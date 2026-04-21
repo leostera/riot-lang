@@ -7,112 +7,168 @@ type 'a box = {
 let box = fun value -> { value }
 
 let test_length = fun _ctx ->
-  if Int.equal (List.length []) 0 then Ok () else Error "expected List.length [] = 0"
+  if Int.equal (List.length []) 0 then
+    Ok ()
+  else
+    Error "expected List.length [] = 0"
 
 let test_compare_lengths = fun _ctx ->
-  if List.compare_lengths ~left:[ 1 ] ~right:[ 1; 2 ] < 0 then Ok ()
-  else Error "expected shorter list to compare below longer list"
+  if List.compare_lengths ~left:[ 1 ] ~right:[ 1; 2 ] < 0 then
+    Ok ()
+  else
+    Error "expected shorter list to compare below longer list"
 
 let test_is_empty = fun _ctx ->
-  if List.is_empty [] && not (List.is_empty [ 1 ]) then Ok ()
-  else Error "expected List.is_empty to reflect list contents"
+  if List.is_empty [] && not (List.is_empty [ 1 ]) then
+    Ok ()
+  else
+    Error "expected List.is_empty to reflect list contents"
 
 let test_append = fun _ctx ->
-  if List.append [ 1; 2 ] [ 3; 4 ] = [ 1; 2; 3; 4 ] then Ok ()
-  else Error "expected List.append to concatenate inputs"
+  if List.append [ 1; 2 ] [ 3; 4 ] = [ 1; 2; 3; 4 ] then
+    Ok ()
+  else
+    Error "expected List.append to concatenate inputs"
 
 let test_reverse = fun _ctx ->
-  if List.reverse [ 1; 2; 3 ] = [ 3; 2; 1 ] then Ok ()
-  else Error "expected List.reverse to invert order"
+  if List.reverse [ 1; 2; 3 ] = [ 3; 2; 1 ] then
+    Ok ()
+  else
+    Error "expected List.reverse to invert order"
 
 let test_reverse_append = fun _ctx ->
-  if List.reverse_append [ 1; 2 ] [ 3; 4 ] = [ 2; 1; 3; 4 ] then Ok ()
-  else Error "expected List.reverse_append to reverse left before appending"
+  if List.reverse_append [ 1; 2 ] [ 3; 4 ] = [ 2; 1; 3; 4 ] then
+    Ok ()
+  else
+    Error "expected List.reverse_append to reverse left before appending"
 
 let test_concat = fun _ctx ->
   let actual = List.concat [ [ "a"; "b" ]; [ "c" ]; [ "d"; "e" ] ] in
-  if actual = [ "a"; "b"; "c"; "d"; "e" ] then Ok ()
-  else Error "expected List.concat to preserve nested list order"
+  if actual = [ "a"; "b"; "c"; "d"; "e" ] then
+    Ok ()
+  else
+    Error "expected List.concat to preserve nested list order"
 
 let test_init = fun _ctx ->
-  if List.init ~count:5 ~fn:(fun idx -> idx) = [ 0; 1; 2; 3; 4 ] then Ok ()
-  else Error "expected List.init to map indices"
+  if List.init ~count:5 ~fn:(fun idx -> idx) = [ 0; 1; 2; 3; 4 ] then
+    Ok ()
+  else
+    Error "expected List.init to map indices"
 
 let test_head_none = fun _ctx ->
-  if List.head [] = None then Ok () else Error "expected List.head [] = None"
+  if List.head [] = None then
+    Ok ()
+  else
+    Error "expected List.head [] = None"
 
 let test_head_some = fun _ctx ->
-  if List.head [ 42 ] = Some 42 then Ok () else Error "expected List.head [42] = Some 42"
+  if List.head [ 42 ] = Some 42 then
+    Ok ()
+  else
+    Error "expected List.head [42] = Some 42"
 
 let test_tail_empty = fun _ctx ->
-  if List.tail [] = [] then Ok () else Error "expected List.tail [] = []"
+  if List.tail [] = [] then
+    Ok ()
+  else
+    Error "expected List.tail [] = []"
 
 let test_get_valid = fun _ctx ->
-  if List.get [ 1; 2; 3 ] ~at:1 = Some 2 then Ok () else Error "expected List.get valid index = Some value"
+  if List.get [ 1; 2; 3 ] ~at:1 = Some 2 then
+    Ok ()
+  else
+    Error "expected List.get valid index = Some value"
 
 let test_get_negative = fun _ctx ->
-  if List.get [ 1; 2; 3 ] ~at:(-1) = None then Ok () else Error "expected List.get negative index = None"
+  if List.get [ 1; 2; 3 ] ~at:(-1) = None then
+    Ok ()
+  else
+    Error "expected List.get negative index = None"
 
 let test_get_unchecked = fun _ctx ->
-  if Int.equal (List.get_unchecked [ 1; 2; 3 ] ~at:2) 3 then Ok ()
-  else Error "expected List.get_unchecked valid index to return value"
+  if Int.equal (List.get_unchecked [ 1; 2; 3 ] ~at:2) 3 then
+    Ok ()
+  else
+    Error "expected List.get_unchecked valid index to return value"
 
 let test_map = fun _ctx ->
-  if List.map [ 1; 2; 3 ] ~fn:(fun value -> value * value) = [ 1; 4; 9 ] then Ok ()
-  else Error "expected List.map to transform every value"
+  if List.map [ 1; 2; 3 ] ~fn:(fun value -> value * value) = [ 1; 4; 9 ] then
+    Ok ()
+  else
+    Error "expected List.map to transform every value"
 
 let test_for_each_order = fun _ctx ->
   let visited = box [] in
   List.for_each [ 1; 2; 3 ] ~fn:(fun value -> visited.value <- value :: visited.value);
-  if List.reverse visited.value = [ 1; 2; 3 ] then Ok ()
-  else Error "expected List.for_each to preserve left-to-right order"
+  if List.reverse visited.value = [ 1; 2; 3 ] then
+    Ok ()
+  else
+    Error "expected List.for_each to preserve left-to-right order"
 
 let test_fold_left = fun _ctx ->
-  if Int.equal (List.fold_left [ 1; 2; 3 ] ~acc:0 ~fn:(fun acc value -> acc - value)) (-6) then Ok ()
-  else Error "expected List.fold_left to associate from the left"
+  if Int.equal (List.fold_left [ 1; 2; 3 ] ~acc:0 ~fn:(fun acc value -> acc - value)) (-6) then
+    Ok ()
+  else
+    Error "expected List.fold_left to associate from the left"
 
 let test_fold_right = fun _ctx ->
-  if List.fold_right [ 1; 2; 3 ] ~acc:[] ~fn:(fun value acc -> value :: acc) = [ 1; 2; 3 ] then Ok ()
-  else Error "expected List.fold_right to rebuild original order"
+  if List.fold_right [ 1; 2; 3 ] ~acc:[] ~fn:(fun value acc -> value :: acc) = [ 1; 2; 3 ] then
+    Ok ()
+  else
+    Error "expected List.fold_right to rebuild original order"
 
 let test_enumerate = fun _ctx ->
-  if List.enumerate [ "a"; "b" ] = [ (0, "a"); (1, "b") ] then Ok ()
-  else Error "expected List.enumerate to pair indices with values"
+  if List.enumerate [ "a"; "b" ] = [ (0, "a"); (1, "b") ] then
+    Ok ()
+  else
+    Error "expected List.enumerate to pair indices with values"
 
 let test_all = fun _ctx ->
-  if List.all [ 2; 4; 6 ] ~fn:(fun value -> value mod 2 = 0) then Ok ()
-  else Error "expected List.all to succeed when every value matches"
+  if List.all [ 2; 4; 6 ] ~fn:(fun value -> value mod 2 = 0) then
+    Ok ()
+  else
+    Error "expected List.all to succeed when every value matches"
 
 let test_any = fun _ctx ->
-  if List.any [ 1; 3; 4 ] ~fn:(fun value -> value mod 2 = 0) then Ok ()
-  else Error "expected List.any to succeed when one value matches"
+  if List.any [ 1; 3; 4 ] ~fn:(fun value -> value mod 2 = 0) then
+    Ok ()
+  else
+    Error "expected List.any to succeed when one value matches"
 
 let test_contains = fun _ctx ->
-  if List.contains [ 1; 2; 3 ] ~value:2 && not (List.contains [ 1; 2; 3 ] ~value:9) then Ok ()
-  else Error "expected List.contains to reflect membership"
+  if List.contains [ 1; 2; 3 ] ~value:2 && not (List.contains [ 1; 2; 3 ] ~value:9) then
+    Ok ()
+  else
+    Error "expected List.contains to reflect membership"
 
 let test_find = fun _ctx ->
-  if List.find [ 1; 3; 4; 6 ] ~fn:(fun value -> value mod 2 = 0) = Some 4 then Ok ()
-  else Error "expected List.find to return first matching value"
+  if List.find [ 1; 3; 4; 6 ] ~fn:(fun value -> value mod 2 = 0) = Some 4 then
+    Ok ()
+  else
+    Error "expected List.find to return first matching value"
 
 let test_filter_map = fun _ctx ->
-  if
-    List.filter_map [ 1; 2; 3; 4 ]
+  if List.filter_map [ 1; 2; 3; 4 ]
       ~fn:(fun value ->
-        if value mod 2 = 0 then Some (value * 10) else None)
-    = [ 20; 40 ]
-  then
+        if value mod 2 = 0 then
+          Some (value * 10)
+        else
+          None) = [ 20; 40 ] then
     Ok ()
   else
     Error "expected List.filter_map to drop Nones and unwrap Somes"
 
 let test_zip = fun _ctx ->
-  if List.zip [ 1; 2 ] [ "a"; "b" ] = [ (1, "a"); (2, "b") ] then Ok ()
-  else Error "expected List.zip to pair matching positions"
+  if List.zip [ 1; 2 ] [ "a"; "b" ] = [ (1, "a"); (2, "b") ] then
+    Ok ()
+  else
+    Error "expected List.zip to pair matching positions"
 
 let test_unzip = fun _ctx ->
-  if List.unzip [ (1, "a"); (2, "b") ] = ([ 1; 2 ], [ "a"; "b" ]) then Ok ()
-  else Error "expected List.unzip to split pair lists"
+  if List.unzip [ (1, "a"); (2, "b") ] = ([ 1; 2 ], [ "a"; "b" ]) then
+    Ok ()
+  else
+    Error "expected List.unzip to split pair lists"
 
 let tests =
   Test.[

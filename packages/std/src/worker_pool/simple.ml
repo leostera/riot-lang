@@ -80,8 +80,7 @@ let rec loop: type task res. (task, res) state -> (unit, Actor.exit_reason) resu
           if state.tasks_in_flight = 0 then
             (
               let results =
-                List.sort
-                  state.results
+                List.sort state.results
                   ~compare:(fun (left_idx, _) (right_idx, _) ->
                     Int.compare left_idx right_idx)
               in
@@ -97,10 +96,8 @@ let init = fun ~owner ~concurrency ~tasks ~result_ref ~fn () ->
   (* Worker function: execute user's fn and send result back *)
   let worker_fn ~owner ~task:(idx, task) =
     match fn task with
-    | result ->
-        send owner (TaskResult { idx; result; result_ref })
-    | exception exn ->
-        send owner (TaskError { idx; exn; result_ref })
+    | result -> send owner (TaskResult { idx; result; result_ref })
+    | exception exn -> send owner (TaskError { idx; exn; result_ref })
   in
   (* Start dynamic pool with indexed tasks *)
   let indexed_tasks, _ =
@@ -137,7 +134,10 @@ let run:
     let owner = self () in
     (* Spawn dispatcher process *)
     let _dispatcher_pid = spawn (init ~owner ~result_ref ~concurrency ~tasks ~fn) in
-    let selector: ([ `Completed of (int * result) list | `Failed of exn ]) selector = function
+    let selector: ([
+        `Completed of (int * result) list
+        | `Failed of exn
+      ]) selector = function
       | Completed { results; result_ref=ref } when Ref.equal result_ref ref -> (
           match Ref.type_equal result_ref ref with
           | Some Type.Equal -> `select (`Completed results)
@@ -148,7 +148,8 @@ let run:
           | Some Type.Equal -> `select (`Failed exn)
           | None -> panic "bad message"
         )
-      | _ -> `skip
+      | _ ->
+          `skip
     in
     match receive ~selector () with
     | `Completed results -> results

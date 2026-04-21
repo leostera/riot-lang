@@ -1,8 +1,8 @@
 open Std
-
 module Kernel = Kernel
 
 let small_chunk = String.make ~len:16 ~char:'x'
+
 let medium_chunk = String.make ~len:1_024 ~char:'y'
 
 let medium_slice =

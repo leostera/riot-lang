@@ -188,26 +188,24 @@ let to_reader = fun file ->
 
     let read = fun file ~into ->
       let writable =
-        if IO.Buffer.writable_bytes into = 0 then (
-          match IO.Buffer.ensure_free into 4_096 with
-          | Ok () -> IO.Buffer.writable into
-          | Error error ->
-              Kernel.SystemError.panic
-                ("Fs.File.to_reader.ensure_free: " ^ Kernel.IO.Error.message error)
-        ) else
+        if IO.Buffer.writable_bytes into = 0 then
+          (
+            match IO.Buffer.ensure_free into 4_096 with
+            | Ok () -> IO.Buffer.writable into
+            | Error error -> Kernel.SystemError.panic
+              ("Fs.File.to_reader.ensure_free: " ^ Kernel.IO.Error.message error)
+          )
+        else
           IO.Buffer.writable into
       in
-      match Kernel.Fs.File.read_vectored file (IO.IoVec.from_slices [| writable |]) with
-      | Ok count ->
-          begin
-            match IO.Buffer.commit into count with
-            | Ok () -> Ok count
-            | Error error ->
-                Kernel.SystemError.panic
-                  ("Fs.File.to_reader.commit: " ^ Kernel.IO.Error.message error)
-          end
-      | Error err ->
-          Error (io_error_of_file_error err)
+      match Kernel.Fs.File.read_vectored file (IO.IoVec.from_slices [|writable|]) with
+      | Ok count -> begin
+          match IO.Buffer.commit into count with
+          | Ok () -> Ok count
+          | Error error -> Kernel.SystemError.panic
+            ("Fs.File.to_reader.commit: " ^ Kernel.IO.Error.message error)
+        end
+      | Error err -> Error (io_error_of_file_error err)
 
     let read_vectored = fun file ~into ->
       match Kernel.Fs.File.read_vectored file into with

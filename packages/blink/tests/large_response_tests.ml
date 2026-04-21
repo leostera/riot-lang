@@ -178,8 +178,10 @@ let test_sse_parsing = fun _ctx ->
                   ("SSE Event "
                   ^ string_of_int (i + 1)
                   ^ ": "
-                  ^ Blink.SSE
-                      .(String.sub event.data ~offset:0 ~len:(min 80 (String.length event.data)))))
+                  ^ Blink.SSE.(String.sub
+                    event.data
+                    ~offset:0
+                    ~len:(min 80 (String.length event.data)))))
               events;
             (* Verify each event has JSON data *)
             let all_valid_json =

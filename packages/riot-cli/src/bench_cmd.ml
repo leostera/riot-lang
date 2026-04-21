@@ -114,8 +114,7 @@ let listed_suite_path_json = fun ~(workspace:Riot_model.Workspace.t) (
 let listed_suite_selector = fun (suite: Bench_runtime.suite_binary) ->
   Package_name.to_string suite.package_name ^ ":" ^ suite.suite_name
 
-let write_json_line = fun json ->
-  println (Data.Json.to_string json)
+let write_json_line = fun json -> println (Data.Json.to_string json)
 
 let write_bench_suite_listed_json = fun ~command_started_at ~(workspace:Riot_model.Workspace.t) (
   suite: Bench_runtime.listed_bench_suite
@@ -446,11 +445,10 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
   else
     let on_event (event: Bench_runtime.bench_event) =
       match event with
-      | Bench_runtime.Build build_event ->
-          Build.write_build_event
-            ~mode:output_mode
-            ~seen_registry_updates
-            build_event
+      | Bench_runtime.Build build_event -> Build.write_build_event
+        ~mode:output_mode
+        ~seen_registry_updates
+        build_event
       | _ -> (
           match output_mode with
           | Build.Json -> Bench_runtime.bench_event_to_json event

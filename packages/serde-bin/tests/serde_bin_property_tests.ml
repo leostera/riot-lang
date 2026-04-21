@@ -15,8 +15,7 @@ let finite_float_limit = 1.0e12
 
 let finite_float_gen = Generator.float_range (-.finite_float_limit) finite_float_limit
 
-let finite_float_arb =
-  Arbitrary.make ~shrink:Shrinker.float ~print:Printer.float finite_float_gen
+let finite_float_arb = Arbitrary.make ~shrink:Shrinker.float ~print:Printer.float finite_float_gen
 
 let io_writer_of_buffer =
   let module Write = struct

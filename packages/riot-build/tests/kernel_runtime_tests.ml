@@ -2,10 +2,8 @@ open Std
 open Riot_build
 open Std.Collections
 open Riot_model
-
 module Action_scheduler = Riot_build.Internal.Action_scheduler
 module Sandbox = Riot_build.Internal.Sandbox
-
 module Test = Std.Test
 module G = Std.Graph.SimpleGraph
 
@@ -119,20 +117,18 @@ let summarize_execution_failures = fun ~sandbox_dir result ->
       ~fn:(fun completed_action ->
         let action = action_label completed_action.Action_scheduler.node in
         match completed_action.result.status with
-        | Action_scheduler.Failed (Action_scheduler.ExecutionFailed { message }) ->
-            Some (action ^ "\n" ^ message)
-        | Action_scheduler.Failed (Action_scheduler.OutputsNotCreated { missing }) ->
-            Some (action
-            ^ "\nmissing outputs: "
-            ^ String.concat ", " (List.map missing ~fn:Path.to_string))
-        | Action_scheduler.Failed (Action_scheduler.DependenciesFailed { failed }) ->
-            Some (action
-            ^ "\nfailed deps: "
-            ^ String.concat ", " (List.map failed ~fn:G.Node_id.to_string))
+        | Action_scheduler.Failed (Action_scheduler.ExecutionFailed { message }) -> Some (action
+        ^ "\n"
+        ^ message)
+        | Action_scheduler.Failed (Action_scheduler.OutputsNotCreated { missing }) -> Some (action
+        ^ "\nmissing outputs: "
+        ^ String.concat ", " (List.map missing ~fn:Path.to_string))
+        | Action_scheduler.Failed (Action_scheduler.DependenciesFailed { failed }) -> Some (action
+        ^ "\nfailed deps: "
+        ^ String.concat ", " (List.map failed ~fn:G.Node_id.to_string))
         | Action_scheduler.Cached _
         | Action_scheduler.Executed
-        | Action_scheduler.Skipped ->
-            None)
+        | Action_scheduler.Skipped -> None)
   in
   "sandbox: " ^ Path.to_string sandbox_dir ^ "\nfailures:\n" ^ String.concat "\n\n" failures
 

@@ -20,10 +20,7 @@ type error =
   | UnexpectedError of { reason: string }
 val error_message: error -> string
 
-val make_context:
-  ?on_event:(Event.t -> unit) ->
-  Request.t ->
-  (Build_context.t, error) result
+val make_context: ?on_event:(Event.t -> unit) -> Request.t -> (Build_context.t, error) result
 
 val resolve: Build_context.t -> Request.t -> (Resolved_build.t, error) result
 

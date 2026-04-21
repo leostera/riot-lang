@@ -1,7 +1,5 @@
 type t
-
 type error = Error.t
-
 val empty: t
 
 val create: size:int -> (t, error) Result.t
@@ -28,69 +26,21 @@ val set: t -> at:int -> char -> (unit, error) Result.t
 
 val set_unchecked: t -> at:int -> char -> unit
 
-val blit:
-  src:t ->
-  src_off:int ->
-  dst:t ->
-  dst_off:int ->
-  len:int ->
-  (unit, error) Result.t
+val blit: src:t -> src_off:int -> dst:t -> dst_off:int -> len:int -> (unit, error) Result.t
 
-val blit_unchecked:
-  src:t ->
-  src_off:int ->
-  dst:t ->
-  dst_off:int ->
-  len:int ->
-  unit
+val blit_unchecked: src:t -> src_off:int -> dst:t -> dst_off:int -> len:int -> unit
 
-val blit_from_bytes:
-  bytes ->
-  src_off:int ->
-  t ->
-  dst_off:int ->
-  len:int ->
-  (unit, error) Result.t
+val blit_from_bytes: bytes -> src_off:int -> t -> dst_off:int -> len:int -> (unit, error) Result.t
 
-val blit_from_bytes_unchecked:
-  bytes ->
-  src_off:int ->
-  t ->
-  dst_off:int ->
-  len:int ->
-  unit
+val blit_from_bytes_unchecked: bytes -> src_off:int -> t -> dst_off:int -> len:int -> unit
 
-val blit_from_string:
-  string ->
-  src_off:int ->
-  t ->
-  dst_off:int ->
-  len:int ->
-  (unit, error) Result.t
+val blit_from_string: string -> src_off:int -> t -> dst_off:int -> len:int -> (unit, error) Result.t
 
-val blit_from_string_unchecked:
-  string ->
-  src_off:int ->
-  t ->
-  dst_off:int ->
-  len:int ->
-  unit
+val blit_from_string_unchecked: string -> src_off:int -> t -> dst_off:int -> len:int -> unit
 
-val blit_to_bytes:
-  t ->
-  src_off:int ->
-  bytes ->
-  dst_off:int ->
-  len:int ->
-  (unit, error) Result.t
+val blit_to_bytes: t -> src_off:int -> bytes -> dst_off:int -> len:int -> (unit, error) Result.t
 
-val blit_to_bytes_unchecked:
-  t ->
-  src_off:int ->
-  bytes ->
-  dst_off:int ->
-  len:int ->
-  unit
+val blit_to_bytes_unchecked: t -> src_off:int -> bytes -> dst_off:int -> len:int -> unit
 
 val from_string: ?off:int -> ?len:int -> string -> (t, error) Result.t
 

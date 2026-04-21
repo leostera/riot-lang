@@ -1,5 +1,4 @@
 open Std
-
 module Kernel = Kernel
 module Test = Std.Test
 
@@ -7,8 +6,8 @@ let test_of_string_roundtrip = fun _ctx ->
   let slice = Kernel.IO.IoVec.IoSlice.from_string "hello riot" |> Result.unwrap in
   if
     Kernel.IO.IoVec.IoSlice.length slice = 10
-    && Kernel.IO.IoVec.IoSlice.get slice ~at:4 = Ok 'o'
-    && String.equal (Kernel.IO.IoVec.IoSlice.to_string slice) "hello riot"
+    && Kernel.IO.IoVec.IoSlice.get slice ~at:4
+    = Ok 'o' && String.equal (Kernel.IO.IoVec.IoSlice.to_string slice) "hello riot"
   then
     Ok ()
   else
@@ -16,14 +15,13 @@ let test_of_string_roundtrip = fun _ctx ->
 
 let test_sub_and_advance = fun _ctx ->
   let slice = Kernel.IO.IoVec.IoSlice.from_string "hello riot" |> Result.unwrap in
-  let actual =
-    slice
-    |> fun slice -> Kernel.IO.IoVec.IoSlice.shift slice 6
+  let actual = slice
+  |> fun slice ->
+    Kernel.IO.IoVec.IoSlice.shift slice 6
     |> Result.unwrap
     |> Kernel.IO.IoVec.IoSlice.sub ~off:0 ~len:3
     |> Result.unwrap
-    |> Kernel.IO.IoVec.IoSlice.to_string
-  in
+    |> Kernel.IO.IoVec.IoSlice.to_string in
   if String.equal actual "rio" then
     Ok ()
   else

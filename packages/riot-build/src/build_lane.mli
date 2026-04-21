@@ -1,13 +1,9 @@
 open Std
 
 type error = string
-
 type unresolved
-
 type locked
-
 type 'stage t
-
 val target: 'a t -> Riot_model.Target.t
 
 val workspace: 'a t -> Riot_model.Workspace.t
@@ -43,6 +39,4 @@ val prepare:
   toolchain:Riot_toolchain.t ->
   (locked t, error) result
 
-val release:
-  locked t ->
-  unit
+val release: locked t -> unit

@@ -1,5 +1,4 @@
 open Std
-
 module Bytes = Kernel.Bytes
 
 let test_format_empty = fun _ctx ->
@@ -9,18 +8,16 @@ let test_format_empty = fun _ctx ->
     Error "Format.format [] should return the empty string"
 
 let test_format_concatenates_fragments_in_order = fun _ctx ->
-  let actual =
-    Format.format
-      [
-        Format.str "ok:";
-        Format.char ' ';
-        Format.bool true;
-        Format.char ' ';
-        Format.int 42;
-        Format.char ' ';
-        Format.bytes (Bytes.from_string "done");
-      ]
-  in
+  let actual = Format.format
+    [
+      Format.str "ok:";
+      Format.char ' ';
+      Format.bool true;
+      Format.char ' ';
+      Format.int 42;
+      Format.char ' ';
+      Format.bytes (Bytes.from_string "done");
+    ] in
   if String.equal actual "ok: true 42 done" then
     Ok ()
   else
@@ -56,15 +53,16 @@ let test_to_string_handles_bytes = fun _ctx ->
   else
     Error "Format.to_string should render bytes"
 
-let tests = Test.[
-  case "format [] returns the empty string" test_format_empty;
-  case "format concatenates fragments in order" test_format_concatenates_fragments_in_order;
-  case "to_string renders strings" test_to_string_handles_string;
-  case "to_string renders chars" test_to_string_handles_char;
-  case "to_string renders bools" test_to_string_handles_bool;
-  case "to_string renders ints" test_to_string_handles_int;
-  case "to_string renders bytes" test_to_string_handles_bytes;
-]
+let tests =
+  Test.[
+    case "format [] returns the empty string" test_format_empty;
+    case "format concatenates fragments in order" test_format_concatenates_fragments_in_order;
+    case "to_string renders strings" test_to_string_handles_string;
+    case "to_string renders chars" test_to_string_handles_char;
+    case "to_string renders bools" test_to_string_handles_bool;
+    case "to_string renders ints" test_to_string_handles_int;
+    case "to_string renders bytes" test_to_string_handles_bytes;
+  ]
 
 let () =
   Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"format" ~tests ~args) ~args:Env.args ()

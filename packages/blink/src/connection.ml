@@ -26,11 +26,7 @@ type t =
     } -> t
 
 let make:
-  reader:IO.Reader.t ->
-  writer:IO.Writer.t ->
-  of_io_error:(IO.error -> Error.t) ->
-  uri:Net.Uri.t ->
-  t = fun ~reader ~writer ~of_io_error ~uri ->
+  reader:IO.Reader.t -> writer:IO.Writer.t -> of_io_error:(IO.error -> Error.t) -> uri:Net.Uri.t -> t = fun ~reader ~writer ~of_io_error ~uri ->
   Conn {
     protocol = (module Protocol.Http1);
     reader;

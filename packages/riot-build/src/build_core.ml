@@ -46,7 +46,8 @@ let error_message = function
       | failures -> "build failed:\n"
       ^ String.concat "\n" (List.map failures ~fn:Build_result.failure_message)
     )
-  | PlanningFailed { reason } -> "planning failed: " ^ reason
+  | PlanningFailed { reason } ->
+      "planning failed: " ^ reason
   | CycleDetected { cycle_nodes } ->
       "cyclic dependency detected: " ^ String.concat " -> " cycle_nodes
   | BuildAlreadyRunning { lock_path } ->
@@ -61,20 +62,19 @@ let map_context_error = function
 
 let map_resolved_error = function
   | Resolved_build.TargetSelectionFailed error -> TargetSelectionFailed error
-  | Resolved_build.PackageNotFound {
+  | Resolved_build.PackageNotFound { package_name; available_packages } -> PackageNotFound {
     package_name;
     available_packages
-  } -> PackageNotFound { package_name; available_packages }
-  | Resolved_build.PackagesNotFound {
+  }
+  | Resolved_build.PackagesNotFound { package_names; available_packages } -> PackagesNotFound {
     package_names;
     available_packages
-  } -> PackagesNotFound { package_names; available_packages }
+  }
 
 let make_context = fun ?on_event request ->
   Build_context.make ?on_event request |> Result.map_err ~fn:map_context_error
 
-let resolve = fun context request ->
-  Resolved_build.resolve context request |> Result.map_err ~fn:map_resolved_error
+let resolve = fun context request -> Resolved_build.resolve context request |> Result.map_err ~fn:map_resolved_error
 
 let map_runtime_error = function
   | Build_runtime.ToolchainInstallFailed { target; error } -> ToolchainInstallFailed {
@@ -88,9 +88,7 @@ let map_runtime_error = function
   | Build_runtime.BuildFailed { errors } -> BuildFailed {
     errors = Build_result.failures_of_build_results errors
   }
-  | Build_runtime.UnexpectedError { reason } -> UnexpectedError {
-    reason
-  }
+  | Build_runtime.UnexpectedError { reason } -> UnexpectedError { reason }
 
 let execute_raw = fun ?(allow_partial_failures = false) ?(record_cache_generation = true) context spec ->
   Build_runtime.execute ~allow_partial_failures ~record_cache_generation context spec
@@ -100,6 +98,6 @@ let execute = fun context spec -> execute_raw context spec |> Result.map ~fn:Bui
 
 let build = fun ?on_event request ->
   let open Std.Result.Syntax in
-  let* context = make_context ?on_event request in
-  let* spec = resolve context request in
-  execute context spec
+    let* context = make_context ?on_event request in
+    let* spec = resolve context request in
+    execute context spec

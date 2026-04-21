@@ -134,194 +134,193 @@ module Fields = struct
 
   let string_equals_slice = fun source ~offset ~length other ->
     let open Std.Int in
-    if length != String.length other then
-      false
-    else
-      let rec loop index =
-        if index = length then
-          true
-        else if
-          Char.equal
-            (String.get_unchecked source ~at:(offset + index))
-            (String.get_unchecked other ~at:index)
-        then
-          loop (index + 1)
-        else
-          false
-      in
-      loop 0
+      if length != String.length other then
+        false
+      else
+        let rec loop index =
+          if index = length then
+            true
+          else if
+            Char.equal
+              (String.get_unchecked source ~at:(offset + index))
+              (String.get_unchecked other ~at:index)
+          then
+            loop (index + 1)
+          else
+            false
+        in
+        loop 0
 
   let bytes_equals_string = fun source ~offset ~length other ->
     let open Std.Int in
-    if length != String.length other then
-      false
-    else
-      let rec loop index =
-        if index = length then
-          true
-        else if
-          Char.equal
-            (IO.Bytes.get_unchecked source ~at:(offset + index))
-            (String.get_unchecked other ~at:index)
-        then
-          loop (index + 1)
-        else
-          false
-      in
-      loop 0
+      if length != String.length other then
+        false
+      else
+        let rec loop index =
+          if index = length then
+            true
+          else if
+            Char.equal
+              (IO.Bytes.get_unchecked source ~at:(offset + index))
+              (String.get_unchecked other ~at:index)
+          then
+            loop (index + 1)
+          else
+            false
+        in
+        loop 0
 
   let ioslice_equals_string = fun source ~offset ~length other ->
     let open Std.Int in
-    if length != String.length other then
-      false
-    else
-      let rec loop index =
-        if index = length then
-          true
-        else if
-          Char.equal
-            (IO.IoSlice.get_unchecked source ~at:(offset + index))
-            (String.get_unchecked other ~at:index)
-        then
-          loop (index + 1)
-        else
-          false
-      in
-      loop 0
+      if length != String.length other then
+        false
+      else
+        let rec loop index =
+          if index = length then
+            true
+          else if
+            Char.equal
+              (IO.IoSlice.get_unchecked source ~at:(offset + index))
+              (String.get_unchecked other ~at:index)
+          then
+            loop (index + 1)
+          else
+            false
+        in
+        loop 0
 
   let buffer_equals_string = fun buffer ~offset ~length other ->
     let open Std.Int in
-    if length != String.length other then
-      false
-    else
-      let rec loop index =
-        if index = length then
-          true
-        else if
-          Char.equal
-            (IO.Buffer.get_unchecked buffer ~at:(offset + index))
-            (String.get_unchecked other ~at:index)
-        then
-          loop (index + 1)
-        else
-          false
-      in
-      loop 0
+      if length != String.length other then
+        false
+      else
+        let rec loop index =
+          if index = length then
+            true
+          else if
+            Char.equal
+              (IO.Buffer.get_unchecked buffer ~at:(offset + index))
+              (String.get_unchecked other ~at:index)
+          then
+            loop (index + 1)
+          else
+            false
+        in
+        loop 0
 
   let find_edge: 'tag. 'tag edge array -> char -> 'tag edge option = fun edges first ->
     let open Std.Int in
-    let rec loop index =
-      if index = Array.length edges then
-        None
-      else
-        let edge = Array.get_unchecked edges ~at:index in
-        if Char.equal edge.first first then
-          Some edge
+      let rec loop index =
+        if index = Array.length edges then
+          None
         else
-          loop (index + 1)
-    in
-    loop 0
+          let edge = Array.get_unchecked edges ~at:index in
+          if Char.equal edge.first first then
+            Some edge
+          else
+            loop (index + 1)
+      in
+      loop 0
 
   let match_slice: 'tag. 'tag t -> string -> offset:int -> length:int -> 'tag option = fun fields source ~offset ~length ->
     let open Std.Int in
-    let rec loop (node: 'tag node) offset length =
-      if length = 0 then
-        node.tag
-      else
-        let first = String.get_unchecked source ~at:offset in
-        match find_edge node.edges first with
-        | None -> None
-        | Some edge ->
-            let label_length = String.length edge.label in
-            if label_length > length then
-              None
-            else if string_equals_slice source ~offset ~length:label_length edge.label then
-              loop edge.next (offset + label_length) (length - label_length)
-            else
-              None
-    in
-    loop fields.root offset length
+      let rec loop (node: 'tag node) offset length =
+        if length = 0 then
+          node.tag
+        else
+          let first = String.get_unchecked source ~at:offset in
+          match find_edge node.edges first with
+          | None -> None
+          | Some edge ->
+              let label_length = String.length edge.label in
+              if label_length > length then
+                None
+              else if string_equals_slice source ~offset ~length:label_length edge.label then
+                loop edge.next (offset + label_length) (length - label_length)
+              else
+                None
+      in
+      loop fields.root offset length
 
   let match_bytes: 'tag. 'tag t -> bytes -> offset:int -> length:int -> 'tag option = fun fields source ~offset ~length ->
     let open Std.Int in
-    let rec loop (node: 'tag node) offset length =
-      if length = 0 then
-        node.tag
-      else
-        let first = IO.Bytes.get_unchecked source ~at:offset in
-        match find_edge node.edges first with
-        | None -> None
-        | Some edge ->
-            let label_length = String.length edge.label in
-            if label_length > length then
-              None
-            else if bytes_equals_string source ~offset ~length:label_length edge.label then
-              loop edge.next (offset + label_length) (length - label_length)
-            else
-              None
-    in
-    loop fields.root offset length
+      let rec loop (node: 'tag node) offset length =
+        if length = 0 then
+          node.tag
+        else
+          let first = IO.Bytes.get_unchecked source ~at:offset in
+          match find_edge node.edges first with
+          | None -> None
+          | Some edge ->
+              let label_length = String.length edge.label in
+              if label_length > length then
+                None
+              else if bytes_equals_string source ~offset ~length:label_length edge.label then
+                loop edge.next (offset + label_length) (length - label_length)
+              else
+                None
+      in
+      loop fields.root offset length
 
   let match_ioslice: 'tag. 'tag t -> IO.IoSlice.t -> offset:int -> length:int -> 'tag option = fun fields source ~offset ~length ->
     let open Std.Int in
-    let rec loop (node: 'tag node) offset length =
-      if length = 0 then
-        node.tag
-      else
-        let first = IO.IoSlice.get_unchecked source ~at:offset in
-        match find_edge node.edges first with
-        | None -> None
-        | Some edge ->
-            let label_length = String.length edge.label in
-            if label_length > length then
-              None
-            else if ioslice_equals_string source ~offset ~length:label_length edge.label then
-              loop edge.next (offset + label_length) (length - label_length)
-            else
-              None
-    in
-    loop fields.root offset length
+      let rec loop (node: 'tag node) offset length =
+        if length = 0 then
+          node.tag
+        else
+          let first = IO.IoSlice.get_unchecked source ~at:offset in
+          match find_edge node.edges first with
+          | None -> None
+          | Some edge ->
+              let label_length = String.length edge.label in
+              if label_length > length then
+                None
+              else if ioslice_equals_string source ~offset ~length:label_length edge.label then
+                loop edge.next (offset + label_length) (length - label_length)
+              else
+                None
+      in
+      loop fields.root offset length
 
   let match_buffer: 'tag. 'tag t -> IO.Buffer.t -> 'tag option = fun fields buffer ->
     let open Std.Int in
-    let rec loop (node: 'tag node) offset length =
-      if length = 0 then
-        node.tag
-      else
-        let first = IO.Buffer.get_unchecked buffer ~at:offset in
-        match find_edge node.edges first with
-        | None -> None
-        | Some edge ->
-            let label_length = String.length edge.label in
-            if label_length > length then
-              None
-            else if buffer_equals_string buffer ~offset ~length:label_length edge.label then
-              loop edge.next (offset + label_length) (length - label_length)
-            else
-              None
-    in
-    loop fields.root 0 (IO.Buffer.length buffer)
+      let rec loop (node: 'tag node) offset length =
+        if length = 0 then
+          node.tag
+        else
+          let first = IO.Buffer.get_unchecked buffer ~at:offset in
+          match find_edge node.edges first with
+          | None -> None
+          | Some edge ->
+              let label_length = String.length edge.label in
+              if label_length > length then
+                None
+              else if buffer_equals_string buffer ~offset ~length:label_length edge.label then
+                loop edge.next (offset + label_length) (length - label_length)
+              else
+                None
+      in
+      loop fields.root 0 (IO.Buffer.length buffer)
 
-  let match_buffer_range: 'tag. 'tag t -> IO.Buffer.t -> offset:int -> length:int -> 'tag option =
-   fun fields buffer ~offset ~length ->
+  let match_buffer_range: 'tag. 'tag t -> IO.Buffer.t -> offset:int -> length:int -> 'tag option = fun fields buffer ~offset ~length ->
     let open Std.Int in
-    let rec loop (node: 'tag node) offset length =
-      if length = 0 then
-        node.tag
-      else
-        let first = IO.Buffer.get_unchecked buffer ~at:offset in
-        match find_edge node.edges first with
-        | None -> None
-        | Some edge ->
-            let label_length = String.length edge.label in
-            if label_length > length then
-              None
-            else if buffer_equals_string buffer ~offset ~length:label_length edge.label then
-              loop edge.next (offset + label_length) (length - label_length)
-            else
-              None
-    in
-    loop fields.root offset length
+      let rec loop (node: 'tag node) offset length =
+        if length = 0 then
+          node.tag
+        else
+          let first = IO.Buffer.get_unchecked buffer ~at:offset in
+          match find_edge node.edges first with
+          | None -> None
+          | Some edge ->
+              let label_length = String.length edge.label in
+              if label_length > length then
+                None
+              else if buffer_equals_string buffer ~offset ~length:label_length edge.label then
+                loop edge.next (offset + label_length) (length - label_length)
+              else
+                None
+      in
+      loop fields.root offset length
 
   let make = fun cases ->
     let root = List.map cases ~fn:(fun case -> { suffix = case.key; tag = case.tag }) |> build_node in

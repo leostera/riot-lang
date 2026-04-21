@@ -193,14 +193,10 @@ let io_error_of_read_error = function
   | Source_error error -> error
   | Gzip_error Truncated_input -> IO.Unexpected_end_of_file
   | Gzip_error (Engine_error Engine.Invalid_data) -> IO.Invalid_data
-  | Gzip_error (Engine_error Engine.Need_dictionary) ->
-      IO.Unknown_error "gzip stream requires a preset dictionary"
-  | Gzip_error (Engine_error Engine.Buffer_error) ->
-      IO.Buffer_full
-  | Gzip_error (Engine_error Engine.Out_of_memory) ->
-      IO.Out_of_memory
-  | Gzip_error (Engine_error (Engine.Unknown_error message)) ->
-      IO.Unknown_error message
+  | Gzip_error (Engine_error Engine.Need_dictionary) -> IO.Unknown_error "gzip stream requires a preset dictionary"
+  | Gzip_error (Engine_error Engine.Buffer_error) -> IO.Buffer_full
+  | Gzip_error (Engine_error Engine.Out_of_memory) -> IO.Out_of_memory
+  | Gzip_error (Engine_error (Engine.Unknown_error message)) -> IO.Unknown_error message
 
 let make_reader = fun src ->
   let decoder =
@@ -236,15 +232,13 @@ let to_reader = fun src ->
       in
       let scratch = Bytes.create ~size:requested in
       match read_into t scratch with
-      | Error err ->
-          Error (io_error_of_read_error err)
+      | Error err -> Error (io_error_of_read_error err)
       | Ok read_len ->
           let chunk = Bytes.sub_unchecked scratch ~offset:0 ~len:read_len in
           begin
             match Buffer.append_bytes into chunk with
             | Ok () -> Ok read_len
-            | Error error ->
-                panic ("Compress.Gzip.to_reader.read: " ^ Kernel.IO.Error.message error)
+            | Error error -> panic ("Compress.Gzip.to_reader.read: " ^ Kernel.IO.Error.message error)
           end
 
     let read_vectored = fun t ~into:bufs ->
@@ -282,8 +276,8 @@ let buffer_writer =
       begin
         match Buffer.append_slice buffer (Buffer.readable from) with
         | Ok () -> Ok (Buffer.readable_bytes from)
-        | Error error ->
-            panic ("Compress.Gzip.buffer_writer.write: " ^ Kernel.IO.Error.message error)
+        | Error error -> panic
+          ("Compress.Gzip.buffer_writer.write: " ^ Kernel.IO.Error.message error)
       end
 
     let write_vectored = fun buffer ~from:bufs ->
@@ -315,12 +309,14 @@ let compress = fun src dst ->
         if not source_eof && available_src = 0 then
           let input = Buffer.create ~size:input_buffer_size in
           match IO.read src ~into:input with
-          | Ok 0 -> encode_loop ~source_eof:true ~src_pos:0 ~src_len:0 ~chunk_count
+          | Ok 0 ->
+              encode_loop ~source_eof:true ~src_pos:0 ~src_len:0 ~chunk_count
           | Ok bytes_read ->
               let bytes = Buffer.to_bytes input in
               Bytes.blit_unchecked bytes ~src_offset:0 ~dst:src_buf ~dst_offset:0 ~len:bytes_read;
               encode_loop ~source_eof:false ~src_pos:0 ~src_len:bytes_read ~chunk_count
-          | Error err -> Error (Stream_source_error err)
+          | Error err ->
+              Error (Stream_source_error err)
         else
           let flush =
             if source_eof then
@@ -402,8 +398,8 @@ let decompress = fun src dst ->
         begin
           match Buffer.append_bytes chunk block with
           | Ok () -> ()
-          | Error error ->
-              panic ("Compress.Gzip.decompress.append: " ^ Kernel.IO.Error.message error)
+          | Error error -> panic
+            ("Compress.Gzip.decompress.append: " ^ Kernel.IO.Error.message error)
         end;
         let () =
           if chunk_count > 0 && Int.rem chunk_count 32 = 0 then
@@ -470,8 +466,10 @@ let compress_string = fun data ->
   let writer = buffer_writer buffer in
   match compress (Reader.from_string data) writer with
   | Ok () -> Ok (Buffer.contents buffer)
-  | Error (Stream_source_error err) -> Error (Engine_error (Engine.Unknown_error ("unexpected in-memory source error: " ^ IO.error_message err)))
-  | Error (Stream_destination_error err) -> Error (Engine_error (Engine.Unknown_error ("unexpected in-memory destination error: " ^ IO.error_message err)))
+  | Error (Stream_source_error err) -> Error (Engine_error (Engine.Unknown_error ("unexpected in-memory source error: "
+  ^ IO.error_message err)))
+  | Error (Stream_destination_error err) -> Error (Engine_error (Engine.Unknown_error ("unexpected in-memory destination error: "
+  ^ IO.error_message err)))
   | Error (Stream_gzip_error err) -> Error err
 
 let decompress_string = fun data ->
@@ -480,18 +478,19 @@ let decompress_string = fun data ->
   let rec loop () =
     let scratch = Bytes.create ~size:input_buffer_size in
     match read_into gzip_reader scratch with
-    | Ok 0 -> Ok ()
+    | Ok 0 ->
+        Ok ()
     | Ok read_len ->
         let block = Bytes.sub_unchecked scratch ~offset:0 ~len:read_len in
         begin
           match Buffer.append_bytes buffer block with
           | Ok () -> Ok ()
-          | Error error ->
-              panic ("Compress.Gzip.decompress_string.append: " ^ Kernel.IO.Error.message error)
-        end
-        |> Result.and_then ~fn:(fun () -> loop ())
+          | Error error -> panic
+            ("Compress.Gzip.decompress_string.append: " ^ Kernel.IO.Error.message error)
+        end |> Result.and_then ~fn:(fun () -> loop ())
     | Error (Source_error err) ->
-        Error (Engine_error (Engine.Unknown_error ("unexpected in-memory source error: " ^ IO.error_message err)))
+        Error (Engine_error (Engine.Unknown_error ("unexpected in-memory source error: "
+        ^ IO.error_message err)))
     | Error (Gzip_error err) ->
         Error err
   in

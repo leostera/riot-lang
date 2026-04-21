@@ -1,5 +1,4 @@
 open Std
-
 module Kernel = Kernel
 module Buffer = IO.Buffer
 module Bytes = IO.Bytes
@@ -71,12 +70,13 @@ let payload_for_kind = function
       for index = 1 to line_count do
         Buffer.add_string
           buffer
-          (format Format.[
-             str "line-";
-             str (Int.to_string index);
-             str ": repeated payload for stdin benchmark";
-             str "\n";
-           ])
+          (format
+            Format.[
+              str "line-";
+              str (Int.to_string index);
+              str ": repeated payload for stdin benchmark";
+              str "\n";
+            ])
       done;
       let data = Buffer.contents buffer in
       { data; expected_bytes = String.length data; expected_lines = line_count }
@@ -85,14 +85,11 @@ let payload_for_mode = function
   | Kernel_chunks
   | Std_chunks
   | Std_reader_chunks
-  | Std_read_to_string ->
-      payload_for_kind Chunk_payload
+  | Std_read_to_string -> payload_for_kind Chunk_payload
   | Kernel_chars
   | Std_chars
-  | Std_buffered_chars ->
-      payload_for_kind Char_payload
-  | Std_lines ->
-      payload_for_kind Line_payload
+  | Std_buffered_chars -> payload_for_kind Char_payload
+  | Std_lines -> payload_for_kind Line_payload
 
 let executable_path =
   match Env.args with
@@ -188,12 +185,11 @@ let write_all = fun poll ~token file buffer ->
   loop 0 (Kernel.Bytes.length buffer)
 
 let read_all = fun poll ~token file ->
-  let buffer = Kernel.Bytes.create ~size:4096 in
+  let buffer = Kernel.Bytes.create ~size:4_096 in
   let rec loop parts =
     match Kernel.Fs.File.read file buffer with
     | Ok 0 -> Ok (String.concat "" (List.reverse parts))
-    | Ok count ->
-        loop (Kernel.Bytes.sub_string buffer ~offset:0 ~len:count :: parts)
+    | Ok count -> loop (Kernel.Bytes.sub_string buffer ~offset:0 ~len:count :: parts)
     | Error error ->
         if is_would_block error then
           let* () = wait_readable poll ~token (Kernel.Fs.File.to_source file) in
@@ -232,13 +228,8 @@ let run_worker_process = fun mode payload ->
     "--expected-lines";
     Int.to_string payload.expected_lines;
   |] in
-  let* process =
-    lift_process
-      (Kernel.Process.spawn
-        ~program:(Path.to_string executable_path)
-        ~args
-        ~stdio
-        ()) in
+  let* process = lift_process
+    (Kernel.Process.spawn ~program:(Path.to_string executable_path) ~args ~stdio ()) in
   protect
     ~finally:(fun () ->
       let _ = Kernel.Process.close process in
@@ -248,23 +239,20 @@ let run_worker_process = fun mode payload ->
       | (Some stdin_file, Some stderr_file) ->
           with_poll
             (fun poll ->
-              let* () =
-                write_all
-                  poll
-                  ~token:(Kernel.Async.Token.make ("stdin-bench-write", mode_to_string mode))
-                  stdin_file
-                  (Kernel.Bytes.from_string payload.data) in
+              let* () = write_all
+                poll
+                ~token:(Kernel.Async.Token.make ("stdin-bench-write", mode_to_string mode))
+                stdin_file
+                (Kernel.Bytes.from_string payload.data) in
               let* () = lift_file (Kernel.Fs.File.close stdin_file) in
-              let* status =
-                wait_for_exit
-                  poll
-                  ~token:(Kernel.Async.Token.make ("stdin-bench-exit", mode_to_string mode))
-                  process in
-              let* stderr =
-                read_all
-                  poll
-                  ~token:(Kernel.Async.Token.make ("stdin-bench-stderr", mode_to_string mode))
-                  stderr_file in
+              let* status = wait_for_exit
+                poll
+                ~token:(Kernel.Async.Token.make ("stdin-bench-exit", mode_to_string mode))
+                process in
+              let* stderr = read_all
+                poll
+                ~token:(Kernel.Async.Token.make ("stdin-bench-stderr", mode_to_string mode))
+                stderr_file in
               match status with
               | Kernel.Process.Exited 0 -> Ok ()
               | _ ->
@@ -272,7 +260,8 @@ let run_worker_process = fun mode payload ->
                     if stderr = "" then
                       ""
                     else
-                      " " ^ stderr in
+                      " " ^ stderr
+                  in
                   Error ("stdin bench worker failed: " ^ status_to_string status ^ details))
       | _ -> Error "stdin bench worker expected stdin and stderr pipes")
 
@@ -281,9 +270,9 @@ let expect_ok = function
   | Error error -> panic error
 
 let run_kernel_chunks = fun expected_bytes ->
-  let buffer = Bytes.create ~size:4096 in
+  let buffer = Bytes.create ~size:4_096 in
   let rec loop total =
-    match Kernel.IO.Stdin.read ~len:4096 buffer with
+    match Kernel.IO.Stdin.read ~len:4_096 buffer with
     | Ok 0 -> total
     | Ok count -> loop (total + count)
     | Error error -> panic (Kernel.IO.Stdin.error_to_string error)
@@ -291,16 +280,17 @@ let run_kernel_chunks = fun expected_bytes ->
   let total = loop 0 in
   if total != expected_bytes then
     panic
-      (format Format.[
-         str "kernel chunk worker expected ";
-         str (Int.to_string expected_bytes);
-         str " bytes but read ";
-         str (Int.to_string total);
-       ])
+      (format
+        Format.[
+          str "kernel chunk worker expected ";
+          str (Int.to_string expected_bytes);
+          str " bytes but read ";
+          str (Int.to_string total);
+        ])
 
 let run_std_chunks = fun expected_bytes ->
   let stdin = IO.Stdin.open_ () in
-  let buffer = IO.Buffer.create ~size:4096 in
+  let buffer = IO.Buffer.create ~size:4_096 in
   let rec loop total =
     IO.Buffer.clear buffer;
     match IO.Stdin.read stdin ~into:buffer with
@@ -311,16 +301,17 @@ let run_std_chunks = fun expected_bytes ->
   let total = loop 0 in
   if total != expected_bytes then
     panic
-      (format Format.[
-         str "std chunk worker expected ";
-         str (Int.to_string expected_bytes);
-         str " bytes but read ";
-         str (Int.to_string total);
-       ])
+      (format
+        Format.[
+          str "std chunk worker expected ";
+          str (Int.to_string expected_bytes);
+          str " bytes but read ";
+          str (Int.to_string total);
+        ])
 
 let run_std_reader_chunks = fun expected_bytes ->
   let reader = IO.stdin () in
-  let buffer = IO.Buffer.create ~size:4096 in
+  let buffer = IO.Buffer.create ~size:4_096 in
   let rec loop total =
     IO.Buffer.clear buffer;
     match IO.read reader ~into:buffer with
@@ -331,12 +322,13 @@ let run_std_reader_chunks = fun expected_bytes ->
   let total = loop 0 in
   if total != expected_bytes then
     panic
-      (format Format.[
-         str "std reader worker expected ";
-         str (Int.to_string expected_bytes);
-         str " bytes but read ";
-         str (Int.to_string total);
-       ])
+      (format
+        Format.[
+          str "std reader worker expected ";
+          str (Int.to_string expected_bytes);
+          str " bytes but read ";
+          str (Int.to_string total);
+        ])
 
 let run_std_read_to_string = fun expected_bytes ->
   let reader = IO.stdin () in
@@ -346,12 +338,13 @@ let run_std_read_to_string = fun expected_bytes ->
       let data = StringBuilder.contents builder in
       if String.length data != expected_bytes then
         panic
-          (format Format.[
-             str "std read_to_string worker expected ";
-             str (Int.to_string expected_bytes);
-             str " bytes but read ";
-             str (Int.to_string (String.length data));
-           ])
+          (format
+            Format.[
+              str "std read_to_string worker expected ";
+              str (Int.to_string expected_bytes);
+              str " bytes but read ";
+              str (Int.to_string (String.length data));
+            ])
   | Error error -> panic (IO.error_message error)
 
 let run_kernel_chars = fun expected_bytes ->
@@ -365,12 +358,13 @@ let run_kernel_chars = fun expected_bytes ->
   let total = loop 0 in
   if total != expected_bytes then
     panic
-      (format Format.[
-         str "kernel char worker expected ";
-         str (Int.to_string expected_bytes);
-         str " bytes but read ";
-         str (Int.to_string total);
-       ])
+      (format
+        Format.[
+          str "kernel char worker expected ";
+          str (Int.to_string expected_bytes);
+          str " bytes but read ";
+          str (Int.to_string total);
+        ])
 
 let run_std_chars = fun expected_bytes ->
   let reader = IO.stdin () in
@@ -385,12 +379,13 @@ let run_std_chars = fun expected_bytes ->
   let total = loop 0 in
   if total != expected_bytes then
     panic
-      (format Format.[
-         str "std char worker expected ";
-         str (Int.to_string expected_bytes);
-         str " bytes but read ";
-         str (Int.to_string total);
-       ])
+      (format
+        Format.[
+          str "std char worker expected ";
+          str (Int.to_string expected_bytes);
+          str " bytes but read ";
+          str (Int.to_string total);
+        ])
 
 let run_std_buffered_chars = fun expected_bytes ->
   let reader = IO.stdin () |> IO.BufReader.from_reader in
@@ -403,12 +398,13 @@ let run_std_buffered_chars = fun expected_bytes ->
   let total = loop 0 in
   if total != expected_bytes then
     panic
-      (format Format.[
-         str "std buffered char worker expected ";
-         str (Int.to_string expected_bytes);
-         str " bytes but read ";
-         str (Int.to_string total);
-       ])
+      (format
+        Format.[
+          str "std buffered char worker expected ";
+          str (Int.to_string expected_bytes);
+          str " bytes but read ";
+          str (Int.to_string total);
+        ])
 
 let run_std_lines = fun expected_bytes expected_lines ->
   let reader = IO.stdin () |> IO.BufReader.from_reader in
@@ -421,17 +417,18 @@ let run_std_lines = fun expected_bytes expected_lines ->
   let (byte_count, line_count) = loop 0 0 in
   if byte_count != expected_bytes || line_count != expected_lines then
     panic
-      (format Format.[
-         str "std line worker expected ";
-         str (Int.to_string expected_lines);
-         str " lines / ";
-         str (Int.to_string expected_bytes);
-         str " bytes but read ";
-         str (Int.to_string line_count);
-         str " lines / ";
-         str (Int.to_string byte_count);
-         str " bytes";
-       ])
+      (format
+        Format.[
+          str "std line worker expected ";
+          str (Int.to_string expected_lines);
+          str " lines / ";
+          str (Int.to_string expected_bytes);
+          str " bytes but read ";
+          str (Int.to_string line_count);
+          str " lines / ";
+          str (Int.to_string byte_count);
+          str " bytes";
+        ])
 
 let run_worker = fun mode ~expected_bytes ~expected_lines ->
   match mode with
@@ -445,12 +442,14 @@ let run_worker = fun mode ~expected_bytes ~expected_lines ->
   | Std_lines -> run_std_lines expected_bytes expected_lines
 
 let parse_worker_args = function
-  | mode :: "--expected-bytes" :: expected_bytes :: "--expected-lines" :: expected_lines :: [] ->
-      (mode_of_string mode, Int.of_string expected_bytes, Int.of_string expected_lines)
-  | args ->
-      panic
-        ("stdin bench worker expected: <mode> --expected-bytes N --expected-lines N, got "
-        ^ String.concat " " args)
+  | mode :: "--expected-bytes" :: expected_bytes :: "--expected-lines" :: expected_lines :: [] -> (
+    mode_of_string mode,
+    Int.of_string expected_bytes,
+    Int.of_string expected_lines
+  )
+  | args -> panic
+    ("stdin bench worker expected: <mode> --expected-bytes N --expected-lines N, got "
+    ^ String.concat " " args)
 
 let run_case = fun mode () ->
   let payload = payload_for_mode mode in
@@ -498,7 +497,6 @@ let main = fun ~args ->
       let (mode, expected_bytes, expected_lines) = parse_worker_args worker_args in
       run_worker mode ~expected_bytes ~expected_lines;
       Ok ()
-  | _ ->
-      Bench.Cli.main ~name:"Stdin Benchmarks" ~benchmarks ~args
+  | _ -> Bench.Cli.main ~name:"Stdin Benchmarks" ~benchmarks ~args
 
 let () = Runtime.run ~main ~args:Env.args ()

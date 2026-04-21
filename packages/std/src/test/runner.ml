@@ -100,21 +100,9 @@ type test_descriptor = {
 type event =
   | SuiteStarted of { suite_name: string; total: int }
   | TestStarted of test_descriptor
-  | TestProgress of {
-      test: test_descriptor;
-      attempt: int;
-      progress: Test_context.progress
-    }
-  | TestAttemptStarted of {
-      test: test_descriptor;
-      attempt: int;
-      timeout: Time.Duration.t option
-    }
-  | TestHeartbeat of {
-      test: test_descriptor;
-      attempt: int;
-      elapsed: Time.Duration.t
-    }
+  | TestProgress of { test: test_descriptor; attempt: int; progress: Test_context.progress }
+  | TestAttemptStarted of { test: test_descriptor; attempt: int; timeout: Time.Duration.t option }
+  | TestHeartbeat of { test: test_descriptor; attempt: int; elapsed: Time.Duration.t }
   | TestAttemptFinished of {
       test: test_descriptor;
       attempt: int;
@@ -289,17 +277,13 @@ let run_single_attempt = fun ~ctx ~on_event ~test_info (test: Test_case.t) ~atte
         | Some timeout ->
             Runtime.Actor.kill child ~reason:(Test_timeout timeout);
             wait_for_exit child ()
-        | None ->
-            wait_for_exit child ()
+        | None -> wait_for_exit child ()
       )
     else
       try wait_for_exit child ~timeout:wait_timeout () with
       | Receive_timeout ->
-          on_event (TestHeartbeat {
-            test = test_info;
-            attempt;
-            elapsed = Time.Instant.elapsed started;
-          });
+          on_event
+            (TestHeartbeat { test = test_info; attempt; elapsed = Time.Instant.elapsed started });
           wait_loop ()
   in
   let exit_reason = wait_loop () in
@@ -350,14 +334,13 @@ let run_single_test = fun reporter ~suite_info ~policy ~on_event index (test: Te
       (
         let timeout = test_timeout_for policy test in
         let rec loop attempts total_duration =
-          let attempt_result, attempt_duration =
-            run_single_attempt
-              ~ctx
-              ~on_event
-              ~test_info
-              test
-              ~attempt:attempts
-              ~timeout in
+          let attempt_result, attempt_duration = run_single_attempt
+            ~ctx
+            ~on_event
+            ~test_info
+            test
+            ~attempt:attempts
+            ~timeout in
           let total_duration = Time.Duration.add total_duration attempt_duration in
           if should_retry policy test attempts attempt_result then
             loop (attempts + 1) total_duration
@@ -391,10 +374,8 @@ let run_tests = fun ~config tests ->
   in
   let module R = (val config.reporter : Reporter.Intf) in
   R.init config.suite_info (List.length tests_to_run);
-  config.event_handler (SuiteStarted {
-    suite_name = config.suite_info.name;
-    total = List.length tests_to_run;
-  });
+  config.event_handler
+    (SuiteStarted { suite_name = config.suite_info.name; total = List.length tests_to_run });
   let rec run_all index = function
     | [] -> []
     | test :: rest -> run_single_test

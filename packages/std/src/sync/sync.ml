@@ -1,5 +1,4 @@
 (** Synchronization primitives owned by `std`. *)
-
 module Atomic = Atomic
 module Cell = Cell
 module Mutex = Mutex

@@ -52,18 +52,14 @@ let reader_get_unchecked = fun state ~at -> IO.Buffer.get_unchecked state.buffer
 
 let reader_slice = fun state -> IO.Buffer.readable state.buffer
 
-let reader_subslice = fun state ~off ~len ->
-  IO.IoSlice.sub_unchecked (reader_slice state) ~off ~len
+let reader_subslice = fun state ~off ~len -> IO.IoSlice.sub_unchecked (reader_slice state) ~off ~len
 
-let reader_substring = fun state ~off ~len ->
-  reader_subslice state ~off ~len
-  |> IO.IoSlice.to_string
+let reader_substring = fun state ~off ~len -> reader_subslice state ~off ~len |> IO.IoSlice.to_string
 
 let reader_append_range = fun dst state ~start ~stop ->
   let len = stop - start in
   if Int.(len > 0) then
-    IO.Buffer.append_subslice dst (reader_slice state) ~off:start ~len
-    |> Result.expect ~msg:"serde-json buffered input should append borrowed slices"
+    IO.Buffer.append_subslice dst (reader_slice state) ~off:start ~len |> Result.expect ~msg:"serde-json buffered input should append borrowed slices"
 
 let reader_match_field_range = fun fields state ~offset ~length ->
   Serde.De.Fields.match_buffer_range fields state.buffer ~offset ~length
@@ -139,8 +135,11 @@ let copy_range_to_buffer = fun buffer input ~start ~stop ->
   if Int.(length > 0) then
     match input with
     | String_input state -> IO.Buffer.add_substring buffer state.input start length
-    | Reader_input state ->
-        reader_append_range buffer state ~start:(local_index state start) ~stop:(local_index state stop)
+    | Reader_input state -> reader_append_range
+      buffer
+      state
+      ~start:(local_index state start)
+      ~stop:(local_index state stop)
 
 let match_field_range = fun fields input ~start ~stop ->
   let length = stop - start in

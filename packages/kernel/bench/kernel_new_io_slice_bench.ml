@@ -1,22 +1,23 @@
 open Std
-
 module Kernel = Kernel
 
 let build_request = fun ~header_count ~body_len ->
-  let header_lines =
-    Kernel.Array.init
-      ~count:header_count
-      ~fn:(fun index -> "x-header-" ^ Int.to_string index ^ ": value-" ^ Int.to_string index ^ "\r\n")
-    |> Kernel.Array.fold_left ~acc:"" ~fn:(fun acc line -> acc ^ line)
-  in
-  "POST /benchmark HTTP/1.1\r\n"
-  ^ header_lines
-  ^ "\r\n"
-  ^ String.make ~len:body_len ~char:'x'
+  let header_lines = Kernel.Array.init
+    ~count:header_count
+    ~fn:(fun index -> "x-header-" ^ Int.to_string index ^ ": value-" ^ Int.to_string index ^ "\r\n")
+  |> Kernel.Array.fold_left ~acc:"" ~fn:(fun acc line -> acc ^ line) in
+  "POST /benchmark HTTP/1.1\r\n" ^ header_lines ^ "\r\n" ^ String.make ~len:body_len ~char:'x'
 
-let small_slice = Kernel.IO.IoVec.IoSlice.from_string (build_request ~header_count:4 ~body_len:128) |> Result.unwrap
-let medium_slice = Kernel.IO.IoVec.IoSlice.from_string (build_request ~header_count:32 ~body_len:4_096) |> Result.unwrap
-let large_slice = Kernel.IO.IoVec.IoSlice.from_string (build_request ~header_count:64 ~body_len:65_536) |> Result.unwrap
+let small_slice = Kernel.IO.IoVec.IoSlice.from_string (build_request ~header_count:4 ~body_len:128)
+|> Result.unwrap
+
+let medium_slice = Kernel.IO.IoVec.IoSlice.from_string
+  (build_request ~header_count:32 ~body_len:4_096)
+|> Result.unwrap
+
+let large_slice = Kernel.IO.IoVec.IoSlice.from_string
+  (build_request ~header_count:64 ~body_len:65_536)
+|> Result.unwrap
 
 let bench_index_of_char = fun slice needle () ->
   let _ = Kernel.IO.IoVec.IoSlice.index_char slice needle in
@@ -31,13 +32,12 @@ let bench_starts_with = fun slice prefix () ->
   ()
 
 let bench_sub_and_advance = fun slice () ->
-  let _ =
-    slice
-    |> fun slice -> Kernel.IO.IoVec.IoSlice.shift slice 5
+  let _ = slice
+  |> fun slice ->
+    Kernel.IO.IoVec.IoSlice.shift slice 5
     |> Result.unwrap
     |> Kernel.IO.IoVec.IoSlice.sub ~off:0 ~len:32
-    |> Result.unwrap
-  in
+    |> Result.unwrap in
   ()
 
 let bench_to_string = fun slice () ->

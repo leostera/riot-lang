@@ -73,8 +73,7 @@ let release_borrow_mut = fun cell ->
 
 let with_borrow = fun cell f ->
   let borrow = borrow cell in
-  protect
-    ~finally:(fun () -> release_borrow borrow)
+  protect ~finally:(fun () -> release_borrow borrow)
     (fun () ->
       let _, value = borrow in
       f value)

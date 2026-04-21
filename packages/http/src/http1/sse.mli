@@ -9,4 +9,5 @@ type event = {
   retry: int option;
 }
 val parse_line_slice: IO.IoVec.IoSlice.t -> event option
+
 val parse_line: string -> event option

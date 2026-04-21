@@ -4,7 +4,6 @@ type scope = Request.scope =
   | Runtime
   | Dev
 type t
-
 type error =
   | TargetSelectionFailed of Riot_model.Target.resolve_error
   | PackageNotFound of {
@@ -15,7 +14,6 @@ type error =
       package_names: Riot_model.Package_name.t list;
       available_packages: Riot_model.Package_name.t list
     }
-
 val package_names: t -> Riot_model.Package_name.t list
 
 val targets: t -> Riot_model.Target.Set.t

@@ -2,7 +2,6 @@ open Std
 open Riot_build
 open Riot_model
 module Test = Std.Test
-
 module Diagnostic_rewrite = Riot_build.Internal.Diagnostic_rewrite
 
 let package_name = fun value ->

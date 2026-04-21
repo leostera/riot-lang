@@ -13,7 +13,9 @@ type handler = {
   fn: event -> unit;
 }
 
-type server_ref = { pid: Pid.t }
+type server_ref = {
+  pid: Pid.t;
+}
 
 open Sync
 open Collections
@@ -109,17 +111,15 @@ let await_stopped = fun pid ->
 
 let rec start = fun () ->
   match Atomic.get pid with
-  | Some current ->
-      current.pid
+  | Some current -> current.pid
   | None ->
       let current = { pid = Server.start () } in
       if Atomic.compare_and_set pid None (Some current) then
         current.pid
-      else
-        (
-          await_stopped current.pid;
-          start ()
-        )
+      else (
+        await_stopped current.pid;
+        start ()
+      )
 
 let emit = fun event ->
   match Atomic.get pid with
@@ -162,5 +162,4 @@ let list_handlers = fun () ->
 let stop = fun () ->
   match Atomic.exchange pid None with
   | None -> ()
-  | Some current ->
-      await_stopped current.pid
+  | Some current -> await_stopped current.pid

@@ -296,10 +296,8 @@ let split_mapping_head = fun line ->
   | None -> None
   | Some index ->
       let key = parse_key (String.sub line.text ~offset:0 ~len:index) line.number in
-      let rest =
-        String.sub line.text ~offset:(index + 1) ~len:(String.length line.text - index - 1)
-        |> String.trim
-      in
+      let rest = String.sub line.text ~offset:(index + 1) ~len:(String.length line.text - index - 1)
+      |> String.trim in
       Some (key, rest)
 
 let parse_float = fun line_number value ->

@@ -44,12 +44,7 @@ let ensure_capacity = fun buffer additional ->
               next_capacity (Kernel.Int.mul capacity 2)
       in
       let grown = Kernel.Bytes.create ~size:(next_capacity current) in
-      Kernel.Bytes.blit_unchecked
-        buffer.bytes
-        ~src_offset:0
-        ~dst:grown
-        ~dst_offset:0
-        ~len:buffer.length;
+      Kernel.Bytes.blit_unchecked buffer.bytes ~src_offset:0 ~dst:grown ~dst_offset:0 ~len:buffer.length;
       buffer.bytes <- grown
 
 let get = fun buffer ~at ->
@@ -109,17 +104,18 @@ let add_substring = fun buffer source offset slice_length ->
           | _ ->
               if Kernel.Int.equal slice_length 0 then
                 ()
-              else (
-                let source_bytes = Kernel.String.to_bytes source in
-                ensure_capacity buffer slice_length;
-                Kernel.Bytes.blit_unchecked
-                  source_bytes
-                  ~src_offset:offset
-                  ~dst:buffer.bytes
-                  ~dst_offset:buffer.length
-                  ~len:slice_length;
-                buffer.length <- Kernel.Int.add buffer.length slice_length
-              )
+              else
+                (
+                  let source_bytes = Kernel.String.to_bytes source in
+                  ensure_capacity buffer slice_length;
+                  Kernel.Bytes.blit_unchecked
+                    source_bytes
+                    ~src_offset:offset
+                    ~dst:buffer.bytes
+                    ~dst_offset:buffer.length
+                    ~len:slice_length;
+                  buffer.length <- Kernel.Int.add buffer.length slice_length
+                )
         )
     )
 

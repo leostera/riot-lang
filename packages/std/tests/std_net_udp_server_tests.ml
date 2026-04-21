@@ -98,9 +98,7 @@ let test_udp_server_serves_one_datagram = fun _ctx ->
     )
 
 let tests =
-  Test.[
-    case "UdpServer bind and serve handle a datagram" test_udp_server_serves_one_datagram;
-  ]
+  Test.[ case "UdpServer bind and serve handle a datagram" test_udp_server_serves_one_datagram; ]
 
 let () =
   Runtime.run

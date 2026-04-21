@@ -155,8 +155,7 @@ let print_workspace = fun ~(load_errors:Workspace_manager.load_error list) (
       |> List.for_each ~fn:(fun err -> println ("  - " ^ Workspace_manager.load_error_to_string err))
     )
 
-let print_json = fun json ->
-  println (Data.Json.to_string json)
+let print_json = fun json -> println (Data.Json.to_string json)
 
 let run = fun ~(workspace_scan:workspace_scan) matches ->
   let json = ArgParser.get_flag matches "json" in

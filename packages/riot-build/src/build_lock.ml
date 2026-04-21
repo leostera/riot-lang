@@ -59,8 +59,7 @@ let decrement_in_process_lock_count = fun path ->
 let has_in_process_lock = fun path ->
   let key = path_key path in
   with_in_process_lock_counts_lock
-    (fun () ->
-      Collections.HashMap.has_key in_process_lock_counts ~key)
+    (fun () -> Collections.HashMap.has_key in_process_lock_counts ~key)
 
 let release = fun t ->
   let _ = Fs.File.unlock t.file in

@@ -106,15 +106,17 @@ let add_segment_if_valid = fun ~compare_v acc segment ->
 
 let end_before_start = fun ~compare_v end_ start ->
   match (end_, start) with
-  | Unbounded, _
-  | _, Unbounded -> false
-  | Included left, Included right
-  | Included left, Excluded right
-  | Excluded left, Included right
-  | Excluded left, Excluded right -> (
+  | (Unbounded, _)
+  | (_, Unbounded) -> false
+  | (Included left, Included right)
+  | (Included left, Excluded right)
+  | (Excluded left, Included right)
+  | (Excluded left, Excluded right) -> (
       match compare_v left right with
-      | n when n < 0 -> true
-      | n when n > 0 -> false
+      | n when n < 0 ->
+          true
+      | n when n > 0 ->
+          false
       | _ ->
           match (end_, start) with
           | Excluded _, Excluded _ -> true
@@ -123,8 +125,7 @@ let end_before_start = fun ~compare_v end_ start ->
 
 let normalize = fun ~compare_v ranges ->
   let sorted =
-    List.sort
-      (List.filter ranges ~fn:(valid_segment ~compare_v))
+    List.sort (List.filter ranges ~fn:(valid_segment ~compare_v))
       ~compare:(fun (left_start, left_end) (right_start, right_end) ->
         match compare_bound_start ~compare_v left_start right_start with
         | 0 -> compare_bound_end ~compare_v left_end right_end
@@ -157,23 +158,23 @@ let complement = fun ~compare_v ranges ->
   if ranges = [] then
     full
   else
-  let rec build current_start acc = function
-    | [] ->
-        List.reverse
-          (
-            match current_start with
+    let rec build current_start acc = function
+      | [] ->
+          List.reverse
+            (
+              match current_start with
+              | Unbounded -> acc
+              | _ -> (current_start, Unbounded) :: acc
+            )
+      | (start, end_) :: rest ->
+          let acc =
+            match start with
             | Unbounded -> acc
-            | _ -> (current_start, Unbounded) :: acc
-          )
-    | (start, end_) :: rest ->
-        let acc =
-          match start with
-          | Unbounded -> acc
-          | _ -> add_segment_if_valid ~compare_v acc (current_start, negate_bound start)
-        in
-        build (negate_bound end_) acc rest
-  in
-  build Unbounded [] ranges
+            | _ -> add_segment_if_valid ~compare_v acc (current_start, negate_bound start)
+          in
+          build (negate_bound end_) acc rest
+    in
+    build Unbounded [] ranges
 
 let within_bounds = fun ~compare_v version ((start, end_)) ->
   let after_start =
@@ -219,8 +220,7 @@ let rec intersection = fun ~compare_v r1 r2 ->
   in
   normalize ~compare_v (compute r1 r2)
 
-let union = fun ~compare_v r1 r2 ->
-  normalize ~compare_v (segments r1 @ segments r2)
+let union = fun ~compare_v r1 r2 -> normalize ~compare_v (segments r1 @ segments r2)
 
 let is_disjoint = fun ~compare_v r1 r2 -> is_empty (intersection ~compare_v r1 r2)
 
@@ -230,9 +230,12 @@ let subset_of = fun ~compare_v r1 r2 ->
 let compare = fun ~compare_v left right ->
   let rec compare_segments left right =
     match (left, right) with
-    | [], [] -> 0
-    | [], _ -> (-1)
-    | _, [] -> 1
+    | [], [] ->
+        0
+    | [], _ ->
+        (-1)
+    | _, [] ->
+        1
     | (left_start, left_end) :: left_rest, (right_start, right_end) :: right_rest -> (
         match compare_bound_start ~compare_v left_start right_start with
         | 0 -> (
@@ -282,5 +285,4 @@ let to_string = fun ~to_string_v ranges ->
   match ranges with
   | [] -> "empty"
   | [ (Unbounded, Unbounded) ] -> "*"
-  | _ ->
-      String.concat " | " (List.map ranges ~fn:(range_to_string ~to_string_v))
+  | _ -> String.concat " | " (List.map ranges ~fn:(range_to_string ~to_string_v))

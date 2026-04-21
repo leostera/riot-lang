@@ -101,7 +101,8 @@ let ensure_can_run_once = fun () ->
       "Actors.run can only be called once per process. Each test should be \
        in a separate executable."
 
-let make_response = fun () -> { lock = Runtime_mutex.create (); cond = Runtime_condition.create (); value = None }
+let make_response = fun () ->
+  { lock = Runtime_mutex.create (); cond = Runtime_condition.create (); value = None }
 
 let with_response = fun (response: 'a response) f ->
   Runtime_mutex.lock response.lock;

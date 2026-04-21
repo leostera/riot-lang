@@ -42,16 +42,13 @@ module SliceCursor = struct
         loop (pos + 1)
     in
     match loop start with
-    | None ->
-        None
-    | Some stop ->
-        Some (
-          Slice.sub_unchecked cursor.source ~off:start ~len:(stop - start),
-          { cursor with pos = stop }
-        )
+    | None -> None
+    | Some stop -> Some (
+      Slice.sub_unchecked cursor.source ~off:start ~len:(stop - start),
+      { cursor with pos = stop }
+    )
 
-  let take_until_char = fun cursor needle ->
-    take_until cursor (fun value -> value = needle)
+  let take_until_char = fun cursor needle -> take_until cursor (fun value -> value = needle)
 
   let take_n = fun cursor count ->
     if cursor.pos + count > cursor.length then
@@ -73,10 +70,7 @@ module SliceCursor = struct
         pos
     in
     let stop = loop start in
-    (
-      Slice.sub_unchecked cursor.source ~off:start ~len:(stop - start),
-      { cursor with pos = stop }
-    )
+    (Slice.sub_unchecked cursor.source ~off:start ~len:(stop - start), { cursor with pos = stop })
 
   let skip_while = fun cursor predicate ->
     let _, cursor = take_while cursor predicate in
@@ -103,8 +97,7 @@ let is_space = fun c -> c = ' '
 let is_optional_whitespace = fun c -> c = ' ' || c = '\t'
 
 let trim_leading_ows = fun slice ->
-  SliceCursor.skip_while (SliceCursor.create slice) is_optional_whitespace
-  |> SliceCursor.remaining
+  SliceCursor.skip_while (SliceCursor.create slice) is_optional_whitespace |> SliceCursor.remaining
 
 type request_line_owned = {
   parsed_method: Std.Net.Http.Method.t;
@@ -143,7 +136,8 @@ let parse_request_line_owned = fun ?(max_length = 8_192) input ->
         Slice_error "Request line too long"
       else
         match skip_line_ending cursor with
-        | Slice_need_more | Slice_error _ as result -> result
+        | Slice_need_more
+        | Slice_error _ as result -> result
         | Slice_done cursor -> (
             let line_cursor = SliceCursor.create line in
             match SliceCursor.take_until_char line_cursor ' ' with
@@ -153,27 +147,19 @@ let parse_request_line_owned = fun ?(max_length = 8_192) input ->
                 match SliceCursor.take_until_char line_cursor ' ' with
                 | None -> Slice_error "Missing path"
                 | Some (path, line_cursor) ->
-                    let version =
-                      SliceCursor.skip_while line_cursor is_space
-                      |> SliceCursor.remaining
-                    in
+                    let version = SliceCursor.skip_while line_cursor is_space |> SliceCursor.remaining in
                     if not (Slice.starts_with version ~prefix:"HTTP/") then
                       Slice_error "Invalid HTTP version"
                     else
                       let method_ = Std.Net.Http.Method.from_slice method_ in
-                      let uri =
-                        Std.Net.Uri.from_slice path
-                        |> Result.unwrap_or ~default:default_root_uri
-                      in
-                      let version =
-                        Std.Net.Http.Version.from_slice version
-                        |> Result.unwrap_or ~default:Std.Net.Http.Version.Http11
-                      in
+                      let uri = Std.Net.Uri.from_slice path |> Result.unwrap_or ~default:default_root_uri in
+                      let version = Std.Net.Http.Version.from_slice version
+                      |> Result.unwrap_or ~default:Std.Net.Http.Version.Http11 in
                       Slice_done {
                         parsed_method = method_;
                         parsed_uri = uri;
                         parsed_version = version;
-                        next_cursor = cursor;
+                        next_cursor = cursor
                       }
           )
 
@@ -182,7 +168,8 @@ let parse_header_line_owned = fun cursor ->
   | None -> Slice_need_more
   | Some (line, cursor) -> (
       match skip_line_ending cursor with
-      | Slice_need_more | Slice_error _ as result -> result
+      | Slice_need_more
+      | Slice_error _ as result -> result
       | Slice_done cursor -> (
           let line_cursor = SliceCursor.create line in
           match SliceCursor.take_until_char line_cursor ':' with
@@ -191,15 +178,13 @@ let parse_header_line_owned = fun cursor ->
               match SliceCursor.advance line_cursor with
               | None -> Slice_error "Invalid header format"
               | Some line_cursor ->
-                  let value =
-                    SliceCursor.skip_while line_cursor is_optional_whitespace
-                    |> SliceCursor.remaining
-                  in
+                  let value = SliceCursor.skip_while line_cursor is_optional_whitespace
+                  |> SliceCursor.remaining in
                   let name = trim_leading_ows name in
                   Slice_done {
                     header_name = string_of_slice name;
                     header_value = string_of_slice value;
-                    next_cursor = cursor;
+                    next_cursor = cursor
                   }
             )
         )
@@ -210,8 +195,7 @@ let rec parse_headers_owned = fun ?(max_count = 100) ?(max_length = 8_192) ?(acc
     Slice_error "Too many headers"
   else
     match take_header_block_terminator cursor with
-    | Some cursor ->
-        Slice_done (List.reverse acc, cursor)
+    | Some cursor -> Slice_done (List.reverse acc, cursor)
     | None ->
         match parse_header_line_owned cursor with
         | Slice_need_more -> Slice_need_more

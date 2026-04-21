@@ -246,8 +246,7 @@ let do_render = fun t str ->
         let align = Option.unwrap_or ~default:`Left t.align_horizontal in
         let lines = Util.Ansi.split_lines str in
         let aligned_lines =
-          List.map
-            lines
+          List.map lines
             ~fn:(fun line ->
               match align with
               | `Left -> Util.Ansi.pad_right ~width:w ' ' line
@@ -343,11 +342,9 @@ let do_render = fun t str ->
   (* render core text *)
   let str =
     let lines = String.split_on_char '\n' str in
-    List.map
-      lines
+    List.map lines
       ~fn:(fun line ->
-        Formatter.format_string format_seq line)
-      |> String.concat "\n"
+        Formatter.format_string format_seq line) |> String.concat "\n"
   in
   (* handle border *)
   let str =
@@ -378,8 +375,7 @@ let do_render = fun t str ->
     | Some max_width when max_width > 0 ->
         let lines = Util.Ansi.split_lines (Cell.get str) in
         let truncated =
-          List.map
-            lines
+          List.map lines
             ~fn:(fun line ->
               if Util.Ansi.width line > max_width then
                 Util.Ansi.truncate ~width:max_width ~ellipsis:"…" line
@@ -406,8 +402,7 @@ let do_render = fun t str ->
           | Some w ->
               let lines = Util.Ansi.split_lines (Cell.get str) in
               let clipped =
-                List.map
-                  lines
+                List.map lines
                   ~fn:(fun line ->
                     if Util.Ansi.width line > w then
                       Util.Ansi.truncate ~width:w line

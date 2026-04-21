@@ -1,7 +1,6 @@
 (** Server-Sent Events Parser *)
 open Std
 open Std.Iter
-
 module Slice = IO.IoVec.IoSlice
 
 type event = {
@@ -18,7 +17,9 @@ let slice_of_string = fun value ->
 
 let parse_line_slice = fun line ->
   let line_cursor = Cursor.from_slice line in
-  let line_cursor = Cursor.skip_while line_cursor (fun c -> c = ' ' || c = '\t') in
+  let line_cursor =
+    Cursor.skip_while line_cursor (fun c -> c = ' ' || c = '\t')
+  in
   let line = Cursor.remaining line_cursor in
   if Slice.length line = 0 then
     None
@@ -28,7 +29,9 @@ let parse_line_slice = fun line ->
     | None -> None
     | Some (field, cursor) -> (
         let cursor = Cursor.advance cursor |> Option.unwrap in
-        let cursor = Cursor.skip_while cursor (fun c -> c = ' ') in
+        let cursor =
+          Cursor.skip_while cursor (fun c -> c = ' ')
+        in
         let value = Cursor.remaining cursor |> Slice.to_string in
         match Slice.to_string field with
         | "" ->

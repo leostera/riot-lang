@@ -12,8 +12,7 @@ let bounded_list_arb = fun ?(min = 0) max elem_arb ->
   let list_arb = Arbitrary.list elem_arb in
   { list_arb with gen = Generator.list_size (Generator.int_range min max) elem_arb.gen }
 
-let non_empty_bounded_list_arb = fun max elem_arb ->
-  bounded_list_arb ~min:1 max elem_arb
+let non_empty_bounded_list_arb = fun max elem_arb -> bounded_list_arb ~min:1 max elem_arb
 
 type operation =
   | Insert of int * int
@@ -105,8 +104,9 @@ let apply_operation = fun op swiss hash ->
 (* Property 1: Random operation sequence maintains equivalence *)
 
 let random_sequence_prop =
-  property "random operation sequence: maintains equivalence with hashmap"
-    (non_empty_bounded_list_arb 100 operation_arb)
+  property "random operation sequence: maintains equivalence with hashmap" (non_empty_bounded_list_arb
+    100
+    operation_arb)
     (fun ops ->
       let swiss = Swisstable.create () in
       let hash = Collections.HashMap.create () in
@@ -121,8 +121,9 @@ let random_sequence_prop =
 (* Property 2: Insert-heavy sequence *)
 
 let insert_heavy_sequence_prop =
-  property "insert-heavy sequence: correctness maintained"
-    (non_empty_bounded_list_arb 100 Arbitrary.(pair int int))
+  property "insert-heavy sequence: correctness maintained" (non_empty_bounded_list_arb
+    100
+    Arbitrary.(pair int int))
     (fun pairs ->
       let swiss = Swisstable.create () in
       let hash = Collections.HashMap.create () in
@@ -135,8 +136,9 @@ let insert_heavy_sequence_prop =
 (* Property 3: Remove-heavy sequence *)
 
 let remove_heavy_sequence_prop =
-  property "remove-heavy sequence: correctness maintained"
-    (non_empty_bounded_list_arb 100 Arbitrary.(pair int int))
+  property "remove-heavy sequence: correctness maintained" (non_empty_bounded_list_arb
+    100
+    Arbitrary.(pair int int))
     (fun pairs ->
       let swiss = Swisstable.create () in
       let hash = Collections.HashMap.create () in
@@ -150,8 +152,9 @@ let remove_heavy_sequence_prop =
 (* Property 4: Interleaved inserts and removes *)
 
 let interleaved_ops_prop =
-  property "interleaved insert/remove: correctness maintained"
-    (non_empty_bounded_list_arb 50 Arbitrary.int)
+  property "interleaved insert/remove: correctness maintained" (non_empty_bounded_list_arb
+    50
+    Arbitrary.int)
     (fun keys ->
       let swiss = Swisstable.create () in
       let hash = Collections.HashMap.create () in
@@ -171,10 +174,9 @@ let interleaved_ops_prop =
 (* Property 5: Clear in the middle of operations *)
 
 let clear_interleaved_prop =
-  property "clear in middle: correctness maintained"
-    (Arbitrary.pair
-      (bounded_list_arb 50 Arbitrary.(pair int int))
-      (bounded_list_arb 50 Arbitrary.(pair int int)))
+  property "clear in middle: correctness maintained" (Arbitrary.pair
+    (bounded_list_arb 50 Arbitrary.(pair int int))
+    (bounded_list_arb 50 Arbitrary.(pair int int)))
     (fun ((before_clear, after_clear)) ->
       let swiss = Swisstable.create () in
       let hash = Collections.HashMap.create () in
@@ -195,8 +197,7 @@ let clear_interleaved_prop =
 (* Property 6: Contains checks interspersed *)
 
 let contains_checks_prop =
-  property "contains_key checks: always match hashmap"
-    (bounded_list_arb 50 Arbitrary.(pair int int))
+  property "contains_key checks: always match hashmap" (bounded_list_arb 50 Arbitrary.(pair int int))
     (fun pairs ->
       let swiss = Swisstable.create () in
       let hash = Collections.HashMap.create () in
@@ -214,8 +215,7 @@ let contains_checks_prop =
 (* Property 7: Length checks after each operation *)
 
 let length_invariant_prop =
-  property "length invariant: maintained after each operation"
-    (bounded_list_arb 100 operation_arb)
+  property "length invariant: maintained after each operation" (bounded_list_arb 100 operation_arb)
     (fun ops ->
       let swiss = Swisstable.create () in
       let hash = Collections.HashMap.create () in
@@ -240,8 +240,7 @@ let length_invariant_prop =
 (* Property 8: to_list consistency throughout *)
 
 let to_list_invariant_prop =
-  property "to_list: entries always accessible"
-    (bounded_list_arb 50 Arbitrary.(pair int int))
+  property "to_list: entries always accessible" (bounded_list_arb 50 Arbitrary.(pair int int))
     (fun pairs ->
       let swiss = Swisstable.create () in
       (* Insert all *)
@@ -263,8 +262,9 @@ let to_list_invariant_prop =
 (* Property 9: Overwrite sequence *)
 
 let overwrite_sequence_prop =
-  property "overwrite sequence: latest value wins"
-    (Arbitrary.pair Arbitrary.int (non_empty_bounded_list_arb 20 Arbitrary.int))
+  property "overwrite sequence: latest value wins" (Arbitrary.pair
+    Arbitrary.int
+    (non_empty_bounded_list_arb 20 Arbitrary.int))
     (fun ((key, values)) ->
       let swiss = Swisstable.create () in
       let hash = Collections.HashMap.create () in
@@ -277,8 +277,7 @@ let overwrite_sequence_prop =
 (* Property 10: Empty checks throughout *)
 
 let empty_invariant_prop =
-  property "is_empty: consistent with len = 0"
-    (bounded_list_arb 50 operation_arb)
+  property "is_empty: consistent with len = 0" (bounded_list_arb 50 operation_arb)
     (fun ops ->
       let swiss = Swisstable.create () in
       (* Apply each operation and verify is_empty consistency *)

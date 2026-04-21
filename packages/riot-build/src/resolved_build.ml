@@ -21,12 +21,7 @@ type error =
       available_packages: Riot_model.Package_name.t list
     }
 
-let make = fun ~package_names ~targets ~scope ->
-  {
-    package_names;
-    targets;
-    scope;
-  }
+let make = fun ~package_names ~targets ~scope -> { package_names; targets; scope }
 
 let package_names = fun t -> t.package_names
 
@@ -69,19 +64,14 @@ let resolve_package_names = fun workspace requested ->
 
 let resolve_target_names = fun context request ->
   let host = context.Build_context.host in
-  let configured_targets = Riot_model.Target.configured_targets
-    ~host
-    context.Build_context.toolchain_config in
+  let configured_targets = Riot_model.Target.configured_targets ~host context.Build_context.toolchain_config in
   Riot_model.Target.resolve ~host ~configured_targets (Request.Internal.targets request)
   |> Result.map_err ~fn:(fun err -> TargetSelectionFailed err)
 
 let resolve = fun context request ->
   let open Std.Result.Syntax in
-  let* package_names =
-    resolve_package_names context.Build_context.workspace (Request.Internal.packages request)
-  in
-  let* targets = resolve_target_names context request in
-  Ok (make
-    ~package_names
-    ~targets
-    ~scope:(Request.Internal.scope request))
+    let* package_names = resolve_package_names
+      context.Build_context.workspace
+      (Request.Internal.packages request) in
+    let* targets = resolve_target_names context request in
+    Ok (make ~package_names ~targets ~scope:(Request.Internal.scope request))

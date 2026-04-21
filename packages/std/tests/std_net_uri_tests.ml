@@ -493,14 +493,13 @@ let test_uri_with_encoded_query = fun _ctx ->
 let test_uri_from_slice = fun _ctx ->
   let slice = IO.IoVec.IoSlice.from_string "https://example.com:8443/a/b?q=1#frag" |> Result.unwrap in
   match Uri.from_slice slice with
-  | Error _ ->
-      Error "Expected URI slice to parse"
+  | Error _ -> Error "Expected URI slice to parse"
   | Ok uri ->
       if Uri.scheme uri != Some "https" then
         Error "Expected https scheme"
       else if Uri.host uri != Some "example.com" then
         Error "Expected example.com host"
-      else if Uri.port uri != Some 8443 then
+      else if Uri.port uri != Some 8_443 then
         Error "Expected port 8443"
       else if Uri.path uri != "/a/b" then
         Error ("Expected /a/b path, got " ^ Uri.path uri)
@@ -514,8 +513,7 @@ let test_uri_from_slice = fun _ctx ->
 let test_uri_from_slice_origin_form = fun _ctx ->
   let slice = IO.IoVec.IoSlice.from_string "/a/b?q=1#frag" |> Result.unwrap in
   match Uri.from_slice slice with
-  | Error _ ->
-      Error "Expected origin-form URI slice to parse"
+  | Error _ -> Error "Expected origin-form URI slice to parse"
   | Ok uri ->
       if Uri.scheme uri != None then
         Error "Expected no scheme"
@@ -531,16 +529,13 @@ let test_uri_from_slice_origin_form = fun _ctx ->
         Ok ()
 
 let test_uri_from_slice_long_origin_form = fun _ctx ->
-  let path =
-    "/_global-navigation/payloads.json?current_repo_nwo=leostera%2Friot-new"
-    ^ "&repository=riot-new"
-    ^ "&return_to=https%3A%2F%2Fgithub.com%2Fleostera%2Friot-new%2Fblob%2Fmain%2Fpackages%2Fhttp%2FBENCHMARKS.md"
-    ^ "&user_id=leostera"
-  in
+  let path = "/_global-navigation/payloads.json?current_repo_nwo=leostera%2Friot-new"
+  ^ "&repository=riot-new"
+  ^ "&return_to=https%3A%2F%2Fgithub.com%2Fleostera%2Friot-new%2Fblob%2Fmain%2Fpackages%2Fhttp%2FBENCHMARKS.md"
+  ^ "&user_id=leostera" in
   let slice = IO.IoVec.IoSlice.from_string path |> Result.unwrap in
   match Uri.from_slice slice with
-  | Error _ ->
-      Error "Expected long origin-form URI slice to parse"
+  | Error _ -> Error "Expected long origin-form URI slice to parse"
   | Ok uri ->
       if Uri.scheme uri != None then
         Error "Expected no scheme"

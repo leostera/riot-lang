@@ -55,9 +55,11 @@ let make_workspace = fun ?target_dir ?toolchain_targets ~root ~packages () ->
   write_workspace_manifest
     ~root
     ~members:(List.map packages ~fn:(fun (pkg: Riot_model.Package.t) -> pkg.relative_path));
-  (match toolchain_targets with
-  | Some targets -> write_toolchain_config ~root ~targets
-  | None -> ());
+  (
+    match toolchain_targets with
+    | Some targets -> write_toolchain_config ~root ~targets
+    | None -> ()
+  );
   Riot_model.Workspace.make_realized ~root ?target_dir ~packages ()
 
 let make_valid_workspace = fun ?target_dir ?toolchain_targets tmpdir ->
@@ -66,8 +68,7 @@ let make_valid_workspace = fun ?target_dir ?toolchain_targets tmpdir ->
 
 let make_workspace_with_sources = fun ?toolchain_targets ~root ~packages () ->
   let packages =
-    List.map packages
-      ~fn:(fun (name, source) -> make_package ~root ~name ~source)
+    List.map packages ~fn:(fun (name, source) -> make_package ~root ~name ~source)
   in
   make_workspace ?toolchain_targets ~root ~packages ()
 
@@ -80,15 +81,7 @@ let make_request = fun ~workspace ?(profile = Riot_model.Profile.debug) () ->
     ~profile
     ()
 
-let make_runtime_request =
-  fun
-    ~workspace
-    ~package_names
-    ~targets
-    ?(scope = Riot_build.Request.Runtime)
-    ?(profile = Riot_model.Profile.debug)
-    ?(requested_parallelism = None)
-    () ->
+let make_runtime_request = fun ~workspace ~package_names ~targets ?(scope = Riot_build.Request.Runtime) ?(profile = Riot_model.Profile.debug) ?(requested_parallelism = None) () ->
   Riot_build.Request.make
     ~workspace
     ~packages:package_names
@@ -98,35 +91,18 @@ let make_runtime_request =
     ~requested_parallelism
     ()
 
-let make_runtime_inputs =
-  fun
-    ?on_event
+let make_runtime_inputs = fun ?on_event ~workspace ~package_names ~targets ?scope ?profile ?requested_parallelism () ->
+  let request = make_runtime_request
     ~workspace
     ~package_names
     ~targets
     ?scope
     ?profile
     ?requested_parallelism
-    () ->
-  let request =
-    make_runtime_request
-      ~workspace
-      ~package_names
-      ~targets
-      ?scope
-      ?profile
-      ?requested_parallelism
-      ()
-  in
-  let context =
-    Build_context.make ?on_event request
-    |> Result.expect ~msg:"expected build context creation to succeed"
-  in
-  let resolved =
-    Resolved_build.resolve context request
-    |> Result.expect ~msg:"expected build intent resolution to succeed"
-  in
-  context, resolved
+    () in
+  let context = Build_context.make ?on_event request |> Result.expect ~msg:"expected build context creation to succeed" in
+  let resolved = Resolved_build.resolve context request |> Result.expect ~msg:"expected build intent resolution to succeed" in
+  (context, resolved)
 
 let build_request = fun request -> Riot_build.build request
 
@@ -330,11 +306,13 @@ let test_execute_rejects_invalid_parallelism = fun _ctx ->
           ~requested_parallelism:(Some 0)
           () in
         match Build_context.make request with
-        | Error (Build_context.InvalidRequestedParallelism 0) -> Ok ()
-        | Error err ->
-            (match err with
-            | Build_context.InvalidRequestedParallelism requested ->
-                Error ("expected invalid parallelism 0, got " ^ Int.to_string requested))
+        | Error (Build_context.InvalidRequestedParallelism 0) ->
+            Ok ()
+        | Error err -> (
+            match err with
+            | Build_context.InvalidRequestedParallelism requested -> Error ("expected invalid parallelism 0, got "
+            ^ Int.to_string requested)
+          )
         | Ok _ ->
             Error "expected invalid parallelism to reject context creation")
   with
@@ -347,22 +325,17 @@ let test_execute_does_not_record_cache_generation_when_disabled = fun _ctx ->
       (fun tmpdir ->
         let workspace = make_valid_workspace tmpdir in
         let saw_cache_event = ref false in
-        let context, spec = make_runtime_inputs
-          ~workspace
-          ~package_names:[ package_name "demo" ]
-          ~targets:(Riot_model.Target.make_set [ Riot_model.Target.current ])
-          ~on_event:(fun event ->
-            match event with
-            | Riot_build.Event.Phase (Riot_build.Event.CacheGenerationRecordingStarted _)
-            | Riot_build.Event.Phase (Riot_build.Event.CacheGenerationRecorded _) -> saw_cache_event := true
-            | _ -> ())
-          () in
-        match
-          Riot_build.Internal.Build_runtime.execute
-            ~record_cache_generation:false
-            context
-            spec
-        with
+        let context, spec =
+          make_runtime_inputs ~workspace ~package_names:[ package_name "demo" ] ~targets:(Riot_model.Target.make_set
+            [ Riot_model.Target.current ])
+            ~on_event:(fun event ->
+              match event with
+              | Riot_build.Event.Phase (Riot_build.Event.CacheGenerationRecordingStarted _)
+              | Riot_build.Event.Phase (Riot_build.Event.CacheGenerationRecorded _) -> saw_cache_event := true
+              | _ -> ())
+            ()
+        in
+        match Riot_build.Internal.Build_runtime.execute ~record_cache_generation:false context spec with
         | Error err -> Error ("expected build to succeed, got: " ^ Build_runtime.error_message err)
         | Ok _ ->
             Test.assert_false !saw_cache_event;
@@ -375,44 +348,36 @@ let test_execute_partial_failures_by_default = fun _ctx ->
   match
     Fs.with_tempdir ~prefix:"riot_build_default_partial_failure"
       (fun tmpdir ->
-        let workspace =
-          make_workspace_with_sources
-            ~root:tmpdir
-            ~packages:[
-              ( "good", "let value = 1\n" );
-              ( "bad", "let broken =" );
-            ] () in
+        let workspace = make_workspace_with_sources
+          ~root:tmpdir
+          ~packages:[ ("good", "let value = 1\n"); ("bad", "let broken ="); ]
+          () in
         let bad = package_name "bad" in
         let saw_returning_results = ref false in
         let saw_partial_failure = ref false in
-        let context, spec = make_runtime_inputs
-          ~workspace
-          ~package_names:[ package_name "good"; package_name "bad" ]
-          ~targets:(Riot_model.Target.make_set [ Riot_model.Target.current ])
-          ~requested_parallelism:(Some 1)
-          ~on_event:(fun event ->
-            match event with
-            | Riot_build.Event.Phase (Riot_build.Event.TargetBuildFinished { had_partial_failure }) ->
-                saw_partial_failure := had_partial_failure
-            | Riot_build.Event.Phase (Riot_build.Event.ReturningResults _) ->
-                saw_returning_results := true
-            | _ -> ())
-          () in
-        match
-          Riot_build.Internal.Build_runtime.execute
-            context
-            spec
-        with
-        | Ok _ -> Error "expected default build to fail when any package fails"
+        let context, spec =
+          make_runtime_inputs ~workspace ~package_names:[ package_name "good"; package_name "bad" ] ~targets:(Riot_model.Target.make_set
+            [ Riot_model.Target.current ]) ~requested_parallelism:(Some 1)
+            ~on_event:(fun event ->
+              match event with
+              | Riot_build.Event.Phase (Riot_build.Event.TargetBuildFinished { had_partial_failure }) -> saw_partial_failure := had_partial_failure
+              | Riot_build.Event.Phase (Riot_build.Event.ReturningResults _) -> saw_returning_results := true
+              | _ -> ())
+            ()
+        in
+        match Riot_build.Internal.Build_runtime.execute context spec with
+        | Ok _ ->
+            Error "expected default build to fail when any package fails"
         | Error (Build_runtime.BuildFailed { errors }) ->
             let output = Riot_build.Build_result.of_build_results errors in
             let bad_output = Riot_build.Build_result.find_package output bad in
             let has_bad_failure =
               match bad_output with
-              | Some bad_package ->
-                  (match Riot_build.Build_result.package_status bad_package with
+              | Some bad_package -> (
+                  match Riot_build.Build_result.package_status bad_package with
                   | Riot_build.Build_result.Failed _ -> true
-                  | _ -> false)
+                  | _ -> false
+                )
               | None -> false
             in
             if not has_bad_failure then
@@ -423,7 +388,8 @@ let test_execute_partial_failures_by_default = fun _ctx ->
               Error "expected returning results event not to fire on build failure"
             else
               Ok ()
-        | Error err -> Error ("expected BuildFailed, got: " ^ Build_runtime.error_message err))
+        | Error err ->
+            Error ("expected BuildFailed, got: " ^ Build_runtime.error_message err))
   with
   | Ok result -> result
   | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
@@ -432,31 +398,25 @@ let test_execute_allows_partial_failures = fun _ctx ->
   match
     Fs.with_tempdir ~prefix:"riot_build_allow_partial_failures"
       (fun tmpdir ->
-        let workspace =
-          make_workspace_with_sources
-            ~root:tmpdir
-            ~packages:[
-              ( "good", "let value = 2\n" );
-              ( "bad", "let broken =" );
-            ] () in
+        let workspace = make_workspace_with_sources
+          ~root:tmpdir
+          ~packages:[ ("good", "let value = 2\n"); ("bad", "let broken ="); ]
+          () in
         let good = package_name "good" in
         let bad = package_name "bad" in
-        let context, spec = make_runtime_inputs
-          ~workspace
-          ~package_names:[ good; bad ]
-          ~targets:(Riot_model.Target.make_set [ Riot_model.Target.current ])
-          ~requested_parallelism:(Some 1)
-          ~on_event:(fun _ -> ())
-          () in
-        let result =
-          Riot_build.Internal.Build_runtime.execute
-            ~allow_partial_failures:true
-            context
-            spec
+        let context, spec =
+          make_runtime_inputs
+            ~workspace
+            ~package_names:[ good; bad ]
+            ~targets:(Riot_model.Target.make_set [ Riot_model.Target.current ])
+            ~requested_parallelism:(Some 1)
+            ~on_event:(fun _ -> ())
+            ()
         in
+        let result = Riot_build.Internal.Build_runtime.execute ~allow_partial_failures:true context spec in
         match result with
-        | Error err ->
-            Error ("expected partial failures to be returned, got: " ^ Build_runtime.error_message err)
+        | Error err -> Error ("expected partial failures to be returned, got: "
+        ^ Build_runtime.error_message err)
         | Ok results ->
             let build_output = Riot_build.Build_result.of_build_results results in
             let good_result = Riot_build.Build_result.find_package build_output good in
@@ -469,14 +429,14 @@ let test_execute_allows_partial_failures = fun _ctx ->
                 | Riot_build.Build_result.Cached _ -> (
                     match bad_result with
                     | None -> Error "expected bad package result"
-                    | Some bad_result ->
-                        (match Riot_build.Build_result.package_status bad_result with
+                    | Some bad_result -> (
+                        match Riot_build.Build_result.package_status bad_result with
                         | Riot_build.Build_result.Failed _ -> Ok ()
-                        | _ ->
-                            Error "expected bad package result to be failed with allow_partial_failures"))
+                        | _ -> Error "expected bad package result to be failed with allow_partial_failures"
+                      )
+                  )
                 | Riot_build.Build_result.Skipped _
-                | Riot_build.Build_result.Failed _ -> Error "expected good package result to be successful"
-  )
+                | Riot_build.Build_result.Failed _ -> Error "expected good package result to be successful")
   with
   | Ok result -> result
   | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
@@ -493,54 +453,43 @@ let test_execute_allows_multi_target_partial_failures = fun _ctx ->
             target "x86_64-unknown-linux-gnu"
         in
         let requested_targets = Riot_model.Target.Set.of_list [ host_target; secondary_target ] in
-        let expected_targets =
-          requested_targets
-          |> Riot_model.Target.Set.to_list
-          |> List.map ~fn:Riot_model.Target.to_string
-          |> List.sort ~compare:String.compare
-        in
+        let expected_targets = requested_targets
+        |> Riot_model.Target.Set.to_list
+        |> List.map ~fn:Riot_model.Target.to_string
+        |> List.sort ~compare:String.compare in
         let expected_target_count = List.length expected_targets in
-        let workspace =
-          make_workspace_with_sources
-            ~root:tmpdir
-            ~toolchain_targets:expected_targets
-            ~packages:[
-              ( "good", "let value = 2\n" );
-              ( "bad", "let broken =" );
-            ] () in
+        let workspace = make_workspace_with_sources
+          ~root:tmpdir
+          ~toolchain_targets:expected_targets
+          ~packages:[ ("good", "let value = 2\n"); ("bad", "let broken ="); ]
+          () in
         let good = package_name "good" in
         let bad = package_name "bad" in
         let started_targets = ref [] in
         let finished_targets = ref [] in
         let finished_counts = ref [] in
         let partial_flags = ref [] in
-        let context, spec = make_runtime_inputs
-          ~workspace
-          ~package_names:[ good; bad ]
-          ~targets:requested_targets
-          ~requested_parallelism:(Some 1)
-          ~on_event:(fun event ->
-            match event with
-            | Riot_build.Event.Phase (Riot_build.Event.TargetBuildStarted { target }) ->
-                started_targets := Riot_model.Target.to_string target :: !started_targets
-            | Riot_build.Event.Phase (Riot_build.Event.TargetBuildFinished {
-              target;
-              result_count;
-              had_partial_failure = partial
-            }) ->
-                finished_targets := Riot_model.Target.to_string target :: !finished_targets;
-                finished_counts := result_count :: !finished_counts;
-                partial_flags := partial :: !partial_flags
-            | _ -> ())
-          () in
-        match
-          Riot_build.Internal.Build_runtime.execute
-            ~allow_partial_failures:true
-            context
-            spec
-        with
-        | Error err ->
-            Error ("expected partial failures to be returned, got: " ^ Build_runtime.error_message err)
+        let context, spec =
+          make_runtime_inputs ~workspace ~package_names:[ good; bad ] ~targets:requested_targets ~requested_parallelism:(Some 1)
+            ~on_event:(fun event ->
+              match event with
+              | Riot_build.Event.Phase (Riot_build.Event.TargetBuildStarted { target }) ->
+                  started_targets := Riot_model.Target.to_string target :: !started_targets
+              | Riot_build.Event.Phase (Riot_build.Event.TargetBuildFinished {
+                target;
+                result_count;
+                had_partial_failure=partial
+              }) ->
+                  finished_targets := Riot_model.Target.to_string target :: !finished_targets;
+                  finished_counts := result_count :: !finished_counts;
+                  partial_flags := partial :: !partial_flags
+              | _ ->
+                  ())
+            ()
+        in
+        match Riot_build.Internal.Build_runtime.execute ~allow_partial_failures:true context spec with
+        | Error err -> Error ("expected partial failures to be returned, got: "
+        ^ Build_runtime.error_message err)
         | Ok results ->
             if not (Int.equal (List.length !started_targets) expected_target_count) then
               Error ("expected " ^ Int.to_string expected_target_count ^ " target builds started")
@@ -557,11 +506,11 @@ let test_execute_allows_multi_target_partial_failures = fun _ctx ->
               let sort_target_names = List.sort ~compare:String.compare in
               let started_sorted = sort_target_names !started_targets in
               let finished_sorted = sort_target_names !finished_targets in
-              let rec equal_target_lists = fun left right ->
+              let rec equal_target_lists left right =
                 match left, right with
                 | [], [] -> true
-                | left :: left_rest, right :: right_rest ->
-                    String.equal left right && equal_target_lists left_rest right_rest
+                | left :: left_rest, right :: right_rest -> String.equal left right
+                && equal_target_lists left_rest right_rest
                 | _, _ -> false
               in
               if not (equal_target_lists expected_targets started_sorted) then
@@ -574,19 +523,21 @@ let test_execute_allows_multi_target_partial_failures = fun _ctx ->
                 let bad_output = Riot_build.Build_result.find_package build_output bad in
                 let good_ok =
                   match good_output with
-                  | Some package_output ->
-                      (match Riot_build.Build_result.package_status package_output with
+                  | Some package_output -> (
+                      match Riot_build.Build_result.package_status package_output with
                       | Riot_build.Build_result.Built _
                       | Riot_build.Build_result.Cached _ -> true
-                      | _ -> false)
+                      | _ -> false
+                    )
                   | None -> false
                 in
                 let bad_ok =
                   match bad_output with
-                  | Some package_output ->
-                      (match Riot_build.Build_result.package_status package_output with
+                  | Some package_output -> (
+                      match Riot_build.Build_result.package_status package_output with
                       | Riot_build.Build_result.Failed _ -> true
-                      | _ -> false)
+                      | _ -> false
+                    )
                   | None -> false
                 in
                 if not good_ok then
@@ -594,8 +545,7 @@ let test_execute_allows_multi_target_partial_failures = fun _ctx ->
                 else if not bad_ok then
                   Error "expected merged output to include failed bad package"
                 else
-                  Ok ()
-      )
+                  Ok ())
   with
   | Ok result -> result
   | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
@@ -615,44 +565,35 @@ let test_execute_multi_target_reports_global_returning_results = fun _ctx ->
         let target_count = List.length (Riot_model.Target.Set.to_list requested_targets) in
         let expected_return_count = target_count * 2 in
         let returning_event = ref None in
-        let workspace =
-          make_workspace_with_sources
-            ~root:tmpdir
-            ~toolchain_targets:(Riot_model.Target.Set.to_list requested_targets
-              |> List.map ~fn:Riot_model.Target.to_string)
-            ~packages:[
-              ( "good", "let value = 2\n" );
-              ( "bad", "let broken =" );
-            ] () in
-        let context, spec = make_runtime_inputs
-          ~workspace
-          ~package_names:[ package_name "good"; package_name "bad" ]
-          ~targets:requested_targets
-          ~requested_parallelism:(Some 1)
-          ~on_event:(fun event ->
-            match event with
-            | Riot_build.Event.Phase (Riot_build.Event.ReturningResults { result_count; had_partial_failure }) ->
-                returning_event := Some (result_count, had_partial_failure)
-            | _ -> ())
+        let workspace = make_workspace_with_sources
+          ~root:tmpdir
+          ~toolchain_targets:(Riot_model.Target.Set.to_list requested_targets
+          |> List.map ~fn:Riot_model.Target.to_string)
+          ~packages:[ ("good", "let value = 2\n"); ("bad", "let broken ="); ]
           () in
-        match
-          Riot_build.Internal.Build_runtime.execute
-            ~allow_partial_failures:true
-            context
-            spec
-        with
-        | Error err ->
-            Error ("expected partial failures to be returned, got: " ^ Build_runtime.error_message err)
+        let context, spec =
+          make_runtime_inputs ~workspace ~package_names:[ package_name "good"; package_name "bad" ] ~targets:requested_targets ~requested_parallelism:(Some 1)
+            ~on_event:(fun event ->
+              match event with
+              | Riot_build.Event.Phase (Riot_build.Event.ReturningResults {
+                result_count;
+                had_partial_failure
+              }) -> returning_event := Some (result_count, had_partial_failure)
+              | _ -> ())
+            ()
+        in
+        match Riot_build.Internal.Build_runtime.execute ~allow_partial_failures:true context spec with
+        | Error err -> Error ("expected partial failures to be returned, got: "
+        ^ Build_runtime.error_message err)
         | Ok _ ->
             match !returning_event with
             | None -> Error "expected returning results event"
             | Some (result_count, had_partial_failure) ->
                 if not (Int.equal result_count expected_return_count) then
-                  Error
-                    ("expected returning result count "
-                    ^ Int.to_string expected_return_count
-                    ^ ", got "
-                    ^ Int.to_string result_count)
+                  Error ("expected returning result count "
+                  ^ Int.to_string expected_return_count
+                  ^ ", got "
+                  ^ Int.to_string result_count)
                 else if not had_partial_failure then
                   Error "expected returning results to report partial failure"
                 else
@@ -673,45 +614,37 @@ let test_execute_multi_target_all_success_reports_aggregated_results = fun _ctx 
             target "x86_64-unknown-linux-gnu"
         in
         let requested_targets = Riot_model.Target.Set.of_list [ host_target; secondary_target ] in
-        let expected_return_count = (List.length (Riot_model.Target.Set.to_list requested_targets)) * 2 in
+        let expected_return_count = (List.length (Riot_model.Target.Set.to_list requested_targets))
+        * 2 in
         let returning_event = ref None in
-        let workspace =
-          make_workspace_with_sources
-            ~root:tmpdir
-            ~toolchain_targets:(Riot_model.Target.Set.to_list requested_targets
-              |> List.map ~fn:Riot_model.Target.to_string)
-            ~packages:[
-              ( "good", "let value = 2\n" );
-              ( "nice", "let answer = 42\n" );
-            ] () in
-        let context, spec = make_runtime_inputs
-          ~workspace
-          ~package_names:[ package_name "good"; package_name "nice" ]
-          ~targets:requested_targets
-          ~requested_parallelism:(Some 1)
-          ~on_event:(fun event ->
-            match event with
-            | Riot_build.Event.Phase (Riot_build.Event.ReturningResults { result_count; had_partial_failure }) ->
-                returning_event := Some (result_count, had_partial_failure)
-            | _ -> ())
+        let workspace = make_workspace_with_sources
+          ~root:tmpdir
+          ~toolchain_targets:(Riot_model.Target.Set.to_list requested_targets
+          |> List.map ~fn:Riot_model.Target.to_string)
+          ~packages:[ ("good", "let value = 2\n"); ("nice", "let answer = 42\n"); ]
           () in
-        match
-          Riot_build.Internal.Build_runtime.execute
-            context
-            spec
-        with
-        | Error err ->
-            Error ("expected build to succeed, got: " ^ Build_runtime.error_message err)
+        let context, spec =
+          make_runtime_inputs ~workspace ~package_names:[ package_name "good"; package_name "nice" ] ~targets:requested_targets ~requested_parallelism:(Some 1)
+            ~on_event:(fun event ->
+              match event with
+              | Riot_build.Event.Phase (Riot_build.Event.ReturningResults {
+                result_count;
+                had_partial_failure
+              }) -> returning_event := Some (result_count, had_partial_failure)
+              | _ -> ())
+            ()
+        in
+        match Riot_build.Internal.Build_runtime.execute context spec with
+        | Error err -> Error ("expected build to succeed, got: " ^ Build_runtime.error_message err)
         | Ok _ ->
             match !returning_event with
             | None -> Error "expected returning results event"
             | Some (result_count, had_partial_failure) ->
                 if not (Int.equal result_count expected_return_count) then
-                  Error
-                    ("expected returning result count "
-                    ^ Int.to_string expected_return_count
-                    ^ ", got "
-                    ^ Int.to_string result_count)
+                  Error ("expected returning result count "
+                  ^ Int.to_string expected_return_count
+                  ^ ", got "
+                  ^ Int.to_string result_count)
                 else if had_partial_failure then
                   Error "expected returning results to report no partial failure"
                 else
@@ -732,35 +665,25 @@ let test_execute_multi_target_partial_failures_skip_cache_recording = fun _ctx -
             target "x86_64-unknown-linux-gnu"
         in
         let requested_targets = Riot_model.Target.Set.of_list [ host_target; secondary_target ] in
-        let workspace =
-          make_workspace_with_sources
-            ~root:tmpdir
-            ~toolchain_targets:(Riot_model.Target.Set.to_list requested_targets
-              |> List.map ~fn:Riot_model.Target.to_string)
-            ~packages:[
-              ( "good", "let value = 2\n" );
-              ( "bad", "let broken =" );
-            ] () in
-        let saw_cache_event = ref false in
-        let context, spec = make_runtime_inputs
-          ~workspace
-          ~package_names:[ package_name "good"; package_name "bad" ]
-          ~targets:requested_targets
-          ~requested_parallelism:(Some 1)
-          ~on_event:(fun event ->
-            match event with
-            | Riot_build.Event.Phase (Riot_build.Event.CacheGenerationRecordingStarted _)
-            | Riot_build.Event.Phase (Riot_build.Event.CacheGenerationRecorded _) -> saw_cache_event := true
-            | _ -> ())
+        let workspace = make_workspace_with_sources
+          ~root:tmpdir
+          ~toolchain_targets:(Riot_model.Target.Set.to_list requested_targets
+          |> List.map ~fn:Riot_model.Target.to_string)
+          ~packages:[ ("good", "let value = 2\n"); ("bad", "let broken ="); ]
           () in
-        match
-          Riot_build.Internal.Build_runtime.execute
-            ~allow_partial_failures:true
-            context
-            spec
-        with
-        | Error err ->
-            Error ("expected build to succeed with allow flag, got: " ^ Build_runtime.error_message err)
+        let saw_cache_event = ref false in
+        let context, spec =
+          make_runtime_inputs ~workspace ~package_names:[ package_name "good"; package_name "bad" ] ~targets:requested_targets ~requested_parallelism:(Some 1)
+            ~on_event:(fun event ->
+              match event with
+              | Riot_build.Event.Phase (Riot_build.Event.CacheGenerationRecordingStarted _)
+              | Riot_build.Event.Phase (Riot_build.Event.CacheGenerationRecorded _) -> saw_cache_event := true
+              | _ -> ())
+            ()
+        in
+        match Riot_build.Internal.Build_runtime.execute ~allow_partial_failures:true context spec with
+        | Error err -> Error ("expected build to succeed with allow flag, got: "
+        ^ Build_runtime.error_message err)
         | Ok _ ->
             if !saw_cache_event then
               Error "expected partial failures to skip cache generation recording"
@@ -782,37 +705,25 @@ let test_execute_multi_target_success_records_cache_generation = fun _ctx ->
             target "x86_64-unknown-linux-gnu"
         in
         let requested_targets = Riot_model.Target.Set.of_list [ host_target; secondary_target ] in
-        let workspace =
-          make_workspace_with_sources
-            ~root:tmpdir
-            ~toolchain_targets:(Riot_model.Target.Set.to_list requested_targets
-              |> List.map ~fn:Riot_model.Target.to_string)
-            ~packages:[
-              ( "good", "let value = 2\n" );
-              ( "nice", "let answer = 42\n" );
-            ] () in
+        let workspace = make_workspace_with_sources
+          ~root:tmpdir
+          ~toolchain_targets:(Riot_model.Target.Set.to_list requested_targets
+          |> List.map ~fn:Riot_model.Target.to_string)
+          ~packages:[ ("good", "let value = 2\n"); ("nice", "let answer = 42\n"); ]
+          () in
         let recording_started = ref false in
         let recording_recorded = ref false in
-        let context, spec = make_runtime_inputs
-          ~workspace
-          ~package_names:[ package_name "good"; package_name "nice" ]
-          ~targets:requested_targets
-          ~requested_parallelism:(Some 1)
-          ~on_event:(fun event ->
-            match event with
-            | Riot_build.Event.Phase (Riot_build.Event.CacheGenerationRecordingStarted _) ->
-                recording_started := true
-            | Riot_build.Event.Phase (Riot_build.Event.CacheGenerationRecorded _) ->
-                recording_recorded := true
-            | _ -> ())
-          () in
-        match
-          Riot_build.Internal.Build_runtime.execute
-            context
-            spec
-        with
-        | Error err ->
-            Error ("expected successful build, got: " ^ Build_runtime.error_message err)
+        let context, spec =
+          make_runtime_inputs ~workspace ~package_names:[ package_name "good"; package_name "nice" ] ~targets:requested_targets ~requested_parallelism:(Some 1)
+            ~on_event:(fun event ->
+              match event with
+              | Riot_build.Event.Phase (Riot_build.Event.CacheGenerationRecordingStarted _) -> recording_started := true
+              | Riot_build.Event.Phase (Riot_build.Event.CacheGenerationRecorded _) -> recording_recorded := true
+              | _ -> ())
+            ()
+        in
+        match Riot_build.Internal.Build_runtime.execute context spec with
+        | Error err -> Error ("expected successful build, got: " ^ Build_runtime.error_message err)
         | Ok _ ->
             if not !recording_started then
               Error "expected cache generation recording to start"
@@ -825,27 +736,21 @@ let test_execute_multi_target_success_records_cache_generation = fun _ctx ->
   | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
 
 let tests =
-  let open Test in [
-    case "build runtime: release builds use the release lane" test_release_build_uses_release_lane;
-    case "build runtime: custom target_dir is respected" test_build_respects_custom_target_dir;
-    case "build runtime: nested udp workspace succeeds across file creation orders" test_nested_udp_workspace_builds_across_file_creation_orders;
-    case "build runtime: rejects invalid parallelism" test_execute_rejects_invalid_parallelism;
-    case "build runtime: execute does not record cache generation when disabled"
-      test_execute_does_not_record_cache_generation_when_disabled;
-    case "build runtime: partial failures fail by default" test_execute_partial_failures_by_default;
-    case "build runtime: allow partial failures returns partial results"
-      test_execute_allows_partial_failures;
-    case "build runtime: multi-target partial failures can succeed with allow flag"
-      test_execute_allows_multi_target_partial_failures;
-    case "build runtime: multi-target partial build returns aggregated returning results"
-      test_execute_multi_target_reports_global_returning_results;
-    case "build runtime: multi-target successful build returns aggregated returning results"
-      test_execute_multi_target_all_success_reports_aggregated_results;
-    case "build runtime: multi-target partial failures skip cache recording"
-      test_execute_multi_target_partial_failures_skip_cache_recording;
-    case "build runtime: multi-target success records cache generation"
-      test_execute_multi_target_success_records_cache_generation;
-  ]
+  let open Test in
+    [
+      case "build runtime: release builds use the release lane" test_release_build_uses_release_lane;
+      case "build runtime: custom target_dir is respected" test_build_respects_custom_target_dir;
+      case "build runtime: nested udp workspace succeeds across file creation orders" test_nested_udp_workspace_builds_across_file_creation_orders;
+      case "build runtime: rejects invalid parallelism" test_execute_rejects_invalid_parallelism;
+      case "build runtime: execute does not record cache generation when disabled" test_execute_does_not_record_cache_generation_when_disabled;
+      case "build runtime: partial failures fail by default" test_execute_partial_failures_by_default;
+      case "build runtime: allow partial failures returns partial results" test_execute_allows_partial_failures;
+      case "build runtime: multi-target partial failures can succeed with allow flag" test_execute_allows_multi_target_partial_failures;
+      case "build runtime: multi-target partial build returns aggregated returning results" test_execute_multi_target_reports_global_returning_results;
+      case "build runtime: multi-target successful build returns aggregated returning results" test_execute_multi_target_all_success_reports_aggregated_results;
+      case "build runtime: multi-target partial failures skip cache recording" test_execute_multi_target_partial_failures_skip_cache_recording;
+      case "build runtime: multi-target success records cache generation" test_execute_multi_target_success_records_cache_generation;
+    ]
 
 let name = "Riot Build Runtime Tests"
 

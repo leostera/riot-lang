@@ -1,8 +1,6 @@
 open Std
 open Riot_build
-
 module Package_builder = Riot_build.Internal.Package_builder
-
 module Test = Std.Test
 
 let package_name = fun name ->

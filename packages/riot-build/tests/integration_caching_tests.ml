@@ -2,11 +2,9 @@ open Std
 open Riot_build
 open Std.Collections
 open Riot_model
-
 module Action_scheduler = Riot_build.Internal.Action_scheduler
 module Package_builder = Riot_build.Internal.Package_builder
 module Sandbox = Riot_build.Internal.Sandbox
-
 module Test = Std.Test
 
 let package_name = fun value ->
@@ -260,7 +258,8 @@ let test_dependency_change_invalidates_cached_compile_actions = fun _ctx ->
                     | Error _ as err -> err
                     | Ok second_app_result ->
                         let statuses = second_app_result.Action_scheduler.completed_actions
-                        |> List.map ~fn:(fun completed_action -> completed_action.Action_scheduler.result.status) in
+                        |> List.map
+                          ~fn:(fun completed_action -> completed_action.Action_scheduler.result.status) in
                         let cached_count =
                           List.fold_left statuses ~acc:0
                             ~fn:(fun count status ->

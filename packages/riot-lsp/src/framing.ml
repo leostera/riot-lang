@@ -101,11 +101,12 @@ let read = fun input ->
         let* read = IO.Reader.read input ~into:chunk |> Result.map_err ~fn:IO.error_message in
         if read = 0 then
           Error "unexpected EOF while reading LSP payload"
-        else (
-          let readable = IO.Buffer.to_bytes chunk in
-          IO.Bytes.blit_unchecked readable ~src_offset:0 ~dst:buffer ~dst_offset:offset ~len:read;
-          loop (offset + read) (remaining - read)
-        )
+        else
+          (
+            let readable = IO.Buffer.to_bytes chunk in
+            IO.Bytes.blit_unchecked readable ~src_offset:0 ~dst:buffer ~dst_offset:offset ~len:read;
+            loop (offset + read) (remaining - read)
+          )
     in
     let* () = loop 0 content_length in
     Ok (IO.Bytes.to_string buffer)

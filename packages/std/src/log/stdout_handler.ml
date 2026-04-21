@@ -18,10 +18,7 @@ module Server = struct
 
   type message =
     Write of Event.t
-    | Flush of {
-        reply_to: Pid.t;
-        request_id: request_id;
-      }
+    | Flush of { reply_to: Pid.t; request_id: request_id }
 
   type Message.t +=
     StdoutHandler of message

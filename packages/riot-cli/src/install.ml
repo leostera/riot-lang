@@ -163,11 +163,10 @@ let run_with_workspace_info = fun ~workspace ~workspace_error matches ->
     in
     let on_event (event: Install_runtime.install_event) =
       match event with
-      | Install_runtime.Build build_event ->
-          Build.write_build_event
-            ~mode:Build.Human
-            ~seen_registry_updates
-            build_event
+      | Install_runtime.Build build_event -> Build.write_build_event
+        ~mode:Build.Human
+        ~seen_registry_updates
+        build_event
       | _ -> write_install_event ~workspace_root:workspace_root_for_output event
     in
     let result =

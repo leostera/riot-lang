@@ -41,9 +41,7 @@ let total_lines = fun t ->
   | `None -> List.length t.lines
   | `Soft ->
       (* Count wrapped lines *)
-      List.fold_left
-        t.lines
-        ~acc:0
+      List.fold_left t.lines ~acc:0
         ~fn:(fun acc line ->
           if line = "" then
             acc + 1
@@ -56,15 +54,12 @@ let max_y_offset = fun t ->
     | `None -> List.length t.lines
     | `Soft ->
         (* Count wrapped lines *)
-        List.fold_left
-          t.lines
-          ~acc:0
+        List.fold_left t.lines ~acc:0
           ~fn:(fun acc line ->
             if line = "" then
               acc + 1
             else
-            acc + List.length (Util.Ansi.word_wrap ~width:t.width line))
-          
+              acc + List.length (Util.Ansi.word_wrap ~width:t.width line))
   in
   Int.max 0 (effective_lines - t.height)
 
@@ -157,8 +152,7 @@ let view = fun t ->
   let start_idx = t.y_offset in
   let end_idx = Int.min (start_idx + t.height) (List.length display_lines) in
   let visible =
-    List.filter_map
-      (List.enumerate display_lines)
+    List.filter_map (List.enumerate display_lines)
       ~fn:(fun (i, line) ->
         if i >= start_idx && i < end_idx then
           Some line

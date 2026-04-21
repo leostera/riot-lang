@@ -4,7 +4,6 @@ open Types
 module IoVec = IoVec
 
 type 'value result = ('value, Error.t) Result.t
-
 module type Read = sig
   type t
   val read: t -> into:Buffer.t -> int result

@@ -73,10 +73,8 @@ type error = Error.t =
   | Buffer_full
   | Invalid_data
   | Unknown_error of string
-
 type nonrec 'value result = ('value, error) Result.t
 type nonrec 'value io_result = 'value result
-
 type file_kind =
   | Regular
   | Directory
@@ -85,7 +83,6 @@ type file_kind =
   | Character
   | Fifo
   | Socket
-
 val of_system_error: Kernel.SystemError.t -> error
 
 val of_async_error: Kernel.Async.error -> error
@@ -93,53 +90,75 @@ val of_async_error: Kernel.Async.error -> error
 val error_message: error -> string
 
 module Error = Error
+
 module Buffer: module type of Buffer
+
 module Bytes: module type of Bytes
+
 module IoSlice: module type of IoSlice
+
 module IoVec: module type of IoVec
+
 module IoBuffer: module type of Kernel.IO.Buffer
+
 module Reader = Reader
+
 module BufReader = Buf_reader
+
 module Writer = Writer
 
 module Stdin: sig
   type t
   type nonrec error = error
-
   val open_: ?chunk_size:int -> unit -> t
+
   val read: t -> into:Buffer.t -> int result
+
   val read_vectored: t -> into:IoVec.t -> int result
+
   val to_reader: t -> Reader.t
 end
 
 module Stdout: sig
   type nonrec error = error
-
   val write: from:Buffer.t -> int result
+
   val write_vectored: from:IoVec.t -> int result
+
   val flush: unit -> unit result
 end
 
 module Stderr: sig
   type nonrec error = error
-
   val write: from:Buffer.t -> int result
+
   val write_vectored: from:IoVec.t -> int result
+
   val flush: unit -> unit result
 end
 
 val stdin: ?chunk_size:int -> unit -> Reader.t
+
 val stdout: unit -> Writer.t
+
 val stderr: unit -> Writer.t
 
 val read: Reader.t -> into:Buffer.t -> int result
+
 val read_vectored: Reader.t -> into:IoVec.t -> int result
+
 val is_read_vectored: Reader.t -> bool
+
 val read_to_end: Reader.t -> into:Buffer.t -> int result
+
 val read_to_string: Reader.t -> into:StringBuilder.t -> int result
 
 val write: Writer.t -> from:Buffer.t -> int result
+
 val write_vectored: Writer.t -> from:IoVec.t -> int result
+
 val write_all: Writer.t -> from:Buffer.t -> unit result
+
 val write_all_vectored: Writer.t -> from:IoVec.t -> unit result
+
 val flush: Writer.t -> unit result

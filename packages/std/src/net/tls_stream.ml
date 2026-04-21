@@ -238,13 +238,14 @@ let to_reader: type src. src t -> IO.Reader.t = fun tls_stream ->
 
     let read = fun (tls: t) ~into ->
       let writable =
-        if IO.Buffer.writable_bytes into = 0 then (
-          match IO.Buffer.ensure_free into 4_096 with
-          | Ok () -> IO.Buffer.writable into
-          | Error error ->
-              Kernel.SystemError.panic
-                ("Net.TlsStream.to_reader.ensure_free: " ^ Kernel.IO.Error.message error)
-        ) else
+        if IO.Buffer.writable_bytes into = 0 then
+          (
+            match IO.Buffer.ensure_free into 4_096 with
+            | Ok () -> IO.Buffer.writable into
+            | Error error -> Kernel.SystemError.panic
+              ("Net.TlsStream.to_reader.ensure_free: " ^ Kernel.IO.Error.message error)
+          )
+        else
           IO.Buffer.writable into
       in
       let scratch = Bytes.create ~size:(IO.IoSlice.length writable) in
@@ -254,13 +255,13 @@ let to_reader: type src. src t -> IO.Reader.t = fun tls_stream ->
           begin
             match IO.Buffer.append_bytes into chunk with
             | Ok () -> Ok count
-            | Error error ->
-                Kernel.SystemError.panic
-                  ("Net.TlsStream.to_reader.append: " ^ Kernel.IO.Error.message error)
+            | Error error -> Kernel.SystemError.panic
+              ("Net.TlsStream.to_reader.append: " ^ Kernel.IO.Error.message error)
           end
       | Error err -> Error (io_error_of_tls_error err)
 
-    let read_vectored = fun _t ~into:_ -> Error (io_error_of_tls_error Unsupported_vectored_operation)
+    let read_vectored = fun _t ~into:_ ->
+      Error (io_error_of_tls_error Unsupported_vectored_operation)
 
     let is_read_vectored = fun _t -> false
   end in
@@ -277,7 +278,8 @@ let to_writer: type src. src t -> IO.Writer.t = fun tls ->
       | Ok written -> Ok written
       | Error err -> Error (io_error_of_tls_error err)
 
-    let write_vectored = fun _t ~from:_ -> Error (io_error_of_tls_error Unsupported_vectored_operation)
+    let write_vectored = fun _t ~from:_ ->
+      Error (io_error_of_tls_error Unsupported_vectored_operation)
 
     let flush = fun _t -> Ok ()
   end in

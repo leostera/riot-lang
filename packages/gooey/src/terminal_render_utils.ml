@@ -1,8 +1,10 @@
 open Std
 
-let start_cell = fun value -> Int.max 0 (Float.to_int (Float.floor value))
+let start_cell = fun value ->
+  Int.max 0 (Float.to_int (Float.floor value))
 
-let end_cell = fun value -> Int.max 0 (Float.to_int (Float.ceil value))
+let end_cell = fun value ->
+  Int.max 0 (Float.to_int (Float.ceil value))
 
 let rect_col_start = fun (rect: Geometry.Rect.t) -> start_cell rect.x
 
@@ -40,8 +42,7 @@ let slice_text_by_cells = fun text ~skip ~take ->
     ""
   else
     let graphemes = String.into_grapheme_iter text |> Std.Iter.Iterator.to_list in
-    let rec loop col acc =
-      function
+    let rec loop col acc = function
       | [] -> List.rev acc |> String.concat ""
       | grapheme :: rest ->
           let grapheme_string = Std.Unicode.Grapheme.to_string grapheme in

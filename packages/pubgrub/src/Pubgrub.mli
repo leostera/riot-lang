@@ -56,7 +56,12 @@ val to_provider: Provider.offline -> string Provider.t
 val default_options: Solver.options
 
 val solve_with_stats:
-  ?trace_ctx:Trace.t -> ?options:Solver.options -> string Provider.t -> package -> version -> Solver.outcome
+  ?trace_ctx:Trace.t ->
+  ?options:Solver.options ->
+  string Provider.t ->
+  package ->
+  version ->
+  Solver.outcome
 
 val solve:
   ?trace_ctx:Trace.t ->

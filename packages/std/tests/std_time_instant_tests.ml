@@ -1,5 +1,4 @@
 open Std
-
 module Duration = Time.Duration
 module Instant = Time.Instant
 
@@ -89,5 +88,4 @@ let tests =
     case "Instant.duration_since panics when earlier > later" test_duration_since_panics_when_earlier_is_later;
   ]
 
-let () =
-  Runtime.run ~main:(Test.Cli.main ~name:"Time.Instant" ~tests) ~args:Env.args ()
+let () = Runtime.run ~main:(Test.Cli.main ~name:"Time.Instant" ~tests) ~args:Env.args ()

@@ -7,8 +7,7 @@ open Propane
 
 (* Generator for valid HTTP header names (lowercase alphanumeric + hyphens) *)
 
-let header_name_gen =
-  Generator.string_size (Generator.int_range 1 24) Generator.char_lowercase
+let header_name_gen = Generator.string_size (Generator.int_range 1 24) Generator.char_lowercase
 
 (* Generator for HTTP header values (printable ASCII) *)
 
@@ -29,9 +28,8 @@ let header_arb =
 (* Property: HPACK encoding produces output *)
 
 let hpack_encode_prop =
-  property
-    "HPACK encoding produces non-empty output for non-empty headers"
-    Arbitrary.(make (Generator.non_empty_list header_gen))
+  property "HPACK encoding produces non-empty output for non-empty headers" Arbitrary.(make
+    (Generator.non_empty_list header_gen))
     (fun headers ->
       let encoder = Http2.Hpack.create_encoder () in
       let encoded = Http2.Hpack.encode encoder ~sensitive_headers:[] () ~headers in
@@ -126,7 +124,7 @@ let frame_length_prop =
 let chunk_size_gen = Generator.int_range 0 100
 
 let int_to_hex = fun n ->
-  let digit = fun value ->
+  let digit value =
     if value < 10 then
       Char.chr (Char.code '0' + value)
     else
@@ -143,14 +141,11 @@ let int_to_hex = fun n ->
 (* Property: Chunk encoding/decoding round-trip *)
 
 let chunk_roundtrip_prop =
-  property
-    "HTTP/1 chunk encode/decode preserves data"
-    Arbitrary.(make (Generator.string_size (Generator.int_range 1 50) Generator.char_printable))
+  property "HTTP/1 chunk encode/decode preserves data" Arbitrary.(make
+    (Generator.string_size (Generator.int_range 1 50) Generator.char_printable))
     (fun data ->
       (* Convert to hex manually for small numbers *)
-      let hex_size =
-        String.length data |> int_to_hex
-      in
+      let hex_size = String.length data |> int_to_hex in
       let encoded = hex_size ^ "\r\n" ^ data ^ "\r\n" in
       (* Decode the chunk *)
       match Http1.Chunk.parse encoded with

@@ -6,37 +6,49 @@ let parse_requirement = fun source -> Version.parse_requirement source |> Result
 
 let test_parse_plain_version = fun _ctx ->
   match Version.parse "1.2.3" with
-  | Ok { major = 1; minor = 2; patch = 3; pre = []; build = None } -> Ok ()
+  | Ok {
+    major=1;
+    minor=2;
+    patch=3;
+    pre=[];
+    build=None
+  } -> Ok ()
   | Ok _ -> Error "expected Version.parse 1.2.3 to return a plain semver"
   | Error _ -> Error "expected Version.parse 1.2.3 to succeed"
 
 let test_parse_zero_version = fun _ctx ->
   match Version.parse "0.0.0" with
-  | Ok { major = 0; minor = 0; patch = 0; pre = []; build = None } -> Ok ()
+  | Ok {
+    major=0;
+    minor=0;
+    patch=0;
+    pre=[];
+    build=None
+  } -> Ok ()
   | Ok _ -> Error "expected Version.parse 0.0.0 to return the zero version"
   | Error _ -> Error "expected Version.parse 0.0.0 to succeed"
 
 let test_parse_pre_release_alpha = fun _ctx ->
   match Version.parse "1.2.3-alpha" with
-  | Ok { pre = [ Version.Alphanumeric "alpha" ]; _ } -> Ok ()
+  | Ok { pre=[ Version.Alphanumeric "alpha" ]; _ } -> Ok ()
   | Ok _ -> Error "expected Version.parse to capture the alpha pre-release segment"
   | Error _ -> Error "expected Version.parse 1.2.3-alpha to succeed"
 
 let test_parse_pre_release_mixed_segments = fun _ctx ->
   match Version.parse "1.2.3-alpha.1" with
-  | Ok { pre = [ Version.Alphanumeric "alpha"; Numeric 1 ]; _ } -> Ok ()
+  | Ok { pre=[Version.Alphanumeric "alpha";Numeric 1]; _ } -> Ok ()
   | Ok _ -> Error "expected Version.parse to preserve mixed pre-release segments"
   | Error _ -> Error "expected Version.parse 1.2.3-alpha.1 to succeed"
 
 let test_parse_build_metadata = fun _ctx ->
   match Version.parse "1.2.3+build.5" with
-  | Ok { build = Some "build.5"; _ } -> Ok ()
+  | Ok { build=Some "build.5"; _ } -> Ok ()
   | Ok _ -> Error "expected Version.parse to capture build metadata"
   | Error _ -> Error "expected Version.parse 1.2.3+build.5 to succeed"
 
 let test_parse_prerelease_and_build = fun _ctx ->
   match Version.parse "1.2.3-alpha+build.5" with
-  | Ok { pre = [ Version.Alphanumeric "alpha" ]; build = Some "build.5"; _ } -> Ok ()
+  | Ok { pre=[ Version.Alphanumeric "alpha" ]; build=Some "build.5"; _ } -> Ok ()
   | Ok _ -> Error "expected Version.parse to capture both pre-release and build metadata"
   | Error _ -> Error "expected Version.parse 1.2.3-alpha+build.5 to succeed"
 
@@ -106,7 +118,9 @@ let test_compare_shorter_prerelease_lists_lower = fun _ctx ->
 let test_ordering_helpers_agree_with_compare = fun _ctx ->
   let left = parse_version "1.2.3-alpha" in
   let right = parse_version "1.2.3" in
-  if Version.lt left right && Version.lte left right && Version.gt right left && Version.gte right left then
+  if
+    Version.lt left right && Version.lte left right && Version.gt right left && Version.gte right left
+  then
     Ok ()
   else
     Error "expected Version.lt/lte/gt/gte to agree with Version.compare"
@@ -224,5 +238,4 @@ let tests =
     case "Version.matches tilde requirements within the minor line" test_matches_tilde_requirement;
   ]
 
-let () =
-  Runtime.run ~main:(Test.Cli.main ~name:"Version" ~tests) ~args:Env.args ()
+let () = Runtime.run ~main:(Test.Cli.main ~name:"Version" ~tests) ~args:Env.args ()

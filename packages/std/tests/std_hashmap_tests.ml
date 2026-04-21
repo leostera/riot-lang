@@ -12,100 +12,144 @@ let box = fun value -> { value }
 let sort_ints = fun values -> List.sort values ~compare:Int.compare
 
 let sort_pairs = fun values ->
-  List.sort values ~compare:(fun (left_key, _) (right_key, _) -> Int.compare left_key right_key)
+  List.sort values
+    ~compare:(fun (left_key, _) (right_key, _) ->
+      Int.compare left_key right_key)
 
 let test_create = fun _ctx ->
   let map = HashMap.create () in
-  if HashMap.is_empty map && Int.equal (HashMap.length map) 0 then Ok ()
-  else Error "expected HashMap.create to start empty"
+  if HashMap.is_empty map && Int.equal (HashMap.length map) 0 then
+    Ok ()
+  else
+    Error "expected HashMap.create to start empty"
 
 let test_with_capacity = fun _ctx ->
   let map = HashMap.with_capacity ~size:32 in
-  if HashMap.is_empty map then Ok () else Error "expected HashMap.with_capacity to start empty"
+  if HashMap.is_empty map then
+    Ok ()
+  else
+    Error "expected HashMap.with_capacity to start empty"
 
 let test_from_list_unique = fun _ctx ->
   let map = HashMap.from_list [ (1, "a"); (2, "b") ] in
-  if HashMap.get map ~key:1 = Some "a" && HashMap.get map ~key:2 = Some "b" then Ok ()
-  else Error "expected from_list to preserve unique key/value pairs"
+  if HashMap.get map ~key:1 = Some "a" && HashMap.get map ~key:2 = Some "b" then
+    Ok ()
+  else
+    Error "expected from_list to preserve unique key/value pairs"
 
 let test_from_list_duplicate_keeps_last = fun _ctx ->
   let map = HashMap.from_list [ (1, "a"); (1, "b") ] in
-  if HashMap.get map ~key:1 = Some "b" then Ok ()
-  else Error "expected duplicate keys to keep the last value"
+  if HashMap.get map ~key:1 = Some "b" then
+    Ok ()
+  else
+    Error "expected duplicate keys to keep the last value"
 
 let test_insert_new = fun _ctx ->
   let map = HashMap.create () in
   let previous = HashMap.insert map ~key:1 ~value:"a" in
-  if Option.is_none previous && Int.equal (HashMap.length map) 1 && HashMap.get map ~key:1 = Some "a" then Ok ()
-  else Error "expected insert new key to return None and increment length"
+  if
+    Option.is_none previous && Int.equal (HashMap.length map) 1 && HashMap.get map ~key:1 = Some "a"
+  then
+    Ok ()
+  else
+    Error "expected insert new key to return None and increment length"
 
 let test_insert_existing = fun _ctx ->
   let map = HashMap.from_list [ (1, "a") ] in
-  if HashMap.insert map ~key:1 ~value:"b" = Some "a" && Int.equal (HashMap.length map) 1 then Ok ()
-  else Error "expected insert existing key to return old value without changing length"
+  if HashMap.insert map ~key:1 ~value:"b" = Some "a" && Int.equal (HashMap.length map) 1 then
+    Ok ()
+  else
+    Error "expected insert existing key to return old value without changing length"
 
 let test_get_existing = fun _ctx ->
   let map = HashMap.from_list [ (1, "a") ] in
-  if HashMap.get map ~key:1 = Some "a" then Ok () else Error "expected get existing key = Some value"
+  if HashMap.get map ~key:1 = Some "a" then
+    Ok ()
+  else
+    Error "expected get existing key = Some value"
 
 let test_get_missing = fun _ctx ->
   let map = HashMap.from_list [ (1, "a") ] in
-  if HashMap.get map ~key:2 = None then Ok () else Error "expected get missing key = None"
+  if HashMap.get map ~key:2 = None then
+    Ok ()
+  else
+    Error "expected get missing key = None"
 
 let test_remove_existing = fun _ctx ->
   let map = HashMap.from_list [ (1, "a") ] in
   let removed = HashMap.remove map ~key:1 in
-  if Option.is_some removed && Int.equal (HashMap.length map) 0 && HashMap.get map ~key:1 = None then Ok ()
-  else Error "expected remove existing key to delete entry"
+  if Option.is_some removed && Int.equal (HashMap.length map) 0 && HashMap.get map ~key:1 = None then
+    Ok ()
+  else
+    Error "expected remove existing key to delete entry"
 
 let test_remove_missing = fun _ctx ->
   let map = HashMap.from_list [ (1, "a") ] in
-  if HashMap.remove map ~key:2 = None then Ok () else Error "expected remove missing key = None"
+  if HashMap.remove map ~key:2 = None then
+    Ok ()
+  else
+    Error "expected remove missing key = None"
 
 let test_has_key = fun _ctx ->
   let map = HashMap.from_list [ (1, "a") ] in
-  if HashMap.has_key map ~key:1 && not (HashMap.has_key map ~key:2) then Ok ()
-  else Error "expected has_key to reflect membership"
+  if HashMap.has_key map ~key:1 && not (HashMap.has_key map ~key:2) then
+    Ok ()
+  else
+    Error "expected has_key to reflect membership"
 
 let test_length_after_overwrite = fun _ctx ->
   let map = HashMap.from_list [ (1, "a") ] in
   ignore (HashMap.insert map ~key:1 ~value:"b");
-  if Int.equal (HashMap.length map) 1 then Ok ()
-  else Error "expected length to count distinct keys"
+  if Int.equal (HashMap.length map) 1 then
+    Ok ()
+  else
+    Error "expected length to count distinct keys"
 
 let test_clear = fun _ctx ->
   let map = HashMap.from_list [ (1, "a"); (2, "b") ] in
   HashMap.clear map;
-  if HashMap.is_empty map && HashMap.to_list map = [] then Ok ()
-  else Error "expected clear to remove all entries"
+  if HashMap.is_empty map && HashMap.to_list map = [] then
+    Ok ()
+  else
+    Error "expected clear to remove all entries"
 
 let test_keys = fun _ctx ->
   let map = HashMap.from_list [ (1, "a"); (2, "b") ] in
-  if sort_ints (HashMap.keys map) = [ 1; 2 ] then Ok ()
-  else Error "expected keys to list every key exactly once"
+  if sort_ints (HashMap.keys map) = [ 1; 2 ] then
+    Ok ()
+  else
+    Error "expected keys to list every key exactly once"
 
 let test_values = fun _ctx ->
   let map = HashMap.from_list [ (1, "a"); (2, "b") ] in
-  if List.sort (HashMap.values map) ~compare:String.compare = [ "a"; "b" ] then Ok ()
-  else Error "expected values to list every current value"
+  if List.sort (HashMap.values map) ~compare:String.compare = [ "a"; "b" ] then
+    Ok ()
+  else
+    Error "expected values to list every current value"
 
 let test_for_each = fun _ctx ->
   let map = HashMap.from_list [ (1, "a"); (2, "b") ] in
   let seen = box [] in
   HashMap.for_each map ~fn:(fun key value -> seen.value <- (key, value) :: seen.value);
-  if sort_pairs seen.value = [ (1, "a"); (2, "b") ] then Ok ()
-  else Error "expected for_each to visit each entry exactly once"
+  if sort_pairs seen.value = [ (1, "a"); (2, "b") ] then
+    Ok ()
+  else
+    Error "expected for_each to visit each entry exactly once"
 
 let test_fold_left = fun _ctx ->
   let map = HashMap.from_list [ (1, 2); (2, 3) ] in
-  if Int.equal (HashMap.fold_left map ~acc:0 ~fn:(fun acc _key value -> acc + value)) 5 then Ok ()
-  else Error "expected fold_left to accumulate over all entries"
+  if Int.equal (HashMap.fold_left map ~acc:0 ~fn:(fun acc _key value -> acc + value)) 5 then
+    Ok ()
+  else
+    Error "expected fold_left to accumulate over all entries"
 
 let test_to_list_roundtrip = fun _ctx ->
   let original = HashMap.from_list [ (1, "a"); (2, "b") ] in
   let rebuilt = HashMap.from_list (HashMap.to_list original) in
-  if sort_pairs (HashMap.to_list rebuilt) = [ (1, "a"); (2, "b") ] then Ok ()
-  else Error "expected to_list/from_list to preserve key/value mapping"
+  if sort_pairs (HashMap.to_list rebuilt) = [ (1, "a"); (2, "b") ] then
+    Ok ()
+  else
+    Error "expected to_list/from_list to preserve key/value mapping"
 
 let test_entry_missing = fun _ctx ->
   let map = HashMap.create () in
@@ -122,38 +166,50 @@ let test_entry_existing = fun _ctx ->
 let test_or_insert_missing = fun _ctx ->
   let map = HashMap.create () in
   let value = HashMap.or_insert map ~key:1 ~default:"a" in
-  if String.equal value "a" && HashMap.get map ~key:1 = Some "a" then Ok ()
-  else Error "expected or_insert missing key to insert default"
+  if String.equal value "a" && HashMap.get map ~key:1 = Some "a" then
+    Ok ()
+  else
+    Error "expected or_insert missing key to insert default"
 
 let test_or_insert_existing = fun _ctx ->
   let map = HashMap.from_list [ (1, "a") ] in
   let value = HashMap.or_insert map ~key:1 ~default:"b" in
-  if String.equal value "a" && HashMap.get map ~key:1 = Some "a" then Ok ()
-  else Error "expected or_insert existing key not to overwrite value"
+  if String.equal value "a" && HashMap.get map ~key:1 = Some "a" then
+    Ok ()
+  else
+    Error "expected or_insert existing key not to overwrite value"
 
 let test_and_modify_existing = fun _ctx ->
   let map = HashMap.from_list [ (1, 2) ] in
   HashMap.and_modify map ~key:1 ~fn:(fun value -> value + 3);
-  if HashMap.get map ~key:1 = Some 5 then Ok ()
-  else Error "expected and_modify existing key to update value"
+  if HashMap.get map ~key:1 = Some 5 then
+    Ok ()
+  else
+    Error "expected and_modify existing key to update value"
 
 let test_and_modify_missing = fun _ctx ->
   let map = HashMap.create () in
   HashMap.and_modify map ~key:1 ~fn:(fun value -> value + 3);
-  if HashMap.get map ~key:1 = None then Ok ()
-  else Error "expected and_modify missing key to leave map unchanged"
+  if HashMap.get map ~key:1 = None then
+    Ok ()
+  else
+    Error "expected and_modify missing key to leave map unchanged"
 
 let test_iter = fun _ctx ->
   let items = Iterator.to_list (HashMap.iter (HashMap.from_list [ (1, "a"); (2, "b") ])) in
-  if sort_pairs items = [ (1, "a"); (2, "b") ] then Ok ()
-  else Error "expected iter to yield every entry once"
+  if sort_pairs items = [ (1, "a"); (2, "b") ] then
+    Ok ()
+  else
+    Error "expected iter to yield every entry once"
 
 let test_mut_iter_after_removals = fun _ctx ->
   let map = HashMap.from_list [ (1, "a"); (2, "b"); (3, "c") ] in
   ignore (HashMap.remove map ~key:2);
   let items = MutIterator.to_list (HashMap.mut_iter map) in
-  if sort_pairs items = [ (1, "a"); (3, "c") ] then Ok ()
-  else Error "expected mut_iter to yield only live entries"
+  if sort_pairs items = [ (1, "a"); (3, "c") ] then
+    Ok ()
+  else
+    Error "expected mut_iter to yield only live entries"
 
 let tests =
   Test.[

@@ -349,21 +349,18 @@ module Thrift = struct
   let read_double = fun input ->
     let* bytes = read_string input 8 "double" in
     let open Int64 in
-    let byte index =
-      let shift = Std.Int.(index * 8) in
-      shift_left (of_int (get_byte bytes index)) shift
-    in
-    Ok
-      (float_of_bits
-         (logor
-            (byte 0)
+      let byte index =
+        let shift = Std.Int.(index * 8) in
+        shift_left (of_int (get_byte bytes index)) shift
+      in
+      Ok (float_of_bits
+        (logor
+          (byte 0)
+          (logor
+            (byte 1)
             (logor
-               (byte 1)
-               (logor
-                  (byte 2)
-                  (logor
-                     (byte 3)
-                     (logor (byte 4) (logor (byte 5) (logor (byte 6) (byte 7)))))))))
+              (byte 2)
+              (logor (byte 3) (logor (byte 4) (logor (byte 5) (logor (byte 6) (byte 7)))))))))
 
   let read_binary = fun input ->
     let* length = read_vlq input in
@@ -1773,21 +1770,15 @@ let to_string = fun (value: t) ->
 let to_writer = fun writer (value: t) ->
   let* metadata_bytes = encode_metadata value.metadata in
   let* footer = encode_footer_tail (String.length metadata_bytes) in
-  let write_string = fun value ->
+  let write_string value =
     let buffer = IO.Buffer.from_string value in
     match IO.write_all writer ~from:buffer with
     | Ok () -> Ok ()
     | Error err -> io_error err
   in
-  let* () =
-    write_string magic
-  in
-  let* () =
-    write_string value.body
-  in
-  let* () =
-    write_string metadata_bytes
-  in
+  let* () = write_string magic in
+  let* () = write_string value.body in
+  let* () = write_string metadata_bytes in
   write_string footer
 
 module Reader = struct

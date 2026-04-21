@@ -57,11 +57,7 @@ let test_custom_preserves_callbacks = fun _ctx ->
   let measured = Viewport.make ~width:4.0 ~height:2.0 in
   let box = Geometry.Rect.make ~x:1.0 ~y:2.0 ~width:3.0 ~height:4.0 in
   let render rect = [
-    {
-      Render.bounding_box = rect;
-      command_type = Render.Custom { data = "custom" };
-      z_index = 7;
-    }
+    { Render.bounding_box = rect; command_type = Render.Custom { data = "custom" }; z_index = 7 }
   ] in
   match Element.custom ~measure:(fun ~constraints:_ -> measured) ~render () with
   | Element.Custom { measure; render; _ } ->
@@ -82,14 +78,15 @@ let test_custom_measure_receives_constraints = fun _ctx ->
       ~render:(fun _ -> [])
       ()
   in
-  let _ =
-    Gooey.layout
-      ~config:(Config.make ~viewport:(Viewport.make ~width:8.0 ~height:4.0) ~text_measurer:Config.default_text_measurer ())
-      element
-  in
+  let _ = Gooey.layout
+    ~config:(Config.make
+      ~viewport:(Viewport.make ~width:8.0 ~height:4.0)
+      ~text_measurer:Config.default_text_measurer
+      ())
+    element in
   match !seen with
-  | Some { Config.available_width = Some width; available_height = Some height } when approx_eq width 8.0 && approx_eq height 4.0 ->
-      Ok ()
+  | Some { Config.available_width=Some width; available_height=Some height } when approx_eq width 8.0
+  && approx_eq height 4.0 -> Ok ()
   | _ -> Error "Custom elements should receive available-space constraints during measurement"
 
 let test_empty_element = fun _ctx ->
@@ -97,18 +94,19 @@ let test_empty_element = fun _ctx ->
   | Element.Empty -> Ok ()
   | _ -> Error "Element.empty should be the Empty variant"
 
-let tests = Test.[
-  case "text element" test_text_element;
-  case "text preserves style" test_text_element_preserves_style;
-  case "container preserves child order" test_container_preserves_child_order;
-  case "row sets direction only" test_row_sets_direction_only;
-  case "column sets direction only" test_column_sets_direction_only;
-  case "spacer is weighted grow" test_spacer_is_weighted_grow;
-  case "spacer clamps negative weight" test_spacer_clamps_negative_weight;
-  case "custom preserves callbacks" test_custom_preserves_callbacks;
-  case "custom measure receives constraints" test_custom_measure_receives_constraints;
-  case "empty element" test_empty_element;
-]
+let tests =
+  Test.[
+    case "text element" test_text_element;
+    case "text preserves style" test_text_element_preserves_style;
+    case "container preserves child order" test_container_preserves_child_order;
+    case "row sets direction only" test_row_sets_direction_only;
+    case "column sets direction only" test_column_sets_direction_only;
+    case "spacer is weighted grow" test_spacer_is_weighted_grow;
+    case "spacer clamps negative weight" test_spacer_clamps_negative_weight;
+    case "custom preserves callbacks" test_custom_preserves_callbacks;
+    case "custom measure receives constraints" test_custom_measure_receives_constraints;
+    case "empty element" test_empty_element;
+  ]
 
 let () =
   Actors.run ~main:(fun ~args -> Test.Cli.main ~name:"element" ~tests ~args) ~args:Env.args ()

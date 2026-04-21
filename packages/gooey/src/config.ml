@@ -34,13 +34,13 @@ let wrap_characters = fun ~width text ->
       match current with
       | [] -> acc
       | _ ->
-          let line =
-            current |> List.rev |> List.map ~fn:Std.Unicode.Grapheme.to_string |> String.concat ""
-          in
+          let line = current
+          |> List.rev
+          |> List.map ~fn:Std.Unicode.Grapheme.to_string
+          |> String.concat "" in
           line :: acc
     in
-    let rec loop current current_width acc =
-      function
+    let rec loop current current_width acc = function
       | [] -> flush current acc |> List.rev
       | grapheme :: rest ->
           let grapheme_width = Std.Unicode.Grapheme.width grapheme in
@@ -55,9 +55,12 @@ let wrap_characters = fun ~width text ->
 
 let wrap_paragraph = fun (style: Style.t) max_width paragraph ->
   match style.Style.text_wrap, max_width with
-  | Style.NoWrap, _ -> [ paragraph ]
-  | _, None -> [ paragraph ]
-  | _, Some width when width <= 0 -> [ "" ]
+  | Style.NoWrap, _ ->
+      [ paragraph ]
+  | _, None ->
+      [ paragraph ]
+  | _, Some width when width <= 0 ->
+      [ "" ]
   | Style.Words, Some width ->
       let lines = String.wrap_words ~width paragraph in
       if lines = [] then
@@ -78,8 +81,7 @@ let default_text_measurer = fun ~constraints text style ->
     List.fold_left paragraphs ~acc:[]
       ~fn:(fun acc paragraph ->
         let wrapped = wrap_paragraph style width_hint paragraph in
-        List.fold_left wrapped ~acc
-          ~fn:(fun acc line -> line :: acc))
+        List.fold_left wrapped ~acc ~fn:(fun acc line -> line :: acc))
   in
   let lines =
     match List.rev lines_rev with
@@ -88,13 +90,11 @@ let default_text_measurer = fun ~constraints text style ->
   in
   let width =
     List.fold_left lines ~acc:0
-      ~fn:(fun acc line -> Int.max acc (String.width line))
+      ~fn:(fun acc line ->
+        Int.max acc (String.width line))
     |> Float.of_int
   in
   let height = Int.max 1 (List.length lines) |> Float.of_int in
-  {
-    size = Viewport.make ~width ~height;
-    lines;
-  }
+  { size = Viewport.make ~width ~height; lines }
 
 let make = fun ~viewport ~text_measurer () -> { viewport; text_measurer }

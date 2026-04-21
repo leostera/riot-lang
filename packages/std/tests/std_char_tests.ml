@@ -26,28 +26,52 @@ let test_from_int_too_large = fun _ctx ->
   | Some _ -> Error "expected Char.from_int 256 = None"
 
 let test_from_int_unchecked = fun _ctx ->
-  if Char.equal (Char.from_int_unchecked 97) 'a' then Ok () else Error "expected unchecked 97 = 'a'"
+  if Char.equal (Char.from_int_unchecked 97) 'a' then
+    Ok ()
+  else
+    Error "expected unchecked 97 = 'a'"
 
 let test_chr_alias = fun _ctx ->
-  if Char.equal (Char.chr 97) 'a' then Ok () else Error "expected Char.chr 97 = 'a'"
+  if Char.equal (Char.chr 97) 'a' then
+    Ok ()
+  else
+    Error "expected Char.chr 97 = 'a'"
 
 let test_to_int = fun _ctx ->
-  if Int.equal (Char.to_int 'A') 65 then Ok () else Error "expected Char.to_int 'A' = 65"
+  if Int.equal (Char.to_int 'A') 65 then
+    Ok ()
+  else
+    Error "expected Char.to_int 'A' = 65"
 
 let test_code = fun _ctx ->
-  if Int.equal (Char.code '\n') 10 then Ok () else Error "expected Char.code newline = 10"
+  if Int.equal (Char.code '\n') 10 then
+    Ok ()
+  else
+    Error "expected Char.code newline = 10"
 
 let test_lowercase_ascii = fun _ctx ->
-  if Char.equal (Char.lowercase_ascii 'A') 'a' then Ok () else Error "expected lowercase_ascii 'A' = 'a'"
+  if Char.equal (Char.lowercase_ascii 'A') 'a' then
+    Ok ()
+  else
+    Error "expected lowercase_ascii 'A' = 'a'"
 
 let test_lowercase_ascii_non_alpha = fun _ctx ->
-  if Char.equal (Char.lowercase_ascii '!') '!' then Ok () else Error "expected lowercase_ascii ! unchanged"
+  if Char.equal (Char.lowercase_ascii '!') '!' then
+    Ok ()
+  else
+    Error "expected lowercase_ascii ! unchanged"
 
 let test_uppercase_ascii = fun _ctx ->
-  if Char.equal (Char.uppercase_ascii 'z') 'Z' then Ok () else Error "expected uppercase_ascii 'z' = 'Z'"
+  if Char.equal (Char.uppercase_ascii 'z') 'Z' then
+    Ok ()
+  else
+    Error "expected uppercase_ascii 'z' = 'Z'"
 
 let test_uppercase_ascii_non_alpha = fun _ctx ->
-  if Char.equal (Char.uppercase_ascii '5') '5' then Ok () else Error "expected uppercase_ascii 5 unchanged"
+  if Char.equal (Char.uppercase_ascii '5') '5' then
+    Ok ()
+  else
+    Error "expected uppercase_ascii 5 unchanged"
 
 let tests =
   Test.[

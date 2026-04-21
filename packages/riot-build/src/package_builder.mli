@@ -36,13 +36,13 @@ type graph_update =
   | Planned_package of {
       hash: Std.Crypto.hash;
       module_graph: Module_node.t Graph.SimpleGraph.t;
-      action_graph: Action_graph.t;
+      action_graph: Action_graph.t
     }
   | Cached_package of {
       hash: Std.Crypto.hash;
       artifact: Riot_store.Artifact.t;
       depset: Dependency.t list;
-      exports: Riot_store.Store.export_entry list;
+      exports: Riot_store.Store.export_entry list
     }
   | Built_package of {
       hash: Std.Crypto.hash;
@@ -50,21 +50,14 @@ type graph_update =
       depset: Dependency.t list;
       module_graph: Module_node.t Graph.SimpleGraph.t;
       action_graph: Action_graph.t;
-      status: Package_graph.build_status;
+      status: Package_graph.build_status
     }
-  | Failed_package of {
-      hash: Std.Crypto.hash option;
-      error: string;
-    }
-  | Skipped_package of {
-      reason: string;
-    }
-
+  | Failed_package of { hash: Std.Crypto.hash option; error: string }
+  | Skipped_package of { reason: string }
 type detailed_result = {
   result: build_result;
   graph_update: graph_update option;
 }
-
 type execution_plan = {
   package_key: Package.key;
   package: Package.t;
@@ -75,23 +68,15 @@ type execution_plan = {
   started_at: Time.Instant.t;
   emit_visible_progress: bool;
 }
-
 type plan_outcome =
   | Final_result of detailed_result
   | Execution_required of execution_plan
-
 type prepared_execution = {
   execution_plan: execution_plan;
   sandbox: Sandbox.t;
   toolchain: Riot_toolchain.t;
 }
-
-val apply_graph_update:
-  Package_graph.t ->
-  Package.key ->
-  Package.t ->
-  graph_update option ->
-  unit
+val apply_graph_update: Package_graph.t -> Package.key -> Package.t -> graph_update option -> unit
 
 val planned_graph_update: execution_plan -> graph_update
 

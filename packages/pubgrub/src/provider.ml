@@ -61,8 +61,8 @@ let add_package = fun provider pkg ver deps ->
   | Some offline_pkg ->
       let _ = Collections.HashMap.insert offline_pkg.deps_by_version ~key:ver ~value:deps in
       let updated = {
-        offline_pkg with
-        versions_desc = insert_version_desc offline_pkg.versions_desc ver
+        offline_pkg
+        with versions_desc = insert_version_desc offline_pkg.versions_desc ver
       } in
       let _ = Collections.HashMap.insert provider.packages ~key:pkg ~value:updated in
       ()
@@ -71,11 +71,9 @@ let to_provider: offline -> string t = fun offline ->
   let choose_version pkg ranges =
     match Collections.HashMap.get offline.packages ~key:pkg with
     | None -> Ok None
-    | Some offline_pkg ->
-        Ok (
-          List.find offline_pkg.versions_desc ~fn:(fun version ->
-            Ranges.contains ~compare_v:version_compare ranges version)
-        )
+    | Some offline_pkg -> Ok (List.find
+      offline_pkg.versions_desc
+      ~fn:(fun version -> Ranges.contains ~compare_v:version_compare ranges version))
   in
   let count_versions pkg ranges =
     match Collections.HashMap.get offline.packages ~key:pkg with
@@ -95,14 +93,11 @@ let to_provider: offline -> string t = fun offline ->
     | None -> Ok (Unavailable ("Package '" ^ pkg ^ "' not found"))
     | Some offline_pkg -> (
         match Collections.HashMap.get offline_pkg.deps_by_version ~key:ver with
-        | None ->
-            Ok
-              (Unavailable
-                 ("Version "
-                 ^ Version.to_string ver
-                 ^ " not found for package '"
-                 ^ pkg
-                 ^ "'"))
+        | None -> Ok (Unavailable ("Version "
+        ^ Version.to_string ver
+        ^ " not found for package '"
+        ^ pkg
+        ^ "'"))
         | Some deps -> Ok (Available deps)
       )
   in

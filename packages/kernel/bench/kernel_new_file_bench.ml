@@ -33,10 +33,9 @@ let with_file = fun file fn ->
 
 let scalar_payload = Kernel.Bytes.from_string (Kernel.String.make ~len:4_096 ~char:'x')
 
-let vectored_payload =
-  Kernel.IO.IoVec.from_string_array
-    (Kernel.Array.init ~count:4 ~fn:(fun _ -> Kernel.String.make ~len:1_024 ~char:'x'))
-  |> Result.unwrap
+let vectored_payload = Kernel.IO.IoVec.from_string_array
+  (Kernel.Array.init ~count:4 ~fn:(fun _ -> Kernel.String.make ~len:1_024 ~char:'x'))
+|> Result.unwrap
 
 let bench_scalar_write = fun () ->
   with_temp_path "kernel_new_file_bench" "scalar.bin"

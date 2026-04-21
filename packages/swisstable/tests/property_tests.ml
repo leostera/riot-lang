@@ -251,8 +251,7 @@ let clear_all_none_prop =
 (* Property 18: Many insertions preserve all entries *)
 
 let many_insertions_prop =
-  property "many insertions preserve all entries"
-    (bounded_list_arb 100 Arbitrary.(pair int int))
+  property "many insertions preserve all entries" (bounded_list_arb 100 Arbitrary.(pair int int))
     (fun pairs ->
       (* Limit test size *)
       let map = Swisstable.create () in
@@ -279,8 +278,7 @@ let many_insertions_prop =
 (* Property 19: Length is correct after many operations *)
 
 let length_invariant_prop =
-  property "length invariant holds across operations"
-    (bounded_list_arb 50 Arbitrary.(pair int int))
+  property "length invariant holds across operations" (bounded_list_arb 50 Arbitrary.(pair int int))
     (fun pairs ->
       let map = Swisstable.create () in
       (* Count unique keys using reference HashMap *)

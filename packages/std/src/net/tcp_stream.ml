@@ -99,33 +99,29 @@ let to_reader = fun stream ->
 
     let read = fun t ~into ->
       let writable =
-        if IO.Buffer.writable_bytes into = 0 then (
-          match IO.Buffer.ensure_free into 4_096 with
-          | Ok () -> IO.Buffer.writable into
-          | Error error ->
-              Kernel.SystemError.panic
-                ("Net.TcpStream.to_reader.ensure_free: " ^ Kernel.IO.Error.message error)
-        ) else
+        if IO.Buffer.writable_bytes into = 0 then
+          (
+            match IO.Buffer.ensure_free into 4_096 with
+            | Ok () -> IO.Buffer.writable into
+            | Error error -> Kernel.SystemError.panic
+              ("Net.TcpStream.to_reader.ensure_free: " ^ Kernel.IO.Error.message error)
+          )
+        else
           IO.Buffer.writable into
       in
       let source = Kernel.Net.TcpStream.to_source t in
       let rec loop () =
-        match Kernel.Net.TcpStream.read_vectored t (IO.IoVec.from_slices [| writable |]) with
-        | Ok n ->
-            begin
-              match IO.Buffer.commit into n with
-              | Ok () -> Ok n
-              | Error error ->
-                  Kernel.SystemError.panic
-                    ("Net.TcpStream.to_reader.commit: " ^ Kernel.IO.Error.message error)
-            end
+        match Kernel.Net.TcpStream.read_vectored t (IO.IoVec.from_slices [|writable|]) with
+        | Ok n -> begin
+            match IO.Buffer.commit into n with
+            | Ok () -> Ok n
+            | Error error -> Kernel.SystemError.panic
+              ("Net.TcpStream.to_reader.commit: " ^ Kernel.IO.Error.message error)
+          end
         | Error Kernel.Net.TcpStream.WouldBlock ->
-            Runtime.syscall
-              ~name:"TcpStream.read"
-              ~interest:Interest.readable
-              ~source
-              loop
-        | Error err -> Error (io_error_of_tcp_error err)
+            Runtime.syscall ~name:"TcpStream.read" ~interest:Interest.readable ~source loop
+        | Error err ->
+            Error (io_error_of_tcp_error err)
       in
       loop ()
 
@@ -156,12 +152,11 @@ let to_writer = fun stream ->
       let rec loop () =
         match Kernel.Net.TcpStream.write_vectored t (IO.Buffer.to_iovec from) with
         | Ok n -> Ok n
-        | Error Kernel.Net.TcpStream.WouldBlock ->
-            Runtime.syscall
-              ~name:"TcpStream.write"
-              ~interest:Interest.writable
-              ~source
-              loop
+        | Error Kernel.Net.TcpStream.WouldBlock -> Runtime.syscall
+          ~name:"TcpStream.write"
+          ~interest:Interest.writable
+          ~source
+          loop
         | Error err -> Error (io_error_of_tcp_error err)
       in
       loop ()

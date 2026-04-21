@@ -162,16 +162,13 @@ let suite_progress_event_of_line = fun line ->
     | Error _ -> None
 
 let strip_progress_json_lines = fun lines ->
-  lines
-  |> List.filter ~fn:(fun line -> Option.is_none (suite_progress_event_of_line line))
+  lines |> List.filter ~fn:(fun line -> Option.is_none (suite_progress_event_of_line line))
 
 let suite_progress_json = fun (suite: suite_binary) (json: Data.Json.t) ->
   match json with
-  | Data.Json.Object fields ->
-      Data.Json.Object
-        (fields
-        |> upsert_json_field "package" (Data.Json.String (Package_name.to_string suite.package_name))
-        |> upsert_json_field "suite" (Data.Json.String suite.suite_name))
+  | Data.Json.Object fields -> Data.Json.Object (fields
+  |> upsert_json_field "package" (Data.Json.String (Package_name.to_string suite.package_name))
+  |> upsert_json_field "suite" (Data.Json.String suite.suite_name))
   | other -> other
 
 let is_test_binary_name = fun name ->
@@ -466,12 +463,10 @@ let test_summary_of_json = fun json ->
 
 let parse_test_suite_output = fun stdout ->
   let* (prefix_stdout, json_line) = split_json_stdout stdout in
-  let prefix_stdout =
-    prefix_stdout
-    |> String.split ~by:"\n"
-    |> strip_progress_json_lines
-    |> String.concat "\n"
-  in
+  let prefix_stdout = prefix_stdout
+  |> String.split ~by:"\n"
+  |> strip_progress_json_lines
+  |> String.concat "\n" in
   let* json = Data.Json.of_string json_line |> Result.map_err ~fn:Data.Json.error_to_string in
   let* fields = get_object json in
   let* tests_json = field "tests" fields in
@@ -581,32 +576,27 @@ let test_event_to_json = function
       )
   | TestSuitesCollected { package_name; suite_name; suite_count } ->
       Some (
-        Data.Json.Object [
-          ("type", Data.Json.String "TestSuitesCollected");
-          (
+        Data.Json.Object [ ("type", Data.Json.String "TestSuitesCollected"); (
             "package_name",
             match package_name with
             | Some name -> Data.Json.String (Riot_model.Package_name.to_string name)
             | None -> Data.Json.Null
-          );
-          (
+          ); (
             "suite_name",
             match suite_name with
             | Some name -> Data.Json.String name
             | None -> Data.Json.Null
-          );
-          ("suite_count", Data.Json.Int suite_count);
-        ]
+          ); ("suite_count", Data.Json.Int suite_count); ]
       )
   | ResolvingSuiteBinary suite ->
-      Some (Data.Json.Object ([
-        ("type", Data.Json.String "ResolvingSuiteBinary");
-      ] @ suite_event_fields suite))
+      Some (Data.Json.Object ([ ("type", Data.Json.String "ResolvingSuiteBinary"); ]
+      @ suite_event_fields suite))
   | SuiteBinaryResolved { suite; binary_path } ->
       Some (Data.Json.Object ([
         ("type", Data.Json.String "SuiteBinaryResolved");
         ("binary_path", Data.Json.String (Path.to_string binary_path));
-      ] @ suite_event_fields suite))
+      ]
+      @ suite_event_fields suite))
   | RunningSuite { package_name; suite_name } ->
       Some (Data.Json.Object [
         ("type", Data.Json.String "RunningSuite");
@@ -618,28 +608,38 @@ let test_event_to_json = function
         ("type", Data.Json.String "ExecutingSuiteBinary");
         ("binary_path", Data.Json.String (Path.to_string binary_path));
         ("args", Data.Json.Array (List.map args ~fn:(fun arg -> Data.Json.String arg)));
-      ] @ suite_event_fields suite))
+      ]
+      @ suite_event_fields suite))
   | SuiteHeartbeat { suite; binary_path; elapsed_us } ->
       Some (Data.Json.Object ([
         ("type", Data.Json.String "SuiteHeartbeat");
         ("binary_path", Data.Json.String (Path.to_string binary_path));
         ("elapsed_us", Data.Json.Int elapsed_us);
-      ] @ suite_event_fields suite))
-  | SuiteBinaryFinished { suite; binary_path; status; stdout_bytes; stderr_bytes } ->
+      ]
+      @ suite_event_fields suite))
+  | SuiteBinaryFinished {
+    suite;
+    binary_path;
+    status;
+    stdout_bytes;
+    stderr_bytes
+  } ->
       Some (Data.Json.Object ([
         ("type", Data.Json.String "SuiteBinaryFinished");
         ("binary_path", Data.Json.String (Path.to_string binary_path));
         ("status", Data.Json.Int status);
         ("stdout_bytes", Data.Json.Int stdout_bytes);
         ("stderr_bytes", Data.Json.Int stderr_bytes);
-      ] @ suite_event_fields suite))
+      ]
+      @ suite_event_fields suite))
   | SuiteProgress { suite; event } ->
       Some (suite_progress_json suite event)
   | ParsingSuiteOutput { suite; binary_path } ->
       Some (Data.Json.Object ([
         ("type", Data.Json.String "ParsingSuiteOutput");
         ("binary_path", Data.Json.String (Path.to_string binary_path));
-      ] @ suite_event_fields suite))
+      ]
+      @ suite_event_fields suite))
   | SuiteCompleted {
     suite;
     status;
@@ -811,8 +811,7 @@ let find_suite_binary_path_in_output = fun ~(workspace:Workspace.t) ~profile ~(s
       | None -> ensure_materialized_fallback ()
     )
 
-let run_suite_args = fun extra_args ->
-  "run-tests" :: remove_json_args extra_args @ [ "--json" ]
+let run_suite_args = fun extra_args -> "run-tests" :: remove_json_args extra_args @ [ "--json" ]
 
 let run_suite = fun ~on_event ~workspace_root ~suite ~extra_args binary_path ->
   let args = run_suite_args extra_args in
@@ -824,34 +823,36 @@ let run_suite = fun ~on_event ~workspace_root ~suite ~extra_args binary_path ->
       ("RIOT_WORKSPACE_ROOT", Path.to_string workspace_root);
     ]
     ~args in
-  match Command.output cmd
+  match Command.output
+    cmd
     ~on_idle:(fun elapsed ->
-      on_event (SuiteHeartbeat {
-        suite;
-        binary_path;
-        elapsed_us = Time.Duration.to_micros elapsed;
-      }))
+      on_event (SuiteHeartbeat { suite; binary_path; elapsed_us = Time.Duration.to_micros elapsed }))
     ~on_stdout_line:(fun line ->
       suite_progress_event_of_line line
       |> Option.for_each ~fn:(fun event -> on_event (SuiteProgress { suite; event }))) with
-  | Error (Command.SystemError reason) ->
-      Error (SuiteExecutionError { suite; reason })
+  | Error (Command.SystemError reason) -> Error (SuiteExecutionError { suite; reason })
   | Ok output -> (
       on_event
-        (SuiteBinaryFinished {
-          suite;
-          binary_path;
-          status = output.status;
-          stdout_bytes = String.length output.stdout;
-          stderr_bytes = String.length output.stderr;
-        });
+        (
+          SuiteBinaryFinished {
+            suite;
+            binary_path;
+            status = output.status;
+            stdout_bytes = String.length output.stdout;
+            stderr_bytes = String.length output.stderr;
+          }
+        );
       on_event (ParsingSuiteOutput { suite; binary_path });
       let parsed_output =
         match parse_test_suite_output output.stdout with
         | Ok parsed -> Ok parsed
-        | Error _reason when Int.equal output.status 0
-        && is_blank output.stdout
-        && is_blank output.stderr -> Ok ("", None, None, None, empty_suite_summary)
+        | Error _reason when Int.equal output.status 0 && is_blank output.stdout && is_blank output.stderr -> Ok (
+          "",
+          None,
+          None,
+          None,
+          empty_suite_summary
+        )
         | Error reason -> Error reason
       in
       match parsed_output with
@@ -1043,14 +1044,12 @@ let test = fun ?(on_event = no_event) (request: test_request) ->
       Ok ()
     )
   else
-    let () =
-      on_event
-        (TestSuitesCollected {
-          package_name = request.package_filter;
-          suite_name = request.suite_filter;
-          suite_count = List.length suites;
-        })
-    in
+    let () = on_event
+      (TestSuitesCollected {
+        package_name = request.package_filter;
+        suite_name = request.suite_filter;
+        suite_count = List.length suites
+      }) in
     match build_output
       ~workspace:request.workspace
       ~packages:(requested_packages suites)

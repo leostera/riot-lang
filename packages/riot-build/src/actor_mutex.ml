@@ -1,8 +1,9 @@
 open Std
-
 module Waiters = Collections.Queue
 
-type t = { pid: Pid.t }
+type t = {
+  pid: Pid.t;
+}
 
 type request_id = int
 
@@ -12,28 +13,18 @@ type owner = {
 }
 
 type request =
-  | Acquire of {
-      reply_to: Pid.t;
-      request_id: request_id;
-    }
-  | Release of {
-      reply_to: Pid.t;
-      request_id: request_id;
-    }
+  | Acquire of { reply_to: Pid.t; request_id: request_id }
+  | Release of { reply_to: Pid.t; request_id: request_id }
 
 type Message.t +=
   | Riot_build_actor_mutex_request of request
   | Riot_build_actor_mutex_acquired of { request_id: request_id }
   | Riot_build_actor_mutex_released of { request_id: request_id }
-  | Riot_build_actor_mutex_failed of {
-      request_id: request_id;
-      reason: string;
-    }
+  | Riot_build_actor_mutex_failed of { request_id: request_id; reason: string }
 
 let request_ids = Kernel.Sync.Atomic.make 0
 
-let next_request_id = fun () ->
-  Kernel.Sync.Atomic.fetch_and_add request_ids 1 + 1
+let next_request_id = fun () -> Kernel.Sync.Atomic.fetch_and_add request_ids 1 + 1
 
 module Server = struct
   type state = {
@@ -48,10 +39,8 @@ module Server = struct
 
   let rec grant_next = fun state ->
     match Waiters.pop state.waiters with
-    | None ->
-        state.owner <- None
-    | Some (pid, request_id) ->
-        grant state pid request_id
+    | None -> state.owner <- None
+    | Some (pid, request_id) -> grant state pid request_id
 
   let fail = fun reply_to request_id reason ->
     send reply_to (Riot_build_actor_mutex_failed { request_id; reason })
@@ -97,36 +86,29 @@ module Server = struct
         release_owner_on_exit state monitor_ref pid;
         loop state
 
-  let start = fun () ->
-    spawn
-      (fun () ->
-        loop { owner = None; waiters = Waiters.create () })
+  let start = fun () -> spawn (fun () -> loop { owner = None; waiters = Waiters.create () })
 end
 
-let create = fun () : t ->
-  { pid = Server.start () }
+let create = fun () : t -> { pid = Server.start () }
 
 let await = fun request_id expected ->
   let selector msg =
     match msg with
-    | Riot_build_actor_mutex_acquired { request_id = got }
-      when expected = `acquired && Int.equal got request_id -> `select (Ok ())
-    | Riot_build_actor_mutex_released { request_id = got }
-      when expected = `released && Int.equal got request_id -> `select (Ok ())
-    | Riot_build_actor_mutex_failed { request_id = got; reason }
-      when Int.equal got request_id -> `select (Error reason)
+    | Riot_build_actor_mutex_acquired { request_id=got } when expected = `acquired && Int.equal got request_id -> `select (Ok ())
+    | Riot_build_actor_mutex_released { request_id=got } when expected = `released && Int.equal got request_id -> `select (Ok ())
+    | Riot_build_actor_mutex_failed { request_id=got; reason } when Int.equal got request_id -> `select (Error reason)
     | _ -> `skip
   in
   receive ~selector ()
 
-let lock = fun (t : t) ->
+let lock = fun (t: t) ->
   let request_id = next_request_id () in
   send t.pid (Riot_build_actor_mutex_request (Acquire { reply_to = self (); request_id }));
   match await request_id `acquired with
   | Ok () -> ()
   | Error reason -> raise (Failure reason)
 
-let unlock = fun (t : t) ->
+let unlock = fun (t: t) ->
   let request_id = next_request_id () in
   send t.pid (Riot_build_actor_mutex_request (Release { reply_to = self (); request_id }));
   match await request_id `released with

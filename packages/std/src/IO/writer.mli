@@ -1,7 +1,6 @@
 open Prelude
 
 type 'value result = ('value, Error.t) Result.t
-
 module type Write = sig
   type t
   val write: t -> from:Buffer.t -> int result

@@ -121,25 +121,26 @@ let test_multiple_mutations_preserve_final_contents = fun _ctx ->
   else
     Error "IO.Bytes should reflect all mutations in order"
 
-let tests = Test.[
-  case "create allocates the requested length" test_create_has_requested_length;
-  case "get returns Some for valid indices" test_get_returns_some_for_valid_index;
-  case "get returns None for invalid indices" test_get_returns_none_for_invalid_index;
-  case "get_unchecked returns the selected byte" test_get_unchecked_returns_the_byte_directly;
-  case "set mutates valid indices" test_set_mutates_valid_index;
-  case "set rejects invalid indices" test_set_rejects_invalid_index;
-  case "set_unchecked mutates without returning a result" test_set_unchecked_mutates_without_result;
-  case "blit copies full slices" test_blit_full_copy_copies_source_into_destination;
-  case "blit handles overlapping right shifts" test_blit_overlapping_right_shift_matches_bytes_semantics;
-  case "blit handles overlapping left shifts" test_blit_overlapping_left_shift_matches_bytes_semantics;
-  case "blit rejects invalid slices" test_blit_invalid_slice_returns_error;
-  case "blit_string copies exact characters" test_blit_string_copies_exact_characters;
-  case "fill updates only the requested range" test_fill_updates_only_requested_range;
-  case "from_string and to_string roundtrip" test_from_string_and_to_string_roundtrip;
-  case "sub returns the expected slice" test_sub_returns_expected_slice;
-  case "sub rejects invalid ranges" test_sub_rejects_invalid_range;
-  case "multiple mutations preserve final contents" test_multiple_mutations_preserve_final_contents;
-]
+let tests =
+  Test.[
+    case "create allocates the requested length" test_create_has_requested_length;
+    case "get returns Some for valid indices" test_get_returns_some_for_valid_index;
+    case "get returns None for invalid indices" test_get_returns_none_for_invalid_index;
+    case "get_unchecked returns the selected byte" test_get_unchecked_returns_the_byte_directly;
+    case "set mutates valid indices" test_set_mutates_valid_index;
+    case "set rejects invalid indices" test_set_rejects_invalid_index;
+    case "set_unchecked mutates without returning a result" test_set_unchecked_mutates_without_result;
+    case "blit copies full slices" test_blit_full_copy_copies_source_into_destination;
+    case "blit handles overlapping right shifts" test_blit_overlapping_right_shift_matches_bytes_semantics;
+    case "blit handles overlapping left shifts" test_blit_overlapping_left_shift_matches_bytes_semantics;
+    case "blit rejects invalid slices" test_blit_invalid_slice_returns_error;
+    case "blit_string copies exact characters" test_blit_string_copies_exact_characters;
+    case "fill updates only the requested range" test_fill_updates_only_requested_range;
+    case "from_string and to_string roundtrip" test_from_string_and_to_string_roundtrip;
+    case "sub returns the expected slice" test_sub_returns_expected_slice;
+    case "sub rejects invalid ranges" test_sub_rejects_invalid_range;
+    case "multiple mutations preserve final contents" test_multiple_mutations_preserve_final_contents;
+  ]
 
 let () =
   Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"io_bytes" ~tests ~args) ~args:Env.args ()

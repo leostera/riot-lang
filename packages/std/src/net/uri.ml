@@ -132,8 +132,8 @@ let parse_authority = fun ops source start_pos ->
   let len = ops.length source in
   if start_pos + 1 < len then
     if
-      ops.get_unchecked source ~at:start_pos = '/'
-      && ops.get_unchecked source ~at:(start_pos + 1) = '/'
+      ops.get_unchecked source ~at:start_pos
+      = '/' && ops.get_unchecked source ~at:(start_pos + 1) = '/'
     then
       let authority_start = start_pos + 2 in
       let rec find_end pos =
@@ -148,9 +148,10 @@ let parse_authority = fun ops source start_pos ->
           | _ -> pos
       in
       let authority_end = find_end authority_start in
-      let authority =
-        ops.sub_to_string source ~off:authority_start ~len:(authority_end - authority_start)
-      in
+      let authority = ops.sub_to_string
+        source
+        ~off:authority_start
+        ~len:(authority_end - authority_start) in
       (Some authority, authority_end)
     else
       (None, start_pos)
@@ -235,13 +236,13 @@ let parse_with = fun ops source ->
 let string_ops = {
   length = String.length;
   get_unchecked = String.get_unchecked;
-  sub_to_string = (fun value ~off ~len -> String.sub value ~offset:off ~len);
+  sub_to_string = (fun value ~off ~len -> String.sub value ~offset:off ~len)
 }
 
 let slice_ops = {
   length = Slice.length;
   get_unchecked = Slice.get_unchecked;
-  sub_to_string = (fun value ~off ~len -> Slice.to_string (Slice.sub_unchecked value ~off ~len));
+  sub_to_string = (fun value ~off ~len -> Slice.to_string (Slice.sub_unchecked value ~off ~len))
 }
 
 let of_string = fun s -> parse_with string_ops s
@@ -268,8 +269,7 @@ let parse_origin_form_slice = fun value ->
       | _ -> Error ()
   in
   match scan_path 0 with
-  | Error () ->
-      parse_with slice_ops value
+  | Error () -> parse_with slice_ops value
   | Ok path_stop -> (
       let path_end, next =
         match path_stop with
@@ -298,21 +298,21 @@ let parse_origin_form_slice = fun value ->
             authority = None;
             path;
             query = None;
-            fragment = Some (Slice.to_string (Slice.sub_unchecked value ~off:fragment_start ~len:(len - fragment_start)));
+            fragment = Some (Slice.to_string
+              (Slice.sub_unchecked value ~off:fragment_start ~len:(len - fragment_start)));
           }
       | Some (`Query, query_start) -> (
           match scan_query query_start with
-          | Error () ->
-              parse_with slice_ops value
+          | Error () -> parse_with slice_ops value
           | Ok query_end ->
-              let query =
-                Some (Slice.to_string (Slice.sub_unchecked value ~off:query_start ~len:(query_end - query_start)))
-              in
+              let query = Some (Slice.to_string
+                (Slice.sub_unchecked value ~off:query_start ~len:(query_end - query_start))) in
               let fragment =
                 if query_end >= len then
                   None
                 else if Slice.get_unchecked value ~at:query_end = '#' then
-                  Some (Slice.to_string (Slice.sub_unchecked value ~off:(query_end + 1) ~len:(len - query_end - 1)))
+                  Some (Slice.to_string
+                    (Slice.sub_unchecked value ~off:(query_end + 1) ~len:(len - query_end - 1)))
                 else
                   None
               in

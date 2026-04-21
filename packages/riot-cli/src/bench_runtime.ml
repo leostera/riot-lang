@@ -605,15 +605,13 @@ let find_suite_binary_path_in_output = fun ~(workspace:Workspace.t) ~profile ~(s
   let fallback_path = materialized_suite_binary_path ~workspace ~profile ~suite in
   let ensure_materialized_fallback () =
     match Fs.exists fallback_path with
-    | Ok true ->
-        ensure_executable_binary_path ~kind:"benchmark binary" fallback_path
-        |> Result.map_err ~fn:(fun reason -> SuiteArtifactNotFound { suite; reason })
+    | Ok true -> ensure_executable_binary_path ~kind:"benchmark binary" fallback_path
+    |> Result.map_err ~fn:(fun reason -> SuiteArtifactNotFound { suite; reason })
     | Ok false
-    | Error _ ->
-        Error (SuiteArtifactNotFound {
-          suite;
-          reason = "suite '" ^ suite.suite_name ^ "' was not produced by build output"
-        })
+    | Error _ -> Error (SuiteArtifactNotFound {
+      suite;
+      reason = "suite '" ^ suite.suite_name ^ "' was not produced by build output"
+    })
   in
   match
     Riot_build.Build_result.find_package output suite.package_name |> Option.and_then
@@ -720,13 +718,12 @@ let list_benchmarks = fun ?(on_suite = no_listed_suite) ?(on_suite_error = no_li
     | Error err -> Error (BuildFailed err)
     | Ok output ->
         let store = store_for_request request in
-        let suite_binaries, missing_suites =
-          resolve_suite_binaries
-            ~workspace:request.workspace
-            ~profile:request.profile
-            ~store
-            ~suites
-            output in
+        let suite_binaries, missing_suites = resolve_suite_binaries
+          ~workspace:request.workspace
+          ~profile:request.profile
+          ~store
+          ~suites
+          output in
         List.for_each missing_suites ~fn:(fun (suite, err) -> on_suite_error suite err);
         if suite_binaries = [] then
           Ok []

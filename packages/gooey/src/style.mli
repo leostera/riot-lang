@@ -3,7 +3,6 @@ open Std
 
 type color = Colors.rgb
 (** Terminal RGB color used throughout Gooey's public API. *)
-
 (** Layout direction *)
 type direction =
   | LeftToRight
@@ -163,7 +162,6 @@ val border: ?width:int -> ?color:color -> ?radius:corner_radius -> unit -> t -> 
 val text_size: int -> t -> t
 
 (** Terminal renderers currently treat text_size as metadata only. *)
-
 val bold: t -> t
 
 val underline: t -> t
@@ -179,7 +177,6 @@ val align_right: t -> t
 val grow_weight: float -> t -> t
 
 (** Set the weight used when distributing remaining space to Grow children *)
-
 val grow: t -> t
 
 (** Set both width and height to Grow *)

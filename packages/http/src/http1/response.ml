@@ -2,7 +2,6 @@
 open Std
 open Std.Iter
 open Common
-
 module Slice = IO.IoVec.IoSlice
 
 type t = Std.Net.Http.Response.t
@@ -36,22 +35,25 @@ let parse_status_line_slice = fun input ->
           match Cursor.take_until_char line_cursor ' ' with
           | None -> Cursor_error "Missing version"
           | Some (version, line_cursor) -> (
-              let line_cursor = Cursor.skip_while line_cursor (fun c -> c = ' ') in
+              let line_cursor =
+                Cursor.skip_while line_cursor (fun c -> c = ' ')
+              in
               match Cursor.take_until_char line_cursor ' ' with
               | None -> Cursor_error "Missing status code"
               | Some (code_str, line_cursor) -> (
-                  let line_cursor = Cursor.skip_while line_cursor (fun c -> c = ' ') in
+                  let line_cursor =
+                    Cursor.skip_while line_cursor (fun c -> c = ' ')
+                  in
                   let reason = Cursor.remaining line_cursor in
                   let version_cursor = Cursor.from_slice version in
                   match Cursor.take_n version_cursor 5 with
                   | Some (prefix, _) when Slice.equal_string prefix "HTTP/" -> (
                       match Int.parse (Slice.to_string code_str) with
                       | None -> Cursor_error "Invalid status code"
-                      | Some status_code ->
-                          Cursor_done {
-                            value = { version; status_code; reason; remaining = cursor };
-                            remaining = cursor;
-                          }
+                      | Some status_code -> Cursor_done {
+                        value = { version; status_code; reason; remaining = cursor };
+                        remaining = cursor
+                      }
                     )
                   | _ -> Cursor_error "Invalid HTTP version"
                 )
@@ -72,17 +74,15 @@ let parse_slice = fun input ->
       | Error error ->
           Error error
       | Done { value=(headers_list, body_start); _ } ->
-          let version =
-            Std.Net.Http.Version.from_slice version
-            |> Result.unwrap_or ~default:Std.Net.Http.Version.Http11
-          in
+          let version = Std.Net.Http.Version.from_slice version
+          |> Result.unwrap_or ~default:Std.Net.Http.Version.Http11 in
           let status = Std.Net.Http.Status.of_int status_code in
           let headers = Std.Net.Http.Header.of_list headers_list in
           let response =
             (
-              Std.Net.Http.Response.create status
-              |> fun res -> Std.Net.Http.Response.with_version res version
-              |> fun res -> Std.Net.Http.Response.with_headers res headers
+              Std.Net.Http.Response.create status |> fun res ->
+                Std.Net.Http.Response.with_version res version |> fun res ->
+                  Std.Net.Http.Response.with_headers res headers
             )
             |> fun res ->
               if String.length body_start > 0 then

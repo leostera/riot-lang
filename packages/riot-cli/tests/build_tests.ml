@@ -3,8 +3,7 @@ module Test = Std.Test
 module HashSet = Std.Collections.HashSet
 
 let package_name = fun name ->
-  Riot_model.Package_name.from_string name
-  |> Result.expect ~msg:("invalid package name: " ^ name)
+  Riot_model.Package_name.from_string name |> Result.expect ~msg:("invalid package name: " ^ name)
 
 let parse_build = fun args ->
   match ArgParser.get_matches Riot_cli.Build.command args with
@@ -37,14 +36,11 @@ let parse_info = fun args ->
   | Error err -> Error (ArgParser.error_message err)
 
 let write_workspace_manifest = fun ~root ~members ->
-  let members =
-    members
-    |> List.map ~fn:(fun member -> "  \"" ^ Path.to_string member ^ "\"")
-    |> String.concat ",\n"
-  in
+  let members = members
+  |> List.map ~fn:(fun member -> "  \"" ^ Path.to_string member ^ "\"")
+  |> String.concat ",\n" in
   let content = "[workspace]\nmembers = [\n" ^ members ^ "\n]\n" in
-  Fs.write content Path.(root / Path.v "riot.toml")
-  |> Result.expect ~msg:"Write workspace riot.toml failed"
+  Fs.write content Path.(root / Path.v "riot.toml") |> Result.expect ~msg:"Write workspace riot.toml failed"
 
 let make_valid_workspace = fun ?target_dir tmpdir ->
   let pkg_dir = Path.(tmpdir / Path.v "demo") in
@@ -53,25 +49,19 @@ let make_valid_workspace = fun ?target_dir tmpdir ->
   let ml_file = Path.(src_dir / Path.v "lib.ml") in
   let _ = Fs.write "let value = 42\n" ml_file |> Result.expect ~msg:"Write ml failed" in
   let riot_file = Path.(pkg_dir / Path.v "riot.toml") in
-  let riot_content =
-    "[package]\nname = \"demo\"\nversion = \"0.0.1\"\n\n[lib]\npath = \"src/lib.ml\"\n"
-  in
+  let riot_content = "[package]\nname = \"demo\"\nversion = \"0.0.1\"\n\n[lib]\npath = \"src/lib.ml\"\n" in
   let _ = Fs.write riot_content riot_file |> Result.expect ~msg:"Write riot.toml failed" in
   let _ = write_workspace_manifest ~root:tmpdir ~members:[ Path.v "demo" ] in
-  let package =
-    Riot_model.Package.make
-      ~name:(package_name "demo")
-      ~path:pkg_dir
-      ~relative_path:(Path.v "demo")
-      ~library:{ path = Path.v "src/lib.ml" }
-      ~sources:{
-        src = [ Path.v "src/lib.ml" ];
-        native = [];
-        tests = [];
-        examples = [];
-        bench = [];
-      }
-      ()
+  let package = Riot_model.Package.make ~name:(package_name "demo") ~path:pkg_dir ~relative_path:(Path.v
+    "demo") ~library:{ path = Path.v "src/lib.ml" }
+    ~sources:{
+      src = [ Path.v "src/lib.ml" ];
+      native = [];
+      tests = [];
+      examples = [];
+      bench = [];
+    }
+    ()
   in
   Riot_model.Workspace.make_realized ~root:tmpdir ?target_dir ~packages:[ package ] ()
 
@@ -113,13 +103,16 @@ let test_build_accepts_jobs_flag = fun _ctx ->
   | Error err -> Error ("expected build args to parse: " ^ err)
   | Ok matches ->
       match ArgParser.get_one matches "jobs" with
-      | Some jobs -> if String.equal jobs "4" then Ok () else Error ("unexpected --jobs value: " ^ jobs)
+      | Some jobs ->
+          if String.equal jobs "4" then
+            Ok ()
+          else
+            Error ("unexpected --jobs value: " ^ jobs)
       | None -> Error "expected --jobs flag to be parsed"
 
 let test_build_rejects_invalid_jobs_flag = fun _ctx ->
   match
-    Fs.with_tempdir
-      ~prefix:"riot_cli_build_invalid_jobs"
+    Fs.with_tempdir ~prefix:"riot_cli_build_invalid_jobs"
       (fun tmpdir ->
         let workspace = make_valid_workspace tmpdir in
         match parse_build [ "build"; "--jobs"; "abc"; "demo" ] with
@@ -128,8 +121,10 @@ let test_build_rejects_invalid_jobs_flag = fun _ctx ->
             match Riot_cli.Build.run ~workspace matches with
             | Ok () -> Error "expected invalid --jobs value to fail"
             | Error (Failure message) ->
-                if String.equal message "invalid --jobs value: abc" then Ok ()
-                else Error ("unexpected jobs parse error: " ^ message)
+                if String.equal message "invalid --jobs value: abc" then
+                  Ok ()
+                else
+                  Error ("unexpected jobs parse error: " ^ message)
             | Error err -> Error ("expected failure to be Failure: " ^ Kernel.Exception.to_string err))
   with
   | Ok result -> result
@@ -137,8 +132,7 @@ let test_build_rejects_invalid_jobs_flag = fun _ctx ->
 
 let test_build_accepts_jobs_flag_in_run = fun _ctx ->
   match
-    Fs.with_tempdir
-      ~prefix:"riot_cli_build_jobs_runtime"
+    Fs.with_tempdir ~prefix:"riot_cli_build_jobs_runtime"
       (fun tmpdir ->
         let workspace = make_valid_workspace tmpdir in
         match parse_build [ "build"; "--jobs"; "2"; "demo" ] with
@@ -153,44 +147,34 @@ let test_build_accepts_jobs_flag_in_run = fun _ctx ->
 
 let test_build_rejects_zero_jobs_runtime = fun _ctx ->
   match
-    Fs.with_tempdir
-      ~prefix:"riot_cli_build_zero_jobs"
+    Fs.with_tempdir ~prefix:"riot_cli_build_zero_jobs"
       (fun tmpdir ->
         let workspace = make_valid_workspace tmpdir in
         match parse_build [ "build"; "--jobs"; "0"; "demo" ] with
         | Error err -> Error ("expected build args to parse: " ^ err)
         | Ok matches ->
             match Riot_cli.Build.run ~workspace matches with
-            | Error (Failure message)
-              when String.equal message "invalid requested parallelism (0): jobs must be >= 1" ->
-                Ok ()
-            | Error (Failure message) ->
-                Error ("unexpected failure message: " ^ message)
+            | Error (Failure message) when String.equal message "invalid requested parallelism (0): jobs must be >= 1" -> Ok ()
+            | Error (Failure message) -> Error ("unexpected failure message: " ^ message)
             | Ok () -> Error "expected zero jobs to be rejected"
-            | Error err ->
-                Error ("expected Failure: " ^ Kernel.Exception.to_string err))
+            | Error err -> Error ("expected Failure: " ^ Kernel.Exception.to_string err))
   with
   | Ok result -> result
   | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
 
 let test_build_rejects_negative_jobs_runtime = fun _ctx ->
   match
-    Fs.with_tempdir
-      ~prefix:"riot_cli_build_negative_jobs"
+    Fs.with_tempdir ~prefix:"riot_cli_build_negative_jobs"
       (fun tmpdir ->
         let workspace = make_valid_workspace tmpdir in
         match parse_build [ "build"; "--jobs"; "-1"; "demo" ] with
         | Error err -> Error ("expected build args to parse: " ^ err)
         | Ok matches ->
             match Riot_cli.Build.run ~workspace matches with
-            | Error (Failure message)
-              when String.equal message "invalid requested parallelism (-1): jobs must be >= 1" ->
-                Ok ()
-            | Error (Failure message) ->
-                Error ("unexpected failure message: " ^ message)
+            | Error (Failure message) when String.equal message "invalid requested parallelism (-1): jobs must be >= 1" -> Ok ()
+            | Error (Failure message) -> Error ("unexpected failure message: " ^ message)
             | Ok () -> Error "expected negative jobs to be rejected"
-            | Error err ->
-                Error ("expected Failure: " ^ Kernel.Exception.to_string err))
+            | Error err -> Error ("expected Failure: " ^ Kernel.Exception.to_string err))
   with
   | Ok result -> result
   | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
@@ -203,34 +187,26 @@ let test_build_command_accepts_workspace = fun _ctx ->
         Riot_cli.Build.build_command
           ~workspace
           ~show_finished_summary:false
-          ~mode:Riot_cli.Build.Human
-          (Some (package_name "demo"))
+          ~mode:Riot_cli.Build.Human (Some (package_name "demo"))
           None)
   with
   | Ok (Ok ()) -> Ok ()
-  | Ok (Error err) ->
-      Error ("expected workspace build command to succeed: " ^ Kernel.Exception.to_string err)
-  | Error err ->
-      Error ("tempdir failed: " ^ IO.error_message err)
+  | Ok (Error err) -> Error ("expected workspace build command to succeed: "
+  ^ Kernel.Exception.to_string err)
+  | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
 
 let test_build_run_accepts_workspace = fun _ctx ->
   match
     Fs.with_tempdir ~prefix:"riot_cli_build_command"
       (fun tmpdir ->
         let workspace = make_valid_workspace tmpdir in
-        let matches =
-          parse_build [ "build"; "demo" ]
-          |> Result.expect ~msg:"expected build args to parse"
-        in
-        Riot_cli.Build.run
-          ~workspace
-          matches)
+        let matches = parse_build [ "build"; "demo" ] |> Result.expect ~msg:"expected build args to parse" in
+        Riot_cli.Build.run ~workspace matches)
   with
   | Ok (Ok ()) -> Ok ()
-  | Ok (Error err) ->
-      Error ("expected workspace build run to succeed: " ^ Kernel.Exception.to_string err)
-  | Error err ->
-      Error ("tempdir failed: " ^ IO.error_message err)
+  | Ok (Error err) -> Error ("expected workspace build run to succeed: "
+  ^ Kernel.Exception.to_string err)
+  | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
 
 let test_test_accepts_json_flag = fun _ctx ->
   match parse_test [ "test"; "--json"; "-p"; "riot-build" ] with
@@ -401,7 +377,10 @@ let test_run_build_scope_uses_runtime_for_runtime_binaries = fun _ctx ->
     [ Riot_model.Package.{ name = "demo"; path = Path.v "src/demo.ml" } ] in
   Test.assert_equal
     ~expected:Riot_cli.Build.Runtime
-    ~actual:(Riot_cli.Run.build_scope_for_binary workspace ~package_name:(package_name "demo") ~binary_name:"demo");
+    ~actual:(Riot_cli.Run.build_scope_for_binary
+      workspace
+      ~package_name:(package_name "demo")
+      ~binary_name:"demo");
   Ok ()
 
 let test_run_build_scope_uses_dev_for_test_binaries = fun _ctx ->
@@ -409,21 +388,27 @@ let test_run_build_scope_uses_dev_for_test_binaries = fun _ctx ->
     [ Riot_model.Package.{ name = "pm_tests"; path = Path.v "tests/pm_tests.ml" } ] in
   Test.assert_equal
     ~expected:Riot_cli.Build.Dev
-    ~actual:(Riot_cli.Run.build_scope_for_binary workspace ~package_name:(package_name "demo") ~binary_name:"pm_tests");
+    ~actual:(Riot_cli.Run.build_scope_for_binary
+      workspace
+      ~package_name:(package_name "demo")
+      ~binary_name:"pm_tests");
   Ok ()
 
 let test_run_build_scope_defaults_to_runtime_when_binary_is_missing = fun _ctx ->
   let workspace = make_workspace [] in
   Test.assert_equal
     ~expected:Riot_cli.Build.Runtime
-    ~actual:(Riot_cli.Run.build_scope_for_binary workspace ~package_name:(package_name "demo") ~binary_name:"missing");
+    ~actual:(Riot_cli.Run.build_scope_for_binary
+      workspace
+      ~package_name:(package_name "demo")
+      ~binary_name:"missing");
   Ok ()
 
 let test_run_resolves_single_implicit_binary = fun _ctx ->
   let workspace = make_workspace
     [ Riot_model.Package.{ name = "hello-world"; path = Path.v "src/hello_world.ml" } ] in
   match Riot_cli.Run.resolve_implicit_local_target workspace with
-  | Ok { package_name = resolved_package_name; binary_name } ->
+  | Ok { package_name=resolved_package_name; binary_name } ->
       Test.assert_equal ~expected:(package_name "demo") ~actual:resolved_package_name;
       Test.assert_equal ~expected:"hello-world" ~actual:binary_name;
       Ok ()
@@ -444,7 +429,7 @@ let test_run_resolves_single_implicit_binary_in_package = fun _ctx ->
     () in
   let workspace = make_workspace_with_packages [ demo; util ] in
   match Riot_cli.Run.resolve_implicit_local_target ~package_filter:(package_name "util") workspace with
-  | Ok { package_name = resolved_package_name; binary_name } ->
+  | Ok { package_name=resolved_package_name; binary_name } ->
       Test.assert_equal ~expected:(package_name "util") ~actual:resolved_package_name;
       Test.assert_equal ~expected:"util" ~actual:binary_name;
       Ok ()
@@ -525,10 +510,7 @@ let test_pm_event_hides_manifest_fetch_chatter = fun _ctx ->
   let seen_registry_updates = HashSet.create () in
   let actual = Riot_cli.Build.format_pm_event
     ~seen_registry_updates
-    (Riot_model.Event.PackageManifestFetchStarted {
-      package = package_name "std";
-      version = "0.1.0"
-    }) in
+    (Riot_model.Event.PackageManifestFetchStarted { package = package_name "std"; version = "0.1.0" }) in
   Test.assert_equal ~expected:None ~actual;
   Ok ()
 

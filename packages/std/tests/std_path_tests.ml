@@ -1,7 +1,5 @@
 open Std
-
 module Test = Std.Test
-
 module Bytes = Kernel.Bytes
 
 let with_tempdir = fun prefix fn ->
@@ -183,33 +181,34 @@ let test_is_file_is_true_for_created_files = fun _ctx ->
           else
             Error "Path.is_file should report created files as files")
 
-let tests = Test.[
-  case "from_string accepts valid UTF-8" test_from_string_accepts_valid_utf8;
-  case "from_string rejects invalid UTF-8" test_from_string_rejects_invalid_utf8;
-  case "to_string roundtrips path literals" test_to_string_roundtrips_literal_paths;
-  case "join appends relative paths" test_join_appends_relative_paths;
-  case "join replaces with absolute paths" test_join_replaces_with_absolute_paths;
-  case "infix join chains components" test_infix_join_chains_components;
-  case "parent returns the containing directory" test_parent_of_nested_absolute_path;
-  case "parent of root is None" test_parent_of_root_is_none;
-  case "basename returns the last component" test_basename_returns_last_component;
-  case "dirname returns the directory portion" test_dirname_returns_directory_part;
-  case "remove_extension strips the last suffix" test_remove_extension_strips_only_the_last_suffix;
-  case "add_extension inserts a missing dot" test_add_extension_adds_missing_dot;
-  case "add_extension preserves an existing dot" test_add_extension_preserves_existing_dot;
-  case "replace_extension swaps the last suffix" test_replace_extension_swaps_the_last_suffix;
-  case "is_absolute recognizes rooted paths" test_is_absolute_recognizes_rooted_paths;
-  case "is_relative recognizes non-rooted paths" test_is_relative_recognizes_non_rooted_paths;
-  case "components preserve root and segments" test_components_preserve_root_and_segments;
-  case "normalize resolves dot and dotdot segments" test_normalize_resolves_dot_and_dotdot_segments;
-  case "equal compares normalized paths" test_equal_compares_normalized_paths;
-  case "compare compares normalized paths" test_compare_compares_normalized_paths;
-  case "strip_prefix returns the relative remainder" test_strip_prefix_returns_relative_remainder;
-  case "strip_prefix rejects non-prefixes" test_strip_prefix_rejects_non_prefixes;
-  case "exists is false for missing paths" test_exists_is_false_for_missing_paths;
-  case "is_directory reports directories" test_is_directory_is_true_for_created_directories;
-  case "is_file reports files" test_is_file_is_true_for_created_files;
-]
+let tests =
+  Test.[
+    case "from_string accepts valid UTF-8" test_from_string_accepts_valid_utf8;
+    case "from_string rejects invalid UTF-8" test_from_string_rejects_invalid_utf8;
+    case "to_string roundtrips path literals" test_to_string_roundtrips_literal_paths;
+    case "join appends relative paths" test_join_appends_relative_paths;
+    case "join replaces with absolute paths" test_join_replaces_with_absolute_paths;
+    case "infix join chains components" test_infix_join_chains_components;
+    case "parent returns the containing directory" test_parent_of_nested_absolute_path;
+    case "parent of root is None" test_parent_of_root_is_none;
+    case "basename returns the last component" test_basename_returns_last_component;
+    case "dirname returns the directory portion" test_dirname_returns_directory_part;
+    case "remove_extension strips the last suffix" test_remove_extension_strips_only_the_last_suffix;
+    case "add_extension inserts a missing dot" test_add_extension_adds_missing_dot;
+    case "add_extension preserves an existing dot" test_add_extension_preserves_existing_dot;
+    case "replace_extension swaps the last suffix" test_replace_extension_swaps_the_last_suffix;
+    case "is_absolute recognizes rooted paths" test_is_absolute_recognizes_rooted_paths;
+    case "is_relative recognizes non-rooted paths" test_is_relative_recognizes_non_rooted_paths;
+    case "components preserve root and segments" test_components_preserve_root_and_segments;
+    case "normalize resolves dot and dotdot segments" test_normalize_resolves_dot_and_dotdot_segments;
+    case "equal compares normalized paths" test_equal_compares_normalized_paths;
+    case "compare compares normalized paths" test_compare_compares_normalized_paths;
+    case "strip_prefix returns the relative remainder" test_strip_prefix_returns_relative_remainder;
+    case "strip_prefix rejects non-prefixes" test_strip_prefix_rejects_non_prefixes;
+    case "exists is false for missing paths" test_exists_is_false_for_missing_paths;
+    case "is_directory reports directories" test_is_directory_is_true_for_created_directories;
+    case "is_file reports files" test_is_file_is_true_for_created_files;
+  ]
 
 let () =
   Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"path" ~tests ~args) ~args:Env.args ()

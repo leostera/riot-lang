@@ -5,7 +5,6 @@ module Provider = Provider
 module Incompatibility = Incompatibility
 module Partial_solution = Partial_solution
 module Solver = Solver
-
 module Trace = Trace
 module Report = Report
 

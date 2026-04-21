@@ -21,45 +21,27 @@ type snapshot_mismatch_reason =
   | Mismatch
 
 type progress =
-  | PropertyIterationPassed of {
-      current: int;
-      total: int;
-      size: int;
-    }
-  | PropertyAssumptionRejected of {
-      current: int;
-      total: int;
-      size: int;
-      rejected_count: int;
-    }
-  | PropertyCounterExampleFound of {
-      current: int;
-      total: int;
-      size: int;
-    }
-  | PropertyShrinkStep of {
-      current: int;
-      total: int;
-      step: int;
-      max_steps: int;
-    }
+  | PropertyIterationPassed of { current: int; total: int; size: int }
+  | PropertyAssumptionRejected of { current: int; total: int; size: int; rejected_count: int }
+  | PropertyCounterExampleFound of { current: int; total: int; size: int }
+  | PropertyShrinkStep of { current: int; total: int; step: int; max_steps: int }
   | SnapshotAssertionStarted of {
       mode: snapshot_mode;
       format: snapshot_format;
       approved_path: Path.t option;
-      pending_path: Path.t option;
+      pending_path: Path.t option
     }
   | SnapshotAssertionMatched of {
       mode: snapshot_mode;
       format: snapshot_format;
-      approved_path: Path.t option;
+      approved_path: Path.t option
     }
   | SnapshotAssertionMismatch of {
       mode: snapshot_mode;
       format: snapshot_format;
       approved_path: Path.t option;
       pending_path: Path.t option;
-      reason: snapshot_mismatch_reason;
+      reason: snapshot_mismatch_reason
     }
 
 type progress_handler = progress -> unit

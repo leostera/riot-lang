@@ -29,7 +29,7 @@ and runtime_phase =
       cached_count: int;
       skipped_count: int;
       failed_count: int;
-      error_count: int;
+      error_count: int
     }
   | PackageExecutionStarted of { lane_count: int; package_count: int }
   | PackageExecutionFinished of {
@@ -38,7 +38,7 @@ and runtime_phase =
       finalized_count: int;
       built_count: int;
       failed_count: int;
-      error_count: int;
+      error_count: int
     }
   | TargetBuildStarted of { target: Riot_model.Target.t; host: bool }
   | TargetBuildFinished of {

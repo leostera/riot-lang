@@ -24,7 +24,7 @@ and runtime_phase =
       cached_count: int;
       skipped_count: int;
       failed_count: int;
-      error_count: int;
+      error_count: int
     }
   | PackageExecutionStarted of { lane_count: int; package_count: int }
   | PackageExecutionFinished of {
@@ -33,7 +33,7 @@ and runtime_phase =
       finalized_count: int;
       built_count: int;
       failed_count: int;
-      error_count: int;
+      error_count: int
     }
   | TargetBuildStarted of { target: Riot_model.Target.t; host: bool }
   | TargetBuildFinished of {
@@ -81,6 +81,7 @@ let runtime_phase_fields = function
     skipped_count;
     failed_count;
     error_count;
+
   } -> [
     ("lane_count", Data.Json.Int lane_count);
     ("package_count", Data.Json.Int package_count);
@@ -99,6 +100,7 @@ let runtime_phase_fields = function
     built_count;
     failed_count;
     error_count;
+
   } -> [
     ("lane_count", Data.Json.Int lane_count);
     ("package_count", Data.Json.Int package_count);
@@ -109,9 +111,7 @@ let runtime_phase_fields = function
   ]
   | RuntimeStarting
   | RuntimeStarted -> []
-  | BuildLockWaiting { lock_path } -> [
-    ("lock_path", Data.Json.String (Path.to_string lock_path));
-  ]
+  | BuildLockWaiting { lock_path } -> [ ("lock_path", Data.Json.String (Path.to_string lock_path)); ]
   | TargetBuildStarted { target; host } -> [
     ("target", Data.Json.String (Riot_model.Target.to_string target));
     ("host", Data.Json.Bool host);

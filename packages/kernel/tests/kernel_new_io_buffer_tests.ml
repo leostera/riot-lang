@@ -1,5 +1,4 @@
 open Std
-
 module Kernel = Kernel
 module Test = Std.Test
 
@@ -33,7 +32,9 @@ let test_growth_preserves_contents = fun _ctx ->
   let buffer = Kernel.IO.Buffer.create ~size:4 () |> Result.unwrap in
   let _ = Kernel.IO.Buffer.append_string buffer "abcd" |> Result.unwrap in
   let _ = Kernel.IO.Buffer.append_string buffer "efgh" |> Result.unwrap in
-  if Kernel.IO.Buffer.capacity buffer >= 8 && String.equal (Kernel.IO.Buffer.to_string buffer) "abcdefgh" then
+  if
+    Kernel.IO.Buffer.capacity buffer >= 8 && String.equal (Kernel.IO.Buffer.to_string buffer) "abcdefgh"
+  then
     Ok ()
   else
     Error "expected buffer growth to preserve readable contents"

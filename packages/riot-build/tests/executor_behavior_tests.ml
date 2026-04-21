@@ -2,10 +2,8 @@ open Std
 open Riot_build
 open Std.Collections
 open Riot_model
-
 module Action_scheduler = Riot_build.Internal.Action_scheduler
 module Sandbox = Riot_build.Internal.Sandbox
-
 module Test = Std.Test
 
 let package_name = fun value ->

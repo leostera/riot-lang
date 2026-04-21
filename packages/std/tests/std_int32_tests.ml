@@ -3,9 +3,9 @@ open Std
 let test_zero_min_and_max_constants = fun _ctx ->
   if not (Int32.equal Int32.zero 0l) then
     Error "Int32.zero should be 0l"
-  else if not (Int32.equal Int32.min_int (-2147483648l)) then
+  else if not (Int32.equal Int32.min_int (-2_147_483_648l)) then
     Error "Int32.min_int should match the runtime value"
-  else if not (Int32.equal Int32.max_int 2147483647l) then
+  else if not (Int32.equal Int32.max_int 2_147_483_647l) then
     Error "Int32.max_int should match the runtime value"
   else
     Ok ()
@@ -41,10 +41,17 @@ let test_basic_arithmetic = fun _ctx ->
 
 let test_operator_syntax = fun _ctx ->
   let open Int32 in
-  if Int32.((7l + 3l) = 10l && (7l - 3l) = 4l && (7l * 3l) = 21l && (7l / 3l) = 2l && (7l mod 3l) = 1l && 7l > 3l) then
-    Ok ()
-  else
-    Error "Int32 operators should mirror the named helpers"
+    if
+      Int32.((7l + 3l) = 10l
+      && (7l - 3l) = 4l
+      && (7l * 3l) = 21l
+      && (7l / 3l) = 2l
+      && (7l mod 3l) = 1l
+      && 7l > 3l)
+    then
+      Ok ()
+    else
+      Error "Int32 operators should mirror the named helpers"
 
 let test_bitwise_operations = fun _ctx ->
   if not (Int32.equal (Int32.logand 0b1100l 0b1010l) 0b1000l) then
@@ -63,7 +70,7 @@ let test_shift_left = fun _ctx ->
     Ok ()
 
 let test_shift_right_logical = fun _ctx ->
-  if not (Int32.equal (Int32.shift_right_logical (-1l) 1) 2147483647l) then
+  if not (Int32.equal (Int32.shift_right_logical (-1l) 1) 2_147_483_647l) then
     Error "Int32.shift_right_logical should fill the left side with zeros"
   else
     Ok ()
@@ -102,21 +109,22 @@ let test_to_string_renders_signed_decimal = fun _ctx ->
   else
     Error "Int32.to_string should render signed decimal text"
 
-let tests = Test.[
-  case "zero min and max constants match runtime values" test_zero_min_and_max_constants;
-  case "from_int and to_int roundtrip small values" test_from_int_to_int_roundtrip;
-  case "neg and abs handle signs" test_neg_and_abs;
-  case "basic arithmetic matches int32 semantics" test_basic_arithmetic;
-  case "operator syntax mirrors named helpers" test_operator_syntax;
-  case "bitwise operations return expected results" test_bitwise_operations;
-  case "shift_left moves bits left" test_shift_left;
-  case "shift_right_logical zero-fills the left edge" test_shift_right_logical;
-  case "from_float truncates toward zero" test_from_float_truncates_toward_zero;
-  case "bits_of_float and float_of_bits roundtrip" test_bits_of_float_roundtrip;
-  case "parse accepts decimal text" test_parse_accepts_decimal_text;
-  case "parse rejects invalid text" test_parse_rejects_invalid_text;
-  case "to_string renders signed decimal" test_to_string_renders_signed_decimal;
-]
+let tests =
+  Test.[
+    case "zero min and max constants match runtime values" test_zero_min_and_max_constants;
+    case "from_int and to_int roundtrip small values" test_from_int_to_int_roundtrip;
+    case "neg and abs handle signs" test_neg_and_abs;
+    case "basic arithmetic matches int32 semantics" test_basic_arithmetic;
+    case "operator syntax mirrors named helpers" test_operator_syntax;
+    case "bitwise operations return expected results" test_bitwise_operations;
+    case "shift_left moves bits left" test_shift_left;
+    case "shift_right_logical zero-fills the left edge" test_shift_right_logical;
+    case "from_float truncates toward zero" test_from_float_truncates_toward_zero;
+    case "bits_of_float and float_of_bits roundtrip" test_bits_of_float_roundtrip;
+    case "parse accepts decimal text" test_parse_accepts_decimal_text;
+    case "parse rejects invalid text" test_parse_rejects_invalid_text;
+    case "to_string renders signed decimal" test_to_string_renders_signed_decimal;
+  ]
 
 let () =
   Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"int32" ~tests ~args) ~args:Env.args ()

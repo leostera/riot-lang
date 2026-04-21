@@ -1,8 +1,10 @@
 open Std
 
 let test_from_int_and_to_int = fun _ctx ->
-  if Float.equal (Float.from_int 7) 7.0 && Int.equal (Float.to_int 7.9) 7 then Ok ()
-  else Error "expected Float.from_int/to_int to convert numerics"
+  if Float.equal (Float.from_int 7) 7.0 && Int.equal (Float.to_int 7.9) 7 then
+    Ok ()
+  else
+    Error "expected Float.from_int/to_int to convert numerics"
 
 let test_parse_valid = fun _ctx ->
   match Float.parse "3.5" with
@@ -15,29 +17,42 @@ let test_parse_invalid = fun _ctx ->
   | Some _ -> Error "expected Float.parse abc = None"
 
 let test_to_string_precision = fun _ctx ->
-  if String.equal (Float.to_string ~precision:2 3.14159) "3.14" then Ok ()
-  else Error "expected Float.to_string ~precision:2 3.14159 = 3.14"
+  if String.equal (Float.to_string ~precision:2 3.141_59) "3.14" then
+    Ok ()
+  else
+    Error "expected Float.to_string ~precision:2 3.14159 = 3.14"
 
 let test_is_finite = fun _ctx ->
-  if Float.is_finite 3.5 && not (Float.is_finite Float.infinity) then Ok ()
-  else Error "expected Float.is_finite to distinguish finite values"
+  if Float.is_finite 3.5 && not (Float.is_finite Float.infinity) then
+    Ok ()
+  else
+    Error "expected Float.is_finite to distinguish finite values"
 
 let test_is_infinite = fun _ctx ->
-  if Float.is_infinite Float.infinity && not (Float.is_infinite 3.5) then Ok ()
-  else Error "expected Float.is_infinite to detect infinities"
+  if Float.is_infinite Float.infinity && not (Float.is_infinite 3.5) then
+    Ok ()
+  else
+    Error "expected Float.is_infinite to detect infinities"
 
 let test_is_nan = fun _ctx ->
-  if Float.is_nan Float.nan && not (Float.is_nan 0.0) then Ok ()
-  else Error "expected Float.is_nan to detect NaN"
+  if Float.is_nan Float.nan && not (Float.is_nan 0.0) then
+    Ok ()
+  else
+    Error "expected Float.is_nan to detect NaN"
 
 let test_rem_and_abs = fun _ctx ->
-  if Float.equal (Float.rem 7.5 2.0) 1.5 && Float.equal (Float.abs (-2.5)) 2.5 then Ok ()
-  else Error "expected Float.rem and Float.abs to behave numerically"
+  if Float.equal (Float.rem 7.5 2.0) 1.5 && Float.equal (Float.abs (-2.5)) 2.5 then
+    Ok ()
+  else
+    Error "expected Float.rem and Float.abs to behave numerically"
 
 let test_sqrt_and_cbrt = fun _ctx ->
-  if Float.equal (Float.round (Float.sqrt 4.0)) 2.0 && Float.equal (Float.round (Float.cbrt 8.0)) 2.0 then
+  if
+    Float.equal (Float.round (Float.sqrt 4.0)) 2.0 && Float.equal (Float.round (Float.cbrt 8.0)) 2.0
+  then
     Ok ()
-  else Error "expected Float.sqrt/cbrt to compute roots"
+  else
+    Error "expected Float.sqrt/cbrt to compute roots"
 
 let test_floor_ceil_round = fun _ctx ->
   if
@@ -50,14 +65,23 @@ let test_floor_ceil_round = fun _ctx ->
     Error "expected floor/ceil/round to behave predictably"
 
 let test_pow = fun _ctx ->
-  if Float.equal (Float.pow 2.0 5.0) 32.0 then Ok () else Error "expected Float.pow 2 5 = 32"
+  if Float.equal (Float.pow 2.0 5.0) 32.0 then
+    Ok ()
+  else
+    Error "expected Float.pow 2 5 = 32"
 
 let test_operator_syntax = fun _ctx ->
   let open Float in
-  if Float.((7.5 + 0.5) = 8.0 && (7.5 - 0.5) = 7.0 && (3.0 * 2.0) = 6.0 && (7.5 / 2.5) = 3.0 && 7.5 > 2.5) then
-    Ok ()
-  else
-    Error "expected Float operators to mirror the runtime float operations"
+    if
+      Float.((7.5 + 0.5) = 8.0
+      && (7.5 - 0.5) = 7.0
+      && (3.0 * 2.0) = 6.0
+      && (7.5 / 2.5) = 3.0
+      && 7.5 > 2.5)
+    then
+      Ok ()
+    else
+      Error "expected Float operators to mirror the runtime float operations"
 
 let tests =
   Test.[

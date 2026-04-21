@@ -307,13 +307,13 @@ let source_path_label = fun ~(workspace:Riot_model.Workspace.t) path ->
   | Error _ -> Path.to_string path
 
 let suite_source_labels = fun ~(workspace:Riot_model.Workspace.t) ->
-  Riot_model.Workspace.realize_packages ~intent:Riot_model.Package.Test workspace
-  |> List.flat_map
+  Riot_model.Workspace.realize_packages ~intent:Riot_model.Package.Test workspace |> List.flat_map
     ~fn:(fun (pkg: Riot_model.Package.t) ->
-      pkg.binaries
-      |> List.filter_map
+      pkg.binaries |> List.filter_map
         ~fn:(fun (bin: Riot_model.Package.binary) ->
-          if String.ends_with ~suffix:"_tests" bin.name || String.ends_with ~suffix:"-tests" bin.name then
+          if
+            String.ends_with ~suffix:"_tests" bin.name || String.ends_with ~suffix:"-tests" bin.name
+          then
             Some {
               package_name = pkg.name;
               suite_name = bin.name;
@@ -322,15 +322,18 @@ let suite_source_labels = fun ~(workspace:Riot_model.Workspace.t) ->
           else
             None))
 
-let suite_source_label = fun ~(suite_labels: suite_source_label_entry list) (suite: Test_runtime.suite_binary) ->
-  match suite_labels |> List.find
+let suite_source_label = fun ~(suite_labels:suite_source_label_entry list) (
+  suite: Test_runtime.suite_binary
+) ->
+  match suite_labels
+  |> List.find
     ~fn:(fun (entry: suite_source_label_entry) ->
       Riot_model.Package_name.equal entry.package_name suite.package_name
       && String.equal entry.suite_name suite.suite_name) with
   | Some entry -> entry.label
   | None -> Riot_model.Package_name.to_string suite.package_name ^ "/" ^ suite.suite_name
 
-let listed_suite_source_label = fun ~(workspace:Riot_model.Workspace.t) ~(suite_labels: suite_source_label_entry list) (
+let listed_suite_source_label = fun ~(workspace:Riot_model.Workspace.t) ~(suite_labels:suite_source_label_entry list) (
   suite: Test_runtime.listed_test_suite
 ) ->
   match suite.source_path with
@@ -388,8 +391,7 @@ let listed_suite_path_json = fun ~(workspace:Riot_model.Workspace.t) (
 let listed_suite_selector = fun (suite: Test_runtime.suite_binary) ->
   Riot_model.Package_name.to_string suite.package_name ^ ":" ^ suite.suite_name
 
-let write_json_line = fun json ->
-  println (Data.Json.to_string json)
+let write_json_line = fun json -> println (Data.Json.to_string json)
 
 let write_test_suite_listed_json = fun ~command_started_at ~(workspace:Riot_model.Workspace.t) (
   suite: Test_runtime.listed_test_suite
@@ -440,7 +442,7 @@ let write_test_list_completed_json = fun ~command_started_at ~suite_count ~test_
       ("completed_at_us", Data.Json.Int (event_elapsed_us ~command_started_at));
     ])
 
-let write_test_list = fun ~(workspace:Riot_model.Workspace.t) ~(suite_labels: suite_source_label_entry list) suites ->
+let write_test_list = fun ~(workspace:Riot_model.Workspace.t) ~(suite_labels:suite_source_label_entry list) suites ->
   List.for_each suites
     ~fn:(fun (suite: Test_runtime.listed_test_suite) ->
       println "";
@@ -462,7 +464,9 @@ let write_test_list = fun ~(workspace:Riot_model.Workspace.t) ~(suite_labels: su
           println
             ("  [" ^ Int.to_string test.index ^ "] " ^ type_prefix ^ " " ^ test.name ^ metadata ^ skip_suffix)))
 
-let print_suite_header = fun ~(suite_labels: suite_source_label_entry list) (suite: Test_runtime.suite_binary) total ->
+let print_suite_header = fun ~(suite_labels:suite_source_label_entry list) (
+  suite: Test_runtime.suite_binary
+) total ->
   println "";
   println ("     Running " ^ suite_source_label ~suite_labels suite);
   println "";
@@ -520,7 +524,7 @@ let print_suite_footer = fun (summary: Test_runtime.test_suite_summary) ->
     ^ Int.to_string summary.skipped
     ^ " skipped")
 
-let print_suite_results = fun ~(suite_labels: suite_source_label_entry list) ~verbose ~(suite:Test_runtime.suite_binary) ~stdout ~stderr (
+let print_suite_results = fun ~(suite_labels:suite_source_label_entry list) ~verbose ~(suite:Test_runtime.suite_binary) ~stdout ~stderr (
   summary: Test_runtime.test_suite_summary
 ) ->
   if summary.total > 0 then
@@ -532,7 +536,7 @@ let print_suite_results = fun ~(suite_labels: suite_source_label_entry list) ~ve
         print_command_output Command.{ stdout; stderr; status = 0 }
     )
 
-let write_test_event = fun ~(suite_labels: suite_source_label_entry list) ~(timing:timing_summary) ~verbose (
+let write_test_event = fun ~(suite_labels:suite_source_label_entry list) ~(timing:timing_summary) ~verbose (
   event: Test_runtime.test_event
 ) ->
   match event with
@@ -549,7 +553,8 @@ let write_test_event = fun ~(suite_labels: suite_source_label_entry list) ~(timi
   | Test_runtime.SuiteHeartbeat _
   | Test_runtime.SuiteBinaryFinished _
   | Test_runtime.ParsingSuiteOutput _
-  | Test_runtime.SuiteProgress _ -> ()
+  | Test_runtime.SuiteProgress _ ->
+      ()
   | Test_runtime.SuiteCompleted {
     suite;
     stdout;
@@ -727,11 +732,10 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
           let timing = empty_timing_summary () in
           let on_event (event: Test_runtime.test_event) =
             match event with
-            | Test_runtime.Build build_event ->
-                Build.write_build_event
-                  ~mode:output_mode
-                  ~seen_registry_updates
-                  build_event
+            | Test_runtime.Build build_event -> Build.write_build_event
+              ~mode:output_mode
+              ~seen_registry_updates
+              build_event
             | _ -> (
                 match output_mode with
                 | Build.Json -> write_test_event_json ~command_started_at event

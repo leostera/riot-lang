@@ -24,7 +24,10 @@ type mode = Terminal.mode =
   | Immediate
 
 type t = Terminal.t
-type stdin_cell = { mutable current: IO.Stdin.t option }
+
+type stdin_cell = {
+  mutable current: IO.Stdin.t option;
+}
 
 let stdin_handle = { current = None }
 

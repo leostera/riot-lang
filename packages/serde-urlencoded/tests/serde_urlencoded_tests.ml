@@ -11,16 +11,14 @@ let io_writer_of_buffer =
 
     let write = fun buffer ~from ->
       let written = IO.Buffer.readable_bytes from in
-      IO.Buffer.append_slice buffer (IO.Buffer.readable from)
-      |> Result.expect ~msg:"serde-urlencoded test writer should append buffer contents";
+      IO.Buffer.append_slice buffer (IO.Buffer.readable from) |> Result.expect ~msg:"serde-urlencoded test writer should append buffer contents";
       Ok written
 
     let write_vectored = fun buffer ~from ->
       let written = ref 0 in
       IO.IoVec.for_each from
         ~fn:(fun chunk ->
-          IO.Buffer.append_slice buffer chunk
-          |> Result.expect ~msg:"serde-urlencoded test writer should append slices";
+          IO.Buffer.append_slice buffer chunk |> Result.expect ~msg:"serde-urlencoded test writer should append slices";
           written := !written + IO.IoSlice.length chunk);
       Ok !written
 

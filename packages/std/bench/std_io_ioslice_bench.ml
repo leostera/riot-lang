@@ -1,5 +1,4 @@
 open Std
-
 module Slice = IO.IoVec.IoSlice
 module Method = Net.Http.Method
 module Version = Net.Http.Version
@@ -107,7 +106,8 @@ let optimized_method_from_slice = fun value ->
       | 'O' when equal_tail value ~at:1 "PTIONS" -> Method.Options
       | _ -> Method.Extension (Slice.to_string value)
     )
-  | _ -> Method.Extension (Slice.to_string value)
+  | _ ->
+      Method.Extension (Slice.to_string value)
 
 let current_version_from_slice = fun value ->
   match Slice.length value with
@@ -142,8 +142,7 @@ let optimized_version_from_slice = fun value ->
         Ok Version.Http3
       else
         Error `InvalidVersion
-  | _ ->
-      Error `InvalidVersion
+  | _ -> Error `InvalidVersion
 
 let current_take_until_char = fun value needle ->
   match Cursor.take_until_char (Cursor.from_slice value) needle with
@@ -185,24 +184,24 @@ let optimized_origin_form_uri_from_slice = fun value ->
             | Some f when f > q -> f
             | _ -> len
           in
-          Some (Slice.to_string (Slice.sub_unchecked value ~off:query_start ~len:(query_end - query_start)))
+          Some (Slice.to_string
+            (Slice.sub_unchecked value ~off:query_start ~len:(query_end - query_start)))
     in
     let fragment =
       match fragment_index with
       | None -> None
       | Some f ->
           let fragment_start = f + 1 in
-          Some
-            (Slice.to_string
-               (Slice.sub_unchecked value ~off:fragment_start ~len:(len - fragment_start)))
+          Some (Slice.to_string
+            (Slice.sub_unchecked value ~off:fragment_start ~len:(len - fragment_start)))
     in
     Ok { path; query; fragment }
 
 let build_slice = fun value ->
   match Slice.from_string value with
   | Ok slice -> slice
-  | Error error ->
-      panic ("std io ioslice bench: failed to build slice: " ^ Kernel.IO.Error.message error)
+  | Error error -> panic
+    ("std io ioslice bench: failed to build slice: " ^ Kernel.IO.Error.message error)
 
 let standard_methods = [|
   "GET";
@@ -251,31 +250,34 @@ let origin_form_targets = [|
 |]
 
 let mixed_slices =
-  Array.init ~count:100_000
+  Array.init
+    ~count:100_000
     ~fn:(fun index ->
       build_slice
         (Array.get_unchecked standard_methods ~at:(index mod Array.length standard_methods)))
 
 let mixed_version_slices =
-  Array.init ~count:100_000
+  Array.init
+    ~count:100_000
     ~fn:(fun index ->
       build_slice
         (Array.get_unchecked standard_versions ~at:(index mod Array.length standard_versions)))
 
 let mixed_request_line_slices =
-  Array.init ~count:100_000
+  Array.init
+    ~count:100_000
     ~fn:(fun index ->
-      build_slice
-        (Array.get_unchecked request_lines ~at:(index mod Array.length request_lines)))
+      build_slice (Array.get_unchecked request_lines ~at:(index mod Array.length request_lines)))
 
 let mixed_header_line_slices =
-  Array.init ~count:100_000
+  Array.init
+    ~count:100_000
     ~fn:(fun index ->
-      build_slice
-        (Array.get_unchecked header_lines ~at:(index mod Array.length header_lines)))
+      build_slice (Array.get_unchecked header_lines ~at:(index mod Array.length header_lines)))
 
 let mixed_origin_form_slices =
-  Array.init ~count:100_000
+  Array.init
+    ~count:100_000
     ~fn:(fun index ->
       build_slice
         (Array.get_unchecked origin_form_targets ~at:(index mod Array.length origin_form_targets)))
@@ -315,13 +317,11 @@ let run_scan = fun values needle scan ->
 
 let bench_request_line_scan_current () = run_scan mixed_request_line_slices ' ' current_take_until_char
 
-let bench_request_line_scan_optimized () =
-  run_scan mixed_request_line_slices ' ' optimized_take_until_char
+let bench_request_line_scan_optimized () = run_scan mixed_request_line_slices ' ' optimized_take_until_char
 
 let bench_header_line_scan_current () = run_scan mixed_header_line_slices ':' current_take_until_char
 
-let bench_header_line_scan_optimized () =
-  run_scan mixed_header_line_slices ':' optimized_take_until_char
+let bench_header_line_scan_optimized () = run_scan mixed_header_line_slices ':' optimized_take_until_char
 
 let run_uri_parse = fun parse ->
   let acc = ref 0 in

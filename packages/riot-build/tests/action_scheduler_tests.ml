@@ -2,10 +2,8 @@ open Std
 open Riot_build
 open Std.Collections
 open Riot_model
-
 module Action_scheduler = Riot_build.Internal.Action_scheduler
 module Sandbox = Riot_build.Internal.Sandbox
-
 module Test = Std.Test
 
 let package_name = fun value ->
@@ -18,7 +16,8 @@ let make_workspace = fun root ->
   Riot_model.Workspace.{
     name = None;
     root;
-    target_dir_root = Path.(root / Path.v "target");
+    target_dir_root =
+      Path.(root / Path.v "target");
     packages = [];
     dependencies = [];
     dev_dependencies = [];
@@ -61,8 +60,7 @@ let test_action_scheduler_returns_empty_results_for_empty_graph = fun _ctx ->
           ~store:(Riot_store.Store.create ~workspace)
           ~session_id:(Riot_model.Session_id.make ())
           (test_toolchain ())
-          ~concurrency:2
-        in
+          ~concurrency:2 in
         let _ = Sandbox.cleanup sandbox in
         if List.length result.Action_scheduler.completed_actions != 0 then
           Error "expected empty graph to produce no action results"
@@ -88,12 +86,11 @@ let test_action_scheduler_reports_first_failure_and_keeps_other_results = fun _c
           ~actions:[
             Riot_planner.Action.CopyFile {
               source = Path.v "missing.txt";
-              destination = Path.v "fail.txt";
+              destination = Path.v "fail.txt"
             };
           ]
           ~outs:[ Path.v "fail.txt" ]
-          ()
-        in
+          () in
         let dependent_node = make_node_in
           graph
           ~package
@@ -101,24 +98,19 @@ let test_action_scheduler_reports_first_failure_and_keeps_other_results = fun _c
           ~actions:[
             Riot_planner.Action.WriteFile {
               destination = Path.v "dependent.txt";
-              content = "dependent";
+              content = "dependent"
             };
           ]
           ~outs:[ Path.v "dependent.txt" ]
-          ()
-        in
+          () in
         let success_node = make_node_in
           graph
           ~package
           ~actions:[
-            Riot_planner.Action.WriteFile {
-              destination = Path.v "success.txt";
-              content = "success";
-            };
+            Riot_planner.Action.WriteFile { destination = Path.v "success.txt"; content = "success" };
           ]
           ~outs:[ Path.v "success.txt" ]
-          ()
-        in
+          () in
         Riot_planner.Action_graph.add_dependency graph dependent_node ~depends_on:failing_node;
         let sandbox = Sandbox.create ~workspace () ~package_name:package.Riot_model.Package.name in
         let result = Action_scheduler.run
@@ -127,8 +119,7 @@ let test_action_scheduler_reports_first_failure_and_keeps_other_results = fun _c
           ~store
           ~session_id:(Riot_model.Session_id.make ())
           (test_toolchain ())
-          ~concurrency:2
-        in
+          ~concurrency:2 in
         let success_exists = Fs.exists Path.(Sandbox.get_dir sandbox / Path.v "success.txt")
         |> Result.unwrap_or ~default:false in
         let _ = Sandbox.cleanup sandbox in
@@ -141,6 +132,7 @@ let test_action_scheduler_reports_first_failure_and_keeps_other_results = fun _c
         | Some { status=Action_scheduler.Failed _; _ }, Some { status=Action_scheduler.Skipped; _ }, Some {
           status=Action_scheduler.Executed;
           _;
+
         }, Some (Action_scheduler.ExecutionFailed _) ->
             if success_exists then
               Ok ()
@@ -153,12 +145,8 @@ let test_action_scheduler_reports_first_failure_and_keeps_other_results = fun _c
 
 let tests =
   Test.[
-    case
-      "action scheduler: empty graph returns no results"
-      test_action_scheduler_returns_empty_results_for_empty_graph;
-    case
-      "action scheduler: failure is surfaced while ready work still completes"
-      test_action_scheduler_reports_first_failure_and_keeps_other_results;
+    case "action scheduler: empty graph returns no results" test_action_scheduler_returns_empty_results_for_empty_graph;
+    case "action scheduler: failure is surfaced while ready work still completes" test_action_scheduler_reports_first_failure_and_keeps_other_results;
   ]
 
 let name = "riot-build:action-scheduler"

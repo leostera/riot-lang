@@ -2,9 +2,7 @@ open Std
 open Riot_build
 open Std.Collections
 open Riot_model
-
 module Action_executor = Riot_build.Internal.Action_executor
-
 module Test = Std.Test
 
 let package_name = fun value ->

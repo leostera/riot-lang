@@ -2,7 +2,6 @@
 open Std
 open Std.Iter
 open Common
-
 module Slice = IO.IoVec.IoSlice
 
 type chunk_result = {
@@ -40,22 +39,24 @@ let parse_slice = fun input ->
       Need_more
   | Cursor_error error ->
       Error error
-  | Cursor_done { value = 0; remaining } ->
-      Done { value = { data = ""; remaining = Slice.to_string (Cursor.remaining remaining) }; remaining = "" }
-  | Cursor_done { value = size; remaining } -> (
+  | Cursor_done { value=0; remaining } ->
+      Done {
+        value = { data = ""; remaining = Slice.to_string (Cursor.remaining remaining) };
+        remaining = ""
+      }
+  | Cursor_done { value=size; remaining } -> (
       match Cursor.take_n remaining size with
       | None -> Need_more
       | Some (data, cursor) -> (
           match Cursor.advance_by cursor 2 with
           | None -> Need_more
-          | Some cursor ->
-              Done {
-                value = {
-                  data = Slice.to_string data;
-                  remaining = Slice.to_string (Cursor.remaining cursor);
-                };
-                remaining = "";
-              }
+          | Some cursor -> Done {
+            value = {
+              data = Slice.to_string data;
+              remaining = Slice.to_string (Cursor.remaining cursor)
+            };
+            remaining = ""
+          }
         )
     )
 

@@ -145,7 +145,7 @@ let rec reader_scan_while: Input.reader_state -> continue:(char -> bool) -> [
     `Stop of int * char
     | `Boundary of int
     | `Eof
-] = fun reader ~continue ->
+  ] = fun reader ~continue ->
   if Int.(reader.Input.pos >= IO.Buffer.readable_bytes reader.Input.buffer) then
     if Input.refill reader then
       reader_scan_while reader ~continue
@@ -198,7 +198,9 @@ let reader_skip_whitespace: Input.reader_state -> unit = fun reader ->
           | _ -> pos
       in
       reader.Input.pos <- skip reader.Input.pos;
-      if Int.(reader.Input.pos >= IO.Buffer.readable_bytes reader.Input.buffer) && Input.refill reader then
+      if
+        Int.(reader.Input.pos >= IO.Buffer.readable_bytes reader.Input.buffer) && Input.refill reader
+      then
         loop ()
   in
   loop ()

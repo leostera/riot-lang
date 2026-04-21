@@ -54,13 +54,12 @@ let reset = fun t ->
   t
 
 let set_progress = fun t ~progress ->
-  t.percent <-
-    if progress < 0.0 then
-      0.0
-    else if progress > 1.0 then
-      1.0
-    else
-      progress;
+  t.percent <- if progress < 0.0 then
+    0.0
+  else if progress > 1.0 then
+    1.0
+  else
+    progress;
   if t.percent = 1.0 then
     t.finished <- true;
   t
@@ -96,10 +95,7 @@ let view = fun t ->
           )
     | `Gradient color_ramp ->
         fun i ->
-          let shade =
-            Array.get color_ramp ~at:i
-            |> Option.expect ~msg:"gradient color index out of bounds"
-          in
+          let shade = Array.get color_ramp ~at:i |> Option.expect ~msg:"gradient color index out of bounds" in
           Style.(
             render
               (default |> fg shade)

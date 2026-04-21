@@ -66,13 +66,14 @@ let test_int_with_positive_bound_stays_in_range = fun _ctx ->
 
 let test_int_rejects_non_positive_bounds = fun _ctx ->
   match Random.int ~rng:(seeded_rng "int-error") 0 with
-  | Error (Random.InvalidIntBound { bound = 0 }) -> Ok ()
+  | Error (Random.InvalidIntBound { bound=0 }) -> Ok ()
   | _ -> Error "expected Random.int 0 to return InvalidIntBound"
 
 let test_int_range_with_equal_bounds_returns_that_value = fun _ctx ->
-  let samples =
-    sample_list ~rng:(seeded_rng "int-range-equal") (Random.Distribution.int_range ~min:4 ~max:4) ~len:12
-  in
+  let samples = sample_list
+    ~rng:(seeded_rng "int-range-equal")
+    (Random.Distribution.int_range ~min:4 ~max:4)
+    ~len:12 in
   if List.all samples ~fn:(Int.equal 4) then
     Ok ()
   else
@@ -80,13 +81,11 @@ let test_int_range_with_equal_bounds_returns_that_value = fun _ctx ->
 
 let test_int_range_rejects_invalid_bounds = fun _ctx ->
   match Random.int_range ~rng:(seeded_rng "int-range-error") ~min:5 ~max:3 () with
-  | Error (Random.InvalidIntRange { min = 5; max = 3 }) -> Ok ()
+  | Error (Random.InvalidIntRange { min=5; max=3 }) -> Ok ()
   | _ -> Error "expected Random.int_range to reject min > max"
 
 let test_int32_with_bound_one_is_zero = fun _ctx ->
-  let samples =
-    sample_list ~rng:(seeded_rng "int32-bound-1") (Random.Distribution.int32 1l) ~len:12
-  in
+  let samples = sample_list ~rng:(seeded_rng "int32-bound-1") (Random.Distribution.int32 1l) ~len:12 in
   if List.all samples ~fn:(Int32.equal 0l) then
     Ok ()
   else
@@ -98,9 +97,7 @@ let test_int32_rejects_zero_bound = fun _ctx ->
   | _ -> Error "expected Random.int32 0l to return InvalidInt32Bound"
 
 let test_int64_with_bound_one_is_zero = fun _ctx ->
-  let samples =
-    sample_list ~rng:(seeded_rng "int64-bound-1") (Random.Distribution.int64 1L) ~len:12
-  in
+  let samples = sample_list ~rng:(seeded_rng "int64-bound-1") (Random.Distribution.int64 1L) ~len:12 in
   if List.all samples ~fn:(Int64.equal 0L) then
     Ok ()
   else
@@ -112,9 +109,7 @@ let test_int64_rejects_zero_bound = fun _ctx ->
   | _ -> Error "expected Random.int64 0L to return InvalidInt64Bound"
 
 let test_float_with_zero_bound_returns_zero = fun _ctx ->
-  let samples =
-    sample_list ~rng:(seeded_rng "float-zero") (Random.Distribution.float 0.0) ~len:12
-  in
+  let samples = sample_list ~rng:(seeded_rng "float-zero") (Random.Distribution.float 0.0) ~len:12 in
   if List.all samples ~fn:(Float.equal 0.0) then
     Ok ()
   else
@@ -122,21 +117,17 @@ let test_float_with_zero_bound_returns_zero = fun _ctx ->
 
 let test_float_with_positive_bound_stays_in_range = fun _ctx ->
   let bound = 3.5 in
-  let samples =
-    sample_list ~rng:(seeded_rng "float-range") (Random.Distribution.float bound) ~len:20
-  in
+  let samples = sample_list ~rng:(seeded_rng "float-range") (Random.Distribution.float bound) ~len:20 in
   if List.all samples ~fn:(fun value -> value >= 0.0 && value < bound) then
     Ok ()
   else
     Error "expected Random.float to stay inside [0.0, bound)"
 
 let test_float_range_with_equal_bounds_returns_that_value = fun _ctx ->
-  let samples =
-    sample_list
-      ~rng:(seeded_rng "float-range-equal")
-      (Random.Distribution.float_range ~min:1.25 ~max:1.25)
-      ~len:12
-  in
+  let samples = sample_list
+    ~rng:(seeded_rng "float-range-equal")
+    (Random.Distribution.float_range ~min:1.25 ~max:1.25)
+    ~len:12 in
   if List.all samples ~fn:(Float.equal 1.25) then
     Ok ()
   else
@@ -144,17 +135,18 @@ let test_float_range_with_equal_bounds_returns_that_value = fun _ctx ->
 
 let test_float_range_rejects_invalid_bounds = fun _ctx ->
   match Random.float_range ~rng:(seeded_rng "float-range-error") ~min:2.0 ~max:1.0 () with
-  | Error (Random.InvalidFloatRange { min; max }) when Float.equal min 2.0 && Float.equal max 1.0 ->
-      Ok ()
+  | Error (Random.InvalidFloatRange { min; max }) when Float.equal min 2.0 && Float.equal max 1.0 -> Ok ()
   | _ -> Error "expected Random.float_range to reject min > max"
 
 let test_bernoulli_boundary_probabilities_are_constant = fun _ctx ->
-  let always_false =
-    sample_list ~rng:(seeded_rng "bernoulli-zero") (Random.Distribution.bernoulli ~p:0.0) ~len:12
-  in
-  let always_true =
-    sample_list ~rng:(seeded_rng "bernoulli-one") (Random.Distribution.bernoulli ~p:1.0) ~len:12
-  in
+  let always_false = sample_list
+    ~rng:(seeded_rng "bernoulli-zero")
+    (Random.Distribution.bernoulli ~p:0.0)
+    ~len:12 in
+  let always_true = sample_list
+    ~rng:(seeded_rng "bernoulli-one")
+    (Random.Distribution.bernoulli ~p:1.0)
+    ~len:12 in
   if List.all always_false ~fn:(Bool.equal false) && List.all always_true ~fn:(Bool.equal true) then
     Ok ()
   else
@@ -171,9 +163,10 @@ let test_one_of_empty_population_errors = fun _ctx ->
   | _ -> Error "expected Random.one_of [] to return EmptyPopulation"
 
 let test_one_of_singleton_returns_the_only_element = fun _ctx ->
-  let samples =
-    sample_list ~rng:(seeded_rng "one-of-singleton") (Random.Distribution.one_of [ "only" ]) ~len:12
-  in
+  let samples = sample_list
+    ~rng:(seeded_rng "one-of-singleton")
+    (Random.Distribution.one_of [ "only" ])
+    ~len:12 in
   if List.all samples ~fn:(String.equal "only") then
     Ok ()
   else
@@ -195,11 +188,12 @@ let test_choose_n_full_population_returns_each_element_once = fun _ctx ->
         Ok ()
       else
         Error "expected Random.choose_n full-size sample to contain every input exactly once"
-  | Error err -> Error ("expected Random.choose_n full-size sample to succeed, got " ^ Random.error_to_string err)
+  | Error err -> Error ("expected Random.choose_n full-size sample to succeed, got "
+  ^ Random.error_to_string err)
 
 let test_choose_n_rejects_oversized_requests = fun _ctx ->
   match Random.choose_n ~rng:(seeded_rng "choose-n-error") [ 1; 2; 3 ] 4 with
-  | Error (Random.InvalidSampleSize { requested = 4; available = 3 }) -> Ok ()
+  | Error (Random.InvalidSampleSize { requested=4; available=3 }) -> Ok ()
   | _ -> Error "expected Random.choose_n to reject requests larger than the population"
 
 let tests =
@@ -231,5 +225,4 @@ let tests =
     case "Random.choose_n rejects oversized requests" test_choose_n_rejects_oversized_requests;
   ]
 
-let () =
-  Runtime.run ~main:(Test.Cli.main ~name:"Random" ~tests) ~args:Env.args ()
+let () = Runtime.run ~main:(Test.Cli.main ~name:"Random" ~tests) ~args:Env.args ()

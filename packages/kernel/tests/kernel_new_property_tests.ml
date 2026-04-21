@@ -320,7 +320,9 @@ let iovec_sub_matches_flattened_substring =
       let remaining = total - pos in
       let len = Int.abs raw_len mod (remaining + 1) in
       let expected = String.sub (Kernel.IO.IoVec.to_string iov) ~offset:pos ~len in
-      let actual = Kernel.IO.IoVec.to_string (Kernel.IO.IoVec.sub ~pos ~len iov |> Result.unwrap) in
+      let actual = Kernel.IO.IoVec.to_string
+        (Kernel.IO.IoVec.sub ~pos ~len iov |> Result.unwrap)
+      in
       actual = expected)
 
 let array_of_list_roundtrips =
@@ -622,7 +624,8 @@ let file_scalar_write_vectored_read_roundtrips =
                       match Kernel.Fs.File.open_read path with
                       | Kernel.Result.Error error -> fail (Kernel.Fs.File.error_to_string error)
                       | Kernel.Result.Ok input ->
-                          let iov = Kernel.IO.IoVec.create ~count:4 ~size:(String.length payload) () |> Result.unwrap in
+                          let iov = Kernel.IO.IoVec.create ~count:4 ~size:(String.length payload) ()
+                          |> Result.unwrap in
                           match Kernel.Fs.File.read_vectored input iov with
                           | Kernel.Result.Error error -> fail (Kernel.Fs.File.error_to_string error)
                           | Kernel.Result.Ok read ->
@@ -866,7 +869,8 @@ let tcp_vectored_loopback_roundtrips_offset_receive_slices =
                           protect ~finally:(fun () -> close_stream server)
                             (fun () ->
                               let outbound = Kernel.IO.IoVec.from_string_array values |> Result.unwrap in
-                              let inbound = Kernel.IO.IoVec.create ~count:3 ~size:(total + 2) () |> Result.unwrap in
+                              let inbound = Kernel.IO.IoVec.create ~count:3 ~size:(total + 2) ()
+                              |> Result.unwrap in
                               let slice = Kernel.IO.IoVec.sub ~pos:1 ~len:total inbound |> Result.unwrap in
                               write_all_vectored poll ~token:(Kernel.Async.Token.make 808) client outbound;
                               read_exact_vectored

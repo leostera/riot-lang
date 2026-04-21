@@ -3,8 +3,7 @@ open Gooey
 
 (* Use Gooey's default terminal-cell text measurement and wrapping. *)
 
-let text_measurer = fun ~constraints text style ->
-  Config.default_text_measurer ~constraints text style
+let text_measurer = fun ~constraints text style -> Config.default_text_measurer ~constraints text style
 
 let () =
   Actors.run

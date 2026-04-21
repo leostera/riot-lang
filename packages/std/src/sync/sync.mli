@@ -11,7 +11,6 @@ open Kernel
     - low-level atomics stay non-blocking;
     - mutable wrapper modules such as {!Cell}, {!OnceCell}, {!LazyCell}, and
       {!RefCell} remain non-blocking local state helpers. *)
-
 module Atomic: sig
   type 'value t = 'value Kernel.Sync.Atomic.t
   val make: 'value -> 'value t

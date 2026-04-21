@@ -21,9 +21,7 @@ let make_ctx = fun ?fixture ?(test_name = "snapshot_test") workspace_root ->
   ctx
 
 let make_progress_ctx = fun ?fixture ?test_name workspace_root progress_handler ->
-  Test.Context.with_progress_handler
-    (make_ctx ?fixture ?test_name workspace_root)
-    progress_handler
+  Test.Context.with_progress_handler (make_ctx ?fixture ?test_name workspace_root) progress_handler
 
 let snapshot_path = fun workspace_root test_name ->
   Path.(workspace_root
@@ -189,17 +187,16 @@ let test_json_snapshot_emits_json_progress =
                       workspace_root
                       (fun progress -> events := progress :: !events)
                   in
-                  match
-                    Test.Snapshot.assert_json
-                      ~ctx
-                      ~actual:(Data.Json.obj [ ("b", Data.Json.int 2); ("a", Data.Json.int 1) ])
-                  with
+                  match Test.Snapshot.assert_json
+                    ~ctx
+                    ~actual:(Data.Json.obj [ ("b", Data.Json.int 2); ("a", Data.Json.int 1) ]) with
                   | Error msg -> Error msg
                   | Ok () ->
                       match List.reverse !events with
                       | [
-                       Test.Context.SnapshotAssertionStarted { format = Test.Context.Json; _ };
-                       Test.Context.SnapshotAssertionMatched { format = Test.Context.Json; _ };
+                        Test.Context.SnapshotAssertionStarted { format=Test.Context.Json; _ };
+                        Test.Context.SnapshotAssertionMatched { format=Test.Context.Json; _ };
+
                       ] -> Ok ()
                       | _ -> Error "expected external JSON snapshot progress events to use json format"
             )))
@@ -216,18 +213,17 @@ let test_inline_json_snapshot_emits_json_progress =
               workspace_root
               (fun progress -> events := progress :: !events)
           in
-          match
-            Test.Snapshot.assert_inline_json
-              ~ctx
-              ~actual:(Data.Json.obj [ ("b", Data.Json.int 2); ("a", Data.Json.int 1) ])
-              ~expected:(Data.Json.obj [ ("a", Data.Json.int 1); ("b", Data.Json.int 2) ])
-          with
+          match Test.Snapshot.assert_inline_json
+            ~ctx
+            ~actual:(Data.Json.obj [ ("b", Data.Json.int 2); ("a", Data.Json.int 1) ])
+            ~expected:(Data.Json.obj [ ("a", Data.Json.int 1); ("b", Data.Json.int 2) ]) with
           | Error msg -> Error msg
           | Ok () ->
               match List.reverse !events with
               | [
-               Test.Context.SnapshotAssertionStarted { format = Test.Context.Json; _ };
-               Test.Context.SnapshotAssertionMatched { format = Test.Context.Json; _ };
+                Test.Context.SnapshotAssertionStarted { format=Test.Context.Json; _ };
+                Test.Context.SnapshotAssertionMatched { format=Test.Context.Json; _ };
+
               ] -> Ok ()
               | _ -> Error "expected inline JSON snapshot progress events to use json format"))
 

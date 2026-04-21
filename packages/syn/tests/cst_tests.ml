@@ -2870,38 +2870,37 @@ val decode : Outer.Inner (* c *).(request -> response)
             | _ -> Error "expected commented expression attribute payload"
           )
       | _ -> Error "expected let binding with commented expression attribute");
-  Test.case
-    "cst expression extensions preserve qualified name boundary"
+  Test.case "cst expression extensions preserve qualified name boundary"
     (fun _ctx ->
       let result = parse_ml "let _ = [%atomic.loc t.a]\n" in
       let cst = expect_some result.cst ~msg:"expected CST for diagnostics-free parse"
       |> Result.expect ~msg:"expected CST for diagnostics-free parse" in
       match structure_items cst with
-      | Syn.Cst.StructureItem.LetBinding { value = Syn.Cst.Expression.Extension extension; _ } :: _ ->
+      | Syn.Cst.StructureItem.LetBinding { value=Syn.Cst.Expression.Extension extension; _ } :: _ ->
           Test.assert_equal
             ~expected:[ "atomic"; "loc" ]
             ~actual:(Syn.Cst.Ident.segments extension.name |> List.map ~fn:Syn.Cst.Token.text);
           Ok ()
       | _ -> Error "expected let binding with expression extension");
-  Test.case
-    "cst expression extensions separate payload from shell when payload starts with field access"
+  Test.case "cst expression extensions separate payload from shell when payload starts with field access"
     (fun _ctx ->
-      let result =
-        parse_ml "let _ = [%atomic.loc t.aha_its_using_the_field_name]\n" in
+      let result = parse_ml "let _ = [%atomic.loc t.aha_its_using_the_field_name]\n" in
       let cst = expect_some result.cst ~msg:"expected CST for diagnostics-free parse"
       |> Result.expect ~msg:"expected CST for diagnostics-free parse" in
       match structure_items cst with
-      | Syn.Cst.StructureItem.LetBinding { value = Syn.Cst.Expression.Extension extension; _ } :: _ ->
+      | Syn.Cst.StructureItem.LetBinding { value=Syn.Cst.Expression.Extension extension; _ } :: _ ->
           Test.assert_equal
             ~expected:[ "atomic"; "loc" ]
             ~actual:(Syn.Cst.Ident.segments extension.name |> List.map ~fn:Syn.Cst.Token.text);
-          (match extension.payload with
-          | Some (Syn.Cst.Payload.Opaque { tokens }) ->
-              Test.assert_equal
-                ~expected:"t.aha_its_using_the_field_name"
-                ~actual:(List.map ~fn:Syn.Cst.Token.text tokens |> String.concat "");
-              Ok ()
-          | None -> Error "expected opaque extension payload")
+          (
+            match extension.payload with
+            | Some (Syn.Cst.Payload.Opaque { tokens }) ->
+                Test.assert_equal
+                  ~expected:"t.aha_its_using_the_field_name"
+                  ~actual:(List.map ~fn:Syn.Cst.Token.text tokens |> String.concat "");
+                Ok ()
+            | None -> Error "expected opaque extension payload"
+          )
       | _ -> Error "expected let binding with expression extension");
   Test.case
     "cst extensions keep typed `:` payloads opaque by default"
@@ -4275,9 +4274,7 @@ and second x = x
       | _ -> Error "expected first item to be a let binding with a fun expression");
   Test.case "cst fun expressions keep nullary constructors and following parameters separate"
     (fun _ctx ->
-      let source =
-        "let cast_worker : type task other. (task, other) Type.eq -> other -> task = fun Type.Equal worker -> worker\n"
-      in
+      let source = "let cast_worker : type task other. (task, other) Type.eq -> other -> task = fun Type.Equal worker -> worker\n" in
       let result = parse_ml source in
       let cst = expect_some result.cst ~msg:"expected CST for diagnostics-free parse"
       |> Result.expect ~msg:"expected CST for diagnostics-free parse" in
@@ -4287,24 +4284,26 @@ and second x = x
           expression=Syn.Cst.Expression.Fun {
             parameters=[
               Syn.Cst.Parameter.Positional {
-                pattern=Syn.Cst.Pattern.Constructor {
-                  constructor_path;
-                  arguments=[];
-                  _;
-                };
+                pattern=Syn.Cst.Pattern.Constructor { constructor_path; arguments=[]; _;  };
                 _;
+
               };
               Syn.Cst.Parameter.Positional {
                 pattern=Syn.Cst.Pattern.Identifier { name_token=worker_name; _ };
                 _;
+
               };
+
             ];
             body=Syn.Cst.Expression (Syn.Cst.Expression.Path { path; _ });
             _;
+
           };
           _;
+
         };
         _;
+
       } :: _ ->
           Test.assert_equal ~expected:(Some "Equal") ~actual:(Syn.Cst.Ident.name constructor_path);
           Test.assert_equal ~expected:"worker" ~actual:(Syn.Cst.Token.text worker_name);

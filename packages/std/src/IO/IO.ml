@@ -1,5 +1,4 @@
 open Prelude
-
 module Types = Types
 module Buffer = Buffer
 module Bytes = Bytes
@@ -87,6 +86,7 @@ type error = Error.t =
   | Unknown_error of string
 
 type nonrec 'value result = ('value, error) Result.t
+
 type nonrec 'value io_result = 'value result
 
 type file_kind =
@@ -99,26 +99,33 @@ type file_kind =
   | Socket
 
 let of_system_error = Error.of_system_error
+
 let of_async_error = Error.of_async_error
+
 let error_message = Error.message
 
-let stdin = fun ?chunk_size () ->
-  Stdin.open_ ?chunk_size () |> Stdin.to_reader
+let stdin = fun ?chunk_size () -> Stdin.open_ ?chunk_size () |> Stdin.to_reader
 
-let stdout = fun () ->
-  Stdout.to_writer ()
+let stdout = fun () -> Stdout.to_writer ()
 
-let stderr = fun () ->
-  Stderr.to_writer ()
+let stderr = fun () -> Stderr.to_writer ()
 
 let read = Reader.read
+
 let read_vectored = Reader.read_vectored
+
 let is_read_vectored = Reader.is_read_vectored
+
 let read_to_end = Reader.read_to_end
+
 let read_to_string = Reader.read_to_string
 
 let write = Writer.write
+
 let write_vectored = Writer.write_vectored
+
 let write_all = Writer.write_all
+
 let write_all_vectored = Writer.write_all_vectored
+
 let flush = Writer.flush

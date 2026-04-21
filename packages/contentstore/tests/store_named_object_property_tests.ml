@@ -19,12 +19,8 @@ let distinct_string_triple_arb =
   Arbitrary.make ~print:(Printer.triple Printer.string Printer.string Printer.string) gen
 
 let string_non_empty_list_pair_arb =
-  let gen =
-    Generator.pair Generator.string (Generator.non_empty_list Generator.string)
-  in
-  Arbitrary.make
-    ~print:(Printer.pair Printer.string (Printer.list Printer.string))
-    gen
+  let gen = Generator.pair Generator.string (Generator.non_empty_list Generator.string) in
+  Arbitrary.make ~print:(Printer.pair Printer.string (Printer.list Printer.string)) gen
 
 let assert_property = fun name property ->
   match Property.check ~config:property_config property with

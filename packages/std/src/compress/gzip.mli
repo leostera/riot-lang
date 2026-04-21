@@ -55,8 +55,7 @@ type file_error =
               |> Result.map_err (fun _ -> "failed to extract tar.gz"))
     ```
 *)
-val to_reader:
-  IO.Reader.t -> IO.Reader.t
+val to_reader: IO.Reader.t -> IO.Reader.t
 
 (** Stream-compress data from a reader into a gzip writer.
 
@@ -75,10 +74,7 @@ val to_reader:
       | Error _ -> Log.error "gzip compression failed"
     ```
 *)
-val compress:
-  IO.Reader.t ->
-  IO.Writer.t ->
-  (unit, stream_error) result
+val compress: IO.Reader.t -> IO.Writer.t -> (unit, stream_error) result
 
 (** Stream-decompress gzip data from a reader into a writer.
 
@@ -96,10 +92,7 @@ val compress:
       | Error _ -> Log.error "gzip decompression failed"
     ```
 *)
-val decompress:
-  IO.Reader.t ->
-  IO.Writer.t ->
-  (unit, stream_error) result
+val decompress: IO.Reader.t -> IO.Writer.t -> (unit, stream_error) result
 
 (** Compress a file into gzip format.
 

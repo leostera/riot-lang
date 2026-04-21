@@ -2,9 +2,7 @@ open Std
 open Riot_build
 open Std.Collections
 open Riot_model
-
 module Package_builder = Riot_build.Internal.Package_builder
-
 module Test = Std.Test
 
 let package_name = fun value ->

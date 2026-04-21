@@ -1024,14 +1024,13 @@ and render_record_type = fun ~opening_token ~closing_token fields ->
 
 and render_record_definition_field = fun (field: Syn.Cst.RecordField.t) ->
   let field_type = Syn.Cst.RecordField.field_type field in
-  let render_field_attribute = fun (attribute: Syn.Cst.attribute) ->
+  let render_field_attribute (attribute: Syn.Cst.attribute) =
     let payload_doc =
       match attribute.payload with
       | None -> Doc.empty
-      | Some (Syn.Cst.Payload.Opaque { tokens }) ->
-          tokens
-          |> List.map ~fn:(fun token -> Doc.text (Syn.Cst.Token.full_text token))
-          |> Doc.concat
+      | Some (Syn.Cst.Payload.Opaque { tokens }) -> tokens
+      |> List.map ~fn:(fun token -> Doc.text (Syn.Cst.Token.full_text token))
+      |> Doc.concat
     in
     Doc.concat
       [
@@ -1046,8 +1045,8 @@ and render_record_definition_field = fun (field: Syn.Cst.RecordField.t) ->
     let type_doc = render_core_type field_type in
     match Syn.Cst.RecordField.attributes field with
     | [] -> type_doc
-    | attributes ->
-        Doc.concat [ type_doc; Doc.space; join_map Doc.space render_field_attribute attributes ]
+    | attributes -> Doc.concat
+      [ type_doc; Doc.space; join_map Doc.space render_field_attribute attributes ]
   in
   let separator =
     if core_type_prefers_multiline field_type then
@@ -2342,8 +2341,7 @@ let expression_can_use_delimited_local_open_sugar = function
 
 let prefix_operator_needs_space_before_operand = fun operator_token operand ->
   match Syn.Cst.Token.fixed_operator operator_token, operand with
-  | (Some Syn.Cst.Token.PrefixMinus | Some Syn.Cst.Token.PrefixNegate), Syn.Cst.Expression.Prefix _ ->
-      true
+  | (Some Syn.Cst.Token.PrefixMinus | Some Syn.Cst.Token.PrefixNegate), Syn.Cst.Expression.Prefix _ -> true
   | _ -> false
 
 let rec collapse_redundant_parenthesized_expression = function

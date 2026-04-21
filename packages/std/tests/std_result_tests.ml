@@ -1,8 +1,10 @@
 open Std
 
 let test_is_ok_and_is_err = fun _ctx ->
-  if Result.is_ok (Ok 1) && Result.is_err (Error "boom") then Ok ()
-  else Error "expected Result.is_ok/is_err to reflect constructors"
+  if Result.is_ok (Ok 1) && Result.is_err (Error "boom") then
+    Ok ()
+  else
+    Error "expected Result.is_ok/is_err to reflect constructors"
 
 let test_map = fun _ctx ->
   match Result.map (Ok 5) ~fn:(fun value -> value * 2) with
@@ -15,8 +17,10 @@ let test_map_err = fun _ctx ->
   | _ -> Error "expected Result.map_err to transform the error branch"
 
 let test_map_or = fun _ctx ->
-  if Int.equal (Result.map_or (Error "x") ~default:7 ~fn:(fun value -> value * 2)) 7 then Ok ()
-  else Error "expected Result.map_or Error to return default"
+  if Int.equal (Result.map_or (Error "x") ~default:7 ~fn:(fun value -> value * 2)) 7 then
+    Ok ()
+  else
+    Error "expected Result.map_or Error to return default"
 
 let test_map_or_else = fun _ctx ->
   if
@@ -39,8 +43,10 @@ let test_or_else = fun _ctx ->
   | _ -> Error "expected Result.or_else Error to recover"
 
 let test_unwrap_or = fun _ctx ->
-  if Int.equal (Result.unwrap_or (Error "boom") ~default:12) 12 then Ok ()
-  else Error "expected Result.unwrap_or Error to return default"
+  if Int.equal (Result.unwrap_or (Error "boom") ~default:12) 12 then
+    Ok ()
+  else
+    Error "expected Result.unwrap_or Error to return default"
 
 let test_ok_value = fun _ctx ->
   match Result.ok_value (Ok "value") with
@@ -64,14 +70,26 @@ let test_transpose = fun _ctx ->
 
 let test_inspect = fun _ctx ->
   let seen = Sync.Atomic.make 0 in
-  let actual = Result.inspect (fun value -> Sync.Atomic.set seen value) (Ok 14) in
-  if actual = Ok 14 && Int.equal (Sync.Atomic.get seen) 14 then Ok ()
-  else Error "expected inspect to run callback and preserve original result"
+  let actual =
+    Result.inspect
+      (fun value ->
+        Sync.Atomic.set seen value)
+      (Ok 14)
+  in
+  if actual = Ok 14 && Int.equal (Sync.Atomic.get seen) 14 then
+    Ok ()
+  else
+    Error "expected inspect to run callback and preserve original result"
 
 let test_iter_err = fun _ctx ->
   let seen = Sync.Atomic.make false in
-  Result.iter_err (Error "boom") ~fn:(fun _ -> Sync.Atomic.set seen true);
-  if Sync.Atomic.get seen then Ok () else Error "expected iter_err to run on Error"
+  Result.iter_err (Error "boom")
+    ~fn:(fun _ ->
+      Sync.Atomic.set seen true);
+  if Sync.Atomic.get seen then
+    Ok ()
+  else
+    Error "expected iter_err to run on Error"
 
 let tests =
   Test.[

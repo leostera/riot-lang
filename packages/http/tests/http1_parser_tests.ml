@@ -17,31 +17,28 @@ module NetStatus = Std.Net.Http.Status
 module Uri = Std.Net.Uri
 
 let build_request = fun ~method_ ~path ~headers ~body ->
-  let head =
-    method_ ^ " " ^ path ^ " HTTP/1.1\r\n"
-    ^ String.concat ""
-        (List.map headers ~fn:(fun (name, value) -> name ^ ": " ^ value ^ "\r\n"))
-    ^ "\r\n"
-  in
+  let head = method_
+  ^ " "
+  ^ path
+  ^ " HTTP/1.1\r\n"
+  ^ String.concat "" (List.map headers ~fn:(fun (name, value) -> name ^ ": " ^ value ^ "\r\n"))
+  ^ "\r\n" in
   head ^ body
 
 let expect_request_parse = fun input ->
   match Http1.Request.parse input with
-  | Done { value; remaining } ->
-      Result.Ok (value, remaining)
-  | Need_more ->
-      Result.Error "Unexpected Need_more"
-  | Error error ->
-      Result.Error ("Parse error: " ^ error)
+  | Done { value; remaining } -> Result.Ok (value, remaining)
+  | Need_more -> Result.Error "Unexpected Need_more"
+  | Error error -> Result.Error ("Parse error: " ^ error)
 
 let expect_request_parse_slice = fun input ->
-  match Http1.Request.parse_slice (IO.IoVec.IoSlice.from_string input |> Result.unwrap) with
-  | Done { value; remaining } ->
-      Result.Ok (value, remaining)
-  | Need_more ->
-      Result.Error "Unexpected Need_more"
-  | Error error ->
-      Result.Error ("Parse error: " ^ error)
+  match
+    Http1.Request.parse_slice
+      (IO.IoVec.IoSlice.from_string input |> Result.unwrap)
+  with
+  | Done { value; remaining } -> Result.Ok (value, remaining)
+  | Need_more -> Result.Error "Unexpected Need_more"
+  | Error error -> Result.Error ("Parse error: " ^ error)
 
 (* HTTP/1 Request Tests *)
 
@@ -107,88 +104,81 @@ let test_request_incomplete = fun _ctx ->
 
 let test_request_with_1k_body = fun _ctx ->
   let body = String.make ~len:1_024 ~char:'x' in
-  let req =
-    build_request
-      ~method_:"POST"
-      ~path:"/upload"
-      ~headers:[
-        ("Host", "example.com");
-        ("Content-Type", "application/octet-stream");
-        ("Content-Length", Int.to_string (String.length body));
-      ]
-      ~body
-  in
+  let req = build_request
+    ~method_:"POST"
+    ~path:"/upload"
+    ~headers:[
+      ("Host", "example.com");
+      ("Content-Type", "application/octet-stream");
+      ("Content-Length", Int.to_string (String.length body));
+    ]
+    ~body in
   match expect_request_parse req with
-  | Error error ->
-      Result.Error error
+  | Error error -> Result.Error error
   | Ok (parsed, remaining) ->
       let path = NetRequest.uri parsed |> Uri.path in
-      let body_length = match NetRequest.body parsed with None -> 0 | Some body -> NetBody.length body in
+      let body_length =
+        match NetRequest.body parsed with
+        | None -> 0
+        | Some body -> NetBody.length body
+      in
       if path != "/upload" then
         Result.Error ("Expected /upload path, got " ^ path)
       else if remaining != "" then
         Result.Error ("Expected empty remaining body, got " ^ remaining)
       else if body_length != 1_024 then
-        Result.Error
-          ("Expected 1024-byte request body, got " ^ Int.to_string body_length)
+        Result.Error ("Expected 1024-byte request body, got " ^ Int.to_string body_length)
       else
         Result.Ok ()
 
 let test_request_with_100k_body = fun _ctx ->
   let body = String.make ~len:100_000 ~char:'y' in
-  let req =
-    build_request
-      ~method_:"PUT"
-      ~path:"/bulk"
-      ~headers:[
-        ("Host", "example.com");
-        ("Content-Length", Int.to_string (String.length body));
-      ]
-      ~body
-  in
+  let req = build_request
+    ~method_:"PUT"
+    ~path:"/bulk"
+    ~headers:[ ("Host", "example.com"); ("Content-Length", Int.to_string (String.length body)); ]
+    ~body in
   match expect_request_parse req with
-  | Error error ->
-      Result.Error error
+  | Error error -> Result.Error error
   | Ok (parsed, remaining) ->
-      let body_length = match NetRequest.body parsed with None -> 0 | Some body -> NetBody.length body in
+      let body_length =
+        match NetRequest.body parsed with
+        | None -> 0
+        | Some body -> NetBody.length body
+      in
       if remaining != "" then
         Result.Error ("Expected empty remaining body, got " ^ remaining)
       else if body_length != 100_000 then
-        Result.Error
-          ("Expected 100000-byte request body, got " ^ Int.to_string body_length)
+        Result.Error ("Expected 100000-byte request body, got " ^ Int.to_string body_length)
       else
         Result.Ok ()
 
 let test_request_with_1m_body = fun _ctx ->
   let body = String.make ~len:1_000_000 ~char:'z' in
-  let req =
-    build_request
-      ~method_:"PATCH"
-      ~path:"/large"
-      ~headers:[
-        ("Host", "example.com");
-        ("Content-Length", Int.to_string (String.length body));
-      ]
-      ~body
-  in
+  let req = build_request
+    ~method_:"PATCH"
+    ~path:"/large"
+    ~headers:[ ("Host", "example.com"); ("Content-Length", Int.to_string (String.length body)); ]
+    ~body in
   match expect_request_parse req with
-  | Error error ->
-      Result.Error error
+  | Error error -> Result.Error error
   | Ok (parsed, remaining) ->
-      let body_length = match NetRequest.body parsed with None -> 0 | Some body -> NetBody.length body in
+      let body_length =
+        match NetRequest.body parsed with
+        | None -> 0
+        | Some body -> NetBody.length body
+      in
       if remaining != "" then
         Result.Error ("Expected empty remaining body, got " ^ remaining)
       else if body_length != 1_000_000 then
-        Result.Error
-          ("Expected 1000000-byte request body, got " ^ Int.to_string body_length)
+        Result.Error ("Expected 1000000-byte request body, got " ^ Int.to_string body_length)
       else
         Result.Ok ()
 
 let test_request_parse_slice = fun _ctx ->
   let req = "GET /view HTTP/1.1\r\nHost: example.com\r\n\r\n" in
   match expect_request_parse_slice req with
-  | Error error ->
-      Result.Error error
+  | Error error -> Result.Error error
   | Ok (parsed, remaining) ->
       let method_ = NetRequest.method_ parsed |> NetMethod.to_string in
       let path = NetRequest.uri parsed |> Uri.path in
@@ -204,12 +194,9 @@ let test_request_parse_slice = fun _ctx ->
 let test_request_missing_lf_after_request_line_current_behavior = fun _ctx ->
   let req = "GET /path HTTP/1.1\rHost: example.com\r\n\r\n" in
   match Http1.Request.parse req with
-  | Done _ ->
-      Result.Ok ()
-  | Error error ->
-      Result.Error ("Expected current Done behavior, got error " ^ error)
-  | Need_more ->
-      Result.Error "Expected current Done behavior, got Need_more"
+  | Done _ -> Result.Ok ()
+  | Error error -> Result.Error ("Expected current Done behavior, got error " ^ error)
+  | Need_more -> Result.Error "Expected current Done behavior, got Need_more"
 
 let test_request_rejects_too_many_headers = fun _ctx ->
   let headers =
@@ -223,14 +210,10 @@ let test_request_rejects_too_many_headers = fun _ctx ->
   in
   let req = build_request ~method_:"GET" ~path:"/" ~headers ~body:"" in
   match Http1.Request.parse req with
-  | Error "Too many headers" ->
-      Result.Ok ()
-  | Error error ->
-      Result.Error ("Expected too many headers error, got " ^ error)
-  | Need_more ->
-      Result.Error "Expected too many headers error"
-  | Done _ ->
-      Result.Error "Expected too many headers error"
+  | Error "Too many headers" -> Result.Ok ()
+  | Error error -> Result.Error ("Expected too many headers error, got " ^ error)
+  | Need_more -> Result.Error "Expected too many headers error"
+  | Done _ -> Result.Error "Expected too many headers error"
 
 (* HTTP/1 Response Tests *)
 
@@ -345,9 +328,7 @@ let tests =
     case "request_with_100k_body" test_request_with_100k_body;
     case "request_with_1m_body" test_request_with_1m_body;
     case "request_parse_slice" test_request_parse_slice;
-    case
-      "request_missing_lf_after_request_line_current_behavior"
-      test_request_missing_lf_after_request_line_current_behavior;
+    case "request_missing_lf_after_request_line_current_behavior" test_request_missing_lf_after_request_line_current_behavior;
     case "request_rejects_too_many_headers" test_request_rejects_too_many_headers;
     case "response_200_ok" test_response_200_ok;
     case "response_404" test_response_404;

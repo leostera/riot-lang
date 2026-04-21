@@ -43,7 +43,8 @@ let from_slice = fun source ->
   let text_range ~off ~len =
     match Slice.sub source ~off ~len with
     | Ok slice -> Slice.to_string slice
-    | Error error -> raise (Failure ("JsonStream.slice range invariant failed: " ^ Kernel.IO.Error.message error))
+    | Error error -> raise
+      (Failure ("JsonStream.slice range invariant failed: " ^ Kernel.IO.Error.message error))
   in
   let rec skip_whitespace () =
     if !pos >= len then
@@ -66,7 +67,9 @@ let from_slice = fun source ->
       let rec loop index =
         if index >= prefix_len then
           true
-        else if Slice.get_unchecked source ~at:(offset + index) != String.get_unchecked prefix ~at:index then
+        else if
+          Slice.get_unchecked source ~at:(offset + index) != String.get_unchecked prefix ~at:index
+        then
           false
         else
           loop (index + 1)
@@ -92,25 +95,22 @@ let from_slice = fun source ->
         let decode_at index =
           match hex_value (Slice.get_unchecked source ~at:index) with
           | Some value -> value
-          | None ->
-              raise_error
-                (Unexpected_character {
-                  position = index;
-                  character = Slice.get_unchecked source ~at:index;
-                  expected = "hex digit";
-                })
+          | None -> raise_error
+            (Unexpected_character {
+              position = index;
+              character = Slice.get_unchecked source ~at:index;
+              expected = "hex digit"
+            })
         in
-        let code =
-          (decode_at (!pos + 1) lsl 12)
-          lor (decode_at (!pos + 2) lsl 8)
-          lor (decode_at (!pos + 3) lsl 4)
-          lor decode_at (!pos + 4)
-        in
+        let code = (decode_at (!pos + 1) lsl 12)
+        lor (decode_at (!pos + 2) lsl 8)
+        lor (decode_at (!pos + 3) lsl 4)
+        lor decode_at (!pos + 4) in
         let rune =
           match Kernel.Unicode.Rune.from_int code with
           | Ok rune -> rune
-          | Error (Kernel.Unicode.Rune.BadRune { int }) ->
-              raise_error (Unknown_error ("invalid unicode scalar value " ^ Int.to_string int))
+          | Error (Kernel.Unicode.Rune.BadRune { int }) -> raise_error
+            (Unknown_error ("invalid unicode scalar value " ^ Int.to_string int))
         in
         advance ();
         advance ();
@@ -280,18 +280,10 @@ let from_slice = fun source ->
                 Array (List.reverse (item :: acc))
             | Some c ->
                 raise_error
-                  (Expected_comma_or_bracket {
-                    kind = "array";
-                    position = !pos;
-                    found = Some c;
-                  })
+                  (Expected_comma_or_bracket { kind = "array"; position = !pos; found = Some c })
             | None ->
                 raise_error
-                  (Expected_comma_or_bracket {
-                    kind = "array";
-                    position = !pos;
-                    found = None;
-                  })
+                  (Expected_comma_or_bracket { kind = "array"; position = !pos; found = None })
           in
           parse_items []
     | Some '{' ->
@@ -330,18 +322,10 @@ let from_slice = fun source ->
                 Object (List.reverse ((key, value) :: acc))
             | Some c ->
                 raise_error
-                  (Expected_comma_or_bracket {
-                    kind = "object";
-                    position = !pos;
-                    found = Some c;
-                  })
+                  (Expected_comma_or_bracket { kind = "object"; position = !pos; found = Some c })
             | None ->
                 raise_error
-                  (Expected_comma_or_bracket {
-                    kind = "object";
-                    position = !pos;
-                    found = None;
-                  })
+                  (Expected_comma_or_bracket { kind = "object"; position = !pos; found = None })
           in
           parse_fields []
     | Some ('-' | '0' .. '9') ->

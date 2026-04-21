@@ -81,30 +81,33 @@ let progress_fields = function
     ("step", Data.Json.Int step);
     ("max_steps", Data.Json.Int max_steps);
   ]
-  | Test_context.SnapshotAssertionStarted { mode; format; approved_path; pending_path } ->
-      [
-        ("progress_type", Data.Json.String "snapshot_assertion_started");
-        ("snapshot_mode", snapshot_mode_to_json mode);
-        ("snapshot_format", snapshot_format_to_json format);
-      ]
-      @ optional_path_fields "approved_path" approved_path
-      @ optional_path_fields "pending_path" pending_path
-  | Test_context.SnapshotAssertionMatched { mode; format; approved_path } ->
-      [
-        ("progress_type", Data.Json.String "snapshot_assertion_matched");
-        ("snapshot_mode", snapshot_mode_to_json mode);
-        ("snapshot_format", snapshot_format_to_json format);
-      ]
-      @ optional_path_fields "approved_path" approved_path
-  | Test_context.SnapshotAssertionMismatch { mode; format; approved_path; pending_path; reason } ->
-      [
-        ("progress_type", Data.Json.String "snapshot_assertion_mismatch");
-        ("snapshot_mode", snapshot_mode_to_json mode);
-        ("snapshot_format", snapshot_format_to_json format);
-        ("reason", snapshot_reason_to_json reason);
-      ]
-      @ optional_path_fields "approved_path" approved_path
-      @ optional_path_fields "pending_path" pending_path
+  | Test_context.SnapshotAssertionStarted { mode; format; approved_path; pending_path } -> [
+    ("progress_type", Data.Json.String "snapshot_assertion_started");
+    ("snapshot_mode", snapshot_mode_to_json mode);
+    ("snapshot_format", snapshot_format_to_json format);
+  ]
+  @ optional_path_fields "approved_path" approved_path
+  @ optional_path_fields "pending_path" pending_path
+  | Test_context.SnapshotAssertionMatched { mode; format; approved_path } -> [
+    ("progress_type", Data.Json.String "snapshot_assertion_matched");
+    ("snapshot_mode", snapshot_mode_to_json mode);
+    ("snapshot_format", snapshot_format_to_json format);
+  ]
+  @ optional_path_fields "approved_path" approved_path
+  | Test_context.SnapshotAssertionMismatch {
+    mode;
+    format;
+    approved_path;
+    pending_path;
+    reason
+  } -> [
+    ("progress_type", Data.Json.String "snapshot_assertion_mismatch");
+    ("snapshot_mode", snapshot_mode_to_json mode);
+    ("snapshot_format", snapshot_format_to_json format);
+    ("reason", snapshot_reason_to_json reason);
+  ]
+  @ optional_path_fields "approved_path" approved_path
+  @ optional_path_fields "pending_path" pending_path
 
 let single_result_fields = function
   | Test_result.Passed -> [ ("status", Data.Json.String "passed") ]
@@ -125,8 +128,7 @@ let event_elapsed_us = fun () ->
   | Some started_at -> Time.Instant.elapsed started_at |> Time.Duration.to_micros
   | None -> 0
 
-let write_json_line = fun json ->
-  println (Data.Json.to_string json)
+let write_json_line = fun json -> println (Data.Json.to_string json)
 
 let event_to_json = function
   | Runner.SuiteStarted { suite_name; total } ->
@@ -138,71 +140,64 @@ let event_to_json = function
         ("started_at_us", Data.Json.Int 0);
       ]
   | Runner.TestStarted test ->
-      Data.Json.Object
-        ([
-            ("type", Data.Json.String "TestCaseStarted");
-            ("emitted_at_us", Data.Json.Int (event_elapsed_us ()));
-          ]
-        @ descriptor_fields test)
+      Data.Json.Object ([
+        ("type", Data.Json.String "TestCaseStarted");
+        ("emitted_at_us", Data.Json.Int (event_elapsed_us ()));
+      ]
+      @ descriptor_fields test)
   | Runner.TestProgress { test; attempt; progress } ->
-      Data.Json.Object
-        ([
-            ("type", Data.Json.String "TestCaseProgress");
-            ("attempt", Data.Json.Int attempt);
-            ("emitted_at_us", Data.Json.Int (event_elapsed_us ()));
-          ]
-        @ descriptor_fields test
-        @ progress_fields progress)
+      Data.Json.Object ([
+        ("type", Data.Json.String "TestCaseProgress");
+        ("attempt", Data.Json.Int attempt);
+        ("emitted_at_us", Data.Json.Int (event_elapsed_us ()));
+      ]
+      @ descriptor_fields test
+      @ progress_fields progress)
   | Runner.TestAttemptStarted { test; attempt; timeout } ->
       let timeout_fields =
         match timeout with
         | Some timeout -> [ ("timeout_ms", Data.Json.Int (Time.Duration.to_millis timeout)) ]
         | None -> []
       in
-      Data.Json.Object
-        ([
-            ("type", Data.Json.String "TestCaseAttemptStarted");
-            ("attempt", Data.Json.Int attempt);
-            ("emitted_at_us", Data.Json.Int (event_elapsed_us ()));
-          ]
-        @ descriptor_fields test
-        @ timeout_fields)
+      Data.Json.Object ([
+        ("type", Data.Json.String "TestCaseAttemptStarted");
+        ("attempt", Data.Json.Int attempt);
+        ("emitted_at_us", Data.Json.Int (event_elapsed_us ()));
+      ]
+      @ descriptor_fields test
+      @ timeout_fields)
   | Runner.TestHeartbeat { test; attempt; elapsed } ->
-      Data.Json.Object
-        ([
-            ("type", Data.Json.String "TestCaseHeartbeat");
-            ("attempt", Data.Json.Int attempt);
-            ("elapsed_us", Data.Json.Int (Time.Duration.to_micros elapsed));
-            ("emitted_at_us", Data.Json.Int (event_elapsed_us ()));
-          ]
-        @ descriptor_fields test)
+      Data.Json.Object ([
+        ("type", Data.Json.String "TestCaseHeartbeat");
+        ("attempt", Data.Json.Int attempt);
+        ("elapsed_us", Data.Json.Int (Time.Duration.to_micros elapsed));
+        ("emitted_at_us", Data.Json.Int (event_elapsed_us ()));
+      ]
+      @ descriptor_fields test)
   | Runner.TestAttemptFinished { test; attempt; result; duration } ->
-      Data.Json.Object
-        ([
-            ("type", Data.Json.String "TestCaseAttemptFinished");
-            ("attempt", Data.Json.Int attempt);
-            ("duration_us", Data.Json.Int (Time.Duration.to_micros duration));
-            ("emitted_at_us", Data.Json.Int (event_elapsed_us ()));
-          ]
-        @ descriptor_fields test
-        @ single_result_fields result)
+      Data.Json.Object ([
+        ("type", Data.Json.String "TestCaseAttemptFinished");
+        ("attempt", Data.Json.Int attempt);
+        ("duration_us", Data.Json.Int (Time.Duration.to_micros duration));
+        ("emitted_at_us", Data.Json.Int (event_elapsed_us ()));
+      ]
+      @ descriptor_fields test
+      @ single_result_fields result)
   | Runner.TestFinished result ->
-      Data.Json.Object
-        ([
-            ("type", Data.Json.String "TestCaseCompleted");
-            ("index", Data.Json.Int result.index);
-            ("name", Data.Json.String result.name);
-            ("attempts", Data.Json.Int result.attempts);
-            ("duration_us", Data.Json.Int (Time.Duration.to_micros result.duration));
-            ("emitted_at_us", Data.Json.Int (event_elapsed_us ()));
-          ]
-        @ event_test_type_fields result.test_type
-        @ [ ("size", size_to_json result.size) ]
-        @ reliability_fields result.reliability
-        @ single_result_fields result.result)
+      Data.Json.Object ([
+        ("type", Data.Json.String "TestCaseCompleted");
+        ("index", Data.Json.Int result.index);
+        ("name", Data.Json.String result.name);
+        ("attempts", Data.Json.Int result.attempts);
+        ("duration_us", Data.Json.Int (Time.Duration.to_micros result.duration));
+        ("emitted_at_us", Data.Json.Int (event_elapsed_us ()));
+      ]
+      @ event_test_type_fields result.test_type
+      @ [ ("size", size_to_json result.size) ]
+      @ reliability_fields result.reliability
+      @ single_result_fields result.result)
 
-let json_event_handler = fun event ->
-  event_to_json event |> write_json_line
+let json_event_handler = fun event -> event_to_json event |> write_json_line
 
 let matches_query = fun query (test: Test_case.t) ->
   match query with

@@ -219,8 +219,9 @@ let test_iovec_with_capacity_matches_create_count_one = fun _ctx ->
 let test_iovec_create_distributes_remainder_deterministically = fun _ctx ->
   let iov = Kernel.IO.IoVec.create ~count:3 ~size:5 () |> Result.unwrap in
   let lengths = ref [] in
-  Kernel.IO.IoVec.for_each iov ~fn:(fun segment ->
-    lengths := Kernel.IO.IoVec.IoSlice.length segment :: !lengths);
+  Kernel.IO.IoVec.for_each
+    iov
+    ~fn:(fun segment -> lengths := Kernel.IO.IoVec.IoSlice.length segment :: !lengths);
   if List.reverse !lengths = [ 2; 2; 1 ] then
     Ok ()
   else
@@ -252,8 +253,7 @@ let test_iovec_iter_reports_left_to_right_segment_metadata = fun _ctx ->
   let third = Kernel.Bytes.from_string "cde" in
   let iov = Kernel.IO.IoVec.from_bytes_array [|first; second; third|] |> Result.unwrap in
   let seen = ref [] in
-  Kernel.IO.IoVec.for_each
-    iov
+  Kernel.IO.IoVec.for_each iov
     ~fn:(fun segment ->
       let len = Kernel.IO.IoVec.IoSlice.length segment in
       seen := (len, Kernel.IO.IoVec.IoSlice.to_string segment) :: !seen);

@@ -8,7 +8,8 @@ let sample_tests = [
   Test.case ~size:Test.Large "alpha_large" (fun _ctx -> Ok ());
   Test.case "beta" (fun _ctx -> Ok ());
   Propane.property "gamma_property" Arbitrary.int (fun _ -> true);
-  Test.case "inline_snapshot_probe"
+  Test.case
+    "inline_snapshot_probe"
     (fun ctx -> Test.Snapshot.assert_inline_text ~ctx ~actual:"inline snapshot\n" ~expected:"inline snapshot\n");
   Test.case ~size:Test.Large "middle_large_case" (fun _ctx -> Ok ());
   Test.case ~reliability:Test.(Flaky { retry_attempts = 2 }) "flaky_then_ok"
@@ -36,7 +37,8 @@ let parse_json_output = fun stdout -> Data.Json.of_string stdout |> Result.expec
 
 let parse_json_lines = fun stdout ->
   split_lines stdout
-  |> List.map ~fn:(fun line -> Data.Json.of_string line |> Result.expect ~msg:"failed to parse jsonl line")
+  |> List.map
+    ~fn:(fun line -> Data.Json.of_string line |> Result.expect ~msg:"failed to parse jsonl line")
 
 let json_type = fun json ->
   match Data.Json.get_field "type" json with
@@ -82,12 +84,10 @@ let listed_test_fields_from_json = fun stdout ->
   | _ -> []
 
 let run_sample_capture = fun args ->
-  let cmd =
-    Command.make
-      (self_executable ())
-      ~env:[ ("PROPANE_TESTS", "7") ]
-      ~args:("sample" :: args)
-  in
+  let cmd = Command.make
+    (self_executable ())
+    ~env:[ ("PROPANE_TESTS", "7") ]
+    ~args:("sample" :: args) in
   Command.output cmd |> Result.expect ~msg:"failed to run sample test cli"
 
 let test_list_tests_lists_all_cases = fun _ctx ->
@@ -96,17 +96,16 @@ let test_list_tests_lists_all_cases = fun _ctx ->
     Error ("expected list-tests to succeed, got " ^ Int.to_string output.status)
   else
     let names = split_lines output.stdout |> List.sort ~compare:String.compare in
-    let expected =
-      [
-        "alpha_large";
-        "beta";
-        "gamma_property";
-        "inline_snapshot_probe";
-        "middle_large_case";
-        "flaky_then_ok";
-        "timeout_probe";
-        "after_timeout"
-      ]
+    let expected = [
+      "alpha_large";
+      "beta";
+      "gamma_property";
+      "inline_snapshot_probe";
+      "middle_large_case";
+      "flaky_then_ok";
+      "timeout_probe";
+      "after_timeout"
+    ]
     |> List.sort ~compare:String.compare in
     if names = expected then
       Ok ()
@@ -204,9 +203,15 @@ let test_run_tests_small_flag_filters_small_tests = fun _ctx ->
     Error ("expected --small run to succeed, got " ^ Int.to_string output.status)
   else
     let names = test_names_from_json output.stdout |> List.sort ~compare:String.compare in
-    let expected =
-      [ "beta"; "gamma_property"; "inline_snapshot_probe"; "flaky_then_ok"; "timeout_probe"; "after_timeout" ]
-      |> List.sort ~compare:String.compare in
+    let expected = [
+      "beta";
+      "gamma_property";
+      "inline_snapshot_probe";
+      "flaky_then_ok";
+      "timeout_probe";
+      "after_timeout"
+    ]
+    |> List.sort ~compare:String.compare in
     if names = expected then
       Ok ()
     else
@@ -347,8 +352,9 @@ let test_run_tests_json_emits_property_progress = fun _ctx ->
         | _ -> None)
   in
   let property_passes =
-    List.filter progress_events ~fn:(fun progress_type ->
-      String.equal progress_type "property_iteration_passed")
+    List.filter progress_events
+      ~fn:(fun progress_type ->
+        String.equal progress_type "property_iteration_passed")
   in
   if Int.equal (List.length property_passes) 7 then
     Ok ()
@@ -356,7 +362,8 @@ let test_run_tests_json_emits_property_progress = fun _ctx ->
     Error ("expected 7 property progress events, got: " ^ String.concat ", " progress_events)
 
 let test_run_tests_json_emits_snapshot_progress = fun _ctx ->
-  let events = parse_json_lines (run_sample_capture [ "run-tests"; "inline_snapshot_probe"; "--json" ]).stdout in
+  let events = parse_json_lines
+    (run_sample_capture [ "run-tests"; "inline_snapshot_probe"; "--json" ]).stdout in
   let progress_events =
     events
     |> List.filter_map
@@ -381,15 +388,20 @@ let test_run_tests_json_emits_heartbeat_for_long_tests = fun _ctx ->
     Error "expected a TestCaseHeartbeat event for a long-running test"
 
 let test_run_tests_timeout_does_not_abort_suite = fun _ctx ->
-  let output =
-    run_sample_capture [ "run-tests"; "--small"; "--json"; "--small-timeout-ms"; "10" ] in
+  let output = run_sample_capture [ "run-tests"; "--small"; "--json"; "--small-timeout-ms"; "10" ] in
   if Int.equal output.status 0 then
     Error "expected timed out small-test run to fail overall"
   else
     let names = test_names_from_json output.stdout |> List.sort ~compare:String.compare in
-    let expected =
-      [ "beta"; "gamma_property"; "inline_snapshot_probe"; "flaky_then_ok"; "timeout_probe"; "after_timeout" ]
-      |> List.sort ~compare:String.compare in
+    let expected = [
+      "beta";
+      "gamma_property";
+      "inline_snapshot_probe";
+      "flaky_then_ok";
+      "timeout_probe";
+      "after_timeout"
+    ]
+    |> List.sort ~compare:String.compare in
     if not (names = expected) then
       Error ("expected suite to continue after timeout, got: " ^ String.concat ", " names)
     else
@@ -398,14 +410,18 @@ let test_run_tests_timeout_does_not_abort_suite = fun _ctx ->
       | Some (Data.Json.Array tests) ->
           let find_status name =
             tests
-            |> List.filter_map ~fn:(fun test_json ->
-              match (Data.Json.get_field "name" test_json, Data.Json.get_field "status" test_json) with
-              | (Some (Data.Json.String test_name), Some (Data.Json.String status))
-                when String.equal test_name name -> Some status
-              | _ -> None)
+            |> List.filter_map
+              ~fn:(fun test_json ->
+                match (Data.Json.get_field "name" test_json, Data.Json.get_field "status" test_json) with
+                | (Some (Data.Json.String test_name), Some (Data.Json.String status)) when String.equal
+                  test_name
+                  name -> Some status
+                | _ -> None)
             |> List.head
           in
-          if find_status "timeout_probe" = Some "timed_out" && find_status "after_timeout" = Some "passed" then
+          if
+            find_status "timeout_probe" = Some "timed_out" && find_status "after_timeout" = Some "passed"
+          then
             Ok ()
           else
             Error "expected timeout_probe to time out and after_timeout to still run"

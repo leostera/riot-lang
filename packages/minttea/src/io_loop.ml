@@ -36,16 +36,14 @@ let rec loop = fun state ->
     if Int.equal size.cols state.window.cols then
       if Int.equal size.rows state.window.rows then
         state
-      else
-        (
-          send state.parent (Input (Event.Resize { width = size.cols; height = size.rows }));
-          { state with window = size }
-        )
-    else
-      (
+      else (
         send state.parent (Input (Event.Resize { width = size.cols; height = size.rows }));
         { state with window = size }
       )
+    else (
+      send state.parent (Input (Event.Resize { width = size.cols; height = size.rows }));
+      { state with window = size }
+    )
   in
   (* Check for shutdown message with timeout *)
   let timeout = Time.Duration.from_millis 100 in
@@ -96,12 +94,7 @@ let rec loop = fun state ->
 
 let init = fun ~parent ~tty ->
   Log.trace ("[IO_LOOP] Starting IO loop, parent=" ^ Pid.to_string parent);
-  let state = {
-    parent;
-    termios = tty;
-    parser = Ansi_parser.create ();
-    window = Tty.size tty;
-  } in
+  let state = { parent; termios = tty; parser = Ansi_parser.create (); window = Tty.size tty } in
   send state.parent (IoStarted (self ()));
   loop state;
   Ok ()

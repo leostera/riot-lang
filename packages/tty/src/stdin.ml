@@ -1,7 +1,10 @@
 open Std
 
 let input_buffer = Utf8_reader.create ()
-type stdin_cell = { mutable current: IO.Stdin.t option }
+
+type stdin_cell = {
+  mutable current: IO.Stdin.t option;
+}
 
 let stdin_handle = { current = None }
 
@@ -30,7 +33,8 @@ let read_stdin_bytes = fun stdin bytes ~offset ~len ->
         `Error
 
 let read_utf8 = fun () ->
-  Utf8_reader.read input_buffer
+  Utf8_reader.read
+    input_buffer
     ~read:(fun bytes ~offset ~len -> read_stdin_bytes (stdin ()) bytes ~offset ~len)
 
 let make_raw = fun () ->

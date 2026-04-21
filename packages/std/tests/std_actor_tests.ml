@@ -6,21 +6,25 @@ type Message.t +=
   | Actor_stop
 
 let await = fun ~what selector ->
-  try Ok (receive ~selector ~timeout:(Time.Duration.from_secs 1) ())
-  with
+  try Ok (receive ~selector ~timeout:(Time.Duration.from_secs 1) ()) with
   | Receive_timeout -> Error ("timed out waiting for " ^ what)
 
 let test_actor_self_in_spawned_actor = fun _ctx ->
   let parent = self () in
   ignore
-    (Actor.spawn (fun () ->
-       send parent (Actor_self_reply (Actor.self ()));
-       Ok ()));
-  match await
-    ~what:"spawned actor self"
-    (function
-    | Actor_self_reply pid -> `select pid
-    | _ -> `skip)
+    (
+      Actor.spawn
+        (fun () ->
+          send parent (Actor_self_reply (Actor.self ()));
+          Ok ())
+    );
+  match
+    await ~what:"spawned actor self"
+      (
+        function
+        | Actor_self_reply pid -> `select pid
+        | _ -> `skip
+      )
   with
   | Error _ as err -> err
   | Ok child_pid ->
@@ -32,34 +36,44 @@ let test_actor_self_in_spawned_actor = fun _ctx ->
 let test_actor_spawn_returns_live_pid = fun _ctx ->
   let parent = self () in
   let child =
-    Actor.spawn (fun () ->
-      send parent (Actor_ready (Actor.self ()));
-      receive
-        ~selector:(function
-          | Actor_stop -> `select ()
-          | _ -> `skip)
-        ();
-      Ok ())
+    Actor.spawn
+      (fun () ->
+        send parent (Actor_ready (Actor.self ()));
+        receive
+          ~selector:(
+            function
+            | Actor_stop -> `select ()
+            | _ -> `skip
+          )
+          ();
+        Ok ())
   in
   let _monitor = Runtime.Actor.monitor child in
-  match await
-    ~what:"spawned actor ready"
-    (function
-    | Actor_ready pid -> `select pid
-    | _ -> `skip)
+  match
+    await ~what:"spawned actor ready"
+      (
+        function
+        | Actor_ready pid -> `select pid
+        | _ -> `skip
+      )
   with
   | Error _ as err -> err
   | Ok ready_pid ->
-      if Pid.equal ready_pid child then (
-        send child Actor_stop;
-        ignore
-          (await
-             ~what:"spawned actor down"
-             (function
-             | Runtime.Actor.DOWN { pid; _ } when Pid.equal pid child -> `select ()
-             | _ -> `skip));
-        Ok ()
-      ) else
+      if Pid.equal ready_pid child then
+        (
+          send child Actor_stop;
+          ignore
+            (
+              await ~what:"spawned actor down"
+                (
+                  function
+                  | Runtime.Actor.DOWN { pid; _ } when Pid.equal pid child -> `select ()
+                  | _ -> `skip
+                )
+            );
+          Ok ()
+        )
+      else
         Error "expected spawn to return the same pid reported by the child"
 
 let is_failure = fun exn ~message ->
@@ -70,15 +84,16 @@ let is_failure = fun exn ~message ->
 let test_actor_spawn_link_reports_abnormal_exit = fun _ctx ->
   Actor.set_flags [ Runtime.Actor.TrapExit true ];
   let child =
-    Actor.spawn_link (fun () ->
-      Error (Failure "boom"))
+    Actor.spawn_link (fun () -> Error (Failure "boom"))
   in
-  match await
-    ~what:"linked actor exit"
-    (function
-    | Runtime.Actor.EXIT { from; reason = Error exn }
-      when Pid.equal from child && is_failure exn ~message:"boom" -> `select ()
-    | _ -> `skip)
+  match
+    await ~what:"linked actor exit"
+      (
+        function
+        | Runtime.Actor.EXIT { from; reason=Error exn } when Pid.equal from child
+        && is_failure exn ~message:"boom" -> `select ()
+        | _ -> `skip
+      )
   with
   | Ok () -> Ok ()
   | Error _ as err -> err

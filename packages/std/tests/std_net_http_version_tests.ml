@@ -1,5 +1,4 @@
 open Std
-
 module Version = Std.Net.Http.Version
 module IoSlice = IO.IoVec.IoSlice
 
@@ -16,10 +15,14 @@ let test_from_slice_invalid = fun _ctx ->
   | Error `InvalidVersion -> Ok ()
   | Ok version -> Error ("Expected invalid version, got " ^ Version.to_string version)
 
-let tests = Test.[
-  case "from_slice parses supported versions" test_from_slice_standard;
-  case "from_slice rejects invalid versions" test_from_slice_invalid;
-]
+let tests =
+  Test.[
+    case "from_slice parses supported versions" test_from_slice_standard;
+    case "from_slice rejects invalid versions" test_from_slice_invalid;
+  ]
 
 let () =
-  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"net_http_version" ~tests ~args) ~args:Env.args ()
+  Runtime.run
+    ~main:(fun ~args -> Test.Cli.main ~name:"net_http_version" ~tests ~args)
+    ~args:Env.args
+    ()

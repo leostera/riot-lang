@@ -6,6 +6,7 @@ let stderr_payload_size = 256 * 1_024
 let stderr_payload = String.make ~len:stderr_payload_size ~char:'e'
 
 let stdout_payload = "stdout-finished"
+
 let streamed_stdout_payload = "first line\nsecond line\nthird line\n"
 
 type Runtime.Message.t +=
@@ -49,13 +50,9 @@ let test_command_output_handles_delayed_shell_stdout = fun _ctx ->
 let test_command_output_streams_stdout_lines = fun _ctx ->
   let seen_lines = ref [] in
   let cmd = Command.make (self_executable ()) ~args:[ "capture-stdout-lines" ] in
-  match
-    Command.output
-      ~on_stdout_line:(fun line -> seen_lines := line :: !seen_lines)
-      cmd
-  with
-  | Error (Command.SystemError message) ->
-      Error ("expected streamed stdout helper to succeed, got: " ^ message)
+  match Command.output ~on_stdout_line:(fun line -> seen_lines := line :: !seen_lines) cmd with
+  | Error (Command.SystemError message) -> Error ("expected streamed stdout helper to succeed, got: "
+  ^ message)
   | Ok output ->
       let actual_lines = List.reverse !seen_lines in
       let expected_lines = [ "first line\n"; "second line\n"; "third line\n" ] in
@@ -63,8 +60,9 @@ let test_command_output_streams_stdout_lines = fun _ctx ->
         if not (Int.equal (List.length actual_lines) (List.length expected_lines)) then
           false
         else
-          List.zip actual_lines expected_lines
-          |> List.for_all (fun (actual, expected) -> String.equal actual expected)
+          List.zip actual_lines expected_lines |> List.for_all
+            (fun (actual, expected) ->
+              String.equal actual expected)
       in
       if not (Int.equal output.status 0) then
         Error ("expected streamed helper to exit 0, got " ^ Int.to_string output.status)
@@ -80,14 +78,12 @@ let test_command_output_streams_stdout_lines = fun _ctx ->
 let test_command_output_emits_idle_callbacks = fun _ctx ->
   let seen = ref [] in
   let cmd = Command.make "sh" ~args:[ "-c"; "sleep 0.05; printf idle-done" ] in
-  match
-    Command.output
-      ~on_idle:(fun elapsed -> seen := Time.Duration.to_micros elapsed :: !seen)
-      ~idle_interval:(Time.Duration.from_millis 10)
-      cmd
-  with
-  | Error (Command.SystemError message) ->
-      Error ("expected idle callback command to succeed, got: " ^ message)
+  match Command.output
+    ~on_idle:(fun elapsed -> seen := Time.Duration.to_micros elapsed :: !seen)
+    ~idle_interval:(Time.Duration.from_millis 10)
+    cmd with
+  | Error (Command.SystemError message) -> Error ("expected idle callback command to succeed, got: "
+  ^ message)
   | Ok output ->
       if not (Int.equal output.status 0) then
         Error ("expected idle callback command to exit 0, got " ^ Int.to_string output.status)

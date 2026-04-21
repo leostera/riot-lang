@@ -1,5 +1,4 @@
 open Prelude
-
 module IoSlice = IoVec.IoSlice
 
 type t = {
@@ -47,31 +46,38 @@ let ensure_free = fun buffer needed ->
     Error (Error.Negative_length needed)
   else if writable_bytes buffer >= needed then
     Ok ()
-  else if capacity buffer - buffer.len >= needed then (
-    compact buffer;
-    Ok ()
-  ) else (
-  let current_capacity = capacity buffer in
-    let min_capacity = buffer.len + needed in
-    let grown =
-      if current_capacity = 0 then
-        min_capacity
-      else if current_capacity * 2 > min_capacity then
-        current_capacity * 2
-      else
-        min_capacity
-    in
-    match IoSlice.create ~size:grown with
-    | Error _ as error -> error
-    | Ok next ->
-        IoSlice.blit_unchecked ~src:buffer.storage ~src_off:buffer.start ~dst:next ~dst_off:0 ~len:buffer.len;
-        buffer.storage <- next;
-        buffer.start <- 0;
-        Ok ()
-  )
+  else if capacity buffer - buffer.len >= needed then
+    (
+      compact buffer;
+      Ok ()
+    )
+  else
+    (
+      let current_capacity = capacity buffer in
+      let min_capacity = buffer.len + needed in
+      let grown =
+        if current_capacity = 0 then
+          min_capacity
+        else if current_capacity * 2 > min_capacity then
+          current_capacity * 2
+        else
+          min_capacity
+      in
+      match IoSlice.create ~size:grown with
+      | Error _ as error -> error
+      | Ok next ->
+          IoSlice.blit_unchecked
+            ~src:buffer.storage
+            ~src_off:buffer.start
+            ~dst:next
+            ~dst_off:0
+            ~len:buffer.len;
+          buffer.storage <- next;
+          buffer.start <- 0;
+          Ok ()
+    )
 
-let readable = fun buffer ->
-  IoSlice.sub_unchecked buffer.storage ~off:buffer.start ~len:buffer.len
+let readable = fun buffer -> IoSlice.sub_unchecked buffer.storage ~off:buffer.start ~len:buffer.len
 
 let writable = fun buffer ->
   IoSlice.sub_unchecked buffer.storage ~off:(buffer.start + buffer.len) ~len:(writable_bytes buffer)
@@ -89,36 +95,47 @@ let commit = fun buffer requested ->
 let append_at_end = fun buffer len append ->
   match ensure_free buffer len with
   | Error _ as error -> error
-  | Ok () ->
-      append buffer.storage (buffer.start + buffer.len) len
-      |> Result.and_then ~fn:(fun () -> commit buffer len)
+  | Ok () -> append buffer.storage (buffer.start + buffer.len) len
+  |> Result.and_then ~fn:(fun () -> commit buffer len)
 
 let append_string = fun buffer value ->
   let len = String.length value in
-  append_at_end buffer len (fun dst dst_off len ->
-    IoSlice.blit_from_string value ~src_off:0 dst ~dst_off ~len)
+  append_at_end
+    buffer
+    len
+    (fun dst dst_off len -> IoSlice.blit_from_string value ~src_off:0 dst ~dst_off ~len)
 
 let append_bytes = fun buffer value ->
   let len = Bytes.length value in
-  append_at_end buffer len (fun dst dst_off len ->
-    IoSlice.blit_from_bytes value ~src_off:0 dst ~dst_off ~len)
+  append_at_end
+    buffer
+    len
+    (fun dst dst_off len -> IoSlice.blit_from_bytes value ~src_off:0 dst ~dst_off ~len)
 
 let append_subbytes = fun buffer value ~off ~len ->
-  append_at_end buffer len (fun dst dst_off len ->
-    IoSlice.blit_from_bytes value ~src_off:off dst ~dst_off ~len)
+  append_at_end
+    buffer
+    len
+    (fun dst dst_off len -> IoSlice.blit_from_bytes value ~src_off:off dst ~dst_off ~len)
 
 let append_substring = fun buffer value ~off ~len ->
-  append_at_end buffer len (fun dst dst_off len ->
-    IoSlice.blit_from_string value ~src_off:off dst ~dst_off ~len)
+  append_at_end
+    buffer
+    len
+    (fun dst dst_off len -> IoSlice.blit_from_string value ~src_off:off dst ~dst_off ~len)
 
 let append_slice = fun buffer value ->
   let len = IoSlice.length value in
-  append_at_end buffer len (fun dst dst_off len ->
-    IoSlice.blit ~src:value ~src_off:0 ~dst ~dst_off ~len)
+  append_at_end
+    buffer
+    len
+    (fun dst dst_off len -> IoSlice.blit ~src:value ~src_off:0 ~dst ~dst_off ~len)
 
 let append_subslice = fun buffer value ~off ~len ->
-  append_at_end buffer len (fun dst dst_off len ->
-    IoSlice.blit ~src:value ~src_off:off ~dst ~dst_off ~len)
+  append_at_end
+    buffer
+    len
+    (fun dst dst_off len -> IoSlice.blit ~src:value ~src_off:off ~dst ~dst_off ~len)
 
 let get = fun buffer ~at ->
   if at < 0 || at >= buffer.len then
@@ -126,8 +143,7 @@ let get = fun buffer ~at ->
   else
     Ok (IoSlice.get_unchecked buffer.storage ~at:(buffer.start + at))
 
-let get_unchecked = fun buffer ~at ->
-  IoSlice.get_unchecked buffer.storage ~at:(buffer.start + at)
+let get_unchecked = fun buffer ~at -> IoSlice.get_unchecked buffer.storage ~at:(buffer.start + at)
 
 let consume = fun buffer ~len ->
   if len < 0 then

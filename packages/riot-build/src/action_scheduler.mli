@@ -6,13 +6,11 @@ type action_error = Action_executor.action_error =
   | ExecutionFailed of { message: string }
   | OutputsNotCreated of { missing: Path.t list }
   | DependenciesFailed of { failed: Graph.SimpleGraph.Node_id.t list }
-
 type action_status = Action_executor.action_status =
   | Cached of Std.Crypto.hash
   | Executed
   | Failed of action_error
   | Skipped
-
 type execution_result = Action_executor.execution_result = {
   node_id: Graph.SimpleGraph.Node_id.t;
   status: action_status;
@@ -21,18 +19,15 @@ type execution_result = Action_executor.execution_result = {
   started_at: Time.Instant.t;
   completed_at: Time.Instant.t;
 }
-
 type completed_action = {
   node: Action_node.t;
   result: execution_result;
 }
-
 type t = {
   completed_actions: completed_action list;
   first_failure: action_error option;
   ocamlc_warnings: string list;
 }
-
 val summarize_completed:
   action_graph:Action_graph.t ->
   completed_results:(Graph.SimpleGraph.Node_id.t, execution_result) HashMap.t ->

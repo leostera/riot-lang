@@ -1,9 +1,10 @@
 open Prelude
-
 module IoSlice = Io_slice
 
 type segment = IoSlice.t
+
 type t = segment array
+
 type error = Error.t
 
 let empty = [||]
@@ -16,8 +17,8 @@ let create = fun ?(count = 1) ~size () ->
   else
     let base = size / count in
     let remainder = size mod count in
-    Ok
-      (Array.init ~count
+    Ok (
+      Array.init ~count
         ~fn:(fun index ->
           let chunk =
             if index < remainder then
@@ -27,17 +28,16 @@ let create = fun ?(count = 1) ~size () ->
           in
           match IoSlice.create ~size:chunk with
           | Ok segment -> segment
-          | Error error -> System_error.panic ("Kernel.IO.IoVec.create: " ^ Error.message error)))
+          | Error error -> System_error.panic ("Kernel.IO.IoVec.create: " ^ Error.message error))
+    )
 
 let with_capacity = fun size -> create ~size ()
 
 let from_slices = fun segments -> segments
 
-let copy_bytes = fun source ->
-  IoSlice.from_bytes source
+let copy_bytes = fun source -> IoSlice.from_bytes source
 
-let copy_string = fun source ->
-  IoSlice.from_string source
+let copy_string = fun source -> IoSlice.from_string source
 
 let from_bytes = fun buffer ->
   match copy_bytes buffer with
@@ -131,7 +131,12 @@ let to_bytes = fun segments ->
       out
     else
       let segment = Array.get_unchecked segments ~at:index in
-      IoSlice.blit_to_bytes_unchecked segment ~src_off:0 out ~dst_off:cursor ~len:(IoSlice.length segment);
+      IoSlice.blit_to_bytes_unchecked
+        segment
+        ~src_off:0
+        out
+        ~dst_off:cursor
+        ~len:(IoSlice.length segment);
       loop (index + 1) (cursor + IoSlice.length segment)
   in
   let _ = loop 0 0 in

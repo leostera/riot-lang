@@ -13,24 +13,46 @@ let sort_ints = fun values -> List.sort values ~compare:Int.compare
 
 let test_create = fun _ctx ->
   let heap = Heap.create () in
-  if Heap.is_empty heap then Ok () else Error "expected Heap.create to start empty"
+  if Heap.is_empty heap then
+    Ok ()
+  else
+    Error "expected Heap.create to start empty"
 
 let test_create_max = fun _ctx ->
   let heap = Heap.create_max () in
   List.for_each [ 1; 3; 2 ] ~fn:(fun value -> Heap.push heap ~value);
-  if Heap.peek heap = Some 3 then Ok () else Error "expected max-heap peek to return maximum"
+  if Heap.peek heap = Some 3 then
+    Ok ()
+  else
+    Error "expected max-heap peek to return maximum"
 
 let test_create_with_custom_compare = fun _ctx ->
-  let heap = Heap.create_with ~compare:(fun left right -> Int.compare (left mod 10) (right mod 10)) () in
+  let heap =
+    Heap.create_with
+      ~compare:(fun left right ->
+        Int.compare (left mod 10) (right mod 10))
+      ()
+  in
   List.for_each [ 32; 25; 18 ] ~fn:(fun value -> Heap.push heap ~value);
-  if Heap.peek heap = Some 32 then Ok () else Error "expected custom compare to determine heap root"
+  if Heap.peek heap = Some 32 then
+    Ok ()
+  else
+    Error "expected custom compare to determine heap root"
 
 let test_from_list = fun _ctx ->
-  if Heap.peek (Heap.from_list [ 3; 1; 2 ]) = Some 1 then Ok ()
-  else Error "expected from_list min-heap peek to return minimum"
+  if Heap.peek (Heap.from_list [ 3; 1; 2 ]) = Some 1 then
+    Ok ()
+  else
+    Error "expected from_list min-heap peek to return minimum"
 
 let test_from_list_with = fun _ctx ->
-  if Heap.peek (Heap.from_list_with ~compare:(fun left right -> Int.compare right left) [ 3; 1; 2 ]) = Some 3 then
+  if Heap.peek
+      (
+        Heap.from_list_with
+          ~compare:(fun left right ->
+            Int.compare right left)
+          [ 3; 1; 2 ]
+      ) = Some 3 then
     Ok ()
   else
     Error "expected from_list_with custom ordering to determine root"
@@ -39,79 +61,118 @@ let test_push_updates_peek = fun _ctx ->
   let heap = Heap.create () in
   Heap.push heap ~value:3;
   Heap.push heap ~value:1;
-  if Heap.peek heap = Some 1 then Ok () else Error "expected push to update peek to smallest element"
+  if Heap.peek heap = Some 1 then
+    Ok ()
+  else
+    Error "expected push to update peek to smallest element"
 
 let test_pop_empty = fun _ctx ->
-  if Heap.pop (Heap.create ()) = None then Ok () else Error "expected pop empty = None"
+  if Heap.pop (Heap.create ()) = None then
+    Ok ()
+  else
+    Error "expected pop empty = None"
 
 let test_pop_repeated = fun _ctx ->
   let heap = Heap.from_list [ 3; 1; 2 ] in
-  let popped = [ Heap.pop heap; Heap.pop heap; Heap.pop heap ] |> List.filter_map ~fn:(fun value -> value) in
-  if sort_ints popped = [ 1; 2; 3 ] && Heap.is_empty heap then Ok ()
-  else Error "expected repeated pops to return ascending order"
+  let popped = [ Heap.pop heap; Heap.pop heap; Heap.pop heap ]
+  |> List.filter_map ~fn:(fun value -> value) in
+  if sort_ints popped = [ 1; 2; 3 ] && Heap.is_empty heap then
+    Ok ()
+  else
+    Error "expected repeated pops to return ascending order"
 
 let test_pop_unchecked = fun _ctx ->
   let heap = Heap.from_list [ 3; 1; 2 ] in
-  if Int.equal (Heap.pop_unchecked heap) 1 then Ok ()
-  else Error "expected pop_unchecked to return root of non-empty heap"
+  if Int.equal (Heap.pop_unchecked heap) 1 then
+    Ok ()
+  else
+    Error "expected pop_unchecked to return root of non-empty heap"
 
 let test_peek_empty = fun _ctx ->
-  if Heap.peek (Heap.create ()) = None then Ok () else Error "expected peek empty = None"
+  if Heap.peek (Heap.create ()) = None then
+    Ok ()
+  else
+    Error "expected peek empty = None"
 
 let test_peek_unchecked = fun _ctx ->
   let heap = Heap.from_list [ 3; 1; 2 ] in
-  if Int.equal (Heap.peek_unchecked heap) 1 then Ok ()
-  else Error "expected peek_unchecked to return root of non-empty heap"
+  if Int.equal (Heap.peek_unchecked heap) 1 then
+    Ok ()
+  else
+    Error "expected peek_unchecked to return root of non-empty heap"
 
 let test_length = fun _ctx ->
   let heap = Heap.from_list [ 3; 1; 2 ] in
-  if Int.equal (Heap.length heap) 3 then Ok () else Error "expected Heap.length to track live items"
+  if Int.equal (Heap.length heap) 3 then
+    Ok ()
+  else
+    Error "expected Heap.length to track live items"
 
 let test_is_empty_after_removing_all = fun _ctx ->
   let heap = Heap.from_list [ 3; 1; 2 ] in
   ignore (Heap.pop heap);
   ignore (Heap.pop heap);
   ignore (Heap.pop heap);
-  if Heap.is_empty heap then Ok () else Error "expected heap to be empty after removing all items"
+  if Heap.is_empty heap then
+    Ok ()
+  else
+    Error "expected heap to be empty after removing all items"
 
 let test_clear = fun _ctx ->
   let heap = Heap.from_list [ 3; 1; 2 ] in
   Heap.clear heap;
-  if Heap.is_empty heap then Ok () else Error "expected clear to empty heap"
+  if Heap.is_empty heap then
+    Ok ()
+  else
+    Error "expected clear to empty heap"
 
 let test_to_list = fun _ctx ->
   let heap = Heap.from_list [ 3; 1; 2 ] in
-  if Heap.to_list heap = [ 1; 2; 3 ] then Ok ()
-  else Error "expected to_list to return ascending list and consume heap"
+  if Heap.to_list heap = [ 1; 2; 3 ] then
+    Ok ()
+  else
+    Error "expected to_list to return ascending list and consume heap"
 
 let test_to_list_unordered = fun _ctx ->
   let heap = Heap.from_list [ 3; 1; 2 ] in
-  if sort_ints (Heap.to_list_unordered heap) = [ 1; 2; 3 ] then Ok ()
-  else Error "expected to_list_unordered to preserve heap multiset"
+  if sort_ints (Heap.to_list_unordered heap) = [ 1; 2; 3 ] then
+    Ok ()
+  else
+    Error "expected to_list_unordered to preserve heap multiset"
 
 let test_for_each = fun _ctx ->
   let heap = Heap.from_list [ 3; 1; 2 ] in
   let seen = box [] in
   Heap.for_each heap ~fn:(fun value -> seen.value <- value :: seen.value);
-  if List.reverse seen.value = [ 1; 2; 3 ] && Heap.is_empty heap then Ok ()
-  else Error "expected for_each to visit each item once in heap order"
+  if List.reverse seen.value = [ 1; 2; 3 ] && Heap.is_empty heap then
+    Ok ()
+  else
+    Error "expected for_each to visit each item once in heap order"
 
 let test_fold_left = fun _ctx ->
   let heap = Heap.from_list [ 3; 1; 2 ] in
-  if String.equal (Heap.fold_left heap ~acc:"" ~fn:(fun acc value -> acc ^ Int.to_string value)) "123" then Ok ()
-  else Error "expected fold_left to consume heap in heap order"
+  if
+    String.equal (Heap.fold_left heap ~acc:"" ~fn:(fun acc value -> acc ^ Int.to_string value)) "123"
+  then
+    Ok ()
+  else
+    Error "expected fold_left to consume heap in heap order"
 
 let test_iter = fun _ctx ->
   let heap = Heap.from_list [ 3; 1; 2 ] in
   let items = Iterator.to_list (Heap.iter heap) in
-  if items = [ 1; 2; 3 ] && Heap.peek heap = Some 1 then Ok ()
-  else Error "expected iter to preserve original heap"
+  if items = [ 1; 2; 3 ] && Heap.peek heap = Some 1 then
+    Ok ()
+  else
+    Error "expected iter to preserve original heap"
 
 let test_mut_iter = fun _ctx ->
   let heap = Heap.from_list [ 3; 1; 2 ] in
   let items = MutIterator.to_list (Heap.mut_iter heap) in
-  if items = [ 1; 2; 3 ] && Heap.is_empty heap then Ok ()
-  else Error "expected mut_iter to drain heap in order"
+  if items = [ 1; 2; 3 ] && Heap.is_empty heap then
+    Ok ()
+  else
+    Error "expected mut_iter to drain heap in order"
 
 let tests =
   Test.[

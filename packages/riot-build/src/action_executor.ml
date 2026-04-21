@@ -433,14 +433,16 @@ let execute_node = fun ~completed ~store ~session_id toolchain sandbox_dir (node
           let completed_at = Instant.now () in
           let duration = Instant.duration_since ~earlier:start completed_at in
           Telemetry.emit
-            (Telemetry_events.ActionCompleted {
-              session_id;
-              package = node.value.package;
-              action = node;
-              artifact;
-              status = `Cached;
-              duration;
-            });
+            (
+              Telemetry_events.ActionCompleted {
+                session_id;
+                package = node.value.package;
+                action = node;
+                artifact;
+                status = `Cached;
+                duration;
+              }
+            );
           {
             node_id = node.id;
             status = Cached action_hash;
@@ -554,14 +556,16 @@ let execute_node = fun ~completed ~store ~session_id toolchain sandbox_dir (node
                         }
                     | Ok artifact ->
                         Telemetry.emit
-                          (Telemetry_events.ActionCompleted {
-                            session_id;
-                            package = node.value.package;
-                            action = node;
-                            artifact;
-                            status = `Fresh;
-                            duration;
-                          });
+                          (
+                            Telemetry_events.ActionCompleted {
+                              session_id;
+                              package = node.value.package;
+                              action = node;
+                              artifact;
+                              status = `Fresh;
+                              duration;
+                            }
+                          );
                         {
                           node_id = node.id;
                           status = Executed;
@@ -601,14 +605,16 @@ let execute_node = fun ~completed ~store ~session_id toolchain sandbox_dir (node
                             }
                         | Ok artifact ->
                             Telemetry.emit
-                              (Telemetry_events.ActionCompleted {
-                                session_id;
-                                package = node.value.package;
-                                action = node;
-                                artifact;
-                                status = `Fresh;
-                                duration;
-                              });
+                              (
+                                Telemetry_events.ActionCompleted {
+                                  session_id;
+                                  package = node.value.package;
+                                  action = node;
+                                  artifact;
+                                  status = `Fresh;
+                                  duration;
+                                }
+                              );
                             {
                               node_id = node.id;
                               status = Executed;

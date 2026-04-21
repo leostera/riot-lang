@@ -11,16 +11,22 @@ let test_none = fun _ctx ->
   | Some _ -> Error "expected Option.none = None"
 
 let test_equal = fun _ctx ->
-  if Option.equal (Some 7) (Some 7) ~fn:Int.equal && not (Option.equal (Some 7) None ~fn:Int.equal) then Ok ()
-  else Error "expected Option.equal to compare Some/None correctly"
+  if Option.equal (Some 7) (Some 7) ~fn:Int.equal && not (Option.equal (Some 7) None ~fn:Int.equal) then
+    Ok ()
+  else
+    Error "expected Option.equal to compare Some/None correctly"
 
 let test_is_some_and_is_none = fun _ctx ->
-  if Option.is_some (Some 1) && Option.is_none None then Ok ()
-  else Error "expected is_some/is_none to reflect constructors"
+  if Option.is_some (Some 1) && Option.is_none None then
+    Ok ()
+  else
+    Error "expected is_some/is_none to reflect constructors"
 
 let test_is_some_and = fun _ctx ->
-  if Option.is_some_and (Some 4) ~fn:(fun value -> value > 0) then Ok ()
-  else Error "expected is_some_and to run predicate on Some"
+  if Option.is_some_and (Some 4) ~fn:(fun value -> value > 0) then
+    Ok ()
+  else
+    Error "expected is_some_and to run predicate on Some"
 
 let test_map = fun _ctx ->
   match Option.map (Some 5) ~fn:(fun value -> value * 2) with
@@ -28,12 +34,16 @@ let test_map = fun _ctx ->
   | _ -> Error "expected map Some 5 -> Some 10"
 
 let test_map_or = fun _ctx ->
-  if Int.equal (Option.map_or None ~default:42 ~fn:(fun value -> value * 2)) 42 then Ok ()
-  else Error "expected map_or on None to return default"
+  if Int.equal (Option.map_or None ~default:42 ~fn:(fun value -> value * 2)) 42 then
+    Ok ()
+  else
+    Error "expected map_or on None to return default"
 
 let test_map_or_else = fun _ctx ->
-  if Int.equal (Option.map_or_else (Some 5) ~default:(fun () -> 0) ~fn:(fun value -> value + 1)) 6 then Ok ()
-  else Error "expected map_or_else on Some to run fn"
+  if Int.equal (Option.map_or_else (Some 5) ~default:(fun () -> 0) ~fn:(fun value -> value + 1)) 6 then
+    Ok ()
+  else
+    Error "expected map_or_else on Some to run fn"
 
 let test_and_then = fun _ctx ->
   match Option.and_then (Some 3) ~fn:(fun value -> Some (value * value)) with
@@ -51,8 +61,10 @@ let test_xor = fun _ctx ->
   | _ -> Error "expected xor Some None = Some"
 
 let test_unwrap_or = fun _ctx ->
-  if Int.equal (Option.unwrap_or None ~default:9) 9 then Ok ()
-  else Error "expected unwrap_or None to return default"
+  if Int.equal (Option.unwrap_or None ~default:9) 9 then
+    Ok ()
+  else
+    Error "expected unwrap_or None to return default"
 
 let test_ok_or = fun _ctx ->
   match Option.ok_or None ~error:"missing" with
@@ -60,8 +72,10 @@ let test_ok_or = fun _ctx ->
   | _ -> Error "expected ok_or None to produce Error"
 
 let test_to_list = fun _ctx ->
-  if Option.to_list (Some 4) = [ 4 ] && Option.to_list None = [] then Ok ()
-  else Error "expected to_list to convert Some/None to singleton/empty lists"
+  if Option.to_list (Some 4) = [ 4 ] && Option.to_list None = [] then
+    Ok ()
+  else
+    Error "expected to_list to convert Some/None to singleton/empty lists"
 
 let test_transpose = fun _ctx ->
   match Option.transpose (Some (Ok 7)) with
@@ -80,7 +94,7 @@ let test_zip = fun _ctx ->
 
 let test_all = fun _ctx ->
   match Option.all [ Some 1; Some 2; Some 3 ] with
-  | Some [ 1; 2; 3 ] -> Ok ()
+  | Some [1;2;3] -> Ok ()
   | _ -> Error "expected Option.all to collect all Somes"
 
 let tests =

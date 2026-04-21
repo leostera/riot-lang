@@ -5,8 +5,7 @@ type Message.t +=
   | Task_unrelated of string
 
 let await_message = fun ~what selector ->
-  try Ok (receive ~selector ~timeout:(Time.Duration.from_secs 1) ())
-  with
+  try Ok (receive ~selector ~timeout:(Time.Duration.from_secs 1) ()) with
   | Receive_timeout -> Error ("timed out waiting for " ^ what)
 
 let is_failure_message = function
@@ -36,72 +35,81 @@ let test_await_all_empty_returns_immediately = fun _ctx ->
   | _ -> Error "expected Task.await_all [] to return []"
 
 let test_await_all_multiple_successes = fun _ctx ->
-  match Task.await_all [
-    Task.async (fun () -> 1);
-    Task.async (fun () -> 2);
-    Task.async (fun () -> 3);
-  ] with
-  | [ Ok 1; Ok 2; Ok 3 ] -> Ok ()
+  match Task.await_all
+    [ Task.async (fun () -> 1); Task.async (fun () -> 2); Task.async (fun () -> 3); ] with
+  | [Ok 1;Ok 2;Ok 3] -> Ok ()
   | _ -> Error "expected Task.await_all to preserve all successful results"
 
 let test_await_all_preserves_mixed_success_and_failure = fun _ctx ->
-  match Task.await_all [
-    Task.async (fun () -> 1);
-    Task.async (fun () -> raise (Failure "boom"));
-    Task.async (fun () -> 3);
-  ] with
-  | [ Ok 1; Error exn; Ok 3 ] when is_failure_message exn -> Ok ()
+  match Task.await_all
+    [
+      Task.async (fun () -> 1);
+      Task.async (fun () -> raise (Failure "boom"));
+      Task.async (fun () -> 3);
+    ] with
+  | [Ok 1;Error exn;Ok 3] when is_failure_message exn -> Ok ()
   | _ -> Error "expected Task.await_all to preserve both Ok and Error results"
 
 let test_await_all_preserves_input_order = fun _ctx ->
-  let slow = Task.async (fun () ->
-    sleep (Time.Duration.from_millis 25);
-    "slow")
+  let slow =
+    Task.async
+      (fun () ->
+        sleep (Time.Duration.from_millis 25);
+        "slow")
   in
-  let fast = Task.async (fun () ->
-    sleep (Time.Duration.from_millis 1);
-    "fast")
+  let fast =
+    Task.async
+      (fun () ->
+        sleep (Time.Duration.from_millis 1);
+        "fast")
   in
   match Task.await_all [ slow; fast ] with
-  | [ Ok "slow"; Ok "fast" ] -> Ok ()
+  | [Ok "slow";Ok "fast"] -> Ok ()
   | _ -> Error "expected Task.await_all to return results in input order"
 
 let test_await_all_ignores_unrelated_messages = fun _ctx ->
   send (self ()) (Task_unrelated "noise");
   let results = Task.await_all [ Task.async (fun () -> 7); Task.async (fun () -> 9) ] in
   match results with
-  | [ Ok 7; Ok 9 ] -> (
-      match await_message
-        ~what:"unrelated message"
-        (function
-        | Task_unrelated payload -> `select payload
-        | _ -> `skip)
+  | [Ok 7;Ok 9] -> (
+      match
+        await_message ~what:"unrelated message"
+          (
+            function
+            | Task_unrelated payload -> `select payload
+            | _ -> `skip
+          )
       with
       | Ok "noise" -> Ok ()
       | Ok payload -> Error ("expected unrelated payload noise, got " ^ payload)
-      | Error _ as err -> err)
+      | Error _ as err -> err
+    )
   | _ -> Error "expected Task.await_all to ignore unrelated mailbox messages"
 
 let test_async_starts_eagerly = fun _ctx ->
   let parent = self () in
   let task =
-    Task.async (fun () ->
-      send parent Task_started;
-      sleep (Time.Duration.from_millis 25);
-      42)
+    Task.async
+      (fun () ->
+        send parent Task_started;
+        sleep (Time.Duration.from_millis 25);
+        42)
   in
-  match await_message
-    ~what:"task start"
-    (function
-    | Task_started -> `select ()
-    | _ -> `skip)
+  match
+    await_message ~what:"task start"
+      (
+        function
+        | Task_started -> `select ()
+        | _ -> `skip
+      )
   with
   | Error _ as err -> err
   | Ok () -> (
       match Task.await task with
       | Ok 42 -> Ok ()
       | Ok value -> Error ("expected task result 42, got " ^ Int.to_string value)
-      | Error _ -> Error "expected eager task to succeed")
+      | Error _ -> Error "expected eager task to succeed"
+    )
 
 let tests =
   Test.[
@@ -116,5 +124,4 @@ let tests =
     case "Task.async starts eagerly before await" test_async_starts_eagerly;
   ]
 
-let () =
-  Runtime.run ~main:(Test.Cli.main ~name:"Task" ~tests) ~args:Env.args ()
+let () = Runtime.run ~main:(Test.Cli.main ~name:"Task" ~tests) ~args:Env.args ()

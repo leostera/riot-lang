@@ -12,7 +12,6 @@ open Global
 
 type t = Json.t
 type error = Json.error
-
 val from_string: string -> (t, error) Result.t
 
 val from_slice: IO.IoVec.IoSlice.t -> (t, error) Result.t

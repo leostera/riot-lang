@@ -21,13 +21,21 @@ let test_stdout_writer_handles_empty_operations = fun _ctx ->
               | Ok () -> (
                   match IO.flush writer with
                   | Ok () -> Ok ()
-                  | Error _ -> Error "IO.stdout flush should succeed for empty operations")
-              | Error _ -> Error "IO.stdout write_all_vectored should accept empty iovecs")
-          | Ok _ -> Error "IO.stdout write_vectored should report zero for empty iovecs"
-          | Error _ -> Error "IO.stdout write_vectored should accept empty iovecs")
-      | Error _ -> Error "IO.stdout write_all should accept empty strings")
-  | Ok _ -> Error "IO.stdout write should report zero for empty strings"
-  | Error _ -> Error "IO.stdout write should accept empty strings"
+                  | Error _ -> Error "IO.stdout flush should succeed for empty operations"
+                )
+              | Error _ -> Error "IO.stdout write_all_vectored should accept empty iovecs"
+            )
+          | Ok _ ->
+              Error "IO.stdout write_vectored should report zero for empty iovecs"
+          | Error _ ->
+              Error "IO.stdout write_vectored should accept empty iovecs"
+        )
+      | Error _ -> Error "IO.stdout write_all should accept empty strings"
+    )
+  | Ok _ ->
+      Error "IO.stdout write should report zero for empty strings"
+  | Error _ ->
+      Error "IO.stdout write should accept empty strings"
 
 let test_stderr_writer_handles_empty_operations = fun _ctx ->
   let writer = IO.stderr () in
@@ -42,22 +50,28 @@ let test_stderr_writer_handles_empty_operations = fun _ctx ->
               | Ok () -> (
                   match IO.flush writer with
                   | Ok () -> Ok ()
-                  | Error _ -> Error "IO.stderr flush should succeed for empty operations")
-              | Error _ -> Error "IO.stderr write_all_vectored should accept empty iovecs")
-          | Ok _ -> Error "IO.stderr write_vectored should report zero for empty iovecs"
-          | Error _ -> Error "IO.stderr write_vectored should accept empty iovecs")
-      | Error _ -> Error "IO.stderr write_all should accept empty strings")
-  | Ok _ -> Error "IO.stderr write should report zero for empty strings"
-  | Error _ -> Error "IO.stderr write should accept empty strings"
+                  | Error _ -> Error "IO.stderr flush should succeed for empty operations"
+                )
+              | Error _ -> Error "IO.stderr write_all_vectored should accept empty iovecs"
+            )
+          | Ok _ ->
+              Error "IO.stderr write_vectored should report zero for empty iovecs"
+          | Error _ ->
+              Error "IO.stderr write_vectored should accept empty iovecs"
+        )
+      | Error _ -> Error "IO.stderr write_all should accept empty strings"
+    )
+  | Ok _ ->
+      Error "IO.stderr write should report zero for empty strings"
+  | Error _ ->
+      Error "IO.stderr write should accept empty strings"
 
-let tests = Test.[
-  case "IO.stdin treats empty iovecs as a no-op" test_stdin_reader_empty_iovec_is_a_noop;
-  case "IO.stdout handles empty writer operations" test_stdout_writer_handles_empty_operations;
-  case "IO.stderr handles empty writer operations" test_stderr_writer_handles_empty_operations;
-]
+let tests =
+  Test.[
+    case "IO.stdin treats empty iovecs as a no-op" test_stdin_reader_empty_iovec_is_a_noop;
+    case "IO.stdout handles empty writer operations" test_stdout_writer_handles_empty_operations;
+    case "IO.stderr handles empty writer operations" test_stderr_writer_handles_empty_operations;
+  ]
 
 let () =
-  Runtime.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"IO.Stdio" ~tests ~args)
-    ~args:Env.args
-    ()
+  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"IO.Stdio" ~tests ~args) ~args:Env.args ()

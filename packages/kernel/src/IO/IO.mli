@@ -3,9 +3,7 @@ module Error: module type of Error
 module IoVec: sig
   module IoSlice: sig
     type t
-
     type error = Error.t
-
     val empty: t
 
     val create: size:int -> (t, error) Result.t
@@ -32,69 +30,23 @@ module IoVec: sig
 
     val set_unchecked: t -> at:int -> char -> unit
 
-    val blit:
-      src:t ->
-      src_off:int ->
-      dst:t ->
-      dst_off:int ->
-      len:int ->
-      (unit, error) Result.t
+    val blit: src:t -> src_off:int -> dst:t -> dst_off:int -> len:int -> (unit, error) Result.t
 
-    val blit_unchecked:
-      src:t ->
-      src_off:int ->
-      dst:t ->
-      dst_off:int ->
-      len:int ->
-      unit
+    val blit_unchecked: src:t -> src_off:int -> dst:t -> dst_off:int -> len:int -> unit
 
     val blit_from_bytes:
-      bytes ->
-      src_off:int ->
-      t ->
-      dst_off:int ->
-      len:int ->
-      (unit, error) Result.t
+      bytes -> src_off:int -> t -> dst_off:int -> len:int -> (unit, error) Result.t
 
-    val blit_from_bytes_unchecked:
-      bytes ->
-      src_off:int ->
-      t ->
-      dst_off:int ->
-      len:int ->
-      unit
+    val blit_from_bytes_unchecked: bytes -> src_off:int -> t -> dst_off:int -> len:int -> unit
 
-    val blit_to_bytes:
-      t ->
-      src_off:int ->
-      bytes ->
-      dst_off:int ->
-      len:int ->
-      (unit, error) Result.t
+    val blit_to_bytes: t -> src_off:int -> bytes -> dst_off:int -> len:int -> (unit, error) Result.t
 
-    val blit_to_bytes_unchecked:
-      t ->
-      src_off:int ->
-      bytes ->
-      dst_off:int ->
-      len:int ->
-      unit
+    val blit_to_bytes_unchecked: t -> src_off:int -> bytes -> dst_off:int -> len:int -> unit
 
     val blit_from_string:
-      string ->
-      src_off:int ->
-      t ->
-      dst_off:int ->
-      len:int ->
-      (unit, error) Result.t
+      string -> src_off:int -> t -> dst_off:int -> len:int -> (unit, error) Result.t
 
-    val blit_from_string_unchecked:
-      string ->
-      src_off:int ->
-      t ->
-      dst_off:int ->
-      len:int ->
-      unit
+    val blit_from_string_unchecked: string -> src_off:int -> t -> dst_off:int -> len:int -> unit
 
     val from_string: ?off:int -> ?len:int -> string -> (t, error) Result.t
 
@@ -117,6 +69,7 @@ module IoVec: sig
   type t
   type error = Error.t
   val empty: t
+
   val create: ?count:int -> size:int -> unit -> (t, error) Result.t
 
   val with_capacity: int -> (t, error) Result.t
@@ -147,7 +100,6 @@ module Buffer: sig
 
   type t
   type error = Error.t
-
   val create: ?size:int -> unit -> (t, error) Result.t
 
   val length: t -> int

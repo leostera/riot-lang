@@ -27,9 +27,7 @@ let positive = fun pkg ranges -> { package = pkg; ranges; positive = true }
 let negative = fun pkg ranges -> { package = pkg; ranges; positive = false }
 
 let is_any = fun t ->
-  let is_full =
-    Ranges.subset_of ~compare_v:version_compare Ranges.full t.ranges
-  in
+  let is_full = Ranges.subset_of ~compare_v:version_compare Ranges.full t.ranges in
   (t.positive && is_full) || ((not t.positive) && Ranges.is_empty t.ranges)
 
 let negate = fun t -> { t with positive = not t.positive }

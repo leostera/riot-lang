@@ -110,15 +110,13 @@ let empty_stats = fun () ->
     provider_choose_version_calls = 0;
     provider_count_versions_calls = 0;
     provider_get_dependencies_calls = 0;
-    max_decision_depth = 0
+    max_decision_depth = 0;
   }
 
 let snapshot_stats = fun stats ->
-  let provider_calls =
-    stats.provider_choose_version_calls
-    + stats.provider_count_versions_calls
-    + stats.provider_get_dependencies_calls
-  in
+  let provider_calls = stats.provider_choose_version_calls
+  + stats.provider_count_versions_calls
+  + stats.provider_get_dependencies_calls in
   {
     iterations = stats.iterations;
     decisions = stats.decisions;
@@ -135,7 +133,9 @@ let snapshot_stats = fun stats ->
 
 let record_decision = fun stats solution ->
   stats.decisions <- stats.decisions + 1;
-  stats.max_decision_depth <- Int.max stats.max_decision_depth (Partial_solution.current_decision_level solution)
+  stats.max_decision_depth <- Int.max
+    stats.max_decision_depth
+    (Partial_solution.current_decision_level solution)
 
 let record_derivation = fun stats -> stats.derivations <- stats.derivations + 1
 
@@ -195,8 +195,7 @@ let get_incompatibility = fun store id ->
   | None -> panic ("Missing incompatibility id " ^ Int.to_string id)
 
 let get_incompatibilities = fun store pkg ->
-  List.sort
-    (List.map (get_incompatibility_ids store pkg) ~fn:(get_incompatibility store))
+  List.sort (List.map (get_incompatibility_ids store pkg) ~fn:(get_incompatibility store))
     ~compare:(fun left right ->
       String.compare (incompatibility_key left) (incompatibility_key right))
 
@@ -259,7 +258,7 @@ let rec conflict_resolution = fun ~stats ~emit root_package root_version state i
               package = pkg;
               previous_level;
               incompatibility = current_incompat
-          });
+            });
           Log.info ("🔙 Backtracking to decision level " ^ Int.to_string previous_level);
           (* Backtrack the solution *)
           let new_solution = Partial_solution.backtrack state.solution previous_level in
@@ -505,7 +504,7 @@ let choose_version = fun stats provider state pkg ranges ->
     ("  💡 Found " ^ (Int.to_string (List.length incompats)) ^ " incompatibilities for " ^ pkg);
   (* Find effective ranges by checking which incompatibilities apply *)
   let effective_ranges = ref ranges in
-  let term_satisfying_ranges = fun term ->
+  let term_satisfying_ranges term =
     if Term.is_positive term then
       Term.ranges term
     else
@@ -560,27 +559,23 @@ let choose_version = fun stats provider state pkg ranges ->
       if !all_other_satisfied then
         (
           Log.info ("    ✨ All other terms satisfied for " ^ pkg ^ "!");
-          let pkg_terms = List.filter terms ~fn:(fun term -> String.equal (Term.package term) pkg) in
+          let pkg_terms =
+            List.filter terms
+              ~fn:(fun term ->
+                String.equal (Term.package term) pkg)
+          in
           match pkg_terms with
-          | [] ->
-              ()
+          | [] -> ()
           | term :: rest ->
               let conflict_ranges =
-                List.fold_left rest
+                List.fold_left
+                  rest
                   ~acc:(term_satisfying_ranges term)
                   ~fn:(fun acc term ->
-                    Ranges.intersection
-                      ~compare_v:version_compare
-                      acc
-                      (term_satisfying_ranges term))
+                    Ranges.intersection ~compare_v:version_compare acc (term_satisfying_ranges term))
               in
-              let allowed_ranges = Ranges.complement
-                ~compare_v:version_compare
-                conflict_ranges in
-              effective_ranges := Ranges.intersection
-                ~compare_v:version_compare
-                !effective_ranges
-                allowed_ranges
+              let allowed_ranges = Ranges.complement ~compare_v:version_compare conflict_ranges in
+              effective_ranges := Ranges.intersection ~compare_v:version_compare !effective_ranges allowed_ranges
         ));
   Log.debug "  Effective ranges computed";
   (* Ask provider for a version in the effective ranges *)
@@ -692,9 +687,7 @@ let solve_with_stats = fun ?trace_ctx ?(options = default_options) provider root
                 if iteration > max_iterations then
                   (
                     Log.error
-                      ("Iteration limit reached after "
-                      ^ Int.to_string max_iterations
-                      ^ " iterations!");
+                      ("Iteration limit reached after " ^ Int.to_string max_iterations ^ " iterations!");
                     finish (Error "Too many iterations - likely infinite loop")
                   )
                 else (
@@ -710,9 +703,8 @@ let solve_with_stats = fun ?trace_ctx ?(options = default_options) provider root
                   | Ok propagated_state -> (
                       (* Pick next highest priority package *)
                       let prioritizer pkg ranges =
-                        let num_incompats =
-                          List.length (get_incompatibility_ids propagated_state.incompatibilities pkg)
-                        in
+                        let num_incompats = List.length
+                          (get_incompatibility_ids propagated_state.incompatibilities pkg) in
                         let matching_versions =
                           match provider_count_versions stats provider pkg ranges with
                           | Ok n -> n
@@ -753,9 +745,13 @@ let solve_with_stats = fun ?trace_ctx ?(options = default_options) provider root
                                 if Ranges.is_empty effective_ranges && not (Ranges.is_empty ranges) then
                                   ranges
                                 else
-                                  effective_ranges in
+                                  effective_ranges
+                              in
                               emit
-                                (Trace.NoVersionAvailable { package = pkg; ranges = unavailable_ranges });
+                                (Trace.NoVersionAvailable {
+                                  package = pkg;
+                                  ranges = unavailable_ranges
+                                });
                               (* No version available, add no_versions incompatibility and continue *)
                               (* This will trigger conflict resolution in the next iteration *)
                               Log.info
@@ -833,13 +829,19 @@ let solve_with_stats = fun ?trace_ctx ?(options = default_options) provider root
                                   | [] -> (
                                       (* PORT OF RUST: Just add decision and incompatibilities *)
                                       Log.info
-                                        ("✅ Adding decision: " ^ pkg ^ "@" ^ (Version.to_string ver));
+                                        ("✅ Adding decision: "
+                                        ^ pkg
+                                        ^ "@"
+                                        ^ (Version.to_string ver));
                                       let new_solution = Partial_solution.add_decision
                                         propagated_state.solution
                                         pkg
                                         ver in
                                       record_decision stats new_solution;
-                                      let new_state = { propagated_state with solution = new_solution } in
+                                      let new_state = {
+                                        propagated_state
+                                        with solution = new_solution
+                                      } in
                                       (* Add dependency incompatibilities and collect affected packages *)
                                       let affected_packages = ref [] in
                                       List.for_each pkg_deps
@@ -865,8 +867,7 @@ let solve_with_stats = fun ?trace_ctx ?(options = default_options) provider root
                                         root_package
                                         root_version
                                         new_state
-                                        affected_packages
-                                      with
+                                        affected_packages with
                                       | Error terminal_incompat ->
                                           Log.error
                                             "Terminal incompatibility after adding \

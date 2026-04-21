@@ -94,7 +94,8 @@ let expect_public_phase_subsequence = fun events ->
     "package_execution_finished";
     "target_build_finished";
     "returning_results";
-  ] in
+  ]
+  in
   let rec loop haystack needle =
     match haystack, needle with
     | _, [] -> Ok ()

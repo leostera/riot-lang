@@ -1,5 +1,4 @@
 open Std
-
 module Duration = Time.Duration
 module SystemTime = Time.SystemTime
 
@@ -71,7 +70,11 @@ let test_add_then_duration_since_recovers_duration = fun _ctx ->
 let test_sub_is_inverse_of_add_for_representable_durations = fun _ctx ->
   let start = SystemTime.from_seconds 10.5 in
   let delta = Duration.from_millis 250 in
-  let shifted = SystemTime.sub start delta |> fun time -> SystemTime.add time delta in
+  let shifted =
+    SystemTime.sub start delta
+    |> fun time ->
+      SystemTime.add time delta
+  in
   if SystemTime.equal shifted start then
     Ok ()
   else
@@ -130,5 +133,4 @@ let tests =
     case "SystemTime.duration_since_epoch is non-negative" test_duration_since_epoch_is_non_negative;
   ]
 
-let () =
-  Runtime.run ~main:(Test.Cli.main ~name:"Time.SystemTime" ~tests) ~args:Env.args ()
+let () = Runtime.run ~main:(Test.Cli.main ~name:"Time.SystemTime" ~tests) ~args:Env.args ()

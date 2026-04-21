@@ -1,5 +1,4 @@
 open Std
-
 module Test = Std.Test
 
 let write_string = fun slice value ->

@@ -29,8 +29,7 @@ let version_compare = fun a b ->
   | Eq -> 0
   | Gt -> 1
 
-let format_ranges = fun ranges ->
-  Ranges.to_string ~to_string_v:version_to_string ranges
+let format_ranges = fun ranges -> Ranges.to_string ~to_string_v:version_to_string ranges
 
 let ensure_trailing_period = fun text ->
   if String.ends_with ~suffix:"." text then
@@ -40,14 +39,12 @@ let ensure_trailing_period = fun text ->
 
 let indent_text = fun spaces text ->
   let prefix = String.make ~len:spaces ~char:' ' in
-  text
-  |> String.split ~by:"\n"
-  |> List.map ~fn:(fun line ->
-    if String.equal line "" then
-      line
-    else
-      prefix ^ line)
-  |> String.concat "\n"
+  text |> String.split ~by:"\n" |> List.map
+    ~fn:(fun line ->
+      if String.equal line "" then
+        line
+      else
+        prefix ^ line) |> String.concat "\n"
 
 let format_term = fun term ->
   let pkg = Term.package term in
@@ -73,18 +70,15 @@ let format_terms = fun terms ->
       String.concat ", " formatted
 
 let format_external_cause = function
-  | Incompatibility.NotRoot (pkg, ver) ->
-      "root package " ^ pkg ^ "@" ^ version_to_string ver ^ " must be selected"
-  | Incompatibility.NoVersions (pkg, ranges) ->
-      "no versions of " ^ pkg ^ " match " ^ format_ranges ranges
-  | Incompatibility.FromDependency (pkg, ver, dep_pkg, dep_ranges) ->
-      pkg
-      ^ "@"
-      ^ version_to_string ver
-      ^ " depends on "
-      ^ dep_pkg
-      ^ " in "
-      ^ format_ranges dep_ranges
+  | Incompatibility.NotRoot (pkg, ver) -> "root package " ^ pkg ^ "@" ^ version_to_string ver ^ " must be selected"
+  | Incompatibility.NoVersions (pkg, ranges) -> "no versions of " ^ pkg ^ " match " ^ format_ranges ranges
+  | Incompatibility.FromDependency (pkg, ver, dep_pkg, dep_ranges) -> pkg
+  ^ "@"
+  ^ version_to_string ver
+  ^ " depends on "
+  ^ dep_pkg
+  ^ " in "
+  ^ format_ranges dep_ranges
   | Incompatibility.Custom (pkg, ranges, msg) ->
       if Ranges.equal ~compare_v:version_compare ranges Ranges.full then
         "package " ^ pkg ^ ": " ^ msg
@@ -93,19 +87,13 @@ let format_external_cause = function
 
 let rec format_derivation_tree = fun tree ->
   match tree with
-  | External (cause, _terms) ->
-      format_external_cause cause
-  | Derived { terms; cause1; cause2; shared_id = _ } ->
+  | External (cause, _terms) -> format_external_cause cause
+  | Derived { terms; cause1; cause2; shared_id=_ } ->
       let c1_str = format_derivation_tree cause1 |> ensure_trailing_period |> indent_text 2 in
       let c2_str = format_derivation_tree cause2 |> ensure_trailing_period |> indent_text 2 in
-      String.concat "\n"
-        [
-          "Because:";
-          c1_str;
-          "And because:";
-          c2_str;
-          "So " ^ format_terms terms ^ ".";
-        ]
+      String.concat
+        "\n"
+        [ "Because:"; c1_str; "And because:"; c2_str; "So " ^ format_terms terms ^ "."; ]
 
 let explain_conflict = fun incompat ->
   let tree = build_derivation_tree incompat in

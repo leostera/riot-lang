@@ -17,7 +17,8 @@ type diff_hunk = {
   context_after: string list;
 }
 
-let emit_snapshot_progress = fun ctx progress -> Test_context.emit_progress ctx progress
+let emit_snapshot_progress = fun ctx progress ->
+  Test_context.emit_progress ctx progress
 
 let append_path_suffix = fun path suffix ->
   Path.to_string path ^ suffix |> Path.from_string |> Result.expect ~msg:"snapshot path should stay valid UTF-8"
@@ -255,7 +256,7 @@ let assert_text_with_format = fun ~ctx ~format ~actual ->
           mode = Test_context.External;
           format;
           approved_path = Some paths.approved;
-          pending_path = Some paths.pending;
+          pending_path = Some paths.pending
         });
       let pending_exists = Fs.exists paths.pending |> Result.unwrap_or ~default:false in
       let approved_exists = Fs.exists paths.approved |> Result.unwrap_or ~default:false in
@@ -266,41 +267,42 @@ let assert_text_with_format = fun ~ctx ~format ~actual ->
             if String.equal expected actual then
               if pending_exists then
                 (
-                  emit_snapshot_progress
-                    ctx
-                    (Test_context.SnapshotAssertionMismatch {
-                      mode = Test_context.External;
-                      format;
-                      approved_path = Some paths.approved;
-                      pending_path = Some paths.pending;
-                      reason = Test_context.Pending_exists;
-                    });
-                Error (pending_exists_message ~approved:paths.approved ~pending:paths.pending)
+                  emit_snapshot_progress ctx
+                    (
+                      Test_context.SnapshotAssertionMismatch {
+                        mode = Test_context.External;
+                        format;
+                        approved_path = Some paths.approved;
+                        pending_path = Some paths.pending;
+                        reason = Test_context.Pending_exists;
+                      }
+                    );
+                  Error (pending_exists_message ~approved:paths.approved ~pending:paths.pending)
                 )
-              else
-                (
-                  emit_snapshot_progress
-                    ctx
-                    (Test_context.SnapshotAssertionMatched {
-                      mode = Test_context.External;
-                      format;
-                      approved_path = Some paths.approved;
-                    });
+              else (
+                emit_snapshot_progress
+                  ctx
+                  (Test_context.SnapshotAssertionMatched {
+                    mode = Test_context.External;
+                    format;
+                    approved_path = Some paths.approved
+                  });
                 Ok ()
-                )
+              )
             else
               match write_pending_snapshot paths.pending actual with
               | Error err -> Error (IO.error_message err)
               | Ok () ->
-                  emit_snapshot_progress
-                    ctx
-                    (Test_context.SnapshotAssertionMismatch {
-                      mode = Test_context.External;
-                      format;
-                      approved_path = Some paths.approved;
-                      pending_path = Some paths.pending;
-                      reason = Test_context.Mismatch;
-                    });
+                  emit_snapshot_progress ctx
+                    (
+                      Test_context.SnapshotAssertionMismatch {
+                        mode = Test_context.External;
+                        format;
+                        approved_path = Some paths.approved;
+                        pending_path = Some paths.pending;
+                        reason = Test_context.Mismatch;
+                      }
+                    );
                   Error (mismatch_message
                     ~kind:"Snapshot mismatch."
                     ~approved:paths.approved
@@ -311,15 +313,16 @@ let assert_text_with_format = fun ~ctx ~format ~actual ->
         match write_pending_snapshot paths.pending actual with
         | Error err -> Error (IO.error_message err)
         | Ok () ->
-            emit_snapshot_progress
-              ctx
-              (Test_context.SnapshotAssertionMismatch {
-                mode = Test_context.External;
-                format;
-                approved_path = Some paths.approved;
-                pending_path = Some paths.pending;
-                reason = Test_context.Missing_approved;
-              });
+            emit_snapshot_progress ctx
+              (
+                Test_context.SnapshotAssertionMismatch {
+                  mode = Test_context.External;
+                  format;
+                  approved_path = Some paths.approved;
+                  pending_path = Some paths.pending;
+                  reason = Test_context.Missing_approved;
+                }
+              );
             Error (String.concat
               "\n"
               [
@@ -330,8 +333,7 @@ let assert_text_with_format = fun ~ctx ~format ~actual ->
                 "Commit approved snapshots and keep `.expected.new` files reviewable until they are promoted or rejected.";
               ])
 
-let assert_text = fun ~ctx ~actual ->
-  assert_text_with_format ~ctx ~format:Test_context.Text ~actual
+let assert_text = fun ~ctx ~actual -> assert_text_with_format ~ctx ~format:Test_context.Text ~actual
 
 let assert_with = fun ~ctx ~render ~actual -> assert_text ~ctx ~actual:(render actual)
 
@@ -346,7 +348,7 @@ let assert_inline_text_with_format = fun ~ctx ~format ~actual ~expected ->
       mode = Test_context.Inline;
       format;
       approved_path = None;
-      pending_path = None;
+      pending_path = None
     });
   if String.equal actual expected then
     (
@@ -355,30 +357,30 @@ let assert_inline_text_with_format = fun ~ctx ~format ~actual ~expected ->
         (Test_context.SnapshotAssertionMatched {
           mode = Test_context.Inline;
           format;
-          approved_path = None;
+          approved_path = None
         });
       Ok ()
     )
-  else
-    (
-      emit_snapshot_progress
-        ctx
-        (Test_context.SnapshotAssertionMismatch {
+  else (
+    emit_snapshot_progress ctx
+      (
+        Test_context.SnapshotAssertionMismatch {
           mode = Test_context.Inline;
           format;
           approved_path = None;
           pending_path = None;
           reason = Test_context.Mismatch;
-        });
-      Error (String.concat
-        "\n"
-        [
-          "Inline snapshot mismatch.";
-          "";
-          "Diff:";
-          format_diff ~expected_label:"expected" ~actual_label:"actual" ~expected ~actual;
-        ])
-    )
+        }
+      );
+    Error (String.concat
+      "\n"
+      [
+        "Inline snapshot mismatch.";
+        "";
+        "Diff:";
+        format_diff ~expected_label:"expected" ~actual_label:"actual" ~expected ~actual;
+      ])
+  )
 
 let assert_inline_text = fun ~ctx ~actual ~expected ->
   assert_inline_text_with_format ~ctx ~format:Test_context.Text ~actual ~expected

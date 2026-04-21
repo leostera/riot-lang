@@ -105,7 +105,7 @@ let spawn_reader = fun ?(line_mode = false) ~parent ~stream file ->
       let result =
         match stream, line_mode with
         | `stdout, true ->
-            let buffer = StringBuilder.create ~size:4096 in
+            let buffer = StringBuilder.create ~size:4_096 in
             let rec loop () =
               match Fs.File.read_line file with
               | Ok line when String.equal line "" ->
@@ -118,8 +118,7 @@ let spawn_reader = fun ?(line_mode = false) ~parent ~stream file ->
                   err
             in
             loop ()
-        | _ ->
-            Fs.File.read_to_end file
+        | _ -> Fs.File.read_to_end file
       in
       let _ = Fs.File.close file in
       send parent (Reader_finished { reader; stream; result });
@@ -134,31 +133,32 @@ let wait_for_reader_output = fun ~on_idle ~idle_interval ~on_stdout_line ~stdout
   let rec loop () =
     if Option.is_some !stdout_result && Option.is_some !stderr_result then
       (Option.unwrap !stdout_result, Option.unwrap !stderr_result)
-    else (
-      try
-        receive
-          ~selector:(
-            function
-            | Reader_stdout_line { reader; line } when Runtime.Pid.equal reader stdout_reader ->
-                Option.for_each on_stdout_line ~fn:(fun on_stdout_line -> on_stdout_line line);
-                `select ()
-            | Reader_finished { reader; stream=`stdout; result } when Runtime.Pid.equal reader stdout_reader ->
-                stdout_result := Some result;
-                `select ()
-            | Reader_finished { reader; stream=`stderr; result } when Runtime.Pid.equal reader stderr_reader ->
-                stderr_result := Some result;
-                `select ()
-            | _ ->
-                `skip
-          )
-          ?timeout:(Option.map on_idle ~fn:(fun _ -> idle_interval))
-          ();
-        loop ()
-      with
-      | Receive_timeout ->
-          Option.for_each on_idle ~fn:(fun on_idle -> on_idle (Time.Instant.elapsed started));
+    else
+      (
+        try
+          receive
+            ~selector:(
+              function
+              | Reader_stdout_line { reader; line } when Runtime.Pid.equal reader stdout_reader ->
+                  Option.for_each on_stdout_line ~fn:(fun on_stdout_line -> on_stdout_line line);
+                  `select ()
+              | Reader_finished { reader; stream=`stdout; result } when Runtime.Pid.equal reader stdout_reader ->
+                  stdout_result := Some result;
+                  `select ()
+              | Reader_finished { reader; stream=`stderr; result } when Runtime.Pid.equal reader stderr_reader ->
+                  stderr_result := Some result;
+                  `select ()
+              | _ ->
+                  `skip
+            )
+            ?timeout:(Option.map on_idle ~fn:(fun _ -> idle_interval))
+            ();
           loop ()
-    )
+        with
+        | Receive_timeout ->
+            Option.for_each on_idle ~fn:(fun on_idle -> on_idle (Time.Instant.elapsed started));
+            loop ()
+      )
   in
   loop ()
 
@@ -249,18 +249,18 @@ let output = fun ?on_stdout_line ?on_idle ?idle_interval t ->
               (* Update state to Running *)
               t.state <- Running { proc; stdout = Some stdout_fd; stderr = Some stderr_fd };
               let parent = self () in
-              let stdout_reader =
-                spawn_reader ~line_mode:(Option.is_some on_stdout_line) ~parent ~stream:`stdout stdout_fd
-              in
+              let stdout_reader = spawn_reader
+                ~line_mode:(Option.is_some on_stdout_line)
+                ~parent
+                ~stream:`stdout
+                stdout_fd in
               let stderr_reader = spawn_reader ~parent ~stream:`stderr stderr_fd in
-              let stdout_result, stderr_result =
-                wait_for_reader_output
-                  ~on_idle
-                  ~idle_interval:(Option.unwrap_or ~default:default_idle_interval idle_interval)
-                  ~on_stdout_line
-                  ~stdout_reader
-                  ~stderr_reader
-              in
+              let stdout_result, stderr_result = wait_for_reader_output
+                ~on_idle
+                ~idle_interval:(Option.unwrap_or ~default:default_idle_interval idle_interval)
+                ~on_stdout_line
+                ~stdout_reader
+                ~stderr_reader in
               match unwrap_reader_result ~stream:"stdout" ~cmd:t.cmd stdout_result, unwrap_reader_result
                 ~stream:"stderr"
                 ~cmd:t.cmd

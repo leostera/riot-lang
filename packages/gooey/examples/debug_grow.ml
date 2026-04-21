@@ -3,8 +3,7 @@ open Gooey
 
 (* Debug program to print layout widths *)
 
-let text_measurer = fun ~constraints text style ->
-  Config.default_text_measurer ~constraints text style
+let text_measurer = fun ~constraints text style -> Config.default_text_measurer ~constraints text style
 
 let () =
   (* Create UI: Three columns (Fixed 20, Grow, Fixed 15) *)

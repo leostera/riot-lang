@@ -1,22 +1,40 @@
 open Std
 
 let test_equal_true_true = fun _ctx ->
-  if Bool.equal true true then Ok () else Error "expected Bool.equal true true"
+  if Bool.equal true true then
+    Ok ()
+  else
+    Error "expected Bool.equal true true"
 
 let test_equal_true_false = fun _ctx ->
-  if not (Bool.equal true false) then Ok () else Error "expected Bool.equal true false to be false"
+  if not (Bool.equal true false) then
+    Ok ()
+  else
+    Error "expected Bool.equal true false to be false"
 
 let test_compare_false_true = fun _ctx ->
-  if Bool.compare false true < 0 then Ok () else Error "expected false < true"
+  if Bool.compare false true < 0 then
+    Ok ()
+  else
+    Error "expected false < true"
 
 let test_compare_true_false = fun _ctx ->
-  if Bool.compare true false > 0 then Ok () else Error "expected true > false"
+  if Bool.compare true false > 0 then
+    Ok ()
+  else
+    Error "expected true > false"
 
 let test_not_true = fun _ctx ->
-  if not (Bool.not true) then Ok () else Error "expected Bool.not true = false"
+  if not (Bool.not true) then
+    Ok ()
+  else
+    Error "expected Bool.not true = false"
 
 let test_to_string_false = fun _ctx ->
-  if String.equal (Bool.to_string false) "false" then Ok () else Error "expected Bool.to_string false = false"
+  if String.equal (Bool.to_string false) "false" then
+    Ok ()
+  else
+    Error "expected Bool.to_string false = false"
 
 let tests =
   Test.[

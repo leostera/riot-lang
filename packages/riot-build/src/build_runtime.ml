@@ -15,8 +15,7 @@ type build_context = {
 }
 
 let telemetry_handler_id = fun context ->
-  "riot-build:"
-  ^ Riot_model.Session_id.to_string context.build.Build_context.session_id
+  "riot-build:" ^ Riot_model.Session_id.to_string context.build.Build_context.session_id
 
 let with_telemetry_bridge = fun context fn ->
   let _ = Std.Telemetry.start () in
@@ -33,7 +32,8 @@ let with_telemetry_bridge = fun context fn ->
       Std.Telemetry.detach handler_id;
       raise exn
 
-let emit_runtime_phase = fun context phase -> Build_context.emit_phase context.build phase
+let emit_runtime_phase = fun context phase ->
+  Build_context.emit_phase context.build phase
 
 let emit_targets_resolved = fun context targets ->
   emit_runtime_phase context (Event.TargetsResolved { target_count = List.length targets })
@@ -68,39 +68,32 @@ let emit_returning_results = fun context ~result_count ~had_partial_failure ->
   emit_runtime_phase context (Event.ReturningResults { result_count; had_partial_failure })
 
 let error_message = function
-  | ToolchainInstallFailed { target; error } -> "Failed to install toolchain for "
-  ^ Riot_model.Target.to_string target
-  ^ ": "
-  ^ error
-  | ToolchainInitializationFailed { target; error } -> "Failed to initialize toolchain for "
-  ^ Riot_model.Target.to_string target
-  ^ ": "
-  ^ error
+  | ToolchainInstallFailed { target; error } ->
+      "Failed to install toolchain for " ^ Riot_model.Target.to_string target ^ ": " ^ error
+  | ToolchainInitializationFailed { target; error } ->
+      "Failed to initialize toolchain for " ^ Riot_model.Target.to_string target ^ ": " ^ error
   | BuildFailed { errors } -> (
       let failures = Build_result.failures_of_build_results errors in
       match failures with
       | [] -> "build failed"
       | [ failure ] -> Build_result.failure_message failure
-      | _ ->
-          "build failed:\n"
-          ^ String.concat "\n" (List.map failures ~fn:Build_result.failure_message)
+      | _ -> "build failed:\n"
+      ^ String.concat "\n" (List.map failures ~fn:Build_result.failure_message)
     )
-  | UnexpectedError { reason } -> reason
+  | UnexpectedError { reason } ->
+      reason
 
 let make_context = fun ~allow_partial_failures ?(record_cache_generation = true) build spec ->
-  Ok {
-    build;
-    resolved = spec;
-    allow_partial_failures;
-    record_cache_generation;
-  }
+  Ok { build; resolved = spec; allow_partial_failures; record_cache_generation }
 
 let ensure_toolchains_for_targets = fun context targets ->
   let targets = Riot_model.Target.Set.to_list targets in
   let missing =
     List.filter targets
       ~fn:(fun target ->
-        match Riot_toolchain.check_toolchain_status ~version:context.build.toolchain_config.version ~target with
+        match Riot_toolchain.check_toolchain_status
+          ~version:context.build.toolchain_config.version
+          ~target with
         | Riot_toolchain.NotInstalled _
         | Riot_toolchain.Incomplete _ -> true
         | Riot_toolchain.Installed _ -> false)
@@ -192,25 +185,14 @@ let new_entries_of_lane_result = fun context (lane_result: Lane_result.t) ->
     (Lane_result.results lane_result)
 
 let record_successful_build_cache_generation = fun context lane_results ->
-  let lanes =
-    List.map
-      lane_results
-      ~fn:(generation_lane_of_result context)
-  in
-  let new_entries = List.map
-    lane_results
-    ~fn:(new_entries_of_lane_result context)
-  |> List.concat in
+  let lanes = List.map lane_results ~fn:(generation_lane_of_result context) in
+  let new_entries = List.map lane_results ~fn:(new_entries_of_lane_result context) |> List.concat in
   match Riot_store.Cache_gc.record_successful_build ~workspace:context.build.workspace ~lanes ~new_entries with
   | Ok _ -> Ok ()
   | Error _ -> Ok ()
 
 let new_entry_count_of_lane_results = fun context lane_results ->
-  List.map
-    lane_results
-    ~fn:(new_entries_of_lane_result context)
-  |> List.concat
-  |> List.length
+  List.map lane_results ~fn:(new_entries_of_lane_result context) |> List.concat |> List.length
 
 let record_cache_generation_if_needed = fun context lane_results had_partial_failure ->
   let new_entry_count = new_entry_count_of_lane_results context lane_results in
@@ -237,44 +219,39 @@ let failed_results = fun results ->
       | Package_builder.Cached _
       | Package_builder.Skipped _ -> false)
 
-let map_lane_error = fun error ->
-  UnexpectedError { reason = error.Build_work.reason }
+let map_lane_error = fun error -> UnexpectedError { reason = error.Build_work.reason }
 
-let map_prepare_error = fun reason ->
-  UnexpectedError { reason }
+let map_prepare_error = fun reason -> UnexpectedError { reason }
 
 let run_lanes = fun context ~toolchain ->
-  let* lanes =
-    Build_work.prepare_lanes context.build context.resolved ~toolchain
-    |> Result.map_err ~fn:map_prepare_error
-  in
+  let* lanes = Build_work.prepare_lanes context.build context.resolved ~toolchain
+  |> Result.map_err ~fn:map_prepare_error in
   List.for_each lanes ~fn:(fun lane -> emit_target_build_started context (Build_lane.target lane));
   let results = Build_work.run context.build lanes in
   let summary = Build_work.summarize results in
   let all_errors = List.map summary.errors ~fn:map_lane_error in
   let lane_results = summary.lane_results in
   let () =
-    List.for_each summary.completions ~fn:(fun (completion: Build_work.completion) ->
-      emit_target_build_finished
-        context
-        ~target:completion.target
-        ~result_count:completion.result_count
-        ~had_partial_failure:completion.had_partial_failure)
+    List.for_each
+      summary.completions
+      ~fn:(fun (completion: Build_work.completion) ->
+        emit_target_build_finished
+          context
+          ~target:completion.target
+          ~result_count:completion.result_count
+          ~had_partial_failure:completion.had_partial_failure)
   in
   if List.length all_errors > 0 then
     match List.head all_errors with
     | Some err -> Error err
     | None -> Ok (lane_results, summary.had_failure)
+  else if summary.had_failure && not context.allow_partial_failures then
+    let failures = lane_results
+    |> List.map ~fn:(fun lane_result -> failed_results (Lane_result.results lane_result))
+    |> List.concat in
+    Error (BuildFailed { errors = failures })
   else
-    if summary.had_failure && not context.allow_partial_failures then
-      let failures =
-        lane_results
-        |> List.map ~fn:(fun lane_result -> failed_results (Lane_result.results lane_result))
-        |> List.concat
-      in
-      Error (BuildFailed { errors = failures })
-    else
-      Ok (lane_results, summary.had_failure)
+    Ok (lane_results, summary.had_failure)
 
 let do_build = fun context ->
   let targets = Riot_model.Target.Set.to_list (Resolved_build.targets context.resolved) in
@@ -283,13 +260,11 @@ let do_build = fun context ->
   let* () = validate_target_toolchains context (Resolved_build.targets context.resolved) in
   emit_runtime_starting context;
   let* toolchain = Riot_toolchain.init ~config:context.build.toolchain_config
-  |> Result.map_err ~fn:(fun error -> ToolchainInitializationFailed { target = context.build.host; error }) in
+  |> Result.map_err
+    ~fn:(fun error -> ToolchainInitializationFailed { target = context.build.host; error }) in
   emit_runtime_started context;
   let* (lane_results, had_partial_failure) = run_lanes context ~toolchain in
-  let all_results =
-    List.map ~fn:Lane_result.results lane_results
-    |> List.concat
-  in
+  let all_results = List.map ~fn:Lane_result.results lane_results |> List.concat in
   let* () = record_cache_generation_if_needed context lane_results had_partial_failure in
   emit_returning_results context ~result_count:(List.length all_results) ~had_partial_failure;
   Ok all_results

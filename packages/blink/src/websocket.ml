@@ -72,8 +72,7 @@ let connect = fun uri ->
           let writer = Net.TcpStream.to_writer stream in
           let handshake_buffer = IO.Buffer.from_string handshake in
           match IO.write_all writer ~from:handshake_buffer with
-          | Error error ->
-              Error (Error.of_io_error error)
+          | Error error -> Error (Error.of_io_error error)
           | Ok () -> (
               let reader = Net.TcpStream.to_reader stream in
               let response_buffer = Buffer.create ~size:1_024 in
@@ -86,10 +85,7 @@ let connect = fun uri ->
                     Error (Error.HandshakeFailed "Connection closed during handshake")
                 | Ok _ -> (
                     let readable = IO.Buffer.readable chunk in
-                    let _ =
-                      Buffer.append_slice response_buffer readable
-                      |> Result.expect ~msg:"failed to append websocket handshake bytes"
-                    in
+                    let _ = Buffer.append_slice response_buffer readable |> Result.expect ~msg:"failed to append websocket handshake bytes" in
                     let response = Buffer.contents response_buffer in
                     match String.index_of response ~char:'\r' with
                     | None -> read_response ()
@@ -221,10 +217,7 @@ let receive = fun conn ->
               Error Error.Eof
           | Ok _ ->
               let readable = IO.Buffer.readable chunk in
-              let _ =
-                Buffer.append_slice conn.buffer readable
-                |> Result.expect ~msg:"failed to append websocket frame bytes"
-              in
+              let _ = Buffer.append_slice conn.buffer readable |> Result.expect ~msg:"failed to append websocket frame bytes" in
               try_parse ()
         )
       | Http.Ws.Parser.Error msg ->

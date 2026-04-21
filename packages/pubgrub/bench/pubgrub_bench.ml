@@ -41,11 +41,10 @@ let build_chain_provider = fun depth ->
 
 let singleton_range = singleton (v 1 0 5)
 
-let holey_range =
-  Ranges.union
-    ~compare_v:version_compare
-    (between (v 1 0 0) (v 1 0 5))
-    (between (v 1 0 10) (v 1 0 15))
+let holey_range = Ranges.union
+  ~compare_v:version_compare
+  (between (v 1 0 0) (v 1 0 5))
+  (between (v 1 0 10) (v 1 0 15))
 
 let bench_ranges_contains_singleton = fun () ->
   let _ = Ranges.contains ~compare_v:version_compare singleton_range (v 1 0 5) in
@@ -57,7 +56,7 @@ let bench_ranges_contains_holey = fun () ->
 
 let provider_100 = build_provider 100
 
-let provider_1000 = build_provider 1000
+let provider_1000 = build_provider 1_000
 
 let bench_provider_choose_version_100 = fun () ->
   let _ = provider_100.choose_version "pkg" full in
@@ -89,10 +88,7 @@ let benchmarks =
     with_config ~config:medium "pubgrub ranges.contains holey" bench_ranges_contains_holey;
     with_config ~config:medium "pubgrub provider.choose_version 100" bench_provider_choose_version_100;
     with_config ~config:heavy "pubgrub provider.choose_version 1000" bench_provider_choose_version_1000;
-    with_config
-      ~config:medium
-      "pubgrub partial_solution.get_constraint 100 derivations"
-      bench_partial_solution_constraint_100;
+    with_config ~config:medium "pubgrub partial_solution.get_constraint 100 derivations" bench_partial_solution_constraint_100;
     with_config ~config:heavy "pubgrub solve deep chain" bench_solve_deep_chain;
   ]
 

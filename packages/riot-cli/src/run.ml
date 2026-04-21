@@ -143,8 +143,7 @@ let json_requested_for_child = fun args ->
     ~fn:(fun arg ->
       String.equal arg "--json")
 
-let write_json_event = fun (json: Data.Json.t) ->
-  println (Data.Json.to_string json)
+let write_json_event = fun (json: Data.Json.t) -> println (Data.Json.to_string json)
 
 let run_error_to_json = fun (err: Run_runtime.run_error) ->
   let details =
@@ -310,11 +309,10 @@ let run_with_workspace_info = fun ~workspace ~workspace_error matches ->
   else
     let on_event (event: Run_runtime.run_event) =
       match event with
-      | Run_runtime.Build build_event ->
-          Build.write_build_event
-            ~mode:output_mode
-            ~seen_registry_updates
-            build_event
+      | Run_runtime.Build build_event -> Build.write_build_event
+        ~mode:output_mode
+        ~seen_registry_updates
+        build_event
       | _ -> write_run_event ~mode:output_mode event
     in
     let resolved_target =

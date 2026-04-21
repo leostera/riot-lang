@@ -118,8 +118,7 @@ let normalize_terms = fun terms ->
           let acc_without_pkg =
             List.filter
               acc
-              ~fn:(fun existing ->
-                not (String.equal (Term.package existing) (Term.package term)))
+              ~fn:(fun existing -> not (String.equal (Term.package existing) (Term.package term)))
           in
           if Term.is_any merged then
             acc_without_pkg
@@ -163,8 +162,12 @@ let prior_cause = fun ?extra_term incompat satisfier_cause package ->
   match incompat with
   | External _
   | Derived _ ->
-      let incompat_term = List.find incompat_terms ~fn:(fun t -> Term.package t = package) in
-      let satisfier_term = List.find satisfier_terms ~fn:(fun t -> Term.package t = package) in
+      let incompat_term =
+        List.find incompat_terms ~fn:(fun t -> Term.package t = package)
+      in
+      let satisfier_term =
+        List.find satisfier_terms ~fn:(fun t -> Term.package t = package)
+      in
       let resolved_package_term =
         match (incompat_term, satisfier_term) with
         | Some left, Some right -> Some (Term.union left right)
@@ -172,14 +175,13 @@ let prior_cause = fun ?extra_term incompat satisfier_cause package ->
         | None, Some right -> Some right
         | None, None -> panic "Package not found in either incompatibility"
       in
-      let add_or_merge_term = fun acc term ->
+      let add_or_merge_term acc term =
         let pkg = Term.package term in
         match List.find acc ~fn:(fun existing -> Term.package existing = pkg) with
         | Some existing ->
             let merged = Term.intersection existing term in
             merged
-            :: List.filter acc ~fn:(fun existing ->
-                 not (String.equal (Term.package existing) pkg))
+            :: List.filter acc ~fn:(fun existing -> not (String.equal (Term.package existing) pkg))
         | None -> term :: acc
       in
       let all_terms =

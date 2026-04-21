@@ -2,7 +2,6 @@ open Std
 open Riot_build
 open Riot_model
 module Test = Std.Test
-
 module Sandbox = Riot_build.Internal.Sandbox
 
 let package_name = fun value ->

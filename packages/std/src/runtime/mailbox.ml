@@ -15,7 +15,7 @@ let create = fun () ->
     producer_lock = Runtime_mutex.create ();
     inbox_rev = [];
     outbox = [];
-    size = Runtime_atomic.make 0;
+    size = Runtime_atomic.make 0
   }
 
 let queue = fun t msg ->

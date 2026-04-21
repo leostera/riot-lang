@@ -248,9 +248,7 @@ let parse_byte = fun p byte ->
       reset p;
       (* Parse OSC commands *)
       if String.starts_with ~prefix:"2;" str && String.length str > 2 then
-        Some
-          (Event.Custom
-             (WindowTitleChange (String.sub str ~offset:2 ~len:(String.length str - 2))))
+        Some (Event.Custom (WindowTitleChange (String.sub str ~offset:2 ~len:(String.length str - 2))))
       else
         None
   | OscString, c ->

@@ -3,8 +3,7 @@ open Gooey
 
 (* Static layout example: Blue box with white text and padding *)
 
-let text_measurer = fun ~constraints text style ->
-  Config.default_text_measurer ~constraints text style
+let text_measurer = fun ~constraints text style -> Config.default_text_measurer ~constraints text style
 
 let () =
   Actors.run

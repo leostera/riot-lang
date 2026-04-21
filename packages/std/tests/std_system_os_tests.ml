@@ -19,9 +19,7 @@ let test_os_predicates_match_current_os = fun _ctx ->
         Error "System cygwin flags should agree with System.OS.current"
 
 let tests =
-  Test.[
-    case "System OS predicates agree with the current OS" test_os_predicates_match_current_os;
-  ]
+  Test.[ case "System OS predicates agree with the current OS" test_os_predicates_match_current_os; ]
 
 let () =
   Runtime.run
