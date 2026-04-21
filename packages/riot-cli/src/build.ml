@@ -444,17 +444,24 @@ let write_cache_gc_event = fun ~mode event ->
   | Json -> write_json_event (Riot_store.Cache_gc.event_to_json event)
   | Human -> (
       match event with
-      | Riot_store.Cache_gc.GcStarted _ -> ()
+      | Riot_store.Cache_gc.GcStarted { trigger=Manual } -> out
+        "    Running tracked cache GC (build root kept; use --force to remove it)"
+      | Riot_store.Cache_gc.GcStarted { trigger=Post_build } -> ()
       | Riot_store.Cache_gc.GcSkipped { trigger=Post_build; _ } -> ()
       | Riot_store.Cache_gc.GcSkipped { summary; _ } -> out
-        ("    Cache is already within policy (" ^ size_to_string summary.size_after_bytes ^ ")")
+        ("    Cache GC skipped: tracked cache is already within policy ("
+        ^ size_to_string summary.size_after_bytes
+        ^ "). Build root kept; use --force to remove it.")
       | Riot_store.Cache_gc.GcCompleted { summary; _ } -> out
-        ("    \027[1;32mCleaning\027[0m " ^ format_cache_gc_cleanup summary)
+        ("    \027[1;32mCleaned\027[0m tracked cache: "
+        ^ format_cache_gc_cleanup summary
+        ^ ". Build root kept.")
       | Riot_store.Cache_gc.GcFailed { error; _ } -> out
         ("\027[1;31mError\027[0m: cache GC failed: " ^ error)
-      | Riot_store.Cache_gc.ForceCleanStarted _ -> ()
+      | Riot_store.Cache_gc.ForceCleanStarted { build_root } -> out
+        ("    Removing build root " ^ Path.to_string build_root)
       | Riot_store.Cache_gc.ForceCleanCompleted { build_root } -> out
-        ("    \027[1;32mCleaning\027[0m removed build root " ^ Path.to_string build_root)
+        ("    \027[1;32mRemoved\027[0m build root " ^ Path.to_string build_root)
       | Riot_store.Cache_gc.ForceCleanFailed { build_root; error } -> out
         ("\027[1;31mError\027[0m: failed to remove build root "
         ^ Path.to_string build_root

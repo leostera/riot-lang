@@ -109,13 +109,15 @@ let size_to_string = fun size_bytes ->
 
 let summary_message = fun summary ->
   if not summary.ran_gc then
-    "cache is already within policy (" ^ size_to_string summary.size_after_bytes ^ ")"
+    "tracked cache is already within policy ("
+    ^ size_to_string summary.size_after_bytes
+    ^ "); build root kept"
   else
     "removed "
     ^ Int.to_string summary.deleted_entries
     ^ " cache entries and "
     ^ Int.to_string summary.deleted_generations
-    ^ " generations ("
+    ^ " generations from tracked cache ("
     ^ size_to_string summary.size_before_bytes
     ^ " -> "
     ^ size_to_string summary.size_after_bytes
@@ -136,7 +138,7 @@ let summary_to_json = fun summary ->
   ]
 
 let event_message = function
-  | GcStarted { trigger } -> "starting cache GC (" ^ trigger_to_string trigger ^ ")"
+  | GcStarted { trigger } -> "starting tracked cache GC (" ^ trigger_to_string trigger ^ ")"
   | GcSkipped { summary; _ } -> summary_message summary
   | GcCompleted { summary; _ } -> summary_message summary
   | GcFailed { error; _ } -> error

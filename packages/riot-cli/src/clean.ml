@@ -4,11 +4,13 @@ open Riot_model
 let command =
   let open ArgParser in
     let open Arg in command "clean"
-    |> about "Run build cache GC or remove the build root"
+    |> about "Run tracked build cache GC, or remove the build root with --force"
     |> args
       [
         flag "json" |> long "json" |> help "Emit machine-readable JSONL events";
-        flag "force" |> long "force" |> help "Remove the entire build root instead of running policy-aware cache GC";
+        flag "force"
+        |> long "force"
+        |> help "Remove the entire build root instead of keeping it and running tracked cache GC";
       ]
 
 let run = fun ~(workspace:Riot_model.Workspace.t) matches ->

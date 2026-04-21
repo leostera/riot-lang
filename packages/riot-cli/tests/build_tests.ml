@@ -35,6 +35,11 @@ let parse_info = fun args ->
   | Ok matches -> Ok matches
   | Error err -> Error (ArgParser.error_message err)
 
+let parse_clean = fun args ->
+  match ArgParser.get_matches Riot_cli.Clean.command args with
+  | Ok matches -> Ok matches
+  | Error err -> Error (ArgParser.error_message err)
+
 let write_workspace_manifest = fun ~root ~members ->
   let members = members
   |> List.map ~fn:(fun member -> "  \"" ^ Path.to_string member ^ "\"")
@@ -337,6 +342,31 @@ let test_info_accepts_json_flag = fun _ctx ->
       else
         Error "expected info --json flag to be parsed"
 
+let test_clean_accepts_json_flag = fun _ctx ->
+  match parse_clean [ "clean"; "--json" ] with
+  | Error err -> Error ("expected clean args to parse with --json: " ^ err)
+  | Ok matches ->
+      if ArgParser.get_flag matches "json" then
+        Ok ()
+      else
+        Error "expected clean --json flag to be parsed"
+
+let test_clean_accepts_force_flag = fun _ctx ->
+  match parse_clean [ "clean"; "--force" ] with
+  | Error err -> Error ("expected clean args to parse with --force: " ^ err)
+  | Ok matches ->
+      if ArgParser.get_flag matches "force" then
+        Ok ()
+      else
+        Error "expected clean --force flag to be parsed"
+
+let test_clean_usage_explains_cache_gc_and_force = fun _ctx ->
+  let usage = ArgParser.usage_string Riot_cli.Clean.command in
+  if String.contains usage "tracked build cache GC" && String.contains usage "--force" then
+    Ok ()
+  else
+    Error ("expected clean usage to explain cache GC and --force, got: " ^ usage)
+
 let test_run_defaults_remote_binary_to_repo_name = fun _ctx ->
   Test.assert_equal
     ~expected:"hello-world"
@@ -582,6 +612,9 @@ let tests =
     case "install: parse --update flag" test_install_accepts_update_flag;
     case "install: parse --package flag" test_install_accepts_package_flag;
     case "info: parse --json flag" test_info_accepts_json_flag;
+    case "clean: parse --json flag" test_clean_accepts_json_flag;
+    case "clean: parse --force flag" test_clean_accepts_force_flag;
+    case "clean: usage explains cache gc and --force" test_clean_usage_explains_cache_gc_and_force;
     case "run: remote source defaults binary to repo name" test_run_defaults_remote_binary_to_repo_name;
     case "run: trailing @ in remote target is rejected" test_run_rejects_trailing_remote_binary_separator;
     case "run: runtime binaries use runtime scope" test_run_build_scope_uses_runtime_for_runtime_binaries;
