@@ -960,7 +960,10 @@ let tests =
       case "build core: output preserves artifacts and exports" test_output_exposes_artifacts_and_exports;
       case "build core: output prefers dev scope and merges exports" test_output_prefers_dev_scope_and_merges_exports;
       case "build core: build returns successful output" test_build_returns_successful_output;
-      case "build core: build uses all packages when none are requested" test_build_uses_all_packages_when_none_are_requested;
+      case
+        ~size:Large
+        "build core: build uses all packages when none are requested"
+        test_build_uses_all_packages_when_none_are_requested;
       case "build core: build returns outputs for requested packages" test_build_returns_outputs_for_requested_packages;
       case "build core: build reports missing single package" test_build_reports_missing_single_package;
       case "build core: build reports missing multiple packages" test_build_reports_missing_multiple_packages;

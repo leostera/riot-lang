@@ -217,4 +217,7 @@ let tests =
   ]
 
 let () =
-  Actors.run ~main:(fun ~args -> Test.Cli.main ~name:"riot_init_tests" ~tests ~args ()) ~args:Env.args ()
+  Actors.run
+    ~main:(fun ~args ->
+      Test.Cli.main ~execution_mode:Test.Cli.Linear ~name:"riot_init_tests" ~tests ~args ())
+    ~args:Env.args ()

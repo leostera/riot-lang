@@ -2925,7 +2925,10 @@ let tests =
     case "git dependency: github source spec normalizes into locator and ref" test_git_dependency_parse_spec_normalizes_github_source;
     case "git dependency: github shorthand locator parses for remote commands" test_git_dependency_parse_source_locator_accepts_github_shorthand;
     case "git dependency: sync checkout clones a local repository" test_git_dependency_sync_checkout_clones_local_repo;
-    case "git dependency: sync checkout skips fetch without update" test_git_dependency_sync_checkout_skips_fetch_without_update;
+    case
+      ~size:Large
+      "git dependency: sync checkout skips fetch without update"
+      test_git_dependency_sync_checkout_skips_fetch_without_update;
     case "package management: add rejects unsupported source dependency specs" test_add_rejects_unsupported_source_dependency_specs;
     case "package management: add not-found message lists search suggestions" test_package_error_message_lists_search_suggestions;
     case "package management: search returns registry results" test_search_returns_registry_results;
