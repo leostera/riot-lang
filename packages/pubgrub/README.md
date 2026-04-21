@@ -59,7 +59,7 @@ src/
 ├── provider.ml/.mli         # Dependency provider interface
 ├── incompatibility.ml/.mli  # Conflict tracking
 ├── partial_solution.ml/.mli # Solution state and satisfier search
-├── new_solver.ml/.mli       # Core solver loop
+├── solver.ml/.mli           # Core solver loop
 ├── trace.ml/.mli            # Structured debugging surface
 └── report.ml/.mli           # Conflict explanation
 ```

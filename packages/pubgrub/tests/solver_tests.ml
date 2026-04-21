@@ -277,6 +277,362 @@ let assert_int_equal = fun ~expected ~actual ~message ->
       ^ ", expected "
       ^ Int.to_string expected)
 
+let rec equal_solution_entries = fun expected actual ->
+  match (expected, actual) with
+  | [], [] -> true
+  | (expected_pkg, expected_ver) :: expected_rest, (actual_pkg, actual_ver) :: actual_rest ->
+      String.equal expected_pkg actual_pkg
+      && Int.equal (Pubgrub.version_compare expected_ver actual_ver) 0
+      && equal_solution_entries expected_rest actual_rest
+  | _ -> false
+
+let assert_solution_exact = fun expected result ->
+  match result with
+  | Ok (Pubgrub.Solver.Success solution) when equal_solution_entries expected solution -> Ok ()
+  | Ok (Pubgrub.Solver.Success solution) ->
+      let expected_entries = List.map expected ~fn:(fun (pkg, ver) -> pkg ^ "@" ^ Pubgrub.version_to_string ver) in
+      let actual_entries = List.map solution ~fn:(fun (pkg, ver) -> pkg ^ "@" ^ Pubgrub.version_to_string ver) in
+      Error
+        (
+          "Wrong exact solution: got ["
+          ^ String.concat ", " actual_entries
+          ^ "], expected ["
+          ^ String.concat ", " expected_entries
+          ^ "]"
+        )
+  | Ok (Pubgrub.Solver.Failure incompat) ->
+      Error ("Unexpected conflict: " ^ Pubgrub.explain_conflict incompat)
+  | Error err -> Error ("Error: " ^ err)
+
+type fuzz_dep = {
+  package: string;
+  allowed_versions: int list;
+}
+
+type fuzz_version_spec = {
+  version: int;
+  deps: fuzz_dep list;
+}
+
+type fuzz_package_spec = {
+  name: string;
+  versions: fuzz_version_spec list;
+}
+
+type fuzz_graph = {
+  root_deps: fuzz_dep list;
+  packages: fuzz_package_spec list;
+}
+
+type fuzz_version_slot = {
+  present: bool;
+  deps: int list option list;
+}
+
+type fuzz_graph_slot = {
+  root_deps: int list option list;
+  packages: fuzz_version_slot list list;
+}
+
+let fuzz_package_names = [ "alpha"; "beta"; "gamma" ]
+
+let fuzz_version_indices = [ 0; 1; 2 ]
+
+let rec int_list_to_string = function
+  | [] -> ""
+  | [ value ] -> Int.to_string value
+  | value :: rest -> Int.to_string value ^ "," ^ int_list_to_string rest
+
+let rec string_member = fun target -> function
+  | [] -> false
+  | head :: rest -> String.equal target head || string_member target rest
+
+let rec int_member = fun target -> function
+  | [] -> false
+  | head :: rest -> Int.equal target head || int_member target rest
+
+let rec lookup_fuzz_package = fun packages pkg ->
+  match packages with
+  | [] -> None
+  | package :: rest when String.equal package.name pkg -> Some package
+  | _ :: rest -> lookup_fuzz_package rest pkg
+
+let rec lookup_fuzz_version_spec = fun versions version ->
+  match versions with
+  | [] -> None
+  | candidate :: rest when Int.equal candidate.version version -> Some candidate
+  | _ :: rest -> lookup_fuzz_version_spec rest version
+
+let rec lookup_assigned_version = fun assignment pkg ->
+  match assignment with
+  | [] -> None
+  | (assigned_pkg, version) :: rest when String.equal assigned_pkg pkg -> Some version
+  | _ :: rest -> lookup_assigned_version rest pkg
+
+let fuzz_pub_version = fun version -> v version 0 0
+
+let fuzz_ranges_of_versions = fun versions ->
+  let rec build = function
+    | [] -> Pubgrub.empty
+    | index :: rest ->
+        Pubgrub.Ranges.union
+          ~compare_v:Pubgrub.version_compare
+          (Pubgrub.singleton (fuzz_pub_version index))
+          (build rest)
+  in
+  build versions
+
+let rec zip_fuzz_deps = fun package_names deps ->
+  match (package_names, deps) with
+  | [], [] -> []
+  | pkg :: pkg_rest, Some allowed_versions :: dep_rest ->
+      { package = pkg; allowed_versions } :: zip_fuzz_deps pkg_rest dep_rest
+  | _ :: pkg_rest, None :: dep_rest -> zip_fuzz_deps pkg_rest dep_rest
+  | _ -> []
+
+let rec zip_fuzz_versions = fun version_indices slots ->
+  match (version_indices, slots) with
+  | [], [] -> []
+  | version :: version_rest, slot :: slot_rest when slot.present ->
+      {
+        version;
+        deps = zip_fuzz_deps fuzz_package_names slot.deps;
+      }
+      :: zip_fuzz_versions version_rest slot_rest
+  | _ :: version_rest, _ :: slot_rest -> zip_fuzz_versions version_rest slot_rest
+  | _ -> []
+
+let rec zip_fuzz_packages = fun package_names slots ->
+  match (package_names, slots) with
+  | [], [] -> []
+  | name :: name_rest, version_slots :: slot_rest ->
+      {
+        name;
+        versions = zip_fuzz_versions fuzz_version_indices version_slots;
+      }
+      :: zip_fuzz_packages name_rest slot_rest
+  | _ -> []
+
+let fuzz_graph_of_slot = fun (slot : fuzz_graph_slot) : fuzz_graph ->
+  {
+    root_deps = zip_fuzz_deps fuzz_package_names slot.root_deps;
+    packages = zip_fuzz_packages fuzz_package_names slot.packages;
+  }
+
+let print_fuzz_dep = fun (dep : fuzz_dep) ->
+  dep.package ^ "={" ^ int_list_to_string dep.allowed_versions ^ "}"
+
+let print_fuzz_version_spec = fun (version : fuzz_version_spec) ->
+  let deps =
+    match version.deps with
+    | [] -> ""
+    | deps -> ":" ^ String.concat ";" (List.map deps ~fn:print_fuzz_dep)
+  in
+  Int.to_string version.version ^ deps
+
+let print_fuzz_package_spec = fun (package : fuzz_package_spec) ->
+  package.name ^ "[" ^ String.concat "|" (List.map package.versions ~fn:print_fuzz_version_spec) ^ "]"
+
+let print_fuzz_graph = fun (graph : fuzz_graph) ->
+  let root =
+    match graph.root_deps with
+    | [] -> ""
+    | deps -> String.concat ";" (List.map deps ~fn:print_fuzz_dep)
+  in
+  "{root=[" ^ root ^ "];packages=[" ^ String.concat ";" (List.map graph.packages ~fn:print_fuzz_package_spec) ^ "]}"
+
+let maybe_allowed_versions_gen =
+  Generator.frequency
+    [
+      (4, Generator.return None);
+      (6, Generator.map (fun allowed_versions -> Some allowed_versions) (Generator.map3
+        (fun zero one two ->
+          let allowed = ref [] in
+          if zero then allowed := 0 :: !allowed;
+          if one then allowed := 1 :: !allowed;
+          if two then allowed := 2 :: !allowed;
+          List.reverse !allowed)
+        Generator.bool
+        Generator.bool
+        Generator.bool));
+    ]
+
+let fuzz_graph_arb =
+  let version_slot_gen = Generator.map2
+    (fun present deps -> { present; deps })
+    (Generator.weighted_bool 3 2)
+    (Generator.list_repeat 3 maybe_allowed_versions_gen) in
+  let graph_gen = Generator.map2
+    (fun root_deps packages -> fuzz_graph_of_slot { root_deps; packages })
+    (Generator.list_repeat 3 maybe_allowed_versions_gen)
+    (Generator.list_repeat 3 (Generator.list_repeat 3 version_slot_gen)) in
+  Arbitrary.make ~print:print_fuzz_graph graph_gen
+
+let rec fuzz_oracle_search = fun (graph : fuzz_graph) assignment pending ->
+  match pending with
+  | [] -> Some assignment
+  | dep :: rest -> (
+      match lookup_assigned_version assignment dep.package with
+      | Some version ->
+          if int_member version dep.allowed_versions then
+            fuzz_oracle_search graph assignment rest
+          else
+            None
+      | None -> (
+          match lookup_fuzz_package graph.packages dep.package with
+          | None -> None
+          | Some package ->
+              let rec try_versions = function
+                | [] -> None
+                | version_spec :: version_rest ->
+                    if int_member version_spec.version dep.allowed_versions then
+                      match fuzz_oracle_search
+                        graph
+                        ((dep.package, version_spec.version) :: assignment)
+                        (version_spec.deps @ rest)
+                      with
+                      | Some _ as solution -> solution
+                      | None -> try_versions version_rest
+                    else
+                      try_versions version_rest
+              in
+              try_versions package.versions
+        )
+    )
+
+let fuzz_find_solution = fun (graph : fuzz_graph) ->
+  fuzz_oracle_search graph [ ("root", 1) ] graph.root_deps
+
+let fuzz_solution_entries = fun assignment ->
+  let versions = List.map assignment ~fn:(fun (pkg, version) -> (pkg, fuzz_pub_version version)) in
+  List.sort versions ~compare:(fun (left, _) (right, _) -> String.compare left right)
+
+let fuzz_version_index_of_pubgrub = fun version ->
+  if Int.equal (Pubgrub.version_compare version (fuzz_pub_version 0)) 0 then
+    Some 0
+  else if Int.equal (Pubgrub.version_compare version (fuzz_pub_version 1)) 0 then
+    Some 1
+  else if Int.equal (Pubgrub.version_compare version (fuzz_pub_version 2)) 0 then
+    Some 2
+  else
+    None
+
+let rec lookup_solution_version = fun solution pkg ->
+  match solution with
+  | [] -> None
+  | (candidate_pkg, version) :: rest when String.equal candidate_pkg pkg -> Some version
+  | _ :: rest -> lookup_solution_version rest pkg
+
+let canonical_result_string = fun result ->
+  match result with
+  | Ok (Pubgrub.Solver.Success solution) ->
+      "success:"
+      ^ String.concat
+        ","
+        (List.map solution ~fn:(fun (pkg, version) -> pkg ^ "@" ^ Pubgrub.version_to_string version))
+  | Ok (Pubgrub.Solver.Failure incompat) ->
+      "failure:" ^ Pubgrub.explain_conflict incompat
+  | Error err -> "error:" ^ err
+
+let validate_fuzz_solution = fun (graph : fuzz_graph) solution ->
+  let rec ensure_known_versions = function
+    | [] -> Ok ()
+    | (pkg, version) :: rest when String.equal pkg "root" ->
+        if Int.equal (Pubgrub.version_compare version (v 1 0 0)) 0 then
+          ensure_known_versions rest
+        else
+          Error "Root version changed in solver solution"
+    | (pkg, version) :: rest -> (
+        match (lookup_fuzz_package graph.packages pkg, fuzz_version_index_of_pubgrub version) with
+        | Some package, Some index -> (
+            match lookup_fuzz_version_spec package.versions index with
+            | Some _ -> ensure_known_versions rest
+            | None -> Error ("Solver chose unavailable version for " ^ pkg)
+          )
+        | Some _, None -> Error ("Solver chose unexpected version outside fuzz domain for " ^ pkg)
+        | None, _ -> Error ("Solver returned unreachable unknown package " ^ pkg)
+      )
+  in
+  let rec walk reachable pending =
+    match pending with
+    | [] -> Ok reachable
+    | dep :: rest -> (
+        match lookup_solution_version solution dep.package with
+        | None -> Error ("Missing chosen dependency " ^ dep.package)
+        | Some version -> (
+            match fuzz_version_index_of_pubgrub version with
+            | None ->
+                Error ("Solver chose unexpected version outside fuzz domain for " ^ dep.package)
+            | Some index ->
+                if not (int_member index dep.allowed_versions) then
+                  Error ("Dependency constraint violated for " ^ dep.package)
+                else if string_member dep.package reachable then
+                  walk reachable rest
+                else
+                  match lookup_fuzz_package graph.packages dep.package with
+                  | None -> Error ("Dependency package missing from graph: " ^ dep.package)
+                  | Some package -> (
+                      match lookup_fuzz_version_spec package.versions index with
+                      | None -> Error ("Chosen version missing from graph for " ^ dep.package)
+                      | Some version_spec ->
+                          walk (dep.package :: reachable) (version_spec.deps @ rest)
+                    )
+          )
+      )
+  in
+  match ensure_known_versions solution with
+  | Error _ as err -> err
+  | Ok () -> (
+      match lookup_solution_version solution "root" with
+      | Some version when Int.equal (Pubgrub.version_compare version (v 1 0 0)) 0 -> (
+          match walk [ "root" ] graph.root_deps with
+          | Error _ as err -> err
+          | Ok reachable ->
+              let expected_packages = List.sort reachable ~compare:String.compare in
+              let actual_packages =
+                List.sort (List.map solution ~fn:(fun (pkg, _) -> pkg)) ~compare:String.compare
+              in
+              if equal_string_lists expected_packages actual_packages then
+                Ok ()
+              else
+                Error
+                  (
+                    "Solver returned unexpected reachable set: got ["
+                    ^ String.concat ", " actual_packages
+                    ^ "], expected ["
+                    ^ String.concat ", " expected_packages
+                    ^ "]"
+                  )
+        )
+      | _ -> Error "Solver solution is missing the root package"
+    )
+
+let check_property = fun ~ctx ~name ~config property ->
+  match Property.check ~config ~on_progress:(Test.Context.emit_progress ctx) property with
+  | Property.Success -> Ok ()
+  | Property.Assumption_violated ->
+      Error ("Property assumptions rejected every generated case for " ^ name)
+  | Property.Failure { counter_example; shrink_steps } ->
+      Error
+        (
+          "Property failed for "
+          ^ name
+          ^ " after "
+          ^ Int.to_string shrink_steps
+          ^ " shrink steps: "
+          ^ counter_example
+        )
+  | Property.Error { exception_; backtrace } ->
+      Error
+        (
+          "Property errored for "
+          ^ name
+          ^ ": "
+          ^ Exception.to_string exception_
+          ^ "\n"
+          ^ backtrace
+        )
+
 let prop_ranges_complement_matches_membership =
   Propane.property
     "Property: range complement matches membership negation"
@@ -337,6 +693,332 @@ let prop_term_negation_is_involutive =
       String.equal (Pubgrub.Term.package term) (Pubgrub.Term.package twice)
       && Bool.equal (Pubgrub.Term.is_positive term) (Pubgrub.Term.is_positive twice)
       && ranges_equal (Pubgrub.Term.ranges term) (Pubgrub.Term.ranges twice))
+
+let test_solver_randomized_small_graphs_match_bruteforce =
+  Test.property
+    "Solver: randomized small graphs match brute-force satisfiability"
+    ~examples:120
+    (fun ctx ->
+      let config =
+        {
+          Property.default_config with
+          test_count = 120;
+          max_size = 20;
+          seed = Some 20260418;
+        }
+      in
+      check_property
+        ~ctx
+        ~name:"small graph oracle"
+        ~config
+        (Property.for_all fuzz_graph_arb
+          (fun (graph : fuzz_graph) ->
+            let result = Pubgrub.solve (Pubgrub.to_provider (
+              let provider = Pubgrub.create_offline () in
+              Pubgrub.add_package provider "root" (v 1 0 0)
+                (List.map graph.root_deps ~fn:(fun dep -> (dep.package, fuzz_ranges_of_versions dep.allowed_versions)));
+              List.iter
+                (fun (package : fuzz_package_spec) ->
+                  List.iter
+                    (fun (version_spec : fuzz_version_spec) ->
+                  Pubgrub.add_package
+                    provider
+                    package.name
+                    (fuzz_pub_version version_spec.version)
+                    (List.map version_spec.deps
+                      ~fn:(fun dep -> (dep.package, fuzz_ranges_of_versions dep.allowed_versions))))
+                    package.versions)
+                graph.packages;
+              provider
+            )) "root" (v 1 0 0) in
+            match (fuzz_find_solution graph, result) with
+            | Some _, Ok (Pubgrub.Solver.Success solution) -> (
+                match validate_fuzz_solution graph solution with
+                | Ok () -> true
+                | Error msg -> Property.fail msg
+              )
+            | None, Ok (Pubgrub.Solver.Failure _) -> true
+            | Some witness, Ok (Pubgrub.Solver.Failure incompat) ->
+                Property.fail
+                  (
+                    "Solver reported failure for satisfiable graph. Witness: "
+                    ^ String.concat
+                      ", "
+                      (List.map (fuzz_solution_entries witness)
+                        ~fn:(fun (pkg, version) -> pkg ^ "@" ^ Pubgrub.version_to_string version))
+                    ^ ". Conflict: "
+                    ^ Pubgrub.explain_conflict incompat
+                  )
+            | None, Ok (Pubgrub.Solver.Success solution) ->
+                Property.fail
+                  (
+                    "Solver reported success for unsatisfiable graph: "
+                    ^ String.concat
+                      ", "
+                      (List.map solution ~fn:(fun (pkg, version) -> pkg ^ "@" ^ Pubgrub.version_to_string version))
+                  )
+            | _, Error err -> Property.fail ("Solver returned internal error: " ^ err))))
+
+let test_solver_randomized_insertion_order_is_deterministic =
+  Test.property
+    "Solver: randomized insertion order stays deterministic"
+    ~examples:120
+    (fun ctx ->
+      let config =
+        {
+          Property.default_config with
+          test_count = 120;
+          max_size = 20;
+          seed = Some 20260419;
+        }
+      in
+      let build_provider = fun ~reverse (graph : fuzz_graph) ->
+        let provider = Pubgrub.create_offline () in
+        let maybe_reverse_list = fun values ->
+          if reverse then
+            List.reverse values
+          else
+            values in
+        let root_deps = maybe_reverse_list graph.root_deps in
+        Pubgrub.add_package provider "root" (v 1 0 0)
+          (List.map root_deps ~fn:(fun dep -> (dep.package, fuzz_ranges_of_versions dep.allowed_versions)));
+        List.iter
+          (fun (package : fuzz_package_spec) ->
+            List.iter
+              (fun (version_spec : fuzz_version_spec) ->
+                let deps = maybe_reverse_list version_spec.deps in
+                Pubgrub.add_package
+                  provider
+                  package.name
+                  (fuzz_pub_version version_spec.version)
+                  (List.map deps
+                    ~fn:(fun dep -> (dep.package, fuzz_ranges_of_versions dep.allowed_versions))))
+              (maybe_reverse_list package.versions))
+          (maybe_reverse_list graph.packages);
+        provider
+      in
+      check_property
+        ~ctx
+        ~name:"small graph determinism"
+        ~config
+        (Property.for_all fuzz_graph_arb
+          (fun (graph : fuzz_graph) ->
+            let forward =
+              Pubgrub.solve (Pubgrub.to_provider (build_provider ~reverse:false graph)) "root" (v 1 0 0)
+            in
+            let reverse =
+              Pubgrub.solve (Pubgrub.to_provider (build_provider ~reverse:true graph)) "root" (v 1 0 0)
+            in
+            if String.equal (canonical_result_string forward) (canonical_result_string reverse) then
+              true
+            else
+              Property.fail
+                (
+                  "Insertion order changed result. Forward="
+                  ^ canonical_result_string forward
+                  ^ " Reverse="
+                  ^ canonical_result_string reverse
+                ))))
+
+let test_corpus_frontend_stack_backtracks_to_shared_runtime =
+  Test.case "Corpus: frontend stack backtracks to a shared runtime"
+    (fun _ctx ->
+      let provider = Pubgrub.create_offline () in
+      Pubgrub.add_package
+        provider
+        "root"
+        (v 1 0 0)
+        [ ("auth", Pubgrub.full); ("bundler", Pubgrub.full); ("framework", Pubgrub.full) ];
+      Pubgrub.add_package
+        provider
+        "framework"
+        (v 2 0 0)
+        [ ("router", Pubgrub.singleton (v 5 0 0)); ("runtime", Pubgrub.singleton (v 2 0 0)) ];
+      Pubgrub.add_package
+        provider
+        "framework"
+        (v 1 0 0)
+        [ ("router", Pubgrub.singleton (v 4 0 0)); ("runtime", Pubgrub.singleton (v 1 0 0)) ];
+      Pubgrub.add_package
+        provider
+        "bundler"
+        (v 3 0 0)
+        [ ("runtime", Pubgrub.singleton (v 2 0 0)) ];
+      Pubgrub.add_package
+        provider
+        "bundler"
+        (v 2 0 0)
+        [ ("runtime", Pubgrub.singleton (v 1 0 0)) ];
+      Pubgrub.add_package
+        provider
+        "auth"
+        (v 1 0 0)
+        [ ("router", Pubgrub.singleton (v 4 0 0)) ];
+      Pubgrub.add_package provider "router" (v 4 0 0) [];
+      Pubgrub.add_package provider "router" (v 5 0 0) [];
+      Pubgrub.add_package provider "runtime" (v 1 0 0) [];
+      Pubgrub.add_package provider "runtime" (v 2 0 0) [];
+      assert_solution_exact
+        [
+          ("auth", v 1 0 0);
+          ("bundler", v 2 0 0);
+          ("framework", v 1 0 0);
+          ("root", v 1 0 0);
+          ("router", v 4 0 0);
+          ("runtime", v 1 0 0);
+        ]
+        (Pubgrub.solve (Pubgrub.to_provider provider) "root" (v 1 0 0)))
+
+let test_corpus_sdk_plugins_backtrack_to_common_core =
+  Test.case "Corpus: SDK plugins backtrack to a common core API"
+    (fun _ctx ->
+      let provider = Pubgrub.create_offline () in
+      Pubgrub.add_package
+        provider
+        "root"
+        (v 1 0 0)
+        [ ("formatter", Pubgrub.full); ("lsp", Pubgrub.full); ("sdk", Pubgrub.full) ];
+      Pubgrub.add_package provider "sdk" (v 3 0 0) [ ("core", Pubgrub.singleton (v 3 0 0)) ];
+      Pubgrub.add_package provider "sdk" (v 2 0 0) [ ("core", Pubgrub.singleton (v 2 0 0)) ];
+      Pubgrub.add_package
+        provider
+        "formatter"
+        (v 2 0 0)
+        [ ("core", Pubgrub.singleton (v 3 0 0)) ];
+      Pubgrub.add_package
+        provider
+        "formatter"
+        (v 1 0 0)
+        [ ("core", Pubgrub.singleton (v 2 0 0)) ];
+      Pubgrub.add_package provider "lsp" (v 1 0 0) [ ("core", Pubgrub.singleton (v 2 0 0)) ];
+      Pubgrub.add_package provider "core" (v 2 0 0) [];
+      Pubgrub.add_package provider "core" (v 3 0 0) [];
+      assert_solution_exact
+        [
+          ("core", v 2 0 0);
+          ("formatter", v 1 0 0);
+          ("lsp", v 1 0 0);
+          ("root", v 1 0 0);
+          ("sdk", v 2 0 0);
+        ]
+        (Pubgrub.solve (Pubgrub.to_provider provider) "root" (v 1 0 0)))
+
+let test_corpus_version_holes_pick_satisfiable_island =
+  Test.case "Corpus: version holes pick the highest satisfiable island"
+    (fun _ctx ->
+      let provider = Pubgrub.create_offline () in
+      Pubgrub.add_package
+        provider
+        "root"
+        (v 1 0 0)
+        [ ("analyzer", Pubgrub.full); ("compiler", Pubgrub.full) ];
+      Pubgrub.add_package
+        provider
+        "compiler"
+        (v 5 0 0)
+        [ ("stdlib", Pubgrub.singleton (v 5 0 0)) ];
+      Pubgrub.add_package
+        provider
+        "compiler"
+        (v 4 0 0)
+        [ ("stdlib", Pubgrub.singleton (v 4 0 0)) ];
+      Pubgrub.add_package
+        provider
+        "compiler"
+        (v 3 0 0)
+        [ ("stdlib", Pubgrub.singleton (v 3 0 0)) ];
+      Pubgrub.add_package
+        provider
+        "analyzer"
+        (v 1 0 0)
+        [ ("stdlib", Pubgrub.singleton (v 4 0 0)) ];
+      Pubgrub.add_package provider "stdlib" (v 3 0 0) [];
+      Pubgrub.add_package provider "stdlib" (v 4 0 0) [];
+      Pubgrub.add_package provider "stdlib" (v 5 0 0) [];
+      assert_solution_exact
+        [
+          ("analyzer", v 1 0 0);
+          ("compiler", v 4 0 0);
+          ("root", v 1 0 0);
+          ("stdlib", v 4 0 0);
+        ]
+        (Pubgrub.solve (Pubgrub.to_provider provider) "root" (v 1 0 0)))
+
+let test_solver_backtracks_from_impossible_self_dependency =
+  Test.case "Solver: backtracks from an impossible self-dependency version"
+    (fun _ctx ->
+      let provider = Pubgrub.create_offline () in
+      Pubgrub.add_package provider "root" (v 1 0 0) [ ("gamma", Pubgrub.full) ];
+      Pubgrub.add_package provider "gamma" (v 2 0 0) [ ("gamma", Pubgrub.singleton (v 1 0 0)) ];
+      Pubgrub.add_package provider "gamma" (v 0 0 0) [];
+      assert_solution_exact
+        [
+          ("gamma", v 0 0 0);
+          ("root", v 1 0 0);
+        ]
+        (Pubgrub.solve (Pubgrub.to_provider provider) "root" (v 1 0 0)))
+
+let test_corpus_unsat_plugin_conflict_is_deterministic =
+  Test.case "Corpus: unsatisfiable plugin conflict stays deterministic"
+    (fun _ctx ->
+      let build_provider = fun ~reverse ->
+        let provider = Pubgrub.create_offline () in
+        let root_deps =
+          if reverse then
+            [ ("plugin", Pubgrub.full); ("cli", Pubgrub.full); ("api", Pubgrub.full) ]
+          else
+            [ ("api", Pubgrub.full); ("cli", Pubgrub.full); ("plugin", Pubgrub.full) ]
+        in
+        Pubgrub.add_package provider "root" (v 1 0 0) root_deps;
+        let add_api_versions = fun () ->
+          Pubgrub.add_package provider "api" (v 2 0 0) [ ("core", Pubgrub.singleton (v 2 0 0)) ];
+          Pubgrub.add_package provider "api" (v 1 0 0) [ ("core", Pubgrub.singleton (v 1 0 0)) ]
+        in
+        let add_cli_versions = fun () ->
+          Pubgrub.add_package provider "cli" (v 2 0 0) [ ("core", Pubgrub.singleton (v 2 0 0)) ];
+          Pubgrub.add_package provider "cli" (v 1 0 0) [ ("core", Pubgrub.singleton (v 1 0 0)) ]
+        in
+        let add_plugin_versions = fun () ->
+          Pubgrub.add_package provider "plugin" (v 1 0 0) [ ("core", Pubgrub.singleton (v 3 0 0)) ]
+        in
+        let add_core_versions = fun () ->
+          Pubgrub.add_package provider "core" (v 1 0 0) [];
+          Pubgrub.add_package provider "core" (v 2 0 0) [];
+          Pubgrub.add_package provider "core" (v 3 0 0) []
+        in
+        if reverse then (
+          add_core_versions ();
+          add_plugin_versions ();
+          add_cli_versions ();
+          add_api_versions ()
+        ) else (
+          add_api_versions ();
+          add_cli_versions ();
+          add_plugin_versions ();
+          add_core_versions ()
+        );
+        provider
+      in
+      let forward = Pubgrub.solve (Pubgrub.to_provider (build_provider ~reverse:false)) "root" (v 1 0 0) in
+      let reverse = Pubgrub.solve (Pubgrub.to_provider (build_provider ~reverse:true)) "root" (v 1 0 0) in
+      match (forward, reverse) with
+      | Ok (Pubgrub.Solver.Failure _), Ok (Pubgrub.Solver.Failure _) ->
+          if String.equal (canonical_result_string forward) (canonical_result_string reverse) then
+            Ok ()
+          else
+            Error
+              (
+                "Expected deterministic unsatisfiable result, got forward="
+                ^ canonical_result_string forward
+                ^ " reverse="
+                ^ canonical_result_string reverse
+              )
+      | Ok (Pubgrub.Solver.Success _), _
+      | _, Ok (Pubgrub.Solver.Success _) ->
+          Error "Expected unsatisfiable plugin conflict to fail"
+      | Error err, _
+      | _, Error err ->
+          Error ("Unexpected solver error: " ^ err))
 
 let test_ranges_empty_contains_nothing =
   Test.case "Ranges: empty contains nothing"
@@ -2411,6 +3093,11 @@ let all_tests =
     test_partial_solution_backtrack_restores_cached_derivation;
     test_partial_solution_missing_derivation_package_raises;
     test_solution_order_is_deterministic;
+    test_corpus_frontend_stack_backtracks_to_shared_runtime;
+    test_corpus_sdk_plugins_backtrack_to_common_core;
+    test_corpus_version_holes_pick_satisfiable_island;
+    test_solver_backtracks_from_impossible_self_dependency;
+    test_corpus_unsat_plugin_conflict_is_deterministic;
     test_report_no_versions_includes_requested_range;
     test_report_from_dependency_includes_dependency_range;
     test_report_derived_explanations_are_readable;
@@ -2479,251 +3166,11 @@ let all_tests =
     prop_ranges_union_matches_boolean_or;
     prop_ranges_intersection_matches_boolean_and;
     prop_term_negation_is_involutive;
+    test_solver_randomized_small_graphs_match_bruteforce;
+    test_solver_randomized_insertion_order_is_deterministic;
   ]
   in
   base_tests @ web_tests @ db_tests @ compiler_tests @ reference_tests
-
-(*
-(* TEMPORARILY COMMENTED OUT - these test New_solver internals *)
-let test_new_solver_compute_pending () =
-  Log.info "=== Testing NEW solver compute_pending ===";
-
-  (* Create a simple state with root decided and one dependency *)
-  let solution = Partial_solution.empty () in
-  let solution = Partial_solution.add_decision solution "root" (v 1 0 0) in
-
-  let incompats = Collections.HashMap.create () in
-  (* Add root to incompatibilities so it gets found during iteration *)
-  ignore (Collections.HashMap.insert incompats "root" []);
-
-  let dep_graph = New_solver.DependencyGraph.empty () in
-  let dep_graph =
-    New_solver.DependencyGraph.add_dependencies dep_graph "root" (v 1 0 0)
-      [ ("foo", Ranges.full) ]
-  in
-
-  let state =
-    {
-      New_solver.solution;
-      incompatibilities = incompats;
-      dependency_graph = dep_graph;
-    }
-  in
-
-  let pending = New_solver.compute_pending state in
-  Log.info "Pending list has %d packages" (List.length pending);
-  List.iter (fun (pkg, _) -> Log.info "  - %s" pkg) pending;
-
-  if List.length pending = 1 then Log.info "✓ compute_pending test passed"
-  else Log.error "✗ compute_pending test FAILED"
-
-let test_new_solver_basic () =
-  Log.info "=== Testing NEW solver basic solve ===";
-
-  let provider = Pubgrub.create_offline () in
-  Pubgrub.add_package provider "root" (v 1 0 0) [];
-
-  match New_solver.solve (Pubgrub.to_provider provider) "root" (v 1 0 0) with
-  | Ok (New_solver.Success solution) ->
-      Log.info "✓ NEW solver basic test passed";
-      Log.info "  Solution has %d packages" (List.length solution);
-      List.iter
-        (fun (pkg, ver) -> Log.info "    %s@%s" pkg (Version.to_string ver))
-        solution
-  | Ok (New_solver.Failure _) -> Log.error "✗ NEW solver: unexpected failure"
-  | Error err -> Log.error "✗ NEW solver error: %s" err
-
-let test_new_solver_with_dependency () =
-  Log.info "=== Testing NEW solver with dependency ===";
-
-  let provider = Pubgrub.create_offline () in
-  Pubgrub.add_package provider "root" (v 1 0 0) [ ("foo", Pubgrub.full) ];
-  Pubgrub.add_package provider "foo" (v 1 0 0) [];
-
-  match New_solver.solve (Pubgrub.to_provider provider) "root" (v 1 0 0) with
-  | Ok (New_solver.Success solution) ->
-      if List.length solution = 2 then
-        Log.info "✓ NEW solver dependency test passed"
-      else
-        Log.error "✗ NEW solver: expected 2 packages, got %d"
-          (List.length solution)
-  | Ok (New_solver.Failure _) -> Log.error "✗ NEW solver: unexpected failure"
-  | Error err -> Log.error "✗ NEW solver error: %s" err
-
-let test_new_solver_on_test_suite () =
-  Log.info "=== Running first 10 tests with NEW solver ===";
-
-  (* Test 1: Empty root *)
-  let provider = Pubgrub.create_offline () in
-  Pubgrub.add_package provider "root" (v 1 0 0) [];
-  (match New_solver.solve (Pubgrub.to_provider provider) "root" (v 1 0 0) with
-  | Ok (New_solver.Success solution) ->
-      if List.length solution = 1 then Log.info "✓ Test 1 (Empty root) passed"
-      else Log.error "✗ Test 1 failed: expected 1 package"
-  | _ -> Log.error "✗ Test 1 failed");
-
-  (* Test 2: Single dependency *)
-  let provider = Pubgrub.create_offline () in
-  Pubgrub.add_package provider "root" (v 1 0 0) [ ("foo", Pubgrub.full) ];
-  Pubgrub.add_package provider "foo" (v 1 0 0) [];
-  (match New_solver.solve (Pubgrub.to_provider provider) "root" (v 1 0 0) with
-  | Ok (New_solver.Success solution) ->
-      if List.length solution = 2 then
-        Log.info "✓ Test 2 (Single dependency) passed"
-      else Log.error "✗ Test 2 failed: expected 2 packages"
-  | _ -> Log.error "✗ Test 2 failed");
-
-  (* Test 3: Two independent dependencies *)
-  let provider = Pubgrub.create_offline () in
-  Pubgrub.add_package provider "root" (v 1 0 0)
-    [ ("foo", Pubgrub.full); ("bar", Pubgrub.full) ];
-  Pubgrub.add_package provider "foo" (v 1 0 0) [];
-  Pubgrub.add_package provider "bar" (v 1 0 0) [];
-  (match New_solver.solve (Pubgrub.to_provider provider) "root" (v 1 0 0) with
-  | Ok (New_solver.Success solution) ->
-      if List.length solution = 3 then
-        Log.info "✓ Test 3 (Two independent deps) passed"
-      else
-        Log.error "✗ Test 3 failed: expected 3 packages, got %d"
-          (List.length solution)
-  | _ -> Log.error "✗ Test 3 failed");
-
-  Log.info "NEW solver preliminary tests complete";
-
-  (* Test 4: Conflict - missing dependency *)
-  let provider = Pubgrub.create_offline () in
-  Pubgrub.add_package provider "root" (v 1 0 0)
-    [ ("nonexistent", Pubgrub.full) ];
-  (match New_solver.solve (Pubgrub.to_provider provider) "root" (v 1 0 0) with
-  | Ok (New_solver.Failure _) ->
-      Log.info "✓ Test 4 (Missing dependency conflict) passed"
-  | Ok (New_solver.Success _) -> Log.error "✗ Test 4 failed: expected failure"
-  | Error err -> Log.error "✗ Test 4 error: %s" err);
-
-  Log.info "NEW solver conflict tests complete"
-
-let test_new_solver_on_failing_tests () =
-  Log.info "=== Testing NEW solver on previously failing tests ===";
-
-  (* First, a simpler conflicting deps test *)
-  let provider = Pubgrub.create_offline () in
-  Pubgrub.add_package provider "root" (v 1 0 0)
-    [ ("a", Pubgrub.full); ("b", Pubgrub.full) ];
-  Pubgrub.add_package provider "a" (v 1 0 0)
-    [ ("c", Pubgrub.singleton (v 1 0 0)) ];
-  Pubgrub.add_package provider "b" (v 1 0 0)
-    [ ("c", Pubgrub.singleton (v 2 0 0)) ];
-  Pubgrub.add_package provider "c" (v 1 0 0) [];
-  Pubgrub.add_package provider "c" (v 2 0 0) [];
-  (match New_solver.solve (Pubgrub.to_provider provider) "root" (v 1 0 0) with
-  | Ok (New_solver.Success solution) ->
-      Log.info "✓ Test: Simple conflicting deps passed (%d packages)"
-        (List.length solution);
-      List.iter
-        (fun (pkg, ver) -> Log.info "    %s@%s" pkg (Version.to_string ver))
-        solution
-  | Ok (New_solver.Failure incompat) ->
-      Log.error "✗ Test: Simple conflicting deps failed (got failure)";
-      Log.error "  Reason: %s" (Pubgrub.Report.explain_conflict incompat)
-  | Error err -> Log.error "✗ Test: Simple conflicting deps error: %s" err);
-
-  (* Test: No solution transitively *)
-  let provider = Pubgrub.create_offline () in
-  Pubgrub.add_package provider "a" (v 0 0 0) [ ("b", Pubgrub.empty) ];
-  Pubgrub.add_package provider "c" (v 0 0 0) [ ("a", Pubgrub.full) ];
-  (match New_solver.solve (Pubgrub.to_provider provider) "c" (v 0 0 0) with
-  | Ok (New_solver.Failure _) ->
-      Log.info "✓ Test: No solution transitively passed"
-  | Ok (New_solver.Success _) ->
-      Log.error "✗ Test: No solution transitively failed (got success)"
-  | Error err -> Log.error "✗ Test: No solution transitively error: %s" err);
-
-  (* Test: Avoiding conflict during decision *)
-  let provider = Pubgrub.create_offline () in
-  Pubgrub.add_package provider "root" (v 1 0 0)
-    [
-      ("foo", Pubgrub.between (v 1 0 0) (v 2 0 0));
-      ("bar", Pubgrub.between (v 1 0 0) (v 2 0 0));
-    ];
-  Pubgrub.add_package provider "foo" (v 1 1 0)
-    [ ("bar", Pubgrub.between (v 2 0 0) (v 3 0 0)) ];
-  Pubgrub.add_package provider "foo" (v 1 0 0) [];
-  Pubgrub.add_package provider "bar" (v 1 0 0) [];
-  Pubgrub.add_package provider "bar" (v 1 1 0) [];
-  Pubgrub.add_package provider "bar" (v 2 0 0) [];
-  (match New_solver.solve (Pubgrub.to_provider provider) "root" (v 1 0 0) with
-  | Ok (New_solver.Success solution) ->
-      if List.length solution = 3 then
-        Log.info "✓ Test: Avoiding conflict during decision passed"
-      else
-        Log.error
-          "✗ Test: Avoiding conflict during decision failed (expected 3, got \
-           %d)"
-          (List.length solution)
-  | Ok (New_solver.Failure _) ->
-      Log.error "✗ Test: Avoiding conflict during decision failed (got failure)"
-  | Error err ->
-      Log.error "✗ Test: Avoiding conflict during decision error: %s" err);
-
-  (* Test: Double choices *)
-  Log.info ">>> Starting Double choices test";
-  let provider = Pubgrub.create_offline () in
-  Pubgrub.add_package provider "a" (v 0 0 0)
-    [ ("b", Pubgrub.full); ("c", Pubgrub.full) ];
-  Pubgrub.add_package provider "b" (v 0 0 0)
-    [ ("d", Pubgrub.singleton (v 0 0 0)) ];
-  Pubgrub.add_package provider "b" (v 1 0 0)
-    [ ("d", Pubgrub.singleton (v 1 0 0)) ];
-  Pubgrub.add_package provider "c" (v 0 0 0) [];
-  Pubgrub.add_package provider "c" (v 1 0 0)
-    [ ("d", Pubgrub.singleton (v 2 0 0)) ];
-  Pubgrub.add_package provider "d" (v 0 0 0) [];
-  (match New_solver.solve (Pubgrub.to_provider provider) "a" (v 0 0 0) with
-  | Ok (New_solver.Success solution) ->
-      if List.length solution = 4 then Log.info "✓ Test: Double choices passed"
-      else (
-        Log.error "✗ Test: Double choices failed (expected 4, got %d)"
-          (List.length solution);
-        List.iter
-          (fun (pkg, ver) ->
-            Log.info "    Solution: %s@%s" pkg (Version.to_string ver))
-          solution)
-  | Ok (New_solver.Failure incompat) ->
-      Log.error "✗ Test: Double choices failed (got failure)";
-      Log.error "  Reason: %s" (Pubgrub.Report.explain_conflict incompat)
-  | Error err -> Log.error "✗ Test: Double choices error: %s" err);
-
-  (* Test: Confusing with lots of holes *)
-  let provider = Pubgrub.create_offline () in
-  Pubgrub.add_package provider "root" (v 1 0 0)
-    [ ("foo", Pubgrub.full); ("baz", Pubgrub.full) ];
-  for i = 1 to 5 do
-    Pubgrub.add_package provider "foo" (v i 0 0) [ ("bar", Pubgrub.full) ]
-  done;
-  Pubgrub.add_package provider "baz" (v 1 0 0) [];
-  (match New_solver.solve (Pubgrub.to_provider provider) "root" (v 1 0 0) with
-  | Ok (New_solver.Failure _) ->
-      Log.info "✓ Test: Confusing with lots of holes passed"
-  | Ok (New_solver.Success _) ->
-      Log.error "✗ Test: Confusing with lots of holes failed (got success)"
-  | Error err -> Log.error "✗ Test: Confusing with lots of holes error: %s" err);
-
-  Log.info "NEW solver failing tests complete"
-
-let run_all_tests_with_new_solver () =
-  Log.info "=== Running ALL package tests with NEW solver ===";
-  let passed = ref 0 in
-  let failed = ref 0 in
-
-  List.iter
-    (fun test ->
-      match Test.run test with Ok () -> incr passed | Error _ -> incr failed)
-    all_tests;
-
-  Log.info "NEW SOLVER RESULTS: %d/%d tests passed (%.1f%%)" !passed
-    (!passed + !failed)
-    (float_of_int !passed /. float_of_int (!passed + !failed) *. 100.0)
-*)
 
 let () =
   Actors.run

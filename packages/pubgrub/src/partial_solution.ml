@@ -195,9 +195,12 @@ let pick_highest_priority_pkg = fun solution prioritizer ->
       in
       let sorted =
         List.sort scored
-          ~compare:(fun (_, _, gidx1, pri1) (_, _, gidx2, pri2) ->
+          ~compare:(fun (pkg1, _, gidx1, pri1) (pkg2, _, gidx2, pri2) ->
             if pri1 = pri2 then
-              compare gidx1 gidx2
+              if gidx1 = gidx2 then
+                String.compare pkg1 pkg2
+              else
+                compare gidx1 gidx2
             else
               compare pri2 pri1)
       in
@@ -265,20 +268,13 @@ let relation = fun solution incompat ->
           )
       | `Constrained constrained_ranges ->
           if is_positive then
-            if Ranges.is_empty constrained_ranges then
-              if Ranges.is_empty ranges then
-                incr satisfied_count
-              else (
-                incr contradicted_count;
-                contradicted_pkg := Some pkg
-              )
+            if Ranges.subset_of ~compare_v:version_compare constrained_ranges ranges then
+              incr satisfied_count
             else if Ranges.is_disjoint ~compare_v:version_compare constrained_ranges ranges then
               (
                 incr contradicted_count;
                 contradicted_pkg := Some pkg
               )
-            else if Ranges.subset_of ~compare_v:version_compare constrained_ranges ranges then
-              incr satisfied_count
             else (
               incr undecided_count;
               undecided_pkg := Some pkg
@@ -334,15 +330,6 @@ let relation = fun solution incompat ->
       ^ " contradicted)");
     `Unknown
   )
-
-let get_assignment_level = fun solution pkg ->
-  let rec find_level = function
-    | [] -> None
-    | Decision (p, _, level, _) :: _ when p = pkg -> Some level
-    | Derivation (p, _, _, _, level, _) :: _ when p = pkg -> Some level
-    | _ :: rest -> find_level rest
-  in
-  find_level solution.assignments
 
 type satisfier_info = {
   cause: Incompatibility.t option;
