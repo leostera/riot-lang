@@ -276,6 +276,9 @@ _riot() {
             _arguments \
                 '(-p --package)'{-p,--package}'[Run benchmarks from package]:package:->packages' \
                 '(-f --filter)'{-f,--filter}'[Filter benchmark suites and cases by substring]:filter:' \
+                '--compare[Show up to N previous comparable suite runs]:count:' \
+                '--iterations[Override iteration count for all matched benchmarks]:count:' \
+                '--warmup[Override warmup count for all matched benchmarks]:count:' \
                 '--list[List benchmark suites and cases without running them]' \
                 '--release[Use the release build profile]' \
                 '--json[Emit machine-readable JSONL events]' \

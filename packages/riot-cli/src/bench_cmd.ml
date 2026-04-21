@@ -15,6 +15,8 @@ let command =
         option "package" |> short 'p' |> long "package" |> multiple |> help "Run benchmarks from a specific package. Repeat to run multiple packages.";
         option "filter" |> short 'f' |> long "filter" |> help "Filter benchmark suites and cases by substring within the selected packages";
         option "compare" |> long "compare" |> help "Show up to N previous comparable suite runs alongside the current results";
+        option "iterations" |> long "iterations" |> help "Override iteration count for all matched benchmarks";
+        option "warmup" |> long "warmup" |> help "Override warmup count for all matched benchmarks";
         flag "list" |> long "list" |> help "List benchmark suites and benchmark cases without running them";
         flag "release" |> long "release" |> help "Use the release build profile";
         flag "json" |> long "json" |> help "Emit machine-readable JSONL events";
@@ -45,7 +47,9 @@ let is_known_flag_with_value = function
   | "--package"
   | "-f"
   | "--filter"
-  | "--compare" -> true
+  | "--compare"
+  | "--iterations"
+  | "--warmup" -> true
   | _ -> false
 
 let looks_like_flag = fun value -> String.starts_with ~prefix:"-" value
@@ -105,6 +109,20 @@ let compare_limit_of_matches = fun matches ->
   | None -> Ok None
   | Some value when Int.(value <= 0) -> Error (Failure "--compare expects a positive integer")
   | Some value -> Ok (Some value)
+
+let bench_override_args = fun matches ->
+  let args = ref [] in
+  (
+    match ArgParser.get_int matches "iterations" with
+    | Some value -> args := !args @ [ "--iterations"; Int.to_string value ]
+    | None -> ()
+  );
+  (
+    match ArgParser.get_int matches "warmup" with
+    | Some value -> args := !args @ [ "--warmup"; Int.to_string value ]
+    | None -> ()
+  );
+  !args
 
 let parse_package_names = fun package_names ->
   let rec loop acc = function
@@ -917,7 +935,7 @@ let bench_history_compare = fun context ~(suite:Bench_runtime.suite_binary) ~lim
 let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
   let seen_registry_updates = Collections.HashSet.create () in
   let* (matches, trailing) = reparsed_matches matches in
-  let extra_args = trailing in
+  let extra_args = trailing @ bench_override_args matches in
   let verbose = ArgParser.get_count matches "verbose" in
   let _ = verbose in
   let output_mode =

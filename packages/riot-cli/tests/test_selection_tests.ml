@@ -168,7 +168,11 @@ let test_bench_command_parses_repeated_packages_and_filter = fun _ctx ->
         "-f";
         "probe";
         "--compare";
-        "3"
+        "3";
+        "--iterations";
+        "500";
+        "--warmup";
+        "25";
       ]
   with
   | Error err -> Error ("expected bench args to parse: " ^ err)
@@ -182,6 +186,10 @@ let test_bench_command_parses_repeated_packages_and_filter = fun _ctx ->
             ~expected:(Some "probe")
             ~actual:(ArgParser.get_one bench_matches "filter");
           Test.assert_equal ~expected:(Some 3) ~actual:(ArgParser.get_int bench_matches "compare");
+          Test.assert_equal
+            ~expected:(Some 500)
+            ~actual:(ArgParser.get_int bench_matches "iterations");
+          Test.assert_equal ~expected:(Some 25) ~actual:(ArgParser.get_int bench_matches "warmup");
           Ok ()
       | Some (name, _) ->
           Error ("expected bench command, got: " ^ name)

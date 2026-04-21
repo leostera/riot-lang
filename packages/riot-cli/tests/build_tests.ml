@@ -272,6 +272,20 @@ let test_bench_accepts_list_flag = fun _ctx ->
       else
         Error "expected bench --list flag to be parsed"
 
+let test_bench_accepts_iterations_flag = fun _ctx ->
+  match parse_bench [ "bench"; "--iterations"; "500"; "-p"; "std" ] with
+  | Error err -> Error ("expected bench args to parse: " ^ err)
+  | Ok matches ->
+      Test.assert_equal ~expected:(Some 500) ~actual:(ArgParser.get_int matches "iterations");
+      Ok ()
+
+let test_bench_accepts_warmup_flag = fun _ctx ->
+  match parse_bench [ "bench"; "--warmup"; "25"; "-p"; "std" ] with
+  | Error err -> Error ("expected bench args to parse: " ^ err)
+  | Ok matches ->
+      Test.assert_equal ~expected:(Some 25) ~actual:(ArgParser.get_int matches "warmup");
+      Ok ()
+
 let test_bench_invocation_args_keep_top_level_flags_after_forwarded_args = fun _ctx ->
   let invocation = Riot_cli.Bench_cmd.bench_invocation_args
     [
@@ -284,6 +298,8 @@ let test_bench_invocation_args_keep_top_level_flags_after_forwarded_args = fun _
       "3";
       "--iterations";
       "500";
+      "--warmup";
+      "25";
       "--release";
       "--json";
     ]
@@ -297,11 +313,15 @@ let test_bench_invocation_args_keep_top_level_flags_after_forwarded_args = fun _
       "manual decode from parsed tree";
       "--compare";
       "3";
+      "--iterations";
+      "500";
+      "--warmup";
+      "25";
       "--release";
       "--json";
     ]
     ~actual:invocation.parsed;
-  Test.assert_equal ~expected:[ "--iterations"; "500" ] ~actual:invocation.trailing;
+  Test.assert_equal ~expected:[] ~actual:invocation.trailing;
   Ok ()
 
 let test_run_accepts_missing_name = fun _ctx ->
@@ -641,6 +661,8 @@ let tests =
     case "bench: parse --json flag" test_bench_accepts_json_flag;
     case "bench: parse --release flag" test_bench_accepts_release_flag;
     case "bench: parse --list flag" test_bench_accepts_list_flag;
+    case "bench: parse --iterations flag" test_bench_accepts_iterations_flag;
+    case "bench: parse --warmup flag" test_bench_accepts_warmup_flag;
     case "bench: keep top-level flags after forwarded args" test_bench_invocation_args_keep_top_level_flags_after_forwarded_args;
     case "run: parse missing name" test_run_accepts_missing_name;
     case "run: parse --list flag" test_run_accepts_list_flag;
