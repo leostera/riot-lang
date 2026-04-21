@@ -420,6 +420,58 @@ let test_result_of_json = fun index json ->
     duration_us = Option.unwrap_or ~default:0 duration_us;
   }
 
+let test_case_type_field_of_json = fun fields ->
+  match
+    List.find fields
+      ~fn:(fun (field_name, _) ->
+        String.equal field_name "test_type")
+  with
+  | None -> Ok Test
+  | Some (_, Data.Json.String "test") -> Ok Test
+  | Some (_, Data.Json.String "property") ->
+      let* examples =
+        match
+          List.find fields
+            ~fn:(fun (field_name, _) ->
+              String.equal field_name "examples")
+        with
+        | Some (_, value) -> get_int value
+        | None -> Ok 0
+      in
+      Ok (Property { examples })
+  | Some (_, Data.Json.String other) -> Error ("unknown test type " ^ other)
+  | Some (_, other) -> error_expected "string" other
+
+let suite_progress_test_case_result = fun json ->
+  match json_event_type json with
+  | Some "TestCaseCompleted" ->
+      let* fields = get_object json in
+      let index =
+        match Data.Json.get_field "index" json with
+        | Some (Data.Json.Int value) -> value
+        | _ -> 0
+      in
+      let* name_json = field "name" fields in
+      let* name = get_string name_json in
+      let* test_type = test_case_type_field_of_json fields in
+      let* size = test_size_of_json fields in
+      let* reliability = test_reliability_of_json fields in
+      let* attempts = optional_int_field "attempts" fields in
+      let* result = test_status_of_json json in
+      let* duration_us = optional_int_field "duration_us" fields in
+      Ok (Some {
+        index;
+        name;
+        test_type;
+        size;
+        reliability;
+        attempts = Option.unwrap_or ~default:1 attempts;
+        result;
+        duration_us = Option.unwrap_or ~default:0 duration_us;
+      })
+  | Some _
+  | None -> Ok None
+
 let listed_test_case_of_json = fun json ->
   let* fields = get_object json in
   let* index_json = field "index" fields in

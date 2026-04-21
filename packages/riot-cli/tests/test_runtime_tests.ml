@@ -43,7 +43,70 @@ let test_suite_heartbeat_event_to_json = fun _ctx ->
   | None ->
       Error "expected suite heartbeat event to render json"
 
-let tests = [ Test.case "suite heartbeat event renders json" test_suite_heartbeat_event_to_json; ]
+let test_suite_progress_test_case_result_parses_completed_case = fun _ctx ->
+  let json = Data.Json.Object [
+    ("type", Data.Json.String "TestCaseCompleted");
+    ("index", Data.Json.Int 3);
+    ("name", Data.Json.String "alpha");
+    ("test_type", Data.Json.String "property");
+    ("examples", Data.Json.Int 7);
+    ("size", Data.Json.String "large");
+    ("reliability", Data.Json.String "flaky");
+    ("retry_attempts", Data.Json.Int 2);
+    ("attempts", Data.Json.Int 3);
+    ("status", Data.Json.String "passed");
+    ("duration_us", Data.Json.Int 1234);
+  ] in
+  match Riot_cli.Test_runtime.suite_progress_test_case_result json with
+  | Ok
+      (Some
+        Riot_cli.Test_runtime.{
+          index;
+          name;
+          test_type = Property { examples };
+          size = Large;
+          reliability = Flaky { retry_attempts };
+          attempts;
+          result = Passed;
+          duration_us;
+        }) ->
+      if
+        Int.equal index 3
+        && String.equal name "alpha"
+        && Int.equal examples 7
+        && Int.equal retry_attempts 2
+        && Int.equal attempts 3
+        && Int.equal duration_us 1234
+      then
+        Ok ()
+      else
+        Error "expected parsed completed case metadata to round-trip"
+  | Ok (Some _) ->
+      Error "expected completed case to parse into a property test result"
+  | Ok None ->
+      Error "expected completed case progress to parse"
+  | Error err ->
+      Error ("expected completed case progress to parse: " ^ err)
+
+let test_suite_progress_test_case_result_ignores_non_completed_event = fun _ctx ->
+  let json = Data.Json.Object [
+    ("type", Data.Json.String "TestCaseStarted");
+    ("name", Data.Json.String "alpha");
+  ] in
+  match Riot_cli.Test_runtime.suite_progress_test_case_result json with
+  | Ok None -> Ok ()
+  | Ok (Some _) -> Error "expected non-completed progress event to be ignored"
+  | Error err -> Error ("expected non-completed progress event to be ignored: " ^ err)
+
+let tests = [
+  Test.case "suite heartbeat event renders json" test_suite_heartbeat_event_to_json;
+  Test.case
+    "suite progress completed case parses into a test result"
+    test_suite_progress_test_case_result_parses_completed_case;
+  Test.case
+    "suite progress ignores non-completed events"
+    test_suite_progress_test_case_result_ignores_non_completed_event;
+]
 
 let main = fun ~args -> Test.Cli.main ~name:"test_runtime_tests" ~tests ~args
 

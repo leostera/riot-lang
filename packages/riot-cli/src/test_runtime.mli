@@ -108,6 +108,8 @@ val test_error_message: test_error -> string
 
 val test_event_to_json: test_event -> Data.Json.t option
 
+val suite_progress_test_case_result: Data.Json.t -> (test_case_result option, string) result
+
 val list_tests:
   ?on_suite:(listed_test_suite -> unit) ->
   ?on_suite_error:(suite_binary -> test_error -> unit) ->

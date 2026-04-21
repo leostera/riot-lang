@@ -464,21 +464,24 @@ let write_test_list = fun ~(workspace:Riot_model.Workspace.t) ~(suite_labels:sui
           println
             ("  [" ^ Int.to_string test.index ^ "] " ^ type_prefix ^ " " ^ test.name ^ metadata ^ skip_suffix)))
 
-let print_suite_header = fun ~(suite_labels:suite_source_label_entry list) (
-  suite: Test_runtime.suite_binary
-) total ->
-  println "";
-  println ("     Running " ^ suite_source_label ~suite_labels suite);
-  println "";
-  println ("running " ^ Int.to_string total ^ " tests")
+type human_render_state = { streamed_suites: string Collections.HashSet.t }
 
-let print_test_result = fun (result: Test_runtime.test_case_result) ->
+let empty_human_render_state = fun () -> { streamed_suites = Collections.HashSet.create () }
+
+let suite_stream_key = fun (suite: Test_runtime.suite_binary) ->
+  Riot_model.Package_name.to_string suite.package_name ^ ":" ^ suite.suite_name
+
+let qualified_test_name = fun (suite: Test_runtime.suite_binary) (result: Test_runtime.test_case_result) ->
+  Riot_model.Package_name.to_string suite.package_name ^ "::" ^ suite.suite_name ^ "::" ^ result.name
+
+let print_test_result = fun ~(suite:Test_runtime.suite_binary) (result: Test_runtime.test_case_result) ->
   let prefix =
     match result.test_type with
     | Test_runtime.Test -> "test"
     | Test_runtime.Property _ -> "prop"
   in
   let metadata = metadata_suffix result.size result.reliability in
+  let name = qualified_test_name suite result in
   match result.result with
   | Test_runtime.Passed ->
       let suffix =
@@ -487,56 +490,30 @@ let print_test_result = fun (result: Test_runtime.test_case_result) ->
         | Test_runtime.Property { examples } -> Int.to_string examples ^ " examples ok"
       in
       println
-        (prefix ^ " " ^ result.name ^ metadata ^ " ... " ^ suffix ^ attempts_suffix result.attempts)
+        (prefix ^ " " ^ name ^ metadata ^ " ... " ^ suffix ^ attempts_suffix result.attempts)
   | Test_runtime.Failed message ->
       println
-        (prefix ^ " " ^ result.name ^ metadata ^ " ... FAILED" ^ attempts_suffix result.attempts);
+        (prefix ^ " " ^ name ^ metadata ^ " ... FAILED" ^ attempts_suffix result.attempts);
       if not (String.equal message "") then
         println ("       " ^ message)
   | Test_runtime.Timed_out { timeout_ms } ->
       println
         (prefix
         ^ " "
-        ^ result.name
+        ^ name
         ^ metadata
         ^ " ... TIMED OUT "
         ^ timeout_message timeout_ms
         ^ attempts_suffix result.attempts)
   | Test_runtime.Skipped ->
-      println (prefix ^ " " ^ result.name ^ metadata ^ " ... skipped")
+      println (prefix ^ " " ^ name ^ metadata ^ " ... skipped")
 
-let print_suite_footer = fun (summary: Test_runtime.test_suite_summary) ->
-  println "";
-  let status =
-    if summary.failed > 0 then
-      "FAILED"
-    else
-      "ok"
-  in
-  println
-    ("test result: "
-    ^ status
-    ^ ". "
-    ^ Int.to_string summary.passed
-    ^ " passed; "
-    ^ Int.to_string summary.failed
-    ^ " failed; "
-    ^ Int.to_string summary.skipped
-    ^ " skipped")
-
-let print_suite_results = fun ~(suite_labels:suite_source_label_entry list) ~verbose ~(suite:Test_runtime.suite_binary) ~stdout ~stderr (
-  summary: Test_runtime.test_suite_summary
-) ->
-  if summary.total > 0 then
-    (
-      print_suite_header ~suite_labels suite summary.total;
-      summary.results |> List.for_each ~fn:print_test_result;
-      print_suite_footer summary;
-      if verbose > 0 then
-        print_command_output Command.{ stdout; stderr; status = 0 }
-    )
-
-let write_test_event = fun ~(suite_labels:suite_source_label_entry list) ~(timing:timing_summary) ~verbose (
+let write_test_event = fun
+  ~(suite_labels:suite_source_label_entry list)
+  ~(timing:timing_summary)
+  ~(state:human_render_state)
+  ~verbose
+(
   event: Test_runtime.test_event
 ) ->
   match event with
@@ -552,9 +529,16 @@ let write_test_event = fun ~(suite_labels:suite_source_label_entry list) ~(timin
   | Test_runtime.ExecutingSuiteBinary _
   | Test_runtime.SuiteHeartbeat _
   | Test_runtime.SuiteBinaryFinished _
-  | Test_runtime.ParsingSuiteOutput _
-  | Test_runtime.SuiteProgress _ ->
+  | Test_runtime.ParsingSuiteOutput _ ->
       ()
+  | Test_runtime.SuiteProgress { suite; event } ->
+      Test_runtime.suite_progress_test_case_result event
+      |> Result.to_option
+      |> Option.flatten
+      |> Option.for_each ~fn:(fun result ->
+        let key = suite_stream_key suite in
+        let _ = Collections.HashSet.insert state.streamed_suites ~value:key in
+        print_test_result ~suite result)
   | Test_runtime.SuiteCompleted {
     suite;
     stdout;
@@ -563,8 +547,13 @@ let write_test_event = fun ~(suite_labels:suite_source_label_entry list) ~(timin
     _
   } ->
       if summary.total > 0 then
-        record_suite_timing timing ~suite_label:(suite_source_label ~suite_labels suite) summary;
-      print_suite_results ~suite_labels ~verbose ~suite ~stdout ~stderr summary
+        (
+          record_suite_timing timing ~suite_label:(suite_source_label ~suite_labels suite) summary;
+          if not (Collections.HashSet.contains state.streamed_suites ~value:(suite_stream_key suite)) then
+            summary.results |> List.for_each ~fn:(print_test_result ~suite)
+        );
+      if verbose > 0 then
+        print_command_output Command.{ stdout; stderr; status = 0 }
   | Test_runtime.Summary {
     total;
     passed;
@@ -730,6 +719,7 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
               Error (Failure (Test_runtime.test_error_message err))
         else
           let timing = empty_timing_summary () in
+          let state = empty_human_render_state () in
           let on_event (event: Test_runtime.test_event) =
             match event with
             | Test_runtime.Build build_event -> Build.write_build_event
@@ -739,7 +729,7 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
             | _ -> (
                 match output_mode with
                 | Build.Json -> write_test_event_json ~command_started_at event
-                | Build.Human -> write_test_event ~suite_labels ~timing ~verbose event
+                | Build.Human -> write_test_event ~suite_labels ~timing ~state ~verbose event
               )
           in
           match
