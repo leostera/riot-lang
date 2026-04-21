@@ -1,0 +1,13 @@
+[package]
+name = "riot-bench"
+version = "0.0.18"
+description = "Benchmark history storage and future regression tracking for Riot"
+license = "Apache-2.0"
+public = false
+
+[lib]
+path = "src/riot_bench.ml"
+
+[dependencies]
+std = "*"
+riot-model = "*"

@@ -3,33 +3,26 @@ open Std.Result.Syntax
 open Riot_model
 open Riot_build
 open ArgParser
+open Riot_bench
 
 let command =
   let open ArgParser in
-    let open Arg in
-      command "bench"
-      |> about "Run benchmarks with optional case filtering"
-      |> ArgParser.allow_trailing_args
-      |> args
-        [ option "package"
-          |> short 'p'
-          |> long "package"
-          |> multiple
-          |> help "Run benchmarks from a specific package. Repeat to run multiple packages."; option
-            "filter"
-          |> short 'f'
-          |> long "filter"
-          |> help "Filter benchmark suites and cases by substring within the selected packages"; flag
-            "list"
-          |> long "list"
-          |> help "List benchmark suites and benchmark cases without running them"; flag "release"
-          |> long "release"
-          |> help "Use the release build profile"; flag "json" |> long "json" |> help "Emit machine-readable JSONL events"; flag
-            "verbose"
-          |> short 'v'
-          |> long "verbose"
-          |> help "Enable verbose output for benchmarks"
-          |> count; ]
+    let open Arg in command "bench"
+    |> about "Run benchmarks with optional case filtering"
+    |> ArgParser.allow_trailing_args
+    |> args
+      [
+        option "package" |> short 'p' |> long "package" |> multiple |> help "Run benchmarks from a specific package. Repeat to run multiple packages.";
+        option "filter" |> short 'f' |> long "filter" |> help "Filter benchmark suites and cases by substring within the selected packages";
+        flag "list" |> long "list" |> help "List benchmark suites and benchmark cases without running them";
+        flag "release" |> long "release" |> help "Use the release build profile";
+        flag "json" |> long "json" |> help "Emit machine-readable JSONL events";
+        flag "verbose"
+        |> short 'v'
+        |> long "verbose"
+        |> help "Enable verbose output for benchmarks"
+        |> count;
+      ]
 
 let trailing_args = fun matches ->
   let args = ArgParser.trailing_args matches in
@@ -255,6 +248,8 @@ let print_summary = fun ~total ~completed ~skipped ~failed ->
   println ("  Skipped: " ^ Int.to_string skipped);
   println ("  Failed: " ^ Int.to_string failed)
 
+let bench_history_warning = fun message -> eprintln ("warning: " ^ message)
+
 let json_int_field = fun name fields ->
   match
     List.find fields
@@ -357,6 +352,78 @@ let write_bench_error_json = fun ~command_started_at err ->
     );
   print "\n"
 
+let bench_history_partial = fun (request: Test_selection.request) ->
+  not (List.is_empty request.package_filters)
+  || Option.is_some request.suite_filter
+  || Option.is_some request.query
+
+let bench_history_context = fun ~(workspace:Riot_model.Workspace.t) ~profile (
+  request: Test_selection.request
+) ~argv ->
+  History.create_run_context
+    ~workspace_root:workspace.root
+    ~profile
+    ~filter:request.query
+    ~partial:(bench_history_partial request)
+    ~argv
+    ()
+
+let bench_history_of_statistics = fun (stats: Bench_runtime.bench_statistics) : History.bench_statistics ->
+  {
+    min = stats.min;
+    max = stats.max;
+    mean = stats.mean;
+    median = stats.median;
+    std_dev = stats.std_dev;
+    iterations = stats.iterations;
+    total_time = stats.total_time;
+  }
+
+let bench_history_of_result = fun (result: Bench_runtime.bench_case_result) : History.bench_case_result ->
+  let result_status: History.bench_case_status =
+    match result.result with
+    | Bench_runtime.Completed stats -> History.Completed (bench_history_of_statistics stats)
+    | Bench_runtime.Failed message -> History.Failed message
+    | Bench_runtime.Skipped -> History.Skipped
+  in
+  { index = result.index; name = result.name; result = result_status }
+
+let bench_history_of_comparison = fun (comparison: Bench_runtime.bench_comparison_result) : History.bench_comparison_result ->
+  {
+    description = comparison.description;
+    fastest = comparison.fastest;
+    case_results = List.map
+      comparison.case_results
+      ~fn:(fun (case_result: Bench_runtime.bench_comparison_case_result) ->
+        {
+          History.name = case_result.name;
+          statistics = bench_history_of_statistics case_result.statistics
+        });
+    speedup_ratios = comparison.speedup_ratios
+  }
+
+let save_bench_history = fun context ~(suite:Bench_runtime.suite_binary) status started_at_us completed_at_us duration_us (
+  results: Bench_runtime.bench_case_result list
+) (comparisons: Bench_runtime.bench_comparison_result list) (
+  summary: Bench_runtime.bench_suite_summary
+) ->
+  let suite_run: History.suite_run = {
+    status;
+    started_at_us;
+    completed_at_us;
+    duration_us;
+    summary = {
+      total = summary.total;
+      completed = summary.completed;
+      skipped = summary.skipped;
+      failed = summary.failed
+    };
+    benchmarks = List.map results ~fn:bench_history_of_result;
+    comparisons = List.map comparisons ~fn:bench_history_of_comparison;
+  }
+  in
+  History.save_suite_run context ~package_name:suite.package_name ~suite_name:suite.suite_name ~suite_run
+
 let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
   let seen_registry_updates = Collections.HashSet.create () in
   let extra_args = trailing_args matches in
@@ -453,12 +520,53 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
         );
         Error (Failure (Bench_runtime.bench_error_message err))
   else
+    let history_context = bench_history_context ~workspace ~profile request ~argv:Env.args in
     let on_event (event: Bench_runtime.bench_event) =
       match event with
-      | Bench_runtime.Build build_event -> Build.write_build_event
-        ~mode:output_mode
-        ~seen_registry_updates
-        build_event
+      | Bench_runtime.Build build_event ->
+          Build.write_build_event ~mode:output_mode ~seen_registry_updates build_event
+      | Bench_runtime.SuiteCompleted {
+        suite;
+        status;
+        started_at_us;
+        completed_at_us;
+        duration_us;
+        results;
+        comparisons;
+        summary;
+        _
+      } ->
+          save_bench_history
+            history_context
+            ~suite
+            status
+            started_at_us
+            completed_at_us
+            duration_us
+            results
+            comparisons
+            summary
+          |> Result.iter_err
+            ~fn:(fun error ->
+              bench_history_warning
+                ("failed to save benchmark history for "
+                ^ Package_name.to_string suite.package_name
+                ^ "/"
+                ^ suite.suite_name
+                ^ ": "
+                ^ error));
+          (
+            match output_mode with
+            | Build.Json -> Bench_runtime.bench_event_to_json event
+            |> Option.for_each
+              ~fn:(fun json ->
+                write_json_event
+                  ~command_started_at
+                  ~duration_us:(summary_duration_us ~command_started_at event)
+                  event
+                  json)
+            | Build.Human -> write_bench_event event
+          )
       | _ -> (
           match output_mode with
           | Build.Json -> Bench_runtime.bench_event_to_json event

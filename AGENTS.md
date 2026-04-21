@@ -33,6 +33,7 @@ Use it as a router: pick the most relevant existing AGENTS file before making ch
 - `packages/riot-toolchain/AGENTS.md`: compiler/toolchain invocation wrappers
 - `packages/riot-build/AGENTS.md`: in-process build session/runtime entrypoints
 - `packages/riot-cli/AGENTS.md`: CLI commands and user-facing flows
+- `packages/riot-bench/AGENTS.md`: benchmark history storage and regression-tracking contracts
 - `packages/riot-check/AGENTS.md`: `riot check` command implementation and package-aware typechecking flow
 - `packages/riot-lsp/AGENTS.md`: Riot's Language Server Protocol server, session loop, and editor-facing behavior
 - `packages/riot-fmt/AGENTS.md`: `riot fmt` wrapper around krasny-based formatting checks
