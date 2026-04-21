@@ -139,6 +139,33 @@ Riot will keep having one good reachability rule for libraries and a weaker,
 special-case rule for everything else. That is the wrong long-term shape for
 `riot-planner`.
 
+### This is also the right base for conditional compilation
+
+Riot does not have full conditional compilation yet, but when it does, the
+planner will no longer be able to treat the package graph as one fixed,
+package-wide fact.
+
+After conditional erasure, the effective module graph may differ by:
+
+- target
+- profile
+- workspace or package configuration
+- active root
+
+That matters here because reachability should be computed from the resolved
+graph that Riot will actually build, not from the raw file tree before target-
+specific resolution.
+
+Target-specific reachability gives Riot the correct place to stand when that
+future arrives:
+
+- resolve the graph for this build context
+- compute closures from that resolved graph
+- build only what those roots actually reach
+
+That is a better long-term planner model than continuing to treat the package
+library as the only root with real ownership semantics.
+
 ## Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
 
@@ -251,6 +278,11 @@ to:
 
 This is still a package-local planning pass. It does not require package
 splitting and does not change dependency solving.
+
+The important semantic rule is that reachability is computed from the resolved
+module graph for the current build context, not from the raw discovered source
+forest. If Riot later erases modules or edges through conditional compilation,
+those changes must happen before closure computation.
 
 ## 2. Target roots
 
@@ -483,6 +515,8 @@ This target-centric reachability model would be a good base for:
 
 - better support for multi-file binaries under `src/`
 - more natural support-module layouts for tests, benches, and examples
+- conditional compilation that changes the effective module graph after target-
+  or profile-specific resolution
 - planner diagnostics that explain why a file is dead or who owns it
 - future editor or `riot info` tooling that can show per-target module
   membership
