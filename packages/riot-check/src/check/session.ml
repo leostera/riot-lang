@@ -235,11 +235,29 @@ let planner_source_groups_for_package = fun ?(include_dev = false) (pkg: Package
       else
         Some (planning_root, allowed_source_files))
 
-let planner_root_mode_for_group = fun (pkg: Package.t) planning_root ->
-  if Path.equal planning_root (Path.v "src") then
-    Riot_planner.Module_graph.Library_root { library_name = pkg.name }
-  else
-    Riot_planner.Module_graph.Loose_sources
+let planner_source_group = fun (pkg: Package.t) planning_root allowed_source_files ->
+  let root_mode =
+    if Path.equal planning_root (Path.v "src") then
+      Riot_planner.Module_graph.Library_root { library_name = Package_name.to_string pkg.name }
+    else
+      Riot_planner.Module_graph.Loose_sources
+  in
+  let namespace =
+    if Path.equal planning_root (Path.v "src") then
+      Namespace.empty
+    else
+      Path.to_string planning_root
+      |> String.split ~by:"/"
+      |> List.filter ~fn:(fun part -> not (String.is_empty part))
+      |> List.map ~fn:String.capitalize_ascii
+      |> Namespace.of_list
+  in
+  Riot_planner.Module_graph.{
+    source_dir = planning_root;
+    allowed_source_files;
+    root_mode;
+    namespace
+  }
 
 let merge_module_exports = fun preferred fallback ->
   let rec loop seen acc remaining =
@@ -512,9 +530,9 @@ let package_typ_sources_from_planner = fun ~on_event ~include_dev ~(workspace:Wo
                 ctx = build_ctx;
                 toolchain;
                 workspace;
-                planning_root;
-                allowed_source_files;
-                root_mode = planner_root_mode_for_group planner_pkg planning_root;
+                source_groups = [
+                  planner_source_group planner_pkg planning_root allowed_source_files
+                ];
                 depset = [];
                 store;
               }

@@ -27,6 +27,21 @@ let make_package = fun tmpdir name ->
     ~relative_path:(Path.v name)
     ()
 
+let workspace_dependency = fun name ->
+  Riot_model.Package.{
+    name = Package_name.from_string name
+    |> Result.expect ~msg:("expected valid dependency name: " ^ name);
+    source =
+      {
+        workspace = true;
+        builtin = false;
+        path = None;
+        source_locator = None;
+        ref_ = None;
+        version = None;
+      };
+  }
+
 let clone_workspace_with_target = fun (workspace: Riot_model.Workspace.t) ~target_dir ->
   Riot_model.Workspace.make
     ?name:workspace.name
@@ -59,6 +74,216 @@ let plan_graph_package = fun ~workspace ~store ~package_graph ~package_key ~buil
         ~package
         ~build_ctx
       |> Result.map_err ~fn:Riot_planner.Planning_error.to_string
+
+let describe_plan_result = function
+  | Riot_planner.Package_planner.Cached _ -> "Cached"
+  | Riot_planner.Package_planner.Planned _ -> "Planned"
+  | Riot_planner.Package_planner.MissingDependencies _ -> "MissingDependencies"
+  | Riot_planner.Package_planner.FailedDependencies _ -> "FailedDependencies"
+
+let persist_dummy_artifact = fun ~tmpdir ~store ~(package:Riot_model.Package.t) ~scope_name ~hash ->
+  let sandbox_dir = Path.(tmpdir / Path.v ("sandbox-" ^ scope_name)) in
+  let output = Path.(sandbox_dir / Path.v (scope_name ^ ".stamp")) in
+  let _ = Fs.create_dir_all sandbox_dir |> Result.expect ~msg:"expected sandbox dir creation to succeed" in
+  let _ = Fs.write scope_name output |> Result.expect ~msg:"expected sandbox marker write to succeed" in
+  Riot_store.Store.save
+    store
+    ~package:(Package_name.to_string package.name)
+    ~hash
+    ~sandbox_dir
+    ~outs:[ output ]
+  |> Result.map ~fn:(fun _artifact -> ())
+  |> Result.map_err ~fn:Riot_store.Store.error_message
+
+let source_buckets_of_files = fun files ->
+  List.fold_left files
+    ~init:Riot_model.Package.{
+      src = [];
+      native = [];
+      tests = [];
+      examples = [];
+      bench = [];
+    }
+    ~fn:(fun buckets (relpath, _) ->
+      let path = Path.v relpath in
+      if String.starts_with ~prefix:"src/" relpath then
+        { buckets with src = path :: buckets.src }
+      else if String.starts_with ~prefix:"tests/" relpath then
+        { buckets with tests = path :: buckets.tests }
+      else if String.starts_with ~prefix:"examples/" relpath then
+        { buckets with examples = path :: buckets.examples }
+      else if String.starts_with ~prefix:"bench/" relpath then
+        { buckets with bench = path :: buckets.bench }
+      else
+        buckets) |> fun buckets ->
+    {
+      buckets
+      with src = List.reverse buckets.src;
+      tests = List.reverse buckets.tests;
+      examples = List.reverse buckets.examples;
+      bench = List.reverse buckets.bench
+    }
+
+let write_package_files = fun ~package_dir files ->
+  List.for_each files
+    ~fn:(fun (relpath, content) ->
+      let path = Path.(package_dir / Path.v relpath) in
+      let parent = Path.parent path |> Option.unwrap_or ~default:package_dir in
+      let _ = Fs.create_dir_all parent
+      |> Result.expect ~msg:("create parent dir failed for " ^ relpath) in
+      let _ = Fs.write content path |> Result.expect ~msg:("write failed for " ^ relpath) in
+      ())
+
+let make_package_with_files = fun ~tmpdir ~package_name ~files ~binaries ->
+  let package_dir = Path.(tmpdir / Path.v package_name) in
+  let _ = Fs.create_dir_all package_dir |> Result.expect ~msg:"create package dir failed" in
+  let () = write_package_files ~package_dir files in
+  Riot_model.Package.make
+    ~name:(Package_name.from_string package_name
+    |> Result.expect ~msg:("expected valid package name: " ^ package_name))
+    ~path:package_dir
+    ~relative_path:(Path.v package_name)
+    ~binaries:(List.map
+      binaries
+      ~fn:(fun (name, path) -> Riot_model.Package.{ name; path = Path.v path }))
+    ~sources:(source_buckets_of_files files)
+    ()
+
+let find_compile_cmx = fun actions source ->
+  let rec loop = function
+    | [] -> None
+    | action :: rest -> (
+        match action with
+        | Riot_planner.Action.CompileImplementation { source=compile_source; outputs; _ } when Path.equal
+          compile_source
+          source -> (
+            match List.find
+              outputs
+              ~fn:(fun output -> String.ends_with ~suffix:".cmx" (Path.to_string output)) with
+            | Some _ as output -> output
+            | None -> loop rest
+          )
+        | _ -> loop rest
+      )
+  in
+  loop actions
+
+let find_create_executable_named = fun action_graph name ->
+  List.find (Riot_planner.Action_graph.to_action_list action_graph)
+    ~fn:(
+      function
+      | Riot_planner.Action.CreateExecutable { outputs; _ } ->
+          List.any outputs
+            ~fn:(fun output ->
+              String.equal (Path.to_string output) name)
+      | _ -> false
+    )
+
+let has_compile_implementation_for_source = fun actions source ->
+  List.any actions
+    ~fn:(
+      function
+      | Riot_planner.Action.CompileImplementation { source=compile_source; _ } -> Path.equal
+        compile_source
+        source
+      | _ -> false
+    )
+
+let plan_dev_package_actions = fun ~tmpdir ~package_name ~files ~binaries ->
+  let package = make_package_with_files ~tmpdir ~package_name ~files ~binaries in
+  let workspace = make_test_workspace tmpdir [ package ] in
+  let store = Riot_store.Store.create ~workspace in
+  let package_graph = Riot_planner.Package_graph.create ~scope:Riot_planner.Package_graph.Dev workspace
+  |> Result.expect ~msg:"package graph should build" in
+  let build_key = Riot_planner.Package_graph.package_key
+    ~package_name:(Package_name.to_string package.name)
+    Riot_planner.Package_graph.Build in
+  let runtime_key = Riot_planner.Package_graph.package_key
+    ~package_name:(Package_name.to_string package.name)
+    Riot_planner.Package_graph.Runtime in
+  let package_key = Riot_planner.Package_graph.package_key
+    ~package_name:(Package_name.to_string package.name)
+    Riot_planner.Package_graph.Dev in
+  let session_id = Riot_model.Session_id.make () in
+  let profile = Riot_model.Profile.debug in
+  let build_ctx = Riot_model.Build_ctx.make ~session_id ~profile () in
+  let plan_runtime_then_dev () =
+    match plan_graph_package ~workspace ~store ~package_graph ~package_key:runtime_key ~build_ctx with
+    | Error _ as err ->
+        err
+    | Ok (Riot_planner.Package_planner.Planned { module_graph; action_graph; hash; _ }) ->
+        let _ = Riot_planner.Package_graph.mark_planned
+          package_graph
+          runtime_key
+          ~module_graph
+          ~action_graph
+          ~hash in
+        (
+          match persist_dummy_artifact ~tmpdir ~store ~package ~scope_name:"runtime" ~hash with
+          | Error _ as err -> err
+          | Ok () -> (
+              match plan_graph_package ~workspace ~store ~package_graph ~package_key ~build_ctx with
+              | Error _ as err -> err
+              | Ok (Riot_planner.Package_planner.Planned { action_graph; _ }) -> Ok (
+                package,
+                action_graph
+              )
+              | Ok result -> Error ("expected dev package plan to return Planned, got "
+              ^ describe_plan_result result)
+            )
+        )
+    | Ok (Riot_planner.Package_planner.Cached _) -> (
+        match plan_graph_package ~workspace ~store ~package_graph ~package_key ~build_ctx with
+        | Error _ as err -> err
+        | Ok (Riot_planner.Package_planner.Planned { action_graph; _ }) -> Ok (package, action_graph)
+        | Ok result -> Error ("expected dev package plan to return Planned, got "
+        ^ describe_plan_result result)
+      )
+    | Ok result ->
+        Error ("expected runtime package plan to return Planned or Cached, got "
+        ^ describe_plan_result result)
+  in
+  if Option.is_none (Riot_planner.Package_graph.get_node_by_key package_graph build_key) then
+    plan_runtime_then_dev ()
+  else
+    match plan_graph_package ~workspace ~store ~package_graph ~package_key:build_key ~build_ctx with
+    | Error _ as err ->
+        err
+    | Ok (Riot_planner.Package_planner.Planned { module_graph; action_graph; hash; _ }) ->
+        let _ = Riot_planner.Package_graph.mark_planned
+          package_graph
+          build_key
+          ~module_graph
+          ~action_graph
+          ~hash in
+        (
+          match persist_dummy_artifact ~tmpdir ~store ~package ~scope_name:"build" ~hash with
+          | Error _ as err -> err
+          | Ok () -> plan_runtime_then_dev ()
+        )
+    | Ok (Riot_planner.Package_planner.Cached _) ->
+        plan_runtime_then_dev ()
+    | Ok result ->
+        Error ("expected build package plan to return Planned or Cached, got "
+        ^ describe_plan_result result)
+
+let plan_runtime_package_actions = fun ~tmpdir ~package_name ~files ~binaries ->
+  let package = make_package_with_files ~tmpdir ~package_name ~files ~binaries in
+  let workspace = make_test_workspace tmpdir [ package ] in
+  let store = Riot_store.Store.create ~workspace in
+  let package_graph = Riot_planner.Package_graph.create ~scope:Riot_planner.Package_graph.Runtime workspace
+  |> Result.expect ~msg:"package graph should build" in
+  let package_key = Riot_planner.Package_graph.package_key
+    ~package_name:(Package_name.to_string package.name)
+    Riot_planner.Package_graph.Runtime in
+  let session_id = Riot_model.Session_id.make () in
+  let profile = Riot_model.Profile.debug in
+  let build_ctx = Riot_model.Build_ctx.make ~session_id ~profile () in
+  match plan_graph_package ~workspace ~store ~package_graph ~package_key ~build_ctx with
+  | Error _ as err -> err
+  | Ok (Riot_planner.Package_planner.Planned { action_graph; _ }) -> Ok (package, action_graph)
+  | Ok result -> Error ("expected runtime package plan to return Planned, got "
+  ^ describe_plan_result result)
 
 let module_node_label = fun (node: Riot_planner.Module_node.t G.node) ->
   match node.value.kind with
@@ -364,6 +589,306 @@ let test_kernel_input_hash_is_not_empty_digest = fun _ctx ->
           else
             Ok ()
     )
+
+let test_dev_scope_test_binaries_include_private_helpers = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"planner_dev_scope_tests_helpers"
+      (fun tmpdir ->
+        match plan_dev_package_actions
+          ~tmpdir
+          ~package_name:"devscope-tests-demo"
+          ~binaries:[ ("foo_tests", "tests/foo_tests.ml") ]
+          ~files:[
+            ("tests/helper.ml", "let value = 1\n");
+            ("tests/foo_tests.ml", "let () = ignore Helper.value\n");
+          ] with
+        | Error _ as err -> err
+        | Ok (_package, action_graph) ->
+            let actions = Riot_planner.Action_graph.to_action_list action_graph in
+            let helper_source = Path.v "tests/helper.ml" in
+            let test_source = Path.v "tests/foo_tests.ml" in
+            let helper_cmx = find_compile_cmx actions helper_source in
+            let test_cmx = find_compile_cmx actions test_source in
+            match find_create_executable_named action_graph "foo_tests", helper_cmx, test_cmx with
+            | Some (Riot_planner.Action.CreateExecutable { objects; _ }), Some helper_cmx, Some test_cmx ->
+                let has object_ = List.any objects ~fn:(Path.equal object_) in
+                if not (has helper_cmx && has test_cmx) then
+                  Error "expected test executable to link both helper and root objects"
+                else
+                  Ok ()
+            | _ -> Error "expected CreateExecutable action and compile outputs for tests/foo_tests.ml and tests/helper.ml")
+  with
+  | Ok result -> result
+  | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
+
+let test_dev_scope_example_binaries_include_private_helpers = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"planner_dev_scope_examples_helpers"
+      (fun tmpdir ->
+        match plan_dev_package_actions
+          ~tmpdir
+          ~package_name:"devscope-examples-demo"
+          ~binaries:[ ("demo", "examples/demo.ml") ]
+          ~files:[
+            ("examples/helper.ml", "let value = 1\n");
+            ("examples/demo.ml", "let () = ignore Helper.value\n");
+          ] with
+        | Error _ as err -> err
+        | Ok (_package, action_graph) ->
+            let actions = Riot_planner.Action_graph.to_action_list action_graph in
+            let helper_source = Path.v "examples/helper.ml" in
+            let example_source = Path.v "examples/demo.ml" in
+            let helper_cmx = find_compile_cmx actions helper_source in
+            let example_cmx = find_compile_cmx actions example_source in
+            match find_create_executable_named action_graph "demo", helper_cmx, example_cmx with
+            | Some (Riot_planner.Action.CreateExecutable { objects; _ }), Some helper_cmx, Some example_cmx ->
+                let has object_ = List.any objects ~fn:(Path.equal object_) in
+                if not (has helper_cmx && has example_cmx) then
+                  Error "expected example executable to link both helper and root objects"
+                else
+                  Ok ()
+            | _ -> Error "expected CreateExecutable action and compile outputs for examples/demo.ml and examples/helper.ml")
+  with
+  | Ok result -> result
+  | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
+
+let test_dev_scope_bench_binaries_include_private_helpers = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"planner_dev_scope_bench_helpers"
+      (fun tmpdir ->
+        match plan_dev_package_actions
+          ~tmpdir
+          ~package_name:"devscope-bench-demo"
+          ~binaries:[ ("foo_bench", "bench/foo_bench.ml") ]
+          ~files:[
+            ("bench/helper.ml", "let value = 1\n");
+            ("bench/foo_bench.ml", "let () = ignore Helper.value\n");
+          ] with
+        | Error _ as err -> err
+        | Ok (_package, action_graph) ->
+            let actions = Riot_planner.Action_graph.to_action_list action_graph in
+            let helper_source = Path.v "bench/helper.ml" in
+            let bench_source = Path.v "bench/foo_bench.ml" in
+            let helper_cmx = find_compile_cmx actions helper_source in
+            let bench_cmx = find_compile_cmx actions bench_source in
+            match find_create_executable_named action_graph "foo_bench", helper_cmx, bench_cmx with
+            | Some (Riot_planner.Action.CreateExecutable { objects; _ }), Some helper_cmx, Some bench_cmx ->
+                let has object_ = List.any objects ~fn:(Path.equal object_) in
+                if not (has helper_cmx && has bench_cmx) then
+                  Error "expected bench executable to link both helper and root objects"
+                else
+                  Ok ()
+            | _ -> Error "expected CreateExecutable action and compile outputs for bench/foo_bench.ml and bench/helper.ml")
+  with
+  | Ok result -> result
+  | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
+
+let test_dev_scope_keeps_private_helpers_separated_by_root = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"planner_dev_scope_multiple_roots"
+      (fun tmpdir ->
+        match plan_dev_package_actions
+          ~tmpdir
+          ~package_name:"devscope-multi-root-demo"
+          ~binaries:[
+            ("foo_tests", "tests/foo_tests.ml");
+            ("demo", "examples/demo.ml");
+            ("foo_bench", "bench/foo_bench.ml");
+          ]
+          ~files:[
+            ("tests/test_helper.ml", "let value = 1\n");
+            ("tests/foo_tests.ml", "let () = ignore Test_helper.value\n");
+            ("examples/example_helper.ml", "let value = 2\n");
+            ("examples/demo.ml", "let () = ignore Example_helper.value\n");
+            ("bench/bench_helper.ml", "let value = 3\n");
+            ("bench/foo_bench.ml", "let () = ignore Bench_helper.value\n");
+          ] with
+        | Error _ as err -> err
+        | Ok (_package, action_graph) ->
+            let actions = Riot_planner.Action_graph.to_action_list action_graph in
+            let test_helper = find_compile_cmx actions (Path.v "tests/test_helper.ml") in
+            let test_root = find_compile_cmx actions (Path.v "tests/foo_tests.ml") in
+            let example_helper = find_compile_cmx actions (Path.v "examples/example_helper.ml") in
+            let example_root = find_compile_cmx actions (Path.v "examples/demo.ml") in
+            let bench_helper = find_compile_cmx actions (Path.v "bench/bench_helper.ml") in
+            let bench_root = find_compile_cmx actions (Path.v "bench/foo_bench.ml") in
+            match find_create_executable_named action_graph "foo_tests", find_create_executable_named
+              action_graph
+              "demo", find_create_executable_named action_graph "foo_bench", test_helper, test_root, example_helper, example_root, bench_helper, bench_root with
+            | Some (Riot_planner.Action.CreateExecutable { objects=test_objects; _ }), Some (Riot_planner.Action.CreateExecutable {
+              objects=example_objects;
+              _
+            }), Some (Riot_planner.Action.CreateExecutable { objects=bench_objects; _ }), Some test_helper, Some test_root, Some example_helper, Some example_root, Some bench_helper, Some bench_root ->
+                let has object_ objects = List.any objects ~fn:(Path.equal object_) in
+                if not (has test_helper test_objects && has test_root test_objects) then
+                  Error "expected test executable to link only its own helper closure"
+                else if has example_helper test_objects || has bench_helper test_objects then
+                  Error "did not expect test executable to link example or bench helpers"
+                else if
+                  not (has example_helper example_objects && has example_root example_objects)
+                then
+                  Error "expected example executable to link only its own helper closure"
+                else if has test_helper example_objects || has bench_helper example_objects then
+                  Error "did not expect example executable to link test or bench helpers"
+                else if not (has bench_helper bench_objects && has bench_root bench_objects) then
+                  Error "expected bench executable to link only its own helper closure"
+                else if has test_helper bench_objects || has example_helper bench_objects then
+                  Error "did not expect bench executable to link test or example helpers"
+                else
+                  Ok ()
+            | _ -> Error "expected CreateExecutable actions and compile outputs for all dev roots")
+  with
+  | Ok result -> result
+  | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
+
+let test_runtime_scope_excludes_dev_only_roots = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"planner_runtime_scope_ignores_dev_roots"
+      (fun tmpdir ->
+        match plan_runtime_package_actions
+          ~tmpdir
+          ~package_name:"runtime-scope-demo"
+          ~binaries:[ ("foo_tests", "tests/foo_tests.ml") ]
+          ~files:[
+            ("src/runtime_scope_demo.ml", "module Public = struct end\n");
+            ("tests/helper.ml", "let value = 1\n");
+            ("tests/foo_tests.ml", "let () = ignore Helper.value\n");
+            ("examples/example_helper.ml", "let value = 2\n");
+            ("examples/demo.ml", "let () = ignore Example_helper.value\n");
+            ("bench/bench_helper.ml", "let value = 3\n");
+            ("bench/foo_bench.ml", "let () = ignore Bench_helper.value\n");
+          ] with
+        | Error _ as err -> err
+        | Ok (_package, action_graph) ->
+            let actions = Riot_planner.Action_graph.to_action_list action_graph in
+            if has_compile_implementation_for_source actions (Path.v "tests/helper.ml") then
+              Error "did not expect runtime scope to compile tests/helper.ml"
+            else if has_compile_implementation_for_source actions (Path.v "tests/foo_tests.ml") then
+              Error "did not expect runtime scope to compile tests/foo_tests.ml"
+            else if
+              has_compile_implementation_for_source actions (Path.v "examples/example_helper.ml")
+            then
+              Error "did not expect runtime scope to compile examples/example_helper.ml"
+            else if has_compile_implementation_for_source actions (Path.v "examples/demo.ml") then
+              Error "did not expect runtime scope to compile examples/demo.ml"
+            else if has_compile_implementation_for_source actions (Path.v "bench/bench_helper.ml") then
+              Error "did not expect runtime scope to compile bench/bench_helper.ml"
+            else if has_compile_implementation_for_source actions (Path.v "bench/foo_bench.ml") then
+              Error "did not expect runtime scope to compile bench/foo_bench.ml"
+            else if Option.is_some (find_create_executable_named action_graph "foo_tests") then
+              Error "did not expect runtime scope to plan test executables"
+            else if Option.is_some (find_create_executable_named action_graph "demo") then
+              Error "did not expect runtime scope to plan example executables"
+            else if Option.is_some (find_create_executable_named action_graph "foo_bench") then
+              Error "did not expect runtime scope to plan bench executables"
+            else
+              Ok ())
+  with
+  | Ok result -> result
+  | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
+
+let test_build_scope_excludes_runtime_and_dev_roots = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"planner_build_scope_excludes_sources"
+      (fun tmpdir ->
+        let build_helper = make_package_with_files
+          ~tmpdir
+          ~package_name:"build-helper"
+          ~binaries:[]
+          ~files:[] in
+        let package_dir = Path.(tmpdir / Path.v "build-scope-demo") in
+        let _ = Fs.create_dir_all package_dir |> Result.expect ~msg:"create package dir failed" in
+        let files = [
+          ("src/build_scope_demo.ml", "module Public = struct end\n");
+          ("tests/helper.ml", "let value = 1\n");
+          ("tests/foo_tests.ml", "let () = ignore Helper.value\n");
+          ("examples/example_helper.ml", "let value = 2\n");
+          ("examples/demo.ml", "let () = ignore Example_helper.value\n");
+          ("bench/bench_helper.ml", "let value = 3\n");
+          ("bench/foo_bench.ml", "let () = ignore Bench_helper.value\n");
+        ] in
+        let () = write_package_files ~package_dir files in
+        let package = Riot_model.Package.make
+          ~name:(Package_name.from_string "build-scope-demo" |> Result.expect ~msg:"expected valid package name: build-scope-demo")
+          ~path:package_dir
+          ~relative_path:(Path.v "build-scope-demo")
+          ~build_dependencies:[ workspace_dependency "build-helper" ]
+          ~binaries:[ Riot_model.Package.{ name = "foo_tests"; path = Path.v "tests/foo_tests.ml" } ]
+          ~sources:(source_buckets_of_files files)
+          () in
+        let workspace = make_test_workspace tmpdir [ build_helper; package ] in
+        let store = Riot_store.Store.create ~workspace in
+        let package_graph = Riot_planner.Package_graph.create
+          ~scope:Riot_planner.Package_graph.Build workspace
+        |> Result.expect ~msg:"package graph should build" in
+        let helper_key = Riot_planner.Package_graph.package_key
+          ~package_name:"build-helper"
+          Riot_planner.Package_graph.Build in
+        let package_key = Riot_planner.Package_graph.package_key
+          ~package_name:(Package_name.to_string package.name)
+          Riot_planner.Package_graph.Build in
+        let session_id = Riot_model.Session_id.make () in
+        let profile = Riot_model.Profile.debug in
+        let build_ctx = Riot_model.Build_ctx.make ~session_id ~profile () in
+        match plan_graph_package ~workspace ~store ~package_graph ~package_key:helper_key ~build_ctx with
+        | Error _ as err ->
+            err
+        | Ok (Riot_planner.Package_planner.Planned {
+          module_graph;
+          action_graph;
+          hash;
+          package=helper_package;
+          _
+        }) ->
+            let _ = Riot_planner.Package_graph.mark_planned
+              package_graph
+              helper_key
+              ~module_graph
+              ~action_graph
+              ~hash in
+            (
+              match persist_dummy_artifact
+                ~tmpdir
+                ~store
+                ~package:helper_package
+                ~scope_name:"build-helper"
+                ~hash with
+              | Error _ as err -> err
+              | Ok () -> (
+                  match plan_graph_package ~workspace ~store ~package_graph ~package_key ~build_ctx with
+                  | Error _ as err ->
+                      err
+                  | Ok (Riot_planner.Package_planner.Planned { action_graph; _ }) ->
+                      let actions = Riot_planner.Action_graph.to_action_list action_graph in
+                      if List.any actions
+                          ~fn:(
+                            function
+                            | Riot_planner.Action.CompileInterface _
+                            | Riot_planner.Action.CompileImplementation _ -> true
+                            | _ -> false
+                          ) then
+                        Error "did not expect build scope to compile runtime or dev source roots"
+                      else if List.any actions
+                          ~fn:(
+                            function
+                            | Riot_planner.Action.CreateLibrary _
+                            | Riot_planner.Action.CreateExecutable _ -> true
+                            | _ -> false
+                          ) then
+                        Error "did not expect build scope to archive or link projected package sources"
+                      else
+                        Ok ()
+                  | Ok result ->
+                      Error ("expected build package plan to return Planned, got "
+                      ^ describe_plan_result result)
+                )
+            )
+        | Ok result ->
+            Error ("expected helper build package plan to return Planned, got "
+            ^ describe_plan_result result))
+  with
+  | Ok result -> result
+  | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
 
 let plan_kernel_package_with_fresh_store = fun () ->
   match
@@ -1491,6 +2016,12 @@ let test_legacy_krasny_plan_bundle_with_bad_root_module_is_ignored_after_version
 
 let tests =
   Test.[
+    case "runtime scope excludes dev-only roots" test_runtime_scope_excludes_dev_only_roots;
+    case "build scope excludes runtime and dev roots" test_build_scope_excludes_runtime_and_dev_roots;
+    case "dev scope test binaries include private helpers" test_dev_scope_test_binaries_include_private_helpers;
+    case "dev scope example binaries include private helpers" test_dev_scope_example_binaries_include_private_helpers;
+    case "dev scope bench binaries include private helpers" test_dev_scope_bench_binaries_include_private_helpers;
+    case "dev scope keeps private helpers separated by root" test_dev_scope_keeps_private_helpers_separated_by_root;
     case ~size:Large "kernel input hash is not empty digest" test_kernel_input_hash_is_not_empty_digest;
     case "plan bundle cache hit restores module and action graphs" test_plan_bundle_cache_hit_restores_module_and_action_graphs;
     case "cached artifact and exports short-circuit without plan bundle" test_cached_artifact_and_exports_short_circuit_without_plan_bundle;

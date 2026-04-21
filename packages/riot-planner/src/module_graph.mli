@@ -6,12 +6,15 @@ module G = Std.Graph.SimpleGraph
 type root_mode =
   | Library_root of { library_name: string }
   | Loose_sources
-type config = {
-  root: Path.t;
+type source_group = {
   source_dir: Path.t;
   allowed_source_files: Path.t list;
   root_mode: root_mode;
-  namespace: string;
+  namespace: Namespace.t;
+}
+type config = {
+  root: Path.t;
+  source_groups: source_group list;
   package: Package.t;
   toolchain: Riot_toolchain.t;
   workspace: Workspace.t;

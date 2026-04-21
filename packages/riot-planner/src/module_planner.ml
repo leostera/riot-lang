@@ -11,9 +11,7 @@ type plan_input = {
   ctx: Build_ctx.t;
   toolchain: Riot_toolchain.t;
   workspace: Workspace.t;
-  planning_root: Path.t;
-  allowed_source_files: Path.t list;
-  root_mode: Module_graph.root_mode;
+  source_groups: Module_graph.source_group list;
   depset: Dependency.t list;
   store: Riot_store.Store.t;
 }
@@ -25,16 +23,11 @@ type plan_result = {
   action_graph: Action_graph.t;
 }
 
-let plan_node = fun input ->
-  let namespace =
-    Module_name.(input.package.name |> Package_name.to_string |> of_string |> to_string) in
+let plan_node = fun (input: plan_input) ->
   let config =
     Module_graph.{
       root = input.package.path;
-      source_dir = input.planning_root;
-      allowed_source_files = input.allowed_source_files;
-      root_mode = input.root_mode;
-      namespace;
+      source_groups = input.source_groups;
       package = input.package;
       toolchain = input.toolchain;
       workspace = input.workspace;

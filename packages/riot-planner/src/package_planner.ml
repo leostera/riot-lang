@@ -59,6 +59,45 @@ let empty_breakdown = {
   module_plan_duration = Time.Duration.zero;
 }
 
+let group_namespace = fun root ->
+  if Path.equal root (Path.v "src") then
+    Namespace.empty
+  else
+    Path.to_string root
+    |> String.split ~by:"/"
+    |> List.filter ~fn:(fun part -> not (String.is_empty part))
+    |> List.map ~fn:String.capitalize_ascii
+    |> Namespace.of_list
+
+let planning_groups_for_package = fun (package: Package.t) ->
+  let groups = [
+    (Path.v "src", package.sources.src);
+    (Path.v "tests", package.sources.tests);
+    (Path.v "examples", package.sources.examples);
+    (Path.v "bench", package.sources.bench);
+  ] in
+  List.filter_map groups
+    ~fn:(fun (source_dir, allowed_source_files) ->
+      if List.is_empty allowed_source_files then
+        None
+      else
+        let root_mode =
+          if Path.equal source_dir (Path.v "src") then
+            match package.library with
+            | Some _ -> Module_graph.Library_root {
+              library_name = Package_name.to_string package.name
+            }
+            | None -> Module_graph.Loose_sources
+          else
+            Module_graph.Loose_sources
+        in
+        Some Module_graph.{
+          source_dir;
+          allowed_source_files;
+          root_mode;
+          namespace = group_namespace source_dir
+        })
+
 type check_deps_error =
   Missing of Package.t list
   | Failed of Package.t list
@@ -691,11 +730,7 @@ let plan_package = fun ~workspace ~toolchain ~store ~package_graph ~package_key 
                         ctx = build_ctx;
                         toolchain;
                         workspace;
-                        planning_root = Path.v "src";
-                        allowed_source_files = package.sources.src;
-                        root_mode = Module_graph.Library_root {
-                          library_name = Package_name.to_string package.name
-                        };
+                        source_groups = planning_groups_for_package package;
                         depset;
                         store;
                       }
@@ -804,11 +839,7 @@ let plan_package = fun ~workspace ~toolchain ~store ~package_graph ~package_key 
                   ctx = build_ctx;
                   toolchain;
                   workspace;
-                  planning_root = Path.v "src";
-                  allowed_source_files = package.sources.src;
-                  root_mode = Module_graph.Library_root {
-                    library_name = Package_name.to_string package.name
-                  };
+                  source_groups = planning_groups_for_package package;
                   depset;
                   store;
                 }

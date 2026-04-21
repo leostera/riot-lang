@@ -568,12 +568,16 @@ let test_library_actions_exclude_unreachable_modules = fun _ctx ->
         let graph_builder = Riot_planner.Module_graph.create
           Riot_planner.Module_graph.{
             root = package_root;
-            source_dir = Path.v "src";
-            allowed_source_files = package.sources.src;
-            root_mode = Riot_planner.Module_graph.Library_root {
-              library_name = Package_name.to_string package.name
-            };
-            namespace = "Lib_with_unreachable";
+            source_groups = [
+              Riot_planner.Module_graph.{
+                source_dir = Path.v "src";
+                allowed_source_files = package.sources.src;
+                root_mode = Riot_planner.Module_graph.Library_root {
+                  library_name = Package_name.to_string package.name
+                };
+                namespace = Namespace.empty
+              }
+            ];
             package;
             toolchain = test_toolchain;
             workspace;
@@ -652,9 +656,6 @@ let test_library_actions_exclude_unreachable_modules = fun _ctx ->
   with
   | Ok result -> result
   | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
-
-let package_namespace = fun (package: Riot_model.Package.t) ->
-  Riot_model.Module_name.(Package_name.to_string package.name |> of_string |> to_string)
 
 let find_compile_implementation = fun actions source ->
   List.find actions
@@ -756,17 +757,20 @@ let plan_actions_for_package = fun ~tmpdir ~package_name ~files ?(binaries = [])
   let graph_builder = Riot_planner.Module_graph.create
     Riot_planner.Module_graph.{
       root = package_root;
-      source_dir = Path.v "src";
-      allowed_source_files = package.sources.src;
-      root_mode =
-        (
-          match package.library with
-          | Some _ -> Riot_planner.Module_graph.Library_root {
-            library_name = Package_name.to_string package.name
-          }
-          | None -> Riot_planner.Module_graph.Loose_sources
-        );
-      namespace = package_namespace package;
+      source_groups =
+        [ Riot_planner.Module_graph.{
+            source_dir = Path.v "src";
+            allowed_source_files = package.sources.src;
+            root_mode =
+              (
+                match package.library with
+                | Some _ -> Riot_planner.Module_graph.Library_root {
+                  library_name = Package_name.to_string package.name
+                }
+                | None -> Riot_planner.Module_graph.Loose_sources
+              );
+            namespace = Namespace.empty;
+          } ];
       package;
       toolchain = test_toolchain;
       workspace;

@@ -102,16 +102,20 @@ let collect_interfaces = fun ~workspace ~store ~release (package: Riot_model.Pac
     ctx;
     toolchain;
     workspace;
-    planning_root = Path.v "src";
-    allowed_source_files = package.sources.src;
-    root_mode =
-      (
-        match package.library with
-        | Some _ -> Riot_planner.Module_graph.Library_root {
-          library_name = Riot_model.Package_name.to_string package.name
-        }
-        | None -> Riot_planner.Module_graph.Loose_sources
-      );
+    source_groups =
+      [ Riot_planner.Module_graph.{
+          source_dir = Path.v "src";
+          allowed_source_files = package.sources.src;
+          root_mode =
+            (
+              match package.library with
+              | Some _ -> Riot_planner.Module_graph.Library_root {
+                library_name = Riot_model.Package_name.to_string package.name
+              }
+              | None -> Riot_planner.Module_graph.Loose_sources
+            );
+          namespace = Namespace.empty;
+        } ];
     depset = [];
     store;
   }

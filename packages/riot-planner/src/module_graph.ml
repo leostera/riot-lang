@@ -39,12 +39,16 @@ type root_mode =
   | Library_root of { library_name: string }
   | Loose_sources
 
-type config = {
-  root: Path.t;
+type source_group = {
   source_dir: Path.t;
   allowed_source_files: Path.t list;
   root_mode: root_mode;
-  namespace: string;
+  namespace: Namespace.t;
+}
+
+type config = {
+  root: Path.t;
+  source_groups: source_group list;
   package: Package.t;
   toolchain: Riot_toolchain.t;
   workspace: Workspace.t;
@@ -416,17 +420,21 @@ and handle_library = fun ~t ~ctx dir name children ->
         with
         | Not_found -> ())
 
-let scan_sources = fun t (sources: Module_scanner.entry list) ->
+let scan_sources = fun t (group: source_group) (sources: Module_scanner.entry list) ->
   let root_node = Module_node.make_root () in
   let root = G.add_node t.graph root_node in
-  let ctx = { ns = Namespace.empty; parent_impl = root; parent_intf = root; aliases = [] } in
-  match t.config.root_mode with
-  | Library_root { library_name } -> handle_library ~t ~ctx t.config.source_dir library_name sources
+  let ctx = { ns = group.namespace; parent_impl = root; parent_intf = root; aliases = [] } in
+  match group.root_mode with
+  | Library_root { library_name } -> handle_library ~t ~ctx group.source_dir library_name sources
   | Loose_sources -> do_scan ~t ~ctx sources
 
 let create = fun config ->
-  let entries = Module_scanner.scan ~root:config.root ~source_dir:config.source_dir
-  |> filter_entries ~allowed:config.allowed_source_files in
+  let entries = List.map
+    config.source_groups
+    ~fn:(fun (group: source_group) ->
+      Module_scanner.scan ~root:config.root ~source_dir:group.source_dir
+      |> filter_entries ~allowed:group.allowed_source_files)
+  |> List.concat in
   let graph = G.make () in
   let registry = Module_registry.create () in
   let analyzed_modules = HashMap.with_capacity ~size:64 in
@@ -438,7 +446,11 @@ let create = fun config ->
     analyzed_modules;
   }
   in
-  scan_sources t entries;
+  List.for_each config.source_groups
+    ~fn:(fun (group: source_group) ->
+      let group_entries = Module_scanner.scan ~root:config.root ~source_dir:group.source_dir
+      |> filter_entries ~allowed:group.allowed_source_files in
+      scan_sources t group group_entries);
   t
 
 (** Wire module dependencies using `Syn.Deps`.
@@ -544,13 +556,21 @@ let wire_dependencies = fun t ->
           )
         | _ -> None)
   in
-  let namespace =
-    if String.is_empty t.config.namespace then
-      Namespace.empty
-    else
-      Namespace.of_list [ t.config.namespace ]
+  let group_for_path path =
+    let normalized_path = Path.normalize path in
+    List.find t.config.source_groups
+      ~fn:(fun (group: source_group) ->
+        let matches_allowed =
+          List.any group.allowed_source_files
+            ~fn:(fun allowed ->
+              Path.equal (Path.normalize allowed) normalized_path)
+        in
+        let prefix = Path.to_string group.source_dir in
+        let path_str = Path.to_string normalized_path in
+        matches_allowed
+        || String.equal path_str prefix
+        || String.starts_with ~prefix:(prefix ^ "/") path_str)
   in
-  let source_dir_prefix = Path.to_string t.config.source_dir ^ "/" in
   let stringify_dependency_error = fun path ->
     function
     | Syn.Deps.Parse_diagnostics diagnostics ->
@@ -594,26 +614,45 @@ let wire_dependencies = fun t ->
     | Ok source -> Ok source
   in
   let file_namespace path =
-    let file_str = Path.to_string path in
-    let rel_path =
-      if String.starts_with ~prefix:source_dir_prefix file_str then
-        let len = String.length source_dir_prefix in
-        String.sub file_str ~offset:len ~len:(String.length file_str - len)
-      else
-        Path.basename path
-    in
-    let file_dir =
-      match Path.parent (Path.v rel_path) with
-      | Some p -> Path.to_string p
-      | None -> "."
-    in
-    let subdir_parts =
-      if file_dir = "." then
-        []
-      else
-        String.split file_dir ~by:"/" |> List.map ~fn:String.capitalize_ascii
-    in
-    List.fold_left subdir_parts ~init:namespace ~fn:Namespace.append
+    match group_for_path path with
+    | None -> Namespace.empty
+    | Some group ->
+        let base_namespace =
+          match group.root_mode with
+          | Library_root { library_name } -> Module_name.of_string library_name
+          |> Module_name.to_string
+          |> fun name -> Namespace.of_list [ name ]
+          | Loose_sources -> group.namespace
+        in
+        let file_str = Path.to_string (Path.normalize path) in
+        let source_dir_prefix =
+          let prefix = Path.to_string group.source_dir in
+          if String.is_empty prefix then
+            ""
+          else
+            prefix ^ "/"
+        in
+        let rel_path =
+          if String.is_empty source_dir_prefix then
+            file_str
+          else if String.starts_with ~prefix:source_dir_prefix file_str then
+            let len = String.length source_dir_prefix in
+            String.sub file_str ~offset:len ~len:(String.length file_str - len)
+          else
+            Path.basename path
+        in
+        let file_dir =
+          match Path.parent (Path.v rel_path) with
+          | Some p -> Path.to_string p
+          | None -> "."
+        in
+        let subdir_parts =
+          if file_dir = "." then
+            []
+          else
+            String.split file_dir ~by:"/" |> List.map ~fn:String.capitalize_ascii
+        in
+        List.fold_left subdir_parts ~init:base_namespace ~fn:Namespace.append
   in
   let analyze_node path (node: Module_node.t G.node) =
     match raw_source_text node with

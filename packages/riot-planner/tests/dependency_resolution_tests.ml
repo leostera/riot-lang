@@ -11,6 +11,34 @@ let make_package = fun name ->
     ~relative_path:(Path.v ".")
     ()
 
+let make_src_graph_builder = fun ~package_root ~(package:Riot_model.Package.t) ~toolchain ~workspace ->
+  let namespace =
+    match package.library with
+    | Some _ -> Namespace.empty
+    | None -> Namespace.of_list [ Package.root_module_name package ]
+  in
+  Riot_planner.Module_graph.create
+    Riot_planner.Module_graph.{
+      root = package_root;
+      source_groups =
+        [ Riot_planner.Module_graph.{
+            source_dir = Path.v "src";
+            allowed_source_files = package.sources.src;
+            root_mode =
+              (
+                match package.library with
+                | Some _ -> Riot_planner.Module_graph.Library_root {
+                  library_name = Package_name.to_string package.name
+                }
+                | None -> Riot_planner.Module_graph.Loose_sources
+              );
+            namespace;
+          } ];
+      package;
+      toolchain;
+      workspace;
+    }
+
 let test_transitive_closure_dependency_first_order = fun _ctx ->
   let dep_c =
     Riot_planner.Dependency.{
@@ -95,20 +123,7 @@ let test_module_graph_prefers_implementation_when_interface_exists = fun _ctx ->
           () in
         let toolchain = Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
         |> Result.expect ~msg:"expected toolchain init to succeed" in
-        let graph_builder = Riot_planner.Module_graph.create
-          Riot_planner.Module_graph.{
-            root = package_root;
-            source_dir = Path.v "src";
-            allowed_source_files = package.sources.src;
-            root_mode = Riot_planner.Module_graph.Library_root {
-              library_name = Package_name.to_string package.name
-            };
-            namespace = "Pkg";
-            package;
-            toolchain;
-            workspace;
-          }
-        in
+        let graph_builder = make_src_graph_builder ~package_root ~package ~toolchain ~workspace in
         match Riot_planner.Module_graph.wire_dependencies graph_builder with
         | Error err -> Error (Riot_planner.Planning_error.to_string err)
         | Ok () ->
@@ -211,20 +226,7 @@ let test_module_graph_resolves_nested_local_unix_backend = fun _ctx ->
           () in
         let toolchain = Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
         |> Result.expect ~msg:"expected toolchain init to succeed" in
-        let graph_builder = Riot_planner.Module_graph.create
-          Riot_planner.Module_graph.{
-            root = package_root;
-            source_dir = Path.v "src";
-            allowed_source_files = package.sources.src;
-            root_mode = Riot_planner.Module_graph.Library_root {
-              library_name = Package_name.to_string package.name
-            };
-            namespace = Riot_model.Module_name.(Package_name.to_string package.name |> of_string |> to_string);
-            package;
-            toolchain;
-            workspace;
-          }
-        in
+        let graph_builder = make_src_graph_builder ~package_root ~package ~toolchain ~workspace in
         match Riot_planner.Module_graph.wire_dependencies graph_builder with
         | Error err -> Error (Riot_planner.Planning_error.to_string err)
         | Ok () ->
@@ -299,20 +301,7 @@ let test_module_graph_uses_explicit_root_library_path = fun _ctx ->
           () in
         let toolchain = Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
         |> Result.expect ~msg:"expected toolchain init to succeed" in
-        let graph_builder = Riot_planner.Module_graph.create
-          Riot_planner.Module_graph.{
-            root = package_root;
-            source_dir = Path.v "src";
-            allowed_source_files = package.sources.src;
-            root_mode = Riot_planner.Module_graph.Library_root {
-              library_name = Package_name.to_string package.name
-            };
-            namespace = "Pkg";
-            package;
-            toolchain;
-            workspace;
-          }
-        in
+        let graph_builder = make_src_graph_builder ~package_root ~package ~toolchain ~workspace in
         match Riot_planner.Module_graph.wire_dependencies graph_builder with
         | Error err -> Error (Riot_planner.Planning_error.to_string err)
         | Ok () -> (
@@ -387,20 +376,7 @@ let test_module_graph_uses_explicit_root_library_path_case_insensitively = fun _
           () in
         let toolchain = Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
         |> Result.expect ~msg:"expected toolchain init to succeed" in
-        let graph_builder = Riot_planner.Module_graph.create
-          Riot_planner.Module_graph.{
-            root = package_root;
-            source_dir = Path.v "src";
-            allowed_source_files = package.sources.src;
-            root_mode = Riot_planner.Module_graph.Library_root {
-              library_name = Package_name.to_string package.name
-            };
-            namespace = "Krasny";
-            package;
-            toolchain;
-            workspace;
-          }
-        in
+        let graph_builder = make_src_graph_builder ~package_root ~package ~toolchain ~workspace in
         match Riot_planner.Module_graph.wire_dependencies graph_builder with
         | Error err -> Error (Riot_planner.Planning_error.to_string err)
         | Ok () -> (
@@ -474,20 +450,7 @@ let test_module_graph_root_library_alias_depends_on_child_module = fun _ctx ->
           () in
         let toolchain = Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
         |> Result.expect ~msg:"expected toolchain init to succeed" in
-        let graph_builder = Riot_planner.Module_graph.create
-          Riot_planner.Module_graph.{
-            root = package_root;
-            source_dir = Path.v "src";
-            allowed_source_files = package.sources.src;
-            root_mode = Riot_planner.Module_graph.Library_root {
-              library_name = Package_name.to_string package.name
-            };
-            namespace = "Lib_with_deps";
-            package;
-            toolchain;
-            workspace;
-          }
-        in
+        let graph_builder = make_src_graph_builder ~package_root ~package ~toolchain ~workspace in
         match Riot_planner.Module_graph.wire_dependencies graph_builder with
         | Error err -> Error (Riot_planner.Planning_error.to_string err)
         | Ok () ->
@@ -566,20 +529,7 @@ let test_module_graph_resolves_deeply_nested_modules_namespace_first = fun _ctx 
           () in
         let toolchain = Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
         |> Result.expect ~msg:"expected toolchain init to succeed" in
-        let graph_builder = Riot_planner.Module_graph.create
-          Riot_planner.Module_graph.{
-            root = package_root;
-            source_dir = Path.v "src";
-            allowed_source_files = package.sources.src;
-            root_mode = Riot_planner.Module_graph.Library_root {
-              library_name = Package_name.to_string package.name
-            };
-            namespace = Riot_model.Module_name.(Package_name.to_string package.name |> of_string |> to_string);
-            package;
-            toolchain;
-            workspace;
-          }
-        in
+        let graph_builder = make_src_graph_builder ~package_root ~package ~toolchain ~workspace in
         match Riot_planner.Module_graph.wire_dependencies graph_builder with
         | Error err -> Error (Riot_planner.Planning_error.to_string err)
         | Ok () ->
@@ -717,22 +667,7 @@ let test_module_graph_keeps_nested_sibling_dependency_across_allowed_source_orde
                 ~packages:[ package ]
                 ~target_dir:"target"
                 () in
-              let graph_builder = Riot_planner.Module_graph.create
-                Riot_planner.Module_graph.{
-                  root = package_root;
-                  source_dir = Path.v "src";
-                  allowed_source_files = package.sources.src;
-                  root_mode = Riot_planner.Module_graph.Library_root {
-                    library_name = Package_name.to_string package.name
-                  };
-                  namespace = Riot_model.Module_name.(Package_name.to_string package.name
-                  |> of_string
-                  |> to_string);
-                  package;
-                  toolchain;
-                  workspace;
-                }
-              in
+              let graph_builder = make_src_graph_builder ~package_root ~package ~toolchain ~workspace in
               match Riot_planner.Module_graph.wire_dependencies graph_builder with
               | Error err -> Error ("unexpected planner error for allowed source order ["
               ^ source_order_to_string source_order
