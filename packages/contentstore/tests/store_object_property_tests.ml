@@ -129,6 +129,7 @@ let tests = [
     (fun _ctx -> assert_property "object roundtrip survives reopen" object_roundtrip_survives_reopen);
   Test.property
     "successful object writes leave no temp files"
+    ~size:Large
     ~examples
     (fun _ctx -> assert_property "successful object writes leave no temp files" successful_object_writes_leave_no_temp_files);
 ]

@@ -235,6 +235,7 @@ let tests = [
     (fun _ctx -> assert_property "mixed workload leaves no temp files" mixed_workload_leaves_no_temp_files);
   Test.property
     "reopen preserves reachable workload data"
+    ~size:Large
     ~examples
     (fun _ctx -> assert_property "reopen preserves reachable workload data" reopen_preserves_reachable_workload);
 ]

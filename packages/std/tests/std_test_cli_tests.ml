@@ -435,7 +435,7 @@ let meta_tests = [
   Test.case "run-tests pattern matches middle substring" test_run_tests_pattern_matches_middle_substring;
   Test.case "run-tests succeeds when the query matches no tests" test_run_tests_returns_success_with_zero_matches;
   Test.case "run-tests --json alias emits json" test_run_tests_json_flag_alias_emits_json;
-  Test.case "run-tests --small filters small tests" test_run_tests_small_flag_filters_small_tests;
+  Test.case ~size:Large "run-tests --small filters small tests" test_run_tests_small_flag_filters_small_tests;
   Test.case "run-tests --large filters large tests" test_run_tests_large_flag_filters_large_tests;
   Test.case "run-tests --flaky filters flaky tests" test_run_tests_flaky_flag_filters_flaky_tests;
   Test.case "run-tests --json includes timing fields" test_run_tests_json_includes_timing_fields;
@@ -445,7 +445,7 @@ let meta_tests = [
   Test.case "run-tests --json emits property metadata" test_run_tests_json_emits_property_metadata;
   Test.case "run-tests --json emits property progress" test_run_tests_json_emits_property_progress;
   Test.case "run-tests --json emits snapshot progress" test_run_tests_json_emits_snapshot_progress;
-  Test.case "run-tests --json emits heartbeat for long tests" test_run_tests_json_emits_heartbeat_for_long_tests;
+  Test.case ~size:Large "run-tests --json emits heartbeat for long tests" test_run_tests_json_emits_heartbeat_for_long_tests;
   Test.case "run-tests timeout does not abort suite" test_run_tests_timeout_does_not_abort_suite;
 ]
 

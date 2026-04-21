@@ -278,7 +278,7 @@ let tests = [ Test.case "ignore walker skips hidden directories by default"
                 ^ String.concat ", " actual
                 ^ "]")
           in
-          run 25)); Test.case "ignore walker to_list packages file set is stable across concurrency and sort modes"
+          run 25)); Test.case ~size:Large "ignore walker to_list packages file set is stable across concurrency and sort modes"
     (fun _ctx ->
       let* packages_root = find_packages_root () in
       let configs = [
