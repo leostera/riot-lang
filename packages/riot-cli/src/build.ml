@@ -323,7 +323,11 @@ let command =
     |> about "Build packages"
     |> args
       [
-        positional "package" |> required false |> multiple |> help "Packages to build (or omit to build all packages)";
+        option "package"
+        |> short 'p'
+        |> long "package"
+        |> multiple
+        |> help "Build a specific package. Repeat to build multiple packages; omit to build all packages.";
         option "target" |> short 'x' |> long "target" |> help "Target architecture (exact triple, pattern like 'linux'/'aarch64', or 'all')";
         flag "all-targets" |> help "Build for all configured targets";
         flag "release" |> long "release" |> help "Use the release build profile";

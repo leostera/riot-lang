@@ -71,22 +71,27 @@ let make_valid_workspace = fun ?target_dir tmpdir ->
   Riot_model.Workspace.make_realized ~root:tmpdir ?target_dir ~packages:[ package ] ()
 
 let test_build_accepts_multiple_packages = fun _ctx ->
-  match parse_build [ "build"; "syn"; "krasny"; "riot-cli" ] with
+  match parse_build [ "build"; "-p"; "syn"; "-p"; "krasny"; "-p"; "riot-cli" ] with
   | Error err -> Error ("expected build args to parse: " ^ err)
   | Ok matches ->
       let actual = ArgParser.get_many matches "package" in
       Test.assert_equal ~expected:[ "syn"; "krasny"; "riot-cli" ] ~actual;
       Ok ()
 
-let test_build_usage_shows_variadic_packages = fun _ctx ->
+let test_build_usage_shows_repeated_package_flag = fun _ctx ->
   let usage = ArgParser.usage_string Riot_cli.Build.command in
-  if String.contains usage "package..." then
+  if String.contains usage "--package" && not (String.contains usage "package...") then
     Ok ()
   else
-    Error ("expected variadic package usage, got: " ^ usage)
+    Error ("expected repeated package flag usage, got: " ^ usage)
+
+let test_build_rejects_positional_package_args = fun _ctx ->
+  match parse_build [ "build"; "syn" ] with
+  | Error _ -> Ok ()
+  | Ok _ -> Error "expected positional package arguments to be rejected"
 
 let test_build_accepts_json_flag = fun _ctx ->
-  match parse_build [ "build"; "--json"; "syn" ] with
+  match parse_build [ "build"; "--json"; "-p"; "syn" ] with
   | Error err -> Error ("expected build args to parse: " ^ err)
   | Ok matches ->
       if ArgParser.get_flag matches "json" then
@@ -95,7 +100,7 @@ let test_build_accepts_json_flag = fun _ctx ->
         Error "expected --json flag to be parsed"
 
 let test_build_accepts_release_flag = fun _ctx ->
-  match parse_build [ "build"; "--release"; "syn" ] with
+  match parse_build [ "build"; "--release"; "-p"; "syn" ] with
   | Error err -> Error ("expected build args to parse: " ^ err)
   | Ok matches ->
       if ArgParser.get_flag matches "release" then
@@ -104,7 +109,7 @@ let test_build_accepts_release_flag = fun _ctx ->
         Error "expected --release flag to be parsed"
 
 let test_build_accepts_jobs_flag = fun _ctx ->
-  match parse_build [ "build"; "--jobs"; "4"; "syn" ] with
+  match parse_build [ "build"; "--jobs"; "4"; "-p"; "syn" ] with
   | Error err -> Error ("expected build args to parse: " ^ err)
   | Ok matches ->
       match ArgParser.get_one matches "jobs" with
@@ -120,7 +125,7 @@ let test_build_rejects_invalid_jobs_flag = fun _ctx ->
     Fs.with_tempdir ~prefix:"riot_cli_build_invalid_jobs"
       (fun tmpdir ->
         let workspace = make_valid_workspace tmpdir in
-        match parse_build [ "build"; "--jobs"; "abc"; "demo" ] with
+        match parse_build [ "build"; "--jobs"; "abc"; "-p"; "demo" ] with
         | Error err -> Error ("expected build args to parse: " ^ err)
         | Ok matches ->
             match Riot_cli.Build.run ~workspace matches with
@@ -140,7 +145,7 @@ let test_build_accepts_jobs_flag_in_run = fun _ctx ->
     Fs.with_tempdir ~prefix:"riot_cli_build_jobs_runtime"
       (fun tmpdir ->
         let workspace = make_valid_workspace tmpdir in
-        match parse_build [ "build"; "--jobs"; "2"; "demo" ] with
+        match parse_build [ "build"; "--jobs"; "2"; "-p"; "demo" ] with
         | Error err -> Error ("expected build args to parse: " ^ err)
         | Ok matches ->
             match Riot_cli.Build.run ~workspace matches with
@@ -155,7 +160,7 @@ let test_build_rejects_zero_jobs_runtime = fun _ctx ->
     Fs.with_tempdir ~prefix:"riot_cli_build_zero_jobs"
       (fun tmpdir ->
         let workspace = make_valid_workspace tmpdir in
-        match parse_build [ "build"; "--jobs"; "0"; "demo" ] with
+        match parse_build [ "build"; "--jobs"; "0"; "-p"; "demo" ] with
         | Error err -> Error ("expected build args to parse: " ^ err)
         | Ok matches ->
             match Riot_cli.Build.run ~workspace matches with
@@ -172,7 +177,7 @@ let test_build_rejects_negative_jobs_runtime = fun _ctx ->
     Fs.with_tempdir ~prefix:"riot_cli_build_negative_jobs"
       (fun tmpdir ->
         let workspace = make_valid_workspace tmpdir in
-        match parse_build [ "build"; "--jobs"; "-1"; "demo" ] with
+        match parse_build [ "build"; "--jobs"; "-1"; "-p"; "demo" ] with
         | Error err -> Error ("expected build args to parse: " ^ err)
         | Ok matches ->
             match Riot_cli.Build.run ~workspace matches with
@@ -205,7 +210,7 @@ let test_build_run_accepts_workspace = fun _ctx ->
     Fs.with_tempdir ~prefix:"riot_cli_build_command"
       (fun tmpdir ->
         let workspace = make_valid_workspace tmpdir in
-        let matches = parse_build [ "build"; "demo" ] |> Result.expect ~msg:"expected build args to parse" in
+        let matches = parse_build [ "build"; "-p"; "demo" ] |> Result.expect ~msg:"expected build args to parse" in
         Riot_cli.Build.run ~workspace matches)
   with
   | Ok (Ok ()) -> Ok ()
@@ -587,7 +592,8 @@ let test_pm_event_shows_up_to_date = fun _ctx ->
 let tests =
   Test.[
     case "build: accept multiple package arguments" test_build_accepts_multiple_packages;
-    case "build: usage shows variadic packages" test_build_usage_shows_variadic_packages;
+    case "build: usage shows repeated package flag" test_build_usage_shows_repeated_package_flag;
+    case "build: reject positional package args" test_build_rejects_positional_package_args;
     case "build: parse --json flag" test_build_accepts_json_flag;
     case "build: parse --release flag" test_build_accepts_release_flag;
     case "build: parse --jobs flag" test_build_accepts_jobs_flag;
