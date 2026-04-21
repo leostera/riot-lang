@@ -746,10 +746,10 @@ let tests =
       case "build runtime: partial failures fail by default" test_execute_partial_failures_by_default;
       case "build runtime: allow partial failures returns partial results" test_execute_allows_partial_failures;
       case ~size:Large "build runtime: multi-target partial failures can succeed with allow flag" test_execute_allows_multi_target_partial_failures;
-      case "build runtime: multi-target partial build returns aggregated returning results" test_execute_multi_target_reports_global_returning_results;
-      case "build runtime: multi-target successful build returns aggregated returning results" test_execute_multi_target_all_success_reports_aggregated_results;
-      case "build runtime: multi-target partial failures skip cache recording" test_execute_multi_target_partial_failures_skip_cache_recording;
-      case "build runtime: multi-target success records cache generation" test_execute_multi_target_success_records_cache_generation;
+      case ~size:Large "build runtime: multi-target partial build returns aggregated returning results" test_execute_multi_target_reports_global_returning_results;
+      case ~size:Large "build runtime: multi-target successful build returns aggregated returning results" test_execute_multi_target_all_success_reports_aggregated_results;
+      case ~size:Large "build runtime: multi-target partial failures skip cache recording" test_execute_multi_target_partial_failures_skip_cache_recording;
+      case ~size:Large "build runtime: multi-target success records cache generation" test_execute_multi_target_success_records_cache_generation;
     ]
 
 let name = "Riot Build Runtime Tests"

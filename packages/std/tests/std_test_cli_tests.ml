@@ -24,8 +24,30 @@ let make_overlap_probe = fun counter name ->
 
 let overlap_probe_counter = Sync.Atomic.make 0
 
+let make_linear_probe = fun counter name ->
+  Test.case ~size:Test.Large name
+    (fun _ctx ->
+      let previous = Sync.Atomic.fetch_and_add counter 1 in
+      let result =
+        if previous = 0 then
+          (
+            sleep (Time.Duration.from_millis 20);
+            Ok ()
+          )
+        else
+          Error "expected linear suite to run one test at a time"
+      in
+      let _ = Sync.Atomic.fetch_and_add counter (-1) in
+      result)
+
+let linear_probe_counter = Sync.Atomic.make 0
+
 let sample_tests = [
   Test.case ~size:Test.Large "alpha_large" (fun _ctx -> Ok ());
+  Test.case ~size:Test.Large "large_timeout_probe"
+    (fun _ctx ->
+      sleep (Time.Duration.from_secs 2);
+      Ok ());
   Test.case "beta" (fun _ctx -> Ok ());
   Propane.property "gamma_property" Arbitrary.int (fun _ -> true);
   Test.case
@@ -50,6 +72,11 @@ let sample_tests = [
       sleep (Time.Duration.from_secs 2);
       Ok ());
   Test.case "after_timeout" (fun _ctx -> Ok ());
+]
+
+let linear_tests = [
+  make_linear_probe linear_probe_counter "linear_probe_alpha";
+  make_linear_probe linear_probe_counter "linear_probe_beta";
 ]
 
 let self_executable = fun () ->
@@ -117,6 +144,13 @@ let run_sample_capture = fun args ->
     ~args:("sample" :: args) in
   Command.output cmd |> Result.expect ~msg:"failed to run sample test cli"
 
+let run_linear_sample_capture = fun args ->
+  let cmd = Command.make
+    (self_executable ())
+    ~env:[ ("PROPANE_TESTS", "7") ]
+    ~args:("sample-linear" :: args) in
+  Command.output cmd |> Result.expect ~msg:"failed to run linear sample test cli"
+
 let test_list_tests_lists_all_cases = fun _ctx ->
   let output = run_sample_capture [ "list-tests" ] in
   if not (Int.equal output.status 0) then
@@ -125,6 +159,7 @@ let test_list_tests_lists_all_cases = fun _ctx ->
     let names = split_lines output.stdout |> List.sort ~compare:String.compare in
     let expected = [
       "alpha_large";
+      "large_timeout_probe";
       "beta";
       "gamma_property";
       "inline_snapshot_probe";
@@ -190,7 +225,8 @@ let test_run_tests_pattern_matches_suffix_substring = fun _ctx ->
     Error ("expected filtered run to succeed, got " ^ Int.to_string output.status)
   else
     let names = test_names_from_json output.stdout |> List.sort ~compare:String.compare in
-    let expected = [ "alpha_large"; "middle_large_case" ] |> List.sort ~compare:String.compare in
+    let expected = [ "alpha_large"; "middle_large_case" ]
+    |> List.sort ~compare:String.compare in
     if names = expected then
       Ok ()
     else
@@ -222,7 +258,8 @@ let test_run_tests_json_flag_alias_emits_json = fun _ctx ->
     Error ("expected --json run to succeed, got " ^ Int.to_string output.status)
   else
     let names = test_names_from_json output.stdout |> List.sort ~compare:String.compare in
-    let expected = [ "alpha_large"; "middle_large_case" ] |> List.sort ~compare:String.compare in
+    let expected = [ "alpha_large"; "middle_large_case" ]
+    |> List.sort ~compare:String.compare in
     if names = expected then
       Ok ()
     else
@@ -230,8 +267,8 @@ let test_run_tests_json_flag_alias_emits_json = fun _ctx ->
 
 let test_run_tests_small_flag_filters_small_tests = fun _ctx ->
   let output = run_sample_capture [ "run-tests"; "--small"; "--format"; "json" ] in
-  if not (Int.equal output.status 0) then
-    Error ("expected --small run to succeed, got " ^ Int.to_string output.status)
+  if Int.equal output.status 0 then
+    Error "expected --small run to fail because timeout_probe is small and exceeds 500ms"
   else
     let names = test_names_from_json output.stdout |> List.sort ~compare:String.compare in
     let expected = [
@@ -256,6 +293,7 @@ let test_run_tests_large_flag_filters_large_tests = fun _ctx ->
     let names = test_names_from_json output.stdout |> List.sort ~compare:String.compare in
     let expected = [
       "alpha_large";
+      "large_timeout_probe";
       "middle_large_case";
       "concurrency_probe_alpha";
       "concurrency_probe_beta";
@@ -334,8 +372,7 @@ let test_run_tests_json_includes_reliability_metadata = fun _ctx ->
     | _ -> Error "expected exactly one flaky test in json output"
 
 let test_run_tests_small_timeout_reports_timed_out = fun _ctx ->
-  let output = run_sample_capture
-    [ "run-tests"; "timeout_probe"; "--json"; "--small-timeout-ms"; "10" ] in
+  let output = run_sample_capture [ "run-tests"; "timeout_probe"; "--small"; "--json" ] in
   if Int.equal output.status 0 then
     Error "expected timeout probe to fail"
   else
@@ -343,7 +380,7 @@ let test_run_tests_small_timeout_reports_timed_out = fun _ctx ->
     match Data.Json.get_field "tests" json with
     | Some (Data.Json.Array [ Data.Json.Object fields ]) ->
         let has name value = assoc_value name fields = Some value in
-        if has "status" (Data.Json.String "timed_out") && has "timeout_ms" (Data.Json.Int 10) then
+        if has "status" (Data.Json.String "timed_out") && has "timeout_ms" (Data.Json.Int 500) then
           Ok ()
         else
           Error "expected timeout probe json output to report a timeout"
@@ -420,14 +457,15 @@ let test_run_tests_json_emits_snapshot_progress = fun _ctx ->
     Error ("expected snapshot progress events, got: " ^ String.concat ", " progress_events)
 
 let test_run_tests_json_emits_heartbeat_for_long_tests = fun _ctx ->
-  let events = parse_json_lines (run_sample_capture [ "run-tests"; "timeout_probe"; "--json" ]).stdout in
+  let events = parse_json_lines
+    (run_sample_capture [ "run-tests"; "large_timeout_probe"; "--json" ]).stdout in
   if List.exists (fun json -> json_type json = Some "TestCaseHeartbeat") events then
     Ok ()
   else
     Error "expected a TestCaseHeartbeat event for a long-running test"
 
 let test_run_tests_timeout_does_not_abort_suite = fun _ctx ->
-  let output = run_sample_capture [ "run-tests"; "--small"; "--json"; "--small-timeout-ms"; "10" ] in
+  let output = run_sample_capture [ "run-tests"; "--small"; "--json" ] in
   if Int.equal output.status 0 then
     Error "expected timed out small-test run to fail overall"
   else
@@ -491,34 +529,54 @@ let test_run_tests_concurrency_keeps_summary_order = fun _ctx ->
     else
       Error ("expected ordered summary results, got: " ^ String.concat ", " names)
 
+let test_run_tests_linear_suite_forces_serial_execution = fun _ctx ->
+  let output =
+    run_linear_sample_capture [ "run-tests"; "linear_probe"; "--json"; "--concurrency"; "2" ] in
+  if not (Int.equal output.status 0) then
+    Error ("expected linear suite run to succeed, got " ^ Int.to_string output.status)
+  else
+    let names = test_names_from_json output.stdout |> List.sort ~compare:String.compare in
+    if names = [ "linear_probe_alpha"; "linear_probe_beta" ] then
+      Ok ()
+    else
+      Error ("unexpected linear probe names: " ^ String.concat ", " names)
+
 let meta_tests = [
-  Test.case "list-tests lists all sample cases" test_list_tests_lists_all_cases;
-  Test.case "list-tests --json includes metadata" test_list_tests_json_includes_metadata;
-  Test.case "list-tests respects filters" test_list_tests_respects_filters;
-  Test.case "run-tests pattern matches suffix substring" test_run_tests_pattern_matches_suffix_substring;
-  Test.case "run-tests pattern matches middle substring" test_run_tests_pattern_matches_middle_substring;
-  Test.case "run-tests succeeds when the query matches no tests" test_run_tests_returns_success_with_zero_matches;
-  Test.case "run-tests --json alias emits json" test_run_tests_json_flag_alias_emits_json;
+  Test.case ~size:Large "list-tests lists all sample cases" test_list_tests_lists_all_cases;
+  Test.case ~size:Large "list-tests --json includes metadata" test_list_tests_json_includes_metadata;
+  Test.case ~size:Large "list-tests respects filters" test_list_tests_respects_filters;
+  Test.case ~size:Large "run-tests pattern matches suffix substring" test_run_tests_pattern_matches_suffix_substring;
+  Test.case ~size:Large "run-tests pattern matches middle substring" test_run_tests_pattern_matches_middle_substring;
+  Test.case ~size:Large "run-tests succeeds when the query matches no tests" test_run_tests_returns_success_with_zero_matches;
+  Test.case ~size:Large "run-tests --json alias emits json" test_run_tests_json_flag_alias_emits_json;
   Test.case ~size:Large "run-tests --small filters small tests" test_run_tests_small_flag_filters_small_tests;
-  Test.case "run-tests --large filters large tests" test_run_tests_large_flag_filters_large_tests;
-  Test.case "run-tests --flaky filters flaky tests" test_run_tests_flaky_flag_filters_flaky_tests;
-  Test.case "run-tests --json includes timing fields" test_run_tests_json_includes_timing_fields;
-  Test.case "run-tests --json includes reliability metadata" test_run_tests_json_includes_reliability_metadata;
-  Test.case "run-tests --small-timeout-ms reports timed out tests" test_run_tests_small_timeout_reports_timed_out;
-  Test.case "run-tests --json emits lifecycle events" test_run_tests_json_emits_lifecycle_events;
-  Test.case "run-tests --json emits property metadata" test_run_tests_json_emits_property_metadata;
-  Test.case "run-tests --json emits property progress" test_run_tests_json_emits_property_progress;
-  Test.case "run-tests --json emits snapshot progress" test_run_tests_json_emits_snapshot_progress;
+  Test.case ~size:Large "run-tests --large filters large tests" test_run_tests_large_flag_filters_large_tests;
+  Test.case ~size:Large "run-tests --flaky filters flaky tests" test_run_tests_flaky_flag_filters_flaky_tests;
+  Test.case ~size:Large "run-tests --json includes timing fields" test_run_tests_json_includes_timing_fields;
+  Test.case ~size:Large "run-tests --json includes reliability metadata" test_run_tests_json_includes_reliability_metadata;
+  Test.case ~size:Large "run-tests applies the default small-test timeout" test_run_tests_small_timeout_reports_timed_out;
+  Test.case ~size:Large "run-tests --json emits lifecycle events" test_run_tests_json_emits_lifecycle_events;
+  Test.case ~size:Large "run-tests --json emits property metadata" test_run_tests_json_emits_property_metadata;
+  Test.case ~size:Large "run-tests --json emits property progress" test_run_tests_json_emits_property_progress;
+  Test.case ~size:Large "run-tests --json emits snapshot progress" test_run_tests_json_emits_snapshot_progress;
   Test.case ~size:Large "run-tests --json emits heartbeat for long tests" test_run_tests_json_emits_heartbeat_for_long_tests;
-  Test.case "run-tests timeout does not abort suite" test_run_tests_timeout_does_not_abort_suite;
-  Test.case "run-tests --concurrency allows overlapping tests" test_run_tests_concurrency_flag_allows_overlap;
-  Test.case "run-tests --concurrency keeps summary order" test_run_tests_concurrency_keeps_summary_order;
+  Test.case ~size:Large "run-tests timeout does not abort suite" test_run_tests_timeout_does_not_abort_suite;
+  Test.case ~size:Large "run-tests --concurrency allows overlapping tests" test_run_tests_concurrency_flag_allows_overlap;
+  Test.case ~size:Large "run-tests --concurrency keeps summary order" test_run_tests_concurrency_keeps_summary_order;
+  Test.case ~size:Large "run-tests linear suites force serial execution" test_run_tests_linear_suite_forces_serial_execution;
 ]
 
 let sample_main = fun ~args ->
   match args with
-  | exe :: _sample :: rest -> Test.Cli.main ~name:"sample" ~tests:sample_tests ~args:(exe :: rest)
+  | exe :: _sample :: rest -> Test.Cli.main ~name:"sample" ~tests:sample_tests ~args:(exe :: rest) ()
   | _ -> Error (Failure "expected sample subcommand arguments")
+
+let linear_sample_main = fun ~args ->
+  match args with
+  | exe :: _sample :: rest ->
+      Test.Cli.main ~execution_mode:Test.Cli.Linear ~name:"sample_linear" ~tests:linear_tests
+        ~args:(exe :: rest) ()
+  | _ -> Error (Failure "expected sample-linear subcommand arguments")
 
 let meta_main = fun ~args ->
   let normalize_args = function
@@ -526,11 +584,12 @@ let meta_main = fun ~args ->
     | [ exe ] -> [ exe; "run-tests" ]
     | args -> args
   in
-  Test.Cli.main ~name:"std_test_cli_tests" ~tests:meta_tests ~args:(normalize_args args)
+  Test.Cli.main ~name:"std_test_cli_tests" ~tests:meta_tests ~args:(normalize_args args) ()
 
 let main = fun ~args ->
   match args with
   | _ :: "sample" :: _ -> sample_main ~args
+  | _ :: "sample-linear" :: _ -> linear_sample_main ~args
   | _ -> meta_main ~args
 
 let () = Runtime.run ~main ~args:Env.args ()

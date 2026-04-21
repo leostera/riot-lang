@@ -135,7 +135,10 @@ type config = {
 
 type run_summary = Test_result.summary
 
-let default_policy = { small_test_timeout = None; flaky_max_retries = 0 }
+let default_policy = {
+  small_test_timeout = Some (Time.Duration.from_millis 500);
+  flaky_max_retries = 0;
+}
 
 let no_event_handler: event_handler = fun _ -> ()
 

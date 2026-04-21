@@ -130,7 +130,16 @@ val assert_true: bool -> unit
 
 (** CLI helpers for test binaries. *)
 module Cli: sig
+  type execution_mode = Cli.execution_mode =
+    | Concurrent
+    | Linear
+
   (** Main entry point for test binaries with CLI support. *)
   val main:
-    name:string -> tests:test_case list -> args:string list -> (unit, Runtime.Actor.exit_reason) result
+    ?execution_mode:execution_mode ->
+    name:string ->
+    tests:test_case list ->
+    args:string list ->
+    unit ->
+    (unit, Runtime.Actor.exit_reason) result
 end

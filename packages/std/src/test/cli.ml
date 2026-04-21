@@ -2,6 +2,10 @@ open Global
 open Collections
 open Arg_parser
 
+type execution_mode =
+  | Concurrent
+  | Linear
+
 let test_type_fields = function
   | Test_case.UnitTest -> [ ("type", Data.Json.String "test") ]
   | Test_case.Property { examples } -> [
@@ -276,7 +280,6 @@ let run_tests_cmd =
         flag "small" |> long "small" |> help "Run only tests marked small";
         flag "large" |> long "large" |> help "Run only tests marked large";
         flag "flaky" |> long "flaky" |> help "Run only tests marked flaky";
-        option "small-timeout-ms" |> long "small-timeout-ms" |> help "Timeout to apply to tests marked small";
         option "flaky-max-retries" |> long "flaky-max-retries" |> help "Retry budget for tests marked flaky";
         option "pattern" |> long "pattern" |> help "Deprecated alias for the positional query argument";
       ]
@@ -298,7 +301,7 @@ let get_suite_info name: Reporter.suite_info =
   let binary_path = Env.args |> List.head |> Option.unwrap_or ~default:name |> Path.v in
   { name; source_file = None; binary_path = Some binary_path }
 
-let main = fun ~name ~tests ~args ->
+let main = fun ?(execution_mode = Concurrent) ~name ~tests ~args () ->
   let suite_info = get_suite_info name in
   let cmd = command name
   |> about ("Test runner for " ^ name)
@@ -336,7 +339,7 @@ let main = fun ~name ~tests ~args ->
               Error (Failure msg)
           | Ok reporter ->
               let shuffle = get_flag sub_matches "shuffle" in
-              let concurrency =
+              let requested_concurrency =
                 get_int sub_matches "concurrency" |> Option.unwrap_or ~default:default_concurrency in
               let small_only = get_flag sub_matches "small" in
               let large_only = get_flag sub_matches "large" in
@@ -357,16 +360,22 @@ let main = fun ~name ~tests ~args ->
                   else
                     Runner.All_sizes
                 in
-                let small_test_timeout = get_int sub_matches "small-timeout-ms"
-                |> Option.map ~fn:Time.Duration.from_millis in
                 let flaky_max_retries = get_int sub_matches "flaky-max-retries"
                 |> Option.unwrap_or ~default:0 in
                 let target = Runner.{ query; size_filter; flaky_only } in
                 let mode =
-                  if shuffle then
-                    Runner.Shuffle
-                  else
-                    Runner.Sequential
+                  match execution_mode with
+                  | Linear -> Runner.Shuffle
+                  | Concurrent ->
+                      if shuffle then
+                        Runner.Shuffle
+                      else
+                        Runner.Sequential
+                in
+                let concurrency =
+                  match execution_mode with
+                  | Linear -> 1
+                  | Concurrent -> requested_concurrency
                 in
                 let config =
                   Runner.{
@@ -374,7 +383,7 @@ let main = fun ~name ~tests ~args ->
                     reporter;
                     mode;
                     target;
-                    policy = { small_test_timeout; flaky_max_retries };
+                    policy = { Runner.default_policy with flaky_max_retries };
                     suite_info;
                     event_handler =
                       if String.equal format_str "json" then
@@ -392,11 +401,21 @@ let main = fun ~name ~tests ~args ->
           let reporter =
             (module Reporter.Pretty : Reporter.Intf)
           in
+          let mode =
+            match execution_mode with
+            | Linear -> Runner.Shuffle
+            | Concurrent -> Runner.Sequential
+          in
+          let concurrency =
+            match execution_mode with
+            | Linear -> 1
+            | Concurrent -> default_concurrency
+          in
           let config =
             Runner.{
-              concurrency = default_concurrency;
+              concurrency;
               reporter;
-              mode = Sequential;
+              mode;
               target = { query = None; size_filter = All_sizes; flaky_only = false };
               policy = default_policy;
               suite_info;
