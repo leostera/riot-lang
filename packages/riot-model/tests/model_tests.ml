@@ -55,6 +55,11 @@ let make_package = fun () ->
     ~publish
     ()
 
+let hash_of_package = fun pkg ->
+  let state = Crypto.Sha256.create () in
+  Package.hash state pkg;
+  Crypto.Sha256.finish state
+
 let with_tempdir = fun prefix fn ->
   match Fs.with_tempdir ~prefix fn with
   | Ok result -> result
@@ -111,6 +116,42 @@ let test_dev_scope_keeps_only_dev_outputs = fun _ctx ->
     Ok ()
   else
     Error "dev scope should reuse runtime deps while keeping only dev outputs"
+
+let test_package_hash_changes_when_build_dependency_path_changes = fun _ctx ->
+  let with_build_dependency path =
+    let command = make_command () in
+    let publish =
+      Package.{
+        version = Some (Std.Version.make ~major:0 ~minor:1 ~patch:0 ());
+        description = Some "minttea";
+        license = Some "Apache-2.0";
+        is_public = Some true
+      } in
+    Package.make ~name:(package_name "minttea") ~path:(Path.v "packages/minttea") ~relative_path:(Path.v
+      "packages/minttea") ~dependencies:[
+      { name = package_name "std"; source = source ~workspace:true () }
+    ] ~dev_dependencies:[ { name = package_name "propane"; source = source ~workspace:true () } ] ~build_dependencies:[
+      { name = package_name "fixme"; source = source ~path:(Path.v path) () }
+    ] ~binaries:[ { name = "demo-bin"; path = Path.v "src/demo_bin.ml" } ] ~library:{
+      path = Path.v "src/minttea.ml"
+    }
+      ~sources:{
+        src = [ Path.v "src/minttea.ml"; Path.v "src/demo_cmd.ml" ];
+        native = [];
+        tests = [ Path.v "tests/model_tests.ml" ];
+        examples = [];
+        bench = [];
+      }
+      ~commands:[ command ]
+      ~publish
+      ()
+  in
+  let first = with_build_dependency "../tools/fixme-one" in
+  let second = with_build_dependency "../tools/fixme-two" in
+  if Crypto.Hash.equal (hash_of_package first) (hash_of_package second) then
+    Error "expected Package.hash to change when build dependency path changes"
+  else
+    Ok ()
 
 let test_explicit_binaries_override_autodiscovery = fun _ctx ->
   with_tempdir "riot_model_package"
@@ -1140,6 +1181,7 @@ let tests =
     case "for_scope: build drops commands and runtime outputs" test_build_scope_drops_commands_and_runtime_outputs;
     case "for_scope: runtime keeps commands" test_runtime_scope_keeps_commands;
     case "for_scope: dev keeps only dev outputs" test_dev_scope_keeps_only_dev_outputs;
+    case "package: hash changes when build dependency path changes" test_package_hash_changes_when_build_dependency_path_changes;
     case "package: explicit binaries suppress autodiscovery duplicates" test_explicit_binaries_override_autodiscovery;
     case "package: src/main.ml autodiscovers runtime binary" test_src_main_autodiscovers_runtime_binary;
     case "package: source scan ignores hidden entries" test_scan_sources_ignores_hidden_entries;
@@ -1177,4 +1219,5 @@ let tests =
 
 let name = "Riot Model Tests"
 
-let () = Actors.run ~main:(fun ~args -> Test.Cli.main ~name ~tests ~args ()) ~args:Env.args ()
+let () =
+  Actors.run ~main:(fun ~args -> Test.Cli.main ~name ~tests ~args ()) ~args:Env.args ()

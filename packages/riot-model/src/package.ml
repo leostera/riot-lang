@@ -2172,6 +2172,7 @@ let hash_with = fun (type s) ((module H : Hash_writer with type state = s)) stat
   in
   List.for_each pkg.dependencies ~fn:hash_dependency;
   List.for_each pkg.dev_dependencies ~fn:hash_dependency;
+  List.for_each pkg.build_dependencies ~fn:hash_dependency;
   (
     match pkg.publish.version with
     | Some version ->
