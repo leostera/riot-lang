@@ -93,6 +93,18 @@ module Cursor: module type of Cursor
 (** Syntax node kind enumeration for OCaml. *)
 module Lexer: module type of Lexer
 
+(** Replacement-parser exact lexical and grammar syntax kinds. *)
+module SyntaxKind2: module type of Syntax_kind2
+
+(** Replacement-parser raw token stream. *)
+module RawToken: module type of Raw_token
+
+(** Replacement-parser event stream. *)
+module Event: module type of Event
+
+(** Replacement-parser vector-backed lossless syntax tree. *)
+module SyntaxTree: module type of Syntax_tree
+
 (** Structured parse error types. *)
 module SyntaxKind: module type of Syntax_kind
 
@@ -120,6 +132,9 @@ module CstJson: module type of Cst_json
 
 (** Why a typed CST could not be constructed from a parse result. *)
 module Parser: module type of Parser
+
+(** Experimental replacement parser. *)
+module Parser2: module type of Parser2
 
 type build_cst_error =
   | Parse_diagnostics of Diagnostic.t list
@@ -166,6 +181,10 @@ val parse_implementation: string -> Parser.parse_result
     Ceibo.Red.new_root result.tree in let span = Ceibo.Red.SyntaxNode.span root
     in Printf.printf "Covers: %s\n" (Ceibo.Span.to_string span) ``` *)
 val parse: filename:Std.Path.t -> string -> Parser.parse_result
+
+(** `parse2 ~filename source` parses source through the replacement parser
+    prototype. It keeps raw tokens, events, and tree storage vector-backed. *)
+val parse2: filename:Std.Path.t -> string -> Parser2.parse_result
 
 (** `build_cst result` lifts a diagnostics-free Ceibo parse result into the
     typed CST.

@@ -6,8 +6,13 @@ module Keyword = Keyword
 module Cursor = Cursor
 module Lexer = Lexer
 module SyntaxKind = Syntax_kind
+module SyntaxKind2 = Syntax_kind2
+module RawToken = Raw_token
+module Event = Event
+module SyntaxTree = Syntax_tree
 module Diagnostic = Diagnostic
 module Parser = Parser
+module Parser2 = Parser2
 module DiagnosticReporter = Diagnostic_reporter
 module Cst = Cst
 module Visit = Visit
@@ -45,3 +50,5 @@ let parse = fun ~filename source ->
   match Path.extension filename with
   | Some ".mli" -> parse_interface source
   | _ -> parse_implementation source
+
+let parse2 = fun ~filename source -> Parser2.parse ~filename source
