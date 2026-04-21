@@ -452,6 +452,6 @@ let tests = [
 
 let () =
   Actors.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"swisstable-complex-key-tests" ~tests ~args)
+    ~main:(fun ~args -> Test.Cli.main ~name:"swisstable-complex-key-tests" ~tests ~args ())
     ~args:Env.args
     ()

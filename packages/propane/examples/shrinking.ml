@@ -96,6 +96,6 @@ let tests = [ passing_with_assume_prop; sqrt_with_assume_prop; ]
 
 let () =
   Actors.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"propane-shrinking-examples" ~tests ~args)
+    ~main:(fun ~args -> Test.Cli.main ~name:"propane-shrinking-examples" ~tests ~args ())
     ~args:Env.args
     ()

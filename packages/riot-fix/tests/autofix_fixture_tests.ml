@@ -107,6 +107,6 @@ let () =
           ~snapshot_path:approved_snapshot_path
           ~run:(fun ctx -> test_fixture ~ctx)
       in
-      Test.Cli.main ~name:"riot-fix autofix fixtures" ~tests ~args)
+      Test.Cli.main ~name:"riot-fix autofix fixtures" ~tests ~args ())
     ~args:Env.args
     ()

@@ -213,6 +213,6 @@ let tests =
 
 let () =
   Actors.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"renderer_backends" ~tests ~args)
+    ~main:(fun ~args -> Test.Cli.main ~name:"renderer_backends" ~tests ~args ())
     ~args:Env.args
     ()

@@ -51,6 +51,6 @@ let () =
           ~filter:filter_diagnostic_fixture
           ~run:(fun ctx -> test_diagnostic ~ctx)
       in
-      Test.Cli.main ~name:"syn-diagnostics" ~tests ~args)
+      Test.Cli.main ~name:"syn-diagnostics" ~tests ~args ())
     ~args:Env.args
     ()

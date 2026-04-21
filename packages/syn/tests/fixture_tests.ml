@@ -174,6 +174,6 @@ let () =
           ~run:(fun ctx -> test_fixture ~ctx)
       in
       let tests = Test.case "tagged_quoted_string_cst" test_tagged_quoted_string_cst :: fixture_tests in
-      Test.Cli.main ~name:"syn-fixtures" ~tests ~args)
+      Test.Cli.main ~name:"syn-fixtures" ~tests ~args ())
     ~args:Env.args
     ()

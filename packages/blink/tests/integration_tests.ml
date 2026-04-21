@@ -5,6 +5,6 @@ let tests = []
 
 let () =
   Runtime.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"blink_integration" ~tests ~args)
+    ~main:(fun ~args -> Test.Cli.main ~name:"blink_integration" ~tests ~args ())
     ~args:Env.args
     ()

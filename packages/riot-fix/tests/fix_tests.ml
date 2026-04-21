@@ -156,6 +156,6 @@ let tests = [ Test.case "apply single operation"
 
 let () =
   Actors.run
-    ~main:(fun ~args:_ -> Test.Cli.main ~name:"riot-fix:fix" ~tests ~args:Env.args)
+    ~main:(fun ~args:_ -> Test.Cli.main ~name:"riot-fix:fix" ~tests ~args:Env.args ())
     ~args:Env.args
     ()

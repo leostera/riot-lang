@@ -322,6 +322,6 @@ let tests =
 
 let () =
   Actors.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"tty_input_parser" ~tests ~args)
+    ~main:(fun ~args -> Test.Cli.main ~name:"tty_input_parser" ~tests ~args ())
     ~args:Env.args
     ()

@@ -55,6 +55,6 @@ let tests = Test.[ case "scan tags C and H files" test_scan_tags_c_and_h_files; 
 
 let () =
   Actors.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"module_scanner_tests" ~tests ~args)
+    ~main:(fun ~args -> Test.Cli.main ~name:"module_scanner_tests" ~tests ~args ())
     ~args:Env.args
     ()

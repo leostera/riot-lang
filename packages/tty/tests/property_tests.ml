@@ -241,4 +241,4 @@ let tests = [
 ]
 
 let () =
-  Actors.run ~main:(fun ~args -> Test.Cli.main ~name:"tty_property" ~tests ~args) ~args:Env.args ()
+  Actors.run ~main:(fun ~args -> Test.Cli.main ~name:"tty_property" ~tests ~args ()) ~args:Env.args ()

@@ -159,6 +159,6 @@ rules = ["demo-rule"]
 
 let () =
   Actors.run
-    ~main:(fun ~args:_ -> Test.Cli.main ~name:"riot-fix:api" ~tests ~args:Env.args)
+    ~main:(fun ~args:_ -> Test.Cli.main ~name:"riot-fix:api" ~tests ~args:Env.args ())
     ~args:Env.args
     ()

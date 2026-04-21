@@ -40,6 +40,6 @@ let tests = [ list_rev_prop; division_prop; vector_length_prop; string_concat_pr
 
 let () =
   Actors.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"propane-basic-examples" ~tests ~args)
+    ~main:(fun ~args -> Test.Cli.main ~name:"propane-basic-examples" ~tests ~args ())
     ~args:Env.args
     ()

@@ -101,6 +101,6 @@ let tests = [
 
 let () =
   Actors.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"propane-collections-examples" ~tests ~args)
+    ~main:(fun ~args -> Test.Cli.main ~name:"propane-collections-examples" ~tests ~args ())
     ~args:Env.args
     ()

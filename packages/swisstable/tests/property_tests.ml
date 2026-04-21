@@ -363,6 +363,6 @@ let tests = [
 
 let () =
   Actors.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"swisstable-property-tests" ~tests ~args)
+    ~main:(fun ~args -> Test.Cli.main ~name:"swisstable-property-tests" ~tests ~args ())
     ~args:Env.args
     ()

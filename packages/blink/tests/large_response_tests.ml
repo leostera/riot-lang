@@ -218,6 +218,6 @@ let () =
       (* Enable logging to see chunk messages in streamed response test *)
       Std.Config.load_string test_config;
       ignore (Std.Log.start_link ());
-      Test.Cli.main ~name:"blink_large_response" ~tests ~args)
+      Test.Cli.main ~name:"blink_large_response" ~tests ~args ())
     ~args:Env.args
     ()

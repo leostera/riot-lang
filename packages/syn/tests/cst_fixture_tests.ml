@@ -59,6 +59,6 @@ let () =
           ~snapshot_path:(fun path -> Some (cst_snapshot_path path))
           ~run:(fun ctx -> test_cst_fixture ~ctx)
       in
-      Test.Cli.main ~name:"syn-cst-fixtures" ~tests ~args)
+      Test.Cli.main ~name:"syn-cst-fixtures" ~tests ~args ())
     ~args:Env.args
     ()

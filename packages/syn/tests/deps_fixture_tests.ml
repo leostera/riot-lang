@@ -40,6 +40,6 @@ let () =
           ~filter:has_expected
           ~run:(fun ctx -> test_fixture ~ctx)
       in
-      Test.Cli.main ~name:"syn-deps-fixtures" ~tests ~args)
+      Test.Cli.main ~name:"syn-deps-fixtures" ~tests ~args ())
     ~args:Env.args
     ()

@@ -95,4 +95,4 @@ let tests =
     case "rewrite ocamlc result leaves generated paths alone" test_rewrite_ocamlc_result_leaves_generated_paths_alone;
   ]
 
-let () = Actors.run ~main:(Test.Cli.main ~name ~tests) ~args:Env.args ()
+let () = Actors.run ~main:(fun ~args -> Test.Cli.main ~name ~tests ~args ()) ~args:Env.args ()

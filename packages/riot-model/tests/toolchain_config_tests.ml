@@ -61,6 +61,6 @@ let tests =
 
 let () =
   Runtime.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"toolchain_config" ~tests ~args)
+    ~main:(fun ~args -> Test.Cli.main ~name:"toolchain_config" ~tests ~args ())
     ~args:Env.args
     ()

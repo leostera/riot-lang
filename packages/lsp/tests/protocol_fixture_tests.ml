@@ -98,6 +98,6 @@ let () =
           ~filter:keep_json
           ~run:(fun ctx -> test_fixture ~ctx)
       in
-      Test.Cli.main ~name:"protocol-fixtures" ~tests ~args)
+      Test.Cli.main ~name:"protocol-fixtures" ~tests ~args ())
     ~args:Env.args
     ()

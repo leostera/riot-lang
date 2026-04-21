@@ -481,6 +481,6 @@ let tests = [
 
 let () =
   Actors.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"serde_cbor_property_tests" ~tests ~args)
+    ~main:(fun ~args -> Test.Cli.main ~name:"serde_cbor_property_tests" ~tests ~args ())
     ~args:Env.args
     ()
