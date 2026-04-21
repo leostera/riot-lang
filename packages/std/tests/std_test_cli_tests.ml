@@ -4,6 +4,26 @@ module Test = Std.Test
 
 let flaky_counter = Sync.Atomic.make 0
 
+let make_overlap_probe = fun counter name ->
+  Test.case ~size:Test.Large name
+    (fun _ctx ->
+      let _ = Sync.Atomic.fetch_and_add counter 1 in
+      let started = Time.Instant.now () in
+      let rec wait_for_peer () =
+        if Sync.Atomic.get counter >= 2 then
+          Ok ()
+        else if Time.Duration.to_millis (Time.Instant.elapsed started) >= 250 then
+          Error "expected tests to overlap under concurrency"
+        else
+          (
+            sleep (Time.Duration.from_millis 5);
+            wait_for_peer ()
+          )
+      in
+      wait_for_peer ())
+
+let overlap_probe_counter = Sync.Atomic.make 0
+
 let sample_tests = [
   Test.case ~size:Test.Large "alpha_large" (fun _ctx -> Ok ());
   Test.case "beta" (fun _ctx -> Ok ());
@@ -12,6 +32,13 @@ let sample_tests = [
     "inline_snapshot_probe"
     (fun ctx -> Test.Snapshot.assert_inline_text ~ctx ~actual:"inline snapshot\n" ~expected:"inline snapshot\n");
   Test.case ~size:Test.Large "middle_large_case" (fun _ctx -> Ok ());
+  make_overlap_probe overlap_probe_counter "concurrency_probe_alpha";
+  make_overlap_probe overlap_probe_counter "concurrency_probe_beta";
+  Test.case ~size:Test.Large "ordered_slow_first"
+    (fun _ctx ->
+      sleep (Time.Duration.from_millis 30);
+      Ok ());
+  Test.case ~size:Test.Large "ordered_fast_second" (fun _ctx -> Ok ());
   Test.case ~reliability:Test.(Flaky { retry_attempts = 2 }) "flaky_then_ok"
     (fun _ctx ->
       if Sync.Atomic.fetch_and_add flaky_counter 1 = 0 then
@@ -102,6 +129,10 @@ let test_list_tests_lists_all_cases = fun _ctx ->
       "gamma_property";
       "inline_snapshot_probe";
       "middle_large_case";
+      "concurrency_probe_alpha";
+      "concurrency_probe_beta";
+      "ordered_slow_first";
+      "ordered_fast_second";
       "flaky_then_ok";
       "timeout_probe";
       "after_timeout"
@@ -223,7 +254,15 @@ let test_run_tests_large_flag_filters_large_tests = fun _ctx ->
     Error ("expected --large run to succeed, got " ^ Int.to_string output.status)
   else
     let names = test_names_from_json output.stdout |> List.sort ~compare:String.compare in
-    let expected = [ "alpha_large"; "middle_large_case" ] |> List.sort ~compare:String.compare in
+    let expected = [
+      "alpha_large";
+      "middle_large_case";
+      "concurrency_probe_alpha";
+      "concurrency_probe_beta";
+      "ordered_slow_first";
+      "ordered_fast_second";
+    ]
+    |> List.sort ~compare:String.compare in
     if names = expected then
       Ok ()
     else
@@ -427,6 +466,31 @@ let test_run_tests_timeout_does_not_abort_suite = fun _ctx ->
             Error "expected timeout_probe to time out and after_timeout to still run"
       | _ -> Error "expected tests array in final TestSummary"
 
+let test_run_tests_concurrency_flag_allows_overlap = fun _ctx ->
+  let output =
+    run_sample_capture [ "run-tests"; "concurrency_probe"; "--json"; "--concurrency"; "2" ] in
+  if not (Int.equal output.status 0) then
+    Error ("expected concurrency probe run to succeed, got " ^ Int.to_string output.status)
+  else
+    let names = test_names_from_json output.stdout |> List.sort ~compare:String.compare in
+    let expected = [ "concurrency_probe_alpha"; "concurrency_probe_beta" ] in
+    if names = expected then
+      Ok ()
+    else
+      Error ("unexpected concurrency probe names: " ^ String.concat ", " names)
+
+let test_run_tests_concurrency_keeps_summary_order = fun _ctx ->
+  let output =
+    run_sample_capture [ "run-tests"; "ordered_"; "--json"; "--concurrency"; "2" ] in
+  if not (Int.equal output.status 0) then
+    Error ("expected ordered concurrency run to succeed, got " ^ Int.to_string output.status)
+  else
+    let names = test_names_from_json output.stdout in
+    if names = [ "ordered_slow_first"; "ordered_fast_second" ] then
+      Ok ()
+    else
+      Error ("expected ordered summary results, got: " ^ String.concat ", " names)
+
 let meta_tests = [
   Test.case "list-tests lists all sample cases" test_list_tests_lists_all_cases;
   Test.case "list-tests --json includes metadata" test_list_tests_json_includes_metadata;
@@ -447,6 +511,8 @@ let meta_tests = [
   Test.case "run-tests --json emits snapshot progress" test_run_tests_json_emits_snapshot_progress;
   Test.case ~size:Large "run-tests --json emits heartbeat for long tests" test_run_tests_json_emits_heartbeat_for_long_tests;
   Test.case "run-tests timeout does not abort suite" test_run_tests_timeout_does_not_abort_suite;
+  Test.case "run-tests --concurrency allows overlapping tests" test_run_tests_concurrency_flag_allows_overlap;
+  Test.case "run-tests --concurrency keeps summary order" test_run_tests_concurrency_keeps_summary_order;
 ]
 
 let sample_main = fun ~args ->

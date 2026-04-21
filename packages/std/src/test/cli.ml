@@ -255,6 +255,8 @@ let parse_format_to_reporter = function
   | "minimal" -> Ok (module Reporter.Minimal : Reporter.Intf)
   | other -> Error ("Unknown format: " ^ other)
 
+let default_concurrency = Int.max 1 Thread.available_parallelism
+
 let run_tests_cmd =
   let open Arg in
     command "run-tests" |> about "Run tests that match query" |> args
@@ -270,7 +272,7 @@ let run_tests_cmd =
         option "concurrency"
         |> long "concurrency"
         |> help "Number of concurrent workers"
-        |> default "1";
+        ;
         flag "small" |> long "small" |> help "Run only tests marked small";
         flag "large" |> long "large" |> help "Run only tests marked large";
         flag "flaky" |> long "flaky" |> help "Run only tests marked flaky";
@@ -334,7 +336,8 @@ let main = fun ~name ~tests ~args ->
               Error (Failure msg)
           | Ok reporter ->
               let shuffle = get_flag sub_matches "shuffle" in
-              let concurrency = get_int sub_matches "concurrency" |> Option.unwrap_or ~default:1 in
+              let concurrency =
+                get_int sub_matches "concurrency" |> Option.unwrap_or ~default:default_concurrency in
               let small_only = get_flag sub_matches "small" in
               let large_only = get_flag sub_matches "large" in
               let flaky_only = get_flag sub_matches "flaky" in
@@ -391,7 +394,7 @@ let main = fun ~name ~tests ~args ->
           in
           let config =
             Runner.{
-              concurrency = 1;
+              concurrency = default_concurrency;
               reporter;
               mode = Sequential;
               target = { query = None; size_filter = All_sizes; flaky_only = false };

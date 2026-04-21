@@ -111,6 +111,11 @@ type event =
     }
   | TestFinished of Test_result.t
 
+type scheduled_test = {
+  index: int;
+  test: Test_case.t;
+}
+
 type event_handler = event -> unit
 
 type policy = {
@@ -135,6 +140,16 @@ let default_policy = { small_test_timeout = None; flaky_max_retries = 0 }
 let no_event_handler: event_handler = fun _ -> ()
 
 let heartbeat_interval = Time.Duration.from_secs 1
+
+type Message.t +=
+  | Test_runner_worker_event of {
+      run_ref: unit Ref.t;
+      event: event;
+    }
+  | Test_runner_worker_failed of {
+      run_ref: unit Ref.t;
+      exn: exn;
+    }
 
 let make_ctx = fun ~(suite_info:Reporter.suite_info) ~index (test: Test_case.t) ->
   let current_dir = Env.current_dir () |> Result.to_option in
@@ -235,6 +250,14 @@ let wait_for_start = fun () ->
       | _ -> `skip)
     ()
 
+let cast_worker:
+  type task other.
+  (task, other) Type.eq ->
+  other Worker_pool.DynamicWorkerPool.worker ->
+  task Worker_pool.DynamicWorkerPool.worker = fun witness worker ->
+  match witness with
+  | Type.Equal -> worker
+
 let run_single_attempt = fun ~ctx ~on_event ~test_info (test: Test_case.t) ~attempt ~timeout ->
   on_event (TestAttemptStarted { test = test_info; attempt; timeout });
   let ctx =
@@ -312,7 +335,7 @@ let should_retry = fun policy (test: Test_case.t) attempts (result: Test_result.
   | Test_result.Failed _
   | Test_result.Timed_out _ -> true
 
-let run_single_test = fun reporter ~suite_info ~policy ~on_event index (test: Test_case.t) ->
+let run_single_test = fun ~suite_info ~policy ~on_event index (test: Test_case.t) ->
   let name = test.name in
   let test_type = test.test_type in
   let ctx = make_ctx ~suite_info ~index test in
@@ -359,10 +382,130 @@ let run_single_test = fun reporter ~suite_info ~policy ~on_event index (test: Te
         loop 1 Time.Duration.zero
       )
   in
-  let module R = (val reporter : Reporter.Intf) in
-  R.on_result index result;
   on_event (TestFinished result);
   result
+
+type parallel_run_state = {
+  owner: Pid.t;
+  pool: scheduled_test Worker_pool.DynamicWorkerPool.t;
+  pending: scheduled_test Queue.t;
+  completed: (int, Test_result.t) HashMap.t;
+  mutable finished_count: int;
+  mutable next_report_index: int;
+  mutable results_rev: Test_result.t list;
+  total: int;
+  reporter: (module Reporter.Intf);
+  on_event: event_handler;
+  run_ref: unit Ref.t;
+}
+
+let flush_reporter_results = fun (state: parallel_run_state) ->
+  let module R = (val state.reporter : Reporter.Intf) in
+  let rec loop () =
+    match HashMap.get state.completed ~key:state.next_report_index with
+    | None -> ()
+    | Some result ->
+        let _ = HashMap.remove state.completed ~key:state.next_report_index in
+        R.on_result state.next_report_index result;
+        state.next_report_index <- state.next_report_index + 1;
+        loop ()
+  in
+  loop ()
+
+let run_tests_parallel = fun ~(config:config) tests_to_run ->
+  let module R = (val config.reporter : Reporter.Intf) in
+  let owner = self () in
+  let run_ref = Ref.make () in
+  let pending = Queue.create () in
+  let completed = HashMap.create () in
+  let tests_with_indices =
+    List.enumerate tests_to_run
+    |> List.map ~fn:(fun (idx, test) -> { index = idx + 1; test })
+  in
+  List.for_each tests_with_indices ~fn:(fun scheduled -> Queue.push pending ~value:scheduled);
+  let worker_fn ~owner ~task:({ index; test }: scheduled_test) =
+    let on_event event = send owner (Test_runner_worker_event { run_ref; event }) in
+    try
+      let _ = run_single_test ~suite_info:config.suite_info ~policy:config.policy ~on_event index test in
+      ()
+    with
+    | exn ->
+        send owner (Test_runner_worker_failed { run_ref; exn })
+  in
+  let pool =
+    Worker_pool.DynamicWorkerPool.start
+      ~concurrency:(Int.max 1 config.concurrency)
+      ~owner
+      ~worker_fn
+      ()
+  in
+  let state = {
+    owner;
+    pool;
+    pending;
+    completed;
+    finished_count = 0;
+    next_report_index = 1;
+    results_rev = [];
+    total = List.length tests_to_run;
+    reporter = config.reporter;
+    on_event = config.event_handler;
+    run_ref;
+  } in
+  let rec loop () =
+    if Int.equal state.finished_count state.total then
+      ()
+    else
+      let selector: ([
+          `WorkerReady of scheduled_test Worker_pool.DynamicWorkerPool.worker
+          | `WorkerEvent of event
+          | `WorkerFailed of exn
+        ]) selector = function
+        | Worker_pool.DynamicWorkerPool.WorkerReady worker -> (
+            match Ref.type_equal state.pool.task_ref (Worker_pool.DynamicWorkerPool.get_worker_task_ref worker) with
+            | Some witness -> `select (`WorkerReady (cast_worker witness worker))
+            | None -> `skip
+          )
+        | Test_runner_worker_event { run_ref; event } when Ref.equal state.run_ref run_ref ->
+            `select (`WorkerEvent event)
+        | Test_runner_worker_failed { run_ref; exn } when Ref.equal state.run_ref run_ref ->
+            `select (`WorkerFailed exn)
+        | _ ->
+            `skip
+      in
+      match receive ~selector () with
+      | `WorkerReady worker -> (
+          match Queue.pop state.pending with
+          | Some task ->
+              Worker_pool.DynamicWorkerPool.send_task state.pool worker task;
+              loop ()
+          | None ->
+              loop ()
+        )
+      | `WorkerEvent event ->
+          state.on_event event;
+          (
+            match event with
+            | TestFinished result ->
+                state.finished_count <- state.finished_count + 1;
+                state.results_rev <- result :: state.results_rev;
+                let _ = HashMap.insert state.completed ~key:result.index ~value:result in
+                flush_reporter_results state
+            | _ ->
+                ()
+          );
+          loop ()
+      | `WorkerFailed exn ->
+          raise exn
+  in
+  loop ();
+  let results =
+    List.sort state.results_rev
+      ~compare:(fun (left: Test_result.t) (right: Test_result.t) -> Int.compare left.index right.index)
+  in
+  let summary = Test_result.make_summary results in
+  R.finalize summary;
+  summary
 
 let run_tests = fun ~config tests ->
   Exception.record_backtrace true;
@@ -376,18 +519,24 @@ let run_tests = fun ~config tests ->
   R.init config.suite_info (List.length tests_to_run);
   config.event_handler
     (SuiteStarted { suite_name = config.suite_info.name; total = List.length tests_to_run });
-  let rec run_all index = function
-    | [] -> []
-    | test :: rest -> run_single_test
-      config.reporter
-      ~suite_info:config.suite_info
-      ~policy:config.policy
-      ~on_event:config.event_handler
-      index
-      test
-    :: run_all (index + 1) rest
-  in
-  let results = run_all 1 tests_to_run in
-  let summary = Test_result.make_summary results in
-  R.finalize summary;
-  summary
+  if config.concurrency <= 1 || List.length tests_to_run <= 1 then
+    (
+      let rec run_all index = function
+        | [] -> []
+        | test :: rest ->
+            let result = run_single_test
+              ~suite_info:config.suite_info
+              ~policy:config.policy
+              ~on_event:config.event_handler
+              index
+              test in
+            R.on_result index result;
+            result :: run_all (index + 1) rest
+      in
+      let results = run_all 1 tests_to_run in
+      let summary = Test_result.make_summary results in
+      R.finalize summary;
+      summary
+    )
+  else
+    run_tests_parallel ~config tests_to_run
