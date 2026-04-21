@@ -88,6 +88,8 @@ type t
     Lexer.next lexer ``` *)
 val create: string -> t
 
+val create_slice: IO.IoVec.IoSlice.t -> t
+
 (** # Tokenization *)
 (** `next lexer delim_stack` returns the next token from the source.
 
@@ -114,3 +116,5 @@ val next: t -> Token.delimiter list -> Token.t
     Example: ```ocaml let tokens = Lexer.tokenize "let x = 42" in List.length
     tokens (* typically 5: let, x, =, 42, EOF *) ``` *)
 val tokenize: string -> Token.t list
+
+val tokenize_slice: IO.IoVec.IoSlice.t -> Token.t list

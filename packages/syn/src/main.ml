@@ -14,6 +14,11 @@ let trace_cst_timings_enabled = fun () ->
 let trace_cst_timing = fun label duration ->
   eprintln ("[syn] " ^ label ^ ": " ^ Float.to_string duration ^ "ms")
 
+let slice_of_file_contents = fun contents ->
+  match IO.IoVec.IoSlice.from_string contents with
+  | Ok slice -> slice
+  | Error error -> panic ("syn parse2: " ^ Kernel.IO.Error.message error)
+
 let parse_file = fun ~file ~source ->
   let tokens = Lexer.tokenize source in
   if String.ends_with ~suffix:".mli" file then
@@ -145,7 +150,7 @@ let handle_parse2 = fun sub_matches ->
       Log.error ("Error reading file " ^ file);
       System.exit 1
   | Ok source ->
-      let result = Syn.parse2 ~filename:(Path.v file) source in
+      let result = Syn.parse2 ~filename:(Path.v file) (slice_of_file_contents source) in
       println (Data.Json.to_string (parse2_result_to_json result))
 
 let handle_print_ceibo = fun sub_matches ->

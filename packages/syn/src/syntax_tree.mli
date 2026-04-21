@@ -7,17 +7,14 @@ type token_leaf = {
   raw_hi: int;
   body_raw: int;
 }
-
 type missing = {
   kind: Syntax_kind2.t;
   offset: int;
 }
-
 type child =
   | Node of int
   | Token of int
   | Missing of missing
-
 type node = {
   kind: Syntax_kind2.t;
   first_child: int;
@@ -26,9 +23,8 @@ type node = {
   raw_hi: int;
   full_width: int;
 }
-
 type t = {
-  source: string;
+  source: IO.IoVec.IoSlice.t;
   raw_tokens: Raw_token.t Vector.t;
   significant_tokens: int Vector.t;
   tokens: token_leaf Vector.t;
@@ -36,8 +32,7 @@ type t = {
   children: child Vector.t;
   root: int;
 }
-
-val build: source:string -> token_stream:Raw_token.stream -> events:Event.Buffer.t -> t
+val build: source:IO.IoVec.IoSlice.t -> token_stream:Raw_token.stream -> events:Event.Buffer.t -> t
 
 val root: t -> node
 
@@ -58,4 +53,3 @@ val raw_range_text: t -> raw_lo:int -> raw_hi:int -> string
 val node_text: t -> node -> string
 
 val to_json: t -> Std.Data.Json.t
-

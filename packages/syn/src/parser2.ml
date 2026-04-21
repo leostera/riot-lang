@@ -1,5 +1,6 @@
 open Std
 open Std.Collections
+module Slice = IO.IoVec.IoSlice
 
 type file_kind =
 [
@@ -8,7 +9,7 @@ type file_kind =
 ]
 
 type parse_result = {
-  source: string;
+  source: Slice.t;
   kind: file_kind;
   tokens: Raw_token.stream;
   events: Event.Buffer.t;
@@ -17,14 +18,14 @@ type parse_result = {
 }
 
 type parser = {
-  source: string;
+  source: Slice.t;
   token_stream: Raw_token.stream;
   events: Event.Buffer.t;
   mutable pos: int;
 }
 
 let create = fun source ->
-  let token_stream = Lexer.tokenize source |> Raw_token.of_lexer_tokens in
+  let token_stream = Lexer.tokenize_slice source |> Raw_token.of_lexer_tokens in
   { source; token_stream; events = Event.Buffer.create (); pos = 0 }
 
 let significant_count = fun p -> Vector.length p.token_stream.Raw_token.significant
@@ -62,7 +63,7 @@ let is_eof = fun p -> at p Syntax_kind2.EOF
 
 let current_offset = fun p -> (current p).Raw_token.span.Ceibo.Span.start
 
-let token_text = fun p raw -> Raw_token.text ~source:p.source raw
+let token_text = fun p raw -> Raw_token.text_slice ~source:p.source raw
 
 let found_token = fun p raw : Diagnostic.found_token ->
   { kind = Syntax_kind2.to_string raw.Raw_token.kind; text = token_text p raw }
@@ -139,7 +140,7 @@ let raw_contains_newline = fun p raw_index ->
   match raw.Raw_token.kind with
   | Syntax_kind2.WHITESPACE
   | Syntax_kind2.COMMENT
-  | Syntax_kind2.DOCSTRING -> String.contains (token_text p raw) "\n"
+  | Syntax_kind2.DOCSTRING -> Raw_token.contains_char ~source:p.source raw '\n'
   | _ -> false
 
 let leading_trivia_contains_newline = fun p ->
@@ -219,6 +220,24 @@ let can_start_atom = function
   | Syntax_kind2.BANG -> true
   | _ -> false
 
+let can_start_pattern_atom = function
+  | Syntax_kind2.IDENT
+  | Syntax_kind2.UNDERSCORE
+  | Syntax_kind2.INT
+  | Syntax_kind2.FLOAT
+  | Syntax_kind2.STRING
+  | Syntax_kind2.CHAR
+  | Syntax_kind2.TRUE_KW
+  | Syntax_kind2.FALSE_KW
+  | Syntax_kind2.LPAREN
+  | Syntax_kind2.LBRACKET
+  | Syntax_kind2.LBRACKET_BAR
+  | Syntax_kind2.LBRACE
+  | Syntax_kind2.BACKTICK
+  | Syntax_kind2.LAZY_KW
+  | Syntax_kind2.EXCEPTION_KW -> true
+  | _ -> false
+
 let prefix_operator = function
   | Syntax_kind2.MINUS
   | Syntax_kind2.PLUSDOT
@@ -254,6 +273,21 @@ let infix_binding_power = function
   | Syntax_kind2.OPERATOR_KW -> Some 50
   | Syntax_kind2.STARSTAR -> Some 60
   | _ -> None
+
+let pattern_binding_power = function
+  | Syntax_kind2.PIPE -> Some 10
+  | Syntax_kind2.AS_KW -> Some 20
+  | Syntax_kind2.COLONCOLON -> Some 30
+  | Syntax_kind2.COLON -> Some 40
+  | _ -> None
+
+let rec consume_path_segments = fun p ->
+  if at p Syntax_kind2.DOT && peek_kind p 1 = Syntax_kind2.IDENT then
+    (
+      bump p;
+      bump p;
+      consume_path_segments p
+    )
 
 let rec parse_expression = fun p ~signature ~stop_at_item min_bp ->
   let rec loop lhs =
@@ -331,15 +365,7 @@ and parse_prefix_or_atom = fun p ~signature ~stop_at_item ->
 and parse_path_expr = fun p ->
   let marker = start_node p in
   expect p Syntax_kind2.IDENT (invalid_expression p);
-  let rec consume_segments () =
-    if at p Syntax_kind2.DOT && peek_kind p 1 = Syntax_kind2.IDENT then
-      (
-        bump p;
-        bump p;
-        consume_segments ()
-      )
-  in
-  consume_segments ();
+  consume_path_segments p;
   complete p marker Syntax_kind2.PATH_EXPR
 
 and parse_literal_expr = fun p ->
@@ -548,7 +574,73 @@ and parse_for_expr = fun p ~signature ~stop_at_item ->
   expect p Syntax_kind2.DONE_KW (invalid_expression p);
   complete p marker Syntax_kind2.FOR_EXPR
 
-and parse_pattern = fun p ->
+and parse_pattern = fun p -> ignore (parse_pattern_bp p 0)
+
+and parse_pattern_bp = fun p min_bp ->
+  let rec loop lhs =
+    match pattern_binding_power (current_kind p) with
+    | Some bp when bp >= min_bp -> (
+        match current_kind p with
+        | Syntax_kind2.COLON ->
+            let marker = precede p lhs in
+            bump p;
+            parse_type_expr p;
+            loop (complete p marker Syntax_kind2.CONSTRAINT_PATTERN)
+        | Syntax_kind2.AS_KW ->
+            let marker = precede p lhs in
+            bump p;
+            ignore (parse_pattern_atom p);
+            loop (complete p marker Syntax_kind2.ALIAS_PATTERN)
+        | Syntax_kind2.COLONCOLON ->
+            let marker = precede p lhs in
+            bump p;
+            ignore (parse_pattern_bp p bp);
+            loop (complete p marker Syntax_kind2.CONS_PATTERN)
+        | Syntax_kind2.PIPE ->
+            let marker = precede p lhs in
+            bump p;
+            ignore (parse_pattern_bp p bp);
+            loop (complete p marker Syntax_kind2.OR_PATTERN)
+        | _ ->
+            lhs
+      )
+    | _ -> lhs
+  in
+  loop (parse_pattern_apply p)
+
+and parse_pattern_apply = fun p ->
+  let rec loop lhs =
+    if can_start_pattern_atom (current_kind p) then
+      (
+        let marker = precede p lhs in
+        ignore (parse_pattern_atom p);
+        loop (complete p marker Syntax_kind2.APPLY_PATTERN)
+      )
+    else
+      lhs
+  in
+  loop (parse_pattern_atom p)
+
+and parse_pattern_atom = fun p ->
+  match current_kind p with
+  | Syntax_kind2.UNDERSCORE -> parse_single_token_pattern p Syntax_kind2.WILDCARD_PATTERN
+  | Syntax_kind2.IDENT -> parse_path_pattern p
+  | Syntax_kind2.INT
+  | Syntax_kind2.FLOAT
+  | Syntax_kind2.STRING
+  | Syntax_kind2.CHAR
+  | Syntax_kind2.TRUE_KW
+  | Syntax_kind2.FALSE_KW -> parse_single_token_pattern p Syntax_kind2.LITERAL_PATTERN
+  | Syntax_kind2.LPAREN -> parse_parenthesized_pattern p
+  | Syntax_kind2.LBRACKET -> parse_list_pattern p
+  | Syntax_kind2.LBRACKET_BAR -> parse_array_pattern p
+  | Syntax_kind2.LBRACE -> parse_record_pattern p
+  | Syntax_kind2.BACKTICK -> parse_poly_variant_pattern p
+  | Syntax_kind2.LAZY_KW -> parse_unary_pattern p Syntax_kind2.LAZY_PATTERN
+  | Syntax_kind2.EXCEPTION_KW -> parse_unary_pattern p Syntax_kind2.EXCEPTION_PATTERN
+  | _ -> parse_error_pattern p
+
+and parse_single_token_pattern = fun p kind ->
   let marker = start_node p in
   if is_eof p then
     (
@@ -557,7 +649,166 @@ and parse_pattern = fun p ->
     )
   else
     bump p;
-  ignore (complete p marker Syntax_kind2.PATTERN)
+  complete p marker kind
+
+and parse_path_pattern = fun p ->
+  let marker = start_node p in
+  expect p Syntax_kind2.IDENT (invalid_pattern p);
+  consume_path_segments p;
+  complete p marker Syntax_kind2.PATH_PATTERN
+
+and parse_parenthesized_pattern = fun p ->
+  let marker = start_node p in
+  bump p;
+  let at_closer () = at p Syntax_kind2.RPAREN || is_eof p in
+  if not (at_closer ()) then
+    parse_pattern p;
+  let rec parse_comma_tail saw_comma =
+    if at p Syntax_kind2.COMMA then
+      (
+        bump p;
+        if not (at_closer ()) then
+          parse_pattern p;
+        parse_comma_tail true
+      )
+    else
+      saw_comma
+  in
+  let saw_comma = parse_comma_tail false in
+  expect p Syntax_kind2.RPAREN (invalid_pattern p);
+  complete p marker
+    (
+      if saw_comma then
+        Syntax_kind2.TUPLE_PATTERN
+      else
+        Syntax_kind2.PAREN_PATTERN
+    )
+
+and parse_list_pattern = fun p ->
+  let marker = start_node p in
+  bump p;
+  let rec parse_elements () =
+    if not (at p Syntax_kind2.RBRACKET || is_eof p) then
+      (
+        parse_pattern p;
+        ignore (bump_if p Syntax_kind2.SEMI);
+        parse_elements ()
+      )
+  in
+  parse_elements ();
+  expect p Syntax_kind2.RBRACKET (invalid_pattern p);
+  complete p marker Syntax_kind2.LIST_PATTERN
+
+and parse_array_pattern = fun p ->
+  let marker = start_node p in
+  bump p;
+  let rec parse_elements () =
+    if not (at p Syntax_kind2.BAR_RBRACKET || is_eof p) then
+      (
+        parse_pattern p;
+        ignore (bump_if p Syntax_kind2.SEMI);
+        parse_elements ()
+      )
+  in
+  parse_elements ();
+  expect p Syntax_kind2.BAR_RBRACKET (invalid_pattern p);
+  complete p marker Syntax_kind2.ARRAY_PATTERN
+
+and parse_record_pattern = fun p ->
+  let marker = start_node p in
+  bump p;
+  let rec parse_fields () =
+    if not (at p Syntax_kind2.RBRACE || is_eof p) then
+      (
+        ignore (parse_path_pattern p);
+        if at p Syntax_kind2.EQ then
+          (
+            bump p;
+            parse_pattern p
+          );
+        ignore (bump_if p Syntax_kind2.SEMI);
+        parse_fields ()
+      )
+  in
+  parse_fields ();
+  expect p Syntax_kind2.RBRACE (invalid_pattern p);
+  complete p marker Syntax_kind2.RECORD_PATTERN
+
+and parse_poly_variant_pattern = fun p ->
+  let marker = start_node p in
+  bump p;
+  expect p Syntax_kind2.IDENT (invalid_pattern p);
+  if can_start_pattern_atom (current_kind p) then
+    parse_pattern p;
+  complete p marker Syntax_kind2.POLY_VARIANT_PATTERN
+
+and parse_unary_pattern = fun p kind ->
+  let marker = start_node p in
+  bump p;
+  ignore (parse_pattern_atom p);
+  complete p marker kind
+
+and parse_error_pattern = fun p ->
+  let marker = start_node p in
+  Event.Buffer.error p.events (invalid_pattern p);
+  if is_eof p then
+    Event.Buffer.missing p.events ~kind:Syntax_kind2.IDENT ~offset:(current_offset p)
+  else
+    bump p;
+  complete p marker Syntax_kind2.ERROR
+
+and parse_type_expr = fun p ->
+  let marker = start_node p in
+  let boundary depth =
+    depth = 0
+    && match current_kind p with
+    | Syntax_kind2.EOF
+    | Syntax_kind2.AS_KW
+    | Syntax_kind2.PIPE
+    | Syntax_kind2.ARROW
+    | Syntax_kind2.WHEN_KW
+    | Syntax_kind2.EQ
+    | Syntax_kind2.COMMA
+    | Syntax_kind2.RPAREN
+    | Syntax_kind2.RBRACKET
+    | Syntax_kind2.RBRACE
+    | Syntax_kind2.BAR_RBRACKET
+    | Syntax_kind2.SEMI -> true
+    | _ -> false
+  in
+  let next_depth depth =
+    match current_kind p with
+    | Syntax_kind2.LPAREN
+    | Syntax_kind2.LBRACE
+    | Syntax_kind2.LBRACKET
+    | Syntax_kind2.LBRACKET_BAR
+    | Syntax_kind2.BEGIN_KW
+    | Syntax_kind2.STRUCT_KW
+    | Syntax_kind2.SIG_KW -> depth + 1
+    | Syntax_kind2.RPAREN
+    | Syntax_kind2.RBRACE
+    | Syntax_kind2.RBRACKET
+    | Syntax_kind2.BAR_RBRACKET
+    | Syntax_kind2.END_KW when depth > 0 -> depth - 1
+    | _ -> depth
+  in
+  let rec consume depth consumed =
+    if is_eof p || (consumed && boundary depth) then
+      ()
+    else if (not consumed) && boundary depth then
+      (
+        Event.Buffer.missing p.events ~kind:Syntax_kind2.IDENT ~offset:(current_offset p);
+        Event.Buffer.error p.events (invalid_type_expression p)
+      )
+    else
+      (
+        let depth = next_depth depth in
+        bump p;
+        consume depth true
+      )
+  in
+  consume 0 false;
+  ignore (complete p marker Syntax_kind2.TYPE_EXPR)
 
 and parse_let_binding = fun p ~signature ~top_level ->
   let marker = start_node p in

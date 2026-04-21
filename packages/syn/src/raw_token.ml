@@ -1,5 +1,6 @@
 open Std
 open Std.Collections
+module Slice = IO.IoVec.IoSlice
 
 type t = {
   kind: Syntax_kind2.t;
@@ -30,12 +31,27 @@ let is_significant = fun token -> not (is_trivia token)
 
 let width = fun token -> token.span.Ceibo.Span.end_ - token.span.Ceibo.Span.start
 
-let text = fun ~source token ->
+let slice = fun ~source token ->
   let len = width token in
   if len <= 0 then
-    ""
+    Slice.empty
   else
-    String.sub source ~offset:token.span.Ceibo.Span.start ~len
+    Slice.sub_unchecked source ~off:token.span.Ceibo.Span.start ~len
+
+let text_slice = fun ~source token -> slice ~source token |> Slice.to_string
+
+let contains_char = fun ~source token needle ->
+  let slice = slice ~source token in
+  let len = Slice.length slice in
+  let rec loop index =
+    if index >= len then
+      false
+    else if Slice.get_unchecked slice ~at:index = needle then
+      true
+    else
+      loop (index + 1)
+  in
+  loop 0
 
 let keyword_kind = function
   | Keyword.And -> Syntax_kind2.AND_KW
@@ -186,7 +202,7 @@ let raw_of_trivia = fun (trivia: Token.trivia) ->
   {
     kind = kind_of_trivia_kind trivia.kind;
     span = trivia.span;
-    legacy_kind = Some (Token.token_kind_of_trivia_kind trivia.kind);
+    legacy_kind = Some (Token.token_kind_of_trivia_kind trivia.kind)
   }
 
 let raw_of_token = fun (token: Token.t) ->
@@ -196,7 +212,8 @@ let of_lexer_tokens = fun tokens ->
   let stream = create_stream () in
   List.for_each tokens
     ~fn:(fun token ->
-      List.for_each token.Token.leading_trivia ~fn:(fun trivia -> ignore (push stream (raw_of_trivia trivia)));
+      List.for_each
+        token.Token.leading_trivia
+        ~fn:(fun trivia -> ignore (push stream (raw_of_trivia trivia)));
       ignore (push_significant stream (raw_of_token token)));
   stream
-

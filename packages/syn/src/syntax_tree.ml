@@ -2,6 +2,7 @@ open Std
 open Std.Collections
 open Std.Data
 module Iterator = Iter.Iterator
+module Slice = IO.IoVec.IoSlice
 
 type token_leaf = {
   kind: Syntax_kind2.t;
@@ -30,7 +31,7 @@ type node = {
 }
 
 type t = {
-  source: string;
+  source: Slice.t;
   raw_tokens: Raw_token.t Vector.t;
   significant_tokens: int Vector.t;
   tokens: token_leaf Vector.t;
@@ -215,10 +216,10 @@ let raw_range_text = fun tree ~raw_lo ~raw_hi ->
   else
     let start = raw_start tree.raw_tokens raw_lo in
     let end_ = raw_end tree.raw_tokens (raw_hi - 1) in
-    String.sub tree.source ~offset:start ~len:(end_ - start)
+    Slice.sub_unchecked tree.source ~off:start ~len:(end_ - start) |> Slice.to_string
 
 let token_text = fun tree token ->
-  Raw_token.text ~source:tree.source (raw_at tree.raw_tokens token.body_raw)
+  Raw_token.text_slice ~source:tree.source (raw_at tree.raw_tokens token.body_raw)
 
 let node_text = fun tree node -> raw_range_text tree ~raw_lo:node.raw_lo ~raw_hi:node.raw_hi
 
@@ -230,7 +231,7 @@ let raw_token_json = fun tree index token ->
     ("index", Json.Int index);
     ("kind", Json.String (Syntax_kind2.to_string token.Raw_token.kind));
     ("span", span_json token.Raw_token.span);
-    ("text", Json.String (Raw_token.text ~source:tree.source token))
+    ("text", Json.String (Raw_token.text_slice ~source:tree.source token))
   ]
 
 let rec child_json = fun tree child ->

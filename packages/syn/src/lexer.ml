@@ -5,6 +5,8 @@ type t = Cursor.t
 
 let create = fun source -> Cursor.create source
 
+let create_slice = fun source -> Cursor.from_slice source
+
 let make_token = fun ~kind ~span -> { Token.kind; span; leading_trivia = [] }
 
 let int_of_string_opt = Int.parse
@@ -1054,8 +1056,7 @@ let next = fun cursor delim_stack ->
         let end_ = Cursor.position cursor in
         make_token ~kind:(Token.Unknown c) ~span:(Ceibo.Span.make ~start ~end_)
 
-let tokenize = fun source ->
-  let cursor = create source in
+let tokenize_cursor = fun cursor ->
   let attach_pending_trivia token pending_rev = Token.with_leading_trivia
     token
     (List.reverse_append pending_rev token.Token.leading_trivia) in
@@ -1084,3 +1085,7 @@ let tokenize = fun source ->
       )
   in
   lex_all [] [] []
+
+let tokenize = fun source -> tokenize_cursor (create source)
+
+let tokenize_slice = fun source -> tokenize_cursor (create_slice source)

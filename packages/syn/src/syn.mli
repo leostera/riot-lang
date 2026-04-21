@@ -186,8 +186,10 @@ val parse_implementation: string -> Parser.parse_result
 val parse: filename:Std.Path.t -> string -> Parser.parse_result
 
 (** `parse2 ~filename source` parses source through the replacement parser
-    prototype. It keeps raw tokens, events, and tree storage vector-backed. *)
-val parse2: filename:Std.Path.t -> string -> Parser2.parse_result
+    prototype. The replacement parser treats source as an IO slice so raw token,
+    event, and tree storage can keep source-backed spans instead of copying
+    substrings. *)
+val parse2: filename:Std.Path.t -> IO.IoVec.IoSlice.t -> Parser2.parse_result
 
 (** `build_cst result` lifts a diagnostics-free Ceibo parse result into the
     typed CST.
