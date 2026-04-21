@@ -31,10 +31,7 @@ let capture_json_event = fun ~root event ->
 
       let write = fun buffer ~from ->
         let len = IO.Buffer.readable_bytes from in
-        let _ =
-          IO.Buffer.append_slice buffer (IO.Buffer.readable from)
-          |> Result.expect ~msg:"failed to append writer buffer"
-        in
+        let _ = IO.Buffer.append_slice buffer (IO.Buffer.readable from) |> Result.expect ~msg:"failed to append writer buffer" in
         Ok len
 
       let write_vectored = fun buffer ~from ->
@@ -42,10 +39,7 @@ let capture_json_event = fun ~root event ->
         IO.IoVec.for_each from
           ~fn:(fun segment ->
             written := !written + IO.IoSlice.length segment;
-            let _ =
-              IO.Buffer.append_slice buffer segment
-              |> Result.expect ~msg:"failed to append writer iovec segment"
-            in
+            let _ = IO.Buffer.append_slice buffer segment |> Result.expect ~msg:"failed to append writer iovec segment" in
             ());
         Ok !written
 
@@ -255,6 +249,22 @@ type u = {
 }
 |}
         ~actual;
+      Ok ());
+  Test.case "format record fields preserves field attributes"
+    (fun _ctx ->
+      let source = {|type 'value t = {
+  mutable contents : 'value [@atomic];
+}
+|}
+      in
+      let actual = parse_ml source |> Krasny.format |> Result.expect ~msg:"record field attributes should render from the CST field attributes" in
+      Test.assert_equal
+        ~expected:{|type 'value t = {
+  mutable contents: 'value [@atomic];
+}
+|}
+        ~actual;
+      assert_idempotent ~source:actual ~msg:"record field attributes should remain stable across repeated formatting";
       Ok ());
   Test.case "desugar typed named parameters without duplicating inner annotations"
     (fun ctx ->
@@ -1060,9 +1070,7 @@ let nested = [%foo let x = 1]
 |}
       in
       let actual = parse_ml source |> Krasny.format |> Result.expect ~msg:"atomic.loc extension should preserve qualified name and payload boundary" in
-      Test.assert_equal
-        ~expected:source
-        ~actual;
+      Test.assert_equal ~expected:source ~actual;
       Ok ());
   Test.case "format unreachable expressions structurally"
     (fun _ctx ->

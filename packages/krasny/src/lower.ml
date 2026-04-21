@@ -1024,7 +1024,31 @@ and render_record_type = fun ~opening_token ~closing_token fields ->
 
 and render_record_definition_field = fun (field: Syn.Cst.RecordField.t) ->
   let field_type = Syn.Cst.RecordField.field_type field in
-  let type_doc = render_core_type field_type in
+  let render_field_attribute = fun (attribute: Syn.Cst.attribute) ->
+    let payload_doc =
+      match attribute.payload with
+      | None -> Doc.empty
+      | Some (Syn.Cst.Payload.Opaque { tokens }) ->
+          tokens
+          |> List.map ~fn:(fun token -> Doc.text (Syn.Cst.Token.full_text token))
+          |> Doc.concat
+    in
+    Doc.concat
+      [
+        Doc.lbracket;
+        attribute.sigil_tokens |> List.map ~fn:doc_of_token |> Doc.concat;
+        doc_of_ident attribute.name;
+        payload_doc;
+        Doc.rbracket;
+      ]
+  in
+  let type_doc =
+    let type_doc = render_core_type field_type in
+    match Syn.Cst.RecordField.attributes field with
+    | [] -> type_doc
+    | attributes ->
+        Doc.concat [ type_doc; Doc.space; join_map Doc.space render_field_attribute attributes ]
+  in
   let separator =
     if core_type_prefers_multiline field_type then
       Doc.line
