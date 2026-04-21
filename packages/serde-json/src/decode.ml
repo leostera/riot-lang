@@ -125,10 +125,10 @@ let append_current_range = fun state start stop ->
   Input.copy_range_to_buffer state.scratch state.input ~start ~stop
 
 let reader_current_char: Input.reader_state -> char option = fun reader ->
-  if Int.(reader.Input.pos < IO.IoSlice.length reader.Input.view) then
-    Some (IO.IoSlice.get_unchecked reader.Input.view ~at:reader.Input.pos)
+  if Int.(reader.Input.pos < Input.reader_length reader) then
+    Some (Input.reader_get_unchecked reader ~at:reader.Input.pos)
   else if Input.refill reader then
-    Some (IO.IoSlice.get_unchecked reader.Input.view ~at:reader.Input.pos)
+    Some (Input.reader_get_unchecked reader ~at:reader.Input.pos)
   else
     None
 
@@ -139,27 +139,24 @@ let reader_advance_by: Input.reader_state -> int -> unit = fun reader count ->
   reader.Input.pos <- reader.Input.pos + count
 
 let reader_append_range: IO.Buffer.t -> Input.reader_state -> int -> int -> unit = fun scratch reader start stop ->
-  let length = stop - start in
-  if Int.(length > 0) then
-    IO.Buffer.append_subslice scratch reader.Input.view ~off:start ~len:length
-    |> Result.expect ~msg:"serde-json reader should append borrowed slices into scratch buffers"
+  Input.reader_append_range scratch reader ~start ~stop
 
 let rec reader_scan_while: Input.reader_state -> continue:(char -> bool) -> [
     `Stop of int * char
     | `Boundary of int
     | `Eof
 ] = fun reader ~continue ->
-  if Int.(reader.Input.pos >= IO.IoSlice.length reader.Input.view) then
+  if Int.(reader.Input.pos >= Input.reader_length reader) then
     if Input.refill reader then
       reader_scan_while reader ~continue
     else
       `Eof
   else
     let rec loop pos =
-      if Int.(pos >= IO.IoSlice.length reader.Input.view) then
+      if Int.(pos >= Input.reader_length reader) then
         `Boundary pos
       else
-        let current = IO.IoSlice.get_unchecked reader.Input.view ~at:pos in
+        let current = Input.reader_get_unchecked reader ~at:pos in
         if continue current then
           loop (pos + 1)
         else
@@ -177,30 +174,32 @@ let reader_expect_char: state -> Input.reader_state -> char -> string -> unit = 
         unexpected_character state actual expected_name
 
 let reader_token_start = fun reader ->
-  if Int.(reader.Input.pos >= IO.IoSlice.length reader.Input.view) then
+  if Int.(reader.Input.pos >= Input.reader_length reader) then
     ignore (Input.refill reader);
   reader.Input.pos
 
 let reader_skip_whitespace: Input.reader_state -> unit = fun reader ->
   let rec loop () =
-    if Int.(reader.Input.pos >= IO.IoSlice.length reader.Input.view) then
+    if Int.(reader.Input.pos >= Input.reader_length reader) then
       if Input.refill reader then
         loop ()
       else
-        let rec skip pos =
-          if Int.(pos >= IO.IoSlice.length reader.Input.view) then
-            pos
-          else
-            match IO.IoSlice.get_unchecked reader.Input.view ~at:pos with
-            | ' '
-            | '\t'
-            | '\n'
-            | '\r' -> skip (pos + 1)
-            | _ -> pos
-        in
-        reader.Input.pos <- skip reader.Input.pos;
-        if Int.(reader.Input.pos >= IO.IoSlice.length reader.Input.view) && Input.refill reader then
-          loop ()
+        ()
+    else
+      let rec skip pos =
+        if Int.(pos >= Input.reader_length reader) then
+          pos
+        else
+          match Input.reader_get_unchecked reader ~at:pos with
+          | ' '
+          | '\t'
+          | '\n'
+          | '\r' -> skip (pos + 1)
+          | _ -> pos
+      in
+      reader.Input.pos <- skip reader.Input.pos;
+      if Int.(reader.Input.pos >= Input.reader_length reader) && Input.refill reader then
+        loop ()
   in
   loop ()
 
@@ -231,10 +230,7 @@ let parse_string_reader = fun state reader ->
   let rec fast start =
     match reader_scan_while reader ~continue:string_fast_continue with
     | `Stop (stop, '"') ->
-        let value =
-          IO.IoSlice.sub_unchecked reader.Input.view ~off:start ~len:(stop - start)
-          |> IO.IoSlice.to_string
-        in
+        let value = Input.reader_substring reader ~off:start ~len:(stop - start) in
         reader.Input.pos <- stop;
         reader_advance reader;
         value
@@ -528,7 +524,7 @@ let read_field_tag_reader = fun state reader fields ->
   let rec fast start =
     match reader_scan_while reader ~continue:string_fast_continue with
     | `Stop (stop, '"') ->
-        let tag = De.Fields.match_ioslice fields reader.Input.view ~offset:start ~length:(stop - start) in
+        let tag = Input.reader_match_field_range fields reader ~offset:start ~length:(stop - start) in
         reader.Input.pos <- stop;
         reader_advance reader;
         tag
@@ -889,12 +885,12 @@ let parse_number_text_reader = fun state reader ->
     start := reader.Input.pos;
     let pos = ref !start in
     let current () =
-      if !pos < IO.IoSlice.length reader.Input.view then
-        Some (IO.IoSlice.get_unchecked reader.Input.view ~at:!pos)
+      if !pos < Input.reader_length reader then
+        Some (Input.reader_get_unchecked reader ~at:!pos)
       else
         None
     in
-    let need_more () = !pos >= IO.IoSlice.length reader.Input.view && not reader.Input.eof in
+    let need_more () = !pos >= Input.reader_length reader && not reader.Input.eof in
     let advance () =
       pos := !pos + 1
     in
@@ -991,14 +987,12 @@ let parse_number_text_reader = fun state reader ->
           )
       | _ -> ()
     );
-    if !pos >= IO.IoSlice.length reader.Input.view then
+    if !pos >= Input.reader_length reader then
       if reader.Input.eof then
         (
           reader.Input.pos <- !pos;
           {
-            text =
-              IO.IoSlice.sub_unchecked reader.Input.view ~off:!start ~len:(!pos - !start)
-              |> IO.IoSlice.to_string;
+            text = Input.reader_substring reader ~off:!start ~len:(!pos - !start);
             is_float = !is_float
           }
         )
@@ -1009,9 +1003,7 @@ let parse_number_text_reader = fun state reader ->
       | Some actual when is_value_delimiter (Some actual) ->
           reader.Input.pos <- !pos;
           {
-            text =
-              IO.IoSlice.sub_unchecked reader.Input.view ~off:!start ~len:(!pos - !start)
-              |> IO.IoSlice.to_string;
+            text = Input.reader_substring reader ~off:!start ~len:(!pos - !start);
             is_float = !is_float
           }
       | Some actual ->
@@ -1019,9 +1011,7 @@ let parse_number_text_reader = fun state reader ->
       | None ->
           reader.Input.pos <- !pos;
           {
-            text =
-              IO.IoSlice.sub_unchecked reader.Input.view ~off:!start ~len:(!pos - !start)
-              |> IO.IoSlice.to_string;
+            text = Input.reader_substring reader ~off:!start ~len:(!pos - !start);
             is_float = !is_float
           }
   with
@@ -1244,12 +1234,12 @@ let parse_int_reader = fun state reader ->
     start := reader.Input.pos;
     let pos = ref reader.Input.pos in
     let current () =
-      if !pos < IO.IoSlice.length reader.Input.view then
-        Some (IO.IoSlice.get_unchecked reader.Input.view ~at:!pos)
+      if !pos < Input.reader_length reader then
+        Some (Input.reader_get_unchecked reader ~at:!pos)
       else
         None
     in
-    let need_more () = !pos >= IO.IoSlice.length reader.Input.view && not reader.Input.eof in
+    let need_more () = !pos >= Input.reader_length reader && not reader.Input.eof in
     let advance () =
       pos := !pos + 1
     in

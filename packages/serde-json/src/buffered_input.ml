@@ -1,8 +1,8 @@
 open Std
 
 type reader_state = {
-  reader: IO.BufReader.t;
-  mutable view: IO.IoSlice.t;
+  reader: IO.Reader.t;
+  buffer: IO.Buffer.t;
   mutable base: int;
   mutable pos: int;
   mutable eof: bool;
@@ -25,8 +25,8 @@ let of_string = fun input -> String_input { input; pos = 0 }
 
 let of_reader = fun reader ->
   Reader_input {
-    reader = IO.BufReader.from_reader ~size:default_capacity reader;
-    view = IO.IoSlice.empty;
+    reader;
+    buffer = IO.Buffer.create ~size:default_capacity;
     base = 0;
     pos = 0;
     eof = false;
@@ -41,24 +41,44 @@ let local_index = fun state absolute -> absolute - state.base
 let compact = fun state ->
   if Int.(state.pos > 0) then
     (
-      ignore (IO.BufReader.consume state.reader ~len:state.pos);
+      ignore (IO.Buffer.consume state.buffer ~len:state.pos);
       state.base <- state.base + state.pos;
       state.pos <- 0
     )
+
+let reader_length = fun state -> IO.Buffer.readable_bytes state.buffer
+
+let reader_get_unchecked = fun state ~at -> IO.Buffer.get_unchecked state.buffer ~at
+
+let reader_slice = fun state -> IO.Buffer.readable state.buffer
+
+let reader_subslice = fun state ~off ~len ->
+  IO.IoSlice.sub_unchecked (reader_slice state) ~off ~len
+
+let reader_substring = fun state ~off ~len ->
+  reader_subslice state ~off ~len
+  |> IO.IoSlice.to_string
+
+let reader_append_range = fun dst state ~start ~stop ->
+  let len = stop - start in
+  if Int.(len > 0) then
+    IO.Buffer.append_subslice dst (reader_slice state) ~off:start ~len
+    |> Result.expect ~msg:"serde-json buffered input should append borrowed slices"
+
+let reader_match_field_range = fun fields state ~offset ~length ->
+  Serde.De.Fields.match_ioslice fields (reader_slice state) ~offset ~length
 
 let refill = fun state ->
   if state.eof then
     false
   else (
     compact state;
-    match IO.BufReader.buffered state.reader with
-    | Ok slice ->
-        state.view <- slice;
+    match IO.Reader.read state.reader ~into:state.buffer with
+    | Ok 0 ->
+        state.eof <- true;
+        false
+    | Ok _ ->
         true
-    | Error IO.End_of_file ->
-          state.eof <- true;
-          state.view <- IO.IoSlice.empty;
-          false
     | Error err ->
         raise (Serde.Decode_error (`Io_error err))
   )
@@ -68,14 +88,14 @@ let ensure = fun input needed ->
   | String_input state -> Int.(state.pos + needed <= String.length state.input)
   | Reader_input state ->
       let rec loop () =
-        if Int.(state.pos + needed <= IO.IoSlice.length state.view) then
+        if Int.(state.pos + needed <= reader_length state) then
           true
         else if state.eof then
           false
         else if refill state then
           loop ()
         else
-          Int.(state.pos + needed <= IO.IoSlice.length state.view)
+          Int.(state.pos + needed <= reader_length state)
       in
       loop ()
 
@@ -83,7 +103,7 @@ let peek_char = fun input ~offset ->
   if ensure input (offset + 1) then
     match input with
     | String_input state -> Some (String.unsafe_get state.input (state.pos + offset))
-    | Reader_input state -> Some (IO.IoSlice.get_unchecked state.view ~at:(state.pos + offset))
+    | Reader_input state -> Some (reader_get_unchecked state ~at:(state.pos + offset))
   else
     None
 
@@ -105,15 +125,14 @@ let set_position = fun input absolute ->
 
 let remaining = function
   | String_input state -> String.length state.input - state.pos
-  | Reader_input state -> IO.IoSlice.length state.view - state.pos
+  | Reader_input state -> reader_length state - state.pos
 
 let slice_to_string = fun input ~start ~stop ->
   match input with
   | String_input state -> String.sub state.input ~offset:start ~len:(stop - start)
   | Reader_input state ->
       let local_start = local_index state start in
-      IO.IoSlice.sub_unchecked state.view ~off:local_start ~len:(stop - start)
-      |> IO.IoSlice.to_string
+      reader_substring state ~off:local_start ~len:(stop - start)
 
 let copy_range_to_buffer = fun buffer input ~start ~stop ->
   let length = stop - start in
@@ -121,22 +140,13 @@ let copy_range_to_buffer = fun buffer input ~start ~stop ->
     match input with
     | String_input state -> IO.Buffer.add_substring buffer state.input start length
     | Reader_input state ->
-        IO.Buffer.append_subslice
-          buffer
-          state.view
-          ~off:(local_index state start)
-          ~len:length
-        |> Result.expect ~msg:"serde-json buffered input should append borrowed slices"
+        reader_append_range buffer state ~start:(local_index state start) ~stop:(local_index state stop)
 
 let match_field_range = fun fields input ~start ~stop ->
   let length = stop - start in
   match input with
   | String_input state -> Serde.De.Fields.match_slice fields state.input ~offset:start ~length
-  | Reader_input state -> Serde.De.Fields.match_ioslice
-    fields
-    state.view
-    ~offset:(local_index state start)
-    ~length
+  | Reader_input state -> reader_match_field_range fields state ~offset:(local_index state start) ~length
 
 let skip_whitespace = function
   | String_input state ->
@@ -157,10 +167,10 @@ let skip_whitespace = function
   | Reader_input state ->
       let rec loop () =
         let rec advance_local pos =
-          if Int.(pos >= IO.IoSlice.length state.view) then
+          if Int.(pos >= reader_length state) then
             pos
           else
-            match IO.IoSlice.get_unchecked state.view ~at:pos with
+            match reader_get_unchecked state ~at:pos with
             | ' '
             | '\t'
             | '\n'
@@ -168,7 +178,7 @@ let skip_whitespace = function
             | _ -> pos
         in
         state.pos <- advance_local state.pos;
-        if Int.(state.pos >= IO.IoSlice.length state.view) && not state.eof && refill state then
+        if Int.(state.pos >= reader_length state) && not state.eof && refill state then
           loop ()
       in
       loop ()
@@ -190,17 +200,17 @@ let scan_while = fun input ~continue ->
       loop state.pos
   | Reader_input state ->
       let rec loop () =
-        if Int.(state.pos >= IO.IoSlice.length state.view) then
+        if Int.(state.pos >= reader_length state) then
           if refill state then
             loop ()
           else
             `Eof (state.base + state.pos)
         else
           let rec scan local =
-            if Int.(local >= IO.IoSlice.length state.view) then
+            if Int.(local >= reader_length state) then
               `Boundary (state.base + local)
             else
-              let current = IO.IoSlice.get_unchecked state.view ~at:local in
+              let current = reader_get_unchecked state ~at:local in
               if continue current then
                 scan (local + 1)
               else
