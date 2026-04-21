@@ -3,6 +3,9 @@ module Test = Std.Test
 
 let ( let* ) = fun value fn -> Result.and_then value ~fn
 
+type Message.t +=
+  | TempdirResult of (string, string) Result.t
+
 let with_tempdir = fun prefix fn ->
   match Fs.with_tempdir ~prefix fn with
   | Ok result -> result
@@ -22,8 +25,53 @@ let test_fs_write_roundtrips_large_binary_payload = fun _ctx ->
       else
         Error "expected Fs.write to persist the full payload")
 
+let test_with_tempdir_retries_collisions_under_concurrency = fun _ctx ->
+  let parent = self () in
+  let workers = 16 in
+  let rec spawn_workers remaining =
+    if remaining <= 0 then
+      ()
+    else
+      (
+        let _worker =
+          spawn
+            (fun () ->
+              let result =
+                with_tempdir "std_fs_concurrent"
+                  (fun tempdir ->
+                    let marker = Path.(tempdir / Path.v "marker.txt") in
+                    let* () = Fs.write "ok" marker |> Result.map_err ~fn:IO.error_message in
+                    Ok (Path.to_string tempdir))
+              in
+              send parent (TempdirResult result);
+              Ok ())
+        in
+        spawn_workers (remaining - 1)
+      )
+  in
+  let rec collect remaining seen =
+    if remaining = 0 then
+      Ok ()
+    else
+      let selector msg =
+        match msg with
+        | TempdirResult result -> `select result
+        | _ -> `skip
+      in
+      match receive ~selector ~timeout:(Time.Duration.from_secs 2) () with
+      | Error error -> Error error
+      | Ok tempdir ->
+          if List.exists (String.equal tempdir) seen then
+            Error "expected concurrent Fs.with_tempdir calls to use unique directories"
+          else
+            collect (remaining - 1) (tempdir :: seen)
+  in
+  spawn_workers workers;
+  collect workers []
+
 let tests = [
   Test.case "Fs.write persists complete payloads" test_fs_write_roundtrips_large_binary_payload;
+  Test.case "Fs.with_tempdir retries collisions under concurrency" test_with_tempdir_retries_collisions_under_concurrency;
 ]
 
 let main = fun ~args -> Test.Cli.main ~name:"std_fs_tests" ~tests ~args ()

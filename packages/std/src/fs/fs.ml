@@ -295,23 +295,32 @@ let make_temp_dir_name = fun temp_base prefix ->
 
 (** Create a temporary directory, run a function with it, then clean it up *)
 let with_tempdir = fun ?(prefix = "tmp") fn ->
+  let max_attempts = 32 in
+  let rec create_unique_tempdir attempt =
+    if attempt >= max_attempts then
+      Error (IO.Unknown_error "Failed to create temp directory after retries")
+    else
+      let temp_base = get_temp_dir () in
+      let temp_name = make_temp_dir_name temp_base prefix in
+      match Path.from_string temp_name with
+      | Error _ -> Error (IO.Unknown_error "Failed to create temp directory")
+      | Ok temp_path -> (
+          match create_dir temp_path with
+          | Ok () -> Ok temp_path
+          | Error IO.File_exists -> create_unique_tempdir (attempt + 1)
+          | Error error -> Error error
+        )
+  in
   try
-    let temp_base = get_temp_dir () in
-    let temp_name = make_temp_dir_name temp_base prefix in
-    match Path.from_string temp_name with
-    | Error _ -> Error (IO.Unknown_error "Failed to create temp directory")
-    | Ok temp_path -> (
-        match create_dir temp_path with
-        | Error e -> Error e
-        | Ok () ->
-            let result =
-              try Ok (fn temp_path) with
-              | e -> Error (IO.Unknown_error (Kernel.Exception.to_string e))
-            in
-            (* Clean up the temp directory *)
-            let _ = remove_dir_all temp_path in
-            result
-      )
+    match create_unique_tempdir 0 with
+    | Error error -> Error error
+    | Ok temp_path ->
+        let result =
+          try Ok (fn temp_path) with
+          | e -> Error (IO.Unknown_error (Kernel.Exception.to_string e))
+        in
+        let _ = remove_dir_all temp_path in
+        result
   with
   | e -> Error (IO.Unknown_error (Kernel.Exception.to_string e))
 
