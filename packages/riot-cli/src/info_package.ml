@@ -115,6 +115,15 @@ let package_links = fun ~name ~version ?homepage_url ?repository_url ?source_url
         source_url;
       }
 
+let workspace_package_links = fun () ->
+  {
+    docs_url = None;
+    package_url = None;
+    homepage_url = None;
+    repository_url = None;
+    source_url = None;
+  }
+
 let matching_release = fun (document: Pkgs_ml.Sparse_index.package_document) requirement ->
   document.releases |> List.filter_map
     ~fn:(fun (release: Pkgs_ml.Sparse_index.release) ->
@@ -222,7 +231,7 @@ let workspace_package_info = fun ?registry ~target ~load_errors (pkg: Riot_model
         description = pkg.publish.description;
         license = pkg.publish.license;
         load_errors = List.map load_errors ~fn:Riot_model.Workspace_manager.load_error_to_string;
-        links = package_links ~name:pkg.name ~version ();
+        links = workspace_package_links ();
       }
 
 let resolve = fun ?registry ~local_workspace ~target () ->

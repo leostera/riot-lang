@@ -59,17 +59,23 @@ let sample_registry = fun ~riot_home ->
     ]
     ()
 
-let make_local_workspace = fun root ->
+let make_local_workspace = fun ?is_public root ->
   let package_root = Path.(root / Path.v "demo") in
   let src_dir = Path.(package_root / Path.v "src") in
   let manifest_path = Path.(package_root / Path.v "riot.toml") in
+  let public_field =
+    match is_public with
+    | None -> ""
+    | Some true -> "public = true\n"
+    | Some false -> "public = false\n"
+  in
+  let manifest_toml = "[package]\nname = \"demo\"\nversion = \"0.1.0\"\ndescription = \"demo package\"\nlicense = \"Apache-2.0\"\n"
+  ^ public_field
+  ^ "\n[lib]\npath = \"src/demo.ml\"\n" in
   Fs.create_dir_all src_dir |> Result.expect ~msg:"expected src dir";
-  Fs.write
-    "[package]\nname = \"demo\"\nversion = \"0.1.0\"\ndescription = \"demo package\"\nlicense = \"Apache-2.0\"\n\n[lib]\npath = \"src/demo.ml\"\n"
-    manifest_path
-  |> Result.expect ~msg:"expected manifest write";
+  Fs.write manifest_toml manifest_path |> Result.expect ~msg:"expected manifest write";
   Fs.write "let value = 42\n" Path.(src_dir / Path.v "demo.ml") |> Result.expect ~msg:"expected source write";
-  let manifest = Data.Toml.parse "[package]\nname = \"demo\"\nversion = \"0.1.0\"\ndescription = \"demo package\"\nlicense = \"Apache-2.0\"\n\n[lib]\npath = \"src/demo.ml\"\n"
+  let manifest = Data.Toml.parse manifest_toml
   |> Result.expect ~msg:"expected toml parse"
   |> Riot_model.Package_manifest.from_toml
     ~workspace_deps:[]
@@ -96,8 +102,26 @@ let test_info_package_prefers_local_workspace_package = fun _ctx ->
           Test.assert_equal ~expected:Riot_cli.Info_package.Workspace ~actual:info.source_kind;
           Test.assert_equal ~expected:(Some "0.1.0") ~actual:info.resolved_version;
           Test.assert_equal ~expected:(Some "demo") ~actual:info.relative_path;
-          if not (Option.is_some info.links.docs_url) then
-            Error "expected local package docs url"
+          if Option.is_some info.links.docs_url || Option.is_some info.links.package_url then
+            Error "expected local package to omit registry docs/package links"
+          else
+            Ok ())
+
+let test_info_package_private_local_package_omits_registry_links = fun _ctx ->
+  with_tempdir_result "riot_cli_info_private_local"
+    (fun tempdir ->
+      let riot_home = Path.(tempdir / Path.v ".riot") in
+      let registry = sample_registry ~riot_home in
+      let workspace = make_local_workspace ~is_public:false tempdir in
+      match Riot_cli.Info_package.resolve
+        ~registry
+        ~local_workspace:(Some (workspace, []))
+        ~target:"demo"
+        () with
+      | Error err -> Error err.message
+      | Ok info ->
+          if Option.is_some info.links.docs_url || Option.is_some info.links.package_url then
+            Error "expected private local package to omit registry docs/package links"
           else
             Ok ())
 
@@ -154,6 +178,7 @@ let test_info_package_json_includes_registry_paths_and_links = fun _ctx ->
 let tests =
   Test.[
     case "info package: bare local package prefers workspace metadata" test_info_package_prefers_local_workspace_package;
+    case "info package: private local package omits registry links" test_info_package_private_local_package_omits_registry_links;
     case "info package: registry target materializes release and paths" test_info_package_loads_registry_release_and_paths;
     case "info package: json includes registry paths and links" test_info_package_json_includes_registry_paths_and_links;
   ]
