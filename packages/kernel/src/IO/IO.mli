@@ -176,9 +176,17 @@ module Buffer: sig
 
   val append_bytes: t -> bytes -> (unit, error) Result.t
 
+  val append_subbytes: t -> bytes -> off:int -> len:int -> (unit, error) Result.t
+
+  val append_substring: t -> string -> off:int -> len:int -> (unit, error) Result.t
+
   val append_slice: t -> IoSlice.t -> (unit, error) Result.t
 
   val append_subslice: t -> IoSlice.t -> off:int -> len:int -> (unit, error) Result.t
+
+  val get: t -> at:int -> (char, error) Result.t
+
+  val get_unchecked: t -> at:int -> char
 
   val to_iovec: t -> IoVec.t
 

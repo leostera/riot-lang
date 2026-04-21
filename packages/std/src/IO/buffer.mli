@@ -37,6 +37,10 @@ val append_string: t -> string -> (unit, error) Result.t
 
 val append_bytes: t -> Kernel.Bytes.t -> (unit, error) Result.t
 
+val append_subbytes: t -> Kernel.Bytes.t -> off:int -> len:int -> (unit, error) Result.t
+
+val append_substring: t -> string -> off:int -> len:int -> (unit, error) Result.t
+
 val append_slice: t -> IoSlice.t -> (unit, error) Result.t
 
 val append_subslice: t -> IoSlice.t -> off:int -> len:int -> (unit, error) Result.t

@@ -129,13 +129,7 @@ let rec read = fun value ~into ->
         Buffer.writable into
     in
     let count = Int.min (IoSlice.length readable) (IoSlice.length writable) in
-    let chunk =
-      if count = IoSlice.length readable then
-        readable
-      else
-        IoSlice.sub_unchecked readable ~off:0 ~len:count
-    in
-    match Buffer.append_slice into chunk with
+    match Buffer.append_subslice into readable ~off:0 ~len:count with
     | Ok () ->
         begin
           match Buffer.consume value.buffer ~len:count with

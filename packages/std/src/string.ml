@@ -316,27 +316,21 @@ module Read = struct
     if Int.equal remaining 0 then
       Ok 0
     else
-      let writable =
+      let available =
         if IO.Buffer.writable_bytes into = 0 then
           (
             match IO.Buffer.ensure_free into state.chunk_size with
-            | Ok () -> IO.Buffer.writable into
+            | Ok () -> IO.Buffer.writable_bytes into
             | Error error -> panic_buffer_error "ensure_free" error
           )
         else
-          IO.Buffer.writable into
+          IO.Buffer.writable_bytes into
       in
-      let to_read = min state.chunk_size (min remaining (IO.IoSlice.length writable)) in
-      IO.IoSlice.blit_from_bytes_unchecked
-        state.source_bytes
-        ~src_off:state.offset
-        writable
-        ~dst_off:0
-        ~len:to_read;
+      let to_read = min state.chunk_size (min remaining available) in
       begin
-        match IO.Buffer.commit into to_read with
+        match IO.Buffer.append_subbytes into state.source_bytes ~off:state.offset ~len:to_read with
         | Ok () -> ()
-        | Error error -> panic_buffer_error "commit" error
+        | Error error -> panic_buffer_error "append_subbytes" error
       end;
       state.offset <- state.offset + to_read;
       Ok to_read
@@ -381,13 +375,14 @@ let to_reader = fun ?chunk_size value ->
           raise (Invalid_argument "Std.String.to_reader: chunk_size must be positive");
         chunk_size
   in
-  let state = {
-    chunk_size;
-    offset = 0;
-    source = value;
-    source_length = length value;
-    source_bytes = bytes_unsafe_of_string value;
-  }
+  let state =
+    Read.{
+      chunk_size;
+      offset = 0;
+      source = value;
+      source_length = length value;
+      source_bytes = bytes_unsafe_of_string value;
+    }
   in
   IO.Reader.from_source (module Read) state
 

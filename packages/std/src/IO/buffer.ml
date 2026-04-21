@@ -73,6 +73,10 @@ let append_string = KernelBuffer.append_string
 
 let append_bytes = KernelBuffer.append_bytes
 
+let append_subbytes = KernelBuffer.append_subbytes
+
+let append_substring = KernelBuffer.append_substring
+
 let append_slice = KernelBuffer.append_slice
 
 let append_subslice = KernelBuffer.append_subslice
@@ -86,13 +90,11 @@ let to_string = KernelBuffer.to_string
 let contents = to_string
 
 let get = fun buffer ~at ->
-  if at < 0 || at >= length buffer then
-    None
-  else
-    Some (IoSlice.get_unchecked (readable buffer) ~at)
+  match KernelBuffer.get buffer ~at with
+  | Ok char -> Some char
+  | Error _ -> None
 
-let get_unchecked = fun buffer ~at ->
-  readable buffer |> IoSlice.get_unchecked ~at
+let get_unchecked = KernelBuffer.get_unchecked
 
 let add_char = fun buffer value ->
   let _ = ensure_free buffer 1 |> panic_result "add_char.ensure_free" in
@@ -113,28 +115,16 @@ let add_subbytes = fun buffer source offset slice_length ->
   let source_length = Kernel.Bytes.length source in
   if offset < 0 || slice_length < 0 || offset > source_length - slice_length then
     panic_invalid_range "add_subbytes" ~offset ~length:slice_length ~total:source_length
-  else if slice_length = 0 then
+  else
+    let _ = append_subbytes buffer source ~off:offset ~len:slice_length |> panic_result "add_subbytes" in
     ()
-  else (
-    let _ = ensure_free buffer slice_length |> panic_result "add_subbytes.ensure_free" in
-    let dst = writable buffer in
-    IoSlice.blit_from_bytes_unchecked source ~src_off:offset dst ~dst_off:0 ~len:slice_length;
-    let _ = commit buffer slice_length |> panic_result "add_subbytes.commit" in
-    ()
-  )
 
 let add_substring = fun buffer source offset slice_length ->
   let source_length = Kernel.String.length source in
   if offset < 0 || slice_length < 0 || offset > source_length - slice_length then
     panic_invalid_range "add_substring" ~offset ~length:slice_length ~total:source_length
-  else if slice_length = 0 then
+  else
+    let _ = append_substring buffer source ~off:offset ~len:slice_length |> panic_result "add_substring" in
     ()
-  else (
-    let _ = ensure_free buffer slice_length |> panic_result "add_substring.ensure_free" in
-    let dst = writable buffer in
-    IoSlice.blit_from_string_unchecked source ~src_off:offset dst ~dst_off:0 ~len:slice_length;
-    let _ = commit buffer slice_length |> panic_result "add_substring.commit" in
-    ()
-  )
 
 let add_utf_8_uchar = fun buffer rune -> add_string buffer (Kernel.Unicode.Rune.to_string rune)
