@@ -77,6 +77,12 @@ let trace_cli = fun message ->
   let _ = message in
   ()
 
+let normalize_args = function
+  | executable :: "docs" :: rest -> executable :: "doc" :: rest
+  | executable :: "toolchains" :: rest -> executable :: "toolchain" :: rest
+  | executable :: "help" :: [] -> [ executable; "--help" ]
+  | args -> args
+
 (** Get workspace scan status *)
 let scan_workspace = fun () ->
   match Env.current_dir () with
@@ -272,12 +278,7 @@ let render_init_event = function
 let run = fun ~args ->
   let () = reset_cli_trace_origin () in
   let () = Pkgs_ml.Registry.set_riot_agent (Some (Version_info.agent_string ())) in
-  let normalized_args =
-    match args with
-    | executable :: "docs" :: rest -> executable :: "doc" :: rest
-    | executable :: "toolchains" :: rest -> executable :: "toolchain" :: rest
-    | _ -> args
-  in
+  let normalized_args = normalize_args args in
   let workspace_scan_cache = ref None in
   let get_workspace_scan () =
     match !workspace_scan_cache with
