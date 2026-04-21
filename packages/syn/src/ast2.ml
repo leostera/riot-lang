@@ -86,6 +86,8 @@ module Expr = struct
   let is_expr_kind = function
     | Syntax_kind2.LET_EXPR
     | Syntax_kind2.LOCAL_OPEN_EXPR
+    | Syntax_kind2.LET_MODULE_EXPR
+    | Syntax_kind2.FIRST_CLASS_MODULE_EXPR
     | Syntax_kind2.IF_EXPR
     | Syntax_kind2.MATCH_EXPR
     | Syntax_kind2.FUN_EXPR
@@ -95,6 +97,7 @@ module Expr = struct
     | Syntax_kind2.FOR_EXPR
     | Syntax_kind2.ASSERT_EXPR
     | Syntax_kind2.LAZY_EXPR
+    | Syntax_kind2.ATTRIBUTE_EXPR
     | Syntax_kind2.SEQUENCE_EXPR
     | Syntax_kind2.APPLY_EXPR
     | Syntax_kind2.INFIX_EXPR
