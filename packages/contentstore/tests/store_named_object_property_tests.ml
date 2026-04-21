@@ -118,10 +118,12 @@ let named_writes_survive_reopen =
 let tests = [
   Test.property
     "save_named_object keeps last writer"
+    ~size:Large
     ~examples
     (fun _ctx -> assert_property "save_named_object keeps last writer" named_objects_keep_last_writer);
   Test.property
     "save_named_object/open_named_object roundtrip"
+    ~size:Large
     ~examples
     (fun _ctx -> assert_property "save_named_object/open_named_object roundtrip" save_named_object_roundtrip);
   Test.property

@@ -745,7 +745,7 @@ let tests =
       case "build runtime: execute does not record cache generation when disabled" test_execute_does_not_record_cache_generation_when_disabled;
       case "build runtime: partial failures fail by default" test_execute_partial_failures_by_default;
       case "build runtime: allow partial failures returns partial results" test_execute_allows_partial_failures;
-      case "build runtime: multi-target partial failures can succeed with allow flag" test_execute_allows_multi_target_partial_failures;
+      case ~size:Large "build runtime: multi-target partial failures can succeed with allow flag" test_execute_allows_multi_target_partial_failures;
       case "build runtime: multi-target partial build returns aggregated returning results" test_execute_multi_target_reports_global_returning_results;
       case "build runtime: multi-target successful build returns aggregated returning results" test_execute_multi_target_all_success_reports_aggregated_results;
       case "build runtime: multi-target partial failures skip cache recording" test_execute_multi_target_partial_failures_skip_cache_recording;

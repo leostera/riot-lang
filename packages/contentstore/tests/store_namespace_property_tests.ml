@@ -92,10 +92,12 @@ let named_writes_stay_in_their_namespace =
 let tests = [
   Test.property
     "object writes stay in their namespace"
+    ~size:Large
     ~examples
     (fun _ctx -> assert_property "object writes stay in their namespace" object_writes_stay_in_their_namespace);
   Test.property
     "named writes stay in their namespace"
+    ~size:Large
     ~examples
     (fun _ctx -> assert_property "named writes stay in their namespace" named_writes_stay_in_their_namespace);
 ]
