@@ -62,7 +62,7 @@
 53. `riot test --json` should also emit parent-side suite heartbeats while a suite process is alive but quiet. Keep them structured (`SuiteHeartbeat`) so long silent startup or teardown gaps are distinguishable from real hangs even before suite-local progress events appear.
 54. `riot bench` should delegate benchmark-history persistence into `riot-bench`. Keep the CLI responsible only for collecting invocation context and forwarding normalized per-suite results to the storage package.
 55. `riot bench --json` should forward child benchmark progress events such as `BenchCaseStarted` and emit parent-side `BenchCaseHeartbeat` idle events while a suite is quiet. Strip forwarded child progress lines back out of `BenchSuiteCompleted.stdout` so consumers do not have to deduplicate them.
-56. `riot bench --compare N` should stay as a rendering flag in `riot-cli`. Load and align prior suite runs through `riot-bench`, then render current-versus-history tables or the matching structured JSON event without duplicating history matching logic in the CLI.
+56. `riot bench --compare N` should stay as a rendering flag in `riot-cli`. Load and align prior suite runs through `riot-bench`, then render current-versus-history tables, including GC diagnostics from the stored stats, or the matching structured JSON event without duplicating history matching logic in the CLI.
 57. Benchmark history recording must be explicit. Only `riot bench --record` should persist runs into `.riot/bench`; plain `riot bench` and `--compare` reads must not create new history files.
 
 ## Validate

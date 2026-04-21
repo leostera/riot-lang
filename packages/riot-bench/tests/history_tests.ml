@@ -30,7 +30,7 @@ let sample_stats = fun nanos ->
     gc = { minor_collections = 1; major_collections = 0; compactions = 0 };
   }
 
-let stats = fun ~min ~max ~mean ~median ~std_dev ~iterations ~total_time ->
+let stats = fun ?(minor_collections = 1) ?(major_collections = 0) ?(compactions = 0) ~min ~max ~mean ~median ~std_dev ~iterations ~total_time () ->
   {
     Riot_bench.History.min = Time.Duration.from_nanos min;
     max = Time.Duration.from_nanos max;
@@ -39,7 +39,7 @@ let stats = fun ~min ~max ~mean ~median ~std_dev ~iterations ~total_time ->
     std_dev = Time.Duration.from_nanos std_dev;
     iterations;
     total_time = Time.Duration.from_nanos total_time;
-    gc = { minor_collections = 1; major_collections = 0; compactions = 0 };
+    gc = { minor_collections; major_collections; compactions };
   }
 
 let benchmark = fun ~index ~name nanos ->
@@ -284,7 +284,21 @@ let test_compare_suite_run_aligns_case_history = fun _ctx ->
         ~suite_name
         ~suite_run:(suite_run
           [
-            benchmark ~index:1 ~name:"manual decode from parsed tree (1MB)" 1_000;
+            benchmark_with_stats
+              ~index:1
+              ~name:"manual decode from parsed tree (1MB)"
+              (stats
+                ~minor_collections:4
+                ~major_collections:1
+                ~compactions:0
+                ~min:980
+                ~max:1_020
+                ~mean:1_020
+                ~median:1_030
+                ~std_dev:5
+                ~iterations:100
+                ~total_time:102_000
+                ());
             benchmark ~index:2 ~name:"serde decode total (1MB)" 2_000;
           ]
           []) in
@@ -295,7 +309,21 @@ let test_compare_suite_run_aligns_case_history = fun _ctx ->
         ~suite_name
         ~suite_run:(suite_run
           [
-            benchmark ~index:1 ~name:"manual decode from parsed tree (1MB)" 900;
+            benchmark_with_stats
+              ~index:1
+              ~name:"manual decode from parsed tree (1MB)"
+              (stats
+                ~minor_collections:8
+                ~major_collections:3
+                ~compactions:2
+                ~min:880
+                ~max:920
+                ~mean:920
+                ~median:930
+                ~std_dev:4
+                ~iterations:100
+                ~total_time:92_000
+                ());
             benchmark ~index:2 ~name:"serde decode total (1MB)" 1_900;
           ]
           []) in
@@ -345,6 +373,12 @@ let test_compare_suite_run_aligns_case_history = fun _ctx ->
             Error "expected serde decode case to compare against two prior runs"
           else if not (Int64.equal (Time.Duration.to_nanos manual_baseline.mean) 970L) then
             Error "expected manual decode baseline mean to be the median of prior runs"
+          else if not (Int.equal manual_baseline.gc.minor_collections 6) then
+            Error "expected manual decode baseline gc.minor_collections to be the median of prior runs"
+          else if not (Int.equal manual_baseline.gc.major_collections 2) then
+            Error "expected manual decode baseline gc.major_collections to be the median of prior runs"
+          else if not (Int.equal manual_baseline.gc.compactions 1) then
+            Error "expected manual decode baseline gc.compactions to be the median of prior runs"
           else if not
               (
                 match manual_stability with
@@ -381,7 +415,8 @@ let test_compare_suite_run_marks_noisy_cases = fun _ctx ->
                 ~median:1_000
                 ~std_dev:20
                 ~iterations:100
-                ~total_time:100_000);
+                ~total_time:100_000
+                ());
           ]
           []) in
       let _ = write_run_with_name
@@ -401,7 +436,8 @@ let test_compare_suite_run_marks_noisy_cases = fun _ctx ->
                 ~median:995
                 ~std_dev:18
                 ~iterations:100
-                ~total_time:99_000);
+                ~total_time:99_000
+                ());
           ]
           []) in
       let context = Riot_bench.History.create_run_context
@@ -432,7 +468,8 @@ let test_compare_suite_run_marks_noisy_cases = fun _ctx ->
               ~median:980
               ~std_dev:120
               ~iterations:100
-              ~total_time:100_000);
+              ~total_time:100_000
+              ());
         ]
         [] in
       let history = Riot_bench.History.compare_suite_run

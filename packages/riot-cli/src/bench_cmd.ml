@@ -449,6 +449,59 @@ let style_delta_cell = fun delta_value ~noise_margin_percent text ->
       else
         styled "#E06C75" text
 
+let render_signed_int = fun value ->
+  let sign =
+    if Int.(value > 0) then
+      "+"
+    else
+      ""
+  in
+  sign ^ Int.to_string value
+
+let style_signed_int_delta = fun value text ->
+  if Int.equal value 0 then
+    styled "#E5C07B" text
+  else if Int.(value < 0) then
+    styled "#98C379" text
+  else
+    styled "#E06C75" text
+
+let float_delta = fun current previous -> Some (current -. previous)
+
+let render_signed_float = fun value ->
+  let sign =
+    if Float.compare value 0.0 > 0 then
+      "+"
+    else
+      ""
+  in
+  sign ^ Float.to_string ~precision:4 value
+
+let style_signed_float_delta = fun value text ->
+  if Float.equal value 0.0 then
+    styled "#E5C07B" text
+  else if Float.compare value 0.0 < 0 then
+    styled "#98C379" text
+  else
+    styled "#E06C75" text
+
+let gc_per_iteration = fun count iterations ->
+  if Int.(iterations <= 0) then
+    None
+  else
+    Some (Float.of_int count /. Float.of_int iterations)
+
+let render_gc_rate = fun value ->
+  match value with
+  | None -> "n/a"
+  | Some value -> Float.to_string ~precision:4 value
+
+let gc_metric_specs = [
+  ("minor", fun (gc: History.gc_stats) -> gc.minor_collections);
+  ("major", fun gc -> gc.major_collections);
+  ("compact", fun gc -> gc.compactions);
+]
+
 let history_column_label = fun index (sample: History.history_sample) ->
   let base =
     if Int.equal index 0 then
@@ -461,18 +514,16 @@ let history_column_label = fun index (sample: History.history_sample) ->
   else
     base
 
-let print_history_table = fun ~current_partial ~baseline ~current_cv ~baseline_cv current (
+let history_table_header = fun ~label_width ~column_width ~current_partial (
   history: History.history_sample list
 ) ->
-  let label_width = 10 in
-  let column_width = 12 in
   let current_label =
     if current_partial then
       "curr*"
     else
       "curr"
   in
-  let header = [ String.pad_right ~width:label_width ' ' "" ]
+  [ String.pad_right ~width:label_width ' ' "" ]
   @ [
     String.pad_left ~width:column_width ' ' "delta";
     String.pad_left ~width:column_width ' ' current_label
@@ -482,7 +533,14 @@ let print_history_table = fun ~current_partial ~baseline ~current_cv ~baseline_c
   |> List.map
     ~fn:(fun (index, sample) ->
       String.pad_left ~width:column_width ' ' (history_column_label index sample)))
-  |> String.concat " " in
+  |> String.concat " "
+
+let print_history_table = fun ~current_partial ~baseline ~current_cv ~baseline_cv current (
+  history: History.history_sample list
+) ->
+  let label_width = 10 in
+  let column_width = 12 in
+  let header = history_table_header ~label_width ~column_width ~current_partial history in
   let noise_margin_percent = noise_margin_percent ~current_cv ~baseline_cv in
   println header;
   metric_specs |> List.iter
@@ -532,6 +590,66 @@ let print_history_table = fun ~current_partial ~baseline ~current_cv ~baseline_c
     @ [ cv_history ]
     |> String.concat " ")
 
+let print_gc_history_table = fun ~current_partial ~(baseline:History.bench_statistics) (
+  current: History.bench_statistics
+) (history: History.history_sample list) ->
+  let label_width = 10 in
+  let column_width = 12 in
+  let header = history_table_header ~label_width ~column_width ~current_partial history in
+  println header;
+  gc_metric_specs |> List.iter
+    (fun (label, project) ->
+      let current_value = project current.gc in
+      let baseline_value = project baseline.gc in
+      let delta_value = current_value - baseline_value in
+      let delta_cell = render_signed_int delta_value
+      |> String.pad_left ~width:column_width ' '
+      |> style_signed_int_delta delta_value in
+      let values = [ String.pad_right ~width:label_width ' ' label ]
+      @ [ delta_cell; String.pad_left ~width:column_width ' ' (Int.to_string current_value); ]
+      @ (history
+      |> List.map
+        ~fn:(fun (sample: History.history_sample) ->
+          String.pad_left ~width:column_width ' ' (Int.to_string (project sample.statistics.gc))))
+      |> String.concat " " in
+      println values)
+
+let print_gc_rate_history_table = fun ~current_partial ~(baseline:History.bench_statistics) (
+  current: History.bench_statistics
+) (history: History.history_sample list) ->
+  let label_width = 10 in
+  let column_width = 12 in
+  let header = history_table_header ~label_width ~column_width ~current_partial history in
+  println header;
+  gc_metric_specs |> List.iter
+    (fun (label, project) ->
+      let current_value = gc_per_iteration (project current.gc) current.iterations in
+      let baseline_value = gc_per_iteration (project baseline.gc) baseline.iterations in
+      let delta_value =
+        match current_value, baseline_value with
+        | Some current_value, Some baseline_value -> float_delta current_value baseline_value
+        | _ -> None
+      in
+      let delta_cell =
+        match delta_value with
+        | Some delta_value -> render_signed_float delta_value
+        |> String.pad_left ~width:column_width ' '
+        |> style_signed_float_delta delta_value
+        | None -> String.pad_left ~width:column_width ' ' "n/a"
+      in
+      let values =
+        [ String.pad_right ~width:label_width ' ' label ]
+        @ [ delta_cell; String.pad_left ~width:column_width ' ' (render_gc_rate current_value); ]
+        @ (
+          history |> List.map
+            ~fn:(fun (sample: History.history_sample) ->
+              let value = gc_per_iteration (project sample.statistics.gc) sample.statistics.iterations in
+              String.pad_left ~width:column_width ' ' (render_gc_rate value))
+        )
+        |> String.concat " "
+      in
+      println values)
+
 let print_benchmark_history = fun ~current_partial (history: History.benchmark_history) ->
   println "  history:";
   println ("  baseline: median of previous " ^ Int.to_string (List.length history.history) ^ " runs");
@@ -554,6 +672,12 @@ let print_benchmark_history = fun ~current_partial (history: History.benchmark_h
     ~baseline_cv:history.baseline_cv
     history.current
     history.history;
+  println "";
+  println "  gc:";
+  print_gc_history_table ~current_partial ~baseline:history.baseline history.current history.history;
+  println "";
+  println "  gc / iter:";
+  print_gc_rate_history_table ~current_partial ~baseline:history.baseline history.current history.history;
   println ""
 
 let print_comparison_case_history = fun ~current_partial (history: History.comparison_case_history) ->
@@ -578,6 +702,12 @@ let print_comparison_case_history = fun ~current_partial (history: History.compa
     ~baseline_cv:history.baseline_cv
     history.current
     history.history;
+  println "";
+  println "  gc:";
+  print_gc_history_table ~current_partial ~baseline:history.baseline history.current history.history;
+  println "";
+  println "  gc / iter:";
+  print_gc_rate_history_table ~current_partial ~baseline:history.baseline history.current history.history;
   println ""
 
 let history_statistics_json = fun (stats: History.bench_statistics) ->

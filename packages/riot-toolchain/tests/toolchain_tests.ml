@@ -379,8 +379,11 @@ let tests =
     case "parse colored ocaml warning diagnostic" test_parse_colored_ocaml_warning_diagnostic;
     case "get_host_triple matches Std.System.host_triple" test_get_host_triple_matches_std_host_triple;
     case "list_toolchains returns typed targets" test_list_toolchains_returns_typed_targets;
-    case "list available toolchains reads manifest" test_list_available_toolchains_reads_manifest;
+    case ~size:Large "list available toolchains reads manifest" test_list_available_toolchains_reads_manifest;
   ]
 
 let () =
-  Actors.run ~main:(fun ~args -> Test.Cli.main ~name:"toolchain_tests" ~tests ~args ()) ~args:Env.args ()
+  Actors.run
+    ~main:(fun ~args -> Test.Cli.main ~name:"toolchain_tests" ~tests ~args ())
+    ~args:Env.args
+    ()

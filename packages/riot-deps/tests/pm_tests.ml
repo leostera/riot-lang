@@ -2925,10 +2925,7 @@ let tests =
     case "git dependency: github source spec normalizes into locator and ref" test_git_dependency_parse_spec_normalizes_github_source;
     case "git dependency: github shorthand locator parses for remote commands" test_git_dependency_parse_source_locator_accepts_github_shorthand;
     case "git dependency: sync checkout clones a local repository" test_git_dependency_sync_checkout_clones_local_repo;
-    case
-      ~size:Large
-      "git dependency: sync checkout skips fetch without update"
-      test_git_dependency_sync_checkout_skips_fetch_without_update;
+    case ~size:Large "git dependency: sync checkout skips fetch without update" test_git_dependency_sync_checkout_skips_fetch_without_update;
     case "package management: add rejects unsupported source dependency specs" test_add_rejects_unsupported_source_dependency_specs;
     case "package management: add not-found message lists search suggestions" test_package_error_message_lists_search_suggestions;
     case "package management: search returns registry results" test_search_returns_registry_results;
@@ -2957,15 +2954,13 @@ let tests =
     case "publisher: workspace publish order ignores dev and build dependencies" test_publisher_workspace_publish_order_ignores_dev_and_build_dependencies;
     case "publisher: workspace publish order reports cycles" test_publisher_workspace_publish_order_reports_cycles;
     case "publisher: validate registry deps skips workspace publish set" test_publisher_validate_registry_dependencies_skips_workspace_publish_set;
-    case
-      ~size:Large
-      "git provenance: discovers nested package locator"
-      test_git_provenance_discovers_nested_package_locator;
-    case "git provenance: discovers repo root locator" test_git_provenance_discovers_repo_root_locator;
+    case ~size:Large "git provenance: discovers nested package locator" test_git_provenance_discovers_nested_package_locator;
+    case ~size:Large "git provenance: discovers repo root locator" test_git_provenance_discovers_repo_root_locator;
     case "publisher: prepare_publish discovers git provenance automatically" test_publisher_prepare_publish_discovers_git_provenance_without_registry;
     case "publisher: publish discovers git provenance automatically" test_publisher_publish_discovers_git_provenance;
   ]
 
 let name = "Riot PM Tests"
 
-let () = Actors.run ~main:(fun ~args -> Test.Cli.main ~name ~tests ~args ()) ~args:Env.args ()
+let () =
+  Actors.run ~main:(fun ~args -> Test.Cli.main ~name ~tests ~args ()) ~args:Env.args ()
