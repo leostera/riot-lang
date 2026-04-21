@@ -101,6 +101,6 @@ let tests =
 
 let () =
   Runtime.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"iter_mut_cursor" ~tests ~args)
+    ~main:(fun ~args -> Test.Cli.main ~name:"iter_mut_cursor" ~tests ~args ())
     ~args:Env.args
     ()

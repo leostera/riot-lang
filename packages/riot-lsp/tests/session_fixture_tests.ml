@@ -114,6 +114,6 @@ let () =
           ~filter:keep_jsonl
           ~run:(fun ctx -> test_fixture ~ctx)
       in
-      Test.Cli.main ~name:"riot-lsp session fixtures" ~tests ~args)
+      Test.Cli.main ~name:"riot-lsp session fixtures" ~tests ~args ())
     ~args:Env.args
     ()

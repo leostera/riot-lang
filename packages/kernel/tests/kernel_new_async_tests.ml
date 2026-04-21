@@ -950,6 +950,7 @@ let tests = [
   Test.case ~size:Test.Large "Async repeated register, reregister, and deregister stays healthy" test_repeated_register_reregister_and_deregister_stays_healthy;
 ]
 
-let main = fun ~args -> Test.Cli.main ~name:"kernel_new_async_tests" ~tests ~args
+let main = fun ~args ->
+  Test.Cli.main ~execution_mode:Linear ~name:"kernel_new_async_tests" ~tests ~args ()
 
 let () = Actors.run ~main ~args:Env.args ()

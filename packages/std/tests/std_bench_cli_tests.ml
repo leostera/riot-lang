@@ -192,7 +192,7 @@ let meta_main = fun ~args ->
     | [ exe ] -> [ exe; "run-tests" ]
     | args -> args
   in
-  Test.Cli.main ~name:"std_bench_cli_tests" ~tests:meta_tests ~args:(normalize_args args)
+  Test.Cli.main ~name:"std_bench_cli_tests" ~tests:meta_tests ~args:(normalize_args args) ()
 
 let main = fun ~args ->
   match args with

@@ -127,4 +127,4 @@ let tests =
   ]
 
 let () =
-  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"int32" ~tests ~args) ~args:Env.args ()
+  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"int32" ~tests ~args ()) ~args:Env.args ()

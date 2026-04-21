@@ -150,6 +150,6 @@ let () =
         test_at_path_no_match;
       ]
       in
-      Test.Cli.main ~name:"diff" ~tests:all_tests ~args)
+      Test.Cli.main ~name:"diff" ~tests:all_tests ~args ())
     ~args:Env.args
     ()

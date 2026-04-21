@@ -99,4 +99,4 @@ let tests =
   ]
 
 let () =
-  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"list-diff" ~tests ~args) ~args:Env.args ()
+  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"list-diff" ~tests ~args ()) ~args:Env.args ()

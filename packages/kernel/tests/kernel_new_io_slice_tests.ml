@@ -55,6 +55,6 @@ let tests = [
   Test.case "readable IoSlice uses the readable region" test_of_buffer_tracks_readable_region;
 ]
 
-let main = fun ~args -> Test.Cli.main ~name:"kernel_new_io_slice_tests" ~tests ~args
+let main = fun ~args -> Test.Cli.main ~name:"kernel_new_io_slice_tests" ~tests ~args ()
 
 let () = Actors.run ~main ~args:Env.args ()

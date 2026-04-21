@@ -22,6 +22,6 @@ let tests =
 
 let () =
   Runtime.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"net_http_method" ~tests ~args)
+    ~main:(fun ~args -> Test.Cli.main ~name:"net_http_method" ~tests ~args ())
     ~args:Env.args
     ()

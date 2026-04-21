@@ -91,4 +91,4 @@ let tests = [
   test_lazy_cell_recomputes_after_take;
 ]
 
-let () = Runtime.run ~main:(Test.Cli.main ~name ~tests) ~args:Env.args ()
+let () = Runtime.run ~main:(fun ~args -> Test.Cli.main ~name ~tests ~args ()) ~args:Env.args ()

@@ -3116,6 +3116,6 @@ let all_tests =
 
 let () =
   Actors.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"pubgrub" ~tests:all_tests ~args)
+    ~main:(fun ~args -> Test.Cli.main ~name:"pubgrub" ~tests:all_tests ~args ())
     ~args:Env.args
     ()

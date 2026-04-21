@@ -213,6 +213,6 @@ let tests =
 
 let () =
   Runtime.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"graph_simple_graph" ~tests ~args)
+    ~main:(fun ~args -> Test.Cli.main ~name:"graph_simple_graph" ~tests ~args ())
     ~args:Env.args
     ()

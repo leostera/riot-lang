@@ -23,6 +23,6 @@ let tests = [ Test.case "kernel regex compiles and matches"
           Test.assert_true (Option.is_some offset);
           Ok ()); ]
 
-let main = fun ~args -> Test.Cli.main ~name:"std_kernel_regex_tests" ~tests ~args
+let main = fun ~args -> Test.Cli.main ~name:"std_kernel_regex_tests" ~tests ~args ()
 
 let () = Runtime.run ~main ~args:Env.args ()

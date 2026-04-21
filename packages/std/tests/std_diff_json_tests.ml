@@ -368,6 +368,6 @@ let () =
         test_json_at_path;
       ]
       in
-      Test.Cli.main ~name:"json-diff" ~tests:all_tests ~args)
+      Test.Cli.main ~name:"json-diff" ~tests:all_tests ~args ())
     ~args:Env.args
     ()

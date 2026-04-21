@@ -196,4 +196,4 @@ let tests = [
   test_refcell_with_borrow_mut_releases_on_exception;
 ]
 
-let () = Runtime.run ~main:(Test.Cli.main ~name ~tests) ~args:Env.args ()
+let () = Runtime.run ~main:(fun ~args -> Test.Cli.main ~name ~tests ~args ()) ~args:Env.args ()

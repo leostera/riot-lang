@@ -203,6 +203,6 @@ let tests =
 
 let () =
   Runtime.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"std_archive_tar" ~tests ~args)
+    ~main:(fun ~args -> Test.Cli.main ~name:"std_archive_tar" ~tests ~args ())
     ~args:Env.args
     ()

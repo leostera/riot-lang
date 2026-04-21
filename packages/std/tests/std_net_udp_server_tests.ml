@@ -102,6 +102,6 @@ let tests =
 
 let () =
   Runtime.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"std_net_udp_server_tests" ~tests ~args)
+    ~main:(fun ~args -> Test.Cli.main ~name:"std_net_udp_server_tests" ~tests ~args ())
     ~args:Env.args
     ()

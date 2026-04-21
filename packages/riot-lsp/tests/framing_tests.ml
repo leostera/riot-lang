@@ -65,6 +65,6 @@ let () =
           Test.case "decode requires Content-Length" test_decode_requires_content_length;
           Test.case "decode returns unconsumed tail" test_decode_returns_unconsumed_tail;
         ]
-        ~args)
+        ~args ())
     ~args:Env.args
     ()

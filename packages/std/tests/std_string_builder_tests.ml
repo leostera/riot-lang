@@ -34,4 +34,4 @@ let tests =
   ]
 
 let () =
-  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"string_builder" ~tests ~args) ~args:Env.args ()
+  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"string_builder" ~tests ~args ()) ~args:Env.args ()

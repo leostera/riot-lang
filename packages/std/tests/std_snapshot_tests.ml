@@ -266,6 +266,6 @@ let tests = [
 
 let () =
   Runtime.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"std_snapshot_tests" ~tests ~args)
+    ~main:(fun ~args -> Test.Cli.main ~name:"std_snapshot_tests" ~tests ~args ())
     ~args:Env.args
     ()

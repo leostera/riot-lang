@@ -73,6 +73,6 @@ let tests = [
   Test.case "Net.Addr reports missing hosts as typed errors" test_resolve_first_stream_reports_missing_hosts;
 ]
 
-let main = fun ~args -> Test.Cli.main ~name:"kernel_new_addr_tests" ~tests ~args
+let main = fun ~args -> Test.Cli.main ~name:"kernel_new_addr_tests" ~tests ~args ()
 
 let () = Actors.run ~main ~args:Env.args ()

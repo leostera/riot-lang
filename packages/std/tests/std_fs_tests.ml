@@ -26,6 +26,6 @@ let tests = [
   Test.case "Fs.write persists complete payloads" test_fs_write_roundtrips_large_binary_payload;
 ]
 
-let main = fun ~args -> Test.Cli.main ~name:"std_fs_tests" ~tests ~args
+let main = fun ~args -> Test.Cli.main ~name:"std_fs_tests" ~tests ~args ()
 
 let () = Runtime.run ~main ~args:Env.args ()

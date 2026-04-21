@@ -58,6 +58,6 @@ let tests = [ Test.case "glob star stays within a path segment"
         (Glob.matches glob ~str:"vendored" |> Result.unwrap_or ~default:false);
       Ok ()); ]
 
-let main = fun ~args -> Test.Cli.main ~name:"std_glob_tests" ~tests ~args
+let main = fun ~args -> Test.Cli.main ~name:"std_glob_tests" ~tests ~args ()
 
 let () = Runtime.run ~main ~args:Env.args ()

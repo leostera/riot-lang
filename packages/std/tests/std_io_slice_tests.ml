@@ -27,6 +27,6 @@ let tests = [
   Test.case "Std.IO.IoBuffer.readable exposes readable bytes" test_iobuffer_readable_uses_readable_bytes;
 ]
 
-let main = fun ~args -> Test.Cli.main ~name:"std_io_slice_tests" ~tests ~args
+let main = fun ~args -> Test.Cli.main ~name:"std_io_slice_tests" ~tests ~args ()
 
 let () = Actors.run ~main ~args:Env.args ()

@@ -77,4 +77,4 @@ let tests =
   ]
 
 let () =
-  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"utf16" ~tests ~args) ~args:Env.args ()
+  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"utf16" ~tests ~args ()) ~args:Env.args ()

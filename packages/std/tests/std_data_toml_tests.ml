@@ -771,6 +771,6 @@ let () =
         test_duplicate_keys_in_section;
       ]
       in
-      Test.Cli.main ~name:"toml" ~tests:all_tests ~args)
+      Test.Cli.main ~name:"toml" ~tests:all_tests ~args ())
     ~args:Env.args
     ()

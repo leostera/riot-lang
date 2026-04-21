@@ -22,6 +22,6 @@ let tests = [
   Test.case "IoVec sub slices across segment boundaries" test_iovec_sub_slices_segments;
 ]
 
-let main = fun ~args -> Test.Cli.main ~name:"kernel_new_iovec_tests" ~tests ~args
+let main = fun ~args -> Test.Cli.main ~name:"kernel_new_iovec_tests" ~tests ~args ()
 
 let () = Actors.run ~main ~args:Env.args ()

@@ -40,6 +40,6 @@ let tests =
     ~snapshot_path:(fun path -> Some (Path.add_extension path ~ext:"semtree.expected"))
     ~run:lowering_test
 
-let main = fun ~args -> Test.Cli.main ~name ~tests ~args
+let main = fun ~args -> Test.Cli.main ~name ~tests ~args ()
 
 let () = Actors.run ~main ~args:Env.args ()

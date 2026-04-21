@@ -1476,6 +1476,6 @@ let tests = [
   Test.case ~size:Test.Large "Fs.File repeated pipe open and close stays healthy" test_repeated_pipe_open_and_close_stays_healthy;
 ]
 
-let main = fun ~args -> Test.Cli.main ~name:"kernel_new_file_tests" ~tests ~args
+let main = fun ~args -> Test.Cli.main ~name:"kernel_new_file_tests" ~tests ~args ()
 
 let () = Actors.run ~main ~args:Env.args ()
