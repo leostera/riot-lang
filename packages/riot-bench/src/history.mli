@@ -44,6 +44,40 @@ type suite_run = {
   benchmarks: bench_case_result list;
   comparisons: bench_comparison_result list;
 }
+type stored_suite_run = {
+  run_id: string;
+  package_name: Package_name.t;
+  suite_name: string;
+  profile: string;
+  target: Target.t;
+  filter: string option;
+  partial: bool;
+  git_head: string option;
+  git_dirty: bool option;
+  argv: string list;
+  suite_run: suite_run;
+}
+type history_sample = {
+  run_id: string;
+  partial: bool;
+  statistics: bench_statistics;
+}
+type benchmark_history = {
+  index: int;
+  name: string;
+  current: bench_statistics;
+  history: history_sample list;
+}
+type comparison_case_history = {
+  description: string;
+  name: string;
+  current: bench_statistics;
+  history: history_sample list;
+}
+type suite_history = {
+  benchmarks: benchmark_history list;
+  comparisons: comparison_case_history list;
+}
 type run_context
 val create_run_context:
   workspace_root:Path.t ->
@@ -58,6 +92,21 @@ val create_run_context:
 val run_id: run_context -> string
 
 val suite_run_path: run_context -> package_name:Package_name.t -> suite_name:string -> Path.t
+
+val load_recent_suite_runs:
+  run_context ->
+  package_name:Package_name.t ->
+  suite_name:string ->
+  limit:int ->
+  (stored_suite_run list, string) result
+
+val compare_suite_run:
+  run_context ->
+  package_name:Package_name.t ->
+  suite_name:string ->
+  current:suite_run ->
+  limit:int ->
+  (suite_history, string) result
 
 val save_suite_run:
   run_context ->

@@ -142,24 +142,51 @@ let test_test_command_parses_repeated_packages_and_filter = fun _ctx ->
   | Ok matches -> (
       match ArgParser.get_subcommand matches with
       | Some ("test", test_matches) ->
-          Test.assert_equal ~expected:[ "std"; "syn" ] ~actual:(ArgParser.get_many test_matches "package");
-          Test.assert_equal ~expected:(Some "probe") ~actual:(ArgParser.get_one test_matches "filter");
+          Test.assert_equal
+            ~expected:[ "std"; "syn" ]
+            ~actual:(ArgParser.get_many test_matches "package");
+          Test.assert_equal
+            ~expected:(Some "probe")
+            ~actual:(ArgParser.get_one test_matches "filter");
           Ok ()
-      | Some (name, _) -> Error ("expected test command, got: " ^ name)
-      | None -> Error "expected top-level subcommand"
+      | Some (name, _) ->
+          Error ("expected test command, got: " ^ name)
+      | None ->
+          Error "expected top-level subcommand"
     )
 
 let test_bench_command_parses_repeated_packages_and_filter = fun _ctx ->
-  match parse_cli [ "riot"; "bench"; "-p"; "std"; "-p"; "syn"; "-f"; "probe" ] with
+  match
+    parse_cli
+      [
+        "riot";
+        "bench";
+        "-p";
+        "std";
+        "-p";
+        "syn";
+        "-f";
+        "probe";
+        "--compare";
+        "3"
+      ]
+  with
   | Error err -> Error ("expected bench args to parse: " ^ err)
   | Ok matches -> (
       match ArgParser.get_subcommand matches with
       | Some ("bench", bench_matches) ->
-          Test.assert_equal ~expected:[ "std"; "syn" ] ~actual:(ArgParser.get_many bench_matches "package");
-          Test.assert_equal ~expected:(Some "probe") ~actual:(ArgParser.get_one bench_matches "filter");
+          Test.assert_equal
+            ~expected:[ "std"; "syn" ]
+            ~actual:(ArgParser.get_many bench_matches "package");
+          Test.assert_equal
+            ~expected:(Some "probe")
+            ~actual:(ArgParser.get_one bench_matches "filter");
+          Test.assert_equal ~expected:(Some 3) ~actual:(ArgParser.get_int bench_matches "compare");
           Ok ()
-      | Some (name, _) -> Error ("expected bench command, got: " ^ name)
-      | None -> Error "expected top-level subcommand"
+      | Some (name, _) ->
+          Error ("expected bench command, got: " ^ name)
+      | None ->
+          Error "expected top-level subcommand"
     )
 
 let tests =
@@ -180,4 +207,5 @@ let tests =
 
 let name = "Riot CLI Test Selection Tests"
 
-let () = Actors.run ~main:(fun ~args -> Test.Cli.main ~name ~tests ~args ()) ~args:Env.args ()
+let () =
+  Actors.run ~main:(fun ~args -> Test.Cli.main ~name ~tests ~args ()) ~args:Env.args ()

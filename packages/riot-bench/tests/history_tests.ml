@@ -18,6 +18,56 @@ let field = fun name fields ->
     ~fn:(fun (field_name, _) ->
       String.equal field_name name) |> Option.map ~fn:(fun (_, value) -> value)
 
+let sample_stats = fun nanos ->
+  {
+    Riot_bench.History.min = Time.Duration.from_nanos nanos;
+    max = Time.Duration.from_nanos (nanos + 10);
+    mean = Time.Duration.from_nanos (nanos + 20);
+    median = Time.Duration.from_nanos (nanos + 30);
+    std_dev = Time.Duration.from_nanos 5;
+    iterations = 100;
+    total_time = Time.Duration.from_nanos ((nanos + 20) * 100);
+  }
+
+let benchmark = fun ~index ~name nanos ->
+  { Riot_bench.History.index; name; result = Completed (sample_stats nanos) }
+
+let suite_run = fun benchmarks comparisons ->
+  {
+    Riot_bench.History.status = 0;
+    started_at_us = Some 10;
+    completed_at_us = Some 20;
+    duration_us = Some 10;
+    summary = {
+      total = List.length benchmarks + List.length comparisons;
+      completed = List.length benchmarks + List.length comparisons;
+      skipped = 0;
+      failed = 0
+    };
+    benchmarks;
+    comparisons;
+  }
+
+let write_run_with_name = fun ~root ~profile ~run_name ~suite_name ~suite_run ->
+  let context = Riot_bench.History.create_run_context
+    ~workspace_root:root
+    ~profile
+    ~filter:None
+    ~partial:false
+    ~argv:[ "riot"; "bench"; "-p"; "serde-json" ]
+    () in
+  let saved = Riot_bench.History.save_suite_run
+    context
+    ~package_name:(package_name "serde-json")
+    ~suite_name
+    ~suite_run
+  |> Result.expect ~msg:"failed to save suite history"
+  |> Option.expect ~msg:"expected non-empty suite history to be saved" in
+  let parent_dir = Path.parent saved |> Option.expect ~msg:"expected suite history path parent" in
+  let renamed = Path.(parent_dir / Path.v (run_name ^ ".json")) in
+  Fs.rename ~src:saved ~dst:renamed |> Result.expect ~msg:"failed to rename saved history file";
+  renamed
+
 let test_suite_run_path_uses_package_suite_and_run_id = fun _ctx ->
   with_tempdir "riot_bench_history_path"
     (fun root ->
@@ -129,18 +179,17 @@ let test_save_suite_run_skips_empty_suite = fun _ctx ->
         summary = { total = 0; completed = 0; skipped = 0; failed = 0 };
         benchmarks = [];
         comparisons = [];
-      } in
+      }
+      in
       let expected_path = Riot_bench.History.suite_run_path
         context
         ~package_name:(package_name "std")
         ~suite_name:"std_io_ioslice_bench" in
-      match
-        Riot_bench.History.save_suite_run
-          context
-          ~package_name:(package_name "std")
-          ~suite_name:"std_io_ioslice_bench"
-          ~suite_run
-      with
+      match Riot_bench.History.save_suite_run
+        context
+        ~package_name:(package_name "std")
+        ~suite_name:"std_io_ioslice_bench"
+        ~suite_run with
       | Error error ->
           Error ("expected empty suite history save to be skipped, got error: " ^ error)
       | Ok (Some path) ->
@@ -152,10 +201,136 @@ let test_save_suite_run_skips_empty_suite = fun _ctx ->
           | Ok false -> Ok ()
         ))
 
+let test_load_recent_suite_runs_filters_and_orders = fun _ctx ->
+  with_tempdir "riot_bench_history_load"
+    (fun root ->
+      let suite_name = "large_json_bench" in
+      let _ = write_run_with_name
+        ~root
+        ~profile:"debug"
+        ~run_name:"2026-04-21T10-00-00.000Z-old"
+        ~suite_name
+        ~suite_run:(suite_run [ benchmark ~index:1 ~name:"serde decode total (1MB)" 100 ] []) in
+      let _ = write_run_with_name
+        ~root
+        ~profile:"release"
+        ~run_name:"2026-04-21T11-00-00.000Z-release"
+        ~suite_name
+        ~suite_run:(suite_run [ benchmark ~index:1 ~name:"serde decode total (1MB)" 200 ] []) in
+      let _ = write_run_with_name
+        ~root
+        ~profile:"debug"
+        ~run_name:"2026-04-21T12-00-00.000Z-new"
+        ~suite_name
+        ~suite_run:(suite_run [ benchmark ~index:1 ~name:"serde decode total (1MB)" 300 ] []) in
+      let context = Riot_bench.History.create_run_context
+        ~workspace_root:root
+        ~profile:"debug"
+        ~filter:(Some "serde decode")
+        ~partial:true
+        ~argv:[ "riot"; "bench"; "-p"; "serde-json"; "-f"; "serde decode"; "--compare"; "2" ]
+        () in
+      let loaded = Riot_bench.History.load_recent_suite_runs
+        context
+        ~package_name:(package_name "serde-json")
+        ~suite_name
+        ~limit:2
+      |> Result.expect ~msg:"failed to load recent suite runs" in
+      match loaded with
+      | [newest;older] ->
+          Test.assert_equal ~expected:"debug" ~actual:newest.profile;
+          Test.assert_equal ~expected:"debug" ~actual:older.profile;
+          let newest_mean =
+            match newest.suite_run.benchmarks with
+            | [ { result=Completed stats; _ } ] -> Time.Duration.to_nanos stats.mean
+            | _ -> Int64.zero
+          in
+          let older_mean =
+            match older.suite_run.benchmarks with
+            | [ { result=Completed stats; _ } ] -> Time.Duration.to_nanos stats.mean
+            | _ -> Int64.zero
+          in
+          if newest_mean > older_mean then
+            Ok ()
+          else
+            Error "expected newer debug history run to sort before older debug run"
+      | _ -> Error ("expected two debug history runs, got " ^ Int.to_string (List.length loaded)))
+
+let test_compare_suite_run_aligns_case_history = fun _ctx ->
+  with_tempdir "riot_bench_history_compare"
+    (fun root ->
+      let suite_name = "large_json_bench" in
+      let _ = write_run_with_name
+        ~root
+        ~profile:"debug"
+        ~run_name:"2026-04-21T10-00-00.000Z-first"
+        ~suite_name
+        ~suite_run:(suite_run
+          [
+            benchmark ~index:1 ~name:"manual decode from parsed tree (1MB)" 1_000;
+            benchmark ~index:2 ~name:"serde decode total (1MB)" 2_000;
+          ]
+          []) in
+      let _ = write_run_with_name
+        ~root
+        ~profile:"debug"
+        ~run_name:"2026-04-21T11-00-00.000Z-second"
+        ~suite_name
+        ~suite_run:(suite_run
+          [
+            benchmark ~index:1 ~name:"manual decode from parsed tree (1MB)" 900;
+            benchmark ~index:2 ~name:"serde decode total (1MB)" 1_900;
+          ]
+          []) in
+      let context = Riot_bench.History.create_run_context
+        ~workspace_root:root
+        ~profile:"debug"
+        ~filter:(Some "manual decode from parsed tree")
+        ~partial:true
+        ~argv:[
+          "riot";
+          "bench";
+          "-p";
+          "serde-json";
+          "-f";
+          "manual decode from parsed tree";
+          "--compare";
+          "3";
+        ]
+        () in
+      let current = suite_run
+        [
+          benchmark ~index:1 ~name:"manual decode from parsed tree (1MB)" 800;
+          benchmark ~index:2 ~name:"serde decode total (1MB)" 1_800;
+        ]
+        [] in
+      let history = Riot_bench.History.compare_suite_run
+        context
+        ~package_name:(package_name "serde-json")
+        ~suite_name
+        ~current
+        ~limit:3
+      |> Result.expect ~msg:"failed to compare suite history" in
+      match history.benchmarks with
+      | [
+        { name="manual decode from parsed tree (1MB)"; history=manual_history; _ };
+        { name="serde decode total (1MB)"; history=serde_history; _ };
+
+      ] ->
+          if not (Int.equal (List.length manual_history) 2) then
+            Error "expected manual decode case to compare against two prior runs"
+          else if not (Int.equal (List.length serde_history) 2) then
+            Error "expected serde decode case to compare against two prior runs"
+          else
+            Ok ()
+      | _ -> Error "expected compare suite run to align benchmark history by case name")
+
 let tests = [
   Test.case "bench history path uses package suite and run id" test_suite_run_path_uses_package_suite_and_run_id;
   Test.case "bench history writes self-contained suite json" test_save_suite_run_writes_self_contained_json;
   Test.case "bench history skips empty suites" test_save_suite_run_skips_empty_suite;
+  Test.case "bench history loads recent comparable suite runs" test_load_recent_suite_runs_filters_and_orders;
+  Test.case "bench history aligns case history against current suite run" test_compare_suite_run_aligns_case_history;
 ]
 
 let () =

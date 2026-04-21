@@ -14,6 +14,7 @@ let command =
       [
         option "package" |> short 'p' |> long "package" |> multiple |> help "Run benchmarks from a specific package. Repeat to run multiple packages.";
         option "filter" |> short 'f' |> long "filter" |> help "Filter benchmark suites and cases by substring within the selected packages";
+        option "compare" |> long "compare" |> help "Show up to N previous comparable suite runs alongside the current results";
         flag "list" |> long "list" |> help "List benchmark suites and benchmark cases without running them";
         flag "release" |> long "release" |> help "Use the release build profile";
         flag "json" |> long "json" |> help "Emit machine-readable JSONL events";
@@ -35,6 +36,12 @@ let profile_of_matches = fun matches ->
     "release"
   else
     "debug"
+
+let compare_limit_of_matches = fun matches ->
+  match ArgParser.get_int matches "compare" with
+  | None -> Ok None
+  | Some value when Int.(value <= 0) -> Error (Failure "--compare expects a positive integer")
+  | Some value -> Ok (Some value)
 
 let parse_package_names = fun package_names ->
   let rec loop acc = function
@@ -248,6 +255,148 @@ let print_summary = fun ~total ~completed ~skipped ~failed ->
   println ("  Skipped: " ^ Int.to_string skipped);
   println ("  Failed: " ^ Int.to_string failed)
 
+let metric_specs = [
+  ("mean", fun (stats: History.bench_statistics) -> stats.mean);
+  ("median", fun stats -> stats.median);
+  ("min", fun stats -> stats.min);
+  ("max", fun stats -> stats.max);
+  ("std_dev", fun stats -> stats.std_dev);
+]
+
+let delta_percent = fun current previous ->
+  let previous_nanos = Time.Duration.to_nanos previous |> Int64.to_float in
+  if Float.equal previous_nanos 0.0 then
+    None
+  else
+    let current_nanos = Time.Duration.to_nanos current |> Int64.to_float in
+    Some (((current_nanos -. previous_nanos) /. previous_nanos) *. 100.0)
+
+let render_delta = fun current previous ->
+  match delta_percent current previous with
+  | None -> "n/a"
+  | Some value ->
+      let sign =
+        if Float.(value > 0.0) then
+          "+"
+        else
+          ""
+      in
+      sign ^ Float.to_string ~precision:1 value ^ "%"
+
+let history_column_label = fun index (sample: History.history_sample) ->
+  let base =
+    if Int.equal index 0 then
+      "prev"
+    else
+      "prev-" ^ Int.to_string index
+  in
+  if sample.partial then
+    base ^ "*"
+  else
+    base
+
+let print_history_table = fun ~current_partial current (history: History.history_sample list) ->
+  let label_width = 10 in
+  let column_width = 12 in
+  let current_label =
+    if current_partial then
+      "curr*"
+    else
+      "curr"
+  in
+  let header = [ String.pad_right ~width:label_width ' ' "" ]
+  @ [
+    String.pad_left ~width:column_width ' ' "delta";
+    String.pad_left ~width:column_width ' ' current_label
+  ]
+  @ (history
+  |> List.enumerate
+  |> List.map
+    ~fn:(fun (index, sample) ->
+      String.pad_left ~width:column_width ' ' (history_column_label index sample)))
+  |> String.concat " " in
+  println header;
+  metric_specs |> List.iter
+    (fun (label, project) ->
+      let current_value = project current in
+      let delta_value =
+        match history with
+        | [] -> "n/a"
+        | previous :: _ -> render_delta current_value (project previous.statistics)
+      in
+      let values = [ String.pad_right ~width:label_width ' ' label ]
+      @ [
+        String.pad_left ~width:column_width ' ' delta_value;
+        String.pad_left ~width:column_width ' ' (print_duration current_value);
+      ]
+      @ (history
+      |> List.map
+        ~fn:(fun (sample: History.history_sample) ->
+          String.pad_left ~width:column_width ' ' (print_duration (project sample.statistics))))
+      |> String.concat " " in
+      println values)
+
+let print_benchmark_history = fun ~current_partial (history: History.benchmark_history) ->
+  println "  history:";
+  print_history_table ~current_partial history.current history.history;
+  println ""
+
+let print_comparison_case_history = fun ~current_partial (history: History.comparison_case_history) ->
+  println ("  history: " ^ history.description ^ " / " ^ history.name);
+  print_history_table ~current_partial history.current history.history;
+  println ""
+
+let history_statistics_json = fun (stats: History.bench_statistics) ->
+  Data.Json.Object [
+    ("min_nanos", Data.Json.Int (Int64.to_int (Time.Duration.to_nanos stats.min)));
+    ("max_nanos", Data.Json.Int (Int64.to_int (Time.Duration.to_nanos stats.max)));
+    ("mean_nanos", Data.Json.Int (Int64.to_int (Time.Duration.to_nanos stats.mean)));
+    ("median_nanos", Data.Json.Int (Int64.to_int (Time.Duration.to_nanos stats.median)));
+    ("std_dev_nanos", Data.Json.Int (Int64.to_int (Time.Duration.to_nanos stats.std_dev)));
+    ("iterations", Data.Json.Int stats.iterations);
+    ("total_time_nanos", Data.Json.Int (Int64.to_int (Time.Duration.to_nanos stats.total_time)));
+  ]
+
+let history_sample_json = fun (sample: History.history_sample) ->
+  Data.Json.Object [
+    ("run_id", Data.Json.String sample.run_id);
+    ("partial", Data.Json.Bool sample.partial);
+    ("statistics", history_statistics_json sample.statistics);
+  ]
+
+let benchmark_history_json = fun (history: History.benchmark_history) ->
+  Data.Json.Object [
+    ("index", Data.Json.Int history.index);
+    ("name", Data.Json.String history.name);
+    ("current", history_statistics_json history.current);
+    ("history", Data.Json.Array (List.map history.history ~fn:history_sample_json));
+  ]
+
+let comparison_case_history_json = fun (history: History.comparison_case_history) ->
+  Data.Json.Object [
+    ("description", Data.Json.String history.description);
+    ("name", Data.Json.String history.name);
+    ("current", history_statistics_json history.current);
+    ("history", Data.Json.Array (List.map history.history ~fn:history_sample_json));
+  ]
+
+let write_bench_history_json = fun ~command_started_at ~current_partial (
+  suite: Bench_runtime.suite_binary
+) (history: History.suite_history) ->
+  write_json_line
+    (Data.Json.Object [
+      ("type", Data.Json.String "BenchHistoryCompared");
+      ("package", Data.Json.String (Package_name.to_string suite.package_name));
+      ("suite", Data.Json.String suite.suite_name);
+      ("current_partial", Data.Json.Bool current_partial);
+      ("benchmarks", Data.Json.Array (List.map history.benchmarks ~fn:benchmark_history_json));
+      (
+        "comparisons",
+        Data.Json.Array (List.map history.comparisons ~fn:comparison_case_history_json)
+      );
+      ("emitted_at_us", Data.Json.Int (event_elapsed_us ~command_started_at));
+    ])
+
 let bench_history_warning = fun message -> eprintln ("warning: " ^ message)
 
 type human_render_state = {
@@ -338,7 +487,9 @@ let summary_duration_us = fun ~command_started_at (event: Bench_runtime.bench_ev
   | Bench_runtime.Summary _ -> Some (Time.Instant.elapsed command_started_at |> Time.Duration.to_micros)
   | _ -> None
 
-let write_bench_event = fun state (event: Bench_runtime.bench_event) ->
+let write_bench_event = fun ?history_comparison ~current_partial state (
+  event: Bench_runtime.bench_event
+) ->
   match event with
   | Bench_runtime.Build _ ->
       ()
@@ -381,8 +532,24 @@ let write_bench_event = fun state (event: Bench_runtime.bench_event) ->
       if should_print_suite then
         (
           ensure_suite_header state suite;
-          List.for_each results ~fn:print_bench_result;
-          List.for_each comparisons ~fn:print_comparison;
+          List.for_each results
+            ~fn:(fun result ->
+              print_bench_result result;
+              history_comparison |> Option.for_each
+                ~fn:(fun (history: History.suite_history) ->
+                  history.benchmarks |> List.find
+                    ~fn:(fun (benchmark_history: History.benchmark_history) ->
+                      String.equal benchmark_history.name result.name) |> Option.for_each
+                    ~fn:(print_benchmark_history ~current_partial)));
+          List.for_each comparisons
+            ~fn:(fun comparison ->
+              print_comparison comparison;
+              history_comparison |> Option.for_each
+                ~fn:(fun (history: History.suite_history) ->
+                  history.comparisons |> List.filter
+                    ~fn:(fun (comparison_history: History.comparison_case_history) ->
+                      String.equal comparison_history.description comparison.description) |> List.iter
+                    (print_comparison_case_history ~current_partial)));
           print_command_output Command.{ stdout; stderr; status = 0 }
         );
       reset_suite_render state
@@ -483,6 +650,42 @@ let save_bench_history = fun context ~(suite:Bench_runtime.suite_binary) status 
   in
   History.save_suite_run context ~package_name:suite.package_name ~suite_name:suite.suite_name ~suite_run
 
+let bench_history_compare = fun context ~(suite:Bench_runtime.suite_binary) ~limit status started_at_us completed_at_us duration_us (
+  results: Bench_runtime.bench_case_result list
+) (comparisons: Bench_runtime.bench_comparison_result list) (
+  summary: Bench_runtime.bench_suite_summary
+) ->
+  if Int.(limit <= 0) then
+    Ok None
+  else
+    let current: History.suite_run = {
+      status;
+      started_at_us;
+      completed_at_us;
+      duration_us;
+      summary = {
+        total = summary.total;
+        completed = summary.completed;
+        skipped = summary.skipped;
+        failed = summary.failed
+      };
+      benchmarks = List.map results ~fn:bench_history_of_result;
+      comparisons = List.map comparisons ~fn:bench_history_of_comparison;
+    }
+    in
+    History.compare_suite_run
+      context
+      ~package_name:suite.package_name
+      ~suite_name:suite.suite_name
+      ~current
+      ~limit
+    |> Result.map
+      ~fn:(fun (history: History.suite_history) ->
+        if List.is_empty history.benchmarks && List.is_empty history.comparisons then
+          None
+        else
+          Some history)
+
 let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
   let seen_registry_updates = Collections.HashSet.create () in
   let extra_args = trailing_args matches in
@@ -497,8 +700,10 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
   let list_mode = ArgParser.get_flag matches "list" in
   let pattern = ArgParser.get_one matches "filter" in
   let package_filters = parse_package_names (ArgParser.get_many matches "package") in
+  let compare_limit = compare_limit_of_matches matches in
   let profile = profile_of_matches matches in
   let* package_filters = package_filters in
+  let* compare_limit = compare_limit in
   let* request = Test_selection.parse_request
     ~filter:pattern
     ~package_filters
@@ -579,6 +784,7 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
         );
         Error (Failure (Bench_runtime.bench_error_message err))
   else
+    let history_partial = bench_history_partial request in
     let history_context = bench_history_context ~workspace ~profile request ~argv:Env.args in
     let human_render_state = create_human_render_state () in
     let on_event (event: Bench_runtime.bench_event) =
@@ -596,6 +802,36 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
         summary;
         _
       } ->
+          let history_comparison = compare_limit
+          |> Option.map
+            ~fn:(fun compare_limit ->
+              bench_history_compare
+                history_context
+                ~suite
+                ~limit:compare_limit
+                status
+                started_at_us
+                completed_at_us
+                duration_us
+                results
+                comparisons
+                summary) in
+          let history_comparison =
+            match history_comparison with
+            | None ->
+                None
+            | Some (Ok history) ->
+                history
+            | Some (Error error) ->
+                bench_history_warning
+                  ("failed to compare benchmark history for "
+                  ^ Package_name.to_string suite.package_name
+                  ^ "/"
+                  ^ suite.suite_name
+                  ^ ": "
+                  ^ error);
+                None
+          in
           save_bench_history
             history_context
             ~suite
@@ -617,15 +853,28 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
                 ^ error));
           (
             match output_mode with
-            | Build.Json -> Bench_runtime.bench_event_to_json event
-            |> Option.for_each
-              ~fn:(fun json ->
-                write_json_event
-                  ~command_started_at
-                  ~duration_us:(summary_duration_us ~command_started_at event)
-                  event
-                  json)
-            | Build.Human -> write_bench_event human_render_state event
+            | Build.Json ->
+                Bench_runtime.bench_event_to_json event
+                |> Option.for_each
+                  ~fn:(fun json ->
+                    write_json_event
+                      ~command_started_at
+                      ~duration_us:(summary_duration_us ~command_started_at event)
+                      event
+                      json);
+                history_comparison
+                |> Option.for_each
+                  ~fn:(fun history ->
+                    write_bench_history_json
+                      ~command_started_at
+                      ~current_partial:history_partial
+                      suite
+                      history)
+            | Build.Human -> write_bench_event
+              ?history_comparison
+              ~current_partial:history_partial
+              human_render_state
+              event
           )
       | _ -> (
           match output_mode with
@@ -637,7 +886,7 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
                 ~duration_us:(summary_duration_us ~command_started_at event)
                 event
                 json)
-          | Build.Human -> write_bench_event human_render_state event
+          | Build.Human -> write_bench_event ~current_partial:history_partial human_render_state event
         )
     in
     match
