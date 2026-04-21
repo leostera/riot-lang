@@ -1,6 +1,0 @@
-#!/bin/bash
-
-riot fmt --check
-#riot fix --check
-riot build
-riot test

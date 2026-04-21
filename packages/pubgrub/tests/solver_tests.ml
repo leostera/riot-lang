@@ -1916,7 +1916,7 @@ let test_solver_options_control_iteration_limit =
       let provider = Pubgrub.create_offline () in
       Pubgrub.add_package provider "root" (v 1 0 0) [ ("foo", Pubgrub.full) ];
       Pubgrub.add_package provider "foo" (v 1 0 0) [];
-      let options = { Pubgrub.default_options with max_iterations = 0 } in
+      let options: Pubgrub.Solver.options = Pubgrub.{ max_iterations = 0 } in
       match Pubgrub.solve ~options (Pubgrub.to_provider provider) "root" (v 1 0 0) with
       | Error msg when String.equal msg "Too many iterations - likely infinite loop" -> Ok ()
       | Error msg -> Error ("Unexpected solver error: " ^ msg)
