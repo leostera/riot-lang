@@ -196,8 +196,7 @@ let read_plaintext t dst: (int, error) Result.t =
 
 (* Write plaintext to TLS stream *)
 
-let write_plaintext t src: (int, error) Result.t =
-  let src_bytes = Bytes.from_string src in
+let write_plaintext_bytes t src_bytes: (int, error) Result.t =
   let src_len = Bytes.length src_bytes in
   let rec write_loop pos remaining =
     if remaining = 0 then
@@ -230,6 +229,8 @@ let write_plaintext t src: (int, error) Result.t =
           Error e
     )
 
+let write_plaintext t src: (int, error) Result.t = write_plaintext_bytes t (Bytes.from_string src)
+
 (* Expose as reader *)
 
 let to_reader: type src. src t -> IO.Reader.t = fun tls_stream ->
@@ -260,8 +261,38 @@ let to_reader: type src. src t -> IO.Reader.t = fun tls_stream ->
           end
       | Error err -> Error (io_error_of_tls_error err)
 
-    let read_vectored = fun _t ~into:_ ->
-      Error (io_error_of_tls_error Unsupported_vectored_operation)
+    let read_vectored = fun (tls: t) ~into ->
+      let total = IO.IoVec.length into in
+      if total = 0 then
+        Ok 0
+      else
+        let scratch = Bytes.create ~size:total in
+        match read_plaintext tls scratch with
+        | Ok count ->
+            let copied = ref 0 in
+            IO.IoVec.for_each into
+              ~fn:(fun segment ->
+                if !copied < count then
+                  let remaining = count - !copied in
+                  let available = IO.IoSlice.length segment in
+                  let chunk =
+                    if available < remaining then
+                      available
+                    else
+                      remaining
+                  in
+                  if chunk > 0 then
+                    (
+                      IO.IoSlice.blit_from_bytes_unchecked
+                        scratch
+                        ~src_off:!copied
+                        segment
+                        ~dst_off:0
+                        ~len:chunk;
+                      copied := !copied + chunk
+                    ));
+            Ok count
+        | Error err -> Error (io_error_of_tls_error err)
 
     let is_read_vectored = fun _t -> false
   end in
@@ -274,12 +305,14 @@ let to_writer: type src. src t -> IO.Writer.t = fun tls ->
     type nonrec t = src t
 
     let write = fun t ~from ->
-      match write_plaintext t (IO.Buffer.to_string from) with
+      match write_plaintext_bytes t (IO.Buffer.to_bytes from) with
       | Ok written -> Ok written
       | Error err -> Error (io_error_of_tls_error err)
 
-    let write_vectored = fun _t ~from:_ ->
-      Error (io_error_of_tls_error Unsupported_vectored_operation)
+    let write_vectored = fun t ~from ->
+      match write_plaintext_bytes t (IO.IoVec.to_bytes from) with
+      | Ok written -> Ok written
+      | Error err -> Error (io_error_of_tls_error err)
 
     let flush = fun _t -> Ok ()
   end in
