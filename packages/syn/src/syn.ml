@@ -10,6 +10,7 @@ module SyntaxKind2 = Syntax_kind2
 module RawToken = Raw_token
 module Event = Event
 module SyntaxTree = Syntax_tree
+module Ast2 = Ast2
 module Diagnostic = Diagnostic
 module Parser = Parser
 module Parser2 = Parser2

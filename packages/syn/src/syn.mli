@@ -105,6 +105,9 @@ module Event: module type of Event
 (** Replacement-parser vector-backed lossless syntax tree. *)
 module SyntaxTree: module type of Syntax_tree
 
+(** Replacement-parser typed CST-style views over the lossless syntax tree. *)
+module Ast2: module type of Ast2
+
 (** Structured parse error types. *)
 module SyntaxKind: module type of Syntax_kind
 
