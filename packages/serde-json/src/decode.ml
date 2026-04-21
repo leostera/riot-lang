@@ -125,10 +125,10 @@ let append_current_range = fun state start stop ->
   Input.copy_range_to_buffer state.scratch state.input ~start ~stop
 
 let reader_current_char: Input.reader_state -> char option = fun reader ->
-  if Int.(reader.Input.pos < Input.reader_length reader) then
-    Some (Input.reader_get_unchecked reader ~at:reader.Input.pos)
+  if Int.(reader.Input.pos < IO.Buffer.readable_bytes reader.Input.buffer) then
+    Some (IO.Buffer.get_unchecked reader.Input.buffer ~at:reader.Input.pos)
   else if Input.refill reader then
-    Some (Input.reader_get_unchecked reader ~at:reader.Input.pos)
+    Some (IO.Buffer.get_unchecked reader.Input.buffer ~at:reader.Input.pos)
   else
     None
 
@@ -146,17 +146,17 @@ let rec reader_scan_while: Input.reader_state -> continue:(char -> bool) -> [
     | `Boundary of int
     | `Eof
 ] = fun reader ~continue ->
-  if Int.(reader.Input.pos >= Input.reader_length reader) then
+  if Int.(reader.Input.pos >= IO.Buffer.readable_bytes reader.Input.buffer) then
     if Input.refill reader then
       reader_scan_while reader ~continue
     else
       `Eof
   else
     let rec loop pos =
-      if Int.(pos >= Input.reader_length reader) then
+      if Int.(pos >= IO.Buffer.readable_bytes reader.Input.buffer) then
         `Boundary pos
       else
-        let current = Input.reader_get_unchecked reader ~at:pos in
+        let current = IO.Buffer.get_unchecked reader.Input.buffer ~at:pos in
         if continue current then
           loop (pos + 1)
         else
@@ -174,23 +174,23 @@ let reader_expect_char: state -> Input.reader_state -> char -> string -> unit = 
         unexpected_character state actual expected_name
 
 let reader_token_start = fun reader ->
-  if Int.(reader.Input.pos >= Input.reader_length reader) then
+  if Int.(reader.Input.pos >= IO.Buffer.readable_bytes reader.Input.buffer) then
     ignore (Input.refill reader);
   reader.Input.pos
 
 let reader_skip_whitespace: Input.reader_state -> unit = fun reader ->
   let rec loop () =
-    if Int.(reader.Input.pos >= Input.reader_length reader) then
+    if Int.(reader.Input.pos >= IO.Buffer.readable_bytes reader.Input.buffer) then
       if Input.refill reader then
         loop ()
       else
         ()
     else
       let rec skip pos =
-        if Int.(pos >= Input.reader_length reader) then
+        if Int.(pos >= IO.Buffer.readable_bytes reader.Input.buffer) then
           pos
         else
-          match Input.reader_get_unchecked reader ~at:pos with
+          match IO.Buffer.get_unchecked reader.Input.buffer ~at:pos with
           | ' '
           | '\t'
           | '\n'
@@ -198,7 +198,7 @@ let reader_skip_whitespace: Input.reader_state -> unit = fun reader ->
           | _ -> pos
       in
       reader.Input.pos <- skip reader.Input.pos;
-      if Int.(reader.Input.pos >= Input.reader_length reader) && Input.refill reader then
+      if Int.(reader.Input.pos >= IO.Buffer.readable_bytes reader.Input.buffer) && Input.refill reader then
         loop ()
   in
   loop ()
@@ -885,12 +885,12 @@ let parse_number_text_reader = fun state reader ->
     start := reader.Input.pos;
     let pos = ref !start in
     let current () =
-      if !pos < Input.reader_length reader then
-        Some (Input.reader_get_unchecked reader ~at:!pos)
+      if !pos < IO.Buffer.readable_bytes reader.Input.buffer then
+        Some (IO.Buffer.get_unchecked reader.Input.buffer ~at:!pos)
       else
         None
     in
-    let need_more () = !pos >= Input.reader_length reader && not reader.Input.eof in
+    let need_more () = !pos >= IO.Buffer.readable_bytes reader.Input.buffer && not reader.Input.eof in
     let advance () =
       pos := !pos + 1
     in
@@ -987,7 +987,7 @@ let parse_number_text_reader = fun state reader ->
           )
       | _ -> ()
     );
-    if !pos >= Input.reader_length reader then
+    if !pos >= IO.Buffer.readable_bytes reader.Input.buffer then
       if reader.Input.eof then
         (
           reader.Input.pos <- !pos;
@@ -1234,12 +1234,12 @@ let parse_int_reader = fun state reader ->
     start := reader.Input.pos;
     let pos = ref reader.Input.pos in
     let current () =
-      if !pos < Input.reader_length reader then
-        Some (Input.reader_get_unchecked reader ~at:!pos)
+      if !pos < IO.Buffer.readable_bytes reader.Input.buffer then
+        Some (IO.Buffer.get_unchecked reader.Input.buffer ~at:!pos)
       else
         None
     in
-    let need_more () = !pos >= Input.reader_length reader && not reader.Input.eof in
+    let need_more () = !pos >= IO.Buffer.readable_bytes reader.Input.buffer && not reader.Input.eof in
     let advance () =
       pos := !pos + 1
     in
