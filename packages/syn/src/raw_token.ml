@@ -7,6 +7,23 @@ type t = {
   legacy_kind: Token.token_kind option;
 }
 
+type stream = {
+  raw: t Vector.t;
+  significant: int Vector.t;
+}
+
+let create_stream = fun () -> { raw = Vector.create (); significant = Vector.create () }
+
+let push = fun stream token ->
+  let index = Vector.length stream.raw in
+  Vector.push stream.raw ~value:token;
+  index
+
+let push_significant = fun stream token ->
+  let index = push stream token in
+  Vector.push stream.significant ~value:index;
+  index
+
 let is_trivia = fun token -> Syntax_kind2.is_trivia token.kind
 
 let is_significant = fun token -> not (is_trivia token)
@@ -169,26 +186,17 @@ let raw_of_trivia = fun (trivia: Token.trivia) ->
   {
     kind = kind_of_trivia_kind trivia.kind;
     span = trivia.span;
-    legacy_kind = Some (Token.token_kind_of_trivia_kind trivia.kind)
+    legacy_kind = Some (Token.token_kind_of_trivia_kind trivia.kind);
   }
 
 let raw_of_token = fun (token: Token.t) ->
   { kind = kind_of_token_kind token.kind; span = token.span; legacy_kind = Some token.kind }
 
 let of_lexer_tokens = fun tokens ->
-  let raw = Vector.create () in
-  let significant = Vector.create () in
-  let push_raw value =
-    let index = Vector.length raw in
-    Vector.push raw ~value;
-    index
-  in
+  let stream = create_stream () in
   List.for_each tokens
     ~fn:(fun token ->
-      List.for_each token.Token.leading_trivia
-        ~fn:(fun trivia ->
-          let _ = push_raw (raw_of_trivia trivia) in
-          ());
-      let raw_index = push_raw (raw_of_token token) in
-      Vector.push significant ~value:raw_index);
-  (Vector.to_array raw, Vector.to_array significant)
+      List.for_each token.Token.leading_trivia ~fn:(fun trivia -> ignore (push stream (raw_of_trivia trivia)));
+      ignore (push_significant stream (raw_of_token token)));
+  stream
+

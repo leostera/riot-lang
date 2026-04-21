@@ -1,4 +1,5 @@
 open Std
+open Std.Collections
 
 type t =
   | StartNode of Syntax_kind2.t option
@@ -6,10 +7,14 @@ type t =
   | Token of int
   | Missing of Syntax_kind2.t * int
   | Error of Diagnostic.t
+
+type event = t
+
 module Buffer: sig
   type t
   type marker
   type completed
+
   val create: unit -> t
 
   val start_node: t -> marker
@@ -24,7 +29,11 @@ module Buffer: sig
 
   val error: t -> Diagnostic.t -> unit
 
-  val to_array: t -> t array
+  val length: t -> int
 
-  val diagnostics: t -> Diagnostic.t list
+  val get_unchecked: t -> at:int -> event
+
+  val iter: t -> event Iter.Iterator.t
+
+  val diagnostics: t -> Diagnostic.t Vector.t
 end

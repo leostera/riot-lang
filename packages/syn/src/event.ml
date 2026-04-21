@@ -9,10 +9,10 @@ type t =
   | Error of Diagnostic.t
 
 module Buffer = struct
-  type buffer = t
+  type event = t
 
   type t = {
-    events: buffer Vector.t;
+    events: event Vector.t;
     diagnostics: Diagnostic.t Vector.t;
   }
 
@@ -49,7 +49,12 @@ module Buffer = struct
     Vector.push t.diagnostics ~value:diagnostic;
     Vector.push t.events ~value:(Error diagnostic)
 
-  let to_array = fun t -> Vector.to_array t.events
+  let length = fun t -> Vector.length t.events
 
-  let diagnostics = fun t -> Vector.to_array t.diagnostics |> Array.to_list
+  let get_unchecked = fun t ~at -> Vector.get_unchecked t.events ~at
+
+  let iter = fun t -> Vector.iter t.events
+
+  let diagnostics = fun t -> t.diagnostics
 end
+
