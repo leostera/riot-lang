@@ -7,7 +7,7 @@ type suite_binary = {
 }
 type test_request = {
   workspace: Workspace.t;
-  package_filter: Package_name.t option;
+  package_filters: Package_name.t list;
   suite_filter: string option;
   profile: string;
   extra_args: string list;
@@ -102,7 +102,7 @@ type test_error =
   | SuiteExecutionError of { suite: suite_binary; reason: string }
   | SuitesFailed of int
 val collect_suite_binaries:
-  Workspace.t -> ?package_filter:Package_name.t -> ?suite_filter:string -> unit -> suite_binary list
+  Workspace.t -> ?package_filters:Package_name.t list -> ?suite_filter:string -> unit -> suite_binary list
 
 val test_error_message: test_error -> string
 

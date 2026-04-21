@@ -8,15 +8,20 @@ let command =
   let open ArgParser in
     let open Arg in
       command "test"
-      |> about "Run tests with optional substring matching"
+      |> about "Run tests with optional case filtering"
       |> ArgParser.allow_trailing_args
       |> args
-        [ positional "pattern" |> required false |> help
-            "Optional test query. Use package:suite to run one suite, or \
-               -p/--package to limit execution to one package. Omit to run all tests."; option "package"
+        [ option "package"
           |> short 'p'
           |> long "package"
-          |> help "Run tests from a specific package"; flag "list" |> long "list" |> help "List test suites and cases without running them"; flag
+          |> multiple
+          |> help "Run tests from a specific package. Repeat to run multiple packages."; option
+            "filter"
+          |> short 'f'
+          |> long "filter"
+          |> help "Filter test suites and cases by substring within the selected packages"; flag "list"
+          |> long "list"
+          |> help "List test suites and cases without running them"; flag
             "release"
           |> long "release"
           |> help "Use the release build profile"; flag "small" |> long "small" |> help "Run only tests marked small"; flag
@@ -42,6 +47,17 @@ let profile_of_matches = fun matches ->
     "release"
   else
     "debug"
+
+let parse_package_names = fun package_names ->
+  let rec loop acc = function
+    | [] -> Ok (List.reverse acc)
+    | package_name :: rest -> (
+        match Riot_model.Package_name.from_string package_name with
+        | Ok package_name -> loop (package_name :: acc) rest
+        | Error error -> Error (Failure ("invalid package name '" ^ package_name ^ "': " ^ error))
+      )
+  in
+  loop [] package_names
 
 let print_command_output = fun (output: Command.output) ->
   if not (String.equal output.stdout "") then
@@ -645,14 +661,8 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
   let small_only = ArgParser.get_flag matches "small" in
   let large_only = ArgParser.get_flag matches "large" in
   let flaky_only = ArgParser.get_flag matches "flaky" in
-  let pattern = ArgParser.get_one matches "pattern" in
-  let legacy_package =
-    match ArgParser.get_one matches "package" with
-    | None -> Ok None
-    | Some package_name -> Package_name.from_string package_name
-    |> Result.map ~fn:Option.some
-    |> Result.map_err ~fn:(fun error -> Failure error)
-  in
+  let filter = ArgParser.get_one matches "filter" in
+  let package_filters = parse_package_names (ArgParser.get_many matches "package") in
   let list_mode = ArgParser.get_flag matches "list" in
   let profile = profile_of_matches matches in
   let command_started_at = Time.Instant.now () in
@@ -688,8 +698,8 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
           else
             Test_selection.All
         in
-        let* legacy_package = legacy_package in
-        let* request = Test_selection.parse_request ~pattern ~legacy_package ~size_filter ~flaky_only
+        let* package_filters = package_filters in
+        let* request = Test_selection.parse_request ~filter ~package_filters ~size_filter ~flaky_only
         |> Result.map_err ~fn:(fun error -> Failure error) in
         let extra_args = Test_selection.extra_args
           ~small_test_timeout:operational_config.test.small_test_timeout
@@ -731,7 +741,7 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
               )
               {
                 workspace;
-                package_filter = request.package_filter;
+                package_filters = request.package_filters;
                 suite_filter = request.suite_filter;
                 profile;
                 extra_args;
@@ -790,7 +800,7 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
             Test_runtime.test ~on_event
               {
                 workspace;
-                package_filter = request.package_filter;
+                package_filters = request.package_filters;
                 suite_filter = request.suite_filter;
                 profile;
                 extra_args;

@@ -38,6 +38,17 @@ let profile_of_matches = fun matches ->
   else
     "debug"
 
+let parse_package_names = fun package_names ->
+  let rec loop acc = function
+    | [] -> Ok (List.reverse acc)
+    | package_name :: rest -> (
+        match Riot_model.Package_name.from_string package_name with
+        | Ok package_name -> loop (package_name :: acc) rest
+        | Error error -> Error (Failure ("invalid package name '" ^ package_name ^ "': " ^ error))
+      )
+  in
+  loop [] package_names
+
 let print_command_output = fun (output: Command.output) ->
   if not (String.equal output.stdout "") then
     print output.stdout;
@@ -354,18 +365,12 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
   in
   let list_mode = ArgParser.get_flag matches "list" in
   let pattern = ArgParser.get_one matches "pattern" in
-  let legacy_package =
-    match ArgParser.get_one matches "package" with
-    | None -> Ok None
-    | Some package_name -> Package_name.from_string package_name
-    |> Result.map ~fn:Option.some
-    |> Result.map_err ~fn:(fun error -> Failure error)
-  in
+  let package_filters = parse_package_names (ArgParser.get_many matches "package") in
   let profile = profile_of_matches matches in
-  let* legacy_package = legacy_package in
+  let* package_filters = package_filters in
   let* request = Test_selection.parse_request
-    ~pattern
-    ~legacy_package
+    ~filter:pattern
+    ~package_filters
     ~size_filter:Test_selection.All
     ~flaky_only:false
   |> Result.map_err ~fn:(fun error -> Failure error) in

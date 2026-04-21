@@ -5,6 +5,7 @@ type size_filter =
   | Small
   | Large
 type request = {
+  package_filters: Riot_model.Package_name.t list;
   package_filter: Riot_model.Package_name.t option;
   suite_filter: string option;
   query: string option;
@@ -12,8 +13,8 @@ type request = {
   flaky_only: bool;
 }
 val parse_request:
-  pattern:string option ->
-  legacy_package:Riot_model.Package_name.t option ->
+  filter:string option ->
+  package_filters:Riot_model.Package_name.t list ->
   size_filter:size_filter ->
   flaky_only:bool ->
   (request, string) result

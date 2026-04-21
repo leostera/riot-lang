@@ -28,7 +28,7 @@
 20. `add`, `rm`, and `update` are thin package-management commands. Parse flags into `Riot_deps` request types, delegate, and reuse the normal PM event renderer instead of inventing a second lock/progress surface.
 21. `riot add` should accept named registry specs, local path specs, and GitHub source specs. Keep the CLI help text and errors honest about the accepted forms, but keep package-name discovery and Git materialization inside `riot-deps`.
 22. Outside a workspace, `riot add` may bootstrap a minimal root workspace (`riot.toml` + `riot.lock`) and then route the first add through the workspace root manifest. `riot rm` and `riot update` should stay no-op/user-guidance commands in that case rather than failing with the generic workspace error.
-23. `riot test` selectors should treat `package:suite` as suite discovery narrowing, not as a raw per-test substring. Only the remaining query text should be forwarded into `run-tests`.
+23. `riot test` selection should use explicit flags: repeat `-p/--package` to narrow packages and use `-f/--filter` for the forwarded substring query. Do not keep positional `package:suite` selector parsing in the CLI.
 24. `riot search` should stay workspace-independent. Parse flags in the CLI, delegate to `Riot_deps.search`, and keep stdout reserved for the search results themselves.
 25. Keep `Riot_cli.Cli.run` reusable for in-process benches and tools. One-time runtime bootstrapping belongs in `initialize_runtime`, not in every embedded caller loop.
 26. Keep workspace scans and `~/.riot` setup lazy. Built-in commands that do not need workspace state or riot-home state should not pay for them during startup.

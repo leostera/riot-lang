@@ -253,30 +253,24 @@ _riot() {
             esac
             ;;
         test)
-            # Check if we're completing the test pattern (position 3)
-            if [[ $CURRENT -eq 3 ]]; then
-                local -a tests
-                tests=(${(f)"$(riot completions --tests 2>/dev/null)"})
-                compadd -a tests
-            else
-                _arguments \
-                    '(-p --package)'{-p,--package}'[Run tests from package]:package:->packages' \
-                    '--list[List test suites and cases without running them]' \
-                    '--release[Use the release build profile]' \
-                    '--json[Emit machine-readable JSONL events]' \
-                    '--small[Run only tests marked small]' \
-                    '--large[Run only tests marked large]' \
-                    '--flaky[Run only tests marked flaky]' \
-                    '(-v --verbose)'{-v,--verbose}'[Verbose output]'
-                
-                case $state in
-                    packages)
-                        local -a packages
-                        packages=(${(f)"$(riot completions --packages 2>/dev/null)"})
-                        _describe 'package' packages
-                        ;;
-                esac
-            fi
+            _arguments \
+                '(-p --package)'{-p,--package}'[Run tests from package]:package:->packages' \
+                '(-f --filter)'{-f,--filter}'[Filter test suites and cases by substring]:filter:' \
+                '--list[List test suites and cases without running them]' \
+                '--release[Use the release build profile]' \
+                '--json[Emit machine-readable JSONL events]' \
+                '--small[Run only tests marked small]' \
+                '--large[Run only tests marked large]' \
+                '--flaky[Run only tests marked flaky]' \
+                '(-v --verbose)'{-v,--verbose}'[Verbose output]'
+            
+            case $state in
+                packages)
+                    local -a packages
+                    packages=(${(f)"$(riot completions --packages 2>/dev/null)"})
+                    _describe 'package' packages
+                    ;;
+            esac
             ;;
         bench)
             # Check if we're completing the benchmark pattern (position 3)

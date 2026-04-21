@@ -7,12 +7,17 @@ type size_filter =
   | Large
 
 type request = {
+  package_filters: Riot_model.Package_name.t list;
   package_filter: Riot_model.Package_name.t option;
   suite_filter: string option;
   query: string option;
   size_filter: size_filter;
   flaky_only: bool;
 }
+
+let single_package_filter = function
+  | [ package_filter ] -> Some package_filter
+  | _ -> None
 
 let split_once = fun value ch ->
   let rec find at =
@@ -47,20 +52,27 @@ let parse_selector = fun pattern ->
     )
   | _ -> Error "invalid suite selector"
 
-let parse_request = fun ~pattern ~legacy_package ~size_filter ~flaky_only ->
-  match (legacy_package, pattern) with
-  | Some package_filter, _ ->
+let parse_request = fun ~filter ~package_filters ~size_filter ~flaky_only ->
+  match (package_filters, filter) with
+  | (_ :: _ as package_filters, _) ->
       Ok {
-        package_filter = Some package_filter;
+        package_filters;
+        package_filter = single_package_filter package_filters;
         suite_filter = None;
-        query = pattern;
+        query = filter;
         size_filter;
         flaky_only;
       }
-  | None, Some pattern -> (
-      match parse_selector pattern with
+  | ([], Some filter) -> (
+      match parse_selector filter with
       | Ok (package_filter, suite_filter, query) ->
+          let package_filters =
+            match package_filter with
+            | Some package_filter -> [ package_filter ]
+            | None -> []
+          in
           Ok {
+            package_filters;
             package_filter;
             suite_filter;
             query;
@@ -69,15 +81,17 @@ let parse_request = fun ~pattern ~legacy_package ~size_filter ~flaky_only ->
           }
       | Error _ ->
           Ok {
+            package_filters = [];
             package_filter = None;
             suite_filter = None;
-            query = Some pattern;
+            query = Some filter;
             size_filter;
             flaky_only;
           }
     )
-  | None, None ->
+  | ([], None) ->
       Ok {
+        package_filters = [];
         package_filter = None;
         suite_filter = None;
         query = None;
