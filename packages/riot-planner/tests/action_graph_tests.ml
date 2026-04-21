@@ -653,6 +653,697 @@ let test_library_actions_exclude_unreachable_modules = fun _ctx ->
   | Ok result -> result
   | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
 
+let package_namespace = fun (package: Riot_model.Package.t) ->
+  Riot_model.Module_name.(Package_name.to_string package.name |> of_string |> to_string)
+
+let find_compile_implementation = fun actions source ->
+  List.find actions
+    ~fn:(
+      function
+      | Riot_planner.Action.CompileImplementation { source=action_source; _ } -> Path.equal
+        action_source
+        source
+      | _ -> false
+    )
+
+let find_compile_cmx = fun actions source ->
+  match find_compile_implementation actions source with
+  | Some (Riot_planner.Action.CompileImplementation { outputs; _ }) -> List.find
+    outputs
+    ~fn:(fun output -> Path.extension output = Some ".cmx")
+  | _ -> None
+
+let compile_sources = fun actions ->
+  List.filter_map actions
+    ~fn:(
+      function
+      | Riot_planner.Action.CompileImplementation { source; _ } -> Some source
+      | _ -> None
+    )
+
+let find_create_library = fun actions ->
+  List.find actions
+    ~fn:(
+      function
+      | Riot_planner.Action.CreateLibrary _ -> true
+      | _ -> false
+    )
+
+let find_create_executable = fun actions ->
+  List.find actions
+    ~fn:(
+      function
+      | Riot_planner.Action.CreateExecutable _ -> true
+      | _ -> false
+    )
+
+let find_create_executable_named = fun actions name ->
+  List.find actions
+    ~fn:(
+      function
+      | Riot_planner.Action.CreateExecutable { outputs; _ } -> List.any
+        outputs
+        ~fn:(Path.equal (Path.v name))
+      | _ -> false
+    )
+
+let index_of_path = fun paths target ->
+  let rec loop index = function
+    | [] -> None
+    | path :: rest ->
+        if Path.equal path target then
+          Some index
+        else
+          loop (index + 1) rest
+  in
+  loop 0 paths
+
+let plan_actions_for_package = fun ~tmpdir ~package_name ~files ?(binaries = []) ?library () ->
+  let package_root = Path.(tmpdir / Path.v "packages" / Path.v package_name) in
+  let src_dir = Path.(package_root / Path.v "src") in
+  let _ = Fs.create_dir_all src_dir |> Result.expect ~msg:"create src dir failed" in
+  let () =
+    List.for_each files
+      ~fn:(fun (relpath, content) ->
+        let path = Path.(package_root / Path.v relpath) in
+        let parent = Path.parent path |> Option.unwrap_or ~default:package_root in
+        let _ = Fs.create_dir_all parent
+        |> Result.expect ~msg:("create parent dir failed for " ^ relpath) in
+        let _ = Fs.write content path |> Result.expect ~msg:("write failed for " ^ relpath) in
+        ())
+  in
+  let package =
+    Riot_model.Package.make ~name:(Package_name.from_string package_name |> Result.expect ~msg:"expected valid package name") ~path:package_root ~relative_path:Path.(Path.v
+      "packages"
+    / Path.v package_name) ?library ~binaries:(List.map
+      binaries
+      ~fn:(fun (name, path) -> Riot_model.Package.{ name; path = Path.v path }))
+      ~sources:{
+        src = List.map files ~fn:(fun (relpath, _) -> Path.v relpath);
+        native = [];
+        tests = [];
+        examples = [];
+        bench = [];
+      }
+      ()
+  in
+  let workspace = Riot_model.Workspace.make ~root:tmpdir ~packages:[] () in
+  let store = Riot_store.Store.create ~workspace in
+  let build_ctx = Riot_model.Build_ctx.make
+    ~session_id:(Riot_model.Session_id.of_string "test-session")
+    ~profile:Riot_model.Profile.release
+    () in
+  let graph_builder = Riot_planner.Module_graph.create
+    Riot_planner.Module_graph.{
+      root = package_root;
+      source_dir = Path.v "src";
+      allowed_source_files = package.sources.src;
+      root_mode =
+        (
+          match package.library with
+          | Some _ -> Riot_planner.Module_graph.Library_root {
+            library_name = Package_name.to_string package.name
+          }
+          | None -> Riot_planner.Module_graph.Loose_sources
+        );
+      namespace = package_namespace package;
+      package;
+      toolchain = test_toolchain;
+      workspace;
+    }
+  in
+  match Riot_planner.Module_graph.wire_dependencies graph_builder with
+  | Error err -> Error ("dependency wiring failed: " ^ Riot_planner.Planning_error.to_string err)
+  | Ok () ->
+      let () =
+        match package.library with
+        | Some _ -> Riot_planner.Module_graph.add_library_node
+          graph_builder
+          ~name:(Package_name.to_string package.name)
+          ~includes:[]
+        | None -> ()
+      in
+      let binary_libraries =
+        match package.library with
+        | Some _ -> [
+          Riot_model.Module_name.(of_string (Package_name.to_string package.name) |> cmxa)
+        ]
+        | None -> []
+      in
+      let () =
+        List.for_each
+          binaries
+          ~fn:(fun (name, path) ->
+            Riot_planner.Module_graph.add_binary_node
+              graph_builder
+              ~name
+              ~source:(Path.v path)
+              ~libraries:binary_libraries
+              ~includes:[ Path.v "." ])
+      in
+      let action_graph, _ = Riot_planner.Action_graph.from_module_graph
+        ~analyzed_modules:(Riot_planner.Module_graph.analyzed_modules graph_builder)
+        ~package
+        ~profile:Riot_model.Profile.release
+        ~ctx:build_ctx
+        ~toolchain:test_toolchain
+        ~store
+        ~depset:[]
+        ~needs_unix:false
+        ~needs_dynlink:false
+        (Riot_planner.Module_graph.graph graph_builder) in
+      Ok (package, Riot_planner.Action_graph.to_action_list action_graph)
+
+let test_binary_actions_include_target_private_modules = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"planner_binary_private_modules"
+      (fun tmpdir ->
+        match plan_actions_for_package
+          ~tmpdir
+          ~package_name:"splitdemo"
+          ~library:{ path = Path.v "src/splitdemo.ml" }
+          ~binaries:[ ("splitdemo", "src/main.ml") ]
+          ~files:[
+            ("src/splitdemo.ml", "module A = A\n");
+            ("src/a.ml", "let library_value = 1\n");
+            ("src/b.ml", "let private_value = 2\n");
+            ("src/main.ml", "let () = ignore B.private_value\n");
+            ("src/orphan.ml", "let orphan = 3\n");
+          ]
+          () with
+        | Error _ as err -> err
+        | Ok (_package, actions) ->
+            let b_source = Path.v "src/b.ml" in
+            let a_source = Path.v "src/a.ml" in
+            let main_source = Path.v "src/main.ml" in
+            let orphan_source = Path.v "src/orphan.ml" in
+            let b_cmx = find_compile_cmx actions b_source in
+            let a_cmx = find_compile_cmx actions a_source in
+            let main_cmx = find_compile_cmx actions main_source in
+            let compiles_orphan = List.any (compile_sources actions) ~fn:(Path.equal orphan_source) in
+            match find_create_library actions, find_create_executable actions, b_cmx, a_cmx, main_cmx with
+            | Some (Riot_planner.Action.CreateLibrary { objects=library_objects; _ }), Some (Riot_planner.Action.CreateExecutable {
+              objects=binary_objects;
+              libraries;
+              _
+            }), Some b_cmx, Some a_cmx, Some main_cmx ->
+                let has object_ objects = List.any objects ~fn:(Path.equal object_) in
+                let object_names objects = List.map objects ~fn:Path.to_string |> String.concat ", " in
+                let binary_positions = (
+                  index_of_path binary_objects b_cmx,
+                  index_of_path binary_objects main_cmx
+                ) in
+                if compiles_orphan then
+                  Error "did not expect unreachable orphan module to be compiled for library or binary"
+                else if not (has a_cmx library_objects) then
+                  Error ("expected library archive to include A; objects: " ^ object_names library_objects)
+                else if has b_cmx library_objects then
+                  Error ("did not expect binary-private helper B in library archive; objects: "
+                  ^ object_names library_objects)
+                else if not (has b_cmx binary_objects) then
+                  Error ("expected executable to link binary-private helper B; objects: "
+                  ^ object_names binary_objects)
+                else if not (has main_cmx binary_objects) then
+                  Error ("expected executable to link binary root object; objects: " ^ object_names binary_objects)
+                else if has a_cmx binary_objects then
+                  Error ("did not expect library-owned module A to be linked privately into executable; objects: "
+                  ^ object_names binary_objects)
+                else if
+                  not
+                    (List.any
+                      libraries
+                      ~fn:(Path.equal Riot_model.Module_name.(of_string "splitdemo" |> cmxa)))
+                then
+                  Error "expected executable to still link the package archive"
+                else
+                  (
+                    match binary_positions with
+                    | Some b_index, Some main_index when b_index < main_index -> Ok ()
+                    | Some _, Some _ -> Error ("expected binary-private helper B to appear before main object in executable link order; objects: "
+                    ^ object_names binary_objects)
+                    | _ -> Error ("expected executable object list to contain both binary-private helper and main object; objects: "
+                    ^ object_names binary_objects)
+                  )
+            | Some _, Some _, None, _, _ ->
+                Error "expected compile action for binary-private helper b.ml"
+            | Some _, Some _, _, None, _ ->
+                Error "expected compile action for library module a.ml"
+            | Some _, Some _, _, _, None ->
+                Error "expected compile action for binary root main.ml"
+            | Some _, Some _, _, _, _ ->
+                Error "expected CreateLibrary and CreateExecutable actions"
+            | _ ->
+                Error "missing CreateLibrary or CreateExecutable action")
+  with
+  | Ok result -> result
+  | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
+
+let test_binary_actions_follow_transitive_private_reachability = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"planner_binary_transitive_private_modules"
+      (fun tmpdir ->
+        match plan_actions_for_package
+          ~tmpdir
+          ~package_name:"transitivedemo"
+          ~library:{ path = Path.v "src/transitivedemo.ml" }
+          ~binaries:[ ("transitivedemo", "src/main.ml") ]
+          ~files:[
+            ("src/transitivedemo.ml", "let library_only = 0\n");
+            ("src/c.ml", "let value = 41\n");
+            ("src/b.ml", "let value = C.value + 1\n");
+            ("src/main.ml", "let () = ignore B.value\n");
+            ("src/orphan.ml", "let orphan = 7\n");
+          ]
+          () with
+        | Error _ as err -> err
+        | Ok (_package, actions) ->
+            let c_source = Path.v "src/c.ml" in
+            let b_source = Path.v "src/b.ml" in
+            let main_source = Path.v "src/main.ml" in
+            let orphan_source = Path.v "src/orphan.ml" in
+            let c_cmx = find_compile_cmx actions c_source in
+            let b_cmx = find_compile_cmx actions b_source in
+            let main_cmx = find_compile_cmx actions main_source in
+            let compiles_orphan = List.any (compile_sources actions) ~fn:(Path.equal orphan_source) in
+            match find_create_library actions, find_create_executable actions, c_cmx, b_cmx, main_cmx with
+            | Some (Riot_planner.Action.CreateLibrary { objects=library_objects; _ }), Some (Riot_planner.Action.CreateExecutable {
+              objects=binary_objects;
+              _
+            }), Some c_cmx, Some b_cmx, Some main_cmx ->
+                let has object_ objects = List.any objects ~fn:(Path.equal object_) in
+                let object_names objects = List.map objects ~fn:Path.to_string |> String.concat ", " in
+                if compiles_orphan then
+                  Error "did not expect unreachable orphan module to be compiled"
+                else if has c_cmx library_objects || has b_cmx library_objects then
+                  Error ("did not expect transitive binary-private helper modules in library archive; objects: "
+                  ^ object_names library_objects)
+                else if
+                  not
+                    (has c_cmx binary_objects && has b_cmx binary_objects && has main_cmx binary_objects)
+                then
+                  Error ("expected executable to link the full transitive private closure (c.ml -> b.ml -> main.ml); objects: "
+                  ^ object_names binary_objects)
+                else
+                  (
+                    match index_of_path binary_objects c_cmx, index_of_path binary_objects b_cmx, index_of_path
+                      binary_objects
+                      main_cmx with
+                    | Some c_index, Some b_index, Some main_index when c_index < b_index
+                    && b_index < main_index -> Ok ()
+                    | _ -> Error ("expected transitive private helper objects to preserve dependency order C -> B -> Main; objects: "
+                    ^ object_names binary_objects)
+                  )
+            | _ -> Error "expected CreateLibrary/CreateExecutable actions and compile outputs for c.ml, b.ml, and main.ml")
+  with
+  | Ok result -> result
+  | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
+
+let test_executable_actions_do_not_duplicate_library_owned_modules = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"planner_binary_shared_module"
+      (fun tmpdir ->
+        match plan_actions_for_package
+          ~tmpdir
+          ~package_name:"shareddemo"
+          ~library:{ path = Path.v "src/shareddemo.ml" }
+          ~binaries:[ ("shareddemo", "src/main.ml") ]
+          ~files:[
+            ("src/shareddemo.ml", "module Shared = Shared\n");
+            ("src/shared.ml", "let value = 1\n");
+            ("src/main.ml", "let () = ignore Shared.value\n");
+          ]
+          () with
+        | Error _ as err -> err
+        | Ok (_package, actions) ->
+            let shared_source = Path.v "src/shared.ml" in
+            let main_source = Path.v "src/main.ml" in
+            let shared_cmx = find_compile_cmx actions shared_source in
+            let main_cmx = find_compile_cmx actions main_source in
+            match find_create_library actions, find_create_executable actions, shared_cmx, main_cmx with
+            | Some (Riot_planner.Action.CreateLibrary { objects=library_objects; _ }), Some (Riot_planner.Action.CreateExecutable {
+              objects=binary_objects;
+              _
+            }), Some shared_cmx, Some main_cmx ->
+                let has object_ objects = List.any objects ~fn:(Path.equal object_) in
+                let object_names objects = List.map objects ~fn:Path.to_string |> String.concat ", " in
+                if not (has shared_cmx library_objects) then
+                  Error ("expected library archive to own Shared; objects: " ^ object_names library_objects)
+                else if has shared_cmx binary_objects then
+                  Error ("did not expect library-owned Shared module to be linked privately into executable; objects: "
+                  ^ object_names binary_objects)
+                else if not (has main_cmx binary_objects) then
+                  Error ("expected executable to link its root object; objects: " ^ object_names binary_objects)
+                else
+                  Ok ()
+            | _ -> Error "expected CreateLibrary/CreateExecutable actions and compile outputs for shared.ml and main.ml")
+  with
+  | Ok result -> result
+  | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
+
+let test_executable_actions_allow_private_helpers_without_a_library = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"planner_binary_no_library"
+      (fun tmpdir ->
+        match plan_actions_for_package
+          ~tmpdir
+          ~package_name:"standalone"
+          ~binaries:[ ("standalone", "src/main.ml") ]
+          ~files:[
+            ("src/helper.ml", "let value = 1\n");
+            ("src/main.ml", "let () = ignore Helper.value\n");
+            ("src/orphan.ml", "let orphan = 0\n");
+          ]
+          () with
+        | Error _ as err -> err
+        | Ok (_package, actions) ->
+            let helper_source = Path.v "src/helper.ml" in
+            let main_source = Path.v "src/main.ml" in
+            let orphan_source = Path.v "src/orphan.ml" in
+            let helper_cmx = find_compile_cmx actions helper_source in
+            let main_cmx = find_compile_cmx actions main_source in
+            let compiles_orphan = List.any (compile_sources actions) ~fn:(Path.equal orphan_source) in
+            match find_create_library actions, find_create_executable actions, helper_cmx, main_cmx with
+            | None, Some (Riot_planner.Action.CreateExecutable {
+              objects=binary_objects;
+              libraries;
+              _
+            }), Some helper_cmx, Some main_cmx ->
+                let has object_ objects = List.any objects ~fn:(Path.equal object_) in
+                let object_names objects = List.map objects ~fn:Path.to_string |> String.concat ", " in
+                if compiles_orphan then
+                  Error "did not expect unreachable orphan module to be compiled in no-library package"
+                else if not (has helper_cmx binary_objects && has main_cmx binary_objects) then
+                  Error ("expected executable to link helper and main objects in no-library package; objects: "
+                  ^ object_names binary_objects)
+                else if not (List.is_empty libraries) then
+                  Error "did not expect no-library executable to link a package archive"
+                else
+                  Ok ()
+            | Some _, _, _, _ ->
+                Error "did not expect CreateLibrary action for no-library package"
+            | _ ->
+                Error "expected CreateExecutable action and compile outputs for helper.ml and main.ml")
+  with
+  | Ok result -> result
+  | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
+
+let test_binary_actions_without_private_helpers = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"planner_binary_without_private_helpers"
+      (fun tmpdir ->
+        match plan_actions_for_package
+          ~tmpdir
+          ~package_name:"nohelperdemo"
+          ~library:{ path = Path.v "src/nohelperdemo.ml" }
+          ~binaries:[ ("nohelperdemo", "src/main.ml") ]
+          ~files:[
+            ("src/nohelperdemo.ml", "module Shared = Shared\n");
+            ("src/shared.ml", "let value = 1\n");
+            ("src/main.ml", "let () = ignore Shared.value\n");
+          ]
+          () with
+        | Error _ as err -> err
+        | Ok (_package, actions) ->
+            let shared_source = Path.v "src/shared.ml" in
+            let main_source = Path.v "src/main.ml" in
+            let shared_cmx = find_compile_cmx actions shared_source in
+            let main_cmx = find_compile_cmx actions main_source in
+            match find_create_library actions, find_create_executable_named actions "nohelperdemo", shared_cmx, main_cmx with
+            | Some (Riot_planner.Action.CreateLibrary { objects=library_objects; _ }), Some (Riot_planner.Action.CreateExecutable {
+              objects=binary_objects;
+              libraries;
+              _
+            }), Some shared_cmx, Some main_cmx ->
+                let has object_ objects = List.any objects ~fn:(Path.equal object_) in
+                let object_names objects = List.map objects ~fn:Path.to_string |> String.concat ", " in
+                if not (has shared_cmx library_objects) then
+                  Error ("expected library archive to include Shared; objects: " ^ object_names library_objects)
+                else if
+                  not Int.(List.length binary_objects = 1) || not (has main_cmx binary_objects)
+                then
+                  Error ("expected executable without private helpers to link only main.cmx; objects: "
+                  ^ object_names binary_objects)
+                else if
+                  not
+                    (List.any
+                      libraries
+                      ~fn:(Path.equal Riot_model.Module_name.(of_string "nohelperdemo" |> cmxa)))
+                then
+                  Error "expected executable to link the package archive"
+                else
+                  Ok ()
+            | _ -> Error "expected CreateLibrary/CreateExecutable actions and compile outputs for shared.ml and main.ml")
+  with
+  | Ok result -> result
+  | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
+
+let test_binary_actions_include_multiple_private_helpers = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"planner_binary_multiple_private_helpers"
+      (fun tmpdir ->
+        match plan_actions_for_package
+          ~tmpdir
+          ~package_name:"multidemo"
+          ~library:{ path = Path.v "src/multidemo.ml" }
+          ~binaries:[ ("multidemo", "src/main.ml") ]
+          ~files:[
+            ("src/multidemo.ml", "let library_value = 1\n");
+            ("src/a.ml", "let value = 10\n");
+            ("src/b.ml", "let value = 20\n");
+            ("src/main.ml", "let () = ignore (A.value + B.value)\n");
+          ]
+          () with
+        | Error _ as err -> err
+        | Ok (_package, actions) ->
+            let a_source = Path.v "src/a.ml" in
+            let b_source = Path.v "src/b.ml" in
+            let main_source = Path.v "src/main.ml" in
+            let a_cmx = find_compile_cmx actions a_source in
+            let b_cmx = find_compile_cmx actions b_source in
+            let main_cmx = find_compile_cmx actions main_source in
+            match find_create_library actions, find_create_executable_named actions "multidemo", a_cmx, b_cmx, main_cmx with
+            | Some (Riot_planner.Action.CreateLibrary { objects=library_objects; _ }), Some (Riot_planner.Action.CreateExecutable {
+              objects=binary_objects;
+              _
+            }), Some a_cmx, Some b_cmx, Some main_cmx ->
+                let has object_ objects = List.any objects ~fn:(Path.equal object_) in
+                let object_names objects = List.map objects ~fn:Path.to_string |> String.concat ", " in
+                if has a_cmx library_objects || has b_cmx library_objects then
+                  Error ("did not expect private fan-out helpers in library archive; objects: "
+                  ^ object_names library_objects)
+                else if
+                  not
+                    (has a_cmx binary_objects && has b_cmx binary_objects && has main_cmx binary_objects)
+                then
+                  Error ("expected executable to link both private helpers and main object; objects: "
+                  ^ object_names binary_objects)
+                else
+                  Ok ()
+            | _ -> Error "expected CreateLibrary/CreateExecutable actions and compile outputs for a.ml, b.ml, and main.ml")
+  with
+  | Ok result -> result
+  | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
+
+let test_multiple_binaries_share_private_helper = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"planner_multiple_binaries_shared_private_helper"
+      (fun tmpdir ->
+        match plan_actions_for_package
+          ~tmpdir
+          ~package_name:"sharedhelperdemo"
+          ~binaries:[ ("main", "src/main.ml"); ("tool", "src/tool.ml") ]
+          ~files:[
+            ("src/shared.ml", "let value = 1\n");
+            ("src/main.ml", "let () = ignore Shared.value\n");
+            ("src/tool.ml", "let () = ignore Shared.value\n");
+          ]
+          () with
+        | Error _ as err -> err
+        | Ok (_package, actions) ->
+            let shared_source = Path.v "src/shared.ml" in
+            let main_source = Path.v "src/main.ml" in
+            let tool_source = Path.v "src/tool.ml" in
+            let shared_cmx = find_compile_cmx actions shared_source in
+            let main_cmx = find_compile_cmx actions main_source in
+            let tool_cmx = find_compile_cmx actions tool_source in
+            match find_create_library actions, find_create_executable_named actions "main", find_create_executable_named
+              actions
+              "tool", shared_cmx, main_cmx, tool_cmx with
+            | None, Some (Riot_planner.Action.CreateExecutable { objects=main_objects; _ }), Some (Riot_planner.Action.CreateExecutable {
+              objects=tool_objects;
+              _
+            }), Some shared_cmx, Some main_cmx, Some tool_cmx ->
+                let has object_ objects = List.any objects ~fn:(Path.equal object_) in
+                let object_names objects = List.map objects ~fn:Path.to_string |> String.concat ", " in
+                if not (has shared_cmx main_objects && has main_cmx main_objects) then
+                  Error ("expected main executable to link shared helper and main root; objects: "
+                  ^ object_names main_objects)
+                else if not (has shared_cmx tool_objects && has tool_cmx tool_objects) then
+                  Error ("expected tool executable to link shared helper and tool root; objects: "
+                  ^ object_names tool_objects)
+                else
+                  Ok ()
+            | Some _, _, _, _, _, _ ->
+                Error "did not expect CreateLibrary action for no-library multi-binary package"
+            | _ ->
+                Error "expected CreateExecutable actions and compile outputs for shared.ml, main.ml, and tool.ml")
+  with
+  | Ok result -> result
+  | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
+
+let test_multiple_binaries_keep_private_helpers_separate = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"planner_multiple_binaries_disjoint_private_helpers"
+      (fun tmpdir ->
+        match plan_actions_for_package
+          ~tmpdir
+          ~package_name:"disjointdemo"
+          ~binaries:[ ("main", "src/main.ml"); ("tool", "src/tool.ml") ]
+          ~files:[
+            ("src/a.ml", "let value = 1\n");
+            ("src/b.ml", "let value = 2\n");
+            ("src/main.ml", "let () = ignore A.value\n");
+            ("src/tool.ml", "let () = ignore B.value\n");
+          ]
+          () with
+        | Error _ as err -> err
+        | Ok (_package, actions) ->
+            let a_source = Path.v "src/a.ml" in
+            let b_source = Path.v "src/b.ml" in
+            let main_source = Path.v "src/main.ml" in
+            let tool_source = Path.v "src/tool.ml" in
+            let a_cmx = find_compile_cmx actions a_source in
+            let b_cmx = find_compile_cmx actions b_source in
+            let main_cmx = find_compile_cmx actions main_source in
+            let tool_cmx = find_compile_cmx actions tool_source in
+            match find_create_executable_named actions "main", find_create_executable_named actions "tool", a_cmx, b_cmx, main_cmx, tool_cmx with
+            | Some (Riot_planner.Action.CreateExecutable { objects=main_objects; _ }), Some (Riot_planner.Action.CreateExecutable {
+              objects=tool_objects;
+              _
+            }), Some a_cmx, Some b_cmx, Some main_cmx, Some tool_cmx ->
+                let has object_ objects = List.any objects ~fn:(Path.equal object_) in
+                let object_names objects = List.map objects ~fn:Path.to_string |> String.concat ", " in
+                if not (has a_cmx main_objects && has main_cmx main_objects) then
+                  Error ("expected main executable to link A and main root; objects: "
+                  ^ object_names main_objects)
+                else if has b_cmx main_objects then
+                  Error ("did not expect main executable to link tool-private helper B; objects: "
+                  ^ object_names main_objects)
+                else if not (has b_cmx tool_objects && has tool_cmx tool_objects) then
+                  Error ("expected tool executable to link B and tool root; objects: "
+                  ^ object_names tool_objects)
+                else if has a_cmx tool_objects then
+                  Error ("did not expect tool executable to link main-private helper A; objects: "
+                  ^ object_names tool_objects)
+                else
+                  Ok ()
+            | _ -> Error "expected CreateExecutable actions and compile outputs for a.ml, b.ml, main.ml, and tool.ml")
+  with
+  | Ok result -> result
+  | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
+
+let test_private_helper_can_depend_on_library_owned_module = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"planner_private_helper_depends_on_library_module"
+      (fun tmpdir ->
+        match plan_actions_for_package
+          ~tmpdir
+          ~package_name:"librarymixdemo"
+          ~library:{ path = Path.v "src/librarymixdemo.ml" }
+          ~binaries:[ ("librarymixdemo", "src/main.ml") ]
+          ~files:[
+            ("src/librarymixdemo.ml", "module A = A\n");
+            ("src/a.ml", "let value = 10\n");
+            ("src/b.ml", "let value = A.value + 20\n");
+            ("src/main.ml", "let () = ignore B.value\n");
+          ]
+          () with
+        | Error _ as err -> err
+        | Ok (_package, actions) ->
+            let a_source = Path.v "src/a.ml" in
+            let b_source = Path.v "src/b.ml" in
+            let main_source = Path.v "src/main.ml" in
+            let a_cmx = find_compile_cmx actions a_source in
+            let b_cmx = find_compile_cmx actions b_source in
+            let main_cmx = find_compile_cmx actions main_source in
+            match find_create_library actions, find_create_executable_named actions "librarymixdemo", a_cmx, b_cmx, main_cmx with
+            | Some (Riot_planner.Action.CreateLibrary { objects=library_objects; _ }), Some (Riot_planner.Action.CreateExecutable {
+              objects=binary_objects;
+              libraries;
+              _
+            }), Some a_cmx, Some b_cmx, Some main_cmx ->
+                let has object_ objects = List.any objects ~fn:(Path.equal object_) in
+                let object_names objects = List.map objects ~fn:Path.to_string |> String.concat ", " in
+                if not (has a_cmx library_objects) then
+                  Error ("expected library archive to include A; objects: " ^ object_names library_objects)
+                else if has b_cmx library_objects then
+                  Error ("did not expect binary-private helper B in library archive; objects: "
+                  ^ object_names library_objects)
+                else if not (has b_cmx binary_objects && has main_cmx binary_objects) then
+                  Error ("expected executable to link helper B and main object; objects: "
+                  ^ object_names binary_objects)
+                else if has a_cmx binary_objects then
+                  Error ("did not expect executable to duplicate library-owned A privately; objects: "
+                  ^ object_names binary_objects)
+                else if
+                  not
+                    (List.any
+                      libraries
+                      ~fn:(Path.equal Riot_model.Module_name.(of_string "librarymixdemo" |> cmxa)))
+                then
+                  Error "expected executable to link the package archive"
+                else
+                  Ok ()
+            | _ -> Error "expected CreateLibrary/CreateExecutable actions and compile outputs for a.ml, b.ml, and main.ml")
+  with
+  | Ok result -> result
+  | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
+
+let test_private_helper_links_only_into_reaching_binary = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"planner_private_helper_links_only_into_reaching_binary"
+      (fun tmpdir ->
+        match plan_actions_for_package
+          ~tmpdir
+          ~package_name:"selectivedemo"
+          ~binaries:[ ("main", "src/main.ml"); ("tool", "src/tool.ml") ]
+          ~files:[
+            ("src/shared.ml", "let value = 1\n");
+            ("src/main.ml", "let () = ignore Shared.value\n");
+            ("src/tool.ml", "let () = ()\n");
+          ]
+          () with
+        | Error _ as err -> err
+        | Ok (_package, actions) ->
+            let shared_source = Path.v "src/shared.ml" in
+            let main_source = Path.v "src/main.ml" in
+            let tool_source = Path.v "src/tool.ml" in
+            let shared_cmx = find_compile_cmx actions shared_source in
+            let main_cmx = find_compile_cmx actions main_source in
+            let tool_cmx = find_compile_cmx actions tool_source in
+            match find_create_executable_named actions "main", find_create_executable_named actions "tool", shared_cmx, main_cmx, tool_cmx with
+            | Some (Riot_planner.Action.CreateExecutable { objects=main_objects; _ }), Some (Riot_planner.Action.CreateExecutable {
+              objects=tool_objects;
+              _
+            }), Some shared_cmx, Some main_cmx, Some tool_cmx ->
+                let has object_ objects = List.any objects ~fn:(Path.equal object_) in
+                let object_names objects = List.map objects ~fn:Path.to_string |> String.concat ", " in
+                if not (has shared_cmx main_objects && has main_cmx main_objects) then
+                  Error ("expected reaching binary to link shared helper and main root; objects: "
+                  ^ object_names main_objects)
+                else if has shared_cmx tool_objects then
+                  Error ("did not expect non-reaching binary to link shared helper privately; objects: "
+                  ^ object_names tool_objects)
+                else if not (has tool_cmx tool_objects) then
+                  Error ("expected tool executable to link its root object; objects: "
+                  ^ object_names tool_objects)
+                else
+                  Ok ()
+            | _ -> Error "expected CreateExecutable actions and compile outputs for shared.ml, main.ml, and tool.ml")
+  with
+  | Ok result -> result
+  | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
+
 let tests =
   Test.[
     case "action graph json round-trip preserves edges" test_action_graph_json_round_trip_preserves_dependencies;
@@ -662,6 +1353,16 @@ let tests =
     case "library builds skip shared native plugin artifacts by default" test_library_builds_do_not_emit_shared_library_actions;
     case "library actions exclude ML object files while keeping native stubs" test_library_actions_exclude_ml_object_files;
     case "library actions exclude unreachable modules" test_library_actions_exclude_unreachable_modules;
+    case "binary actions without private helpers stay thin" test_binary_actions_without_private_helpers;
+    case "binary actions include target-private modules" test_binary_actions_include_target_private_modules;
+    case "binary actions include multiple private helpers" test_binary_actions_include_multiple_private_helpers;
+    case "binary actions follow transitive private reachability" test_binary_actions_follow_transitive_private_reachability;
+    case "multiple binaries can share a private helper" test_multiple_binaries_share_private_helper;
+    case "multiple binaries keep private helpers separate" test_multiple_binaries_keep_private_helpers_separate;
+    case "private helper can depend on library-owned module" test_private_helper_can_depend_on_library_owned_module;
+    case "private helper only links into the binary that reaches it" test_private_helper_links_only_into_reaching_binary;
+    case "executable actions do not duplicate library-owned modules" test_executable_actions_do_not_duplicate_library_owned_modules;
+    case "executable actions allow private helpers without a library" test_executable_actions_allow_private_helpers_without_a_library;
     case "CreateLibrary preserves module dependency order" test_create_library_preserves_module_dependency_order;
     case "release profile flags flow into compile actions" test_release_profile_flags_flow_into_compile_actions;
   ]

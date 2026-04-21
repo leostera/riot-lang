@@ -168,13 +168,13 @@ let is_binary = fun config path ->
 (** Recursively scan directory entries and build graph nodes.
 
     Processing order (entries are pre-sorted by Module_scanner): 1. MLI files
-    (interfaces must compile before implementations) 2. ML files (but binaries
-    are handled separately) 3. C files (compiled to .o objects) 4. H files
-    (headers, no compilation needed) 5. Directories (create library interface
-    modules, descend recursively)
+    (interfaces must compile before implementations) 2. ML files 3. C files
+    (compiled to .o objects) 4. H files (headers, no compilation needed) 5.
+    Directories (create library interface modules, descend recursively)
 
-    Binary detection uses a guard pattern to separate binary handling from
-    regular module handling, keeping each function focused. *)
+    Binary sources are still analyzed as regular OCaml modules so target-specific
+    reachability can follow their helper-module closure later on. The dedicated
+    binary target node is still added separately after dependency wiring. *)
 let rec do_scan = fun ~t ~ctx entries ->
   match entries with
   | [] -> ()
@@ -200,10 +200,45 @@ let rec do_scan = fun ~t ~ctx entries ->
 
 (** Handle a binary source file.
 
-    Binaries are compiled separately from the library, so we do nothing during
-    the library scan phase. Binary compilation will be handled later during
-    action generation. *)
-and handle_ocaml_binary = fun ~t ~ctx:_ _path -> ()
+    Binary roots participate in dependency analysis like any other module. They
+    are excluded from the library later by target-specific reachability, and
+    the executable target node consumes their reachable closure during action
+    planning. *)
+and handle_ocaml_binary = fun ~t ~ctx path ->
+  let { ns; aliases; parent_impl=_; parent_intf=_ } = ctx in
+  let mod_ = Module.make ~namespace:ns ~filename:path in
+  let file = Module_node.Concrete path in
+  let node_val =
+    match Module.kind mod_ with
+    | `interface -> Module_node.make_mli mod_ file
+    | `implementation -> Module_node.make_ml mod_ file
+  in
+  Module_node.set_open_modules node_val aliases;
+  let node = G.add_node t.graph node_val in
+  Module_registry.register t.registry mod_ node.id;
+  (
+    match Module.kind mod_ with
+    | `implementation -> (
+        let qualified_name = Module.module_name mod_ |> Module_name.qualified_name in
+        try
+          let node_ids = Module_registry.get_by_qualified_name t.registry qualified_name in
+          List.for_each node_ids
+            ~fn:(fun intf_node_id ->
+              match G.get_node t.graph intf_node_id with
+              | Some intf_node -> (
+                  match intf_node.value.kind with
+                  | MLI intf_mod when Module.module_name intf_mod |> Module_name.qualified_name = qualified_name -> G.add_edge
+                    node
+                    ~depends_on:intf_node
+                  | _ -> ()
+                )
+              | None -> ())
+        with
+        | Not_found -> ()
+      )
+    | `interface -> ()
+  );
+  List.for_each aliases ~fn:(fun aliases_node -> G.add_edge node ~depends_on:aliases_node)
 
 (** Handle a regular OCaml module file (.ml or .mli).
 
@@ -702,8 +737,20 @@ let add_binary_node = fun t ~name ~source ~libraries ~includes ->
   G.iter t.graph
     ~fn:(fun _node_id node ->
       match node.value.kind with
-      | Module_node.Library _ -> G.add_edge bin_node ~depends_on:node
-      | _ -> ())
+      | Module_node.Library _ ->
+          G.add_edge bin_node ~depends_on:node
+      | Module_node.ML _ -> (
+          match node.value.file with
+          | Module_node.Concrete path ->
+              let source_rel = make_relative ~base:t.config.package.path ~path:source in
+              if Path.equal path source_rel || Path.equal path source then
+                G.add_edge bin_node ~depends_on:node
+              else
+                ()
+          | Module_node.Generated _ -> ()
+        )
+      | _ ->
+          ())
 
 (* Commands are just regular binaries *)
 

@@ -16,6 +16,7 @@
 10. Resolved profile-owned compile flags must flow into planned OCaml compile actions. If release/debug profile settings change emitted compiler args, the action graph and planner artifact version must change with them.
 11. Warm cached packages should short-circuit from the hash-addressed artifact manifest when possible. Do not require full module/action graph decode on cache hits unless execution really needs the full plan.
 12. Library planning should trim unreachable modules from the final action graph, but only by following resolved `Syn.Deps` edges from the concrete library root. Do not reintroduce CST or directory-structure fallbacks for reachability.
+13. Binary targets should consume a target-private closure derived from their source module and resolved deps. Analyze binary sources as modules, but do not wire them as structural children of the library root or re-link library-owned modules privately into the executable.
 
 ## Validate
 

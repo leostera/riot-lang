@@ -268,15 +268,27 @@ let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~get
       let all_outputs = [ library_name; archive_name ] in
       ([ create_lib ], all_outputs, sources)
   | { kind=Binary { name; source; libraries; includes }; _ } ->
-      let binary_mod = Module.make ~namespace:Namespace.empty ~filename:source in
-      let binary_cmx = Module.cmx binary_mod in
       let sources = [ source ] in
-      let compile_action = Action.CompileImplementation {
-        source;
-        outputs = [ binary_cmx ];
-        includes = Path.v "." :: dep_includes;
-        flags = base_compile_flags
-      } in
+      let objects_with_duplicates =
+        List.map deps
+          ~fn:(fun dep_id ->
+            let dep_outputs = get_dep_outputs dep_id in
+            match get_dep_kind dep_id with
+            | Some (Module_node.ML _) -> List.filter
+              dep_outputs
+              ~fn:(fun output -> Path.extension output = Some ".cmx")
+            | _ -> [])
+        |> List.concat
+      in
+      let seen_objects = HashSet.create () in
+      let objects =
+        List.filter_map objects_with_duplicates
+          ~fn:(fun object_path ->
+            if HashSet.insert seen_objects ~value:object_path then
+              Some object_path
+            else
+              None)
+      in
       (* Collect foreign library outputs for linking *)
       let cclibs =
         List.map package.foreign_dependencies
@@ -360,7 +372,7 @@ let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~get
       let cclib_flags = ldflags in
       let link_action = Action.CreateExecutable {
         outputs = [ binary_output ];
-        objects = [ binary_cmx ];
+        objects;
         libraries;
         includes;
         cclibs;
@@ -368,7 +380,7 @@ let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~get
         cclib_flags;
       }
       in
-      ([ compile_action; link_action ], [ binary_output ], sources)
+      ([ link_action ], [ binary_output ], sources)
 
 let from_module_graph ?analyzed_modules ~package ~profile ~ctx ~toolchain ~store ~depset ~needs_unix ~needs_dynlink (
   module_graph: Module_node.t G.t
@@ -583,6 +595,59 @@ let from_module_graph ?analyzed_modules ~package ~profile ~ctx ~toolchain ~store
         let _ = HashSet.insert library_reachable_set ~value:node_id in
         ())
   in
+  let relative_to_package_root path =
+    if Path.is_absolute path then
+      let package_root = Path.normalize package.path in
+      let normalized = Path.normalize path in
+      match Path.strip_prefix normalized ~prefix:package_root with
+      | Ok rel when not (String.starts_with ~prefix:"../" rel) -> rel
+      | Ok _
+      | Error _ -> normalized
+    else
+      path
+  in
+  let node_matches_source_path source_path (node: Module_node.t G.node) =
+    let source_path = relative_to_package_root source_path in
+    match node.value.kind, node.value.file with
+    | (Module_node.ML _, Module_node.Concrete path)
+    | (Module_node.MLI _, Module_node.Concrete path) -> Path.equal (relative_to_package_root path) source_path
+    | _, _ -> false
+  in
+  let binary_source_nodes source_path = List.filter
+    sorted_modules
+    ~fn:(node_matches_source_path source_path) in
+  let binary_private_dependency_ids source_path =
+    let visited = HashSet.create () in
+    let rec visit node_id =
+      if HashSet.insert visited ~value:node_id then
+        match G.get_node module_graph node_id with
+        | Some dep_node -> List.for_each dep_node.deps ~fn:visit
+        | None -> ()
+    in
+    let () =
+      List.for_each
+        (binary_source_nodes source_path)
+        ~fn:(fun (node: Module_node.t G.node) -> visit node.id)
+    in
+    List.filter_map sorted_modules
+      ~fn:(fun (node: Module_node.t G.node) ->
+        if HashSet.contains visited ~value:node.id then
+          match node.value.kind with
+          | Module_node.ML _
+          | Module_node.MLI _ ->
+              if HashSet.contains library_reachable_set ~value:node.id then
+                None
+              else
+                Some node.id
+          | Module_node.Root -> None
+          | _ ->
+              if HashSet.contains library_reachable_set ~value:node.id then
+                None
+              else
+                Some node.id
+        else
+          None)
+  in
   let effective_deps (node: Module_node.t G.node) =
     match node.value.kind with
     | _ when HashSet.contains concrete_root_ids ~value:node.id ->
@@ -603,6 +668,16 @@ let from_module_graph ?analyzed_modules ~package ~profile ~ctx ~toolchain ~store
                 | Module_node.MLI _ -> HashSet.contains library_reachable_set ~value:dep_id
                 | Module_node.Root -> false
                 | _ -> true
+              )
+            | None -> false)
+    | Module_node.Binary { source; _ } ->
+        binary_private_dependency_ids source @ List.filter node.deps
+          ~fn:(fun dep_id ->
+            match G.get_node module_graph dep_id with
+            | Some dep_node -> (
+                match dep_node.value.kind with
+                | Module_node.Library _ -> true
+                | _ -> false
               )
             | None -> false)
     | _ ->
