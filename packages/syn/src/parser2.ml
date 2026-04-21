@@ -258,6 +258,7 @@ let can_start_pattern_atom = function
   | _ -> false
 
 let prefix_operator = function
+  | Syntax_kind2.PLUS
   | Syntax_kind2.MINUS
   | Syntax_kind2.PLUSDOT
   | Syntax_kind2.MINUSDOT
@@ -302,6 +303,16 @@ let operator_pattern_token = function
   | Syntax_kind2.MINUSDOT
   | Syntax_kind2.STARDOT
   | Syntax_kind2.SLASHDOT -> true
+  | _ -> false
+
+let binding_operator_suffix = function
+  | Syntax_kind2.STAR
+  | Syntax_kind2.PLUS -> true
+  | _ -> false
+
+let binding_operator_keyword = function
+  | Syntax_kind2.LET_KW
+  | Syntax_kind2.AND_KW -> true
   | _ -> false
 
 let infix_binding_power = function
@@ -495,7 +506,7 @@ and parse_prefix_or_atom = fun p ~signature ~stop_at_item ~stop_at_semi ->
       let _operand = parse_expression p ~signature ~stop_at_item ~stop_at_semi 70 in
       complete p marker Syntax_kind2.PREFIX_EXPR
   | Syntax_kind2.LET_KW ->
-      parse_let_expr p ~signature
+      parse_let_expr p ~signature ~stop_at_item
   | Syntax_kind2.BACKTICK ->
       parse_poly_variant_expr p ~signature ~stop_at_item ~stop_at_semi
   | Syntax_kind2.TILDE ->
@@ -698,16 +709,18 @@ and parse_record_expr = fun p ~signature ->
   expect p Syntax_kind2.RBRACE (invalid_expression p);
   complete p marker kind
 
-and parse_let_expr = fun p ~signature ->
+and parse_let_expr = fun p ~signature ~stop_at_item ->
   let marker = start_node p in
   bump p;
-  if at p Syntax_kind2.OPEN_KW then
+  if binding_operator_suffix (current_kind p) then
+    parse_binding_operator_expr p marker ~signature ~stop_at_item
+  else if at p Syntax_kind2.OPEN_KW then
     (
       bump p;
       ignore (bump_if p Syntax_kind2.BANG);
       ignore (parse_path_expr p);
       expect p Syntax_kind2.IN_KW (invalid_expression p);
-      ignore (parse_expression p ~signature ~stop_at_item:false 0);
+      ignore (parse_expression p ~signature ~stop_at_item 0);
       complete p marker Syntax_kind2.LOCAL_OPEN_EXPR
     )
   else if at p Syntax_kind2.MODULE_KW then
@@ -718,8 +731,16 @@ and parse_let_expr = fun p ~signature ->
       expect p Syntax_kind2.EQ (invalid_expression p);
       consume_balanced_until p ~closer:Syntax_kind2.IN_KW 0;
       expect p Syntax_kind2.IN_KW (invalid_expression p);
-      ignore (parse_expression p ~signature ~stop_at_item:false 0);
+      ignore (parse_expression p ~signature ~stop_at_item 0);
       complete p marker Syntax_kind2.LET_MODULE_EXPR
+    )
+  else if at p Syntax_kind2.EXCEPTION_KW then
+    (
+      bump p;
+      consume_balanced_until p ~closer:Syntax_kind2.IN_KW 0;
+      expect p Syntax_kind2.IN_KW (invalid_expression p);
+      ignore (parse_expression p ~signature ~stop_at_item 0);
+      complete p marker Syntax_kind2.LET_EXCEPTION_EXPR
     )
   else (
     ignore (bump_if p Syntax_kind2.REC_KW);
@@ -734,9 +755,26 @@ and parse_let_expr = fun p ~signature ->
     in
     parse_and_bindings ();
     expect p Syntax_kind2.IN_KW (invalid_expression p);
-    ignore (parse_expression p ~signature ~stop_at_item:false 0);
+    ignore (parse_expression p ~signature ~stop_at_item 0);
     complete p marker Syntax_kind2.LET_EXPR
   )
+
+and parse_binding_operator_expr = fun p marker ~signature ~stop_at_item ->
+  bump p;
+  parse_let_binding p ~signature ~top_level:false;
+  let rec parse_parallel_bindings () =
+    if at p Syntax_kind2.AND_KW && binding_operator_suffix (peek_kind p 1) then
+      (
+        bump p;
+        bump p;
+        parse_let_binding p ~signature ~top_level:false;
+        parse_parallel_bindings ()
+      )
+  in
+  parse_parallel_bindings ();
+  expect p Syntax_kind2.IN_KW (invalid_expression p);
+  ignore (parse_expression p ~signature ~stop_at_item 0);
+  complete p marker Syntax_kind2.BINDING_OPERATOR_EXPR
 
 and parse_dot_bang_expr = fun p lhs ~signature ~stop_at_item ~stop_at_semi ->
   let marker = precede p lhs in
@@ -977,19 +1015,55 @@ and parse_path_pattern = fun p ->
   let marker = start_node p in
   expect p Syntax_kind2.IDENT (invalid_pattern p);
   consume_path_segments p;
-  complete p marker Syntax_kind2.PATH_PATTERN
+  if at p Syntax_kind2.DOT && peek_kind p 1 = Syntax_kind2.LPAREN then
+    (
+      bump p;
+      bump p;
+      if not (at p Syntax_kind2.RPAREN || is_eof p) then
+        parse_pattern ~stop_type_at_arrow:false p;
+      expect p Syntax_kind2.RPAREN (invalid_pattern p);
+      complete p marker Syntax_kind2.LOCAL_OPEN_PATTERN
+    )
+  else
+    complete p marker Syntax_kind2.PATH_PATTERN
 
 and parse_parenthesized_pattern = fun p ->
   let marker = start_node p in
   bump p;
   let at_closer () = at p Syntax_kind2.RPAREN || is_eof p in
-  if at p Syntax_kind2.MODULE_KW then
+  if at p Syntax_kind2.TYPE_KW then
     (
       bump p;
-      expect p Syntax_kind2.IDENT (invalid_pattern p);
+      let rec consume_type_names () =
+        if at p Syntax_kind2.IDENT then
+          (
+            bump p;
+            consume_type_names ()
+          )
+      in
+      consume_type_names ();
+      expect p Syntax_kind2.RPAREN (invalid_pattern p);
+      complete p marker Syntax_kind2.LOCALLY_ABSTRACT_TYPE_PATTERN
+    )
+  else if at p Syntax_kind2.MODULE_KW then
+    (
+      bump p;
+      if at p Syntax_kind2.IDENT || at p Syntax_kind2.UNDERSCORE then
+        bump p
+      else
+        expect p Syntax_kind2.IDENT (invalid_pattern p);
       consume_balanced_until p ~closer:Syntax_kind2.RPAREN 0;
       expect p Syntax_kind2.RPAREN (invalid_pattern p);
       complete p marker Syntax_kind2.FIRST_CLASS_MODULE_PATTERN
+    )
+  else if binding_operator_keyword (current_kind p)
+          && binding_operator_suffix (peek_kind p 1)
+          && peek_kind p 2 = Syntax_kind2.RPAREN then
+    (
+      bump p;
+      bump p;
+      expect p Syntax_kind2.RPAREN (invalid_pattern p);
+      complete p marker Syntax_kind2.PATH_PATTERN
     )
   else (
     if not (at_closer ()) then
@@ -1245,6 +1319,8 @@ let parse_structure_item = fun p ->
   let marker = start_node p in
   (
     match current_kind p with
+    | Syntax_kind2.LET_KW when binding_operator_suffix (peek_kind p 1) ->
+        parse_expr_item p ~signature:false
     | Syntax_kind2.LET_KW
       when peek_kind p 1 = Syntax_kind2.OPEN_KW || peek_kind p 1 = Syntax_kind2.MODULE_KW ->
         parse_expr_item p ~signature:false

@@ -87,6 +87,8 @@ module Expr = struct
     | Syntax_kind2.LET_EXPR
     | Syntax_kind2.LOCAL_OPEN_EXPR
     | Syntax_kind2.LET_MODULE_EXPR
+    | Syntax_kind2.LET_EXCEPTION_EXPR
+    | Syntax_kind2.BINDING_OPERATOR_EXPR
     | Syntax_kind2.FIRST_CLASS_MODULE_EXPR
     | Syntax_kind2.IF_EXPR
     | Syntax_kind2.MATCH_EXPR
