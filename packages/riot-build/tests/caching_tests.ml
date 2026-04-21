@@ -16,7 +16,7 @@ let make_test_workspace = fun tmpdir ->
 
 let test_cache_store_creation_is_lazy_until_first_save = fun _ctx ->
   match
-    Fs.with_tempdir ~prefix:"cache_test"
+    Fs.with_tempdir ~prefix:"cache_test_lazy"
       (fun tmpdir ->
         let workspace = make_test_workspace tmpdir in
         let store = Riot_store.Store.create ~workspace in
@@ -57,7 +57,7 @@ let test_cache_store_creation_is_lazy_until_first_save = fun _ctx ->
 
 let test_simple_file_caching = fun _ctx ->
   match
-    Fs.with_tempdir ~prefix:"cache_test"
+    Fs.with_tempdir ~prefix:"cache_test_simple"
       (fun tmpdir ->
         let workspace = make_test_workspace tmpdir in
         let store = Riot_store.Store.create ~workspace in
@@ -80,7 +80,7 @@ let test_simple_file_caching = fun _ctx ->
 
 let test_cache_hit_retrieval = fun _ctx ->
   match
-    Fs.with_tempdir ~prefix:"cache_test"
+    Fs.with_tempdir ~prefix:"cache_test_hit"
       (fun tmpdir ->
         let workspace = make_test_workspace tmpdir in
         let store = Riot_store.Store.create ~workspace in
@@ -105,7 +105,7 @@ let test_cache_hit_retrieval = fun _ctx ->
 
 let test_cache_promotion_workflow = fun _ctx ->
   match
-    Fs.with_tempdir ~prefix:"cache_test"
+    Fs.with_tempdir ~prefix:"cache_test_promotion"
       (fun tmpdir ->
         let workspace = make_test_workspace tmpdir in
         let store = Riot_store.Store.create ~workspace in
@@ -146,7 +146,7 @@ let test_cache_promotion_workflow = fun _ctx ->
 
 let test_different_hashes_isolated = fun _ctx ->
   match
-    Fs.with_tempdir ~prefix:"cache_test"
+    Fs.with_tempdir ~prefix:"cache_test_isolated"
       (fun tmpdir ->
         let workspace = make_test_workspace tmpdir in
         let store = Riot_store.Store.create ~workspace in

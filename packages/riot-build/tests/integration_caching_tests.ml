@@ -285,7 +285,7 @@ let tests =
   Test.[
     case "equivalent action graph reuses cached artifact" test_execute_reuses_cache_for_equivalent_graph;
     case "changed action graph misses cache" test_execute_cache_misses_when_action_changes;
-    case "dependency change invalidates cached compile actions" test_dependency_change_invalidates_cached_compile_actions;
+    case ~size:Large "dependency change invalidates cached compile actions" test_dependency_change_invalidates_cached_compile_actions;
   ]
 
 let name = "riot-build:integration-caching"
