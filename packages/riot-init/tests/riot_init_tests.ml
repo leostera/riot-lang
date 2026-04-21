@@ -188,6 +188,36 @@ let test_init_without_path_defaults_to_current_directory = fun _ctx ->
       | Some _ -> Error "expected final init event to be completion"
       | None -> Error "expected init completion event")
 
+let test_init_preserves_dotted_workspace_names = fun _ctx ->
+  with_tempdir_result "riot_init_dotted_name"
+    (fun tempdir ->
+      let workspace_root = Path.(tempdir / Path.v "arewedown.dev") in
+      let* () = run_init [ "init"; Path.to_string workspace_root; "--bin" ] in
+      let module_name = Riot_model.Module_name.(of_string "arewedown-dev" |> to_string) in
+      let test_file = String.lowercase_ascii module_name ^ "_tests.ml" in
+      let* () = assert_exists Path.(workspace_root / Path.v "riot.toml") in
+      let* () = assert_contains Path.(workspace_root / Path.v "riot.toml") {|name = "arewedown.dev"|} in
+      let* () =
+        assert_contains Path.(workspace_root / Path.v "riot.toml")
+          {|members = [
+  "packages/arewedown-dev"|}
+      in
+      let* () = assert_exists
+        Path.(workspace_root / Path.v "packages" / Path.v "arewedown-dev" / Path.v "riot.toml") in
+      let* () = assert_contains
+        Path.(workspace_root / Path.v "packages" / Path.v "arewedown-dev" / Path.v "riot.toml")
+        {|name = "arewedown-dev"|} in
+      let* () =
+        assert_contains Path.(workspace_root / Path.v "packages" / Path.v "arewedown-dev" / Path.v "riot.toml")
+          {|[[bin]]
+name = "arewedown-dev"|}
+      in
+      let* () = assert_exists
+        Path.(workspace_root / Path.v "packages" / Path.v "arewedown-dev" / Path.v "tests" / Path.v test_file) in
+      let* () = assert_contains Path.(workspace_root / Path.v "README.md") "riot run arewedown-dev" in
+      let* () = assert_contains Path.(workspace_root / Path.v "Dockerfile") "/app/_build/release/*/arewedown-dev" in
+      assert_contains Path.(workspace_root / Path.v "Dockerfile") {|ENTRYPOINT ["/usr/local/bin/arewedown-dev"]|})
+
 let test_new_package_uses_typed_paths = fun _ctx ->
   with_tempdir_result "riot_init_new_package"
     (fun tempdir ->
@@ -213,6 +243,7 @@ let tests =
     case "init scaffolds Docker, CI, and a starter test for binaries" test_init_scaffolds_binary_workspace;
     case "init . scaffolds the current directory and records the workspace name" test_init_dot_scaffolds_current_directory;
     case "init defaults to the current directory when no path is passed" test_init_without_path_defaults_to_current_directory;
+    case "init preserves dotted workspace names and normalizes the starter package" test_init_preserves_dotted_workspace_names;
     case "new_package scaffolds a package from a typed path" test_new_package_uses_typed_paths;
   ]
 
@@ -220,4 +251,5 @@ let () =
   Actors.run
     ~main:(fun ~args ->
       Test.Cli.main ~execution_mode:Test.Cli.Linear ~name:"riot_init_tests" ~tests ~args ())
-    ~args:Env.args ()
+    ~args:Env.args
+    ()
