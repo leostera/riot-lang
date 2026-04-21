@@ -181,8 +181,16 @@ let at_item_boundary = fun p ~signature ->
     false
   else if signature then
     starts_signature_item (current_kind p)
+    || (at p Syntax_kind2.LBRACKET
+       && (peek_kind p 1 = Syntax_kind2.PERCENT
+          || peek_kind p 1 = Syntax_kind2.AT
+          || peek_kind p 1 = Syntax_kind2.ATAT))
   else
     starts_structure_item (current_kind p)
+    || (at p Syntax_kind2.LBRACKET
+       && (peek_kind p 1 = Syntax_kind2.PERCENT
+          || peek_kind p 1 = Syntax_kind2.AT
+          || peek_kind p 1 = Syntax_kind2.ATAT))
 
 let expression_boundary = fun p ~stop_at_item ~stop_at_semi ~signature ->
   match current_kind p with
@@ -230,6 +238,7 @@ let can_start_atom = function
   | Syntax_kind2.BACKTICK
   | Syntax_kind2.TILDE
   | Syntax_kind2.QUESTION
+  | Syntax_kind2.PLUS
   | Syntax_kind2.MINUS
   | Syntax_kind2.PLUSDOT
   | Syntax_kind2.MINUSDOT
@@ -392,6 +401,27 @@ let is_attribute_suffix = fun p ->
   at p Syntax_kind2.LBRACKET
   && (peek_kind p 1 = Syntax_kind2.AT || peek_kind p 1 = Syntax_kind2.ATAT)
 
+let is_extension_shell = fun p ->
+  at p Syntax_kind2.LBRACKET && peek_kind p 1 = Syntax_kind2.PERCENT
+
+let is_attribute_shell = fun p ->
+  at p Syntax_kind2.LBRACKET
+  && (peek_kind p 1 = Syntax_kind2.AT || peek_kind p 1 = Syntax_kind2.ATAT)
+
+let rec consume_attribute_sigils = fun p ->
+  if at p Syntax_kind2.AT || at p Syntax_kind2.ATAT then
+    (
+      bump p;
+      consume_attribute_sigils p
+    )
+
+let rec consume_extension_sigils = fun p ->
+  if at p Syntax_kind2.PERCENT then
+    (
+      bump p;
+      consume_extension_sigils p
+    )
+
 let rec parse_expression = fun p ~signature ~stop_at_item ?(stop_at_semi = false) min_bp ->
   let rec loop lhs =
     if expression_boundary p ~stop_at_item ~stop_at_semi ~signature then
@@ -507,10 +537,15 @@ and parse_prefix_or_atom = fun p ~signature ~stop_at_item ~stop_at_semi ->
       complete p marker Syntax_kind2.PREFIX_EXPR
   | Syntax_kind2.LET_KW ->
       parse_let_expr p ~signature ~stop_at_item
+  | Syntax_kind2.DOT ->
+      parse_unreachable_expr p
   | Syntax_kind2.BACKTICK ->
       parse_poly_variant_expr p ~signature ~stop_at_item ~stop_at_semi
   | Syntax_kind2.TILDE ->
-      parse_label_arg_expr p ~signature ~stop_at_item ~stop_at_semi Syntax_kind2.LABELED_ARG
+      if prefix_operator (peek_kind p 1) then
+        parse_tilde_prefix_expr p ~signature ~stop_at_item ~stop_at_semi
+      else
+        parse_label_arg_expr p ~signature ~stop_at_item ~stop_at_semi Syntax_kind2.LABELED_ARG
   | Syntax_kind2.QUESTION ->
       parse_label_arg_expr p ~signature ~stop_at_item ~stop_at_semi Syntax_kind2.OPTIONAL_ARG
   | Syntax_kind2.IF_KW ->
@@ -544,7 +579,10 @@ and parse_prefix_or_atom = fun p ~signature ~stop_at_item ~stop_at_semi ->
   | Syntax_kind2.BEGIN_KW ->
       parse_parenthesized_expr p ~signature ~stop_at_item
   | Syntax_kind2.LBRACKET ->
-      parse_list_expr p ~signature
+      if is_extension_shell p then
+        parse_extension_expr p
+      else
+        parse_list_expr p ~signature
   | Syntax_kind2.LBRACKET_BAR ->
       parse_array_expr p ~signature
   | Syntax_kind2.LBRACE ->
@@ -557,6 +595,18 @@ and parse_prefix_or_atom = fun p ~signature ~stop_at_item ~stop_at_semi ->
       else
         Event.Buffer.missing p.events ~kind:Syntax_kind2.IDENT ~offset:(current_offset p);
       complete p marker Syntax_kind2.ERROR
+
+and parse_tilde_prefix_expr = fun p ~signature ~stop_at_item ~stop_at_semi ->
+  let marker = start_node p in
+  bump p;
+  bump p;
+  let _operand = parse_expression p ~signature ~stop_at_item ~stop_at_semi 70 in
+  complete p marker Syntax_kind2.PREFIX_EXPR
+
+and parse_unreachable_expr = fun p ->
+  let marker = start_node p in
+  bump p;
+  complete p marker Syntax_kind2.UNREACHABLE_EXPR
 
 and parse_path_expr = fun p ->
   let marker = start_node p in
@@ -645,6 +695,14 @@ and parse_list_expr = fun p ~signature ->
   parse_elements ();
   expect p Syntax_kind2.RBRACKET (invalid_expression p);
   complete p marker Syntax_kind2.LIST_EXPR
+
+and parse_extension_expr = fun p ->
+  let marker = start_node p in
+  bump p;
+  consume_extension_sigils p;
+  consume_balanced_until p ~closer:Syntax_kind2.RBRACKET 0;
+  expect p Syntax_kind2.RBRACKET (invalid_expression p);
+  complete p marker Syntax_kind2.EXTENSION_EXPR
 
 and parse_array_expr = fun p ~signature ->
   let marker = start_node p in
@@ -1315,10 +1373,29 @@ let parse_expr_item = fun p ~signature ->
   ignore (parse_expression p ~signature ~stop_at_item:true 0);
   ignore (complete p marker Syntax_kind2.EXPR_ITEM)
 
+let parse_bracketed_item_shell = fun p kind ->
+  let marker = start_node p in
+  bump p;
+  (
+    match kind with
+    | Syntax_kind2.EXTENSION_ITEM ->
+        consume_extension_sigils p
+    | Syntax_kind2.ATTRIBUTE_ITEM ->
+        consume_attribute_sigils p
+    | _ -> ()
+  );
+  consume_balanced_until p ~closer:Syntax_kind2.RBRACKET 0;
+  expect p Syntax_kind2.RBRACKET (invalid_expression p);
+  ignore (complete p marker kind)
+
 let parse_structure_item = fun p ->
   let marker = start_node p in
   (
     match current_kind p with
+    | Syntax_kind2.LBRACKET when is_extension_shell p ->
+        parse_bracketed_item_shell p Syntax_kind2.EXTENSION_ITEM
+    | Syntax_kind2.LBRACKET when is_attribute_shell p ->
+        parse_bracketed_item_shell p Syntax_kind2.ATTRIBUTE_ITEM
     | Syntax_kind2.LET_KW when binding_operator_suffix (peek_kind p 1) ->
         parse_expr_item p ~signature:false
     | Syntax_kind2.LET_KW
@@ -1351,6 +1428,10 @@ let parse_signature_item = fun p ->
   let marker = start_node p in
   (
     match current_kind p with
+    | Syntax_kind2.LBRACKET when is_extension_shell p ->
+        parse_bracketed_item_shell p Syntax_kind2.EXTENSION_ITEM
+    | Syntax_kind2.LBRACKET when is_attribute_shell p ->
+        parse_bracketed_item_shell p Syntax_kind2.ATTRIBUTE_ITEM
     | Syntax_kind2.VAL_KW ->
         parse_opaque_decl p ~signature:true Syntax_kind2.VAL_DECL (invalid_type_expression p)
     | Syntax_kind2.TYPE_KW ->
