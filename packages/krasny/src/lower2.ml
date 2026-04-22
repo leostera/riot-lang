@@ -355,7 +355,7 @@ let is_section_docstring_text = fun comment_text ->
       Char.equal first '{' || Char.equal first '#'
 
 let leading_docstring_separator = fun left right ->
-  if (not left.is_section) && right.is_section then
+  if not left.is_section then
     "\n"
   else
     "\n\n"
@@ -2992,18 +2992,13 @@ let signature_item_doc = fun item ->
   in
   Doc.concat [ leading_comment_doc item; body ]
 
-let node_has_leading_comment = fun node ->
-  match Ast.Node.first_descendant_token node with
-  | Some token -> Ast.Token.has_leading_comment token
-  | None -> false
-
 let signature_item_is_type = fun item ->
   match Ast.SignatureItem.view item with
   | Type _ -> true
   | _ -> false
 
 let signature_items_compact_between = fun left right ->
-  signature_item_is_type left && signature_item_is_type right && not (node_has_leading_comment right)
+  signature_item_is_type left && signature_item_is_type right
 
 let signature_items_doc = fun items ->
   let rec loop previous doc = function
