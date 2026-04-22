@@ -204,6 +204,16 @@ type t =
   | TYPE_EXPR
   | ERROR
   | MISSING
+val equal: t -> t -> bool
+
+val not_equal: t -> t -> bool
+
+val ( = ): t -> t -> bool
+
+val ( != ): t -> t -> bool
+
+val is: t -> t -> bool
+
 val to_string: t -> string
 
 val is_trivia: t -> bool

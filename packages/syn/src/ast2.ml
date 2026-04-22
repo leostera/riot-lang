@@ -46,7 +46,7 @@ module Node = struct
         match !found with
         | Some _ -> ()
         | None ->
-            if kind child = expected_kind then
+            if Syntax_kind2.(kind child = expected_kind) then
               found := Some child);
     !found
 end
