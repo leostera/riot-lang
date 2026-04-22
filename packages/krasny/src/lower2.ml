@@ -304,9 +304,29 @@ let literal_token_doc = fun token ->
   | kind when Kind.(kind = FLOAT) -> Doc.text (render_float_literal (Ast.Token.text token))
   | _ -> token_doc token
 
+let strip_leading_whitespace = fun text ->
+  let length = String.length text in
+  let rec loop index =
+    if Int.(index >= length) then
+      ""
+    else
+      match String.get_unchecked text ~at:index with
+      | ' '
+      | '\t'
+      | '\n'
+      | '\r' -> loop Int.(index + 1)
+      | _ ->
+          if Int.equal index 0 then
+            text
+          else
+            String.sub text ~offset:index ~len:Int.(length - index)
+  in
+  loop 0
+
 let leading_comment_doc = fun node ->
   match Ast.Node.first_descendant_token node with
-  | Some token when Ast.Token.has_leading_comment token -> Doc.text (Ast.Token.leading_text token)
+  | Some token when Ast.Token.has_leading_comment token -> Doc.text
+    (strip_leading_whitespace (Ast.Token.leading_text token))
   | _ -> Doc.empty
 
 let bracketed_shell_doc = fun ~empty_message ~for_each_shell_token ->
@@ -2023,6 +2043,7 @@ let type_token_needs_space = fun previous current ->
   | (_, kind) when Kind.(kind = COMMA || kind = SEMI || kind = COLON) -> false
   | (kind, _) when Kind.(kind = LPAREN || kind = LBRACKET || kind = LBRACKET_BAR || kind = LBRACE) -> false
   | (kind, _) when Kind.(kind = QUOTE || kind = BACKTICK || kind = QUESTION || kind = TILDE) -> false
+  | (kind, _) when Kind.(kind = AT || kind = ATAT) -> false
   | (_, kind) when Kind.(kind = DOT) -> false
   | (kind, current) when Kind.(kind = DOT) -> Kind.(current = QUOTE)
   | (kind, _) when Kind.(kind = COMMA) -> true
