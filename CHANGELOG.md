@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.0.20 - 2026-04-22
+
+### riot
+- `riot new` now works both inside a workspace and as a standalone package scaffold, with generated packages staying usable after creation and repeated `riot new` flows keeping workspace members in sync.
+- Riot end-to-end coverage now exercises generated `riot init` / `riot new` workspaces directly instead of relying on the globally installed binary.
+- Test suites can now execute the binaries built for the package under test through structured suite context, so CLI/package tests run against the just-built artifact instead of an ambient install.
+
+### planner-build
+- Hardened package-layout validation so target code is rejected early when it reaches library-internal modules, namespaced internal modules, or another target's private root.
+- Added real-package kernel planner oracles that pin public-root dependency retention before later action planning, including `Kernel__Net__Addr__Unix` and `Kernel__Process`.
+- Tightened planner/model integration around target ownership, target-root boundaries, and stale plan refresh behavior, with broader regression coverage across `riot-planner`, `riot-model`, and `syn`.
+
 ## 0.0.19 - 2026-04-22
 
 ### riot
