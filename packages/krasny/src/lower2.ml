@@ -2097,6 +2097,33 @@ let type_tokens_inline_doc = fun tokens ->
   in
   loop None Doc.empty tokens
 
+let declaration_head_token_needs_space = fun previous current ->
+  match previous, current with
+  | (_, kind) when Kind.(kind = PERCENT) -> false
+  | (kind, _) when Kind.(kind = PERCENT) -> false
+  | (_, kind) when Kind.(kind = RPAREN || kind = RBRACKET || kind = RBRACE) -> false
+  | (kind, _) when Kind.(kind = LPAREN || kind = LBRACKET || kind = LBRACE) -> false
+  | (kind, _) when Kind.(kind = AT || kind = ATAT) -> false
+  | (_, kind) when Kind.(kind = DOT) -> false
+  | (kind, _) when Kind.(kind = DOT) -> false
+  | _ -> true
+
+let declaration_head_tokens_doc = fun tokens ->
+  let rec loop previous acc = function
+    | [] -> acc
+    | token :: rest ->
+        let current = Ast.Token.kind token in
+        let piece = token_doc token in
+        let acc =
+          match previous with
+          | Some previous when declaration_head_token_needs_space previous current -> Doc.concat
+            [ acc; Doc.space; piece ]
+          | _ -> Doc.concat [ acc; piece ]
+        in
+        loop (Some current) acc rest
+  in
+  loop None Doc.empty tokens
+
 let split_top_level_arrows = fun tokens ->
   let rec loop current groups depth = function
     | [] -> List.reverse ((List.reverse current, false) :: groups)
@@ -2574,6 +2601,16 @@ let module_type_decl_sig_body_tokens = fun decl ->
     ~fn:(fun token -> tokens := token :: !tokens);
   List.reverse !tokens
 
+let module_type_decl_head_tokens = fun decl ->
+  let tokens = ref [] in
+  Ast.ModuleTypeDeclaration.for_each_head_token decl ~fn:(fun token -> tokens := token :: !tokens);
+  List.reverse !tokens
+
+let module_type_decl_head_doc = fun decl ->
+  match module_type_decl_head_tokens decl with
+  | [] -> unsupported "module type declaration without head tokens"
+  | tokens -> declaration_head_tokens_doc tokens
+
 let starts_signature_body_item = fun kind ->
   Kind.(kind = VAL_KW
   || kind = TYPE_KW
@@ -2581,7 +2618,13 @@ let starts_signature_body_item = fun kind ->
   || kind = OPEN_KW
   || kind = INCLUDE_KW
   || kind = EXTERNAL_KW
-  || kind = EXCEPTION_KW)
+  || kind = EXCEPTION_KW
+  || kind = CLASS_KW)
+
+let continues_compound_signature_item_head = fun current token ->
+  token_kind_is token Kind.TYPE_KW && match current with
+  | previous :: [] -> token_kind_is previous Kind.MODULE_KW || token_kind_is previous Kind.CLASS_KW
+  | _ -> false
 
 let split_signature_body_items = fun tokens ->
   let rec loop current items depth = function
@@ -2594,6 +2637,7 @@ let split_signature_body_items = fun tokens ->
           )
     | token :: rest when Int.(depth = 0)
     && starts_signature_body_item (Ast.Token.kind token)
+    && not (continues_compound_signature_item_head current token)
     && not (List.is_empty current) -> loop
       [ token ]
       (List.reverse current :: items)
@@ -2629,10 +2673,26 @@ let signature_body_val_item_doc = fun tokens ->
     )
   | _ -> type_tokens_inline_doc tokens
 
+let signature_body_equals_item_doc = fun tokens ->
+  match split_top_level_token tokens ~matches:(fun kind -> Kind.(kind = EQ)) with
+  | Some (head_tokens, equals_token, body_tokens) -> Doc.concat
+    [
+      declaration_head_tokens_doc head_tokens;
+      Doc.space;
+      token_doc equals_token;
+      Doc.space;
+      type_tokens_doc body_tokens;
+    ]
+  | None -> declaration_head_tokens_doc tokens
+
 let signature_body_item_doc = fun tokens ->
   match tokens with
   | token :: _ when token_kind_is token Kind.TYPE_KW -> signature_body_type_item_doc tokens
   | token :: _ when token_kind_is token Kind.VAL_KW -> signature_body_val_item_doc tokens
+  | first :: second :: _ when token_kind_is first Kind.MODULE_KW && token_kind_is second Kind.TYPE_KW -> signature_body_equals_item_doc
+    tokens
+  | first :: second :: _ when token_kind_is first Kind.CLASS_KW && token_kind_is second Kind.TYPE_KW -> signature_body_equals_item_doc
+    tokens
   | _ -> type_tokens_inline_doc tokens
 
 let module_type_decl_sig_body_doc = fun decl ->
@@ -2692,8 +2752,8 @@ let module_type_decl_doc = fun decl ->
   match Ast.ModuleTypeDeclaration.name decl with
   | None -> unsupported "module type declaration without name"
   | Some name ->
-      let head = Doc.concat
-        [ Doc.text "module"; Doc.space; Doc.text "type"; Doc.space; token_doc name ] in
+      let _ = name in
+      let head = module_type_decl_head_doc decl in
       (
         match Ast.ModuleTypeDeclaration.equals_token decl, Ast.ModuleTypeDeclaration.body decl with
         | None, Abstract -> head

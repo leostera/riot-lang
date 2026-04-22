@@ -603,6 +603,8 @@ module ModuleTypeDeclaration: sig
 
   val equals_token: t -> Token.t option
 
+  val for_each_head_token: t -> fn:(Token.t -> unit) -> unit
+
   val body: t -> body
 
   val sig_token: t -> Token.t option

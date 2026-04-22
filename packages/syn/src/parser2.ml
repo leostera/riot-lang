@@ -971,6 +971,33 @@ let consume_extension_payload = fun p ->
   else
     consume_balanced_until p ~closer:Syntax_kind2.RBRACKET 0
 
+let consume_shortcut_extension_modifier = fun p ->
+  if at p Syntax_kind2.PERCENT then
+    (
+      bump p;
+      if at p Syntax_kind2.IDENT then
+        bump p;
+      let rec loop () =
+        if at p Syntax_kind2.DOT && Syntax_kind2.(peek_kind p 1 = IDENT) then
+          (
+            bump p;
+            bump p;
+            loop ()
+          )
+      in
+      loop ()
+    )
+
+let rec consume_declaration_attributes = fun p ->
+  if is_attribute_shell p then
+    (
+      bump p;
+      consume_attribute_sigils p;
+      consume_balanced_until p ~closer:Syntax_kind2.RBRACKET 0;
+      expect p Syntax_kind2.RBRACKET (invalid_expression p);
+      consume_declaration_attributes p
+    )
+
 let rec consume_symbolic_operator = fun p ->
   if symbolic_operator_part (current_kind p) then
     (
@@ -2908,6 +2935,8 @@ let parse_module_type_decl = fun p ~signature ->
   let marker = start_node p in
   expect p Syntax_kind2.MODULE_KW (invalid_expression p);
   expect p Syntax_kind2.TYPE_KW (invalid_type_expression p);
+  consume_shortcut_extension_modifier p;
+  consume_declaration_attributes p;
   (
     if at p Syntax_kind2.IDENT then
       bump p
@@ -2928,7 +2957,9 @@ let parse_module_type_decl = fun p ~signature ->
 let parse_module_decl = fun p ~signature ->
   let marker = start_node p in
   expect p Syntax_kind2.MODULE_KW (invalid_expression p);
+  consume_shortcut_extension_modifier p;
   ignore (bump_if p Syntax_kind2.REC_KW);
+  consume_declaration_attributes p;
   (
     if at p Syntax_kind2.IDENT || at p Syntax_kind2.UNDERSCORE then
       bump p
@@ -2956,6 +2987,8 @@ let parse_module_decl = fun p ~signature ->
 let parse_external_decl = fun p ~signature ->
   let marker = start_node p in
   expect p Syntax_kind2.EXTERNAL_KW (invalid_expression p);
+  consume_shortcut_extension_modifier p;
+  consume_declaration_attributes p;
   (
     if at p Syntax_kind2.IDENT then
       bump p
@@ -2998,6 +3031,8 @@ let parse_val_decl = fun p ~signature ->
 let parse_exception_decl = fun p ~signature ->
   let marker = start_node p in
   expect p Syntax_kind2.EXCEPTION_KW (invalid_expression p);
+  consume_shortcut_extension_modifier p;
+  consume_declaration_attributes p;
   if not (at p Syntax_kind2.IDENT) then
     Event.Buffer.error p.events (missing_exception_name p);
   consume_until_item_boundary p ~signature;

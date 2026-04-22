@@ -2387,9 +2387,38 @@ module ModuleTypeDeclaration = struct
     else
       None
 
-  let name = first_ident_token
+  let name = fun decl ->
+    let found = ref None in
+    let rec loop index =
+      if index >= Node.child_count decl then
+        !found
+      else
+        match child_token_at decl index with
+        | Some token when token_kind_is token Syntax_kind2.EQ ->
+            !found
+        | Some token when token_kind_is token Syntax_kind2.IDENT ->
+            found := Some token;
+            loop (index + 1)
+        | _ ->
+            loop (index + 1)
+    in
+    loop 0
 
   let equals_token = fun decl -> Node.first_child_token decl ~kind:Syntax_kind2.EQ
+
+  let for_each_head_token = fun decl ~fn ->
+    let rec loop index =
+      if index < Node.child_count decl then
+        match child_token_at decl index with
+        | Some token when token_kind_is token Syntax_kind2.EQ ->
+            ()
+        | Some token ->
+            fn token;
+            loop (index + 1)
+        | None ->
+            loop (index + 1)
+    in
+    loop 0
 
   let equals_index = fun decl ->
     let count = Node.child_count decl in
