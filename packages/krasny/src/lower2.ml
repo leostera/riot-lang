@@ -645,8 +645,16 @@ and expr_doc_with_view = fun expr (view: Ast.Expr.view) ->
       let_exception_expr_doc expr
   | FirstClassModule ->
       first_class_module_expr_doc expr
+  | Unreachable -> (
+      match Ast.UnreachableExpr.cast expr with
+      | Some unreachable -> (
+          match Ast.UnreachableExpr.dot_token unreachable with
+          | Some dot -> token_doc dot
+          | None -> unsupported "unreachable expression without dot token"
+        )
+      | None -> unsupported "unsupported unreachable expression"
+    )
   | Extension
-  | Unreachable
   | Object
   | New
   | Attribute _

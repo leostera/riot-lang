@@ -340,6 +340,13 @@ module LetExceptionExpr: sig
   val for_each_payload_token: t -> fn:(Token.t -> unit) -> unit
 end
 
+module UnreachableExpr: sig
+  type t = expr
+  val cast: expr -> t option
+
+  val dot_token: t -> Token.t option
+end
+
 module FirstClassModuleExpr: sig
   type t = expr
   type module_path =

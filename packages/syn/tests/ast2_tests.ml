@@ -783,6 +783,32 @@ let test_let_exception_expression_views = fun _ctx ->
     | Some _ -> Error "expected bare let exception without payload"
   )
 
+let test_unreachable_expression_views = fun _ctx ->
+  let source = "let value = match maybe with | Some value -> value | None -> .\n" in
+  let root = parse_ml source |> Result.expect ~msg:"expected parse2 source file" in
+  let match_expr = nth_structure_item root 0
+  |> require_some ~msg:"expected let item"
+  |> binding_of_structure_item
+  |> Result.expect ~msg:"expected outer binding"
+  |> body_of_binding
+  |> Result.expect ~msg:"expected match body" in
+  let unreachable = ref None in
+  Ast2.Expr.for_each_match_case match_expr
+    ~fn:(fun match_case ->
+      let view = Ast2.MatchCase.view match_case in
+      match view.body with
+      | Some body -> (
+          match Ast2.Expr.view body with
+          | Ast2.Expr.Unreachable -> unreachable := Some body
+          | _ -> ()
+        )
+      | None -> ());
+  let unreachable = !unreachable |> require_some ~msg:"expected unreachable expression" in
+  let unreachable = Ast2.UnreachableExpr.cast unreachable |> require_some ~msg:"expected unreachable expression view" in
+  let dot = Ast2.UnreachableExpr.dot_token unreachable |> require_some ~msg:"expected dot token" in
+  Test.assert_equal ~expected:"." ~actual:(Ast2.Token.text dot);
+  Ok ()
+
 let tests = [
   Test.case "ast2 exposes source file and let binding views" test_source_file_and_let_binding_views;
   Test.case "ast2 exposes if and match expression views" test_expression_views;
@@ -802,6 +828,7 @@ let tests = [
   Test.case "ast2 exposes first-class module expression views" test_first_class_module_views;
   Test.case "ast2 exposes let module expression views" test_let_module_expression_views;
   Test.case "ast2 exposes let exception expression views" test_let_exception_expression_views;
+  Test.case "ast2 exposes unreachable expression views" test_unreachable_expression_views;
 ]
 
 let () =

@@ -1129,6 +1129,23 @@ end = struct
         loop start
 end
 
+module UnreachableExpr: sig
+  type t = expr
+  val cast: expr -> t option
+
+  val dot_token: t -> token option
+end = struct
+  type t = expr
+
+  let cast = fun (expr: expr) ->
+    if node_kind_is expr Syntax_kind2.UNREACHABLE_EXPR then
+      Some expr
+    else
+      None
+
+  let dot_token = fun expr -> Node.first_child_token expr ~kind:Syntax_kind2.DOT
+end
+
 module FirstClassModuleExpr: sig
   type t = expr
   type module_path =
