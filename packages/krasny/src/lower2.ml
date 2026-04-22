@@ -2388,55 +2388,57 @@ let render_type_body_after_equal = fun head body constraints ->
   in
   append_type_constraints doc constraints
 
-let type_member_doc = fun member_ ->
+let type_member_head_doc = fun member_ ->
   match member_.name with
   | None -> unsupported "type declaration without name"
   | Some name ->
       let keyword_doc = token_doc member_.type_keyword in
-      let head = Doc.concat
+      Doc.concat
         [ keyword_doc; Doc.space; (
             match member_.nonrec_token with
             | Some nonrec_token -> Doc.concat [ token_doc nonrec_token; Doc.space ]
             | None -> Doc.empty
           ); type_member_parameters_doc member_.parameters; token_doc name; ]
-      in
-      let body_tokens, constraints = split_constraints member_.body_tokens in
-      match body_tokens with
-      | [] -> append_type_constraints head constraints
-      | _ -> (
-          match split_top_level_token body_tokens ~matches:(fun kind -> Kind.(kind = EQ)) with
-          | Some (alias_tokens, _eq, representation_tokens) ->
-              let representation = rendered_type_body representation_tokens in
-              let doc =
-                if representation.leading_line then
-                  Doc.concat
-                    [
-                      head;
-                      Doc.space;
-                      Doc.equal;
-                      Doc.space;
-                      type_tokens_doc alias_tokens;
-                      Doc.space;
-                      Doc.equal;
-                      representation.doc;
-                    ]
-                else
-                  Doc.concat
-                    [
-                      head;
-                      Doc.space;
-                      Doc.equal;
-                      Doc.space;
-                      type_tokens_doc alias_tokens;
-                      Doc.space;
-                      Doc.equal;
-                      Doc.space;
-                      representation.doc;
-                    ]
-              in
-              append_type_constraints doc constraints
-          | None -> render_type_body_after_equal head body_tokens constraints
-        )
+
+let type_member_doc = fun member_ ->
+  let head = type_member_head_doc member_ in
+  let body_tokens, constraints = split_constraints member_.body_tokens in
+  match body_tokens with
+  | [] -> append_type_constraints head constraints
+  | _ -> (
+      match split_top_level_token body_tokens ~matches:(fun kind -> Kind.(kind = EQ)) with
+      | Some (alias_tokens, _eq, representation_tokens) ->
+          let representation = rendered_type_body representation_tokens in
+          let doc =
+            if representation.leading_line then
+              Doc.concat
+                [
+                  head;
+                  Doc.space;
+                  Doc.equal;
+                  Doc.space;
+                  type_tokens_doc alias_tokens;
+                  Doc.space;
+                  Doc.equal;
+                  representation.doc;
+                ]
+            else
+              Doc.concat
+                [
+                  head;
+                  Doc.space;
+                  Doc.equal;
+                  Doc.space;
+                  type_tokens_doc alias_tokens;
+                  Doc.space;
+                  Doc.equal;
+                  Doc.space;
+                  representation.doc;
+                ]
+          in
+          append_type_constraints doc constraints
+      | None -> render_type_body_after_equal head body_tokens constraints
+    )
 
 let type_decl_members = fun tokens ->
   let rec loop current members depth = function
@@ -2459,14 +2461,43 @@ let type_decl_members = fun tokens ->
   in
   loop [] [] 0 tokens
 
+let split_type_extension_operator = fun tokens ->
+  let rec loop before depth = function
+    | plus_token :: eq_token :: rest when Int.equal depth 0
+    && token_kind_is plus_token Kind.PLUS
+    && token_kind_is eq_token Kind.EQ -> Some (List.reverse before, plus_token, eq_token, rest)
+    | token :: rest -> loop (token :: before) (type_token_depth_after depth token) rest
+    | [] -> None
+  in
+  loop [] 0 tokens
+
+let type_extension_doc = fun before plus_token eq_token body_tokens ->
+  let member_ = parse_type_member_header before in
+  let head = type_member_head_doc member_ in
+  let operator = Doc.concat [ token_doc plus_token; token_doc eq_token ] in
+  match body_tokens with
+  | [] -> Doc.concat [ head; Doc.space; operator ]
+  | token :: _ when token_kind_is token Kind.PIPE -> Doc.concat
+    [ head; Doc.space; operator; variant_body_doc body_tokens ]
+  | _ -> Doc.concat [ head; Doc.space; operator; Doc.space; type_tokens_doc body_tokens ]
+
 let type_decl_doc = fun decl ->
-  match type_decl_members (type_decl_tokens decl) with
-  | [] -> unsupported "empty type declaration"
-  | first :: rest ->
-      let first_doc = type_member_doc first in
-      let rest_docs = rest
-      |> List.map ~fn:(fun member_ -> Doc.concat [ blank_line; type_member_doc member_ ]) in
-      Doc.concat (first_doc :: rest_docs)
+  let tokens = type_decl_tokens decl in
+  match split_type_extension_operator tokens with
+  | Some (before, plus_token, eq_token, body_tokens) -> type_extension_doc
+    before
+    plus_token
+    eq_token
+    body_tokens
+  | None -> (
+      match type_decl_members tokens with
+      | [] -> unsupported "empty type declaration"
+      | first :: rest ->
+          let first_doc = type_member_doc first in
+          let rest_docs = rest
+          |> List.map ~fn:(fun member_ -> Doc.concat [ blank_line; type_member_doc member_ ]) in
+          Doc.concat (first_doc :: rest_docs)
+    )
 
 let module_decl_path_body_doc = fun decl ->
   let segments = ref [] in
