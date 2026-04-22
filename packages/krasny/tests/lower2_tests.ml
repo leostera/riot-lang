@@ -84,6 +84,7 @@ let assert_lower2_existing_fixture_subset = fun () ->
     Path.v "packages/krasny/tests/fixtures/0100_atoms_and_basic_expressions.ml";
     Path.v "packages/krasny/tests/fixtures/0200_operators_and_parens.ml";
     Path.v "packages/krasny/tests/fixtures/0300_bindings_and_control_flow.ml";
+    Path.v "packages/krasny/tests/fixtures/0400_functions_match_and_patterns.ml";
   ] in
   let rec loop = function
     | [] -> Ok ()
@@ -146,7 +147,7 @@ let tests = [
     (fun _ctx ->
       assert_format2_ml
         ~expected:(top_level
-          [ "let ok = `Ok 1"; "let classify = function\n| `Ok value -> value\n| `Error -> 0" ])
+          [ "let ok = `Ok 1"; "let classify = function\n  | `Ok value -> value\n  | `Error -> 0" ])
         "let ok = `Ok 1\nlet classify = function | `Ok value -> value | `Error -> 0\n");
   Test.case
     "lower2 formats expression and pattern attributes"
@@ -271,9 +272,9 @@ let tests = [
       assert_format2_ml
         ~expected:(top_level
           [
-            "let force = function\n| lazy value -> value";
+            "let force = function\n  | lazy value -> value";
             "let recovered =\n  match read () with\n  | exception Failure -> 0\n  | value -> value";
-            "let classify = function\n| 'a' .. 'z' -> 1\n| _ -> 0";
+            "let classify = function\n  | 'a' .. 'z' -> 1\n  | _ -> 0";
           ])
         "let force = function | lazy value -> value\nlet recovered = match read () with | exception Failure -> 0 | value -> value\nlet classify = function | 'a' .. 'z' -> 1 | _ -> 0\n");
   Test.case

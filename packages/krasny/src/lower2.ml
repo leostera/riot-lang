@@ -366,6 +366,14 @@ let child_pattern_docs = fun pattern ->
   Ast.Pattern.for_each_child_pattern pattern ~fn:(fun child -> docs := child :: !docs);
   List.reverse !docs
 
+let or_pattern_items = fun pattern ->
+  let rec collect pattern acc =
+    match Ast.Pattern.view pattern with
+    | Or { left=Some left; right=Some right } -> collect left (collect right acc)
+    | _ -> pattern :: acc
+  in
+  collect pattern []
+
 let direct_pattern_docs = fun node ->
   let docs = ref [] in
   Ast.Node.for_each_child_node node
@@ -499,11 +507,18 @@ let rec pattern_doc = fun pattern ->
       child_pattern_docs pattern
       |> List.map ~fn:pattern_doc
       |> Doc.join (Doc.concat [ Doc.comma; Doc.space ])
-  | List ->
-      child_pattern_docs pattern
-      |> List.map ~fn:pattern_doc
-      |> Doc.join (Doc.concat [ Doc.semi; Doc.space ])
-      |> fun items -> Doc.concat [ Doc.lbracket; items; Doc.rbracket ]
+  | List -> (
+      match child_pattern_docs pattern |> List.map ~fn:pattern_doc with
+      | [] -> Doc.concat [ Doc.lbracket; Doc.rbracket ]
+      | items -> Doc.concat
+        [
+          Doc.lbracket;
+          Doc.space;
+          Doc.join (Doc.concat [ Doc.semi; Doc.space ]) items;
+          Doc.space;
+          Doc.rbracket;
+        ]
+    )
   | Array ->
       child_pattern_docs pattern
       |> List.map ~fn:pattern_doc
@@ -718,6 +733,14 @@ and record_pattern_doc = fun pattern ->
   in
   match fields with
   | [] -> Doc.concat [ Doc.lbrace; Doc.rbrace ]
+  | fields when Int.(List.length fields > 3) -> Doc.concat
+    [
+      Doc.lbrace;
+      Doc.line;
+      Doc.indent 2 (Doc.join (Doc.concat [ Doc.semi; Doc.line ]) fields);
+      Doc.line;
+      Doc.rbrace;
+    ]
   | fields -> Doc.concat
     [
       Doc.lbrace;
@@ -762,30 +785,47 @@ and match_case_doc = fun match_case ->
         | None -> Doc.empty
       in
       let body_doc = expr_doc body in
-      if expr_case_body_breaks body then
-        Doc.concat
-          [
-            Doc.bar;
-            Doc.space;
-            pattern_doc pattern;
-            guard;
-            Doc.space;
-            Doc.arrow;
-            Doc.line;
-            Doc.indent 2 body_doc
-          ]
-      else
-        Doc.concat
-          [
-            Doc.bar;
-            Doc.space;
-            pattern_doc pattern;
-            guard;
-            Doc.space;
-            Doc.arrow;
-            Doc.space;
-            body_doc;
-          ]
+      let final_case_doc pattern =
+        if expr_case_body_breaks body then
+          Doc.concat
+            [
+              Doc.bar;
+              Doc.space;
+              pattern_doc pattern;
+              guard;
+              Doc.space;
+              Doc.arrow;
+              Doc.line;
+              Doc.indent 2 body_doc
+            ]
+        else
+          Doc.concat
+            [
+              Doc.bar;
+              Doc.space;
+              pattern_doc pattern;
+              guard;
+              Doc.space;
+              Doc.arrow;
+              Doc.space;
+              body_doc;
+            ]
+      in
+      (
+        match or_pattern_items pattern with
+        | []
+        | [ _ ] -> final_case_doc pattern
+        | alternatives -> (
+            match List.reverse alternatives with
+            | [] -> final_case_doc pattern
+            | last :: rest ->
+                let prefix_cases = rest
+                |> List.reverse
+                |> List.map
+                  ~fn:(fun pattern -> Doc.concat [ Doc.bar; Doc.space; pattern_doc pattern ]) in
+                Doc.join Doc.line (prefix_cases @ [ final_case_doc last ])
+          )
+      )
   | _ -> unsupported "incomplete match case"
 
 and expr_apply_callee_doc = fun expr ->
@@ -821,10 +861,28 @@ and expr_apply_argument_doc = fun expr ->
   | RecordUpdate -> expr_doc_with_view expr view
   | _ -> Doc.concat [ Doc.lparen; expr_doc_with_view expr view; Doc.rparen ]
 
+and application_parts = fun expr ->
+  let rec collect expr args =
+    match Ast.Expr.view expr with
+    | Apply { callee=Some callee; argument=Some argument } -> collect callee (argument :: args)
+    | _ -> (expr, args)
+  in
+  collect expr []
+
+and application_doc = fun expr ->
+  let callee, arguments = application_parts expr in
+  match arguments with
+  | [] -> expr_doc callee
+  | arguments ->
+      let callee_doc = expr_apply_callee_doc callee in
+      let argument_docs = List.map arguments ~fn:expr_apply_argument_doc in
+      if List.any argument_docs ~fn:Doc.is_multiline then
+        Doc.concat [ callee_doc; Doc.line; Doc.indent 2 (Doc.join Doc.line argument_docs) ]
+      else
+        Doc.concat [ callee_doc; Doc.space; Doc.join Doc.space argument_docs ]
+
 and token_text_equal = fun left right ->
   String.equal (Ast.Token.text left) (Ast.Token.text right)
-
-and token_text_is_boolean_operator = fun token -> token_text_is token "&&" || token_text_is token "||"
 
 and collect_same_infix_chain = fun operator expr acc ->
   match Ast.Expr.view expr with
@@ -837,9 +895,9 @@ and collect_same_infix_chain = fun operator expr acc ->
 
 and same_infix_chain = fun operator expr -> collect_same_infix_chain operator expr [] |> List.reverse
 
-and large_boolean_infix_chain_doc = fun expr ->
+and large_infix_chain_doc = fun expr ->
   match Ast.Expr.view expr with
-  | Infix { operator=Some operator; _ } when token_text_is_boolean_operator operator -> (
+  | Infix { operator=Some operator; _ } -> (
       let parts = same_infix_chain operator expr in
       if Int.(List.length parts <= 8) then
         None
@@ -853,6 +911,12 @@ and large_boolean_infix_chain_doc = fun expr ->
             ~fn:(fun part -> [ Doc.line; token_doc operator; Doc.space; expr_infix_operand_doc part ])
           |> List.concat)))
     )
+  | _ -> None
+
+and function_binding_body_doc = fun expr ->
+  match Ast.Expr.view expr with
+  | Function { first_case=Some _ } -> Some (Doc.concat
+    [ Doc.text "function"; Doc.line; Doc.indent 2 (match_cases_doc expr) ])
   | _ -> None
 
 and expr_is_begin_block = fun expr ->
@@ -952,6 +1016,8 @@ and parenthesized_expr_doc = fun expr inner ->
     | Sequence _ ->
         Doc.concat
           [ Doc.lparen; Doc.line; Doc.indent 4 (expr_doc inner); Doc.line; Doc.indent 2 Doc.rparen ]
+    | Function _ ->
+        Doc.concat [ Doc.lparen; Doc.line; Doc.indent 2 (expr_doc inner); Doc.line; Doc.rparen ]
     | Prefix { operator=Some operator; operand=Some operand } -> (
         match Ast.Expr.view operand with
         | Literal { token=Some token } when token_text_is operator "-" -> Doc.concat
@@ -997,8 +1063,8 @@ and expr_doc_with_view = fun expr (view: Ast.Expr.view) ->
     )
   | Prefix _ ->
       unsupported "incomplete prefix expression"
-  | Apply { callee=Some callee; argument=Some argument } ->
-      Doc.concat [ expr_apply_callee_doc callee; Doc.space; expr_apply_argument_doc argument ]
+  | Apply { callee=Some _; argument=Some _ } ->
+      application_doc expr
   | Apply _ ->
       unsupported "incomplete apply expression"
   | Typed { expr=Some expr; annotation=Some annotation } ->
@@ -1542,13 +1608,20 @@ and let_binding_doc = fun binding ->
           ); Doc.space; Doc.equal; ]
       in
       (
-        match large_boolean_infix_chain_doc body with
-        | Some body_doc -> Doc.concat [ head; Doc.line; Doc.indent 2 body_doc ]
-        | None ->
-            if expr_binding_body_breaks_after_equal body then
-              Doc.concat [ head; Doc.line; Doc.indent 2 (expr_doc body) ]
-            else
-              Doc.concat [ head; Doc.space; expr_doc body ]
+        match function_binding_body_doc body with
+        | Some body_doc -> Doc.concat [ head; Doc.space; body_doc ]
+        | None -> (
+            match large_infix_chain_doc body with
+            | Some body_doc -> Doc.concat [ head; Doc.line; Doc.indent 2 body_doc ]
+            | None ->
+                let body_doc = expr_doc body in
+                if expr_binding_body_breaks_after_equal body || match Ast.Expr.view body with
+                  | Apply _ -> Doc.is_multiline body_doc
+                  | _ -> false then
+                  Doc.concat [ head; Doc.line; Doc.indent 2 body_doc ]
+                else
+                  Doc.concat [ head; Doc.space; body_doc ]
+          )
       )
   | _ -> unsupported "incomplete let binding"
 

@@ -564,7 +564,7 @@ let at_item_boundary = fun p ~signature ->
     || Syntax_kind2.(peek_kind p 1 = AT)
     || Syntax_kind2.(peek_kind p 1 = ATAT)))
 
-let expression_boundary = fun p ~stop_at_item ~stop_at_semi ~signature ->
+let expression_boundary = fun p ~stop_at_item ~stop_at_semi ~stop_at_comma ~signature ->
   match current_kind p with
   | Syntax_kind2.EOF
   | Syntax_kind2.IN_KW
@@ -574,13 +574,13 @@ let expression_boundary = fun p ~stop_at_item ~stop_at_semi ~signature ->
   | Syntax_kind2.WHEN_KW
   | Syntax_kind2.ARROW
   | Syntax_kind2.PIPE
-  | Syntax_kind2.COMMA
   | Syntax_kind2.RPAREN
   | Syntax_kind2.RBRACKET
   | Syntax_kind2.RBRACE
   | Syntax_kind2.BAR_RBRACKET
   | Syntax_kind2.END_KW
   | Syntax_kind2.DONE_KW -> true
+  | Syntax_kind2.COMMA -> stop_at_comma
   | Syntax_kind2.SEMI -> stop_at_semi || (stop_at_item && Syntax_kind2.(peek_kind p 1 = SEMI))
   | _ -> stop_at_item && at_item_boundary p ~signature
 
@@ -1030,16 +1030,23 @@ let consume_first_class_module_shell = fun p ->
     consume_balanced_until p ~closer:Syntax_kind2.RPAREN 0;
   expect_closer p Syntax_kind2.RPAREN ~opener:"("
 
-let rec parse_expression = fun p ~signature ~stop_at_item ?(stop_at_semi = false) min_bp ->
+let rec parse_expression = fun p ~signature ~stop_at_item ?(stop_at_semi = false) ?(stop_at_comma = false) min_bp ->
   let rec loop lhs =
-    if expression_boundary p ~stop_at_item ~stop_at_semi ~signature then
+    if expression_boundary p ~stop_at_item ~stop_at_semi ~stop_at_comma ~signature then
       lhs
     else if at p Syntax_kind2.SEMI && not stop_at_semi && min_bp <= 0 then
       (
         let marker = precede p lhs in
         bump p;
-        let _rhs = parse_expression p ~signature ~stop_at_item ~stop_at_semi 0 in
+        let _rhs = parse_expression p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma 0 in
         loop (complete p marker Syntax_kind2.SEQUENCE_EXPR)
+      )
+    else if at p Syntax_kind2.COMMA && min_bp <= 15 then
+      (
+        let marker = precede p lhs in
+        bump p;
+        ignore (parse_expression p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma 15);
+        loop (complete p marker Syntax_kind2.TUPLE_EXPR)
       )
     else if at p Syntax_kind2.DOT then
       (
@@ -1088,7 +1095,7 @@ let rec parse_expression = fun p ~signature ~stop_at_item ?(stop_at_semi = false
             expect p Syntax_kind2.IDENT (invalid_expression p);
             loop (complete p marker Syntax_kind2.FIELD_ACCESS_EXPR)
         | Syntax_kind2.BANG ->
-            loop (parse_dot_bang_expr p lhs ~signature ~stop_at_item ~stop_at_semi)
+            loop (parse_dot_bang_expr p lhs ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma)
         | kind when symbolic_operator_part kind && symbolic_sequence_followed_by_index_opener p 1 ->
             loop (parse_extended_index_expr p lhs ~signature ~stop_at_item)
         | _ ->
@@ -1106,7 +1113,7 @@ let rec parse_expression = fun p ~signature ~stop_at_item ?(stop_at_semi = false
         (
           let marker = precede p lhs in
           consume_symbolic_operator p;
-          let _rhs = parse_expression p ~signature ~stop_at_item ~stop_at_semi 51 in
+          let _rhs = parse_expression p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma 51 in
           loop (complete p marker Syntax_kind2.INFIX_EXPR)
         )
       else
@@ -1116,7 +1123,7 @@ let rec parse_expression = fun p ~signature ~stop_at_item ?(stop_at_semi = false
         let marker = precede p lhs in
         let operator = operator_text (current_kind p) in
         bump p;
-        if expression_boundary p ~stop_at_item ~stop_at_semi ~signature then
+        if expression_boundary p ~stop_at_item ~stop_at_semi ~stop_at_comma ~signature then
           (
             Event.Buffer.missing p.events ~kind:Syntax_kind2.IDENT ~offset:(current_offset p);
             Event.Buffer.error
@@ -1124,7 +1131,7 @@ let rec parse_expression = fun p ~signature ~stop_at_item ?(stop_at_semi = false
               (missing_binary_operand_after_operator p ~operator ~side:"right")
           )
         else
-          ignore (parse_expression p ~signature ~stop_at_item ~stop_at_semi 6);
+          ignore (parse_expression p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma 6);
         loop (complete p marker Syntax_kind2.ASSIGN_EXPR)
       )
     else if at p Syntax_kind2.COLON && min_bp <= 5 then
@@ -1149,7 +1156,7 @@ let rec parse_expression = fun p ~signature ~stop_at_item ?(stop_at_semi = false
           let marker = precede p lhs in
           let operator = token_text p (current p) in
           bump p;
-          if expression_boundary p ~stop_at_item ~stop_at_semi ~signature then
+          if expression_boundary p ~stop_at_item ~stop_at_semi ~stop_at_comma ~signature then
             (
               Event.Buffer.missing p.events ~kind:Syntax_kind2.IDENT ~offset:(current_offset p);
               Event.Buffer.error
@@ -1163,29 +1170,30 @@ let rec parse_expression = fun p ~signature ~stop_at_item ?(stop_at_semi = false
               p.events
               (consecutive_binary_operators p ~operators:(operator ^ " " ^ token_text p (current p)))
           else
-            ignore (parse_expression p ~signature ~stop_at_item ~stop_at_semi (bp + 1));
+            ignore
+              (parse_expression p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma (bp + 1));
           loop (complete p marker Syntax_kind2.INFIX_EXPR)
       | Some _ ->
           lhs
       | _ when can_start_atom (current_kind p) ->
           let marker = precede p lhs in
-          let _argument = parse_prefix_or_atom p ~signature ~stop_at_item ~stop_at_semi in
+          let _argument = parse_prefix_or_atom p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma in
           loop (complete p marker Syntax_kind2.APPLY_EXPR)
       | _ ->
           lhs
   in
-  loop (parse_prefix_or_atom p ~signature ~stop_at_item ~stop_at_semi)
+  loop (parse_prefix_or_atom p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma)
 
-and parse_prefix_or_atom = fun p ~signature ~stop_at_item ~stop_at_semi ->
+and parse_prefix_or_atom = fun p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma ->
   match current_kind p with
   | kind when prefix_operator kind ->
       if symbolic_operator_part (peek_kind p 1) then
-        parse_symbolic_prefix_expr p ~signature ~stop_at_item ~stop_at_semi
+        parse_symbolic_prefix_expr p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma
       else
         (
           let marker = start_node p in
           bump p;
-          let _operand = parse_expression p ~signature ~stop_at_item ~stop_at_semi 70 in
+          let _operand = parse_expression p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma 70 in
           complete p marker Syntax_kind2.PREFIX_EXPR
         )
   | Syntax_kind2.LET_KW ->
@@ -1193,17 +1201,17 @@ and parse_prefix_or_atom = fun p ~signature ~stop_at_item ~stop_at_semi ->
   | Syntax_kind2.DOT ->
       parse_unreachable_expr p
   | Syntax_kind2.BACKTICK ->
-      parse_poly_variant_expr p ~signature ~stop_at_item ~stop_at_semi
+      parse_poly_variant_expr p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma
   | Syntax_kind2.TILDE ->
       if symbolic_operator_part (peek_kind p 1) then
-        parse_symbolic_prefix_expr p ~signature ~stop_at_item ~stop_at_semi
+        parse_symbolic_prefix_expr p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma
       else
-        parse_label_arg_expr p ~signature ~stop_at_item ~stop_at_semi Syntax_kind2.LABELED_ARG
+        parse_label_arg_expr p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma Syntax_kind2.LABELED_ARG
   | Syntax_kind2.QUESTION ->
       if symbolic_operator_part (peek_kind p 1) then
-        parse_symbolic_prefix_expr p ~signature ~stop_at_item ~stop_at_semi
+        parse_symbolic_prefix_expr p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma
       else
-        parse_label_arg_expr p ~signature ~stop_at_item ~stop_at_semi Syntax_kind2.OPTIONAL_ARG
+        parse_label_arg_expr p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma Syntax_kind2.OPTIONAL_ARG
   | Syntax_kind2.IF_KW ->
       parse_if_expr p ~signature ~stop_at_item
   | Syntax_kind2.MATCH_KW ->
@@ -1292,10 +1300,10 @@ and parse_prefix_or_atom = fun p ~signature ~stop_at_item ~stop_at_semi ->
           complete p marker Syntax_kind2.ERROR
     )
 
-and parse_symbolic_prefix_expr = fun p ~signature ~stop_at_item ~stop_at_semi ->
+and parse_symbolic_prefix_expr = fun p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma ->
   let marker = start_node p in
   consume_symbolic_operator p;
-  let _operand = parse_expression p ~signature ~stop_at_item ~stop_at_semi 70 in
+  let _operand = parse_expression p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma 70 in
   complete p marker Syntax_kind2.PREFIX_EXPR
 
 and parse_unreachable_expr = fun p ->
@@ -1354,25 +1362,25 @@ and parse_literal_expr = fun p ->
   bump p;
   complete p marker Syntax_kind2.LITERAL_EXPR
 
-and parse_poly_variant_expr = fun p ~signature ~stop_at_item ~stop_at_semi ->
+and parse_poly_variant_expr = fun p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma ->
   let marker = start_node p in
   bump p;
   expect p Syntax_kind2.IDENT (invalid_expression p);
   if
-    (not (expression_boundary p ~stop_at_item ~stop_at_semi ~signature))
+    (not (expression_boundary p ~stop_at_item ~stop_at_semi ~stop_at_comma ~signature))
     && can_start_atom (current_kind p)
   then
-    ignore (parse_prefix_or_atom p ~signature ~stop_at_item ~stop_at_semi);
+    ignore (parse_prefix_or_atom p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma);
   complete p marker Syntax_kind2.POLY_VARIANT_EXPR
 
-and parse_label_arg_expr = fun p ~signature ~stop_at_item ~stop_at_semi kind ->
+and parse_label_arg_expr = fun p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma kind ->
   let marker = start_node p in
   bump p;
   expect p Syntax_kind2.IDENT (invalid_expression p);
   if at p Syntax_kind2.COLON then
     (
       bump p;
-      ignore (parse_prefix_or_atom p ~signature ~stop_at_item ~stop_at_semi)
+      ignore (parse_prefix_or_atom p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma)
     );
   complete p marker kind
 
@@ -1394,13 +1402,13 @@ and parse_parenthesized_expr = fun p ~signature ~stop_at_item ->
     )
   else (
     if not (at_closer ()) then
-      ignore (parse_expression p ~signature ~stop_at_item:false 0);
+      ignore (parse_expression p ~signature ~stop_at_item:false ~stop_at_comma:true 0);
     let rec parse_comma_tail saw_comma =
       if at p Syntax_kind2.COMMA then
         (
           bump p;
           if not (at_closer ()) then
-            ignore (parse_expression p ~signature ~stop_at_item:false 0);
+            ignore (parse_expression p ~signature ~stop_at_item:false ~stop_at_comma:true 0);
           parse_comma_tail true
         )
       else
@@ -1638,7 +1646,7 @@ and parse_binding_operator_expr = fun p marker ~signature ~stop_at_item ->
   ignore (parse_expression p ~signature ~stop_at_item 0);
   complete p marker Syntax_kind2.BINDING_OPERATOR_EXPR
 
-and parse_dot_bang_expr = fun p lhs ~signature ~stop_at_item ~stop_at_semi ->
+and parse_dot_bang_expr = fun p lhs ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma ->
   let marker = precede p lhs in
   bump p;
   bump p;
@@ -1650,7 +1658,7 @@ and parse_dot_bang_expr = fun p lhs ~signature ~stop_at_item ~stop_at_semi ->
       expect p Syntax_kind2.RPAREN (invalid_expression p)
     )
   else if can_start_atom (current_kind p) then
-    ignore (parse_prefix_or_atom p ~signature ~stop_at_item ~stop_at_semi)
+    ignore (parse_prefix_or_atom p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma)
   else
     Event.Buffer.error p.events (invalid_expression p);
   complete p marker Syntax_kind2.LOCAL_OPEN_EXPR
@@ -2425,7 +2433,10 @@ and parse_let_binding = fun p ~signature ~top_level ->
         else
           missing_let_binding_equals p
       );
-    if not (expression_boundary p ~stop_at_item:top_level ~stop_at_semi:false ~signature) then
+    if
+      not
+        (expression_boundary p ~stop_at_item:top_level ~stop_at_semi:false ~stop_at_comma:false ~signature)
+    then
       ignore (parse_expression p ~signature ~stop_at_item:top_level 0)
   );
   ignore (complete p marker Syntax_kind2.LET_BINDING)
