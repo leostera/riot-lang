@@ -17,9 +17,15 @@ let format_error_to_string = Format_core.format_error_to_string
 
 let format = Format_core.format
 
+let parse_source = fun ~filename source -> Syn.parse ~filename source
+
+let format_source = fun ~filename source -> parse_source ~filename source |> format
+
 let format2 = Format_core.format2
 
 let syntax_hash = Runner.syntax_hash
+
+let syntax_hash_source = fun ~filename source -> parse_source ~filename source |> syntax_hash
 
 let write = fun ~writer result ->
   match format result with

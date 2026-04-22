@@ -1,22 +1,16 @@
 open Std
 
-let parse_file = fun ~file ~source ->
-  if String.ends_with ~suffix:".mli" file then
-    Syn.parse_interface source
-  else
-    Syn.parse_implementation source
-
 let handle_format = fun file ->
   match Fs.read (Path.v file) with
   | Error _err ->
       Log.error ("Error reading file: " ^ file);
       System.exit 1
   | Ok source ->
-      let result = parse_file ~file ~source in
-      match Krasny.format result with
+      let filename = Path.v file in
+      match Krasny.format_source ~filename source with
       | Ok formatted -> print formatted
-      | Error _err ->
-          Log.error ("Error formatting file without a CST: " ^ file);
+      | Error err ->
+          Log.error ("Error formatting file: " ^ file ^ ": " ^ Krasny.format_error_to_string err);
           System.exit 1
 
 let handle_syntax_hash = fun file ->
@@ -25,8 +19,8 @@ let handle_syntax_hash = fun file ->
       Log.error ("Error reading file: " ^ file);
       System.exit 1
   | Ok source ->
-      let result = parse_file ~file ~source in
-      print (Krasny.syntax_hash result)
+      let filename = Path.v file in
+      print (Krasny.syntax_hash_source ~filename source)
 
 let main ~args =
   let cmd =

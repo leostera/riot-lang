@@ -104,6 +104,15 @@ let tests = [
       let actual = parse_ml source |> Krasny.format |> Result.expect ~msg:"simple implementations should format" in
       Test.assert_equal ~expected:source ~actual;
       Ok ());
+  Test.case "format_source uses the public krasny parse facade"
+    (fun _ctx ->
+      let source = "let x = 1 + 2\n" in
+      let formatted = Krasny.format_source ~filename:sample_ml source |> Result.expect ~msg:"format_source should format" in
+      let expected_hash = parse_ml source |> Krasny.syntax_hash in
+      let actual_hash = Krasny.syntax_hash_source ~filename:sample_ml source in
+      Test.assert_equal ~expected:source ~actual:formatted;
+      Test.assert_equal ~expected:expected_hash ~actual:actual_hash;
+      Ok ());
   Test.case "format adds a final newline to non-empty output"
     (fun _ctx ->
       let source = "let x = 1 + 2" in

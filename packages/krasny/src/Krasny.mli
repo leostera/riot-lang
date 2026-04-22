@@ -23,6 +23,10 @@ val format_error_to_string: format_error -> string
     with a final newline. *)
 val format: Syn.Parser.parse_result -> (string, format_error) result
 
+(** `format_source ~filename source` parses and formats an OCaml source file,
+    selecting implementation vs interface parsing from [filename]. *)
+val format_source: filename:Path.t -> string -> (string, format_error) result
+
 (** `format2 result` renders a parser2 result through the experimental Ast2
     typed-view lowering path. It is intentionally side-by-side with [format]
     while parser2 and the view layer are validated against formatter tests and
@@ -33,6 +37,10 @@ val format2: Syn.Parser2.parse_result -> (string, format_error) result
     syntax tree, ignoring formatting-only punctuation and wrappers that
     `krasny` canonicalizes. *)
 val syntax_hash: Syn.Parser.parse_result -> string
+
+(** `syntax_hash_source ~filename source` parses an OCaml source file and
+    computes its normalized concrete syntax hash. *)
+val syntax_hash_source: filename:Path.t -> string -> string
 
 (** `write ~writer result` renders a parse result into the provided writer. *)
 val write: writer:IO.Writer.t -> Syn.Parser.parse_result -> (unit, [
