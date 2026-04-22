@@ -284,6 +284,29 @@ let write_bench_list = fun ~(workspace:Riot_model.Workspace.t) suites ->
           in
           println ("  [" ^ Int.to_string item.index ^ "] " ^ kind ^ " " ^ item.name ^ skip_suffix)))
 
+let terminal_profile = Tty.Profile.from_env ()
+
+let styled = fun color_hex text ->
+  let color = Tty.Color.make color_hex |> Tty.Profile.convert terminal_profile in
+  Tty.Style.default |> Tty.Style.fg color |> Tty.Style.bold |> fun style ->
+    Tty.Style.styled style text
+
+let styled_fastest_case_name = fun name -> styled "#98C379" name
+
+let comparison_case_label = fun ~fastest name ->
+  if String.equal name fastest then
+    styled_fastest_case_name name
+  else
+    name
+
+let render_relative_speed_line = fun ~fastest (name, ratio) ->
+  "    "
+  ^ styled_fastest_case_name fastest
+  ^ " ran "
+  ^ Float.to_string ~precision:2 ratio
+  ^ "x faster than "
+  ^ name
+
 let print_gc = fun ~indent (gc: Bench_runtime.bench_gc_stats) ->
   println (indent ^ "gc.minor:   " ^ Int.to_string gc.minor_collections);
   println (indent ^ "gc.major:   " ^ Int.to_string gc.major_collections);
@@ -311,11 +334,11 @@ let print_bench_result = fun (result: Bench_runtime.bench_case_result) ->
 
 let print_comparison = fun (result: Bench_runtime.bench_comparison_result) ->
   println ("Comparison: " ^ result.description);
-  println ("  Fastest: " ^ result.fastest);
+  println ("  Fastest: " ^ styled_fastest_case_name result.fastest);
   result.case_results |> List.for_each
     ~fn:(fun (case_result: Bench_runtime.bench_comparison_case_result) ->
       let stats = case_result.statistics in
-      println ("  " ^ case_result.name ^ ":");
+      println ("  " ^ comparison_case_label ~fastest:result.fastest case_result.name ^ ":");
       println ("    iterations: " ^ Int.to_string stats.iterations);
       println
         ("    mean:       " ^ print_duration stats.mean ^ " ± " ^ print_duration stats.std_dev);
@@ -328,13 +351,7 @@ let print_comparison = fun (result: Bench_runtime.bench_comparison_result) ->
       result.speedup_ratios |> List.for_each
         ~fn:(fun (name, ratio) ->
           if not (String.equal name result.fastest) then
-            println
-              ("    "
-              ^ result.fastest
-              ^ " ran "
-              ^ Float.to_string ~precision:2 ratio
-              ^ "x faster than "
-              ^ name))
+            println (render_relative_speed_line ~fastest:result.fastest (name, ratio)))
     );
   println ""
 
@@ -360,13 +377,6 @@ let json_of_option = fun value ~some ->
   | None -> Data.Json.Null
 
 let print_percent = fun value -> Float.to_string ~precision:1 (value *. 100.0) ^ "%"
-
-let terminal_profile = Tty.Profile.from_env ()
-
-let styled = fun color_hex text ->
-  let color = Tty.Color.make color_hex |> Tty.Profile.convert terminal_profile in
-  Tty.Style.default |> Tty.Style.fg color |> Tty.Style.bold |> fun style ->
-    Tty.Style.styled style text
 
 type cv_band =
   | Great
