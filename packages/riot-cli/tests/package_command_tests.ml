@@ -133,25 +133,33 @@ let test_update_outside_workspace_message = fun _ctx ->
   Test.assert_equal ~expected:"No riot.toml, so nothing to update" ~actual:Riot_cli.Update_cmd.no_workspace_message;
   Ok ()
 
-let test_new_outside_workspace_requires_init = fun _ctx ->
-  with_tempdir_result "riot_cli_new_requires_init"
+let test_new_outside_workspace_creates_standalone_package = fun _ctx ->
+  with_tempdir_result "riot_cli_new_standalone"
     (fun tempdir ->
+      let package_root = Path.(tempdir / Path.v "hello-world") in
       let* matches = parse_new [ "new"; "hello-world" ] in
-      match with_current_dir_exn_result tempdir (fun () -> Riot_cli.New.run matches) with
-      | Ok () ->
-          Error "expected riot new to fail outside a workspace"
-      | Error (Failure message) ->
-          Test.assert_equal ~expected:Riot_cli.New.no_workspace_message ~actual:message;
-          Ok ()
-      | Error err ->
-          Error ("unexpected error kind: " ^ Kernel.Exception.to_string err))
+      let* () = with_current_dir_exn_result tempdir (fun () -> Riot_cli.New.run matches)
+      |> Result.map_err ~fn:Kernel.Exception.to_string in
+      let* package_exists = Result.map_err
+        (Fs.exists Path.(package_root / Path.v "riot.toml"))
+        ~fn:IO.error_message in
+      let* main_exists = Result.map_err
+        (Fs.exists Path.(package_root / Path.v "src" / Path.v "HelloWorld.ml"))
+        ~fn:IO.error_message in
+      let* manifest_source = Result.map_err
+        (Fs.read Path.(package_root / Path.v "riot.toml"))
+        ~fn:IO.error_message in
+      if package_exists && main_exists && String.contains manifest_source "[package]" then
+        Ok ()
+      else
+        Error "expected riot new outside a workspace to create a standalone package")
 
 let tests =
   Test.[
     case "package commands: add bootstraps an empty workspace outside a workspace" test_add_bootstraps_empty_workspace_outside_workspace;
     case "package commands: remove outside a workspace reports no riot.toml" test_remove_outside_workspace_message;
     case "package commands: update outside a workspace reports no riot.toml" test_update_outside_workspace_message;
-    case "package commands: new outside a workspace asks for riot init" test_new_outside_workspace_requires_init;
+    case "package commands: new outside a workspace creates a standalone package" test_new_outside_workspace_creates_standalone_package;
   ]
 
 let name = "Riot CLI Package Command Tests"

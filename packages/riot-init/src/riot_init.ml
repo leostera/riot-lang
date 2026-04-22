@@ -143,7 +143,7 @@ let add_workspace_member = fun ~(workspace:Workspace_manifest.t) ~path ->
   Fs.write updated_source manifest_path
   |> Result.map_err ~fn:(fun err -> "Failed to update workspace manifest: " ^ IO.error_message err)
 
-let new_package = fun ~workspace ~path ~name ~is_library ->
+let scaffold_package = fun ~path ~name ~is_library ->
   let src_dir = Path.(path / Path.v "src") in
   let* () = Fs.create_dir_all src_dir
   |> Result.map_err ~fn:(fun _ -> "Failed to create src directory") in
@@ -185,8 +185,14 @@ let new_package = fun ~workspace ~path ~name ~is_library ->
   in
   let* () = Fs.write toml_content package_toml
   |> Result.map_err ~fn:(fun _ -> "Failed to write package manifest") in
-  let* () = add_workspace_member ~workspace ~path in
   Ok (Path.to_string path, name)
+
+let new_package = fun ~workspace ~path ~name ~is_library ->
+  let* (created_path, created_name) = scaffold_package ~path ~name ~is_library in
+  let* () = add_workspace_member ~workspace ~path in
+  Ok (created_path, created_name)
+
+let new_standalone_package = fun ~path ~name ~is_library -> scaffold_package ~path ~name ~is_library
 
 let package_hints = [
   (Library, "riot new --lib ./packages/<name>");

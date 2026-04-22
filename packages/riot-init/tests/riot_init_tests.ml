@@ -305,6 +305,23 @@ members = []
       else
         Error "expected new_package to preserve the package name")
 
+let test_new_standalone_package_scaffolds_a_detached_package = fun _ctx ->
+  with_tempdir_result "riot_init_new_standalone"
+    (fun tempdir ->
+      let package_dir = Path.(tempdir / Path.v "demo-lib") in
+      let* (_created_path, created_name) = Riot_init.new_standalone_package
+        ~path:package_dir
+        ~name:"demo-lib"
+        ~is_library:true in
+      let module_name = package_module_name "demo-lib" in
+      let* () = assert_exists Path.(package_dir / Path.v "riot.toml") in
+      let* () = assert_exists Path.(package_dir / Path.v "src" / Path.v (module_name ^ ".ml")) in
+      let* () = assert_exists Path.(package_dir / Path.v "src" / Path.v (module_name ^ ".mli")) in
+      if String.equal created_name "demo-lib" then
+        Ok ()
+      else
+        Error "expected new_standalone_package to preserve the package name")
+
 let tests =
   Test.[
     case "init scaffolds Docker, CI, and a starter test for libraries" test_init_scaffolds_library_workspace;
@@ -314,6 +331,7 @@ let tests =
     case "init preserves dotted workspace names and normalizes the starter package" test_init_preserves_dotted_workspace_names;
     case "new_package scaffolds a package from a typed path and updates workspace members" test_new_package_uses_typed_paths;
     case "new_package normalizes absolute paths back into workspace members" test_new_package_updates_workspace_members_for_absolute_paths;
+    case "new_standalone_package scaffolds a detached package from a typed path" test_new_standalone_package_scaffolds_a_detached_package;
   ]
 
 let () =

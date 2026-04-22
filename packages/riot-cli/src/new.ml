@@ -3,8 +3,6 @@ open Riot_init
 
 let out = eprintln
 
-let no_workspace_message = "Not in a riot workspace. Run `riot init` to create one first"
-
 let command =
   let open ArgParser in
     let open Arg in command "new"
@@ -20,7 +18,25 @@ let fail = fun message ->
   out ("\027[1;31mError\027[0m: " ^ message);
   Error (Failure message)
 
-let run_without_workspace = fun _matches -> fail no_workspace_message
+let run_without_workspace = fun path path_obj name is_library ->
+  let package_kind =
+    if is_library then
+      "library"
+    else
+      "binary"
+  in
+  println ("Creating standalone " ^ package_kind ^ " '" ^ name ^ "' in '" ^ path ^ "'");
+  match Riot_init.new_standalone_package ~path:path_obj ~name ~is_library with
+  | Ok (created_path, created_name) ->
+      println
+        (String.capitalize_ascii package_kind
+        ^ " '"
+        ^ created_name
+        ^ "' created at '"
+        ^ created_path
+        ^ "'");
+      Ok ()
+  | Error e -> fail ("Package creation failed: " ^ e)
 
 let path_error_message = function
   | Path.InvalidUtf8 { path } -> "invalid UTF-8 path: " ^ path
@@ -52,7 +68,7 @@ let run = fun matches ->
         (
           match Riot_model.Workspace_manager.scan workspace_manager cwd with
           | Error "No workspace root found" ->
-              run_without_workspace matches
+              run_without_workspace path path_obj name is_library
           | Error err ->
               fail ("Failed to scan workspace: " ^ err)
           | Ok (workspace, _load_errors) ->
