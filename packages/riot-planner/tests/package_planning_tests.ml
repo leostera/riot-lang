@@ -75,6 +75,23 @@ let plan_graph_package = fun ~workspace ~store ~package_graph ~package_key ~buil
         ~build_ctx
       |> Result.map_err ~fn:Riot_planner.Planning_error.to_string
 
+let plan_package_raw = fun ~workspace ~store ~package_graph ~package_key ~build_ctx ->
+  match Riot_planner.Package_graph.get_node_by_key package_graph package_key with
+  | None ->
+      Error (Riot_planner.Planning_error.GraphBuildFailed {
+        reason = "package graph node not found: " ^ Riot_model.Package.key_to_string package_key
+      })
+  | Some node ->
+      let package = Riot_planner.Package_graph.get_package node.value in
+      Riot_planner.Package_planner.plan_package
+        ~workspace
+        ~toolchain:test_toolchain
+        ~store
+        ~package_graph
+        ~package_key
+        ~package
+        ~build_ctx
+
 let describe_plan_result = function
   | Riot_planner.Package_planner.Cached _ -> "Cached"
   | Riot_planner.Package_planner.Planned _ -> "Planned"
@@ -134,7 +151,7 @@ let write_package_files = fun ~package_dir files ->
       let _ = Fs.write content path |> Result.expect ~msg:("write failed for " ^ relpath) in
       ())
 
-let make_package_with_files = fun ~tmpdir ~package_name ~files ~binaries ->
+let make_package_with_files = fun ~library ~tmpdir ~package_name ~files ~binaries ->
   let package_dir = Path.(tmpdir / Path.v package_name) in
   let _ = Fs.create_dir_all package_dir |> Result.expect ~msg:"create package dir failed" in
   let () = write_package_files ~package_dir files in
@@ -143,6 +160,7 @@ let make_package_with_files = fun ~tmpdir ~package_name ~files ~binaries ->
     |> Result.expect ~msg:("expected valid package name: " ^ package_name))
     ~path:package_dir
     ~relative_path:(Path.v package_name)
+    ?library
     ~binaries:(List.map
       binaries
       ~fn:(fun (name, path) -> Riot_model.Package.{ name; path = Path.v path }))
@@ -190,7 +208,7 @@ let has_compile_implementation_for_source = fun actions source ->
     )
 
 let plan_dev_package_actions = fun ~tmpdir ~package_name ~files ~binaries ->
-  let package = make_package_with_files ~tmpdir ~package_name ~files ~binaries in
+  let package = make_package_with_files ~library:None ~tmpdir ~package_name ~files ~binaries in
   let workspace = make_test_workspace tmpdir [ package ] in
   let store = Riot_store.Store.create ~workspace in
   let package_graph = Riot_planner.Package_graph.create ~scope:Riot_planner.Package_graph.Dev workspace
@@ -268,7 +286,7 @@ let plan_dev_package_actions = fun ~tmpdir ~package_name ~files ~binaries ->
         ^ describe_plan_result result)
 
 let plan_runtime_package_actions = fun ~tmpdir ~package_name ~files ~binaries ->
-  let package = make_package_with_files ~tmpdir ~package_name ~files ~binaries in
+  let package = make_package_with_files ~library:None ~tmpdir ~package_name ~files ~binaries in
   let workspace = make_test_workspace tmpdir [ package ] in
   let store = Riot_store.Store.create ~workspace in
   let package_graph = Riot_planner.Package_graph.create ~scope:Riot_planner.Package_graph.Runtime workspace
@@ -819,6 +837,7 @@ let test_build_scope_excludes_runtime_and_dev_roots = fun _ctx ->
     Fs.with_tempdir ~prefix:"planner_build_scope_excludes_sources"
       (fun tmpdir ->
         let build_helper = make_package_with_files
+          ~library:None
           ~tmpdir
           ~package_name:"build-helper"
           ~binaries:[]
@@ -1586,6 +1605,114 @@ let test_underscore_sibling_module_dependency_is_planned = fun _ctx ->
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"
 
+let test_planner_rejects_direct_internal_library_access = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"planner_rejects_direct_internal_access"
+      (fun tmpdir ->
+        let package = make_package_with_files
+          ~tmpdir
+          ~package_name:"berrybot"
+          ~library:(Some { path = Path.v "src/berrybot.ml" })
+          ~files:[
+            ("src/berrybot.ml", "module A = A\n");
+            ("src/a.ml", "let value = 42\n");
+            ("src/main.ml", "let () = ignore A.value\n");
+          ]
+          ~binaries:[ ("berrybot", "src/main.ml") ] in
+        let workspace = make_test_workspace tmpdir [ package ] in
+        let store = Riot_store.Store.create ~workspace in
+        let package_graph = Riot_planner.Package_graph.create
+          ~scope:Riot_planner.Package_graph.Runtime workspace
+          |> Result.expect ~msg:"package graph should build" in
+        let package_key = Riot_planner.Package_graph.package_key
+          ~package_name:(Package_name.to_string package.name)
+          Riot_planner.Package_graph.Runtime in
+        let session_id = Riot_model.Session_id.make () in
+        let profile = Riot_model.Profile.debug in
+        let build_ctx = Riot_model.Build_ctx.make ~session_id ~profile () in
+        match plan_package_raw ~workspace ~store ~package_graph ~package_key ~build_ctx with
+        | Error (Riot_planner.Planning_error.TargetDependsOnInternalLibraryModule {
+          target_name;
+          source;
+          requested_module;
+          internal_module;
+          public_module;
+        }) ->
+            if not (String.equal target_name "berrybot") then
+              Error ("expected target name berrybot, got " ^ target_name)
+            else if not (Path.equal source (Path.v "src/main.ml")) then
+              Error ("expected source src/main.ml, got " ^ Path.to_string source)
+            else if not (String.equal requested_module "A") then
+              Error ("expected requested module A, got " ^ requested_module)
+            else if not (String.equal internal_module "Berrybot__A") then
+              Error ("expected internal module Berrybot__A, got " ^ internal_module)
+            else if not (String.equal public_module "Berrybot") then
+              Error ("expected public module Berrybot, got " ^ public_module)
+            else
+              Ok ()
+        | Error err ->
+            Error ("expected direct internal access planner error, got "
+            ^ Riot_planner.Planning_error.to_string err)
+        | Ok _ ->
+            Error "expected planner to reject direct internal library access")
+  with
+  | Ok x -> x
+  | Error _ -> Error "tempdir creation failed"
+
+let test_planner_rejects_namespaced_internal_library_access = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"planner_rejects_namespaced_internal_access"
+      (fun tmpdir ->
+        let package = make_package_with_files
+          ~tmpdir
+          ~package_name:"berrybot"
+          ~library:(Some { path = Path.v "src/berrybot.ml" })
+          ~files:[
+            ("src/berrybot.ml", "module A = A\n");
+            ("src/a.ml", "let value = 42\n");
+            ("src/main.ml", "let () = ignore Berrybot__A.value\n");
+          ]
+          ~binaries:[ ("berrybot", "src/main.ml") ] in
+        let workspace = make_test_workspace tmpdir [ package ] in
+        let store = Riot_store.Store.create ~workspace in
+        let package_graph = Riot_planner.Package_graph.create
+          ~scope:Riot_planner.Package_graph.Runtime workspace
+          |> Result.expect ~msg:"package graph should build" in
+        let package_key = Riot_planner.Package_graph.package_key
+          ~package_name:(Package_name.to_string package.name)
+          Riot_planner.Package_graph.Runtime in
+        let session_id = Riot_model.Session_id.make () in
+        let profile = Riot_model.Profile.debug in
+        let build_ctx = Riot_model.Build_ctx.make ~session_id ~profile () in
+        match plan_package_raw ~workspace ~store ~package_graph ~package_key ~build_ctx with
+        | Error (Riot_planner.Planning_error.TargetDependsOnNamespacedInternalLibraryModule {
+          target_name;
+          source;
+          requested_module;
+          internal_module;
+          public_module;
+        }) ->
+            if not (String.equal target_name "berrybot") then
+              Error ("expected target name berrybot, got " ^ target_name)
+            else if not (Path.equal source (Path.v "src/main.ml")) then
+              Error ("expected source src/main.ml, got " ^ Path.to_string source)
+            else if not (String.equal requested_module "Berrybot__A") then
+              Error ("expected requested module Berrybot__A, got " ^ requested_module)
+            else if not (String.equal internal_module "Berrybot__A") then
+              Error ("expected internal module Berrybot__A, got " ^ internal_module)
+            else if not (String.equal public_module "Berrybot") then
+              Error ("expected public module Berrybot, got " ^ public_module)
+            else
+              Ok ()
+        | Error err ->
+            Error ("expected namespaced internal access planner error, got "
+            ^ Riot_planner.Planning_error.to_string err)
+        | Ok _ ->
+            Error "expected planner to reject namespaced internal library access")
+  with
+  | Ok x -> x
+  | Error _ -> Error "tempdir creation failed"
+
 let test_nested_library_interfaces_depend_on_inherited_aliases = fun _ctx ->
   match
     Fs.with_tempdir ~prefix:"planner_nested_library_aliases"
@@ -2146,6 +2273,8 @@ let tests =
     case "stale plan bundle version rebuilds plan graphs" test_stale_plan_bundle_version_rebuilds_plan_graphs;
     case "plan bundle cache hit preserves module dependency order" test_plan_bundle_cache_hit_preserves_module_dependency_order;
     case "underscore sibling module dependency is planned" test_underscore_sibling_module_dependency_is_planned;
+    case "planner rejects direct internal library access" test_planner_rejects_direct_internal_library_access;
+    case "planner rejects namespaced internal library access" test_planner_rejects_namespaced_internal_library_access;
     case "nested library interfaces depend on inherited aliases" test_nested_library_interfaces_depend_on_inherited_aliases;
     case "legacy nested sibling plan bundle is ignored after version bump" test_legacy_nested_sibling_plan_bundle_is_ignored_after_version_bump;
     case ~size:Large "kernel live CreateLibrary orders dependencies before Error" test_kernel_live_create_library_orders_dependencies_before_error;
