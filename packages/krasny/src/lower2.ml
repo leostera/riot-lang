@@ -604,7 +604,6 @@ and expr_doc_with_view = fun expr (view: Ast.Expr.view) ->
   | LocalOpen _
   | LetModule _
   | LetException _
-  | BindingOperator _
   | FirstClassModule
   | Extension
   | Unreachable
@@ -614,6 +613,8 @@ and expr_doc_with_view = fun expr (view: Ast.Expr.view) ->
   | Error _
   | Unknown _ ->
       unsupported "unsupported expression"
+  | BindingOperator _ ->
+      binding_operator_expr_doc expr
 
 and record_expr_field_doc = fun (field: Ast.RecordExpr.field) ->
   match field.path with
@@ -646,6 +647,29 @@ and record_expr_doc = fun expr ->
       | Doc.Empty -> Doc.concat [ Doc.lbrace; Doc.rbrace ]
       | fields -> Doc.concat [ Doc.lbrace; Doc.space; fields; Doc.space; Doc.rbrace ]
     )
+
+and binding_operator_clause_doc = fun (clause: Ast.BindingOperatorExpr.clause) ->
+  match clause.keyword, clause.operator with
+  | Some keyword, Some operator -> Doc.concat
+    [ token_doc keyword; token_doc operator; Doc.space; let_binding_doc clause.binding ]
+  | _ -> unsupported "incomplete binding operator clause"
+
+and binding_operator_expr_doc = fun expr ->
+  let view =
+    match Ast.BindingOperatorExpr.cast expr with
+    | Some view -> view
+    | None -> unsupported "unsupported binding operator expression"
+  in
+  let clauses = ref [] in
+  Ast.BindingOperatorExpr.for_each_clause
+    view
+    ~fn:(fun clause -> clauses := binding_operator_clause_doc clause :: !clauses);
+  match List.reverse !clauses, Ast.BindingOperatorExpr.in_token view, Ast.BindingOperatorExpr.body view with
+  | [], _, _ -> unsupported "binding operator expression without binding"
+  | _, None, _ -> unsupported "binding operator expression without in"
+  | _, _, None -> unsupported "binding operator expression without body"
+  | clauses, Some in_token, Some body -> Doc.concat
+    [ Doc.join Doc.space clauses; Doc.space; token_doc in_token; Doc.space; expr_doc body; ]
 
 and let_binding_doc = fun binding ->
   let parts = let_binding_parts binding in

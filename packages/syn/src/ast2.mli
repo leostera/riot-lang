@@ -258,6 +258,22 @@ module RecordExpr: sig
   val for_each_field: t -> fn:(field -> unit) -> unit
 end
 
+module BindingOperatorExpr: sig
+  type t = expr
+  type clause = {
+    keyword: Token.t option;
+    operator: Token.t option;
+    binding: let_binding;
+  }
+  val cast: expr -> t option
+
+  val in_token: t -> Token.t option
+
+  val body: t -> expr option
+
+  val for_each_clause: t -> fn:(clause -> unit) -> unit
+end
+
 module Path: sig
   type t = path
   val cast: Node.t -> t option

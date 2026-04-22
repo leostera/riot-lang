@@ -143,6 +143,12 @@ let tests = [
         ~expected:"let record = { x = 1; y }\nlet updated = { base with x = 2; y }\nlet { x; y = z; _ } = record\n"
         "let record = { x = 1; y }\nlet updated = { base with x = 2; y }\nlet { x; y = z; _ } = record\n");
   Test.case
+    "lower2 formats binding operator expressions"
+    (fun _ctx ->
+      assert_format2_ml
+        ~expected:"let value = let* x = fetch in let+ y = decode in pair x y\nlet both = let+ x = a and+ y = b in pair x y\n"
+        "let value = let* x = fetch in let+ y = decode in pair x y\nlet both = let+ x = a and+ y = b in pair x y\n");
+  Test.case
     "lower2 formats assertion and lazy expressions"
     (fun _ctx -> assert_format2_ml ~expected:"let _ = assert ready\nlet later = lazy compute\n" "let _ = assert ready\nlet later = lazy compute\n");
   Test.case

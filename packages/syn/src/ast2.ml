@@ -812,6 +812,76 @@ end = struct
       )
 end
 
+module BindingOperatorExpr: sig
+  type t = expr
+  type clause = {
+    keyword: Token.t option;
+    operator: Token.t option;
+    binding: let_binding;
+  }
+  val cast: expr -> t option
+
+  val in_token: t -> Token.t option
+
+  val body: t -> expr option
+
+  val for_each_clause: t -> fn:(clause -> unit) -> unit
+end = struct
+  type t = expr
+
+  type clause = {
+    keyword: Token.t option;
+    operator: Token.t option;
+    binding: let_binding;
+  }
+
+  let cast = fun (expr: expr) ->
+    if node_kind_is expr Syntax_kind2.BINDING_OPERATOR_EXPR then
+      Some expr
+    else
+      None
+
+  let in_token = fun (expr: t) -> Node.first_child_token expr ~kind:Syntax_kind2.IN_KW
+
+  let body = first_expr_child
+
+  let binding_operator_keyword = fun token ->
+    token_kind_is token Syntax_kind2.LET_KW || token_kind_is token Syntax_kind2.AND_KW
+
+  let binding_operator_suffix = fun token ->
+    token_kind_is token Syntax_kind2.STAR || token_kind_is token Syntax_kind2.PLUS
+
+  let for_each_clause = fun (expr: t) ~fn ->
+    let child_count = Node.child_count expr in
+    let rec loop index keyword operator =
+      if index >= child_count then
+        ()
+      else
+        match Node.child_at expr index with
+        | Some (Syntax_tree.Token id) ->
+            let token = wrap_token expr.tree id in
+            if binding_operator_keyword token then
+              loop (index + 1) (Some token) None
+            else if binding_operator_suffix token then
+              loop (index + 1) keyword (Some token)
+            else
+              loop (index + 1) keyword operator
+        | Some (Syntax_tree.Node id) ->
+            let child = wrap_node expr.tree id in
+            if node_matches child is_let_binding_kind then
+              (
+                fn { keyword; operator; binding = child };
+                loop (index + 1) None None
+              )
+            else
+              loop (index + 1) keyword operator
+        | Some (Syntax_tree.Missing _)
+        | None ->
+            loop (index + 1) keyword operator
+    in
+    loop 0 None None
+end
+
 module Pattern: sig
   type t = pattern
   type view =

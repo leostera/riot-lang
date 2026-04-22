@@ -418,6 +418,58 @@ let test_record_views = fun _ctx ->
   Test.assert_equal ~expected:"_" ~actual:(Ast2.Token.text wildcard);
   Ok ()
 
+let binding_pattern_text = fun binding ->
+  let pattern = pattern_of_binding binding |> Result.expect ~msg:"expected binding pattern" in
+  match Ast2.Pattern.view pattern with
+  | Ast2.Pattern.Path { path } -> last_path_text path
+  | _ -> panic "expected path binding pattern"
+
+let binding_body_path_text = fun binding ->
+  let body = body_of_binding binding |> Result.expect ~msg:"expected binding body" in
+  match Ast2.Expr.view body with
+  | Ast2.Expr.Path { path } -> last_path_text path
+  | _ -> panic "expected path binding body"
+
+let test_binding_operator_views = fun _ctx ->
+  let root = parse_ml "let both = let+ x = a and+ y = b in pair x y\n" |> Result.expect ~msg:"expected parse2 source file" in
+  let expr = nth_structure_item root 0
+  |> require_some ~msg:"expected binding operator item"
+  |> binding_of_structure_item
+  |> Result.expect ~msg:"expected outer let binding"
+  |> body_of_binding
+  |> Result.expect ~msg:"expected binding operator expression" in
+  let binding_operator = Ast2.BindingOperatorExpr.cast expr |> require_some ~msg:"expected binding operator view" in
+  let clauses = ref [] in
+  Ast2.BindingOperatorExpr.for_each_clause binding_operator
+    ~fn:(fun clause ->
+      let keyword = clause.Ast2.BindingOperatorExpr.keyword
+      |> require_some ~msg:"expected binding operator keyword"
+      |> Ast2.Token.text in
+      let operator = clause.Ast2.BindingOperatorExpr.operator
+      |> require_some ~msg:"expected binding operator suffix"
+      |> Ast2.Token.text in
+      clauses := (
+        keyword,
+        operator,
+        binding_pattern_text clause.Ast2.BindingOperatorExpr.binding,
+        binding_body_path_text clause.Ast2.BindingOperatorExpr.binding
+      )
+      :: !clauses);
+  Test.assert_equal
+    ~expected:[ ("let", "+", "x", "a"); ("and", "+", "y", "b") ]
+    ~actual:(List.reverse !clauses);
+  let in_token = Ast2.BindingOperatorExpr.in_token binding_operator |> require_some ~msg:"expected binding operator in token" in
+  Test.assert_equal ~expected:"in" ~actual:(Ast2.Token.text in_token);
+  (
+    match Ast2.BindingOperatorExpr.body binding_operator with
+    | Some body -> (
+        match Ast2.Expr.view body with
+        | Ast2.Expr.Apply _ -> Ok ()
+        | _ -> Error "expected binding operator body application"
+      )
+    | None -> Error "expected binding operator body"
+  )
+
 let tests = [
   Test.case "ast2 exposes source file and let binding views" test_source_file_and_let_binding_views;
   Test.case "ast2 exposes if and match expression views" test_expression_views;
@@ -430,6 +482,7 @@ let tests = [
   Test.case "ast2 exposes module declaration tokens" test_module_declaration_tokens;
   Test.case "ast2 exposes let binding type annotation views" test_binding_type_annotation_view;
   Test.case "ast2 exposes record expression and pattern views" test_record_views;
+  Test.case "ast2 exposes binding operator expression views" test_binding_operator_views;
 ]
 
 let () =
