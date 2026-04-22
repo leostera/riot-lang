@@ -27,7 +27,15 @@ type parser = {
 
 let create = fun source ->
   let token_stream = Lexer.tokenize_slice source |> Raw_token.of_lexer_tokens in
-  { source; token_stream; events = Event.Buffer.create (); pos = 0; last_eof_unclosed_delimiter_offset = None }
+  let significant_count = Vector.length token_stream.Raw_token.significant in
+  let raw_count = Vector.length token_stream.Raw_token.raw in
+  let events =
+    Event.Buffer.create
+      ~event_capacity:(Int.max 32 ((significant_count * 3) + (raw_count / 4)))
+      ~diagnostic_capacity:8
+      ()
+  in
+  { source; token_stream; events; pos = 0; last_eof_unclosed_delimiter_offset = None }
 
 let significant_count = fun p -> Vector.length p.token_stream.Raw_token.significant
 

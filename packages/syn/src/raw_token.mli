@@ -12,6 +12,8 @@ type stream = {
 }
 val create_stream: unit -> stream
 
+val create_stream_with_capacity: raw:int -> significant:int -> stream
+
 val push: stream -> t -> int
 
 val push_significant: stream -> t -> int

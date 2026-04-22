@@ -27,7 +27,11 @@ module Buffer = struct
     kind: Syntax_kind2.t;
   }
 
-  let create = fun () -> { events = Vector.create (); diagnostics = Vector.create () }
+  let create = fun ?(event_capacity = 0) ?(diagnostic_capacity = 0) () ->
+    {
+      events = Vector.with_capacity ~size:event_capacity;
+      diagnostics = Vector.with_capacity ~size:diagnostic_capacity;
+    }
 
   let start_node = fun t ->
     let index = Vector.length t.events in

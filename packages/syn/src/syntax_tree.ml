@@ -107,9 +107,11 @@ let finish_frame = fun ~raw_tokens ~(nodes:node Vector.t) ~(tokens:token_leaf Ve
   }
 
 let build = fun ~source ~token_stream ~events ->
-  let tokens: token_leaf Vector.t = Vector.create () in
-  let nodes: node Vector.t = Vector.create () in
-  let children_store: child Vector.t = Vector.create () in
+  let event_count = Event.Buffer.length events in
+  let significant_count = Vector.length token_stream.Raw_token.significant in
+  let tokens: token_leaf Vector.t = Vector.with_capacity ~size:significant_count in
+  let nodes: node Vector.t = Vector.with_capacity ~size:(Int.max 1 (event_count / 2)) in
+  let children_store: child Vector.t = Vector.with_capacity ~size:event_count in
   let stack = ref [] in
   let root = ref None in
   let next_raw_lo = ref 0 in
@@ -120,7 +122,7 @@ let build = fun ~source ~token_stream ~events ->
     | [] -> ()
   in
   let push_node kind =
-    stack := { kind; children = (Vector.create (): child Vector.t) } :: !stack
+    stack := { kind; children = (Vector.with_capacity ~size:4 : child Vector.t) } :: !stack
   in
   let pop_node () =
     match !stack with

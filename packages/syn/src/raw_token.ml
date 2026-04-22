@@ -15,6 +15,12 @@ type stream = {
 
 let create_stream = fun () -> { raw = Vector.create (); significant = Vector.create () }
 
+let create_stream_with_capacity = fun ~raw ~significant ->
+  {
+    raw = Vector.with_capacity ~size:raw;
+    significant = Vector.with_capacity ~size:significant;
+  }
+
 let push = fun stream token ->
   let index = Vector.length stream.raw in
   Vector.push stream.raw ~value:token;
@@ -209,7 +215,8 @@ let raw_of_token = fun (token: Token.t) ->
   { kind = kind_of_token_kind token.kind; span = token.span; legacy_kind = Some token.kind }
 
 let of_lexer_tokens = fun tokens ->
-  let stream = create_stream () in
+  let token_count = List.length tokens in
+  let stream = create_stream_with_capacity ~raw:(token_count * 2) ~significant:token_count in
   List.for_each tokens
     ~fn:(fun token ->
       List.for_each
