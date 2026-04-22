@@ -915,11 +915,13 @@ let runtime_output_packages = fun ~(workspace:Workspace.t) (output: Riot_build.B
     ~fn:(fun (pkg: Package.t) ->
       Option.is_some (Riot_build.Build_result.find_package output pkg.name))
 
-let runtime_output_built_binaries = fun ~(workspace:Workspace.t) ~profile ~(store:Riot_store.Store.t) (
+let runtime_output_built_binaries = fun ~(workspace:Workspace.t) ~package_name ~profile ~(store:Riot_store.Store.t) (
   output: Riot_build.Build_result.t
 ) ->
-  runtime_output_packages ~workspace output |> List.map
+  runtime_output_packages ~workspace output |> List.find
     ~fn:(fun (pkg: Package.t) ->
+      Package_name.equal pkg.name package_name) |> function
+  | Some (pkg: Package.t) ->
       List.filter_map pkg.binaries
         ~fn:(fun (bin: Package.binary) ->
           match find_export_path_in_output
@@ -931,7 +933,8 @@ let runtime_output_built_binaries = fun ~(workspace:Workspace.t) ~profile ~(stor
             ~export_name:bin.name
             output with
           | Ok path -> Some Test.Context.{ name = bin.name; path }
-          | Error _ -> None)) |> List.concat
+          | Error _ -> None)
+  | None -> []
 
 let run_suite_args = fun extra_args -> "run-tests" :: remove_json_args extra_args @ [ "--json" ]
 
@@ -1221,6 +1224,7 @@ let test = fun ?(on_event = no_event) (request: test_request) ->
                   let source_file = find_suite_source_path ~workspace:request.workspace suite in
                   let built_binaries = runtime_output_built_binaries
                     ~workspace:request.workspace
+                    ~package_name:suite.package_name
                     ~profile:request.profile
                     ~store
                     output in

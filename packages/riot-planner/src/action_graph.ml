@@ -452,48 +452,6 @@ let from_module_graph ?analyzed_modules ~package ~profile ~ctx ~toolchain ~store
     else
       concrete_library_root_modules
   in
-  let concrete_root_ids = HashSet.create () in
-  let () =
-    List.for_each concrete_library_root_modules
-      ~fn:(fun (node: Module_node.t G.node) ->
-        let _ = HashSet.insert concrete_root_ids ~value:node.id in
-        ())
-  in
-  let root_candidate_ids = HashSet.create () in
-  let () =
-    List.for_each library_root_candidates
-      ~fn:(fun (node: Module_node.t G.node) ->
-        let _ = HashSet.insert root_candidate_ids ~value:node.id in
-        ())
-  in
-  let root_support_dependency_ids (node: Module_node.t G.node) =
-    let keep_ids = HashSet.create () in
-    let () =
-      List.for_each node.value.open_modules
-        ~fn:(fun open_module ->
-          let _ = HashSet.insert keep_ids ~value:open_module.id in
-          ())
-    in
-    let () =
-      match node.value.kind with
-      | Module_node.ML mod_ ->
-          List.for_each node.deps
-            ~fn:(fun dep_id ->
-              match G.get_node module_graph dep_id with
-              | Some dep_node -> (
-                  match dep_node.value.kind with
-                  | Module_node.MLI dep_mod when Module_name.qualified_name
-                    (Module.module_name dep_mod)
-                  = Module_name.qualified_name (Module.module_name mod_) ->
-                      let _ = HashSet.insert keep_ids ~value:dep_id in
-                      ()
-                  | _ -> ()
-                )
-              | None -> ())
-      | _ -> ()
-    in
-    keep_ids
-  in
   let dependency_ids_for_resolved_deps (node: Module_node.t G.node) resolved_deps =
     let keep_ids = HashSet.create () in
     let resolved_qualified_names = HashSet.create () in
@@ -545,76 +503,156 @@ let from_module_graph ?analyzed_modules ~package ~profile ~ctx ~toolchain ~store
     in
     keep_ids
   in
-  let concrete_root_dependency_ids (node: Module_node.t G.node) =
-    let keep_ids = root_support_dependency_ids node in
-    let () =
-      match HashMap.get analyzed_modules_by_id ~key:node.id with
-      | Some analyzed_module ->
-          dependency_ids_for_resolved_deps node analyzed_module.Module_graph.resolved_deps
-          |> HashSet.to_list
-          |> List.for_each
-            ~fn:(fun dep_id ->
-              let _ = HashSet.insert keep_ids ~value:dep_id in
-              ())
-      | None -> ()
-    in
-    List.filter node.deps ~fn:(fun dep_id -> HashSet.contains keep_ids ~value:dep_id)
+  let same_module_interface_dependency_ids (node: Module_node.t G.node) =
+    match node.value.kind with
+    | Module_node.ML mod_ ->
+        let qualified_name = Module.namespaced_name mod_ in
+        List.filter node.deps
+          ~fn:(fun dep_id ->
+            match G.get_node module_graph dep_id with
+            | Some dep_node -> (
+                match dep_node.value.kind with
+                | Module_node.MLI dep_mod -> String.equal (Module.namespaced_name dep_mod) qualified_name
+                | _ -> false
+              )
+            | None -> false)
+    | _ -> []
   in
-  let preferred_interface_dep_ids_by_qualified_name =
-    let table = HashMap.create () in
-    let () =
-      List.iter
-        (fun (node: Module_node.t G.node) ->
-          match node.value.kind with
-          | Module_node.MLI mod_ ->
-              let qualified_name = Module.module_name mod_ |> Module_name.qualified_name in
-              let _ = HashMap.insert table ~key:qualified_name ~value:node.id in
-              ()
-          | _ -> ())
-        sorted_modules
-    in
-    table
+  let concrete_semantic_dependency_ids (node: Module_node.t G.node) =
+    match HashMap.get analyzed_modules_by_id ~key:node.id with
+    | Some analyzed_module -> dependency_ids_for_resolved_deps node analyzed_module.Module_graph.resolved_deps
+    |> HashSet.to_list
+    | None -> []
   in
-  let normalize_compile_deps dep_ids =
-    let seen = HashSet.create () in
-    dep_ids |> List.filter_map
+  let concrete_module_deps_for_scope (node: Module_node.t G.node) =
+    let semantic_dep_ids = HashSet.create () in
+    let () =
+      List.for_each (concrete_semantic_dependency_ids node)
+        ~fn:(fun dep_id ->
+          let _ = HashSet.insert semantic_dep_ids ~value:dep_id in
+          ())
+    in
+    let same_interface_dep_ids = HashSet.create () in
+    let () =
+      List.for_each (same_module_interface_dependency_ids node)
+        ~fn:(fun dep_id ->
+          let _ = HashSet.insert same_interface_dep_ids ~value:dep_id in
+          ())
+    in
+    List.filter node.deps
       ~fn:(fun dep_id ->
-        let preferred_dep_id =
-          match G.get_node module_graph dep_id with
-          | Some dep_node -> (
-              match dep_node.value.kind with
-              | Module_node.ML mod_ -> (
-                  let qualified_name = Module.module_name mod_ |> Module_name.qualified_name in
-                  match HashMap.get preferred_interface_dep_ids_by_qualified_name ~key:qualified_name with
-                  | Some preferred_dep_id -> preferred_dep_id
-                  | None -> dep_id
-                )
-              | _ -> dep_id
-            )
-          | None -> dep_id
-        in
-        if HashSet.insert seen ~value:preferred_dep_id then
-          Some preferred_dep_id
-        else
-          None)
+        match G.get_node module_graph dep_id with
+        | Some dep_node -> (
+            match dep_node.value.kind, dep_node.value.file with
+            | Module_node.Root, _ -> false
+            | (Module_node.ML _ | Module_node.MLI _), Module_node.Concrete _ -> HashSet.contains
+              semantic_dep_ids
+              ~value:dep_id
+            || HashSet.contains same_interface_dep_ids ~value:dep_id
+            | (Module_node.ML _ | Module_node.MLI _), Module_node.Generated _ -> true
+            | _ -> true
+          )
+        | None -> false)
   in
-  let traversal_deps (node: Module_node.t G.node) =
-    if HashSet.contains concrete_root_ids ~value:node.id then
-      concrete_root_dependency_ids node
-    else if
-      not (List.is_empty concrete_library_root_modules)
-      && HashSet.contains root_candidate_ids ~value:node.id
-    then
-      (
-        match node.value.file with
-        | Module_node.Generated _ -> normalize_compile_deps node.deps
-        | _ ->
-            let keep_ids = root_support_dependency_ids node in
-            List.filter node.deps ~fn:(fun dep_id -> HashSet.contains keep_ids ~value:dep_id)
-      )
+  let concrete_semantic_reachable_set start_nodes =
+    let visited = HashSet.create () in
+    let rec visit node_id =
+      if HashSet.insert visited ~value:node_id then
+        match G.get_node module_graph node_id with
+        | Some node -> List.for_each (concrete_semantic_dependency_ids node) ~fn:visit
+        | None -> ()
+    in
+    let () =
+      List.for_each start_nodes ~fn:(fun (node: Module_node.t G.node) -> visit node.id)
+    in
+    visited
+  in
+  let concrete_implementation_counterpart_ids (node: Module_node.t G.node) =
+    match node.value.kind, node.value.file with
+    | Module_node.MLI mod_, Module_node.Concrete _ ->
+        let qualified_name = Module.namespaced_name mod_ in
+        List.filter_map sorted_modules
+          ~fn:(fun (candidate: Module_node.t G.node) ->
+            match candidate.value.kind, candidate.value.file with
+            | Module_node.ML candidate_mod, Module_node.Concrete _ when String.equal
+              (Module.namespaced_name candidate_mod)
+              qualified_name -> Some candidate.id
+            | _ -> None)
+    | _ -> []
+  in
+  let generated_library_interface_public_seed_ids =
+    List.filter library_root_candidates
+      ~fn:(fun (node: Module_node.t G.node) ->
+        match node.value.kind, node.value.file with
+        | Module_node.MLI _, Module_node.Generated _ -> true
+        | _ -> false)
+    |> List.map
+      ~fn:(fun (node: Module_node.t G.node) ->
+        List.map node.deps
+          ~fn:(fun dep_id ->
+            match G.get_node module_graph dep_id with
+            | Some dep_node -> (
+                match dep_node.value.kind, dep_node.value.file with
+                | Module_node.MLI _, Module_node.Concrete _ -> dep_id
+                :: concrete_implementation_counterpart_ids dep_node
+                | _ -> []
+              )
+            | None -> []) |> List.concat)
+    |> List.concat
+  in
+  let concrete_reachable_set_from_ids start_ids =
+    List.filter_map start_ids
+      ~fn:(fun node_id ->
+        G.get_node module_graph node_id)
+    |> concrete_semantic_reachable_set
+  in
+  let library_concrete_reachable_set =
+    let library_seed_ids = List.map
+      concrete_library_root_modules
+      ~fn:(fun (node: Module_node.t G.node) -> node.id)
+    @ generated_library_interface_public_seed_ids in
+    if List.is_empty library_seed_ids then
+      HashSet.create ()
     else
-      node.deps
+      concrete_reachable_set_from_ids library_seed_ids
   in
+  let generated_deps_for_scope concrete_scope_set dep_ids =
+    List.filter dep_ids
+      ~fn:(fun dep_id ->
+        match G.get_node module_graph dep_id with
+        | Some dep_node -> (
+            match dep_node.value.kind, dep_node.value.file with
+            | (Module_node.ML _ | Module_node.MLI _), Module_node.Concrete _ -> (
+                match dep_node.value.kind with
+                | Module_node.MLI _ -> true
+                | Module_node.ML _ -> HashSet.contains concrete_scope_set ~value:dep_id
+                | _ -> false
+              )
+            | Module_node.Root, _ ->
+                false
+            | _ ->
+                true
+          )
+        | None -> false)
+  in
+  let scoped_module_deps concrete_scope_set (node: Module_node.t G.node) =
+    match node.value.kind, node.value.file with
+    | (Module_node.ML _ | Module_node.MLI _), Module_node.Concrete _ -> concrete_module_deps_for_scope
+      node
+    | (Module_node.ML _ | Module_node.MLI _), Module_node.Generated _ -> generated_deps_for_scope
+      concrete_scope_set
+      node.deps
+    | _ -> node.deps
+  in
+  let scoped_traversal_deps concrete_scope_set (node: Module_node.t G.node) =
+    if List.is_empty concrete_library_root_modules then
+      node.deps
+    else
+      scoped_module_deps concrete_scope_set node
+  in
+  let traversal_deps (node: Module_node.t G.node) = scoped_traversal_deps
+    library_concrete_reachable_set
+    node in
   let library_reachable_ids =
     if List.is_empty library_root_modules then
       []
@@ -659,12 +697,31 @@ let from_module_graph ?analyzed_modules ~package ~profile ~ctx ~toolchain ~store
   let binary_source_nodes source_path = List.filter
     sorted_modules
     ~fn:(node_matches_source_path source_path) in
+  let binary_concrete_reachable_set source_path = concrete_semantic_reachable_set
+    (binary_source_nodes source_path) in
+  let binary_scope_set source_path =
+    let scope_set = HashSet.create () in
+    let () =
+      List.for_each (HashSet.to_list library_concrete_reachable_set)
+        ~fn:(fun node_id ->
+          let _ = HashSet.insert scope_set ~value:node_id in
+          ())
+    in
+    let () =
+      List.for_each (HashSet.to_list (binary_concrete_reachable_set source_path))
+        ~fn:(fun node_id ->
+          let _ = HashSet.insert scope_set ~value:node_id in
+          ())
+    in
+    scope_set
+  in
   let binary_private_dependency_ids source_path =
+    let scope_set = binary_scope_set source_path in
     let visited = HashSet.create () in
     let rec visit node_id =
       if HashSet.insert visited ~value:node_id then
         match G.get_node module_graph node_id with
-        | Some dep_node -> List.for_each dep_node.deps ~fn:visit
+        | Some dep_node -> List.for_each (scoped_traversal_deps scope_set dep_node) ~fn:visit
         | None -> ()
     in
     let () =
@@ -691,20 +748,31 @@ let from_module_graph ?analyzed_modules ~package ~profile ~ctx ~toolchain ~store
         else
           None)
   in
+  let global_concrete_reachable_set =
+    let scope_set = HashSet.create () in
+    let () =
+      if not (List.is_empty concrete_library_root_modules) then
+        List.for_each (HashSet.to_list library_concrete_reachable_set)
+          ~fn:(fun node_id ->
+            let _ = HashSet.insert scope_set ~value:node_id in
+            ())
+    in
+    let () =
+      List.for_each sorted_modules
+        ~fn:(fun (node: Module_node.t G.node) ->
+          match node.value.kind with
+          | Module_node.Binary { source; _ } ->
+              List.for_each (HashSet.to_list (binary_concrete_reachable_set source))
+                ~fn:(fun node_id ->
+                  let _ = HashSet.insert scope_set ~value:node_id in
+                  ())
+          | _ -> ())
+    in
+    scope_set
+  in
   let effective_deps (node: Module_node.t G.node) =
     match node.value.kind with
-    | _ when HashSet.contains concrete_root_ids ~value:node.id ->
-        concrete_root_dependency_ids node
-    | _ when not (List.is_empty concrete_library_root_modules)
-    && HashSet.contains root_candidate_ids ~value:node.id -> (
-        match node.value.file with
-        | Module_node.Generated _ -> normalize_compile_deps node.deps
-        | _ ->
-            let keep_ids = root_support_dependency_ids node in
-            List.filter node.deps ~fn:(fun dep_id -> HashSet.contains keep_ids ~value:dep_id)
-      )
-    | Module_node.Library _ when List.is_empty library_root_modules ->
-        node.deps
+    | Module_node.Library _ when List.is_empty library_root_modules -> node.deps
     | Module_node.Library _ ->
         List.filter node.deps
           ~fn:(fun dep_id ->
@@ -727,8 +795,10 @@ let from_module_graph ?analyzed_modules ~package ~profile ~ctx ~toolchain ~store
                 | _ -> false
               )
             | None -> false)
-    | _ ->
-        node.deps
+    | _ when not (List.is_empty concrete_library_root_modules) -> scoped_module_deps
+      global_concrete_reachable_set
+      node
+    | _ -> node.deps
   in
   let target_nodes =
     List.filter sorted_modules
