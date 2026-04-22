@@ -2997,8 +2997,14 @@ let signature_item_is_type = fun item ->
   | Type _ -> true
   | _ -> false
 
+let signature_item_is_open = fun item ->
+  match Ast.SignatureItem.view item with
+  | Open _ -> true
+  | _ -> false
+
 let signature_items_compact_between = fun left right ->
-  signature_item_is_type left && signature_item_is_type right
+  (signature_item_is_type left && signature_item_is_type right)
+  || (signature_item_is_open left && signature_item_is_open right)
 
 let signature_items_doc = fun items ->
   let rec loop previous doc = function
