@@ -11,8 +11,8 @@ type module_plan_result = Module_planner.plan_result
 
 type package_plan_result = Package_planner.plan_result
 
-let plan_workspace = fun ~workspace ~target ~scope ~load_errors ->
-  Workspace_planner.plan_workspace ~workspace ~target ~scope ~load_errors
+let plan_workspace = fun ~workspace ~target ~scope ~load_errors ~dev_artifacts ->
+  Workspace_planner.plan_workspace ~workspace ~target ~scope ~load_errors ~dev_artifacts
 
 let plan_package_with_graph = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~package ~build_ctx ->
   Package_planner.plan_package ~workspace ~toolchain ~store ~package_graph ~package_key ~package ~build_ctx

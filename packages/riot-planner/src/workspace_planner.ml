@@ -101,7 +101,7 @@ let filter_workspace_for_target = fun ~(workspace:Workspace.t) ~target ~(scope:P
           ~fn:(fun (pkg: Package_manifest.t) -> HashSet.contains seen ~value:pkg.name)
       }
 
-let plan_workspace = fun ~(workspace:Workspace.t) ~target ~(scope:Package_graph.build_scope) ~load_errors ->
+let plan_workspace = fun ~(workspace:Workspace.t) ~target ~(scope:Package_graph.build_scope) ~load_errors ~dev_artifacts ->
   (* Check for package load errors first *)
   if List.length load_errors > 0 then
     Error (PackageLoadFailed { errors = load_errors })
@@ -122,7 +122,7 @@ let plan_workspace = fun ~(workspace:Workspace.t) ~target ~(scope:Package_graph.
         (Time.Instant.now ()) in
       (
         let package_graph_started_at = Time.Instant.now () in
-        match Package_graph.create_with_breakdown ~scope workspace with
+        match Package_graph.create_with_breakdown ~scope ~dev_artifacts workspace with
         | Error (Package_graph.MissingPackages { missing }) -> Error (MissingDependencies { missing })
         | Ok (package_graph, package_graph_create_breakdown) ->
             let package_graph_duration = Time.Instant.duration_since

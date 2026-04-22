@@ -4,21 +4,33 @@ type scope =
   | Runtime
   | Dev
 
+type dev_artifacts = Riot_model.Package.dev_artifacts = {
+  tests: bool;
+  examples: bool;
+  benches: bool;
+}
+
 type t = {
   workspace: Riot_model.Workspace.t;
   packages: Riot_model.Package_name.t list;
   targets: Riot_model.Target.request;
   scope: scope;
+  dev_artifacts: dev_artifacts;
   profile: Riot_model.Profile.t;
   requested_parallelism: int option;
 }
 
-let make = fun ~workspace ~packages ~targets ~scope ~profile ?(requested_parallelism = None) () ->
+let make = fun ~workspace ~packages ~targets ~scope ~profile ?(dev_artifacts = {
+  tests = true;
+  examples = true;
+  benches = true
+}) ?(requested_parallelism = None) () ->
   {
     workspace;
     packages;
     targets;
     scope;
+    dev_artifacts;
     profile;
     requested_parallelism;
   }
@@ -31,6 +43,8 @@ module Internal = struct
   let targets = fun t -> t.targets
 
   let scope = fun t -> t.scope
+
+  let dev_artifacts = fun t -> t.dev_artifacts
 
   let profile = fun t -> t.profile
 

@@ -103,8 +103,8 @@ let plan_error_to_string = function
       in
       "package load failed: " ^ String.concat "; " (List.map errors ~fn:format_load_error)
 
-let make_lane_plan = fun lane_target workspace scope ->
-  Riot_planner.plan_workspace ~workspace ~target:lane_target ~scope ~load_errors:[]
+let make_lane_plan = fun lane_target workspace scope ~dev_artifacts ->
+  Riot_planner.plan_workspace ~workspace ~target:lane_target ~scope ~load_errors:[] ~dev_artifacts
   |> Result.map_err ~fn:plan_error_to_string
 
 let release_on_error = fun lock result ->
@@ -129,6 +129,7 @@ let prepare:
   let package_names = sort_unique_packages package_names in
   let planner_target = planner_target package_names in
   let planner_scope = planner_scope scope in
+  let dev_artifacts = Resolved_build.dev_artifacts spec in
   let* lock =
     Build_lock.wait
       ~on_waiting:(fun lock_path ->
@@ -151,7 +152,7 @@ let prepare:
               ^ ": "
               ^ reason)
       in
-      let* plan = make_lane_plan planner_target workspace planner_scope in
+      let* plan = make_lane_plan planner_target workspace planner_scope ~dev_artifacts in
       let build_ctx = make_build_ctx ~host ~target ~session_id ~profile ~parallelism:context.parallelism in
       let store = Riot_store.Store.create_for_lane ~workspace ~profile:profile.name ~target in
       Ok {

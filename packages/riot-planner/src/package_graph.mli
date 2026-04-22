@@ -9,6 +9,11 @@ type build_scope =
   | Build
   | Runtime
   | Dev
+type dev_artifacts = Riot_model.Package.dev_artifacts = {
+  tests: bool;
+  examples: bool;
+  benches: bool;
+}
 type package_scope = build_scope
 type package_node =
   | Unplanned of { package: Package.t; scope: package_scope }
@@ -61,10 +66,13 @@ type create_breakdown = {
   dev_node_realization_duration: Time.Duration.t;
   edge_wiring_duration: Time.Duration.t;
 }
-val create: scope:build_scope -> Workspace.t -> (t, create_error) result
+val create: scope:build_scope -> ?dev_artifacts:dev_artifacts -> Workspace.t -> (t, create_error) result
 
 val create_with_breakdown:
-  scope:build_scope -> Workspace.t -> ((t * create_breakdown), create_error) result
+  scope:build_scope ->
+  ?dev_artifacts:dev_artifacts ->
+  Workspace.t ->
+  ((t * create_breakdown), create_error) result
 
 (** Extract the Package.t from a package_node *)
 val get_package: package_node -> Package.t

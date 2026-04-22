@@ -37,7 +37,12 @@ let make_workspace = fun packages ->
   Workspace.make_realized ~root:(Path.v "/tmp/workspace_planner_target_tests") ~packages ()
 
 let plan_workspace = fun workspace target scope ->
-  Workspace_planner.plan_workspace ~workspace ~target ~scope ~load_errors:[]
+  Workspace_planner.plan_workspace
+    ~workspace
+    ~target
+    ~scope
+    ~load_errors:[]
+    ~dev_artifacts:{ tests = true; examples = true; benches = true }
 
 let package_names = fun plan ->
   Workspace_planner.packages_in_plan plan |> List.map ~fn:(fun (pkg: Package.t) -> pkg.name)

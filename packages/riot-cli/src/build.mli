@@ -8,6 +8,11 @@ open Std
 type build_scope = Riot_build.Request.scope =
   Runtime
   | Dev
+type dev_artifacts = Riot_build.Request.dev_artifacts = {
+  tests: bool;
+  examples: bool;
+  benches: bool;
+}
 type output_mode =
   | Human
   | Json
@@ -72,6 +77,7 @@ val run: workspace:Riot_model.Workspace.t -> Std.ArgParser.matches -> (unit, exn
 val build_command:
   workspace:Riot_model.Workspace.t ->
   ?scope:build_scope ->
+  ?dev_artifacts:dev_artifacts ->
   ?profile:string ->
   ?mode:output_mode ->
   ?show_finished_summary:bool ->

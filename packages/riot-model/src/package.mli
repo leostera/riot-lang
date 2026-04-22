@@ -41,6 +41,11 @@ type sources = {
   examples: Path.t list;
   bench: Path.t list;
 }
+type dev_artifacts = {
+  tests: bool;
+  examples: bool;
+  benches: bool;
+}
 type realization_intent =
   | Build
   | Runtime
@@ -195,9 +200,9 @@ val dependencies_for_scope: dependency_scope -> t -> dependency list
 
 val scope_of_binary_name: t -> binary_name:string -> dependency_scope option
 
-val binaries_for_scope: dependency_scope -> t -> binary list
+val binaries_for_scope: ?dev_artifacts:dev_artifacts -> dependency_scope -> t -> binary list
 
-val for_scope: dependency_scope -> t -> t
+val for_scope: ?dev_artifacts:dev_artifacts -> dependency_scope -> t -> t
 
 val build_graph_dependencies: t -> dependency list
 

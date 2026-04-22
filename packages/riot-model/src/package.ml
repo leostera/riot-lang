@@ -56,6 +56,12 @@ type sources = {
   bench: Path.t list;
 }
 
+type dev_artifacts = {
+  tests: bool;
+  examples: bool;
+  benches: bool;
+}
+
 type realization_intent =
   | Build
   | Runtime
@@ -154,6 +160,8 @@ let empty_sources = {
   examples = [];
   bench = [];
 }
+
+let all_dev_artifacts = { tests = true; examples = true; benches = true }
 
 let compare_path = fun left right ->
   String.compare (Path.to_string left) (Path.to_string right)
@@ -353,15 +361,28 @@ let binary_scope: binary -> dependency_scope = fun (bin: binary) ->
   else
     Normal
 
+let dev_artifact_selected_for_binary = fun (dev_artifacts: dev_artifacts) (bin: binary) ->
+  let path_str = Path.to_string bin.path in
+  if String.starts_with ~prefix:"tests/" path_str then
+    dev_artifacts.tests
+  else if String.starts_with ~prefix:"examples/" path_str then
+    dev_artifacts.examples
+  else if String.starts_with ~prefix:"bench/" path_str then
+    dev_artifacts.benches
+  else
+    false
+
 let scope_of_binary_name = fun (pkg: t) ~binary_name ->
   List.find pkg.binaries
     ~fn:(fun (bin: binary) ->
       String.equal bin.name binary_name) |> Option.map ~fn:binary_scope
 
-let binaries_for_scope = fun scope (pkg: t) ->
+let binaries_for_scope = fun ?(dev_artifacts = all_dev_artifacts) scope (pkg: t) ->
   match scope with
   | Normal -> List.filter pkg.binaries ~fn:(fun bin -> binary_scope bin = Normal)
-  | Dev -> List.filter pkg.binaries ~fn:(fun bin -> binary_scope bin = Dev)
+  | Dev -> List.filter
+    pkg.binaries
+    ~fn:(fun bin -> binary_scope bin = Dev && dev_artifact_selected_for_binary dev_artifacts bin)
   | Build -> []
 
 let commands_for_scope = fun scope (pkg: t) ->
@@ -370,10 +391,29 @@ let commands_for_scope = fun scope (pkg: t) ->
   | Dev
   | Build -> []
 
-let sources_for_scope = fun scope (pkg: t) ->
+let sources_for_scope = fun ?(dev_artifacts = all_dev_artifacts) scope (pkg: t) ->
   match scope with
   | Normal -> { pkg.sources with tests = []; examples = []; bench = [] }
-  | Dev -> { pkg.sources with src = []; native = [] }
+  | Dev ->
+      {
+        src = [];
+        native = [];
+        tests =
+          if dev_artifacts.tests then
+            pkg.sources.tests
+          else
+            [];
+        examples =
+          if dev_artifacts.examples then
+            pkg.sources.examples
+          else
+            [];
+        bench =
+          if dev_artifacts.benches then
+            pkg.sources.bench
+          else
+            [];
+      }
   | Build ->
       {
         src = [];
@@ -383,7 +423,7 @@ let sources_for_scope = fun scope (pkg: t) ->
         bench = [];
       }
 
-let for_scope = fun scope (pkg: t) ->
+let for_scope = fun ?(dev_artifacts = all_dev_artifacts) scope (pkg: t) ->
   match scope with
   | Normal -> canonicalize
     {
@@ -397,9 +437,9 @@ let for_scope = fun scope (pkg: t) ->
     {
       pkg
       with library = None;
-      binaries = binaries_for_scope Dev pkg;
+      binaries = binaries_for_scope ~dev_artifacts Dev pkg;
       commands = commands_for_scope Dev pkg;
-      sources = sources_for_scope Dev pkg
+      sources = sources_for_scope ~dev_artifacts Dev pkg
     }
   | Build ->
       canonicalize

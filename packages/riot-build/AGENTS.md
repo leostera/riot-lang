@@ -38,6 +38,7 @@
 31. Local build-session coordination that only runs under the actor runtime can experiment with actor-owned synchronization inside `riot-build`, but do not promote those primitives to `Std.Sync` until the runtime-facing contract is proven by real builds.
 32. Actor-owned helpers inside `riot-build` should not spawn actors at module load time. Defer actor creation until runtime use so test binaries and other callers can finish booting their actor runtime before those helpers come to life.
 33. `riot-build` must not print raw progress lines directly. Build-lock waits and similar runtime coordination states belong on `Riot_build.Event.Phase` so `riot-cli --json` stays pure JSONL and human mode can render the same state from structured events.
+34. Typed build requests may narrow dev-scope artifacts independently of the scope itself. Preserve selectors such as tests/examples/benches end-to-end through build resolution and planner projection instead of rebuilding the full dev surface whenever a caller only asked to compile one artifact class.
 
 ## Validate
 

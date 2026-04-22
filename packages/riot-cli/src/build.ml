@@ -9,6 +9,12 @@ type build_scope = Riot_build.Request.scope =
   Runtime
   | Dev
 
+type dev_artifacts = Riot_build.Request.dev_artifacts = {
+  tests: bool;
+  examples: bool;
+  benches: bool;
+}
+
 let out = eprintln
 
 type output_mode =
@@ -27,6 +33,7 @@ type request = {
   packages: Riot_model.Package_name.t list;
   targets: Riot_model.Target.request;
   scope: build_scope;
+  dev_artifacts: dev_artifacts;
   profile: Riot_model.Profile.t;
   requested_parallelism: int option;
   output_mode: output_mode;
@@ -319,17 +326,20 @@ let write_command_error = fun ~mode kind details human_message ->
 
 let command =
   let open ArgParser in
-    let open Arg in command "build"
-    |> about "Build packages"
-    |> args
-      [
-        option "package" |> short 'p' |> long "package" |> multiple |> help "Build a specific package. Repeat to build multiple packages; omit to build all packages.";
-        option "target" |> short 'x' |> long "target" |> help "Target architecture (exact triple, pattern like 'linux'/'aarch64', or 'all')";
-        flag "all-targets" |> long "all-targets" |> help "Build for all configured targets";
-        flag "release" |> long "release" |> help "Use the release build profile";
-        option "jobs" |> short 'j' |> long "jobs" |> help "Limit parallel workers";
-        flag "json" |> long "json" |> help "Emit machine-readable JSONL events";
-      ]
+    let open Arg in
+      command "build" |> about "Build packages" |> args
+        [
+          option "package" |> short 'p' |> long "package" |> multiple |> help "Build a specific package. Repeat to build multiple packages; omit to build all packages.";
+          option "target" |> short 'x' |> long "target" |> help "Target architecture (exact triple, pattern like 'linux'/'aarch64', or 'all')";
+          flag "all-targets" |> long "all-targets" |> help "Build for all configured targets";
+          flag "tests" |> long "tests" |> help "Also compile test binaries";
+          flag "examples" |> long "examples" |> help "Also compile example binaries";
+          flag "benches" |> long "benches" |> help "Also compile benchmark binaries";
+          flag "all" |> long "all" |> help "Also compile tests, examples, and benchmark binaries";
+          flag "release" |> long "release" |> help "Use the release build profile";
+          option "jobs" |> short 'j' |> long "jobs" |> help "Limit parallel workers";
+          flag "json" |> long "json" |> help "Emit machine-readable JSONL events";
+        ]
 
 let target_request_of_matches = fun matches ->
   if ArgParser.get_flag matches "all-targets" then
@@ -344,6 +354,22 @@ let output_mode_of_matches = fun matches ->
     Json
   else
     Human
+
+let dev_artifacts_of_matches = fun matches ->
+  if ArgParser.get_flag matches "all" then
+    { tests = true; examples = true; benches = true }
+  else
+    {
+      tests = ArgParser.get_flag matches "tests";
+      examples = ArgParser.get_flag matches "examples";
+      benches = ArgParser.get_flag matches "benches"
+    }
+
+let scope_of_dev_artifacts = fun (dev_artifacts: dev_artifacts) ->
+  if dev_artifacts.tests || dev_artifacts.examples || dev_artifacts.benches then
+    Dev
+  else
+    Runtime
 
 let profile_of_matches = fun matches ->
   if ArgParser.get_flag matches "release" then
@@ -371,12 +397,17 @@ let parse_package_names = fun package_names ->
   in
   loop [] package_names
 
-let make_request = fun ~workspace ?(scope = Runtime) ?(profile = Riot_model.Profile.debug) ?(mode = Human) ?(show_finished_summary = true) ?(requested_parallelism = None) ~packages ~targets () ->
+let make_request = fun ~workspace ?(scope = Runtime) ?(dev_artifacts = {
+  tests = true;
+  examples = true;
+  benches = true
+}) ?(profile = Riot_model.Profile.debug) ?(mode = Human) ?(show_finished_summary = true) ?(requested_parallelism = None) ~packages ~targets () ->
   {
     workspace;
     packages;
     targets;
     scope;
+    dev_artifacts;
     profile;
     requested_parallelism;
     output_mode = mode;
@@ -389,14 +420,18 @@ let request_of_matches = fun ~workspace matches ->
   | Ok packages -> (
       match requested_parallelism_of_matches matches with
       | Error _ as err -> err
-      | Ok requested_parallelism -> Ok (make_request
-        ~workspace
-        ~profile:(profile_of_matches matches)
-        ~mode:(output_mode_of_matches matches)
-        ~requested_parallelism
-        ~packages
-        ~targets:(target_request_of_matches matches)
-        ())
+      | Ok requested_parallelism ->
+          let dev_artifacts = dev_artifacts_of_matches matches in
+          Ok (make_request
+            ~workspace
+            ~scope:(scope_of_dev_artifacts dev_artifacts)
+            ~dev_artifacts
+            ~profile:(profile_of_matches matches)
+            ~mode:(output_mode_of_matches matches)
+            ~requested_parallelism
+            ~packages
+            ~targets:(target_request_of_matches matches)
+            ())
     )
 
 let write_building_target_event = fun ~mode ~target ~host ->
@@ -633,6 +668,7 @@ let run_request = fun (request: request) ->
         ~packages:request.packages
         ~targets:request.targets
         ~scope:request.scope
+        ~dev_artifacts:request.dev_artifacts
         ~profile:request.profile
         ~requested_parallelism:request.requested_parallelism
         ())
@@ -722,11 +758,15 @@ let load_workspace_strict = fun cwd ->
       |> Result.map_err ~fn:(fun err -> Failure (Riot_model.Pm_error.message err)) in
       Ok { workspace }
 
-let build_command = fun ~workspace ?(scope = Runtime) ?(profile = "debug") ?(mode = Human) ?(show_finished_summary = true) ?(requested_parallelism = None) package_opt target_arch ->
+let build_command = fun ~workspace ?(scope = Runtime) ?(dev_artifacts = {
+  tests = true;
+  examples = true;
+  benches = true
+}) ?(profile = "debug") ?(mode = Human) ?(show_finished_summary = true) ?(requested_parallelism = None) package_opt target_arch ->
   let packages = package_opt |> Option.to_list in
   run_request
     (
-      make_request ~workspace ~scope
+      make_request ~workspace ~scope ~dev_artifacts
         ~profile:(
           match profile with
           | "release" -> Riot_model.Profile.release
@@ -744,13 +784,17 @@ let build_command = fun ~workspace ?(scope = Runtime) ?(profile = "debug") ?(mod
         ()
     )
 
-let build_packages_command = fun ~workspace ?(scope = Runtime) ?(mode = Human) ?(show_finished_summary = true) ?(requested_parallelism = None) package_names target_arch ->
+let build_packages_command = fun ~workspace ?(scope = Runtime) ?(dev_artifacts = {
+  tests = true;
+  examples = true;
+  benches = true
+}) ?(mode = Human) ?(show_finished_summary = true) ?(requested_parallelism = None) package_names target_arch ->
   match parse_package_names package_names with
   | Error _ as err -> err
   | Ok packages ->
       run_request
         (
-          make_request ~workspace ~scope ~mode ~show_finished_summary ~requested_parallelism ~packages
+          make_request ~workspace ~scope ~dev_artifacts ~mode ~show_finished_summary ~requested_parallelism ~packages
             ~targets:(
               match target_arch with
               | Some target -> Riot_model.Target.parse target

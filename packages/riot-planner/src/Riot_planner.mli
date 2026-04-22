@@ -14,6 +14,7 @@ val plan_workspace:
   target:build_target ->
   scope:Package_graph.build_scope ->
   load_errors:Workspace_manager.load_error list ->
+  dev_artifacts:Package_graph.dev_artifacts ->
   (workspace_plan_result, plan_error) result
 
 (** Plan a single package with dependency-aware hashing. Checks if all

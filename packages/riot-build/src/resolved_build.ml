@@ -4,10 +4,17 @@ type scope = Request.scope =
   | Runtime
   | Dev
 
+type dev_artifacts = Request.dev_artifacts = {
+  tests: bool;
+  examples: bool;
+  benches: bool;
+}
+
 type t = {
   package_names: Riot_model.Package_name.t list;
   targets: Riot_model.Target.Set.t;
   scope: scope;
+  dev_artifacts: dev_artifacts;
 }
 
 type error =
@@ -21,13 +28,16 @@ type error =
       available_packages: Riot_model.Package_name.t list
     }
 
-let make = fun ~package_names ~targets ~scope -> { package_names; targets; scope }
+let make = fun ~package_names ~targets ~scope ~dev_artifacts ->
+  { package_names; targets; scope; dev_artifacts }
 
 let package_names = fun t -> t.package_names
 
 let targets = fun t -> t.targets
 
 let scope = fun t -> t.scope
+
+let dev_artifacts = fun t -> t.dev_artifacts
 
 let available_package_names = fun workspace ->
   workspace.Riot_model.Workspace.packages
@@ -74,4 +84,8 @@ let resolve = fun context request ->
       context.Build_context.workspace
       (Request.Internal.packages request) in
     let* targets = resolve_target_names context request in
-    Ok (make ~package_names ~targets ~scope:(Request.Internal.scope request))
+    Ok (make
+      ~package_names
+      ~targets
+      ~scope:(Request.Internal.scope request)
+      ~dev_artifacts:(Request.Internal.dev_artifacts request))

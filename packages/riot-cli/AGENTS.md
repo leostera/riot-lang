@@ -64,6 +64,7 @@
 55. `riot bench --json` should forward child benchmark progress events such as `BenchCaseStarted` and emit parent-side `BenchCaseHeartbeat` idle events while a suite is quiet. Strip forwarded child progress lines back out of `BenchSuiteCompleted.stdout` so consumers do not have to deduplicate them.
 56. `riot bench --compare N` should stay as a rendering flag in `riot-cli`. Load and align prior suite runs through `riot-bench`, then render current-versus-history tables, including GC diagnostics from the stored stats, or the matching structured JSON event without duplicating history matching logic in the CLI.
 57. Benchmark history recording must be explicit. Only `riot bench --record` should persist runs into `.riot/bench`; plain `riot bench` and `--compare` reads must not create new history files.
+58. `riot build` should keep runtime builds as the default. Use explicit artifact selectors (`--tests`, `--examples`, `--benches`, `--all`) to opt into dev binaries for build-only workflows, and keep those selectors thin wrappers over typed build-request state rather than CLI-side artifact discovery.
 
 ## Validate
 

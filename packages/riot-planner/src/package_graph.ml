@@ -34,6 +34,12 @@ type build_scope =
   | Runtime
   | Dev
 
+type dev_artifacts = Riot_model.Package.dev_artifacts = {
+  tests: bool;
+  examples: bool;
+  benches: bool;
+}
+
 type package_scope = build_scope
 
 type package_node =
@@ -156,11 +162,11 @@ let dependencies_for_scope = fun scope (pkg: Package.t) ->
   | Runtime -> pkg.dependencies
   | Dev -> pkg.dev_dependencies
 
-let projected_package = fun scope pkg ->
+let projected_package = fun ?(dev_artifacts = { tests = true; examples = true; benches = true }) scope pkg ->
   match scope with
   | Build -> Package.for_scope Package.Build pkg
   | Runtime -> Package.for_scope Package.Normal pkg
-  | Dev -> Package.for_scope Package.Dev pkg
+  | Dev -> Package.for_scope ~dev_artifacts Package.Dev pkg
 
 let needs_build_scope_node = fun (pkg: Package_manifest.t) -> List.length pkg.build_dependencies > 0
 
@@ -183,7 +189,10 @@ let empty_breakdown = {
   edge_wiring_duration = Time.Duration.zero;
 }
 
-let create_with_breakdown ~scope (workspace: Workspace.t): ((t * create_breakdown), create_error) result =
+let create_with_breakdown ~scope ?(dev_artifacts = { tests = true; examples = true; benches = true }) (
+  workspace: Workspace.t
+):
+  ((t * create_breakdown), create_error) result =
   let started_at = Time.Instant.now () in
   let graph = G.make () in
   let name_to_node = HashMap.create () in
@@ -199,7 +208,13 @@ let create_with_breakdown ~scope (workspace: Workspace.t): ((t * create_breakdow
   in
   let realize_and_insert_node scope (pkg: Package_manifest.t) =
     let realization_started_at = Time.Instant.now () in
-    let package = realize_projected_package workspace scope pkg in
+    let package =
+      match scope with
+      | Dev -> Workspace.realize_package ~intent:Package.Dev pkg
+      |> projected_package ~dev_artifacts scope
+      | Build
+      | Runtime -> realize_projected_package workspace scope pkg
+    in
     let realization_duration = Time.Instant.duration_since
       ~earlier:realization_started_at
       (Time.Instant.now ()) in
@@ -365,7 +380,7 @@ let create_with_breakdown ~scope (workspace: Workspace.t): ((t * create_breakdow
   in
   result
 
-let create ~scope workspace = create_with_breakdown ~scope workspace
+let create ~scope ?dev_artifacts workspace = create_with_breakdown ~scope ?dev_artifacts workspace
 |> Result.map ~fn:(fun (graph, _breakdown) -> graph)
 
 let get_node = fun pg package ->
