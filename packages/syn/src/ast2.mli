@@ -404,18 +404,40 @@ end
 
 module ModuleDeclaration: sig
   type t = module_declaration
+  type body =
+    | Path
+    | EmptyStruct
+    | EmptySig
+    | Unsupported
   val cast: Node.t -> t option
 
   val name: t -> Token.t option
 
   val rec_token: t -> Token.t option
+
+  val separator_token: t -> Token.t option
+
+  val body: t -> body
+
+  val for_each_body_path_ident: t -> fn:(Token.t -> unit) -> unit
 end
 
 module ModuleTypeDeclaration: sig
   type t = module_type_declaration
+  type body =
+    | Abstract
+    | Path
+    | EmptySig
+    | Unsupported
   val cast: Node.t -> t option
 
   val name: t -> Token.t option
+
+  val equals_token: t -> Token.t option
+
+  val body: t -> body
+
+  val for_each_body_path_ident: t -> fn:(Token.t -> unit) -> unit
 end
 
 module OpenDeclaration: sig

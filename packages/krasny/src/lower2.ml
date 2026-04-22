@@ -836,16 +836,72 @@ let type_decl_doc = fun decl ->
       | None -> Doc.concat [ Doc.text "type"; Doc.space; type_parameters_doc decl; token_doc name ]
     )
 
+let module_decl_path_body_doc = fun decl ->
+  let segments = ref [] in
+  Ast.ModuleDeclaration.for_each_body_path_ident
+    decl
+    ~fn:(fun token -> segments := token_doc token :: !segments);
+  match List.reverse !segments with
+  | [] -> unsupported "module declaration path body without identifiers"
+  | segments -> Doc.join (Doc.text ".") segments
+
+let module_type_decl_path_body_doc = fun decl ->
+  let segments = ref [] in
+  Ast.ModuleTypeDeclaration.for_each_body_path_ident
+    decl
+    ~fn:(fun token -> segments := token_doc token :: !segments);
+  match List.reverse !segments with
+  | [] -> unsupported "module type declaration path body without identifiers"
+  | segments -> Doc.join (Doc.text ".") segments
+
+let module_decl_body_doc = fun decl ->
+  match Ast.ModuleDeclaration.body decl with
+  | Path -> module_decl_path_body_doc decl
+  | EmptyStruct -> Doc.concat [ Doc.text "struct"; Doc.space; Doc.text "end" ]
+  | EmptySig -> Doc.concat [ Doc.text "sig"; Doc.space; Doc.text "end" ]
+  | Unsupported -> unsupported "unsupported module declaration body"
+
+let module_type_decl_body_doc = fun decl ->
+  match Ast.ModuleTypeDeclaration.body decl with
+  | Abstract -> Doc.empty
+  | Path -> module_type_decl_path_body_doc decl
+  | EmptySig -> Doc.concat [ Doc.text "sig"; Doc.space; Doc.text "end" ]
+  | Unsupported -> unsupported "unsupported module type declaration body"
+
 let module_decl_doc = fun decl ->
   match Ast.ModuleDeclaration.name decl with
   | Some name ->
-      Doc.concat
+      let head = Doc.concat
         [ Doc.text "module"; (
             match Ast.ModuleDeclaration.rec_token decl with
             | Some rec_token -> Doc.concat [ Doc.space; token_doc rec_token; Doc.space ]
             | None -> Doc.space
           ); token_doc name; ]
+      in
+      (
+        match Ast.ModuleDeclaration.separator_token decl with
+        | Some separator when Kind.(Ast.Token.kind separator = COLON) -> Doc.concat
+          [ head; token_doc separator; Doc.space; module_decl_body_doc decl ]
+        | Some separator -> Doc.concat
+          [ head; Doc.space; token_doc separator; Doc.space; module_decl_body_doc decl ]
+        | None -> unsupported "module declaration without separator"
+      )
   | None -> unsupported "module declaration without name"
+
+let module_type_decl_doc = fun decl ->
+  match Ast.ModuleTypeDeclaration.name decl with
+  | None -> unsupported "module type declaration without name"
+  | Some name ->
+      let head = Doc.concat
+        [ Doc.text "module"; Doc.space; Doc.text "type"; Doc.space; token_doc name ] in
+      (
+        match Ast.ModuleTypeDeclaration.equals_token decl, Ast.ModuleTypeDeclaration.body decl with
+        | None, Abstract -> head
+        | Some equals_token, (Path | EmptySig) -> Doc.concat
+          [ head; Doc.space; token_doc equals_token; Doc.space; module_type_decl_body_doc decl ]
+        | Some _, (Abstract | Unsupported) -> unsupported "unsupported module type declaration body"
+        | None, _ -> unsupported "module type declaration body without equals token"
+      )
 
 let value_decl_doc = fun decl ->
   match Ast.ValueDeclaration.name decl, Ast.ValueDeclaration.type_annotation decl with
@@ -906,12 +962,13 @@ let structure_item_doc = fun item ->
       external_decl_doc decl
   | Exception decl ->
       exception_decl_doc decl
+  | ModuleType decl ->
+      module_type_decl_doc decl
   | Expr expr_item -> (
       match Ast.ExprItem.expr expr_item with
       | Some expr -> expr_doc expr
       | None -> unsupported "expression item without expression"
     )
-  | ModuleType _
   | Class _
   | Extension _
   | Attribute _
@@ -928,7 +985,7 @@ let signature_item_doc = fun item ->
   | Include decl -> include_decl_doc decl
   | External decl -> external_decl_doc decl
   | Exception decl -> exception_decl_doc decl
-  | ModuleType _
+  | ModuleType decl -> module_type_decl_doc decl
   | Class _
   | Extension _
   | Attribute _

@@ -185,6 +185,18 @@ let tests = [
         ~expected:"include Foo.Bar\nexternal id: 'a -> 'a = \"%identity\" \"caml_id\"\nexception Boom\n"
         "include Foo.Bar\nexternal id : 'a -> 'a = \"%identity\" \"caml_id\"\nexception Boom\n");
   Test.case
+    "lower2 formats simple module and module type declarations"
+    (fun _ctx ->
+      assert_format2_ml
+        ~expected:"module Alias = Foo.Bar\nmodule Empty = struct end\nmodule type S = Foo.S\nmodule type Empty = sig end\n"
+        "module Alias = Foo.Bar\nmodule Empty = struct end\nmodule type S = Foo.S\nmodule type Empty = sig end\n");
+  Test.case
+    "lower2 formats simple signature module declarations"
+    (fun _ctx ->
+      assert_format2_mli
+        ~expected:"module Alias: Foo.S\nmodule Empty: sig end\nmodule type S = Foo.S\nmodule type Abstract\n"
+        "module Alias : Foo.S\nmodule Empty : sig end\nmodule type S = Foo.S\nmodule type Abstract\n");
+  Test.case
     "lower2 formats type aliases with parameters"
     (fun _ctx -> assert_format2_mli ~expected:"type 'a t = 'a list\n" "type 'a t = 'a list\n");
   Test.case

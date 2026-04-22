@@ -58,6 +58,9 @@ let benchmarks = [
     (make_fixture ~name:"include external exception declarations" ~path:(Path.v "sample.ml") "include Foo.Bar\nexternal id : 'a -> 'a = \"%identity\" \"caml_id\"\nexception Boom\n");
   compare_fixture
     ~config:small_config
+    (make_fixture ~name:"module and module type declarations" ~path:(Path.v "sample.ml") "module Alias = Foo.Bar\nmodule Empty = struct end\nmodule type S = Foo.S\nmodule type Empty = sig end\n");
+  compare_fixture
+    ~config:small_config
     (make_fixture ~name:"type alias" ~path:(Path.v "sample.mli") "type 'a t = 'a list\n");
   compare_fixture
     ~config:small_config

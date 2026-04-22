@@ -1548,6 +1548,12 @@ end
 module ModuleDeclaration = struct
   type t = module_declaration
 
+  type body =
+    | Path
+    | EmptyStruct
+    | EmptySig
+    | Unsupported
+
   let cast = fun (node: node) ->
     if node_kind_is node Syntax_kind2.MODULE_DECL then
       Some node
@@ -1557,10 +1563,88 @@ module ModuleDeclaration = struct
   let name = first_ident_or_underscore_token
 
   let rec_token = fun decl -> Node.first_child_token decl ~kind:Syntax_kind2.REC_KW
+
+  let separator_token = fun decl ->
+    first_child_token_matching decl ~matches:(fun kind -> Syntax_kind2.(kind = EQ || kind = COLON))
+
+  let separator_index = fun decl ->
+    let count = Node.child_count decl in
+    let rec loop index =
+      if index >= count then
+        None
+      else
+        match child_token_at decl index with
+        | Some token when token_kind_is token Syntax_kind2.EQ || token_kind_is token Syntax_kind2.COLON -> Some index
+        | _ -> loop (index + 1)
+    in
+    loop 0
+
+  let body_path_starts_at = fun decl start ->
+    let count = Node.child_count decl in
+    let rec loop index saw_ident expect_ident =
+      if index >= count then
+        saw_ident && not expect_ident
+      else
+        match child_token_at decl index with
+        | Some token when token_kind_is token Syntax_kind2.IDENT && expect_ident -> loop
+          (index + 1)
+          true
+          false
+        | Some token when token_kind_is token Syntax_kind2.DOT && saw_ident && not expect_ident -> loop
+          (index + 1)
+          saw_ident
+          true
+        | _ -> false
+    in
+    loop start false true
+
+  let body_has_exact_tokens = fun decl start left right ->
+    Int.equal (start + 2) (Node.child_count decl)
+    && match child_token_at decl start, child_token_at decl (start + 1) with
+    | Some left_token, Some right_token -> token_kind_is left_token left
+    && token_kind_is right_token right
+    | _ -> false
+
+  let body = fun decl ->
+    match separator_index decl with
+    | None -> Unsupported
+    | Some separator_index ->
+        let start = separator_index + 1 in
+        if body_path_starts_at decl start then
+          Path
+        else if body_has_exact_tokens decl start Syntax_kind2.STRUCT_KW Syntax_kind2.END_KW then
+          EmptyStruct
+        else if body_has_exact_tokens decl start Syntax_kind2.SIG_KW Syntax_kind2.END_KW then
+          EmptySig
+        else
+          Unsupported
+
+  let for_each_body_path_ident = fun decl ~fn ->
+    match separator_index decl with
+    | None -> ()
+    | Some separator_index ->
+        let count = Node.child_count decl in
+        let rec loop index =
+          if index < count then
+            (
+              match child_token_at decl index with
+              | Some token when token_kind_is token Syntax_kind2.IDENT ->
+                  fn token;
+                  loop (index + 1)
+              | _ -> loop (index + 1)
+            )
+        in
+        loop (separator_index + 1)
 end
 
 module ModuleTypeDeclaration = struct
   type t = module_type_declaration
+
+  type body =
+    | Abstract
+    | Path
+    | EmptySig
+    | Unsupported
 
   let cast = fun (node: node) ->
     if node_kind_is node Syntax_kind2.MODULE_TYPE_DECL then
@@ -1569,6 +1653,75 @@ module ModuleTypeDeclaration = struct
       None
 
   let name = first_ident_token
+
+  let equals_token = fun decl -> Node.first_child_token decl ~kind:Syntax_kind2.EQ
+
+  let equals_index = fun decl ->
+    let count = Node.child_count decl in
+    let rec loop index =
+      if index >= count then
+        None
+      else
+        match child_token_at decl index with
+        | Some token when token_kind_is token Syntax_kind2.EQ -> Some index
+        | _ -> loop (index + 1)
+    in
+    loop 0
+
+  let body_path_starts_at = fun decl start ->
+    let count = Node.child_count decl in
+    let rec loop index saw_ident expect_ident =
+      if index >= count then
+        saw_ident && not expect_ident
+      else
+        match child_token_at decl index with
+        | Some token when token_kind_is token Syntax_kind2.IDENT && expect_ident -> loop
+          (index + 1)
+          true
+          false
+        | Some token when token_kind_is token Syntax_kind2.DOT && saw_ident && not expect_ident -> loop
+          (index + 1)
+          saw_ident
+          true
+        | _ -> false
+    in
+    loop start false true
+
+  let body_has_exact_tokens = fun decl start left right ->
+    Int.equal (start + 2) (Node.child_count decl)
+    && match child_token_at decl start, child_token_at decl (start + 1) with
+    | Some left_token, Some right_token -> token_kind_is left_token left
+    && token_kind_is right_token right
+    | _ -> false
+
+  let body = fun decl ->
+    match equals_index decl with
+    | None -> Abstract
+    | Some equals_index ->
+        let start = equals_index + 1 in
+        if body_path_starts_at decl start then
+          Path
+        else if body_has_exact_tokens decl start Syntax_kind2.SIG_KW Syntax_kind2.END_KW then
+          EmptySig
+        else
+          Unsupported
+
+  let for_each_body_path_ident = fun decl ~fn ->
+    match equals_index decl with
+    | None -> ()
+    | Some equals_index ->
+        let count = Node.child_count decl in
+        let rec loop index =
+          if index < count then
+            (
+              match child_token_at decl index with
+              | Some token when token_kind_is token Syntax_kind2.IDENT ->
+                  fn token;
+                  loop (index + 1)
+              | _ -> loop (index + 1)
+            )
+        in
+        loop (equals_index + 1)
 end
 
 module OpenDeclaration = struct

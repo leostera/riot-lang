@@ -364,24 +364,85 @@ let test_simple_declaration_token_views = fun _ctx ->
   | _ -> Error "expected exception declaration"
 
 let test_module_declaration_tokens = fun _ctx ->
-  let root = parse_ml "module rec M = struct end\nmodule _ = struct end\n" |> Result.expect ~msg:"expected parse2 source file" in
+  let root = parse_ml "module rec M = struct end\nmodule _ = struct end\nmodule Alias = Foo.Bar\n"
+  |> Result.expect ~msg:"expected parse2 source file" in
   let first_item = nth_structure_item root 0 |> require_some ~msg:"expected first module item" in
   let second_item = nth_structure_item root 1 |> require_some ~msg:"expected second module item" in
+  let third_item = nth_structure_item root 2 |> require_some ~msg:"expected third module item" in
   (
     match Ast2.StructureItem.view first_item with
     | Ast2.StructureItem.Module decl ->
         let rec_token = Ast2.ModuleDeclaration.rec_token decl |> require_some ~msg:"expected rec token" in
         let name = Ast2.ModuleDeclaration.name decl |> require_some ~msg:"expected module name" in
         Test.assert_equal ~expected:"rec" ~actual:(Ast2.Token.text rec_token);
-        Test.assert_equal ~expected:"M" ~actual:(Ast2.Token.text name)
+        Test.assert_equal ~expected:"M" ~actual:(Ast2.Token.text name);
+        Test.assert_equal
+          ~expected:Ast2.ModuleDeclaration.EmptyStruct
+          ~actual:(Ast2.ModuleDeclaration.body decl)
     | _ -> panic "expected first module declaration"
   );
-  match Ast2.StructureItem.view second_item with
-  | Ast2.StructureItem.Module decl ->
-      let name = Ast2.ModuleDeclaration.name decl |> require_some ~msg:"expected module wildcard name" in
-      Test.assert_equal ~expected:"_" ~actual:(Ast2.Token.text name);
-      Ok ()
-  | _ -> Error "expected second module declaration"
+  (
+    match Ast2.StructureItem.view second_item with
+    | Ast2.StructureItem.Module decl ->
+        let name = Ast2.ModuleDeclaration.name decl |> require_some ~msg:"expected module wildcard name" in
+        Test.assert_equal ~expected:"_" ~actual:(Ast2.Token.text name)
+    | _ -> panic "expected second module declaration"
+  );
+  (
+    match Ast2.StructureItem.view third_item with
+    | Ast2.StructureItem.Module decl ->
+        let separator = Ast2.ModuleDeclaration.separator_token decl |> require_some ~msg:"expected module separator" in
+        let segments = ref [] in
+        Ast2.ModuleDeclaration.for_each_body_path_ident
+          decl
+          ~fn:(fun token -> segments := Ast2.Token.text token :: !segments);
+        Test.assert_equal ~expected:"=" ~actual:(Ast2.Token.text separator);
+        Test.assert_equal
+          ~expected:Ast2.ModuleDeclaration.Path
+          ~actual:(Ast2.ModuleDeclaration.body decl);
+        Test.assert_equal ~expected:[ "Foo"; "Bar" ] ~actual:(List.reverse !segments)
+    | _ -> panic "expected third module declaration"
+  );
+  Ok ()
+
+let test_module_type_declaration_tokens = fun _ctx ->
+  let root = parse_mli "module type S = Foo.S\nmodule type Empty = sig end\nmodule type Abstract\n"
+  |> Result.expect ~msg:"expected parse2 interface" in
+  let first_item = nth_signature_item root 0 |> require_some ~msg:"expected first module type item" in
+  let second_item = nth_signature_item root 1 |> require_some ~msg:"expected second module type item" in
+  let third_item = nth_signature_item root 2 |> require_some ~msg:"expected third module type item" in
+  (
+    match Ast2.SignatureItem.view first_item with
+    | Ast2.SignatureItem.ModuleType decl ->
+        let name = Ast2.ModuleTypeDeclaration.name decl |> require_some ~msg:"expected module type name" in
+        let equals = Ast2.ModuleTypeDeclaration.equals_token decl |> require_some ~msg:"expected module type equals token" in
+        let segments = ref [] in
+        Ast2.ModuleTypeDeclaration.for_each_body_path_ident
+          decl
+          ~fn:(fun token -> segments := Ast2.Token.text token :: !segments);
+        Test.assert_equal ~expected:"S" ~actual:(Ast2.Token.text name);
+        Test.assert_equal ~expected:"=" ~actual:(Ast2.Token.text equals);
+        Test.assert_equal
+          ~expected:Ast2.ModuleTypeDeclaration.Path
+          ~actual:(Ast2.ModuleTypeDeclaration.body decl);
+        Test.assert_equal ~expected:[ "Foo"; "S" ] ~actual:(List.reverse !segments)
+    | _ -> panic "expected first module type declaration"
+  );
+  (
+    match Ast2.SignatureItem.view second_item with
+    | Ast2.SignatureItem.ModuleType decl -> Test.assert_equal
+      ~expected:Ast2.ModuleTypeDeclaration.EmptySig
+      ~actual:(Ast2.ModuleTypeDeclaration.body decl)
+    | _ -> panic "expected second module type declaration"
+  );
+  (
+    match Ast2.SignatureItem.view third_item with
+    | Ast2.SignatureItem.ModuleType decl -> Test.assert_equal
+      ~expected:Ast2.ModuleTypeDeclaration.Abstract
+      ~actual:(Ast2.ModuleTypeDeclaration.body decl)
+    | _ -> panic "expected third module type declaration"
+  );
+  Ok ()
 
 let test_binding_type_annotation_view = fun _ctx ->
   let root = parse_ml "let x : int = 1\n" |> Result.expect ~msg:"expected parse2 source file" in
@@ -579,6 +640,7 @@ let tests = [
   Test.case "ast2 exposes open declaration path tokens" test_open_declaration_path_tokens;
   Test.case "ast2 exposes simple declaration token views" test_simple_declaration_token_views;
   Test.case "ast2 exposes module declaration tokens" test_module_declaration_tokens;
+  Test.case "ast2 exposes module type declaration tokens" test_module_type_declaration_tokens;
   Test.case "ast2 exposes let binding type annotation views" test_binding_type_annotation_view;
   Test.case "ast2 exposes record expression and pattern views" test_record_views;
   Test.case "ast2 exposes binding operator expression views" test_binding_operator_views;
