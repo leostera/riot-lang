@@ -385,26 +385,22 @@ let sources_for_scope = fun scope (pkg: t) ->
 
 let for_scope = fun scope (pkg: t) ->
   match scope with
-  | Normal ->
-      canonicalize
-        {
-          pkg
-          with dev_dependencies = [];
-          build_dependencies = [];
-          binaries = binaries_for_scope Normal pkg;
-          commands = commands_for_scope Normal pkg;
-          sources = sources_for_scope Normal pkg;
-        }
-  | Dev ->
-      canonicalize
-        {
-          pkg
-          with build_dependencies = [];
-          library = None;
-          binaries = binaries_for_scope Dev pkg;
-          commands = commands_for_scope Dev pkg;
-          sources = sources_for_scope Dev pkg;
-        }
+  | Normal -> canonicalize
+    {
+      pkg
+      with dev_dependencies = [];
+      binaries = binaries_for_scope Normal pkg;
+      commands = commands_for_scope Normal pkg;
+      sources = sources_for_scope Normal pkg
+    }
+  | Dev -> canonicalize
+    {
+      pkg
+      with library = None;
+      binaries = binaries_for_scope Dev pkg;
+      commands = commands_for_scope Dev pkg;
+      sources = sources_for_scope Dev pkg
+    }
   | Build ->
       canonicalize
         {

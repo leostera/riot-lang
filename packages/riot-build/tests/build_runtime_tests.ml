@@ -72,6 +72,64 @@ let make_workspace_with_sources = fun ?toolchain_targets ~root ~packages () ->
   in
   make_workspace ?toolchain_targets ~root ~packages ()
 
+let load_prepared_workspace = fun ~root ->
+  let workspace_manager = Riot_model.Workspace_manager.create () in
+  match Riot_model.Workspace_manager.scan workspace_manager root with
+  | Error err -> Error ("workspace scan failed: " ^ err)
+  | Ok (workspace, load_errors) ->
+      if not (List.is_empty load_errors) then
+        Error "workspace scan produced load errors"
+      else
+        let registry = Pkgs_ml.Registry.create_filesystem ?riot_home:None ~registry_name:"pkgs.ml" ()
+        |> Result.expect ~msg:"registry init failed" in
+        Riot_deps.ensure_workspace
+          ~workspace_manager
+          ~mode:Riot_deps.Dep_solver.Refresh
+          ~registry
+          ~workspace
+          ()
+        |> Result.map_err ~fn:Riot_model.Pm_error.message
+
+let write_path_dependency_package = fun ~root ~dir_name ~package_name ->
+  let pkg_dir = Path.(root / Path.v dir_name) in
+  let src_dir = Path.(pkg_dir / Path.v "src") in
+  Fs.create_dir_all src_dir |> Result.expect ~msg:"Create path dependency src failed";
+  Fs.write "let value = 42\n" Path.(src_dir / Path.v (package_name ^ ".ml")) |> Result.expect ~msg:"Write path dependency source failed";
+  Fs.write
+    ("[package]\nname = \""
+    ^ package_name
+    ^ "\"\nversion = \"0.0.1\"\n\n[lib]\npath = \"src/"
+    ^ package_name
+    ^ ".ml\"\n")
+    Path.(pkg_dir / Path.v "riot.toml")
+  |> Result.expect ~msg:"Write path dependency riot.toml failed"
+
+let write_app_package_with_path_dependency = fun ~root ~dep_path ->
+  let pkg_dir = Path.(root / Path.v "packages" / Path.v "app") in
+  let src_dir = Path.(pkg_dir / Path.v "src") in
+  Fs.create_dir_all src_dir |> Result.expect ~msg:"Create app src failed";
+  Fs.write "let value = Dep.value\n" Path.(src_dir / Path.v "app.ml") |> Result.expect ~msg:"Write app source failed";
+  Fs.write
+    ("[package]\nname = \"app\"\nversion = \"0.0.1\"\n\n[lib]\npath = \"src/app.ml\"\n\n[dependencies]\n"
+    ^ "dep = { path = \""
+    ^ dep_path
+    ^ "\" }\n")
+    Path.(pkg_dir / Path.v "riot.toml")
+  |> Result.expect ~msg:"Write app riot.toml failed"
+
+let write_app_package_with_build_dependency = fun ~root ~dep_path ->
+  let pkg_dir = Path.(root / Path.v "packages" / Path.v "app") in
+  let src_dir = Path.(pkg_dir / Path.v "src") in
+  Fs.create_dir_all src_dir |> Result.expect ~msg:"Create app src failed";
+  Fs.write "let value = 42\n" Path.(src_dir / Path.v "app.ml") |> Result.expect ~msg:"Write app source failed";
+  Fs.write
+    ("[package]\nname = \"app\"\nversion = \"0.0.1\"\n\n[lib]\npath = \"src/app.ml\"\n\n[build-dependencies]\n"
+    ^ "dep = { path = \""
+    ^ dep_path
+    ^ "\" }\n")
+    Path.(pkg_dir / Path.v "riot.toml")
+  |> Result.expect ~msg:"Write app riot.toml failed"
+
 let make_request = fun ~workspace ?(profile = Riot_model.Profile.debug) () ->
   Riot_build.Request.make
     ~workspace
@@ -288,6 +346,88 @@ let test_nested_udp_workspace_builds_across_file_creation_orders = fun _ctx ->
               end
         in
         run orders)
+  with
+  | Ok result -> result
+  | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
+
+let test_manifest_path_dependency_change_invalidates_package_cache = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"riot_build_dep_path_runtime"
+      (fun tmpdir ->
+        write_workspace_manifest ~root:tmpdir ~members:[ Path.v "packages/app" ];
+        write_path_dependency_package ~root:tmpdir ~dir_name:"dep-one" ~package_name:"dep";
+        write_path_dependency_package ~root:tmpdir ~dir_name:"dep-two" ~package_name:"dep";
+        write_app_package_with_path_dependency ~root:tmpdir ~dep_path:"../../dep-one";
+        let prepared_workspace = load_prepared_workspace ~root:tmpdir |> Result.expect ~msg:"expected initial workspace preparation to succeed" in
+        let request = make_runtime_request
+          ~workspace:prepared_workspace
+          ~package_names:[ package_name "app" ]
+          ~targets:(Riot_model.Target.make_set [ Riot_model.Target.current ])
+          () in
+        let _ = build_request request |> Result.expect ~msg:"expected initial build to succeed" in
+        write_app_package_with_path_dependency ~root:tmpdir ~dep_path:"../../dep-two";
+        let prepared_workspace = load_prepared_workspace ~root:tmpdir |> Result.expect ~msg:"expected refreshed workspace preparation to succeed" in
+        let request = make_runtime_request
+          ~workspace:prepared_workspace
+          ~package_names:[ package_name "app" ]
+          ~targets:(Riot_model.Target.make_set [ Riot_model.Target.current ])
+          () in
+        match build_request request with
+        | Error err -> Error ("expected second build to succeed, got: " ^ Riot_build.error_message err)
+        | Ok output -> (
+            match Riot_build.Build_result.find_package output (package_name "app") with
+            | None -> Error "expected second build output for package app"
+            | Some package_output -> (
+                match Riot_build.Build_result.package_status package_output with
+                | Riot_build.Build_result.Built _ -> Ok ()
+                | Riot_build.Build_result.Cached _ -> Error "expected path dependency manifest change to invalidate the app package cache"
+                | Riot_build.Build_result.Skipped reason -> Error ("expected app package to rebuild, got skipped: "
+                ^ reason)
+                | Riot_build.Build_result.Failed message -> Error ("expected app package to rebuild, got failure: "
+                ^ message)
+              )
+          ))
+  with
+  | Ok result -> result
+  | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
+
+let test_manifest_build_dependency_path_change_invalidates_package_cache = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"riot_build_build_dep_path_runtime"
+      (fun tmpdir ->
+        write_workspace_manifest ~root:tmpdir ~members:[ Path.v "packages/app" ];
+        write_path_dependency_package ~root:tmpdir ~dir_name:"dep-one" ~package_name:"dep";
+        write_path_dependency_package ~root:tmpdir ~dir_name:"dep-two" ~package_name:"dep";
+        write_app_package_with_build_dependency ~root:tmpdir ~dep_path:"../../dep-one";
+        let prepared_workspace = load_prepared_workspace ~root:tmpdir |> Result.expect ~msg:"expected initial workspace preparation to succeed" in
+        let request = make_runtime_request
+          ~workspace:prepared_workspace
+          ~package_names:[ package_name "app" ]
+          ~targets:(Riot_model.Target.make_set [ Riot_model.Target.current ])
+          () in
+        let _ = build_request request |> Result.expect ~msg:"expected initial build to succeed" in
+        write_app_package_with_build_dependency ~root:tmpdir ~dep_path:"../../dep-two";
+        let prepared_workspace = load_prepared_workspace ~root:tmpdir |> Result.expect ~msg:"expected refreshed workspace preparation to succeed" in
+        let request = make_runtime_request
+          ~workspace:prepared_workspace
+          ~package_names:[ package_name "app" ]
+          ~targets:(Riot_model.Target.make_set [ Riot_model.Target.current ])
+          () in
+        match build_request request with
+        | Error err -> Error ("expected second build to succeed, got: " ^ Riot_build.error_message err)
+        | Ok output -> (
+            match Riot_build.Build_result.find_package output (package_name "app") with
+            | None -> Error "expected second build output for package app"
+            | Some package_output -> (
+                match Riot_build.Build_result.package_status package_output with
+                | Riot_build.Build_result.Built _ -> Ok ()
+                | Riot_build.Build_result.Cached _ -> Error "expected build dependency path change to invalidate the app package cache"
+                | Riot_build.Build_result.Skipped reason -> Error ("expected app package to rebuild, got skipped: "
+                ^ reason)
+                | Riot_build.Build_result.Failed message -> Error ("expected app package to rebuild, got failure: "
+                ^ message)
+              )
+          ))
   with
   | Ok result -> result
   | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
@@ -741,10 +881,14 @@ let tests =
       case ~size:Large "build runtime: release builds use the release lane" test_release_build_uses_release_lane;
       case "build runtime: custom target_dir is respected" test_build_respects_custom_target_dir;
       case ~size:Large "build runtime: nested udp workspace succeeds across file creation orders" test_nested_udp_workspace_builds_across_file_creation_orders;
+      case ~size:Large "build runtime: manifest path dependency change invalidates package cache" test_manifest_path_dependency_change_invalidates_package_cache;
+      case
+        ~size:Large "build runtime: manifest build dependency path change invalidates package cache"
+        test_manifest_build_dependency_path_change_invalidates_package_cache;
       case "build runtime: rejects invalid parallelism" test_execute_rejects_invalid_parallelism;
       case "build runtime: execute does not record cache generation when disabled" test_execute_does_not_record_cache_generation_when_disabled;
       case ~size:Large "build runtime: partial failures fail by default" test_execute_partial_failures_by_default;
-      case "build runtime: allow partial failures returns partial results" test_execute_allows_partial_failures;
+      case ~size:Large "build runtime: allow partial failures returns partial results" test_execute_allows_partial_failures;
       case ~size:Large "build runtime: multi-target partial failures can succeed with allow flag" test_execute_allows_multi_target_partial_failures;
       case
         ~size:Large "build runtime: multi-target partial build returns aggregated returning results"

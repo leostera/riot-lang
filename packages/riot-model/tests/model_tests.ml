@@ -104,6 +104,8 @@ let test_dev_scope_keeps_only_dev_outputs = fun _ctx ->
   |> List.map ~fn:(fun (dep: Package.dependency) -> dep.name) = [ package_name "propane" ] in
   let kept_runtime_deps = projected.dependencies
   |> List.map ~fn:(fun (dep: Package.dependency) -> dep.name) = [ package_name "std" ] in
+  let kept_build_deps = projected.build_dependencies
+  |> List.map ~fn:(fun (dep: Package.dependency) -> dep.name) = [ package_name "std" ] in
   let no_normal_binaries = projected.binaries
   |> List.all
     ~fn:(fun (bin: Riot_model.Package.binary) ->
@@ -111,11 +113,27 @@ let test_dev_scope_keeps_only_dev_outputs = fun _ctx ->
       || String.starts_with ~prefix:"examples/" (Path.to_string bin.path)
       || String.starts_with ~prefix:"bench/" (Path.to_string bin.path)) in
   if
-    no_library && no_commands && no_runtime_sources && kept_dev_deps && kept_runtime_deps && no_normal_binaries
+    no_library
+    && no_commands
+    && no_runtime_sources
+    && kept_dev_deps
+    && kept_runtime_deps
+    && kept_build_deps
+    && no_normal_binaries
   then
     Ok ()
   else
     Error "dev scope should reuse runtime deps while keeping only dev outputs"
+
+let test_runtime_scope_keeps_build_dependencies_for_hashing = fun _ctx ->
+  let pkg = make_package () in
+  let projected = Package.for_scope Package.Normal pkg in
+  let kept_build_deps = projected.build_dependencies
+  |> List.map ~fn:(fun (dep: Package.dependency) -> dep.name) = [ package_name "std" ] in
+  if kept_build_deps then
+    Ok ()
+  else
+    Error "runtime scope should preserve build dependencies as cache inputs"
 
 let test_package_hash_changes_when_build_dependency_path_changes = fun _ctx ->
   let with_build_dependency path =
@@ -1181,6 +1199,7 @@ let tests =
     case "for_scope: build drops commands and runtime outputs" test_build_scope_drops_commands_and_runtime_outputs;
     case "for_scope: runtime keeps commands" test_runtime_scope_keeps_commands;
     case "for_scope: dev keeps only dev outputs" test_dev_scope_keeps_only_dev_outputs;
+    case "for_scope: runtime keeps build dependencies for hashing" test_runtime_scope_keeps_build_dependencies_for_hashing;
     case "package: hash changes when build dependency path changes" test_package_hash_changes_when_build_dependency_path_changes;
     case "package: explicit binaries suppress autodiscovery duplicates" test_explicit_binaries_override_autodiscovery;
     case "package: src/main.ml autodiscovers runtime binary" test_src_main_autodiscovers_runtime_binary;
