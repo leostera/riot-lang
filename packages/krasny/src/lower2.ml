@@ -72,6 +72,50 @@ let let_binding_nodes = fun node ->
       | None -> ());
   List.reverse !bindings
 
+type let_binding_parts = {
+  pattern: Ast.pattern option;
+  parameters: Ast.pattern list;
+  annotation: Ast.type_expr option;
+  body: Ast.expr option;
+}
+
+let let_binding_parts = fun binding ->
+  let pattern = ref None in
+  let parameters = ref [] in
+  let annotation = ref None in
+  let body = ref None in
+  Ast.Node.for_each_child_node binding
+    ~fn:(fun child ->
+      match Ast.Pattern.cast child with
+      | Some child_pattern -> (
+          match !pattern with
+          | None -> pattern := Some child_pattern
+          | Some _ -> parameters := child_pattern :: !parameters
+        )
+      | None -> (
+          match Ast.TypeExpr.cast child with
+          | Some type_expr -> (
+              match !annotation with
+              | None -> annotation := Some type_expr
+              | Some _ -> ()
+            )
+          | None -> (
+              match Ast.Expr.cast child with
+              | Some expr -> (
+                  match !body with
+                  | None -> body := Some expr
+                  | Some _ -> ()
+                )
+              | None -> ()
+            )
+        ));
+  {
+    pattern = !pattern;
+    parameters = List.reverse !parameters;
+    annotation = !annotation;
+    body = !body
+  }
+
 let rec type_expr_doc = fun type_expr ->
   match Ast.TypeExpr.view type_expr with
   | Path { path } -> path_doc path
@@ -483,18 +527,20 @@ and expr_doc = fun expr ->
       unsupported "unsupported expression"
 
 and let_binding_doc = fun binding ->
-  let view = Ast.LetBinding.view binding in
-  match view.pattern, view.body with
+  let parts = let_binding_parts binding in
+  match parts.pattern, parts.body with
   | Some pattern, Some body ->
       Doc.concat
         [ pattern_doc pattern; (
-            let parameters = ref [] in
-            Ast.LetBinding.for_each_parameter
-              binding
-              ~fn:(fun parameter -> parameters := pattern_doc parameter :: !parameters);
-            match List.reverse !parameters with
+            match parts.parameters with
             | [] -> Doc.empty
-            | parameters -> Doc.concat [ Doc.space; Doc.join Doc.space parameters ]
+            | parameters -> Doc.concat
+              [ Doc.space; Doc.join Doc.space (List.map parameters ~fn:pattern_doc) ]
+          ); (
+            match parts.annotation with
+            | Some annotation -> Doc.concat
+              [ Doc.space; Doc.text ":"; Doc.space; type_expr_doc annotation ]
+            | None -> Doc.empty
           ); Doc.space; Doc.equal; Doc.space; expr_doc body; ]
   | _ -> unsupported "incomplete let binding"
 

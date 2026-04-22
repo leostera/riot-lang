@@ -81,6 +81,12 @@ let tests = [
     "lower2 formats parameterized let bindings"
     (fun _ctx -> assert_format2_ml ~expected:"let id x = x\n" "let id x = x\n");
   Test.case
+    "lower2 formats typed let binding heads"
+    (fun _ctx ->
+      assert_format2_ml
+        ~expected:"let value: int = 1\nlet id x: int = x\nlet keep_pattern (x: int) = x\n"
+        "let value : int = 1\nlet id x : int = x\nlet keep_pattern (x : int) = x\n");
+  Test.case
     "lower2 formats mutual recursive let bindings"
     (fun _ctx -> assert_format2_ml ~expected:"let rec f = g and g = f\n" "let rec f = g\nand g = f\n");
   Test.case

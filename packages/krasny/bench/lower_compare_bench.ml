@@ -64,6 +64,9 @@ let benchmarks = [
     (make_fixture ~name:"parameterized let" ~path:(Path.v "sample.ml") "let id x = x\n");
   compare_fixture
     ~config:small_config
+    (make_fixture ~name:"typed let heads" ~path:(Path.v "sample.ml") "let value : int = 1\nlet id x : int = x\nlet keep_pattern (x : int) = x\n");
+  compare_fixture
+    ~config:small_config
     (make_fixture ~name:"mutual recursive let" ~path:(Path.v "sample.ml") "let rec f = g\nand g = f\n");
   compare_fixture
     ~config:small_config
