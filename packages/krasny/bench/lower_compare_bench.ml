@@ -83,6 +83,21 @@ let benchmarks = [
        ~path:(Path.v "sample.ml")
        "let values = [1; 2]\nlet array = [|1; 2|]\n");
   compare_fixture
+    ~config:small_config
+    (make_fixture ~name:"labeled arguments" ~path:(Path.v "sample.ml") "let f ~x ?y = g ~x ?y\n");
+  compare_fixture
+    ~config:small_config
+    (make_fixture
+       ~name:"polymorphic variants"
+       ~path:(Path.v "sample.ml")
+       "let ok = `Ok 1\nlet classify = function | `Ok value -> value | `Error -> 0\n");
+  compare_fixture
+    ~config:small_config
+    (make_fixture
+       ~name:"selectors and indexes"
+       ~path:(Path.v "sample.ml")
+       "let field = value.name\nlet item = values.(index)\nlet char = text.[index]\n");
+  compare_fixture
     ~config:medium_config
     (load_fixture
        ~name:"atoms fixture"

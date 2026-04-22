@@ -2,6 +2,7 @@ open Std
 open Std.Collections
 module Ast = Syn.Ast2
 module Doc = Doc
+module Kind = Syn.SyntaxKind2
 
 type error = {
   message: string;
@@ -51,6 +52,18 @@ let direct_pattern_docs = fun node ->
       | Some pattern -> docs := pattern :: !docs
       | None -> ());
   List.reverse !docs
+
+let first_ident_token = fun node ->
+  let found = ref None in
+  Ast.Node.for_each_child_token
+    node
+    ~fn:(fun token ->
+      match !found with
+      | Some _ -> ()
+      | None ->
+          if Kind.(Ast.Token.kind token = IDENT) then
+            found := Some token);
+  !found
 
 let let_binding_nodes = fun node ->
   let bindings = ref [] in
@@ -131,8 +144,25 @@ let rec pattern_doc = fun pattern ->
       Doc.concat [ pattern_doc left; Doc.space; Doc.bar; Doc.space; pattern_doc right ]
   | Or _ ->
       unsupported "incomplete or pattern"
+  | PolyVariant ->
+      let head =
+        match first_ident_token pattern with
+        | Some tag -> Doc.concat [ Doc.text "`"; token_doc tag ]
+        | None -> unsupported "polymorphic variant pattern without tag"
+      in
+      (
+        match child_pattern_docs pattern with
+        | [] -> head
+        | [ payload ] -> Doc.concat [ head; Doc.space; pattern_doc payload ]
+        | _ -> unsupported "polymorphic variant pattern with multiple payloads"
+      )
+  | LabeledParam parameter ->
+      parameter_doc parameter
+  | OptionalParam parameter ->
+      parameter_doc parameter
+  | OptionalParamDefault parameter ->
+      parameter_doc parameter
   | Record
-  | PolyVariant
   | Extension
   | Attribute _
   | LocalOpen
@@ -141,12 +171,41 @@ let rec pattern_doc = fun pattern ->
   | Interval _
   | Lazy _
   | Exception _
-  | LabeledParam _
-  | OptionalParam _
-  | OptionalParamDefault _
   | Error _
   | Unknown _ ->
       unsupported "unsupported pattern"
+
+and parameter_doc = fun parameter ->
+  match Ast.Parameter.view parameter with
+  | Labeled { label=Some label; pattern=None } ->
+      Doc.concat [ Doc.text "~"; token_doc label ]
+  | Labeled { label=Some label; pattern=Some pattern } ->
+      Doc.concat [ Doc.text "~"; token_doc label; Doc.text ":"; pattern_doc pattern ]
+  | Labeled _ ->
+      unsupported "labeled parameter without label"
+  | Optional { label=Some label; pattern=None } ->
+      Doc.concat [ Doc.text "?"; token_doc label ]
+  | Optional { label=Some label; pattern=Some pattern } ->
+      Doc.concat [ Doc.text "?"; token_doc label; Doc.text ":"; pattern_doc pattern ]
+  | Optional _ ->
+      unsupported "optional parameter without label"
+  | OptionalDefault { label=Some label; pattern=Some pattern; default=Some default } ->
+      Doc.concat
+        [
+          Doc.text "?";
+          token_doc label;
+          Doc.text ":(";
+          pattern_doc pattern;
+          Doc.space;
+          Doc.equal;
+          Doc.space;
+          expr_doc default;
+          Doc.rparen;
+        ]
+  | OptionalDefault _ ->
+      unsupported "incomplete optional parameter default"
+  | Unknown _ ->
+      unsupported "unsupported parameter"
 
 and match_case_doc = fun match_case ->
   let view = Ast.MatchCase.view match_case in
@@ -240,7 +299,7 @@ and expr_doc = fun expr ->
         [
           let_bindings_doc
             ~keyword:"let"
-            ~rec_token:(Ast.Node.first_child_token expr ~kind:Syn.SyntaxKind2.REC_KW)
+            ~rec_token:(Ast.Node.first_child_token expr ~kind:Kind.REC_KW)
             expr;
           Doc.space;
           Doc.text "in";
@@ -285,6 +344,57 @@ and expr_doc = fun expr ->
       Doc.concat [ Doc.text "function"; Doc.space; Doc.join Doc.space (List.reverse !cases) ]
   | Function _ ->
       unsupported "incomplete function expression"
+  | Assert { argument=Some argument } ->
+      Doc.concat [ Doc.text "assert"; Doc.space; expr_doc argument ]
+  | Assert _ ->
+      unsupported "assert expression without argument"
+  | Lazy { argument=Some argument } ->
+      Doc.concat [ Doc.text "lazy"; Doc.space; expr_doc argument ]
+  | Lazy _ ->
+      unsupported "lazy expression without argument"
+  | Assign { target=Some target; value=Some value } ->
+      Doc.concat [ expr_doc target; Doc.space; Doc.text "<-"; Doc.space; expr_doc value ]
+  | Assign _ ->
+      unsupported "incomplete assignment expression"
+  | FieldAccess { target=Some target; field=Some field } ->
+      Doc.concat [ expr_doc target; Doc.text "."; token_doc field ]
+  | FieldAccess _ ->
+      unsupported "incomplete field access expression"
+  | MethodCall { target=Some target; method_=Some method_ } ->
+      Doc.concat [ expr_doc target; Doc.text "#"; token_doc method_ ]
+  | MethodCall _ ->
+      unsupported "incomplete method call expression"
+  | PolyVariant { payload } ->
+      let head =
+        match first_ident_token expr with
+        | Some tag -> Doc.concat [ Doc.text "`"; token_doc tag ]
+        | None -> unsupported "polymorphic variant expression without tag"
+      in
+      (
+        match payload with
+        | Some payload -> Doc.concat [ head; Doc.space; expr_doc payload ]
+        | None -> head
+      )
+  | ArrayIndex { target=Some target; index=Some index } ->
+      Doc.concat [ expr_doc target; Doc.text ".("; expr_doc index; Doc.rparen ]
+  | ArrayIndex _ ->
+      unsupported "incomplete array index expression"
+  | StringIndex { target=Some target; index=Some index } ->
+      Doc.concat [ expr_doc target; Doc.text ".["; expr_doc index; Doc.rbracket ]
+  | StringIndex _ ->
+      unsupported "incomplete string index expression"
+  | LabeledArg { label=Some label; value=None } ->
+      Doc.concat [ Doc.text "~"; token_doc label ]
+  | LabeledArg { label=Some label; value=Some value } ->
+      Doc.concat [ Doc.text "~"; token_doc label; Doc.text ":"; expr_doc value ]
+  | LabeledArg _ ->
+      unsupported "labeled argument without label"
+  | OptionalArg { label=Some label; value=None } ->
+      Doc.concat [ Doc.text "?"; token_doc label ]
+  | OptionalArg { label=Some label; value=Some value } ->
+      Doc.concat [ Doc.text "?"; token_doc label; Doc.text ":"; expr_doc value ]
+  | OptionalArg _ ->
+      unsupported "optional argument without label"
   | LocalOpen _
   | LetModule _
   | LetException _
@@ -297,19 +407,9 @@ and expr_doc = fun expr ->
   | Try _
   | While _
   | For _
-  | Assert _
-  | Lazy _
   | Attribute _
-  | Assign _
-  | FieldAccess _
-  | MethodCall _
-  | PolyVariant _
   | Record
   | RecordUpdate
-  | ArrayIndex _
-  | StringIndex _
-  | LabeledArg _
-  | OptionalArg _
   | Error _
   | Unknown _ ->
       unsupported "unsupported expression"

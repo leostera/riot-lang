@@ -109,6 +109,30 @@ let tests = [
         ~expected:"let values = [1; 2]\nlet array = [|1; 2|]\n"
         "let values = [1; 2]\nlet array = [|1; 2|]\n");
   Test.case
+    "lower2 formats labels and optional labels"
+    (fun _ctx ->
+      assert_format2_ml
+        ~expected:"let f ~x ?y = g ~x ?y\n"
+        "let f ~x ?y = g ~x ?y\n");
+  Test.case
+    "lower2 formats polymorphic variants"
+    (fun _ctx ->
+      assert_format2_ml
+        ~expected:"let ok = `Ok 1\nlet classify = function | `Ok value -> value | `Error -> 0\n"
+        "let ok = `Ok 1\nlet classify = function | `Ok value -> value | `Error -> 0\n");
+  Test.case
+    "lower2 formats selectors and index expressions"
+    (fun _ctx ->
+      assert_format2_ml
+        ~expected:"let field = value.name\nlet item = values.(index)\nlet char = text.[index]\n"
+        "let field = value.name\nlet item = values.(index)\nlet char = text.[index]\n");
+  Test.case
+    "lower2 formats assertion and lazy expressions"
+    (fun _ctx ->
+      assert_format2_ml
+        ~expected:"let _ = assert ready\nlet later = lazy compute\n"
+        "let _ = assert ready\nlet later = lazy compute\n");
+  Test.case
     "lower2 adds a final newline"
     (fun _ctx -> assert_format2_ml ~expected:"let x = 1\n" "let x = 1");
   Test.case
