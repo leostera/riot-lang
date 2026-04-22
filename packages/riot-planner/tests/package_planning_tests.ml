@@ -1713,6 +1713,122 @@ let test_planner_rejects_namespaced_internal_library_access = fun _ctx ->
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"
 
+let test_planner_rejects_direct_other_binary_root_access = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"planner_rejects_direct_other_binary_root"
+      (fun tmpdir ->
+        let package = make_package_with_files
+          ~tmpdir
+          ~package_name:"berrybot"
+          ~library:(Some { path = Path.v "src/berrybot.ml" })
+          ~files:[
+            ("src/berrybot.ml", "module A = A\n");
+            ("src/a.ml", "let value = 42\n");
+            ("src/main.ml", "let () = Admin.run ()\n");
+            ("src/admin.ml", "let run () = ignore Berrybot.A.value\n");
+          ]
+          ~binaries:[ ("berrybot", "src/main.ml"); ("admin", "src/admin.ml") ] in
+        let workspace = make_test_workspace tmpdir [ package ] in
+        let store = Riot_store.Store.create ~workspace in
+        let package_graph = Riot_planner.Package_graph.create
+          ~scope:Riot_planner.Package_graph.Runtime workspace
+          |> Result.expect ~msg:"package graph should build" in
+        let package_key = Riot_planner.Package_graph.package_key
+          ~package_name:(Package_name.to_string package.name)
+          Riot_planner.Package_graph.Runtime in
+        let session_id = Riot_model.Session_id.make () in
+        let profile = Riot_model.Profile.debug in
+        let build_ctx = Riot_model.Build_ctx.make ~session_id ~profile () in
+        match plan_package_raw ~workspace ~store ~package_graph ~package_key ~build_ctx with
+        | Error (Riot_planner.Planning_error.TargetDependsOnOtherTargetRoot {
+          target_name;
+          source;
+          requested_module;
+          other_target_name;
+          other_target_module;
+          public_module;
+        }) ->
+            if not (String.equal target_name "berrybot") then
+              Error ("expected target name berrybot, got " ^ target_name)
+            else if not (Path.equal source (Path.v "src/main.ml")) then
+              Error ("expected source src/main.ml, got " ^ Path.to_string source)
+            else if not (String.equal requested_module "Admin") then
+              Error ("expected requested module Admin, got " ^ requested_module)
+            else if not (String.equal other_target_name "admin") then
+              Error ("expected other target name admin, got " ^ other_target_name)
+            else if not (String.equal other_target_module "Berrybot__Admin") then
+              Error ("expected other target module Berrybot__Admin, got " ^ other_target_module)
+            else if not (String.equal public_module "Berrybot") then
+              Error ("expected public module Berrybot, got " ^ public_module)
+            else
+              Ok ()
+        | Error err ->
+            Error ("expected other target root planner error, got "
+            ^ Riot_planner.Planning_error.to_string err)
+        | Ok _ ->
+            Error "expected planner to reject direct other-binary-root access")
+  with
+  | Ok x -> x
+  | Error _ -> Error "tempdir creation failed"
+
+let test_planner_rejects_namespaced_other_binary_root_access = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"planner_rejects_namespaced_other_binary_root"
+      (fun tmpdir ->
+        let package = make_package_with_files
+          ~tmpdir
+          ~package_name:"berrybot"
+          ~library:(Some { path = Path.v "src/berrybot.ml" })
+          ~files:[
+            ("src/berrybot.ml", "module A = A\n");
+            ("src/a.ml", "let value = 42\n");
+            ("src/main.ml", "let () = Berrybot__Admin.run ()\n");
+            ("src/admin.ml", "let run () = ignore Berrybot.A.value\n");
+          ]
+          ~binaries:[ ("berrybot", "src/main.ml"); ("admin", "src/admin.ml") ] in
+        let workspace = make_test_workspace tmpdir [ package ] in
+        let store = Riot_store.Store.create ~workspace in
+        let package_graph = Riot_planner.Package_graph.create
+          ~scope:Riot_planner.Package_graph.Runtime workspace
+          |> Result.expect ~msg:"package graph should build" in
+        let package_key = Riot_planner.Package_graph.package_key
+          ~package_name:(Package_name.to_string package.name)
+          Riot_planner.Package_graph.Runtime in
+        let session_id = Riot_model.Session_id.make () in
+        let profile = Riot_model.Profile.debug in
+        let build_ctx = Riot_model.Build_ctx.make ~session_id ~profile () in
+        match plan_package_raw ~workspace ~store ~package_graph ~package_key ~build_ctx with
+        | Error (Riot_planner.Planning_error.TargetDependsOnOtherTargetRoot {
+          target_name;
+          source;
+          requested_module;
+          other_target_name;
+          other_target_module;
+          public_module;
+        }) ->
+            if not (String.equal target_name "berrybot") then
+              Error ("expected target name berrybot, got " ^ target_name)
+            else if not (Path.equal source (Path.v "src/main.ml")) then
+              Error ("expected source src/main.ml, got " ^ Path.to_string source)
+            else if not (String.equal requested_module "Berrybot__Admin") then
+              Error ("expected requested module Berrybot__Admin, got " ^ requested_module)
+            else if not (String.equal other_target_name "admin") then
+              Error ("expected other target name admin, got " ^ other_target_name)
+            else if not (String.equal other_target_module "Berrybot__Admin") then
+              Error ("expected other target module Berrybot__Admin, got " ^ other_target_module)
+            else if not (String.equal public_module "Berrybot") then
+              Error ("expected public module Berrybot, got " ^ public_module)
+            else
+              Ok ()
+        | Error err ->
+            Error ("expected namespaced other target root planner error, got "
+            ^ Riot_planner.Planning_error.to_string err)
+        | Ok _ ->
+            Error "expected planner to reject namespaced other-binary-root access")
+  with
+  | Ok x -> x
+  | Error _ -> Error "tempdir creation failed"
+
 let test_nested_library_interfaces_depend_on_inherited_aliases = fun _ctx ->
   match
     Fs.with_tempdir ~prefix:"planner_nested_library_aliases"
@@ -2275,6 +2391,8 @@ let tests =
     case "underscore sibling module dependency is planned" test_underscore_sibling_module_dependency_is_planned;
     case "planner rejects direct internal library access" test_planner_rejects_direct_internal_library_access;
     case "planner rejects namespaced internal library access" test_planner_rejects_namespaced_internal_library_access;
+    case "planner rejects direct other binary root access" test_planner_rejects_direct_other_binary_root_access;
+    case "planner rejects namespaced other binary root access" test_planner_rejects_namespaced_other_binary_root_access;
     case "nested library interfaces depend on inherited aliases" test_nested_library_interfaces_depend_on_inherited_aliases;
     case "legacy nested sibling plan bundle is ignored after version bump" test_legacy_nested_sibling_plan_bundle_is_ignored_after_version_bump;
     case ~size:Large "kernel live CreateLibrary orders dependencies before Error" test_kernel_live_create_library_orders_dependencies_before_error;
