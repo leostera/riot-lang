@@ -577,6 +577,7 @@ module ModuleDeclaration: sig
     | Path
     | EmptyStruct
     | EmptySig
+    | Sig
     | Unsupported
   val cast: Node.t -> t option
 
@@ -588,7 +589,13 @@ module ModuleDeclaration: sig
 
   val body: t -> body
 
+  val sig_token: t -> Token.t option
+
+  val end_token: t -> Token.t option
+
   val for_each_body_path_ident: t -> fn:(Token.t -> unit) -> unit
+
+  val for_each_sig_body_token: t -> fn:(Token.t -> unit) -> unit
 end
 
 module ModuleTypeDeclaration: sig

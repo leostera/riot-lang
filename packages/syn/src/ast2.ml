@@ -2318,6 +2318,7 @@ module ModuleDeclaration = struct
     | Path
     | EmptyStruct
     | EmptySig
+    | Sig
     | Unsupported
 
   let cast = fun (node: node) ->
@@ -2371,6 +2372,18 @@ module ModuleDeclaration = struct
     && token_kind_is right_token right
     | _ -> false
 
+  let sig_end_tokens_at = fun decl start ->
+    let count = Node.child_count decl in
+    if Int.(start < count) then
+      match child_token_at decl start, child_token_at decl (count - 1) with
+      | Some sig_token, Some end_token when token_kind_is sig_token Syntax_kind2.SIG_KW
+      && token_kind_is end_token Syntax_kind2.END_KW -> Some (sig_token, end_token)
+      | _ -> None
+    else
+      None
+
+  let body_is_sig = fun decl start -> Option.is_some (sig_end_tokens_at decl start)
+
   let body = fun decl ->
     match separator_index decl with
     | None -> Unsupported
@@ -2382,8 +2395,25 @@ module ModuleDeclaration = struct
           EmptyStruct
         else if body_has_exact_tokens decl start Syntax_kind2.SIG_KW Syntax_kind2.END_KW then
           EmptySig
+        else if body_is_sig decl start then
+          Sig
         else
           Unsupported
+
+  let sig_end_tokens = fun decl ->
+    match separator_index decl with
+    | None -> None
+    | Some separator_index -> sig_end_tokens_at decl (separator_index + 1)
+
+  let sig_token = fun decl ->
+    match sig_end_tokens decl with
+    | Some (sig_token, _) -> Some sig_token
+    | None -> None
+
+  let end_token = fun decl ->
+    match sig_end_tokens decl with
+    | Some (_, end_token) -> Some end_token
+    | None -> None
 
   let for_each_body_path_ident = fun decl ~fn ->
     match separator_index decl with
@@ -2401,6 +2431,25 @@ module ModuleDeclaration = struct
             )
         in
         loop (separator_index + 1)
+
+  let for_each_sig_body_token = fun decl ~fn ->
+    match separator_index decl with
+    | None -> ()
+    | Some separator_index ->
+        let start = separator_index + 1 in
+        let count = Node.child_count decl in
+        if body_is_sig decl start then
+          let rec loop index =
+            if Int.(index < count - 1) then
+              (
+                match child_token_at decl index with
+                | Some token ->
+                    fn token;
+                    loop (index + 1)
+                | None -> loop (index + 1)
+              )
+          in
+          loop (start + 1)
 end
 
 module ModuleTypeDeclaration = struct

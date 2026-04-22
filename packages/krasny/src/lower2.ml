@@ -413,6 +413,27 @@ let leading_comment_doc = fun node ->
   | Some token when Ast.Token.has_leading_comment token -> Doc.text (leading_comment_text token)
   | _ -> Doc.empty
 
+let text_lines_doc = fun text -> text |> String.split ~by:"\n" |> List.map ~fn:Doc.text |> Doc.lines
+
+let compact_trailing_blank_line = fun text ->
+  if String.ends_with ~suffix:"\n\n" text then
+    String.sub text ~offset:0 ~len:(String.length text - 1)
+  else
+    text
+
+let leading_comment_token_doc = fun ?(compact_trailing_blank = false) token ->
+  if Ast.Token.has_leading_comment token then
+    let text = leading_comment_text token in
+    let text =
+      if compact_trailing_blank then
+        compact_trailing_blank_line text
+      else
+        text
+    in
+    text_lines_doc text
+  else
+    Doc.empty
+
 let eof_comment_doc = fun source_file ->
   match Ast.Node.first_child_token source_file ~kind:Kind.EOF with
   | Some token when Ast.Token.has_leading_comment token -> Doc.text (leading_comment_text token)
@@ -2687,6 +2708,11 @@ let module_type_decl_sig_body_tokens = fun decl ->
     ~fn:(fun token -> tokens := token :: !tokens);
   List.reverse !tokens
 
+let module_decl_sig_body_tokens = fun decl ->
+  let tokens = ref [] in
+  Ast.ModuleDeclaration.for_each_sig_body_token decl ~fn:(fun token -> tokens := token :: !tokens);
+  List.reverse !tokens
+
 let module_type_decl_head_tokens = fun decl ->
   let tokens = ref [] in
   Ast.ModuleTypeDeclaration.for_each_head_token decl ~fn:(fun token -> tokens := token :: !tokens);
@@ -2739,7 +2765,10 @@ let signature_body_type_item_doc = fun tokens ->
   | first :: rest ->
       let first_doc = type_member_doc first in
       let rest_docs = rest
-      |> List.map ~fn:(fun member_ -> Doc.concat [ blank_line; type_member_doc member_ ]) in
+      |> List.map
+        ~fn:(fun member_ ->
+          Doc.concat
+            [ blank_line; leading_comment_token_doc member_.type_keyword; type_member_doc member_; ]) in
       Doc.concat (first_doc :: rest_docs)
 
 let signature_body_val_item_doc = fun tokens ->
@@ -2771,7 +2800,7 @@ let signature_body_equals_item_doc = fun tokens ->
     ]
   | None -> declaration_head_tokens_doc tokens
 
-let signature_body_item_doc = fun tokens ->
+let signature_body_item_body_doc = fun tokens ->
   match tokens with
   | token :: _ when token_kind_is token Kind.TYPE_KW -> signature_body_type_item_doc tokens
   | token :: _ when token_kind_is token Kind.VAL_KW -> signature_body_val_item_doc tokens
@@ -2780,6 +2809,17 @@ let signature_body_item_doc = fun tokens ->
   | first :: second :: _ when token_kind_is first Kind.CLASS_KW && token_kind_is second Kind.TYPE_KW -> signature_body_equals_item_doc
     tokens
   | _ -> type_tokens_inline_doc tokens
+
+let signature_body_item_doc = fun tokens ->
+  match tokens with
+  | first :: _ ->
+      let compact_trailing_blank = token_kind_is first Kind.VAL_KW in
+      Doc.concat
+        [
+          leading_comment_token_doc ~compact_trailing_blank first;
+          signature_body_item_body_doc tokens;
+        ]
+  | [] -> signature_body_item_body_doc tokens
 
 let module_type_decl_sig_body_doc = fun decl ->
   match Ast.ModuleTypeDeclaration.sig_token decl, Ast.ModuleTypeDeclaration.end_token decl with
@@ -2799,11 +2839,30 @@ let module_type_decl_sig_body_doc = fun decl ->
       )
   | _ -> unsupported "module type signature body without sig/end tokens"
 
+let module_decl_sig_body_doc = fun decl ->
+  match Ast.ModuleDeclaration.sig_token decl, Ast.ModuleDeclaration.end_token decl with
+  | Some sig_token, Some end_token ->
+      let items = split_signature_body_items (module_decl_sig_body_tokens decl) in
+      (
+        match items with
+        | [] -> Doc.concat [ token_doc sig_token; Doc.space; token_doc end_token ]
+        | items -> Doc.concat
+          [
+            token_doc sig_token;
+            Doc.line;
+            Doc.indent 2 (Doc.lines (List.map items ~fn:signature_body_item_doc));
+            Doc.line;
+            token_doc end_token;
+          ]
+      )
+  | _ -> unsupported "module signature body without sig/end tokens"
+
 let module_decl_body_doc = fun decl ->
   match Ast.ModuleDeclaration.body decl with
   | Path -> module_decl_path_body_doc decl
   | EmptyStruct -> Doc.concat [ Doc.text "struct"; Doc.space; Doc.text "end" ]
   | EmptySig -> Doc.concat [ Doc.text "sig"; Doc.space; Doc.text "end" ]
+  | Sig -> module_decl_sig_body_doc decl
   | Unsupported -> unsupported "unsupported module declaration body"
 
 let module_type_decl_body_doc = fun decl ->
