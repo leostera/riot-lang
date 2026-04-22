@@ -52,6 +52,27 @@ let benchmarks = [
   compare_fixture
     ~config:small_config
     (make_fixture ~name:"value declaration" ~path:(Path.v "sample.mli") "val id : 'a -> 'a\n");
+  compare_fixture
+    ~config:small_config
+    (make_fixture ~name:"parameterized let" ~path:(Path.v "sample.ml") "let id x = x\n");
+  compare_fixture
+    ~config:small_config
+    (make_fixture ~name:"local let expression" ~path:(Path.v "sample.ml") "let x = let y = 1 in y\n");
+  compare_fixture
+    ~config:small_config
+    (make_fixture ~name:"function expression" ~path:(Path.v "sample.ml") "let id = fun x -> x\n");
+  compare_fixture
+    ~config:small_config
+    (make_fixture
+       ~name:"match expression"
+       ~path:(Path.v "sample.ml")
+       "let value = match x with | 0 -> 1 | _ -> 2\n");
+  compare_fixture
+    ~config:small_config
+    (make_fixture
+       ~name:"list and array expressions"
+       ~path:(Path.v "sample.ml")
+       "let values = [1; 2]\nlet array = [|1; 2|]\n");
 ]
 
 let () =

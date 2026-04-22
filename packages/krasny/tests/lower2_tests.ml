@@ -41,6 +41,30 @@ let tests = [
     "lower2 formats simple let bindings"
     (fun _ctx -> assert_format2_ml ~expected:"let x = 1 + 2\n" "let x = 1 + 2\n");
   Test.case
+    "lower2 formats parameterized let bindings"
+    (fun _ctx -> assert_format2_ml ~expected:"let id x = x\n" "let id x = x\n");
+  Test.case
+    "lower2 formats local let expressions"
+    (fun _ctx -> assert_format2_ml ~expected:"let x = let y = 1 in y\n" "let x = let y = 1 in y\n");
+  Test.case
+    "lower2 formats function expressions"
+    (fun _ctx -> assert_format2_ml ~expected:"let id = fun x -> x\n" "let id = fun x -> x\n");
+  Test.case
+    "lower2 formats match expressions"
+    (fun _ctx ->
+      assert_format2_ml
+        ~expected:"let value = match x with | 0 -> 1 | _ -> 2\n"
+        "let value = match x with | 0 -> 1 | _ -> 2\n");
+  Test.case
+    "lower2 formats sequence expressions"
+    (fun _ctx -> assert_format2_ml ~expected:"let run = first; second\n" "let run = first; second\n");
+  Test.case
+    "lower2 formats list and array expressions"
+    (fun _ctx ->
+      assert_format2_ml
+        ~expected:"let values = [1; 2]\nlet array = [|1; 2|]\n"
+        "let values = [1; 2]\nlet array = [|1; 2|]\n");
+  Test.case
     "lower2 adds a final newline"
     (fun _ctx -> assert_format2_ml ~expected:"let x = 1\n" "let x = 1");
   Test.case
@@ -54,7 +78,7 @@ let tests = [
     (fun _ctx -> assert_format2_mli ~expected:"val id: 'a -> 'a\n" "val id : 'a -> 'a\n");
   Test.case
     "lower2 rejects unsupported shapes instead of replaying source"
-    (fun _ctx -> assert_format2_ml_fails "let xs = [1]\n");
+    (fun _ctx -> assert_format2_ml_fails "let record = { x = 1 }\n");
 ]
 
 let () =

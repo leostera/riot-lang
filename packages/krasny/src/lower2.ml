@@ -32,6 +32,26 @@ let open_path_doc = fun decl ->
     ~fn:(fun token -> segments := token_doc token :: !segments);
   Doc.join (Doc.text ".") (List.reverse !segments)
 
+let child_expr_docs = fun expr ->
+  let docs = ref [] in
+  Ast.Expr.for_each_child_expr expr ~fn:(fun child -> docs := child :: !docs);
+  List.reverse !docs
+
+let child_pattern_docs = fun pattern ->
+  let docs = ref [] in
+  Ast.Pattern.for_each_child_pattern pattern ~fn:(fun child -> docs := child :: !docs);
+  List.reverse !docs
+
+let direct_pattern_docs = fun node ->
+  let docs = ref [] in
+  Ast.Node.for_each_child_node
+    node
+    ~fn:(fun child ->
+      match Ast.Pattern.cast child with
+      | Some pattern -> docs := pattern :: !docs
+      | None -> ());
+  List.reverse !docs
+
 let rec type_expr_doc = fun type_expr ->
   match Ast.TypeExpr.view type_expr with
   | Path { path } -> path_doc path
@@ -68,11 +88,19 @@ let rec pattern_doc = fun pattern ->
   | Parenthesized { inner=None } ->
       Doc.concat [ Doc.lparen; Doc.rparen ]
   | Tuple ->
-      let parts = ref [] in
-      Ast.Pattern.for_each_child_pattern
-        pattern
-        ~fn:(fun child -> parts := pattern_doc child :: !parts);
-      Doc.join (Doc.concat [ Doc.comma; Doc.space ]) (List.reverse !parts)
+      child_pattern_docs pattern
+      |> List.map ~fn:pattern_doc
+      |> Doc.join (Doc.concat [ Doc.comma; Doc.space ])
+  | List ->
+      child_pattern_docs pattern
+      |> List.map ~fn:pattern_doc
+      |> Doc.join (Doc.concat [ Doc.semi; Doc.space ])
+      |> fun items -> Doc.concat [ Doc.lbracket; items; Doc.rbracket ]
+  | Array ->
+      child_pattern_docs pattern
+      |> List.map ~fn:pattern_doc
+      |> Doc.join (Doc.concat [ Doc.semi; Doc.space ])
+      |> fun items -> Doc.concat [ Doc.text "[|"; items; Doc.text "|]" ]
   | Cons { head=Some head; tail=Some tail } ->
       Doc.concat [ pattern_doc head; Doc.space; Doc.text "::"; Doc.space; pattern_doc tail ]
   | Cons _ ->
@@ -89,9 +117,10 @@ let rec pattern_doc = fun pattern ->
       Doc.concat [ pattern_doc callee; Doc.space; pattern_doc argument ]
   | Apply _ ->
       unsupported "incomplete apply pattern"
-  | Or _
-  | List
-  | Array
+  | Or { left=Some left; right=Some right } ->
+      Doc.concat [ pattern_doc left; Doc.space; Doc.bar; Doc.space; pattern_doc right ]
+  | Or _ ->
+      unsupported "incomplete or pattern"
   | Record
   | PolyVariant
   | Extension
@@ -109,7 +138,20 @@ let rec pattern_doc = fun pattern ->
   | Unknown _ ->
       unsupported "unsupported pattern"
 
-let rec expr_doc = fun expr ->
+and match_case_doc = fun match_case ->
+  let view = Ast.MatchCase.view match_case in
+  match view.pattern, view.body with
+  | Some pattern, Some body ->
+      let guard =
+        match view.guard with
+        | Some guard -> Doc.concat [ Doc.space; Doc.text "when"; Doc.space; expr_doc guard ]
+        | None -> Doc.empty
+      in
+      Doc.concat [ Doc.bar; Doc.space; pattern_doc pattern; guard; Doc.space; Doc.arrow; Doc.space; expr_doc body ]
+  | _ ->
+      unsupported "incomplete match case"
+
+and expr_doc = fun expr ->
   match Ast.Expr.view expr with
   | Path { path } ->
       path_doc path
@@ -152,13 +194,77 @@ let rec expr_doc = fun expr ->
           Doc.space;
           expr_doc else_branch;
         ]
+  | If { condition=Some condition; then_branch=Some then_branch; else_branch=None } ->
+      Doc.concat
+        [
+          Doc.text "if";
+          Doc.space;
+          expr_doc condition;
+          Doc.space;
+          Doc.text "then";
+          Doc.space;
+          expr_doc then_branch;
+        ]
   | If _ ->
       unsupported "incomplete if expression"
   | Tuple ->
-      let parts = ref [] in
-      Ast.Expr.for_each_child_expr expr ~fn:(fun child -> parts := expr_doc child :: !parts);
-      Doc.join (Doc.concat [ Doc.comma; Doc.space ]) (List.reverse !parts)
-  | Let _
+      child_expr_docs expr
+      |> List.map ~fn:expr_doc
+      |> Doc.join (Doc.concat [ Doc.comma; Doc.space ])
+  | List ->
+      child_expr_docs expr
+      |> List.map ~fn:expr_doc
+      |> Doc.join (Doc.concat [ Doc.semi; Doc.space ])
+      |> fun items -> Doc.concat [ Doc.lbracket; items; Doc.rbracket ]
+  | Array ->
+      child_expr_docs expr
+      |> List.map ~fn:expr_doc
+      |> Doc.join (Doc.concat [ Doc.semi; Doc.space ])
+      |> fun items -> Doc.concat [ Doc.text "[|"; items; Doc.text "|]" ]
+  | Sequence { left=Some left; right=Some right } ->
+      Doc.concat [ expr_doc left; Doc.semi; Doc.space; expr_doc right ]
+  | Sequence _ ->
+      unsupported "incomplete sequence expression"
+  | Let { first_binding=Some binding; body=Some body } ->
+      Doc.concat [ Doc.text "let"; Doc.space; let_binding_doc binding; Doc.space; Doc.text "in"; Doc.space; expr_doc body ]
+  | Let _ ->
+      unsupported "incomplete let expression"
+  | Fun { body=Some body } -> (
+      match direct_pattern_docs expr with
+      | [] -> unsupported "function expression without parameters"
+      | parameters ->
+          Doc.concat [
+            Doc.text "fun";
+            Doc.space;
+            Doc.join Doc.space (List.map parameters ~fn:pattern_doc);
+            Doc.space;
+            Doc.arrow;
+            Doc.space;
+            expr_doc body;
+          ]
+    )
+  | Fun _ ->
+      unsupported "incomplete function expression"
+  | Match { scrutinee=Some scrutinee; first_case=Some _ } ->
+      let cases = ref [] in
+      Ast.Expr.for_each_match_case expr ~fn:(fun match_case -> cases := match_case_doc match_case :: !cases);
+      Doc.concat [
+        Doc.text "match";
+        Doc.space;
+        expr_doc scrutinee;
+        Doc.space;
+        Doc.text "with";
+        Doc.space;
+        Doc.join Doc.space (List.reverse !cases);
+      ]
+  | Match _ ->
+      unsupported "incomplete match expression"
+  | Function { first_case=Some _ } ->
+      let cases = ref [] in
+      Ast.Expr.for_each_match_case expr ~fn:(fun match_case -> cases := match_case_doc match_case :: !cases);
+      Doc.concat [ Doc.text "function"; Doc.space; Doc.join Doc.space (List.reverse !cases) ]
+  | Function _ ->
+      unsupported "incomplete function expression"
   | LocalOpen _
   | LetModule _
   | LetException _
@@ -168,22 +274,16 @@ let rec expr_doc = fun expr ->
   | Unreachable
   | Object
   | New
-  | Match _
-  | Fun _
-  | Function _
   | Try _
   | While _
   | For _
   | Assert _
   | Lazy _
   | Attribute _
-  | Sequence _
   | Assign _
   | FieldAccess _
   | MethodCall _
   | PolyVariant _
-  | List
-  | Array
   | Record
   | RecordUpdate
   | ArrayIndex _
@@ -194,11 +294,26 @@ let rec expr_doc = fun expr ->
   | Unknown _ ->
       unsupported "unsupported expression"
 
-let let_binding_doc = fun binding ->
+and let_binding_doc = fun binding ->
   let view = Ast.LetBinding.view binding in
   match view.pattern, view.body with
   | Some pattern, Some body -> Doc.concat
-    [ pattern_doc pattern; Doc.space; Doc.equal; Doc.space; expr_doc body ]
+    [
+      pattern_doc pattern;
+      (
+        let parameters = ref [] in
+        Ast.LetBinding.for_each_parameter
+          binding
+          ~fn:(fun parameter -> parameters := pattern_doc parameter :: !parameters);
+        match List.reverse !parameters with
+        | [] -> Doc.empty
+        | parameters -> Doc.concat [ Doc.space; Doc.join Doc.space parameters ]
+      );
+      Doc.space;
+      Doc.equal;
+      Doc.space;
+      expr_doc body;
+    ]
   | _ -> unsupported "incomplete let binding"
 
 let let_decl_doc = fun decl ->
