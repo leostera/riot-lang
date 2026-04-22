@@ -1809,27 +1809,614 @@ let type_parameters_doc = fun decl ->
   match List.reverse !parameters with
   | [] -> Doc.empty
   | [ parameter ] -> Doc.concat [ parameter; Doc.space ]
-  | parameters -> Doc.concat
-    [ Doc.lparen; Doc.join (Doc.concat [ Doc.comma; Doc.space ]) parameters; Doc.rparen; Doc.space; ]
+  | parameters ->
+      if Int.(List.length parameters > 4) then
+        Doc.concat
+          [
+            Doc.lparen;
+            Doc.line;
+            Doc.indent 2 (Doc.join (Doc.concat [ Doc.comma; Doc.line ]) parameters);
+            Doc.line;
+            Doc.rparen;
+            Doc.space;
+          ]
+      else
+        Doc.concat
+          [
+            Doc.lparen;
+            Doc.join (Doc.concat [ Doc.comma; Doc.space ]) parameters;
+            Doc.rparen;
+            Doc.space;
+          ]
+
+let type_decl_tokens = fun decl ->
+  let tokens = ref [] in
+  Ast.TypeDeclaration.for_each_token decl ~fn:(fun token -> tokens := token :: !tokens);
+  List.reverse !tokens
+
+let token_kind_is = fun token kind -> Kind.(Ast.Token.kind token = kind)
+
+let type_token_depth_after = fun depth token ->
+  match Ast.Token.kind token with
+  | kind when Kind.(kind = LPAREN || kind = LBRACE || kind = LBRACKET || kind = LBRACKET_BAR) -> Int.(depth
+  + 1)
+  | kind when Kind.(kind = RPAREN || kind = RBRACE || kind = RBRACKET || kind = BAR_RBRACKET)
+  && Int.(depth > 0) -> Int.(depth - 1)
+  | _ -> depth
+
+let token_docs = fun tokens -> List.map tokens ~fn:token_doc
+
+let type_parameter_tokens_doc = fun tokens -> Doc.concat (token_docs tokens)
+
+let split_type_parameter_groups = fun tokens ->
+  let rec loop current groups = function
+    | [] ->
+        List.reverse
+          (
+            match current with
+            | [] -> groups
+            | _ -> List.reverse current :: groups
+          )
+    | token :: rest when token_kind_is token Kind.COMMA -> loop [] (List.reverse current :: groups) rest
+    | token :: rest -> loop (token :: current) groups rest
+  in
+  loop [] [] tokens
+
+let type_parameters_from_parenthesized_tokens = fun tokens ->
+  match tokens with
+  | opening :: rest when token_kind_is opening Kind.LPAREN ->
+      let rec gather current depth = function
+        | [] -> (List.reverse current, [])
+        | token :: rest when token_kind_is token Kind.RPAREN && Int.equal depth 0 -> (
+          List.reverse current,
+          rest
+        )
+        | token :: rest -> gather (token :: current) (type_token_depth_after depth token) rest
+      in
+      let inside, rest = gather [] 0 rest in
+      let params = split_type_parameter_groups inside |> List.map ~fn:type_parameter_tokens_doc in
+      (params, rest)
+  | _ -> ([], tokens)
+
+let type_parameter_starts = fun token ->
+  let kind = Ast.Token.kind token in
+  Kind.(kind = PLUS || kind = MINUS || kind = BANG || kind = QUOTE || kind = UNDERSCORE)
+
+let take_type_parameter_tokens = fun tokens ->
+  let rec take_modifiers current = function
+    | token :: rest when token_kind_is token Kind.PLUS
+    || token_kind_is token Kind.MINUS
+    || token_kind_is token Kind.BANG -> take_modifiers (token :: current) rest
+    | tokens -> (current, tokens)
+  in
+  let modifiers, rest = take_modifiers [] tokens in
+  match rest with
+  | quote :: name :: rest when token_kind_is quote Kind.QUOTE && token_kind_is name Kind.IDENT -> (
+    Some (List.reverse (name :: quote :: modifiers)),
+    rest
+  )
+  | wildcard :: rest when token_kind_is wildcard Kind.UNDERSCORE -> (
+    Some (List.reverse (wildcard :: modifiers)),
+    rest
+  )
+  | _ -> (None, tokens)
+
+type rendered_type_body = {
+  doc: Doc.t;
+  leading_line: bool;
+  break_after_equal: bool;
+}
+
+type parsed_type_member = {
+  type_keyword: Ast.Token.t;
+  nonrec_token: Ast.Token.t option;
+  parameters: Doc.t list;
+  name: Ast.Token.t option;
+  body_tokens: Ast.Token.t list;
+}
+
+let parse_type_member_header = fun tokens ->
+  let type_keyword, rest =
+    match tokens with
+    | keyword :: rest when token_kind_is keyword Kind.TYPE_KW || token_kind_is keyword Kind.AND_KW -> (
+      keyword,
+      rest
+    )
+    | _ -> unsupported "type declaration member without type keyword"
+  in
+  let nonrec_token, rest =
+    match rest with
+    | token :: rest when token_kind_is token Kind.NONREC_KW -> (Some token, rest)
+    | _ -> (None, rest)
+  in
+  let rec parse_parameters parameters tokens =
+    match tokens with
+    | token :: _ when token_kind_is token Kind.LPAREN ->
+        let grouped, rest = type_parameters_from_parenthesized_tokens tokens in
+        parse_parameters (List.reverse grouped @ parameters) rest
+    | token :: _ when type_parameter_starts token -> (
+        match take_type_parameter_tokens tokens with
+        | Some parameter, rest -> parse_parameters
+          (type_parameter_tokens_doc parameter :: parameters)
+          rest
+        | None, rest -> parse_parameters parameters rest
+      )
+    | _ ->
+        (List.reverse parameters, tokens)
+  in
+  let parameters, rest = parse_parameters [] rest in
+  let name, rest =
+    match rest with
+    | token :: rest when token_kind_is token Kind.IDENT -> (Some token, rest)
+    | _ -> (None, rest)
+  in
+  let body_tokens =
+    match rest with
+    | token :: rest when token_kind_is token Kind.EQ -> rest
+    | _ -> []
+  in
+  {
+    type_keyword;
+    nonrec_token;
+    parameters;
+    name;
+    body_tokens;
+  }
+
+let type_member_parameters_doc = fun parameters ->
+  match parameters with
+  | [] -> Doc.empty
+  | [ parameter ] -> Doc.concat [ parameter; Doc.space ]
+  | parameters ->
+      if Int.(List.length parameters > 4) then
+        Doc.concat
+          [
+            Doc.lparen;
+            Doc.line;
+            Doc.indent 2 (Doc.join (Doc.concat [ Doc.comma; Doc.line ]) parameters);
+            Doc.line;
+            Doc.rparen;
+            Doc.space;
+          ]
+      else
+        Doc.concat
+          [
+            Doc.lparen;
+            Doc.join (Doc.concat [ Doc.comma; Doc.space ]) parameters;
+            Doc.rparen;
+            Doc.space;
+          ]
+
+let split_top_level_token = fun tokens ~matches ->
+  let rec loop before depth = function
+    | [] -> None
+    | token :: rest when Int.equal depth 0 && matches (Ast.Token.kind token) -> Some (
+      List.reverse before,
+      token,
+      rest
+    )
+    | token :: rest -> loop (token :: before) (type_token_depth_after depth token) rest
+  in
+  loop [] 0 tokens
+
+let split_top_level_all = fun tokens ~matches ->
+  let rec loop current groups depth = function
+    | [] ->
+        List.reverse
+          (
+            match current with
+            | [] -> groups
+            | _ -> List.reverse current :: groups
+          )
+    | token :: rest when Int.equal depth 0 && matches (Ast.Token.kind token) -> loop
+      []
+      (List.reverse current :: groups)
+      (type_token_depth_after depth token)
+      rest
+    | token :: rest -> loop (token :: current) groups (type_token_depth_after depth token) rest
+  in
+  loop [] [] 0 tokens
+
+let type_token_needs_space = fun previous current ->
+  match previous, current with
+  | (_, kind) when Kind.(kind = RPAREN || kind = RBRACKET || kind = BAR_RBRACKET || kind = RBRACE) -> false
+  | (_, kind) when Kind.(kind = COMMA || kind = SEMI || kind = COLON) -> false
+  | (kind, _) when Kind.(kind = LPAREN || kind = LBRACKET || kind = LBRACKET_BAR || kind = LBRACE) -> false
+  | (kind, _) when Kind.(kind = QUOTE || kind = BACKTICK || kind = QUESTION || kind = TILDE) -> false
+  | (_, kind) when Kind.(kind = DOT) -> false
+  | (kind, current) when Kind.(kind = DOT) -> Kind.(current = QUOTE)
+  | (kind, _) when Kind.(kind = COMMA) -> true
+  | (_, kind) when Kind.(kind = ARROW || kind = STAR || kind = OF_KW || kind = AS_KW) -> true
+  | (kind, _) when Kind.(kind = ARROW || kind = STAR || kind = OF_KW || kind = AS_KW) -> true
+  | (kind, _) when Kind.(kind = COLON) -> false
+  | _ -> true
+
+let type_tokens_inline_doc = fun tokens ->
+  let rec loop previous acc = function
+    | [] -> acc
+    | token :: rest ->
+        let current = Ast.Token.kind token in
+        let piece = token_doc token in
+        let acc =
+          match previous with
+          | Some previous when type_token_needs_space previous current -> Doc.concat
+            [ acc; Doc.space; piece ]
+          | _ -> Doc.concat [ acc; piece ]
+        in
+        loop (Some current) acc rest
+  in
+  loop None Doc.empty tokens
+
+let split_top_level_arrows = fun tokens ->
+  let rec loop current groups depth = function
+    | [] -> List.reverse ((List.reverse current, false) :: groups)
+    | token :: rest when Int.equal depth 0 && token_kind_is token Kind.ARROW -> loop
+      []
+      ((List.reverse current, true) :: groups)
+      depth
+      rest
+    | token :: rest -> loop (token :: current) groups (type_token_depth_after depth token) rest
+  in
+  loop [] [] 0 tokens
+
+let top_level_arrow_count = fun tokens ->
+  let rec loop depth count = function
+    | [] -> count
+    | token :: rest ->
+        let count =
+          if Int.equal depth 0 && token_kind_is token Kind.ARROW then
+            Int.(count + 1)
+          else
+            count
+        in
+        loop (type_token_depth_after depth token) count rest
+  in
+  loop 0 0 tokens
+
+let rec type_tokens_doc = fun tokens ->
+  if Int.(top_level_arrow_count tokens > 4) then
+    let parts = split_top_level_arrows tokens in
+    let rec render = function
+      | [] -> Doc.empty
+      | [ (tokens, false) ] -> type_tokens_inline_doc tokens
+      | (tokens, true) :: rest -> Doc.concat
+        [ type_tokens_inline_doc tokens; Doc.space; Doc.arrow; Doc.line; render rest ]
+      | (tokens, false) :: rest -> Doc.concat
+        [ type_tokens_inline_doc tokens; Doc.line; render rest ]
+    in
+    render parts
+  else
+    type_tokens_inline_doc tokens
+
+let record_field_doc = fun ~inline tokens ->
+  match split_top_level_token tokens ~matches:(fun kind -> Kind.(kind = COLON)) with
+  | Some (name_tokens, _colon, type_tokens) ->
+      Doc.concat
+        [ type_tokens_inline_doc name_tokens; Doc.colon; Doc.space; type_tokens_doc type_tokens; (
+            if inline then
+              Doc.empty
+            else
+              Doc.semi
+          ); ]
+  | None -> type_tokens_inline_doc tokens
+
+let record_body_doc = fun ~inline tokens ->
+  let tokens =
+    match tokens with
+    | opening :: rest when token_kind_is opening Kind.LBRACE ->
+        let rec strip_closing acc = function
+          | [] -> List.reverse acc
+          | [ closing ] when token_kind_is closing Kind.RBRACE -> List.reverse acc
+          | token :: rest -> strip_closing (token :: acc) rest
+        in
+        strip_closing [] rest
+    | _ -> tokens
+  in
+  let fields =
+    split_top_level_all tokens ~matches:(fun kind -> Kind.(kind = SEMI))
+  in
+  let fields = fields |> List.map ~fn:(record_field_doc ~inline) in
+  match inline with
+  | true -> Doc.concat
+    [
+      Doc.lbrace;
+      Doc.space;
+      Doc.join (Doc.concat [ Doc.semi; Doc.space ]) fields;
+      Doc.space;
+      Doc.rbrace
+    ]
+  | false -> Doc.concat
+    [ Doc.lbrace; Doc.line; Doc.indent 2 (Doc.lines fields); Doc.line; Doc.rbrace; ]
+
+let constructor_payload_doc = fun tokens ->
+  match tokens with
+  | opening :: _ when token_kind_is opening Kind.LBRACE -> record_body_doc ~inline:true tokens
+  | _ -> type_tokens_doc tokens
+
+let constructor_doc = fun tokens ->
+  match split_top_level_token tokens ~matches:(fun kind -> Kind.(kind = COLON)) with
+  | Some (name_tokens, _colon, type_tokens) -> Doc.concat
+    [ type_tokens_inline_doc name_tokens; Doc.colon; Doc.space; type_tokens_doc type_tokens ]
+  | None -> (
+      match split_top_level_token tokens ~matches:(fun kind -> Kind.(kind = OF_KW)) with
+      | Some (name_tokens, of_token, payload_tokens) -> Doc.concat
+        [
+          type_tokens_inline_doc name_tokens;
+          Doc.space;
+          token_doc of_token;
+          Doc.space;
+          constructor_payload_doc payload_tokens;
+        ]
+      | None -> type_tokens_inline_doc tokens
+    )
+
+let split_variant_constructors = fun tokens ->
+  let rec loop current constructors depth = function
+    | [] ->
+        List.reverse
+          (
+            match current with
+            | [] -> constructors
+            | _ -> List.reverse current :: constructors
+          )
+    | token :: rest when Int.equal depth 0 && token_kind_is token Kind.PIPE ->
+        let constructors =
+          match current with
+          | [] -> constructors
+          | _ -> List.reverse current :: constructors
+        in
+        loop [ token ] constructors depth rest
+    | token :: rest ->
+        loop (token :: current) constructors (type_token_depth_after depth token) rest
+  in
+  loop [] [] 0 tokens
+
+let variant_body_doc = fun tokens ->
+  let private_token, tokens =
+    match tokens with
+    | token :: rest when token_kind_is token Kind.PRIVATE_KW -> (Some token, rest)
+    | _ -> (None, tokens)
+  in
+  let constructors = split_variant_constructors tokens in
+  let rec row_docs first = function
+    | [] -> []
+    | tokens :: rest ->
+        let pipe_token, tokens =
+          match tokens with
+          | token :: rest when token_kind_is token Kind.PIPE -> (Some token, rest)
+          | _ -> (None, tokens)
+        in
+        let prefix =
+          match private_token, first, pipe_token with
+          | Some private_token, true, Some pipe_token -> Doc.concat
+            [ token_doc private_token; Doc.space; token_doc pipe_token; Doc.space ]
+          | Some private_token, true, None -> Doc.concat [ token_doc private_token; Doc.space ]
+          | _, _, Some pipe_token -> Doc.concat [ token_doc pipe_token; Doc.space ]
+          | _ -> Doc.empty
+        in
+        Doc.concat [ prefix; constructor_doc tokens ] :: row_docs false rest
+  in
+  Doc.concat [ Doc.line; Doc.indent 2 (Doc.lines (row_docs true constructors)) ]
+
+let poly_variant_row_doc = fun ~bar tokens ->
+  let row =
+    match split_top_level_token tokens ~matches:(fun kind -> Kind.(kind = OF_KW)) with
+    | Some (tag_tokens, of_token, payload_tokens) -> Doc.concat
+      [
+        type_tokens_inline_doc tag_tokens;
+        Doc.space;
+        token_doc of_token;
+        Doc.space;
+        type_tokens_doc payload_tokens;
+      ]
+    | None -> type_tokens_doc tokens
+  in
+  if bar then
+    Doc.concat [ Doc.bar; Doc.space; row ]
+  else
+    row
+
+let poly_variant_body_doc = fun tokens ->
+  let opener, rest =
+    match tokens with
+    | opening :: marker :: rest when token_kind_is opening Kind.LBRACKET
+    && (token_kind_is marker Kind.GT || token_kind_is marker Kind.LT) -> (
+      Doc.concat [ token_doc opening; token_doc marker ],
+      rest
+    )
+    | opening :: rest when token_kind_is opening Kind.LBRACKET -> (token_doc opening, rest)
+    | _ -> (Doc.lbracket, tokens)
+  in
+  let rec strip_closing acc = function
+    | [] -> List.reverse acc
+    | [ closing ] when token_kind_is closing Kind.RBRACKET -> List.reverse acc
+    | token :: rest -> strip_closing (token :: acc) rest
+  in
+  let rows = split_variant_constructors (strip_closing [] rest) in
+  let rec row_docs first = function
+    | [] -> []
+    | tokens :: rest ->
+        let tokens =
+          match tokens with
+          | token :: rest when token_kind_is token Kind.PIPE -> rest
+          | _ -> tokens
+        in
+        poly_variant_row_doc ~bar:(not first) tokens :: row_docs false rest
+  in
+  Doc.concat
+    [ opener; Doc.line; Doc.indent 2 (Doc.lines (row_docs true rows)); Doc.line; Doc.rbracket; ]
+
+let rec rendered_type_body = fun tokens ->
+  match tokens with
+  | [] ->
+      { doc = Doc.empty; leading_line = false; break_after_equal = false }
+  | token :: _ when token_kind_is token Kind.LBRACE ->
+      { doc = record_body_doc ~inline:false tokens; leading_line = false; break_after_equal = false }
+  | private_token :: opening :: rest when token_kind_is private_token Kind.PRIVATE_KW
+  && token_kind_is opening Kind.LBRACE ->
+      {
+        doc = Doc.concat
+          [ token_doc private_token; Doc.space; record_body_doc ~inline:false (opening :: rest) ];
+        leading_line = false;
+        break_after_equal = false
+      }
+  | token :: _ when token_kind_is token Kind.PIPE ->
+      { doc = variant_body_doc tokens; leading_line = true; break_after_equal = false }
+  | private_token :: pipe :: _ when token_kind_is private_token Kind.PRIVATE_KW
+  && token_kind_is pipe Kind.PIPE ->
+      { doc = variant_body_doc tokens; leading_line = true; break_after_equal = false }
+  | opening :: row_start :: _ when token_kind_is opening Kind.LBRACKET
+  && token_kind_is row_start Kind.BACKTICK ->
+      {
+        doc = Doc.concat [ Doc.line; poly_variant_body_doc tokens ];
+        leading_line = true;
+        break_after_equal = false
+      }
+  | token :: _ when token_kind_is token Kind.LBRACKET ->
+      { doc = poly_variant_body_doc tokens; leading_line = false; break_after_equal = false }
+  | _ ->
+      let doc = type_tokens_doc tokens in
+      { doc; leading_line = false; break_after_equal = Doc.is_multiline doc }
+
+let split_constraints = fun tokens ->
+  let rec collect_constraints current constraints depth = function
+    | [] ->
+        List.reverse
+          (
+            match current with
+            | [] -> constraints
+            | _ -> List.reverse current :: constraints
+          )
+    | token :: rest when Int.equal depth 0 && token_kind_is token Kind.CONSTRAINT_KW ->
+        collect_constraints []
+          (
+            match current with
+            | [] -> constraints
+            | _ -> List.reverse current :: constraints
+          )
+          depth
+          rest
+    | token :: rest -> collect_constraints
+      (token :: current)
+      constraints
+      (type_token_depth_after depth token)
+      rest
+  in
+  let rec loop body depth = function
+    | [] -> (List.reverse body, [])
+    | token :: rest when Int.equal depth 0 && token_kind_is token Kind.CONSTRAINT_KW -> (
+      List.reverse body,
+      collect_constraints [] [] depth rest
+    )
+    | token :: rest -> loop (token :: body) (type_token_depth_after depth token) rest
+  in
+  loop [] 0 tokens
+
+let constraint_doc = fun tokens ->
+  match split_top_level_token tokens ~matches:(fun kind -> Kind.(kind = EQ)) with
+  | Some (left, _eq, right) -> Doc.concat
+    [ Doc.text "constraint"; Doc.space; type_tokens_doc left; Doc.equal; type_tokens_doc right ]
+  | None -> Doc.concat [ Doc.text "constraint"; Doc.space; type_tokens_doc tokens ]
+
+let append_type_constraints = fun doc constraints ->
+  match constraints with
+  | [] -> doc
+  | constraints -> Doc.concat
+    (doc
+    :: (constraints
+    |> List.map ~fn:(fun tokens -> Doc.concat [ Doc.line; Doc.indent 2 (constraint_doc tokens) ])))
+
+let render_type_body_after_equal = fun head body constraints ->
+  let body = rendered_type_body body in
+  let doc =
+    if body.leading_line then
+      Doc.concat [ head; Doc.space; Doc.equal; body.doc ]
+    else if body.break_after_equal then
+      Doc.concat [ head; Doc.space; Doc.equal; Doc.line; Doc.indent 2 body.doc ]
+    else
+      Doc.concat [ head; Doc.space; Doc.equal; Doc.space; body.doc ]
+  in
+  append_type_constraints doc constraints
+
+let type_member_doc = fun member_ ->
+  match member_.name with
+  | None -> unsupported "type declaration without name"
+  | Some name ->
+      let keyword_doc = token_doc member_.type_keyword in
+      let head = Doc.concat
+        [ keyword_doc; Doc.space; (
+            match member_.nonrec_token with
+            | Some nonrec_token -> Doc.concat [ token_doc nonrec_token; Doc.space ]
+            | None -> Doc.empty
+          ); type_member_parameters_doc member_.parameters; token_doc name; ]
+      in
+      let body_tokens, constraints = split_constraints member_.body_tokens in
+      match body_tokens with
+      | [] -> append_type_constraints head constraints
+      | _ -> (
+          match split_top_level_token body_tokens ~matches:(fun kind -> Kind.(kind = EQ)) with
+          | Some (alias_tokens, _eq, representation_tokens) ->
+              let representation = rendered_type_body representation_tokens in
+              let doc =
+                if representation.leading_line then
+                  Doc.concat
+                    [
+                      head;
+                      Doc.space;
+                      Doc.equal;
+                      Doc.space;
+                      type_tokens_doc alias_tokens;
+                      Doc.space;
+                      Doc.equal;
+                      representation.doc;
+                    ]
+                else
+                  Doc.concat
+                    [
+                      head;
+                      Doc.space;
+                      Doc.equal;
+                      Doc.space;
+                      type_tokens_doc alias_tokens;
+                      Doc.space;
+                      Doc.equal;
+                      Doc.space;
+                      representation.doc;
+                    ]
+              in
+              append_type_constraints doc constraints
+          | None -> render_type_body_after_equal head body_tokens constraints
+        )
+
+let type_decl_members = fun tokens ->
+  let rec loop current members depth = function
+    | [] ->
+        List.reverse
+          (
+            match current with
+            | [] -> members
+            | _ -> parse_type_member_header (List.reverse current) :: members
+          )
+    | token :: rest when Int.equal depth 0 && token_kind_is token Kind.AND_KW ->
+        let members =
+          match current with
+          | [] -> members
+          | _ -> parse_type_member_header (List.reverse current) :: members
+        in
+        loop [ token ] members depth rest
+    | token :: rest ->
+        loop (token :: current) members (type_token_depth_after depth token) rest
+  in
+  loop [] [] 0 tokens
 
 let type_decl_doc = fun decl ->
-  match Ast.TypeDeclaration.name decl with
-  | None -> unsupported "type declaration without name"
-  | Some name -> (
-      match Ast.TypeDeclaration.manifest decl with
-      | Some manifest -> Doc.concat
-        [
-          Doc.text "type";
-          Doc.space;
-          type_parameters_doc decl;
-          token_doc name;
-          Doc.space;
-          Doc.equal;
-          Doc.space;
-          type_expr_doc manifest;
-        ]
-      | None -> Doc.concat [ Doc.text "type"; Doc.space; type_parameters_doc decl; token_doc name ]
-    )
+  match type_decl_members (type_decl_tokens decl) with
+  | [] -> unsupported "empty type declaration"
+  | first :: rest ->
+      let first_doc = type_member_doc first in
+      let rest_docs = rest
+      |> List.map ~fn:(fun member_ -> Doc.concat [ blank_line; type_member_doc member_ ]) in
+      Doc.concat (first_doc :: rest_docs)
 
 let module_decl_path_body_doc = fun decl ->
   let segments = ref [] in

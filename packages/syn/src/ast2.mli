@@ -554,6 +554,12 @@ module TypeDeclaration: sig
     | Wildcard of { wildcard: Token.t; variance: Token.t option; injective: Token.t option }
   val cast: Node.t -> t option
 
+  val for_each_token: t -> fn:(Token.t -> unit) -> unit
+
+  val keyword_token: t -> Token.t option
+
+  val nonrec_token: t -> Token.t option
+
   val name: t -> Token.t option
 
   val for_each_parameter: t -> fn:(parameter -> unit) -> unit

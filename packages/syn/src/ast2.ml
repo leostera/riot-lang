@@ -2119,6 +2119,21 @@ module TypeDeclaration = struct
     else
       None
 
+  let rec for_each_token_in_node = fun (node: node) ~fn ->
+    Syntax_tree.for_each_child node.tree (syntax_node node)
+      ~fn:(
+        function
+        | Syntax_tree.Token id -> fn (wrap_token node.tree id)
+        | Syntax_tree.Node id -> for_each_token_in_node (wrap_node node.tree id) ~fn
+        | Syntax_tree.Missing _ -> ()
+      )
+
+  let for_each_token = fun decl ~fn -> for_each_token_in_node decl ~fn
+
+  let keyword_token = fun decl -> Node.first_child_token decl ~kind:Syntax_kind2.TYPE_KW
+
+  let nonrec_token = fun decl -> Node.first_child_token decl ~kind:Syntax_kind2.NONREC_KW
+
   let child_token_at = fun (decl: type_declaration) index ->
     match Node.child_at decl index with
     | Some (Syntax_tree.Token id) -> Some (wrap_token decl.tree id)
