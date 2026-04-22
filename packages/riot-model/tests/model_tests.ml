@@ -211,13 +211,10 @@ path = "examples/test_https_httpbin.ml"
       |> List.map ~fn:(fun (bin: Riot_model.Package.binary) -> bin.name)
       |> List.sort ~compare:String.compare in
       match binary_names with
-      | ["test_https_httpbin"] -> Ok ()
-      | _ ->
-          Error (
-            "expected declared example binaries to suppress same-bucket autodiscovery, got: ["
-            ^ String.concat ", " binary_names
-            ^ "]"
-          ))
+      | [ "test_https_httpbin" ] -> Ok ()
+      | _ -> Error ("expected declared example binaries to suppress same-bucket autodiscovery, got: ["
+      ^ String.concat ", " binary_names
+      ^ "]"))
 
 let test_declared_runtime_binaries_suppress_main_autodiscovery = fun _ctx ->
   with_tempdir "riot_model_declared_runtime_bin"
@@ -251,13 +248,10 @@ path = "src/custom.ml"
       |> List.map ~fn:(fun (bin: Riot_model.Package.binary) -> bin.name)
       |> List.sort ~compare:String.compare in
       match binary_names with
-      | ["custom"] -> Ok ()
-      | _ ->
-          Error (
-            "expected declared runtime binaries to suppress src/main.ml autodiscovery, got: ["
-            ^ String.concat ", " binary_names
-            ^ "]"
-          ))
+      | [ "custom" ] -> Ok ()
+      | _ -> Error ("expected declared runtime binaries to suppress src/main.ml autodiscovery, got: ["
+      ^ String.concat ", " binary_names
+      ^ "]"))
 
 let test_src_main_autodiscovers_runtime_binary = fun _ctx ->
   with_tempdir "riot_model_main_binary"

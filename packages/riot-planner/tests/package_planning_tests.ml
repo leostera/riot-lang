@@ -77,10 +77,9 @@ let plan_graph_package = fun ~workspace ~store ~package_graph ~package_key ~buil
 
 let plan_package_raw = fun ~workspace ~store ~package_graph ~package_key ~build_ctx ->
   match Riot_planner.Package_graph.get_node_by_key package_graph package_key with
-  | None ->
-      Error (Riot_planner.Planning_error.GraphBuildFailed {
-        reason = "package graph node not found: " ^ Riot_model.Package.key_to_string package_key
-      })
+  | None -> Error (Riot_planner.Planning_error.GraphBuildFailed {
+    reason = "package graph node not found: " ^ Riot_model.Package.key_to_string package_key
+  })
   | Some node ->
       let package = Riot_planner.Package_graph.get_package node.value in
       Riot_planner.Package_planner.plan_package
@@ -1623,7 +1622,7 @@ let test_planner_rejects_direct_internal_library_access = fun _ctx ->
         let store = Riot_store.Store.create ~workspace in
         let package_graph = Riot_planner.Package_graph.create
           ~scope:Riot_planner.Package_graph.Runtime workspace
-          |> Result.expect ~msg:"package graph should build" in
+        |> Result.expect ~msg:"package graph should build" in
         let package_key = Riot_planner.Package_graph.package_key
           ~package_name:(Package_name.to_string package.name)
           Riot_planner.Package_graph.Runtime in
@@ -1637,6 +1636,7 @@ let test_planner_rejects_direct_internal_library_access = fun _ctx ->
           requested_module;
           internal_module;
           public_module;
+
         }) ->
             if not (String.equal target_name "berrybot") then
               Error ("expected target name berrybot, got " ^ target_name)
@@ -1650,11 +1650,9 @@ let test_planner_rejects_direct_internal_library_access = fun _ctx ->
               Error ("expected public module Berrybot, got " ^ public_module)
             else
               Ok ()
-        | Error err ->
-            Error ("expected direct internal access planner error, got "
-            ^ Riot_planner.Planning_error.to_string err)
-        | Ok _ ->
-            Error "expected planner to reject direct internal library access")
+        | Error err -> Error ("expected direct internal access planner error, got "
+        ^ Riot_planner.Planning_error.to_string err)
+        | Ok _ -> Error "expected planner to reject direct internal library access")
   with
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"
@@ -1677,7 +1675,7 @@ let test_planner_rejects_namespaced_internal_library_access = fun _ctx ->
         let store = Riot_store.Store.create ~workspace in
         let package_graph = Riot_planner.Package_graph.create
           ~scope:Riot_planner.Package_graph.Runtime workspace
-          |> Result.expect ~msg:"package graph should build" in
+        |> Result.expect ~msg:"package graph should build" in
         let package_key = Riot_planner.Package_graph.package_key
           ~package_name:(Package_name.to_string package.name)
           Riot_planner.Package_graph.Runtime in
@@ -1691,6 +1689,7 @@ let test_planner_rejects_namespaced_internal_library_access = fun _ctx ->
           requested_module;
           internal_module;
           public_module;
+
         }) ->
             if not (String.equal target_name "berrybot") then
               Error ("expected target name berrybot, got " ^ target_name)
@@ -1704,11 +1703,9 @@ let test_planner_rejects_namespaced_internal_library_access = fun _ctx ->
               Error ("expected public module Berrybot, got " ^ public_module)
             else
               Ok ()
-        | Error err ->
-            Error ("expected namespaced internal access planner error, got "
-            ^ Riot_planner.Planning_error.to_string err)
-        | Ok _ ->
-            Error "expected planner to reject namespaced internal library access")
+        | Error err -> Error ("expected namespaced internal access planner error, got "
+        ^ Riot_planner.Planning_error.to_string err)
+        | Ok _ -> Error "expected planner to reject namespaced internal library access")
   with
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"
@@ -1732,7 +1729,7 @@ let test_planner_rejects_direct_other_binary_root_access = fun _ctx ->
         let store = Riot_store.Store.create ~workspace in
         let package_graph = Riot_planner.Package_graph.create
           ~scope:Riot_planner.Package_graph.Runtime workspace
-          |> Result.expect ~msg:"package graph should build" in
+        |> Result.expect ~msg:"package graph should build" in
         let package_key = Riot_planner.Package_graph.package_key
           ~package_name:(Package_name.to_string package.name)
           Riot_planner.Package_graph.Runtime in
@@ -1747,6 +1744,7 @@ let test_planner_rejects_direct_other_binary_root_access = fun _ctx ->
           other_target_name;
           other_target_module;
           public_module;
+
         }) ->
             if not (String.equal target_name "berrybot") then
               Error ("expected target name berrybot, got " ^ target_name)
@@ -1762,11 +1760,9 @@ let test_planner_rejects_direct_other_binary_root_access = fun _ctx ->
               Error ("expected public module Berrybot, got " ^ public_module)
             else
               Ok ()
-        | Error err ->
-            Error ("expected other target root planner error, got "
-            ^ Riot_planner.Planning_error.to_string err)
-        | Ok _ ->
-            Error "expected planner to reject direct other-binary-root access")
+        | Error err -> Error ("expected other target root planner error, got "
+        ^ Riot_planner.Planning_error.to_string err)
+        | Ok _ -> Error "expected planner to reject direct other-binary-root access")
   with
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"
@@ -1790,7 +1786,7 @@ let test_planner_rejects_namespaced_other_binary_root_access = fun _ctx ->
         let store = Riot_store.Store.create ~workspace in
         let package_graph = Riot_planner.Package_graph.create
           ~scope:Riot_planner.Package_graph.Runtime workspace
-          |> Result.expect ~msg:"package graph should build" in
+        |> Result.expect ~msg:"package graph should build" in
         let package_key = Riot_planner.Package_graph.package_key
           ~package_name:(Package_name.to_string package.name)
           Riot_planner.Package_graph.Runtime in
@@ -1805,6 +1801,7 @@ let test_planner_rejects_namespaced_other_binary_root_access = fun _ctx ->
           other_target_name;
           other_target_module;
           public_module;
+
         }) ->
             if not (String.equal target_name "berrybot") then
               Error ("expected target name berrybot, got " ^ target_name)
@@ -1820,11 +1817,9 @@ let test_planner_rejects_namespaced_other_binary_root_access = fun _ctx ->
               Error ("expected public module Berrybot, got " ^ public_module)
             else
               Ok ()
-        | Error err ->
-            Error ("expected namespaced other target root planner error, got "
-            ^ Riot_planner.Planning_error.to_string err)
-        | Ok _ ->
-            Error "expected planner to reject namespaced other-binary-root access")
+        | Error err -> Error ("expected namespaced other target root planner error, got "
+        ^ Riot_planner.Planning_error.to_string err)
+        | Ok _ -> Error "expected planner to reject namespaced other-binary-root access")
   with
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"
@@ -2072,15 +2067,23 @@ let test_kernel_process_interface_keeps_public_child_root_dependency = fun _ctx 
       | None -> Error "missing MLI(Kernel__Process) in module graph"
       | Some node ->
           let deps = module_dependency_labels module_graph node in
-          if not (List.contains deps ~value:"ML(Kernel__Fs)") && not (List.contains deps ~value:"MLI(Kernel__Fs)") then
+          if
+            not (List.contains deps ~value:"ML(Kernel__Fs)")
+            && not (List.contains deps ~value:"MLI(Kernel__Fs)")
+          then
             Error ("expected MLI(Kernel__Process) to keep public Fs dependency in module graph, got ["
             ^ String.concat ", " deps
             ^ "]")
-          else if List.contains deps ~value:"ML(Kernel__Fs__File)" || List.contains deps ~value:"MLI(Kernel__Fs__File)" then
+          else if
+            List.contains deps ~value:"ML(Kernel__Fs__File)" || List.contains deps ~value:"MLI(Kernel__Fs__File)"
+          then
             Error ("did not expect MLI(Kernel__Process) to depend directly on Kernel__Fs__File, got ["
             ^ String.concat ", " deps
             ^ "]")
-          else if not (List.contains deps ~value:"ML(Kernel__System_error)") && not (List.contains deps ~value:"MLI(Kernel__System_error)") then
+          else if
+            not (List.contains deps ~value:"ML(Kernel__System_error)")
+            && not (List.contains deps ~value:"MLI(Kernel__System_error)")
+          then
             Error ("expected MLI(Kernel__Process) to keep System_error dependency in module graph, got ["
             ^ String.concat ", " deps
             ^ "]")

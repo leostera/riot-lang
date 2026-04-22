@@ -451,9 +451,7 @@ let test_multiple_binaries_can_share_private_helper_module = fun _ctx ->
   ^ Riot_planner.Planning_error.to_string err)
 
 let test_no_library_package_can_use_private_helper_module = fun _ctx ->
-  let package = make_package
-    ~binaries:[ ("berrybot", "src/main.ml") ]
-    "berrybot" in
+  let package = make_package ~binaries:[ ("berrybot", "src/main.ml") ] "berrybot" in
   let graph = G.make () in
   let helper = add_ml_node graph ~namespace:(public_namespace package) ~path:"src/helper.ml" in
   let main = add_ml_node graph ~namespace:(public_namespace package) ~path:"src/main.ml" in
@@ -462,10 +460,7 @@ let test_no_library_package_can_use_private_helper_module = fun _ctx ->
   match validate_layout
     ~package
     ~graph
-    ~analyzed:[
-      (helper, "let value = 1\n");
-      (main, "let () = ignore Helper.value\n");
-    ] with
+    ~analyzed:[ (helper, "let value = 1\n"); (main, "let () = ignore Helper.value\n"); ] with
   | Ok () -> Ok ()
   | Error err -> Error ("expected helper module in no-library package to be valid, got: "
   ^ Riot_planner.Planning_error.to_string err)
@@ -482,11 +477,10 @@ let test_same_package_binary_cannot_use_other_binary_root_directly = fun _ctx ->
   let _main_binary = add_binary_target graph ~name:"berrybot" ~source:"src/main.ml" in
   let _admin_binary = add_binary_target graph ~name:"admin" ~source:"src/admin.ml" in
   let () = add_dep main ~depends_on:admin in
-  let () = add_dep root ~depends_on:(add_ml_node graph ~namespace:(public_namespace package) ~path:"src/a.ml") in
-  match validate_layout
-    ~package
-    ~graph
-    ~analyzed:[ (main, "let () = ignore Admin.run\n"); ] with
+  let () = add_dep
+    root
+    ~depends_on:(add_ml_node graph ~namespace:(public_namespace package) ~path:"src/a.ml") in
+  match validate_layout ~package ~graph ~analyzed:[ (main, "let () = ignore Admin.run\n"); ] with
   | Error (Riot_planner.Planning_error.TargetDependsOnOtherTargetRoot {
     target_name;
     source;
@@ -494,6 +488,7 @@ let test_same_package_binary_cannot_use_other_binary_root_directly = fun _ctx ->
     other_target_name;
     other_target_module;
     public_module;
+
   }) ->
       Test.assert_equal ~expected:"berrybot" ~actual:target_name;
       Test.assert_equal ~expected:(Path.v "src/main.ml") ~actual:source;
@@ -530,6 +525,7 @@ let test_same_package_binary_cannot_use_namespaced_other_binary_root = fun _ctx 
     other_target_name;
     other_target_module;
     public_module;
+
   }) ->
       Test.assert_equal ~expected:"berrybot" ~actual:target_name;
       Test.assert_equal ~expected:(Path.v "src/main.ml") ~actual:source;
@@ -560,10 +556,7 @@ let test_binary_private_helper_cannot_use_other_binary_root = fun _ctx ->
   match validate_layout
     ~package
     ~graph
-    ~analyzed:[
-      (helper, "let value = Admin.run\n");
-      (main, "let () = ignore B.value\n");
-    ] with
+    ~analyzed:[ (helper, "let value = Admin.run\n"); (main, "let () = ignore B.value\n"); ] with
   | Error (Riot_planner.Planning_error.TargetDependsOnOtherTargetRoot {
     target_name;
     source;
@@ -571,6 +564,7 @@ let test_binary_private_helper_cannot_use_other_binary_root = fun _ctx ->
     other_target_name;
     other_target_module;
     public_module;
+
   }) ->
       Test.assert_equal ~expected:"berrybot" ~actual:target_name;
       Test.assert_equal ~expected:(Path.v "src/b.ml") ~actual:source;

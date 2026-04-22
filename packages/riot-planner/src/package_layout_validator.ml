@@ -62,7 +62,8 @@ let binary_source_nodes = fun ~source_path nodes ->
       | _ -> false)
 
 let target_root_nodes = fun package nodes ->
-  List.filter_map package.Package.binaries
+  List.filter_map
+    package.Package.binaries
     ~fn:(fun (binary: Package.binary) ->
       binary_source_nodes ~source_path:binary.path nodes
       |> List.map ~fn:(fun node -> (binary.name, node))
@@ -156,8 +157,7 @@ let classify_internal_module_error = fun ~target_name ~source ~requested_modules
 let validate_target_source = fun ~target_name ~(source_node:Module_node.t G.node) ~library_reachable_set ~public_root_ids ~public_module ~module_graph ~analyzed_modules_by_id ~other_target_root_ids ->
   let nodes_to_check =
     let reachable = target_reachable_set [ source_node ] module_graph in
-    HashSet.to_list reachable
-    |> List.filter_map
+    HashSet.to_list reachable |> List.filter_map
       ~fn:(fun node_id ->
         match G.get_node module_graph node_id with
         | Some (node: Module_node.t G.node) -> (
@@ -177,28 +177,22 @@ let validate_target_source = fun ~target_name ~(source_node:Module_node.t G.node
   List.fold_left nodes_to_check ~init:(Ok ())
     ~fn:(fun acc (node: Module_node.t G.node) ->
       match acc with
-      | Error _ as err ->
-          err
+      | Error _ as err -> err
       | Ok () -> (
           match HashMap.get analyzed_modules_by_id ~key:node.id with
-          | None ->
-              Ok ()
+          | None -> Ok ()
           | Some analyzed_module ->
               let requested = requested_modules analyzed_module in
-              match
-                List.find node.deps
-                  ~fn:(fun dep_id -> Option.is_some (HashMap.get other_target_root_ids ~key:dep_id))
-              with
+              match List.find
+                node.deps
+                ~fn:(fun dep_id -> Option.is_some (HashMap.get other_target_root_ids ~key:dep_id)) with
               | Some dep_id -> (
                   match G.get_node module_graph dep_id with
                   | Some (dep_node: Module_node.t G.node) ->
-                      let other_target_name =
-                        HashMap.get other_target_root_ids ~key:dep_id
-                        |> Option.unwrap_or ~default:"unknown"
-                      in
+                      let other_target_name = HashMap.get other_target_root_ids ~key:dep_id
+                      |> Option.unwrap_or ~default:"unknown" in
                       Error (
-                        classify_other_target_root_error
-                          ~target_name
+                        classify_other_target_root_error ~target_name
                           ~source:(
                             node.value.file |> function
                             | Module_node.Concrete path -> path
@@ -209,8 +203,7 @@ let validate_target_source = fun ~target_name ~(source_node:Module_node.t G.node
                           ~public_module
                           dep_node
                       )
-                  | None ->
-                      Ok ()
+                  | None -> Ok ()
                 )
               | None -> (
                   match
@@ -224,20 +217,16 @@ let validate_target_source = fun ~target_name ~(source_node:Module_node.t G.node
                           match G.get_node module_graph dep_id with
                           | Some (dep_node: Module_node.t G.node) -> (
                               match dep_node.value.kind, dep_node.value.file with
-                              | (Module_node.ML _ | Module_node.MLI _), Module_node.Concrete _ ->
-                                  true
-                              | _ ->
-                                  false
+                              | (Module_node.ML _ | Module_node.MLI _), Module_node.Concrete _ -> true
+                              | _ -> false
                             )
-                          | None ->
-                              false)
+                          | None -> false)
                   with
                   | Some dep_id -> (
                       match G.get_node module_graph dep_id with
                       | Some (dep_node: Module_node.t G.node) ->
                           Error (
-                            classify_internal_module_error
-                              ~target_name
+                            classify_internal_module_error ~target_name
                               ~source:(
                                 node.value.file |> function
                                 | Module_node.Concrete path -> path
@@ -247,11 +236,9 @@ let validate_target_source = fun ~target_name ~(source_node:Module_node.t G.node
                               dep_node
                               ~public_module
                           )
-                      | None ->
-                          Ok ()
+                      | None -> Ok ()
                     )
-                  | None ->
-                      Ok ()
+                  | None -> Ok ()
                 )
         ))
 
@@ -282,11 +269,7 @@ let validate = fun ~package ~module_graph ~analyzed_modules ->
                 List.for_each target_root_nodes
                   ~fn:(fun (other_target_name, other_target_node) ->
                     if not (String.equal other_target_name name) then
-                      let _ = HashMap.insert
-                        other_target_root_ids
-                        ~key:other_target_node.id
-                        ~value:other_target_name
-                      in
+                      let _ = HashMap.insert other_target_root_ids ~key:other_target_node.id ~value:other_target_name in
                       ())
               in
               List.fold_left source_nodes ~init:(Ok ())
