@@ -4,12 +4,17 @@
 #include <caml/memory.h>
 #include <caml/mlvalues.h>
 #include <caml/signals.h>
-#include <sys/event.h>
 #include <unistd.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <stdlib.h>
 #include "kernel_new_errors.h"
+
+static intnat kernel_new_async_next_token_id = 0;
+
+#if defined(__APPLE__) || defined(__MACH__)
+
+#include <sys/event.h>
 
 typedef struct token_binding {
   int selector_fd;
@@ -20,7 +25,6 @@ typedef struct token_binding {
 } token_binding;
 
 static token_binding *kernel_new_async_bindings = NULL;
-static intnat kernel_new_async_next_token_id = 0;
 
 static void kernel_new_async_remove_selector_bindings(int selector_fd) {
   token_binding **cursor = &kernel_new_async_bindings;
@@ -118,6 +122,8 @@ static int kernel_new_async_ignore_error(value ignored_errors_val, int code) {
   return 0;
 }
 
+#endif
+
 CAMLprim value kernel_new_async_token_make(value payload_val) {
   CAMLparam1(payload_val);
   CAMLlocal1(token_val);
@@ -139,6 +145,8 @@ CAMLprim value kernel_new_async_token_value(value token_val) {
   CAMLparam1(token_val);
   CAMLreturn(Field(token_val, 1));
 }
+
+#if defined(__APPLE__) || defined(__MACH__)
 
 CAMLprim value kernel_new_async_unix_selector_create(value unit_val) {
   CAMLparam1(unit_val);
@@ -521,3 +529,83 @@ CAMLprim value kernel_new_async_unix_selector_deregister_timer(
     EV_DELETE | EV_RECEIPT
   );
 }
+
+#else
+
+CAMLprim value kernel_new_async_unix_selector_create(value unit_val) {
+  CAMLparam1(unit_val);
+  CAMLreturn(kernel_new_result_error(KERNEL_NEW_ERR_NOT_SUPPORTED));
+}
+
+CAMLprim value kernel_new_async_unix_selector_close(value selector_val) {
+  CAMLparam1(selector_val);
+  CAMLreturn(kernel_new_result_error(KERNEL_NEW_ERR_NOT_SUPPORTED));
+}
+
+CAMLprim value kernel_new_async_unix_selector_wait(value max_events_val, value timeout_ns_val, value selector_val) {
+  CAMLparam3(max_events_val, timeout_ns_val, selector_val);
+  CAMLreturn(kernel_new_result_error(KERNEL_NEW_ERR_NOT_SUPPORTED));
+}
+
+CAMLprim value kernel_new_async_unix_selector_apply(value selector_val, value changes_val, value ignored_errors_val) {
+  CAMLparam3(selector_val, changes_val, ignored_errors_val);
+  CAMLreturn(kernel_new_result_error(KERNEL_NEW_ERR_NOT_SUPPORTED));
+}
+
+CAMLprim value kernel_new_async_unix_selector_register_process(
+  value selector_val,
+  value pid_val,
+  value token_val
+) {
+  CAMLparam3(selector_val, pid_val, token_val);
+  CAMLreturn(kernel_new_result_error(KERNEL_NEW_ERR_NOT_SUPPORTED));
+}
+
+CAMLprim value kernel_new_async_unix_selector_reregister_process(
+  value selector_val,
+  value pid_val,
+  value token_val
+) {
+  CAMLparam3(selector_val, pid_val, token_val);
+  CAMLreturn(kernel_new_result_error(KERNEL_NEW_ERR_NOT_SUPPORTED));
+}
+
+CAMLprim value kernel_new_async_unix_selector_deregister_process(
+  value selector_val,
+  value pid_val
+) {
+  CAMLparam2(selector_val, pid_val);
+  CAMLreturn(kernel_new_result_error(KERNEL_NEW_ERR_NOT_SUPPORTED));
+}
+
+CAMLprim value kernel_new_async_unix_selector_register_timer(
+  value selector_val,
+  value timer_id_val,
+  value timeout_parts_val,
+  value repeat_val,
+  value token_val
+) {
+  CAMLparam5(selector_val, timer_id_val, timeout_parts_val, repeat_val, token_val);
+  CAMLreturn(kernel_new_result_error(KERNEL_NEW_ERR_NOT_SUPPORTED));
+}
+
+CAMLprim value kernel_new_async_unix_selector_reregister_timer(
+  value selector_val,
+  value timer_id_val,
+  value timeout_parts_val,
+  value repeat_val,
+  value token_val
+) {
+  CAMLparam5(selector_val, timer_id_val, timeout_parts_val, repeat_val, token_val);
+  CAMLreturn(kernel_new_result_error(KERNEL_NEW_ERR_NOT_SUPPORTED));
+}
+
+CAMLprim value kernel_new_async_unix_selector_deregister_timer(
+  value selector_val,
+  value timer_id_val
+) {
+  CAMLparam2(selector_val, timer_id_val);
+  CAMLreturn(kernel_new_result_error(KERNEL_NEW_ERR_NOT_SUPPORTED));
+}
+
+#endif

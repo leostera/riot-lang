@@ -1,7 +1,8 @@
 #!/bin/bash
 # Create a minimal Linux SDK overlay for cross-compilation.
-# This script uses Docker to extract only the non-libc headers and libraries
-# that Riot's foreign stubs need on Linux.
+# This script uses Docker to extract the target-specific Linux headers and
+# libraries that Riot's foreign stubs need on Linux, including the
+# multiarch glibc header tree required by pthread/OpenSSL consumers.
 
 set -e
 
@@ -67,6 +68,7 @@ docker cp "$CONTAINER:/usr/include/pcre2.h" "$SYSROOT_DIR/usr/include/"
 docker cp "$CONTAINER:/usr/include/pcre2posix.h" "$SYSROOT_DIR/usr/include/" 2>/dev/null || true
 docker cp "$CONTAINER:/usr/include/zlib.h" "$SYSROOT_DIR/usr/include/"
 docker cp "$CONTAINER:/usr/include/zconf.h" "$SYSROOT_DIR/usr/include/"
+docker cp "$CONTAINER:/usr/include/${LIB_DIR}" "$SYSROOT_DIR/usr/include/"
 docker cp "$CONTAINER:/usr/include/${LIB_DIR}/openssl/." "$SYSROOT_DIR/usr/include/openssl/" 2>/dev/null || true
 
 # Extract libraries without overwriting the bundled glibc sysroot.

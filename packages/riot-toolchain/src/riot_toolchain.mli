@@ -46,6 +46,10 @@ val ocamlopt_path: t -> Path.t
 
 val ocamldep: t -> Ocamldep.t
 
+val path: t -> Path.t
+
+val c_compiler: t -> Path.t option
+
 val hash: t -> Crypto.hash
 
 (** Compute a hash of the toolchain for cache invalidation *)

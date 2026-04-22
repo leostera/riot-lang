@@ -55,7 +55,7 @@ let run_ocamlc_invocation = fun ~session_id ~package ~node ~sandbox_dir invocati
   emit_action_command ~session_id ~package ~node (Riot_toolchain.Ocamlc.to_string invocation);
   Riot_toolchain.Ocamlc.run invocation |> Diagnostic_rewrite.rewrite_ocamlc_result ~package ~sandbox_dir
 
-let run_action = fun ~session_id ~package ~node ocamlc sandbox_dir action ->
+let run_action = fun ~session_id ~package ~node ?c_compiler ocamlc sandbox_dir action ->
   match action with
   | Action.CompileInterface { source; outputs=output :: _; includes; flags } ->
       let abs_source = Path.join sandbox_dir source in
@@ -109,6 +109,7 @@ let run_action = fun ~session_id ~package ~node ocamlc sandbox_dir action ->
         ocamlc
         ~cwd:sandbox_dir
         ~includes:source_dir
+        ?cc:c_compiler
         ~ccflags
         ~output:abs_output
         abs_source in
@@ -159,6 +160,7 @@ let run_action = fun ~session_id ~package ~node ocamlc sandbox_dir action ->
         ~cwd:sandbox_dir
         ~includes:abs_includes
         ~libs:abs_libraries
+        ?cc:c_compiler
         ~cclibs:abs_cclibs
         ~ccopt_flags
         ~cclib_flags
@@ -214,6 +216,7 @@ let run_action = fun ~session_id ~package ~node ocamlc sandbox_dir action ->
         ~cwd:sandbox_dir
         ~includes:abs_includes
         ~libs:abs_libraries
+        ?cc:c_compiler
         ~cclibs:abs_cclibs
         ~ccopt_flags
         ~cclib_flags
@@ -312,11 +315,12 @@ let run_action = fun ~session_id ~package ~node ocamlc sandbox_dir action ->
 
 let execute_actions = fun ~session_id ~(node:Action_node.t) toolchain sandbox_dir actions ->
   let ocamlc = Riot_toolchain.ocamlc toolchain in
+  let c_compiler = Riot_toolchain.c_compiler toolchain in
   let package = node.value.package in
   let rec execute_next ocamlc_warnings = function
     | [] -> Ok ocamlc_warnings
     | action :: rest -> (
-        let result = run_action ~session_id ~package ~node ocamlc sandbox_dir action in
+        let result = run_action ~session_id ~package ~node ?c_compiler ocamlc sandbox_dir action in
         match result with
         | Riot_toolchain.Ocamlc.Success _ ->
             let action_warnings = Riot_toolchain.Ocamlc.get_ocamlc_warnings result in

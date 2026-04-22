@@ -6,6 +6,7 @@ SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 REPO_ROOT="$(CDPATH= cd -- "$SCRIPT_DIR/../.." && pwd)"
 ENV_FILE="$REPO_ROOT/.env"
 RIOT_CLI_MANIFEST_PATH="$REPO_ROOT/packages/riot-cli/riot.toml"
+OCAML_TOOLCHAIN_CONFIG_PATH="$REPO_ROOT/ocaml-toolchain.toml"
 
 load_env_file() {
   local env_file="$1"
@@ -28,19 +29,21 @@ load_env_file "$ENV_FILE"
 
 usage() {
   cat <<'EOF'
-Usage: ./scripts/release/riot.sh <target|all>
+Usage: ./scripts/release/riot.sh [--force] <target|all>
 
 Build, package, and upload a riot binary plus install.sh.
 
 The release version comes from ./packages/riot-cli/riot.toml.
 If riot/manifest.json already contains that version, the script aborts before
 building so an old release is not republished accidentally.
+Pass --force to bypass that remote-version guard.
 
 When <target> is "all", the script releases every enabled target from
 ./ocaml-toolchain.toml. If that file is missing, it falls back to the host
 target plus any matching vendor/ocaml cross targets for that host.
 
 Examples:
+  ./scripts/release/riot.sh --force aarch64-apple-darwin
   ./scripts/release/riot.sh aarch64-apple-darwin
   ./scripts/release/riot.sh all
 
@@ -54,6 +57,7 @@ Optional environment:
   BUILD_SHA               default: git short SHA (12 chars)
   OUTPUT_DIR              default: dist/riot
   INSTALL_SCRIPT_PATH     default: scripts/install.sh
+  RIOT_RELEASE_RIOT_BIN   default: command -v riot
   RIOT_RELEASE_NOTES_URL  default: GitHub release tag URL for v* versions
   RIOT_RELEASE_COMPARE_URL
                           default: compare current latest release to VERSION when discoverable
@@ -108,18 +112,69 @@ print(version, end="")
 PY
 }
 
-if [ $# -lt 1 ] || [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
-  usage
-  [ $# -eq 1 ] && exit 0
-  exit 1
-fi
+read_toolchain_version() {
+  local config_path="${1:-$OCAML_TOOLCHAIN_CONFIG_PATH}"
 
-if [ $# -ne 1 ]; then
+  if [ ! -f "$config_path" ]; then
+    return 0
+  fi
+
+  python3 - <<'PY' "$config_path"
+import sys
+
+config_path = sys.argv[1]
+
+try:
+    import tomllib
+except Exception:
+    sys.exit(0)
+
+try:
+    with open(config_path, "rb") as config_file:
+        data = tomllib.load(config_file)
+except Exception:
+    sys.exit(0)
+
+toolchain = data.get("toolchain")
+if not isinstance(toolchain, dict):
+    sys.exit(0)
+
+version = toolchain.get("version")
+if isinstance(version, str) and version:
+    print(version, end="")
+PY
+}
+
+FORCE_RELEASE=0
+POSITIONAL_ARGS=()
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --help|-h)
+      usage
+      exit 0
+      ;;
+    --force)
+      FORCE_RELEASE=1
+      ;;
+    --*)
+      echo "error: unknown argument: $1" >&2
+      usage >&2
+      exit 1
+      ;;
+    *)
+      POSITIONAL_ARGS+=("$1")
+      ;;
+  esac
+  shift
+done
+
+if [ "${#POSITIONAL_ARGS[@]}" -ne 1 ]; then
   usage >&2
   exit 1
 fi
 
-REQUESTED_TARGET="$1"
+REQUESTED_TARGET="${POSITIONAL_ARGS[0]}"
 OUTPUT_DIR="${OUTPUT_DIR:-$REPO_ROOT/dist/riot}"
 CDN_BASE_URL="https://cdn.pkgs.ml"
 PUBLIC_BASE_URL="${CDN_BASE_URL}/riot"
@@ -133,6 +188,7 @@ AWS_SESSION_TOKEN="${RIOT_CDN_SESSION_TOKEN:-}"
 AWS_REGION_VALUE="${RIOT_CDN_REGION:-}"
 INSTALL_SCRIPT_PATH="${INSTALL_SCRIPT_PATH:-$REPO_ROOT/scripts/install.sh}"
 VERSION="$(read_riot_cli_version)"
+TOOLCHAIN_VERSION="${TOOLCHAIN_VERSION:-$(read_toolchain_version)}"
 BUILD_SHA="${BUILD_SHA:-$(git rev-parse --short=12 HEAD)}"
 UPLOAD_ARTIFACTS="${RIOT_RELEASE_UPLOAD:-1}"
 PUBLISH_LATEST="${RIOT_RELEASE_PUBLISH_LATEST:-1}"
@@ -425,6 +481,11 @@ PY
 }
 
 ensure_release_version_is_new() {
+  if [ "$FORCE_RELEASE" = "1" ]; then
+    echo "==> Skipping remote version guard for $VERSION (--force)"
+    return 0
+  fi
+
   local listing_path
   local manifest_path
   local exists
@@ -512,6 +573,100 @@ detect_host_triple() {
       ;;
     *) die "unsupported operating system: $os" ;;
   esac
+}
+
+toolchain_root_for_target() {
+  local target="$1"
+
+  if [ -z "$TOOLCHAIN_VERSION" ]; then
+    return 1
+  fi
+
+  printf '%s\n' "$HOME/.riot/toolchains/$TOOLCHAIN_VERSION/$target"
+}
+
+target_strip_prefixes() {
+  local target="$1"
+
+  case "$target" in
+    aarch64-unknown-linux-gnu)
+      printf '%s\n' "aarch64-linux-gnu-" "aarch64-unknown-linux-gnu-"
+      ;;
+    x86_64-unknown-linux-gnu)
+      printf '%s\n' "x86_64-linux-gnu-" "x86_64-unknown-linux-gnu-"
+      ;;
+    aarch64-unknown-linux-musl)
+      printf '%s\n' "aarch64-linux-musl-" "aarch64-unknown-linux-musl-"
+      ;;
+    x86_64-unknown-linux-musl)
+      printf '%s\n' "x86_64-linux-musl-" "x86_64-unknown-linux-musl-"
+      ;;
+    x86_64-w64-mingw32)
+      printf '%s\n' "x86_64-w64-mingw32-"
+      ;;
+    aarch64-w64-mingw32)
+      printf '%s\n' "aarch64-w64-mingw32-"
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+find_strip_tool() {
+  local target="$1"
+  local host_target="$2"
+  local toolchain_root=""
+  local prefix=""
+  local candidate=""
+
+  if [ "$target" = "$host_target" ]; then
+    if command -v strip >/dev/null 2>&1; then
+      command -v strip
+      return 0
+    fi
+    return 1
+  fi
+
+  toolchain_root="$(toolchain_root_for_target "$target" 2>/dev/null || true)"
+  while IFS= read -r prefix; do
+    [ -n "$prefix" ] || continue
+
+    if [ -n "$toolchain_root" ]; then
+      for candidate in \
+        "$toolchain_root/bin/${prefix}strip" \
+        "$toolchain_root/gcc/bin/${prefix}strip"
+      do
+        if [ -x "$candidate" ]; then
+          printf '%s\n' "$candidate"
+          return 0
+        fi
+      done
+    fi
+
+    if command -v "${prefix}strip" >/dev/null 2>&1; then
+      command -v "${prefix}strip"
+      return 0
+    fi
+  done < <(target_strip_prefixes "$target" 2>/dev/null || true)
+
+  return 1
+}
+
+strip_binary() {
+  local target="$1"
+  local host_target="$2"
+  local binary_path="$3"
+  local strip_tool=""
+
+  strip_tool="$(find_strip_tool "$target" "$host_target")" || \
+    die "unable to find strip tool for target $target"
+
+  if [[ "$target" == *-apple-darwin ]]; then
+    run_cmd "$strip_tool" -S -x "$binary_path"
+  else
+    run_cmd "$strip_tool" "$binary_path"
+  fi
 }
 
 toolchain_config_targets() {
@@ -640,8 +795,9 @@ if [ "${#TARGETS[@]}" -eq 0 ]; then
   die "no releasable targets found for host $HOST_TARGET"
 fi
 
-RELEASE_RIOT="$REPO_ROOT/riot"
-[ -x "$RELEASE_RIOT" ] || die "expected release driver at $RELEASE_RIOT"
+RELEASE_RIOT="${RIOT_RELEASE_RIOT_BIN:-$(command -v riot || true)}"
+[ -n "$RELEASE_RIOT" ] || die "expected an installed riot binary in PATH or RIOT_RELEASE_RIOT_BIN"
+[ -x "$RELEASE_RIOT" ] || die "release driver is not executable: $RELEASE_RIOT"
 
 VERSIONED_METADATA="$OUTPUT_DIR/riot-${VERSION}.json"
 LATEST_METADATA="$OUTPUT_DIR/latest.json"
@@ -657,9 +813,9 @@ fi
 
 for TARGET in "${TARGETS[@]}"; do
   if [ "$TARGET" = "$HOST_TARGET" ]; then
-    run_cmd "$RELEASE_RIOT" build --release riot-cli
+    run_cmd "$RELEASE_RIOT" build --release -p riot-cli
   else
-    run_cmd "$RELEASE_RIOT" build --release -x "$TARGET" riot-cli
+    run_cmd "$RELEASE_RIOT" build --release -x "$TARGET" -p riot-cli
   fi
 
   BINARY_PATH="$REPO_ROOT/_build/release/$TARGET/out/riot-cli/riot"
@@ -671,6 +827,7 @@ for TARGET in "${TARGETS[@]}"; do
     run_cmd mkdir -p "$STAGING_DIR"
     run_cmd cp "$BINARY_PATH" "$STAGING_DIR/riot"
     run_cmd cp "$VERSIONED_METADATA" "$STAGING_DIR/release.json"
+    strip_binary "$TARGET" "$HOST_TARGET" "$STAGING_DIR/riot"
     run_cmd chmod +x "$STAGING_DIR/riot"
     run_cmd tar czf "$VERSIONED_TARBALL" -C "$STAGING_DIR" riot release.json
     if [ "$PUBLISH_LATEST" != "0" ]; then
@@ -682,6 +839,7 @@ for TARGET in "${TARGETS[@]}"; do
     mkdir -p "$STAGING_DIR"
     cp "$BINARY_PATH" "$STAGING_DIR/riot"
     cp "$VERSIONED_METADATA" "$STAGING_DIR/release.json"
+    strip_binary "$TARGET" "$HOST_TARGET" "$STAGING_DIR/riot"
     chmod +x "$STAGING_DIR/riot"
     tar czf "$VERSIONED_TARBALL" -C "$STAGING_DIR" riot release.json
     write_sha256_file "$VERSIONED_TARBALL" "$VERSIONED_TARBALL.sha256"

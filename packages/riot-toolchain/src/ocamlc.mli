@@ -125,7 +125,14 @@ val generate_interface:
 (** Generate interface file (.ml -> .mli) using ocamlc -i. Infers the module
     interface from an implementation file and writes it to output. *)
 val compile_c:
-  t -> cwd:Std.Path.t -> includes:Path.t list -> ?ccflags:string list -> output:Path.t -> Path.t -> invocation
+  t ->
+  cwd:Std.Path.t ->
+  includes:Path.t list ->
+  ?cc:Path.t ->
+  ?ccflags:string list ->
+  output:Path.t ->
+  Path.t ->
+  invocation
 
 (** Compile a C file. The optional ccflags parameter specifies additional
     C compiler flags like -I for include directories. *)
@@ -138,6 +145,7 @@ val create_executable:
   includes:Path.t list ->
   output:Path.t ->
   libs:Path.t list ->
+  ?cc:Path.t ->
   ?cclibs:Path.t list ->
   ?ccopt_flags:string list ->
   ?cclib_flags:string list ->
@@ -156,6 +164,7 @@ val create_shared_library:
   includes:Path.t list ->
   output:Path.t ->
   libs:Path.t list ->
+  ?cc:Path.t ->
   ?cclibs:Path.t list ->
   ?ccopt_flags:string list ->
   ?cclib_flags:string list ->
@@ -170,6 +179,7 @@ val create_custom_executable:
   includes:Path.t list ->
   output:Path.t ->
   libs:Path.t list ->
+  ?cc:Path.t ->
   Path.t list ->
   invocation
 

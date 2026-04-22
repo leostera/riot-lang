@@ -64,6 +64,15 @@ let ocamlopt_path = fun t -> t.ocamlopt
 
 let ocamldep = fun t -> t.ocamldep
 
+let path = fun t -> get_toolchain_path_for_target t.version t.target
+
+let c_compiler = fun t ->
+  if Riot_model.Target.equal t.target (get_host_triple ()) then
+    None
+  else
+    CrossCompilingToolchain.detect ~toolchain_root:(path t) () ~target_triplet:t.target
+    |> fun detection -> detection.c_compiler
+
 let check_binaries_exist = fun toolchain ->
   let ocamlc_path = Ocamlc.path toolchain.ocamlc in
   let ocamldep_path = Ocamldep.path toolchain.ocamldep in
@@ -187,8 +196,8 @@ let sysroot_candidates = fun ~toolchain_path ~target ->
     Path.(toolchain_path / Path.v "gcc" / Path.v target / Path.v "sysroot");
   ]
 
-let bundled_sysroot_marker_paths = fun sysroot ->
-  [
+let bundled_sysroot_marker_paths = fun sysroot target ->
+  let markers = [
     Path.(sysroot / Path.v "usr" / Path.v "include" / Path.v "uuid" / Path.v "uuid.h");
     Path.(sysroot / Path.v "usr" / Path.v "include" / Path.v "openssl" / Path.v "ssl.h");
     Path.(sysroot / Path.v "usr" / Path.v "include" / Path.v "pcre2.h");
@@ -197,7 +206,28 @@ let bundled_sysroot_marker_paths = fun sysroot ->
     Path.(sysroot / Path.v "usr" / Path.v "lib" / Path.v "libssl.a");
     Path.(sysroot / Path.v "usr" / Path.v "lib" / Path.v "libcrypto.a");
     Path.(sysroot / Path.v "usr" / Path.v "lib" / Path.v "libpcre2-8.a");
-  ]
+  ] in
+  let glibc_marker =
+    match (target.Riot_model.Target.architecture, target.Riot_model.Target.os) with
+    | ("aarch64", "linux") -> Some Path.(sysroot
+    / Path.v "usr"
+    / Path.v "include"
+    / Path.v "aarch64-linux-gnu"
+    / Path.v "bits"
+    / Path.v "types"
+    / Path.v "struct___jmp_buf_tag.h")
+    | ("x86_64", "linux") -> Some Path.(sysroot
+    / Path.v "usr"
+    / Path.v "include"
+    / Path.v "x86_64-linux-gnu"
+    / Path.v "bits"
+    / Path.v "types"
+    / Path.v "struct___jmp_buf_tag.h")
+    | _ -> None
+  in
+  match glibc_marker with
+  | Some marker -> marker :: markers
+  | None -> markers
 
 let explicit_sysroot_override = fun () ->
   let present name =
@@ -222,7 +252,7 @@ let missing_cross_components = fun ~toolchain_path ~target ->
   in
   let sysroot_missing =
     match first_existing sysroot_candidates with
-    | Some sysroot when List.all (bundled_sysroot_marker_paths sysroot) ~fn:path_exists -> []
+    | Some sysroot when List.all (bundled_sysroot_marker_paths sysroot target) ~fn:path_exists -> []
     | _ -> [ "sysroot" ]
   in
   compiler_missing @ sysroot_missing
@@ -457,7 +487,8 @@ let hash = fun t ->
         if not (Riot_model.Target.equal t.target (get_host_triple ())) then
           (
             match first_existing (sysroot_candidates ~toolchain_path ~target:t.target) with
-            | Some sysroot -> write_legacy_path_fingerprint (bundled_sysroot_marker_paths sysroot)
+            | Some sysroot -> write_legacy_path_fingerprint
+              (bundled_sysroot_marker_paths sysroot t.target)
             | None -> ()
           )
     | Version _

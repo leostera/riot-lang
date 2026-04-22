@@ -40,19 +40,23 @@ let planner_target = fun package_names ->
   | [ package_name ] -> Riot_planner.Workspace_planner.Package package_name
   | _ -> Riot_planner.Workspace_planner.Packages package_names
 
-let make_build_ctx = fun ~host ~target ~session_id ~profile ~parallelism ->
+let make_build_ctx = fun ~host ~target ~toolchain ~session_id ~profile ~parallelism ->
   if Riot_model.Target.equal target host then
     Riot_model.Build_ctx.make ~session_id ~profile ~parallelism ()
   else
-    let toolchain = Riot_toolchain.CrossCompilingToolchain.detect () ~target_triplet:target in
+    let toolchain_root = Riot_toolchain.path toolchain in
+    let cross_toolchain = Riot_toolchain.CrossCompilingToolchain.detect
+      ~toolchain_root
+      ()
+      ~target_triplet:target in
     Riot_model.Build_ctx.make
       ~session_id
       ~profile
       ~compilation_mode:(Riot_model.Build_ctx.Cross {
         target;
-        sysroot = toolchain.sysroot;
-        bin_dir = toolchain.bin_dir;
-        bin_prefix = toolchain.bin_prefix
+        sysroot = cross_toolchain.sysroot;
+        bin_dir = cross_toolchain.bin_dir;
+        bin_prefix = cross_toolchain.bin_prefix
       })
       ~parallelism
       ()
@@ -153,7 +157,13 @@ let prepare:
               ^ reason)
       in
       let* plan = make_lane_plan planner_target workspace planner_scope ~dev_artifacts in
-      let build_ctx = make_build_ctx ~host ~target ~session_id ~profile ~parallelism:context.parallelism in
+      let build_ctx = make_build_ctx
+        ~host
+        ~target
+        ~toolchain:lane_toolchain
+        ~session_id
+        ~profile
+        ~parallelism:context.parallelism in
       let store = Riot_store.Store.create_for_lane ~workspace ~profile:profile.name ~target in
       Ok {
         target;

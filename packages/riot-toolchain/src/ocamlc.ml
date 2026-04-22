@@ -439,9 +439,14 @@ let make_include_flags = fun dirs -> dirs |> List.map ~fn:(fun dir -> "-I " ^ di
 let make_invocation = fun ?(output_mode = Normal) ~cwd command_string ->
   { cwd; env = [ ("OCAML_COLOR", "always") ]; command_string; output_mode }
 
-let build_invocation = fun t ~cwd ?(includes = []) ?(libs = []) ?(cclibs = []) ?(ccflags = []) ?(ccopt_flags = []) ?(cclib_flags = []) ?(output = None) ?(mode = Compile) ?(flags = []) sources ->
+let build_invocation = fun t ~cwd ?cc ?(includes = []) ?(libs = []) ?(cclibs = []) ?(ccflags = []) ?(ccopt_flags = []) ?(cclib_flags = []) ?(output = None) ?(mode = Compile) ?(flags = []) sources ->
   let ocamlc = base_command t in
   let include_flags = make_include_flags (List.map includes ~fn:Path.to_string) in
+  let cc_flag =
+    match cc with
+    | Some cc -> "-cc " ^ Path.to_string cc
+    | None -> ""
+  in
   let mode_flag =
     match mode with
     | Compile -> "-c"
@@ -485,6 +490,7 @@ let build_invocation = fun t ~cwd ?(includes = []) ?(libs = []) ?(cclibs = []) ?
   let command_string =
     [
       ocamlc;
+      cc_flag;
       "-bin-annot";
       String.concat " " default_warning_flags;
       mode_flag;
@@ -577,10 +583,11 @@ let generate_interface = fun t ~cwd ~includes ~flags ~output source ->
     ~cwd
     (String.concat " " ([ base_command t ] @ args))
 
-let compile_c = fun t ~cwd ~includes ?(ccflags = []) ~output source ->
+let compile_c = fun t ~cwd ~includes ?cc ?(ccflags = []) ~output source ->
   build_invocation
     t
     ~cwd
+    ?cc
     ~includes
     ~ccflags
     ~output:(Some output)
@@ -594,11 +601,12 @@ let create_library = fun t ~cwd ~includes ~output objects ->
     ~output:(Some output)
     ~mode:Library (List.map objects ~fn:Path.to_string)
 
-let create_executable = fun t ~cwd ~includes ~output ~libs ?(cclibs = []) ?(ccopt_flags = []) ?(cclib_flags = []) objects ->
+let create_executable = fun t ~cwd ~includes ~output ~libs ?cc ?(cclibs = []) ?(ccopt_flags = []) ?(cclib_flags = []) objects ->
   let includes_with_dot = Path.v "." :: includes in
   build_invocation
     t
     ~cwd
+    ?cc
     ~includes:includes_with_dot
     ~libs
     ~cclibs
@@ -609,11 +617,12 @@ let create_executable = fun t ~cwd ~includes ~output ~libs ?(cclibs = []) ?(ccop
     ~flags:[ LinkAll ]
     (List.map objects ~fn:Path.to_string)
 
-let create_shared_library = fun t ~cwd ~includes ~output ~libs ?(cclibs = []) ?(ccopt_flags = []) ?(cclib_flags = []) objects ->
+let create_shared_library = fun t ~cwd ~includes ~output ~libs ?cc ?(cclibs = []) ?(ccopt_flags = []) ?(cclib_flags = []) objects ->
   let includes_with_dot = Path.v "." :: includes in
   build_invocation
     t
     ~cwd
+    ?cc
     ~includes:includes_with_dot
     ~libs
     ~cclibs
@@ -624,11 +633,12 @@ let create_shared_library = fun t ~cwd ~includes ~output ~libs ?(cclibs = []) ?(
     ~flags:[ LinkAll ]
     (List.map objects ~fn:Path.to_string)
 
-let create_custom_executable = fun t ~cwd ~includes ~output ~libs objects ->
+let create_custom_executable = fun t ~cwd ~includes ~output ~libs ?cc objects ->
   let includes_with_dot = Path.v "." :: includes in
   build_invocation
     t
     ~cwd
+    ?cc
     ~includes:includes_with_dot
     ~libs
     ~output:(Some output)
