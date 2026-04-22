@@ -2146,59 +2146,6 @@ let record_body_doc = fun ~inline tokens ->
 
 let inline_record_payload = fun tokens -> Int.(List.length (record_body_field_groups tokens) <= 2)
 
-let constructor_payload_doc = fun tokens ->
-  match tokens with
-  | opening :: _ when token_kind_is opening Kind.LBRACE -> record_body_doc
-    ~inline:(inline_record_payload tokens)
-    tokens
-  | _ -> type_tokens_doc tokens
-
-let constructor_result_type_doc = fun tokens ->
-  match tokens with
-  | opening :: _ when token_kind_is opening Kind.LBRACE -> (
-      let payload_doc tokens =
-        let inline = inline_record_payload tokens in
-        let doc = record_body_doc ~inline tokens in
-        if inline then
-          doc
-        else
-          Doc.indent 2 doc
-      in
-      match split_top_level_token tokens ~matches:(fun kind -> Kind.(kind = ARROW)) with
-      | Some (payload_tokens, arrow_token, result_tokens) -> Doc.concat
-        [
-          payload_doc payload_tokens;
-          Doc.space;
-          token_doc arrow_token;
-          Doc.space;
-          type_tokens_doc result_tokens;
-        ]
-      | None -> payload_doc tokens
-    )
-  | _ -> type_tokens_doc tokens
-
-let constructor_doc = fun tokens ->
-  match split_top_level_token tokens ~matches:(fun kind -> Kind.(kind = COLON)) with
-  | Some (name_tokens, _colon, type_tokens) -> Doc.concat
-    [
-      type_tokens_inline_doc name_tokens;
-      Doc.colon;
-      Doc.space;
-      constructor_result_type_doc type_tokens
-    ]
-  | None -> (
-      match split_top_level_token tokens ~matches:(fun kind -> Kind.(kind = OF_KW)) with
-      | Some (name_tokens, of_token, payload_tokens) -> Doc.concat
-        [
-          type_tokens_inline_doc name_tokens;
-          Doc.space;
-          token_doc of_token;
-          Doc.space;
-          constructor_payload_doc payload_tokens;
-        ]
-      | None -> type_tokens_inline_doc tokens
-    )
-
 let split_variant_constructors = fun tokens ->
   let rec loop current constructors depth = function
     | [] ->
@@ -2219,33 +2166,6 @@ let split_variant_constructors = fun tokens ->
         loop (token :: current) constructors (type_token_depth_after depth token) rest
   in
   loop [] [] 0 tokens
-
-let variant_body_doc = fun tokens ->
-  let private_token, tokens =
-    match tokens with
-    | token :: rest when token_kind_is token Kind.PRIVATE_KW -> (Some token, rest)
-    | _ -> (None, tokens)
-  in
-  let constructors = split_variant_constructors tokens in
-  let rec row_docs first = function
-    | [] -> []
-    | tokens :: rest ->
-        let pipe_token, tokens =
-          match tokens with
-          | token :: rest when token_kind_is token Kind.PIPE -> (Some token, rest)
-          | _ -> (None, tokens)
-        in
-        let prefix =
-          match private_token, first, pipe_token with
-          | Some private_token, true, Some pipe_token -> Doc.concat
-            [ token_doc private_token; Doc.space; token_doc pipe_token; Doc.space ]
-          | Some private_token, true, None -> Doc.concat [ token_doc private_token; Doc.space ]
-          | _, _, Some pipe_token -> Doc.concat [ token_doc pipe_token; Doc.space ]
-          | _ -> Doc.empty
-        in
-        Doc.concat [ prefix; constructor_doc tokens ] :: row_docs false rest
-  in
-  Doc.concat [ Doc.line; Doc.indent 2 (Doc.lines (row_docs true constructors)) ]
 
 let poly_variant_row_doc = fun ~bar tokens ->
   let row =
@@ -2294,6 +2214,87 @@ let poly_variant_body_doc = fun tokens ->
   in
   Doc.concat
     [ opener; Doc.line; Doc.indent 2 (Doc.lines (row_docs true rows)); Doc.line; Doc.rbracket; ]
+
+let constructor_payload_doc = fun tokens ->
+  match tokens with
+  | opening :: _ when token_kind_is opening Kind.LBRACE -> record_body_doc
+    ~inline:(inline_record_payload tokens)
+    tokens
+  | opening :: _ when token_kind_is opening Kind.LBRACKET -> poly_variant_body_doc tokens
+  | _ -> type_tokens_doc tokens
+
+let constructor_result_type_doc = fun tokens ->
+  match tokens with
+  | opening :: _ when token_kind_is opening Kind.LBRACE -> (
+      let payload_doc tokens =
+        let inline = inline_record_payload tokens in
+        let doc = record_body_doc ~inline tokens in
+        if inline then
+          doc
+        else
+          Doc.indent 2 doc
+      in
+      match split_top_level_token tokens ~matches:(fun kind -> Kind.(kind = ARROW)) with
+      | Some (payload_tokens, arrow_token, result_tokens) -> Doc.concat
+        [
+          payload_doc payload_tokens;
+          Doc.space;
+          token_doc arrow_token;
+          Doc.space;
+          type_tokens_doc result_tokens;
+        ]
+      | None -> payload_doc tokens
+    )
+  | _ -> type_tokens_doc tokens
+
+let constructor_doc = fun tokens ->
+  match split_top_level_token tokens ~matches:(fun kind -> Kind.(kind = COLON)) with
+  | Some (name_tokens, _colon, type_tokens) -> Doc.concat
+    [
+      type_tokens_inline_doc name_tokens;
+      Doc.colon;
+      Doc.space;
+      constructor_result_type_doc type_tokens
+    ]
+  | None -> (
+      match split_top_level_token tokens ~matches:(fun kind -> Kind.(kind = OF_KW)) with
+      | Some (name_tokens, of_token, payload_tokens) -> Doc.concat
+        [
+          type_tokens_inline_doc name_tokens;
+          Doc.space;
+          token_doc of_token;
+          Doc.space;
+          constructor_payload_doc payload_tokens;
+        ]
+      | None -> type_tokens_inline_doc tokens
+    )
+
+let variant_body_doc = fun tokens ->
+  let private_token, tokens =
+    match tokens with
+    | token :: rest when token_kind_is token Kind.PRIVATE_KW -> (Some token, rest)
+    | _ -> (None, tokens)
+  in
+  let constructors = split_variant_constructors tokens in
+  let rec row_docs first = function
+    | [] -> []
+    | tokens :: rest ->
+        let pipe_token, tokens =
+          match tokens with
+          | token :: rest when token_kind_is token Kind.PIPE -> (Some token, rest)
+          | _ -> (None, tokens)
+        in
+        let prefix =
+          match private_token, first, pipe_token with
+          | Some private_token, true, Some pipe_token -> Doc.concat
+            [ token_doc private_token; Doc.space; token_doc pipe_token; Doc.space ]
+          | Some private_token, true, None -> Doc.concat [ token_doc private_token; Doc.space ]
+          | _, _, Some pipe_token -> Doc.concat [ token_doc pipe_token; Doc.space ]
+          | _ -> Doc.empty
+        in
+        Doc.concat [ prefix; constructor_doc tokens ] :: row_docs false rest
+  in
+  Doc.concat [ Doc.line; Doc.indent 2 (Doc.lines (row_docs true constructors)) ]
 
 let rec rendered_type_body = fun tokens ->
   match tokens with
