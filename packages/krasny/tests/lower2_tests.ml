@@ -18,6 +18,10 @@ let format2_ml = fun source -> parse2_ml source |> Krasny.format2
 
 let format2_mli = fun source -> parse2_mli source |> Krasny.format2
 
+let parse2_source = fun ~filename source -> Syn.parse2 ~filename (source_slice source)
+
+let format2_source = fun ~filename source -> parse2_source ~filename source |> Krasny.format2
+
 let assert_format2_ml = fun ~expected source ->
   let actual = format2_ml source |> Result.expect ~msg:"implementation should format through lower2" in
   Test.assert_equal ~expected ~actual;
@@ -32,6 +36,39 @@ let assert_format2_ml_fails = fun source ->
   match format2_ml source with
   | Ok formatted -> Error ("lower2 unexpectedly formatted unsupported source as:\n" ^ formatted)
   | Error _ -> Ok ()
+
+let assert_lower2_fixture_idempotent = fun path ->
+  let source = Fs.read path |> Result.expect ~msg:"fixture file should exist" in
+  match format2_source ~filename:path source with
+  | Error err ->
+      Error (Path.to_string path ^ " failed lower2 formatting: " ^ Krasny.format_error_to_string err)
+  | Ok formatted -> (
+      match format2_source ~filename:path formatted with
+      | Error err ->
+          Error
+            (Path.to_string path
+            ^ " formatted once but failed to format again: "
+            ^ Krasny.format_error_to_string err)
+      | Ok reformatted ->
+          Test.assert_equal ~expected:formatted ~actual:reformatted;
+          Ok ()
+    )
+
+let assert_lower2_existing_fixture_subset = fun () ->
+  let fixtures = [
+    Path.v "packages/krasny/tests/fixtures/0100_atoms_and_basic_expressions.ml";
+    Path.v "packages/krasny/tests/fixtures/0415_nested_fun_parameter_stability.ml";
+    Path.v "packages/krasny/tests/fixtures/0952_multiline_list_expression_no_trailing_separator.ml";
+  ] in
+  let rec loop = function
+    | [] -> Ok ()
+    | path :: rest -> (
+        match assert_lower2_fixture_idempotent path with
+        | Ok () -> loop rest
+        | Error _ as err -> err
+      )
+  in
+  loop fixtures
 
 let tests = [
   Test.case
@@ -79,6 +116,9 @@ let tests = [
   Test.case
     "lower2 rejects unsupported shapes instead of replaying source"
     (fun _ctx -> assert_format2_ml_fails "let record = { x = 1 }\n");
+  Test.case
+    "lower2 formats a selected existing fixture subset idempotently"
+    (fun _ctx -> assert_lower2_existing_fixture_subset ());
 ]
 
 let () =

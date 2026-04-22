@@ -13,6 +13,10 @@ let make_slice = fun source -> IO.IoVec.IoSlice.from_string source |> Result.exp
 
 let make_fixture = fun ~name ~path source -> { name; path; source; slice = make_slice source }
 
+let load_fixture = fun ~name path ->
+  let source = Fs.read path |> Result.expect ~msg:("failed to read lower benchmark fixture: " ^ Path.to_string path) in
+  make_fixture ~name ~path source
+
 let touch_formatted = fun formatted -> checksum := !checksum lxor String.length formatted
 
 let bench_lower1 = fun fixture ->
@@ -28,6 +32,8 @@ let bench_lower2 = fun fixture ->
 let tiny_config: Bench.bench_config = { iterations = 2_000; warmup = 100 }
 
 let small_config: Bench.bench_config = { iterations = 500; warmup = 50 }
+
+let medium_config: Bench.bench_config = { iterations = 100; warmup = 10 }
 
 let make_lower_case = fun ~config name fn -> Bench.make_case_with_config ~config name fn
 
@@ -73,6 +79,21 @@ let benchmarks = [
        ~name:"list and array expressions"
        ~path:(Path.v "sample.ml")
        "let values = [1; 2]\nlet array = [|1; 2|]\n");
+  compare_fixture
+    ~config:medium_config
+    (load_fixture
+       ~name:"atoms fixture"
+       (Path.v "packages/krasny/tests/fixtures/0100_atoms_and_basic_expressions.ml"));
+  compare_fixture
+    ~config:medium_config
+    (load_fixture
+       ~name:"nested fun fixture"
+       (Path.v "packages/krasny/tests/fixtures/0415_nested_fun_parameter_stability.ml"));
+  compare_fixture
+    ~config:medium_config
+    (load_fixture
+       ~name:"multiline list fixture"
+       (Path.v "packages/krasny/tests/fixtures/0952_multiline_list_expression_no_trailing_separator.ml"));
 ]
 
 let () =
