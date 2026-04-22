@@ -903,6 +903,144 @@ end = struct
       }
 end
 
+module LetModuleExpr: sig
+  type t = expr
+  type module_body =
+    | Path
+    | EmptyStruct
+    | Unsupported
+  val cast: expr -> t option
+
+  val let_token: t -> token option
+
+  val module_token: t -> token option
+
+  val name: t -> token option
+
+  val equals_token: t -> token option
+
+  val in_token: t -> token option
+
+  val module_body: t -> module_body
+
+  val body: t -> expr option
+
+  val for_each_module_body_path_ident: t -> fn:(token -> unit) -> unit
+end = struct
+  type t = expr
+
+  type module_body =
+    | Path
+    | EmptyStruct
+    | Unsupported
+
+  let cast = fun (expr: expr) ->
+    if node_kind_is expr Syntax_kind2.LET_MODULE_EXPR then
+      Some expr
+    else
+      None
+
+  let let_token = fun expr -> Node.first_child_token expr ~kind:Syntax_kind2.LET_KW
+
+  let module_token = fun expr -> Node.first_child_token expr ~kind:Syntax_kind2.MODULE_KW
+
+  let equals_token = fun expr -> Node.first_child_token expr ~kind:Syntax_kind2.EQ
+
+  let in_token = fun expr -> Node.first_child_token expr ~kind:Syntax_kind2.IN_KW
+
+  let token_index = fun expr ~from ~matches ->
+    let count = Node.child_count expr in
+    let rec loop index =
+      if index >= count then
+        None
+      else
+        match child_token_at expr index with
+        | Some token when matches (Token.kind token) -> Some index
+        | _ -> loop (index + 1)
+    in
+    loop from
+
+  let module_index = fun expr ->
+    token_index expr ~from:0 ~matches:(fun kind -> Syntax_kind2.(kind = MODULE_KW))
+
+  let equals_index = fun expr ->
+    token_index expr ~from:0 ~matches:(fun kind -> Syntax_kind2.(kind = EQ))
+
+  let in_index = fun expr ->
+    token_index expr ~from:0 ~matches:(fun kind -> Syntax_kind2.(kind = IN_KW))
+
+  let name = fun expr ->
+    match module_index expr with
+    | Some module_index -> (
+        match child_token_at expr (module_index + 1) with
+        | Some token when token_kind_is token Syntax_kind2.IDENT -> Some token
+        | _ -> None
+      )
+    | None -> None
+
+  let range_is_path = fun expr start stop ->
+    let rec loop index saw_ident expect_ident =
+      if index >= stop then
+        saw_ident && not expect_ident
+      else
+        match child_token_at expr index with
+        | Some token when token_kind_is token Syntax_kind2.IDENT && expect_ident -> loop
+          (index + 1)
+          true
+          false
+        | Some token when token_kind_is token Syntax_kind2.DOT && saw_ident && not expect_ident -> loop
+          (index + 1)
+          saw_ident
+          true
+        | _ -> false
+    in
+    loop start false true
+
+  let range_has_exact_tokens = fun expr start stop left right ->
+    Int.equal (start + 2) stop
+    && match child_token_at expr start, child_token_at expr (start + 1) with
+    | Some left_token, Some right_token -> token_kind_is left_token left
+    && token_kind_is right_token right
+    | _ -> false
+
+  let module_body_bounds = fun expr ->
+    match equals_index expr, in_index expr with
+    | Some equals_index, Some in_index when equals_index < in_index -> Some (
+      equals_index + 1,
+      in_index
+    )
+    | _ -> None
+
+  let module_body = fun expr ->
+    match module_body_bounds expr with
+    | Some (start, stop) when range_is_path expr start stop -> Path
+    | Some (start, stop) when range_has_exact_tokens
+      expr
+      start
+      stop
+      Syntax_kind2.STRUCT_KW
+      Syntax_kind2.END_KW -> EmptyStruct
+    | _ -> Unsupported
+
+  let body = first_expr_child
+
+  let for_each_module_body_path_ident = fun expr ~fn ->
+    match module_body_bounds expr with
+    | Some (start, stop) when range_is_path expr start stop ->
+        let rec loop index =
+          if index < stop then
+            (
+              match child_token_at expr index with
+              | Some token when token_kind_is token Syntax_kind2.IDENT ->
+                  fn token;
+                  loop (index + 1)
+              | _ -> loop (index + 1)
+            )
+        in
+        loop start
+    | _ -> ()
+end
+
 module FirstClassModuleExpr: sig
   type t = expr
   type module_path =

@@ -159,6 +159,12 @@ let tests = [
     (fun _ctx ->
       assert_format2_ml ~expected:"let packed = (module Foo.Bar)\nlet typed = (module Foo : S.T)\n" "let packed = (module Foo.Bar)\nlet typed = (module Foo : S.T)\n");
   Test.case
+    "lower2 formats let module expressions"
+    (fun _ctx ->
+      assert_format2_ml
+        ~expected:"let value = let module M = Foo.Bar in result\nlet empty = let module Empty = struct end in done_\n"
+        "let value = let module M = Foo.Bar in result\nlet empty = let module Empty = struct end in done_\n");
+  Test.case
     "lower2 formats assertion and lazy expressions"
     (fun _ctx -> assert_format2_ml ~expected:"let _ = assert ready\nlet later = lazy compute\n" "let _ = assert ready\nlet later = lazy compute\n");
   Test.case

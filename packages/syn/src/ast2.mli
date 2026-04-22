@@ -296,6 +296,31 @@ module LocalOpenExpr: sig
   val view: t -> view
 end
 
+module LetModuleExpr: sig
+  type t = expr
+  type module_body =
+    | Path
+    | EmptyStruct
+    | Unsupported
+  val cast: expr -> t option
+
+  val let_token: t -> Token.t option
+
+  val module_token: t -> Token.t option
+
+  val name: t -> Token.t option
+
+  val equals_token: t -> Token.t option
+
+  val in_token: t -> Token.t option
+
+  val module_body: t -> module_body
+
+  val body: t -> expr option
+
+  val for_each_module_body_path_ident: t -> fn:(Token.t -> unit) -> unit
+end
+
 module FirstClassModuleExpr: sig
   type t = expr
   type module_path =

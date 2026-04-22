@@ -639,9 +639,10 @@ and expr_doc_with_view = fun expr (view: Ast.Expr.view) ->
       unsupported "optional argument without label"
   | LocalOpen _ ->
       local_open_expr_doc expr
+  | LetModule _ ->
+      let_module_expr_doc expr
   | FirstClassModule ->
       first_class_module_expr_doc expr
-  | LetModule _
   | LetException _
   | Extension
   | Unreachable
@@ -732,6 +733,54 @@ and local_open_expr_doc = fun expr ->
       token_doc closing_token;
     ]
   | Delimited _ -> unsupported "incomplete delimited local open expression"
+
+and let_module_path_body_doc = fun expr ->
+  let doc = ref None in
+  Ast.LetModuleExpr.for_each_module_body_path_ident expr
+    ~fn:(fun token ->
+      let segment = token_doc token in
+      doc := Some (
+        match !doc with
+        | None -> segment
+        | Some doc -> Doc.concat [ doc; Doc.text "."; segment ]
+      ));
+  match !doc with
+  | Some doc -> doc
+  | None -> unsupported "let module expression path body without identifiers"
+
+and let_module_body_doc = fun expr ->
+  match Ast.LetModuleExpr.module_body expr with
+  | Ast.LetModuleExpr.Path -> let_module_path_body_doc expr
+  | Ast.LetModuleExpr.EmptyStruct -> Doc.concat [ Doc.text "struct"; Doc.space; Doc.text "end" ]
+  | Ast.LetModuleExpr.Unsupported -> unsupported "unsupported let module body"
+
+and let_module_expr_doc = fun expr ->
+  let module_expr =
+    match Ast.LetModuleExpr.cast expr with
+    | Some module_expr -> module_expr
+    | None -> unsupported "unsupported let module expression"
+  in
+  match Ast.LetModuleExpr.let_token module_expr, Ast.LetModuleExpr.module_token module_expr, Ast.LetModuleExpr.name
+    module_expr, Ast.LetModuleExpr.equals_token module_expr, Ast.LetModuleExpr.in_token module_expr, Ast.LetModuleExpr.body
+    module_expr with
+  | Some let_token, Some module_token, Some name, Some equals_token, Some in_token, Some body ->
+      Doc.concat
+        [
+          token_doc let_token;
+          Doc.space;
+          token_doc module_token;
+          Doc.space;
+          token_doc name;
+          Doc.space;
+          token_doc equals_token;
+          Doc.space;
+          let_module_body_doc module_expr;
+          Doc.space;
+          token_doc in_token;
+          Doc.space;
+          expr_doc body;
+        ]
+  | _ -> unsupported "incomplete let module expression"
 
 and first_class_module_path_doc = fun expr ->
   let segments = ref [] in

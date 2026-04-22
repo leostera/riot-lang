@@ -591,6 +591,13 @@ let first_class_module_ascription_text = fun expr ->
     ~fn:(fun token -> segments := Ast2.Token.text token :: !segments);
   List.reverse !segments |> String.concat "."
 
+let let_module_body_path_text = fun expr ->
+  let segments = ref [] in
+  Ast2.LetModuleExpr.for_each_module_body_path_ident
+    expr
+    ~fn:(fun token -> segments := Ast2.Token.text token :: !segments);
+  List.reverse !segments |> String.concat "."
+
 let test_local_open_views = fun _ctx ->
   let source = "let value = let open Foo.Bar in result\nlet Foo.Bar.(x) = value\n" in
   let root = parse_ml source |> Result.expect ~msg:"expected parse2 source file" in
@@ -679,6 +686,51 @@ let test_first_class_module_views = fun _ctx ->
   Test.assert_equal ~expected:":" ~actual:(Ast2.Token.text colon);
   Ok ()
 
+let test_let_module_expression_views = fun _ctx ->
+  let source = "let value = let module M = Foo.Bar in result\nlet empty = let module Empty = struct end in done_\n" in
+  let root = parse_ml source |> Result.expect ~msg:"expected parse2 source file" in
+  let value_expr = nth_structure_item root 0
+  |> require_some ~msg:"expected let module item"
+  |> binding_of_structure_item
+  |> Result.expect ~msg:"expected outer binding"
+  |> body_of_binding
+  |> Result.expect ~msg:"expected let module body" in
+  let module_expr = Ast2.LetModuleExpr.cast value_expr |> require_some ~msg:"expected let module expression view" in
+  let module_token = Ast2.LetModuleExpr.module_token module_expr |> require_some ~msg:"expected module token" in
+  let name = Ast2.LetModuleExpr.name module_expr |> require_some ~msg:"expected module name" in
+  let equals = Ast2.LetModuleExpr.equals_token module_expr |> require_some ~msg:"expected let module equals" in
+  let in_token = Ast2.LetModuleExpr.in_token module_expr |> require_some ~msg:"expected let module in" in
+  Test.assert_equal ~expected:"module" ~actual:(Ast2.Token.text module_token);
+  Test.assert_equal ~expected:"M" ~actual:(Ast2.Token.text name);
+  Test.assert_equal ~expected:"=" ~actual:(Ast2.Token.text equals);
+  Test.assert_equal ~expected:"in" ~actual:(Ast2.Token.text in_token);
+  Test.assert_equal
+    ~expected:Ast2.LetModuleExpr.Path
+    ~actual:(Ast2.LetModuleExpr.module_body module_expr);
+  Test.assert_equal ~expected:"Foo.Bar" ~actual:(let_module_body_path_text module_expr);
+  (
+    match Ast2.LetModuleExpr.body module_expr with
+    | Some body -> (
+        match Ast2.Expr.view body with
+        | Ast2.Expr.Path { path } -> Test.assert_equal
+          ~expected:"result"
+          ~actual:(last_path_text path)
+        | _ -> panic "expected let module body path"
+      )
+    | None -> panic "expected let module expression body"
+  );
+  let empty_expr = nth_structure_item root 1
+  |> require_some ~msg:"expected empty let module item"
+  |> binding_of_structure_item
+  |> Result.expect ~msg:"expected empty outer binding"
+  |> body_of_binding
+  |> Result.expect ~msg:"expected empty let module body" in
+  let empty_module = Ast2.LetModuleExpr.cast empty_expr |> require_some ~msg:"expected empty let module view" in
+  Test.assert_equal
+    ~expected:Ast2.LetModuleExpr.EmptyStruct
+    ~actual:(Ast2.LetModuleExpr.module_body empty_module);
+  Ok ()
+
 let tests = [
   Test.case "ast2 exposes source file and let binding views" test_source_file_and_let_binding_views;
   Test.case "ast2 exposes if and match expression views" test_expression_views;
@@ -696,6 +748,7 @@ let tests = [
   Test.case "ast2 exposes binding operator expression views" test_binding_operator_views;
   Test.case "ast2 exposes local open expression and pattern views" test_local_open_views;
   Test.case "ast2 exposes first-class module expression views" test_first_class_module_views;
+  Test.case "ast2 exposes let module expression views" test_let_module_expression_views;
 ]
 
 let () =
