@@ -33,6 +33,15 @@ let open_path_doc = fun decl ->
     ~fn:(fun token -> segments := token_doc token :: !segments);
   Doc.join (Doc.text ".") (List.reverse !segments)
 
+let include_path_doc = fun decl ->
+  let segments = ref [] in
+  Ast.IncludeDeclaration.for_each_path_ident
+    decl
+    ~fn:(fun token -> segments := token_doc token :: !segments);
+  match List.reverse !segments with
+  | [] -> unsupported "include declaration without target"
+  | segments -> Doc.join (Doc.text ".") segments
+
 let child_expr_docs = fun expr ->
   let docs = ref [] in
   Ast.Expr.for_each_child_expr expr ~fn:(fun child -> docs := child :: !docs);
@@ -846,18 +855,40 @@ let value_decl_doc = fun decl ->
 
 let external_decl_doc = fun decl ->
   match Ast.ExternalDeclaration.name decl, Ast.ExternalDeclaration.type_annotation decl with
-  | Some name, Some annotation -> Doc.concat
-    [
-      Doc.text "external";
-      Doc.space;
-      token_doc name;
-      Doc.text ":";
-      Doc.space;
-      type_expr_doc annotation;
-    ]
+  | Some name, Some annotation ->
+      let primitives = ref [] in
+      Ast.ExternalDeclaration.for_each_primitive_string
+        decl
+        ~fn:(fun token -> primitives := token_doc token :: !primitives);
+      (
+        match List.reverse !primitives with
+        | [] -> unsupported "external declaration without primitive strings"
+        | primitives ->
+            Doc.concat
+              [
+                Doc.text "external";
+                Doc.space;
+                token_doc name;
+                Doc.text ":";
+                Doc.space;
+                type_expr_doc annotation;
+                Doc.space;
+                Doc.equal;
+                Doc.space;
+                Doc.join Doc.space primitives;
+              ]
+      )
   | _ -> unsupported "incomplete external declaration"
 
 let open_decl_doc = fun decl -> Doc.concat [ Doc.text "open"; Doc.space; open_path_doc decl ]
+
+let include_decl_doc = fun decl ->
+  Doc.concat [ Doc.text "include"; Doc.space; include_path_doc decl ]
+
+let exception_decl_doc = fun decl ->
+  match Ast.ExceptionDeclaration.name decl with
+  | Some name -> Doc.concat [ Doc.text "exception"; Doc.space; token_doc name ]
+  | None -> unsupported "exception declaration without name"
 
 let structure_item_doc = fun item ->
   match Ast.StructureItem.view item with
@@ -869,15 +900,18 @@ let structure_item_doc = fun item ->
       module_decl_doc decl
   | Open decl ->
       open_decl_doc decl
+  | Include decl ->
+      include_decl_doc decl
+  | External decl ->
+      external_decl_doc decl
+  | Exception decl ->
+      exception_decl_doc decl
   | Expr expr_item -> (
       match Ast.ExprItem.expr expr_item with
       | Some expr -> expr_doc expr
       | None -> unsupported "expression item without expression"
     )
   | ModuleType _
-  | Include _
-  | External _
-  | Exception _
   | Class _
   | Extension _
   | Attribute _
@@ -891,10 +925,10 @@ let signature_item_doc = fun item ->
   | Type decl -> type_decl_doc decl
   | Module decl -> module_decl_doc decl
   | Open decl -> open_decl_doc decl
+  | Include decl -> include_decl_doc decl
   | External decl -> external_decl_doc decl
+  | Exception decl -> exception_decl_doc decl
   | ModuleType _
-  | Include _
-  | Exception _
   | Class _
   | Extension _
   | Attribute _

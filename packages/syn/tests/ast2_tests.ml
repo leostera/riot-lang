@@ -324,6 +324,45 @@ let test_open_declaration_path_tokens = fun _ctx ->
       Ok ()
   | _ -> Error "expected open declaration"
 
+let test_simple_declaration_token_views = fun _ctx ->
+  let source = "include Foo.Bar\nexternal id : 'a -> 'a = \"%identity\" \"caml_id\"\nexception Boom\n" in
+  let root = parse_ml source |> Result.expect ~msg:"expected parse2 source file" in
+  let include_item = nth_structure_item root 0 |> require_some ~msg:"expected include structure item" in
+  (
+    match Ast2.StructureItem.view include_item with
+    | Ast2.StructureItem.Include decl ->
+        let first = Ast2.IncludeDeclaration.first_path_ident decl |> require_some ~msg:"expected first include path ident" in
+        let last = Ast2.IncludeDeclaration.last_path_ident decl |> require_some ~msg:"expected last include path ident" in
+        let count = ref 0 in
+        Ast2.IncludeDeclaration.for_each_path_ident decl ~fn:(fun _ -> count := !count + 1);
+        Test.assert_equal ~expected:"Foo" ~actual:(Ast2.Token.text first);
+        Test.assert_equal ~expected:"Bar" ~actual:(Ast2.Token.text last);
+        Test.assert_equal ~expected:2 ~actual:!count
+    | _ -> panic "expected include declaration"
+  );
+  let external_item = nth_structure_item root 1 |> require_some ~msg:"expected external structure item" in
+  (
+    match Ast2.StructureItem.view external_item with
+    | Ast2.StructureItem.External decl ->
+        let name = Ast2.ExternalDeclaration.name decl |> require_some ~msg:"expected external name" in
+        Test.assert_equal ~expected:"id" ~actual:(Ast2.Token.text name);
+        let primitives = ref [] in
+        Ast2.ExternalDeclaration.for_each_primitive_string
+          decl
+          ~fn:(fun token -> primitives := Ast2.Token.text token :: !primitives);
+        Test.assert_equal
+          ~expected:[ "\"%identity\""; "\"caml_id\"" ]
+          ~actual:(List.reverse !primitives)
+    | _ -> panic "expected external declaration"
+  );
+  let exception_item = nth_structure_item root 2 |> require_some ~msg:"expected exception structure item" in
+  match Ast2.StructureItem.view exception_item with
+  | Ast2.StructureItem.Exception decl ->
+      let name = Ast2.ExceptionDeclaration.name decl |> require_some ~msg:"expected exception name" in
+      Test.assert_equal ~expected:"Boom" ~actual:(Ast2.Token.text name);
+      Ok ()
+  | _ -> Error "expected exception declaration"
+
 let test_module_declaration_tokens = fun _ctx ->
   let root = parse_ml "module rec M = struct end\nmodule _ = struct end\n" |> Result.expect ~msg:"expected parse2 source file" in
   let first_item = nth_structure_item root 0 |> require_some ~msg:"expected first module item" in
@@ -538,6 +577,7 @@ let tests = [
   Test.case "ast2 keeps non-manifest type bodies out of manifest views" test_non_manifest_type_declaration_bodies;
   Test.case "ast2 exposes type declaration parameters" test_type_declaration_parameters;
   Test.case "ast2 exposes open declaration path tokens" test_open_declaration_path_tokens;
+  Test.case "ast2 exposes simple declaration token views" test_simple_declaration_token_views;
   Test.case "ast2 exposes module declaration tokens" test_module_declaration_tokens;
   Test.case "ast2 exposes let binding type annotation views" test_binding_type_annotation_view;
   Test.case "ast2 exposes record expression and pattern views" test_record_views;

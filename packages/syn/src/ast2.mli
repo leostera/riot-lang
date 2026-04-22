@@ -434,6 +434,14 @@ end
 module IncludeDeclaration: sig
   type t = include_declaration
   val cast: Node.t -> t option
+
+  val path_text: t -> string
+
+  val first_path_ident: t -> Token.t option
+
+  val last_path_ident: t -> Token.t option
+
+  val for_each_path_ident: t -> fn:(Token.t -> unit) -> unit
 end
 
 module ValueDeclaration: sig
@@ -452,6 +460,8 @@ module ExternalDeclaration: sig
   val name: t -> Token.t option
 
   val type_annotation: t -> type_expr option
+
+  val for_each_primitive_string: t -> fn:(Token.t -> unit) -> unit
 end
 
 module ExceptionDeclaration: sig

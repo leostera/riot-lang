@@ -179,6 +179,12 @@ let tests = [
     "lower2 formats open declarations"
     (fun _ctx -> assert_format2_ml ~expected:"open Foo.Bar\n" "open Foo.Bar\n");
   Test.case
+    "lower2 formats simple include external and exception declarations"
+    (fun _ctx ->
+      assert_format2_ml
+        ~expected:"include Foo.Bar\nexternal id: 'a -> 'a = \"%identity\" \"caml_id\"\nexception Boom\n"
+        "include Foo.Bar\nexternal id : 'a -> 'a = \"%identity\" \"caml_id\"\nexception Boom\n");
+  Test.case
     "lower2 formats type aliases with parameters"
     (fun _ctx -> assert_format2_mli ~expected:"type 'a t = 'a list\n" "type 'a t = 'a list\n");
   Test.case

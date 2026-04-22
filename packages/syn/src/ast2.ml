@@ -1601,6 +1601,18 @@ module IncludeDeclaration = struct
       Some node
     else
       None
+
+  let path_text = Node.text
+
+  let first_path_ident = first_ident_token
+
+  let last_path_ident = last_ident_token
+
+  let for_each_path_ident = fun decl ~fn ->
+    Node.for_each_child_token decl
+      ~fn:(fun token ->
+        if token_kind_is token Syntax_kind2.IDENT then
+          fn token)
 end
 
 module ValueDeclaration = struct
@@ -1629,6 +1641,12 @@ module ExternalDeclaration = struct
   let name = first_ident_token
 
   let type_annotation = first_type_expr_child
+
+  let for_each_primitive_string = fun decl ~fn ->
+    Node.for_each_child_token decl
+      ~fn:(fun token ->
+        if token_kind_is token Syntax_kind2.STRING then
+          fn token)
 end
 
 module ExceptionDeclaration = struct
