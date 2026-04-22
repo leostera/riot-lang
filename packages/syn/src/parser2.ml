@@ -204,20 +204,22 @@ let tuple_pattern_extra_comma = fun p -> diagnostic_with_current p Diagnostic.tu
 
 let cons_pattern_missing_head = fun p -> diagnostic_with_current p Diagnostic.cons_pattern_missing_head
 
-let cons_pattern_missing_tail = fun p -> diagnostic_with_current p Diagnostic.cons_pattern_missing_tail
+let cons_pattern_missing_tail = fun p ->
+  diagnostic_with_current_at p Diagnostic.cons_pattern_missing_tail (zero_span (previous_end_offset p))
 
 let or_pattern_missing = fun p ->
-  diagnostic_with_current_at p Diagnostic.or_pattern_missing (zero_span (current_offset p))
+  diagnostic_with_current_at p Diagnostic.or_pattern_missing (zero_span (previous_end_offset p))
 
 let or_pattern_double = fun p -> diagnostic_with_current p Diagnostic.or_pattern_double
 
-let mutable_field_missing_name = fun p -> diagnostic_with_current p Diagnostic.mutable_field_missing_name
+let mutable_field_missing_name = fun p ->
+  diagnostic_with_current_at p Diagnostic.mutable_field_missing_name (zero_span (previous_end_offset p))
 
 let record_field_missing_colon = fun p ~field_name ->
   diagnostic_with_current_at
     p
     (Diagnostic.record_field_missing_colon ~field_name)
-    (zero_span (current_offset p))
+    (zero_span (previous_end_offset p))
 
 let missing_module_decl_equals = fun p ->
   diagnostic_with_current_at
@@ -1547,7 +1549,7 @@ and parse_pattern_no_apply = fun p ~stop_type_at_arrow ->
               if can_start_pattern_atom (current_kind p) then
                 ignore (parse_pattern_atom p ~stop_type_at_arrow)
               else
-                Event.Buffer.error p.events (invalid_pattern p);
+                Event.Buffer.error p.events (invalid_pattern_at_previous_end p);
               loop (complete p marker Syntax_kind2.ALIAS_PATTERN)
           | Syntax_kind2.COLONCOLON ->
               let marker = precede p lhs in
@@ -1610,7 +1612,7 @@ and parse_pattern_bp = fun p ~stop_type_at_arrow min_bp ->
             if can_start_pattern_atom (current_kind p) then
               ignore (parse_pattern_atom p ~stop_type_at_arrow)
             else
-              Event.Buffer.error p.events (invalid_pattern p);
+              Event.Buffer.error p.events (invalid_pattern_at_previous_end p);
             loop (complete p marker Syntax_kind2.ALIAS_PATTERN)
         | Syntax_kind2.COLONCOLON ->
             let marker = precede p lhs in
@@ -1883,12 +1885,12 @@ and parse_unary_pattern = fun p ~stop_type_at_arrow kind ->
   if can_start_pattern_atom (current_kind p) then
     ignore (parse_pattern_atom p ~stop_type_at_arrow)
   else
-    Event.Buffer.error p.events (invalid_pattern p);
+    Event.Buffer.error p.events (invalid_pattern_at_previous_end p);
   complete p marker kind
 
 and parse_error_pattern = fun p ->
   let marker = start_node p in
-  Event.Buffer.error p.events (invalid_pattern p);
+  Event.Buffer.error p.events (invalid_pattern_at_previous_end p);
   if is_eof p then
     Event.Buffer.missing p.events ~kind:Syntax_kind2.IDENT ~offset:(current_offset p)
   else
@@ -2116,17 +2118,20 @@ let consume_record_type_body = fun p ->
           else
             None
         in
-        (
+        let missing_colon =
           match field_name with
           | Some field_name when not (at p Syntax_kind2.COLON) ->
-              Event.Buffer.error p.events (record_field_missing_colon p ~field_name)
-          | _ -> ()
-        );
+              Event.Buffer.error p.events (record_field_missing_colon p ~field_name);
+              true
+          | _ -> false
+        in
         if at p Syntax_kind2.COLON then
           (
             bump p;
             consume_field_type ()
-          );
+          )
+        else if missing_colon then
+          consume_field_type ();
         ignore (bump_if p Syntax_kind2.SEMI);
         parse_fields ()
       )
