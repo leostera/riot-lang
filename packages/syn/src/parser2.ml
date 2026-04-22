@@ -2170,6 +2170,8 @@ and type_expr_boundary = fun p ~stop_at_arrow ->
   match current_kind p with
   | Syntax_kind2.EOF
   | Syntax_kind2.AS_KW
+  | Syntax_kind2.AND_KW
+  | Syntax_kind2.CONSTRAINT_KW
   | Syntax_kind2.PIPE
   | Syntax_kind2.WHEN_KW
   | Syntax_kind2.EQ
@@ -2544,6 +2546,65 @@ let consume_type_body = fun p ~signature ->
   | _ ->
       consume_until_item_boundary p ~signature
 
+let type_decl_body_contains_unsupported_type_syntax = fun p ~signature ->
+  let next_depth depth kind =
+    match kind with
+    | Syntax_kind2.LPAREN
+    | Syntax_kind2.LBRACE
+    | Syntax_kind2.LBRACKET
+    | Syntax_kind2.LBRACKET_BAR
+    | Syntax_kind2.BEGIN_KW
+    | Syntax_kind2.OBJECT_KW
+    | Syntax_kind2.STRUCT_KW
+    | Syntax_kind2.SIG_KW -> depth + 1
+    | Syntax_kind2.RPAREN
+    | Syntax_kind2.RBRACE
+    | Syntax_kind2.RBRACKET
+    | Syntax_kind2.BAR_RBRACKET
+    | Syntax_kind2.END_KW when depth > 0 -> depth - 1
+    | _ -> depth
+  in
+  let rec loop position depth =
+    let kind = (raw_at p (significant_raw_at p position)).Raw_token.kind in
+    if Syntax_kind2.(kind = EOF) then
+      false
+    else if position > p.pos && depth = 0 && at_item_boundary_at p position ~signature then
+      false
+    else if depth = 0 && Syntax_kind2.(kind = AND_KW || kind = CONSTRAINT_KW) then
+      false
+    else if Syntax_kind2.(kind = AS_KW || kind = WITH_KW) then
+      true
+    else
+      loop (position + 1) (next_depth depth kind)
+  in
+  loop p.pos 0
+
+let type_decl_body_needs_opaque_parse = fun p ~signature ->
+  match current_kind p with
+  | Syntax_kind2.PIPE
+  | Syntax_kind2.LBRACE
+  | Syntax_kind2.LBRACKET
+  | Syntax_kind2.LBRACKET_BAR
+  | Syntax_kind2.PRIVATE_KW -> true
+  | Syntax_kind2.LPAREN when Syntax_kind2.(peek_kind p 1 = MODULE_KW) -> true
+  | _ ->
+      type_decl_body_contains_unsupported_type_syntax p ~signature
+
+let parse_type_decl_body = fun p ~signature ->
+  if type_decl_body_needs_opaque_parse p ~signature then
+    consume_type_body p ~signature
+  else (
+    parse_type_expr p ~stop_at_arrow:false;
+    if
+      not
+        (is_eof p
+        || at_item_boundary p ~signature
+        || at p Syntax_kind2.AND_KW
+        || at p Syntax_kind2.CONSTRAINT_KW)
+    then
+      consume_until_item_boundary p ~signature
+  )
+
 let parse_type_decl = fun p ~signature ->
   let marker = start_node p in
   expect p Syntax_kind2.TYPE_KW (invalid_type_expression p);
@@ -2711,7 +2772,7 @@ let parse_type_decl = fun p ~signature ->
             Event.Buffer.error p.events (invalid_type_expression_at_previous_end p)
           )
         else
-          consume_type_body p ~signature
+          parse_type_decl_body p ~signature
     | Syntax_kind2.EOF ->
         ()
     | _ when at_item_boundary p ~signature ->
@@ -2736,7 +2797,7 @@ let parse_type_decl = fun p ~signature ->
           (
             bump p;
             if not (is_eof p || at_item_boundary p ~signature) then
-              consume_type_body p ~signature
+              parse_type_decl_body p ~signature
           );
         consume_tail_members ()
     | _ ->

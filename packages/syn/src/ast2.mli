@@ -302,6 +302,8 @@ module TypeDeclaration: sig
   val cast: Node.t -> t option
 
   val name: t -> Token.t option
+
+  val manifest: t -> type_expr option
 end
 
 module ModuleDeclaration: sig

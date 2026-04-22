@@ -227,6 +227,10 @@ let touch_ast2_external_declaration = fun (decl: Ast2.ExternalDeclaration.t) ->
   touch_ast2_token_option 431 (Ast2.ExternalDeclaration.name decl);
   touch_ast2_type_expr_option 432 (Ast2.ExternalDeclaration.type_annotation decl)
 
+let touch_ast2_type_declaration = fun (decl: Ast2.TypeDeclaration.t) ->
+  touch_ast2_token_option 441 (Ast2.TypeDeclaration.name decl);
+  touch_ast2_type_expr_option 442 (Ast2.TypeDeclaration.manifest decl)
+
 let rec touch_ast2_expr_view = fun (expr: Ast2.Expr.t) ->
   match Ast2.Expr.view expr with
   | Let { first_binding; body } ->
@@ -293,6 +297,11 @@ let rec walk_ast2_node = fun (node: Ast2.Node.t) ->
   (
     match Ast2.ValueDeclaration.cast node with
     | Some decl -> touch_ast2_value_declaration decl
+    | None -> ()
+  );
+  (
+    match Ast2.TypeDeclaration.cast node with
+    | Some decl -> touch_ast2_type_declaration decl
     | None -> ()
   );
   (

@@ -211,7 +211,9 @@ let test_signature_and_type_views = fun _ctx ->
     match Ast2.SignatureItem.view type_item with
     | Ast2.SignatureItem.Type decl ->
         let name = Ast2.TypeDeclaration.name decl |> require_some ~msg:"expected type name" in
-        Test.assert_equal ~expected:"t" ~actual:(Ast2.Token.text name)
+        Test.assert_equal ~expected:"t" ~actual:(Ast2.Token.text name);
+        let manifest = Ast2.TypeDeclaration.manifest decl |> require_some ~msg:"expected type manifest" in
+        assert_type_path_last_ident manifest "int"
     | _ -> panic "expected type declaration"
   );
   let module_item = nth_signature_item root 2 |> require_some ~msg:"expected module signature item" in
@@ -258,6 +260,23 @@ let test_type_expression_views = fun _ctx ->
       )
   | _ -> Error "expected external declaration"
 
+let assert_type_manifest_is_none = fun source ->
+  let root = parse_mli source |> Result.expect ~msg:"expected parse2 interface" in
+  let type_item = nth_signature_item root 0 |> require_some ~msg:"expected type signature item" in
+  match Ast2.SignatureItem.view type_item with
+  | Ast2.SignatureItem.Type decl -> (
+      match Ast2.TypeDeclaration.manifest decl with
+      | None -> Ok ()
+      | Some _ -> Error "expected type declaration without manifest view"
+    )
+  | _ -> Error "expected type declaration"
+
+let test_non_manifest_type_declaration_bodies = fun _ctx ->
+  match assert_type_manifest_is_none "type color = Red | Blue\n" with
+  | Error _ as error -> error
+  | Ok () ->
+      assert_type_manifest_is_none "type point = { x : int }\n"
+
 let test_binding_type_annotation_view = fun _ctx ->
   let root = parse_ml "let x : int = 1\n" |> Result.expect ~msg:"expected parse2 source file" in
   let binding = nth_structure_item root 0
@@ -277,6 +296,9 @@ let tests = [
   Test.case "ast2 exposes tuple and cons pattern views" test_pattern_views;
   Test.case "ast2 exposes signature declaration views" test_signature_and_type_views;
   Test.case "ast2 exposes type expression views" test_type_expression_views;
+  Test.case
+    "ast2 keeps non-manifest type bodies out of manifest views"
+    test_non_manifest_type_declaration_bodies;
   Test.case "ast2 exposes let binding type annotation views" test_binding_type_annotation_view;
 ]
 

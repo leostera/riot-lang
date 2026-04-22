@@ -1014,6 +1014,20 @@ module TypeDeclaration = struct
       None
 
   let name = first_ident_token
+
+  let has_direct_pipe = fun decl ->
+    let found = ref false in
+    Node.for_each_child_token decl
+      ~fn:(fun token ->
+        if token_kind_is token Syntax_kind2.PIPE then
+          found := true);
+    !found
+
+  let manifest = fun decl ->
+    if has_direct_pipe decl then
+      None
+    else
+      first_type_expr_child decl
 end
 
 module ModuleDeclaration = struct
