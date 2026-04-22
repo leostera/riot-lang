@@ -2583,6 +2583,21 @@ module ExternalDeclaration = struct
       ~fn:(fun token ->
         if token_kind_is token Syntax_kind2.STRING then
           fn token)
+
+  let for_each_attribute_token = fun decl ~fn ->
+    let seen_primitive = ref false in
+    let after_primitives = ref false in
+    Node.for_each_child_token decl
+      ~fn:(fun token ->
+        if !after_primitives then
+          fn token
+        else if token_kind_is token Syntax_kind2.STRING then
+          seen_primitive := true
+        else if !seen_primitive then
+          (
+            after_primitives := true;
+            fn token
+          ))
 end
 
 module ExceptionDeclaration = struct

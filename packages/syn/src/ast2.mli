@@ -658,6 +658,8 @@ module ExternalDeclaration: sig
   val type_annotation: t -> type_expr option
 
   val for_each_primitive_string: t -> fn:(Token.t -> unit) -> unit
+
+  val for_each_attribute_token: t -> fn:(Token.t -> unit) -> unit
 end
 
 module ExceptionDeclaration: sig

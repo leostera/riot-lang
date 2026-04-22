@@ -2716,10 +2716,19 @@ let external_decl_doc = fun decl ->
       Ast.ExternalDeclaration.for_each_primitive_string
         decl
         ~fn:(fun token -> primitives := token_doc token :: !primitives);
+      let attribute_tokens = ref [] in
+      Ast.ExternalDeclaration.for_each_attribute_token
+        decl
+        ~fn:(fun token -> attribute_tokens := token :: !attribute_tokens);
       (
         match List.reverse !primitives with
         | [] -> unsupported "external declaration without primitive strings"
         | primitives ->
+            let attributes =
+              match List.reverse !attribute_tokens with
+              | [] -> Doc.empty
+              | tokens -> Doc.concat [ Doc.space; type_tokens_doc tokens ]
+            in
             Doc.concat
               [
                 Doc.text "external";
@@ -2732,6 +2741,7 @@ let external_decl_doc = fun decl ->
                 Doc.equal;
                 Doc.space;
                 Doc.join Doc.space primitives;
+                attributes;
               ]
       )
   | _ -> unsupported "incomplete external declaration"
