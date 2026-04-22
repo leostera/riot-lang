@@ -6,6 +6,8 @@ open Riot_run
 open ArgParser
 module Run_runtime = Riot_run
 
+let out = eprintln
+
 let command =
   let open ArgParser in
     let open Arg in command "run"
@@ -191,7 +193,7 @@ let write_run_event = fun ~mode (event: Run_runtime.run_event) ->
   | Build.Human -> (
       match event with
       | Run_runtime.Build _ -> ()
-      | Run_runtime.RunningBinary { package; binary; _ } -> println
+      | Run_runtime.RunningBinary { package; binary; _ } -> out
         ("    \027[1;32mBuilding\027[0m " ^ Riot_model.Package_name.to_string package ^ ":" ^ binary)
     )
 
@@ -200,9 +202,9 @@ let write_run_error = fun ~mode (err: Run_runtime.run_error) ->
   | Build.Json -> write_json_event (run_error_to_json err)
   | Build.Human -> (
       match err with
-      | Run_runtime.BinaryNotFound { binary_name } -> println
+      | Run_runtime.BinaryNotFound { binary_name } -> out
         ("error: binary '" ^ binary_name ^ "' not found")
-      | err -> println ("error: " ^ Run_runtime.run_error_message err)
+      | err -> out ("error: " ^ Run_runtime.run_error_message err)
     )
 
 let write_workspace_error = fun ~mode message ->
@@ -213,7 +215,7 @@ let write_workspace_error = fun ~mode message ->
       ("kind", Data.Json.String "workspace_error");
       ("message", Data.Json.String message);
     ])
-  | Build.Human -> println ("error: " ^ message)
+  | Build.Human -> out ("error: " ^ message)
 
 let binary_source_label = fun ~(workspace:Riot_model.Workspace.t) (
   binary: Run_runtime.runnable_binary
