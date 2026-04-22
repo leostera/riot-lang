@@ -276,8 +276,7 @@ let assert_type_manifest_is_none = fun source ->
 let test_non_manifest_type_declaration_bodies = fun _ctx ->
   match assert_type_manifest_is_none "type color = Red | Blue\n" with
   | Error _ as error -> error
-  | Ok () ->
-      assert_type_manifest_is_none "type point = { x : int }\n"
+  | Ok () -> assert_type_manifest_is_none "type point = { x : int }\n"
 
 let test_type_declaration_parameters = fun _ctx ->
   let root = parse_mli "type (+'a, _) box = 'a list\n" |> Result.expect ~msg:"expected parse2 interface" in
@@ -291,10 +290,12 @@ let test_type_declaration_parameters = fun _ctx ->
       Ast2.TypeDeclaration.for_each_parameter decl
         ~fn:(
           function
-          | Ast2.TypeDeclaration.Named { name; variance; _ } ->
-              named := Some (Ast2.Token.text name, Option.map variance ~fn:Ast2.Token.text)
-          | Ast2.TypeDeclaration.Wildcard { wildcard; _ } ->
-              wildcard_param := Some (Ast2.Token.text wildcard)
+          | Ast2.TypeDeclaration.Named { name; variance; _ } -> named := Some (
+            Ast2.Token.text name,
+            Option.map variance ~fn:Ast2.Token.text
+          )
+          | Ast2.TypeDeclaration.Wildcard { wildcard; _ } -> wildcard_param := Some (Ast2.Token.text
+            wildcard)
         );
       (
         match !named with
@@ -324,8 +325,7 @@ let test_open_declaration_path_tokens = fun _ctx ->
   | _ -> Error "expected open declaration"
 
 let test_module_declaration_tokens = fun _ctx ->
-  let root = parse_ml "module rec M = struct end\nmodule _ = struct end\n"
-  |> Result.expect ~msg:"expected parse2 source file" in
+  let root = parse_ml "module rec M = struct end\nmodule _ = struct end\n" |> Result.expect ~msg:"expected parse2 source file" in
   let first_item = nth_structure_item root 0 |> require_some ~msg:"expected first module item" in
   let second_item = nth_structure_item root 1 |> require_some ~msg:"expected second module item" in
   (
@@ -357,19 +357,79 @@ let test_binding_type_annotation_view = fun _ctx ->
       Ok ()
   | _ -> Error "expected binding path type annotation"
 
+let last_path_text = fun path ->
+  let token = Ast2.Path.last_ident path |> require_some ~msg:"expected path ident" in
+  Ast2.Token.text token
+
+let test_record_views = fun _ctx ->
+  let source = "let record = { x = 1; y }\nlet updated = { base with x = 2; y }\nlet { x; y = z; _ } = record\n" in
+  let root = parse_ml source |> Result.expect ~msg:"expected parse2 source file" in
+  let record_expr = nth_structure_item root 0
+  |> require_some ~msg:"expected record item"
+  |> binding_of_structure_item
+  |> Result.expect ~msg:"expected record binding"
+  |> body_of_binding
+  |> Result.expect ~msg:"expected record expression" in
+  let record_view = Ast2.RecordExpr.cast record_expr |> require_some ~msg:"expected record expression view" in
+  let record_fields = ref [] in
+  Ast2.RecordExpr.for_each_field record_view
+    ~fn:(fun field ->
+      let name = field.Ast2.RecordExpr.path |> require_some ~msg:"expected record field path" |> last_path_text in
+      record_fields := (name, Option.is_some field.Ast2.RecordExpr.value) :: !record_fields);
+  Test.assert_equal ~expected:[ ("x", true); ("y", false) ] ~actual:(List.reverse !record_fields);
+  let update_expr = nth_structure_item root 1
+  |> require_some ~msg:"expected update item"
+  |> binding_of_structure_item
+  |> Result.expect ~msg:"expected update binding"
+  |> body_of_binding
+  |> Result.expect ~msg:"expected update expression" in
+  let update_view = Ast2.RecordExpr.cast update_expr |> require_some ~msg:"expected record update view" in
+  (
+    match Ast2.RecordExpr.base update_view with
+    | Some base -> (
+        match Ast2.Expr.view base with
+        | Ast2.Expr.Path { path } -> Test.assert_equal ~expected:"base" ~actual:(last_path_text path)
+        | _ -> panic "expected record update base path"
+      )
+    | None -> panic "expected record update base"
+  );
+  let update_fields = ref [] in
+  Ast2.RecordExpr.for_each_field update_view
+    ~fn:(fun field ->
+      let name = field.Ast2.RecordExpr.path |> require_some ~msg:"expected update field path" |> last_path_text in
+      update_fields := (name, Option.is_some field.Ast2.RecordExpr.value) :: !update_fields);
+  Test.assert_equal ~expected:[ ("x", true); ("y", false) ] ~actual:(List.reverse !update_fields);
+  let record_pattern = nth_structure_item root 2
+  |> require_some ~msg:"expected record pattern item"
+  |> binding_of_structure_item
+  |> Result.expect ~msg:"expected record pattern binding"
+  |> pattern_of_binding
+  |> Result.expect ~msg:"expected record pattern" in
+  let pattern_view = Ast2.RecordPattern.cast record_pattern |> require_some ~msg:"expected record pattern view" in
+  let pattern_fields = ref [] in
+  Ast2.RecordPattern.for_each_field pattern_view
+    ~fn:(fun field ->
+      let name = field.Ast2.RecordPattern.path
+      |> require_some ~msg:"expected pattern field path"
+      |> last_path_text in
+      pattern_fields := (name, Option.is_some field.Ast2.RecordPattern.pattern) :: !pattern_fields);
+  Test.assert_equal ~expected:[ ("x", false); ("y", true) ] ~actual:(List.reverse !pattern_fields);
+  let wildcard = Ast2.RecordPattern.open_wildcard pattern_view |> require_some ~msg:"expected open record wildcard" in
+  Test.assert_equal ~expected:"_" ~actual:(Ast2.Token.text wildcard);
+  Ok ()
+
 let tests = [
   Test.case "ast2 exposes source file and let binding views" test_source_file_and_let_binding_views;
   Test.case "ast2 exposes if and match expression views" test_expression_views;
   Test.case "ast2 exposes tuple and cons pattern views" test_pattern_views;
   Test.case "ast2 exposes signature declaration views" test_signature_and_type_views;
   Test.case "ast2 exposes type expression views" test_type_expression_views;
-  Test.case
-    "ast2 keeps non-manifest type bodies out of manifest views"
-    test_non_manifest_type_declaration_bodies;
+  Test.case "ast2 keeps non-manifest type bodies out of manifest views" test_non_manifest_type_declaration_bodies;
   Test.case "ast2 exposes type declaration parameters" test_type_declaration_parameters;
   Test.case "ast2 exposes open declaration path tokens" test_open_declaration_path_tokens;
   Test.case "ast2 exposes module declaration tokens" test_module_declaration_tokens;
   Test.case "ast2 exposes let binding type annotation views" test_binding_type_annotation_view;
+  Test.case "ast2 exposes record expression and pattern views" test_record_views;
 ]
 
 let () =

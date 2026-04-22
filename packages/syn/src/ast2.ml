@@ -296,7 +296,9 @@ let first_ident_token = fun (node: node) ->
   first_child_token_matching node ~matches:(fun kind -> Syntax_kind2.(kind = IDENT))
 
 let first_ident_or_underscore_token = fun (node: node) ->
-  first_child_token_matching node ~matches:(fun kind -> Syntax_kind2.(kind = IDENT || kind = UNDERSCORE))
+  first_child_token_matching
+    node
+    ~matches:(fun kind -> Syntax_kind2.(kind = IDENT || kind = UNDERSCORE))
 
 let last_ident_token = fun (node: node) ->
   let found = ref None in
@@ -735,6 +737,81 @@ end = struct
     for_each_child_node_matching expr ~matches:is_match_case_kind ~fn
 end
 
+module RecordExpr: sig
+  type t = expr
+  type field = {
+    path: path option;
+    value: expr option;
+    node: expr;
+  }
+  val cast: expr -> t option
+
+  val base: t -> expr option
+
+  val for_each_field: t -> fn:(field -> unit) -> unit
+end = struct
+  type t = expr
+
+  type field = {
+    path: path option;
+    value: expr option;
+    node: expr;
+  }
+
+  let cast = fun (expr: expr) ->
+    if
+      node_kind_is expr Syntax_kind2.RECORD_EXPR || node_kind_is expr Syntax_kind2.RECORD_UPDATE_EXPR
+    then
+      Some expr
+    else
+      None
+
+  let base = fun (record: t) ->
+    if node_kind_is record Syntax_kind2.RECORD_UPDATE_EXPR then
+      nth_expr_child record 0
+    else
+      None
+
+  let field_of_expr = fun (expr: expr) ->
+    if node_kind_is expr Syntax_kind2.INFIX_EXPR then
+      match Node.first_child_token expr ~kind:Syntax_kind2.EQ, nth_expr_child expr 0, nth_expr_child
+        expr
+        1 with
+      | Some _, Some left, Some right ->
+          let path =
+            if node_kind_is left Syntax_kind2.PATH_EXPR then
+              Path.cast left
+            else
+              None
+          in
+          { path; value = Some right; node = expr }
+      | _ -> { path = None; value = None; node = expr }
+    else if node_kind_is expr Syntax_kind2.PATH_EXPR then
+      { path = Path.cast expr; value = None; node = expr }
+    else
+      { path = None; value = None; node = expr }
+
+  let for_each_field = fun (record: t) ~fn ->
+    let after_with = ref (node_kind_is record Syntax_kind2.RECORD_EXPR) in
+    Syntax_tree.for_each_child record.tree (syntax_node record)
+      ~fn:(
+        function
+        | Syntax_tree.Token id ->
+            let token = wrap_token record.tree id in
+            if token_kind_is token Syntax_kind2.WITH_KW then
+              after_with := true
+        | Syntax_tree.Node id ->
+            if !after_with then
+              (
+                let child = wrap_node record.tree id in
+                if node_matches child is_expr_kind then
+                  fn (field_of_expr child)
+              )
+        | Syntax_tree.Missing _ ->
+            ()
+      )
+end
+
 module Pattern: sig
   type t = pattern
   type view =
@@ -862,6 +939,89 @@ end = struct
 
   let for_each_child_pattern = fun (pattern: pattern) ~fn ->
     for_each_child_node_matching pattern ~matches:is_pattern_kind ~fn
+end
+
+module RecordPattern: sig
+  type t = pattern
+  type field = {
+    path: path option;
+    pattern: pattern option;
+    node: pattern;
+  }
+  val cast: pattern -> t option
+
+  val open_wildcard: t -> Token.t option
+
+  val for_each_field: t -> fn:(field -> unit) -> unit
+end = struct
+  type t = pattern
+
+  type field = {
+    path: path option;
+    pattern: pattern option;
+    node: pattern;
+  }
+
+  let cast = fun (pattern: pattern) ->
+    if node_kind_is pattern Syntax_kind2.RECORD_PATTERN then
+      Some pattern
+    else
+      None
+
+  let open_wildcard = fun (record: t) ->
+    let found = ref None in
+    Node.for_each_child_node record
+      ~fn:(fun child ->
+        match !found with
+        | Some _ -> ()
+        | None ->
+            if node_kind_is child Syntax_kind2.WILDCARD_PATTERN then
+              found := Node.first_child_token child ~kind:Syntax_kind2.UNDERSCORE);
+    !found
+
+  let child_node_at = fun (record: t) index ->
+    match Node.child_at record index with
+    | Some (Syntax_tree.Node id) -> Some (wrap_node record.tree id)
+    | Some (Syntax_tree.Token _)
+    | Some (Syntax_tree.Missing _)
+    | None -> None
+
+  let child_token_kind_at = fun (record: t) index ->
+    match Node.child_at record index with
+    | Some (Syntax_tree.Token id) -> Some (Token.kind (wrap_token record.tree id))
+    | Some (Syntax_tree.Node _)
+    | Some (Syntax_tree.Missing _)
+    | None -> None
+
+  let for_each_field = fun (record: t) ~fn ->
+    let child_count = Node.child_count record in
+    let rec loop index =
+      if index >= child_count then
+        ()
+      else
+        match child_node_at record index with
+        | Some child when node_kind_is child Syntax_kind2.PATH_PATTERN ->
+            let pattern, next =
+              match child_token_kind_at record (index + 1) with
+              | Some kind when Syntax_kind2.(kind = EQ) -> (
+                  match child_node_at record (index + 2) with
+                  | Some value when node_matches value is_pattern_kind -> (Some value, index + 3)
+                  | _ -> (None, index + 2)
+                )
+              | _ -> (None, index + 1)
+            in
+            fn { path = Path.cast child; pattern; node = child };
+            loop next
+        | Some child when node_kind_is child Syntax_kind2.WILDCARD_PATTERN ->
+            loop (index + 1)
+        | Some child when node_matches child is_pattern_kind ->
+            fn { path = None; pattern = None; node = child };
+            loop (index + 1)
+        | Some _
+        | None ->
+            loop (index + 1)
+    in
+    loop 0
 end
 
 module Parameter: sig
@@ -1020,16 +1180,12 @@ module TypeDeclaration = struct
 
   type parameter =
     | Named of {
-      name: Token.t;
-      quote: Token.t option;
-      variance: Token.t option;
-      injective: Token.t option;
-    }
-    | Wildcard of {
-      wildcard: Token.t;
-      variance: Token.t option;
-      injective: Token.t option;
-    }
+        name: Token.t;
+        quote: Token.t option;
+        variance: Token.t option;
+        injective: Token.t option
+      }
+    | Wildcard of { wildcard: Token.t; variance: Token.t option; injective: Token.t option }
 
   let cast = fun (node: node) ->
     if node_kind_is node Syntax_kind2.TYPE_DECL then
@@ -1051,12 +1207,17 @@ module TypeDeclaration = struct
 
   let rec collect_type_parameter_modifiers = fun decl index variance injective ->
     match child_token_at decl index with
-    | Some token when token_kind_is token Syntax_kind2.PLUS || token_kind_is token Syntax_kind2.MINUS ->
-        collect_type_parameter_modifiers decl (index + 1) (Some token) injective
-    | Some token when token_kind_is token Syntax_kind2.BANG ->
-        collect_type_parameter_modifiers decl (index + 1) variance (Some token)
-    | _ ->
-        (index, variance, injective)
+    | Some token when token_kind_is token Syntax_kind2.PLUS || token_kind_is token Syntax_kind2.MINUS -> collect_type_parameter_modifiers
+      decl
+      (index + 1)
+      (Some token)
+      injective
+    | Some token when token_kind_is token Syntax_kind2.BANG -> collect_type_parameter_modifiers
+      decl
+      (index + 1)
+      variance
+      (Some token)
+    | _ -> (index, variance, injective)
 
   let skip_type_parameter = fun decl index ->
     let index, _, _ = collect_type_parameter_modifiers decl index None None in
@@ -1079,8 +1240,7 @@ module TypeDeclaration = struct
         | Some name when token_kind_is name Syntax_kind2.IDENT ->
             fn (Named { name; quote = Some quote; variance; injective });
             index + 2
-        | _ ->
-            index + 1
+        | _ -> index + 1
       )
     | Some wildcard when token_kind_is wildcard Syntax_kind2.UNDERSCORE ->
         fn (Wildcard { wildcard; variance; injective });
@@ -1090,27 +1250,24 @@ module TypeDeclaration = struct
 
   let rec skip_parenthesized_type_parameters = fun decl index ->
     match child_token_kind_at decl index with
-    | Some Syntax_kind2.RPAREN ->
-        index + 1
+    | Some Syntax_kind2.RPAREN -> index + 1
     | Some Syntax_kind2.EOF
-    | None ->
-        index
-    | _ ->
-        skip_parenthesized_type_parameters decl (index + 1)
+    | None -> index
+    | _ -> skip_parenthesized_type_parameters decl (index + 1)
 
   let name = fun decl ->
     let rec loop index =
       match child_token_at decl index with
-      | Some token when token_kind_is token Syntax_kind2.TYPE_KW || token_kind_is token Syntax_kind2.NONREC_KW ->
+      | Some token when token_kind_is token Syntax_kind2.TYPE_KW
+      || token_kind_is token Syntax_kind2.NONREC_KW ->
           loop (index + 1)
       | Some token when token_kind_is token Syntax_kind2.LPAREN ->
           loop (skip_parenthesized_type_parameters decl (index + 1))
-      | Some token when
-        token_kind_is token Syntax_kind2.PLUS
-        || token_kind_is token Syntax_kind2.MINUS
-        || token_kind_is token Syntax_kind2.BANG
-        || token_kind_is token Syntax_kind2.QUOTE
-        || token_kind_is token Syntax_kind2.UNDERSCORE ->
+      | Some token when token_kind_is token Syntax_kind2.PLUS
+      || token_kind_is token Syntax_kind2.MINUS
+      || token_kind_is token Syntax_kind2.BANG
+      || token_kind_is token Syntax_kind2.QUOTE
+      || token_kind_is token Syntax_kind2.UNDERSCORE ->
           let next = skip_type_parameter decl index in
           if next > index then
             loop next
@@ -1145,16 +1302,16 @@ module TypeDeclaration = struct
     in
     let rec parse_head index =
       match child_token_at decl index with
-      | Some token when token_kind_is token Syntax_kind2.TYPE_KW || token_kind_is token Syntax_kind2.NONREC_KW ->
+      | Some token when token_kind_is token Syntax_kind2.TYPE_KW
+      || token_kind_is token Syntax_kind2.NONREC_KW ->
           parse_head (index + 1)
       | Some token when token_kind_is token Syntax_kind2.LPAREN ->
           parse_head (parse_parenthesized (index + 1))
-      | Some token when
-        token_kind_is token Syntax_kind2.PLUS
-        || token_kind_is token Syntax_kind2.MINUS
-        || token_kind_is token Syntax_kind2.BANG
-        || token_kind_is token Syntax_kind2.QUOTE
-        || token_kind_is token Syntax_kind2.UNDERSCORE ->
+      | Some token when token_kind_is token Syntax_kind2.PLUS
+      || token_kind_is token Syntax_kind2.MINUS
+      || token_kind_is token Syntax_kind2.BANG
+      || token_kind_is token Syntax_kind2.QUOTE
+      || token_kind_is token Syntax_kind2.UNDERSCORE ->
           let next = emit_type_parameter decl index ~fn in
           if next > index then
             parse_head next

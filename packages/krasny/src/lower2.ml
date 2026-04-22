@@ -165,6 +165,8 @@ let rec pattern_doc = fun pattern ->
       |> List.map ~fn:pattern_doc
       |> Doc.join (Doc.concat [ Doc.semi; Doc.space ])
       |> fun items -> Doc.concat [ Doc.text "[|"; items; Doc.text "|]" ]
+  | Record ->
+      record_pattern_doc pattern
   | Cons { head=Some head; tail=Some tail } ->
       Doc.concat [ pattern_doc head; Doc.space; Doc.text "::"; Doc.space; pattern_doc tail ]
   | Cons _ ->
@@ -215,7 +217,6 @@ let rec pattern_doc = fun pattern ->
       Doc.concat [ Doc.text "exception"; Doc.space; pattern_doc pattern ]
   | Exception _ ->
       unsupported "exception pattern without payload"
-  | Record
   | Extension
   | Attribute _
   | LocalOpen
@@ -224,6 +225,40 @@ let rec pattern_doc = fun pattern ->
   | Error _
   | Unknown _ ->
       unsupported "unsupported pattern"
+
+and record_pattern_field_doc = fun (field: Ast.RecordPattern.field) ->
+  match field.path with
+  | Some path -> (
+      match field.pattern with
+      | Some pattern -> Doc.concat
+        [ path_doc path; Doc.space; Doc.equal; Doc.space; pattern_doc pattern ]
+      | None -> path_doc path
+    )
+  | None -> unsupported "unsupported record pattern field"
+
+and record_pattern_doc = fun pattern ->
+  let fields = ref [] in
+  Ast.RecordPattern.for_each_field
+    pattern
+    ~fn:(fun field -> fields := record_pattern_field_doc field :: !fields);
+  let fields =
+    (
+      match Ast.RecordPattern.open_wildcard pattern with
+      | Some wildcard -> token_doc wildcard :: !fields
+      | None -> !fields
+    )
+    |> List.reverse
+  in
+  match fields with
+  | [] -> Doc.concat [ Doc.lbrace; Doc.rbrace ]
+  | fields -> Doc.concat
+    [
+      Doc.lbrace;
+      Doc.space;
+      Doc.join (Doc.concat [ Doc.semi; Doc.space ]) fields;
+      Doc.space;
+      Doc.rbrace;
+    ]
 
 and parameter_doc = fun parameter ->
   match Ast.Parameter.view parameter with
@@ -292,7 +327,9 @@ and expr_apply_argument_doc = fun expr ->
   | Array
   | PolyVariant _
   | LabeledArg _
-  | OptionalArg _ -> expr_doc_with_view expr view
+  | OptionalArg _
+  | Record
+  | RecordUpdate -> expr_doc_with_view expr view
   | _ -> Doc.concat [ Doc.lparen; expr_doc_with_view expr view; Doc.rparen ]
 
 and expr_infix_operand_doc = fun expr ->
@@ -391,6 +428,9 @@ and expr_doc_with_view = fun expr (view: Ast.Expr.view) ->
       |> List.map ~fn:expr_doc
       |> Doc.join (Doc.concat [ Doc.semi; Doc.space ])
       |> fun items -> Doc.concat [ Doc.text "[|"; items; Doc.text "|]" ]
+  | Record
+  | RecordUpdate ->
+      record_expr_doc expr
   | Sequence { left=Some left; right=Some right } ->
       Doc.concat [ expr_doc left; Doc.semi; Doc.space; expr_doc right ]
   | Sequence _ ->
@@ -571,11 +611,41 @@ and expr_doc_with_view = fun expr (view: Ast.Expr.view) ->
   | Object
   | New
   | Attribute _
-  | Record
-  | RecordUpdate
   | Error _
   | Unknown _ ->
       unsupported "unsupported expression"
+
+and record_expr_field_doc = fun (field: Ast.RecordExpr.field) ->
+  match field.path with
+  | Some path -> (
+      match field.value with
+      | Some value -> Doc.concat [ path_doc path; Doc.space; Doc.equal; Doc.space; expr_doc value ]
+      | None -> path_doc path
+    )
+  | None -> unsupported "unsupported record expression field"
+
+and record_expr_fields_doc = fun expr ->
+  let fields = ref [] in
+  Ast.RecordExpr.for_each_field
+    expr
+    ~fn:(fun field -> fields := record_expr_field_doc field :: !fields);
+  List.reverse !fields |> Doc.join (Doc.concat [ Doc.semi; Doc.space ])
+
+and record_expr_doc = fun expr ->
+  let fields = record_expr_fields_doc expr in
+  match Ast.RecordExpr.base expr with
+  | Some base ->
+      Doc.concat
+        [ Doc.lbrace; Doc.space; expr_doc base; Doc.space; Doc.text "with"; (
+            match fields with
+            | Doc.Empty -> Doc.empty
+            | fields -> Doc.concat [ Doc.space; fields ]
+          ); Doc.space; Doc.rbrace; ]
+  | None -> (
+      match fields with
+      | Doc.Empty -> Doc.concat [ Doc.lbrace; Doc.rbrace ]
+      | fields -> Doc.concat [ Doc.lbrace; Doc.space; fields; Doc.space; Doc.rbrace ]
+    )
 
 and let_binding_doc = fun binding ->
   let parts = let_binding_parts binding in

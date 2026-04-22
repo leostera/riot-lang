@@ -130,6 +130,20 @@ module Pattern: sig
   val for_each_child_pattern: t -> fn:(t -> unit) -> unit
 end
 
+module RecordPattern: sig
+  type t = pattern
+  type field = {
+    path: path option;
+    pattern: pattern option;
+    node: pattern;
+  }
+  val cast: pattern -> t option
+
+  val open_wildcard: t -> Token.t option
+
+  val for_each_field: t -> fn:(field -> unit) -> unit
+end
+
 module Parameter: sig
   type t = parameter
   type view =
@@ -230,6 +244,20 @@ module Expr: sig
   val for_each_match_case: t -> fn:(match_case -> unit) -> unit
 end
 
+module RecordExpr: sig
+  type t = expr
+  type field = {
+    path: path option;
+    value: expr option;
+    node: expr;
+  }
+  val cast: expr -> t option
+
+  val base: t -> expr option
+
+  val for_each_field: t -> fn:(field -> unit) -> unit
+end
+
 module Path: sig
   type t = path
   val cast: Node.t -> t option
@@ -305,16 +333,12 @@ module TypeDeclaration: sig
   type t = type_declaration
   type parameter =
     | Named of {
-      name: Token.t;
-      quote: Token.t option;
-      variance: Token.t option;
-      injective: Token.t option;
-    }
-    | Wildcard of {
-      wildcard: Token.t;
-      variance: Token.t option;
-      injective: Token.t option;
-    }
+        name: Token.t;
+        quote: Token.t option;
+        variance: Token.t option;
+        injective: Token.t option
+      }
+    | Wildcard of { wildcard: Token.t; variance: Token.t option; injective: Token.t option }
   val cast: Node.t -> t option
 
   val name: t -> Token.t option

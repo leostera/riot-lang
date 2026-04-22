@@ -94,6 +94,9 @@ let benchmarks = [
     (make_fixture ~name:"selectors and indexes" ~path:(Path.v "sample.ml") "let field = value.name\nlet item = values.(index)\nlet char = text.[index]\n");
   compare_fixture
     ~config:small_config
+    (make_fixture ~name:"record expressions and patterns" ~path:(Path.v "sample.ml") "let record = { x = 1; y }\nlet updated = { base with x = 2; y }\nlet { x; y = z; _ } = record\n");
+  compare_fixture
+    ~config:small_config
     (make_fixture ~name:"try expression" ~path:(Path.v "sample.ml") "let value = try read () with | Failure -> 0\n");
   compare_fixture
     ~config:small_config

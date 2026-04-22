@@ -137,6 +137,12 @@ let tests = [
         ~expected:"let field = value.name\nlet item = values.(index)\nlet char = text.[index]\n"
         "let field = value.name\nlet item = values.(index)\nlet char = text.[index]\n");
   Test.case
+    "lower2 formats record expressions and patterns"
+    (fun _ctx ->
+      assert_format2_ml
+        ~expected:"let record = { x = 1; y }\nlet updated = { base with x = 2; y }\nlet { x; y = z; _ } = record\n"
+        "let record = { x = 1; y }\nlet updated = { base with x = 2; y }\nlet { x; y = z; _ } = record\n");
+  Test.case
     "lower2 formats assertion and lazy expressions"
     (fun _ctx -> assert_format2_ml ~expected:"let _ = assert ready\nlet later = lazy compute\n" "let _ = assert ready\nlet later = lazy compute\n");
   Test.case
@@ -168,7 +174,7 @@ let tests = [
     (fun _ctx -> assert_format2_mli ~expected:"val id: 'a -> 'a\n" "val id : 'a -> 'a\n");
   Test.case
     "lower2 rejects unsupported shapes instead of replaying source"
-    (fun _ctx -> assert_format2_ml_fails "let record = { x = 1 }\n");
+    (fun _ctx -> assert_format2_ml_fails "let object_value = object end\n");
   Test.case
     "lower2 formats a selected existing fixture subset idempotently"
     (fun _ctx -> assert_lower2_existing_fixture_subset ());
