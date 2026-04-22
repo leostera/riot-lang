@@ -119,6 +119,21 @@ let test_clear = fun _ctx ->
   else
     Error "expected clear to empty vector"
 
+let test_truncate = fun _ctx ->
+  let vector = Vector.from_list [ 1; 2; 3; 4 ] in
+  let capacity = Vector.capacity vector in
+  match Vector.truncate vector ~len:2 with
+  | Error _ -> Error "expected truncate to accept shorter length"
+  | Ok () when Array.to_list (Vector.to_array vector) = [ 1; 2 ] && Vector.capacity vector = capacity -> Ok ()
+  | Ok () -> Error "expected truncate to shorten length without shrinking capacity"
+
+let test_truncate_past_length = fun _ctx ->
+  let vector = Vector.from_list [ 1; 2; 3 ] in
+  match Vector.truncate vector ~len:5 with
+  | Error Vector.OutOfBounds when Array.to_list (Vector.to_array vector) = [ 1; 2; 3 ] -> Ok ()
+  | Error _ -> Error "expected truncate past length to report out of bounds"
+  | Ok () -> Error "expected truncate past length to leave vector unchanged"
+
 let test_reserve = fun _ctx ->
   let vector = Vector.create () in
   Vector.reserve vector ~size:10;
@@ -192,6 +207,8 @@ let tests =
     case "Vector.set updates a valid index" test_set;
     case "Vector.set reports out-of-bounds errors" test_set_oob;
     case "Vector.clear empties the vector" test_clear;
+    case "Vector.truncate shortens length without shrinking capacity" test_truncate;
+    case "Vector.truncate past length reports out of bounds" test_truncate_past_length;
     case "Vector.reserve increases capacity" test_reserve;
     case "Vector.append moves right into left and clears right" test_append;
     case "Vector.split_off divides prefix and tail" test_split_off;

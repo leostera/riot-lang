@@ -1,7 +1,6 @@
 open Std
 open Std.Collections
 open Std.Data
-module Iterator = Iter.Iterator
 module Slice = IO.IoVec.IoSlice
 
 type token_leaf = {
@@ -42,69 +41,48 @@ type t = {
 
 type frame = {
   kind: Syntax_kind2.t;
-  children: child Vector.t;
+  first_pending_child: int;
+  mutable has_range: bool;
+  mutable frame_raw_lo: int;
+  mutable frame_raw_hi: int;
 }
 
 let raw_at = fun raw_tokens raw_index -> Vector.get_unchecked raw_tokens ~at:raw_index
 
 let raw_start = fun raw_tokens raw_index ->
-  if raw_index < 0 || raw_index >= Vector.length raw_tokens then
+  if Int.(raw_index < 0) || Int.(raw_index >= Vector.length raw_tokens) then
     0
   else
     (raw_at raw_tokens raw_index).Raw_token.span.Ceibo.Span.start
 
 let raw_end = fun raw_tokens raw_index ->
-  if raw_index < 0 || raw_index >= Vector.length raw_tokens then
+  if Int.(raw_index < 0) || Int.(raw_index >= Vector.length raw_tokens) then
     0
   else
     (raw_at raw_tokens raw_index).Raw_token.span.Ceibo.Span.end_
 
-let child_range = fun (nodes: node Vector.t) (tokens: token_leaf Vector.t) child ->
+let include_range = fun frame ~lo ~hi ->
+  if frame.has_range then
+    (
+      frame.frame_raw_lo <- Int.min frame.frame_raw_lo lo;
+      frame.frame_raw_hi <- Int.max frame.frame_raw_hi hi
+    )
+  else (
+    frame.has_range <- true;
+    frame.frame_raw_lo <- lo;
+    frame.frame_raw_hi <- hi
+  )
+
+let include_child_range = fun ~(nodes:node Vector.t) ~(tokens:token_leaf Vector.t) frame child ->
   match child with
   | Token token_id ->
       let token = Vector.get_unchecked tokens ~at:token_id in
-      Some (token.raw_lo, token.raw_hi)
+      include_range frame ~lo:token.raw_lo ~hi:token.raw_hi
   | Node node_id ->
       let node = Vector.get_unchecked nodes ~at:node_id in
-      Some (node.raw_lo, node.raw_hi)
+      include_range frame ~lo:node.raw_lo ~hi:node.raw_hi
   | Missing _ ->
-      None
-
-let finish_frame = fun ~raw_tokens ~(nodes:node Vector.t) ~(tokens:token_leaf Vector.t) ~(children_store:child Vector.t) frame ->
-  let first_child = Vector.length children_store in
-  Vector.iter frame.children
-  |> Iterator.for_each ~fn:(fun child -> Vector.push children_store ~value:child);
-  let child_count = Vector.length frame.children in
-  let range = ref None in
-  Vector.iter frame.children |> Iterator.for_each
-    ~fn:(fun child ->
-      match child_range nodes tokens child with
-      | None -> ()
-      | Some (lo, hi) -> (
-          match !range with
-          | None -> range := Some (lo, hi)
-          | Some (acc_lo, acc_hi) -> range := Some (Int.min acc_lo lo, Int.max acc_hi hi)
-        ));
-  let raw_lo, raw_hi, full_width =
-    match !range with
-    | None -> (0, 0, 0)
-    | Some (raw_lo, raw_hi) ->
-        let width =
-          if raw_hi <= raw_lo then
-            0
-          else
-            raw_end raw_tokens (raw_hi - 1) - raw_start raw_tokens raw_lo
-        in
-        (raw_lo, raw_hi, width)
-  in
-  {
-    kind = frame.kind;
-    first_child;
-    child_count;
-    raw_lo;
-    raw_hi;
-    full_width;
-  }
+      ()
 
 let build = fun ~source ~token_stream ~events ->
   let event_count = Event.Buffer.length events in
@@ -112,56 +90,109 @@ let build = fun ~source ~token_stream ~events ->
   let tokens: token_leaf Vector.t = Vector.with_capacity ~size:significant_count in
   let nodes: node Vector.t = Vector.with_capacity ~size:(Int.max 1 (event_count / 2)) in
   let children_store: child Vector.t = Vector.with_capacity ~size:event_count in
-  let stack = ref [] in
+  let pending_children: child Vector.t = Vector.with_capacity ~size:event_count in
+  let frame_stack: frame Vector.t = Vector.with_capacity ~size:64 in
   let root = ref None in
   let next_raw_lo = ref 0 in
   let raw_tokens = token_stream.Raw_token.raw in
   let push_child child =
-    match !stack with
-    | frame :: _ -> Vector.push frame.children ~value:child
-    | [] -> ()
+    let depth = Vector.length frame_stack in
+    if Int.(depth > 0) then
+      let frame = Vector.get_unchecked frame_stack ~at:Int.(depth - 1) in
+      Vector.push pending_children ~value:child;
+      include_child_range ~nodes ~tokens frame child
   in
-  let push_node kind =
-    stack := { kind; children = (Vector.with_capacity ~size:4 : child Vector.t) } :: !stack
+  let push_node kind = Vector.push frame_stack
+    ~value:{
+      kind;
+      first_pending_child = Vector.length pending_children;
+      has_range = false;
+      frame_raw_lo = 0;
+      frame_raw_hi = 0;
+    }
+  in
+  let copy_pending_children first_child limit =
+    let rec loop index =
+      if Int.(index < limit) then
+        (
+          Vector.push children_store ~value:(Vector.get_unchecked pending_children ~at:index);
+          loop Int.(index + 1)
+        )
+    in
+    loop first_child
   in
   let pop_node () =
-    match !stack with
-    | [] -> ()
-    | frame :: rest ->
-        stack := rest;
-        let node = finish_frame ~raw_tokens ~nodes ~tokens ~children_store frame in
+    let depth = Vector.length frame_stack in
+    if Int.(depth > 0) then
+      (
+        let frame = Vector.get_unchecked frame_stack ~at:Int.(depth - 1) in
+        Vector.truncate_unchecked frame_stack ~len:Int.(depth - 1);
+        let pending_limit = Vector.length pending_children in
+        let first_child = Vector.length children_store in
+        copy_pending_children frame.first_pending_child pending_limit;
+        let child_count = Int.(pending_limit - frame.first_pending_child) in
+        Vector.truncate_unchecked pending_children ~len:frame.first_pending_child;
+        let raw_lo, raw_hi, full_width =
+          if frame.has_range then
+            let width =
+              if Int.(frame.frame_raw_hi <= frame.frame_raw_lo) then
+                0
+              else
+                Int.(raw_end raw_tokens (frame.frame_raw_hi - 1) - raw_start raw_tokens frame.frame_raw_lo)
+            in
+            (frame.frame_raw_lo, frame.frame_raw_hi, width)
+          else
+            (0, 0, 0)
+        in
+        let node = {
+          kind = frame.kind;
+          first_child;
+          child_count;
+          raw_lo;
+          raw_hi;
+          full_width;
+        }
+        in
         let node_id = Vector.length nodes in
         Vector.push nodes ~value:node;
-        (
-          match rest with
-          | _ :: _ -> push_child (Node node_id)
-          | [] -> root := Some node_id
-        )
+        if Int.(Vector.length frame_stack > 0) then
+          push_child (Node node_id)
+        else
+          root := Some node_id
+      )
   in
   let push_token raw_index =
-    if raw_index >= 0 && raw_index < Vector.length raw_tokens then
+    if Int.(raw_index >= 0) && Int.(raw_index < Vector.length raw_tokens) then
       let raw = raw_at raw_tokens raw_index in
       let token_id = Vector.length tokens in
       let token = {
         kind = raw.Raw_token.kind;
         raw_lo = !next_raw_lo;
-        raw_hi = raw_index + 1;
-        body_raw = raw_index
-      } in
-      next_raw_lo := raw_index + 1;
+        raw_hi =
+          Int.(raw_index + 1);
+        body_raw = raw_index;
+      }
+      in
+      next_raw_lo := Int.(raw_index + 1);
       Vector.push tokens ~value:token;
       push_child (Token token_id)
   in
-  Event.Buffer.iter events |> Iterator.for_each
-    ~fn:(
-      function
-      | Event.StartNode (Some kind) -> push_node kind
-      | Event.StartNode None -> push_node Syntax_kind2.ERROR
-      | Event.FinishNode -> pop_node ()
-      | Event.Token raw_index -> push_token raw_index
-      | Event.Missing (kind, offset) -> push_child (Missing { kind; offset })
-      | Event.Error _ -> ()
-    );
+  let rec loop_events index =
+    if Int.(index < event_count) then
+      (
+        (
+          match Event.Buffer.get_unchecked events ~at:index with
+          | Event.StartNode (Some kind) -> push_node kind
+          | Event.StartNode None -> push_node Syntax_kind2.ERROR
+          | Event.FinishNode -> pop_node ()
+          | Event.Token raw_index -> push_token raw_index
+          | Event.Missing (kind, offset) -> push_child (Missing { kind; offset })
+          | Event.Error _ -> ()
+        );
+        loop_events Int.(index + 1)
+      )
+  in
+  loop_events 0;
   let root =
     match !root with
     | Some root -> root

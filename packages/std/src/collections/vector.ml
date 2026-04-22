@@ -6,6 +6,7 @@ type 'value t = {
 }
 
 type error =
+  | OutOfBounds
   | OutOfBoundsSet of { length: int; at: int }
 
 let create = fun () -> { data = [||]; length = 0 }
@@ -105,6 +106,16 @@ let remove = fun vector ~at ->
     Some value
 
 let clear = fun vector -> vector.length <- 0
+
+let truncate_unchecked = fun vector ~len -> vector.length <- len
+
+let truncate = fun vector ~len:new_length ->
+  if Int.(new_length < 0) || Int.(new_length > len vector) then
+    Error OutOfBounds
+  else (
+    truncate_unchecked vector ~len:new_length;
+    Ok ()
+  )
 
 let to_array = fun vector -> Array.sub vector.data ~offset:0 ~len:vector.length
 

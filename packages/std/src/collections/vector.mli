@@ -1,5 +1,8 @@
+open Prelude
+
 type 'value t
 type error =
+  | OutOfBounds
   | OutOfBoundsSet of { length: int; at: int }
 val create: unit -> 'value t
 
@@ -19,7 +22,7 @@ val get: 'value t -> at:int -> 'value option
 
 val get_unchecked: 'value t -> at:int -> 'value
 
-val set: 'value t -> at:int -> value:'value -> (unit, error) Kernel.result
+val set: 'value t -> at:int -> value:'value -> (unit, error) result
 
 val set_unchecked: 'value t -> at:int -> value:'value -> unit
 
@@ -32,6 +35,10 @@ val is_empty: 'value t -> bool
 val capacity: 'value t -> int
 
 val clear: 'value t -> unit
+
+val truncate: 'value t -> len:int -> (unit, error) result
+
+val truncate_unchecked: 'value t -> len:int -> unit
 
 val to_array: 'value t -> 'value array
 
