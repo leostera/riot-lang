@@ -1794,6 +1794,57 @@ let test_kernel_live_create_library_orders_dependencies_before_error = fun _ctx 
         )
     )
 
+let test_kernel_unix_addr_interface_keeps_module_graph_dependencies = fun _ctx ->
+  match plan_kernel_package_with_fresh_store () with
+  | Error _ as err -> err
+  | Ok (module_graph, _live_objects, _cached_objects) -> (
+      match find_module_node_by_label module_graph "MLI(Kernel__Net__Addr__Unix)" with
+      | None -> Error "missing MLI(Kernel__Net__Addr__Unix) in module graph"
+      | Some node ->
+          let deps = module_dependency_labels module_graph node in
+          let has_any labels =
+            List.any labels ~fn:(fun label -> List.contains deps ~value:label)
+          in
+          if not (has_any [ "ML(Kernel__Result)"; "MLI(Kernel__Result)" ]) then
+            Error ("expected MLI(Kernel__Net__Addr__Unix) to keep Result dependency in module graph, got ["
+            ^ String.concat ", " deps
+            ^ "]")
+          else if not (has_any [ "ML(Kernel__System_error)"; "MLI(Kernel__System_error)" ]) then
+            Error ("expected MLI(Kernel__Net__Addr__Unix) to keep System_error dependency in module graph, got ["
+            ^ String.concat ", " deps
+            ^ "]")
+          else if not (has_any [ "ML(Kernel__Net__Socket_addr)"; "MLI(Kernel__Net__Socket_addr)" ]) then
+            Error ("expected MLI(Kernel__Net__Addr__Unix) to keep Socket_addr dependency in module graph, got ["
+            ^ String.concat ", " deps
+            ^ "]")
+          else
+            Ok ()
+    )
+
+let test_kernel_process_interface_keeps_public_child_root_dependency = fun _ctx ->
+  match plan_kernel_package_with_fresh_store () with
+  | Error _ as err -> err
+  | Ok (module_graph, _live_objects, _cached_objects) -> (
+      match find_module_node_by_label module_graph "MLI(Kernel__Process)" with
+      | None -> Error "missing MLI(Kernel__Process) in module graph"
+      | Some node ->
+          let deps = module_dependency_labels module_graph node in
+          if not (List.contains deps ~value:"ML(Kernel__Fs)") && not (List.contains deps ~value:"MLI(Kernel__Fs)") then
+            Error ("expected MLI(Kernel__Process) to keep public Fs dependency in module graph, got ["
+            ^ String.concat ", " deps
+            ^ "]")
+          else if List.contains deps ~value:"ML(Kernel__Fs__File)" || List.contains deps ~value:"MLI(Kernel__Fs__File)" then
+            Error ("did not expect MLI(Kernel__Process) to depend directly on Kernel__Fs__File, got ["
+            ^ String.concat ", " deps
+            ^ "]")
+          else if not (List.contains deps ~value:"ML(Kernel__System_error)") && not (List.contains deps ~value:"MLI(Kernel__System_error)") then
+            Error ("expected MLI(Kernel__Process) to keep System_error dependency in module graph, got ["
+            ^ String.concat ", " deps
+            ^ "]")
+          else
+            Ok ()
+    )
+
 let test_kernel_plan_bundle_cache_hit_preserves_live_create_library_order = fun _ctx ->
   match plan_kernel_package_with_fresh_store () with
   | Error _ as err -> err
@@ -2098,6 +2149,8 @@ let tests =
     case "nested library interfaces depend on inherited aliases" test_nested_library_interfaces_depend_on_inherited_aliases;
     case "legacy nested sibling plan bundle is ignored after version bump" test_legacy_nested_sibling_plan_bundle_is_ignored_after_version_bump;
     case ~size:Large "kernel live CreateLibrary orders dependencies before Error" test_kernel_live_create_library_orders_dependencies_before_error;
+    case ~size:Large "kernel unix addr interface keeps module graph dependencies" test_kernel_unix_addr_interface_keeps_module_graph_dependencies;
+    case ~size:Large "kernel process interface keeps public child root dependency" test_kernel_process_interface_keeps_public_child_root_dependency;
     case ~size:Large "kernel plan bundle cache hit preserves live CreateLibrary order" test_kernel_plan_bundle_cache_hit_preserves_live_create_library_order;
     case ~size:Large "kernel CreateLibrary objects are topological" test_kernel_create_library_is_topological;
     case ~size:Large "kernel CreateLibrary dependencies are unique" test_kernel_create_library_dependencies_are_unique;
