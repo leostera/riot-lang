@@ -75,12 +75,16 @@ end
 
 module TypeExpr: sig
   type t = type_expr
+  type tuple_separator =
+    | Star
+    | Comma
+    | UnknownSeparator
   type view =
     | Path of { path: path }
     | Var of { name: Token.t option }
     | Wildcard
     | Arrow of { left: t option; right: t option }
-    | Tuple of { left: t option; right: t option }
+    | Tuple of { left: t option; right: t option; separator: tuple_separator }
     | Apply of { argument: t option; constructor: t option }
     | Parenthesized of { inner: t option }
     | Opaque of Node.t

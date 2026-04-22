@@ -242,6 +242,12 @@ let tests = [
     "lower2 formats type aliases with parameters"
     (fun _ctx -> assert_format2_mli ~expected:"type 'a t = 'a list\n" "type 'a t = 'a list\n");
   Test.case
+    "lower2 formats tuple type separators structurally"
+    (fun _ctx ->
+      assert_format2_mli
+        ~expected:"type ('a, 'e) result_like = ('a, 'e) result\ntype pair = int * string\n"
+        "type ('a, 'e) result_like = ('a, 'e) result\ntype pair = int * string\n");
+  Test.case
     "lower2 formats simple value declarations"
     (fun _ctx -> assert_format2_mli ~expected:"val id: 'a -> 'a\n" "val id : 'a -> 'a\n");
   Test.case

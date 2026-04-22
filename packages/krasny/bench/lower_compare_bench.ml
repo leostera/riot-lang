@@ -64,6 +64,9 @@ let benchmarks = [
     (make_fixture ~name:"type alias" ~path:(Path.v "sample.mli") "type 'a t = 'a list\n");
   compare_fixture
     ~config:small_config
+    (make_fixture ~name:"tuple type separators" ~path:(Path.v "sample.mli") "type ('a, 'e) result_like = ('a, 'e) result\ntype pair = int * string\n");
+  compare_fixture
+    ~config:small_config
     (make_fixture ~name:"value declaration" ~path:(Path.v "sample.mli") "val id : 'a -> 'a\n");
   compare_fixture
     ~config:small_config

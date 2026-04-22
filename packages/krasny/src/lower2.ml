@@ -147,24 +147,53 @@ let let_binding_parts = fun binding ->
 
 let rec type_expr_doc = fun type_expr ->
   match Ast.TypeExpr.view type_expr with
-  | Path { path } -> path_doc path
-  | Var { name=Some name } -> Doc.concat [ Doc.text "'"; token_doc name ]
-  | Var { name=None } -> unsupported "type variable without name"
-  | Wildcard -> Doc.text "_"
-  | Arrow { left=Some left; right=Some right } -> Doc.concat
-    [ type_expr_doc left; Doc.space; Doc.arrow; Doc.space; type_expr_doc right ]
-  | Arrow _ -> unsupported "incomplete arrow type expression"
-  | Tuple { left=Some left; right=Some right } -> Doc.concat
-    [ type_expr_doc left; Doc.space; Doc.text "*"; Doc.space; type_expr_doc right ]
-  | Tuple _ -> unsupported "incomplete tuple type expression"
-  | Apply { argument=Some argument; constructor=Some constructor } -> Doc.concat
-    [ type_expr_doc argument; Doc.space; type_expr_doc constructor ]
-  | Apply _ -> unsupported "incomplete type application"
-  | Parenthesized { inner=Some inner } -> Doc.concat [ Doc.lparen; type_expr_doc inner; Doc.rparen ]
-  | Parenthesized { inner=None } -> Doc.concat [ Doc.lparen; Doc.rparen ]
+  | Path { path } ->
+      path_doc path
+  | Var { name=Some name } ->
+      Doc.concat [ Doc.text "'"; token_doc name ]
+  | Var { name=None } ->
+      unsupported "type variable without name"
+  | Wildcard ->
+      Doc.text "_"
+  | Arrow { left=Some left; right=Some right } ->
+      Doc.concat [ type_expr_doc left; Doc.space; Doc.arrow; Doc.space; type_expr_doc right ]
+  | Arrow _ ->
+      unsupported "incomplete arrow type expression"
+  | Tuple { separator=Star; _ } ->
+      let items = ref [] in
+      Ast.TypeExpr.for_each_child_type
+        type_expr
+        ~fn:(fun child -> items := type_expr_doc child :: !items);
+      (
+        match List.reverse !items with
+        | [] -> unsupported "incomplete tuple type expression"
+        | items -> Doc.join (Doc.concat [ Doc.space; Doc.text "*"; Doc.space ]) items
+      )
+  | Tuple { separator=Comma; _ } ->
+      let items = ref [] in
+      Ast.TypeExpr.for_each_child_type
+        type_expr
+        ~fn:(fun child -> items := type_expr_doc child :: !items);
+      (
+        match List.reverse !items with
+        | [] -> unsupported "incomplete tuple type expression"
+        | items -> Doc.concat
+          [ Doc.lparen; Doc.join (Doc.concat [ Doc.comma; Doc.space ]) items; Doc.rparen; ]
+      )
+  | Tuple { separator=UnknownSeparator; _ } ->
+      unsupported "tuple type expression without separator"
+  | Apply { argument=Some argument; constructor=Some constructor } ->
+      Doc.concat [ type_expr_doc argument; Doc.space; type_expr_doc constructor ]
+  | Apply _ ->
+      unsupported "incomplete type application"
+  | Parenthesized { inner=Some inner } ->
+      Doc.concat [ Doc.lparen; type_expr_doc inner; Doc.rparen ]
+  | Parenthesized { inner=None } ->
+      Doc.concat [ Doc.lparen; Doc.rparen ]
   | Opaque _
   | Error _
-  | Unknown _ -> unsupported "unsupported type expression"
+  | Unknown _ ->
+      unsupported "unsupported type expression"
 
 let rec pattern_doc = fun pattern ->
   match Ast.Pattern.view pattern with

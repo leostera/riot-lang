@@ -262,6 +262,54 @@ let test_type_expression_views = fun _ctx ->
       )
   | _ -> Error "expected external declaration"
 
+let test_type_tuple_separator_views = fun _ctx ->
+  let root = parse_mli "type ('a, 'e) result_like = ('a, 'e) result\ntype pair = int * string\n"
+  |> Result.expect ~msg:"expected parse2 interface" in
+  let result_item = nth_signature_item root 0 |> require_some ~msg:"expected result-like type item" in
+  (
+    match Ast2.SignatureItem.view result_item with
+    | Ast2.SignatureItem.Type decl ->
+        let manifest = Ast2.TypeDeclaration.manifest decl |> require_some ~msg:"expected result-like manifest" in
+        (
+          match Ast2.TypeExpr.view manifest with
+          | Ast2.TypeExpr.Apply { argument=Some argument; constructor=Some constructor } ->
+              assert_type_path_last_ident constructor "result";
+              (
+                match Ast2.TypeExpr.view argument with
+                | Ast2.TypeExpr.Tuple {
+                  separator=Ast2.TypeExpr.Comma;
+                  left=Some left;
+                  right=Some right
+                } -> (
+                    match Ast2.TypeExpr.view left, Ast2.TypeExpr.view right with
+                    | Ast2.TypeExpr.Var { name=Some left_name }, Ast2.TypeExpr.Var {
+                      name=Some right_name
+                    } ->
+                        Test.assert_equal ~expected:"a" ~actual:(Ast2.Token.text left_name);
+                        Test.assert_equal ~expected:"e" ~actual:(Ast2.Token.text right_name);
+                        Ok ()
+                    | _ -> Error "expected comma tuple type variables"
+                  )
+                | _ -> Error "expected comma tuple type argument"
+              )
+          | _ -> Error "expected type constructor application"
+        )
+    | _ -> Error "expected result-like type declaration"
+  ) |> Result.expect ~msg:"expected comma type tuple";
+  let pair_item = nth_signature_item root 1 |> require_some ~msg:"expected pair type item" in
+  match Ast2.SignatureItem.view pair_item with
+  | Ast2.SignatureItem.Type decl ->
+      let manifest = Ast2.TypeDeclaration.manifest decl |> require_some ~msg:"expected pair manifest" in
+      (
+        match Ast2.TypeExpr.view manifest with
+        | Ast2.TypeExpr.Tuple { separator=Ast2.TypeExpr.Star; left=Some left; right=Some right } ->
+            assert_type_path_last_ident left "int";
+            assert_type_path_last_ident right "string";
+            Ok ()
+        | _ -> Error "expected star tuple type"
+      )
+  | _ -> Error "expected pair type declaration"
+
 let assert_type_manifest_is_none = fun source ->
   let root = parse_mli source |> Result.expect ~msg:"expected parse2 interface" in
   let type_item = nth_signature_item root 0 |> require_some ~msg:"expected type signature item" in
@@ -988,6 +1036,7 @@ let tests = [
   Test.case "ast2 exposes tuple and cons pattern views" test_pattern_views;
   Test.case "ast2 exposes signature declaration views" test_signature_and_type_views;
   Test.case "ast2 exposes type expression views" test_type_expression_views;
+  Test.case "ast2 exposes type tuple separators" test_type_tuple_separator_views;
   Test.case "ast2 keeps non-manifest type bodies out of manifest views" test_non_manifest_type_declaration_bodies;
   Test.case "ast2 exposes type declaration parameters" test_type_declaration_parameters;
   Test.case "ast2 exposes open declaration path tokens" test_open_declaration_path_tokens;

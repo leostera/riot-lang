@@ -428,12 +428,17 @@ end
 module TypeExpr = struct
   type t = type_expr
 
+  type tuple_separator =
+    | Star
+    | Comma
+    | UnknownSeparator
+
   type view =
     | Path of { path: path }
     | Var of { name: Token.t option }
     | Wildcard
     | Arrow of { left: t option; right: t option }
-    | Tuple of { left: t option; right: t option }
+    | Tuple of { left: t option; right: t option; separator: tuple_separator }
     | Apply of { argument: t option; constructor: t option }
     | Parenthesized of { inner: t option }
     | Opaque of Node.t
@@ -445,6 +450,18 @@ module TypeExpr = struct
       Some node
     else
       None
+
+  let tuple_separator = fun type_expr ->
+    let rec loop index =
+      if index >= Node.child_count type_expr then
+        UnknownSeparator
+      else
+        match child_token_at type_expr index with
+        | Some token when token_kind_is token Syntax_kind2.STAR -> Star
+        | Some token when token_kind_is token Syntax_kind2.COMMA -> Comma
+        | _ -> loop (index + 1)
+    in
+    loop 0
 
   let rec view = fun (type_expr: type_expr) ->
     match Node.kind type_expr with
@@ -471,7 +488,8 @@ module TypeExpr = struct
     | Syntax_kind2.TUPLE_TYPE ->
         Tuple {
           left = nth_child_node_matching type_expr 0 ~matches:is_type_expr_kind;
-          right = nth_child_node_matching type_expr 1 ~matches:is_type_expr_kind
+          right = nth_child_node_matching type_expr 1 ~matches:is_type_expr_kind;
+          separator = tuple_separator type_expr
         }
     | Syntax_kind2.APPLY_TYPE ->
         Apply {
