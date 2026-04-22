@@ -165,6 +165,12 @@ let tests = [
         ~expected:"let value = let module M = Foo.Bar in result\nlet empty = let module Empty = struct end in done_\n"
         "let value = let module M = Foo.Bar in result\nlet empty = let module Empty = struct end in done_\n");
   Test.case
+    "lower2 formats let exception expressions"
+    (fun _ctx ->
+      assert_format2_ml
+        ~expected:"let value = let exception Local of int * Foo.t in result\nlet bare = let exception Done in done_\n"
+        "let value = let exception Local of int * Foo.t in result\nlet bare = let exception Done in done_\n");
+  Test.case
     "lower2 formats assertion and lazy expressions"
     (fun _ctx -> assert_format2_ml ~expected:"let _ = assert ready\nlet later = lazy compute\n" "let _ = assert ready\nlet later = lazy compute\n");
   Test.case

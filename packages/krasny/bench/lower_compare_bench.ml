@@ -115,6 +115,9 @@ let benchmarks = [
     (make_fixture ~name:"let module expressions" ~path:(Path.v "sample.ml") "let value = let module M = Foo.Bar in result\nlet empty = let module Empty = struct end in done_\n");
   compare_fixture
     ~config:small_config
+    (make_fixture ~name:"let exception expressions" ~path:(Path.v "sample.ml") "let value = let exception Local of int * Foo.t in result\nlet bare = let exception Done in done_\n");
+  compare_fixture
+    ~config:small_config
     (make_fixture ~name:"try expression" ~path:(Path.v "sample.ml") "let value = try read () with | Failure -> 0\n");
   compare_fixture
     ~config:small_config

@@ -1041,6 +1041,94 @@ end = struct
     | _ -> ()
 end
 
+module LetExceptionExpr: sig
+  type t = expr
+  val cast: expr -> t option
+
+  val let_token: t -> token option
+
+  val exception_token: t -> token option
+
+  val name: t -> token option
+
+  val of_token: t -> token option
+
+  val in_token: t -> token option
+
+  val body: t -> expr option
+
+  val for_each_payload_token: t -> fn:(token -> unit) -> unit
+end = struct
+  type t = expr
+
+  let cast = fun (expr: expr) ->
+    if node_kind_is expr Syntax_kind2.LET_EXCEPTION_EXPR then
+      Some expr
+    else
+      None
+
+  let let_token = fun expr -> Node.first_child_token expr ~kind:Syntax_kind2.LET_KW
+
+  let exception_token = fun expr -> Node.first_child_token expr ~kind:Syntax_kind2.EXCEPTION_KW
+
+  let of_token = fun expr -> Node.first_child_token expr ~kind:Syntax_kind2.OF_KW
+
+  let in_token = fun expr -> Node.first_child_token expr ~kind:Syntax_kind2.IN_KW
+
+  let token_index = fun expr ~from ~matches ->
+    let count = Node.child_count expr in
+    let rec loop index =
+      if index >= count then
+        None
+      else
+        match child_token_at expr index with
+        | Some token when matches (Token.kind token) -> Some index
+        | _ -> loop (index + 1)
+    in
+    loop from
+
+  let exception_index = fun expr ->
+    token_index expr ~from:0 ~matches:(fun kind -> Syntax_kind2.(kind = EXCEPTION_KW))
+
+  let of_index = fun expr ->
+    token_index expr ~from:0 ~matches:(fun kind -> Syntax_kind2.(kind = OF_KW))
+
+  let in_index = fun expr ->
+    token_index expr ~from:0 ~matches:(fun kind -> Syntax_kind2.(kind = IN_KW))
+
+  let name = fun expr ->
+    match exception_index expr with
+    | Some exception_index -> (
+        match child_token_at expr (exception_index + 1) with
+        | Some token when token_kind_is token Syntax_kind2.IDENT -> Some token
+        | _ -> None
+      )
+    | None -> None
+
+  let body = first_expr_child
+
+  let payload_bounds = fun expr ->
+    match of_index expr, in_index expr with
+    | Some of_index, Some in_index when of_index < in_index -> Some (of_index + 1, in_index)
+    | _ -> None
+
+  let for_each_payload_token = fun expr ~fn ->
+    match payload_bounds expr with
+    | None -> ()
+    | Some (start, stop) ->
+        let rec loop index =
+          if index < stop then
+            (
+              match child_token_at expr index with
+              | Some token ->
+                  fn token;
+                  loop (index + 1)
+              | None -> loop (index + 1)
+            )
+        in
+        loop start
+end
+
 module FirstClassModuleExpr: sig
   type t = expr
   type module_path =

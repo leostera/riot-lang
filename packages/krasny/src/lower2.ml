@@ -641,9 +641,10 @@ and expr_doc_with_view = fun expr (view: Ast.Expr.view) ->
       local_open_expr_doc expr
   | LetModule _ ->
       let_module_expr_doc expr
+  | LetException _ ->
+      let_exception_expr_doc expr
   | FirstClassModule ->
       first_class_module_expr_doc expr
-  | LetException _
   | Extension
   | Unreachable
   | Object
@@ -781,6 +782,67 @@ and let_module_expr_doc = fun expr ->
           expr_doc body;
         ]
   | _ -> unsupported "incomplete let module expression"
+
+and let_exception_payload_needs_space = fun previous current ->
+  match previous, current with
+  | (_, Kind.DOT)
+  | (Kind.DOT, _)
+  | (Kind.QUOTE, _)
+  | (Kind.LPAREN, _)
+  | (Kind.LBRACKET, _)
+  | (_, Kind.RPAREN)
+  | (_, Kind.RBRACKET) -> false
+  | _ -> true
+
+and let_exception_payload_doc = fun expr ->
+  let doc = ref None in
+  let previous = ref None in
+  Ast.LetExceptionExpr.for_each_payload_token expr
+    ~fn:(fun token ->
+      let segment = token_doc token in
+      let kind = Ast.Token.kind token in
+      doc := Some (
+        match !doc, !previous with
+        | None, _ -> segment
+        | Some doc, Some previous when let_exception_payload_needs_space previous kind -> Doc.concat
+          [ doc; Doc.space; segment ]
+        | Some doc, _ -> Doc.concat [ doc; segment ]
+      );
+      previous := Some kind);
+  !doc
+
+and let_exception_expr_doc = fun expr ->
+  let exception_expr =
+    match Ast.LetExceptionExpr.cast expr with
+    | Some exception_expr -> exception_expr
+    | None -> unsupported "unsupported let exception expression"
+  in
+  match Ast.LetExceptionExpr.let_token exception_expr, Ast.LetExceptionExpr.exception_token exception_expr, Ast.LetExceptionExpr.name
+    exception_expr, Ast.LetExceptionExpr.in_token exception_expr, Ast.LetExceptionExpr.body exception_expr with
+  | Some let_token, Some exception_token, Some name, Some in_token, Some body ->
+      let payload =
+        match Ast.LetExceptionExpr.of_token exception_expr with
+        | None -> Doc.empty
+        | Some of_token -> (
+            match let_exception_payload_doc exception_expr with
+            | None -> Doc.concat [ Doc.space; token_doc of_token ]
+            | Some payload -> Doc.concat [ Doc.space; token_doc of_token; Doc.space; payload ]
+          )
+      in
+      Doc.concat
+        [
+          token_doc let_token;
+          Doc.space;
+          token_doc exception_token;
+          Doc.space;
+          token_doc name;
+          payload;
+          Doc.space;
+          token_doc in_token;
+          Doc.space;
+          expr_doc body;
+        ]
+  | _ -> unsupported "incomplete let exception expression"
 
 and first_class_module_path_doc = fun expr ->
   let segments = ref [] in

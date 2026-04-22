@@ -321,6 +321,25 @@ module LetModuleExpr: sig
   val for_each_module_body_path_ident: t -> fn:(Token.t -> unit) -> unit
 end
 
+module LetExceptionExpr: sig
+  type t = expr
+  val cast: expr -> t option
+
+  val let_token: t -> Token.t option
+
+  val exception_token: t -> Token.t option
+
+  val name: t -> Token.t option
+
+  val of_token: t -> Token.t option
+
+  val in_token: t -> Token.t option
+
+  val body: t -> expr option
+
+  val for_each_payload_token: t -> fn:(Token.t -> unit) -> unit
+end
+
 module FirstClassModuleExpr: sig
   type t = expr
   type module_path =
