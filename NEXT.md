@@ -4,35 +4,22 @@
 
 # Before Announcing
 
-* Std.Test.serial to run certain tests serially
+* make Std.Collections.Queue actor-safe -- ideally all the collections should be lockfree concurrency-safe?
 
-* Std.String <- actual zero-copy string views with .sub, could we make this copy-on-write ?
+* riot build output should show `Building pkg (vsn)` if the package is not local/workspace
 
-* ~acc -> ~init or ffolds
+* riot publish --json
 
-* option.for_each -> option.if_some ~fn
+* Perf:
+    * everywhere we're using Cell + list we probably should just use Colletions.Vector 
+
+* Code quality:
+    * turn every `error: string` into a structured error
 
 * riot-deps make workspace_manager a required param instead of an optinoal one
 
-* everywhere we're using Cell + list maybe we just need to use Vector 
-
-* riot fix rule id != string
-
-* turn every `error: string` into a structured error
-
-* clean up the riot-test selector filter flag code
-
-* Bug: riot build doesn't promote binaries with the right permissions?
-
-* Std.Log should be set up by default on the generated template code
-
-* Std.Collections.Proplist : ('key, 'value) list helpers
-
 * riot build takes _ages_ to plan big packages like std: is it syn?
-
-* riot clean should take a build lock to ensure noone is using _build while it tries to clean it
-
-* when installing sources in ~/.riot/registry we should make them read-only! 
+* regression: cold riot build takes _ages_ on syn.deps? 
 
 * lint: if a function uses raise, it should be called _unchecked
 
@@ -41,28 +28,13 @@
 * riot init should initialize:
     * .agents/skills/riot/* 
     * config/dev.toml
+    * .githooks/pre-commit   <- runs fmt / fix / build / test --fast
+    * .riot/config.toml      <- default config for gc
+    * Std.Log should be set up by default on the generated template code
 
-* riot info workspace
-  riot info pkg[@vsn]  should show information about that package (local or remote), including links to the docs, should also include the local ~/.riot/registry path
 
-* riot help == riot --help
-
-* bug: riot init arewedown.dev fails silently -- workspaces can contain dots in names, that's fine, but the package name becomes arewdown-dev
-
-* bug: changing riot.toml dep paths didn't break the cache :( 
-
-* regression: cold riot build takes _ages_ on syn.deps? 
 
 * riot snapshots review sucks: its hella slow, its not very interactive (a+enter? yuk)
-
-* riot bench streams outputs/results
-
-* riot test support multipl `-p` flags
-
-* riot test/bench should support `--filter` flag to be used with `--package` flag
-
-* need a riot SKILLS for agents
-
 * keep workign on making docs.riot.ml look great and writing the docs 
 
 * riot run hello_world.ml should just work:
@@ -72,14 +44,14 @@
 
 * build lock should be acquired _after planning_ to allow for fully cached builds to finish immediately
 
-* reacahability analysis during planning -- if a module in a package isn't included/reached by any other module, it shouldn't be part of the build!
-
 * `riot check` should be able to type-check Riot! 
 
 * `riot lsp` doesn't use 200gb of ram
 
 
 # Next
+
+* riot vendor -- quicklly make local copies of dependencies to modify them
 
 * little tool for git commit queues?
 
@@ -117,7 +89,7 @@ ubuntu` that can help us run cross-compiled binaries in a container so can confi
 
 * riot fix: allow for disabling specific rules like [@fix.disable "rule id"]
 
-* `riot trace` -- instrument and dump traces for tests and programs? is this worth doing?
+* `riot profile` -- instrument and dump traces for tests and programs? is this worth doing?
 
 * `riot fetch` -- download everything that needs downloading
 

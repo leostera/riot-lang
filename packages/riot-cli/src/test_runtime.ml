@@ -909,16 +909,17 @@ let suite_ctx_json_value = fun ~workspace_root ~package_name ?source_file ~binar
   ]
   |> Data.Json.to_string
 
-let runtime_package_built_binaries = fun ~(workspace:Workspace.t) ~profile ~(store:Riot_store.Store.t) ~(suite:suite_binary) (
+let runtime_output_packages = fun ~(workspace:Workspace.t) (output: Riot_build.Build_result.t) ->
+  Workspace.realize_packages ~intent:Package.Runtime workspace
+  |> List.filter
+    ~fn:(fun (pkg: Package.t) ->
+      Option.is_some (Riot_build.Build_result.find_package output pkg.name))
+
+let runtime_output_built_binaries = fun ~(workspace:Workspace.t) ~profile ~(store:Riot_store.Store.t) (
   output: Riot_build.Build_result.t
 ) ->
-  match
-    List.find (Workspace.realize_packages ~intent:Package.Runtime workspace)
-      ~fn:(fun (pkg: Package.t) ->
-        Package_name.equal pkg.name suite.package_name)
-  with
-  | None -> []
-  | Some pkg ->
+  runtime_output_packages ~workspace output |> List.map
+    ~fn:(fun (pkg: Package.t) ->
       List.filter_map pkg.binaries
         ~fn:(fun (bin: Package.binary) ->
           match find_export_path_in_output
@@ -926,11 +927,11 @@ let runtime_package_built_binaries = fun ~(workspace:Workspace.t) ~profile ~(sto
             ~profile
             ~store
             ~kind:"built binary"
-            ~package_name:suite.package_name
+            ~package_name:pkg.name
             ~export_name:bin.name
             output with
           | Ok path -> Some Test.Context.{ name = bin.name; path }
-          | Error _ -> None)
+          | Error _ -> None)) |> List.concat
 
 let run_suite_args = fun extra_args -> "run-tests" :: remove_json_args extra_args @ [ "--json" ]
 
@@ -1218,11 +1219,10 @@ let test = fun ?(on_event = no_event) (request: test_request) ->
               | Error _ as err -> err
               | Ok binary_path ->
                   let source_file = find_suite_source_path ~workspace:request.workspace suite in
-                  let built_binaries = runtime_package_built_binaries
+                  let built_binaries = runtime_output_built_binaries
                     ~workspace:request.workspace
                     ~profile:request.profile
                     ~store
-                    ~suite
                     output in
                   on_event (SuiteBinaryResolved { suite; binary_path });
                   on_event (RunningSuite suite);

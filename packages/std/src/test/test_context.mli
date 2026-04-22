@@ -13,7 +13,7 @@ type fixture = {
   snapshot_path: Path.t option;
 }
 type built_binary = {
-  (** Binary name as declared or autodiscovered for the owning package. *)
+  (** Binary name as declared or autodiscovered for an available runtime binary. *)
   name: string;
   (** Absolute built binary path. *)
   path: Path.t;
@@ -69,7 +69,7 @@ type t = {
   source_file: Path.t option;
   (** Built test binary path, when known. *)
   binary_path: Path.t option;
-  (** Built runtime binaries for the owning package, when any. *)
+  (** Built runtime binaries for the suite package's reachable runtime dependency closure, when any. *)
   built_binaries: built_binary list;
   (** Workspace root, when available from the runner. *)
   workspace_root: Path.t option;
@@ -93,8 +93,8 @@ val emit_progress: t -> progress -> unit
 (** Default no-op progress handler. *)
 val no_progress_handler: progress_handler
 
-(** Find an owning-package built binary by name. *)
+(** Find an available built binary by name. *)
 val find_binary: t -> string -> Path.t option
 
-(** Require an owning-package built binary by name. *)
+(** Require an available built binary by name. *)
 val require_binary: t -> string -> (Path.t, string) result
