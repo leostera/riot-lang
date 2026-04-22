@@ -117,37 +117,29 @@ type let_binding_parts = {
 }
 
 let let_binding_parts = fun binding ->
-  let pattern = ref None in
   let parameters = ref [] in
   let annotation = ref None in
   let body = ref None in
+  Ast.LetBinding.for_each_parameter binding ~fn:(fun pattern -> parameters := pattern :: !parameters);
   Ast.Node.for_each_child_node binding
     ~fn:(fun child ->
-      match Ast.Pattern.cast child with
-      | Some child_pattern -> (
-          match !pattern with
-          | None -> pattern := Some child_pattern
-          | Some _ -> parameters := child_pattern :: !parameters
+      match Ast.TypeExpr.cast child with
+      | Some type_expr -> (
+          match !annotation with
+          | None -> annotation := Some type_expr
+          | Some _ -> ()
         )
       | None -> (
-          match Ast.TypeExpr.cast child with
-          | Some type_expr -> (
-              match !annotation with
-              | None -> annotation := Some type_expr
+          match Ast.Expr.cast child with
+          | Some expr -> (
+              match !body with
+              | None -> body := Some expr
               | Some _ -> ()
             )
-          | None -> (
-              match Ast.Expr.cast child with
-              | Some expr -> (
-                  match !body with
-                  | None -> body := Some expr
-                  | Some _ -> ()
-                )
-              | None -> ()
-            )
+          | None -> ()
         ));
   {
-    pattern = !pattern;
+    pattern = Ast.LetBinding.pattern binding;
     parameters = List.reverse !parameters;
     annotation = !annotation;
     body = !body
@@ -262,8 +254,10 @@ let rec pattern_doc = fun pattern ->
       unsupported "attribute pattern without inner pattern"
   | Extension ->
       extension_pattern_doc pattern
-  | LocallyAbstractType
-  | FirstClassModule
+  | LocallyAbstractType ->
+      locally_abstract_type_pattern_doc pattern
+  | FirstClassModule ->
+      first_class_module_pattern_doc pattern
   | Error _
   | Unknown _ ->
       unsupported "unsupported pattern"
@@ -288,6 +282,75 @@ and extension_pattern_doc = fun pattern ->
   | Some extension -> extension_shell_doc
     ~for_each_shell_token:(fun ~fn -> Ast.ExtensionPattern.for_each_shell_token extension ~fn)
   | None -> unsupported "unsupported extension pattern"
+
+and locally_abstract_type_pattern_doc = fun pattern ->
+  match Ast.LocallyAbstractTypePattern.cast pattern with
+  | None -> unsupported "unsupported locally abstract type pattern"
+  | Some pattern -> (
+      let names = ref [] in
+      Ast.LocallyAbstractTypePattern.for_each_type_name
+        pattern
+        ~fn:(fun token -> names := token_doc token :: !names);
+      match Ast.LocallyAbstractTypePattern.opening_token pattern, Ast.LocallyAbstractTypePattern.type_token
+        pattern, List.reverse !names, Ast.LocallyAbstractTypePattern.closing_token pattern with
+      | Some opening_token, Some type_token, [], Some closing_token -> Doc.concat
+        [ token_doc opening_token; token_doc type_token; token_doc closing_token ]
+      | Some opening_token, Some type_token, names, Some closing_token -> Doc.concat
+        [
+          token_doc opening_token;
+          token_doc type_token;
+          Doc.space;
+          Doc.join Doc.space names;
+          token_doc closing_token;
+        ]
+      | _ -> unsupported "incomplete locally abstract type pattern"
+    )
+
+and first_class_module_pattern_ascription_doc = fun pattern ->
+  let segments = ref [] in
+  Ast.FirstClassModulePattern.for_each_ascription_path_ident
+    pattern
+    ~fn:(fun token -> segments := token_doc token :: !segments);
+  match List.reverse !segments with
+  | [] -> unsupported "first-class module pattern without module type path"
+  | segments -> Doc.join (Doc.text ".") segments
+
+and first_class_module_pattern_doc = fun pattern ->
+  let module_pattern =
+    match Ast.FirstClassModulePattern.cast pattern with
+    | Some module_pattern -> module_pattern
+    | None -> unsupported "unsupported first-class module pattern"
+  in
+  match Ast.FirstClassModulePattern.opening_token module_pattern, Ast.FirstClassModulePattern.module_token
+    module_pattern, Ast.FirstClassModulePattern.binder module_pattern, Ast.FirstClassModulePattern.ascription
+    module_pattern, Ast.FirstClassModulePattern.closing_token module_pattern with
+  | Some opening_token, Some module_token, Some binder, Ast.FirstClassModulePattern.NoAscription, Some closing_token ->
+      Doc.concat
+        [
+          token_doc opening_token;
+          token_doc module_token;
+          Doc.space;
+          token_doc binder;
+          token_doc closing_token;
+        ]
+  | Some opening_token, Some module_token, Some binder, Ast.FirstClassModulePattern.PathAscription, Some closing_token -> (
+      match Ast.FirstClassModulePattern.colon_token module_pattern with
+      | Some colon_token -> Doc.concat
+        [
+          token_doc opening_token;
+          token_doc module_token;
+          Doc.space;
+          token_doc binder;
+          Doc.space;
+          token_doc colon_token;
+          Doc.space;
+          first_class_module_pattern_ascription_doc module_pattern;
+          token_doc closing_token;
+        ]
+      | None -> unsupported "first-class module pattern ascription without colon token"
+    )
+  | _ ->
+      unsupported "unsupported first-class module pattern"
 
 and local_open_pattern_path_doc = fun pattern ->
   let segments = ref [] in

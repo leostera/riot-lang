@@ -173,6 +173,12 @@ let tests = [
     (fun _ctx ->
       assert_format2_ml ~expected:"let packed = (module Foo.Bar)\nlet typed = (module Foo : S.T)\n" "let packed = (module Foo.Bar)\nlet typed = (module Foo : S.T)\n");
   Test.case
+    "lower2 formats locally abstract and first-class module patterns"
+    (fun _ctx ->
+      assert_format2_ml
+        ~expected:"let f (type a b) (module M : S.T) = value\nlet g (module _) = value\n"
+        "let f (type a b) (module M : S.T) = value\nlet g (module _) = value\n");
+  Test.case
     "lower2 formats let module expressions"
     (fun _ctx ->
       assert_format2_ml

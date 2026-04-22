@@ -148,6 +148,42 @@ module ExtensionPattern: sig
   val for_each_shell_token: t -> fn:(Token.t -> unit) -> unit
 end
 
+module LocallyAbstractTypePattern: sig
+  type t = pattern
+  val cast: pattern -> t option
+
+  val opening_token: t -> Token.t option
+
+  val type_token: t -> Token.t option
+
+  val closing_token: t -> Token.t option
+
+  val for_each_type_name: t -> fn:(Token.t -> unit) -> unit
+end
+
+module FirstClassModulePattern: sig
+  type t = pattern
+  type ascription =
+    | NoAscription
+    | PathAscription
+    | UnsupportedAscription
+  val cast: pattern -> t option
+
+  val opening_token: t -> Token.t option
+
+  val module_token: t -> Token.t option
+
+  val binder: t -> Token.t option
+
+  val colon_token: t -> Token.t option
+
+  val closing_token: t -> Token.t option
+
+  val ascription: t -> ascription
+
+  val for_each_ascription_path_ident: t -> fn:(Token.t -> unit) -> unit
+end
+
 module RecordPattern: sig
   type t = pattern
   type field = {

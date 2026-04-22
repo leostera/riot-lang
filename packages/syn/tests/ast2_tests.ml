@@ -591,6 +591,13 @@ let first_class_module_ascription_text = fun expr ->
     ~fn:(fun token -> segments := Ast2.Token.text token :: !segments);
   List.reverse !segments |> String.concat "."
 
+let first_class_module_pattern_ascription_text = fun pattern ->
+  let segments = ref [] in
+  Ast2.FirstClassModulePattern.for_each_ascription_path_ident
+    pattern
+    ~fn:(fun token -> segments := Ast2.Token.text token :: !segments);
+  List.reverse !segments |> String.concat "."
+
 let let_module_body_path_text = fun expr ->
   let segments = ref [] in
   Ast2.LetModuleExpr.for_each_module_body_path_ident
@@ -930,6 +937,51 @@ let test_extension_views = fun _ctx ->
   );
   Ok ()
 
+let test_special_pattern_views = fun _ctx ->
+  let source = "let f (type a b) (module M : S.T) = value\n" in
+  let root = parse_ml source |> Result.expect ~msg:"expected parse2 source file" in
+  let binding = nth_structure_item root 0
+  |> require_some ~msg:"expected special pattern item"
+  |> binding_of_structure_item
+  |> Result.expect ~msg:"expected special pattern binding" in
+  let parameters = ref [] in
+  Ast2.LetBinding.for_each_parameter
+    binding
+    ~fn:(fun pattern -> parameters := pattern :: !parameters);
+  match List.reverse !parameters with
+  | [locally_abstract;first_class_module] ->
+      (
+        match Ast2.Pattern.view locally_abstract with
+        | Ast2.Pattern.LocallyAbstractType -> ()
+        | _ -> panic "expected locally abstract type pattern"
+      );
+      let locally_abstract = Ast2.LocallyAbstractTypePattern.cast locally_abstract
+      |> require_some ~msg:"expected locally abstract type pattern view" in
+      let type_names = ref [] in
+      Ast2.LocallyAbstractTypePattern.for_each_type_name
+        locally_abstract
+        ~fn:(fun token -> type_names := Ast2.Token.text token :: !type_names);
+      Test.assert_equal ~expected:[ "a"; "b" ] ~actual:(List.reverse !type_names);
+      (
+        match Ast2.Pattern.view first_class_module with
+        | Ast2.Pattern.FirstClassModule -> ()
+        | _ -> panic "expected first-class module pattern"
+      );
+      let first_class_module = Ast2.FirstClassModulePattern.cast first_class_module
+      |> require_some ~msg:"expected first-class module pattern view" in
+      let binder = Ast2.FirstClassModulePattern.binder first_class_module |> require_some ~msg:"expected first-class module binder" in
+      let colon = Ast2.FirstClassModulePattern.colon_token first_class_module |> require_some ~msg:"expected first-class module colon" in
+      Test.assert_equal ~expected:"M" ~actual:(Ast2.Token.text binder);
+      Test.assert_equal ~expected:":" ~actual:(Ast2.Token.text colon);
+      Test.assert_equal
+        ~expected:Ast2.FirstClassModulePattern.PathAscription
+        ~actual:(Ast2.FirstClassModulePattern.ascription first_class_module);
+      Test.assert_equal
+        ~expected:"S.T"
+        ~actual:(first_class_module_pattern_ascription_text first_class_module);
+      Ok ()
+  | _ -> Error "expected two special-pattern parameters"
+
 let tests = [
   Test.case "ast2 exposes source file and let binding views" test_source_file_and_let_binding_views;
   Test.case "ast2 exposes if and match expression views" test_expression_views;
@@ -952,6 +1004,7 @@ let tests = [
   Test.case "ast2 exposes unreachable expression views" test_unreachable_expression_views;
   Test.case "ast2 exposes attribute expression and pattern views" test_attribute_views;
   Test.case "ast2 exposes extension expression pattern and item views" test_extension_views;
+  Test.case "ast2 exposes locally abstract and first-class module pattern views" test_special_pattern_views;
 ]
 
 let () =

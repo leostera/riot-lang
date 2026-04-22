@@ -118,6 +118,9 @@ let benchmarks = [
     (make_fixture ~name:"first-class module expressions" ~path:(Path.v "sample.ml") "let packed = (module Foo.Bar)\nlet typed = (module Foo : S.T)\n");
   compare_fixture
     ~config:small_config
+    (make_fixture ~name:"special patterns" ~path:(Path.v "sample.ml") "let f (type a b) (module M : S.T) = value\nlet g (module _) = value\n");
+  compare_fixture
+    ~config:small_config
     (make_fixture ~name:"let module expressions" ~path:(Path.v "sample.ml") "let value = let module M = Foo.Bar in result\nlet empty = let module Empty = struct end in done_\n");
   compare_fixture
     ~config:small_config

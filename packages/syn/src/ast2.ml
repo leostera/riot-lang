@@ -1572,6 +1572,162 @@ end = struct
   let for_each_shell_token = Node.for_each_child_token
 end
 
+module LocallyAbstractTypePattern: sig
+  type t = pattern
+  val cast: pattern -> t option
+
+  val opening_token: t -> token option
+
+  val type_token: t -> token option
+
+  val closing_token: t -> token option
+
+  val for_each_type_name: t -> fn:(token -> unit) -> unit
+end = struct
+  type t = pattern
+
+  let cast = fun (pattern: pattern) ->
+    if node_kind_is pattern Syntax_kind2.LOCALLY_ABSTRACT_TYPE_PATTERN then
+      Some pattern
+    else
+      None
+
+  let opening_token = fun pattern -> Node.first_child_token pattern ~kind:Syntax_kind2.LPAREN
+
+  let type_token = fun pattern -> Node.first_child_token pattern ~kind:Syntax_kind2.TYPE_KW
+
+  let closing_token = fun pattern -> Node.first_child_token pattern ~kind:Syntax_kind2.RPAREN
+
+  let for_each_type_name = fun pattern ~fn ->
+    Node.for_each_child_token pattern
+      ~fn:(fun token ->
+        if token_kind_is token Syntax_kind2.IDENT then
+          fn token)
+end
+
+module FirstClassModulePattern: sig
+  type t = pattern
+  type ascription =
+    | NoAscription
+    | PathAscription
+    | UnsupportedAscription
+  val cast: pattern -> t option
+
+  val opening_token: t -> token option
+
+  val module_token: t -> token option
+
+  val binder: t -> token option
+
+  val colon_token: t -> token option
+
+  val closing_token: t -> token option
+
+  val ascription: t -> ascription
+
+  val for_each_ascription_path_ident: t -> fn:(token -> unit) -> unit
+end = struct
+  type t = pattern
+
+  type ascription =
+    | NoAscription
+    | PathAscription
+    | UnsupportedAscription
+
+  let cast = fun (pattern: pattern) ->
+    if node_kind_is pattern Syntax_kind2.FIRST_CLASS_MODULE_PATTERN then
+      Some pattern
+    else
+      None
+
+  let opening_token = fun pattern -> Node.first_child_token pattern ~kind:Syntax_kind2.LPAREN
+
+  let module_token = fun pattern -> Node.first_child_token pattern ~kind:Syntax_kind2.MODULE_KW
+
+  let colon_token = fun pattern -> Node.first_child_token pattern ~kind:Syntax_kind2.COLON
+
+  let closing_token = fun pattern -> Node.first_child_token pattern ~kind:Syntax_kind2.RPAREN
+
+  let token_index = fun pattern ~from ~matches ->
+    let count = Node.child_count pattern in
+    let rec loop index =
+      if index >= count then
+        None
+      else
+        match child_token_at pattern index with
+        | Some token when matches (Token.kind token) -> Some index
+        | _ -> loop (index + 1)
+    in
+    loop from
+
+  let module_index = fun pattern ->
+    token_index pattern ~from:0 ~matches:(fun kind -> Syntax_kind2.(kind = MODULE_KW))
+
+  let binder = fun pattern ->
+    match module_index pattern with
+    | Some module_index -> (
+        match child_token_at pattern (module_index + 1) with
+        | Some token when token_kind_is token Syntax_kind2.IDENT
+        || token_kind_is token Syntax_kind2.UNDERSCORE -> Some token
+        | _ -> None
+      )
+    | None -> None
+
+  let range_is_path = fun pattern start stop ->
+    let rec loop index saw_ident expect_ident =
+      if index >= stop then
+        saw_ident && not expect_ident
+      else
+        match child_token_at pattern index with
+        | Some token when token_kind_is token Syntax_kind2.IDENT && expect_ident -> loop
+          (index + 1)
+          true
+          false
+        | Some token when token_kind_is token Syntax_kind2.DOT && saw_ident && not expect_ident -> loop
+          (index + 1)
+          saw_ident
+          true
+        | _ -> false
+    in
+    loop start false true
+
+  let ascription_bounds = fun pattern ->
+    match token_index pattern ~from:0 ~matches:(fun kind -> Syntax_kind2.(kind = COLON)) with
+    | None -> None
+    | Some colon_index ->
+        let start = colon_index + 1 in
+        token_index pattern ~from:start ~matches:(fun kind -> Syntax_kind2.(kind = RPAREN))
+        |> Option.map ~fn:(fun stop -> (start, stop))
+
+  let ascription = fun pattern ->
+    match colon_token pattern, ascription_bounds pattern with
+    | None, _ -> NoAscription
+    | Some _, Some (start, stop) when range_is_path pattern start stop -> PathAscription
+    | Some _, _ -> UnsupportedAscription
+
+  let for_each_ident_in_range = fun pattern start stop ~fn ->
+    let rec loop index =
+      if index < stop then
+        (
+          match child_token_at pattern index with
+          | Some token when token_kind_is token Syntax_kind2.IDENT ->
+              fn token;
+              loop (index + 1)
+          | _ -> loop (index + 1)
+        )
+    in
+    loop start
+
+  let for_each_ascription_path_ident = fun pattern ~fn ->
+    match ascription_bounds pattern with
+    | Some (start, stop) when range_is_path pattern start stop -> for_each_ident_in_range
+      pattern
+      start
+      stop
+      ~fn
+    | _ -> ()
+end
+
 module RecordPattern: sig
   type t = pattern
   type field = {
@@ -1819,12 +1975,19 @@ end = struct
 
   let view = fun (binding: let_binding) -> { pattern = pattern binding; body = body binding }
 
+  let rec for_each_parameter_pattern = fun pattern ~fn ->
+    match Pattern.view pattern with
+    | Apply { callee=Some callee; argument=Some argument } ->
+        for_each_parameter_pattern callee ~fn;
+        for_each_parameter_pattern argument ~fn
+    | _ -> fn pattern
+
   let for_each_parameter = fun (binding: let_binding) ~fn ->
     let seen_first = ref false in
     for_each_child_node_matching binding ~matches:is_pattern_kind
       ~fn:(fun pattern ->
         if !seen_first then
-          fn pattern
+          for_each_parameter_pattern pattern ~fn
         else
           seen_first := true)
 
