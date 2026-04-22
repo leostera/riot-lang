@@ -560,6 +560,44 @@ let from_module_graph ?analyzed_modules ~package ~profile ~ctx ~toolchain ~store
     in
     List.filter node.deps ~fn:(fun dep_id -> HashSet.contains keep_ids ~value:dep_id)
   in
+  let preferred_interface_dep_ids_by_qualified_name =
+    let table = HashMap.create () in
+    let () =
+      List.iter
+        (fun (node: Module_node.t G.node) ->
+          match node.value.kind with
+          | Module_node.MLI mod_ ->
+              let qualified_name = Module.module_name mod_ |> Module_name.qualified_name in
+              let _ = HashMap.insert table ~key:qualified_name ~value:node.id in
+              ()
+          | _ -> ())
+        sorted_modules
+    in
+    table
+  in
+  let normalize_compile_deps dep_ids =
+    let seen = HashSet.create () in
+    dep_ids |> List.filter_map
+      ~fn:(fun dep_id ->
+        let preferred_dep_id =
+          match G.get_node module_graph dep_id with
+          | Some dep_node -> (
+              match dep_node.value.kind with
+              | Module_node.ML mod_ -> (
+                  let qualified_name = Module.module_name mod_ |> Module_name.qualified_name in
+                  match HashMap.get preferred_interface_dep_ids_by_qualified_name ~key:qualified_name with
+                  | Some preferred_dep_id -> preferred_dep_id
+                  | None -> dep_id
+                )
+              | _ -> dep_id
+            )
+          | None -> dep_id
+        in
+        if HashSet.insert seen ~value:preferred_dep_id then
+          Some preferred_dep_id
+        else
+          None)
+  in
   let traversal_deps (node: Module_node.t G.node) =
     if HashSet.contains concrete_root_ids ~value:node.id then
       concrete_root_dependency_ids node
@@ -567,8 +605,13 @@ let from_module_graph ?analyzed_modules ~package ~profile ~ctx ~toolchain ~store
       not (List.is_empty concrete_library_root_modules)
       && HashSet.contains root_candidate_ids ~value:node.id
     then
-      let keep_ids = root_support_dependency_ids node in
-      List.filter node.deps ~fn:(fun dep_id -> HashSet.contains keep_ids ~value:dep_id)
+      (
+        match node.value.file with
+        | Module_node.Generated _ -> normalize_compile_deps node.deps
+        | _ ->
+            let keep_ids = root_support_dependency_ids node in
+            List.filter node.deps ~fn:(fun dep_id -> HashSet.contains keep_ids ~value:dep_id)
+      )
     else
       node.deps
   in
@@ -653,9 +696,13 @@ let from_module_graph ?analyzed_modules ~package ~profile ~ctx ~toolchain ~store
     | _ when HashSet.contains concrete_root_ids ~value:node.id ->
         concrete_root_dependency_ids node
     | _ when not (List.is_empty concrete_library_root_modules)
-    && HashSet.contains root_candidate_ids ~value:node.id ->
-        let keep_ids = root_support_dependency_ids node in
-        List.filter node.deps ~fn:(fun dep_id -> HashSet.contains keep_ids ~value:dep_id)
+    && HashSet.contains root_candidate_ids ~value:node.id -> (
+        match node.value.file with
+        | Module_node.Generated _ -> normalize_compile_deps node.deps
+        | _ ->
+            let keep_ids = root_support_dependency_ids node in
+            List.filter node.deps ~fn:(fun dep_id -> HashSet.contains keep_ids ~value:dep_id)
+      )
     | Module_node.Library _ when List.is_empty library_root_modules ->
         node.deps
     | Module_node.Library _ ->

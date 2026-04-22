@@ -818,6 +818,181 @@ let plan_actions_for_package = fun ~tmpdir ~package_name ~files ?(binaries = [])
         (Riot_planner.Module_graph.graph graph_builder) in
       Ok (package, Riot_planner.Action_graph.to_action_list action_graph)
 
+let plan_action_graph_for_package = fun ~tmpdir ~package_name ~files ?(binaries = []) ?library () ->
+  let package_root = Path.(tmpdir / Path.v "packages" / Path.v package_name) in
+  let src_dir = Path.(package_root / Path.v "src") in
+  let _ = Fs.create_dir_all src_dir |> Result.expect ~msg:"create src dir failed" in
+  let () =
+    List.for_each files
+      ~fn:(fun (relpath, content) ->
+        let path = Path.(package_root / Path.v relpath) in
+        let parent = Path.parent path |> Option.unwrap_or ~default:package_root in
+        let _ = Fs.create_dir_all parent
+        |> Result.expect ~msg:("create parent dir failed for " ^ relpath) in
+        let _ = Fs.write content path |> Result.expect ~msg:("write failed for " ^ relpath) in
+        ())
+  in
+  let package =
+    Riot_model.Package.make ~name:(Package_name.from_string package_name |> Result.expect ~msg:"expected valid package name") ~path:package_root ~relative_path:Path.(Path.v
+      "packages"
+    / Path.v package_name) ?library ~binaries:(List.map
+      binaries
+      ~fn:(fun (name, path) -> Riot_model.Package.{ name; path = Path.v path }))
+      ~sources:{
+        src = List.map files ~fn:(fun (relpath, _) -> Path.v relpath);
+        native = [];
+        tests = [];
+        examples = [];
+        bench = [];
+      }
+      ()
+  in
+  let workspace = Riot_model.Workspace.make ~root:tmpdir ~packages:[] () in
+  let store = Riot_store.Store.create ~workspace in
+  let build_ctx = Riot_model.Build_ctx.make
+    ~session_id:(Riot_model.Session_id.of_string "test-session")
+    ~profile:Riot_model.Profile.release
+    () in
+  let graph_builder = Riot_planner.Module_graph.create
+    Riot_planner.Module_graph.{
+      root = package_root;
+      source_groups =
+        [ Riot_planner.Module_graph.{
+            source_dir = Path.v "src";
+            allowed_source_files = package.sources.src;
+            root_mode =
+              (
+                match package.library with
+                | Some _ -> Riot_planner.Module_graph.Library_root {
+                  library_name = Package_name.to_string package.name
+                }
+                | None -> Riot_planner.Module_graph.Loose_sources
+              );
+            namespace = Namespace.empty;
+          } ];
+      package;
+      toolchain = test_toolchain;
+      workspace;
+    }
+  in
+  match Riot_planner.Module_graph.wire_dependencies graph_builder with
+  | Error err -> Error ("dependency wiring failed: " ^ Riot_planner.Planning_error.to_string err)
+  | Ok () ->
+      let () =
+        match package.library with
+        | Some _ -> Riot_planner.Module_graph.add_library_node
+          graph_builder
+          ~name:(Package_name.to_string package.name)
+          ~includes:[]
+        | None -> ()
+      in
+      let binary_libraries =
+        match package.library with
+        | Some _ -> [
+          Riot_model.Module_name.(of_string (Package_name.to_string package.name) |> cmxa)
+        ]
+        | None -> []
+      in
+      let () =
+        List.for_each
+          binaries
+          ~fn:(fun (name, path) ->
+            Riot_planner.Module_graph.add_binary_node
+              graph_builder
+              ~name
+              ~source:(Path.v path)
+              ~libraries:binary_libraries
+              ~includes:[ Path.v "." ])
+      in
+      let action_graph, _ = Riot_planner.Action_graph.from_module_graph
+        ~analyzed_modules:(Riot_planner.Module_graph.analyzed_modules graph_builder)
+        ~package
+        ~profile:Riot_model.Profile.release
+        ~ctx:build_ctx
+        ~toolchain:test_toolchain
+        ~store
+        ~depset:[]
+        ~needs_unix:false
+        ~needs_dynlink:false
+        (Riot_planner.Module_graph.graph graph_builder) in
+      Ok (package, action_graph)
+
+let test_generated_library_interface_depends_on_child_module_interfaces = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"planner_generated_library_interface_deps"
+      (fun tmpdir ->
+        match plan_action_graph_for_package
+          ~tmpdir
+          ~package_name:"rootexportdemo"
+          ~library:{ path = Path.v "src/rootexportdemo.ml" }
+          ~files:[
+            ("src/rootexportdemo.ml", "let version = 1\n");
+            ("src/framing.mli", "val helper: int\n");
+            ("src/framing.ml", "let helper = 2\n");
+          ]
+          () with
+        | Error _ as err -> err
+        | Ok (_package, action_graph) ->
+            match find_action_node_by_output action_graph "Rootexportdemo.cmti" with
+            | None -> Error "expected generated root interface compile action"
+            | Some root_intf_node ->
+                let dep_outputs = dependency_output_names action_graph root_intf_node in
+                if List.any dep_outputs ~fn:(String.equal "Rootexportdemo__Framing.cmti") then
+                  Ok ()
+                else
+                  Error ("expected generated root interface to depend on child module interface; deps: ["
+                  ^ String.concat ", " dep_outputs
+                  ^ "]"))
+  with
+  | Ok result -> result
+  | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
+
+let test_generated_library_interface_with_multiple_children_depends_on_child_module_interfaces = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"planner_generated_library_interface_multiple_children"
+      (fun tmpdir ->
+        match plan_action_graph_for_package
+          ~tmpdir
+          ~package_name:"riot_doc"
+          ~library:{ path = Path.v "src/riot_doc.ml" }
+          ~files:[
+            ("src/riot_doc.ml", "let version = 1\n");
+            ("src/doctree.mli", "val render: int\n");
+            ("src/doctree.ml", "let render = 1\n");
+            ("src/html.mli", "val emit: int\n");
+            ("src/html.ml", "let emit = 2\n");
+            ("src/source.mli", "val load: int\n");
+            ("src/source.ml", "let load = 3\n");
+            ("src/transform.mli", "val run: int\n");
+            ("src/transform.ml", "let run = 4\n");
+          ]
+          () with
+        | Error _ as err -> err
+        | Ok (_package, action_graph) ->
+            match find_action_node_by_output action_graph "Riot_doc.cmti" with
+            | None -> Error "expected generated root interface compile action"
+            | Some root_intf_node ->
+                let dep_outputs = dependency_output_names action_graph root_intf_node in
+                let expected_outputs = [
+                  "Riot_doc__Doctree.cmti";
+                  "Riot_doc__Html.cmti";
+                  "Riot_doc__Source.cmti";
+                  "Riot_doc__Transform.cmti";
+                ] in
+                if
+                  List.all
+                    expected_outputs
+                    ~fn:(fun output -> List.any dep_outputs ~fn:(String.equal output))
+                then
+                  Ok ()
+                else
+                  Error ("expected generated root interface to depend on child module interfaces; deps: ["
+                  ^ String.concat ", " dep_outputs
+                  ^ "]"))
+  with
+  | Ok result -> result
+  | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
+
 let test_binary_actions_include_target_private_modules = fun _ctx ->
   match
     Fs.with_tempdir ~prefix:"planner_binary_private_modules"
@@ -1357,6 +1532,8 @@ let tests =
     case "library builds skip shared native plugin artifacts by default" test_library_builds_do_not_emit_shared_library_actions;
     case "library actions exclude ML object files while keeping native stubs" test_library_actions_exclude_ml_object_files;
     case "library actions exclude unreachable modules" test_library_actions_exclude_unreachable_modules;
+    case "generated library interfaces depend on child module interfaces" test_generated_library_interface_depends_on_child_module_interfaces;
+    case "generated library interfaces with multiple children depend on child module interfaces" test_generated_library_interface_with_multiple_children_depends_on_child_module_interfaces;
     case "binary actions without private helpers stay thin" test_binary_actions_without_private_helpers;
     case "binary actions include target-private modules" test_binary_actions_include_target_private_modules;
     case "binary actions include multiple private helpers" test_binary_actions_include_multiple_private_helpers;
