@@ -2779,36 +2779,34 @@ let signature_item_doc = fun item ->
   in
   Doc.concat [ leading_comment_doc item; body ]
 
-let signature_item_compacts_after = fun item ->
+let node_has_leading_comment = fun node ->
+  match Ast.Node.first_descendant_token node with
+  | Some token -> Ast.Token.has_leading_comment token
+  | None -> false
+
+let signature_item_is_type = fun item ->
   match Ast.SignatureItem.view item with
-  | Type decl -> (
-      match type_decl_members (type_decl_tokens decl) with
-      | [ member_ ] ->
-          let rec body_starts_poly_variant = function
-            | token :: rest when token_kind_is token Kind.PRIVATE_KW -> body_starts_poly_variant rest
-            | token :: _ when token_kind_is token Kind.LBRACKET -> true
-            | _ -> false
-          in
-          body_starts_poly_variant member_.body_tokens
-      | _ -> false
-    )
+  | Type _ -> true
   | _ -> false
 
+let signature_items_compact_between = fun left right ->
+  signature_item_is_type left && signature_item_is_type right && not (node_has_leading_comment right)
+
 let signature_items_doc = fun items ->
-  let rec loop doc compact_after = function
+  let rec loop previous doc = function
     | [] -> doc
-    | (next_doc, next_compact_after) :: rest ->
+    | (next_item, next_doc) :: rest ->
         let separator =
-          if compact_after then
+          if signature_items_compact_between previous next_item then
             Doc.line
           else
             blank_line
         in
-        loop (Doc.concat [ doc; separator; next_doc ]) next_compact_after rest
+        loop next_item (Doc.concat [ doc; separator; next_doc ]) rest
   in
   match items with
   | [] -> Doc.empty
-  | (first_doc, first_compact_after) :: rest -> loop first_doc first_compact_after rest
+  | (first_item, first_doc) :: rest -> loop first_item first_doc rest
 
 let implementation_doc = fun implementation ->
   let docs = ref [] in
@@ -2821,7 +2819,7 @@ let interface_doc = fun interface ->
   let items = ref [] in
   Ast.Interface.for_each_item
     interface
-    ~fn:(fun item -> items := (signature_item_doc item, signature_item_compacts_after item) :: !items);
+    ~fn:(fun item -> items := (item, signature_item_doc item) :: !items);
   signature_items_doc (List.reverse !items)
 
 let source_file = fun source_file ->
