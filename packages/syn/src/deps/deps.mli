@@ -6,6 +6,9 @@ module Env: sig
   val empty: t
 
   val add_path: t -> path:string list -> free_names:string list -> t
+  val add_binding: t -> path:string list -> free_names:string list -> exports:t -> t
+  val add_scoped_binding: t -> path:string list -> free_names:string list -> exports:t -> t
+  val open_path: t -> path:string list -> t
 end
 
 type t

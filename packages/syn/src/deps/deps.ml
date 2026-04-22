@@ -42,6 +42,13 @@ module Env = struct
   let merge = fun left right ->
     List.fold_left right ~init:left ~fn:(fun env (name, node) -> add name node env)
 
+  let rec rebind = fun free_names ->
+    function
+    | Node (_, children) -> Node (free_names, List.map children ~fn:(fun (name, child) -> (name, rebind free_names child)))
+
+  let rebind_exports = fun free_names exports ->
+    List.map exports ~fn:(fun (name, node) -> (name, rebind free_names node))
+
   let rec add_path = fun env ~path ~free_names ->
     match path with
     | [] -> env
@@ -62,6 +69,66 @@ module Env = struct
           | _ -> add_path children ~path:rest ~free_names
         in
         add segment (Node (Names.union free free_names, updated_children)) env
+
+  let rec add_binding = fun env ~path ~free_names ~exports ->
+    match path with
+    | [] -> env
+    | [ segment ] ->
+        let existing =
+          match
+            List.find env
+              ~fn:(fun (name, _) ->
+                String.equal name segment)
+          with
+          | Some (_, node) -> node
+          | None -> Node (Names.empty, [])
+        in
+        let Node (free, children) = existing in
+        let merged_children = merge children (rebind_exports free_names exports) in
+        add segment (Node (Names.union free free_names, merged_children)) env
+    | segment :: rest ->
+        let existing =
+          match
+            List.find env
+              ~fn:(fun (name, _) ->
+                String.equal name segment)
+          with
+          | Some (_, node) -> node
+          | None -> Node (Names.empty, [])
+        in
+        let Node (free, children) = existing in
+        let updated_children = add_binding children ~path:rest ~free_names ~exports in
+        add segment (Node (free, updated_children)) env
+
+  let rec add_scoped_binding = fun env ~path ~free_names ~exports ->
+    match path with
+    | [] -> env
+    | [ segment ] ->
+        let existing =
+          match
+            List.find env
+              ~fn:(fun (name, _) ->
+                String.equal name segment)
+          with
+          | Some (_, node) -> node
+          | None -> Node (Names.empty, [])
+        in
+        let Node (free, children) = existing in
+        let merged_children = merge children exports in
+        add segment (Node (Names.union free free_names, merged_children)) env
+    | segment :: rest ->
+        let existing =
+          match
+            List.find env
+              ~fn:(fun (name, _) ->
+                String.equal name segment)
+          with
+          | Some (_, node) -> node
+          | None -> Node (Names.empty, [])
+        in
+        let Node (free, children) = existing in
+        let updated_children = add_scoped_binding children ~path:rest ~free_names ~exports in
+        add segment (Node (free, updated_children)) env
 
   let top_free = function
     | Node (free, _) -> free
@@ -108,6 +175,11 @@ module Env = struct
         match find segment env with
         | None -> None
         | Some (Node (_, children)) -> lookup_map rest children
+
+  let open_path = fun env ~path ->
+    match lookup_map path env with
+    | Some node -> merge_children env node
+    | None -> env
 end
 
 module DepSet = struct
