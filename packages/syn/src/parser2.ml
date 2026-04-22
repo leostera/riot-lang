@@ -74,21 +74,30 @@ let zero_span = fun offset -> Ceibo.Span.make ~start:offset ~end_:offset
 let token_text = fun p raw -> Raw_token.text_slice ~source:p.source raw
 
 let current_text_is = fun p expected ->
-  let slice = Raw_token.slice ~source:p.source (current p) in
+  let raw = current p in
   let len = String.length expected in
-  Slice.length slice = len
+  let start = raw.Raw_token.span.Ceibo.Span.start in
+  let end_ = raw.Raw_token.span.Ceibo.Span.end_ in
+  let width = end_ - start in
+  width = len
+  && start >= 0
+  && end_ <= Slice.length p.source
   &&
-  let rec loop index =
-    if index >= len then
-      true
-    else if Slice.get_unchecked slice ~at:index = String.get_unchecked expected ~at:index then
-      loop (index + 1)
-    else
-      false
-  in
-  loop 0
+  try
+    let rec loop index =
+      if index >= len then
+        true
+      else if Slice.get_unchecked p.source ~at:(start + index) = String.get_unchecked expected ~at:index then
+        loop (index + 1)
+      else
+        false
+    in
+    loop 0
+  with
+  | Invalid_argument _ -> false
 
-let at_end_keyword = fun p -> at p Syntax_kind2.END_KW || current_text_is p "end"
+let at_end_keyword = fun p ->
+  at p Syntax_kind2.END_KW || current_text_is p "end"
 
 let legacy_token = fun raw ->
   {
@@ -148,6 +157,9 @@ let missing_let_binding_expr = fun p ->
 
 let missing_type_name = fun p -> diagnostic_with_current p Diagnostic.missing_type_name
 
+let missing_type_name_at_current_offset = fun p ->
+  diagnostic_with_current_at p Diagnostic.missing_type_name (zero_span (current_offset p))
+
 let missing_type_decl_equals = fun p ->
   diagnostic_with_current_at
     p
@@ -161,7 +173,15 @@ let bracketed_type_parameters = fun p ~type_name ->
   diagnostic_with_current p (Diagnostic.bracketed_type_parameters ~type_name)
 
 let unclosed_delimiter = fun p ~opener ->
-  diagnostic_with_current p (Diagnostic.unclosed_delimiter ~opener)
+  diagnostic_with_current_at
+    p
+    (Diagnostic.unclosed_delimiter ~opener)
+    (
+      if is_eof p then
+        zero_span (previous_end_offset p)
+      else
+        (current p).Raw_token.span
+    )
 
 let unexpected_closing_delimiter = fun p ~delimiter ->
   diagnostic_with_current p (Diagnostic.unexpected_closing_delimiter ~delimiter)
@@ -240,11 +260,13 @@ let missing_module_type_name = fun p ->
   diagnostic_with_current_at p Diagnostic.missing_module_type_name (zero_span (previous_end_offset p))
 
 let missing_module_type_expr = fun p ->
-  diagnostic_with_current_at p Diagnostic.missing_module_type_expr (zero_span (current_offset p))
+  diagnostic_with_current_at p Diagnostic.missing_module_type_expr (zero_span (previous_end_offset p))
 
-let missing_module_expr = fun p -> diagnostic_with_current p Diagnostic.missing_module_expr
+let missing_module_expr = fun p ->
+  diagnostic_with_current_at p Diagnostic.missing_module_expr (zero_span (previous_end_offset p))
 
-let missing_with_keyword = fun p -> diagnostic_with_current p Diagnostic.missing_with_keyword
+let missing_with_keyword = fun p ->
+  diagnostic_with_current_at p Diagnostic.missing_with_keyword (zero_span (current_offset p))
 
 let invalid_module_name = fun p -> diagnostic_with_current p Diagnostic.invalid_module_name
 
@@ -780,7 +802,7 @@ let consume_first_class_module_shell = fun p ->
       if at p Syntax_kind2.IDENT then
       bump p
       else
-        Event.Buffer.error p.events (missing_type_name p)
+        Event.Buffer.error p.events (missing_type_name_at_current_offset p)
     );
     if at p Syntax_kind2.EQ then
       (
@@ -1890,7 +1912,14 @@ and parse_unary_pattern = fun p ~stop_type_at_arrow kind ->
 
 and parse_error_pattern = fun p ->
   let marker = start_node p in
-  Event.Buffer.error p.events (invalid_pattern_at_previous_end p);
+  Event.Buffer.error
+    p.events
+    (
+      if at p Syntax_kind2.COLONCOLON then
+        invalid_pattern_at_previous_end p
+      else
+        invalid_pattern p
+    );
   if is_eof p then
     Event.Buffer.missing p.events ~kind:Syntax_kind2.IDENT ~offset:(current_offset p)
   else
