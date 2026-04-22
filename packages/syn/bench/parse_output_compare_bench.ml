@@ -106,6 +106,9 @@ let touch_ast2_token_option = fun seed (token: Ast2.Token.t option) ->
   | Some token -> checksum := !checksum lxor seed lxor token.Ast2.id
   | None -> checksum := !checksum lxor seed
 
+let touch_ast2_token = fun seed (token: Ast2.Token.t) ->
+  checksum := !checksum lxor seed lxor token.Ast2.id
+
 let touch_ast2_path = fun seed (path: Ast2.Path.t) ->
   checksum := !checksum lxor seed lxor path.Ast2.id;
   Ast2.Path.for_each_ident path ~fn:(fun token -> checksum := !checksum lxor token.Ast2.id)
@@ -229,7 +232,20 @@ let touch_ast2_external_declaration = fun (decl: Ast2.ExternalDeclaration.t) ->
 
 let touch_ast2_type_declaration = fun (decl: Ast2.TypeDeclaration.t) ->
   touch_ast2_token_option 441 (Ast2.TypeDeclaration.name decl);
-  touch_ast2_type_expr_option 442 (Ast2.TypeDeclaration.manifest decl)
+  touch_ast2_type_expr_option 442 (Ast2.TypeDeclaration.manifest decl);
+  Ast2.TypeDeclaration.for_each_parameter decl
+    ~fn:(
+      function
+      | Ast2.TypeDeclaration.Named { name; quote; variance; injective } ->
+          touch_ast2_token 443 name;
+          touch_ast2_token_option 444 quote;
+          touch_ast2_token_option 445 variance;
+          touch_ast2_token_option 446 injective
+      | Ast2.TypeDeclaration.Wildcard { wildcard; variance; injective } ->
+          touch_ast2_token 447 wildcard;
+          touch_ast2_token_option 448 variance;
+          touch_ast2_token_option 449 injective
+    )
 
 let rec touch_ast2_expr_view = fun (expr: Ast2.Expr.t) ->
   match Ast2.Expr.view expr with

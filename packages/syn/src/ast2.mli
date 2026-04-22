@@ -299,9 +299,23 @@ end
 
 module TypeDeclaration: sig
   type t = type_declaration
+  type parameter =
+    | Named of {
+      name: Token.t;
+      quote: Token.t option;
+      variance: Token.t option;
+      injective: Token.t option;
+    }
+    | Wildcard of {
+      wildcard: Token.t;
+      variance: Token.t option;
+      injective: Token.t option;
+    }
   val cast: Node.t -> t option
 
   val name: t -> Token.t option
+
+  val for_each_parameter: t -> fn:(parameter -> unit) -> unit
 
   val manifest: t -> type_expr option
 end

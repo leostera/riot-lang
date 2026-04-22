@@ -277,6 +277,35 @@ let test_non_manifest_type_declaration_bodies = fun _ctx ->
   | Ok () ->
       assert_type_manifest_is_none "type point = { x : int }\n"
 
+let test_type_declaration_parameters = fun _ctx ->
+  let root = parse_mli "type (+'a, _) box = 'a list\n" |> Result.expect ~msg:"expected parse2 interface" in
+  let type_item = nth_signature_item root 0 |> require_some ~msg:"expected type signature item" in
+  match Ast2.SignatureItem.view type_item with
+  | Ast2.SignatureItem.Type decl ->
+      let name = Ast2.TypeDeclaration.name decl |> require_some ~msg:"expected type name" in
+      Test.assert_equal ~expected:"box" ~actual:(Ast2.Token.text name);
+      let named = ref None in
+      let wildcard_param = ref None in
+      Ast2.TypeDeclaration.for_each_parameter decl
+        ~fn:(
+          function
+          | Ast2.TypeDeclaration.Named { name; variance; _ } ->
+              named := Some (Ast2.Token.text name, Option.map variance ~fn:Ast2.Token.text)
+          | Ast2.TypeDeclaration.Wildcard { wildcard; _ } ->
+              wildcard_param := Some (Ast2.Token.text wildcard)
+        );
+      (
+        match !named with
+        | Some ("a", Some "+") -> ()
+        | _ -> panic "expected covariant named type parameter"
+      );
+      (
+        match !wildcard_param with
+        | Some "_" -> Ok ()
+        | _ -> Error "expected wildcard type parameter"
+      )
+  | _ -> Error "expected type declaration"
+
 let test_binding_type_annotation_view = fun _ctx ->
   let root = parse_ml "let x : int = 1\n" |> Result.expect ~msg:"expected parse2 source file" in
   let binding = nth_structure_item root 0
@@ -299,6 +328,7 @@ let tests = [
   Test.case
     "ast2 keeps non-manifest type bodies out of manifest views"
     test_non_manifest_type_declaration_bodies;
+  Test.case "ast2 exposes type declaration parameters" test_type_declaration_parameters;
   Test.case "ast2 exposes let binding type annotation views" test_binding_type_annotation_view;
 ]
 
