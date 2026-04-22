@@ -106,6 +106,127 @@ let touch_ast2_token_option = fun seed (token: Ast2.Token.t option) ->
   | Some token -> checksum := !checksum lxor seed lxor token.Ast2.id
   | None -> checksum := !checksum lxor seed
 
+let touch_ast2_path = fun seed (path: Ast2.Path.t) ->
+  checksum := !checksum lxor seed lxor path.Ast2.id;
+  Ast2.Path.for_each_ident path ~fn:(fun token -> checksum := !checksum lxor token.Ast2.id)
+
+let touch_ast2_type_expr_option = fun seed (type_expr: Ast2.TypeExpr.t option) ->
+  match type_expr with
+  | Some type_expr -> checksum := !checksum lxor seed lxor type_expr.Ast2.id
+  | None -> checksum := !checksum lxor seed
+
+let touch_ast2_type_expr_view = fun (type_expr: Ast2.TypeExpr.t) ->
+  (
+    match Ast2.TypeExpr.view type_expr with
+    | Path { path } -> touch_ast2_path 201 path
+    | Var { name } -> touch_ast2_token_option 202 name
+    | Wildcard -> checksum := !checksum lxor 203
+    | Arrow { left; right } ->
+        touch_ast2_type_expr_option 204 left;
+        touch_ast2_type_expr_option 205 right
+    | Tuple { left; right } ->
+        touch_ast2_type_expr_option 206 left;
+        touch_ast2_type_expr_option 207 right
+    | Apply { argument; constructor } ->
+        touch_ast2_type_expr_option 208 argument;
+        touch_ast2_type_expr_option 209 constructor
+    | Parenthesized { inner } ->
+        touch_ast2_type_expr_option 210 inner
+    | Opaque node ->
+        checksum := !checksum lxor 211 lxor node.Ast2.id
+    | Error node ->
+        checksum := !checksum lxor 212 lxor node.Ast2.id
+    | Unknown node ->
+        checksum := !checksum lxor 213 lxor node.Ast2.id
+  );
+  Ast2.TypeExpr.for_each_child_type type_expr
+    ~fn:(fun child -> checksum := !checksum lxor 214 lxor child.Ast2.id)
+
+let touch_ast2_pattern_option = fun seed (pattern: Ast2.Pattern.t option) ->
+  match pattern with
+  | Some pattern -> checksum := !checksum lxor seed lxor pattern.Ast2.id
+  | None -> checksum := !checksum lxor seed
+
+let touch_ast2_parameter = fun (parameter: Ast2.Parameter.t) ->
+  match Ast2.Parameter.view parameter with
+  | Labeled { label; pattern } ->
+      touch_ast2_token_option 301 label;
+      touch_ast2_pattern_option 302 pattern
+  | Optional { label; pattern } ->
+      touch_ast2_token_option 303 label;
+      touch_ast2_pattern_option 304 pattern
+  | OptionalDefault { label; pattern; default } ->
+      touch_ast2_token_option 305 label;
+      touch_ast2_pattern_option 306 pattern;
+      touch_ast2_node_option 307 default
+  | Unknown node ->
+      checksum := !checksum lxor 308 lxor node.Ast2.id
+
+let touch_ast2_pattern_view = fun (pattern: Ast2.Pattern.t) ->
+  (
+    match Ast2.Pattern.view pattern with
+    | Wildcard -> checksum := !checksum lxor 321
+    | Path { path } -> touch_ast2_path 322 path
+    | Apply { callee; argument } ->
+        touch_ast2_pattern_option 323 callee;
+        touch_ast2_pattern_option 324 argument
+    | Literal -> checksum := !checksum lxor 325
+    | Parenthesized { inner } -> touch_ast2_pattern_option 326 inner
+    | Tuple -> checksum := !checksum lxor 327
+    | List -> checksum := !checksum lxor 328
+    | Array -> checksum := !checksum lxor 329
+    | Record -> checksum := !checksum lxor 330
+    | PolyVariant -> checksum := !checksum lxor 331
+    | Extension -> checksum := !checksum lxor 332
+    | Attribute { inner } -> touch_ast2_pattern_option 333 inner
+    | LocalOpen -> checksum := !checksum lxor 334
+    | LocallyAbstractType -> checksum := !checksum lxor 335
+    | FirstClassModule -> checksum := !checksum lxor 336
+    | Interval { left; right } ->
+        touch_ast2_pattern_option 337 left;
+        touch_ast2_pattern_option 338 right
+    | Constraint { pattern; annotation } ->
+        touch_ast2_pattern_option 339 pattern;
+        touch_ast2_type_expr_option 340 annotation
+    | Alias { pattern; alias } ->
+        touch_ast2_pattern_option 341 pattern;
+        touch_ast2_pattern_option 342 alias
+    | Or { left; right } ->
+        touch_ast2_pattern_option 343 left;
+        touch_ast2_pattern_option 344 right
+    | Cons { head; tail } ->
+        touch_ast2_pattern_option 345 head;
+        touch_ast2_pattern_option 346 tail
+    | Lazy { pattern } -> touch_ast2_pattern_option 347 pattern
+    | Exception { pattern } -> touch_ast2_pattern_option 348 pattern
+    | LabeledParam parameter
+    | OptionalParam parameter
+    | OptionalParamDefault parameter ->
+        touch_ast2_parameter parameter
+    | Error node ->
+        checksum := !checksum lxor 349 lxor node.Ast2.id
+    | Unknown node ->
+        checksum := !checksum lxor 350 lxor node.Ast2.id
+  );
+  Ast2.Pattern.for_each_child_pattern pattern
+    ~fn:(fun child -> checksum := !checksum lxor 351 lxor child.Ast2.id)
+
+let touch_ast2_let_binding_view = fun (binding: Ast2.LetBinding.t) ->
+  let view = Ast2.LetBinding.view binding in
+  touch_ast2_pattern_option 401 view.pattern;
+  touch_ast2_node_option 402 view.body;
+  touch_ast2_type_expr_option 403 (Ast2.LetBinding.type_annotation binding);
+  Ast2.LetBinding.for_each_parameter binding
+    ~fn:(fun parameter -> checksum := !checksum lxor 404 lxor parameter.Ast2.id)
+
+let touch_ast2_value_declaration = fun (decl: Ast2.ValueDeclaration.t) ->
+  touch_ast2_token_option 421 (Ast2.ValueDeclaration.name decl);
+  touch_ast2_type_expr_option 422 (Ast2.ValueDeclaration.type_annotation decl)
+
+let touch_ast2_external_declaration = fun (decl: Ast2.ExternalDeclaration.t) ->
+  touch_ast2_token_option 431 (Ast2.ExternalDeclaration.name decl);
+  touch_ast2_type_expr_option 432 (Ast2.ExternalDeclaration.type_annotation decl)
+
 let rec touch_ast2_expr_view = fun (expr: Ast2.Expr.t) ->
   match Ast2.Expr.view expr with
   | Let { first_binding; body } ->
@@ -138,6 +259,9 @@ let rec touch_ast2_expr_view = fun (expr: Ast2.Expr.t) ->
   | Record -> checksum := !checksum lxor 86
   | Parenthesized { inner } ->
       touch_ast2_node_option 91 inner
+  | Typed { expr; annotation } ->
+      touch_ast2_node_option 92 expr;
+      touch_ast2_type_expr_option 93 annotation
   | Error node
   | Unknown node ->
       checksum := !checksum lxor 101 lxor node.Ast2.id
@@ -149,6 +273,31 @@ let rec walk_ast2_node = fun (node: Ast2.Node.t) ->
   (
     match Ast2.Expr.cast node with
     | Some expr -> touch_ast2_expr_view expr
+    | None -> ()
+  );
+  (
+    match Ast2.Pattern.cast node with
+    | Some pattern -> touch_ast2_pattern_view pattern
+    | None -> ()
+  );
+  (
+    match Ast2.TypeExpr.cast node with
+    | Some type_expr -> touch_ast2_type_expr_view type_expr
+    | None -> ()
+  );
+  (
+    match Ast2.LetBinding.cast node with
+    | Some binding -> touch_ast2_let_binding_view binding
+    | None -> ()
+  );
+  (
+    match Ast2.ValueDeclaration.cast node with
+    | Some decl -> touch_ast2_value_declaration decl
+    | None -> ()
+  );
+  (
+    match Ast2.ExternalDeclaration.cast node with
+    | Some decl -> touch_ast2_external_declaration decl
     | None -> ()
   );
   Ast2.Node.for_each_child_node node ~fn:walk_ast2_node
