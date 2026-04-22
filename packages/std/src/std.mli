@@ -60,7 +60,7 @@ module Collections = Collections
 
 (** **When to use:** Working with data structures
     
-    Parent module containing Vector, HashMap, HashSet, Queue, Deque, Heap, and List.
+    Parent module containing Vector, HashMap, HashSet, Queue, Deque, Heap, List, and Proplist.
     
     Use collections when you need:
     - Fast lookups → HashMap
@@ -69,7 +69,8 @@ module Collections = Collections
     - FIFO queues → Queue
     - Double-ended operations → Deque
     - Priority ordering → Heap
-    - Functional lists → List *)
+    - Functional lists → List
+    - Duplicate-friendly key/value lists → Proplist *)
 module Compress = Compress
 
 (** **When to use:** Streaming compression/decompression
