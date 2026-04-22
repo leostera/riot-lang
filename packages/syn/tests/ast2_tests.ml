@@ -809,6 +809,71 @@ let test_unreachable_expression_views = fun _ctx ->
   Test.assert_equal ~expected:"." ~actual:(Ast2.Token.text dot);
   Ok ()
 
+let attribute_shell_text = fun ~for_each_shell_token ->
+  let text = ref "" in
+  let first = ref true in
+  for_each_shell_token
+    ~fn:(fun token ->
+      if !first then
+        (
+          first := false;
+          text := !text ^ Ast2.Token.text token
+        )
+      else
+        text := !text ^ Ast2.Token.full_text token);
+  !text
+
+let test_attribute_views = fun _ctx ->
+  let source = "let value = target [@inline always]\nlet (x [@foo]) = value\n" in
+  let root = parse_ml source |> Result.expect ~msg:"expected parse2 source file" in
+  let attribute_expr = nth_structure_item root 0
+  |> require_some ~msg:"expected attribute expression item"
+  |> binding_of_structure_item
+  |> Result.expect ~msg:"expected attribute expression binding"
+  |> body_of_binding
+  |> Result.expect ~msg:"expected attribute expression body" in
+  (
+    match Ast2.Expr.view attribute_expr with
+    | Ast2.Expr.Attribute { inner=Some inner } -> (
+        match Ast2.Expr.view inner with
+        | Ast2.Expr.Path { path } -> assert_last_ident_text path "target"
+        | _ -> panic "expected attributed expression inner path"
+      )
+    | _ -> panic "expected attribute expression"
+  );
+  let attribute_expr = Ast2.AttributeExpr.cast attribute_expr |> require_some ~msg:"expected attribute expression view" in
+  Test.assert_equal
+    ~expected:"[@inline always]"
+    ~actual:(attribute_shell_text
+      ~for_each_shell_token:(fun ~fn -> Ast2.AttributeExpr.for_each_shell_token attribute_expr ~fn));
+  let attribute_pattern = nth_structure_item root 1
+  |> require_some ~msg:"expected attribute pattern item"
+  |> binding_of_structure_item
+  |> Result.expect ~msg:"expected attribute pattern binding"
+  |> pattern_of_binding
+  |> Result.expect ~msg:"expected attribute pattern" in
+  let attribute_pattern =
+    match Ast2.Pattern.view attribute_pattern with
+    | Ast2.Pattern.Parenthesized { inner=Some inner } -> inner
+    | _ -> panic "expected parenthesized attribute pattern"
+  in
+  let attribute_pattern = Ast2.AttributePattern.cast attribute_pattern |> require_some ~msg:"expected attribute pattern view" in
+  (
+    match Ast2.AttributePattern.inner attribute_pattern with
+    | Some inner -> (
+        match Ast2.Pattern.view inner with
+        | Ast2.Pattern.Path { path } -> assert_last_ident_text path "x"
+        | _ -> panic "expected attributed pattern inner path"
+      )
+    | None -> panic "expected attribute pattern inner"
+  );
+  Test.assert_equal
+    ~expected:"[@foo]"
+    ~actual:(attribute_shell_text
+      ~for_each_shell_token:(fun ~fn ->
+        Ast2.AttributePattern.for_each_shell_token attribute_pattern ~fn));
+  Ok ()
+
 let tests = [
   Test.case "ast2 exposes source file and let binding views" test_source_file_and_let_binding_views;
   Test.case "ast2 exposes if and match expression views" test_expression_views;
@@ -829,6 +894,7 @@ let tests = [
   Test.case "ast2 exposes let module expression views" test_let_module_expression_views;
   Test.case "ast2 exposes let exception expression views" test_let_exception_expression_views;
   Test.case "ast2 exposes unreachable expression views" test_unreachable_expression_views;
+  Test.case "ast2 exposes attribute expression and pattern views" test_attribute_views;
 ]
 
 let () =

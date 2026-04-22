@@ -16,10 +16,32 @@ let unsupported = fun message -> raise (Unsupported { message })
 
 let token_doc = fun token -> Doc.text (Ast.Token.text token)
 
+let token_full_doc = fun token -> Doc.text (Ast.Token.full_text token)
+
 let optional_token_doc = fun token ->
   match token with
   | Some token -> token_doc token
   | None -> Doc.empty
+
+let attribute_shell_doc = fun ~for_each_shell_token ->
+  let shell = ref Doc.empty in
+  let first = ref true in
+  for_each_shell_token
+    ~fn:(fun token ->
+      let part =
+        if !first then
+          (
+            first := false;
+            token_doc token
+          )
+        else
+          token_full_doc token
+      in
+      shell := Doc.concat [ !shell; part ]);
+  if !first then
+    unsupported "attribute without shell tokens"
+  else
+    !shell
 
 let path_doc = fun path ->
   let segments = ref [] in
@@ -228,13 +250,31 @@ let rec pattern_doc = fun pattern ->
       unsupported "exception pattern without payload"
   | LocalOpen ->
       local_open_pattern_doc pattern
+  | Attribute { inner=Some _ } ->
+      attribute_pattern_doc pattern
+  | Attribute _ ->
+      unsupported "attribute pattern without inner pattern"
   | Extension
-  | Attribute _
   | LocallyAbstractType
   | FirstClassModule
   | Error _
   | Unknown _ ->
       unsupported "unsupported pattern"
+
+and attribute_pattern_doc = fun pattern ->
+  match Ast.AttributePattern.cast pattern with
+  | Some attribute -> (
+      match Ast.AttributePattern.inner attribute with
+      | Some inner -> Doc.concat
+        [
+          pattern_doc inner;
+          Doc.space;
+          attribute_shell_doc
+            ~for_each_shell_token:(fun ~fn -> Ast.AttributePattern.for_each_shell_token attribute ~fn);
+        ]
+      | None -> unsupported "attribute pattern without inner pattern"
+    )
+  | None -> unsupported "unsupported attribute pattern"
 
 and local_open_pattern_path_doc = fun pattern ->
   let segments = ref [] in
@@ -654,15 +694,33 @@ and expr_doc_with_view = fun expr (view: Ast.Expr.view) ->
         )
       | None -> unsupported "unsupported unreachable expression"
     )
+  | Attribute { inner=Some _ } ->
+      attribute_expr_doc expr
+  | Attribute _ ->
+      unsupported "attribute expression without inner expression"
   | Extension
   | Object
   | New
-  | Attribute _
   | Error _
   | Unknown _ ->
       unsupported "unsupported expression"
   | BindingOperator _ ->
       binding_operator_expr_doc expr
+
+and attribute_expr_doc = fun expr ->
+  match Ast.AttributeExpr.cast expr with
+  | Some attribute -> (
+      match Ast.AttributeExpr.inner attribute with
+      | Some inner -> Doc.concat
+        [
+          expr_doc inner;
+          Doc.space;
+          attribute_shell_doc
+            ~for_each_shell_token:(fun ~fn -> Ast.AttributeExpr.for_each_shell_token attribute ~fn);
+        ]
+      | None -> unsupported "attribute expression without inner expression"
+    )
+  | None -> unsupported "unsupported attribute expression"
 
 and record_expr_field_doc = fun (field: Ast.RecordExpr.field) ->
   match field.path with

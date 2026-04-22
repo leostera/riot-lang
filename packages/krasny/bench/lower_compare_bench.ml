@@ -97,6 +97,9 @@ let benchmarks = [
     (make_fixture ~name:"polymorphic variants" ~path:(Path.v "sample.ml") "let ok = `Ok 1\nlet classify = function | `Ok value -> value | `Error -> 0\n");
   compare_fixture
     ~config:small_config
+    (make_fixture ~name:"attributes" ~path:(Path.v "sample.ml") "let value = target [@inline always]\nlet (x [@foo]) = value\n");
+  compare_fixture
+    ~config:small_config
     (make_fixture ~name:"selectors and indexes" ~path:(Path.v "sample.ml") "let field = value.name\nlet item = values.(index)\nlet char = text.[index]\n");
   compare_fixture
     ~config:small_config

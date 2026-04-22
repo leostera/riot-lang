@@ -41,6 +41,8 @@ module Token: sig
 
   val text: t -> string
 
+  val full_text: t -> string
+
   val raw_range: t -> int * int
 end
 
@@ -128,6 +130,15 @@ module Pattern: sig
   val literal_token: t -> Token.t option
 
   val for_each_child_pattern: t -> fn:(t -> unit) -> unit
+end
+
+module AttributePattern: sig
+  type t = pattern
+  val cast: pattern -> t option
+
+  val inner: t -> pattern option
+
+  val for_each_shell_token: t -> fn:(Token.t -> unit) -> unit
 end
 
 module RecordPattern: sig
@@ -257,6 +268,15 @@ module Expr: sig
   val for_each_child_expr: t -> fn:(t -> unit) -> unit
 
   val for_each_match_case: t -> fn:(match_case -> unit) -> unit
+end
+
+module AttributeExpr: sig
+  type t = expr
+  val cast: expr -> t option
+
+  val inner: t -> expr option
+
+  val for_each_shell_token: t -> fn:(Token.t -> unit) -> unit
 end
 
 module RecordExpr: sig

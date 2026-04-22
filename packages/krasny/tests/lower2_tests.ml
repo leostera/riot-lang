@@ -131,6 +131,10 @@ let tests = [
         ~expected:"let ok = `Ok 1\nlet classify = function | `Ok value -> value | `Error -> 0\n"
         "let ok = `Ok 1\nlet classify = function | `Ok value -> value | `Error -> 0\n");
   Test.case
+    "lower2 formats expression and pattern attributes"
+    (fun _ctx ->
+      assert_format2_ml ~expected:"let value = target [@inline always]\nlet (x [@foo]) = value\n" "let value = target [@inline always]\nlet (x [@foo]) = value\n");
+  Test.case
     "lower2 formats selectors and index expressions"
     (fun _ctx ->
       assert_format2_ml

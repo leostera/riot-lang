@@ -364,6 +364,13 @@ module Token = struct
   let text = fun (token: token) ->
     Syntax_tree.token_text token.tree (syntax_token token)
 
+  let full_text = fun (token: token) ->
+    let raw_lo, raw_hi =
+      let token = syntax_token token in
+      (token.Syntax_tree.raw_lo, token.Syntax_tree.raw_hi)
+    in
+    Syntax_tree.raw_range_text token.tree ~raw_lo ~raw_hi
+
   let raw_range = fun (token: token) ->
     let token = syntax_token token in
     (token.Syntax_tree.raw_lo, token.Syntax_tree.raw_hi)
@@ -742,6 +749,27 @@ end = struct
 
   let for_each_match_case = fun (expr: expr) ~fn ->
     for_each_child_node_matching expr ~matches:is_match_case_kind ~fn
+end
+
+module AttributeExpr: sig
+  type t = expr
+  val cast: expr -> t option
+
+  val inner: t -> expr option
+
+  val for_each_shell_token: t -> fn:(token -> unit) -> unit
+end = struct
+  type t = expr
+
+  let cast = fun (expr: expr) ->
+    if node_kind_is expr Syntax_kind2.ATTRIBUTE_EXPR then
+      Some expr
+    else
+      None
+
+  let inner = first_expr_child
+
+  let for_each_shell_token = Node.for_each_child_token
 end
 
 module RecordExpr: sig
@@ -1487,6 +1515,27 @@ end = struct
 
   let for_each_child_pattern = fun (pattern: pattern) ~fn ->
     for_each_child_node_matching pattern ~matches:is_pattern_kind ~fn
+end
+
+module AttributePattern: sig
+  type t = pattern
+  val cast: pattern -> t option
+
+  val inner: t -> pattern option
+
+  val for_each_shell_token: t -> fn:(token -> unit) -> unit
+end = struct
+  type t = pattern
+
+  let cast = fun (pattern: pattern) ->
+    if node_kind_is pattern Syntax_kind2.ATTRIBUTE_PATTERN then
+      Some pattern
+    else
+      None
+
+  let inner = first_pattern_child
+
+  let for_each_shell_token = Node.for_each_child_token
 end
 
 module RecordPattern: sig
