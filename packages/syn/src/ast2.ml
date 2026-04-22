@@ -158,11 +158,20 @@ let is_parameter_kind = function
 
 let is_path_kind = function
   | Syntax_kind2.PATH_EXPR
-  | Syntax_kind2.PATH_PATTERN -> true
+  | Syntax_kind2.PATH_PATTERN
+  | Syntax_kind2.PATH_TYPE -> true
   | _ -> false
 
 let is_type_expr_kind = function
-  | Syntax_kind2.TYPE_EXPR -> true
+  | Syntax_kind2.TYPE_EXPR
+  | Syntax_kind2.PATH_TYPE
+  | Syntax_kind2.VAR_TYPE
+  | Syntax_kind2.WILDCARD_TYPE
+  | Syntax_kind2.ARROW_TYPE
+  | Syntax_kind2.TUPLE_TYPE
+  | Syntax_kind2.APPLY_TYPE
+  | Syntax_kind2.PAREN_TYPE
+  | Syntax_kind2.OPAQUE_TYPE -> true
   | _ -> false
 
 let is_match_case_kind = function
@@ -401,7 +410,16 @@ module TypeExpr = struct
   type t = type_expr
 
   type view =
+    | Path of { path: path }
+    | Var of { name: Token.t option }
+    | Wildcard
+    | Arrow of { left: t option; right: t option }
+    | Tuple of { left: t option; right: t option }
+    | Apply of { argument: t option; constructor: t option }
+    | Parenthesized of { inner: t option }
     | Opaque of Node.t
+    | Error of Node.t
+    | Unknown of Node.t
 
   let cast = fun (node: node) ->
     if node_matches node is_type_expr_kind then
@@ -409,7 +427,49 @@ module TypeExpr = struct
     else
       None
 
-  let view = fun (type_expr: type_expr) -> Opaque type_expr
+  let rec view = fun (type_expr: type_expr) ->
+    match Node.kind type_expr with
+    | Syntax_kind2.TYPE_EXPR -> (
+        match first_child_node_matching type_expr ~matches:is_type_expr_kind with
+        | Some child -> (
+            match Node.kind child with
+            | Syntax_kind2.TYPE_EXPR -> Opaque type_expr
+            | _ -> view child
+          )
+        | None -> Opaque type_expr
+      )
+    | Syntax_kind2.PATH_TYPE ->
+        Path { path = type_expr }
+    | Syntax_kind2.VAR_TYPE ->
+        Var { name = last_ident_token type_expr }
+    | Syntax_kind2.WILDCARD_TYPE ->
+        Wildcard
+    | Syntax_kind2.ARROW_TYPE ->
+        Arrow {
+          left = nth_child_node_matching type_expr 0 ~matches:is_type_expr_kind;
+          right = nth_child_node_matching type_expr 1 ~matches:is_type_expr_kind
+        }
+    | Syntax_kind2.TUPLE_TYPE ->
+        Tuple {
+          left = nth_child_node_matching type_expr 0 ~matches:is_type_expr_kind;
+          right = nth_child_node_matching type_expr 1 ~matches:is_type_expr_kind
+        }
+    | Syntax_kind2.APPLY_TYPE ->
+        Apply {
+          argument = nth_child_node_matching type_expr 0 ~matches:is_type_expr_kind;
+          constructor = nth_child_node_matching type_expr 1 ~matches:is_type_expr_kind
+        }
+    | Syntax_kind2.PAREN_TYPE ->
+        Parenthesized { inner = first_child_node_matching type_expr ~matches:is_type_expr_kind }
+    | Syntax_kind2.OPAQUE_TYPE ->
+        Opaque type_expr
+    | Syntax_kind2.ERROR ->
+        Error type_expr
+    | _ ->
+        Unknown type_expr
+
+  let for_each_child_type = fun (type_expr: type_expr) ~fn ->
+    for_each_child_node_matching type_expr ~matches:is_type_expr_kind ~fn
 end
 
 module Path = struct
@@ -1012,6 +1072,8 @@ module ValueDeclaration = struct
       None
 
   let name = first_ident_token
+
+  let type_annotation = first_type_expr_child
 end
 
 module ExternalDeclaration = struct
@@ -1024,6 +1086,8 @@ module ExternalDeclaration = struct
       None
 
   let name = first_ident_token
+
+  let type_annotation = first_type_expr_child
 end
 
 module ExceptionDeclaration = struct

@@ -75,6 +75,11 @@ let assert_last_ident_text = fun path expected ->
   let token = Ast2.Path.last_ident path |> require_some ~msg:"expected last path ident" in
   Test.assert_equal ~expected ~actual:(Ast2.Token.text token)
 
+let assert_type_path_last_ident = fun type_expr expected ->
+  match Ast2.TypeExpr.view type_expr with
+  | Ast2.TypeExpr.Path { path } -> assert_last_ident_text path expected
+  | _ -> panic "expected path type"
+
 let test_source_file_and_let_binding_views = fun _ctx ->
   let root = parse_ml "let x = 1\n" |> Result.expect ~msg:"expected parse2 source file" in
   (
@@ -177,7 +182,8 @@ let test_pattern_views = fun _ctx ->
   | _ -> Error "expected cons pattern"
 
 let test_signature_and_type_views = fun _ctx ->
-  let root = parse_mli "val x : int\ntype t = int\nmodule M : sig end\n" |> Result.expect ~msg:"expected parse2 interface" in
+  let root = parse_mli "val x : int -> string\ntype t = int\nmodule M : sig end\n"
+  |> Result.expect ~msg:"expected parse2 interface" in
   (
     match Ast2.SourceFile.view root with
     | Ast2.SourceFile.Interface _ -> ()
@@ -188,9 +194,18 @@ let test_signature_and_type_views = fun _ctx ->
     match Ast2.SignatureItem.view value_item with
     | Ast2.SignatureItem.Value decl ->
         let name = Ast2.ValueDeclaration.name decl |> require_some ~msg:"expected value name" in
-        Test.assert_equal ~expected:"x" ~actual:(Ast2.Token.text name)
-    | _ -> panic "expected value declaration"
-  );
+        Test.assert_equal ~expected:"x" ~actual:(Ast2.Token.text name);
+        let annotation = Ast2.ValueDeclaration.type_annotation decl |> require_some ~msg:"expected value type annotation" in
+        (
+          match Ast2.TypeExpr.view annotation with
+          | Ast2.TypeExpr.Arrow { left=Some left; right=Some right } ->
+              assert_type_path_last_ident left "int";
+              assert_type_path_last_ident right "string";
+              Ok ()
+          | _ -> Error "expected arrow value type"
+        )
+    | _ -> Error "expected value declaration"
+  ) |> Result.expect ~msg:"expected value signature";
   let type_item = nth_signature_item root 1 |> require_some ~msg:"expected type signature item" in
   (
     match Ast2.SignatureItem.view type_item with
@@ -207,6 +222,42 @@ let test_signature_and_type_views = fun _ctx ->
       Ok ()
   | _ -> Error "expected module declaration"
 
+let test_type_expression_views = fun _ctx ->
+  let root = parse_mli "val xs : int list\nexternal id : 'a -> 'a = \"%identity\"\n"
+  |> Result.expect ~msg:"expected parse2 interface" in
+  let value_item = nth_signature_item root 0 |> require_some ~msg:"expected value signature item" in
+  (
+    match Ast2.SignatureItem.view value_item with
+    | Ast2.SignatureItem.Value decl ->
+        let annotation = Ast2.ValueDeclaration.type_annotation decl |> require_some ~msg:"expected value type annotation" in
+        (
+          match Ast2.TypeExpr.view annotation with
+          | Ast2.TypeExpr.Apply { argument=Some argument; constructor=Some constructor } ->
+              assert_type_path_last_ident argument "int";
+              assert_type_path_last_ident constructor "list";
+              Ok ()
+          | _ -> Error "expected type application"
+        )
+    | _ -> Error "expected value declaration"
+  ) |> Result.expect ~msg:"expected value type application";
+  let external_item = nth_signature_item root 1 |> require_some ~msg:"expected external signature item" in
+  match Ast2.SignatureItem.view external_item with
+  | Ast2.SignatureItem.External decl ->
+      let annotation = Ast2.ExternalDeclaration.type_annotation decl |> require_some ~msg:"expected external type annotation" in
+      (
+        match Ast2.TypeExpr.view annotation with
+        | Ast2.TypeExpr.Arrow { left=Some left; right=Some right } -> (
+            match Ast2.TypeExpr.view left, Ast2.TypeExpr.view right with
+            | Ast2.TypeExpr.Var { name=Some left_name }, Ast2.TypeExpr.Var { name=Some right_name } ->
+                Test.assert_equal ~expected:"a" ~actual:(Ast2.Token.text left_name);
+                Test.assert_equal ~expected:"a" ~actual:(Ast2.Token.text right_name);
+                Ok ()
+            | _ -> Error "expected type variables"
+          )
+        | _ -> Error "expected external arrow type"
+      )
+  | _ -> Error "expected external declaration"
+
 let test_binding_type_annotation_view = fun _ctx ->
   let root = parse_ml "let x : int = 1\n" |> Result.expect ~msg:"expected parse2 source file" in
   let binding = nth_structure_item root 0
@@ -215,16 +266,17 @@ let test_binding_type_annotation_view = fun _ctx ->
   |> Result.expect ~msg:"expected let binding" in
   let annotation = Ast2.LetBinding.type_annotation binding |> require_some ~msg:"expected binding type annotation" in
   match Ast2.TypeExpr.view annotation with
-  | Ast2.TypeExpr.Opaque node ->
-      let token = Ast2.Node.first_token node |> require_some ~msg:"expected type expression token" in
-      Test.assert_equal ~expected:"int" ~actual:(Ast2.Token.text token);
+  | Ast2.TypeExpr.Path { path } ->
+      assert_last_ident_text path "int";
       Ok ()
+  | _ -> Error "expected binding path type annotation"
 
 let tests = [
   Test.case "ast2 exposes source file and let binding views" test_source_file_and_let_binding_views;
   Test.case "ast2 exposes if and match expression views" test_expression_views;
   Test.case "ast2 exposes tuple and cons pattern views" test_pattern_views;
   Test.case "ast2 exposes signature declaration views" test_signature_and_type_views;
+  Test.case "ast2 exposes type expression views" test_type_expression_views;
   Test.case "ast2 exposes let binding type annotation views" test_binding_type_annotation_view;
 ]
 

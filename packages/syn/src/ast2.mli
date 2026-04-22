@@ -4,12 +4,10 @@ type node = {
   tree: Syntax_tree.t;
   id: int;
 }
-
 type token = {
   tree: Syntax_tree.t;
   id: int;
 }
-
 type source_file = node
 type implementation = node
 type interface = node
@@ -35,12 +33,10 @@ type parameter = node
 type match_case = node
 type type_expr = node
 type path = node
-
 val root: Syntax_tree.t -> node
 
 module Token: sig
   type t = token
-
   val kind: t -> Syntax_kind2.t
 
   val text: t -> string
@@ -50,7 +46,6 @@ end
 
 module Node: sig
   type t = node
-
   val kind: t -> Syntax_kind2.t
 
   val text: t -> string
@@ -78,18 +73,26 @@ end
 
 module TypeExpr: sig
   type t = type_expr
-
   type view =
+    | Path of { path: path }
+    | Var of { name: Token.t option }
+    | Wildcard
+    | Arrow of { left: t option; right: t option }
+    | Tuple of { left: t option; right: t option }
+    | Apply of { argument: t option; constructor: t option }
+    | Parenthesized of { inner: t option }
     | Opaque of Node.t
-
+    | Error of Node.t
+    | Unknown of Node.t
   val cast: Node.t -> t option
 
   val view: t -> view
+
+  val for_each_child_type: t -> fn:(t -> unit) -> unit
 end
 
 module Pattern: sig
   type t = pattern
-
   type view =
     | Wildcard
     | Path of { path: path }
@@ -118,7 +121,6 @@ module Pattern: sig
     | OptionalParamDefault of parameter
     | Error of Node.t
     | Unknown of Node.t
-
   val cast: Node.t -> t option
 
   val view: t -> view
@@ -128,17 +130,11 @@ end
 
 module Parameter: sig
   type t = parameter
-
   type view =
     | Labeled of { label: Token.t option; pattern: pattern option }
     | Optional of { label: Token.t option; pattern: pattern option }
-    | OptionalDefault of {
-      label: Token.t option;
-      pattern: pattern option;
-      default: expr option;
-    }
+    | OptionalDefault of { label: Token.t option; pattern: pattern option; default: expr option }
     | Unknown of Node.t
-
   val cast: Node.t -> t option
 
   val view: t -> view
@@ -146,13 +142,11 @@ end
 
 module MatchCase: sig
   type t = match_case
-
   type view = {
     pattern: pattern option;
     guard: expr option;
     body: expr option;
   }
-
   val cast: Node.t -> t option
 
   val view: t -> view
@@ -160,12 +154,10 @@ end
 
 module LetBinding: sig
   type t = let_binding
-
   type view = {
     pattern: pattern option;
     body: expr option;
   }
-
   val cast: Node.t -> t option
 
   val view: t -> view
@@ -181,7 +173,6 @@ end
 
 module Expr: sig
   type t = expr
-
   type view =
     | Let of { first_binding: let_binding option; body: t option }
     | LocalOpen of { body: t option }
@@ -199,12 +190,7 @@ module Expr: sig
     | Function of { first_case: match_case option }
     | Try of { body: t option; first_case: match_case option }
     | While of { condition: t option; body: t option }
-    | For of {
-      pattern: pattern option;
-      start_: t option;
-      stop: t option;
-      body: t option;
-    }
+    | For of { pattern: pattern option; start_: t option; stop: t option; body: t option }
     | Assert of { argument: t option }
     | Lazy of { argument: t option }
     | Attribute of { inner: t option }
@@ -231,7 +217,6 @@ module Expr: sig
     | OptionalArg of { label: Token.t option; value: t option }
     | Error of Node.t
     | Unknown of Node.t
-
   val cast: Node.t -> t option
 
   val view: t -> view
@@ -243,7 +228,6 @@ end
 
 module Path: sig
   type t = path
-
   val cast: Node.t -> t option
 
   val text: t -> string
@@ -257,7 +241,6 @@ end
 
 module StructureItem: sig
   type t = structure_item
-
   type view =
     | Let of let_declaration
     | Type of type_declaration
@@ -273,7 +256,6 @@ module StructureItem: sig
     | Expr of expr_item
     | Error of Node.t
     | Unknown of Node.t
-
   val cast: Node.t -> t option
 
   val view: t -> view
@@ -283,7 +265,6 @@ end
 
 module SignatureItem: sig
   type t = signature_item
-
   type view =
     | Value of value_declaration
     | Type of type_declaration
@@ -298,7 +279,6 @@ module SignatureItem: sig
     | Attribute of attribute_item
     | Error of Node.t
     | Unknown of Node.t
-
   val cast: Node.t -> t option
 
   val view: t -> view
@@ -308,7 +288,6 @@ end
 
 module LetDeclaration: sig
   type t = let_declaration
-
   val cast: Node.t -> t option
 
   val rec_token: t -> Token.t option
@@ -320,7 +299,6 @@ end
 
 module TypeDeclaration: sig
   type t = type_declaration
-
   val cast: Node.t -> t option
 
   val name: t -> Token.t option
@@ -328,7 +306,6 @@ end
 
 module ModuleDeclaration: sig
   type t = module_declaration
-
   val cast: Node.t -> t option
 
   val name: t -> Token.t option
@@ -336,7 +313,6 @@ end
 
 module ModuleTypeDeclaration: sig
   type t = module_type_declaration
-
   val cast: Node.t -> t option
 
   val name: t -> Token.t option
@@ -344,7 +320,6 @@ end
 
 module OpenDeclaration: sig
   type t = open_declaration
-
   val cast: Node.t -> t option
 
   val path_text: t -> string
@@ -352,29 +327,29 @@ end
 
 module IncludeDeclaration: sig
   type t = include_declaration
-
   val cast: Node.t -> t option
 end
 
 module ValueDeclaration: sig
   type t = value_declaration
-
   val cast: Node.t -> t option
 
   val name: t -> Token.t option
+
+  val type_annotation: t -> type_expr option
 end
 
 module ExternalDeclaration: sig
   type t = external_declaration
-
   val cast: Node.t -> t option
 
   val name: t -> Token.t option
+
+  val type_annotation: t -> type_expr option
 end
 
 module ExceptionDeclaration: sig
   type t = exception_declaration
-
   val cast: Node.t -> t option
 
   val name: t -> Token.t option
@@ -382,7 +357,6 @@ end
 
 module ClassDeclaration: sig
   type t = class_declaration
-
   val cast: Node.t -> t option
 
   val name: t -> Token.t option
@@ -390,19 +364,16 @@ end
 
 module ExtensionItem: sig
   type t = extension_item
-
   val cast: Node.t -> t option
 end
 
 module AttributeItem: sig
   type t = attribute_item
-
   val cast: Node.t -> t option
 end
 
 module ExprItem: sig
   type t = expr_item
-
   val cast: Node.t -> t option
 
   val expr: t -> expr option
@@ -410,7 +381,6 @@ end
 
 module Implementation: sig
   type t = implementation
-
   val cast: Node.t -> t option
 
   val for_each_item: t -> fn:(structure_item -> unit) -> unit
@@ -418,7 +388,6 @@ end
 
 module Interface: sig
   type t = interface
-
   val cast: Node.t -> t option
 
   val for_each_item: t -> fn:(signature_item -> unit) -> unit
@@ -426,12 +395,10 @@ end
 
 module SourceFile: sig
   type t = source_file
-
   type view =
     | Implementation of implementation
     | Interface of interface
     | Empty
-
   val make: Syntax_tree.t -> t
 
   val view: t -> view

@@ -202,6 +202,14 @@ type t =
   | LAZY_PATTERN
   | EXCEPTION_PATTERN
   | TYPE_EXPR
+  | PATH_TYPE
+  | VAR_TYPE
+  | WILDCARD_TYPE
+  | ARROW_TYPE
+  | TUPLE_TYPE
+  | APPLY_TYPE
+  | PAREN_TYPE
+  | OPAQUE_TYPE
   | ERROR
   | MISSING
 val equal: t -> t -> bool
