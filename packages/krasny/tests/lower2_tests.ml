@@ -59,6 +59,7 @@ let assert_lower2_existing_fixture_subset = fun () ->
     Path.v "packages/krasny/tests/fixtures/0100_atoms_and_basic_expressions.ml";
     Path.v "packages/krasny/tests/fixtures/0415_nested_fun_parameter_stability.ml";
     Path.v "packages/krasny/tests/fixtures/0952_multiline_list_expression_no_trailing_separator.ml";
+    Path.v "packages/krasny/tests/fixtures/0981_top_level_letrec_blank_line.ml";
   ] in
   let rec loop = function
     | [] -> Ok ()
@@ -80,6 +81,12 @@ let tests = [
   Test.case
     "lower2 formats parameterized let bindings"
     (fun _ctx -> assert_format2_ml ~expected:"let id x = x\n" "let id x = x\n");
+  Test.case
+    "lower2 formats mutual recursive let bindings"
+    (fun _ctx ->
+      assert_format2_ml
+        ~expected:"let rec f = g and g = f\n"
+        "let rec f = g\nand g = f\n");
   Test.case
     "lower2 formats local let expressions"
     (fun _ctx -> assert_format2_ml ~expected:"let x = let y = 1 in y\n" "let x = let y = 1 in y\n");

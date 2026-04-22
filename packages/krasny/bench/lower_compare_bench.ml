@@ -63,6 +63,9 @@ let benchmarks = [
     (make_fixture ~name:"parameterized let" ~path:(Path.v "sample.ml") "let id x = x\n");
   compare_fixture
     ~config:small_config
+    (make_fixture ~name:"mutual recursive let" ~path:(Path.v "sample.ml") "let rec f = g\nand g = f\n");
+  compare_fixture
+    ~config:small_config
     (make_fixture ~name:"local let expression" ~path:(Path.v "sample.ml") "let x = let y = 1 in y\n");
   compare_fixture
     ~config:small_config
@@ -94,6 +97,11 @@ let benchmarks = [
     (load_fixture
        ~name:"multiline list fixture"
        (Path.v "packages/krasny/tests/fixtures/0952_multiline_list_expression_no_trailing_separator.ml"));
+  compare_fixture
+    ~config:medium_config
+    (load_fixture
+       ~name:"top-level let rec fixture"
+       (Path.v "packages/krasny/tests/fixtures/0981_top_level_letrec_blank_line.ml"));
 ]
 
 let () =

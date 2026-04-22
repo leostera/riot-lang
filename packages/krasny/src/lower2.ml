@@ -52,6 +52,16 @@ let direct_pattern_docs = fun node ->
       | None -> ());
   List.reverse !docs
 
+let let_binding_nodes = fun node ->
+  let bindings = ref [] in
+  Ast.Node.for_each_child_node
+    node
+    ~fn:(fun child ->
+      match Ast.LetBinding.cast child with
+      | Some binding -> bindings := binding :: !bindings
+      | None -> ());
+  List.reverse !bindings
+
 let rec type_expr_doc = fun type_expr ->
   match Ast.TypeExpr.view type_expr with
   | Path { path } -> path_doc path
@@ -225,8 +235,18 @@ and expr_doc = fun expr ->
       Doc.concat [ expr_doc left; Doc.semi; Doc.space; expr_doc right ]
   | Sequence _ ->
       unsupported "incomplete sequence expression"
-  | Let { first_binding=Some binding; body=Some body } ->
-      Doc.concat [ Doc.text "let"; Doc.space; let_binding_doc binding; Doc.space; Doc.text "in"; Doc.space; expr_doc body ]
+  | Let { first_binding=Some _; body=Some body } ->
+      Doc.concat
+        [
+          let_bindings_doc
+            ~keyword:"let"
+            ~rec_token:(Ast.Node.first_child_token expr ~kind:Syn.SyntaxKind2.REC_KW)
+            expr;
+          Doc.space;
+          Doc.text "in";
+          Doc.space;
+          expr_doc body;
+        ]
   | Let _ ->
       unsupported "incomplete let expression"
   | Fun { body=Some body } -> (
@@ -316,16 +336,30 @@ and let_binding_doc = fun binding ->
     ]
   | _ -> unsupported "incomplete let binding"
 
-let let_decl_doc = fun decl ->
-  match Ast.LetDeclaration.first_binding decl with
-  | Some binding ->
+and let_bindings_doc = fun ~keyword ~rec_token node ->
+  match let_binding_nodes node with
+  | [] ->
+      unsupported (keyword ^ " declaration without binding")
+  | first :: rest ->
+      let rest =
+        List.map
+          rest
+          ~fn:(fun binding -> Doc.concat [ Doc.space; Doc.text "and"; Doc.space; let_binding_doc binding ])
+      in
       Doc.concat
-        [ Doc.text "let"; (
-            match Ast.LetDeclaration.rec_token decl with
+        ([
+          Doc.text keyword;
+          (
+            match rec_token with
             | Some rec_token -> Doc.concat [ Doc.space; token_doc rec_token; Doc.space ]
             | None -> Doc.space
-          ); let_binding_doc binding; ]
-  | None -> unsupported "let declaration without binding"
+          );
+          let_binding_doc first;
+        ]
+        @ rest)
+
+let let_decl_doc = fun decl ->
+  let_bindings_doc ~keyword:"let" ~rec_token:(Ast.LetDeclaration.rec_token decl) decl
 
 let type_parameter_doc = function
   | Ast.TypeDeclaration.Named { name; quote; variance; injective } -> Doc.concat
