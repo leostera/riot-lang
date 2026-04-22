@@ -70,6 +70,13 @@ let sample_tests = [
     (fun _ctx ->
       sleep (Time.Duration.from_secs 2);
       Ok ());
+  Test.case "ctx_probe"
+    (fun ctx ->
+      match (ctx.package_name, ctx.workspace_root, Test.Context.find_binary ctx "demo") with
+      | Some "demo", Some workspace_root, Some binary_path
+        when String.equal (Path.to_string workspace_root) "/tmp/demo-workspace"
+          && String.equal (Path.to_string binary_path) "/tmp/demo-bin" -> Ok ()
+      | _ -> Error "expected ctx_probe to receive structured context from --ctx");
   Test.case "after_timeout" (fun _ctx -> Ok ());
 ]
 
@@ -463,6 +470,20 @@ let test_run_tests_json_emits_heartbeat_for_long_tests = fun _ctx ->
   else
     Error "expected a TestCaseHeartbeat event for a long-running test"
 
+let test_run_tests_ctx_flag_populates_structured_context = fun _ctx ->
+  let ctx_json =
+    "{\"workspace_root\":\"/tmp/demo-workspace\",\
+     \"package_name\":\"demo\",\
+     \"binary_path\":\"/tmp/sample-suite\",\
+     \"source_file\":\"/tmp/sample-suite.ml\",\
+     \"built_binaries\":[{\"name\":\"demo\",\"path\":\"/tmp/demo-bin\"}]}"
+  in
+  let output = run_sample_capture [ "run-tests"; "ctx_probe"; "--ctx"; ctx_json ] in
+  if Int.equal output.status 0 then
+    Ok ()
+  else
+    Error ("expected --ctx run to succeed, got " ^ Int.to_string output.status ^ ": " ^ output.stdout)
+
 let test_run_tests_timeout_does_not_abort_suite = fun _ctx ->
   let output = run_sample_capture [ "run-tests"; "--small"; "--json" ] in
   if Int.equal output.status 0 then
@@ -558,6 +579,7 @@ let meta_tests = [
   Test.case ~size:Large "run-tests --json emits property progress" test_run_tests_json_emits_property_progress;
   Test.case ~size:Large "run-tests --json emits snapshot progress" test_run_tests_json_emits_snapshot_progress;
   Test.case ~size:Large "run-tests --json emits heartbeat for long tests" test_run_tests_json_emits_heartbeat_for_long_tests;
+  Test.case ~size:Large "run-tests --ctx populates structured context" test_run_tests_ctx_flag_populates_structured_context;
   Test.case ~size:Large "run-tests timeout does not abort suite" test_run_tests_timeout_does_not_abort_suite;
   Test.case ~size:Large "run-tests --concurrency allows overlapping tests" test_run_tests_concurrency_flag_allows_overlap;
   Test.case ~size:Large "run-tests --concurrency keeps summary order" test_run_tests_concurrency_keeps_summary_order;

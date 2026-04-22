@@ -135,6 +135,8 @@ let no_listed_suite: listed_test_suite -> unit = fun _ -> ()
 
 let no_list_error: suite_binary -> test_error -> unit = fun _ _ -> ()
 
+let ctx_json_arg = "--ctx"
+
 let upsert_json_field = fun name value fields ->
   let filtered =
     List.filter fields ~fn:(fun (field_name, _) -> not (String.equal field_name name))
@@ -841,52 +843,108 @@ let ensure_executable_binary_path = fun ~kind path ->
         |> Result.map_err
           ~fn:(fun err -> "failed to mark " ^ kind ^ " executable: " ^ IO.error_message err)
 
-let materialized_suite_binary_path = fun ~(workspace:Workspace.t) ~profile ~(suite:suite_binary) ->
+let materialized_export_path = fun ~(workspace:Workspace.t) ~profile ~package_name ~export_name ->
   let out_dir = Riot_model.Riot_dirs.out_dir_in_workspace
     ~workspace
     ~profile
     ~target:(Riot_model.Riot_dirs.host_target ()) in
-  Path.(out_dir / Path.v (Package_name.to_string suite.package_name) / Path.v suite.suite_name)
+  Path.(out_dir / Path.v (Package_name.to_string package_name) / Path.v export_name)
 
-let find_suite_binary_path_in_output = fun ~(workspace:Workspace.t) ~profile ~(store:Riot_store.Store.t) ~(suite:suite_binary) (
+let find_export_path_in_output = fun ~(workspace:Workspace.t) ~profile ~(store:Riot_store.Store.t) ~kind ~package_name ~export_name (
   output: Riot_build.Build_result.t
 ) ->
-  let fallback_path = materialized_suite_binary_path ~workspace ~profile ~suite in
+  let fallback_path = materialized_export_path ~workspace ~profile ~package_name ~export_name in
   let ensure_materialized_fallback () =
     match Fs.exists fallback_path with
-    | Ok true -> ensure_executable_binary_path ~kind:"suite binary" fallback_path
-    |> Result.map_err ~fn:(fun reason -> SuiteArtifactNotFound { suite; reason })
+    | Ok true -> ensure_executable_binary_path ~kind fallback_path
+    |> Result.map_err ~fn:(fun reason -> reason)
     | Ok false
-    | Error _ -> Error (SuiteArtifactNotFound {
-      suite;
-      reason = "suite '" ^ suite.suite_name ^ "' was not produced by build output"
-    })
+    | Error _ -> Error (kind ^ " '" ^ export_name ^ "' was not produced by build output")
   in
   match
-    Riot_build.Build_result.find_package output suite.package_name |> Option.and_then
+    Riot_build.Build_result.find_package output package_name |> Option.and_then
       ~fn:(fun package_output ->
-        Riot_build.Build_result.find_export package_output suite.suite_name)
+        Riot_build.Build_result.find_export package_output export_name)
   with
   | None -> ensure_materialized_fallback ()
   | Some export_entry -> (
       match Riot_store.Store.export_source_path store export_entry with
-      | Some path -> ensure_executable_binary_path ~kind:"suite binary" path
-      |> Result.map_err ~fn:(fun reason -> SuiteArtifactNotFound { suite; reason })
+      | Some path -> ensure_executable_binary_path ~kind path
+      |> Result.map_err ~fn:(fun reason -> reason)
       | None -> ensure_materialized_fallback ()
     )
 
+let find_suite_binary_path_in_output = fun ~(workspace:Workspace.t) ~profile ~(store:Riot_store.Store.t) ~(suite:suite_binary) (
+  output: Riot_build.Build_result.t
+) ->
+  find_export_path_in_output
+    ~workspace
+    ~profile
+    ~store
+    ~kind:"suite binary"
+    ~package_name:suite.package_name
+    ~export_name:suite.suite_name
+    output
+  |> Result.map_err ~fn:(fun reason -> SuiteArtifactNotFound { suite; reason })
+
+let suite_ctx_json_value = fun ~workspace_root ~package_name ?source_file ~binary_path ~built_binaries () ->
+  let built_binaries_json = built_binaries
+  |> List.map
+    ~fn:(fun (binary: Test.Context.built_binary) ->
+      Data.Json.Object [
+        ("name", Data.Json.String binary.name);
+        ("path", Data.Json.String (Path.to_string binary.path));
+      ]) in
+  Data.Json.Object [
+    ("workspace_root", Data.Json.String (Path.to_string workspace_root));
+    ("package_name", Data.Json.String (Package_name.to_string package_name));
+    ("binary_path", Data.Json.String (Path.to_string binary_path));
+    (
+      "source_file",
+      match source_file with
+      | Some source_file -> Data.Json.String (Path.to_string source_file)
+      | None -> Data.Json.Null
+    );
+    ("built_binaries", Data.Json.Array built_binaries_json);
+  ]
+  |> Data.Json.to_string
+
+let runtime_package_built_binaries = fun ~(workspace:Workspace.t) ~profile ~(store:Riot_store.Store.t) ~(suite:suite_binary) (
+  output: Riot_build.Build_result.t
+) ->
+  match
+    List.find (Workspace.realize_packages ~intent:Package.Runtime workspace)
+      ~fn:(fun (pkg: Package.t) ->
+        Package_name.equal pkg.name suite.package_name)
+  with
+  | None -> []
+  | Some pkg ->
+      List.filter_map pkg.binaries
+        ~fn:(fun (bin: Package.binary) ->
+          match find_export_path_in_output
+            ~workspace
+            ~profile
+            ~store
+            ~kind:"built binary"
+            ~package_name:suite.package_name
+            ~export_name:bin.name
+            output with
+          | Ok path -> Some Test.Context.{ name = bin.name; path }
+          | Error _ -> None)
+
 let run_suite_args = fun extra_args -> "run-tests" :: remove_json_args extra_args @ [ "--json" ]
 
-let run_suite = fun ~on_event ~workspace_root ~suite ~extra_args binary_path ->
-  let args = run_suite_args extra_args in
+let run_suite = fun ~on_event ~workspace_root ~suite ?source_file ~built_binaries ~extra_args binary_path ->
+  let ctx_json = suite_ctx_json_value
+    ~workspace_root
+    ~package_name:suite.package_name
+    ?source_file
+    ~binary_path
+    ~built_binaries
+    () in
+  let args = run_suite_args extra_args @ [ ctx_json_arg; ctx_json ] in
   on_event (ExecutingSuiteBinary { suite; binary_path; args });
-  let cmd = Command.make
-    (Path.to_string binary_path)
-    ~env:[
-      ("RIOT_PACKAGE_NAME", Package_name.to_string suite.package_name);
-      ("RIOT_WORKSPACE_ROOT", Path.to_string workspace_root);
-    ]
-    ~args in
+  let cmd = Command.make (Path.to_string binary_path) ~args in
   match Command.output
     cmd
     ~on_idle:(fun elapsed ->
@@ -939,13 +997,15 @@ let run_suite = fun ~on_event ~workspace_root ~suite ~extra_args binary_path ->
 
 let list_suite_binary_capture = fun ~workspace_root ~(suite:suite_binary) ~extra_args binary_path ->
   let extra_args = remove_list_args extra_args @ [ "--json" ] in
+  let ctx_json = suite_ctx_json_value
+    ~workspace_root
+    ~package_name:suite.package_name
+    ~binary_path
+    ~built_binaries:[]
+    () in
   let cmd = Command.make
     (Path.to_string binary_path)
-    ~env:[
-      ("RIOT_PACKAGE_NAME", Package_name.to_string suite.package_name);
-      ("RIOT_WORKSPACE_ROOT", Path.to_string workspace_root);
-    ]
-    ~args:("list-tests" :: extra_args) in
+    ~args:("list-tests" :: extra_args @ [ ctx_json_arg; ctx_json ]) in
   Command.output cmd
 
 let list_suite = fun ~(workspace:Workspace.t) ~suite ~extra_args binary_path ->
@@ -1157,12 +1217,21 @@ let test = fun ?(on_event = no_event) (request: test_request) ->
                 output with
               | Error _ as err -> err
               | Ok binary_path ->
+                  let source_file = find_suite_source_path ~workspace:request.workspace suite in
+                  let built_binaries = runtime_package_built_binaries
+                    ~workspace:request.workspace
+                    ~profile:request.profile
+                    ~store
+                    ~suite
+                    output in
                   on_event (SuiteBinaryResolved { suite; binary_path });
                   on_event (RunningSuite suite);
                   match run_suite
                     ~on_event
                     ~workspace_root:request.workspace.root
                     ~suite
+                    ?source_file
+                    ~built_binaries
                     ~extra_args:request.extra_args
                     binary_path with
                   | Error _ as err -> err

@@ -1,10 +1,16 @@
 open Global
+open Collections
 
 type fixture = {
   path: Path.t;
   relpath: Path.t;
   name: string;
   snapshot_path: Path.t option;
+}
+
+type built_binary = {
+  name: string;
+  path: Path.t;
 }
 
 type snapshot_mode =
@@ -52,6 +58,7 @@ type t = {
   test_index: int;
   source_file: Path.t option;
   binary_path: Path.t option;
+  built_binaries: built_binary list;
   workspace_root: Path.t option;
   package_name: string option;
   fixture: fixture option;
@@ -65,3 +72,30 @@ let with_fixture = fun ctx fixture -> { ctx with fixture = Some fixture }
 let with_progress_handler = fun ctx progress_handler -> { ctx with progress_handler }
 
 let emit_progress = fun ctx progress -> ctx.progress_handler progress
+
+let find_binary = fun ctx name ->
+  List.find ctx.built_binaries
+    ~fn:(fun (binary: built_binary) ->
+      String.equal binary.name name) |> Option.map ~fn:(fun binary -> binary.path)
+
+let require_binary = fun ctx name ->
+  match find_binary ctx name with
+  | Some path -> Ok path
+  | None ->
+      let package_prefix =
+        match ctx.package_name with
+        | Some package_name -> "package '" ^ package_name ^ "' "
+        | None -> ""
+      in
+      let available =
+        match List.map ctx.built_binaries ~fn:(fun (binary: built_binary) -> binary.name) with
+        | [] -> "none"
+        | names -> String.concat ", " names
+      in
+      Error ("required built binary '"
+      ^ name
+      ^ "' was not available for "
+      ^ package_prefix
+      ^ "(available: "
+      ^ available
+      ^ ")")

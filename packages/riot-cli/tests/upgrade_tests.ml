@@ -190,19 +190,19 @@ let test_upgrade_accepts_version_flag = fun _ctx ->
       Test.assert_equal ~expected:(Some "abc123") ~actual:(ArgParser.get_one matches "version");
       Ok ()
 
-let test_upgrade_installs_downloaded_archive = fun _ctx ->
+let test_upgrade_installs_downloaded_archive = fun ctx ->
   with_tempdir_result "upgrade-install"
     (fun tempdir ->
       let archive_path = Path.(tempdir / Path.v "riot.tar.gz") in
       let home_dir = Path.(tempdir / Path.v "home") in
       let installed = Path.(home_dir / Path.v ".riot" / Path.v "bin" / Path.v "riot") in
-      let riot_binary_path = Path.v "/Users/leostera/.riot/bin/riot" in
       let old_binary_path = Path.v "/bin/sh" in
       let metadata = make_metadata
         ~release_id:"v9.9.9"
         ~build_sha:"deadbeefcafe"
         ~issues_url:"https://github.com/leostera/riot/issues"
         () in
+      let* riot_binary_path = Test.Context.require_binary ctx "riot" in
       let* next_binary = Result.map_err (Fs.read riot_binary_path) ~fn:IO.error_message in
       let* () = copy_executable_file ~src:old_binary_path ~dst:installed in
       let* () = write_upgrade_archive ~metadata:(Some metadata) ~path:archive_path ~binary:next_binary in
@@ -227,18 +227,18 @@ let test_upgrade_installs_downloaded_archive = fun _ctx ->
                       | None -> Error "expected installed metadata to be written"
                 ))))
 
-let test_upgrade_skips_when_binary_is_unchanged = fun _ctx ->
+let test_upgrade_skips_when_binary_is_unchanged = fun ctx ->
   with_tempdir_result "upgrade-noop"
     (fun tempdir ->
       let archive_path = Path.(tempdir / Path.v "riot.tar.gz") in
       let home_dir = Path.(tempdir / Path.v "home") in
       let installed = Path.(home_dir / Path.v ".riot" / Path.v "bin" / Path.v "riot") in
-      let riot_binary_path = Path.v "/Users/leostera/.riot/bin/riot" in
       let metadata = make_metadata
         ~release_id:"v1.2.3"
         ~build_sha:"feedface1234"
         ~issues_url:"https://github.com/leostera/riot/issues"
         () in
+      let* riot_binary_path = Test.Context.require_binary ctx "riot" in
       let* binary = Result.map_err (Fs.read riot_binary_path) ~fn:IO.error_message in
       let* () = copy_executable_file ~src:riot_binary_path ~dst:installed in
       let* () = write_upgrade_archive ~metadata:(Some metadata) ~path:archive_path ~binary in

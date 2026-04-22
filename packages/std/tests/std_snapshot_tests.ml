@@ -12,6 +12,7 @@ let make_ctx = fun ?fixture ?(test_name = "snapshot_test") workspace_root ->
     test_index = 1;
     source_file = None;
     binary_path = None;
+    built_binaries = [];
     workspace_root = Some workspace_root;
     package_name = Some "std";
     fixture;

@@ -17,6 +17,7 @@ type ctx = Test_context.t = {
   test_index: int;
   source_file: Path.t option;
   binary_path: Path.t option;
+  built_binaries: Test_context.built_binary list;
   workspace_root: Path.t option;
   package_name: string option;
   fixture: Test_context.fixture option;

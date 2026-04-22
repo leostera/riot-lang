@@ -12,6 +12,7 @@ let dummy_ctx: Test.ctx = {
   test_index = 0;
   source_file = None;
   binary_path = None;
+  built_binaries = [];
   workspace_root = None;
   package_name = Some "propane";
   fixture = None;

@@ -244,6 +244,99 @@ let write_tests_json = fun tests ->
   let tests_json = to_json_items 1 tests in
   println (Data.Json.to_string (Data.Json.Object [ ("tests", Data.Json.Array tests_json) ]))
 
+let ctx_json_arg = "--ctx"
+
+type suite_ctx = {
+  source_file: Path.t option;
+  binary_path: Path.t option;
+  workspace_root: Path.t option;
+  package_name: string option;
+  built_binaries: Test_context.built_binary list;
+}
+
+let empty_suite_ctx = {
+  source_file = None;
+  binary_path = None;
+  workspace_root = None;
+  package_name = None;
+  built_binaries = [];
+}
+
+let suite_ctx_of_json = fun value ->
+  let built_binary_of_json = function
+    | Data.Json.Object fields -> (
+        match
+          (
+            List.find fields
+              ~fn:(fun (name, _) ->
+                String.equal name "name"),
+            List.find fields
+              ~fn:(fun (name, _) ->
+                String.equal name "path")
+          )
+        with
+        | Some (_, Data.Json.String name), Some (_, Data.Json.String path) -> Some Test_context.{
+          name;
+          path = Path.v path
+        }
+        | _ -> None
+      )
+    | _ -> None
+  in
+  match Data.Json.of_string value with
+  | Ok (Data.Json.Object fields) ->
+      let path_field name =
+        match
+          List.find fields
+            ~fn:(fun (field_name, _) ->
+              String.equal field_name name)
+        with
+        | Some (_, Data.Json.String path) -> Some (Path.v path)
+        | _ -> None
+      in
+      let string_field name =
+        match
+          List.find fields
+            ~fn:(fun (field_name, _) ->
+              String.equal field_name name)
+        with
+        | Some (_, Data.Json.String value) -> Some value
+        | _ -> None
+      in
+      let built_binaries =
+        match
+          List.find fields
+            ~fn:(fun (name, _) ->
+              String.equal name "built_binaries")
+        with
+        | Some (_, Data.Json.Array items) -> List.filter_map items ~fn:built_binary_of_json
+        | _ -> []
+      in
+      {
+        source_file = path_field "source_file";
+        binary_path = path_field "binary_path";
+        workspace_root = path_field "workspace_root";
+        package_name = string_field "package_name";
+        built_binaries;
+      }
+  | Error _
+  | Ok _ -> empty_suite_ctx
+
+let suite_ctx_from_args = fun args ->
+  let rec loop = function
+    | [] ->
+        empty_suite_ctx
+    | flag :: value :: _ when String.equal flag ctx_json_arg ->
+        suite_ctx_of_json value
+    | arg :: _ when String.starts_with ~prefix:(ctx_json_arg ^ "=") arg ->
+        let prefix_len = String.length ctx_json_arg + 1 in
+        let len = String.length arg - prefix_len in
+        suite_ctx_of_json (String.sub arg ~offset:prefix_len ~len)
+    | _ :: rest ->
+        loop rest
+  in
+  loop args
+
 let list_tests = fun ~json tests ->
   if json then
     write_tests_json tests
@@ -279,6 +372,7 @@ let run_tests_cmd =
         flag "flaky" |> long "flaky" |> help "Run only tests marked flaky";
         option "flaky-max-retries" |> long "flaky-max-retries" |> help "Retry budget for tests marked flaky";
         option "pattern" |> long "pattern" |> help "Deprecated alias for the positional query argument";
+        option "ctx" |> long "ctx" |> help "Structured runner context JSON";
       ]
 
 let list_tests_cmd =
@@ -294,12 +388,20 @@ let list_tests_cmd =
       option "pattern" |> long "pattern" |> help "Deprecated alias for the positional query argument";
     ]
 
-let get_suite_info name: Reporter.suite_info =
-  let binary_path = Env.args |> List.head |> Option.unwrap_or ~default:name |> Path.v in
-  { name; source_file = None; binary_path = Some binary_path }
+let get_suite_info name args: Reporter.suite_info =
+  let suite_ctx = suite_ctx_from_args args in
+  let fallback_binary_path = Env.args |> List.head |> Option.unwrap_or ~default:name |> Path.v in
+  {
+    name;
+    source_file = suite_ctx.source_file;
+    binary_path = Option.or_ suite_ctx.binary_path (Some fallback_binary_path);
+    workspace_root = suite_ctx.workspace_root;
+    package_name = suite_ctx.package_name;
+    built_binaries = suite_ctx.built_binaries;
+  }
 
 let main = fun ?(execution_mode = Concurrent) ~name ~tests ~args () ->
-  let suite_info = get_suite_info name in
+  let suite_info = get_suite_info name args in
   let cmd = command name
   |> about ("Test runner for " ^ name)
   |> subcommands [ list_tests_cmd; run_tests_cmd ] in

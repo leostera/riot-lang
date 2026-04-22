@@ -6,6 +6,12 @@ type suite_info = {
   source_file: Path.t option;
   (** Built test binary path, when known. *)
   binary_path: Path.t option;
+  (** Workspace root for the suite, when known. *)
+  workspace_root: Path.t option;
+  (** Owning package name for the suite, when known. *)
+  package_name: string option;
+  (** Built runtime binaries for the owning package, when any. *)
+  built_binaries: Test_context.built_binary list;
 }
 
 (** Reporter interface used by the test runner.

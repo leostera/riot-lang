@@ -30,6 +30,31 @@ let test_ctx_derives_package_name =
       | Some package_name -> Error ("expected package name std, got " ^ package_name)
       | None -> Error "expected ctx.package_name to be present")
 
+let test_ctx_defaults_built_binaries_to_empty =
+  Test.case "ctx defaults built binaries to empty"
+    (fun ctx ->
+      match ctx.built_binaries with
+      | [] -> Ok ()
+      | _ -> Error "expected std test context to have no owning-package runtime binaries")
+
+let test_ctx_find_binary_looks_up_a_built_binary =
+  Test.case "ctx find_binary looks up a built binary"
+    (fun ctx ->
+      let expected = Path.v "/tmp/demo-bin" in
+      let ctx = { ctx with built_binaries = [ Test.Context.{ name = "demo"; path = expected } ] } in
+      match Test.Context.find_binary ctx "demo" with
+      | Some actual when Path.equal actual expected -> Ok ()
+      | Some actual -> Error ("expected /tmp/demo-bin, got " ^ Path.to_string actual)
+      | None -> Error "expected find_binary to return the requested built binary")
+
+let test_ctx_require_binary_reports_missing_binary =
+  Test.case "ctx require_binary reports a missing binary"
+    (fun ctx ->
+      match Test.Context.require_binary ctx "riot" with
+      | Error message when String.contains message "required built binary 'riot' was not available" -> Ok ()
+      | Error message -> Error ("unexpected missing-binary message: " ^ message)
+      | Ok path -> Error ("expected missing binary lookup to fail, got " ^ Path.to_string path))
+
 let test_ctx_derives_workspace_root =
   Test.case "ctx derives workspace root"
     (fun ctx ->
@@ -43,6 +68,9 @@ let tests = [
   test_ctx_assigns_one_based_indices;
   test_ctx_exposes_binary_path;
   test_ctx_derives_package_name;
+  test_ctx_defaults_built_binaries_to_empty;
+  test_ctx_find_binary_looks_up_a_built_binary;
+  test_ctx_require_binary_reports_missing_binary;
   test_ctx_derives_workspace_root;
 ]
 

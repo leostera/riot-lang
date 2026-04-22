@@ -32,46 +32,34 @@ let join_path_segments = fun segments ->
   | _ -> String.concat "/" segments
 
 let derive_package_name = fun binary_path ->
-  match Env.get Env.String ~var:"RIOT_PACKAGE_NAME" with
-  | Some package_name -> Some package_name
-  | None -> (
-      match binary_path with
-      | None -> None
-      | Some path ->
-          let segments = Path.components path |> List.map ~fn:Path.to_string in
-          match find_segment_index segments "out" with
-          | Some idx when List.length segments > idx + 1 -> List.get segments ~at:(idx + 1)
-          | _ -> None
-    )
+  match binary_path with
+  | None -> None
+  | Some path ->
+      let segments = Path.components path |> List.map ~fn:Path.to_string in
+      match find_segment_index segments "out" with
+      | Some idx when List.length segments > idx + 1 -> List.get segments ~at:(idx + 1)
+      | _ -> None
 
 let derive_workspace_root = fun ~current_dir ~binary_path ->
-  match Env.get Env.String ~var:"RIOT_WORKSPACE_ROOT" with
-  | Some root -> (
-      match Path.from_string root with
-      | Ok root -> Some root
-      | Error _ -> current_dir
-    )
-  | None -> (
-      match binary_path with
-      | None -> current_dir
-      | Some path -> (
-          let segments = Path.components path |> List.map ~fn:Path.to_string in
-          match find_segment_index segments "_build" with
-          | Some 0 ->
-              current_dir
-          | Some idx -> (
-              match take idx segments with
-              | []
-              | [ "." ] -> current_dir
-              | prefix -> (
-                  match Path.from_string (join_path_segments prefix) with
-                  | Ok root -> Some root
-                  | Error _ -> current_dir
-                )
+  match binary_path with
+  | None -> current_dir
+  | Some path -> (
+      let segments = Path.components path |> List.map ~fn:Path.to_string in
+      match find_segment_index segments "_build" with
+      | Some 0 ->
+          current_dir
+      | Some idx -> (
+          match take idx segments with
+          | []
+          | [ "." ] -> current_dir
+          | prefix -> (
+              match Path.from_string (join_path_segments prefix) with
+              | Ok root -> Some root
+              | Error _ -> current_dir
             )
-          | None ->
-              current_dir
         )
+      | None ->
+          current_dir
     )
 
 type mode =
@@ -156,8 +144,11 @@ let make_ctx = fun ~(suite_info:Reporter.suite_info) ~index (test: Test_case.t) 
     test_index = index;
     source_file = suite_info.source_file;
     binary_path = suite_info.binary_path;
-    workspace_root = derive_workspace_root ~current_dir ~binary_path:suite_info.binary_path;
-    package_name = derive_package_name suite_info.binary_path;
+    built_binaries = suite_info.built_binaries;
+    workspace_root = Option.or_
+      suite_info.workspace_root
+      (derive_workspace_root ~current_dir ~binary_path:suite_info.binary_path);
+    package_name = Option.or_ suite_info.package_name (derive_package_name suite_info.binary_path);
     fixture = None;
     progress_handler = Test_context.no_progress_handler;
   }

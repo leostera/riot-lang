@@ -7,6 +7,7 @@ type ctx = Test_context.t = {
   test_index: int;
   source_file: Path.t option;
   binary_path: Path.t option;
+  built_binaries: Test_context.built_binary list;
   workspace_root: Path.t option;
   package_name: string option;
   fixture: Test_context.fixture option;
@@ -16,6 +17,10 @@ type ctx = Test_context.t = {
 (** Helpers for working with test contexts and fixtures. *)
 module Context: sig
   type t = ctx
+  type built_binary = Test_context.built_binary = {
+    name: string;
+    path: Path.t;
+  }
   type fixture = Test_context.fixture = {
     path: Path.t;
     relpath: Path.t;
@@ -64,6 +69,10 @@ module Context: sig
   val emit_progress: t -> progress -> unit
 
   val no_progress_handler: Test_context.progress_handler
+
+  val find_binary: t -> string -> Path.t option
+
+  val require_binary: t -> string -> (Path.t, string) result
 end
 
 (** Snapshot assertions for golden-file and inline snapshots. *)
