@@ -761,17 +761,31 @@ and match_case_doc = fun match_case ->
         | Some guard -> Doc.concat [ Doc.space; Doc.text "when"; Doc.space; expr_doc guard ]
         | None -> Doc.empty
       in
-      Doc.concat
-        [
-          Doc.bar;
-          Doc.space;
-          pattern_doc pattern;
-          guard;
-          Doc.space;
-          Doc.arrow;
-          Doc.space;
-          expr_doc body
-        ]
+      let body_doc = expr_doc body in
+      if expr_case_body_breaks body then
+        Doc.concat
+          [
+            Doc.bar;
+            Doc.space;
+            pattern_doc pattern;
+            guard;
+            Doc.space;
+            Doc.arrow;
+            Doc.line;
+            Doc.indent 2 body_doc
+          ]
+      else
+        Doc.concat
+          [
+            Doc.bar;
+            Doc.space;
+            pattern_doc pattern;
+            guard;
+            Doc.space;
+            Doc.arrow;
+            Doc.space;
+            body_doc;
+          ]
   | _ -> unsupported "incomplete match case"
 
 and expr_apply_callee_doc = fun expr ->
@@ -841,6 +855,51 @@ and large_boolean_infix_chain_doc = fun expr ->
     )
   | _ -> None
 
+and expr_is_begin_block = fun expr ->
+  match Ast.Node.first_child_token expr ~kind:Kind.BEGIN_KW with
+  | Some _ -> true
+  | None -> false
+
+and expr_binding_body_breaks_after_equal = fun expr ->
+  match Ast.Expr.view expr with
+  | If _
+  | Let _
+  | Match _
+  | Try _
+  | Sequence _ -> true
+  | Parenthesized _ -> expr_is_begin_block expr
+  | _ -> false
+
+and expr_arrow_body_breaks = fun expr ->
+  match Ast.Expr.view expr with
+  | If _
+  | Let _
+  | Match _
+  | Try _
+  | Sequence _ -> true
+  | Parenthesized _ -> expr_is_begin_block expr
+  | _ -> false
+
+and expr_try_body_breaks = fun expr ->
+  match Ast.Expr.view expr with
+  | If _
+  | Let _
+  | Match _
+  | Try _
+  | Sequence _ -> true
+  | Parenthesized _ -> expr_is_begin_block expr
+  | _ -> false
+
+and expr_case_body_breaks = fun expr ->
+  match Ast.Expr.view expr with
+  | If _
+  | Let _
+  | Match _
+  | Try _
+  | Sequence _ -> true
+  | Parenthesized _ when expr_is_begin_block expr -> true
+  | _ -> false
+
 and expr_infix_operand_doc = fun expr ->
   let view = Ast.Expr.view expr in
   match view with
@@ -862,6 +921,46 @@ and expr_infix_operand_doc = fun expr ->
 
 and expr_doc = fun expr -> expr_doc_with_view expr (Ast.Expr.view expr)
 
+and sequence_items = fun expr ->
+  let rec loop expr acc =
+    match Ast.Expr.view expr with
+    | Sequence { left=Some left; right=Some right } -> loop left (loop right acc)
+    | _ -> expr :: acc
+  in
+  loop expr []
+
+and sequence_doc = fun expr ->
+  sequence_items expr |> List.map ~fn:expr_doc |> Doc.join (Doc.concat [ Doc.semi; Doc.line ])
+
+and match_cases_doc = fun expr ->
+  let cases = ref [] in
+  Ast.Expr.for_each_match_case
+    expr
+    ~fn:(fun match_case -> cases := match_case_doc match_case :: !cases);
+  Doc.join Doc.line (List.reverse !cases)
+
+and parenthesized_expr_doc = fun expr inner ->
+  if expr_is_begin_block expr then
+    Doc.concat
+      [ Doc.text "begin"; Doc.line; Doc.indent 2 (expr_doc inner); Doc.line; Doc.text "end" ]
+  else
+    match Ast.Expr.view inner with
+    | If _
+    | Let _
+    | Match _
+    | Try _
+    | Sequence _ ->
+        Doc.concat
+          [ Doc.lparen; Doc.line; Doc.indent 4 (expr_doc inner); Doc.line; Doc.indent 2 Doc.rparen ]
+    | Prefix { operator=Some operator; operand=Some operand } -> (
+        match Ast.Expr.view operand with
+        | Literal { token=Some token } when token_text_is operator "-" -> Doc.concat
+          [ Doc.lparen; token_doc operator; literal_token_doc token; Doc.rparen ]
+        | _ -> Doc.concat [ Doc.lparen; expr_doc inner; Doc.rparen ]
+      )
+    | _ ->
+        Doc.concat [ Doc.lparen; expr_doc inner; Doc.rparen ]
+
 and expr_doc_with_view = fun expr (view: Ast.Expr.view) ->
   match view with
   | Path { path } ->
@@ -873,19 +972,12 @@ and expr_doc_with_view = fun expr (view: Ast.Expr.view) ->
   | Parenthesized { inner=Some inner } when expr_parens_can_elide inner ->
       expr_doc inner
   | Parenthesized { inner=Some inner } ->
-      let inner_doc =
-        match Ast.Expr.view inner with
-        | Prefix { operator=Some operator; operand=Some operand } -> (
-            match Ast.Expr.view operand with
-            | Literal { token=Some token } when token_text_is operator "-" -> Doc.concat
-              [ token_doc operator; literal_token_doc token ]
-            | _ -> expr_doc inner
-          )
-        | _ -> expr_doc inner
-      in
-      Doc.concat [ Doc.lparen; inner_doc; Doc.rparen ]
+      parenthesized_expr_doc expr inner
   | Parenthesized { inner=None } ->
-      Doc.concat [ Doc.lparen; Doc.rparen ]
+      if expr_is_begin_block expr then
+        Doc.concat [ Doc.text "begin"; Doc.space; Doc.text "end" ]
+      else
+        Doc.concat [ Doc.lparen; Doc.rparen ]
   | Infix { left=Some left; operator=Some operator; right=Some right } ->
       Doc.concat
         [
@@ -921,12 +1013,12 @@ and expr_doc_with_view = fun expr (view: Ast.Expr.view) ->
           expr_doc condition;
           Doc.space;
           Doc.text "then";
-          Doc.space;
-          expr_doc then_branch;
-          Doc.space;
+          Doc.line;
+          Doc.indent 2 (expr_doc then_branch);
+          Doc.line;
           Doc.text "else";
-          Doc.space;
-          expr_doc else_branch;
+          Doc.line;
+          Doc.indent 2 (expr_doc else_branch);
         ]
   | If { condition=Some condition; then_branch=Some then_branch; else_branch=None } ->
       Doc.concat
@@ -936,8 +1028,8 @@ and expr_doc_with_view = fun expr (view: Ast.Expr.view) ->
           expr_doc condition;
           Doc.space;
           Doc.text "then";
-          Doc.space;
-          expr_doc then_branch;
+          Doc.line;
+          Doc.indent 2 (expr_doc then_branch);
         ]
   | If _ ->
       unsupported "incomplete if expression"
@@ -956,45 +1048,44 @@ and expr_doc_with_view = fun expr (view: Ast.Expr.view) ->
   | Record
   | RecordUpdate ->
       record_expr_doc expr
-  | Sequence { left=Some left; right=Some right } ->
-      Doc.concat [ expr_doc left; Doc.semi; Doc.space; expr_doc right ]
+  | Sequence { left=Some _; right=Some _ } ->
+      sequence_doc expr
   | Sequence _ ->
       unsupported "incomplete sequence expression"
   | Let { first_binding=Some _; body=Some body } ->
+      let bindings, last_binding_is_multiline = let_bindings_block_doc
+        ~keyword:"let"
+        ~rec_token:(Ast.Node.first_child_token expr ~kind:Kind.REC_KW)
+        expr in
       Doc.concat
-        [
-          let_bindings_doc
-            ~keyword:"let"
-            ~rec_token:(Ast.Node.first_child_token expr ~kind:Kind.REC_KW)
-            expr;
-          Doc.space;
-          Doc.text "in";
-          Doc.space;
-          expr_doc body;
-        ]
+        [ bindings; (
+            if last_binding_is_multiline then
+              Doc.line
+            else
+              Doc.space
+          ); Doc.text "in"; Doc.line; expr_doc body; ]
   | Let _ ->
       unsupported "incomplete let expression"
   | Fun { body=Some body } -> (
       match direct_pattern_docs expr with
       | [] -> unsupported "function expression without parameters"
-      | parameters -> Doc.concat
-        [
-          Doc.text "fun";
-          Doc.space;
-          Doc.join Doc.space (List.map parameters ~fn:pattern_doc);
-          Doc.space;
-          Doc.arrow;
-          Doc.space;
-          expr_doc body;
-        ]
+      | parameters ->
+          let head = Doc.concat
+            [
+              Doc.text "fun";
+              Doc.space;
+              Doc.join Doc.space (List.map parameters ~fn:pattern_doc);
+              Doc.space;
+              Doc.arrow;
+            ] in
+          if expr_arrow_body_breaks body then
+            Doc.concat [ head; Doc.line; Doc.indent 2 (expr_doc body) ]
+          else
+            Doc.concat [ head; Doc.space; expr_doc body ]
     )
   | Fun _ ->
       unsupported "incomplete function expression"
   | Match { scrutinee=Some scrutinee; first_case=Some _ } ->
-      let cases = ref [] in
-      Ast.Expr.for_each_match_case
-        expr
-        ~fn:(fun match_case -> cases := match_case_doc match_case :: !cases);
       Doc.concat
         [
           Doc.text "match";
@@ -1002,34 +1093,23 @@ and expr_doc_with_view = fun expr (view: Ast.Expr.view) ->
           expr_doc scrutinee;
           Doc.space;
           Doc.text "with";
-          Doc.space;
-          Doc.join Doc.space (List.reverse !cases);
+          Doc.line;
+          match_cases_doc expr;
         ]
   | Match _ ->
       unsupported "incomplete match expression"
   | Function { first_case=Some _ } ->
-      let cases = ref [] in
-      Ast.Expr.for_each_match_case
-        expr
-        ~fn:(fun match_case -> cases := match_case_doc match_case :: !cases);
-      Doc.concat [ Doc.text "function"; Doc.space; Doc.join Doc.space (List.reverse !cases) ]
+      Doc.concat [ Doc.text "function"; Doc.line; match_cases_doc expr ]
   | Function _ ->
       unsupported "incomplete function expression"
   | Try { body=Some body; first_case=Some _ } ->
-      let cases = ref [] in
-      Ast.Expr.for_each_match_case
-        expr
-        ~fn:(fun match_case -> cases := match_case_doc match_case :: !cases);
-      Doc.concat
-        [
-          Doc.text "try";
-          Doc.space;
-          expr_doc body;
-          Doc.space;
-          Doc.text "with";
-          Doc.space;
-          Doc.join Doc.space (List.reverse !cases);
-        ]
+      let body_separator =
+        if expr_try_body_breaks body then
+          Doc.concat [ Doc.line; Doc.indent 2 (expr_doc body); Doc.line ]
+        else
+          Doc.concat [ Doc.space; expr_doc body; Doc.space ]
+      in
+      Doc.concat [ Doc.text "try"; body_separator; Doc.text "with"; Doc.line; match_cases_doc expr ]
   | Try _ ->
       unsupported "incomplete try expression"
   | While { condition=Some condition; body=Some body } ->
@@ -1464,7 +1544,11 @@ and let_binding_doc = fun binding ->
       (
         match large_boolean_infix_chain_doc body with
         | Some body_doc -> Doc.concat [ head; Doc.line; Doc.indent 2 body_doc ]
-        | None -> Doc.concat [ head; Doc.space; expr_doc body ]
+        | None ->
+            if expr_binding_body_breaks_after_equal body then
+              Doc.concat [ head; Doc.line; Doc.indent 2 (expr_doc body) ]
+            else
+              Doc.concat [ head; Doc.space; expr_doc body ]
       )
   | _ -> unsupported "incomplete let binding"
 
@@ -1486,6 +1570,34 @@ and let_bindings_doc = fun ~keyword ~rec_token node ->
               | None -> Doc.space
             ); let_binding_doc first; ] @ rest
         )
+
+and let_bindings_block_doc = fun ~keyword ~rec_token node ->
+  match let_binding_nodes node with
+  | [] -> unsupported (keyword ^ " declaration without binding")
+  | first :: rest ->
+      let first_doc = let_binding_doc first in
+      let rec collect rest docs last_is_multiline =
+        match rest with
+        | [] -> (List.reverse docs, last_is_multiline)
+        | binding :: rest ->
+            let binding_doc = let_binding_doc binding in
+            collect
+              rest
+              (Doc.concat [ Doc.line; Doc.text "and"; Doc.space; binding_doc ] :: docs)
+              (Doc.is_multiline binding_doc)
+      in
+      let rest_docs, last_is_multiline = collect rest [] (Doc.is_multiline first_doc) in
+      (
+        Doc.concat
+          (
+            [ Doc.text keyword; (
+                match rec_token with
+                | Some rec_token -> Doc.concat [ Doc.space; token_doc rec_token; Doc.space ]
+                | None -> Doc.space
+              ); first_doc; ] @ rest_docs
+          ),
+        last_is_multiline
+      )
 
 let let_decl_doc = fun decl ->
   let_bindings_doc ~keyword:"let" ~rec_token:(Ast.LetDeclaration.rec_token decl) decl

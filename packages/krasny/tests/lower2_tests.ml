@@ -83,6 +83,7 @@ let assert_lower2_existing_fixture_subset = fun () ->
   let fixtures = [
     Path.v "packages/krasny/tests/fixtures/0100_atoms_and_basic_expressions.ml";
     Path.v "packages/krasny/tests/fixtures/0200_operators_and_parens.ml";
+    Path.v "packages/krasny/tests/fixtures/0300_bindings_and_control_flow.ml";
   ] in
   let rec loop = function
     | [] -> Ok ()
@@ -116,16 +117,17 @@ let tests = [
     (fun _ctx -> assert_format2_ml ~expected:"let rec f = g and g = f\n" "let rec f = g\nand g = f\n");
   Test.case
     "lower2 formats local let expressions"
-    (fun _ctx -> assert_format2_ml ~expected:"let x = let y = 1 in y\n" "let x = let y = 1 in y\n");
+    (fun _ctx -> assert_format2_ml ~expected:"let x =\n  let y = 1 in\n  y\n" "let x = let y = 1 in y\n");
   Test.case
     "lower2 formats function expressions"
     (fun _ctx -> assert_format2_ml ~expected:"let id = fun x -> x\n" "let id = fun x -> x\n");
   Test.case
     "lower2 formats match expressions"
-    (fun _ctx -> assert_format2_ml ~expected:"let value = match x with | 0 -> 1 | _ -> 2\n" "let value = match x with | 0 -> 1 | _ -> 2\n");
+    (fun _ctx ->
+      assert_format2_ml ~expected:"let value =\n  match x with\n  | 0 -> 1\n  | _ -> 2\n" "let value = match x with | 0 -> 1 | _ -> 2\n");
   Test.case
     "lower2 formats sequence expressions"
-    (fun _ctx -> assert_format2_ml ~expected:"let run = first; second\n" "let run = first; second\n");
+    (fun _ctx -> assert_format2_ml ~expected:"let run =\n  first;\n  second\n" "let run = first; second\n");
   Test.case
     "lower2 formats list and array expressions"
     (fun _ctx ->
@@ -144,7 +146,7 @@ let tests = [
     (fun _ctx ->
       assert_format2_ml
         ~expected:(top_level
-          [ "let ok = `Ok 1"; "let classify = function | `Ok value -> value | `Error -> 0" ])
+          [ "let ok = `Ok 1"; "let classify = function\n| `Ok value -> value\n| `Error -> 0" ])
         "let ok = `Ok 1\nlet classify = function | `Ok value -> value | `Error -> 0\n");
   Test.case
     "lower2 formats expression and pattern attributes"
@@ -241,7 +243,7 @@ let tests = [
     "lower2 formats unreachable expressions"
     (fun _ctx ->
       assert_format2_ml
-        ~expected:"let value = match maybe with | Some value -> value | None -> .\n"
+        ~expected:"let value =\n  match maybe with\n  | Some value -> value\n  | None -> .\n"
         "let value = match maybe with | Some value -> value | None -> .\n");
   Test.case
     "lower2 formats assertion and lazy expressions"
@@ -251,7 +253,7 @@ let tests = [
         "let _ = assert ready\nlet later = lazy compute\n");
   Test.case
     "lower2 formats try expressions"
-    (fun _ctx -> assert_format2_ml ~expected:"let value = try read () with | Failure -> 0\n" "let value = try read () with | Failure -> 0\n");
+    (fun _ctx -> assert_format2_ml ~expected:"let value =\n  try read () with\n  | Failure -> 0\n" "let value = try read () with | Failure -> 0\n");
   Test.case
     "lower2 formats while and for loops"
     (fun _ctx ->
@@ -269,9 +271,9 @@ let tests = [
       assert_format2_ml
         ~expected:(top_level
           [
-            "let force = function | lazy value -> value";
-            "let recovered = match read () with | exception Failure -> 0 | value -> value";
-            "let classify = function | 'a' .. 'z' -> 1 | _ -> 0";
+            "let force = function\n| lazy value -> value";
+            "let recovered =\n  match read () with\n  | exception Failure -> 0\n  | value -> value";
+            "let classify = function\n| 'a' .. 'z' -> 1\n| _ -> 0";
           ])
         "let force = function | lazy value -> value\nlet recovered = match read () with | exception Failure -> 0 | value -> value\nlet classify = function | 'a' .. 'z' -> 1 | _ -> 0\n");
   Test.case
