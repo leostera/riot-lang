@@ -577,6 +577,20 @@ let local_open_pattern_path_text = fun pattern ->
     ~fn:(fun token -> segments := Ast2.Token.text token :: !segments);
   List.reverse !segments |> String.concat "."
 
+let first_class_module_path_text = fun expr ->
+  let segments = ref [] in
+  Ast2.FirstClassModuleExpr.for_each_module_path_ident
+    expr
+    ~fn:(fun token -> segments := Ast2.Token.text token :: !segments);
+  List.reverse !segments |> String.concat "."
+
+let first_class_module_ascription_text = fun expr ->
+  let segments = ref [] in
+  Ast2.FirstClassModuleExpr.for_each_ascription_path_ident
+    expr
+    ~fn:(fun token -> segments := Ast2.Token.text token :: !segments);
+  List.reverse !segments |> String.concat "."
+
 let test_local_open_views = fun _ctx ->
   let source = "let value = let open Foo.Bar in result\nlet Foo.Bar.(x) = value\n" in
   let root = parse_ml source |> Result.expect ~msg:"expected parse2 source file" in
@@ -629,6 +643,42 @@ let test_local_open_views = fun _ctx ->
     | _ -> Error "expected local open inner path pattern"
   )
 
+let test_first_class_module_views = fun _ctx ->
+  let source = "let packed = (module Foo.Bar)\nlet typed = (module Foo : S.T)\n" in
+  let root = parse_ml source |> Result.expect ~msg:"expected parse2 source file" in
+  let packed = nth_structure_item root 0
+  |> require_some ~msg:"expected packed module item"
+  |> binding_of_structure_item
+  |> Result.expect ~msg:"expected packed module binding"
+  |> body_of_binding
+  |> Result.expect ~msg:"expected packed module body" in
+  let packed = Ast2.FirstClassModuleExpr.cast packed |> require_some ~msg:"expected first-class module view" in
+  Test.assert_equal
+    ~expected:Ast2.FirstClassModuleExpr.ModulePath
+    ~actual:(Ast2.FirstClassModuleExpr.module_path packed);
+  Test.assert_equal
+    ~expected:Ast2.FirstClassModuleExpr.NoAscription
+    ~actual:(Ast2.FirstClassModuleExpr.ascription packed);
+  Test.assert_equal ~expected:"Foo.Bar" ~actual:(first_class_module_path_text packed);
+  let typed = nth_structure_item root 1
+  |> require_some ~msg:"expected typed module item"
+  |> binding_of_structure_item
+  |> Result.expect ~msg:"expected typed module binding"
+  |> body_of_binding
+  |> Result.expect ~msg:"expected typed module body" in
+  let typed = Ast2.FirstClassModuleExpr.cast typed |> require_some ~msg:"expected typed first-class module view" in
+  Test.assert_equal
+    ~expected:Ast2.FirstClassModuleExpr.ModulePath
+    ~actual:(Ast2.FirstClassModuleExpr.module_path typed);
+  Test.assert_equal
+    ~expected:Ast2.FirstClassModuleExpr.PathAscription
+    ~actual:(Ast2.FirstClassModuleExpr.ascription typed);
+  Test.assert_equal ~expected:"Foo" ~actual:(first_class_module_path_text typed);
+  Test.assert_equal ~expected:"S.T" ~actual:(first_class_module_ascription_text typed);
+  let colon = Ast2.FirstClassModuleExpr.colon_token typed |> require_some ~msg:"expected first-class module colon" in
+  Test.assert_equal ~expected:":" ~actual:(Ast2.Token.text colon);
+  Ok ()
+
 let tests = [
   Test.case "ast2 exposes source file and let binding views" test_source_file_and_let_binding_views;
   Test.case "ast2 exposes if and match expression views" test_expression_views;
@@ -645,6 +695,7 @@ let tests = [
   Test.case "ast2 exposes record expression and pattern views" test_record_views;
   Test.case "ast2 exposes binding operator expression views" test_binding_operator_views;
   Test.case "ast2 exposes local open expression and pattern views" test_local_open_views;
+  Test.case "ast2 exposes first-class module expression views" test_first_class_module_views;
 ]
 
 let () =

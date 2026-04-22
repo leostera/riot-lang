@@ -903,6 +903,150 @@ end = struct
       }
 end
 
+module FirstClassModuleExpr: sig
+  type t = expr
+  type module_path =
+    | ModulePath
+    | UnsupportedModulePath
+  type ascription =
+    | NoAscription
+    | PathAscription
+    | UnsupportedAscription
+  val cast: expr -> t option
+
+  val opening_token: t -> token option
+
+  val module_token: t -> token option
+
+  val colon_token: t -> token option
+
+  val closing_token: t -> token option
+
+  val module_path: t -> module_path
+
+  val ascription: t -> ascription
+
+  val for_each_module_path_ident: t -> fn:(token -> unit) -> unit
+
+  val for_each_ascription_path_ident: t -> fn:(token -> unit) -> unit
+end = struct
+  type t = expr
+
+  type module_path =
+    | ModulePath
+    | UnsupportedModulePath
+
+  type ascription =
+    | NoAscription
+    | PathAscription
+    | UnsupportedAscription
+
+  let cast = fun (expr: expr) ->
+    if node_kind_is expr Syntax_kind2.FIRST_CLASS_MODULE_EXPR then
+      Some expr
+    else
+      None
+
+  let opening_token = fun expr -> Node.first_child_token expr ~kind:Syntax_kind2.LPAREN
+
+  let module_token = fun expr -> Node.first_child_token expr ~kind:Syntax_kind2.MODULE_KW
+
+  let colon_token = fun expr -> Node.first_child_token expr ~kind:Syntax_kind2.COLON
+
+  let closing_token = fun expr -> Node.first_child_token expr ~kind:Syntax_kind2.RPAREN
+
+  let token_index = fun expr ~from ~matches ->
+    let count = Node.child_count expr in
+    let rec loop index =
+      if index >= count then
+        None
+      else
+        match child_token_at expr index with
+        | Some token when matches (Token.kind token) -> Some index
+        | _ -> loop (index + 1)
+    in
+    loop from
+
+  let range_is_path = fun expr start stop ->
+    let rec loop index saw_ident expect_ident =
+      if index >= stop then
+        saw_ident && not expect_ident
+      else
+        match child_token_at expr index with
+        | Some token when token_kind_is token Syntax_kind2.IDENT && expect_ident -> loop
+          (index + 1)
+          true
+          false
+        | Some token when token_kind_is token Syntax_kind2.DOT && saw_ident && not expect_ident -> loop
+          (index + 1)
+          saw_ident
+          true
+        | _ -> false
+    in
+    loop start false true
+
+  let module_path_bounds = fun expr ->
+    match token_index expr ~from:0 ~matches:(fun kind -> Syntax_kind2.(kind = MODULE_KW)) with
+    | None -> None
+    | Some module_index ->
+        let start = module_index + 1 in
+        token_index
+          expr
+          ~from:start
+          ~matches:(fun kind -> Syntax_kind2.(kind = COLON || kind = RPAREN))
+        |> Option.map ~fn:(fun stop -> (start, stop))
+
+  let ascription_bounds = fun expr ->
+    match token_index expr ~from:0 ~matches:(fun kind -> Syntax_kind2.(kind = COLON)) with
+    | None -> None
+    | Some colon_index ->
+        let start = colon_index + 1 in
+        token_index expr ~from:start ~matches:(fun kind -> Syntax_kind2.(kind = RPAREN))
+        |> Option.map ~fn:(fun stop -> (start, stop))
+
+  let module_path = fun expr ->
+    match module_path_bounds expr with
+    | Some (start, stop) when range_is_path expr start stop -> ModulePath
+    | _ -> UnsupportedModulePath
+
+  let ascription = fun expr ->
+    match colon_token expr, ascription_bounds expr with
+    | None, _ -> NoAscription
+    | Some _, Some (start, stop) when range_is_path expr start stop -> PathAscription
+    | Some _, _ -> UnsupportedAscription
+
+  let for_each_ident_in_range = fun expr start stop ~fn ->
+    let rec loop index =
+      if index < stop then
+        (
+          match child_token_at expr index with
+          | Some token when token_kind_is token Syntax_kind2.IDENT ->
+              fn token;
+              loop (index + 1)
+          | _ -> loop (index + 1)
+        )
+    in
+    loop start
+
+  let for_each_module_path_ident = fun expr ~fn ->
+    match module_path_bounds expr with
+    | Some (start, stop) when range_is_path expr start stop -> for_each_ident_in_range
+      expr
+      start
+      stop
+      ~fn
+    | _ -> ()
+
+  let for_each_ascription_path_ident = fun expr ~fn ->
+    match ascription_bounds expr with
+    | Some (start, stop) when range_is_path expr start stop -> for_each_ident_in_range
+      expr
+      start
+      stop
+      ~fn
+    | _ -> ()
+end
+
 module BindingOperatorExpr: sig
   type t = expr
   type clause = {

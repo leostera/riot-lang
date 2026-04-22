@@ -155,6 +155,10 @@ let tests = [
         ~expected:"let value = let open Foo.Bar in result\nlet Foo.Bar.(x) = value\n"
         "let value = let open Foo.Bar in result\nlet Foo.Bar.(x) = value\n");
   Test.case
+    "lower2 formats first-class module expressions"
+    (fun _ctx ->
+      assert_format2_ml ~expected:"let packed = (module Foo.Bar)\nlet typed = (module Foo : S.T)\n" "let packed = (module Foo.Bar)\nlet typed = (module Foo : S.T)\n");
+  Test.case
     "lower2 formats assertion and lazy expressions"
     (fun _ctx -> assert_format2_ml ~expected:"let _ = assert ready\nlet later = lazy compute\n" "let _ = assert ready\nlet later = lazy compute\n");
   Test.case

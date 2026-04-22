@@ -296,6 +296,34 @@ module LocalOpenExpr: sig
   val view: t -> view
 end
 
+module FirstClassModuleExpr: sig
+  type t = expr
+  type module_path =
+    | ModulePath
+    | UnsupportedModulePath
+  type ascription =
+    | NoAscription
+    | PathAscription
+    | UnsupportedAscription
+  val cast: expr -> t option
+
+  val opening_token: t -> Token.t option
+
+  val module_token: t -> Token.t option
+
+  val colon_token: t -> Token.t option
+
+  val closing_token: t -> Token.t option
+
+  val module_path: t -> module_path
+
+  val ascription: t -> ascription
+
+  val for_each_module_path_ident: t -> fn:(Token.t -> unit) -> unit
+
+  val for_each_ascription_path_ident: t -> fn:(Token.t -> unit) -> unit
+end
+
 module BindingOperatorExpr: sig
   type t = expr
   type clause = {

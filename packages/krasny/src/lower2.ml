@@ -639,9 +639,10 @@ and expr_doc_with_view = fun expr (view: Ast.Expr.view) ->
       unsupported "optional argument without label"
   | LocalOpen _ ->
       local_open_expr_doc expr
+  | FirstClassModule ->
+      first_class_module_expr_doc expr
   | LetModule _
   | LetException _
-  | FirstClassModule
   | Extension
   | Unreachable
   | Object
@@ -731,6 +732,61 @@ and local_open_expr_doc = fun expr ->
       token_doc closing_token;
     ]
   | Delimited _ -> unsupported "incomplete delimited local open expression"
+
+and first_class_module_path_doc = fun expr ->
+  let segments = ref [] in
+  Ast.FirstClassModuleExpr.for_each_module_path_ident
+    expr
+    ~fn:(fun token -> segments := token_doc token :: !segments);
+  match List.reverse !segments with
+  | [] -> unsupported "first-class module expression without module path"
+  | segments -> Doc.join (Doc.text ".") segments
+
+and first_class_module_ascription_doc = fun expr ->
+  let segments = ref [] in
+  Ast.FirstClassModuleExpr.for_each_ascription_path_ident
+    expr
+    ~fn:(fun token -> segments := token_doc token :: !segments);
+  match List.reverse !segments with
+  | [] -> unsupported "first-class module expression without module type path"
+  | segments -> Doc.join (Doc.text ".") segments
+
+and first_class_module_expr_doc = fun expr ->
+  let module_expr =
+    match Ast.FirstClassModuleExpr.cast expr with
+    | Some module_expr -> module_expr
+    | None -> unsupported "unsupported first-class module expression"
+  in
+  match Ast.FirstClassModuleExpr.opening_token module_expr, Ast.FirstClassModuleExpr.module_token module_expr, Ast.FirstClassModuleExpr.module_path
+    module_expr, Ast.FirstClassModuleExpr.ascription module_expr, Ast.FirstClassModuleExpr.closing_token
+    module_expr with
+  | Some opening_token, Some module_token, Ast.FirstClassModuleExpr.ModulePath, Ast.FirstClassModuleExpr.NoAscription, Some closing_token ->
+      Doc.concat
+        [
+          token_doc opening_token;
+          token_doc module_token;
+          Doc.space;
+          first_class_module_path_doc module_expr;
+          token_doc closing_token;
+        ]
+  | Some opening_token, Some module_token, Ast.FirstClassModuleExpr.ModulePath, Ast.FirstClassModuleExpr.PathAscription, Some closing_token -> (
+      match Ast.FirstClassModuleExpr.colon_token module_expr with
+      | Some colon_token -> Doc.concat
+        [
+          token_doc opening_token;
+          token_doc module_token;
+          Doc.space;
+          first_class_module_path_doc module_expr;
+          Doc.space;
+          token_doc colon_token;
+          Doc.space;
+          first_class_module_ascription_doc module_expr;
+          token_doc closing_token;
+        ]
+      | None -> unsupported "first-class module ascription without colon token"
+    )
+  | _ ->
+      unsupported "unsupported first-class module expression"
 
 and binding_operator_clause_doc = fun (clause: Ast.BindingOperatorExpr.clause) ->
   match clause.keyword, clause.operator with
