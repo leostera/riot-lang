@@ -32,12 +32,15 @@ pub const ObjectExplain = struct {
     handle: HeapRef,
     kind: ObjectKind,
     space: heap_store.Space,
-    size: usize,
+    payload_bytes: usize,
+    storage_bytes: usize,
+    scan_words: usize,
+    allocation_cost_units: usize,
     explicit_roots: usize,
     control_roots: usize,
     service_roots: usize,
     liveness_roots: usize,
-    remembered_edges: usize,
+    remembered_targets: usize,
     memprof_sample: ?memprof_mod.SampleView = null,
     last_event: ?event_sink_mod.ObjectLastEvent = null,
 };
@@ -61,7 +64,10 @@ pub const DomainWorkerState = domain_registry_mod.DomainWorkerState;
 pub const DomainStatus = domain_registry_mod.DomainStatus;
 pub const FiberScheduler = fiber_scheduler_mod.FiberScheduler;
 pub const SchedulerLaneSnapshot = fiber_scheduler_mod.LaneCoordinationSnapshot;
+pub const HeapBackendKind = heap_store.BackendKind;
+pub const HeapStorageOwner = heap_store.StorageOwner;
 pub const HeapStore = heap_store.HeapStore;
+pub const HeapStoreConfig = heap_store.Config;
 pub const Object = heap_store.Object;
 pub const ObjectKind = heap_store.ObjectKind;
 pub const Space = heap_store.Space;
@@ -85,6 +91,8 @@ pub const ReadyFinalizer = liveness_mod.ReadyFinalizer;
 pub const RememberedSet = remembered_set_mod.RememberedSet;
 pub const RootProvider = root_provider_mod.RootProvider;
 pub const RootVisitor = root_provider_mod.RootVisitor;
+pub const RootBinding = root_registry.RootBinding;
+pub const RootFrame = root_registry.RootFrame;
 pub const RootRegistry = root_registry.RootRegistry;
 pub const RootHandle = root_registry.RootHandle;
 pub const RuntimeServices = runtime_services_mod.RuntimeServices;
@@ -133,8 +141,8 @@ pub const Runtime = struct {
         /// - .generational: nursery/minor baseline with explicit promotion
         /// - .bump: experimental full reset path
         gcStrategy: GcStrategy = .mark_sweep,
-        nurseryObjectWords: usize = 32,
-        nurseryLiveWords: usize = 1024,
+        nurseryObjectUnits: usize = 32,
+        nurseryLiveUnits: usize = 1024,
         nurseryLiveObjects: usize = 256,
         memprof: MemprofConfig = .{},
         stackLimits: StackLimits = .{},
@@ -160,9 +168,9 @@ pub const Runtime = struct {
         collect_generations: usize,
         minor_collect_generations: usize,
         nursery_objects: usize,
-        nursery_words: usize,
+        nursery_allocation_units: usize,
         major_objects: usize,
-        major_words: usize,
+        major_allocation_units: usize,
     };
 
     allocator: std.mem.Allocator,
@@ -241,8 +249,8 @@ pub const Runtime = struct {
         runtime.gc_strategy = config.gcStrategy;
         runtime.heap_store.configureNursery(.{
             .enabled = config.gcStrategy == .generational,
-            .max_object_words = config.nurseryObjectWords,
-            .max_live_words = config.nurseryLiveWords,
+            .max_object_units = config.nurseryObjectUnits,
+            .max_live_units = config.nurseryLiveUnits,
             .max_live_objects = config.nurseryLiveObjects,
         });
         runtime.services.startup() catch unreachable;
@@ -264,9 +272,9 @@ pub const Runtime = struct {
             .collect_generations = self.collect_generations,
             .minor_collect_generations = self.minor_collect_generations,
             .nursery_objects = self.heap_store.spaceStats(.nursery).objects,
-            .nursery_words = self.heap_store.spaceStats(.nursery).words,
+            .nursery_allocation_units = self.heap_store.spaceStats(.nursery).allocation_units,
             .major_objects = self.heap_store.spaceStats(.major).objects,
-            .major_words = self.heap_store.spaceStats(.major).words,
+            .major_allocation_units = self.heap_store.spaceStats(.major).allocation_units,
         };
     }
 
@@ -684,7 +692,7 @@ pub const Runtime = struct {
     }
 
     pub fn allocTuple(self: *Runtime, len: usize) !Value {
-        self.prepareAllocation(.tuple, len);
+        self.prepareAllocation(.tuple, tupleAllocationUnits(len));
         var surface = self.language();
         const allocated = try surface.allocTuple(len);
         self.trackAllocationSample(allocated);
@@ -693,7 +701,7 @@ pub const Runtime = struct {
 
     /// Allocate a tuple and initialize all fields from `fields`.
     pub fn tuple(self: *Runtime, fields: []const Value) !Value {
-        self.prepareAllocation(.tuple, fields.len);
+        self.prepareAllocation(.tuple, tupleAllocationUnits(fields.len));
         var surface = self.language();
         const allocated = try surface.tuple(fields);
         self.trackAllocationSample(allocated);
@@ -706,7 +714,7 @@ pub const Runtime = struct {
     }
 
     pub fn allocString(self: *Runtime, bytes: []const u8) !Value {
-        self.prepareAllocation(.string, bytes.len);
+        self.prepareAllocation(.string, compatStringUnits(bytes.len));
         var surface = self.language();
         const allocated = try surface.allocString(bytes);
         self.trackAllocationSample(allocated);
@@ -714,7 +722,7 @@ pub const Runtime = struct {
     }
 
     pub fn allocStringWithFill(self: *Runtime, len: usize, fill: u8) !Value {
-        self.prepareAllocation(.string, len);
+        self.prepareAllocation(.string, compatStringUnits(len));
         var surface = self.language();
         const allocated = try surface.allocStringWithFill(len, fill);
         self.trackAllocationSample(allocated);
@@ -722,7 +730,7 @@ pub const Runtime = struct {
     }
 
     pub fn allocStringWithInit(self: *Runtime, len: usize, initial_bytes: []const u8) !Value {
-        self.prepareAllocation(.string, len);
+        self.prepareAllocation(.string, compatStringUnits(len));
         var surface = self.language();
         const allocated = try surface.allocStringWithInit(len, initial_bytes);
         self.trackAllocationSample(allocated);
@@ -730,7 +738,7 @@ pub const Runtime = struct {
     }
 
     pub fn allocBytes(self: *Runtime, bytes: []const u8) !Value {
-        self.prepareAllocation(.string, bytes.len);
+        self.prepareAllocation(.string, compatStringUnits(bytes.len));
         var surface = self.language();
         const allocated = try surface.allocBytes(bytes);
         self.trackAllocationSample(allocated);
@@ -738,7 +746,7 @@ pub const Runtime = struct {
     }
 
     pub fn allocBytesWithFill(self: *Runtime, len: usize, fill: u8) !Value {
-        self.prepareAllocation(.string, len);
+        self.prepareAllocation(.string, compatStringUnits(len));
         var surface = self.language();
         const allocated = try surface.allocBytesWithFill(len, fill);
         self.trackAllocationSample(allocated);
@@ -746,7 +754,7 @@ pub const Runtime = struct {
     }
 
     pub fn allocBytesWithInit(self: *Runtime, len: usize, initial_bytes: []const u8) !Value {
-        self.prepareAllocation(.string, len);
+        self.prepareAllocation(.string, compatStringUnits(len));
         var surface = self.language();
         const allocated = try surface.allocBytesWithInit(len, initial_bytes);
         self.trackAllocationSample(allocated);
@@ -862,16 +870,38 @@ pub const Runtime = struct {
         return surface.formatF64(boxed_value, buffer);
     }
 
-    pub fn registerRoot(self: *Runtime, slot: *const Value) !void {
+    /// Escape hatch for interop code that already owns a stable `Value` slot.
+    /// Prefer `beginRootFrame()` for ordinary runtime code.
+    pub fn registerInteropRoot(self: *Runtime, slot: *const Value) !void {
         try self.root_registry.register(slot);
     }
 
-    pub fn scopedRoot(self: *Runtime, slot: *const Value) !RootHandle {
+    pub fn registerRoot(self: *Runtime, slot: *const Value) !void {
+        try self.registerInteropRoot(slot);
+    }
+
+    /// Escape hatch for interop code that already owns a stable `Value` slot.
+    /// Prefer `beginRootFrame()` for ordinary runtime code.
+    pub fn scopedInteropRoot(self: *Runtime, slot: *const Value) !RootHandle {
         return self.root_registry.scoped(slot);
     }
 
-    pub fn unregisterRoot(self: *Runtime, slot: *const Value) void {
+    pub fn scopedRoot(self: *Runtime, slot: *const Value) !RootHandle {
+        return self.scopedInteropRoot(slot);
+    }
+
+    pub fn beginRootFrame(self: *Runtime) RootFrame {
+        return self.root_registry.beginFrame();
+    }
+
+    /// Escape hatch for interop code that already owns a stable `Value` slot.
+    /// Prefer `RootFrame.end()` for ordinary runtime code.
+    pub fn unregisterInteropRoot(self: *Runtime, slot: *const Value) void {
         self.root_registry.unregister(slot);
+    }
+
+    pub fn unregisterRoot(self: *Runtime, slot: *const Value) void {
+        self.unregisterInteropRoot(slot);
     }
 
     pub fn registerNamedValue(self: *Runtime, name: []const u8, rooted: Value) !void {
@@ -1005,16 +1035,20 @@ pub const Runtime = struct {
     pub fn explainValue(self: *Runtime, block_value: Value, trace: ?*const TraceRecorder) Error!ObjectExplain {
         const obj = self.objectFrom(block_value) orelse return Error.InvalidValue;
         const handle = block_value.asHeapRef() orelse return Error.InvalidValue;
+        const metrics = obj.sizeMetrics();
         return .{
             .handle = handle,
             .kind = obj.kind().?,
             .space = self.heap_store.spaceOf(handle).?,
-            .size = obj.wosize(),
+            .payload_bytes = metrics.payload_bytes,
+            .storage_bytes = metrics.storage_bytes,
+            .scan_words = metrics.scan_words,
+            .allocation_cost_units = metrics.allocation_cost_units,
             .explicit_roots = self.root_registry.ownerCount(block_value),
             .control_roots = self.control_kernel.ownedRootCount(block_value),
             .service_roots = self.services.ownerCount(block_value),
             .liveness_roots = self.liveness.ownerCount(block_value),
-            .remembered_edges = self.remembered_set.ownerCount(handle),
+            .remembered_targets = self.remembered_set.ownerCount(handle),
             .memprof_sample = self.memprof.sampleFor(handle),
             .last_event = if (trace) |recorder| recorder.lastObjectEvent(handle) else null,
         };
@@ -1158,23 +1192,54 @@ pub const Runtime = struct {
         if (!self.memprof.enabled()) return;
         const handle = block_value.asHeapRef() orelse return;
         const obj = self.objectFrom(block_value) orelse return;
-        const sample_ordinal = self.memprof.beginAllocation(obj.wosize()) orelse return;
+        const metrics = obj.sizeMetrics();
+        const sample_ordinal = self.memprof.beginAllocation(metrics.allocation_cost_units) orelse return;
         const kind = obj.kind() orelse return;
         const space = self.heap_store.spaceOf(handle) orelse return;
 
         if (!self.memprof.capturesBacktraces()) {
-            self.memprof.recordAllocation(sample_ordinal, handle, kind, obj.wosize(), space, &.{});
+            self.memprof.recordAllocation(
+                sample_ordinal,
+                handle,
+                kind,
+                metrics.payload_bytes,
+                metrics.storage_bytes,
+                metrics.scan_words,
+                metrics.allocation_cost_units,
+                space,
+                &.{},
+            );
             return;
         }
 
         const frames = self.control_kernel.captureBacktrace(self.allocator, null) catch {
-            self.memprof.recordAllocation(sample_ordinal, handle, kind, obj.wosize(), space, &.{});
+            self.memprof.recordAllocation(
+                sample_ordinal,
+                handle,
+                kind,
+                metrics.payload_bytes,
+                metrics.storage_bytes,
+                metrics.scan_words,
+                metrics.allocation_cost_units,
+                space,
+                &.{},
+            );
             return;
         };
         defer self.allocator.free(frames);
 
         const sites = self.allocator.alloc(u32, frames.len) catch {
-            self.memprof.recordAllocation(sample_ordinal, handle, kind, obj.wosize(), space, &.{});
+            self.memprof.recordAllocation(
+                sample_ordinal,
+                handle,
+                kind,
+                metrics.payload_bytes,
+                metrics.storage_bytes,
+                metrics.scan_words,
+                metrics.allocation_cost_units,
+                space,
+                &.{},
+            );
             return;
         };
         defer self.allocator.free(sites);
@@ -1182,32 +1247,55 @@ pub const Runtime = struct {
         for (frames, 0..) |frame, index| {
             sites[index] = frame.site_id;
         }
-        self.memprof.recordAllocation(sample_ordinal, handle, kind, obj.wosize(), space, sites);
+        self.memprof.recordAllocation(
+            sample_ordinal,
+            handle,
+            kind,
+            metrics.payload_bytes,
+            metrics.storage_bytes,
+            metrics.scan_words,
+            metrics.allocation_cost_units,
+            space,
+            sites,
+        );
     }
 
     fn prepareCompatAllocation(self: *Runtime, arity: usize, tag: Tag) void {
         const compat_allocation = switch (tag) {
-            .tuple => CompatAllocation{ .kind = .tuple, .words = arity },
-            .string => CompatAllocation{ .kind = .string, .words = arity },
-            .int64 => CompatAllocation{ .kind = .boxed_i64, .words = 1 },
-            .double => CompatAllocation{ .kind = .boxed_f64, .words = 1 },
-            .custom => CompatAllocation{ .kind = .custom, .words = arity },
+            .tuple => CompatAllocation{ .kind = .tuple, .allocation_units = @max(arity, 1) },
+            .string => CompatAllocation{ .kind = .string, .allocation_units = compatStringUnits(arity) },
+            .int64 => CompatAllocation{ .kind = .boxed_i64, .allocation_units = 1 },
+            .double => CompatAllocation{ .kind = .boxed_f64, .allocation_units = 1 },
+            .custom => CompatAllocation{ .kind = .custom, .allocation_units = bytesToAllocationUnits(arity) },
         };
-        self.prepareAllocation(compat_allocation.kind, compat_allocation.words);
+        self.prepareAllocation(compat_allocation.kind, compat_allocation.allocation_units);
     }
 
-    fn prepareAllocation(self: *Runtime, kind: ObjectKind, words: usize) void {
+    fn prepareAllocation(self: *Runtime, kind: ObjectKind, allocation_units: usize) void {
         if (self.gc_strategy != .generational) return;
         if (kind == .custom) return;
-        if (words > self.heap_store.nursery_config.max_object_words) return;
-        if (!self.heap_store.shouldCollectBeforeNurseryAlloc(words)) return;
+        if (allocation_units > self.heap_store.nursery_config.max_object_units) return;
+        if (!self.heap_store.shouldCollectBeforeNurseryAlloc(allocation_units)) return;
         self.collectMinor();
     }
 
     const CompatAllocation = struct {
         kind: ObjectKind,
-        words: usize,
+        allocation_units: usize,
     };
+
+    fn tupleAllocationUnits(len: usize) usize {
+        return @max(len, 1);
+    }
+
+    fn compatStringUnits(len: usize) usize {
+        return bytesToAllocationUnits(len + 1);
+    }
+
+    fn bytesToAllocationUnits(byte_count: usize) usize {
+        if (byte_count == 0) return 1;
+        return std.math.divCeil(usize, byte_count, @sizeOf(usize)) catch unreachable;
+    }
 
     fn quiesceAttachedDomainsForCollection(self: *Runtime) void {
         const Pause = struct {
@@ -1494,10 +1582,12 @@ test "runtime: setStringBytes preserves null-termination" {
 
 test "runtime: deep tuple chain is retained and reclaimed" {
     var rt = Runtime.init(std.testing.allocator);
+    defer rt.deinit();
 
     const depth = 1_024;
-    var head = try rt.allocTuple(1);
-    var current = head;
+    var frame = rt.beginRootFrame();
+    var head = try frame.bind(try rt.allocTuple(1));
+    var current = head.get();
     var i: usize = 1;
 
     while (i < depth) : (i += 1) {
@@ -1508,18 +1598,17 @@ test "runtime: deep tuple chain is retained and reclaimed" {
 
     try rt.setField(current, 0, Value.fromInt(1234));
 
-    try rt.registerRoot(&head);
     rt.collect();
     try std.testing.expectEqual(@as(usize, depth), rt.objectCount());
 
-    rt.unregisterRoot(&head);
+    frame.end();
     rt.collect();
     try std.testing.expectEqual(@as(usize, 0), rt.objectCount());
-    rt.deinit();
 }
 
 test "runtime: shared object graph keeps object alive across multiple parents" {
     var rt = Runtime.init(std.testing.allocator);
+    defer rt.deinit();
 
     const shared = try rt.allocTuple(1);
     try rt.setField(shared, 0, Value.fromInt(0));
@@ -1532,33 +1621,35 @@ test "runtime: shared object graph keeps object alive across multiple parents" {
     try rt.setField(right, 0, shared);
     try rt.setField(right, 1, Value.fromInt(2));
 
-    try rt.registerRoot(&left);
-    try rt.registerRoot(&right);
+    var frame = rt.beginRootFrame();
+    var left_root = try frame.bind(left);
+    var right_root = try frame.bind(right);
 
     rt.collect();
     try std.testing.expectEqual(@as(usize, 3), rt.objectCount());
 
     try rt.setField(shared, 0, Value.fromInt(77));
 
-    const shared_from_left = try rt.field(left, 0);
-    const shared_from_right = try rt.field(right, 0);
+    const shared_from_left = try rt.field(left_root.get(), 0);
+    const shared_from_right = try rt.field(right_root.get(), 0);
     try std.testing.expectEqual(shared, shared_from_left);
     try std.testing.expectEqual(shared, shared_from_right);
     try std.testing.expectEqual(Value.fromInt(77), try rt.field(shared_from_left, 0));
     try std.testing.expectEqual(Value.fromInt(77), try rt.field(shared_from_right, 0));
 
-    rt.unregisterRoot(&left);
+    left_root.set(Value.fromInt(0));
     rt.collect();
     try std.testing.expectEqual(@as(usize, 2), rt.objectCount());
 
-    rt.unregisterRoot(&right);
+    right_root.set(Value.fromInt(0));
     rt.collect();
     try std.testing.expectEqual(@as(usize, 0), rt.objectCount());
-    rt.deinit();
+    frame.end();
 }
 
 test "runtime: cyclic graph is marked without recursion blowup" {
     var rt = Runtime.init(std.testing.allocator);
+    defer rt.deinit();
 
     const first = try rt.allocTuple(1);
     const second = try rt.allocTuple(1);
@@ -1566,14 +1657,14 @@ test "runtime: cyclic graph is marked without recursion blowup" {
     try rt.setField(first, 0, second);
     try rt.setField(second, 0, first);
 
-    try rt.registerRoot(&first);
+    var frame = rt.beginRootFrame();
+    _ = try frame.bind(first);
     rt.collect();
     try std.testing.expectEqual(@as(usize, 2), rt.objectCount());
 
-    rt.unregisterRoot(&first);
+    frame.end();
     rt.collect();
     try std.testing.expectEqual(@as(usize, 0), rt.objectCount());
-    rt.deinit();
 }
 
 test "runtime: root generation counters track registration activity" {
@@ -1609,6 +1700,23 @@ test "runtime: root generation counters track registration activity" {
     rt.deinit();
 }
 
+test "runtime: lexical root frames keep values alive without raw slot registration" {
+    var rt = Runtime.init(std.testing.allocator);
+    defer rt.deinit();
+
+    var frame = rt.beginRootFrame();
+    var rooted = try frame.bind(try rt.allocTuple(1));
+    const child = try rt.allocTuple(0);
+    try rt.setField(rooted.get(), 0, child);
+
+    rt.collect();
+    try std.testing.expectEqual(@as(usize, 2), rt.objectCount());
+
+    frame.end();
+    rt.collect();
+    try std.testing.expectEqual(@as(usize, 0), rt.objectCount());
+}
+
 test "runtime: fixed arena allocation failure leaves runtime consistent" {
     var arena = [_]u8{0} ** 256;
     var rt = Runtime.initWithFixedArena(std.testing.allocator, arena[0..]);
@@ -1632,16 +1740,16 @@ test "runtime: default collection strategy is mark-sweep" {
 
 test "runtime: mark-sweep strategy preserves reachable graph" {
     var rt = Runtime.init(std.testing.allocator);
-    const root = try rt.allocTuple(1);
+    defer rt.deinit();
+    var frame = rt.beginRootFrame();
+    var root = try frame.bind(try rt.allocTuple(1));
     const child = try rt.allocTuple(1);
     _ = try rt.allocTuple(1);
-    try rt.setField(root, 0, child);
+    try rt.setField(root.get(), 0, child);
 
-    try rt.registerRoot(&root);
     rt.collect();
     try std.testing.expectEqual(@as(usize, 2), rt.objectCount());
-    rt.unregisterRoot(&root);
-    rt.deinit();
+    frame.end();
 }
 
 test "runtime: bump GC strategy discards rooted objects" {
@@ -1650,18 +1758,17 @@ test "runtime: bump GC strategy discards rooted objects" {
         .fixedArena = arena[0..],
         .gcStrategy = .bump,
     });
+    defer rt.deinit();
 
-    const root = try rt.allocTuple(1);
+    var frame = rt.beginRootFrame();
+    var root = try frame.bind(try rt.allocTuple(1));
     const child = try rt.allocTuple(1);
     _ = try rt.allocTuple(1);
-    try rt.setField(root, 0, child);
+    try rt.setField(root.get(), 0, child);
 
-    try rt.registerRoot(&root);
     rt.collect();
     try std.testing.expectEqual(@as(usize, 0), rt.objectCount());
-
-    rt.unregisterRoot(&root);
-    rt.deinit();
+    frame.end();
 }
 
 test "runtime: bump GC strategy drops all objects and reuses fixed arena buffer" {
@@ -1751,10 +1858,10 @@ test "runtime: register/unregister roots control liveness" {
     rt.deinit();
 }
 
-test "runtime: scoped root handle keeps and releases liveness" {
+test "runtime: scoped interop root handle keeps and releases liveness" {
     var rt = Runtime.init(std.testing.allocator);
     var rooted = try rt.allocTuple(1);
-    var handle = try rt.scopedRoot(&rooted);
+    var handle = try rt.scopedInteropRoot(&rooted);
 
     rt.collect();
     try std.testing.expectEqual(@as(usize, 1), rt.objectCount());
@@ -1778,6 +1885,7 @@ test "runtime: unregistering non-root slot is safe" {
 
 test "runtime: transitive and cyclic graphs are marked" {
     var rt = Runtime.init(std.testing.allocator);
+    defer rt.deinit();
 
     const left = try rt.allocTuple(2);
     const right = try rt.allocTuple(2);
@@ -1786,26 +1894,25 @@ test "runtime: transitive and cyclic graphs are marked" {
     try rt.setField(left, 1, Value.fromInt(1));
     try rt.setField(right, 1, Value.fromInt(2));
 
-    var root = left;
-    try rt.registerRoot(&root);
+    var frame = rt.beginRootFrame();
+    _ = try frame.bind(left);
     rt.collect();
     try std.testing.expectEqual(@as(usize, 2), rt.objectCount());
 
-    rt.unregisterRoot(&root);
+    frame.end();
     rt.collect();
     try std.testing.expectEqual(@as(usize, 0), rt.objectCount());
-    rt.deinit();
 }
 
 test "runtime: immediate roots are ignored by GC and do not retain blocks" {
     var rt = Runtime.init(std.testing.allocator);
+    defer rt.deinit();
     _ = try rt.allocTuple(1);
-    var root = Value.fromInt(1234);
-    try rt.registerRoot(&root);
+    var frame = rt.beginRootFrame();
+    _ = try frame.bind(Value.fromInt(1234));
     rt.collect();
     try std.testing.expectEqual(@as(usize, 0), rt.objectCount());
-    rt.unregisterRoot(&root);
-    rt.deinit();
+    frame.end();
 }
 
 test "runtime: root slot mutation can drop formerly rooted object" {
@@ -1899,28 +2006,28 @@ test "runtime: setField on immediate fails" {
 
 test "runtime: transitive marking keeps graph" {
     var rt = Runtime.init(std.testing.allocator);
-    var root = try rt.allocTuple(2);
+    defer rt.deinit();
+    var frame = rt.beginRootFrame();
+    var root = try frame.bind(try rt.allocTuple(2));
     const child = try rt.allocTuple(1);
-    try rt.setField(root, 0, child);
-    try rt.setField(root, 1, Value.fromInt(7));
+    try rt.setField(root.get(), 0, child);
+    try rt.setField(root.get(), 1, Value.fromInt(7));
     try rt.setField(child, 0, Value.fromInt(9));
 
-    try rt.registerRoot(&root);
     rt.collect();
     try std.testing.expectEqual(@as(usize, 2), rt.objectCount());
-    rt.unregisterRoot(&root);
-    rt.deinit();
+    frame.end();
 }
 
 test "runtime: self-referential tuple survives gc" {
     var rt = Runtime.init(std.testing.allocator);
-    var cyclic = try rt.allocTuple(1);
-    try rt.setField(cyclic, 0, cyclic);
-    try rt.registerRoot(&cyclic);
+    defer rt.deinit();
+    var frame = rt.beginRootFrame();
+    var cyclic = try frame.bind(try rt.allocTuple(1));
+    try rt.setField(cyclic.get(), 0, cyclic.get());
     rt.collect();
     try std.testing.expectEqual(@as(usize, 1), rt.objectCount());
-    rt.unregisterRoot(&cyclic);
-    rt.deinit();
+    frame.end();
 }
 
 test "runtime: unregisterRoot removes every duplicate at first match" {
@@ -1936,18 +2043,16 @@ test "runtime: unregisterRoot removes every duplicate at first match" {
 
 test "runtime: gc collects unreachable values" {
     var runtime = Runtime.init(std.testing.allocator);
-    var kept: Value = Value.fromInt(0);
+    defer runtime.deinit();
+    var frame = runtime.beginRootFrame();
     const keep_me = try runtime.allocTuple(1);
     try runtime.setField(keep_me, 0, Value.fromInt(42));
-    kept = keep_me;
+    _ = try frame.bind(keep_me);
 
     _ = try runtime.allocTuple(1);
-    try runtime.registerRoot(&kept);
     runtime.collect();
     try std.testing.expectEqual(@as(usize, 1), runtime.objectCount());
-    runtime.unregisterRoot(&kept);
-
-    runtime.deinit();
+    frame.end();
 }
 
 test "runtime: performed continuations keep heap values alive until resumed" {
@@ -2330,10 +2435,11 @@ test "runtime: explainValue reports root ownership and last object event" {
     });
     defer rt.deinit();
 
-    var rooted = try rt.allocTuple(1);
-    try rt.registerRoot(&rooted);
+    var frame = rt.beginRootFrame();
+    defer frame.end();
+    var rooted = try frame.bind(try rt.allocTuple(1));
     const child = try rt.allocTuple(0);
-    try rt.setField(rooted, 0, child);
+    try rt.setField(rooted.get(), 0, child);
     try rt.registerNamedValue("child", child);
 
     const main = rt.currentFiber();
@@ -2342,9 +2448,13 @@ test "runtime: explainValue reports root ownership and last object event" {
         .handle_effect = child,
     });
 
-    const explained_root = try rt.explainValue(rooted, &trace);
+    const explained_root = try rt.explainValue(rooted.get(), &trace);
     try std.testing.expectEqual(@as(usize, 1), explained_root.explicit_roots);
-    try std.testing.expectEqual(@as(usize, 0), explained_root.remembered_edges);
+    try std.testing.expectEqual(@as(usize, 8), explained_root.payload_bytes);
+    try std.testing.expectEqual(@as(usize, 8), explained_root.storage_bytes);
+    try std.testing.expectEqual(@as(usize, 1), explained_root.scan_words);
+    try std.testing.expectEqual(@as(usize, 1), explained_root.allocation_cost_units);
+    try std.testing.expectEqual(@as(usize, 0), explained_root.remembered_targets);
     try std.testing.expectEqual(@as(?event_sink_mod.ObjectLastEvent, .{ .field_write = .{
         .target = explained_root.handle,
         .index = 0,
@@ -2366,8 +2476,9 @@ test "runtime: verifyDebugState accepts healthy runtime" {
     });
     defer rt.deinit();
 
-    var rooted = try rt.allocTuple(0);
-    try rt.registerRoot(&rooted);
+    var frame = rt.beginRootFrame();
+    defer frame.end();
+    _ = try frame.bind(try rt.allocTuple(0));
     try rt.verifyDebugState();
 }
 
@@ -2469,55 +2580,129 @@ test "runtime: generational minor collection promotes live nursery objects" {
     });
     defer rt.deinit();
 
-    var root = try rt.allocTuple(1);
-    try rt.registerRoot(&root);
+    var frame = rt.beginRootFrame();
+    defer frame.end();
+    var root = try frame.bind(try rt.allocTuple(1));
     const child = try rt.allocTuple(0);
     _ = try rt.allocTuple(0);
-    try rt.setField(root, 0, child);
+    try rt.setField(root.get(), 0, child);
 
-    try std.testing.expectEqual(@as(?Space, .nursery), rt.objectSpace(root));
+    try std.testing.expectEqual(@as(?Space, .nursery), rt.objectSpace(root.get()));
     try std.testing.expectEqual(@as(?Space, .nursery), rt.objectSpace(child));
     rt.collectMinor();
 
-    try std.testing.expectEqual(@as(?Space, .major), rt.objectSpace(root));
+    try std.testing.expectEqual(@as(?Space, .major), rt.objectSpace(root.get()));
     try std.testing.expectEqual(@as(?Space, .major), rt.objectSpace(child));
     try std.testing.expectEqual(@as(usize, 2), rt.objectCount());
+}
+
+test "runtime: nursery tuple payloads stay pinned across promotion" {
+    var rt = Runtime.initWithConfig(std.testing.allocator, .{
+        .gcStrategy = .generational,
+    });
+    defer rt.deinit();
+
+    var frame = rt.beginRootFrame();
+    defer frame.end();
+    var tuple = try frame.bind(try rt.allocTuple(2));
+
+    const before_obj = rt.objectFromDebug(tuple.get()).?;
+    const before_fields = before_obj.tupleFields().?;
+    const before_ptr = @intFromPtr(before_fields.ptr);
+    try std.testing.expectEqual(HeapStorageOwner.nursery_page, before_obj.storageOwner().?);
+
+    try rt.setField(tuple.get(), 0, Value.fromInt(1));
+    try rt.setField(tuple.get(), 1, Value.fromInt(2));
+    rt.collectMinor();
+
+    const after_obj = rt.objectFromDebug(tuple.get()).?;
+    const after_fields = after_obj.tupleFields().?;
+    try std.testing.expectEqual(@as(?Space, .major), rt.objectSpace(tuple.get()));
+    try std.testing.expectEqual(HeapStorageOwner.major_page, after_obj.storageOwner().?);
+    try std.testing.expectEqual(before_ptr, @intFromPtr(after_fields.ptr));
+    try std.testing.expectEqual(Value.fromInt(1), after_fields[0]);
+    try std.testing.expectEqual(Value.fromInt(2), after_fields[1]);
 }
 
 test "runtime: nursery pressure triggers minor collection before allocation" {
     var rt = Runtime.initWithConfig(std.testing.allocator, .{
         .gcStrategy = .generational,
-        .nurseryLiveWords = 1,
+        .nurseryLiveUnits = 1,
         .nurseryLiveObjects = 1,
     });
     defer rt.deinit();
 
-    var root = try rt.allocTuple(1);
-    try rt.registerRoot(&root);
-    try std.testing.expectEqual(@as(?Space, .nursery), rt.objectSpace(root));
+    var frame = rt.beginRootFrame();
+    defer frame.end();
+    var root = try frame.bind(try rt.allocTuple(1));
+    try std.testing.expectEqual(@as(?Space, .nursery), rt.objectSpace(root.get()));
     try std.testing.expectEqual(@as(u64, 0), rt.rootStats().minor_collect_generations);
 
     const next = try rt.allocTuple(1);
 
     try std.testing.expectEqual(@as(u64, 1), rt.rootStats().minor_collect_generations);
-    try std.testing.expectEqual(@as(?Space, .major), rt.objectSpace(root));
+    try std.testing.expectEqual(@as(?Space, .major), rt.objectSpace(root.get()));
     try std.testing.expectEqual(@as(?Space, .nursery), rt.objectSpace(next));
 
     const stats = rt.rootStats();
     try std.testing.expectEqual(@as(usize, 1), stats.nursery_objects);
-    try std.testing.expectEqual(@as(usize, 1), stats.nursery_words);
+    try std.testing.expectEqual(@as(usize, 1), stats.nursery_allocation_units);
     try std.testing.expectEqual(@as(usize, 1), stats.major_objects);
-    try std.testing.expectEqual(@as(usize, 1), stats.major_words);
+    try std.testing.expectEqual(@as(usize, 1), stats.major_allocation_units);
 }
 
-test "runtime: remembered edges keep nursery children alive from major parents" {
+test "runtime: remembered targets keep nursery children alive from major parents" {
     var rt = Runtime.initWithConfig(std.testing.allocator, .{
         .gcStrategy = .generational,
     });
     defer rt.deinit();
 
-    var parent = try rt.allocTuple(1);
-    try rt.registerRoot(&parent);
+    var frame = rt.beginRootFrame();
+    defer frame.end();
+    var parent = try frame.bind(try rt.allocTuple(1));
+    rt.collectMinor();
+    try std.testing.expectEqual(@as(?Space, .major), rt.objectSpace(parent.get()));
+
+    const child = try rt.allocTuple(0);
+    try rt.setField(parent.get(), 0, child);
+    try std.testing.expectEqual(@as(usize, 1), rt.rememberedSet().count());
+
+    rt.collectMinor();
+    try std.testing.expectEqual(@as(?Space, .major), rt.objectSpace(child));
+    try std.testing.expectEqual(@as(usize, 2), rt.objectCount());
+}
+
+test "runtime: remembered targets rescan current major fields instead of stale nursery edges" {
+    var rt = Runtime.initWithConfig(std.testing.allocator, .{
+        .gcStrategy = .generational,
+    });
+    defer rt.deinit();
+
+    var frame = rt.beginRootFrame();
+    defer frame.end();
+    var parent = try frame.bind(try rt.allocTuple(1));
+    rt.collectMinor();
+    try std.testing.expectEqual(@as(?Space, .major), rt.objectSpace(parent.get()));
+
+    const first = try rt.allocTuple(0);
+    try rt.setField(parent.get(), 0, first);
+    const second = try rt.allocTuple(0);
+    try rt.setField(parent.get(), 0, second);
+    try std.testing.expectEqual(@as(usize, 1), rt.rememberedSet().count());
+
+    rt.collectMinor();
+    try std.testing.expectEqual(@as(?Space, .major), rt.objectSpace(second));
+    try std.testing.expectEqual(@as(usize, 2), rt.objectCount());
+}
+
+test "runtime: named-value major parents rely on remembered targets during minor gc" {
+    var rt = Runtime.initWithConfig(std.testing.allocator, .{
+        .gcStrategy = .generational,
+    });
+    defer rt.deinit();
+
+    const parent = try rt.allocTuple(1);
+    try rt.registerNamedValue("remembered-parent", parent);
     rt.collectMinor();
     try std.testing.expectEqual(@as(?Space, .major), rt.objectSpace(parent));
 
@@ -2534,17 +2719,17 @@ test "runtime: weak refs and ephemerons follow collector liveness" {
     var rt = Runtime.init(std.testing.allocator);
     defer rt.deinit();
 
-    var key = try rt.allocTuple(0);
-    try rt.registerRoot(&key);
+    var frame = rt.beginRootFrame();
+    var key = try frame.bind(try rt.allocTuple(0));
     const data = try rt.allocTuple(0);
     const weak = try rt.createWeakRef(data);
-    const ephemeron = try rt.createEphemeron(&.{key}, data);
+    const ephemeron = try rt.createEphemeron(&.{key.get()}, data);
 
     rt.collectMajor();
     try std.testing.expectEqual(data, (try rt.weakGet(weak)).?);
     try std.testing.expectEqual(data, (try rt.ephemeronData(ephemeron)).?);
 
-    rt.unregisterRoot(&key);
+    frame.end();
     rt.collectMajor();
     try std.testing.expectEqual(@as(?Value, null), try rt.weakGet(weak));
     try std.testing.expectEqual(@as(?Value, null), try rt.ephemeronData(ephemeron));
@@ -2917,7 +3102,7 @@ test "runtime: memprof samples allocation backtraces and lifecycle transitions" 
         .gcStrategy = .generational,
         .memprof = .{
             .enabled = true,
-            .sample_interval_words = 1,
+            .sample_interval_units = 1,
             .capture_backtraces = true,
         },
     });
@@ -2928,19 +3113,21 @@ test "runtime: memprof samples allocation backtraces and lifecycle transitions" 
     defer _ = rt.popFiberFrame(main) catch unreachable;
 
     const tuple = try rt.allocTuple(1);
-    var rooted = tuple;
-    var root = try rt.scopedRoot(&rooted);
+    var frame = rt.beginRootFrame();
+    _ = try frame.bind(tuple);
 
     const explained = try rt.explainValue(tuple, null);
     try std.testing.expect(explained.memprof_sample != null);
     try std.testing.expectEqual(@as(u32, 777), explained.memprof_sample.?.backtrace_sites[0]);
+    try std.testing.expectEqual(@as(usize, 8), explained.memprof_sample.?.payload_bytes);
+    try std.testing.expectEqual(@as(usize, 8), explained.memprof_sample.?.storage_bytes);
+    try std.testing.expectEqual(@as(usize, 1), explained.memprof_sample.?.scan_words);
 
     rt.collectMinor();
     try std.testing.expectEqual(Space.major, rt.objectSpace(tuple).?);
     try std.testing.expectEqual(@as(usize, 1), trace.snapshot().memprof_promotions);
 
-    rooted = Value.fromInt(0);
-    root.deinit();
+    frame.end();
     rt.collectMajor();
     try std.testing.expect(rt.objectFromDebug(tuple) == null);
 

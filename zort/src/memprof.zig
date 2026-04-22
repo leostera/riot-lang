@@ -9,22 +9,25 @@ pub const Space = heap_store.Space;
 pub const EventSink = event_sink.EventSink;
 
 pub const SamplingMode = enum {
-    probabilistic_words,
+    probabilistic_allocation_units,
     deterministic_interval,
 };
 
 pub const Config = struct {
     enabled: bool = false,
-    sample_interval_words: usize = 64,
+    sample_interval_units: usize = 64,
     capture_backtraces: bool = false,
-    sampling: SamplingMode = .probabilistic_words,
+    sampling: SamplingMode = .probabilistic_allocation_units,
     seed: ?u64 = null,
 };
 
 pub const SampleView = struct {
     sample_ordinal: u64,
     kind: ObjectKind,
-    size: usize,
+    payload_bytes: usize,
+    storage_bytes: usize,
+    scan_words: usize,
+    allocation_cost_units: usize,
     current_space: Space,
     promotion_count: usize,
     backtrace_sites: []const u32,
@@ -33,7 +36,10 @@ pub const SampleView = struct {
 const Sample = struct {
     sample_ordinal: u64,
     kind: ObjectKind,
-    size: usize,
+    payload_bytes: usize,
+    storage_bytes: usize,
+    scan_words: usize,
+    allocation_cost_units: usize,
     current_space: Space,
     promotion_count: usize = 0,
     backtrace_sites: []u32 = &.{},
@@ -43,7 +49,7 @@ pub const MemprofState = struct {
     allocator: std.mem.Allocator,
     event_sink: EventSink,
     config: Config,
-    words_until_next_sample: usize = 1,
+    units_until_next_sample: usize = 1,
     sample_sequence: u64 = 0,
     rng_state: u64 = 0,
     samples: std.AutoHashMapUnmanaged(u64, Sample) = .{},
@@ -55,7 +61,7 @@ pub const MemprofState = struct {
             .config = config,
             .rng_state = config.seed orelse defaultSeed(),
         };
-        state.words_until_next_sample = state.drawNextGap();
+        state.units_until_next_sample = state.drawNextGap();
         return state;
     }
 
@@ -68,7 +74,7 @@ pub const MemprofState = struct {
     }
 
     pub fn enabled(self: *const MemprofState) bool {
-        return self.config.enabled and self.config.sample_interval_words > 0;
+        return self.config.enabled and self.config.sample_interval_units > 0;
     }
 
     pub fn capturesBacktraces(self: *const MemprofState) bool {
@@ -79,23 +85,23 @@ pub const MemprofState = struct {
         return self.samples.count();
     }
 
-    pub fn beginAllocation(self: *MemprofState, object_words: usize) ?u64 {
+    pub fn beginAllocation(self: *MemprofState, allocation_cost_units: usize) ?u64 {
         if (!self.enabled()) return null;
 
-        const effective_words = @max(object_words, 1);
-        if (effective_words < self.words_until_next_sample) {
-            self.words_until_next_sample -= effective_words;
+        const effective_units = @max(allocation_cost_units, 1);
+        if (effective_units < self.units_until_next_sample) {
+            self.units_until_next_sample -= effective_units;
             return null;
         }
 
         self.sample_sequence +%= 1;
-        const leftover_words = effective_words - self.words_until_next_sample;
-        self.words_until_next_sample = self.drawNextGap();
-        if (leftover_words > 0) {
-            if (leftover_words >= self.words_until_next_sample) {
-                self.words_until_next_sample = 1;
+        const leftover_units = effective_units - self.units_until_next_sample;
+        self.units_until_next_sample = self.drawNextGap();
+        if (leftover_units > 0) {
+            if (leftover_units >= self.units_until_next_sample) {
+                self.units_until_next_sample = 1;
             } else {
-                self.words_until_next_sample -= leftover_words;
+                self.units_until_next_sample -= leftover_units;
             }
         }
         return self.sample_sequence;
@@ -106,7 +112,10 @@ pub const MemprofState = struct {
         sample_ordinal: u64,
         handle: HeapRef,
         kind: ObjectKind,
-        size: usize,
+        payload_bytes: usize,
+        storage_bytes: usize,
+        scan_words: usize,
+        allocation_cost_units: usize,
         space: Space,
         backtrace_sites: []const u32,
     ) void {
@@ -123,7 +132,10 @@ pub const MemprofState = struct {
             existing.* = .{
                 .sample_ordinal = sample_ordinal,
                 .kind = kind,
-                .size = size,
+                .payload_bytes = payload_bytes,
+                .storage_bytes = storage_bytes,
+                .scan_words = scan_words,
+                .allocation_cost_units = allocation_cost_units,
                 .current_space = space,
                 .promotion_count = 0,
                 .backtrace_sites = copied_sites,
@@ -132,7 +144,10 @@ pub const MemprofState = struct {
             self.samples.put(self.allocator, key, .{
                 .sample_ordinal = sample_ordinal,
                 .kind = kind,
-                .size = size,
+                .payload_bytes = payload_bytes,
+                .storage_bytes = storage_bytes,
+                .scan_words = scan_words,
+                .allocation_cost_units = allocation_cost_units,
                 .current_space = space,
                 .backtrace_sites = copied_sites,
             }) catch {
@@ -146,7 +161,10 @@ pub const MemprofState = struct {
             .handle = handle,
             .sample_ordinal = sample_ordinal,
             .kind = kind,
-            .size = size,
+            .payload_bytes = payload_bytes,
+            .storage_bytes = storage_bytes,
+            .scan_words = scan_words,
+            .allocation_cost_units = allocation_cost_units,
             .space = space,
             .promotion_count = 0,
             .backtrace_depth = backtrace_sites.len,
@@ -163,7 +181,10 @@ pub const MemprofState = struct {
             .handle = handle,
             .sample_ordinal = sample.sample_ordinal,
             .kind = sample.kind,
-            .size = sample.size,
+            .payload_bytes = sample.payload_bytes,
+            .storage_bytes = sample.storage_bytes,
+            .scan_words = sample.scan_words,
+            .allocation_cost_units = sample.allocation_cost_units,
             .space = next_space,
             .promotion_count = sample.promotion_count,
             .backtrace_depth = sample.backtrace_sites.len,
@@ -182,7 +203,10 @@ pub const MemprofState = struct {
             .handle = handle,
             .sample_ordinal = sample.sample_ordinal,
             .kind = sample.kind,
-            .size = sample.size,
+            .payload_bytes = sample.payload_bytes,
+            .storage_bytes = sample.storage_bytes,
+            .scan_words = sample.scan_words,
+            .allocation_cost_units = sample.allocation_cost_units,
             .space = sample.current_space,
             .promotion_count = sample.promotion_count,
             .backtrace_depth = sample.backtrace_sites.len,
@@ -194,7 +218,10 @@ pub const MemprofState = struct {
         return .{
             .sample_ordinal = sample.sample_ordinal,
             .kind = sample.kind,
-            .size = sample.size,
+            .payload_bytes = sample.payload_bytes,
+            .storage_bytes = sample.storage_bytes,
+            .scan_words = sample.scan_words,
+            .allocation_cost_units = sample.allocation_cost_units,
             .current_space = sample.current_space,
             .promotion_count = sample.promotion_count,
             .backtrace_sites = sample.backtrace_sites,
@@ -206,10 +233,10 @@ pub const MemprofState = struct {
     }
 
     fn drawNextGap(self: *MemprofState) usize {
-        const interval = @max(self.config.sample_interval_words, 1);
+        const interval = @max(self.config.sample_interval_units, 1);
         return switch (self.config.sampling) {
             .deterministic_interval => interval,
-            .probabilistic_words => self.drawProbabilisticGap(interval),
+            .probabilistic_allocation_units => self.drawProbabilisticGap(interval),
         };
     }
 
@@ -248,7 +275,7 @@ test "memprof: deterministic sampling preserves simple lifecycle tests" {
     var recorder = event_sink.Recorder{};
     var memprof = MemprofState.init(std.testing.allocator, recorder.sink(), .{
         .enabled = true,
-        .sample_interval_words = 2,
+        .sample_interval_units = 2,
         .capture_backtraces = true,
         .sampling = .deterministic_interval,
     });
@@ -259,10 +286,14 @@ test "memprof: deterministic sampling preserves simple lifecycle tests" {
     try std.testing.expectEqual(@as(u64, 1), sample_ordinal);
 
     const handle = HeapRef{ .index = 2, .generation = 9 };
-    memprof.recordAllocation(sample_ordinal, handle, .tuple, 1, .nursery, &.{ 11, 22 });
+    memprof.recordAllocation(sample_ordinal, handle, .tuple, 16, 16, 2, 2, .nursery, &.{ 11, 22 });
 
     const sample = memprof.sampleFor(handle).?;
     try std.testing.expectEqual(@as(u64, 1), sample.sample_ordinal);
+    try std.testing.expectEqual(@as(usize, 16), sample.payload_bytes);
+    try std.testing.expectEqual(@as(usize, 16), sample.storage_bytes);
+    try std.testing.expectEqual(@as(usize, 2), sample.scan_words);
+    try std.testing.expectEqual(@as(usize, 2), sample.allocation_cost_units);
     try std.testing.expectEqual(@as(usize, 2), sample.backtrace_sites.len);
     try std.testing.expectEqualSlices(u32, &.{ 11, 22 }, sample.backtrace_sites);
 
@@ -288,22 +319,22 @@ test "memprof: disabled state never samples" {
 test "memprof: probabilistic sampling is reproducible with a fixed seed" {
     var left = MemprofState.init(std.testing.allocator, EventSink.noop(), .{
         .enabled = true,
-        .sample_interval_words = 8,
-        .sampling = .probabilistic_words,
+        .sample_interval_units = 8,
+        .sampling = .probabilistic_allocation_units,
         .seed = 42,
     });
     defer left.deinit();
 
     var right = MemprofState.init(std.testing.allocator, EventSink.noop(), .{
         .enabled = true,
-        .sample_interval_words = 8,
-        .sampling = .probabilistic_words,
+        .sample_interval_units = 8,
+        .sampling = .probabilistic_allocation_units,
         .seed = 42,
     });
     defer right.deinit();
 
     const pattern = [_]usize{ 1, 3, 2, 5, 1, 4, 2, 8, 1, 1, 6, 2, 7, 3, 1, 4 };
-    for (pattern) |words| {
-        try std.testing.expectEqual(left.beginAllocation(words), right.beginAllocation(words));
+    for (pattern) |units| {
+        try std.testing.expectEqual(left.beginAllocation(units), right.beginAllocation(units));
     }
 }

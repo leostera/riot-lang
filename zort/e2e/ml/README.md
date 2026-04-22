@@ -19,14 +19,14 @@ Current workflow:
 1. compile each `.ml` fixture with `ocamlopt.opt -output-obj`
 2. link it with a tiny C host stub
 3. link today against vendor `libasmrun` as the baseline runtime
-4. keep the same `.ml` fixtures for the future `zort` OCaml-compatibility
+4. keep the same `.ml` fixtures for the future `zort` OCaml-shaped interop
    shim
 
 Current status:
 
 - `zig build e2e-ml` runs the baseline fixtures against vendor `libasmrun`
 - `zig build e2e-ml-zort` now runs seven intentionally narrow fixtures against
-  `zort`'s OCaml-compatibility shim on `aarch64-apple-darwin`
+  `zort`'s OCaml-shaped interop shim on `aarch64-apple-darwin`
 - the caml-compat startup path now registers linked frametable,
   `gc_roots`, and code/data segment tables in compatibility-owned state and
   verifies that `caml_program` lands in a registered code fragment before
@@ -68,7 +68,7 @@ Current cases:
   symbol plus callback registration
 - `min_pure_startup.ml`: strict `-nostdlib -nopervasives` pure startup smoke
   intended to prove the smallest compiler-emitted object can run against the
-  `zort` OCaml-compatibility shim without depending on externals
+  `zort` OCaml-shaped interop shim without depending on externals
 - `min_pure_startup_reentrant`: the same strict pure-startup object under a C
   host that calls `caml_startup`/`caml_shutdown` twice to prove nested startup
   ownership and final teardown behavior in the compatibility layer
@@ -89,7 +89,7 @@ Current cases:
   block raw value after startup metadata registration
 - `min_external_startup.ml`: strict `-nostdlib -nopervasives` top-level external
   call intended as the first compiler-emitted program that can run against the
-  `zort` OCaml-compatibility shim
+  `zort` OCaml-shaped interop shim
 
 Run them with:
 

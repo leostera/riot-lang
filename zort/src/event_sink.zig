@@ -93,7 +93,10 @@ pub const GcPhase = enum {
 pub const AllocEvent = struct {
     handle: HeapRef,
     kind: ObjectKind,
-    size: usize,
+    payload_bytes: usize,
+    storage_bytes: usize,
+    scan_words: usize,
+    allocation_cost_units: usize,
 };
 
 pub const FieldWriteEvent = struct {
@@ -135,7 +138,10 @@ pub const MemprofEvent = struct {
     handle: HeapRef,
     sample_ordinal: u64,
     kind: ObjectKind,
-    size: usize,
+    payload_bytes: usize,
+    storage_bytes: usize,
+    scan_words: usize,
+    allocation_cost_units: usize,
     space: heap_store.Space,
     promotion_count: usize = 0,
     backtrace_depth: usize = 0,
@@ -152,13 +158,13 @@ pub const GcSnapshotEvent = struct {
     marked: ObjectKindCounts = .{},
     promoted: ObjectKindCounts = .{},
     reclaimed: ObjectKindCounts = .{},
-    promoted_words: usize = 0,
+    promoted_allocation_units: usize = 0,
     weak_processed: usize = 0,
     finalizers_ready: usize = 0,
     nursery_objects: usize = 0,
-    nursery_words: usize = 0,
+    nursery_allocation_units: usize = 0,
     major_objects: usize = 0,
-    major_words: usize = 0,
+    major_allocation_units: usize = 0,
     timings: CollectTimings = .{},
 };
 
@@ -476,7 +482,10 @@ test "event_sink: recorder tracks counters by event kind" {
     sink.emit(.{ .alloc = .{
         .handle = .{ .index = 1, .generation = 1 },
         .kind = .tuple,
-        .size = 2,
+        .payload_bytes = 16,
+        .storage_bytes = 16,
+        .scan_words = 2,
+        .allocation_cost_units = 2,
     } });
     sink.emit(.{ .field_write = .{
         .target = .{ .index = 1, .generation = 1 },
@@ -514,7 +523,10 @@ test "event_sink: recorder tracks counters by event kind" {
         .handle = .{ .index = 1, .generation = 1 },
         .sample_ordinal = 1,
         .kind = .tuple,
-        .size = 2,
+        .payload_bytes = 16,
+        .storage_bytes = 16,
+        .scan_words = 2,
+        .allocation_cost_units = 2,
         .space = .nursery,
         .backtrace_depth = 2,
     } });
@@ -523,7 +535,10 @@ test "event_sink: recorder tracks counters by event kind" {
         .handle = .{ .index = 1, .generation = 1 },
         .sample_ordinal = 1,
         .kind = .tuple,
-        .size = 2,
+        .payload_bytes = 16,
+        .storage_bytes = 16,
+        .scan_words = 2,
+        .allocation_cost_units = 2,
         .space = .major,
         .promotion_count = 1,
         .backtrace_depth = 2,
@@ -533,7 +548,10 @@ test "event_sink: recorder tracks counters by event kind" {
         .handle = .{ .index = 1, .generation = 1 },
         .sample_ordinal = 1,
         .kind = .tuple,
-        .size = 2,
+        .payload_bytes = 16,
+        .storage_bytes = 16,
+        .scan_words = 2,
+        .allocation_cost_units = 2,
         .space = .major,
         .promotion_count = 1,
         .backtrace_depth = 2,
@@ -548,11 +566,11 @@ test "event_sink: recorder tracks counters by event kind" {
         .root_count = 1,
         .reclaimed = .{ .tuple = 1 },
         .promoted = .{ .boxed_i64 = 1 },
-        .promoted_words = 3,
+        .promoted_allocation_units = 3,
         .nursery_objects = 2,
-        .nursery_words = 5,
+        .nursery_allocation_units = 5,
         .major_objects = 4,
-        .major_words = 9,
+        .major_allocation_units = 9,
         .timings = .{ .total_ns = 12 },
     } });
     sink.emit(.{ .collect = .{
@@ -579,11 +597,11 @@ test "event_sink: recorder tracks counters by event kind" {
     try std.testing.expectEqual(@as(usize, 1), recorder.last_collect_reclaimed);
     try std.testing.expectEqual(@as(usize, 1), recorder.last_gc_snapshot.?.reclaimed.tuple);
     try std.testing.expectEqual(@as(usize, 1), recorder.last_gc_snapshot.?.promoted.boxed_i64);
-    try std.testing.expectEqual(@as(usize, 3), recorder.last_gc_snapshot.?.promoted_words);
+    try std.testing.expectEqual(@as(usize, 3), recorder.last_gc_snapshot.?.promoted_allocation_units);
     try std.testing.expectEqual(@as(usize, 2), recorder.last_gc_snapshot.?.nursery_objects);
-    try std.testing.expectEqual(@as(usize, 5), recorder.last_gc_snapshot.?.nursery_words);
+    try std.testing.expectEqual(@as(usize, 5), recorder.last_gc_snapshot.?.nursery_allocation_units);
     try std.testing.expectEqual(@as(usize, 4), recorder.last_gc_snapshot.?.major_objects);
-    try std.testing.expectEqual(@as(usize, 9), recorder.last_gc_snapshot.?.major_words);
+    try std.testing.expectEqual(@as(usize, 9), recorder.last_gc_snapshot.?.major_allocation_units);
 }
 
 test "event_sink: trace recorder stores object history and gc snapshot" {
@@ -598,7 +616,10 @@ test "event_sink: trace recorder stores object history and gc snapshot" {
     sink.emit(.{ .alloc = .{
         .handle = handle,
         .kind = .boxed_i64,
-        .size = 1,
+        .payload_bytes = 8,
+        .storage_bytes = 0,
+        .scan_words = 0,
+        .allocation_cost_units = 1,
     } });
     sink.emit(.{ .field_write = .{
         .target = handle,
@@ -626,11 +647,11 @@ test "event_sink: trace recorder stores object history and gc snapshot" {
         .root_count = 2,
         .marked = .{ .boxed_i64 = 1 },
         .promoted = .{ .tuple = 1 },
-        .promoted_words = 2,
+        .promoted_allocation_units = 2,
         .nursery_objects = 1,
-        .nursery_words = 2,
+        .nursery_allocation_units = 2,
         .major_objects = 3,
-        .major_words = 4,
+        .major_allocation_units = 4,
         .weak_processed = 1,
         .timings = .{ .mark_ns = 7, .total_ns = 44 },
     } });
@@ -639,7 +660,10 @@ test "event_sink: trace recorder stores object history and gc snapshot" {
         .handle = handle,
         .sample_ordinal = 1,
         .kind = .boxed_i64,
-        .size = 1,
+        .payload_bytes = 8,
+        .storage_bytes = 0,
+        .scan_words = 0,
+        .allocation_cost_units = 1,
         .space = .major,
         .backtrace_depth = 3,
     } });
@@ -654,11 +678,11 @@ test "event_sink: trace recorder stores object history and gc snapshot" {
     try std.testing.expectEqual(@as(usize, 1), trace.rootProviderEntries().len);
     try std.testing.expectEqual(@as(usize, 1), trace.last_gc_snapshot.?.marked.boxed_i64);
     try std.testing.expectEqual(@as(usize, 1), trace.last_gc_snapshot.?.promoted.tuple);
-    try std.testing.expectEqual(@as(usize, 2), trace.last_gc_snapshot.?.promoted_words);
+    try std.testing.expectEqual(@as(usize, 2), trace.last_gc_snapshot.?.promoted_allocation_units);
     try std.testing.expectEqual(@as(usize, 1), trace.last_gc_snapshot.?.nursery_objects);
-    try std.testing.expectEqual(@as(usize, 2), trace.last_gc_snapshot.?.nursery_words);
+    try std.testing.expectEqual(@as(usize, 2), trace.last_gc_snapshot.?.nursery_allocation_units);
     try std.testing.expectEqual(@as(usize, 3), trace.last_gc_snapshot.?.major_objects);
-    try std.testing.expectEqual(@as(usize, 4), trace.last_gc_snapshot.?.major_words);
+    try std.testing.expectEqual(@as(usize, 4), trace.last_gc_snapshot.?.major_allocation_units);
     try std.testing.expectEqual(@as(usize, 1), trace.last_gc_snapshot.?.weak_processed);
     try std.testing.expectEqual(@as(usize, 1), trace.snapshot().memprof_samples);
     const last = trace.lastObjectEvent(handle).?;

@@ -6,13 +6,19 @@ flat prototype in `src/`.
 
 The goal is a maintainable Zig-native runtime that is easy to reason about,
 easy to test, explicit about ownership and liveness, and capable of supporting
-an outer compatibility shim without making OCaml's historical runtime layout the
+an outer interop shim without making OCaml's historical runtime layout the
 center of the design.
+
+Current status note:
+`src/caml_compat/*` is a handle-oriented interop boundary, not a claim of raw
+OCaml ABI compatibility. The architecture should stay honest about that
+distinction until value layout, headers, roots, barriers, and callback
+semantics are truly ABI-shaped.
 
 ## Design Principles
 
 - Internal runtime data should be semantic and typed.
-- OCaml compatibility should be an outer encoding layer, not the foundation.
+- OCaml-shaped interop should be an outer encoding layer, not the foundation.
 - Liveness should be explicit and owned.
 - Allocation, mutation, collection, and control transfer should be separate
   subsystems.
@@ -29,12 +35,12 @@ The system should have two universes:
 - Internal universe:
   typed values, typed heap objects, stable handles, explicit roots,
   explicit continuations, explicit collectors.
-- Compatibility universe:
+- Interop/shim universe:
   tagged raw words, OCaml-ish tags, named values, primitive lookup,
   legacy `caml_*` entrypoints, and any future FFI shim.
 
-The compatibility universe may depend on the internal universe.
-The internal universe must not depend on the compatibility universe.
+The interop universe may depend on the internal universe.
+The internal universe must not depend on the interop universe.
 
 That is the main irreversible architecture rule.
 
@@ -78,6 +84,12 @@ const Object = union(enum) {
 The runtime may still derive OCaml-like tags at the boundary, but the internal
 kernel should work in terms of object kinds, not header-bit numerology.
 
+Current scalar note:
+the current `boxed_i64` / `boxed_f64` object kinds are still provisional. If
+zort wants first-class unboxed `u8/u16/u32/u64/u128` and corresponding float
+widths, the long-term answer is a richer scalar/value representation strategy,
+not an ever-growing set of boxed heap cases.
+
 ## Runtime Subsystems
 
 The runtime should be built from a small number of explicit subsystems with
@@ -98,12 +110,27 @@ stack switching, and compatibility encoding all live together.
 
 - object allocation
 - object lookup by `HeapRef`
-- object slot reuse
-- heap iteration for collectors
+- storage-backend selection and backend-neutral traversal hooks
+- object slot reuse in the current `slot_registry` backend
+- heap iteration for collectors through callback-based traversal/sweep APIs
+- explicit payload-storage ownership metadata so host-allocated, static, and
+  future page-backed payloads can coexist without hidden free rules
 - object destruction/reclamation hooks
 
 `HeapStore` does not own GC policy.
 It is storage plus object lifecycle primitives.
+
+Current implementation note:
+the only backend today is `slot_registry`. That is still an object registry,
+not a packed page heap. New backends should fit behind the `HeapStore`
+interface instead of teaching the collector or mutator about backend-specific
+arrays or page tables.
+
+Current storage note:
+small nursery tuples now use pinned page-backed field storage, and promotion is
+currently a non-moving metadata transition for those tuple payloads. That
+matches the intended direction better than a copying nursery, but page-local
+fragmentation and page-reuse policy are still early.
 
 ### `RootRegistry`
 
@@ -111,6 +138,7 @@ It is storage plus object lifecycle primitives.
 
 - explicit root registration
 - scoped root handles
+- lexical root frames that own stable root slots
 - root generation counters
 - debug validation of root operations
 - root enumeration for collection
@@ -172,6 +200,9 @@ The compatibility layer owns all OCaml-shaped behavior we choose to support:
 - primitive table
 - native plugin boundary
 - `caml_*` shims
+
+In the current repo this is best understood as an interop shim, not as proven
+ABI compatibility.
 
 If the compatibility layer disappears, the internal runtime should still make
 sense.

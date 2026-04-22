@@ -10,6 +10,7 @@ const value = @import("value.zig");
 pub const Value = value.Value;
 pub const HeapStore = heap_store.HeapStore;
 pub const Object = heap_store.Object;
+pub const ObjectKind = heap_store.ObjectKind;
 pub const Space = heap_store.Space;
 pub const MemprofState = memprof_mod.MemprofState;
 pub const RememberedSet = remembered_set_mod.RememberedSet;
@@ -27,6 +28,17 @@ pub const GcStrategy = enum {
     mark_sweep,
     generational,
     bump,
+};
+
+const MarkScope = enum {
+    all,
+    nursery_only,
+};
+
+const MarkVisitorContext = struct {
+    collector: *Collector,
+    worklist: *std.ArrayListUnmanaged(value.HeapRef),
+    scope: MarkScope,
 };
 
 pub const Collector = struct {
@@ -187,13 +199,21 @@ pub const Collector = struct {
 
     fn traceMarkSweep(self: *Collector, summary: *GcSnapshotEvent) void {
         var timer = std.time.Timer.start() catch unreachable;
+        var worklist = std.ArrayListUnmanaged(value.HeapRef){};
+        defer worklist.deinit(self.heap_store.hostAllocator());
+        var ctx = MarkVisitorContext{
+            .collector = self,
+            .worklist = &worklist,
+            .scope = .all,
+        };
         const visitor = RootVisitor{
-            .ctx = self,
-            .visit_fn = visitRoot,
+            .ctx = &ctx,
+            .visit_fn = visitMarkRoot,
         };
         for (self.root_providers) |provider| {
             provider.visit(visitor);
         }
+        self.drainMarkWorklist(&worklist, .all);
         summary.timings.mark_ns = timer.read();
         self.emitPhase(.mark, summary.timings.mark_ns);
     }
@@ -222,16 +242,11 @@ pub const Collector = struct {
     }
 
     pub fn markValue(self: *Collector, block_value: Value) bool {
-        const obj = self.objectFrom(block_value) orelse return false;
-        if (obj.marked) return false;
-        obj.marked = true;
-
-        if (obj.tupleFields()) |fields| {
-            for (fields) |child| {
-                _ = self.markValue(child);
-            }
-        }
-        return true;
+        var worklist = std.ArrayListUnmanaged(value.HeapRef){};
+        defer worklist.deinit(self.heap_store.hostAllocator());
+        const seeded = self.enqueueForMark(&worklist, block_value, .all);
+        self.drainMarkWorklist(&worklist, .all);
+        return seeded;
     }
 
     pub fn isMarkedValue(self: *const Collector, rooted: Value) bool {
@@ -241,44 +256,59 @@ pub const Collector = struct {
     }
 
     fn emitLiveReclaims(self: *Collector, summary: *GcSnapshotEvent) usize {
-        var reclaimed: usize = 0;
-        for (self.heap_store.slotsRef(), 0..) |slot, slot_index| {
-            if (!slot.alive) continue;
-            const kind = slot.object.kind().?;
-            summary.reclaimed.bump(kind);
-            self.event_sink.emit(.{ .reclaim = .{
-                .handle = .{
-                    .index = @intCast(slot_index),
-                    .generation = slot.generation,
-                },
-                .kind = kind,
-            } });
-            if (self.memprof) |memprof| {
-                memprof.noteReclaim(.{
-                    .index = @intCast(slot_index),
-                    .generation = slot.generation,
-                });
+        const Context = struct {
+            collector: *Collector,
+            summary: *GcSnapshotEvent,
+            reclaimed: usize = 0,
+
+            fn visit(ctx: *@This(), handle: value.HeapRef, _: Space, obj: *const Object) void {
+                const kind = obj.kind().?;
+                ctx.summary.reclaimed.bump(kind);
+                ctx.collector.event_sink.emit(.{ .reclaim = .{
+                    .handle = handle,
+                    .kind = kind,
+                } });
+                if (ctx.collector.memprof) |memprof| {
+                    memprof.noteReclaim(handle);
+                }
+                ctx.reclaimed += 1;
             }
-            reclaimed += 1;
-        }
-        return reclaimed;
+        };
+
+        var ctx = Context{
+            .collector = self,
+            .summary = summary,
+        };
+        self.heap_store.visitLiveConst(&ctx, Context.visit);
+        return ctx.reclaimed;
     }
 
     fn traceMinorGenerational(self: *Collector, summary: *GcSnapshotEvent) void {
         var timer = std.time.Timer.start() catch unreachable;
+        var worklist = std.ArrayListUnmanaged(value.HeapRef){};
+        defer worklist.deinit(self.heap_store.hostAllocator());
+        var ctx = MarkVisitorContext{
+            .collector = self,
+            .worklist = &worklist,
+            .scope = .nursery_only,
+        };
         const visitor = RootVisitor{
-            .ctx = self,
-            .visit_fn = visitMinorRoot,
+            .ctx = &ctx,
+            .visit_fn = visitMarkRoot,
         };
         for (self.root_providers) |provider| {
             provider.visit(visitor);
         }
         if (self.remembered_set) |set| {
-            for (set.edgesSlice()) |edge| {
-                _ = edge.target;
-                self.markMinorValue(Value.fromHeapRef(edge.value));
+            for (set.targetsSlice()) |target| {
+                const obj = self.heap_store.get(target) orelse continue;
+                const fields = obj.tupleFields() orelse continue;
+                for (fields) |field| {
+                    _ = self.enqueueForMark(&worklist, field, .nursery_only);
+                }
             }
         }
+        self.drainMarkWorklist(&worklist, .nursery_only);
         summary.timings.mark_ns = timer.read();
         self.emitPhase(.mark, summary.timings.mark_ns);
     }
@@ -286,33 +316,32 @@ pub const Collector = struct {
     fn sweepMarked(self: *Collector, summary: *GcSnapshotEvent) usize {
         var timer = std.time.Timer.start() catch unreachable;
         const fixed_arena = self.fixed_arena_buffer != null;
-        const slots = self.heap_store.slotsMut();
-        var reclaimed: usize = 0;
-        for (slots, 0..) |*slot, slot_index| {
-            if (!slot.alive) continue;
-            if (!slot.object.marked) {
-                const kind = slot.object.kind().?;
-                summary.reclaimed.bump(kind);
-                self.event_sink.emit(.{ .reclaim = .{
-                    .handle = .{
-                        .index = @intCast(slot_index),
-                        .generation = slot.generation,
-                    },
+        const Context = struct {
+            collector: *Collector,
+            summary: *GcSnapshotEvent,
+
+            fn onReclaim(ctx: *@This(), handle: value.HeapRef, kind: ObjectKind) void {
+                ctx.summary.reclaimed.bump(kind);
+                ctx.collector.event_sink.emit(.{ .reclaim = .{
+                    .handle = handle,
                     .kind = kind,
                 } });
-                if (self.memprof) |memprof| {
-                    memprof.noteReclaim(.{
-                        .index = @intCast(slot_index),
-                        .generation = slot.generation,
-                    });
+                if (ctx.collector.memprof) |memprof| {
+                    memprof.noteReclaim(handle);
                 }
-                self.heap_store.reclaimSlot(slot_index, fixed_arena);
-                reclaimed += 1;
-            } else {
-                summary.marked.bump(slot.object.kind().?);
-                slot.object.marked = false;
             }
-        }
+
+            fn onKeep(ctx: *@This(), obj: *Object, kind: ObjectKind, _: Space) void {
+                ctx.summary.marked.bump(kind);
+                obj.marked = false;
+            }
+        };
+
+        var ctx = Context{
+            .collector = self,
+            .summary = summary,
+        };
+        const reclaimed = self.heap_store.sweepMarked(fixed_arena, &ctx, Context.onReclaim, Context.onKeep);
         if (self.remembered_set) |set| set.compact(self.heap_store);
         self.captureSpaceStats(summary);
         summary.timings.sweep_ns = timer.read();
@@ -322,46 +351,38 @@ pub const Collector = struct {
 
     fn sweepMinorGenerational(self: *Collector, summary: *GcSnapshotEvent) usize {
         var timer = std.time.Timer.start() catch unreachable;
-        var reclaimed: usize = 0;
         const fixed_arena = self.fixed_arena_buffer != null;
-        for (self.heap_store.slotsMut(), 0..) |*slot, slot_index| {
-            if (!slot.alive or slot.space != .nursery) continue;
-            if (!slot.object.marked) {
-                const kind = slot.object.kind().?;
-                summary.reclaimed.bump(kind);
-                self.event_sink.emit(.{ .reclaim = .{
-                    .handle = .{
-                        .index = @intCast(slot_index),
-                        .generation = slot.generation,
-                    },
+        const Context = struct {
+            collector: *Collector,
+            summary: *GcSnapshotEvent,
+
+            fn onReclaim(ctx: *@This(), handle: value.HeapRef, kind: ObjectKind) void {
+                ctx.summary.reclaimed.bump(kind);
+                ctx.collector.event_sink.emit(.{ .reclaim = .{
+                    .handle = handle,
                     .kind = kind,
                 } });
-                if (self.memprof) |memprof| {
-                    memprof.noteReclaim(.{
-                        .index = @intCast(slot_index),
-                        .generation = slot.generation,
-                    });
+                if (ctx.collector.memprof) |memprof| {
+                    memprof.noteReclaim(handle);
                 }
-                self.heap_store.reclaimSlot(slot_index, fixed_arena);
-                reclaimed += 1;
-                continue;
             }
 
-            slot.object.marked = false;
-            summary.promoted.bump(slot.object.kind().?);
-            summary.promoted_words += slot.object.wosize();
-            _ = self.heap_store.promote(.{
-                .index = @intCast(slot_index),
-                .generation = slot.generation,
-            });
-            if (self.memprof) |memprof| {
-                memprof.notePromotion(.{
-                    .index = @intCast(slot_index),
-                    .generation = slot.generation,
-                }, .major);
+            fn onPromote(ctx: *@This(), handle: value.HeapRef, obj: *Object, kind: ObjectKind) void {
+                obj.marked = false;
+                ctx.summary.promoted.bump(kind);
+                ctx.summary.promoted_allocation_units += obj.allocationCostUnits();
+                ctx.summary.marked.bump(kind);
+                if (ctx.collector.memprof) |memprof| {
+                    memprof.notePromotion(handle, .major);
+                }
             }
-            summary.marked.bump(slot.object.kind().?);
-        }
+        };
+
+        var ctx = Context{
+            .collector = self,
+            .summary = summary,
+        };
+        const reclaimed = self.heap_store.sweepNurseryMarked(fixed_arena, &ctx, Context.onReclaim, Context.onPromote);
         if (self.remembered_set) |set| set.compact(self.heap_store);
         self.captureSpaceStats(summary);
         summary.timings.sweep_ns = timer.read();
@@ -410,31 +431,53 @@ pub const Collector = struct {
         const nursery = self.heap_store.spaceStats(.nursery);
         const major = self.heap_store.spaceStats(.major);
         summary.nursery_objects = nursery.objects;
-        summary.nursery_words = nursery.words;
+        summary.nursery_allocation_units = nursery.allocation_units;
         summary.major_objects = major.objects;
-        summary.major_words = major.words;
+        summary.major_allocation_units = major.allocation_units;
     }
 
-    fn visitRoot(ctx: ?*anyopaque, rooted: Value) void {
-        const self: *Collector = @ptrCast(@alignCast(ctx.?));
-        _ = self.markValue(rooted);
-    }
-
-    fn visitMinorRoot(ctx: ?*anyopaque, rooted: Value) void {
-        const self: *Collector = @ptrCast(@alignCast(ctx.?));
-        self.markMinorValue(rooted);
-    }
-
-    fn markMinorValue(self: *Collector, rooted: Value) void {
-        const handle = rooted.asHeapRef() orelse return;
-        const obj = self.heap_store.get(handle) orelse return;
-        const space = self.heap_store.spaceOf(handle) orelse return;
-        if (space != .nursery) return;
-        if (obj.marked) return;
-        obj.marked = true;
-        if (obj.tupleFields()) |fields| {
-            for (fields) |child| self.markMinorValue(child);
+    fn enqueueForMark(
+        self: *Collector,
+        worklist: *std.ArrayListUnmanaged(value.HeapRef),
+        rooted: Value,
+        scope: MarkScope,
+    ) bool {
+        const handle = rooted.asHeapRef() orelse return false;
+        const obj = self.heap_store.get(handle) orelse return false;
+        switch (scope) {
+            .all => {},
+            .nursery_only => {
+                const space = self.heap_store.spaceOf(handle) orelse return false;
+                if (space != .nursery) return false;
+            },
         }
+        if (obj.marked) return false;
+        obj.marked = true;
+        worklist.append(self.heap_store.hostAllocator(), handle) catch {
+            @panic("zort: out of memory while growing mark stack");
+        };
+        return true;
+    }
+
+    fn drainMarkWorklist(
+        self: *Collector,
+        worklist: *std.ArrayListUnmanaged(value.HeapRef),
+        scope: MarkScope,
+    ) void {
+        while (worklist.items.len > 0) {
+            const handle = worklist.pop() orelse unreachable;
+            const obj = self.heap_store.get(handle) orelse continue;
+            if (obj.tupleFields()) |fields| {
+                for (fields) |child| {
+                    _ = self.enqueueForMark(worklist, child, scope);
+                }
+            }
+        }
+    }
+
+    fn visitMarkRoot(ctx: ?*anyopaque, rooted: Value) void {
+        const mark_ctx: *MarkVisitorContext = @ptrCast(@alignCast(ctx.?));
+        _ = mark_ctx.collector.enqueueForMark(mark_ctx.worklist, rooted, mark_ctx.scope);
     }
 };
 
@@ -577,7 +620,7 @@ test "collector: generational minor collection promotes reachable nursery object
     defer heap.deinit(false);
     heap.configureNursery(.{
         .enabled = true,
-        .max_object_words = 2,
+        .max_object_units = 2,
     });
     var roots = RootRegistry.init(std.testing.allocator, EventSink.noop());
     defer roots.deinit();
@@ -603,9 +646,9 @@ test "collector: generational minor collection promotes reachable nursery object
     try std.testing.expectEqual(@as(?Space, .major), heap.spaceOf(child.asHeapRef().?));
     try std.testing.expectEqual(@as(usize, 2), heap.count());
     try std.testing.expectEqual(@as(usize, 2), trace.last_gc_snapshot.?.promoted.tuple);
-    try std.testing.expectEqual(@as(usize, 1), trace.last_gc_snapshot.?.promoted_words);
+    try std.testing.expectEqual(@as(usize, 1), trace.last_gc_snapshot.?.promoted_allocation_units);
     try std.testing.expectEqual(@as(usize, 0), trace.last_gc_snapshot.?.nursery_objects);
-    try std.testing.expectEqual(@as(usize, 0), trace.last_gc_snapshot.?.nursery_words);
+    try std.testing.expectEqual(@as(usize, 0), trace.last_gc_snapshot.?.nursery_allocation_units);
     try std.testing.expectEqual(@as(usize, 2), trace.last_gc_snapshot.?.major_objects);
-    try std.testing.expectEqual(@as(usize, 1), trace.last_gc_snapshot.?.major_words);
+    try std.testing.expectEqual(@as(usize, 1), trace.last_gc_snapshot.?.major_allocation_units);
 }

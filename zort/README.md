@@ -4,6 +4,10 @@
 It is deliberately focused on native execution, maintainability, and
 observability, not full OCaml runtime compatibility.
 
+Today it is closest to a runtime research project for control effects,
+observability, and GC experimentation. The `src/caml_compat/*` tree is an
+OCaml-shaped interop shim, not a claim of raw OCaml ABI compatibility.
+
 ## Phase 1 scope
 
 - Native-only allocation model
@@ -15,23 +19,39 @@ observability, not full OCaml runtime compatibility.
 - Managed fiber stacks with one-shot continuation capture/resume, `reperform`, explicit managed-stack growth policy, and deep-copy continuation stack snapshots for inspection
 - Explicit event sink, trace recorder, and GC/control instrumentation
 - Runtime services for named values, signal handlers, pending signals, blocking-section state, and owned alternate signal-stack lifecycle
-- Small optional OCaml compatibility shim (`src/caml_compat/api.zig`) for legacy `caml_*` entrypoints
+- Small optional OCaml-shaped interop shim (`src/caml_compat/api.zig`) for legacy `caml_*` entrypoints
 - Compile-time platform capabilities plus runtime permissions for Deno-style host access narrowing
 
 ## Current representation
 
-- `Value` is a tagged immediate when `(value.raw & 1) == 1`.
-- Non-immediate values are semantic block references (`HeapRef`) resolved
-  through `HeapStore`.
+- `Value` is a semantic tagged union with immediate and block cases.
+- Block values are semantic heap references (`HeapRef`) resolved through
+  `HeapStore`.
+- `HeapStore` now exposes an explicit backend kind. Today the only real backend
+  is `slot_registry`, which is the current debug-friendly object registry.
 - Internal object kinds are semantic (`tuple`, `string`, `boxed_i64`,
   `boxed_f64`, `custom`) and are not centered on OCaml tag numbers.
 - Strings and bytes are allocated with an explicit trailing NUL sentinel.
-- OCaml-shaped compatibility encoding stays at the boundary in `src/caml_compat/codec.zig`.
+- Heap payloads now carry explicit storage ownership metadata (`host_allocator`,
+  `static`, and future page-backed owners) instead of assuming every slice came
+  from the host allocator.
+- Small nursery tuples now allocate their field arrays from pinned page-backed
+  storage, and promotion keeps those tuple payload addresses stable by changing
+  ownership metadata instead of copying the fields.
+- Allocation accounting is split into:
+  - `payload_bytes`
+  - `storage_bytes`
+  - `scan_words`
+  - `allocation_cost_units`
+- Collector-facing heap traversal now goes through `HeapStore` callback methods
+  instead of exposing the slot array directly. That is the seam future paged or
+  nursery backends should grow behind.
+- OCaml-shaped interop encoding stays at the boundary in `src/caml_compat/codec.zig`.
 
 ## API entrypoints
 
 - Main library surface: `src/lib.zig`
-- Separate OCaml compatibility boundary: `src/caml_compat.zig`
+- Separate OCaml-shaped interop boundary: `src/caml_compat.zig`
 - Optional shim entrypoints: `src/caml_compat/api.zig`
 - External primitive dispatch now goes through `PrimitiveRegistry.callWithBoundary(...)`, so shim-driven primitive calls use the same callback-boundary isolation as pending signal/finalizer delivery.
 - Mutable effect/fiber control-state setup now goes through `Runtime` helpers such as `pushEffectHandler`, `pushFiberFrame`, `pushFiberFrameRoot`, and `enterCallbackBoundary`.
@@ -126,21 +146,23 @@ const pair = try rt.tuple(&.{ left, text });
 
 ## Safe root usage
 
-Register the exact `Value` slot by pointer while it is live:
+Prefer lexical root frames in ordinary runtime code:
 
 ```zig
-var root = try rt.allocI64(123);
-try rt.registerRoot(&root);
-defer rt.unregisterRoot(&root);
+var frame = rt.beginRootFrame();
+defer frame.end();
 
-// mutate the root slot as needed while keeping a stable pointer
-root = try rt.allocString("updated while rooted");
+var root = try frame.bind(try rt.allocI64(123));
+root.set(try rt.allocString("updated while rooted"));
 
 rt.collect();
 ```
 
-`collect()` only follows currently registered `root` slots, so unregistering is required
-for values that should become unreachable.
+Use `beginRootFrame()` for normal runtime code. `registerInteropRoot(&slot)` /
+`unregisterInteropRoot(&slot)` / `scopedInteropRoot(&slot)` are the low-level
+interop escape hatches when you already own a stable `Value` slot address.
+`registerRoot` / `unregisterRoot` remain compatibility aliases for that same
+escape hatch.
 
 ## Debugging and profiling
 
@@ -152,7 +174,10 @@ for values that should become unreachable.
   - heap handle
   - heap space (`nursery` / `major`)
   - object kind
-  - payload size
+  - `payload_bytes`
+  - `storage_bytes`
+  - `scan_words`
+  - `allocation_cost_units`
   - explicit root ownership count
   - control-kernel ownership count
   - runtime-service ownership count
@@ -182,11 +207,11 @@ for values that should become unreachable.
   - ephemerons
   - first/last finalizers
 - `MemprofState` keeps sampled lifecycle profiling explicit:
-  - probabilistic word-based sampling by default
+  - probabilistic allocation-unit sampling by default
   - deterministic interval sampling as an explicit test/debug mode
   - optional allocation-site backtrace capture
   - promotion and reclaim lifecycle tracking by `HeapRef`
-- `Mutator` now exposes remembered-set recording through barrier events.
+- `Mutator` now exposes remembered-target recording through barrier events.
 - `Runtime.snapshotContinuationStack(...)` returns a deep copy of a suspended continuation stack so effects/backtraces can inspect captured managed-stack state without resuming it.
 - `FiberScheduler` now exposes per-domain coordination snapshots with:
   - atomic runnable/parked/suspended counters

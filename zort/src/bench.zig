@@ -279,9 +279,9 @@ fn runBenchcases(
         .eventSink = recorder.sink(),
         .memprof = .{
             .enabled = config.trace_mode == .memprof,
-            .sample_interval_words = 16,
+            .sample_interval_units = 16,
             .capture_backtraces = true,
-            .sampling = .probabilistic_words,
+            .sampling = .probabilistic_allocation_units,
             .seed = 7,
         },
     });
@@ -410,8 +410,19 @@ fn emitTrace(label: []const u8, strategy: Runtime.GcStrategy, entries: []const T
         }
         switch (entry.event) {
             .alloc => |event| std.log.info(
-                "trace:{s}:{s}: alloc ts={d} handle={d}:{d} kind={s} size={d}",
-                .{ @tagName(strategy), label, entry.timestamp_ms, event.handle.index, event.handle.generation, @tagName(event.kind), event.size },
+                "trace:{s}:{s}: alloc ts={d} handle={d}:{d} kind={s} payload_bytes={d} storage_bytes={d} scan_words={d} units={d}",
+                .{
+                    @tagName(strategy),
+                    label,
+                    entry.timestamp_ms,
+                    event.handle.index,
+                    event.handle.generation,
+                    @tagName(event.kind),
+                    event.payload_bytes,
+                    event.storage_bytes,
+                    event.scan_words,
+                    event.allocation_cost_units,
+                },
             ),
             .field_write => |event| std.log.info(
                 "trace:{s}:{s}: field ts={d} target={d}:{d} index={d} phase={s}",
@@ -442,7 +453,7 @@ fn emitTrace(label: []const u8, strategy: Runtime.GcStrategy, entries: []const T
                 .{ @tagName(strategy), label, entry.timestamp_ms, @tagName(event.phase), event.elapsed_ns },
             ),
             .gc_snapshot => |event| std.log.info(
-                "trace:{s}:{s}: gc-snapshot ts={d} roots={d} marked={d}/{d}/{d}/{d}/{d} promoted={d}/{d}/{d}/{d}/{d} promoted_words={d} reclaimed={d}/{d}/{d}/{d}/{d} nursery={d}obj/{d}w major={d}obj/{d}w weak={d} finalizers={d} ns={d}/{d}/{d}/{d}/{d}/{d}",
+                "trace:{s}:{s}: gc-snapshot ts={d} roots={d} marked={d}/{d}/{d}/{d}/{d} promoted={d}/{d}/{d}/{d}/{d} promoted_units={d} reclaimed={d}/{d}/{d}/{d}/{d} nursery={d}obj/{d}u major={d}obj/{d}u weak={d} finalizers={d} ns={d}/{d}/{d}/{d}/{d}/{d}",
                 .{
                     @tagName(strategy),
                     label,
@@ -458,16 +469,16 @@ fn emitTrace(label: []const u8, strategy: Runtime.GcStrategy, entries: []const T
                     event.promoted.boxed_i64,
                     event.promoted.boxed_f64,
                     event.promoted.custom,
-                    event.promoted_words,
+                    event.promoted_allocation_units,
                     event.reclaimed.tuple,
                     event.reclaimed.string,
                     event.reclaimed.boxed_i64,
                     event.reclaimed.boxed_f64,
                     event.reclaimed.custom,
                     event.nursery_objects,
-                    event.nursery_words,
+                    event.nursery_allocation_units,
                     event.major_objects,
-                    event.major_words,
+                    event.major_allocation_units,
                     event.weak_processed,
                     event.finalizers_ready,
                     event.timings.root_enumeration_ns,
@@ -483,7 +494,7 @@ fn emitTrace(label: []const u8, strategy: Runtime.GcStrategy, entries: []const T
                 .{ @tagName(strategy), label, entry.timestamp_ms, event.handle.index, event.handle.generation, @tagName(event.kind) },
             ),
             .memprof => |event| std.log.info(
-                "trace:{s}:{s}: memprof ts={d} action={s} handle={d}:{d} sample={d} kind={s} size={d} space={s} promotions={d} depth={d}",
+                "trace:{s}:{s}: memprof ts={d} action={s} handle={d}:{d} sample={d} kind={s} payload_bytes={d} storage_bytes={d} scan_words={d} units={d} space={s} promotions={d} depth={d}",
                 .{
                     @tagName(strategy),
                     label,
@@ -493,7 +504,10 @@ fn emitTrace(label: []const u8, strategy: Runtime.GcStrategy, entries: []const T
                     event.handle.generation,
                     event.sample_ordinal,
                     @tagName(event.kind),
-                    event.size,
+                    event.payload_bytes,
+                    event.storage_bytes,
+                    event.scan_words,
+                    event.allocation_cost_units,
                     @tagName(event.space),
                     event.promotion_count,
                     event.backtrace_depth,
@@ -609,31 +623,31 @@ fn benchmarkTupleAlloc(rt: *Runtime, iters: usize) !u64 {
 }
 
 fn benchmarkTupleUpdate(rt: *Runtime, iters: usize) !u64 {
-    var tuple = try rt.allocTuple(16);
-    try rt.registerRoot(&tuple);
-    defer rt.unregisterRoot(&tuple);
+    var frame = rt.beginRootFrame();
+    defer frame.end();
+    var tuple = try frame.bind(try rt.allocTuple(16));
 
     var i: usize = 0;
     var timer = try std.time.Timer.start();
     while (i < iters) : (i += 1) {
         var index: usize = 0;
         while (index < 16) : (index += 1) {
-            try rt.setField(tuple, index, Value.fromInt(@as(i64, @intCast(i + index))));
+            try rt.setField(tuple.get(), index, Value.fromInt(@as(i64, @intCast(i + index))));
         }
         if ((i % 4_096) == 0) rt.collect();
     }
-    consume(tuple);
+    consume(tuple.get());
     return timer.read();
 }
 
 fn benchmarkTupleRead(rt: *Runtime, iters: usize) !u64 {
-    var tuple = try rt.allocTuple(16);
-    try rt.registerRoot(&tuple);
-    defer rt.unregisterRoot(&tuple);
+    var frame = rt.beginRootFrame();
+    defer frame.end();
+    var tuple = try frame.bind(try rt.allocTuple(16));
 
     var i: usize = 0;
     while (i < 16) : (i += 1) {
-        try rt.setField(tuple, i, Value.fromInt(@as(i64, @intCast(i))));
+        try rt.setField(tuple.get(), i, Value.fromInt(@as(i64, @intCast(i))));
     }
 
     var timer = try std.time.Timer.start();
@@ -642,7 +656,7 @@ fn benchmarkTupleRead(rt: *Runtime, iters: usize) !u64 {
         var total: usize = 0;
         var index: usize = 0;
         while (index < 16) : (index += 1) {
-            const field = try rt.field(tuple, index);
+            const field = try rt.field(tuple.get(), index);
             if (field.isImmediate()) {
                 total += 1;
             }
@@ -741,10 +755,10 @@ fn benchmarkGcReachableChain(rt: *Runtime, iters: usize) !u64 {
     var i: usize = 0;
     var timer = try std.time.Timer.start();
     while (i < iters) : (i += 1) {
-        var root = try buildChain(rt, GraphDepth);
-        try rt.registerRoot(&root);
+        var frame = rt.beginRootFrame();
+        _ = try frame.bind(try buildChain(rt, GraphDepth));
         rt.collect();
-        rt.unregisterRoot(&root);
+        frame.end();
         rt.collect();
     }
     return timer.read();
@@ -793,9 +807,9 @@ fn benchmarkRootChurn(rt: *Runtime, iters: usize) !u64 {
 }
 
 fn benchmarkLongLivedSweep(rt: *Runtime, iters: usize) !u64 {
-    var long_lived = try buildChain(rt, LongLivedChainDepth);
-    try rt.registerRoot(&long_lived);
-    defer rt.unregisterRoot(&long_lived);
+    var frame = rt.beginRootFrame();
+    defer frame.end();
+    var long_lived = try frame.bind(try buildChain(rt, LongLivedChainDepth));
 
     var i: usize = 0;
     var timer = try std.time.Timer.start();
@@ -803,10 +817,10 @@ fn benchmarkLongLivedSweep(rt: *Runtime, iters: usize) !u64 {
         _ = try buildChain(rt, LongLivedBurstDepth);
         if ((i % 4) == 0) {
             const marker = try rt.allocI64(@as(i64, @intCast(i)));
-            try rt.setField(long_lived, 1, marker);
+            try rt.setField(long_lived.get(), 1, marker);
         }
         if ((i & 0x7) == 0) {
-            consume(try rt.field(long_lived, 0));
+            consume(try rt.field(long_lived.get(), 0));
         }
         rt.collect();
     }

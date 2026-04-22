@@ -49,8 +49,8 @@ pub const Language = struct {
 
     pub fn tupleLength(self: *Language, block_value: Value) Error!usize {
         const obj = try self.objectFrom(block_value);
-        if (obj.kind() != .tuple) return Error.InvalidValue;
-        return obj.wosize();
+        const fields = obj.tupleFields() orelse return Error.InvalidValue;
+        return fields.len;
     }
 
     pub fn field(self: *Language, block_value: Value, idx: usize) Error!Value {
@@ -95,8 +95,8 @@ pub const Language = struct {
 
     pub fn stringLength(self: *Language, block_value: Value) Error!usize {
         const obj = try self.objectFrom(block_value);
-        if (obj.kind() != .string) return Error.InvalidValue;
-        return obj.wosize();
+        const bytes = obj.stringSlice() orelse return Error.InvalidValue;
+        return bytes.len;
     }
 
     pub fn bytesLength(self: *Language, block_value: Value) Error!usize {

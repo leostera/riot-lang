@@ -48,14 +48,8 @@ pub const Mutator = struct {
     }
 
     pub fn allocTuple(self: *Mutator, len: usize) Error!Value {
-        const fields = if (len == 0)
-            @constCast(&[_]Value{})
-        else blk: {
-            const allocated = try self.allocator.alloc(Value, len);
-            @memset(allocated, Value.fromInt(0));
-            break :blk allocated;
-        };
-        return self.insertObject(Object.initTuple(fields));
+        const storage = try self.heap_store.allocTupleFields(self.allocator, len);
+        return self.insertObject(Object.initTupleOwned(storage.fields, storage.owner));
     }
 
     pub fn allocStringLen(self: *Mutator, len: usize) Error!Value {
@@ -73,9 +67,11 @@ pub const Mutator = struct {
     }
 
     pub fn allocCustomBytes(self: *Mutator, len: usize) Error!Value {
-        const bytes = if (len == 0)
-            @constCast(&[_]u8{})
-        else blk: {
+        if (len == 0) {
+            return self.insertObject(Object.initCustomOwned(@constCast(&[_]u8{}), .static));
+        }
+
+        const bytes = blk: {
             const allocated = try self.allocator.alloc(u8, len);
             @memset(allocated, 0);
             break :blk allocated;
@@ -122,10 +118,14 @@ pub const Mutator = struct {
 
     fn insertObject(self: *Mutator, object: Object) Error!Value {
         const handle = try self.heap_store.add(object);
+        const metrics = object.sizeMetrics();
         self.event_sink.emit(.{ .alloc = .{
             .handle = handle,
             .kind = object.kind().?,
-            .size = object.wosize(),
+            .payload_bytes = metrics.payload_bytes,
+            .storage_bytes = metrics.storage_bytes,
+            .scan_words = metrics.scan_words,
+            .allocation_cost_units = metrics.allocation_cost_units,
         } });
         return Value.fromHeapRef(handle);
     }
@@ -193,7 +193,7 @@ pub const Mutator = struct {
             const next_handle = next.asHeapRef() orelse return;
             const next_space = self.heap_store.spaceOf(next_handle) orelse return;
             if (target_space != .major or next_space != .nursery) return;
-            recorded = try set.record(target, next);
+            recorded = try set.record(target);
         }
         if (!recorded) return;
         self.event_sink.emit(.{ .barrier = .{
@@ -244,6 +244,37 @@ test "mutator: field writes reject non-tuples" {
     try std.testing.expectError(Error.InvalidValue, mutator.writeField(number, 0, Value.fromInt(1)));
 }
 
+test "mutator: zero-length payloads use static storage ownership" {
+    var store = HeapStore.init(std.testing.allocator);
+    defer store.deinit(false);
+    var mutator = Mutator.init(std.testing.allocator, &store, EventSink.noop(), null);
+
+    const empty_tuple = try mutator.allocTuple(0);
+    const empty_custom = try mutator.allocCustomBytes(0);
+
+    try std.testing.expectEqual(heap_store.StorageOwner.static, store.get(empty_tuple.asHeapRef().?).?.storageOwner().?);
+    try std.testing.expectEqual(heap_store.StorageOwner.static, store.get(empty_custom.asHeapRef().?).?.storageOwner().?);
+}
+
+test "mutator: nursery tuples allocate pinned page-backed field storage" {
+    var store = HeapStore.init(std.testing.allocator);
+    defer store.deinit(false);
+    store.configureNursery(.{
+        .enabled = true,
+        .max_object_units = 8,
+    });
+    var mutator = Mutator.init(std.testing.allocator, &store, EventSink.noop(), null);
+
+    const tuple = try mutator.allocTuple(2);
+    const obj = store.get(tuple.asHeapRef().?).?;
+    const fields = obj.tupleFields().?;
+
+    try std.testing.expectEqual(heap_store.StorageOwner.nursery_page, obj.storageOwner().?);
+    try std.testing.expectEqual(@as(usize, 2), fields.len);
+    try std.testing.expectEqual(Value.fromInt(0), fields[0]);
+    try std.testing.expectEqual(Value.fromInt(0), fields[1]);
+}
+
 test "mutator: emits allocation and mutation events" {
     var recorder = event_sink.Recorder{};
     var store = HeapStore.init(std.testing.allocator);
@@ -261,7 +292,7 @@ test "mutator: emits allocation and mutation events" {
     try std.testing.expectEqual(@as(usize, 1), counters.bytes_writes);
 }
 
-test "mutator: mutate writes record remembered edges for block targets" {
+test "mutator: mutate records remembered major targets for nursery children" {
     var recorder = event_sink.Recorder{};
     var remembered = RememberedSet.init(std.testing.allocator);
     defer remembered.deinit();
@@ -269,7 +300,7 @@ test "mutator: mutate writes record remembered edges for block targets" {
     defer store.deinit(false);
     store.configureNursery(.{
         .enabled = true,
-        .max_object_words = 2,
+        .max_object_units = 2,
     });
     var mutator = Mutator.init(std.testing.allocator, &store, recorder.sink(), &remembered);
 
@@ -284,7 +315,7 @@ test "mutator: mutate writes record remembered edges for block targets" {
     try std.testing.expectEqual(@as(usize, 1), recorder.snapshot().barrier_records);
 }
 
-test "mutator: initialize records remembered edges for major-to-nursery fields" {
+test "mutator: duplicate nursery stores only remember a major target once" {
     var recorder = event_sink.Recorder{};
     var remembered = RememberedSet.init(std.testing.allocator);
     defer remembered.deinit();
@@ -292,7 +323,31 @@ test "mutator: initialize records remembered edges for major-to-nursery fields" 
     defer store.deinit(false);
     store.configureNursery(.{
         .enabled = true,
-        .max_object_words = 2,
+        .max_object_units = 2,
+    });
+    var mutator = Mutator.init(std.testing.allocator, &store, recorder.sink(), &remembered);
+
+    const fields = try std.testing.allocator.alloc(Value, 1);
+    fields[0] = Value.fromInt(0);
+    const target = Value.fromHeapRef(try store.addInSpace(Object.initTuple(fields), .major));
+    const first = try mutator.allocTuple(0);
+    const second = try mutator.allocTuple(0);
+    try mutator.writeField(target, 0, first);
+    try mutator.writeField(target, 0, second);
+
+    try std.testing.expectEqual(@as(usize, 1), remembered.count());
+    try std.testing.expectEqual(@as(usize, 1), recorder.snapshot().barrier_records);
+}
+
+test "mutator: initialize records remembered major targets for nursery fields" {
+    var recorder = event_sink.Recorder{};
+    var remembered = RememberedSet.init(std.testing.allocator);
+    defer remembered.deinit();
+    var store = HeapStore.init(std.testing.allocator);
+    defer store.deinit(false);
+    store.configureNursery(.{
+        .enabled = true,
+        .max_object_units = 2,
     });
     var mutator = Mutator.init(std.testing.allocator, &store, recorder.sink(), &remembered);
 

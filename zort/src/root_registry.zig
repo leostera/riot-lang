@@ -26,6 +26,62 @@ pub const RootHandle = struct {
     }
 };
 
+const RootFrameSlot = struct {
+    value: Value,
+};
+
+pub const RootBinding = struct {
+    slot: *RootFrameSlot,
+
+    pub fn get(self: *const RootBinding) Value {
+        return self.slot.value;
+    }
+
+    pub fn set(self: *RootBinding, next: Value) void {
+        self.slot.value = next;
+    }
+
+    pub fn ptr(self: *RootBinding) *Value {
+        return &self.slot.value;
+    }
+};
+
+pub const RootFrame = struct {
+    allocator: std.mem.Allocator,
+    registry: *RootRegistry,
+    slots: std.ArrayListUnmanaged(*RootFrameSlot) = .{},
+    active: bool = true,
+
+    pub const Error = error{
+        FrameInactive,
+    } || std.mem.Allocator.Error;
+
+    pub fn bind(self: *RootFrame, rooted: Value) Error!RootBinding {
+        if (!self.active) return error.FrameInactive;
+
+        const slot = try self.allocator.create(RootFrameSlot);
+        errdefer self.allocator.destroy(slot);
+        slot.* = .{ .value = rooted };
+
+        try self.registry.register(&slot.value);
+        errdefer self.registry.unregister(&slot.value);
+
+        try self.slots.append(self.allocator, slot);
+        return .{ .slot = slot };
+    }
+
+    pub fn end(self: *RootFrame) void {
+        if (!self.active) return;
+
+        for (self.slots.items) |slot| {
+            self.registry.unregister(&slot.value);
+            self.allocator.destroy(slot);
+        }
+        self.slots.deinit(self.allocator);
+        self.active = false;
+    }
+};
+
 pub const RootRegistry = struct {
     allocator: std.mem.Allocator,
     event_sink: EventSink,
@@ -89,6 +145,13 @@ pub const RootRegistry = struct {
         return .{
             .registry = self,
             .slot = slot,
+        };
+    }
+
+    pub fn beginFrame(self: *RootRegistry) RootFrame {
+        return .{
+            .allocator = self.allocator,
+            .registry = self,
         };
     }
 
@@ -161,6 +224,25 @@ test "root_registry: scoped handle unregisters on deinit" {
     // idempotent
     handle.deinit();
     try std.testing.expectEqual(@as(usize, 0), registry.items().len);
+}
+
+test "root_registry: lexical root frame owns stable rooted slots" {
+    var registry = RootRegistry.init(std.testing.allocator, EventSink.noop());
+    defer registry.deinit();
+
+    var frame = registry.beginFrame();
+    var left = try frame.bind(Value.fromInt(7));
+    var right = try frame.bind(Value.fromHeapRef(.{ .index = 3, .generation = 1 }));
+
+    try std.testing.expectEqual(@as(usize, 2), registry.items().len);
+    try std.testing.expectEqual(Value.fromInt(7), left.get());
+    right.set(Value.fromInt(9));
+    try std.testing.expectEqual(Value.fromInt(9), right.get());
+
+    frame.end();
+    try std.testing.expectEqual(@as(usize, 0), registry.items().len);
+
+    try std.testing.expectError(RootFrame.Error.FrameInactive, frame.bind(Value.fromInt(1)));
 }
 
 fn rootIsValid(valid: []const Value, rooted: Value) bool {

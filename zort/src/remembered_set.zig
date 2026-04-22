@@ -7,14 +7,9 @@ pub const Space = heap_store.Space;
 pub const Value = value.Value;
 pub const HeapRef = value.HeapRef;
 
-pub const RememberedEdge = struct {
-    target: HeapRef,
-    value: HeapRef,
-};
-
 pub const RememberedSet = struct {
     allocator: std.mem.Allocator,
-    edges: std.ArrayListUnmanaged(RememberedEdge) = .{},
+    targets: std.ArrayListUnmanaged(HeapRef) = .{},
 
     pub fn init(allocator: std.mem.Allocator) RememberedSet {
         return .{
@@ -23,85 +18,95 @@ pub const RememberedSet = struct {
     }
 
     pub fn deinit(self: *RememberedSet) void {
-        self.edges.deinit(self.allocator);
+        self.targets.deinit(self.allocator);
     }
 
     pub fn clear(self: *RememberedSet) void {
-        self.edges.clearRetainingCapacity();
+        self.targets.clearRetainingCapacity();
     }
 
     pub fn count(self: *const RememberedSet) usize {
-        return self.edges.items.len;
+        return self.targets.items.len;
     }
 
-    pub fn edgesSlice(self: *const RememberedSet) []const RememberedEdge {
-        return self.edges.items;
+    pub fn targetsSlice(self: *const RememberedSet) []const HeapRef {
+        return self.targets.items;
     }
 
     pub fn compact(self: *RememberedSet, heap: *const HeapStore) void {
         var write_index: usize = 0;
-        for (self.edges.items) |edge| {
-            const target_space = heap.spaceOf(edge.target) orelse continue;
-            const value_space = heap.spaceOf(edge.value) orelse continue;
-            if (target_space != .major or value_space != .nursery) continue;
-            self.edges.items[write_index] = edge;
+        for (self.targets.items) |target| {
+            const target_space = heap.spaceOf(target) orelse continue;
+            if (target_space != .major) continue;
+            if (!targetHasNurseryChildren(heap, target)) continue;
+            self.targets.items[write_index] = target;
             write_index += 1;
         }
-        self.edges.shrinkRetainingCapacity(write_index);
+        self.targets.shrinkRetainingCapacity(write_index);
     }
 
     pub fn ownerCount(self: *const RememberedSet, target: HeapRef) usize {
-        var total: usize = 0;
-        for (self.edges.items) |edge| {
-            if (edge.target.index == target.index and edge.target.generation == target.generation) {
-                total += 1;
-            }
+        for (self.targets.items) |candidate| {
+            if (candidate.index == target.index and candidate.generation == target.generation) return 1;
         }
-        return total;
+        return 0;
     }
 
-    pub fn record(self: *RememberedSet, target: HeapRef, next: Value) !bool {
-        const next_handle = next.asHeapRef() orelse return false;
-        try self.edges.append(self.allocator, .{
-            .target = target,
-            .value = next_handle,
-        });
+    pub fn record(self: *RememberedSet, target: HeapRef) !bool {
+        if (self.ownerCount(target) != 0) return false;
+        try self.targets.append(self.allocator, target);
         return true;
     }
 };
 
-test "remembered_set: records only block-to-block edges" {
+fn targetHasNurseryChildren(heap: *const HeapStore, target: HeapRef) bool {
+    const obj = heap.get(target) orelse return false;
+    const fields = obj.tupleFields() orelse return false;
+    for (fields) |field| {
+        const handle = field.asHeapRef() orelse continue;
+        const space = heap.spaceOf(handle) orelse continue;
+        if (space == .nursery) return true;
+    }
+    return false;
+}
+
+test "remembered_set: records only unique major targets" {
     var set = RememberedSet.init(std.testing.allocator);
     defer set.deinit();
 
     const target = HeapRef{ .index = 1, .generation = 1 };
-    try std.testing.expect(!(try set.record(target, Value.fromInt(7))));
-    try std.testing.expectEqual(@as(usize, 0), set.count());
-
-    try std.testing.expect(try set.record(target, Value.fromHeapRef(.{ .index = 2, .generation = 1 })));
+    try std.testing.expect(try set.record(target));
+    try std.testing.expect(!(try set.record(target)));
     try std.testing.expectEqual(@as(usize, 1), set.count());
     try std.testing.expectEqual(@as(usize, 1), set.ownerCount(target));
 }
 
-test "remembered_set: compact drops invalid and non-major-to-nursery edges" {
+test "remembered_set: compact keeps only major targets with nursery children" {
     var set = RememberedSet.init(std.testing.allocator);
     defer set.deinit();
     var heap = HeapStore.init(std.testing.allocator);
     defer heap.deinit(false);
     heap.configureNursery(.{
         .enabled = true,
-        .max_object_words = 4,
+        .max_object_units = 4,
     });
 
-    const major = try heap.addInSpace(heap_store.Object.initBoxedI64(1), .major);
+    const major_fields = try std.testing.allocator.alloc(Value, 1);
+    major_fields[0] = Value.fromInt(0);
+    const major = try heap.addInSpace(heap_store.Object.initTuple(major_fields), .major);
+
     const nursery = try heap.addInSpace(heap_store.Object.initBoxedI64(2), .nursery);
     const other_major = try heap.addInSpace(heap_store.Object.initBoxedI64(3), .major);
-    try std.testing.expect(try set.record(major, Value.fromHeapRef(nursery)));
-    try std.testing.expect(try set.record(major, Value.fromHeapRef(other_major)));
-    try std.testing.expectEqual(@as(usize, 2), set.count());
+    heap.get(major).?.tupleFields().?[0] = Value.fromHeapRef(nursery);
+
+    try std.testing.expect(try set.record(major));
+    try std.testing.expectEqual(@as(usize, 1), set.count());
 
     set.compact(&heap);
     try std.testing.expectEqual(@as(usize, 1), set.count());
-    try std.testing.expectEqual(major, set.edgesSlice()[0].target);
-    try std.testing.expectEqual(nursery, set.edgesSlice()[0].value);
+    try std.testing.expectEqual(major, set.targetsSlice()[0]);
+
+    heap.get(major).?.tupleFields().?[0] = Value.fromHeapRef(other_major);
+    set.compact(&heap);
+    try std.testing.expectEqual(@as(usize, 0), set.count());
 }

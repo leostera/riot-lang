@@ -13,7 +13,7 @@ const e2e_cases = [_]E2eCase{
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
-    const compat_shim_enabled = b.option(bool, "compat-shim", "Build the legacy compatibility shim") orelse true;
+    const compat_shim_enabled = b.option(bool, "compat-shim", "Build the legacy OCaml-shaped interop shim") orelse true;
     const disable_threads = b.option(bool, "disable-threads", "Compile zort without thread/domain worker capabilities") orelse false;
     const disable_filesystem = b.option(bool, "disable-filesystem", "Compile zort without filesystem-backed host capabilities") orelse false;
     const disable_network = b.option(bool, "disable-network", "Compile zort without network host capabilities") orelse false;
@@ -80,7 +80,7 @@ pub fn build(b: *std.Build) void {
         const run_compat_tests = b.addRunArtifact(compat_tests);
         test_step.dependOn(&run_compat_tests.step);
 
-        const compat_step = b.step("compat", "Build zort compatibility shim");
+        const compat_step = b.step("compat", "Build zort interop shim");
         compat_step.dependOn(&compat_lib.step);
     }
 
@@ -109,7 +109,7 @@ pub fn build(b: *std.Build) void {
         const run_caml_compat_tests = b.addRunArtifact(caml_compat_tests);
         test_step.dependOn(&run_caml_compat_tests.step);
 
-        const caml_compat_step = b.step("caml-compat", "Build zort native OCaml compatibility shim");
+        const caml_compat_step = b.step("caml-compat", "Build zort native OCaml interop shim");
         caml_compat_step.dependOn(&caml_compat_lib.step);
 
         const e2e_ml_zort_step = b.step("e2e-ml-zort", "Compile and run minimal OCaml smoke programs against zort");

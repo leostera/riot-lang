@@ -23,6 +23,7 @@ const HandleSlot = struct {
     generation: u32 = 1,
     live: bool = false,
     value: Value = value_mod.Unit,
+    root: ?runtime_mod.RootHandle = null,
 };
 
 pub const HandleTable = struct {
@@ -35,12 +36,9 @@ pub const HandleTable = struct {
     }
 
     pub fn deinit(self: *HandleTable, runtime: *Runtime) void {
-        for (self.slots.items, 0..) |slot, slot_index| {
-            if (slot.live) {
-                runtime.unregisterRoot(&slot.value);
-            } else {
-                _ = slot_index;
-            }
+        _ = runtime;
+        for (self.slots.items) |slot| {
+            releaseSlotRoot(slot);
             self.allocator.destroy(slot);
         }
         self.slots.deinit(self.allocator);
@@ -68,12 +66,13 @@ pub const HandleTable = struct {
     }
 
     pub fn releaseHandle(self: *HandleTable, runtime: *Runtime, raw: CompatValue) Error!void {
+        _ = runtime;
         if ((raw & 0b11) != HandleTag) return Error.NotHandleValue;
         const handle = decodeHandleParts(raw);
         const slot = self.slots.items[handle.slot_index];
         if (!slot.live or slot.generation != handle.generation) return Error.StaleHandle;
 
-        runtime.unregisterRoot(&slot.value);
+        releaseSlotRoot(slot);
         slot.value = value_mod.Unit;
         slot.live = false;
         slot.generation +%= 1;
@@ -103,7 +102,8 @@ pub const HandleTable = struct {
         errdefer self.rollbackAllocatedSlot(allocated);
 
         allocated.slot.value = value;
-        try runtime.registerRoot(&allocated.slot.value);
+        allocated.slot.root = try runtime.scopedInteropRoot(&allocated.slot.value);
+        errdefer releaseSlotRoot(allocated.slot);
         allocated.slot.live = true;
         return encodeHandle(@intCast(allocated.index), allocated.slot.generation);
     }
@@ -128,6 +128,7 @@ pub const HandleTable = struct {
             const slot = self.slots.items[reused_index];
             slot.value = value_mod.Unit;
             slot.live = false;
+            releaseSlotRoot(slot);
             return .{
                 .index = reused_index,
                 .slot = slot,
@@ -146,6 +147,7 @@ pub const HandleTable = struct {
     }
 
     fn rollbackAllocatedSlot(self: *HandleTable, allocated: AllocatedSlot) void {
+        releaseSlotRoot(allocated.slot);
         if (allocated.reused) {
             self.free_indices.append(self.allocator, @intCast(allocated.index)) catch {};
             allocated.slot.value = value_mod.Unit;
@@ -157,6 +159,11 @@ pub const HandleTable = struct {
         self.allocator.destroy(slot);
     }
 };
+
+fn releaseSlotRoot(slot: *HandleSlot) void {
+    if (slot.root) |*root| root.deinit();
+    slot.root = null;
+}
 
 fn encodeAtom(atom: Atom) CompatValue {
     return (@as(u64, @intFromEnum(atom)) << 2) | AtomTag;
