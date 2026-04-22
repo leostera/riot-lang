@@ -98,7 +98,9 @@ let test_source_file_and_let_binding_views = fun _ctx ->
   let body = body_of_binding binding |> Result.expect ~msg:"expected binding body" in
   (
     match Ast2.Expr.view body with
-    | Ast2.Expr.Literal -> Ok ()
+    | Ast2.Expr.Literal { token=Some token } ->
+        Test.assert_equal ~expected:"1" ~actual:(Ast2.Token.text token);
+        Ok ()
     | _ -> Error "expected literal expression body"
   )
 

@@ -526,7 +526,7 @@ module Expr: sig
     | MethodCall of { target: t option; method_: token option }
     | PolyVariant of { payload: t option }
     | Path of { path: path }
-    | Literal
+    | Literal of { token: token option }
     | Parenthesized of { inner: t option }
     | Tuple
     | List
@@ -543,6 +543,8 @@ module Expr: sig
   val cast: Node.t -> t option
 
   val view: t -> view
+
+  val literal_token: t -> token option
 
   val for_each_child_expr: t -> fn:(t -> unit) -> unit
 
@@ -580,7 +582,7 @@ end = struct
     | MethodCall of { target: t option; method_: token option }
     | PolyVariant of { payload: t option }
     | Path of { path: path }
-    | Literal
+    | Literal of { token: token option }
     | Parenthesized of { inner: t option }
     | Tuple
     | List
@@ -613,6 +615,8 @@ end = struct
           || Syntax_kind2.(kind = CHAR)
           || Syntax_kind2.(kind = TRUE_KW)
           || Syntax_kind2.(kind = FALSE_KW)))
+
+  let literal_token = Node.first_token
 
   let view = fun (expr: expr) ->
     match Node.kind expr with
@@ -691,7 +695,7 @@ end = struct
     }
     | Syntax_kind2.POLY_VARIANT_EXPR -> PolyVariant { payload = first_expr_child expr }
     | Syntax_kind2.PATH_EXPR -> Path { path = expr }
-    | Syntax_kind2.LITERAL_EXPR -> Literal
+    | Syntax_kind2.LITERAL_EXPR -> Literal { token = literal_token expr }
     | Syntax_kind2.PAREN_EXPR -> Parenthesized { inner = first_expr_child expr }
     | Syntax_kind2.TUPLE_EXPR -> Tuple
     | Syntax_kind2.LIST_EXPR -> List
@@ -734,7 +738,7 @@ module Pattern: sig
     | Wildcard
     | Path of { path: path }
     | Apply of { callee: t option; argument: t option }
-    | Literal
+    | Literal of { token: token option }
     | Parenthesized of { inner: t option }
     | Tuple
     | List
@@ -762,6 +766,8 @@ module Pattern: sig
 
   val view: t -> view
 
+  val literal_token: t -> token option
+
   val for_each_child_pattern: t -> fn:(t -> unit) -> unit
 end = struct
   type t = pattern
@@ -770,7 +776,7 @@ end = struct
     | Wildcard
     | Path of { path: path }
     | Apply of { callee: t option; argument: t option }
-    | Literal
+    | Literal of { token: token option }
     | Parenthesized of { inner: t option }
     | Tuple
     | List
@@ -801,6 +807,8 @@ end = struct
     else
       None
 
+  let literal_token = Node.first_token
+
   let view = fun (pattern: pattern) ->
     match Node.kind pattern with
     | Syntax_kind2.WILDCARD_PATTERN -> Wildcard
@@ -809,7 +817,7 @@ end = struct
       callee = nth_pattern_child pattern 0;
       argument = nth_pattern_child pattern 1
     }
-    | Syntax_kind2.LITERAL_PATTERN -> Literal
+    | Syntax_kind2.LITERAL_PATTERN -> Literal { token = literal_token pattern }
     | Syntax_kind2.PAREN_PATTERN -> Parenthesized { inner = first_pattern_child pattern }
     | Syntax_kind2.TUPLE_PATTERN -> Tuple
     | Syntax_kind2.LIST_PATTERN -> List

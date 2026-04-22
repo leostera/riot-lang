@@ -97,7 +97,7 @@ module Pattern: sig
     | Wildcard
     | Path of { path: path }
     | Apply of { callee: t option; argument: t option }
-    | Literal
+    | Literal of { token: Token.t option }
     | Parenthesized of { inner: t option }
     | Tuple
     | List
@@ -124,6 +124,8 @@ module Pattern: sig
   val cast: Node.t -> t option
 
   val view: t -> view
+
+  val literal_token: t -> Token.t option
 
   val for_each_child_pattern: t -> fn:(t -> unit) -> unit
 end
@@ -203,7 +205,7 @@ module Expr: sig
     | MethodCall of { target: t option; method_: Token.t option }
     | PolyVariant of { payload: t option }
     | Path of { path: path }
-    | Literal
+    | Literal of { token: Token.t option }
     | Parenthesized of { inner: t option }
     | Tuple
     | List
@@ -220,6 +222,8 @@ module Expr: sig
   val cast: Node.t -> t option
 
   val view: t -> view
+
+  val literal_token: t -> Token.t option
 
   val for_each_child_expr: t -> fn:(t -> unit) -> unit
 

@@ -173,7 +173,7 @@ let touch_ast2_pattern_view = fun (pattern: Ast2.Pattern.t) ->
     | Apply { callee; argument } ->
         touch_ast2_pattern_option 323 callee;
         touch_ast2_pattern_option 324 argument
-    | Literal -> checksum := !checksum lxor 325
+    | Literal { token } -> touch_ast2_token_option 325 token
     | Parenthesized { inner } -> touch_ast2_pattern_option 326 inner
     | Tuple -> checksum := !checksum lxor 327
     | List -> checksum := !checksum lxor 328
@@ -272,7 +272,7 @@ let rec touch_ast2_expr_view = fun (expr: Ast2.Expr.t) ->
       touch_ast2_token_option 71 operator;
       touch_ast2_node_option 72 operand
   | Path { path } -> checksum := !checksum lxor 81 lxor path.Ast2.id
-  | Literal -> checksum := !checksum lxor 82
+  | Literal { token } -> touch_ast2_token_option 82 token
   | Tuple -> checksum := !checksum lxor 83
   | List -> checksum := !checksum lxor 84
   | Array -> checksum := !checksum lxor 85
