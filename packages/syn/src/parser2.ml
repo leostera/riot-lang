@@ -188,6 +188,9 @@ let if_missing_then = fun p ->
 
 let match_missing_scrutinee = fun p -> diagnostic_with_current p Diagnostic.match_missing_scrutinee
 
+let match_missing_scrutinee_at_previous_end = fun p ->
+  diagnostic_with_current_at p Diagnostic.match_missing_scrutinee (zero_span (previous_end_offset p))
+
 let match_missing_with = fun p -> diagnostic_with_current p Diagnostic.match_missing_with
 
 let match_missing_pattern = fun p -> diagnostic_with_current p Diagnostic.match_missing_pattern
@@ -910,10 +913,6 @@ let rec parse_expression = fun p ~signature ~stop_at_item ?(stop_at_semi = false
         expect p Syntax_kind2.RBRACKET (invalid_expression p);
         loop (complete p marker Syntax_kind2.ATTRIBUTE_EXPR)
       )
-    else if can_start_atom (current_kind p) then
-      let marker = precede p lhs in
-      let _argument = parse_prefix_or_atom p ~signature ~stop_at_item ~stop_at_semi in
-      loop (complete p marker Syntax_kind2.APPLY_EXPR)
     else
       match infix_binding_power (current_kind p) with
       | Some bp when bp >= min_bp ->
@@ -934,6 +933,10 @@ let rec parse_expression = fun p ~signature ~stop_at_item ?(stop_at_semi = false
           else
             ignore (parse_expression p ~signature ~stop_at_item ~stop_at_semi (bp + 1));
           loop (complete p marker Syntax_kind2.INFIX_EXPR)
+      | _ when can_start_atom (current_kind p) ->
+          let marker = precede p lhs in
+          let _argument = parse_prefix_or_atom p ~signature ~stop_at_item ~stop_at_semi in
+          loop (complete p marker Syntax_kind2.APPLY_EXPR)
       | _ -> lhs
   in
   loop (parse_prefix_or_atom p ~signature ~stop_at_item ~stop_at_semi)
@@ -1176,12 +1179,11 @@ and parse_list_expr = fun p ~signature ->
       (
         if at p Syntax_kind2.SEMI then
           (
+            if peek_kind p 1 = Syntax_kind2.SEMI then
+              Event.Buffer.error p.events (list_double_semicolon p);
             bump p;
             if at p Syntax_kind2.SEMI then
-              (
-                Event.Buffer.error p.events (list_double_semicolon p);
-                bump p
-              )
+              bump p
           )
         else (
           let before = p.pos in
@@ -1192,7 +1194,8 @@ and parse_list_expr = fun p ~signature ->
               bump p;
               if at p Syntax_kind2.SEMI then
                 (
-                  Event.Buffer.error p.events (list_double_semicolon p);
+                  if not (peek_kind p 1 = Syntax_kind2.RBRACKET) then
+                    Event.Buffer.error p.events (list_double_semicolon p);
                   bump p
                 )
             )
@@ -1411,7 +1414,7 @@ and parse_match_expr = fun p ~signature ~stop_at_item ->
   let marker = start_node p in
   bump p;
   if at p Syntax_kind2.WITH_KW then
-    Event.Buffer.error p.events (match_missing_scrutinee p)
+    Event.Buffer.error p.events (match_missing_scrutinee_at_previous_end p)
   else
     ignore (parse_expression p ~signature ~stop_at_item:false 0);
   if at p Syntax_kind2.WITH_KW then
