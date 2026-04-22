@@ -2580,6 +2580,19 @@ module IncludeDeclaration = struct
           fn token)
 end
 
+let for_each_declaration_name_token = fun decl ~keyword ~fn ->
+  let seen_keyword = ref false in
+  let done_ = ref false in
+  Node.for_each_child_token decl
+    ~fn:(fun token ->
+      if not !done_ then
+        if token_kind_is token Syntax_kind2.COLON then
+          done_ := true
+        else if !seen_keyword then
+          fn token
+        else if token_kind_is token keyword then
+          seen_keyword := true)
+
 module ValueDeclaration = struct
   type t = value_declaration
 
@@ -2591,7 +2604,12 @@ module ValueDeclaration = struct
 
   let name = first_ident_token
 
+  let colon_token = fun decl -> Node.first_child_token decl ~kind:Syntax_kind2.COLON
+
   let type_annotation = first_type_expr_child
+
+  let for_each_name_token = fun decl ~fn ->
+    for_each_declaration_name_token decl ~keyword:Syntax_kind2.VAL_KW ~fn
 end
 
 module ExternalDeclaration = struct
@@ -2605,7 +2623,12 @@ module ExternalDeclaration = struct
 
   let name = first_ident_token
 
+  let colon_token = fun decl -> Node.first_child_token decl ~kind:Syntax_kind2.COLON
+
   let type_annotation = first_type_expr_child
+
+  let for_each_name_token = fun decl ~fn ->
+    for_each_declaration_name_token decl ~keyword:Syntax_kind2.EXTERNAL_KW ~fn
 
   let for_each_primitive_string = fun decl ~fn ->
     Node.for_each_child_token decl

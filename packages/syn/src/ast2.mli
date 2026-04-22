@@ -648,7 +648,11 @@ module ValueDeclaration: sig
 
   val name: t -> Token.t option
 
+  val colon_token: t -> Token.t option
+
   val type_annotation: t -> type_expr option
+
+  val for_each_name_token: t -> fn:(Token.t -> unit) -> unit
 end
 
 module ExternalDeclaration: sig
@@ -657,7 +661,11 @@ module ExternalDeclaration: sig
 
   val name: t -> Token.t option
 
+  val colon_token: t -> Token.t option
+
   val type_annotation: t -> type_expr option
+
+  val for_each_name_token: t -> fn:(Token.t -> unit) -> unit
 
   val for_each_primitive_string: t -> fn:(Token.t -> unit) -> unit
 

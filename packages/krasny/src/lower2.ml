@@ -2097,6 +2097,32 @@ let type_tokens_inline_doc = fun tokens ->
   in
   loop None Doc.empty tokens
 
+let declaration_name_doc = fun tokens ->
+  match tokens with
+  | opening :: rest when token_kind_is opening Kind.LPAREN ->
+      let rec gather_inner current depth = function
+        | [] -> None
+        | token :: rest when token_kind_is token Kind.RPAREN && Int.equal depth 0 -> Some (
+          List.reverse current,
+          token,
+          rest
+        )
+        | token :: rest -> gather_inner (token :: current) (type_token_depth_after depth token) rest
+      in
+      (
+        match gather_inner [] 0 rest with
+        | Some (inner, closing, []) -> Doc.concat
+          [
+            token_doc opening;
+            Doc.space;
+            type_tokens_inline_doc inner;
+            Doc.space;
+            token_doc closing
+          ]
+        | _ -> type_tokens_inline_doc tokens
+      )
+  | _ -> type_tokens_inline_doc tokens
+
 let declaration_head_token_needs_space = fun previous current ->
   match previous, current with
   | (_, kind) when Kind.(kind = PERCENT) -> false
@@ -2664,7 +2690,7 @@ let signature_body_val_item_doc = fun tokens ->
         [
           token_doc val_token;
           Doc.space;
-          type_tokens_inline_doc name_tokens;
+          declaration_name_doc name_tokens;
           Doc.colon;
           Doc.space;
           type_tokens_doc type_tokens;
@@ -2763,15 +2789,37 @@ let module_type_decl_doc = fun decl ->
         | None, _ -> unsupported "module type declaration body without equals token"
       )
 
+let value_decl_name_tokens = fun decl ->
+  let tokens = ref [] in
+  Ast.ValueDeclaration.for_each_name_token decl ~fn:(fun token -> tokens := token :: !tokens);
+  List.reverse !tokens
+
 let value_decl_doc = fun decl ->
-  match Ast.ValueDeclaration.name decl, Ast.ValueDeclaration.type_annotation decl with
-  | Some name, Some annotation -> Doc.concat
-    [ Doc.text "val"; Doc.space; token_doc name; Doc.text ":"; Doc.space; type_expr_doc annotation ]
+  match value_decl_name_tokens decl, Ast.ValueDeclaration.colon_token decl, Ast.ValueDeclaration.type_annotation
+    decl with
+  | [], _, _ -> unsupported "value declaration without name"
+  | name_tokens, Some colon_token, Some annotation -> Doc.concat
+    [
+      Doc.text "val";
+      Doc.space;
+      declaration_name_doc name_tokens;
+      token_doc colon_token;
+      Doc.space;
+      type_expr_doc annotation;
+    ]
   | _ -> unsupported "incomplete value declaration"
 
+let external_decl_name_tokens = fun decl ->
+  let tokens = ref [] in
+  Ast.ExternalDeclaration.for_each_name_token decl ~fn:(fun token -> tokens := token :: !tokens);
+  List.reverse !tokens
+
 let external_decl_doc = fun decl ->
-  match Ast.ExternalDeclaration.name decl, Ast.ExternalDeclaration.type_annotation decl with
-  | Some name, Some annotation ->
+  match external_decl_name_tokens decl, Ast.ExternalDeclaration.colon_token decl, Ast.ExternalDeclaration.type_annotation
+    decl with
+  | [], _, _ ->
+      unsupported "external declaration without name"
+  | name_tokens, Some colon_token, Some annotation ->
       let primitives = ref [] in
       Ast.ExternalDeclaration.for_each_primitive_string
         decl
@@ -2793,8 +2841,8 @@ let external_decl_doc = fun decl ->
               [
                 Doc.text "external";
                 Doc.space;
-                token_doc name;
-                Doc.text ":";
+                declaration_name_doc name_tokens;
+                token_doc colon_token;
                 Doc.space;
                 type_expr_doc annotation;
                 Doc.space;
@@ -2804,7 +2852,8 @@ let external_decl_doc = fun decl ->
                 attributes;
               ]
       )
-  | _ -> unsupported "incomplete external declaration"
+  | _ ->
+      unsupported "incomplete external declaration"
 
 let open_decl_doc = fun decl -> Doc.concat [ Doc.text "open"; Doc.space; open_path_doc decl ]
 

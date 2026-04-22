@@ -848,6 +848,12 @@ let current_infix_binding_power = fun p ->
       else
         None
 
+let operator_name_start_at = fun p offset ->
+  let kind = peek_kind p offset in
+  Syntax_kind2.(kind = DOT || kind = OPERATOR_KW)
+  || symbolic_operator_part kind
+  || (binding_operator_keyword kind && binding_operator_suffix (peek_kind p (offset + 1)))
+
 let pattern_binding_power = function
   | Syntax_kind2.PIPE -> Some 10
   | Syntax_kind2.COMMA -> Some 15
@@ -1004,6 +1010,51 @@ let rec consume_symbolic_operator = fun p ->
       bump p;
       consume_symbolic_operator p
     )
+
+let consume_parenthesized_operator_name = fun p ~signature ->
+  if at p Syntax_kind2.LPAREN && operator_name_start_at p 1 then
+    (
+      bump p;
+      let next_depth depth =
+        match current_kind p with
+        | Syntax_kind2.LPAREN
+        | Syntax_kind2.LBRACE
+        | Syntax_kind2.LBRACKET
+        | Syntax_kind2.LBRACKET_BAR -> depth + 1
+        | Syntax_kind2.RPAREN
+        | Syntax_kind2.RBRACE
+        | Syntax_kind2.RBRACKET
+        | Syntax_kind2.BAR_RBRACKET when depth > 0 -> depth - 1
+        | _ -> depth
+      in
+      let rec loop depth =
+        if
+          not
+            (is_eof p
+            || (depth = 0
+            && (at p Syntax_kind2.RPAREN || at p Syntax_kind2.COLON || at_item_boundary p ~signature)))
+        then
+          (
+            let depth = next_depth depth in
+            bump p;
+            loop depth
+          )
+      in
+      loop 0;
+      expect_closer p Syntax_kind2.RPAREN ~opener:"(";
+      true
+    )
+  else
+    false
+
+let consume_value_name = fun p ~signature ->
+  if at p Syntax_kind2.IDENT then
+    (
+      bump p;
+      true
+    )
+  else
+    consume_parenthesized_operator_name p ~signature
 
 let consume_first_class_module_shell = fun p ->
   expect p Syntax_kind2.MODULE_KW (missing_module_expr p);
@@ -2989,10 +3040,7 @@ let parse_external_decl = fun p ~signature ->
   expect p Syntax_kind2.EXTERNAL_KW (invalid_expression p);
   consume_shortcut_extension_modifier p;
   consume_declaration_attributes p;
-  (
-    if at p Syntax_kind2.IDENT then
-      bump p
-  );
+  ignore (consume_value_name p ~signature);
   if at p Syntax_kind2.COLON then
     (
       bump p;
@@ -3009,12 +3057,8 @@ let parse_external_decl = fun p ~signature ->
 let parse_val_decl = fun p ~signature ->
   let marker = start_node p in
   expect p Syntax_kind2.VAL_KW (invalid_type_expression p);
-  (
-    if at p Syntax_kind2.IDENT then
-      bump p
-    else
-      Event.Buffer.error p.events (missing_type_name p)
-  );
+  if not (consume_value_name p ~signature) then
+    Event.Buffer.error p.events (missing_type_name p);
   if at p Syntax_kind2.COLON then
     (
       bump p;

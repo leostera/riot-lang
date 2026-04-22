@@ -98,6 +98,7 @@ let assert_lower2_existing_fixture_subset = fun () ->
     Path.v "packages/krasny/tests/fixtures/0727_signature_abstract_type_then_value_docstrings.mli";
     Path.v "packages/krasny/tests/fixtures/0728_external_declaration_attribute.ml";
     Path.v "packages/krasny/tests/fixtures/0729_shortcut_extension_declaration_items.ml";
+    Path.v "packages/krasny/tests/fixtures/0730_signature_operator_value_declarations.mli";
   ]
   in
   let rec loop = function
