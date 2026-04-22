@@ -3,14 +3,6 @@ open Std.Result.Syntax
 open Riot_e2e
 module Test = Std.Test
 
-let with_initialized_workspace = fun ctx workspace_name fn ->
-  with_tempdir_result ~prefix:"riot_e2e_init_"
-    (fun root ->
-      let workspace_root = Path.(root / Path.v workspace_name) in
-      let* init_output = run_riot ctx ~cwd:root [ "init"; workspace_name ] in
-      let* _ = expect_success ~cmd:"riot init" init_output in
-      fn workspace_root)
-
 let test_riot_init_default_workspace_builds_and_tests =
   Test.case ~size:Test.Large "riot init default workspace builds and tests"
     (fun ctx ->

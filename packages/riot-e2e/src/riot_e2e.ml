@@ -62,3 +62,11 @@ let with_tempdir_result = fun ?prefix fn ->
   match Fs.with_tempdir ?prefix fn with
   | Ok result -> result
   | Error err -> Error (IO.error_message err)
+
+let with_initialized_workspace = fun ?(init_args = []) ctx workspace_name fn ->
+  with_tempdir_result ~prefix:"riot_e2e_init_"
+    (fun root ->
+      let workspace_root = Path.(root / Path.v workspace_name) in
+      let* init_output = run_riot ctx ~cwd:root ("init" :: workspace_name :: init_args) in
+      let* _ = expect_success ~cmd:"riot init" init_output in
+      fn workspace_root)

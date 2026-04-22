@@ -115,6 +115,12 @@ let test_init_scaffolds_binary_workspace = fun _ctx ->
       let* () = assert_contains
         Path.(workspace_root / Path.v "packages" / Path.v "demo-bin" / Path.v "src" / Path.v "main.ml")
         (module_name ^ ".hello ()") in
+      let* () = assert_contains
+        Path.(workspace_root / Path.v "packages" / Path.v "demo-bin" / Path.v "src" / Path.v "main.ml")
+        "let main = fun ~args:_ ->" in
+      let* () = assert_contains
+        Path.(workspace_root / Path.v "packages" / Path.v "demo-bin" / Path.v "src" / Path.v "main.ml")
+        "let () = Actors.run ~main ~args:Env.args ()" in
       assert_contains
         Path.(workspace_root / Path.v "packages" / Path.v "demo-bin" / Path.v "tests" / Path.v test_file)
         "starter greeting")
@@ -221,8 +227,24 @@ name = "arewedown-dev"|}
 let test_new_package_uses_typed_paths = fun _ctx ->
   with_tempdir_result "riot_init_new_package"
     (fun tempdir ->
-      let workspace = Riot_model.Workspace_manifest.make ~root:tempdir ~packages:[] () in
-      let package_dir = Path.(tempdir / Path.v "packages" / Path.v "demo-lib") in
+      let workspace_root = Path.(tempdir / Path.v "workspace") in
+      let* () = Result.map_err (Fs.create_dir_all workspace_root) ~fn:IO.error_message in
+      let* () =
+        Result.map_err
+          (
+            Fs.write
+              {|
+[workspace]
+members = [
+  "packages/demo",
+]
+|}
+              Path.(workspace_root / Path.v "riot.toml")
+          )
+          ~fn:IO.error_message
+      in
+      let workspace = Riot_model.Workspace_manifest.make ~root:workspace_root ~packages:[] () in
+      let package_dir = Path.(workspace_root / Path.v "packages" / Path.v "demo-lib") in
       let* (_created_path, created_name) = Riot_init.new_package
         ~workspace
         ~path:package_dir
@@ -232,6 +254,52 @@ let test_new_package_uses_typed_paths = fun _ctx ->
       let* () = assert_exists Path.(package_dir / Path.v "riot.toml") in
       let* () = assert_exists Path.(package_dir / Path.v "src" / Path.v (module_name ^ ".ml")) in
       let* () = assert_exists Path.(package_dir / Path.v "src" / Path.v (module_name ^ ".mli")) in
+      let* () =
+        assert_contains Path.(workspace_root / Path.v "riot.toml")
+          {|members = [
+  "packages/demo",
+  "packages/demo-lib",
+]|}
+      in
+      if String.equal created_name "demo-lib" then
+        Ok ()
+      else
+        Error "expected new_package to preserve the package name")
+
+let test_new_package_updates_workspace_members_for_absolute_paths = fun _ctx ->
+  with_tempdir_result "riot_init_new_package_abs"
+    (fun tempdir ->
+      let workspace_root = Path.(tempdir / Path.v "workspace") in
+      let* () = Result.map_err (Fs.create_dir_all workspace_root) ~fn:IO.error_message in
+      let* () =
+        Result.map_err
+          (
+            Fs.write
+              {|
+[workspace]
+members = []
+|}
+              Path.(workspace_root / Path.v "riot.toml")
+          )
+          ~fn:IO.error_message
+      in
+      let workspace = Riot_model.Workspace_manifest.make ~root:workspace_root ~packages:[] () in
+      let package_dir = Path.(workspace_root / Path.v "packages" / Path.v "demo-lib") in
+      let* (_created_path, created_name) = Riot_init.new_package
+        ~workspace
+        ~path:package_dir
+        ~name:"demo-lib"
+        ~is_library:true in
+      let module_name = package_module_name "demo-lib" in
+      let* () = assert_exists Path.(package_dir / Path.v "riot.toml") in
+      let* () = assert_exists Path.(package_dir / Path.v "src" / Path.v (module_name ^ ".ml")) in
+      let* () = assert_exists Path.(package_dir / Path.v "src" / Path.v (module_name ^ ".mli")) in
+      let* () =
+        assert_contains Path.(workspace_root / Path.v "riot.toml")
+          {|members = [
+  "packages/demo-lib",
+]|}
+      in
       if String.equal created_name "demo-lib" then
         Ok ()
       else
@@ -244,7 +312,8 @@ let tests =
     case "init . scaffolds the current directory and records the workspace name" test_init_dot_scaffolds_current_directory;
     case "init defaults to the current directory when no path is passed" test_init_without_path_defaults_to_current_directory;
     case "init preserves dotted workspace names and normalizes the starter package" test_init_preserves_dotted_workspace_names;
-    case "new_package scaffolds a package from a typed path" test_new_package_uses_typed_paths;
+    case "new_package scaffolds a package from a typed path and updates workspace members" test_new_package_uses_typed_paths;
+    case "new_package normalizes absolute paths back into workspace members" test_new_package_updates_workspace_members_for_absolute_paths;
   ]
 
 let () =
