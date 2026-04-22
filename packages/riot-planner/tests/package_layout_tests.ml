@@ -421,6 +421,170 @@ let test_bench_target_cannot_use_namespaced_internal_library_module = fun _ctx -
     ~target_source_path:"bench/demo_bench.ml"
     ~target_source:"let () = ignore Berrybot__A.value\n"
 
+let test_multiple_binaries_can_share_private_helper_module = fun _ctx ->
+  let package = make_package
+    ~library:{ path = Path.v "src/berrybot.ml" }
+    ~binaries:[ ("berrybot", "src/main.ml"); ("admin", "src/admin.ml") ]
+    "berrybot" in
+  let graph = G.make () in
+  let root = add_ml_node graph ~namespace:Namespace.empty ~path:"src/berrybot.ml" in
+  let a = add_ml_node graph ~namespace:(public_namespace package) ~path:"src/a.ml" in
+  let shared = add_ml_node graph ~namespace:(public_namespace package) ~path:"src/shared.ml" in
+  let main = add_ml_node graph ~namespace:(public_namespace package) ~path:"src/main.ml" in
+  let admin = add_ml_node graph ~namespace:(public_namespace package) ~path:"src/admin.ml" in
+  let _main_binary = add_binary_target graph ~name:"berrybot" ~source:"src/main.ml" in
+  let _admin_binary = add_binary_target graph ~name:"admin" ~source:"src/admin.ml" in
+  let () = add_dep root ~depends_on:a in
+  let () = add_dep shared ~depends_on:root in
+  let () = add_dep main ~depends_on:shared in
+  let () = add_dep admin ~depends_on:shared in
+  match validate_layout
+    ~package
+    ~graph
+    ~analyzed:[
+      (shared, "let value = Berrybot.A.value\n");
+      (main, "let () = ignore Shared.value\n");
+      (admin, "let () = ignore Shared.value\n");
+    ] with
+  | Ok () -> Ok ()
+  | Error err -> Error ("expected shared helper module across binaries to be valid, got: "
+  ^ Riot_planner.Planning_error.to_string err)
+
+let test_no_library_package_can_use_private_helper_module = fun _ctx ->
+  let package = make_package
+    ~binaries:[ ("berrybot", "src/main.ml") ]
+    "berrybot" in
+  let graph = G.make () in
+  let helper = add_ml_node graph ~namespace:(public_namespace package) ~path:"src/helper.ml" in
+  let main = add_ml_node graph ~namespace:(public_namespace package) ~path:"src/main.ml" in
+  let _binary = add_binary_target graph ~name:"berrybot" ~source:"src/main.ml" in
+  let () = add_dep main ~depends_on:helper in
+  match validate_layout
+    ~package
+    ~graph
+    ~analyzed:[
+      (helper, "let value = 1\n");
+      (main, "let () = ignore Helper.value\n");
+    ] with
+  | Ok () -> Ok ()
+  | Error err -> Error ("expected helper module in no-library package to be valid, got: "
+  ^ Riot_planner.Planning_error.to_string err)
+
+let test_same_package_binary_cannot_use_other_binary_root_directly = fun _ctx ->
+  let package = make_package
+    ~library:{ path = Path.v "src/berrybot.ml" }
+    ~binaries:[ ("berrybot", "src/main.ml"); ("admin", "src/admin.ml") ]
+    "berrybot" in
+  let graph = G.make () in
+  let root = add_ml_node graph ~namespace:Namespace.empty ~path:"src/berrybot.ml" in
+  let main = add_ml_node graph ~namespace:(public_namespace package) ~path:"src/main.ml" in
+  let admin = add_ml_node graph ~namespace:(public_namespace package) ~path:"src/admin.ml" in
+  let _main_binary = add_binary_target graph ~name:"berrybot" ~source:"src/main.ml" in
+  let _admin_binary = add_binary_target graph ~name:"admin" ~source:"src/admin.ml" in
+  let () = add_dep main ~depends_on:admin in
+  let () = add_dep root ~depends_on:(add_ml_node graph ~namespace:(public_namespace package) ~path:"src/a.ml") in
+  match validate_layout
+    ~package
+    ~graph
+    ~analyzed:[ (main, "let () = ignore Admin.run\n"); ] with
+  | Error (Riot_planner.Planning_error.TargetDependsOnOtherTargetRoot {
+    target_name;
+    source;
+    requested_module;
+    other_target_name;
+    other_target_module;
+    public_module;
+  }) ->
+      Test.assert_equal ~expected:"berrybot" ~actual:target_name;
+      Test.assert_equal ~expected:(Path.v "src/main.ml") ~actual:source;
+      Test.assert_equal ~expected:"Admin" ~actual:requested_module;
+      Test.assert_equal ~expected:"admin" ~actual:other_target_name;
+      Test.assert_equal ~expected:"Berrybot__Admin" ~actual:other_target_module;
+      Test.assert_equal ~expected:"Berrybot" ~actual:public_module;
+      Ok ()
+  | Error err ->
+      Error ("expected other-target-root planner error, got: "
+      ^ Riot_planner.Planning_error.to_string err)
+  | Ok () ->
+      Error "expected direct access to another target root to fail"
+
+let test_same_package_binary_cannot_use_namespaced_other_binary_root = fun _ctx ->
+  let package = make_package
+    ~library:{ path = Path.v "src/berrybot.ml" }
+    ~binaries:[ ("berrybot", "src/main.ml"); ("admin", "src/admin.ml") ]
+    "berrybot" in
+  let graph = G.make () in
+  let main = add_ml_node graph ~namespace:(public_namespace package) ~path:"src/main.ml" in
+  let admin = add_ml_node graph ~namespace:(public_namespace package) ~path:"src/admin.ml" in
+  let _main_binary = add_binary_target graph ~name:"berrybot" ~source:"src/main.ml" in
+  let _admin_binary = add_binary_target graph ~name:"admin" ~source:"src/admin.ml" in
+  let () = add_dep main ~depends_on:admin in
+  match validate_layout
+    ~package
+    ~graph
+    ~analyzed:[ (main, "let () = ignore Berrybot__Admin.run\n"); ] with
+  | Error (Riot_planner.Planning_error.TargetDependsOnOtherTargetRoot {
+    target_name;
+    source;
+    requested_module;
+    other_target_name;
+    other_target_module;
+    public_module;
+  }) ->
+      Test.assert_equal ~expected:"berrybot" ~actual:target_name;
+      Test.assert_equal ~expected:(Path.v "src/main.ml") ~actual:source;
+      Test.assert_equal ~expected:"Berrybot__Admin" ~actual:requested_module;
+      Test.assert_equal ~expected:"admin" ~actual:other_target_name;
+      Test.assert_equal ~expected:"Berrybot__Admin" ~actual:other_target_module;
+      Test.assert_equal ~expected:"Berrybot" ~actual:public_module;
+      Ok ()
+  | Error err ->
+      Error ("expected namespaced other-target-root planner error, got: "
+      ^ Riot_planner.Planning_error.to_string err)
+  | Ok () ->
+      Error "expected namespaced access to another target root to fail"
+
+let test_binary_private_helper_cannot_use_other_binary_root = fun _ctx ->
+  let package = make_package
+    ~library:{ path = Path.v "src/berrybot.ml" }
+    ~binaries:[ ("berrybot", "src/main.ml"); ("admin", "src/admin.ml") ]
+    "berrybot" in
+  let graph = G.make () in
+  let helper = add_ml_node graph ~namespace:(public_namespace package) ~path:"src/b.ml" in
+  let main = add_ml_node graph ~namespace:(public_namespace package) ~path:"src/main.ml" in
+  let admin = add_ml_node graph ~namespace:(public_namespace package) ~path:"src/admin.ml" in
+  let _main_binary = add_binary_target graph ~name:"berrybot" ~source:"src/main.ml" in
+  let _admin_binary = add_binary_target graph ~name:"admin" ~source:"src/admin.ml" in
+  let () = add_dep helper ~depends_on:admin in
+  let () = add_dep main ~depends_on:helper in
+  match validate_layout
+    ~package
+    ~graph
+    ~analyzed:[
+      (helper, "let value = Admin.run\n");
+      (main, "let () = ignore B.value\n");
+    ] with
+  | Error (Riot_planner.Planning_error.TargetDependsOnOtherTargetRoot {
+    target_name;
+    source;
+    requested_module;
+    other_target_name;
+    other_target_module;
+    public_module;
+  }) ->
+      Test.assert_equal ~expected:"berrybot" ~actual:target_name;
+      Test.assert_equal ~expected:(Path.v "src/b.ml") ~actual:source;
+      Test.assert_equal ~expected:"Admin" ~actual:requested_module;
+      Test.assert_equal ~expected:"admin" ~actual:other_target_name;
+      Test.assert_equal ~expected:"Berrybot__Admin" ~actual:other_target_module;
+      Test.assert_equal ~expected:"Berrybot" ~actual:public_module;
+      Ok ()
+  | Error err ->
+      Error ("expected helper other-target-root planner error, got: "
+      ^ Riot_planner.Planning_error.to_string err)
+  | Ok () ->
+      Error "expected helper access to another target root to fail"
+
 let tests =
   Test.[
     case "same-package binary can use public root module" test_same_package_binary_can_use_public_root_module;
@@ -437,6 +601,11 @@ let tests =
     case "test target cannot use internal library module directly" test_test_target_cannot_use_internal_library_module_directly;
     case "example target cannot use internal library module directly" test_example_target_cannot_use_internal_library_module_directly;
     case "bench target cannot use namespaced internal library module" test_bench_target_cannot_use_namespaced_internal_library_module;
+    case "multiple binaries can share private helper module" test_multiple_binaries_can_share_private_helper_module;
+    case "no-library package can use private helper module" test_no_library_package_can_use_private_helper_module;
+    case "same-package binary cannot use other binary root directly" test_same_package_binary_cannot_use_other_binary_root_directly;
+    case "same-package binary cannot use namespaced other binary root" test_same_package_binary_cannot_use_namespaced_other_binary_root;
+    case "binary-private helper cannot use other binary root" test_binary_private_helper_cannot_use_other_binary_root;
   ]
 
 let name = "riot-planner:package-layout"

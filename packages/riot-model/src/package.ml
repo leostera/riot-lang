@@ -1649,6 +1649,13 @@ let binary_bucket = fun (bin: binary) ->
   else
     Some Src
 
+let has_declared_binary_in_bucket = fun binaries bucket ->
+  List.any binaries
+    ~fn:(fun bin ->
+      match binary_bucket bin with
+      | Some bin_bucket -> bin_bucket = bucket
+      | None -> false)
+
 let declared_binaries_for_intent = fun ~(intent:realization_intent) binaries ->
   let keep bucket =
     match intent with
@@ -1667,17 +1674,38 @@ let declared_binaries_for_intent = fun ~(intent:realization_intent) binaries ->
       | Some bucket -> keep bucket
       | None -> false)
 
-let autodiscovered_binaries_for_intent = fun ~(intent:realization_intent) ~(sources:sources) ~package_name ~package_path ->
+let autodiscovered_binaries_for_intent = fun ~(intent:realization_intent) ~(sources:sources) ~package_name ~package_path ~declared_binaries ->
+  let runtime_binaries =
+    if has_declared_binary_in_bucket declared_binaries Src then
+      []
+    else
+      autodiscover_main_binary sources ~package_name
+  in
+  let test_binaries =
+    if has_declared_binary_in_bucket declared_binaries Tests then
+      []
+    else
+      autodiscover_test_binaries sources ~package_path
+  in
+  let example_binaries =
+    if has_declared_binary_in_bucket declared_binaries Examples then
+      []
+    else
+      autodiscover_example_binaries sources ~package_path
+  in
+  let bench_binaries =
+    if has_declared_binary_in_bucket declared_binaries Bench then
+      []
+    else
+      autodiscover_bench_binaries sources ~package_path
+  in
   match intent with
   | Build -> []
-  | Runtime -> autodiscover_main_binary sources ~package_name
-  | Dev -> autodiscover_main_binary sources ~package_name
-  @ autodiscover_test_binaries sources ~package_path
-  @ autodiscover_example_binaries sources ~package_path
-  @ autodiscover_bench_binaries sources ~package_path
-  | Run -> autodiscover_main_binary sources ~package_name @ autodiscover_example_binaries sources ~package_path
-  | Test -> autodiscover_test_binaries sources ~package_path
-  | Bench -> autodiscover_bench_binaries sources ~package_path
+  | Runtime -> runtime_binaries
+  | Dev -> runtime_binaries @ test_binaries @ example_binaries @ bench_binaries
+  | Run -> runtime_binaries @ example_binaries
+  | Test -> test_binaries
+  | Bench -> bench_binaries
   | Doc
   | Check -> []
 
@@ -1793,7 +1821,8 @@ let realize_manifest_spec = fun ~(intent:realization_intent) (manifest: manifest
     ~intent
     ~sources
     ~package_name:manifest.name
-    ~package_path:manifest.path in
+    ~package_path:manifest.path
+    ~declared_binaries in
   let binaries = merge_binaries ~declared:declared_binaries ~autodiscovered in
   make
     ~name:manifest.name

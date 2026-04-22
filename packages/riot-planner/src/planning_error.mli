@@ -19,6 +19,14 @@ type t =
       internal_module: string;
       public_module: string
     }
+  | TargetDependsOnOtherTargetRoot of {
+      target_name: string;
+      source: Path.t;
+      requested_module: string;
+      other_target_name: string;
+      other_target_module: string;
+      public_module: string
+    }
   | Exception of { exn: exn }
 val to_string: t -> string
 

@@ -20,6 +20,14 @@ type t =
       internal_module: string;
       public_module: string
     }
+  | TargetDependsOnOtherTargetRoot of {
+      target_name: string;
+      source: Path.t;
+      requested_module: string;
+      other_target_name: string;
+      other_target_module: string;
+      public_module: string
+    }
   | Exception of { exn: exn }
 
 let to_string = function
@@ -71,6 +79,26 @@ let to_string = function
   |> List.head
   |> Option.unwrap_or ~default:requested_module)
   ^ "' instead."
+  | TargetDependsOnOtherTargetRoot {
+    target_name;
+    source;
+    requested_module;
+    other_target_name;
+    other_target_module;
+    public_module
+  } -> "Target '"
+  ^ target_name
+  ^ "' source '"
+  ^ Path.to_string source
+  ^ "' depends on target root module '"
+  ^ other_target_module
+  ^ "' via '"
+  ^ requested_module
+  ^ "' from target '"
+  ^ other_target_name
+  ^ "'. Target roots are private entrypoints. Move shared code behind the public package module '"
+  ^ public_module
+  ^ "' or a shared helper module."
   | Exception { exn } -> "Unexpected exception: " ^ Kernel.Exception.to_string exn
 
 let to_json = function
@@ -117,6 +145,23 @@ let to_json = function
       ("source", Data.Json.string (Path.to_string source));
       ("requested_module", Data.Json.string requested_module);
       ("internal_module", Data.Json.string internal_module);
+      ("public_module", Data.Json.string public_module)
+    ]
+  | TargetDependsOnOtherTargetRoot {
+    target_name;
+    source;
+    requested_module;
+    other_target_name;
+    other_target_module;
+    public_module
+  } -> Data.Json.obj
+    [
+      ("type", Data.Json.string "target_depends_on_other_target_root");
+      ("target_name", Data.Json.string target_name);
+      ("source", Data.Json.string (Path.to_string source));
+      ("requested_module", Data.Json.string requested_module);
+      ("other_target_name", Data.Json.string other_target_name);
+      ("other_target_module", Data.Json.string other_target_module);
       ("public_module", Data.Json.string public_module)
     ]
   | Exception { exn } -> Data.Json.obj

@@ -171,7 +171,7 @@ let test_package_hash_changes_when_build_dependency_path_changes = fun _ctx ->
   else
     Ok ()
 
-let test_explicit_binaries_override_autodiscovery = fun _ctx ->
+let test_declared_example_binaries_suppress_example_autodiscovery = fun _ctx ->
   with_tempdir "riot_model_package"
     (fun tmpdir ->
       let src_dir = Path.(tmpdir / Path.v "src") in
@@ -211,11 +211,52 @@ path = "examples/test_https_httpbin.ml"
       |> List.map ~fn:(fun (bin: Riot_model.Package.binary) -> bin.name)
       |> List.sort ~compare:String.compare in
       match binary_names with
-      | ["simple_https";"test_https_httpbin"] -> Ok ()
+      | ["test_https_httpbin"] -> Ok ()
       | _ ->
           Error (
-            "expected explicit example binary to suppress autodiscovery \
-              duplicate, got: [" ^ String.concat ", " binary_names ^ "]"
+            "expected declared example binaries to suppress same-bucket autodiscovery, got: ["
+            ^ String.concat ", " binary_names
+            ^ "]"
+          ))
+
+let test_declared_runtime_binaries_suppress_main_autodiscovery = fun _ctx ->
+  with_tempdir "riot_model_declared_runtime_bin"
+    (fun tmpdir ->
+      let src_dir = Path.(tmpdir / Path.v "src") in
+      Result.expect (Fs.create_dir_all src_dir) ~msg:"Failed to create src directory";
+      Result.expect (Fs.write "let () = ()\n" Path.(src_dir / Path.v "main.ml")) ~msg:"Failed to write main source";
+      Result.expect (Fs.write "let () = ()\n" Path.(src_dir / Path.v "custom.ml")) ~msg:"Failed to write custom source";
+      let manifest =
+        Std.Data.Toml.parse
+          {|
+[package]
+name = "hello-world"
+version = "0.1.0"
+
+[[bin]]
+name = "custom"
+path = "src/custom.ml"
+|}
+        |> Result.expect ~msg:"Expected package TOML to parse"
+      in
+      let pkg = Riot_model.Package.from_toml
+        manifest
+        ~workspace_deps:[]
+        ~workspace_dev_deps:[]
+        ~workspace_build_deps:[]
+        ~path:tmpdir
+        ~relative_path:(Path.v ".")
+      |> Result.expect ~msg:"Expected package manifest to parse" in
+      let binary_names = pkg.binaries
+      |> List.map ~fn:(fun (bin: Riot_model.Package.binary) -> bin.name)
+      |> List.sort ~compare:String.compare in
+      match binary_names with
+      | ["custom"] -> Ok ()
+      | _ ->
+          Error (
+            "expected declared runtime binaries to suppress src/main.ml autodiscovery, got: ["
+            ^ String.concat ", " binary_names
+            ^ "]"
           ))
 
 let test_src_main_autodiscovers_runtime_binary = fun _ctx ->
@@ -1201,7 +1242,8 @@ let tests =
     case "for_scope: dev keeps only dev outputs" test_dev_scope_keeps_only_dev_outputs;
     case "for_scope: runtime keeps build dependencies for hashing" test_runtime_scope_keeps_build_dependencies_for_hashing;
     case "package: hash changes when build dependency path changes" test_package_hash_changes_when_build_dependency_path_changes;
-    case "package: explicit binaries suppress autodiscovery duplicates" test_explicit_binaries_override_autodiscovery;
+    case "package: declared example binaries suppress example autodiscovery" test_declared_example_binaries_suppress_example_autodiscovery;
+    case "package: declared runtime binaries suppress src/main autodiscovery" test_declared_runtime_binaries_suppress_main_autodiscovery;
     case "package: src/main.ml autodiscovers runtime binary" test_src_main_autodiscovers_runtime_binary;
     case "package: source scan ignores hidden entries" test_scan_sources_ignores_hidden_entries;
     case "package: source scan ignores test support entries" test_scan_sources_ignores_test_support_entries;

@@ -18,6 +18,7 @@
 12. Library planning should trim unreachable modules from the final action graph, but only by following resolved `Syn.Deps` edges from the concrete library root. Do not reintroduce CST or directory-structure fallbacks for reachability.
 13. Binary targets should consume a target-private closure derived from their source module and resolved deps. Analyze binary sources as modules, but do not wire them as structural children of the library root or re-link library-owned modules privately into the executable.
 14. Source-root selection is scope-owned behavior. Runtime nodes only analyze runtime roots, dev nodes analyze dev roots, and build nodes must stay empty unless an explicit build-time source model is introduced. Derive planner source groups from the already projected package for that scope; do not bypass package projection with raw manifest buckets.
+15. Package-layout validation runs after reachability has produced the actual planned closure. Reject target code that reaches library-internal modules or another target's root module; shared helper modules are fine, target entrypoints are not.
 
 ## Validate
 
