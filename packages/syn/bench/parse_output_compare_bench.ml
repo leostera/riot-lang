@@ -247,6 +247,11 @@ let touch_ast2_type_declaration = fun (decl: Ast2.TypeDeclaration.t) ->
           touch_ast2_token_option 449 injective
     )
 
+let touch_ast2_open_declaration = fun (decl: Ast2.OpenDeclaration.t) ->
+  touch_ast2_token_option 451 (Ast2.OpenDeclaration.first_path_ident decl);
+  touch_ast2_token_option 452 (Ast2.OpenDeclaration.last_path_ident decl);
+  Ast2.OpenDeclaration.for_each_path_ident decl ~fn:(touch_ast2_token 453)
+
 let rec touch_ast2_expr_view = fun (expr: Ast2.Expr.t) ->
   match Ast2.Expr.view expr with
   | Let { first_binding; body } ->
@@ -318,6 +323,11 @@ let rec walk_ast2_node = fun (node: Ast2.Node.t) ->
   (
     match Ast2.TypeDeclaration.cast node with
     | Some decl -> touch_ast2_type_declaration decl
+    | None -> ()
+  );
+  (
+    match Ast2.OpenDeclaration.cast node with
+    | Some decl -> touch_ast2_open_declaration decl
     | None -> ()
   );
   (

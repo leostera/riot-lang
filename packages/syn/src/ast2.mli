@@ -343,6 +343,12 @@ module OpenDeclaration: sig
   val cast: Node.t -> t option
 
   val path_text: t -> string
+
+  val first_path_ident: t -> Token.t option
+
+  val last_path_ident: t -> Token.t option
+
+  val for_each_path_ident: t -> fn:(Token.t -> unit) -> unit
 end
 
 module IncludeDeclaration: sig

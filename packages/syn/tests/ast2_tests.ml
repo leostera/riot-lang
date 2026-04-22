@@ -308,6 +308,21 @@ let test_type_declaration_parameters = fun _ctx ->
       )
   | _ -> Error "expected type declaration"
 
+let test_open_declaration_path_tokens = fun _ctx ->
+  let root = parse_ml "open Foo.Bar\n" |> Result.expect ~msg:"expected parse2 source file" in
+  let item = nth_structure_item root 0 |> require_some ~msg:"expected open structure item" in
+  match Ast2.StructureItem.view item with
+  | Ast2.StructureItem.Open decl ->
+      let first = Ast2.OpenDeclaration.first_path_ident decl |> require_some ~msg:"expected first open path ident" in
+      let last = Ast2.OpenDeclaration.last_path_ident decl |> require_some ~msg:"expected last open path ident" in
+      let count = ref 0 in
+      Ast2.OpenDeclaration.for_each_path_ident decl ~fn:(fun _ -> count := !count + 1);
+      Test.assert_equal ~expected:"Foo" ~actual:(Ast2.Token.text first);
+      Test.assert_equal ~expected:"Bar" ~actual:(Ast2.Token.text last);
+      Test.assert_equal ~expected:2 ~actual:!count;
+      Ok ()
+  | _ -> Error "expected open declaration"
+
 let test_binding_type_annotation_view = fun _ctx ->
   let root = parse_ml "let x : int = 1\n" |> Result.expect ~msg:"expected parse2 source file" in
   let binding = nth_structure_item root 0
@@ -331,6 +346,7 @@ let tests = [
     "ast2 keeps non-manifest type bodies out of manifest views"
     test_non_manifest_type_declaration_bodies;
   Test.case "ast2 exposes type declaration parameters" test_type_declaration_parameters;
+  Test.case "ast2 exposes open declaration path tokens" test_open_declaration_path_tokens;
   Test.case "ast2 exposes let binding type annotation views" test_binding_type_annotation_view;
 ]
 
