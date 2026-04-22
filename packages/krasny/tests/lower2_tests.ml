@@ -40,15 +40,14 @@ let assert_format2_ml_fails = fun source ->
 let assert_lower2_fixture_idempotent = fun path ->
   let source = Fs.read path |> Result.expect ~msg:"fixture file should exist" in
   match format2_source ~filename:path source with
-  | Error err ->
-      Error (Path.to_string path ^ " failed lower2 formatting: " ^ Krasny.format_error_to_string err)
+  | Error err -> Error (Path.to_string path
+  ^ " failed lower2 formatting: "
+  ^ Krasny.format_error_to_string err)
   | Ok formatted -> (
       match format2_source ~filename:path formatted with
-      | Error err ->
-          Error
-            (Path.to_string path
-            ^ " formatted once but failed to format again: "
-            ^ Krasny.format_error_to_string err)
+      | Error err -> Error (Path.to_string path
+      ^ " formatted once but failed to format again: "
+      ^ Krasny.format_error_to_string err)
       | Ok reformatted ->
           Test.assert_equal ~expected:formatted ~actual:reformatted;
           Ok ()
@@ -83,10 +82,7 @@ let tests = [
     (fun _ctx -> assert_format2_ml ~expected:"let id x = x\n" "let id x = x\n");
   Test.case
     "lower2 formats mutual recursive let bindings"
-    (fun _ctx ->
-      assert_format2_ml
-        ~expected:"let rec f = g and g = f\n"
-        "let rec f = g\nand g = f\n");
+    (fun _ctx -> assert_format2_ml ~expected:"let rec f = g and g = f\n" "let rec f = g\nand g = f\n");
   Test.case
     "lower2 formats local let expressions"
     (fun _ctx -> assert_format2_ml ~expected:"let x = let y = 1 in y\n" "let x = let y = 1 in y\n");
@@ -95,25 +91,16 @@ let tests = [
     (fun _ctx -> assert_format2_ml ~expected:"let id = fun x -> x\n" "let id = fun x -> x\n");
   Test.case
     "lower2 formats match expressions"
-    (fun _ctx ->
-      assert_format2_ml
-        ~expected:"let value = match x with | 0 -> 1 | _ -> 2\n"
-        "let value = match x with | 0 -> 1 | _ -> 2\n");
+    (fun _ctx -> assert_format2_ml ~expected:"let value = match x with | 0 -> 1 | _ -> 2\n" "let value = match x with | 0 -> 1 | _ -> 2\n");
   Test.case
     "lower2 formats sequence expressions"
     (fun _ctx -> assert_format2_ml ~expected:"let run = first; second\n" "let run = first; second\n");
   Test.case
     "lower2 formats list and array expressions"
-    (fun _ctx ->
-      assert_format2_ml
-        ~expected:"let values = [1; 2]\nlet array = [|1; 2|]\n"
-        "let values = [1; 2]\nlet array = [|1; 2|]\n");
+    (fun _ctx -> assert_format2_ml ~expected:"let values = [1; 2]\nlet array = [|1; 2|]\n" "let values = [1; 2]\nlet array = [|1; 2|]\n");
   Test.case
     "lower2 formats labels and optional labels"
-    (fun _ctx ->
-      assert_format2_ml
-        ~expected:"let f ~x ?y = g ~x ?y\n"
-        "let f ~x ?y = g ~x ?y\n");
+    (fun _ctx -> assert_format2_ml ~expected:"let f ~x ?y = g ~x ?y\n" "let f ~x ?y = g ~x ?y\n");
   Test.case
     "lower2 formats polymorphic variants"
     (fun _ctx ->
@@ -128,10 +115,22 @@ let tests = [
         "let field = value.name\nlet item = values.(index)\nlet char = text.[index]\n");
   Test.case
     "lower2 formats assertion and lazy expressions"
+    (fun _ctx -> assert_format2_ml ~expected:"let _ = assert ready\nlet later = lazy compute\n" "let _ = assert ready\nlet later = lazy compute\n");
+  Test.case
+    "lower2 formats try expressions"
+    (fun _ctx -> assert_format2_ml ~expected:"let value = try read () with | Failure -> 0\n" "let value = try read () with | Failure -> 0\n");
+  Test.case
+    "lower2 formats while and for loops"
     (fun _ctx ->
       assert_format2_ml
-        ~expected:"let _ = assert ready\nlet later = lazy compute\n"
-        "let _ = assert ready\nlet later = lazy compute\n");
+        ~expected:"let poll = while ready do step () done\nlet up = for i = 0 to n do step i done\nlet down = for i = n downto 0 do step i done\n"
+        "let poll = while ready do step () done\nlet up = for i = 0 to n do step i done\nlet down = for i = n downto 0 do step i done\n");
+  Test.case
+    "lower2 formats lazy exception and interval patterns"
+    (fun _ctx ->
+      assert_format2_ml
+        ~expected:"let force = function | lazy value -> value\nlet recovered = match read () with | exception Failure -> 0 | value -> value\nlet classify = function | 'a' .. 'z' -> 1 | _ -> 0\n"
+        "let force = function | lazy value -> value\nlet recovered = match read () with | exception Failure -> 0 | value -> value\nlet classify = function | 'a' .. 'z' -> 1 | _ -> 0\n");
   Test.case
     "lower2 adds a final newline"
     (fun _ctx -> assert_format2_ml ~expected:"let x = 1\n" "let x = 1");

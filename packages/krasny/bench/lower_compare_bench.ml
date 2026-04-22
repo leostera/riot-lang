@@ -14,7 +14,8 @@ let make_slice = fun source -> IO.IoVec.IoSlice.from_string source |> Result.exp
 let make_fixture = fun ~name ~path source -> { name; path; source; slice = make_slice source }
 
 let load_fixture = fun ~name path ->
-  let source = Fs.read path |> Result.expect ~msg:("failed to read lower benchmark fixture: " ^ Path.to_string path) in
+  let source = Fs.read path
+  |> Result.expect ~msg:("failed to read lower benchmark fixture: " ^ Path.to_string path) in
   make_fixture ~name ~path source
 
 let touch_formatted = fun formatted -> checksum := !checksum lxor String.length formatted
@@ -72,51 +73,48 @@ let benchmarks = [
     (make_fixture ~name:"function expression" ~path:(Path.v "sample.ml") "let id = fun x -> x\n");
   compare_fixture
     ~config:small_config
-    (make_fixture
-       ~name:"match expression"
-       ~path:(Path.v "sample.ml")
-       "let value = match x with | 0 -> 1 | _ -> 2\n");
+    (make_fixture ~name:"match expression" ~path:(Path.v "sample.ml") "let value = match x with | 0 -> 1 | _ -> 2\n");
   compare_fixture
     ~config:small_config
-    (make_fixture
-       ~name:"list and array expressions"
-       ~path:(Path.v "sample.ml")
-       "let values = [1; 2]\nlet array = [|1; 2|]\n");
+    (make_fixture ~name:"list and array expressions" ~path:(Path.v "sample.ml") "let values = [1; 2]\nlet array = [|1; 2|]\n");
   compare_fixture
     ~config:small_config
     (make_fixture ~name:"labeled arguments" ~path:(Path.v "sample.ml") "let f ~x ?y = g ~x ?y\n");
   compare_fixture
     ~config:small_config
-    (make_fixture
-       ~name:"polymorphic variants"
-       ~path:(Path.v "sample.ml")
-       "let ok = `Ok 1\nlet classify = function | `Ok value -> value | `Error -> 0\n");
+    (make_fixture ~name:"polymorphic variants" ~path:(Path.v "sample.ml") "let ok = `Ok 1\nlet classify = function | `Ok value -> value | `Error -> 0\n");
   compare_fixture
     ~config:small_config
-    (make_fixture
-       ~name:"selectors and indexes"
-       ~path:(Path.v "sample.ml")
-       "let field = value.name\nlet item = values.(index)\nlet char = text.[index]\n");
+    (make_fixture ~name:"selectors and indexes" ~path:(Path.v "sample.ml") "let field = value.name\nlet item = values.(index)\nlet char = text.[index]\n");
+  compare_fixture
+    ~config:small_config
+    (make_fixture ~name:"try expression" ~path:(Path.v "sample.ml") "let value = try read () with | Failure -> 0\n");
+  compare_fixture
+    ~config:small_config
+    (make_fixture ~name:"loops" ~path:(Path.v "sample.ml") "let poll = while ready do step () done\nlet up = for i = 0 to n do step i done\nlet down = for i = n downto 0 do step i done\n");
+  compare_fixture
+    ~config:small_config
+    (make_fixture ~name:"lazy exception interval patterns" ~path:(Path.v "sample.ml") "let force = function | lazy value -> value\nlet recovered = match read () with | exception Failure -> 0 | value -> value\nlet classify = function | 'a' .. 'z' -> 1 | _ -> 0\n");
   compare_fixture
     ~config:medium_config
     (load_fixture
-       ~name:"atoms fixture"
-       (Path.v "packages/krasny/tests/fixtures/0100_atoms_and_basic_expressions.ml"));
+      ~name:"atoms fixture"
+      (Path.v "packages/krasny/tests/fixtures/0100_atoms_and_basic_expressions.ml"));
   compare_fixture
     ~config:medium_config
     (load_fixture
-       ~name:"nested fun fixture"
-       (Path.v "packages/krasny/tests/fixtures/0415_nested_fun_parameter_stability.ml"));
+      ~name:"nested fun fixture"
+      (Path.v "packages/krasny/tests/fixtures/0415_nested_fun_parameter_stability.ml"));
   compare_fixture
     ~config:medium_config
     (load_fixture
-       ~name:"multiline list fixture"
-       (Path.v "packages/krasny/tests/fixtures/0952_multiline_list_expression_no_trailing_separator.ml"));
+      ~name:"multiline list fixture"
+      (Path.v "packages/krasny/tests/fixtures/0952_multiline_list_expression_no_trailing_separator.ml"));
   compare_fixture
     ~config:medium_config
     (load_fixture
-       ~name:"top-level let rec fixture"
-       (Path.v "packages/krasny/tests/fixtures/0981_top_level_letrec_blank_line.ml"));
+      ~name:"top-level let rec fixture"
+      (Path.v "packages/krasny/tests/fixtures/0981_top_level_letrec_blank_line.ml"));
 ]
 
 let () =

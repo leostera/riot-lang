@@ -45,8 +45,7 @@ let child_pattern_docs = fun pattern ->
 
 let direct_pattern_docs = fun node ->
   let docs = ref [] in
-  Ast.Node.for_each_child_node
-    node
+  Ast.Node.for_each_child_node node
     ~fn:(fun child ->
       match Ast.Pattern.cast child with
       | Some pattern -> docs := pattern :: !docs
@@ -55,8 +54,7 @@ let direct_pattern_docs = fun node ->
 
 let first_ident_token = fun node ->
   let found = ref None in
-  Ast.Node.for_each_child_token
-    node
+  Ast.Node.for_each_child_token node
     ~fn:(fun token ->
       match !found with
       | Some _ -> ()
@@ -67,8 +65,7 @@ let first_ident_token = fun node ->
 
 let let_binding_nodes = fun node ->
   let bindings = ref [] in
-  Ast.Node.for_each_child_node
-    node
+  Ast.Node.for_each_child_node node
     ~fn:(fun child ->
       match Ast.LetBinding.cast child with
       | Some binding -> bindings := binding :: !bindings
@@ -162,50 +159,52 @@ let rec pattern_doc = fun pattern ->
       parameter_doc parameter
   | OptionalParamDefault parameter ->
       parameter_doc parameter
+  | Interval { left=Some left; right=Some right } ->
+      Doc.concat [ pattern_doc left; Doc.space; Doc.text ".."; Doc.space; pattern_doc right ]
+  | Interval _ ->
+      unsupported "incomplete interval pattern"
+  | Lazy { pattern=Some pattern } ->
+      Doc.concat [ Doc.text "lazy"; Doc.space; pattern_doc pattern ]
+  | Lazy _ ->
+      unsupported "lazy pattern without payload"
+  | Exception { pattern=Some pattern } ->
+      Doc.concat [ Doc.text "exception"; Doc.space; pattern_doc pattern ]
+  | Exception _ ->
+      unsupported "exception pattern without payload"
   | Record
   | Extension
   | Attribute _
   | LocalOpen
   | LocallyAbstractType
   | FirstClassModule
-  | Interval _
-  | Lazy _
-  | Exception _
   | Error _
   | Unknown _ ->
       unsupported "unsupported pattern"
 
 and parameter_doc = fun parameter ->
   match Ast.Parameter.view parameter with
-  | Labeled { label=Some label; pattern=None } ->
-      Doc.concat [ Doc.text "~"; token_doc label ]
-  | Labeled { label=Some label; pattern=Some pattern } ->
-      Doc.concat [ Doc.text "~"; token_doc label; Doc.text ":"; pattern_doc pattern ]
-  | Labeled _ ->
-      unsupported "labeled parameter without label"
-  | Optional { label=Some label; pattern=None } ->
-      Doc.concat [ Doc.text "?"; token_doc label ]
-  | Optional { label=Some label; pattern=Some pattern } ->
-      Doc.concat [ Doc.text "?"; token_doc label; Doc.text ":"; pattern_doc pattern ]
-  | Optional _ ->
-      unsupported "optional parameter without label"
-  | OptionalDefault { label=Some label; pattern=Some pattern; default=Some default } ->
-      Doc.concat
-        [
-          Doc.text "?";
-          token_doc label;
-          Doc.text ":(";
-          pattern_doc pattern;
-          Doc.space;
-          Doc.equal;
-          Doc.space;
-          expr_doc default;
-          Doc.rparen;
-        ]
-  | OptionalDefault _ ->
-      unsupported "incomplete optional parameter default"
-  | Unknown _ ->
-      unsupported "unsupported parameter"
+  | Labeled { label=Some label; pattern=None } -> Doc.concat [ Doc.text "~"; token_doc label ]
+  | Labeled { label=Some label; pattern=Some pattern } -> Doc.concat
+    [ Doc.text "~"; token_doc label; Doc.text ":"; pattern_doc pattern ]
+  | Labeled _ -> unsupported "labeled parameter without label"
+  | Optional { label=Some label; pattern=None } -> Doc.concat [ Doc.text "?"; token_doc label ]
+  | Optional { label=Some label; pattern=Some pattern } -> Doc.concat
+    [ Doc.text "?"; token_doc label; Doc.text ":"; pattern_doc pattern ]
+  | Optional _ -> unsupported "optional parameter without label"
+  | OptionalDefault { label=Some label; pattern=Some pattern; default=Some default } -> Doc.concat
+    [
+      Doc.text "?";
+      token_doc label;
+      Doc.text ":(";
+      pattern_doc pattern;
+      Doc.space;
+      Doc.equal;
+      Doc.space;
+      expr_doc default;
+      Doc.rparen;
+    ]
+  | OptionalDefault _ -> unsupported "incomplete optional parameter default"
+  | Unknown _ -> unsupported "unsupported parameter"
 
 and match_case_doc = fun match_case ->
   let view = Ast.MatchCase.view match_case in
@@ -216,9 +215,18 @@ and match_case_doc = fun match_case ->
         | Some guard -> Doc.concat [ Doc.space; Doc.text "when"; Doc.space; expr_doc guard ]
         | None -> Doc.empty
       in
-      Doc.concat [ Doc.bar; Doc.space; pattern_doc pattern; guard; Doc.space; Doc.arrow; Doc.space; expr_doc body ]
-  | _ ->
-      unsupported "incomplete match case"
+      Doc.concat
+        [
+          Doc.bar;
+          Doc.space;
+          pattern_doc pattern;
+          guard;
+          Doc.space;
+          Doc.arrow;
+          Doc.space;
+          expr_doc body
+        ]
+  | _ -> unsupported "incomplete match case"
 
 and expr_doc = fun expr ->
   match Ast.Expr.view expr with
@@ -277,9 +285,7 @@ and expr_doc = fun expr ->
   | If _ ->
       unsupported "incomplete if expression"
   | Tuple ->
-      child_expr_docs expr
-      |> List.map ~fn:expr_doc
-      |> Doc.join (Doc.concat [ Doc.comma; Doc.space ])
+      child_expr_docs expr |> List.map ~fn:expr_doc |> Doc.join (Doc.concat [ Doc.comma; Doc.space ])
   | List ->
       child_expr_docs expr
       |> List.map ~fn:expr_doc
@@ -311,39 +317,104 @@ and expr_doc = fun expr ->
   | Fun { body=Some body } -> (
       match direct_pattern_docs expr with
       | [] -> unsupported "function expression without parameters"
-      | parameters ->
-          Doc.concat [
-            Doc.text "fun";
-            Doc.space;
-            Doc.join Doc.space (List.map parameters ~fn:pattern_doc);
-            Doc.space;
-            Doc.arrow;
-            Doc.space;
-            expr_doc body;
-          ]
+      | parameters -> Doc.concat
+        [
+          Doc.text "fun";
+          Doc.space;
+          Doc.join Doc.space (List.map parameters ~fn:pattern_doc);
+          Doc.space;
+          Doc.arrow;
+          Doc.space;
+          expr_doc body;
+        ]
     )
   | Fun _ ->
       unsupported "incomplete function expression"
   | Match { scrutinee=Some scrutinee; first_case=Some _ } ->
       let cases = ref [] in
-      Ast.Expr.for_each_match_case expr ~fn:(fun match_case -> cases := match_case_doc match_case :: !cases);
-      Doc.concat [
-        Doc.text "match";
-        Doc.space;
-        expr_doc scrutinee;
-        Doc.space;
-        Doc.text "with";
-        Doc.space;
-        Doc.join Doc.space (List.reverse !cases);
-      ]
+      Ast.Expr.for_each_match_case
+        expr
+        ~fn:(fun match_case -> cases := match_case_doc match_case :: !cases);
+      Doc.concat
+        [
+          Doc.text "match";
+          Doc.space;
+          expr_doc scrutinee;
+          Doc.space;
+          Doc.text "with";
+          Doc.space;
+          Doc.join Doc.space (List.reverse !cases);
+        ]
   | Match _ ->
       unsupported "incomplete match expression"
   | Function { first_case=Some _ } ->
       let cases = ref [] in
-      Ast.Expr.for_each_match_case expr ~fn:(fun match_case -> cases := match_case_doc match_case :: !cases);
+      Ast.Expr.for_each_match_case
+        expr
+        ~fn:(fun match_case -> cases := match_case_doc match_case :: !cases);
       Doc.concat [ Doc.text "function"; Doc.space; Doc.join Doc.space (List.reverse !cases) ]
   | Function _ ->
       unsupported "incomplete function expression"
+  | Try { body=Some body; first_case=Some _ } ->
+      let cases = ref [] in
+      Ast.Expr.for_each_match_case
+        expr
+        ~fn:(fun match_case -> cases := match_case_doc match_case :: !cases);
+      Doc.concat
+        [
+          Doc.text "try";
+          Doc.space;
+          expr_doc body;
+          Doc.space;
+          Doc.text "with";
+          Doc.space;
+          Doc.join Doc.space (List.reverse !cases);
+        ]
+  | Try _ ->
+      unsupported "incomplete try expression"
+  | While { condition=Some condition; body=Some body } ->
+      Doc.concat
+        [
+          Doc.text "while";
+          Doc.space;
+          expr_doc condition;
+          Doc.space;
+          Doc.text "do";
+          Doc.space;
+          expr_doc body;
+          Doc.space;
+          Doc.text "done";
+        ]
+  | While _ ->
+      unsupported "incomplete while expression"
+  | For { pattern=Some pattern; start_=Some start_; stop=Some stop; body=Some body } ->
+      let direction =
+        match Ast.Node.first_child_token expr ~kind:Kind.DOWNTO_KW with
+        | Some token -> token_doc token
+        | None -> Doc.text "to"
+      in
+      Doc.concat
+        [
+          Doc.text "for";
+          Doc.space;
+          pattern_doc pattern;
+          Doc.space;
+          Doc.equal;
+          Doc.space;
+          expr_doc start_;
+          Doc.space;
+          direction;
+          Doc.space;
+          expr_doc stop;
+          Doc.space;
+          Doc.text "do";
+          Doc.space;
+          expr_doc body;
+          Doc.space;
+          Doc.text "done";
+        ]
+  | For _ ->
+      unsupported "incomplete for expression"
   | Assert { argument=Some argument } ->
       Doc.concat [ Doc.text "assert"; Doc.space; expr_doc argument ]
   | Assert _ ->
@@ -404,9 +475,6 @@ and expr_doc = fun expr ->
   | Unreachable
   | Object
   | New
-  | Try _
-  | While _
-  | For _
   | Attribute _
   | Record
   | RecordUpdate
@@ -417,46 +485,37 @@ and expr_doc = fun expr ->
 and let_binding_doc = fun binding ->
   let view = Ast.LetBinding.view binding in
   match view.pattern, view.body with
-  | Some pattern, Some body -> Doc.concat
-    [
-      pattern_doc pattern;
-      (
-        let parameters = ref [] in
-        Ast.LetBinding.for_each_parameter
-          binding
-          ~fn:(fun parameter -> parameters := pattern_doc parameter :: !parameters);
-        match List.reverse !parameters with
-        | [] -> Doc.empty
-        | parameters -> Doc.concat [ Doc.space; Doc.join Doc.space parameters ]
-      );
-      Doc.space;
-      Doc.equal;
-      Doc.space;
-      expr_doc body;
-    ]
+  | Some pattern, Some body ->
+      Doc.concat
+        [ pattern_doc pattern; (
+            let parameters = ref [] in
+            Ast.LetBinding.for_each_parameter
+              binding
+              ~fn:(fun parameter -> parameters := pattern_doc parameter :: !parameters);
+            match List.reverse !parameters with
+            | [] -> Doc.empty
+            | parameters -> Doc.concat [ Doc.space; Doc.join Doc.space parameters ]
+          ); Doc.space; Doc.equal; Doc.space; expr_doc body; ]
   | _ -> unsupported "incomplete let binding"
 
 and let_bindings_doc = fun ~keyword ~rec_token node ->
   match let_binding_nodes node with
-  | [] ->
-      unsupported (keyword ^ " declaration without binding")
+  | [] -> unsupported (keyword ^ " declaration without binding")
   | first :: rest ->
       let rest =
         List.map
           rest
-          ~fn:(fun binding -> Doc.concat [ Doc.space; Doc.text "and"; Doc.space; let_binding_doc binding ])
+          ~fn:(fun binding ->
+            Doc.concat [ Doc.space; Doc.text "and"; Doc.space; let_binding_doc binding ])
       in
       Doc.concat
-        ([
-          Doc.text keyword;
-          (
-            match rec_token with
-            | Some rec_token -> Doc.concat [ Doc.space; token_doc rec_token; Doc.space ]
-            | None -> Doc.space
-          );
-          let_binding_doc first;
-        ]
-        @ rest)
+        (
+          [ Doc.text keyword; (
+              match rec_token with
+              | Some rec_token -> Doc.concat [ Doc.space; token_doc rec_token; Doc.space ]
+              | None -> Doc.space
+            ); let_binding_doc first; ] @ rest
+        )
 
 let let_decl_doc = fun decl ->
   let_bindings_doc ~keyword:"let" ~rec_token:(Ast.LetDeclaration.rec_token decl) decl
