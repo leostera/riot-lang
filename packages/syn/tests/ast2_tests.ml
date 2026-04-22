@@ -20,8 +20,7 @@ let expect_some = fun value ~msg ->
   | Some value -> Ok value
   | None -> Error msg
 
-let require_some = fun value ~msg ->
-  expect_some value ~msg |> Result.expect ~msg
+let require_some = fun value ~msg -> expect_some value ~msg |> Result.expect ~msg
 
 let parse_root = fun ~filename source ->
   let source = source_slice source in
@@ -65,15 +64,12 @@ let nth_signature_item = fun (root: Ast2.source_file) target ->
 
 let binding_of_structure_item = fun item ->
   match Ast2.StructureItem.view item with
-  | Ast2.StructureItem.Let decl ->
-      Ast2.LetDeclaration.first_binding decl |> expect_some ~msg:"expected first let binding"
+  | Ast2.StructureItem.Let decl -> Ast2.LetDeclaration.first_binding decl |> expect_some ~msg:"expected first let binding"
   | _ -> Error "expected let structure item"
 
-let body_of_binding = fun binding ->
-  Ast2.LetBinding.body binding |> expect_some ~msg:"expected let binding body"
+let body_of_binding = fun binding -> Ast2.LetBinding.body binding |> expect_some ~msg:"expected let binding body"
 
-let pattern_of_binding = fun binding ->
-  Ast2.LetBinding.pattern binding |> expect_some ~msg:"expected let binding pattern"
+let pattern_of_binding = fun binding -> Ast2.LetBinding.pattern binding |> expect_some ~msg:"expected let binding pattern"
 
 let assert_last_ident_text = fun path expected ->
   let token = Ast2.Path.last_ident path |> require_some ~msg:"expected last path ident" in
@@ -105,32 +101,32 @@ let test_expression_views = fun _ctx ->
   let source = "let x = if ready then 1 else 2\nlet y = match x with | 0 -> 1 | _ -> 2\n" in
   let root = parse_ml source |> Result.expect ~msg:"expected parse2 source file" in
   let if_item = nth_structure_item root 0 |> require_some ~msg:"expected first structure item" in
-  let if_body =
-    if_item
-    |> binding_of_structure_item
-    |> Result.expect ~msg:"expected first let binding"
-    |> body_of_binding
-    |> Result.expect ~msg:"expected if body"
-  in
+  let if_body = if_item
+  |> binding_of_structure_item
+  |> Result.expect ~msg:"expected first let binding"
+  |> body_of_binding
+  |> Result.expect ~msg:"expected if body" in
   (
     match Ast2.Expr.view if_body with
     | Ast2.Expr.If { condition; then_branch; else_branch } ->
-        ignore (condition |> expect_some ~msg:"expected if condition" |> Result.expect ~msg:"condition");
-        ignore (then_branch |> expect_some ~msg:"expected then branch" |> Result.expect ~msg:"then branch");
-        ignore (else_branch |> expect_some ~msg:"expected else branch" |> Result.expect ~msg:"else branch")
+        ignore
+          (condition |> expect_some ~msg:"expected if condition" |> Result.expect ~msg:"condition");
+        ignore
+          (then_branch |> expect_some ~msg:"expected then branch" |> Result.expect ~msg:"then branch");
+        ignore
+          (else_branch |> expect_some ~msg:"expected else branch" |> Result.expect ~msg:"else branch")
     | _ -> panic "expected if expression"
   );
   let match_item = nth_structure_item root 1 |> require_some ~msg:"expected second structure item" in
-  let match_body =
-    match_item
-    |> binding_of_structure_item
-    |> Result.expect ~msg:"expected second let binding"
-    |> body_of_binding
-    |> Result.expect ~msg:"expected match body"
-  in
+  let match_body = match_item
+  |> binding_of_structure_item
+  |> Result.expect ~msg:"expected second let binding"
+  |> body_of_binding
+  |> Result.expect ~msg:"expected match body" in
   match Ast2.Expr.view match_body with
   | Ast2.Expr.Match { scrutinee; first_case } ->
-      ignore (scrutinee |> expect_some ~msg:"expected match scrutinee" |> Result.expect ~msg:"scrutinee");
+      ignore
+        (scrutinee |> expect_some ~msg:"expected match scrutinee" |> Result.expect ~msg:"scrutinee");
       let first_case = first_case |> require_some ~msg:"expected first match case" in
       let case = Ast2.MatchCase.view first_case in
       (
@@ -138,45 +134,50 @@ let test_expression_views = fun _ctx ->
         | None -> ()
         | Some _ -> panic "expected first match case without guard"
       );
-      ignore (case.Ast2.MatchCase.pattern |> expect_some ~msg:"expected case pattern" |> Result.expect ~msg:"case pattern");
-      ignore (case.Ast2.MatchCase.body |> expect_some ~msg:"expected case body" |> Result.expect ~msg:"case body");
+      ignore
+        (case.Ast2.MatchCase.pattern
+        |> expect_some ~msg:"expected case pattern"
+        |> Result.expect ~msg:"case pattern");
+      ignore
+        (case.Ast2.MatchCase.body |> expect_some ~msg:"expected case body" |> Result.expect ~msg:"case body");
       Ok ()
   | _ -> Error "expected match expression"
 
 let test_pattern_views = fun _ctx ->
   let source = "let (a, b) = xs\nlet h :: t = xs\n" in
   let root = parse_ml source |> Result.expect ~msg:"expected parse2 source file" in
-  let tuple_pattern =
-    nth_structure_item root 0
-    |> require_some ~msg:"expected tuple pattern item"
-    |> binding_of_structure_item
-    |> Result.expect ~msg:"expected tuple pattern binding"
-    |> pattern_of_binding
-    |> Result.expect ~msg:"expected tuple pattern"
-  in
+  let tuple_pattern = nth_structure_item root 0
+  |> require_some ~msg:"expected tuple pattern item"
+  |> binding_of_structure_item
+  |> Result.expect ~msg:"expected tuple pattern binding"
+  |> pattern_of_binding
+  |> Result.expect ~msg:"expected tuple pattern" in
   (
     match Ast2.Pattern.view tuple_pattern with
-    | Ast2.Pattern.Tuple -> ()
+    | Ast2.Pattern.Parenthesized { inner=Some inner } -> (
+        match Ast2.Pattern.view inner with
+        | Ast2.Pattern.Tuple -> ()
+        | _ -> panic "expected tuple pattern inside parentheses"
+      )
     | _ -> panic "expected tuple pattern"
   );
-  let cons_pattern =
-    nth_structure_item root 1
-    |> require_some ~msg:"expected cons pattern item"
-    |> binding_of_structure_item
-    |> Result.expect ~msg:"expected cons pattern binding"
-    |> pattern_of_binding
-    |> Result.expect ~msg:"expected cons pattern"
-  in
+  let cons_pattern = nth_structure_item root 1
+  |> require_some ~msg:"expected cons pattern item"
+  |> binding_of_structure_item
+  |> Result.expect ~msg:"expected cons pattern binding"
+  |> pattern_of_binding
+  |> Result.expect ~msg:"expected cons pattern" in
   match Ast2.Pattern.view cons_pattern with
   | Ast2.Pattern.Cons { head; tail } ->
-      ignore (head |> expect_some ~msg:"expected cons head" |> Result.expect ~msg:"cons head");
-      ignore (tail |> expect_some ~msg:"expected cons tail" |> Result.expect ~msg:"cons tail");
+      ignore
+        (head |> expect_some ~msg:"expected cons head" |> Result.expect ~msg:"cons head");
+      ignore
+        (tail |> expect_some ~msg:"expected cons tail" |> Result.expect ~msg:"cons tail");
       Ok ()
   | _ -> Error "expected cons pattern"
 
 let test_signature_and_type_views = fun _ctx ->
-  let root = parse_mli "val x : int\ntype t = int\nmodule M : sig end\n"
-  |> Result.expect ~msg:"expected parse2 interface" in
+  let root = parse_mli "val x : int\ntype t = int\nmodule M : sig end\n" |> Result.expect ~msg:"expected parse2 interface" in
   (
     match Ast2.SourceFile.view root with
     | Ast2.SourceFile.Interface _ -> ()
@@ -208,18 +209,15 @@ let test_signature_and_type_views = fun _ctx ->
 
 let test_binding_type_annotation_view = fun _ctx ->
   let root = parse_ml "let x : int = 1\n" |> Result.expect ~msg:"expected parse2 source file" in
-  let binding =
-    nth_structure_item root 0
-    |> require_some ~msg:"expected first structure item"
-    |> binding_of_structure_item
-    |> Result.expect ~msg:"expected let binding"
-  in
-  let annotation =
-    Ast2.LetBinding.type_annotation binding |> require_some ~msg:"expected binding type annotation"
-  in
+  let binding = nth_structure_item root 0
+  |> require_some ~msg:"expected first structure item"
+  |> binding_of_structure_item
+  |> Result.expect ~msg:"expected let binding" in
+  let annotation = Ast2.LetBinding.type_annotation binding |> require_some ~msg:"expected binding type annotation" in
   match Ast2.TypeExpr.view annotation with
   | Ast2.TypeExpr.Opaque node ->
-      Test.assert_equal ~expected:"int" ~actual:(Ast2.Node.text node);
+      let token = Ast2.Node.first_token node |> require_some ~msg:"expected type expression token" in
+      Test.assert_equal ~expected:"int" ~actual:(Ast2.Token.text token);
       Ok ()
 
 let tests = [
@@ -231,7 +229,4 @@ let tests = [
 ]
 
 let () =
-  Actors.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"syn-ast2" ~tests ~args ())
-    ~args:Env.args
-    ()
+  Actors.run ~main:(fun ~args -> Test.Cli.main ~name:"syn-ast2" ~tests ~args ()) ~args:Env.args ()

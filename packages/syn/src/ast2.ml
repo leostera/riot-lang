@@ -11,29 +11,53 @@ type token = {
 }
 
 type source_file = node
+
 type implementation = node
+
 type interface = node
+
 type structure_item = node
+
 type signature_item = node
+
 type let_declaration = node
+
 type let_binding = node
+
 type type_declaration = node
+
 type module_declaration = node
+
 type module_type_declaration = node
+
 type open_declaration = node
+
 type include_declaration = node
+
 type value_declaration = node
+
 type external_declaration = node
+
 type exception_declaration = node
+
 type class_declaration = node
+
 type extension_item = node
+
 type attribute_item = node
+
 type expr_item = node
+
 type expr = node
+
 type pattern = node
+
 type parameter = node
+
 type match_case = node
+
 type type_expr = node
+
 type path = node
 
 let root = fun tree -> ({ tree; id = tree.Syntax_tree.root }: node)
@@ -42,9 +66,11 @@ let wrap_node = fun tree id -> ({ tree; id }: node)
 
 let wrap_token = fun tree id -> ({ tree; id }: token)
 
-let syntax_node = fun (node: node) -> Syntax_tree.node node.tree node.id
+let syntax_node = fun (node: node) ->
+  Syntax_tree.node node.tree node.id
 
-let syntax_token = fun (token: token) -> Syntax_tree.token token.tree token.id
+let syntax_token = fun (token: token) ->
+  Syntax_tree.token token.tree token.id
 
 let kind_is = Syntax_kind2.( = )
 
@@ -156,13 +182,14 @@ let first_child_node_matching = fun (node: node) ~matches ->
   Syntax_tree.for_each_child node.tree (syntax_node node)
     ~fn:(
       function
-      | Syntax_tree.Node id ->
-          (match !found with
+      | Syntax_tree.Node id -> (
+          match !found with
           | Some _ -> ()
           | None ->
               let child = wrap_node node.tree id in
               if node_matches child matches then
-                found := Some child)
+                found := Some child
+        )
       | Syntax_tree.Token _
       | Syntax_tree.Missing _ -> ()
     );
@@ -174,8 +201,8 @@ let nth_child_node_matching = fun (node: node) target ~matches ->
   Syntax_tree.for_each_child node.tree (syntax_node node)
     ~fn:(
       function
-      | Syntax_tree.Node id ->
-          (match !found with
+      | Syntax_tree.Node id -> (
+          match !found with
           | Some _ -> ()
           | None ->
               let child = wrap_node node.tree id in
@@ -183,7 +210,8 @@ let nth_child_node_matching = fun (node: node) target ~matches ->
                 if Int.equal !seen target then
                   found := Some child
                 else
-                  seen := !seen + 1)
+                  seen := !seen + 1
+        )
       | Syntax_tree.Token _
       | Syntax_tree.Missing _ -> ()
     );
@@ -206,13 +234,14 @@ let first_child_token_matching = fun (node: node) ~matches ->
   Syntax_tree.for_each_child node.tree (syntax_node node)
     ~fn:(
       function
-      | Syntax_tree.Token id ->
-          (match !found with
+      | Syntax_tree.Token id -> (
+          match !found with
           | Some _ -> ()
           | None ->
               let token = wrap_token node.tree id in
               if token_matches token matches then
-                found := Some token)
+                found := Some token
+        )
       | Syntax_tree.Node _
       | Syntax_tree.Missing _ -> ()
     );
@@ -238,8 +267,8 @@ let nth_child_token_matching = fun (node: node) target ~matches ->
   Syntax_tree.for_each_child node.tree (syntax_node node)
     ~fn:(
       function
-      | Syntax_tree.Token id ->
-          (match !found with
+      | Syntax_tree.Token id -> (
+          match !found with
           | Some _ -> ()
           | None ->
               let token = wrap_token node.tree id in
@@ -247,7 +276,8 @@ let nth_child_token_matching = fun (node: node) target ~matches ->
                 if Int.equal !seen target then
                   found := Some token
                 else
-                  seen := !seen + 1)
+                  seen := !seen + 1
+        )
       | Syntax_tree.Node _
       | Syntax_tree.Missing _ -> ()
     );
@@ -280,6 +310,27 @@ let nth_pattern_child = fun (node: node) target -> nth_child_node_matching node 
 
 let first_type_expr_child = fun (node: node) -> first_child_node_matching node ~matches:is_type_expr_kind
 
+let rec first_type_expr_descendant_of_pattern = fun (node: node) ->
+  match first_type_expr_child node with
+  | Some type_expr -> Some type_expr
+  | None ->
+      let found = ref None in
+      Syntax_tree.for_each_child node.tree (syntax_node node)
+        ~fn:(
+          function
+          | Syntax_tree.Node id -> (
+              match !found with
+              | Some _ -> ()
+              | None ->
+                  let child = wrap_node node.tree id in
+                  if node_matches child is_pattern_kind then
+                    found := first_type_expr_descendant_of_pattern child
+            )
+          | Syntax_tree.Token _
+          | Syntax_tree.Missing _ -> ()
+        );
+      !found
+
 let first_match_case_child = fun (node: node) -> first_child_node_matching node ~matches:is_match_case_kind
 
 let first_let_binding_child = fun (node: node) -> first_child_node_matching node ~matches:is_let_binding_kind
@@ -289,7 +340,8 @@ module Token = struct
 
   let kind = fun (token: token) -> (syntax_token token).Syntax_tree.kind
 
-  let text = fun (token: token) -> Syntax_tree.token_text token.tree (syntax_token token)
+  let text = fun (token: token) ->
+    Syntax_tree.token_text token.tree (syntax_token token)
 
   let raw_range = fun (token: token) ->
     let token = syntax_token token in
@@ -301,7 +353,8 @@ module Node = struct
 
   let kind = fun (node: node) -> (syntax_node node).Syntax_tree.kind
 
-  let text = fun (node: node) -> Syntax_tree.node_text node.tree (syntax_node node)
+  let text = fun (node: node) ->
+    Syntax_tree.node_text node.tree (syntax_node node)
 
   let raw_range = fun (node: node) ->
     let node = syntax_node node in
@@ -311,9 +364,11 @@ module Node = struct
 
   let child_count = fun (node: node) -> (syntax_node node).Syntax_tree.child_count
 
-  let child_at = fun (node: node) index -> Syntax_tree.child_at node.tree (syntax_node node) index
+  let child_at = fun (node: node) index ->
+    Syntax_tree.child_at node.tree (syntax_node node) index
 
-  let for_each_child = fun (node: node) ~fn -> Syntax_tree.for_each_child node.tree (syntax_node node) ~fn
+  let for_each_child = fun (node: node) ~fn ->
+    Syntax_tree.for_each_child node.tree (syntax_node node) ~fn
 
   let for_each_child_node = fun (node: node) ~fn ->
     for_each_child node
@@ -339,8 +394,7 @@ module Node = struct
   let first_child_token = fun (node: node) ~kind:expected_kind ->
     first_child_token_matching node ~matches:(fun kind -> Syntax_kind2.(kind = expected_kind))
 
-  let first_token = fun (node: node) ->
-    first_child_token_matching node ~matches:(fun _ -> true)
+  let first_token = fun (node: node) -> first_child_token_matching node ~matches:(fun _ -> true)
 end
 
 module TypeExpr = struct
@@ -382,7 +436,6 @@ end
 
 module Expr: sig
   type t = expr
-
   type view =
     | Let of { first_binding: let_binding option; body: t option }
     | LocalOpen of { body: t option }
@@ -400,12 +453,7 @@ module Expr: sig
     | Function of { first_case: match_case option }
     | Try of { body: t option; first_case: match_case option }
     | While of { condition: t option; body: t option }
-    | For of {
-      pattern: pattern option;
-      start_: t option;
-      stop: t option;
-      body: t option;
-    }
+    | For of { pattern: pattern option; start_: t option; stop: t option; body: t option }
     | Assert of { argument: t option }
     | Lazy of { argument: t option }
     | Attribute of { inner: t option }
@@ -432,7 +480,6 @@ module Expr: sig
     | OptionalArg of { label: token option; value: t option }
     | Error of Node.t
     | Unknown of Node.t
-
   val cast: Node.t -> t option
 
   val view: t -> view
@@ -460,12 +507,7 @@ end = struct
     | Function of { first_case: match_case option }
     | Try of { body: t option; first_case: match_case option }
     | While of { condition: t option; body: t option }
-    | For of {
-      pattern: pattern option;
-      start_: t option;
-      stop: t option;
-      body: t option;
-    }
+    | For of { pattern: pattern option; start_: t option; stop: t option; body: t option }
     | Assert of { argument: t option }
     | Lazy of { argument: t option }
     | Attribute of { inner: t option }
@@ -500,7 +542,8 @@ end = struct
       None
 
   let first_operator_token = fun (node: node) ->
-    first_child_token_matching node
+    first_child_token_matching
+      node
       ~matches:(fun kind ->
         not
           (Syntax_kind2.(kind = IDENT)
@@ -515,14 +558,14 @@ end = struct
     match Node.kind expr with
     | Syntax_kind2.LET_EXPR -> Let {
       first_binding = first_let_binding_child expr;
-      body = nth_expr_child expr 0;
+      body = nth_expr_child expr 0
     }
     | Syntax_kind2.LOCAL_OPEN_EXPR -> LocalOpen { body = nth_expr_child expr 1 }
     | Syntax_kind2.LET_MODULE_EXPR -> LetModule { body = first_expr_child expr }
     | Syntax_kind2.LET_EXCEPTION_EXPR -> LetException { body = first_expr_child expr }
     | Syntax_kind2.BINDING_OPERATOR_EXPR -> BindingOperator {
       first_binding = first_let_binding_child expr;
-      body = nth_expr_child expr 0;
+      body = nth_expr_child expr 0
     }
     | Syntax_kind2.FIRST_CLASS_MODULE_EXPR -> FirstClassModule
     | Syntax_kind2.EXTENSION_EXPR -> Extension
@@ -532,41 +575,59 @@ end = struct
     | Syntax_kind2.IF_EXPR -> If {
       condition = nth_expr_child expr 0;
       then_branch = nth_expr_child expr 1;
-      else_branch = nth_expr_child expr 2;
+      else_branch = nth_expr_child expr 2
     }
     | Syntax_kind2.MATCH_EXPR -> Match {
       scrutinee = nth_expr_child expr 0;
-      first_case = first_match_case_child expr;
+      first_case = first_match_case_child expr
     }
     | Syntax_kind2.FUN_EXPR -> Fun { body = nth_expr_child expr 0 }
     | Syntax_kind2.FUNCTION_EXPR -> Function { first_case = first_match_case_child expr }
-    | Syntax_kind2.TRY_EXPR -> Try { body = nth_expr_child expr 0; first_case = first_match_case_child expr }
-    | Syntax_kind2.WHILE_EXPR -> While { condition = nth_expr_child expr 0; body = nth_expr_child expr 1 }
+    | Syntax_kind2.TRY_EXPR -> Try {
+      body = nth_expr_child expr 0;
+      first_case = first_match_case_child expr
+    }
+    | Syntax_kind2.WHILE_EXPR -> While {
+      condition = nth_expr_child expr 0;
+      body = nth_expr_child expr 1
+    }
     | Syntax_kind2.FOR_EXPR -> For {
       pattern = first_pattern_child expr;
       start_ = nth_expr_child expr 0;
       stop = nth_expr_child expr 1;
-      body = nth_expr_child expr 2;
+      body = nth_expr_child expr 2
     }
     | Syntax_kind2.ASSERT_EXPR -> Assert { argument = first_expr_child expr }
     | Syntax_kind2.LAZY_EXPR -> Lazy { argument = first_expr_child expr }
     | Syntax_kind2.ATTRIBUTE_EXPR -> Attribute { inner = first_expr_child expr }
-    | Syntax_kind2.SEQUENCE_EXPR -> Sequence { left = nth_expr_child expr 0; right = nth_expr_child expr 1 }
-    | Syntax_kind2.APPLY_EXPR -> Apply { callee = nth_expr_child expr 0; argument = nth_expr_child expr 1 }
+    | Syntax_kind2.SEQUENCE_EXPR -> Sequence {
+      left = nth_expr_child expr 0;
+      right = nth_expr_child expr 1
+    }
+    | Syntax_kind2.APPLY_EXPR -> Apply {
+      callee = nth_expr_child expr 0;
+      argument = nth_expr_child expr 1
+    }
     | Syntax_kind2.INFIX_EXPR -> Infix {
       left = nth_expr_child expr 0;
       operator = first_operator_token expr;
-      right = nth_expr_child expr 1;
+      right = nth_expr_child expr 1
     }
-    | Syntax_kind2.PREFIX_EXPR -> Prefix { operator = first_operator_token expr; operand = first_expr_child expr }
-    | Syntax_kind2.ASSIGN_EXPR -> Assign { target = nth_expr_child expr 0; value = nth_expr_child expr 1 }
+    | Syntax_kind2.PREFIX_EXPR -> Prefix {
+      operator = first_operator_token expr;
+      operand = first_expr_child expr
+    }
+    | Syntax_kind2.ASSIGN_EXPR -> Assign {
+      target = nth_expr_child expr 0;
+      value = nth_expr_child expr 1
+    }
     | Syntax_kind2.FIELD_ACCESS_EXPR -> FieldAccess {
       target = nth_expr_child expr 0;
-      field = last_ident_token expr;
+      field = last_ident_token expr
     }
     | Syntax_kind2.METHOD_CALL_EXPR -> MethodCall {
       target = nth_expr_child expr 0;
-      method_ = last_ident_token expr;
+      method_ = last_ident_token expr
     }
     | Syntax_kind2.POLY_VARIANT_EXPR -> PolyVariant { payload = first_expr_child expr }
     | Syntax_kind2.PATH_EXPR -> Path { path = expr }
@@ -579,15 +640,24 @@ end = struct
     | Syntax_kind2.RECORD_UPDATE_EXPR -> RecordUpdate
     | Syntax_kind2.ARRAY_INDEX_EXPR -> ArrayIndex {
       target = nth_expr_child expr 0;
-      index = nth_expr_child expr 1;
+      index = nth_expr_child expr 1
     }
     | Syntax_kind2.STRING_INDEX_EXPR -> StringIndex {
       target = nth_expr_child expr 0;
-      index = nth_expr_child expr 1;
+      index = nth_expr_child expr 1
     }
-    | Syntax_kind2.TYPED_EXPR -> Typed { expr = first_expr_child expr; annotation = first_type_expr_child expr }
-    | Syntax_kind2.LABELED_ARG -> LabeledArg { label = first_ident_token expr; value = first_expr_child expr }
-    | Syntax_kind2.OPTIONAL_ARG -> OptionalArg { label = first_ident_token expr; value = first_expr_child expr }
+    | Syntax_kind2.TYPED_EXPR -> Typed {
+      expr = first_expr_child expr;
+      annotation = first_type_expr_child expr
+    }
+    | Syntax_kind2.LABELED_ARG -> LabeledArg {
+      label = first_ident_token expr;
+      value = first_expr_child expr
+    }
+    | Syntax_kind2.OPTIONAL_ARG -> OptionalArg {
+      label = first_ident_token expr;
+      value = first_expr_child expr
+    }
     | Syntax_kind2.ERROR -> Error expr
     | _ -> Unknown expr
 
@@ -600,7 +670,6 @@ end
 
 module Pattern: sig
   type t = pattern
-
   type view =
     | Wildcard
     | Path of { path: path }
@@ -629,7 +698,6 @@ module Pattern: sig
     | OptionalParamDefault of parameter
     | Error of Node.t
     | Unknown of Node.t
-
   val cast: Node.t -> t option
 
   val view: t -> view
@@ -679,7 +747,7 @@ end = struct
     | Syntax_kind2.PATH_PATTERN -> Path { path = pattern }
     | Syntax_kind2.APPLY_PATTERN -> Apply {
       callee = nth_pattern_child pattern 0;
-      argument = nth_pattern_child pattern 1;
+      argument = nth_pattern_child pattern 1
     }
     | Syntax_kind2.LITERAL_PATTERN -> Literal
     | Syntax_kind2.PAREN_PATTERN -> Parenthesized { inner = first_pattern_child pattern }
@@ -695,20 +763,23 @@ end = struct
     | Syntax_kind2.FIRST_CLASS_MODULE_PATTERN -> FirstClassModule
     | Syntax_kind2.INTERVAL_PATTERN -> Interval {
       left = nth_pattern_child pattern 0;
-      right = nth_pattern_child pattern 1;
+      right = nth_pattern_child pattern 1
     }
     | Syntax_kind2.CONSTRAINT_PATTERN -> Constraint {
       pattern = first_pattern_child pattern;
-      annotation = first_type_expr_child pattern;
+      annotation = first_type_expr_child pattern
     }
     | Syntax_kind2.ALIAS_PATTERN -> Alias {
       pattern = nth_pattern_child pattern 0;
-      alias = nth_pattern_child pattern 1;
+      alias = nth_pattern_child pattern 1
     }
-    | Syntax_kind2.OR_PATTERN -> Or { left = nth_pattern_child pattern 0; right = nth_pattern_child pattern 1 }
+    | Syntax_kind2.OR_PATTERN -> Or {
+      left = nth_pattern_child pattern 0;
+      right = nth_pattern_child pattern 1
+    }
     | Syntax_kind2.CONS_PATTERN -> Cons {
       head = nth_pattern_child pattern 0;
-      tail = nth_pattern_child pattern 1;
+      tail = nth_pattern_child pattern 1
     }
     | Syntax_kind2.LAZY_PATTERN -> Lazy { pattern = first_pattern_child pattern }
     | Syntax_kind2.EXCEPTION_PATTERN -> Exception { pattern = first_pattern_child pattern }
@@ -724,17 +795,11 @@ end
 
 module Parameter: sig
   type t = parameter
-
   type view =
     | Labeled of { label: token option; pattern: pattern option }
     | Optional of { label: token option; pattern: pattern option }
-    | OptionalDefault of {
-      label: token option;
-      pattern: pattern option;
-      default: expr option;
-    }
+    | OptionalDefault of { label: token option; pattern: pattern option; default: expr option }
     | Unknown of Node.t
-
   val cast: Node.t -> t option
 
   val view: t -> view
@@ -744,11 +809,7 @@ end = struct
   type view =
     | Labeled of { label: token option; pattern: pattern option }
     | Optional of { label: token option; pattern: pattern option }
-    | OptionalDefault of {
-      label: token option;
-      pattern: pattern option;
-      default: expr option;
-    }
+    | OptionalDefault of { label: token option; pattern: pattern option; default: expr option }
     | Unknown of Node.t
 
   let cast = fun (node: node) ->
@@ -761,29 +822,27 @@ end = struct
     match Node.kind parameter with
     | Syntax_kind2.LABELED_PARAM -> Labeled {
       label = first_ident_token parameter;
-      pattern = first_pattern_child parameter;
+      pattern = first_pattern_child parameter
     }
     | Syntax_kind2.OPTIONAL_PARAM -> Optional {
       label = first_ident_token parameter;
-      pattern = first_pattern_child parameter;
+      pattern = first_pattern_child parameter
     }
     | Syntax_kind2.OPTIONAL_PARAM_DEFAULT -> OptionalDefault {
       label = first_ident_token parameter;
       pattern = first_pattern_child parameter;
-      default = first_expr_child parameter;
+      default = first_expr_child parameter
     }
     | _ -> Unknown parameter
 end
 
 module MatchCase: sig
   type t = match_case
-
   type view = {
     pattern: pattern option;
     guard: expr option;
     body: expr option;
   }
-
   val cast: Node.t -> t option
 
   val view: t -> view
@@ -809,21 +868,15 @@ end = struct
       else
         (None, nth_expr_child match_case 0)
     in
-    {
-      pattern = first_pattern_child match_case;
-      guard;
-      body;
-    }
+    { pattern = first_pattern_child match_case; guard; body }
 end
 
 module LetBinding: sig
   type t = let_binding
-
   type view = {
     pattern: pattern option;
     body: expr option;
   }
-
   val cast: Node.t -> t option
 
   val view: t -> view
@@ -857,15 +910,21 @@ end = struct
 
   let for_each_parameter = fun (binding: let_binding) ~fn ->
     let seen_first = ref false in
-    for_each_child_node_matching binding
-      ~matches:is_pattern_kind
+    for_each_child_node_matching binding ~matches:is_pattern_kind
       ~fn:(fun pattern ->
         if !seen_first then
           fn pattern
         else
           seen_first := true)
 
-  let type_annotation = first_type_expr_child
+  let type_annotation = fun (binding: let_binding) ->
+    match first_type_expr_child binding with
+    | Some type_expr -> Some type_expr
+    | None -> (
+        match pattern binding with
+        | Some pattern -> first_type_expr_descendant_of_pattern pattern
+        | None -> None
+      )
 end
 
 module LetDeclaration = struct
@@ -1132,10 +1191,7 @@ module Implementation = struct
       None
 
   let for_each_item = fun (impl: implementation) ~fn ->
-    for_each_child_node_matching
-      impl
-      ~matches:(fun kind -> Syntax_kind2.(kind = STRUCTURE_ITEM))
-      ~fn
+    for_each_child_node_matching impl ~matches:(fun kind -> Syntax_kind2.(kind = STRUCTURE_ITEM)) ~fn
 end
 
 module Interface = struct
