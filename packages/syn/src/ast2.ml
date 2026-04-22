@@ -384,6 +384,33 @@ let first_match_case_child = fun (node: node) -> first_child_node_matching node 
 
 let first_let_binding_child = fun (node: node) -> first_child_node_matching node ~matches:is_let_binding_kind
 
+let rec for_each_token_in_node = fun (node: node) ~fn ->
+  Syntax_tree.for_each_child node.tree (syntax_node node)
+    ~fn:(
+      function
+      | Syntax_tree.Token id -> fn (wrap_token node.tree id)
+      | Syntax_tree.Node id -> for_each_token_in_node (wrap_node node.tree id) ~fn
+      | Syntax_tree.Missing _ -> ()
+    )
+
+let for_each_token_after_child_token = fun (node: node) ~matches ~fn ->
+  let seen_boundary = ref false in
+  Syntax_tree.for_each_child node.tree (syntax_node node)
+    ~fn:(
+      function
+      | Syntax_tree.Token id ->
+          let token = wrap_token node.tree id in
+          if !seen_boundary then
+            fn token
+          else if token_matches token matches then
+            seen_boundary := true
+      | Syntax_tree.Node id ->
+          if !seen_boundary then
+            for_each_token_in_node (wrap_node node.tree id) ~fn
+      | Syntax_tree.Missing _ ->
+          ()
+    )
+
 module Token = struct
   type t = token
 
@@ -398,6 +425,20 @@ module Token = struct
       token.tree
       ~raw_lo:syntax_token.Syntax_tree.raw_lo
       ~raw_hi:syntax_token.Syntax_tree.body_raw
+
+  let for_each_leading_trivia = fun (token: token) ~fn ->
+    let syntax_token = syntax_token token in
+    let rec loop raw_index =
+      if Int.(raw_index < syntax_token.Syntax_tree.body_raw) then
+        (
+          let raw = Vector.get_unchecked token.tree.Syntax_tree.raw_tokens ~at:raw_index in
+          fn
+            ~kind:raw.Raw_token.kind
+            ~text:(Raw_token.text_slice ~source:token.tree.Syntax_tree.source raw);
+          loop Int.(raw_index + 1)
+        )
+    in
+    loop syntax_token.Syntax_tree.raw_lo
 
   let has_leading_raw = fun (token: token) ~matches ->
     let syntax_token = syntax_token token in
@@ -2122,15 +2163,6 @@ module TypeDeclaration = struct
     else
       None
 
-  let rec for_each_token_in_node = fun (node: node) ~fn ->
-    Syntax_tree.for_each_child node.tree (syntax_node node)
-      ~fn:(
-        function
-        | Syntax_tree.Token id -> fn (wrap_token node.tree id)
-        | Syntax_tree.Node id -> for_each_token_in_node (wrap_node node.tree id) ~fn
-        | Syntax_tree.Missing _ -> ()
-      )
-
   let for_each_token = fun decl ~fn -> for_each_token_in_node decl ~fn
 
   let keyword_token = fun decl -> Node.first_child_token decl ~kind:Syntax_kind2.TYPE_KW
@@ -2610,6 +2642,9 @@ module ValueDeclaration = struct
 
   let for_each_name_token = fun decl ~fn ->
     for_each_declaration_name_token decl ~keyword:Syntax_kind2.VAL_KW ~fn
+
+  let for_each_annotation_token = fun decl ~fn ->
+    for_each_token_after_child_token decl ~matches:(fun kind -> Syntax_kind2.(kind = COLON)) ~fn
 end
 
 module ExternalDeclaration = struct

@@ -43,6 +43,8 @@ module Token: sig
 
   val leading_text: t -> string
 
+  val for_each_leading_trivia: t -> fn:(kind:Syntax_kind2.t -> text:string -> unit) -> unit
+
   val has_leading_comment: t -> bool
 
   val has_leading_docstring: t -> bool
@@ -653,6 +655,8 @@ module ValueDeclaration: sig
   val type_annotation: t -> type_expr option
 
   val for_each_name_token: t -> fn:(Token.t -> unit) -> unit
+
+  val for_each_annotation_token: t -> fn:(Token.t -> unit) -> unit
 end
 
 module ExternalDeclaration: sig

@@ -337,16 +337,76 @@ let strip_trailing_whitespace = fun text ->
   in
   loop Int.(String.length text - 1)
 
-let leading_comment_text = fun token ->
-  let text = Ast.Token.leading_text token |> strip_leading_whitespace in
-  if Ast.Token.has_leading_docstring token then
-    let text = strip_trailing_whitespace text in
-    if Int.(String.length text = 0) then
-      ""
-    else
-      text ^ "\n"
+type leading_docstring = {
+  text: string;
+  is_section: bool;
+}
+
+let is_section_docstring_text = fun comment_text ->
+  let len = String.length comment_text in
+  if Int.(len < 5) then
+    false
   else
-    text
+    let body = String.sub comment_text ~offset:3 ~len:Int.(len - 5) |> String.trim in
+    if Int.(String.length body = 0) then
+      false
+    else
+      let first = String.get_unchecked body ~at:0 in
+      Char.equal first '{' || Char.equal first '#'
+
+let leading_docstring_separator = fun left right ->
+  if (not left.is_section) && right.is_section then
+    "\n"
+  else
+    "\n\n"
+
+let rec leading_docstring_text = function
+  | [] ->
+      ""
+  | [ docstring ] ->
+      let suffix =
+        if docstring.is_section then
+          "\n\n"
+        else
+          "\n"
+      in
+      docstring.text ^ suffix
+  | left :: (right :: _ as rest) ->
+      left.text ^ leading_docstring_separator left right ^ leading_docstring_text rest
+
+let normalized_leading_docstrings = fun token ->
+  let docstrings = ref [] in
+  let has_comment = ref false in
+  Ast.Token.for_each_leading_trivia token
+    ~fn:(fun ~kind ~text ->
+      if Kind.(kind = DOCSTRING) then
+        docstrings := {
+          text = strip_trailing_whitespace text;
+          is_section = is_section_docstring_text text
+        }
+        :: !docstrings
+      else if Kind.(kind = COMMENT) then
+        has_comment := true);
+  if !has_comment then
+    None
+  else
+    match List.reverse !docstrings with
+    | [] -> None
+    | docstrings -> Some (leading_docstring_text docstrings)
+
+let leading_comment_text = fun token ->
+  if Ast.Token.has_leading_docstring token then
+    match normalized_leading_docstrings token with
+    | Some text -> text
+    | None ->
+        let text = Ast.Token.leading_text token |> strip_leading_whitespace in
+        let text = strip_trailing_whitespace text in
+        if Int.(String.length text = 0) then
+          ""
+        else
+          text ^ "\n"
+  else
+    Ast.Token.leading_text token |> strip_leading_whitespace
 
 let leading_comment_doc = fun node ->
   match Ast.Node.first_descendant_token node with
@@ -2794,18 +2854,23 @@ let value_decl_name_tokens = fun decl ->
   Ast.ValueDeclaration.for_each_name_token decl ~fn:(fun token -> tokens := token :: !tokens);
   List.reverse !tokens
 
+let value_decl_annotation_tokens = fun decl ->
+  let tokens = ref [] in
+  Ast.ValueDeclaration.for_each_annotation_token decl ~fn:(fun token -> tokens := token :: !tokens);
+  List.reverse !tokens
+
 let value_decl_doc = fun decl ->
-  match value_decl_name_tokens decl, Ast.ValueDeclaration.colon_token decl, Ast.ValueDeclaration.type_annotation
+  match value_decl_name_tokens decl, Ast.ValueDeclaration.colon_token decl, value_decl_annotation_tokens
     decl with
   | [], _, _ -> unsupported "value declaration without name"
-  | name_tokens, Some colon_token, Some annotation -> Doc.concat
+  | name_tokens, Some colon_token, ((_ :: _) as annotation_tokens) -> Doc.concat
     [
       Doc.text "val";
       Doc.space;
       declaration_name_doc name_tokens;
       token_doc colon_token;
       Doc.space;
-      type_expr_doc annotation;
+      type_tokens_doc annotation_tokens;
     ]
   | _ -> unsupported "incomplete value declaration"
 
