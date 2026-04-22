@@ -2,6 +2,10 @@ open Std
 open Std.Collections
 module Slice = IO.IoVec.IoSlice
 
+module Event = struct
+  module Buffer = Syntax_tree.Builder
+end
+
 type file_kind =
 [
   | `Implementation
@@ -12,7 +16,6 @@ type parse_result = {
   source: Slice.t;
   kind: file_kind;
   tokens: Raw_token.stream;
-  events: Event.Buffer.t;
   tree: Syntax_tree.t;
   diagnostics: Diagnostic.t Vector.t;
 }
@@ -24,7 +27,7 @@ type parser = {
   significant_tokens: int Vector.t;
   raw_len: int;
   significant_len: int;
-  events: Event.Buffer.t;
+  events: Syntax_tree.Builder.t;
   mutable pos: int;
   mutable last_eof_unclosed_delimiter_offset: int option;
 }
@@ -35,7 +38,9 @@ let create = fun source ->
   let significant_tokens = token_stream.Raw_token.significant in
   let raw_len = Vector.length raw_tokens in
   let significant_len = Vector.length significant_tokens in
-  let events = Event.Buffer.create
+  let events = Syntax_tree.Builder.create
+    ~source
+    ~token_stream
     ~event_capacity:(Int.max 32 ((significant_len * 3) + (raw_len / 4)))
     ~diagnostic_capacity:8
     () in
@@ -84,7 +89,11 @@ let current_kind = fun p -> (current p).Raw_token.kind
 
 let peek_kind = fun p offset -> (peek p offset).Raw_token.kind
 
-let at = fun p kind -> Syntax_kind2.(current_kind p = kind)
+let kind_is = Syntax_kind2.is
+
+let at = fun p kind -> kind_is (current_kind p) kind
+
+let peek_is = fun p offset kind -> kind_is (peek_kind p offset) kind
 
 let is_eof = fun p -> at p Syntax_kind2.EOF
 
@@ -137,11 +146,7 @@ let current_text_is = fun p expected ->
 let at_end_keyword = fun p -> at p Syntax_kind2.END_KW || current_text_is p "end"
 
 let legacy_token = fun raw ->
-  {
-    Token.kind = Option.unwrap_or raw.Raw_token.legacy_kind ~default:(Token.Unknown '?');
-    span = raw.Raw_token.span;
-    leading_trivia = []
-  }
+  { Token.kind = raw.Raw_token.legacy_kind; span = raw.Raw_token.span; leading_trivia = [] }
 
 let found_token = fun p raw : Diagnostic.found_token ->
   let token = legacy_token raw in
@@ -2923,12 +2928,11 @@ let parse_file = fun kind source ->
   if is_eof p then
     bump p;
   ignore (complete p root Syntax_kind2.SOURCE_FILE);
-  let tree = Syntax_tree.build ~source ~token_stream:p.token_stream ~events:p.events in
+  let tree = Syntax_tree.Builder.finish p.events in
   {
     source;
     kind;
     tokens = p.token_stream;
-    events = p.events;
     tree;
     diagnostics = Event.Buffer.diagnostics p.events;
   }

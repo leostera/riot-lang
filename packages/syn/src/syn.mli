@@ -187,8 +187,9 @@ val parse: filename:Std.Path.t -> string -> Parser.parse_result
 
 (** `parse2 ~filename source` parses source through the replacement parser
     prototype. The replacement parser treats source as an IO slice so raw token,
-    event, and tree storage can keep source-backed spans instead of copying
-    substrings. *)
+    parser, and tree storage can keep source-backed spans instead of copying
+    substrings. The parser streams events into the syntax-tree builder instead
+    of replaying an intermediate event buffer on the hot path. *)
 val parse2: filename:Std.Path.t -> IO.IoVec.IoSlice.t -> Parser2.parse_result
 
 (** `build_cst result` lifts a diagnostics-free Ceibo parse result into the

@@ -10,7 +10,6 @@ type parse_result = {
   source: IO.IoVec.IoSlice.t;
   kind: file_kind;
   tokens: Raw_token.stream;
-  events: Event.Buffer.t;
   tree: Syntax_tree.t;
   diagnostics: Diagnostic.t Vector.t;
 }

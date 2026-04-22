@@ -5,7 +5,7 @@ module Slice = IO.IoVec.IoSlice
 type t = {
   kind: Syntax_kind2.t;
   span: Ceibo.Span.t;
-  legacy_kind: Token.token_kind option;
+  legacy_kind: Token.token_kind;
 }
 
 type stream = {
@@ -16,10 +16,7 @@ type stream = {
 let create_stream = fun () -> { raw = Vector.create (); significant = Vector.create () }
 
 let create_stream_with_capacity = fun ~raw ~significant ->
-  {
-    raw = Vector.with_capacity ~size:raw;
-    significant = Vector.with_capacity ~size:significant;
-  }
+  { raw = Vector.with_capacity ~size:raw; significant = Vector.with_capacity ~size:significant }
 
 let push = fun stream token ->
   let index = Vector.length stream.raw in
@@ -208,11 +205,11 @@ let raw_of_trivia = fun (trivia: Token.trivia) ->
   {
     kind = kind_of_trivia_kind trivia.kind;
     span = trivia.span;
-    legacy_kind = Some (Token.token_kind_of_trivia_kind trivia.kind)
+    legacy_kind = Token.token_kind_of_trivia_kind trivia.kind
   }
 
 let raw_of_token = fun (token: Token.t) ->
-  { kind = kind_of_token_kind token.kind; span = token.span; legacy_kind = Some token.kind }
+  { kind = kind_of_token_kind token.kind; span = token.span; legacy_kind = token.kind }
 
 let of_lexer_tokens = fun tokens ->
   let token_count = List.length tokens in

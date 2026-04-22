@@ -4,7 +4,7 @@ open Std.Collections
 type t = {
   kind: Syntax_kind2.t;
   span: Ceibo.Span.t;
-  legacy_kind: Token.token_kind option;
+  legacy_kind: Token.token_kind;
 }
 type stream = {
   raw: t Vector.t;

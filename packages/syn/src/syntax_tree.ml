@@ -39,6 +39,8 @@ type t = {
   root: int;
 }
 
+type tree = t
+
 type frame = {
   kind: Syntax_kind2.t;
   first_pending_child: int;
@@ -83,6 +85,206 @@ let include_child_range = fun ~(nodes:node Vector.t) ~(tokens:token_leaf Vector.
       include_range frame ~lo:node.raw_lo ~hi:node.raw_hi
   | Missing _ ->
       ()
+
+module Builder = struct
+  type marker = {
+    depth: int;
+  }
+
+  type completed = {
+    child: child;
+    kind: Syntax_kind2.t;
+  }
+
+  type t = {
+    source: Slice.t;
+    raw_tokens: Raw_token.t Vector.t;
+    significant_tokens: int Vector.t;
+    token_leaves: token_leaf Vector.t;
+    node_store: node Vector.t;
+    child_store: child Vector.t;
+    pending_children: child Vector.t;
+    frame_stack: frame Vector.t;
+    diagnostics: Diagnostic.t Vector.t;
+    mutable root_id: int option;
+    mutable next_raw_lo: int;
+    mutable event_count: int;
+  }
+
+  let create = fun ~source ~token_stream ?(event_capacity = 0) ?(diagnostic_capacity = 0) () ->
+    let significant_count = Vector.length token_stream.Raw_token.significant in
+    let event_capacity = Int.max 1 event_capacity in
+    {
+      source;
+      raw_tokens = token_stream.Raw_token.raw;
+      significant_tokens = token_stream.Raw_token.significant;
+      token_leaves = Vector.with_capacity ~size:significant_count;
+      node_store = Vector.with_capacity ~size:(Int.max 1 (event_capacity / 2));
+      child_store = Vector.with_capacity ~size:event_capacity;
+      pending_children = Vector.with_capacity ~size:event_capacity;
+      frame_stack = Vector.with_capacity ~size:64;
+      diagnostics = Vector.with_capacity ~size:diagnostic_capacity;
+      root_id = None;
+      next_raw_lo = 0;
+      event_count = 0;
+    }
+
+  let push_child = fun builder child ->
+    let depth = Vector.length builder.frame_stack in
+    if Int.(depth > 0) then
+      let frame = Vector.get_unchecked builder.frame_stack ~at:Int.(depth - 1) in
+      Vector.push builder.pending_children ~value:child;
+      include_child_range ~nodes:builder.node_store ~tokens:builder.token_leaves frame child
+
+  let start_node = fun builder ->
+    let depth = Vector.length builder.frame_stack in
+    builder.event_count <- Int.(builder.event_count + 1);
+    Vector.push builder.frame_stack
+      ~value:{
+        kind = Syntax_kind2.ERROR;
+        first_pending_child = Vector.length builder.pending_children;
+        has_range = false;
+        frame_raw_lo = 0;
+        frame_raw_hi = 0;
+      };
+    { depth }
+
+  let copy_pending_children = fun builder first_child limit ->
+    let rec loop index =
+      if Int.(index < limit) then
+        (
+          Vector.push
+            builder.child_store
+            ~value:(Vector.get_unchecked builder.pending_children ~at:index);
+          loop Int.(index + 1)
+        )
+    in
+    loop first_child
+
+  let complete = fun builder _marker kind ->
+    builder.event_count <- Int.(builder.event_count + 1);
+    let depth = Vector.length builder.frame_stack in
+    if Int.(depth <= 0) then
+      panic "Syntax_tree.Builder.complete called with no open node"
+    else
+      let frame = Vector.get_unchecked builder.frame_stack ~at:Int.(depth - 1) in
+      Vector.truncate_unchecked builder.frame_stack ~len:Int.(depth - 1);
+      let pending_limit = Vector.length builder.pending_children in
+      let first_child = Vector.length builder.child_store in
+      copy_pending_children builder frame.first_pending_child pending_limit;
+      let child_count = Int.(pending_limit - frame.first_pending_child) in
+      Vector.truncate_unchecked builder.pending_children ~len:frame.first_pending_child;
+      let raw_lo, raw_hi, full_width =
+        if frame.has_range then
+          let width =
+            if Int.(frame.frame_raw_hi <= frame.frame_raw_lo) then
+              0
+            else
+              Int.(raw_end builder.raw_tokens (frame.frame_raw_hi - 1)
+              - raw_start builder.raw_tokens frame.frame_raw_lo)
+          in
+          (frame.frame_raw_lo, frame.frame_raw_hi, width)
+        else
+          (0, 0, 0)
+      in
+      let node = {
+        kind;
+        first_child;
+        child_count;
+        raw_lo;
+        raw_hi;
+        full_width;
+      }
+      in
+      let node_id = Vector.length builder.node_store in
+      Vector.push builder.node_store ~value:node;
+      let child = Node node_id in
+      if Int.(Vector.length builder.frame_stack > 0) then
+        push_child builder child
+      else
+        builder.root_id <- Some node_id;
+      { child; kind }
+
+  let same_child = fun left right ->
+    match left, right with
+    | (Node left, Node right)
+    | (Token left, Token right) -> Int.(left = right)
+    | Missing left, Missing right -> Syntax_kind2.is left.kind right.kind
+    && Int.(left.offset = right.offset)
+    | _ -> false
+
+  let precede = fun builder completed ->
+    let pending_len = Vector.length builder.pending_children in
+    if Int.(pending_len <= 0) then
+      panic "Syntax_tree.Builder.precede called without a completed child"
+    else
+      let last_index = Int.(pending_len - 1) in
+      let last_child = Vector.get_unchecked builder.pending_children ~at:last_index in
+      if not (same_child last_child completed.child) then
+        panic "Syntax_tree.Builder.precede expected the completed child to be last"
+      else (
+        Vector.truncate_unchecked builder.pending_children ~len:last_index;
+        let marker = start_node builder in
+        push_child builder completed.child;
+        marker
+      )
+
+  let token = fun builder ~raw_index ->
+    builder.event_count <- Int.(builder.event_count + 1);
+    if Int.(raw_index >= 0) && Int.(raw_index < Vector.length builder.raw_tokens) then
+      let raw = raw_at builder.raw_tokens raw_index in
+      let token_id = Vector.length builder.token_leaves in
+      let token = {
+        kind = raw.Raw_token.kind;
+        raw_lo = builder.next_raw_lo;
+        raw_hi =
+          Int.(raw_index + 1);
+        body_raw = raw_index;
+      }
+      in
+      builder.next_raw_lo <- Int.(raw_index + 1);
+      Vector.push builder.token_leaves ~value:token;
+      push_child builder (Token token_id)
+
+  let missing = fun builder ~kind ~offset ->
+    builder.event_count <- Int.(builder.event_count + 1);
+    push_child builder (Missing { kind; offset })
+
+  let error = fun builder diagnostic ->
+    builder.event_count <- Int.(builder.event_count + 1);
+    Vector.push builder.diagnostics ~value:diagnostic
+
+  let length = fun builder -> builder.event_count
+
+  let diagnostics = fun builder -> builder.diagnostics
+
+  let finish = fun builder ->
+    let root =
+      match builder.root_id with
+      | Some root -> root
+      | None ->
+          let node = {
+            kind = Syntax_kind2.SOURCE_FILE;
+            first_child = 0;
+            child_count = 0;
+            raw_lo = 0;
+            raw_hi = 0;
+            full_width = 0;
+          }
+          in
+          Vector.push builder.node_store ~value:node;
+          0
+    in
+    {
+      source = builder.source;
+      raw_tokens = builder.raw_tokens;
+      significant_tokens = builder.significant_tokens;
+      tokens = builder.token_leaves;
+      nodes = builder.node_store;
+      children = builder.child_store;
+      root;
+    }
+end
 
 let build = fun ~source ~token_stream ~events ->
   let event_count = Event.Buffer.length events in

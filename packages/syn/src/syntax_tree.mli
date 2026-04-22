@@ -32,6 +32,38 @@ type t = {
   children: child Vector.t;
   root: int;
 }
+type tree = t
+module Builder: sig
+  type t
+  type marker
+  type completed
+  val create:
+    source:IO.IoVec.IoSlice.t ->
+    token_stream:Raw_token.stream ->
+    ?event_capacity:int ->
+    ?diagnostic_capacity:int ->
+    unit ->
+    t
+
+  val start_node: t -> marker
+
+  val complete: t -> marker -> Syntax_kind2.t -> completed
+
+  val precede: t -> completed -> marker
+
+  val token: t -> raw_index:int -> unit
+
+  val missing: t -> kind:Syntax_kind2.t -> offset:int -> unit
+
+  val error: t -> Diagnostic.t -> unit
+
+  val length: t -> int
+
+  val diagnostics: t -> Diagnostic.t Vector.t
+
+  val finish: t -> tree
+end
+
 val build: source:IO.IoVec.IoSlice.t -> token_stream:Raw_token.stream -> events:Event.Buffer.t -> t
 
 val root: t -> node
