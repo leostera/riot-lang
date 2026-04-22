@@ -2726,6 +2726,37 @@ let signature_item_doc = fun item ->
   in
   Doc.concat [ leading_comment_doc item; body ]
 
+let signature_item_compacts_after = fun item ->
+  match Ast.SignatureItem.view item with
+  | Type decl -> (
+      match type_decl_members (type_decl_tokens decl) with
+      | [ member_ ] ->
+          let rec body_starts_poly_variant = function
+            | token :: rest when token_kind_is token Kind.PRIVATE_KW -> body_starts_poly_variant rest
+            | token :: _ when token_kind_is token Kind.LBRACKET -> true
+            | _ -> false
+          in
+          body_starts_poly_variant member_.body_tokens
+      | _ -> false
+    )
+  | _ -> false
+
+let signature_items_doc = fun items ->
+  let rec loop doc compact_after = function
+    | [] -> doc
+    | (next_doc, next_compact_after) :: rest ->
+        let separator =
+          if compact_after then
+            Doc.line
+          else
+            blank_line
+        in
+        loop (Doc.concat [ doc; separator; next_doc ]) next_compact_after rest
+  in
+  match items with
+  | [] -> Doc.empty
+  | (first_doc, first_compact_after) :: rest -> loop first_doc first_compact_after rest
+
 let implementation_doc = fun implementation ->
   let docs = ref [] in
   Ast.Implementation.for_each_item
@@ -2734,9 +2765,11 @@ let implementation_doc = fun implementation ->
   Doc.join blank_line (List.reverse !docs)
 
 let interface_doc = fun interface ->
-  let docs = ref [] in
-  Ast.Interface.for_each_item interface ~fn:(fun item -> docs := signature_item_doc item :: !docs);
-  Doc.join blank_line (List.reverse !docs)
+  let items = ref [] in
+  Ast.Interface.for_each_item
+    interface
+    ~fn:(fun item -> items := (signature_item_doc item, signature_item_compacts_after item) :: !items);
+  signature_items_doc (List.reverse !items)
 
 let source_file = fun source_file ->
   try
