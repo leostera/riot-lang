@@ -750,30 +750,125 @@ and record_pattern_doc = fun pattern ->
       Doc.rbrace;
     ]
 
+and compact_record_pattern_field_doc = fun (field: Ast.RecordPattern.field) ->
+  match field.path with
+  | Some path -> (
+      match field.pattern with
+      | Some pattern -> Doc.concat [ path_doc path; Doc.equal; pattern_doc pattern ]
+      | None -> path_doc path
+    )
+  | None -> unsupported "unsupported record pattern field"
+
+and compact_record_pattern_doc = fun pattern ->
+  let fields = ref [] in
+  Ast.RecordPattern.for_each_field
+    pattern
+    ~fn:(fun field -> fields := compact_record_pattern_field_doc field :: !fields);
+  let fields =
+    (
+      match Ast.RecordPattern.open_wildcard pattern with
+      | Some wildcard -> token_doc wildcard :: !fields
+      | None -> !fields
+    )
+    |> List.reverse
+  in
+  match fields with
+  | [] -> Doc.concat [ Doc.lbrace; Doc.rbrace ]
+  | fields when Int.(List.length fields > 3) -> Doc.concat
+    [
+      Doc.lbrace;
+      Doc.line;
+      Doc.indent 2 (Doc.join (Doc.concat [ Doc.semi; Doc.line ]) fields);
+      Doc.line;
+      Doc.rbrace;
+    ]
+  | fields -> Doc.concat
+    [
+      Doc.lbrace;
+      Doc.space;
+      Doc.join (Doc.concat [ Doc.semi; Doc.space ]) fields;
+      Doc.space;
+      Doc.rbrace;
+    ]
+
+and path_single_ident_token = fun path ->
+  let found = ref None in
+  let count = ref 0 in
+  Ast.Path.for_each_ident path
+    ~fn:(fun token ->
+      count := !count + 1;
+      if Int.equal !count 1 then
+        found := Some token
+      else
+        ());
+  if Int.equal !count 1 then
+    !found
+  else
+    None
+
+and pattern_binding_ident_token = fun pattern ->
+  match Ast.Pattern.view pattern with
+  | Path { path } -> path_single_ident_token path
+  | Parenthesized { inner=Some inner }
+  | Constraint { pattern=Some inner; _ }
+  | Attribute { inner=Some inner } -> pattern_binding_ident_token inner
+  | _ -> None
+
+and parameter_pattern_matches_label = fun label pattern ->
+  match pattern_binding_ident_token pattern with
+  | Some binding -> token_text_equal label binding
+  | None -> false
+
+and parameter_pattern_doc = fun pattern ->
+  match Ast.Pattern.view pattern with
+  | Record -> compact_record_pattern_doc pattern
+  | _ -> pattern_doc pattern
+
 and parameter_doc = fun parameter ->
   match Ast.Parameter.view parameter with
-  | Labeled { label=Some label; pattern=None } -> Doc.concat [ Doc.text "~"; token_doc label ]
-  | Labeled { label=Some label; pattern=Some pattern } -> Doc.concat
-    [ Doc.text "~"; token_doc label; Doc.text ":"; pattern_doc pattern ]
-  | Labeled _ -> unsupported "labeled parameter without label"
-  | Optional { label=Some label; pattern=None } -> Doc.concat [ Doc.text "?"; token_doc label ]
-  | Optional { label=Some label; pattern=Some pattern } -> Doc.concat
-    [ Doc.text "?"; token_doc label; Doc.text ":"; pattern_doc pattern ]
-  | Optional _ -> unsupported "optional parameter without label"
-  | OptionalDefault { label=Some label; pattern=Some pattern; default=Some default } -> Doc.concat
-    [
-      Doc.text "?";
-      token_doc label;
-      Doc.text ":(";
-      pattern_doc pattern;
-      Doc.space;
-      Doc.equal;
-      Doc.space;
-      expr_doc default;
-      Doc.rparen;
-    ]
-  | OptionalDefault _ -> unsupported "incomplete optional parameter default"
-  | Unknown _ -> unsupported "unsupported parameter"
+  | Labeled { label=Some label; pattern=None } ->
+      Doc.concat [ Doc.text "~"; token_doc label ]
+  | Labeled { label=Some label; pattern=Some pattern } ->
+      Doc.concat [ Doc.text "~"; token_doc label; Doc.text ":"; parameter_pattern_doc pattern ]
+  | Labeled _ ->
+      unsupported "labeled parameter without label"
+  | Optional { label=Some label; pattern=None } ->
+      Doc.concat [ Doc.text "?"; token_doc label ]
+  | Optional { label=Some label; pattern=Some pattern } ->
+      Doc.concat [ Doc.text "?"; token_doc label; Doc.text ":"; parameter_pattern_doc pattern ]
+  | Optional _ ->
+      unsupported "optional parameter without label"
+  | OptionalDefault { label=Some label; pattern=Some pattern; default=Some default } ->
+      let parts =
+        if parameter_pattern_matches_label label pattern then
+          [
+            Doc.text "?";
+            Doc.lparen;
+            pattern_doc pattern;
+            Doc.space;
+            Doc.equal;
+            Doc.space;
+            expr_doc default;
+            Doc.rparen;
+          ]
+        else
+          [
+            Doc.text "?";
+            token_doc label;
+            Doc.text ":(";
+            pattern_doc pattern;
+            Doc.space;
+            Doc.equal;
+            Doc.space;
+            expr_doc default;
+            Doc.rparen;
+          ]
+      in
+      Doc.concat parts
+  | OptionalDefault _ ->
+      unsupported "incomplete optional parameter default"
+  | Unknown _ ->
+      unsupported "unsupported parameter"
 
 and match_case_doc = fun match_case ->
   let view = Ast.MatchCase.view match_case in
@@ -924,6 +1019,14 @@ and expr_is_begin_block = fun expr ->
   | Some _ -> true
   | None -> false
 
+and expr_tuple_has_explicit_delimiter = fun expr ->
+  match Ast.Node.first_child_token expr ~kind:Kind.LPAREN, Ast.Node.first_child_token
+    expr
+    ~kind:Kind.BEGIN_KW with
+  | (Some _, _)
+  | (_, Some _) -> true
+  | None, None -> false
+
 and expr_binding_body_breaks_after_equal = fun expr ->
   match Ast.Expr.view expr with
   | If _
@@ -967,6 +1070,7 @@ and expr_case_body_breaks = fun expr ->
 and expr_infix_operand_doc = fun expr ->
   let view = Ast.Expr.view expr in
   match view with
+  | Tuple when expr_tuple_has_explicit_delimiter expr -> expr_doc_with_view expr view
   | Tuple
   | Sequence _
   | Let _
@@ -1100,7 +1204,18 @@ and expr_doc_with_view = fun expr (view: Ast.Expr.view) ->
   | If _ ->
       unsupported "incomplete if expression"
   | Tuple ->
-      child_expr_docs expr |> List.map ~fn:expr_doc |> Doc.join (Doc.concat [ Doc.comma; Doc.space ])
+      let items = child_expr_docs expr
+      |> List.map ~fn:expr_doc
+      |> Doc.join (Doc.concat [ Doc.comma; Doc.space ]) in
+      (
+        match Ast.Node.first_child_token expr ~kind:Kind.LPAREN, Ast.Node.first_child_token
+          expr
+          ~kind:Kind.BEGIN_KW with
+        | _, Some _ -> Doc.concat
+          [ Doc.text "begin"; Doc.line; Doc.indent 2 items; Doc.line; Doc.text "end" ]
+        | Some _, _ -> Doc.concat [ Doc.lparen; items; Doc.rparen ]
+        | None, None -> items
+      )
   | List ->
       child_expr_docs expr
       |> List.map ~fn:expr_doc

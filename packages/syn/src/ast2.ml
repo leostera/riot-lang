@@ -1961,6 +1961,13 @@ end = struct
     else
       None
 
+  let parameter_label_token = fun parameter ->
+    match first_ident_token parameter with
+    | Some token -> Some token
+    | None -> first_descendant_token_matching
+      parameter
+      ~matches:(fun kind -> Syntax_kind2.(kind = IDENT))
+
   let view = fun (parameter: parameter) ->
     match Node.kind parameter with
     | Syntax_kind2.LABELED_PARAM -> Labeled {
@@ -1972,7 +1979,7 @@ end = struct
       pattern = first_pattern_child parameter
     }
     | Syntax_kind2.OPTIONAL_PARAM_DEFAULT -> OptionalDefault {
-      label = first_ident_token parameter;
+      label = parameter_label_token parameter;
       pattern = first_pattern_child parameter;
       default = first_expr_child parameter
     }

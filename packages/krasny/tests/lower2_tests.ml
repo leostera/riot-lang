@@ -85,6 +85,7 @@ let assert_lower2_existing_fixture_subset = fun () ->
     Path.v "packages/krasny/tests/fixtures/0200_operators_and_parens.ml";
     Path.v "packages/krasny/tests/fixtures/0300_bindings_and_control_flow.ml";
     Path.v "packages/krasny/tests/fixtures/0400_functions_match_and_patterns.ml";
+    Path.v "packages/krasny/tests/fixtures/0500_labeled_and_optional_arguments.ml";
   ] in
   let rec loop = function
     | [] -> Ok ()
