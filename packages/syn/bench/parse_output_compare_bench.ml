@@ -108,15 +108,16 @@ let touch_ast2_token_option = fun seed (token: Ast2.Token.t option) ->
 
 let rec touch_ast2_expr_view = fun (expr: Ast2.Expr.t) ->
   match Ast2.Expr.view expr with
-  | Let { binding; body } ->
-      touch_ast2_node_option 11 binding;
+  | Let { first_binding; body } ->
+      touch_ast2_node_option 11 first_binding;
       touch_ast2_node_option 12 body
   | If { condition; then_branch; else_branch } ->
       touch_ast2_node_option 21 condition;
       touch_ast2_node_option 22 then_branch;
       touch_ast2_node_option 23 else_branch
-  | Match { scrutinee } ->
-      touch_ast2_node_option 31 scrutinee
+  | Match { scrutinee; first_case } ->
+      touch_ast2_node_option 31 scrutinee;
+      touch_ast2_node_option 32 first_case
   | Fun { body } ->
       touch_ast2_node_option 41 body
   | Apply { callee; argument } ->
@@ -129,7 +130,7 @@ let rec touch_ast2_expr_view = fun (expr: Ast2.Expr.t) ->
   | Prefix { operator; operand } ->
       touch_ast2_token_option 71 operator;
       touch_ast2_node_option 72 operand
-  | Path -> checksum := !checksum lxor 81
+  | Path { path } -> checksum := !checksum lxor 81 lxor path.Ast2.id
   | Literal -> checksum := !checksum lxor 82
   | Tuple -> checksum := !checksum lxor 83
   | List -> checksum := !checksum lxor 84
@@ -137,8 +138,11 @@ let rec touch_ast2_expr_view = fun (expr: Ast2.Expr.t) ->
   | Record -> checksum := !checksum lxor 86
   | Parenthesized { inner } ->
       touch_ast2_node_option 91 inner
+  | Error node
   | Unknown node ->
       checksum := !checksum lxor 101 lxor node.Ast2.id
+  | _ ->
+      checksum := !checksum lxor 109 lxor expr.Ast2.id
 
 let rec walk_ast2_node = fun (node: Ast2.Node.t) ->
   checksum := !checksum lxor node.Ast2.id;
