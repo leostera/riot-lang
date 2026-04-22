@@ -6,8 +6,11 @@ module Env: sig
   val empty: t
 
   val add_path: t -> path:string list -> free_names:string list -> t
+
   val add_binding: t -> path:string list -> free_names:string list -> exports:t -> t
+
   val add_scoped_binding: t -> path:string list -> free_names:string list -> exports:t -> t
+
   val open_path: t -> path:string list -> t
 end
 
@@ -18,6 +21,8 @@ type parse_error =
 val modules: t -> string list
 
 val env: t -> Env.t
+
+val exports: t -> Env.t
 
 val to_json: t -> Json.t
 

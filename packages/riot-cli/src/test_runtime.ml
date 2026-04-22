@@ -915,13 +915,35 @@ let runtime_output_packages = fun ~(workspace:Workspace.t) (output: Riot_build.B
     ~fn:(fun (pkg: Package.t) ->
       Option.is_some (Riot_build.Build_result.find_package output pkg.name))
 
+let reachable_runtime_packages = fun packages start_package_name ->
+  let find_package package_name =
+    List.find packages
+      ~fn:(fun (pkg: Package.t) ->
+        Package_name.equal pkg.name package_name)
+  in
+  let seen = Collections.HashSet.create () in
+  let rec visit acc package_name =
+    if Collections.HashSet.contains seen ~value:package_name then
+      acc
+    else
+      let _ = Collections.HashSet.insert seen ~value:package_name in
+      match find_package package_name with
+      | None -> acc
+      | Some (pkg: Package.t) ->
+          let acc = pkg :: acc in
+          List.fold_left
+            pkg.dependencies
+            ~init:acc
+            ~fn:(fun acc (dep: Package.dependency) -> visit acc dep.name)
+  in
+  visit [] start_package_name |> List.reverse
+
 let runtime_output_built_binaries = fun ~(workspace:Workspace.t) ~package_name ~profile ~(store:Riot_store.Store.t) (
   output: Riot_build.Build_result.t
 ) ->
-  runtime_output_packages ~workspace output |> List.find
+  let packages = runtime_output_packages ~workspace output in
+  reachable_runtime_packages packages package_name |> List.flat_map
     ~fn:(fun (pkg: Package.t) ->
-      Package_name.equal pkg.name package_name) |> function
-  | Some (pkg: Package.t) ->
       List.filter_map pkg.binaries
         ~fn:(fun (bin: Package.binary) ->
           match find_export_path_in_output
@@ -933,8 +955,7 @@ let runtime_output_built_binaries = fun ~(workspace:Workspace.t) ~package_name ~
             ~export_name:bin.name
             output with
           | Ok path -> Some Test.Context.{ name = bin.name; path }
-          | Error _ -> None)
-  | None -> []
+          | Error _ -> None))
 
 let run_suite_args = fun extra_args -> "run-tests" :: remove_json_args extra_args @ [ "--json" ]
 

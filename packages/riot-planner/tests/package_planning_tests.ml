@@ -6,7 +6,7 @@ module G = Graph.SimpleGraph
 let test_toolchain = Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
 |> Result.expect ~msg:"Failed to initialize toolchain"
 
-let planner_artifacts_version = "planner-artifacts:v14"
+let planner_artifacts_version = "planner-artifacts:v16"
 
 let legacy_planner_artifacts_version = "planner-artifacts:v12"
 
@@ -343,6 +343,33 @@ let find_create_library_node = fun action_graph ->
           | Riot_planner.Action.CreateLibrary _ -> true
           | _ -> false
         ))
+
+let find_action_node_by_source = fun action_graph source ->
+  List.find (Riot_planner.Action_graph.nodes action_graph)
+    ~fn:(fun (node: Riot_planner.Action_node.t) ->
+      List.any node.value.actions
+        ~fn:(
+          function
+          | Riot_planner.Action.CompileInterface { source=action_source; _ }
+          | Riot_planner.Action.CompileImplementation { source=action_source; _ } -> Path.equal
+            action_source
+            source
+          | _ -> false
+        ))
+
+let dependency_output_names = fun action_graph (node: Riot_planner.Action_node.t) ->
+  List.filter_map node.deps
+    ~fn:(fun dep_id ->
+      match G.get_node (Riot_planner.Action_graph.graph action_graph) dep_id with
+      | Some dep_node -> List.head dep_node.value.outs |> Option.map ~fn:Path.to_string
+      | None -> None)
+
+let dependency_output_names_flat = fun action_graph (node: Riot_planner.Action_node.t) ->
+  List.flat_map node.deps
+    ~fn:(fun dep_id ->
+      match G.get_node (Riot_planner.Action_graph.graph action_graph) dep_id with
+      | Some dep_node -> List.map dep_node.value.outs ~fn:Path.to_string
+      | None -> [])
 
 let require_order = fun items ~before ~after ->
   let rec find_index needle index items =
@@ -1824,6 +1851,46 @@ let test_kernel_create_library_dependencies_are_unique = fun _ctx ->
   | Ok result -> result
   | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
 
+let test_kernel_unix_addr_interface_depends_on_sibling_modules = fun _ctx ->
+  let check tempdir =
+    match load_repo_workspace () with
+    | Error _ as err -> err
+    | Ok repo_workspace ->
+        let workspace = clone_workspace_with_target
+          repo_workspace
+          ~target_dir:Path.(tempdir / Path.v "target") in
+        let store = Riot_store.Store.create ~workspace in
+        let session_id = Riot_model.Session_id.make () in
+        let profile = Riot_model.Profile.debug in
+        let build_ctx = Riot_model.Build_ctx.make ~session_id ~profile () in
+        match plan_kernel_runtime_graphs ~workspace ~store ~build_ctx with
+        | Error _ as err -> err
+        | Ok (_, _, action_graph, _, _) -> (
+            match find_action_node_by_source action_graph (Path.v "src/net/addr/unix.mli") with
+            | None -> Error "expected compile action for src/net/addr/unix.mli"
+            | Some unix_addr_node ->
+                let dep_outputs = dependency_output_names_flat action_graph unix_addr_node in
+                let has output = List.any dep_outputs ~fn:(String.equal output) in
+                if not (has "Kernel__System_error.cmi") then
+                  Error ("expected src/net/addr/unix.mli to depend on Kernel__System_error.cmi; deps: ["
+                  ^ String.concat ", " dep_outputs
+                  ^ "]")
+                else if not (has "Kernel__Result.cmi") then
+                  Error ("expected src/net/addr/unix.mli to depend on Kernel__Result.cmi; deps: ["
+                  ^ String.concat ", " dep_outputs
+                  ^ "]")
+                else if not (has "Kernel__Net__Socket_addr.cmi") then
+                  Error ("expected src/net/addr/unix.mli to depend on Kernel__Net__Socket_addr.cmi; deps: ["
+                  ^ String.concat ", " dep_outputs
+                  ^ "]")
+                else
+                  Ok ()
+          )
+  in
+  match Fs.with_tempdir ~prefix:"planner_kernel_unix_addr_interface_deps" check with
+  | Ok result -> result
+  | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
+
 let test_kernel_dependency_walk_snapshot = fun ctx ->
   match plan_kernel_package_with_fresh_store () with
   | Error err -> Error err
@@ -2034,6 +2101,7 @@ let tests =
     case ~size:Large "kernel plan bundle cache hit preserves live CreateLibrary order" test_kernel_plan_bundle_cache_hit_preserves_live_create_library_order;
     case ~size:Large "kernel CreateLibrary objects are topological" test_kernel_create_library_is_topological;
     case ~size:Large "kernel CreateLibrary dependencies are unique" test_kernel_create_library_dependencies_are_unique;
+    case ~size:Large "kernel unix addr interface depends on sibling modules" test_kernel_unix_addr_interface_depends_on_sibling_modules;
     case ~size:Large "kernel dependency walk snapshot" test_kernel_dependency_walk_snapshot;
     case ~size:Large "legacy kernel plan bundle is ignored after version bump" test_legacy_kernel_plan_bundle_is_ignored_after_version_bump;
     case "legacy krasny plan bundle with bad root module is ignored after version bump" test_legacy_krasny_plan_bundle_with_bad_root_module_is_ignored_after_version_bump;

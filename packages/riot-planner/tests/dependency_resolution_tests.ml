@@ -1,4 +1,5 @@
 open Std
+open Std.Result.Syntax
 open Riot_model
 module Test = Std.Test
 module G = Std.Graph.SimpleGraph
@@ -479,6 +480,400 @@ let test_module_graph_root_library_alias_depends_on_child_module = fun _ctx ->
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"
 
+let test_module_graph_opened_public_root_resolves_children_to_public_module = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"module_graph_opened_public_root"
+      (fun tmpdir ->
+        let package_root = Path.(tmpdir / Path.v "pkg") in
+        let src_dir = Path.(package_root / Path.v "src") in
+        let _ = Fs.create_dir_all src_dir |> Result.expect ~msg:"expected src dir creation to succeed" in
+        let _ = Fs.write "module Token = Token\n" Path.(src_dir / Path.v "syn.ml")
+        |> Result.expect ~msg:"expected syn.ml write to succeed" in
+        let _ = Fs.write "let value = 42\n" Path.(src_dir / Path.v "token.ml")
+        |> Result.expect ~msg:"expected token.ml write to succeed" in
+        let _ = Fs.write "open Syn\nlet _ = Token.value\n" Path.(src_dir / Path.v "main.ml")
+        |> Result.expect ~msg:"expected main.ml write to succeed" in
+        let package = Riot_model.Package.make ~name:(Package_name.from_string "syn"
+        |> Result.expect ~msg:"expected valid package name") ~path:package_root ~relative_path:(Path.v
+          "pkg") ~library:{ path = Path.v "src/syn.ml" } ~binaries:[
+          Riot_model.Package.{ name = "syn"; path = Path.v "src/main.ml" }
+        ]
+          ~sources:{
+            src = [ Path.v "src/syn.ml"; Path.v "src/token.ml"; Path.v "src/main.ml" ];
+            native = [];
+            tests = [];
+            examples = [];
+            bench = [];
+          }
+          ()
+        in
+        let workspace = Riot_model.Workspace.make_realized
+          ~root:tmpdir
+          ~packages:[ package ]
+          ~target_dir:"target"
+          () in
+        let toolchain = Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
+        |> Result.expect ~msg:"expected toolchain init to succeed" in
+        let graph_builder = make_src_graph_builder ~package_root ~package ~toolchain ~workspace in
+        match Riot_planner.Module_graph.wire_dependencies graph_builder with
+        | Error err -> Error (Riot_planner.Planning_error.to_string err)
+        | Ok () ->
+            let graph = Riot_planner.Module_graph.graph graph_builder in
+            let analyzed_modules = Riot_planner.Module_graph.analyzed_modules graph_builder in
+            let find_ml qualified_name =
+              let matches ((_id, (node: Riot_planner.Module_node.t G.node))) =
+                match node.value.kind with
+                | Riot_planner.Module_node.ML mod_ -> String.equal
+                  (Riot_model.Module.namespaced_name mod_)
+                  qualified_name
+                | _ -> false
+              in
+              match List.find (G.map graph ~fn:(fun x -> x)) ~fn:matches with
+              | Some (_node_id, node) -> Ok node
+              | None -> Error ("expected module not found: " ^ qualified_name)
+            in
+            let find_analyzed_module path =
+              let expected_suffix = "/" ^ path in
+              List.find analyzed_modules
+                ~fn:(fun (_id, analyzed) ->
+                  let display_path = Path.to_string analyzed.display_path in
+                  String.equal display_path path || String.ends_with ~suffix:expected_suffix display_path) |> Option.map
+                ~fn:(fun (_id, analyzed) -> analyzed)
+            in
+            match (
+              find_ml "Syn",
+              find_ml "Syn__Token",
+              find_ml "Syn__Main",
+              find_analyzed_module "src/main.ml"
+            ) with
+            | Ok syn_node, Ok token_node, Ok main_node, Some analyzed_main -> (
+                match analyzed_main.deps with
+                | Error err ->
+                    Error (
+                      "dependency analysis failed: " ^ (
+                        match err with
+                        | Syn.Deps.Parse_diagnostics diagnostics -> String.concat
+                          "; "
+                          (List.map diagnostics ~fn:Syn.Diagnostic.to_string)
+                        | Syn.Deps.Cst_builder_error build_err -> build_err.message
+                      )
+                    )
+                | Ok deps ->
+                    let modules = Syn.Deps.modules deps in
+                    let depends_on_syn = List.any main_node.deps ~fn:(G.Node_id.eq syn_node.id) in
+                    let depends_on_token = List.any main_node.deps ~fn:(G.Node_id.eq token_node.id) in
+                    if modules = [ "Syn" ] && depends_on_syn && not depends_on_token then
+                      Ok ()
+                    else
+                      Error ("expected opened child reference to resolve through public root only; modules=["
+                      ^ String.concat ", " modules
+                      ^ "], depends_on_syn="
+                      ^ Bool.to_string depends_on_syn
+                      ^ ", depends_on_token="
+                      ^ Bool.to_string depends_on_token
+                      ^ ")")
+              )
+            | (Error msg, _, _, _)
+            | (_, Error msg, _, _)
+            | (_, _, Error msg, _) ->
+                Error msg
+            | _ ->
+                Error "expected analyzed main module to exist")
+  with
+  | Ok x -> x
+  | Error _ -> Error "tempdir creation failed"
+
+let test_module_graph_implicit_alias_opens_resolve_nested_leaf_modules = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"module_graph_implicit_alias_opens_nested_leaf_modules"
+      (fun tmpdir ->
+        let package_root = Path.(tmpdir / Path.v "pkg") in
+        let src_dir = Path.(package_root / Path.v "src") in
+        let net_addr_dir = Path.(src_dir / Path.v "net/addr") in
+        let create_dir path = Fs.create_dir_all path
+        |> Result.expect ~msg:("expected dir creation to succeed: " ^ Path.to_string path) in
+        let write path contents = Fs.write contents path
+        |> Result.expect ~msg:("expected file write to succeed: " ^ Path.to_string path) in
+        let _ = create_dir net_addr_dir in
+        let _ = write Path.(src_dir / Path.v "kernel.ml") "module Net = Net\nmodule Result = Result\nmodule SystemError = System_error\n" in
+        let _ = write Path.(src_dir / Path.v "result.mli") "type ('value, 'error) t = ('value, 'error) result = | Ok of 'value | Error of 'error\n" in
+        let _ = write Path.(src_dir / Path.v "result.ml") "type ('value, 'error) t = ('value, 'error) result = | Ok of 'value | Error of 'error\n" in
+        let _ = write Path.(src_dir / Path.v "system_error.mli") "type t = Unknown\n" in
+        let _ = write Path.(src_dir / Path.v "system_error.ml") "type t = Unknown\n" in
+        let _ = write Path.(src_dir / Path.v "net/net.ml") "module Addr = Addr\nmodule Socket_addr = Socket_addr\n" in
+        let _ = write Path.(src_dir / Path.v "net/socket_addr.mli") "type t\n" in
+        let _ = write Path.(src_dir / Path.v "net/socket_addr.ml") "type t = int\n" in
+        let _ = write Path.(src_dir / Path.v "net/addr/addr.ml") "module Unix = Unix\n" in
+        let _ = write Path.(src_dir / Path.v "net/addr/unix.mli") "type error =\n  | System of System_error.t\nval resolve_stream: host:string -> port:int -> (Socket_addr.t array, error) Result.t\n" in
+        let package = Riot_model.Package.make ~name:(Package_name.from_string "kernel"
+        |> Result.expect ~msg:"expected valid package name") ~path:package_root ~relative_path:(Path.v
+          "pkg") ~library:{ path = Path.v "src/kernel.ml" }
+          ~sources:{
+            src =
+              [
+                Path.v "src/kernel.ml";
+                Path.v "src/result.mli";
+                Path.v "src/result.ml";
+                Path.v "src/system_error.mli";
+                Path.v "src/system_error.ml";
+                Path.v "src/net/net.ml";
+                Path.v "src/net/socket_addr.mli";
+                Path.v "src/net/socket_addr.ml";
+                Path.v "src/net/addr/addr.ml";
+                Path.v "src/net/addr/unix.mli";
+              ];
+            native = [];
+            tests = [];
+            examples = [];
+            bench = [];
+          }
+          ()
+        in
+        let workspace = Riot_model.Workspace.make_realized
+          ~root:tmpdir
+          ~packages:[ package ]
+          ~target_dir:"target"
+          () in
+        let toolchain = Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
+        |> Result.expect ~msg:"expected toolchain init to succeed" in
+        let graph_builder = make_src_graph_builder ~package_root ~package ~toolchain ~workspace in
+        match Riot_planner.Module_graph.wire_dependencies graph_builder with
+        | Error err -> Error (Riot_planner.Planning_error.to_string err)
+        | Ok () ->
+            let graph = Riot_planner.Module_graph.graph graph_builder in
+            let analyzed_modules = Riot_planner.Module_graph.analyzed_modules graph_builder in
+            let find_ml qualified_name =
+              let matches ((_id, (node: Riot_planner.Module_node.t G.node))) =
+                match node.value.kind with
+                | Riot_planner.Module_node.ML mod_ -> String.equal
+                  (Riot_model.Module.namespaced_name mod_)
+                  qualified_name
+                | _ -> false
+              in
+              match List.find (G.map graph ~fn:(fun x -> x)) ~fn:matches with
+              | Some (_node_id, node) -> Ok node
+              | None -> Error ("expected module not found: " ^ qualified_name)
+            in
+            let find_mli qualified_name =
+              let matches ((_id, (node: Riot_planner.Module_node.t G.node))) =
+                match node.value.kind with
+                | Riot_planner.Module_node.MLI mod_ -> String.equal
+                  (Riot_model.Module.namespaced_name mod_)
+                  qualified_name
+                | _ -> false
+              in
+              match List.find (G.map graph ~fn:(fun x -> x)) ~fn:matches with
+              | Some (_node_id, node) -> Ok node
+              | None -> Error ("expected module not found: " ^ qualified_name)
+            in
+            let find_analyzed_module path =
+              let expected_suffix = "/" ^ path in
+              List.find analyzed_modules
+                ~fn:(fun (_id, analyzed) ->
+                  let display_path = Path.to_string analyzed.display_path in
+                  String.equal display_path path || String.ends_with ~suffix:expected_suffix display_path) |> Option.map
+                ~fn:(fun (_id, analyzed) -> analyzed)
+            in
+            match (
+              find_mli "Kernel__Net__Addr__Unix",
+              find_ml "Kernel__Result",
+              find_ml "Kernel__System_error",
+              find_ml "Kernel__Net__Socket_addr",
+              find_analyzed_module "src/net/addr/unix.mli"
+            ) with
+            | Ok unix_node, Ok result_node, Ok system_error_node, Ok socket_addr_node, Some analyzed_unix -> (
+                match analyzed_unix.deps with
+                | Error err ->
+                    Error (
+                      "dependency analysis failed: " ^ (
+                        match err with
+                        | Syn.Deps.Parse_diagnostics diagnostics -> String.concat
+                          "; "
+                          (List.map diagnostics ~fn:Syn.Diagnostic.to_string)
+                        | Syn.Deps.Cst_builder_error build_err -> build_err.message
+                      )
+                    )
+                | Ok deps ->
+                    let modules = Syn.Deps.modules deps in
+                    let depends_on_result = List.any unix_node.deps ~fn:(G.Node_id.eq result_node.id) in
+                    let depends_on_system_error = List.any
+                      unix_node.deps
+                      ~fn:(G.Node_id.eq system_error_node.id) in
+                    let depends_on_socket_addr = List.any
+                      unix_node.deps
+                      ~fn:(G.Node_id.eq socket_addr_node.id) in
+                    if
+                      modules = [ "Result"; "Socket_addr"; "System_error" ]
+                      && depends_on_result
+                      && depends_on_system_error
+                      && depends_on_socket_addr
+                    then
+                      Ok ()
+                    else
+                      Error ("expected implicit alias opens to resolve nested leaf modules; modules=["
+                      ^ String.concat ", " modules
+                      ^ "], depends_on_result="
+                      ^ Bool.to_string depends_on_result
+                      ^ ", depends_on_system_error="
+                      ^ Bool.to_string depends_on_system_error
+                      ^ ", depends_on_socket_addr="
+                      ^ Bool.to_string depends_on_socket_addr
+                      ^ ")")
+              )
+            | (Error msg, _, _, _, _)
+            | (_, Error msg, _, _, _)
+            | (_, _, Error msg, _, _)
+            | (_, _, _, Error msg, _) ->
+                Error msg
+            | _ ->
+                Error "expected analyzed unix.mli module to exist")
+  with
+  | Ok x -> x
+  | Error _ -> Error "tempdir creation failed"
+
+let test_module_graph_implicit_root_alias_resolves_public_child_root = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"module_graph_implicit_root_alias_public_child_root"
+      (fun tmpdir ->
+        let package_root = Path.(tmpdir / Path.v "pkg") in
+        let src_dir = Path.(package_root / Path.v "src") in
+        let fs_file_dir = Path.(src_dir / Path.v "fs/file") in
+        let process_dir = Path.(src_dir / Path.v "process") in
+        let create_dir path = Fs.create_dir_all path
+        |> Result.expect ~msg:("expected dir creation to succeed: " ^ Path.to_string path) in
+        let write path contents = Fs.write contents path
+        |> Result.expect ~msg:("expected file write to succeed: " ^ Path.to_string path) in
+        let _ = create_dir fs_file_dir in
+        let _ = create_dir process_dir in
+        let _ = write Path.(src_dir / Path.v "kernel.ml") "module Fs = Fs\nmodule Process = Process\nmodule SystemError = System_error\n" in
+        let _ = write Path.(src_dir / Path.v "system_error.mli") "type t = Unknown\n" in
+        let _ = write Path.(src_dir / Path.v "system_error.ml") "type t = Unknown\n" in
+        let _ = write Path.(src_dir / Path.v "fs/fs.ml") "module File = File\n" in
+        let _ = write Path.(src_dir / Path.v "fs/file/file.mli") "type t\ntype error\n" in
+        let _ = write Path.(src_dir / Path.v "fs/file/file.ml") "type t = int\ntype error = unit\n" in
+        let _ = write Path.(src_dir / Path.v "process/process.mli") "type error =\n  | File of Fs.File.error\n  | System of System_error.t\n" in
+        let package = Riot_model.Package.make ~name:(Package_name.from_string "kernel"
+        |> Result.expect ~msg:"expected valid package name") ~path:package_root ~relative_path:(Path.v
+          "pkg") ~library:{ path = Path.v "src/kernel.ml" }
+          ~sources:{
+            src = [
+              Path.v "src/kernel.ml";
+              Path.v "src/system_error.mli";
+              Path.v "src/system_error.ml";
+              Path.v "src/fs/fs.ml";
+              Path.v "src/fs/file/file.mli";
+              Path.v "src/fs/file/file.ml";
+              Path.v "src/process/process.mli";
+            ];
+            native = [];
+            tests = [];
+            examples = [];
+            bench = [];
+          }
+          ()
+        in
+        let workspace = Riot_model.Workspace.make_realized
+          ~root:tmpdir
+          ~packages:[ package ]
+          ~target_dir:"target"
+          () in
+        let toolchain = Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
+        |> Result.expect ~msg:"expected toolchain init to succeed" in
+        let graph_builder = make_src_graph_builder ~package_root ~package ~toolchain ~workspace in
+        match Riot_planner.Module_graph.wire_dependencies graph_builder with
+        | Error err -> Error (Riot_planner.Planning_error.to_string err)
+        | Ok () ->
+            let graph = Riot_planner.Module_graph.graph graph_builder in
+            let analyzed_modules = Riot_planner.Module_graph.analyzed_modules graph_builder in
+            let find_ml qualified_name =
+              let matches ((_id, (node: Riot_planner.Module_node.t G.node))) =
+                match node.value.kind with
+                | Riot_planner.Module_node.ML mod_ -> String.equal
+                  (Riot_model.Module.namespaced_name mod_)
+                  qualified_name
+                | _ -> false
+              in
+              match List.find (G.map graph ~fn:(fun x -> x)) ~fn:matches with
+              | Some (_node_id, node) -> Ok node
+              | None -> Error ("expected module not found: " ^ qualified_name)
+            in
+            let find_mli qualified_name =
+              let matches ((_id, (node: Riot_planner.Module_node.t G.node))) =
+                match node.value.kind with
+                | Riot_planner.Module_node.MLI mod_ -> String.equal
+                  (Riot_model.Module.namespaced_name mod_)
+                  qualified_name
+                | _ -> false
+              in
+              match List.find (G.map graph ~fn:(fun x -> x)) ~fn:matches with
+              | Some (_node_id, node) -> Ok node
+              | None -> Error ("expected module not found: " ^ qualified_name)
+            in
+            let find_analyzed_module path =
+              let expected_suffix = "/" ^ path in
+              List.find analyzed_modules
+                ~fn:(fun (_id, analyzed) ->
+                  let display_path = Path.to_string analyzed.display_path in
+                  String.equal display_path path || String.ends_with ~suffix:expected_suffix display_path) |> Option.map
+                ~fn:(fun (_id, analyzed) -> analyzed)
+            in
+            match (
+              find_mli "Kernel__Process",
+              find_ml "Kernel__Fs",
+              find_ml "Kernel__Fs__File",
+              find_ml "Kernel__System_error",
+              find_analyzed_module "src/process/process.mli"
+            ) with
+            | Ok process_node, Ok fs_node, Ok fs_file_node, Ok system_error_node, Some analyzed_process -> (
+                match analyzed_process.deps with
+                | Error err ->
+                    Error (
+                      "dependency analysis failed: " ^ (
+                        match err with
+                        | Syn.Deps.Parse_diagnostics diagnostics -> String.concat
+                          "; "
+                          (List.map diagnostics ~fn:Syn.Diagnostic.to_string)
+                        | Syn.Deps.Cst_builder_error build_err -> build_err.message
+                      )
+                    )
+                | Ok deps ->
+                    let modules = Syn.Deps.modules deps in
+                    let depends_on_fs = List.any process_node.deps ~fn:(G.Node_id.eq fs_node.id) in
+                    let depends_on_fs_file = List.any
+                      process_node.deps
+                      ~fn:(G.Node_id.eq fs_file_node.id) in
+                    let depends_on_system_error = List.any
+                      process_node.deps
+                      ~fn:(G.Node_id.eq system_error_node.id) in
+                    if
+                      modules = [ "Fs"; "System_error" ]
+                      && depends_on_fs
+                      && not depends_on_fs_file
+                      && depends_on_system_error
+                    then
+                      Ok ()
+                    else
+                      Error ("expected implicit root alias to resolve through public child root; modules=["
+                      ^ String.concat ", " modules
+                      ^ "], depends_on_fs="
+                      ^ Bool.to_string depends_on_fs
+                      ^ ", depends_on_fs_file="
+                      ^ Bool.to_string depends_on_fs_file
+                      ^ ", depends_on_system_error="
+                      ^ Bool.to_string depends_on_system_error
+                      ^ ")")
+              )
+            | (Error msg, _, _, _, _)
+            | (_, Error msg, _, _, _)
+            | (_, _, Error msg, _, _)
+            | (_, _, _, Error msg, _) ->
+                Error msg
+            | _ ->
+                Error "expected analyzed process.mli module to exist")
+  with
+  | Ok x -> x
+  | Error _ -> Error "tempdir creation failed"
+
 let test_module_graph_resolves_deeply_nested_modules_namespace_first = fun _ctx ->
   match
     Fs.with_tempdir ~prefix:"module_graph_deeply_nested_modules"
@@ -763,6 +1158,9 @@ let tests =
     case "module graph uses explicit root library path" test_module_graph_uses_explicit_root_library_path;
     case "module graph uses explicit root library path despite case mismatch" test_module_graph_uses_explicit_root_library_path_case_insensitively;
     case "module graph root library alias depends on child module" test_module_graph_root_library_alias_depends_on_child_module;
+    case "module graph opened public root resolves children to public module" test_module_graph_opened_public_root_resolves_children_to_public_module;
+    case "module graph implicit alias opens resolve nested leaf modules" test_module_graph_implicit_alias_opens_resolve_nested_leaf_modules;
+    case "module graph implicit root alias resolves public child root" test_module_graph_implicit_root_alias_resolves_public_child_root;
     case "module graph resolves nested local unix backend" test_module_graph_resolves_nested_local_unix_backend;
     case "module graph resolves deeply nested modules namespace-first" test_module_graph_resolves_deeply_nested_modules_namespace_first;
     case "module graph keeps nested sibling dependency across allowed source orders" test_module_graph_keeps_nested_sibling_dependency_across_allowed_source_orders;

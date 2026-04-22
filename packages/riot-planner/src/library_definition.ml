@@ -221,6 +221,8 @@ let library_module_name = fun t -> t.library_module_name
 
 let child_files = fun t -> t.child_files
 
+let child_dirs = fun t -> t.child_dirs
+
 let child_modules = fun t -> t.child_modules
 
 let has_concrete_ml = fun t -> t.has_concrete_ml

@@ -162,68 +162,72 @@ let plan_node = fun (input: plan_input) ->
         let module_graph = Module_graph.graph graph_builder in
         let analyzed_modules = Module_graph.analyzed_modules graph_builder in
         (
-          match G.topo_sort module_graph with
-          | Error cycle_ids ->
-              let cycle =
-                List.filter_map cycle_ids
-                  ~fn:(fun node_id ->
-                    match G.get_node module_graph node_id with
-                    | None -> None
-                    | Some node ->
-                        Some (
-                          match node.value.kind with
-                          | Module_node.ML m
-                          | Module_node.MLI m -> Module.module_name m |> Module_name.to_string
-                          | Module_node.Library { name; _ } -> "Library(" ^ name ^ ")"
-                          | Module_node.Binary { name; _ } -> "Binary(" ^ name ^ ")"
-                          | Module_node.Native _ -> "Native"
-                          | Module_node.C -> "C"
-                          | Module_node.H -> "H"
-                          | Module_node.Root -> "Root"
-                          | Module_node.Other s -> "Other(" ^ s ^ ")"
-                        ))
-                |> List.reverse
-              in
-              Error (Planning_error.CyclicDependency { cycle })
-          | Ok sorted_modules -> (
-              let action_graph, _outputs = Action_graph.from_module_graph
-                ~analyzed_modules
-                ~package:input.package
-                ~profile:input.profile
-                ~ctx:input.ctx
-                ~toolchain:input.toolchain
-                ~store:input.store
-                ~depset:input.depset
-                ~needs_unix
-                ~needs_dynlink
-                module_graph in
-              let sources =
-                sorted_modules
-                |> List.map
-                  ~fn:(fun (node: Module_node.t G.node) ->
-                    match node.value.kind with
-                    | Native { files } ->
-                        List.map files
-                          ~fn:(fun path ->
-                            if Path.is_absolute path then
-                              path
-                            else
-                              Path.(input.package.path / path))
-                    | _ -> (
-                        match node.value.file with
-                        | Concrete path when Path.to_string path != "" ->
-                            let abs_path =
-                              if Path.is_absolute path then
-                                path
-                              else
-                                Path.(input.package.path / path)
-                            in
-                            [ abs_path ]
-                        | _ -> []
-                      ))
-                |> List.concat
-              in
-              Ok { sources; module_graph; analyzed_modules; action_graph }
+          match Package_layout_validator.validate ~package:input.package ~module_graph ~analyzed_modules with
+          | Error _ as err -> err
+          | Ok () -> (
+              match G.topo_sort module_graph with
+              | Error cycle_ids ->
+                  let cycle =
+                    List.filter_map cycle_ids
+                      ~fn:(fun node_id ->
+                        match G.get_node module_graph node_id with
+                        | None -> None
+                        | Some node ->
+                            Some (
+                              match node.value.kind with
+                              | Module_node.ML m
+                              | Module_node.MLI m -> Module.module_name m |> Module_name.to_string
+                              | Module_node.Library { name; _ } -> "Library(" ^ name ^ ")"
+                              | Module_node.Binary { name; _ } -> "Binary(" ^ name ^ ")"
+                              | Module_node.Native _ -> "Native"
+                              | Module_node.C -> "C"
+                              | Module_node.H -> "H"
+                              | Module_node.Root -> "Root"
+                              | Module_node.Other s -> "Other(" ^ s ^ ")"
+                            ))
+                    |> List.reverse
+                  in
+                  Error (Planning_error.CyclicDependency { cycle })
+              | Ok sorted_modules -> (
+                  let action_graph, _outputs = Action_graph.from_module_graph
+                    ~analyzed_modules
+                    ~package:input.package
+                    ~profile:input.profile
+                    ~ctx:input.ctx
+                    ~toolchain:input.toolchain
+                    ~store:input.store
+                    ~depset:input.depset
+                    ~needs_unix
+                    ~needs_dynlink
+                    module_graph in
+                  let sources =
+                    sorted_modules
+                    |> List.map
+                      ~fn:(fun (node: Module_node.t G.node) ->
+                        match node.value.kind with
+                        | Native { files } ->
+                            List.map files
+                              ~fn:(fun path ->
+                                if Path.is_absolute path then
+                                  path
+                                else
+                                  Path.(input.package.path / path))
+                        | _ -> (
+                            match node.value.file with
+                            | Concrete path when Path.to_string path != "" ->
+                                let abs_path =
+                                  if Path.is_absolute path then
+                                    path
+                                  else
+                                    Path.(input.package.path / path)
+                                in
+                                [ abs_path ]
+                            | _ -> []
+                          ))
+                    |> List.concat
+                  in
+                  Ok { sources; module_graph; analyzed_modules; action_graph }
+                )
             )
         )
   with

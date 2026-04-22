@@ -34,14 +34,14 @@ let template = fun (modules: Module.t list) ->
 
 let make_node = fun (ns: Namespace.t) (modules: Module.t list) ->
   let ns_prefix = Namespace.to_string ns in
-  let filename =
+  let generated_path =
     if ns_prefix = "" then
       "Aliases.ml-gen"
     else
       ns_prefix ^ "__Aliases.ml-gen"
   in
-  let path = Path.v filename in
-  let mod_ = Module.make ~namespace:Namespace.empty ~filename:path in
+  let path = Path.v generated_path in
+  let mod_ = Module.make ~namespace:ns ~filename:(Path.v "Aliases.ml-gen") in
   let file = Module_node.Generated { path; contents = template modules } in
   let kind = Module_node.ML mod_ in
   { Module_node.file; open_modules = []; kind }

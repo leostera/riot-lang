@@ -45,6 +45,23 @@ let dependency_output_names = fun graph (node: Riot_planner.Action_node.t) ->
       | Some dep_node -> List.head dep_node.value.outs |> Option.map ~fn:Path.to_string
       | None -> None)
 
+let dependency_output_names_flat = fun graph (node: Riot_planner.Action_node.t) ->
+  List.filter_map node.deps
+    ~fn:(fun dep_id ->
+      G.get_node (Riot_planner.Action_graph.graph graph) dep_id) |> List.map
+    ~fn:(fun (dep_node: Riot_planner.Action_node.t) -> List.map dep_node.value.outs ~fn:Path.to_string) |> List.concat
+
+let find_compile_action_node_by_source = fun graph source ->
+  Riot_planner.Action_graph.nodes graph |> List.find
+    ~fn:(fun (node: Riot_planner.Action_node.t) ->
+      List.any node.value.actions
+        ~fn:(fun action ->
+          match action with
+          | Riot_planner.Action.CompileImplementation { source=action_source; _ } -> Path.equal
+            action_source
+            source
+          | _ -> false))
+
 let test_action_graph_json_round_trip_preserves_dependencies = fun _ctx ->
   let package = make_package "pkg" in
   let graph = Riot_planner.Action_graph.create () in
@@ -926,7 +943,6 @@ let test_generated_library_interface_depends_on_child_module_interfaces = fun _c
           ~package_name:"rootexportdemo"
           ~library:{ path = Path.v "src/rootexportdemo.ml" }
           ~files:[
-            ("src/rootexportdemo.ml", "let version = 1\n");
             ("src/framing.mli", "val helper: int\n");
             ("src/framing.ml", "let helper = 2\n");
           ]
@@ -956,7 +972,6 @@ let test_generated_library_interface_with_multiple_children_depends_on_child_mod
           ~package_name:"riot_doc"
           ~library:{ path = Path.v "src/riot_doc.ml" }
           ~files:[
-            ("src/riot_doc.ml", "let version = 1\n");
             ("src/doctree.mli", "val render: int\n");
             ("src/doctree.ml", "let render = 1\n");
             ("src/html.mli", "val emit: int\n");
@@ -992,6 +1007,130 @@ let test_generated_library_interface_with_multiple_children_depends_on_child_mod
   with
   | Ok result -> result
   | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
+
+let test_nested_generated_library_interface_depends_on_public_child_modules = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"planner_nested_generated_library_interface_deps"
+      (fun tmpdir ->
+        match plan_action_graph_for_package
+          ~tmpdir
+          ~package_name:"stdish"
+          ~library:{ path = Path.v "src/stdish.ml" }
+          ~files:[
+            ("src/stdish.ml", "module Crypto = Crypto\n");
+            ("src/crypto/crypto.ml", "module Md5 = Algo.Md5\n");
+            ("src/crypto/algo/md5.ml", "let hash = 1\n");
+          ]
+          () with
+        | Error _ as err -> err
+        | Ok (_package, action_graph) ->
+            match find_action_node_by_output action_graph "Stdish__Crypto__Algo.cmti" with
+            | None -> Error "expected generated nested interface compile action"
+            | Some algo_intf_node ->
+                let dep_outputs = dependency_output_names action_graph algo_intf_node in
+                if List.any dep_outputs ~fn:(String.equal "Stdish__Crypto__Algo__Md5.cmt") then
+                  Ok ()
+                else
+                  Error ("expected generated nested interface to depend on child module implementation; deps: ["
+                  ^ String.concat ", " dep_outputs
+                  ^ "]"))
+  with
+  | Ok result -> result
+  | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
+
+let test_real_kernel_unix_addr_interface_keeps_sibling_modules = fun _ctx ->
+  let package_root = Path.v "packages/kernel" in
+  let package = Riot_model.Package.make ~name:(Package_name.from_string "kernel"
+  |> Result.expect ~msg:"expected valid package name") ~path:package_root ~relative_path:(Path.v "packages/kernel") ~library:{
+    path = Path.v "src/kernel.ml"
+  }
+    ~sources:{
+      src =
+        [
+          Path.v "src/kernel.ml";
+          Path.v "src/result.mli";
+          Path.v "src/result.ml";
+          Path.v "src/system_error.mli";
+          Path.v "src/system_error.ml";
+          Path.v "src/net/net.ml";
+          Path.v "src/net/socket_addr/socket_addr.mli";
+          Path.v "src/net/socket_addr/socket_addr.ml";
+          Path.v "src/net/addr/addr.mli";
+          Path.v "src/net/addr/addr.ml";
+          Path.v "src/net/addr/unix.mli";
+        ];
+      native = [];
+      tests = [];
+      examples = [];
+      bench = [];
+    }
+    ()
+  in
+  let workspace = Riot_model.Workspace.make_realized
+    ~root:(Path.v ".")
+    ~packages:[ package ]
+    ~target_dir:"target"
+    () in
+  let store = Riot_store.Store.create ~workspace in
+  let build_ctx = Riot_model.Build_ctx.make
+    ~session_id:(Riot_model.Session_id.of_string "test-session")
+    ~profile:Riot_model.Profile.release
+    () in
+  let graph_builder = Riot_planner.Module_graph.create
+    Riot_planner.Module_graph.{
+      root = package_root;
+      source_groups = [
+        Riot_planner.Module_graph.{
+          source_dir = Path.v "src";
+          allowed_source_files = package.sources.src;
+          root_mode = Riot_planner.Module_graph.Library_root {
+            library_name = Package_name.to_string package.name
+          };
+          namespace = Namespace.empty
+        }
+      ];
+      package;
+      toolchain = test_toolchain;
+      workspace;
+    }
+  in
+  match Riot_planner.Module_graph.wire_dependencies graph_builder with
+  | Error err -> Error ("dependency wiring failed: " ^ Riot_planner.Planning_error.to_string err)
+  | Ok () ->
+      Riot_planner.Module_graph.add_library_node
+        graph_builder
+        ~name:(Package_name.to_string package.name)
+        ~includes:[];
+      let action_graph, _ = Riot_planner.Action_graph.from_module_graph
+        ~analyzed_modules:(Riot_planner.Module_graph.analyzed_modules graph_builder)
+        ~package
+        ~profile:Riot_model.Profile.release
+        ~ctx:build_ctx
+        ~toolchain:test_toolchain
+        ~store
+        ~depset:[]
+        ~needs_unix:false
+        ~needs_dynlink:false
+        (Riot_planner.Module_graph.graph graph_builder) in
+      match find_action_node_by_output action_graph "Kernel__Net__Addr__Unix.cmti" with
+      | None -> Error "expected compile action for Kernel__Net__Addr__Unix.cmti"
+      | Some unix_addr_node ->
+          let dep_outputs = dependency_output_names_flat action_graph unix_addr_node in
+          let has output = List.any dep_outputs ~fn:(String.equal output) in
+          if not (has "Kernel__System_error.cmi") then
+            Error ("expected Kernel__Net__Addr__Unix.cmti to depend on Kernel__System_error.cmi; deps: ["
+            ^ String.concat ", " dep_outputs
+            ^ "]")
+          else if not (has "Kernel__Result.cmi") then
+            Error ("expected Kernel__Net__Addr__Unix.cmti to depend on Kernel__Result.cmi; deps: ["
+            ^ String.concat ", " dep_outputs
+            ^ "]")
+          else if not (has "Kernel__Net__Socket_addr.cmi") then
+            Error ("expected Kernel__Net__Addr__Unix.cmti to depend on Kernel__Net__Socket_addr.cmi; deps: ["
+            ^ String.concat ", " dep_outputs
+            ^ "]")
+          else
+            Ok ()
 
 let test_binary_actions_include_target_private_modules = fun _ctx ->
   match
@@ -1149,7 +1288,7 @@ let test_executable_actions_do_not_duplicate_library_owned_modules = fun _ctx ->
           ~files:[
             ("src/shareddemo.ml", "module Shared = Shared\n");
             ("src/shared.ml", "let value = 1\n");
-            ("src/main.ml", "let () = ignore Shared.value\n");
+            ("src/main.ml", "let () = ignore Shareddemo.Shared.value\n");
           ]
           () with
         | Error _ as err -> err
@@ -1238,7 +1377,7 @@ let test_binary_actions_without_private_helpers = fun _ctx ->
           ~files:[
             ("src/nohelperdemo.ml", "module Shared = Shared\n");
             ("src/shared.ml", "let value = 1\n");
-            ("src/main.ml", "let () = ignore Shared.value\n");
+            ("src/main.ml", "let () = ignore Nohelperdemo.Shared.value\n");
           ]
           () with
         | Error _ as err -> err
@@ -1433,7 +1572,7 @@ let test_private_helper_can_depend_on_library_owned_module = fun _ctx ->
           ~files:[
             ("src/librarymixdemo.ml", "module A = A\n");
             ("src/a.ml", "let value = 10\n");
-            ("src/b.ml", "let value = A.value + 20\n");
+            ("src/b.ml", "let value = Librarymixdemo.A.value + 20\n");
             ("src/main.ml", "let () = ignore B.value\n");
           ]
           () with
@@ -1523,6 +1662,74 @@ let test_private_helper_links_only_into_reaching_binary = fun _ctx ->
   | Ok result -> result
   | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
 
+let test_binary_compile_depends_on_public_library_root_not_internal_modules = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"planner_binary_public_root_dependency"
+      (fun tmpdir ->
+        match plan_action_graph_for_package
+          ~tmpdir
+          ~package_name:"berrybot"
+          ~library:{ path = Path.v "src/berrybot.ml" }
+          ~binaries:[ ("berrybot", "src/main.ml") ]
+          ~files:[
+            ("src/berrybot.ml", "module A = A\n");
+            ("src/a.ml", "let value = 10\n");
+            ("src/main.ml", "let () = ignore Berrybot.A.value\n");
+          ]
+          () with
+        | Error _ as err -> err
+        | Ok (_package, action_graph) -> (
+            match find_compile_action_node_by_source action_graph (Path.v "src/main.ml") with
+            | None -> Error "expected compile action for main.ml"
+            | Some main_node ->
+                let dep_outputs = dependency_output_names action_graph main_node in
+                if List.any dep_outputs ~fn:(String.equal "A.cmt") then
+                  Error ("did not expect main.ml to depend directly on internal module A; deps: ["
+                  ^ String.concat ", " dep_outputs
+                  ^ "]")
+                else if List.any dep_outputs ~fn:(String.equal "Berrybot.cmt") then
+                  Ok ()
+                else
+                  Error ("expected main.ml to depend on the public Berrybot module; deps: ["
+                  ^ String.concat ", " dep_outputs
+                  ^ "]")
+          ))
+  with
+  | Ok result -> result
+  | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
+
+let test_binary_compile_does_not_reach_internal_library_modules_directly = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"planner_binary_internal_library_dependency"
+      (fun tmpdir ->
+        match plan_action_graph_for_package
+          ~tmpdir
+          ~package_name:"berrybot"
+          ~library:{ path = Path.v "src/berrybot.ml" }
+          ~binaries:[ ("berrybot", "src/main.ml") ]
+          ~files:[
+            ("src/berrybot.ml", "module A = A\n");
+            ("src/a.ml", "let value = 10\n");
+            ("src/main.ml", "let () = ignore A.value\n");
+          ]
+          () with
+        | Error _ as err -> err
+        | Ok (_package, action_graph) -> (
+            match find_compile_action_node_by_source action_graph (Path.v "src/main.ml") with
+            | None -> Error "expected compile action for main.ml"
+            | Some main_node ->
+                let dep_outputs = dependency_output_names action_graph main_node in
+                if List.any dep_outputs ~fn:(String.equal "A.cmt") then
+                  Error ("did not expect main.ml to depend directly on internal module A; deps: ["
+                  ^ String.concat ", " dep_outputs
+                  ^ "]")
+                else
+                  Ok ()
+          ))
+  with
+  | Ok result -> result
+  | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
+
 let tests =
   Test.[
     case "action graph json round-trip preserves edges" test_action_graph_json_round_trip_preserves_dependencies;
@@ -1534,10 +1741,14 @@ let tests =
     case "library actions exclude unreachable modules" test_library_actions_exclude_unreachable_modules;
     case "generated library interfaces depend on child module interfaces" test_generated_library_interface_depends_on_child_module_interfaces;
     case "generated library interfaces with multiple children depend on child module interfaces" test_generated_library_interface_with_multiple_children_depends_on_child_module_interfaces;
+    case "nested generated library interfaces depend on public child modules" test_nested_generated_library_interface_depends_on_public_child_modules;
+    case ~size:Large "real kernel unix addr interface keeps sibling modules" test_real_kernel_unix_addr_interface_keeps_sibling_modules;
     case "binary actions without private helpers stay thin" test_binary_actions_without_private_helpers;
     case "binary actions include target-private modules" test_binary_actions_include_target_private_modules;
     case "binary actions include multiple private helpers" test_binary_actions_include_multiple_private_helpers;
     case "binary actions follow transitive private reachability" test_binary_actions_follow_transitive_private_reachability;
+    case "binary compile depends on the public library root" test_binary_compile_depends_on_public_library_root_not_internal_modules;
+    case "binary compile does not reach internal library modules directly" test_binary_compile_does_not_reach_internal_library_modules_directly;
     case "multiple binaries can share a private helper" test_multiple_binaries_share_private_helper;
     case "multiple binaries keep private helpers separate" test_multiple_binaries_keep_private_helpers_separate;
     case "private helper can depend on library-owned module" test_private_helper_can_depend_on_library_owned_module;

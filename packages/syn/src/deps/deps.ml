@@ -44,7 +44,10 @@ module Env = struct
 
   let rec rebind = fun free_names ->
     function
-    | Node (_, children) -> Node (free_names, List.map children ~fn:(fun (name, child) -> (name, rebind free_names child)))
+    | Node (_, children) -> Node (
+      free_names,
+      List.map children ~fn:(fun (name, child) -> (name, rebind free_names child))
+    )
 
   let rebind_exports = fun free_names exports ->
     List.map exports ~fn:(fun (name, node) -> (name, rebind free_names node))
@@ -72,7 +75,8 @@ module Env = struct
 
   let rec add_binding = fun env ~path ~free_names ~exports ->
     match path with
-    | [] -> env
+    | [] ->
+        env
     | [ segment ] ->
         let existing =
           match
@@ -102,7 +106,8 @@ module Env = struct
 
   let rec add_scoped_binding = fun env ~path ~free_names ~exports ->
     match path with
-    | [] -> env
+    | [] ->
+        env
     | [ segment ] ->
         let existing =
           match
@@ -204,6 +209,7 @@ end
 type t = {
   modules: string list;
   env: Env.t;
+  exports: Env.t;
 }
 
 type parse_error =
@@ -218,6 +224,8 @@ let ( let* ) = fun result f ->
 let modules = fun t -> t.modules
 
 let env = fun t -> t.env
+
+let exports = fun t -> t.exports
 
 let to_json = fun t ->
   Json.Object [ ("modules", Json.Array (List.map t.modules ~fn:(fun name -> Json.String name))) ]
@@ -1144,16 +1152,17 @@ and collect_signature_item env deps bindings item =
   | Cst.SignatureItem.ExceptionDeclaration _ ->
       Ok (deps, env, bindings)
 
-let finalize = fun deps env -> { modules = DepSet.elements deps; env }
+let finalize = fun deps env exports -> { modules = DepSet.elements deps; env; exports }
 
 let of_cst = fun ?(env = Env.empty) source_file ->
   match source_file with
   | Cst.Implementation implementation ->
-      let* (deps, env) = collect_structure env (DepSet.empty ()) implementation.items in
-      Ok (finalize deps env)
+      let* (deps, env, exports) = collect_structure_binding env (DepSet.empty ()) implementation.items in
+      let deps = add_names deps (Env.collect_free (Env.make_node exports)) in
+      Ok (finalize deps env exports)
   | Cst.Interface interface ->
-      let* (deps, env, _) = collect_signature_binding env (DepSet.empty ()) interface.items in
-      Ok (finalize deps env)
+      let* (deps, env, exports) = collect_signature_binding env (DepSet.empty ()) interface.items in
+      Ok (finalize deps env exports)
 
 let of_parse_result = fun ?(env = Env.empty) result ->
   if result.Parser.diagnostics != [] then

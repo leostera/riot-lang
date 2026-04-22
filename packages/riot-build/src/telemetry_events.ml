@@ -1124,6 +1124,54 @@ let from_json: Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json -
                                       message = "Planning failed: graph build failed"
                                     })
                                   )
+                                | Some (Data.Json.String "target_depends_on_internal_library_module") -> (
+                                    match (
+                                      get_field planning_fields ~name:"target_name",
+                                      get_field planning_fields ~name:"source",
+                                      get_field planning_fields ~name:"requested_module",
+                                      get_field planning_fields ~name:"internal_module",
+                                      get_field planning_fields ~name:"public_module"
+                                    ) with
+                                    | (Some (Data.Json.String target_name), Some (Data.Json.String source), Some (Data.Json.String requested_module), Some (Data.Json.String internal_module), Some (Data.Json.String public_module)) ->
+                                        Ok (
+                                          PlanningFailed (
+                                            Planning_error.TargetDependsOnInternalLibraryModule {
+                                              target_name;
+                                              source = Path.v source;
+                                              requested_module;
+                                              internal_module;
+                                              public_module;
+                                            }
+                                          )
+                                        )
+                                    | _ -> Ok (ExecutionFailed {
+                                      message = "Planning failed: target depends on internal library module"
+                                    })
+                                  )
+                                | Some (Data.Json.String "target_depends_on_namespaced_internal_library_module") -> (
+                                    match (
+                                      get_field planning_fields ~name:"target_name",
+                                      get_field planning_fields ~name:"source",
+                                      get_field planning_fields ~name:"requested_module",
+                                      get_field planning_fields ~name:"internal_module",
+                                      get_field planning_fields ~name:"public_module"
+                                    ) with
+                                    | (Some (Data.Json.String target_name), Some (Data.Json.String source), Some (Data.Json.String requested_module), Some (Data.Json.String internal_module), Some (Data.Json.String public_module)) ->
+                                        Ok (
+                                          PlanningFailed (
+                                            Planning_error.TargetDependsOnNamespacedInternalLibraryModule {
+                                              target_name;
+                                              source = Path.v source;
+                                              requested_module;
+                                              internal_module;
+                                              public_module;
+                                            }
+                                          )
+                                        )
+                                    | _ -> Ok (ExecutionFailed {
+                                      message = "Planning failed: target depends on namespaced internal library module"
+                                    })
+                                  )
                                 | Some (Data.Json.String "exception") -> (
                                     match get_field planning_fields ~name:"message" with
                                     | Some (Data.Json.String msg) -> Ok (PlanningFailed (Planning_error.Exception {

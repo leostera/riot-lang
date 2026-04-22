@@ -15,6 +15,8 @@ val library_module_name: t -> string
 
 val child_files: t -> Module.t list
 
+val child_dirs: t -> Module.t list
+
 val child_modules: t -> Module.t list
 
 val has_concrete_ml: t -> bool

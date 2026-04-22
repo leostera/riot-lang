@@ -67,6 +67,8 @@ module Module_scanner = Module_scanner
 
 module Planning_error = Planning_error
 
+module Package_layout_validator = Package_layout_validator
+
 module Package_graph = Package_graph
 
 module Workspace_planner = Workspace_planner
