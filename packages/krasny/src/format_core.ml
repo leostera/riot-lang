@@ -32,6 +32,17 @@ let finalize_rendered_output = fun rendered ->
   else
     rendered ^ "\n"
 
+let parse2_diagnostics_to_string = fun diagnostics ->
+  let count = Vector.length diagnostics in
+  if count = 0 then
+    "parse2 diagnostics prevented formatting"
+  else
+    let first = Vector.get_unchecked diagnostics ~at:0 |> Syn.Diagnostic.to_string in
+    if count = 1 then
+      first
+    else
+      first ^ " (+" ^ Int.to_string (count - 1) ^ " more)"
+
 let format = fun (result: Syn.Parser.parse_result) ->
   yield ();
   match Syn.build_cst result with
@@ -47,3 +58,18 @@ let format = fun (result: Syn.Parser.parse_result) ->
             yield ();
             Ok (finalize_rendered_output rendered)
       )
+
+let format2 = fun (result: Syn.Parser2.parse_result) ->
+  yield ();
+  let diagnostics = result.Syn.Parser2.diagnostics in
+  if Vector.length diagnostics > 0 then
+    Error (Cannot_lower (parse2_diagnostics_to_string diagnostics))
+  else
+    let source_file = Syn.Ast2.SourceFile.make result.Syn.Parser2.tree in
+    match Lower2.source_file source_file with
+    | Error err -> Error (Cannot_lower (Lower2.error_to_string err))
+    | Ok rendered ->
+        yield ();
+        let rendered = Solver.solve ~width:100 rendered |> Printer.to_string in
+        yield ();
+        Ok (finalize_rendered_output rendered)

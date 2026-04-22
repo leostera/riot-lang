@@ -23,6 +23,12 @@ val format_error_to_string: format_error -> string
     with a final newline. *)
 val format: Syn.Parser.parse_result -> (string, format_error) result
 
+(** `format2 result` renders a parser2 result through the experimental Ast2
+    typed-view lowering path. It is intentionally side-by-side with [format]
+    while parser2 and the view layer are validated against formatter tests and
+    benchmarks. *)
+val format2: Syn.Parser2.parse_result -> (string, format_error) result
+
 (** `syntax_hash result` computes a normalized hash of the parsed concrete
     syntax tree, ignoring formatting-only punctuation and wrappers that
     `krasny` canonicalizes. *)

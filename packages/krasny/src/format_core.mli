@@ -6,3 +6,5 @@ type format_error =
 val format_error_to_string: format_error -> string
 
 val format: Syn.Parser.parse_result -> (string, format_error) result
+
+val format2: Syn.Parser2.parse_result -> (string, format_error) result

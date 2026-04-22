@@ -9,12 +9,15 @@ module Doc = Doc
 module Solver = Solver
 module Printer = Printer
 module Lower = Lower
+module Lower2 = Lower2
 module Runner = Runner
 module Report = Report
 
 let format_error_to_string = Format_core.format_error_to_string
 
 let format = Format_core.format
+
+let format2 = Format_core.format2
 
 let syntax_hash = Runner.syntax_hash
 
