@@ -191,9 +191,11 @@ let match_missing_scrutinee = fun p -> diagnostic_with_current p Diagnostic.matc
 let match_missing_scrutinee_at_previous_end = fun p ->
   diagnostic_with_current_at p Diagnostic.match_missing_scrutinee (zero_span (previous_end_offset p))
 
-let match_missing_with = fun p -> diagnostic_with_current p Diagnostic.match_missing_with
+let match_missing_with = fun p ->
+  diagnostic_with_current_at p Diagnostic.match_missing_with (zero_span (previous_end_offset p))
 
-let match_missing_pattern = fun p -> diagnostic_with_current p Diagnostic.match_missing_pattern
+let match_missing_pattern = fun p ->
+  diagnostic_with_current_at p Diagnostic.match_missing_pattern (zero_span (previous_end_offset p))
 
 let match_guard_missing_expr = fun p ->
   diagnostic_with_current_at p Diagnostic.match_guard_missing_expr (zero_span (previous_end_offset p))
@@ -226,11 +228,14 @@ let missing_module_decl_equals = fun p ->
 let missing_external_colon = fun p ->
   diagnostic_with_current_at p Diagnostic.missing_external_colon (zero_span (previous_end_offset p))
 
-let missing_exception_name = fun p -> diagnostic_with_current p Diagnostic.missing_exception_name
+let missing_exception_name = fun p ->
+  diagnostic_with_current_at p Diagnostic.missing_exception_name (zero_span (previous_end_offset p))
 
-let missing_module_path = fun p -> diagnostic_with_current p Diagnostic.missing_module_path
+let missing_module_path = fun p ->
+  diagnostic_with_current_at p Diagnostic.missing_module_path (zero_span (previous_end_offset p))
 
-let missing_module_type_name = fun p -> diagnostic_with_current p Diagnostic.missing_module_type_name
+let missing_module_type_name = fun p ->
+  diagnostic_with_current_at p Diagnostic.missing_module_type_name (zero_span (previous_end_offset p))
 
 let missing_module_type_expr = fun p ->
   diagnostic_with_current_at p Diagnostic.missing_module_type_expr (zero_span (current_offset p))
