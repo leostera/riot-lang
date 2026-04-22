@@ -1,4 +1,5 @@
 open Std
+open Std.Collections
 
 type node = {
   tree: Syntax_tree.t;
@@ -256,6 +257,33 @@ let first_child_token_matching = fun (node: node) ~matches ->
     );
   !found
 
+let rec first_descendant_token_matching = fun (node: node) ~matches ->
+  let found = ref None in
+  Syntax_tree.for_each_child node.tree (syntax_node node)
+    ~fn:(
+      function
+      | Syntax_tree.Token id -> (
+          match !found with
+          | Some _ -> ()
+          | None ->
+              let token = wrap_token node.tree id in
+              if token_matches token matches then
+                found := Some token
+        )
+      | Syntax_tree.Node id -> (
+          match !found with
+          | Some _ -> ()
+          | None -> (
+              match first_descendant_token_matching (wrap_node node.tree id) ~matches with
+              | Some token -> found := Some token
+              | None -> ()
+            )
+        )
+      | Syntax_tree.Missing _ ->
+          ()
+    );
+  !found
+
 let child_token_at = fun (node: node) index ->
   match Syntax_tree.child_at node.tree (syntax_node node) index with
   | Some (Syntax_tree.Token id) -> Some (wrap_token node.tree id)
@@ -364,6 +392,30 @@ module Token = struct
   let text = fun (token: token) ->
     Syntax_tree.token_text token.tree (syntax_token token)
 
+  let leading_text = fun (token: token) ->
+    let syntax_token = syntax_token token in
+    Syntax_tree.raw_range_text
+      token.tree
+      ~raw_lo:syntax_token.Syntax_tree.raw_lo
+      ~raw_hi:syntax_token.Syntax_tree.body_raw
+
+  let has_leading_comment = fun (token: token) ->
+    let syntax_token = syntax_token token in
+    let rec loop raw_index =
+      if Int.(raw_index >= syntax_token.Syntax_tree.body_raw) then
+        false
+      else
+        let raw = Vector.get_unchecked token.tree.Syntax_tree.raw_tokens ~at:raw_index in
+        if
+          Syntax_kind2.(raw.Raw_token.kind = COMMENT)
+          || Syntax_kind2.(raw.Raw_token.kind = DOCSTRING)
+        then
+          true
+        else
+          loop Int.(raw_index + 1)
+    in
+    loop syntax_token.Syntax_tree.raw_lo
+
   let full_text = fun (token: token) ->
     let raw_lo, raw_hi =
       let token = syntax_token token in
@@ -423,6 +475,9 @@ module Node = struct
     first_child_token_matching node ~matches:(fun kind -> Syntax_kind2.(kind = expected_kind))
 
   let first_token = fun (node: node) -> first_child_token_matching node ~matches:(fun _ -> true)
+
+  let first_descendant_token = fun (node: node) ->
+    first_descendant_token_matching node ~matches:(fun _ -> true)
 end
 
 module TypeExpr = struct
@@ -653,6 +708,9 @@ end = struct
           || Syntax_kind2.(kind = TRUE_KW)
           || Syntax_kind2.(kind = FALSE_KW)))
 
+  let first_direct_token = fun (node: node) ->
+    first_child_token_matching node ~matches:(fun _kind -> true)
+
   let literal_token = Node.first_token
 
   let view = fun (expr: expr) ->
@@ -711,7 +769,7 @@ end = struct
     }
     | Syntax_kind2.INFIX_EXPR -> Infix {
       left = nth_expr_child expr 0;
-      operator = first_operator_token expr;
+      operator = first_direct_token expr;
       right = nth_expr_child expr 1
     }
     | Syntax_kind2.PREFIX_EXPR -> Prefix {

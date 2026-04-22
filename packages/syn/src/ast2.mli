@@ -41,6 +41,10 @@ module Token: sig
 
   val text: t -> string
 
+  val leading_text: t -> string
+
+  val has_leading_comment: t -> bool
+
   val full_text: t -> string
 
   val raw_range: t -> int * int
@@ -71,6 +75,8 @@ module Node: sig
   val first_child_token: t -> kind:Syntax_kind2.t -> Token.t option
 
   val first_token: t -> Token.t option
+
+  val first_descendant_token: t -> Token.t option
 end
 
 module TypeExpr: sig

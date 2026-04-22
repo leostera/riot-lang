@@ -825,6 +825,29 @@ let infix_binding_power = function
   | Syntax_kind2.STARSTAR -> Some 60
   | _ -> None
 
+let infix_operator_keyword_binding_power = fun p ->
+  if
+    current_text_is p "mod"
+    || current_text_is p "land"
+    || current_text_is p "lor"
+    || current_text_is p "lxor"
+    || current_text_is p "lsl"
+    || current_text_is p "lsr"
+    || current_text_is p "asr"
+  then
+    Some 50
+  else
+    None
+
+let current_infix_binding_power = fun p ->
+  match infix_binding_power (current_kind p) with
+  | Some _ as bp -> bp
+  | None ->
+      if at p Syntax_kind2.IDENT then
+        infix_operator_keyword_binding_power p
+      else
+        None
+
 let pattern_binding_power = function
   | Syntax_kind2.PIPE -> Some 10
   | Syntax_kind2.COMMA -> Some 15
@@ -1121,10 +1144,10 @@ let rec parse_expression = fun p ~signature ~stop_at_item ?(stop_at_semi = false
         loop (complete p marker Syntax_kind2.ATTRIBUTE_EXPR)
       )
     else
-      match infix_binding_power (current_kind p) with
+      match current_infix_binding_power p with
       | Some bp when bp >= min_bp ->
           let marker = precede p lhs in
-          let operator = operator_text (current_kind p) in
+          let operator = token_text p (current p) in
           bump p;
           if expression_boundary p ~stop_at_item ~stop_at_semi ~signature then
             (
@@ -1134,17 +1157,16 @@ let rec parse_expression = fun p ~signature ~stop_at_item ?(stop_at_semi = false
                 (missing_binary_operand_after_operator p ~operator ~side:"right")
             )
           else if
-            Option.is_some (infix_binding_power (current_kind p))
-            && not (prefix_operator (current_kind p))
+            Option.is_some (current_infix_binding_power p) && not (prefix_operator (current_kind p))
           then
             Event.Buffer.error
               p.events
-              (consecutive_binary_operators
-                p
-                ~operators:(operator ^ " " ^ operator_text (current_kind p)))
+              (consecutive_binary_operators p ~operators:(operator ^ " " ^ token_text p (current p)))
           else
             ignore (parse_expression p ~signature ~stop_at_item ~stop_at_semi (bp + 1));
           loop (complete p marker Syntax_kind2.INFIX_EXPR)
+      | Some _ ->
+          lhs
       | _ when can_start_atom (current_kind p) ->
           let marker = precede p lhs in
           let _argument = parse_prefix_or_atom p ~signature ~stop_at_item ~stop_at_semi in
@@ -2587,8 +2609,7 @@ let type_decl_body_needs_opaque_parse = fun p ~signature ->
   | Syntax_kind2.LBRACKET_BAR
   | Syntax_kind2.PRIVATE_KW -> true
   | Syntax_kind2.LPAREN when Syntax_kind2.(peek_kind p 1 = MODULE_KW) -> true
-  | _ ->
-      type_decl_body_contains_unsupported_type_syntax p ~signature
+  | _ -> type_decl_body_contains_unsupported_type_syntax p ~signature
 
 let parse_type_decl_body = fun p ~signature ->
   if type_decl_body_needs_opaque_parse p ~signature then
@@ -2597,10 +2618,7 @@ let parse_type_decl_body = fun p ~signature ->
     parse_type_expr p ~stop_at_arrow:false;
     if
       not
-        (is_eof p
-        || at_item_boundary p ~signature
-        || at p Syntax_kind2.AND_KW
-        || at p Syntax_kind2.CONSTRAINT_KW)
+        (is_eof p || at_item_boundary p ~signature || at p Syntax_kind2.AND_KW || at p Syntax_kind2.CONSTRAINT_KW)
     then
       consume_until_item_boundary p ~signature
   )

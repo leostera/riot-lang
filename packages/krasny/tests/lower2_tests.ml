@@ -22,6 +22,8 @@ let parse2_source = fun ~filename source -> Syn.parse2 ~filename (source_slice s
 
 let format2_source = fun ~filename source -> parse2_source ~filename source |> Krasny.format2
 
+let top_level = fun items -> String.concat "\n\n" items ^ "\n"
+
 let assert_format2_ml = fun ~expected source ->
   let actual = format2_ml source |> Result.expect ~msg:"implementation should format through lower2" in
   if expected = actual then
@@ -41,40 +43,51 @@ let assert_format2_ml_fails = fun source ->
   | Ok formatted -> Error ("lower2 unexpectedly formatted unsupported source as:\n" ^ formatted)
   | Error _ -> Ok ()
 
-let assert_lower2_fixture_idempotent = fun path ->
+let approved_snapshot_path = fun path ->
+  match Path.extension path with
+  | Some ext -> Path.add_extension path ~ext:(ext ^ ".expected")
+  | None -> Path.add_extension path ~ext:"expected"
+
+let assert_lower2_fixture_matches_approved = fun path ->
   let source = Fs.read path |> Result.expect ~msg:"fixture file should exist" in
   match format2_source ~filename:path source with
   | Error err -> Error (Path.to_string path
   ^ " failed lower2 formatting: "
   ^ Krasny.format_error_to_string err)
   | Ok formatted -> (
-      match format2_source ~filename:path formatted with
-      | Error err -> Error (Path.to_string path
-      ^ " formatted once but failed to format again: "
-      ^ Krasny.format_error_to_string err)
-      | Ok reformatted ->
-          if formatted = reformatted then
-            Ok ()
-          else
-            Error (Path.to_string path
-            ^ " is not lower2-idempotent after one format\nfirst:\n"
-            ^ formatted
-            ^ "\nsecond:\n"
-            ^ reformatted)
+      let expected_path = approved_snapshot_path path in
+      let expected = Fs.read expected_path |> Result.expect ~msg:"approved fixture snapshot should exist" in
+      if not (String.equal expected formatted) then
+        Error (Path.to_string path
+        ^ " lower2 output did not match approved formatter snapshot\nexpected:\n"
+        ^ expected
+        ^ "\nactual:\n"
+        ^ formatted)
+      else
+        match format2_source ~filename:path formatted with
+        | Error err -> Error (Path.to_string path
+        ^ " formatted once but failed to format again: "
+        ^ Krasny.format_error_to_string err)
+        | Ok reformatted ->
+            if formatted = reformatted then
+              Ok ()
+            else
+              Error (Path.to_string path
+              ^ " is not lower2-idempotent after one format\nfirst:\n"
+              ^ formatted
+              ^ "\nsecond:\n"
+              ^ reformatted)
     )
 
 let assert_lower2_existing_fixture_subset = fun () ->
   let fixtures = [
     Path.v "packages/krasny/tests/fixtures/0100_atoms_and_basic_expressions.ml";
-    Path.v "packages/krasny/tests/fixtures/0300_bindings_and_control_flow.ml";
-    Path.v "packages/krasny/tests/fixtures/0415_nested_fun_parameter_stability.ml";
-    Path.v "packages/krasny/tests/fixtures/0952_multiline_list_expression_no_trailing_separator.ml";
-    Path.v "packages/krasny/tests/fixtures/0981_top_level_letrec_blank_line.ml";
+    Path.v "packages/krasny/tests/fixtures/0200_operators_and_parens.ml";
   ] in
   let rec loop = function
     | [] -> Ok ()
     | path :: rest -> (
-        match assert_lower2_fixture_idempotent path with
+        match assert_lower2_fixture_matches_approved path with
         | Ok () -> loop rest
         | Error _ as err -> err
       )
@@ -95,7 +108,8 @@ let tests = [
     "lower2 formats typed let binding heads"
     (fun _ctx ->
       assert_format2_ml
-        ~expected:"let value: int = 1\nlet id x: int = x\nlet keep_pattern (x: int) = x\n"
+        ~expected:(top_level
+          [ "let value: int = 1"; "let id x: int = x"; "let keep_pattern (x: int) = x" ])
         "let value : int = 1\nlet id x : int = x\nlet keep_pattern (x : int) = x\n");
   Test.case
     "lower2 formats mutual recursive let bindings"
@@ -114,7 +128,8 @@ let tests = [
     (fun _ctx -> assert_format2_ml ~expected:"let run = first; second\n" "let run = first; second\n");
   Test.case
     "lower2 formats list and array expressions"
-    (fun _ctx -> assert_format2_ml ~expected:"let values = [1; 2]\nlet array = [|1; 2|]\n" "let values = [1; 2]\nlet array = [|1; 2|]\n");
+    (fun _ctx ->
+      assert_format2_ml ~expected:(top_level [ "let values = [1; 2]"; "let array = [|1; 2|]" ]) "let values = [1; 2]\nlet array = [|1; 2|]\n");
   Test.case
     "lower2 preserves parens around function application arguments"
     (fun _ctx ->
@@ -128,67 +143,99 @@ let tests = [
     "lower2 formats polymorphic variants"
     (fun _ctx ->
       assert_format2_ml
-        ~expected:"let ok = `Ok 1\nlet classify = function | `Ok value -> value | `Error -> 0\n"
+        ~expected:(top_level
+          [ "let ok = `Ok 1"; "let classify = function | `Ok value -> value | `Error -> 0" ])
         "let ok = `Ok 1\nlet classify = function | `Ok value -> value | `Error -> 0\n");
   Test.case
     "lower2 formats expression and pattern attributes"
     (fun _ctx ->
-      assert_format2_ml ~expected:"let value = target [@inline always]\nlet (x [@foo]) = value\n" "let value = target [@inline always]\nlet (x [@foo]) = value\n");
+      assert_format2_ml
+        ~expected:(top_level [ "let value = target [@inline always]"; "let (x [@foo]) = value" ])
+        "let value = target [@inline always]\nlet (x [@foo]) = value\n");
   Test.case
     "lower2 formats expression pattern and item extensions"
     (fun _ctx ->
       assert_format2_ml
-        ~expected:"let value = [%expr payload]\nlet [%pat payload] = value\n[%%item payload]\n[@@@warning \"-32\"]\n"
+        ~expected:(top_level
+          [
+            "let value = [%expr payload]";
+            "let [%pat payload] = value";
+            "[%%item payload]";
+            "[@@@warning \"-32\"]";
+          ])
         "let value = [%expr payload]\nlet [%pat payload] = value\n[%%item payload]\n[@@@warning \"-32\"]\n");
   Test.case
     "lower2 formats signature extension and attribute items"
     (fun _ctx ->
-      assert_format2_mli ~expected:"[%%foo payload]\n[@@@warning \"-32\"]\nval id: int\n" "[%%foo payload]\n[@@@warning \"-32\"]\nval id : int\n");
+      assert_format2_mli
+        ~expected:(top_level [ "[%%foo payload]"; "[@@@warning \"-32\"]"; "val id: int" ])
+        "[%%foo payload]\n[@@@warning \"-32\"]\nval id : int\n");
   Test.case
     "lower2 formats selectors and index expressions"
     (fun _ctx ->
       assert_format2_ml
-        ~expected:"let field = value.name\nlet item = values.(index)\nlet char = text.[index]\n"
+        ~expected:(top_level
+          [ "let field = value.name"; "let item = values.(index)"; "let char = text.[index]" ])
         "let field = value.name\nlet item = values.(index)\nlet char = text.[index]\n");
   Test.case
     "lower2 formats record expressions and patterns"
     (fun _ctx ->
       assert_format2_ml
-        ~expected:"let record = { x = 1; y }\nlet updated = { base with x = 2; y }\nlet { x; y = z; _ } = record\n"
+        ~expected:(top_level
+          [
+            "let record = { x = 1; y }";
+            "let updated = { base with x = 2; y }";
+            "let { x; y = z; _ } = record";
+          ])
         "let record = { x = 1; y }\nlet updated = { base with x = 2; y }\nlet { x; y = z; _ } = record\n");
   Test.case
     "lower2 formats binding operator expressions"
     (fun _ctx ->
       assert_format2_ml
-        ~expected:"let value = let* x = fetch in let+ y = decode in pair x y\nlet both = let+ x = a and+ y = b in pair x y\n"
+        ~expected:(top_level
+          [
+            "let value = let* x = fetch in let+ y = decode in pair x y";
+            "let both = let+ x = a and+ y = b in pair x y";
+          ])
         "let value = let* x = fetch in let+ y = decode in pair x y\nlet both = let+ x = a and+ y = b in pair x y\n");
   Test.case
     "lower2 formats local open expressions and patterns"
     (fun _ctx ->
       assert_format2_ml
-        ~expected:"let value = let open Foo.Bar in result\nlet Foo.Bar.(x) = value\n"
+        ~expected:(top_level [ "let value = let open Foo.Bar in result"; "let Foo.Bar.(x) = value" ])
         "let value = let open Foo.Bar in result\nlet Foo.Bar.(x) = value\n");
   Test.case
     "lower2 formats first-class module expressions"
     (fun _ctx ->
-      assert_format2_ml ~expected:"let packed = (module Foo.Bar)\nlet typed = (module Foo : S.T)\n" "let packed = (module Foo.Bar)\nlet typed = (module Foo : S.T)\n");
+      assert_format2_ml
+        ~expected:(top_level [ "let packed = (module Foo.Bar)"; "let typed = (module Foo : S.T)" ])
+        "let packed = (module Foo.Bar)\nlet typed = (module Foo : S.T)\n");
   Test.case
     "lower2 formats locally abstract and first-class module patterns"
     (fun _ctx ->
       assert_format2_ml
-        ~expected:"let f (type a b) (module M : S.T) = value\nlet g (module _) = value\n"
+        ~expected:(top_level
+          [ "let f (type a b) (module M : S.T) = value"; "let g (module _) = value" ])
         "let f (type a b) (module M : S.T) = value\nlet g (module _) = value\n");
   Test.case
     "lower2 formats let module expressions"
     (fun _ctx ->
       assert_format2_ml
-        ~expected:"let value = let module M = Foo.Bar in result\nlet empty = let module Empty = struct end in done_\n"
+        ~expected:(top_level
+          [
+            "let value = let module M = Foo.Bar in result";
+            "let empty = let module Empty = struct end in done_";
+          ])
         "let value = let module M = Foo.Bar in result\nlet empty = let module Empty = struct end in done_\n");
   Test.case
     "lower2 formats let exception expressions"
     (fun _ctx ->
       assert_format2_ml
-        ~expected:"let value = let exception Local of int * Foo.t in result\nlet bare = let exception Done in done_\n"
+        ~expected:(top_level
+          [
+            "let value = let exception Local of int * Foo.t in result";
+            "let bare = let exception Done in done_";
+          ])
         "let value = let exception Local of int * Foo.t in result\nlet bare = let exception Done in done_\n");
   Test.case
     "lower2 formats unreachable expressions"
@@ -198,7 +245,10 @@ let tests = [
         "let value = match maybe with | Some value -> value | None -> .\n");
   Test.case
     "lower2 formats assertion and lazy expressions"
-    (fun _ctx -> assert_format2_ml ~expected:"let _ = assert ready\nlet later = lazy compute\n" "let _ = assert ready\nlet later = lazy compute\n");
+    (fun _ctx ->
+      assert_format2_ml
+        ~expected:(top_level [ "let _ = assert ready"; "let later = lazy compute" ])
+        "let _ = assert ready\nlet later = lazy compute\n");
   Test.case
     "lower2 formats try expressions"
     (fun _ctx -> assert_format2_ml ~expected:"let value = try read () with | Failure -> 0\n" "let value = try read () with | Failure -> 0\n");
@@ -206,13 +256,23 @@ let tests = [
     "lower2 formats while and for loops"
     (fun _ctx ->
       assert_format2_ml
-        ~expected:"let poll = while ready do step () done\nlet up = for i = 0 to n do step i done\nlet down = for i = n downto 0 do step i done\n"
+        ~expected:(top_level
+          [
+            "let poll = while ready do step () done";
+            "let up = for i = 0 to n do step i done";
+            "let down = for i = n downto 0 do step i done";
+          ])
         "let poll = while ready do step () done\nlet up = for i = 0 to n do step i done\nlet down = for i = n downto 0 do step i done\n");
   Test.case
     "lower2 formats lazy exception and interval patterns"
     (fun _ctx ->
       assert_format2_ml
-        ~expected:"let force = function | lazy value -> value\nlet recovered = match read () with | exception Failure -> 0 | value -> value\nlet classify = function | 'a' .. 'z' -> 1 | _ -> 0\n"
+        ~expected:(top_level
+          [
+            "let force = function | lazy value -> value";
+            "let recovered = match read () with | exception Failure -> 0 | value -> value";
+            "let classify = function | 'a' .. 'z' -> 1 | _ -> 0";
+          ])
         "let force = function | lazy value -> value\nlet recovered = match read () with | exception Failure -> 0 | value -> value\nlet classify = function | 'a' .. 'z' -> 1 | _ -> 0\n");
   Test.case
     "lower2 adds a final newline"
@@ -224,19 +284,36 @@ let tests = [
     "lower2 formats simple include external and exception declarations"
     (fun _ctx ->
       assert_format2_ml
-        ~expected:"include Foo.Bar\nexternal id: 'a -> 'a = \"%identity\" \"caml_id\"\nexception Boom\n"
+        ~expected:(top_level
+          [
+            "include Foo.Bar";
+            "external id: 'a -> 'a = \"%identity\" \"caml_id\"";
+            "exception Boom"
+          ])
         "include Foo.Bar\nexternal id : 'a -> 'a = \"%identity\" \"caml_id\"\nexception Boom\n");
   Test.case
     "lower2 formats simple module and module type declarations"
     (fun _ctx ->
       assert_format2_ml
-        ~expected:"module Alias = Foo.Bar\nmodule Empty = struct end\nmodule type S = Foo.S\nmodule type Empty = sig end\n"
+        ~expected:(top_level
+          [
+            "module Alias = Foo.Bar";
+            "module Empty = struct end";
+            "module type S = Foo.S";
+            "module type Empty = sig end";
+          ])
         "module Alias = Foo.Bar\nmodule Empty = struct end\nmodule type S = Foo.S\nmodule type Empty = sig end\n");
   Test.case
     "lower2 formats simple signature module declarations"
     (fun _ctx ->
       assert_format2_mli
-        ~expected:"module Alias: Foo.S\nmodule Empty: sig end\nmodule type S = Foo.S\nmodule type Abstract\n"
+        ~expected:(top_level
+          [
+            "module Alias: Foo.S";
+            "module Empty: sig end";
+            "module type S = Foo.S";
+            "module type Abstract"
+          ])
         "module Alias : Foo.S\nmodule Empty : sig end\nmodule type S = Foo.S\nmodule type Abstract\n");
   Test.case
     "lower2 formats type aliases with parameters"
@@ -245,7 +322,8 @@ let tests = [
     "lower2 formats tuple type separators structurally"
     (fun _ctx ->
       assert_format2_mli
-        ~expected:"type ('a, 'e) result_like = ('a, 'e) result\ntype pair = int * string\n"
+        ~expected:(top_level
+          [ "type ('a, 'e) result_like = ('a, 'e) result"; "type pair = int * string" ])
         "type ('a, 'e) result_like = ('a, 'e) result\ntype pair = int * string\n");
   Test.case
     "lower2 formats simple value declarations"

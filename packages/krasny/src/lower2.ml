@@ -14,6 +14,8 @@ let error_to_string = fun err -> err.message
 
 let unsupported = fun message -> raise (Unsupported { message })
 
+let blank_line = Doc.concat [ Doc.line; Doc.line ]
+
 let token_doc = fun token -> Doc.text (Ast.Token.text token)
 
 let token_full_doc = fun token -> Doc.text (Ast.Token.full_text token)
@@ -22,6 +24,290 @@ let optional_token_doc = fun token ->
   match token with
   | Some token -> token_doc token
   | None -> Doc.empty
+
+let token_text_is = fun token expected ->
+  String.equal (Ast.Token.text token) expected
+
+let is_ascii_alpha = function
+  | 'a' .. 'z'
+  | 'A' .. 'Z' -> true
+  | _ -> false
+
+let find_char_from = fun text start target ->
+  let rec loop index =
+    if Int.(index >= String.length text) then
+      None
+    else if Char.equal (String.get_unchecked text ~at:index) target then
+      Some index
+    else
+      loop Int.(index + 1)
+  in
+  loop start
+
+let split_trailing_alpha_suffix = fun text ->
+  let rec loop index =
+    if Int.(index < 0) then
+      0
+    else if is_ascii_alpha (String.get_unchecked text ~at:index) then
+      loop Int.(index - 1)
+    else
+      Int.(index + 1)
+  in
+  let suffix_start = loop Int.(String.length text - 1) in
+  (
+    String.sub text ~offset:0 ~len:suffix_start,
+    if Int.(suffix_start < String.length text) then
+      Some (String.sub text ~offset:suffix_start ~len:Int.(String.length text - suffix_start))
+    else
+      None
+  )
+
+let strip_underscores = fun text ->
+  if not (String.contains text "_") then
+    text
+  else
+    let length = String.length text in
+    let buffer = IO.Buffer.create ~size:length in
+    let rec loop index =
+      if Int.(index >= length) then
+        IO.Buffer.contents buffer
+      else
+        (
+          let char = String.get_unchecked text ~at:index in
+          if not (Char.equal char '_') then
+            IO.Buffer.add_char buffer char;
+          loop Int.(index + 1)
+        )
+    in
+    loop 0
+
+let group_digits_from_left = fun ~group_size digits ->
+  let digits = strip_underscores digits in
+  let length = String.length digits in
+  if Int.(length <= group_size) then
+    digits
+  else
+    let buffer = IO.Buffer.create ~size:Int.(length + (length / group_size)) in
+    let rec loop index =
+      if Int.(index >= length) then
+        IO.Buffer.contents buffer
+      else (
+        if Int.(index > 0) then
+          IO.Buffer.add_char buffer '_';
+        let chunk_size = Int.min group_size Int.(length - index) in
+        IO.Buffer.add_string buffer (String.sub digits ~offset:index ~len:chunk_size);
+        loop Int.(index + chunk_size)
+      )
+    in
+    loop 0
+
+let group_digits_from_right = fun ~group_size digits ->
+  let digits = strip_underscores digits in
+  let length = String.length digits in
+  if Int.(length <= group_size) then
+    digits
+  else
+    let first_group_size =
+      match Int.(length mod group_size) with
+      | 0 -> group_size
+      | remainder -> remainder
+    in
+    let buffer = IO.Buffer.create ~size:Int.(length + (length / group_size)) in
+    IO.Buffer.add_string buffer (String.sub digits ~offset:0 ~len:first_group_size);
+    let rec loop index =
+      if Int.(index >= length) then
+        IO.Buffer.contents buffer
+      else (
+        IO.Buffer.add_char buffer '_';
+        IO.Buffer.add_string buffer (String.sub digits ~offset:index ~len:group_size);
+        loop Int.(index + group_size)
+      )
+    in
+    loop first_group_size
+
+type integer_base =
+  | Decimal
+  | Hexadecimal
+  | Octal
+  | Binary
+
+type exponent_sign =
+  | Positive
+  | Negative
+
+type float_exponent = {
+  marker: string;
+  sign: exponent_sign option;
+  digits: string;
+}
+
+let integer_parts = fun text ->
+  let base, prefix =
+    if String.starts_with ~prefix:"0x" text || String.starts_with ~prefix:"0X" text then
+      (Hexadecimal, Some (String.sub text ~offset:0 ~len:2))
+    else if String.starts_with ~prefix:"0o" text || String.starts_with ~prefix:"0O" text then
+      (Octal, Some (String.sub text ~offset:0 ~len:2))
+    else if String.starts_with ~prefix:"0b" text || String.starts_with ~prefix:"0B" text then
+      (Binary, Some (String.sub text ~offset:0 ~len:2))
+    else
+      (Decimal, None)
+  in
+  let digit_start =
+    match prefix with
+    | Some prefix -> String.length prefix
+    | None -> 0
+  in
+  let is_digit =
+    match base with
+    | Decimal -> (
+        function
+        | '0' .. '9'
+        | '_' -> true
+        | _ -> false
+      )
+    | Hexadecimal -> (
+        function
+        | '0' .. '9'
+        | 'a' .. 'f'
+        | 'A' .. 'F'
+        | '_' -> true
+        | _ -> false
+      )
+    | Octal -> (
+        function
+        | '0' .. '7'
+        | '_' -> true
+        | _ -> false
+      )
+    | Binary -> (
+        function
+        | '0'
+        | '1'
+        | '_' -> true
+        | _ -> false
+      )
+  in
+  let rec find_suffix_start index =
+    if Int.(index >= String.length text) then
+      index
+    else if is_digit (String.get_unchecked text ~at:index) then
+      find_suffix_start Int.(index + 1)
+    else
+      index
+  in
+  let suffix_start = find_suffix_start digit_start in
+  let digits = String.sub text ~offset:digit_start ~len:Int.(suffix_start - digit_start) in
+  let suffix =
+    if Int.(suffix_start < String.length text) then
+      Some (String.sub text ~offset:suffix_start ~len:Int.(String.length text - suffix_start))
+    else
+      None
+  in
+  (base, prefix, digits, suffix)
+
+let float_parts = fun text ->
+  let body, suffix = split_trailing_alpha_suffix text in
+  let exponent_marker_index =
+    match find_char_from body 0 'e' with
+    | Some _ as found -> found
+    | None -> find_char_from body 0 'E'
+  in
+  let body_without_exponent, exponent =
+    match exponent_marker_index with
+    | Some index ->
+        let exponent_body = String.sub
+          body
+          ~offset:Int.(index + 1)
+          ~len:Int.(String.length body - index - 1) in
+        let sign, digits =
+          if Int.(String.length exponent_body = 0) then
+            (None, "")
+          else
+            match String.get_unchecked exponent_body ~at:0 with
+            | '+' -> (
+              Some Positive,
+              String.sub exponent_body ~offset:1 ~len:Int.(String.length exponent_body - 1)
+            )
+            | '-' -> (
+              Some Negative,
+              String.sub exponent_body ~offset:1 ~len:Int.(String.length exponent_body - 1)
+            )
+            | _ -> (None, exponent_body)
+        in
+        (
+          String.sub body ~offset:0 ~len:index,
+          Some { marker = String.sub body ~offset:index ~len:1; sign; digits }
+        )
+    | None -> (body, None)
+  in
+  let dot_index = find_char_from body_without_exponent 0 '.' in
+  let integral_digits, fractional_digits =
+    match dot_index with
+    | Some index -> (
+      String.sub body_without_exponent ~offset:0 ~len:index,
+      String.sub
+        body_without_exponent
+        ~offset:Int.(index + 1)
+        ~len:Int.(String.length body_without_exponent - index - 1)
+    )
+    | None -> (body_without_exponent, "")
+  in
+  (integral_digits, fractional_digits, exponent, suffix)
+
+let render_integer_literal = fun text ->
+  let base, prefix, digits, suffix = integer_parts text in
+  let prefix =
+    match base with
+    | Decimal -> Option.unwrap_or prefix ~default:""
+    | Hexadecimal -> "0x"
+    | Octal -> "0o"
+    | Binary -> "0b"
+  in
+  let digits =
+    match base with
+    | Decimal
+    | Octal -> group_digits_from_right ~group_size:3 digits
+    | Binary -> group_digits_from_right ~group_size:4 digits
+    | Hexadecimal -> digits |> String.lowercase_ascii |> group_digits_from_right ~group_size:4
+  in
+  let suffix = Option.unwrap_or suffix ~default:"" in
+  prefix ^ digits ^ suffix
+
+let render_float_literal = fun text ->
+  let integral_digits, fractional_digits, exponent, suffix = float_parts text in
+  let exponent =
+    match exponent with
+    | None -> ""
+    | Some exponent ->
+        let sign =
+          match exponent.sign with
+          | None -> ""
+          | Some Positive -> "+"
+          | Some Negative -> "-"
+        in
+        exponent.marker ^ sign ^ exponent.digits
+  in
+  let suffix = Option.unwrap_or suffix ~default:"" in
+  let normalized_integral_digits = strip_underscores integral_digits in
+  let integral_digits =
+    if Int.(String.length normalized_integral_digits >= 8) then
+      group_digits_from_right ~group_size:3 normalized_integral_digits
+    else
+      normalized_integral_digits
+  in
+  let fractional_digits = group_digits_from_left ~group_size:3 fractional_digits in
+  integral_digits ^ "." ^ fractional_digits ^ exponent ^ suffix
+
+let literal_token_doc = fun token ->
+  match Ast.Token.kind token with
+  | kind when Kind.(kind = INT) -> Doc.text (render_integer_literal (Ast.Token.text token))
+  | kind when Kind.(kind = FLOAT) -> Doc.text (render_float_literal (Ast.Token.text token))
+  | _ -> token_doc token
+
+let leading_comment_doc = fun node ->
+  match Ast.Node.first_descendant_token node with
+  | Some token when Ast.Token.has_leading_comment token -> Doc.text (Ast.Token.leading_text token)
+  | _ -> Doc.empty
 
 let bracketed_shell_doc = fun ~empty_message ~for_each_shell_token ->
   let shell = ref Doc.empty in
@@ -202,7 +488,7 @@ let rec pattern_doc = fun pattern ->
   | Path { path } ->
       path_doc path
   | Literal { token=Some token } ->
-      token_doc token
+      literal_token_doc token
   | Literal { token=None } ->
       unsupported "literal pattern without token"
   | Parenthesized { inner=Some inner } ->
@@ -498,6 +784,14 @@ and expr_apply_callee_doc = fun expr ->
   | Parenthesized _ -> expr_doc_with_view expr view
   | _ -> Doc.concat [ Doc.lparen; expr_doc_with_view expr view; Doc.rparen ]
 
+and expr_parens_can_elide = fun expr ->
+  match Ast.Expr.view expr with
+  | Path _
+  | Literal _
+  | PolyVariant { payload=None } -> true
+  | Parenthesized { inner=Some inner } -> expr_parens_can_elide inner
+  | _ -> false
+
 and expr_apply_argument_doc = fun expr ->
   let view = Ast.Expr.view expr in
   match view with
@@ -512,6 +806,40 @@ and expr_apply_argument_doc = fun expr ->
   | Record
   | RecordUpdate -> expr_doc_with_view expr view
   | _ -> Doc.concat [ Doc.lparen; expr_doc_with_view expr view; Doc.rparen ]
+
+and token_text_equal = fun left right ->
+  String.equal (Ast.Token.text left) (Ast.Token.text right)
+
+and token_text_is_boolean_operator = fun token -> token_text_is token "&&" || token_text_is token "||"
+
+and collect_same_infix_chain = fun operator expr acc ->
+  match Ast.Expr.view expr with
+  | Infix { left=Some left; operator=Some next_operator; right=Some right } when token_text_equal
+    operator
+    next_operator ->
+      let acc = collect_same_infix_chain operator left acc in
+      collect_same_infix_chain operator right acc
+  | _ -> expr :: acc
+
+and same_infix_chain = fun operator expr -> collect_same_infix_chain operator expr [] |> List.reverse
+
+and large_boolean_infix_chain_doc = fun expr ->
+  match Ast.Expr.view expr with
+  | Infix { operator=Some operator; _ } when token_text_is_boolean_operator operator -> (
+      let parts = same_infix_chain operator expr in
+      if Int.(List.length parts <= 8) then
+        None
+      else
+        match parts with
+        | [] -> None
+        | first :: rest -> Some (Doc.concat
+          (expr_infix_operand_doc first
+          :: (rest
+          |> List.map
+            ~fn:(fun part -> [ Doc.line; token_doc operator; Doc.space; expr_infix_operand_doc part ])
+          |> List.concat)))
+    )
+  | _ -> None
 
 and expr_infix_operand_doc = fun expr ->
   let view = Ast.Expr.view expr in
@@ -539,11 +867,23 @@ and expr_doc_with_view = fun expr (view: Ast.Expr.view) ->
   | Path { path } ->
       path_doc path
   | Literal { token=Some token } ->
-      token_doc token
+      literal_token_doc token
   | Literal { token=None } ->
       unsupported "literal expression without token"
+  | Parenthesized { inner=Some inner } when expr_parens_can_elide inner ->
+      expr_doc inner
   | Parenthesized { inner=Some inner } ->
-      Doc.concat [ Doc.lparen; expr_doc inner; Doc.rparen ]
+      let inner_doc =
+        match Ast.Expr.view inner with
+        | Prefix { operator=Some operator; operand=Some operand } -> (
+            match Ast.Expr.view operand with
+            | Literal { token=Some token } when token_text_is operator "-" -> Doc.concat
+              [ token_doc operator; literal_token_doc token ]
+            | _ -> expr_doc inner
+          )
+        | _ -> expr_doc inner
+      in
+      Doc.concat [ Doc.lparen; inner_doc; Doc.rparen ]
   | Parenthesized { inner=None } ->
       Doc.concat [ Doc.lparen; Doc.rparen ]
   | Infix { left=Some left; operator=Some operator; right=Some right } ->
@@ -557,8 +897,12 @@ and expr_doc_with_view = fun expr (view: Ast.Expr.view) ->
         ]
   | Infix _ ->
       unsupported "incomplete infix expression"
-  | Prefix { operator=Some operator; operand=Some operand } ->
-      Doc.concat [ token_doc operator; expr_doc operand ]
+  | Prefix { operator=Some operator; operand=Some operand } -> (
+      match Ast.Expr.view operand with
+      | Literal { token=Some token } when token_text_is operator "-" -> Doc.concat
+        [ Doc.lparen; token_doc operator; literal_token_doc token; Doc.rparen ]
+      | _ -> Doc.concat [ token_doc operator; expr_doc operand ]
+    )
   | Prefix _ ->
       unsupported "incomplete prefix expression"
   | Apply { callee=Some callee; argument=Some argument } ->
@@ -1104,7 +1448,7 @@ and let_binding_doc = fun binding ->
   let parts = let_binding_parts binding in
   match parts.pattern, parts.body with
   | Some pattern, Some body ->
-      Doc.concat
+      let head = Doc.concat
         [ pattern_doc pattern; (
             match parts.parameters with
             | [] -> Doc.empty
@@ -1115,7 +1459,13 @@ and let_binding_doc = fun binding ->
             | Some annotation -> Doc.concat
               [ Doc.space; Doc.text ":"; Doc.space; type_expr_doc annotation ]
             | None -> Doc.empty
-          ); Doc.space; Doc.equal; Doc.space; expr_doc body; ]
+          ); Doc.space; Doc.equal; ]
+      in
+      (
+        match large_boolean_infix_chain_doc body with
+        | Some body_doc -> Doc.concat [ head; Doc.line; Doc.indent 2 body_doc ]
+        | None -> Doc.concat [ head; Doc.space; expr_doc body ]
+      )
   | _ -> unsupported "incomplete let binding"
 
 and let_bindings_doc = fun ~keyword ~rec_token node ->
@@ -1300,64 +1650,70 @@ let attribute_item_doc = fun item ->
     ~for_each_shell_token:(fun ~fn -> Ast.AttributeItem.for_each_shell_token item ~fn)
 
 let structure_item_doc = fun item ->
-  match Ast.StructureItem.view item with
-  | Let decl ->
-      let_decl_doc decl
-  | Type decl ->
-      type_decl_doc decl
-  | Module decl ->
-      module_decl_doc decl
-  | Open decl ->
-      open_decl_doc decl
-  | Include decl ->
-      include_decl_doc decl
-  | External decl ->
-      external_decl_doc decl
-  | Exception decl ->
-      exception_decl_doc decl
-  | ModuleType decl ->
-      module_type_decl_doc decl
-  | Expr expr_item -> (
-      match Ast.ExprItem.expr expr_item with
-      | Some expr -> expr_doc expr
-      | None -> unsupported "expression item without expression"
-    )
-  | Extension item ->
-      extension_item_doc item
-  | Attribute item ->
-      attribute_item_doc item
-  | Class _
-  | Error _
-  | Unknown _ ->
-      unsupported "unsupported structure item"
+  let body =
+    match Ast.StructureItem.view item with
+    | Let decl ->
+        let_decl_doc decl
+    | Type decl ->
+        type_decl_doc decl
+    | Module decl ->
+        module_decl_doc decl
+    | Open decl ->
+        open_decl_doc decl
+    | Include decl ->
+        include_decl_doc decl
+    | External decl ->
+        external_decl_doc decl
+    | Exception decl ->
+        exception_decl_doc decl
+    | ModuleType decl ->
+        module_type_decl_doc decl
+    | Expr expr_item -> (
+        match Ast.ExprItem.expr expr_item with
+        | Some expr -> expr_doc expr
+        | None -> unsupported "expression item without expression"
+      )
+    | Extension item ->
+        extension_item_doc item
+    | Attribute item ->
+        attribute_item_doc item
+    | Class _
+    | Error _
+    | Unknown _ ->
+        unsupported "unsupported structure item"
+  in
+  Doc.concat [ leading_comment_doc item; body ]
 
 let signature_item_doc = fun item ->
-  match Ast.SignatureItem.view item with
-  | Value decl -> value_decl_doc decl
-  | Type decl -> type_decl_doc decl
-  | Module decl -> module_decl_doc decl
-  | Open decl -> open_decl_doc decl
-  | Include decl -> include_decl_doc decl
-  | External decl -> external_decl_doc decl
-  | Exception decl -> exception_decl_doc decl
-  | ModuleType decl -> module_type_decl_doc decl
-  | Extension item -> extension_item_doc item
-  | Attribute item -> attribute_item_doc item
-  | Class _
-  | Error _
-  | Unknown _ -> unsupported "unsupported signature item"
+  let body =
+    match Ast.SignatureItem.view item with
+    | Value decl -> value_decl_doc decl
+    | Type decl -> type_decl_doc decl
+    | Module decl -> module_decl_doc decl
+    | Open decl -> open_decl_doc decl
+    | Include decl -> include_decl_doc decl
+    | External decl -> external_decl_doc decl
+    | Exception decl -> exception_decl_doc decl
+    | ModuleType decl -> module_type_decl_doc decl
+    | Extension item -> extension_item_doc item
+    | Attribute item -> attribute_item_doc item
+    | Class _
+    | Error _
+    | Unknown _ -> unsupported "unsupported signature item"
+  in
+  Doc.concat [ leading_comment_doc item; body ]
 
 let implementation_doc = fun implementation ->
   let docs = ref [] in
   Ast.Implementation.for_each_item
     implementation
     ~fn:(fun item -> docs := structure_item_doc item :: !docs);
-  Doc.lines (List.reverse !docs)
+  Doc.join blank_line (List.reverse !docs)
 
 let interface_doc = fun interface ->
   let docs = ref [] in
   Ast.Interface.for_each_item interface ~fn:(fun item -> docs := signature_item_doc item :: !docs);
-  Doc.lines (List.reverse !docs)
+  Doc.join blank_line (List.reverse !docs)
 
 let source_file = fun source_file ->
   try
