@@ -217,14 +217,41 @@ let rec pattern_doc = fun pattern ->
       Doc.concat [ Doc.text "exception"; Doc.space; pattern_doc pattern ]
   | Exception _ ->
       unsupported "exception pattern without payload"
+  | LocalOpen ->
+      local_open_pattern_doc pattern
   | Extension
   | Attribute _
-  | LocalOpen
   | LocallyAbstractType
   | FirstClassModule
   | Error _
   | Unknown _ ->
       unsupported "unsupported pattern"
+
+and local_open_pattern_path_doc = fun pattern ->
+  let segments = ref [] in
+  Ast.LocalOpenPattern.for_each_module_path_ident
+    pattern
+    ~fn:(fun token -> segments := token_doc token :: !segments);
+  match List.reverse !segments with
+  | [] -> unsupported "local open pattern without module path"
+  | segments -> Doc.join (Doc.text ".") segments
+
+and local_open_pattern_doc = fun pattern ->
+  match Ast.LocalOpenPattern.cast pattern with
+  | None -> unsupported "unsupported local open pattern"
+  | Some local_open -> (
+      match Ast.LocalOpenPattern.dot_token local_open, Ast.LocalOpenPattern.opening_token local_open, Ast.LocalOpenPattern.pattern
+        local_open, Ast.LocalOpenPattern.closing_token local_open with
+      | Some dot_token, Some opening_token, Some inner, Some closing_token -> Doc.concat
+        [
+          local_open_pattern_path_doc local_open;
+          token_doc dot_token;
+          token_doc opening_token;
+          pattern_doc inner;
+          token_doc closing_token;
+        ]
+      | _ -> unsupported "incomplete local open pattern"
+    )
 
 and record_pattern_field_doc = fun (field: Ast.RecordPattern.field) ->
   match field.path with
@@ -601,7 +628,8 @@ and expr_doc_with_view = fun expr (view: Ast.Expr.view) ->
       Doc.concat [ Doc.text "?"; token_doc label; Doc.text ":"; expr_apply_argument_doc value ]
   | OptionalArg _ ->
       unsupported "optional argument without label"
-  | LocalOpen _
+  | LocalOpen _ ->
+      local_open_expr_doc expr
   | LetModule _
   | LetException _
   | FirstClassModule
@@ -647,6 +675,53 @@ and record_expr_doc = fun expr ->
       | Doc.Empty -> Doc.concat [ Doc.lbrace; Doc.rbrace ]
       | fields -> Doc.concat [ Doc.lbrace; Doc.space; fields; Doc.space; Doc.rbrace ]
     )
+
+and local_open_expr_doc = fun expr ->
+  let local_open =
+    match Ast.LocalOpenExpr.cast expr with
+    | Some local_open -> local_open
+    | None -> unsupported "unsupported local open expression"
+  in
+  match Ast.LocalOpenExpr.view local_open with
+  | LetOpen {
+    let_token=Some let_token;
+    open_token=Some open_token;
+    bang_token;
+    module_path=Some module_path;
+    in_token=Some in_token;
+    body=Some body;
+
+  } ->
+      Doc.concat
+        [
+          token_doc let_token;
+          Doc.space;
+          token_doc open_token;
+          optional_token_doc bang_token;
+          Doc.space;
+          path_doc module_path;
+          Doc.space;
+          token_doc in_token;
+          Doc.space;
+          expr_doc body;
+        ]
+  | LetOpen _ -> unsupported "incomplete let open expression"
+  | Delimited {
+    module_path=Some module_path;
+    dot_token=Some dot_token;
+    opening_token=Some opening_token;
+    body=Some body;
+    closing_token=Some closing_token;
+
+  } -> Doc.concat
+    [
+      path_doc module_path;
+      token_doc dot_token;
+      token_doc opening_token;
+      expr_doc body;
+      token_doc closing_token;
+    ]
+  | Delimited _ -> unsupported "incomplete delimited local open expression"
 
 and binding_operator_clause_doc = fun (clause: Ast.BindingOperatorExpr.clause) ->
   match clause.keyword, clause.operator with

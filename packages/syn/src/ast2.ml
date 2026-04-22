@@ -256,6 +256,13 @@ let first_child_token_matching = fun (node: node) ~matches ->
     );
   !found
 
+let child_token_at = fun (node: node) index ->
+  match Syntax_tree.child_at node.tree (syntax_node node) index with
+  | Some (Syntax_tree.Token id) -> Some (wrap_token node.tree id)
+  | Some (Syntax_tree.Node _)
+  | Some (Syntax_tree.Missing _)
+  | None -> None
+
 let has_child_token_kind = fun (node: node) expected_kind ->
   let found = ref false in
   Syntax_tree.for_each_child node.tree (syntax_node node)
@@ -812,6 +819,90 @@ end = struct
       )
 end
 
+module LocalOpenExpr: sig
+  type t = expr
+  type view =
+    | LetOpen of {
+        let_token: token option;
+        open_token: token option;
+        bang_token: token option;
+        module_path: path option;
+        in_token: token option;
+        body: expr option
+      }
+    | Delimited of {
+        module_path: path option;
+        dot_token: token option;
+        opening_token: token option;
+        body: expr option;
+        closing_token: token option
+      }
+  val cast: expr -> t option
+
+  val view: t -> view
+end = struct
+  type t = expr
+
+  type view =
+    | LetOpen of {
+        let_token: token option;
+        open_token: token option;
+        bang_token: token option;
+        module_path: path option;
+        in_token: token option;
+        body: expr option
+      }
+    | Delimited of {
+        module_path: path option;
+        dot_token: token option;
+        opening_token: token option;
+        body: expr option;
+        closing_token: token option
+      }
+
+  let cast = fun (expr: expr) ->
+    if node_kind_is expr Syntax_kind2.LOCAL_OPEN_EXPR then
+      Some expr
+    else
+      None
+
+  let path_expr_child = fun expr index ->
+    match nth_expr_child expr index with
+    | Some child -> Path.cast child
+    | None -> None
+
+  let opening_token = fun expr ->
+    first_child_token_matching
+      expr
+      ~matches:(fun kind ->
+        Syntax_kind2.(kind = LPAREN || kind = LBRACKET || kind = LBRACKET_BAR || kind = LBRACE))
+
+  let closing_token = fun expr ->
+    first_child_token_matching
+      expr
+      ~matches:(fun kind ->
+        Syntax_kind2.(kind = RPAREN || kind = RBRACKET || kind = BAR_RBRACKET || kind = RBRACE))
+
+  let view = fun expr ->
+    if has_child_token_kind expr Syntax_kind2.LET_KW then
+      LetOpen {
+        let_token = Node.first_child_token expr ~kind:Syntax_kind2.LET_KW;
+        open_token = Node.first_child_token expr ~kind:Syntax_kind2.OPEN_KW;
+        bang_token = Node.first_child_token expr ~kind:Syntax_kind2.BANG;
+        module_path = path_expr_child expr 0;
+        in_token = Node.first_child_token expr ~kind:Syntax_kind2.IN_KW;
+        body = nth_expr_child expr 1;
+      }
+    else
+      Delimited {
+        module_path = path_expr_child expr 0;
+        dot_token = Node.first_child_token expr ~kind:Syntax_kind2.DOT;
+        opening_token = opening_token expr;
+        body = nth_expr_child expr 1;
+        closing_token = closing_token expr;
+      }
+end
+
 module BindingOperatorExpr: sig
   type t = expr
   type clause = {
@@ -1088,6 +1179,55 @@ end = struct
             fn { path = None; pattern = None; node = child };
             loop (index + 1)
         | Some _
+        | None ->
+            loop (index + 1)
+    in
+    loop 0
+end
+
+module LocalOpenPattern: sig
+  type t = pattern
+  val cast: pattern -> t option
+
+  val dot_token: t -> token option
+
+  val opening_token: t -> token option
+
+  val closing_token: t -> token option
+
+  val pattern: t -> pattern option
+
+  val for_each_module_path_ident: t -> fn:(token -> unit) -> unit
+end = struct
+  type t = pattern
+
+  let cast = fun (pattern: pattern) ->
+    if node_kind_is pattern Syntax_kind2.LOCAL_OPEN_PATTERN then
+      Some pattern
+    else
+      None
+
+  let dot_token = fun pattern -> Node.first_child_token pattern ~kind:Syntax_kind2.DOT
+
+  let opening_token = fun pattern -> Node.first_child_token pattern ~kind:Syntax_kind2.LPAREN
+
+  let closing_token = fun pattern -> Node.first_child_token pattern ~kind:Syntax_kind2.RPAREN
+
+  let pattern = first_pattern_child
+
+  let for_each_module_path_ident = fun pattern ~fn ->
+    let child_count = Node.child_count pattern in
+    let rec loop index =
+      if index >= child_count then
+        ()
+      else
+        match child_token_at pattern index with
+        | Some token when token_kind_is token Syntax_kind2.LPAREN ->
+            ()
+        | Some token ->
+            if token_kind_is token Syntax_kind2.IDENT then
+              fn token;
+            loop (index + 1)
         | None ->
             loop (index + 1)
     in

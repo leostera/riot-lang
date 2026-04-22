@@ -100,6 +100,9 @@ let benchmarks = [
     (make_fixture ~name:"binding operator expressions" ~path:(Path.v "sample.ml") "let value = let* x = fetch in let+ y = decode in pair x y\nlet both = let+ x = a and+ y = b in pair x y\n");
   compare_fixture
     ~config:small_config
+    (make_fixture ~name:"local open expressions and patterns" ~path:(Path.v "sample.ml") "let value = let open Foo.Bar in result\nlet Foo.Bar.(x) = value\n");
+  compare_fixture
+    ~config:small_config
     (make_fixture ~name:"try expression" ~path:(Path.v "sample.ml") "let value = try read () with | Failure -> 0\n");
   compare_fixture
     ~config:small_config

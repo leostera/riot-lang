@@ -470,6 +470,65 @@ let test_binding_operator_views = fun _ctx ->
     | None -> Error "expected binding operator body"
   )
 
+let local_open_pattern_path_text = fun pattern ->
+  let segments = ref [] in
+  Ast2.LocalOpenPattern.for_each_module_path_ident
+    pattern
+    ~fn:(fun token -> segments := Ast2.Token.text token :: !segments);
+  List.reverse !segments |> String.concat "."
+
+let test_local_open_views = fun _ctx ->
+  let source = "let value = let open Foo.Bar in result\nlet Foo.Bar.(x) = value\n" in
+  let root = parse_ml source |> Result.expect ~msg:"expected parse2 source file" in
+  let local_open_expr = nth_structure_item root 0
+  |> require_some ~msg:"expected local open expression item"
+  |> binding_of_structure_item
+  |> Result.expect ~msg:"expected local open binding"
+  |> body_of_binding
+  |> Result.expect ~msg:"expected local open body" in
+  let local_open = Ast2.LocalOpenExpr.cast local_open_expr |> require_some ~msg:"expected local open expression view" in
+  (
+    match Ast2.LocalOpenExpr.view local_open with
+    | Ast2.LocalOpenExpr.LetOpen {
+      let_token=Some let_token;
+      open_token=Some open_token;
+      module_path=Some module_path;
+      in_token=Some in_token;
+      body=Some body;
+      _
+    } ->
+        Test.assert_equal ~expected:"let" ~actual:(Ast2.Token.text let_token);
+        Test.assert_equal ~expected:"open" ~actual:(Ast2.Token.text open_token);
+        Test.assert_equal ~expected:"Bar" ~actual:(last_path_text module_path);
+        Test.assert_equal ~expected:"in" ~actual:(Ast2.Token.text in_token);
+        (
+          match Ast2.Expr.view body with
+          | Ast2.Expr.Path { path } -> Test.assert_equal
+            ~expected:"result"
+            ~actual:(last_path_text path)
+          | _ -> panic "expected local open body path"
+        )
+    | _ -> panic "expected complete let open expression"
+  );
+  let local_open_pattern = nth_structure_item root 1
+  |> require_some ~msg:"expected local open pattern item"
+  |> binding_of_structure_item
+  |> Result.expect ~msg:"expected local open pattern binding"
+  |> pattern_of_binding
+  |> Result.expect ~msg:"expected local open pattern" in
+  let local_open_pattern = Ast2.LocalOpenPattern.cast local_open_pattern |> require_some ~msg:"expected local open pattern view" in
+  Test.assert_equal ~expected:"Foo.Bar" ~actual:(local_open_pattern_path_text local_open_pattern);
+  let dot_token = Ast2.LocalOpenPattern.dot_token local_open_pattern |> require_some ~msg:"expected local open dot" in
+  let inner = Ast2.LocalOpenPattern.pattern local_open_pattern |> require_some ~msg:"expected inner local open pattern" in
+  Test.assert_equal ~expected:"." ~actual:(Ast2.Token.text dot_token);
+  (
+    match Ast2.Pattern.view inner with
+    | Ast2.Pattern.Path { path } ->
+        Test.assert_equal ~expected:"x" ~actual:(last_path_text path);
+        Ok ()
+    | _ -> Error "expected local open inner path pattern"
+  )
+
 let tests = [
   Test.case "ast2 exposes source file and let binding views" test_source_file_and_let_binding_views;
   Test.case "ast2 exposes if and match expression views" test_expression_views;
@@ -483,6 +542,7 @@ let tests = [
   Test.case "ast2 exposes let binding type annotation views" test_binding_type_annotation_view;
   Test.case "ast2 exposes record expression and pattern views" test_record_views;
   Test.case "ast2 exposes binding operator expression views" test_binding_operator_views;
+  Test.case "ast2 exposes local open expression and pattern views" test_local_open_views;
 ]
 
 let () =

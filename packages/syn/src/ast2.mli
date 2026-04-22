@@ -144,6 +144,21 @@ module RecordPattern: sig
   val for_each_field: t -> fn:(field -> unit) -> unit
 end
 
+module LocalOpenPattern: sig
+  type t = pattern
+  val cast: pattern -> t option
+
+  val dot_token: t -> Token.t option
+
+  val opening_token: t -> Token.t option
+
+  val closing_token: t -> Token.t option
+
+  val pattern: t -> pattern option
+
+  val for_each_module_path_ident: t -> fn:(Token.t -> unit) -> unit
+end
+
 module Parameter: sig
   type t = parameter
   type view =
@@ -256,6 +271,29 @@ module RecordExpr: sig
   val base: t -> expr option
 
   val for_each_field: t -> fn:(field -> unit) -> unit
+end
+
+module LocalOpenExpr: sig
+  type t = expr
+  type view =
+    | LetOpen of {
+        let_token: Token.t option;
+        open_token: Token.t option;
+        bang_token: Token.t option;
+        module_path: path option;
+        in_token: Token.t option;
+        body: expr option
+      }
+    | Delimited of {
+        module_path: path option;
+        dot_token: Token.t option;
+        opening_token: Token.t option;
+        body: expr option;
+        closing_token: Token.t option
+      }
+  val cast: expr -> t option
+
+  val view: t -> view
 end
 
 module BindingOperatorExpr: sig

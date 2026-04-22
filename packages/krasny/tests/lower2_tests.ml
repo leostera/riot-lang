@@ -149,6 +149,12 @@ let tests = [
         ~expected:"let value = let* x = fetch in let+ y = decode in pair x y\nlet both = let+ x = a and+ y = b in pair x y\n"
         "let value = let* x = fetch in let+ y = decode in pair x y\nlet both = let+ x = a and+ y = b in pair x y\n");
   Test.case
+    "lower2 formats local open expressions and patterns"
+    (fun _ctx ->
+      assert_format2_ml
+        ~expected:"let value = let open Foo.Bar in result\nlet Foo.Bar.(x) = value\n"
+        "let value = let open Foo.Bar in result\nlet Foo.Bar.(x) = value\n");
+  Test.case
     "lower2 formats assertion and lazy expressions"
     (fun _ctx -> assert_format2_ml ~expected:"let _ = assert ready\nlet later = lazy compute\n" "let _ = assert ready\nlet later = lazy compute\n");
   Test.case
