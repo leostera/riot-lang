@@ -2088,11 +2088,27 @@ let rec type_tokens_doc = fun tokens ->
   else
     type_tokens_inline_doc tokens
 
+let field_type_breaks_after_colon = fun tokens ->
+  let rec contains_and = function
+    | [] -> false
+    | token :: rest -> token_kind_is token Kind.AND_KW || contains_and rest
+  in
+  match tokens with
+  | opening :: module_token :: _ when token_kind_is opening Kind.LPAREN
+  && token_kind_is module_token Kind.MODULE_KW -> contains_and tokens
+  | _ -> false
+
 let record_field_doc = fun ~inline tokens ->
   match split_top_level_token tokens ~matches:(fun kind -> Kind.(kind = COLON)) with
   | Some (name_tokens, _colon, type_tokens) ->
+      let type_doc = type_tokens_doc type_tokens in
       Doc.concat
-        [ type_tokens_inline_doc name_tokens; Doc.colon; Doc.space; type_tokens_doc type_tokens; (
+        [ type_tokens_inline_doc name_tokens; Doc.colon; (
+            if (not inline) && field_type_breaks_after_colon type_tokens then
+              Doc.concat [ Doc.line; Doc.indent 2 type_doc ]
+            else
+              Doc.concat [ Doc.space; type_doc ]
+          ); (
             if inline then
               Doc.empty
             else
@@ -2100,7 +2116,7 @@ let record_field_doc = fun ~inline tokens ->
           ); ]
   | None -> type_tokens_inline_doc tokens
 
-let record_body_doc = fun ~inline tokens ->
+let record_body_field_groups = fun tokens ->
   let tokens =
     match tokens with
     | opening :: rest when token_kind_is opening Kind.LBRACE ->
@@ -2112,10 +2128,10 @@ let record_body_doc = fun ~inline tokens ->
         strip_closing [] rest
     | _ -> tokens
   in
-  let fields =
-    split_top_level_all tokens ~matches:(fun kind -> Kind.(kind = SEMI))
-  in
-  let fields = fields |> List.map ~fn:(record_field_doc ~inline) in
+  split_top_level_all tokens ~matches:(fun kind -> Kind.(kind = SEMI))
+
+let record_body_doc = fun ~inline tokens ->
+  let fields = record_body_field_groups tokens |> List.map ~fn:(record_field_doc ~inline) in
   match inline with
   | true -> Doc.concat
     [
@@ -2128,15 +2144,48 @@ let record_body_doc = fun ~inline tokens ->
   | false -> Doc.concat
     [ Doc.lbrace; Doc.line; Doc.indent 2 (Doc.lines fields); Doc.line; Doc.rbrace; ]
 
+let inline_record_payload = fun tokens -> Int.(List.length (record_body_field_groups tokens) <= 2)
+
 let constructor_payload_doc = fun tokens ->
   match tokens with
-  | opening :: _ when token_kind_is opening Kind.LBRACE -> record_body_doc ~inline:true tokens
+  | opening :: _ when token_kind_is opening Kind.LBRACE -> record_body_doc
+    ~inline:(inline_record_payload tokens)
+    tokens
+  | _ -> type_tokens_doc tokens
+
+let constructor_result_type_doc = fun tokens ->
+  match tokens with
+  | opening :: _ when token_kind_is opening Kind.LBRACE -> (
+      let payload_doc tokens =
+        let inline = inline_record_payload tokens in
+        let doc = record_body_doc ~inline tokens in
+        if inline then
+          doc
+        else
+          Doc.indent 2 doc
+      in
+      match split_top_level_token tokens ~matches:(fun kind -> Kind.(kind = ARROW)) with
+      | Some (payload_tokens, arrow_token, result_tokens) -> Doc.concat
+        [
+          payload_doc payload_tokens;
+          Doc.space;
+          token_doc arrow_token;
+          Doc.space;
+          type_tokens_doc result_tokens;
+        ]
+      | None -> payload_doc tokens
+    )
   | _ -> type_tokens_doc tokens
 
 let constructor_doc = fun tokens ->
   match split_top_level_token tokens ~matches:(fun kind -> Kind.(kind = COLON)) with
   | Some (name_tokens, _colon, type_tokens) -> Doc.concat
-    [ type_tokens_inline_doc name_tokens; Doc.colon; Doc.space; type_tokens_doc type_tokens ]
+    [
+      type_tokens_inline_doc name_tokens;
+      Doc.colon;
+      Doc.space;
+      constructor_result_type_doc type_tokens
+    ]
   | None -> (
       match split_top_level_token tokens ~matches:(fun kind -> Kind.(kind = OF_KW)) with
       | Some (name_tokens, of_token, payload_tokens) -> Doc.concat
@@ -2436,6 +2485,92 @@ let module_type_decl_path_body_doc = fun decl ->
   | [] -> unsupported "module type declaration path body without identifiers"
   | segments -> Doc.join (Doc.text ".") segments
 
+let module_type_decl_sig_body_tokens = fun decl ->
+  let tokens = ref [] in
+  Ast.ModuleTypeDeclaration.for_each_sig_body_token
+    decl
+    ~fn:(fun token -> tokens := token :: !tokens);
+  List.reverse !tokens
+
+let starts_signature_body_item = fun kind ->
+  Kind.(kind = VAL_KW
+  || kind = TYPE_KW
+  || kind = MODULE_KW
+  || kind = OPEN_KW
+  || kind = INCLUDE_KW
+  || kind = EXTERNAL_KW
+  || kind = EXCEPTION_KW)
+
+let split_signature_body_items = fun tokens ->
+  let rec loop current items depth = function
+    | [] ->
+        List.reverse
+          (
+            match current with
+            | [] -> items
+            | _ -> List.reverse current :: items
+          )
+    | token :: rest when Int.(depth = 0)
+    && starts_signature_body_item (Ast.Token.kind token)
+    && not (List.is_empty current) -> loop
+      [ token ]
+      (List.reverse current :: items)
+      (type_token_depth_after depth token)
+      rest
+    | token :: rest -> loop (token :: current) items (type_token_depth_after depth token) rest
+  in
+  loop [] [] 0 tokens
+
+let signature_body_type_item_doc = fun tokens ->
+  match type_decl_members tokens with
+  | [] -> unsupported "empty signature type item"
+  | first :: rest ->
+      let first_doc = type_member_doc first in
+      let rest_docs = rest
+      |> List.map ~fn:(fun member_ -> Doc.concat [ blank_line; type_member_doc member_ ]) in
+      Doc.concat (first_doc :: rest_docs)
+
+let signature_body_val_item_doc = fun tokens ->
+  match tokens with
+  | val_token :: rest when token_kind_is val_token Kind.VAL_KW -> (
+      match split_top_level_token rest ~matches:(fun kind -> Kind.(kind = COLON)) with
+      | Some (name_tokens, _colon, type_tokens) -> Doc.concat
+        [
+          token_doc val_token;
+          Doc.space;
+          type_tokens_inline_doc name_tokens;
+          Doc.colon;
+          Doc.space;
+          type_tokens_doc type_tokens;
+        ]
+      | None -> type_tokens_inline_doc tokens
+    )
+  | _ -> type_tokens_inline_doc tokens
+
+let signature_body_item_doc = fun tokens ->
+  match tokens with
+  | token :: _ when token_kind_is token Kind.TYPE_KW -> signature_body_type_item_doc tokens
+  | token :: _ when token_kind_is token Kind.VAL_KW -> signature_body_val_item_doc tokens
+  | _ -> type_tokens_inline_doc tokens
+
+let module_type_decl_sig_body_doc = fun decl ->
+  match Ast.ModuleTypeDeclaration.sig_token decl, Ast.ModuleTypeDeclaration.end_token decl with
+  | Some sig_token, Some end_token ->
+      let items = split_signature_body_items (module_type_decl_sig_body_tokens decl) in
+      (
+        match items with
+        | [] -> Doc.concat [ token_doc sig_token; Doc.space; token_doc end_token ]
+        | items -> Doc.concat
+          [
+            token_doc sig_token;
+            Doc.line;
+            Doc.indent 2 (Doc.lines (List.map items ~fn:signature_body_item_doc));
+            Doc.line;
+            token_doc end_token;
+          ]
+      )
+  | _ -> unsupported "module type signature body without sig/end tokens"
+
 let module_decl_body_doc = fun decl ->
   match Ast.ModuleDeclaration.body decl with
   | Path -> module_decl_path_body_doc decl
@@ -2447,7 +2582,8 @@ let module_type_decl_body_doc = fun decl ->
   match Ast.ModuleTypeDeclaration.body decl with
   | Abstract -> Doc.empty
   | Path -> module_type_decl_path_body_doc decl
-  | EmptySig -> Doc.concat [ Doc.text "sig"; Doc.space; Doc.text "end" ]
+  | EmptySig -> module_type_decl_sig_body_doc decl
+  | Sig -> module_type_decl_sig_body_doc decl
   | Unsupported -> unsupported "unsupported module type declaration body"
 
 let module_decl_doc = fun decl ->
@@ -2479,7 +2615,7 @@ let module_type_decl_doc = fun decl ->
       (
         match Ast.ModuleTypeDeclaration.equals_token decl, Ast.ModuleTypeDeclaration.body decl with
         | None, Abstract -> head
-        | Some equals_token, (Path | EmptySig) -> Doc.concat
+        | Some equals_token, (Path | EmptySig | Sig) -> Doc.concat
           [ head; Doc.space; token_doc equals_token; Doc.space; module_type_decl_body_doc decl ]
         | Some _, (Abstract | Unsupported) -> unsupported "unsupported module type declaration body"
         | None, _ -> unsupported "module type declaration body without equals token"
