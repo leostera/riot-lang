@@ -14,11 +14,10 @@ let make_overlap_probe = fun counter name ->
           Ok ()
         else if Time.Duration.to_millis (Time.Instant.elapsed started) >= 250 then
           Error "expected tests to overlap under concurrency"
-        else
-          (
-            sleep (Time.Duration.from_millis 5);
-            wait_for_peer ()
-          )
+        else (
+          sleep (Time.Duration.from_millis 5);
+          wait_for_peer ()
+        )
       in
       wait_for_peer ())
 
@@ -157,22 +156,24 @@ let test_list_tests_lists_all_cases = fun _ctx ->
     Error ("expected list-tests to succeed, got " ^ Int.to_string output.status)
   else
     let names = split_lines output.stdout |> List.sort ~compare:String.compare in
-    let expected = [
-      "alpha_large";
-      "large_timeout_probe";
-      "beta";
-      "gamma_property";
-      "inline_snapshot_probe";
-      "middle_large_case";
-      "concurrency_probe_alpha";
-      "concurrency_probe_beta";
-      "ordered_slow_first";
-      "ordered_fast_second";
-      "flaky_then_ok";
-      "timeout_probe";
-      "after_timeout"
-    ]
-    |> List.sort ~compare:String.compare in
+    let expected =
+      [
+        "alpha_large";
+        "large_timeout_probe";
+        "beta";
+        "gamma_property";
+        "inline_snapshot_probe";
+        "middle_large_case";
+        "concurrency_probe_alpha";
+        "concurrency_probe_beta";
+        "ordered_slow_first";
+        "ordered_fast_second";
+        "flaky_then_ok";
+        "timeout_probe";
+        "after_timeout"
+      ]
+      |> List.sort ~compare:String.compare
+    in
     if names = expected then
       Ok ()
     else
@@ -225,8 +226,7 @@ let test_run_tests_pattern_matches_suffix_substring = fun _ctx ->
     Error ("expected filtered run to succeed, got " ^ Int.to_string output.status)
   else
     let names = test_names_from_json output.stdout |> List.sort ~compare:String.compare in
-    let expected = [ "alpha_large"; "middle_large_case" ]
-    |> List.sort ~compare:String.compare in
+    let expected = [ "alpha_large"; "middle_large_case" ] |> List.sort ~compare:String.compare in
     if names = expected then
       Ok ()
     else
@@ -258,8 +258,7 @@ let test_run_tests_json_flag_alias_emits_json = fun _ctx ->
     Error ("expected --json run to succeed, got " ^ Int.to_string output.status)
   else
     let names = test_names_from_json output.stdout |> List.sort ~compare:String.compare in
-    let expected = [ "alpha_large"; "middle_large_case" ]
-    |> List.sort ~compare:String.compare in
+    let expected = [ "alpha_large"; "middle_large_case" ] |> List.sort ~compare:String.compare in
     if names = expected then
       Ok ()
     else
@@ -505,8 +504,8 @@ let test_run_tests_timeout_does_not_abort_suite = fun _ctx ->
       | _ -> Error "expected tests array in final TestSummary"
 
 let test_run_tests_concurrency_flag_allows_overlap = fun _ctx ->
-  let output =
-    run_sample_capture [ "run-tests"; "concurrency_probe"; "--json"; "--concurrency"; "2" ] in
+  let output = run_sample_capture
+    [ "run-tests"; "concurrency_probe"; "--json"; "--concurrency"; "2" ] in
   if not (Int.equal output.status 0) then
     Error ("expected concurrency probe run to succeed, got " ^ Int.to_string output.status)
   else
@@ -518,8 +517,7 @@ let test_run_tests_concurrency_flag_allows_overlap = fun _ctx ->
       Error ("unexpected concurrency probe names: " ^ String.concat ", " names)
 
 let test_run_tests_concurrency_keeps_summary_order = fun _ctx ->
-  let output =
-    run_sample_capture [ "run-tests"; "ordered_"; "--json"; "--concurrency"; "2" ] in
+  let output = run_sample_capture [ "run-tests"; "ordered_"; "--json"; "--concurrency"; "2" ] in
   if not (Int.equal output.status 0) then
     Error ("expected ordered concurrency run to succeed, got " ^ Int.to_string output.status)
   else
@@ -530,8 +528,8 @@ let test_run_tests_concurrency_keeps_summary_order = fun _ctx ->
       Error ("expected ordered summary results, got: " ^ String.concat ", " names)
 
 let test_run_tests_linear_suite_forces_serial_execution = fun _ctx ->
-  let output =
-    run_linear_sample_capture [ "run-tests"; "linear_probe"; "--json"; "--concurrency"; "2" ] in
+  let output = run_linear_sample_capture
+    [ "run-tests"; "linear_probe"; "--json"; "--concurrency"; "2" ] in
   if not (Int.equal output.status 0) then
     Error ("expected linear suite run to succeed, got " ^ Int.to_string output.status)
   else
@@ -573,9 +571,12 @@ let sample_main = fun ~args ->
 
 let linear_sample_main = fun ~args ->
   match args with
-  | exe :: _sample :: rest ->
-      Test.Cli.main ~execution_mode:Test.Cli.Linear ~name:"sample_linear" ~tests:linear_tests
-        ~args:(exe :: rest) ()
+  | exe :: _sample :: rest -> Test.Cli.main
+    ~execution_mode:Test.Cli.Linear
+    ~name:"sample_linear"
+    ~tests:linear_tests
+    ~args:(exe :: rest)
+    ()
   | _ -> Error (Failure "expected sample-linear subcommand arguments")
 
 let meta_main = fun ~args ->

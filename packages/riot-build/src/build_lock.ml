@@ -54,17 +54,18 @@ let compare_lane = fun left right ->
 let existing_lanes = fun ~target_dir_root ->
   list_subdirectories target_dir_root
   |> List.filter ~fn:(fun dir -> not (String.equal (Path.basename dir) "cache"))
-  |> List.flat_map ~fn:(fun profile_dir ->
-    let profile = Path.basename profile_dir in
-    list_subdirectories profile_dir
-    |> List.filter_map ~fn:(fun target_dir ->
-      let lock_path = Path.(target_dir / Path.v "riot.lock") in
-      if not (path_exists lock_path) then
-        None
-      else
-        Riot_model.Target.from_string (Path.basename target_dir)
-        |> Result.map ~fn:(fun target -> { profile; target })
-        |> Result.to_option))
+  |> List.flat_map
+    ~fn:(fun profile_dir ->
+      let profile = Path.basename profile_dir in
+      list_subdirectories profile_dir |> List.filter_map
+        ~fn:(fun target_dir ->
+          let lock_path = Path.(target_dir / Path.v "riot.lock") in
+          if not (path_exists lock_path) then
+            None
+          else
+            Riot_model.Target.from_string (Path.basename target_dir)
+            |> Result.map ~fn:(fun target -> { profile; target })
+            |> Result.to_option))
   |> List.sort ~compare:compare_lane
 
 let path_key = fun path -> Path.to_string path
@@ -177,8 +178,11 @@ let acquire = fun ~on_waiting ~target_dir_root ~profile ~target fn ->
 let acquire_existing_lanes = fun ~on_waiting ~target_dir_root fn ->
   let rec loop = function
     | [] -> fn ()
-    | lane :: rest ->
-        acquire ~on_waiting ~target_dir_root ~profile:lane.profile ~target:lane.target
-          (fun () -> loop rest)
+    | lane :: rest -> acquire
+      ~on_waiting
+      ~target_dir_root
+      ~profile:lane.profile
+      ~target:lane.target
+      (fun () -> loop rest)
   in
   loop (existing_lanes ~target_dir_root)

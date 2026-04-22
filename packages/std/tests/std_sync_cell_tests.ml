@@ -109,4 +109,5 @@ let tests = [
   test_cell_equal_compares_stored_values;
 ]
 
-let () = Runtime.run ~main:(fun ~args -> Test.Cli.main ~name ~tests ~args ()) ~args:Env.args ()
+let () =
+  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name ~tests ~args ()) ~args:Env.args ()

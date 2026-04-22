@@ -102,7 +102,11 @@ type test_error =
   | SuiteExecutionError of { suite: suite_binary; reason: string }
   | SuitesFailed of int
 val collect_suite_binaries:
-  Workspace.t -> ?package_filters:Package_name.t list -> ?suite_filter:string -> unit -> suite_binary list
+  Workspace.t ->
+  ?package_filters:Package_name.t list ->
+  ?suite_filter:string ->
+  unit ->
+  suite_binary list
 
 val test_error_message: test_error -> string
 

@@ -139,36 +139,43 @@ let test_existing_lanes_lists_sorted_targets = fun _ctx ->
       let host_target = target "aarch64-apple-darwin" in
       let linux_target = target "aarch64-unknown-linux-gnu" in
       let open ResultSyntax in
-      let* () =
-        BuildLock.acquire ~on_waiting:(fun _ -> ()) ~target_dir_root:(target_dir_root workspace) ~profile:"release"
-          ~target:linux_target (fun () -> Ok ())
-      in
-      let* () =
-        BuildLock.acquire ~on_waiting:(fun _ -> ()) ~target_dir_root:(target_dir_root workspace) ~profile:"debug"
-          ~target:host_target (fun () -> Ok ())
-      in
-      let cache_dir = Path.(target_dir_root workspace / Path.v "cache") in
-      let junk_dir = Path.(target_dir_root workspace / Path.v "debug" / Path.v "not-a-target") in
-      let _ = Fs.create_dir_all cache_dir in
-      let _ = Fs.create_dir_all junk_dir in
-      let actual =
-        BuildLock.existing_lanes ~target_dir_root:(target_dir_root workspace)
-        |> List.map ~fn:(fun (lane: BuildLock.lane) ->
-          lane.profile ^ ":" ^ Riot_model.Target.to_string lane.target)
-      in
-      let expected = [ "debug:aarch64-apple-darwin"; "release:aarch64-unknown-linux-gnu" ] in
-      if actual = expected then
-        Ok ()
-      else
-        Error
-          ("Expected existing_lanes to return sorted profile/target lanes, got "
+        let* () =
+          BuildLock.acquire
+            ~on_waiting:(fun _ -> ())
+            ~target_dir_root:(target_dir_root workspace)
+            ~profile:"release"
+            ~target:linux_target
+            (fun () -> Ok ())
+        in
+        let* () =
+          BuildLock.acquire
+            ~on_waiting:(fun _ -> ())
+            ~target_dir_root:(target_dir_root workspace)
+            ~profile:"debug"
+            ~target:host_target
+            (fun () -> Ok ())
+        in
+        let cache_dir = Path.(target_dir_root workspace / Path.v "cache") in
+        let junk_dir = Path.(target_dir_root workspace / Path.v "debug" / Path.v "not-a-target") in
+        let _ = Fs.create_dir_all cache_dir in
+        let _ = Fs.create_dir_all junk_dir in
+        let actual = BuildLock.existing_lanes ~target_dir_root:(target_dir_root workspace)
+        |> List.map
+          ~fn:(fun (lane: BuildLock.lane) -> lane.profile ^ ":" ^ Riot_model.Target.to_string lane.target) in
+        let expected = [ "debug:aarch64-apple-darwin"; "release:aarch64-unknown-linux-gnu" ] in
+        if actual = expected then
+          Ok ()
+        else
+          Error ("Expected existing_lanes to return sorted profile/target lanes, got "
           ^ String.concat ", " actual))
 
 let test_acquire_existing_lanes_succeeds_when_no_lanes_exist = fun _ctx ->
   with_tempdir "riot_build_lock_empty_lanes"
     (fun tmpdir ->
       let workspace = make_workspace tmpdir in
-      BuildLock.acquire_existing_lanes ~on_waiting:(fun _ -> ()) ~target_dir_root:(target_dir_root workspace)
+      BuildLock.acquire_existing_lanes
+        ~on_waiting:(fun _ -> ())
+        ~target_dir_root:(target_dir_root workspace)
         (fun () -> Ok ()))
 
 let tests =
@@ -182,4 +189,5 @@ let tests =
 
 let name = "Riot CLI Build Lock Tests"
 
-let () = Actors.run ~main:(fun ~args -> Test.Cli.main ~name ~tests ~args ()) ~args:Env.args ()
+let () =
+  Actors.run ~main:(fun ~args -> Test.Cli.main ~name ~tests ~args ()) ~args:Env.args ()

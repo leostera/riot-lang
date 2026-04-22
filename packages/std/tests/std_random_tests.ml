@@ -225,4 +225,5 @@ let tests =
     case "Random.choose_n rejects oversized requests" test_choose_n_rejects_oversized_requests;
   ]
 
-let () = Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"Random" ~tests ~args ()) ~args:Env.args ()
+let () =
+  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"Random" ~tests ~args ()) ~args:Env.args ()

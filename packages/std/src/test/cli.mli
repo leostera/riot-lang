@@ -3,7 +3,6 @@ open Global
 type execution_mode =
   | Concurrent
   | Linear
-
 val main:
   ?execution_mode:execution_mode ->
   name:string ->

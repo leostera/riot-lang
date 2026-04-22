@@ -6,35 +6,21 @@ open ArgParser
 
 let command =
   let open ArgParser in
-    let open Arg in
-      command "test"
-      |> about "Run tests with optional case filtering"
-      |> ArgParser.allow_trailing_args
-      |> args
-        [ option "package"
-          |> short 'p'
-          |> long "package"
-          |> multiple
-          |> help "Run tests from a specific package. Repeat to run multiple packages."; option
-            "filter"
-          |> short 'f'
-          |> long "filter"
-          |> help "Filter test suites and cases by substring within the selected packages"; flag "list"
-          |> long "list"
-          |> help "List test suites and cases without running them"; flag
-            "release"
-          |> long "release"
-          |> help "Use the release build profile"; flag "small" |> long "small" |> help "Run only tests marked small"; flag
-            "large"
-          |> long "large"
-          |> help "Run only tests marked large"; flag "flaky" |> long "flaky" |> help "Run only tests marked flaky"; flag
-            "json"
-          |> long "json"
-          |> help "Emit machine-readable JSONL events"; flag "verbose"
-          |> short 'v'
-          |> long "verbose"
-          |> help "Enable verbose output for tests"
-          |> count; ]
+    let open Arg in command "test"
+    |> about "Run tests with optional case filtering"
+    |> ArgParser.allow_trailing_args
+    |> args
+      [
+        option "package" |> short 'p' |> long "package" |> multiple |> help "Run tests from a specific package. Repeat to run multiple packages.";
+        option "filter" |> short 'f' |> long "filter" |> help "Filter test suites and cases by substring within the selected packages";
+        flag "list" |> long "list" |> help "List test suites and cases without running them";
+        flag "release" |> long "release" |> help "Use the release build profile";
+        flag "small" |> long "small" |> help "Run only tests marked small";
+        flag "large" |> long "large" |> help "Run only tests marked large";
+        flag "flaky" |> long "flaky" |> help "Run only tests marked flaky";
+        flag "json" |> long "json" |> help "Emit machine-readable JSONL events";
+        flag "verbose" |> short 'v' |> long "verbose" |> help "Enable verbose output for tests" |> count;
+      ]
 
 let trailing_args = fun matches ->
   let args = ArgParser.trailing_args matches in
@@ -153,9 +139,11 @@ let timeout_message = fun timeout_ms -> "timed out after " ^ Int.to_string timeo
 let sort_summary_tests = fun ~small_only ~large_only tests ->
   let compare =
     if large_only && not small_only then
-      fun (left: slow_test) (right: slow_test) -> Int.compare left.duration_us right.duration_us
+      fun (left: slow_test) (right: slow_test) ->
+        Int.compare left.duration_us right.duration_us
     else
-      fun (left: slow_test) (right: slow_test) -> Int.compare right.duration_us left.duration_us
+      fun (left: slow_test) (right: slow_test) ->
+        Int.compare right.duration_us left.duration_us
   in
   List.sort tests ~compare
 
@@ -181,19 +169,19 @@ let record_suite_timing = fun ~small_only ~large_only (timing: timing_summary) ~
   let slow_suite_tests: slow_test list = summary.results
   |> List.map
     ~fn:(fun (result: Test_runtime.test_case_result) ->
-      ({
-        suite_label;
-        test_name = result.name;
-        duration_us = result.duration_us;
-        size = result.size
-      }:
-        slow_test)) in
-  let slowest_tests: slow_test list =
-    List.append timing.slowest_tests slow_suite_tests
-    |> filter_summary_tests ~small_only ~large_only
-    |> sort_summary_tests ~small_only ~large_only
-    |> take 5
-  in
+      (
+        {
+          suite_label;
+          test_name = result.name;
+          duration_us = result.duration_us;
+          size = result.size
+        }:
+          slow_test
+      )) in
+  let slowest_tests: slow_test list = List.append timing.slowest_tests slow_suite_tests
+  |> filter_summary_tests ~small_only ~large_only
+  |> sort_summary_tests ~small_only ~large_only
+  |> take 5 in
   timing.slowest_tests <- slowest_tests;
   timing.failed_tests <- List.reverse_append
     (
@@ -512,17 +500,23 @@ let write_test_list = fun ~(workspace:Riot_model.Workspace.t) ~(suite_labels:sui
           println
             ("  [" ^ Int.to_string test.index ^ "] " ^ type_prefix ^ " " ^ test.name ^ metadata ^ skip_suffix)))
 
-type human_render_state = { streamed_suites: string Collections.HashSet.t }
+type human_render_state = {
+  streamed_suites: string Collections.HashSet.t;
+}
 
 let empty_human_render_state = fun () -> { streamed_suites = Collections.HashSet.create () }
 
 let suite_stream_key = fun (suite: Test_runtime.suite_binary) ->
   Riot_model.Package_name.to_string suite.package_name ^ ":" ^ suite.suite_name
 
-let qualified_test_name = fun (suite: Test_runtime.suite_binary) (result: Test_runtime.test_case_result) ->
+let qualified_test_name = fun (suite: Test_runtime.suite_binary) (
+  result: Test_runtime.test_case_result
+) ->
   Riot_model.Package_name.to_string suite.package_name ^ "::" ^ suite.suite_name ^ "::" ^ result.name
 
-let print_test_result = fun ~(suite:Test_runtime.suite_binary) (result: Test_runtime.test_case_result) ->
+let print_test_result = fun ~(suite:Test_runtime.suite_binary) (
+  result: Test_runtime.test_case_result
+) ->
   let prefix =
     match result.test_type with
     | Test_runtime.Test -> "test"
@@ -537,11 +531,9 @@ let print_test_result = fun ~(suite:Test_runtime.suite_binary) (result: Test_run
         | Test_runtime.Test -> "ok"
         | Test_runtime.Property { examples } -> Int.to_string examples ^ " examples ok"
       in
-      println
-        (prefix ^ " " ^ name ^ metadata ^ " ... " ^ suffix ^ attempts_suffix result.attempts)
+      println (prefix ^ " " ^ name ^ metadata ^ " ... " ^ suffix ^ attempts_suffix result.attempts)
   | Test_runtime.Failed message ->
-      println
-        (prefix ^ " " ^ name ^ metadata ^ " ... FAILED" ^ attempts_suffix result.attempts);
+      println (prefix ^ " " ^ name ^ metadata ^ " ... FAILED" ^ attempts_suffix result.attempts);
       if not (String.equal message "") then
         println ("       " ^ message)
   | Test_runtime.Timed_out { timeout_ms } ->
@@ -556,14 +548,7 @@ let print_test_result = fun ~(suite:Test_runtime.suite_binary) (result: Test_run
   | Test_runtime.Skipped ->
       println (prefix ^ " " ^ name ^ metadata ^ " ... skipped")
 
-let write_test_event = fun
-  ~(suite_labels:suite_source_label_entry list)
-  ~(timing:timing_summary)
-  ~small_only
-  ~large_only
-  ~(state:human_render_state)
-  ~verbose
-(
+let write_test_event = fun ~(suite_labels:suite_source_label_entry list) ~(timing:timing_summary) ~small_only ~large_only ~(state:human_render_state) ~verbose (
   event: Test_runtime.test_event
 ) ->
   match event with
@@ -585,10 +570,11 @@ let write_test_event = fun
       Test_runtime.suite_progress_test_case_result event
       |> Result.to_option
       |> Option.flatten
-      |> Option.for_each ~fn:(fun result ->
-        let key = suite_stream_key suite in
-        let _ = Collections.HashSet.insert state.streamed_suites ~value:key in
-        print_test_result ~suite result)
+      |> Option.for_each
+        ~fn:(fun result ->
+          let key = suite_stream_key suite in
+          let _ = Collections.HashSet.insert state.streamed_suites ~value:key in
+          print_test_result ~suite result)
   | Test_runtime.SuiteCompleted {
     suite;
     stdout;
@@ -604,7 +590,9 @@ let write_test_event = fun
             timing
             ~suite_label:(suite_source_label ~suite_labels suite)
             summary;
-          if not (Collections.HashSet.contains state.streamed_suites ~value:(suite_stream_key suite)) then
+          if
+            not (Collections.HashSet.contains state.streamed_suites ~value:(suite_stream_key suite))
+          then
             summary.results |> List.for_each ~fn:(print_test_result ~suite)
         );
       if verbose > 0 then
@@ -616,15 +604,7 @@ let write_test_event = fun
     skipped;
     failed_tests=_
   } ->
-      print_summary
-        ~small_only
-        ~large_only
-        ~label:"Test Summary:"
-        ~total
-        ~passed
-        ~failed
-        ~skipped
-        ~timing
+      print_summary ~small_only ~large_only ~label:"Test Summary:" ~total ~passed ~failed ~skipped ~timing
 
 let write_test_error = fun err -> println ("error: " ^ Test_runtime.test_error_message err)
 
@@ -787,13 +767,13 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
                 match output_mode with
                 | Build.Json -> write_test_event_json ~command_started_at event
                 | Build.Human -> write_test_event
-                    ~suite_labels
-                    ~timing
-                    ~small_only
-                    ~large_only
-                    ~state
-                    ~verbose
-                    event
+                  ~suite_labels
+                  ~timing
+                  ~small_only
+                  ~large_only
+                  ~state
+                  ~verbose
+                  event
               )
           in
           match

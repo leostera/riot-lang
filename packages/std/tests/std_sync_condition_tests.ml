@@ -219,4 +219,5 @@ let tests = [
   test_condition_broadcast_wakes_all_waiters;
 ]
 
-let () = Runtime.run ~main:(fun ~args -> Test.Cli.main ~name ~tests ~args ()) ~args:Env.args ()
+let () =
+  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name ~tests ~args ()) ~args:Env.args ()

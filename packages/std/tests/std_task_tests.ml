@@ -59,14 +59,23 @@ let test_await_all_preserves_input_order = fun _ctx ->
   let gate =
     spawn
       (fun () ->
-        let slow_pid = receive ~selector:(function
-          | Register_slow slow_pid -> `select slow_pid
-          | _ -> `skip) ()
+        let slow_pid =
+          receive
+            ~selector:(
+              function
+              | Register_slow slow_pid -> `select slow_pid
+              | _ -> `skip
+            )
+            ()
         in
         send parent Slow_task_registered;
-        receive ~selector:(function
-          | Release_slow -> `select ()
-          | _ -> `skip) ();
+        receive
+          ~selector:(
+            function
+            | Release_slow -> `select ()
+            | _ -> `skip
+          )
+          ();
         send slow_pid Slow_task_released;
         Ok ())
   in
@@ -74,16 +83,22 @@ let test_await_all_preserves_input_order = fun _ctx ->
     Task.async
       (fun () ->
         send gate (Register_slow (self ()));
-        receive ~selector:(function
-          | Slow_task_released -> `select ()
-          | _ -> `skip) ();
+        receive
+          ~selector:(
+            function
+            | Slow_task_released -> `select ()
+            | _ -> `skip
+          )
+          ();
         "slow")
   in
   match
     await_message ~what:"slow task registration"
-      (function
+      (
+        function
         | Slow_task_registered -> `select ()
-        | _ -> `skip)
+        | _ -> `skip
+      )
   with
   | Error _ as err -> err
   | Ok () ->
@@ -93,9 +108,9 @@ let test_await_all_preserves_input_order = fun _ctx ->
             send gate Release_slow;
             "fast")
       in
-  match Task.await_all [ slow; fast ] with
-  | [Ok "slow";Ok "fast"] -> Ok ()
-  | _ -> Error "expected Task.await_all to return results in input order"
+      match Task.await_all [ slow; fast ] with
+      | [Ok "slow";Ok "fast"] -> Ok ()
+      | _ -> Error "expected Task.await_all to return results in input order"
 
 let test_await_all_ignores_unrelated_messages = fun _ctx ->
   send (self ()) (Task_unrelated "noise");
@@ -154,4 +169,5 @@ let tests =
     case "Task.async starts eagerly before await" test_async_starts_eagerly;
   ]
 
-let () = Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"Task" ~tests ~args ()) ~args:Env.args ()
+let () =
+  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"Task" ~tests ~args ()) ~args:Env.args ()

@@ -175,4 +175,5 @@ let tests = [
   test_dynamic_worker_pool_send_task_executes_payload;
 ]
 
-let () = Runtime.run ~main:(fun ~args -> Test.Cli.main ~name ~tests ~args ()) ~args:Env.args ()
+let () =
+  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name ~tests ~args ()) ~args:Env.args ()

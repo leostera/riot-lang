@@ -273,10 +273,7 @@ let run_tests_cmd =
         |> default "pretty"
         |> possible_values [ "tap"; "json"; "junit"; "pretty"; "minimal" ];
         flag "shuffle" |> long "shuffle" |> help "Run tests in random order";
-        option "concurrency"
-        |> long "concurrency"
-        |> help "Number of concurrent workers"
-        ;
+        option "concurrency" |> long "concurrency" |> help "Number of concurrent workers";
         flag "small" |> long "small" |> help "Run only tests marked small";
         flag "large" |> long "large" |> help "Run only tests marked large";
         flag "flaky" |> long "flaky" |> help "Run only tests marked flaky";
@@ -339,8 +336,8 @@ let main = fun ?(execution_mode = Concurrent) ~name ~tests ~args () ->
               Error (Failure msg)
           | Ok reporter ->
               let shuffle = get_flag sub_matches "shuffle" in
-              let requested_concurrency =
-                get_int sub_matches "concurrency" |> Option.unwrap_or ~default:default_concurrency in
+              let requested_concurrency = get_int sub_matches "concurrency"
+              |> Option.unwrap_or ~default:default_concurrency in
               let small_only = get_flag sub_matches "small" in
               let large_only = get_flag sub_matches "large" in
               let flaky_only = get_flag sub_matches "flaky" in

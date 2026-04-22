@@ -104,4 +104,5 @@ let tests = [
   test_once_cell_get_or_try_init_retries_after_error;
 ]
 
-let () = Runtime.run ~main:(fun ~args -> Test.Cli.main ~name ~tests ~args ()) ~args:Env.args ()
+let () =
+  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name ~tests ~args ()) ~args:Env.args ()

@@ -29,7 +29,4 @@ val acquire:
   ('a, 'b) result
 
 val acquire_existing_lanes:
-  on_waiting:(Path.t -> unit) ->
-  target_dir_root:Path.t ->
-  (unit -> ('a, 'b) result) ->
-  ('a, 'b) result
+  on_waiting:(Path.t -> unit) -> target_dir_root:Path.t -> (unit -> ('a, 'b) result) -> ('a, 'b) result

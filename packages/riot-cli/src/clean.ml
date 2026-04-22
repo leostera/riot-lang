@@ -8,9 +8,7 @@ let command =
     |> args
       [
         flag "json" |> long "json" |> help "Emit machine-readable JSONL events";
-        flag "force"
-        |> long "force"
-        |> help "Remove the entire build root instead of keeping it and running tracked cache GC";
+        flag "force" |> long "force" |> help "Remove the entire build root instead of keeping it and running tracked cache GC";
       ]
 
 let run = fun ~(workspace:Riot_model.Workspace.t) matches ->

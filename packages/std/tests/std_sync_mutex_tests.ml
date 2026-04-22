@@ -252,4 +252,5 @@ let tests = [
   test_mutex_owner_exit_releases_lock;
 ]
 
-let () = Runtime.run ~main:(fun ~args -> Test.Cli.main ~name ~tests ~args ()) ~args:Env.args ()
+let () =
+  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name ~tests ~args ()) ~args:Env.args ()

@@ -55,38 +55,35 @@ let test_suite_progress_test_case_result_parses_completed_case = fun _ctx ->
     ("retry_attempts", Data.Json.Int 2);
     ("attempts", Data.Json.Int 3);
     ("status", Data.Json.String "passed");
-    ("duration_us", Data.Json.Int 1234);
-  ] in
+    ("duration_us", Data.Json.Int 1_234);
+  ]
+  in
   match Riot_cli.Test_runtime.suite_progress_test_case_result json with
-  | Ok
-      (Some
-        Riot_cli.Test_runtime.{
-          index;
-          name;
-          test_type = Property { examples };
-          size = Large;
-          reliability = Flaky { retry_attempts };
-          attempts;
-          result = Passed;
-          duration_us;
-        }) ->
+  | Ok (Some Riot_cli.Test_runtime.{
+    index;
+    name;
+    test_type=Property { examples };
+    size=Large;
+    reliability=Flaky { retry_attempts };
+    attempts;
+    result=Passed;
+    duration_us;
+
+  }) ->
       if
         Int.equal index 3
         && String.equal name "alpha"
         && Int.equal examples 7
         && Int.equal retry_attempts 2
         && Int.equal attempts 3
-        && Int.equal duration_us 1234
+        && Int.equal duration_us 1_234
       then
         Ok ()
       else
         Error "expected parsed completed case metadata to round-trip"
-  | Ok (Some _) ->
-      Error "expected completed case to parse into a property test result"
-  | Ok None ->
-      Error "expected completed case progress to parse"
-  | Error err ->
-      Error ("expected completed case progress to parse: " ^ err)
+  | Ok (Some _) -> Error "expected completed case to parse into a property test result"
+  | Ok None -> Error "expected completed case progress to parse"
+  | Error err -> Error ("expected completed case progress to parse: " ^ err)
 
 let test_suite_progress_test_case_result_ignores_non_completed_event = fun _ctx ->
   let json = Data.Json.Object [
@@ -100,12 +97,8 @@ let test_suite_progress_test_case_result_ignores_non_completed_event = fun _ctx 
 
 let tests = [
   Test.case "suite heartbeat event renders json" test_suite_heartbeat_event_to_json;
-  Test.case
-    "suite progress completed case parses into a test result"
-    test_suite_progress_test_case_result_parses_completed_case;
-  Test.case
-    "suite progress ignores non-completed events"
-    test_suite_progress_test_case_result_ignores_non_completed_event;
+  Test.case "suite progress completed case parses into a test result" test_suite_progress_test_case_result_parses_completed_case;
+  Test.case "suite progress ignores non-completed events" test_suite_progress_test_case_result_ignores_non_completed_event;
 ]
 
 let main = fun ~args -> Test.Cli.main ~name:"test_runtime_tests" ~tests ~args ()

@@ -189,8 +189,10 @@ let profile_of_name = function
   | _ -> Riot_model.Profile.debug
 
 let matches_package_filters = fun package_filters package_name ->
-  List.is_empty package_filters
-  || List.exists (fun package_filter -> Package_name.equal package_filter package_name) package_filters
+  List.is_empty package_filters || List.exists
+    (fun package_filter ->
+      Package_name.equal package_filter package_name)
+    package_filters
 
 let selected_package_name = function
   | [ package_name ] -> Some package_name
@@ -199,8 +201,7 @@ let selected_package_name = function
 let realized_test_packages = fun ?(package_filters = []) (workspace: Workspace.t) ->
   Workspace.realize_packages ~intent:Package.Test workspace
   |> List.filter ~fn:Package.is_workspace_member
-  |> List.filter
-    ~fn:(fun (pkg: Package.t) -> matches_package_filters package_filters pkg.name)
+  |> List.filter ~fn:(fun (pkg: Package.t) -> matches_package_filters package_filters pkg.name)
 
 let collect_suite_binaries = fun (workspace: Workspace.t) ?(package_filters = []) ?suite_filter () ->
   realized_test_packages ~package_filters workspace |> List.flat_map
@@ -431,8 +432,10 @@ let test_case_type_field_of_json = fun fields ->
       ~fn:(fun (field_name, _) ->
         String.equal field_name "test_type")
   with
-  | None -> Ok Test
-  | Some (_, Data.Json.String "test") -> Ok Test
+  | None ->
+      Ok Test
+  | Some (_, Data.Json.String "test") ->
+      Ok Test
   | Some (_, Data.Json.String "property") ->
       let* examples =
         match
@@ -444,8 +447,10 @@ let test_case_type_field_of_json = fun fields ->
         | None -> Ok 0
       in
       Ok (Property { examples })
-  | Some (_, Data.Json.String other) -> Error ("unknown test type " ^ other)
-  | Some (_, other) -> error_expected "string" other
+  | Some (_, Data.Json.String other) ->
+      Error ("unknown test type " ^ other)
+  | Some (_, other) ->
+      error_expected "string" other
 
 let suite_progress_test_case_result = fun json ->
   match json_event_type json with
@@ -464,16 +469,18 @@ let suite_progress_test_case_result = fun json ->
       let* attempts = optional_int_field "attempts" fields in
       let* result = test_status_of_json json in
       let* duration_us = optional_int_field "duration_us" fields in
-      Ok (Some {
-        index;
-        name;
-        test_type;
-        size;
-        reliability;
-        attempts = Option.unwrap_or ~default:1 attempts;
-        result;
-        duration_us = Option.unwrap_or ~default:0 duration_us;
-      })
+      Ok (
+        Some {
+          index;
+          name;
+          test_type;
+          size;
+          reliability;
+          attempts = Option.unwrap_or ~default:1 attempts;
+          result;
+          duration_us = Option.unwrap_or ~default:0 duration_us;
+        }
+      )
   | Some _
   | None -> Ok None
 

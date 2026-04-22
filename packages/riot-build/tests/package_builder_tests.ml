@@ -278,12 +278,10 @@ let tests =
     case "build_result: status variants" test_build_result_status_variants;
     case "package_error: variants" test_package_error_variants;
     case "build writes hash manifest with exports" test_build_writes_hash_manifest_with_exports;
-    case
-      ~size:Large
-      "dependency source change rebuilds dependent package"
-      test_dependency_source_change_rebuilds_dependent_package;
+    case ~size:Large "dependency source change rebuilds dependent package" test_dependency_source_change_rebuilds_dependent_package;
   ]
 
 let name = "Package Builder Tests"
 
-let () = Actors.run ~main:(fun ~args -> Test.Cli.main ~name ~tests ~args ()) ~args:Env.args ()
+let () =
+  Actors.run ~main:(fun ~args -> Test.Cli.main ~name ~tests ~args ()) ~args:Env.args ()

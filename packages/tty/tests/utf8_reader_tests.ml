@@ -106,4 +106,7 @@ let tests =
   ]
 
 let () =
-  Actors.run ~main:(fun ~args -> Test.Cli.main ~name:"tty_utf8_reader" ~tests ~args ()) ~args:Env.args ()
+  Actors.run
+    ~main:(fun ~args -> Test.Cli.main ~name:"tty_utf8_reader" ~tests ~args ())
+    ~args:Env.args
+    ()

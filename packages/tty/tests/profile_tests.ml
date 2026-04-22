@@ -144,6 +144,7 @@ let tests =
 
 let () =
   Actors.run
-    ~main:(fun ~args -> Test.Cli.main ~execution_mode:Test.Cli.Linear ~name:"tty_profile" ~tests ~args ())
+    ~main:(fun ~args ->
+      Test.Cli.main ~execution_mode:Test.Cli.Linear ~name:"tty_profile" ~tests ~args ())
     ~args:Env.args
     ()
