@@ -23,7 +23,7 @@ let optional_token_doc = fun token ->
   | Some token -> token_doc token
   | None -> Doc.empty
 
-let attribute_shell_doc = fun ~for_each_shell_token ->
+let bracketed_shell_doc = fun ~empty_message ~for_each_shell_token ->
   let shell = ref Doc.empty in
   let first = ref true in
   for_each_shell_token
@@ -39,9 +39,15 @@ let attribute_shell_doc = fun ~for_each_shell_token ->
       in
       shell := Doc.concat [ !shell; part ]);
   if !first then
-    unsupported "attribute without shell tokens"
+    unsupported empty_message
   else
     !shell
+
+let attribute_shell_doc = fun ~for_each_shell_token ->
+  bracketed_shell_doc ~empty_message:"attribute without shell tokens" ~for_each_shell_token
+
+let extension_shell_doc = fun ~for_each_shell_token ->
+  bracketed_shell_doc ~empty_message:"extension without shell tokens" ~for_each_shell_token
 
 let path_doc = fun path ->
   let segments = ref [] in
@@ -254,7 +260,8 @@ let rec pattern_doc = fun pattern ->
       attribute_pattern_doc pattern
   | Attribute _ ->
       unsupported "attribute pattern without inner pattern"
-  | Extension
+  | Extension ->
+      extension_pattern_doc pattern
   | LocallyAbstractType
   | FirstClassModule
   | Error _
@@ -275,6 +282,12 @@ and attribute_pattern_doc = fun pattern ->
       | None -> unsupported "attribute pattern without inner pattern"
     )
   | None -> unsupported "unsupported attribute pattern"
+
+and extension_pattern_doc = fun pattern ->
+  match Ast.ExtensionPattern.cast pattern with
+  | Some extension -> extension_shell_doc
+    ~for_each_shell_token:(fun ~fn -> Ast.ExtensionPattern.for_each_shell_token extension ~fn)
+  | None -> unsupported "unsupported extension pattern"
 
 and local_open_pattern_path_doc = fun pattern ->
   let segments = ref [] in
@@ -698,7 +711,8 @@ and expr_doc_with_view = fun expr (view: Ast.Expr.view) ->
       attribute_expr_doc expr
   | Attribute _ ->
       unsupported "attribute expression without inner expression"
-  | Extension
+  | Extension ->
+      extension_expr_doc expr
   | Object
   | New
   | Error _
@@ -721,6 +735,12 @@ and attribute_expr_doc = fun expr ->
       | None -> unsupported "attribute expression without inner expression"
     )
   | None -> unsupported "unsupported attribute expression"
+
+and extension_expr_doc = fun expr ->
+  match Ast.ExtensionExpr.cast expr with
+  | Some extension -> extension_shell_doc
+    ~for_each_shell_token:(fun ~fn -> Ast.ExtensionExpr.for_each_shell_token extension ~fn)
+  | None -> unsupported "unsupported extension expression"
 
 and record_expr_field_doc = fun (field: Ast.RecordExpr.field) ->
   match field.path with
@@ -1179,6 +1199,14 @@ let exception_decl_doc = fun decl ->
   | Some name -> Doc.concat [ Doc.text "exception"; Doc.space; token_doc name ]
   | None -> unsupported "exception declaration without name"
 
+let extension_item_doc = fun item ->
+  extension_shell_doc
+    ~for_each_shell_token:(fun ~fn -> Ast.ExtensionItem.for_each_shell_token item ~fn)
+
+let attribute_item_doc = fun item ->
+  attribute_shell_doc
+    ~for_each_shell_token:(fun ~fn -> Ast.AttributeItem.for_each_shell_token item ~fn)
+
 let structure_item_doc = fun item ->
   match Ast.StructureItem.view item with
   | Let decl ->
@@ -1202,9 +1230,11 @@ let structure_item_doc = fun item ->
       | Some expr -> expr_doc expr
       | None -> unsupported "expression item without expression"
     )
+  | Extension item ->
+      extension_item_doc item
+  | Attribute item ->
+      attribute_item_doc item
   | Class _
-  | Extension _
-  | Attribute _
   | Error _
   | Unknown _ ->
       unsupported "unsupported structure item"
@@ -1219,9 +1249,9 @@ let signature_item_doc = fun item ->
   | External decl -> external_decl_doc decl
   | Exception decl -> exception_decl_doc decl
   | ModuleType decl -> module_type_decl_doc decl
+  | Extension item -> extension_item_doc item
+  | Attribute item -> attribute_item_doc item
   | Class _
-  | Extension _
-  | Attribute _
   | Error _
   | Unknown _ -> unsupported "unsupported signature item"
 

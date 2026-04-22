@@ -874,6 +874,62 @@ let test_attribute_views = fun _ctx ->
         Ast2.AttributePattern.for_each_shell_token attribute_pattern ~fn));
   Ok ()
 
+let test_extension_views = fun _ctx ->
+  let source = "let value = [%expr payload]\nlet [%pat payload] = value\n[%%item payload]\n[@@@warning \"-32\"]\n" in
+  let root = parse_ml source |> Result.expect ~msg:"expected parse2 source file" in
+  let extension_expr = nth_structure_item root 0
+  |> require_some ~msg:"expected extension expression item"
+  |> binding_of_structure_item
+  |> Result.expect ~msg:"expected extension expression binding"
+  |> body_of_binding
+  |> Result.expect ~msg:"expected extension expression body" in
+  (
+    match Ast2.Expr.view extension_expr with
+    | Ast2.Expr.Extension -> ()
+    | _ -> panic "expected extension expression"
+  );
+  let extension_expr = Ast2.ExtensionExpr.cast extension_expr |> require_some ~msg:"expected extension expression view" in
+  Test.assert_equal
+    ~expected:"[%expr payload]"
+    ~actual:(attribute_shell_text
+      ~for_each_shell_token:(fun ~fn -> Ast2.ExtensionExpr.for_each_shell_token extension_expr ~fn));
+  let extension_pattern = nth_structure_item root 1
+  |> require_some ~msg:"expected extension pattern item"
+  |> binding_of_structure_item
+  |> Result.expect ~msg:"expected extension pattern binding"
+  |> pattern_of_binding
+  |> Result.expect ~msg:"expected extension pattern" in
+  (
+    match Ast2.Pattern.view extension_pattern with
+    | Ast2.Pattern.Extension -> ()
+    | _ -> panic "expected extension pattern"
+  );
+  let extension_pattern = Ast2.ExtensionPattern.cast extension_pattern |> require_some ~msg:"expected extension pattern view" in
+  Test.assert_equal
+    ~expected:"[%pat payload]"
+    ~actual:(attribute_shell_text
+      ~for_each_shell_token:(fun ~fn ->
+        Ast2.ExtensionPattern.for_each_shell_token extension_pattern ~fn));
+  let extension_item = nth_structure_item root 2 |> require_some ~msg:"expected extension item" in
+  (
+    match Ast2.StructureItem.view extension_item with
+    | Ast2.StructureItem.Extension item -> Test.assert_equal
+      ~expected:"[%%item payload]"
+      ~actual:(attribute_shell_text
+        ~for_each_shell_token:(fun ~fn -> Ast2.ExtensionItem.for_each_shell_token item ~fn))
+    | _ -> panic "expected extension structure item"
+  );
+  let attribute_item = nth_structure_item root 3 |> require_some ~msg:"expected attribute item" in
+  (
+    match Ast2.StructureItem.view attribute_item with
+    | Ast2.StructureItem.Attribute item -> Test.assert_equal
+      ~expected:"[@@@warning \"-32\"]"
+      ~actual:(attribute_shell_text
+        ~for_each_shell_token:(fun ~fn -> Ast2.AttributeItem.for_each_shell_token item ~fn))
+    | _ -> panic "expected attribute structure item"
+  );
+  Ok ()
+
 let tests = [
   Test.case "ast2 exposes source file and let binding views" test_source_file_and_let_binding_views;
   Test.case "ast2 exposes if and match expression views" test_expression_views;
@@ -895,6 +951,7 @@ let tests = [
   Test.case "ast2 exposes let exception expression views" test_let_exception_expression_views;
   Test.case "ast2 exposes unreachable expression views" test_unreachable_expression_views;
   Test.case "ast2 exposes attribute expression and pattern views" test_attribute_views;
+  Test.case "ast2 exposes extension expression pattern and item views" test_extension_views;
 ]
 
 let () =

@@ -135,6 +135,16 @@ let tests = [
     (fun _ctx ->
       assert_format2_ml ~expected:"let value = target [@inline always]\nlet (x [@foo]) = value\n" "let value = target [@inline always]\nlet (x [@foo]) = value\n");
   Test.case
+    "lower2 formats expression pattern and item extensions"
+    (fun _ctx ->
+      assert_format2_ml
+        ~expected:"let value = [%expr payload]\nlet [%pat payload] = value\n[%%item payload]\n[@@@warning \"-32\"]\n"
+        "let value = [%expr payload]\nlet [%pat payload] = value\n[%%item payload]\n[@@@warning \"-32\"]\n");
+  Test.case
+    "lower2 formats signature extension and attribute items"
+    (fun _ctx ->
+      assert_format2_mli ~expected:"[%%foo payload]\n[@@@warning \"-32\"]\nval id: int\n" "[%%foo payload]\n[@@@warning \"-32\"]\nval id : int\n");
+  Test.case
     "lower2 formats selectors and index expressions"
     (fun _ctx ->
       assert_format2_ml

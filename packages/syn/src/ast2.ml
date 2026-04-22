@@ -772,6 +772,23 @@ end = struct
   let for_each_shell_token = Node.for_each_child_token
 end
 
+module ExtensionExpr: sig
+  type t = expr
+  val cast: expr -> t option
+
+  val for_each_shell_token: t -> fn:(token -> unit) -> unit
+end = struct
+  type t = expr
+
+  let cast = fun (expr: expr) ->
+    if node_kind_is expr Syntax_kind2.EXTENSION_EXPR then
+      Some expr
+    else
+      None
+
+  let for_each_shell_token = Node.for_each_child_token
+end
+
 module RecordExpr: sig
   type t = expr
   type field = {
@@ -1538,6 +1555,23 @@ end = struct
   let for_each_shell_token = Node.for_each_child_token
 end
 
+module ExtensionPattern: sig
+  type t = pattern
+  val cast: pattern -> t option
+
+  val for_each_shell_token: t -> fn:(token -> unit) -> unit
+end = struct
+  type t = pattern
+
+  let cast = fun (pattern: pattern) ->
+    if node_kind_is pattern Syntax_kind2.EXTENSION_PATTERN then
+      Some pattern
+    else
+      None
+
+  let for_each_shell_token = Node.for_each_child_token
+end
+
 module RecordPattern: sig
   type t = pattern
   type field = {
@@ -2270,6 +2304,8 @@ module ExtensionItem = struct
       Some node
     else
       None
+
+  let for_each_shell_token = Node.for_each_child_token
 end
 
 module AttributeItem = struct
@@ -2280,6 +2316,8 @@ module AttributeItem = struct
       Some node
     else
       None
+
+  let for_each_shell_token = Node.for_each_child_token
 end
 
 module ExprItem = struct

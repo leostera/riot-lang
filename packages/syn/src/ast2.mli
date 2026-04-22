@@ -141,6 +141,13 @@ module AttributePattern: sig
   val for_each_shell_token: t -> fn:(Token.t -> unit) -> unit
 end
 
+module ExtensionPattern: sig
+  type t = pattern
+  val cast: pattern -> t option
+
+  val for_each_shell_token: t -> fn:(Token.t -> unit) -> unit
+end
+
 module RecordPattern: sig
   type t = pattern
   type field = {
@@ -275,6 +282,13 @@ module AttributeExpr: sig
   val cast: expr -> t option
 
   val inner: t -> expr option
+
+  val for_each_shell_token: t -> fn:(Token.t -> unit) -> unit
+end
+
+module ExtensionExpr: sig
+  type t = expr
+  val cast: expr -> t option
 
   val for_each_shell_token: t -> fn:(Token.t -> unit) -> unit
 end
@@ -602,11 +616,15 @@ end
 module ExtensionItem: sig
   type t = extension_item
   val cast: Node.t -> t option
+
+  val for_each_shell_token: t -> fn:(Token.t -> unit) -> unit
 end
 
 module AttributeItem: sig
   type t = attribute_item
   val cast: Node.t -> t option
+
+  val for_each_shell_token: t -> fn:(Token.t -> unit) -> unit
 end
 
 module ExprItem: sig

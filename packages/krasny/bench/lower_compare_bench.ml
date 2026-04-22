@@ -100,6 +100,9 @@ let benchmarks = [
     (make_fixture ~name:"attributes" ~path:(Path.v "sample.ml") "let value = target [@inline always]\nlet (x [@foo]) = value\n");
   compare_fixture
     ~config:small_config
+    (make_fixture ~name:"extensions" ~path:(Path.v "sample.ml") "let value = [%expr payload]\nlet [%pat payload] = value\n[%%item payload]\n[@@@warning \"-32\"]\n");
+  compare_fixture
+    ~config:small_config
     (make_fixture ~name:"selectors and indexes" ~path:(Path.v "sample.ml") "let field = value.name\nlet item = values.(index)\nlet char = text.[index]\n");
   compare_fixture
     ~config:small_config
