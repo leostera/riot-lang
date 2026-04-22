@@ -3,14 +3,33 @@
 ## 0.0.20 - 2026-04-22
 
 ### riot
-- `riot new` now works both inside a workspace and as a standalone package scaffold, with generated packages staying usable after creation and repeated `riot new` flows keeping workspace members in sync.
-- Riot end-to-end coverage now exercises generated `riot init` / `riot new` workspaces directly instead of relying on the globally installed binary.
-- Test suites can now execute the binaries built for the package under test through structured suite context, so CLI/package tests run against the just-built artifact instead of an ambient install.
+- `riot new --lib` and `riot new --bin` now work both inside a workspace and as standalone package scaffolds.
+- `riot new` now keeps `[workspace].members` in sync when adding packages into an existing workspace, and repeated `riot new` flows no longer leave generated packages unbuildable or unrunnable.
+- Generated `--bin` scaffolds now use the correct runtime entrypoint shape, so newly created binaries run immediately after scaffolding.
+- Test suites now receive structured suite context that includes the binaries built for the owning package, so package tests can execute the just-built artifact instead of relying on a globally installed `riot`.
+- Riot now has initial `riot-e2e` generated-workspace coverage for:
+  - `riot init`
+  - `riot new --lib`
+  - `riot new --bin`
+  - repeated `riot new` flows inside a workspace
 
 ### planner-build
-- Hardened package-layout validation so target code is rejected early when it reaches library-internal modules, namespaced internal modules, or another target's private root.
-- Added real-package kernel planner oracles that pin public-root dependency retention before later action planning, including `Kernel__Net__Addr__Unix` and `Kernel__Process`.
-- Tightened planner/model integration around target ownership, target-root boundaries, and stale plan refresh behavior, with broader regression coverage across `riot-planner`, `riot-model`, and `syn`.
+- Hardened package-layout validation so target code is rejected during planning, not later during compilation, when it reaches:
+  - library-internal modules directly
+  - namespaced internal modules like `Pkg__A`
+  - another target's private root module
+- Refreshed stale plan handling and planner artifact versioning so old cached plans are rebuilt instead of leaking invalid graph state forward.
+- Tightened target ownership between `riot-model` and `riot-planner`: declared binaries in a source bucket now suppress autodiscovery in that same bucket, avoiding fake extra target roots during planning.
+- Added real-package kernel planner oracles that pin public-root dependency retention before action planning, including:
+  - `Kernel__Net__Addr__Unix` keeping `Result`, `System_error`, and `Socket_addr`
+  - `Kernel__Process` depending on `Fs` through the public child root instead of leaking down to `Fs__File`
+- Expanded planner regression coverage across:
+  - `syn` dependency analysis for alias-open and public-root cases
+  - planner package layout validation
+  - real-kernel module graph and action graph behavior
+
+### std-kernel
+- Preserved `IoVec` module casing correctly across `kernel` / `std`, fixing the broken alias/module naming path that was surfacing in kernel builds and planner probes.
 
 ## 0.0.19 - 2026-04-22
 
