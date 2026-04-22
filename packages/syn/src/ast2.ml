@@ -399,22 +399,25 @@ module Token = struct
       ~raw_lo:syntax_token.Syntax_tree.raw_lo
       ~raw_hi:syntax_token.Syntax_tree.body_raw
 
-  let has_leading_comment = fun (token: token) ->
+  let has_leading_raw = fun (token: token) ~matches ->
     let syntax_token = syntax_token token in
     let rec loop raw_index =
       if Int.(raw_index >= syntax_token.Syntax_tree.body_raw) then
         false
       else
         let raw = Vector.get_unchecked token.tree.Syntax_tree.raw_tokens ~at:raw_index in
-        if
-          Syntax_kind2.(raw.Raw_token.kind = COMMENT)
-          || Syntax_kind2.(raw.Raw_token.kind = DOCSTRING)
-        then
+        if matches raw.Raw_token.kind then
           true
         else
           loop Int.(raw_index + 1)
     in
     loop syntax_token.Syntax_tree.raw_lo
+
+  let has_leading_comment = fun token ->
+    has_leading_raw token ~matches:(fun kind -> Syntax_kind2.(kind = COMMENT || kind = DOCSTRING))
+
+  let has_leading_docstring = fun token ->
+    has_leading_raw token ~matches:(fun kind -> Syntax_kind2.(kind = DOCSTRING))
 
   let full_text = fun (token: token) ->
     let raw_lo, raw_hi =

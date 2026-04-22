@@ -323,10 +323,39 @@ let strip_leading_whitespace = fun text ->
   in
   loop 0
 
+let strip_trailing_whitespace = fun text ->
+  let rec loop index =
+    if Int.(index < 0) then
+      ""
+    else
+      match String.get_unchecked text ~at:index with
+      | ' '
+      | '\t'
+      | '\n'
+      | '\r' -> loop Int.(index - 1)
+      | _ -> String.sub text ~offset:0 ~len:Int.(index + 1)
+  in
+  loop Int.(String.length text - 1)
+
+let leading_comment_text = fun token ->
+  let text = Ast.Token.leading_text token |> strip_leading_whitespace in
+  if Ast.Token.has_leading_docstring token then
+    let text = strip_trailing_whitespace text in
+    if Int.(String.length text = 0) then
+      ""
+    else
+      text ^ "\n"
+  else
+    text
+
 let leading_comment_doc = fun node ->
   match Ast.Node.first_descendant_token node with
-  | Some token when Ast.Token.has_leading_comment token -> Doc.text
-    (strip_leading_whitespace (Ast.Token.leading_text token))
+  | Some token when Ast.Token.has_leading_comment token -> Doc.text (leading_comment_text token)
+  | _ -> Doc.empty
+
+let eof_comment_doc = fun source_file ->
+  match Ast.Node.first_child_token source_file ~kind:Kind.EOF with
+  | Some token when Ast.Token.has_leading_comment token -> Doc.text (leading_comment_text token)
   | _ -> Doc.empty
 
 let bracketed_shell_doc = fun ~empty_message ~for_each_shell_token ->
@@ -2822,11 +2851,23 @@ let interface_doc = fun interface ->
     ~fn:(fun item -> items := (item, signature_item_doc item) :: !items);
   signature_items_doc (List.reverse !items)
 
+let append_eof_comment = fun source_file doc ->
+  match eof_comment_doc source_file with
+  | Doc.Empty -> doc
+  | comment -> (
+      match doc with
+      | Doc.Empty -> comment
+      | _ -> Doc.concat [ doc; blank_line; comment ]
+    )
+
 let source_file = fun source_file ->
   try
-    match Ast.SourceFile.view source_file with
-    | Empty -> Ok Doc.empty
-    | Implementation implementation -> Ok (implementation_doc implementation)
-    | Interface interface -> Ok (interface_doc interface)
+    let body =
+      match Ast.SourceFile.view source_file with
+      | Empty -> Doc.empty
+      | Implementation implementation -> implementation_doc implementation
+      | Interface interface -> interface_doc interface
+    in
+    Ok (append_eof_comment source_file body)
   with
   | Unsupported err -> Error err

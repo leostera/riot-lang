@@ -45,6 +45,8 @@ module Token: sig
 
   val has_leading_comment: t -> bool
 
+  val has_leading_docstring: t -> bool
+
   val full_text: t -> string
 
   val raw_range: t -> int * int
