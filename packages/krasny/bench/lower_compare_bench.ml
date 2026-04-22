@@ -82,6 +82,9 @@ let benchmarks = [
     (make_fixture ~name:"list and array expressions" ~path:(Path.v "sample.ml") "let values = [1; 2]\nlet array = [|1; 2|]\n");
   compare_fixture
     ~config:small_config
+    (make_fixture ~name:"function application argument" ~path:(Path.v "sample.ml") "let folded = List.fold_left (fun acc doc -> (indent, doc) :: acc) rest\n");
+  compare_fixture
+    ~config:small_config
     (make_fixture ~name:"labeled arguments" ~path:(Path.v "sample.ml") "let f ~x ?y = g ~x ?y\n");
   compare_fixture
     ~config:small_config
@@ -103,6 +106,11 @@ let benchmarks = [
     (load_fixture
       ~name:"atoms fixture"
       (Path.v "packages/krasny/tests/fixtures/0100_atoms_and_basic_expressions.ml"));
+  compare_fixture
+    ~config:medium_config
+    (load_fixture
+      ~name:"bindings and control flow fixture"
+      (Path.v "packages/krasny/tests/fixtures/0300_bindings_and_control_flow.ml"));
   compare_fixture
     ~config:medium_config
     (load_fixture

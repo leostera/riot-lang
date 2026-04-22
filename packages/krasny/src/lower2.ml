@@ -272,8 +272,52 @@ and match_case_doc = fun match_case ->
         ]
   | _ -> unsupported "incomplete match case"
 
-and expr_doc = fun expr ->
-  match Ast.Expr.view expr with
+and expr_apply_callee_doc = fun expr ->
+  let view = Ast.Expr.view expr in
+  match view with
+  | Path _
+  | FieldAccess _
+  | MethodCall _
+  | Apply _
+  | Parenthesized _ -> expr_doc_with_view expr view
+  | _ -> Doc.concat [ Doc.lparen; expr_doc_with_view expr view; Doc.rparen ]
+
+and expr_apply_argument_doc = fun expr ->
+  let view = Ast.Expr.view expr in
+  match view with
+  | Path _
+  | Literal _
+  | Parenthesized _
+  | List
+  | Array
+  | PolyVariant _
+  | LabeledArg _
+  | OptionalArg _ -> expr_doc_with_view expr view
+  | _ -> Doc.concat [ Doc.lparen; expr_doc_with_view expr view; Doc.rparen ]
+
+and expr_infix_operand_doc = fun expr ->
+  let view = Ast.Expr.view expr in
+  match view with
+  | Tuple
+  | Sequence _
+  | Let _
+  | LocalOpen _
+  | LetModule _
+  | LetException _
+  | BindingOperator _
+  | If _
+  | Match _
+  | Fun _
+  | Function _
+  | Try _
+  | While _
+  | For _ -> Doc.concat [ Doc.lparen; expr_doc_with_view expr view; Doc.rparen ]
+  | _ -> expr_doc_with_view expr view
+
+and expr_doc = fun expr -> expr_doc_with_view expr (Ast.Expr.view expr)
+
+and expr_doc_with_view = fun expr (view: Ast.Expr.view) ->
+  match view with
   | Path { path } ->
       path_doc path
   | Literal { token=Some token } ->
@@ -285,7 +329,14 @@ and expr_doc = fun expr ->
   | Parenthesized { inner=None } ->
       Doc.concat [ Doc.lparen; Doc.rparen ]
   | Infix { left=Some left; operator=Some operator; right=Some right } ->
-      Doc.concat [ expr_doc left; Doc.space; token_doc operator; Doc.space; expr_doc right ]
+      Doc.concat
+        [
+          expr_infix_operand_doc left;
+          Doc.space;
+          token_doc operator;
+          Doc.space;
+          expr_infix_operand_doc right;
+        ]
   | Infix _ ->
       unsupported "incomplete infix expression"
   | Prefix { operator=Some operator; operand=Some operand } ->
@@ -293,7 +344,7 @@ and expr_doc = fun expr ->
   | Prefix _ ->
       unsupported "incomplete prefix expression"
   | Apply { callee=Some callee; argument=Some argument } ->
-      Doc.concat [ expr_doc callee; Doc.space; expr_doc argument ]
+      Doc.concat [ expr_apply_callee_doc callee; Doc.space; expr_apply_argument_doc argument ]
   | Apply _ ->
       unsupported "incomplete apply expression"
   | Typed { expr=Some expr; annotation=Some annotation } ->
@@ -501,13 +552,13 @@ and expr_doc = fun expr ->
   | LabeledArg { label=Some label; value=None } ->
       Doc.concat [ Doc.text "~"; token_doc label ]
   | LabeledArg { label=Some label; value=Some value } ->
-      Doc.concat [ Doc.text "~"; token_doc label; Doc.text ":"; expr_doc value ]
+      Doc.concat [ Doc.text "~"; token_doc label; Doc.text ":"; expr_apply_argument_doc value ]
   | LabeledArg _ ->
       unsupported "labeled argument without label"
   | OptionalArg { label=Some label; value=None } ->
       Doc.concat [ Doc.text "?"; token_doc label ]
   | OptionalArg { label=Some label; value=Some value } ->
-      Doc.concat [ Doc.text "?"; token_doc label; Doc.text ":"; expr_doc value ]
+      Doc.concat [ Doc.text "?"; token_doc label; Doc.text ":"; expr_apply_argument_doc value ]
   | OptionalArg _ ->
       unsupported "optional argument without label"
   | LocalOpen _

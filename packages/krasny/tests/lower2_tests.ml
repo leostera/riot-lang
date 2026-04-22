@@ -24,13 +24,17 @@ let format2_source = fun ~filename source -> parse2_source ~filename source |> K
 
 let assert_format2_ml = fun ~expected source ->
   let actual = format2_ml source |> Result.expect ~msg:"implementation should format through lower2" in
-  Test.assert_equal ~expected ~actual;
-  Ok ()
+  if expected = actual then
+    Ok ()
+  else
+    Error ("lower2 implementation output mismatch\nexpected:\n" ^ expected ^ "\nactual:\n" ^ actual)
 
 let assert_format2_mli = fun ~expected source ->
   let actual = format2_mli source |> Result.expect ~msg:"interface should format through lower2" in
-  Test.assert_equal ~expected ~actual;
-  Ok ()
+  if expected = actual then
+    Ok ()
+  else
+    Error ("lower2 interface output mismatch\nexpected:\n" ^ expected ^ "\nactual:\n" ^ actual)
 
 let assert_format2_ml_fails = fun source ->
   match format2_ml source with
@@ -49,13 +53,20 @@ let assert_lower2_fixture_idempotent = fun path ->
       ^ " formatted once but failed to format again: "
       ^ Krasny.format_error_to_string err)
       | Ok reformatted ->
-          Test.assert_equal ~expected:formatted ~actual:reformatted;
-          Ok ()
+          if formatted = reformatted then
+            Ok ()
+          else
+            Error (Path.to_string path
+            ^ " is not lower2-idempotent after one format\nfirst:\n"
+            ^ formatted
+            ^ "\nsecond:\n"
+            ^ reformatted)
     )
 
 let assert_lower2_existing_fixture_subset = fun () ->
   let fixtures = [
     Path.v "packages/krasny/tests/fixtures/0100_atoms_and_basic_expressions.ml";
+    Path.v "packages/krasny/tests/fixtures/0300_bindings_and_control_flow.ml";
     Path.v "packages/krasny/tests/fixtures/0415_nested_fun_parameter_stability.ml";
     Path.v "packages/krasny/tests/fixtures/0952_multiline_list_expression_no_trailing_separator.ml";
     Path.v "packages/krasny/tests/fixtures/0981_top_level_letrec_blank_line.ml";
@@ -104,6 +115,12 @@ let tests = [
   Test.case
     "lower2 formats list and array expressions"
     (fun _ctx -> assert_format2_ml ~expected:"let values = [1; 2]\nlet array = [|1; 2|]\n" "let values = [1; 2]\nlet array = [|1; 2|]\n");
+  Test.case
+    "lower2 preserves parens around function application arguments"
+    (fun _ctx ->
+      assert_format2_ml
+        ~expected:"let folded = List.fold_left (fun acc doc -> (indent, doc) :: acc) rest\n"
+        "let folded = List.fold_left (fun acc doc -> (indent, doc) :: acc) rest\n");
   Test.case
     "lower2 formats labels and optional labels"
     (fun _ctx -> assert_format2_ml ~expected:"let f ~x ?y = g ~x ?y\n" "let f ~x ?y = g ~x ?y\n");
