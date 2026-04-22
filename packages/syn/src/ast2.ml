@@ -295,6 +295,9 @@ let nth_child_token_matching = fun (node: node) target ~matches ->
 let first_ident_token = fun (node: node) ->
   first_child_token_matching node ~matches:(fun kind -> Syntax_kind2.(kind = IDENT))
 
+let first_ident_or_underscore_token = fun (node: node) ->
+  first_child_token_matching node ~matches:(fun kind -> Syntax_kind2.(kind = IDENT || kind = UNDERSCORE))
+
 let last_ident_token = fun (node: node) ->
   let found = ref None in
   Syntax_tree.for_each_child node.tree (syntax_node node)
@@ -1184,7 +1187,9 @@ module ModuleDeclaration = struct
     else
       None
 
-  let name = first_ident_token
+  let name = first_ident_or_underscore_token
+
+  let rec_token = fun decl -> Node.first_child_token decl ~kind:Syntax_kind2.REC_KW
 end
 
 module ModuleTypeDeclaration = struct

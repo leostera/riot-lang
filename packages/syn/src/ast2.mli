@@ -329,6 +329,8 @@ module ModuleDeclaration: sig
   val cast: Node.t -> t option
 
   val name: t -> Token.t option
+
+  val rec_token: t -> Token.t option
 end
 
 module ModuleTypeDeclaration: sig

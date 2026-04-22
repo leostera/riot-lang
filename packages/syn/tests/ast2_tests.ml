@@ -323,6 +323,27 @@ let test_open_declaration_path_tokens = fun _ctx ->
       Ok ()
   | _ -> Error "expected open declaration"
 
+let test_module_declaration_tokens = fun _ctx ->
+  let root = parse_ml "module rec M = struct end\nmodule _ = struct end\n"
+  |> Result.expect ~msg:"expected parse2 source file" in
+  let first_item = nth_structure_item root 0 |> require_some ~msg:"expected first module item" in
+  let second_item = nth_structure_item root 1 |> require_some ~msg:"expected second module item" in
+  (
+    match Ast2.StructureItem.view first_item with
+    | Ast2.StructureItem.Module decl ->
+        let rec_token = Ast2.ModuleDeclaration.rec_token decl |> require_some ~msg:"expected rec token" in
+        let name = Ast2.ModuleDeclaration.name decl |> require_some ~msg:"expected module name" in
+        Test.assert_equal ~expected:"rec" ~actual:(Ast2.Token.text rec_token);
+        Test.assert_equal ~expected:"M" ~actual:(Ast2.Token.text name)
+    | _ -> panic "expected first module declaration"
+  );
+  match Ast2.StructureItem.view second_item with
+  | Ast2.StructureItem.Module decl ->
+      let name = Ast2.ModuleDeclaration.name decl |> require_some ~msg:"expected module wildcard name" in
+      Test.assert_equal ~expected:"_" ~actual:(Ast2.Token.text name);
+      Ok ()
+  | _ -> Error "expected second module declaration"
+
 let test_binding_type_annotation_view = fun _ctx ->
   let root = parse_ml "let x : int = 1\n" |> Result.expect ~msg:"expected parse2 source file" in
   let binding = nth_structure_item root 0
@@ -347,6 +368,7 @@ let tests = [
     test_non_manifest_type_declaration_bodies;
   Test.case "ast2 exposes type declaration parameters" test_type_declaration_parameters;
   Test.case "ast2 exposes open declaration path tokens" test_open_declaration_path_tokens;
+  Test.case "ast2 exposes module declaration tokens" test_module_declaration_tokens;
   Test.case "ast2 exposes let binding type annotation views" test_binding_type_annotation_view;
 ]
 
