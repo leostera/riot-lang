@@ -879,7 +879,7 @@ let tests =
   let open Test in
     [
       case ~size:Large "build runtime: release builds use the release lane" test_release_build_uses_release_lane;
-      case "build runtime: custom target_dir is respected" test_build_respects_custom_target_dir;
+      case ~size:Large "build runtime: custom target_dir is respected" test_build_respects_custom_target_dir;
       case ~size:Large "build runtime: nested udp workspace succeeds across file creation orders" test_nested_udp_workspace_builds_across_file_creation_orders;
       case ~size:Large "build runtime: manifest path dependency change invalidates package cache" test_manifest_path_dependency_change_invalidates_package_cache;
       case

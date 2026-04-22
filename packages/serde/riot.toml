@@ -1,6 +1,9 @@
 [package]
 name = "serde"
 version = "0.0.18"
+description = "Type-safe serialization framework for Riot"
+public = true
+license = "Apache-2.0"
 
 [lib]
 path = "src/serde.ml"

@@ -1,6 +1,9 @@
 [package]
 name = "serde-yaml"
 version = "0.0.18"
+description = "YAML support for the Serde serialization framework"
+public = true
+license = "Apache-2.0"
 
 [lib]
 path = "src/serde_yaml.ml"
