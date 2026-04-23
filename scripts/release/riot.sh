@@ -829,7 +829,7 @@ for TARGET in "${TARGETS[@]}"; do
     run_cmd cp "$VERSIONED_METADATA" "$STAGING_DIR/release.json"
     strip_binary "$TARGET" "$HOST_TARGET" "$STAGING_DIR/riot"
     run_cmd chmod +x "$STAGING_DIR/riot"
-    run_cmd tar czf "$VERSIONED_TARBALL" -C "$STAGING_DIR" riot release.json
+    run_cmd env COPYFILE_DISABLE=1 tar czf "$VERSIONED_TARBALL" -C "$STAGING_DIR" riot release.json
     if [ "$PUBLISH_LATEST" != "0" ]; then
       run_cmd cp "$VERSIONED_TARBALL" "$LATEST_TARBALL"
     fi
@@ -841,7 +841,7 @@ for TARGET in "${TARGETS[@]}"; do
     cp "$VERSIONED_METADATA" "$STAGING_DIR/release.json"
     strip_binary "$TARGET" "$HOST_TARGET" "$STAGING_DIR/riot"
     chmod +x "$STAGING_DIR/riot"
-    tar czf "$VERSIONED_TARBALL" -C "$STAGING_DIR" riot release.json
+    env COPYFILE_DISABLE=1 tar czf "$VERSIONED_TARBALL" -C "$STAGING_DIR" riot release.json
     write_sha256_file "$VERSIONED_TARBALL" "$VERSIONED_TARBALL.sha256"
     if [ "$PUBLISH_LATEST" != "0" ]; then
       cp "$VERSIONED_TARBALL" "$LATEST_TARBALL"
