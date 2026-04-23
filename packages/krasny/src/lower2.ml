@@ -1057,7 +1057,7 @@ let rec pattern_doc = fun pattern ->
   | Alias _ ->
       unsupported "incomplete alias pattern"
   | Apply { callee=Some callee; argument=Some argument } ->
-      Doc.concat [ pattern_doc callee; Doc.space; pattern_doc argument ]
+      Doc.concat [ pattern_doc callee; Doc.space; pattern_apply_argument_doc argument ]
   | Apply _ ->
       unsupported "incomplete apply pattern"
   | Or { left=Some left; right=Some right } ->
@@ -1109,6 +1109,11 @@ let rec pattern_doc = fun pattern ->
   | Error _
   | Unknown _ ->
       unsupported "unsupported pattern"
+
+and pattern_apply_argument_doc = fun pattern ->
+  match Ast.Pattern.view pattern with
+  | Record -> compact_record_pattern_doc pattern
+  | _ -> pattern_doc pattern
 
 and parenthesized_empty_pattern_doc = fun pattern ->
   parenthesized_token_shell_doc (direct_child_tokens pattern)
@@ -1591,6 +1596,16 @@ and expr_binding_body_breaks_after_equal = fun expr ->
   | Parenthesized _ -> expr_is_begin_block expr
   | _ -> false
 
+and expr_parenthesized_inner_breaks_after_equal = fun expr ->
+  match Ast.Expr.view expr with
+  | If _
+  | Let _
+  | Match _
+  | Try _
+  | Sequence _
+  | Function _ -> true
+  | _ -> false
+
 and expr_arrow_body_breaks = fun expr ->
   match Ast.Expr.view expr with
   | If _
@@ -1674,10 +1689,16 @@ and expr_doc_with_boundary_leading_comment_doc = fun expr body_doc ->
     [ trimmed_leading_comment_token_doc token; Doc.line; body_doc ]
   | _ -> body_doc
 
+and parenthesized_expr_multiline_body_doc = fun inner ->
+  Doc.concat [ Doc.lparen; Doc.line; Doc.indent 2 (expr_doc inner); Doc.line; Doc.rparen ]
+
 and expr_multiline_body_doc = fun expr ->
   match Ast.Expr.view expr with
   | LetException _ ->
       let_exception_expr_doc_with_body_break expr
+  | Parenthesized { inner=Some inner } when (not (expr_is_begin_block expr))
+  && expr_parenthesized_inner_breaks_after_equal inner ->
+      parenthesized_expr_multiline_body_doc inner
   | Infix { operator=Some operator; _ } when String.equal (infix_operator_text expr operator) "|>" -> (
       match infix_chain_doc ~minimum_parts:2 expr with
       | Some body_doc -> expr_doc_with_boundary_leading_comment_doc expr body_doc
@@ -2435,6 +2456,8 @@ and let_binding_doc = fun ?(force_body_break_after_equal = false) binding ->
                   || expr_has_unconsumed_boundary_leading_comment body
                   || match Ast.Expr.view body with
                   | Apply _ -> Doc.is_multiline inline_body_doc
+                  | Parenthesized { inner=Some inner } -> expr_parenthesized_inner_breaks_after_equal
+                    inner
                   | _ -> false
                 in
                 let body_doc =
