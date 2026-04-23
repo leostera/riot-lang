@@ -3787,7 +3787,7 @@ let module_tokens_doc = fun tokens ->
     | [] -> acc
     | token :: rest ->
         let current = Ast.Token.kind token in
-        let piece = token_doc token in
+        let piece = literal_token_doc token in
         let acc =
           match previous with
           | Some previous when module_token_needs_space ~depth previous current -> Doc.concat
