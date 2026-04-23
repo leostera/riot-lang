@@ -1,6 +1,7 @@
 open Std
 open Std.Collections
 open Std.Data
+module Iterator = Iter.Iterator
 
 module Env = struct
   module Names = struct
@@ -1155,6 +1156,872 @@ and collect_signature_item env deps bindings item =
   | Cst.SignatureItem.ExceptionDeclaration _ ->
       Ok (deps, env, bindings)
 
+module Ast2_deps = struct
+  module A = Ast2
+
+  let node_kind = A.Node.kind
+
+  let token_kind = A.Token.kind
+
+  let child_node_at = fun (node: A.Node.t) index ->
+    match A.Node.child_at node index with
+    | Some (Syntax_tree.Node id) -> Some ({ tree = node.tree; id }: A.Node.t)
+    | Some (Syntax_tree.Token _)
+    | Some (Syntax_tree.Missing _)
+    | None -> None
+
+  let child_token_at = fun (node: A.Node.t) index ->
+    match A.Node.child_at node index with
+    | Some (Syntax_tree.Token id) -> Some ({ tree = node.tree; id }: A.Token.t)
+    | Some (Syntax_tree.Node _)
+    | Some (Syntax_tree.Missing _)
+    | None -> None
+
+  let child_token_kind_is = fun node index kind ->
+    match child_token_at node index with
+    | Some token -> Syntax_kind2.(token_kind token = kind)
+    | None -> false
+
+  let node_kind_is = fun node kind -> Syntax_kind2.(node_kind node = kind)
+
+  let is_module_expr_kind = function
+    | Syntax_kind2.MODULE_EXPR
+    | Syntax_kind2.PATH_MODULE_EXPR
+    | Syntax_kind2.STRUCT_MODULE_EXPR
+    | Syntax_kind2.FUNCTOR_MODULE_EXPR
+    | Syntax_kind2.APPLY_MODULE_EXPR
+    | Syntax_kind2.CONSTRAINT_MODULE_EXPR
+    | Syntax_kind2.PAREN_MODULE_EXPR
+    | Syntax_kind2.OPAQUE_MODULE_EXPR -> true
+    | _ -> false
+
+  let is_module_type_kind = function
+    | Syntax_kind2.MODULE_TYPE_EXPR
+    | Syntax_kind2.PATH_MODULE_TYPE
+    | Syntax_kind2.SIGNATURE_MODULE_TYPE
+    | Syntax_kind2.TYPEOF_MODULE_TYPE
+    | Syntax_kind2.FUNCTOR_MODULE_TYPE
+    | Syntax_kind2.WITH_MODULE_TYPE
+    | Syntax_kind2.PAREN_MODULE_TYPE
+    | Syntax_kind2.OPAQUE_MODULE_TYPE -> true
+    | _ -> false
+
+  let path_segments = fun node ->
+    let segments = ref [] in
+    A.Node.for_each_token node
+      ~fn:(fun token ->
+        if Syntax_kind2.(token_kind token = IDENT) then
+          segments := A.Token.text token :: !segments);
+    List.reverse !segments
+
+  let add_parent_segments = fun env deps segments ->
+    match drop_last segments with
+    | head :: _ as parent when is_module_head head -> add_path env deps parent
+    | _ -> deps
+
+  let add_module_segments = fun env deps segments ->
+    match segments with
+    | head :: _ when is_module_head head -> add_path env deps segments
+    | _ -> deps
+
+  let module_alias = fun env deps segments ->
+    let deps = add_module_segments env deps segments in
+    let binding =
+      match Env.lookup_map segments env with
+      | Some node -> node
+      | None -> (
+          match segments with
+          | [ name ] -> Env.make_leaf name
+          | _ -> Env.bound
+        )
+    in
+    (deps, binding)
+
+  let open_alias = fun env deps segments ->
+    let deps, binding = module_alias env deps segments in
+    let deps = add_names deps (Env.top_free binding) in
+    (deps, Env.merge_children env binding)
+
+  let direct_path_between = fun node start stop ->
+    let rec loop index expect_ident acc =
+      if index >= stop then
+        if not (List.is_empty acc) && not expect_ident then
+          Some (List.reverse acc)
+        else
+          None
+      else
+        match child_token_at node index with
+        | Some token when expect_ident && Syntax_kind2.(token_kind token = IDENT) -> loop
+          (index + 1)
+          false
+          (A.Token.text token :: acc)
+        | Some token when (not expect_ident) && Syntax_kind2.(token_kind token = DOT) -> loop
+          (index + 1)
+          true
+          acc
+        | _ -> None
+    in
+    loop start true []
+
+  let collect_direct_module_refs_between = fun env deps node start stop ->
+    let rec collect_path index acc =
+      if index >= stop then
+        (index, List.reverse acc)
+      else
+        match child_token_at node index with
+        | Some token when Syntax_kind2.(token_kind token = IDENT) -> collect_path
+          (index + 1)
+          (A.Token.text token :: acc)
+        | Some token when Syntax_kind2.(token_kind token = DOT) -> collect_path (index + 1) acc
+        | _ -> (index, List.reverse acc)
+    in
+    let rec scan index deps =
+      if index >= stop then
+        deps
+      else
+        match child_token_at node index with
+        | Some token when Syntax_kind2.(token_kind token = IDENT) ->
+            let next, segments = collect_path index [] in
+            scan next (add_module_segments env deps segments)
+        | _ -> scan (index + 1) deps
+    in
+    scan start deps
+
+  let collect_direct_module_accesses_between = fun env deps node start stop ->
+    let rec collect_path index acc saw_dot =
+      if index >= stop then
+        (index, List.reverse acc, saw_dot)
+      else
+        match child_token_at node index with
+        | Some token when Syntax_kind2.(token_kind token = IDENT) -> collect_path
+          (index + 1)
+          (A.Token.text token :: acc)
+          saw_dot
+        | Some token when Syntax_kind2.(token_kind token = DOT) -> collect_path (index + 1) acc true
+        | _ -> (index, List.reverse acc, saw_dot)
+    in
+    let rec scan index deps =
+      if index >= stop then
+        deps
+      else
+        match child_token_at node index with
+        | Some token when Syntax_kind2.(token_kind token = IDENT) ->
+            let next, segments, saw_dot = collect_path index [] false in
+            let deps =
+              match segments with
+              | head :: _ when saw_dot && is_module_head head -> add_parent_segments env deps segments
+              | _ -> deps
+            in
+            scan next deps
+        | _ -> scan (index + 1) deps
+    in
+    scan start deps
+
+  let rec direct_module_binding_between env deps node start stop =
+    match direct_path_between node start stop with
+    | Some segments -> Ok (module_alias env deps segments)
+    | None -> (
+        match child_token_at node start with
+        | Some token when Syntax_kind2.(token_kind token = STRUCT_KW) -> direct_struct_binding_between
+          env
+          deps
+          node
+          (start + 1)
+          stop
+        | _ ->
+            let deps = collect_direct_module_refs_between env deps node start stop in
+            Ok (deps, Env.bound)
+      )
+
+  and direct_struct_binding_between env deps node start stop =
+    let deps = collect_direct_module_accesses_between env deps node start stop in
+    let rec find_token index limit kind =
+      if index >= limit then
+        None
+      else if child_token_kind_is node index kind then
+        Some index
+      else
+        find_token (index + 1) limit kind
+    in
+    let rec member_stop index =
+      if
+        index >= stop
+        || child_token_kind_is node index Syntax_kind2.MODULE_KW
+        || child_token_kind_is node index Syntax_kind2.END_KW
+      then
+        index
+      else
+        member_stop (index + 1)
+    in
+    let rec scan index deps bindings =
+      if index >= stop then
+        Ok (deps, Env.make_node bindings)
+      else if child_token_kind_is node index Syntax_kind2.MODULE_KW then
+        let name =
+          match child_token_at node (index + 1) with
+          | Some token when Syntax_kind2.(token_kind token = IDENT) -> Some (A.Token.text token)
+          | _ -> None
+        in
+        let member_stop =
+          match find_token (index + 1) stop Syntax_kind2.EQ with
+          | Some eq_index -> member_stop (eq_index + 1)
+          | None -> member_stop (index + 1)
+        in
+        let* (deps, binding) =
+          match find_token (index + 1) member_stop Syntax_kind2.EQ with
+          | Some eq_index -> direct_module_binding_between env deps node (eq_index + 1) member_stop
+          | None -> Ok (deps, Env.bound)
+        in
+        let bindings =
+          match name with
+          | Some name -> Env.add name binding bindings
+          | None -> bindings
+        in
+        scan member_stop deps bindings
+      else
+        scan (index + 1) deps bindings
+    in
+    scan start deps Env.empty
+
+  let first_child_node_matching = fun node ~matches ->
+    let found = ref None in
+    A.Node.for_each_child_node node
+      ~fn:(fun child ->
+        match !found with
+        | Some _ -> ()
+        | None ->
+            if matches (node_kind child) then
+              found := Some child);
+    !found
+
+  let rec unwrap_module_expr = fun node ->
+    match node_kind node with
+    | Syntax_kind2.MODULE_EXPR -> (
+        match first_child_node_matching node ~matches:is_module_expr_kind with
+        | Some child -> unwrap_module_expr child
+        | None -> node
+      )
+    | _ -> node
+
+  let rec unwrap_module_type = fun node ->
+    match node_kind node with
+    | Syntax_kind2.MODULE_TYPE_EXPR -> (
+        match first_child_node_matching node ~matches:is_module_type_kind with
+        | Some child -> unwrap_module_type child
+        | None -> node
+      )
+    | _ -> node
+
+  let first_direct_child_node = fun node kind ->
+    first_child_node_matching node ~matches:(fun child_kind -> Syntax_kind2.(child_kind = kind))
+
+  let fold_child_nodes = fun node init fn ->
+    let acc = ref init in
+    A.Node.for_each_child_node node ~fn:(fun child -> acc := fn !acc child);
+    !acc
+
+  let collect_child_nodes = fun collect env deps node ->
+    fold_child_nodes node (Ok deps)
+      (fun acc child ->
+        let* deps = acc in
+        collect env deps child)
+
+  let collect_direct_type_payload_paths = fun env deps node ->
+    let count = A.Node.child_count node in
+    let rec collect_path index acc =
+      if index >= count then
+        (index, List.reverse acc)
+      else
+        match child_token_at node index with
+        | Some token when Syntax_kind2.(token_kind token = IDENT) -> collect_path
+          (index + 1)
+          (A.Token.text token :: acc)
+        | Some token when Syntax_kind2.(token_kind token = DOT) -> collect_path (index + 1) acc
+        | _ -> (index, List.reverse acc)
+    in
+    let rec scan active index deps =
+      if index >= count then
+        deps
+      else
+        match child_token_at node index with
+        | Some token when Syntax_kind2.(token_kind token = OF_KW || token_kind token = COLON) ->
+            scan true (index + 1) deps
+        | Some token when Syntax_kind2.(token_kind token = PIPE || token_kind token = AND_KW) ->
+            scan false (index + 1) deps
+        | Some token when active && Syntax_kind2.(token_kind token = IDENT) ->
+            let next, segments = collect_path index [] in
+            scan active next (add_parent_segments env deps segments)
+        | _ ->
+            scan active (index + 1) deps
+    in
+    scan false 0 deps
+
+  let collect_direct_type_extension_path = fun env deps node ->
+    let count = A.Node.child_count node in
+    let rec find_plus index =
+      if index >= count then
+        None
+      else if child_token_kind_is node index Syntax_kind2.PLUS then
+        Some index
+      else
+        find_plus (index + 1)
+    in
+    let rec collect_before_plus index plus_index acc =
+      if index >= plus_index then
+        add_parent_segments env deps (List.reverse acc)
+      else
+        match child_token_at node index with
+        | Some token when Syntax_kind2.(token_kind token = IDENT) -> collect_before_plus
+          (index + 1)
+          plus_index
+          (A.Token.text token :: acc)
+        | Some token when Syntax_kind2.(token_kind token = DOT) -> collect_before_plus
+          (index + 1)
+          plus_index
+          acc
+        | _ -> collect_before_plus (index + 1) plus_index []
+    in
+    match find_plus 0 with
+    | Some plus_index -> collect_before_plus 0 plus_index []
+    | None -> deps
+
+  let fold_module_members = fun node init fn ->
+    let count = A.Node.child_count node in
+    let rec member_end index =
+      if index >= count then
+        count
+      else if child_token_kind_is node index Syntax_kind2.AND_KW then
+        index
+      else
+        member_end (index + 1)
+    in
+    let rec next_member index =
+      if index >= count then
+        None
+      else if child_token_kind_is node index Syntax_kind2.AND_KW then
+        Some index
+      else
+        next_member (index + 1)
+    in
+    let rec loop start acc =
+      if start >= count then
+        acc
+      else
+        let stop = member_end (start + 1) in
+        let acc = fn acc start stop in
+        match next_member stop with
+        | Some next -> loop next acc
+        | None -> acc
+    in
+    loop 0 init
+
+  let rec bind_pattern_modules env node =
+    match node_kind node with
+    | Syntax_kind2.FIRST_CLASS_MODULE_PATTERN ->
+        let count = A.Node.child_count node in
+        let rec find_binding index seen_module =
+          if index >= count then
+            None
+          else
+            match child_token_at node index with
+            | Some token when Syntax_kind2.(token_kind token = MODULE_KW) -> find_binding
+              (index + 1)
+              true
+            | Some token when seen_module && Syntax_kind2.(token_kind token = IDENT) -> Some (A.Token.text
+              token)
+            | Some token when seen_module && Syntax_kind2.(token_kind token = UNDERSCORE) -> None
+            | _ -> find_binding (index + 1) seen_module
+        in
+        (
+          match find_binding 0 false with
+          | Some name -> Env.add name Env.bound env
+          | None -> env
+        )
+    | _ -> fold_child_nodes node env (fun env child -> bind_pattern_modules env child)
+
+  let rec collect_node env deps node =
+    match node_kind node with
+    | Syntax_kind2.PATH_EXPR
+    | Syntax_kind2.PATH_PATTERN
+    | Syntax_kind2.PATH_TYPE ->
+        Ok (add_parent_segments env deps (path_segments node))
+    | Syntax_kind2.PATH_MODULE_EXPR ->
+        Ok (add_module_segments env deps (path_segments node))
+    | Syntax_kind2.PATH_MODULE_TYPE ->
+        Ok (add_parent_segments env deps (path_segments node))
+    | Syntax_kind2.FIELD_ACCESS_EXPR ->
+        let segments = path_segments node in
+        let deps =
+          match segments with
+          | head :: _ when is_module_head head -> add_parent_segments env deps segments
+          | _ -> deps
+        in
+        Ok deps
+    | Syntax_kind2.LOCAL_OPEN_EXPR
+    | Syntax_kind2.LOCAL_OPEN_PATTERN ->
+        let segments = path_segments node in
+        let deps, env =
+          match segments with
+          | head :: _ when is_module_head head -> open_alias env deps segments
+          | _ -> (deps, env)
+        in
+        collect_child_nodes collect_node env deps node
+    | Syntax_kind2.LET_MODULE_EXPR ->
+        collect_let_module_expr env deps node
+    | Syntax_kind2.FUN_EXPR ->
+        collect_fun_expr env deps node
+    | Syntax_kind2.TYPE_DECL ->
+        let deps = collect_direct_type_extension_path env deps node in
+        let deps = collect_direct_type_payload_paths env deps node in
+        collect_child_nodes collect_node env deps node
+    | Syntax_kind2.STRUCTURE_ITEM ->
+        let* (deps, _, _) = collect_structure_item env deps Env.empty node in
+        Ok deps
+    | Syntax_kind2.SIGNATURE_ITEM ->
+        let* (deps, _, _) = collect_signature_item env deps Env.empty node in
+        Ok deps
+    | Syntax_kind2.MODULE_DECL ->
+        let* (deps, _, _) = collect_module_decl env deps Env.empty node in
+        Ok deps
+    | Syntax_kind2.MODULE_TYPE_DECL ->
+        let* deps = collect_module_type_decl env deps node in
+        Ok deps
+    | _ ->
+        collect_child_nodes collect_node env deps node
+
+  and collect_let_module_expr env deps node =
+    let count = A.Node.child_count node in
+    let rec find_name index =
+      if index >= count then
+        None
+      else
+        match child_token_at node index with
+        | Some token when Syntax_kind2.(token_kind token = IDENT) -> Some (A.Token.text token)
+        | _ -> find_name (index + 1)
+    in
+    let rec find_node_after index ~matches =
+      if index >= count then
+        None
+      else
+        match child_node_at node index with
+        | Some child when matches (node_kind child) -> Some child
+        | _ -> find_node_after (index + 1) ~matches
+    in
+    let rec find_token index kind =
+      if index >= count then
+        None
+      else if child_token_kind_is node index kind then
+        Some index
+      else
+        find_token (index + 1) kind
+    in
+    let eq_index = find_token 0 Syntax_kind2.EQ in
+    let in_index = find_token 0 Syntax_kind2.IN_KW in
+    let body_expr =
+      match in_index with
+      | Some in_index -> find_node_after
+        (in_index + 1)
+        ~matches:(fun kind -> not (Syntax_kind2.(kind = MODULE_EXPR)))
+      | None -> None
+    in
+    let module_expr =
+      match eq_index, in_index with
+      | Some eq_index, Some in_index -> find_node_between node (eq_index + 1) in_index ~matches:is_module_expr_kind
+      | _ -> find_node_after 0 ~matches:is_module_expr_kind
+    in
+    let* (deps, binding) =
+      match module_expr with
+      | Some module_expr -> module_binding env deps module_expr
+      | None -> (
+          match eq_index, in_index with
+          | Some eq_index, Some in_index -> direct_module_binding_between
+            env
+            deps
+            node
+            (eq_index + 1)
+            in_index
+          | _ -> Ok (deps, Env.bound)
+        )
+    in
+    let env =
+      match find_name 0 with
+      | Some name -> Env.add name binding env
+      | None -> env
+    in
+    match body_expr with
+    | Some body -> collect_node env deps body
+    | None -> Ok deps
+
+  and collect_fun_expr env deps node =
+    let count = A.Node.child_count node in
+    let rec find_arrow index =
+      if index >= count then
+        None
+      else if child_token_kind_is node index Syntax_kind2.ARROW then
+        Some index
+      else
+        find_arrow (index + 1)
+    in
+    let rec collect_patterns index stop deps =
+      if index >= stop then
+        Ok deps
+      else
+        match child_node_at node index with
+        | Some child ->
+            let* deps = collect_node env deps child in
+            collect_patterns (index + 1) stop deps
+        | None -> collect_patterns (index + 1) stop deps
+    in
+    let rec bind_patterns index stop env =
+      if index >= stop then
+        env
+      else
+        match child_node_at node index with
+        | Some child -> bind_patterns (index + 1) stop (bind_pattern_modules env child)
+        | None -> bind_patterns (index + 1) stop env
+    in
+    match find_arrow 0 with
+    | Some arrow_index ->
+        let* deps = collect_patterns 0 arrow_index deps in
+        let env = bind_patterns 0 arrow_index env in
+        (
+          match find_node_between node (arrow_index + 1) count ~matches:(fun _ -> true) with
+          | Some body -> collect_node env deps body
+          | None -> Ok deps
+        )
+    | None -> collect_child_nodes collect_node env deps node
+
+  and collect_structure_items_in env deps node = collect_structure_binding env deps node
+
+  and collect_signature_items_in env deps node = collect_signature_binding env deps node
+
+  and module_binding env deps node =
+    let node = unwrap_module_expr node in
+    match node_kind node with
+    | Syntax_kind2.PATH_MODULE_EXPR ->
+        Ok (module_alias env deps (path_segments node))
+    | Syntax_kind2.STRUCT_MODULE_EXPR ->
+        let* (deps, _, bindings) = collect_structure_items_in env deps node in
+        Ok (deps, Env.make_node bindings)
+    | Syntax_kind2.CONSTRAINT_MODULE_EXPR
+    | Syntax_kind2.PAREN_MODULE_EXPR -> (
+        match first_child_node_matching node ~matches:is_module_expr_kind with
+        | Some inner -> module_binding env deps inner
+        | None ->
+            let* deps = collect_node env deps node in
+            Ok (deps, Env.bound)
+      )
+    | Syntax_kind2.FUNCTOR_MODULE_EXPR
+    | Syntax_kind2.APPLY_MODULE_EXPR
+    | Syntax_kind2.OPAQUE_MODULE_EXPR ->
+        let* deps = collect_node env deps node in
+        Ok (deps, Env.bound)
+    | _ ->
+        let* deps = collect_node env deps node in
+        Ok (deps, Env.bound)
+
+  and collect_module_expression env deps node =
+    let* (deps, _) = module_binding env deps node in
+    Ok deps
+
+  and module_type_binding env deps node =
+    let node = unwrap_module_type node in
+    match node_kind node with
+    | Syntax_kind2.PATH_MODULE_TYPE ->
+        Ok (add_parent_segments env deps (path_segments node), Env.bound)
+    | Syntax_kind2.SIGNATURE_MODULE_TYPE ->
+        let* (deps, _, bindings) = collect_signature_items_in env deps node in
+        Ok (deps, Env.make_node bindings)
+    | Syntax_kind2.PAREN_MODULE_TYPE -> (
+        match first_child_node_matching node ~matches:is_module_type_kind with
+        | Some inner -> module_type_binding env deps inner
+        | None -> Ok (deps, Env.bound)
+      )
+    | Syntax_kind2.TYPEOF_MODULE_TYPE -> (
+        match first_child_node_matching node ~matches:is_module_expr_kind with
+        | Some module_expr -> module_binding env deps module_expr
+        | None -> Ok (deps, Env.bound)
+      )
+    | Syntax_kind2.FUNCTOR_MODULE_TYPE
+    | Syntax_kind2.WITH_MODULE_TYPE
+    | Syntax_kind2.OPAQUE_MODULE_TYPE ->
+        let* deps = collect_node env deps node in
+        Ok (deps, Env.bound)
+    | _ ->
+        let* deps = collect_node env deps node in
+        Ok (deps, Env.bound)
+
+  and collect_module_type env deps node =
+    let* (deps, _) = module_type_binding env deps node in
+    Ok deps
+
+  and collect_functor_head env deps node start stop =
+    let rec path_after_colon index acc =
+      if index >= stop || child_token_kind_is node index Syntax_kind2.RPAREN then
+        add_parent_segments env deps (List.reverse acc)
+      else
+        match child_token_at node index with
+        | Some token when Syntax_kind2.(token_kind token = IDENT) -> path_after_colon
+          (index + 1)
+          (A.Token.text token :: acc)
+        | _ -> path_after_colon (index + 1) acc
+    in
+    let rec scan index env deps =
+      if index >= stop then
+        (deps, env)
+      else if child_token_kind_is node index Syntax_kind2.LPAREN then
+        let name =
+          match child_token_at node (index + 1) with
+          | Some token when Syntax_kind2.(token_kind token = IDENT) -> Some (A.Token.text token)
+          | _ -> None
+        in
+        let deps =
+          let rec find_colon i =
+            if i >= stop || child_token_kind_is node i Syntax_kind2.RPAREN then
+              deps
+            else if child_token_kind_is node i Syntax_kind2.COLON then
+              path_after_colon (i + 1) []
+            else
+              find_colon (i + 1)
+          in
+          find_colon (index + 1)
+        in
+        let env =
+          match name with
+          | Some name -> Env.add name Env.bound env
+          | None -> env
+        in
+        scan (index + 1) env deps
+      else
+        scan (index + 1) env deps
+    in
+    scan start env deps
+
+  and module_member_name node start stop =
+    let rec loop index =
+      if index >= stop then
+        None
+      else
+        match child_token_at node index with
+        | Some token when Syntax_kind2.(token_kind token = IDENT || token_kind token = UNDERSCORE) -> Some (A.Token.text
+          token)
+        | _ -> loop (index + 1)
+    in
+    loop start
+
+  and find_token_between node start stop kind =
+    let rec loop index =
+      if index >= stop then
+        None
+      else if child_token_kind_is node index kind then
+        Some index
+      else
+        loop (index + 1)
+    in
+    loop start
+
+  and find_node_between node start stop ~matches =
+    let rec loop index =
+      if index >= stop then
+        None
+      else
+        match child_node_at node index with
+        | Some child when matches (node_kind child) -> Some child
+        | _ -> loop (index + 1)
+    in
+    loop start
+
+  and module_decl_is_recursive node =
+    let rec loop index =
+      if index >= A.Node.child_count node then
+        false
+      else if child_token_kind_is node index Syntax_kind2.REC_KW then
+        true
+      else if
+        child_token_kind_is node index Syntax_kind2.EQ
+        || child_token_kind_is node index Syntax_kind2.COLON
+        || child_token_kind_is node index Syntax_kind2.AND_KW
+      then
+        false
+      else
+        loop (index + 1)
+    in
+    loop 0
+
+  and prebind_module_decl_group env bindings node =
+    fold_module_members node (env, bindings)
+      (fun (env, bindings) start stop ->
+        match module_member_name node start stop with
+        | Some name -> (Env.add name Env.bound env, Env.add name Env.bound bindings)
+        | None -> (env, bindings))
+
+  and collect_module_member_rhs env deps node start stop =
+    let deps, env = collect_functor_head env deps node start stop in
+    let* deps =
+      match find_node_between node start stop ~matches:is_module_type_kind with
+      | Some module_type -> collect_module_type env deps module_type
+      | None -> Ok deps
+    in
+    match find_node_between node start stop ~matches:is_module_expr_kind with
+    | Some module_expr -> collect_module_expression env deps module_expr
+    | None -> Ok deps
+
+  and module_member_binding env deps node start stop =
+    let deps, env = collect_functor_head env deps node start stop in
+    let* deps =
+      match find_node_between node start stop ~matches:is_module_type_kind with
+      | Some module_type -> collect_module_type env deps module_type
+      | None -> Ok deps
+    in
+    match find_node_between node start stop ~matches:is_module_expr_kind with
+    | Some module_expr -> module_binding env deps module_expr
+    | None -> Ok (deps, Env.bound)
+
+  and collect_module_decl env deps bindings node =
+    if module_decl_is_recursive node then
+      let env, bindings = prebind_module_decl_group env bindings node in
+      let* deps =
+        fold_module_members node (Ok deps)
+          (fun acc start stop ->
+            let* deps = acc in
+            collect_module_member_rhs env deps node start stop)
+      in
+      Ok (deps, env, bindings)
+    else
+      fold_module_members node (Ok (deps, env, bindings))
+        (fun acc start stop ->
+          let* (deps, env, bindings) = acc in
+          let* (deps, binding) = module_member_binding env deps node start stop in
+          match module_member_name node start stop with
+          | Some name ->
+              let env = Env.add name binding env in
+              let bindings = Env.add name binding bindings in
+              Ok (deps, env, bindings)
+          | None -> Ok (deps, env, bindings))
+
+  and collect_module_type_decl env deps node =
+    match find_node_between node 0 (A.Node.child_count node) ~matches:is_module_type_kind with
+    | Some module_type -> collect_module_type env deps module_type
+    | None -> Ok deps
+
+  and include_structure_binding env deps node =
+    match first_child_node_matching node ~matches:is_module_expr_kind with
+    | Some module_expr -> module_binding env deps module_expr
+    | None -> (
+        match first_child_node_matching node ~matches:is_module_type_kind with
+        | Some module_type -> module_type_binding env deps module_type
+        | None -> direct_module_binding_between env deps node 1 (A.Node.child_count node)
+      )
+
+  and include_signature_binding env deps node =
+    match first_child_node_matching node ~matches:is_module_type_kind with
+    | Some module_type -> module_type_binding env deps module_type
+    | None -> (
+        match first_child_node_matching node ~matches:is_module_expr_kind with
+        | Some module_expr -> module_binding env deps module_expr
+        | None -> (
+            let count = A.Node.child_count node in
+            match direct_path_between node 1 count with
+            | Some segments -> Ok (add_parent_segments env deps segments, Env.bound)
+            | None ->
+                let deps = collect_direct_module_refs_between env deps node 1 count in
+                Ok (deps, Env.bound)
+          )
+      )
+
+  and collect_open_decl env deps node =
+    let count = A.Node.child_count node in
+    match direct_path_between node 1 count with
+    | Some (head :: _ as segments) when is_module_head head ->
+        Ok (open_alias env deps segments)
+    | Some _ ->
+        Ok (deps, env)
+    | None ->
+        let deps = collect_direct_module_refs_between env deps node 1 count in
+        Ok (deps, env)
+
+  and collect_include_structure env deps node =
+    let* (deps, binding) = include_structure_binding env deps node in
+    let deps = add_names deps (Env.collect_free binding) in
+    Ok (deps, Env.merge_children env binding)
+
+  and collect_include_signature env deps node =
+    let* (deps, binding) = include_signature_binding env deps node in
+    let deps = add_names deps (Env.top_free binding) in
+    Ok (deps, Env.merge_children env binding)
+
+  and collect_structure_item env deps bindings item =
+    match first_child_node_matching item ~matches:(fun _ -> true) with
+    | Some decl when node_kind_is decl Syntax_kind2.MODULE_DECL ->
+        collect_module_decl env deps bindings decl
+    | Some decl when node_kind_is decl Syntax_kind2.MODULE_TYPE_DECL ->
+        let* deps = collect_module_type_decl env deps decl in
+        Ok (deps, env, bindings)
+    | Some decl when node_kind_is decl Syntax_kind2.OPEN_DECL ->
+        let* (deps, env) = collect_open_decl env deps decl in
+        Ok (deps, env, bindings)
+    | Some decl when node_kind_is decl Syntax_kind2.INCLUDE_DECL ->
+        let* (deps, env) = collect_include_structure env deps decl in
+        Ok (deps, env, bindings)
+    | Some decl ->
+        let* deps = collect_node env deps decl in
+        Ok (deps, env, bindings)
+    | None ->
+        Ok (deps, env, bindings)
+
+  and collect_signature_item env deps bindings item =
+    match first_child_node_matching item ~matches:(fun _ -> true) with
+    | Some decl when node_kind_is decl Syntax_kind2.MODULE_DECL ->
+        collect_module_decl env deps bindings decl
+    | Some decl when node_kind_is decl Syntax_kind2.MODULE_TYPE_DECL ->
+        let* deps = collect_module_type_decl env deps decl in
+        Ok (deps, env, bindings)
+    | Some decl when node_kind_is decl Syntax_kind2.OPEN_DECL ->
+        let* (deps, env) = collect_open_decl env deps decl in
+        Ok (deps, env, bindings)
+    | Some decl when node_kind_is decl Syntax_kind2.INCLUDE_DECL ->
+        let* (deps, env) = collect_include_signature env deps decl in
+        Ok (deps, env, bindings)
+    | Some decl ->
+        let* deps = collect_node env deps decl in
+        Ok (deps, env, bindings)
+    | None ->
+        Ok (deps, env, bindings)
+
+  and collect_structure_binding env deps node =
+    fold_child_nodes node (Ok (deps, env, Env.empty))
+      (fun acc child ->
+        let* (deps, env, bindings) = acc in
+        if node_kind_is child Syntax_kind2.STRUCTURE_ITEM then
+          collect_structure_item env deps bindings child
+        else
+          Ok (deps, env, bindings))
+
+  and collect_signature_binding env deps node =
+    fold_child_nodes node (Ok (deps, env, Env.empty))
+      (fun acc child ->
+        let* (deps, env, bindings) = acc in
+        if node_kind_is child Syntax_kind2.SIGNATURE_ITEM then
+          collect_signature_item env deps bindings child
+        else
+          Ok (deps, env, bindings))
+
+  let finalize_impl = fun env impl ->
+    let* (deps, env, exports) = collect_structure_binding env (DepSet.empty ()) impl in
+    let deps = add_names deps (Env.collect_free (Env.make_node exports)) in
+    Ok (deps, env, exports)
+
+  let finalize_intf = fun env intf ->
+    let* (deps, env, exports) = collect_signature_binding env (DepSet.empty ()) intf in
+    Ok (deps, env, exports)
+
+  let of_parse2_result = fun ~env result ->
+    match A.SourceFile.view (A.SourceFile.make result.Parser2.tree) with
+    | A.SourceFile.Implementation impl -> finalize_impl env impl
+    | A.SourceFile.Interface intf -> finalize_intf env intf
+    | A.SourceFile.Empty -> Ok (DepSet.empty (), env, Env.empty)
+end
+
 let finalize = fun deps env exports -> { modules = DepSet.elements deps; env; exports }
 
 let of_cst = fun ?(env = Env.empty) source_file ->
@@ -1166,18 +2033,19 @@ let of_cst = fun ?(env = Env.empty) source_file ->
       let* (deps, env, exports) = collect_signature_binding env (DepSet.empty ()) interface.items in
       Ok (finalize deps env exports)
 
-let of_parse_result = fun ?(env = Env.empty) result ->
-  if result.Parser.diagnostics != [] then
-    Error (Parse_diagnostics result.Parser.diagnostics)
+let of_parse2_result = fun ?(env = Env.empty) result ->
+  if Int.(Vector.length result.Parser2.diagnostics != 0) then
+    Error (Parse_diagnostics (Vector.iter result.Parser2.diagnostics |> Iterator.to_list))
   else
-    match Cst_builder.create_from_ceibo
-      ~kind:result.Parser.kind
-      ~source:result.Parser.source
-      ~tokens:result.Parser.tokens
-      result.tree with
-    | Ok cst -> (
-        match of_cst ~env cst with
-        | Ok deps -> Ok deps
-        | Error err -> Error (Cst_builder_error err)
-      )
+    match Ast2_deps.of_parse2_result ~env result with
+    | Ok (deps, env, exports) -> Ok (finalize deps env exports)
     | Error err -> Error (Cst_builder_error err)
+
+let of_parse_result = fun ?(env = Env.empty) result ->
+  let source = IO.IoVec.IoSlice.from_string result.Parser.source |> Result.unwrap in
+  let result =
+    match result.Parser.kind with
+    | `Implementation -> Parser2.parse_implementation source
+    | `Interface -> Parser2.parse_interface source
+  in
+  of_parse2_result ~env result
