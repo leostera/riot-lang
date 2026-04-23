@@ -248,6 +248,56 @@ let syntax_hash = fun (result: Syn.Parser.parse_result) ->
   IO.Buffer.add_string buffer (IO.Buffer.contents docstring_buffer);
   IO.Buffer.contents buffer |> Crypto.Sha256.hash_string |> Crypto.Digest.hex
 
+let syntax_hash2 = fun (result: Syn.Parser2.parse_result) ->
+  let module Ast = Syn.Ast2 in
+  let module Kind = Syn.SyntaxKind2 in
+  let buffer = IO.Buffer.create ~size:1_024 in
+  let trivia_buffer = IO.Buffer.create ~size:256 in
+  let write_kind kind = IO.Buffer.add_string buffer (Kind.to_string kind) in
+  let write_trivia_kind kind = IO.Buffer.add_string trivia_buffer (Kind.to_string kind) in
+  let write_trivia ~kind ~text =
+    if Kind.(kind = COMMENT || kind = DOCSTRING) then
+      (
+        IO.Buffer.add_string trivia_buffer "R(";
+        write_trivia_kind kind;
+        IO.Buffer.add_string trivia_buffer ":";
+        IO.Buffer.add_string trivia_buffer text;
+        IO.Buffer.add_string trivia_buffer ")"
+      )
+  in
+  let rec write_node node =
+    IO.Buffer.add_string buffer "N(";
+    write_kind (Ast.Node.kind node);
+    IO.Buffer.add_string buffer "[";
+    Ast.Node.for_each_child node ~fn:write_child;
+    IO.Buffer.add_string buffer "])"
+  and write_token token =
+    Ast.Token.for_each_leading_trivia token ~fn:write_trivia;
+    IO.Buffer.add_string buffer "T(";
+    write_kind (Ast.Token.kind token);
+    IO.Buffer.add_string buffer ":";
+    IO.Buffer.add_string buffer (Ast.Token.text token);
+    IO.Buffer.add_string buffer ")"
+  and write_child = function
+    | Syn.SyntaxTree.Node id ->
+        write_node (({ tree = result.tree; id }: Ast.Node.t))
+    | Syn.SyntaxTree.Token id ->
+        write_token (({ tree = result.tree; id }: Ast.Token.t))
+    | Syn.SyntaxTree.Missing missing ->
+        IO.Buffer.add_string buffer "M(";
+        write_kind missing.kind;
+        IO.Buffer.add_string buffer ")"
+  in
+  write_node (Ast.root result.tree);
+  IO.Buffer.add_string buffer "|TRIVIA|";
+  IO.Buffer.add_string buffer (IO.Buffer.contents trivia_buffer);
+  IO.Buffer.contents buffer |> Crypto.Sha256.hash_string |> Crypto.Digest.hex
+
+let vector_to_list = fun vector ->
+  let items = ref [] in
+  Vector.for_each vector ~fn:(fun item -> items := item :: !items);
+  List.reverse !items
+
 let finalize = fun file start ~status ~needs_formatting ~error ->
   {
     file;
@@ -268,7 +318,7 @@ let format_file = fun ~mode file ->
     ~needs_formatting:false
     ~error:(Some ("Failed to read " ^ Path.to_string file))
   | Ok source ->
-      let parsed = Syn.parse ~filename:file source in
+      let parsed = Format_core.parse_source ~filename:file source in
       match Format_core.format parsed with
       | Ok formatted ->
           let result =
@@ -279,9 +329,9 @@ let format_file = fun ~mode file ->
               | Check ->
                   finalize file start ~status:Needs_formatting ~needs_formatting:true ~error:None
               | Verify ->
-                  let original_hash = syntax_hash parsed in
-                  let reparsed = Syn.parse ~filename:file formatted in
-                  let formatted_hash = syntax_hash reparsed in
+                  let original_hash = syntax_hash2 parsed in
+                  let reparsed = Format_core.parse_source ~filename:file formatted in
+                  let formatted_hash = syntax_hash2 reparsed in
                   if String.equal original_hash formatted_hash then
                     finalize file start ~status:Would_reformat ~needs_formatting:true ~error:None
                   else
@@ -310,7 +360,7 @@ let format_file = fun ~mode file ->
       | Error err ->
           let diagnostics =
             match err with
-            | Format_core.Cannot_build_cst (Syn.Parse_diagnostics diagnostics) -> Some diagnostics
+            | Format_core.Cannot_parse diagnostics -> Some (vector_to_list diagnostics)
             | _ -> None
           in
           {

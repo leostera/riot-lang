@@ -10,13 +10,13 @@ let workspace_files = [
   Path.v "packages/std/src/result.ml";
 ]
 
-let parse_ml = fun source -> Syn.parse ~filename:sample_ml source
+let parse_ml = fun source -> Krasny.parse_source ~filename:sample_ml source
 
-let parse_mli = fun source -> Syn.parse ~filename:(Path.v "sample.mli") source
+let parse_mli = fun source -> Krasny.parse_source ~filename:(Path.v "sample.mli") source
 
 let parse_file = fun path ->
   let source = Fs.read path |> Result.expect ~msg:"fixture file should exist" in
-  Syn.parse ~filename:path source
+  Krasny.parse_source ~filename:path source
 
 let with_tempdir = fun prefix fn ->
   match Fs.with_tempdir ~prefix fn with
@@ -93,7 +93,7 @@ let assert_roundtrip_hash = fun path ->
   let parsed = parse_file path in
   let original_hash = Krasny.syntax_hash parsed in
   let formatted = Krasny.format parsed |> Result.expect ~msg:"selected repo files should format" in
-  let reparsed = Syn.parse ~filename:path formatted in
+  let reparsed = Krasny.parse_source ~filename:path formatted in
   let reparsed_hash = Krasny.syntax_hash reparsed in
   Test.assert_equal ~expected:original_hash ~actual:reparsed_hash
 

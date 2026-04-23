@@ -3,7 +3,19 @@ open Std.Collections
 
 type format_error =
   | Cannot_build_cst of Syn.build_cst_error
+  | Cannot_parse of Syn.Diagnostic.t Vector.t
   | Cannot_lower of string
+
+let parse2_diagnostics_to_string = fun diagnostics ->
+  let count = Vector.length diagnostics in
+  if count = 0 then
+    "parse2 diagnostics prevented formatting"
+  else
+    let first = Vector.get_unchecked diagnostics ~at:0 |> Syn.Diagnostic.to_string in
+    if count = 1 then
+      first
+    else
+      first ^ " (+" ^ Int.to_string (count - 1) ^ " more)"
 
 let format_error_to_string = function
   | Cannot_build_cst (Syn.Parse_diagnostics diagnostics) -> (
@@ -23,6 +35,8 @@ let format_error_to_string = function
         | context -> " [" ^ String.concat " > " context ^ "]"
       in
       err.message ^ context
+  | Cannot_parse diagnostics ->
+      parse2_diagnostics_to_string diagnostics
   | Cannot_lower err ->
       err
 
@@ -32,38 +46,18 @@ let finalize_rendered_output = fun rendered ->
   else
     rendered ^ "\n"
 
-let parse2_diagnostics_to_string = fun diagnostics ->
-  let count = Vector.length diagnostics in
-  if count = 0 then
-    "parse2 diagnostics prevented formatting"
-  else
-    let first = Vector.get_unchecked diagnostics ~at:0 |> Syn.Diagnostic.to_string in
-    if count = 1 then
-      first
-    else
-      first ^ " (+" ^ Int.to_string (count - 1) ^ " more)"
+let source_slice = fun source ->
+  match IO.IoVec.IoSlice.from_string source with
+  | Ok slice -> slice
+  | Error error -> panic ("failed to create parser source slice: " ^ Kernel.IO.Error.message error)
 
-let format = fun (result: Syn.Parser.parse_result) ->
-  yield ();
-  match Syn.build_cst result with
-  | Error err -> Error (Cannot_build_cst err)
-  | Ok source_file ->
-      yield ();
-      (
-        match Lower.source_file source_file with
-        | Error err -> Error (Cannot_lower (Lower.error_to_string err))
-        | Ok rendered ->
-            yield ();
-            let rendered = Solver.solve ~width:100 rendered |> Printer.to_string in
-            yield ();
-            Ok (finalize_rendered_output rendered)
-      )
+let parse_source = fun ~filename source -> Syn.parse2 ~filename (source_slice source)
 
-let format2 = fun (result: Syn.Parser2.parse_result) ->
+let format = fun (result: Syn.Parser2.parse_result) ->
   yield ();
   let diagnostics = result.Syn.Parser2.diagnostics in
   if Vector.length diagnostics > 0 then
-    Error (Cannot_lower (parse2_diagnostics_to_string diagnostics))
+    Error (Cannot_parse diagnostics)
   else
     let source_file = Syn.Ast2.SourceFile.make result.Syn.Parser2.tree in
     match Lower2.source_file source_file with
@@ -73,3 +67,7 @@ let format2 = fun (result: Syn.Parser2.parse_result) ->
         let rendered = Solver.solve ~width:100 rendered |> Printer.to_string in
         yield ();
         Ok (finalize_rendered_output rendered)
+
+let format_source = fun ~filename source -> parse_source ~filename source |> format
+
+let format2 = format

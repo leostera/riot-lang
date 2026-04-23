@@ -9,7 +9,7 @@ let manifest_path = Path.(tests_dir / Path.v "format_expectations.txt")
 
 let parse_file = fun path ->
   let source = Fs.read path |> Result.expect ~msg:"fixture file should exist" in
-  Syn.parse ~filename:path source
+  Krasny.parse_source ~filename:path source
 
 let tracked_fixtures = fun () ->
   let manifest = Fs.read manifest_path |> Result.expect ~msg:"failed to read krasny fixture manifest" in
@@ -40,10 +40,10 @@ let approved_snapshot_path = fun path ->
   | None -> Path.add_extension path ~ext:"expected"
 
 let assert_roundtrip_hash = fun ~fixture_path ~formatted ->
-  let formatted_parse = Syn.parse ~filename:fixture_path formatted in
+  let formatted_parse = Krasny.parse_source ~filename:fixture_path formatted in
   let original_hash = Krasny.syntax_hash formatted_parse in
   let reformatted = Krasny.format formatted_parse |> Result.expect ~msg:"formatted fixture should reformat" in
-  let reparsed = Syn.parse ~filename:fixture_path reformatted in
+  let reparsed = Krasny.parse_source ~filename:fixture_path reformatted in
   let reparsed_hash = Krasny.syntax_hash reparsed in
   Test.assert_equal ~expected:original_hash ~actual:reparsed_hash;
   Ok ()

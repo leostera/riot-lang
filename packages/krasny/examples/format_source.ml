@@ -5,7 +5,7 @@ exception Format_failed of string
 let source = "let  add  x   y= x+y"
 
 let main ~args:_ =
-  let parsed = Syn.parse ~filename:(Path.v "example.ml") source in
+  let parsed = Krasny.parse_source ~filename:(Path.v "example.ml") source in
   match Krasny.format parsed with
   | Ok formatted ->
       println formatted;

@@ -123,7 +123,7 @@ let type_token_needs_space = fun previous current ->
   | (_, kind) when Kind.(kind = COMMA || kind = SEMI || kind = COLON) -> false
   | (kind, _) when Kind.(kind = LPAREN || kind = LBRACKET || kind = LBRACKET_BAR || kind = LBRACE) -> false
   | (kind, _) when Kind.(kind = QUOTE || kind = BACKTICK || kind = QUESTION || kind = TILDE) -> false
-  | (kind, _) when Kind.(kind = AT || kind = ATAT) -> false
+  | (kind, _) when Kind.(kind = PERCENT || kind = AT || kind = ATAT) -> false
   | (_, kind) when Kind.(kind = DOT) -> false
   | (kind, current) when Kind.(kind = DOT) -> Kind.(current = QUOTE)
   | (kind, _) when Kind.(kind = COMMA) -> true
@@ -1027,7 +1027,9 @@ let eof_comment_separator = fun source_file ->
 let shell_token_needs_space = fun previous current ->
   match previous, current with
   | (_, kind) when Kind.(kind = RBRACKET || kind = BAR_RBRACKET) -> false
+  | (_, kind) when Kind.(kind = DOT || kind = COLON) -> false
   | (kind, _) when Kind.(kind = LBRACKET || kind = LBRACKET_BAR) -> false
+  | (kind, _) when Kind.(kind = DOT) -> false
   | (kind, _) when Kind.(kind = AT || kind = ATAT || kind = PERCENT || kind = PERCENTGT || kind = LTPERCENT) -> false
   | _ -> true
 
@@ -1286,9 +1288,10 @@ let rec type_expr_doc = fun type_expr ->
       Doc.concat [ Doc.lparen; type_expr_doc inner; Doc.rparen ]
   | Parenthesized { inner=None } ->
       Doc.concat [ Doc.lparen; Doc.rparen ]
-  | Opaque _
-  | Error _
-  | Unknown _ ->
+  | Opaque node
+  | Unknown node ->
+      type_tokens_inline_doc (node_tokens node)
+  | Error _ ->
       unsupported "unsupported type expression"
 
 let type_expr_poly_names_doc = fun type_expr ->
@@ -1406,17 +1409,24 @@ let rec pattern_doc = fun pattern ->
   | Or _ ->
       unsupported "incomplete or pattern"
   | PolyVariant ->
-      let head =
-        match first_ident_token pattern with
-        | Some tag -> Doc.concat [ Doc.text "`"; token_doc tag ]
-        | None -> unsupported "polymorphic variant pattern without tag"
-      in
-      (
-        match child_pattern_docs pattern with
-        | [] -> head
-        | [ payload ] -> Doc.concat [ head; Doc.space; pattern_doc payload ]
-        | _ -> unsupported "polymorphic variant pattern with multiple payloads"
-      )
+      if node_has_token_kind pattern Kind.HASH then
+        (
+          match child_pattern_docs pattern with
+          | [ inherited ] -> Doc.concat [ Doc.text "#"; pattern_doc inherited ]
+          | _ -> unsupported "polymorphic variant inherit pattern without path"
+        )
+      else
+        let head =
+          match first_ident_token pattern with
+          | Some tag -> Doc.concat [ Doc.text "`"; token_doc tag ]
+          | None -> unsupported "polymorphic variant pattern without tag"
+        in
+        (
+          match child_pattern_docs pattern with
+          | [] -> head
+          | [ payload ] -> Doc.concat [ head; Doc.space; pattern_doc payload ]
+          | _ -> unsupported "polymorphic variant pattern with multiple payloads"
+        )
   | LabeledParam parameter ->
       parameter_doc parameter
   | OptionalParam parameter ->
@@ -2285,7 +2295,7 @@ and expr_binding_body_breaks_after_equal = fun expr ->
   | Try _
   | Sequence _
   | Assign _ -> true
-  | BindingOperator _ -> binding_operator_body_breaks expr
+  | BindingOperator _ -> true
   | LocalOpen _ -> Doc.is_multiline (local_open_expr_doc expr)
   | LetModule _ -> let_module_expr_is_multiline expr
   | Parenthesized _ -> expr_is_begin_block expr
@@ -2482,14 +2492,6 @@ and expr_has_leading_comment = fun expr ->
   | Some token -> Ast.Token.has_leading_comment token
   | None -> false
 
-and sequence_items = fun expr ->
-  let rec loop expr acc =
-    match Ast.Expr.view expr with
-    | Sequence { left=Some left; right=Some right } -> loop left (loop right acc)
-    | _ -> expr :: acc
-  in
-  loop expr []
-
 and sequence_item_doc = fun expr ->
   match Ast.Expr.view expr with
   | Parenthesized { inner=Some inner } when (not (expr_is_begin_block expr))
@@ -2499,10 +2501,20 @@ and sequence_item_doc = fun expr ->
     (application_doc ~prefer_first_argument_head:true expr)
   | _ -> expr_doc_with_boundary_leading_comment expr
 
+and sequence_separator_suffix_doc = fun expr ->
+  match Ast.Node.first_child_token expr ~kind:Kind.SEMI with
+  | Some separator when token_has_inline_leading_comment_after_horizontal separator -> (
+      match leading_comments separator with
+      | comment :: _ -> Doc.concat [ Doc.semi; Doc.line; Doc.text comment.text; Doc.line ]
+      | [] -> Doc.concat [ Doc.semi; Doc.line ]
+    )
+  | _ -> Doc.concat [ Doc.semi; Doc.line ]
+
 and sequence_doc = fun expr ->
-  sequence_items expr
-  |> List.map ~fn:sequence_item_doc
-  |> Doc.join (Doc.concat [ Doc.semi; Doc.line ])
+  match Ast.Expr.view expr with
+  | Sequence { left=Some left; right=Some right } -> Doc.concat
+    [ sequence_doc left; sequence_separator_suffix_doc expr; sequence_item_doc right ]
+  | _ -> sequence_item_doc expr
 
 and match_cases_doc = fun expr ->
   let cases = ref [] in
@@ -2572,7 +2584,7 @@ and if_keyword_doc = fun token ->
     token_doc token
 
 and if_then_branch_doc = fun then_branch else_token ->
-  let branch_doc = expr_doc then_branch in
+  let branch_doc = expr_doc_with_boundary_leading_comment then_branch in
   match else_token with
   | Some token when Ast.Token.has_leading_comment token -> Doc.concat
     [ branch_doc; Doc.line; trimmed_leading_comment_token_doc token ]
@@ -2725,6 +2737,8 @@ and expr_doc_with_view = fun expr (view: Ast.Expr.view) ->
       match Ast.Expr.view operand with
       | Literal { token=Some token } when String.equal (prefix_operator_text expr operator) "-" -> Doc.concat
         [ Doc.lparen; prefix_operator_doc expr operator; literal_token_doc token; Doc.rparen ]
+      | Prefix _ when String.equal (prefix_operator_text expr operator) "-" -> Doc.concat
+        [ prefix_operator_doc expr operator; Doc.space; expr_prefix_operand_doc operand ]
       | _ -> Doc.concat [ prefix_operator_doc expr operator; expr_prefix_operand_doc operand ]
     )
   | Prefix _ ->
@@ -3471,7 +3485,13 @@ and binding_operator_expr_doc = fun expr ->
   | _, _, None ->
       unsupported "binding operator expression without body"
   | clauses, Some in_token, Some body ->
-      let head = Doc.concat [ Doc.join Doc.space clauses; Doc.space; token_doc in_token ] in
+      let multiline_clause = List.any clauses ~fn:Doc.is_multiline in
+      let head =
+        if multiline_clause then
+          Doc.concat [ Doc.join Doc.line clauses; Doc.line; token_doc in_token ]
+        else
+          Doc.concat [ Doc.join Doc.space clauses; Doc.space; token_doc in_token ]
+      in
       if
         expr_binding_body_breaks_after_equal body || expr_has_unconsumed_boundary_leading_comment body
       then
@@ -5600,22 +5620,18 @@ let module_type_decl_doc = fun decl ->
         | None, _ -> unsupported "module type declaration body without equals token"
       )
 
-let value_decl_name_tokens = fun decl ->
-  let tokens = ref [] in
-  Ast.ValueDeclaration.for_each_name_token decl ~fn:(fun token -> tokens := token :: !tokens);
-  List.reverse !tokens
-
-let value_decl_annotation_tokens = fun decl ->
-  let tokens = ref [] in
-  Ast.ValueDeclaration.for_each_annotation_token decl ~fn:(fun token -> tokens := token :: !tokens);
-  List.reverse !tokens
+let value_decl_parts = fun decl ->
+  match node_tokens decl with
+  | val_token :: rest when token_kind_is val_token Kind.VAL_KW -> split_top_level_token
+    rest
+    ~matches:(fun kind -> Kind.(kind = COLON))
+  | _ -> None
 
 let value_decl_doc = fun decl ->
-  match value_decl_name_tokens decl, Ast.ValueDeclaration.colon_token decl, value_decl_annotation_tokens
-    decl with
-  | [], _, _ ->
+  match value_decl_parts decl with
+  | Some ([], _, _) ->
       unsupported "value declaration without name"
-  | name_tokens, Some colon_token, ((_ :: _) as annotation_tokens) ->
+  | Some (name_tokens, colon_token, ((_ :: _) as annotation_tokens)) ->
       let annotation_doc = value_decl_type_tokens_doc annotation_tokens in
       let separator =
         if Doc.is_multiline annotation_doc then
@@ -5638,7 +5654,8 @@ let value_decl_doc = fun decl ->
           separator;
           annotation_doc;
         ]
-  | _ ->
+  | None
+  | Some (_, _, []) ->
       unsupported "incomplete value declaration"
 
 let external_decl_name_tokens = fun decl ->
@@ -5802,20 +5819,8 @@ let class_body_field_doc = fun tokens ->
   | None -> declaration_head_tokens_doc tokens
 
 let class_decl_doc = fun decl ->
-  let tokens = node_tokens decl in
-  match split_top_level_token tokens ~matches:(fun kind -> Kind.(kind = OBJECT_KW)) with
-  | Some (head_tokens, object_token, body_tokens) ->
-      let body_tokens = strip_trailing_end_token body_tokens in
-      let fields = split_class_body_fields body_tokens |> List.map ~fn:class_body_field_doc in
-      Doc.concat
-        [
-          declaration_head_tokens_doc (head_tokens @ [ object_token ]);
-          Doc.line;
-          Doc.indent 2 (Doc.lines fields);
-          Doc.line;
-          Doc.text "end";
-        ]
-  | None -> declaration_head_tokens_doc tokens
+  let _ = decl in
+  unsupported "class declarations are not supported by the parser2 formatter"
 
 let extension_item_doc = fun item ->
   extension_shell_doc
