@@ -459,6 +459,13 @@ let test_type_declaration_member_views = fun _ctx ->
   let type_item = nth_signature_item root 0 |> require_some ~msg:"expected type signature item" in
   match Ast2.SignatureItem.view type_item with
   | Ast2.SignatureItem.Type decl ->
+      let child_kinds = ref [] in
+      Ast2.Node.for_each_child_node
+        decl
+        ~fn:(fun child -> child_kinds := Ast2.Node.kind child :: !child_kinds);
+      Test.assert_equal
+        ~expected:[ SyntaxKind2.TYPE_DECL_MEMBER; SyntaxKind2.TYPE_DECL_MEMBER; SyntaxKind2.TYPE_DECL_MEMBER ]
+        ~actual:(List.reverse !child_kinds);
       let count = ref 0 in
       let names = ref [] in
       let shells = ref [] in

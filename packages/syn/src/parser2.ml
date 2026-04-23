@@ -3278,36 +3278,51 @@ let parse_type_extension_decl = fun p ~signature ->
     consume_until_item_boundary p ~signature;
   ignore (complete p marker Syntax_kind2.TYPE_EXTENSION_DECL)
 
-let parse_type_decl = fun p ~signature ->
+let type_decl_tail_depth_after = fun depth kind ->
+  match kind with
+  | Syntax_kind2.LPAREN
+  | Syntax_kind2.LBRACE
+  | Syntax_kind2.LBRACKET
+  | Syntax_kind2.LBRACKET_BAR
+  | Syntax_kind2.BEGIN_KW
+  | Syntax_kind2.OBJECT_KW
+  | Syntax_kind2.STRUCT_KW
+  | Syntax_kind2.SIG_KW -> depth + 1
+  | Syntax_kind2.RPAREN
+  | Syntax_kind2.RBRACE
+  | Syntax_kind2.RBRACKET
+  | Syntax_kind2.BAR_RBRACKET when Int.(depth > 0) -> depth - 1
+  | Syntax_kind2.END_KW when Int.(depth > 0) -> depth - 1
+  | _ -> depth
+
+let rec consume_until_type_decl_member_boundary = fun p ~signature depth ->
+  if is_eof p || at_item_boundary p ~signature || (Int.equal depth 0 && at p Syntax_kind2.AND_KW) then
+    ()
+  else (
+    let kind = current_kind p in
+    bump p;
+    consume_until_type_decl_member_boundary p ~signature (type_decl_tail_depth_after depth kind)
+  )
+
+let consume_type_decl_constraints = fun p ~signature ->
+  if at p Syntax_kind2.CONSTRAINT_KW then
+    consume_until_type_decl_member_boundary p ~signature 0
+
+let parse_type_decl_member = fun p ~signature ~first ->
   let marker = start_node p in
-  expect p Syntax_kind2.TYPE_KW (invalid_type_expression p);
+  if first then
+    expect p Syntax_kind2.TYPE_KW (invalid_type_expression p)
+  else
+    expect p Syntax_kind2.AND_KW (invalid_type_expression p);
   let type_name = parse_type_decl_head p ~signature in
-  let parsed_type_extension =
+  (
     match current_kind p with
     | Syntax_kind2.LT ->
         let type_name = Option.unwrap_or type_name ~default:"" in
         Event.Buffer.error p.events (bracketed_type_parameters p ~type_name);
-        consume_until_item_boundary p ~signature;
-        false
-    | Syntax_kind2.PLUS when Syntax_kind2.(peek_kind p 1 = EQ) ->
-        bump p;
-        bump p;
-        if is_eof p || at_item_boundary p ~signature then
-          (
-            Event.Buffer.missing p.events ~kind:Syntax_kind2.IDENT ~offset:(current_offset p);
-            Event.Buffer.error p.events (invalid_type_expression_at_previous_end p)
-          )
-        else if starts_type_extension_body p then
-          ignore (parse_variant_type p ~signature)
-        else (
-          Event.Buffer.error p.events (invalid_type_expression p);
-          consume_until_item_boundary p ~signature
-        );
-        ignore (complete p marker Syntax_kind2.TYPE_EXTENSION_DECL);
-        true
+        consume_until_type_decl_member_boundary p ~signature 0
     | Syntax_kind2.COLONEQ ->
-        consume_until_item_boundary p ~signature;
-        false
+        consume_until_type_decl_member_boundary p ~signature 0
     | Syntax_kind2.EQ ->
         bump p;
         if is_eof p || at_item_boundary p ~signature then
@@ -3317,43 +3332,30 @@ let parse_type_decl = fun p ~signature ->
           )
         else
           parse_type_decl_body p ~signature;
-        false
+        consume_type_decl_constraints p ~signature
     | Syntax_kind2.EOF ->
-        false
+        ()
     | _ when at_item_boundary p ~signature ->
-        false
+        ()
     | _ ->
         Event.Buffer.missing p.events ~kind:Syntax_kind2.EQ ~offset:(current_offset p);
         Event.Buffer.error p.events (missing_type_decl_equals p);
-        consume_until_item_boundary p ~signature;
-        false
+        consume_until_type_decl_member_boundary p ~signature 0
+  );
+  ignore (complete p marker Syntax_kind2.TYPE_DECL_MEMBER)
+
+let parse_type_decl = fun p ~signature ->
+  let marker = start_node p in
+  ignore (parse_type_decl_member p ~signature ~first:true);
+  let rec parse_tail_members () =
+    if at p Syntax_kind2.AND_KW then
+      (
+        ignore (parse_type_decl_member p ~signature ~first:false);
+        parse_tail_members ()
+      )
   in
-  if not parsed_type_extension then
-    (
-      let rec consume_tail_members () =
-        match current_kind p with
-        | Syntax_kind2.CONSTRAINT_KW ->
-            consume_until_item_boundary p ~signature
-        | Syntax_kind2.AND_KW ->
-            bump p;
-            consume_type_params p;
-            (
-              if at p Syntax_kind2.IDENT then
-                bump p
-            );
-            if at p Syntax_kind2.EQ then
-              (
-                bump p;
-                if not (is_eof p || at_item_boundary p ~signature) then
-                  parse_type_decl_body p ~signature
-              );
-            consume_tail_members ()
-        | _ ->
-            ()
-      in
-      consume_tail_members ();
-      ignore (complete p marker Syntax_kind2.TYPE_DECL)
-    )
+  parse_tail_members ();
+  ignore (complete p marker Syntax_kind2.TYPE_DECL)
 
 let module_expr_boundary = fun p ~signature ->
   is_eof p

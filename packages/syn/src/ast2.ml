@@ -2387,6 +2387,7 @@ module TypeDeclaration = struct
 
   type member = {
     declaration: type_declaration;
+    node: node;
     start_index: int;
     stop_index: int;
   }
@@ -2406,17 +2407,32 @@ module TypeDeclaration = struct
     else
       None
 
+  let first_member_node = fun decl ->
+    first_child_node_matching decl ~matches:(fun kind -> Syntax_kind2.(kind = TYPE_DECL_MEMBER))
+
+  let member_or_decl = fun decl ->
+    match first_member_node decl with
+    | Some member -> member
+    | None -> decl
+
   let for_each_token = fun decl ~fn -> for_each_token_in_node decl ~fn
 
-  let keyword_token = fun decl -> Node.first_child_token decl ~kind:Syntax_kind2.TYPE_KW
+  let keyword_token = fun decl -> Node.first_child_token (member_or_decl decl) ~kind:Syntax_kind2.TYPE_KW
 
-  let nonrec_token = fun decl -> Node.first_child_token decl ~kind:Syntax_kind2.NONREC_KW
+  let nonrec_token = fun decl -> Node.first_child_token (member_or_decl decl) ~kind:Syntax_kind2.NONREC_KW
 
-  let child_token_at = fun (decl: type_declaration) index ->
-    match Node.child_at decl index with
-    | Some (Syntax_tree.Token id) -> Some (wrap_token decl.tree id)
+  let child_token_at_node = fun node index ->
+    match Node.child_at node index with
+    | Some (Syntax_tree.Token id) -> Some (wrap_token node.tree id)
     | Some (Syntax_tree.Node _)
     | Some (Syntax_tree.Missing _)
+    | None -> None
+
+  let child_token_at = fun (decl: type_declaration) index -> child_token_at_node decl index
+
+  let child_token_kind_at_node = fun node index ->
+    match child_token_at_node node index with
+    | Some token -> Some (Token.kind token)
     | None -> None
 
   let child_token_kind_at = fun decl index ->
@@ -2424,25 +2440,25 @@ module TypeDeclaration = struct
     | Some token -> Some (Token.kind token)
     | None -> None
 
-  let rec collect_type_parameter_modifiers = fun decl index variance injective ->
-    match child_token_at decl index with
-    | Some token when token_kind_is token Syntax_kind2.PLUS || token_kind_is token Syntax_kind2.MINUS -> collect_type_parameter_modifiers
-      decl
+  let rec collect_type_parameter_modifiers_in = fun node index variance injective ->
+    match child_token_at_node node index with
+    | Some token when token_kind_is token Syntax_kind2.PLUS || token_kind_is token Syntax_kind2.MINUS -> collect_type_parameter_modifiers_in
+      node
       (index + 1)
       (Some token)
       injective
-    | Some token when token_kind_is token Syntax_kind2.BANG -> collect_type_parameter_modifiers
-      decl
+    | Some token when token_kind_is token Syntax_kind2.BANG -> collect_type_parameter_modifiers_in
+      node
       (index + 1)
       variance
       (Some token)
     | _ -> (index, variance, injective)
 
-  let skip_type_parameter = fun decl index ->
-    let index, _, _ = collect_type_parameter_modifiers decl index None None in
-    match child_token_kind_at decl index with
+  let skip_type_parameter_in = fun node index ->
+    let index, _, _ = collect_type_parameter_modifiers_in node index None None in
+    match child_token_kind_at_node node index with
     | Some Syntax_kind2.QUOTE -> (
-        match child_token_kind_at decl (index + 1) with
+        match child_token_kind_at_node node (index + 1) with
         | Some Syntax_kind2.IDENT -> index + 2
         | _ -> index + 1
       )
@@ -2451,11 +2467,11 @@ module TypeDeclaration = struct
     | _ ->
         index
 
-  let emit_type_parameter = fun decl index ~fn ->
-    let index, variance, injective = collect_type_parameter_modifiers decl index None None in
-    match child_token_at decl index with
+  let emit_type_parameter_in = fun node index ~fn ->
+    let index, variance, injective = collect_type_parameter_modifiers_in node index None None in
+    match child_token_at_node node index with
     | Some quote when token_kind_is quote Syntax_kind2.QUOTE -> (
-        match child_token_at decl (index + 1) with
+        match child_token_at_node node (index + 1) with
         | Some name when token_kind_is name Syntax_kind2.IDENT ->
             fn (Named { name; quote = Some quote; variance; injective });
             index + 2
@@ -2467,27 +2483,43 @@ module TypeDeclaration = struct
     | _ ->
         index
 
-  let rec skip_parenthesized_type_parameters = fun decl index ->
-    match child_token_kind_at decl index with
+  let rec skip_parenthesized_type_parameters_in = fun node index ->
+    match child_token_kind_at_node node index with
     | Some Syntax_kind2.RPAREN -> index + 1
     | Some Syntax_kind2.EOF
     | None -> index
-    | _ -> skip_parenthesized_type_parameters decl (index + 1)
+    | _ -> skip_parenthesized_type_parameters_in node (index + 1)
+
+  let rec find_node_in = fun node index ~matches ->
+    if index >= Node.child_count node then
+      None
+    else
+      match Node.child_at node index with
+      | Some (Syntax_tree.Node id) ->
+          let child = wrap_node node.tree id in
+          if node_matches child matches then
+            Some child
+          else
+            find_node_in node (index + 1) ~matches
+      | Some (Syntax_tree.Token _)
+      | Some (Syntax_tree.Missing _)
+      | None -> find_node_in node (index + 1) ~matches
 
   let name = fun decl ->
+    let node = member_or_decl decl in
     let rec loop index =
-      match child_token_at decl index with
+      match child_token_at_node node index with
       | Some token when token_kind_is token Syntax_kind2.TYPE_KW
       || token_kind_is token Syntax_kind2.NONREC_KW ->
           loop (index + 1)
       | Some token when token_kind_is token Syntax_kind2.LPAREN ->
-          loop (skip_parenthesized_type_parameters decl (index + 1))
+          loop (skip_parenthesized_type_parameters_in node (index + 1))
       | Some token when token_kind_is token Syntax_kind2.PLUS
       || token_kind_is token Syntax_kind2.MINUS
       || token_kind_is token Syntax_kind2.BANG
       || token_kind_is token Syntax_kind2.QUOTE
       || token_kind_is token Syntax_kind2.UNDERSCORE ->
-          let next = skip_type_parameter decl index in
+          let next = skip_type_parameter_in node index in
           if next > index then
             loop next
           else
@@ -2500,8 +2532,9 @@ module TypeDeclaration = struct
     loop 0
 
   let for_each_parameter = fun decl ~fn ->
+    let node = member_or_decl decl in
     let rec parse_parenthesized index =
-      match child_token_kind_at decl index with
+      match child_token_kind_at_node node index with
       | Some Syntax_kind2.RPAREN ->
           index + 1
       | Some Syntax_kind2.COMMA ->
@@ -2510,7 +2543,7 @@ module TypeDeclaration = struct
       | None ->
           index
       | _ ->
-          let next = emit_type_parameter decl index ~fn in
+          let next = emit_type_parameter_in node index ~fn in
           parse_parenthesized
             (
               if next > index then
@@ -2520,7 +2553,7 @@ module TypeDeclaration = struct
             )
     in
     let rec parse_head index =
-      match child_token_at decl index with
+      match child_token_at_node node index with
       | Some token when token_kind_is token Syntax_kind2.TYPE_KW
       || token_kind_is token Syntax_kind2.NONREC_KW ->
           parse_head (index + 1)
@@ -2531,7 +2564,7 @@ module TypeDeclaration = struct
       || token_kind_is token Syntax_kind2.BANG
       || token_kind_is token Syntax_kind2.QUOTE
       || token_kind_is token Syntax_kind2.UNDERSCORE ->
-          let next = emit_type_parameter decl index ~fn in
+          let next = emit_type_parameter_in node index ~fn in
           if next > index then
             parse_head next
       | _ ->
@@ -2539,19 +2572,7 @@ module TypeDeclaration = struct
     in
     parse_head 0
 
-  let has_direct_pipe = fun decl ->
-    let found = ref false in
-    Node.for_each_child_token decl
-      ~fn:(fun token ->
-        if token_kind_is token Syntax_kind2.PIPE then
-          found := true);
-    !found
-
-  let manifest = fun decl ->
-    if has_direct_pipe decl then
-      None
-    else
-      first_type_expr_child decl
+  let manifest = fun decl -> find_node_in (member_or_decl decl) 0 ~matches:is_type_expr_kind
 
   module Member = struct
     type t = member
@@ -2562,24 +2583,24 @@ module TypeDeclaration = struct
 
     let stop_index = fun member -> member.stop_index
 
-    let child_count = fun member -> member.stop_index - member.start_index
+    let child_count = fun member -> Node.child_count member.node
 
     let child_at = fun member index ->
       if index < 0 || index >= child_count member then
         None
       else
-        Node.child_at member.declaration (member.start_index + index)
+        Node.child_at member.node index
 
     let child_token_at = fun member index ->
       match child_at member index with
-      | Some (Syntax_tree.Token id) -> Some (wrap_token member.declaration.tree id)
+      | Some (Syntax_tree.Token id) -> Some (wrap_token member.node.tree id)
       | Some (Syntax_tree.Node _)
       | Some (Syntax_tree.Missing _)
       | None -> None
 
     let child_node_at = fun member index ->
       match child_at member index with
-      | Some (Syntax_tree.Node id) -> Some (wrap_node member.declaration.tree id)
+      | Some (Syntax_tree.Node id) -> Some (wrap_node member.node.tree id)
       | Some (Syntax_tree.Token _)
       | Some (Syntax_tree.Missing _)
       | None -> None
@@ -2596,23 +2617,23 @@ module TypeDeclaration = struct
 
     let for_each_child = fun member ~fn ->
       let rec loop index =
-        if index < member.stop_index then
+        if index < Node.child_count member.node then
           (
             (
-              match Node.child_at member.declaration index with
+              match Node.child_at member.node index with
               | Some child -> fn child
               | None -> ()
             );
             loop (index + 1)
           )
       in
-      loop member.start_index
+      loop 0
 
     let for_each_child_token = fun member ~fn ->
       for_each_child member
         ~fn:(
           function
-          | Syntax_tree.Token id -> fn (wrap_token member.declaration.tree id)
+          | Syntax_tree.Token id -> fn (wrap_token member.node.tree id)
           | Syntax_tree.Node _
           | Syntax_tree.Missing _ -> ()
         )
@@ -2621,22 +2642,12 @@ module TypeDeclaration = struct
       for_each_child member
         ~fn:(
           function
-          | Syntax_tree.Node id -> fn (wrap_node member.declaration.tree id)
+          | Syntax_tree.Node id -> fn (wrap_node member.node.tree id)
           | Syntax_tree.Token _
           | Syntax_tree.Missing _ -> ()
         )
 
-    let find_node = fun member ~matches ->
-      let count = child_count member in
-      let rec loop index =
-        if index >= count then
-          None
-        else
-          match child_node_at member index with
-          | Some node when node_matches node matches -> Some node
-          | _ -> loop (index + 1)
-      in
-      loop 0
+    let find_node = fun member ~matches -> find_node_in member.node 0 ~matches
 
     let record_type = fun member -> find_node member ~matches:is_record_type_kind
 
@@ -2657,56 +2668,6 @@ module TypeDeclaration = struct
       in
       loop 0
 
-    let rec collect_type_parameter_modifiers = fun member index variance injective ->
-      match child_token_at member index with
-      | Some token when token_kind_is token Syntax_kind2.PLUS || token_kind_is token Syntax_kind2.MINUS -> collect_type_parameter_modifiers
-        member
-        (index + 1)
-        (Some token)
-        injective
-      | Some token when token_kind_is token Syntax_kind2.BANG -> collect_type_parameter_modifiers
-        member
-        (index + 1)
-        variance
-        (Some token)
-      | _ -> (index, variance, injective)
-
-    let skip_type_parameter = fun member index ->
-      let index, _, _ = collect_type_parameter_modifiers member index None None in
-      match child_token_kind_at member index with
-      | Some Syntax_kind2.QUOTE -> (
-          match child_token_kind_at member (index + 1) with
-          | Some Syntax_kind2.IDENT -> index + 2
-          | _ -> index + 1
-        )
-      | Some Syntax_kind2.UNDERSCORE ->
-          index + 1
-      | _ ->
-          index
-
-    let emit_type_parameter = fun member index ~fn ->
-      let index, variance, injective = collect_type_parameter_modifiers member index None None in
-      match child_token_at member index with
-      | Some quote when token_kind_is quote Syntax_kind2.QUOTE -> (
-          match child_token_at member (index + 1) with
-          | Some name when token_kind_is name Syntax_kind2.IDENT ->
-              fn (Named { name; quote = Some quote; variance; injective });
-              index + 2
-          | _ -> index + 1
-        )
-      | Some wildcard when token_kind_is wildcard Syntax_kind2.UNDERSCORE ->
-          fn (Wildcard { wildcard; variance; injective });
-          index + 1
-      | _ ->
-          index
-
-    let rec skip_parenthesized_type_parameters = fun member index ->
-      match child_token_kind_at member index with
-      | Some Syntax_kind2.RPAREN -> index + 1
-      | Some Syntax_kind2.EOF
-      | None -> index
-      | _ -> skip_parenthesized_type_parameters member (index + 1)
-
     let name = fun member ->
       let rec loop index =
         match child_token_at member index with
@@ -2715,13 +2676,13 @@ module TypeDeclaration = struct
         || token_kind_is token Syntax_kind2.NONREC_KW ->
             loop (index + 1)
         | Some token when token_kind_is token Syntax_kind2.LPAREN ->
-            loop (skip_parenthesized_type_parameters member (index + 1))
+            loop (skip_parenthesized_type_parameters_in member.node (index + 1))
         | Some token when token_kind_is token Syntax_kind2.PLUS
         || token_kind_is token Syntax_kind2.MINUS
         || token_kind_is token Syntax_kind2.BANG
         || token_kind_is token Syntax_kind2.QUOTE
         || token_kind_is token Syntax_kind2.UNDERSCORE ->
-            let next = skip_type_parameter member index in
+            let next = skip_type_parameter_in member.node index in
             if next > index then
               loop next
             else
@@ -2744,7 +2705,7 @@ module TypeDeclaration = struct
         | None ->
             index
         | _ ->
-            let next = emit_type_parameter member index ~fn in
+            let next = emit_type_parameter_in member.node index ~fn in
             parse_parenthesized
               (
                 if next > index then
@@ -2766,7 +2727,7 @@ module TypeDeclaration = struct
         || token_kind_is token Syntax_kind2.BANG
         || token_kind_is token Syntax_kind2.QUOTE
         || token_kind_is token Syntax_kind2.UNDERSCORE ->
-            let next = emit_type_parameter member index ~fn in
+            let next = emit_type_parameter_in member.node index ~fn in
             if next > index then
               parse_head next
         | _ ->
@@ -2774,73 +2735,33 @@ module TypeDeclaration = struct
       in
       parse_head 0
 
-    let has_direct_pipe = fun member ->
-      let found = ref false in
-      for_each_child_token member
-        ~fn:(fun token ->
-          if token_kind_is token Syntax_kind2.PIPE then
-            found := true);
-      !found
-
-    let manifest = fun member ->
-      if has_direct_pipe member then
-        None
-      else
-        let found = ref None in
-        for_each_child_node member
-          ~fn:(fun node ->
-            match !found with
-            | Some _ -> ()
-            | None ->
-                if node_matches node is_type_expr_kind then
-                  found := Some node);
-        !found
+    let manifest = fun member -> find_node_in member.node 0 ~matches:is_type_expr_kind
   end
 
-  let type_member_depth_after = fun depth token ->
-    match Token.kind token with
-    | Syntax_kind2.LPAREN
-    | Syntax_kind2.LBRACE
-    | Syntax_kind2.LBRACKET
-    | Syntax_kind2.LBRACKET_BAR
-    | Syntax_kind2.BEGIN_KW
-    | Syntax_kind2.OBJECT_KW
-    | Syntax_kind2.STRUCT_KW
-    | Syntax_kind2.SIG_KW -> depth + 1
-    | Syntax_kind2.RPAREN
-    | Syntax_kind2.RBRACE
-    | Syntax_kind2.RBRACKET
-    | Syntax_kind2.BAR_RBRACKET
-    | Syntax_kind2.END_KW when depth > 0 -> depth - 1
-    | _ -> depth
+  let for_each_member = fun decl ~fn ->
+    let saw_member = ref false in
+    let index = ref 0 in
+    Node.for_each_child decl
+      ~fn:(
+        function
+        | Syntax_tree.Node id ->
+            let node = wrap_node decl.tree id in
+            if node_kind_is node Syntax_kind2.TYPE_DECL_MEMBER then
+              (
+                saw_member := true;
+                fn { declaration = decl; node; start_index = !index; stop_index = !index + 1 }
+              );
+            index := !index + 1
+        | Syntax_tree.Token _
+        | Syntax_tree.Missing _ -> index := !index + 1
+      );
+    if not !saw_member then
+      fn { declaration = decl; node = decl; start_index = 0; stop_index = Node.child_count decl }
 
   let fold_members = fun decl init fn ->
-    let count = Node.child_count decl in
-    let rec member_end index depth =
-      if index >= count then
-        count
-      else
-        match child_token_at decl index with
-        | Some token when Int.equal depth 0 && token_kind_is token Syntax_kind2.AND_KW -> index
-        | Some token -> member_end (index + 1) (type_member_depth_after depth token)
-        | None -> member_end (index + 1) depth
-    in
-    let rec loop start acc =
-      if start >= count then
-        acc
-      else
-        let stop = member_end (start + 1) 0 in
-        let acc = fn acc { declaration = decl; start_index = start; stop_index = stop } in
-        if stop < count then
-          match child_token_at decl stop with
-          | Some token when token_kind_is token Syntax_kind2.AND_KW -> loop stop acc
-          | _ -> acc
-        else
-          acc
-    in
-    loop 0 init
-
-  let for_each_member = fun decl ~fn -> ignore (fold_members decl () (fun () member -> fn member))
+    let acc = ref init in
+    for_each_member decl ~fn:(fun member -> acc := fn !acc member);
+    !acc
 end
 
 module TypeExtensionDeclaration = struct
