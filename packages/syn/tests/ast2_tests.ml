@@ -621,8 +621,13 @@ let test_simple_declaration_token_views = fun _ctx ->
   let exception_item = nth_structure_item root 2 |> require_some ~msg:"expected exception structure item" in
   match Ast2.StructureItem.view exception_item with
   | Ast2.StructureItem.Exception decl ->
+      let child_kinds = ref [] in
       let name = Ast2.ExceptionDeclaration.name decl |> require_some ~msg:"expected exception name" in
+      Ast2.Node.for_each_child_node decl ~fn:(fun child -> child_kinds := Ast2.Node.kind child :: !child_kinds);
       Test.assert_equal ~expected:"Boom" ~actual:(Ast2.Token.text name);
+      Test.assert_equal
+        ~expected:[ SyntaxKind2.EXCEPTION_DECL_HEAD ]
+        ~actual:(List.reverse !child_kinds);
       Ok ()
   | _ -> Error "expected exception declaration"
 

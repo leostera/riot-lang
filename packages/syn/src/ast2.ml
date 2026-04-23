@@ -3690,87 +3690,18 @@ module ExceptionDeclaration = struct
     else
       None
 
-  let keyword_token = fun decl -> Node.first_child_token decl ~kind:Syntax_kind2.EXCEPTION_KW
+  let head_node = fun decl ->
+    first_child_node_matching decl ~matches:(fun kind -> Syntax_kind2.(kind = EXCEPTION_DECL_HEAD))
 
-  let scan_name = fun (decl: t) ~on_name ->
-    let phase = ref `Before_keyword in
-    let attribute_depth = ref 0 in
-    let rec before_name (token: token) kind =
-      if Int.((!attribute_depth) > 0) then
-        (
-          if Syntax_kind2.(kind = LBRACKET) then
-            attribute_depth := Int.((!attribute_depth) + 1)
-          else if Syntax_kind2.(kind = RBRACKET) then
-            attribute_depth := Int.((!attribute_depth) - 1)
-        )
-      else
-        (
-          match !phase with
-          | `Before_keyword ->
-              if Syntax_kind2.(kind = EXCEPTION_KW) then
-                phase := `Before_name
-          | `Before_name ->
-              if Syntax_kind2.(kind = PERCENT) then
-                phase := `Shortcut_after_percent
-              else if Syntax_kind2.(kind = LBRACKET) then
-                attribute_depth := 1
-              else if Syntax_kind2.(kind = IDENT) then
-                (
-                  on_name token;
-                  phase := `After_name
-                )
-          | `Shortcut_after_percent ->
-              if Syntax_kind2.(kind = IDENT) then
-                phase := `Shortcut_after_ident
-              else (
-                phase := `Before_name;
-                before_name token kind
-              )
-          | `Shortcut_after_ident ->
-              if Syntax_kind2.(kind = DOT) then
-                phase := `Shortcut_after_dot
-              else if Syntax_kind2.(kind = LBRACKET) then
-                (
-                  phase := `Before_name;
-                  attribute_depth := 1
-                )
-              else if Syntax_kind2.(kind = IDENT) then
-                (
-                  on_name token;
-                  phase := `After_name
-                )
-              else (
-                phase := `Before_name;
-                before_name token kind
-              )
-          | `Shortcut_after_dot ->
-              if Syntax_kind2.(kind = IDENT) then
-                phase := `Shortcut_after_ident
-              else (
-                phase := `Before_name;
-                before_name token kind
-              )
-          | `After_name ->
-              ()
-        )
-    in
-    Syntax_tree.for_each_child decl.tree (syntax_node decl)
-      ~fn:(
-        function
-        | Syntax_tree.Token id ->
-            let token = wrap_token decl.tree id in
-            let kind = Token.kind token in
-            before_name token kind
-        | Syntax_tree.Node _ ->
-            ()
-        | Syntax_tree.Missing _ ->
-            ()
-      )
+  let keyword_token = fun decl ->
+    match head_node decl with
+    | Some head -> Node.first_child_token head ~kind:Syntax_kind2.EXCEPTION_KW
+    | None -> None
 
   let name = fun decl ->
-    let found = ref None in
-    scan_name decl ~on_name:(fun token -> found := Some token);
-    !found
+    match head_node decl with
+    | Some head -> last_ident_token head
+    | None -> None
 
   let view = fun decl ->
     match first_child_node_matching

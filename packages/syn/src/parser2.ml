@@ -3783,6 +3783,7 @@ and parse_exception_payload = fun p ~signature ->
 
 and parse_exception_decl = fun p ~signature ->
   let marker = start_node p in
+  let head = start_node p in
   expect p Syntax_kind2.EXCEPTION_KW (invalid_expression p);
   consume_shortcut_extension_modifier p;
   consume_declaration_attributes p;
@@ -3790,6 +3791,7 @@ and parse_exception_decl = fun p ~signature ->
     bump p
   else
     Event.Buffer.error p.events (missing_exception_name p);
+  ignore (complete p head Syntax_kind2.EXCEPTION_DECL_HEAD);
   (
     match current_kind p with
     | Syntax_kind2.EQ -> ignore (parse_exception_alias p)
