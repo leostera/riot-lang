@@ -27,6 +27,25 @@ let optional_token_doc = fun token ->
 
 let token_kind_is = fun token kind -> Kind.(Ast.Token.kind token = kind)
 
+let starts_attribute_suffix_tokens = fun token rest ->
+  token_kind_is token Kind.LBRACKET && match rest with
+  | sigil :: _ -> token_kind_is sigil Kind.AT || token_kind_is sigil Kind.ATAT
+  | [] -> false
+
+let starts_floating_attribute_item_tokens = fun token rest ->
+  token_kind_is token Kind.LBRACKET && match rest with
+  | first :: second :: _ -> (token_kind_is first Kind.ATAT && token_kind_is second Kind.AT)
+  || (token_kind_is first Kind.AT && token_kind_is second Kind.ATAT)
+  | _ -> false
+
+let starts_extension_item_tokens = fun token rest ->
+  token_kind_is token Kind.LBRACKET && match rest with
+  | first :: second :: _ -> token_kind_is first Kind.PERCENT && token_kind_is second Kind.PERCENT
+  | _ -> false
+
+let starts_shell_body_item_tokens = fun token rest ->
+  starts_floating_attribute_item_tokens token rest || starts_extension_item_tokens token rest
+
 let local_module_token_depth_after = fun depth token ->
   let decrease depth =
     if Int.(depth <= 0) then
@@ -703,6 +722,21 @@ let attribute_shell_doc = fun ~for_each_shell_token ->
 
 let extension_shell_doc = fun ~for_each_shell_token ->
   bracketed_shell_doc ~empty_message:"extension without shell tokens" ~for_each_shell_token
+
+let for_each_token_in_list = fun tokens ~fn ->
+  let rec loop = function
+    | [] -> ()
+    | token :: rest ->
+        fn token;
+        loop rest
+  in
+  loop tokens
+
+let attribute_shell_tokens_doc = fun tokens ->
+  attribute_shell_doc ~for_each_shell_token:(fun ~fn -> for_each_token_in_list tokens ~fn)
+
+let extension_shell_tokens_doc = fun tokens ->
+  extension_shell_doc ~for_each_shell_token:(fun ~fn -> for_each_token_in_list tokens ~fn)
 
 let path_doc = fun path ->
   let segments = ref [] in
@@ -3076,7 +3110,17 @@ let module_expr_tokens_doc = fun tokens ->
       Doc.rparen;
     ]
 
-let starts_module_signature_body_item = fun kind ->
+let module_after_tokens_doc = fun tokens ->
+  match tokens with
+  | [] -> Doc.empty
+  | token :: rest when starts_attribute_suffix_tokens token rest -> Doc.concat
+    [ Doc.space; attribute_shell_tokens_doc tokens ]
+  | token :: rest when starts_extension_item_tokens token rest -> Doc.concat
+    [ Doc.space; extension_shell_tokens_doc tokens ]
+  | _ -> Doc.concat [ Doc.space; module_tokens_doc tokens ]
+
+let starts_module_signature_body_item = fun token rest ->
+  let kind = Ast.Token.kind token in
   Kind.(kind = VAL_KW
   || kind = TYPE_KW
   || kind = MODULE_KW
@@ -3085,6 +3129,7 @@ let starts_module_signature_body_item = fun kind ->
   || kind = EXTERNAL_KW
   || kind = EXCEPTION_KW
   || kind = CLASS_KW)
+  || starts_shell_body_item_tokens token rest
 
 let continues_compound_module_signature_item_head = fun current token ->
   token_kind_is token Kind.TYPE_KW && match current with
@@ -3101,7 +3146,7 @@ let split_module_signature_body_items = fun tokens ->
             | _ -> List.reverse current :: items
           )
     | token :: rest when Int.(depth = 0)
-    && starts_module_signature_body_item (Ast.Token.kind token)
+    && starts_module_signature_body_item token rest
     && not (continues_compound_module_signature_item_head current token)
     && not (List.is_empty current) -> loop
       [ token ]
@@ -3157,6 +3202,9 @@ let module_signature_body_item_body_doc = fun tokens ->
   match tokens with
   | token :: _ when token_kind_is token Kind.TYPE_KW -> module_signature_body_type_item_doc tokens
   | token :: _ when token_kind_is token Kind.VAL_KW -> module_signature_body_val_item_doc tokens
+  | token :: rest when starts_floating_attribute_item_tokens token rest -> attribute_shell_tokens_doc
+    tokens
+  | token :: rest when starts_extension_item_tokens token rest -> extension_shell_tokens_doc tokens
   | first :: second :: _ when token_kind_is first Kind.MODULE_KW && token_kind_is second Kind.TYPE_KW -> module_signature_body_equals_item_doc
     tokens
   | first :: second :: _ when token_kind_is first Kind.CLASS_KW && token_kind_is second Kind.TYPE_KW -> module_signature_body_equals_item_doc
@@ -3270,21 +3318,17 @@ let split_signature_shell = fun tokens ->
 
 let module_head_tokens_doc = fun tokens ->
   match split_signature_shell tokens with
-  | Some (before, sig_token, body_tokens, end_token, after) ->
-      Doc.concat
-        [
-          module_tokens_doc before;
-          Doc.space;
-          module_signature_tokens_doc sig_token body_tokens end_token;
-          (
-            match after with
-            | [] -> Doc.empty
-            | tokens -> Doc.concat [ Doc.space; module_tokens_doc tokens ]
-          );
-        ]
+  | Some (before, sig_token, body_tokens, end_token, after) -> Doc.concat
+    [
+      module_tokens_doc before;
+      Doc.space;
+      module_signature_tokens_doc sig_token body_tokens end_token;
+      (module_after_tokens_doc after);
+    ]
   | None -> module_tokens_doc tokens
 
-let starts_structure_body_item = fun kind ->
+let starts_structure_body_item = fun token rest ->
+  let kind = Ast.Token.kind token in
   Kind.(kind = LET_KW
   || kind = TYPE_KW
   || kind = MODULE_KW
@@ -3293,6 +3337,7 @@ let starts_structure_body_item = fun kind ->
   || kind = EXTERNAL_KW
   || kind = EXCEPTION_KW
   || kind = CLASS_KW)
+  || starts_shell_body_item_tokens token rest
 
 let continues_compound_structure_item_head = fun current token ->
   token_kind_is token Kind.TYPE_KW && match current with
@@ -3309,7 +3354,7 @@ let split_structure_body_items = fun tokens ->
             | _ -> List.reverse current :: items
           )
     | token :: rest when Int.equal depth 0
-    && starts_structure_body_item (Ast.Token.kind token)
+    && starts_structure_body_item token rest
     && not (continues_compound_structure_item_head current token)
     && not (List.is_empty current) -> loop
       [ token ]
@@ -3322,18 +3367,14 @@ let split_structure_body_items = fun tokens ->
 
 let rec module_member_doc = fun tokens ->
   match split_module_struct_body tokens with
-  | Some (head_tokens, struct_token, body_tokens, end_token, _after) ->
+  | Some (head_tokens, struct_token, body_tokens, end_token, after) ->
       Doc.concat
         [ module_head_tokens_doc head_tokens; Doc.space; token_doc struct_token; (
             match split_structure_body_items body_tokens with
             | [] -> Doc.space
             | items -> Doc.concat
-              [
-                Doc.line;
-                Doc.indent 2 (Doc.join blank_line (List.map items ~fn:structure_body_item_doc));
-                Doc.line;
-              ]
-          ); token_doc end_token; ]
+              [ Doc.line; Doc.indent 2 (structure_body_items_doc items); Doc.line; ]
+          ); token_doc end_token; module_after_tokens_doc after; ]
   | None -> (
       match split_signature_shell tokens with
       | Some _ -> module_head_tokens_doc tokens
@@ -3369,12 +3410,42 @@ and split_module_struct_body = fun tokens ->
   in
   find [] 0 tokens
 
+and structure_body_item_is_type = function
+  | token :: _ -> token_kind_is token Kind.TYPE_KW
+  | [] -> false
+
+and structure_body_item_is_floating_attribute = function
+  | token :: rest -> starts_floating_attribute_item_tokens token rest
+  | [] -> false
+
+and structure_body_items_compact_between = fun left right ->
+  structure_body_item_is_type left && structure_body_item_is_floating_attribute right
+
+and structure_body_items_doc = fun items ->
+  let rec loop previous doc = function
+    | [] -> doc
+    | next :: rest ->
+        let separator =
+          if structure_body_items_compact_between previous next then
+            Doc.line
+          else
+            blank_line
+        in
+        loop next (Doc.concat [ doc; separator; structure_body_item_doc next ]) rest
+  in
+  match items with
+  | [] -> Doc.empty
+  | first :: rest -> loop first (structure_body_item_doc first) rest
+
 and structure_body_item_doc = fun tokens ->
   let body =
     match tokens with
     | token :: _ when token_kind_is token Kind.TYPE_KW -> module_signature_body_type_item_doc tokens
     | token :: _ when token_kind_is token Kind.LET_KW -> structure_body_let_item_doc tokens
     | token :: _ when token_kind_is token Kind.MODULE_KW -> module_member_doc tokens
+    | token :: rest when starts_floating_attribute_item_tokens token rest -> attribute_shell_tokens_doc
+      tokens
+    | token :: rest when starts_extension_item_tokens token rest -> extension_shell_tokens_doc tokens
     | _ -> module_tokens_doc tokens
   in
   match tokens with
@@ -3427,6 +3498,11 @@ let module_decl_tokens = fun decl ->
   Ast.Node.for_each_child_token decl ~fn:(fun token -> tokens := token :: !tokens);
   List.reverse !tokens
 
+let module_type_decl_tokens = fun decl ->
+  let tokens = ref [] in
+  Ast.Node.for_each_child_token decl ~fn:(fun token -> tokens := token :: !tokens);
+  List.reverse !tokens
+
 let module_decl_path_body_doc = fun decl ->
   let segments = ref [] in
   Ast.ModuleDeclaration.for_each_body_path_ident
@@ -3467,7 +3543,8 @@ let module_type_decl_head_doc = fun decl ->
   | [] -> unsupported "module type declaration without head tokens"
   | tokens -> declaration_head_tokens_doc tokens
 
-let starts_signature_body_item = fun kind ->
+let starts_signature_body_item = fun token rest ->
+  let kind = Ast.Token.kind token in
   Kind.(kind = VAL_KW
   || kind = TYPE_KW
   || kind = MODULE_KW
@@ -3476,6 +3553,7 @@ let starts_signature_body_item = fun kind ->
   || kind = EXTERNAL_KW
   || kind = EXCEPTION_KW
   || kind = CLASS_KW)
+  || starts_shell_body_item_tokens token rest
 
 let continues_compound_signature_item_head = fun current token ->
   token_kind_is token Kind.TYPE_KW && match current with
@@ -3492,7 +3570,7 @@ let split_signature_body_items = fun tokens ->
             | _ -> List.reverse current :: items
           )
     | token :: rest when Int.(depth = 0)
-    && starts_signature_body_item (Ast.Token.kind token)
+    && starts_signature_body_item token rest
     && not (continues_compound_signature_item_head current token)
     && not (List.is_empty current) -> loop
       [ token ]
@@ -3548,6 +3626,9 @@ let signature_body_item_body_doc = fun tokens ->
   match tokens with
   | token :: _ when token_kind_is token Kind.TYPE_KW -> signature_body_type_item_doc tokens
   | token :: _ when token_kind_is token Kind.VAL_KW -> signature_body_val_item_doc tokens
+  | token :: rest when starts_floating_attribute_item_tokens token rest -> attribute_shell_tokens_doc
+    tokens
+  | token :: rest when starts_extension_item_tokens token rest -> extension_shell_tokens_doc tokens
   | first :: second :: _ when token_kind_is first Kind.MODULE_KW && token_kind_is second Kind.TYPE_KW -> signature_body_equals_item_doc
     tokens
   | first :: second :: _ when token_kind_is first Kind.CLASS_KW && token_kind_is second Kind.TYPE_KW -> signature_body_equals_item_doc
@@ -3565,13 +3646,20 @@ let signature_body_item_doc = fun tokens ->
         ]
   | [] -> signature_body_item_body_doc tokens
 
+let module_type_decl_sig_after_tokens = fun decl ->
+  match split_signature_shell (module_type_decl_tokens decl) with
+  | Some (_, _, _, _, after) -> after
+  | None -> []
+
 let module_type_decl_sig_body_doc = fun decl ->
   match Ast.ModuleTypeDeclaration.sig_token decl, Ast.ModuleTypeDeclaration.end_token decl with
   | Some sig_token, Some end_token ->
       let items = split_signature_body_items (module_type_decl_sig_body_tokens decl) in
+      let after = module_type_decl_sig_after_tokens decl in
       (
         match items with
-        | [] -> Doc.concat [ token_doc sig_token; Doc.space; token_doc end_token ]
+        | [] -> Doc.concat
+          [ token_doc sig_token; Doc.space; token_doc end_token; module_after_tokens_doc after ]
         | items -> Doc.concat
           [
             token_doc sig_token;
@@ -3579,6 +3667,7 @@ let module_type_decl_sig_body_doc = fun decl ->
             Doc.indent 2 (Doc.lines (List.map items ~fn:signature_body_item_doc));
             Doc.line;
             token_doc end_token;
+            module_after_tokens_doc after;
           ]
       )
   | _ -> unsupported "module type signature body without sig/end tokens"

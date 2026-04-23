@@ -2311,6 +2311,48 @@ module TypeDeclaration = struct
       first_type_expr_child decl
 end
 
+let child_token_kind_is = fun node index kind ->
+  match child_token_at node index with
+  | Some token -> token_kind_is token kind
+  | None -> false
+
+let attribute_suffix_start_at = fun node close_index ->
+  if not (child_token_kind_is node close_index Syntax_kind2.RBRACKET) then
+    None
+  else
+    let rec loop index depth =
+      if Int.(index < 0) then
+        None
+      else if child_token_kind_is node index Syntax_kind2.RBRACKET then
+        loop Int.(index - 1) Int.(depth + 1)
+      else if child_token_kind_is node index Syntax_kind2.LBRACKET then
+        if Int.equal depth 1 then
+          let next = Int.(index + 1) in
+          if
+            child_token_kind_is node next Syntax_kind2.AT
+            || child_token_kind_is node next Syntax_kind2.ATAT
+          then
+            Some index
+          else
+            None
+        else
+          loop Int.(index - 1) Int.(depth - 1)
+      else
+        loop Int.(index - 1) depth
+    in
+    loop Int.(close_index - 1) 1
+
+let last_non_attribute_suffix_token_index = fun node ->
+  let rec loop index =
+    if Int.(index < 0) then
+      (-1)
+    else
+      match attribute_suffix_start_at node index with
+      | Some start -> loop Int.(start - 1)
+      | None -> index
+  in
+  loop Int.(Node.child_count node - 1)
+
 module ModuleDeclaration = struct
   type t = module_declaration
 
@@ -2347,9 +2389,9 @@ module ModuleDeclaration = struct
     loop 0
 
   let body_path_starts_at = fun decl start ->
-    let count = Node.child_count decl in
+    let end_index = last_non_attribute_suffix_token_index decl in
     let rec loop index saw_ident expect_ident =
-      if index >= count then
+      if Int.(index > end_index) then
         saw_ident && not expect_ident
       else
         match child_token_at decl index with
@@ -2366,16 +2408,17 @@ module ModuleDeclaration = struct
     loop start false true
 
   let body_has_exact_tokens = fun decl start left right ->
-    Int.equal (start + 2) (Node.child_count decl)
-    && match child_token_at decl start, child_token_at decl (start + 1) with
+    let end_index = last_non_attribute_suffix_token_index decl in
+    Int.equal (start + 1) end_index
+    && match child_token_at decl start, child_token_at decl end_index with
     | Some left_token, Some right_token -> token_kind_is left_token left
     && token_kind_is right_token right
     | _ -> false
 
   let sig_end_tokens_at = fun decl start ->
-    let count = Node.child_count decl in
-    if Int.(start < count) then
-      match child_token_at decl start, child_token_at decl (count - 1) with
+    let end_index = last_non_attribute_suffix_token_index decl in
+    if Int.(start <= end_index) then
+      match child_token_at decl start, child_token_at decl end_index with
       | Some sig_token, Some end_token when token_kind_is sig_token Syntax_kind2.SIG_KW
       && token_kind_is end_token Syntax_kind2.END_KW -> Some (sig_token, end_token)
       | _ -> None
@@ -2437,10 +2480,10 @@ module ModuleDeclaration = struct
     | None -> ()
     | Some separator_index ->
         let start = separator_index + 1 in
-        let count = Node.child_count decl in
+        let end_index = last_non_attribute_suffix_token_index decl in
         if body_is_sig decl start then
           let rec loop index =
-            if Int.(index < count - 1) then
+            if Int.(index < end_index) then
               (
                 match child_token_at decl index with
                 | Some token ->
@@ -2514,9 +2557,9 @@ module ModuleTypeDeclaration = struct
     loop 0
 
   let body_path_starts_at = fun decl start ->
-    let count = Node.child_count decl in
+    let end_index = last_non_attribute_suffix_token_index decl in
     let rec loop index saw_ident expect_ident =
-      if index >= count then
+      if Int.(index > end_index) then
         saw_ident && not expect_ident
       else
         match child_token_at decl index with
@@ -2533,16 +2576,17 @@ module ModuleTypeDeclaration = struct
     loop start false true
 
   let body_has_exact_tokens = fun decl start left right ->
-    Int.equal (start + 2) (Node.child_count decl)
-    && match child_token_at decl start, child_token_at decl (start + 1) with
+    let end_index = last_non_attribute_suffix_token_index decl in
+    Int.equal (start + 1) end_index
+    && match child_token_at decl start, child_token_at decl end_index with
     | Some left_token, Some right_token -> token_kind_is left_token left
     && token_kind_is right_token right
     | _ -> false
 
   let sig_end_tokens_at = fun decl start ->
-    let count = Node.child_count decl in
-    if Int.(start < count) then
-      match child_token_at decl start, child_token_at decl (count - 1) with
+    let end_index = last_non_attribute_suffix_token_index decl in
+    if Int.(start <= end_index) then
+      match child_token_at decl start, child_token_at decl end_index with
       | Some sig_token, Some end_token when token_kind_is sig_token Syntax_kind2.SIG_KW
       && token_kind_is end_token Syntax_kind2.END_KW -> Some (sig_token, end_token)
       | _ -> None
@@ -2602,10 +2646,10 @@ module ModuleTypeDeclaration = struct
     | None -> ()
     | Some equals_index ->
         let start = equals_index + 1 in
-        let count = Node.child_count decl in
+        let end_index = last_non_attribute_suffix_token_index decl in
         if body_is_sig decl start then
           let rec loop index =
-            if Int.(index < count - 1) then
+            if Int.(index < end_index) then
               (
                 match child_token_at decl index with
                 | Some token ->

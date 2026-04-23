@@ -117,6 +117,7 @@ let assert_lower2_existing_fixture_subset = fun () ->
     Path.v "packages/krasny/tests/fixtures/0801_module_with_exception_declarations.ml";
     Path.v "packages/krasny/tests/fixtures/0810_local_module_parameter_spacing.ml";
     Path.v "packages/krasny/tests/fixtures/0820_module_let_parameter_stability.ml";
+    Path.v "packages/krasny/tests/fixtures/0821_nested_module_body_attribute_relift_fallback.ml";
   ]
   in
   let rec loop = function

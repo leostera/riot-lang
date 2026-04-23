@@ -964,6 +964,19 @@ let rec consume_extension_sigils = fun p ->
       consume_extension_sigils p
     )
 
+let consume_attribute_suffix = fun p ->
+  bump p;
+  consume_attribute_sigils p;
+  consume_balanced_until p ~closer:Syntax_kind2.RBRACKET 0;
+  expect p Syntax_kind2.RBRACKET (invalid_expression p)
+
+let rec consume_same_line_attribute_suffixes = fun p ->
+  if is_attribute_suffix p && not (leading_trivia_contains_newline p) then
+    (
+      consume_attribute_suffix p;
+      consume_same_line_attribute_suffixes p
+    )
+
 let rec consume_until = fun p closer ->
   if not (is_eof p || at p closer) then
     (
@@ -1222,10 +1235,7 @@ let rec parse_expression = fun p ~signature ~stop_at_item ?(stop_at_semi = false
     else if is_attribute_suffix p then
       (
         let marker = precede p lhs in
-        bump p;
-        bump p;
-        consume_balanced_until p ~closer:Syntax_kind2.RBRACKET 0;
-        expect p Syntax_kind2.RBRACKET (invalid_expression p);
+        consume_attribute_suffix p;
         loop (complete p marker Syntax_kind2.ATTRIBUTE_EXPR)
       )
     else
@@ -2969,6 +2979,10 @@ let consume_module_expr_shell = fun p ~signature ->
   | Syntax_kind2.STRUCT_KW -> consume_struct_body p
   | _ -> consume_until_item_boundary p ~signature
 
+let consume_module_expr = fun p ~signature ->
+  consume_module_expr_shell p ~signature;
+  consume_same_line_attribute_suffixes p
+
 let consume_module_type_expr_shell = fun p ~signature ->
   match current_kind p with
   | Syntax_kind2.SIG_KW ->
@@ -2981,6 +2995,10 @@ let consume_module_type_expr_shell = fun p ~signature ->
       Event.Buffer.error p.events (missing_module_type_expr p)
   | _ ->
       consume_until_item_boundary p ~signature
+
+let consume_module_type_expr = fun p ~signature ->
+  consume_module_type_expr_shell p ~signature;
+  consume_same_line_attribute_suffixes p
 
 let parse_module_type_decl = fun p ~signature ->
   let marker = start_node p in
@@ -2997,7 +3015,7 @@ let parse_module_type_decl = fun p ~signature ->
   if at p Syntax_kind2.EQ then
     (
       bump p;
-      consume_module_type_expr_shell p ~signature
+      consume_module_type_expr p ~signature
     )
   else if is_eof p || at_item_boundary p ~signature then
     ()
@@ -3023,13 +3041,13 @@ let parse_module_decl = fun p ~signature ->
       if is_eof p || at_item_boundary p ~signature then
         Event.Buffer.error p.events (missing_module_expr p)
       else
-        consume_module_expr_shell p ~signature
+        consume_module_expr p ~signature
     )
   else if at p Syntax_kind2.STRUCT_KW || at p Syntax_kind2.IDENT then
     (
       Event.Buffer.missing p.events ~kind:Syntax_kind2.EQ ~offset:(current_offset p);
       Event.Buffer.error p.events (missing_module_decl_equals p);
-      consume_module_expr_shell p ~signature
+      consume_module_expr p ~signature
     )
   else if not (is_eof p || at_item_boundary p ~signature) then
     consume_until_item_boundary p ~signature;
