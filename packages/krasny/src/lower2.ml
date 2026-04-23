@@ -3724,7 +3724,14 @@ let type_decl_doc = fun decl ->
       | first :: rest ->
           let first_doc = type_member_doc first in
           let rest_docs = rest
-          |> List.map ~fn:(fun member_ -> Doc.concat [ blank_line; type_member_doc member_ ]) in
+          |> List.map
+            ~fn:(fun member_ ->
+              Doc.concat
+                [
+                  blank_line;
+                  leading_comment_token_doc member_.type_keyword;
+                  type_member_doc member_
+                ]) in
           Doc.concat (first_doc :: rest_docs)
     )
 
@@ -3943,18 +3950,25 @@ let module_signature_body_items_doc = fun items ->
   | [] -> Doc.empty
   | first :: rest -> loop first (module_signature_body_item_doc first) rest
 
+let signature_body_doc_with_closing_leading_comment = fun body_doc end_token ->
+  match trimmed_leading_comment_token_doc end_token with
+  | Doc.Empty -> body_doc
+  | closing_comment -> (
+      match body_doc with
+      | Doc.Empty -> closing_comment
+      | body_doc -> Doc.concat [ body_doc; blank_line; closing_comment ]
+    )
+
 let module_signature_tokens_doc = fun sig_token body_tokens end_token ->
   let items = split_module_signature_body_items body_tokens in
+  let body_doc = module_signature_body_items_doc items
+  |> fun body_doc -> signature_body_doc_with_closing_leading_comment body_doc end_token in
   match items with
+  | [] when Doc.is_multiline body_doc -> Doc.concat
+    [ token_doc sig_token; Doc.line; Doc.indent 2 body_doc; Doc.line; token_doc end_token; ]
   | [] -> Doc.concat [ token_doc sig_token; Doc.space; token_doc end_token ]
-  | items -> Doc.concat
-    [
-      token_doc sig_token;
-      Doc.line;
-      Doc.indent 2 (module_signature_body_items_doc items);
-      Doc.line;
-      token_doc end_token;
-    ]
+  | _ -> Doc.concat
+    [ token_doc sig_token; Doc.line; Doc.indent 2 body_doc; Doc.line; token_doc end_token; ]
 
 let split_signature_shell = fun tokens ->
   let rec take_body before sig_token body depth = function
@@ -4328,16 +4342,27 @@ let module_type_decl_sig_body_doc = fun decl ->
   match Ast.ModuleTypeDeclaration.sig_token decl, Ast.ModuleTypeDeclaration.end_token decl with
   | Some sig_token, Some end_token ->
       let items = split_signature_body_items (module_type_decl_sig_body_tokens decl) in
+      let body_doc = Doc.lines (List.map items ~fn:signature_body_item_doc)
+      |> fun body_doc -> signature_body_doc_with_closing_leading_comment body_doc end_token in
       let after = module_type_decl_sig_after_tokens decl in
       (
         match items with
-        | [] -> Doc.concat
-          [ token_doc sig_token; Doc.space; token_doc end_token; module_after_tokens_doc after ]
-        | items -> Doc.concat
+        | [] when Doc.is_multiline body_doc -> Doc.concat
           [
             token_doc sig_token;
             Doc.line;
-            Doc.indent 2 (Doc.lines (List.map items ~fn:signature_body_item_doc));
+            Doc.indent 2 body_doc;
+            Doc.line;
+            token_doc end_token;
+            module_after_tokens_doc after;
+          ]
+        | [] -> Doc.concat
+          [ token_doc sig_token; Doc.space; token_doc end_token; module_after_tokens_doc after ]
+        | _ -> Doc.concat
+          [
+            token_doc sig_token;
+            Doc.line;
+            Doc.indent 2 body_doc;
             Doc.line;
             token_doc end_token;
             module_after_tokens_doc after;
@@ -4349,17 +4374,15 @@ let module_decl_sig_body_doc = fun decl ->
   match Ast.ModuleDeclaration.sig_token decl, Ast.ModuleDeclaration.end_token decl with
   | Some sig_token, Some end_token ->
       let items = split_signature_body_items (module_decl_sig_body_tokens decl) in
+      let body_doc = Doc.lines (List.map items ~fn:signature_body_item_doc)
+      |> fun body_doc -> signature_body_doc_with_closing_leading_comment body_doc end_token in
       (
         match items with
+        | [] when Doc.is_multiline body_doc -> Doc.concat
+          [ token_doc sig_token; Doc.line; Doc.indent 2 body_doc; Doc.line; token_doc end_token; ]
         | [] -> Doc.concat [ token_doc sig_token; Doc.space; token_doc end_token ]
-        | items -> Doc.concat
-          [
-            token_doc sig_token;
-            Doc.line;
-            Doc.indent 2 (Doc.lines (List.map items ~fn:signature_body_item_doc));
-            Doc.line;
-            token_doc end_token;
-          ]
+        | _ -> Doc.concat
+          [ token_doc sig_token; Doc.line; Doc.indent 2 body_doc; Doc.line; token_doc end_token; ]
       )
   | _ -> unsupported "module signature body without sig/end tokens"
 

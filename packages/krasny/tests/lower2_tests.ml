@@ -114,6 +114,8 @@ let assert_lower2_existing_fixture_subset = fun () ->
     Path.v "packages/krasny/tests/fixtures/0427_let_in_sequence_after_multiline_apply.ml";
     Path.v "packages/krasny/tests/fixtures/0428_top_level_phrase_separator_after_supported_item.ml";
     Path.v "packages/krasny/tests/fixtures/0429_qualified_local_open_record_literal.ml";
+    Path.v "packages/krasny/tests/fixtures/0430_signature_last_docstring.mli";
+    Path.v "packages/krasny/tests/fixtures/0431_type_mutual_docstring_between_members.mli";
     Path.v "packages/krasny/tests/fixtures/0432_nested_poly_variant_payload.ml";
     Path.v "packages/krasny/tests/fixtures/0433_apply_parenthesized_poly_variant_payload.ml";
     Path.v "packages/krasny/tests/fixtures/0434_poly_variant_local_open_pattern_payload.ml";
