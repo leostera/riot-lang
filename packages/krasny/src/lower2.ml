@@ -30,6 +30,11 @@ let direct_child_tokens = fun node ->
   Ast.Node.for_each_child_token node ~fn:(fun token -> tokens := token :: !tokens);
   List.reverse !tokens
 
+let tokens_doc = fun tokens -> Doc.concat (List.map tokens ~fn:token_doc)
+
+let tokens_text = fun tokens ->
+  String.concat "" (List.map tokens ~fn:Ast.Token.text)
+
 let split_last = fun items ->
   let rec loop prefix = function
     | [] -> None
@@ -37,6 +42,23 @@ let split_last = fun items ->
     | item :: rest -> loop (item :: prefix) rest
   in
   loop [] items
+
+let index_shell_docs = fun expr ~fallback_open ~fallback_close ->
+  match split_last (direct_child_tokens expr) with
+  | Some (opening_tokens, closing) when not (List.is_empty opening_tokens) -> (
+    tokens_doc opening_tokens,
+    token_doc closing
+  )
+  | _ -> (Doc.text fallback_open, Doc.text fallback_close)
+
+let infix_operator_tokens = fun expr fallback ->
+  match direct_child_tokens expr with
+  | [] -> [ fallback ]
+  | tokens -> tokens
+
+let infix_operator_doc = fun expr fallback -> tokens_doc (infix_operator_tokens expr fallback)
+
+let infix_operator_text = fun expr fallback -> tokens_text (infix_operator_tokens expr fallback)
 
 let parenthesized_token_shell_doc = fun tokens ->
   match tokens with
@@ -1491,21 +1513,23 @@ and application_doc = fun expr ->
 and token_text_equal = fun left right ->
   String.equal (Ast.Token.text left) (Ast.Token.text right)
 
-and collect_same_infix_chain = fun operator expr acc ->
+and collect_same_infix_chain = fun operator_text expr acc ->
   match Ast.Expr.view expr with
-  | Infix { left=Some left; operator=Some next_operator; right=Some right } when token_text_equal
-    operator
-    next_operator ->
-      let acc = collect_same_infix_chain operator left acc in
-      collect_same_infix_chain operator right acc
+  | Infix { left=Some left; operator=Some next_operator; right=Some right } when String.equal
+    operator_text
+    (infix_operator_text expr next_operator) ->
+      let acc = collect_same_infix_chain operator_text left acc in
+      collect_same_infix_chain operator_text right acc
   | _ -> expr :: acc
 
-and same_infix_chain = fun operator expr -> collect_same_infix_chain operator expr [] |> List.reverse
+and same_infix_chain = fun operator expr ->
+  collect_same_infix_chain (infix_operator_text expr operator) expr [] |> List.reverse
 
 and large_infix_chain_doc = fun expr ->
   match Ast.Expr.view expr with
   | Infix { operator=Some operator; _ } -> (
       let parts = same_infix_chain operator expr in
+      let operator_doc = infix_operator_doc expr operator in
       if Int.(List.length parts <= 8) then
         None
       else
@@ -1515,7 +1539,7 @@ and large_infix_chain_doc = fun expr ->
           (expr_infix_operand_doc first
           :: (rest
           |> List.map
-            ~fn:(fun part -> [ Doc.line; token_doc operator; Doc.space; expr_infix_operand_doc part ])
+            ~fn:(fun part -> [ Doc.line; operator_doc; Doc.space; expr_infix_operand_doc part ])
           |> List.concat)))
     )
   | _ -> None
@@ -1757,7 +1781,7 @@ and expr_doc_with_view = fun expr (view: Ast.Expr.view) ->
         [
           expr_infix_operand_doc left;
           Doc.space;
-          token_doc operator;
+          infix_operator_doc expr operator;
           Doc.space;
           expr_infix_operand_doc right;
         ]
@@ -1969,15 +1993,17 @@ and expr_doc_with_view = fun expr (view: Ast.Expr.view) ->
         | None -> head
       )
   | ArrayIndex { target=Some target; index=Some index } ->
+      let opening_doc, closing_doc = index_shell_docs expr ~fallback_open:".(" ~fallback_close:")" in
       if expr_is_operator_word_path index then
         Doc.concat
-          [ expr_doc target; Doc.text ".("; Doc.space; expr_doc index; Doc.space; Doc.rparen ]
+          [ expr_doc target; opening_doc; Doc.space; expr_doc index; Doc.space; closing_doc ]
       else
-        Doc.concat [ expr_doc target; Doc.text ".("; expr_doc index; Doc.rparen ]
+        Doc.concat [ expr_doc target; opening_doc; expr_doc index; closing_doc ]
   | ArrayIndex _ ->
       unsupported "incomplete array index expression"
   | StringIndex { target=Some target; index=Some index } ->
-      Doc.concat [ expr_doc target; Doc.text ".["; expr_doc index; Doc.rbracket ]
+      let opening_doc, closing_doc = index_shell_docs expr ~fallback_open:".[" ~fallback_close:"]" in
+      Doc.concat [ expr_doc target; opening_doc; expr_doc index; closing_doc ]
   | StringIndex _ ->
       unsupported "incomplete string index expression"
   | LabeledArg { label=Some label; value=None } ->
