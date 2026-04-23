@@ -92,6 +92,7 @@ let assert_lower2_existing_fixture_subset = fun () ->
     Path.v "packages/krasny/tests/fixtures/0344_typed_let_alias_pattern_parameter.ml";
     Path.v "packages/krasny/tests/fixtures/0350_typed_function_binding_headers.ml";
     Path.v "packages/krasny/tests/fixtures/0360_local_open_record_pattern.ml";
+    Path.v "packages/krasny/tests/fixtures/0370_section_comment_order.ml";
     Path.v "packages/krasny/tests/fixtures/0380_long_grouped_bench_list.ml";
     Path.v "packages/krasny/tests/fixtures/0400_functions_match_and_patterns.ml";
     Path.v "packages/krasny/tests/fixtures/0410_negative_literal_patterns.ml";
@@ -167,8 +168,11 @@ let assert_lower2_existing_fixture_subset = fun () ->
     Path.v "packages/krasny/tests/fixtures/0906_docstring_after_fun_with_local_exception.ml";
     Path.v "packages/krasny/tests/fixtures/0907_docstring_after_fun_with_local_exception_and_try.ml";
     Path.v "packages/krasny/tests/fixtures/0908_trailing_inline_comment_in_module.ml";
+    Path.v "packages/krasny/tests/fixtures/0909_comment_stability_between_lets.ml";
     Path.v "packages/krasny/tests/fixtures/0911_comment_before_sequence_let.ml";
+    Path.v "packages/krasny/tests/fixtures/0912_banner_comments_followed_by_plain_comment.ml";
     Path.v "packages/krasny/tests/fixtures/0913_structure_docstring_after_open.ml";
+    Path.v "packages/krasny/tests/fixtures/0914_docstring_then_plain_comment_before_let.ml";
     Path.v "packages/krasny/tests/fixtures/0915_signature_type_trailing_docstring_at_eof.mli";
     Path.v "packages/krasny/tests/fixtures/0916_signature_type_trailing_comment_at_eof.mli";
     Path.v "packages/krasny/tests/fixtures/0918_nested_signature_terminal_doc_before_end.mli";

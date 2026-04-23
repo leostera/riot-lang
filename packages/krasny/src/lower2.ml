@@ -662,6 +662,12 @@ type leading_docstring = {
   is_section: bool;
 }
 
+type leading_comment = {
+  text: string;
+  kind: Kind.t;
+  is_section: bool;
+}
+
 let is_section_docstring_text = fun comment_text ->
   let len = String.length comment_text in
   if Int.(len < 5) then
@@ -674,19 +680,20 @@ let is_section_docstring_text = fun comment_text ->
       let first = String.get_unchecked body ~at:0 in
       Char.equal first '{' || Char.equal first '#'
 
-let leading_docstring_separator = fun left right ->
+let leading_docstring_separator = fun (left: leading_docstring) (_right: leading_docstring) ->
   if not left.is_section then
     "\n"
   else
     "\n\n"
 
-let standalone_docstring_separator = fun left right ->
+let standalone_docstring_separator = fun (left: leading_docstring) (right: leading_docstring) ->
   if (not left.is_section) && right.is_section then
     "\n"
   else
     "\n\n"
 
-let rec leading_docstring_text_with_separator = fun ~separator ->
+let rec leading_docstring_text_with_separator:
+  separator:(leading_docstring -> leading_docstring -> string) -> leading_docstring list -> string = fun ~separator ->
   function
   | [] ->
       ""
@@ -704,6 +711,19 @@ let rec leading_docstring_text_with_separator = fun ~separator ->
 let leading_docstring_text = leading_docstring_text_with_separator ~separator:leading_docstring_separator
 
 let standalone_docstring_text = leading_docstring_text_with_separator ~separator:standalone_docstring_separator
+
+let leading_comments = fun token ->
+  let comments = ref [] in
+  Ast.Token.for_each_leading_trivia token
+    ~fn:(fun ~kind ~text ->
+      if Kind.(kind = COMMENT || kind = DOCSTRING) then
+        comments := {
+          text = strip_trailing_whitespace text;
+          kind;
+          is_section = Kind.(kind = DOCSTRING) && is_section_docstring_text text
+        }
+        :: !comments);
+  List.reverse !comments
 
 let normalized_leading_docstrings_with = fun ~docstrings_text token ->
   let docstrings = ref [] in
@@ -728,6 +748,28 @@ let normalized_leading_docstrings_with = fun ~docstrings_text token ->
 let normalized_leading_docstrings = normalized_leading_docstrings_with ~docstrings_text:leading_docstring_text
 
 let normalized_standalone_docstrings = normalized_leading_docstrings_with ~docstrings_text:standalone_docstring_text
+
+let paragraph_comment_separator = fun left right ->
+  match Kind.(left.kind = DOCSTRING), Kind.(right.kind = DOCSTRING) with
+  | true, true -> leading_docstring_separator
+    { text = left.text; is_section = left.is_section }
+    { text = right.text; is_section = right.is_section }
+  | true, false when not left.is_section -> "\n"
+  | _ -> "\n\n"
+
+let rec paragraph_comment_text = function
+  | [] ->
+      ""
+  | [ comment ] ->
+      let suffix =
+        if Kind.(comment.kind = DOCSTRING) && not comment.is_section then
+          "\n"
+        else
+          "\n\n"
+      in
+      comment.text ^ suffix
+  | left :: (right :: _ as rest) ->
+      left.text ^ paragraph_comment_separator left right ^ paragraph_comment_text rest
 
 let leading_comment_text = fun token ->
   if Ast.Token.has_leading_docstring token then
@@ -814,7 +856,14 @@ let token_has_leading_nonsection_comment = fun token ->
 
 let leading_comment_token_paragraph_doc = fun token ->
   if Ast.Token.has_leading_comment token then
-    let text = leading_comment_text token |> strip_trailing_horizontal_whitespace in
+    let comments = leading_comments token in
+    let text =
+      if token_has_leading_plain_comment token then
+        paragraph_comment_text comments
+      else
+        leading_comment_text token
+    in
+    let text = text |> strip_trailing_horizontal_whitespace in
     let text =
       if not (token_has_leading_plain_comment token) then
         text
@@ -825,7 +874,7 @@ let leading_comment_token_paragraph_doc = fun token ->
       else
         text ^ "\n\n"
     in
-    Doc.text text
+    text_lines_doc text
   else
     Doc.empty
 
@@ -1712,7 +1761,12 @@ and application_doc = fun expr ->
         in
         Doc.concat [ head_doc; Doc.line; Doc.indent 2 (Doc.join Doc.line multiline_docs) ]
       else
-        Doc.concat [ callee_doc; Doc.space; Doc.join Doc.space argument_docs ]
+        Doc.group
+          (Doc.concat
+            [
+              callee_doc;
+              Doc.indent 2 (Doc.concat [ Doc.break (); Doc.join (Doc.break ()) argument_docs ]);
+            ])
 
 and token_text_equal = fun left right ->
   String.equal (Ast.Token.text left) (Ast.Token.text right)
