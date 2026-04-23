@@ -79,10 +79,28 @@ let assert_lower2_fixture_matches_approved = fun path ->
 let assert_lower2_existing_fixture_subset = fun () ->
   let fixtures = [
     Path.v "packages/krasny/tests/fixtures/0100_atoms_and_basic_expressions.ml";
+    Path.v "packages/krasny/tests/fixtures/0101_apply_list_trailing_separator.ml";
     Path.v "packages/krasny/tests/fixtures/0200_operators_and_parens.ml";
     Path.v "packages/krasny/tests/fixtures/0300_bindings_and_control_flow.ml";
+    Path.v "packages/krasny/tests/fixtures/0310_let_mutual_and_bindings.ml";
+    Path.v "packages/krasny/tests/fixtures/0320_field_assign_expression.ml";
+    Path.v "packages/krasny/tests/fixtures/0330_let_mutual_trailing_comment.ml";
+    Path.v "packages/krasny/tests/fixtures/0341_labeled_wildcard_after_positional_parameter.ml";
+    Path.v "packages/krasny/tests/fixtures/0342_constructor_pattern_before_labeled_parameters.ml";
+    Path.v "packages/krasny/tests/fixtures/0350_typed_function_binding_headers.ml";
     Path.v "packages/krasny/tests/fixtures/0400_functions_match_and_patterns.ml";
+    Path.v "packages/krasny/tests/fixtures/0411_match_case_char_guard.ml";
+    Path.v "packages/krasny/tests/fixtures/0414_typed_match_scrutinee.ml";
+    Path.v "packages/krasny/tests/fixtures/0415_nested_fun_parameter_stability.ml";
+    Path.v "packages/krasny/tests/fixtures/0419_typed_constructor_payload.ml";
+    Path.v "packages/krasny/tests/fixtures/0420_typed_expression_parenthesized.ml";
+    Path.v "packages/krasny/tests/fixtures/0432_nested_poly_variant_payload.ml";
+    Path.v "packages/krasny/tests/fixtures/0433_apply_parenthesized_poly_variant_payload.ml";
+    Path.v "packages/krasny/tests/fixtures/0434_poly_variant_local_open_pattern_payload.ml";
     Path.v "packages/krasny/tests/fixtures/0500_labeled_and_optional_arguments.ml";
+    Path.v "packages/krasny/tests/fixtures/0511_optional_parameter_default_preservation.ml";
+    Path.v "packages/krasny/tests/fixtures/0515_optional_arg_parenthesized_payload_then_unit_before_tuple.ml";
+    Path.v "packages/krasny/tests/fixtures/0516_labeled_arg_then_optional_then_unit_before_tuple.ml";
     Path.v "packages/krasny/tests/fixtures/0700_types_and_type_declarations.ml";
     Path.v "packages/krasny/tests/fixtures/0710_first_class_module_types.ml";
     Path.v "packages/krasny/tests/fixtures/0720_signature_external_declaration.mli";
@@ -126,15 +144,19 @@ let assert_lower2_existing_fixture_subset = fun () ->
     Path.v "packages/krasny/tests/fixtures/0944_exception_separator_comments.ml";
   ]
   in
-  let rec loop = function
-    | [] -> Ok ()
+  let rec loop errors = function
+    | [] -> (
+        match List.reverse errors with
+        | [] -> Ok ()
+        | errors -> Error (String.concat "\n\n" errors)
+      )
     | path :: rest -> (
         match assert_lower2_fixture_matches_approved path with
-        | Ok () -> loop rest
-        | Error _ as err -> err
+        | Ok () -> loop errors rest
+        | Error error -> loop (error :: errors) rest
       )
   in
-  loop fixtures
+  loop [] fixtures
 
 let tests = [
   Test.case
@@ -155,7 +177,7 @@ let tests = [
         "let value : int = 1\nlet id x : int = x\nlet keep_pattern (x : int) = x\n");
   Test.case
     "lower2 formats mutual recursive let bindings"
-    (fun _ctx -> assert_format2_ml ~expected:"let rec f = g and g = f\n" "let rec f = g\nand g = f\n");
+    (fun _ctx -> assert_format2_ml ~expected:"let rec f = g\n\nand g = f\n" "let rec f = g\nand g = f\n");
   Test.case
     "lower2 formats local let expressions"
     (fun _ctx -> assert_format2_ml ~expected:"let x =\n  let y = 1 in\n  y\n" "let x = let y = 1 in y\n");

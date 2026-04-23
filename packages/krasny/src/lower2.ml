@@ -25,6 +25,39 @@ let optional_token_doc = fun token ->
   | Some token -> token_doc token
   | None -> Doc.empty
 
+let direct_child_tokens = fun node ->
+  let tokens = ref [] in
+  Ast.Node.for_each_child_token node ~fn:(fun token -> tokens := token :: !tokens);
+  List.reverse !tokens
+
+let split_last = fun items ->
+  let rec loop prefix = function
+    | [] -> None
+    | [ last ] -> Some (List.reverse prefix, last)
+    | item :: rest -> loop (item :: prefix) rest
+  in
+  loop [] items
+
+let parenthesized_token_shell_doc = fun tokens ->
+  match tokens with
+  | opening :: rest when Kind.(Ast.Token.kind opening = LPAREN) -> (
+      match split_last rest with
+      | Some (inner, closing) when Kind.(Ast.Token.kind closing = RPAREN) -> (
+          match inner with
+          | [] -> Doc.concat [ token_doc opening; token_doc closing ]
+          | inner -> Doc.concat
+            [
+              token_doc opening;
+              Doc.space;
+              Doc.concat (List.map inner ~fn:token_doc);
+              Doc.space;
+              token_doc closing;
+            ]
+        )
+      | _ -> Doc.concat (List.map (opening :: rest) ~fn:token_doc)
+    )
+  | tokens -> Doc.concat (List.map tokens ~fn:token_doc)
+
 let token_kind_is = fun token kind -> Kind.(Ast.Token.kind token = kind)
 
 let starts_attribute_suffix_tokens = fun token rest ->
@@ -780,6 +813,26 @@ let child_expr_docs = fun expr ->
   Ast.Expr.for_each_child_expr expr ~fn:(fun child -> docs := child :: !docs);
   List.reverse !docs
 
+let expr_list_has_trailing_separator = fun expr items ->
+  match List.reverse items with
+  | [] -> false
+  | last_item :: _ ->
+      let _, last_item_end = Ast.Node.raw_range last_item in
+      let rec loop = function
+        | [] -> false
+        | token :: rest ->
+            let token_start, _ = Ast.Token.raw_range token in
+            if Int.(token_start < last_item_end) then
+              loop rest
+            else if token_kind_is token Kind.RBRACKET then
+              false
+            else if token_kind_is token Kind.SEMI then
+              true
+            else
+              loop rest
+      in
+      loop (direct_child_tokens expr)
+
 let child_pattern_docs = fun pattern ->
   let docs = ref [] in
   Ast.Pattern.for_each_child_pattern pattern ~fn:(fun child -> docs := child :: !docs);
@@ -921,7 +974,7 @@ let rec pattern_doc = fun pattern ->
   | Parenthesized { inner=Some inner } ->
       Doc.concat [ Doc.lparen; pattern_doc inner; Doc.rparen ]
   | Parenthesized { inner=None } ->
-      Doc.concat [ Doc.lparen; Doc.rparen ]
+      parenthesized_empty_pattern_doc pattern
   | Tuple ->
       child_pattern_docs pattern
       |> List.map ~fn:pattern_doc
@@ -1010,6 +1063,9 @@ let rec pattern_doc = fun pattern ->
   | Error _
   | Unknown _ ->
       unsupported "unsupported pattern"
+
+and parenthesized_empty_pattern_doc = fun pattern ->
+  parenthesized_token_shell_doc (direct_child_tokens pattern)
 
 and attribute_pattern_doc = fun pattern ->
   match Ast.AttributePattern.cast pattern with
@@ -1659,7 +1715,7 @@ and expr_doc_with_view = fun expr (view: Ast.Expr.view) ->
       if expr_is_begin_block expr then
         Doc.concat [ Doc.text "begin"; Doc.space; Doc.text "end" ]
       else
-        Doc.concat [ Doc.lparen; Doc.rparen ]
+        parenthesized_token_shell_doc (direct_child_tokens expr)
   | Infix { left=Some left; operator=Some operator; right=Some right } ->
       Doc.concat
         [
@@ -1707,10 +1763,21 @@ and expr_doc_with_view = fun expr (view: Ast.Expr.view) ->
         | None, None -> items
       )
   | List ->
-      child_expr_docs expr
-      |> List.map ~fn:expr_doc
-      |> Doc.join (Doc.concat [ Doc.semi; Doc.space ])
-      |> fun items -> Doc.concat [ Doc.lbracket; items; Doc.rbracket ]
+      let items = child_expr_docs expr in
+      let item_docs = List.map items ~fn:expr_doc in
+      if expr_list_has_trailing_separator expr items then
+        Doc.concat
+          [
+            Doc.lbracket;
+            Doc.space;
+            Doc.join (Doc.concat [ Doc.semi; Doc.space ]) item_docs;
+            Doc.semi;
+            Doc.space;
+            Doc.rbracket;
+          ]
+      else
+        Doc.concat
+          [ Doc.lbracket; Doc.join (Doc.concat [ Doc.semi; Doc.space ]) item_docs; Doc.rbracket ]
   | Array ->
       child_expr_docs expr
       |> List.map ~fn:expr_doc
@@ -2331,6 +2398,25 @@ and let_bindings_block_doc = fun ~keyword ~rec_token node ->
 
 let let_decl_doc = fun decl ->
   let_bindings_doc ~keyword:"let" ~rec_token:(Ast.LetDeclaration.rec_token decl) decl
+
+let let_decl_block_doc = fun decl ->
+  match let_binding_nodes decl with
+  | [] -> unsupported "let declaration without binding"
+  | first :: rest ->
+      let rest =
+        List.map
+          rest
+          ~fn:(fun binding ->
+            Doc.concat [ blank_line; Doc.text "and"; Doc.space; let_binding_doc binding ])
+      in
+      Doc.concat
+        (
+          [ Doc.text "let"; (
+              match Ast.LetDeclaration.rec_token decl with
+              | Some rec_token -> Doc.concat [ Doc.space; token_doc rec_token; Doc.space ]
+              | None -> Doc.space
+            ); let_binding_doc first; ] @ rest
+        )
 
 let type_parameter_doc = function
   | Ast.TypeDeclaration.Named { name; quote; variance; injective } -> Doc.concat
@@ -3990,7 +4076,7 @@ let structure_item_doc = fun item ->
   let body =
     match Ast.StructureItem.view item with
     | Let decl ->
-        let_decl_doc decl
+        let_decl_block_doc decl
     | Type decl ->
         type_decl_doc decl
     | Module decl ->
