@@ -625,6 +625,14 @@ module TypeExpr = struct
     in
     loop 0
 
+  let rec unwrap_poly_node = fun type_expr ->
+    if node_kind_is type_expr Syntax_kind2.TYPE_EXPR then
+      match first_child_node_matching type_expr ~matches:is_type_expr_kind with
+      | Some child -> unwrap_poly_node child
+      | None -> type_expr
+    else
+      type_expr
+
   let rec view = fun (type_expr: type_expr) ->
     match Node.kind type_expr with
     | Syntax_kind2.TYPE_EXPR -> (
@@ -684,14 +692,6 @@ module TypeExpr = struct
     for_each_child_node_matching type_expr ~matches:is_type_expr_kind ~fn
 
   let for_each_poly_type_name = fun (type_expr: type_expr) ~fn ->
-    let rec unwrap_poly_node type_expr =
-      if node_kind_is type_expr Syntax_kind2.TYPE_EXPR then
-        match first_child_node_matching type_expr ~matches:is_type_expr_kind with
-        | Some child -> unwrap_poly_node child
-        | None -> type_expr
-      else
-        type_expr
-    in
     let type_expr = unwrap_poly_node type_expr in
     let before_dot = ref true in
     Syntax_tree.for_each_child type_expr.tree (syntax_node type_expr)
@@ -706,6 +706,10 @@ module TypeExpr = struct
         | Syntax_tree.Node _
         | Syntax_tree.Missing _ -> ()
       )
+
+  let poly_type_keyword_token = fun (type_expr: type_expr) ->
+    let type_expr = unwrap_poly_node type_expr in
+    first_child_token_matching type_expr ~matches:(fun kind -> Syntax_kind2.(kind = TYPE_KW))
 end
 
 module RecordField = struct

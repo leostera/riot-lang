@@ -1306,14 +1306,14 @@ let type_expr_poly_names_doc = fun type_expr ->
   match List.reverse !names with
   | [] -> None
   | names ->
-      let uses_type_keyword =
-        List.exists (fun token -> token_kind_is token Kind.TYPE_KW) (direct_child_tokens type_expr)
-      in
+      let uses_type_keyword = Option.is_some (Ast.TypeExpr.poly_type_keyword_token type_expr) in
       let names_doc =
         if uses_type_keyword then
           Doc.join Doc.space (List.map names ~fn:token_doc)
         else
-          Doc.join Doc.space (List.map names ~fn:(fun name -> Doc.concat [ Doc.text "'"; token_doc name ]))
+          Doc.join
+            Doc.space
+            (List.map names ~fn:(fun name -> Doc.concat [ Doc.text "'"; token_doc name ]))
       in
       let prefix =
         if uses_type_keyword then
@@ -1578,7 +1578,7 @@ and first_class_module_pattern_doc = fun pattern ->
       | None -> unsupported "first-class module pattern ascription without colon token"
     )
   | _ ->
-      unsupported "unsupported first-class module pattern"
+      local_module_tokens_doc (direct_child_tokens pattern)
 
 and local_open_pattern_path_doc = fun pattern ->
   let segments = ref [] in
@@ -1959,16 +1959,32 @@ and expr_parens_can_elide_in_apply_argument = fun expr ->
   match Ast.Expr.view expr with
   | Path _
   | Literal _
-  | PolyVariant { payload=None } -> true
+  | ArrayIndex _
+  | StringIndex _
+  | PolyVariant { payload=None } ->
+      true
   | LocalOpen _ -> (
       match Ast.LocalOpenExpr.cast expr with
       | Some local_open -> (
           match Ast.LocalOpenExpr.view local_open with
-          | Delimited _ -> true
+          | Delimited { module_path=Some _; _ } -> true
+          | Delimited { module_path=None; _ } -> false
           | LetOpen _ -> false
         )
       | None -> false
     )
+  | Parenthesized { inner=Some inner } ->
+      expr_parens_can_elide_in_apply_argument inner
+  | _ ->
+      false
+
+and poly_variant_payload_can_elide_apply_parens = fun payload ->
+  match Ast.Expr.view payload with
+  | Path _
+  | Literal _
+  | ArrayIndex _
+  | StringIndex _
+  | PolyVariant { payload=None } -> true
   | Parenthesized { inner=Some inner } -> expr_parens_can_elide_in_apply_argument inner
   | _ -> false
 
@@ -1984,12 +2000,17 @@ and expr_apply_argument_doc = fun expr ->
   | Literal _
   | List
   | Array
-  | PolyVariant _
+  | ArrayIndex _
+  | StringIndex _
+  | PolyVariant { payload=None }
   | LocalOpen _
   | LabeledArg _
   | OptionalArg _
   | Record
   | RecordUpdate -> expr_doc_with_view expr view
+  | PolyVariant { payload=Some payload } when poly_variant_payload_can_elide_apply_parens payload -> expr_doc_with_view
+    expr
+    view
   | _ -> Doc.concat [ Doc.lparen; expr_doc_with_view expr view; Doc.rparen ]
 
 and expr_apply_argument_doc_with_leading_comment = fun expr ->
@@ -2557,6 +2578,15 @@ and sequence_separator_suffix_doc = fun expr ->
     )
   | _ -> Doc.concat [ Doc.semi; Doc.line ]
 
+and sequence_terminal_suffix_doc = fun expr ->
+  match Ast.Node.first_child_token expr ~kind:Kind.SEMI with
+  | Some separator when token_has_inline_leading_comment_after_horizontal separator -> (
+      match leading_comments separator with
+      | comment :: _ -> Doc.concat [ Doc.semi; Doc.line; Doc.text comment.text ]
+      | [] -> Doc.semi
+    )
+  | _ -> Doc.semi
+
 and sequence_doc = fun expr ->
   match Ast.Expr.view expr with
   | Sequence { left=Some left; right=Some right } -> Doc.concat
@@ -2567,6 +2597,7 @@ and sequence_doc = fun expr ->
         ~skip_boundary_leading_comment:(sequence_separator_consumes_leading_comment expr)
         right;
     ]
+  | Sequence { left=Some left; right=None } -> Doc.concat [ sequence_doc left; sequence_terminal_suffix_doc expr ]
   | _ -> sequence_item_doc expr
 
 and match_cases_doc = fun expr ->
@@ -2824,7 +2855,7 @@ and expr_doc_with_view = fun expr (view: Ast.Expr.view) ->
   | Record
   | RecordUpdate ->
       record_expr_doc expr
-  | Sequence { left=Some _; right=Some _ } ->
+  | Sequence { left=Some _; _ } ->
       sequence_doc expr
   | Sequence _ ->
       unsupported "incomplete sequence expression"

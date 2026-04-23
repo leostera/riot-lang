@@ -271,6 +271,24 @@ let test_signature_and_type_views = fun _ctx ->
       Ok ()
   | _ -> Error "expected module declaration"
 
+let test_package_type_value_annotation_views = fun _ctx ->
+  let root = parse_mli "val get: (module ConfigSpec with type t = 'a) -> ('a, error) result\n"
+  |> Result.expect ~msg:"expected parse2 interface" in
+  let value_item = nth_signature_item root 0 |> require_some ~msg:"expected value signature item" in
+  match Ast2.SignatureItem.view value_item with
+  | Ast2.SignatureItem.Value decl ->
+      let annotation = Ast2.ValueDeclaration.type_annotation decl |> require_some ~msg:"expected value type annotation" in
+      (
+        match Ast2.TypeExpr.view annotation with
+        | Ast2.TypeExpr.Arrow { left=Some left; right=Some _ } -> (
+            match Ast2.TypeExpr.view left with
+            | Ast2.TypeExpr.Opaque _ -> Ok ()
+            | _ -> Error "expected package type annotation to lower as opaque type"
+          )
+        | _ -> Error "expected arrow value type"
+      )
+  | _ -> Error "expected value declaration"
+
 let test_type_expression_views = fun _ctx ->
   let root = parse_mli "val xs : int list\nexternal id : 'a -> 'a = \"%identity\"\n"
   |> Result.expect ~msg:"expected parse2 interface" in
@@ -407,8 +425,7 @@ let test_poly_labeled_and_signed_views = fun _ctx ->
   | _ -> Error "expected function expression"
 
 let test_quoted_poly_let_annotation_views = fun _ctx ->
-  let source =
-    "let rec record_mut_backend:\n\
+  let source = "let rec record_mut_backend:\n\
     \  'field 'builder 'value. state ->\n\
     \  fields:'field De.Fields.t ->\n\
     \  create:(unit -> 'builder) ->\n\
@@ -426,7 +443,9 @@ let test_quoted_poly_let_annotation_views = fun _ctx ->
     match Ast2.TypeExpr.view annotation with
     | Ast2.TypeExpr.Poly { body=Some body } ->
         let names = ref [] in
-        Ast2.TypeExpr.for_each_poly_type_name annotation ~fn:(fun token -> names := Ast2.Token.text token :: !names);
+        Ast2.TypeExpr.for_each_poly_type_name
+          annotation
+          ~fn:(fun token -> names := Ast2.Token.text token :: !names);
         Test.assert_equal ~expected:[ "field"; "builder"; "value" ] ~actual:(List.reverse !names);
         (
           match Ast2.TypeExpr.view body with
@@ -440,7 +459,11 @@ let test_quoted_poly_let_annotation_views = fun _ctx ->
                 match Ast2.TypeExpr.view right with
                 | Ast2.TypeExpr.Arrow { left=Some labeled; right=Some _ } -> (
                     match Ast2.TypeExpr.view labeled with
-                    | Ast2.TypeExpr.Labeled { label=Some label; annotation=Some labeled_annotation; _ } ->
+                    | Ast2.TypeExpr.Labeled {
+                      label=Some label;
+                      annotation=Some labeled_annotation;
+                      _
+                    } ->
                         Test.assert_equal ~expected:"fields" ~actual:(Ast2.Token.text label);
                         (
                           match Ast2.TypeExpr.view labeled_annotation with
@@ -817,6 +840,39 @@ let test_module_declaration_tokens = fun _ctx ->
   );
   Ok ()
 
+let test_trailing_sequence_before_and_views = fun _ctx ->
+  let source = "let rec f () = log \"f\";\nand g () = log \"g\";\n" in
+  let root = parse_ml source |> Result.expect ~msg:"expected parse2 source file" in
+  let item = nth_structure_item root 0 |> require_some ~msg:"expected let declaration" in
+  let decl =
+    match Ast2.StructureItem.view item with
+    | Ast2.StructureItem.Let decl -> decl
+    | _ -> panic "expected let declaration"
+  in
+  let bindings = ref [] in
+  Ast2.LetDeclaration.for_each_binding decl ~fn:(fun binding -> bindings := binding :: !bindings);
+  match List.rev !bindings with
+  | [f_binding;g_binding] ->
+      let assert_trailing_sequence binding expected_name =
+        let pattern = pattern_of_binding binding |> Result.expect ~msg:"expected binding pattern" in
+        (
+          match Ast2.Pattern.view pattern with
+          | Ast2.Pattern.Path { path } -> assert_last_ident_text path expected_name
+          | _ -> panic "expected binding head path pattern"
+        );
+        let parameters = ref [] in
+        Ast2.LetBinding.for_each_parameter binding ~fn:(fun parameter -> parameters := parameter :: !parameters);
+        if List.is_empty !parameters then
+          panic "expected function binding parameters";
+        let body = body_of_binding binding |> Result.expect ~msg:"expected binding body" in
+        match Ast2.Expr.view body with
+        | Ast2.Expr.Sequence { left=Some _; right=None } -> Ok ()
+        | _ -> Error "expected trailing sequence expression body"
+      in
+      assert_trailing_sequence f_binding "f";
+      assert_trailing_sequence g_binding "g"
+  | _ -> Error "expected two recursive bindings"
+
 let test_module_declaration_member_views = fun _ctx ->
   let root = parse_ml "module rec M : S = A and N : T = B\n" |> Result.expect ~msg:"expected parse2 source file" in
   let item = nth_structure_item root 0 |> require_some ~msg:"expected module item" in
@@ -853,9 +909,7 @@ let test_module_declaration_member_views = fun _ctx ->
   | _ -> Error "expected module declaration"
 
 let test_signature_module_typeof_declaration = fun _ctx ->
-  let root =
-    parse_mli "module Http1 : module type of Foo.Bar\n"
-    |> Result.expect ~msg:"expected parse2 interface" in
+  let root = parse_mli "module Http1 : module type of Foo.Bar\n" |> Result.expect ~msg:"expected parse2 interface" in
   let item = nth_signature_item root 0 |> require_some ~msg:"expected module item" in
   match Ast2.SignatureItem.view item with
   | Ast2.SignatureItem.Module decl ->
@@ -865,7 +919,8 @@ let test_signature_module_typeof_declaration = fun _ctx ->
             match acc with
             | Some _ -> acc
             | None -> Some member)
-        |> require_some ~msg:"expected module member" in
+        |> require_some ~msg:"expected module member"
+      in
       let separator = Ast2.ModuleDeclaration.separator_token decl |> require_some ~msg:"expected module separator" in
       let module_type = Ast2.ModuleDeclaration.Member.module_type member |> require_some ~msg:"expected module type body" in
       Test.assert_equal ~expected:":" ~actual:(Ast2.Token.text separator);
@@ -1231,7 +1286,7 @@ let test_local_open_argument_views = fun _ctx ->
     | _ -> panic "expected send callee"
   );
   match arguments with
-  | [pid_arg; local_open_arg] ->
+  | [pid_arg;local_open_arg] ->
       (
         match Ast2.Expr.view pid_arg with
         | Ast2.Expr.Path { path } -> assert_last_ident_text path "pid"
@@ -1260,9 +1315,7 @@ let test_local_open_argument_views = fun _ctx ->
   | _ -> Error "expected send application arguments"
 
 let test_local_open_labeled_argument_views = fun _ctx ->
-  let source =
-    "let store = Contentstore.create ~root:Path.(tmpdir / Path.v \"cache\") ~ns:(namespace parts)\n"
-  in
+  let source = "let store = Contentstore.create ~root:Path.(tmpdir / Path.v \"cache\") ~ns:(namespace parts)\n" in
   let root = parse_ml source |> Result.expect ~msg:"expected parse2 source file" in
   let body = nth_structure_item root 0
   |> require_some ~msg:"expected labeled local open item"
@@ -1284,7 +1337,7 @@ let test_local_open_labeled_argument_views = fun _ctx ->
     | _ -> panic "expected create callee"
   );
   match arguments with
-  | [root_arg; ns_arg] ->
+  | [root_arg;ns_arg] ->
       (
         match Ast2.Expr.view root_arg with
         | Ast2.Expr.LabeledArg { label=Some label; value=Some value } ->
@@ -1292,7 +1345,11 @@ let test_local_open_labeled_argument_views = fun _ctx ->
             let local_open = Ast2.LocalOpenExpr.cast value |> require_some ~msg:"expected local open root value" in
             (
               match Ast2.LocalOpenExpr.view local_open with
-              | Ast2.LocalOpenExpr.Delimited { module_path=Some module_path; body=Some inner_body; _ } ->
+              | Ast2.LocalOpenExpr.Delimited {
+                module_path=Some module_path;
+                body=Some inner_body;
+                _
+              } ->
                   Test.assert_equal ~expected:"Path" ~actual:(last_path_text module_path);
                   (
                     match Ast2.Expr.view inner_body with
@@ -1313,7 +1370,7 @@ let test_local_open_labeled_argument_views = fun _ctx ->
   | _ -> Error "expected labeled application arguments"
 
 let test_first_class_module_views = fun _ctx ->
-  let source = "let packed = (module Foo.Bar)\nlet typed = (module Foo : S.T)\n" in
+  let source = "let packed = (module Foo.Bar)\nlet typed = (module Foo : S.T)\nlet advanced = (module Foo : S with type t = item)\n" in
   let root = parse_ml source |> Result.expect ~msg:"expected parse2 source file" in
   let packed = nth_structure_item root 0
   |> require_some ~msg:"expected packed module item"
@@ -1346,6 +1403,19 @@ let test_first_class_module_views = fun _ctx ->
   Test.assert_equal ~expected:"S.T" ~actual:(first_class_module_ascription_text typed);
   let colon = Ast2.FirstClassModuleExpr.colon_token typed |> require_some ~msg:"expected first-class module colon" in
   Test.assert_equal ~expected:":" ~actual:(Ast2.Token.text colon);
+  let advanced = nth_structure_item root 2
+  |> require_some ~msg:"expected advanced module item"
+  |> binding_of_structure_item
+  |> Result.expect ~msg:"expected advanced module binding"
+  |> body_of_binding
+  |> Result.expect ~msg:"expected advanced module body" in
+  let advanced = Ast2.FirstClassModuleExpr.cast advanced |> require_some ~msg:"expected advanced first-class module view" in
+  Test.assert_equal
+    ~expected:Ast2.FirstClassModuleExpr.ModulePath
+    ~actual:(Ast2.FirstClassModuleExpr.module_path advanced);
+  Test.assert_equal
+    ~expected:Ast2.FirstClassModuleExpr.UnsupportedAscription
+    ~actual:(Ast2.FirstClassModuleExpr.ascription advanced);
   Ok ()
 
 let test_let_module_expression_views = fun _ctx ->
@@ -1586,7 +1656,7 @@ let test_extension_views = fun _ctx ->
   Ok ()
 
 let test_special_pattern_views = fun _ctx ->
-  let source = "let f (type a b) (module M : S.T) = value\n" in
+  let source = "let f (type a b) (module M : S.T) = value\nlet h (module N : S with type t = item) = value\n" in
   let root = parse_ml source |> Result.expect ~msg:"expected parse2 source file" in
   let binding = nth_structure_item root 0
   |> require_some ~msg:"expected special pattern item"
@@ -1630,6 +1700,29 @@ let test_special_pattern_views = fun _ctx ->
       Ok ()
   | _ -> Error "expected two special-pattern parameters"
 
+let test_first_class_module_pattern_with_constraints_view = fun _ctx ->
+  let root = parse_ml "let h (module N : S with type t = item) = value\n"
+  |> Result.expect ~msg:"expected parse2 source file" in
+  let binding = nth_structure_item root 0
+  |> require_some ~msg:"expected constrained module pattern item"
+  |> binding_of_structure_item
+  |> Result.expect ~msg:"expected constrained module pattern binding" in
+  let parameters = ref [] in
+  Ast2.LetBinding.for_each_parameter binding ~fn:(fun pattern -> parameters := pattern :: !parameters);
+  match List.reverse !parameters with
+  | [first_class_module] -> (
+      match Ast2.Pattern.view first_class_module with
+      | Ast2.Pattern.FirstClassModule ->
+          let first_class_module = Ast2.FirstClassModulePattern.cast first_class_module
+          |> require_some ~msg:"expected constrained first-class module pattern view" in
+          Test.assert_equal
+            ~expected:Ast2.FirstClassModulePattern.UnsupportedAscription
+            ~actual:(Ast2.FirstClassModulePattern.ascription first_class_module);
+          Ok ()
+      | _ -> Error "expected first-class module pattern parameter"
+    )
+  | _ -> Error "expected one constrained first-class module parameter"
+
 let test_typed_labeled_parameter_view = fun _ctx ->
   let source = "let map (type a b) (iter : a t) ~(fn : a -> b) = ()\n" in
   let root = parse_ml source |> Result.expect ~msg:"expected parse2 source file" in
@@ -1672,9 +1765,11 @@ let test_typed_labeled_parameter_view = fun _ctx ->
 let tests = [
   Test.case "ast2 exposes source file and let binding views" test_source_file_and_let_binding_views;
   Test.case "ast2 exposes if and match expression views" test_expression_views;
+  Test.case "ast2 preserves trailing sequence bodies before and-bindings" test_trailing_sequence_before_and_views;
   Test.case "ast2 keeps labels after polymorphic variant arguments as application arguments" test_labeled_application_after_poly_variant_argument;
   Test.case "ast2 exposes tuple and cons pattern views" test_pattern_views;
   Test.case "ast2 exposes signature declaration views" test_signature_and_type_views;
+  Test.case "ast2 parses package type value annotations" test_package_type_value_annotation_views;
   Test.case "ast2 exposes type expression views" test_type_expression_views;
   Test.case "ast2 exposes type tuple separators" test_type_tuple_separator_views;
   Test.case "ast2 exposes poly labeled types and signed literal patterns" test_poly_labeled_and_signed_views;
@@ -1704,6 +1799,7 @@ let tests = [
   Test.case "ast2 exposes attribute expression and pattern views" test_attribute_views;
   Test.case "ast2 exposes extension expression pattern and item views" test_extension_views;
   Test.case "ast2 exposes locally abstract and first-class module pattern views" test_special_pattern_views;
+  Test.case "ast2 marks constrained first-class module pattern ascriptions unsupported" test_first_class_module_pattern_with_constraints_view;
   Test.case "ast2 exposes typed labeled parameter views" test_typed_labeled_parameter_view;
 ]
 

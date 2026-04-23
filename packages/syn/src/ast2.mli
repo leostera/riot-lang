@@ -114,6 +114,8 @@ module TypeExpr: sig
 
   val view: t -> view
 
+  val poly_type_keyword_token: t -> Token.t option
+
   val for_each_poly_type_name: t -> fn:(Token.t -> unit) -> unit
 
   val for_each_child_type: t -> fn:(t -> unit) -> unit

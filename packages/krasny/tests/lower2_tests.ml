@@ -309,9 +309,13 @@ let tests = [
   Test.case
     "lower2 formats quoted poly let annotations"
     (fun _ctx ->
+      assert_format2_ml ~expected:"let id:\n  'a 'b. 'a ->\n  'b ->\n  'a = fun x _ -> x\n" "let id : 'a 'b. 'a -> 'b -> 'a = fun x _ -> x\n");
+  Test.case
+    "lower2 keeps locally abstract type binding prefixes"
+    (fun _ctx ->
       assert_format2_ml
-        ~expected:"let id:\n  'a 'b. 'a ->\n  'b ->\n  'a = fun x _ -> x\n"
-        "let id : 'a 'b. 'a -> 'b -> 'a = fun x _ -> x\n");
+        ~expected:"let make:\n  type socket err. reader:(socket, err) reader ->\n  writer:(socket, err) writer ->\n  of_io_error:(err -> error) ->\n  uri:uri ->\n  t = fun ~reader ~writer ~of_io_error ~uri -> make_conn reader writer of_io_error uri\n"
+        "let make : type socket err. reader:(socket, err) reader -> writer:(socket, err) writer -> of_io_error:(err -> error) -> uri:uri -> t = fun ~reader ~writer ~of_io_error ~uri -> make_conn reader writer of_io_error uri\n");
   Test.case
     "lower2 formats mutual recursive let bindings"
     (fun _ctx -> assert_format2_ml ~expected:"let rec f = g\n\nand g = f\n" "let rec f = g\nand g = f\n");
@@ -322,12 +326,24 @@ let tests = [
     "lower2 formats function expressions"
     (fun _ctx -> assert_format2_ml ~expected:"let id = fun x -> x\n" "let id = fun x -> x\n");
   Test.case
+    "lower2 formats function expressions with return annotations"
+    (fun _ctx ->
+      assert_format2_ml
+        ~expected:"let boxed = fun (value: int): int -> value\n"
+        "let boxed = fun (value: int) : int -> value\n");
+  Test.case
     "lower2 formats match expressions"
     (fun _ctx ->
       assert_format2_ml ~expected:"let value =\n  match x with\n  | 0 -> 1\n  | _ -> 2\n" "let value = match x with | 0 -> 1 | _ -> 2\n");
   Test.case
     "lower2 formats sequence expressions"
     (fun _ctx -> assert_format2_ml ~expected:"let run =\n  first;\n  second\n" "let run = first; second\n");
+  Test.case
+    "lower2 preserves trailing sequence bodies in and-bindings"
+    (fun _ctx ->
+      assert_format2_ml
+        ~expected:"let rec f () =\n  log \"f\";\n\nand g () =\n  log \"g\";\n"
+        "let rec f () = log \"f\";\nand g () = log \"g\";\n");
   Test.case
     "lower2 formats list and array expressions"
     (fun _ctx ->
@@ -348,6 +364,13 @@ let tests = [
         ~expected:(top_level
           [ "let ok = `Ok 1"; "let classify = function\n  | `Ok value -> value\n  | `Error -> 0" ])
         "let ok = `Ok 1\nlet classify = function | `Ok value -> value | `Error -> 0\n");
+  Test.case
+    "lower2 preserves parens around polymorphic variant payload apply arguments"
+    (fun _ctx -> assert_format2_ml ~expected:"let wrapped = Some (`Tag { value = 1 })\n" "let wrapped = Some (`Tag { value = 1 })\n");
+  Test.case
+    "lower2 keeps simple polymorphic variant payload args bare"
+    (fun _ctx ->
+      assert_format2_ml ~expected:"let color_escape color = Color.to_escape_seq ~mode:`fg color\n" "let color_escape color = Color.to_escape_seq ~mode:`fg color\n");
   Test.case
     "lower2 formats expression and pattern attributes"
     (fun _ctx ->
@@ -379,6 +402,16 @@ let tests = [
         ~expected:(top_level
           [ "let field = value.name"; "let item = values.(index)"; "let char = text.[index]" ])
         "let field = value.name\nlet item = values.(index)\nlet char = text.[index]\n");
+  Test.case
+    "lower2 keeps index expressions bare in apply arguments"
+    (fun _ctx ->
+      assert_format2_ml
+        ~expected:(top_level
+          [
+            "let char_ok = identifier_character source.[index - 1]";
+            "let item_ok = consume values.(index)"
+          ])
+        "let char_ok = identifier_character source.[index - 1]\nlet item_ok = consume values.(index)\n");
   Test.case
     "lower2 formats record expressions and patterns"
     (fun _ctx ->
@@ -428,8 +461,18 @@ let tests = [
     (fun _ctx ->
       assert_format2_ml
         ~expected:(top_level
-          [ "let f (type a b) (module M : S.T) = value"; "let g (module _) = value" ])
-        "let f (type a b) (module M : S.T) = value\nlet g (module _) = value\n");
+          [
+            "let f (type a b) (module M : S.T) = value";
+            "let g (module _) = value";
+            "let h (module N : S with type t = item) = value";
+          ])
+        "let f (type a b) (module M : S.T) = value\nlet g (module _) = value\nlet h (module N : S with type t = item) = value\n");
+  Test.case
+    "lower2 formats package type value declarations"
+    (fun _ctx ->
+      assert_format2_mli
+        ~expected:"val get: (module ConfigSpec with type t = 'a) -> ('a, error) result\n"
+        "val get: (module ConfigSpec with type t = 'a) -> ('a, error) result\n");
   Test.case
     "lower2 formats let module expressions"
     (fun _ctx ->

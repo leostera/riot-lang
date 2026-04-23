@@ -454,18 +454,14 @@ let kind_at_position = fun p position -> (raw_at p (significant_raw_at p positio
 let peek_kind_at_position = fun p position offset -> kind_at_position p (position + offset)
 
 let starts_with_typeof_module_expr_at = fun p position ->
-  Syntax_kind2.(
-    kind_at_position p position = MODULE_KW
-    && peek_kind_at_position p position 1 = TYPE_KW
-    && peek_kind_at_position p position 2 = OF_KW
-  )
+  Syntax_kind2.(kind_at_position p position = MODULE_KW
+  && peek_kind_at_position p position 1 = TYPE_KW
+  && peek_kind_at_position p position 2 = OF_KW)
 
 let starts_with_module_type_decl_at = fun p position ->
-  Syntax_kind2.(
-    kind_at_position p position = MODULE_KW
-    && peek_kind_at_position p position 1 = TYPE_KW
-    && peek_kind_at_position p position 2 != OF_KW
-  )
+  Syntax_kind2.(kind_at_position p position = MODULE_KW
+  && peek_kind_at_position p position 1 = TYPE_KW
+  && peek_kind_at_position p position 2 != OF_KW)
 
 let starts_structure_item_at_position = fun p position ->
   match kind_at_position p position with
@@ -485,9 +481,9 @@ let starts_signature_item = function
 
 let starts_signature_item_at_position = fun p position ->
   match kind_at_position p position with
-  | Syntax_kind2.MODULE_KW ->
-      not (starts_with_typeof_module_expr_at p position)
-      && (starts_with_module_type_decl_at p position || Syntax_kind2.(peek_kind_at_position p position 1 != TYPE_KW))
+  | Syntax_kind2.MODULE_KW -> not (starts_with_typeof_module_expr_at p position)
+  && (starts_with_module_type_decl_at p position
+  || Syntax_kind2.(peek_kind_at_position p position 1 != TYPE_KW))
   | kind -> starts_signature_item kind
 
 let starts_structure_item_at = fun p -> starts_structure_item_at_position p p.pos
@@ -614,6 +610,7 @@ let at_item_boundary = fun p ~signature ->
 let expression_boundary = fun p ~stop_at_item ~stop_at_semi ~stop_at_comma ~signature ->
   match current_kind p with
   | Syntax_kind2.EOF
+  | Syntax_kind2.AND_KW
   | Syntax_kind2.IN_KW
   | Syntax_kind2.THEN_KW
   | Syntax_kind2.ELSE_KW
@@ -633,6 +630,8 @@ let expression_boundary = fun p ~stop_at_item ~stop_at_semi ~stop_at_comma ~sign
 
 let trailing_sequence_boundary = fun p ->
   match current_kind p with
+  | Syntax_kind2.EOF
+  | Syntax_kind2.AND_KW
   | Syntax_kind2.IN_KW
   | Syntax_kind2.PIPE
   | Syntax_kind2.RPAREN
@@ -1374,15 +1373,13 @@ let rec parse_expression = fun p ~signature ~stop_at_item ?(stop_at_semi = false
           lhs
       | _ when can_start_atom (current_kind p) && min_bp <= application_binding_power ->
           let marker = precede p lhs in
-          let _argument =
-            parse_expression
-              p
-              ~signature
-              ~stop_at_item
-              ~stop_at_semi
-              ~stop_at_comma
-              (application_binding_power + 1)
-          in
+          let _argument = parse_expression
+            p
+            ~signature
+            ~stop_at_item
+            ~stop_at_semi
+            ~stop_at_comma
+            (application_binding_power + 1) in
           loop (complete p marker Syntax_kind2.APPLY_EXPR)
       | _ ->
           lhs
@@ -2020,13 +2017,18 @@ and parse_fun_expr = fun p ~signature ~stop_at_item ->
   let marker = start_node p in
   bump p;
   let rec parse_params () =
-    if not (at p Syntax_kind2.ARROW || is_eof p) then
+    if not (at p Syntax_kind2.ARROW || at p Syntax_kind2.COLON || is_eof p) then
       (
-        parse_pattern ~stop_type_at_arrow:false p;
+        parse_pattern ~stop_type_at_arrow:true p;
         parse_params ()
       )
   in
   parse_params ();
+  if at p Syntax_kind2.COLON then
+    (
+      bump p;
+      ignore (parse_type_expr p ~allow_leading_poly_type_after_newline:true ~stop_at_arrow:true)
+    );
   expect p Syntax_kind2.ARROW (invalid_expression p);
   ignore (parse_expression p ~signature ~stop_at_item 0);
   complete p marker Syntax_kind2.FUN_EXPR
@@ -2674,6 +2676,11 @@ and parse_type_atom = fun p ~stop_at_arrow ->
       let marker = start_node p in
       bump p;
       complete p marker Syntax_kind2.WILDCARD_TYPE
+  | Syntax_kind2.LPAREN when Syntax_kind2.(peek_kind p 1 = MODULE_KW) ->
+      let marker = start_node p in
+      bump p;
+      consume_first_class_module_shell p;
+      complete p marker Syntax_kind2.OPAQUE_TYPE
   | Syntax_kind2.LPAREN ->
       parse_parenthesized_type p ~stop_at_arrow
   | _ ->
@@ -3729,7 +3736,9 @@ and parse_functor_module_type = fun p ~signature ->
 and parse_module_type_atom = fun p ~signature ->
   match current_kind p with
   | Syntax_kind2.SIG_KW -> parse_signature_module_type p
-  | Syntax_kind2.MODULE_KW when starts_with_typeof_module_expr_keyword p -> parse_typeof_module_type p ~signature
+  | Syntax_kind2.MODULE_KW when starts_with_typeof_module_expr_keyword p -> parse_typeof_module_type
+    p
+    ~signature
   | Syntax_kind2.FUNCTOR_KW -> parse_functor_module_type p ~signature
   | Syntax_kind2.LPAREN -> parse_parenthesized_module_type p ~signature
   | Syntax_kind2.IDENT -> parse_module_path_node
