@@ -549,6 +549,41 @@ let test_module_declaration_tokens = fun _ctx ->
   );
   Ok ()
 
+let test_module_declaration_member_views = fun _ctx ->
+  let root = parse_ml "module rec M : S = A and N : T = B\n" |> Result.expect ~msg:"expected parse2 source file" in
+  let item = nth_structure_item root 0 |> require_some ~msg:"expected module item" in
+  match Ast2.StructureItem.view item with
+  | Ast2.StructureItem.Module decl ->
+      Test.assert_equal ~expected:true ~actual:(Ast2.ModuleDeclaration.is_recursive decl);
+      let count = ref 0 in
+      let names = ref [] in
+      let shells = ref [] in
+      let body_shapes = ref [] in
+      Ast2.ModuleDeclaration.for_each_member decl
+        ~fn:(fun member ->
+          count := !count + 1;
+          let name = Ast2.ModuleDeclaration.Member.name member |> require_some ~msg:"expected member name" in
+          let shell = Ast2.ModuleDeclaration.Member.child_token_at member 0 |> require_some ~msg:"expected member shell token" in
+          let has_module_type =
+            match Ast2.ModuleDeclaration.Member.module_type member with
+            | Some _ -> true
+            | None -> false
+          in
+          let has_module_expr =
+            match Ast2.ModuleDeclaration.Member.module_expr member with
+            | Some _ -> true
+            | None -> false
+          in
+          names := Ast2.Token.text name :: !names;
+          shells := Ast2.Token.text shell :: !shells;
+          body_shapes := (has_module_type, has_module_expr) :: !body_shapes);
+      Test.assert_equal ~expected:2 ~actual:!count;
+      Test.assert_equal ~expected:[ "M"; "N" ] ~actual:(List.reverse !names);
+      Test.assert_equal ~expected:[ "module"; "and" ] ~actual:(List.reverse !shells);
+      Test.assert_equal ~expected:[ (true, true); (true, true) ] ~actual:(List.reverse !body_shapes);
+      Ok ()
+  | _ -> Error "expected module declaration"
+
 let test_module_type_declaration_tokens = fun _ctx ->
   let root = parse_mli "module type S = Foo.S\nmodule type Empty = sig end\nmodule type Abstract\n"
   |> Result.expect ~msg:"expected parse2 interface" in
@@ -1201,6 +1236,7 @@ let tests = [
   Test.case "ast2 exposes open declaration path tokens" test_open_declaration_path_tokens;
   Test.case "ast2 exposes simple declaration token views" test_simple_declaration_token_views;
   Test.case "ast2 exposes module declaration tokens" test_module_declaration_tokens;
+  Test.case "ast2 exposes module declaration member views" test_module_declaration_member_views;
   Test.case "ast2 exposes module type declaration tokens" test_module_type_declaration_tokens;
   Test.case "ast2 exposes let binding type annotation views" test_binding_type_annotation_view;
   Test.case "ast2 exposes record expression and pattern views" test_record_views;

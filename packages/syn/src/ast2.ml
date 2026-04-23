@@ -2476,6 +2476,12 @@ let last_non_attribute_suffix_token_index = fun node ->
 module ModuleDeclaration = struct
   type t = module_declaration
 
+  type member = {
+    declaration: module_declaration;
+    start_index: int;
+    stop_index: int;
+  }
+
   type body =
     | Path
     | EmptyStruct
@@ -2493,8 +2499,158 @@ module ModuleDeclaration = struct
 
   let rec_token = fun decl -> Node.first_child_token decl ~kind:Syntax_kind2.REC_KW
 
+  let is_recursive = fun decl ->
+    match rec_token decl with
+    | Some _ -> true
+    | None -> false
+
   let separator_token = fun decl ->
     first_child_token_matching decl ~matches:(fun kind -> Syntax_kind2.(kind = EQ || kind = COLON))
+
+  module Member = struct
+    type t = member
+
+    let declaration = fun member -> member.declaration
+
+    let start_index = fun member -> member.start_index
+
+    let stop_index = fun member -> member.stop_index
+
+    let child_count = fun member -> member.stop_index - member.start_index
+
+    let child_at = fun member index ->
+      if index < 0 || index >= child_count member then
+        None
+      else
+        Node.child_at member.declaration (member.start_index + index)
+
+    let child_token_at = fun member index ->
+      match child_at member index with
+      | Some (Syntax_tree.Token id) -> Some (wrap_token member.declaration.tree id)
+      | Some (Syntax_tree.Node _)
+      | Some (Syntax_tree.Missing _)
+      | None -> None
+
+    let child_node_at = fun member index ->
+      match child_at member index with
+      | Some (Syntax_tree.Node id) -> Some (wrap_node member.declaration.tree id)
+      | Some (Syntax_tree.Token _)
+      | Some (Syntax_tree.Missing _)
+      | None -> None
+
+    let child_token_kind_is = fun member index kind ->
+      match child_token_at member index with
+      | Some token -> token_kind_is token kind
+      | None -> false
+
+    let for_each_child = fun member ~fn ->
+      let rec loop index =
+        if index < member.stop_index then
+          (
+            (
+              match Node.child_at member.declaration index with
+              | Some child -> fn child
+              | None -> ()
+            );
+            loop (index + 1)
+          )
+      in
+      loop member.start_index
+
+    let for_each_child_token = fun member ~fn ->
+      for_each_child member
+        ~fn:(
+          function
+          | Syntax_tree.Token id -> fn (wrap_token member.declaration.tree id)
+          | Syntax_tree.Node _
+          | Syntax_tree.Missing _ -> ()
+        )
+
+    let for_each_child_node = fun member ~fn ->
+      for_each_child member
+        ~fn:(
+          function
+          | Syntax_tree.Node id -> fn (wrap_node member.declaration.tree id)
+          | Syntax_tree.Token _
+          | Syntax_tree.Missing _ -> ()
+        )
+
+    let name = fun member ->
+      let count = child_count member in
+      let rec loop index =
+        if index >= count then
+          None
+        else
+          match child_token_at member index with
+          | Some token when token_kind_is token Syntax_kind2.IDENT
+          || token_kind_is token Syntax_kind2.UNDERSCORE -> Some token
+          | _ -> loop (index + 1)
+      in
+      loop 0
+
+    let find_token = fun member kind ->
+      let count = child_count member in
+      let rec loop index =
+        if index >= count then
+          None
+        else if child_token_kind_is member index kind then
+          Some index
+        else
+          loop (index + 1)
+      in
+      loop 0
+
+    let find_node = fun member ~matches ->
+      let count = child_count member in
+      let rec loop index =
+        if index >= count then
+          None
+        else
+          match child_node_at member index with
+          | Some node when node_matches node matches -> Some node
+          | _ -> loop (index + 1)
+      in
+      loop 0
+
+    let module_expr = fun member -> find_node member ~matches:is_module_expr_kind
+
+    let module_type = fun member -> find_node member ~matches:is_module_type_kind
+  end
+
+  let for_each_member = fun decl ~fn ->
+    let count = Node.child_count decl in
+    let rec member_end index =
+      if index >= count then
+        count
+      else if child_token_kind_is decl index Syntax_kind2.AND_KW then
+        index
+      else
+        member_end (index + 1)
+    in
+    let rec next_member index =
+      if index >= count then
+        None
+      else if child_token_kind_is decl index Syntax_kind2.AND_KW then
+        Some index
+      else
+        next_member (index + 1)
+    in
+    let rec loop start =
+      if start < count then
+        (
+          let stop = member_end (start + 1) in
+          fn { declaration = decl; start_index = start; stop_index = stop };
+          match next_member stop with
+          | Some next -> loop next
+          | None -> ()
+        )
+    in
+    loop 0
+
+  let fold_members = fun decl init fn ->
+    let acc = ref init in
+    for_each_member decl ~fn:(fun member -> acc := fn !acc member);
+    !acc
 
   let child_node_at = fun (decl: module_declaration) index ->
     match Node.child_at decl index with

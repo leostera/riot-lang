@@ -1485,36 +1485,6 @@ module Ast2_deps = struct
     | Some plus_index -> collect_before_plus 0 plus_index []
     | None -> deps
 
-  let fold_module_members = fun node init fn ->
-    let count = A.Node.child_count node in
-    let rec member_end index =
-      if index >= count then
-        count
-      else if child_token_kind_is node index Syntax_kind2.AND_KW then
-        index
-      else
-        member_end (index + 1)
-    in
-    let rec next_member index =
-      if index >= count then
-        None
-      else if child_token_kind_is node index Syntax_kind2.AND_KW then
-        Some index
-      else
-        next_member (index + 1)
-    in
-    let rec loop start acc =
-      if start >= count then
-        acc
-      else
-        let stop = member_end (start + 1) in
-        let acc = fn acc start stop in
-        match next_member stop with
-        | Some next -> loop next acc
-        | None -> acc
-    in
-    loop 0 init
-
   let rec bind_pattern_modules env node =
     match node_kind node with
     | Syntax_kind2.FIRST_CLASS_MODULE_PATTERN ->
@@ -1755,12 +1725,14 @@ module Ast2_deps = struct
     let* (deps, _) = module_type_binding env deps node in
     Ok deps
 
-  and collect_functor_head env deps node start stop =
+  and collect_functor_head env deps member =
+    let module Member = A.ModuleDeclaration.Member in
+    let stop = Member.child_count member in
     let rec path_after_colon index acc =
-      if index >= stop || child_token_kind_is node index Syntax_kind2.RPAREN then
+      if index >= stop || Member.child_token_kind_is member index Syntax_kind2.RPAREN then
         add_parent_segments env deps (List.reverse acc)
       else
-        match child_token_at node index with
+        match Member.child_token_at member index with
         | Some token when Syntax_kind2.(token_kind token = IDENT) -> path_after_colon
           (index + 1)
           (A.Token.text token :: acc)
@@ -1769,17 +1741,17 @@ module Ast2_deps = struct
     let rec scan index env deps =
       if index >= stop then
         (deps, env)
-      else if child_token_kind_is node index Syntax_kind2.LPAREN then
+      else if Member.child_token_kind_is member index Syntax_kind2.LPAREN then
         let name =
-          match child_token_at node (index + 1) with
+          match Member.child_token_at member (index + 1) with
           | Some token when Syntax_kind2.(token_kind token = IDENT) -> Some (A.Token.text token)
           | _ -> None
         in
         let deps =
           let rec find_colon i =
-            if i >= stop || child_token_kind_is node i Syntax_kind2.RPAREN then
+            if i >= stop || Member.child_token_kind_is member i Syntax_kind2.RPAREN then
               deps
-            else if child_token_kind_is node i Syntax_kind2.COLON then
+            else if Member.child_token_kind_is member i Syntax_kind2.COLON then
               path_after_colon (i + 1) []
             else
               find_colon (i + 1)
@@ -1795,19 +1767,12 @@ module Ast2_deps = struct
       else
         scan (index + 1) env deps
     in
-    scan start env deps
+    scan 0 env deps
 
-  and module_member_name node start stop =
-    let rec loop index =
-      if index >= stop then
-        None
-      else
-        match child_token_at node index with
-        | Some token when Syntax_kind2.(token_kind token = IDENT || token_kind token = UNDERSCORE) -> Some (A.Token.text
-          token)
-        | _ -> loop (index + 1)
-    in
-    loop start
+  and module_member_name member =
+    match A.ModuleDeclaration.Member.name member with
+    | Some token -> Some (A.Token.text token)
+    | None -> None
 
   and find_token_between node start stop kind =
     let rec loop index =
@@ -1831,68 +1796,51 @@ module Ast2_deps = struct
     in
     loop start
 
-  and module_decl_is_recursive node =
-    let rec loop index =
-      if index >= A.Node.child_count node then
-        false
-      else if child_token_kind_is node index Syntax_kind2.REC_KW then
-        true
-      else if
-        child_token_kind_is node index Syntax_kind2.EQ
-        || child_token_kind_is node index Syntax_kind2.COLON
-        || child_token_kind_is node index Syntax_kind2.AND_KW
-      then
-        false
-      else
-        loop (index + 1)
-    in
-    loop 0
-
   and prebind_module_decl_group env bindings node =
-    fold_module_members node (env, bindings)
-      (fun (env, bindings) start stop ->
-        match module_member_name node start stop with
+    A.ModuleDeclaration.fold_members node (env, bindings)
+      (fun (env, bindings) member ->
+        match module_member_name member with
         | Some name -> (Env.add name Env.bound env, Env.add name Env.bound bindings)
         | None -> (env, bindings))
 
-  and collect_module_member_rhs env deps node start stop =
-    let deps, env = collect_functor_head env deps node start stop in
+  and collect_module_member_rhs env deps member =
+    let deps, env = collect_functor_head env deps member in
     let* deps =
-      match find_node_between node start stop ~matches:is_module_type_kind with
+      match A.ModuleDeclaration.Member.module_type member with
       | Some module_type -> collect_module_type env deps module_type
       | None -> Ok deps
     in
-    match find_node_between node start stop ~matches:is_module_expr_kind with
+    match A.ModuleDeclaration.Member.module_expr member with
     | Some module_expr -> collect_module_expression env deps module_expr
     | None -> Ok deps
 
-  and module_member_binding env deps node start stop =
-    let deps, env = collect_functor_head env deps node start stop in
+  and module_member_binding env deps member =
+    let deps, env = collect_functor_head env deps member in
     let* deps =
-      match find_node_between node start stop ~matches:is_module_type_kind with
+      match A.ModuleDeclaration.Member.module_type member with
       | Some module_type -> collect_module_type env deps module_type
       | None -> Ok deps
     in
-    match find_node_between node start stop ~matches:is_module_expr_kind with
+    match A.ModuleDeclaration.Member.module_expr member with
     | Some module_expr -> module_binding env deps module_expr
     | None -> Ok (deps, Env.bound)
 
   and collect_module_decl env deps bindings node =
-    if module_decl_is_recursive node then
+    if A.ModuleDeclaration.is_recursive node then
       let env, bindings = prebind_module_decl_group env bindings node in
       let* deps =
-        fold_module_members node (Ok deps)
-          (fun acc start stop ->
+        A.ModuleDeclaration.fold_members node (Ok deps)
+          (fun acc member ->
             let* deps = acc in
-            collect_module_member_rhs env deps node start stop)
+            collect_module_member_rhs env deps member)
       in
       Ok (deps, env, bindings)
     else
-      fold_module_members node (Ok (deps, env, bindings))
-        (fun acc start stop ->
+      A.ModuleDeclaration.fold_members node (Ok (deps, env, bindings))
+        (fun acc member ->
           let* (deps, env, bindings) = acc in
-          let* (deps, binding) = module_member_binding env deps node start stop in
-          match module_member_name node start stop with
+          let* (deps, binding) = module_member_binding env deps member in
+          match module_member_name member with
           | Some name ->
               let env = Env.add name binding env in
               let bindings = Env.add name binding bindings in

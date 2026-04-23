@@ -581,6 +581,42 @@ end
 
 module ModuleDeclaration: sig
   type t = module_declaration
+  type member
+  module Member: sig
+    type t = member
+    val declaration: t -> module_declaration
+
+    val start_index: t -> int
+
+    val stop_index: t -> int
+
+    val child_count: t -> int
+
+    val child_at: t -> int -> Syntax_tree.child option
+
+    val child_token_at: t -> int -> Token.t option
+
+    val child_node_at: t -> int -> Node.t option
+
+    val child_token_kind_is: t -> int -> Syntax_kind2.t -> bool
+
+    val for_each_child: t -> fn:(Syntax_tree.child -> unit) -> unit
+
+    val for_each_child_token: t -> fn:(Token.t -> unit) -> unit
+
+    val for_each_child_node: t -> fn:(Node.t -> unit) -> unit
+
+    val name: t -> Token.t option
+
+    val find_token: t -> Syntax_kind2.t -> int option
+
+    val find_node: t -> matches:(Syntax_kind2.t -> bool) -> Node.t option
+
+    val module_expr: t -> Node.t option
+
+    val module_type: t -> Node.t option
+  end
+
   type body =
     | Path
     | EmptyStruct
@@ -593,7 +629,13 @@ module ModuleDeclaration: sig
 
   val rec_token: t -> Token.t option
 
+  val is_recursive: t -> bool
+
   val separator_token: t -> Token.t option
+
+  val for_each_member: t -> fn:(member -> unit) -> unit
+
+  val fold_members: t -> 'acc -> ('acc -> member -> 'acc) -> 'acc
 
   val body: t -> body
 

@@ -7,14 +7,11 @@ type t =
   | Token of int
   | Missing of Syntax_kind2.t * int
   | Error of Diagnostic.t
-
 type event = t
-
 module Buffer: sig
   type t
   type marker
   type completed
-
   val create: ?event_capacity:int -> ?diagnostic_capacity:int -> unit -> t
 
   val start_node: t -> marker
