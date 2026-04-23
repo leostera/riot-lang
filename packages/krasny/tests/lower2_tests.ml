@@ -88,6 +88,7 @@ let assert_lower2_existing_fixture_subset = fun () ->
     Path.v "packages/krasny/tests/fixtures/0341_labeled_wildcard_after_positional_parameter.ml";
     Path.v "packages/krasny/tests/fixtures/0342_constructor_pattern_before_labeled_parameters.ml";
     Path.v "packages/krasny/tests/fixtures/0343_let_parameter_with_comment_pipeline.ml";
+    Path.v "packages/krasny/tests/fixtures/0344_typed_let_alias_pattern_parameter.ml";
     Path.v "packages/krasny/tests/fixtures/0350_typed_function_binding_headers.ml";
     Path.v "packages/krasny/tests/fixtures/0400_functions_match_and_patterns.ml";
     Path.v "packages/krasny/tests/fixtures/0411_match_case_char_guard.ml";

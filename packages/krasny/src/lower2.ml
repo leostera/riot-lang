@@ -2989,8 +2989,6 @@ let record_body_doc = fun ~inline tokens ->
   | false -> Doc.concat
     [ Doc.lbrace; Doc.line; Doc.indent 2 (Doc.lines fields); Doc.line; Doc.rbrace; ]
 
-let inline_record_payload = fun tokens -> Int.(List.length (record_body_field_groups tokens) <= 2)
-
 let inline_constructor_payload = fun tokens ->
   Int.(List.length (record_body_field_groups tokens) <= 3)
 
@@ -3092,14 +3090,7 @@ let constructor_payload_doc = fun tokens ->
 let constructor_result_type_doc = fun tokens ->
   match tokens with
   | opening :: _ when token_kind_is opening Kind.LBRACE -> (
-      let payload_doc tokens =
-        let inline = inline_record_payload tokens in
-        let doc = record_body_doc ~inline tokens in
-        if inline then
-          doc
-        else
-          Doc.indent 2 doc
-      in
+      let payload_doc tokens = record_body_doc ~inline:false tokens |> Doc.indent 2 in
       match split_top_level_token tokens ~matches:(fun kind -> Kind.(kind = ARROW)) with
       | Some (payload_tokens, arrow_token, result_tokens) -> Doc.concat
         [
