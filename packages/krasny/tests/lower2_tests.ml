@@ -410,8 +410,13 @@ let tests = [
     "lower2 formats first-class module expressions"
     (fun _ctx ->
       assert_format2_ml
-        ~expected:(top_level [ "let packed = (module Foo.Bar)"; "let typed = (module Foo : S.T)" ])
-        "let packed = (module Foo.Bar)\nlet typed = (module Foo : S.T)\n");
+        ~expected:(top_level
+          [
+            "let packed = (module Foo.Bar)";
+            "let typed = (module Foo : S.T)";
+            "let advanced = (module Foo : S with type t = item and type state = state)";
+          ])
+        "let packed = (module Foo.Bar)\nlet typed = (module Foo : S.T)\nlet advanced = (module Foo : S with type t = item and type state = state)\n");
   Test.case
     "lower2 formats locally abstract and first-class module patterns"
     (fun _ctx ->
@@ -427,8 +432,9 @@ let tests = [
           [
             "let value = let module M = Foo.Bar in result";
             "let empty = let module Empty = struct end in done_";
+            "let packed = let module D = (val driver : Driver with type t = _) in body";
           ])
-        "let value = let module M = Foo.Bar in result\nlet empty = let module Empty = struct end in done_\n");
+        "let value = let module M = Foo.Bar in result\nlet empty = let module Empty = struct end in done_\nlet packed = let module D = (val driver : Driver with type t = _) in body\n");
   Test.case
     "lower2 formats let exception expressions"
     (fun _ctx ->

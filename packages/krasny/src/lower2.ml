@@ -3305,15 +3305,16 @@ and let_module_path_body_doc = fun expr ->
   | None -> unsupported "let module expression path body without identifiers"
 
 and let_module_body_doc = fun expr ->
+  let tokens = local_module_body_tokens expr in
   match Ast.LetModuleExpr.module_body expr with
   | Ast.LetModuleExpr.Path ->
       let_module_path_body_doc expr
   | Ast.LetModuleExpr.EmptyStruct ->
       Doc.concat [ Doc.text "struct"; Doc.space; Doc.text "end" ]
   | Ast.LetModuleExpr.Unsupported -> (
-      match local_module_struct_body_doc (local_module_body_tokens expr) with
+      match local_module_struct_body_doc tokens with
       | Some doc -> doc
-      | None -> unsupported "unsupported let module body"
+      | None -> local_module_expr_tokens_doc tokens
     )
 
 and let_module_expr_doc = fun expr ->
@@ -3498,7 +3499,7 @@ and first_class_module_expr_doc = fun expr ->
       | None -> unsupported "first-class module ascription without colon token"
     )
   | _ ->
-      unsupported "unsupported first-class module expression"
+      local_module_tokens_doc (direct_child_tokens expr)
 
 and binding_operator_clause_doc = fun (clause: Ast.BindingOperatorExpr.clause) ->
   match clause.keyword, clause.operator with
