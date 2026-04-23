@@ -122,8 +122,7 @@ let raw_char_is = fun p raw ~offset expected ->
 
 let raw_starts_with = fun p raw expected -> raw_char_is p raw ~offset:0 expected
 
-let current_text_is = fun p expected ->
-  let raw = current p in
+let raw_text_is = fun p raw expected ->
   let len = String.length expected in
   let start = raw.Raw_token.span.Ceibo.Span.start in
   let end_ = raw.Raw_token.span.Ceibo.Span.end_ in
@@ -142,6 +141,8 @@ let current_text_is = fun p expected ->
     loop 0
   with
   | Invalid_argument _ -> false
+
+let current_text_is = fun p expected -> raw_text_is p (current p) expected
 
 let at_end_keyword = fun p -> at p Syntax_kind2.END_KW || current_text_is p "end"
 
@@ -875,6 +876,17 @@ let infix_operator_keyword_binding_power = fun p ->
   else
     None
 
+let operator_keyword_at = fun p offset ->
+  let raw = peek p offset in
+  Syntax_kind2.(raw.Raw_token.kind = IDENT)
+  && (raw_text_is p raw "mod"
+  || raw_text_is p raw "land"
+  || raw_text_is p raw "lor"
+  || raw_text_is p raw "lxor"
+  || raw_text_is p raw "lsl"
+  || raw_text_is p raw "lsr"
+  || raw_text_is p raw "asr")
+
 let current_infix_binding_power = fun p ->
   match infix_binding_power (current_kind p) with
   | Some _ as bp -> bp
@@ -888,6 +900,7 @@ let operator_name_start_at = fun p offset ->
   let kind = peek_kind p offset in
   Syntax_kind2.(kind = DOT || kind = OPERATOR_KW)
   || symbolic_operator_part kind
+  || operator_keyword_at p offset
   || (binding_operator_keyword kind && binding_operator_suffix (peek_kind p (offset + 1)))
 
 let pattern_binding_power = function
@@ -2455,10 +2468,20 @@ and parse_parenthesized_type = fun p ~stop_at_arrow ->
   let marker = start_node p in
   bump p;
   let has_comma = ref false in
+  let has_alias = ref false in
   (
     if not (at p Syntax_kind2.RPAREN || is_eof p) then
       ignore (parse_type_bp p ~stop_at_arrow:false 0)
   );
+  if at p Syntax_kind2.AS_KW then
+    (
+      has_alias := true;
+      bump p;
+      if type_expr_boundary p ~stop_at_arrow:false then
+        Event.Buffer.missing p.events ~kind:Syntax_kind2.IDENT ~offset:(current_offset p)
+      else
+        ignore (parse_type_atom p ~stop_at_arrow:false)
+    );
   let rec parse_comma_items () =
     if at p Syntax_kind2.COMMA then
       (
@@ -2475,7 +2498,9 @@ and parse_parenthesized_type = fun p ~stop_at_arrow ->
   expect p Syntax_kind2.RPAREN (invalid_type_expression p);
   complete p marker
     (
-      if !has_comma then
+      if !has_alias then
+        Syntax_kind2.OPAQUE_TYPE
+      else if !has_comma then
         Syntax_kind2.TUPLE_TYPE
       else
         Syntax_kind2.PAREN_TYPE

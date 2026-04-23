@@ -71,6 +71,12 @@ let prefix_operator_doc = fun expr fallback -> tokens_doc (prefix_operator_token
 
 let prefix_operator_text = fun expr fallback -> tokens_text (prefix_operator_tokens expr fallback)
 
+let prefix_operator_doc_with_explicit_spacing = fun expr fallback ->
+  match prefix_operator_tokens expr fallback with
+  | first :: (_ :: _ as rest) when Kind.(Ast.Token.kind first = MINUS) -> Doc.concat
+    [ token_doc first; Doc.space; tokens_doc rest ]
+  | tokens -> tokens_doc tokens
+
 let parenthesized_token_shell_doc = fun tokens ->
   match tokens with
   | opening :: rest when Kind.(Ast.Token.kind opening = LPAREN) -> (
@@ -2280,10 +2286,19 @@ and let_module_expr_is_multiline = fun expr ->
 and binding_operator_body_breaks = fun expr ->
   match Ast.BindingOperatorExpr.cast expr with
   | Some view -> (
+      let clause_breaks = ref false in
+      Ast.BindingOperatorExpr.for_each_clause view
+        ~fn:(fun clause ->
+          match Ast.LetBinding.body clause.binding with
+          | Some body when Doc.is_multiline (let_binding_doc clause.binding)
+          || expr_binding_body_breaks_after_equal body
+          || expr_has_unconsumed_boundary_leading_comment body -> clause_breaks := true
+          | _ -> ());
       match Ast.BindingOperatorExpr.body view with
-      | Some body -> expr_binding_body_breaks_after_equal body
+      | Some body -> !clause_breaks
+      || expr_binding_body_breaks_after_equal body
       || expr_has_unconsumed_boundary_leading_comment body
-      | None -> false
+      | None -> !clause_breaks
     )
   | None -> false
 
@@ -2295,7 +2310,7 @@ and expr_binding_body_breaks_after_equal = fun expr ->
   | Try _
   | Sequence _
   | Assign _ -> true
-  | BindingOperator _ -> true
+  | BindingOperator _ -> binding_operator_body_breaks expr
   | LocalOpen _ -> Doc.is_multiline (local_open_expr_doc expr)
   | LetModule _ -> let_module_expr_is_multiline expr
   | Parenthesized _ -> expr_is_begin_block expr
@@ -2492,14 +2507,21 @@ and expr_has_leading_comment = fun expr ->
   | Some token -> Ast.Token.has_leading_comment token
   | None -> false
 
-and sequence_item_doc = fun expr ->
+and sequence_item_doc = fun ?(skip_boundary_leading_comment = false) expr ->
   match Ast.Expr.view expr with
   | Parenthesized { inner=Some inner } when (not (expr_is_begin_block expr))
   && expr_parenthesized_inner_breaks_after_equal inner -> parenthesized_expr_multiline_body_doc inner
+  | Apply _ when skip_boundary_leading_comment -> application_doc ~prefer_first_argument_head:true expr
   | Apply _ -> expr_doc_with_boundary_leading_comment_doc
     expr
     (application_doc ~prefer_first_argument_head:true expr)
+  | _ when skip_boundary_leading_comment -> expr_doc expr
   | _ -> expr_doc_with_boundary_leading_comment expr
+
+and sequence_separator_consumes_leading_comment = fun expr ->
+  match Ast.Node.first_child_token expr ~kind:Kind.SEMI with
+  | Some separator -> token_has_inline_leading_comment_after_horizontal separator
+  | None -> false
 
 and sequence_separator_suffix_doc = fun expr ->
   match Ast.Node.first_child_token expr ~kind:Kind.SEMI with
@@ -2513,7 +2535,13 @@ and sequence_separator_suffix_doc = fun expr ->
 and sequence_doc = fun expr ->
   match Ast.Expr.view expr with
   | Sequence { left=Some left; right=Some right } -> Doc.concat
-    [ sequence_doc left; sequence_separator_suffix_doc expr; sequence_item_doc right ]
+    [
+      sequence_doc left;
+      sequence_separator_suffix_doc expr;
+      sequence_item_doc
+        ~skip_boundary_leading_comment:(sequence_separator_consumes_leading_comment expr)
+        right;
+    ]
   | _ -> sequence_item_doc expr
 
 and match_cases_doc = fun expr ->
@@ -2739,7 +2767,8 @@ and expr_doc_with_view = fun expr (view: Ast.Expr.view) ->
         [ Doc.lparen; prefix_operator_doc expr operator; literal_token_doc token; Doc.rparen ]
       | Prefix _ when String.equal (prefix_operator_text expr operator) "-" -> Doc.concat
         [ prefix_operator_doc expr operator; Doc.space; expr_prefix_operand_doc operand ]
-      | _ -> Doc.concat [ prefix_operator_doc expr operator; expr_prefix_operand_doc operand ]
+      | _ -> Doc.concat
+        [ prefix_operator_doc_with_explicit_spacing expr operator; expr_prefix_operand_doc operand ]
     )
   | Prefix _ ->
       unsupported "incomplete prefix expression"
@@ -3467,6 +3496,13 @@ and binding_operator_clause_doc = fun (clause: Ast.BindingOperatorExpr.clause) -
     [ token_doc keyword; token_doc operator; Doc.space; let_binding_doc clause.binding ]
   | _ -> unsupported "incomplete binding operator clause"
 
+and binding_operator_clause_breaks = fun (clause: Ast.BindingOperatorExpr.clause) ->
+  match Ast.LetBinding.body clause.binding with
+  | Some body -> Doc.is_multiline (let_binding_doc clause.binding)
+  || expr_binding_body_breaks_after_equal body
+  || expr_has_unconsumed_boundary_leading_comment body
+  | None -> false
+
 and binding_operator_expr_doc = fun expr ->
   let view =
     match Ast.BindingOperatorExpr.cast expr with
@@ -3476,7 +3512,7 @@ and binding_operator_expr_doc = fun expr ->
   let clauses = ref [] in
   Ast.BindingOperatorExpr.for_each_clause
     view
-    ~fn:(fun clause -> clauses := binding_operator_clause_doc clause :: !clauses);
+    ~fn:(fun clause -> clauses := (clause, binding_operator_clause_doc clause) :: !clauses);
   match List.reverse !clauses, Ast.BindingOperatorExpr.in_token view, Ast.BindingOperatorExpr.body view with
   | [], _, _ ->
       unsupported "binding operator expression without binding"
@@ -3485,15 +3521,24 @@ and binding_operator_expr_doc = fun expr ->
   | _, _, None ->
       unsupported "binding operator expression without body"
   | clauses, Some in_token, Some body ->
-      let multiline_clause = List.any clauses ~fn:Doc.is_multiline in
+      let multiline_clause =
+        List.any
+          clauses
+          ~fn:(fun (clause, doc) -> binding_operator_clause_breaks clause || Doc.is_multiline doc)
+      in
+      let clause_docs =
+        List.map clauses ~fn:(fun (_, doc) -> doc)
+      in
       let head =
         if multiline_clause then
-          Doc.concat [ Doc.join Doc.line clauses; Doc.line; token_doc in_token ]
+          Doc.concat [ Doc.join Doc.line clause_docs; Doc.line; token_doc in_token ]
         else
-          Doc.concat [ Doc.join Doc.space clauses; Doc.space; token_doc in_token ]
+          Doc.concat [ Doc.join Doc.space clause_docs; Doc.space; token_doc in_token ]
       in
       if
-        expr_binding_body_breaks_after_equal body || expr_has_unconsumed_boundary_leading_comment body
+        multiline_clause
+        || expr_binding_body_breaks_after_equal body
+        || expr_has_unconsumed_boundary_leading_comment body
       then
         Doc.concat [ head; Doc.line; expr_doc_with_boundary_leading_comment body ]
       else
@@ -5568,6 +5613,11 @@ let module_type_decl_sig_body_doc = fun decl ->
       )
   | _ -> unsupported "module type signature body without sig/end tokens"
 
+let module_type_decl_unsupported_body_doc = fun decl ->
+  match split_top_level_token (module_type_decl_tokens decl) ~matches:(fun kind -> Kind.(kind = EQ)) with
+  | Some (_, _, body_tokens) -> module_tokens_doc body_tokens
+  | None -> unsupported "unsupported module type declaration body"
+
 let module_decl_sig_body_doc = fun decl ->
   match Ast.ModuleDeclaration.sig_token decl, Ast.ModuleDeclaration.end_token decl with
   | Some sig_token, Some end_token ->
@@ -5598,7 +5648,7 @@ let module_type_decl_body_doc = fun decl ->
   | Path -> module_type_decl_path_body_doc decl
   | EmptySig -> module_type_decl_sig_body_doc decl
   | Sig -> module_type_decl_sig_body_doc decl
-  | Unsupported -> unsupported "unsupported module type declaration body"
+  | Unsupported -> module_type_decl_unsupported_body_doc decl
 
 let module_decl_doc = fun ?(force_empty_struct_multiline = false) decl ->
   match module_decl_tokens decl with
@@ -5614,9 +5664,9 @@ let module_type_decl_doc = fun decl ->
       (
         match Ast.ModuleTypeDeclaration.equals_token decl, Ast.ModuleTypeDeclaration.body decl with
         | None, Abstract -> head
-        | Some equals_token, (Path | EmptySig | Sig) -> Doc.concat
+        | Some equals_token, (Path | EmptySig | Sig | Unsupported) -> Doc.concat
           [ head; Doc.space; token_doc equals_token; Doc.space; module_type_decl_body_doc decl ]
-        | Some _, (Abstract | Unsupported) -> unsupported "unsupported module type declaration body"
+        | Some _, Abstract -> unsupported "unsupported module type declaration body"
         | None, _ -> unsupported "module type declaration body without equals token"
       )
 

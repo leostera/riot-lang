@@ -1,3 +1,3 @@
-let simple = 1 [@foo? Some y]
+let simple = 1 [@foo ? Some y]
 
-let guarded = 1 [@foo? Some y when y > 0]
+let guarded = 1 [@foo ? Some y when y > 0]

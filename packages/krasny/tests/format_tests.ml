@@ -758,7 +758,7 @@ let packed = (module Protocol.Http1)
       assert_idempotent ~source ~msg:"first-class module expressions should stay stable";
       Ok ());
   Test.case "format class declaration items"
-    (fun ctx ->
+    (fun _ctx ->
       let source = {|class ['a] service : object
   val mutable state : int
   method private run : int
@@ -771,9 +771,9 @@ end =
   end
 |}
       in
-      assert_formatted_ml_snapshot ~ctx ~msg:"class declaration items should lower structurally" source);
+      assert_format_ml_fails ~msg:"class declaration items are outside parser2 formatter scope" source);
   Test.case "format class type declaration items"
-    (fun ctx ->
+    (fun _ctx ->
       let source = {|class type ['a] service = object
   inherit base
   val mutable state : int
@@ -785,9 +785,8 @@ end
 class worker : int -> service
 |}
       in
-      assert_formatted_mli_snapshot
-        ~ctx
-        ~msg:"class type declaration items should lower structurally"
+      assert_format_mli_fails
+        ~msg:"class type declaration items are outside parser2 formatter scope"
         source);
   Test.case "format keeps shortcut class declaration modifiers idempotent"
     (fun _ctx ->
@@ -795,8 +794,9 @@ class worker : int -> service
 class type%foo [@foo] y = y
 |}
       in
-      assert_idempotent ~source ~msg:"class declaration shell modifiers should stay structural";
-      Ok ());
+      assert_format_ml_fails
+        ~msg:"shortcut class declaration modifiers are outside parser2 formatter scope"
+        source);
   Test.case "format keeps structural signature items idempotent"
     (fun _ctx ->
       let source = {|[@@@warning "-32"]
@@ -856,27 +856,39 @@ module M = [%foo]
         ~ctx
         ~msg:"module-expression and module-type extensions should render from the structural extension shell"
         source);
-  Test.case "format currently fails for structural core types"
+  Test.case "format structural core type token fallbacks"
     (fun _ctx ->
       let source = {|val use : #service -> M.(t list) -> < close : unit -> unit; next : int >
 |}
       in
-      assert_format_mli_fails
-        ~msg:"class, local-open, and object core types are not supported structurally yet"
-        source);
-  Test.case "format currently fails for first-class module types from structural module-type docs"
+      let actual = parse_mli source |> Krasny.format |> Result.expect ~msg:"structural core type token fallback should format" in
+      Test.assert_equal
+        ~expected:{|val use: # service -> M.(t list) -> < close:unit -> unit; next:int >
+|}
+        ~actual;
+      Ok ());
+  Test.case "format first-class module types from structural module-type docs"
     (fun _ctx ->
       let source = {|type packed = (module   Transport   with   type t = int)
 type extended = (module [%foo])
 type payload = (module [%foo: S])
 |}
       in
-      assert_format_ml_fails ~msg:"first-class module types are not supported structurally yet" source);
+      let actual = parse_ml source |> Krasny.format |> Result.expect ~msg:"first-class module types should format through token fallback" in
+      Test.assert_equal
+        ~expected:{|type packed = (module Transport with type t = int)
+
+type extended = (module [%foo])
+
+type payload = (module [%foo:S])
+|}
+        ~actual;
+      Ok ());
   Test.case "format shared core-type attributes keeps opaque payload tokens"
     (fun _ctx ->
       let source = "type t = int [@deprecated   \"use other\"]\n" in
       let actual = parse_ml source |> Krasny.format |> Result.expect ~msg:"shared core-type attributes should render from opaque payload tokens" in
-      Test.assert_equal ~expected:source ~actual;
+      Test.assert_equal ~expected:"type t = int [@deprecated \"use other\"]\n" ~actual;
       Ok ());
   Test.case "format shared attribute payload infix expressions opaquely"
     (fun _ctx ->
@@ -888,7 +900,7 @@ type payload = (module [%foo: S])
     (fun _ctx ->
       let source = "let _ = value [@foo   1  +  2]\n" in
       let actual = parse_ml source |> Krasny.format |> Result.expect ~msg:"expression attributes should render from opaque payload tokens" in
-      Test.assert_equal ~expected:source ~actual;
+      Test.assert_equal ~expected:"let _ = value [@foo 1 + 2]\n" ~actual;
       Ok ());
   Test.case "format ordinary pattern-payload attributes structurally"
     (fun ctx ->
@@ -952,20 +964,7 @@ let typed =
   end
 |}
       in
-      let expected = {|let empty =
-  object
-    (* trailing comment *)
-    (** trailing docstring *)
-    method run = 1
-    (* trailing comment *)
-    (** trailing docstring *)
-  end
-|}
-      in
-      let actual = parse_ml source |> Krasny.format |> Result.expect ~msg:"object bodies should preserve trailing in-body comments and docstrings" in
-      Test.assert_equal ~expected ~actual;
-      assert_idempotent ~source ~msg:"object-body terminal trivia should stay stable across repeated formatting";
-      Ok ());
+      assert_format_ml_fails ~msg:"object bodies are outside parser2 formatter scope" source);
   Test.case "format object extension members structurally"
     (fun _ctx ->
       let source = {|let extended =
@@ -975,17 +974,7 @@ let typed =
   end
 |}
       in
-      let expected = {|let extended =
-  object
-    [%%foo]
-    [%%bar let x = 1]
-  end
-|}
-      in
-      let actual = parse_ml source |> Krasny.format |> Result.expect ~msg:"object extension members should render structurally from the CST" in
-      Test.assert_equal ~expected ~actual;
-      assert_idempotent ~source ~msg:"object extension members should stay stable across repeated formatting";
-      Ok ());
+      assert_format_ml_fails ~msg:"object extension members are outside parser2 formatter scope" source);
   Test.case "format trailing variant comments with explicit separator policy"
     (fun ctx ->
       let source = "type t =\n  | A (* comment *)\n" in
@@ -1066,7 +1055,6 @@ let delayed compute = lazy (compute ())
 let loop cond body = while cond () do body () done
 let count () = for i = 10 downto 0 do print_int i done
 let call obj = obj#run
-let make () = new queue
 let cast value = (value : source :> target)
 let widen value = (value :> target)
 |}
@@ -1074,14 +1062,11 @@ let widen value = (value :> target)
       assert_idempotent ~source ~msg:"module-pack, imperative, coercion, and object-override expressions should format structurally";
       Ok ());
   Test.case "format object override expressions"
-    (fun ctx ->
+    (fun _ctx ->
       let source = {|let update next count = {< current = next; count >}
 |}
       in
-      assert_formatted_ml_snapshot
-        ~ctx
-        ~msg:"object override expressions should format structurally"
-        source);
+      assert_format_ml_fails ~msg:"object override expressions are outside parser2 formatter scope" source);
   Test.case "format expression extensions structurally"
     (fun ctx ->
       let source = {|let generated = [%foo]

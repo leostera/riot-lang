@@ -1,3 +1,3 @@
 let unpack = function
-  | [%foo?Somex] -> x
-  | [%foo?Someywheny>0] -> y
+  | [%foo ? Some x] -> x
+  | [%foo ? Some y when y > 0] -> y

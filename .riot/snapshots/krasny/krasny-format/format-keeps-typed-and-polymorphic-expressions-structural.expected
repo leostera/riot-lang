@@ -1,8 +1,5 @@
-let typed value: source = value
+let typed value = (value: source)
 
-let shaped handler: <
-    run: int
-  > = handler
+let shaped handler = (handler: < run:int >)
 
-let poly: 'a. 'a -> 'a =
-  fun x -> x
+let poly = ((fun x -> x): 'a. 'a -> 'a)

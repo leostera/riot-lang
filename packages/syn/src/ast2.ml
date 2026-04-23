@@ -569,13 +569,16 @@ module TypeExpr = struct
   let rec view = fun (type_expr: type_expr) ->
     match Node.kind type_expr with
     | Syntax_kind2.TYPE_EXPR -> (
-        match first_child_node_matching type_expr ~matches:is_type_expr_kind with
-        | Some child -> (
+        match first_child_node_matching type_expr ~matches:is_type_expr_kind, nth_child_node_matching
+          type_expr
+          1
+          ~matches:is_type_expr_kind with
+        | Some child, None -> (
             match Node.kind child with
             | Syntax_kind2.TYPE_EXPR -> Opaque type_expr
             | _ -> view child
           )
-        | None -> Opaque type_expr
+        | _ -> Opaque type_expr
       )
     | Syntax_kind2.PATH_TYPE ->
         Path { path = type_expr }

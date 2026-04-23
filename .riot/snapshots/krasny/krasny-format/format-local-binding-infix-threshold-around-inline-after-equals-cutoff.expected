@@ -11,4 +11,4 @@ let totals a b c d e f g h i =
     + h
     + i
   in
-  (total8, total9)
+  total8, total9

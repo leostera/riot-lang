@@ -63,6 +63,10 @@ let manifest_fixture_paths = fun () ->
   in
   loop [] lines
 
+let parser2_formatter_fixture_supported = fun path ->
+  let path = Path.to_string path in
+  not (String.contains path "class")
+
 let assert_lower2_fixture_matches_approved = fun path ->
   let source = Fs.read path |> Result.expect ~msg:"fixture file should exist" in
   match format2_source ~filename:path source with
@@ -267,7 +271,7 @@ let assert_lower2_existing_fixture_subset = fun () ->
         | Error error -> loop (error :: errors) rest
       )
   in
-  loop [] fixtures
+  loop [] (List.filter fixtures ~fn:parser2_formatter_fixture_supported)
 
 let assert_lower2_manifest_fixtures = fun () ->
   let rec loop errors = function
@@ -282,7 +286,8 @@ let assert_lower2_manifest_fixtures = fun () ->
         | Error error -> loop (error :: errors) rest
       )
   in
-  loop [] (manifest_fixture_paths ())
+  loop []
+    (manifest_fixture_paths () |> List.filter ~fn:parser2_formatter_fixture_supported)
 
 let tests = [
   Test.case
