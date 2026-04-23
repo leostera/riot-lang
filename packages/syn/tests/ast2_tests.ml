@@ -861,7 +861,9 @@ let test_trailing_sequence_before_and_views = fun _ctx ->
           | _ -> panic "expected binding head path pattern"
         );
         let parameters = ref [] in
-        Ast2.LetBinding.for_each_parameter binding ~fn:(fun parameter -> parameters := parameter :: !parameters);
+        Ast2.LetBinding.for_each_parameter
+          binding
+          ~fn:(fun parameter -> parameters := parameter :: !parameters);
         if List.is_empty !parameters then
           panic "expected function binding parameters";
         let body = body_of_binding binding |> Result.expect ~msg:"expected binding body" in
@@ -1039,7 +1041,7 @@ let last_path_text = fun path ->
   Ast2.Token.text token
 
 let test_record_views = fun _ctx ->
-  let source = "let record = { x = 1; y }\nlet updated = { base with x = 2; y }\nlet { x; y = z; _ } = record\n" in
+  let source = "let record = { x = 1; y }\nlet updated = { base with x = 2; y }\nlet scoped = Lockfile.{ name = package.name; version = None }\nlet { x; y = z; _ } = record\n" in
   let root = parse_ml source |> Result.expect ~msg:"expected parse2 source file" in
   let record_expr = nth_structure_item root 0
   |> require_some ~msg:"expected record item"
@@ -1076,7 +1078,31 @@ let test_record_views = fun _ctx ->
       let name = field.Ast2.RecordExpr.path |> require_some ~msg:"expected update field path" |> last_path_text in
       update_fields := (name, Option.is_some field.Ast2.RecordExpr.value) :: !update_fields);
   Test.assert_equal ~expected:[ ("x", true); ("y", false) ] ~actual:(List.reverse !update_fields);
-  let record_pattern = nth_structure_item root 2
+  let scoped_expr = nth_structure_item root 2
+  |> require_some ~msg:"expected scoped record item"
+  |> binding_of_structure_item
+  |> Result.expect ~msg:"expected scoped record binding"
+  |> body_of_binding
+  |> Result.expect ~msg:"expected scoped record expression" in
+  let scoped_local_open = Ast2.LocalOpenExpr.cast scoped_expr |> require_some ~msg:"expected local open record expression" in
+  (
+    match Ast2.LocalOpenExpr.view scoped_local_open with
+    | Ast2.LocalOpenExpr.Delimited { module_path=Some module_path; body=Some body; _ } ->
+        Test.assert_equal ~expected:"Lockfile" ~actual:(last_path_text module_path);
+        let scoped_record = Ast2.RecordExpr.cast body |> require_some ~msg:"expected scoped record body" in
+        let scoped_fields = ref [] in
+        Ast2.RecordExpr.for_each_field scoped_record
+          ~fn:(fun field ->
+            let name = field.Ast2.RecordExpr.path
+            |> require_some ~msg:"expected scoped field path"
+            |> last_path_text in
+            scoped_fields := (name, Option.is_some field.Ast2.RecordExpr.value) :: !scoped_fields);
+        Test.assert_equal
+          ~expected:[ ("name", true); ("version", true) ]
+          ~actual:(List.reverse !scoped_fields)
+    | _ -> panic "expected delimited local open record expression"
+  );
+  let record_pattern = nth_structure_item root 3
   |> require_some ~msg:"expected record pattern item"
   |> binding_of_structure_item
   |> Result.expect ~msg:"expected record pattern binding"
@@ -1701,16 +1727,17 @@ let test_special_pattern_views = fun _ctx ->
   | _ -> Error "expected two special-pattern parameters"
 
 let test_first_class_module_pattern_with_constraints_view = fun _ctx ->
-  let root = parse_ml "let h (module N : S with type t = item) = value\n"
-  |> Result.expect ~msg:"expected parse2 source file" in
+  let root = parse_ml "let h (module N : S with type t = item) = value\n" |> Result.expect ~msg:"expected parse2 source file" in
   let binding = nth_structure_item root 0
   |> require_some ~msg:"expected constrained module pattern item"
   |> binding_of_structure_item
   |> Result.expect ~msg:"expected constrained module pattern binding" in
   let parameters = ref [] in
-  Ast2.LetBinding.for_each_parameter binding ~fn:(fun pattern -> parameters := pattern :: !parameters);
+  Ast2.LetBinding.for_each_parameter
+    binding
+    ~fn:(fun pattern -> parameters := pattern :: !parameters);
   match List.reverse !parameters with
-  | [first_class_module] -> (
+  | [ first_class_module ] -> (
       match Ast2.Pattern.view first_class_module with
       | Ast2.Pattern.FirstClassModule ->
           let first_class_module = Ast2.FirstClassModulePattern.cast first_class_module

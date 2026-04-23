@@ -1737,47 +1737,69 @@ and parse_array_expr = fun p ~signature ->
 
 and parse_record_expr = fun p ~signature ->
   let marker = start_node p in
+  let rec update_head_ahead depth offset =
+    let kind = peek_kind p offset in
+    if Syntax_kind2.(kind = EOF) then
+      false
+    else if Int.(depth = 0) && Syntax_kind2.(kind = WITH_KW) then
+      true
+    else if Int.(depth = 0) && Syntax_kind2.(kind = SEMI || kind = RBRACE) then
+      false
+    else
+      match kind with
+      | Syntax_kind2.LPAREN
+      | Syntax_kind2.LBRACKET
+      | Syntax_kind2.LBRACE
+      | Syntax_kind2.LBRACKET_BAR
+      | Syntax_kind2.BEGIN_KW
+      | Syntax_kind2.STRUCT_KW
+      | Syntax_kind2.SIG_KW
+      | Syntax_kind2.OBJECT_KW -> update_head_ahead Int.(depth + 1) (offset + 1)
+      | Syntax_kind2.RPAREN
+      | Syntax_kind2.RBRACKET
+      | Syntax_kind2.RBRACE
+      | Syntax_kind2.BAR_RBRACKET
+      | Syntax_kind2.END_KW -> update_head_ahead (Int.max 0 (depth - 1)) (offset + 1)
+      | _ -> update_head_ahead depth (offset + 1)
+  in
+  let parse_record_field () =
+    let field_marker = start_node p in
+    let before = p.pos in
+    if at p Syntax_kind2.IDENT then
+      ignore (parse_path_expr p)
+    else
+      ignore (parse_expression p ~signature ~stop_at_item:false ~stop_at_semi:true 0);
+    if at p Syntax_kind2.EQ then
+      (
+        bump p;
+        ignore (parse_expression p ~signature ~stop_at_item:false ~stop_at_semi:true 0)
+      );
+    ensure_progress p before (invalid_expression p);
+    ignore (bump_if p Syntax_kind2.SEMI);
+    complete p field_marker Syntax_kind2.RECORD_EXPR_FIELD
+  in
   bump p;
   let rec parse_fields () =
     if not (at p Syntax_kind2.RBRACE || is_eof p) then
       (
-        let before = p.pos in
-        ignore (parse_expression p ~signature ~stop_at_item:false ~stop_at_semi:true 0);
-        if at p Syntax_kind2.EQ then
-          (
-            bump p;
-            ignore (parse_expression p ~signature ~stop_at_item:false ~stop_at_semi:true 0)
-          );
-        ensure_progress p before (invalid_expression p);
-        ignore (bump_if p Syntax_kind2.SEMI);
+        ignore (parse_record_field ());
         parse_fields ()
       )
   in
   let kind =
     if at p Syntax_kind2.RBRACE || is_eof p then
       Syntax_kind2.RECORD_EXPR
-    else
+    else if update_head_ahead 0 0 then
       (
-        let before = p.pos in
         ignore (parse_expression p ~signature ~stop_at_item:false ~stop_at_semi:true 0);
-        if at p Syntax_kind2.WITH_KW then
-          (
-            bump p;
-            parse_fields ();
-            Syntax_kind2.RECORD_UPDATE_EXPR
-          )
-        else (
-          if at p Syntax_kind2.EQ then
-            (
-              bump p;
-              ignore (parse_expression p ~signature ~stop_at_item:false ~stop_at_semi:true 0)
-            );
-          ensure_progress p before (invalid_expression p);
-          ignore (bump_if p Syntax_kind2.SEMI);
-          parse_fields ();
-          Syntax_kind2.RECORD_EXPR
-        )
+        expect p Syntax_kind2.WITH_KW (invalid_expression p);
+        parse_fields ();
+        Syntax_kind2.RECORD_UPDATE_EXPR
       )
+    else (
+      parse_fields ();
+      Syntax_kind2.RECORD_EXPR
+    )
   in
   expect p Syntax_kind2.RBRACE (invalid_expression p);
   complete p marker kind

@@ -36,6 +36,7 @@ type match_case = node
 type type_expr = node
 type record_type = node
 type record_field = node
+type record_expr_field = node
 type variant_type = node
 type variant_constructor = node
 type path = node
@@ -418,7 +419,7 @@ module RecordExpr: sig
   type field = {
     path: path option;
     value: expr option;
-    node: expr;
+    node: record_expr_field;
   }
   val cast: expr -> t option
 

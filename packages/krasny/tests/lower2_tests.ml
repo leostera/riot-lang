@@ -327,10 +327,7 @@ let tests = [
     (fun _ctx -> assert_format2_ml ~expected:"let id = fun x -> x\n" "let id = fun x -> x\n");
   Test.case
     "lower2 formats function expressions with return annotations"
-    (fun _ctx ->
-      assert_format2_ml
-        ~expected:"let boxed = fun (value: int): int -> value\n"
-        "let boxed = fun (value: int) : int -> value\n");
+    (fun _ctx -> assert_format2_ml ~expected:"let boxed = fun (value: int): int -> value\n" "let boxed = fun (value: int) : int -> value\n");
   Test.case
     "lower2 formats match expressions"
     (fun _ctx ->
@@ -341,9 +338,7 @@ let tests = [
   Test.case
     "lower2 preserves trailing sequence bodies in and-bindings"
     (fun _ctx ->
-      assert_format2_ml
-        ~expected:"let rec f () =\n  log \"f\";\n\nand g () =\n  log \"g\";\n"
-        "let rec f () = log \"f\";\nand g () = log \"g\";\n");
+      assert_format2_ml ~expected:"let rec f () =\n  log \"f\";\n\nand g () =\n  log \"g\";\n" "let rec f () = log \"f\";\nand g () = log \"g\";\n");
   Test.case
     "lower2 formats list and array expressions"
     (fun _ctx ->
@@ -421,9 +416,10 @@ let tests = [
             "let record = { x = 1; y }";
             "let updated = { base with x = 2; y }";
             "let qualified = { History.name = name; statistics = stats }";
+            "let scoped =\n  Lockfile.{\n    name = package.name;\n    version = None\n  }";
             "let { x; y = z; _ } = record";
           ])
-        "let record = { x = 1; y }\nlet updated = { base with x = 2; y }\nlet qualified = { History.name = name; statistics = stats }\nlet { x; y = z; _ } = record\n");
+        "let record = { x = 1; y }\nlet updated = { base with x = 2; y }\nlet qualified = { History.name = name; statistics = stats }\nlet scoped = Lockfile.{ name = package.name; version = None }\nlet { x; y = z; _ } = record\n");
   Test.case
     "lower2 formats binding operator expressions"
     (fun _ctx ->

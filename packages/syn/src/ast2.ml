@@ -67,6 +67,8 @@ type record_type = node
 
 type record_field = node
 
+type record_expr_field = node
+
 type variant_type = node
 
 type variant_constructor = node
@@ -197,6 +199,10 @@ let is_record_type_kind = function
 
 let is_record_field_kind = function
   | Syntax_kind2.RECORD_FIELD -> true
+  | _ -> false
+
+let is_record_expr_field_kind = function
+  | Syntax_kind2.RECORD_EXPR_FIELD -> true
   | _ -> false
 
 let is_variant_type_kind = function
@@ -1100,7 +1106,7 @@ module RecordExpr: sig
   type field = {
     path: path option;
     value: expr option;
-    node: expr;
+    node: record_expr_field;
   }
   val cast: expr -> t option
 
@@ -1113,7 +1119,7 @@ end = struct
   type field = {
     path: path option;
     value: expr option;
-    node: expr;
+    node: record_expr_field;
   }
 
   let cast = fun (expr: expr) ->
@@ -1130,43 +1136,47 @@ end = struct
     else
       None
 
-  let field_of_expr = fun (expr: expr) ->
-    if node_kind_is expr Syntax_kind2.INFIX_EXPR then
-      match Node.first_child_token expr ~kind:Syntax_kind2.EQ, nth_expr_child expr 0, nth_expr_child
-        expr
-        1 with
-      | Some _, Some left, Some right ->
-          let path =
-            if node_kind_is left Syntax_kind2.PATH_EXPR then
-              Path.cast left
-            else
-              None
-          in
-          { path; value = Some right; node = expr }
-      | _ -> { path = None; value = None; node = expr }
-    else if node_kind_is expr Syntax_kind2.PATH_EXPR then
-      { path = Path.cast expr; value = None; node = expr }
-    else
-      { path = None; value = None; node = expr }
+  let field_of_node = fun (field: record_expr_field) ->
+    match first_expr_child field with
+    | Some expr when node_kind_is expr Syntax_kind2.INFIX_EXPR -> (
+        match nth_expr_child expr 0, nth_expr_child expr 1 with
+        | Some left, Some right ->
+            let path =
+              if node_kind_is left Syntax_kind2.PATH_EXPR then
+                Path.cast left
+              else
+                None
+            in
+            { path; value = Some right; node = field }
+        | _ -> { path = None; value = None; node = field }
+      )
+    | Some expr ->
+        let path =
+          if node_kind_is expr Syntax_kind2.PATH_EXPR then
+            Path.cast expr
+          else
+            None
+        in
+        let value =
+          if Option.is_some (Node.first_child_token field ~kind:Syntax_kind2.EQ) then
+            nth_expr_child field 1
+          else
+            None
+        in
+        { path; value; node = field }
+    | None ->
+        { path = None; value = None; node = field }
 
   let for_each_field = fun (record: t) ~fn ->
-    let after_with = ref (node_kind_is record Syntax_kind2.RECORD_EXPR) in
     Syntax_tree.for_each_child record.tree (syntax_node record)
       ~fn:(
         function
-        | Syntax_tree.Token id ->
-            let token = wrap_token record.tree id in
-            if token_kind_is token Syntax_kind2.WITH_KW then
-              after_with := true
         | Syntax_tree.Node id ->
-            if !after_with then
-              (
-                let child = wrap_node record.tree id in
-                if node_matches child is_expr_kind then
-                  fn (field_of_expr child)
-              )
-        | Syntax_tree.Missing _ ->
-            ()
+            let child = wrap_node record.tree id in
+            if node_matches child is_record_expr_field_kind then
+              fn (field_of_node child)
+        | Syntax_tree.Token _
+        | Syntax_tree.Missing _ -> ()
       )
 end
 
