@@ -101,6 +101,7 @@ let assert_lower2_existing_fixture_subset = fun () ->
     Path.v "packages/krasny/tests/fixtures/0424_top_level_trailing_sequence_prefix_operator.ml";
     Path.v "packages/krasny/tests/fixtures/0425_prefix_parenthesized_field_access.ml";
     Path.v "packages/krasny/tests/fixtures/0426_top_level_trailing_sequence_before_let.ml";
+    Path.v "packages/krasny/tests/fixtures/0428_top_level_phrase_separator_after_supported_item.ml";
     Path.v "packages/krasny/tests/fixtures/0432_nested_poly_variant_payload.ml";
     Path.v "packages/krasny/tests/fixtures/0433_apply_parenthesized_poly_variant_payload.ml";
     Path.v "packages/krasny/tests/fixtures/0434_poly_variant_local_open_pattern_payload.ml";

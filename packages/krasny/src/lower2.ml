@@ -2389,7 +2389,7 @@ and binding_operator_expr_doc = fun expr ->
   | clauses, Some in_token, Some body -> Doc.concat
     [ Doc.join Doc.space clauses; Doc.space; token_doc in_token; Doc.space; expr_doc body; ]
 
-and let_binding_doc = fun binding ->
+and let_binding_doc = fun ?(force_body_break_after_equal = false) binding ->
   let parts = let_binding_parts binding in
   match parts.pattern, parts.body with
   | Some pattern, Some body ->
@@ -2414,9 +2414,13 @@ and let_binding_doc = fun binding ->
             | Some body_doc -> Doc.concat [ head; Doc.line; Doc.indent 2 body_doc ]
             | None ->
                 let body_doc = expr_doc body in
-                if expr_binding_body_breaks_after_equal body || match Ast.Expr.view body with
+                if
+                  force_body_break_after_equal
+                  || expr_binding_body_breaks_after_equal body
+                  || match Ast.Expr.view body with
                   | Apply _ -> Doc.is_multiline body_doc
-                  | _ -> false then
+                  | _ -> false
+                then
                   Doc.concat [ head; Doc.line; Doc.indent 2 body_doc ]
                 else
                   Doc.concat [ head; Doc.space; body_doc ]
@@ -2474,7 +2478,7 @@ and let_bindings_block_doc = fun ~keyword ~rec_token node ->
 let let_decl_doc = fun decl ->
   let_bindings_doc ~keyword:"let" ~rec_token:(Ast.LetDeclaration.rec_token decl) decl
 
-let let_decl_block_doc = fun decl ->
+let let_decl_block_doc = fun ?(force_body_break_after_equal = false) decl ->
   match let_binding_nodes decl with
   | [] -> unsupported "let declaration without binding"
   | first :: rest ->
@@ -2482,7 +2486,13 @@ let let_decl_block_doc = fun decl ->
         List.map
           rest
           ~fn:(fun binding ->
-            Doc.concat [ blank_line; Doc.text "and"; Doc.space; let_binding_doc binding ])
+            Doc.concat
+              [
+                blank_line;
+                Doc.text "and";
+                Doc.space;
+                let_binding_doc ~force_body_break_after_equal binding;
+              ])
       in
       Doc.concat
         (
@@ -2490,7 +2500,7 @@ let let_decl_block_doc = fun decl ->
               match Ast.LetDeclaration.rec_token decl with
               | Some rec_token -> Doc.concat [ Doc.space; token_doc rec_token; Doc.space ]
               | None -> Doc.space
-            ); let_binding_doc first; ] @ rest
+            ); let_binding_doc ~force_body_break_after_equal first; ] @ rest
         )
 
 let type_parameter_doc = function
@@ -3648,13 +3658,17 @@ let split_structure_body_items = fun tokens ->
   in
   loop [] [] 0 tokens
 
-let rec module_member_doc = fun tokens ->
+let rec module_member_doc = fun ?(force_empty_struct_multiline = false) tokens ->
   match split_module_struct_body tokens with
   | Some (head_tokens, struct_token, body_tokens, end_token, after) ->
       Doc.concat
         [ module_head_tokens_doc head_tokens; Doc.space; token_doc struct_token; (
             match split_structure_body_items body_tokens with
-            | [] -> Doc.space
+            | [] ->
+                if force_empty_struct_multiline then
+                  blank_line
+                else
+                  Doc.space
             | items -> Doc.concat
               [ Doc.line; Doc.indent 2 (structure_body_items_doc items); Doc.line; ]
           ); token_doc end_token; module_after_tokens_doc after; ]
@@ -3770,10 +3784,10 @@ let split_module_members = fun tokens ->
   in
   loop [] [] 0 false tokens
 
-let module_declaration_tokens_doc = fun tokens ->
+let module_declaration_tokens_doc = fun ?(force_empty_struct_multiline = false) tokens ->
   match split_module_members tokens with
   | [] -> Doc.empty
-  | [ member_ ] -> module_member_doc member_
+  | [ member_ ] -> module_member_doc ~force_empty_struct_multiline member_
   | members -> Doc.join blank_line (List.map members ~fn:module_member_doc)
 
 let module_decl_tokens = fun decl ->
@@ -3989,10 +4003,10 @@ let module_type_decl_body_doc = fun decl ->
   | Sig -> module_type_decl_sig_body_doc decl
   | Unsupported -> unsupported "unsupported module type declaration body"
 
-let module_decl_doc = fun decl ->
+let module_decl_doc = fun ?(force_empty_struct_multiline = false) decl ->
   match module_decl_tokens decl with
   | [] -> unsupported "module declaration without tokens"
-  | tokens -> module_declaration_tokens_doc tokens
+  | tokens -> module_declaration_tokens_doc ~force_empty_struct_multiline tokens
 
 let module_type_decl_doc = fun decl ->
   match Ast.ModuleTypeDeclaration.name decl with
@@ -4182,6 +4196,18 @@ let structure_item_doc = fun item ->
   in
   Doc.concat [ leading_comment_node_paragraph_doc item; body ]
 
+let structure_item_phrase_separator_doc = fun item ->
+  let body =
+    match Ast.StructureItem.view item with
+    | Let decl -> let_decl_block_doc ~force_body_break_after_equal:true decl
+    | Module decl -> module_decl_doc ~force_empty_struct_multiline:true decl
+    | _ -> structure_item_doc item
+  in
+  match Ast.StructureItem.view item with
+  | Let _
+  | Module _ -> Doc.concat [ leading_comment_node_paragraph_doc item; body ]
+  | _ -> body
+
 let signature_item_doc = fun item ->
   let body =
     match Ast.SignatureItem.view item with
@@ -4292,7 +4318,11 @@ let implementation_doc = fun implementation ->
   let semis = ref 0 in
   let append_phrase_separator () =
     match !items with
-    | (item, doc) :: rest -> items := (item, Doc.concat [ doc; Doc.text ";;" ]) :: rest
+    | (item, _doc) :: rest -> items := (
+      item,
+      Doc.concat [ structure_item_phrase_separator_doc item; Doc.text ";;" ]
+    )
+    :: rest
     | [] -> ()
   in
   Ast.Node.for_each_child implementation
