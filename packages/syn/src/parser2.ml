@@ -1620,7 +1620,14 @@ and parse_label_arg_expr = fun p ~signature ~stop_at_item ~stop_at_semi ~stop_at
   if at p Syntax_kind2.COLON then
     (
       bump p;
-      ignore (parse_prefix_or_atom p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma)
+      ignore
+        (parse_expression
+          p
+          ~signature
+          ~stop_at_item
+          ~stop_at_semi
+          ~stop_at_comma
+          (application_binding_power + 1))
     );
   complete p marker kind
 

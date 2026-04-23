@@ -402,9 +402,10 @@ let tests = [
           [
             "let value = let open Foo.Bar in result";
             "let scoped = send pid Server.(Telemetry (Stop { reply_to = self (); request_id }))";
+            "let store = Contentstore.create ~root:Path.(tmpdir / Path.v \"cache\") ~ns:(namespace parts)";
             "let Foo.Bar.(x) = value"
           ])
-        "let value = let open Foo.Bar in result\nlet scoped = send pid Server.(Telemetry (Stop { reply_to = self (); request_id }))\nlet Foo.Bar.(x) = value\n");
+        "let value = let open Foo.Bar in result\nlet scoped = send pid Server.(Telemetry (Stop { reply_to = self (); request_id }))\nlet store = Contentstore.create ~root:Path.(tmpdir / Path.v \"cache\") ~ns:(namespace parts)\nlet Foo.Bar.(x) = value\n");
   Test.case
     "lower2 formats first-class module expressions"
     (fun _ctx ->

@@ -1207,6 +1207,59 @@ let test_local_open_argument_views = fun _ctx ->
       )
   | _ -> Error "expected send application arguments"
 
+let test_local_open_labeled_argument_views = fun _ctx ->
+  let source =
+    "let store = Contentstore.create ~root:Path.(tmpdir / Path.v \"cache\") ~ns:(namespace parts)\n"
+  in
+  let root = parse_ml source |> Result.expect ~msg:"expected parse2 source file" in
+  let body = nth_structure_item root 0
+  |> require_some ~msg:"expected labeled local open item"
+  |> binding_of_structure_item
+  |> Result.expect ~msg:"expected labeled local open binding"
+  |> body_of_binding
+  |> Result.expect ~msg:"expected labeled local open body" in
+  let rec application_parts expr args =
+    match Ast2.Expr.view expr with
+    | Ast2.Expr.Apply { callee=Some callee; argument=Some argument } -> application_parts
+      callee
+      (argument :: args)
+    | _ -> (expr, args)
+  in
+  let callee, arguments = application_parts body [] in
+  (
+    match Ast2.Expr.view callee with
+    | Ast2.Expr.Path { path } -> assert_last_ident_text path "create"
+    | _ -> panic "expected create callee"
+  );
+  match arguments with
+  | [root_arg; ns_arg] ->
+      (
+        match Ast2.Expr.view root_arg with
+        | Ast2.Expr.LabeledArg { label=Some label; value=Some value } ->
+            Test.assert_equal ~expected:"root" ~actual:(Ast2.Token.text label);
+            let local_open = Ast2.LocalOpenExpr.cast value |> require_some ~msg:"expected local open root value" in
+            (
+              match Ast2.LocalOpenExpr.view local_open with
+              | Ast2.LocalOpenExpr.Delimited { module_path=Some module_path; body=Some inner_body; _ } ->
+                  Test.assert_equal ~expected:"Path" ~actual:(last_path_text module_path);
+                  (
+                    match Ast2.Expr.view inner_body with
+                    | Ast2.Expr.Infix _ -> Ok ()
+                    | _ -> Error "expected infix local open body"
+                  )
+              | _ -> Error "expected complete labeled local open"
+            )
+        | _ -> Error "expected labeled root argument"
+      );
+      (
+        match Ast2.Expr.view ns_arg with
+        | Ast2.Expr.LabeledArg { label=Some label; value=Some _ } ->
+            Test.assert_equal ~expected:"ns" ~actual:(Ast2.Token.text label);
+            Ok ()
+        | _ -> Error "expected labeled ns argument"
+      )
+  | _ -> Error "expected labeled application arguments"
+
 let test_first_class_module_views = fun _ctx ->
   let source = "let packed = (module Foo.Bar)\nlet typed = (module Foo : S.T)\n" in
   let root = parse_ml source |> Result.expect ~msg:"expected parse2 source file" in
@@ -1590,6 +1643,7 @@ let tests = [
   Test.case "ast2 exposes binding operator expression views" test_binding_operator_views;
   Test.case "ast2 exposes local open expression and pattern views" test_local_open_views;
   Test.case "ast2 preserves local open expressions as application arguments" test_local_open_argument_views;
+  Test.case "ast2 preserves local open expressions inside labeled arguments" test_local_open_labeled_argument_views;
   Test.case "ast2 exposes first-class module expression views" test_first_class_module_views;
   Test.case "ast2 exposes let module expression views" test_let_module_expression_views;
   Test.case "ast2 exposes let exception expression views" test_let_exception_expression_views;
