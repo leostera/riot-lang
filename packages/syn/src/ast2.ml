@@ -2268,6 +2268,12 @@ end
 module TypeDeclaration = struct
   type t = type_declaration
 
+  type member = {
+    declaration: type_declaration;
+    start_index: int;
+    stop_index: int;
+  }
+
   type parameter =
     | Named of {
         name: Token.t;
@@ -2429,6 +2435,279 @@ module TypeDeclaration = struct
       None
     else
       first_type_expr_child decl
+
+  module Member = struct
+    type t = member
+
+    let declaration = fun member -> member.declaration
+
+    let start_index = fun member -> member.start_index
+
+    let stop_index = fun member -> member.stop_index
+
+    let child_count = fun member -> member.stop_index - member.start_index
+
+    let child_at = fun member index ->
+      if index < 0 || index >= child_count member then
+        None
+      else
+        Node.child_at member.declaration (member.start_index + index)
+
+    let child_token_at = fun member index ->
+      match child_at member index with
+      | Some (Syntax_tree.Token id) -> Some (wrap_token member.declaration.tree id)
+      | Some (Syntax_tree.Node _)
+      | Some (Syntax_tree.Missing _)
+      | None -> None
+
+    let child_node_at = fun member index ->
+      match child_at member index with
+      | Some (Syntax_tree.Node id) -> Some (wrap_node member.declaration.tree id)
+      | Some (Syntax_tree.Token _)
+      | Some (Syntax_tree.Missing _)
+      | None -> None
+
+    let child_token_kind_at = fun member index ->
+      match child_token_at member index with
+      | Some token -> Some (Token.kind token)
+      | None -> None
+
+    let child_token_kind_is = fun member index kind ->
+      match child_token_at member index with
+      | Some token -> token_kind_is token kind
+      | None -> false
+
+    let for_each_child = fun member ~fn ->
+      let rec loop index =
+        if index < member.stop_index then
+          (
+            (
+              match Node.child_at member.declaration index with
+              | Some child -> fn child
+              | None -> ()
+            );
+            loop (index + 1)
+          )
+      in
+      loop member.start_index
+
+    let for_each_child_token = fun member ~fn ->
+      for_each_child member
+        ~fn:(
+          function
+          | Syntax_tree.Token id -> fn (wrap_token member.declaration.tree id)
+          | Syntax_tree.Node _
+          | Syntax_tree.Missing _ -> ()
+        )
+
+    let for_each_child_node = fun member ~fn ->
+      for_each_child member
+        ~fn:(
+          function
+          | Syntax_tree.Node id -> fn (wrap_node member.declaration.tree id)
+          | Syntax_tree.Token _
+          | Syntax_tree.Missing _ -> ()
+        )
+
+    let shell_token = fun member -> child_token_at member 0
+
+    let nonrec_token = fun member ->
+      let count = child_count member in
+      let rec loop index =
+        if index >= count then
+          None
+        else
+          match child_token_at member index with
+          | Some token when token_kind_is token Syntax_kind2.NONREC_KW -> Some token
+          | Some token when token_kind_is token Syntax_kind2.IDENT -> None
+          | _ -> loop (index + 1)
+      in
+      loop 0
+
+    let rec collect_type_parameter_modifiers = fun member index variance injective ->
+      match child_token_at member index with
+      | Some token when token_kind_is token Syntax_kind2.PLUS || token_kind_is token Syntax_kind2.MINUS -> collect_type_parameter_modifiers
+        member
+        (index + 1)
+        (Some token)
+        injective
+      | Some token when token_kind_is token Syntax_kind2.BANG -> collect_type_parameter_modifiers
+        member
+        (index + 1)
+        variance
+        (Some token)
+      | _ -> (index, variance, injective)
+
+    let skip_type_parameter = fun member index ->
+      let index, _, _ = collect_type_parameter_modifiers member index None None in
+      match child_token_kind_at member index with
+      | Some Syntax_kind2.QUOTE -> (
+          match child_token_kind_at member (index + 1) with
+          | Some Syntax_kind2.IDENT -> index + 2
+          | _ -> index + 1
+        )
+      | Some Syntax_kind2.UNDERSCORE ->
+          index + 1
+      | _ ->
+          index
+
+    let emit_type_parameter = fun member index ~fn ->
+      let index, variance, injective = collect_type_parameter_modifiers member index None None in
+      match child_token_at member index with
+      | Some quote when token_kind_is quote Syntax_kind2.QUOTE -> (
+          match child_token_at member (index + 1) with
+          | Some name when token_kind_is name Syntax_kind2.IDENT ->
+              fn (Named { name; quote = Some quote; variance; injective });
+              index + 2
+          | _ -> index + 1
+        )
+      | Some wildcard when token_kind_is wildcard Syntax_kind2.UNDERSCORE ->
+          fn (Wildcard { wildcard; variance; injective });
+          index + 1
+      | _ ->
+          index
+
+    let rec skip_parenthesized_type_parameters = fun member index ->
+      match child_token_kind_at member index with
+      | Some Syntax_kind2.RPAREN -> index + 1
+      | Some Syntax_kind2.EOF
+      | None -> index
+      | _ -> skip_parenthesized_type_parameters member (index + 1)
+
+    let name = fun member ->
+      let rec loop index =
+        match child_token_at member index with
+        | Some token when token_kind_is token Syntax_kind2.TYPE_KW
+        || token_kind_is token Syntax_kind2.AND_KW
+        || token_kind_is token Syntax_kind2.NONREC_KW ->
+            loop (index + 1)
+        | Some token when token_kind_is token Syntax_kind2.LPAREN ->
+            loop (skip_parenthesized_type_parameters member (index + 1))
+        | Some token when token_kind_is token Syntax_kind2.PLUS
+        || token_kind_is token Syntax_kind2.MINUS
+        || token_kind_is token Syntax_kind2.BANG
+        || token_kind_is token Syntax_kind2.QUOTE
+        || token_kind_is token Syntax_kind2.UNDERSCORE ->
+            let next = skip_type_parameter member index in
+            if next > index then
+              loop next
+            else
+              None
+        | Some token when token_kind_is token Syntax_kind2.IDENT ->
+            Some token
+        | _ ->
+            None
+      in
+      loop 0
+
+    let for_each_parameter = fun member ~fn ->
+      let rec parse_parenthesized index =
+        match child_token_kind_at member index with
+        | Some Syntax_kind2.RPAREN ->
+            index + 1
+        | Some Syntax_kind2.COMMA ->
+            parse_parenthesized (index + 1)
+        | Some Syntax_kind2.EOF
+        | None ->
+            index
+        | _ ->
+            let next = emit_type_parameter member index ~fn in
+            parse_parenthesized
+              (
+                if next > index then
+                  next
+                else
+                  index + 1
+              )
+      in
+      let rec parse_head index =
+        match child_token_at member index with
+        | Some token when token_kind_is token Syntax_kind2.TYPE_KW
+        || token_kind_is token Syntax_kind2.AND_KW
+        || token_kind_is token Syntax_kind2.NONREC_KW ->
+            parse_head (index + 1)
+        | Some token when token_kind_is token Syntax_kind2.LPAREN ->
+            parse_head (parse_parenthesized (index + 1))
+        | Some token when token_kind_is token Syntax_kind2.PLUS
+        || token_kind_is token Syntax_kind2.MINUS
+        || token_kind_is token Syntax_kind2.BANG
+        || token_kind_is token Syntax_kind2.QUOTE
+        || token_kind_is token Syntax_kind2.UNDERSCORE ->
+            let next = emit_type_parameter member index ~fn in
+            if next > index then
+              parse_head next
+        | _ ->
+            ()
+      in
+      parse_head 0
+
+    let has_direct_pipe = fun member ->
+      let found = ref false in
+      for_each_child_token member
+        ~fn:(fun token ->
+          if token_kind_is token Syntax_kind2.PIPE then
+            found := true);
+      !found
+
+    let manifest = fun member ->
+      if has_direct_pipe member then
+        None
+      else
+        let found = ref None in
+        for_each_child_node member
+          ~fn:(fun node ->
+            match !found with
+            | Some _ -> ()
+            | None ->
+                if node_matches node is_type_expr_kind then
+                  found := Some node);
+        !found
+  end
+
+  let type_member_depth_after = fun depth token ->
+    match Token.kind token with
+    | Syntax_kind2.LPAREN
+    | Syntax_kind2.LBRACE
+    | Syntax_kind2.LBRACKET
+    | Syntax_kind2.LBRACKET_BAR
+    | Syntax_kind2.BEGIN_KW
+    | Syntax_kind2.OBJECT_KW
+    | Syntax_kind2.STRUCT_KW
+    | Syntax_kind2.SIG_KW -> depth + 1
+    | Syntax_kind2.RPAREN
+    | Syntax_kind2.RBRACE
+    | Syntax_kind2.RBRACKET
+    | Syntax_kind2.BAR_RBRACKET
+    | Syntax_kind2.END_KW when depth > 0 -> depth - 1
+    | _ -> depth
+
+  let fold_members = fun decl init fn ->
+    let count = Node.child_count decl in
+    let rec member_end index depth =
+      if index >= count then
+        count
+      else
+        match child_token_at decl index with
+        | Some token when Int.equal depth 0 && token_kind_is token Syntax_kind2.AND_KW -> index
+        | Some token -> member_end (index + 1) (type_member_depth_after depth token)
+        | None -> member_end (index + 1) depth
+    in
+    let rec loop start acc =
+      if start >= count then
+        acc
+      else
+        let stop = member_end (start + 1) 0 in
+        let acc = fn acc { declaration = decl; start_index = start; stop_index = stop } in
+        if stop < count then
+          match child_token_at decl stop with
+          | Some token when token_kind_is token Syntax_kind2.AND_KW -> loop stop acc
+          | _ -> acc
+        else
+          acc
+    in
+    loop 0 init
+
+  let for_each_member = fun decl ~fn -> ignore (fold_members decl () (fun () member -> fn member))
 end
 
 let child_token_kind_is = fun node index kind ->

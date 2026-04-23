@@ -556,6 +556,7 @@ end
 
 module TypeDeclaration: sig
   type t = type_declaration
+  type member
   type parameter =
     | Named of {
         name: Token.t;
@@ -564,6 +565,41 @@ module TypeDeclaration: sig
         injective: Token.t option
       }
     | Wildcard of { wildcard: Token.t; variance: Token.t option; injective: Token.t option }
+  module Member: sig
+    type t = member
+    val declaration: t -> type_declaration
+
+    val start_index: t -> int
+
+    val stop_index: t -> int
+
+    val child_count: t -> int
+
+    val child_at: t -> int -> Syntax_tree.child option
+
+    val child_token_at: t -> int -> Token.t option
+
+    val child_node_at: t -> int -> Node.t option
+
+    val child_token_kind_is: t -> int -> Syntax_kind2.t -> bool
+
+    val for_each_child: t -> fn:(Syntax_tree.child -> unit) -> unit
+
+    val for_each_child_token: t -> fn:(Token.t -> unit) -> unit
+
+    val for_each_child_node: t -> fn:(Node.t -> unit) -> unit
+
+    val shell_token: t -> Token.t option
+
+    val nonrec_token: t -> Token.t option
+
+    val name: t -> Token.t option
+
+    val for_each_parameter: t -> fn:(parameter -> unit) -> unit
+
+    val manifest: t -> type_expr option
+  end
+
   val cast: Node.t -> t option
 
   val for_each_token: t -> fn:(Token.t -> unit) -> unit
@@ -577,6 +613,10 @@ module TypeDeclaration: sig
   val for_each_parameter: t -> fn:(parameter -> unit) -> unit
 
   val manifest: t -> type_expr option
+
+  val for_each_member: t -> fn:(member -> unit) -> unit
+
+  val fold_members: t -> 'acc -> ('acc -> member -> 'acc) -> 'acc
 end
 
 module ModuleDeclaration: sig

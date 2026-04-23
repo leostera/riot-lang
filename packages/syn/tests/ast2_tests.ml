@@ -453,6 +453,43 @@ let test_type_declaration_parameters = fun _ctx ->
       )
   | _ -> Error "expected type declaration"
 
+let test_type_declaration_member_views = fun _ctx ->
+  let root = parse_mli "type 'a box = 'a list and color = Red | Blue and point = { x : int }\n"
+  |> Result.expect ~msg:"expected parse2 interface" in
+  let type_item = nth_signature_item root 0 |> require_some ~msg:"expected type signature item" in
+  match Ast2.SignatureItem.view type_item with
+  | Ast2.SignatureItem.Type decl ->
+      let count = ref 0 in
+      let names = ref [] in
+      let shells = ref [] in
+      let parameter_counts = ref [] in
+      let manifest_shapes = ref [] in
+      Ast2.TypeDeclaration.for_each_member decl
+        ~fn:(fun member ->
+          count := !count + 1;
+          let name = Ast2.TypeDeclaration.Member.name member |> require_some ~msg:"expected type member name" in
+          let shell = Ast2.TypeDeclaration.Member.shell_token member |> require_some ~msg:"expected type member shell" in
+          let parameters = ref 0 in
+          Ast2.TypeDeclaration.Member.for_each_parameter
+            member
+            ~fn:(fun _ -> parameters := !parameters + 1);
+          let has_manifest =
+            match Ast2.TypeDeclaration.Member.manifest member with
+            | Some _ -> true
+            | None -> false
+          in
+          names := Ast2.Token.text name :: !names;
+          shells := Ast2.Token.text shell :: !shells;
+          parameter_counts := !parameters :: !parameter_counts;
+          manifest_shapes := has_manifest :: !manifest_shapes);
+      Test.assert_equal ~expected:3 ~actual:!count;
+      Test.assert_equal ~expected:[ "box"; "color"; "point" ] ~actual:(List.reverse !names);
+      Test.assert_equal ~expected:[ "type"; "and"; "and" ] ~actual:(List.reverse !shells);
+      Test.assert_equal ~expected:[ 1; 0; 0 ] ~actual:(List.reverse !parameter_counts);
+      Test.assert_equal ~expected:[ true; false; false ] ~actual:(List.reverse !manifest_shapes);
+      Ok ()
+  | _ -> Error "expected type declaration"
+
 let test_open_declaration_path_tokens = fun _ctx ->
   let root = parse_ml "open Foo.Bar\n" |> Result.expect ~msg:"expected parse2 source file" in
   let item = nth_structure_item root 0 |> require_some ~msg:"expected open structure item" in
@@ -1233,6 +1270,7 @@ let tests = [
   Test.case "ast2 exposes poly labeled types and signed literal patterns" test_poly_labeled_and_signed_views;
   Test.case "ast2 keeps non-manifest type bodies out of manifest views" test_non_manifest_type_declaration_bodies;
   Test.case "ast2 exposes type declaration parameters" test_type_declaration_parameters;
+  Test.case "ast2 exposes type declaration member views" test_type_declaration_member_views;
   Test.case "ast2 exposes open declaration path tokens" test_open_declaration_path_tokens;
   Test.case "ast2 exposes simple declaration token views" test_simple_declaration_token_views;
   Test.case "ast2 exposes module declaration tokens" test_module_declaration_tokens;
