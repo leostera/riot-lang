@@ -1916,7 +1916,7 @@ and sequence_item_doc = fun expr ->
   match Ast.Expr.view expr with
   | Parenthesized { inner=Some inner } when (not (expr_is_begin_block expr))
   && expr_parenthesized_inner_breaks_after_equal inner -> parenthesized_expr_multiline_body_doc inner
-  | _ -> expr_doc expr
+  | _ -> expr_doc_with_boundary_leading_comment expr
 
 and sequence_doc = fun expr ->
   sequence_items expr
