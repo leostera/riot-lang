@@ -1,6 +1,6 @@
 [package]
 name = "serde-bin"
-version = "0.0.21"
+version = "0.0.22"
 
 [lib]
 path = "src/serde_bin.ml"

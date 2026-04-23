@@ -393,10 +393,16 @@ let commands_for_scope = fun scope (pkg: t) ->
 
 let sources_for_scope = fun ?(dev_artifacts = all_dev_artifacts) scope (pkg: t) ->
   match scope with
-  | Normal -> { pkg.sources with tests = []; examples = []; bench = [] }
+  | Normal ->
+      { pkg.sources with tests = []; examples = []; bench = [] }
   | Dev ->
+      let src =
+        match pkg.library with
+        | Some _ -> []
+        | None -> pkg.sources.src
+      in
       {
-        src = [];
+        src;
         native = [];
         tests =
           if dev_artifacts.tests then

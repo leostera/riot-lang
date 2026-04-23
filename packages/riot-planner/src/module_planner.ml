@@ -99,7 +99,13 @@ let plan_node = fun (input: plan_input) ->
             else
               []
           in
-          let dep_libs = List.map transitive_deps ~fn:Dependency.library_cmxa in
+          let dep_libs =
+            List.filter_map transitive_deps
+              ~fn:(fun (dep: Dependency.t) ->
+                match dep.package.Package.library with
+                | Some _ -> Some (Dependency.library_cmxa dep)
+                | None -> None)
+          in
           let own_lib =
             match input.package.library with
             | Some _ -> [

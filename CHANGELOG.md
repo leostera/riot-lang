@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.0.22 - 2026-04-23
+
+### riot
+- Fixed generated `riot init --bin` workspaces so the starter package builds, runs, and tests correctly when the package has no library archive.
+- Dev-scope planning for no-library packages now carries reachable `src/` helper modules into tests/examples/benches instead of linking a missing package `.cmxa`.
+- Added Docker smoke fixtures for mounting the current locally built Riot binary into Arch Linux and Ubuntu containers and validating `riot init`, `riot build`, `riot run`, and `riot test --small`.
+
 ## 0.0.21 - 2026-04-23
 
 ### riot

@@ -196,6 +196,9 @@ let find_create_executable_named = fun action_graph name ->
       | _ -> false
     )
 
+let path_list_to_string = fun paths ->
+  String.concat ", " (List.map paths ~fn:Path.to_string)
+
 let has_compile_implementation_for_source = fun actions source ->
   List.any actions
     ~fn:(
@@ -661,6 +664,48 @@ let test_dev_scope_test_binaries_include_private_helpers = fun _ctx ->
                 else
                   Ok ()
             | _ -> Error "expected CreateExecutable action and compile outputs for tests/foo_tests.ml and tests/helper.ml")
+  with
+  | Ok result -> result
+  | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
+
+let test_dev_scope_no_library_tests_include_package_named_helpers = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"planner_dev_scope_no_library_package_helpers"
+      (fun tmpdir ->
+        match plan_dev_package_actions
+          ~tmpdir
+          ~package_name:"hello-world"
+          ~binaries:[ ("hello_world_tests", "tests/hello_world_tests.ml") ]
+          ~files:[
+            ("src/main.ml", "let () = ignore (Hello_world.hello ())\n");
+            ("src/hello_world.mli", "val hello : unit -> string\n");
+            ("src/hello_world.ml", "let hello () = \"Hello from hello-world\"\n");
+            ("tests/hello_world_tests.ml", "let value = Hello_world.hello ()\n");
+          ] with
+        | Error _ as err -> err
+        | Ok (_package, action_graph) ->
+            let actions = Riot_planner.Action_graph.to_action_list action_graph in
+            let helper_source = Path.v "src/hello_world.ml" in
+            let test_source = Path.v "tests/hello_world_tests.ml" in
+            let helper_cmx = find_compile_cmx actions helper_source in
+            let test_cmx = find_compile_cmx actions test_source in
+            match find_create_executable_named action_graph "hello_world_tests", helper_cmx, test_cmx with
+            | Some (Riot_planner.Action.CreateExecutable { objects; libraries; _ }), Some helper_cmx, Some test_cmx ->
+                let has object_ = List.any objects ~fn:(Path.equal object_) in
+                if not (has helper_cmx && has test_cmx) then
+                  Error ("expected test executable to link package-named helper and test root objects; objects: "
+                  ^ path_list_to_string objects)
+                else if
+                  List.any
+                    libraries
+                    ~fn:(fun library ->
+                      String.ends_with ~suffix:"Hello_world.cmxa" (Path.to_string library))
+                then
+                  Error ("did not expect no-library test executable to link missing package archive; libraries: "
+                  ^ path_list_to_string libraries)
+                else
+                  Ok ()
+            | _ -> Error "expected CreateExecutable action and compile outputs for tests/hello_world_tests.ml and src/hello_world.ml")
   with
   | Ok result -> result
   | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
@@ -2383,6 +2428,7 @@ let tests =
     case "runtime scope excludes dev-only roots" test_runtime_scope_excludes_dev_only_roots;
     case "build scope excludes runtime and dev roots" test_build_scope_excludes_runtime_and_dev_roots;
     case "dev scope test binaries include private helpers" test_dev_scope_test_binaries_include_private_helpers;
+    case "dev scope no-library tests include package-named helpers" test_dev_scope_no_library_tests_include_package_named_helpers;
     case "dev scope example binaries include private helpers" test_dev_scope_example_binaries_include_private_helpers;
     case "dev scope bench binaries include private helpers" test_dev_scope_bench_binaries_include_private_helpers;
     case "dev scope keeps private helpers separated by root" test_dev_scope_keeps_private_helpers_separated_by_root;

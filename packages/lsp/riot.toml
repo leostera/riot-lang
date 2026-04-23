@@ -1,6 +1,6 @@
 [package]
 name = "lsp"
-version = "0.0.21"
+version = "0.0.22"
 description = "Language Server Protocol types and codecs"
 license = "Apache-2.0"
 public = true
