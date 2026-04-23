@@ -464,7 +464,11 @@ let test_type_declaration_member_views = fun _ctx ->
         decl
         ~fn:(fun child -> child_kinds := Ast2.Node.kind child :: !child_kinds);
       Test.assert_equal
-        ~expected:[ SyntaxKind2.TYPE_DECL_MEMBER; SyntaxKind2.TYPE_DECL_MEMBER; SyntaxKind2.TYPE_DECL_MEMBER ]
+        ~expected:[
+          SyntaxKind2.TYPE_DECL_MEMBER;
+          SyntaxKind2.TYPE_DECL_MEMBER;
+          SyntaxKind2.TYPE_DECL_MEMBER
+        ]
         ~actual:(List.reverse !child_kinds);
       let count = ref 0 in
       let names = ref [] in

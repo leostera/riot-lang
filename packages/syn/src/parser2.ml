@@ -3298,11 +3298,12 @@ let type_decl_tail_depth_after = fun depth kind ->
 let rec consume_until_type_decl_member_boundary = fun p ~signature depth ->
   if is_eof p || at_item_boundary p ~signature || (Int.equal depth 0 && at p Syntax_kind2.AND_KW) then
     ()
-  else (
-    let kind = current_kind p in
-    bump p;
-    consume_until_type_decl_member_boundary p ~signature (type_decl_tail_depth_after depth kind)
-  )
+  else
+    (
+      let kind = current_kind p in
+      bump p;
+      consume_until_type_decl_member_boundary p ~signature (type_decl_tail_depth_after depth kind)
+    )
 
 let consume_type_decl_constraints = fun p ~signature ->
   if at p Syntax_kind2.CONSTRAINT_KW then
