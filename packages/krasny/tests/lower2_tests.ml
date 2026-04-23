@@ -160,6 +160,7 @@ let assert_lower2_existing_fixture_subset = fun () ->
     Path.v "packages/krasny/tests/fixtures/0810_local_module_parameter_spacing.ml";
     Path.v "packages/krasny/tests/fixtures/0820_module_let_parameter_stability.ml";
     Path.v "packages/krasny/tests/fixtures/0821_nested_module_body_attribute_relift_fallback.ml";
+    Path.v "packages/krasny/tests/fixtures/0900_trivia_and_mixed_top_level.ml";
     Path.v "packages/krasny/tests/fixtures/0901_exception_followed_by_section_comment.ml";
     Path.v "packages/krasny/tests/fixtures/0902_docstring_between_multiline_lets.ml";
     Path.v "packages/krasny/tests/fixtures/0903_docstring_after_function_binding.ml";
@@ -169,6 +170,7 @@ let assert_lower2_existing_fixture_subset = fun () ->
     Path.v "packages/krasny/tests/fixtures/0907_docstring_after_fun_with_local_exception_and_try.ml";
     Path.v "packages/krasny/tests/fixtures/0908_trailing_inline_comment_in_module.ml";
     Path.v "packages/krasny/tests/fixtures/0909_comment_stability_between_lets.ml";
+    Path.v "packages/krasny/tests/fixtures/0910_docstring_before_local_open_let.ml";
     Path.v "packages/krasny/tests/fixtures/0911_comment_before_sequence_let.ml";
     Path.v "packages/krasny/tests/fixtures/0912_banner_comments_followed_by_plain_comment.ml";
     Path.v "packages/krasny/tests/fixtures/0913_structure_docstring_after_open.ml";
@@ -183,7 +185,16 @@ let assert_lower2_existing_fixture_subset = fun () ->
     Path.v "packages/krasny/tests/fixtures/0922_signature_variant_inline_record_terminal_doc_before_closing_brace.mli";
     Path.v "packages/krasny/tests/fixtures/0923_nested_signature_prefix_docs.mli";
     Path.v "packages/krasny/tests/fixtures/0924_type_declaration_attribute.ml";
+    Path.v "packages/krasny/tests/fixtures/0925_comment_before_and_binding.ml";
     Path.v "packages/krasny/tests/fixtures/0926_if_branch_comments.ml";
+    Path.v "packages/krasny/tests/fixtures/0927_leading_comment_dedup.ml";
+    Path.v "packages/krasny/tests/fixtures/0928_polyvariant_record_payload.ml";
+    Path.v "packages/krasny/tests/fixtures/0929_labeled_alias_parameter.ml";
+    Path.v "packages/krasny/tests/fixtures/0930_structure_attribute_before_let.ml";
+    Path.v "packages/krasny/tests/fixtures/0933_comment_attribute_between_lets.ml";
+    Path.v "packages/krasny/tests/fixtures/0934_typed_labeled_binding_header.ml";
+    Path.v "packages/krasny/tests/fixtures/0935_unary_value_declaration.mli";
+    Path.v "packages/krasny/tests/fixtures/0936_nested_signature_value.mli";
     Path.v "packages/krasny/tests/fixtures/0937_match_case_body_comment.ml";
     Path.v "packages/krasny/tests/fixtures/0944_exception_separator_comments.ml";
   ]

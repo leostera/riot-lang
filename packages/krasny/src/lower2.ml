@@ -35,6 +35,8 @@ let tokens_doc = fun tokens -> Doc.concat (List.map tokens ~fn:token_doc)
 let tokens_text = fun tokens ->
   String.concat "" (List.map tokens ~fn:Ast.Token.text)
 
+let first_descendant_token = Ast.Node.first_descendant_token
+
 let split_last = fun items ->
   let rec loop prefix = function
     | [] -> None
@@ -90,6 +92,51 @@ let parenthesized_token_shell_doc = fun tokens ->
   | tokens -> Doc.concat (List.map tokens ~fn:token_doc)
 
 let token_kind_is = fun token kind -> Kind.(Ast.Token.kind token = kind)
+
+let rec node_tokens = fun node ->
+  let tokens = ref [] in
+  let rec visit node =
+    Ast.Node.for_each_child node
+      ~fn:(
+        function
+        | Syn.SyntaxTree.Token id -> tokens := ({ tree = node.tree; id }: Ast.Token.t) :: !tokens
+        | Syn.SyntaxTree.Node id -> visit (({ tree = node.tree; id }: Ast.Node.t))
+        | Syn.SyntaxTree.Missing _ -> ()
+      )
+  in
+  visit node;
+  List.reverse !tokens
+
+let type_token_needs_space = fun previous current ->
+  match previous, current with
+  | (_, kind) when Kind.(kind = RPAREN || kind = RBRACKET || kind = BAR_RBRACKET || kind = RBRACE) -> false
+  | (_, kind) when Kind.(kind = COMMA || kind = SEMI || kind = COLON) -> false
+  | (kind, _) when Kind.(kind = LPAREN || kind = LBRACKET || kind = LBRACKET_BAR || kind = LBRACE) -> false
+  | (kind, _) when Kind.(kind = QUOTE || kind = BACKTICK || kind = QUESTION || kind = TILDE) -> false
+  | (kind, _) when Kind.(kind = AT || kind = ATAT) -> false
+  | (_, kind) when Kind.(kind = DOT) -> false
+  | (kind, current) when Kind.(kind = DOT) -> Kind.(current = QUOTE)
+  | (kind, _) when Kind.(kind = COMMA) -> true
+  | (_, kind) when Kind.(kind = ARROW || kind = STAR || kind = OF_KW || kind = AS_KW) -> true
+  | (kind, _) when Kind.(kind = ARROW || kind = STAR || kind = OF_KW || kind = AS_KW) -> true
+  | (kind, _) when Kind.(kind = COLON) -> false
+  | _ -> true
+
+let type_tokens_inline_doc = fun tokens ->
+  let rec loop previous acc = function
+    | [] -> acc
+    | token :: rest ->
+        let current = Ast.Token.kind token in
+        let piece = token_doc token in
+        let acc =
+          match previous with
+          | Some previous when type_token_needs_space previous current -> Doc.concat
+            [ acc; Doc.space; piece ]
+          | _ -> Doc.concat [ acc; piece ]
+        in
+        loop (Some current) acc rest
+  in
+  loop None Doc.empty tokens
 
 let starts_attribute_suffix_tokens = fun token rest ->
   token_kind_is token Kind.LBRACKET && match rest with
@@ -836,6 +883,25 @@ let trimmed_leading_comment_token_doc = fun token ->
         ));
   !doc
 
+let inline_leading_comment_token_doc = fun token ->
+  leading_comment_text token |> strip_trailing_whitespace |> Doc.text
+
+let token_has_inline_leading_comment = fun token ->
+  let text = Ast.Token.leading_text token in
+  let length = String.length text in
+  let rec loop index =
+    if Int.(index >= length) then
+      false
+    else
+      match String.get_unchecked text ~at:index with
+      | ' '
+      | '\t'
+      | '\r' -> loop Int.(index + 1)
+      | '\n' -> false
+      | _ -> Ast.Token.has_leading_comment token
+  in
+  loop 0
+
 let token_has_leading_plain_comment = fun token ->
   let has_plain_comment = ref false in
   Ast.Token.for_each_leading_trivia token
@@ -899,21 +965,33 @@ let eof_comment_separator = fun source_file ->
   && not (Ast.Token.has_leading_docstring token) -> Doc.line
   | _ -> blank_line
 
+let shell_token_needs_space = fun previous current ->
+  match previous, current with
+  | (_, kind) when Kind.(kind = RBRACKET || kind = BAR_RBRACKET) -> false
+  | (kind, _) when Kind.(kind = LBRACKET || kind = LBRACKET_BAR) -> false
+  | (kind, _) when Kind.(kind = AT || kind = ATAT || kind = PERCENT || kind = PERCENTGT || kind = LTPERCENT) -> false
+  | _ -> true
+
 let bracketed_shell_doc = fun ~empty_message ~for_each_shell_token ->
   let shell = ref Doc.empty in
   let first = ref true in
+  let previous = ref None in
   for_each_shell_token
     ~fn:(fun token ->
+      let current = Ast.Token.kind token in
+      let piece = token_doc token in
       let part =
-        if !first then
-          (
+        match !previous with
+        | None ->
             first := false;
-            token_doc token
-          )
-        else
-          token_full_doc token
+            piece
+        | Some previous when shell_token_needs_space previous current ->
+            Doc.concat [ Doc.space; piece ]
+        | Some _ ->
+            piece
       in
-      shell := Doc.concat [ !shell; part ]);
+      shell := Doc.concat [ !shell; part ];
+      previous := Some current);
   if !first then
     unsupported empty_message
   else
@@ -1036,6 +1114,14 @@ type let_binding_parts = {
   annotation: Ast.type_expr option;
   body: Ast.expr option;
 }
+
+type binding_annotation =
+  | TypeAnnotation of Ast.TypeExpr.t
+  | TokenAnnotation of Ast.Token.t list
+
+type binding_head_parameter =
+  | PatternParameter of Ast.Pattern.t
+  | LabelOnlyParameter of Ast.Pattern.t
 
 let let_binding_parts = fun binding ->
   let parameters = ref [] in
@@ -1717,6 +1803,15 @@ and expr_apply_argument_doc = fun expr ->
   | RecordUpdate -> expr_doc_with_view expr view
   | _ -> Doc.concat [ Doc.lparen; expr_doc_with_view expr view; Doc.rparen ]
 
+and expr_apply_argument_doc_with_leading_comment = fun expr ->
+  let argument_doc = expr_apply_argument_doc expr in
+  match first_descendant_token expr with
+  | Some token when token_has_inline_leading_comment token -> Doc.concat
+    [ inline_leading_comment_token_doc token; Doc.space; argument_doc ]
+  | Some token when Ast.Token.has_leading_comment token -> Doc.concat
+    [ trimmed_leading_comment_token_doc token; Doc.line; argument_doc ]
+  | _ -> argument_doc
+
 and application_parts = fun expr ->
   let rec collect expr args =
     match Ast.Expr.view expr with
@@ -1743,30 +1838,85 @@ and split_before_first_multiline_doc = fun docs ->
   in
   loop [] docs
 
+and expr_multiline_apply_argument_stays_with_callee = fun expr ->
+  match Ast.Expr.view expr with
+  | PolyVariant { payload=Some _ } ->
+      true
+  | LocalOpen _ -> (
+      match Ast.LocalOpenExpr.cast expr with
+      | Some local_open -> (
+          match Ast.LocalOpenExpr.view local_open with
+          | Delimited { module_path=None; body=Some body; _ } -> (
+              match Ast.Expr.view body with
+              | Record
+              | RecordUpdate -> true
+              | _ -> false
+            )
+          | _ -> false
+        )
+      | None -> false
+    )
+  | Parenthesized { inner=Some inner } -> (
+      match Ast.Expr.view inner with
+      | PolyVariant { payload=Some _ } -> true
+      | LocalOpen _ -> expr_multiline_apply_argument_stays_with_callee inner
+      | _ -> false
+    )
+  | _ ->
+      false
+
+and application_breaks_after_equal = fun expr inline_body_doc ->
+  if not (Doc.is_multiline inline_body_doc) then
+    false
+  else
+    match Ast.Expr.view expr with
+    | Apply _ ->
+        let _, arguments = application_parts expr in
+        if application_has_many_labeled_arguments arguments then
+          false
+        else
+          (
+            match arguments with
+            | first :: _ when expr_multiline_apply_argument_stays_with_callee first -> false
+            | first :: _ -> Doc.is_multiline (expr_apply_argument_doc_with_leading_comment first)
+            | [] -> false
+          )
+    | _ -> false
+
 and application_doc = fun expr ->
   let callee, arguments = application_parts expr in
   match arguments with
   | [] -> expr_doc callee
   | arguments ->
       let callee_doc = expr_apply_callee_doc callee in
-      let argument_docs = List.map arguments ~fn:expr_apply_argument_doc in
+      let argument_docs = List.map arguments ~fn:expr_apply_argument_doc_with_leading_comment in
       if application_has_many_labeled_arguments arguments then
         Doc.concat [ callee_doc; Doc.line; Doc.indent 2 (Doc.join Doc.line argument_docs) ]
-      else if List.any argument_docs ~fn:Doc.is_multiline then
-        let inline_docs, multiline_docs = split_before_first_multiline_doc argument_docs in
-        let head_doc =
-          match inline_docs with
-          | [] -> callee_doc
-          | docs -> Doc.concat [ callee_doc; Doc.space; Doc.join Doc.space docs ]
-        in
-        Doc.concat [ head_doc; Doc.line; Doc.indent 2 (Doc.join Doc.line multiline_docs) ]
       else
-        Doc.group
-          (Doc.concat
-            [
-              callee_doc;
-              Doc.indent 2 (Doc.concat [ Doc.break (); Doc.join (Doc.break ()) argument_docs ]);
-            ])
+        match arguments, argument_docs with
+        | first_arg :: _, first_doc :: rest_docs when Doc.is_multiline first_doc
+        && expr_multiline_apply_argument_stays_with_callee first_arg ->
+            Doc.concat
+              [ callee_doc; Doc.space; first_doc; (
+                  match rest_docs with
+                  | [] -> Doc.empty
+                  | rest_docs -> Doc.concat [ Doc.line; Doc.indent 2 (Doc.join Doc.line rest_docs) ]
+                ); ]
+        | _ when List.any argument_docs ~fn:Doc.is_multiline ->
+            let inline_docs, multiline_docs = split_before_first_multiline_doc argument_docs in
+            let head_doc =
+              match inline_docs with
+              | [] -> callee_doc
+              | docs -> Doc.concat [ callee_doc; Doc.space; Doc.join Doc.space docs ]
+            in
+            Doc.concat [ head_doc; Doc.line; Doc.indent 2 (Doc.join Doc.line multiline_docs) ]
+        | _ ->
+            Doc.group
+              (Doc.concat
+                [
+                  callee_doc;
+                  Doc.indent 2 (Doc.concat [ Doc.break (); Doc.join (Doc.break ()) argument_docs ]);
+                ])
 
 and token_text_equal = fun left right ->
   String.equal (Ast.Token.text left) (Ast.Token.text right)
@@ -1828,6 +1978,16 @@ and let_module_expr_is_multiline = fun expr ->
   | Some module_expr -> Doc.is_multiline (let_module_body_doc module_expr)
   | None -> false
 
+and binding_operator_body_breaks = fun expr ->
+  match Ast.BindingOperatorExpr.cast expr with
+  | Some view -> (
+      match Ast.BindingOperatorExpr.body view with
+      | Some body -> expr_binding_body_breaks_after_equal body
+      || expr_has_unconsumed_boundary_leading_comment body
+      | None -> false
+    )
+  | None -> false
+
 and expr_binding_body_breaks_after_equal = fun expr ->
   match Ast.Expr.view expr with
   | If _
@@ -1836,6 +1996,7 @@ and expr_binding_body_breaks_after_equal = fun expr ->
   | Try _
   | Sequence _
   | Assign _ -> true
+  | BindingOperator _ -> binding_operator_body_breaks expr
   | LocalOpen _ -> Doc.is_multiline (local_open_expr_doc expr)
   | LetModule _ -> let_module_expr_is_multiline expr
   | Parenthesized _ -> expr_is_begin_block expr
@@ -1934,6 +2095,15 @@ and expr_doc_with_boundary_leading_comment_doc = fun expr body_doc ->
   | Some token when expr_has_unconsumed_boundary_leading_comment expr -> Doc.concat
     [ trimmed_leading_comment_token_doc token; Doc.line; body_doc ]
   | _ -> body_doc
+
+and expr_infix_right_operand_doc = fun expr ->
+  let operand_doc = expr_infix_operand_doc expr in
+  match first_descendant_token expr with
+  | Some token when token_has_inline_leading_comment token -> Doc.concat
+    [ inline_leading_comment_token_doc token; Doc.space; operand_doc ]
+  | Some token when Ast.Token.has_leading_comment token -> Doc.concat
+    [ trimmed_leading_comment_token_doc token; Doc.line; operand_doc ]
+  | _ -> operand_doc
 
 and parenthesized_expr_multiline_body_doc = fun inner ->
   Doc.concat [ Doc.lparen; Doc.line; Doc.indent 2 (expr_doc inner); Doc.line; Doc.rparen ]
@@ -2082,7 +2252,7 @@ and expr_doc_with_view = fun expr (view: Ast.Expr.view) ->
           Doc.space;
           infix_operator_doc expr operator;
           Doc.space;
-          expr_infix_operand_doc right;
+          expr_infix_right_operand_doc right;
         ]
   | Infix _ ->
       unsupported "incomplete infix expression"
@@ -2424,6 +2594,23 @@ and record_expr_doc = fun expr ->
   | Some _ -> Doc.concat [ Doc.lbrace; record_expr_body_doc expr; Doc.rbrace ]
   | None -> Doc.concat [ Doc.lbrace; record_expr_body_doc expr; Doc.rbrace ]
 
+and expr_child_exprs = fun expr ->
+  let children = ref [] in
+  Ast.Expr.for_each_child_expr expr ~fn:(fun child -> children := child :: !children);
+  List.reverse !children
+
+and local_open_poly_variant_record_doc = fun expr dot_token opening_token body closing_token ->
+  match expr_child_exprs expr with
+  | prefix :: _ when not (Ast.Node.raw_range prefix = Ast.Node.raw_range body) -> Some (Doc.concat
+    [
+      expr_doc prefix;
+      token_doc dot_token;
+      token_doc opening_token;
+      record_expr_body_doc ~force_multiline:true body;
+      token_doc closing_token;
+    ])
+  | _ -> None
+
 and local_open_expr_doc = fun expr ->
   let local_open =
     match Ast.LocalOpenExpr.cast expr with
@@ -2452,7 +2639,15 @@ and local_open_expr_doc = fun expr ->
           token_doc in_token;
         ] in
       let body_doc = expr_doc body in
-      if Doc.is_multiline body_doc then
+      let body_breaks =
+        Doc.is_multiline body_doc
+        || (
+          match Ast.Expr.view body with
+          | LocalOpen _ -> true
+          | _ -> false
+        )
+      in
+      if body_breaks then
         Doc.concat [ head; Doc.line; Doc.indent 2 body_doc ]
       else
         Doc.concat [ head; Doc.space; body_doc ]
@@ -2488,6 +2683,23 @@ and local_open_expr_doc = fun expr ->
                 | _ -> expr_doc body
               ); token_doc closing_token; ]
         )
+  | Delimited {
+    module_path=None;
+    dot_token=Some dot_token;
+    opening_token=Some opening_token;
+    body=Some body;
+    closing_token=Some closing_token;
+
+  } when (
+    match Ast.Expr.view body with
+    | Record
+    | RecordUpdate -> true
+    | _ -> false
+  ) -> (
+      match local_open_poly_variant_record_doc expr dot_token opening_token body closing_token with
+      | Some doc -> doc
+      | None -> unsupported "incomplete delimited local open expression"
+    )
   | Delimited _ ->
       unsupported "incomplete delimited local open expression"
 
@@ -2718,15 +2930,27 @@ and binding_operator_expr_doc = fun expr ->
     view
     ~fn:(fun clause -> clauses := binding_operator_clause_doc clause :: !clauses);
   match List.reverse !clauses, Ast.BindingOperatorExpr.in_token view, Ast.BindingOperatorExpr.body view with
-  | [], _, _ -> unsupported "binding operator expression without binding"
-  | _, None, _ -> unsupported "binding operator expression without in"
-  | _, _, None -> unsupported "binding operator expression without body"
-  | clauses, Some in_token, Some body -> Doc.concat
-    [ Doc.join Doc.space clauses; Doc.space; token_doc in_token; Doc.space; expr_doc body; ]
+  | [], _, _ ->
+      unsupported "binding operator expression without binding"
+  | _, None, _ ->
+      unsupported "binding operator expression without in"
+  | _, _, None ->
+      unsupported "binding operator expression without body"
+  | clauses, Some in_token, Some body ->
+      let head = Doc.concat [ Doc.join Doc.space clauses; Doc.space; token_doc in_token ] in
+      if
+        expr_binding_body_breaks_after_equal body || expr_has_unconsumed_boundary_leading_comment body
+      then
+        Doc.concat [ head; Doc.line; expr_doc_with_boundary_leading_comment body ]
+      else
+        Doc.concat [ head; Doc.space; expr_doc body ]
 
 and split_typed_binding_pattern = fun pattern ->
   match Ast.Pattern.view pattern with
-  | Constraint { pattern=Some pattern; annotation=Some annotation } -> (pattern, Some annotation)
+  | Constraint { pattern=Some pattern; annotation=Some annotation } -> (
+    pattern,
+    Some (TypeAnnotation annotation)
+  )
   | _ -> (pattern, None)
 
 and collect_binding_head_parameters = fun pattern ->
@@ -2737,33 +2961,101 @@ and collect_binding_head_parameters = fun pattern ->
   in
   collect pattern []
 
-and split_parameterized_binding_annotation = fun parameters ->
-  match parameters with
-  | [ parameter ] -> (
-      let parameter, annotation = split_typed_binding_pattern parameter in
-      match annotation with
-      | Some annotation ->
-          let first_parameter, rest_parameters = collect_binding_head_parameters parameter in
-          (
-            match rest_parameters with
-            | [] -> (parameters, None)
-            | _ -> (first_parameter :: rest_parameters, Some annotation)
-          )
-      | None -> (parameters, None)
+and parameter_colon_has_leading_space = fun parameter ->
+  match Ast.Node.first_child_token parameter ~kind:Kind.COLON with
+  | Some colon -> not (String.is_empty (Ast.Token.leading_text colon))
+  | None -> false
+
+and split_labeled_parameter_binding_annotation = fun parameter ->
+  match Ast.Parameter.view parameter with
+  | Labeled { pattern=Some annotation; _ }
+  | Optional { pattern=Some annotation; _ } when parameter_colon_has_leading_space parameter -> Some (TokenAnnotation (node_tokens
+    annotation))
+  | _ -> None
+
+and binding_head_parameter_doc = function
+  | PatternParameter pattern -> pattern_doc pattern
+  | LabelOnlyParameter pattern -> (
+      match Ast.Pattern.view pattern with
+      | LabeledParam parameter -> (
+          match Ast.Parameter.view parameter with
+          | Labeled { label=Some label; _ } -> Doc.concat [ Doc.text "~"; token_doc label ]
+          | _ -> pattern_doc pattern
+        )
+      | OptionalParam parameter
+      | OptionalParamDefault parameter -> (
+          match Ast.Parameter.view parameter with
+          | Optional { label=Some label; _ }
+          | OptionalDefault { label=Some label; _ } -> Doc.concat [ Doc.text "?"; token_doc label ]
+          | _ -> pattern_doc pattern
+        )
+      | _ ->
+          pattern_doc pattern
     )
-  | _ -> (parameters, None)
+
+and binding_head_parameter_is_labeled = function
+  | PatternParameter pattern
+  | LabelOnlyParameter pattern -> (
+      match Ast.Pattern.view pattern with
+      | LabeledParam _
+      | OptionalParam _
+      | OptionalParamDefault _ -> true
+      | _ -> false
+    )
+
+and pattern_parameters = fun parameters ->
+  List.map parameters ~fn:(fun parameter -> PatternParameter parameter)
+
+and split_parameterized_binding_annotation = fun parameters ->
+  match List.reverse parameters with
+  | [] -> ([], None)
+  | last :: prefix_rev -> (
+      match Ast.Pattern.view last with
+      | LabeledParam parameter
+      | OptionalParam parameter
+      | OptionalParamDefault parameter -> (
+          match split_labeled_parameter_binding_annotation parameter with
+          | Some annotation -> (
+            pattern_parameters (List.reverse prefix_rev) @ [ LabelOnlyParameter last ],
+            Some annotation
+          )
+          | None -> (pattern_parameters parameters, None)
+        )
+      | _ ->
+          let parameter, annotation = split_typed_binding_pattern last in
+          match annotation with
+          | Some annotation ->
+              let first_parameter, rest_parameters = collect_binding_head_parameters parameter in
+              let prefix = List.reverse prefix_rev in
+              (
+                match rest_parameters with
+                | [] -> (
+                    match Ast.Pattern.view first_parameter with
+                    | LabeledParam _
+                    | OptionalParam _
+                    | OptionalParamDefault _ -> (
+                      pattern_parameters prefix @ [ PatternParameter first_parameter ],
+                      Some annotation
+                    )
+                    | _ -> (pattern_parameters parameters, None)
+                  )
+                | _ -> (
+                  pattern_parameters (prefix @ (first_parameter :: rest_parameters)),
+                  Some annotation
+                )
+              )
+          | None -> (pattern_parameters parameters, None)
+    )
 
 and binding_annotation_doc = fun parameters annotation ->
-  let annotation_doc = type_expr_binding_annotation_doc annotation in
+  let annotation_doc =
+    match annotation with
+    | TypeAnnotation annotation -> type_expr_binding_annotation_doc annotation
+    | TokenAnnotation tokens -> type_tokens_inline_doc tokens
+  in
   let loose_colon =
     match List.reverse parameters with
-    | last :: _ -> (
-        match Ast.Pattern.view last with
-        | LabeledParam _
-        | OptionalParam _
-        | OptionalParamDefault _ -> true
-        | _ -> false
-      )
+    | last :: _ -> binding_head_parameter_is_labeled last
     | [] -> false
   in
   if Doc.is_multiline annotation_doc then
@@ -2828,7 +3120,7 @@ and let_binding_doc = fun ?(force_body_break_after_equal = false) binding ->
       let parameters, annotation_from_parameters = split_parameterized_binding_annotation parameters in
       let annotation =
         match parts.annotation with
-        | Some annotation -> Some annotation
+        | Some annotation -> Some (TypeAnnotation annotation)
         | None -> (
             match annotation_from_parameters with
             | Some annotation -> Some annotation
@@ -2840,7 +3132,7 @@ and let_binding_doc = fun ?(force_body_break_after_equal = false) binding ->
             match parameters with
             | [] -> Doc.empty
             | parameters -> Doc.concat
-              [ Doc.space; Doc.join Doc.space (List.map parameters ~fn:pattern_doc) ]
+              [ Doc.space; Doc.join Doc.space (List.map parameters ~fn:binding_head_parameter_doc) ]
           ); (
             match annotation with
             | Some annotation -> binding_annotation_doc parameters annotation
@@ -2866,14 +3158,10 @@ and let_binding_doc = fun ?(force_body_break_after_equal = false) binding ->
                       || expr_binding_body_breaks_after_equal body
                       || expr_has_unconsumed_boundary_leading_comment body
                       || match Ast.Expr.view body with
-                      | Apply _ ->
-                          let _, arguments = application_parts body in
-                          Doc.is_multiline inline_body_doc
-                          && not (application_has_many_labeled_arguments arguments)
-                      | Parenthesized { inner=Some inner } ->
-                          expr_parenthesized_inner_breaks_after_equal inner
-                      | _ ->
-                          false
+                      | Apply _ -> application_breaks_after_equal body inline_body_doc
+                      | Parenthesized { inner=Some inner } -> expr_parenthesized_inner_breaks_after_equal
+                        inner
+                      | _ -> false
                     in
                     let body_doc =
                       if body_breaks then
@@ -2894,11 +3182,30 @@ and let_bindings_doc = fun ~keyword ~rec_token node ->
   match let_binding_nodes node with
   | [] -> unsupported (keyword ^ " declaration without binding")
   | first :: rest ->
+      let and_tokens = direct_child_tokens node
+      |> List.filter ~fn:(fun token -> token_kind_is token Kind.AND_KW) in
+      let rec zip_and_tokens tokens bindings =
+        match tokens, bindings with
+        | token :: tokens, binding :: bindings -> (Some token, binding) :: zip_and_tokens tokens bindings
+        | [], binding :: bindings -> (None, binding) :: zip_and_tokens [] bindings
+        | _, [] -> []
+      in
       let rest =
-        List.map
-          rest
-          ~fn:(fun binding ->
-            Doc.concat [ Doc.space; Doc.text "and"; Doc.space; let_binding_doc binding ])
+        zip_and_tokens and_tokens rest
+        |> List.map
+          ~fn:(fun (and_token, binding) ->
+            let keyword_doc =
+              match and_token with
+              | Some token -> token_doc token
+              | None -> Doc.text "and"
+            in
+            let leading =
+              match and_token with
+              | Some token when Ast.Token.has_leading_comment token -> Doc.concat
+                [ trimmed_leading_comment_token_doc token; Doc.line ]
+              | _ -> Doc.empty
+            in
+            Doc.concat [ Doc.space; leading; keyword_doc; Doc.space; let_binding_doc binding ])
       in
       Doc.concat
         (
@@ -2944,16 +3251,36 @@ let let_decl_block_doc = fun ?(force_body_break_after_equal = false) decl ->
   match let_binding_nodes decl with
   | [] -> unsupported "let declaration without binding"
   | first :: rest ->
+      let and_tokens = direct_child_tokens decl
+      |> List.filter ~fn:(fun token -> token_kind_is token Kind.AND_KW) in
+      let rec zip_and_tokens tokens bindings =
+        match tokens, bindings with
+        | token :: tokens, binding :: bindings -> (Some token, binding) :: zip_and_tokens tokens bindings
+        | [], binding :: bindings -> (None, binding) :: zip_and_tokens [] bindings
+        | _, [] -> []
+      in
       let rest =
-        List.map
-          rest
-          ~fn:(fun binding ->
+        zip_and_tokens and_tokens rest
+        |> List.map
+          ~fn:(fun (and_token, binding) ->
+            let keyword_doc =
+              match and_token with
+              | Some token -> token_doc token
+              | None -> Doc.text "and"
+            in
+            let leading =
+              match and_token with
+              | Some token when Ast.Token.has_leading_comment token -> Doc.concat
+                [ trimmed_leading_comment_token_doc token; Doc.line ]
+              | _ -> Doc.empty
+            in
             Doc.concat
               [
                 blank_line;
-                Doc.text "and";
+                leading;
+                keyword_doc;
                 Doc.space;
-                let_binding_doc ~force_body_break_after_equal binding;
+                let_binding_doc ~force_body_break_after_equal binding
               ])
       in
       Doc.concat
@@ -3190,37 +3517,6 @@ let split_top_level_all = fun tokens ~matches ->
   in
   loop [] [] 0 tokens
 
-let type_token_needs_space = fun previous current ->
-  match previous, current with
-  | (_, kind) when Kind.(kind = RPAREN || kind = RBRACKET || kind = BAR_RBRACKET || kind = RBRACE) -> false
-  | (_, kind) when Kind.(kind = COMMA || kind = SEMI || kind = COLON) -> false
-  | (kind, _) when Kind.(kind = LPAREN || kind = LBRACKET || kind = LBRACKET_BAR || kind = LBRACE) -> false
-  | (kind, _) when Kind.(kind = QUOTE || kind = BACKTICK || kind = QUESTION || kind = TILDE) -> false
-  | (kind, _) when Kind.(kind = AT || kind = ATAT) -> false
-  | (_, kind) when Kind.(kind = DOT) -> false
-  | (kind, current) when Kind.(kind = DOT) -> Kind.(current = QUOTE)
-  | (kind, _) when Kind.(kind = COMMA) -> true
-  | (_, kind) when Kind.(kind = ARROW || kind = STAR || kind = OF_KW || kind = AS_KW) -> true
-  | (kind, _) when Kind.(kind = ARROW || kind = STAR || kind = OF_KW || kind = AS_KW) -> true
-  | (kind, _) when Kind.(kind = COLON) -> false
-  | _ -> true
-
-let type_tokens_inline_doc = fun tokens ->
-  let rec loop previous acc = function
-    | [] -> acc
-    | token :: rest ->
-        let current = Ast.Token.kind token in
-        let piece = token_doc token in
-        let acc =
-          match previous with
-          | Some previous when type_token_needs_space previous current -> Doc.concat
-            [ acc; Doc.space; piece ]
-          | _ -> Doc.concat [ acc; piece ]
-        in
-        loop (Some current) acc rest
-  in
-  loop None Doc.empty tokens
-
 let declaration_name_doc = fun tokens ->
   match tokens with
   | opening :: rest when token_kind_is opening Kind.LPAREN ->
@@ -3331,51 +3627,40 @@ let field_type_breaks_after_colon = fun tokens ->
   && token_kind_is module_token Kind.MODULE_KW -> contains_and tokens
   | _ -> false
 
-let inline_leading_comment_token_doc = fun token ->
-  leading_comment_text token |> strip_trailing_whitespace |> Doc.text
-
-let token_has_inline_leading_comment = fun token ->
-  let text = Ast.Token.leading_text token in
-  let length = String.length text in
-  let rec loop index =
-    if Int.(index >= length) then
-      false
-    else
-      match String.get_unchecked text ~at:index with
-      | ' '
-      | '\t'
-      | '\r' -> loop Int.(index + 1)
-      | '\n' -> false
-      | _ -> Ast.Token.has_leading_comment token
-  in
-  loop 0
-
 let trailing_field_comment_doc = function
   | Some token when token_has_inline_leading_comment token -> Some (Doc.concat
     [ Doc.spaces 2; inline_leading_comment_token_doc token ])
   | _ -> None
 
 let record_field_doc = fun ~inline ?trailing_comment tokens ->
-  match split_top_level_token tokens ~matches:(fun kind -> Kind.(kind = COLON)) with
-  | Some (name_tokens, _colon, type_tokens) ->
-      let type_doc = type_tokens_doc type_tokens in
-      Doc.concat
-        [ type_tokens_inline_doc name_tokens; Doc.colon; (
-            if (not inline) && field_type_breaks_after_colon type_tokens then
-              Doc.concat [ Doc.line; Doc.indent 2 type_doc ]
-            else
-              Doc.concat [ Doc.space; type_doc ]
-          ); (
-            if inline then
-              Doc.empty
-            else
-              Doc.semi
-          ); (
-            match trailing_comment with
-            | Some trailing_comment -> trailing_comment
-            | None -> Doc.empty
-          ); ]
-  | None -> type_tokens_inline_doc tokens
+  let field_doc =
+    match split_top_level_token tokens ~matches:(fun kind -> Kind.(kind = COLON)) with
+    | Some (name_tokens, _colon, type_tokens) ->
+        let type_doc = type_tokens_doc type_tokens in
+        Doc.concat
+          [ type_tokens_inline_doc name_tokens; Doc.colon; (
+              if (not inline) && field_type_breaks_after_colon type_tokens then
+                Doc.concat [ Doc.line; Doc.indent 2 type_doc ]
+              else
+                Doc.concat [ Doc.space; type_doc ]
+            ); (
+              if inline then
+                Doc.empty
+              else
+                Doc.semi
+            ); (
+              match trailing_comment with
+              | Some trailing_comment -> trailing_comment
+              | None -> Doc.empty
+            ); ]
+    | None -> type_tokens_inline_doc tokens
+  in
+  match tokens with
+  | first :: _ when (not inline)
+  && Ast.Token.has_leading_comment first
+  && not (token_has_inline_leading_comment first) -> Doc.concat
+    [ trimmed_leading_comment_token_doc first; Doc.line; field_doc ]
+  | _ -> field_doc
 
 let record_body_parts = fun tokens ->
   let tokens, closing =
@@ -3614,7 +3899,7 @@ let variant_body_doc = fun tokens ->
         let row =
           match pipe_token with
           | Some pipe_token when Ast.Token.has_leading_comment pipe_token -> Doc.concat
-            [ leading_comment_token_doc pipe_token; row ]
+            [ trimmed_leading_comment_token_doc pipe_token; Doc.line; row ]
           | _ -> row
         in
         row :: row_docs false rest
@@ -3854,8 +4139,10 @@ let module_token_needs_space = fun ~depth previous current ->
   | (_, kind) when Kind.(kind = COMMA) -> false
   | (_, kind) when Kind.(kind = DOT) -> false
   | (_, kind) when Kind.(kind = COLON) && Int.equal depth 0 -> false
+  | (_, kind) when Kind.(kind = AT || kind = ATAT || kind = PERCENT) -> false
   | (kind, _) when Kind.(kind = LPAREN || kind = LBRACKET || kind = LBRACE) -> false
   | (kind, _) when Kind.(kind = DOT) -> false
+  | (kind, _) when Kind.(kind = AT || kind = ATAT || kind = PERCENT) -> false
   | _ -> true
 
 let module_tokens_doc = fun tokens ->
@@ -4256,16 +4543,56 @@ and structure_body_item_doc = fun tokens ->
   | first :: _ -> Doc.concat [ leading_comment_token_paragraph_doc first; body ]
   | [] -> body
 
+and structure_body_expr_tokens_doc = fun tokens ->
+  match tokens with
+  | if_token :: rest when token_kind_is if_token Kind.IF_KW -> (
+      match split_top_level_token rest ~matches:(fun kind -> Kind.(kind = THEN_KW)) with
+      | Some (condition_tokens, then_token, then_else_tokens) -> (
+          match split_top_level_token then_else_tokens ~matches:(fun kind -> Kind.(kind = ELSE_KW)) with
+          | Some (then_tokens, else_token, else_tokens) ->
+              Doc.concat
+                [
+                  token_doc if_token;
+                  Doc.space;
+                  module_expr_tokens_doc condition_tokens;
+                  Doc.space;
+                  token_doc then_token;
+                  Doc.line;
+                  Doc.indent 2 (module_expr_tokens_doc then_tokens);
+                  Doc.line;
+                  token_doc else_token;
+                  Doc.line;
+                  Doc.indent 2 (module_expr_tokens_doc else_tokens);
+                ]
+          | None -> module_expr_tokens_doc tokens
+        )
+      | None -> module_expr_tokens_doc tokens
+    )
+  | _ -> module_expr_tokens_doc tokens
+
 and structure_body_let_item_doc = fun tokens ->
   match split_top_level_token tokens ~matches:(fun kind -> Kind.(kind = EQ)) with
-  | Some (head_tokens, equals_token, body_tokens) -> Doc.concat
-    [
-      module_tokens_doc head_tokens;
-      Doc.space;
-      token_doc equals_token;
-      Doc.space;
-      module_expr_tokens_doc body_tokens;
-    ]
+  | Some (head_tokens, equals_token, body_tokens) ->
+      if match body_tokens with
+        | token :: _ -> token_kind_is token Kind.IF_KW
+        | [] -> false then
+        Doc.concat
+          [
+            module_tokens_doc head_tokens;
+            Doc.space;
+            token_doc equals_token;
+            Doc.line;
+            Doc.indent 2 (structure_body_expr_tokens_doc body_tokens);
+          ]
+      else
+        Doc.concat
+          [
+            module_tokens_doc head_tokens;
+            Doc.space;
+            token_doc equals_token;
+            Doc.space;
+            structure_body_expr_tokens_doc body_tokens;
+          ]
   | None -> module_tokens_doc tokens
 
 let split_module_members = fun tokens ->
