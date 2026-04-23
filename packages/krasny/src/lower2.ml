@@ -295,6 +295,47 @@ let token_is_operator_word = fun token ->
   | "mod" -> true
   | _ -> false
 
+let token_is_symbolic_operator_part = fun token ->
+  match Ast.Token.kind token with
+  | Kind.PLUS
+  | Kind.MINUS
+  | Kind.STAR
+  | Kind.SLASH
+  | Kind.PERCENT
+  | Kind.CARET
+  | Kind.EQ
+  | Kind.LT
+  | Kind.GT
+  | Kind.LTE
+  | Kind.GTE
+  | Kind.NE
+  | Kind.BANG
+  | Kind.AMPAMP
+  | Kind.BARBAR
+  | Kind.PIPE
+  | Kind.AMPERSAND
+  | Kind.AT
+  | Kind.HASH
+  | Kind.TILDE
+  | Kind.QUESTION
+  | Kind.DOLLAR
+  | Kind.COLONCOLON
+  | Kind.COLONEQ
+  | Kind.ARROW
+  | Kind.LEFT_ARROW
+  | Kind.STARSTAR
+  | Kind.EQEQ
+  | Kind.BANGEQ
+  | Kind.ATAT
+  | Kind.PIPEGT
+  | Kind.PERCENTGT
+  | Kind.LTPERCENT
+  | Kind.PLUSDOT
+  | Kind.MINUSDOT
+  | Kind.STARDOT
+  | Kind.SLASHDOT -> true
+  | _ -> false
+
 let is_ascii_alpha = function
   | 'a' .. 'z'
   | 'A' .. 'Z' -> true
@@ -969,6 +1010,36 @@ let rec type_expr_doc = fun type_expr ->
       Doc.concat [ type_expr_doc left; Doc.space; Doc.arrow; Doc.space; type_expr_doc right ]
   | Arrow _ ->
       unsupported "incomplete arrow type expression"
+  | Poly { body=Some body } ->
+      let names = ref [] in
+      Ast.TypeExpr.for_each_poly_type_name
+        type_expr
+        ~fn:(fun name -> names := token_doc name :: !names);
+      (
+        match List.reverse !names with
+        | [] -> unsupported "locally abstract type without names"
+        | names -> Doc.concat
+          [
+            Doc.text "type";
+            Doc.space;
+            Doc.join Doc.space names;
+            Doc.text ".";
+            Doc.space;
+            type_expr_doc body;
+          ]
+      )
+  | Poly { body=None } ->
+      unsupported "locally abstract type without body"
+  | Labeled { optional_token; label=Some label; annotation=Some annotation } ->
+      Doc.concat
+        [
+          optional_token_doc optional_token;
+          token_doc label;
+          Doc.text ":";
+          type_expr_doc annotation;
+        ]
+  | Labeled _ ->
+      unsupported "incomplete labeled type expression"
   | Tuple { separator=Star; _ } ->
       let items = ref [] in
       Ast.TypeExpr.for_each_child_type
@@ -1005,14 +1076,47 @@ let rec type_expr_doc = fun type_expr ->
   | Unknown _ ->
       unsupported "unsupported type expression"
 
+let type_expr_poly_names_doc = fun type_expr ->
+  let names = ref [] in
+  Ast.TypeExpr.for_each_poly_type_name type_expr ~fn:(fun name -> names := token_doc name :: !names);
+  match List.reverse !names with
+  | [] -> None
+  | names -> Some (Doc.concat
+    [ Doc.text "type"; Doc.space; Doc.join Doc.space names; Doc.text "."; Doc.space ])
+
+let type_expr_arrow_chain_docs = fun type_expr ->
+  let rec collect type_expr docs =
+    match Ast.TypeExpr.view type_expr with
+    | Arrow { left=Some left; right=Some right } -> collect right (type_expr_doc left :: docs)
+    | _ -> List.reverse (type_expr_doc type_expr :: docs)
+  in
+  collect type_expr []
+
+let type_expr_binding_annotation_doc = fun type_expr ->
+  match Ast.TypeExpr.view type_expr with
+  | Poly { body=Some body } -> (
+      match type_expr_poly_names_doc type_expr with
+      | None -> type_expr_doc type_expr
+      | Some prefix -> (
+          match type_expr_arrow_chain_docs body with
+          | _ :: _ :: _ as parts -> Doc.concat
+            [ prefix; Doc.join (Doc.concat [ Doc.space; Doc.arrow; Doc.line ]) parts; ]
+          | _ -> type_expr_doc type_expr
+        )
+    )
+  | _ -> type_expr_doc type_expr
+
 let rec pattern_doc = fun pattern ->
   match Ast.Pattern.view pattern with
   | Wildcard ->
       Doc.text "_"
   | Path { path } ->
       path_doc path
-  | Literal { token=Some token } ->
-      literal_token_doc token
+  | Literal { token=Some token } -> (
+      match Ast.Pattern.literal_sign_token pattern with
+      | Some sign -> Doc.concat [ token_doc sign; literal_token_doc token ]
+      | None -> literal_token_doc token
+    )
   | Literal { token=None } ->
       unsupported "literal pattern without token"
   | Parenthesized { inner=Some inner } when pattern_is_operator_word_path inner ->
@@ -1223,14 +1327,21 @@ and local_open_pattern_doc = fun pattern ->
   | Some local_open -> (
       match Ast.LocalOpenPattern.dot_token local_open, Ast.LocalOpenPattern.opening_token local_open, Ast.LocalOpenPattern.pattern
         local_open, Ast.LocalOpenPattern.closing_token local_open with
-      | Some dot_token, Some opening_token, Some inner, Some closing_token -> Doc.concat
-        [
-          local_open_pattern_path_doc local_open;
-          token_doc dot_token;
-          token_doc opening_token;
-          pattern_doc inner;
-          token_doc closing_token;
-        ]
+      | Some dot_token, Some opening_token, Some inner, Some closing_token ->
+          Doc.concat
+            [
+              local_open_pattern_path_doc local_open;
+              token_doc dot_token;
+              token_doc opening_token;
+              (
+                match Ast.Pattern.view inner with
+                | Record -> record_pattern_body_doc inner
+                | List -> list_pattern_body_doc inner
+                | Array -> array_pattern_body_doc inner
+                | _ -> pattern_doc inner
+              );
+              token_doc closing_token;
+            ]
       | _ -> unsupported "incomplete local open pattern"
     )
 
@@ -1244,7 +1355,7 @@ and record_pattern_field_doc = fun (field: Ast.RecordPattern.field) ->
     )
   | None -> unsupported "unsupported record pattern field"
 
-and record_pattern_doc = fun pattern ->
+and record_pattern_body_doc = fun pattern ->
   let fields = ref [] in
   Ast.RecordPattern.for_each_field
     pattern
@@ -1258,23 +1369,25 @@ and record_pattern_doc = fun pattern ->
     |> List.reverse
   in
   match fields with
-  | [] -> Doc.concat [ Doc.lbrace; Doc.rbrace ]
+  | [] -> Doc.empty
   | fields when Int.(List.length fields > 3) -> Doc.concat
-    [
-      Doc.lbrace;
-      Doc.line;
-      Doc.indent 2 (Doc.join (Doc.concat [ Doc.semi; Doc.line ]) fields);
-      Doc.line;
-      Doc.rbrace;
-    ]
+    [ Doc.line; Doc.indent 2 (Doc.join (Doc.concat [ Doc.semi; Doc.line ]) fields); Doc.line; ]
   | fields -> Doc.concat
-    [
-      Doc.lbrace;
-      Doc.space;
-      Doc.join (Doc.concat [ Doc.semi; Doc.space ]) fields;
-      Doc.space;
-      Doc.rbrace;
-    ]
+    [ Doc.space; Doc.join (Doc.concat [ Doc.semi; Doc.space ]) fields; Doc.space; ]
+
+and record_pattern_doc = fun pattern ->
+  Doc.concat [ Doc.lbrace; record_pattern_body_doc pattern; Doc.rbrace ]
+
+and list_pattern_body_doc = fun pattern ->
+  match child_pattern_docs pattern |> List.map ~fn:pattern_doc with
+  | [] -> Doc.empty
+  | items -> Doc.concat
+    [ Doc.space; Doc.join (Doc.concat [ Doc.semi; Doc.space ]) items; Doc.space; ]
+
+and array_pattern_body_doc = fun pattern ->
+  child_pattern_docs pattern
+  |> List.map ~fn:pattern_doc
+  |> Doc.join (Doc.concat [ Doc.semi; Doc.space ])
 
 and compact_record_pattern_field_doc = fun (field: Ast.RecordPattern.field) ->
   match field.path with
@@ -1345,6 +1458,16 @@ and pattern_is_operator_word_path = fun pattern ->
 and expr_is_operator_word_path = fun expr ->
   match Ast.Expr.view expr with
   | Path { path } -> Option.is_some (path_single_operator_word_token path)
+  | _ -> false
+
+and expr_is_operator_value_path = fun expr ->
+  match Ast.Expr.view expr with
+  | Path { path } ->
+      Option.is_some (path_single_operator_word_token path) || (
+        match direct_child_tokens path with
+        | [] -> false
+        | tokens -> List.all tokens ~fn:token_is_symbolic_operator_part
+      )
   | _ -> false
 
 and pattern_binding_ident_token = fun pattern ->
@@ -2238,14 +2361,28 @@ and local_open_expr_doc = fun expr ->
     body=Some body;
     closing_token=Some closing_token;
 
-  } -> Doc.concat
-    [
-      path_doc module_path;
-      token_doc dot_token;
-      token_doc opening_token;
-      expr_doc body;
-      token_doc closing_token;
-    ]
+  } ->
+      Doc.concat
+        (
+          if expr_is_operator_value_path body then
+            [
+              path_doc module_path;
+              token_doc dot_token;
+              token_doc opening_token;
+              Doc.space;
+              expr_doc body;
+              Doc.space;
+              token_doc closing_token;
+            ]
+          else
+            [
+              path_doc module_path;
+              token_doc dot_token;
+              token_doc opening_token;
+              expr_doc body;
+              token_doc closing_token;
+            ]
+        )
   | Delimited _ -> unsupported "incomplete delimited local open expression"
 
 and let_module_path_body_doc = fun expr ->
@@ -2509,6 +2646,7 @@ and split_parameterized_binding_annotation = fun parameters ->
   | _ -> (parameters, None)
 
 and binding_annotation_doc = fun parameters annotation ->
+  let annotation_doc = type_expr_binding_annotation_doc annotation in
   let loose_colon =
     match List.reverse parameters with
     | last :: _ -> (
@@ -2520,10 +2658,15 @@ and binding_annotation_doc = fun parameters annotation ->
       )
     | [] -> false
   in
-  if loose_colon then
-    Doc.concat [ Doc.space; Doc.text ":"; Doc.space; type_expr_doc annotation ]
+  if Doc.is_multiline annotation_doc then
+    if loose_colon then
+      Doc.concat [ Doc.space; Doc.text ":"; Doc.line; Doc.indent 2 annotation_doc ]
+    else
+      Doc.concat [ Doc.text ":"; Doc.line; Doc.indent 2 annotation_doc ]
+  else if loose_colon then
+    Doc.concat [ Doc.space; Doc.text ":"; Doc.space; annotation_doc ]
   else
-    Doc.concat [ Doc.text ":"; Doc.space; type_expr_doc annotation ]
+    Doc.concat [ Doc.text ":"; Doc.space; annotation_doc ]
 
 and expr_contains_labeled_argument = fun expr ->
   let rec loop expr =

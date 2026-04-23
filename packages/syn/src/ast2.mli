@@ -94,6 +94,8 @@ module TypeExpr: sig
     | Var of { name: Token.t option }
     | Wildcard
     | Arrow of { left: t option; right: t option }
+    | Poly of { body: t option }
+    | Labeled of { optional_token: Token.t option; label: Token.t option; annotation: t option }
     | Tuple of { left: t option; right: t option; separator: tuple_separator }
     | Apply of { argument: t option; constructor: t option }
     | Parenthesized of { inner: t option }
@@ -103,6 +105,8 @@ module TypeExpr: sig
   val cast: Node.t -> t option
 
   val view: t -> view
+
+  val for_each_poly_type_name: t -> fn:(Token.t -> unit) -> unit
 
   val for_each_child_type: t -> fn:(t -> unit) -> unit
 end
@@ -142,6 +146,8 @@ module Pattern: sig
   val view: t -> view
 
   val literal_token: t -> Token.t option
+
+  val literal_sign_token: t -> Token.t option
 
   val for_each_child_pattern: t -> fn:(t -> unit) -> unit
 end

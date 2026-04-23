@@ -169,6 +169,8 @@ let is_type_expr_kind = function
   | Syntax_kind2.VAR_TYPE
   | Syntax_kind2.WILDCARD_TYPE
   | Syntax_kind2.ARROW_TYPE
+  | Syntax_kind2.POLY_TYPE
+  | Syntax_kind2.LABELED_TYPE
   | Syntax_kind2.TUPLE_TYPE
   | Syntax_kind2.APPLY_TYPE
   | Syntax_kind2.PAREN_TYPE
@@ -537,6 +539,8 @@ module TypeExpr = struct
     | Var of { name: Token.t option }
     | Wildcard
     | Arrow of { left: t option; right: t option }
+    | Poly of { body: t option }
+    | Labeled of { optional_token: Token.t option; label: Token.t option; annotation: t option }
     | Tuple of { left: t option; right: t option; separator: tuple_separator }
     | Apply of { argument: t option; constructor: t option }
     | Parenthesized of { inner: t option }
@@ -584,6 +588,16 @@ module TypeExpr = struct
           left = nth_child_node_matching type_expr 0 ~matches:is_type_expr_kind;
           right = nth_child_node_matching type_expr 1 ~matches:is_type_expr_kind
         }
+    | Syntax_kind2.POLY_TYPE ->
+        Poly { body = first_child_node_matching type_expr ~matches:is_type_expr_kind }
+    | Syntax_kind2.LABELED_TYPE ->
+        Labeled {
+          optional_token = first_child_token_matching
+            type_expr
+            ~matches:(fun kind -> Syntax_kind2.(kind = QUESTION));
+          label = first_ident_token type_expr;
+          annotation = first_child_node_matching type_expr ~matches:is_type_expr_kind
+        }
     | Syntax_kind2.TUPLE_TYPE ->
         Tuple {
           left = nth_child_node_matching type_expr 0 ~matches:is_type_expr_kind;
@@ -606,6 +620,30 @@ module TypeExpr = struct
 
   let for_each_child_type = fun (type_expr: type_expr) ~fn ->
     for_each_child_node_matching type_expr ~matches:is_type_expr_kind ~fn
+
+  let for_each_poly_type_name = fun (type_expr: type_expr) ~fn ->
+    let rec unwrap_poly_node type_expr =
+      if node_kind_is type_expr Syntax_kind2.TYPE_EXPR then
+        match first_child_node_matching type_expr ~matches:is_type_expr_kind with
+        | Some child -> unwrap_poly_node child
+        | None -> type_expr
+      else
+        type_expr
+    in
+    let type_expr = unwrap_poly_node type_expr in
+    let before_dot = ref true in
+    Syntax_tree.for_each_child type_expr.tree (syntax_node type_expr)
+      ~fn:(
+        function
+        | Syntax_tree.Token id ->
+            let token = wrap_token type_expr.tree id in
+            if token_kind_is token Syntax_kind2.DOT then
+              before_dot := false
+            else if !before_dot && token_kind_is token Syntax_kind2.IDENT then
+              fn token
+        | Syntax_tree.Node _
+        | Syntax_tree.Missing _ -> ()
+      )
 end
 
 module Path = struct
@@ -1561,6 +1599,8 @@ module Pattern: sig
 
   val literal_token: t -> token option
 
+  val literal_sign_token: t -> token option
+
   val for_each_child_pattern: t -> fn:(t -> unit) -> unit
 end = struct
   type t = pattern
@@ -1600,7 +1640,22 @@ end = struct
     else
       None
 
-  let literal_token = Node.first_token
+  let literal_token = fun pattern ->
+    first_child_token_matching
+      pattern
+      ~matches:(fun kind ->
+        Syntax_kind2.(kind = INT
+        || kind = FLOAT
+        || kind = STRING
+        || kind = CHAR
+        || kind = TRUE_KW
+        || kind = FALSE_KW))
+
+  let literal_sign_token = fun pattern ->
+    first_child_token_matching
+      pattern
+      ~matches:(fun kind ->
+        Syntax_kind2.(kind = PLUS || kind = MINUS || kind = PLUSDOT || kind = MINUSDOT))
 
   let view = fun (pattern: pattern) ->
     match Node.kind pattern with
@@ -1955,9 +2010,29 @@ end = struct
 
   let dot_token = fun pattern -> Node.first_child_token pattern ~kind:Syntax_kind2.DOT
 
-  let opening_token = fun pattern -> Node.first_child_token pattern ~kind:Syntax_kind2.LPAREN
+  let delimiter_child = first_pattern_child
 
-  let closing_token = fun pattern -> Node.first_child_token pattern ~kind:Syntax_kind2.RPAREN
+  let opening_token = fun pattern ->
+    let matches kind =
+      Syntax_kind2.(kind = LPAREN || kind = LBRACE || kind = LBRACKET || kind = LBRACKET_BAR) in
+    match first_child_token_matching pattern ~matches with
+    | Some token -> Some token
+    | None -> (
+        match delimiter_child pattern with
+        | Some child -> first_child_token_matching child ~matches
+        | None -> None
+      )
+
+  let closing_token = fun pattern ->
+    let matches kind =
+      Syntax_kind2.(kind = RPAREN || kind = RBRACE || kind = RBRACKET || kind = BAR_RBRACKET) in
+    match first_child_token_matching pattern ~matches with
+    | Some token -> Some token
+    | None -> (
+        match delimiter_child pattern with
+        | Some child -> first_child_token_matching child ~matches
+        | None -> None
+      )
 
   let pattern = first_pattern_child
 

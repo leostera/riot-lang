@@ -355,6 +355,57 @@ let test_type_tuple_separator_views = fun _ctx ->
       )
   | _ -> Error "expected pair type declaration"
 
+let test_poly_labeled_and_signed_views = fun _ctx ->
+  let source = "let make:\n  type socket err. reader:(socket, err) reader -> t = fun ~reader -> value\n\
+                let f = function | -1 -> true | +2 -> false\n"
+  in
+  let root = parse_ml source |> Result.expect ~msg:"expected parse2 source file" in
+  let make_binding = nth_structure_item root 0
+  |> require_some ~msg:"expected make item"
+  |> binding_of_structure_item
+  |> Result.expect ~msg:"expected make binding" in
+  let annotation = Ast2.LetBinding.type_annotation make_binding |> require_some ~msg:"expected make type annotation" in
+  (
+    match Ast2.TypeExpr.view annotation with
+    | Ast2.TypeExpr.Poly { body=Some body } ->
+        let names = ref [] in
+        Ast2.TypeExpr.for_each_poly_type_name
+          annotation
+          ~fn:(fun token -> names := Ast2.Token.text token :: !names);
+        Test.assert_equal ~expected:[ "socket"; "err" ] ~actual:(List.reverse !names);
+        (
+          match Ast2.TypeExpr.view body with
+          | Ast2.TypeExpr.Arrow { left=Some left; right=Some _ } -> (
+              match Ast2.TypeExpr.view left with
+              | Ast2.TypeExpr.Labeled { label=Some label; annotation=Some _; _ } -> Test.assert_equal
+                ~expected:"reader"
+                ~actual:(Ast2.Token.text label)
+              | _ -> panic "expected labeled arrow argument type"
+            )
+          | _ -> panic "expected poly type arrow body"
+        )
+    | _ -> panic "expected poly type annotation"
+  );
+  let function_body = nth_structure_item root 1
+  |> require_some ~msg:"expected function item"
+  |> binding_of_structure_item
+  |> Result.expect ~msg:"expected function binding"
+  |> body_of_binding
+  |> Result.expect ~msg:"expected function body" in
+  match Ast2.Expr.view function_body with
+  | Ast2.Expr.Function { first_case=Some first_case } -> (
+      let case = Ast2.MatchCase.view first_case in
+      let pattern = case.Ast2.MatchCase.pattern |> require_some ~msg:"expected first function case pattern" in
+      match Ast2.Pattern.view pattern with
+      | Ast2.Pattern.Literal { token=Some token } ->
+          let sign = Ast2.Pattern.literal_sign_token pattern |> require_some ~msg:"expected signed literal sign" in
+          Test.assert_equal ~expected:"-" ~actual:(Ast2.Token.text sign);
+          Test.assert_equal ~expected:"1" ~actual:(Ast2.Token.text token);
+          Ok ()
+      | _ -> Error "expected signed literal pattern"
+    )
+  | _ -> Error "expected function expression"
+
 let assert_type_manifest_is_none = fun source ->
   let root = parse_mli source |> Result.expect ~msg:"expected parse2 interface" in
   let type_item = nth_signature_item root 0 |> require_some ~msg:"expected type signature item" in
@@ -706,7 +757,7 @@ let let_exception_payload_tokens = fun expr ->
   List.reverse !tokens
 
 let test_local_open_views = fun _ctx ->
-  let source = "let value = let open Foo.Bar in result\nlet Foo.Bar.(x) = value\n" in
+  let source = "let value = let open Foo.Bar in result\nlet Foo.Bar.(x) = value\nlet Frame.{ payload } = frame\n" in
   let root = parse_ml source |> Result.expect ~msg:"expected parse2 source file" in
   let local_open_expr = nth_structure_item root 0
   |> require_some ~msg:"expected local open expression item"
@@ -755,7 +806,29 @@ let test_local_open_views = fun _ctx ->
         Test.assert_equal ~expected:"x" ~actual:(last_path_text path);
         Ok ()
     | _ -> Error "expected local open inner path pattern"
-  )
+  );
+  let local_open_record_pattern = nth_structure_item root 2
+  |> require_some ~msg:"expected local open record pattern item"
+  |> binding_of_structure_item
+  |> Result.expect ~msg:"expected local open record pattern binding"
+  |> pattern_of_binding
+  |> Result.expect ~msg:"expected local open record pattern" in
+  let local_open_record_pattern = Ast2.LocalOpenPattern.cast local_open_record_pattern
+  |> require_some ~msg:"expected local open record pattern view" in
+  Test.assert_equal
+    ~expected:"Frame"
+    ~actual:(local_open_pattern_path_text local_open_record_pattern);
+  let opening = Ast2.LocalOpenPattern.opening_token local_open_record_pattern |> require_some ~msg:"expected local open record opening" in
+  let closing = Ast2.LocalOpenPattern.closing_token local_open_record_pattern |> require_some ~msg:"expected local open record closing" in
+  Test.assert_equal ~expected:"{" ~actual:(Ast2.Token.text opening);
+  Test.assert_equal ~expected:"}" ~actual:(Ast2.Token.text closing);
+  match Ast2.LocalOpenPattern.pattern local_open_record_pattern with
+  | Some pattern -> (
+      match Ast2.Pattern.view pattern with
+      | Ast2.Pattern.Record -> Ok ()
+      | _ -> Error "expected local open record inner pattern"
+    )
+  | None -> Error "expected local open record inner pattern"
 
 let test_first_class_module_views = fun _ctx ->
   let source = "let packed = (module Foo.Bar)\nlet typed = (module Foo : S.T)\n" in
@@ -1122,6 +1195,7 @@ let tests = [
   Test.case "ast2 exposes signature declaration views" test_signature_and_type_views;
   Test.case "ast2 exposes type expression views" test_type_expression_views;
   Test.case "ast2 exposes type tuple separators" test_type_tuple_separator_views;
+  Test.case "ast2 exposes poly labeled types and signed literal patterns" test_poly_labeled_and_signed_views;
   Test.case "ast2 keeps non-manifest type bodies out of manifest views" test_non_manifest_type_declaration_bodies;
   Test.case "ast2 exposes type declaration parameters" test_type_declaration_parameters;
   Test.case "ast2 exposes open declaration path tokens" test_open_declaration_path_tokens;

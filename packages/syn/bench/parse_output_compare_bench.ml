@@ -11,11 +11,11 @@ type fixture = {
 
 let checksum = ref 0
 
-let make_slice = fun source ->
-  IO.IoVec.IoSlice.from_string source |> Result.expect ~msg:"failed to create output benchmark source slice"
+let make_slice = fun source -> IO.IoVec.IoSlice.from_string source |> Result.expect ~msg:"failed to create output benchmark source slice"
 
 let load_fixture = fun name path ->
-  let source = Fs.read path |> Result.expect ~msg:("failed to read output benchmark fixture: " ^ Path.to_string path) in
+  let source = Fs.read path
+  |> Result.expect ~msg:("failed to read output benchmark fixture: " ^ Path.to_string path) in
   { name; path; source; slice = make_slice source }
 
 let is_source_file = fun path ->
@@ -25,16 +25,13 @@ let is_source_file = fun path ->
   | _ -> false
 
 let cst_snapshot_path = fun path ->
-  Path.to_string path ^ ".expected_cst.json"
-  |> Path.from_string
-  |> Result.expect ~msg:"CST snapshot path should stay valid UTF-8"
+  Path.to_string path ^ ".expected_cst.json" |> Path.from_string |> Result.expect ~msg:"CST snapshot path should stay valid UTF-8"
 
 let has_successful_cst_snapshot = fun path ->
   if is_source_file path then
     let snapshot_path = cst_snapshot_path path in
     match Fs.read snapshot_path with
-    | Ok snapshot ->
-        not (String.contains snapshot "\"status\": \"parse_error\"")
+    | Ok snapshot -> not (String.contains snapshot "\"status\": \"parse_error\"")
     | Error _ -> false
   else
     false
@@ -44,10 +41,8 @@ let parser2_accepts = fun fixture ->
   Vector.length result.Parser2.diagnostics = 0
 
 let load_cst_fixture_corpus = fun () ->
-  let fixtures = Vector.with_capacity ~size:1050 in
-  Fs.Walker.walk
-    ~roots:[ Path.v "packages/syn/tests/fixtures" ]
-    ~sort:true
+  let fixtures = Vector.with_capacity ~size:1_050 in
+  Fs.Walker.walk ~roots:[ Path.v "packages/syn/tests/fixtures" ] ~sort:true
     ~f:(fun item ->
       let path = Fs.Walker.FileItem.path item in
       (
@@ -58,8 +53,7 @@ let load_cst_fixture_corpus = fun () ->
             Vector.push fixtures ~value:fixture
       );
       Fs.Walker.Continue)
-    ()
-  |> Result.expect ~msg:"failed to walk syn CST fixture corpus";
+    () |> Result.expect ~msg:"failed to walk syn CST fixture corpus";
   fixtures
 
 let touch_cst = fun cst ->
@@ -81,20 +75,21 @@ let touch_cst = fun cst ->
   lxor List.length (Cst.SourceFile.trailing_phrase_separator_tokens cst)
 
 let build_cst_error_to_string = function
-  | Parse_diagnostics diagnostics ->
-      "parse diagnostics: " ^ Int.to_string (List.length diagnostics)
-  | Cst_builder_error error ->
-      "CST builder error: "
-      ^ error.CstBuilder.message
-      ^ " @ "
-      ^ SyntaxKind.to_string error.CstBuilder.syntax_kind
+  | Parse_diagnostics diagnostics -> "parse diagnostics: " ^ Int.to_string (List.length diagnostics)
+  | Cst_builder_error error -> "CST builder error: "
+  ^ error.CstBuilder.message
+  ^ " @ "
+  ^ SyntaxKind.to_string error.CstBuilder.syntax_kind
 
 let bench_parse1_build_cst = fun fixture ->
   let result = parse ~filename:fixture.path fixture.source in
   match build_cst result with
   | Ok cst -> touch_cst cst
-  | Error error ->
-      panic ("parse1 + build_cst failed for " ^ Path.to_string fixture.path ^ ": " ^ build_cst_error_to_string error)
+  | Error error -> panic
+    ("parse1 + build_cst failed for "
+    ^ Path.to_string fixture.path
+    ^ ": "
+    ^ build_cst_error_to_string error)
 
 let touch_ast2_node_option = fun seed (node: Ast2.Node.t option) ->
   match node with
@@ -121,12 +116,22 @@ let touch_ast2_type_expr_option = fun seed (type_expr: Ast2.TypeExpr.t option) -
 let touch_ast2_type_expr_view = fun (type_expr: Ast2.TypeExpr.t) ->
   (
     match Ast2.TypeExpr.view type_expr with
-    | Path { path } -> touch_ast2_path 201 path
-    | Var { name } -> touch_ast2_token_option 202 name
-    | Wildcard -> checksum := !checksum lxor 203
+    | Path { path } ->
+        touch_ast2_path 201 path
+    | Var { name } ->
+        touch_ast2_token_option 202 name
+    | Wildcard ->
+        checksum := !checksum lxor 203
     | Arrow { left; right } ->
         touch_ast2_type_expr_option 204 left;
         touch_ast2_type_expr_option 205 right
+    | Poly { body } ->
+        touch_ast2_type_expr_option 215 body;
+        Ast2.TypeExpr.for_each_poly_type_name type_expr ~fn:(touch_ast2_token 216)
+    | Labeled { optional_token; label; annotation } ->
+        touch_ast2_token_option 217 optional_token;
+        touch_ast2_token_option 218 label;
+        touch_ast2_type_expr_option 219 annotation
     | Tuple { left; right } ->
         touch_ast2_type_expr_option 206 left;
         touch_ast2_type_expr_option 207 right
@@ -142,7 +147,8 @@ let touch_ast2_type_expr_view = fun (type_expr: Ast2.TypeExpr.t) ->
     | Unknown node ->
         checksum := !checksum lxor 213 lxor node.Ast2.id
   );
-  Ast2.TypeExpr.for_each_child_type type_expr
+  Ast2.TypeExpr.for_each_child_type
+    type_expr
     ~fn:(fun child -> checksum := !checksum lxor 214 lxor child.Ast2.id)
 
 let touch_ast2_pattern_option = fun seed (pattern: Ast2.Pattern.t option) ->
@@ -168,23 +174,37 @@ let touch_ast2_parameter = fun (parameter: Ast2.Parameter.t) ->
 let touch_ast2_pattern_view = fun (pattern: Ast2.Pattern.t) ->
   (
     match Ast2.Pattern.view pattern with
-    | Wildcard -> checksum := !checksum lxor 321
-    | Path { path } -> touch_ast2_path 322 path
+    | Wildcard ->
+        checksum := !checksum lxor 321
+    | Path { path } ->
+        touch_ast2_path 322 path
     | Apply { callee; argument } ->
         touch_ast2_pattern_option 323 callee;
         touch_ast2_pattern_option 324 argument
-    | Literal { token } -> touch_ast2_token_option 325 token
-    | Parenthesized { inner } -> touch_ast2_pattern_option 326 inner
-    | Tuple -> checksum := !checksum lxor 327
-    | List -> checksum := !checksum lxor 328
-    | Array -> checksum := !checksum lxor 329
-    | Record -> checksum := !checksum lxor 330
-    | PolyVariant -> checksum := !checksum lxor 331
-    | Extension -> checksum := !checksum lxor 332
-    | Attribute { inner } -> touch_ast2_pattern_option 333 inner
-    | LocalOpen -> checksum := !checksum lxor 334
-    | LocallyAbstractType -> checksum := !checksum lxor 335
-    | FirstClassModule -> checksum := !checksum lxor 336
+    | Literal { token } ->
+        touch_ast2_token_option 325 token
+    | Parenthesized { inner } ->
+        touch_ast2_pattern_option 326 inner
+    | Tuple ->
+        checksum := !checksum lxor 327
+    | List ->
+        checksum := !checksum lxor 328
+    | Array ->
+        checksum := !checksum lxor 329
+    | Record ->
+        checksum := !checksum lxor 330
+    | PolyVariant ->
+        checksum := !checksum lxor 331
+    | Extension ->
+        checksum := !checksum lxor 332
+    | Attribute { inner } ->
+        touch_ast2_pattern_option 333 inner
+    | LocalOpen ->
+        checksum := !checksum lxor 334
+    | LocallyAbstractType ->
+        checksum := !checksum lxor 335
+    | FirstClassModule ->
+        checksum := !checksum lxor 336
     | Interval { left; right } ->
         touch_ast2_pattern_option 337 left;
         touch_ast2_pattern_option 338 right
@@ -200,8 +220,10 @@ let touch_ast2_pattern_view = fun (pattern: Ast2.Pattern.t) ->
     | Cons { head; tail } ->
         touch_ast2_pattern_option 345 head;
         touch_ast2_pattern_option 346 tail
-    | Lazy { pattern } -> touch_ast2_pattern_option 347 pattern
-    | Exception { pattern } -> touch_ast2_pattern_option 348 pattern
+    | Lazy { pattern } ->
+        touch_ast2_pattern_option 347 pattern
+    | Exception { pattern } ->
+        touch_ast2_pattern_option 348 pattern
     | LabeledParam parameter
     | OptionalParam parameter
     | OptionalParamDefault parameter ->
@@ -211,7 +233,8 @@ let touch_ast2_pattern_view = fun (pattern: Ast2.Pattern.t) ->
     | Unknown node ->
         checksum := !checksum lxor 350 lxor node.Ast2.id
   );
-  Ast2.Pattern.for_each_child_pattern pattern
+  Ast2.Pattern.for_each_child_pattern
+    pattern
     ~fn:(fun child -> checksum := !checksum lxor 351 lxor child.Ast2.id)
 
 let touch_ast2_let_binding_view = fun (binding: Ast2.LetBinding.t) ->
@@ -219,7 +242,8 @@ let touch_ast2_let_binding_view = fun (binding: Ast2.LetBinding.t) ->
   touch_ast2_pattern_option 401 view.pattern;
   touch_ast2_node_option 402 view.body;
   touch_ast2_type_expr_option 403 (Ast2.LetBinding.type_annotation binding);
-  Ast2.LetBinding.for_each_parameter binding
+  Ast2.LetBinding.for_each_parameter
+    binding
     ~fn:(fun parameter -> checksum := !checksum lxor 404 lxor parameter.Ast2.id)
 
 let touch_ast2_value_declaration = fun (decl: Ast2.ValueDeclaration.t) ->
@@ -280,12 +304,18 @@ let rec touch_ast2_expr_view = fun (expr: Ast2.Expr.t) ->
   | Prefix { operator; operand } ->
       touch_ast2_token_option 71 operator;
       touch_ast2_node_option 72 operand
-  | Path { path } -> checksum := !checksum lxor 81 lxor path.Ast2.id
-  | Literal { token } -> touch_ast2_token_option 82 token
-  | Tuple -> checksum := !checksum lxor 83
-  | List -> checksum := !checksum lxor 84
-  | Array -> checksum := !checksum lxor 85
-  | Record -> checksum := !checksum lxor 86
+  | Path { path } ->
+      checksum := !checksum lxor 81 lxor path.Ast2.id
+  | Literal { token } ->
+      touch_ast2_token_option 82 token
+  | Tuple ->
+      checksum := !checksum lxor 83
+  | List ->
+      checksum := !checksum lxor 84
+  | Array ->
+      checksum := !checksum lxor 85
+  | Record ->
+      checksum := !checksum lxor 86
   | Parenthesized { inner } ->
       touch_ast2_node_option 91 inner
   | Typed { expr; annotation } ->
@@ -348,7 +378,8 @@ let rec walk_ast2_node = fun (node: Ast2.Node.t) ->
 
 let touch_ast2_views = fun tree ->
   let source_file = Ast2.SourceFile.make tree in
-  Ast2.SourceFile.for_each_item source_file
+  Ast2.SourceFile.for_each_item
+    source_file
     ~fn:(fun item -> checksum := !checksum lxor 103 lxor item.Ast2.id);
   walk_ast2_node source_file
 
@@ -394,8 +425,7 @@ let large_config: Bench.bench_config = { iterations = 6; warmup = 1 }
 
 let corpus_config: Bench.bench_config = { iterations = 2; warmup = 1 }
 
-let make_output_case = fun ~config name fn ->
-  Bench.make_case_with_config ~config name fn
+let make_output_case = fun ~config name fn -> Bench.make_case_with_config ~config name fn
 
 let compare_fixture = fun ~config fixture ->
   Bench.compare
@@ -413,16 +443,14 @@ let selected_benchmarks = fun () ->
     compare_fixture
       ~config:small_config
       (load_fixture
-         "complex list ops"
-         (Path.v "packages/syn/tests/fixtures/0409_complex_list_ops.ml"));
+        "complex list ops"
+        (Path.v "packages/syn/tests/fixtures/0409_complex_list_ops.ml"));
     compare_fixture
       ~config:medium_config
       (load_fixture "raw identifiers" (Path.v "packages/syn/tests/fixtures/ocaml_rawidents.ml"));
     compare_fixture
       ~config:large_config
-      (load_fixture
-         "multi indices"
-         (Path.v "packages/syn/tests/fixtures/ocaml_multi_indices.ml"));
+      (load_fixture "multi indices" (Path.v "packages/syn/tests/fixtures/ocaml_multi_indices.ml"));
   ]
 
 let corpus_benchmark = fun () ->
@@ -440,8 +468,7 @@ let corpus_benchmark = fun () ->
         (fun () -> parse2_typed_views_corpus fixtures);
     ]
 
-let benchmarks = fun () ->
-  selected_benchmarks () @ [ corpus_benchmark () ]
+let benchmarks = fun () -> selected_benchmarks () @ [ corpus_benchmark () ]
 
 let () =
   Runtime.run
