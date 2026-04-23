@@ -662,6 +662,22 @@ let leading_comment_token_doc = fun ?(compact_trailing_blank = false) token ->
   else
     Doc.empty
 
+let trimmed_leading_comment_token_doc = fun token ->
+  let doc = ref Doc.empty in
+  let first = ref true in
+  Ast.Token.for_each_leading_trivia token
+    ~fn:(fun ~kind ~text ->
+      if Kind.(kind = COMMENT || kind = DOCSTRING) then
+        (
+          let comment = text |> strip_trailing_whitespace |> Doc.text in
+          doc := if !first then
+            comment
+          else
+            Doc.concat [ !doc; Doc.line; comment ];
+          first := false
+        ));
+  !doc
+
 let token_has_leading_plain_comment = fun token ->
   let has_plain_comment = ref false in
   Ast.Token.for_each_leading_trivia token
@@ -1499,6 +1515,11 @@ and expr_infix_operand_doc = fun expr ->
 
 and expr_doc = fun expr -> expr_doc_with_view expr (Ast.Expr.view expr)
 
+and expr_has_leading_comment = fun expr ->
+  match Ast.Node.first_descendant_token expr with
+  | Some token -> Ast.Token.has_leading_comment token
+  | None -> false
+
 and sequence_items = fun expr ->
   let rec loop expr acc =
     match Ast.Expr.view expr with
@@ -1540,6 +1561,51 @@ and parenthesized_expr_doc = fun expr inner ->
       )
     | _ ->
         Doc.concat [ Doc.lparen; expr_doc inner; Doc.rparen ]
+
+and if_keyword_doc = fun token ->
+  if Ast.Token.has_leading_comment token then
+    Doc.concat [ trimmed_leading_comment_token_doc token; Doc.line; token_doc token ]
+  else
+    token_doc token
+
+and if_then_branch_doc = fun then_branch else_token ->
+  let branch_doc = expr_doc then_branch in
+  match else_token with
+  | Some token when Ast.Token.has_leading_comment token -> Doc.concat
+    [ branch_doc; Doc.line; trimmed_leading_comment_token_doc token ]
+  | _ -> branch_doc
+
+and if_else_branch_doc = fun else_token else_branch ->
+  match Ast.Expr.view else_branch with
+  | If _ when not (Ast.Token.has_leading_comment else_token)
+  && not (expr_has_leading_comment else_branch) -> Doc.concat
+    [ token_doc else_token; Doc.space; expr_doc else_branch ]
+  | _ -> Doc.concat [ token_doc else_token; Doc.line; Doc.indent 2 (expr_doc else_branch) ]
+
+and if_expr_doc = fun expr condition then_branch else_branch ->
+  match Ast.Node.first_child_token expr ~kind:Kind.IF_KW, Ast.Node.first_child_token
+    expr
+    ~kind:Kind.THEN_KW with
+  | Some if_token, Some then_token ->
+      let else_token = Ast.Node.first_child_token expr ~kind:Kind.ELSE_KW in
+      let head = Doc.concat
+        [
+          if_keyword_doc if_token;
+          Doc.space;
+          expr_doc condition;
+          Doc.space;
+          token_doc then_token;
+          Doc.line;
+          Doc.indent 2 (if_then_branch_doc then_branch else_token);
+        ] in
+      (
+        match else_token, else_branch with
+        | Some else_token, Some else_branch -> Doc.concat
+          [ head; Doc.line; if_else_branch_doc else_token else_branch ]
+        | None, None -> head
+        | _ -> unsupported "incomplete if expression"
+      )
+  | _ -> unsupported "if expression without keyword tokens"
 
 and expr_doc_with_view = fun expr (view: Ast.Expr.view) ->
   match view with
@@ -1586,31 +1652,9 @@ and expr_doc_with_view = fun expr (view: Ast.Expr.view) ->
   | Typed _ ->
       unsupported "incomplete typed expression"
   | If { condition=Some condition; then_branch=Some then_branch; else_branch=Some else_branch } ->
-      Doc.concat
-        [
-          Doc.text "if";
-          Doc.space;
-          expr_doc condition;
-          Doc.space;
-          Doc.text "then";
-          Doc.line;
-          Doc.indent 2 (expr_doc then_branch);
-          Doc.line;
-          Doc.text "else";
-          Doc.line;
-          Doc.indent 2 (expr_doc else_branch);
-        ]
+      if_expr_doc expr condition then_branch (Some else_branch)
   | If { condition=Some condition; then_branch=Some then_branch; else_branch=None } ->
-      Doc.concat
-        [
-          Doc.text "if";
-          Doc.space;
-          expr_doc condition;
-          Doc.space;
-          Doc.text "then";
-          Doc.line;
-          Doc.indent 2 (expr_doc then_branch);
-        ]
+      if_expr_doc expr condition then_branch None
   | If _ ->
       unsupported "incomplete if expression"
   | Tuple ->
