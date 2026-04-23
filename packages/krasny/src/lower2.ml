@@ -3820,9 +3820,20 @@ let open_decl_doc = fun decl ->
 let include_decl_doc = fun decl ->
   Doc.concat [ Doc.text "include"; Doc.space; include_path_doc decl ]
 
+let exception_decl_tail_tokens = fun decl ->
+  let tokens = ref [] in
+  Ast.ExceptionDeclaration.for_each_tail_token decl ~fn:(fun token -> tokens := token :: !tokens);
+  List.reverse !tokens
+
 let exception_decl_doc = fun decl ->
   match Ast.ExceptionDeclaration.name decl with
-  | Some name -> Doc.concat [ Doc.text "exception"; Doc.space; token_doc name ]
+  | Some name ->
+      let tail =
+        match exception_decl_tail_tokens decl with
+        | [] -> Doc.empty
+        | tokens -> Doc.concat [ Doc.space; module_tokens_doc tokens ]
+      in
+      Doc.concat [ Doc.text "exception"; Doc.space; token_doc name; tail ]
   | None -> unsupported "exception declaration without name"
 
 let extension_item_doc = fun item ->

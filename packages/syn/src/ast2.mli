@@ -688,6 +688,8 @@ module ExceptionDeclaration: sig
   val cast: Node.t -> t option
 
   val name: t -> Token.t option
+
+  val for_each_tail_token: t -> fn:(Token.t -> unit) -> unit
 end
 
 module ClassDeclaration: sig
