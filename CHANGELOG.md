@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.0.21 - 2026-04-23
+
+### riot
+- `riot init` now lowercases generated starter file stems, so dotted workspace names with normalized package names build and run consistently on case-sensitive systems.
+- `Std.Command.output` no longer hangs when the direct child exits while another process inherited the captured stdout/stderr pipe, preserving idle callbacks and streamed stdout line callbacks for long-running commands.
+- Release automation now supports force-republishing explicit Riot binary targets and strips release binaries before upload.
+
+### kernel-toolchain
+- Added the Linux implementation path for the new kernel async backend, including epoll/timerfd process, pipe, timer, TCP, and UDP readiness support.
+- Added `Kernel.Thread.sleep_ns` for low-level blocking sleeps used by polling paths that must not depend on the actor scheduler.
+- Updated Linux sysroot and OCaml cross-toolchain packaging so Riot-built Linux binaries run on common glibc distributions such as Ubuntu and Arch instead of relying on Ubuntu-specific assumptions.
+- Published and validated the `5.5.0-riot.3` toolchains with Riot project smoke tests in Linux containers.
+
+### release
+- Published Riot 0.0.20 binaries for `aarch64-apple-darwin`, `aarch64-unknown-linux-gnu`, and `x86_64-unknown-linux-gnu` after validating the generated release artifacts and CDN metadata.
+
 ## 0.0.20 - 2026-04-22
 
 ### riot
