@@ -814,6 +814,53 @@ let test_module_type_declaration_tokens = fun _ctx ->
   );
   Ok ()
 
+let test_module_type_with_constraint_views = fun _ctx ->
+  let root = parse_mli "module type S = Driver with type config = int and module Nested = Impl\n"
+  |> Result.expect ~msg:"expected parse2 interface" in
+  let item = nth_signature_item root 0 |> require_some ~msg:"expected module type item" in
+  match Ast2.SignatureItem.view item with
+  | Ast2.SignatureItem.ModuleType decl ->
+      Test.assert_equal
+        ~expected:Ast2.ModuleTypeDeclaration.With
+        ~actual:(Ast2.ModuleTypeDeclaration.body decl);
+      (
+        match Ast2.ModuleTypeDeclaration.base_module_type decl with
+        | Some base ->
+            let path = Ast2.Path.cast base |> require_some ~msg:"expected constrained base path" in
+            let name = Ast2.Path.last_ident path |> require_some ~msg:"expected constrained base name" in
+            Test.assert_equal ~expected:"Driver" ~actual:(Ast2.Token.text name)
+        | None -> panic "expected constrained base module type"
+      );
+      let seen = ref 0 in
+      Ast2.ModuleTypeDeclaration.for_each_constraint decl
+        ~fn:(fun constraint_ ->
+          let index = !seen in
+          seen := !seen + 1;
+          match Ast2.ModuleTypeConstraint.view constraint_ with
+          | Ast2.ModuleTypeConstraint.Type { path; operator; body } when Int.equal index 0 ->
+              let path = path |> require_some ~msg:"expected type constraint path" in
+              let operator = operator |> require_some ~msg:"expected type constraint operator" in
+              let body = body |> require_some ~msg:"expected type constraint body" in
+              let path_name = Ast2.Path.last_ident path |> require_some ~msg:"expected type path name" in
+              let body_token = Ast2.Node.first_descendant_token body |> require_some ~msg:"expected type constraint body token" in
+              Test.assert_equal ~expected:"config" ~actual:(Ast2.Token.text path_name);
+              Test.assert_equal ~expected:"=" ~actual:(Ast2.Token.text operator);
+              Test.assert_equal ~expected:"int" ~actual:(Ast2.Token.text body_token)
+          | Ast2.ModuleTypeConstraint.Module { path; body } when Int.equal index 1 ->
+              let path = path |> require_some ~msg:"expected module constraint path" in
+              let body = body |> require_some ~msg:"expected module constraint body" in
+              let path_name = Ast2.Path.last_ident path |> require_some ~msg:"expected module path name" in
+              let body_token = Ast2.Node.first_descendant_token body |> require_some ~msg:"expected module constraint body token" in
+              Test.assert_equal ~expected:"Nested" ~actual:(Ast2.Token.text path_name);
+              Test.assert_equal ~expected:"Impl" ~actual:(Ast2.Token.text body_token)
+          | Ast2.ModuleTypeConstraint.Unknown _ ->
+              panic "unexpected module type constraint shape"
+          | _ ->
+              panic "unexpected module type constraint ordering");
+      Test.assert_equal ~expected:2 ~actual:!seen;
+      Ok ()
+  | _ -> Error "expected module type declaration"
+
 let test_binding_type_annotation_view = fun _ctx ->
   let root = parse_ml "let x : int = 1\n" |> Result.expect ~msg:"expected parse2 source file" in
   let binding = nth_structure_item root 0
@@ -1432,6 +1479,7 @@ let tests = [
   Test.case "ast2 exposes module declaration tokens" test_module_declaration_tokens;
   Test.case "ast2 exposes module declaration member views" test_module_declaration_member_views;
   Test.case "ast2 exposes module type declaration tokens" test_module_type_declaration_tokens;
+  Test.case "ast2 exposes module type with-constraint views" test_module_type_with_constraint_views;
   Test.case "ast2 exposes let binding type annotation views" test_binding_type_annotation_view;
   Test.case "ast2 exposes record expression and pattern views" test_record_views;
   Test.case "ast2 exposes binding operator expression views" test_binding_operator_views;

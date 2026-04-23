@@ -5709,6 +5709,7 @@ let module_type_decl_body_doc = fun decl ->
   | Path -> module_type_decl_path_body_doc decl
   | EmptySig -> module_type_decl_sig_body_doc decl
   | Sig -> module_type_decl_sig_body_doc decl
+  | With -> module_type_decl_unsupported_body_doc decl
   | Unsupported -> module_type_decl_unsupported_body_doc decl
 
 let module_decl_doc = fun ?(force_empty_struct_multiline = false) decl ->
@@ -5725,7 +5726,7 @@ let module_type_decl_doc = fun decl ->
       (
         match Ast.ModuleTypeDeclaration.equals_token decl, Ast.ModuleTypeDeclaration.body decl with
         | None, Abstract -> head
-        | Some equals_token, (Path | EmptySig | Sig | Unsupported) -> Doc.concat
+        | Some equals_token, (Path | EmptySig | Sig | With | Unsupported) -> Doc.concat
           [ head; Doc.space; token_doc equals_token; Doc.space; module_type_decl_body_doc decl ]
         | Some _, Abstract -> unsupported "unsupported module type declaration body"
         | None, _ -> unsupported "module type declaration body without equals token"

@@ -3549,18 +3549,21 @@ and parse_module_type_atom = fun p ~signature ->
   | _ -> parse_opaque_module_type p ~signature
 
 and consume_module_type_with_constraint = fun p ~signature ->
-  let consume_path_like () =
+  let parse_type_path () =
+    let marker = start_node p in
     if at p Syntax_kind2.IDENT then
       (
         bump p;
         consume_path_segments p
       )
     else
-      Event.Buffer.error p.events (missing_type_name p)
+      Event.Buffer.error p.events (missing_type_name p);
+    complete p marker Syntax_kind2.PATH_TYPE
   in
-  let consume_type_constraint () =
+  let parse_type_constraint () =
+    let marker = start_node p in
     expect p Syntax_kind2.TYPE_KW (invalid_type_expression p);
-    consume_path_like ();
+    ignore (parse_type_path ());
     if at p Syntax_kind2.EQ || at p Syntax_kind2.COLONEQ then
       (
         bump p;
@@ -3575,11 +3578,13 @@ and consume_module_type_with_constraint = fun p ~signature ->
           parse_type_expr p ~allow_leading_poly_type_after_newline:false ~stop_at_arrow:false
       )
     else
-      Event.Buffer.error p.events (missing_type_decl_equals p)
+      Event.Buffer.error p.events (missing_type_decl_equals p);
+    complete p marker Syntax_kind2.WITH_TYPE_CONSTRAINT
   in
-  let consume_module_constraint () =
+  let parse_module_constraint () =
+    let marker = start_node p in
     expect p Syntax_kind2.MODULE_KW (invalid_expression p);
-    consume_path_like ();
+    ignore (parse_module_path_node p Syntax_kind2.PATH_MODULE_EXPR (missing_module_expr p));
     if at p Syntax_kind2.EQ then
       (
         bump p;
@@ -3587,13 +3592,14 @@ and consume_module_type_with_constraint = fun p ~signature ->
           ignore (parse_module_expr p ~signature)
       )
     else
-      Event.Buffer.error p.events (missing_module_decl_equals p)
+      Event.Buffer.error p.events (missing_module_decl_equals p);
+    complete p marker Syntax_kind2.WITH_MODULE_CONSTRAINT
   in
-  let rec consume_constraint () =
+  let rec parse_constraint () =
     (
       match current_kind p with
-      | Syntax_kind2.TYPE_KW -> consume_type_constraint ()
-      | Syntax_kind2.MODULE_KW -> consume_module_constraint ()
+      | Syntax_kind2.TYPE_KW -> ignore (parse_type_constraint ())
+      | Syntax_kind2.MODULE_KW -> ignore (parse_module_constraint ())
       | _ -> consume_until_module_type_boundary p ~signature
     );
     if
@@ -3602,10 +3608,10 @@ and consume_module_type_with_constraint = fun p ~signature ->
     then
       (
         bump p;
-        consume_constraint ()
+        parse_constraint ()
       )
   in
-  consume_constraint ()
+  parse_constraint ()
 
 and parse_module_type_bp = fun p ~signature ->
   let rec loop lhs =

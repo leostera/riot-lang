@@ -33,6 +33,8 @@ type module_declaration = node
 
 type module_type_declaration = node
 
+type module_type_constraint = node
+
 type open_declaration = node
 
 type include_declaration = node
@@ -170,7 +172,9 @@ let is_parameter_kind = function
 let is_path_kind = function
   | Syntax_kind2.PATH_EXPR
   | Syntax_kind2.PATH_PATTERN
-  | Syntax_kind2.PATH_TYPE -> true
+  | Syntax_kind2.PATH_TYPE
+  | Syntax_kind2.PATH_MODULE_EXPR
+  | Syntax_kind2.PATH_MODULE_TYPE -> true
   | _ -> false
 
 let is_type_expr_kind = function
@@ -3332,6 +3336,7 @@ module ModuleTypeDeclaration = struct
     | Path
     | EmptySig
     | Sig
+    | With
     | Unsupported
 
   let cast = fun (node: node) ->
@@ -3435,6 +3440,7 @@ module ModuleTypeDeclaration = struct
           Sig
         else
           EmptySig
+    | Some _, Some node when node_kind_is node Syntax_kind2.WITH_MODULE_TYPE -> With
     | Some _, _ -> Unsupported
 
   let signature_body_node = fun decl ->
@@ -3483,6 +3489,76 @@ module ModuleTypeDeclaration = struct
             | Syntax_tree.Missing _ ->
                 ()
           )
+
+  let constrained_body_node = fun decl ->
+    match body_specific_node decl with
+    | Some node when node_kind_is node Syntax_kind2.WITH_MODULE_TYPE -> Some node
+    | _ -> None
+
+  let base_module_type = fun decl ->
+    match constrained_body_node decl with
+    | Some node -> first_child_node_matching node ~matches:is_module_type_kind
+    | None -> None
+
+  let for_each_constraint = fun decl ~fn ->
+    match constrained_body_node decl with
+    | None -> ()
+    | Some node ->
+        Node.for_each_child_node node
+          ~fn:(fun child ->
+            if
+              node_kind_is child Syntax_kind2.WITH_TYPE_CONSTRAINT
+              || node_kind_is child Syntax_kind2.WITH_MODULE_CONSTRAINT
+            then
+              fn child)
+end
+
+module ModuleTypeConstraint = struct
+  type t = module_type_constraint
+
+  type view =
+    | Type of { path: path option; operator: token option; body: type_expr option }
+    | Module of { path: path option; body: node option }
+    | Unknown of node
+
+  let cast = fun (node: node) ->
+    if
+      node_kind_is node Syntax_kind2.WITH_TYPE_CONSTRAINT || node_kind_is node Syntax_kind2.WITH_MODULE_CONSTRAINT
+    then
+      Some node
+    else
+      None
+
+  let type_path = fun constraint_ ->
+    match first_child_node_matching constraint_ ~matches:is_path_kind with
+    | Some node -> Path.cast node
+    | None -> None
+
+  let type_body = fun constraint_ ->
+    match nth_child_node_matching constraint_ 1 ~matches:is_type_expr_kind with
+    | Some node -> TypeExpr.cast node
+    | None -> None
+
+  let module_path = fun constraint_ ->
+    match first_child_node_matching constraint_ ~matches:is_path_kind with
+    | Some node -> Path.cast node
+    | None -> None
+
+  let module_body = fun constraint_ -> nth_child_node_matching constraint_ 1 ~matches:is_module_expr_kind
+
+  let view = fun (constraint_: t) ->
+    if node_kind_is constraint_ Syntax_kind2.WITH_TYPE_CONSTRAINT then
+      Type {
+        path = type_path constraint_;
+        operator = first_child_token_matching
+          constraint_
+          ~matches:(fun kind -> Syntax_kind2.(kind = EQ || kind = COLONEQ || kind = PLUS));
+        body = type_body constraint_
+      }
+    else if node_kind_is constraint_ Syntax_kind2.WITH_MODULE_CONSTRAINT then
+      Module { path = module_path constraint_; body = module_body constraint_ }
+    else
+      Unknown constraint_
 end
 
 module OpenDeclaration = struct

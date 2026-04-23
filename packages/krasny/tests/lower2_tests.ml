@@ -511,6 +511,13 @@ let tests = [
           ])
         "module Alias = Foo.Bar\nmodule Empty = struct end\nmodule type S = Foo.S\nmodule type Empty = sig end\n");
   Test.case
+    "lower2 formats constrained module type declarations"
+    (fun _ctx ->
+      assert_format2_ml
+        ~expected:(top_level
+          [ "module type S = Driver with type config = int and module Nested = Impl"; ])
+        "module type S = Driver with type config = int and module Nested = Impl\n");
+  Test.case
     "lower2 formats simple signature module declarations"
     (fun _ctx ->
       assert_format2_mli

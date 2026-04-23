@@ -19,6 +19,7 @@ type type_declaration = node
 type type_extension_declaration = node
 type module_declaration = node
 type module_type_declaration = node
+type module_type_constraint = node
 type open_declaration = node
 type include_declaration = node
 type value_declaration = node
@@ -780,6 +781,7 @@ module ModuleTypeDeclaration: sig
     | Path
     | EmptySig
     | Sig
+    | With
     | Unsupported
   val cast: Node.t -> t option
 
@@ -798,6 +800,21 @@ module ModuleTypeDeclaration: sig
   val for_each_body_path_ident: t -> fn:(Token.t -> unit) -> unit
 
   val for_each_sig_body_token: t -> fn:(Token.t -> unit) -> unit
+
+  val base_module_type: t -> Node.t option
+
+  val for_each_constraint: t -> fn:(module_type_constraint -> unit) -> unit
+end
+
+module ModuleTypeConstraint: sig
+  type t = module_type_constraint
+  type view =
+    | Type of { path: path option; operator: Token.t option; body: type_expr option }
+    | Module of { path: path option; body: Node.t option }
+    | Unknown of Node.t
+  val cast: Node.t -> t option
+
+  val view: t -> view
 end
 
 module OpenDeclaration: sig
