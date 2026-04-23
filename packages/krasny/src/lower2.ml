@@ -3395,6 +3395,16 @@ let record_body_field_groups = fun tokens ->
   let fields, _closing = record_body_parts tokens in
   fields
 
+let record_body_closing_comment_doc = function
+  | Some closing when Ast.Token.has_leading_comment closing
+  && Option.is_none (trailing_field_comment_doc (Some closing)) -> Some (trimmed_leading_comment_token_doc
+    closing)
+  | _ -> None
+
+let record_body_has_standalone_closing_comment = fun tokens ->
+  let _fields, closing = record_body_parts tokens in
+  Option.is_some (record_body_closing_comment_doc closing)
+
 let first_token = function
   | token :: _ -> Some token
   | [] -> None
@@ -3425,11 +3435,21 @@ let record_body_doc = fun ~inline tokens ->
       Doc.space;
       Doc.rbrace
     ]
-  | false -> Doc.concat
-    [ Doc.lbrace; Doc.line; Doc.indent 2 (Doc.lines fields); Doc.line; Doc.rbrace; ]
+  | false ->
+      Doc.concat
+        [ Doc.lbrace; Doc.line; Doc.indent 2
+            (
+              Doc.lines
+                (
+                  match record_body_closing_comment_doc closing with
+                  | Some closing_comment -> fields @ [ closing_comment ]
+                  | None -> fields
+                )
+            ); Doc.line; Doc.rbrace; ]
 
 let inline_constructor_payload = fun tokens ->
   Int.(List.length (record_body_field_groups tokens) <= 3)
+  && not (record_body_has_standalone_closing_comment tokens)
 
 let split_variant_constructors = fun tokens ->
   let rec loop current constructors depth = function
@@ -3520,9 +3540,11 @@ let poly_variant_body_doc = fun tokens ->
 
 let constructor_payload_doc = fun tokens ->
   match tokens with
-  | opening :: _ when token_kind_is opening Kind.LBRACE -> record_body_doc
-    ~inline:(inline_constructor_payload tokens)
-    tokens
+  | opening :: _ when token_kind_is opening Kind.LBRACE ->
+      if inline_constructor_payload tokens then
+        record_body_doc ~inline:true tokens
+      else
+        Doc.indent 2 (record_body_doc ~inline:false tokens)
   | opening :: _ when token_kind_is opening Kind.LBRACKET -> poly_variant_body_doc tokens
   | _ -> type_tokens_doc tokens
 
@@ -4131,6 +4153,15 @@ let split_structure_body_items = fun tokens ->
   in
   loop [] [] 0 tokens
 
+let structure_body_doc_with_closing_leading_comment = fun body_doc end_token ->
+  match trimmed_leading_comment_token_doc end_token with
+  | Doc.Empty -> body_doc
+  | closing_comment -> (
+      match body_doc with
+      | Doc.Empty -> closing_comment
+      | body_doc -> Doc.concat [ body_doc; blank_line; closing_comment ]
+    )
+
 let rec module_member_doc = fun ?(force_empty_struct_multiline = false) tokens ->
   match split_module_struct_body tokens with
   | Some (head_tokens, struct_token, body_tokens, end_token, after) ->
@@ -4138,12 +4169,17 @@ let rec module_member_doc = fun ?(force_empty_struct_multiline = false) tokens -
         [ module_head_tokens_doc head_tokens; Doc.space; token_doc struct_token; (
             match split_structure_body_items body_tokens with
             | [] ->
-                if force_empty_struct_multiline then
-                  blank_line
-                else
-                  Doc.space
-            | items -> Doc.concat
-              [ Doc.line; Doc.indent 2 (structure_body_items_doc items); Doc.line; ]
+                let body_doc = structure_body_doc_with_closing_leading_comment Doc.empty end_token in
+                (
+                  match body_doc with
+                  | Doc.Empty when force_empty_struct_multiline -> blank_line
+                  | Doc.Empty -> Doc.space
+                  | body_doc -> Doc.concat [ Doc.line; Doc.indent 2 body_doc; Doc.line ]
+                )
+            | items ->
+                let body_doc = structure_body_items_doc items
+                |> fun body_doc -> structure_body_doc_with_closing_leading_comment body_doc end_token in
+                Doc.concat [ Doc.line; Doc.indent 2 body_doc; Doc.line; ]
           ); token_doc end_token; module_after_tokens_doc after; ]
   | None -> (
       match split_signature_shell tokens with
@@ -4188,19 +4224,17 @@ and structure_body_item_is_floating_attribute = function
   | token :: rest -> starts_floating_attribute_item_tokens token rest
   | [] -> false
 
-and structure_body_items_compact_between = fun left right ->
-  structure_body_item_is_type left && structure_body_item_is_floating_attribute right
+and structure_body_items_separator = fun left right ->
+  if structure_body_item_is_type left && structure_body_item_is_floating_attribute right then
+    Doc.line
+  else
+    blank_line
 
 and structure_body_items_doc = fun items ->
   let rec loop previous doc = function
     | [] -> doc
     | next :: rest ->
-        let separator =
-          if structure_body_items_compact_between previous next then
-            Doc.line
-          else
-            blank_line
-        in
+        let separator = structure_body_items_separator previous next in
         loop next (Doc.concat [ doc; separator; structure_body_item_doc next ]) rest
   in
   match items with
@@ -4797,19 +4831,29 @@ let structure_item_is_open = fun item ->
   | Open _ -> true
   | _ -> false
 
-let structure_items_compact_between = fun left right ->
-  structure_item_is_open left && structure_item_is_open right
+let structure_item_is_type = fun item ->
+  match Ast.StructureItem.view item with
+  | Type _ -> true
+  | _ -> false
+
+let structure_item_is_attribute = fun item ->
+  match Ast.StructureItem.view item with
+  | Attribute _ -> true
+  | _ -> false
+
+let structure_items_separator = fun left right ->
+  if structure_item_is_type left && structure_item_is_attribute right then
+    Doc.space
+  else if structure_item_is_open left && structure_item_is_open right then
+    Doc.line
+  else
+    blank_line
 
 let structure_items_doc = fun items ->
   let rec loop previous doc = function
     | [] -> doc
     | (next_item, next_doc) :: rest ->
-        let separator =
-          if structure_items_compact_between previous next_item then
-            Doc.line
-          else
-            blank_line
-        in
+        let separator = structure_items_separator previous next_item in
         loop next_item (Doc.concat [ doc; separator; next_doc ]) rest
   in
   match items with

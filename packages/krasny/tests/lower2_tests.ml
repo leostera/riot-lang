@@ -175,10 +175,14 @@ let assert_lower2_existing_fixture_subset = fun () ->
     Path.v "packages/krasny/tests/fixtures/0914_docstring_then_plain_comment_before_let.ml";
     Path.v "packages/krasny/tests/fixtures/0915_signature_type_trailing_docstring_at_eof.mli";
     Path.v "packages/krasny/tests/fixtures/0916_signature_type_trailing_comment_at_eof.mli";
+    Path.v "packages/krasny/tests/fixtures/0917_signature_type_docstring_between_declarations.mli";
     Path.v "packages/krasny/tests/fixtures/0918_nested_signature_terminal_doc_before_end.mli";
+    Path.v "packages/krasny/tests/fixtures/0919_nested_structure_terminal_comment_before_end.ml";
     Path.v "packages/krasny/tests/fixtures/0920_signature_grouped_type_comment_before_and_member.mli";
     Path.v "packages/krasny/tests/fixtures/0921_signature_grouped_type_doc_before_and_member.mli";
+    Path.v "packages/krasny/tests/fixtures/0922_signature_variant_inline_record_terminal_doc_before_closing_brace.mli";
     Path.v "packages/krasny/tests/fixtures/0923_nested_signature_prefix_docs.mli";
+    Path.v "packages/krasny/tests/fixtures/0924_type_declaration_attribute.ml";
     Path.v "packages/krasny/tests/fixtures/0926_if_branch_comments.ml";
     Path.v "packages/krasny/tests/fixtures/0937_match_case_body_comment.ml";
     Path.v "packages/krasny/tests/fixtures/0944_exception_separator_comments.ml";
