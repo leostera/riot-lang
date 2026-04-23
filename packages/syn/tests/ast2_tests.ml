@@ -406,6 +406,58 @@ let test_poly_labeled_and_signed_views = fun _ctx ->
     )
   | _ -> Error "expected function expression"
 
+let test_quoted_poly_let_annotation_views = fun _ctx ->
+  let source =
+    "let rec record_mut_backend:\n\
+    \  'field 'builder 'value. state ->\n\
+    \  fields:'field De.Fields.t ->\n\
+    \  create:(unit -> 'builder) ->\n\
+    \  step:('builder -> 'field option -> unit) ->\n\
+    \  finish:('builder -> 'value) ->\n\
+    \  'value = fun state ~fields ~create ~step ~finish -> finish (create ())\n"
+  in
+  let root = parse_ml source |> Result.expect ~msg:"expected parse2 source file" in
+  let binding = nth_structure_item root 0
+  |> require_some ~msg:"expected first structure item"
+  |> binding_of_structure_item
+  |> Result.expect ~msg:"expected let binding" in
+  let annotation = Ast2.LetBinding.type_annotation binding |> require_some ~msg:"expected let binding type annotation" in
+  (
+    match Ast2.TypeExpr.view annotation with
+    | Ast2.TypeExpr.Poly { body=Some body } ->
+        let names = ref [] in
+        Ast2.TypeExpr.for_each_poly_type_name annotation ~fn:(fun token -> names := Ast2.Token.text token :: !names);
+        Test.assert_equal ~expected:[ "field"; "builder"; "value" ] ~actual:(List.reverse !names);
+        (
+          match Ast2.TypeExpr.view body with
+          | Ast2.TypeExpr.Arrow { left=Some left; right=Some right } ->
+              (
+                match Ast2.TypeExpr.view left with
+                | Ast2.TypeExpr.Path { path } -> assert_last_ident_text path "state"
+                | _ -> panic "expected state path type"
+              );
+              (
+                match Ast2.TypeExpr.view right with
+                | Ast2.TypeExpr.Arrow { left=Some labeled; right=Some _ } -> (
+                    match Ast2.TypeExpr.view labeled with
+                    | Ast2.TypeExpr.Labeled { label=Some label; annotation=Some labeled_annotation; _ } ->
+                        Test.assert_equal ~expected:"fields" ~actual:(Ast2.Token.text label);
+                        (
+                          match Ast2.TypeExpr.view labeled_annotation with
+                          | Ast2.TypeExpr.Apply { constructor=Some constructor; _ } ->
+                              assert_type_path_last_ident constructor "t";
+                              Ok ()
+                          | _ -> Error "expected labeled fields apply type"
+                        )
+                    | _ -> Error "expected labeled fields type"
+                  )
+                | _ -> Error "expected arrow chain after state"
+              )
+          | _ -> Error "expected quoted poly type arrow body"
+        )
+    | _ -> Error "expected quoted poly type annotation"
+  )
+
 let assert_type_manifest_is_none = fun source ->
   let root = parse_mli source |> Result.expect ~msg:"expected parse2 interface" in
   let type_item = nth_signature_item root 0 |> require_some ~msg:"expected type signature item" in
@@ -1626,6 +1678,7 @@ let tests = [
   Test.case "ast2 exposes type expression views" test_type_expression_views;
   Test.case "ast2 exposes type tuple separators" test_type_tuple_separator_views;
   Test.case "ast2 exposes poly labeled types and signed literal patterns" test_poly_labeled_and_signed_views;
+  Test.case "ast2 exposes quoted poly let annotations" test_quoted_poly_let_annotation_views;
   Test.case "ast2 keeps non-manifest type bodies out of manifest views" test_non_manifest_type_declaration_bodies;
   Test.case "ast2 exposes type declaration parameters" test_type_declaration_parameters;
   Test.case "ast2 exposes type declaration member views" test_type_declaration_member_views;

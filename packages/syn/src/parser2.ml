@@ -2584,19 +2584,46 @@ and parse_parenthesized_type = fun p ~stop_at_arrow ->
         Syntax_kind2.PAREN_TYPE
     )
 
+and starts_quoted_poly_type = fun p ->
+  let rec loop offset consumed =
+    if Syntax_kind2.(peek_kind p offset = QUOTE && peek_kind p (offset + 1) = IDENT) then
+      loop (offset + 2) true
+    else
+      consumed && Syntax_kind2.(peek_kind p offset = DOT)
+  in
+  loop 0 false
+
 and parse_poly_type = fun p ~stop_at_arrow ->
   let marker = start_node p in
-  bump p;
-  let rec consume_type_names consumed =
+  let rec consume_keyword_type_names consumed =
     if at p Syntax_kind2.IDENT then
       (
         bump p;
-        consume_type_names true
+        consume_keyword_type_names true
       )
     else
       consumed
   in
-  let consumed_name = consume_type_names false in
+  let rec consume_quoted_type_names consumed =
+    if at p Syntax_kind2.QUOTE && Syntax_kind2.(peek_kind p 1 = IDENT) then
+      (
+        bump p;
+        bump p;
+        consume_quoted_type_names true
+      )
+    else
+      consumed
+  in
+  let consumed_name =
+    match current_kind p with
+    | Syntax_kind2.TYPE_KW ->
+        bump p;
+        consume_keyword_type_names false
+    | Syntax_kind2.QUOTE ->
+        consume_quoted_type_names false
+    | _ ->
+        false
+  in
   if not consumed_name then
     Event.Buffer.error p.events (missing_type_name_at_current_offset p);
   expect p Syntax_kind2.DOT (invalid_type_expression p);
@@ -2620,6 +2647,8 @@ and parse_labeled_type = fun p ->
 and parse_type_atom = fun p ~stop_at_arrow ->
   match current_kind p with
   | Syntax_kind2.TYPE_KW ->
+      parse_poly_type p ~stop_at_arrow
+  | Syntax_kind2.QUOTE when starts_quoted_poly_type p ->
       parse_poly_type p ~stop_at_arrow
   | Syntax_kind2.IDENT when Syntax_kind2.(peek_kind p 1 = COLON) ->
       parse_labeled_type p

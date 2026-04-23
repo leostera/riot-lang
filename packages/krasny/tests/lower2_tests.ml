@@ -307,6 +307,12 @@ let tests = [
           [ "let value: int = 1"; "let id x: int = x"; "let keep_pattern (x: int) = x" ])
         "let value : int = 1\nlet id x : int = x\nlet keep_pattern (x : int) = x\n");
   Test.case
+    "lower2 formats quoted poly let annotations"
+    (fun _ctx ->
+      assert_format2_ml
+        ~expected:"let id:\n  'a 'b. 'a ->\n  'b ->\n  'a = fun x _ -> x\n"
+        "let id : 'a 'b. 'a -> 'b -> 'a = fun x _ -> x\n");
+  Test.case
     "lower2 formats mutual recursive let bindings"
     (fun _ctx -> assert_format2_ml ~expected:"let rec f = g\n\nand g = f\n" "let rec f = g\nand g = f\n");
   Test.case

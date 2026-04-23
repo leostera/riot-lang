@@ -1302,11 +1302,26 @@ let rec type_expr_doc = fun type_expr ->
 
 let type_expr_poly_names_doc = fun type_expr ->
   let names = ref [] in
-  Ast.TypeExpr.for_each_poly_type_name type_expr ~fn:(fun name -> names := token_doc name :: !names);
+  Ast.TypeExpr.for_each_poly_type_name type_expr ~fn:(fun name -> names := name :: !names);
   match List.reverse !names with
   | [] -> None
-  | names -> Some (Doc.concat
-    [ Doc.text "type"; Doc.space; Doc.join Doc.space names; Doc.text "."; Doc.space ])
+  | names ->
+      let uses_type_keyword =
+        List.exists (fun token -> token_kind_is token Kind.TYPE_KW) (direct_child_tokens type_expr)
+      in
+      let names_doc =
+        if uses_type_keyword then
+          Doc.join Doc.space (List.map names ~fn:token_doc)
+        else
+          Doc.join Doc.space (List.map names ~fn:(fun name -> Doc.concat [ Doc.text "'"; token_doc name ]))
+      in
+      let prefix =
+        if uses_type_keyword then
+          Doc.concat [ Doc.text "type"; Doc.space; names_doc ]
+        else
+          names_doc
+      in
+      Some (Doc.concat [ prefix; Doc.text "."; Doc.space ])
 
 let type_expr_arrow_chain_docs = fun type_expr ->
   let rec collect type_expr docs =
