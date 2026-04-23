@@ -328,6 +328,12 @@ let record_field_missing_colon = fun p ~field_name ->
     (Diagnostic.record_field_missing_colon ~field_name)
     (zero_span (previous_end_offset p))
 
+let record_field_missing_type = fun p ~field_name ->
+  diagnostic_with_current_at
+    p
+    (Diagnostic.record_field_missing_type ~field_name)
+    (zero_span (previous_end_offset p))
+
 let missing_module_decl_equals = fun p ->
   diagnostic_with_current_at
     p
@@ -2804,76 +2810,146 @@ let parse_let_decl = fun p ~signature ->
   in
   ignore (complete p marker kind)
 
-let consume_record_type_body = fun p ->
-  bump p;
-  let consume_field_type () =
-    let rec loop depth =
-      if not (is_eof p || (depth = 0 && (at p Syntax_kind2.SEMI || at p Syntax_kind2.RBRACE))) then
-        (
-          let depth =
-            match current_kind p with
-            | Syntax_kind2.LPAREN
-            | Syntax_kind2.LBRACKET
-            | Syntax_kind2.LBRACE -> depth + 1
-            | Syntax_kind2.RPAREN
-            | Syntax_kind2.RBRACKET
-            | Syntax_kind2.RBRACE when depth > 0 -> depth - 1
-            | _ -> depth
-          in
-          bump p;
-          loop depth
-        )
-    in
-    loop 0
+let raw_first_char = fun p raw ->
+  let index = raw.Raw_token.span.Ceibo.Span.start in
+  if index < 0 || index >= Slice.length p.source then
+    None
+  else
+    try Some (Slice.get_unchecked p.source ~at:index) with
+    | Invalid_argument _ -> None
+
+let raw_ident_is_capitalized = fun p raw ->
+  Syntax_kind2.(raw.Raw_token.kind = IDENT) && match raw_first_char p raw with
+  | Some ('A' .. 'Z') -> true
+  | _ -> false
+
+let ident_at_is_capitalized = fun p offset ->
+  raw_ident_is_capitalized p (raw_at p (significant_raw_at p (p.pos + offset)))
+
+let starts_bare_variant_constructor = fun p ->
+  ident_at_is_capitalized p 0 && not (Syntax_kind2.(peek_kind p 1 = DOT))
+
+let starts_bare_variant_constructor_at = fun p offset ->
+  ident_at_is_capitalized p offset && not (Syntax_kind2.(peek_kind p (offset + 1) = DOT))
+
+let at_type_decl_member_boundary = fun p ~signature ->
+  is_eof p || at_item_boundary p ~signature || at p Syntax_kind2.AND_KW || at p Syntax_kind2.CONSTRAINT_KW
+
+let at_record_type_field_boundary = fun p ->
+  is_eof p || at p Syntax_kind2.SEMI || at p Syntax_kind2.RBRACE
+
+let rec parse_record_type_field = fun p ->
+  let marker = start_node p in
+  let start_pos = p.pos in
+  ignore (bump_if p Syntax_kind2.MUTABLE_KW);
+  let field_name =
+    if at p Syntax_kind2.IDENT then
+      let text = token_text p (current p) in
+      bump p;
+      Some text
+    else (
+      if p.pos > start_pos then
+        Event.Buffer.error p.events (mutable_field_missing_name p);
+      None
+    )
   in
+  let missing_colon =
+    match field_name with
+    | Some field_name when not (at p Syntax_kind2.COLON) ->
+        Event.Buffer.error p.events (record_field_missing_colon p ~field_name);
+        true
+    | _ -> false
+  in
+  if at p Syntax_kind2.COLON then
+    bump p
+  else if Option.is_some field_name && not missing_colon then
+    ();
+  if at_record_type_field_boundary p then
+    (
+      match field_name with
+      | Some field_name when at p Syntax_kind2.SEMI || at p Syntax_kind2.RBRACE -> Event.Buffer.error
+        p.events
+        (record_field_missing_type p ~field_name)
+      | _ -> ()
+    )
+  else
+    ignore (parse_type_expr p ~allow_leading_poly_type_after_newline:false ~stop_at_arrow:false);
+  if p.pos = start_pos && not (is_eof p || at p Syntax_kind2.RBRACE) then
+    bump p;
+  ignore (bump_if p Syntax_kind2.SEMI);
+  complete p marker Syntax_kind2.RECORD_FIELD
+
+and parse_record_type = fun p ->
+  let marker = start_node p in
+  ignore (bump_if p Syntax_kind2.PRIVATE_KW);
+  expect p Syntax_kind2.LBRACE (invalid_type_expression p);
   let rec parse_fields () =
     if not (is_eof p || at p Syntax_kind2.RBRACE) then
       (
-        let field_name =
-          if at p Syntax_kind2.MUTABLE_KW then
-            (
-              bump p;
-              if at p Syntax_kind2.IDENT then
-                let text = token_text p (current p) in
-                bump p;
-                Some text
-              else (
-                Event.Buffer.error p.events (mutable_field_missing_name p);
-                None
-              )
-            )
-          else if at p Syntax_kind2.IDENT then
-            let text = token_text p (current p) in
-            bump p;
-            Some text
-          else
-            None
-        in
-        let missing_colon =
-          match field_name with
-          | Some field_name when not (at p Syntax_kind2.COLON) ->
-              Event.Buffer.error p.events (record_field_missing_colon p ~field_name);
-              true
-          | _ -> false
-        in
-        if at p Syntax_kind2.COLON then
-          (
-            bump p;
-            consume_field_type ()
-          )
-        else if missing_colon then
-          consume_field_type ();
-        ignore (bump_if p Syntax_kind2.SEMI);
+        ignore (parse_record_type_field p);
         parse_fields ()
       )
   in
   parse_fields ();
-  expect_closer p Syntax_kind2.RBRACE ~opener:"{"
+  expect_closer p Syntax_kind2.RBRACE ~opener:"{";
+  complete p marker Syntax_kind2.RECORD_TYPE
+
+and parse_variant_constructor = fun p ~signature ->
+  let marker = start_node p in
+  ignore (bump_if p Syntax_kind2.PIPE);
+  if at p Syntax_kind2.IDENT then
+    (
+      bump p;
+      consume_path_segments p
+    )
+  else (
+    Event.Buffer.missing p.events ~kind:Syntax_kind2.IDENT ~offset:(current_offset p);
+    Event.Buffer.error p.events (missing_type_name_at_current_offset p)
+  );
+  (
+    match current_kind p with
+    | Syntax_kind2.OF_KW ->
+        bump p;
+        if at_type_decl_member_boundary p ~signature || at p Syntax_kind2.PIPE then
+          Event.Buffer.missing p.events ~kind:Syntax_kind2.IDENT ~offset:(current_offset p)
+        else if at p Syntax_kind2.LBRACE then
+          ignore (parse_record_type p)
+        else
+          ignore
+            (parse_type_expr p ~allow_leading_poly_type_after_newline:false ~stop_at_arrow:false)
+    | Syntax_kind2.COLON ->
+        bump p;
+        if at_type_decl_member_boundary p ~signature || at p Syntax_kind2.PIPE then
+          Event.Buffer.missing p.events ~kind:Syntax_kind2.IDENT ~offset:(current_offset p)
+        else
+          ignore
+            (parse_type_expr p ~allow_leading_poly_type_after_newline:false ~stop_at_arrow:false)
+    | _ ->
+        ()
+  );
+  complete p marker Syntax_kind2.VARIANT_CONSTRUCTOR
+
+and parse_variant_type = fun p ~signature ->
+  let marker = start_node p in
+  ignore (bump_if p Syntax_kind2.PRIVATE_KW);
+  let rec parse_constructors consumed =
+    if at_type_decl_member_boundary p ~signature then
+      consumed
+    else if at p Syntax_kind2.PIPE || starts_bare_variant_constructor p then
+      (
+        ignore (parse_variant_constructor p ~signature);
+        parse_constructors true
+      )
+    else
+      consumed
+  in
+  ignore (parse_constructors false);
+  complete p marker Syntax_kind2.VARIANT_TYPE
 
 let consume_type_body = fun p ~signature ->
   match current_kind p with
   | Syntax_kind2.LBRACE ->
-      consume_record_type_body p
+      ignore (parse_record_type p)
   | Syntax_kind2.LPAREN when Syntax_kind2.(peek_kind p 1 = MODULE_KW) ->
       bump p;
       consume_first_class_module_shell p
@@ -2924,7 +3000,19 @@ let type_decl_body_needs_opaque_parse = fun p ~signature ->
   | _ -> type_decl_body_contains_unsupported_type_syntax p ~signature
 
 let parse_type_decl_body = fun p ~signature ->
-  if type_decl_body_needs_opaque_parse p ~signature then
+  if
+    at p Syntax_kind2.LBRACE
+    || (at p Syntax_kind2.PRIVATE_KW && Syntax_kind2.(peek_kind p 1 = LBRACE))
+  then
+    ignore (parse_record_type p)
+  else if
+    at p Syntax_kind2.PIPE
+    || starts_bare_variant_constructor p
+    || (at p Syntax_kind2.PRIVATE_KW
+    && (Syntax_kind2.(peek_kind p 1 = PIPE) || starts_bare_variant_constructor_at p 1))
+  then
+    ignore (parse_variant_type p ~signature)
+  else if type_decl_body_needs_opaque_parse p ~signature then
     consume_type_body p ~signature
   else (
     parse_type_expr p ~allow_leading_poly_type_after_newline:false ~stop_at_arrow:false;

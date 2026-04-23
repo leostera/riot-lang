@@ -32,6 +32,10 @@ type pattern = node
 type parameter = node
 type match_case = node
 type type_expr = node
+type record_type = node
+type record_field = node
+type variant_type = node
+type variant_constructor = node
 type path = node
 val root: Syntax_tree.t -> node
 
@@ -111,6 +115,60 @@ module TypeExpr: sig
   val for_each_poly_type_name: t -> fn:(Token.t -> unit) -> unit
 
   val for_each_child_type: t -> fn:(t -> unit) -> unit
+end
+
+module RecordField: sig
+  type t = record_field
+  val cast: Node.t -> t option
+
+  val mutable_token: t -> Token.t option
+
+  val name: t -> Token.t option
+
+  val colon_token: t -> Token.t option
+
+  val type_annotation: t -> type_expr option
+end
+
+module RecordType: sig
+  type t = record_type
+  val cast: Node.t -> t option
+
+  val private_token: t -> Token.t option
+
+  val opening_token: t -> Token.t option
+
+  val closing_token: t -> Token.t option
+
+  val for_each_field: t -> fn:(record_field -> unit) -> unit
+end
+
+module VariantConstructor: sig
+  type t = variant_constructor
+  val cast: Node.t -> t option
+
+  val pipe_token: t -> Token.t option
+
+  val name: t -> Token.t option
+
+  val of_token: t -> Token.t option
+
+  val colon_token: t -> Token.t option
+
+  val payload_type: t -> type_expr option
+
+  val result_type: t -> type_expr option
+
+  val record_payload: t -> record_type option
+end
+
+module VariantType: sig
+  type t = variant_type
+  val cast: Node.t -> t option
+
+  val private_token: t -> Token.t option
+
+  val for_each_constructor: t -> fn:(variant_constructor -> unit) -> unit
 end
 
 module Pattern: sig
@@ -588,6 +646,10 @@ module TypeDeclaration: sig
     val for_each_child_token: t -> fn:(Token.t -> unit) -> unit
 
     val for_each_child_node: t -> fn:(Node.t -> unit) -> unit
+
+    val record_type: t -> record_type option
+
+    val variant_type: t -> variant_type option
 
     val shell_token: t -> Token.t option
 

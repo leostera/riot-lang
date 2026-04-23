@@ -59,6 +59,14 @@ type match_case = node
 
 type type_expr = node
 
+type record_type = node
+
+type record_field = node
+
+type variant_type = node
+
+type variant_constructor = node
+
 type path = node
 
 let root = fun tree -> ({ tree; id = tree.Syntax_tree.root }: node)
@@ -175,6 +183,22 @@ let is_type_expr_kind = function
   | Syntax_kind2.APPLY_TYPE
   | Syntax_kind2.PAREN_TYPE
   | Syntax_kind2.OPAQUE_TYPE -> true
+  | _ -> false
+
+let is_record_type_kind = function
+  | Syntax_kind2.RECORD_TYPE -> true
+  | _ -> false
+
+let is_record_field_kind = function
+  | Syntax_kind2.RECORD_FIELD -> true
+  | _ -> false
+
+let is_variant_type_kind = function
+  | Syntax_kind2.VARIANT_TYPE -> true
+  | _ -> false
+
+let is_variant_constructor_kind = function
+  | Syntax_kind2.VARIANT_CONSTRUCTOR -> true
   | _ -> false
 
 let is_module_expr_kind = function
@@ -671,6 +695,88 @@ module TypeExpr = struct
         | Syntax_tree.Node _
         | Syntax_tree.Missing _ -> ()
       )
+end
+
+module RecordField = struct
+  type t = record_field
+
+  let cast = fun (node: node) ->
+    if node_matches node is_record_field_kind then
+      Some node
+    else
+      None
+
+  let mutable_token = fun field -> Node.first_child_token field ~kind:Syntax_kind2.MUTABLE_KW
+
+  let name = first_ident_token
+
+  let colon_token = fun field -> Node.first_child_token field ~kind:Syntax_kind2.COLON
+
+  let type_annotation = fun field -> first_child_node_matching field ~matches:is_type_expr_kind
+end
+
+module RecordType = struct
+  type t = record_type
+
+  let cast = fun (node: node) ->
+    if node_matches node is_record_type_kind then
+      Some node
+    else
+      None
+
+  let private_token = fun record_type -> Node.first_child_token record_type ~kind:Syntax_kind2.PRIVATE_KW
+
+  let opening_token = fun record_type -> Node.first_child_token record_type ~kind:Syntax_kind2.LBRACE
+
+  let closing_token = fun record_type -> Node.first_child_token record_type ~kind:Syntax_kind2.RBRACE
+
+  let for_each_field = fun record_type ~fn ->
+    for_each_child_node_matching record_type ~matches:is_record_field_kind ~fn
+end
+
+module VariantConstructor = struct
+  type t = variant_constructor
+
+  let cast = fun (node: node) ->
+    if node_matches node is_variant_constructor_kind then
+      Some node
+    else
+      None
+
+  let pipe_token = fun constructor -> Node.first_child_token constructor ~kind:Syntax_kind2.PIPE
+
+  let name = first_ident_token
+
+  let of_token = fun constructor -> Node.first_child_token constructor ~kind:Syntax_kind2.OF_KW
+
+  let colon_token = fun constructor -> Node.first_child_token constructor ~kind:Syntax_kind2.COLON
+
+  let payload_type = fun constructor ->
+    match of_token constructor with
+    | Some _ -> first_child_node_matching constructor ~matches:is_type_expr_kind
+    | None -> None
+
+  let result_type = fun constructor ->
+    match colon_token constructor with
+    | Some _ -> first_child_node_matching constructor ~matches:is_type_expr_kind
+    | None -> None
+
+  let record_payload = fun constructor -> first_child_node_matching constructor ~matches:is_record_type_kind
+end
+
+module VariantType = struct
+  type t = variant_type
+
+  let cast = fun (node: node) ->
+    if node_matches node is_variant_type_kind then
+      Some node
+    else
+      None
+
+  let private_token = fun variant_type -> Node.first_child_token variant_type ~kind:Syntax_kind2.PRIVATE_KW
+
+  let for_each_constructor = fun variant_type ~fn ->
+    for_each_child_node_matching variant_type ~matches:is_variant_constructor_kind ~fn
 end
 
 module Path = struct
@@ -2509,6 +2615,22 @@ module TypeDeclaration = struct
           | Syntax_tree.Missing _ -> ()
         )
 
+    let find_node = fun member ~matches ->
+      let count = child_count member in
+      let rec loop index =
+        if index >= count then
+          None
+        else
+          match child_node_at member index with
+          | Some node when node_matches node matches -> Some node
+          | _ -> loop (index + 1)
+      in
+      loop 0
+
+    let record_type = fun member -> find_node member ~matches:is_record_type_kind
+
+    let variant_type = fun member -> find_node member ~matches:is_variant_type_kind
+
     let shell_token = fun member -> child_token_at member 0
 
     let nonrec_token = fun member ->
@@ -3246,15 +3368,48 @@ module IncludeDeclaration = struct
 
   let path_text = Node.text
 
-  let first_path_ident = first_ident_token
+  let first_specific_body = fun decl ->
+    let rec find_body index =
+      if index >= Node.child_count decl then
+        None
+      else
+        match Node.child_at decl index with
+        | Some (Syntax_tree.Node id) ->
+            let node = wrap_node decl.tree id in
+            if node_matches node (fun kind -> is_module_expr_kind kind || is_module_type_kind kind) then
+              (
+                match Node.kind node with
+                | Syntax_kind2.MODULE_EXPR -> first_child_node_matching node ~matches:is_module_expr_kind
+                | Syntax_kind2.MODULE_TYPE_EXPR -> first_child_node_matching node ~matches:is_module_type_kind
+                | kind when is_module_expr_kind kind || is_module_type_kind kind -> Some node
+                | _ -> None
+              )
+            else
+              find_body (index + 1)
+        | Some (Syntax_tree.Token _)
+        | Some (Syntax_tree.Missing _)
+        | None -> find_body (index + 1)
+    in
+    find_body 0
 
-  let last_path_ident = last_ident_token
+  let first_path_ident = fun decl ->
+    match first_specific_body decl with
+    | Some node -> first_ident_token node
+    | None -> None
+
+  let last_path_ident = fun decl ->
+    match first_specific_body decl with
+    | Some node -> last_ident_token node
+    | None -> None
 
   let for_each_path_ident = fun decl ~fn ->
-    Node.for_each_child_token decl
-      ~fn:(fun token ->
-        if token_kind_is token Syntax_kind2.IDENT then
-          fn token)
+    match first_specific_body decl with
+    | Some node ->
+        for_each_token_in_node node
+          ~fn:(fun token ->
+            if token_kind_is token Syntax_kind2.IDENT then
+              fn token)
+    | None -> ()
 end
 
 let for_each_declaration_name_token = fun decl ~keyword ~fn ->

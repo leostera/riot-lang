@@ -490,6 +490,88 @@ let test_type_declaration_member_views = fun _ctx ->
       Ok ()
   | _ -> Error "expected type declaration"
 
+let test_type_declaration_body_group_views = fun _ctx ->
+  let root =
+    parse_mli
+      "type color = Red | Blue of int | Pair of int * string\n\
+     type point = private { mutable x : int; y : string }\n"
+    |> Result.expect ~msg:"expected parse2 interface"
+  in
+  let color_item = nth_signature_item root 0 |> require_some ~msg:"expected color type item" in
+  (
+    match Ast2.SignatureItem.view color_item with
+    | Ast2.SignatureItem.Type decl ->
+        let member =
+          Ast2.TypeDeclaration.fold_members decl None
+            (fun acc member ->
+              match acc with
+              | Some _ -> acc
+              | None -> Some member)
+          |> require_some ~msg:"expected color type member"
+        in
+        let variant = Ast2.TypeDeclaration.Member.variant_type member |> require_some ~msg:"expected variant type body" in
+        let names = ref [] in
+        let pipe_flags = ref [] in
+        let payload_shapes = ref [] in
+        Ast2.VariantType.for_each_constructor variant
+          ~fn:(fun constructor ->
+            let name = Ast2.VariantConstructor.name constructor |> require_some ~msg:"expected constructor name" in
+            names := Ast2.Token.text name :: !names;
+            pipe_flags := Option.is_some (Ast2.VariantConstructor.pipe_token constructor) :: !pipe_flags;
+            let payload_shape =
+              match Ast2.VariantConstructor.payload_type constructor with
+              | None -> "none"
+              | Some payload -> (
+                  match Ast2.TypeExpr.view payload with
+                  | Ast2.TypeExpr.Path _ -> "path"
+                  | Ast2.TypeExpr.Tuple { separator=Ast2.TypeExpr.Star; _ } -> "tuple"
+                  | _ -> "other"
+                )
+            in
+            payload_shapes := payload_shape :: !payload_shapes);
+        Test.assert_equal ~expected:[ "Red"; "Blue"; "Pair" ] ~actual:(List.reverse !names);
+        Test.assert_equal ~expected:[ false; true; true ] ~actual:(List.reverse !pipe_flags);
+        Test.assert_equal
+          ~expected:[ "none"; "path"; "tuple" ]
+          ~actual:(List.reverse !payload_shapes);
+        Ok ()
+    | _ -> Error "expected color type declaration"
+  ) |> Result.expect ~msg:"expected variant type body";
+  let point_item = nth_signature_item root 1 |> require_some ~msg:"expected point type item" in
+  match Ast2.SignatureItem.view point_item with
+  | Ast2.SignatureItem.Type decl ->
+      let member =
+        Ast2.TypeDeclaration.fold_members decl None
+          (fun acc member ->
+            match acc with
+            | Some _ -> acc
+            | None -> Some member)
+        |> require_some ~msg:"expected point type member"
+      in
+      let record = Ast2.TypeDeclaration.Member.record_type member |> require_some ~msg:"expected record type body" in
+      Test.assert_true (Option.is_some (Ast2.RecordType.private_token record));
+      let names = ref [] in
+      let mutable_flags = ref [] in
+      let field_types = ref [] in
+      Ast2.RecordType.for_each_field record
+        ~fn:(fun field ->
+          let name = Ast2.RecordField.name field |> require_some ~msg:"expected record field name" in
+          names := Ast2.Token.text name :: !names;
+          mutable_flags := Option.is_some (Ast2.RecordField.mutable_token field) :: !mutable_flags;
+          let annotation = Ast2.RecordField.type_annotation field |> require_some ~msg:"expected record field type" in
+          (
+            match Ast2.TypeExpr.view annotation with
+            | Ast2.TypeExpr.Path { path } ->
+                let last = Ast2.Path.last_ident path |> require_some ~msg:"expected field type path" in
+                field_types := Ast2.Token.text last :: !field_types
+            | _ -> panic "expected field type path"
+          ));
+      Test.assert_equal ~expected:[ "x"; "y" ] ~actual:(List.reverse !names);
+      Test.assert_equal ~expected:[ true; false ] ~actual:(List.reverse !mutable_flags);
+      Test.assert_equal ~expected:[ "int"; "string" ] ~actual:(List.reverse !field_types);
+      Ok ()
+  | _ -> Error "expected point type declaration"
+
 let test_open_declaration_path_tokens = fun _ctx ->
   let root = parse_ml "open Foo.Bar\n" |> Result.expect ~msg:"expected parse2 source file" in
   let item = nth_structure_item root 0 |> require_some ~msg:"expected open structure item" in
@@ -1271,6 +1353,7 @@ let tests = [
   Test.case "ast2 keeps non-manifest type bodies out of manifest views" test_non_manifest_type_declaration_bodies;
   Test.case "ast2 exposes type declaration parameters" test_type_declaration_parameters;
   Test.case "ast2 exposes type declaration member views" test_type_declaration_member_views;
+  Test.case "ast2 exposes type declaration body group views" test_type_declaration_body_group_views;
   Test.case "ast2 exposes open declaration path tokens" test_open_declaration_path_tokens;
   Test.case "ast2 exposes simple declaration token views" test_simple_declaration_token_views;
   Test.case "ast2 exposes module declaration tokens" test_module_declaration_tokens;

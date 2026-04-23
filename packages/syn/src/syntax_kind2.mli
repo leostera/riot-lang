@@ -228,6 +228,10 @@ type t =
   | APPLY_TYPE
   | PAREN_TYPE
   | OPAQUE_TYPE
+  | RECORD_TYPE
+  | RECORD_FIELD
+  | VARIANT_TYPE
+  | VARIANT_CONSTRUCTOR
   | ERROR
   | MISSING
 val equal: t -> t -> bool
