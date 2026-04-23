@@ -753,6 +753,12 @@ let symbolic_operator_part = function
   | kind when operator_pattern_token kind -> true
   | _ -> false
 
+let can_start_poly_variant_payload = fun p ->
+  match current_kind p with
+  | Syntax_kind2.TILDE
+  | Syntax_kind2.QUESTION -> symbolic_operator_part (peek_kind p 1)
+  | kind -> can_start_atom kind
+
 let starts_with_module_type_keyword = fun p ->
   at p Syntax_kind2.MODULE_KW && Syntax_kind2.(peek_kind p 1 = TYPE_KW)
 
@@ -1456,7 +1462,7 @@ and parse_poly_variant_expr = fun p ~signature ~stop_at_item ~stop_at_semi ~stop
   expect p Syntax_kind2.IDENT (invalid_expression p);
   if
     (not (expression_boundary p ~stop_at_item ~stop_at_semi ~stop_at_comma ~signature))
-    && can_start_atom (current_kind p)
+    && can_start_poly_variant_payload p
   then
     ignore (parse_prefix_or_atom p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma);
   complete p marker Syntax_kind2.POLY_VARIANT_EXPR

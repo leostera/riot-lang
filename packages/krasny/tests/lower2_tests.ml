@@ -99,6 +99,7 @@ let assert_lower2_existing_fixture_subset = fun () ->
     Path.v "packages/krasny/tests/fixtures/0418_keyword_operator_binding_pattern.ml";
     Path.v "packages/krasny/tests/fixtures/0419_typed_constructor_payload.ml";
     Path.v "packages/krasny/tests/fixtures/0420_typed_expression_parenthesized.ml";
+    Path.v "packages/krasny/tests/fixtures/0421_labeled_arg_poly_variant_then_label.ml";
     Path.v "packages/krasny/tests/fixtures/0422_top_level_expression_double_semicolon_before_floating_attribute.ml";
     Path.v "packages/krasny/tests/fixtures/0423_extended_index_operators.ml";
     Path.v "packages/krasny/tests/fixtures/0424_top_level_trailing_sequence_prefix_operator.ml";

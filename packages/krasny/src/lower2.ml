@@ -1512,6 +1512,15 @@ and application_parts = fun expr ->
   in
   collect expr []
 
+and expr_is_labeled_argument = fun expr ->
+  match Ast.Expr.view expr with
+  | LabeledArg _
+  | OptionalArg _ -> true
+  | _ -> false
+
+and application_has_many_labeled_arguments = fun arguments ->
+  Int.(List.length arguments >= 4) && List.all arguments ~fn:expr_is_labeled_argument
+
 and application_doc = fun expr ->
   let callee, arguments = application_parts expr in
   match arguments with
@@ -1519,7 +1528,9 @@ and application_doc = fun expr ->
   | arguments ->
       let callee_doc = expr_apply_callee_doc callee in
       let argument_docs = List.map arguments ~fn:expr_apply_argument_doc in
-      if List.any argument_docs ~fn:Doc.is_multiline then
+      if
+        List.any argument_docs ~fn:Doc.is_multiline || application_has_many_labeled_arguments arguments
+      then
         Doc.concat [ callee_doc; Doc.line; Doc.indent 2 (Doc.join Doc.line argument_docs) ]
       else
         Doc.concat [ callee_doc; Doc.space; Doc.join Doc.space argument_docs ]
@@ -2455,10 +2466,14 @@ and let_binding_doc = fun ?(force_body_break_after_equal = false) binding ->
                   || expr_binding_body_breaks_after_equal body
                   || expr_has_unconsumed_boundary_leading_comment body
                   || match Ast.Expr.view body with
-                  | Apply _ -> Doc.is_multiline inline_body_doc
-                  | Parenthesized { inner=Some inner } -> expr_parenthesized_inner_breaks_after_equal
-                    inner
-                  | _ -> false
+                  | Apply _ ->
+                      let _, arguments = application_parts body in
+                      Doc.is_multiline inline_body_doc
+                      && not (application_has_many_labeled_arguments arguments)
+                  | Parenthesized { inner=Some inner } ->
+                      expr_parenthesized_inner_breaks_after_equal inner
+                  | _ ->
+                      false
                 in
                 let body_doc =
                   if body_breaks then

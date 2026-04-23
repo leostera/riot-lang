@@ -150,6 +150,51 @@ let test_expression_views = fun _ctx ->
       Ok ()
   | _ -> Error "expected match expression"
 
+let test_labeled_application_after_poly_variant_argument = fun _ctx ->
+  let source = "let parse_interface ~source tokens = parse ~cst_kind:`Interface \
+     ~parse_item:parse_signature_item ~source ~tokens\n"
+  in
+  let root = parse_ml source |> Result.expect ~msg:"expected parse2 source file" in
+  let item = nth_structure_item root 0 |> require_some ~msg:"expected first structure item" in
+  let body = item
+  |> binding_of_structure_item
+  |> Result.expect ~msg:"expected let binding"
+  |> body_of_binding
+  |> Result.expect ~msg:"expected binding body" in
+  let rec application_parts expr args =
+    match Ast2.Expr.view expr with
+    | Ast2.Expr.Apply { callee=Some callee; argument=Some argument } -> application_parts
+      callee
+      (argument :: args)
+    | _ -> (expr, args)
+  in
+  let assert_labeled_arg arg expected =
+    match Ast2.Expr.view arg with
+    | Ast2.Expr.LabeledArg { label=Some label; value } ->
+        Test.assert_equal ~expected ~actual:(Ast2.Token.text label);
+        value
+    | _ -> panic ("expected labeled argument " ^ expected)
+  in
+  let callee, arguments = application_parts body [] in
+  (
+    match Ast2.Expr.view callee with
+    | Ast2.Expr.Path { path } -> assert_last_ident_text path "parse"
+    | _ -> panic "expected parse callee"
+  );
+  match arguments with
+  | [cst_kind;parse_item;source;tokens] ->
+      let cst_kind_value = assert_labeled_arg cst_kind "cst_kind" in
+      (
+        match cst_kind_value |> require_some ~msg:"expected cst_kind value" |> Ast2.Expr.view with
+        | Ast2.Expr.PolyVariant { payload=None } -> ()
+        | _ -> panic "expected cst_kind value to be a bare polymorphic variant"
+      );
+      ignore (assert_labeled_arg parse_item "parse_item");
+      ignore (assert_labeled_arg source "source");
+      ignore (assert_labeled_arg tokens "tokens");
+      Ok ()
+  | _ -> Error "expected parse application to have four labeled arguments"
+
 let test_pattern_views = fun _ctx ->
   let source = "let (a, b) = xs\nlet h :: t = xs\n" in
   let root = parse_ml source |> Result.expect ~msg:"expected parse2 source file" in
@@ -1033,6 +1078,7 @@ let test_special_pattern_views = fun _ctx ->
 let tests = [
   Test.case "ast2 exposes source file and let binding views" test_source_file_and_let_binding_views;
   Test.case "ast2 exposes if and match expression views" test_expression_views;
+  Test.case "ast2 keeps labels after polymorphic variant arguments as application arguments" test_labeled_application_after_poly_variant_argument;
   Test.case "ast2 exposes tuple and cons pattern views" test_pattern_views;
   Test.case "ast2 exposes signature declaration views" test_signature_and_type_views;
   Test.case "ast2 exposes type expression views" test_type_expression_views;
