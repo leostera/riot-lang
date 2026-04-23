@@ -1534,12 +1534,12 @@ and collect_same_infix_chain = fun operator_text expr acc ->
 and same_infix_chain = fun operator expr ->
   collect_same_infix_chain (infix_operator_text expr operator) expr [] |> List.reverse
 
-and large_infix_chain_doc = fun expr ->
+and infix_chain_doc = fun ~minimum_parts expr ->
   match Ast.Expr.view expr with
   | Infix { operator=Some operator; _ } -> (
       let parts = same_infix_chain operator expr in
       let operator_doc = infix_operator_doc expr operator in
-      if Int.(List.length parts <= 8) then
+      if Int.(List.length parts < minimum_parts) then
         None
       else
         match parts with
@@ -1552,6 +1552,8 @@ and large_infix_chain_doc = fun expr ->
           |> List.concat)))
     )
   | _ -> None
+
+and large_infix_chain_doc = fun expr -> infix_chain_doc ~minimum_parts:9 expr
 
 and function_binding_body_doc = fun expr ->
   match Ast.Expr.view expr with
@@ -1666,10 +1668,23 @@ and expr_doc_with_boundary_leading_comment = fun expr ->
     [ trimmed_leading_comment_token_doc token; Doc.line; expr_doc expr ]
   | _ -> expr_doc expr
 
+and expr_doc_with_boundary_leading_comment_doc = fun expr body_doc ->
+  match Ast.Node.first_descendant_token expr with
+  | Some token when expr_has_unconsumed_boundary_leading_comment expr -> Doc.concat
+    [ trimmed_leading_comment_token_doc token; Doc.line; body_doc ]
+  | _ -> body_doc
+
 and expr_multiline_body_doc = fun expr ->
   match Ast.Expr.view expr with
-  | LetException _ -> let_exception_expr_doc_with_body_break expr
-  | _ -> expr_doc_with_boundary_leading_comment expr
+  | LetException _ ->
+      let_exception_expr_doc_with_body_break expr
+  | Infix { operator=Some operator; _ } when String.equal (infix_operator_text expr operator) "|>" -> (
+      match infix_chain_doc ~minimum_parts:2 expr with
+      | Some body_doc -> expr_doc_with_boundary_leading_comment_doc expr body_doc
+      | None -> expr_doc_with_boundary_leading_comment expr
+    )
+  | _ ->
+      expr_doc_with_boundary_leading_comment expr
 
 and expr_has_leading_comment = fun expr ->
   match Ast.Node.first_descendant_token expr with
@@ -2413,14 +2428,22 @@ and let_binding_doc = fun ?(force_body_break_after_equal = false) binding ->
             match large_infix_chain_doc body with
             | Some body_doc -> Doc.concat [ head; Doc.line; Doc.indent 2 body_doc ]
             | None ->
-                let body_doc = expr_doc body in
-                if
+                let inline_body_doc = expr_doc body in
+                let body_breaks =
                   force_body_break_after_equal
                   || expr_binding_body_breaks_after_equal body
+                  || expr_has_unconsumed_boundary_leading_comment body
                   || match Ast.Expr.view body with
-                  | Apply _ -> Doc.is_multiline body_doc
+                  | Apply _ -> Doc.is_multiline inline_body_doc
                   | _ -> false
-                then
+                in
+                let body_doc =
+                  if body_breaks then
+                    expr_multiline_body_doc body
+                  else
+                    expr_doc_with_boundary_leading_comment body
+                in
+                if body_breaks then
                   Doc.concat [ head; Doc.line; Doc.indent 2 body_doc ]
                 else
                   Doc.concat [ head; Doc.space; body_doc ]
