@@ -253,6 +253,17 @@ let local_module_struct_body_doc = fun tokens ->
 let token_text_is = fun token expected ->
   String.equal (Ast.Token.text token) expected
 
+let token_is_operator_word = fun token ->
+  match Ast.Token.text token with
+  | "asr"
+  | "land"
+  | "lor"
+  | "lsl"
+  | "lsr"
+  | "lxor"
+  | "mod" -> true
+  | _ -> false
+
 let is_ascii_alpha = function
   | 'a' .. 'z'
   | 'A' .. 'Z' -> true
@@ -973,6 +984,8 @@ let rec pattern_doc = fun pattern ->
       literal_token_doc token
   | Literal { token=None } ->
       unsupported "literal pattern without token"
+  | Parenthesized { inner=Some inner } when pattern_is_operator_word_path inner ->
+      Doc.concat [ Doc.lparen; Doc.space; pattern_doc inner; Doc.space; Doc.rparen ]
   | Parenthesized { inner=Some inner } ->
       Doc.concat [ Doc.lparen; pattern_doc inner; Doc.rparen ]
   | Parenthesized { inner=None } ->
@@ -1283,6 +1296,21 @@ and path_single_ident_token = fun path ->
   else
     None
 
+and path_single_operator_word_token = fun path ->
+  match path_single_ident_token path with
+  | Some token when token_is_operator_word token -> Some token
+  | _ -> None
+
+and pattern_is_operator_word_path = fun pattern ->
+  match Ast.Pattern.view pattern with
+  | Path { path } -> Option.is_some (path_single_operator_word_token path)
+  | _ -> false
+
+and expr_is_operator_word_path = fun expr ->
+  match Ast.Expr.view expr with
+  | Path { path } -> Option.is_some (path_single_operator_word_token path)
+  | _ -> false
+
 and pattern_binding_ident_token = fun pattern ->
   match Ast.Pattern.view pattern with
   | Path { path } -> path_single_ident_token path
@@ -1427,6 +1455,7 @@ and expr_parens_can_elide = fun expr ->
 and expr_apply_argument_doc = fun expr ->
   let view = Ast.Expr.view expr in
   match view with
+  | Tuple when expr_tuple_has_explicit_delimiter expr -> expr_doc_with_view expr view
   | Path _
   | Literal _
   | Parenthesized _
@@ -1579,6 +1608,11 @@ and expr_infix_operand_doc = fun expr ->
   | While _
   | For _ -> Doc.concat [ Doc.lparen; expr_doc_with_view expr view; Doc.rparen ]
   | _ -> expr_doc_with_view expr view
+
+and expr_prefix_operand_doc = fun expr ->
+  match Ast.Expr.view expr with
+  | Parenthesized { inner=Some inner } -> parenthesized_expr_doc expr inner
+  | _ -> expr_doc expr
 
 and expr_doc = fun expr -> expr_doc_with_view expr (Ast.Expr.view expr)
 
@@ -1733,7 +1767,7 @@ and expr_doc_with_view = fun expr (view: Ast.Expr.view) ->
       match Ast.Expr.view operand with
       | Literal { token=Some token } when token_text_is operator "-" -> Doc.concat
         [ Doc.lparen; token_doc operator; literal_token_doc token; Doc.rparen ]
-      | _ -> Doc.concat [ token_doc operator; expr_doc operand ]
+      | _ -> Doc.concat [ token_doc operator; expr_prefix_operand_doc operand ]
     )
   | Prefix _ ->
       unsupported "incomplete prefix expression"
@@ -1935,7 +1969,11 @@ and expr_doc_with_view = fun expr (view: Ast.Expr.view) ->
         | None -> head
       )
   | ArrayIndex { target=Some target; index=Some index } ->
-      Doc.concat [ expr_doc target; Doc.text ".("; expr_doc index; Doc.rparen ]
+      if expr_is_operator_word_path index then
+        Doc.concat
+          [ expr_doc target; Doc.text ".("; Doc.space; expr_doc index; Doc.space; Doc.rparen ]
+      else
+        Doc.concat [ expr_doc target; Doc.text ".("; expr_doc index; Doc.rparen ]
   | ArrayIndex _ ->
       unsupported "incomplete array index expression"
   | StringIndex { target=Some target; index=Some index } ->

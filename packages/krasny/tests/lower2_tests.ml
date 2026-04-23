@@ -93,13 +93,16 @@ let assert_lower2_existing_fixture_subset = fun () ->
     Path.v "packages/krasny/tests/fixtures/0413_parenthesized_operator_value.ml";
     Path.v "packages/krasny/tests/fixtures/0414_typed_match_scrutinee.ml";
     Path.v "packages/krasny/tests/fixtures/0415_nested_fun_parameter_stability.ml";
+    Path.v "packages/krasny/tests/fixtures/0418_keyword_operator_binding_pattern.ml";
     Path.v "packages/krasny/tests/fixtures/0419_typed_constructor_payload.ml";
     Path.v "packages/krasny/tests/fixtures/0420_typed_expression_parenthesized.ml";
+    Path.v "packages/krasny/tests/fixtures/0425_prefix_parenthesized_field_access.ml";
     Path.v "packages/krasny/tests/fixtures/0432_nested_poly_variant_payload.ml";
     Path.v "packages/krasny/tests/fixtures/0433_apply_parenthesized_poly_variant_payload.ml";
     Path.v "packages/krasny/tests/fixtures/0434_poly_variant_local_open_pattern_payload.ml";
     Path.v "packages/krasny/tests/fixtures/0500_labeled_and_optional_arguments.ml";
     Path.v "packages/krasny/tests/fixtures/0511_optional_parameter_default_preservation.ml";
+    Path.v "packages/krasny/tests/fixtures/0514_labeled_tuple_payload.ml";
     Path.v "packages/krasny/tests/fixtures/0515_optional_arg_parenthesized_payload_then_unit_before_tuple.ml";
     Path.v "packages/krasny/tests/fixtures/0516_labeled_arg_then_optional_then_unit_before_tuple.ml";
     Path.v "packages/krasny/tests/fixtures/0700_types_and_type_declarations.ml";
