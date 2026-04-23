@@ -790,7 +790,9 @@ let extension_shell_tokens_doc = fun tokens ->
 let path_doc = fun path ->
   let segments = ref [] in
   Ast.Path.for_each_ident path ~fn:(fun token -> segments := token_doc token :: !segments);
-  Doc.join (Doc.text ".") (List.reverse !segments)
+  match List.reverse !segments with
+  | [] -> parenthesized_token_shell_doc (direct_child_tokens path)
+  | segments -> Doc.join (Doc.text ".") segments
 
 let open_path_doc = fun decl ->
   let segments = ref [] in

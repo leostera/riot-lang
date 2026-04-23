@@ -90,6 +90,7 @@ let assert_lower2_existing_fixture_subset = fun () ->
     Path.v "packages/krasny/tests/fixtures/0350_typed_function_binding_headers.ml";
     Path.v "packages/krasny/tests/fixtures/0400_functions_match_and_patterns.ml";
     Path.v "packages/krasny/tests/fixtures/0411_match_case_char_guard.ml";
+    Path.v "packages/krasny/tests/fixtures/0413_parenthesized_operator_value.ml";
     Path.v "packages/krasny/tests/fixtures/0414_typed_match_scrutinee.ml";
     Path.v "packages/krasny/tests/fixtures/0415_nested_fun_parameter_stability.ml";
     Path.v "packages/krasny/tests/fixtures/0419_typed_constructor_payload.ml";
