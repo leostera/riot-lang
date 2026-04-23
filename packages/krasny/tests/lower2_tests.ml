@@ -92,6 +92,7 @@ let assert_lower2_existing_fixture_subset = fun () ->
     Path.v "packages/krasny/tests/fixtures/0344_typed_let_alias_pattern_parameter.ml";
     Path.v "packages/krasny/tests/fixtures/0350_typed_function_binding_headers.ml";
     Path.v "packages/krasny/tests/fixtures/0360_local_open_record_pattern.ml";
+    Path.v "packages/krasny/tests/fixtures/0380_long_grouped_bench_list.ml";
     Path.v "packages/krasny/tests/fixtures/0400_functions_match_and_patterns.ml";
     Path.v "packages/krasny/tests/fixtures/0410_negative_literal_patterns.ml";
     Path.v "packages/krasny/tests/fixtures/0411_match_case_char_guard.ml";
@@ -100,6 +101,7 @@ let assert_lower2_existing_fixture_subset = fun () ->
     Path.v "packages/krasny/tests/fixtures/0414_typed_match_scrutinee.ml";
     Path.v "packages/krasny/tests/fixtures/0415_nested_fun_parameter_stability.ml";
     Path.v "packages/krasny/tests/fixtures/0416_local_open_unary_operator_value.ml";
+    Path.v "packages/krasny/tests/fixtures/0417_local_open_operator_spacing.ml";
     Path.v "packages/krasny/tests/fixtures/0418_keyword_operator_binding_pattern.ml";
     Path.v "packages/krasny/tests/fixtures/0419_typed_constructor_payload.ml";
     Path.v "packages/krasny/tests/fixtures/0420_typed_expression_parenthesized.ml";
@@ -111,6 +113,7 @@ let assert_lower2_existing_fixture_subset = fun () ->
     Path.v "packages/krasny/tests/fixtures/0426_top_level_trailing_sequence_before_let.ml";
     Path.v "packages/krasny/tests/fixtures/0427_let_in_sequence_after_multiline_apply.ml";
     Path.v "packages/krasny/tests/fixtures/0428_top_level_phrase_separator_after_supported_item.ml";
+    Path.v "packages/krasny/tests/fixtures/0429_qualified_local_open_record_literal.ml";
     Path.v "packages/krasny/tests/fixtures/0432_nested_poly_variant_payload.ml";
     Path.v "packages/krasny/tests/fixtures/0433_apply_parenthesized_poly_variant_payload.ml";
     Path.v "packages/krasny/tests/fixtures/0434_poly_variant_local_open_pattern_payload.ml";

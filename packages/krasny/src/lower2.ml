@@ -1761,6 +1761,7 @@ and expr_binding_body_breaks_after_equal = fun expr ->
   | Try _
   | Sequence _
   | Assign _ -> true
+  | LocalOpen _ -> Doc.is_multiline (local_open_expr_doc expr)
   | LetModule _ -> let_module_expr_is_multiline expr
   | Parenthesized _ -> expr_is_begin_block expr
   | _ -> false
@@ -1783,6 +1784,7 @@ and expr_arrow_body_breaks = fun expr ->
   | Try _
   | Sequence _
   | LetException _ -> true
+  | LocalOpen _ -> Doc.is_multiline (local_open_expr_doc expr)
   | Parenthesized _ -> expr_is_begin_block expr
   | _ -> false
 
@@ -2045,26 +2047,9 @@ and expr_doc_with_view = fun expr (view: Ast.Expr.view) ->
         | None, None -> items
       )
   | List ->
-      let items = child_expr_docs expr in
-      let item_docs = List.map items ~fn:expr_doc in
-      if expr_list_has_trailing_separator expr items then
-        Doc.concat
-          [
-            Doc.lbracket;
-            Doc.space;
-            Doc.join (Doc.concat [ Doc.semi; Doc.space ]) item_docs;
-            Doc.semi;
-            Doc.space;
-            Doc.rbracket;
-          ]
-      else
-        Doc.concat
-          [ Doc.lbracket; Doc.join (Doc.concat [ Doc.semi; Doc.space ]) item_docs; Doc.rbracket ]
+      Doc.concat [ Doc.lbracket; list_expr_body_doc expr; Doc.rbracket ]
   | Array ->
-      child_expr_docs expr
-      |> List.map ~fn:expr_doc
-      |> Doc.join (Doc.concat [ Doc.semi; Doc.space ])
-      |> fun items -> Doc.concat [ Doc.text "[|"; items; Doc.text "|]" ]
+      Doc.concat [ Doc.text "[|"; array_expr_body_doc expr; Doc.text "|]" ]
   | Record
   | RecordUpdate ->
       record_expr_doc expr
@@ -2292,6 +2277,26 @@ and extension_expr_doc = fun expr ->
     ~for_each_shell_token:(fun ~fn -> Ast.ExtensionExpr.for_each_shell_token extension ~fn)
   | None -> unsupported "unsupported extension expression"
 
+and list_expr_body_doc = fun expr ->
+  let items = child_expr_docs expr in
+  let item_docs = List.map items ~fn:expr_doc in
+  if Int.(List.length item_docs > 3) then
+    Doc.concat
+      [
+        Doc.line;
+        Doc.indent 2 (Doc.join (Doc.concat [ Doc.semi; Doc.line ]) item_docs);
+        Doc.semi;
+        Doc.line;
+      ]
+  else if expr_list_has_trailing_separator expr items then
+    Doc.concat
+      [ Doc.space; Doc.join (Doc.concat [ Doc.semi; Doc.space ]) item_docs; Doc.semi; Doc.space; ]
+  else
+    Doc.join (Doc.concat [ Doc.semi; Doc.space ]) item_docs
+
+and array_expr_body_doc = fun expr ->
+  child_expr_docs expr |> List.map ~fn:expr_doc |> Doc.join (Doc.concat [ Doc.semi; Doc.space ])
+
 and record_expr_field_doc = fun (field: Ast.RecordExpr.field) ->
   match field.path with
   | Some path -> (
@@ -2301,28 +2306,48 @@ and record_expr_field_doc = fun (field: Ast.RecordExpr.field) ->
     )
   | None -> unsupported "unsupported record expression field"
 
-and record_expr_fields_doc = fun expr ->
+and record_expr_field_docs = fun expr ->
   let fields = ref [] in
   Ast.RecordExpr.for_each_field
     expr
     ~fn:(fun field -> fields := record_expr_field_doc field :: !fields);
-  List.reverse !fields |> Doc.join (Doc.concat [ Doc.semi; Doc.space ])
+  List.reverse !fields
 
-and record_expr_doc = fun expr ->
-  let fields = record_expr_fields_doc expr in
+and record_expr_fields_doc = fun expr ->
+  record_expr_field_docs expr |> Doc.join (Doc.concat [ Doc.semi; Doc.space ])
+
+and record_expr_body_doc = fun ?(force_multiline = false) expr ->
+  let multiline_fields_doc ~trailing_semi fields = Doc.concat
+    [ Doc.line; Doc.indent 2 (Doc.join (Doc.concat [ Doc.semi; Doc.line ]) fields); (
+        if trailing_semi then
+          Doc.semi
+        else
+          Doc.empty
+      ); Doc.line; ]
+  in
+  let fields = record_expr_field_docs expr in
   match Ast.RecordExpr.base expr with
   | Some base ->
+      let fields_doc = Doc.join (Doc.concat [ Doc.semi; Doc.space ]) fields in
       Doc.concat
-        [ Doc.lbrace; Doc.space; expr_doc base; Doc.space; Doc.text "with"; (
-            match fields with
+        [ Doc.space; expr_doc base; Doc.space; Doc.text "with"; (
+            match fields_doc with
             | Doc.Empty -> Doc.empty
-            | fields -> Doc.concat [ Doc.space; fields ]
-          ); Doc.space; Doc.rbrace; ]
+            | fields_doc -> Doc.concat [ Doc.space; fields_doc ]
+          ); Doc.space; ]
   | None -> (
       match fields with
-      | Doc.Empty -> Doc.concat [ Doc.lbrace; Doc.rbrace ]
-      | fields -> Doc.concat [ Doc.lbrace; Doc.space; fields; Doc.space; Doc.rbrace ]
+      | [] -> Doc.empty
+      | fields when Int.(List.length fields > 3) -> multiline_fields_doc ~trailing_semi:true fields
+      | fields when force_multiline -> multiline_fields_doc ~trailing_semi:false fields
+      | fields -> Doc.concat
+        [ Doc.space; Doc.join (Doc.concat [ Doc.semi; Doc.space ]) fields; Doc.space; ]
     )
+
+and record_expr_doc = fun expr ->
+  match Ast.RecordExpr.base expr with
+  | Some _ -> Doc.concat [ Doc.lbrace; record_expr_body_doc expr; Doc.rbrace ]
+  | None -> Doc.concat [ Doc.lbrace; record_expr_body_doc expr; Doc.rbrace ]
 
 and local_open_expr_doc = fun expr ->
   let local_open =
@@ -2340,7 +2365,7 @@ and local_open_expr_doc = fun expr ->
     body=Some body;
 
   } ->
-      Doc.concat
+      let head = Doc.concat
         [
           token_doc let_token;
           Doc.space;
@@ -2350,10 +2375,14 @@ and local_open_expr_doc = fun expr ->
           path_doc module_path;
           Doc.space;
           token_doc in_token;
-          Doc.space;
-          expr_doc body;
-        ]
-  | LetOpen _ -> unsupported "incomplete let open expression"
+        ] in
+      let body_doc = expr_doc body in
+      if Doc.is_multiline body_doc then
+        Doc.concat [ head; Doc.line; Doc.indent 2 body_doc ]
+      else
+        Doc.concat [ head; Doc.space; body_doc ]
+  | LetOpen _ ->
+      unsupported "incomplete let open expression"
   | Delimited {
     module_path=Some module_path;
     dot_token=Some dot_token;
@@ -2375,15 +2404,17 @@ and local_open_expr_doc = fun expr ->
               token_doc closing_token;
             ]
           else
-            [
-              path_doc module_path;
-              token_doc dot_token;
-              token_doc opening_token;
-              expr_doc body;
-              token_doc closing_token;
-            ]
+            [ path_doc module_path; token_doc dot_token; token_doc opening_token; (
+                match Ast.Expr.view body with
+                | List -> list_expr_body_doc body
+                | Array -> array_expr_body_doc body
+                | Record
+                | RecordUpdate -> record_expr_body_doc ~force_multiline:true body
+                | _ -> expr_doc body
+              ); token_doc closing_token; ]
         )
-  | Delimited _ -> unsupported "incomplete delimited local open expression"
+  | Delimited _ ->
+      unsupported "incomplete delimited local open expression"
 
 and let_module_path_body_doc = fun expr ->
   let doc = ref None in

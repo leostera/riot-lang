@@ -1199,13 +1199,7 @@ let rec parse_expression = fun p ~signature ~stop_at_item ?(stop_at_semi = false
               )
         | Syntax_kind2.LBRACKET ->
             if previous_ident_starts_uppercase p then
-              loop
-                (parse_delimited_local_open_expr
-                  p
-                  lhs
-                  ~signature
-                  ~opener:Syntax_kind2.LBRACKET
-                  ~closer:Syntax_kind2.RBRACKET)
+              loop (parse_delimited_local_open_list_expr p lhs ~signature)
             else
               (
                 let marker = precede p lhs in
@@ -1217,27 +1211,9 @@ let rec parse_expression = fun p ~signature ~stop_at_item ?(stop_at_semi = false
                 loop (complete p marker Syntax_kind2.STRING_INDEX_EXPR)
               )
         | Syntax_kind2.LBRACKET_BAR ->
-            let marker = precede p lhs in
-            bump p;
-            bump p;
-            let rec parse_elements () =
-              if not (at p Syntax_kind2.BAR_RBRACKET || is_eof p) then
-                (
-                  let before = p.pos in
-                  ignore (parse_expression p ~signature ~stop_at_item:false ~stop_at_semi:true 0);
-                  ensure_progress p before (invalid_expression p);
-                  ignore (bump_if p Syntax_kind2.SEMI);
-                  parse_elements ()
-                )
-            in
-            parse_elements ();
-            expect p Syntax_kind2.BAR_RBRACKET (invalid_expression p);
-            loop (complete p marker Syntax_kind2.LOCAL_OPEN_EXPR)
+            loop (parse_delimited_local_open_array_expr p lhs ~signature)
         | Syntax_kind2.LBRACE ->
-            let marker = precede p lhs in
-            bump p;
-            ignore (parse_record_expr p ~signature);
-            loop (complete p marker Syntax_kind2.LOCAL_OPEN_EXPR)
+            loop (parse_delimited_local_open_record_expr p lhs ~signature)
         | Syntax_kind2.IDENT ->
             let marker = precede p lhs in
             bump p;
@@ -1488,6 +1464,24 @@ and parse_delimited_local_open_expr = fun p lhs ~signature ~opener:_ ~closer ->
     else
       ignore (parse_expression p ~signature ~stop_at_item:false 0);
   expect p closer (invalid_expression p);
+  complete p marker Syntax_kind2.LOCAL_OPEN_EXPR
+
+and parse_delimited_local_open_list_expr = fun p lhs ~signature ->
+  let marker = precede p lhs in
+  bump p;
+  ignore (parse_list_expr p ~signature);
+  complete p marker Syntax_kind2.LOCAL_OPEN_EXPR
+
+and parse_delimited_local_open_array_expr = fun p lhs ~signature ->
+  let marker = precede p lhs in
+  bump p;
+  ignore (parse_array_expr p ~signature);
+  complete p marker Syntax_kind2.LOCAL_OPEN_EXPR
+
+and parse_delimited_local_open_record_expr = fun p lhs ~signature ->
+  let marker = precede p lhs in
+  bump p;
+  ignore (parse_record_expr p ~signature);
   complete p marker Syntax_kind2.LOCAL_OPEN_EXPR
 
 and parse_extended_index_expr = fun p lhs ~signature ~stop_at_item:_ ->

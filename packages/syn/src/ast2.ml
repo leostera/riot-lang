@@ -1075,16 +1075,34 @@ end = struct
     | None -> None
 
   let opening_token = fun expr ->
-    first_child_token_matching
+    match first_child_token_matching
       expr
       ~matches:(fun kind ->
-        Syntax_kind2.(kind = LPAREN || kind = LBRACKET || kind = LBRACKET_BAR || kind = LBRACE))
+        Syntax_kind2.(kind = LPAREN || kind = LBRACKET || kind = LBRACKET_BAR || kind = LBRACE)) with
+    | Some token -> Some token
+    | None -> (
+        match nth_expr_child expr 1 with
+        | Some body -> first_child_token_matching
+          body
+          ~matches:(fun kind ->
+            Syntax_kind2.(kind = LBRACKET || kind = LBRACKET_BAR || kind = LBRACE))
+        | None -> None
+      )
 
   let closing_token = fun expr ->
-    first_child_token_matching
+    match first_child_token_matching
       expr
       ~matches:(fun kind ->
-        Syntax_kind2.(kind = RPAREN || kind = RBRACKET || kind = BAR_RBRACKET || kind = RBRACE))
+        Syntax_kind2.(kind = RPAREN || kind = RBRACKET || kind = BAR_RBRACKET || kind = RBRACE)) with
+    | Some token -> Some token
+    | None -> (
+        match nth_expr_child expr 1 with
+        | Some body -> first_child_token_matching
+          body
+          ~matches:(fun kind ->
+            Syntax_kind2.(kind = RBRACKET || kind = BAR_RBRACKET || kind = RBRACE))
+        | None -> None
+      )
 
   let view = fun expr ->
     if has_child_token_kind expr Syntax_kind2.LET_KW then
