@@ -87,6 +87,18 @@ let include_child_range = fun ~(nodes:node Vector.t) ~(tokens:token_leaf Vector.
       ()
 
 module Builder = struct
+  type checkpoint = {
+    token_leaves_len: int;
+    node_store_len: int;
+    child_store_len: int;
+    pending_children_len: int;
+    frame_stack_len: int;
+    diagnostics_len: int;
+    root_id: int option;
+    next_raw_lo: int;
+    event_count: int;
+  }
+
   type marker = {
     depth: int;
   }
@@ -255,6 +267,30 @@ module Builder = struct
     Vector.push builder.diagnostics ~value:diagnostic
 
   let length = fun builder -> builder.event_count
+
+  let checkpoint = fun builder ->
+    {
+      token_leaves_len = Vector.length builder.token_leaves;
+      node_store_len = Vector.length builder.node_store;
+      child_store_len = Vector.length builder.child_store;
+      pending_children_len = Vector.length builder.pending_children;
+      frame_stack_len = Vector.length builder.frame_stack;
+      diagnostics_len = Vector.length builder.diagnostics;
+      root_id = builder.root_id;
+      next_raw_lo = builder.next_raw_lo;
+      event_count = builder.event_count;
+    }
+
+  let restore = fun builder checkpoint ->
+    Vector.truncate_unchecked builder.token_leaves ~len:checkpoint.token_leaves_len;
+    Vector.truncate_unchecked builder.node_store ~len:checkpoint.node_store_len;
+    Vector.truncate_unchecked builder.child_store ~len:checkpoint.child_store_len;
+    Vector.truncate_unchecked builder.pending_children ~len:checkpoint.pending_children_len;
+    Vector.truncate_unchecked builder.frame_stack ~len:checkpoint.frame_stack_len;
+    Vector.truncate_unchecked builder.diagnostics ~len:checkpoint.diagnostics_len;
+    builder.root_id <- checkpoint.root_id;
+    builder.next_raw_lo <- checkpoint.next_raw_lo;
+    builder.event_count <- checkpoint.event_count
 
   let diagnostics = fun builder -> builder.diagnostics
 

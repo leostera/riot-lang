@@ -37,6 +37,7 @@ module Builder: sig
   type t
   type marker
   type completed
+  type checkpoint
   val create:
     source:IO.IoVec.IoSlice.t ->
     token_stream:Raw_token.stream ->
@@ -58,6 +59,10 @@ module Builder: sig
   val error: t -> Diagnostic.t -> unit
 
   val length: t -> int
+
+  val checkpoint: t -> checkpoint
+
+  val restore: t -> checkpoint -> unit
 
   val diagnostics: t -> Diagnostic.t Vector.t
 

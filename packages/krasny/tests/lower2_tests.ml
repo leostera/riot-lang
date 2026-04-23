@@ -518,6 +518,16 @@ let tests = [
           ])
         "let poll = while ready do step () done\nlet up = for i = 0 to n do step i done\nlet down = for i = n downto 0 do step i done\n");
   Test.case
+    "lower2 keeps while and for body sequences inside done boundaries"
+    (fun _ctx ->
+      assert_format2_ml
+        ~expected:(top_level
+          [
+            "let poll ready = while ready do\n  step ();\n  next ()\ndone";
+            "let count n = for i = 0 to n do\n  tick i;\n  total := !total + i\ndone";
+          ])
+        "let poll ready = while ready do step (); next () done\nlet count n = for i = 0 to n do tick i; total := !total + i done\n");
+  Test.case
     "lower2 formats lazy exception and interval patterns"
     (fun _ctx ->
       assert_format2_ml
@@ -557,6 +567,16 @@ let tests = [
           ])
         "type 'a box += | More of 'a\nexception Parse_error of string\nexception Nested = Std.Result.Error\n");
   Test.case
+    "lower2 formats top-level exceptions after function bindings"
+    (fun _ctx ->
+      assert_format2_ml
+        ~expected:(top_level
+          [
+            "let error_to_string = function\n  | Error message -> message";
+            "exception Parse_exception of string";
+          ])
+        "let error_to_string = function\n  | Error message -> message\n\nexception Parse_exception of string\n");
+  Test.case
     "lower2 formats simple module and module type declarations"
     (fun _ctx ->
       assert_format2_ml
@@ -588,6 +608,38 @@ let tests = [
             "module type Abstract"
           ])
         "module Alias : Foo.S\nmodule Http1 : module type of Foo.Bar\nmodule Empty : sig end\nmodule type S = Foo.S\nmodule type Abstract\n");
+  Test.case "lower2 keeps include constraints in one signature item"
+    (fun _ctx ->
+      assert_format2_mli
+        ~expected:"module type McpApplicationProtocol = sig\n\
+          \  include Jsonrpc.ApplicationProtocol with type request := request and type response := response\n\
+          end\n"
+        "module type McpApplicationProtocol = sig\n\
+        \  include Jsonrpc.ApplicationProtocol with type request := request and type response := response\n\
+        end\n");
+  Test.case "lower2 keeps then-branch sequences inside if expressions with else"
+    (fun _ctx ->
+      assert_format2_ml
+        ~expected:"let render ok =\n\
+          \  if ok then\n\
+          \    log ();\n\
+          \    next ()\n\
+          \  else\n\
+          \    done_ ()\n"
+        "let render ok = if ok then log (); next () else done_ ()\n");
+  Test.case "lower2 keeps match-case sequences inside if then branches"
+    (fun _ctx ->
+      assert_format2_ml
+        ~expected:"let classify ready input =\n\
+          \  if ready then\n\
+          \    match input with\n\
+          \    | '!' | '^' ->\n\
+          \        bump ();\n\
+          \        true\n\
+          \    | _ -> false\n\
+          \  else\n\
+          \    false\n"
+        "let classify ready input = if ready then match input with | '!' | '^' -> bump (); true | _ -> false else false\n");
   Test.case
     "lower2 formats type aliases with parameters"
     (fun _ctx -> assert_format2_mli ~expected:"type 'a t = 'a list\n" "type 'a t = 'a list\n");

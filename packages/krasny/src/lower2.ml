@@ -2597,7 +2597,8 @@ and sequence_doc = fun expr ->
         ~skip_boundary_leading_comment:(sequence_separator_consumes_leading_comment expr)
         right;
     ]
-  | Sequence { left=Some left; right=None } -> Doc.concat [ sequence_doc left; sequence_terminal_suffix_doc expr ]
+  | Sequence { left=Some left; right=None } -> Doc.concat
+    [ sequence_doc left; sequence_terminal_suffix_doc expr ]
   | _ -> sequence_item_doc expr
 
 and match_cases_doc = fun expr ->
@@ -5609,6 +5610,23 @@ let continues_compound_signature_item_head = fun current token ->
   | previous :: [] -> token_kind_is previous Kind.MODULE_KW || token_kind_is previous Kind.CLASS_KW
   | _ -> false
 
+let signature_item_first_token = fun current ->
+  let rec loop = function
+    | [] -> None
+    | [ token ] -> Some token
+    | _ :: rest -> loop rest
+  in
+  loop current
+
+let continues_include_with_constraint_item = fun current token ->
+  (token_kind_is token Kind.TYPE_KW || token_kind_is token Kind.MODULE_KW) && match current with
+  | previous :: _ when token_kind_is previous Kind.WITH_KW || token_kind_is previous Kind.AND_KW -> (
+      match signature_item_first_token current with
+      | Some first -> token_kind_is first Kind.INCLUDE_KW
+      | None -> false
+    )
+  | _ -> false
+
 let split_signature_body_items = fun tokens ->
   let rec loop current items depth = function
     | [] ->
@@ -5620,7 +5638,9 @@ let split_signature_body_items = fun tokens ->
           )
     | token :: rest when Int.(depth = 0)
     && starts_signature_body_item token rest
-    && not (continues_compound_signature_item_head current token)
+    && not
+      (continues_compound_signature_item_head current token
+      || continues_include_with_constraint_item current token)
     && not (List.is_empty current) -> loop
       [ token ]
       (List.reverse current :: items)

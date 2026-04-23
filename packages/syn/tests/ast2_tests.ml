@@ -658,6 +658,14 @@ let test_type_declaration_body_group_views = fun _ctx ->
       Ok ()
   | _ -> Error "expected point type declaration"
 
+let test_abstract_type_attribute_boundary_views = fun _ctx ->
+  let source = "type ('a, 'b) stack [@@immediate]\nlet next = 1\n" in
+  let root = parse_ml source |> Result.expect ~msg:"expected parse2 source file" in
+  let next_item = nth_structure_item root 1 |> require_some ~msg:"expected trailing let item" in
+  match Ast2.StructureItem.view next_item with
+  | Ast2.StructureItem.Let _ -> Ok ()
+  | _ -> Error "expected trailing let declaration after abstract type attribute"
+
 let test_open_declaration_path_tokens = fun _ctx ->
   let root = parse_ml "open Foo.Bar\n" |> Result.expect ~msg:"expected parse2 source file" in
   let item = nth_structure_item root 0 |> require_some ~msg:"expected open structure item" in
@@ -797,6 +805,38 @@ let test_type_extension_and_exception_views = fun _ctx ->
         | _ -> Error "expected exception alias view"
       )
   | _ -> Error "expected exception declaration"
+
+let test_exception_after_function_binding_views = fun _ctx ->
+  let source = "let error_to_string = function\n  | Error message -> message\n\nexception Parse_exception of string\n" in
+  let root = parse_ml source |> Result.expect ~msg:"expected parse2 source file" in
+  let exception_item = nth_structure_item root 1 |> require_some ~msg:"expected exception item after function binding" in
+  (
+    match Ast2.StructureItem.view exception_item with
+    | Ast2.StructureItem.Exception decl ->
+        let name = Ast2.ExceptionDeclaration.name decl |> require_some ~msg:"expected exception name" in
+        Test.assert_equal ~expected:"Parse_exception" ~actual:(Ast2.Token.text name);
+        (
+          match Ast2.ExceptionDeclaration.view decl with
+          | Ast2.ExceptionDeclaration.Payload {
+            of_token=Some of_token;
+            payload=Some (TypeExpr payload)
+          } ->
+              Test.assert_equal ~expected:"of" ~actual:(Ast2.Token.text of_token);
+              assert_type_path_last_ident payload "string";
+              Ok ()
+          | _ -> Error "expected exception payload view"
+        )
+    | _ -> Error "expected exception declaration"
+  ) |> Result.expect ~msg:"expected exception declaration after function binding";
+  Ok ()
+
+let test_nested_match_guard_case_boundaries = fun _ctx ->
+  let source = "let classify = function\n  | Some x when match read x with | Some 0 | Some 1 -> false | _ -> true -> 1\n  | _ -> 0\nlet next = 1\n" in
+  let root = parse_ml source |> Result.expect ~msg:"expected parse2 source file" in
+  let next_item = nth_structure_item root 1 |> require_some ~msg:"expected trailing let item after guarded match" in
+  match Ast2.StructureItem.view next_item with
+  | Ast2.StructureItem.Let _ -> Ok ()
+  | _ -> Error "expected trailing let declaration after guarded nested match"
 
 let test_module_declaration_tokens = fun _ctx ->
   let root = parse_ml "module rec M = struct end\nmodule _ = struct end\nmodule Alias = Foo.Bar\n"
@@ -1120,6 +1160,14 @@ let test_record_views = fun _ctx ->
   let wildcard = Ast2.RecordPattern.open_wildcard pattern_view |> require_some ~msg:"expected open record wildcard" in
   Test.assert_equal ~expected:"_" ~actual:(Ast2.Token.text wildcard);
   Ok ()
+
+let test_record_field_special_form_boundaries = fun _ctx ->
+  let source = "let generator = {\n  run =\n    fun rnd size ->\n      let rec try_gen () =\n        match build rnd size with\n        | Some value -> value\n        | None -> try_gen ()\n      in\n      try_gen ();\n}\nlet next = 1\n" in
+  let root = parse_ml source |> Result.expect ~msg:"expected parse2 source file" in
+  let trailing_item = nth_structure_item root 1 |> require_some ~msg:"expected trailing let item" in
+  match Ast2.StructureItem.view trailing_item with
+  | Ast2.StructureItem.Let _ -> Ok ()
+  | _ -> Error "expected trailing let declaration after record field fun body"
 
 let binding_pattern_text = fun binding ->
   let pattern = pattern_of_binding binding |> Result.expect ~msg:"expected binding pattern" in
@@ -1789,6 +1837,160 @@ let test_typed_labeled_parameter_view = fun _ctx ->
     )
   | _ -> Error "expected locally abstract, positional, and labeled parameters"
 
+let test_optional_default_labeled_parameter_view = fun _ctx ->
+  let source = "let middleware ?config:(cfg = default_config) types = cfg\n" in
+  let root = parse_ml source |> Result.expect ~msg:"expected parse2 source file" in
+  let binding = nth_structure_item root 0
+  |> require_some ~msg:"expected optional default binding item"
+  |> binding_of_structure_item
+  |> Result.expect ~msg:"expected optional default binding" in
+  let parameters = ref [] in
+  Ast2.LetBinding.for_each_parameter
+    binding
+    ~fn:(fun pattern -> parameters := pattern :: !parameters);
+  match List.reverse !parameters with
+  | [optional;_types] -> (
+      match Ast2.Pattern.view optional with
+      | Ast2.Pattern.OptionalParamDefault parameter -> (
+          match Ast2.Parameter.view parameter with
+          | Ast2.Parameter.OptionalDefault {
+            label=Some label;
+            pattern=Some pattern;
+            default=Some default
+          } ->
+              Test.assert_equal ~expected:"config" ~actual:(Ast2.Token.text label);
+              (
+                match Ast2.Pattern.view pattern with
+                | Ast2.Pattern.Path { path } -> Test.assert_equal
+                  ~expected:"cfg"
+                  ~actual:(last_path_text path)
+                | _ -> panic "expected optional default binding path"
+              );
+              (
+                match Ast2.Expr.view default with
+                | Ast2.Expr.Path { path } ->
+                    Test.assert_equal ~expected:"default_config" ~actual:(last_path_text path);
+                    Ok ()
+                | _ -> Error "expected optional default expression path"
+              )
+          | _ -> Error "expected optional default parameter view"
+        )
+      | _ -> Error "expected optional default parameter pattern"
+    )
+  | _ -> Error "expected optional and positional parameters"
+
+let test_if_then_branch_sequence_boundaries = fun _ctx ->
+  let root = parse_ml "let with_else ok = if ok then log (); next () else done_ ()\nlet without_else ok = if ok then log (); next ()\n"
+  |> Result.expect ~msg:"expected parse2 source file" in
+  let with_else_body = nth_structure_item root 0
+  |> require_some ~msg:"expected with_else structure item"
+  |> binding_of_structure_item
+  |> Result.expect ~msg:"expected with_else binding"
+  |> body_of_binding
+  |> Result.expect ~msg:"expected with_else body" in
+  (
+    match Ast2.Expr.view with_else_body with
+    | Ast2.Expr.If { then_branch=Some then_branch; else_branch=Some _; _ } -> (
+        match Ast2.Expr.view then_branch with
+        | Ast2.Expr.Sequence { left=Some _; right=Some _ } -> ()
+        | _ -> panic "expected then branch sequence to stay inside if with else"
+      )
+    | _ -> panic "expected with_else body to be an if expression"
+  );
+  let without_else_body = nth_structure_item root 1
+  |> require_some ~msg:"expected without_else structure item"
+  |> binding_of_structure_item
+  |> Result.expect ~msg:"expected without_else binding"
+  |> body_of_binding
+  |> Result.expect ~msg:"expected without_else body" in
+  match Ast2.Expr.view without_else_body with
+  | Ast2.Expr.Sequence { left=Some left; right=Some _;  } -> (
+      match Ast2.Expr.view left with
+      | Ast2.Expr.If { else_branch=None; _ } -> Ok ()
+      | _ -> Error "expected outer sequence to keep no-else if on the left"
+    )
+  | _ -> Error "expected without_else body to stay a top-level sequence"
+
+let test_if_then_match_case_sequence_boundaries = fun _ctx ->
+  let root =
+    parse_ml
+      "let classify input =\n\
+    \  if ready then\n\
+    \    match input with\n\
+    \    | '!' | '^' ->\n\
+    \        bump ();\n\
+    \        true\n\
+    \    | _ -> false\n\
+    \  else\n\
+    \    false\n"
+    |> Result.expect ~msg:"expected parse2 source file"
+  in
+  let body = nth_structure_item root 0
+  |> require_some ~msg:"expected classify structure item"
+  |> binding_of_structure_item
+  |> Result.expect ~msg:"expected classify binding"
+  |> body_of_binding
+  |> Result.expect ~msg:"expected classify body" in
+  match Ast2.Expr.view body with
+  | Ast2.Expr.If { then_branch=Some then_branch; _ } -> (
+      match Ast2.Expr.view then_branch with
+      | Ast2.Expr.Match { first_case=Some first_case; _ } -> (
+          match Ast2.MatchCase.view first_case with
+          | { Ast2.MatchCase.body=Some case_body; _ } -> (
+              match Ast2.Expr.view case_body with
+              | Ast2.Expr.Sequence { left=Some _; right=Some _ } -> Ok ()
+              | _ -> Error "expected first match case body sequence to stay inside the case"
+            )
+          | _ -> Error "expected first match case body"
+        )
+      | _ -> Error "expected if then branch to remain a match expression"
+    )
+  | _ -> Error "expected classify body to be an if expression"
+
+let test_loop_body_sequence_boundaries = fun _ctx ->
+  let root =
+    parse_ml
+      "let poll ready =\n\
+    \  while ready do\n\
+    \    step ();\n\
+    \    next ()\n\
+    \  done\n\
+    let count n =\n\
+    \  for i = 0 to n do\n\
+    \    tick i;\n\
+    \    total := !total + i\n\
+    \  done\n"
+    |> Result.expect ~msg:"expected parse2 source file"
+  in
+  let poll_body = nth_structure_item root 0
+  |> require_some ~msg:"expected poll structure item"
+  |> binding_of_structure_item
+  |> Result.expect ~msg:"expected poll binding"
+  |> body_of_binding
+  |> Result.expect ~msg:"expected poll body" in
+  let count_body = nth_structure_item root 1
+  |> require_some ~msg:"expected count structure item"
+  |> binding_of_structure_item
+  |> Result.expect ~msg:"expected count binding"
+  |> body_of_binding
+  |> Result.expect ~msg:"expected count body" in
+  (
+    match Ast2.Expr.view poll_body with
+    | Ast2.Expr.While { body=Some body; _ } -> (
+        match Ast2.Expr.view body with
+        | Ast2.Expr.Sequence { left=Some _; right=Some _ } -> ()
+        | _ -> panic "expected while body sequence to stay inside the loop body"
+      )
+    | _ -> panic "expected poll body to be a while expression"
+  );
+  match Ast2.Expr.view count_body with
+  | Ast2.Expr.For { body=Some body; _ } -> (
+      match Ast2.Expr.view body with
+      | Ast2.Expr.Sequence { left=Some _; right=Some _ } -> Ok ()
+      | _ -> Error "expected for body sequence to stay inside the loop body"
+    )
+  | _ -> Error "expected count body to be a for expression"
+
 let tests = [
   Test.case "ast2 exposes source file and let binding views" test_source_file_and_let_binding_views;
   Test.case "ast2 exposes if and match expression views" test_expression_views;
@@ -1805,7 +2007,10 @@ let tests = [
   Test.case "ast2 exposes type declaration parameters" test_type_declaration_parameters;
   Test.case "ast2 exposes type declaration member views" test_type_declaration_member_views;
   Test.case "ast2 exposes type declaration body group views" test_type_declaration_body_group_views;
+  Test.case "ast2 preserves abstract type attributes before later structure items" test_abstract_type_attribute_boundary_views;
   Test.case "ast2 exposes type extensions and structured exception views" test_type_extension_and_exception_views;
+  Test.case "ast2 preserves exception declarations after function bindings" test_exception_after_function_binding_views;
+  Test.case "ast2 keeps nested match guards from stealing outer case arrows" test_nested_match_guard_case_boundaries;
   Test.case "ast2 exposes open declaration path tokens" test_open_declaration_path_tokens;
   Test.case "ast2 exposes simple declaration token views" test_simple_declaration_token_views;
   Test.case "ast2 exposes module declaration tokens" test_module_declaration_tokens;
@@ -1815,6 +2020,7 @@ let tests = [
   Test.case "ast2 exposes module type with-constraint views" test_module_type_with_constraint_views;
   Test.case "ast2 exposes let binding type annotation views" test_binding_type_annotation_view;
   Test.case "ast2 exposes record expression and pattern views" test_record_views;
+  Test.case "ast2 keeps record field special-form bodies within the field boundary" test_record_field_special_form_boundaries;
   Test.case "ast2 exposes binding operator expression views" test_binding_operator_views;
   Test.case "ast2 exposes local open expression and pattern views" test_local_open_views;
   Test.case "ast2 preserves local open expressions as application arguments" test_local_open_argument_views;
@@ -1828,6 +2034,10 @@ let tests = [
   Test.case "ast2 exposes locally abstract and first-class module pattern views" test_special_pattern_views;
   Test.case "ast2 marks constrained first-class module pattern ascriptions unsupported" test_first_class_module_pattern_with_constraints_view;
   Test.case "ast2 exposes typed labeled parameter views" test_typed_labeled_parameter_view;
+  Test.case "ast2 exposes renamed optional parameters with defaults" test_optional_default_labeled_parameter_view;
+  Test.case "ast2 keeps if then-branch sequences inside explicit else branches" test_if_then_branch_sequence_boundaries;
+  Test.case "ast2 keeps match-case sequences inside if then-branch matches" test_if_then_match_case_sequence_boundaries;
+  Test.case "ast2 keeps while and for body sequences inside done boundaries" test_loop_body_sequence_boundaries;
 ]
 
 let () =
