@@ -165,6 +165,7 @@ let assert_lower2_existing_fixture_subset = fun () ->
     Path.v "packages/krasny/tests/fixtures/0904_comments_inside_if_binding.ml";
     Path.v "packages/krasny/tests/fixtures/0905_docstring_after_explicit_fun_with_inner_comment.ml";
     Path.v "packages/krasny/tests/fixtures/0906_docstring_after_fun_with_local_exception.ml";
+    Path.v "packages/krasny/tests/fixtures/0907_docstring_after_fun_with_local_exception_and_try.ml";
     Path.v "packages/krasny/tests/fixtures/0911_comment_before_sequence_let.ml";
     Path.v "packages/krasny/tests/fixtures/0913_structure_docstring_after_open.ml";
     Path.v "packages/krasny/tests/fixtures/0915_signature_type_trailing_docstring_at_eof.mli";

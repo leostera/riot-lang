@@ -2542,7 +2542,7 @@ and let_exception_expr_doc = fun expr ->
             | Some payload -> Doc.concat [ Doc.space; token_doc of_token; Doc.space; payload ]
           )
       in
-      Doc.concat
+      let head = Doc.concat
         [
           token_doc let_token;
           Doc.space;
@@ -2552,9 +2552,11 @@ and let_exception_expr_doc = fun expr ->
           payload;
           Doc.space;
           token_doc in_token;
-          Doc.space;
-          expr_doc body;
-        ]
+        ] in
+      if expr_arrow_body_breaks body || expr_has_unconsumed_boundary_leading_comment body then
+        Doc.concat [ head; Doc.line; expr_doc_with_boundary_leading_comment body ]
+      else
+        Doc.concat [ head; Doc.space; expr_doc body ]
   | _ -> unsupported "incomplete let exception expression"
 
 and let_exception_expr_doc_with_body_break = fun expr ->
