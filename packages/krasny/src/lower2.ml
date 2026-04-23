@@ -60,6 +60,15 @@ let infix_operator_doc = fun expr fallback -> tokens_doc (infix_operator_tokens 
 
 let infix_operator_text = fun expr fallback -> tokens_text (infix_operator_tokens expr fallback)
 
+let prefix_operator_tokens = fun expr fallback ->
+  match direct_child_tokens expr with
+  | [] -> [ fallback ]
+  | tokens -> tokens
+
+let prefix_operator_doc = fun expr fallback -> tokens_doc (prefix_operator_tokens expr fallback)
+
+let prefix_operator_text = fun expr fallback -> tokens_text (prefix_operator_tokens expr fallback)
+
 let parenthesized_token_shell_doc = fun tokens ->
   match tokens with
   | opening :: rest when Kind.(Ast.Token.kind opening = LPAREN) -> (
@@ -1706,8 +1715,8 @@ and parenthesized_expr_doc = fun expr inner ->
           Doc.concat [ Doc.lparen; Doc.line; Doc.indent 2 inner_doc; Doc.line; Doc.rparen ]
       | Prefix { operator=Some operator; operand=Some operand } -> (
           match Ast.Expr.view operand with
-          | Literal { token=Some token } when token_text_is operator "-" -> Doc.concat
-            [ Doc.lparen; token_doc operator; literal_token_doc token; Doc.rparen ]
+          | Literal { token=Some token } when String.equal (prefix_operator_text inner operator) "-" -> Doc.concat
+            [ Doc.lparen; prefix_operator_doc inner operator; literal_token_doc token; Doc.rparen ]
           | _ -> Doc.concat [ Doc.lparen; inner_doc; Doc.rparen ]
         )
       | _ ->
@@ -1789,9 +1798,9 @@ and expr_doc_with_view = fun expr (view: Ast.Expr.view) ->
       unsupported "incomplete infix expression"
   | Prefix { operator=Some operator; operand=Some operand } -> (
       match Ast.Expr.view operand with
-      | Literal { token=Some token } when token_text_is operator "-" -> Doc.concat
-        [ Doc.lparen; token_doc operator; literal_token_doc token; Doc.rparen ]
-      | _ -> Doc.concat [ token_doc operator; expr_prefix_operand_doc operand ]
+      | Literal { token=Some token } when String.equal (prefix_operator_text expr operator) "-" -> Doc.concat
+        [ Doc.lparen; prefix_operator_doc expr operator; literal_token_doc token; Doc.rparen ]
+      | _ -> Doc.concat [ prefix_operator_doc expr operator; expr_prefix_operand_doc operand ]
     )
   | Prefix _ ->
       unsupported "incomplete prefix expression"
