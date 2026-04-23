@@ -786,12 +786,17 @@ let test_module_type_declaration_tokens = fun _ctx ->
     | Ast2.SignatureItem.ModuleType decl ->
         let name = Ast2.ModuleTypeDeclaration.name decl |> require_some ~msg:"expected module type name" in
         let equals = Ast2.ModuleTypeDeclaration.equals_token decl |> require_some ~msg:"expected module type equals token" in
+        let child_kinds = ref [] in
         let segments = ref [] in
+        Ast2.Node.for_each_child_node decl ~fn:(fun child -> child_kinds := Ast2.Node.kind child :: !child_kinds);
         Ast2.ModuleTypeDeclaration.for_each_body_path_ident
           decl
           ~fn:(fun token -> segments := Ast2.Token.text token :: !segments);
         Test.assert_equal ~expected:"S" ~actual:(Ast2.Token.text name);
         Test.assert_equal ~expected:"=" ~actual:(Ast2.Token.text equals);
+        Test.assert_equal
+          ~expected:[ SyntaxKind2.MODULE_TYPE_DECL_HEAD; SyntaxKind2.MODULE_TYPE_DECL_BODY ]
+          ~actual:(List.reverse !child_kinds);
         Test.assert_equal
           ~expected:Ast2.ModuleTypeDeclaration.Path
           ~actual:(Ast2.ModuleTypeDeclaration.body decl);

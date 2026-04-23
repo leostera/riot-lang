@@ -3345,72 +3345,31 @@ module ModuleTypeDeclaration = struct
     else
       None
 
-  let name = fun decl ->
-    let found = ref None in
-    let rec loop index =
-      if index >= Node.child_count decl then
-        !found
-      else
-        match child_token_at decl index with
-        | Some token when token_kind_is token Syntax_kind2.EQ ->
-            !found
-        | Some token when token_kind_is token Syntax_kind2.IDENT ->
-            found := Some token;
-            loop (index + 1)
-        | _ ->
-            loop (index + 1)
-    in
-    loop 0
+  let head_node = fun decl ->
+    first_child_node_matching decl ~matches:(fun kind -> Syntax_kind2.(kind = MODULE_TYPE_DECL_HEAD))
 
-  let equals_token = fun decl -> Node.first_child_token decl ~kind:Syntax_kind2.EQ
+  let body_group = fun decl ->
+    first_child_node_matching decl ~matches:(fun kind -> Syntax_kind2.(kind = MODULE_TYPE_DECL_BODY))
+
+  let name = fun decl ->
+    match head_node decl with
+    | Some head -> last_ident_token head
+    | None -> None
+
+  let equals_token = fun decl ->
+    match body_group decl with
+    | Some body -> Node.first_child_token body ~kind:Syntax_kind2.EQ
+    | None -> None
 
   let for_each_head_token = fun decl ~fn ->
-    let rec loop index =
-      if index < Node.child_count decl then
-        match child_token_at decl index with
-        | Some token when token_kind_is token Syntax_kind2.EQ ->
-            ()
-        | Some token ->
-            fn token;
-            loop (index + 1)
-        | None ->
-            loop (index + 1)
-    in
-    loop 0
-
-  let child_node_at = fun (decl: module_type_declaration) index ->
-    match Node.child_at decl index with
-    | Some (Syntax_tree.Node id) -> Some (wrap_node decl.tree id)
-    | Some (Syntax_tree.Token _)
-    | Some (Syntax_tree.Missing _)
-    | None -> None
-
-  let equals_index = fun decl ->
-    let count = Node.child_count decl in
-    let rec loop index =
-      if index >= count then
-        None
-      else
-        match child_token_at decl index with
-        | Some token when token_kind_is token Syntax_kind2.EQ -> Some index
-        | _ -> loop (index + 1)
-    in
-    loop 0
+    match head_node decl with
+    | Some head -> Node.for_each_child_token head ~fn
+    | None -> ()
 
   let body_node = fun decl ->
-    match equals_index decl with
+    match body_group decl with
+    | Some body -> first_child_node_matching body ~matches:(fun kind -> Syntax_kind2.(kind = MODULE_TYPE_EXPR))
     | None -> None
-    | Some equals_index ->
-        let count = Node.child_count decl in
-        let rec loop index =
-          if index >= count then
-            None
-          else
-            match child_node_at decl index with
-            | Some node when node_matches node is_module_type_kind -> Some node
-            | _ -> loop (index + 1)
-        in
-        loop (equals_index + 1)
 
   let first_specific_module_type = fun node ->
     match Node.kind node with
@@ -3432,7 +3391,7 @@ module ModuleTypeDeclaration = struct
     !found
 
   let body = fun decl ->
-    match equals_index decl, body_specific_node decl with
+    match body_group decl, body_specific_node decl with
     | None, _ -> Abstract
     | Some _, Some node when node_kind_is node Syntax_kind2.PATH_MODULE_TYPE -> Path
     | Some _, Some node when node_kind_is node Syntax_kind2.SIGNATURE_MODULE_TYPE ->

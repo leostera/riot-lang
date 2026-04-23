@@ -3635,6 +3635,7 @@ and parse_module_type_expr = fun p ~signature ->
 
 and parse_module_type_decl = fun p ~signature ->
   let marker = start_node p in
+  let head = start_node p in
   expect p Syntax_kind2.MODULE_KW (invalid_expression p);
   expect p Syntax_kind2.TYPE_KW (invalid_type_expression p);
   consume_shortcut_extension_modifier p;
@@ -3645,11 +3646,14 @@ and parse_module_type_decl = fun p ~signature ->
     else
       Event.Buffer.error p.events (missing_module_type_name p)
   );
+  ignore (complete p head Syntax_kind2.MODULE_TYPE_DECL_HEAD);
   if at p Syntax_kind2.EQ then
+    let body = start_node p in
     (
       bump p;
       ignore (parse_module_type_expr p ~signature)
-    )
+    );
+    ignore (complete p body Syntax_kind2.MODULE_TYPE_DECL_BODY)
   else if is_eof p || at_item_boundary p ~signature then
     ()
   else
