@@ -43,10 +43,7 @@ let assert_format2_ml_fails = fun source ->
   | Ok formatted -> Error ("lower2 unexpectedly formatted unsupported source as:\n" ^ formatted)
   | Error _ -> Ok ()
 
-let approved_snapshot_path = fun path ->
-  match Path.extension path with
-  | Some ext -> Path.add_extension path ~ext:(ext ^ ".expected")
-  | None -> Path.add_extension path ~ext:"expected"
+let approved_snapshot_path = fun path -> Path.add_extension path ~ext:"expected"
 
 let assert_lower2_fixture_matches_approved = fun path ->
   let source = Fs.read path |> Result.expect ~msg:"fixture file should exist" in
@@ -119,6 +116,7 @@ let assert_lower2_existing_fixture_subset = fun () ->
     Path.v "packages/krasny/tests/fixtures/0820_module_let_parameter_stability.ml";
     Path.v "packages/krasny/tests/fixtures/0821_nested_module_body_attribute_relift_fallback.ml";
     Path.v "packages/krasny/tests/fixtures/0901_exception_followed_by_section_comment.ml";
+    Path.v "packages/krasny/tests/fixtures/0944_exception_separator_comments.ml";
   ]
   in
   let rec loop = function

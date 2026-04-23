@@ -3825,14 +3825,34 @@ let exception_decl_tail_tokens = fun decl ->
   Ast.ExceptionDeclaration.for_each_tail_token decl ~fn:(fun token -> tokens := token :: !tokens);
   List.reverse !tokens
 
+let exception_decl_tail_has_comment = fun tokens ->
+  let rec loop = function
+    | [] -> false
+    | token :: rest -> Ast.Token.has_leading_comment token || loop rest
+  in
+  loop tokens
+
+let exception_decl_tail_token_doc = fun token ->
+  if Ast.Token.has_leading_comment token then
+    let comment = leading_comment_text token |> strip_trailing_whitespace |> text_lines_doc in
+    Doc.concat [ comment; Doc.line; token_doc token ]
+  else
+    token_doc token
+
+let exception_decl_tail_doc = fun tokens ->
+  match tokens with
+  | [] -> Doc.empty
+  | tokens when exception_decl_tail_has_comment tokens -> Doc.concat
+    [
+      Doc.line;
+      Doc.indent 2 (Doc.join Doc.line (List.map tokens ~fn:exception_decl_tail_token_doc))
+    ]
+  | tokens -> Doc.concat [ Doc.space; module_tokens_doc tokens ]
+
 let exception_decl_doc = fun decl ->
   match Ast.ExceptionDeclaration.name decl with
   | Some name ->
-      let tail =
-        match exception_decl_tail_tokens decl with
-        | [] -> Doc.empty
-        | tokens -> Doc.concat [ Doc.space; module_tokens_doc tokens ]
-      in
+      let tail = exception_decl_tail_doc (exception_decl_tail_tokens decl) in
       Doc.concat [ Doc.text "exception"; Doc.space; token_doc name; tail ]
   | None -> unsupported "exception declaration without name"
 
