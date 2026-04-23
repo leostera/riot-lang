@@ -1521,6 +1521,15 @@ and expr_is_labeled_argument = fun expr ->
 and application_has_many_labeled_arguments = fun arguments ->
   Int.(List.length arguments >= 4) && List.all arguments ~fn:expr_is_labeled_argument
 
+and split_before_first_multiline_doc = fun docs ->
+  let rec loop prefix docs =
+    match docs with
+    | [] -> (List.reverse prefix, [])
+    | doc :: rest when Doc.is_multiline doc -> (List.reverse prefix, doc :: rest)
+    | doc :: rest -> loop (doc :: prefix) rest
+  in
+  loop [] docs
+
 and application_doc = fun expr ->
   let callee, arguments = application_parts expr in
   match arguments with
@@ -1528,10 +1537,16 @@ and application_doc = fun expr ->
   | arguments ->
       let callee_doc = expr_apply_callee_doc callee in
       let argument_docs = List.map arguments ~fn:expr_apply_argument_doc in
-      if
-        List.any argument_docs ~fn:Doc.is_multiline || application_has_many_labeled_arguments arguments
-      then
+      if application_has_many_labeled_arguments arguments then
         Doc.concat [ callee_doc; Doc.line; Doc.indent 2 (Doc.join Doc.line argument_docs) ]
+      else if List.any argument_docs ~fn:Doc.is_multiline then
+        let inline_docs, multiline_docs = split_before_first_multiline_doc argument_docs in
+        let head_doc =
+          match inline_docs with
+          | [] -> callee_doc
+          | docs -> Doc.concat [ callee_doc; Doc.space; Doc.join Doc.space docs ]
+        in
+        Doc.concat [ head_doc; Doc.line; Doc.indent 2 (Doc.join Doc.line multiline_docs) ]
       else
         Doc.concat [ callee_doc; Doc.space; Doc.join Doc.space argument_docs ]
 
@@ -1731,8 +1746,16 @@ and sequence_items = fun expr ->
   in
   loop expr []
 
+and sequence_item_doc = fun expr ->
+  match Ast.Expr.view expr with
+  | Parenthesized { inner=Some inner } when (not (expr_is_begin_block expr))
+  && expr_parenthesized_inner_breaks_after_equal inner -> parenthesized_expr_multiline_body_doc inner
+  | _ -> expr_doc expr
+
 and sequence_doc = fun expr ->
-  sequence_items expr |> List.map ~fn:expr_doc |> Doc.join (Doc.concat [ Doc.semi; Doc.line ])
+  sequence_items expr
+  |> List.map ~fn:sequence_item_doc
+  |> Doc.join (Doc.concat [ Doc.semi; Doc.line ])
 
 and match_cases_doc = fun expr ->
   let cases = ref [] in
