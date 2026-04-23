@@ -1945,6 +1945,15 @@ and expr_parens_can_elide_in_apply_argument = fun expr ->
   | Path _
   | Literal _
   | PolyVariant { payload=None } -> true
+  | LocalOpen _ -> (
+      match Ast.LocalOpenExpr.cast expr with
+      | Some local_open -> (
+          match Ast.LocalOpenExpr.view local_open with
+          | Delimited _ -> true
+          | LetOpen _ -> false
+        )
+      | None -> false
+    )
   | Parenthesized { inner=Some inner } -> expr_parens_can_elide_in_apply_argument inner
   | _ -> false
 
@@ -1961,6 +1970,7 @@ and expr_apply_argument_doc = fun expr ->
   | List
   | Array
   | PolyVariant _
+  | LocalOpen _
   | LabeledArg _
   | OptionalArg _
   | Record

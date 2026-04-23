@@ -1156,6 +1156,57 @@ let test_local_open_views = fun _ctx ->
     )
   | None -> Error "expected local open record inner pattern"
 
+let test_local_open_argument_views = fun _ctx ->
+  let source = "let value = send pid Server.(Telemetry (Stop { reply_to = self (); request_id }))\n" in
+  let root = parse_ml source |> Result.expect ~msg:"expected parse2 source file" in
+  let body = nth_structure_item root 0
+  |> require_some ~msg:"expected local open application item"
+  |> binding_of_structure_item
+  |> Result.expect ~msg:"expected local open application binding"
+  |> body_of_binding
+  |> Result.expect ~msg:"expected local open application body" in
+  let rec application_parts expr args =
+    match Ast2.Expr.view expr with
+    | Ast2.Expr.Apply { callee=Some callee; argument=Some argument } -> application_parts
+      callee
+      (argument :: args)
+    | _ -> (expr, args)
+  in
+  let callee, arguments = application_parts body [] in
+  (
+    match Ast2.Expr.view callee with
+    | Ast2.Expr.Path { path } -> assert_last_ident_text path "send"
+    | _ -> panic "expected send callee"
+  );
+  match arguments with
+  | [pid_arg; local_open_arg] ->
+      (
+        match Ast2.Expr.view pid_arg with
+        | Ast2.Expr.Path { path } -> assert_last_ident_text path "pid"
+        | _ -> panic "expected pid argument"
+      );
+      let local_open = Ast2.LocalOpenExpr.cast local_open_arg |> require_some ~msg:"expected local open argument" in
+      (
+        match Ast2.LocalOpenExpr.view local_open with
+        | Ast2.LocalOpenExpr.Delimited {
+          module_path=Some module_path;
+          opening_token=Some opening_token;
+          body=Some inner_body;
+          closing_token=Some closing_token;
+          _
+        } ->
+            Test.assert_equal ~expected:"Server" ~actual:(last_path_text module_path);
+            Test.assert_equal ~expected:"(" ~actual:(Ast2.Token.text opening_token);
+            Test.assert_equal ~expected:")" ~actual:(Ast2.Token.text closing_token);
+            (
+              match Ast2.Expr.view inner_body with
+              | Ast2.Expr.Apply _ -> Ok ()
+              | _ -> Error "expected local open inner application"
+            )
+        | _ -> Error "expected complete delimited local open argument"
+      )
+  | _ -> Error "expected send application arguments"
+
 let test_first_class_module_views = fun _ctx ->
   let source = "let packed = (module Foo.Bar)\nlet typed = (module Foo : S.T)\n" in
   let root = parse_ml source |> Result.expect ~msg:"expected parse2 source file" in
@@ -1538,6 +1589,7 @@ let tests = [
   Test.case "ast2 exposes record expression and pattern views" test_record_views;
   Test.case "ast2 exposes binding operator expression views" test_binding_operator_views;
   Test.case "ast2 exposes local open expression and pattern views" test_local_open_views;
+  Test.case "ast2 preserves local open expressions as application arguments" test_local_open_argument_views;
   Test.case "ast2 exposes first-class module expression views" test_first_class_module_views;
   Test.case "ast2 exposes let module expression views" test_let_module_expression_views;
   Test.case "ast2 exposes let exception expression views" test_let_exception_expression_views;

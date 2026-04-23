@@ -824,6 +824,8 @@ let operator_text = function
   | Syntax_kind2.SLASHDOT -> "/."
   | kind -> Syntax_kind2.to_string kind
 
+let application_binding_power = 60
+
 let symbolic_operator_part = function
   | kind when operator_pattern_token kind -> true
   | _ -> false
@@ -1370,9 +1372,17 @@ let rec parse_expression = fun p ~signature ~stop_at_item ?(stop_at_semi = false
           loop (complete p marker Syntax_kind2.INFIX_EXPR)
       | Some _ ->
           lhs
-      | _ when can_start_atom (current_kind p) ->
+      | _ when can_start_atom (current_kind p) && min_bp <= application_binding_power ->
           let marker = precede p lhs in
-          let _argument = parse_prefix_or_atom p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma in
+          let _argument =
+            parse_expression
+              p
+              ~signature
+              ~stop_at_item
+              ~stop_at_semi
+              ~stop_at_comma
+              (application_binding_power + 1)
+          in
           loop (complete p marker Syntax_kind2.APPLY_EXPR)
       | _ ->
           lhs

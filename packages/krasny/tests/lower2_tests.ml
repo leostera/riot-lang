@@ -398,8 +398,13 @@ let tests = [
     "lower2 formats local open expressions and patterns"
     (fun _ctx ->
       assert_format2_ml
-        ~expected:(top_level [ "let value = let open Foo.Bar in result"; "let Foo.Bar.(x) = value" ])
-        "let value = let open Foo.Bar in result\nlet Foo.Bar.(x) = value\n");
+        ~expected:(top_level
+          [
+            "let value = let open Foo.Bar in result";
+            "let scoped = send pid Server.(Telemetry (Stop { reply_to = self (); request_id }))";
+            "let Foo.Bar.(x) = value"
+          ])
+        "let value = let open Foo.Bar in result\nlet scoped = send pid Server.(Telemetry (Stop { reply_to = self (); request_id }))\nlet Foo.Bar.(x) = value\n");
   Test.case
     "lower2 formats first-class module expressions"
     (fun _ctx ->
