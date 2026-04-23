@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.0.23 - 2026-04-23
+
+### riot
+- Defaulted Riot to `OCaml 5.5.0-riot.4` across workspace/toolchain defaults, including generated workspaces, toolchain resolution, and bootstrap constants.
+- Updated toolchain tests and release scripts to target `5.5.0-riot.4`.
+
+### windows-toolchain
+- Updated vendored OCaml to support MinGW cross toolchains reliably.
+- Fixed Windows cross-compilation issues by:
+  - setting the Windows API floor to `0x0600` for MinGW targets
+  - fixing Win32 runtime/header guards
+  - adding missing `errno.h` includes in Win32 Unix shims
+  - fixing the `yacc/wstr.c` Windows build path
+- This enabled shipping the full `5.5.0-riot.4` toolchain matrix, including the Linux-hosted MinGW targets.
+
 ## 0.0.22 - 2026-04-23
 
 ### riot
