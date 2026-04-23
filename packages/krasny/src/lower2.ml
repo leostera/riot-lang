@@ -3170,6 +3170,18 @@ and record_expr_field_value_breaks = fun value value_doc ->
   | LetException _ -> true
   | _ -> false
 
+and record_expr_field_name_tokens = fun (field: Ast.RecordExpr.field) ->
+  let tokens = ref [] in
+  let saw_equals = ref false in
+  Ast.Node.for_each_child_token field.node
+    ~fn:(fun token ->
+      if not !saw_equals then
+        if token_kind_is token Kind.EQ then
+          saw_equals := true
+        else
+          tokens := token :: !tokens);
+  List.reverse !tokens
+
 and record_expr_field_doc = fun (field: Ast.RecordExpr.field) ->
   match field.path with
   | Some path -> (
@@ -3182,7 +3194,17 @@ and record_expr_field_doc = fun (field: Ast.RecordExpr.field) ->
             Doc.concat [ path_doc path; Doc.space; Doc.equal; Doc.space; value_doc ]
       | None -> path_doc path
     )
-  | None -> unsupported "unsupported record expression field"
+  | None -> (
+      match field.value, record_expr_field_name_tokens field with
+      | Some value, (_ :: _ as name_tokens) ->
+          let value_doc = expr_doc value in
+          let name_doc = local_module_tokens_doc name_tokens in
+          if record_expr_field_value_breaks value value_doc then
+            Doc.concat [ name_doc; Doc.space; Doc.equal; Doc.line; Doc.indent 2 value_doc ]
+          else
+            Doc.concat [ name_doc; Doc.space; Doc.equal; Doc.space; value_doc ]
+      | _ -> unsupported "unsupported record expression field"
+    )
 
 and record_expr_field_docs = fun expr ->
   let fields = ref [] in

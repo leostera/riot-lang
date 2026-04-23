@@ -420,9 +420,10 @@ let tests = [
           [
             "let record = { x = 1; y }";
             "let updated = { base with x = 2; y }";
+            "let qualified = { History.name = name; statistics = stats }";
             "let { x; y = z; _ } = record";
           ])
-        "let record = { x = 1; y }\nlet updated = { base with x = 2; y }\nlet { x; y = z; _ } = record\n");
+        "let record = { x = 1; y }\nlet updated = { base with x = 2; y }\nlet qualified = { History.name = name; statistics = stats }\nlet { x; y = z; _ } = record\n");
   Test.case
     "lower2 formats binding operator expressions"
     (fun _ctx ->
