@@ -524,11 +524,12 @@ let tests = [
         ~expected:(top_level
           [
             "module Alias: Foo.S";
+            "module Http1: module type of Foo.Bar";
             "module Empty: sig end";
             "module type S = Foo.S";
             "module type Abstract"
           ])
-        "module Alias : Foo.S\nmodule Empty : sig end\nmodule type S = Foo.S\nmodule type Abstract\n");
+        "module Alias : Foo.S\nmodule Http1 : module type of Foo.Bar\nmodule Empty : sig end\nmodule type S = Foo.S\nmodule type Abstract\n");
   Test.case
     "lower2 formats type aliases with parameters"
     (fun _ctx -> assert_format2_mli ~expected:"type 'a t = 'a list\n" "type 'a t = 'a list\n");

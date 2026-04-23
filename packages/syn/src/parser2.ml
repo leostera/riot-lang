@@ -449,6 +449,29 @@ let starts_structure_item = function
   | Syntax_kind2.CLASS_KW -> true
   | _ -> false
 
+let kind_at_position = fun p position -> (raw_at p (significant_raw_at p position)).Raw_token.kind
+
+let peek_kind_at_position = fun p position offset -> kind_at_position p (position + offset)
+
+let starts_with_typeof_module_expr_at = fun p position ->
+  Syntax_kind2.(
+    kind_at_position p position = MODULE_KW
+    && peek_kind_at_position p position 1 = TYPE_KW
+    && peek_kind_at_position p position 2 = OF_KW
+  )
+
+let starts_with_module_type_decl_at = fun p position ->
+  Syntax_kind2.(
+    kind_at_position p position = MODULE_KW
+    && peek_kind_at_position p position 1 = TYPE_KW
+    && peek_kind_at_position p position 2 != OF_KW
+  )
+
+let starts_structure_item_at_position = fun p position ->
+  match kind_at_position p position with
+  | Syntax_kind2.MODULE_KW -> not (starts_with_typeof_module_expr_at p position)
+  | kind -> starts_structure_item kind
+
 let starts_signature_item = function
   | Syntax_kind2.VAL_KW
   | Syntax_kind2.TYPE_KW
@@ -460,8 +483,17 @@ let starts_signature_item = function
   | Syntax_kind2.CLASS_KW -> true
   | _ -> false
 
+let starts_signature_item_at_position = fun p position ->
+  match kind_at_position p position with
+  | Syntax_kind2.MODULE_KW ->
+      not (starts_with_typeof_module_expr_at p position)
+      && (starts_with_module_type_decl_at p position || Syntax_kind2.(peek_kind_at_position p position 1 != TYPE_KW))
+  | kind -> starts_signature_item kind
+
+let starts_structure_item_at = fun p -> starts_structure_item_at_position p p.pos
+
 let starts_signature_item_at = fun p ->
-  starts_signature_item (current_kind p)
+  starts_signature_item_at_position p p.pos
   || (at p Syntax_kind2.LBRACKET
   && (Syntax_kind2.(peek_kind p 1 = PERCENT)
   || Syntax_kind2.(peek_kind p 1 = AT)
@@ -537,14 +569,14 @@ let at_item_boundary_at = fun p position ~signature ->
     true
   else if Syntax_kind2.(raw.Raw_token.kind = END_KW) then
     true
-  else if signature && starts_signature_item raw.Raw_token.kind then
+  else if signature && starts_signature_item_at_position p position then
     true
   else if not (leading_trivia_contains_newline_at p position) then
     false
   else if signature then
-    starts_signature_item raw.Raw_token.kind
+    starts_signature_item_at_position p position
   else
-    starts_structure_item raw.Raw_token.kind
+    starts_structure_item_at_position p position
 
 let has_eq_before_item_boundary = fun p ~signature ->
   let rec loop position =
@@ -562,18 +594,18 @@ let at_item_boundary = fun p ~signature ->
     true
   else if at_end_keyword p then
     true
-  else if signature && starts_signature_item (current_kind p) then
+  else if signature && starts_signature_item_at p then
     true
   else if not (leading_trivia_contains_newline p) then
     false
   else if signature then
-    starts_signature_item (current_kind p)
+    starts_signature_item_at p
     || (at p Syntax_kind2.LBRACKET
     && (Syntax_kind2.(peek_kind p 1 = PERCENT)
     || Syntax_kind2.(peek_kind p 1 = AT)
     || Syntax_kind2.(peek_kind p 1 = ATAT)))
   else
-    starts_structure_item (current_kind p)
+    starts_structure_item_at p
     || (at p Syntax_kind2.LBRACKET
     && (Syntax_kind2.(peek_kind p 1 = PERCENT)
     || Syntax_kind2.(peek_kind p 1 = AT)
@@ -802,8 +834,9 @@ let can_start_poly_variant_payload = fun p ->
   | Syntax_kind2.QUESTION -> symbolic_operator_part (peek_kind p 1)
   | kind -> can_start_atom kind
 
-let starts_with_module_type_keyword = fun p ->
-  at p Syntax_kind2.MODULE_KW && Syntax_kind2.(peek_kind p 1 = TYPE_KW)
+let starts_with_typeof_module_expr_keyword = fun p -> starts_with_typeof_module_expr_at p p.pos
+
+let starts_with_module_type_decl_keyword = fun p -> starts_with_module_type_decl_at p p.pos
 
 let identifier_text_starts_uppercase = fun text ->
   String.length text > 0 && match String.get text ~at:0 with
@@ -3650,7 +3683,7 @@ and parse_functor_module_type = fun p ~signature ->
 and parse_module_type_atom = fun p ~signature ->
   match current_kind p with
   | Syntax_kind2.SIG_KW -> parse_signature_module_type p
-  | Syntax_kind2.MODULE_KW when starts_with_module_type_keyword p -> parse_typeof_module_type p ~signature
+  | Syntax_kind2.MODULE_KW when starts_with_typeof_module_expr_keyword p -> parse_typeof_module_type p ~signature
   | Syntax_kind2.FUNCTOR_KW -> parse_functor_module_type p ~signature
   | Syntax_kind2.LPAREN -> parse_parenthesized_module_type p ~signature
   | Syntax_kind2.IDENT -> parse_module_path_node
@@ -3819,11 +3852,11 @@ and parse_module_decl_member = fun p ~signature ~first ->
 
 and parse_module_decl = fun p ~signature ->
   let marker = start_node p in
-  parse_module_decl_member p ~signature ~first:true;
+  ignore (parse_module_decl_member p ~signature ~first:true);
   let rec parse_tail_members () =
     if at p Syntax_kind2.AND_KW then
       (
-        parse_module_decl_member p ~signature ~first:false;
+        ignore (parse_module_decl_member p ~signature ~first:false);
         parse_tail_members ()
       )
   in
@@ -3980,7 +4013,7 @@ and parse_structure_item = fun p ->
       p
       ~signature:false
     | Syntax_kind2.TYPE_KW -> parse_type_decl p ~signature:false
-    | Syntax_kind2.MODULE_KW when starts_with_module_type_keyword p -> parse_module_type_decl
+    | Syntax_kind2.MODULE_KW when starts_with_module_type_decl_keyword p -> parse_module_type_decl
       p
       ~signature:false
     | Syntax_kind2.MODULE_KW -> parse_module_decl p ~signature:false
@@ -4012,7 +4045,7 @@ and parse_signature_item = fun p ->
         parse_type_extension_decl p ~signature:true
     | Syntax_kind2.TYPE_KW ->
         parse_type_decl p ~signature:true
-    | Syntax_kind2.MODULE_KW when starts_with_module_type_keyword p ->
+    | Syntax_kind2.MODULE_KW when starts_with_module_type_decl_keyword p ->
         parse_module_type_decl p ~signature:true
     | Syntax_kind2.MODULE_KW ->
         parse_module_decl p ~signature:true

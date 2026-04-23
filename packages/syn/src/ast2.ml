@@ -3123,9 +3123,27 @@ module ModuleDeclaration = struct
       in
       loop 0
 
-    let module_expr = fun member -> find_node member ~matches:is_module_expr_kind
+    let first_specific_module_expr = fun node ->
+      match Node.kind node with
+      | Syntax_kind2.MODULE_EXPR -> first_child_node_matching node ~matches:is_module_expr_kind
+      | kind when is_module_expr_kind kind -> Some node
+      | _ -> None
 
-    let module_type = fun member -> find_node member ~matches:is_module_type_kind
+    let first_specific_module_type = fun node ->
+      match Node.kind node with
+      | Syntax_kind2.MODULE_TYPE_EXPR -> first_child_node_matching node ~matches:is_module_type_kind
+      | kind when is_module_type_kind kind -> Some node
+      | _ -> None
+
+    let module_expr = fun member ->
+      match find_node member ~matches:is_module_expr_kind with
+      | Some node -> first_specific_module_expr node
+      | None -> None
+
+    let module_type = fun member ->
+      match find_node member ~matches:is_module_type_kind with
+      | Some node -> first_specific_module_type node
+      | None -> None
   end
 
   let for_each_member = fun decl ~fn ->

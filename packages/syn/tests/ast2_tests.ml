@@ -800,6 +800,27 @@ let test_module_declaration_member_views = fun _ctx ->
       Ok ()
   | _ -> Error "expected module declaration"
 
+let test_signature_module_typeof_declaration = fun _ctx ->
+  let root =
+    parse_mli "module Http1 : module type of Foo.Bar\n"
+    |> Result.expect ~msg:"expected parse2 interface" in
+  let item = nth_signature_item root 0 |> require_some ~msg:"expected module item" in
+  match Ast2.SignatureItem.view item with
+  | Ast2.SignatureItem.Module decl ->
+      let member =
+        Ast2.ModuleDeclaration.fold_members decl None
+          (fun acc member ->
+            match acc with
+            | Some _ -> acc
+            | None -> Some member)
+        |> require_some ~msg:"expected module member" in
+      let separator = Ast2.ModuleDeclaration.separator_token decl |> require_some ~msg:"expected module separator" in
+      let module_type = Ast2.ModuleDeclaration.Member.module_type member |> require_some ~msg:"expected module type body" in
+      Test.assert_equal ~expected:":" ~actual:(Ast2.Token.text separator);
+      Test.assert_equal ~expected:SyntaxKind2.TYPEOF_MODULE_TYPE ~actual:(Ast2.Node.kind module_type);
+      Ok ()
+  | _ -> Error "expected module declaration"
+
 let test_module_type_declaration_tokens = fun _ctx ->
   let root = parse_mli "module type S = Foo.S\nmodule type Empty = sig end\nmodule type Abstract\n"
   |> Result.expect ~msg:"expected parse2 interface" in
@@ -1510,6 +1531,7 @@ let tests = [
   Test.case "ast2 exposes simple declaration token views" test_simple_declaration_token_views;
   Test.case "ast2 exposes module declaration tokens" test_module_declaration_tokens;
   Test.case "ast2 exposes module declaration member views" test_module_declaration_member_views;
+  Test.case "ast2 preserves signature module declarations with module type of bodies" test_signature_module_typeof_declaration;
   Test.case "ast2 exposes module type declaration tokens" test_module_type_declaration_tokens;
   Test.case "ast2 exposes module type with-constraint views" test_module_type_with_constraint_views;
   Test.case "ast2 exposes let binding type annotation views" test_binding_type_annotation_view;
