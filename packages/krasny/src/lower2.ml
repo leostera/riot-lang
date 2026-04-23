@@ -25,6 +25,179 @@ let optional_token_doc = fun token ->
   | Some token -> token_doc token
   | None -> Doc.empty
 
+let token_kind_is = fun token kind -> Kind.(Ast.Token.kind token = kind)
+
+let local_module_token_depth_after = fun depth token ->
+  let decrease depth =
+    if Int.(depth <= 0) then
+      0
+    else
+      Int.(depth - 1)
+  in
+  match Ast.Token.kind token with
+  | kind when Kind.(kind = LPAREN || kind = LBRACKET || kind = LBRACE) -> Int.(depth + 1)
+  | kind when Kind.(kind = STRUCT_KW || kind = SIG_KW || kind = BEGIN_KW) -> Int.(depth + 1)
+  | kind when Kind.(kind = RPAREN || kind = RBRACKET || kind = RBRACE) -> decrease depth
+  | kind when Kind.(kind = END_KW) -> decrease depth
+  | _ -> depth
+
+let local_module_token_needs_space = fun ~depth previous current ->
+  match previous, current with
+  | (_, kind) when Kind.(kind = RPAREN || kind = RBRACKET || kind = RBRACE) -> false
+  | (_, kind) when Kind.(kind = COMMA) -> false
+  | (_, kind) when Kind.(kind = DOT) -> false
+  | (_, kind) when Kind.(kind = COLON) && Int.equal depth 0 -> false
+  | (kind, _) when Kind.(kind = LPAREN || kind = LBRACKET || kind = LBRACE) -> false
+  | (kind, _) when Kind.(kind = DOT || kind = QUESTION || kind = TILDE) -> false
+  | (kind, current) when Kind.(kind = COLON && current = UNDERSCORE) -> false
+  | _ -> true
+
+let local_module_tokens_doc = fun tokens ->
+  let rec loop depth previous acc = function
+    | [] -> acc
+    | token :: rest ->
+        let current = Ast.Token.kind token in
+        let piece = token_doc token in
+        let acc =
+          match previous with
+          | Some previous when local_module_token_needs_space ~depth previous current -> Doc.concat
+            [ acc; Doc.space; piece ]
+          | _ -> Doc.concat [ acc; piece ]
+        in
+        loop (local_module_token_depth_after depth token) (Some current) acc rest
+  in
+  loop 0 None Doc.empty tokens
+
+let local_module_split_top_level_token = fun tokens ~matches ->
+  let rec loop before depth = function
+    | token :: rest when Int.equal depth 0 && matches (Ast.Token.kind token) -> Some (
+      List.reverse before,
+      token,
+      rest
+    )
+    | token :: rest -> loop (token :: before) (local_module_token_depth_after depth token) rest
+    | [] -> None
+  in
+  loop [] 0 tokens
+
+let local_module_expr_tokens_doc = fun tokens ->
+  match local_module_split_top_level_token tokens ~matches:(fun kind -> Kind.(kind = COMMA)) with
+  | Some (left, comma, right) -> Doc.concat
+    [
+      Doc.lparen;
+      local_module_tokens_doc left;
+      token_doc comma;
+      Doc.space;
+      local_module_tokens_doc right;
+      Doc.rparen
+    ]
+  | None -> local_module_tokens_doc tokens
+
+let local_module_body_tokens = fun expr ->
+  let tokens = ref [] in
+  let after_equals = ref false in
+  let done_ = ref false in
+  Ast.Node.for_each_child_token expr
+    ~fn:(fun token ->
+      if !after_equals && not !done_ then
+        if token_kind_is token Kind.IN_KW then
+          done_ := true
+        else
+          tokens := token :: !tokens
+      else if token_kind_is token Kind.EQ then
+        after_equals := true);
+  List.reverse !tokens
+
+let local_module_starts_structure_body_item = fun kind ->
+  Kind.(kind = LET_KW
+  || kind = TYPE_KW
+  || kind = MODULE_KW
+  || kind = OPEN_KW
+  || kind = INCLUDE_KW
+  || kind = EXTERNAL_KW
+  || kind = EXCEPTION_KW
+  || kind = CLASS_KW)
+
+let local_module_continues_compound_structure_item_head = fun current token ->
+  token_kind_is token Kind.TYPE_KW && match current with
+  | previous :: [] -> token_kind_is previous Kind.MODULE_KW || token_kind_is previous Kind.CLASS_KW
+  | _ -> false
+
+let local_module_split_structure_body_items = fun tokens ->
+  let rec loop current items depth = function
+    | [] ->
+        List.reverse
+          (
+            match current with
+            | [] -> items
+            | _ -> List.reverse current :: items
+          )
+    | token :: rest when Int.equal depth 0
+    && local_module_starts_structure_body_item (Ast.Token.kind token)
+    && not (local_module_continues_compound_structure_item_head current token)
+    && not (List.is_empty current) -> loop
+      [ token ]
+      (List.reverse current :: items)
+      (local_module_token_depth_after depth token)
+      rest
+    | token :: rest -> loop (token :: current) items (local_module_token_depth_after depth token) rest
+  in
+  loop [] [] 0 tokens
+
+let local_module_structure_body_let_item_doc = fun tokens ->
+  match local_module_split_top_level_token tokens ~matches:(fun kind -> Kind.(kind = EQ)) with
+  | Some (head_tokens, equals_token, body_tokens) -> Doc.concat
+    [
+      local_module_tokens_doc head_tokens;
+      Doc.space;
+      token_doc equals_token;
+      Doc.space;
+      local_module_expr_tokens_doc body_tokens;
+    ]
+  | None -> local_module_tokens_doc tokens
+
+let local_module_structure_body_item_doc = fun tokens ->
+  match tokens with
+  | token :: _ when token_kind_is token Kind.LET_KW -> local_module_structure_body_let_item_doc tokens
+  | _ -> local_module_tokens_doc tokens
+
+let local_module_struct_body_doc = fun tokens ->
+  match tokens with
+  | struct_token :: rest when token_kind_is struct_token Kind.STRUCT_KW ->
+      let rec take_body body depth = function
+        | [] -> None
+        | token :: after when Int.equal depth 0 && token_kind_is token Kind.END_KW -> Some (
+          List.reverse body,
+          token,
+          after
+        )
+        | token :: rest -> take_body (token :: body) (local_module_token_depth_after depth token) rest
+      in
+      (
+        match take_body [] 0 rest with
+        | Some (body_tokens, end_token, []) ->
+            let body_items = local_module_split_structure_body_items body_tokens in
+            Some (
+              Doc.concat
+                [ token_doc struct_token; (
+                    match body_items with
+                    | [] -> Doc.space
+                    | items -> Doc.concat
+                      [
+                        Doc.line;
+                        Doc.indent
+                          2
+                          (Doc.join
+                            blank_line
+                            (List.map items ~fn:local_module_structure_body_item_doc));
+                        Doc.line;
+                      ]
+                  ); token_doc end_token; ]
+            )
+        | _ -> None
+      )
+  | _ -> None
+
 let token_text_is = fun token expected ->
   String.equal (Ast.Token.text token) expected
 
@@ -1186,6 +1359,11 @@ and expr_tuple_has_explicit_delimiter = fun expr ->
   | (_, Some _) -> true
   | None, None -> false
 
+and let_module_expr_is_multiline = fun expr ->
+  match Ast.LetModuleExpr.cast expr with
+  | Some module_expr -> Doc.is_multiline (let_module_body_doc module_expr)
+  | None -> false
+
 and expr_binding_body_breaks_after_equal = fun expr ->
   match Ast.Expr.view expr with
   | If _
@@ -1193,6 +1371,7 @@ and expr_binding_body_breaks_after_equal = fun expr ->
   | Match _
   | Try _
   | Sequence _ -> true
+  | LetModule _ -> let_module_expr_is_multiline expr
   | Parenthesized _ -> expr_is_begin_block expr
   | _ -> false
 
@@ -1693,9 +1872,15 @@ and let_module_path_body_doc = fun expr ->
 
 and let_module_body_doc = fun expr ->
   match Ast.LetModuleExpr.module_body expr with
-  | Ast.LetModuleExpr.Path -> let_module_path_body_doc expr
-  | Ast.LetModuleExpr.EmptyStruct -> Doc.concat [ Doc.text "struct"; Doc.space; Doc.text "end" ]
-  | Ast.LetModuleExpr.Unsupported -> unsupported "unsupported let module body"
+  | Ast.LetModuleExpr.Path ->
+      let_module_path_body_doc expr
+  | Ast.LetModuleExpr.EmptyStruct ->
+      Doc.concat [ Doc.text "struct"; Doc.space; Doc.text "end" ]
+  | Ast.LetModuleExpr.Unsupported -> (
+      match local_module_struct_body_doc (local_module_body_tokens expr) with
+      | Some doc -> doc
+      | None -> unsupported "unsupported let module body"
+    )
 
 and let_module_expr_doc = fun expr ->
   let module_expr =
@@ -1707,22 +1892,27 @@ and let_module_expr_doc = fun expr ->
     module_expr, Ast.LetModuleExpr.equals_token module_expr, Ast.LetModuleExpr.in_token module_expr, Ast.LetModuleExpr.body
     module_expr with
   | Some let_token, Some module_token, Some name, Some equals_token, Some in_token, Some body ->
+      let module_body_doc = let_module_body_doc module_expr in
+      let body_doc = expr_doc body in
       Doc.concat
-        [
-          token_doc let_token;
-          Doc.space;
-          token_doc module_token;
-          Doc.space;
-          token_doc name;
-          Doc.space;
-          token_doc equals_token;
-          Doc.space;
-          let_module_body_doc module_expr;
-          Doc.space;
-          token_doc in_token;
-          Doc.space;
-          expr_doc body;
-        ]
+        (
+          [
+            token_doc let_token;
+            Doc.space;
+            token_doc module_token;
+            Doc.space;
+            token_doc name;
+            Doc.space;
+            token_doc equals_token;
+            Doc.space;
+            module_body_doc;
+            Doc.space;
+            token_doc in_token;
+          ] @ if Doc.is_multiline module_body_doc then
+            [ Doc.line; body_doc ]
+          else
+            [ Doc.space; body_doc ]
+        )
   | _ -> unsupported "incomplete let module expression"
 
 and let_exception_payload_needs_space = fun previous current ->
@@ -1992,8 +2182,6 @@ let type_decl_tokens = fun decl ->
   let tokens = ref [] in
   Ast.TypeDeclaration.for_each_token decl ~fn:(fun token -> tokens := token :: !tokens);
   List.reverse !tokens
-
-let token_kind_is = fun token kind -> Kind.(Ast.Token.kind token = kind)
 
 let type_token_depth_after = fun depth token ->
   match Ast.Token.kind token with
