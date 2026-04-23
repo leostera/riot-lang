@@ -3025,155 +3025,263 @@ let parse_type_decl_body = fun p ~signature ->
 
 let starts_type_extension_body = fun p -> at p Syntax_kind2.PIPE || starts_bare_variant_constructor p
 
-let parse_type_decl = fun p ~signature ->
-  let marker = start_node p in
-  expect p Syntax_kind2.TYPE_KW (invalid_type_expression p);
-  let rec consume_type_params () =
-    let rec recover_bad_comment_type_var raw =
-      if raw_char_is p raw ~offset:1 '(' then
-        (
-          let rec consume_until_rparen () =
-            if not (is_eof p || at p Syntax_kind2.RPAREN) then
-              (
-                bump p;
-                consume_until_rparen ()
-              )
-          in
-          consume_until_rparen ();
-          ignore (bump_if p Syntax_kind2.RPAREN)
-        )
-    and consume_type_variable () =
-      let quote = current p in
-      bump p;
-      if at p Syntax_kind2.IDENT then
-        (
-          let ident = current p in
-          let first =
-            try Some (Slice.get_unchecked p.source ~at:ident.Raw_token.span.Ceibo.Span.start) with
-            | Invalid_argument _ -> None
-          in
-          (
-            match first with
-            | Some first when first >= 'A' && first <= 'Z' -> Event.Buffer.error
-              p.events
-              (uppercase_type_variable_at p ~quote ~ident)
-            | _ -> ()
-          );
-          bump p
-        )
+let rec skip_type_extension_param_modifiers = fun p index ->
+  match peek_kind p index with
+  | Syntax_kind2.PLUS
+  | Syntax_kind2.MINUS
+  | Syntax_kind2.BANG -> skip_type_extension_param_modifiers p (index + 1)
+  | _ -> index
+
+let skip_type_extension_param = fun p index ->
+  let index = skip_type_extension_param_modifiers p index in
+  match peek_kind p index with
+  | Syntax_kind2.QUOTE -> (
+      match peek_kind p (index + 1) with
+      | Syntax_kind2.IDENT -> index + 2
+      | _ -> index + 1
+    )
+  | Syntax_kind2.UNDERSCORE ->
+      index + 1
+  | _ ->
+      index
+
+let rec skip_parenthesized_type_extension_params = fun p index ->
+  match peek_kind p index with
+  | Syntax_kind2.RPAREN ->
+      index + 1
+  | Syntax_kind2.EOF ->
+      index
+  | Syntax_kind2.COMMA ->
+      skip_parenthesized_type_extension_params p (index + 1)
+  | _ ->
+      let next = skip_type_extension_param p index in
+      if next > index then
+        skip_parenthesized_type_extension_params p next
       else
-        Event.Buffer.error
+        index
+
+let rec skip_type_extension_params = fun p index ->
+  match peek_kind p index with
+  | Syntax_kind2.NONREC_KW ->
+      skip_type_extension_params p (index + 1)
+  | Syntax_kind2.PLUS
+  | Syntax_kind2.MINUS
+  | Syntax_kind2.BANG
+  | Syntax_kind2.QUOTE
+  | Syntax_kind2.UNDERSCORE ->
+      let next = skip_type_extension_param p index in
+      if next > index then
+        skip_type_extension_params p next
+      else
+        index
+  | Syntax_kind2.LPAREN ->
+      let next = skip_parenthesized_type_extension_params p (index + 1) in
+      if next > index then
+        skip_type_extension_params p next
+      else
+        index
+  | _ ->
+      index
+
+let rec skip_type_extension_name_segments = fun p index ->
+  if Syntax_kind2.(peek_kind p index = DOT) && Syntax_kind2.(peek_kind p (index + 1) = IDENT) then
+    skip_type_extension_name_segments p (index + 2)
+  else
+    index
+
+let starts_with_type_extension_decl = fun p ->
+  if not (at p Syntax_kind2.TYPE_KW) then
+    false
+  else
+    let index = skip_type_extension_params p 1 in
+    if Syntax_kind2.(peek_kind p index = IDENT) then
+      let index = skip_type_extension_name_segments p (index + 1) in
+      Syntax_kind2.(peek_kind p index = PLUS) && Syntax_kind2.(peek_kind p (index + 1) = EQ)
+    else
+      false
+
+let rec recover_bad_comment_type_var = fun p raw ->
+  if raw_char_is p raw ~offset:1 '(' then
+    (
+      let rec consume_until_rparen () =
+        if not (is_eof p || at p Syntax_kind2.RPAREN) then
+          (
+            bump p;
+            consume_until_rparen ()
+          )
+      in
+      consume_until_rparen ();
+      ignore (bump_if p Syntax_kind2.RPAREN)
+    )
+
+and consume_type_variable = fun p ->
+  let quote = current p in
+  bump p;
+  if at p Syntax_kind2.IDENT then
+    (
+      let ident = current p in
+      let first =
+        try Some (Slice.get_unchecked p.source ~at:ident.Raw_token.span.Ceibo.Span.start) with
+        | Invalid_argument _ -> None
+      in
+      (
+        match first with
+        | Some first when first >= 'A' && first <= 'Z' -> Event.Buffer.error
           p.events
-          (malformed_type_variable_at p (current p) (current p).Raw_token.span)
-    and consume_type_parameter () =
-      let rec consume_modifiers first =
-        match current_kind p with
-        | Syntax_kind2.PLUS
-        | Syntax_kind2.MINUS
-        | Syntax_kind2.BANG ->
-            let raw = current p in
-            bump p;
-            consume_modifiers (Option.or_ first (Some raw))
-        | _ -> first
-      in
-      let first_modifier = consume_modifiers None in
-      match current_kind p with
-      | Syntax_kind2.QUOTE ->
-          consume_type_variable ()
-      | Syntax_kind2.UNDERSCORE ->
-          bump p
-      | _ -> (
-          match first_modifier with
-          | Some raw -> Event.Buffer.error
-            p.events
-            (invalid_type_parameter_at p raw (current p).Raw_token.span)
-          | None -> ()
-        )
-    and consume_invalid_standalone_type_param () =
-      let raw = current p in
-      bump p;
-      Event.Buffer.error p.events (invalid_type_parameter_at p raw (current p).Raw_token.span)
-    and consume_paren_type_params () =
-      bump p;
-      let rec consume_items () =
-        match current_kind p with
-        | Syntax_kind2.RPAREN ->
-            bump p;
-            true
-        | Syntax_kind2.EOF ->
-            false
-        | Syntax_kind2.COMMA ->
-            bump p;
-            consume_items ()
-        | Syntax_kind2.QUOTE
-        | Syntax_kind2.PLUS
-        | Syntax_kind2.MINUS
-        | Syntax_kind2.BANG
-        | Syntax_kind2.UNDERSCORE ->
-            consume_type_parameter ();
-            consume_items ()
-        | Syntax_kind2.UNKNOWN when raw_starts_with p (current p) '\'' ->
-            let raw = current p in
-            Event.Buffer.error p.events (malformed_type_variable_at p raw raw.Raw_token.span);
-            bump p;
-            recover_bad_comment_type_var raw;
-            consume_items ()
-        | _ ->
-            false
-      in
-      if not (consume_items ()) then
-        Event.Buffer.error p.events (unclosed_type_params_at_previous_end p)
-    in
+          (uppercase_type_variable_at p ~quote ~ident)
+        | _ -> ()
+      );
+      bump p
+    )
+  else
+    Event.Buffer.error p.events (malformed_type_variable_at p (current p) (current p).Raw_token.span)
+
+and consume_type_parameter = fun p ->
+  let rec consume_modifiers first =
     match current_kind p with
-    | Syntax_kind2.NONREC_KW ->
-        bump p;
-        consume_type_params ()
     | Syntax_kind2.PLUS
     | Syntax_kind2.MINUS
     | Syntax_kind2.BANG ->
-        consume_type_parameter ();
-        consume_type_params ()
-    | Syntax_kind2.QUOTE ->
-        consume_type_variable ();
-        consume_type_params ()
-    | Syntax_kind2.UNDERSCORE ->
+        let raw = current p in
         bump p;
-        consume_type_params ()
+        consume_modifiers (Option.or_ first (Some raw))
+    | _ -> first
+  in
+  let first_modifier = consume_modifiers None in
+  match current_kind p with
+  | Syntax_kind2.QUOTE ->
+      consume_type_variable p
+  | Syntax_kind2.UNDERSCORE ->
+      bump p
+  | _ -> (
+      match first_modifier with
+      | Some raw -> Event.Buffer.error
+        p.events
+        (invalid_type_parameter_at p raw (current p).Raw_token.span)
+      | None -> ()
+    )
+
+and consume_invalid_standalone_type_param = fun p ->
+  let raw = current p in
+  bump p;
+  Event.Buffer.error p.events (invalid_type_parameter_at p raw (current p).Raw_token.span)
+
+and consume_paren_type_params = fun p ->
+  bump p;
+  let rec consume_items () =
+    match current_kind p with
+    | Syntax_kind2.RPAREN ->
+        bump p;
+        true
+    | Syntax_kind2.EOF ->
+        false
+    | Syntax_kind2.COMMA ->
+        bump p;
+        consume_items ()
+    | Syntax_kind2.QUOTE
+    | Syntax_kind2.PLUS
+    | Syntax_kind2.MINUS
+    | Syntax_kind2.BANG
+    | Syntax_kind2.UNDERSCORE ->
+        consume_type_parameter p;
+        consume_items ()
     | Syntax_kind2.UNKNOWN when raw_starts_with p (current p) '\'' ->
         let raw = current p in
         Event.Buffer.error p.events (malformed_type_variable_at p raw raw.Raw_token.span);
         bump p;
-        recover_bad_comment_type_var raw;
-        consume_type_params ()
-    | Syntax_kind2.IDENT when current_text_is p "__" && Syntax_kind2.(peek_kind p 1 = IDENT) ->
-        consume_invalid_standalone_type_param ();
-        consume_type_params ()
-    | Syntax_kind2.AT
-    | Syntax_kind2.CARET
-    | Syntax_kind2.LBRACKET when Syntax_kind2.(peek_kind p 1 = IDENT) ->
-        consume_invalid_standalone_type_param ();
-        consume_type_params ()
-    | Syntax_kind2.LPAREN ->
-        consume_paren_type_params ();
-        consume_type_params ()
+        recover_bad_comment_type_var p raw;
+        consume_items ()
     | _ ->
-        ()
+        false
   in
-  consume_type_params ();
-  let type_name =
-    if at p Syntax_kind2.IDENT then
-      (
-        let text = token_text p (current p) in
-        bump p;
-        consume_path_segments p;
-        Some text
-      )
-    else (
-      if not (is_eof p || at_item_boundary p ~signature) then
-        Event.Buffer.error p.events (missing_type_name p);
-      None
+  if not (consume_items ()) then
+    Event.Buffer.error p.events (unclosed_type_params_at_previous_end p)
+
+and consume_type_params = fun p ->
+  match current_kind p with
+  | Syntax_kind2.NONREC_KW ->
+      bump p;
+      consume_type_params p
+  | Syntax_kind2.PLUS
+  | Syntax_kind2.MINUS
+  | Syntax_kind2.BANG ->
+      consume_type_parameter p;
+      consume_type_params p
+  | Syntax_kind2.QUOTE ->
+      consume_type_variable p;
+      consume_type_params p
+  | Syntax_kind2.UNDERSCORE ->
+      bump p;
+      consume_type_params p
+  | Syntax_kind2.UNKNOWN when raw_starts_with p (current p) '\'' ->
+      let raw = current p in
+      Event.Buffer.error p.events (malformed_type_variable_at p raw raw.Raw_token.span);
+      bump p;
+      recover_bad_comment_type_var p raw;
+      consume_type_params p
+  | Syntax_kind2.IDENT when current_text_is p "__" && Syntax_kind2.(peek_kind p 1 = IDENT) ->
+      consume_invalid_standalone_type_param p;
+      consume_type_params p
+  | Syntax_kind2.AT
+  | Syntax_kind2.CARET
+  | Syntax_kind2.LBRACKET when Syntax_kind2.(peek_kind p 1 = IDENT) ->
+      consume_invalid_standalone_type_param p;
+      consume_type_params p
+  | Syntax_kind2.LPAREN ->
+      consume_paren_type_params p;
+      consume_type_params p
+  | _ ->
+      ()
+
+let parse_type_decl_head = fun p ~signature ->
+  consume_type_params p;
+  if at p Syntax_kind2.IDENT then
+    (
+      let text = token_text p (current p) in
+      bump p;
+      consume_path_segments p;
+      Some text
     )
-  in
+  else (
+    if not (is_eof p || at_item_boundary p ~signature) then
+      Event.Buffer.error p.events (missing_type_name p);
+    None
+  )
+
+let parse_type_extension_decl = fun p ~signature ->
+  let marker = start_node p in
+  let head = start_node p in
+  expect p Syntax_kind2.TYPE_KW (invalid_type_expression p);
+  ignore (parse_type_decl_head p ~signature);
+  ignore (complete p head Syntax_kind2.TYPE_EXTENSION_DECL_HEAD);
+  let body = start_node p in
+  if at p Syntax_kind2.PLUS && Syntax_kind2.(peek_kind p 1 = EQ) then
+    (
+      bump p;
+      bump p;
+      if is_eof p || at_item_boundary p ~signature then
+        (
+          Event.Buffer.missing p.events ~kind:Syntax_kind2.IDENT ~offset:(current_offset p);
+          Event.Buffer.error p.events (invalid_type_expression_at_previous_end p)
+        )
+      else if starts_type_extension_body p then
+        ignore (parse_variant_type p ~signature)
+      else (
+        Event.Buffer.error p.events (invalid_type_expression p);
+        consume_until_item_boundary p ~signature
+      )
+    )
+  else
+    Event.Buffer.error p.events (missing_type_decl_equals p);
+  ignore (complete p body Syntax_kind2.TYPE_EXTENSION_DECL_BODY);
+  if not (is_eof p || at_item_boundary p ~signature) then
+    consume_until_item_boundary p ~signature;
+  ignore (complete p marker Syntax_kind2.TYPE_EXTENSION_DECL)
+
+let parse_type_decl = fun p ~signature ->
+  let marker = start_node p in
+  expect p Syntax_kind2.TYPE_KW (invalid_type_expression p);
+  let type_name = parse_type_decl_head p ~signature in
   let parsed_type_extension =
     match current_kind p with
     | Syntax_kind2.LT ->
@@ -3228,7 +3336,7 @@ let parse_type_decl = fun p ~signature ->
             consume_until_item_boundary p ~signature
         | Syntax_kind2.AND_KW ->
             bump p;
-            consume_type_params ();
+            consume_type_params p;
             (
               if at p Syntax_kind2.IDENT then
                 bump p
@@ -3865,6 +3973,9 @@ and parse_structure_item = fun p ->
     | Syntax_kind2.LET_KW when Syntax_kind2.(peek_kind p 1 = OPEN_KW)
     || Syntax_kind2.(peek_kind p 1 = MODULE_KW) -> parse_expr_item p ~signature:false
     | Syntax_kind2.LET_KW -> parse_let_decl p ~signature:false
+    | Syntax_kind2.TYPE_KW when starts_with_type_extension_decl p -> parse_type_extension_decl
+      p
+      ~signature:false
     | Syntax_kind2.TYPE_KW -> parse_type_decl p ~signature:false
     | Syntax_kind2.MODULE_KW when starts_with_module_type_keyword p -> parse_module_type_decl
       p
@@ -3894,6 +4005,8 @@ and parse_signature_item = fun p ->
         parse_bracketed_item_shell p Syntax_kind2.ATTRIBUTE_ITEM
     | Syntax_kind2.VAL_KW ->
         parse_val_decl p ~signature:true
+    | Syntax_kind2.TYPE_KW when starts_with_type_extension_decl p ->
+        parse_type_extension_decl p ~signature:true
     | Syntax_kind2.TYPE_KW ->
         parse_type_decl p ~signature:true
     | Syntax_kind2.MODULE_KW when starts_with_module_type_keyword p ->

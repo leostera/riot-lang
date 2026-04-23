@@ -2861,11 +2861,30 @@ module TypeExtensionDeclaration = struct
     else
       None
 
-  let keyword_token = fun decl -> Node.first_child_token decl ~kind:Syntax_kind2.TYPE_KW
+  let head_node = fun decl ->
+    first_child_node_matching
+      decl
+      ~matches:(fun kind -> Syntax_kind2.(kind = TYPE_EXTENSION_DECL_HEAD))
 
-  let plus_token = fun decl -> Node.first_child_token decl ~kind:Syntax_kind2.PLUS
+  let body_node = fun decl ->
+    first_child_node_matching
+      decl
+      ~matches:(fun kind -> Syntax_kind2.(kind = TYPE_EXTENSION_DECL_BODY))
 
-  let equals_token = fun decl -> Node.first_child_token decl ~kind:Syntax_kind2.EQ
+  let keyword_token = fun decl ->
+    match head_node decl with
+    | Some head -> Node.first_child_token head ~kind:Syntax_kind2.TYPE_KW
+    | None -> None
+
+  let plus_token = fun decl ->
+    match body_node decl with
+    | Some body -> Node.first_child_token body ~kind:Syntax_kind2.PLUS
+    | None -> None
+
+  let equals_token = fun decl ->
+    match body_node decl with
+    | Some body -> Node.first_child_token body ~kind:Syntax_kind2.EQ
+    | None -> None
 
   let rec collect_type_parameter_modifiers = fun decl index variance injective ->
     match child_token_at decl index with
@@ -2918,84 +2937,91 @@ module TypeExtensionDeclaration = struct
     | _ -> skip_parenthesized_type_parameters decl (index + 1)
 
   let for_each_parameter = fun decl ~fn ->
-    let rec parse_parenthesized index =
-      match child_token_kind_at decl index with
-      | Some Syntax_kind2.RPAREN ->
-          index + 1
-      | Some Syntax_kind2.COMMA ->
-          parse_parenthesized (index + 1)
-      | Some Syntax_kind2.EOF
-      | None ->
-          index
-      | _ ->
-          let next = emit_type_parameter decl index ~fn in
-          parse_parenthesized
-            (
+    match head_node decl with
+    | None -> ()
+    | Some head ->
+        let rec parse_parenthesized index =
+          match child_token_kind_at head index with
+          | Some Syntax_kind2.RPAREN ->
+              index + 1
+          | Some Syntax_kind2.COMMA ->
+              parse_parenthesized (index + 1)
+          | Some Syntax_kind2.EOF
+          | None ->
+              index
+          | _ ->
+              let next = emit_type_parameter head index ~fn in
+              parse_parenthesized
+                (
+                  if next > index then
+                    next
+                  else
+                    index + 1
+                )
+        in
+        let rec parse_head index =
+          match child_token_at head index with
+          | Some token when token_kind_is token Syntax_kind2.TYPE_KW ->
+              parse_head (index + 1)
+          | Some token when token_kind_is token Syntax_kind2.LPAREN ->
+              parse_head (parse_parenthesized (index + 1))
+          | Some token when token_kind_is token Syntax_kind2.PLUS
+          || token_kind_is token Syntax_kind2.MINUS
+          || token_kind_is token Syntax_kind2.BANG
+          || token_kind_is token Syntax_kind2.QUOTE
+          || token_kind_is token Syntax_kind2.UNDERSCORE ->
+              let next = emit_type_parameter head index ~fn in
               if next > index then
-                next
-              else
-                index + 1
-            )
-    in
-    let rec parse_head index =
-      match child_token_at decl index with
-      | Some token when token_kind_is token Syntax_kind2.TYPE_KW ->
-          parse_head (index + 1)
-      | Some token when token_kind_is token Syntax_kind2.LPAREN ->
-          parse_head (parse_parenthesized (index + 1))
-      | Some token when token_kind_is token Syntax_kind2.PLUS
-      || token_kind_is token Syntax_kind2.MINUS
-      || token_kind_is token Syntax_kind2.BANG
-      || token_kind_is token Syntax_kind2.QUOTE
-      || token_kind_is token Syntax_kind2.UNDERSCORE ->
-          let next = emit_type_parameter decl index ~fn in
-          if next > index then
-            parse_head next
-      | _ ->
-          ()
-    in
-    parse_head 0
+                parse_head next
+          | _ ->
+              ()
+        in
+        parse_head 0
 
   let for_each_name_ident = fun decl ~fn ->
-    let rec parse_name index =
-      match child_token_at decl index with
-      | Some token when token_kind_is token Syntax_kind2.PLUS || token_kind_is token Syntax_kind2.EQ ->
-          ()
-      | Some token when token_kind_is token Syntax_kind2.IDENT ->
-          fn token;
-          parse_name (index + 1)
-      | Some token when token_kind_is token Syntax_kind2.DOT ->
-          parse_name (index + 1)
-      | Some _ ->
-          parse_name (index + 1)
-      | None ->
-          ()
-    in
-    let rec parse_head index =
-      match child_token_at decl index with
-      | Some token when token_kind_is token Syntax_kind2.TYPE_KW ->
-          parse_head (index + 1)
-      | Some token when token_kind_is token Syntax_kind2.LPAREN ->
-          parse_head (skip_parenthesized_type_parameters decl (index + 1))
-      | Some token when token_kind_is token Syntax_kind2.PLUS
-      || token_kind_is token Syntax_kind2.MINUS
-      || token_kind_is token Syntax_kind2.BANG
-      || token_kind_is token Syntax_kind2.QUOTE
-      || token_kind_is token Syntax_kind2.UNDERSCORE ->
-          let next = skip_type_parameter decl index in
-          if next > index then
-            parse_head next
-      | _ ->
-          parse_name index
-    in
-    parse_head 0
+    match head_node decl with
+    | None -> ()
+    | Some head ->
+        let rec parse_name index =
+          match child_token_at head index with
+          | Some token when token_kind_is token Syntax_kind2.IDENT ->
+              fn token;
+              parse_name (index + 1)
+          | Some token when token_kind_is token Syntax_kind2.DOT ->
+              parse_name (index + 1)
+          | Some _ ->
+              parse_name (index + 1)
+          | None ->
+              ()
+        in
+        let rec parse_head index =
+          match child_token_at head index with
+          | Some token when token_kind_is token Syntax_kind2.TYPE_KW ->
+              parse_head (index + 1)
+          | Some token when token_kind_is token Syntax_kind2.LPAREN ->
+              parse_head (skip_parenthesized_type_parameters head (index + 1))
+          | Some token when token_kind_is token Syntax_kind2.PLUS
+          || token_kind_is token Syntax_kind2.MINUS
+          || token_kind_is token Syntax_kind2.BANG
+          || token_kind_is token Syntax_kind2.QUOTE
+          || token_kind_is token Syntax_kind2.UNDERSCORE ->
+              let next = skip_type_parameter head index in
+              if next > index then
+                parse_head next
+          | _ ->
+              parse_name index
+        in
+        parse_head 0
 
   let name = fun decl ->
     let found = ref None in
     for_each_name_ident decl ~fn:(fun token -> found := Some token);
     !found
 
-  let variant_type = fun decl -> first_child_node_matching decl ~matches:is_variant_type_kind
+  let variant_type = fun decl ->
+    match body_node decl with
+    | Some body -> first_child_node_matching body ~matches:is_variant_type_kind
+    | None -> None
 end
 
 let child_token_kind_is = fun node index kind ->
@@ -3368,7 +3394,9 @@ module ModuleTypeDeclaration = struct
 
   let body_node = fun decl ->
     match body_group decl with
-    | Some body -> first_child_node_matching body ~matches:(fun kind -> Syntax_kind2.(kind = MODULE_TYPE_EXPR))
+    | Some body -> first_child_node_matching
+      body
+      ~matches:(fun kind -> Syntax_kind2.(kind = MODULE_TYPE_EXPR))
     | None -> None
 
   let first_specific_module_type = fun node ->

@@ -623,7 +623,9 @@ let test_simple_declaration_token_views = fun _ctx ->
   | Ast2.StructureItem.Exception decl ->
       let child_kinds = ref [] in
       let name = Ast2.ExceptionDeclaration.name decl |> require_some ~msg:"expected exception name" in
-      Ast2.Node.for_each_child_node decl ~fn:(fun child -> child_kinds := Ast2.Node.kind child :: !child_kinds);
+      Ast2.Node.for_each_child_node
+        decl
+        ~fn:(fun child -> child_kinds := Ast2.Node.kind child :: !child_kinds);
       Test.assert_equal ~expected:"Boom" ~actual:(Ast2.Token.text name);
       Test.assert_equal
         ~expected:[ SyntaxKind2.EXCEPTION_DECL_HEAD ]
@@ -638,8 +640,15 @@ let test_type_extension_and_exception_views = fun _ctx ->
   (
     match Ast2.SignatureItem.view type_extension_item with
     | Ast2.SignatureItem.TypeExtension decl ->
+        let child_kinds = ref [] in
+        Ast2.Node.for_each_child_node
+          decl
+          ~fn:(fun child -> child_kinds := Ast2.Node.kind child :: !child_kinds);
         let name = Ast2.TypeExtensionDeclaration.name decl |> require_some ~msg:"expected type extension name" in
         Test.assert_equal ~expected:"box" ~actual:(Ast2.Token.text name);
+        Test.assert_equal
+          ~expected:[ SyntaxKind2.TYPE_EXTENSION_DECL_HEAD; SyntaxKind2.TYPE_EXTENSION_DECL_BODY ]
+          ~actual:(List.reverse !child_kinds);
         let parameter_count = ref 0 in
         Ast2.TypeExtensionDeclaration.for_each_parameter
           decl
@@ -793,7 +802,9 @@ let test_module_type_declaration_tokens = fun _ctx ->
         let equals = Ast2.ModuleTypeDeclaration.equals_token decl |> require_some ~msg:"expected module type equals token" in
         let child_kinds = ref [] in
         let segments = ref [] in
-        Ast2.Node.for_each_child_node decl ~fn:(fun child -> child_kinds := Ast2.Node.kind child :: !child_kinds);
+        Ast2.Node.for_each_child_node
+          decl
+          ~fn:(fun child -> child_kinds := Ast2.Node.kind child :: !child_kinds);
         Ast2.ModuleTypeDeclaration.for_each_body_path_ident
           decl
           ~fn:(fun token -> segments := Ast2.Token.text token :: !segments);
