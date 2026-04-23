@@ -510,6 +510,18 @@ let strip_trailing_whitespace = fun text ->
   in
   loop Int.(String.length text - 1)
 
+let strip_trailing_horizontal_whitespace = fun text ->
+  let rec loop index =
+    if Int.(index < 0) then
+      ""
+    else
+      match String.get_unchecked text ~at:index with
+      | ' '
+      | '\t' -> loop Int.(index - 1)
+      | _ -> String.sub text ~offset:0 ~len:Int.(index + 1)
+  in
+  loop Int.(String.length text - 1)
+
 type leading_docstring = {
   text: string;
   is_section: bool;
@@ -610,11 +622,6 @@ let standalone_comment_text = fun token ->
   else
     Ast.Token.leading_text token |> strip_leading_whitespace
 
-let leading_comment_doc = fun node ->
-  match Ast.Node.first_descendant_token node with
-  | Some token when Ast.Token.has_leading_comment token -> Doc.text (leading_comment_text token)
-  | _ -> Doc.empty
-
 let text_lines_doc = fun text -> text |> String.split ~by:"\n" |> List.map ~fn:Doc.text |> Doc.lines
 
 let compact_trailing_blank_line = fun text ->
@@ -635,6 +642,36 @@ let leading_comment_token_doc = fun ?(compact_trailing_blank = false) token ->
     text_lines_doc text
   else
     Doc.empty
+
+let token_has_leading_plain_comment = fun token ->
+  let has_plain_comment = ref false in
+  Ast.Token.for_each_leading_trivia token
+    ~fn:(fun ~kind ~text:_ ->
+      if Kind.(kind = COMMENT) then
+        has_plain_comment := true);
+  !has_plain_comment
+
+let leading_comment_token_paragraph_doc = fun token ->
+  if Ast.Token.has_leading_comment token then
+    let text = leading_comment_text token |> strip_trailing_horizontal_whitespace in
+    let text =
+      if not (token_has_leading_plain_comment token) then
+        text
+      else if String.ends_with ~suffix:"\n\n" text then
+        text
+      else if String.ends_with ~suffix:"\n" text then
+        text ^ "\n"
+      else
+        text ^ "\n\n"
+    in
+    Doc.text text
+  else
+    Doc.empty
+
+let leading_comment_node_paragraph_doc = fun node ->
+  match Ast.Node.first_descendant_token node with
+  | Some token -> leading_comment_token_paragraph_doc token
+  | None -> Doc.empty
 
 let eof_comment_doc = fun source_file ->
   match Ast.Node.first_child_token source_file ~kind:Kind.EOF with
@@ -3131,10 +3168,12 @@ let module_signature_body_item_doc = fun tokens ->
   | first :: _ ->
       let compact_trailing_blank = token_kind_is first Kind.VAL_KW in
       Doc.concat
-        [
-          leading_comment_token_doc ~compact_trailing_blank first;
-          module_signature_body_item_body_doc tokens;
-        ]
+        [ (
+            if compact_trailing_blank then
+              leading_comment_token_doc ~compact_trailing_blank first
+            else
+              leading_comment_token_paragraph_doc first
+          ); module_signature_body_item_body_doc tokens; ]
   | [] -> module_signature_body_item_body_doc tokens
 
 let module_signature_body_item_is_type = function
@@ -3331,11 +3370,16 @@ and split_module_struct_body = fun tokens ->
   find [] 0 tokens
 
 and structure_body_item_doc = fun tokens ->
+  let body =
+    match tokens with
+    | token :: _ when token_kind_is token Kind.TYPE_KW -> module_signature_body_type_item_doc tokens
+    | token :: _ when token_kind_is token Kind.LET_KW -> structure_body_let_item_doc tokens
+    | token :: _ when token_kind_is token Kind.MODULE_KW -> module_member_doc tokens
+    | _ -> module_tokens_doc tokens
+  in
   match tokens with
-  | token :: _ when token_kind_is token Kind.TYPE_KW -> module_signature_body_type_item_doc tokens
-  | token :: _ when token_kind_is token Kind.LET_KW -> structure_body_let_item_doc tokens
-  | token :: _ when token_kind_is token Kind.MODULE_KW -> module_member_doc tokens
-  | _ -> module_tokens_doc tokens
+  | first :: _ -> Doc.concat [ leading_comment_token_paragraph_doc first; body ]
+  | [] -> body
 
 and structure_body_let_item_doc = fun tokens ->
   match split_top_level_token tokens ~matches:(fun kind -> Kind.(kind = EQ)) with
@@ -3733,7 +3777,7 @@ let structure_item_doc = fun item ->
     | Unknown _ ->
         unsupported "unsupported structure item"
   in
-  Doc.concat [ leading_comment_doc item; body ]
+  Doc.concat [ leading_comment_node_paragraph_doc item; body ]
 
 let signature_item_doc = fun item ->
   let body =
@@ -3752,7 +3796,7 @@ let signature_item_doc = fun item ->
     | Error _
     | Unknown _ -> unsupported "unsupported signature item"
   in
-  Doc.concat [ leading_comment_doc item; body ]
+  Doc.concat [ leading_comment_node_paragraph_doc item; body ]
 
 let signature_item_is_type = fun item ->
   match Ast.SignatureItem.view item with
