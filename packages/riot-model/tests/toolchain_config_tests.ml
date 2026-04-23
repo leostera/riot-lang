@@ -26,9 +26,9 @@ let test_from_workspace_defaults_without_toolchain_file = fun _ctx ->
 let test_from_workspace_parses_and_normalizes_targets = fun _ctx ->
   with_tempdir "riot_model_toolchain_targets"
     (fun root ->
-      let () = write_toolchain_toml ~root "[toolchain]\nversion = \"5.5.0-riot.3\"\ntargets = [\"x86_64-unknown-linux-gnu\", \"bad\", \"aarch64-unknown-linux-gnu\", \"x86_64-unknown-linux-gnu\"]\n" in
+      let () = write_toolchain_toml ~root "[toolchain]\nversion = \"5.5.0-riot.4\"\ntargets = [\"x86_64-unknown-linux-gnu\", \"bad\", \"aarch64-unknown-linux-gnu\", \"x86_64-unknown-linux-gnu\"]\n" in
       let config = Riot_model.Toolchain_config.from_root ~root in
-      if not (String.equal config.version "5.5.0-riot.3") then
+      if not (String.equal config.version "5.5.0-riot.4") then
         Error "expected toolchain version to parse from ocaml-toolchain.toml"
       else if
         not

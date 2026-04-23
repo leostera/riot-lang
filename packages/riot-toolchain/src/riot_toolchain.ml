@@ -25,7 +25,7 @@ type t = {
   ocamldep: Ocamldep.t;
 }
 
-let default_ocaml_version = "5.5.0-riot.3"
+let default_ocaml_version = "5.5.0-riot.4"
 
 let toolchain_base_dir = Path.(Riot_model.Riot_dirs.dot_riot / Path.v "toolchains")
 

@@ -238,7 +238,7 @@ kind = "native"
 (** Create ocaml-toolchain.toml *)
 let create_toolchain_toml = fun ~on_event target_dir ->
   let content = {|[toolchain]
-version = "5.5.0-riot.3"
+version = "5.5.0-riot.4"
 |}
   in
   let path = Path.(target_dir / Path.v "ocaml-toolchain.toml") in

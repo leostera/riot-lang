@@ -49,7 +49,7 @@ Build or publish prebuilt OCaml toolchains from the vendored OCaml source tree.
 
 Options:
   --output-dir PATH   Root output directory. Defaults to dist/toolchains/ocaml
-  --suffix VALUE      Release suffix to append to the OCaml version (for example riot.3)
+  --suffix VALUE      Release suffix to append to the OCaml version (for example riot.4)
   --clean             Request a clean local rebuild before packaging
   --dry-run           Print commands without executing them
   --help, -h          Show this help
@@ -57,10 +57,10 @@ Options:
 Examples:
   ./scripts/toolchain/ocaml.sh build x86_64-unknown-linux-gnu
   ./scripts/toolchain/ocaml.sh build all
-  ./scripts/toolchain/ocaml.sh publish riot.3 x86_64-unknown-linux-gnu
-  ./scripts/toolchain/ocaml.sh publish riot.3 all
-  ./scripts/toolchain/ocaml.sh publish --clean riot.3 x86_64-unknown-linux-gnu
-  ./scripts/toolchain/ocaml.sh release riot.3 x86_64-unknown-linux-gnu
+  ./scripts/toolchain/ocaml.sh publish riot.4 x86_64-unknown-linux-gnu
+  ./scripts/toolchain/ocaml.sh publish riot.4 all
+  ./scripts/toolchain/ocaml.sh publish --clean riot.4 x86_64-unknown-linux-gnu
+  ./scripts/toolchain/ocaml.sh release riot.4 x86_64-unknown-linux-gnu
   ./scripts/toolchain/ocaml.sh build aarch64-apple-darwin-x-x86_64-unknown-linux-gnu
 
 Linux native GNU host targets are built via Docker Buildx:
@@ -995,7 +995,7 @@ done
 
 load_env_file "$ENV_FILE"
 
-RIOT_TOOLCHAIN_SUFFIX="${CLI_TOOLCHAIN_SUFFIX:-${INITIAL_RIOT_TOOLCHAIN_SUFFIX:-${RIOT_TOOLCHAIN_SUFFIX:-${INITIAL_OCAML_TOOLCHAIN_SUFFIX:-${OCAML_TOOLCHAIN_SUFFIX:-riot.3}}}}}"
+RIOT_TOOLCHAIN_SUFFIX="${CLI_TOOLCHAIN_SUFFIX:-${INITIAL_RIOT_TOOLCHAIN_SUFFIX:-${RIOT_TOOLCHAIN_SUFFIX:-${INITIAL_OCAML_TOOLCHAIN_SUFFIX:-${OCAML_TOOLCHAIN_SUFFIX:-riot.4}}}}}"
 OCAML_TOOLCHAIN_SUFFIX="$RIOT_TOOLCHAIN_SUFFIX"
 export RIOT_TOOLCHAIN_SUFFIX
 export OCAML_TOOLCHAIN_SUFFIX
