@@ -4254,9 +4254,38 @@ let structure_items_doc = fun items ->
 
 let implementation_doc = fun implementation ->
   let items = ref [] in
-  Ast.Implementation.for_each_item
-    implementation
-    ~fn:(fun item -> items := (item, structure_item_doc item) :: !items);
+  let semis = ref 0 in
+  let append_phrase_separator () =
+    match !items with
+    | (item, doc) :: rest -> items := (item, Doc.concat [ doc; Doc.text ";;" ]) :: rest
+    | [] -> ()
+  in
+  Ast.Node.for_each_child implementation
+    ~fn:(
+      function
+      | Syn.SyntaxTree.Node id -> (
+          semis := 0;
+          let node: Ast.Node.t = { Ast.tree = implementation.Ast.tree; id } in
+          match Ast.StructureItem.cast node with
+          | Some item -> items := (item, structure_item_doc item) :: !items
+          | None -> ()
+        )
+      | Syn.SyntaxTree.Token id ->
+          let token: Ast.Token.t = { Ast.tree = implementation.Ast.tree; id } in
+          if token_kind_is token Kind.SEMI then
+            (
+              semis := !semis + 1;
+              if Int.equal !semis 2 then
+                (
+                  append_phrase_separator ();
+                  semis := 0
+                )
+            )
+          else
+            semis := 0
+      | Syn.SyntaxTree.Missing _ ->
+          semis := 0
+    );
   structure_items_doc (List.reverse !items)
 
 let interface_doc = fun interface ->
