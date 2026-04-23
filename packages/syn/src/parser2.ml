@@ -593,6 +593,18 @@ let expression_boundary = fun p ~stop_at_item ~stop_at_semi ~stop_at_comma ~sign
   | Syntax_kind2.SEMI -> stop_at_semi || (stop_at_item && Syntax_kind2.(peek_kind p 1 = SEMI))
   | _ -> stop_at_item && at_item_boundary p ~signature
 
+let trailing_sequence_boundary = fun p ->
+  match current_kind p with
+  | Syntax_kind2.IN_KW
+  | Syntax_kind2.PIPE
+  | Syntax_kind2.RPAREN
+  | Syntax_kind2.RBRACKET
+  | Syntax_kind2.RBRACE
+  | Syntax_kind2.BAR_RBRACKET
+  | Syntax_kind2.END_KW
+  | Syntax_kind2.DONE_KW -> true
+  | _ -> false
+
 let can_start_atom = function
   | Syntax_kind2.IDENT
   | Syntax_kind2.INT
@@ -1186,7 +1198,8 @@ let rec parse_expression = fun p ~signature ~stop_at_item ?(stop_at_semi = false
       (
         let marker = precede p lhs in
         bump p;
-        let _rhs = parse_expression p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma 0 in
+        if not (trailing_sequence_boundary p) then
+          ignore (parse_expression p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma 0);
         loop (complete p marker Syntax_kind2.SEQUENCE_EXPR)
       )
     else if at p Syntax_kind2.COMMA && min_bp <= 15 then
@@ -3639,6 +3652,23 @@ and parse_open_decl = fun p ~signature ->
     consume_until_item_boundary p ~signature;
   ignore (complete p marker Syntax_kind2.OPEN_DECL)
 
+and parse_include_decl = fun p ~signature ->
+  let marker = start_node p in
+  expect p Syntax_kind2.INCLUDE_KW (invalid_expression p);
+  let missing_target =
+    is_eof p
+    || at_end_keyword p
+    || (leading_trivia_contains_newline p && at_item_boundary p ~signature) in
+  if missing_target then
+    Event.Buffer.error p.events (invalid_expression p)
+  else if signature then
+    ignore (parse_module_type_expr p ~signature)
+  else
+    ignore (parse_module_expr p ~signature);
+  if not (is_eof p || at_item_boundary p ~signature) then
+    consume_until_item_boundary p ~signature;
+  ignore (complete p marker Syntax_kind2.INCLUDE_DECL)
+
 and parse_opaque_decl = fun p ~signature kind diagnostic ->
   consume_opaque_until_item_boundary p ~signature kind diagnostic
 
@@ -3682,11 +3712,7 @@ and parse_structure_item = fun p ->
       ~signature:false
     | Syntax_kind2.MODULE_KW -> parse_module_decl p ~signature:false
     | Syntax_kind2.OPEN_KW -> parse_open_decl p ~signature:false
-    | Syntax_kind2.INCLUDE_KW -> parse_opaque_decl
-      p
-      ~signature:false
-      Syntax_kind2.INCLUDE_DECL
-      (invalid_expression p)
+    | Syntax_kind2.INCLUDE_KW -> parse_include_decl p ~signature:false
     | Syntax_kind2.EXTERNAL_KW -> parse_external_decl p ~signature:false
     | Syntax_kind2.EXCEPTION_KW -> parse_exception_decl p ~signature:false
     | Syntax_kind2.CLASS_KW -> parse_opaque_decl
@@ -3718,7 +3744,7 @@ and parse_signature_item = fun p ->
     | Syntax_kind2.OPEN_KW ->
         parse_open_decl p ~signature:true
     | Syntax_kind2.INCLUDE_KW ->
-        parse_opaque_decl p ~signature:true Syntax_kind2.INCLUDE_DECL (invalid_expression p)
+        parse_include_decl p ~signature:true
     | Syntax_kind2.EXTERNAL_KW ->
         parse_external_decl p ~signature:true
     | Syntax_kind2.EXCEPTION_KW ->
