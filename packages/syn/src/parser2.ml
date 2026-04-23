@@ -529,6 +529,10 @@ let at_item_boundary_at = fun p position ~signature ->
   let raw = raw_at p (significant_raw_at p position) in
   if Syntax_kind2.(raw.Raw_token.kind = EOF) then
     true
+  else if Syntax_kind2.(raw.Raw_token.kind = END_KW) then
+    true
+  else if signature && starts_signature_item raw.Raw_token.kind then
+    true
   else if not (leading_trivia_contains_newline_at p position) then
     false
   else if signature then
@@ -549,6 +553,10 @@ let has_eq_before_item_boundary = fun p ~signature ->
 
 let at_item_boundary = fun p ~signature ->
   if is_eof p then
+    true
+  else if at_end_keyword p then
+    true
+  else if signature && starts_signature_item (current_kind p) then
     true
   else if not (leading_trivia_contains_newline p) then
     false
@@ -2422,6 +2430,7 @@ and type_expr_boundary = fun p ~stop_at_arrow ->
   | Syntax_kind2.RBRACKET
   | Syntax_kind2.RBRACE
   | Syntax_kind2.BAR_RBRACKET
+  | Syntax_kind2.END_KW
   | Syntax_kind2.SEMI -> true
   | Syntax_kind2.ARROW when stop_at_arrow -> true
   | kind when leading_trivia_contains_newline p
@@ -3114,84 +3123,387 @@ let parse_type_decl = fun p ~signature ->
   consume_tail_members ();
   ignore (complete p marker Syntax_kind2.TYPE_DECL)
 
-let consume_sig_body = fun p ->
-  bump p;
-  let consume_sig_item () =
-    bump p;
-    let rec loop depth =
-      if
-        not
-          (is_eof p
-          || (depth = 0 && at_end_keyword p)
-          || (depth = 0 && at_item_boundary p ~signature:true))
-      then
-        (
-          let depth =
-            match current_kind p with
-            | Syntax_kind2.LPAREN
-            | Syntax_kind2.LBRACE
-            | Syntax_kind2.LBRACKET
-            | Syntax_kind2.LBRACKET_BAR
-            | Syntax_kind2.BEGIN_KW
-            | Syntax_kind2.OBJECT_KW
-            | Syntax_kind2.STRUCT_KW
-            | Syntax_kind2.SIG_KW -> depth + 1
-            | Syntax_kind2.RPAREN
-            | Syntax_kind2.RBRACE
-            | Syntax_kind2.RBRACKET
-            | Syntax_kind2.BAR_RBRACKET
-            | Syntax_kind2.END_KW when depth > 0 -> depth - 1
-            | _ when depth > 0 && at_end_keyword p -> depth - 1
-            | _ -> depth
-          in
-          bump p;
-          loop depth
-        )
-    in
-    loop 0
+let module_expr_boundary = fun p ~signature ->
+  is_eof p
+  || at_end_keyword p
+  || at p Syntax_kind2.IN_KW
+  || at p Syntax_kind2.AND_KW
+  || at_item_boundary p ~signature
+
+let module_type_boundary = fun p ~signature ->
+  is_eof p
+  || at_end_keyword p
+  || at p Syntax_kind2.IN_KW
+  || at p Syntax_kind2.AND_KW
+  || at p Syntax_kind2.EQ
+  || at_item_boundary p ~signature
+
+let rec parse_nested_phrase_separators = fun p ->
+  if at p Syntax_kind2.SEMI && Syntax_kind2.(peek_kind p 1 = SEMI) then
+    (
+      bump p;
+      bump p;
+      parse_nested_phrase_separators p
+    )
+
+let module_decl_head_boundary = fun p ~signature depth ->
+  Int.equal depth 0
+  && (is_eof p
+  || at p Syntax_kind2.COLON
+  || at p Syntax_kind2.EQ
+  || at p Syntax_kind2.AND_KW
+  || at p Syntax_kind2.STRUCT_KW
+  || at p Syntax_kind2.FUNCTOR_KW
+  || at p Syntax_kind2.IDENT
+  || at_end_keyword p
+  || at_item_boundary p ~signature)
+
+let consume_module_decl_head_tail = fun p ~signature ->
+  let next_depth depth =
+    match current_kind p with
+    | Syntax_kind2.LPAREN
+    | Syntax_kind2.LBRACE
+    | Syntax_kind2.LBRACKET
+    | Syntax_kind2.LBRACKET_BAR
+    | Syntax_kind2.BEGIN_KW
+    | Syntax_kind2.OBJECT_KW
+    | Syntax_kind2.STRUCT_KW
+    | Syntax_kind2.SIG_KW -> depth + 1
+    | Syntax_kind2.RPAREN
+    | Syntax_kind2.RBRACE
+    | Syntax_kind2.RBRACKET
+    | Syntax_kind2.BAR_RBRACKET
+    | Syntax_kind2.END_KW when depth > 0 -> depth - 1
+    | _ when depth > 0 && at_end_keyword p -> depth - 1
+    | _ -> depth
   in
+  let rec loop depth =
+    if not (module_decl_head_boundary p ~signature depth) then
+      (
+        let depth = next_depth depth in
+        bump p;
+        loop depth
+      )
+  in
+  loop 0
+
+let consume_until_module_expr_boundary = fun p ~signature ->
+  let next_depth depth =
+    match current_kind p with
+    | Syntax_kind2.LPAREN
+    | Syntax_kind2.LBRACE
+    | Syntax_kind2.LBRACKET
+    | Syntax_kind2.LBRACKET_BAR
+    | Syntax_kind2.BEGIN_KW
+    | Syntax_kind2.OBJECT_KW
+    | Syntax_kind2.STRUCT_KW
+    | Syntax_kind2.SIG_KW -> depth + 1
+    | Syntax_kind2.RPAREN
+    | Syntax_kind2.RBRACE
+    | Syntax_kind2.RBRACKET
+    | Syntax_kind2.BAR_RBRACKET
+    | Syntax_kind2.END_KW when depth > 0 -> depth - 1
+    | _ when depth > 0 && at_end_keyword p -> depth - 1
+    | _ -> depth
+  in
+  let rec loop depth consumed =
+    if not (module_expr_boundary p ~signature && (consumed || Int.equal depth 0)) then
+      (
+        let depth = next_depth depth in
+        bump p;
+        loop depth true
+      )
+  in
+  loop 0 false
+
+let consume_until_module_type_boundary = fun p ~signature ->
+  let next_depth depth =
+    match current_kind p with
+    | Syntax_kind2.LPAREN
+    | Syntax_kind2.LBRACE
+    | Syntax_kind2.LBRACKET
+    | Syntax_kind2.LBRACKET_BAR
+    | Syntax_kind2.BEGIN_KW
+    | Syntax_kind2.OBJECT_KW
+    | Syntax_kind2.STRUCT_KW
+    | Syntax_kind2.SIG_KW -> depth + 1
+    | Syntax_kind2.RPAREN
+    | Syntax_kind2.RBRACE
+    | Syntax_kind2.RBRACKET
+    | Syntax_kind2.BAR_RBRACKET
+    | Syntax_kind2.END_KW when depth > 0 -> depth - 1
+    | _ when depth > 0 && at_end_keyword p -> depth - 1
+    | _ -> depth
+  in
+  let rec loop depth consumed =
+    if not (module_type_boundary p ~signature && (consumed || Int.equal depth 0)) then
+      (
+        let depth = next_depth depth in
+        bump p;
+        loop depth true
+      )
+  in
+  loop 0 false
+
+let rec parse_struct_module_expr = fun p ->
+  let marker = start_node p in
+  expect p Syntax_kind2.STRUCT_KW (invalid_expression p);
   let rec loop () =
+    parse_nested_phrase_separators p;
     if not (is_eof p || at_end_keyword p) then
       (
-        if starts_signature_item_at p then
-          consume_sig_item ()
-        else (
-          Event.Buffer.error p.events (unexpected_signature_item p);
-          bump p
-        );
+        parse_structure_item p;
         loop ()
       )
   in
   loop ();
-  expect_closer p Syntax_kind2.END_KW ~opener:"sig"
+  expect_closer p Syntax_kind2.END_KW ~opener:"struct";
+  complete p marker Syntax_kind2.STRUCT_MODULE_EXPR
 
-let consume_module_expr_shell = fun p ~signature ->
-  match current_kind p with
-  | Syntax_kind2.STRUCT_KW -> consume_struct_body p
-  | _ -> consume_until_item_boundary p ~signature
+and parse_signature_module_type = fun p ->
+  let marker = start_node p in
+  expect p Syntax_kind2.SIG_KW (invalid_type_expression p);
+  let rec loop () =
+    parse_nested_phrase_separators p;
+    if not (is_eof p || at_end_keyword p) then
+      (
+        if starts_signature_item_at p then
+          parse_signature_item p
+        else
+          recover_current_as_error p (unexpected_signature_item p);
+        loop ()
+      )
+  in
+  loop ();
+  expect_closer p Syntax_kind2.END_KW ~opener:"sig";
+  complete p marker Syntax_kind2.SIGNATURE_MODULE_TYPE
 
-let consume_module_expr = fun p ~signature ->
-  consume_module_expr_shell p ~signature;
-  consume_same_line_attribute_suffixes p
+and parse_module_path_node = fun p kind diagnostic ->
+  let marker = start_node p in
+  if at p Syntax_kind2.IDENT then
+    (
+      bump p;
+      consume_path_segments p
+    )
+  else (
+    Event.Buffer.missing p.events ~kind:Syntax_kind2.IDENT ~offset:(current_offset p);
+    Event.Buffer.error p.events diagnostic
+  );
+  complete p marker kind
 
-let consume_module_type_expr_shell = fun p ~signature ->
-  match current_kind p with
-  | Syntax_kind2.SIG_KW ->
-      consume_sig_body p
-  | Syntax_kind2.EOF ->
+and parse_opaque_module_expr = fun p ~signature ->
+  let marker = start_node p in
+  if module_expr_boundary p ~signature then
+    (
+      Event.Buffer.missing p.events ~kind:Syntax_kind2.IDENT ~offset:(current_offset p);
+      Event.Buffer.error p.events (missing_module_expr p)
+    )
+  else
+    consume_until_module_expr_boundary p ~signature;
+  complete p marker Syntax_kind2.OPAQUE_MODULE_EXPR
+
+and parse_opaque_module_type = fun p ~signature ->
+  let marker = start_node p in
+  if module_type_boundary p ~signature then
+    (
       Event.Buffer.missing p.events ~kind:Syntax_kind2.IDENT ~offset:(current_offset p);
       Event.Buffer.error p.events (missing_module_type_expr p)
-  | _ when at_item_boundary p ~signature ->
-      Event.Buffer.missing p.events ~kind:Syntax_kind2.IDENT ~offset:(current_offset p);
-      Event.Buffer.error p.events (missing_module_type_expr p)
-  | _ ->
-      consume_until_item_boundary p ~signature
+    )
+  else
+    consume_until_module_type_boundary p ~signature;
+  complete p marker Syntax_kind2.OPAQUE_MODULE_TYPE
 
-let consume_module_type_expr = fun p ~signature ->
-  consume_module_type_expr_shell p ~signature;
-  consume_same_line_attribute_suffixes p
+and parse_parenthesized_module_expr = fun p ~signature ->
+  let marker = start_node p in
+  bump p;
+  if not (at p Syntax_kind2.RPAREN || is_eof p) then
+    ignore (parse_module_expr p ~signature);
+  let has_constraint =
+    if at p Syntax_kind2.COLON then
+      (
+        bump p;
+        if not (at p Syntax_kind2.RPAREN || is_eof p) then
+          ignore (parse_module_type_expr p ~signature);
+        true
+      )
+    else
+      false
+  in
+  expect_closer p Syntax_kind2.RPAREN ~opener:"(";
+  complete p marker
+    (
+      if has_constraint then
+        Syntax_kind2.CONSTRAINT_MODULE_EXPR
+      else
+        Syntax_kind2.PAREN_MODULE_EXPR
+    )
 
-let parse_module_type_decl = fun p ~signature ->
+and parse_functor_module_expr = fun p ~signature ->
+  let marker = start_node p in
+  bump p;
+  consume_balanced_until p ~closer:Syntax_kind2.ARROW 0;
+  expect p Syntax_kind2.ARROW (missing_module_expr p);
+  if not (module_expr_boundary p ~signature) then
+    ignore (parse_module_expr p ~signature)
+  else
+    Event.Buffer.error p.events (missing_module_expr p);
+  complete p marker Syntax_kind2.FUNCTOR_MODULE_EXPR
+
+and parse_module_expr_atom = fun p ~signature ->
+  match current_kind p with
+  | Syntax_kind2.STRUCT_KW -> parse_struct_module_expr p
+  | Syntax_kind2.FUNCTOR_KW -> parse_functor_module_expr p ~signature
+  | Syntax_kind2.LPAREN -> parse_parenthesized_module_expr p ~signature
+  | Syntax_kind2.IDENT -> parse_module_path_node
+    p
+    Syntax_kind2.PATH_MODULE_EXPR
+    (missing_module_expr p)
+  | _ -> parse_opaque_module_expr p ~signature
+
+and parse_module_expr_bp = fun p ~signature ->
+  let rec loop lhs =
+    if at p Syntax_kind2.LPAREN then
+      (
+        let marker = precede p lhs in
+        bump p;
+        if not (at p Syntax_kind2.RPAREN || is_eof p) then
+          ignore (parse_module_expr p ~signature);
+        expect_closer p Syntax_kind2.RPAREN ~opener:"(";
+        loop (complete p marker Syntax_kind2.APPLY_MODULE_EXPR)
+      )
+    else
+      lhs
+  in
+  loop (parse_module_expr_atom p ~signature)
+
+and parse_module_expr = fun p ~signature ->
+  let marker = start_node p in
+  ignore (parse_module_expr_bp p ~signature);
+  consume_same_line_attribute_suffixes p;
+  complete p marker Syntax_kind2.MODULE_EXPR
+
+and parse_parenthesized_module_type = fun p ~signature ->
+  let marker = start_node p in
+  bump p;
+  if not (at p Syntax_kind2.RPAREN || is_eof p) then
+    ignore (parse_module_type_expr p ~signature);
+  expect_closer p Syntax_kind2.RPAREN ~opener:"(";
+  complete p marker Syntax_kind2.PAREN_MODULE_TYPE
+
+and parse_typeof_module_type = fun p ~signature ->
+  let marker = start_node p in
+  expect p Syntax_kind2.MODULE_KW (invalid_type_expression p);
+  expect p Syntax_kind2.TYPE_KW (invalid_type_expression p);
+  expect p Syntax_kind2.OF_KW (invalid_type_expression p);
+  if not (module_expr_boundary p ~signature) then
+    ignore (parse_module_expr p ~signature)
+  else
+    Event.Buffer.error p.events (missing_module_expr p);
+  complete p marker Syntax_kind2.TYPEOF_MODULE_TYPE
+
+and parse_functor_module_type = fun p ~signature ->
+  let marker = start_node p in
+  bump p;
+  consume_balanced_until p ~closer:Syntax_kind2.ARROW 0;
+  expect p Syntax_kind2.ARROW (missing_module_type_expr p);
+  if not (module_type_boundary p ~signature) then
+    ignore (parse_module_type_expr p ~signature)
+  else
+    Event.Buffer.error p.events (missing_module_type_expr p);
+  complete p marker Syntax_kind2.FUNCTOR_MODULE_TYPE
+
+and parse_module_type_atom = fun p ~signature ->
+  match current_kind p with
+  | Syntax_kind2.SIG_KW -> parse_signature_module_type p
+  | Syntax_kind2.MODULE_KW when starts_with_module_type_keyword p -> parse_typeof_module_type p ~signature
+  | Syntax_kind2.FUNCTOR_KW -> parse_functor_module_type p ~signature
+  | Syntax_kind2.LPAREN -> parse_parenthesized_module_type p ~signature
+  | Syntax_kind2.IDENT -> parse_module_path_node
+    p
+    Syntax_kind2.PATH_MODULE_TYPE
+    (missing_module_type_expr p)
+  | _ -> parse_opaque_module_type p ~signature
+
+and consume_module_type_with_constraint = fun p ~signature ->
+  let consume_path_like () =
+    if at p Syntax_kind2.IDENT then
+      (
+        bump p;
+        consume_path_segments p
+      )
+    else
+      Event.Buffer.error p.events (missing_type_name p)
+  in
+  let consume_type_constraint () =
+    expect p Syntax_kind2.TYPE_KW (invalid_type_expression p);
+    consume_path_like ();
+    if at p Syntax_kind2.EQ || at p Syntax_kind2.COLONEQ then
+      (
+        bump p;
+        if not (type_expr_boundary p ~stop_at_arrow:false) then
+          parse_type_expr p ~allow_leading_poly_type_after_newline:false ~stop_at_arrow:false
+      )
+    else if at p Syntax_kind2.PLUS && Syntax_kind2.(peek_kind p 1 = EQ) then
+      (
+        bump p;
+        bump p;
+        if not (type_expr_boundary p ~stop_at_arrow:false) then
+          parse_type_expr p ~allow_leading_poly_type_after_newline:false ~stop_at_arrow:false
+      )
+    else
+      Event.Buffer.error p.events (missing_type_decl_equals p)
+  in
+  let consume_module_constraint () =
+    expect p Syntax_kind2.MODULE_KW (invalid_expression p);
+    consume_path_like ();
+    if at p Syntax_kind2.EQ then
+      (
+        bump p;
+        if not (module_expr_boundary p ~signature) then
+          ignore (parse_module_expr p ~signature)
+      )
+    else
+      Event.Buffer.error p.events (missing_module_decl_equals p)
+  in
+  let rec consume_constraint () =
+    (
+      match current_kind p with
+      | Syntax_kind2.TYPE_KW -> consume_type_constraint ()
+      | Syntax_kind2.MODULE_KW -> consume_module_constraint ()
+      | _ -> consume_until_module_type_boundary p ~signature
+    );
+    if
+      at p Syntax_kind2.AND_KW
+      && (Syntax_kind2.(peek_kind p 1 = TYPE_KW) || Syntax_kind2.(peek_kind p 1 = MODULE_KW))
+    then
+      (
+        bump p;
+        consume_constraint ()
+      )
+  in
+  consume_constraint ()
+
+and parse_module_type_bp = fun p ~signature ->
+  let rec loop lhs =
+    if at p Syntax_kind2.WITH_KW then
+      (
+        let marker = precede p lhs in
+        bump p;
+        consume_module_type_with_constraint p ~signature;
+        loop (complete p marker Syntax_kind2.WITH_MODULE_TYPE)
+      )
+    else
+      lhs
+  in
+  loop (parse_module_type_atom p ~signature)
+
+and parse_module_type_expr = fun p ~signature ->
+  let marker = start_node p in
+  ignore (parse_module_type_bp p ~signature);
+  consume_same_line_attribute_suffixes p;
+  complete p marker Syntax_kind2.MODULE_TYPE_EXPR
+
+and parse_module_type_decl = fun p ~signature ->
   let marker = start_node p in
   expect p Syntax_kind2.MODULE_KW (invalid_expression p);
   expect p Syntax_kind2.TYPE_KW (invalid_type_expression p);
@@ -3206,7 +3518,7 @@ let parse_module_type_decl = fun p ~signature ->
   if at p Syntax_kind2.EQ then
     (
       bump p;
-      consume_module_type_expr p ~signature
+      ignore (parse_module_type_expr p ~signature)
     )
   else if is_eof p || at_item_boundary p ~signature then
     ()
@@ -3214,37 +3526,64 @@ let parse_module_type_decl = fun p ~signature ->
     consume_until_item_boundary p ~signature;
   ignore (complete p marker Syntax_kind2.MODULE_TYPE_DECL)
 
-let parse_module_decl = fun p ~signature ->
-  let marker = start_node p in
-  expect p Syntax_kind2.MODULE_KW (invalid_expression p);
-  consume_shortcut_extension_modifier p;
-  ignore (bump_if p Syntax_kind2.REC_KW);
-  consume_declaration_attributes p;
+and parse_module_decl_member = fun p ~signature ~first ->
+  if first then
+    (
+      expect p Syntax_kind2.MODULE_KW (invalid_expression p);
+      consume_shortcut_extension_modifier p;
+      ignore (bump_if p Syntax_kind2.REC_KW);
+      consume_declaration_attributes p
+    )
+  else (
+    expect p Syntax_kind2.AND_KW (invalid_expression p);
+    consume_declaration_attributes p
+  );
   (
     if at p Syntax_kind2.IDENT || at p Syntax_kind2.UNDERSCORE then
       bump p
     else
       Event.Buffer.error p.events (invalid_module_name p)
   );
+  consume_module_decl_head_tail p ~signature;
+  if at p Syntax_kind2.COLON then
+    (
+      bump p;
+      if is_eof p || at p Syntax_kind2.EQ || at_item_boundary p ~signature then
+        Event.Buffer.error p.events (missing_module_type_expr p)
+      else
+        ignore (parse_module_type_expr p ~signature)
+    );
   if at p Syntax_kind2.EQ then
     (
       bump p;
       if is_eof p || at_item_boundary p ~signature then
         Event.Buffer.error p.events (missing_module_expr p)
       else
-        consume_module_expr p ~signature
+        ignore (parse_module_expr p ~signature)
     )
   else if at p Syntax_kind2.STRUCT_KW || at p Syntax_kind2.IDENT then
     (
       Event.Buffer.missing p.events ~kind:Syntax_kind2.EQ ~offset:(current_offset p);
       Event.Buffer.error p.events (missing_module_decl_equals p);
-      consume_module_expr p ~signature
+      ignore (parse_module_expr p ~signature)
     )
-  else if not (is_eof p || at_item_boundary p ~signature) then
-    consume_until_item_boundary p ~signature;
+  else if not (is_eof p || at p Syntax_kind2.AND_KW || at_item_boundary p ~signature) then
+    consume_until_module_expr_boundary p ~signature
+
+and parse_module_decl = fun p ~signature ->
+  let marker = start_node p in
+  parse_module_decl_member p ~signature ~first:true;
+  let rec parse_tail_members () =
+    if at p Syntax_kind2.AND_KW then
+      (
+        parse_module_decl_member p ~signature ~first:false;
+        parse_tail_members ()
+      )
+  in
+  parse_tail_members ();
   ignore (complete p marker Syntax_kind2.MODULE_DECL)
 
-let parse_external_decl = fun p ~signature ->
+and parse_external_decl = fun p ~signature ->
   let marker = start_node p in
   expect p Syntax_kind2.EXTERNAL_KW (invalid_expression p);
   consume_shortcut_extension_modifier p;
@@ -3263,7 +3602,7 @@ let parse_external_decl = fun p ~signature ->
     consume_until_item_boundary p ~signature;
   ignore (complete p marker Syntax_kind2.EXTERNAL_DECL)
 
-let parse_val_decl = fun p ~signature ->
+and parse_val_decl = fun p ~signature ->
   let marker = start_node p in
   expect p Syntax_kind2.VAL_KW (invalid_type_expression p);
   if not (consume_value_name p ~signature) then
@@ -3281,7 +3620,7 @@ let parse_val_decl = fun p ~signature ->
     consume_until_item_boundary p ~signature;
   ignore (complete p marker Syntax_kind2.VAL_DECL)
 
-let parse_exception_decl = fun p ~signature ->
+and parse_exception_decl = fun p ~signature ->
   let marker = start_node p in
   expect p Syntax_kind2.EXCEPTION_KW (invalid_expression p);
   consume_shortcut_extension_modifier p;
@@ -3291,7 +3630,7 @@ let parse_exception_decl = fun p ~signature ->
   consume_until_item_boundary p ~signature;
   ignore (complete p marker Syntax_kind2.EXCEPTION_DECL)
 
-let parse_open_decl = fun p ~signature ->
+and parse_open_decl = fun p ~signature ->
   let marker = start_node p in
   expect p Syntax_kind2.OPEN_KW (invalid_expression p);
   if is_eof p || at_item_boundary p ~signature then
@@ -3300,15 +3639,15 @@ let parse_open_decl = fun p ~signature ->
     consume_until_item_boundary p ~signature;
   ignore (complete p marker Syntax_kind2.OPEN_DECL)
 
-let parse_opaque_decl = fun p ~signature kind diagnostic ->
+and parse_opaque_decl = fun p ~signature kind diagnostic ->
   consume_opaque_until_item_boundary p ~signature kind diagnostic
 
-let parse_expr_item = fun p ~signature ->
+and parse_expr_item = fun p ~signature ->
   let marker = start_node p in
   ignore (parse_expression p ~signature ~stop_at_item:true 0);
   ignore (complete p marker Syntax_kind2.EXPR_ITEM)
 
-let parse_bracketed_item_shell = fun p kind ->
+and parse_bracketed_item_shell = fun p kind ->
   let marker = start_node p in
   bump p;
   (
@@ -3325,7 +3664,7 @@ let parse_bracketed_item_shell = fun p kind ->
   expect p Syntax_kind2.RBRACKET (invalid_expression p);
   ignore (complete p marker kind)
 
-let parse_structure_item = fun p ->
+and parse_structure_item = fun p ->
   let marker = start_node p in
   (
     match current_kind p with
@@ -3360,7 +3699,7 @@ let parse_structure_item = fun p ->
   );
   ignore (complete p marker Syntax_kind2.STRUCTURE_ITEM)
 
-let parse_signature_item = fun p ->
+and parse_signature_item = fun p ->
   let marker = start_node p in
   (
     match current_kind p with

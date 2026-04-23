@@ -5404,12 +5404,12 @@ let module_declaration_tokens_doc = fun ?(force_empty_struct_multiline = false) 
 
 let module_decl_tokens = fun decl ->
   let tokens = ref [] in
-  Ast.Node.for_each_child_token decl ~fn:(fun token -> tokens := token :: !tokens);
+  Ast.Node.for_each_token decl ~fn:(fun token -> tokens := token :: !tokens);
   List.reverse !tokens
 
 let module_type_decl_tokens = fun decl ->
   let tokens = ref [] in
-  Ast.Node.for_each_child_token decl ~fn:(fun token -> tokens := token :: !tokens);
+  Ast.Node.for_each_token decl ~fn:(fun token -> tokens := token :: !tokens);
   List.reverse !tokens
 
 let module_decl_path_body_doc = fun decl ->

@@ -74,6 +74,8 @@ module Node: sig
 
   val for_each_child_token: t -> fn:(Token.t -> unit) -> unit
 
+  val for_each_token: t -> fn:(Token.t -> unit) -> unit
+
   val first_child_node: t -> kind:Syntax_kind2.t -> t option
 
   val first_child_token: t -> kind:Syntax_kind2.t -> Token.t option
