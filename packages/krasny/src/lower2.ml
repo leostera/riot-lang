@@ -2257,8 +2257,10 @@ let top_level_arrow_count = fun tokens ->
   in
   loop 0 0 tokens
 
-let rec type_tokens_doc = fun tokens ->
-  if Int.(top_level_arrow_count tokens > 4) then
+let multiline_top_level_arrow_type_threshold = 4
+
+let type_tokens_doc_with_threshold = fun ~threshold tokens ->
+  if Int.(top_level_arrow_count tokens > threshold) then
     let parts = split_top_level_arrows tokens in
     let rec render = function
       | [] -> Doc.empty
@@ -2271,6 +2273,10 @@ let rec type_tokens_doc = fun tokens ->
     render parts
   else
     type_tokens_inline_doc tokens
+
+let type_tokens_doc = type_tokens_doc_with_threshold ~threshold:multiline_top_level_arrow_type_threshold
+
+let value_decl_type_tokens_doc = type_tokens_doc_with_threshold ~threshold:3
 
 let field_type_breaks_after_colon = fun tokens ->
   let rec contains_and = function
@@ -2921,17 +2927,33 @@ let value_decl_annotation_tokens = fun decl ->
 let value_decl_doc = fun decl ->
   match value_decl_name_tokens decl, Ast.ValueDeclaration.colon_token decl, value_decl_annotation_tokens
     decl with
-  | [], _, _ -> unsupported "value declaration without name"
-  | name_tokens, Some colon_token, ((_ :: _) as annotation_tokens) -> Doc.concat
-    [
-      Doc.text "val";
-      Doc.space;
-      declaration_name_doc name_tokens;
-      token_doc colon_token;
-      Doc.space;
-      type_tokens_doc annotation_tokens;
-    ]
-  | _ -> unsupported "incomplete value declaration"
+  | [], _, _ ->
+      unsupported "value declaration without name"
+  | name_tokens, Some colon_token, ((_ :: _) as annotation_tokens) ->
+      let annotation_doc = value_decl_type_tokens_doc annotation_tokens in
+      let separator =
+        if Doc.is_multiline annotation_doc then
+          Doc.line
+        else
+          Doc.space
+      in
+      let annotation_doc =
+        if Doc.is_multiline annotation_doc then
+          Doc.indent 2 annotation_doc
+        else
+          annotation_doc
+      in
+      Doc.concat
+        [
+          Doc.text "val";
+          Doc.space;
+          declaration_name_doc name_tokens;
+          token_doc colon_token;
+          separator;
+          annotation_doc;
+        ]
+  | _ ->
+      unsupported "incomplete value declaration"
 
 let external_decl_name_tokens = fun decl ->
   let tokens = ref [] in
