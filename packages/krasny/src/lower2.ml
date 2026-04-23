@@ -802,6 +802,16 @@ let token_has_leading_plain_comment = fun token ->
         has_plain_comment := true);
   !has_plain_comment
 
+let token_has_leading_nonsection_comment = fun token ->
+  let has_comment = ref false in
+  Ast.Token.for_each_leading_trivia token
+    ~fn:(fun ~kind ~text ->
+      if Kind.(kind = COMMENT) then
+        has_comment := true
+      else if Kind.(kind = DOCSTRING) && not (is_section_docstring_text text) then
+        has_comment := true);
+  !has_comment
+
 let leading_comment_token_paragraph_doc = fun token ->
   if Ast.Token.has_leading_comment token then
     let text = leading_comment_text token |> strip_trailing_horizontal_whitespace in
@@ -824,10 +834,21 @@ let leading_comment_node_paragraph_doc = fun node ->
   | Some token -> leading_comment_token_paragraph_doc token
   | None -> Doc.empty
 
-let eof_comment_doc = fun source_file ->
+let eof_comment_token = fun source_file ->
   match Ast.Node.first_child_token source_file ~kind:Kind.EOF with
-  | Some token when Ast.Token.has_leading_comment token -> Doc.text (standalone_comment_text token)
-  | _ -> Doc.empty
+  | Some token when Ast.Token.has_leading_comment token -> Some token
+  | _ -> None
+
+let eof_comment_doc = fun source_file ->
+  match eof_comment_token source_file with
+  | Some token -> Doc.text (standalone_comment_text token)
+  | None -> Doc.empty
+
+let eof_comment_separator = fun source_file ->
+  match eof_comment_token source_file with
+  | Some token when token_has_leading_plain_comment token
+  && not (Ast.Token.has_leading_docstring token) -> Doc.line
+  | _ -> blank_line
 
 let bracketed_shell_doc = fun ~empty_message ~for_each_shell_token ->
   let shell = ref Doc.empty in
@@ -3912,6 +3933,10 @@ let module_signature_body_item_is_value = function
   | token :: _ -> token_kind_is token Kind.VAL_KW
   | [] -> false
 
+let module_signature_body_item_has_leading_nonsection_comment = function
+  | token :: _ -> token_has_leading_nonsection_comment token
+  | [] -> false
+
 let module_signature_body_item_has_mixed_leading_section_docstrings = fun tokens ->
   match tokens with
   | [] -> false
@@ -3932,7 +3957,9 @@ let module_signature_body_items_compact_between = fun left right ->
   && module_signature_body_item_is_type right
   && not (module_signature_body_item_has_mixed_leading_section_docstrings right))
   || (module_signature_body_item_is_open left && module_signature_body_item_is_open right)
-  || (module_signature_body_item_is_type left && module_signature_body_item_is_value right)
+  || (module_signature_body_item_is_type left
+  && module_signature_body_item_is_value right
+  && not (module_signature_body_item_has_leading_nonsection_comment right))
 
 let module_signature_body_items_doc = fun items ->
   let rec loop previous doc = function
@@ -4333,6 +4360,27 @@ let signature_body_item_doc = fun tokens ->
         ]
   | [] -> signature_body_item_body_doc tokens
 
+let signature_body_items_blank_between = fun left right ->
+  module_signature_body_item_is_type left
+  && module_signature_body_item_is_value right
+  && module_signature_body_item_has_leading_nonsection_comment right
+
+let signature_body_items_doc = fun items ->
+  let rec loop previous doc = function
+    | [] -> doc
+    | next :: rest ->
+        let separator =
+          if signature_body_items_blank_between previous next then
+            blank_line
+          else
+            Doc.line
+        in
+        loop next (Doc.concat [ doc; separator; signature_body_item_doc next ]) rest
+  in
+  match items with
+  | [] -> Doc.empty
+  | first :: rest -> loop first (signature_body_item_doc first) rest
+
 let module_type_decl_sig_after_tokens = fun decl ->
   match split_signature_shell (module_type_decl_tokens decl) with
   | Some (_, _, _, _, after) -> after
@@ -4342,7 +4390,7 @@ let module_type_decl_sig_body_doc = fun decl ->
   match Ast.ModuleTypeDeclaration.sig_token decl, Ast.ModuleTypeDeclaration.end_token decl with
   | Some sig_token, Some end_token ->
       let items = split_signature_body_items (module_type_decl_sig_body_tokens decl) in
-      let body_doc = Doc.lines (List.map items ~fn:signature_body_item_doc)
+      let body_doc = signature_body_items_doc items
       |> fun body_doc -> signature_body_doc_with_closing_leading_comment body_doc end_token in
       let after = module_type_decl_sig_after_tokens decl in
       (
@@ -4374,7 +4422,7 @@ let module_decl_sig_body_doc = fun decl ->
   match Ast.ModuleDeclaration.sig_token decl, Ast.ModuleDeclaration.end_token decl with
   | Some sig_token, Some end_token ->
       let items = split_signature_body_items (module_decl_sig_body_tokens decl) in
-      let body_doc = Doc.lines (List.map items ~fn:signature_body_item_doc)
+      let body_doc = signature_body_items_doc items
       |> fun body_doc -> signature_body_doc_with_closing_leading_comment body_doc end_token in
       (
         match items with
@@ -4641,9 +4689,9 @@ let signature_item_is_value = fun item ->
   | Value _ -> true
   | _ -> false
 
-let signature_item_has_leading_comment = fun item ->
+let signature_item_has_leading_nonsection_comment = fun item ->
   match Ast.Node.first_descendant_token item with
-  | Some token -> Ast.Token.has_leading_comment token
+  | Some token -> token_has_leading_nonsection_comment token
   | None -> false
 
 let token_has_mixed_leading_section_docstrings = fun token ->
@@ -4670,7 +4718,7 @@ let signature_items_compact_between = fun left right ->
   || (signature_item_is_open left && signature_item_is_open right)
   || (signature_item_is_type left
   && signature_item_is_value right
-  && not (signature_item_has_leading_comment right))
+  && not (signature_item_has_leading_nonsection_comment right))
 
 let signature_items_doc = fun items ->
   let rec loop previous doc = function
@@ -4765,7 +4813,7 @@ let append_eof_comment = fun source_file doc ->
   | comment -> (
       match doc with
       | Doc.Empty -> comment
-      | _ -> Doc.concat [ doc; blank_line; comment ]
+      | _ -> Doc.concat [ doc; eof_comment_separator source_file; comment ]
     )
 
 let source_file = fun source_file ->
