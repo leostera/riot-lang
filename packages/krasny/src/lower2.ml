@@ -2800,6 +2800,401 @@ let type_decl_doc = fun decl ->
           Doc.concat (first_doc :: rest_docs)
     )
 
+let module_token_depth_after = fun depth token ->
+  let decrease depth =
+    if Int.(depth <= 0) then
+      0
+    else
+      Int.(depth - 1)
+  in
+  match Ast.Token.kind token with
+  | kind when Kind.(kind = LPAREN || kind = LBRACKET || kind = LBRACE) -> Int.(depth + 1)
+  | kind when Kind.(kind = STRUCT_KW || kind = SIG_KW || kind = BEGIN_KW) -> Int.(depth + 1)
+  | kind when Kind.(kind = RPAREN || kind = RBRACKET || kind = RBRACE) -> decrease depth
+  | kind when Kind.(kind = END_KW) -> decrease depth
+  | _ -> depth
+
+let module_token_needs_space = fun ~depth previous current ->
+  match previous, current with
+  | (_, kind) when Kind.(kind = RPAREN || kind = RBRACKET || kind = RBRACE) -> false
+  | (_, kind) when Kind.(kind = COMMA) -> false
+  | (_, kind) when Kind.(kind = DOT) -> false
+  | (_, kind) when Kind.(kind = COLON) && Int.equal depth 0 -> false
+  | (kind, _) when Kind.(kind = LPAREN || kind = LBRACKET || kind = LBRACE) -> false
+  | (kind, _) when Kind.(kind = DOT) -> false
+  | _ -> true
+
+let module_tokens_doc = fun tokens ->
+  let rec loop depth previous acc = function
+    | [] -> acc
+    | token :: rest ->
+        let current = Ast.Token.kind token in
+        let piece = token_doc token in
+        let acc =
+          match previous with
+          | Some previous when module_token_needs_space ~depth previous current -> Doc.concat
+            [ acc; Doc.space; piece ]
+          | _ -> Doc.concat [ acc; piece ]
+        in
+        loop (module_token_depth_after depth token) (Some current) acc rest
+  in
+  loop 0 None Doc.empty tokens
+
+let module_expr_tokens_doc = fun tokens ->
+  match split_top_level_all tokens ~matches:(fun kind -> Kind.(kind = COMMA)) with
+  | []
+  | [ _ ] -> module_tokens_doc tokens
+  | parts -> Doc.concat
+    [
+      Doc.lparen;
+      Doc.join (Doc.concat [ Doc.comma; Doc.space ]) (List.map parts ~fn:module_tokens_doc);
+      Doc.rparen;
+    ]
+
+let starts_module_signature_body_item = fun kind ->
+  Kind.(kind = VAL_KW
+  || kind = TYPE_KW
+  || kind = MODULE_KW
+  || kind = OPEN_KW
+  || kind = INCLUDE_KW
+  || kind = EXTERNAL_KW
+  || kind = EXCEPTION_KW
+  || kind = CLASS_KW)
+
+let continues_compound_module_signature_item_head = fun current token ->
+  token_kind_is token Kind.TYPE_KW && match current with
+  | previous :: [] -> token_kind_is previous Kind.MODULE_KW || token_kind_is previous Kind.CLASS_KW
+  | _ -> false
+
+let split_module_signature_body_items = fun tokens ->
+  let rec loop current items depth = function
+    | [] ->
+        List.reverse
+          (
+            match current with
+            | [] -> items
+            | _ -> List.reverse current :: items
+          )
+    | token :: rest when Int.(depth = 0)
+    && starts_module_signature_body_item (Ast.Token.kind token)
+    && not (continues_compound_module_signature_item_head current token)
+    && not (List.is_empty current) -> loop
+      [ token ]
+      (List.reverse current :: items)
+      (type_token_depth_after depth token)
+      rest
+    | token :: rest -> loop (token :: current) items (type_token_depth_after depth token) rest
+  in
+  loop [] [] 0 tokens
+
+let module_signature_body_type_item_doc = fun tokens ->
+  match type_decl_members tokens with
+  | [] -> unsupported "empty module signature type item"
+  | first :: rest ->
+      let first_doc = type_member_doc first in
+      let rest_docs = rest
+      |> List.map
+        ~fn:(fun member_ ->
+          Doc.concat
+            [ blank_line; leading_comment_token_doc member_.type_keyword; type_member_doc member_; ]) in
+      Doc.concat (first_doc :: rest_docs)
+
+let module_signature_body_val_item_doc = fun tokens ->
+  match tokens with
+  | val_token :: rest when token_kind_is val_token Kind.VAL_KW -> (
+      match split_top_level_token rest ~matches:(fun kind -> Kind.(kind = COLON)) with
+      | Some (name_tokens, _colon, type_tokens) -> Doc.concat
+        [
+          token_doc val_token;
+          Doc.space;
+          declaration_name_doc name_tokens;
+          Doc.colon;
+          Doc.space;
+          type_tokens_doc type_tokens;
+        ]
+      | None -> type_tokens_inline_doc tokens
+    )
+  | _ -> type_tokens_inline_doc tokens
+
+let module_signature_body_equals_item_doc = fun tokens ->
+  match split_top_level_token tokens ~matches:(fun kind -> Kind.(kind = EQ)) with
+  | Some (head_tokens, equals_token, body_tokens) -> Doc.concat
+    [
+      declaration_head_tokens_doc head_tokens;
+      Doc.space;
+      token_doc equals_token;
+      Doc.space;
+      type_tokens_doc body_tokens;
+    ]
+  | None -> declaration_head_tokens_doc tokens
+
+let module_signature_body_item_body_doc = fun tokens ->
+  match tokens with
+  | token :: _ when token_kind_is token Kind.TYPE_KW -> module_signature_body_type_item_doc tokens
+  | token :: _ when token_kind_is token Kind.VAL_KW -> module_signature_body_val_item_doc tokens
+  | first :: second :: _ when token_kind_is first Kind.MODULE_KW && token_kind_is second Kind.TYPE_KW -> module_signature_body_equals_item_doc
+    tokens
+  | first :: second :: _ when token_kind_is first Kind.CLASS_KW && token_kind_is second Kind.TYPE_KW -> module_signature_body_equals_item_doc
+    tokens
+  | _ -> type_tokens_inline_doc tokens
+
+let module_signature_body_item_doc = fun tokens ->
+  match tokens with
+  | first :: _ ->
+      let compact_trailing_blank = token_kind_is first Kind.VAL_KW in
+      Doc.concat
+        [
+          leading_comment_token_doc ~compact_trailing_blank first;
+          module_signature_body_item_body_doc tokens;
+        ]
+  | [] -> module_signature_body_item_body_doc tokens
+
+let module_signature_body_item_is_type = function
+  | token :: _ -> token_kind_is token Kind.TYPE_KW
+  | [] -> false
+
+let module_signature_body_item_is_open = function
+  | token :: _ -> token_kind_is token Kind.OPEN_KW
+  | [] -> false
+
+let module_signature_body_item_is_value = function
+  | token :: _ -> token_kind_is token Kind.VAL_KW
+  | [] -> false
+
+let module_signature_body_item_has_mixed_leading_section_docstrings = fun tokens ->
+  match tokens with
+  | [] -> false
+  | token :: _ ->
+      let has_section = ref false in
+      let has_nonsection = ref false in
+      Ast.Token.for_each_leading_trivia token
+        ~fn:(fun ~kind ~text ->
+          if Kind.(kind = DOCSTRING) then
+            if is_section_docstring_text text then
+              has_section := true
+            else
+              has_nonsection := true);
+      !has_section && !has_nonsection
+
+let module_signature_body_items_compact_between = fun left right ->
+  (module_signature_body_item_is_type left
+  && module_signature_body_item_is_type right
+  && not (module_signature_body_item_has_mixed_leading_section_docstrings right))
+  || (module_signature_body_item_is_open left && module_signature_body_item_is_open right)
+  || (module_signature_body_item_is_type left && module_signature_body_item_is_value right)
+
+let module_signature_body_items_doc = fun items ->
+  let rec loop previous doc = function
+    | [] -> doc
+    | next :: rest ->
+        let separator =
+          if module_signature_body_items_compact_between previous next then
+            Doc.line
+          else
+            blank_line
+        in
+        loop next (Doc.concat [ doc; separator; module_signature_body_item_doc next ]) rest
+  in
+  match items with
+  | [] -> Doc.empty
+  | first :: rest -> loop first (module_signature_body_item_doc first) rest
+
+let module_signature_tokens_doc = fun sig_token body_tokens end_token ->
+  let items = split_module_signature_body_items body_tokens in
+  match items with
+  | [] -> Doc.concat [ token_doc sig_token; Doc.space; token_doc end_token ]
+  | items -> Doc.concat
+    [
+      token_doc sig_token;
+      Doc.line;
+      Doc.indent 2 (module_signature_body_items_doc items);
+      Doc.line;
+      token_doc end_token;
+    ]
+
+let split_signature_shell = fun tokens ->
+  let rec take_body before sig_token body depth = function
+    | [] -> None
+    | token :: rest when Int.equal depth 0 && token_kind_is token Kind.END_KW -> Some (
+      List.reverse before,
+      sig_token,
+      List.reverse body,
+      token,
+      rest
+    )
+    | token :: rest -> take_body
+      before
+      sig_token
+      (token :: body)
+      (module_token_depth_after depth token)
+      rest
+  in
+  let rec find before depth = function
+    | [] -> None
+    | token :: rest when Int.equal depth 0 && token_kind_is token Kind.SIG_KW -> take_body
+      before
+      token
+      []
+      0
+      rest
+    | token :: rest -> find (token :: before) (module_token_depth_after depth token) rest
+  in
+  find [] 0 tokens
+
+let module_head_tokens_doc = fun tokens ->
+  match split_signature_shell tokens with
+  | Some (before, sig_token, body_tokens, end_token, after) ->
+      Doc.concat
+        [
+          module_tokens_doc before;
+          Doc.space;
+          module_signature_tokens_doc sig_token body_tokens end_token;
+          (
+            match after with
+            | [] -> Doc.empty
+            | tokens -> Doc.concat [ Doc.space; module_tokens_doc tokens ]
+          );
+        ]
+  | None -> module_tokens_doc tokens
+
+let starts_structure_body_item = fun kind ->
+  Kind.(kind = LET_KW
+  || kind = TYPE_KW
+  || kind = MODULE_KW
+  || kind = OPEN_KW
+  || kind = INCLUDE_KW
+  || kind = EXTERNAL_KW
+  || kind = EXCEPTION_KW
+  || kind = CLASS_KW)
+
+let continues_compound_structure_item_head = fun current token ->
+  token_kind_is token Kind.TYPE_KW && match current with
+  | previous :: [] -> token_kind_is previous Kind.MODULE_KW || token_kind_is previous Kind.CLASS_KW
+  | _ -> false
+
+let split_structure_body_items = fun tokens ->
+  let rec loop current items depth = function
+    | [] ->
+        List.reverse
+          (
+            match current with
+            | [] -> items
+            | _ -> List.reverse current :: items
+          )
+    | token :: rest when Int.equal depth 0
+    && starts_structure_body_item (Ast.Token.kind token)
+    && not (continues_compound_structure_item_head current token)
+    && not (List.is_empty current) -> loop
+      [ token ]
+      (List.reverse current :: items)
+      (module_token_depth_after depth token)
+      rest
+    | token :: rest -> loop (token :: current) items (module_token_depth_after depth token) rest
+  in
+  loop [] [] 0 tokens
+
+let rec module_member_doc = fun tokens ->
+  match split_module_struct_body tokens with
+  | Some (head_tokens, struct_token, body_tokens, end_token, _after) ->
+      Doc.concat
+        [ module_head_tokens_doc head_tokens; Doc.space; token_doc struct_token; (
+            match split_structure_body_items body_tokens with
+            | [] -> Doc.space
+            | items -> Doc.concat
+              [
+                Doc.line;
+                Doc.indent 2 (Doc.join blank_line (List.map items ~fn:structure_body_item_doc));
+                Doc.line;
+              ]
+          ); token_doc end_token; ]
+  | None -> (
+      match split_signature_shell tokens with
+      | Some _ -> module_head_tokens_doc tokens
+      | None -> module_expr_tokens_doc tokens
+    )
+
+and split_module_struct_body = fun tokens ->
+  let rec take_body before struct_token body depth = function
+    | [] -> None
+    | token :: rest when Int.equal depth 0 && token_kind_is token Kind.END_KW -> Some (
+      List.reverse before,
+      struct_token,
+      List.reverse body,
+      token,
+      rest
+    )
+    | token :: rest -> take_body
+      before
+      struct_token
+      (token :: body)
+      (module_token_depth_after depth token)
+      rest
+  in
+  let rec find before depth = function
+    | [] -> None
+    | token :: rest when Int.equal depth 0 && token_kind_is token Kind.STRUCT_KW -> take_body
+      before
+      token
+      []
+      0
+      rest
+    | token :: rest -> find (token :: before) (module_token_depth_after depth token) rest
+  in
+  find [] 0 tokens
+
+and structure_body_item_doc = fun tokens ->
+  match tokens with
+  | token :: _ when token_kind_is token Kind.TYPE_KW -> module_signature_body_type_item_doc tokens
+  | token :: _ when token_kind_is token Kind.LET_KW -> structure_body_let_item_doc tokens
+  | token :: _ when token_kind_is token Kind.MODULE_KW -> module_member_doc tokens
+  | _ -> module_tokens_doc tokens
+
+and structure_body_let_item_doc = fun tokens ->
+  match split_top_level_token tokens ~matches:(fun kind -> Kind.(kind = EQ)) with
+  | Some (head_tokens, equals_token, body_tokens) -> Doc.concat
+    [
+      module_tokens_doc head_tokens;
+      Doc.space;
+      token_doc equals_token;
+      Doc.space;
+      module_expr_tokens_doc body_tokens;
+    ]
+  | None -> module_tokens_doc tokens
+
+let split_module_members = fun tokens ->
+  let rec loop current members depth seen_struct_body = function
+    | [] ->
+        List.reverse
+          (
+            match current with
+            | [] -> members
+            | _ -> List.reverse current :: members
+          )
+    | token :: rest when Int.equal depth 0 && seen_struct_body && token_kind_is token Kind.AND_KW ->
+        loop
+          [ token ]
+          (List.reverse current :: members)
+          (module_token_depth_after depth token)
+          false
+          rest
+    | token :: rest ->
+        let seen_struct_body =
+          seen_struct_body || (Int.equal depth 0 && token_kind_is token Kind.STRUCT_KW) in
+        loop (token :: current) members (module_token_depth_after depth token) seen_struct_body rest
+  in
+  loop [] [] 0 false tokens
+
+let module_declaration_tokens_doc = fun tokens ->
+  match split_module_members tokens with
+  | [] -> Doc.empty
+  | [ member_ ] -> module_member_doc member_
+  | members -> Doc.join blank_line (List.map members ~fn:module_member_doc)
+
+let module_decl_tokens = fun decl ->
+  let tokens = ref [] in
+  Ast.Node.for_each_child_token decl ~fn:(fun token -> tokens := token :: !tokens);
+  List.reverse !tokens
+
 let module_decl_path_body_doc = fun decl ->
   let segments = ref [] in
   Ast.ModuleDeclaration.for_each_body_path_ident
@@ -2991,24 +3386,9 @@ let module_type_decl_body_doc = fun decl ->
   | Unsupported -> unsupported "unsupported module type declaration body"
 
 let module_decl_doc = fun decl ->
-  match Ast.ModuleDeclaration.name decl with
-  | Some name ->
-      let head = Doc.concat
-        [ Doc.text "module"; (
-            match Ast.ModuleDeclaration.rec_token decl with
-            | Some rec_token -> Doc.concat [ Doc.space; token_doc rec_token; Doc.space ]
-            | None -> Doc.space
-          ); token_doc name; ]
-      in
-      (
-        match Ast.ModuleDeclaration.separator_token decl with
-        | Some separator when Kind.(Ast.Token.kind separator = COLON) -> Doc.concat
-          [ head; token_doc separator; Doc.space; module_decl_body_doc decl ]
-        | Some separator -> Doc.concat
-          [ head; Doc.space; token_doc separator; Doc.space; module_decl_body_doc decl ]
-        | None -> unsupported "module declaration without separator"
-      )
-  | None -> unsupported "module declaration without name"
+  match module_decl_tokens decl with
+  | [] -> unsupported "module declaration without tokens"
+  | tokens -> module_declaration_tokens_doc tokens
 
 let module_type_decl_doc = fun decl ->
   match Ast.ModuleTypeDeclaration.name decl with
@@ -3112,7 +3492,9 @@ let external_decl_doc = fun decl ->
   | _ ->
       unsupported "incomplete external declaration"
 
-let open_decl_doc = fun decl -> Doc.concat [ Doc.text "open"; Doc.space; open_path_doc decl ]
+let open_decl_doc = fun decl ->
+  let bang_token = Ast.Node.first_child_token decl ~kind:Kind.BANG in
+  Doc.concat [ Doc.text "open"; optional_token_doc bang_token; Doc.space; open_path_doc decl ]
 
 let include_decl_doc = fun decl ->
   Doc.concat [ Doc.text "include"; Doc.space; include_path_doc decl ]
@@ -3246,12 +3628,36 @@ let signature_items_doc = fun items ->
   | [] -> Doc.empty
   | (first_item, first_doc) :: rest -> loop first_item first_doc rest
 
+let structure_item_is_open = fun item ->
+  match Ast.StructureItem.view item with
+  | Open _ -> true
+  | _ -> false
+
+let structure_items_compact_between = fun left right ->
+  structure_item_is_open left && structure_item_is_open right
+
+let structure_items_doc = fun items ->
+  let rec loop previous doc = function
+    | [] -> doc
+    | (next_item, next_doc) :: rest ->
+        let separator =
+          if structure_items_compact_between previous next_item then
+            Doc.line
+          else
+            blank_line
+        in
+        loop next_item (Doc.concat [ doc; separator; next_doc ]) rest
+  in
+  match items with
+  | [] -> Doc.empty
+  | (first_item, first_doc) :: rest -> loop first_item first_doc rest
+
 let implementation_doc = fun implementation ->
-  let docs = ref [] in
+  let items = ref [] in
   Ast.Implementation.for_each_item
     implementation
-    ~fn:(fun item -> docs := structure_item_doc item :: !docs);
-  Doc.join blank_line (List.reverse !docs)
+    ~fn:(fun item -> items := (item, structure_item_doc item) :: !items);
+  structure_items_doc (List.reverse !items)
 
 let interface_doc = fun interface ->
   let items = ref [] in
