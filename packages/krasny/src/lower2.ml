@@ -1298,9 +1298,15 @@ and match_case_doc = fun match_case ->
         | Some guard -> Doc.concat [ Doc.space; Doc.text "when"; Doc.space; expr_doc guard ]
         | None -> Doc.empty
       in
-      let body_doc = expr_doc body in
+      let body_breaks = expr_case_body_breaks body || expr_has_unconsumed_boundary_leading_comment body in
+      let body_doc =
+        if body_breaks then
+          expr_multiline_body_doc body
+        else
+          expr_doc_with_boundary_leading_comment body
+      in
       let final_case_doc pattern =
-        if expr_case_body_breaks body then
+        if body_breaks then
           Doc.concat
             [
               Doc.bar;
@@ -1310,7 +1316,7 @@ and match_case_doc = fun match_case ->
               Doc.space;
               Doc.arrow;
               Doc.line;
-              Doc.indent 2 body_doc
+              Doc.indent 4 body_doc
             ]
         else
           Doc.concat
@@ -1469,7 +1475,8 @@ and expr_arrow_body_breaks = fun expr ->
   | Let _
   | Match _
   | Try _
-  | Sequence _ -> true
+  | Sequence _
+  | LetException _ -> true
   | Parenthesized _ -> expr_is_begin_block expr
   | _ -> false
 
@@ -1479,7 +1486,8 @@ and expr_try_body_breaks = fun expr ->
   | Let _
   | Match _
   | Try _
-  | Sequence _ -> true
+  | Sequence _
+  | LetException _ -> true
   | Parenthesized _ -> expr_is_begin_block expr
   | _ -> false
 
@@ -1489,7 +1497,8 @@ and expr_case_body_breaks = fun expr ->
   | Let _
   | Match _
   | Try _
-  | Sequence _ -> true
+  | Sequence _
+  | LetException _ -> true
   | Parenthesized _ when expr_is_begin_block expr -> true
   | _ -> false
 
@@ -1514,6 +1523,28 @@ and expr_infix_operand_doc = fun expr ->
   | _ -> expr_doc_with_view expr view
 
 and expr_doc = fun expr -> expr_doc_with_view expr (Ast.Expr.view expr)
+
+and expr_consumes_boundary_leading_comment = fun expr ->
+  match Ast.Expr.view expr with
+  | If _ -> true
+  | _ -> false
+
+and expr_has_unconsumed_boundary_leading_comment = fun expr ->
+  match Ast.Node.first_descendant_token expr with
+  | Some token when Ast.Token.has_leading_comment token
+  && not (expr_consumes_boundary_leading_comment expr) -> true
+  | _ -> false
+
+and expr_doc_with_boundary_leading_comment = fun expr ->
+  match Ast.Node.first_descendant_token expr with
+  | Some token when expr_has_unconsumed_boundary_leading_comment expr -> Doc.concat
+    [ trimmed_leading_comment_token_doc token; Doc.line; expr_doc expr ]
+  | _ -> expr_doc expr
+
+and expr_multiline_body_doc = fun expr ->
+  match Ast.Expr.view expr with
+  | LetException _ -> let_exception_expr_doc_with_body_break expr
+  | _ -> expr_doc_with_boundary_leading_comment expr
 
 and expr_has_leading_comment = fun expr ->
   match Ast.Node.first_descendant_token expr with
@@ -1543,24 +1574,28 @@ and parenthesized_expr_doc = fun expr inner ->
     Doc.concat
       [ Doc.text "begin"; Doc.line; Doc.indent 2 (expr_doc inner); Doc.line; Doc.text "end" ]
   else
-    match Ast.Expr.view inner with
-    | If _
-    | Let _
-    | Match _
-    | Try _
-    | Sequence _ ->
-        Doc.concat
-          [ Doc.lparen; Doc.line; Doc.indent 4 (expr_doc inner); Doc.line; Doc.indent 2 Doc.rparen ]
-    | Function _ ->
-        Doc.concat [ Doc.lparen; Doc.line; Doc.indent 2 (expr_doc inner); Doc.line; Doc.rparen ]
-    | Prefix { operator=Some operator; operand=Some operand } -> (
-        match Ast.Expr.view operand with
-        | Literal { token=Some token } when token_text_is operator "-" -> Doc.concat
-          [ Doc.lparen; token_doc operator; literal_token_doc token; Doc.rparen ]
-        | _ -> Doc.concat [ Doc.lparen; expr_doc inner; Doc.rparen ]
-      )
-    | _ ->
-        Doc.concat [ Doc.lparen; expr_doc inner; Doc.rparen ]
+    let inner_doc = expr_doc_with_boundary_leading_comment inner in
+    if expr_has_leading_comment inner then
+      Doc.concat [ Doc.lparen; Doc.line; Doc.indent 2 inner_doc; Doc.line; Doc.rparen ]
+    else
+      match Ast.Expr.view inner with
+      | If _
+      | Let _
+      | Match _
+      | Try _
+      | Sequence _ ->
+          Doc.concat
+            [ Doc.lparen; Doc.line; Doc.indent 4 inner_doc; Doc.line; Doc.indent 2 Doc.rparen ]
+      | Function _ ->
+          Doc.concat [ Doc.lparen; Doc.line; Doc.indent 2 inner_doc; Doc.line; Doc.rparen ]
+      | Prefix { operator=Some operator; operand=Some operand } -> (
+          match Ast.Expr.view operand with
+          | Literal { token=Some token } when token_text_is operator "-" -> Doc.concat
+            [ Doc.lparen; token_doc operator; literal_token_doc token; Doc.rparen ]
+          | _ -> Doc.concat [ Doc.lparen; inner_doc; Doc.rparen ]
+        )
+      | _ ->
+          Doc.concat [ Doc.lparen; inner_doc; Doc.rparen ]
 
 and if_keyword_doc = fun token ->
   if Ast.Token.has_leading_comment token then
@@ -1615,7 +1650,8 @@ and expr_doc_with_view = fun expr (view: Ast.Expr.view) ->
       literal_token_doc token
   | Literal { token=None } ->
       unsupported "literal expression without token"
-  | Parenthesized { inner=Some inner } when expr_parens_can_elide inner ->
+  | Parenthesized { inner=Some inner } when expr_parens_can_elide inner
+  && not (expr_has_leading_comment inner) ->
       expr_doc inner
   | Parenthesized { inner=Some inner } ->
       parenthesized_expr_doc expr inner
@@ -1713,10 +1749,18 @@ and expr_doc_with_view = fun expr (view: Ast.Expr.view) ->
               Doc.space;
               Doc.arrow;
             ] in
-          if expr_arrow_body_breaks body then
-            Doc.concat [ head; Doc.line; Doc.indent 2 (expr_doc body) ]
+          let body_breaks =
+            expr_arrow_body_breaks body || expr_has_unconsumed_boundary_leading_comment body in
+          let body_doc =
+            if body_breaks then
+              expr_multiline_body_doc body
+            else
+              expr_doc_with_boundary_leading_comment body
+          in
+          if body_breaks then
+            Doc.concat [ head; Doc.line; Doc.indent 2 body_doc ]
           else
-            Doc.concat [ head; Doc.space; expr_doc body ]
+            Doc.concat [ head; Doc.space; body_doc ]
     )
   | Fun _ ->
       unsupported "incomplete function expression"
@@ -2089,6 +2133,39 @@ and let_exception_expr_doc = fun expr ->
           token_doc in_token;
           Doc.space;
           expr_doc body;
+        ]
+  | _ -> unsupported "incomplete let exception expression"
+
+and let_exception_expr_doc_with_body_break = fun expr ->
+  let exception_expr =
+    match Ast.LetExceptionExpr.cast expr with
+    | Some exception_expr -> exception_expr
+    | None -> unsupported "unsupported let exception expression"
+  in
+  match Ast.LetExceptionExpr.let_token exception_expr, Ast.LetExceptionExpr.exception_token exception_expr, Ast.LetExceptionExpr.name
+    exception_expr, Ast.LetExceptionExpr.in_token exception_expr, Ast.LetExceptionExpr.body exception_expr with
+  | Some let_token, Some exception_token, Some name, Some in_token, Some body ->
+      let payload =
+        match Ast.LetExceptionExpr.of_token exception_expr with
+        | None -> Doc.empty
+        | Some of_token -> (
+            match let_exception_payload_doc exception_expr with
+            | None -> Doc.concat [ Doc.space; token_doc of_token ]
+            | Some payload -> Doc.concat [ Doc.space; token_doc of_token; Doc.space; payload ]
+          )
+      in
+      Doc.concat
+        [
+          token_doc let_token;
+          Doc.space;
+          token_doc exception_token;
+          Doc.space;
+          token_doc name;
+          payload;
+          Doc.space;
+          token_doc in_token;
+          Doc.line;
+          expr_doc_with_boundary_leading_comment body;
         ]
   | _ -> unsupported "incomplete let exception expression"
 

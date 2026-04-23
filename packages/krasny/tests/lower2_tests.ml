@@ -119,6 +119,10 @@ let assert_lower2_existing_fixture_subset = fun () ->
     Path.v "packages/krasny/tests/fixtures/0902_docstring_between_multiline_lets.ml";
     Path.v "packages/krasny/tests/fixtures/0903_docstring_after_function_binding.ml";
     Path.v "packages/krasny/tests/fixtures/0904_comments_inside_if_binding.ml";
+    Path.v "packages/krasny/tests/fixtures/0905_docstring_after_explicit_fun_with_inner_comment.ml";
+    Path.v "packages/krasny/tests/fixtures/0906_docstring_after_fun_with_local_exception.ml";
+    Path.v "packages/krasny/tests/fixtures/0926_if_branch_comments.ml";
+    Path.v "packages/krasny/tests/fixtures/0937_match_case_body_comment.ml";
     Path.v "packages/krasny/tests/fixtures/0944_exception_separator_comments.ml";
   ]
   in
