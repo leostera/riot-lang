@@ -2357,6 +2357,24 @@ let split_variant_constructors = fun tokens ->
   in
   loop [] [] 0 tokens
 
+let token_is_capitalized_ident = fun token ->
+  if not (token_kind_is token Kind.IDENT) then
+    false
+  else
+    let text = Ast.Token.text token in
+    if Int.(String.length text = 0) then
+      false
+    else
+      match String.get_unchecked text ~at:0 with
+      | 'A' .. 'Z' -> true
+      | _ -> false
+
+let tokens_look_like_bare_variant_body = fun tokens ->
+  match tokens with
+  | first :: _ when token_is_capitalized_ident first -> not
+    (Option.is_some (split_top_level_token tokens ~matches:(fun kind -> Kind.(kind = DOT))))
+  | _ -> false
+
 let poly_variant_row_doc = fun ~bar tokens ->
   let row =
     match split_top_level_token tokens ~matches:(fun kind -> Kind.(kind = OF_KW)) with
@@ -2500,10 +2518,13 @@ let rec rendered_type_body = fun tokens ->
         leading_line = false;
         break_after_equal = false
       }
-  | token :: _ when token_kind_is token Kind.PIPE ->
+  | token :: _ when token_kind_is token Kind.PIPE || tokens_look_like_bare_variant_body tokens ->
       { doc = variant_body_doc tokens; leading_line = true; break_after_equal = false }
-  | private_token :: pipe :: _ when token_kind_is private_token Kind.PRIVATE_KW
-  && token_kind_is pipe Kind.PIPE ->
+  | private_token :: rest when token_kind_is private_token Kind.PRIVATE_KW && (
+    match rest with
+    | pipe :: _ when token_kind_is pipe Kind.PIPE -> true
+    | _ -> tokens_look_like_bare_variant_body rest
+  ) ->
       { doc = variant_body_doc tokens; leading_line = true; break_after_equal = false }
   | opening :: row_start :: _ when token_kind_is opening Kind.LBRACKET
   && token_kind_is row_start Kind.BACKTICK ->
@@ -3093,8 +3114,27 @@ let signature_item_has_leading_comment = fun item ->
   | Some token -> Ast.Token.has_leading_comment token
   | None -> false
 
+let token_has_mixed_leading_section_docstrings = fun token ->
+  let has_section = ref false in
+  let has_nonsection = ref false in
+  Ast.Token.for_each_leading_trivia token
+    ~fn:(fun ~kind ~text ->
+      if Kind.(kind = DOCSTRING) then
+        if is_section_docstring_text text then
+          has_section := true
+        else
+          has_nonsection := true);
+  !has_section && !has_nonsection
+
+let signature_item_has_mixed_leading_section_docstrings = fun item ->
+  match Ast.Node.first_descendant_token item with
+  | Some token -> token_has_mixed_leading_section_docstrings token
+  | None -> false
+
 let signature_items_compact_between = fun left right ->
-  (signature_item_is_type left && signature_item_is_type right)
+  (signature_item_is_type left
+  && signature_item_is_type right
+  && not (signature_item_has_mixed_leading_section_docstrings right))
   || (signature_item_is_open left && signature_item_is_open right)
   || (signature_item_is_type left
   && signature_item_is_value right
