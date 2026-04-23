@@ -113,6 +113,8 @@ let assert_lower2_existing_fixture_subset = fun () ->
     Path.v "packages/krasny/tests/fixtures/0500_labeled_and_optional_arguments.ml";
     Path.v "packages/krasny/tests/fixtures/0510_typed_labeled_parameter_arrow.ml";
     Path.v "packages/krasny/tests/fixtures/0511_optional_parameter_default_preservation.ml";
+    Path.v "packages/krasny/tests/fixtures/0512_labeled_arg_literal_then_positional_before_infix.ml";
+    Path.v "packages/krasny/tests/fixtures/0513_labeled_string_then_or_chain.ml";
     Path.v "packages/krasny/tests/fixtures/0514_labeled_tuple_payload.ml";
     Path.v "packages/krasny/tests/fixtures/0515_optional_arg_parenthesized_payload_then_unit_before_tuple.ml";
     Path.v "packages/krasny/tests/fixtures/0516_labeled_arg_then_optional_then_unit_before_tuple.ml";

@@ -2525,6 +2525,44 @@ and binding_annotation_doc = fun parameters annotation ->
   else
     Doc.concat [ Doc.text ":"; Doc.space; type_expr_doc annotation ]
 
+and expr_contains_labeled_argument = fun expr ->
+  let rec loop expr =
+    match Ast.Expr.view expr with
+    | LabeledArg _
+    | OptionalArg _ -> true
+    | Apply { callee=Some callee; argument=Some argument }
+    | Infix { left=Some callee; right=Some argument; _ } -> loop callee || loop argument
+    | Parenthesized { inner=Some inner }
+    | Typed { expr=Some inner; _ } -> loop inner
+    | _ -> false
+  in
+  loop expr
+
+and local_binding_infix_chain_doc = fun expr ->
+  match Ast.Expr.view expr with
+  | Infix { operator=Some operator; _ } -> (
+      let operator_text = infix_operator_text expr operator in
+      if
+        String.equal operator_text "^"
+        || String.equal operator_text "||"
+        || String.equal operator_text "&&"
+      then
+        let parts = same_infix_chain operator expr in
+        if Int.(List.length parts >= 4) && List.any parts ~fn:expr_contains_labeled_argument then
+          match infix_chain_doc ~minimum_parts:2 expr with
+          | Some doc ->
+              if String.equal operator_text "^" then
+                Some (`After_equal doc)
+              else
+                Some (`BodyBreak doc)
+          | None -> None
+        else
+          None
+      else
+        None
+    )
+  | _ -> None
+
 and let_binding_doc = fun ?(force_body_break_after_equal = false) binding ->
   let parts = let_binding_parts binding in
   match parts.pattern, parts.body with
@@ -2562,34 +2600,41 @@ and let_binding_doc = fun ?(force_body_break_after_equal = false) binding ->
         match function_binding_body_doc body with
         | Some body_doc -> Doc.concat [ head; Doc.space; body_doc ]
         | None -> (
-            match large_infix_chain_doc body with
-            | Some body_doc -> Doc.concat [ head; Doc.line; Doc.indent 2 body_doc ]
-            | None ->
-                let inline_body_doc = expr_doc body in
-                let body_breaks =
-                  force_body_break_after_equal
-                  || expr_binding_body_breaks_after_equal body
-                  || expr_has_unconsumed_boundary_leading_comment body
-                  || match Ast.Expr.view body with
-                  | Apply _ ->
-                      let _, arguments = application_parts body in
-                      Doc.is_multiline inline_body_doc
-                      && not (application_has_many_labeled_arguments arguments)
-                  | Parenthesized { inner=Some inner } ->
-                      expr_parenthesized_inner_breaks_after_equal inner
-                  | _ ->
-                      false
-                in
-                let body_doc =
-                  if body_breaks then
-                    expr_multiline_body_doc body
-                  else
-                    expr_doc_with_boundary_leading_comment body
-                in
-                if body_breaks then
-                  Doc.concat [ head; Doc.line; Doc.indent 2 body_doc ]
-                else
-                  Doc.concat [ head; Doc.space; body_doc ]
+            match local_binding_infix_chain_doc body with
+            | Some (`After_equal body_doc) ->
+                Doc.concat [ head; Doc.space; body_doc ]
+            | Some (`BodyBreak body_doc) ->
+                Doc.concat [ head; Doc.line; Doc.indent 2 body_doc ]
+            | None -> (
+                match large_infix_chain_doc body with
+                | Some body_doc -> Doc.concat [ head; Doc.line; Doc.indent 2 body_doc ]
+                | None ->
+                    let inline_body_doc = expr_doc body in
+                    let body_breaks =
+                      force_body_break_after_equal
+                      || expr_binding_body_breaks_after_equal body
+                      || expr_has_unconsumed_boundary_leading_comment body
+                      || match Ast.Expr.view body with
+                      | Apply _ ->
+                          let _, arguments = application_parts body in
+                          Doc.is_multiline inline_body_doc
+                          && not (application_has_many_labeled_arguments arguments)
+                      | Parenthesized { inner=Some inner } ->
+                          expr_parenthesized_inner_breaks_after_equal inner
+                      | _ ->
+                          false
+                    in
+                    let body_doc =
+                      if body_breaks then
+                        expr_multiline_body_doc body
+                      else
+                        expr_doc_with_boundary_leading_comment body
+                    in
+                    if body_breaks then
+                      Doc.concat [ head; Doc.line; Doc.indent 2 body_doc ]
+                    else
+                      Doc.concat [ head; Doc.space; body_doc ]
+              )
           )
       )
   | _ -> unsupported "incomplete let binding"
