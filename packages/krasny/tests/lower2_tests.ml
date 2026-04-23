@@ -111,6 +111,8 @@ let assert_lower2_existing_fixture_subset = fun () ->
     Path.v "packages/krasny/tests/fixtures/0740_signature_abstract_type_doc_then_creation_heading_then_values.mli";
     Path.v "packages/krasny/tests/fixtures/0741_signature_abstract_type_then_error_type_then_section_heading.mli";
     Path.v "packages/krasny/tests/fixtures/0742_signature_protocol_sections_and_alias_docs.mli";
+    Path.v "packages/krasny/tests/fixtures/0743_signature_variant_constructor_doc_before_type_level_doc.mli";
+    Path.v "packages/krasny/tests/fixtures/0744_signature_record_field_doc_before_type_level_doc.mli";
   ]
   in
   let rec loop = function

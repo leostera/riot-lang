@@ -360,7 +360,14 @@ let leading_docstring_separator = fun left right ->
   else
     "\n\n"
 
-let rec leading_docstring_text = function
+let standalone_docstring_separator = fun left right ->
+  if (not left.is_section) && right.is_section then
+    "\n"
+  else
+    "\n\n"
+
+let rec leading_docstring_text_with_separator = fun ~separator ->
+  function
   | [] ->
       ""
   | [ docstring ] ->
@@ -372,9 +379,13 @@ let rec leading_docstring_text = function
       in
       docstring.text ^ suffix
   | left :: (right :: _ as rest) ->
-      left.text ^ leading_docstring_separator left right ^ leading_docstring_text rest
+      left.text ^ separator left right ^ leading_docstring_text_with_separator ~separator rest
 
-let normalized_leading_docstrings = fun token ->
+let leading_docstring_text = leading_docstring_text_with_separator ~separator:leading_docstring_separator
+
+let standalone_docstring_text = leading_docstring_text_with_separator ~separator:standalone_docstring_separator
+
+let normalized_leading_docstrings_with = fun ~docstrings_text token ->
   let docstrings = ref [] in
   let has_comment = ref false in
   Ast.Token.for_each_leading_trivia token
@@ -392,11 +403,29 @@ let normalized_leading_docstrings = fun token ->
   else
     match List.reverse !docstrings with
     | [] -> None
-    | docstrings -> Some (leading_docstring_text docstrings)
+    | docstrings -> Some (docstrings_text docstrings)
+
+let normalized_leading_docstrings = normalized_leading_docstrings_with ~docstrings_text:leading_docstring_text
+
+let normalized_standalone_docstrings = normalized_leading_docstrings_with ~docstrings_text:standalone_docstring_text
 
 let leading_comment_text = fun token ->
   if Ast.Token.has_leading_docstring token then
     match normalized_leading_docstrings token with
+    | Some text -> text
+    | None ->
+        let text = Ast.Token.leading_text token |> strip_leading_whitespace in
+        let text = strip_trailing_whitespace text in
+        if Int.(String.length text = 0) then
+          ""
+        else
+          text ^ "\n"
+  else
+    Ast.Token.leading_text token |> strip_leading_whitespace
+
+let standalone_comment_text = fun token ->
+  if Ast.Token.has_leading_docstring token then
+    match normalized_standalone_docstrings token with
     | Some text -> text
     | None ->
         let text = Ast.Token.leading_text token |> strip_leading_whitespace in
@@ -436,7 +465,7 @@ let leading_comment_token_doc = fun ?(compact_trailing_blank = false) token ->
 
 let eof_comment_doc = fun source_file ->
   match Ast.Node.first_child_token source_file ~kind:Kind.EOF with
-  | Some token when Ast.Token.has_leading_comment token -> Doc.text (leading_comment_text token)
+  | Some token when Ast.Token.has_leading_comment token -> Doc.text (standalone_comment_text token)
   | _ -> Doc.empty
 
 let bracketed_shell_doc = fun ~empty_message ~for_each_shell_token ->
@@ -2288,7 +2317,31 @@ let field_type_breaks_after_colon = fun tokens ->
   && token_kind_is module_token Kind.MODULE_KW -> contains_and tokens
   | _ -> false
 
-let record_field_doc = fun ~inline tokens ->
+let inline_leading_comment_token_doc = fun token ->
+  leading_comment_text token |> strip_trailing_whitespace |> Doc.text
+
+let token_has_inline_leading_comment = fun token ->
+  let text = Ast.Token.leading_text token in
+  let length = String.length text in
+  let rec loop index =
+    if Int.(index >= length) then
+      false
+    else
+      match String.get_unchecked text ~at:index with
+      | ' '
+      | '\t'
+      | '\r' -> loop Int.(index + 1)
+      | '\n' -> false
+      | _ -> Ast.Token.has_leading_comment token
+  in
+  loop 0
+
+let trailing_field_comment_doc = function
+  | Some token when token_has_inline_leading_comment token -> Some (Doc.concat
+    [ Doc.spaces 2; inline_leading_comment_token_doc token ])
+  | _ -> None
+
+let record_field_doc = fun ~inline ?trailing_comment tokens ->
   match split_top_level_token tokens ~matches:(fun kind -> Kind.(kind = COLON)) with
   | Some (name_tokens, _colon, type_tokens) ->
       let type_doc = type_tokens_doc type_tokens in
@@ -2303,25 +2356,52 @@ let record_field_doc = fun ~inline tokens ->
               Doc.empty
             else
               Doc.semi
+          ); (
+            match trailing_comment with
+            | Some trailing_comment -> trailing_comment
+            | None -> Doc.empty
           ); ]
   | None -> type_tokens_inline_doc tokens
 
-let record_body_field_groups = fun tokens ->
-  let tokens =
+let record_body_parts = fun tokens ->
+  let tokens, closing =
     match tokens with
     | opening :: rest when token_kind_is opening Kind.LBRACE ->
         let rec strip_closing acc = function
-          | [] -> List.reverse acc
-          | [ closing ] when token_kind_is closing Kind.RBRACE -> List.reverse acc
+          | [] -> (List.reverse acc, None)
+          | [ closing ] when token_kind_is closing Kind.RBRACE -> (List.reverse acc, Some closing)
           | token :: rest -> strip_closing (token :: acc) rest
         in
         strip_closing [] rest
-    | _ -> tokens
+    | _ -> (tokens, None)
   in
-  split_top_level_all tokens ~matches:(fun kind -> Kind.(kind = SEMI))
+  (split_top_level_all tokens ~matches:(fun kind -> Kind.(kind = SEMI)), closing)
+
+let record_body_field_groups = fun tokens ->
+  let fields, _closing = record_body_parts tokens in
+  fields
+
+let first_token = function
+  | token :: _ -> Some token
+  | [] -> None
+
+let record_field_docs = fun ~inline fields closing ->
+  let rec loop = function
+    | [] -> []
+    | [ tokens ] -> [
+      record_field_doc ~inline ?trailing_comment:(trailing_field_comment_doc closing) tokens
+    ]
+    | tokens :: (next :: _ as rest) -> record_field_doc
+      ~inline
+      ?trailing_comment:(trailing_field_comment_doc (first_token next))
+      tokens
+    :: loop rest
+  in
+  loop fields
 
 let record_body_doc = fun ~inline tokens ->
-  let fields = record_body_field_groups tokens |> List.map ~fn:(record_field_doc ~inline) in
+  let field_groups, closing = record_body_parts tokens in
+  let fields = record_field_docs ~inline field_groups closing in
   match inline with
   | true -> Doc.concat
     [
@@ -2335,6 +2415,9 @@ let record_body_doc = fun ~inline tokens ->
     [ Doc.lbrace; Doc.line; Doc.indent 2 (Doc.lines fields); Doc.line; Doc.rbrace; ]
 
 let inline_record_payload = fun tokens -> Int.(List.length (record_body_field_groups tokens) <= 2)
+
+let inline_constructor_payload = fun tokens ->
+  Int.(List.length (record_body_field_groups tokens) <= 3)
 
 let split_variant_constructors = fun tokens ->
   let rec loop current constructors depth = function
@@ -2426,7 +2509,7 @@ let poly_variant_body_doc = fun tokens ->
 let constructor_payload_doc = fun tokens ->
   match tokens with
   | opening :: _ when token_kind_is opening Kind.LBRACE -> record_body_doc
-    ~inline:(inline_record_payload tokens)
+    ~inline:(inline_constructor_payload tokens)
     tokens
   | opening :: _ when token_kind_is opening Kind.LBRACKET -> poly_variant_body_doc tokens
   | _ -> type_tokens_doc tokens
@@ -2500,7 +2583,14 @@ let variant_body_doc = fun tokens ->
           | _, _, Some pipe_token -> Doc.concat [ token_doc pipe_token; Doc.space ]
           | _ -> Doc.empty
         in
-        Doc.concat [ prefix; constructor_doc tokens ] :: row_docs false rest
+        let row = Doc.concat [ prefix; constructor_doc tokens ] in
+        let row =
+          match pipe_token with
+          | Some pipe_token when Ast.Token.has_leading_comment pipe_token -> Doc.concat
+            [ leading_comment_token_doc pipe_token; row ]
+          | _ -> row
+        in
+        row :: row_docs false rest
   in
   Doc.concat [ Doc.line; Doc.indent 2 (Doc.lines (row_docs true constructors)) ]
 
