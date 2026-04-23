@@ -1075,6 +1075,45 @@ let test_special_pattern_views = fun _ctx ->
       Ok ()
   | _ -> Error "expected two special-pattern parameters"
 
+let test_typed_labeled_parameter_view = fun _ctx ->
+  let source = "let map (type a b) (iter : a t) ~(fn : a -> b) = ()\n" in
+  let root = parse_ml source |> Result.expect ~msg:"expected parse2 source file" in
+  let binding = nth_structure_item root 0
+  |> require_some ~msg:"expected typed labeled parameter item"
+  |> binding_of_structure_item
+  |> Result.expect ~msg:"expected typed labeled parameter binding" in
+  let parameters = ref [] in
+  Ast2.LetBinding.for_each_parameter
+    binding
+    ~fn:(fun pattern -> parameters := pattern :: !parameters);
+  match List.reverse !parameters with
+  | [_locally_abstract;_iter;labeled] -> (
+      match Ast2.Pattern.view labeled with
+      | Ast2.Pattern.LabeledParam parameter -> (
+          match Ast2.Parameter.view parameter with
+          | Ast2.Parameter.Labeled { label=Some label; pattern=Some pattern } ->
+              Test.assert_equal ~expected:"fn" ~actual:(Ast2.Token.text label);
+              (
+                match Ast2.Pattern.view pattern with
+                | Ast2.Pattern.Constraint { pattern=Some binding; annotation=Some annotation } ->
+                    (
+                      match Ast2.Pattern.view binding with
+                      | Ast2.Pattern.Path { path } -> assert_last_ident_text path "fn"
+                      | _ -> panic "expected labeled parameter binding path"
+                    );
+                    (
+                      match Ast2.TypeExpr.view annotation with
+                      | Ast2.TypeExpr.Arrow { left=Some _; right=Some _ } -> Ok ()
+                      | _ -> Error "expected labeled parameter arrow annotation"
+                    )
+                | _ -> Error "expected typed labeled parameter pattern"
+              )
+          | _ -> Error "expected labeled parameter view with label and typed pattern"
+        )
+      | _ -> Error "expected labeled parameter pattern"
+    )
+  | _ -> Error "expected locally abstract, positional, and labeled parameters"
+
 let tests = [
   Test.case "ast2 exposes source file and let binding views" test_source_file_and_let_binding_views;
   Test.case "ast2 exposes if and match expression views" test_expression_views;
@@ -1100,6 +1139,7 @@ let tests = [
   Test.case "ast2 exposes attribute expression and pattern views" test_attribute_views;
   Test.case "ast2 exposes extension expression pattern and item views" test_extension_views;
   Test.case "ast2 exposes locally abstract and first-class module pattern views" test_special_pattern_views;
+  Test.case "ast2 exposes typed labeled parameter views" test_typed_labeled_parameter_view;
 ]
 
 let () =

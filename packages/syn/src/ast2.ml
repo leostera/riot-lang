@@ -2015,11 +2015,11 @@ end = struct
   let view = fun (parameter: parameter) ->
     match Node.kind parameter with
     | Syntax_kind2.LABELED_PARAM -> Labeled {
-      label = first_ident_token parameter;
+      label = parameter_label_token parameter;
       pattern = first_pattern_child parameter
     }
     | Syntax_kind2.OPTIONAL_PARAM -> Optional {
-      label = first_ident_token parameter;
+      label = parameter_label_token parameter;
       pattern = first_pattern_child parameter
     }
     | Syntax_kind2.OPTIONAL_PARAM_DEFAULT -> OptionalDefault {

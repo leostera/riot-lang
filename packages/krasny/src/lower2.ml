@@ -1360,23 +1360,43 @@ and parameter_pattern_matches_label = fun label pattern ->
   | Some binding -> token_text_equal label binding
   | None -> false
 
+and split_typed_parameter_pattern = fun pattern ->
+  match Ast.Pattern.view pattern with
+  | Constraint { pattern=Some pattern; annotation=Some annotation } -> Some (pattern, annotation)
+  | _ -> None
+
 and parameter_pattern_doc = fun pattern ->
   match Ast.Pattern.view pattern with
   | Record -> compact_record_pattern_doc pattern
   | _ -> pattern_doc pattern
+
+and named_parameter_doc = fun ~sigil label pattern ->
+  match split_typed_parameter_pattern pattern with
+  | Some (inner, annotation) when parameter_pattern_matches_label label inner -> Doc.concat
+    [
+      Doc.text sigil;
+      Doc.lparen;
+      pattern_doc inner;
+      Doc.text ":";
+      type_expr_doc annotation;
+      Doc.rparen;
+    ]
+  | _ when parameter_pattern_matches_label label pattern -> Doc.concat
+    [ Doc.text sigil; token_doc label ]
+  | _ -> Doc.concat [ Doc.text sigil; token_doc label; Doc.text ":"; parameter_pattern_doc pattern ]
 
 and parameter_doc = fun parameter ->
   match Ast.Parameter.view parameter with
   | Labeled { label=Some label; pattern=None } ->
       Doc.concat [ Doc.text "~"; token_doc label ]
   | Labeled { label=Some label; pattern=Some pattern } ->
-      Doc.concat [ Doc.text "~"; token_doc label; Doc.text ":"; parameter_pattern_doc pattern ]
+      named_parameter_doc ~sigil:"~" label pattern
   | Labeled _ ->
       unsupported "labeled parameter without label"
   | Optional { label=Some label; pattern=None } ->
       Doc.concat [ Doc.text "?"; token_doc label ]
   | Optional { label=Some label; pattern=Some pattern } ->
-      Doc.concat [ Doc.text "?"; token_doc label; Doc.text ":"; parameter_pattern_doc pattern ]
+      named_parameter_doc ~sigil:"?" label pattern
   | Optional _ ->
       unsupported "optional parameter without label"
   | OptionalDefault { label=Some label; pattern=Some pattern; default=Some default } ->
@@ -2459,20 +2479,82 @@ and binding_operator_expr_doc = fun expr ->
   | clauses, Some in_token, Some body -> Doc.concat
     [ Doc.join Doc.space clauses; Doc.space; token_doc in_token; Doc.space; expr_doc body; ]
 
+and split_typed_binding_pattern = fun pattern ->
+  match Ast.Pattern.view pattern with
+  | Constraint { pattern=Some pattern; annotation=Some annotation } -> (pattern, Some annotation)
+  | _ -> (pattern, None)
+
+and collect_binding_head_parameters = fun pattern ->
+  let rec collect pattern parameters =
+    match Ast.Pattern.view pattern with
+    | Apply { callee=Some callee; argument=Some argument } -> collect callee (argument :: parameters)
+    | _ -> (pattern, parameters)
+  in
+  collect pattern []
+
+and split_parameterized_binding_annotation = fun parameters ->
+  match parameters with
+  | [ parameter ] -> (
+      let parameter, annotation = split_typed_binding_pattern parameter in
+      match annotation with
+      | Some annotation ->
+          let first_parameter, rest_parameters = collect_binding_head_parameters parameter in
+          (
+            match rest_parameters with
+            | [] -> (parameters, None)
+            | _ -> (first_parameter :: rest_parameters, Some annotation)
+          )
+      | None -> (parameters, None)
+    )
+  | _ -> (parameters, None)
+
+and binding_annotation_doc = fun parameters annotation ->
+  let loose_colon =
+    match List.reverse parameters with
+    | last :: _ -> (
+        match Ast.Pattern.view last with
+        | LabeledParam _
+        | OptionalParam _
+        | OptionalParamDefault _ -> true
+        | _ -> false
+      )
+    | [] -> false
+  in
+  if loose_colon then
+    Doc.concat [ Doc.space; Doc.text ":"; Doc.space; type_expr_doc annotation ]
+  else
+    Doc.concat [ Doc.text ":"; Doc.space; type_expr_doc annotation ]
+
 and let_binding_doc = fun ?(force_body_break_after_equal = false) binding ->
   let parts = let_binding_parts binding in
   match parts.pattern, parts.body with
   | Some pattern, Some body ->
+      let pattern, annotation_from_pattern = split_typed_binding_pattern pattern in
+      let pattern, parameters_from_pattern = collect_binding_head_parameters pattern in
+      let parameters =
+        match parts.parameters with
+        | [] -> parameters_from_pattern
+        | parameters -> parameters
+      in
+      let parameters, annotation_from_parameters = split_parameterized_binding_annotation parameters in
+      let annotation =
+        match parts.annotation with
+        | Some annotation -> Some annotation
+        | None -> (
+            match annotation_from_parameters with
+            | Some annotation -> Some annotation
+            | None -> annotation_from_pattern
+          )
+      in
       let head = Doc.concat
         [ pattern_doc pattern; (
-            match parts.parameters with
+            match parameters with
             | [] -> Doc.empty
             | parameters -> Doc.concat
               [ Doc.space; Doc.join Doc.space (List.map parameters ~fn:pattern_doc) ]
           ); (
-            match parts.annotation with
-            | Some annotation -> Doc.concat
-              [ Doc.space; Doc.text ":"; Doc.space; type_expr_doc annotation ]
+            match annotation with
+            | Some annotation -> binding_annotation_doc parameters annotation
             | None -> Doc.empty
           ); Doc.space; Doc.equal; ]
       in

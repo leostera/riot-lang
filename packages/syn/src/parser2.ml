@@ -1765,13 +1765,24 @@ and parse_label_pattern = fun p ~stop_type_at_arrow kind ->
       bump p;
       if not (at p Syntax_kind2.RPAREN || is_eof p) then
         parse_pattern ~stop_type_at_arrow:false p;
-      if at p Syntax_kind2.EQ then
-        (
-          bump p;
-          ignore (parse_expression p ~signature:false ~stop_at_item:false ~stop_at_semi:true 0)
-        );
+      let has_default =
+        if at p Syntax_kind2.EQ then
+          (
+            bump p;
+            ignore (parse_expression p ~signature:false ~stop_at_item:false ~stop_at_semi:true 0);
+            true
+          )
+        else
+          false
+      in
       expect p Syntax_kind2.RPAREN (invalid_pattern p);
-      complete p marker Syntax_kind2.OPTIONAL_PARAM_DEFAULT
+      let completed_kind =
+        if Syntax_kind2.(kind = OPTIONAL_PARAM) && has_default then
+          Syntax_kind2.OPTIONAL_PARAM_DEFAULT
+        else
+          kind
+      in
+      complete p marker completed_kind
     )
   else (
     expect p Syntax_kind2.IDENT (invalid_pattern p);

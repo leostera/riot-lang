@@ -111,6 +111,7 @@ let assert_lower2_existing_fixture_subset = fun () ->
     Path.v "packages/krasny/tests/fixtures/0433_apply_parenthesized_poly_variant_payload.ml";
     Path.v "packages/krasny/tests/fixtures/0434_poly_variant_local_open_pattern_payload.ml";
     Path.v "packages/krasny/tests/fixtures/0500_labeled_and_optional_arguments.ml";
+    Path.v "packages/krasny/tests/fixtures/0510_typed_labeled_parameter_arrow.ml";
     Path.v "packages/krasny/tests/fixtures/0511_optional_parameter_default_preservation.ml";
     Path.v "packages/krasny/tests/fixtures/0514_labeled_tuple_payload.ml";
     Path.v "packages/krasny/tests/fixtures/0515_optional_arg_parenthesized_payload_then_unit_before_tuple.ml";
