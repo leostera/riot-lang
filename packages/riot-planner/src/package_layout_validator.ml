@@ -20,15 +20,18 @@ let analyzed_modules_by_id = fun analyzed_modules ->
 
 let library_root_candidates = fun ~package nodes ->
   let package_namespace = Package.root_module_name package in
-  List.filter nodes
-    ~fn:(fun (node: Module_node.t G.node) ->
-      match node.value.kind with
-      | Module_node.ML mod_
-      | Module_node.MLI mod_ ->
-          String.equal
-            (Module.module_name mod_ |> Module_name.to_string)
-            package_namespace
-      | _ -> false)
+  if Option.is_none package.Package.library then
+    []
+  else
+    List.filter nodes
+      ~fn:(fun (node: Module_node.t G.node) ->
+        match node.value.kind with
+        | Module_node.ML mod_
+        | Module_node.MLI mod_ ->
+            String.equal
+              (Module.module_name mod_ |> Module_name.to_string)
+              package_namespace
+        | _ -> false)
 
 let concrete_library_reachable_set = fun library_roots module_graph ->
   let reachable = HashSet.create () in

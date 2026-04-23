@@ -1560,6 +1560,42 @@ let test_multiple_binaries_keep_private_helpers_separate = fun _ctx ->
   | Ok result -> result
   | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
 
+let test_binary_only_package_links_package_named_private_helper = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"planner_binary_only_package_named_helper"
+      (fun tmpdir ->
+        match plan_actions_for_package
+          ~tmpdir
+          ~package_name:"hello-world"
+          ~binaries:[ ("hello-world", "src/main.ml") ]
+          ~files:[
+            ("src/hello_world.ml", "let hello = fun () -> \"Hello from hello-world\"\n");
+            ("src/main.ml", "let () = print_endline (Hello_world.hello ())\n");
+          ]
+          () with
+        | Error _ as err -> err
+        | Ok (_package, actions) ->
+            let helper_source = Path.v "src/hello_world.ml" in
+            let main_source = Path.v "src/main.ml" in
+            let helper_cmx = find_compile_cmx actions helper_source in
+            let main_cmx = find_compile_cmx actions main_source in
+            match find_create_library actions, find_create_executable_named actions "hello-world", helper_cmx, main_cmx with
+            | None, Some (Riot_planner.Action.CreateExecutable { objects; _ }), Some helper_cmx, Some main_cmx ->
+                let has object_ objects = List.any objects ~fn:(Path.equal object_) in
+                let object_names objects = List.map objects ~fn:Path.to_string |> String.concat ", " in
+                if not (has helper_cmx objects && has main_cmx objects) then
+                  Error ("expected executable to link package-named helper and main root; objects: "
+                  ^ object_names objects)
+                else
+                  Ok ()
+            | Some _, _, _, _ ->
+                Error "did not expect CreateLibrary action for binary-only package"
+            | _ ->
+                Error "expected executable and compile outputs for hello_world.ml and main.ml")
+  with
+  | Ok result -> result
+  | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
+
 let test_private_helper_can_depend_on_library_owned_module = fun _ctx ->
   match
     Fs.with_tempdir ~prefix:"planner_private_helper_depends_on_library_module"
@@ -1751,6 +1787,7 @@ let tests =
     case "binary compile does not reach internal library modules directly" test_binary_compile_does_not_reach_internal_library_modules_directly;
     case "multiple binaries can share a private helper" test_multiple_binaries_share_private_helper;
     case "multiple binaries keep private helpers separate" test_multiple_binaries_keep_private_helpers_separate;
+    case "binary-only package links package-named private helper" test_binary_only_package_links_package_named_private_helper;
     case "private helper can depend on library-owned module" test_private_helper_can_depend_on_library_owned_module;
     case "private helper only links into the binary that reaches it" test_private_helper_links_only_into_reaching_binary;
     case "executable actions do not duplicate library-owned modules" test_executable_actions_do_not_duplicate_library_owned_modules;
