@@ -541,9 +541,11 @@ toolchain_sysroot_dir() {
 merge_linux_sysroot_overlay() {
   local target="$1"
   local toolchain_dir="$2"
+  local existing_overlay_sysroot="${3:-}"
   local overlay_target
   local sysroot_dir
   local overlay_root
+  local overlay_sysroot
 
   overlay_target="$(linux_sysroot_overlay_target "$target" 2>/dev/null)" || return 0
   sysroot_dir="$(toolchain_sysroot_dir "$toolchain_dir" "$overlay_target")" || \
@@ -557,14 +559,60 @@ merge_linux_sysroot_overlay() {
       "$overlay_target" \
       "22.04" \
       "/tmp/riot-ocaml-sysroot.$overlay_target.XXXXXX"
-    printf '+ rsync -a %q %q/\n' "/tmp/riot-ocaml-sysroot.$overlay_target.XXXXXX/sysroot-$overlay_target/" "$sysroot_dir"
+    printf '+ rm -rf %q %q %q %q %q\n' \
+      "$sysroot_dir/lib" \
+      "$sysroot_dir/lib64" \
+      "$sysroot_dir/usr/include" \
+      "$sysroot_dir/usr/lib" \
+      "$sysroot_dir/usr/lib64"
+    printf '+ rsync -a %q %q/\n' \
+      "/tmp/riot-ocaml-sysroot.$overlay_target.XXXXXX/sysroot-$overlay_target/" \
+      "$sysroot_dir"
     return 0
   fi
 
-  overlay_root="$(mktemp -d "/tmp/riot-ocaml-sysroot.${overlay_target}.XXXXXX")"
-  bash "$REPO_ROOT/scripts/create-sysroot.sh" "$overlay_target" "22.04" "$overlay_root"
-  rsync -a "$overlay_root/sysroot-$overlay_target"/ "$sysroot_dir"/
-  rm -rf "$overlay_root"
+  if [ -n "$existing_overlay_sysroot" ]; then
+    overlay_sysroot="$existing_overlay_sysroot"
+  else
+    overlay_root="$(mktemp -d "/tmp/riot-ocaml-sysroot.${overlay_target}.XXXXXX")"
+    bash "$REPO_ROOT/scripts/create-sysroot.sh" "$overlay_target" "22.04" "$overlay_root"
+    overlay_sysroot="$overlay_root/sysroot-$overlay_target"
+  fi
+
+  rm -rf \
+    "$sysroot_dir/lib" \
+    "$sysroot_dir/lib64" \
+    "$sysroot_dir/usr/include" \
+    "$sysroot_dir/usr/lib" \
+    "$sysroot_dir/usr/lib64"
+  mkdir -p "$sysroot_dir"
+  rsync -a "$overlay_sysroot"/ "$sysroot_dir"/
+
+  if [ -n "${overlay_root:-}" ]; then
+    rm -rf "$overlay_root"
+  fi
+}
+
+strip_packaged_sysroot_flags() {
+  local toolchain_dir="$1"
+  local config_path="$toolchain_dir/lib/ocaml/Makefile.config"
+
+  [ -f "$config_path" ] || return 0
+
+  python3 - "$config_path" <<'PY'
+import re
+import sys
+
+path = sys.argv[1]
+with open(path, "r", encoding="utf-8") as file:
+    contents = file.read()
+
+updated = re.sub(r" ?--sysroot=/tmp/riot-ocaml-sysroot\.[^\s]+", "", contents)
+
+if updated != contents:
+    with open(path, "w", encoding="utf-8") as file:
+        file.write(updated)
+PY
 }
 
 restore_built_host_toolchain() {
@@ -593,9 +641,15 @@ build_local_target() {
   local tarball_path
   local final_tarball
   local checksum_path
+  local overlay_target
+  local overlay_root
+  local overlay_sysroot
 
   worktree_dir="$LOCAL_CACHE_ROOT/$target/worktree/vendor/ocaml"
   bootstrapped_host=0
+  overlay_target=""
+  overlay_root=""
+  overlay_sysroot=""
 
   if [ "$CLEAN_BUILD" != "0" ]; then
     run_cmd rm -rf "$(dirname "$worktree_dir")"
@@ -646,12 +700,29 @@ build_local_target() {
     )
   fi
 
-  (
-    cd "$worktree_dir"
-    bash ./cross/build.sh "$target"
-  )
+  if overlay_target="$(linux_sysroot_overlay_target "$target" 2>/dev/null)"; then
+    overlay_root="$(mktemp -d "/tmp/riot-ocaml-sysroot.${overlay_target}.XXXXXX")"
+    bash "$REPO_ROOT/scripts/create-sysroot.sh" "$overlay_target" "22.04" "$overlay_root"
+    overlay_sysroot="$overlay_root/sysroot-$overlay_target"
+  fi
 
-  merge_linux_sysroot_overlay "$target" "$worktree_dir/cross/$target"
+  if [ -n "$overlay_sysroot" ]; then
+    (
+      cd "$worktree_dir"
+      CROSS_SYSROOT="$overlay_sysroot" bash ./cross/build.sh "$target"
+    )
+  else
+    (
+      cd "$worktree_dir"
+      bash ./cross/build.sh "$target"
+    )
+  fi
+
+  merge_linux_sysroot_overlay "$target" "$worktree_dir/cross/$target" "$overlay_sysroot"
+  strip_packaged_sysroot_flags "$worktree_dir/cross/$target"
+  if [ -n "$overlay_root" ]; then
+    rm -rf "$overlay_root"
+  fi
 
   temp_output_dir="$(mktemp -d "$output_dir/.tmp-${target}.XXXXXX")"
   (
@@ -925,6 +996,9 @@ done
 load_env_file "$ENV_FILE"
 
 RIOT_TOOLCHAIN_SUFFIX="${CLI_TOOLCHAIN_SUFFIX:-${INITIAL_RIOT_TOOLCHAIN_SUFFIX:-${RIOT_TOOLCHAIN_SUFFIX:-${INITIAL_OCAML_TOOLCHAIN_SUFFIX:-${OCAML_TOOLCHAIN_SUFFIX:-riot.3}}}}}"
+OCAML_TOOLCHAIN_SUFFIX="$RIOT_TOOLCHAIN_SUFFIX"
+export RIOT_TOOLCHAIN_SUFFIX
+export OCAML_TOOLCHAIN_SUFFIX
 
 if { [ "$MODE" = "publish" ] || [ "$MODE" = "release" ]; } && [ -z "$CLI_TOOLCHAIN_SUFFIX" ]; then
   if [ "${#TARGETS[@]}" -gt 1 ]; then

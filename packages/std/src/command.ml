@@ -1,13 +1,8 @@
 open Global
 open Collections
 
-type Runtime.Message.t +=
-  | Reader_stdout_line of { reader: Runtime.Pid.t; line: string }
-  | Reader_finished of { reader: Runtime.Pid.t; stream: 
-        [
-          `stdout
-          | `stderr
-        ]; result: (string, Fs.File.error) result }
+type error =
+  SystemError of string
 
 module Stdio = struct
   type t =
@@ -33,9 +28,6 @@ type output = {
   status: status;
 }
 
-type error =
-  SystemError of string
-
 type state =
   | Pending
   | Running of { proc: Kernel.Process.t; stdout: Fs.File.t option; stderr: Fs.File.t option }
@@ -48,6 +40,14 @@ type t = {
   cwd: string option;
   mutable state: state;
 }
+
+let pipe_read_retry_interval = Time.Duration.from_millis 1
+
+let pipe_drain_retries_after_process_exit = 50
+
+let is_file_would_block = function
+  | Kernel.Fs.File.System error -> Kernel.SystemError.would_block error
+  | Kernel.Fs.File.InvalidSlice _ -> false
 
 (** Command - OS process spawning and management *)
 let make = fun ?cwd ?(env = []) ?(args = []) cmd ->
@@ -98,79 +98,7 @@ let to_string = fun t ->
   | Some cwd -> "cd " ^ shell_quote cwd ^ " && " ^ command
   | None -> command
 
-let spawn_reader = fun ?(line_mode = false) ~parent ~stream file ->
-  Runtime.spawn_blocked
-    (fun () ->
-      let reader = self () in
-      let result =
-        match stream, line_mode with
-        | `stdout, true ->
-            let buffer = StringBuilder.create ~size:4_096 in
-            let rec loop () =
-              match Fs.File.read_line file with
-              | Ok line when String.equal line "" ->
-                  Ok (StringBuilder.contents buffer)
-              | Ok line ->
-                  StringBuilder.add_string buffer line;
-                  send parent (Reader_stdout_line { reader; line });
-                  loop ()
-              | Error _ as err ->
-                  err
-            in
-            loop ()
-        | _ -> Fs.File.read_to_end file
-      in
-      let _ = Fs.File.close file in
-      send parent (Reader_finished { reader; stream; result });
-      Ok ())
-
 let default_idle_interval = Time.Duration.from_secs 1
-
-let wait_for_reader_output = fun ~on_idle ~idle_interval ~on_stdout_line ~stdout_reader ~stderr_reader ->
-  let stdout_result = ref None in
-  let stderr_result = ref None in
-  let started = Time.Instant.now () in
-  let rec loop () =
-    if Option.is_some !stdout_result && Option.is_some !stderr_result then
-      (Option.unwrap !stdout_result, Option.unwrap !stderr_result)
-    else
-      (
-        try
-          receive
-            ~selector:(
-              function
-              | Reader_stdout_line { reader; line } when Runtime.Pid.equal reader stdout_reader ->
-                  Option.for_each on_stdout_line ~fn:(fun on_stdout_line -> on_stdout_line line);
-                  `select ()
-              | Reader_finished { reader; stream=`stdout; result } when Runtime.Pid.equal reader stdout_reader ->
-                  stdout_result := Some result;
-                  `select ()
-              | Reader_finished { reader; stream=`stderr; result } when Runtime.Pid.equal reader stderr_reader ->
-                  stderr_result := Some result;
-                  `select ()
-              | _ ->
-                  `skip
-            )
-            ?timeout:(Option.map on_idle ~fn:(fun _ -> idle_interval))
-            ();
-          loop ()
-        with
-        | Receive_timeout ->
-            Option.for_each on_idle ~fn:(fun on_idle -> on_idle (Time.Instant.elapsed started));
-            loop ()
-      )
-  in
-  loop ()
-
-let unwrap_reader_result = fun ~stream ~cmd ->
-  function
-  | Ok output -> Ok output
-  | Error err -> Error (SystemError ("Failed to read "
-  ^ stream
-  ^ " from command '"
-  ^ cmd
-  ^ "': "
-  ^ Fs.File.error_to_string err))
 
 let stdio_of_config = fun stdin stdout stderr ->
   let stdin_config =
@@ -202,17 +130,20 @@ let kernel_status_code = function
   | Kernel.Process.Signaled n -> 128 + n
   | Kernel.Process.Stopped n -> 128 + n
 
+let process_exit_poll_interval = Time.Duration.from_millis 1
+
+let blocking_sleep = fun duration -> Kernel.Thread.sleep_ns (Time.Duration.to_nanos duration)
+
 let wait_for_exit = fun proc ->
-  let source = Kernel.Process.to_source proc in
   let rec loop () =
     match Kernel.Process.try_wait proc with
-    | Error err -> Error (SystemError (Kernel.Process.error_to_string err))
-    | Ok None -> Runtime.syscall
-      ~name:"Command.wait"
-      ~interest:Kernel.Async.Interest.readable
-      ~source
-      loop
-    | Ok (Some status) -> Ok status
+    | Error err ->
+        Error (SystemError (Kernel.Process.error_to_string err))
+    | Ok None ->
+        blocking_sleep process_exit_poll_interval;
+        loop ()
+    | Ok (Some status) ->
+        Ok status
   in
   loop ()
 
@@ -221,12 +152,244 @@ let cwd_path = fun cwd ->
   | None -> Ok None
   | Some cwd -> Ok (Some (Kernel.Path.from_string cwd))
 
+let fs_error = fun action err -> Error (SystemError (action ^ ": " ^ IO.error_message err))
+
+let fs_file_error = fun action err ->
+  Error (SystemError (action ^ ": " ^ Fs.File.error_to_string err))
+
+let output_to_temp_files = fun t ->
+  match
+    Fs.with_tempdir ~prefix:"std-command-"
+      (fun tempdir ->
+        let stdout_path = Path.(tempdir / Path.v "stdout") in
+        let stderr_path = Path.(tempdir / Path.v "stderr") in
+        match Fs.File.create stdout_path, Fs.File.create stderr_path with
+        | Error err, _ ->
+            fs_file_error "failed to create stdout capture file" err
+        | _, Error err ->
+            fs_file_error "failed to create stderr capture file" err
+        | Ok stdout_file, Ok stderr_file -> (
+            let stdio = stdio_of_config Stdio.Null (Stdio.File stdout_file) (Stdio.File stderr_file) in
+            match cwd_path t.cwd with
+            | Error _ as err ->
+                let _ = Fs.File.close stdout_file in
+                let _ = Fs.File.close stderr_file in
+                err
+            | Ok current_dir -> (
+                match Kernel.Process.spawn
+                  ~program:t.cmd
+                  ~args:(Array.from_list t.args)
+                  ~env:(Array.from_list t.env)
+                  ?current_dir
+                  ~stdio
+                  () with
+                | Error err ->
+                    let _ = Fs.File.close stdout_file in
+                    let _ = Fs.File.close stderr_file in
+                    Error (SystemError (Kernel.Process.error_to_string err))
+                | Ok proc -> (
+                    let _ = Fs.File.close stdout_file in
+                    let _ = Fs.File.close stderr_file in
+                    t.state <- Running { proc; stdout = None; stderr = None };
+                    match wait_for_exit proc with
+                    | Error _ as err ->
+                        let _ = Kernel.Process.close proc in
+                        err
+                    | Ok exit_status -> (
+                        let _ = Kernel.Process.close proc in
+                        match Fs.read stdout_path, Fs.read stderr_path with
+                        | Error err, _ ->
+                            fs_error "failed to read stdout capture file" err
+                        | _, Error err ->
+                            fs_error "failed to read stderr capture file" err
+                        | Ok stdout, Ok stderr ->
+                            let status = kernel_status_code exit_status in
+                            let result = { stdout; stderr; status } in
+                            t.state <- Exited result;
+                            Ok result
+                      )
+                  )
+              )
+          ))
+  with
+  | Error err -> fs_error "failed to create command capture tempdir" err
+  | Ok result -> result
+
+let command_pipe_chunk_size = 4_096
+
+let read_pipe_once = fun file buffer ->
+  match Kernel.Fs.File.read file buffer ~pos:0 ~len:command_pipe_chunk_size with
+  | Ok 0 -> Ok `Closed
+  | Ok bytes_read -> Ok (`Read bytes_read)
+  | Error err when is_file_would_block err -> Ok `Would_block
+  | Error err -> Error err
+
+let append_stdout_chunk = fun ~on_stdout_line ~stdout_buffer ~line_buffer buffer bytes_read ->
+  StringBuilder.add_subbytes stdout_buffer buffer 0 bytes_read;
+  Option.for_each on_stdout_line
+    ~fn:(fun on_stdout_line ->
+      for i = 0 to bytes_read - 1 do
+        let ch = Kernel.Bytes.get_unchecked buffer ~at:i in
+        StringBuilder.add_char line_buffer ch;
+        if ch = '\n' then
+          (
+            on_stdout_line (StringBuilder.contents line_buffer);
+            StringBuilder.clear line_buffer
+          )
+      done)
+
+let flush_stdout_line = fun ~on_stdout_line ~line_buffer ->
+  Option.for_each on_stdout_line
+    ~fn:(fun on_stdout_line ->
+      let line = StringBuilder.contents line_buffer in
+      if not (String.equal line "") then
+        (
+          on_stdout_line line;
+          StringBuilder.clear line_buffer
+        ))
+
+let output_with_pipes = fun ~on_stdout_line ~on_idle ~idle_interval t proc stdout_fd stderr_fd ->
+  let stdout_buffer = StringBuilder.create ~size:4_096 in
+  let stderr_buffer = StringBuilder.create ~size:4_096 in
+  let stdout_line_buffer = StringBuilder.create ~size:256 in
+  let stdout_chunk = Kernel.Bytes.create ~size:command_pipe_chunk_size in
+  let stderr_chunk = Kernel.Bytes.create ~size:command_pipe_chunk_size in
+  let stdout_closed = ref false in
+  let stderr_closed = ref false in
+  let process_status = ref None in
+  let drain_retries = ref 0 in
+  let started = Time.Instant.now () in
+  let last_idle_us = ref 0 in
+  let finish_error err =
+    let _ = Kernel.Process.close proc in
+    err
+  in
+  let read_stdout () =
+    if !stdout_closed then
+      Ok false
+    else
+      match read_pipe_once stdout_fd stdout_chunk with
+      | Error err ->
+          Error err
+      | Ok `Closed ->
+          stdout_closed := true;
+          Ok false
+      | Ok `Would_block ->
+          Ok false
+      | Ok (`Read bytes_read) ->
+          append_stdout_chunk
+            ~on_stdout_line
+            ~stdout_buffer
+            ~line_buffer:stdout_line_buffer
+            stdout_chunk
+            bytes_read;
+          Ok true
+  in
+  let read_stderr () =
+    if !stderr_closed then
+      Ok false
+    else
+      match read_pipe_once stderr_fd stderr_chunk with
+      | Error err ->
+          Error err
+      | Ok `Closed ->
+          stderr_closed := true;
+          Ok false
+      | Ok `Would_block ->
+          Ok false
+      | Ok (`Read bytes_read) ->
+          StringBuilder.add_subbytes stderr_buffer stderr_chunk 0 bytes_read;
+          Ok true
+  in
+  let rec drain read_any =
+    match read_stdout (), read_stderr () with
+    | (Error err, _)
+    | (_, Error err) -> Error err
+    | Ok stdout_read, Ok stderr_read ->
+        if stdout_read || stderr_read then
+          drain true
+        else
+          Ok read_any
+  in
+  let observe_process () =
+    match !process_status with
+    | Some _ -> Ok ()
+    | None -> (
+        match Kernel.Process.try_wait proc with
+        | Error err ->
+            Error (SystemError (Kernel.Process.error_to_string err))
+        | Ok None ->
+            Ok ()
+        | Ok (Some status) ->
+            process_status := Some status;
+            Ok ()
+      )
+  in
+  let maybe_idle data_read =
+    if not data_read then
+      Option.for_each on_idle
+        ~fn:(fun on_idle ->
+          let elapsed = Time.Instant.elapsed started in
+          let elapsed_us = Time.Duration.to_micros elapsed in
+          let idle_interval_us = Time.Duration.to_micros idle_interval in
+          if elapsed_us - !last_idle_us >= idle_interval_us then
+            (
+              last_idle_us := elapsed_us;
+              on_idle elapsed
+            ))
+  in
+  let rec loop () =
+    match drain false with
+    | Error err -> finish_error
+      (Error (SystemError ("Failed to read from command '"
+      ^ t.cmd
+      ^ "': "
+      ^ Fs.File.error_to_string err)))
+    | Ok data_read -> (
+        match observe_process () with
+        | Error _ as err -> finish_error err
+        | Ok () ->
+            let process_done = Option.is_some !process_status in
+            if data_read then
+              drain_retries := 0
+            else if process_done then
+              drain_retries := !drain_retries + 1;
+            let readers_closed = !stdout_closed && !stderr_closed in
+            if
+              process_done
+              && (readers_closed || !drain_retries >= pipe_drain_retries_after_process_exit)
+            then
+              (
+                flush_stdout_line ~on_stdout_line ~line_buffer:stdout_line_buffer;
+                let _ = Kernel.Process.close proc in
+                let exit_status = Option.unwrap !process_status in
+                let result = {
+                  status = kernel_status_code exit_status;
+                  stdout = StringBuilder.contents stdout_buffer;
+                  stderr = StringBuilder.contents stderr_buffer
+                } in
+                t.state <- Exited result;
+                Ok result
+              )
+            else (
+              maybe_idle data_read;
+              if not data_read then
+                blocking_sleep pipe_read_retry_interval;
+              loop ()
+            )
+      )
+  in
+  loop ()
+
 let output = fun ?on_stdout_line ?on_idle ?idle_interval t ->
   match t.state with
   | Exited out ->
       Ok out
   | Running _ ->
       Error (SystemError "Command is already running")
+  | Pending when Option.is_none on_stdout_line && Option.is_none on_idle ->
+      let _ = idle_interval in
+      output_to_temp_files t
   | Pending -> (
       (* Build stdio config to capture stdout and stderr *)
       let stdio = stdio_of_config Stdio.Null Stdio.Pipe Stdio.Pipe in
@@ -248,36 +411,14 @@ let output = fun ?on_stdout_line ?on_idle ?idle_interval t ->
               let stderr_fd = Kernel.Process.stderr proc |> Option.unwrap in
               (* Update state to Running *)
               t.state <- Running { proc; stdout = Some stdout_fd; stderr = Some stderr_fd };
-              let parent = self () in
-              let stdout_reader = spawn_reader
-                ~line_mode:(Option.is_some on_stdout_line)
-                ~parent
-                ~stream:`stdout
-                stdout_fd in
-              let stderr_reader = spawn_reader ~parent ~stream:`stderr stderr_fd in
-              let stdout_result, stderr_result = wait_for_reader_output
+              output_with_pipes
+                ~on_stdout_line
                 ~on_idle
                 ~idle_interval:(Option.unwrap_or ~default:default_idle_interval idle_interval)
-                ~on_stdout_line
-                ~stdout_reader
-                ~stderr_reader in
-              match unwrap_reader_result ~stream:"stdout" ~cmd:t.cmd stdout_result, unwrap_reader_result
-                ~stream:"stderr"
-                ~cmd:t.cmd
-                stderr_result with
-              | (Error _ as err), _ ->
-                  err
-              | _, (Error _ as err) ->
-                  err
-              | Ok stdout_str, Ok stderr_str ->
-                  (* Now wait for process to exit *)
-                  match wait_for_exit proc with
-                  | Error _ as err -> err
-                  | Ok exit_status ->
-                      let status_code = kernel_status_code exit_status in
-                      let result = { status = status_code; stdout = stdout_str; stderr = stderr_str } in
-                      t.state <- Exited result;
-                      Ok result
+                t
+                proc
+                stdout_fd
+                stderr_fd
         )
     )
 

@@ -43,6 +43,8 @@ let package_name_to_module_name = fun name -> Module_name.of_string name |> Modu
 
 let module_name_to_test_file_stem = fun module_name -> String.lowercase_ascii module_name ^ "_tests"
 
+let module_name_to_file_stem = fun module_name -> String.lowercase_ascii module_name
+
 type package_kind =
   | Library
   | Binary
@@ -148,13 +150,14 @@ let scaffold_package = fun ~path ~name ~is_library ->
   let* () = Fs.create_dir_all src_dir
   |> Result.map_err ~fn:(fun _ -> "Failed to create src directory") in
   let module_name = package_module_name name in
+  let module_file_stem = module_name_to_file_stem module_name in
   let main_ml =
     if is_library then
-      Path.(src_dir / Path.v (module_name ^ ".ml"))
+      Path.(src_dir / Path.v (module_file_stem ^ ".ml"))
     else
       Path.(src_dir / Path.v "main.ml")
   in
-  let main_mli = Path.(src_dir / Path.v (module_name ^ ".mli")) in
+  let main_mli = Path.(src_dir / Path.v (module_file_stem ^ ".mli")) in
   let ml_content =
     if is_library then
       "open Std\n\n(** Main module for " ^ name ^ " library *)\n"
@@ -170,7 +173,7 @@ let scaffold_package = fun ~path ~name ~is_library ->
   let package_toml = Path.(path / Path.v "riot.toml") in
   let toml_content = "[package]\nname = \"" ^ name ^ "\"\nversion = \"0.1.0\"\n\n" ^ (
     if is_library then
-      "[lib]\npath = \"src/" ^ module_name ^ ".ml\"\n\n"
+      "[lib]\npath = \"src/" ^ module_file_stem ^ ".ml\"\n\n"
     else
       "[[bin]]\nname = \"" ^ name ^ "\"\npath = \"src/main.ml\"\n\n"
   ) ^ "[dependencies]\nstd = \"*\"\n# Add dependencies here\n\n"
@@ -452,11 +455,12 @@ let create_default_package = fun ~on_event target_dir workspace_name package_nam
     | Error _e -> Error (Failure "Failed to create package test directory")
   in
   let module_name = package_name_to_module_name package_name in
+  let module_file_stem = module_name_to_file_stem module_name in
   let test_file_stem = module_name_to_test_file_stem module_name in
   (* Create package riot.toml *)
   let lib_or_bin_section =
     if is_library then
-      "[lib]\npath = \"src/" ^ module_name ^ ".ml\"\n"
+      "[lib]\npath = \"src/" ^ module_file_stem ^ ".ml\"\n"
     else
       "[[bin]]\nname = \"" ^ package_name ^ "\"\npath = \"src/main.ml\"\n"
   in
@@ -488,7 +492,7 @@ std = "*"
   in
   let ml_path =
     if is_library then
-      Path.(src_dir / Path.v (module_name ^ ".ml"))
+      Path.(src_dir / Path.v (module_file_stem ^ ".ml"))
     else
       Path.(src_dir / Path.v "main.ml")
   in
@@ -516,7 +520,7 @@ std = "*"
   in
   let* () =
     if is_library then
-      let mli_path = Path.(src_dir / Path.v (module_name ^ ".mli")) in
+      let mli_path = Path.(src_dir / Path.v (module_file_stem ^ ".mli")) in
       match Fs.write mli_content mli_path with
       | Ok () -> Ok ()
       | Error _e -> Error (Failure ("Failed to create " ^ module_name ^ ".mli"))
@@ -533,8 +537,8 @@ std = "*"
       ^ workspace_name
       ^ "\"\n" in
       let helper_mli_content = "(** Return the starter greeting for " ^ workspace_name ^ ". *)\nval hello: unit -> string\n" in
-      let helper_ml_path = Path.(src_dir / Path.v (module_name ^ ".ml")) in
-      let helper_mli_path = Path.(src_dir / Path.v (module_name ^ ".mli")) in
+      let helper_ml_path = Path.(src_dir / Path.v (module_file_stem ^ ".ml")) in
+      let helper_mli_path = Path.(src_dir / Path.v (module_file_stem ^ ".mli")) in
       let* () =
         match Fs.write helper_ml_content helper_ml_path with
         | Ok () -> Ok ()

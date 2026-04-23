@@ -22,9 +22,9 @@ let division_prop =
 let vector_length_prop =
   property "vector length after push" Arbitrary.(pair int (vector int))
     (fun ((x, vec)) ->
-      let original_len = Collections.Vector.length vec in
-      Collections.Vector.push vec ~value:x;
-      Collections.Vector.length vec = original_len + 1)
+      let original_len = Std.Collections.Vector.length vec in
+      Std.Collections.Vector.push vec ~value:x;
+      Std.Collections.Vector.length vec = original_len + 1)
 
 (* String property *)
 

@@ -183,6 +183,8 @@ end
 
 external raise_with_backtrace: exn -> Exception.raw_backtrace -> 'value = "%raise_with_backtrace"
 
+external sleep_ns: int64 -> unit = "kernel_new_thread_sleep_ns"
+
 let spawn = fun fn ->
   let initial_keys = DLS.get_initial_keys () in
   let term_sync =

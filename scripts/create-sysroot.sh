@@ -1,8 +1,11 @@
 #!/bin/bash
-# Create a minimal Linux SDK overlay for cross-compilation.
-# This script uses Docker to extract the target-specific Linux headers and
-# libraries that Riot's foreign stubs need on Linux, including the
-# multiarch glibc header tree required by pthread/OpenSSL consumers.
+# Create a Linux sysroot overlay for cross-compilation.
+# This script uses Docker to extract a target-specific Ubuntu userspace and
+# copy its multiarch runtime/devel layout into the GCC sysroot shape used by
+# Riot's bundled Linux toolchains. The files are also mirrored into the flat
+# lib/usr/lib paths expected by parts of the current toolchain packaging. That
+# keeps the glibc baseline anchored to the selected Ubuntu release instead of
+# whatever the host cross toolchain shipped.
 
 set -e
 
@@ -36,7 +39,12 @@ echo "Creating sysroot for $TARGET using $DOCKER_IMAGE..."
 # Clean previous sysroot
 mkdir -p "$OUTPUT_ROOT"
 rm -rf "$SYSROOT_DIR"
-mkdir -p "$SYSROOT_DIR/usr"/{include,lib}
+mkdir -p \
+  "$SYSROOT_DIR/lib" \
+  "$SYSROOT_DIR/lib/$LIB_DIR" \
+  "$SYSROOT_DIR/usr/include" \
+  "$SYSROOT_DIR/usr/lib" \
+  "$SYSROOT_DIR/usr/lib/$LIB_DIR"
 
 # Start container
 echo "Starting Docker container..."
@@ -62,38 +70,66 @@ docker exec "$CONTAINER" apt-get install -y -qq \
 
 # Extract headers
 echo "Extracting headers..."
-docker cp "$CONTAINER:/usr/include/uuid" "$SYSROOT_DIR/usr/include/"
-docker cp "$CONTAINER:/usr/include/openssl" "$SYSROOT_DIR/usr/include/"
-docker cp "$CONTAINER:/usr/include/pcre2.h" "$SYSROOT_DIR/usr/include/"
-docker cp "$CONTAINER:/usr/include/pcre2posix.h" "$SYSROOT_DIR/usr/include/" 2>/dev/null || true
-docker cp "$CONTAINER:/usr/include/zlib.h" "$SYSROOT_DIR/usr/include/"
-docker cp "$CONTAINER:/usr/include/zconf.h" "$SYSROOT_DIR/usr/include/"
-docker cp "$CONTAINER:/usr/include/${LIB_DIR}" "$SYSROOT_DIR/usr/include/"
+docker exec "$CONTAINER" tar czf /tmp/riot-sysroot-headers.tar -C /usr/include .
+docker cp "$CONTAINER:/tmp/riot-sysroot-headers.tar" "$OUTPUT_ROOT/riot-sysroot-headers-${TARGET}.tar.gz"
+tar xzf "$OUTPUT_ROOT/riot-sysroot-headers-${TARGET}.tar.gz" -C "$SYSROOT_DIR/usr/include"
+rm -f "$OUTPUT_ROOT/riot-sysroot-headers-${TARGET}.tar.gz"
+cp -a "$SYSROOT_DIR/usr/include/${LIB_DIR}/." "$SYSROOT_DIR/usr/include/"
 docker cp "$CONTAINER:/usr/include/${LIB_DIR}/openssl/." "$SYSROOT_DIR/usr/include/openssl/" 2>/dev/null || true
 
-# Extract libraries without overwriting the bundled glibc sysroot.
-echo "Extracting libraries..."
+# Extract the distro runtime + linker inputs. Keep the native multiarch layout
+# because Ubuntu's libc.so linker script references absolute multiarch paths
+# under --sysroot, and also mirror files into flat lib/usr/lib for existing
+# Riot toolchain packaging expectations.
+echo "Extracting glibc runtime and development libraries..."
 docker exec "$CONTAINER" bash -lc "
   set -euo pipefail
-  shopt -s nullglob
-  rm -rf /tmp/riot-sdk-libs
-  mkdir -p /tmp/riot-sdk-libs
-  for pattern in libuuid.so* libuuid.a libssl.so* libssl.a libcrypto.so* libcrypto.a libpcre2-8.so* libpcre2-8.a libz.so* libz.a; do
-    for file in /usr/lib/${LIB_DIR}/\$pattern /lib/${LIB_DIR}/\$pattern; do
-      [ -e \"\$file\" ] || continue
-      cp -a \"\$file\" /tmp/riot-sdk-libs/
-    done
-  done
-  tar czf /tmp/riot-sdk-libs.tar -C /tmp/riot-sdk-libs .
+  rm -rf /tmp/riot-sysroot-glibc
+  mkdir -p \
+    /tmp/riot-sysroot-glibc/lib/${LIB_DIR} \
+    /tmp/riot-sysroot-glibc/usr/lib/${LIB_DIR}
+  cp -a /lib/${LIB_DIR}/. /tmp/riot-sysroot-glibc/lib/
+  cp -a /lib/${LIB_DIR}/. /tmp/riot-sysroot-glibc/lib/${LIB_DIR}/
+  cp -a /usr/lib/${LIB_DIR}/. /tmp/riot-sysroot-glibc/usr/lib/
+  cp -a /usr/lib/${LIB_DIR}/. /tmp/riot-sysroot-glibc/usr/lib/${LIB_DIR}/
+  find /tmp/riot-sysroot-glibc/lib -type f -name '*.a' -delete
+  tar czf /tmp/riot-sysroot-glibc.tar -C /tmp/riot-sysroot-glibc .
 "
-docker cp "$CONTAINER:/tmp/riot-sdk-libs.tar" "$OUTPUT_ROOT/riot-sdk-libs-${TARGET}.tar.gz"
-tar xzf "$OUTPUT_ROOT/riot-sdk-libs-${TARGET}.tar.gz" -C "$SYSROOT_DIR/usr/lib/"
-rm -f "$OUTPUT_ROOT/riot-sdk-libs-${TARGET}.tar.gz"
+docker cp "$CONTAINER:/tmp/riot-sysroot-glibc.tar" "$OUTPUT_ROOT/riot-sysroot-glibc-${TARGET}.tar.gz"
+tar xzf "$OUTPUT_ROOT/riot-sysroot-glibc-${TARGET}.tar.gz" -C "$SYSROOT_DIR"
+rm -f "$OUTPUT_ROOT/riot-sysroot-glibc-${TARGET}.tar.gz"
 
-# Create lib64 symlink if needed (x86_64)
-if [ "$ARCH" = "amd64" ]; then
-  (cd "$SYSROOT_DIR/usr" && ln -sf lib lib64)
-fi
+echo "Rewriting absolute sysroot symlinks..."
+find "$SYSROOT_DIR" -type l -print | while IFS= read -r link_path; do
+  link_target="$(readlink "$link_path")"
+  case "$link_target" in
+    /*)
+      sysroot_target="$SYSROOT_DIR$link_target"
+      [ -e "$sysroot_target" ] || continue
+      link_dir="$(dirname "$link_path")"
+      relative_target="$(python3 -c 'import os, sys; print(os.path.relpath(sys.argv[1], sys.argv[2]))' "$sysroot_target" "$link_dir")"
+      ln -snf "$relative_target" "$link_path"
+      ;;
+  esac
+done
+
+# The Homebrew-built cross GCCs search lib64 for libgcc_s on both Linux
+# targets. Ubuntu ships libgcc_s.so.1 but not an unversioned linker input in
+# the base runtime, so provide the expected development symlink in each mirrored
+# library directory.
+for libgcc_dir in \
+  "$SYSROOT_DIR/lib" \
+  "$SYSROOT_DIR/lib/$LIB_DIR" \
+  "$SYSROOT_DIR/usr/lib" \
+  "$SYSROOT_DIR/usr/lib/$LIB_DIR"
+do
+  if [ -e "$libgcc_dir/libgcc_s.so.1" ] && [ ! -e "$libgcc_dir/libgcc_s.so" ]; then
+    (cd "$libgcc_dir" && ln -s libgcc_s.so.1 libgcc_s.so)
+  fi
+done
+
+(cd "$SYSROOT_DIR" && ln -sf lib lib64)
+(cd "$SYSROOT_DIR/usr" && ln -sf lib lib64)
 
 # Create tarball
 TARBALL="${OUTPUT_ROOT%/}/sysroot-${TARGET}.tar.gz"

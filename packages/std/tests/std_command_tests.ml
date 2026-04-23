@@ -94,6 +94,24 @@ let test_command_output_emits_idle_callbacks = fun _ctx ->
       else
         Ok ()
 
+let test_command_output_returns_when_child_exits_with_inherited_writer = fun _ctx ->
+  let cmd = Command.make "sh" ~args:[ "-c"; "printf parent-done; (sleep 2) &" ] in
+  let started = Time.Instant.now () in
+  match Command.output ~on_idle:(fun _elapsed -> ()) ~idle_interval:(Time.Duration.from_millis 10) cmd with
+  | Error (Command.SystemError message) -> Error ("expected inherited writer command to succeed, got: "
+  ^ message)
+  | Ok output ->
+      let elapsed_us = Time.Duration.to_micros (Time.Instant.elapsed started) in
+      if not (Int.equal output.status 0) then
+        Error ("expected inherited writer command to exit 0, got " ^ Int.to_string output.status)
+      else if not (String.equal output.stdout "parent-done") then
+        Error ("unexpected inherited writer stdout payload: " ^ output.stdout)
+      else if elapsed_us > 1_000_000 then
+        Error ("expected command output to return before inherited writer closed, elapsed us: "
+        ^ Int.to_string elapsed_us)
+      else
+        Ok ()
+
 let test_command_output_handles_parallel_shell_commands = fun _ctx ->
   let parent = Runtime.self () in
   let count = 16 in
@@ -199,6 +217,7 @@ let meta_tests = [
   Test.case "command output handles delayed shell stdout" test_command_output_handles_delayed_shell_stdout;
   Test.case "command output streams stdout lines" test_command_output_streams_stdout_lines;
   Test.case "command output emits idle callbacks" test_command_output_emits_idle_callbacks;
+  Test.case "command output returns after child exit even when another process inherited stdout" test_command_output_returns_when_child_exits_with_inherited_writer;
   Test.case "command output handles parallel shell commands" test_command_output_handles_parallel_shell_commands;
   Test.case ~size:Large "command output handles parallel fast exit commands" test_command_output_handles_parallel_fast_exit_commands;
 ]

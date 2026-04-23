@@ -45,6 +45,8 @@ let path_error_to_string = function
 let package_module_name = fun name ->
   String.split ~by:"-" name |> List.map ~fn:String.capitalize_ascii |> String.concat ""
 
+let module_file_stem = fun module_name -> String.lowercase_ascii module_name
+
 let with_current_dir_result = fun dir fn ->
   let original = Env.current_dir () |> Result.expect ~msg:"expected current directory" in
   let result =
@@ -88,7 +90,7 @@ let test_init_scaffolds_library_workspace = fun _ctx ->
         / Path.v "packages"
         / Path.v "demo-app"
         / Path.v "src"
-        / Path.v (module_name ^ ".ml"))
+        / Path.v (module_file_stem module_name ^ ".ml"))
         "let hello = fun () -> \"Hello from demo-app\"" in
       assert_contains
         Path.(workspace_root / Path.v "packages" / Path.v "demo-app" / Path.v "tests" / Path.v test_file)
@@ -108,7 +110,7 @@ let test_init_scaffolds_binary_workspace = fun _ctx ->
         / Path.v "packages"
         / Path.v "demo-bin"
         / Path.v "src"
-        / Path.v (module_name ^ ".ml")) in
+        / Path.v (module_file_stem module_name ^ ".ml")) in
       let* () = assert_exists
         Path.(workspace_root / Path.v "packages" / Path.v "demo-bin" / Path.v "tests" / Path.v test_file) in
       let* () = assert_contains Path.(workspace_root / Path.v "Dockerfile") "ENTRYPOINT [\"/usr/local/bin/demo-bin\"]" in
@@ -252,8 +254,10 @@ members = [
         ~is_library:true in
       let module_name = package_module_name "demo-lib" in
       let* () = assert_exists Path.(package_dir / Path.v "riot.toml") in
-      let* () = assert_exists Path.(package_dir / Path.v "src" / Path.v (module_name ^ ".ml")) in
-      let* () = assert_exists Path.(package_dir / Path.v "src" / Path.v (module_name ^ ".mli")) in
+      let* () = assert_exists
+        Path.(package_dir / Path.v "src" / Path.v (module_file_stem module_name ^ ".ml")) in
+      let* () = assert_exists
+        Path.(package_dir / Path.v "src" / Path.v (module_file_stem module_name ^ ".mli")) in
       let* () =
         assert_contains Path.(workspace_root / Path.v "riot.toml")
           {|members = [
@@ -292,8 +296,10 @@ members = []
         ~is_library:true in
       let module_name = package_module_name "demo-lib" in
       let* () = assert_exists Path.(package_dir / Path.v "riot.toml") in
-      let* () = assert_exists Path.(package_dir / Path.v "src" / Path.v (module_name ^ ".ml")) in
-      let* () = assert_exists Path.(package_dir / Path.v "src" / Path.v (module_name ^ ".mli")) in
+      let* () = assert_exists
+        Path.(package_dir / Path.v "src" / Path.v (module_file_stem module_name ^ ".ml")) in
+      let* () = assert_exists
+        Path.(package_dir / Path.v "src" / Path.v (module_file_stem module_name ^ ".mli")) in
       let* () =
         assert_contains Path.(workspace_root / Path.v "riot.toml")
           {|members = [
@@ -315,8 +321,10 @@ let test_new_standalone_package_scaffolds_a_detached_package = fun _ctx ->
         ~is_library:true in
       let module_name = package_module_name "demo-lib" in
       let* () = assert_exists Path.(package_dir / Path.v "riot.toml") in
-      let* () = assert_exists Path.(package_dir / Path.v "src" / Path.v (module_name ^ ".ml")) in
-      let* () = assert_exists Path.(package_dir / Path.v "src" / Path.v (module_name ^ ".mli")) in
+      let* () = assert_exists
+        Path.(package_dir / Path.v "src" / Path.v (module_file_stem module_name ^ ".ml")) in
+      let* () = assert_exists
+        Path.(package_dir / Path.v "src" / Path.v (module_file_stem module_name ^ ".mli")) in
       if String.equal created_name "demo-lib" then
         Ok ()
       else

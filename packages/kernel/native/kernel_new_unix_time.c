@@ -1,7 +1,9 @@
 #include <caml/alloc.h>
 #include <caml/memory.h>
 #include <caml/mlvalues.h>
+#include <caml/signals.h>
 #include <errno.h>
+#include <stdint.h>
 #include <time.h>
 #include "kernel_new_errors.h"
 
@@ -35,4 +37,24 @@ CAMLprim value kernel_new_time_monotonic_now(value unit_val) {
   Store_field(pair, 1, Val_int(ts.tv_nsec));
   result = kernel_new_result_ok(pair);
   CAMLreturn(result);
+}
+
+CAMLprim value kernel_new_thread_sleep_ns(value timeout_ns_val) {
+  CAMLparam1(timeout_ns_val);
+
+  int64_t timeout_ns = Int64_val(timeout_ns_val);
+  if (timeout_ns <= 0) {
+    CAMLreturn(Val_unit);
+  }
+
+  struct timespec requested;
+  requested.tv_sec = (time_t)(timeout_ns / 1000000000LL);
+  requested.tv_nsec = (long)(timeout_ns % 1000000000LL);
+
+  caml_enter_blocking_section();
+  while (nanosleep(&requested, &requested) == -1 && errno == EINTR) {
+  }
+  caml_leave_blocking_section();
+
+  CAMLreturn(Val_unit);
 }
