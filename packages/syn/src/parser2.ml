@@ -3651,6 +3651,7 @@ and parse_module_type_decl = fun p ~signature ->
   ignore (complete p marker Syntax_kind2.MODULE_TYPE_DECL)
 
 and parse_module_decl_member = fun p ~signature ~first ->
+  let marker = start_node p in
   if first then
     (
       expect p Syntax_kind2.MODULE_KW (invalid_expression p);
@@ -3692,7 +3693,8 @@ and parse_module_decl_member = fun p ~signature ~first ->
       ignore (parse_module_expr p ~signature)
     )
   else if not (is_eof p || at p Syntax_kind2.AND_KW || at_item_boundary p ~signature) then
-    consume_until_module_expr_boundary p ~signature
+    consume_until_module_expr_boundary p ~signature;
+  ignore (complete p marker Syntax_kind2.MODULE_DECL_MEMBER)
 
 and parse_module_decl = fun p ~signature ->
   let marker = start_node p in
