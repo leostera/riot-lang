@@ -16,6 +16,7 @@ type signature_item = node
 type let_declaration = node
 type let_binding = node
 type type_declaration = node
+type type_extension_declaration = node
 type module_declaration = node
 type module_type_declaration = node
 type open_declaration = node
@@ -559,6 +560,7 @@ module StructureItem: sig
   type view =
     | Let of let_declaration
     | Type of type_declaration
+    | TypeExtension of type_extension_declaration
     | Module of module_declaration
     | ModuleType of module_type_declaration
     | Open of open_declaration
@@ -583,6 +585,7 @@ module SignatureItem: sig
   type view =
     | Value of value_declaration
     | Type of type_declaration
+    | TypeExtension of type_extension_declaration
     | Module of module_declaration
     | ModuleType of module_type_declaration
     | Open of open_declaration
@@ -679,6 +682,26 @@ module TypeDeclaration: sig
   val for_each_member: t -> fn:(member -> unit) -> unit
 
   val fold_members: t -> 'acc -> ('acc -> member -> 'acc) -> 'acc
+end
+
+module TypeExtensionDeclaration: sig
+  type t = type_extension_declaration
+  type parameter = TypeDeclaration.parameter
+  val cast: Node.t -> t option
+
+  val keyword_token: t -> Token.t option
+
+  val plus_token: t -> Token.t option
+
+  val equals_token: t -> Token.t option
+
+  val name: t -> Token.t option
+
+  val for_each_name_ident: t -> fn:(Token.t -> unit) -> unit
+
+  val for_each_parameter: t -> fn:(parameter -> unit) -> unit
+
+  val variant_type: t -> variant_type option
 end
 
 module ModuleDeclaration: sig
@@ -837,11 +860,20 @@ end
 
 module ExceptionDeclaration: sig
   type t = exception_declaration
+  type payload =
+    | TypeExpr of type_expr
+    | Record of record_type
+  type view =
+    | Bare
+    | Alias of { equals_token: Token.t option; path: path option }
+    | Payload of { of_token: Token.t option; payload: payload option }
   val cast: Node.t -> t option
+
+  val keyword_token: t -> Token.t option
 
   val name: t -> Token.t option
 
-  val for_each_tail_token: t -> fn:(Token.t -> unit) -> unit
+  val view: t -> view
 end
 
 module ClassDeclaration: sig

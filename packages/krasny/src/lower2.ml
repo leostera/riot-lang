@@ -3969,6 +3969,34 @@ let type_parameters_doc = fun decl ->
             Doc.space;
           ]
 
+let type_extension_parameters_doc = fun decl ->
+  let parameters = ref [] in
+  Ast.TypeExtensionDeclaration.for_each_parameter
+    decl
+    ~fn:(fun param -> parameters := type_parameter_doc param :: !parameters);
+  match List.reverse !parameters with
+  | [] -> Doc.empty
+  | [ parameter ] -> Doc.concat [ parameter; Doc.space ]
+  | parameters ->
+      if Int.(List.length parameters > 4) then
+        Doc.concat
+          [
+            Doc.lparen;
+            Doc.line;
+            Doc.indent 2 (Doc.join (Doc.concat [ Doc.comma; Doc.line ]) parameters);
+            Doc.line;
+            Doc.rparen;
+            Doc.space;
+          ]
+      else
+        Doc.concat
+          [
+            Doc.lparen;
+            Doc.join (Doc.concat [ Doc.comma; Doc.space ]) parameters;
+            Doc.rparen;
+            Doc.space;
+          ]
+
 let type_decl_tokens = fun decl ->
   let tokens = ref [] in
   Ast.TypeDeclaration.for_each_token decl ~fn:(fun token -> tokens := token :: !tokens);
@@ -4861,6 +4889,39 @@ let type_extension_doc = fun before plus_token eq_token body_tokens ->
   | token :: _ when token_kind_is token Kind.PIPE -> Doc.concat
     [ head; Doc.space; operator; variant_body_doc body_tokens ]
   | _ -> Doc.concat [ head; Doc.space; operator; Doc.space; type_tokens_doc body_tokens ]
+
+let type_extension_name_doc = fun decl ->
+  let segments = ref [] in
+  Ast.TypeExtensionDeclaration.for_each_name_ident
+    decl
+    ~fn:(fun token -> segments := token_doc token :: !segments);
+  match List.reverse !segments with
+  | [] -> unsupported "type extension without name"
+  | segments -> Doc.join (Doc.text ".") segments
+
+let type_extension_decl_doc = fun decl ->
+  let keyword_doc =
+    match Ast.TypeExtensionDeclaration.keyword_token decl with
+    | Some token -> token_doc token
+    | None -> Doc.text "type"
+  in
+  let operator_doc =
+    match Ast.TypeExtensionDeclaration.plus_token decl, Ast.TypeExtensionDeclaration.equals_token decl with
+    | Some plus_token, Some eq_token -> Doc.concat [ token_doc plus_token; token_doc eq_token ]
+    | _ -> Doc.text "+="
+  in
+  let head = Doc.concat
+    [
+      keyword_doc;
+      Doc.space;
+      type_extension_parameters_doc decl;
+      type_extension_name_doc decl;
+      Doc.space;
+      operator_doc;
+    ] in
+  match Ast.TypeExtensionDeclaration.variant_type decl with
+  | Some variant_type -> Doc.concat [ head; variant_body_doc (node_tokens variant_type) ]
+  | None -> head
 
 let type_decl_doc = fun decl ->
   let tokens = type_decl_tokens decl in
@@ -5789,40 +5850,77 @@ let open_decl_doc = fun decl ->
 let include_decl_doc = fun decl ->
   Doc.concat [ Doc.text "include"; Doc.space; include_path_doc decl ]
 
-let exception_decl_tail_tokens = fun decl ->
-  let tokens = ref [] in
-  Ast.ExceptionDeclaration.for_each_tail_token decl ~fn:(fun token -> tokens := token :: !tokens);
-  List.reverse !tokens
-
-let exception_decl_tail_has_comment = fun tokens ->
-  let rec loop = function
-    | [] -> false
-    | token :: rest -> Ast.Token.has_leading_comment token || loop rest
-  in
-  loop tokens
-
-let exception_decl_tail_token_doc = fun token ->
+let doc_with_leading_comment_token = fun token doc ->
   if Ast.Token.has_leading_comment token then
-    let comment = leading_comment_text token |> strip_trailing_whitespace |> text_lines_doc in
-    Doc.concat [ comment; Doc.line; token_doc token ]
+    Doc.concat [ trimmed_leading_comment_token_doc token; Doc.line; doc ]
   else
-    token_doc token
+    doc
 
-let exception_decl_tail_doc = fun tokens ->
-  match tokens with
-  | [] -> Doc.empty
-  | tokens when exception_decl_tail_has_comment tokens -> Doc.concat
-    [
-      Doc.line;
-      Doc.indent 2 (Doc.join Doc.line (List.map tokens ~fn:exception_decl_tail_token_doc))
-    ]
-  | tokens -> Doc.concat [ Doc.space; module_tokens_doc tokens ]
+let doc_with_leading_comment_node = fun node doc ->
+  match Ast.Node.first_descendant_token node with
+  | Some token when Ast.Token.has_leading_comment token -> Doc.concat
+    [ trimmed_leading_comment_token_doc token; Doc.line; doc ]
+  | _ -> doc
+
+let exception_payload_doc = function
+  | Ast.ExceptionDeclaration.TypeExpr type_expr -> type_expr_doc type_expr
+  | Ast.ExceptionDeclaration.Record record -> constructor_payload_doc (node_tokens record)
+
+let exception_rhs_doc = function
+  | Ast.ExceptionDeclaration.Bare ->
+      Doc.empty
+  | Ast.ExceptionDeclaration.Alias { equals_token=Some equals_token; path=Some path } ->
+      let path_doc = doc_with_leading_comment_node path (path_doc path) in
+      if Ast.Token.has_leading_comment equals_token || Doc.is_multiline path_doc then
+        Doc.concat
+          [
+            Doc.line;
+            Doc.indent 2 (doc_with_leading_comment_token equals_token (token_doc equals_token));
+            Doc.line;
+            Doc.indent 2 path_doc;
+          ]
+      else
+        Doc.concat [ Doc.space; token_doc equals_token; Doc.space; path_doc ]
+  | Ast.ExceptionDeclaration.Alias { equals_token=Some equals_token; path=None } ->
+      Doc.concat [ Doc.space; token_doc equals_token ]
+  | Ast.ExceptionDeclaration.Alias { equals_token=None; path=Some path } ->
+      Doc.concat [ Doc.space; path_doc path ]
+  | Ast.ExceptionDeclaration.Alias { equals_token=None; path=None } ->
+      Doc.empty
+  | Ast.ExceptionDeclaration.Payload { of_token=Some of_token; payload=Some payload } ->
+      let payload_doc = exception_payload_doc payload in
+      let payload_doc =
+        match payload with
+        | Ast.ExceptionDeclaration.TypeExpr type_expr -> doc_with_leading_comment_node type_expr payload_doc
+        | Ast.ExceptionDeclaration.Record record -> doc_with_leading_comment_node record payload_doc
+      in
+      if Ast.Token.has_leading_comment of_token || Doc.is_multiline payload_doc then
+        Doc.concat
+          [
+            Doc.line;
+            Doc.indent 2 (doc_with_leading_comment_token of_token (token_doc of_token));
+            Doc.line;
+            Doc.indent 2 payload_doc;
+          ]
+      else
+        Doc.concat [ Doc.space; token_doc of_token; Doc.space; payload_doc ]
+  | Ast.ExceptionDeclaration.Payload { of_token=Some of_token; payload=None } ->
+      Doc.concat [ Doc.space; token_doc of_token ]
+  | Ast.ExceptionDeclaration.Payload { of_token=None; payload=Some payload } ->
+      Doc.concat [ Doc.space; exception_payload_doc payload ]
+  | Ast.ExceptionDeclaration.Payload { of_token=None; payload=None } ->
+      Doc.empty
 
 let exception_decl_doc = fun decl ->
   match Ast.ExceptionDeclaration.name decl with
   | Some name ->
-      let tail = exception_decl_tail_doc (exception_decl_tail_tokens decl) in
-      Doc.concat [ Doc.text "exception"; Doc.space; token_doc name; tail ]
+      let keyword_doc =
+        match Ast.ExceptionDeclaration.keyword_token decl with
+        | Some token -> token_doc token
+        | None -> Doc.text "exception"
+      in
+      let rhs_doc = exception_rhs_doc (Ast.ExceptionDeclaration.view decl) in
+      Doc.concat [ keyword_doc; Doc.space; token_doc name; rhs_doc ]
   | None -> unsupported "exception declaration without name"
 
 let strip_trailing_end_token = fun tokens ->
@@ -5887,6 +5985,8 @@ let structure_item_doc = fun item ->
         let_decl_block_doc decl
     | Type decl ->
         type_decl_doc decl
+    | TypeExtension decl ->
+        type_extension_decl_doc decl
     | Module decl ->
         module_decl_doc decl
     | Open decl ->
@@ -5933,6 +6033,7 @@ let signature_item_doc = fun item ->
     match Ast.SignatureItem.view item with
     | Value decl -> value_decl_doc decl
     | Type decl -> type_decl_doc decl
+    | TypeExtension decl -> type_extension_decl_doc decl
     | Module decl -> module_decl_doc decl
     | Open decl -> open_decl_doc decl
     | Include decl -> include_decl_doc decl
@@ -5950,6 +6051,7 @@ let signature_item_doc = fun item ->
 let signature_item_is_type = fun item ->
   match Ast.SignatureItem.view item with
   | Type _ -> true
+  | TypeExtension _ -> true
   | _ -> false
 
 let signature_item_is_open = fun item ->
@@ -6022,6 +6124,7 @@ let structure_item_is_open = fun item ->
 let structure_item_is_type = fun item ->
   match Ast.StructureItem.view item with
   | Type _ -> true
+  | TypeExtension _ -> true
   | _ -> false
 
 let structure_item_is_attribute = fun item ->

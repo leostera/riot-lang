@@ -626,6 +626,78 @@ let test_simple_declaration_token_views = fun _ctx ->
       Ok ()
   | _ -> Error "expected exception declaration"
 
+let test_type_extension_and_exception_views = fun _ctx ->
+  let source = "type 'a box += | More of 'a\nexception Parse_error of string\nexception Nested = Std.Result.Error\n" in
+  let root = parse_mli source |> Result.expect ~msg:"expected parse2 interface" in
+  let type_extension_item = nth_signature_item root 0 |> require_some ~msg:"expected type extension item" in
+  (
+    match Ast2.SignatureItem.view type_extension_item with
+    | Ast2.SignatureItem.TypeExtension decl ->
+        let name = Ast2.TypeExtensionDeclaration.name decl |> require_some ~msg:"expected type extension name" in
+        Test.assert_equal ~expected:"box" ~actual:(Ast2.Token.text name);
+        let parameter_count = ref 0 in
+        Ast2.TypeExtensionDeclaration.for_each_parameter
+          decl
+          ~fn:(fun _ -> parameter_count := !parameter_count + 1);
+        Test.assert_equal ~expected:1 ~actual:!parameter_count;
+        let variant = Ast2.TypeExtensionDeclaration.variant_type decl |> require_some ~msg:"expected type extension body" in
+        let constructor = ref None in
+        Ast2.VariantType.for_each_constructor variant
+          ~fn:(fun current ->
+            match !constructor with
+            | Some _ -> ()
+            | None -> constructor := Some current);
+        let constructor = !constructor |> require_some ~msg:"expected type extension constructor" in
+        let constructor_name = Ast2.VariantConstructor.name constructor |> require_some ~msg:"expected type extension constructor name" in
+        Test.assert_equal ~expected:"More" ~actual:(Ast2.Token.text constructor_name);
+        (
+          match Ast2.VariantConstructor.payload_type constructor with
+          | Some payload -> (
+              match Ast2.TypeExpr.view payload with
+              | Ast2.TypeExpr.Var { name=Some payload_name } -> Test.assert_equal
+                ~expected:"a"
+                ~actual:(Ast2.Token.text payload_name)
+              | _ -> panic "expected type extension payload type variable"
+            )
+          | None -> panic "expected type extension payload"
+        );
+        Ok ()
+    | _ -> Error "expected type extension declaration"
+  ) |> Result.expect ~msg:"expected type extension view";
+  let payload_item = nth_signature_item root 1 |> require_some ~msg:"expected exception payload item" in
+  (
+    match Ast2.SignatureItem.view payload_item with
+    | Ast2.SignatureItem.Exception decl ->
+        let name = Ast2.ExceptionDeclaration.name decl |> require_some ~msg:"expected exception payload name" in
+        Test.assert_equal ~expected:"Parse_error" ~actual:(Ast2.Token.text name);
+        (
+          match Ast2.ExceptionDeclaration.view decl with
+          | Ast2.ExceptionDeclaration.Payload {
+            of_token=Some of_token;
+            payload=Some (TypeExpr payload)
+          } ->
+              Test.assert_equal ~expected:"of" ~actual:(Ast2.Token.text of_token);
+              assert_type_path_last_ident payload "string";
+              Ok ()
+          | _ -> Error "expected exception payload view"
+        )
+    | _ -> Error "expected exception declaration"
+  ) |> Result.expect ~msg:"expected exception payload view";
+  let alias_item = nth_signature_item root 2 |> require_some ~msg:"expected exception alias item" in
+  match Ast2.SignatureItem.view alias_item with
+  | Ast2.SignatureItem.Exception decl ->
+      let name = Ast2.ExceptionDeclaration.name decl |> require_some ~msg:"expected exception alias name" in
+      Test.assert_equal ~expected:"Nested" ~actual:(Ast2.Token.text name);
+      (
+        match Ast2.ExceptionDeclaration.view decl with
+        | Ast2.ExceptionDeclaration.Alias { equals_token=Some equals_token; path=Some path } ->
+            Test.assert_equal ~expected:"=" ~actual:(Ast2.Token.text equals_token);
+            assert_last_ident_text path "Error";
+            Ok ()
+        | _ -> Error "expected exception alias view"
+      )
+  | _ -> Error "expected exception declaration"
+
 let test_module_declaration_tokens = fun _ctx ->
   let root = parse_ml "module rec M = struct end\nmodule _ = struct end\nmodule Alias = Foo.Bar\n"
   |> Result.expect ~msg:"expected parse2 source file" in
@@ -1354,6 +1426,7 @@ let tests = [
   Test.case "ast2 exposes type declaration parameters" test_type_declaration_parameters;
   Test.case "ast2 exposes type declaration member views" test_type_declaration_member_views;
   Test.case "ast2 exposes type declaration body group views" test_type_declaration_body_group_views;
+  Test.case "ast2 exposes type extensions and structured exception views" test_type_extension_and_exception_views;
   Test.case "ast2 exposes open declaration path tokens" test_open_declaration_path_tokens;
   Test.case "ast2 exposes simple declaration token views" test_simple_declaration_token_views;
   Test.case "ast2 exposes module declaration tokens" test_module_declaration_tokens;

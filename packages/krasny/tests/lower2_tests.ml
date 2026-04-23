@@ -488,6 +488,17 @@ let tests = [
           ])
         "include Foo.Bar\nexternal id : 'a -> 'a = \"%identity\" \"caml_id\"\nexception Boom\n");
   Test.case
+    "lower2 formats type extensions and structured exception rhs"
+    (fun _ctx ->
+      assert_format2_mli
+        ~expected:(top_level
+          [
+            "type 'a box +=\n  | More of 'a";
+            "exception Parse_error of string";
+            "exception Nested = Std.Result.Error";
+          ])
+        "type 'a box += | More of 'a\nexception Parse_error of string\nexception Nested = Std.Result.Error\n");
+  Test.case
     "lower2 formats simple module and module type declarations"
     (fun _ctx ->
       assert_format2_ml
