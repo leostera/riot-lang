@@ -5,7 +5,7 @@ set -eu
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
 ZORT_DIR=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
 OUT_DIR=${OUT_DIR:-"$ZORT_DIR/zig-out/e2e-ml-zort"}
-OCAMLOPT=${OCAMLOPT:-"$HOME/.riot/toolchains/5.5.0-riot.2/aarch64-apple-darwin/bin/ocamlopt.opt"}
+OCAMLOPT=${OCAMLOPT:-"$HOME/.riot/toolchains/5.5.0-riot.3/aarch64-apple-darwin/bin/ocamlopt.opt"}
 CC=${CC:-cc}
 BENCH_RUNS=${BENCH_RUNS:-25}
 if [ "$#" -gt 0 ]; then

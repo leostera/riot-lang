@@ -13,7 +13,7 @@ type t = {
   targets: System.TargetTriple.t list;  (* Target architectures for cross-compilation *)
 }
 
-let default_ocaml_version = "5.5.0-riot.2"
+let default_ocaml_version = "5.5.0-riot.3"
 
 let default = {
   version = default_ocaml_version;

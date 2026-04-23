@@ -49,7 +49,7 @@ Build or publish prebuilt OCaml toolchains from the vendored OCaml source tree.
 
 Options:
   --output-dir PATH   Root output directory. Defaults to dist/toolchains/ocaml
-  --suffix VALUE      Release suffix to append to the OCaml version (for example riot.2)
+  --suffix VALUE      Release suffix to append to the OCaml version (for example riot.3)
   --clean             Request a clean local rebuild before packaging
   --dry-run           Print commands without executing them
   --help, -h          Show this help
@@ -57,10 +57,10 @@ Options:
 Examples:
   ./scripts/toolchain/ocaml.sh build x86_64-unknown-linux-gnu
   ./scripts/toolchain/ocaml.sh build all
-  ./scripts/toolchain/ocaml.sh publish riot.2 x86_64-unknown-linux-gnu
-  ./scripts/toolchain/ocaml.sh publish riot.2 all
-  ./scripts/toolchain/ocaml.sh publish --clean riot.2 x86_64-unknown-linux-gnu
-  ./scripts/toolchain/ocaml.sh release riot.2 x86_64-unknown-linux-gnu
+  ./scripts/toolchain/ocaml.sh publish riot.3 x86_64-unknown-linux-gnu
+  ./scripts/toolchain/ocaml.sh publish riot.3 all
+  ./scripts/toolchain/ocaml.sh publish --clean riot.3 x86_64-unknown-linux-gnu
+  ./scripts/toolchain/ocaml.sh release riot.3 x86_64-unknown-linux-gnu
   ./scripts/toolchain/ocaml.sh build aarch64-apple-darwin-x-x86_64-unknown-linux-gnu
 
 Linux native GNU host targets are built via Docker Buildx:
@@ -355,7 +355,7 @@ build_linux_host_target() {
   local worktree_dir
   local tarball_path
   local checksum_path
-  local build_jobs_env=()
+  local needs_single_job_build=0
 
   platform="$(docker_platform_for_target "$target")"
   image_tag="riot-ocaml-toolchain:${target}"
@@ -382,23 +382,37 @@ build_linux_host_target() {
   if [ "$platform" = "linux/amd64" ] && [ "$(uname -s)" = "Darwin" ]; then
     case "$(uname -m)" in
       arm64|aarch64)
-        build_jobs_env=(--env RIOT_OCAML_BUILD_JOBS=1)
+        needs_single_job_build=1
         ;;
     esac
   fi
 
-  run_cmd docker run \
-    --rm \
-    --platform "$platform" \
-    --env RIOT_TOOLCHAIN_SUFFIX="$RIOT_TOOLCHAIN_SUFFIX" \
-    --env OCAML_TOOLCHAIN_SUFFIX="$RIOT_TOOLCHAIN_SUFFIX" \
-    "${build_jobs_env[@]}" \
-    --volume "$REPO_ROOT:/src:ro" \
-    --volume "$worktree_dir:/work" \
-    --volume "$output_dir:/out" \
-    "$image_tag" \
-    "$target" \
-    "$CLEAN_BUILD"
+  if [ "$needs_single_job_build" = "1" ]; then
+    run_cmd docker run \
+      --rm \
+      --platform "$platform" \
+      --env RIOT_TOOLCHAIN_SUFFIX="$RIOT_TOOLCHAIN_SUFFIX" \
+      --env OCAML_TOOLCHAIN_SUFFIX="$RIOT_TOOLCHAIN_SUFFIX" \
+      --env RIOT_OCAML_BUILD_JOBS=1 \
+      --volume "$REPO_ROOT:/src:ro" \
+      --volume "$worktree_dir:/work" \
+      --volume "$output_dir:/out" \
+      "$image_tag" \
+      "$target" \
+      "$CLEAN_BUILD"
+  else
+    run_cmd docker run \
+      --rm \
+      --platform "$platform" \
+      --env RIOT_TOOLCHAIN_SUFFIX="$RIOT_TOOLCHAIN_SUFFIX" \
+      --env OCAML_TOOLCHAIN_SUFFIX="$RIOT_TOOLCHAIN_SUFFIX" \
+      --volume "$REPO_ROOT:/src:ro" \
+      --volume "$worktree_dir:/work" \
+      --volume "$output_dir:/out" \
+      "$image_tag" \
+      "$target" \
+      "$CLEAN_BUILD"
+  fi
 
   if [ "$DRY_RUN" != "0" ]; then
     echo "dry-run: artifact path will be determined after packaging"
@@ -910,7 +924,7 @@ done
 
 load_env_file "$ENV_FILE"
 
-RIOT_TOOLCHAIN_SUFFIX="${CLI_TOOLCHAIN_SUFFIX:-${INITIAL_RIOT_TOOLCHAIN_SUFFIX:-${RIOT_TOOLCHAIN_SUFFIX:-${INITIAL_OCAML_TOOLCHAIN_SUFFIX:-${OCAML_TOOLCHAIN_SUFFIX:-riot.2}}}}}"
+RIOT_TOOLCHAIN_SUFFIX="${CLI_TOOLCHAIN_SUFFIX:-${INITIAL_RIOT_TOOLCHAIN_SUFFIX:-${RIOT_TOOLCHAIN_SUFFIX:-${INITIAL_OCAML_TOOLCHAIN_SUFFIX:-${OCAML_TOOLCHAIN_SUFFIX:-riot.3}}}}}"
 
 if { [ "$MODE" = "publish" ] || [ "$MODE" = "release" ]; } && [ -z "$CLI_TOOLCHAIN_SUFFIX" ]; then
   if [ "${#TARGETS[@]}" -gt 1 ]; then

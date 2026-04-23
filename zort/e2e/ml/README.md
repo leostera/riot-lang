@@ -4,7 +4,7 @@ These fixtures are the first compiler-facing bridge in `zort/e2e`.
 
 They are intentionally small `.ml` programs compiled with:
 
-- `~/.riot/toolchains/5.5.0-riot.2/aarch64-apple-darwin/bin/ocamlopt.opt`
+- `~/.riot/toolchains/5.5.0-riot.3/aarch64-apple-darwin/bin/ocamlopt.opt`
 - native `-output-obj` mode
 
 Why `-output-obj`:
@@ -140,7 +140,7 @@ Successful `zort` milestones today:
 
 - target: `aarch64-apple-darwin`
 - compiler path:
-  `~/.riot/toolchains/5.5.0-riot.2/aarch64-apple-darwin/bin/ocamlopt.opt`
+  `~/.riot/toolchains/5.5.0-riot.3/aarch64-apple-darwin/bin/ocamlopt.opt`
 - runtime path: `libzort-caml-compat.dylib`
 - observable pure-startup result: `output=unit`
 - observable external-startup result: `output=42`

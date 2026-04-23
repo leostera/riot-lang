@@ -232,28 +232,28 @@ let test_list_available_toolchains_reads_manifest = fun _ctx ->
                 Data.Json.array
                   [ Data.Json.obj
                       [
-                        ("version", Data.Json.string "5.5.0-riot.2");
+                        ("version", Data.Json.string "5.5.0-riot.3");
                         ("host", Data.Json.string "aarch64-apple-darwin");
                         ("target", Data.Json.string "aarch64-apple-darwin");
                         ("artifact_target", Data.Json.string "aarch64-apple-darwin");
                         ("kind", Data.Json.string "native");
                         (
                           "artifact",
-                          Data.Json.string "ocaml-5.5.0-riot.2-aarch64-apple-darwin.tar.gz"
+                          Data.Json.string "ocaml-5.5.0-riot.3-aarch64-apple-darwin.tar.gz"
                         );
                         (
                           "artifact_url",
-                          Data.Json.string "https://cdn.pkgs.ml/ocaml/ocaml-5.5.0-riot.2-aarch64-apple-darwin.tar.gz"
+                          Data.Json.string "https://cdn.pkgs.ml/ocaml/ocaml-5.5.0-riot.3-aarch64-apple-darwin.tar.gz"
                         );
                         (
                           "checksum_url",
-                          Data.Json.string "https://cdn.pkgs.ml/ocaml/ocaml-5.5.0-riot.2-aarch64-apple-darwin.tar.gz.sha256"
+                          Data.Json.string "https://cdn.pkgs.ml/ocaml/ocaml-5.5.0-riot.3-aarch64-apple-darwin.tar.gz.sha256"
                         );
                         ("size_bytes", Data.Json.int 123);
                         ("last_modified", Data.Json.string "2026-04-04T00:00:00Z");
                       ]; Data.Json.obj
                       [
-                        ("version", Data.Json.string "5.5.0-riot.2");
+                        ("version", Data.Json.string "5.5.0-riot.3");
                         ("host", Data.Json.string "aarch64-apple-darwin");
                         ("target", Data.Json.string "x86_64-unknown-linux-gnu");
                         (
@@ -263,15 +263,15 @@ let test_list_available_toolchains_reads_manifest = fun _ctx ->
                         ("kind", Data.Json.string "cross");
                         (
                           "artifact",
-                          Data.Json.string "ocaml-5.5.0-riot.2-aarch64-apple-darwin-x-x86_64-unknown-linux-gnu.tar.gz"
+                          Data.Json.string "ocaml-5.5.0-riot.3-aarch64-apple-darwin-x-x86_64-unknown-linux-gnu.tar.gz"
                         );
                         (
                           "artifact_url",
-                          Data.Json.string "https://cdn.pkgs.ml/ocaml/ocaml-5.5.0-riot.2-aarch64-apple-darwin-x-x86_64-unknown-linux-gnu.tar.gz"
+                          Data.Json.string "https://cdn.pkgs.ml/ocaml/ocaml-5.5.0-riot.3-aarch64-apple-darwin-x-x86_64-unknown-linux-gnu.tar.gz"
                         );
                         (
                           "checksum_url",
-                          Data.Json.string "https://cdn.pkgs.ml/ocaml/ocaml-5.5.0-riot.2-aarch64-apple-darwin-x-x86_64-unknown-linux-gnu.tar.gz.sha256"
+                          Data.Json.string "https://cdn.pkgs.ml/ocaml/ocaml-5.5.0-riot.3-aarch64-apple-darwin-x-x86_64-unknown-linux-gnu.tar.gz.sha256"
                         );
                         ("size_bytes", Data.Json.int 456);
                         ("last_modified", Data.Json.string "2026-04-04T00:01:00Z");
@@ -333,8 +333,8 @@ let test_list_toolchains_returns_typed_targets = fun _ctx ->
   let cross = first_distinct_target host in
   let config =
     Riot_model.Toolchain_config.{
-      version = "5.5.0-riot.2";
-      source = Version "5.5.0-riot.2";
+      version = "5.5.0-riot.3";
+      source = Version "5.5.0-riot.3";
       targets = [ host; cross ]
     } in
   let toolchains = Riot_toolchain.list_toolchains ~config in

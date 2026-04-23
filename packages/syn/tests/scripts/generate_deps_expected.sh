@@ -3,7 +3,7 @@
 set -euo pipefail
 
 fixtures_dir="${1:-packages/syn/tests/deps_fixtures}"
-ocamldep_bin="${OCAMLDEP:-$HOME/.riot/toolchains/5.5.0-riot.2/aarch64-apple-darwin/bin/ocamldep}"
+ocamldep_bin="${OCAMLDEP:-$HOME/.riot/toolchains/5.5.0-riot.3/aarch64-apple-darwin/bin/ocamldep}"
 
 find "$fixtures_dir" -type f \( -name '*.ml' -o -name '*.mli' \) | sort | while read -r file; do
   expected_path="${file%.*}.expected.ocamldep"

@@ -146,7 +146,7 @@ Current locked target:
 
 - `aarch64-apple-darwin`
 - existing compiler path:
-  `~/.riot/toolchains/5.5.0-riot.2/aarch64-apple-darwin/bin/ocamlopt.opt`
+  `~/.riot/toolchains/5.5.0-riot.3/aarch64-apple-darwin/bin/ocamlopt.opt`
 - compatibility artifact: `libzort-caml-compat.dylib`
 - current proven scope:
   - strict pure-startup objects link and run under `zort`

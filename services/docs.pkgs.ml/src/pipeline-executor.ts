@@ -19,7 +19,7 @@ export interface SandboxExecutorEnv {
 }
 
 const WORKSPACE_ROOT = "/workspace";
-const DEFAULT_TOOLCHAIN_VERSION = "5.5.0-riot.2";
+const DEFAULT_TOOLCHAIN_VERSION = "5.5.0-riot.3";
 const DEFAULT_TARGET = "x86_64-unknown-linux-gnu";
 const RIOT_BIN_DIR = "/root/.riot/bin";
 const RIOT_BIN = `${RIOT_BIN_DIR}/riot`;

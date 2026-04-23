@@ -134,6 +134,7 @@ install_linux_sdk_overlay() {
   [ ! -f /usr/include/pcre2posix.h ] || cp -a /usr/include/pcre2posix.h "$sysroot_dir/usr/include/"
   cp -a /usr/include/zlib.h "$sysroot_dir/usr/include/"
   cp -a /usr/include/zconf.h "$sysroot_dir/usr/include/"
+  cp -a "/usr/include/$lib_dir" "$sysroot_dir/usr/include/"
   [ ! -d "/usr/include/$lib_dir/openssl" ] || cp -a "/usr/include/$lib_dir/openssl/." "$sysroot_dir/usr/include/openssl/"
 
   (
