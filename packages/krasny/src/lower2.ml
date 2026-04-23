@@ -1441,7 +1441,8 @@ and expr_binding_body_breaks_after_equal = fun expr ->
   | Let _
   | Match _
   | Try _
-  | Sequence _ -> true
+  | Sequence _
+  | Assign _ -> true
   | LetModule _ -> let_module_expr_is_multiline expr
   | Parenthesized _ -> expr_is_begin_block expr
   | _ -> false
