@@ -1335,7 +1335,7 @@ and parse_prefix_or_atom = fun p ~signature ~stop_at_item ~stop_at_semi ~stop_at
       else
         parse_label_arg_expr p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma Syntax_kind2.OPTIONAL_ARG
   | Syntax_kind2.IF_KW ->
-      parse_if_expr p ~signature ~stop_at_item
+      parse_if_expr p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma
   | Syntax_kind2.MATCH_KW ->
       parse_match_expr p ~signature ~stop_at_item
   | Syntax_kind2.FUN_KW ->
@@ -1857,21 +1857,21 @@ and parse_label_pattern = fun p ~stop_type_at_arrow kind ->
     complete p marker kind
   )
 
-and parse_if_expr = fun p ~signature ~stop_at_item ->
+and parse_if_expr = fun p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma ->
   let marker = start_node p in
   bump p;
   ignore (parse_expression p ~signature ~stop_at_item:false 0);
   if at p Syntax_kind2.THEN_KW then
     (
       bump p;
-      ignore (parse_expression p ~signature ~stop_at_item 0)
+      ignore (parse_expression p ~signature ~stop_at_item ~stop_at_semi:true ~stop_at_comma 0)
     )
   else
     Event.Buffer.error p.events (if_missing_then p);
   if at p Syntax_kind2.ELSE_KW then
     (
       bump p;
-      ignore (parse_expression p ~signature ~stop_at_item 0)
+      ignore (parse_expression p ~signature ~stop_at_item ~stop_at_semi:true ~stop_at_comma 0)
     );
   complete p marker Syntax_kind2.IF_EXPR
 
@@ -2420,8 +2420,15 @@ and parse_opaque_type_atom = fun p ~stop_at_arrow ->
   (
     match current_kind p with
     | Syntax_kind2.LBRACKET ->
+        let extension_shell = is_extension_shell p in
         bump p;
-        consume_balanced_until p ~closer:Syntax_kind2.RBRACKET 0;
+        if extension_shell then
+          (
+            consume_extension_sigils p;
+            consume_extension_payload p
+          )
+        else
+          consume_balanced_until p ~closer:Syntax_kind2.RBRACKET 0;
         expect p Syntax_kind2.RBRACKET (invalid_type_expression p)
     | Syntax_kind2.LBRACKET_BAR ->
         bump p;
@@ -2542,7 +2549,12 @@ and parse_type_atom = fun p ~stop_at_arrow ->
 
 and parse_type_bp = fun p ~stop_at_arrow min_bp ->
   let rec loop lhs =
-    if type_expr_boundary p ~stop_at_arrow then
+    if is_attribute_suffix p then
+      (
+        consume_attribute_suffix p;
+        loop lhs
+      )
+    else if type_expr_boundary p ~stop_at_arrow then
       lhs
     else if (not stop_at_arrow) && at p Syntax_kind2.ARROW && min_bp <= 5 then
       (

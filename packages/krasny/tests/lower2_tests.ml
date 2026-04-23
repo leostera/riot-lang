@@ -45,6 +45,24 @@ let assert_format2_ml_fails = fun source ->
 
 let approved_snapshot_path = fun path -> Path.add_extension path ~ext:"expected"
 
+let fixture_manifest_path = Path.v "packages/krasny/tests/format_expectations.txt"
+
+let fixtures_dir = Path.v "packages/krasny/tests/fixtures"
+
+let manifest_fixture_paths = fun () ->
+  let manifest = Fs.read fixture_manifest_path |> Result.expect ~msg:"failed to read krasny fixture manifest" in
+  let lines = manifest |> String.split_on_char '\n' |> List.map ~fn:String.trim in
+  let rec loop paths = function
+    | [] -> List.reverse paths
+    | line :: rest ->
+        if String.equal line "" || String.starts_with ~prefix:"#" line then
+          loop paths rest
+        else
+          let relpath = Path.from_string line |> Result.expect ~msg:"fixture manifest entry should be valid UTF-8" in
+          loop (Path.(fixtures_dir / relpath) :: paths) rest
+  in
+  loop [] lines
+
 let assert_lower2_fixture_matches_approved = fun path ->
   let source = Fs.read path |> Result.expect ~msg:"fixture file should exist" in
   match format2_source ~filename:path source with
@@ -197,6 +215,44 @@ let assert_lower2_existing_fixture_subset = fun () ->
     Path.v "packages/krasny/tests/fixtures/0936_nested_signature_value.mli";
     Path.v "packages/krasny/tests/fixtures/0937_match_case_body_comment.ml";
     Path.v "packages/krasny/tests/fixtures/0944_exception_separator_comments.ml";
+    Path.v "packages/krasny/tests/fixtures/0950_extensible_type_spacing.mli";
+    Path.v "packages/krasny/tests/fixtures/0951_record_expression_field_spacing.ml";
+    Path.v "packages/krasny/tests/fixtures/0952_multiline_list_expression_no_trailing_separator.ml";
+    Path.v "packages/krasny/tests/fixtures/0953_type_alias_function_spacing.mli";
+    Path.v "packages/krasny/tests/fixtures/0954_record_type_terminal_semicolon.mli";
+    Path.v "packages/krasny/tests/fixtures/0955_signature_type_doc_preserved.mli";
+    Path.v "packages/krasny/tests/fixtures/0956_record_type_field_docs_preserved.mli";
+    Path.v "packages/krasny/tests/fixtures/0957_signature_value_doc_preserved.mli";
+    Path.v "packages/krasny/tests/fixtures/0958_inline_record_type_field_docs_preserved.mli";
+    Path.v "packages/krasny/tests/fixtures/0959_signature_module_type_doc_preserved.mli";
+    Path.v "packages/krasny/tests/fixtures/0960_signature_external_doc_preserved.mli";
+    Path.v "packages/krasny/tests/fixtures/0961_signature_exception_doc_preserved.mli";
+    Path.v "packages/krasny/tests/fixtures/0962_signature_value_trailing_comment_preserved.mli";
+    Path.v "packages/krasny/tests/fixtures/0963_signature_module_type_doc_between_items.mli";
+    Path.v "packages/krasny/tests/fixtures/0964_nested_signature_value_docs_not_duplicated.mli";
+    Path.v "packages/krasny/tests/fixtures/0965_nested_signature_value_trailing_comment_not_duplicated.mli";
+    Path.v "packages/krasny/tests/fixtures/0966_inline_record_constructor_terminal_semicolon.ml";
+    Path.v "packages/krasny/tests/fixtures/0967_type_and_doc_preserved.mli";
+    Path.v "packages/krasny/tests/fixtures/0968_terminal_variant_constructor_doc.mli";
+    Path.v "packages/krasny/tests/fixtures/0969_terminal_variant_payload_doc.mli";
+    Path.v "packages/krasny/tests/fixtures/0970_signature_value_tight_colon.mli";
+    Path.v "packages/krasny/tests/fixtures/0971_external_tight_colon.ml";
+    Path.v "packages/krasny/tests/fixtures/0972_module_signature_tight_colon.mli";
+    Path.v "packages/krasny/tests/fixtures/0973_record_type_field_tight_colon.mli";
+    Path.v "packages/krasny/tests/fixtures/0974_expression_ascription_parenthesized.ml";
+    Path.v "packages/krasny/tests/fixtures/0975_typed_pattern_tight_colon.ml";
+    Path.v "packages/krasny/tests/fixtures/0976_object_type_field_tight_colon.mli";
+    Path.v "packages/krasny/tests/fixtures/0977_class_type_field_tight_colon.mli";
+    Path.v "packages/krasny/tests/fixtures/0978_variant_result_tight_colon.mli";
+    Path.v "packages/krasny/tests/fixtures/0979_nested_redundant_parens.ml";
+    Path.v "packages/krasny/tests/fixtures/0980_fun_breaks_after_arrow.ml";
+    Path.v "packages/krasny/tests/fixtures/0981_top_level_letrec_blank_line.ml";
+    Path.v "packages/krasny/tests/fixtures/0982_inline_fun_head_with_multiline_body.ml";
+    Path.v "packages/krasny/tests/fixtures/0983_record_expression_final_nested_record_separator.ml";
+    Path.v "packages/krasny/tests/fixtures/0984_record_expression_final_if_separator.ml";
+    Path.v "packages/krasny/tests/fixtures/0985_inline_record_expression_spacing.ml";
+    Path.v "packages/krasny/tests/fixtures/0986_inline_record_update_spacing.ml";
+    Path.v "packages/krasny/tests/fixtures/0987_inline_constructor_record_spacing.mli";
   ]
   in
   let rec loop errors = function
@@ -212,6 +268,21 @@ let assert_lower2_existing_fixture_subset = fun () ->
       )
   in
   loop [] fixtures
+
+let assert_lower2_manifest_fixtures = fun () ->
+  let rec loop errors = function
+    | [] -> (
+        match List.reverse errors with
+        | [] -> Ok ()
+        | errors -> Error (String.concat "\n\n" errors)
+      )
+    | path :: rest -> (
+        match assert_lower2_fixture_matches_approved path with
+        | Ok () -> loop errors rest
+        | Error error -> loop (error :: errors) rest
+      )
+  in
+  loop [] (manifest_fixture_paths ())
 
 let tests = [
   Test.case
@@ -249,7 +320,7 @@ let tests = [
   Test.case
     "lower2 formats list and array expressions"
     (fun _ctx ->
-      assert_format2_ml ~expected:(top_level [ "let values = [1; 2]"; "let array = [|1; 2|]" ]) "let values = [1; 2]\nlet array = [|1; 2|]\n");
+      assert_format2_ml ~expected:(top_level [ "let values = [ 1; 2 ]"; "let array = [|1; 2|]" ]) "let values = [1; 2]\nlet array = [|1; 2|]\n");
   Test.case
     "lower2 preserves parens around function application arguments"
     (fun _ctx ->
@@ -451,8 +522,8 @@ let tests = [
     "lower2 rejects unsupported shapes instead of replaying source"
     (fun _ctx -> assert_format2_ml_fails "let object_value = object end\n");
   Test.case
-    "lower2 formats a selected existing fixture subset idempotently"
-    (fun _ctx -> assert_lower2_existing_fixture_subset ());
+    ~size:Large "lower2 formats the existing fixture corpus idempotently"
+    (fun _ctx -> assert_lower2_manifest_fixtures ());
 ]
 
 let () =
