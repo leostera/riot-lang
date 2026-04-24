@@ -109,8 +109,13 @@ let release = fun t ->
   ()
 
 let lock_failure = fun action path ->
-  Failure (format
-    Format.[ str "Failed to "; str action; str " build lock file at "; str (Path.to_string path) ])
+  Failure (
+    format
+      Std.Format.[str "Failed to ";
+      str action;
+      str " build lock file at ";
+      str (Path.to_string path)]
+  )
 
 let rec retry = fun ~on_waiting ?(announced = false) t ->
   if not announced then

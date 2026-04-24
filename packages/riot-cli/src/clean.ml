@@ -3,7 +3,7 @@ open Riot_model
 
 let command =
   let open ArgParser in
-    let open Arg in command "clean"
+    let open ArgParser.Arg in command "clean"
     |> about "Run tracked build cache GC, or remove the build root with --force"
     |> args
       [

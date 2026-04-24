@@ -37,7 +37,7 @@ let tests = [ Test.case "fix_request_of_matches parses explicit check requests"
               | Error _ as err -> err
               | Ok matches -> (
                   match Riot_fix.fix_request_of_matches matches with
-                  | Error err -> Error (Kernel.Exception.to_string err)
+                  | Error err -> Error (Exception.to_string err)
                   | Ok request -> (
                       match request.action with
                       | Riot_fix.Run { mode; target; output_mode; _ } ->
@@ -59,10 +59,10 @@ let tests = [ Test.case "fix_request_of_matches parses explicit check requests"
               | Error _ as err -> err
               | Ok matches -> (
                   match Riot_fix.fix_request_of_matches matches with
-                  | Error err -> Error (Kernel.Exception.to_string err)
+                  | Error err -> Error (Exception.to_string err)
                   | Ok request -> (
                       match Riot_fix.fix request with
-                      | Error err -> Error (Kernel.Exception.to_string err)
+                      | Error err -> Error (Exception.to_string err)
                       | Ok response ->
                           match Riot_fix.response_output response with
                           | Some output ->
@@ -114,7 +114,7 @@ let tests = [ Test.case "fix_request_of_matches parses explicit check requests"
           | Ok _ -> Error "expected issues to remain"
           | Error err ->
               Test.assert_true
-                (String.contains (Kernel.Exception.to_string err) "Issues remain after riot fix");
+                (String.contains (Exception.to_string err) "Issues remain after riot fix");
               Test.assert_true (not (List.is_empty !seen));
               Ok ())); Test.case "fix_request_of_matches enables generated runner when providers are present"
     (fun _ctx ->
@@ -149,7 +149,7 @@ rules = ["demo-rule"]
               | Error _ as err -> err
               | Ok matches -> (
                   match Riot_fix.fix_request_of_matches matches with
-                  | Error err -> Error (Kernel.Exception.to_string err)
+                  | Error err -> Error (Exception.to_string err)
                   | Ok request -> (
                       match request.action with
                       | Riot_fix.Run { use_generated_runner; _ } ->

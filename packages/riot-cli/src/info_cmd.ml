@@ -21,7 +21,7 @@ and workspace_scan_error =
 
 let command =
   let open ArgParser in
-    let open Arg in command "info"
+    let open ArgParser.Arg in command "info"
     |> about "Show resolved workspace or package information"
     |> args
       [

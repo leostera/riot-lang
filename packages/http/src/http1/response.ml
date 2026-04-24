@@ -21,7 +21,7 @@ type 'a cursor_parse_result =
 let slice_of_string = fun value ->
   match Slice.from_string value with
   | Ok slice -> slice
-  | Error error -> panic ("Http1.Response.slice_of_string: " ^ Kernel.IO.Error.message error)
+  | Error error -> panic ("Http1.Response.slice_of_string: " ^ Slice.error_message error)
 
 let parse_status_line_slice = fun input ->
   let cursor = Cursor.from_slice input in

@@ -100,15 +100,7 @@ MLI(Kernel__Array)
   deps:
     - ML(Kernel__Aliases)
 
-MLI(Kernel__Bool)
-  deps:
-    - ML(Kernel__Aliases)
-
 MLI(Kernel__Caml_runtime)
-  deps:
-    - ML(Kernel__Aliases)
-
-MLI(Kernel__Char)
   deps:
     - ML(Kernel__Aliases)
 
@@ -116,27 +108,7 @@ MLI(Kernel__Exception)
   deps:
     - ML(Kernel__Aliases)
 
-MLI(Kernel__Float)
-  deps:
-    - ML(Kernel__Aliases)
-
 MLI(Kernel__Gc)
-  deps:
-    - ML(Kernel__Aliases)
-
-MLI(Kernel__Int)
-  deps:
-    - ML(Kernel__Aliases)
-
-MLI(Kernel__Int32)
-  deps:
-    - ML(Kernel__Aliases)
-
-MLI(Kernel__Int64)
-  deps:
-    - ML(Kernel__Aliases)
-
-MLI(Kernel__List)
   deps:
     - ML(Kernel__Aliases)
 
@@ -144,11 +116,11 @@ MLI(Kernel__Option)
   deps:
     - ML(Kernel__Aliases)
 
-MLI(Kernel__Path)
+MLI(Kernel__Order)
   deps:
     - ML(Kernel__Aliases)
 
-MLI(Kernel__Prelude)
+MLI(Kernel__Path)
   deps:
     - ML(Kernel__Aliases)
 
@@ -234,23 +206,11 @@ ML(Kernel__Gc)
     - ML(Kernel__Aliases)
     - MLI(Kernel__Gc)
 
-ML(Kernel__Int32)
+ML(Kernel__Order)
   deps:
     - ML(Kernel__Caml_runtime)
     - ML(Kernel__Aliases)
-    - MLI(Kernel__Int32)
-
-ML(Kernel__Int64)
-  deps:
-    - ML(Kernel__Caml_runtime)
-    - ML(Kernel__Aliases)
-    - MLI(Kernel__Int64)
-
-ML(Kernel__Prelude)
-  deps:
-    - ML(Kernel__Caml_runtime)
-    - ML(Kernel__Aliases)
-    - MLI(Kernel__Prelude)
+    - MLI(Kernel__Order)
 
 ML(Kernel__Ptr)
   deps:
@@ -269,6 +229,100 @@ MLI(Kernel__Sync__Condition)
     - ML(Kernel__Sync__Aliases)
     - ML(Kernel__Aliases)
 
+MLI(Kernel__Bool)
+  deps:
+    - ML(Kernel__Order)
+    - ML(Kernel__Aliases)
+
+MLI(Kernel__Char)
+  deps:
+    - ML(Kernel__Order)
+    - ML(Kernel__Aliases)
+
+MLI(Kernel__Float)
+  deps:
+    - ML(Kernel__Order)
+    - ML(Kernel__Aliases)
+
+MLI(Kernel__Int)
+  deps:
+    - ML(Kernel__Order)
+    - ML(Kernel__Aliases)
+
+MLI(Kernel__Int32)
+  deps:
+    - ML(Kernel__Order)
+    - ML(Kernel__Aliases)
+
+MLI(Kernel__Int64)
+  deps:
+    - ML(Kernel__Order)
+    - ML(Kernel__Aliases)
+
+MLI(Kernel__List)
+  deps:
+    - ML(Kernel__Order)
+    - ML(Kernel__Aliases)
+
+MLI(Kernel__Prelude)
+  deps:
+    - ML(Kernel__Order)
+    - ML(Kernel__Aliases)
+
+ML(Kernel__System_error_code)
+  deps:
+    - ML(Kernel__System_error)
+    - ML(Kernel__Aliases)
+    - MLI(Kernel__System_error_code)
+
+ML(Kernel__Sync__Condition)
+  deps:
+    - ML(Kernel__Sync__Mutex)
+    - ML(Kernel__Sync__Aliases)
+    - ML(Kernel__Aliases)
+    - MLI(Kernel__Sync__Condition)
+
+ML(Kernel__Int32)
+  deps:
+    - ML(Kernel__Order)
+    - ML(Kernel__Caml_runtime)
+    - ML(Kernel__Aliases)
+    - MLI(Kernel__Int32)
+
+ML(Kernel__Int64)
+  deps:
+    - ML(Kernel__Order)
+    - ML(Kernel__Caml_runtime)
+    - ML(Kernel__Aliases)
+    - MLI(Kernel__Int64)
+
+ML(Kernel__Prelude)
+  deps:
+    - ML(Kernel__Order)
+    - ML(Kernel__Caml_runtime)
+    - ML(Kernel__Aliases)
+    - MLI(Kernel__Prelude)
+
+MLI(Kernel__Sync)
+  deps:
+    - ML(Kernel__Sync__Mutex)
+    - ML(Kernel__Sync__Condition)
+    - ML(Kernel__Sync__Atomic)
+    - MLI(Kernel__Sync__Mutex)
+    - ML(Kernel__Sync__Mutex)
+    - MLI(Kernel__Sync__Condition)
+    - ML(Kernel__Sync__Condition)
+    - MLI(Kernel__Sync__Atomic)
+    - ML(Kernel__Sync__Atomic)
+    - MLI(Kernel__Sync__Mutex)
+    - ML(Kernel__Sync__Mutex)
+    - MLI(Kernel__Sync__Condition)
+    - ML(Kernel__Sync__Condition)
+    - MLI(Kernel__Sync__Atomic)
+    - ML(Kernel__Sync__Atomic)
+    - ML(Kernel__Aliases)
+    - ML(Kernel__Sync__Aliases)
+
 MLI(Kernel__Bytes)
   deps:
     - ML(Kernel__Prelude)
@@ -282,6 +336,7 @@ MLI(Kernel__Result)
 ML(Kernel__Bool)
   deps:
     - ML(Kernel__Prelude)
+    - ML(Kernel__Order)
     - ML(Kernel__Caml_runtime)
     - ML(Kernel__Aliases)
     - MLI(Kernel__Bool)
@@ -289,6 +344,7 @@ ML(Kernel__Bool)
 ML(Kernel__Int)
   deps:
     - ML(Kernel__Prelude)
+    - ML(Kernel__Order)
     - ML(Kernel__Caml_runtime)
     - ML(Kernel__Aliases)
     - MLI(Kernel__Int)
@@ -318,21 +374,18 @@ ML(Kernel__Thread__Unix)
 MLI(Kernel__Unicode__Rune)
   deps:
     - ML(Kernel__Prelude)
+    - ML(Kernel__Order)
     - ML(Kernel__Unicode__Aliases)
     - ML(Kernel__Aliases)
 
-ML(Kernel__System_error_code)
-  deps:
-    - ML(Kernel__System_error)
-    - ML(Kernel__Aliases)
-    - MLI(Kernel__System_error_code)
-
-ML(Kernel__Sync__Condition)
+ML(Kernel__Sync)
   deps:
     - ML(Kernel__Sync__Mutex)
-    - ML(Kernel__Sync__Aliases)
+    - ML(Kernel__Sync__Condition)
+    - ML(Kernel__Sync__Atomic)
+    - MLI(Kernel__Sync)
     - ML(Kernel__Aliases)
-    - MLI(Kernel__Sync__Condition)
+    - ML(Kernel__Sync__Aliases)
 
 ML(Kernel__Bytes)
   deps:
@@ -362,6 +415,7 @@ ML(Kernel__Char)
   deps:
     - ML(Kernel__System_error)
     - ML(Kernel__Prelude)
+    - ML(Kernel__Order)
     - ML(Kernel__Int)
     - ML(Kernel__Caml_runtime)
     - ML(Kernel__Aliases)
@@ -371,6 +425,7 @@ ML(Kernel__List)
   deps:
     - ML(Kernel__System_error)
     - ML(Kernel__Prelude)
+    - ML(Kernel__Order)
     - ML(Kernel__Int)
     - ML(Kernel__Aliases)
     - MLI(Kernel__List)
@@ -412,26 +467,6 @@ MLI(Kernel__Thread)
     - ML(Kernel__Aliases)
     - ML(Kernel__Thread__Aliases)
 
-MLI(Kernel__Sync)
-  deps:
-    - ML(Kernel__Sync__Mutex)
-    - ML(Kernel__Sync__Condition)
-    - ML(Kernel__Sync__Atomic)
-    - MLI(Kernel__Sync__Mutex)
-    - ML(Kernel__Sync__Mutex)
-    - MLI(Kernel__Sync__Condition)
-    - ML(Kernel__Sync__Condition)
-    - MLI(Kernel__Sync__Atomic)
-    - ML(Kernel__Sync__Atomic)
-    - MLI(Kernel__Sync__Mutex)
-    - ML(Kernel__Sync__Mutex)
-    - MLI(Kernel__Sync__Condition)
-    - ML(Kernel__Sync__Condition)
-    - MLI(Kernel__Sync__Atomic)
-    - ML(Kernel__Sync__Atomic)
-    - ML(Kernel__Aliases)
-    - ML(Kernel__Sync__Aliases)
-
 MLI(Kernel__Async__Common)
   deps:
     - ML(Kernel__Result)
@@ -441,6 +476,7 @@ MLI(Kernel__Async__Common)
 MLI(Kernel__Net__Ip_addr__Unix)
   deps:
     - ML(Kernel__Result)
+    - ML(Kernel__Order)
     - ML(Kernel__Net__Ip_addr__Aliases)
     - ML(Kernel__Net__Aliases)
     - ML(Kernel__Aliases)
@@ -462,6 +498,7 @@ MLI(Kernel__System__Unix)
 MLI(Kernel__Time__Common)
   deps:
     - ML(Kernel__Result)
+    - ML(Kernel__Order)
     - ML(Kernel__Time__Aliases)
     - ML(Kernel__Aliases)
 
@@ -469,6 +506,7 @@ MLI(Kernel__Time__Monotonic__Unix)
   deps:
     - ML(Kernel__System_error)
     - ML(Kernel__Result)
+    - ML(Kernel__Order)
     - ML(Kernel__Time__Monotonic__Aliases)
     - ML(Kernel__Time__Aliases)
     - ML(Kernel__Aliases)
@@ -477,6 +515,7 @@ MLI(Kernel__Time__System_time__Unix)
   deps:
     - ML(Kernel__System_error)
     - ML(Kernel__Result)
+    - ML(Kernel__Order)
     - ML(Kernel__Time__System_time__Aliases)
     - ML(Kernel__Time__Aliases)
     - ML(Kernel__Aliases)
@@ -522,15 +561,6 @@ ML(Kernel__Regex)
     - ML(Kernel__Aliases)
     - ML(Kernel__Regex__Aliases)
 
-ML(Kernel__Sync)
-  deps:
-    - ML(Kernel__Sync__Mutex)
-    - ML(Kernel__Sync__Condition)
-    - ML(Kernel__Sync__Atomic)
-    - MLI(Kernel__Sync)
-    - ML(Kernel__Aliases)
-    - ML(Kernel__Sync__Aliases)
-
 ML(Kernel__Async__Common)
   deps:
     - ML(Kernel__Result)
@@ -551,6 +581,7 @@ ML(Kernel__Time__Common)
   deps:
     - ML(Kernel__Result)
     - ML(Kernel__Prelude)
+    - ML(Kernel__Order)
     - ML(Kernel__Int64)
     - ML(Kernel__Int)
     - ML(Kernel__Time__Aliases)
@@ -615,6 +646,7 @@ ML(Kernel__Random__Source)
 MLI(Kernel__String)
   deps:
     - ML(Kernel__Unicode)
+    - ML(Kernel__Order)
     - ML(Kernel__Aliases)
 
 ML(Kernel__Async__Adapter__Unix)
@@ -645,6 +677,7 @@ ML(Kernel__String)
     - ML(Kernel__Unicode)
     - ML(Kernel__System_error)
     - ML(Kernel__Prelude)
+    - ML(Kernel__Order)
     - ML(Kernel__List)
     - ML(Kernel__Char)
     - ML(Kernel__Caml_runtime)
@@ -685,6 +718,7 @@ ML(Kernel__Exception)
 ML(Kernel__Float)
   deps:
     - ML(Kernel__String)
+    - ML(Kernel__Order)
     - ML(Kernel__Int)
     - ML(Kernel__Caml_runtime)
     - ML(Kernel__Aliases)
@@ -736,6 +770,7 @@ ML(Kernel__Time__Monotonic__Unix)
     - ML(Kernel__String)
     - ML(Kernel__Result)
     - ML(Kernel__Prelude)
+    - ML(Kernel__Order)
     - ML(Kernel__Int)
     - ML(Kernel__Time__Common)
     - ML(Kernel__Time__Monotonic__Aliases)
@@ -749,6 +784,7 @@ ML(Kernel__Time__System_time__Unix)
     - ML(Kernel__String)
     - ML(Kernel__Result)
     - ML(Kernel__Prelude)
+    - ML(Kernel__Order)
     - ML(Kernel__Int)
     - ML(Kernel__Time__Common)
     - ML(Kernel__Time__System_time__Aliases)
@@ -805,6 +841,7 @@ MLI(Kernel__IO__IoVec)
 MLI(Kernel__Net__Ip_addr)
   deps:
     - ML(Kernel__Result)
+    - ML(Kernel__Order)
     - MLI(Kernel__Net__Ip_addr__Unix)
     - ML(Kernel__Net__Ip_addr__Unix)
     - MLI(Kernel__Net__Ip_addr__Unix)
@@ -827,6 +864,7 @@ MLI(Kernel__Time__Monotonic)
   deps:
     - ML(Kernel__System_error)
     - ML(Kernel__Result)
+    - ML(Kernel__Order)
     - MLI(Kernel__Time__Monotonic__Unix)
     - ML(Kernel__Time__Monotonic__Unix)
     - MLI(Kernel__Time__Monotonic__Unix)
@@ -839,6 +877,7 @@ MLI(Kernel__Time__System_time)
   deps:
     - ML(Kernel__System_error)
     - ML(Kernel__Result)
+    - ML(Kernel__Order)
     - MLI(Kernel__Time__System_time__Unix)
     - ML(Kernel__Time__System_time__Unix)
     - MLI(Kernel__Time__System_time__Unix)
@@ -860,6 +899,7 @@ ML(Kernel__Effect)
   deps:
     - ML(Kernel__System_error)
     - ML(Kernel__Prelude)
+    - ML(Kernel__Order)
     - ML(Kernel__Int)
     - ML(Kernel__Exception)
     - ML(Kernel__Aliases)
@@ -1595,6 +1635,7 @@ MLI(Kernel)
     - ML(Kernel__Process)
     - ML(Kernel__Prelude)
     - ML(Kernel__Path)
+    - ML(Kernel__Order)
     - ML(Kernel__Option)
     - ML(Kernel__Net)
     - ML(Kernel__List)
@@ -1628,6 +1669,8 @@ MLI(Kernel)
     - ML(Kernel__Prelude)
     - MLI(Kernel__Path)
     - ML(Kernel__Path)
+    - MLI(Kernel__Order)
+    - ML(Kernel__Order)
     - MLI(Kernel__Option)
     - ML(Kernel__Option)
     - MLI(Kernel__List)
@@ -1672,6 +1715,8 @@ MLI(Kernel)
     - ML(Kernel__Prelude)
     - MLI(Kernel__Path)
     - ML(Kernel__Path)
+    - MLI(Kernel__Order)
+    - ML(Kernel__Order)
     - MLI(Kernel__Option)
     - ML(Kernel__Option)
     - MLI(Kernel__List)
@@ -1720,6 +1765,7 @@ ML(Kernel)
     - ML(Kernel__Process)
     - ML(Kernel__Prelude)
     - ML(Kernel__Path)
+    - ML(Kernel__Order)
     - ML(Kernel__Option)
     - ML(Kernel__Net)
     - ML(Kernel__List)
@@ -1776,19 +1822,12 @@ Library(kernel)
     - ML(Kernel__Unicode__Aliases)
     - Native(native/kernel_new_async_unix.c, native/kernel_new_errors.h, native/kernel_new_exception.c, native/kernel_new_fsevents.c, native/kernel_new_host.c, native/kernel_new_random_source.c, native/kernel_new_runtime.c, native/kernel_new_unix_env.c, native/kernel_new_unix_io.c, native/kernel_new_unix_net.c, native/kernel_new_unix_process.c, native/kernel_new_unix_time.c, native/kernel_regex.c, native/kernel_time.c)
     - MLI(Kernel__Array)
-    - MLI(Kernel__Bool)
     - MLI(Kernel__Caml_runtime)
-    - MLI(Kernel__Char)
     - MLI(Kernel__Exception)
-    - MLI(Kernel__Float)
     - MLI(Kernel__Gc)
-    - MLI(Kernel__Int)
-    - MLI(Kernel__Int32)
-    - MLI(Kernel__Int64)
-    - MLI(Kernel__List)
     - MLI(Kernel__Option)
+    - MLI(Kernel__Order)
     - MLI(Kernel__Path)
-    - MLI(Kernel__Prelude)
     - MLI(Kernel__Ptr)
     - MLI(Kernel__System_error)
     - MLI(Kernel__IO__Error)
@@ -1805,12 +1844,24 @@ Library(kernel)
     - ML(Kernel__Sync__Atomic)
     - ML(Kernel__Sync__Mutex)
     - ML(Kernel__Gc)
-    - ML(Kernel__Int32)
-    - ML(Kernel__Int64)
-    - ML(Kernel__Prelude)
+    - ML(Kernel__Order)
     - ML(Kernel__Ptr)
     - MLI(Kernel__System_error_code)
     - MLI(Kernel__Sync__Condition)
+    - MLI(Kernel__Bool)
+    - MLI(Kernel__Char)
+    - MLI(Kernel__Float)
+    - MLI(Kernel__Int)
+    - MLI(Kernel__Int32)
+    - MLI(Kernel__Int64)
+    - MLI(Kernel__List)
+    - MLI(Kernel__Prelude)
+    - ML(Kernel__System_error_code)
+    - ML(Kernel__Sync__Condition)
+    - ML(Kernel__Int32)
+    - ML(Kernel__Int64)
+    - ML(Kernel__Prelude)
+    - MLI(Kernel__Sync)
     - MLI(Kernel__Bytes)
     - MLI(Kernel__Result)
     - ML(Kernel__Bool)
@@ -1819,8 +1870,7 @@ Library(kernel)
     - ML(Kernel__Regex__Regex_stubs)
     - ML(Kernel__Thread__Unix)
     - MLI(Kernel__Unicode__Rune)
-    - ML(Kernel__System_error_code)
-    - ML(Kernel__Sync__Condition)
+    - ML(Kernel__Sync)
     - ML(Kernel__Bytes)
     - ML(Kernel__Result)
     - ML(Kernel__Array)
@@ -1831,7 +1881,6 @@ Library(kernel)
     - MLI(Kernel__Async__Interest)
     - MLI(Kernel__Regex)
     - MLI(Kernel__Thread)
-    - MLI(Kernel__Sync)
     - MLI(Kernel__Async__Common)
     - MLI(Kernel__Net__Ip_addr__Unix)
     - MLI(Kernel__Random__Source__Unix)
@@ -1844,7 +1893,6 @@ Library(kernel)
     - MLI(Kernel__Async__Event)
     - ML(Kernel__Async__Interest)
     - ML(Kernel__Regex)
-    - ML(Kernel__Sync)
     - ML(Kernel__Async__Common)
     - ML(Kernel__Random__Source__Unix)
     - ML(Kernel__Time__Common)
@@ -1995,16 +2043,18 @@ CREATE LIBRARY OBJECTS
 - Kernel__Sync__Atomic.cmx
 - Kernel__Sync__Mutex.cmx
 - Kernel__Gc.cmx
+- Kernel__Order.cmx
+- Kernel__Ptr.cmx
+- Kernel__System_error_code.cmx
+- Kernel__Sync__Condition.cmx
 - Kernel__Int32.cmx
 - Kernel__Int64.cmx
 - Kernel__Prelude.cmx
-- Kernel__Ptr.cmx
 - Kernel__Bool.cmx
 - Kernel__Int.cmx
 - Kernel__Async__Non_zero_int.cmx
 - Kernel__Regex__Regex_stubs.cmx
-- Kernel__System_error_code.cmx
-- Kernel__Sync__Condition.cmx
+- Kernel__Sync.cmx
 - Kernel__Bytes.cmx
 - Kernel__Result.cmx
 - Kernel__Array.cmx
@@ -2015,7 +2065,6 @@ CREATE LIBRARY OBJECTS
 - Kernel__Unicode__Rune.cmx
 - Kernel__Async__Interest.cmx
 - Kernel__Regex.cmx
-- Kernel__Sync.cmx
 - Kernel__Async__Common.cmx
 - Kernel__Random__Source__Unix.cmx
 - Kernel__Time__Common.cmx

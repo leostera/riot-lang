@@ -22,9 +22,20 @@ let test_iobuffer_readable_uses_readable_bytes = fun _ctx ->
   else
     Error "expected Std.IO.IoSlice.to_string over readable bytes to preserve the readable region"
 
+let test_io_slice_error_message_preserves_details = fun _ctx ->
+  match IO.IoSlice.create ~size:(-1) with
+  | Ok _ -> Error "expected negative IoSlice size to fail"
+  | Error error ->
+      let message = IO.IoSlice.error_message error in
+      if String.contains message "negative size" && String.contains message "-1" then
+        Ok ()
+      else
+        Error ("expected detailed IoSlice error message, got: " ^ message)
+
 let tests = [
   Test.case "Std.IO.IoSlice finds HTTP delimiters" test_io_slice_search_helpers;
   Test.case "Std.IO.IoBuffer.readable exposes readable bytes" test_iobuffer_readable_uses_readable_bytes;
+  Test.case "Std.IO.IoSlice renders detailed errors" test_io_slice_error_message_preserves_details;
 ]
 
 let main = fun ~args -> Test.Cli.main ~name:"std_io_slice_tests" ~tests ~args ()

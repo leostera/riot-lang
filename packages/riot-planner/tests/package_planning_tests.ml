@@ -209,8 +209,8 @@ let has_compile_implementation_for_source = fun actions source ->
       | _ -> false
     )
 
-let plan_dev_package_actions = fun ~tmpdir ~package_name ~files ~binaries ->
-  let package = make_package_with_files ~library:None ~tmpdir ~package_name ~files ~binaries in
+let plan_dev_package_actions_with_library = fun ~library ~tmpdir ~package_name ~files ~binaries ->
+  let package = make_package_with_files ~library ~tmpdir ~package_name ~files ~binaries in
   let workspace = make_test_workspace tmpdir [ package ] in
   let store = Riot_store.Store.create ~workspace in
   let package_graph = Riot_planner.Package_graph.create ~scope:Riot_planner.Package_graph.Dev workspace
@@ -287,6 +287,9 @@ let plan_dev_package_actions = fun ~tmpdir ~package_name ~files ~binaries ->
         Error ("expected build package plan to return Planned or Cached, got "
         ^ describe_plan_result result)
 
+let plan_dev_package_actions = fun ~tmpdir ~package_name ~files ~binaries ->
+  plan_dev_package_actions_with_library ~library:None ~tmpdir ~package_name ~files ~binaries
+
 let plan_runtime_package_actions = fun ~tmpdir ~package_name ~files ~binaries ->
   let package = make_package_with_files ~library:None ~tmpdir ~package_name ~files ~binaries in
   let workspace = make_test_workspace tmpdir [ package ] in
@@ -313,6 +316,9 @@ let module_node_label = fun (node: Riot_planner.Module_node.t G.node) ->
   | Riot_planner.Module_node.Binary { name; _ } -> "Binary(" ^ name ^ ")"
   | Riot_planner.Module_node.Native { files } -> "Native("
   ^ String.concat ", " (List.map files ~fn:Path.to_string)
+  ^ ")"
+  | Riot_planner.Module_node.PackageDependency { root_module; _ } -> "PackageDependency("
+  ^ root_module
   ^ ")"
   | Riot_planner.Module_node.C -> "C(" ^ Riot_planner.Module_node.file_to_string node.value.file ^ ")"
   | Riot_planner.Module_node.H -> "H(" ^ Riot_planner.Module_node.file_to_string node.value.file ^ ")"
@@ -417,6 +423,7 @@ let object_name_of_module_node = fun (node: Riot_planner.Module_node.t G.node) -
   | Riot_planner.Module_node.Library _
   | Riot_planner.Module_node.Binary _
   | Riot_planner.Module_node.Native _
+  | Riot_planner.Module_node.PackageDependency _
   | Riot_planner.Module_node.C
   | Riot_planner.Module_node.H
   | Riot_planner.Module_node.Root
@@ -706,6 +713,39 @@ let test_dev_scope_no_library_tests_include_package_named_helpers = fun _ctx ->
                 else
                   Ok ()
             | _ -> Error "expected CreateExecutable action and compile outputs for tests/hello_world_tests.ml and src/hello_world.ml")
+  with
+  | Ok result -> result
+  | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
+
+let test_dev_scope_tests_can_import_own_runtime_library_root = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"planner_dev_scope_own_runtime_root"
+      (fun tmpdir ->
+        match plan_dev_package_actions_with_library
+          ~tmpdir
+          ~package_name:"self-lib"
+          ~library:(Some Riot_model.Package.{ path = Path.v "src/self_lib.ml" })
+          ~binaries:[ ("self_lib_tests", "tests/self_lib_tests.ml") ]
+          ~files:[
+            ("src/self_lib.ml", "let value = 1\n");
+            ("tests/self_lib_tests.ml", "let value = Self_lib.value\n");
+          ] with
+        | Error _ as err -> err
+        | Ok (_package, action_graph) -> (
+            match find_create_executable_named action_graph "self_lib_tests" with
+            | Some (Riot_planner.Action.CreateExecutable { libraries; _ }) ->
+                if
+                  List.any
+                    libraries
+                    ~fn:(fun library ->
+                      String.ends_with ~suffix:"Self_lib.cmxa" (Path.to_string library))
+                then
+                  Ok ()
+                else
+                  Error ("expected dev test executable to link its runtime package library; libraries: "
+                  ^ path_list_to_string libraries)
+            | _ -> Error "expected CreateExecutable action for tests/self_lib_tests.ml"
+          ))
   with
   | Ok result -> result
   | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
@@ -2429,6 +2469,7 @@ let tests =
     case "build scope excludes runtime and dev roots" test_build_scope_excludes_runtime_and_dev_roots;
     case "dev scope test binaries include private helpers" test_dev_scope_test_binaries_include_private_helpers;
     case "dev scope no-library tests include package-named helpers" test_dev_scope_no_library_tests_include_package_named_helpers;
+    case "dev scope tests can import own runtime library root" test_dev_scope_tests_can_import_own_runtime_library_root;
     case "dev scope example binaries include private helpers" test_dev_scope_example_binaries_include_private_helpers;
     case "dev scope bench binaries include private helpers" test_dev_scope_bench_binaries_include_private_helpers;
     case "dev scope keeps private helpers separated by root" test_dev_scope_keeps_private_helpers_separated_by_root;

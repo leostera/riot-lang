@@ -188,7 +188,11 @@ let bench_read_dir_names_large = fun () ->
         if index = 128 then
           ()
         else
-          let name = format Format.[ str "entry-"; int index; str ".txt" ] in
+          let name = format
+            Std.Format.[str "entry-";
+            int index;
+            str ".txt"]
+          in
           match Kernel.Fs.File.open_write Kernel.Path.(tempdir / name) with
           | Kernel.Result.Error error -> panic_file error
           | Kernel.Result.Ok file ->

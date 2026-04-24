@@ -170,11 +170,11 @@ let parse_escape = fun text line_number index ->
           lor (hex_value (String.unsafe_get text (index + 3)) lsl 4)
           lor hex_value (String.unsafe_get text (index + 4)) in
           let rune =
-            match Kernel.Unicode.Rune.from_int code with
-            | Ok rune -> rune
-            | Error _ -> fail_line line_number "invalid unicode scalar value"
+            match Unicode.Rune.from_int code with
+            | Some rune -> rune
+            | None -> fail_line line_number "invalid unicode scalar value"
           in
-          (Kernel.Unicode.Rune.to_char rune, index + 5)
+          (Unicode.Rune.to_char rune, index + 5)
     | _ -> fail_line line_number "unsupported escape sequence"
 
 let parse_double_quoted = fun text line_number start ->

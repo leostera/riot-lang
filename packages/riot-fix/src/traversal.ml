@@ -17,13 +17,12 @@ type binding_site = {
 }
 
 let direct_non_trivia_nodes = fun node ->
-  let open Syn.Ceibo.Red in
-    SyntaxNode.children node |> List.filter_map
-      ~fn:(
-        function
-        | Node child when not (is_trivia (SyntaxNode.kind child)) -> Some child
-        | _ -> None
-      )
+  Syn.Ceibo.Red.SyntaxNode.children node |> List.filter_map
+    ~fn:(
+      function
+      | Syn.Ceibo.Red.Node child when not (is_trivia (Syn.Ceibo.Red.SyntaxNode.kind child)) -> Some child
+      | _ -> None
+    )
 
 let is_expression_syntax_kind syntax_kind =
   match syntax_kind with

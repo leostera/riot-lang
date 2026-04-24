@@ -8,7 +8,7 @@
   },
   "files": [
     {
-      "file": "packages/riot-fix/tests/0004_nostdlib_mixed.ml",
+      "file": "packages/riot-fix/tests/fixtures/0004_nostdlib_mixed.ml",
       "changed": false,
       "error": null,
       "applied_fixes": [],

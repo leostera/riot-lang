@@ -26,7 +26,7 @@ let out = eprintln
 
 let command =
   let open ArgParser in
-    let open Arg in command "add"
+    let open ArgParser.Arg in command "add"
     |> about "Add a registry, local path, or GitHub dependency and refresh riot.lock"
     |> args
       [

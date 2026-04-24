@@ -113,9 +113,9 @@ let rec read_unicode_scalar = fun state ->
 
 let append_unicode_escape = fun state ->
   let code = read_unicode_scalar state in
-  match Kernel.Unicode.Rune.from_int code with
-  | Ok rune -> IO.Buffer.add_utf_8_uchar state.scratch rune
-  | Error _ -> error_at (Input.position state.input) "invalid unicode scalar value"
+  match Unicode.Rune.from_int code with
+  | Some rune -> IO.Buffer.add_utf_8_uchar state.scratch rune
+  | None -> error_at (Input.position state.input) "invalid unicode scalar value"
 
 let skip_unicode_escape = fun state -> ignore (read_unicode_scalar state)
 

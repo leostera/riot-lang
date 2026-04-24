@@ -22,9 +22,9 @@ type Message.t +=
   | Riot_build_actor_mutex_released of { request_id: request_id }
   | Riot_build_actor_mutex_failed of { request_id: request_id; reason: string }
 
-let request_ids = Kernel.Sync.Atomic.make 0
+let request_ids = Sync.Atomic.make 0
 
-let next_request_id = fun () -> Kernel.Sync.Atomic.fetch_and_add request_ids 1 + 1
+let next_request_id = fun () -> Sync.Atomic.fetch_and_add request_ids 1 + 1
 
 module Server = struct
   type state = {

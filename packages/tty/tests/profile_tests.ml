@@ -5,12 +5,16 @@ let ( let* ) = fun value fn -> Result.and_then value ~fn
 
 let apply_env_value = fun name value_opt ->
   match value_opt with
-  | Some value -> Kernel.Env.set ~var:name ~value |> Result.map_err ~fn:Kernel.Env.error_to_string
-  | None -> Kernel.Env.remove ~var:name |> Result.map_err ~fn:Kernel.Env.error_to_string
+  | Some value ->
+      let _ = Env.set ~var:name ~value in
+      Ok ()
+  | None ->
+      let _ = Env.remove ~var:name in
+      Ok ()
 
 let with_env = fun bindings fn ->
   let saved =
-    List.map bindings ~fn:(fun (name, _) -> (name, Kernel.Env.get ~var:name))
+    List.map bindings ~fn:(fun (name, _) -> (name, Env.get Env.String ~var:name))
   in
   let rec apply = function
     | [] -> Ok ()

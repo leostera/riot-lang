@@ -24,7 +24,7 @@ type publish_check_stage =
 ]
 
 type publish_event =
-  | Fmt of Krasny.Report.event
+  | Fmt of Riot_fmt.event
   | Fix of Riot_fix.Event.t
   | Build of Riot_build.Event.t
   | CheckStarted of {
@@ -77,7 +77,7 @@ let no_event: publish_event -> unit = fun _ -> ()
 let exn_message = fun exn ->
   match exn with
   | Failure message -> message
-  | exn -> Kernel.Exception.to_string exn
+  | exn -> Exception.to_string exn
 
 let registry_initialization_error_message = function
   | Riot_deps.RegistryFilesystemInitializationFailed error -> Pkgs_ml.Registry_cache.create_error_message

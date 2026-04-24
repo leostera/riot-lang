@@ -399,9 +399,9 @@ let quoted_key = fun segment ->
       let code = (decode 0 lsl 12) lor (decode 1 lsl 8) lor (decode 2 lsl 4) lor decode 3 in
       pos := !pos + 4;
       let rune =
-        match Kernel.Unicode.Rune.from_int code with
-        | Ok rune -> rune
-        | Error _ -> fail "invalid unicode scalar value in quoted key"
+        match Unicode.Rune.from_int code with
+        | Some rune -> rune
+        | None -> fail "invalid unicode scalar value in quoted key"
       in
       IO.Buffer.add_utf_8_uchar buffer rune
     in
@@ -623,9 +623,9 @@ let parse_value_text = fun input ->
             | Some 'u' ->
                 advance ();
                 let rune =
-                  match Kernel.Unicode.Rune.from_int (read_hex4 ()) with
-                  | Ok rune -> rune
-                  | Error _ -> fail "invalid unicode scalar value"
+                  match Unicode.Rune.from_int (read_hex4 ()) with
+                  | Some rune -> rune
+                  | None -> fail "invalid unicode scalar value"
                 in
                 IO.Buffer.add_utf_8_uchar buffer rune
             | Some _ ->

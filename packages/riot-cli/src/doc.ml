@@ -10,7 +10,7 @@ type output_mode =
 
 let command =
   let open ArgParser in
-    let open Arg in command "doc"
+    let open ArgParser.Arg in command "doc"
     |> about "Generate package documentation"
     |> args
       [

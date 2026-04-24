@@ -103,20 +103,20 @@ let normalize_size = fun raw ->
       ~init:0
       raw
   in
-  let compact = Kernel.Bytes.create ~size:compact_length in
+  let compact = IO.Bytes.create ~size:compact_length in
   let _ =
     String.fold_left
       ~fn:(fun index c ->
         if Char.equal c ' ' || Char.equal c '\t' then
           index
         else (
-          Kernel.Bytes.set_unchecked compact ~at:index ~char:c;
+          IO.Bytes.set_unchecked compact ~at:index ~char:c;
           index + 1
         ))
       ~init:0
       raw
   in
-  String.lowercase_ascii (Kernel.Bytes.to_string compact)
+  String.lowercase_ascii (IO.Bytes.to_string compact)
 
 let unit_multiplier = function
   | ""
@@ -202,20 +202,20 @@ let normalize_duration = fun raw ->
       ~init:0
       raw
   in
-  let compact = Kernel.Bytes.create ~size:compact_length in
+  let compact = IO.Bytes.create ~size:compact_length in
   let _ =
     String.fold_left
       ~fn:(fun index c ->
         if Char.equal c ' ' || Char.equal c '\t' then
           index
         else (
-          Kernel.Bytes.set_unchecked compact ~at:index ~char:c;
+          IO.Bytes.set_unchecked compact ~at:index ~char:c;
           index + 1
         ))
       ~init:0
       raw
   in
-  String.lowercase_ascii (Kernel.Bytes.to_string compact)
+  String.lowercase_ascii (IO.Bytes.to_string compact)
 
 let duration_unit_seconds = function
   | ""

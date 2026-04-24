@@ -4,6 +4,7 @@ module Actor = Actor
 module Application = Application
 module Archive = Archive
 module ArgParser = Arg_parser
+module Array = Collections.Array
 module Bench = Bench
 module Bool = Bool
 module Calendar = Calendar

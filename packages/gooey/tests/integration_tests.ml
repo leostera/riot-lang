@@ -27,7 +27,7 @@ let test_complex_nested_layout = fun _ctx ->
     ~style:Style.(empty |> width Grow)
     [
       Element.container
-        ~style:Style.(empty |> bg (`rgb (50, 50, 50)) |> padding (Padding.all 2))
+        ~style:Style.(empty |> bg (`rgb (50, 50, 50)) |> padding (Style.Padding.all 2))
         [ Element.text ~style:Style.(empty |> bold) "Header" ];
       Element.row [ Element.text "A"; Element.text "B" ];
       Element.text "Footer";
@@ -44,7 +44,7 @@ let test_card_pattern_has_consistent_content_offsets = fun _ctx ->
     |> width (Fixed 20.0)
     |> bg (`rgb (255, 255, 255))
     |> border ~width:1 ~color:(`rgb (200, 200, 200)) ()
-    |> padding (Padding.all 1))
+    |> padding (Style.Padding.all 1))
     [
       Element.container ~style:Style.(empty |> height (Fixed 3.0) |> bg (`rgb (220, 220, 220))) [];
       Element.text "Title";
@@ -129,7 +129,7 @@ let test_margin_and_gap_stack_cleanly = fun _ctx ->
         ~style:Style.(empty
         |> width (Fixed 10.0)
         |> height (Fixed 2.0)
-        |> margin (Margin.make ~bottom:1 ())
+        |> margin (Style.Margin.make ~bottom:1 ())
         |> bg (`rgb (255, 0, 0)))
         [];
       Element.container

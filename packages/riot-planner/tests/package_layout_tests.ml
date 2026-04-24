@@ -63,11 +63,13 @@ let analyzed_module = fun (node: Riot_planner.Module_node.t G.node) ~source ->
       deps;
       resolved_deps = [];
       resolved_dep_ids = node.deps;
+      unresolved_deps = [];
     }
   )
 
 let validate_layout = fun ~package ~graph ~analyzed ->
   Riot_planner.Package_layout_validator.validate
+    ~direct_dependency_modules:[]
     ~package
     ~module_graph:graph
     ~analyzed_modules:(List.map analyzed ~fn:(fun (node, source) -> analyzed_module node ~source))

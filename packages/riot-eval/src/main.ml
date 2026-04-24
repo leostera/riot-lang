@@ -36,19 +36,41 @@ let parse_code = fun code ->
 
 (** Format the result for display *)
 let format_result = function
-  | Success { output; typ=Some t } -> format Format.[ str "- : "; str t; str " = "; str output ]
+  | Success { output; typ=Some t } ->
+      format
+        Std.Format.[str "- : ";
+        str t;
+        str " = ";
+        str output]
   | Success { output; typ=None } -> output
-  | Error { message; backtrace=Some bt } -> format
-    Format.[ str "Error: "; str message; str "\nBacktrace:\n"; str bt ]
-  | Error { message; backtrace=None } -> format Format.[ str "Error: "; str message ]
-  | ParseError msg -> format Format.[ str "Parse error:\n"; str msg ]
-  | TypeError msg -> format Format.[ str "Type error:\n"; str msg ]
+  | Error { message; backtrace=Some bt } ->
+      format
+        Std.Format.[str "Error: ";
+        str message;
+        str "\nBacktrace:\n";
+        str bt]
+  | Error { message; backtrace=None } ->
+      format
+        Std.Format.[str "Error: ";
+        str message]
+  | ParseError msg ->
+      format
+        Std.Format.[str "Parse error:\n";
+        str msg]
+  | TypeError msg ->
+      format
+        Std.Format.[str "Type error:\n";
+        str msg]
 
 let main = fun ~args:_ ->
   (* Get current working directory as workspace root *)
   let workspace = Path.v "." in
   Log.info
-    (format Format.[ str "Riot Eval starting in workspace: "; str (Path.to_string workspace) ]);
+    (
+      format
+        Std.Format.[str "Riot Eval starting in workspace: ";
+        str (Path.to_string workspace)]
+    );
   (* Read all input from stdin *)
   let code = "" in
   (* TODO: implement stdin reading properly *)

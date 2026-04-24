@@ -9,7 +9,7 @@ module Pm_error = Pm_error
 (** Strip ANSI escape codes from a string *)
 let strip_ansi_codes = fun str ->
   let len = String.length str in
-  let out = Kernel.Bytes.create ~size:len in
+  let out = IO.Bytes.create ~size:len in
   let rec skip_until_m index =
     match String.get str ~at:index with
     | None -> len
@@ -21,20 +21,20 @@ let strip_ansi_codes = fun str ->
   in
   let rec strip read_index write_index =
     if read_index >= len then
-      Kernel.Bytes.sub_unchecked out ~offset:0 ~len:write_index |> Kernel.Bytes.to_string
+      IO.Bytes.sub_unchecked out ~offset:0 ~len:write_index |> IO.Bytes.to_string
     else
       match String.get str ~at:read_index with
       | None ->
-          Kernel.Bytes.sub_unchecked out ~offset:0 ~len:write_index |> Kernel.Bytes.to_string
+          IO.Bytes.sub_unchecked out ~offset:0 ~len:write_index |> IO.Bytes.to_string
       | Some '\027' -> (
           match String.get str ~at:(read_index + 1) with
           | Some '[' -> strip (skip_until_m (read_index + 2)) write_index
           | _ ->
-              Kernel.Bytes.set_unchecked out ~at:write_index ~char:'\027';
+              IO.Bytes.set_unchecked out ~at:write_index ~char:'\027';
               strip (read_index + 1) (write_index + 1)
         )
       | Some char ->
-          Kernel.Bytes.set_unchecked out ~at:write_index ~char;
+          IO.Bytes.set_unchecked out ~at:write_index ~char;
           strip (read_index + 1) (write_index + 1)
   in
   strip 0 0

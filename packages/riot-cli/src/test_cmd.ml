@@ -6,7 +6,7 @@ open ArgParser
 
 let command =
   let open ArgParser in
-    let open Arg in command "test"
+    let open ArgParser.Arg in command "test"
     |> about "Run tests with optional case filtering"
     |> ArgParser.allow_trailing_args
     |> args

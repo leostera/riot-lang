@@ -8,7 +8,7 @@ let parse_format_to_reporter = function
   | other -> Error ("Unknown format: " ^ other)
 
 let run_benchmarks_cmd =
-  let open Arg in command "run-benchmarks"
+  let open Arg_parser.Arg in command "run-benchmarks"
   |> about "Run benchmarks"
   |> args
     [
@@ -33,7 +33,7 @@ let matches_pattern = fun ~pattern bench_item ->
   String.contains (benchmark_name bench_item) pattern
 
 let list_benchmarks_cmd =
-  let open Arg in command "list-benchmarks"
+  let open Arg_parser.Arg in command "list-benchmarks"
   |> about "List all benchmarks"
   |> args
     [

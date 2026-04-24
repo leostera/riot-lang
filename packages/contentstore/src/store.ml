@@ -4,8 +4,6 @@ type policy = Policy.t
 
 module Namespace = Namespace
 
-let panic = Kernel.SystemError.panic
-
 type source_path_error = Store_error.source_path_error =
   | Source_missing
   | Source_not_file

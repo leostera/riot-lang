@@ -14,17 +14,20 @@ type event = Types.event =
       package_hints: (package_kind * string) list
     }
 
-let command =
-  let open ArgParser in
-    let open Arg in command "init"
-    |> about "Initialize a new Riot workspace"
-    |> args
-      [
-        positional "path" |> required false |> help "Path for new workspace (default: current directory)";
-        flag "name" |> long "name" |> short 'n' |> help "Workspace name (default: directory basename)";
-        flag "lib" |> long "lib" |> help "Create library package (default)";
-        flag "bin" |> long "bin" |> help "Create binary package";
-      ]
+let command = Std.ArgParser.command "init"
+|> Std.ArgParser.about "Initialize a new Riot workspace"
+|> Std.ArgParser.args
+  [
+    Std.ArgParser.Arg.positional "path"
+    |> Std.ArgParser.Arg.required false
+    |> Std.ArgParser.Arg.help "Path for new workspace (default: current directory)";
+    Std.ArgParser.Arg.flag "name"
+    |> Std.ArgParser.Arg.long "name"
+    |> Std.ArgParser.Arg.short 'n'
+    |> Std.ArgParser.Arg.help "Workspace name (default: directory basename)";
+    Std.ArgParser.Arg.flag "lib" |> Std.ArgParser.Arg.long "lib" |> Std.ArgParser.Arg.help "Create library package (default)";
+    Std.ArgParser.Arg.flag "bin" |> Std.ArgParser.Arg.long "bin" |> Std.ArgParser.Arg.help "Create binary package";
+  ]
 
 let new_package = Scaffold.new_package
 

@@ -1,6 +1,6 @@
 format_version = 1
 
-dependency_hash = "c17dfbe3f5031f2c"
+dependency_hash = "40b834717072f420"
 
 [[packages]]
 name = "blink"
@@ -358,7 +358,7 @@ dev_dependencies = []
 name = "riot-fmt"
 root = "packages/riot-fmt"
 provenance = { kind = "workspace" }
-dependencies = [{ name = "krasny", package = { name = "krasny" } }, { name = "riot-model", package = { name = "riot-model" } }, { name = "std", package = { name = "std" } }]
+dependencies = [{ name = "krasny", package = { name = "krasny" } }, { name = "riot-model", package = { name = "riot-model" } }, { name = "std", package = { name = "std" } }, { name = "syn", package = { name = "syn" } }]
 build_dependencies = []
 dev_dependencies = []
 

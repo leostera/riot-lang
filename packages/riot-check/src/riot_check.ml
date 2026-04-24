@@ -9,7 +9,7 @@ type action =
 
 let command =
   let open ArgParser in
-    let open Arg in command "check"
+    let open ArgParser.Arg in command "check"
     |> about "Typecheck OCaml files in workspace packages"
     |> args
       [

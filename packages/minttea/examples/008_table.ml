@@ -196,7 +196,7 @@ let update = fun event model ->
 
 let view = fun model ->
   let open Element in
-    column ~style:Style.(empty |> padding (Padding.all 1))
+    column ~style:Style.(empty |> padding (Style.Padding.all 1))
       [
         text ~style:Style.(empty |> bold |> fg (`rgb (100, 200, 255))) "User Management System";
         text "";
@@ -207,7 +207,7 @@ let view = fun model ->
           | Some user -> column
             ~style:Style.(empty
             |> border ~width:1 ~color:(`rgb (0, 255, 0)) ()
-            |> padding (Padding.all 1))
+            |> padding (Style.Padding.all 1))
             [
               text ~style:Style.(empty |> bold) "Selected User Details:";
               text "";

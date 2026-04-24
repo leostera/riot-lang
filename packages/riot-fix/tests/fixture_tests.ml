@@ -128,7 +128,7 @@ Replace direct `Pervasives` references with `Std`.
         let diagnostic_for_first_token node =
           match Api.Traversal.first_non_trivia_token node with
           | Some token ->
-              let text = SyntaxToken.text token in
+              let text = Syn.Ceibo.Red.SyntaxToken.text token in
               if List.contains forbidden_modules ~value:text then
                 Some (make_diagnostic token)
               else
@@ -137,11 +137,11 @@ Replace direct `Pervasives` references with `Std`.
         in
         let diagnostic_for_open_stmt node =
           let non_trivia_children =
-            SyntaxNode.children node
+            Syn.Ceibo.Red.SyntaxNode.children node
             |> List.filter
               ~fn:(
                 function
-                | Token token -> not (Api.Traversal.is_trivia (SyntaxToken.kind token))
+                | Token token -> not (Api.Traversal.is_trivia (Syn.Ceibo.Red.SyntaxToken.kind token))
                 | Node _ -> true
               )
           in
@@ -149,7 +149,7 @@ Replace direct `Pervasives` references with `Std`.
           | _open_kw :: Node module_path :: _ ->
               diagnostic_for_first_token module_path
           | _open_kw :: Token token :: _ ->
-              let text = SyntaxToken.text token in
+              let text = Syn.Ceibo.Red.SyntaxToken.text token in
               if List.contains forbidden_modules ~value:text then
                 Some (make_diagnostic token)
               else
@@ -162,7 +162,7 @@ Replace direct `Pervasives` references with `Std`.
           | Some (Node receiver) ->
               diagnostic_for_first_token receiver
           | Some (Token token) ->
-              let text = SyntaxToken.text token in
+              let text = Syn.Ceibo.Red.SyntaxToken.text token in
               if List.contains forbidden_modules ~value:text then
                 Some (make_diagnostic token)
               else
@@ -198,7 +198,7 @@ module Fixture_std_provider = struct
   let explanations = fun () -> Fixture_no_stdlib.explanations ()
 end
 
-let tests_dir = Path.v "packages/riot-fix/tests"
+let tests_dir = Path.v "packages/riot-fix/tests/fixtures"
 
 let is_digit = function
   | '0' .. '9' -> true

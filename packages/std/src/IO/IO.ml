@@ -100,6 +100,8 @@ type file_kind =
 
 let of_system_error = Error.of_system_error
 
+let of_system_error_code = Error.of_system_error_code
+
 let of_async_error = Error.of_async_error
 
 let error_message = Error.message

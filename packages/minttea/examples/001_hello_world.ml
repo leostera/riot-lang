@@ -27,7 +27,7 @@ let view = fun model ->
         ~style:Style.(empty
         |> fg (`rgb (0, 255, 255))
         |> bold
-        |> padding (Padding.make ~top:1 ~left:2 ()))
+        |> padding (Style.Padding.make ~top:1 ~left:2 ()))
         model;
       text "\n\nPress 'q' to quit";
     ]

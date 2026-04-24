@@ -96,9 +96,12 @@ let view = fun model ->
       |> fg (`rgb (255, 255, 255))
       |> width (Fixed 10.0)
       |> height (Fixed 3.0)
-      |> padding (Padding.all 1)) in
-    column ~style:Style.(empty |> padding (Padding.all 1))
-      [ row ~style:Style.(empty |> bg (`rgb (40, 40, 40)) |> padding (Padding.symmetric ~h:2 ~v:1))
+      |> padding (Style.Padding.all 1)) in
+    column ~style:Style.(empty |> padding (Style.Padding.all 1))
+      [
+        row ~style:Style.(empty
+        |> bg (`rgb (40, 40, 40))
+        |> padding (Style.Padding.symmetric ~h:2 ~v:1))
           [
             text ~style:Style.(empty |> bold |> fg (`rgb (0, 255, 127))) "FPS: 60";
             spacer ~flex:1.0 ();
@@ -122,7 +125,9 @@ let view = fun model ->
                 else
                   "⏸ PAUSED"
               );
-          ]; text ""; container
+          ];
+        text "";
+        container
           ~style:Style.(empty
           |> border ~width:1 ~color:(`rgb (100, 100, 200)) ()
           |> min_height (float_of_int (model.height - 10))
@@ -131,9 +136,11 @@ let view = fun model ->
             container
               ~style:Style.(empty
               |> margin
-                (Margin.make ~left:(int_of_float model.box_x) ~top:(int_of_float model.box_y) ()))
+                (Style.Margin.make ~left:(int_of_float model.box_x) ~top:(int_of_float model.box_y) ()))
               [ container ~style:box_style [ text "BOX" ]; ];
-          ]; text ""; row
+          ];
+        text "";
+        row
           ~style:Style.(empty |> fg (`rgb (100, 100, 100)))
           [
             text "Space: Play/Pause";
@@ -143,7 +150,8 @@ let view = fun model ->
             text "r: Reset";
             text " • ";
             text "q: Quit";
-          ]; ]
+          ];
+      ]
 
 (* Create and run the app *)
 

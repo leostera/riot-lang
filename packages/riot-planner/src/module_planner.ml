@@ -23,6 +23,64 @@ type plan_result = {
   action_graph: Action_graph.t;
 }
 
+type direct_dependency_root = {
+  package_name: Package_name.t;
+  root_module: string;
+  package: Package.t option;
+}
+
+let root_module_name_of_package_name = fun package_name ->
+  Module_name.(of_string (Package_name.to_string package_name) |> to_string)
+
+let dependency_package_by_name = fun depset package_name ->
+  Dependency.transitive_closure depset |> List.find
+    ~fn:(fun (dep: Dependency.t) ->
+      Package_name.equal dep.package.name package_name) |> Option.map
+    ~fn:(fun (dep: Dependency.t) -> dep.package)
+
+let direct_dependency_roots = fun (input: plan_input) ->
+  let seen = HashSet.create () in
+  let roots = ref [] in
+  let add ~package_name ~root_module ~package =
+    if HashSet.insert seen ~value:root_module then
+      roots := { package_name; root_module; package } :: !roots
+    else
+      ()
+  in
+  Package.build_graph_dependencies input.package |> List.for_each
+    ~fn:(fun (dep: Package.dependency) ->
+      let package =
+        if Package.is_builtin_dependency dep then
+          None
+        else
+          dependency_package_by_name input.depset dep.name
+      in
+      let root_module =
+        match package with
+        | Some package -> Package.root_module_name package
+        | None -> root_module_name_of_package_name dep.name
+      in
+      add ~package_name:dep.name ~root_module ~package);
+  let has_dev_sources = not
+    (List.is_empty input.package.sources.tests
+    && List.is_empty input.package.sources.examples
+    && List.is_empty input.package.sources.bench) in
+  let () =
+    if Option.is_none input.package.library && has_dev_sources then
+      match Dependency.transitive_closure input.depset
+      |> List.find
+        ~fn:(fun (dep: Dependency.t) ->
+          Package_name.equal dep.package.name input.package.name && Option.is_some dep.package.library) with
+      | None -> ()
+      | Some (dep: Dependency.t) -> add
+        ~package_name:dep.package.name
+        ~root_module:(Package.root_module_name dep.package)
+        ~package:(Some dep.package)
+    else
+      ()
+  in
+  List.reverse !roots
+
 let plan_node = fun (input: plan_input) ->
   let config =
     Module_graph.{
@@ -35,6 +93,15 @@ let plan_node = fun (input: plan_input) ->
   in
   try
     let graph_builder = Module_graph.create config in
+    let direct_dependency_roots = direct_dependency_roots input in
+    List.for_each direct_dependency_roots
+      ~fn:(fun direct_dependency ->
+        match direct_dependency.package with
+        | Some package -> Module_graph.add_direct_dependency_package graph_builder package
+        | None -> Module_graph.add_direct_dependency_root
+          graph_builder
+          ~package_name:direct_dependency.package_name
+          ~root_module:direct_dependency.root_module);
     (
       match input.package.sources.native with
       | [] -> ()
@@ -168,7 +235,13 @@ let plan_node = fun (input: plan_input) ->
         let module_graph = Module_graph.graph graph_builder in
         let analyzed_modules = Module_graph.analyzed_modules graph_builder in
         (
-          match Package_layout_validator.validate ~package:input.package ~module_graph ~analyzed_modules with
+          match Package_layout_validator.validate
+            ~direct_dependency_modules:(List.map
+              direct_dependency_roots
+              ~fn:(fun root -> root.root_module))
+            ~package:input.package
+            ~module_graph
+            ~analyzed_modules with
           | Error _ as err -> err
           | Ok () -> (
               match G.topo_sort module_graph with
@@ -186,6 +259,9 @@ let plan_node = fun (input: plan_input) ->
                               | Module_node.Library { name; _ } -> "Library(" ^ name ^ ")"
                               | Module_node.Binary { name; _ } -> "Binary(" ^ name ^ ")"
                               | Module_node.Native _ -> "Native"
+                              | Module_node.PackageDependency { root_module; _ } -> "PackageDependency("
+                              ^ root_module
+                              ^ ")"
                               | Module_node.C -> "C"
                               | Module_node.H -> "H"
                               | Module_node.Root -> "Root"

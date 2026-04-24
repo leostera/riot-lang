@@ -15,7 +15,7 @@ let out = eprintln
 
 let command =
   let open ArgParser in
-    let open Arg in command "publish"
+    let open ArgParser.Arg in command "publish"
     |> about "Publish packages to the registry"
     |> args
       [
@@ -57,50 +57,6 @@ let write_block = fun text ->
   |> String.split ~by:"\n"
   |> List.filter ~fn:(fun line -> not (String.equal line ""))
   |> List.for_each ~fn:out
-
-let format_fmt_file_result = fun ~root (result: Krasny.Runner.file_result) ->
-  let status_char, suffix =
-    match result.status, result.error with
-    | Krasny.Runner.Failed, Some error -> ("\027[1;31m✗\027[0m", ": " ^ error)
-    | Krasny.Runner.Failed, None -> ("\027[1;31m✗\027[0m", " (failed)")
-    | Krasny.Runner.Already_formatted, _ -> ("\027[1;32m✓\027[0m", " (already formatted)")
-    | Krasny.Runner.Needs_formatting, _ -> ("\027[1;33m!\027[0m", " (needs formatting)")
-    | Krasny.Runner.Would_reformat, _ -> ("\027[1;32m✓\027[0m", " (would reformat safely)")
-    | Krasny.Runner.Formatted, _ -> ("\027[1;32m✓\027[0m", " (formatted)")
-    | Krasny.Runner.Unsafe_to_format, Some error -> (
-      "\027[1;31m✗\027[0m",
-      " (unsafe to format: " ^ error ^ ")"
-    )
-    | Krasny.Runner.Unsafe_to_format, None -> ("\027[1;31m✗\027[0m", " (unsafe to format)")
-  in
-  status_char ^ " " ^ relative_or_absolute ~root result.file ^ suffix
-
-let format_fmt_summary = fun (summary: Krasny.Runner.summary) ->
-  let status_char =
-    if summary.needs_formatting = 0 && summary.failed_files = 0 then
-      "\027[1;32m✓\027[0m"
-    else
-      "\027[1;31m✗\027[0m"
-  in
-  let duration = Time.Duration.to_secs_string ~precision:2 summary.duration in
-  status_char
-  ^ " Checked "
-  ^ Int.to_string summary.total_files
-  ^ " files in "
-  ^ duration
-  ^ "s ("
-  ^ Int.to_string summary.already_formatted
-  ^ " already formatted, "
-  ^ Int.to_string summary.needs_formatting
-  ^ " need formatting, "
-  ^ Int.to_string summary.would_reformat
-  ^ " would reformat safely, "
-  ^ Int.to_string summary.unsafe_to_format
-  ^ " unsafe to format, "
-  ^ Int.to_string summary.formatted_files
-  ^ " formatted, "
-  ^ Int.to_string summary.failed_files
-  ^ " failed)"
 
 let format_fix_diagnostics = fun result ->
   let grouped = Riot_fix.Diagnostic.group_diagnostics result.Riot_fix.Runner.diagnostics in
@@ -201,9 +157,7 @@ let render_skipping_not_public = fun ~package ~version ->
 
 let write_publish_event = fun ~workspace_root ~seen_registry_updates ~displayed_packages ~progress event ->
   match event with
-  | Riot_publish.Fmt (Krasny.Report.Start _) -> ()
-  | Riot_publish.Fmt (Krasny.Report.File _) -> ()
-  | Riot_publish.Fmt (Krasny.Report.Summary _) -> ()
+  | Riot_publish.Fmt _ -> ()
   | Riot_publish.Fix (Riot_fix.Event.Start _) -> ()
   | Riot_publish.Fix (Riot_fix.Event.FileStarted _) -> ()
   | Riot_publish.Fix (Riot_fix.Event.FileProgress _) -> ()

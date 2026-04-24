@@ -383,7 +383,7 @@ let key_compare = fun left right ->
 let dependencies_for_scope = fun scope (pkg: t) ->
   match scope with
   | Normal -> pkg.dependencies
-  | Dev -> pkg.dev_dependencies
+  | Dev -> pkg.dependencies @ pkg.dev_dependencies
   | Build -> pkg.build_dependencies
 
 let is_builtin_dependency_name = fun name ->
@@ -1599,7 +1599,7 @@ let scan_sources_for_intent ~(intent:realization_intent) ~(package_path:Path.t) 
     let should_skip_source_entry filename = String.starts_with ~prefix:"." (Path.basename filename) in
     let should_skip_test_support_path rel_path =
       match path_components rel_path with
-      | "tests" :: ("fixtures" | "generated" | "diagnostics" | "deps_fixtures") :: _ -> true
+      | "tests" :: ("fixtures" | "generated" | "diagnostics" | "deps_fixtures" | "autofix_fixtures" | "workspace_fixtures") :: _ -> true
       | _ -> false
     in
     let is_ocaml_module_file rel_path =
@@ -3007,6 +3007,37 @@ std = {}
       Ok ()
     else
       Error "expected build graph dependencies to exclude build-only deps" [@test]
+
+  let test_dev_scope_dependencies_include_regular_dependencies (): (unit, string) result =
+    let pkg = {
+      name = package_name "example";
+      path = Path.v "/tmp/example";
+      relative_path = Path.v "packages/example";
+      dependencies = [ { name = package_name "std"; source = source ~workspace:true () } ];
+      dev_dependencies = [ { name = package_name "propane"; source = source ~workspace:true () } ];
+      build_dependencies = [ { name = package_name "fixme"; source = source ~workspace:true () } ];
+      foreign_dependencies = [];
+      binaries = [];
+      library = None;
+      sources =
+        {
+          src = [];
+          native = [];
+          tests = [];
+          examples = [];
+          bench = [];
+        };
+      compiler = { profile_overrides = []; target_overrides = [] };
+      commands = [];
+      fix_providers = [];
+      publish;
+    }
+    in
+    let dev_deps = dependencies_for_scope Dev pkg |> List.map ~fn:(fun (dep: dependency) -> dep.name) in
+    if dev_deps = [ package_name "std"; package_name "propane" ] then
+      Ok ()
+    else
+      Error "expected dev scope dependencies to include regular dependencies" [@test]
 
   let test_root_module_name_sanitizes_hyphenated_package_names (): (unit, string) result =
     let pkg = synthetic

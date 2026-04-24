@@ -120,7 +120,7 @@ let test_corner_radius_is_preserved_on_rectangles = fun _ctx ->
     |> width (Fixed 4.0)
     |> height (Fixed 2.0)
     |> bg (`rgb (255, 0, 0))
-    |> border ~radius:(CornerRadius.all 8.0) ())
+    |> border ~radius:(Style.CornerRadius.all 8.0) ())
     [] in
   match find_rectangles (layout ~config:(make_config ()) ui) with
   | [ ({ Render.corner_radius; _ }, _, _) ] when approx_eq corner_radius.top_left 8.0

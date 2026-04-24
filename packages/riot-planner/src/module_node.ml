@@ -11,6 +11,7 @@ type kind =
   | Other of string
   | Root
   | Native of { files: Path.t list }
+  | PackageDependency of { package_name: Package_name.t; root_module: string }
   | Library of { name: string; includes: Path.t list }
   | Binary of { name: string; source: Path.t; libraries: Path.t list; includes: Path.t list }
 
@@ -45,6 +46,13 @@ let make_library = fun ~name ~includes ->
 let make_native = fun ~files ->
   { file = Concrete (Path.v "native"); open_modules = []; kind = Native { files } }
 
+let make_package_dependency = fun ~package_name ~root_module ->
+  {
+    file = Concrete (Path.v "");
+    open_modules = [];
+    kind = PackageDependency { package_name; root_module }
+  }
+
 let make_binary = fun ~name ~source ~libraries ~includes ->
   { file = Concrete source; open_modules = []; kind = Binary { name; source; libraries; includes } }
 
@@ -58,5 +66,10 @@ let kind_to_string = function
   | Other s -> "Other(" ^ s ^ ")"
   | Root -> "Root"
   | Native { files } -> "Native(" ^ Int.to_string (List.length files) ^ " files)"
+  | PackageDependency { package_name; root_module } -> "PackageDependency("
+  ^ Package_name.to_string package_name
+  ^ ":"
+  ^ root_module
+  ^ ")"
   | Library { name; _ } -> "Library(" ^ name ^ ")"
   | Binary { name; _ } -> "Binary(" ^ name ^ ")"

@@ -65,11 +65,12 @@ type analyzed_module = {
   deps: (Syn.Deps.t, Syn.Deps.parse_error) result;
   resolved_deps: Module_name.t list;
   resolved_dep_ids: G.Node_id.t list;
+  unresolved_deps: string list;
 }
 
 type root_export_source =
-  | Export_from_ml of { public_root_name: string }
-  | Export_from_mli of { public_root_name: string }
+  | Export_from_ml of { public_root_name: string; source_path: Path.t }
+  | Export_from_mli of { public_root_name: string; source_path: Path.t }
 
 type t = {
   config: config;
@@ -451,6 +452,85 @@ let scan_sources = fun t (group: source_group) (sources: Module_scanner.entry li
 let module_name_segments = fun module_name ->
   (Module_name.namespace module_name |> Namespace.to_list) @ [ Module_name.to_string module_name ]
 
+let ocaml_stdlib_module_names = [
+  "Arg";
+  "Array";
+  "ArrayLabels";
+  "Atomic";
+  "Bigarray";
+  "Bool";
+  "Buffer";
+  "Bytes";
+  "BytesLabels";
+  "Callback";
+  "Char";
+  "Complex";
+  "Digest";
+  "Domain";
+  "Effect";
+  "Either";
+  "Ephemeron";
+  "Filename";
+  "Float";
+  "Format";
+  "Fun";
+  "Gc";
+  "Hashtbl";
+  "In_channel";
+  "Int";
+  "Int32";
+  "Int64";
+  "Lazy";
+  "Lexing";
+  "List";
+  "ListLabels";
+  "Map";
+  "Marshal";
+  "MoreLabels";
+  "Mutex";
+  "Nativeint";
+  "Obj";
+  "Oo";
+  "Option";
+  "Out_channel";
+  "Parsing";
+  "Printexc";
+  "Printf";
+  "Queue";
+  "Random";
+  "Result";
+  "Scanf";
+  "Semaphore";
+  "Seq";
+  "Set";
+  "Stack";
+  "StdLabels";
+  "String";
+  "StringLabels";
+  "Sys";
+  "Uchar";
+  "Unit";
+  "Weak";
+]
+
+let add_ocaml_stdlib_exports = fun env ~root_module ->
+  if not (String.equal root_module "Stdlib") then
+    env
+  else
+    let exports =
+      List.fold_left
+        ocaml_stdlib_module_names
+        ~init:Syn.Deps.Env.empty
+        ~fn:(fun exports module_name ->
+          Syn.Deps.Env.add_path exports ~path:[ module_name ] ~free_names:[ root_module ])
+    in
+    let env = Syn.Deps.Env.add_binding env ~path:[ root_module ] ~free_names:[ root_module ] ~exports in
+    List.fold_left
+      ocaml_stdlib_module_names
+      ~init:env
+      ~fn:(fun env module_name ->
+        Syn.Deps.Env.add_path env ~path:[ module_name ] ~free_names:[ root_module ])
+
 let rec build_deps_env_for_library = fun (env, root_export_sources) ~package_path ~binaries ~namespace ~public_root_name ~library_name ~concrete_library_path children ->
   let lib_def = Library_definition.from_entries
     ~namespace
@@ -474,6 +554,16 @@ let rec build_deps_env_for_library = fun (env, root_export_sources) ~package_pat
         let child_name = Module.module_name child_mod |> Module_name.to_string in
         Syn.Deps.Env.add_path exports ~path:[ child_name ] ~free_names:[ child_name ])
   in
+  let alias_exports =
+    if List.is_empty (Library_definition.child_modules lib_def) then
+      alias_exports
+    else
+      Syn.Deps.Env.add_scoped_binding
+        alias_exports
+        ~path:[ "Super" ]
+        ~free_names:[ alias_module_name ]
+        ~exports:alias_exports
+  in
   let env = Syn.Deps.Env.add_scoped_binding
     env
     ~path:alias_module_segments
@@ -481,17 +571,23 @@ let rec build_deps_env_for_library = fun (env, root_export_sources) ~package_pat
     ~exports:alias_exports in
   let env, root_export_sources =
     if Library_definition.has_concrete_mli lib_def then
-      let _ = HashMap.insert
-        root_export_sources
-        ~key:qualified_root_name
-        ~value:(Export_from_mli { public_root_name }) in
-      (env, root_export_sources)
+      match Library_definition.concrete_mli_path lib_def with
+      | Some source_path ->
+          let _ = HashMap.insert
+            root_export_sources
+            ~key:qualified_root_name
+            ~value:(Export_from_mli { public_root_name; source_path }) in
+          (env, root_export_sources)
+      | None -> (env, root_export_sources)
     else if Library_definition.has_concrete_ml lib_def then
-      let _ = HashMap.insert
-        root_export_sources
-        ~key:qualified_root_name
-        ~value:(Export_from_ml { public_root_name }) in
-      (env, root_export_sources)
+      match Library_definition.concrete_ml_path lib_def with
+      | Some source_path ->
+          let _ = HashMap.insert
+            root_export_sources
+            ~key:qualified_root_name
+            ~value:(Export_from_ml { public_root_name; source_path }) in
+          (env, root_export_sources)
+      | None -> (env, root_export_sources)
     else
       (
         List.fold_left
@@ -549,6 +645,94 @@ let build_deps_env_for_group = fun config (env, root_export_sources) (group: sou
         )
         group_entries
 
+let group_namespace = fun root ->
+  if Path.equal root (Path.v "src") then
+    Namespace.empty
+  else
+    Path.to_string root
+    |> String.split ~by:"/"
+    |> List.filter ~fn:(fun part -> not (String.is_empty part))
+    |> List.map ~fn:String.capitalize_ascii
+    |> Namespace.of_list
+
+let dependency_source_groups = fun (package: Package.t) ->
+  let groups = [
+    (Path.v "src", package.sources.src);
+    (Path.v "tests", package.sources.tests);
+    (Path.v "examples", package.sources.examples);
+    (Path.v "bench", package.sources.bench);
+  ] in
+  List.filter_map groups
+    ~fn:(fun (source_dir, allowed_source_files) ->
+      if List.is_empty allowed_source_files then
+        None
+      else
+        let root_mode =
+          if Path.equal source_dir (Path.v "src") then
+            match package.library with
+            | Some _ -> Library_root { library_name = Package_name.to_string package.name }
+            | None -> Loose_sources
+          else
+            Loose_sources
+        in
+        Some { source_dir; allowed_source_files; root_mode; namespace = group_namespace source_dir })
+
+let dependency_group_entries = fun ~root (group: source_group) ->
+  Module_scanner.scan ~root ~source_dir:group.source_dir |> filter_entries ~allowed:group.allowed_source_files
+
+let dependency_root_export_env = fun config env (group: source_group) group_entries ->
+  match group.root_mode with
+  | Loose_sources -> env
+  | Library_root { library_name } ->
+      let public_root_name = Module_name.of_string library_name |> Module_name.to_string in
+      let lib_def =
+        Library_definition.from_entries ~namespace:group.namespace ~library_name ~package_path:config.package.path
+          ~concrete_library_path:(
+            if Namespace.is_empty group.namespace then
+              Option.map config.package.library ~fn:(fun (library: Package.library) -> library.path)
+            else
+              None
+          )
+          ~binaries:config.package.binaries
+          group_entries
+      in
+      let root_path =
+        if Library_definition.has_concrete_mli lib_def then
+          Library_definition.concrete_mli_path lib_def
+        else if Library_definition.has_concrete_ml lib_def then
+          Library_definition.concrete_ml_path lib_def
+        else
+          None
+      in
+      (
+        match root_path with
+        | None -> env
+        | Some path ->
+            let display_path =
+              if Path.is_absolute path then
+                path
+              else
+                Path.(config.package.path / path)
+            in
+            match Fs.read display_path with
+            | Error _ -> env
+            | Ok source ->
+                let library_module_name = Module_name.of_string ~namespace:group.namespace library_name in
+                let alias_namespace = Namespace.append
+                  group.namespace
+                  (Module_name.to_string library_module_name) in
+                let alias_module_segments = Namespace.to_list alias_namespace @ [ "Aliases" ] in
+                let parse_env = Syn.Deps.Env.open_path env ~path:alias_module_segments in
+                let parse_result = Syn.parse ~filename:display_path source in
+                match Syn.Deps.of_parse_result ~env:parse_env parse_result with
+                | Error _ -> env
+                | Ok deps -> Syn.Deps.Env.add_binding
+                  env
+                  ~path:(module_name_segments library_module_name)
+                  ~free_names:[ public_root_name ]
+                  ~exports:(Syn.Deps.exports deps)
+      )
+
 let create = fun config ->
   let scanned_groups =
     List.map config.source_groups
@@ -582,6 +766,80 @@ let create = fun config ->
   List.for_each scanned_groups ~fn:(fun (group, group_entries) -> scan_sources t group group_entries);
   t
 
+let add_direct_dependency_root = fun t ~package_name ~root_module ->
+  let node_value = Module_node.make_package_dependency ~package_name ~root_module in
+  let node = G.add_node t.graph node_value in
+  Module_registry.register_qualified_name t.registry root_module node.id;
+  Cell.set t.deps_env
+    (Syn.Deps.Env.add_path (Cell.get t.deps_env) ~path:[ root_module ] ~free_names:[ root_module ]
+    |> add_ocaml_stdlib_exports ~root_module)
+
+let dependency_export_source_path = function
+  | Export_from_ml { source_path; _ }
+  | Export_from_mli { source_path; _ } -> source_path
+
+let dependency_export_public_root_name = function
+  | Export_from_ml { public_root_name; _ }
+  | Export_from_mli { public_root_name; _ } -> public_root_name
+
+let qualified_name_segments = fun qualified_name ->
+  String.split qualified_name ~by:"__"
+  |> List.filter ~fn:(fun segment -> not (String.is_empty segment))
+
+let prime_dependency_root_exports = fun dependency_config env root_export_sources ->
+  let sorted_sources =
+    HashMap.to_list root_export_sources
+    |> List.sort
+      ~compare:(fun (left_name, _) (right_name, _) ->
+        let left_segments = qualified_name_segments left_name in
+        let right_segments = qualified_name_segments right_name in
+        match Int.compare (List.length left_segments) (List.length right_segments) with
+        | Order.EQ -> String.compare left_name right_name
+        | order -> order)
+  in
+  List.fold_left sorted_sources ~init:env
+    ~fn:(fun env (qualified_name, source) ->
+      let source_path = dependency_export_source_path source in
+      let display_path =
+        if Path.is_absolute source_path then
+          source_path
+        else
+          Path.(dependency_config.package.path / source_path)
+      in
+      match Fs.read display_path with
+      | Error _ -> env
+      | Ok text ->
+          let module_segments = qualified_name_segments qualified_name in
+          let alias_segments = module_segments @ [ "Aliases" ] in
+          let parse_env = Syn.Deps.Env.open_path env ~path:alias_segments in
+          let parse_result = Syn.parse ~filename:display_path text in
+          match Syn.Deps.of_parse_result ~env:parse_env parse_result with
+          | Error _ -> env
+          | Ok deps -> Syn.Deps.Env.add_binding
+            env
+            ~path:module_segments
+            ~free_names:[ dependency_export_public_root_name source ]
+            ~exports:(Syn.Deps.exports deps))
+
+let add_direct_dependency_package = fun t (package: Package.t) ->
+  let root_module = Package.root_module_name package in
+  add_direct_dependency_root t ~package_name:package.name ~root_module;
+  let source_groups = dependency_source_groups package in
+  let scanned_groups =
+    List.map
+      source_groups
+      ~fn:(fun group -> (group, dependency_group_entries ~root:package.path group))
+  in
+  let dependency_config = { t.config with root = package.path; source_groups; package } in
+  let env, root_export_sources =
+    List.fold_left
+      scanned_groups
+      ~init:(Cell.get t.deps_env, HashMap.create ())
+      ~fn:(fun acc (group, group_entries) -> build_deps_env_for_group dependency_config acc group group_entries)
+  in
+  let env = prime_dependency_root_exports dependency_config env root_export_sources in
+  Cell.set t.deps_env env
+
 (** Wire module dependencies using `Syn.Deps`.
 
     This function implements Phase 2 of graph construction by analyzing source
@@ -597,7 +855,7 @@ let create = fun config ->
 
     Edge cases:
     - Generated files are excluded (they have no `open` statements to analyze)
-    - Missing dependencies are silently skipped (external modules, stdlib)
+    - Missing dependencies are recorded for package-edge validation but not wired
     - MLI -> ML dependencies are filtered out to maintain proper compilation
       order *)
 let wire_dependencies = fun t ->
@@ -634,6 +892,17 @@ let wire_dependencies = fun t ->
           env
           ~path:(module_name_segments (Module.module_name mod_))
         | _ -> env)
+  in
+  let module_node_module (node: Module_node.t G.node) =
+    match node.value.kind with
+    | Module_node.ML mod_
+    | Module_node.MLI mod_ -> Some mod_
+    | _ -> None
+  in
+  let module_node_path (node: Module_node.t G.node) =
+    match node.value.file with
+    | Module_node.Concrete path -> Some path
+    | Module_node.Generated _ -> None
   in
   let preferred_dependency_nodes dep_node_ids =
     let rec collect acc has_ml = function
@@ -708,6 +977,20 @@ let wire_dependencies = fun t ->
         || String.equal path_str prefix
         || String.starts_with ~prefix:(prefix ^ "/") path_str)
   in
+  let add_loose_source_module_paths env =
+    List.fold_left sorted_nodes ~init:env
+      ~fn:(fun env (_node_id, (node: Module_node.t G.node)) ->
+        match module_node_module node, module_node_path node with
+        | Some mod_, Some path -> (
+            match group_for_path path with
+            | Some { root_mode=Loose_sources; _ } ->
+                let simple_name = Module.module_name mod_ |> Module_name.to_string in
+                Syn.Deps.Env.add_path env ~path:[ simple_name ] ~free_names:[ simple_name ]
+            | _ -> env
+          )
+        | _ -> env)
+  in
+  let () = Cell.set t.deps_env (add_loose_source_module_paths (Cell.get t.deps_env)) in
   let stringify_dependency_error = fun path ->
     function
     | Syn.Deps.Parse_diagnostics diagnostics ->
@@ -805,35 +1088,33 @@ let wire_dependencies = fun t ->
           | Ok cst -> source_hash ~implicit_opens ~cst
           | Error _ -> Crypto.hash_string ""
         in
-        let resolved_deps =
+        let requested_deps =
           match deps, node.value.file with
           | Ok deps, Module_node.Concrete _ -> Syn.Deps.modules deps
-          |> List.map
-            ~fn:(fun modname -> Module_name.of_string ~namespace:(file_namespace path) modname)
           | Ok _, Module_node.Generated _ -> []
           | Error _, _ -> []
         in
-        let resolved_dep_ids =
-          match deps, node.value.file with
-          | Ok deps, Module_node.Concrete _ ->
-              Syn.Deps.modules deps
-              |> List.map
-                ~fn:(fun modname -> Module_name.of_string ~namespace:(file_namespace path) modname)
-              |> List.map
-                ~fn:(fun dep_mod_name ->
-                  try
-                    let dep_node_ids = resolve_dependency_node_ids dep_mod_name in
-                    preferred_dependency_nodes dep_node_ids |> List.filter_map
-                      ~fn:(fun (dep_node_id, _dep_node) ->
-                        if G.Node_id.eq dep_node_id node.id then
-                          None
-                        else
-                          Some dep_node_id)
-                  with
-                  | Not_found -> [])
-              |> List.concat
-          | Ok _, Module_node.Generated _ -> []
-          | Error _, _ -> []
+        let resolved_deps = requested_deps
+        |> List.map
+          ~fn:(fun modname -> Module_name.of_string ~namespace:(file_namespace path) modname) in
+        let resolved_dep_ids, unresolved_deps =
+          List.fold_left (List.zip requested_deps resolved_deps) ~init:([], [])
+            ~fn:(fun (resolved_ids, unresolved) (requested_module, dep_mod_name) ->
+              try
+                let dep_node_ids = resolve_dependency_node_ids dep_mod_name in
+                let preferred_ids =
+                  preferred_dependency_nodes dep_node_ids
+                  |> List.filter_map
+                    ~fn:(fun (dep_node_id, _dep_node) ->
+                      if G.Node_id.eq dep_node_id node.id then
+                        None
+                      else
+                        Some dep_node_id)
+                in
+                (List.reverse preferred_ids @ resolved_ids, unresolved)
+              with
+              | Not_found -> (resolved_ids, requested_module :: unresolved))
+          |> fun (resolved_ids, unresolved) -> (List.reverse resolved_ids, List.reverse unresolved)
         in
         let analyzed = {
           display_path;
@@ -844,31 +1125,68 @@ let wire_dependencies = fun t ->
           deps;
           resolved_deps;
           resolved_dep_ids;
+          unresolved_deps;
         }
         in
         let _ = HashMap.insert t.analyzed_modules ~key:node.id ~value:analyzed in
+        let add_local_export_bindings env mod_ deps =
+          let simple_name = Module.module_name mod_ |> Module_name.to_string in
+          let module_segments = module_name_segments (Module.module_name mod_) in
+          let env =
+            match group_for_path path with
+            | Some { root_mode=Loose_sources; _ } -> Syn.Deps.Env.add_binding
+              env
+              ~path:[ simple_name ]
+              ~free_names:[ simple_name ]
+              ~exports:(Syn.Deps.exports deps)
+            | _ -> env
+          in
+          match List.reverse module_segments with
+          | []
+          | [ _ ] -> env
+          | simple_name :: parent_segments_rev ->
+              let parent_segments = List.reverse parent_segments_rev in
+              let alias_path = parent_segments @ [ "Aliases" ] in
+              let alias_module =
+                match parent_segments with
+                | [] -> "Aliases"
+                | _ -> String.concat "__" parent_segments ^ "__Aliases"
+              in
+              let alias_exports = Syn.Deps.Env.add_binding
+                Syn.Deps.Env.empty
+                ~path:[ simple_name ]
+                ~free_names:[ simple_name ]
+                ~exports:(Syn.Deps.exports deps) in
+              Syn.Deps.Env.add_scoped_binding
+                env
+                ~path:alias_path
+                ~free_names:[ alias_module ]
+                ~exports:alias_exports
+        in
+        let add_public_root_export_binding env mod_ deps =
+          match HashMap.get
+            t.root_export_sources
+            ~key:(Module_name.qualified_name (Module.module_name mod_)) with
+          | Some (Export_from_ml { public_root_name; _ }) when Module.kind mod_ = `implementation -> Syn.Deps.Env.add_binding
+            env
+            ~path:(module_name_segments (Module.module_name mod_))
+            ~free_names:[ public_root_name ]
+            ~exports:(Syn.Deps.exports deps)
+          | Some (Export_from_mli { public_root_name; _ }) when Module.kind mod_ = `interface -> Syn.Deps.Env.add_binding
+            env
+            ~path:(module_name_segments (Module.module_name mod_))
+            ~free_names:[ public_root_name ]
+            ~exports:(Syn.Deps.exports deps)
+          | _ -> env
+        in
         let () =
           match deps, node.value.kind, node.value.file with
-          | Ok deps, (Module_node.ML mod_ | Module_node.MLI mod_), Module_node.Concrete _ -> (
-              match HashMap.get
-                t.root_export_sources
-                ~key:(Module_name.qualified_name (Module.module_name mod_)) with
-              | Some (Export_from_ml { public_root_name }) when Module.kind mod_ = `implementation -> Cell.set
-                t.deps_env
-                (Syn.Deps.Env.add_binding
-                  (Cell.get t.deps_env)
-                  ~path:(module_name_segments (Module.module_name mod_))
-                  ~free_names:[ public_root_name ]
-                  ~exports:(Syn.Deps.exports deps))
-              | Some (Export_from_mli { public_root_name }) when Module.kind mod_ = `interface -> Cell.set
-                t.deps_env
-                (Syn.Deps.Env.add_binding
-                  (Cell.get t.deps_env)
-                  ~path:(module_name_segments (Module.module_name mod_))
-                  ~free_names:[ public_root_name ]
-                  ~exports:(Syn.Deps.exports deps))
-              | _ -> ()
-            )
+          | Ok deps, (Module_node.ML mod_ | Module_node.MLI mod_), Module_node.Concrete _ ->
+              Cell.set t.deps_env
+                (Cell.get t.deps_env
+                |> fun env ->
+                  add_local_export_bindings env mod_ deps
+                  |> fun env -> add_public_root_export_binding env mod_ deps)
           | _ -> ()
         in
         (
@@ -883,32 +1201,50 @@ let wire_dependencies = fun t ->
           })
         )
   in
-  let is_root_export_source_node (node: Module_node.t G.node) =
-    match node.value.kind, node.value.file with
-    | Module_node.ML mod_, Module_node.Concrete _ -> (
-        match HashMap.get
-          t.root_export_sources
-          ~key:(Module_name.qualified_name (Module.module_name mod_)) with
-        | Some (Export_from_ml _) -> true
-        | _ -> false
+  let export_source_node_ids =
+    let candidates = HashMap.create () in
+    let rank_node (node: Module_node.t G.node) =
+      match node.value.kind, node.value.file with
+      | Module_node.MLI mod_, Module_node.Concrete _ -> Some (
+        Module_name.qualified_name (Module.module_name mod_),
+        0
       )
-    | Module_node.MLI mod_, Module_node.Concrete _ -> (
-        match HashMap.get
-          t.root_export_sources
-          ~key:(Module_name.qualified_name (Module.module_name mod_)) with
-        | Some (Export_from_mli _) -> true
-        | _ -> false
+      | Module_node.ML mod_, Module_node.Concrete _ -> Some (
+        Module_name.qualified_name (Module.module_name mod_),
+        1
       )
-    | _ ->
-        false
+      | _ -> None
+    in
+    let () =
+      List.for_each sorted_nodes
+        ~fn:(fun (node_id, node) ->
+          match rank_node node with
+          | None -> ()
+          | Some (qualified_name, rank) -> (
+              match HashMap.get candidates ~key:qualified_name with
+              | Some (existing_rank, _) when existing_rank <= rank -> ()
+              | _ ->
+                  let _ = HashMap.insert candidates ~key:qualified_name ~value:(rank, node_id) in
+                  ()
+            ))
+    in
+    let selected = HashSet.create () in
+    let () =
+      HashMap.values candidates
+      |> List.for_each
+        ~fn:(fun (_rank, node_id) ->
+          let _ = HashSet.insert selected ~value:node_id in
+          ())
+    in
+    selected
   in
-  let prime_root_exports file_nodes =
+  let prime_module_exports file_nodes =
     List.fold_left file_nodes ~init:(Ok ())
-      ~fn:(fun acc (path, node) ->
+      ~fn:(fun acc (path, (node: Module_node.t G.node)) ->
         match acc with
         | Error _ as error -> error
         | Ok () ->
-            if is_root_export_source_node node then
+            if HashSet.contains export_source_node_ids ~value:node.id then
               match analyze_node path node with
               | Ok _ -> Ok ()
               | Error _ as error -> error
@@ -922,7 +1258,8 @@ let wire_dependencies = fun t ->
         String.compare (Path.to_string left_path) (Path.to_string right_path))
   in
   let deps =
-    let* () = prime_root_exports sorted_file_nodes in
+    let* () = prime_module_exports sorted_file_nodes in
+    let* () = prime_module_exports sorted_file_nodes in
     List.fold_left sorted_file_nodes ~init:(Ok [])
       ~fn:(fun acc (path, node) ->
         match acc with

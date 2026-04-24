@@ -1,5 +1,4 @@
 open Std
-module Rune = Kernel.Unicode.Rune
 
 type media_key =
   | Play
@@ -566,9 +565,8 @@ module Parser = struct
       make_key ~mods (Char char)
 
   let split_first_rune = fun text ->
-    match String.get_utf_8_rune text ~at:0 with
-    | Some decode ->
-        let len = Rune.utf_decode_length decode in
+    match Unicode.Utf8.decode_rune text 0 with
+    | Some (_rune, len) ->
         let head = String.sub text ~offset:0 ~len in
         let rest = String.sub text ~offset:len ~len:(String.length text - len) in
         (head, rest)

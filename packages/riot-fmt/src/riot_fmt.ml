@@ -2,8 +2,10 @@ open Std
 open Std.ArgParser
 open Riot_model
 
+type event = Krasny.Report.event
+
 let command =
-  let open Arg in command "fmt"
+  let open ArgParser.Arg in command "fmt"
   |> about "Format OCaml with krasny"
   |> args
     [
@@ -186,7 +188,7 @@ let explicit_targets = fun matches ->
   |> List.sort ~compare:compare_paths
   |> List.unique ~compare:compare_paths
 
-let no_event = fun (_: Krasny.Report.event) -> ()
+let no_event = fun (_: event) -> ()
 
 let run_mode = fun ?workspace ?(stdout = default_stdout) ?(stderr = default_stderr) ?(on_event = no_event) ~mode ~output_mode ~explicit_targets () ->
   let stdout_writer = writer_of_emit stdout in

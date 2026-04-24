@@ -125,7 +125,7 @@ let blink_error_message = function
 
 let exn_message = function
   | Failure message -> message
-  | exn -> Kernel.Exception.to_string exn
+  | exn -> Exception.to_string exn
 
 let configured_riot_agent = ref None
 

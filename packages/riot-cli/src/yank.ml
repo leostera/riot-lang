@@ -17,7 +17,7 @@ type error =
 
 let command =
   let open ArgParser in
-    let open Arg in command "yank"
+    let open ArgParser.Arg in command "yank"
     |> about "Yank a published package version from pkgs.ml"
     |> args [ positional "package" |> help "Package release in the form <name>@<version>"; ]
 

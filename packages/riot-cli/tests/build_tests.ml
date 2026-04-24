@@ -77,6 +77,8 @@ let parse_clean = fun args ->
   | Ok matches -> Ok matches
   | Error err -> Error (ArgParser.error_message err)
 
+let error_line = fun message -> "\027[1;31mError\027[0m: " ^ message
+
 let write_workspace_manifest = fun ~root ~members ->
   let members = members
   |> List.map ~fn:(fun member -> "  \"" ^ Path.to_string member ^ "\"")
@@ -240,13 +242,39 @@ let test_planning_error_lines_describe_internal_module_violation = fun _ctx ->
   in
   Test.assert_equal
     ~expected:[
-      "planner error: target reaches a library-internal module";
+      error_line "target main imports private module A";
+      "The target source reaches Demo__A, which is internal to this package library.";
       "target: main";
       "source: src/main.ml";
       "requested module: A";
       "internal module: Demo__A";
       "public module: Demo";
-      "help: use Demo.A instead";
+      "examples:";
+      "  - use Demo.A instead";
+      "  - move shared target code behind Demo or a shared helper module";
+    ]
+    ~actual:lines;
+  Ok ()
+
+let test_planning_error_lines_describe_undeclared_package_module = fun _ctx ->
+  let lines = Riot_cli.Build.planning_error_lines
+    (Riot_planner.Planning_error.SourceDependsOnUndeclaredPackageModule {
+      package_name = "demo";
+      source = Path.v "src/main.ml";
+      requested_module = "Kernel";
+      allowed_modules = [ "Demo"; "Std" ]
+    }) in
+  Test.assert_equal
+    ~expected:[
+      error_line "Kernel is not available to package demo";
+      "The source file imports Kernel, but Riot only exposes modules from this package and its direct dependencies.";
+      "package: demo";
+      "source: src/main.ml";
+      "requested module: Kernel";
+      "available direct modules: Demo, Std";
+      "examples:";
+      "  - add the package that provides Kernel to [dependencies]";
+      "  - or depend through one of the exposed modules above if that is the public API you meant";
     ]
     ~actual:lines;
   Ok ()
@@ -261,9 +289,13 @@ let test_workspace_planning_error_lines_describe_missing_dependencies = fun _ctx
     }) in
   Test.assert_equal
     ~expected:[
-      "planner error: missing dependencies";
+      error_line "missing package dependencies";
+      "Riot found package dependency edges that do not point at a loaded workspace or resolved package.";
       "missing: demo -> std";
       "missing: demo -> tty";
+      "examples:";
+      "  - add the missing package to the workspace";
+      "  - add a registry, path, or workspace dependency entry for the missing package";
     ]
     ~actual:lines;
   Ok ()
@@ -275,7 +307,8 @@ let test_planning_error_lines_indent_multiline_reasons = fun _ctx ->
     }) in
   Test.assert_equal
     ~expected:[
-      "planner error: dependency analysis failed";
+      error_line "dependency analysis failed";
+      "Riot could not parse or analyze a source file while discovering module dependencies.";
       "reason: failed to parse tests/solver_tests.ml";
       "";
       "  hint: add )";
@@ -298,7 +331,8 @@ let test_build_failure_detail_lines_render_planning_errors = fun _ctx ->
   Test.assert_equal
     ~expected:[
       "package: demo";
-      "  planner error: dependency analysis failed";
+      "  " ^ error_line "dependency analysis failed";
+      "  Riot could not parse or analyze a source file while discovering module dependencies.";
       "  reason: failed to parse src/demo.ml";
       "    hint: add end";
     ]
@@ -398,7 +432,7 @@ let test_build_rejects_invalid_jobs_flag = fun _ctx ->
                   Ok ()
                 else
                   Error ("unexpected jobs parse error: " ^ message)
-            | Error err -> Error ("expected failure to be Failure: " ^ Kernel.Exception.to_string err))
+            | Error err -> Error ("expected failure to be Failure: " ^ Exception.to_string err))
   with
   | Ok result -> result
   | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
@@ -413,7 +447,7 @@ let test_build_accepts_jobs_flag_in_run = fun _ctx ->
         | Ok matches ->
             match Riot_cli.Build.run ~workspace matches with
             | Ok () -> Ok ()
-            | Error err -> Error ("expected build success: " ^ Kernel.Exception.to_string err))
+            | Error err -> Error ("expected build success: " ^ Exception.to_string err))
   with
   | Ok result -> result
   | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
@@ -430,7 +464,7 @@ let test_build_rejects_zero_jobs_runtime = fun _ctx ->
             | Error (Failure message) when String.equal message "invalid requested parallelism (0): jobs must be >= 1" -> Ok ()
             | Error (Failure message) -> Error ("unexpected failure message: " ^ message)
             | Ok () -> Error "expected zero jobs to be rejected"
-            | Error err -> Error ("expected Failure: " ^ Kernel.Exception.to_string err))
+            | Error err -> Error ("expected Failure: " ^ Exception.to_string err))
   with
   | Ok result -> result
   | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
@@ -447,7 +481,7 @@ let test_build_rejects_negative_jobs_runtime = fun _ctx ->
             | Error (Failure message) when String.equal message "invalid requested parallelism (-1): jobs must be >= 1" -> Ok ()
             | Error (Failure message) -> Error ("unexpected failure message: " ^ message)
             | Ok () -> Error "expected negative jobs to be rejected"
-            | Error err -> Error ("expected Failure: " ^ Kernel.Exception.to_string err))
+            | Error err -> Error ("expected Failure: " ^ Exception.to_string err))
   with
   | Ok result -> result
   | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
@@ -464,8 +498,7 @@ let test_build_command_accepts_workspace = fun _ctx ->
           None)
   with
   | Ok (Ok ()) -> Ok ()
-  | Ok (Error err) -> Error ("expected workspace build command to succeed: "
-  ^ Kernel.Exception.to_string err)
+  | Ok (Error err) -> Error ("expected workspace build command to succeed: " ^ Exception.to_string err)
   | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
 
 let test_build_run_accepts_workspace = fun _ctx ->
@@ -477,8 +510,7 @@ let test_build_run_accepts_workspace = fun _ctx ->
         Riot_cli.Build.run ~workspace matches)
   with
   | Ok (Ok ()) -> Ok ()
-  | Ok (Error err) -> Error ("expected workspace build run to succeed: "
-  ^ Kernel.Exception.to_string err)
+  | Ok (Error err) -> Error ("expected workspace build run to succeed: " ^ Exception.to_string err)
   | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
 
 let test_build_tests_compile_only_test_binaries = fun _ctx ->
@@ -492,8 +524,7 @@ let test_build_tests_compile_only_test_binaries = fun _ctx ->
           let* () =
             match Riot_cli.Build.run ~workspace tests_matches with
             | Ok () -> Ok ()
-            | Error err -> Error ("expected test-scoped build success: "
-            ^ Kernel.Exception.to_string err)
+            | Error err -> Error ("expected test-scoped build success: " ^ Exception.to_string err)
           in
           let* () = assert_path_exists test_binary ~message:"expected --tests to materialize test binary" in
           let* () = assert_path_missing example_binary ~message:"did not expect --tests to materialize example binary" in
@@ -514,8 +545,7 @@ let test_build_examples_compile_only_example_binaries = fun _ctx ->
           let* () =
             match Riot_cli.Build.run ~workspace example_matches with
             | Ok () -> Ok ()
-            | Error err -> Error ("expected example-scoped build success: "
-            ^ Kernel.Exception.to_string err)
+            | Error err -> Error ("expected example-scoped build success: " ^ Exception.to_string err)
           in
           let* () = assert_path_missing test_binary ~message:"did not expect --examples to materialize test binary" in
           let* () = assert_path_exists example_binary ~message:"expected --examples to materialize example binary" in
@@ -536,8 +566,7 @@ let test_build_benches_compile_only_bench_binaries = fun _ctx ->
           let* () =
             match Riot_cli.Build.run ~workspace bench_matches with
             | Ok () -> Ok ()
-            | Error err -> Error ("expected bench-scoped build success: "
-            ^ Kernel.Exception.to_string err)
+            | Error err -> Error ("expected bench-scoped build success: " ^ Exception.to_string err)
           in
           let* () = assert_path_missing test_binary ~message:"did not expect --benches to materialize test binary" in
           let* () = assert_path_missing example_binary ~message:"did not expect --benches to materialize example binary" in
@@ -557,8 +586,7 @@ let test_build_all_compiles_all_dev_binaries = fun _ctx ->
           let* () =
             match Riot_cli.Build.run ~workspace all_matches with
             | Ok () -> Ok ()
-            | Error err -> Error ("expected all-artifacts build success: "
-            ^ Kernel.Exception.to_string err)
+            | Error err -> Error ("expected all-artifacts build success: " ^ Exception.to_string err)
           in
           let* () = assert_path_exists test_binary ~message:"expected --all to materialize test binary" in
           let* () = assert_path_exists example_binary ~message:"expected --all to materialize example binary" in
@@ -812,7 +840,7 @@ let test_run_rejects_trailing_remote_binary_separator = fun _ctx ->
         Ok ()
       else
         Error ("unexpected trailing @ error: " ^ message)
-  | Error err -> Error ("unexpected error kind: " ^ Kernel.Exception.to_string err)
+  | Error err -> Error ("unexpected error kind: " ^ Exception.to_string err)
 
 let make_workspace = fun binaries ->
   let package = Riot_model.Package.make
@@ -1016,6 +1044,7 @@ let tests =
     case "build: workspace test package labels show artifact and target" test_display_package_name_shows_workspace_test_and_target;
     case "build: workspace bench package labels show artifact" test_display_package_name_shows_workspace_bench;
     case "build: planning error lines explain internal module violations" test_planning_error_lines_describe_internal_module_violation;
+    case "build: planning error lines explain undeclared package modules" test_planning_error_lines_describe_undeclared_package_module;
     case "build: workspace planning error lines explain missing dependencies" test_workspace_planning_error_lines_describe_missing_dependencies;
     case "build: planning error lines indent multiline reasons" test_planning_error_lines_indent_multiline_reasons;
     case "build: final failure lines render planning errors" test_build_failure_detail_lines_render_planning_errors;

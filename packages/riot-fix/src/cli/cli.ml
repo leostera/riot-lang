@@ -18,7 +18,7 @@ type event = Types.event =
 
 let command =
   let open ArgParser in
-    let open Arg in command "fix"
+    let open ArgParser.Arg in command "fix"
     |> about "Lint OCaml code and optionally apply safe fixes"
     |> args
       [

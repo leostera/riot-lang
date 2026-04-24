@@ -17,7 +17,7 @@ type 'a cursor_parse_result =
 let slice_of_string = fun value ->
   match Slice.from_string value with
   | Ok slice -> slice
-  | Error error -> panic ("Http1.Chunk.slice_of_string: " ^ Kernel.IO.Error.message error)
+  | Error error -> panic ("Http1.Chunk.slice_of_string: " ^ Slice.error_message error)
 
 let parse_size = fun cursor ->
   match Cursor.take_until_char cursor '\r' with

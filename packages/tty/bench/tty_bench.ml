@@ -1,5 +1,5 @@
 open Std
-module Utf8_reader = Tty__Utf8_reader
+module Utf8_reader = Tty.Utf8_reader
 
 let ansi_rich_text =
   let chunk = "\x1b[1;31merror\x1b[0m " in

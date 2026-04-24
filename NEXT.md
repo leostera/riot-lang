@@ -4,8 +4,7 @@
 
 # Before Announcing
 
-* PREVENT direct access to transitive dependencies: if you depend on Std, you can't directly use Kernel -- this avoids circumventing things like using Kernel.List instead of Std.Collections.List unless you epxlicitly depend on Kernel
-
+* riot add <support many packages>
 
 * Perf: everywhere we're using Cell + list we probably should just use Colletions.Vector 
 

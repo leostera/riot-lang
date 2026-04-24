@@ -142,7 +142,7 @@ let test_escape_sequences_are_strings = fun _ctx ->
     else
       Error "Some escape sequences are invalid"
   with
-  | e -> Error ("Escape sequence error: " ^ Kernel.Exception.to_string e)
+  | e -> Error ("Escape sequence error: " ^ Exception.to_string e)
 
 let test_csi_constant = fun _ctx ->
   (* Test the CSI constant *)

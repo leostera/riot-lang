@@ -16,7 +16,7 @@ let assert_property = fun name property ->
   ^ Int.to_string shrink_steps)
   | Property.Error { exception_; backtrace } -> Error (name
   ^ " raised "
-  ^ Kernel.Exception.to_string exception_
+  ^ Exception.to_string exception_
   ^ "\n"
   ^ backtrace)
   | Property.Assumption_violated -> Error (name ^ " exhausted assumptions")

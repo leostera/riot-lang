@@ -568,7 +568,7 @@ let prepare_execution = fun ~workspace ~toolchain ~store ~execution_plan ~build_
     Ok { execution_plan; sandbox; toolchain }
   with
   | exn ->
-      let error_msg = "Exception: " ^ Kernel.Exception.to_string exn in
+      let error_msg = "Exception: " ^ Exception.to_string exn in
       let error = ExecutionFailed { message = error_msg } in
       Error (failed_execution_result
         ~session_id
@@ -681,7 +681,7 @@ let finalize_execution = fun ~workspace ~store ~(prepared_execution:prepared_exe
           }
   with
   | exn ->
-      let error_msg = "Exception: " ^ Kernel.Exception.to_string exn in
+      let error_msg = "Exception: " ^ Exception.to_string exn in
       let error = ExecutionFailed { message = error_msg } in
       cleanup_and_return
         (failed_execution_result

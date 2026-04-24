@@ -28,6 +28,12 @@ type t =
       other_target_module: string;
       public_module: string
     }
+  | SourceDependsOnUndeclaredPackageModule of {
+      package_name: string;
+      source: Path.t;
+      requested_module: string;
+      allowed_modules: string list
+    }
   | Exception of { exn: exn }
 
 let to_string = function
@@ -99,7 +105,21 @@ let to_string = function
   ^ "'. Target roots are private entrypoints. Move shared code behind the public package module '"
   ^ public_module
   ^ "' or a shared helper module."
-  | Exception { exn } -> "Unexpected exception: " ^ Kernel.Exception.to_string exn
+  | SourceDependsOnUndeclaredPackageModule {
+    package_name;
+    source;
+    requested_module;
+    allowed_modules
+  } -> "Package '"
+  ^ package_name
+  ^ "' source '"
+  ^ Path.to_string source
+  ^ "' depends on module '"
+  ^ requested_module
+  ^ "', but that module is not provided by this package or one of its direct dependencies. Allowed package modules: "
+  ^ String.concat ", " allowed_modules
+  ^ "."
+  | Exception { exn } -> "Unexpected exception: " ^ Exception.to_string exn
 
 let to_json = function
   | CyclicDependency { cycle } -> Data.Json.obj
@@ -164,8 +184,21 @@ let to_json = function
       ("other_target_module", Data.Json.string other_target_module);
       ("public_module", Data.Json.string public_module)
     ]
+  | SourceDependsOnUndeclaredPackageModule {
+    package_name;
+    source;
+    requested_module;
+    allowed_modules
+  } -> Data.Json.obj
+    [
+      ("type", Data.Json.string "source_depends_on_undeclared_package_module");
+      ("package_name", Data.Json.string package_name);
+      ("source", Data.Json.string (Path.to_string source));
+      ("requested_module", Data.Json.string requested_module);
+      ("allowed_modules", Data.Json.array (List.map allowed_modules ~fn:Data.Json.string))
+    ]
   | Exception { exn } -> Data.Json.obj
     [
       ("type", Data.Json.string "exception");
-      ("message", Data.Json.string (Kernel.Exception.to_string exn))
+      ("message", Data.Json.string (Exception.to_string exn))
     ]

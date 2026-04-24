@@ -268,7 +268,7 @@ let test_package_scheduler_skips_dependents_after_failed_dependency = fun _ctx -
         let lib = make_package
           ~root:tmpdir
           ~name:"lib"
-          ~source:"let value = Missing_module.value\n"
+          ~source:"let value : int = \"not an int\"\n"
           () in
         let app = make_package
           ~root:tmpdir

@@ -18,7 +18,7 @@ type publish_check_stage =
   | `metadata
 ]
 type publish_event =
-  | Fmt of Krasny.Report.event
+  | Fmt of Riot_fmt.event
   | Fix of Riot_fix.Event.t
   | Build of Riot_build.Event.t
   | CheckStarted of {

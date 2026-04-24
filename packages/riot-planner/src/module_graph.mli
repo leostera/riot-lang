@@ -28,9 +28,14 @@ type analyzed_module = {
   deps: (Syn.Deps.t, Syn.Deps.parse_error) result;
   resolved_deps: Module_name.t list;
   resolved_dep_ids: G.Node_id.t list;
+  unresolved_deps: string list;
 }
 type t
 val create: config -> t
+
+val add_direct_dependency_root: t -> package_name:Package_name.t -> root_module:string -> unit
+
+val add_direct_dependency_package: t -> Package.t -> unit
 
 val wire_dependencies: t -> (unit, Planning_error.t) result
 

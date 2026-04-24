@@ -1,5 +1,4 @@
 open Std
-module Rune = Kernel.Unicode.Rune
 
 type read_result =
 [
@@ -42,9 +41,8 @@ let utf8_char_length = fun first_byte ->
 
 let is_valid_buffer = fun reader ->
   let value = IO.Bytes.sub_unchecked reader.data ~offset:0 ~len:reader.len |> IO.Bytes.to_string in
-  match String.get_utf_8_rune value ~at:0 with
-  | Some decode -> Rune.utf_decode_is_valid decode
-  && Int.equal (Rune.utf_decode_length decode) reader.len
+  match Unicode.Utf8.decode_rune value 0 with
+  | Some (_rune, next_pos) -> Int.equal next_pos reader.len
   | None -> false
 
 let read_more = fun reader ~read ->

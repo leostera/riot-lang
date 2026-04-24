@@ -50,21 +50,21 @@ let rgb_distance = fun (left_r, left_g, left_b) (right_r, right_g, right_b) ->
 
 let nearest_ansi_index = fun rgb ->
   let rec loop index best_index best_distance =
-    if index >= Kernel.Array.length ansi_palette then
+    if index >= Array.length ansi_palette then
       best_index
     else
-      let candidate = Kernel.Array.get_unchecked ansi_palette ~at:index in
+      let candidate = Array.get_unchecked ansi_palette ~at:index in
       let distance = rgb_distance rgb candidate in
       if distance < best_distance then
         loop (index + 1) index distance
       else
         loop (index + 1) best_index best_distance
   in
-  loop 1 0 (rgb_distance rgb (Kernel.Array.get_unchecked ansi_palette ~at:0))
+  loop 1 0 (rgb_distance rgb (Array.get_unchecked ansi_palette ~at:0))
 
 let rgb_of_ansi256 = fun index ->
   if index < 16 then
-    Kernel.Array.get_unchecked ansi_palette ~at:index
+    Array.get_unchecked ansi_palette ~at:index
   else if index < 232 then
     let normalized = index - 16 in
     let red = normalized / 36 in

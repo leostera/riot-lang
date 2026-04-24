@@ -355,7 +355,7 @@ let parse_format_to_reporter = function
 let default_concurrency = Int.max 1 Thread.available_parallelism
 
 let run_tests_cmd =
-  let open Arg in
+  let open Arg_parser.Arg in
     command "run-tests" |> about "Run tests that match query" |> args
       [
         positional "query" |> required false |> help "Test name substring to filter by";
@@ -376,7 +376,7 @@ let run_tests_cmd =
       ]
 
 let list_tests_cmd =
-  let open Arg in command "list-tests"
+  let open Arg_parser.Arg in command "list-tests"
   |> about "List all tests"
   |> args
     [

@@ -232,7 +232,7 @@ let create = fun ?base_dir ?(ocamlc_warnings = []) ?(exports = []) () ~package ~
         (* Calculate hash of the file *)
         match Std.Fs.read_to_string readable_path with
         | Ok file ->
-            let hash = Std.Crypto.(Sha512.hash_string file |> Digest.hex) in
+            let hash = Std.Crypto.Digest.hex (Std.Crypto.Sha512.hash_string file) in
             Some { path; hash; size }
         | Error _ -> None)
   in

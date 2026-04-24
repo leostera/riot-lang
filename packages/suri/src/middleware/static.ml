@@ -192,7 +192,7 @@ module Cache = struct
 
   let last_modified = fun timestamp ->
     (* Format as HTTP date: Sun, 06 Nov 1994 08:49:37 GMT *)
-    let tm = Kernel.Time.gmtime timestamp in
+    let tm = Time.gmtime timestamp in
     String.concat ""
       [
         weekday tm.tm_wday;
@@ -241,7 +241,7 @@ module Cache = struct
             | [h;m;s] -> (Int.of_string h, Int.of_string m, Int.of_string s)
             | _ -> (0, 0, 0)
           in
-          let tm: Kernel.Time.tm = {
+          let tm: Time.tm = {
             tm_sec = sec;
             tm_min = min;
             tm_hour = hour;
@@ -253,7 +253,7 @@ module Cache = struct
             tm_isdst = false;
           }
           in
-          let unix_time, _ = Kernel.Time.mktime tm in
+          let unix_time, _ = Time.mktime tm in
           Some unix_time
       | _ -> None
     with
@@ -303,7 +303,7 @@ module Directory = struct
       format_float_1dp (float size /. (1024.0 *. 1024.0 *. 1024.0)) ^ " GB"
 
   let format_date = fun timestamp ->
-    let tm = Kernel.Time.localtime timestamp in
+    let tm = Time.localtime timestamp in
     let pad2 n =
       if n < 10 then
         "0" ^ string_of_int n

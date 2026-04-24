@@ -13,10 +13,9 @@ let with_on_event = fun config ~on_event -> { config with on_event = Some on_eve
 
 let without_on_event = fun config -> { config with on_event = None }
 
-let monotonic_now_us = fun () ->
-  let instant = Kernel.Time.Monotonic.now () |> Result.expect ~msg:"failed to read monotonic clock" in
-  let secs, nanos = Kernel.Time.Monotonic.to_parts instant in
-  Int64.(to_int (add (mul (from_int secs) 1_000_000L) (div (from_int nanos) 1_000L)))
+let monotonic_origin = Time.Instant.now ()
+
+let monotonic_now_us = fun () -> Time.Instant.elapsed monotonic_origin |> Time.Duration.to_micros
 
 let emit_event = fun config build_event ->
   match config.on_event with

@@ -16,3 +16,4 @@ path = "tests/fmt_tests.ml"
 std = { path = "../std", version = "*" }
 riot-model = { path = "../riot-model", version = "*" }
 krasny = { path = "../krasny", version = "*" }
+syn = { path = "../syn", version = "*" }

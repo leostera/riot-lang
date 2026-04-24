@@ -196,7 +196,7 @@ let main = fun ~args ->
   (* Parse command line arguments *)
   let cmd =
     let open ArgParser in
-      let open Arg in command "syn"
+      let open ArgParser.Arg in command "syn"
       |> version "0.1.0"
       |> about "OCaml syntax analysis tool"
       |> subcommands

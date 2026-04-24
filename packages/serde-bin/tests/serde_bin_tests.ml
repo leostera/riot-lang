@@ -284,7 +284,7 @@ let test_encode_into_bytes = fun _ctx ->
   let dst = IO.Bytes.create ~size:16 in
   match Serde_bin.encode_into_bytes pet_encode dst (Dog "Chouchou") with
   | Ok written ->
-      let actual = Kernel.Bytes.sub_string dst ~offset:0 ~len:written |> byte_values in
+      let actual = IO.Bytes.sub_string dst ~offset:0 ~len:written |> byte_values in
       expect_equal
         ~expected:[
           1;

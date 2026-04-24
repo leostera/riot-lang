@@ -112,12 +112,12 @@ let render_tab = fun ~active index ((title, _)) ->
         |> bg (`rgb (62, 103, 224))
         |> fg (`rgb (255, 255, 255))
         |> bold
-        |> padding (Padding.symmetric ~h:2 ~v:1))
+        |> padding (Style.Padding.symmetric ~h:2 ~v:1))
       else
         Style.(empty
         |> bg (`rgb (40, 40, 40))
         |> fg (`rgb (150, 150, 150))
-        |> padding (Padding.symmetric ~h:2 ~v:1))
+        |> padding (Style.Padding.symmetric ~h:2 ~v:1))
     in
     text ~style (" " ^ Int.to_string (index + 1) ^ ":" ^ title ^ " ")
 
@@ -130,17 +130,17 @@ let view = fun model ->
     let tab_elements = model.tabs
     |> List.enumerate
     |> List.map ~fn:(fun (index, tab) -> render_tab ~active:model.active_tab index tab) in
-    let tab_bar = row ~style:Style.(empty |> margin (Margin.make ~bottom:1 ())) tab_elements in
+    let tab_bar = row ~style:Style.(empty |> margin (Style.Margin.make ~bottom:1 ())) tab_elements in
     (* Content area *)
     let content_area = container
       ~style:Style.(empty
       |> border ~width:1 ~color:(`rgb (100, 100, 100)) ()
-      |> padding (Padding.all 2)
+      |> padding (Style.Padding.all 2)
       |> min_height 15.0)
       [ text ~style:Style.(empty |> fg (`rgb (200, 200, 200))) content ] in
     (* Full layout *)
     column
-      ~style:Style.(empty |> padding (Padding.all 1))
+      ~style:Style.(empty |> padding (Style.Padding.all 1))
       [
         tab_bar;
         content_area;

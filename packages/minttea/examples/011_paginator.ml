@@ -147,12 +147,12 @@ let view = fun model ->
       |> String.concat " "
     in
     column
-      ~style:Style.(empty |> padding (Padding.all 1))
+      ~style:Style.(empty |> padding (Style.Padding.all 1))
       [
         container
           ~style:Style.(empty
           |> border ~width:1 ~color:(`rgb (100, 150, 200)) ()
-          |> padding (Padding.all 2)
+          |> padding (Style.Padding.all 2)
           |> min_height 15.0)
           [ text page_content ];
         text "";

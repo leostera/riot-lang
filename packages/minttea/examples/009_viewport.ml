@@ -99,7 +99,7 @@ let view = fun model ->
     let scroll_percent = Viewport.scroll_percent model.viewport in
     let at_top = Viewport.at_top model.viewport in
     let at_bottom = Viewport.at_bottom model.viewport in
-    column ~style:Style.(empty |> padding (Padding.all 1))
+    column ~style:Style.(empty |> padding (Style.Padding.all 1))
       [
         text ~style:Style.(empty |> bold |> fg (`rgb (100, 200, 255))) "📜 Scrollable Content Viewer";
         text "";
@@ -117,7 +117,7 @@ let view = fun model ->
         container
           ~style:Style.(empty
           |> border ~width:1 ~color:(`rgb (100, 100, 200)) ()
-          |> padding (Padding.all 1))
+          |> padding (Style.Padding.all 1))
           [ text (Viewport.view model.viewport) ];
         text "";
         column

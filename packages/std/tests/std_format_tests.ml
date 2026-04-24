@@ -1,22 +1,23 @@
 open Std
-module Bytes = Kernel.Bytes
+module Bytes = IO.Bytes
+module F = Std.Format
 
 let test_format_empty = fun _ctx ->
-  if String.equal (Format.format []) "" then
+  if String.equal (F.format []) "" then
     Ok ()
   else
     Error "Format.format [] should return the empty string"
 
 let test_format_concatenates_fragments_in_order = fun _ctx ->
-  let actual = Format.format
+  let actual = F.format
     [
-      Format.str "ok:";
-      Format.char ' ';
-      Format.bool true;
-      Format.char ' ';
-      Format.int 42;
-      Format.char ' ';
-      Format.bytes (Bytes.from_string "done");
+      F.str "ok:";
+      F.char ' ';
+      F.bool true;
+      F.char ' ';
+      F.int 42;
+      F.char ' ';
+      F.bytes (Bytes.from_string "done");
     ] in
   if String.equal actual "ok: true 42 done" then
     Ok ()
@@ -24,31 +25,31 @@ let test_format_concatenates_fragments_in_order = fun _ctx ->
     Error "Format.format should concatenate fragments in order"
 
 let test_to_string_handles_string = fun _ctx ->
-  if String.equal (Format.to_string (Format.str "hello")) "hello" then
+  if String.equal (F.to_string (F.str "hello")) "hello" then
     Ok ()
   else
     Error "Format.to_string should unwrap string fragments"
 
 let test_to_string_handles_char = fun _ctx ->
-  if String.equal (Format.to_string (Format.char 'x')) "x" then
+  if String.equal (F.to_string (F.char 'x')) "x" then
     Ok ()
   else
     Error "Format.to_string should render chars"
 
 let test_to_string_handles_bool = fun _ctx ->
-  if String.equal (Format.to_string (Format.bool false)) "false" then
+  if String.equal (F.to_string (F.bool false)) "false" then
     Ok ()
   else
     Error "Format.to_string should render bools"
 
 let test_to_string_handles_int = fun _ctx ->
-  if String.equal (Format.to_string (Format.int 7)) "7" then
+  if String.equal (F.to_string (F.int 7)) "7" then
     Ok ()
   else
     Error "Format.to_string should render ints"
 
 let test_to_string_handles_bytes = fun _ctx ->
-  if String.equal (Format.to_string (Format.bytes (Bytes.from_string "raw"))) "raw" then
+  if String.equal (F.to_string (F.bytes (Bytes.from_string "raw"))) "raw" then
     Ok ()
   else
     Error "Format.to_string should render bytes"

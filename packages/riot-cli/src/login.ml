@@ -7,7 +7,7 @@ let registry_name = "pkgs.ml"
 
 let command =
   let open ArgParser in
-    let open Arg in command "login"
+    let open ArgParser.Arg in command "login"
     |> about "Save your pkgs.ml API token"
     |> args [ option "token" |> long "token" |> help "API token to save without prompting"; ]
 
@@ -16,8 +16,7 @@ let fail = fun message -> Error (Failure message)
 let config_path = fun () -> Riot_dirs.config_path ()
 
 let ensure_riot_dirs = fun () ->
-  Riot_dirs.ensure_created ()
-  |> Result.map_err ~fn:(fun exn -> Failure (Kernel.Exception.to_string exn))
+  Riot_dirs.ensure_created () |> Result.map_err ~fn:(fun exn -> Failure (Exception.to_string exn))
 
 let load_config = fun path ->
   match Fs.exists path with

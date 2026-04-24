@@ -65,5 +65,10 @@ let set = fun ~var ~value ->
   let _ = Kernel.Env.set ~var ~value in
   previous
 
+let remove = fun ~var ->
+  let previous = get_raw var in
+  let _ = Kernel.Env.remove ~var in
+  previous
+
 let vars = fun () ->
   Kernel.Env.vars () |> Kernel.Array.fold_left ~acc:[] ~fn:(fun acc value -> value :: acc) |> List.reverse

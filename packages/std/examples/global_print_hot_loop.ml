@@ -145,14 +145,14 @@ let write_stdout_bytes_raw_native = fun bytes ~len ->
 
 let configure_log = fun format_name ->
   Config.load_string
-    (format
-      Format.[
-        str "[[log.handler]]\n";
+    (
+      format
+        Std.Format.[str "[[log.handler]]\n";
         str "type = \"stdout\"\n";
         str "format = \"";
         str format_name;
-        str "\"\n";
-      ]);
+        str "\"\n";]
+    );
   Log.set_level Log.Info;
   ignore (Log.start_link ())
 
@@ -217,27 +217,25 @@ let main = fun ~args ->
       eprintln
         (
           format
-            Format.[
-              str "{";
-              str "\"mode\":\"";
-              str (mode_to_string config.mode);
-              str "\",";
-              str "\"message\":\"";
-              str (message_kind_to_string config.message_kind);
-              str "\",";
-              str "\"iterations\":";
-              str (Int.to_string config.iterations);
-              str ",";
-              str "\"warmup\":";
-              str (Int.to_string config.warmup);
-              str ",";
-              str "\"total_nanos\":";
-              str (Int64.to_string total_nanos);
-              str ",";
-              str "\"per_iteration_nanos\":";
-              str (Int64.to_string per_iteration_nanos);
-              str "}";
-            ]
+            Std.Format.[str "{";
+            str "\"mode\":\"";
+            str (mode_to_string config.mode);
+            str "\",";
+            str "\"message\":\"";
+            str (message_kind_to_string config.message_kind);
+            str "\",";
+            str "\"iterations\":";
+            str (Int.to_string config.iterations);
+            str ",";
+            str "\"warmup\":";
+            str (Int.to_string config.warmup);
+            str ",";
+            str "\"total_nanos\":";
+            str (Int64.to_string total_nanos);
+            str ",";
+            str "\"per_iteration_nanos\":";
+            str (Int64.to_string per_iteration_nanos);
+            str "}";]
         );
       Ok ()
 

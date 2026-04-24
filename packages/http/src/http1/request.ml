@@ -86,7 +86,7 @@ end
 let slice_of_string = fun value ->
   match Slice.from_string value with
   | Ok slice -> slice
-  | Error error -> panic ("Http1.Request.slice_of_string: " ^ Kernel.IO.Error.message error)
+  | Error error -> panic ("Http1.Request.slice_of_string: " ^ Slice.error_message error)
 
 let string_of_slice = Slice.to_string
 

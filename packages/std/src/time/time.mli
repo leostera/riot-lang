@@ -39,3 +39,26 @@ module Instant = Instant
 module SystemTime = System_time
 
 (** Wall-clock time for timestamps and calendar operations. See [SystemTime]. *)
+type tm = {
+  tm_sec: int;
+  tm_min: int;
+  tm_hour: int;
+  tm_mday: int;
+  tm_mon: int;
+  tm_year: int;
+  tm_wday: int;
+  tm_yday: int;
+  tm_isdst: bool;
+}
+
+(** Breaks a Unix timestamp into local calendar fields. *)
+val localtime: float -> tm
+
+(** Breaks a Unix timestamp into UTC calendar fields. *)
+val gmtime: float -> tm
+
+(** Converts local calendar fields back into a Unix timestamp.
+
+    The returned pair includes normalized calendar fields produced by the
+    platform. *)
+val mktime: tm -> float * tm

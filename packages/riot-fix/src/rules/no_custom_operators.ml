@@ -59,7 +59,7 @@ let make_diagnostic = fun expr ->
     | first :: rest ->
         List.fold_left rest ~init:(Syn.Cst.Token.span first)
           ~fn:(fun span token ->
-            Ceibo.Span.union span (Syn.Cst.Token.span token))
+            Syn.Ceibo.Span.union span (Syn.Cst.Token.span token))
     | [] -> Syn.Cst.Expression.syntax_node (Syn.Cst.Expression.Infix expr) |> Syn.Cst.token_body_span
   in
   Diagnostic.make

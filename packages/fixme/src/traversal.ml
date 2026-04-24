@@ -1,5 +1,6 @@
 open Std
 open Std.Collections
+module Red = Syn.Ceibo.Red
 
 type red_tree = (Syn.SyntaxKind.t, string) Syn.Ceibo.Red.syntax_node
 
@@ -22,18 +23,17 @@ let is_trivia = fun kind ->
 (* Core traversal that collects elements *)
 
 let traverse = fun ~visit_node ~visit_token tree ->
-  let open Syn.Ceibo.Red in
-    let rec go elem acc =
-      match elem with
-      | Node n ->
-          let acc = visit_node n acc in
-          SyntaxNode.fold_children n acc
-            (fun acc child ->
-              yield ();
-              go child acc)
-      | Token t -> visit_token t acc
-    in
-    go (Node tree) []
+  let rec go elem acc =
+    match elem with
+    | Red.Node n ->
+        let acc = visit_node n acc in
+        Red.SyntaxNode.fold_children n acc
+          (fun acc child ->
+            yield ();
+            go child acc)
+    | Red.Token t -> visit_token t acc
+  in
+  go (Red.Node tree) []
 
 (* Find nodes matching predicate *)
 
@@ -49,15 +49,12 @@ let find_nodes = fun predicate tree ->
 
 (* Find nodes by kind *)
 
-let find_by_kind = fun kind tree ->
-  find_nodes (fun node -> let open Syn.Ceibo.Red in SyntaxNode.kind node = kind) tree
+let find_by_kind = fun kind tree -> find_nodes (fun node -> Red.SyntaxNode.kind node = kind) tree
 
 (* Find nodes by multiple kinds *)
 
 let find_by_kinds = fun kinds tree ->
-  find_nodes
-    (fun node -> let open Syn.Ceibo.Red in List.contains kinds ~value:(SyntaxNode.kind node))
-    tree
+  find_nodes (fun node -> List.contains kinds ~value:(Red.SyntaxNode.kind node)) tree
 
 (* Find tokens matching predicate *)
 
@@ -73,19 +70,18 @@ let find_tokens = fun predicate tree ->
 (* First non-trivia child *)
 
 let first_non_trivia_child = fun node ->
-  let open Syn.Ceibo.Red in
-    SyntaxNode.children node |> List.find
-      ~fn:(
-        function
-        | Token t when is_trivia (SyntaxToken.kind t) -> false
-        | _ -> true
-      )
+  Red.SyntaxNode.children node |> List.find
+    ~fn:(
+      function
+      | Red.Token t when is_trivia (Red.SyntaxToken.kind t) -> false
+      | _ -> true
+    )
 
 (* First non-trivia token *)
 
 let first_non_trivia_token = fun node ->
   match first_non_trivia_child node with
-  | Some (Syn.Ceibo.Red.Token t) -> Some t
+  | Some (Red.Token t) -> Some t
   | _ -> None
 
 (* Visitor pattern *)
@@ -96,18 +92,17 @@ type 'acc visitor = {
 }
 
 let fold = fun visitor init tree ->
-  let open Syn.Ceibo.Red in
-    let rec go elem acc =
-      match elem with
-      | Node n ->
-          let acc = visitor.visit_node n acc in
-          SyntaxNode.fold_children n acc
-            (fun acc child ->
-              yield ();
-              go child acc)
-      | Token t -> visitor.visit_token t acc
-    in
-    go (Node tree) init
+  let rec go elem acc =
+    match elem with
+    | Red.Node n ->
+        let acc = visitor.visit_node n acc in
+        Red.SyntaxNode.fold_children n acc
+          (fun acc child ->
+            yield ();
+            go child acc)
+    | Red.Token t -> visitor.visit_token t acc
+  in
+  go (Red.Node tree) init
 
 let rec let_bindings_of_module_expression = fun expr ->
   match expr with

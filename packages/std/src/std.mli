@@ -31,6 +31,11 @@ module ArgParser = Arg_parser
     - Build tools (like riot, cargo, npm)
     - Developer utilities
     - System administration scripts *)
+module Array = Collections.Array
+
+(** **When to use:** Fixed-size arrays
+
+    Use Array for index-addressed collections where the size is known up front. *)
 module Bench = Bench
 
 (** **When to use:** Microbenchmarking performance

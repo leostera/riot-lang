@@ -1403,7 +1403,7 @@ details[open] summary {
 (** Main error page component *)
 let render_error_page = fun ~conn ~exn ~backtrace ->
   let open Component in
-    let exception_str = Kernel.Exception.to_string exn in
+    let exception_str = Exception.to_string exn in
     let frames = parse_backtrace backtrace in
     let method_str = Conn.method_ conn |> Net.Http.Method.to_string in
     let path = Conn.path conn in
@@ -1479,9 +1479,8 @@ let debugger = fun ~conn ~next ->
   try next conn with
   | exn ->
       (* Capture backtrace immediately *)
-      let backtrace = Kernel.Exception.raw_backtrace_to_string
-        (Kernel.Exception.get_raw_backtrace ()) in
-      let exception_str = Kernel.Exception.to_string exn in
+      let backtrace = Exception.raw_backtrace_to_string (Exception.get_raw_backtrace ()) in
+      let exception_str = Exception.to_string exn in
       let method_str = Conn.method_ conn |> Net.Http.Method.to_string in
       let path = Conn.path conn in
       (* Log the error *)

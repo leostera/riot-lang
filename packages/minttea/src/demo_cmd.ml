@@ -4,7 +4,7 @@ let name = "demo"
 
 let command =
   let open ArgParser in
-    let open Arg in command name |> about "Run a minttea TUI demo"
+    let open ArgParser.Arg in command name |> about "Run a minttea TUI demo"
 
 let main = fun ~args ->
   match ArgParser.get_matches command args with

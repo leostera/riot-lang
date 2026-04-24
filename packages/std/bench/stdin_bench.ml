@@ -68,15 +68,14 @@ let payload_for_kind = function
       let line_count = 5_000 in
       let buffer = Buffer.create ~size:(line_count * 48) in
       for index = 1 to line_count do
-        Buffer.add_string
-          buffer
-          (format
-            Format.[
-              str "line-";
+        Buffer.add_string buffer
+          (
+            format
+              Std.Format.[str "line-";
               str (Int.to_string index);
               str ": repeated payload for stdin benchmark";
-              str "\n";
-            ])
+              str "\n";]
+          )
       done;
       let data = Buffer.contents buffer in
       { data; expected_bytes = String.length data; expected_lines = line_count }
@@ -280,13 +279,13 @@ let run_kernel_chunks = fun expected_bytes ->
   let total = loop 0 in
   if total != expected_bytes then
     panic
-      (format
-        Format.[
-          str "kernel chunk worker expected ";
+      (
+        format
+          Std.Format.[str "kernel chunk worker expected ";
           str (Int.to_string expected_bytes);
           str " bytes but read ";
-          str (Int.to_string total);
-        ])
+          str (Int.to_string total);]
+      )
 
 let run_std_chunks = fun expected_bytes ->
   let stdin = IO.Stdin.open_ () in
@@ -301,13 +300,13 @@ let run_std_chunks = fun expected_bytes ->
   let total = loop 0 in
   if total != expected_bytes then
     panic
-      (format
-        Format.[
-          str "std chunk worker expected ";
+      (
+        format
+          Std.Format.[str "std chunk worker expected ";
           str (Int.to_string expected_bytes);
           str " bytes but read ";
-          str (Int.to_string total);
-        ])
+          str (Int.to_string total);]
+      )
 
 let run_std_reader_chunks = fun expected_bytes ->
   let reader = IO.stdin () in
@@ -322,13 +321,13 @@ let run_std_reader_chunks = fun expected_bytes ->
   let total = loop 0 in
   if total != expected_bytes then
     panic
-      (format
-        Format.[
-          str "std reader worker expected ";
+      (
+        format
+          Std.Format.[str "std reader worker expected ";
           str (Int.to_string expected_bytes);
           str " bytes but read ";
-          str (Int.to_string total);
-        ])
+          str (Int.to_string total);]
+      )
 
 let run_std_read_to_string = fun expected_bytes ->
   let reader = IO.stdin () in
@@ -338,13 +337,13 @@ let run_std_read_to_string = fun expected_bytes ->
       let data = StringBuilder.contents builder in
       if String.length data != expected_bytes then
         panic
-          (format
-            Format.[
-              str "std read_to_string worker expected ";
+          (
+            format
+              Std.Format.[str "std read_to_string worker expected ";
               str (Int.to_string expected_bytes);
               str " bytes but read ";
-              str (Int.to_string (String.length data));
-            ])
+              str (Int.to_string (String.length data));]
+          )
   | Error error -> panic (IO.error_message error)
 
 let run_kernel_chars = fun expected_bytes ->
@@ -358,13 +357,13 @@ let run_kernel_chars = fun expected_bytes ->
   let total = loop 0 in
   if total != expected_bytes then
     panic
-      (format
-        Format.[
-          str "kernel char worker expected ";
+      (
+        format
+          Std.Format.[str "kernel char worker expected ";
           str (Int.to_string expected_bytes);
           str " bytes but read ";
-          str (Int.to_string total);
-        ])
+          str (Int.to_string total);]
+      )
 
 let run_std_chars = fun expected_bytes ->
   let reader = IO.stdin () in
@@ -379,13 +378,13 @@ let run_std_chars = fun expected_bytes ->
   let total = loop 0 in
   if total != expected_bytes then
     panic
-      (format
-        Format.[
-          str "std char worker expected ";
+      (
+        format
+          Std.Format.[str "std char worker expected ";
           str (Int.to_string expected_bytes);
           str " bytes but read ";
-          str (Int.to_string total);
-        ])
+          str (Int.to_string total);]
+      )
 
 let run_std_buffered_chars = fun expected_bytes ->
   let reader = IO.stdin () |> IO.BufReader.from_reader in
@@ -398,13 +397,13 @@ let run_std_buffered_chars = fun expected_bytes ->
   let total = loop 0 in
   if total != expected_bytes then
     panic
-      (format
-        Format.[
-          str "std buffered char worker expected ";
+      (
+        format
+          Std.Format.[str "std buffered char worker expected ";
           str (Int.to_string expected_bytes);
           str " bytes but read ";
-          str (Int.to_string total);
-        ])
+          str (Int.to_string total);]
+      )
 
 let run_std_lines = fun expected_bytes expected_lines ->
   let reader = IO.stdin () |> IO.BufReader.from_reader in
@@ -417,9 +416,9 @@ let run_std_lines = fun expected_bytes expected_lines ->
   let (byte_count, line_count) = loop 0 0 in
   if byte_count != expected_bytes || line_count != expected_lines then
     panic
-      (format
-        Format.[
-          str "std line worker expected ";
+      (
+        format
+          Std.Format.[str "std line worker expected ";
           str (Int.to_string expected_lines);
           str " lines / ";
           str (Int.to_string expected_bytes);
@@ -427,8 +426,8 @@ let run_std_lines = fun expected_bytes expected_lines ->
           str (Int.to_string line_count);
           str " lines / ";
           str (Int.to_string byte_count);
-          str " bytes";
-        ])
+          str " bytes";]
+      )
 
 let run_worker = fun mode ~expected_bytes ~expected_lines ->
   match mode with

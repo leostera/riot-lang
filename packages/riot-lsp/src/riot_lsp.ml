@@ -115,7 +115,7 @@ let run = fun ?log_path () ->
             log (Some logger) ~level:"INFO" "riot-lsp stopped cleanly";
             ok
         | Error error as err ->
-            log (Some logger) ~level:"ERROR" ("riot-lsp failed: " ^ Kernel.Exception.to_string error);
+            log (Some logger) ~level:"ERROR" ("riot-lsp failed: " ^ Exception.to_string error);
             err
       in
       close ();

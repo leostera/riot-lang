@@ -4,7 +4,7 @@ open Std.Result.Syntax
 (** Build the static CLI. Workspace commands are resolved lazily after parse. *)
 let build_cli = fun () ->
   let open ArgParser in
-    let open Arg in
+    let open ArgParser.Arg in
       let builtin_commands = [
         Add.command;
         Build.command;
@@ -189,20 +189,19 @@ let try_command = fun ?workspace_scan cmd_name remaining_args ->
                     match ensure_workspace workspace with
                     | Error err ->
                         Log.error
-                          ("Failed to ensure workspace for build: " ^ Kernel.Exception.to_string err);
+                          ("Failed to ensure workspace for build: " ^ Exception.to_string err);
                         Some (Error err)
                     | Ok workspace -> (
                         match Build.build_command ~workspace (Some cmd.package_name) None with
                         | Error err ->
-                            Log.error ("Failed to build package: " ^ Kernel.Exception.to_string err);
+                            Log.error ("Failed to build package: " ^ Exception.to_string err);
                             Some (Error err)
                         | Ok () ->
                             (* Execute the command binary *)
                             match Command_executor.execute ~command_binary:cmd.command_binary ~args:remaining_args with
                             | Ok () -> Some (Ok ())
                             | Error err ->
-                                Log.error
-                                  ("Command execution failed: " ^ Kernel.Exception.to_string err);
+                                Log.error ("Command execution failed: " ^ Exception.to_string err);
                                 Some (Error err)
                       )
                   )
@@ -360,7 +359,7 @@ let run = fun ~args ->
                 | Loaded (workspace, load_errors) when List.is_empty load_errors -> (
                     match ensure_workspace workspace with
                     | Ok workspace -> (Some workspace, None)
-                    | Error err -> (None, Some (Kernel.Exception.to_string err))
+                    | Error err -> (None, Some (Exception.to_string err))
                   )
                 | Loaded (workspace, load_errors) -> (
                     let _ = workspace in
@@ -536,7 +535,7 @@ let run = fun ~args ->
                 | Loaded (workspace, load_errors) when List.is_empty load_errors -> (
                     match ensure_workspace workspace with
                     | Ok workspace -> (Some workspace, None)
-                    | Error err -> (None, Some (Kernel.Exception.to_string err))
+                    | Error err -> (None, Some (Exception.to_string err))
                   )
                 | Loaded (workspace, load_errors) -> (
                     let _ = workspace in

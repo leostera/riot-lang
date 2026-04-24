@@ -71,7 +71,7 @@ let update = fun event model ->
 
 let view = fun model ->
   let open Element in
-    column ~style:Style.(empty |> padding (Padding.all 1))
+    column ~style:Style.(empty |> padding (Style.Padding.all 1))
       [
         text (Listbox.view model.list);
         text "";
@@ -79,7 +79,7 @@ let view = fun model ->
         (
           match model.selected with
           | Some item -> text
-            ~style:Style.(empty |> fg (`rgb (0, 255, 0)) |> padding (Padding.make ~top:1 ()))
+            ~style:Style.(empty |> fg (`rgb (0, 255, 0)) |> padding (Style.Padding.make ~top:1 ()))
             ("You selected: " ^ item)
           | None -> empty
         );

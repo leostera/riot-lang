@@ -191,12 +191,12 @@ let pending_doc_of_token_leading_trivia = fun token ->
   Syn.Cst.Token.leading_trivia token |> List.filter_map ~fn:Syn.Cst.trivia_of_syntax_trivia |> pending_doc_of_trivia
 
 let pending_doc_of_token_leading_trivia_after_fresh_line = fun ~after token ->
-  let raw_leading_trivia = Ceibo.Red.SyntaxToken.leading_trivia token.Syn.Cst.Token.syntax_token in
+  let raw_leading_trivia = Syn.Ceibo.Red.SyntaxToken.leading_trivia token.Syn.Cst.Token.syntax_token in
   let rec collect = fun seen_newline acc ->
     function
     | [] -> List.reverse acc
     | syntax_trivia :: rest ->
-        let span = Ceibo.Red.SyntaxTrivia.span syntax_trivia in
+        let span = Syn.Ceibo.Red.SyntaxTrivia.span syntax_trivia in
         if span.start < after then
           collect seen_newline acc rest
         else
@@ -211,7 +211,7 @@ let pending_doc_of_token_leading_trivia_after_fresh_line = fun ~after token ->
                 || String.exists
                   ~fn:(fun ch ->
                     Char.equal ch '\n')
-                  (Ceibo.Red.SyntaxTrivia.text syntax_trivia)
+                  (Syn.Ceibo.Red.SyntaxTrivia.text syntax_trivia)
               in
               collect seen_newline acc rest
   in
@@ -246,12 +246,12 @@ type boundary_trivia_layout =
   | Block_trivia of Doc.t
 
 let boundary_trivia_before_node = fun ~after syntax_node ->
-  match Ceibo.Red.SyntaxNode.first_token syntax_node with
+  match Syn.Ceibo.Red.SyntaxNode.first_token syntax_node with
   | None -> None
   | Some first_token ->
-      let raw_leading_trivia = Ceibo.Red.SyntaxToken.leading_trivia first_token
+      let raw_leading_trivia = Syn.Ceibo.Red.SyntaxToken.leading_trivia first_token
       |> List.filter
-        ~fn:(fun syntax_trivia -> (Ceibo.Red.SyntaxTrivia.span syntax_trivia).start >= after) in
+        ~fn:(fun syntax_trivia -> (Syn.Ceibo.Red.SyntaxTrivia.span syntax_trivia).start >= after) in
       let trivia_doc = raw_leading_trivia |> List.filter_map ~fn:Syn.Cst.trivia_of_syntax_trivia |> pending_doc_of_trivia in
       let has_newline =
         raw_leading_trivia
@@ -260,7 +260,7 @@ let boundary_trivia_before_node = fun ~after syntax_node ->
             String.exists
               ~fn:(fun ch ->
                 Char.equal ch '\n')
-              (Ceibo.Red.SyntaxTrivia.text syntax_trivia))
+              (Syn.Ceibo.Red.SyntaxTrivia.text syntax_trivia))
       in
       match trivia_doc with
       | None -> None
@@ -719,12 +719,12 @@ and render_floating_attribute = fun attribute -> render_attribute_doc ~floating:
 
 and doc_of_syntax_node_full_text = fun syntax_node ->
   let pieces =
-    Ceibo.Red.SyntaxNode.tokens syntax_node
+    Syn.Ceibo.Red.SyntaxNode.tokens syntax_node
     |> List.map
       ~fn:(fun syntax_token ->
-        let leading = Ceibo.Red.SyntaxToken.leading_trivia syntax_token
-        |> List.map ~fn:Ceibo.Red.SyntaxTrivia.text in
-        leading @ [ Ceibo.Red.SyntaxToken.text syntax_token ])
+        let leading = Syn.Ceibo.Red.SyntaxToken.leading_trivia syntax_token
+        |> List.map ~fn:Syn.Ceibo.Red.SyntaxTrivia.text in
+        leading @ [ Syn.Ceibo.Red.SyntaxToken.text syntax_token ])
     |> List.concat
   in
   Doc.text (String.concat "" pieces)

@@ -1,6 +1,6 @@
 open Std
 
-let array_of_list = fun lst -> Kernel.Array.from_list lst
+let array_of_list = fun lst -> Array.of_list lst
 
 let execute = fun ~command_binary ~args ->
   let command_path = Path.to_string command_binary in
@@ -19,5 +19,6 @@ let execute = fun ~command_binary ~args ->
       (
         match Process.execv ~program:command_path ~args:argv with
         | Ok () -> Error (Failure "execv returned unexpectedly")
-        | Error error -> Error (Failure ("Failed to exec command: " ^ Kernel.SystemError.to_string error))
+        | Error error -> Error (Failure ("Failed to exec command: "
+        ^ IO.error_message (IO.of_system_error error)))
       )

@@ -56,7 +56,7 @@ let test_grow_children_respect_margins = fun _ctx ->
         ~style:Style.(empty
         |> width Grow
         |> height (Fixed 1.0)
-        |> margin (Margin.make ~right:2 ())
+        |> margin (Style.Margin.make ~right:2 ())
         |> bg (`rgb (255, 0, 0)))
         [];
       Element.container

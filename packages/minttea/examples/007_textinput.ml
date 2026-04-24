@@ -176,7 +176,7 @@ let view = fun model ->
   let open Element in
     if model.submitted then
       column
-        ~style:Style.(empty |> padding (Padding.all 2))
+        ~style:Style.(empty |> padding (Style.Padding.all 2))
         [
           text ~style:Style.(empty |> fg (`rgb (0, 255, 0)) |> bold) "✓ Form submitted successfully!";
           text "";
@@ -192,7 +192,7 @@ let view = fun model ->
         else
           Style.empty
       in
-      column ~style:Style.(empty |> padding (Padding.all 2))
+      column ~style:Style.(empty |> padding (Style.Padding.all 2))
         [
           text ~style:Style.(empty |> bold |> fg (`rgb (100, 200, 255))) "User Registration Form";
           text "";
@@ -213,12 +213,12 @@ let view = fun model ->
                 |> bg (`rgb (62, 103, 224))
                 |> fg (`rgb (255, 255, 255))
                 |> bold
-                |> padding (Padding.symmetric ~h:2 ~v:1))
+                |> padding (Style.Padding.symmetric ~h:2 ~v:1))
               else
                 Style.(empty
                 |> bg (`rgb (40, 40, 40))
                 |> fg (`rgb (150, 150, 150))
-                |> padding (Padding.symmetric ~h:2 ~v:1))
+                |> padding (Style.Padding.symmetric ~h:2 ~v:1))
             )
             " Submit (Enter) ";
           (

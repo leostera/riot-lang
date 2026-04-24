@@ -254,14 +254,17 @@ let add_names = DepSet.add_names
 
 let add_path = fun env deps segments ->
   match segments with
-  | [] -> deps
-  | head :: _ ->
+  | [] ->
+      deps
+  | head :: _ when is_module_head head ->
       let names =
         match Env.lookup_free segments env with
         | Some names -> names
         | None -> Env.singleton_name head
       in
       add_names deps names
+  | _ ->
+      deps
 
 let add_parent = fun env deps ident ->
   let segments = segments_of_ident ident |> drop_last in
@@ -1158,7 +1161,6 @@ let of_cst = fun ?(env = Env.empty) source_file ->
   match source_file with
   | Cst.Implementation implementation ->
       let* (deps, env, exports) = collect_structure_binding env (DepSet.empty ()) implementation.items in
-      let deps = add_names deps (Env.collect_free (Env.make_node exports)) in
       Ok (finalize deps env exports)
   | Cst.Interface interface ->
       let* (deps, env, exports) = collect_signature_binding env (DepSet.empty ()) interface.items in

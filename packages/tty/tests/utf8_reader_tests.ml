@@ -1,6 +1,6 @@
 open Std
 module Test = Std.Test
-module Utf8_reader = Tty__Utf8_reader
+module Utf8_reader = Tty.Utf8_reader
 
 type chunk =
   | Data of string

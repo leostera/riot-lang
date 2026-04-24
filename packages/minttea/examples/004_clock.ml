@@ -168,7 +168,7 @@ let view = fun model ->
     in
     (* Center everything *)
     column
-      ~style:Style.(empty |> align ~x:Center ~y:Middle |> padding (Padding.all 2))
+      ~style:Style.(empty |> align ~x:Center ~y:Middle |> padding (Style.Padding.all 2))
       [
         column ascii_elements;
         text "";

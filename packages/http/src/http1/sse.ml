@@ -13,7 +13,7 @@ type event = {
 let slice_of_string = fun value ->
   match Slice.from_string value with
   | Ok slice -> slice
-  | Error error -> panic ("Http1.Sse.slice_of_string: " ^ Kernel.IO.Error.message error)
+  | Error error -> panic ("Http1.Sse.slice_of_string: " ^ Slice.error_message error)
 
 let parse_line_slice = fun line ->
   let line_cursor = Cursor.from_slice line in

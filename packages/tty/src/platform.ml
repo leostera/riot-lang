@@ -39,7 +39,7 @@ external read_raw: fd -> bytes -> int -> int -> (int, int) result = "tty_read"
 
 external write_raw: fd -> bytes -> int -> int -> (int, int) result = "tty_write"
 
-let decode_error = fun code -> Kernel.SystemError.from_code code
+let decode_error = fun code -> IO.of_system_error_code code
 
 let map_error = fun result ->
   match result with

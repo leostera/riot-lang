@@ -387,12 +387,12 @@ let string_bytes_roundtrip =
       Kernel.String.equal (Kernel.String.from_bytes (Kernel.String.to_bytes value)) value)
 
 let path_join_preserves_segment_order =
-  property
-    "Path.join preserves simple segment order"
-    Arbitrary.(pair simple_segment_arb simple_segment_arb)
+  property "Path.join preserves simple segment order" Arbitrary.(pair simple_segment_arb simple_segment_arb)
     (fun (left, right) ->
-      Kernel.Path.to_string (Kernel.Path.join left right)
-      = format Format.[ str left; str "/"; str right ])
+      Kernel.Path.to_string (Kernel.Path.join left right) = format
+        Std.Format.[str left;
+        str "/";
+        str right])
 
 let path_fold_join_preserves_many_segment_order =
   property "Path.join preserves many simple segments in order" (simple_segment_array_arb

@@ -6,7 +6,7 @@ let out = eprintln
 
 let command =
   let open ArgParser in
-    let open Arg in command "install"
+    let open ArgParser.Arg in command "install"
     |> about "Install a local binary, registry package, or remote source to ~/.riot/bin"
     |> args
       [
@@ -190,7 +190,7 @@ let run_with_workspace_info = fun ~workspace ~workspace_error matches ->
       | Error (Failure message) ->
           Error (`Cli message)
       | Error err ->
-          Error (`Cli (Kernel.Exception.to_string err))
+          Error (`Cli (Exception.to_string err))
       | Ok (External (spec, binary_name)) ->
           if local_only then
             Error (`Cli "--local is only supported when installing a workspace binary")

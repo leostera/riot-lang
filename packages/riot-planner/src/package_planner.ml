@@ -159,6 +159,12 @@ let module_kind_to_json = fun (kind: Module_node.kind) ->
           ("kind", String "native");
           ("files", Array (List.map files ~fn:(fun p -> String (Path.to_string p))));
         ]
+    | Module_node.PackageDependency { package_name; root_module } ->
+        Object [
+          ("kind", String "package_dependency");
+          ("package_name", String (Package_name.to_string package_name));
+          ("root_module", String root_module);
+        ]
     | Module_node.Library { name; includes } ->
         Object [
           ("kind", String "library");
@@ -234,6 +240,15 @@ let module_kind_of_json = fun json ->
                 | Error e -> Error e
               )
             | None -> Error "invalid native kind payload"
+          )
+        | Some (String "package_dependency") -> (
+            match (get_field "package_name" json, get_field "root_module" json) with
+            | Some (String package_name), Some (String root_module) -> (
+                match Package_name.from_string package_name with
+                | Ok package_name -> Ok (Module_node.PackageDependency { package_name; root_module })
+                | Error err -> Error (Package_name.error_message err)
+              )
+            | _ -> Error "invalid package_dependency kind payload"
           )
         | Some (String "library") -> (
             match (get_field "name" json, get_field "includes" json) with
@@ -403,7 +418,7 @@ let plan_bundle_of_json = fun ~(package:Package.t) json ->
     - Action graph (derived from module graph)
 
     If input_hash hasn't changed, we know the full hash is the same! *)
-let compute_input_hash = fun ?(planner_version = "planner-artifacts:v16") ~package ~depset ~workspace ~profile ~build_ctx ~toolchain () ->
+let compute_input_hash = fun ?(planner_version = "planner-artifacts:v17") ~package ~depset ~workspace ~profile ~build_ctx ~toolchain () ->
   let module H = Std.Crypto.Sha256 in
   let state = H.create () in
   (* Planner artifact contract version.
@@ -686,7 +701,7 @@ let plan_package = fun ~workspace ~toolchain ~store ~package_graph ~package_key 
                       ("Package "
                       ^ Package_name.to_string package.name
                       ^ ": plan bundle decode raised exception, rebuilding plan graph ("
-                      ^ Kernel.Exception.to_string exn
+                      ^ Exception.to_string exn
                       ^ ")");
                     Error "plan bundle decode exception"
               in

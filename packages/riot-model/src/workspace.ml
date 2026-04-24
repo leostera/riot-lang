@@ -49,7 +49,7 @@ let make_realized ?name ~root ~packages ?(dependencies = []) ?(dev_dependencies 
 let dependencies_for_scope = fun scope (workspace: t) ->
   match scope with
   | Package.Normal -> workspace.dependencies
-  | Package.Dev -> workspace.dev_dependencies
+  | Package.Dev -> workspace.dependencies @ workspace.dev_dependencies
   | Package.Build -> workspace.build_dependencies
 
 let package_root = fun (workspace: t) (pkg: Package_manifest.t) ->

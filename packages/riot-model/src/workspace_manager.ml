@@ -506,7 +506,7 @@ let scan: t -> Path.t -> ((Workspace_manifest.t * load_error list), scan_error) 
     | None, None ->
         Error NoWorkspaceRootFound
   with
-  | exn -> Error (ScanException { message = Kernel.Exception.to_string exn })
+  | exn -> Error (ScanException { message = Exception.to_string exn })
 
 let load = fun t ~root -> scan t root
 

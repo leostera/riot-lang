@@ -32,7 +32,7 @@ let ( let* ) value fn = Result.and_then value ~fn
 
 let command =
   let open ArgParser in
-    let open Arg in
+    let open ArgParser.Arg in
       let make_subcommand name about_text = command name
       |> about about_text
       |> args

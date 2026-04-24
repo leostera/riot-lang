@@ -169,16 +169,62 @@ let labeled_multiline_lines = fun ~label value ->
           else
             "  " ^ line)
 
+let red_error = "\027[1;31mError\027[0m"
+
+let error_line = fun message -> red_error ^ ": " ^ message
+
 let planning_error_lines = function
   | Riot_planner.Planning_error.CyclicDependency { cycle } ->
-      [ "planner error: cyclic dependency detected"; "cycle: " ^ String.concat " -> " cycle; ]
+      [
+        error_line "cyclic dependency detected while planning modules";
+        "Riot found a cycle in the module graph, so it cannot choose a safe compile order.";
+        "cycle: " ^ String.concat " -> " cycle;
+        "examples:";
+        "  - move shared types or helpers into a lower-level module";
+        "  - replace one side of the cycle with a parameter, callback, or interface";
+      ]
   | Riot_planner.Planning_error.ScanFailed { path; reason } ->
-      [ "planner error: failed to scan package sources"; "path: " ^ Path.to_string path; ]
+      [
+        error_line "failed to scan package sources";
+        "Riot could not read the source tree it needs to plan this package.";
+        "path: " ^ Path.to_string path;
+      ]
       @ labeled_multiline_lines ~label:"reason" reason
   | Riot_planner.Planning_error.DependencyAnalysisFailed { reason } ->
-      "planner error: dependency analysis failed" :: labeled_multiline_lines ~label:"reason" reason
+      [
+        error_line "dependency analysis failed";
+        "Riot could not parse or analyze a source file while discovering module dependencies.";
+      ]
+      @ labeled_multiline_lines ~label:"reason" reason
   | Riot_planner.Planning_error.GraphBuildFailed { reason } ->
-      "planner error: failed to build module graph" :: labeled_multiline_lines ~label:"reason" reason
+      [
+        error_line "failed to build the module graph";
+        "Riot analyzed the package sources but could not assemble a valid build graph.";
+      ]
+      @ labeled_multiline_lines ~label:"reason" reason
+  | Riot_planner.Planning_error.SourceDependsOnUndeclaredPackageModule {
+    package_name;
+    source;
+    requested_module;
+    allowed_modules;
+
+  } ->
+      let allowed_modules =
+        match allowed_modules with
+        | [] -> "<none>"
+        | allowed_modules -> String.concat ", " allowed_modules
+      in
+      [
+        error_line (requested_module ^ " is not available to package " ^ package_name);
+        "The source file imports " ^ requested_module ^ ", but Riot only exposes modules from this package and its direct dependencies.";
+        "package: " ^ package_name;
+        "source: " ^ Path.to_string source;
+        "requested module: " ^ requested_module;
+        "available direct modules: " ^ allowed_modules;
+        "examples:";
+        "  - add the package that provides " ^ requested_module ^ " to [dependencies]";
+        "  - or depend through one of the exposed modules above if that is the public API you meant";
+      ]
   | Riot_planner.Planning_error.TargetDependsOnInternalLibraryModule {
     target_name;
     source;
@@ -188,13 +234,16 @@ let planning_error_lines = function
 
   } ->
       [
-        "planner error: target reaches a library-internal module";
+        error_line ("target " ^ target_name ^ " imports private module " ^ requested_module);
+        "The target source reaches " ^ internal_module ^ ", which is internal to this package library.";
         "target: " ^ target_name;
         "source: " ^ Path.to_string source;
         "requested module: " ^ requested_module;
         "internal module: " ^ internal_module;
         "public module: " ^ public_module;
-        "help: use " ^ public_module ^ "." ^ requested_module ^ " instead";
+        "examples:";
+        "  - use " ^ public_module ^ "." ^ requested_module ^ " instead";
+        "  - move shared target code behind " ^ public_module ^ " or a shared helper module";
       ]
   | Riot_planner.Planning_error.TargetDependsOnNamespacedInternalLibraryModule {
     target_name;
@@ -210,13 +259,16 @@ let planning_error_lines = function
       |> List.head
       |> Option.unwrap_or ~default:requested_module in
       [
-        "planner error: target reaches a namespaced library-internal module";
+        error_line ("target " ^ target_name ^ " imports private module " ^ requested_module);
+        "The target source reaches " ^ internal_module ^ ", which is a namespaced implementation detail of this package library.";
         "target: " ^ target_name;
         "source: " ^ Path.to_string source;
         "requested module: " ^ requested_module;
         "internal module: " ^ internal_module;
         "public module: " ^ public_module;
-        "help: use " ^ public_module ^ "." ^ public_leaf ^ " instead";
+        "examples:";
+        "  - use " ^ public_module ^ "." ^ public_leaf ^ " instead";
+        "  - move shared target code behind " ^ public_module ^ " or a shared helper module";
       ]
   | Riot_planner.Planning_error.TargetDependsOnOtherTargetRoot {
     target_name;
@@ -228,18 +280,24 @@ let planning_error_lines = function
 
   } ->
       [
-        "planner error: target reaches another target root";
+        error_line ("target " ^ target_name ^ " imports target entrypoint " ^ other_target_module);
+        "The target source reaches another target root. Target entrypoints are private and are not reusable modules.";
         "target: " ^ target_name;
         "source: " ^ Path.to_string source;
         "requested module: " ^ requested_module;
         "other target: " ^ other_target_name;
         "other target module: " ^ other_target_module;
         "public module: " ^ public_module;
-        "help: move shared code behind " ^ public_module ^ " or a shared helper module";
+        "examples:";
+        "  - move shared code behind " ^ public_module;
+        "  - move shared code into a helper module that both targets can import";
       ]
   | Riot_planner.Planning_error.Exception { exn } ->
-      "planner error: unexpected exception"
-      :: labeled_multiline_lines ~label:"reason" (Kernel.Exception.to_string exn)
+      [
+        error_line "unexpected planner exception";
+        "Riot hit an unexpected exception while planning this package.";
+      ]
+      @ labeled_multiline_lines ~label:"reason" (Exception.to_string exn)
 
 let workspace_load_error_line = function
   | Riot_model.Workspace_manager.PackageNotFound { package; path; dependant=None } -> "missing package: "
@@ -273,28 +331,42 @@ let workspace_load_error_line = function
 
 let workspace_planning_error_lines = function
   | Riot_planner.Workspace_planner.PackageNotFound { name; available } -> [
-    "planner error: package not found";
+    error_line ("package " ^ Riot_model.Package_name.to_string name ^ " was not found");
+    "Riot could not find a workspace package matching the requested name.";
     "package: " ^ Riot_model.Package_name.to_string name;
     "available packages: "
     ^ String.concat ", " (List.map available ~fn:Riot_model.Package_name.to_string);
   ]
   | Riot_planner.Workspace_planner.PackagesNotFound { names; available } -> [
-    "planner error: packages not found";
+    error_line "some requested packages were not found";
+    "Riot could not find workspace packages matching every requested name.";
     "packages: " ^ String.concat ", " (List.map names ~fn:Riot_model.Package_name.to_string);
     "available packages: "
     ^ String.concat ", " (List.map available ~fn:Riot_model.Package_name.to_string);
   ]
   | Riot_planner.Workspace_planner.CycleDetected { cycle } -> [
-    "planner error: package cycle detected";
+    error_line "package cycle detected";
+    "Riot found a cycle between packages, so it cannot plan them in dependency order.";
     "cycle: " ^ String.concat " -> " cycle;
   ]
-  | Riot_planner.Workspace_planner.MissingDependencies { missing } -> "planner error: missing dependencies"
-  :: List.map
+  | Riot_planner.Workspace_planner.MissingDependencies { missing } -> [
+    error_line "missing package dependencies";
+    "Riot found package dependency edges that do not point at a loaded workspace or resolved package.";
+  ]
+  @ List.map
     missing
     ~fn:(fun (dep: Riot_planner.Package_graph.missing_dependency) ->
       "missing: " ^ dep.package ^ " -> " ^ dep.dependency)
-  | Riot_planner.Workspace_planner.PackageLoadFailed { errors } -> "planner error: failed to load workspace packages"
-  :: List.map errors ~fn:workspace_load_error_line
+  @ [
+    "examples:";
+    "  - add the missing package to the workspace";
+    "  - add a registry, path, or workspace dependency entry for the missing package";
+  ]
+  | Riot_planner.Workspace_planner.PackageLoadFailed { errors } -> [
+    error_line "failed to load workspace packages";
+    "Riot could not load every package manifest needed for planning.";
+  ]
+  @ List.map errors ~fn:workspace_load_error_line
 
 let out_prefixed_payload = fun ~prefix payload ->
   match String.split payload ~by:"\n" with
@@ -567,7 +639,7 @@ let write_build_failed_error = fun ~mode errors ->
 
 let command =
   let open ArgParser in
-    let open Arg in
+    let open ArgParser.Arg in
       command "build" |> about "Build packages" |> args
         [
           option "package" |> short 'p' |> long "package" |> multiple |> help "Build a specific package. Repeat to build multiple packages; omit to build all packages.";
@@ -1039,7 +1111,7 @@ let run_request = fun (request: request) ->
   | Error err ->
       trace_build_probe
         ~started_at:start_time
-        ("run-request-return-error reason=" ^ Kernel.Exception.to_string err);
+        ("run-request-return-error reason=" ^ Exception.to_string err);
       Error err
 
 let print_workspace_load_errors = fun errors ->

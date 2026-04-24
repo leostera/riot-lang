@@ -7,7 +7,7 @@ type error =
 
 let command =
   let open ArgParser in
-    let open Arg in command "search"
+    let open ArgParser.Arg in command "search"
     |> about "Search pkgs.ml for packages by name"
     |> args
       [

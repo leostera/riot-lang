@@ -897,7 +897,7 @@ let list_benchmarks = fun ?(on_suite = no_listed_suite) ?(on_suite_error = no_li
                             binary_path with
                           | exn -> Error (SuiteExecutionError {
                             suite;
-                            reason = Kernel.Exception.to_string exn
+                            reason = Exception.to_string exn
                           })
                         in
                         send parent (ListedBenchmarksReady (suite, result));
@@ -940,7 +940,7 @@ let list_benchmarks = fun ?(on_suite = no_listed_suite) ?(on_suite_error = no_li
                             next_binary_path with
                           | exn -> Error (SuiteExecutionError {
                             suite = next_suite;
-                            reason = Kernel.Exception.to_string exn
+                            reason = Exception.to_string exn
                           })
                         in
                         send parent (ListedBenchmarksReady (next_suite, result));

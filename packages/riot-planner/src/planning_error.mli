@@ -27,6 +27,12 @@ type t =
       other_target_module: string;
       public_module: string
     }
+  | SourceDependsOnUndeclaredPackageModule of {
+      package_name: string;
+      source: Path.t;
+      requested_module: string;
+      allowed_modules: string list
+    }
   | Exception of { exn: exn }
 val to_string: t -> string
 

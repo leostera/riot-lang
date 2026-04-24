@@ -85,6 +85,8 @@ type file_kind =
   | Socket
 val of_system_error: Kernel.SystemError.t -> error
 
+val of_system_error_code: int -> error
+
 val of_async_error: Kernel.Async.error -> error
 
 val error_message: error -> string

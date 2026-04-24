@@ -227,19 +227,19 @@ let with_env_var = fun name value_opt f ->
   let restore () =
     match restore_value with
     | Some value ->
-        let _ = Kernel.Env.set ~var:name ~value in
+        let _ = Env.set ~var:name ~value in
         ()
     | None ->
-        let _ = Kernel.Env.remove ~var:name in
+        let _ = Env.remove ~var:name in
         ()
   in
   let () =
     match value_opt with
     | Some value ->
-        let _ = Kernel.Env.set ~var:name ~value in
+        let _ = Env.set ~var:name ~value in
         ()
     | None ->
-        let _ = Kernel.Env.remove ~var:name in
+        let _ = Env.remove ~var:name in
         ()
   in
   try

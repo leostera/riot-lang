@@ -31,7 +31,7 @@ let handle_syntax_hash = fun file ->
 let main = fun ~args ->
   let cmd =
     let open ArgParser in
-      let open Arg in command "krasny"
+      let open ArgParser.Arg in command "krasny"
       |> version "0.1.0"
       |> about "Riot OCaml formatter"
       |> subcommands

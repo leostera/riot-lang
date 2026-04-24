@@ -3,7 +3,7 @@ open Riot_model
 
 let command =
   let open ArgParser in
-    let open Arg in
+    let open ArgParser.Arg in
       command "completions" |> about "Generate shell completions or list completion data" |> args
         [
           option "shell" |> long "shell" |> possible_values [ "bash"; "zsh"; "fish" ] |> help "Generate completion script for shell (zsh, bash, fish)";
@@ -85,7 +85,7 @@ let run_install = fun matches ->
 
 let install_command =
   let open ArgParser in
-    let open Arg in command "install"
+    let open ArgParser.Arg in command "install"
     |> about "Install shell completions for the current user"
     |> args
       [

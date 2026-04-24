@@ -6,6 +6,7 @@ module Profile = Profile
 module Style = Style
 module Size = Size
 module Input = Input
+module Utf8_reader = Utf8_reader
 module Terminal_control = Terminal_control
 
 type fd = Platform.fd
@@ -55,9 +56,7 @@ let read_stdin_bytes = fun stdin bytes ~offset ~len ->
     | Error _ ->
         `Error
 
-let io_error_of_system_error = fun error -> IO.of_system_error error
-
-let error_of_system_error = fun error -> SystemError (io_error_of_system_error error)
+let error_of_io_error = fun error -> SystemError error
 
 let default_size = fun () -> { rows = 24; cols = 80 }
 
@@ -82,7 +81,7 @@ let make = fun ?fd ?stdin ?stdout ?stderr ?size ?(mode = LineBuffered) () ->
               let _ = Platform.close tty_fd in
               ()
             );
-          Error (error_of_system_error error)
+          Error (error_of_io_error error)
       | Ok original_attrs ->
           let detected_size =
             match size with
@@ -117,7 +116,7 @@ let make = fun ?fd ?stdin ?stdout ?stderr ?size ?(mode = LineBuffered) () ->
                       let _ = Platform.close tty_fd in
                       ()
                     );
-                  Error (error_of_system_error error)
+                  Error (error_of_io_error error)
             )
     )
 
@@ -187,7 +186,7 @@ let read_from_input = fun input_fd bytes ~offset ~len ->
   else
     match Platform.read input_fd bytes ~offset ~len with
     | Ok count -> `Ok count
-    | Error error when Kernel.SystemError.would_block error -> `Would_block
+    | Error IO.Operation_would_block -> `Would_block
     | Error _ -> `Error
 
 let read_utf8 = fun t ->

@@ -17,7 +17,7 @@ let no_workspace_message = "No riot.toml, so nothing to remove"
 
 let command =
   let open ArgParser in
-    let open Arg in command "rm"
+    let open ArgParser.Arg in command "rm"
     |> about "Remove a dependency from a manifest section and refresh riot.lock"
     |> args
       [

@@ -331,10 +331,14 @@ let test_scan_sources_ignores_test_support_entries = fun _ctx ->
       let fixtures_dir = Path.(tests_dir / Path.v "fixtures") in
       let diagnostics_dir = Path.(tests_dir / Path.v "diagnostics") in
       let generated_dir = Path.(tests_dir / Path.v "generated") in
+      let autofix_fixtures_dir = Path.(tests_dir / Path.v "autofix_fixtures") in
+      let workspace_fixtures_dir = Path.(tests_dir / Path.v "workspace_fixtures") in
       Result.expect (Fs.create_dir_all src_dir) ~msg:"Failed to create src directory";
       Result.expect (Fs.create_dir_all fixtures_dir) ~msg:"Failed to create fixtures directory";
       Result.expect (Fs.create_dir_all diagnostics_dir) ~msg:"Failed to create diagnostics directory";
       Result.expect (Fs.create_dir_all generated_dir) ~msg:"Failed to create generated directory";
+      Result.expect (Fs.create_dir_all autofix_fixtures_dir) ~msg:"Failed to create autofix fixtures directory";
+      Result.expect (Fs.create_dir_all workspace_fixtures_dir) ~msg:"Failed to create workspace fixtures directory";
       Result.expect (Fs.write "let version = 1\n" Path.(src_dir / Path.v "demo.ml")) ~msg:"Failed to write visible source";
       Result.expect (Fs.write "let () = ()\n" Path.(tests_dir / Path.v "demo_tests.ml")) ~msg:"Failed to write real test source";
       Result.expect
@@ -342,6 +346,12 @@ let test_scan_sources_ignores_test_support_entries = fun _ctx ->
         ~msg:"Failed to write fixture source";
       Result.expect (Fs.write "let () = ()\n" Path.(diagnostics_dir / Path.v "broken.ml")) ~msg:"Failed to write diagnostics source";
       Result.expect (Fs.write "let () = ()\n" Path.(generated_dir / Path.v "generated.ml")) ~msg:"Failed to write generated source";
+      Result.expect
+        (Fs.write "let () = ()\n" Path.(autofix_fixtures_dir / Path.v "rewrite.ml"))
+        ~msg:"Failed to write autofix fixture source";
+      Result.expect
+        (Fs.write "let () = ()\n" Path.(workspace_fixtures_dir / Path.v "nested.ml"))
+        ~msg:"Failed to write workspace fixture source";
       let manifest =
         Std.Data.Toml.parse
           {|
@@ -369,7 +379,7 @@ path = "src/demo.ml"
       then
         Ok ()
       else
-        Error "expected test support entries under tests/fixtures|generated|diagnostics to be ignored")
+        Error "expected test support entries under tests/fixtures|generated|diagnostics|autofix_fixtures|workspace_fixtures to be ignored")
 
 let test_scan_sources_keeps_similarly_named_test_directories = fun _ctx ->
   with_tempdir "riot_model_test_support_boundary_sources"

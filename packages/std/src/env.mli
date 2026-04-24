@@ -175,6 +175,11 @@ val var: 't var_type -> name:string -> 't option
     ~name:"PATH" ~value:p |> ignore ) old_path ``` *)
 val set: var:string -> value:string -> string option
 
+(** Removes an environment variable.
+
+    Returns the previous value if it existed. *)
+val remove: var:string -> string option
+
 (** Returns all environment variables as key-value pairs.
 
     ## Examples

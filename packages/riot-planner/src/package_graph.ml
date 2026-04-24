@@ -160,7 +160,7 @@ let dependencies_for_scope = fun scope (pkg: Package.t) ->
   match scope with
   | Build -> pkg.build_dependencies
   | Runtime -> pkg.dependencies
-  | Dev -> pkg.dev_dependencies
+  | Dev -> pkg.dependencies @ pkg.dev_dependencies
 
 let projected_package = fun ?(dev_artifacts = { tests = true; examples = true; benches = true }) scope pkg ->
   match scope with

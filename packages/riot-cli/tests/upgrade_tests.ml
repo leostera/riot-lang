@@ -156,26 +156,18 @@ let write_upgrade_archive = fun ~metadata ~path ~binary ->
   | Ok gzip_payload -> write_file path gzip_payload
 
 let with_env = fun ~name ~value fn ->
-  let previous = Kernel.Env.get ~var:name in
+  let previous = Env.get Env.String ~var:name in
   protect
     ~finally:(fun () ->
       match previous with
-      | Some old -> (
-          match Kernel.Env.set ~var:name ~value:old with
-          | Ok () -> ()
-          | Error _ -> ()
-        )
-      | None -> (
-          match Kernel.Env.remove ~var:name with
-          | Ok () -> ()
-          | Error _ -> ()
-        ))
+      | Some old ->
+          let _ = Env.set ~var:name ~value:old in
+          ()
+      | None ->
+          let _ = Env.remove ~var:name in
+          ())
     (fun () ->
-      (
-        match Kernel.Env.set ~var:name ~value with
-        | Ok () -> ()
-        | Error _ -> ()
-      );
+      let _ = Env.set ~var:name ~value in
       fn ())
 
 let parse_upgrade = fun args ->
@@ -212,7 +204,7 @@ let test_upgrade_installs_downloaded_archive = fun ctx ->
           with_env ~name:"RIOT_UPGRADE_ARCHIVE_PATH" ~value:(Path.to_string archive_path)
             (fun () ->
               match Riot_cli.Upgrade.run matches with
-              | Error exn -> Error (Kernel.Exception.to_string exn)
+              | Error exn -> Error (Exception.to_string exn)
               | Ok () -> (
                   match Fs.read installed with
                   | Error err -> Error (IO.error_message err)
@@ -250,7 +242,7 @@ let test_upgrade_skips_when_binary_is_unchanged = fun ctx ->
             with_env ~name:"RIOT_UPGRADE_ARCHIVE_PATH" ~value:(Path.to_string archive_path)
               (fun () ->
                 match Riot_cli.Upgrade.run matches with
-                | Error exn -> Error (Kernel.Exception.to_string exn)
+                | Error exn -> Error (Exception.to_string exn)
                 | Ok () -> Ok (Riot_cli.Version_info.read_installed ())))
       in
       let* after = Result.map_err (Fs.read installed) ~fn:IO.error_message in

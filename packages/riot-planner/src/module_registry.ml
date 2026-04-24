@@ -25,6 +25,10 @@ let register = fun t mod_ node_id ->
   let () = insert t.by_name name node_id in
   insert t.by_qualified_name qualified_name node_id
 
+let register_qualified_name = fun t name node_id ->
+  let () = insert t.by_name name node_id in
+  insert t.by_qualified_name name node_id
+
 let get_by_name = fun t name ->
   match HashMap.get t.by_name ~key:name with
   | None -> raise Not_found

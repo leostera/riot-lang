@@ -21,7 +21,7 @@ and run_init_with_events = fun args ->
   let* matches = parse_init args in
   let events = ref [] in
   let* () = Riot_init.run ~on_event:(fun event -> events := event :: !events) matches
-  |> Result.map_err ~fn:Kernel.Exception.to_string in
+  |> Result.map_err ~fn:Exception.to_string in
   Ok (List.reverse !events)
 
 let assert_exists = fun path ->

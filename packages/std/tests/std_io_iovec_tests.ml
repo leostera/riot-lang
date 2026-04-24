@@ -89,6 +89,16 @@ let test_sub_full_length_returns_all_bytes = fun _ctx ->
   else
     Error "IoVec.sub should return all bytes for a full-length slice"
 
+let test_error_message_preserves_details = fun _ctx ->
+  match IoVec.create ~count:0 ~size:1 () with
+  | Ok _ -> Error "expected invalid IoVec count to fail"
+  | Error error ->
+      let message = IoVec.error_message error in
+      if String.contains message "invalid count" && String.contains message "0" then
+        Ok ()
+      else
+        Error ("expected detailed IoVec error message, got: " ^ message)
+
 let tests =
   Test.[
     case "create allocates the requested total length" test_create_allocates_requested_total_length;
@@ -101,6 +111,7 @@ let tests =
     case "sub returns prefixes" test_sub_returns_prefix;
     case "sub slices across segment boundaries" test_sub_can_slice_across_segment_boundaries;
     case "sub full length returns all bytes" test_sub_full_length_returns_all_bytes;
+    case "error_message renders details" test_error_message_preserves_details;
   ]
 
 let () =

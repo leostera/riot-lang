@@ -5,7 +5,7 @@ let out = eprintln
 
 let command =
   let open ArgParser in
-    let open Arg in command "new"
+    let open ArgParser.Arg in command "new"
     |> about "Create a new package"
     |> args
       [

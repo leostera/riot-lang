@@ -10,7 +10,7 @@ let no_workspace_message = "No riot.toml, so nothing to update"
 
 let command =
   let open ArgParser in
-    let open Arg in command "update"
+    let open ArgParser.Arg in command "update"
     |> about "Re-resolve the workspace graph, update locked package versions, and rewrite riot.lock"
     |> args [ flag "json" |> long "json" |> help "Render events as JSON"; ]
 

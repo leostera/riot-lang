@@ -45,6 +45,7 @@ let concrete_library_reachable_set = fun library_roots module_graph ->
               | Some (dep_node: Module_node.t G.node) -> (
                   match dep_node.value.kind with
                   | Module_node.Root
+                  | Module_node.PackageDependency _
                   | Module_node.Library _
                   | Module_node.Binary _ -> ()
                   | _ -> visit dep_id
@@ -84,6 +85,7 @@ let target_reachable_set = fun start_nodes module_graph ->
               | Some (dep_node: Module_node.t G.node) -> (
                   match dep_node.value.kind with
                   | Module_node.Root
+                  | Module_node.PackageDependency _
                   | Module_node.Library _
                   | Module_node.Binary _ -> ()
                   | _ -> visit dep_id
@@ -245,48 +247,75 @@ let validate_target_source = fun ~target_name ~(source_node:Module_node.t G.node
                 )
         ))
 
-let validate = fun ~package ~module_graph ~analyzed_modules ->
-  let nodes = sorted_nodes module_graph in
-  let analyzed_modules_by_id = analyzed_modules_by_id analyzed_modules in
-  let public_roots = library_root_candidates ~package nodes in
-  let public_root_ids = HashSet.create () in
-  let () =
-    List.for_each public_roots
-      ~fn:(fun (node: Module_node.t G.node) ->
-        let _ = HashSet.insert public_root_ids ~value:node.id in
-        ())
-  in
-  let library_reachable_set = concrete_library_reachable_set public_roots module_graph in
-  let public_module = Package.root_module_name package in
-  let target_root_nodes = target_root_nodes package nodes in
-  List.fold_left nodes ~init:(Ok ())
-    ~fn:(fun acc (node: Module_node.t G.node) ->
+let unique_sorted_strings = fun values ->
+  values |> List.sort ~compare:String.compare |> List.unique ~compare:String.compare
+
+let validate_dependency_edges = fun ~package ~direct_dependency_modules ~analyzed_modules ->
+  let allowed_modules = unique_sorted_strings
+    (Package.root_module_name package :: direct_dependency_modules) in
+  List.fold_left analyzed_modules ~init:(Ok ())
+    ~fn:(fun acc (_node_id, analyzed_module) ->
       match acc with
       | Error _ as err -> err
       | Ok () -> (
-          match node.value.kind with
-          | Module_node.Binary { name; source; _ } ->
-              let source_nodes = binary_source_nodes ~source_path:source nodes in
-              let other_target_root_ids = HashMap.create () in
-              let () =
-                List.for_each target_root_nodes
-                  ~fn:(fun (other_target_name, other_target_node) ->
-                    if not (String.equal other_target_name name) then
-                      let _ = HashMap.insert other_target_root_ids ~key:other_target_node.id ~value:other_target_name in
-                      ())
-              in
-              List.fold_left source_nodes ~init:(Ok ())
-                ~fn:(fun source_acc (source_node: Module_node.t G.node) ->
-                  match source_acc with
-                  | Error _ as err -> err
-                  | Ok () -> validate_target_source
-                    ~target_name:name
-                    ~source_node
-                    ~library_reachable_set
-                    ~public_root_ids
-                    ~public_module
-                    ~module_graph
-                    ~analyzed_modules_by_id
-                    ~other_target_root_ids)
-          | _ -> Ok ()
+          match unique_sorted_strings analyzed_module.Module_graph.unresolved_deps with
+          | [] -> Ok ()
+          | requested_module :: _ -> Error (Planning_error.SourceDependsOnUndeclaredPackageModule {
+            package_name = Package_name.to_string package.name;
+            source = analyzed_module.display_path;
+            requested_module;
+            allowed_modules
+          })
         ))
+
+let validate = fun ~direct_dependency_modules ~package ~module_graph ~analyzed_modules ->
+  match validate_dependency_edges ~package ~direct_dependency_modules ~analyzed_modules with
+  | Error _ as err -> err
+  | Ok () ->
+      let nodes = sorted_nodes module_graph in
+      let analyzed_modules_by_id = analyzed_modules_by_id analyzed_modules in
+      let public_roots = library_root_candidates ~package nodes in
+      let public_root_ids = HashSet.create () in
+      let () =
+        List.for_each public_roots
+          ~fn:(fun (node: Module_node.t G.node) ->
+            let _ = HashSet.insert public_root_ids ~value:node.id in
+            ())
+      in
+      let library_reachable_set = concrete_library_reachable_set public_roots module_graph in
+      let public_module = Package.root_module_name package in
+      let target_root_nodes = target_root_nodes package nodes in
+      List.fold_left nodes ~init:(Ok ())
+        ~fn:(fun acc (node: Module_node.t G.node) ->
+          match acc with
+          | Error _ as err -> err
+          | Ok () -> (
+              match node.value.kind with
+              | Module_node.Binary { name; source; _ } ->
+                  let source_nodes = binary_source_nodes ~source_path:source nodes in
+                  let other_target_root_ids = HashMap.create () in
+                  let () =
+                    List.for_each target_root_nodes
+                      ~fn:(fun (other_target_name, other_target_node) ->
+                        if not (String.equal other_target_name name) then
+                          let _ = HashMap.insert
+                            other_target_root_ids
+                            ~key:other_target_node.id
+                            ~value:other_target_name in
+                          ())
+                  in
+                  List.fold_left source_nodes ~init:(Ok ())
+                    ~fn:(fun source_acc (source_node: Module_node.t G.node) ->
+                      match source_acc with
+                      | Error _ as err -> err
+                      | Ok () -> validate_target_source
+                        ~target_name:name
+                        ~source_node
+                        ~library_reachable_set
+                        ~public_root_ids
+                        ~public_module
+                        ~module_graph
+                        ~analyzed_modules_by_id
+                        ~other_target_root_ids)
+              | _ -> Ok ()
+            ))

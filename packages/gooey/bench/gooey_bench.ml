@@ -5,7 +5,9 @@ let make_config = fun ?(width = 120.0) ?(height = 40.0) () ->
   Config.make ~viewport:(Viewport.make ~width ~height) ~text_measurer:Config.default_text_measurer ()
 
 let badge = fun label ->
-  Element.text ~style:Style.(empty |> padding (Padding.symmetric ~h:1 ~v:0) |> border ~width:1 ()) label
+  Element.text
+    ~style:Style.(empty |> padding (Style.Padding.symmetric ~h:1 ~v:0) |> border ~width:1 ())
+    label
 
 let make_wide_row = fun count ->
   let children =
@@ -15,7 +17,7 @@ let make_wide_row = fun count ->
     ~style:Style.(empty
     |> width (Fixed 320.0)
     |> child_gap 1
-    |> padding (Padding.symmetric ~h:1 ~v:1))
+    |> padding (Style.Padding.symmetric ~h:1 ~v:1))
     children
 
 let rec make_deep_tree = fun depth leaf ->
@@ -23,7 +25,7 @@ let rec make_deep_tree = fun depth leaf ->
     leaf
   else
     Element.column
-      ~style:Style.(empty |> width Fit |> height Fit |> padding (Padding.symmetric ~h:1 ~v:0))
+      ~style:Style.(empty |> width Fit |> height Fit |> padding (Style.Padding.symmetric ~h:1 ~v:0))
       [ make_deep_tree (depth - 1) leaf; ]
 
 let make_sidebar = fun item_count ->
@@ -32,14 +34,14 @@ let make_sidebar = fun item_count ->
       ~count:item_count
       ~fn:(fun index ->
         Element.text
-          ~style:Style.(empty |> width Grow |> padding (Padding.symmetric ~h:1 ~v:0))
+          ~style:Style.(empty |> width Grow |> padding (Style.Padding.symmetric ~h:1 ~v:0))
           ("section-" ^ Int.to_string index))
   in
   Element.column
     ~style:Style.(empty
     |> width (Fixed 24.0)
     |> height Grow
-    |> padding (Padding.all 1)
+    |> padding (Style.Padding.all 1)
     |> child_gap 1
     |> bg (Style.color "#16202A"))
     items
@@ -48,7 +50,7 @@ let make_card = fun title body ->
   Element.column
     ~style:Style.(empty
     |> width Grow
-    |> padding (Padding.all 1)
+    |> padding (Style.Padding.all 1)
     |> child_gap 1
     |> border ~width:1 ~color:(Style.color "#5A6B7A") ()
     |> bg (Style.color "#0F1720")
@@ -69,7 +71,7 @@ let make_mixed_dashboard = fun () ->
     ~style:Style.(empty
     |> width Grow
     |> height Grow
-    |> padding (Padding.all 1)
+    |> padding (Style.Padding.all 1)
     |> child_gap 1
     |> bg (Style.color "#111827"))
     cards in
@@ -77,7 +79,7 @@ let make_mixed_dashboard = fun () ->
     ~style:Style.(empty
     |> width (Percent 0.2)
     |> height Grow
-    |> padding (Padding.all 1)
+    |> padding (Style.Padding.all 1)
     |> child_gap 1
     |> bg (Style.color "#1F2937"))
     [ badge "filters"; badge "selection"; badge "events"; badge "search"; badge "help"; ] in
@@ -85,7 +87,7 @@ let make_mixed_dashboard = fun () ->
     ~style:Style.(empty
     |> width (Fixed 120.0)
     |> height (Fixed 36.0)
-    |> padding (Padding.all 1)
+    |> padding (Style.Padding.all 1)
     |> child_gap 1
     |> bg (Style.color "#020617"))
     [ make_sidebar 12; content; inspector; ]
@@ -99,11 +101,11 @@ let make_wrapped_unicode_document = fun count ->
           ~style:Style.(empty
           |> width Grow
           |> text_wrap Words
-          |> padding (Padding.symmetric ~h:1 ~v:0))
+          |> padding (Style.Padding.symmetric ~h:1 ~v:0))
           ("line " ^ Int.to_string index ^ ": Hello 世界 👍🏽 cafe\u{301} -- wrapped unicode content for Gooey benchmarks"))
   in
   Element.column
-    ~style:Style.(empty |> width (Fixed 64.0) |> padding (Padding.all 1) |> child_gap 1 |> clip)
+    ~style:Style.(empty |> width (Fixed 64.0) |> padding (Style.Padding.all 1) |> child_gap 1 |> clip)
     lines
 
 let render_custom_bar = fun label width box ->
@@ -115,7 +117,7 @@ let make_custom_widget_board = fun count ->
     Element.custom ~style:Style.(empty
     |> width Grow
     |> height (Fixed 1.0)
-    |> padding (Padding.symmetric ~h:1 ~v:0))
+    |> padding (Style.Padding.symmetric ~h:1 ~v:0))
       ~measure:(fun ~constraints ->
         let width =
           match constraints.Config.available_width with
@@ -131,7 +133,7 @@ let make_custom_widget_board = fun count ->
       ()
   in
   Element.column
-    ~style:Style.(empty |> width (Fixed 40.0) |> padding (Padding.all 1) |> child_gap 1 |> clip)
+    ~style:Style.(empty |> width (Fixed 40.0) |> padding (Style.Padding.all 1) |> child_gap 1 |> clip)
     (List.init ~count ~fn:widget)
 
 let bench_layout_wide_row = fun () ->

@@ -4,7 +4,7 @@ open Gooey
 let () =
   (* Create a simple UI *)
   let ui = Element.column
-    ~style:Style.(empty |> padding (Padding.all 2))
+    ~style:Style.(empty |> padding (Style.Padding.all 2))
     [
       Element.text ~style:Style.(empty |> bold |> fg (`rgb (59, 130, 246))) "Hello, Gooey!";
       Element.row

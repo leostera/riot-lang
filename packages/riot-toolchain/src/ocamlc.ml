@@ -90,11 +90,11 @@ module Diagnostic = struct
     let rec loop acc idx =
       if idx >= String.length line then
         let chars = List.reverse acc in
-        let out = Kernel.Bytes.create ~size:(List.length chars) in
+        let out = IO.Bytes.create ~size:(List.length chars) in
         let rec fill index = function
-          | [] -> Kernel.Bytes.to_string out
+          | [] -> IO.Bytes.to_string out
           | ch :: rest ->
-              Kernel.Bytes.set_unchecked out ~at:index ~char:ch;
+              IO.Bytes.set_unchecked out ~at:index ~char:ch;
               fill (index + 1) rest
         in
         fill 0 chars

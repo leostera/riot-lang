@@ -395,7 +395,7 @@ let run_property = fun ?(examples = primitive_examples) name arb predicate ->
         ])
       | Property.Error { exception_; backtrace } -> Error (String.concat
         "\n"
-        [ "Exception raised:"; Kernel.Exception.to_string exception_; backtrace; ])
+        [ "Exception raised:"; Exception.to_string exception_; backtrace; ])
       | Property.Assumption_violated -> Error "Too many test cases violated assumptions (>10x test count)")
 
 let roundtrip_in_memory = fun encode decode equal value ->

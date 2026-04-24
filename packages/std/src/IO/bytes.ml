@@ -39,3 +39,5 @@ let unsafe_to_string = Kernel.Bytes.unsafe_to_string
 let sub = fun value ~offset ~len -> Kernel.Bytes.sub value ~offset ~len
 
 let sub_unchecked = fun value ~offset ~len -> Kernel.Bytes.sub_unchecked value ~offset ~len
+
+let sub_string = fun value ~offset ~len -> Kernel.Bytes.sub_string value ~offset ~len

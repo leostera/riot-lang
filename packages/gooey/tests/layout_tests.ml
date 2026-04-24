@@ -49,7 +49,7 @@ let test_multiline_text_uses_longest_line_and_line_count = fun _ctx ->
 
 let test_padding_offsets_first_child = fun _ctx ->
   let ui = Element.container
-    ~style:Style.(empty |> padding (Padding.make ~left:3 ~top:2 ()))
+    ~style:Style.(empty |> padding (Style.Padding.make ~left:3 ~top:2 ()))
     [ Element.text "Hi" ] in
   match find_text_box (layout ~config:(make_config ()) ui) "Hi" with
   | Some box when approx_eq box.x 3.0 && approx_eq box.y 2.0 -> Ok ()
@@ -209,7 +209,7 @@ let test_margins_affect_sibling_spacing = fun _ctx ->
         ~style:Style.(empty
         |> width (Fixed 10.0)
         |> height (Fixed 1.0)
-        |> margin (Margin.make ~right:2 ())
+        |> margin (Style.Margin.make ~right:2 ())
         |> bg (`rgb (255, 0, 0)))
         [];
       Element.container
@@ -228,7 +228,7 @@ let test_margins_affect_fit_parent_size = fun _ctx ->
         ~style:Style.(empty
         |> width (Fixed 5.0)
         |> height (Fixed 1.0)
-        |> margin (Margin.symmetric ~h:1 ~v:0)
+        |> margin (Style.Margin.symmetric ~h:1 ~v:0)
         |> bg (`rgb (255, 0, 0)))
         [];
     ] in
@@ -266,7 +266,7 @@ let test_border_and_padding_define_the_content_box = fun _ctx ->
     |> width (Fixed 12.0)
     |> height (Fixed 5.0)
     |> border ~width:1 ~color:(`rgb (255, 255, 255)) ()
-    |> padding (Padding.all 1))
+    |> padding (Style.Padding.all 1))
     [ Element.text "Hi" ] in
   match find_text_box (layout ~config:(make_config ()) ui) "Hi" with
   | Some box when approx_eq box.x 2.0 && approx_eq box.y 2.0 -> Ok ()

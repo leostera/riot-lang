@@ -7,7 +7,7 @@ open Riot_bench
 
 let command =
   let open ArgParser in
-    let open Arg in
+    let open ArgParser.Arg in
       command "bench"
       |> about "Run benchmarks with optional case filtering"
       |> ArgParser.allow_trailing_args

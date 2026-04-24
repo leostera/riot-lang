@@ -103,6 +103,8 @@ let of_system_error = function
   | Kernel.SystemError.Unknown code -> Unknown_error ("Unknown system error code "
   ^ Kernel.Int.to_string code)
 
+let of_system_error_code = fun code -> of_system_error (Kernel.SystemError.from_code code)
+
 let of_async_error = function
   | Kernel.Async.InvalidTimeoutNs _ -> Invalid_argument
   | Kernel.Async.InvalidMaxEvents _ -> Invalid_argument

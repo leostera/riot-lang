@@ -1,5 +1,9 @@
 open Std
 
+module Toml_value = Toml_value
+
+module Parse = Parse
+
 val to_string: 'value Serde.Ser.t -> 'value -> (string, Serde.error) result
 
 val to_writer: 'value Serde.Ser.t -> IO.Writer.t -> 'value -> (unit, Serde.error) result

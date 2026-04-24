@@ -2052,7 +2052,7 @@ let parse = fun ?(flavor = Markdown) source ->
     { source; tokens; tree; diagnostics }
   with
   | exn ->
-      let message = Kernel.Exception.to_string exn in
+      let message = Exception.to_string exn in
       let found = { kind = "exception"; text = message } in
       let span = make_span ~start:0 ~len:(String.length source) in
       let diagnostic = parser_internal ~found ~message ~span in

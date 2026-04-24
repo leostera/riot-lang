@@ -58,6 +58,46 @@ let test_deps_collect_qualified_public_root_module_instead_of_child_module = fun
   | Ok modules -> Error ("expected deps [Syn], got [" ^ String.concat ", " modules ^ "]")
   | Error err -> Error err
 
+let test_deps_do_not_collect_exported_children_from_module_alias = fun _ctx ->
+  let env = Syn.Deps.Env.empty
+  |> Syn.Deps.Env.add_binding
+    ~path:[ "Kernel" ]
+    ~free_names:[ "Kernel" ]
+    ~exports:(alias_exports [ "Array"; "Result" ]) in
+  match parse_modules ~env ~filename:"kernel_new_addr_tests.ml" "module Kernel = Kernel\nlet len = Kernel.Array.length values\n" with
+  | Ok modules when modules = [ "Kernel" ] -> Ok ()
+  | Ok modules -> Error ("expected deps [Kernel], got [" ^ String.concat ", " modules ^ "]")
+  | Error err -> Error err
+
+let test_deps_collect_opened_module_root_for_exported_child = fun _ctx ->
+  let env = Syn.Deps.Env.empty
+  |> Syn.Deps.Env.add_binding
+    ~path:[ "Iter" ]
+    ~free_names:[ "Iter" ]
+    ~exports:(alias_exports [ "Iterator"; "MutIterator" ]) in
+  match parse_modules ~env ~filename:"string.mli" "open Iter\nval into_iter: string -> char Iterator.t\nval into_mut_iter: string -> char MutIterator.t\n" with
+  | Ok modules when modules = [ "Iter" ] -> Ok ()
+  | Ok modules -> Error ("expected deps [Iter], got [" ^ String.concat ", " modules ^ "]")
+  | Error err -> Error err
+
+let test_deps_ignore_lowercase_field_access_roots = fun _ctx ->
+  let source = "\n\
+    type opts = { follow_symlinks: bool }\n\
+    type iterator_state = { roots: int list; opts: opts }\n\
+    let update = fun state -> { state.opts with follow_symlinks = false }\n\
+    let size = fun state -> List.length state.roots\n\
+    let make =\n\
+      let module Base = struct\n\
+        type state = iterator_state\n\
+        let size = fun state -> List.length state.roots\n\
+      end in\n\
+      ()\n"
+  in
+  match parse_modules ~env:Syn.Deps.Env.empty ~filename:"walker.ml" source with
+  | Ok modules when modules = [ "List" ] -> Ok ()
+  | Ok modules -> Error ("expected deps [List], got [" ^ String.concat ", " modules ^ "]")
+  | Error err -> Error err
+
 let test_deps_collect_manifest_type_modules_from_implicit_alias_opens = fun _ctx ->
   let env = Syn.Deps.Env.empty
   |> Syn.Deps.Env.add_scoped_binding
@@ -117,6 +157,9 @@ let tests =
     case "deps collect qualified public root from implicit root alias open" test_deps_collect_qualified_public_root_from_implicit_root_alias_open;
     case "deps collect opened public root module instead of child module" test_deps_collect_opened_public_root_module_instead_of_child_module;
     case "deps collect qualified public root module instead of child module" test_deps_collect_qualified_public_root_module_instead_of_child_module;
+    case "deps do not collect exported children from module alias" test_deps_do_not_collect_exported_children_from_module_alias;
+    case "deps collect opened module root for exported child" test_deps_collect_opened_module_root_for_exported_child;
+    case "deps ignore lowercase field access roots" test_deps_ignore_lowercase_field_access_roots;
     case "deps collect variant payload modules from implicit alias opens" test_deps_collect_variant_payload_modules_from_implicit_alias_opens;
     case "deps collect field access modules from implicit alias opens" test_deps_collect_field_access_modules_from_implicit_alias_opens;
   ]

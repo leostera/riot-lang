@@ -231,6 +231,7 @@ let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~get
   | { kind=C; file=Generated _; _ }
   | { kind=H; _ }
   | { kind=Root; _ }
+  | { kind=PackageDependency _; _ }
   | { kind=Other _; _ } ->
       ([], [], [])
   | { kind=Library { name; includes }; _ } ->
@@ -506,7 +507,7 @@ let from_module_graph ?analyzed_modules ~package ~profile ~ctx ~toolchain ~store
             match G.get_node module_graph dep_id with
             | Some dep_node -> (
                 match dep_node.value.kind, dep_node.value.file with
-                | Module_node.Root, _ -> false
+                | (Module_node.Root | Module_node.PackageDependency _), _ -> false
                 | (Module_node.ML _ | Module_node.MLI _), Module_node.Concrete _ -> HashSet.contains
                   semantic_dep_ids
                   ~value:dep_id
@@ -548,7 +549,7 @@ let from_module_graph ?analyzed_modules ~package ~profile ~ctx ~toolchain ~store
         match G.get_node module_graph dep_id with
         | Some dep_node -> (
             match dep_node.value.kind, dep_node.value.file with
-            | Module_node.Root, _ -> false
+            | (Module_node.Root | Module_node.PackageDependency _), _ -> false
             | (Module_node.ML _ | Module_node.MLI _), Module_node.Concrete _ -> HashSet.contains
               semantic_dep_ids
               ~value:dep_id
@@ -632,7 +633,7 @@ let from_module_graph ?analyzed_modules ~package ~profile ~ctx ~toolchain ~store
                 | Module_node.ML _ -> HashSet.contains concrete_scope_set ~value:dep_id
                 | _ -> false
               )
-            | Module_node.Root, _ ->
+            | (Module_node.Root | Module_node.PackageDependency _), _ ->
                 false
             | _ ->
                 true
@@ -750,7 +751,8 @@ let from_module_graph ?analyzed_modules ~package ~profile ~ctx ~toolchain ~store
                 None
               else
                 Some node.id
-          | Module_node.Root -> None
+          | Module_node.Root
+          | Module_node.PackageDependency _ -> None
           | _ ->
               if HashSet.contains library_reachable_set ~value:node.id then
                 None
@@ -792,7 +794,8 @@ let from_module_graph ?analyzed_modules ~package ~profile ~ctx ~toolchain ~store
                 match dep_node.value.kind with
                 | Module_node.ML _
                 | Module_node.MLI _ -> HashSet.contains library_reachable_set ~value:dep_id
-                | Module_node.Root -> false
+                | Module_node.Root
+                | Module_node.PackageDependency _ -> false
                 | _ -> true
               )
             | None -> false)

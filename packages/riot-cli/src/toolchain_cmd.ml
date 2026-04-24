@@ -3,7 +3,7 @@ open Riot_model
 
 let command =
   let open ArgParser in
-    let open Arg in command "toolchain"
+    let open ArgParser.Arg in command "toolchain"
     |> about "Manage OCaml toolchains"
     |> subcommands
       [

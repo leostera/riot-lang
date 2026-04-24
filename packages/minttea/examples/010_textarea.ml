@@ -101,8 +101,11 @@ let view = fun model ->
   let open Element in
     let lines = String.split_on_char '\n' model.text in
     let line_count = List.length lines in
-    column ~style:Style.(empty |> padding (Padding.all 1))
-      [ row ~style:Style.(empty |> bg (`rgb (40, 40, 40)) |> padding (Padding.symmetric ~h:2 ~v:1))
+    column ~style:Style.(empty |> padding (Style.Padding.all 1))
+      [
+        row ~style:Style.(empty
+        |> bg (`rgb (40, 40, 40))
+        |> padding (Style.Padding.symmetric ~h:2 ~v:1))
           [
             text ~style:Style.(empty |> bold |> fg (`rgb (100, 200, 255))) "📝 Minttea Text Editor";
             spacer ~flex:1.0 ();
@@ -122,20 +125,26 @@ let view = fun model ->
                 else
                   "Modified"
               );
-          ]; text
+          ];
+        text
           ~style:Style.(empty |> fg (`rgb (150, 150, 150)))
           ("Line "
           ^ Int.to_string (model.cursor_row + 1)
           ^ ":"
           ^ Int.to_string (model.cursor_col + 1)
           ^ " | Total lines: "
-          ^ Int.to_string line_count); text ""; container
+          ^ Int.to_string line_count);
+        text "";
+        container
           ~style:Style.(empty
           |> border ~width:1 ~color:(`rgb (0, 255, 127)) ()
-          |> padding (Padding.all 1)
+          |> padding (Style.Padding.all 1)
           |> min_height 15.0
           |> min_width 70.0)
-          [ text model.text ]; text ""; text ~style:Style.(empty |> fg (`rgb (100, 100, 100))) "Type to edit • Ctrl+S: Save • Ctrl+C: Clear • q: Quit"; ]
+          [ text model.text ];
+        text "";
+        text ~style:Style.(empty |> fg (`rgb (100, 100, 100))) "Type to edit • Ctrl+S: Save • Ctrl+C: Clear • q: Quit";
+      ]
 
 (* Create and run the app *)
 

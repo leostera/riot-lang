@@ -10,7 +10,7 @@ let out = eprintln
 
 let command =
   let open ArgParser in
-    let open Arg in command "run"
+    let open ArgParser.Arg in command "run"
     |> about "Run a binary"
     |> ArgParser.allow_trailing_args
     |> args

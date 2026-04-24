@@ -154,7 +154,7 @@ let test_add_message_renders_typed_command_errors = fun _ctx ->
 
 let test_remove_outside_workspace_message = fun _ctx ->
   let* matches = parse_remove [ "rm"; "hello" ] in
-  let* () = Result.map_err (Riot_cli.Remove.run_without_workspace matches) ~fn:Kernel.Exception.to_string in
+  let* () = Result.map_err (Riot_cli.Remove.run_without_workspace matches) ~fn:Exception.to_string in
   Test.assert_equal ~expected:"No riot.toml, so nothing to remove" ~actual:Riot_cli.Remove.no_workspace_message;
   Ok ()
 
@@ -173,7 +173,7 @@ let test_remove_message_renders_typed_command_errors = fun _ctx ->
 
 let test_update_outside_workspace_message = fun _ctx ->
   let* matches = parse_update [ "update" ] in
-  let* () = Result.map_err (Riot_cli.Update_cmd.run_without_workspace matches) ~fn:Kernel.Exception.to_string in
+  let* () = Result.map_err (Riot_cli.Update_cmd.run_without_workspace matches) ~fn:Exception.to_string in
   Test.assert_equal ~expected:"No riot.toml, so nothing to update" ~actual:Riot_cli.Update_cmd.no_workspace_message;
   Ok ()
 
@@ -183,7 +183,7 @@ let test_new_outside_workspace_creates_standalone_package = fun _ctx ->
       let package_root = Path.(tempdir / Path.v "hello-world") in
       let* matches = parse_new [ "new"; "hello-world" ] in
       let* () = with_current_dir_exn_result tempdir (fun () -> Riot_cli.New.run matches)
-      |> Result.map_err ~fn:Kernel.Exception.to_string in
+      |> Result.map_err ~fn:Exception.to_string in
       let* package_exists = Result.map_err
         (Fs.exists Path.(package_root / Path.v "riot.toml"))
         ~fn:IO.error_message in

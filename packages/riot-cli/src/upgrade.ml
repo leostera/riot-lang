@@ -20,7 +20,7 @@ let default_issues_url = "https://github.com/leostera/riot/issues"
 
 let command =
   let open ArgParser in
-    let open Arg in command "upgrade"
+    let open ArgParser.Arg in command "upgrade"
     |> about "Upgrade the globally installed riot binary"
     |> args [ option "version" |> long "version" |> help "Version to install (default: latest)"; ]
 

@@ -114,32 +114,19 @@ let test_remove_middle = fun _ctx ->
     Ok ()
   else
     Error (
-      format
-        Format.[
-          str "expected remove middle to return Some 2 and preserve [1; 3], got removed=";
-          str
-            (
-              match removed with
-              | None -> "None"
-              | Some value -> Int.to_string value
-            );
-          str " length=";
-          int (Deque.length deque);
-          str " front=";
-          str
-            (
-              match Deque.front deque with
-              | None -> "None"
-              | Some value -> Int.to_string value
-            );
-          str " back=";
-          str
-            (
-              match Deque.back deque with
-              | None -> "None"
-              | Some value -> Int.to_string value
-            );
-        ]
+      "expected remove middle to return Some 2 and preserve [1; 3], got removed=" ^ (
+        match removed with
+        | None -> "None"
+        | Some value -> Int.to_string value
+      ) ^ " length=" ^ Int.to_string (Deque.length deque) ^ " front=" ^ (
+        match Deque.front deque with
+        | None -> "None"
+        | Some value -> Int.to_string value
+      ) ^ " back=" ^ (
+        match Deque.back deque with
+        | None -> "None"
+        | Some value -> Int.to_string value
+      )
     )
 
 let wraparound_deque = fun () ->
