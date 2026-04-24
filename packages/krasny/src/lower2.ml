@@ -760,9 +760,9 @@ let is_markdown_section_docstring_text = fun comment_text ->
     | None -> false
 
 let leading_docstring_separator = fun (left: leading_docstring) (right: leading_docstring) ->
-  if left.is_section then
+  if left.is_section && right.is_section then
     "\n\n"
-  else if right.is_section then
+  else if left.is_section || right.is_section then
     "\n"
   else
     "\n"
@@ -770,6 +770,8 @@ let leading_docstring_separator = fun (left: leading_docstring) (right: leading_
 let standalone_docstring_separator = fun (left: leading_docstring) (right: leading_docstring) ->
   if right.blank_before then
     "\n\n"
+  else if left.is_section && not right.is_section then
+    "\n"
   else if (not left.is_section) && right.is_section then
     "\n"
   else
@@ -1072,6 +1074,21 @@ let token_has_leading_section_docstring = fun token ->
       if Kind.(kind = DOCSTRING) && is_section_docstring_text text then
         has_section := true);
   !has_section
+
+let token_starts_with_section_docstring = fun token ->
+  let starts_with_section = ref false in
+  let found = ref false in
+  Ast.Token.for_each_leading_trivia token
+    ~fn:(fun ~kind ~text ->
+      if not !found then
+        if Kind.(kind = COMMENT) then
+          found := true
+        else if Kind.(kind = DOCSTRING) then
+          (
+            starts_with_section := is_section_docstring_text text;
+            found := true
+          ));
+  !starts_with_section
 
 let token_first_leading_comment_is_indented = fun token ->
   let pending_indentation = ref false in
@@ -5720,6 +5737,10 @@ let module_signature_body_item_has_leading_nonsection_comment = function
   | token :: _ -> token_has_leading_nonsection_comment token
   | [] -> false
 
+let module_signature_body_item_starts_with_section_docstring = function
+  | token :: _ -> token_starts_with_section_docstring token
+  | [] -> false
+
 let module_signature_body_item_has_mixed_leading_section_docstrings = fun tokens ->
   match tokens with
   | [] -> false
@@ -5741,15 +5762,10 @@ let module_signature_body_items_compact_between = fun left right ->
   && not (module_signature_body_item_has_mixed_leading_section_docstrings right))
   || (module_signature_body_item_is_open left && module_signature_body_item_is_open right)
   || (module_signature_body_item_is_value left && module_signature_body_item_is_value right)
-  || (
-    module_signature_body_item_is_type left && module_signature_body_item_is_value right && (
-      not (module_signature_body_item_has_leading_nonsection_comment right) || (
-        match right with
-        | token :: _ -> token_has_leading_markdown_section_docstring token
-        | [] -> false
-      )
-    )
-  )
+  || (module_signature_body_item_is_type left
+  && module_signature_body_item_is_value right
+  && (not (module_signature_body_item_has_leading_nonsection_comment right)
+  || module_signature_body_item_starts_with_section_docstring right))
 
 let module_signature_body_items_doc = fun items ->
   let rec loop previous doc = function
@@ -6672,6 +6688,11 @@ and item_has_leading_markdown_section_docstring = fun node ->
   | Some token -> token_has_leading_markdown_section_docstring token
   | None -> false
 
+and item_starts_with_section_docstring = fun node ->
+  match Ast.Node.first_descendant_token node with
+  | Some token -> token_starts_with_section_docstring token
+  | None -> false
+
 and item_has_mixed_leading_section_docstrings = fun node ->
   match Ast.Node.first_descendant_token node with
   | Some token ->
@@ -6738,7 +6759,7 @@ and module_signature_items_compact_between = fun left right ->
   || (signature_item_is_open_local left && signature_item_is_open_local right)
   || (signature_item_is_type_local left
   && signature_item_is_value_local right
-  && not (item_has_leading_nonsection_comment right))
+  && (item_starts_with_section_docstring right || not (item_has_leading_nonsection_comment right)))
 
 and module_signature_items_doc = fun items ->
   let rec loop previous doc = function
@@ -6748,7 +6769,8 @@ and module_signature_items_doc = fun items ->
           if
             signature_item_is_type_local previous
             && signature_item_is_value_local next_item
-            && not (item_has_leading_nonsection_comment next_item)
+            && (item_starts_with_section_docstring next_item
+            || not (item_has_leading_nonsection_comment next_item))
           then
             signature_item_doc_compact_leading next_item
           else
@@ -7417,6 +7439,11 @@ let signature_item_has_leading_section_docstring = fun item ->
   | Some token -> token_has_leading_section_docstring token
   | None -> false
 
+let signature_item_starts_with_section_docstring = fun item ->
+  match Ast.Node.first_descendant_token item with
+  | Some token -> token_starts_with_section_docstring token
+  | None -> false
+
 let signature_item_is_variant_type = fun item ->
   match Ast.SignatureItem.view item with
   | Type decl ->
@@ -7436,7 +7463,8 @@ let signature_items_compact_between = fun left right ->
   || (signature_item_is_open left && signature_item_is_open right)
   || (signature_item_is_type left
   && signature_item_is_value right
-  && not (signature_item_has_leading_nonsection_comment right))
+  && (signature_item_starts_with_section_docstring right
+  || not (signature_item_has_leading_nonsection_comment right)))
 
 let signature_items_doc = fun items ->
   let rec loop previous doc = function
@@ -7502,7 +7530,8 @@ let signature_items_doc = fun items ->
           else if
             signature_item_is_type previous
             && signature_item_is_value next_item
-            && not (signature_item_has_leading_nonsection_comment next_item)
+            && (signature_item_starts_with_section_docstring next_item
+            || not (signature_item_has_leading_nonsection_comment next_item))
           then
             (signature_item_doc_compact_leading next_item, None)
           else

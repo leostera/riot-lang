@@ -761,6 +761,12 @@ let tests = [
           val get_host_triple: unit -> Riot_model.Target.t\n"
         "val hash: t -> Crypto.hash\n\n(** Compute a hash of the toolchain for cache invalidation *)\n\n(** Multi-target toolchain support *)\nval get_host_triple: unit -> Riot_model.Target.t\n");
   Test.case
+    "lower2 keeps section headings tight to following signature docs"
+    (fun _ctx ->
+      assert_format2_mli
+        ~expected:"type t = {\n  value: int;\n}\n(** {2 Parsing} *)\n(** Parse Cookie header into name-value pairs. *)\nval parse: string -> t\n"
+        "type t = {\n  value: int;\n}\n(** {2 Parsing} *)\n(** Parse Cookie header into name-value pairs. *)\nval parse: string -> t\n");
+  Test.case
     "lower2 keeps adjacent signature values separated"
     (fun _ctx ->
       assert_format2_mli
