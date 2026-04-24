@@ -4815,6 +4815,12 @@ let type_annotation_breaks_after_colon = fun tokens ->
 
 let multiline_top_level_arrow_type_threshold = 4
 
+let tight_token_rhs_doc = fun head token rhs ->
+  Doc.group (Doc.concat [ head; token_doc token; Doc.indent 2 (Doc.concat [ Doc.break (); rhs ]) ])
+
+let tight_doc_rhs = fun head separator rhs ->
+  Doc.group (Doc.concat [ head; separator; Doc.indent 2 (Doc.concat [ Doc.break (); rhs ]) ])
+
 let declaration_type_annotation_doc = fun tokens ->
   let arrow_count = top_level_arrow_count tokens in
   let width = tokens_text_width tokens in
@@ -5645,28 +5651,12 @@ let module_signature_body_val_item_doc = fun tokens ->
   match tokens with
   | val_token :: rest when token_kind_is val_token Kind.VAL_KW -> (
       match split_top_level_token rest ~matches:(fun kind -> Kind.(kind = COLON)) with
-      | Some (name_tokens, _colon, type_tokens) ->
+      | Some (name_tokens, colon_token, type_tokens) ->
           let type_doc = declaration_type_annotation_doc type_tokens in
-          if Doc.is_multiline type_doc || type_annotation_breaks_after_colon type_tokens then
-            Doc.concat
-              [
-                token_doc val_token;
-                Doc.space;
-                declaration_name_doc name_tokens;
-                Doc.colon;
-                Doc.line;
-                Doc.indent 2 type_doc;
-              ]
-          else
-            Doc.concat
-              [
-                token_doc val_token;
-                Doc.space;
-                declaration_name_doc name_tokens;
-                Doc.colon;
-                Doc.space;
-                type_doc;
-              ]
+          tight_token_rhs_doc
+            (Doc.concat [ token_doc val_token; Doc.space; declaration_name_doc name_tokens ])
+            colon_token
+            type_doc
       | None -> type_tokens_inline_doc tokens
     )
   | _ -> type_tokens_inline_doc tokens
@@ -6187,28 +6177,12 @@ let signature_body_val_item_doc = fun tokens ->
   match tokens with
   | val_token :: rest when token_kind_is val_token Kind.VAL_KW -> (
       match split_top_level_token rest ~matches:(fun kind -> Kind.(kind = COLON)) with
-      | Some (name_tokens, _colon, type_tokens) ->
+      | Some (name_tokens, colon_token, type_tokens) ->
           let type_doc = type_annotation_tokens_doc type_tokens in
-          if Doc.is_multiline type_doc || type_annotation_breaks_after_colon type_tokens then
-            Doc.concat
-              [
-                token_doc val_token;
-                Doc.space;
-                declaration_name_doc name_tokens;
-                Doc.colon;
-                Doc.line;
-                Doc.indent 2 type_doc;
-              ]
-          else
-            Doc.concat
-              [
-                token_doc val_token;
-                Doc.space;
-                declaration_name_doc name_tokens;
-                Doc.colon;
-                Doc.space;
-                type_doc;
-              ]
+          tight_token_rhs_doc
+            (Doc.concat [ token_doc val_token; Doc.space; declaration_name_doc name_tokens ])
+            colon_token
+            type_doc
       | None -> type_tokens_inline_doc tokens
     )
   | _ -> type_tokens_inline_doc tokens
@@ -6379,26 +6353,10 @@ let value_decl_doc = fun decl ->
       unsupported "value declaration without name"
   | Some (name_tokens, colon_token, ((_ :: _) as annotation_tokens)) ->
       let annotation_doc = declaration_type_annotation_doc annotation_tokens in
-      if Doc.is_multiline annotation_doc || type_annotation_breaks_after_colon annotation_tokens then
-        Doc.concat
-          [
-            Doc.text "val";
-            Doc.space;
-            declaration_name_doc name_tokens;
-            token_doc colon_token;
-            Doc.line;
-            Doc.indent 2 annotation_doc;
-          ]
-      else
-        Doc.concat
-          [
-            Doc.text "val";
-            Doc.space;
-            declaration_name_doc name_tokens;
-            token_doc colon_token;
-            Doc.space;
-            annotation_doc;
-          ]
+      tight_token_rhs_doc
+        (Doc.concat [ Doc.text "val"; Doc.space; declaration_name_doc name_tokens ])
+        colon_token
+        annotation_doc
   | None
   | Some (_, _, []) ->
       unsupported "incomplete value declaration"
@@ -6448,32 +6406,12 @@ let external_decl_doc = fun decl ->
               | [] -> type_expr_doc annotation
               | tokens -> declaration_type_annotation_doc tokens
             in
-            if
-              Doc.is_multiline annotation_doc || type_annotation_breaks_after_colon annotation_tokens
-            then
-              Doc.concat
-                [
-                  Doc.text "external";
-                  Doc.space;
-                  declaration_name_doc name_tokens;
-                  token_doc colon_token;
-                  Doc.line;
-                  Doc.indent 2 annotation_doc;
-                  Doc.line;
-                  Doc.indent 2 primitive_doc;
-                ]
-            else
-              Doc.concat
-                [
-                  Doc.text "external";
-                  Doc.space;
-                  declaration_name_doc name_tokens;
-                  token_doc colon_token;
-                  Doc.space;
-                  annotation_doc;
-                  Doc.space;
-                  primitive_doc;
-                ]
+            let type_doc = tight_token_rhs_doc
+              (Doc.concat [ Doc.text "external"; Doc.space; declaration_name_doc name_tokens ])
+              colon_token
+              annotation_doc in
+            Doc.group
+              (Doc.concat [ type_doc; Doc.indent 2 (Doc.concat [ Doc.break (); primitive_doc ]) ])
       )
   | _ ->
       unsupported "incomplete external declaration"

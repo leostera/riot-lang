@@ -726,6 +726,23 @@ let tests = [
         ~expected:"val materialize_package_exports:\n\
           \  t -> exports:export_entry list -> target_dir:Std.Path.t -> (unit, error) result\n"
         "val materialize_package_exports: t -> exports:export_entry list -> target_dir:Std.Path.t -> (unit, error) result\n");
+  Test.case
+    "lower2 keeps fitting labeled value declarations inline"
+    (fun _ctx ->
+      assert_format2_mli
+        ~expected:"val request: t -> Net.Http.Request.t -> ?body:string -> unit -> (unit, Error.t) result\n"
+        "val request: t -> Net.Http.Request.t -> ?body:string -> unit -> (unit, Error.t) result\n");
+  Test.case "lower2 keeps wider labeled value declarations grouped after the colon"
+    (fun _ctx ->
+      assert_format2_mli
+        ~expected:"val parse:\n\
+          \  ?max_request_line:int -> ?max_headers:int -> ?max_header_length:int -> string -> Std.Net.Http.Request.t parse_result\n"
+        "val parse:\n\
+          \  ?max_request_line:int ->\n\
+          \  ?max_headers:int ->\n\
+          \  ?max_header_length:int ->\n\
+          \  string ->\n\
+          \  Std.Net.Http.Request.t parse_result\n");
   Test.case "lower2 keeps adjacent type and module declarations compact"
     (fun _ctx ->
       assert_format2_mli
