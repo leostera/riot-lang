@@ -545,6 +545,34 @@ public = true
           | Error err -> Error ("unexpected publish error: " ^ Riot_deps.Publisher.message err)
         ))
 
+let test_publisher_reports_missing_prepared_artifact = fun _ctx ->
+  with_tempdir "riot_deps_publish_missing_artifact"
+    (fun root ->
+      let artifact_path = Path.(root / Path.v "missing.tar.gz") in
+      let package = make_package ~name:"demo" ~path:root () in
+      let fetch, _requests =
+        make_fetch_recorder
+          ~post_handler:(fun _uri ~headers:_ ~body:_ -> Error "publish should not be called when the artifact is missing")
+          (fun uri -> Error ("unexpected GET " ^ Net.Uri.to_string uri))
+      in
+      let registry = Pkgs_ml.Registry.filesystem ~fetch (make_registry_cache ()) in
+      let prepared: Riot_deps.Publisher.prepared_publish = {
+        package;
+        version = Std.Version.make ~major:0 ~minor:1 ~patch:0 ();
+        locator = "github.com/example/demo";
+        selector = "main";
+        artifact_path;
+      }
+      in
+      match Riot_deps.Publisher.publish_prepared ~registry ~api_token:"root-secret" prepared with
+      | Error (Riot_deps.Publisher.ArtifactReadFailed { path; _ }) ->
+          if Path.equal path artifact_path then
+            Ok ()
+          else
+            Error "expected missing artifact error to preserve artifact path"
+      | Error err -> Error ("unexpected publish error: " ^ Riot_deps.Publisher.message err)
+      | Ok _ -> Error "expected missing prepared artifact to fail before publish")
+
 let test_publisher_workspace_publish_order_uses_runtime_local_dependencies = fun _ctx ->
   let core = make_package ~name:"core" ~path:(Path.v "packages/core") () in
   let util = make_package
@@ -3521,6 +3549,7 @@ let tests =
     case "publisher: rejects symlink entries" test_publisher_rejects_symlink_entries;
     case "publisher: publishes prepared package artifacts" test_publisher_publishes_prepared_artifact;
     case "publisher: bubbles registry publish errors" test_publisher_bubbles_registry_publish_errors;
+    case "publisher: reports missing prepared artifacts" test_publisher_reports_missing_prepared_artifact;
     case "publisher: workspace publish order uses runtime local dependencies" test_publisher_workspace_publish_order_uses_runtime_local_dependencies;
     case "publisher: workspace publish order ignores dev and build dependencies" test_publisher_workspace_publish_order_ignores_dev_and_build_dependencies;
     case "publisher: workspace publish order reports cycles" test_publisher_workspace_publish_order_reports_cycles;

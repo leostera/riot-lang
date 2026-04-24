@@ -21,14 +21,18 @@ type error =
   | RuntimeDependencyNotFoundInRegistry of { package: string; dependency: string; registry: string }
   | SymlinkNotAllowed of { path: Path.t }
   | UnsupportedEntry of { path: Path.t; kind: string }
-  | DirectoryReadFailed of { path: Path.t; error: string }
-  | MetadataReadFailed of { path: Path.t; error: string }
-  | ArtifactReadFailed of { path: Path.t; error: string }
+  | DirectoryReadFailed of { path: Path.t; error: IO.error }
+  | MetadataReadFailed of { path: Path.t; error: metadata_error }
+  | ArtifactReadFailed of { path: Path.t; error: IO.error }
   | TarCommandFailed of { command: string; status: int; stdout: string; stderr: string }
-  | TarCommandSpawnFailed of { command: string; error: string }
+  | TarCommandSpawnFailed of { command: string; error: Command.error }
   | GitProvenanceFailed of Git_provenance.error
   | RegistryPublishFailed of { locator: string; error: string }
   | CyclicWorkspacePublishOrder of { cycle: string list }
+
+and metadata_error =
+  | MetadataIoError of IO.error
+  | MetadataPathError of Path.error
 
 type prepared_publish = {
   package: Riot_model.Package.t;
@@ -62,6 +66,18 @@ let excluded_entry_names = [
 
 let is_apple_junk_entry = fun name ->
   String.starts_with ~prefix:"._" name || String.equal name ".DS_Store" || String.equal name "__MACOSX"
+
+let path_error_message = function
+  | Path.InvalidUtf8 { path } -> "invalid utf8 path: " ^ path
+  | Path.SystemInvalidUtf8 { syscall; path } -> "invalid utf8 from " ^ syscall ^ ": " ^ path
+  | Path.SystemError msg -> msg
+
+let metadata_error_message = function
+  | MetadataIoError error -> IO.error_message error
+  | MetadataPathError error -> path_error_message error
+
+let command_error_message = function
+  | Command.SystemError error -> error
 
 let message = function
   | MissingPublishVersion { package } ->
@@ -111,11 +127,11 @@ let message = function
       ^ " at "
       ^ Path.to_string path
   | DirectoryReadFailed { path; error } ->
-      "failed to read directory '" ^ Path.to_string path ^ "': " ^ error
+      "failed to read directory '" ^ Path.to_string path ^ "': " ^ IO.error_message error
   | MetadataReadFailed { path; error } ->
-      "failed to read metadata for '" ^ Path.to_string path ^ "': " ^ error
+      "failed to read metadata for '" ^ Path.to_string path ^ "': " ^ metadata_error_message error
   | ArtifactReadFailed { path; error } ->
-      "failed to read publish artifact '" ^ Path.to_string path ^ "': " ^ error
+      "failed to read publish artifact '" ^ Path.to_string path ^ "': " ^ IO.error_message error
   | TarCommandFailed { command; status; stdout; stderr } ->
       let detail =
         if String.equal stderr "" then
@@ -130,7 +146,7 @@ let message = function
       ^ "): "
       ^ detail
   | TarCommandSpawnFailed { command; error } ->
-      "failed to spawn publish artifact command '" ^ command ^ "': " ^ error
+      "failed to spawn publish artifact command '" ^ command ^ "': " ^ command_error_message error
   | GitProvenanceFailed error ->
       Git_provenance.message error
   | RegistryPublishFailed { locator; error } ->
@@ -151,11 +167,6 @@ let file_kind_to_string = function
   | `Fifo -> "fifo"
   | `Socket -> "socket"
 
-let path_error_message = function
-  | Path.InvalidUtf8 { path } -> "invalid utf8 path: " ^ path
-  | Path.SystemInvalidUtf8 { syscall; path } -> "invalid utf8 from " ^ syscall ^ ": " ^ path
-  | Path.SystemError msg -> msg
-
 let walker_kind_to_string = function
   | Fs.Walker.File -> "regular file"
   | Fs.Walker.Directory -> "directory"
@@ -163,15 +174,14 @@ let walker_kind_to_string = function
   | Fs.Walker.Other -> "unsupported entry"
 
 let publisher_error_of_walker_error = fun ~package_root (err: Fs.Walker.error) ->
-  let error = IO.error_message err.cause in
   match err.path with
   | Some path -> (
       if Path.is_directory path then
-        DirectoryReadFailed { path; error }
+        DirectoryReadFailed { path; error = err.cause }
       else
-        MetadataReadFailed { path; error }
+        MetadataReadFailed { path; error = MetadataIoError err.cause }
     )
-  | None -> DirectoryReadFailed { path = package_root; error }
+  | None -> DirectoryReadFailed { path = package_root; error = err.cause }
 
 let validate_publish_metadata = fun ~(package:Riot_model.Package.t) ->
   let package_name = Riot_model.Package_name.to_string package.name in
@@ -303,7 +313,7 @@ let collect_relative_files = fun ~package_root ->
         | File -> (
             match Path.strip_prefix path ~prefix:package_root with
             | Ok relative -> loop (relative :: acc) iter'
-            | Error err -> Error (MetadataReadFailed { path; error = path_error_message err })
+            | Error err -> Error (MetadataReadFailed { path; error = MetadataPathError err })
           )
         | Symlink ->
             Error (SymlinkNotAllowed { path })
@@ -332,16 +342,13 @@ let create_archive = fun ~package_root ~artifact_path ~relative_files ->
     | None -> Path.v "."
   in
   match Fs.create_dir_all parent with
-  | Error err -> Error (ArtifactReadFailed { path = artifact_path; error = IO.error_message err })
+  | Error err -> Error (ArtifactReadFailed { path = artifact_path; error = err })
   | Ok () ->
       let args = [ "-czf"; Path.to_string artifact_path; "-C"; Path.to_string package_root ]
       @ List.map relative_files ~fn:Path.to_string in
       let command = Command.make "tar" ~args in
       match Command.output command with
-      | Error (Command.SystemError error) -> Error (TarCommandSpawnFailed {
-        command = Command.to_string command;
-        error
-      })
+      | Error error -> Error (TarCommandSpawnFailed { command = Command.to_string command; error })
       | Ok output when not (Int.equal output.status 0) -> Error (TarCommandFailed {
         command = Command.to_string command;
         status = output.status;
@@ -406,10 +413,7 @@ let prepare_publish = fun ~registry ~target_dir_root ~publishing_workspace_packa
 
 let publish_prepared = fun ~registry ~api_token (prepared: prepared_publish) ->
   match Fs.read prepared.artifact_path with
-  | Error err -> Error (ArtifactReadFailed {
-    path = prepared.artifact_path;
-    error = IO.error_message err
-  })
+  | Error err -> Error (ArtifactReadFailed { path = prepared.artifact_path; error = err })
   | Ok artifact -> (
       match Pkgs_ml.Registry.publish_artifact registry ~api_token ~artifact with
       | Ok published -> Ok published

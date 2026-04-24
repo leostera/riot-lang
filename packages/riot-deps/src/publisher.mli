@@ -21,14 +21,18 @@ type error =
   | RuntimeDependencyNotFoundInRegistry of { package: string; dependency: string; registry: string }
   | SymlinkNotAllowed of { path: Path.t }
   | UnsupportedEntry of { path: Path.t; kind: string }
-  | DirectoryReadFailed of { path: Path.t; error: string }
-  | MetadataReadFailed of { path: Path.t; error: string }
-  | ArtifactReadFailed of { path: Path.t; error: string }
+  | DirectoryReadFailed of { path: Path.t; error: IO.error }
+  | MetadataReadFailed of { path: Path.t; error: metadata_error }
+  | ArtifactReadFailed of { path: Path.t; error: IO.error }
   | TarCommandFailed of { command: string; status: int; stdout: string; stderr: string }
-  | TarCommandSpawnFailed of { command: string; error: string }
+  | TarCommandSpawnFailed of { command: string; error: Command.error }
   | GitProvenanceFailed of Git_provenance.error
   | RegistryPublishFailed of { locator: string; error: string }
   | CyclicWorkspacePublishOrder of { cycle: string list }
+
+and metadata_error =
+  | MetadataIoError of IO.error
+  | MetadataPathError of Path.error
 type prepared_publish = {
   package: Riot_model.Package.t;
   version: Std.Version.t;
