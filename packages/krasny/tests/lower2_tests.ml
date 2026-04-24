@@ -356,6 +356,36 @@ let tests = [
         ~expected:"let folded = List.fold_left (fun acc doc -> (indent, doc) :: acc) rest\n"
         "let folded = List.fold_left (fun acc doc -> (indent, doc) :: acc) rest\n");
   Test.case
+    "lower2 keeps parenthesized multiline infix arguments with callee"
+    (fun _ctx ->
+      assert_format2_ml
+        ~expected:"let result = Error (\"Response body truncated! Length: \"\n^ string_of_int body_len\n^ \", Content-Length: \"\n^ (Option.unwrap_or ~default:\"missing\" content_length_hdr))\n"
+        "let result = Error (\"Response body truncated! Length: \" ^ string_of_int body_len ^ \", Content-Length: \" ^ (Option.unwrap_or ~default:\"missing\" content_length_hdr))\n");
+  Test.case
+    "lower2 keeps if-branch multiline infix arguments with callee"
+    (fun _ctx ->
+      assert_format2_ml
+        ~expected:"let f body body_len content_length_hdr =\n  if not (String.ends_with ~suffix:\"}\" body) then\n    Error (\"Response body truncated! Length: \"\n    ^ string_of_int body_len\n    ^ \", Content-Length: \"\n    ^ (Option.unwrap_or ~default:\"missing\" content_length_hdr))\n  else\n    Ok ()\n"
+        "let f body body_len content_length_hdr = if not (String.ends_with ~suffix:\"}\" body) then Error (\"Response body truncated! Length: \" ^ string_of_int body_len ^ \", Content-Length: \" ^ (Option.unwrap_or ~default:\"missing\" content_length_hdr)) else Ok ()\n");
+  Test.case
+    "lower2 breaks ordinary calls before multiline infix arguments"
+    (fun _ctx ->
+      assert_format2_ml
+        ~expected:"let log chunk chunk_count = Log.info\n  (\"Chunk \"\n  ^ string_of_int !chunk_count\n  ^ \" (\"\n  ^ string_of_int (String.length chunk)\n  ^ \" bytes): \"\n  ^ chunk)\n"
+        "let log chunk chunk_count = Log.info (\"Chunk \" ^ string_of_int !chunk_count ^ \" (\" ^ string_of_int (String.length chunk) ^ \" bytes): \" ^ chunk)\n");
+  Test.case
+    "lower2 breaks long qualified match pattern application bodies"
+    (fun _ctx ->
+      assert_format2_ml
+        ~expected:"let run event =\n  match event with\n  | Blink.Connection.Status status ->\n      Log.info (\"Status: \" ^ string_of_int (Net.Http.Status.to_int status))\n  | _ -> ()\n"
+        "let run event = match event with | Blink.Connection.Status status -> Log.info (\"Status: \" ^ string_of_int (Net.Http.Status.to_int status)) | _ -> ()\n");
+  Test.case
+    "lower2 keeps parenthesized match bodies on long qualified cases"
+    (fun _ctx ->
+      assert_format2_ml
+        ~expected:"let run json =\n  match json with\n  | Data.Json.Object fields -> (\n      match List.assoc_opt \"choices\" fields with\n      | Some (Data.Json.Array _choices) ->\n          Ok ()\n      | Some _ -> Error \"bad\"\n      | None -> Ok ()\n    )\n  | _ -> Error \"Response is not a JSON object\"\n"
+        "let run json = match json with | Data.Json.Object fields -> (match List.assoc_opt \"choices\" fields with | Some (Data.Json.Array _choices) -> Ok () | Some _ -> Error \"bad\" | None -> Ok ()) | _ -> Error \"Response is not a JSON object\"\n");
+  Test.case
     "lower2 formats labels and optional labels"
     (fun _ctx -> assert_format2_ml ~expected:"let f ~x ?y = g ~x ?y\n" "let f ~x ?y = g ~x ?y\n");
   Test.case

@@ -2038,8 +2038,15 @@ and expr_case_body_stays_with_arrow_for_long_pattern = fun expr ->
   match Ast.Expr.view expr with
   | Path _
   | Literal _
-  | Parenthesized { inner=None } -> true
-  | _ -> expr_case_body_stays_with_arrow expr
+  | Parenthesized { inner=None } ->
+      true
+  | Parenthesized { inner=Some inner } -> (
+      match Ast.Expr.view inner with
+      | Match _ -> true
+      | _ -> false
+    )
+  | _ ->
+      false
 
 and match_case_body_breaks = fun match_case ->
   let view = Ast.MatchCase.view match_case in
@@ -2433,12 +2440,11 @@ and expr_multiline_apply_argument_stays_with_callee = fun expr ->
   | _ ->
       false
 
-and expr_multiline_apply_argument_breaks_after_callee = fun expr ->
-  match Ast.Expr.view expr with
+and expr_multiline_apply_argument_breaks_after_callee = fun callee expr ->
+  (not (expr_is_capitalized_path callee)) && match Ast.Expr.view expr with
   | Parenthesized { inner=Some inner } -> (
       match Ast.Expr.view inner with
-      | Infix { operator=Some operator; _ } when String.equal (infix_operator_text inner operator) "^"
-      && Int.(node_token_text_width inner > 70) -> true
+      | Infix { operator=Some operator; _ } -> String.equal (infix_operator_text inner operator) "^"
       | _ -> false
     )
   | _ -> false
@@ -2596,7 +2602,7 @@ and application_doc = fun ?(prefer_first_argument_head = false) expr ->
       else
         match arguments, argument_docs with
         | first_arg :: _, first_doc :: rest_docs when Doc.is_multiline first_doc
-        && expr_multiline_apply_argument_breaks_after_callee first_arg ->
+        && expr_multiline_apply_argument_breaks_after_callee callee first_arg ->
             Doc.concat
               [ callee_doc; Doc.line; Doc.indent 2 (Doc.join Doc.line (first_doc :: rest_docs)) ]
         | first_arg :: _, first_doc :: rest_docs when Doc.is_multiline first_doc
