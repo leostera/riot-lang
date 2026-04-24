@@ -95,8 +95,14 @@ type error =
   | RegistryVersionNotFound of { package: string; requirement: string; registry: string }
   | ManifestUpdateFailed of Manifest_edit.error
   | DependencyNotFoundInSection of { path: Path.t; section: string; dependency: string }
-  | WorkspaceReloadFailed of { workspace_root: Path.t; error: string }
-  | WorkspaceReloadHadErrors of { workspace_root: Path.t; errors: string list }
+  | WorkspaceReloadFailed of {
+      workspace_root: Path.t;
+      error: Workspace_manager.scan_error
+    }
+  | WorkspaceReloadHadErrors of {
+      workspace_root: Path.t;
+      errors: Workspace_manager.load_error list
+    }
   | MaterializedPackageNotFound of { package_root: Path.t; workspace_root: Path.t }
   | LockRefreshFailed of Deps_error.t
 
@@ -243,9 +249,15 @@ let error_message = function
       ^ Path.to_string path
       ^ "'"
   | WorkspaceReloadFailed { workspace_root; error } ->
-      "failed to reload workspace '" ^ Path.to_string workspace_root ^ "': " ^ error
+      "failed to reload workspace '"
+      ^ Path.to_string workspace_root
+      ^ "': "
+      ^ Workspace_manager.scan_error_message error
   | WorkspaceReloadHadErrors { workspace_root; errors } ->
-      "workspace '" ^ Path.to_string workspace_root ^ "' has load errors:\n" ^ String.concat "\n" errors
+      "workspace '"
+      ^ Path.to_string workspace_root
+      ^ "' has load errors:\n"
+      ^ String.concat "\n" (List.map errors ~fn:Workspace_manager.load_error_to_string)
   | MaterializedPackageNotFound { package_root; workspace_root } ->
       "materialized package root '"
       ^ Path.to_string package_root
@@ -470,13 +482,12 @@ let scan_workspace_from_root = fun ~workspace_manager ~package_root () ->
     ~fn:(fun error ->
       WorkspaceReloadFailed {
         workspace_root = package_root;
-        error = Riot_model.Workspace_manager.scan_error_message error
+        error
       }) in
   match load_errors with
   | [] -> Ok workspace
   | load_errors ->
-      let errors = List.map load_errors ~fn:Riot_model.Workspace_manager.load_error_to_string in
-      Error (WorkspaceReloadHadErrors { workspace_root = workspace.root; errors })
+      Error (WorkspaceReloadHadErrors { workspace_root = workspace.root; errors = load_errors })
 
 let matching_release_of_document = fun (document: Pkgs_ml.Sparse_index.package_document) requirement ->
   let matches =
@@ -1051,13 +1062,12 @@ let reload_workspace = fun ~workspace_manager ~(workspace_root:Path.t) ->
     ~fn:(fun error ->
       WorkspaceReloadFailed {
         workspace_root;
-        error = Riot_model.Workspace_manager.scan_error_message error
+        error
       }) in
   match load_errors with
   | [] -> Ok workspace
   | load_errors ->
-      let errors = List.map load_errors ~fn:Riot_model.Workspace_manager.load_error_to_string in
-      Error (WorkspaceReloadHadErrors { workspace_root; errors })
+      Error (WorkspaceReloadHadErrors { workspace_root; errors = load_errors })
 
 let refresh_lock = fun ~workspace_manager ~(emit:event_sink) ~mode ~registry ~(workspace:Riot_model.Workspace_manifest.t) ->
   Workspace_resolution.ensure_lock ~workspace_manager ~emit ~mode ~registry ~workspace ()

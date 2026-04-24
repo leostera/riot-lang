@@ -2412,6 +2412,31 @@ let test_package_error_message_renders_typed_source_dependency_errors = fun _ctx
   in
   loop cases
 
+let test_package_error_message_renders_typed_workspace_reload_errors = fun _ctx ->
+  let workspace_root = Path.v "/workspace" in
+  let scan_message = Riot_deps.package_error_message
+    (Riot_deps.WorkspaceReloadFailed {
+      workspace_root;
+      error = Riot_model.Workspace_manager.NoWorkspaceRootFound
+    }) in
+  let load_message = Riot_deps.package_error_message
+    (Riot_deps.WorkspaceReloadHadErrors {
+      workspace_root;
+      errors = [
+        Riot_model.Workspace_manager.PackageTomlParseFailed {
+          package = "app";
+          path = "/workspace/packages/app";
+        };
+      ]
+    }) in
+  if
+    String.contains scan_message "no workspace root found"
+    && String.contains load_message "package 'app': failed to parse riot.toml"
+  then
+    Ok ()
+  else
+    Error "expected typed workspace reload errors to render through package_error_message"
+
 let test_package_error_message_lists_search_suggestions = fun _ctx ->
   let message = Riot_deps.package_error_message
     (Riot_deps.RegistryPackageNotFound {
@@ -3662,6 +3687,7 @@ let tests =
     case ~size:Large "git dependency: sync checkout skips fetch without update" test_git_dependency_sync_checkout_skips_fetch_without_update;
     case "package management: add rejects unsupported source dependency specs" test_add_rejects_unsupported_source_dependency_specs;
     case "package management: renders typed source dependency load errors" test_package_error_message_renders_typed_source_dependency_errors;
+    case "package management: renders typed workspace reload errors" test_package_error_message_renders_typed_workspace_reload_errors;
     case "package management: add not-found message lists search suggestions" test_package_error_message_lists_search_suggestions;
     case "package management: search returns registry results" test_search_returns_registry_results;
     case "package management: remove rejects dependencies only inherited from workspace root" test_remove_reports_missing_package_dependency_when_only_inherited_from_workspace;

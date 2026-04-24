@@ -102,8 +102,14 @@ type package_error = Package_management.error =
   | RegistryVersionNotFound of { package: string; requirement: string; registry: string }
   | ManifestUpdateFailed of Manifest_edit.error
   | DependencyNotFoundInSection of { path: Path.t; section: string; dependency: string }
-  | WorkspaceReloadFailed of { workspace_root: Path.t; error: string }
-  | WorkspaceReloadHadErrors of { workspace_root: Path.t; errors: string list }
+  | WorkspaceReloadFailed of {
+      workspace_root: Path.t;
+      error: Riot_model.Workspace_manager.scan_error
+    }
+  | WorkspaceReloadHadErrors of {
+      workspace_root: Path.t;
+      errors: Riot_model.Workspace_manager.load_error list
+    }
   | MaterializedPackageNotFound of { package_root: Path.t; workspace_root: Path.t }
   | LockRefreshFailed of Error.t
 val package_error_message: package_error -> string
