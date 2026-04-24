@@ -728,12 +728,15 @@ let strip_trailing_horizontal_whitespace = fun text ->
 type leading_docstring = {
   text: string;
   is_section: bool;
+  blank_before: bool;
 }
 
 type leading_comment = {
   text: string;
   kind: Kind.t;
   is_section: bool;
+  blank_before: bool;
+  starts_on_new_line: bool;
 }
 
 let is_section_docstring_text = fun comment_text ->
@@ -757,17 +760,33 @@ let is_markdown_section_docstring_text = fun comment_text ->
     | None -> false
 
 let leading_docstring_separator = fun (left: leading_docstring) (right: leading_docstring) ->
-  let _ = right in
   if left.is_section then
     "\n\n"
+  else if right.is_section then
+    "\n"
   else
     "\n"
 
 let standalone_docstring_separator = fun (left: leading_docstring) (right: leading_docstring) ->
-  if (not left.is_section) && right.is_section then
+  if right.blank_before then
+    "\n\n"
+  else if (not left.is_section) && right.is_section then
     "\n"
   else
     "\n\n"
+
+let text_has_blank_line = fun text ->
+  let rec loop index newlines =
+    if Int.(newlines >= 2) then
+      true
+    else if Int.(index >= String.length text) then
+      false
+    else if Char.equal (String.get_unchecked text ~at:index) '\n' then
+      loop Int.(index + 1) Int.(newlines + 1)
+    else
+      loop Int.(index + 1) newlines
+  in
+  loop 0 0
 
 let rec leading_docstring_text_with_separator:
   separator:(leading_docstring -> leading_docstring -> string) -> leading_docstring list -> string = fun ~separator ->
@@ -794,30 +813,74 @@ let rec leading_docstring_text: leading_docstring list -> string = function
 
 let standalone_docstring_text = leading_docstring_text_with_separator ~separator:standalone_docstring_separator
 
+let whitespace_ends_with_indentation = fun text ->
+  let rec find_last_newline index last_newline =
+    if Int.(index >= String.length text) then
+      last_newline
+    else if Char.equal (String.get_unchecked text ~at:index) '\n' then
+      find_last_newline Int.(index + 1) (Some index)
+    else
+      find_last_newline Int.(index + 1) last_newline
+  in
+  match find_last_newline 0 None with
+  | None -> false
+  | Some newline_index ->
+      let rec has_indentation index seen_horizontal =
+        if Int.(index >= String.length text) then
+          seen_horizontal
+        else
+          match String.get_unchecked text ~at:index with
+          | ' '
+          | '\t' -> has_indentation Int.(index + 1) true
+          | '\r' -> has_indentation Int.(index + 1) seen_horizontal
+          | _ -> false
+      in
+      has_indentation Int.(newline_index + 1) false
+
 let leading_comments = fun token ->
   let comments = ref [] in
+  let blank_before = ref false in
+  let starts_on_new_line = ref false in
   Ast.Token.for_each_leading_trivia token
     ~fn:(fun ~kind ~text ->
-      if Kind.(kind = COMMENT || kind = DOCSTRING) then
-        comments := {
-          text = strip_trailing_whitespace text;
-          kind;
-          is_section = Kind.(kind = DOCSTRING) && is_section_docstring_text text
-        }
-        :: !comments);
+      if Kind.(kind = WHITESPACE) then
+        (
+          if text_has_blank_line text || String.contains text "\n" then
+            starts_on_new_line := true;
+          blank_before := text_has_blank_line text
+        )
+      else if Kind.(kind = COMMENT || kind = DOCSTRING) then
+        (
+          comments := {
+            text = strip_trailing_whitespace text;
+            kind;
+            is_section = Kind.(kind = DOCSTRING) && is_section_docstring_text text;
+            blank_before = !blank_before;
+            starts_on_new_line = !starts_on_new_line;
+          } :: !comments;
+          blank_before := false;
+          starts_on_new_line := false
+        ));
   List.reverse !comments
 
 let normalized_leading_docstrings_with = fun ~docstrings_text token ->
   let docstrings = ref [] in
   let has_comment = ref false in
+  let blank_before = ref false in
   Ast.Token.for_each_leading_trivia token
     ~fn:(fun ~kind ~text ->
-      if Kind.(kind = DOCSTRING) then
-        docstrings := {
-          text = strip_trailing_whitespace text;
-          is_section = is_section_docstring_text text
-        }
-        :: !docstrings
+      if Kind.(kind = WHITESPACE) then
+        blank_before := text_has_blank_line text
+      else if Kind.(kind = DOCSTRING) then
+        (
+          docstrings := {
+            text = strip_trailing_whitespace text;
+            is_section = is_section_docstring_text text;
+            blank_before = !blank_before
+          }
+          :: !docstrings;
+          blank_before := false
+        )
       else if Kind.(kind = COMMENT) then
         has_comment := true);
   if !has_comment then
@@ -833,11 +896,25 @@ let normalized_standalone_docstrings = normalized_leading_docstrings_with ~docst
 
 let paragraph_comment_separator = fun left right ->
   match Kind.(left.kind = DOCSTRING), Kind.(right.kind = DOCSTRING) with
-  | true, true -> leading_docstring_separator
-    { text = left.text; is_section = left.is_section }
-    { text = right.text; is_section = right.is_section }
-  | true, false when not left.is_section -> "\n"
-  | _ -> "\n\n"
+  | true, true ->
+      let left_docstring = {
+        text = left.text;
+        is_section = left.is_section;
+        blank_before = left.blank_before
+      } in
+      let right_docstring = {
+        text = right.text;
+        is_section = right.is_section;
+        blank_before = right.blank_before
+      } in
+      if (not left.is_section) && right.is_section then
+        "\n"
+      else
+        standalone_docstring_separator left_docstring right_docstring
+  | true, false when not left.is_section ->
+      "\n"
+  | _ ->
+      "\n\n"
 
 let rec paragraph_comment_text = function
   | [] ->
@@ -988,31 +1065,95 @@ let token_has_leading_markdown_section_docstring = fun token ->
         has_section := true);
   !has_section
 
-let leading_comment_token_paragraph_doc = fun ?(drop_inline = false) token ->
-  if Ast.Token.has_leading_comment token then
-    let comments = leading_comments_for_paragraph ~drop_inline token in
-    if List.is_empty comments then
-      Doc.empty
-    else
-      let text = paragraph_comment_text comments in
-      let text = text |> strip_trailing_horizontal_whitespace in
-      let text =
-        if not (comments_have_plain_comment comments) then
-          text
-        else if String.ends_with ~suffix:"\n\n" text then
-          text
-        else if String.ends_with ~suffix:"\n" text then
-          text ^ "\n"
-        else
-          text ^ "\n\n"
+let token_has_leading_section_docstring = fun token ->
+  let has_section = ref false in
+  Ast.Token.for_each_leading_trivia token
+    ~fn:(fun ~kind ~text ->
+      if Kind.(kind = DOCSTRING) && is_section_docstring_text text then
+        has_section := true);
+  !has_section
+
+let token_first_leading_comment_is_indented = fun token ->
+  let pending_indentation = ref false in
+  let indented = ref false in
+  let found = ref false in
+  Ast.Token.for_each_leading_trivia token
+    ~fn:(fun ~kind ~text ->
+      if not !found then
+        if Kind.(kind = WHITESPACE) then
+          pending_indentation := whitespace_ends_with_indentation text
+        else if Kind.(kind = COMMENT || kind = DOCSTRING) then
+          (
+            indented := !pending_indentation;
+            found := true
+          ));
+  !indented
+
+let rec paragraph_comment_text_compact_first_gap = function
+  | [] ->
+      ""
+  | [ comment ] ->
+      paragraph_comment_text [ comment ]
+  | left :: ((right :: _ as rest)) ->
+      let separator =
+        match Kind.(left.kind = DOCSTRING), Kind.(right.kind = DOCSTRING) with
+        | true, true -> "\n"
+        | _ -> paragraph_comment_separator left right
       in
-      text_lines_doc text
+      left.text ^ separator ^ paragraph_comment_text rest
+
+let paragraph_comment_doc = fun ?(compact_first_gap = false) comments ->
+  if List.is_empty comments then
+    Doc.empty
+  else
+    let text =
+      if compact_first_gap then
+        paragraph_comment_text_compact_first_gap comments
+      else
+        paragraph_comment_text comments
+    in
+    let text = text |> strip_trailing_horizontal_whitespace in
+    let text =
+      if not (comments_have_plain_comment comments) then
+        text
+      else if String.ends_with ~suffix:"\n\n" text then
+        text
+      else if String.ends_with ~suffix:"\n" text then
+        text ^ "\n"
+      else
+        text ^ "\n\n"
+    in
+    text_lines_doc text
+
+let leading_comment_token_paragraph_doc = fun ?(drop_inline = false) ?(compact_first_gap = false) token ->
+  if Ast.Token.has_leading_comment token then
+    leading_comments_for_paragraph ~drop_inline token |> paragraph_comment_doc ~compact_first_gap
   else
     Doc.empty
 
-let leading_comment_node_paragraph_doc = fun ?(drop_inline = false) node ->
+let leading_comment_token_paragraph_doc_dropping_first_docstring = fun ?(drop_inline = false) ?(compact_first_gap = false) token ->
+  if Ast.Token.has_leading_comment token then
+    let comments = leading_comments_for_paragraph ~drop_inline token in
+    let comments =
+      match comments with
+      | first :: rest when Kind.(first.kind = DOCSTRING) && not first.starts_on_new_line -> rest
+      | _ -> comments
+    in
+    paragraph_comment_doc ~compact_first_gap comments
+  else
+    Doc.empty
+
+let leading_comment_node_paragraph_doc = fun ?(drop_inline = false) ?(compact_first_gap = false) node ->
   match Ast.Node.first_descendant_token node with
-  | Some token -> leading_comment_token_paragraph_doc ~drop_inline token
+  | Some token -> leading_comment_token_paragraph_doc ~drop_inline ~compact_first_gap token
+  | None -> Doc.empty
+
+let leading_comment_node_paragraph_doc_dropping_first_docstring = fun ?(drop_inline = false) ?(compact_first_gap = false) node ->
+  match Ast.Node.first_descendant_token node with
+  | Some token -> leading_comment_token_paragraph_doc_dropping_first_docstring
+    ~drop_inline
+    ~compact_first_gap
+    token
   | None -> Doc.empty
 
 let inline_leading_comment_node_doc = fun node ->
@@ -2229,6 +2370,8 @@ and expr_multiline_apply_argument_stays_with_callee = fun expr ->
   match Ast.Expr.view expr with
   | PolyVariant { payload=Some _ } ->
       true
+  | Tuple ->
+      true
   | LocalOpen _ -> (
       match Ast.LocalOpenExpr.cast expr with
       | Some local_open -> (
@@ -2246,6 +2389,7 @@ and expr_multiline_apply_argument_stays_with_callee = fun expr ->
   | Parenthesized { inner=Some inner } -> (
       match Ast.Expr.view inner with
       | PolyVariant { payload=Some _ } -> true
+      | Tuple -> true
       | Match _ -> true
       | Infix { operator=Some operator; _ } when (String.equal (infix_operator_text inner operator) "^"
       || String.equal (infix_operator_text inner operator) "::")
@@ -2592,6 +2736,8 @@ and expr_arrow_body_breaks = fun expr ->
   | Match _
   | Try _
   | Sequence _
+  | Record
+  | RecordUpdate
   | LetException _ ->
       true
   | Infix _ ->
@@ -4665,7 +4811,7 @@ let tokens_text_width = fun tokens ->
 let type_annotation_breaks_after_colon = fun tokens ->
   let arrow_count = top_level_arrow_count tokens in
   let width = tokens_text_width tokens in
-  (Int.(arrow_count >= 2) && Int.(width > 80)) || (Int.(arrow_count >= 4) && Int.(width > 100))
+  (Int.(arrow_count >= 2) && Int.(width > 70)) || (Int.(arrow_count >= 4) && Int.(width > 100))
 
 let multiline_top_level_arrow_type_threshold = 4
 
@@ -6643,6 +6789,14 @@ and module_signature_items_compact_between = fun left right ->
   (signature_item_is_type_local left
   && signature_item_is_type_local right
   && not (item_has_mixed_leading_section_docstrings right))
+  || (
+    signature_item_is_type_local left && (
+      match Ast.SignatureItem.view right with
+      | Module _
+      | ModuleType _ -> true
+      | _ -> false
+    )
+  )
   || (signature_item_is_open_local left && signature_item_is_open_local right)
   || (signature_item_is_type_local left
   && signature_item_is_value_local right
@@ -7282,6 +7436,12 @@ let signature_item_is_open = fun item ->
   | Open _ -> true
   | _ -> false
 
+let signature_item_is_module_like = fun item ->
+  match Ast.SignatureItem.view item with
+  | Module _
+  | ModuleType _ -> true
+  | _ -> false
+
 let signature_item_is_value = fun item ->
   match Ast.SignatureItem.view item with
   | Value _ -> true
@@ -7314,10 +7474,27 @@ let signature_item_has_mixed_leading_section_docstrings = fun item ->
   | Some token -> token_has_mixed_leading_section_docstrings token
   | None -> false
 
+let signature_item_has_leading_section_docstring = fun item ->
+  match Ast.Node.first_descendant_token item with
+  | Some token -> token_has_leading_section_docstring token
+  | None -> false
+
+let signature_item_is_variant_type = fun item ->
+  match Ast.SignatureItem.view item with
+  | Type decl ->
+      let is_variant = ref false in
+      Ast.TypeDeclaration.for_each_member decl
+        ~fn:(fun member_ ->
+          if Option.is_some (Ast.TypeDeclaration.Member.variant_type member_) then
+            is_variant := true);
+      !is_variant
+  | _ -> false
+
 let signature_items_compact_between = fun left right ->
   (signature_item_is_type left
   && signature_item_is_type right
   && not (signature_item_has_mixed_leading_section_docstrings right))
+  || (signature_item_is_type left && signature_item_is_module_like right)
   || (signature_item_is_open left && signature_item_is_open right)
   || (signature_item_is_type left
   && signature_item_is_value right
@@ -7327,24 +7504,84 @@ let signature_items_doc = fun items ->
   let rec loop previous doc = function
     | [] -> doc
     | (next_item, next_doc) :: rest ->
-        let next_doc =
-          if
+        let next_doc, separator_override =
+          if signature_item_is_variant_type previous && item_has_leading_comment next_item then
+            let leading, compact_variant_bridge =
+              match Ast.Node.first_descendant_token next_item with
+              | Some token ->
+                  let initial_comments = leading_comments_for_paragraph ~drop_inline:true token in
+                  let compact_variant_bridge =
+                    token_first_leading_comment_is_indented token
+                    || match initial_comments with
+                    | first :: second :: _ -> Kind.(first.kind = DOCSTRING && second.kind = DOCSTRING)
+                    && not first.is_section
+                    && not second.is_section
+                    | _ -> false
+                  in
+                  let comments =
+                    match initial_comments with
+                    | first :: rest when Kind.(first.kind = DOCSTRING) && not first.starts_on_new_line -> rest
+                    | _ -> initial_comments
+                  in
+                  (
+                    paragraph_comment_doc ~compact_first_gap:compact_variant_bridge comments,
+                    compact_variant_bridge
+                  )
+              | None -> (Doc.empty, false)
+            in
+            let body =
+              match Ast.SignatureItem.view next_item with
+              | Value decl -> value_decl_doc decl
+              | Type decl -> type_decl_doc decl
+              | TypeExtension decl -> type_extension_decl_doc decl
+              | Module decl -> module_decl_doc decl
+              | Open decl -> open_decl_doc decl
+              | Include decl -> include_decl_doc decl
+              | External decl -> external_decl_doc decl
+              | Exception decl -> exception_decl_doc decl
+              | ModuleType decl -> module_type_decl_doc decl
+              | Extension item -> extension_item_doc item
+              | Attribute item -> attribute_item_doc item
+              | Class decl -> class_decl_doc decl
+              | Error _
+              | Unknown _ -> unsupported "unsupported signature item"
+            in
+            (
+              Doc.concat [ leading; body ],
+              if compact_variant_bridge then
+                match leading with
+                | Doc.Empty -> None
+                | _ -> Some Doc.line
+              else
+                None
+            )
+          else if
+            signature_item_is_type previous
+            && signature_item_is_type next_item
+            && not (signature_item_has_leading_section_docstring next_item)
+          then
+            (signature_item_doc_compact_leading next_item, None)
+          else if
             signature_item_is_type previous
             && signature_item_is_value next_item
             && not (signature_item_has_leading_nonsection_comment next_item)
           then
-            signature_item_doc_compact_leading next_item
+            (signature_item_doc_compact_leading next_item, None)
           else
-            next_doc
+            (next_doc, None)
         in
         let separator =
-          match inline_leading_comment_node_doc next_item with
-          | Doc.Empty ->
-              if signature_items_compact_between previous next_item then
-                Doc.line
-              else
-                blank_line
-          | comment -> Doc.concat [ Doc.space; comment; blank_line ]
+          match separator_override with
+          | Some separator -> separator
+          | None -> (
+              match inline_leading_comment_node_doc next_item with
+              | Doc.Empty ->
+                  if signature_items_compact_between previous next_item then
+                    Doc.line
+                  else
+                    blank_line
+              | comment -> Doc.concat [ Doc.space; comment; blank_line ]
+            )
         in
         loop next_item (Doc.concat [ doc; separator; next_doc ]) rest
   in

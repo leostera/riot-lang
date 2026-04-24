@@ -661,6 +661,14 @@ let tests = [
       assert_format2_ml
         ~expected:"let about_handler = fun conn req -> conn |> Conn.respond ~status:Ok ~body:\"Suri - High-performance web framework\" |> Conn.send\n"
         "let about_handler = fun conn req -> conn |> Conn.respond ~status:Ok ~body:\"Suri - High-performance web framework\" |> Conn.send\n");
+  Test.case "lower2 keeps multiline parenthesized tuple args with callee"
+    (fun _ctx ->
+      assert_format2_ml
+        ~expected:"let next = Some (\n\
+          \  Slice.sub_unchecked cursor.source ~off:start ~len:(stop - start),\n\
+          \  { cursor with pos = stop }\n\
+)\n"
+        "let next = Some (Slice.sub_unchecked cursor.source ~off:start ~len:(stop - start), { cursor with pos = stop })\n");
   Test.case
     "lower2 keeps @@ fun applications bare"
     (fun _ctx -> assert_format2_ml ~expected:"let () = start ~apps:[] @@ fun () -> main ()\n" "let () = start ~apps:[] @@ fun () -> main ()\n");
@@ -677,6 +685,18 @@ let tests = [
   Test.case
     "lower2 formats type aliases with parameters"
     (fun _ctx -> assert_format2_mli ~expected:"type 'a t = 'a list\n" "type 'a t = 'a list\n");
+  Test.case "lower2 breaks function arrows before multiline record bodies"
+    (fun _ctx ->
+      assert_format2_ml
+        ~expected:"let create = fun method_ uri ->\n\
+          \  {\n\
+          \    method_;\n\
+          \    uri;\n\
+          \    version = Version.Http11;\n\
+          \    headers = Header.empty;\n\
+          \    body = None;\n\
+          \  }\n"
+        "let create = fun method_ uri -> { method_; uri; version = Version.Http11; headers = Header.empty; body = None }\n");
   Test.case
     "lower2 formats tuple type separators structurally"
     (fun _ctx ->
@@ -700,6 +720,29 @@ let tests = [
         ~expected:"val resolve_module_path:\n\
           \  lookup -> current_path:string list -> target_path:string list -> interface_source option\n"
         "val resolve_module_path: lookup -> current_path:string list -> target_path:string list -> interface_source option\n");
+  Test.case "lower2 breaks medium value declarations after the colon"
+    (fun _ctx ->
+      assert_format2_mli
+        ~expected:"val materialize_package_exports:\n\
+          \  t -> exports:export_entry list -> target_dir:Std.Path.t -> (unit, error) result\n"
+        "val materialize_package_exports: t -> exports:export_entry list -> target_dir:Std.Path.t -> (unit, error) result\n");
+  Test.case "lower2 keeps adjacent type and module declarations compact"
+    (fun _ctx ->
+      assert_format2_mli
+        ~expected:"type source =\n\
+          \  Version of string\n\
+          \  | Path of Path.t\n\
+          \  | Url of Net.Uri.t\n\
+          module Ocamldep = Ocamldep\n"
+        "type source = Version of string | Path of Path.t | Url of Net.Uri.t\nmodule Ocamldep = Ocamldep\n");
+  Test.case "lower2 preserves consecutive docstring paragraphs"
+    (fun _ctx ->
+      assert_format2_mli
+        ~expected:"val hash: t -> Crypto.hash\n\n\
+          (** Compute a hash of the toolchain for cache invalidation *)\n\n\
+          (** Multi-target toolchain support *)\n\
+          val get_host_triple: unit -> Riot_model.Target.t\n"
+        "val hash: t -> Crypto.hash\n\n(** Compute a hash of the toolchain for cache invalidation *)\n\n(** Multi-target toolchain support *)\nval get_host_triple: unit -> Riot_model.Target.t\n");
   Test.case
     "lower2 keeps adjacent signature values separated"
     (fun _ctx ->
