@@ -54,7 +54,10 @@ type publish_error =
   | NoWorkspacePackages
   | PublishConfigLoadFailed of Riot_model.User_config.error
   | MissingApiToken of { registry_name: string; path: Path.t }
-  | RegistryInitializationFailed of { registry_name: string; error: string }
+  | RegistryInitializationFailed of {
+      registry_name: string;
+      error: Riot_deps.registry_initialization_error
+    }
   | WorkspaceScanFailed of { workspace_root: Path.t; error: string }
   | WorkspacePrepareFailed of { workspace_root: Path.t; error: string }
   | FmtCheckFailed of { package: Package_name.t; error: string }
@@ -72,6 +75,9 @@ let exn_message = fun exn ->
   | Failure message -> message
   | exn -> Kernel.Exception.to_string exn
 
+let registry_initialization_error_message = function
+  | Riot_deps.RegistryFilesystemInitializationFailed error -> error
+
 let publish_error_message = fun error ->
   match error with
   | PackageNotFound { package } -> "package '" ^ Package_name.to_string package ^ "' was not found in this workspace"
@@ -87,7 +93,7 @@ let publish_error_message = fun error ->
   | RegistryInitializationFailed { registry_name; error } -> "failed to initialize registry '"
   ^ registry_name
   ^ "': "
-  ^ error
+  ^ registry_initialization_error_message error
   | WorkspaceScanFailed { workspace_root; error } -> "failed to scan workspace '"
   ^ Path.to_string workspace_root
   ^ "': "
@@ -176,7 +182,12 @@ let load_api_token = fun ~registry_name ->
 
 let resolve_registry = fun ?(registry_name = default_registry_name) () ->
   Pkgs_ml.Registry.create_filesystem ~registry_name ()
-  |> Result.map_err ~fn:(fun error -> RegistryInitializationFailed { registry_name; error })
+  |> Result.map_err
+    ~fn:(fun error ->
+      RegistryInitializationFailed {
+        registry_name;
+        error = Riot_deps.RegistryFilesystemInitializationFailed error
+      })
 
 let run_check = fun ~emit ~package_name ~version ~stage check_fn ->
   emit (CheckStarted { package = package_name; version; stage });

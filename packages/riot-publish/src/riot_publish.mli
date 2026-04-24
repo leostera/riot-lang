@@ -46,7 +46,10 @@ type publish_error =
   | NoWorkspacePackages
   | PublishConfigLoadFailed of Riot_model.User_config.error
   | MissingApiToken of { registry_name: string; path: Path.t }
-  | RegistryInitializationFailed of { registry_name: string; error: string }
+  | RegistryInitializationFailed of {
+      registry_name: string;
+      error: Riot_deps.registry_initialization_error
+    }
   | WorkspaceScanFailed of { workspace_root: Path.t; error: string }
   | WorkspacePrepareFailed of { workspace_root: Path.t; error: string }
   | FmtCheckFailed of { package: Riot_model.Package_name.t; error: string }

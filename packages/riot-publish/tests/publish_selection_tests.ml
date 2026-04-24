@@ -176,12 +176,29 @@ let test_workspace_selection_orders_public_packages_only = fun _ctx ->
       else
         Ok ()
 
+let test_publish_error_message_renders_typed_registry_initialization_error = fun _ctx ->
+  let message =
+    Riot_publish.publish_error_message
+      (Riot_publish.RegistryInitializationFailed {
+        registry_name = "pkgs.ml";
+        error = Riot_deps.RegistryFilesystemInitializationFailed "permission denied"
+      })
+  in
+  let expected = "failed to initialize registry 'pkgs.ml': permission denied" in
+  if String.equal message expected then
+    Ok ()
+  else
+    Error ("unexpected registry initialization message: " ^ message)
+
 let tests =
   Test.[
     case "publish selection: workspace without packages errors" test_workspace_without_packages_errors;
     case "publish selection: missing package errors" test_missing_package_errors;
     case "publish selection: private package is skipped" test_private_package_is_skipped;
     case "publish selection: workspace orders public packages only" test_workspace_selection_orders_public_packages_only;
+    case
+      "publish selection: renders typed registry initialization errors"
+      test_publish_error_message_renders_typed_registry_initialization_error;
   ]
 
 let name = "Riot Publish Selection Tests"
