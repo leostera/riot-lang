@@ -55,6 +55,12 @@ type path_dependency_load_error =
   | PathDependencyTomlParseFailed of Std.Data.Toml.error
   | PathDependencyManifestDecodeFailed of Package.manifest_error
 
+type source_dependency_load_error =
+  | SourceDependencyMaterializationFailed of Git_dependency.error
+  | SourceDependencyManifestReadFailed of IO.error
+  | SourceDependencyTomlParseFailed of Std.Data.Toml.error
+  | SourceDependencyManifestDecodeFailed of Package.manifest_error
+
 type error =
   | CurrentPackageNotFound of { cwd: Path.t }
   | PackageNotFound of { package: Package_name.t }
@@ -69,7 +75,7 @@ type error =
       dependency: string;
       source_locator: string;
       ref_: string option;
-      error: string
+      error: source_dependency_load_error
     }
   | RegistryInitializationFailed of { registry: string; error: string }
   | RegistryLookupFailed of { package: string; registry: string; error: string }
@@ -129,6 +135,12 @@ let path_dependency_load_error_message = function
   | PathDependencyTomlParseFailed error -> Data.Toml.error_to_string error
   | PathDependencyManifestDecodeFailed error -> Package.manifest_error_message error
 
+let source_dependency_load_error_message = function
+  | SourceDependencyMaterializationFailed error -> Git_dependency.message error
+  | SourceDependencyManifestReadFailed error -> IO.error_message error
+  | SourceDependencyTomlParseFailed error -> Data.Toml.error_to_string error
+  | SourceDependencyManifestDecodeFailed error -> Package.manifest_error_message error
+
 let no_emit: event_sink = fun _ -> ()
 
 let registry_name = "pkgs.ml"
@@ -179,7 +191,7 @@ let error_message = function
       ^ source_locator
       ^ suffix
       ^ "': "
-      ^ error
+      ^ source_dependency_load_error_message error
   | RegistryInitializationFailed { registry; error } ->
       "failed to initialize registry '" ^ registry ^ "': " ^ error
   | RegistryLookupFailed { package; registry; error } ->
@@ -338,7 +350,7 @@ let load_source_dependency = fun ~(emit:event_sink) ~raw ->
         dependency = raw;
         source_locator = spec.source_locator;
         ref_ = spec.ref_;
-        error = Git_dependency.message error
+        error = SourceDependencyMaterializationFailed error
       }) in
   let manifest_path = Path.(materialized.package_root / Path.v "riot.toml") in
   let* source = Fs.read_to_string manifest_path
@@ -348,7 +360,7 @@ let load_source_dependency = fun ~(emit:event_sink) ~raw ->
         dependency = raw;
         source_locator = spec.source_locator;
         ref_ = spec.ref_;
-        error = IO.error_message err
+        error = SourceDependencyManifestReadFailed err
       }) in
   let* toml = Data.Toml.parse source
   |> Result.map_err
@@ -357,7 +369,7 @@ let load_source_dependency = fun ~(emit:event_sink) ~raw ->
         dependency = raw;
         source_locator = spec.source_locator;
         ref_ = spec.ref_;
-        error = Data.Toml.error_to_string err
+        error = SourceDependencyTomlParseFailed err
       }) in
   let relative_path =
     match Path.strip_prefix materialized.package_root ~prefix:materialized.repository_root with
@@ -377,7 +389,7 @@ let load_source_dependency = fun ~(emit:event_sink) ~raw ->
         dependency = raw;
         source_locator = spec.source_locator;
         ref_ = spec.ref_;
-        error = Package_manifest.error_message error
+        error = SourceDependencyManifestDecodeFailed error
       }) in
   if emit_materialization_events then
     emit
@@ -791,7 +803,7 @@ let load_source_workspace_from_spec = fun ?(emit = no_emit) ~workspace_manager ?
         dependency = source_spec;
         source_locator = parsed.source_locator;
         ref_ = parsed.ref_;
-        error = Git_dependency.message error
+        error = SourceDependencyMaterializationFailed error
       }) in
   let* registry = init_registry () in
   let loaded =

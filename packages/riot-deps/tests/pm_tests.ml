@@ -2329,6 +2329,49 @@ version = "0.0.1"
                   Error "unexpected unsupported source dependency payload"
             | Error err -> Error ("unexpected add error: " ^ Riot_deps.package_error_message err)))
 
+let test_package_error_message_renders_typed_source_dependency_errors = fun _ctx ->
+  let message_for error = Riot_deps.package_error_message
+    (Riot_deps.SourceDependencyLoadFailed {
+      dependency = "github.com/riot-tests/widgets";
+      source_locator = "github.com/riot-tests/widgets";
+      ref_ = Some "main";
+      error
+    }) in
+  let cases = [
+    (
+      Riot_deps.SourceDependencyMaterializationFailed (Riot_deps.Git_dependency.PackageRootMissing {
+        path = Path.v "/cache/widgets"
+      }),
+      "materialized source dependency is missing package root"
+    );
+    (Riot_deps.SourceDependencyManifestReadFailed (IO.Unknown_error "read boom"), "read boom");
+    (
+      Riot_deps.SourceDependencyTomlParseFailed (Data.Toml.Parse_error {
+        position = 7;
+        context = "package";
+        reason = "bad toml"
+      }),
+      "bad toml"
+    );
+    (
+      Riot_deps.SourceDependencyManifestDecodeFailed Package.ManifestMustBeTable,
+      "package manifest must be a table"
+    );
+  ] in
+  let rec loop = function
+    | [] -> Ok ()
+    | (error, expected) :: rest ->
+        let message = message_for error in
+        if
+          String.contains message "failed to load source dependency 'github.com/riot-tests/widgets'"
+          && String.contains message expected
+        then
+          loop rest
+        else
+          Error ("expected source dependency error message to include '" ^ expected ^ "', got: " ^ message)
+  in
+  loop cases
+
 let test_package_error_message_lists_search_suggestions = fun _ctx ->
   let message = Riot_deps.package_error_message
     (Riot_deps.RegistryPackageNotFound {
@@ -3578,6 +3621,7 @@ let tests =
     case "git dependency: sync checkout clones a local repository" test_git_dependency_sync_checkout_clones_local_repo;
     case ~size:Large "git dependency: sync checkout skips fetch without update" test_git_dependency_sync_checkout_skips_fetch_without_update;
     case "package management: add rejects unsupported source dependency specs" test_add_rejects_unsupported_source_dependency_specs;
+    case "package management: renders typed source dependency load errors" test_package_error_message_renders_typed_source_dependency_errors;
     case "package management: add not-found message lists search suggestions" test_package_error_message_lists_search_suggestions;
     case "package management: search returns registry results" test_search_returns_registry_results;
     case "package management: remove rejects dependencies only inherited from workspace root" test_remove_reports_missing_package_dependency_when_only_inherited_from_workspace;

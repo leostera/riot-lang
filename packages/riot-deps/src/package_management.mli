@@ -39,6 +39,11 @@ type path_dependency_load_error =
   | PathDependencyManifestReadFailed of IO.error
   | PathDependencyTomlParseFailed of Std.Data.Toml.error
   | PathDependencyManifestDecodeFailed of Riot_model.Package.manifest_error
+type source_dependency_load_error =
+  | SourceDependencyMaterializationFailed of Git_dependency.error
+  | SourceDependencyManifestReadFailed of IO.error
+  | SourceDependencyTomlParseFailed of Std.Data.Toml.error
+  | SourceDependencyManifestDecodeFailed of Riot_model.Package.manifest_error
 type error =
   | CurrentPackageNotFound of { cwd: Path.t }
   | PackageNotFound of { package: Riot_model.Package_name.t }
@@ -53,7 +58,7 @@ type error =
       dependency: string;
       source_locator: string;
       ref_: string option;
-      error: string
+      error: source_dependency_load_error
     }
   | RegistryInitializationFailed of { registry: string; error: string }
   | RegistryLookupFailed of { package: string; registry: string; error: string }
