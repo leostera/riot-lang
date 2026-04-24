@@ -222,14 +222,10 @@ let scope_to_section = function
   | Dev -> Manifest_edit.Dev
 
 let parse_registry_dependency_spec = fun raw ->
-  Registry_package_spec.from_string raw |> Result.map_err
-    ~fn:(
-      function
-      | Registry_package_spec.Invalid_spec { error; _ } -> DependencySpecInvalid {
-        dependency = raw;
-        error
-      }
-    )
+  Registry_package_spec.from_string raw
+  |> Result.map_err
+    ~fn:(fun error ->
+      DependencySpecInvalid { dependency = raw; error = Registry_package_spec.error_message error })
 
 let is_source_dependency_spec = fun raw ->
   String.starts_with ~prefix:"http://" raw
@@ -436,8 +432,7 @@ let scan_workspace_from_root = fun ~workspace_manager ~package_root () ->
       WorkspaceReloadFailed {
         workspace_root = package_root;
         error = Riot_model.Workspace_manager.scan_error_message error
-      })
-  in
+      }) in
   match load_errors with
   | [] -> Ok workspace
   | load_errors ->
@@ -1029,8 +1024,7 @@ let reload_workspace = fun ~workspace_manager ~(workspace_root:Path.t) ->
       WorkspaceReloadFailed {
         workspace_root;
         error = Riot_model.Workspace_manager.scan_error_message error
-      })
-  in
+      }) in
   match load_errors with
   | [] -> Ok workspace
   | load_errors ->

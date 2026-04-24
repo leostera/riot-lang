@@ -5,7 +5,9 @@ type t = {
   requirement: Std.Version.requirement option;
 }
 type error =
-  | Invalid_spec of { spec: string; error: string }
+  | InvalidShape of { spec: string }
+  | InvalidPackageName of { spec: string; name: string; error: Riot_model.Package_name.error }
+  | InvalidRequirement of { spec: string; requirement: string; error: Std.Version.parse_error }
 val from_string: string -> (t, error) result
 
 val to_string: t -> string

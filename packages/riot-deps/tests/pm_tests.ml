@@ -2006,8 +2006,7 @@ version = "0.0.1"
       Riot_model.Workspace_manager.scan workspace_manager workspace_root
       |> Result.map_err
         ~fn:(fun err ->
-          "expected workspace scan to succeed: "
-          ^ Riot_model.Workspace_manager.scan_error_message err)
+          "expected workspace scan to succeed: " ^ Riot_model.Workspace_manager.scan_error_message err)
       |> Result.and_then
         ~fn:(fun (workspace, load_errors) ->
           if not (List.is_empty load_errors) then
@@ -2150,8 +2149,7 @@ version = "0.0.1"
       Riot_model.Workspace_manager.scan workspace_manager workspace_root
       |> Result.map_err
         ~fn:(fun err ->
-          "expected workspace scan to succeed: "
-          ^ Riot_model.Workspace_manager.scan_error_message err)
+          "expected workspace scan to succeed: " ^ Riot_model.Workspace_manager.scan_error_message err)
       |> Result.and_then
         ~fn:(fun (workspace, load_errors) ->
           if not (List.is_empty load_errors) then
@@ -3352,6 +3350,43 @@ let test_registry_package_spec_preserves_explicit_requirement = fun _ctx ->
   | Error err -> Error ("expected explicit registry package spec to parse: "
   ^ Riot_deps.Registry_package_spec.error_message err)
 
+let test_registry_package_spec_reports_invalid_shape = fun _ctx ->
+  match Riot_deps.Registry_package_spec.from_string "demo@1.0.0@extra" with
+  | Error (Riot_deps.Registry_package_spec.InvalidShape { spec }) ->
+      if String.equal spec "demo@1.0.0@extra" then
+        Ok ()
+      else
+        Error "expected invalid shape error to preserve original spec"
+  | Error err -> Error ("expected invalid shape error, got: "
+  ^ Riot_deps.Registry_package_spec.error_message err)
+  | Ok _ -> Error "expected invalid registry package spec shape to fail"
+
+let test_registry_package_spec_reports_invalid_package_name = fun _ctx ->
+  match Riot_deps.Registry_package_spec.from_string "Demo@1.0.0" with
+  | Error (Riot_deps.Registry_package_spec.InvalidPackageName {
+    spec;
+    name;
+    error=Riot_model.Package_name.InvalidLeadingCharacter _
+  }) ->
+      if String.equal spec "Demo@1.0.0" && String.equal name "Demo" then
+        Ok ()
+      else
+        Error "expected invalid package name error to preserve spec and parsed name"
+  | Error err -> Error ("expected invalid package name error, got: "
+  ^ Riot_deps.Registry_package_spec.error_message err)
+  | Ok _ -> Error "expected invalid registry package name to fail"
+
+let test_registry_package_spec_reports_invalid_requirement = fun _ctx ->
+  match Riot_deps.Registry_package_spec.from_string "demo@>= nope" with
+  | Error (Riot_deps.Registry_package_spec.InvalidRequirement { spec; requirement; _ }) ->
+      if String.equal spec "demo@>= nope" && String.equal requirement ">= nope" then
+        Ok ()
+      else
+        Error "expected invalid requirement error to preserve spec and requirement"
+  | Error err -> Error ("expected invalid requirement error, got: "
+  ^ Riot_deps.Registry_package_spec.error_message err)
+  | Ok _ -> Error "expected invalid registry requirement to fail"
+
 let tests =
   Test.[
     case "dep solver: projects workspace packages into lockfile" test_lock_deps_projects_workspace_packages;
@@ -3398,6 +3433,9 @@ let tests =
     case "lock deps: preserves registry build and dev dependencies" test_lock_deps_preserves_registry_build_and_dev_dependencies;
     case "registry package spec: bare names roundtrip without synthetic any markers" test_registry_package_spec_roundtrips_bare_name;
     case "registry package spec: explicit requirements roundtrip" test_registry_package_spec_preserves_explicit_requirement;
+    case "registry package spec: reports invalid shapes" test_registry_package_spec_reports_invalid_shape;
+    case "registry package spec: reports invalid package names" test_registry_package_spec_reports_invalid_package_name;
+    case "registry package spec: reports invalid requirements" test_registry_package_spec_reports_invalid_requirement;
     case "projection: resolves workspace packages from lockfile" test_projection_resolves_workspace_packages;
     case "projection: loads external manifests from lockfile" test_projection_loads_external_manifests_from_lockfile;
     case "projection: bubbles external manifest errors" test_projection_bubbles_external_manifest_errors;
