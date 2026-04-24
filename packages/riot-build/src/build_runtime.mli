@@ -1,8 +1,19 @@
 open Std
 
+type toolchain_install_error =
+  | ToolchainDownloadFailed of { message: string }
+val toolchain_install_error_message: toolchain_install_error -> string
+
+type toolchain_initialization_error =
+  | ToolchainInitFailed of { message: string }
+val toolchain_initialization_error_message: toolchain_initialization_error -> string
+
 type build_error =
-  | ToolchainInstallFailed of { target: Riot_model.Target.t; error: string }
-  | ToolchainInitializationFailed of { target: Riot_model.Target.t; error: string }
+  | ToolchainInstallFailed of { target: Riot_model.Target.t; error: toolchain_install_error }
+  | ToolchainInitializationFailed of {
+      target: Riot_model.Target.t;
+      error: toolchain_initialization_error
+    }
   | BuildFailed of { errors: Package_builder.build_result list }
   | PlanningFailed of Riot_planner.Workspace_planner.plan_error
   | UnexpectedError of { reason: string }

@@ -1,9 +1,28 @@
 open Std
 open Std.Result.Syntax
 
+type toolchain_install_error =
+  | ToolchainDownloadFailed of { message: string }
+
+let toolchain_install_error_message = function
+  | ToolchainDownloadFailed { message } -> message
+
+type toolchain_initialization_error =
+  | ToolchainInitFailed of { message: string }
+
+let toolchain_initialization_error_message = function
+  | ToolchainInitFailed { message } -> message
+
+let toolchain_install_error = fun message -> ToolchainDownloadFailed { message }
+
+let toolchain_initialization_error = fun message -> ToolchainInitFailed { message }
+
 type build_error =
-  | ToolchainInstallFailed of { target: Riot_model.Target.t; error: string }
-  | ToolchainInitializationFailed of { target: Riot_model.Target.t; error: string }
+  | ToolchainInstallFailed of { target: Riot_model.Target.t; error: toolchain_install_error }
+  | ToolchainInitializationFailed of {
+      target: Riot_model.Target.t;
+      error: toolchain_initialization_error
+    }
   | BuildFailed of { errors: Package_builder.build_result list }
   | PlanningFailed of Riot_planner.Workspace_planner.plan_error
   | UnexpectedError of { reason: string }
@@ -70,9 +89,15 @@ let emit_returning_results = fun context ~result_count ~had_partial_failure ->
 
 let error_message = function
   | ToolchainInstallFailed { target; error } ->
-      "Failed to install toolchain for " ^ Riot_model.Target.to_string target ^ ": " ^ error
+      "Failed to install toolchain for "
+      ^ Riot_model.Target.to_string target
+      ^ ": "
+      ^ toolchain_install_error_message error
   | ToolchainInitializationFailed { target; error } ->
-      "Failed to initialize toolchain for " ^ Riot_model.Target.to_string target ^ ": " ^ error
+      "Failed to initialize toolchain for "
+      ^ Riot_model.Target.to_string target
+      ^ ": "
+      ^ toolchain_initialization_error_message error
   | BuildFailed { errors } -> (
       let failures = Build_result.failures_of_build_results errors in
       match failures with
@@ -109,7 +134,10 @@ let ensure_toolchains_for_targets = fun context targets ->
           ~host:context.build.host
           ~target with
         | Ok () -> loop rest
-        | Error error -> Error (ToolchainInstallFailed { target; error })
+        | Error message -> Error (ToolchainInstallFailed {
+          target;
+          error = toolchain_install_error message
+        })
       )
   in
   let* () = loop missing in
@@ -123,7 +151,10 @@ let validate_target_toolchains = fun context targets ->
     | target :: rest -> (
         match Riot_toolchain.init_for_target ~config:context.build.toolchain_config ~target with
         | Ok _ -> loop rest
-        | Error error -> Error (ToolchainInitializationFailed { target; error })
+        | Error message -> Error (ToolchainInitializationFailed {
+          target;
+          error = toolchain_initialization_error message
+        })
       )
   in
   let* () = loop targets in
@@ -266,7 +297,11 @@ let do_build = fun context ->
   emit_runtime_starting context;
   let* toolchain = Riot_toolchain.init ~config:context.build.toolchain_config
   |> Result.map_err
-    ~fn:(fun error -> ToolchainInitializationFailed { target = context.build.host; error }) in
+    ~fn:(fun message ->
+      ToolchainInitializationFailed {
+        target = context.build.host;
+        error = toolchain_initialization_error message
+      }) in
   emit_runtime_started context;
   let* (lane_results, had_partial_failure) = run_lanes context ~toolchain in
   let all_results = List.map ~fn:Lane_result.results lane_results |> List.concat in

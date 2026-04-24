@@ -727,7 +727,7 @@ let write_build_error = fun ~mode err ->
         "ToolchainInstallFailed"
         [
           ("target", Data.Json.String (Riot_model.Target.to_string target));
-          ("reason", Data.Json.String error);
+          ("reason", Data.Json.String (Riot_build.toolchain_install_error_message error));
         ]
         (Riot_build.error_message err)
   | Riot_build.ToolchainInitializationFailed { target; error } ->
@@ -736,7 +736,7 @@ let write_build_error = fun ~mode err ->
         "ToolchainInitializationFailed"
         [
           ("target", Data.Json.String (Riot_model.Target.to_string target));
-          ("reason", Data.Json.String error);
+          ("reason", Data.Json.String (Riot_build.toolchain_initialization_error_message error));
         ]
         (Riot_build.error_message err)
   | Riot_build.BuildFailed { errors } ->

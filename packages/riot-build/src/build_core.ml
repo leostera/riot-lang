@@ -1,5 +1,15 @@
 open Std
 
+type toolchain_install_error = Build_runtime.toolchain_install_error =
+  | ToolchainDownloadFailed of { message: string }
+
+let toolchain_install_error_message = Build_runtime.toolchain_install_error_message
+
+type toolchain_initialization_error = Build_runtime.toolchain_initialization_error =
+  | ToolchainInitFailed of { message: string }
+
+let toolchain_initialization_error_message = Build_runtime.toolchain_initialization_error_message
+
 type error =
   | TargetSelectionFailed of Riot_model.Target.resolve_error
   | PackageNotFound of {
@@ -10,8 +20,11 @@ type error =
       package_names: Riot_model.Package_name.t list;
       available_packages: Riot_model.Package_name.t list
     }
-  | ToolchainInstallFailed of { target: Riot_model.Target.t; error: string }
-  | ToolchainInitializationFailed of { target: Riot_model.Target.t; error: string }
+  | ToolchainInstallFailed of { target: Riot_model.Target.t; error: toolchain_install_error }
+  | ToolchainInitializationFailed of {
+      target: Riot_model.Target.t;
+      error: toolchain_initialization_error
+    }
   | BuildFailed of { errors: Build_result.failure list }
   | PlanningFailed of Riot_planner.Workspace_planner.plan_error
   | CycleDetected of { cycle_nodes: string list }
@@ -36,9 +49,15 @@ let error_message = function
       ^ ". Available packages: "
       ^ String.concat ", " (List.map available_packages ~fn:Riot_model.Package_name.to_string)
   | ToolchainInstallFailed { target; error } ->
-      "Failed to install toolchain for " ^ Riot_model.Target.to_string target ^ ": " ^ error
+      "Failed to install toolchain for "
+      ^ Riot_model.Target.to_string target
+      ^ ": "
+      ^ toolchain_install_error_message error
   | ToolchainInitializationFailed { target; error } ->
-      "Failed to initialize toolchain for " ^ Riot_model.Target.to_string target ^ ": " ^ error
+      "Failed to initialize toolchain for "
+      ^ Riot_model.Target.to_string target
+      ^ ": "
+      ^ toolchain_initialization_error_message error
   | BuildFailed { errors } -> (
       match errors with
       | [] -> "build failed"
