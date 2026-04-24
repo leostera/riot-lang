@@ -112,7 +112,7 @@ let run = fun matches ->
               | Error err -> fail err
               | Ok () -> (
                   match Pkgs_ml.Registry.create_filesystem ~registry_name () with
-                  | Error err -> fail (YankFailed err)
+                  | Error err -> fail (YankFailed (Pkgs_ml.Registry_cache.create_error_message err))
                   | Ok registry -> (
                       match Pkgs_ml.Registry.yank_release
                         registry

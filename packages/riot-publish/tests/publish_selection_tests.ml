@@ -180,9 +180,9 @@ let test_publish_error_message_renders_typed_registry_initialization_error = fun
   let message = Riot_publish.publish_error_message
     (Riot_publish.RegistryInitializationFailed {
       registry_name = "pkgs.ml";
-      error = Riot_deps.RegistryFilesystemInitializationFailed "permission denied"
+      error = Riot_deps.RegistryFilesystemInitializationFailed Pkgs_ml.Registry_cache.HomeDirectoryUnavailable
     }) in
-  let expected = "failed to initialize registry 'pkgs.ml': permission denied" in
+  let expected = "failed to initialize registry 'pkgs.ml': failed to determine home directory for pkgs.ml cache" in
   if String.equal message expected then
     Ok ()
   else

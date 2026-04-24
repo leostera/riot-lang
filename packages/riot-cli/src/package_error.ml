@@ -17,7 +17,8 @@ let source_dependency_load_error_message = function
     error
 
 let registry_initialization_error_message = function
-  | Riot_deps.RegistryFilesystemInitializationFailed error -> error
+  | Riot_deps.RegistryFilesystemInitializationFailed error -> Pkgs_ml.Registry_cache.create_error_message
+    error
 
 let registry_lookup_error_message = function
   | Riot_deps.RegistryPackageDocumentReadFailed error -> error

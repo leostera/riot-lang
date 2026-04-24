@@ -2425,13 +2425,12 @@ let test_package_error_message_renders_typed_workspace_reload_errors = fun _ctx 
       errors = [
         Riot_model.Workspace_manager.PackageTomlParseFailed {
           package = "app";
-          path = "/workspace/packages/app";
+          path = "/workspace/packages/app"
         };
       ]
     }) in
   if
-    String.contains scan_message "no workspace root found"
-    && String.contains load_message "package 'app': failed to parse riot.toml"
+    String.contains scan_message "no workspace root found" && String.contains load_message "package 'app': failed to parse riot.toml"
   then
     Ok ()
   else
@@ -2441,11 +2440,10 @@ let test_package_error_message_renders_typed_registry_initialization_errors = fu
   let message = Riot_deps.package_error_message
     (Riot_deps.RegistryInitializationFailed {
       registry = "pkgs.ml";
-      error = Riot_deps.RegistryFilesystemInitializationFailed "missing home directory"
+      error = Riot_deps.RegistryFilesystemInitializationFailed Pkgs_ml.Registry_cache.HomeDirectoryUnavailable
     }) in
   if
-    String.contains message "failed to initialize registry 'pkgs.ml'"
-    && String.contains message "missing home directory"
+    String.contains message "failed to initialize registry 'pkgs.ml'" && String.contains message "failed to determine home directory for pkgs.ml cache"
   then
     Ok ()
   else

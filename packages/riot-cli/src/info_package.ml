@@ -76,6 +76,7 @@ let registry_of_optional = fun ?registry () ->
   match registry with
   | Some registry -> Ok registry
   | None -> Pkgs_ml.Registry.create_filesystem ~registry_name ()
+  |> Result.map_err ~fn:Pkgs_ml.Registry_cache.create_error_message
 
 let local_workspace_package:
   (Riot_model.Workspace_manifest.t * Riot_model.Workspace_manager.load_error list) option ->

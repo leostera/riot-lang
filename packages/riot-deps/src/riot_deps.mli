@@ -69,7 +69,7 @@ type source_dependency_load_error = Package_management.source_dependency_load_er
   | SourceDependencyTomlParseFailed of Std.Data.Toml.error
   | SourceDependencyManifestDecodeFailed of Riot_model.Package.manifest_error
 type registry_initialization_error = Package_management.registry_initialization_error =
-  | RegistryFilesystemInitializationFailed of string
+  | RegistryFilesystemInitializationFailed of Pkgs_ml.Registry_cache.create_error
 type registry_lookup_error = Package_management.registry_lookup_error =
   | RegistryPackageDocumentReadFailed of string
   | RegistryPackageNameDecodeFailed of Riot_model.Package_name.error
@@ -96,26 +96,15 @@ type package_error = Package_management.error =
       ref_: string option;
       error: source_dependency_load_error
     }
-  | RegistryInitializationFailed of {
-      registry: string;
-      error: registry_initialization_error
-    }
-  | RegistryLookupFailed of {
-      package: string;
-      registry: string;
-      error: registry_lookup_error
-    }
+  | RegistryInitializationFailed of { registry: string; error: registry_initialization_error }
+  | RegistryLookupFailed of { package: string; registry: string; error: registry_lookup_error }
   | RegistryMaterializationFailed of {
       package: string;
       version: string;
       registry: string;
       error: registry_materialization_error
     }
-  | RegistrySearchFailed of {
-      query: string;
-      registry: string;
-      error: registry_search_error
-    }
+  | RegistrySearchFailed of { query: string; registry: string; error: registry_search_error }
   | RegistryPackageNotFound of {
       package: string;
       registry: string;

@@ -72,7 +72,7 @@ let prepare_workspace = fun (workspace: Workspace.t) ->
     match Pkgs_ml.Registry.create_filesystem ?riot_home:None ~registry_name:default_registry_name () with
     | Error error -> Error (Check_error.RegistryInitializationFailed {
       registry = default_registry_name;
-      error
+      error = Pkgs_ml.Registry_cache.create_error_message error
     })
     | Ok registry -> Riot_deps.ensure_workspace
       ~mode:Riot_deps.Dep_solver.Refresh

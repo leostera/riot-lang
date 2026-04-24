@@ -15,6 +15,7 @@ Riot-specific workflow policy.
 7. Build package download URLs only from sparse-index `artifact_base_url` plus `source_key`. Do not hardcode `cdn.pkgs.ml` or reconstruct artifact paths outside the index contract.
 8. Keep Riot-agent transport metadata explicit. `pkgs-ml` may expose a small setter for the default `X-Riot-Agent` header, but it should also honor `RIOT_AGENT_HEADER` as a higher-priority override for automation that shells out to `riot` and needs a distinct identity.
 9. Mutating registry routes such as publish and yank belong here as small explicit client helpers. Keep them exact-version and bubble registry error messages up unchanged.
+10. Filesystem registry/cache initialization errors should stay typed in `pkgs-ml`; render them to strings only at CLI/user-facing edges.
 
 ## Validate
 

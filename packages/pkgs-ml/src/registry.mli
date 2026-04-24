@@ -84,7 +84,11 @@ val set_riot_agent: string option -> unit
 
 (** Create a filesystem-backed registry client. *)
 val create_filesystem:
-  ?fetch:fetch -> registry_name:string -> ?riot_home:Path.t -> unit -> (t, string) result
+  ?fetch:fetch ->
+  registry_name:string ->
+  ?riot_home:Path.t ->
+  unit ->
+  (t, Registry_cache.create_error) result
 
 (** Build a registry client from an existing cache. *)
 val filesystem: ?fetch:fetch -> Registry_cache.t -> t

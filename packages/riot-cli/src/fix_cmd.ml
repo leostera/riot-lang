@@ -11,7 +11,7 @@ let build_mode_of_output_mode = function
 let prepare_workspace = fun (workspace: Riot_model.Workspace_manifest.t) ->
   let workspace_manager = Riot_model.Workspace_manager.create () in
   let* registry = Pkgs_ml.Registry.create_filesystem ?riot_home:None ~registry_name:"pkgs.ml" ()
-  |> Result.map_err ~fn:(fun err -> Failure err) in
+  |> Result.map_err ~fn:(fun err -> Failure (Pkgs_ml.Registry_cache.create_error_message err)) in
   Riot_deps.ensure_workspace
     ~workspace_manager
     ~mode:Riot_deps.Dep_solver.Refresh

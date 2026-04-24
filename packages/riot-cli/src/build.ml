@@ -985,7 +985,7 @@ type loaded_workspace = {
 let load_workspace_strict = fun cwd ->
   let workspace_manager = Workspace_manager.create () in
   let* registry = Pkgs_ml.Registry.create_filesystem ?riot_home:None ~registry_name:"pkgs.ml" ()
-  |> Result.map_err ~fn:(fun err -> Failure err) in
+  |> Result.map_err ~fn:(fun err -> Failure (Pkgs_ml.Registry_cache.create_error_message err)) in
   match Workspace_manager.scan workspace_manager cwd with
   | Error err ->
       Error (Failure (Workspace_manager.scan_error_message err))

@@ -62,7 +62,7 @@ type source_dependency_load_error =
   | SourceDependencyManifestDecodeFailed of Package.manifest_error
 
 type registry_initialization_error =
-  | RegistryFilesystemInitializationFailed of string
+  | RegistryFilesystemInitializationFailed of Pkgs_ml.Registry_cache.create_error
 
 type registry_lookup_error =
   | RegistryPackageDocumentReadFailed of string
@@ -93,26 +93,15 @@ type error =
       ref_: string option;
       error: source_dependency_load_error
     }
-  | RegistryInitializationFailed of {
-      registry: string;
-      error: registry_initialization_error
-    }
-  | RegistryLookupFailed of {
-      package: string;
-      registry: string;
-      error: registry_lookup_error
-    }
+  | RegistryInitializationFailed of { registry: string; error: registry_initialization_error }
+  | RegistryLookupFailed of { package: string; registry: string; error: registry_lookup_error }
   | RegistryMaterializationFailed of {
       package: string;
       version: string;
       registry: string;
       error: registry_materialization_error
     }
-  | RegistrySearchFailed of {
-      query: string;
-      registry: string;
-      error: registry_search_error
-    }
+  | RegistrySearchFailed of { query: string; registry: string; error: registry_search_error }
   | RegistryPackageNotFound of {
       package: string;
       registry: string;
@@ -122,14 +111,8 @@ type error =
   | RegistryVersionNotFound of { package: string; requirement: string; registry: string }
   | ManifestUpdateFailed of Manifest_edit.error
   | DependencyNotFoundInSection of { path: Path.t; section: string; dependency: string }
-  | WorkspaceReloadFailed of {
-      workspace_root: Path.t;
-      error: Workspace_manager.scan_error
-    }
-  | WorkspaceReloadHadErrors of {
-      workspace_root: Path.t;
-      errors: Workspace_manager.load_error list
-    }
+  | WorkspaceReloadFailed of { workspace_root: Path.t; error: Workspace_manager.scan_error }
+  | WorkspaceReloadHadErrors of { workspace_root: Path.t; errors: Workspace_manager.load_error list }
   | MaterializedPackageNotFound of { package_root: Path.t; workspace_root: Path.t }
   | LockRefreshFailed of Deps_error.t
 
@@ -175,7 +158,7 @@ let source_dependency_load_error_message = function
   | SourceDependencyManifestDecodeFailed error -> Package.manifest_error_message error
 
 let registry_initialization_error_message = function
-  | RegistryFilesystemInitializationFailed error -> error
+  | RegistryFilesystemInitializationFailed error -> Pkgs_ml.Registry_cache.create_error_message error
 
 let registry_lookup_error_message = function
   | RegistryPackageDocumentReadFailed error -> error
@@ -242,10 +225,7 @@ let error_message = function
       ^ "': "
       ^ source_dependency_load_error_message error
   | RegistryInitializationFailed { registry; error } ->
-      "failed to initialize registry '"
-      ^ registry
-      ^ "': "
-      ^ registry_initialization_error_message error
+      "failed to initialize registry '" ^ registry ^ "': " ^ registry_initialization_error_message error
   | RegistryLookupFailed { package; registry; error } ->
       "failed to look up package '"
       ^ package
@@ -538,16 +518,13 @@ let select_materialized_package = fun ~(workspace:Riot_model.Workspace_manifest.
 
 let scan_workspace_from_root = fun ~workspace_manager ~package_root () ->
   let* (workspace, load_errors) = Riot_model.Workspace_manager.scan workspace_manager package_root
-  |> Result.map_err
-    ~fn:(fun error ->
-      WorkspaceReloadFailed {
-        workspace_root = package_root;
-        error
-      }) in
+  |> Result.map_err ~fn:(fun error -> WorkspaceReloadFailed { workspace_root = package_root; error }) in
   match load_errors with
   | [] -> Ok workspace
-  | load_errors ->
-      Error (WorkspaceReloadHadErrors { workspace_root = workspace.root; errors = load_errors })
+  | load_errors -> Error (WorkspaceReloadHadErrors {
+    workspace_root = workspace.root;
+    errors = load_errors
+  })
 
 let matching_release_of_document = fun (document: Pkgs_ml.Sparse_index.package_document) requirement ->
   let matches =
@@ -1126,16 +1103,10 @@ let dependency_of_parsed = function
 let reload_workspace = fun ~workspace_manager ~(workspace_root:Path.t) ->
   Riot_model.Workspace_manager.clear_cache workspace_manager;
   let* (workspace, load_errors) = Riot_model.Workspace_manager.scan workspace_manager workspace_root
-  |> Result.map_err
-    ~fn:(fun error ->
-      WorkspaceReloadFailed {
-        workspace_root;
-        error
-      }) in
+  |> Result.map_err ~fn:(fun error -> WorkspaceReloadFailed { workspace_root; error }) in
   match load_errors with
   | [] -> Ok workspace
-  | load_errors ->
-      Error (WorkspaceReloadHadErrors { workspace_root; errors = load_errors })
+  | load_errors -> Error (WorkspaceReloadHadErrors { workspace_root; errors = load_errors })
 
 let refresh_lock = fun ~workspace_manager ~(emit:event_sink) ~mode ~registry ~(workspace:Riot_model.Workspace_manifest.t) ->
   Workspace_resolution.ensure_lock ~workspace_manager ~emit ~mode ~registry ~workspace ()
@@ -1191,8 +1162,7 @@ let update_manifest = fun ~(emit:event_sink) ~(target:target_manifest) ~scope ~d
     ~manifest_path:target.path
     ~section:(scope_to_section scope)
     ~dependencies
-  |> Result.map_err
-    ~fn:(fun error -> ManifestUpdateFailed error)
+  |> Result.map_err ~fn:(fun error -> ManifestUpdateFailed error)
   |> Result.map
     ~fn:(fun () ->
       emit

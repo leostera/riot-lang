@@ -80,7 +80,8 @@ let exn_message = fun exn ->
   | exn -> Kernel.Exception.to_string exn
 
 let registry_initialization_error_message = function
-  | Riot_deps.RegistryFilesystemInitializationFailed error -> error
+  | Riot_deps.RegistryFilesystemInitializationFailed error -> Pkgs_ml.Registry_cache.create_error_message
+    error
 
 let publish_error_message = fun error ->
   match error with

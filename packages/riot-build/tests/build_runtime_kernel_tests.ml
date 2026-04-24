@@ -27,7 +27,8 @@ let load_repo_workspace = fun () ->
             ?riot_home:None
             ~registry_name:"pkgs.ml"
             ()
-          |> Result.map_err ~fn:(fun err -> "registry init failed: " ^ err) in
+          |> Result.map_err
+            ~fn:(fun err -> "registry init failed: " ^ Pkgs_ml.Registry_cache.create_error_message err) in
           Riot_deps.ensure_workspace
             ~workspace_manager:manager
             ~mode:Riot_deps.Dep_solver.Refresh

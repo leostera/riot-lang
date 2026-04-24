@@ -5,6 +5,12 @@ type t = {
   registry_name: string;
 }
 
+type create_error =
+  | HomeDirectoryUnavailable
+
+let create_error_message = function
+  | HomeDirectoryUnavailable -> "failed to determine home directory for pkgs.ml cache"
+
 let create = fun ?riot_home ~registry_name () ->
   match riot_home with
   | Some riot_home -> Ok { riot_home; registry_name }
@@ -16,7 +22,7 @@ let create = fun ?riot_home ~registry_name () ->
               Path.(home / Path.v ".riot");
             registry_name;
           }
-      | None -> Error "failed to determine home directory for pkgs.ml cache"
+      | None -> Error HomeDirectoryUnavailable
     )
 
 let riot_home = fun cache -> cache.riot_home

@@ -1321,4 +1321,7 @@ let tests =
 let name = "pkgs-ml Tests"
 
 let () =
-  Actors.run ~main:(fun ~args -> Test.Cli.main ~name ~tests ~args ()) ~args:Env.args ()
+  Actors.run
+    ~main:(fun ~args -> Test.Cli.main ~execution_mode:Test.Cli.Linear ~name ~tests ~args ())
+    ~args:Env.args
+    ()
