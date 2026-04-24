@@ -15,7 +15,8 @@ module Package_management = Package_management
 
 type event_sink = Workspace_resolution.event_sink
 
-let ensure_lock = Workspace_resolution.ensure_lock
+let ensure_lock = fun ?emit ~workspace_manager ~mode ~registry ~workspace () ->
+  Workspace_resolution.ensure_lock ?emit ~workspace_manager ~mode ~registry ~workspace ()
 
 let ensure_workspace = Workspace_resolution.ensure_workspace
 
@@ -48,13 +49,17 @@ type loaded_workspace = Package_management.loaded_workspace = {
 type add_request = Package_management.add_request = {
   selection: manifest_selection;
   scope: dependency_scope;
-  dependency: string;
+  dependencies: string list;
 }
 
 type remove_request = Package_management.remove_request = {
   selection: manifest_selection;
   scope: dependency_scope;
-  dependency: Riot_model.Package_name.t;
+  dependencies: Riot_model.Package_name.t list;
+}
+
+type update_request = Package_management.update_request = {
+  packages: Riot_model.Package_name.t list;
 }
 
 type dependency_spec_error = Package_management.dependency_spec_error =

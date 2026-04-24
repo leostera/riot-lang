@@ -81,7 +81,7 @@ let emit_locked_packages = fun ~(emit:event_sink) ~(previous_lock:Riot_model.Loc
 let lockfile_with_dependency_hash = fun dependency_hash (lockfile: Riot_model.Lockfile.t) ->
   { lockfile with dependency_hash = dependency_hash }
 
-let ensure_lock = fun ?(emit = no_emit) ~workspace_manager ~mode ~registry ~(workspace:Riot_model.Workspace_manifest.t) () ->
+let ensure_lock = fun ?(emit = no_emit) ?existing_lock ~workspace_manager ~mode ~registry ~(workspace:Riot_model.Workspace_manifest.t) () ->
   let workspace_root = workspace.root in
   let manifest_paths = workspace_manifest_paths workspace in
   let packages = root_packages_for_workspace workspace in
@@ -122,7 +122,12 @@ let ensure_lock = fun ?(emit = no_emit) ~workspace_manager ~mode ~registry ~(wor
       } in
       emit (Riot_model.Event.LockfileReadFailed { path = lock_path_str; error = err });
       Error err
-  | Ok existing_lock ->
+  | Ok stored_lock ->
+      let existing_lock =
+        match existing_lock with
+        | Some override -> override
+        | None -> stored_lock
+      in
       let current_dependency_hash =
         match Lock_refresh.dependency_hash ~workspace_manager ~workspace_root ~manifest_paths with
         | Ok dependency_hash -> Ok dependency_hash

@@ -25,12 +25,15 @@ type event_sink = Riot_model.Event.kind -> unit
 type add_request = {
   selection: manifest_selection;
   scope: dependency_scope;
-  dependency: string;
+  dependencies: string list;
 }
 type remove_request = {
   selection: manifest_selection;
   scope: dependency_scope;
-  dependency: Riot_model.Package_name.t;
+  dependencies: Riot_model.Package_name.t list;
+}
+type update_request = {
+  packages: Riot_model.Package_name.t list;
 }
 type dependency_spec_error =
   | RegistryDependencySpecError of Registry_package_spec.error
@@ -157,7 +160,9 @@ val search:
 
 val update:
   ?on_event:event_sink ->
+  ?registry:Pkgs_ml.Registry.t ->
   workspace_manager:Riot_model.Workspace_manager.t ->
   workspace:Riot_model.Workspace_manifest.t ->
+  request:update_request ->
   unit ->
   (unit, error) result

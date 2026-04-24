@@ -152,6 +152,13 @@ let test_add_message_renders_typed_command_errors = fun _ctx ->
     else
       Ok ()
 
+let test_add_accepts_multiple_dependencies = fun _ctx ->
+  let* matches = parse_add [ "add"; "std"; "serde-json"; "../widgets" ] in
+  Test.assert_equal
+    ~expected:[ "std"; "serde-json"; "../widgets" ]
+    ~actual:(ArgParser.get_many matches "dependency");
+  Ok ()
+
 let test_remove_outside_workspace_message = fun _ctx ->
   let* matches = parse_remove [ "rm"; "hello" ] in
   let* () = Result.map_err (Riot_cli.Remove.run_without_workspace matches) ~fn:Exception.to_string in
@@ -171,10 +178,22 @@ let test_remove_message_renders_typed_command_errors = fun _ctx ->
     else
       Ok ()
 
+let test_remove_accepts_multiple_dependencies = fun _ctx ->
+  let* matches = parse_remove [ "rm"; "std"; "serde-json" ] in
+  Test.assert_equal
+    ~expected:[ "std"; "serde-json" ]
+    ~actual:(ArgParser.get_many matches "dependency");
+  Ok ()
+
 let test_update_outside_workspace_message = fun _ctx ->
   let* matches = parse_update [ "update" ] in
   let* () = Result.map_err (Riot_cli.Update_cmd.run_without_workspace matches) ~fn:Exception.to_string in
   Test.assert_equal ~expected:"No riot.toml, so nothing to update" ~actual:Riot_cli.Update_cmd.no_workspace_message;
+  Ok ()
+
+let test_update_accepts_package_names = fun _ctx ->
+  let* matches = parse_update [ "update"; "std"; "serde-json" ] in
+  Test.assert_equal ~expected:[ "std"; "serde-json" ] ~actual:(ArgParser.get_many matches "package");
   Ok ()
 
 let test_new_outside_workspace_creates_standalone_package = fun _ctx ->
@@ -202,9 +221,12 @@ let tests =
   Test.[
     case "package commands: add bootstraps an empty workspace outside a workspace" test_add_bootstraps_empty_workspace_outside_workspace;
     case "package commands: add renders typed command errors" test_add_message_renders_typed_command_errors;
+    case "package commands: add accepts multiple dependencies" test_add_accepts_multiple_dependencies;
     case "package commands: remove outside a workspace reports no riot.toml" test_remove_outside_workspace_message;
     case "package commands: remove renders typed command errors" test_remove_message_renders_typed_command_errors;
+    case "package commands: remove accepts multiple dependencies" test_remove_accepts_multiple_dependencies;
     case "package commands: update outside a workspace reports no riot.toml" test_update_outside_workspace_message;
+    case "package commands: update accepts package names" test_update_accepts_package_names;
     case "package commands: new outside a workspace creates a standalone package" test_new_outside_workspace_creates_standalone_package;
   ]
 

@@ -149,6 +149,9 @@ _riot() {
     builtin_commands=(
         'build:Build packages'
         'fix:Lint code and optionally apply safe fixes'
+        'add:Add dependencies'
+        'rm:Remove dependencies'
+        'update:Update locked dependencies'
         'run:Run a binary'
         'test:Run tests'
         'bench:Run benchmarks'
@@ -157,6 +160,7 @@ _riot() {
         'login:Save pkgs.ml API token'
         'logout:Remove saved pkgs.ml API token'
         'yank:Yank a published package version'
+        'publish:Publish packages'
         'new:Create new package'
         'search:Search registry packages'
         'info:Show resolved workspace or package information'
@@ -297,6 +301,69 @@ _riot() {
                 '--json[Emit machine-readable JSON results]' \
                 '(-n --limit)'{-n,--limit}'[Maximum number of results to return]:limit:' \
                 ':query:'
+            ;;
+        add)
+            _arguments \
+                '(-p --package)'{-p,--package}'[Edit a specific workspace package manifest]:package:->packages' \
+                '--workspace[Edit the workspace root manifest]' \
+                '--build[Write into build-dependencies]' \
+                '--dev[Write into dev-dependencies]' \
+                '--json[Emit machine-readable JSONL events]' \
+                '*:dependency:'
+
+            case $state in
+                packages)
+                    local -a packages
+                    packages=(${(f)"$(riot completions --packages 2>/dev/null)"})
+                    _describe 'package' packages
+                    ;;
+            esac
+            ;;
+        rm)
+            _arguments \
+                '(-p --package)'{-p,--package}'[Edit a specific workspace package manifest]:package:->packages' \
+                '--workspace[Edit the workspace root manifest]' \
+                '--build[Remove from build-dependencies]' \
+                '--dev[Remove from dev-dependencies]' \
+                '--json[Emit machine-readable JSONL events]' \
+                '*:dependency:'
+
+            case $state in
+                packages)
+                    local -a packages
+                    packages=(${(f)"$(riot completions --packages 2>/dev/null)"})
+                    _describe 'package' packages
+                    ;;
+            esac
+            ;;
+        update)
+            _arguments \
+                '--json[Emit machine-readable JSONL events]' \
+                '*:package:->packages'
+
+            case $state in
+                packages)
+                    local -a packages
+                    packages=(${(f)"$(riot completions --packages 2>/dev/null)"})
+                    _describe 'package' packages
+                    ;;
+            esac
+            ;;
+        publish)
+            _arguments \
+                '(-p --package)'{-p,--package}'[Publish a specific workspace package]:package:->packages' \
+                '--workspace[Publish workspace packages in dependency order]' \
+                '--dry-run[Run local publish checks without uploading]' \
+                '--skip-check[Skip the fix preflight step]' \
+                '--json[Emit machine-readable JSONL events]'
+
+            case $state in
+                packages)
+                    local -a packages
+                    packages=(${(f)"$(riot completions --packages 2>/dev/null)"})
+                    _describe 'package' packages
+                    ;;
+            esac
             ;;
         info)
             _arguments \

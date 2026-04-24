@@ -30,7 +30,7 @@ let command =
     |> about "Add a registry, local path, or GitHub dependency and refresh riot.lock"
     |> args
       [
-        positional "dependency" |> help "Dependency spec: <name>, <name>@<version>, ../path, github.com/<owner>/<repo>[/pkg][#ref], or https://github.com/<owner>/<repo>[/pkg][#ref]";
+        positional "dependency" |> multiple |> help "Dependency spec: <name>, <name>@<version>, ../path, github.com/<owner>/<repo>[/pkg][#ref], or https://github.com/<owner>/<repo>[/pkg][#ref]";
         option "package" |> short 'p' |> long "package" |> help "Edit a specific workspace package manifest";
         flag "workspace" |> long "workspace" |> help "Edit the workspace root manifest";
         flag "build" |> long "build" |> help "Write into [build-dependencies]";
@@ -143,14 +143,14 @@ let run_request = fun ?(default_selection = Riot_deps.Current) ~workspace ~cwd m
       Build.Human
   in
   let workspace_manager = Riot_model.Workspace_manager.create () in
-  let dependency =
-    match ArgParser.get_one matches "dependency" with
-    | Some dependency -> Ok dependency
-    | None -> Error MissingDependency
+  let dependencies =
+    match ArgParser.get_many matches "dependency" with
+    | [] -> Error MissingDependency
+    | dependencies -> Ok dependencies
   in
-  match dependency, selection_of_matches ~default_selection matches, scope_of_matches matches with
-  | Ok dependency, Ok selection, Ok scope ->
-      let request: Riot_deps.add_request = Riot_deps.{ selection; scope; dependency } in
+  match dependencies, selection_of_matches ~default_selection matches, scope_of_matches matches with
+  | Ok dependencies, Ok selection, Ok scope ->
+      let request: Riot_deps.add_request = Riot_deps.{ selection; scope; dependencies } in
       let pm_session_id = Riot_model.Session_id.make () in
       let seen_registry_updates = HashSet.create () in
       (

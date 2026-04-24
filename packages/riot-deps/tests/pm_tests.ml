@@ -1860,6 +1860,172 @@ let test_unlock_discards_existing_external_nodes = fun _ctx ->
       else
         Error "expected unlock to discard preserved external lock nodes"
 
+let test_update_targets_only_requested_registry_packages = fun _ctx ->
+  with_tempdir "riot_deps_update_targeted"
+    (fun workspace_root ->
+      let workspace_manifest = Path.(workspace_root / Path.v "riot.toml") in
+      let app_root = Path.(workspace_root / Path.v "packages/app") in
+      write_file workspace_manifest
+        {|
+[workspace]
+members = ["packages/app"]
+|};
+      write_package_manifest ~root:app_root
+        {|
+[package]
+name = "app"
+version = "0.0.1"
+
+[dependencies]
+std = "*"
+mime = "*"
+|};
+      let registry = Pkgs_ml.Registry.in_memory ~cache:(make_registry_cache_at
+        Path.(workspace_root / Path.v ".riot")) ~packages:[
+        make_registry_document
+          ~name:"std"
+          ~latest:"0.2.0"
+          ~releases:[ make_release ~version:"0.1.0" (); make_release ~version:"0.2.0" () ]
+          ();
+        make_registry_document
+          ~name:"mime"
+          ~latest:"0.2.0"
+          ~releases:[ make_release ~version:"0.1.0" (); make_release ~version:"0.2.0" () ]
+          ();
+      ]
+        ~releases:[ make_release_source ~package_name:"std" ~version:"0.1.0"
+            {|
+[package]
+name = "std"
+version = "0.1.0"
+|}; make_release_source ~package_name:"std" ~version:"0.2.0"
+            {|
+[package]
+name = "std"
+version = "0.2.0"
+|}; make_release_source ~package_name:"mime" ~version:"0.1.0"
+            {|
+[package]
+name = "mime"
+version = "0.1.0"
+|}; make_release_source ~package_name:"mime" ~version:"0.2.0"
+            {|
+[package]
+name = "mime"
+version = "0.2.0"
+|}; ]
+        ()
+      in
+      let lock_id name version =
+        Riot_model.Lockfile.{
+          registry = Some "pkgs.ml";
+          name = package_name name;
+          version = Some version;
+          sha256 = Some "deadbeef"
+        } in
+      let app_id =
+        Riot_model.Lockfile.{
+          registry = None;
+          name = package_name "app";
+          version = None;
+          sha256 = None
+        } in
+      let existing_lock =
+        Riot_model.Lockfile.{
+          format_version = 1;
+          dependency_hash = "old";
+          packages =
+            [ {
+                id = app_id;
+                root = Some (Path.v "packages/app");
+                provenance = Workspace;
+                dependencies = [
+                  { name = package_name "std"; package = lock_id "std" "0.1.0" };
+                  { name = package_name "mime"; package = lock_id "mime" "0.1.0" };
+                ];
+                build_dependencies = [];
+                dev_dependencies = [];
+              }; {
+                id = lock_id "std" "0.1.0";
+                root = None;
+                provenance = Registry { registry = "pkgs.ml" };
+                dependencies = [];
+                build_dependencies = [];
+                dev_dependencies = [];
+              }; {
+                id = lock_id "mime" "0.1.0";
+                root = None;
+                provenance = Registry { registry = "pkgs.ml" };
+                dependencies = [];
+                build_dependencies = [];
+                dev_dependencies = [];
+              } ];
+        }
+      in
+      Riot_deps.Lockfile_store.write ~workspace_root existing_lock
+      |> Result.map_err ~fn:Riot_deps.Lockfile_store.error_message
+      |> Result.and_then
+        ~fn:(fun () ->
+          let workspace_manager = Riot_model.Workspace_manager.create () in
+          Riot_model.Workspace_manager.scan workspace_manager workspace_root
+          |> Result.map_err
+            ~fn:(fun err ->
+              "expected workspace scan to succeed: "
+              ^ Riot_model.Workspace_manager.scan_error_message err)
+          |> Result.and_then
+            ~fn:(fun (workspace, load_errors) ->
+              if not (List.is_empty load_errors) then
+                Error "expected workspace scan to have no load errors"
+              else
+                let events = ref [] in
+                Riot_deps.update
+                  ~on_event:(fun event -> events := event :: !events)
+                  ~registry
+                  ~workspace_manager
+                  ~workspace
+                  ~request:Riot_deps.{ packages = [ package_name "std" ] }
+                  ()
+                |> Result.map_err ~fn:Riot_deps.package_error_message
+                |> Result.and_then
+                  ~fn:(fun () ->
+                    Riot_deps.Lockfile_store.read ~workspace_root
+                    |> Result.map_err ~fn:Riot_deps.Lockfile_store.error_message
+                    |> Result.and_then
+                      ~fn:(
+                        function
+                        | None -> Error "expected update to write riot.lock"
+                        | Some (lockfile: Lockfile.t) ->
+                            let std_lock =
+                              List.find
+                                lockfile.packages
+                                ~fn:(fun (pkg: Lockfile.package) -> has_name "std" pkg.id.name)
+                            in
+                            let mime_lock =
+                              List.find
+                                lockfile.packages
+                                ~fn:(fun (pkg: Lockfile.package) -> has_name "mime" pkg.id.name)
+                            in
+                            let updated_std =
+                              List.any !events
+                                ~fn:(
+                                  function
+                                  | Riot_model.Event.PackageVersionUpdated {
+                                    package;
+                                    from_version;
+                                    to_version
+                                  } -> has_name "std" package
+                                  && String.equal from_version "0.1.0"
+                                  && String.equal to_version "0.2.0"
+                                  | _ -> false
+                                )
+                            in
+                            match std_lock, mime_lock with
+                            | Some std_lock, Some mime_lock when std_lock.id.version = Some "0.2.0"
+                            && mime_lock.id.version = Some "0.1.0"
+                            && updated_std -> Ok ()
+                            | _ -> Error "expected targeted update to update std and preserve mime"
+                      )))))
+
 let test_lock_refresh_requires_lock_when_missing = fun _ctx ->
   with_tempdir "riot_deps_missing_lock"
     (fun workspace_root ->
@@ -2034,7 +2200,11 @@ version = "0.0.1"
         ~workspace_manager
         ~workspace
         ~cwd:app_root
-        ~request:Riot_deps.{ selection = Current; scope = Runtime; dependency = package_name "std" }
+        ~request:Riot_deps.{
+          selection = Current;
+          scope = Runtime;
+          dependencies = [ package_name "std" ]
+        }
         () with
       | Ok () -> Error "expected remove to reject dependencies that are only inherited from the workspace root"
       | Error (Riot_deps.DependencyNotFoundInSection { path; section; dependency }) ->
@@ -2075,7 +2245,11 @@ version = "0.0.1"
         ~workspace_manager
         ~workspace
         ~cwd:app_root
-        ~request:Riot_deps.{ selection = Current; scope = Runtime; dependency = package_name "std" }
+        ~request:Riot_deps.{
+          selection = Current;
+          scope = Runtime;
+          dependencies = [ package_name "std" ]
+        }
         () with
       | Ok () -> Error "expected remove to report typed manifest update error"
       | Error (Riot_deps.ManifestUpdateFailed (Riot_deps.Manifest_edit.DependencySectionMustBeTable {
@@ -2087,6 +2261,90 @@ version = "0.0.1"
           else
             Error "unexpected manifest update payload for non-table dependency section"
       | Error err -> Error ("unexpected remove error: " ^ Riot_deps.package_error_message err))
+
+let test_remove_multiple_dependencies_refreshes_lock_once = fun _ctx ->
+  with_tempdir "riot_deps_remove_multiple"
+    (fun workspace_root ->
+      let workspace_manifest = Path.(workspace_root / Path.v "riot.toml") in
+      let app_root = Path.(workspace_root / Path.v "packages/app") in
+      let widgets_root = Path.(workspace_root / Path.v "packages/widgets") in
+      let gadgets_root = Path.(workspace_root / Path.v "packages/gadgets") in
+      write_file workspace_manifest
+        {|
+[workspace]
+members = ["packages/app"]
+|};
+      write_package_manifest ~root:app_root
+        {|
+[package]
+name = "app"
+version = "0.0.1"
+
+[dependencies]
+widgets = { path = "../widgets" }
+gadgets = { path = "../gadgets" }
+|};
+      write_package_manifest ~root:widgets_root
+        {|
+[package]
+name = "widgets"
+version = "0.0.1"
+|};
+      write_package_manifest ~root:gadgets_root
+        {|
+[package]
+name = "gadgets"
+version = "0.0.1"
+|};
+      let workspace_manager = Riot_model.Workspace_manager.create () in
+      Riot_model.Workspace_manager.scan workspace_manager workspace_root
+      |> Result.map_err
+        ~fn:(fun err ->
+          "expected workspace scan to succeed: " ^ Riot_model.Workspace_manager.scan_error_message err)
+      |> Result.and_then
+        ~fn:(fun (workspace, load_errors) ->
+          if not (List.is_empty load_errors) then
+            Error "expected workspace scan to have no load errors"
+          else
+            Riot_deps.remove
+              ~workspace_manager
+              ~workspace
+              ~cwd:app_root
+              ~request:Riot_deps.{
+                selection = Current;
+                scope = Runtime;
+                dependencies = [ package_name "widgets"; package_name "gadgets" ]
+              }
+              ()
+            |> Result.map_err ~fn:Riot_deps.package_error_message
+            |> Result.and_then
+              ~fn:(fun () ->
+                Fs.read_to_string Path.(app_root / Path.v "riot.toml")
+                |> Result.map_err ~fn:IO.error_message
+                |> Result.and_then
+                  ~fn:(fun manifest_source ->
+                    Riot_deps.Lockfile_store.read ~workspace_root
+                    |> Result.map_err
+                      ~fn:(fun err ->
+                        "expected lockfile read to succeed: "
+                        ^ Riot_deps.Lockfile_store.error_message err)
+                    |> Result.and_then
+                      ~fn:(fun maybe_lockfile ->
+                        match maybe_lockfile with
+                        | None -> Error "expected remove to rewrite riot.lock"
+                        | Some (lockfile: Lockfile.t) ->
+                            if
+                              (not (String.contains manifest_source "widgets"))
+                              && (not (String.contains manifest_source "gadgets"))
+                              && List.all
+                                lockfile.packages
+                                ~fn:(fun (pkg: Lockfile.package) ->
+                                  not (has_name "widgets" pkg.id.name)
+                                  && not (has_name "gadgets" pkg.id.name))
+                            then
+                              Ok ()
+                            else
+                              Error "expected multi-remove to remove both deps from manifest and lock")))))
 
 let test_add_path_dependency_discovers_package_name_and_refreshes_lock = fun _ctx ->
   with_tempdir "riot_deps_add_path"
@@ -2125,7 +2383,11 @@ version = "0.0.1"
               ~workspace_manager
               ~workspace
               ~cwd:app_root
-              ~request:Riot_deps.{ selection = Current; scope = Runtime; dependency = "../lib" }
+              ~request:Riot_deps.{
+                selection = Current;
+                scope = Runtime;
+                dependencies = [ "../lib" ]
+              }
               ()
             |> Result.map_err ~fn:Riot_deps.package_error_message
             |> Result.and_then
@@ -2160,6 +2422,87 @@ version = "0.0.1"
                             else
                               Error "expected path add to write discovered package name and refresh riot.lock")))))
 
+let test_add_multiple_path_dependencies_refreshes_lock_once = fun _ctx ->
+  with_tempdir "riot_deps_add_multiple_paths"
+    (fun workspace_root ->
+      let workspace_manifest = Path.(workspace_root / Path.v "riot.toml") in
+      let app_root = Path.(workspace_root / Path.v "packages/app") in
+      let widgets_root = Path.(workspace_root / Path.v "packages/widgets") in
+      let gadgets_root = Path.(workspace_root / Path.v "packages/gadgets") in
+      write_file workspace_manifest
+        {|
+[workspace]
+members = ["packages/app"]
+|};
+      write_package_manifest ~root:app_root
+        {|
+[package]
+name = "app"
+version = "0.0.1"
+|};
+      write_package_manifest ~root:widgets_root
+        {|
+[package]
+name = "widgets"
+version = "0.0.1"
+|};
+      write_package_manifest ~root:gadgets_root
+        {|
+[package]
+name = "gadgets"
+version = "0.0.1"
+|};
+      let workspace_manager = Riot_model.Workspace_manager.create () in
+      Riot_model.Workspace_manager.scan workspace_manager workspace_root
+      |> Result.map_err
+        ~fn:(fun err ->
+          "expected workspace scan to succeed: " ^ Riot_model.Workspace_manager.scan_error_message err)
+      |> Result.and_then
+        ~fn:(fun (workspace, load_errors) ->
+          if not (List.is_empty load_errors) then
+            Error "expected workspace scan to have no load errors"
+          else
+            Riot_deps.add
+              ~workspace_manager
+              ~workspace
+              ~cwd:app_root
+              ~request:Riot_deps.{
+                selection = Current;
+                scope = Runtime;
+                dependencies = [ "../widgets"; "../gadgets" ]
+              }
+              ()
+            |> Result.map_err ~fn:Riot_deps.package_error_message
+            |> Result.and_then
+              ~fn:(fun () ->
+                Fs.read_to_string Path.(app_root / Path.v "riot.toml")
+                |> Result.map_err ~fn:IO.error_message
+                |> Result.and_then
+                  ~fn:(fun manifest_source ->
+                    Riot_deps.Lockfile_store.read ~workspace_root
+                    |> Result.map_err
+                      ~fn:(fun err ->
+                        "expected lockfile read to succeed: "
+                        ^ Riot_deps.Lockfile_store.error_message err)
+                    |> Result.and_then
+                      ~fn:(fun maybe_lockfile ->
+                        match maybe_lockfile with
+                        | None -> Error "expected add to rewrite riot.lock"
+                        | Some (lockfile: Lockfile.t) ->
+                            if
+                              String.contains manifest_source "widgets = { path = \"../widgets\" }"
+                              && String.contains manifest_source "gadgets = { path = \"../gadgets\" }"
+                              && List.any
+                                lockfile.packages
+                                ~fn:(fun (pkg: Lockfile.package) -> has_name "widgets" pkg.id.name)
+                              && List.any
+                                lockfile.packages
+                                ~fn:(fun (pkg: Lockfile.package) -> has_name "gadgets" pkg.id.name)
+                            then
+                              Ok ()
+                            else
+                              Error "expected multi-add to write both discovered package names and refresh riot.lock")))))
+
 let test_add_path_dependency_reports_missing_manifest = fun _ctx ->
   with_tempdir "riot_deps_add_missing_path"
     (fun workspace_root ->
@@ -2190,7 +2533,11 @@ version = "0.0.1"
               ~workspace_manager
               ~workspace
               ~cwd:app_root
-              ~request:Riot_deps.{ selection = Current; scope = Runtime; dependency = "../missing" }
+              ~request:Riot_deps.{
+                selection = Current;
+                scope = Runtime;
+                dependencies = [ "../missing" ]
+              }
               () with
             | Error (Riot_deps.PathDependencyLoadFailed {
               dependency;
@@ -2349,7 +2696,7 @@ version = "0.0.1"
               ~request:Riot_deps.{
                 selection = Current;
                 scope = Runtime;
-                dependency = "https://gitlab.com/leostera/widgets"
+                dependencies = [ "https://gitlab.com/leostera/widgets" ]
               }
               () with
             | Ok () -> Error "expected unsupported non-github source dependency add to fail"
@@ -3711,6 +4058,7 @@ let tests =
     case "dep solver: refresh discards stale external nodes" test_lock_refresh_discards_stale_external_nodes;
     case "dep solver: refresh discards removed workspace packages" test_lock_refresh_discards_removed_workspace_packages;
     case "dep solver: unlock discards existing external nodes" test_unlock_discards_existing_external_nodes;
+    case "package management: update targets only requested registry packages" test_update_targets_only_requested_registry_packages;
     case "lock refresh: missing lock requires refresh" test_lock_refresh_requires_lock_when_missing;
     case "lock refresh: matching dependency hash avoids refresh" test_lock_refresh_false_when_dependency_hash_matches;
     case "lock refresh: changed dependency hash requires refresh" test_lock_refresh_true_when_dependency_hash_changes;
@@ -3719,6 +4067,7 @@ let tests =
     case "lockfile store: missing lockfile returns none" test_lockfile_store_returns_none_when_missing;
     case "lockfile store: bubbles parse errors" test_lockfile_store_bubbles_parse_errors;
     case "package management: add discovers path dependency package names and refreshes lockfile" test_add_path_dependency_discovers_package_name_and_refreshes_lock;
+    case "package management: add accepts multiple dependencies" test_add_multiple_path_dependencies_refreshes_lock_once;
     case "package management: add reports missing path dependency manifests" test_add_path_dependency_reports_missing_manifest;
     case "git dependency: github source spec normalizes into locator and ref" test_git_dependency_parse_spec_normalizes_github_source;
     case "git dependency: reports multiple ref suffixes" test_git_dependency_parse_spec_reports_multiple_ref_suffixes;
@@ -3735,6 +4084,7 @@ let tests =
     case "package management: search returns registry results" test_search_returns_registry_results;
     case "package management: remove rejects dependencies only inherited from workspace root" test_remove_reports_missing_package_dependency_when_only_inherited_from_workspace;
     case "package management: remove reports typed manifest update errors" test_remove_reports_typed_manifest_update_errors;
+    case "package management: remove accepts multiple dependencies" test_remove_multiple_dependencies_refreshes_lock_once;
     case "ensure lock: refreshes missing lock and resolves workspace graph" test_ensure_lock_refreshes_missing_lock_and_resolves_workspace;
     case "ensure lock: uses existing fresh lock" test_ensure_lock_uses_existing_fresh_lock;
     case "ensure lock: materializes registry packages during projection" test_ensure_lock_materializes_registry_packages_during_projection;

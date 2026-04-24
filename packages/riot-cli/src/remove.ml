@@ -21,7 +21,7 @@ let command =
     |> about "Remove a dependency from a manifest section and refresh riot.lock"
     |> args
       [
-        positional "dependency" |> help "Dependency name to remove";
+        positional "dependency" |> multiple |> help "Dependency name to remove";
         option "package" |> short 'p' |> long "package" |> help "Edit a specific workspace package manifest";
         flag "workspace" |> long "workspace" |> help "Edit the workspace root manifest";
         flag "build" |> long "build" |> help "Remove from [build-dependencies]";
@@ -85,15 +85,22 @@ let run = fun ~workspace matches ->
       Build.Human
   in
   let workspace_manager = Riot_model.Workspace_manager.create () in
-  let dependency =
-    match ArgParser.get_one matches "dependency" with
-    | Some dependency -> Package_name.from_string dependency
-    |> Result.map_err ~fn:(fun error -> InvalidPackageName error)
-    | None -> Error MissingDependency
+  let dependencies =
+    match ArgParser.get_many matches "dependency" with
+    | [] -> Error MissingDependency
+    | dependencies ->
+        let rec parse_all acc = function
+          | [] -> Ok (List.reverse acc)
+          | dependency :: rest ->
+              let* dependency = Package_name.from_string dependency
+              |> Result.map_err ~fn:(fun error -> InvalidPackageName error) in
+              parse_all (dependency :: acc) rest
+        in
+        parse_all [] dependencies
   in
-  match dependency, selection_of_matches matches, scope_of_matches matches, Env.current_dir () with
-  | Ok dependency, Ok selection, Ok scope, Ok cwd ->
-      let request: Riot_deps.remove_request = Riot_deps.{ selection; scope; dependency } in
+  match dependencies, selection_of_matches matches, scope_of_matches matches, Env.current_dir () with
+  | Ok dependencies, Ok selection, Ok scope, Ok cwd ->
+      let request: Riot_deps.remove_request = Riot_deps.{ selection; scope; dependencies } in
       let pm_session_id = Riot_model.Session_id.make () in
       let seen_registry_updates = HashSet.create () in
       (
