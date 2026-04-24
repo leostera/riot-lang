@@ -57,6 +57,7 @@
 51. Keep `Std.Net.Http.Body` as the explicit lazy ownership boundary for HTTP payloads. Request and response helpers may accept owned strings for ergonomics, but parser and transport code should prefer carrying `IoSlice`-backed bodies until a caller explicitly asks for `Body.to_string`.
 52. Keep public `Std` fold surfaces consistent on `~init` for the initial accumulator. Collection and string folds in `Std` should use `~init`; reserve kernel-only `~acc` labels for the lower-level kernel boundary.
 53. Keep `Std.Collections.Proplist` duplicate-friendly and order-preserving. `get` returns the first binding, `get_all` preserves binding order, `add` prepends without deduping, and `set` canonicalizes one key while preserving the position of its first binding.
+54. Keep actor-safe FIFO queues under `Std.Collections.Queue.{MPSC,SPMC,MPMC}`. Use `Kernel.Sync` internally for these ownership-specific concurrent queues, keep FIFO semantics explicit, and avoid spawning ad hoc mailbox-like queue implementations elsewhere in `std` when one of those ownership models fits.
 
 ## Validate
 

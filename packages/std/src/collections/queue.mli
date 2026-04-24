@@ -1,34 +1,58 @@
-type 'value t
-val create: unit -> 'value t
+include module type of Queue_core
 
-val with_capacity: size:int -> 'value t
+module MPSC: sig
+  type 'value t
+  val create: unit -> 'value t
 
-val from_list: 'value list -> 'value t
+  val with_capacity: size:int -> 'value t
 
-val push: 'value t -> value:'value -> unit
+  val from_list: 'value list -> 'value t
 
-val pop: 'value t -> 'value option
+  val push: 'value t -> value:'value -> unit
 
-val front: 'value t -> 'value option
+  val pop: 'value t -> 'value option
 
-val length: 'value t -> int
+  val length: 'value t -> int
 
-val is_empty: 'value t -> bool
+  val is_empty: 'value t -> bool
 
-val clear: 'value t -> unit
+  val clear: 'value t -> unit
+end
 
-val for_each: 'value t -> fn:('value -> unit) -> unit
+module SPMC: sig
+  type 'value t
+  val create: unit -> 'value t
 
-val fold_left: 'value t -> init:'acc -> fn:('acc -> 'value -> 'acc) -> 'acc
+  val with_capacity: size:int -> 'value t
 
-val to_list: 'value t -> 'value list
+  val from_list: 'value list -> 'value t
 
-val contains: 'value t -> value:'value -> bool
+  val push: 'value t -> value:'value -> unit
 
-val append: 'value t -> 'value t -> unit
+  val pop: 'value t -> 'value option
 
-val transfer: src:'value t -> dst:'value t -> unit
+  val length: 'value t -> int
 
-val iter: 'value t -> 'value Iter.Iterator.t
+  val is_empty: 'value t -> bool
 
-val mut_iter: 'value t -> 'value Iter.MutIterator.t
+  val clear: 'value t -> unit
+end
+
+module MPMC: sig
+  type 'value t
+  val create: unit -> 'value t
+
+  val with_capacity: size:int -> 'value t
+
+  val from_list: 'value list -> 'value t
+
+  val push: 'value t -> value:'value -> unit
+
+  val pop: 'value t -> 'value option
+
+  val length: 'value t -> int
+
+  val is_empty: 'value t -> bool
+
+  val clear: 'value t -> unit
+end
