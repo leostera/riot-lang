@@ -45,9 +45,9 @@ let cancel = fun t -> t.status <- `cancelled
 let should_fire = fun t ~now ->
   let due =
     match Int64.compare now t.expires_at with
-    | 0
-    | 1 -> true
-    | _ -> false
+    | Order.EQ
+    | Order.GT -> true
+    | Order.LT -> false
   in
   if due then
     match is_cancelled t with

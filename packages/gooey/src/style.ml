@@ -186,7 +186,12 @@ let align_right = fun t -> { t with alignment = { t.alignment with x = Right } }
 
 let grow_weight = fun weight t ->
   let weight =
-    if Float.compare weight 0.0 < 0 then
+    if (
+        match Float.compare weight 0.0 with
+        | Order.LT -> true
+        | Order.EQ
+        | Order.GT -> false
+      ) then
       0.0
     else
       weight

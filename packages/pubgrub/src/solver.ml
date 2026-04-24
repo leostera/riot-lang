@@ -16,11 +16,7 @@ type package = string
 
 type version = Version.t
 
-let version_compare = fun a b ->
-  match Version.compare a b with
-  | Lt -> (-1)
-  | Eq -> 0
-  | Gt -> 1
+let version_compare = Version.compare
 
 let equal_ranges = fun left right ->
   Ranges.subset_of ~compare_v:version_compare left right
@@ -29,7 +25,7 @@ let equal_ranges = fun left right ->
 let equal_constraint = fun left right ->
   match (left, right) with
   | `Undecided, `Undecided -> true
-  | `Decided left, `Decided right -> version_compare left right = 0
+  | `Decided left, `Decided right -> version_compare left right = Order.EQ
   | `Constrained left, `Constrained right -> equal_ranges left right
   | _ -> false
 
@@ -229,7 +225,7 @@ let normalize_packages = fun packages ->
 
 let compare_dependency = fun (left_pkg, left_ranges) (right_pkg, right_ranges) ->
   let pkg_compare = String.compare left_pkg right_pkg in
-  if pkg_compare != 0 then
+  if pkg_compare != Order.EQ then
     pkg_compare
   else
     String.compare

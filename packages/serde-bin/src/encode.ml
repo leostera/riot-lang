@@ -28,15 +28,9 @@ let raise_length_out_of_range = fun kind value ->
   raise
     (Serde.Encode_error (`Msg ("serde-bin " ^ kind ^ " length is out of range: " ^ Int.to_string value)))
 
-let int_is_nonzero = fun value -> not (Int.equal value 0)
+let int_lt = fun left right -> left < right
 
-let int_lt = fun left right ->
-  let ordering = Int.compare left right in
-  int_is_nonzero ordering && Int.equal (Int.min ordering 0) ordering
-
-let int_gt = fun left right ->
-  let ordering = Int.compare left right in
-  int_is_nonzero ordering && Int.equal (Int.max ordering 0) ordering
+let int_gt = fun left right -> left > right
 
 let int_le = fun left right -> not (int_gt left right)
 
@@ -45,7 +39,7 @@ let flush_output = fun state ->
   | Buffer_target
   | Bytes_target _ -> ()
   | Writer_target writer ->
-      if int_is_nonzero (IO.Buffer.length state.output) then
+      if not (Int.equal (IO.Buffer.length state.output) 0) then
         match IO.write_all writer ~from:state.output with
         | Ok () -> IO.Buffer.clear state.output
         | Error err -> raise_io_error err
@@ -56,7 +50,7 @@ let maybe_flush_output = fun state ->
   | _ -> ()
 
 let write_subbytes = fun state source ~off ~len ->
-  if int_is_nonzero len then
+  if not (Int.equal len 0) then
     match state.target with
     | Buffer_target
     | Writer_target _ ->
@@ -82,7 +76,7 @@ let write_char = fun state value ->
 
 let write_string = fun state value ->
   let len = String.length value in
-  if int_is_nonzero len then
+  if not (Int.equal len 0) then
     match state.target with
     | Buffer_target
     | Writer_target _ ->
@@ -147,7 +141,12 @@ let encode_u32 = fun kind value ->
     raise_length_out_of_range kind value
   else
     let value64 = Int64.of_int value in
-    if Int64.compare value64 0xffff_ffffL > 0 then
+    if (
+        match Int64.compare value64 0xffff_ffffL with
+        | Order.GT -> true
+        | Order.LT
+        | Order.EQ -> false
+      ) then
       raise_length_out_of_range kind value
     else
       Int64.to_int value64

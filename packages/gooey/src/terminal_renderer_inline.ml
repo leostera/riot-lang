@@ -301,14 +301,17 @@ let render_to_string = fun commands ->
         |> List.sort
           ~compare:(fun left right ->
             let by_row = Int.compare left.row right.row in
-            if by_row != 0 then
-              by_row
-            else
-              let by_col = Int.compare left.col right.col in
-              if by_col != 0 then
-                by_col
-              else
-                Int.compare left.command_order right.command_order)
+            match by_row with
+            | Order.LT
+            | Order.GT -> by_row
+            | Order.EQ ->
+                let by_col = Int.compare left.col right.col in
+                (
+                  match by_col with
+                  | Order.LT
+                  | Order.GT -> by_col
+                  | Order.EQ -> Int.compare left.command_order right.command_order
+                ))
       in
       let render_grid_segment buffer row from_col to_col =
         for col = from_col to to_col - 1 do

@@ -103,4 +103,8 @@ let compare = fun m1 m2 ->
   | Extension s1, Extension s2 -> String.compare s1 s2
   | _ -> Int.compare (method_priority m1) (method_priority m2)
 
-let equal = fun m1 m2 -> compare m1 m2 = 0
+let equal = fun m1 m2 ->
+  match compare m1 m2 with
+  | Order.EQ -> true
+  | Order.LT
+  | Order.GT -> false

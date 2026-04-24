@@ -268,7 +268,7 @@ val is_server_error: t -> bool
 
     ```ocaml Status.compare Status.Ok Status.NotFound (* < 0, since 200 < 404 *)
     ``` *)
-val compare: t -> t -> int
+val compare: t -> t -> Order.t
 
 (** Checks if two status codes are equal.
 

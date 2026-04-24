@@ -36,7 +36,7 @@ val ends_with: suffix:t -> t -> bool
 
 val equal: t -> t -> bool
 
-val compare: t -> t -> int
+val compare: t -> t -> Order.t
 
 val index_of: t -> char:char -> int option
 

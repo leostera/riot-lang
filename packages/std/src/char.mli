@@ -1,7 +1,7 @@
 type t = char
 val equal: t -> t -> bool
 
-val compare: t -> t -> int
+val compare: t -> t -> Order.t
 
 (** Use `of_int value` to build a byte-sized character only when `value` is in the inclusive
     range `0` to `255`. *)

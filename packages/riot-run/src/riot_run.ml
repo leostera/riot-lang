@@ -86,7 +86,7 @@ let list_binaries = fun (workspace: Riot_model.Workspace.t) ?package_filter () -
           })) |> List.sort
     ~compare:(fun left right ->
       match Riot_model.Package_name.compare left.package_name right.package_name with
-      | 0 -> String.compare left.binary_name right.binary_name
+      | Order.EQ -> String.compare left.binary_name right.binary_name
       | diff -> diff)
 
 let resolve_binary = fun ~(workspace:Riot_model.Workspace.t) ~package_name ~binary_name ->

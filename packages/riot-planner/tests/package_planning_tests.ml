@@ -630,7 +630,7 @@ let test_kernel_input_hash_is_not_empty_digest = fun _ctx ->
             ~toolchain:test_toolchain
             () in
           let empty_hash = Crypto.Sha256.hash_string "" in
-          if Std.Crypto.Hash.compare hash empty_hash = 0 then
+          if Std.Crypto.Hash.compare hash empty_hash = Std.Order.EQ then
             Error ("expected kernel input hash to differ from empty digest, got "
             ^ Std.Crypto.Digest.hex hash)
           else
@@ -1255,7 +1255,7 @@ let test_cached_artifact_and_exports_short_circuit_without_plan_bundle = fun _ct
             exports=cached_exports;
             _
           }) ->
-              if not (Std.Crypto.Hash.compare hash input_hash = 0) then
+              if Std.Crypto.Hash.compare hash input_hash != Std.Order.EQ then
                 Error "expected cached plan hash to match input hash"
               else if not (List.length cached_artifact.Riot_store.Artifact.files = 1) then
                 Error "expected cached artifact to expose one file"

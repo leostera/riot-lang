@@ -339,7 +339,7 @@ val equal: t -> t -> bool
 (** Orders two paths using their normalized representation.
 
     This keeps ordering consistent with semantic path equality. *)
-val compare: t -> t -> int
+val compare: t -> t -> Order.t
 
 (** Removes a prefix from a path if it matches.
 

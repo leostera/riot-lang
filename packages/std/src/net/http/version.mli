@@ -69,7 +69,7 @@ val to_string: t -> string
 
     ```ocaml Version.compare Version.Http10 Version.Http11 (* < 0 *)
     Version.compare Version.Http2 Version.Http11 (* > 0 *) ``` *)
-val compare: t -> t -> int
+val compare: t -> t -> Order.t
 
 (** Checks if two HTTP versions are equal.
 

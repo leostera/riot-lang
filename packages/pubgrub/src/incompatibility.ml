@@ -54,11 +54,7 @@ let get_term = fun incompat pkg ->
   let all_terms = terms incompat in
   List.find all_terms ~fn:(fun term -> Term.package term = pkg)
 
-let version_compare = fun a b ->
-  match Version.compare a b with
-  | Lt -> (-1)
-  | Eq -> 0
-  | Gt -> 1
+let version_compare = Version.compare
 
 let is_terminal = fun incompat root_pkg root_ver ->
   match incompat with

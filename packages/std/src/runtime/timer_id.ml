@@ -19,5 +19,5 @@ let make (): t =
 let equal: t -> t -> bool = fun a b ->
   Int64.equal a b
 
-let compare: t -> t -> int = fun a b ->
+let compare: t -> t -> Order.t = fun a b ->
   Int64.compare a b

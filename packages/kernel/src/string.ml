@@ -141,7 +141,7 @@ let ends_with = fun ~suffix value ->
 
 let equal = Caml_runtime.equal
 
-let compare = Caml_runtime.compare
+let compare = Order.compare
 
 let index_of = fun value ~char:needle ->
   let rec loop index =

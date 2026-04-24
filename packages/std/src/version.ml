@@ -13,11 +13,6 @@ type t = {
   build: string option;
 }
 
-type comparison =
-  Lt
-  | Eq
-  | Gt
-
 type requirement_op =
   | ReqEq
   | ReqNeq
@@ -186,68 +181,68 @@ let compare_pre_release_segment = fun s1 s2 ->
   match (s1, s2) with
   | Numeric n1, Numeric n2 ->
       if n1 < n2 then
-        Lt
+        Order.LT
       else if n1 > n2 then
-        Gt
+        Order.GT
       else
-        Eq
-  | Numeric _, Alphanumeric _ -> Lt
-  | Alphanumeric _, Numeric _ -> Gt
+        Order.EQ
+  | Numeric _, Alphanumeric _ -> Order.LT
+  | Alphanumeric _, Numeric _ -> Order.GT
   | Alphanumeric a1, Alphanumeric a2 ->
       if a1 < a2 then
-        Lt
+        Order.LT
       else if a1 > a2 then
-        Gt
+        Order.GT
       else
-        Eq
+        Order.EQ
 
 let rec compare_pre_release_lists = fun l1 l2 ->
   match (l1, l2) with
   | [], [] ->
-      Eq
+      Order.EQ
   | [], _ :: _ ->
-      Lt
+      Order.LT
   | _ :: _, [] ->
-      Gt
+      Order.GT
   | h1 :: t1, h2 :: t2 -> (
       match compare_pre_release_segment h1 h2 with
-      | Eq -> compare_pre_release_lists t1 t2
+      | Order.EQ -> compare_pre_release_lists t1 t2
       | other -> other
     )
 
 let compare = fun v1 v2 ->
   if v1.major < v2.major then
-    Lt
+    Order.LT
   else if v1.major > v2.major then
-    Gt
+    Order.GT
   else if v1.minor < v2.minor then
-    Lt
+    Order.LT
   else if v1.minor > v2.minor then
-    Gt
+    Order.GT
   else if v1.patch < v2.patch then
-    Lt
+    Order.LT
   else if v1.patch > v2.patch then
-    Gt
+    Order.GT
   else
     match (v1.pre, v2.pre) with
-    | [], [] -> Eq
-    | [], _ :: _ -> Gt
-    | _ :: _, [] -> Lt
+    | [], [] -> Order.EQ
+    | [], _ :: _ -> Order.GT
+    | _ :: _, [] -> Order.LT
     | pre1, pre2 -> compare_pre_release_lists pre1 pre2
 
-let equal = fun v1 v2 -> compare v1 v2 = Eq
+let equal = fun v1 v2 -> compare v1 v2 = Order.EQ
 
-let lt = fun v1 v2 -> compare v1 v2 = Lt
+let lt = fun v1 v2 -> compare v1 v2 = Order.LT
 
 let lte = fun v1 v2 ->
   let c = compare v1 v2 in
-  c = Lt || c = Eq
+  c = Order.LT || c = Order.EQ
 
-let gt = fun v1 v2 -> compare v1 v2 = Gt
+let gt = fun v1 v2 -> compare v1 v2 = Order.GT
 
 let gte = fun v1 v2 ->
   let c = compare v1 v2 in
-  c = Gt || c = Eq
+  c = Order.GT || c = Order.EQ
 
 (* Requirements *)
 
@@ -341,17 +336,17 @@ let matches = fun requirement test_version ->
       let cmp = compare test_version req_version in
       match op with
       | ReqEq ->
-          cmp = Eq
+          cmp = Order.EQ
       | ReqNeq ->
-          cmp != Eq
+          cmp != Order.EQ
       | ReqGt ->
-          cmp = Gt
+          cmp = Order.GT
       | ReqGte ->
-          cmp = Gt || cmp = Eq
+          cmp = Order.GT || cmp = Order.EQ
       | ReqLt ->
-          cmp = Lt
+          cmp = Order.LT
       | ReqLte ->
-          cmp = Lt || cmp = Eq
+          cmp = Order.LT || cmp = Order.EQ
       | ReqTilde ->
           let at_least = gte test_version req_version in
           let below_next =

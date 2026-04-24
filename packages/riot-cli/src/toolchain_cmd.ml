@@ -93,13 +93,13 @@ let sort_available_toolchain_rows = fun rows ->
   List.sort rows
     ~compare:(fun left right ->
       let by_version = String.compare right.version left.version in
-      if not (Int.equal by_version 0) then
+      if by_version != Order.EQ then
         by_version
       else
         let by_host = String.compare
           (Riot_model.Target.to_string left.host)
           (Riot_model.Target.to_string right.host) in
-        if not (Int.equal by_host 0) then
+        if by_host != Order.EQ then
           by_host
         else
           String.compare

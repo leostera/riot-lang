@@ -31,20 +31,16 @@ type offline = {
 
 let create_offline = fun () -> { packages = Collections.HashMap.create () }
 
-let version_compare = fun a b ->
-  match Version.compare a b with
-  | Lt -> (-1)
-  | Eq -> 0
-  | Gt -> 1
+let version_compare = Version.compare
 
 let rec insert_version_desc = fun versions ver ->
   match versions with
   | [] -> [ ver ]
   | current :: rest -> (
       match version_compare ver current with
-      | 0 -> versions
-      | n when n > 0 -> ver :: versions
-      | _ -> current :: insert_version_desc rest ver
+      | Order.EQ -> versions
+      | Order.GT -> ver :: versions
+      | Order.LT -> current :: insert_version_desc rest ver
     )
 
 let create_offline_package = fun ver deps ->

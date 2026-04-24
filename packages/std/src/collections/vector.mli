@@ -45,7 +45,7 @@ val split_off: 'value t -> at:int -> 'value t
 
 val sort: 'value t -> unit
 
-val sort_by: 'value t -> compare:('value -> 'value -> int) -> unit
+val sort_by: 'value t -> compare:('value -> 'value -> Order.t) -> unit
 
 val reverse: 'value t -> unit
 

@@ -23,7 +23,7 @@ val version_of_string: string -> (version, Version.parse_error) result
 
 val version_to_string: version -> string
 
-val version_compare: version -> version -> int
+val version_compare: version -> version -> Order.t
 
 val make_version: major:int -> minor:int -> patch:int -> version
 

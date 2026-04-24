@@ -17,4 +17,4 @@ val succ: t -> t
 val equal: t -> t -> bool
 
 (** Compare two scheduler identifiers. *)
-val compare: t -> t -> int
+val compare: t -> t -> Order.t

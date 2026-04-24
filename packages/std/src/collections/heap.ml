@@ -10,7 +10,7 @@ let box = fun value -> { value }
 type 'a t = {
   mutable data: 'a array;
   mutable size: int;
-  compare: 'a -> 'a -> int;
+  compare: 'a -> 'a -> Order.t;
 }
 
 let create_with = fun ~compare () -> { data = [||]; size = 0; compare }
@@ -54,32 +54,35 @@ let swap = fun heap i j ->
 let rec sift_up = fun heap i ->
   if i > 0 then
     let p = parent i in
-    if heap.compare (Array.get_unchecked heap.data ~at:i) (Array.get_unchecked heap.data ~at:p) < 0 then
-      (
+    match heap.compare (Array.get_unchecked heap.data ~at:i) (Array.get_unchecked heap.data ~at:p) with
+    | Order.LT ->
         swap heap i p;
         sift_up heap p
-      )
+    | Order.EQ
+    | Order.GT -> ()
 
 let rec sift_down = fun heap i ->
   let l = left i in
   let r = right i in
   let smallest = box i in
-  if
-    l < heap.size
-    && heap.compare
-      (Array.get_unchecked heap.data ~at:l)
-      (Array.get_unchecked heap.data ~at:smallest.value)
-    < 0
-  then
-    smallest.value <- l;
-  if
-    r < heap.size
-    && heap.compare
-      (Array.get_unchecked heap.data ~at:r)
-      (Array.get_unchecked heap.data ~at:smallest.value)
-    < 0
-  then
-    smallest.value <- r;
+  if l < heap.size then
+    (
+      match heap.compare
+        (Array.get_unchecked heap.data ~at:l)
+        (Array.get_unchecked heap.data ~at:smallest.value) with
+      | Order.LT -> smallest.value <- l
+      | Order.EQ
+      | Order.GT -> ()
+    );
+  if r < heap.size then
+    (
+      match heap.compare
+        (Array.get_unchecked heap.data ~at:r)
+        (Array.get_unchecked heap.data ~at:smallest.value) with
+      | Order.LT -> smallest.value <- r
+      | Order.EQ
+      | Order.GT -> ()
+    );
   let smallest_val = smallest.value in
   if smallest_val != i then
     (

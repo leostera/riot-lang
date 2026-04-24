@@ -15,6 +15,21 @@ type error =
 
 let ( let* ) = fun result fn -> Result.and_then ~fn result
 
+let order_lt = function
+  | Order.LT -> true
+  | Order.EQ
+  | Order.GT -> false
+
+let order_lte = function
+  | Order.LT
+  | Order.EQ -> true
+  | Order.GT -> false
+
+let order_gt = function
+  | Order.GT -> true
+  | Order.LT
+  | Order.EQ -> false
+
 let error_to_string = function
   | Entropy error -> String.concat
     ""
@@ -316,7 +331,7 @@ let int32_aux = fun rng bound ->
     let random = Int32.shift_right_logical (Rng.bits32 rng) 1 in
     let value = Int32.rem random bound in
     let upper = Int32.add (Int32.sub 0x7fff_ffffl bound) 1l in
-    if Int32.compare (Int32.sub random value) upper > 0 then
+    if order_gt (Int32.compare (Int32.sub random value) upper) then
       loop ()
     else
       value
@@ -325,9 +340,9 @@ let int32_aux = fun rng bound ->
 
 let rec int32_range_sample = fun rng min max ->
   let span = Int32.add (Int32.sub max min) 1l in
-  if Int32.compare span 0l <= 0 then
+  if order_lte (Int32.compare span 0l) then
     let candidate = Rng.bits32 rng in
-    if Int32.compare candidate min < 0 || Int32.compare candidate max > 0 then
+    if order_lt (Int32.compare candidate min) || order_gt (Int32.compare candidate max) then
       int32_range_sample rng min max
     else
       candidate
@@ -339,7 +354,7 @@ let int64_aux = fun rng bound ->
     let random = Int64.shift_right_logical (Rng.bits64 rng) 1 in
     let value = Int64.rem random bound in
     let upper = Int64.add (Int64.sub 0x7fff_ffff_ffff_ffffL bound) 1L in
-    if Int64.compare (Int64.sub random value) upper > 0 then
+    if order_gt (Int64.compare (Int64.sub random value) upper) then
       loop ()
     else
       value
@@ -348,9 +363,9 @@ let int64_aux = fun rng bound ->
 
 let rec int64_range_sample = fun rng min max ->
   let span = Int64.add (Int64.sub max min) 1L in
-  if Int64.compare span 0L <= 0 then
+  if order_lte (Int64.compare span 0L) then
     let candidate = Rng.bits64 rng in
-    if Int64.compare candidate min < 0 || Int64.compare candidate max > 0 then
+    if order_lt (Int64.compare candidate min) || order_gt (Int64.compare candidate max) then
       int64_range_sample rng min max
     else
       candidate
@@ -439,25 +454,25 @@ module Distribution = struct
       Ok (int_range_sample rng min max)
 
   let int32 = fun bound rng ->
-    if Int32.compare bound 0l <= 0 then
+    if order_lte (Int32.compare bound 0l) then
       Error (InvalidInt32Bound { bound })
     else
       Ok (int32_aux rng bound)
 
   let int32_range = fun ~min ~max rng ->
-    if Int32.compare min max > 0 then
+    if order_gt (Int32.compare min max) then
       Error (InvalidInt32Range { min; max })
     else
       Ok (int32_range_sample rng min max)
 
   let int64 = fun bound rng ->
-    if Int64.compare bound 0L <= 0 then
+    if order_lte (Int64.compare bound 0L) then
       Error (InvalidInt64Bound { bound })
     else
       Ok (int64_aux rng bound)
 
   let int64_range = fun ~min ~max rng ->
-    if Int64.compare min max > 0 then
+    if order_gt (Int64.compare min max) then
       Error (InvalidInt64Range { min; max })
     else
       Ok (int64_range_sample rng min max)
@@ -474,7 +489,7 @@ module Distribution = struct
     if p < 0.0 || p > 1.0 then
       Error (InvalidProbability { probability = p })
     else
-      Ok (Float.compare (Rng.standard_float rng) p < 0)
+      Ok (order_lt (Float.compare (Rng.standard_float rng) p))
 
   let one_of_array = fun values rng ->
     let length = Array.length values in

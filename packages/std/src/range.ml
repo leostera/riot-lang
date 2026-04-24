@@ -9,7 +9,7 @@ type 'a bound =
 type 'a t = {
   lower: 'a bound;
   upper: 'a bound;
-  compare: 'a -> 'a -> int;
+  compare: 'a -> 'a -> Order.t;
 }
 
 let make = fun ~lower ~upper ~compare -> { lower; upper; compare }
@@ -43,71 +43,71 @@ let compare_values = fun t -> t.compare
 let compare_lower_bounds = fun t left right ->
   match (left, right) with
   | Unbounded, Unbounded ->
-      0
+      Order.EQ
   | Unbounded, _ ->
-      (-1)
+      Order.LT
   | _, Unbounded ->
-      1
+      Order.GT
   | (Included left, Included right)
   | (Excluded left, Excluded right) ->
       t.compare left right
   | Included left, Excluded right ->
       let order = t.compare left right in
-      if Int.equal order 0 then
-        (-1)
+      if order = Order.EQ then
+        Order.LT
       else
         order
   | Excluded left, Included right ->
       let order = t.compare left right in
-      if Int.equal order 0 then
-        1
+      if order = Order.EQ then
+        Order.GT
       else
         order
 
 let compare_upper_bounds = fun t left right ->
   match (left, right) with
   | Unbounded, Unbounded ->
-      0
+      Order.EQ
   | Unbounded, _ ->
-      1
+      Order.GT
   | _, Unbounded ->
-      (-1)
+      Order.LT
   | (Included left, Included right)
   | (Excluded left, Excluded right) ->
       t.compare left right
   | Included left, Excluded right ->
       let order = t.compare left right in
-      if Int.equal order 0 then
-        1
+      if order = Order.EQ then
+        Order.GT
       else
         order
   | Excluded left, Included right ->
       let order = t.compare left right in
-      if Int.equal order 0 then
-        (-1)
+      if order = Order.EQ then
+        Order.LT
       else
         order
 
 let max_lower_bound = fun t left right ->
-  if compare_lower_bounds t left right >= 0 then
+  if compare_lower_bounds t left right != Order.LT then
     left
   else
     right
 
 let min_lower_bound = fun t left right ->
-  if compare_lower_bounds t left right <= 0 then
+  if compare_lower_bounds t left right != Order.GT then
     left
   else
     right
 
 let min_upper_bound = fun t left right ->
-  if compare_upper_bounds t left right <= 0 then
+  if compare_upper_bounds t left right != Order.GT then
     left
   else
     right
 
 let max_upper_bound = fun t left right ->
-  if compare_upper_bounds t left right >= 0 then
+  if compare_upper_bounds t left right != Order.LT then
     left
   else
     right
@@ -116,14 +116,14 @@ let contains = fun t value ->
   let above_lower =
     match t.lower with
     | Unbounded -> true
-    | Included lower -> t.compare value lower >= 0
-    | Excluded lower -> t.compare value lower > 0
+    | Included lower -> t.compare value lower != Order.LT
+    | Excluded lower -> t.compare value lower = Order.GT
   in
   let below_upper =
     match t.upper with
     | Unbounded -> true
-    | Included upper -> t.compare value upper <= 0
-    | Excluded upper -> t.compare value upper < 0
+    | Included upper -> t.compare value upper != Order.GT
+    | Excluded upper -> t.compare value upper = Order.LT
   in
   above_lower && below_upper
 
@@ -133,14 +133,14 @@ let is_empty = fun t ->
   | (_, Unbounded) ->
       false
   | Included lower, Included upper ->
-      t.compare lower upper > 0
+      t.compare lower upper = Order.GT
   | (Included lower, Excluded upper)
   | (Excluded lower, Included upper)
   | (Excluded lower, Excluded upper) ->
       let order = t.compare lower upper in
-      if order > 0 then
+      if order = Order.GT then
         true
-      else if order < 0 then
+      else if order = Order.LT then
         false
       else
         (

@@ -27,10 +27,10 @@ let shift_right = Caml_runtime.shift_right_int64
 let shift_right_logical = Caml_runtime.shift_right_logical_int64
 
 let abs = fun value ->
-  if Caml_runtime.less_than (Caml_runtime.compare value 0L) 0 then
-    Caml_runtime.int64_neg value
-  else
-    value
+  match Order.compare value 0L with
+  | Order.LT -> Caml_runtime.int64_neg value
+  | Order.EQ
+  | Order.GT -> value
 
 let neg = Caml_runtime.int64_neg
 
@@ -80,4 +80,4 @@ let hash = to_int
 
 let equal = Caml_runtime.equal
 
-let compare = Caml_runtime.compare
+let compare = Order.compare

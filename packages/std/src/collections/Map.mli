@@ -79,7 +79,7 @@ module type S = sig
 
   val equal: left:'value t -> right:'value t -> fn:('value -> 'value -> bool) -> bool
 
-  val compare: left:'value t -> right:'value t -> fn:('value -> 'value -> int) -> int
+  val compare: left:'value t -> right:'value t -> fn:('value -> 'value -> Order.t) -> Order.t
 
   val all: 'value t -> fn:(key -> 'value -> bool) -> bool
 

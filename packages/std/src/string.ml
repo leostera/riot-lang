@@ -357,7 +357,7 @@ module Read = struct
                 ~len:to_read;
               state.offset <- state.offset + to_read;
               progress.total <- progress.total + to_read;
-              if Int.compare to_read segment_length < 0 then
+              if to_read < segment_length then
                 progress.continue_ <- false
               else
                 ()
@@ -373,7 +373,7 @@ let to_reader = fun ?chunk_size value ->
     match chunk_size with
     | None -> max 1 (length value)
     | Some chunk_size ->
-        if Int.compare chunk_size 0 <= 0 then
+        if chunk_size <= 0 then
           raise (Invalid_argument "Std.String.to_reader: chunk_size must be positive");
         chunk_size
   in

@@ -38,19 +38,24 @@ module Math = struct
     | None -> None
 
   let float_max = fun left right ->
-    if Float.compare left right >= 0 then
-      left
-    else
-      right
+    match Float.compare left right with
+    | Order.LT -> right
+    | Order.EQ
+    | Order.GT -> left
 
   let float_min = fun left right ->
-    if Float.compare left right <= 0 then
-      left
-    else
-      right
+    match Float.compare left right with
+    | Order.LT
+    | Order.EQ -> left
+    | Order.GT -> right
 
   let clamp_non_negative = fun value ->
-    if Float.compare value 0.0 < 0 then
+    if (
+        match Float.compare value 0.0 with
+        | Order.LT -> true
+        | Order.EQ
+        | Order.GT -> false
+      ) then
       0.0
     else
       value
@@ -415,7 +420,12 @@ and measure_children_for_final_size:
     ~fn:(fun child ->
       if is_main_axis_grow direction child.style then
         let share =
-          if Float.compare total_weight 0.0 > 0 then
+          if (
+              match Float.compare total_weight 0.0 with
+              | Order.GT -> true
+              | Order.LT
+              | Order.EQ -> false
+            ) then
             remaining *. (child.style.grow_weight /. total_weight)
           else
             0.0
@@ -543,17 +553,27 @@ and arrange_children: layout_node -> unit = fun node ->
       ) +. Float.of_int style.child_gap)
 
 let rect_equal = fun (left: Geometry.Rect.t) (right: Geometry.Rect.t) ->
-  Float.compare left.x right.x = 0
-  && Float.compare left.y right.y = 0
-  && Float.compare left.width right.width = 0
-  && Float.compare left.height right.height = 0
+  Float.compare left.x right.x = Order.EQ
+  && Float.compare left.y right.y = Order.EQ
+  && Float.compare left.width right.width = Order.EQ
+  && Float.compare left.height right.height = Order.EQ
 
 let push_annotated = fun commands ~clip_stack command ->
   Vector.push commands ~value:{ command; clip_stack }
 
 let clip_rect = fun (node: layout_node) ->
   let rect = Box_model.content_box node.final_box node.style in
-  if Float.compare rect.width 0.0 > 0 && Float.compare rect.height 0.0 > 0 then
+  if (
+      match Float.compare rect.width 0.0 with
+      | Order.GT -> true
+      | Order.LT
+      | Order.EQ -> false
+    ) && (
+      match Float.compare rect.height 0.0 with
+      | Order.GT -> true
+      | Order.LT
+      | Order.EQ -> false
+    ) then
     Some rect
   else
     None
@@ -565,8 +585,17 @@ let child_clip_stack = fun (node: layout_node) clip_stack ->
 
 let push_background = fun node commands ~clip_stack ->
   match node.style.background with
-  | Some color when Float.compare node.final_box.width 0.0 > 0
-  && Float.compare node.final_box.height 0.0 > 0 -> push_annotated
+  | Some color when (
+    match Float.compare node.final_box.width 0.0 with
+    | Order.GT -> true
+    | Order.LT
+    | Order.EQ -> false
+  ) && (
+    match Float.compare node.final_box.height 0.0 with
+    | Order.GT -> true
+    | Order.LT
+    | Order.EQ -> false
+  ) -> push_annotated
     commands
     ~clip_stack
     {
@@ -597,7 +626,17 @@ let push_border = fun node commands ~clip_stack ->
 let push_text = fun node commands ~clip_stack content ->
   let style = node.style in
   let text_rect = Box_model.content_box node.final_box style in
-  if Float.compare text_rect.width 0.0 <= 0 || Float.compare text_rect.height 0.0 <= 0 then
+  if (
+      match Float.compare text_rect.width 0.0 with
+      | Order.LT
+      | Order.EQ -> true
+      | Order.GT -> false
+    ) || (
+      match Float.compare text_rect.height 0.0 with
+      | Order.LT
+      | Order.EQ -> true
+      | Order.GT -> false
+    ) then
     ()
   else
     let measurement =
@@ -743,7 +782,7 @@ let compute = fun ~config element ->
   index_commands command_list |> List.sort
     ~compare:(fun (left_index, left) (right_index, right) ->
       let by_z = Int.compare left.command.Render.z_index right.command.Render.z_index in
-      if by_z != 0 then
-        by_z
-      else
-        Int.compare left_index right_index) |> linearize_commands
+      match by_z with
+      | Order.LT
+      | Order.GT -> by_z
+      | Order.EQ -> Int.compare left_index right_index) |> linearize_commands

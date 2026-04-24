@@ -29,10 +29,17 @@ let int_of_int64 = fun value ->
   | _ -> error "decoded YAML integer does not fit in OCaml int"
 
 let int32_of_int64 = fun value ->
-  if
-    Int64.compare value (Int64.of_int32 Int32.min_int) < 0
-    || Int64.compare value (Int64.of_int32 Int32.max_int) > 0
-  then
+  if (
+      match Int64.compare value (Int64.of_int32 Int32.min_int) with
+      | Order.LT -> true
+      | Order.EQ
+      | Order.GT -> false
+    ) || (
+      match Int64.compare value (Int64.of_int32 Int32.max_int) with
+      | Order.GT -> true
+      | Order.LT
+      | Order.EQ -> false
+    ) then
     error "decoded YAML integer does not fit in int32"
   else
     Int64.to_int32 value

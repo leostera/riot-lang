@@ -385,7 +385,7 @@ val max: t -> t -> t
 
     ```ocaml Duration.compare (Duration.from_secs 5) (Duration.from_secs 10) (*
     < 0 *) ``` *)
-val compare: t -> t -> int
+val compare: t -> t -> Order.t
 
 (** Tests equality of two durations.
 

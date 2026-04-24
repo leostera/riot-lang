@@ -1011,8 +1011,9 @@ std = "not-a-version"
       in
       let workspace_manager = Riot_model.Workspace_manager.create () in
       match Riot_model.Workspace_manager.scan workspace_manager root with
-      | Error (Riot_model.Workspace_manager.WorkspaceManifestDecodeFailed { path; _ })
-        when Path.equal path manifest_path -> Ok ()
+      | Error (Riot_model.Workspace_manager.WorkspaceManifestDecodeFailed { path; _ }) when Path.equal
+        path
+        manifest_path -> Ok ()
       | Error err -> Error ("expected typed workspace manifest decode error, got "
       ^ Riot_model.Workspace_manager.scan_error_message err)
       | Ok _ -> Error "expected invalid workspace manifest to fail scan")

@@ -19,7 +19,7 @@ let test_add_sub_mul_div_rem = fun _ctx ->
     Error "expected Int arithmetic wrappers to match runtime arithmetic"
 
 let test_equal_and_compare = fun _ctx ->
-  if Int.equal 7 7 && Int.compare 3 5 < 0 && Int.compare 5 3 > 0 then
+  if Int.equal 7 7 && Int.compare 3 5 = Order.LT && Int.compare 5 3 = Order.GT then
     Ok ()
   else
     Error "expected Int.equal and Int.compare to behave consistently"

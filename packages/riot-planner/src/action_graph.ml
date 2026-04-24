@@ -104,14 +104,14 @@ let profile_compile_flags = fun (profile: Profile.t) ->
     let rec compare_flag_parts left right =
       match (left, right) with
       | ([], []) ->
-          0
+          Order.EQ
       | ([], _) ->
-          (-1)
+          Order.LT
       | (_, []) ->
-          1
+          Order.GT
       | (left :: left_rest, right :: right_rest) ->
           let compared = String.compare left right in
-          if compared = 0 then
+          if compared = Order.EQ then
             compare_flag_parts left_rest right_rest
           else
             compared
@@ -905,10 +905,9 @@ let to_json = fun t ->
   let open Data.Json in
     let all_nodes = nodes t in
     let sorted_nodes =
-      List.sort
-        all_nodes
+      List.sort all_nodes
         ~compare:(fun (a: Action_node.t) (b: Action_node.t) ->
-          G.Node_id.to_int a.id - G.Node_id.to_int b.id)
+          Int.compare (G.Node_id.to_int a.id) (G.Node_id.to_int b.id))
     in
     obj [ ("nodes", array (List.map sorted_nodes ~fn:Action_node.to_json)) ]
 

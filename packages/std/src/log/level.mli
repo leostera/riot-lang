@@ -13,4 +13,4 @@ val to_int: t -> int
 val to_string: t -> string
 
 (** Compare two levels *)
-val compare: t -> t -> int
+val compare: t -> t -> Order.t

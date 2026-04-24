@@ -199,7 +199,7 @@ let test_max_returns_the_larger_duration = fun _ctx ->
 let test_compare_and_equal_are_consistent = fun _ctx ->
   let left = Duration.from_millis 500 in
   let right = Duration.from_micros 500_000 in
-  if Duration.equal left right && Int.equal (Duration.compare left right) 0 then
+  if Duration.equal left right && Duration.compare left right = Order.EQ then
     Ok ()
   else
     Error "Duration.compare and Duration.equal should agree on equivalent values"

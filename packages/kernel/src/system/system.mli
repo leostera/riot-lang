@@ -1,10 +1,7 @@
 (** Platform identity and executable metadata for the current host. *)
 module Host: sig
   type error =
-    | InvalidTripletFormat of {
-        value: string;
-      }
-
+    | InvalidTripletFormat of { value: string }
   type t = {
     architecture: string;
     vendor: string;

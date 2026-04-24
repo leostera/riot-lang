@@ -388,11 +388,11 @@ type cv_band =
   | Bad
 
 let classify_cv = fun value ->
-  if Float.compare value 0.02 < 0 then
+  if Float.compare value 0.02 = Order.LT then
     Great
-  else if Float.compare value 0.05 <= 0 then
+  else if Float.compare value 0.05 != Order.GT then
     Good
-  else if Float.compare value 0.10 <= 0 then
+  else if Float.compare value 0.10 != Order.GT then
     Meh
   else
     Bad
@@ -434,7 +434,7 @@ let noise_margin_percent = fun ~current_cv ~baseline_cv ->
   | values ->
       List.fold_left values ~init:0.0
         ~fn:(fun acc value ->
-          if Float.compare value acc > 0 then
+          if Float.compare value acc = Order.GT then
             value
           else
             acc)
@@ -444,7 +444,7 @@ let render_delta_text = fun delta_value ->
   | None -> "n/a"
   | Some value ->
       let sign =
-        if Float.compare value 0.0 > 0 then
+        if Float.compare value 0.0 = Order.GT then
           "+"
         else
           ""
@@ -455,9 +455,9 @@ let style_delta_cell = fun delta_value ~noise_margin_percent text ->
   match delta_value with
   | None -> text
   | Some value ->
-      if Float.compare (Float.abs value) noise_margin_percent <= 0 then
+      if Float.compare (Float.abs value) noise_margin_percent != Order.GT then
         styled "#E5C07B" text
-      else if Float.compare value 0.0 < 0 then
+      else if Float.compare value 0.0 = Order.LT then
         styled "#98C379" text
       else
         styled "#E06C75" text
@@ -483,7 +483,7 @@ let float_delta = fun current previous -> Some (current -. previous)
 
 let render_signed_float = fun value ->
   let sign =
-    if Float.compare value 0.0 > 0 then
+    if Float.compare value 0.0 = Order.GT then
       "+"
     else
       ""
@@ -493,7 +493,7 @@ let render_signed_float = fun value ->
 let style_signed_float_delta = fun value text ->
   if Float.equal value 0.0 then
     styled "#E5C07B" text
-  else if Float.compare value 0.0 < 0 then
+  else if Float.compare value 0.0 = Order.LT then
     styled "#98C379" text
   else
     styled "#E06C75" text
@@ -581,7 +581,7 @@ let print_history_table = fun ~current_partial ~baseline ~current_cv ~baseline_c
     | Some current_cv, Some baseline_cv when not (Float.equal baseline_cv 0.0) ->
         let change = ((current_cv -. baseline_cv) /. baseline_cv) *. 100.0 in
         let sign =
-          if Float.compare change 0.0 > 0 then
+          if Float.compare change 0.0 = Order.GT then
             "+"
           else
             ""

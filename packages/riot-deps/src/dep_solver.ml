@@ -902,11 +902,7 @@ let pubgrub_root_package = "__riot_lock_root__"
 
 let pubgrub_root_version = Std.Version.make ~major:0 ~minor:0 ~patch:0 ()
 
-let pubgrub_version_compare = fun left right ->
-  match Std.Version.compare left right with
-  | Lt -> (-1)
-  | Eq -> 0
-  | Gt -> 1
+let pubgrub_version_compare = Std.Version.compare
 
 type local_entry = {
   package: Riot_model.Package_manifest.t;

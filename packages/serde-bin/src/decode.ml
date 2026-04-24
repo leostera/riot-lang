@@ -36,9 +36,9 @@ let unexpected_end = fun state expected ->
   error_at (position state.input) ("unexpected end of input while decoding " ^ expected)
 
 let compact = fun state ->
-  if Int.compare state.pos 0 > 0 then
+  if state.pos > 0 then
     let unread = state.limit - state.pos in
-    if Int.compare unread 0 > 0 then
+    if unread > 0 then
       IO.Bytes.blit_unchecked state.buf ~src_offset:state.pos ~dst:state.buf ~dst_offset:0 ~len:unread;
     state.base <- state.base + state.pos;
     state.limit <- unread;
@@ -73,12 +73,12 @@ let refill = fun state ->
 
 let peek_byte = function
   | String_input state ->
-      if Int.compare state.pos (String.length state.input) < 0 then
+      if state.pos < String.length state.input then
         Some (String.unsafe_get state.input state.pos)
       else
         None
   | Reader_input state ->
-      if Int.compare state.pos state.limit < 0 then
+      if state.pos < state.limit then
         Some (String.unsafe_get state.view state.pos)
       else if refill state then
         Some (String.unsafe_get state.view state.pos)
@@ -99,7 +99,7 @@ let read_byte = fun state expected ->
 let read_exact_into = fun state dst ~off ~len expected ->
   match state.input with
   | String_input input ->
-      if Int.compare (input.pos + len) (String.length input.input) > 0 then
+      if input.pos + len > String.length input.input then
         unexpected_end state expected
       else (
         IO.Bytes.blit_string input.input ~src_offset:input.pos ~dst ~dst_offset:off ~len;
@@ -126,11 +126,11 @@ let read_exact_into = fun state dst ~off ~len expected ->
 
 let read_uint32_le = fun state ->
   match state.input with
-  | String_input input when Int.compare (input.pos + 4) (String.length input.input) <= 0 ->
+  | String_input input when input.pos + 4 <= String.length input.input ->
       let value = Stubs.read_uint32_le_from_string input.input input.pos in
       input.pos <- input.pos + 4;
       value
-  | Reader_input reader when Int.compare (reader.pos + 4) reader.limit <= 0 ->
+  | Reader_input reader when reader.pos + 4 <= reader.limit ->
       let value = Stubs.read_uint32_le_from_bytes reader.buf reader.pos in
       reader.pos <- reader.pos + 4;
       value
@@ -140,11 +140,11 @@ let read_uint32_le = fun state ->
 
 let read_int32_le = fun state ->
   match state.input with
-  | String_input input when Int.compare (input.pos + 4) (String.length input.input) <= 0 ->
+  | String_input input when input.pos + 4 <= String.length input.input ->
       let value = Stubs.read_int32_le_from_string input.input input.pos in
       input.pos <- input.pos + 4;
       value
-  | Reader_input reader when Int.compare (reader.pos + 4) reader.limit <= 0 ->
+  | Reader_input reader when reader.pos + 4 <= reader.limit ->
       let value = Stubs.read_int32_le_from_bytes reader.buf reader.pos in
       reader.pos <- reader.pos + 4;
       value
@@ -154,11 +154,11 @@ let read_int32_le = fun state ->
 
 let read_int64_le = fun state ->
   match state.input with
-  | String_input input when Int.compare (input.pos + 8) (String.length input.input) <= 0 ->
+  | String_input input when input.pos + 8 <= String.length input.input ->
       let value = Stubs.read_int64_le_from_string input.input input.pos in
       input.pos <- input.pos + 8;
       value
-  | Reader_input reader when Int.compare (reader.pos + 8) reader.limit <= 0 ->
+  | Reader_input reader when reader.pos + 8 <= reader.limit ->
       let value = Stubs.read_int64_le_from_bytes reader.buf reader.pos in
       reader.pos <- reader.pos + 8;
       value
@@ -168,20 +168,20 @@ let read_int64_le = fun state ->
 
 let decode_length = fun state kind ->
   let value = read_uint32_le state in
-  if Int.compare value 0 < 0 then
+  if value < 0 then
     error_at (position state.input) ("decoded " ^ kind ^ " length is negative")
   else
     value
 
 let raise_int_out_of_range = fun pos -> error_at pos "decoded int does not fit in an OCaml int"
 
-let variant_uses_u8 = fun cases -> Int.compare (Array.length cases) 0x100 <= 0
+let variant_uses_u8 = fun cases -> Array.length cases <= 0x100
 
 let read_string = fun state ->
   let len = decode_length state "string" in
   match state.input with
   | String_input input ->
-      if Int.compare (input.pos + len) (String.length input.input) > 0 then
+      if input.pos + len > String.length input.input then
         unexpected_end state "string"
       else
         let value = String.sub input.input ~offset:input.pos ~len in
@@ -189,7 +189,7 @@ let read_string = fun state ->
         value
   | Reader_input reader ->
       let available = reader.limit - reader.pos in
-      if Int.compare len available <= 0 then
+      if len <= available then
         let value = String.sub reader.view ~offset:reader.pos ~len in
         reader.pos <- reader.pos + len;
         value
@@ -216,7 +216,7 @@ let read_string = fun state ->
 
 let read_int = fun state ->
   match state.input with
-  | String_input input when Int.compare (input.pos + 8) (String.length input.input) <= 0 ->
+  | String_input input when input.pos + 8 <= String.length input.input ->
       let pos = input.pos in
       let value =
         try Stubs.read_int_le_from_string input.input pos with
@@ -224,7 +224,7 @@ let read_int = fun state ->
       in
       input.pos <- pos + 8;
       value
-  | Reader_input reader when Int.compare (reader.pos + 8) reader.limit <= 0 ->
+  | Reader_input reader when reader.pos + 8 <= reader.limit ->
       let pos = reader.pos in
       let value =
         try Stubs.read_int_le_from_bytes reader.buf pos with
@@ -289,7 +289,7 @@ and variant_backend: 'value. state -> 'value De.compiled_variant_cases -> 'value
     else
       decode_length state "variant"
   in
-  if Int.compare index 0 < 0 || Int.compare index (Array.length cases) >= 0 then
+  if index < 0 || index >= Array.length cases then
     raise (Serde.Decode_error `invalid_tag)
   else
     match Array.get_unchecked cases ~at:index with

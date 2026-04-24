@@ -9,6 +9,6 @@ val surface_path: t -> Surface_path.t
 
 val equal: t -> t -> bool
 
-val compare: t -> t -> int
+val compare: t -> t -> Std.Order.t
 
 val serializer: t Serde.Ser.t

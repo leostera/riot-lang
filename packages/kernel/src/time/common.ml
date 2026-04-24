@@ -10,10 +10,10 @@ let validate_nanos = fun nanos ->
 
 let compare_parts = fun ~left_secs ~left_nanos ~right_secs ~right_nanos ->
   let secs_order = Int.compare left_secs right_secs in
-  if secs_order = 0 then
-    Int.compare left_nanos right_nanos
-  else
-    secs_order
+  match secs_order with
+  | Order.EQ -> Int.compare left_nanos right_nanos
+  | Order.LT
+  | Order.GT -> secs_order
 
 let diff_ns = fun ~left_secs ~left_nanos ~right_secs ~right_nanos ->
   let secs = Int64.mul (Int64.from_int (left_secs - right_secs)) nanos_per_second in

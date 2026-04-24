@@ -44,19 +44,39 @@ let add_uint64_be = fun buffer value ->
     add 0
 
 let add_header = fun buffer major value ->
-  if Int64.compare value 23L <= 0 then
+  if (
+      match Int64.compare value 23L with
+      | Order.LT
+      | Order.EQ -> true
+      | Order.GT -> false
+    ) then
     add_byte buffer ((major lsl 5) lor Int64.to_int value)
-  else if Int64.compare value 0xffL <= 0 then
+  else if (
+      match Int64.compare value 0xffL with
+      | Order.LT
+      | Order.EQ -> true
+      | Order.GT -> false
+    ) then
     (
       add_byte buffer ((major lsl 5) lor 24);
       add_byte buffer (Int64.to_int value)
     )
-  else if Int64.compare value 0xffffL <= 0 then
+  else if (
+      match Int64.compare value 0xffffL with
+      | Order.LT
+      | Order.EQ -> true
+      | Order.GT -> false
+    ) then
     (
       add_byte buffer ((major lsl 5) lor 25);
       add_uint16_be buffer (Int64.to_int value)
     )
-  else if Int64.compare value 0xffff_ffffL <= 0 then
+  else if (
+      match Int64.compare value 0xffff_ffffL with
+      | Order.LT
+      | Order.EQ -> true
+      | Order.GT -> false
+    ) then
     (
       add_byte buffer ((major lsl 5) lor 26);
       add_uint32_be buffer (Int64.to_int32 value)
@@ -83,7 +103,12 @@ let rec encode_value = fun buffer value ->
   | Bool true ->
       add_byte buffer 0xf5
   | Int value ->
-      if Int64.compare value 0L >= 0 then
+      if (
+          match Int64.compare value 0L with
+          | Order.LT -> false
+          | Order.EQ
+          | Order.GT -> true
+        ) then
         add_header buffer major_positive value
       else
         add_header buffer major_negative (Int64.lognot value)
@@ -120,7 +145,7 @@ type input = {
 }
 
 let ensure = fun input needed ->
-  if Int.compare (input.pos + needed) input.length > 0 then
+  if input.pos + needed > input.length then
     Error `no_more_data
   else
     Ok ()
@@ -201,7 +226,12 @@ let read_argument = fun input minor ->
 
 let read_count = fun input minor kind ->
   let* value = read_argument input minor in
-  if Int64.compare value (Int64.of_int Int.max_int) > 0 then
+  if (
+      match Int64.compare value (Int64.of_int Int.max_int) with
+      | Order.GT -> true
+      | Order.LT
+      | Order.EQ -> false
+    ) then
     error ("serde-cbor " ^ kind ^ " length does not fit in OCaml int")
   else
     Ok (Int64.to_int value)
@@ -214,13 +244,23 @@ let read_text = fun input minor ->
   Ok value
 
 let int_of_positive = fun value ->
-  if Int64.compare value Int64.max_int > 0 then
+  if (
+      match Int64.compare value Int64.max_int with
+      | Order.GT -> true
+      | Order.LT
+      | Order.EQ -> false
+    ) then
     error "serde-cbor integer exceeds the supported signed range"
   else
     Ok value
 
 let int_of_negative = fun raw ->
-  if Int64.compare raw Int64.max_int > 0 then
+  if (
+      match Int64.compare raw Int64.max_int with
+      | Order.GT -> true
+      | Order.LT
+      | Order.EQ -> false
+    ) then
     error "serde-cbor negative integer exceeds the supported signed range"
   else
     Ok (Int64.lognot raw)

@@ -299,4 +299,8 @@ let is_server_error = fun status ->
 let compare = fun s1 s2 ->
   Int.compare (to_int s1) (to_int s2)
 
-let equal = fun s1 s2 -> compare s1 s2 = 0
+let equal = fun s1 s2 ->
+  match compare s1 s2 with
+  | Order.EQ -> true
+  | Order.LT
+  | Order.GT -> false

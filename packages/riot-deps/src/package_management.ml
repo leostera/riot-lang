@@ -540,9 +540,9 @@ let matching_release_of_document = fun (document: Pkgs_ml.Sparse_index.package_d
     List.sort matches
       ~compare:(fun (left, _) (right, _) ->
         match Std.Version.compare left right with
-        | Lt -> 1
-        | Eq -> 0
-        | Gt -> (-1))
+        | Order.LT -> Order.GT
+        | Order.EQ -> Order.EQ
+        | Order.GT -> Order.LT)
   with
   | (_, release) :: _ -> Some release
   | [] -> None

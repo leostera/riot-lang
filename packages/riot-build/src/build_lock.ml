@@ -48,7 +48,7 @@ let list_subdirectories = fun dir -> list_children dir |> List.filter ~fn:path_i
 
 let compare_lane = fun left right ->
   match String.compare left.profile right.profile with
-  | 0 -> Riot_model.Target.compare left.target right.target
+  | Order.EQ -> Riot_model.Target.compare left.target right.target
   | order -> order
 
 let existing_lanes = fun ~target_dir_root ->

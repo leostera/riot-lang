@@ -386,9 +386,9 @@ let test_compare_suite_run_aligns_case_history = fun _ctx ->
                 | Riot_bench.History.Noisy -> false
               ) then
             Error "expected manual decode case to be classified as stable"
-          else if Float.compare manual_current_cv 0.01 >= 0 then
+          else if Float.compare manual_current_cv 0.01 != Order.LT then
             Error "expected current CV to stay below 1% for the stable case"
-          else if Float.compare manual_baseline_cv 0.01 >= 0 then
+          else if Float.compare manual_baseline_cv 0.01 != Order.LT then
             Error "expected baseline CV to stay below 1% for the stable case"
           else
             Ok ()
@@ -490,9 +490,9 @@ let test_compare_suite_run_marks_noisy_cases = fun _ctx ->
         };
 
       ] ->
-          if Float.compare current_cv 0.05 <= 0 then
+          if Float.compare current_cv 0.05 != Order.GT then
             Error "expected current CV to exceed the noisy threshold"
-          else if Float.compare baseline_cv 0.05 >= 0 then
+          else if Float.compare baseline_cv 0.05 != Order.LT then
             Error "expected baseline CV to remain below the noisy threshold"
           else
             Ok ()

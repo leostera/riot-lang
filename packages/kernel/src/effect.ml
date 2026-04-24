@@ -28,8 +28,9 @@ module Unsafe = struct
     let value = repr exn in
     let slot =
       match Int.compare (tag value) object_tag with
-      | 0 -> value
-      | _ -> field value 0
+      | Order.EQ -> value
+      | Order.LT
+      | Order.GT -> field value 0
     in
     register_named_value name slot
 end

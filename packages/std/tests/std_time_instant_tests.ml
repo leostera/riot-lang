@@ -6,7 +6,7 @@ let test_now_is_nondecreasing = fun _ctx ->
   let first = Instant.now () in
   sleep (Duration.from_millis 10);
   let second = Instant.now () in
-  if Instant.compare first second <= 0 then
+  if Instant.compare first second != Order.GT then
     Ok ()
   else
     Error "expected Instant.now to be nondecreasing"
@@ -29,7 +29,7 @@ let test_saturating_duration_since_swapped_returns_zero = fun _ctx ->
 let test_elapsed_is_non_negative = fun _ctx ->
   let start = Instant.now () in
   let elapsed = Instant.elapsed start in
-  if Duration.compare elapsed Duration.zero >= 0 then
+  if Duration.compare elapsed Duration.zero != Order.LT then
     Ok ()
   else
     Error "expected Instant.elapsed to be non-negative"
@@ -58,7 +58,7 @@ let test_compare_equal_min_and_max_obey_ordering_laws = fun _ctx ->
   let second = Instant.add first (Duration.from_millis 10) in
   if
     Instant.equal first first
-    && Instant.compare first second < 0
+    && Instant.compare first second = Order.LT
     && Instant.equal (Instant.min first second) first
     && Instant.equal (Instant.max first second) second
   then

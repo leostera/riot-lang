@@ -24,22 +24,22 @@ val segments: 'v t -> 'v range list
 
 val is_empty: 'v t -> bool
 
-val normalize: compare_v:('v -> 'v -> int) -> 'v t -> 'v t
+val normalize: compare_v:('v -> 'v -> Std.Order.t) -> 'v t -> 'v t
 
-val complement: compare_v:('v -> 'v -> int) -> 'v t -> 'v t
+val complement: compare_v:('v -> 'v -> Std.Order.t) -> 'v t -> 'v t
 
-val intersection: compare_v:('v -> 'v -> int) -> 'v t -> 'v t -> 'v t
+val intersection: compare_v:('v -> 'v -> Std.Order.t) -> 'v t -> 'v t -> 'v t
 
-val union: compare_v:('v -> 'v -> int) -> 'v t -> 'v t -> 'v t
+val union: compare_v:('v -> 'v -> Std.Order.t) -> 'v t -> 'v t -> 'v t
 
-val contains: compare_v:('v -> 'v -> int) -> 'v t -> 'v -> bool
+val contains: compare_v:('v -> 'v -> Std.Order.t) -> 'v t -> 'v -> bool
 
-val is_disjoint: compare_v:('v -> 'v -> int) -> 'v t -> 'v t -> bool
+val is_disjoint: compare_v:('v -> 'v -> Std.Order.t) -> 'v t -> 'v t -> bool
 
-val subset_of: compare_v:('v -> 'v -> int) -> 'v t -> 'v t -> bool
+val subset_of: compare_v:('v -> 'v -> Std.Order.t) -> 'v t -> 'v t -> bool
 
-val equal: compare_v:('v -> 'v -> int) -> 'v t -> 'v t -> bool
+val equal: compare_v:('v -> 'v -> Std.Order.t) -> 'v t -> 'v t -> bool
 
-val compare: compare_v:('v -> 'v -> int) -> 'v t -> 'v t -> int
+val compare: compare_v:('v -> 'v -> Std.Order.t) -> 'v t -> 'v t -> Std.Order.t
 
 val to_string: to_string_v:('v -> string) -> 'v t -> string

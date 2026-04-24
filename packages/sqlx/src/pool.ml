@@ -132,14 +132,14 @@ let check_connections = fun state ->
         | Available conn ->
             let age = Time.Instant.duration_since ~earlier:(Connection.created_at conn) now in
             let idle = Time.Instant.duration_since ~earlier:(Connection.last_used conn) now in
-            if Time.Duration.compare idle state.idle_timeout > 0 then
+            if Time.Duration.compare idle state.idle_timeout = Order.GT then
               (
                 Connection.close conn;
                 None
               )
             else if Option.is_some state.max_lifetime then
               let max_life = Option.unwrap state.max_lifetime in
-              if Time.Duration.compare age max_life > 0 then
+              if Time.Duration.compare age max_life = Order.GT then
                 (
                   Connection.close conn;
                   None

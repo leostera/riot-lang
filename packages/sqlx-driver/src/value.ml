@@ -179,11 +179,11 @@ let equal = fun a b ->
 let compare = fun a b ->
   match (a, b) with
   | Null, Null ->
-      0
+      Order.EQ
   | Null, _ ->
-      (-1)
+      Order.LT
   | _, Null ->
-      1
+      Order.GT
   | Int x, Int y ->
       Int.compare x y
   | Int64 x, Int64 y ->
@@ -204,20 +204,20 @@ let compare = fun a b ->
       Time.SystemTime.compare (DateTime.to_system_time x) (DateTime.to_system_time y)
   | Date (y1, m1, d1), Date (y2, m2, d2) -> (
       match Int.compare y1 y2 with
-      | 0 -> (
+      | Order.EQ -> (
           match Int.compare m1 m2 with
-          | 0 -> Int.compare d1 d2
+          | Order.EQ -> Int.compare d1 d2
           | c -> c
         )
       | c -> c
     )
   | Time (h1, min1, s1, us1), Time (h2, min2, s2, us2) -> (
       match Int.compare h1 h2 with
-      | 0 -> (
+      | Order.EQ -> (
           match Int.compare min1 min2 with
-          | 0 -> (
+          | Order.EQ -> (
               match Int.compare s1 s2 with
-              | 0 -> Int.compare us1 us2
+              | Order.EQ -> Int.compare us1 us2
               | c -> c
             )
           | c -> c
@@ -231,54 +231,54 @@ let compare = fun a b ->
   | Numeric x, Numeric y ->
       String.compare x y
   | Int _, _ ->
-      (-1)
+      Order.LT
   | _, Int _ ->
-      1
+      Order.GT
   | Int64 _, _ ->
-      (-1)
+      Order.LT
   | _, Int64 _ ->
-      1
+      Order.GT
   | Int16 _, _ ->
-      (-1)
+      Order.LT
   | _, Int16 _ ->
-      1
+      Order.GT
   | Float _, _ ->
-      (-1)
+      Order.LT
   | _, Float _ ->
-      1
+      Order.GT
   | String _, _ ->
-      (-1)
+      Order.LT
   | _, String _ ->
-      1
+      Order.GT
   | Bool _, _ ->
-      (-1)
+      Order.LT
   | _, Bool _ ->
-      1
+      Order.GT
   | Bytes _, _ ->
-      (-1)
+      Order.LT
   | _, Bytes _ ->
-      1
+      Order.GT
   | Timestamp _, _ ->
-      (-1)
+      Order.LT
   | _, Timestamp _ ->
-      1
+      Order.GT
   | TimestampWithTimezone _, _ ->
-      (-1)
+      Order.LT
   | _, TimestampWithTimezone _ ->
-      1
+      Order.GT
   | Date _, _ ->
-      (-1)
+      Order.LT
   | _, Date _ ->
-      1
+      Order.GT
   | Time _, _ ->
-      (-1)
+      Order.LT
   | _, Time _ ->
-      1
+      Order.GT
   | Uuid _, _ ->
-      (-1)
+      Order.LT
   | _, Uuid _ ->
-      1
+      Order.GT
   | Json _, _ ->
-      (-1)
+      Order.LT
   | _, Json _ ->
-      1
+      Order.GT

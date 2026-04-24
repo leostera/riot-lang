@@ -48,7 +48,7 @@ let first_out_of_order = fun parameters ->
     | [] -> None
     | parameter :: rest ->
         let name = parameter_name parameter in
-        if String.compare name last_name < 0 then
+        if String.compare name last_name = Order.LT then
           Some (last_name, parameter)
         else
           go name rest

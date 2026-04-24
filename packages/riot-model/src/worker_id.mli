@@ -14,4 +14,4 @@ val to_int: t -> int
 val equal: t -> t -> bool
 
 (** Compare two worker IDs *)
-val compare: t -> t -> int
+val compare: t -> t -> Std.Order.t

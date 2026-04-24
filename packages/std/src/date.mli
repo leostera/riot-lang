@@ -37,7 +37,7 @@ val make: year:int -> month:int -> day:int -> (t, error) result
 
 val is_valid: t -> bool
 
-val compare: t -> t -> int
+val compare: t -> t -> Order.t
 
 val equal: t -> t -> bool
 

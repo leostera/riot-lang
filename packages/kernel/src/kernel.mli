@@ -47,6 +47,8 @@ module Array = Array
 
 module Option = Option
 
+module Order = Order
+
 module Result = Result
 
 module Regex = Regex

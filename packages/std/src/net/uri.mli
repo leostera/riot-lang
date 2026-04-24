@@ -231,7 +231,7 @@ val join: t -> string -> (t, error) Kernel.result
 val equal: t -> t -> bool
 
 (** Compare two URLs *)
-val compare: t -> t -> int
+val compare: t -> t -> Order.t
 
 (** ## Query Parameter Utilities *)
 

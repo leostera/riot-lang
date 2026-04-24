@@ -263,16 +263,18 @@ let analyze_document = fun document ->
 let compare_position = fun (left: Lsp.Position.t) ->
   fun (right: Lsp.Position.t) ->
     match Int.compare left.line right.line with
-    | 0 -> Int.compare left.character right.character
+    | Order.EQ -> Int.compare left.character right.character
     | n -> n
 
 let ranges_overlap = fun (left: Lsp.Range.t) ->
   fun (right: Lsp.Range.t) ->
-    compare_position left.end_ right.start_ >= 0 && compare_position right.end_ left.start_ >= 0
+    compare_position left.end_ right.start_ != Order.LT
+    && compare_position right.end_ left.start_ != Order.LT
 
 let same_range = fun (left: Lsp.Range.t) ->
   fun (right: Lsp.Range.t) ->
-    compare_position left.start_ right.start_ = 0 && compare_position left.end_ right.end_ = 0
+    compare_position left.start_ right.start_ = Order.EQ
+    && compare_position left.end_ right.end_ = Order.EQ
 
 let same_lsp_diagnostic = fun (left: Lsp.Diagnostic.t) ->
   fun (right: Lsp.Diagnostic.t) ->

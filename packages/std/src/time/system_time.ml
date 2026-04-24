@@ -100,24 +100,28 @@ let checked_sub = fun systime duration ->
 
 let compare = fun a b ->
   let secs_cmp = Int.compare a.secs b.secs in
-  if secs_cmp = 0 then
-    Int.compare a.nanos b.nanos
-  else
-    secs_cmp
+  match secs_cmp with
+  | Order.EQ -> Int.compare a.nanos b.nanos
+  | Order.LT
+  | Order.GT -> secs_cmp
 
-let equal = fun a b -> compare a b = 0
+let equal = fun a b ->
+  match compare a b with
+  | Order.EQ -> true
+  | Order.LT
+  | Order.GT -> false
 
 let min = fun a b ->
-  if compare a b <= 0 then
-    a
-  else
-    b
+  match compare a b with
+  | Order.LT
+  | Order.EQ -> a
+  | Order.GT -> b
 
 let max = fun a b ->
-  if compare a b >= 0 then
-    a
-  else
-    b
+  match compare a b with
+  | Order.LT -> b
+  | Order.EQ
+  | Order.GT -> a
 
 (* Unix timestamp conversion *)
 

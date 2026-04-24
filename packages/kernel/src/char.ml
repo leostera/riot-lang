@@ -4,7 +4,7 @@ type t = char
 
 let equal = Caml_runtime.equal
 
-let compare = Caml_runtime.compare
+let compare = Order.compare
 
 let from_int_unchecked = Caml_runtime.char_of_int
 

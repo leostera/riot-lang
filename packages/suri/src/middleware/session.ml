@@ -49,7 +49,7 @@ let is_expired = fun session ->
   match session.data.expires_at with
   | Option.Some exp ->
       let now = Time.SystemTime.secs (Time.SystemTime.now ()) |> Int64.of_int in
-      Int64.compare now exp > 0
+      Int64.compare now exp = Order.GT
   | Option.None -> false
 
 (** Check if session was modified *)

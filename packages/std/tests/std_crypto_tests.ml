@@ -35,7 +35,7 @@ let test_hash_equal_reports_identical_hashes = fun _ctx ->
     Error "Hash.equal should report identical hashes as equal"
 
 let test_hash_compare_uses_bytewise_order = fun _ctx ->
-  if Crypto.Hash.compare (raw_hash "abc") (raw_hash "abd") < 0 then
+  if Crypto.Hash.compare (raw_hash "abc") (raw_hash "abd") = Order.LT then
     Ok ()
   else
     Error "Hash.compare should use bytewise ordering"

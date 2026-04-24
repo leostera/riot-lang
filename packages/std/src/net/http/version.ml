@@ -46,7 +46,11 @@ let compare = fun v1 v2 ->
   in
   Int.compare (version_num v1) (version_num v2)
 
-let equal = fun v1 v2 -> compare v1 v2 = 0
+let equal = fun v1 v2 ->
+  match compare v1 v2 with
+  | Order.EQ -> true
+  | Order.LT
+  | Order.GT -> false
 
 let is_supported = function
   | Http09

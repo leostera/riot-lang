@@ -178,7 +178,7 @@ let is_test_binary_name = fun name ->
 
 let compare_suite_binary = fun left right ->
   match Package_name.compare left.package_name right.package_name with
-  | 0 -> String.compare left.suite_name right.suite_name
+  | Order.EQ -> String.compare left.suite_name right.suite_name
   | cmp -> cmp
 
 let requested_packages = fun suites ->

@@ -900,19 +900,19 @@ let parse_available_toolchains_manifest = fun raw ->
                       List.reverse acc |> List.sort
                         ~compare:(fun left right ->
                           let by_version = String.compare left.version right.version in
-                          if not (Int.equal by_version 0) then
+                          if by_version != Order.EQ then
                             by_version
                           else
                             let by_host = String.compare
                               (Riot_model.Target.to_string left.host)
                               (Riot_model.Target.to_string right.host) in
-                            if not (Int.equal by_host 0) then
+                            if by_host != Order.EQ then
                               by_host
                             else
                               let by_target = String.compare
                                 (Riot_model.Target.to_string left.target)
                                 (Riot_model.Target.to_string right.target) in
-                              if not (Int.equal by_target 0) then
+                              if by_target != Order.EQ then
                                 by_target
                               else
                                 String.compare left.artifact_target right.artifact_target)

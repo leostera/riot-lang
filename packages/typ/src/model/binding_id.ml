@@ -16,7 +16,7 @@ let equal = fun left right ->
 
 let compare = fun left right ->
   match Int.compare left.stamp right.stamp with
-  | 0 -> Surface_path.compare left.name right.name
+  | Order.EQ -> Surface_path.compare left.name right.name
   | order -> order
 
 let to_string = fun value -> Surface_path.to_string value.name ^ "#" ^ Int.to_string value.stamp

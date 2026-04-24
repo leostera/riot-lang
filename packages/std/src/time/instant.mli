@@ -175,7 +175,7 @@ val checked_sub: t -> Duration.t -> t option
     ```ocaml let t1 = Instant.now () in let t2 = Instant.now () in
 
     Instant.compare t1 t2 (* <= 0, t1 should be earlier or equal *) ``` *)
-val compare: t -> t -> int
+val compare: t -> t -> Order.t
 
 (** Tests equality of two instants.
 

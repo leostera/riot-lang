@@ -35,21 +35,31 @@ let hex_byte = fun value ->
 let length_error = fun kind -> error ("serde-bson " ^ kind ^ " length exceeds BSON's int32 limit")
 
 let int_of_length_int32 = fun value ->
-  if Int32.compare value 5l < 0 then
+  if (
+      match Int32.compare value 5l with
+      | Order.LT -> true
+      | Order.EQ
+      | Order.GT -> false
+    ) then
     Error (`Msg "serde-bson document length is too small")
   else
     try Ok (Int32.to_int value) with
     | _ -> Error (`Msg "serde-bson document length does not fit in OCaml int")
 
 let int_of_positive_int32 = fun kind value minimum ->
-  if Int32.compare value minimum < 0 then
+  if (
+      match Int32.compare value minimum with
+      | Order.LT -> true
+      | Order.EQ
+      | Order.GT -> false
+    ) then
     Error (`Msg ("serde-bson " ^ kind ^ " length is too small"))
   else
     try Ok (Int32.to_int value) with
     | _ -> Error (`Msg ("serde-bson " ^ kind ^ " length does not fit in OCaml int"))
 
 let int32_of_length = fun kind value ->
-  if Int.compare value (Int32.to_int Int32.max_int) > 0 then
+  if value > Int32.to_int Int32.max_int then
     length_error kind
   else
     Ok (Int32.of_int value)
@@ -171,7 +181,7 @@ type input = {
 }
 
 let ensure = fun input needed ->
-  if Int.compare (input.pos + needed) input.length > 0 then
+  if input.pos + needed > input.length then
     Error `no_more_data
   else
     Ok ()
@@ -222,7 +232,7 @@ let read_double_le = fun input ->
 let read_cstring = fun input ->
   let start = input.pos in
   let rec loop index =
-    if Int.compare index input.length >= 0 then
+    if index >= input.length then
       Error `no_more_data
     else if Char.equal (String.unsafe_get input.source index) '\x00' then
       (
@@ -294,7 +304,7 @@ and read_document_body = fun input _parent_end ->
   let* declared_length = read_int32_le input in
   let* declared_length = int_of_length_int32 declared_length in
   let end_pos = start + declared_length in
-  if Int.compare end_pos input.length > 0 then
+  if end_pos > input.length then
     Error `no_more_data
   else
     let rec loop acc =
@@ -304,7 +314,7 @@ and read_document_body = fun input _parent_end ->
           Ok (List.rev acc)
         else
           error "serde-bson document terminator must be 0"
-      else if Int.compare input.pos (end_pos - 1) > 0 then
+      else if input.pos > end_pos - 1 then
         error "serde-bson document overran its declared length"
       else
         let* kind = read_byte input in

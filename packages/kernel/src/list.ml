@@ -85,7 +85,11 @@ let exists = fun values ~fn ->
 let contains = fun values ~value ->
   let rec loop = function
     | [] -> false
-    | current :: rest -> compare current value = 0 || loop rest
+    | current :: rest ->
+        match compare current value with
+        | Order.EQ -> true
+        | Order.LT
+        | Order.GT -> loop rest
   in
   loop values
 
@@ -143,23 +147,27 @@ let filter = fun values ~fn ->
 let sort = fun values ~compare ->
   let rec insert value = function
     | [] -> [ value ]
-    | current :: rest as values ->
-        if compare value current <= 0 then
-          value :: values
-        else
-          current :: insert value rest
+    | current :: rest as values -> (
+        match compare value current with
+        | Order.LT
+        | Order.EQ -> value :: values
+        | Order.GT -> current :: insert value rest
+      )
   in
   fold_left values ~acc:[] ~fn:(fun acc value -> insert value acc)
 
 let unique = fun values ~compare ->
   let sorted = sort values ~compare in
   let rec loop acc = function
-    | [] -> reverse acc
-    | [ value ] -> reverse (value :: acc)
-    | left :: ((right :: _) as rest) ->
-        if compare left right = 0 then
-          loop acc rest
-        else
-          loop (left :: acc) rest
+    | [] ->
+        reverse acc
+    | [ value ] ->
+        reverse (value :: acc)
+    | left :: ((right :: _) as rest) -> (
+        match compare left right with
+        | Order.EQ -> loop acc rest
+        | Order.LT
+        | Order.GT -> loop (left :: acc) rest
+      )
   in
   loop [] sorted

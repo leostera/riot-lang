@@ -133,7 +133,7 @@ let preprocess = fun input ->
 let skip_spaces = fun text index ->
   let length = String.length text in
   let rec loop index =
-    if Int.compare index length >= 0 then
+    if index >= length then
       length
     else
       match String.unsafe_get text index with
@@ -143,7 +143,7 @@ let skip_spaces = fun text index ->
   loop index
 
 let parse_escape = fun text line_number index ->
-  if Int.compare index (String.length text) >= 0 then
+  if index >= String.length text then
     fail_line line_number "unterminated escape sequence"
   else
     match String.unsafe_get text index with
@@ -156,7 +156,7 @@ let parse_escape = fun text line_number index ->
     | 'r' -> ('\r', index + 1)
     | 't' -> ('\t', index + 1)
     | 'u' ->
-        if Int.compare (index + 4) (String.length text) >= 0 then
+        if index + 4 >= String.length text then
           fail_line line_number "unterminated unicode escape"
         else
           let hex_value = function
@@ -179,12 +179,12 @@ let parse_escape = fun text line_number index ->
 
 let parse_double_quoted = fun text line_number start ->
   let length = String.length text in
-  if Int.compare start length >= 0 || not (Char.equal (String.unsafe_get text start) '"') then
+  if start >= length || not (Char.equal (String.unsafe_get text start) '"') then
     fail_line line_number "expected double-quoted string"
   else
     let buffer = IO.Buffer.create ~size:32 in
     let rec loop index =
-      if Int.compare index length >= 0 then
+      if index >= length then
         fail_line line_number "unterminated double-quoted string"
       else
         match String.unsafe_get text index with
@@ -202,17 +202,15 @@ let parse_double_quoted = fun text line_number start ->
 
 let parse_single_quoted = fun text line_number start ->
   let length = String.length text in
-  if Int.compare start length >= 0 || not (Char.equal (String.unsafe_get text start) '\'') then
+  if start >= length || not (Char.equal (String.unsafe_get text start) '\'') then
     fail_line line_number "expected single-quoted string"
   else
     let buffer = IO.Buffer.create ~size:32 in
     let rec loop index =
-      if Int.compare index length >= 0 then
+      if index >= length then
         fail_line line_number "unterminated single-quoted string"
       else if Char.equal (String.unsafe_get text index) '\'' then
-        if
-          Int.compare (index + 1) length < 0 && Char.equal (String.unsafe_get text (index + 1)) '\''
-        then
+        if index + 1 < length && Char.equal (String.unsafe_get text (index + 1)) '\'' then
           (
             IO.Buffer.add_char buffer '\'';
             loop (index + 2)
@@ -229,7 +227,7 @@ let parse_single_quoted = fun text line_number start ->
 let find_mapping_separator = fun text line_number ->
   let length = String.length text in
   let rec scan index in_double in_single =
-    if Int.compare index length >= 0 then
+    if index >= length then
       None
     else
       let current = String.unsafe_get text index in
@@ -242,9 +240,7 @@ let find_mapping_separator = fun text line_number ->
           scan (index + 1) true false
       else if in_single then
         if Char.equal current '\'' then
-          if
-            Int.compare (index + 1) length < 0 && Char.equal (String.unsafe_get text (index + 1)) '\''
-          then
+          if index + 1 < length && Char.equal (String.unsafe_get text (index + 1)) '\'' then
             scan (index + 2) false true
           else
             scan (index + 1) false false
@@ -256,7 +252,7 @@ let find_mapping_separator = fun text line_number ->
         scan (index + 1) false true
       else if Char.equal current ':' then
         let next = index + 1 in
-        if Int.compare next length >= 0 then
+        if next >= length then
           Some index
         else if
           Char.equal (String.unsafe_get text next) ' ' || Char.equal (String.unsafe_get text next) '\t'
@@ -352,11 +348,11 @@ let parse_scalar_text = fun text line_number ->
           String value
 
 let rec parse_nested_or_null = fun lines index parent_indent ->
-  if Int.compare index (Array.length lines) >= 0 then
+  if index >= Array.length lines then
     (Null, index)
   else
     let next_line = Array.get_unchecked lines ~at:index in
-    if Int.compare next_line.indent parent_indent > 0 then
+    if next_line.indent > parent_indent then
       parse_node lines index next_line.indent
     else
       (Null, index)
@@ -364,7 +360,7 @@ let rec parse_nested_or_null = fun lines index parent_indent ->
 and parse_tagged = fun lines line index head parent_indent ->
   let length = String.length head in
   let rec scan tag_end =
-    if Int.compare tag_end length >= 0 then
+    if tag_end >= length then
       tag_end
     else
       match String.unsafe_get head tag_end with
@@ -400,7 +396,7 @@ and parse_sequence = fun lines start_index indent ->
   let items = ref [] in
   let index = ref start_index in
   let continue = ref true in
-  while !continue && Int.compare !index (Array.length lines) < 0 do
+  while !continue && !index < Array.length lines do
     let line = Array.get_unchecked lines ~at:!index in
     if not (Int.equal line.indent indent) then
       continue := false
@@ -422,7 +418,7 @@ and parse_mapping = fun lines start_index indent ->
   let items = ref [] in
   let index = ref start_index in
   let continue = ref true in
-  while !continue && Int.compare !index (Array.length lines) < 0 do
+  while !continue && !index < Array.length lines do
     let line = Array.get_unchecked lines ~at:!index in
     if not (Int.equal line.indent indent) then
       continue := false
@@ -437,7 +433,7 @@ and parse_mapping = fun lines start_index indent ->
   (Map (List.rev !items), !index)
 
 and parse_node = fun lines index indent ->
-  if Int.compare index (Array.length lines) >= 0 then
+  if index >= Array.length lines then
     fail "unexpected end of YAML input"
   else
     let line = Array.get_unchecked lines ~at:index in

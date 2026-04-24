@@ -11,7 +11,7 @@ val next: unit -> t
 val equal: t -> t -> bool
 
 (** Compare two process identifiers. *)
-val compare: t -> t -> int
+val compare: t -> t -> Order.t
 
 (** Convert PID to its underlying integer identifier. *)
 val to_int: t -> int

@@ -65,7 +65,7 @@ let support_module_sources = fun (provider: Riot_model.Fix_provider.t) ->
             Some (ocaml_module_name_of_path source_path, source_path)) |> List.sort
         ~compare:(fun (left_name, left_path) (right_name, right_path) ->
           match String.compare left_name right_name with
-          | 0 -> String.compare (Path.to_string left_path) (Path.to_string right_path)
+          | Order.EQ -> String.compare (Path.to_string left_path) (Path.to_string right_path)
           | cmp -> cmp)
 
 let file_content_hash = fun path ->

@@ -35,17 +35,18 @@ let error_message = function
   ^ Path.to_string path
   ^ "': "
   ^ Std.Data.Toml.error_to_string error
-  | InvalidDependencyName { path; dependency; error } ->
-      "manifest '"
-      ^ Path.to_string path
-      ^ "' has invalid dependency name '"
-      ^ dependency
-      ^ "': "
-      ^ Riot_model.Package_name.error_message error
-  | DependencySectionMustBeTable { path; section } ->
-      "manifest '" ^ Path.to_string path ^ "' section [" ^ section ^ "] must be a table"
-  | ManifestMustBeTable { path } ->
-      "manifest '" ^ Path.to_string path ^ "' root must be a TOML table"
+  | InvalidDependencyName { path; dependency; error } -> "manifest '"
+  ^ Path.to_string path
+  ^ "' has invalid dependency name '"
+  ^ dependency
+  ^ "': "
+  ^ Riot_model.Package_name.error_message error
+  | DependencySectionMustBeTable { path; section } -> "manifest '"
+  ^ Path.to_string path
+  ^ "' section ["
+  ^ section
+  ^ "] must be a table"
+  | ManifestMustBeTable { path } -> "manifest '" ^ Path.to_string path ^ "' root must be a TOML table"
 
 let quoted = fun value -> Std.Data.Toml.to_string (Std.Data.Toml.String value)
 

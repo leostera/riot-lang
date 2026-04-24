@@ -3,11 +3,11 @@ val create: unit -> 'value t
 
 val create_max: unit -> 'value t
 
-val create_with: compare:('value -> 'value -> int) -> unit -> 'value t
+val create_with: compare:('value -> 'value -> Order.t) -> unit -> 'value t
 
 val from_list: 'value list -> 'value t
 
-val from_list_with: compare:('value -> 'value -> int) -> 'value list -> 'value t
+val from_list_with: compare:('value -> 'value -> Order.t) -> 'value list -> 'value t
 
 val push: 'value t -> value:'value -> unit
 

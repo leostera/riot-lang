@@ -113,7 +113,7 @@ val is_cacheable: t -> bool
     ## Examples
 
     ```ocaml Method.compare Method.Get Method.Post (* < 0 *) ``` *)
-val compare: t -> t -> int
+val compare: t -> t -> Order.t
 
 (** Checks if two HTTP methods are equal.
 

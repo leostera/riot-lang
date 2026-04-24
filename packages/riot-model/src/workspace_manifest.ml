@@ -39,14 +39,17 @@ type dependency_error =
   | InvalidDependencyRequirement of {
       dependency_name: string;
       requirement: string;
-      error: Version.parse_error;
+      error: Version.parse_error
     }
   | DependencyCannotUseWorkspaceFlag of { dependency_name: string }
   | DependencyFieldMustBeString of { dependency_name: string; field: dependency_field }
   | DependencyCannotSpecifySourceAndGithub of { dependency_name: string }
   | DependencyRefRequiresSource of { dependency_name: string }
   | BuiltinDependencyDoesNotSupportOverrides of { dependency_name: string }
-  | BuiltinDependencyDoesNotSupportVersionRequirement of { dependency_name: string; requirement: string }
+  | BuiltinDependencyDoesNotSupportVersionRequirement of {
+      dependency_name: string;
+      requirement: string
+    }
   | DependencyMustBeStringOrTable of { dependency_name: string }
 
 type error =
@@ -66,36 +69,36 @@ let dependency_field_name = function
   | Version -> "version"
 
 let dependency_error_message = function
-  | InvalidDependencyName { raw_name; error } ->
-      "dependency name '" ^ raw_name ^ "' is invalid: " ^ Package_name.error_message error
-  | InvalidDependencyRequirement { dependency_name; requirement; error } ->
-      "dependency '"
-      ^ dependency_name
-      ^ "' has invalid version requirement '"
-      ^ requirement
-      ^ "': "
-      ^ version_parse_error_to_string error
-  | DependencyCannotUseWorkspaceFlag { dependency_name } ->
-      "workspace dependency '" ^ dependency_name ^ "' cannot use workspace = true"
-  | DependencyFieldMustBeString { dependency_name; field } ->
-      "dependency '"
-      ^ dependency_name
-      ^ "' has non-string "
-      ^ dependency_field_name field
-  | DependencyCannotSpecifySourceAndGithub { dependency_name } ->
-      "dependency '" ^ dependency_name ^ "' cannot specify both source and github"
-  | DependencyRefRequiresSource { dependency_name } ->
-      "dependency '" ^ dependency_name ^ "' cannot specify ref without source"
-  | BuiltinDependencyDoesNotSupportOverrides { dependency_name } ->
-      "builtin dependency '" ^ dependency_name ^ "' does not support path or source overrides"
-  | BuiltinDependencyDoesNotSupportVersionRequirement { dependency_name; requirement } ->
-      "builtin dependency '"
-      ^ dependency_name
-      ^ "' does not support version requirement '"
-      ^ requirement
-      ^ "'"
-  | DependencyMustBeStringOrTable { dependency_name } ->
-      "dependency '" ^ dependency_name ^ "' must be a string or table"
+  | InvalidDependencyName { raw_name; error } -> "dependency name '"
+  ^ raw_name
+  ^ "' is invalid: "
+  ^ Package_name.error_message error
+  | InvalidDependencyRequirement { dependency_name; requirement; error } -> "dependency '"
+  ^ dependency_name
+  ^ "' has invalid version requirement '"
+  ^ requirement
+  ^ "': "
+  ^ version_parse_error_to_string error
+  | DependencyCannotUseWorkspaceFlag { dependency_name } -> "workspace dependency '"
+  ^ dependency_name
+  ^ "' cannot use workspace = true"
+  | DependencyFieldMustBeString { dependency_name; field } -> "dependency '"
+  ^ dependency_name
+  ^ "' has non-string "
+  ^ dependency_field_name field
+  | DependencyCannotSpecifySourceAndGithub { dependency_name } -> "dependency '"
+  ^ dependency_name
+  ^ "' cannot specify both source and github"
+  | DependencyRefRequiresSource { dependency_name } -> "dependency '" ^ dependency_name ^ "' cannot specify ref without source"
+  | BuiltinDependencyDoesNotSupportOverrides { dependency_name } -> "builtin dependency '"
+  ^ dependency_name
+  ^ "' does not support path or source overrides"
+  | BuiltinDependencyDoesNotSupportVersionRequirement { dependency_name; requirement } -> "builtin dependency '"
+  ^ dependency_name
+  ^ "' does not support version requirement '"
+  ^ requirement
+  ^ "'"
+  | DependencyMustBeStringOrTable { dependency_name } -> "dependency '" ^ dependency_name ^ "' must be a string or table"
 
 let error_message = function
   | DependencySectionMustBeTable { section_name } -> "[" ^ section_name ^ "] must be a table"
@@ -106,10 +109,10 @@ let validate_requirement = fun ~dependency_name requirement ->
   match Version.parse_requirement trimmed with
   | Ok requirement -> Ok requirement
   | Error err -> Error (DependencyError (InvalidDependencyRequirement {
-      dependency_name;
-      requirement;
-      error = err;
-    }))
+    dependency_name;
+    requirement;
+    error = err
+  }))
 
 let requirement_is_any = fun requirement ->
   String.equal (Version.requirement_to_string requirement) "*"
@@ -129,9 +132,9 @@ let validate_dependency_source = fun ~dependency_name (source: Package.dependenc
     | None -> Ok { source with version = Some Version.any }
     | Some version when requirement_is_any version -> Ok source
     | Some version -> Error (DependencyError (BuiltinDependencyDoesNotSupportVersionRequirement {
-        dependency_name;
-        requirement = Version.requirement_to_string version;
-      }))
+      dependency_name;
+      requirement = Version.requirement_to_string version
+    }))
   else if
     Option.is_some source.path || Option.is_some source.source_locator || Option.is_some source.version
   then
@@ -167,35 +170,35 @@ let parse_dependency: string -> Toml.value -> (Package.dependency, error) result
         match Fields.get "path" attrs with
         | Some (Toml.String path_str) -> Ok (Some (Path.v path_str))
         | Some _ -> Error (DependencyError (DependencyFieldMustBeString {
-            dependency_name;
-            field = Path;
-          }))
+          dependency_name;
+          field = Path
+        }))
         | None -> Ok None
       in
       let source_locator =
         match Fields.get "source" attrs, Fields.get "github" attrs with
         | Some _, Some _ -> Error (DependencyError (DependencyCannotSpecifySourceAndGithub {
-            dependency_name;
-          }))
+          dependency_name
+        }))
         | Some (Toml.String locator), None -> Ok (Some (normalize_source_locator locator))
         | Some _, None -> Error (DependencyError (DependencyFieldMustBeString {
-            dependency_name;
-            field = Source;
-          }))
+          dependency_name;
+          field = Source
+        }))
         | None, Some (Toml.String github) -> Ok (Some (github_locator_of_value github))
         | None, Some _ -> Error (DependencyError (DependencyFieldMustBeString {
-            dependency_name;
-            field = Github;
-          }))
+          dependency_name;
+          field = Github
+        }))
         | None, None -> Ok None
       in
       let ref_ =
         match Fields.get "ref" attrs with
         | Some (Toml.String ref_) -> Ok (Some (String.trim ref_))
         | Some _ -> Error (DependencyError (DependencyFieldMustBeString {
-            dependency_name;
-            field = Ref;
-          }))
+          dependency_name;
+          field = Ref
+        }))
         | None -> Ok None
       in
       let version =
@@ -203,9 +206,9 @@ let parse_dependency: string -> Toml.value -> (Package.dependency, error) result
         | Some (Toml.String requirement) -> validate_requirement ~dependency_name requirement
         |> Result.map ~fn:(fun version -> Some version)
         | Some _ -> Error (DependencyError (DependencyFieldMustBeString {
-            dependency_name;
-            field = Version;
-          }))
+          dependency_name;
+          field = Version
+        }))
         | None -> Ok None
       in
       match path, source_locator, ref_, version with
@@ -580,7 +583,7 @@ std = { version = 123 }
       |> Result.expect ~msg:"expected workspace toml to parse"
     in
     match of_toml toml with
-    | Error (DependencyError (DependencyFieldMustBeString { dependency_name = "std"; field = Version })) -> Ok ()
+    | Error (DependencyError (DependencyFieldMustBeString { dependency_name="std"; field=Version })) -> Ok ()
     | Error err -> Error ("expected non-string version error, got: " ^ error_message err)
     | Ok _ -> Error "expected workspace manifest parse to fail for non-string dependency version" [@test]
 

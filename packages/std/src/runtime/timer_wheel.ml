@@ -68,7 +68,12 @@ let create = fun ~config ->
 let calculate_slot = fun t expires_at ->
   let delta = Int64.sub expires_at t.current_time in
   let ticks = Int64.div delta t.slot_duration in
-  if Int64.compare ticks (Int64.from_int t.num_slots) < 0 then
+  if (
+      match Int64.compare ticks (Int64.from_int t.num_slots) with
+      | Order.LT -> true
+      | Order.EQ
+      | Order.GT -> false
+    ) then
     let slot = Int64.to_int
       (Int64.rem (Int64.add (Int64.from_int t.current_slot) ticks) (Int64.from_int t.num_slots)) in
     Some slot
@@ -100,7 +105,12 @@ let cancel_timer = fun t timer_id ->
   | None -> ()
 
 let tick = fun t ~now ->
-  if Int64.compare now t.current_time < 0 then
+  if (
+      match Int64.compare now t.current_time with
+      | Order.LT -> true
+      | Order.EQ
+      | Order.GT -> false
+    ) then
     []
   else
     let expired = Cell.create [] in
@@ -161,7 +171,12 @@ let next_expiration = fun t ~now ->
         match !min_expiration with
         | None -> min_expiration := Some timer.Timer.expires_at
         | Some current_min ->
-            if Int64.compare timer.Timer.expires_at current_min < 0 then
+            if (
+                match Int64.compare timer.Timer.expires_at current_min with
+                | Order.LT -> true
+                | Order.EQ
+                | Order.GT -> false
+              ) then
               min_expiration := Some timer.Timer.expires_at);
   !min_expiration
 

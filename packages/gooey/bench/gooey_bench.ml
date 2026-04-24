@@ -120,7 +120,7 @@ let make_custom_widget_board = fun count ->
         let width =
           match constraints.Config.available_width with
           | Some width ->
-              if Float.compare width 24.0 < 0 then
+              if Float.compare width 24.0 = Order.LT then
                 width
               else
                 24.0

@@ -13,13 +13,13 @@ let test_equal_true_false = fun _ctx ->
     Error "expected Bool.equal true false to be false"
 
 let test_compare_false_true = fun _ctx ->
-  if Bool.compare false true < 0 then
+  if Bool.compare false true = Order.LT then
     Ok ()
   else
     Error "expected false < true"
 
 let test_compare_true_false = fun _ctx ->
-  if Bool.compare true false > 0 then
+  if Bool.compare true false = Order.GT then
     Ok ()
   else
     Error "expected true > false"

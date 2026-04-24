@@ -17,9 +17,12 @@ let add = fun headers name value -> (name, value) :: headers
 
 let set = fun headers name value ->
   let filtered =
-    List.filter
-      headers
-      ~fn:(fun (n, _) -> String.compare (String.lowercase_ascii n) (String.lowercase_ascii name) != 0)
+    List.filter headers
+      ~fn:(fun (n, _) ->
+        match String.compare (String.lowercase_ascii n) (String.lowercase_ascii name) with
+        | Order.EQ -> false
+        | Order.LT
+        | Order.GT -> true)
   in
   (name, value) :: filtered
 
@@ -29,8 +32,12 @@ let get = fun headers name ->
   let normalized = normalize_name name in
   let rec find_header = function
     | [] -> None
-    | (n, v) :: _ when String.compare (normalize_name n) normalized = 0 -> Some v
-    | _ :: rest -> find_header rest
+    | (n, v) :: rest -> (
+        match String.compare (normalize_name n) normalized with
+        | Order.EQ -> Some v
+        | Order.LT
+        | Order.GT -> find_header rest
+      )
   in
   find_header headers
 
@@ -38,18 +45,28 @@ let get_all = fun headers name ->
   let normalized = normalize_name name in
   List.fold_left headers ~init:[]
     ~fn:(fun acc (n, v) ->
-      if String.compare (normalize_name n) normalized = 0 then
-        v :: acc
-      else
-        acc) |> List.reverse
+      match String.compare (normalize_name n) normalized with
+      | Order.EQ -> v :: acc
+      | Order.LT
+      | Order.GT -> acc) |> List.reverse
 
 let remove = fun headers name ->
   let normalized = normalize_name name in
-  List.filter headers ~fn:(fun (n, _) -> String.compare (normalize_name n) normalized != 0)
+  List.filter headers
+    ~fn:(fun (n, _) ->
+      match String.compare (normalize_name n) normalized with
+      | Order.EQ -> false
+      | Order.LT
+      | Order.GT -> true)
 
 let has = fun headers name ->
   let normalized = normalize_name name in
-  List.any headers ~fn:(fun (n, _) -> String.compare (normalize_name n) normalized = 0)
+  List.any headers
+    ~fn:(fun (n, _) ->
+      match String.compare (normalize_name n) normalized with
+      | Order.EQ -> true
+      | Order.LT
+      | Order.GT -> false)
 
 let iter = fun f headers -> List.for_each headers ~fn:(fun (n, v) -> f n v)
 

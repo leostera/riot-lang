@@ -30,14 +30,14 @@ let ensure_capacity = fun buffer additional ->
   let required = Kernel.Int.add buffer.length additional in
   let current = Kernel.Bytes.length buffer.bytes in
   match Kernel.Int.compare required current with
-  | -1
-  | 0 -> ()
-  | _ ->
+  | Kernel.Order.LT
+  | Kernel.Order.EQ -> ()
+  | Kernel.Order.GT ->
       let rec next_capacity capacity =
         match Kernel.Int.compare capacity required with
-        | 1
-        | 0 -> capacity
-        | _ ->
+        | Kernel.Order.GT
+        | Kernel.Order.EQ -> capacity
+        | Kernel.Order.LT ->
             if Kernel.Int.equal capacity 0 then
               next_capacity 1
             else
@@ -49,11 +49,13 @@ let ensure_capacity = fun buffer additional ->
 
 let get = fun buffer ~at ->
   match Kernel.Int.compare at 0 with
-  | -1 -> None
-  | _ -> (
+  | Kernel.Order.LT -> None
+  | Kernel.Order.EQ
+  | Kernel.Order.GT -> (
       match Kernel.Int.compare at buffer.length with
-      | -1 -> Some (Kernel.Bytes.get_unchecked buffer.bytes ~at)
-      | _ -> None
+      | Kernel.Order.LT -> Some (Kernel.Bytes.get_unchecked buffer.bytes ~at)
+      | Kernel.Order.EQ
+      | Kernel.Order.GT -> None
     )
 
 let get_unchecked = fun buffer ~at -> Kernel.Bytes.get_unchecked buffer.bytes ~at
@@ -66,14 +68,21 @@ let add_char = fun buffer value ->
 let add_subbytes = fun buffer source offset slice_length ->
   let source_length = Kernel.Bytes.length source in
   match Kernel.Int.compare offset 0 with
-  | -1 -> panic_invalid_range "add_subbytes" ~offset ~length:slice_length ~total:source_length
-  | _ -> (
+  | Kernel.Order.LT -> panic_invalid_range "add_subbytes" ~offset ~length:slice_length ~total:source_length
+  | Kernel.Order.EQ
+  | Kernel.Order.GT -> (
       match Kernel.Int.compare slice_length 0 with
-      | -1 -> panic_invalid_range "add_subbytes" ~offset ~length:slice_length ~total:source_length
-      | _ -> (
+      | Kernel.Order.LT -> panic_invalid_range "add_subbytes" ~offset ~length:slice_length ~total:source_length
+      | Kernel.Order.EQ
+      | Kernel.Order.GT -> (
           match Kernel.Int.compare offset (Kernel.Int.sub source_length slice_length) with
-          | 1 -> panic_invalid_range "add_subbytes" ~offset ~length:slice_length ~total:source_length
-          | _ ->
+          | Kernel.Order.GT -> panic_invalid_range
+            "add_subbytes"
+            ~offset
+            ~length:slice_length
+            ~total:source_length
+          | Kernel.Order.LT
+          | Kernel.Order.EQ ->
               if Kernel.Int.equal slice_length 0 then
                 ()
               else (
@@ -94,14 +103,21 @@ let add_bytes = fun buffer source -> add_subbytes buffer source 0 (Kernel.Bytes.
 let add_substring = fun buffer source offset slice_length ->
   let source_length = Kernel.String.length source in
   match Kernel.Int.compare offset 0 with
-  | -1 -> panic_invalid_range "add_substring" ~offset ~length:slice_length ~total:source_length
-  | _ -> (
+  | Kernel.Order.LT -> panic_invalid_range "add_substring" ~offset ~length:slice_length ~total:source_length
+  | Kernel.Order.EQ
+  | Kernel.Order.GT -> (
       match Kernel.Int.compare slice_length 0 with
-      | -1 -> panic_invalid_range "add_substring" ~offset ~length:slice_length ~total:source_length
-      | _ -> (
+      | Kernel.Order.LT -> panic_invalid_range "add_substring" ~offset ~length:slice_length ~total:source_length
+      | Kernel.Order.EQ
+      | Kernel.Order.GT -> (
           match Kernel.Int.compare offset (Kernel.Int.sub source_length slice_length) with
-          | 1 -> panic_invalid_range "add_substring" ~offset ~length:slice_length ~total:source_length
-          | _ ->
+          | Kernel.Order.GT -> panic_invalid_range
+            "add_substring"
+            ~offset
+            ~length:slice_length
+            ~total:source_length
+          | Kernel.Order.LT
+          | Kernel.Order.EQ ->
               if Kernel.Int.equal slice_length 0 then
                 ()
               else

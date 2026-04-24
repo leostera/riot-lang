@@ -23,11 +23,7 @@ let rec build_derivation_tree = fun incompat ->
 
 let version_to_string = fun ver -> Version.to_string ver
 
-let version_compare = fun a b ->
-  match Version.compare a b with
-  | Lt -> (-1)
-  | Eq -> 0
-  | Gt -> 1
+let version_compare = Version.compare
 
 let format_ranges = fun ranges -> Ranges.to_string ~to_string_v:version_to_string ranges
 

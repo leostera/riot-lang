@@ -11,6 +11,6 @@ val from_string: string -> (t, error) Result.t
 
 val to_string: t -> string
 
-val compare: t -> t -> int
+val compare: t -> t -> Order.t
 
 val equal: t -> t -> bool

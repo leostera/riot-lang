@@ -6,8 +6,8 @@ let compare_package_name = fun left right ->
   match left = "riot", right = "riot" with
   | (true, true)
   | (false, false) -> String.compare left right
-  | true, false -> (-1)
-  | false, true -> 1
+  | true, false -> Order.LT
+  | false, true -> Order.GT
 
 let display_rule_id_text = fun rule_id ->
   let package_name, local_id = split_rule_id rule_id in
@@ -21,7 +21,7 @@ let sorted_rules = fun () ->
       let left_package, left_local = split_rule_id (Rule.id left) in
       let right_package, right_local = split_rule_id (Rule.id right) in
       let package_cmp = compare_package_name left_package right_package in
-      if package_cmp != 0 then
+      if package_cmp != Order.EQ then
         package_cmp
       else if String.equal left_package "riot" then
         let left_category = Pipeline.builtin_rule_category (Rule.id left)
@@ -29,7 +29,7 @@ let sorted_rules = fun () ->
         let right_category = Pipeline.builtin_rule_category (Rule.id right)
         |> Option.unwrap_or ~default:"Other" in
         let category_cmp = String.compare left_category right_category in
-        if category_cmp != 0 then
+        if category_cmp != Order.EQ then
           category_cmp
         else
           String.compare left_local right_local

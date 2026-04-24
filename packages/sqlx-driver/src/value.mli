@@ -107,4 +107,4 @@ val to_string: t -> string
 val equal: t -> t -> bool
 
 (* `compare a b` compares two values for ordering *)
-val compare: t -> t -> int
+val compare: t -> t -> Order.t

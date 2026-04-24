@@ -96,13 +96,13 @@ let size_to_string = fun size_bytes ->
   let mib = Int64.mul kib 1_024L in
   let gib = Int64.mul mib 1_024L in
   let tib = Int64.mul gib 1_024L in
-  if Int64.compare size_bytes tib >= 0 then
+  if Int64.compare size_bytes tib != Order.LT then
     scaled_size_string size_bytes tib "TiB"
-  else if Int64.compare size_bytes gib >= 0 then
+  else if Int64.compare size_bytes gib != Order.LT then
     scaled_size_string size_bytes gib "GiB"
-  else if Int64.compare size_bytes mib >= 0 then
+  else if Int64.compare size_bytes mib != Order.LT then
     scaled_size_string size_bytes mib "MiB"
-  else if Int64.compare size_bytes kib >= 0 then
+  else if Int64.compare size_bytes kib != Order.LT then
     scaled_size_string size_bytes kib "KiB"
   else
     Int64.to_string size_bytes ^ " B"
@@ -200,7 +200,7 @@ let normalize_lanes: generation_lane list -> generation_lane list = fun lanes ->
   lanes |> List.map ~fn:normalize_lane |> List.sort
     ~compare:(fun (left: generation_lane) (right: generation_lane) ->
       match String.compare left.profile right.profile with
-      | 0 -> String.compare
+      | Order.EQ -> String.compare
         (Riot_model.Target.to_string left.target)
         (Riot_model.Target.to_string right.target)
       | order -> order)
@@ -255,8 +255,8 @@ let generation_lane_of_json = fun json ->
     match Data.Json.get_field "target" json with
     | Some value -> (
         match Data.Json.get_string value with
-        | Some target ->
-            Riot_model.Target.from_string target |> Result.map_err ~fn:Riot_model.Target.error_message
+        | Some target -> Riot_model.Target.from_string target
+        |> Result.map_err ~fn:Riot_model.Target.error_message
         | None -> Error "generation lane is missing string field 'target'"
       )
     | None -> Error "generation lane is missing string field 'target'"
@@ -595,7 +595,7 @@ let evaluate_retention = fun ~policy receipts entries ->
       List.filter entries ~fn:(fun (entry: cache_entry) -> HashSet.contains live ~value:entry.hash)
     in
     let retained_size = total_size retained_entries in
-    if Int64.compare retained_size policy.max_size_bytes <= 0 || kept = [] then
+    if Int64.compare retained_size policy.max_size_bytes != Order.GT || kept = [] then
       (kept, live, retained_size)
     else
       loop (drop_last kept)
@@ -686,7 +686,7 @@ let load_policy = fun ~(workspace:Workspace.t) ->
 
 let should_run_gc = fun ~generation_count ~policy ~tracked_size_bytes ->
   generation_count > policy.Riot_model.Workspace_operational_config.keep_generations
-  || Int64.compare tracked_size_bytes policy.max_size_bytes > 0
+  || Int64.compare tracked_size_bytes policy.max_size_bytes = Order.GT
 
 let clean_with_events = fun ~(workspace:Workspace.t) ~on_event ->
   let trigger = Manual in

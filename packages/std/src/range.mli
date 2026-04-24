@@ -47,37 +47,37 @@ type 'a bound =
 type 'a t
 
 (** Build a range from explicit bounds and a comparator. *)
-val make: lower:'a bound -> upper:'a bound -> compare:('a -> 'a -> int) -> 'a t
+val make: lower:'a bound -> upper:'a bound -> compare:('a -> 'a -> Order.t) -> 'a t
 
 (** An unbounded range that contains every value in the chosen ordering. *)
-val all: compare:('a -> 'a -> int) -> 'a t
+val all: compare:('a -> 'a -> Order.t) -> 'a t
 
 (** A closed range containing exactly one endpoint value. *)
-val singleton: compare:('a -> 'a -> int) -> 'a -> 'a t
+val singleton: compare:('a -> 'a -> Order.t) -> 'a -> 'a t
 
 (** Build a fully closed range [[lower,upper]]. *)
-val closed: compare:('a -> 'a -> int) -> 'a -> 'a -> 'a t
+val closed: compare:('a -> 'a -> Order.t) -> 'a -> 'a -> 'a t
 
 (** Build a fully open range [(lower,upper)]. *)
-val open_: compare:('a -> 'a -> int) -> 'a -> 'a -> 'a t
+val open_: compare:('a -> 'a -> Order.t) -> 'a -> 'a -> 'a t
 
 (** Build a half-open range [[lower,upper)]. *)
-val closed_open: compare:('a -> 'a -> int) -> 'a -> 'a -> 'a t
+val closed_open: compare:('a -> 'a -> Order.t) -> 'a -> 'a -> 'a t
 
 (** Build a half-open range [(lower,upper]]. *)
-val open_closed: compare:('a -> 'a -> int) -> 'a -> 'a -> 'a t
+val open_closed: compare:('a -> 'a -> Order.t) -> 'a -> 'a -> 'a t
 
 (** Build a lower-bounded range [[lower,..)]. *)
-val at_least: compare:('a -> 'a -> int) -> 'a -> 'a t
+val at_least: compare:('a -> 'a -> Order.t) -> 'a -> 'a t
 
 (** Build a lower-bounded range [(lower,..)]. *)
-val greater_than: compare:('a -> 'a -> int) -> 'a -> 'a t
+val greater_than: compare:('a -> 'a -> Order.t) -> 'a -> 'a t
 
 (** Build an upper-bounded range [(..,upper]]. *)
-val at_most: compare:('a -> 'a -> int) -> 'a -> 'a t
+val at_most: compare:('a -> 'a -> Order.t) -> 'a -> 'a t
 
 (** Build an upper-bounded range [(..,upper)]. *)
-val less_than: compare:('a -> 'a -> int) -> 'a -> 'a t
+val less_than: compare:('a -> 'a -> Order.t) -> 'a -> 'a t
 
 (** Return the stored lower bound. *)
 val lower_bound: 'a t -> 'a bound
@@ -86,7 +86,7 @@ val lower_bound: 'a t -> 'a bound
 val upper_bound: 'a t -> 'a bound
 
 (** Return the comparator captured when the range was built. *)
-val compare_values: 'a t -> 'a -> 'a -> int
+val compare_values: 'a t -> 'a -> 'a -> Order.t
 
 (** Check whether a value lies inside the interval. *)
 val contains: 'a t -> 'a -> bool

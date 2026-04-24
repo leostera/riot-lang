@@ -6,13 +6,12 @@ type dependency_field =
   | Github
   | Ref
   | Version
-
 type dependency_error =
   | InvalidDependencyName of { raw_name: string; error: Package_name.error }
   | InvalidDependencyRequirement of {
       dependency_name: string;
       requirement: string;
-      error: Std.Version.parse_error;
+      error: Std.Version.parse_error
     }
   | DependencyCannotUseWorkspaceFlag of { dependency_name: string }
   | DependencyFieldMustBeString of { dependency_name: string; field: dependency_field }
@@ -21,14 +20,12 @@ type dependency_error =
   | BuiltinDependencyDoesNotSupportOverrides of { dependency_name: string }
   | BuiltinDependencyDoesNotSupportVersionRequirement of {
       dependency_name: string;
-      requirement: string;
+      requirement: string
     }
   | DependencyMustBeStringOrTable of { dependency_name: string }
-
 type error =
   | DependencySectionMustBeTable of { section_name: string }
   | DependencyError of dependency_error
-
 type t = {
   name: string option;
   root: Path.t;
@@ -49,8 +46,11 @@ type manifest = {
   target_dir: string option;
 }
 val dependency_field_name: dependency_field -> string
+
 val dependency_error_message: dependency_error -> string
+
 val error_message: error -> string
+
 val of_toml: Std.Data.Toml.value -> (manifest, error) result
 
 val make:

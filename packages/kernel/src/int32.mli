@@ -66,4 +66,4 @@ val to_string: t -> string
 val equal: t -> t -> bool
 
 (** Use `compare left right` for `Int32` ordering. *)
-val compare: t -> t -> int
+val compare: t -> t -> Order.t

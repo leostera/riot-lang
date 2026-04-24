@@ -135,9 +135,9 @@ let matching_release = fun (document: Pkgs_ml.Sparse_index.package_document) req
             None) |> List.sort
     ~compare:(fun (left, _) (right, _) ->
       match Std.Version.compare left right with
-      | Lt -> 1
-      | Eq -> 0
-      | Gt -> (-1)) |> List.head
+      | Order.LT -> Order.GT
+      | Order.EQ -> Order.EQ
+      | Order.GT -> Order.LT) |> List.head
 
 let registry_package_info = fun ?registry ~target (parsed: Riot_deps.Registry_package_spec.t) () ->
   match registry_of_optional ?registry () with

@@ -8,7 +8,11 @@ let to_bytes = fun hash -> Bytes.sub_unchecked hash ~offset:0 ~len:(Bytes.length
 
 let length = Bytes.length
 
-let equal = fun left right -> compare left right = 0
+let equal = fun left right ->
+  match compare left right with
+  | Order.EQ -> true
+  | Order.LT
+  | Order.GT -> false
 
 let compare = fun left right ->
   let left_length = Bytes.length left in
@@ -20,9 +24,9 @@ let compare = fun left right ->
       let byte_compare = Int.compare
         (Char.to_int (Bytes.get_unchecked left ~at:index))
         (Char.to_int (Bytes.get_unchecked right ~at:index)) in
-      if byte_compare = 0 then
-        loop (index + 1)
-      else
-        byte_compare
+      match byte_compare with
+      | Order.EQ -> loop (index + 1)
+      | Order.LT
+      | Order.GT -> byte_compare
   in
   loop 0

@@ -226,7 +226,7 @@ val checked_sub: t -> Duration.t -> t option
 
     ```ocaml let t1 = SystemTime.now () in sleep 0.1; let t2 = SystemTime.now ()
     in SystemTime.compare t1 t2 (* < 0, t1 is earlier *) ``` *)
-val compare: t -> t -> int
+val compare: t -> t -> Order.t
 
 (** Tests equality of two system times.
 

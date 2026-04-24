@@ -9522,9 +9522,9 @@ let build_source_file_body = fun ~source ~tokens ~comment_item_of_comment ~docst
           else if not (Int.equal left_span.end_ right_span.end_) then
             Int.compare left_span.end_ right_span.end_
           else
-            0
+            Order.EQ
         in
-        if Int.equal order 0 then
+        if order = Order.EQ then
           Int.compare left_index right_index
         else
           order)
@@ -9609,9 +9609,9 @@ let build_items_from_payload_nodes = fun ~comment_item_of_comment ~docstring_ite
         else if not (Int.equal left_span.end_ right_span.end_) then
           Int.compare left_span.end_ right_span.end_
         else
-          0
+          Order.EQ
       in
-      if Int.equal order 0 then
+      if order = Order.EQ then
         Int.compare left_index right_index
       else
         order) |> List.map ~fn:(fun ((_, _, item)) -> item)
@@ -9681,9 +9681,9 @@ let record_field_items_of_fields = fun fields ->
         else if not (Int.equal left_span.end_ right_span.end_) then
           Int.compare left_span.end_ right_span.end_
         else
-          0
+          Order.EQ
       in
-      if Int.equal order 0 then
+      if order = Order.EQ then
         Int.compare left_index right_index
       else
         order) |> List.map ~fn:(fun ((_, _, item)) -> item)
@@ -9771,9 +9771,9 @@ let object_member_items_of_members = fun ?source_node members ->
         else if not (Int.equal left_span.end_ right_span.end_) then
           Int.compare left_span.end_ right_span.end_
         else
-          0
+          Order.EQ
       in
-      if Int.equal order 0 then
+      if order = Order.EQ then
         Int.compare left_index right_index
       else
         order) |> List.map ~fn:(fun ((_, _, item)) -> item)
@@ -9860,9 +9860,9 @@ let class_field_items_of_fields = fun ?source_node fields ->
         else if not (Int.equal left_span.end_ right_span.end_) then
           Int.compare left_span.end_ right_span.end_
         else
-          0
+          Order.EQ
       in
-      if Int.equal order 0 then
+      if order = Order.EQ then
         Int.compare left_index right_index
       else
         order) |> List.map ~fn:(fun ((_, _, item)) -> item)
@@ -9949,9 +9949,9 @@ let class_type_field_items_of_fields = fun ?source_node fields ->
         else if not (Int.equal left_span.end_ right_span.end_) then
           Int.compare left_span.end_ right_span.end_
         else
-          0
+          Order.EQ
       in
-      if Int.equal order 0 then
+      if order = Order.EQ then
         Int.compare left_index right_index
       else
         order) |> List.map ~fn:(fun ((_, _, item)) -> item)

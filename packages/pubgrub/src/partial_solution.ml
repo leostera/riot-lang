@@ -56,11 +56,7 @@ let empty = fun () ->
 
 let current_decision_level = fun solution -> solution.decision_level
 
-let version_compare = fun a b ->
-  match Version.compare a b with
-  | Lt -> (-1)
-  | Eq -> 0
-  | Gt -> 1
+let version_compare = Version.compare
 
 let merge_derived_state = fun left right ->
   {
@@ -111,12 +107,7 @@ let add_decision = fun solution pkg ver ->
 
 let add_derivation = fun solution pkg incompat ->
   let global_index = solution.next_global_index in
-  let version_compare a b =
-    match Version.compare a b with
-    | Lt -> (-1)
-    | Eq -> 0
-    | Gt -> 1
-  in
+  let version_compare = Version.compare in
   (* Get the term for this package from the incompatibility and derive ranges *)
   (* RUST: negating gives the constraint - if term is POS, derive complement; if NEG, derive ranges *)
   let term = Incompatibility.get_term incompat pkg in

@@ -327,7 +327,7 @@ val equal: t -> t -> bool
     UUID.compare uuid1 uuid2
     ```
 *)
-val compare: t -> t -> int
+val compare: t -> t -> Order.t
 
 (** Tests if UUID is the nil UUID (all zeros).
     

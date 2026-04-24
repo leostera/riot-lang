@@ -8,21 +8,36 @@ type decode_error =
 let digit_char = fun digit -> Char.from_int_unchecked (Char.to_int '0' + digit)
 
 let rec encode_positive_int64 = fun value ->
-  if Int64.compare value 8L < 0 then
+  if (
+      match Int64.compare value 8L with
+      | Order.LT -> true
+      | Order.EQ
+      | Order.GT -> false
+    ) then
     String.make ~len:1 ~char:(digit_char (Int64.to_int value))
   else
     encode_positive_int64 (Int64.div value 8L)
     ^ String.make ~len:1 ~char:(digit_char (Int64.to_int (Int64.rem value 8L)))
 
 let rec encode_negative_int64 = fun value ->
-  if Int64.compare value (-8L) > 0 then
+  if (
+      match Int64.compare value (-8L) with
+      | Order.GT -> true
+      | Order.LT
+      | Order.EQ -> false
+    ) then
     String.make ~len:1 ~char:(digit_char (Int64.to_int (Int64.neg value)))
   else
     encode_negative_int64 (Int64.div value 8L)
     ^ String.make ~len:1 ~char:(digit_char (Int64.to_int (Int64.neg (Int64.rem value 8L))))
 
 let encode_signed_int64 = fun value ->
-  if Int64.compare value 0L < 0 then
+  if (
+      match Int64.compare value 0L with
+      | Order.LT -> true
+      | Order.EQ
+      | Order.GT -> false
+    ) then
     "-" ^ encode_negative_int64 value
   else
     encode_positive_int64 value

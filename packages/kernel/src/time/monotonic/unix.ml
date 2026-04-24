@@ -48,7 +48,11 @@ let compare = fun left right ->
     ~right_secs:right.secs
     ~right_nanos:right.nanos
 
-let equal = fun left right -> compare left right = 0
+let equal = fun left right ->
+  match compare left right with
+  | Order.EQ -> true
+  | Order.LT
+  | Order.GT -> false
 
 let diff_ns = fun left right ->
   Common.diff_ns

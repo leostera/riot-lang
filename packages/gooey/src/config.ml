@@ -20,7 +20,12 @@ type t = {
 let constraints = fun ?available_width ?available_height () -> { available_width; available_height }
 
 let clamp_non_negative = fun value ->
-  if Float.compare value 0.0 < 0 then
+  if (
+      match Float.compare value 0.0 with
+      | Order.LT -> true
+      | Order.EQ
+      | Order.GT -> false
+    ) then
     0.0
   else
     value

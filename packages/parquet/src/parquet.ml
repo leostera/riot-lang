@@ -188,8 +188,17 @@ let encrypted_magic = "PARE"
 let footer_size = 8
 
 let int64_fits_int = fun value ->
-  Int64.compare value (Int64.of_int Int.min_int) >= 0
-  && Int64.compare value (Int64.of_int Int.max_int) <= 0
+  (
+    match Int64.compare value (Int64.of_int Int.min_int) with
+    | Order.LT -> false
+    | Order.EQ
+    | Order.GT -> true
+  ) && (
+    match Int64.compare value (Int64.of_int Int.max_int) with
+    | Order.LT
+    | Order.EQ -> true
+    | Order.GT -> false
+  )
 
 let int_of_int64 = fun kind value ->
   if int64_fits_int value then
@@ -198,29 +207,34 @@ let int_of_int64 = fun kind value ->
     fail ("parquet " ^ kind ^ " exceeds the OCaml int range")
 
 let ensure_i16 = fun kind value ->
-  if Int.compare value (-0x8000) < 0 || Int.compare value 0x7fff > 0 then
+  if value < (-0x8000) || value > 0x7fff then
     fail ("parquet " ^ kind ^ " is outside the i16 range")
   else
     Ok ()
 
 let ensure_i32 = fun kind value ->
-  if Int.compare value (-0x8000_0000) < 0 || Int.compare value 0x7fff_ffff > 0 then
+  if value < (-0x8000_0000) || value > 0x7fff_ffff then
     fail ("parquet " ^ kind ^ " is outside the i32 range")
   else
     Ok ()
 
 let ensure_u32 = fun kind value ->
-  if Int.compare value 0 < 0 then
+  if value < 0 then
     fail ("parquet " ^ kind ^ " is negative")
-  else if Int64.compare (Int64.of_int value) 0xffff_ffffL > 0 then
+  else if (
+      match Int64.compare (Int64.of_int value) 0xffff_ffffL with
+      | Order.GT -> true
+      | Order.LT
+      | Order.EQ -> false
+    ) then
     fail ("parquet " ^ kind ^ " exceeds the u32 range")
   else
     Ok ()
 
 let string_segment_equals = fun value ~offset segment ->
   let segment_length = String.length segment in
-  Int.compare offset 0 >= 0
-  && Int.compare (offset + segment_length) (String.length value) <= 0
+  offset >= 0
+  && offset + segment_length <= String.length value
   && String.equal (String.sub value ~offset ~len:segment_length) segment
 
 let get_byte = fun value at -> Char.code (String.get_unchecked value ~at)
@@ -289,7 +303,7 @@ module Thrift = struct
     fail ("parquet compact thrift " ^ message ^ " at byte " ^ Int.to_string input.pos)
 
   let ensure = fun input needed kind ->
-    if Int.compare (input.pos + needed) input.length > 0 then
+    if input.pos + needed > input.length then
       at input ("unexpected end of input while reading " ^ kind)
     else
       Ok ()
@@ -307,7 +321,12 @@ module Thrift = struct
     Ok value
 
   let int_of_nonnegative_int64 = fun input kind value ->
-    if Int64.compare value 0L < 0 then
+    if (
+        match Int64.compare value 0L with
+        | Order.LT -> true
+        | Order.EQ
+        | Order.GT -> false
+      ) then
       at input (kind ^ " is negative")
     else
       int_of_int64 kind value
@@ -321,7 +340,7 @@ module Thrift = struct
       let acc = Int64.logor acc (Int64.shift_left (Int64.of_int (byte land 0x7f)) shift) in
       if Int.equal (byte land 0x80) 0 then
         Ok acc
-      else if Int.compare shift 63 >= 0 then
+      else if shift >= 63 then
         at input "encountered an oversized varint"
       else
         loop (shift + 7) acc
@@ -601,7 +620,7 @@ module Thrift = struct
 
   let write_field_begin = fun buffer field_type field_id last_field_id ->
     let delta = field_id - last_field_id in
-    if Int.compare delta 0 > 0 && Int.compare delta 0x0f <= 0 then
+    if delta > 0 && delta <= 0x0f then
       let* () = write_byte buffer ((delta lsl 4) lor code_of_field_type field_type) in
       Ok field_id
     else
@@ -621,7 +640,7 @@ module Thrift = struct
       last_field_id
 
   let write_list_begin = fun buffer element_type length ->
-    if Int.compare length 15 < 0 then
+    if length < 15 then
       write_byte buffer ((length lsl 4) lor code_of_element_type element_type)
     else
       let* () = write_byte buffer (0xf0 lor code_of_element_type element_type) in
@@ -1727,7 +1746,7 @@ let encode_footer_tail = fun metadata_length ->
   Ok (IO.Buffer.contents buffer)
 
 let from_string = fun input ->
-  if Int.compare (String.length input) (String.length magic + footer_size) < 0 then
+  if String.length input < String.length magic + footer_size then
     fail "parquet file is too small"
   else if not (string_segment_equals input ~offset:0 magic) then
     fail "parquet file is missing the leading magic bytes"
@@ -1739,7 +1758,7 @@ let from_string = fun input ->
       fail "encrypted Parquet footers are not supported yet"
     else
       let metadata_offset = footer_offset - footer.metadata_length in
-      if Int.compare metadata_offset (String.length magic) < 0 then
+      if metadata_offset < String.length magic then
         fail "parquet metadata length points outside the file"
       else
         let metadata_bytes = String.sub input ~offset:metadata_offset ~len:footer.metadata_length in

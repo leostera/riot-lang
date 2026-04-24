@@ -18,7 +18,7 @@ let equal = fun left right ->
 
 let compare = fun left right ->
   match Binding_id.compare left.binding_id right.binding_id with
-  | 0 -> Surface_path.compare left.surface_path right.surface_path
+  | Order.EQ -> Surface_path.compare left.surface_path right.surface_path
   | order -> order
 
 let serializer = Serde.Ser.record

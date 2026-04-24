@@ -78,7 +78,7 @@ let test_to_string_roundtrips_parsed_versions = fun _ctx ->
 let test_compare_ignores_build_metadata = fun _ctx ->
   let left = parse_version "1.2.3+build.1" in
   let right = parse_version "1.2.3+build.2" in
-  if Version.compare left right = Version.Eq then
+  if Version.compare left right = Order.EQ then
     Ok ()
   else
     Error "expected Version.compare to ignore build metadata"
@@ -86,7 +86,7 @@ let test_compare_ignores_build_metadata = fun _ctx ->
 let test_compare_stable_release_is_greater_than_prerelease = fun _ctx ->
   let stable = parse_version "1.2.3" in
   let prerelease = parse_version "1.2.3-alpha" in
-  if Version.compare stable prerelease = Version.Gt then
+  if Version.compare stable prerelease = Order.GT then
     Ok ()
   else
     Error "expected stable releases to compare greater than their prereleases"
@@ -94,7 +94,7 @@ let test_compare_stable_release_is_greater_than_prerelease = fun _ctx ->
 let test_compare_numeric_pre_release_segments = fun _ctx ->
   let left = parse_version "1.0.0-alpha.1" in
   let right = parse_version "1.0.0-alpha.2" in
-  if Version.compare left right = Version.Lt then
+  if Version.compare left right = Order.LT then
     Ok ()
   else
     Error "expected numeric pre-release segments to compare numerically"
@@ -102,7 +102,7 @@ let test_compare_numeric_pre_release_segments = fun _ctx ->
 let test_compare_numeric_segments_lower_than_alphanumeric = fun _ctx ->
   let left = parse_version "1.0.0-1" in
   let right = parse_version "1.0.0-alpha" in
-  if Version.compare left right = Version.Lt then
+  if Version.compare left right = Order.LT then
     Ok ()
   else
     Error "expected numeric pre-release segments to compare lower than alphanumeric ones"
@@ -110,7 +110,7 @@ let test_compare_numeric_segments_lower_than_alphanumeric = fun _ctx ->
 let test_compare_shorter_prerelease_lists_lower = fun _ctx ->
   let left = parse_version "1.0.0-alpha" in
   let right = parse_version "1.0.0-alpha.1" in
-  if Version.compare left right = Version.Lt then
+  if Version.compare left right = Order.LT then
     Ok ()
   else
     Error "expected shorter equal-prefix pre-release lists to compare lower"

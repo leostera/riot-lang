@@ -1,9 +1,6 @@
 (** Platform identity and executable metadata for a concrete target triple. *)
 type error = Kernel.System.Host.error =
-  | InvalidTripletFormat of {
-      value: string;
-    }
-
+  | InvalidTripletFormat of { value: string }
 type t = Kernel.System.Host.t = {
   architecture: string;
   vendor: string;

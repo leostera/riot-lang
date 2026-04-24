@@ -29,6 +29,10 @@ let cast: type a b. a t -> b t -> a -> b option = fun a b value ->
   | Some witness -> Some (cast witness value)
   | None -> None
 
-let is_newer = fun (Ref a) (Ref b) -> Int64.compare a b = 1
+let is_newer = fun (Ref a) (Ref b) ->
+  match Int64.compare a b with
+  | Order.GT -> true
+  | Order.LT
+  | Order.EQ -> false
 
 let hash = fun (Ref a) -> Int64.hash a

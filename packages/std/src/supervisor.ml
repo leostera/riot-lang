@@ -158,7 +158,12 @@ let prune_old_restarts = fun state ->
   let cutoff = Time.Instant.sub current_time state.intensity.window in
   let restarts = Cell.get state.restarts in
   let recent =
-    List.filter restarts ~fn:(fun ((ts, _)) -> Time.Instant.compare ts cutoff >= 0)
+    List.filter restarts
+      ~fn:(fun ((ts, _)) ->
+        match Time.Instant.compare ts cutoff with
+        | Order.LT -> false
+        | Order.EQ
+        | Order.GT -> true)
   in
   Cell.set state.restarts recent
 
@@ -681,9 +686,12 @@ module Dynamic = struct
                 let current_time = Time.Instant.now () in
                 let cutoff = Time.Instant.sub current_time state.intensity.window in
                 let recent =
-                  List.filter
-                    (Cell.get state.restarts)
-                    ~fn:(fun ((ts, _)) -> Time.Instant.compare ts cutoff >= 0)
+                  List.filter (Cell.get state.restarts)
+                    ~fn:(fun ((ts, _)) ->
+                      match Time.Instant.compare ts cutoff with
+                      | Order.LT -> false
+                      | Order.EQ
+                      | Order.GT -> true)
                 in
                 Cell.set state.restarts recent;
                 if List.length recent > state.intensity.max_restarts then

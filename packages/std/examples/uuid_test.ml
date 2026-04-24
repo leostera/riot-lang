@@ -7,7 +7,13 @@ let () =
   let id2 = UUID.v7 () in
   Log.info ("ID1: " ^ UUID.to_string id1);
   Log.info ("ID2: " ^ UUID.to_string id2);
-  Log.info ("Compare: " ^ Int.to_string (UUID.compare id1 id2));
+  let ordering =
+    match UUID.compare id1 id2 with
+    | Order.LT -> "LT"
+    | Order.EQ -> "EQ"
+    | Order.GT -> "GT"
+  in
+  Log.info ("Compare: " ^ ordering);
   Log.info "";
   Log.info "=== UUID v4 (random) ===";
   let rand1 = UUID.v4 () in

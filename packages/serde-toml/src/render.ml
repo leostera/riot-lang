@@ -33,7 +33,12 @@ let float_to_string = fun value ->
   if Float.is_nan value then
     "nan"
   else if Float.is_infinite value then
-    if Float.compare value 0.0 < 0 then
+    if (
+        match Float.compare value 0.0 with
+        | Order.LT -> true
+        | Order.EQ
+        | Order.GT -> false
+      ) then
       "-inf"
     else
       "inf"

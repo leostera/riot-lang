@@ -14,7 +14,16 @@ external to_string_native: bytes -> string = "std_uuid_to_string"
 
 external of_string_native: string -> bytes = "std_uuid_of_string"
 
-external compare: bytes -> bytes -> int = "std_uuid_compare"
+external compare_native: bytes -> bytes -> int = "std_uuid_compare"
+
+let compare = fun left right ->
+  let order = compare_native left right in
+  if order < 0 then
+    Order.LT
+  else if order > 0 then
+    Order.GT
+  else
+    Order.EQ
 
 external is_nil_native: bytes -> bool = "std_uuid_is_nil"
 

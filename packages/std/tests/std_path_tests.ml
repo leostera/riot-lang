@@ -136,7 +136,7 @@ let test_equal_compares_normalized_paths = fun _ctx ->
     Error "Path.equal should compare normalized paths"
 
 let test_compare_compares_normalized_paths = fun _ctx ->
-  if Int.equal (Path.compare (Path.v "/home/./user") (Path.v "/home/user")) 0 then
+  if Path.compare (Path.v "/home/./user") (Path.v "/home/user") = Order.EQ then
     Ok ()
   else
     Error "Path.compare should compare normalized paths"

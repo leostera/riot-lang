@@ -15,10 +15,10 @@ external to_int: int32 -> int = "%int32_to_int"
 let neg = Caml_runtime.int32_neg
 
 let abs = fun value ->
-  if Caml_runtime.less_than (Caml_runtime.compare value 0l) 0 then
-    neg value
-  else
-    value
+  match Order.compare value 0l with
+  | Order.LT -> neg value
+  | Order.EQ
+  | Order.GT -> value
 
 let add = Caml_runtime.int32_add
 
@@ -66,4 +66,4 @@ let to_string = fun value -> format "%d" value
 
 let equal = Caml_runtime.equal
 
-let compare = Caml_runtime.compare
+let compare = Order.compare

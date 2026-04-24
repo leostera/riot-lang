@@ -46,7 +46,10 @@ let compare = fun left right ->
   Int.compare (Calendar.date_to_gregorian_days left) (Calendar.date_to_gregorian_days right)
 
 let equal = fun left right ->
-  Int.equal (compare left right) 0
+  match compare left right with
+  | Order.EQ -> true
+  | Order.LT
+  | Order.GT -> false
 
 let from_date_time: DateTime.t -> t = fun dt -> { year = dt.year; month = dt.month; day = dt.day }
 

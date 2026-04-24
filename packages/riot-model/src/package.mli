@@ -241,7 +241,7 @@ val key_to_string: key -> string
 
 val key_equal: key -> key -> bool
 
-val key_compare: key -> key -> int
+val key_compare: key -> key -> Order.t
 
 val dependencies_for_scope: dependency_scope -> t -> dependency list
 

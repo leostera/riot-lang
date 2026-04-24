@@ -16,7 +16,7 @@ val subsec_nanos: t -> int
 
 val now: unit -> (t, error) Result.t
 
-val compare: t -> t -> int
+val compare: t -> t -> Order.t
 
 val equal: t -> t -> bool
 

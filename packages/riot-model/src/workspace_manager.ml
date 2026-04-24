@@ -59,16 +59,14 @@ let manifest_load_error_message = function
 let scan_error_message = function
   | WorkspaceTomlLoadFailed { error; _ }
   | PackageTomlLoadFailed { error; _ } -> manifest_load_error_message error
-  | WorkspaceManifestDecodeFailed { path; error } ->
-      "failed to parse workspace manifest '"
-      ^ Path.to_string path
-      ^ "': "
-      ^ Workspace_manifest.error_message error
-  | PackageManifestDecodeFailed { path; error } ->
-      "failed to parse package manifest '"
-      ^ Path.to_string path
-      ^ "': "
-      ^ Package_manifest.error_message error
+  | WorkspaceManifestDecodeFailed { path; error } -> "failed to parse workspace manifest '"
+  ^ Path.to_string path
+  ^ "': "
+  ^ Workspace_manifest.error_message error
+  | PackageManifestDecodeFailed { path; error } -> "failed to parse package manifest '"
+  ^ Path.to_string path
+  ^ "': "
+  ^ Package_manifest.error_message error
   | NoWorkspaceRootFound -> "no workspace root found"
   | ScanException { message } -> "scan failed: " ^ message
 
@@ -415,11 +413,11 @@ let build_workspace:
     all_errors
   )
 
-let build_single_package_workspace: t -> Path.t -> (Workspace_manifest.t * load_error list, scan_error) result = fun t package_root ->
+let build_single_package_workspace:
+  t -> Path.t -> (Workspace_manifest.t * load_error list, scan_error) result = fun t package_root ->
   let manifest_path = Path.(package_root / riot_toml) in
   match load_riot_toml t manifest_path with
-  | Error err ->
-      Error (PackageTomlLoadFailed { path = manifest_path; error = err })
+  | Error err -> Error (PackageTomlLoadFailed { path = manifest_path; error = err })
   | Ok toml -> (
       match Package_manifest.from_toml
         toml
@@ -428,8 +426,7 @@ let build_single_package_workspace: t -> Path.t -> (Workspace_manifest.t * load_
         ~workspace_build_deps:[]
         ~path:package_root
         ~relative_path:(Path.v ".") with
-      | Error err ->
-          Error (PackageManifestDecodeFailed { path = manifest_path; error = err })
+      | Error err -> Error (PackageManifestDecodeFailed { path = manifest_path; error = err })
       | Ok package ->
           let package_name = Package_name.to_string package.name in
           let seen = Cell.create [ package.name ] in
@@ -473,13 +470,14 @@ let scan: t -> Path.t -> ((Workspace_manifest.t * load_error list), scan_error) 
               let toml_path = Path.(workspace_root / riot_toml) in
               let result =
                 match load_riot_toml t toml_path with
-                | Error err ->
-                    Error (WorkspaceTomlLoadFailed { path = toml_path; error = err })
+                | Error err -> Error (WorkspaceTomlLoadFailed { path = toml_path; error = err })
                 | Ok toml -> (
                     let workspace_of_toml_started_at = Time.Instant.now () in
                     match Workspace_manifest.of_toml toml with
-                    | Error err ->
-                        Error (WorkspaceManifestDecodeFailed { path = toml_path; error = err })
+                    | Error err -> Error (WorkspaceManifestDecodeFailed {
+                      path = toml_path;
+                      error = err
+                    })
                     | Ok workspace_manifest ->
                         let () = trace_workspace_manager
                           ("workspace-of-toml-us="

@@ -70,8 +70,8 @@ let run = fun matches ->
           | Error Riot_model.Workspace_manager.NoWorkspaceRootFound ->
               run_without_workspace path path_obj name is_library
           | Error err ->
-              fail ("Failed to scan workspace: "
-              ^ Riot_model.Workspace_manager.scan_error_message err)
+              fail
+                ("Failed to scan workspace: " ^ Riot_model.Workspace_manager.scan_error_message err)
           | Ok (workspace, _load_errors) ->
               let package_kind =
                 if is_library then

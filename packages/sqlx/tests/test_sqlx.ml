@@ -42,11 +42,11 @@ let test_value_equality = fun () ->
 
 let test_value_comparison = fun () ->
   Log.info "Testing value comparison...";
-  assert (Value.compare (Value.int 1) (Value.int 2) < 0);
-  assert (Value.compare (Value.int 2) (Value.int 1) > 0);
-  assert (Value.compare (Value.int 1) (Value.int 1) = 0);
-  assert (Value.compare Value.null (Value.int 1) < 0);
-  assert (Value.compare (Value.int 1) Value.null > 0);
+  assert (Value.compare (Value.int 1) (Value.int 2) = Order.LT);
+  assert (Value.compare (Value.int 2) (Value.int 1) = Order.GT);
+  assert (Value.compare (Value.int 1) (Value.int 1) = Order.EQ);
+  assert (Value.compare Value.null (Value.int 1) = Order.LT);
+  assert (Value.compare (Value.int 1) Value.null = Order.GT);
   Log.info "Value comparison: OK"
 
 let main = fun () ->

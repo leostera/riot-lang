@@ -38,7 +38,7 @@ let test_now_is_typically_nondecreasing = fun _ctx ->
   let first = SystemTime.now () in
   sleep (Duration.from_millis 10);
   let second = SystemTime.now () in
-  if SystemTime.compare first second <= 0 then
+  if SystemTime.compare first second != Order.GT then
     Ok ()
   else
     Error "expected SystemTime.now to be nondecreasing in normal operation"
@@ -53,7 +53,7 @@ let test_duration_since_same_time_is_zero = fun _ctx ->
 let test_elapsed_is_non_negative = fun _ctx ->
   let start = SystemTime.now () in
   let elapsed = SystemTime.elapsed start in
-  if Duration.compare elapsed Duration.zero >= 0 then
+  if Duration.compare elapsed Duration.zero != Order.LT then
     Ok ()
   else
     Error "expected SystemTime.elapsed to be non-negative"
@@ -96,7 +96,7 @@ let test_compare_equal_min_and_max_obey_ordering_laws = fun _ctx ->
   let second = SystemTime.from_seconds 2.0 in
   if
     SystemTime.equal first first
-    && SystemTime.compare first second < 0
+    && SystemTime.compare first second = Order.LT
     && SystemTime.equal (SystemTime.min first second) first
     && SystemTime.equal (SystemTime.max first second) second
   then
@@ -111,7 +111,7 @@ let test_to_unix_timestamp_drops_fractional_seconds = fun _ctx ->
     Error "expected SystemTime.to_unix_timestamp to drop fractional seconds"
 
 let test_duration_since_epoch_is_non_negative = fun _ctx ->
-  if Duration.compare (SystemTime.duration_since_epoch ()) Duration.zero >= 0 then
+  if Duration.compare (SystemTime.duration_since_epoch ()) Duration.zero != Order.LT then
     Ok ()
   else
     Error "expected SystemTime.duration_since_epoch to be non-negative"

@@ -1,9 +1,6 @@
 module Host: sig
   type error =
-    | InvalidTripletFormat of {
-        value: string;
-      }
-
+    | InvalidTripletFormat of { value: string }
   type t = {
     architecture: string;
     vendor: string;

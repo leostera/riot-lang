@@ -629,13 +629,13 @@ let size_to_string = fun size_bytes ->
   let mib = Int64.mul kib 1_024L in
   let gib = Int64.mul mib 1_024L in
   let tib = Int64.mul gib 1_024L in
-  if Int64.compare size_bytes tib >= 0 then
+  if Int64.compare size_bytes tib != Order.LT then
     scaled_size_string size_bytes tib "TiB"
-  else if Int64.compare size_bytes gib >= 0 then
+  else if Int64.compare size_bytes gib != Order.LT then
     scaled_size_string size_bytes gib "GiB"
-  else if Int64.compare size_bytes mib >= 0 then
+  else if Int64.compare size_bytes mib != Order.LT then
     scaled_size_string size_bytes mib "MiB"
-  else if Int64.compare size_bytes kib >= 0 then
+  else if Int64.compare size_bytes kib != Order.LT then
     scaled_size_string size_bytes kib "KiB"
   else
     Int64.to_string size_bytes ^ " B"

@@ -5,11 +5,8 @@ let test_target_triple_roundtrips_the_current_host = fun _ctx ->
   match System.TargetTriple.from_string rendered with
   | Ok parsed when System.TargetTriple.equal parsed System.host_triple -> Ok ()
   | Ok _ -> Error "System.TargetTriple.from_string should roundtrip System.host_triple"
-  | Error error ->
-      Error (
-        "expected current host triple to parse, got: "
-        ^ System.TargetTriple.error_message error
-      )
+  | Error error -> Error ("expected current host triple to parse, got: "
+  ^ System.TargetTriple.error_message error)
 
 let test_target_triple_rejects_incomplete_values = fun _ctx ->
   match System.TargetTriple.from_string "wasm32-wasi" with

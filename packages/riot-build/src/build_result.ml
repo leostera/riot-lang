@@ -78,12 +78,12 @@ let status_priority = function
 
 let should_prefer = fun current incoming ->
   let scope_comparison = Int.compare (scope_priority incoming.scope) (scope_priority current.scope) in
-  if scope_comparison > 0 then
+  if scope_comparison = Order.GT then
     true
-  else if scope_comparison < 0 then
+  else if scope_comparison = Order.LT then
     false
   else
-    Int.compare (status_priority incoming.status) (status_priority current.status) > 0
+    Int.compare (status_priority incoming.status) (status_priority current.status) = Order.GT
 
 let merge_artifacts = fun current incoming ->
   List.fold_left incoming ~init:current

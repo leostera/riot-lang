@@ -10,11 +10,7 @@ type t = {
   positive: bool;
 }
 
-let version_compare = fun a b ->
-  match Version.compare a b with
-  | Lt -> (-1)
-  | Eq -> 0
-  | Gt -> 1
+let version_compare = Version.compare
 
 let package = fun t -> t.package
 

@@ -17,6 +17,7 @@ type load_error =
   | PackageTomlParseFailed of { package: string; path: string }
   | PackageFromTomlFailed of { package: string; path: string; error: Package_manifest.error }
 val manifest_load_error_message: manifest_load_error -> string
+
 val scan_error_message: scan_error -> string
 
 val load_error_to_string: load_error -> string

@@ -4,7 +4,7 @@ open Propane
 let v = fun major minor patch -> Pubgrub.make_version ~major ~minor ~patch
 
 let order_versions = fun left right ->
-  if Pubgrub.version_compare left right <= 0 then
+  if Pubgrub.version_compare left right != Order.GT then
     (left, right)
   else
     (right, left)
@@ -25,7 +25,7 @@ let simple_range_gen =
     Generator.map2
       (fun left right ->
         let low, high = order_versions left right in
-        if Int.equal (Pubgrub.version_compare low high) 0 then
+        if Pubgrub.version_compare low high = Order.EQ then
           Pubgrub.singleton low
         else
           Pubgrub.between low high)
@@ -141,7 +141,7 @@ let assert_term_incompat = fun ~package ~positive ~ranges incompat ->
   | None -> Error ("Expected incompatibility term for package " ^ package)
 
 let assert_version_equal = fun ~expected ~actual ~message ->
-  if Int.equal (Pubgrub.version_compare expected actual) 0 then
+  if Pubgrub.version_compare expected actual = Order.EQ then
     Ok ()
   else
     Error (message
@@ -264,7 +264,7 @@ let rec equal_solution_entries = fun expected actual ->
   | (expected_pkg, expected_ver) :: expected_rest, (actual_pkg, actual_ver) :: actual_rest -> String.equal
     expected_pkg
     actual_pkg
-  && Int.equal (Pubgrub.version_compare expected_ver actual_ver) 0
+  && Pubgrub.version_compare expected_ver actual_ver = Order.EQ
   && equal_solution_entries expected_rest actual_rest
   | _ -> false
 
@@ -507,11 +507,11 @@ let fuzz_solution_entries = fun assignment ->
       String.compare left right)
 
 let fuzz_version_index_of_pubgrub = fun version ->
-  if Int.equal (Pubgrub.version_compare version (fuzz_pub_version 0)) 0 then
+  if Pubgrub.version_compare version (fuzz_pub_version 0) = Order.EQ then
     Some 0
-  else if Int.equal (Pubgrub.version_compare version (fuzz_pub_version 1)) 0 then
+  else if Pubgrub.version_compare version (fuzz_pub_version 1) = Order.EQ then
     Some 1
-  else if Int.equal (Pubgrub.version_compare version (fuzz_pub_version 2)) 0 then
+  else if Pubgrub.version_compare version (fuzz_pub_version 2) = Order.EQ then
     Some 2
   else
     None
@@ -536,7 +536,7 @@ let validate_fuzz_solution = fun (graph: fuzz_graph) solution ->
     | [] ->
         Ok ()
     | (pkg, version) :: rest when String.equal pkg "root" ->
-        if Int.equal (Pubgrub.version_compare version (v 1 0 0)) 0 then
+        if Pubgrub.version_compare version (v 1 0 0) = Order.EQ then
           ensure_known_versions rest
         else
           Error "Root version changed in solver solution"
@@ -584,7 +584,7 @@ let validate_fuzz_solution = fun (graph: fuzz_graph) solution ->
   | Error _ as err -> err
   | Ok () -> (
       match lookup_solution_version solution "root" with
-      | Some version when Int.equal (Pubgrub.version_compare version (v 1 0 0)) 0 -> (
+      | Some version when Pubgrub.version_compare version (v 1 0 0) = Order.EQ -> (
           match walk [ "root" ] graph.root_deps with
           | Error _ as err -> err
           | Ok reachable ->
@@ -1186,7 +1186,7 @@ let test_ranges_compare_is_semantic =
         (Pubgrub.between (v 1 0 0) (v 3 0 0))
         (Pubgrub.between (v 2 0 0) (v 4 0 0)) in
       let right = Pubgrub.between (v 1 0 0) (v 4 0 0) in
-      if Int.equal (Pubgrub.Ranges.compare ~compare_v:Pubgrub.version_compare left right) 0 then
+      if Pubgrub.Ranges.compare ~compare_v:Pubgrub.version_compare left right = Order.EQ then
         Ok ()
       else
         Error "Expected compare to treat semantically equal ranges as equal")

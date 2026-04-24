@@ -18,7 +18,7 @@ let rem = Caml_runtime.mod_int
 
 let equal = Caml_runtime.equal
 
-let compare = Caml_runtime.compare
+let compare = Order.compare
 
 let abs = fun value ->
   if value < 0 then
@@ -27,16 +27,16 @@ let abs = fun value ->
     value
 
 let min = fun left right ->
-  if compare left right <= 0 then
-    left
-  else
-    right
+  match compare left right with
+  | Order.LT
+  | Order.EQ -> left
+  | Order.GT -> right
 
 let max = fun left right ->
-  if compare left right >= 0 then
-    left
-  else
-    right
+  match compare left right with
+  | Order.LT -> right
+  | Order.EQ
+  | Order.GT -> left
 
 let succ = fun value -> add value 1
 

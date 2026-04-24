@@ -199,7 +199,7 @@ let is_ws = function
 let strip_comment = fun line ->
   let len = String.length line in
   let rec needs_scan index =
-    if Int.compare index len >= 0 then
+    if index >= len then
       false
     else
       match String.unsafe_get line index with
@@ -214,7 +214,7 @@ let strip_comment = fun line ->
     let in_string = ref false in
     let escaped = ref false in
     let rec loop index =
-      if Int.compare index len >= 0 then
+      if index >= len then
         IO.Buffer.contents buffer
       else
         let current = String.unsafe_get line index in
@@ -246,7 +246,7 @@ let strip_comment = fun line ->
 
 let trim_bounds = fun text ~start ~stop ->
   let rec trim_start index =
-    if Int.compare index stop >= 0 then
+    if index >= stop then
       stop
     else if is_ws (String.unsafe_get text index) then
       trim_start (index + 1)
@@ -254,7 +254,7 @@ let trim_bounds = fun text ~start ~stop ->
       index
   in
   let rec trim_stop index =
-    if Int.compare index start <= 0 then
+    if index <= start then
       start
     else if is_ws (String.unsafe_get text (index - 1)) then
       trim_stop (index - 1)
@@ -263,7 +263,7 @@ let trim_bounds = fun text ~start ~stop ->
   in
   let trimmed_start = trim_start start in
   let trimmed_stop = trim_stop stop in
-  if Int.compare trimmed_start trimmed_stop > 0 then
+  if trimmed_start > trimmed_stop then
     (trimmed_stop, trimmed_stop)
   else
     (trimmed_start, trimmed_stop)
@@ -276,7 +276,7 @@ let comment_cutoff = fun text ~start ~stop ->
   let in_string = ref false in
   let escaped = ref false in
   let rec loop index =
-    if Int.compare index stop >= 0 then
+    if index >= stop then
       stop
     else
       let current = String.unsafe_get text index in
@@ -340,7 +340,7 @@ let split_top_level = fun text ~sep ->
 let find_non_ws = fun text ~start ->
   let len = String.length text in
   let rec loop index =
-    if Int.compare index len >= 0 then
+    if index >= len then
       None
     else if is_ws (String.unsafe_get text index) then
       loop (index + 1)
@@ -360,7 +360,7 @@ let float_of_decimal_string = fun token ->
 let token_has_float_marker = fun token ->
   let len = String.length token in
   let rec loop index =
-    if Int.compare index len >= 0 then
+    if index >= len then
       false
     else
       match String.unsafe_get token index with
@@ -374,7 +374,7 @@ let token_has_float_marker = fun token ->
 let quoted_key = fun segment ->
   let len = String.length segment in
   if
-    Int.compare len 2 >= 0
+    len >= 2
     && Char.equal (String.unsafe_get segment 0) '"'
     && Char.equal (String.unsafe_get segment (len - 1)) '"'
   then
@@ -389,7 +389,7 @@ let quoted_key = fun segment ->
       | _ -> None
     in
     let read_hex4 () =
-      if Int.compare (!pos + 4) (text_len - 1) > 0 then
+      if !pos + 4 > text_len - 1 then
         fail "unterminated unicode escape in quoted key";
       let decode offset =
         match hex_value (String.unsafe_get value_text (!pos + offset)) with
@@ -405,11 +405,11 @@ let quoted_key = fun segment ->
       in
       IO.Buffer.add_utf_8_uchar buffer rune
     in
-    while Int.compare !pos (text_len - 1) < 0 do
+    while !pos < text_len - 1 do
       match String.unsafe_get value_text !pos with
       | '\\' ->
           pos := !pos + 1;
-          if Int.compare !pos (text_len - 1) >= 0 then
+          if !pos >= text_len - 1 then
             fail "unterminated escape in quoted key";
           (
             match String.unsafe_get value_text !pos with
@@ -454,7 +454,7 @@ let split_key_path = fun text ->
     start := stop + 1
   in
   let rec loop index =
-    if Int.compare index len >= 0 then
+    if index >= len then
       (
         parts := String.sub text ~offset:!start ~len:(len - !start) :: !parts;
         List.rev !parts
@@ -499,7 +499,7 @@ let find_assignment_from = fun text ~start ~stop ->
   let bracket_depth = ref 0 in
   let brace_depth = ref 0 in
   let rec loop index =
-    if Int.compare index stop >= 0 then
+    if index >= stop then
       None
     else
       let current = String.unsafe_get text index in
@@ -544,7 +544,7 @@ let find_assignment = fun text -> find_assignment_from text ~start:0 ~stop:(Stri
 let parse_value_text = fun input ->
   let len = String.length input in
   let pos = ref 0 in
-  let at_end () = Int.compare !pos len >= 0 in
+  let at_end () = !pos >= len in
   let peek () = String.get input ~at:!pos in
   let advance () =
     if not (at_end ()) then
@@ -564,7 +564,7 @@ let parse_value_text = fun input ->
     | _ -> None
   in
   let read_hex4 () =
-    if Int.compare (!pos + 4) len > 0 then
+    if !pos + 4 > len then
       fail "unterminated unicode escape";
     let decode offset =
       match String.get input ~at:(!pos + offset) with
@@ -812,9 +812,9 @@ let parse_document = fun content ->
       (fun line_number ~start ~stop ->
         let stop = comment_cutoff content ~start ~stop in
         let (start, stop) = trim_bounds content ~start ~stop in
-        if Int.compare start stop < 0 then
+        if start < stop then
           if
-            Int.compare (stop - start) 4 >= 0
+            stop - start >= 4
             && Char.equal (String.unsafe_get content start) '['
             && Char.equal (String.unsafe_get content (start + 1)) '['
           then

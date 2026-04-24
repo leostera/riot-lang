@@ -8,7 +8,7 @@ let panic = Kernel.SystemError.panic
 let zero = Scheduler_id 0
 
 let of_int = fun value ->
-  if Int.compare value 0 < 0 then
+  if value < 0 then
     panic "Scheduler_id.of_int expects a non-negative integer";
   Scheduler_id value
 

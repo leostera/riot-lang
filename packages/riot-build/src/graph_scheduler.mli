@@ -4,7 +4,7 @@ module Node_id: sig
   type t
   val equal: t -> t -> bool
 
-  val compare: t -> t -> int
+  val compare: t -> t -> Order.t
 
   val to_int: t -> int
 end

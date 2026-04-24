@@ -1085,9 +1085,19 @@ let attempt_steal = fun t (worker: worker) ->
 let reactor_poll_timeout_nanos = fun t ->
   let configured = Config.resolution_to_nanos t.config.timer_resolution in
   let max_timeout = 1_000_000L in
-  if Int64.compare configured 0L <= 0 then
+  if (
+      match Int64.compare configured 0L with
+      | Order.LT
+      | Order.EQ -> true
+      | Order.GT -> false
+    ) then
     max_timeout
-  else if Int64.compare configured max_timeout < 0 then
+  else if (
+      match Int64.compare configured max_timeout with
+      | Order.LT -> true
+      | Order.EQ
+      | Order.GT -> false
+    ) then
     configured
   else
     max_timeout

@@ -12,9 +12,7 @@ end
 
 module Host = struct
   type error =
-    | InvalidTripletFormat of {
-        value: string;
-      }
+    | InvalidTripletFormat of { value: string }
 
   type t = {
     architecture: string;

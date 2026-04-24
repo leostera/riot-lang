@@ -46,12 +46,12 @@ let rec compare = fun left right ->
   | Bare left_name, Bare right_name ->
       String.compare left_name right_name
   | Bare _, Qualified _ ->
-      (-1)
+      Order.LT
   | Qualified _, Bare _ ->
-      1
+      Order.GT
   | Qualified (left_name, left_tail), Qualified (right_name, right_tail) -> (
       match String.compare left_name right_name with
-      | 0 -> compare left_tail right_tail
+      | Order.EQ -> compare left_tail right_tail
       | order -> order
     )
 

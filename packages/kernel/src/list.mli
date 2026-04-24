@@ -35,6 +35,6 @@ val find: 'value list -> fn:('value -> bool) -> 'value option
 
 val filter: 'value list -> fn:('value -> bool) -> 'value list
 
-val sort: 'value list -> compare:('value -> 'value -> int) -> 'value list
+val sort: 'value list -> compare:('value -> 'value -> Order.t) -> 'value list
 
-val unique: 'value list -> compare:('value -> 'value -> int) -> 'value list
+val unique: 'value list -> compare:('value -> 'value -> Order.t) -> 'value list

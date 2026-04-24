@@ -218,32 +218,32 @@ let compare_path = fun left right ->
 
 let compare_option compare_value left right =
   match left, right with
-  | None, None -> 0
-  | None, Some _ -> (-1)
-  | Some _, None -> 1
+  | None, None -> Order.EQ
+  | None, Some _ -> Order.LT
+  | Some _, None -> Order.GT
   | Some left, Some right -> compare_value left right
 
 let compare_package_name = Package_name.compare
 
 let compare_dependency_source = fun left right ->
   let by_workspace = Bool.compare left.workspace right.workspace in
-  if not (Int.equal by_workspace 0) then
+  if by_workspace != Order.EQ then
     by_workspace
   else
     let by_builtin = Bool.compare left.builtin right.builtin in
-    if not (Int.equal by_builtin 0) then
+    if by_builtin != Order.EQ then
       by_builtin
     else
       let by_path = compare_option compare_path left.path right.path in
-      if not (Int.equal by_path 0) then
+      if by_path != Order.EQ then
         by_path
       else
         let by_source_locator = compare_option String.compare left.source_locator right.source_locator in
-        if not (Int.equal by_source_locator 0) then
+        if by_source_locator != Order.EQ then
           by_source_locator
         else
           let by_ref = compare_option String.compare left.ref_ right.ref_ in
-          if not (Int.equal by_ref 0) then
+          if by_ref != Order.EQ then
             by_ref
           else
             compare_option
@@ -256,21 +256,21 @@ let compare_dependency_source = fun left right ->
 
 let compare_dependency = fun (left: dependency) (right: dependency) ->
   let by_name = compare_package_name left.name right.name in
-  if not (Int.equal by_name 0) then
+  if by_name != Order.EQ then
     by_name
   else
     compare_dependency_source left.source right.source
 
 let compare_binary = fun (left: binary) (right: binary) ->
   let by_name = String.compare left.name right.name in
-  if not (Int.equal by_name 0) then
+  if by_name != Order.EQ then
     by_name
   else
     compare_path left.path right.path
 
 let compare_fix_provider = fun (left: Fix_provider.t) (right: Fix_provider.t) ->
   let by_name = String.compare left.name right.name in
-  if not (Int.equal by_name 0) then
+  if by_name != Order.EQ then
     by_name
   else
     compare_path left.source_path right.source_path
@@ -283,7 +283,7 @@ let compare_target_override = fun (left_name, _) (right_name, _) ->
 
 let compare_foreign_dependency = fun (left: foreign_dependency) (right: foreign_dependency) ->
   let by_name = String.compare left.name right.name in
-  if not (Int.equal by_name 0) then
+  if by_name != Order.EQ then
     by_name
   else
     compare_path left.path right.path

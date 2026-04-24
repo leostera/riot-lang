@@ -26,6 +26,7 @@ module List = List
 module Mutex = Sync.Mutex
 module Net = Net
 module Option = Option
+module Order = Order
 module Path = Path
 module Process = Process
 module Ptr = Ptr

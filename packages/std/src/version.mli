@@ -100,10 +100,6 @@ type t = {
 }
 (** Semantic version with major.minor.patch, optional pre-release identifiers,
     and optional build metadata *)
-type comparison =
-  Lt
-  | Eq
-  | Gt
 (** Requirement operator for version matching *)
 type requirement_op =
   | ReqEq
@@ -156,7 +152,7 @@ val to_string: t -> string
 (** Convert a version to its string representation *)
 (** {1 Comparison} *)
 
-val compare: t -> t -> comparison
+val compare: t -> t -> Order.t
 
 (** Compare two versions according to SemVer precedence rules.
 

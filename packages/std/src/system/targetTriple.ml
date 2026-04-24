@@ -6,9 +6,7 @@ type t = Kernel.System.Host.t = {
 }
 
 type error = Kernel.System.Host.error =
-  | InvalidTripletFormat of {
-      value: string;
-    }
+  | InvalidTripletFormat of { value: string }
 
 let current = Kernel.System.Host.current
 

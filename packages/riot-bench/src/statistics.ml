@@ -41,12 +41,12 @@ let stability_of_cv = fun ~current_cv ~baseline_cv ->
         | None -> 0.05
         | Some baseline_cv ->
             let scaled = baseline_cv *. 2.0 in
-            if Float.compare scaled 0.05 > 0 then
+            if Float.compare scaled 0.05 = Order.GT then
               scaled
             else
               0.05
       in
-      if Float.compare current_cv threshold <= 0 then
+      if Float.compare current_cv threshold != Order.GT then
         Stable
       else
         Noisy

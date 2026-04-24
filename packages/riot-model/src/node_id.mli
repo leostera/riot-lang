@@ -8,7 +8,7 @@ val of_package: Package.t -> t
 val to_string: t -> string
 
 (** Compare two node IDs *)
-val compare: t -> t -> int
+val compare: t -> t -> Std.Order.t
 
 (** Check if two node IDs are equal *)
 val equal: t -> t -> bool

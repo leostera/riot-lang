@@ -59,9 +59,9 @@ val filter: 'value list -> fn:('value -> bool) -> 'value list
 
 val filter_map: 'value list -> fn:('value -> 'mapped option) -> 'mapped list
 
-val sort: 'value list -> compare:('value -> 'value -> int) -> 'value list
+val sort: 'value list -> compare:('value -> 'value -> Order.t) -> 'value list
 
-val unique: 'value list -> compare:('value -> 'value -> int) -> 'value list
+val unique: 'value list -> compare:('value -> 'value -> Order.t) -> 'value list
 
 val zip: 'left list -> 'right list -> ('left * 'right) list
 

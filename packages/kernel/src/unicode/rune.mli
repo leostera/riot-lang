@@ -28,7 +28,7 @@ val to_char: t -> char
 
 val equal: t -> t -> bool
 
-val compare: t -> t -> int
+val compare: t -> t -> Order.t
 
 val utf_decode_is_valid: utf_decode -> bool
 

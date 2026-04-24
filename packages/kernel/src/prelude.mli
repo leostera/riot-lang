@@ -5,7 +5,7 @@ external raise: exn -> 'a = "%raise"
 
 val ( = ): 'value -> 'value -> bool
 
-val compare: 'value -> 'value -> int
+val compare: 'value -> 'value -> Order.t
 
 val min: 'value -> 'value -> 'value
 

@@ -94,7 +94,10 @@ let test_of_parts_roundtrips = fun _ctx ->
 
 let test_now_is_at_or_after_epoch = fun _ctx ->
   let* now = lift_system_time (Kernel.Time.SystemTime.now ()) in
-  if Kernel.Time.SystemTime.compare now Kernel.Time.SystemTime.epoch >= 0 then
+  if match Kernel.Time.SystemTime.compare now Kernel.Time.SystemTime.epoch with
+    | Kernel.Order.LT -> false
+    | Kernel.Order.EQ
+    | Kernel.Order.GT -> true then
     Ok ()
   else
     Error "expected current system time to be at or after the epoch"
@@ -118,7 +121,10 @@ let test_system_time_diff_ns_matches_parts = fun _ctx ->
 let test_monotonic_now_is_non_decreasing = fun _ctx ->
   let* earlier = lift_monotonic (Kernel.Time.Monotonic.now ()) in
   let* later = lift_monotonic (Kernel.Time.Monotonic.now ()) in
-  if Kernel.Time.Monotonic.compare earlier later <= 0 then
+  if match Kernel.Time.Monotonic.compare earlier later with
+    | Kernel.Order.LT
+    | Kernel.Order.EQ -> true
+    | Kernel.Order.GT -> false then
     Ok ()
   else
     Error "expected monotonic now to be non-decreasing"
@@ -489,9 +495,9 @@ let test_system_time_compare_and_equal_are_antisymmetric = fun _ctx ->
   let* later = lift_system_time (Kernel.Time.SystemTime.from_parts ~secs:1 ~nanos:6) in
   if
     Kernel.Time.SystemTime.equal earlier same
-    && Kernel.Time.SystemTime.compare earlier same = 0
-    && Kernel.Time.SystemTime.compare earlier later < 0
-    && Kernel.Time.SystemTime.compare later earlier > 0
+    && Kernel.Time.SystemTime.compare earlier same = Kernel.Order.EQ
+    && Kernel.Time.SystemTime.compare earlier later = Kernel.Order.LT
+    && Kernel.Time.SystemTime.compare later earlier = Kernel.Order.GT
   then
     Ok ()
   else

@@ -263,9 +263,9 @@ let compare_item_path = fun left right ->
       let right = Option.map right.path ~fn:Path.to_string |> Option.unwrap_or ~default:"" in
       String.compare left right
   | Error _, Ok _ ->
-      (-1)
+      Order.LT
   | Ok _, Error _ ->
-      1
+      Order.GT
 
 let next_dir_entry = fun opts ~depth ~dir_path handle ->
   match ReadDir.next handle with

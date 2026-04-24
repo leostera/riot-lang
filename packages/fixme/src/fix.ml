@@ -103,8 +103,8 @@ let lower_operation = fun ~source ->
 
 let compare_text_edit = fun a b ->
   match Int.compare a.span.start b.span.start with
-  | 0 -> Int.compare a.span.end_ b.span.end_
-  | n -> n
+  | Order.EQ -> Int.compare a.span.end_ b.span.end_
+  | order -> order
 
 let same_text_edit = fun a b ->
   a.span.start = b.span.start && a.span.end_ = b.span.end_ && String.equal a.new_text b.new_text

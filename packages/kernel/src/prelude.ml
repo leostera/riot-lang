@@ -10,19 +10,19 @@ let min_int = Caml_runtime.add_int max_int 1
 
 let ( = ) = Caml_runtime.equal
 
-let compare = Caml_runtime.compare
+let compare = Order.compare
 
 let min = fun left right ->
-  if Caml_runtime.less_or_equal (compare left right) 0 then
-    left
-  else
-    right
+  match compare left right with
+  | Order.LT
+  | Order.EQ -> left
+  | Order.GT -> right
 
 let max = fun left right ->
-  if Caml_runtime.greater_or_equal (compare left right) 0 then
-    left
-  else
-    right
+  match compare left right with
+  | Order.LT -> right
+  | Order.EQ
+  | Order.GT -> left
 
 let ( != ) = Caml_runtime.not_equal
 
