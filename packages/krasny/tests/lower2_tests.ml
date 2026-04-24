@@ -683,9 +683,23 @@ let tests = [
       assert_format2_mli
         ~expected:"type ('a, 'e) result_like = ('a, 'e) result\ntype pair = int * string\n"
         "type ('a, 'e) result_like = ('a, 'e) result\ntype pair = int * string\n");
+  Test.case "lower2 keeps qualified variant payload declarations multiline"
+    (fun _ctx ->
+      assert_format2_mli
+        ~expected:"type source =\n\
+          \  Version of string\n\
+          \  | Path of Path.t\n\
+          \  | Url of Net.Uri.t\n"
+        "type source = Version of string | Path of Path.t | Url of Net.Uri.t\n");
   Test.case
     "lower2 formats simple value declarations"
     (fun _ctx -> assert_format2_mli ~expected:"val id: 'a -> 'a\n" "val id : 'a -> 'a\n");
+  Test.case "lower2 keeps long value declarations inline after colon breaks"
+    (fun _ctx ->
+      assert_format2_mli
+        ~expected:"val resolve_module_path:\n\
+          \  lookup -> current_path:string list -> target_path:string list -> interface_source option\n"
+        "val resolve_module_path: lookup -> current_path:string list -> target_path:string list -> interface_source option\n");
   Test.case
     "lower2 keeps adjacent signature values separated"
     (fun _ctx ->

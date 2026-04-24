@@ -4664,10 +4664,18 @@ let tokens_text_width = fun tokens ->
 
 let type_annotation_breaks_after_colon = fun tokens ->
   let arrow_count = top_level_arrow_count tokens in
-  (Int.(arrow_count > 0) && tokens_have_long_text ~minimum:30 tokens)
-  || (Int.(arrow_count >= 4) && Int.(tokens_text_width tokens > 100))
+  let width = tokens_text_width tokens in
+  (Int.(arrow_count >= 2) && Int.(width > 80)) || (Int.(arrow_count >= 4) && Int.(width > 100))
 
 let multiline_top_level_arrow_type_threshold = 4
+
+let declaration_type_annotation_doc = fun tokens ->
+  let arrow_count = top_level_arrow_count tokens in
+  let width = tokens_text_width tokens in
+  if Int.(arrow_count >= 2) && (tokens_have_long_text ~minimum:30 tokens || Int.(width > 120)) then
+    type_annotation_tokens_doc tokens
+  else
+    type_tokens_inline_doc tokens
 
 let strip_enclosing_token = fun ~opening ~closing tokens ->
   match tokens with
@@ -4888,10 +4896,27 @@ let token_is_capitalized_ident = fun token ->
       | 'A' .. 'Z' -> true
       | _ -> false
 
+let constructor_head_tokens = fun tokens ->
+  let tokens =
+    match tokens with
+    | token :: rest when token_kind_is token Kind.PIPE -> rest
+    | _ -> tokens
+  in
+  let rec loop acc depth = function
+    | [] -> List.reverse acc
+    | token :: _ when Int.equal depth 0
+    && (token_kind_is token Kind.OF_KW
+    || token_kind_is token Kind.COLON
+    || token_kind_is token Kind.PIPE) -> List.reverse acc
+    | token :: rest -> loop (token :: acc) (type_token_depth_after depth token) rest
+  in
+  loop [] 0 tokens
+
 let tokens_look_like_bare_variant_body = fun tokens ->
-  match tokens with
-  | first :: _ when token_is_capitalized_ident first -> not
-    (Option.is_some (split_top_level_token tokens ~matches:(fun kind -> Kind.(kind = DOT))))
+  match constructor_head_tokens tokens with
+  | first :: head_tokens when token_is_capitalized_ident first -> not
+    (Option.is_some
+      (split_top_level_token (first :: head_tokens) ~matches:(fun kind -> Kind.(kind = DOT))))
   | _ -> false
 
 let poly_variant_row_doc = fun ~bar tokens ->
@@ -5475,7 +5500,7 @@ let module_signature_body_val_item_doc = fun tokens ->
   | val_token :: rest when token_kind_is val_token Kind.VAL_KW -> (
       match split_top_level_token rest ~matches:(fun kind -> Kind.(kind = COLON)) with
       | Some (name_tokens, _colon, type_tokens) ->
-          let type_doc = type_annotation_tokens_doc type_tokens in
+          let type_doc = declaration_type_annotation_doc type_tokens in
           if Doc.is_multiline type_doc || type_annotation_breaks_after_colon type_tokens then
             Doc.concat
               [
@@ -6207,11 +6232,7 @@ let value_decl_doc = fun decl ->
   | Some ([], _, _) ->
       unsupported "value declaration without name"
   | Some (name_tokens, colon_token, ((_ :: _) as annotation_tokens)) ->
-      let annotation_doc =
-        match Ast.ValueDeclaration.type_annotation decl with
-        | Some _ -> type_annotation_tokens_doc annotation_tokens
-        | None -> type_annotation_tokens_doc annotation_tokens
-      in
+      let annotation_doc = declaration_type_annotation_doc annotation_tokens in
       if Doc.is_multiline annotation_doc || type_annotation_breaks_after_colon annotation_tokens then
         Doc.concat
           [
@@ -6279,7 +6300,7 @@ let external_decl_doc = fun decl ->
             let annotation_doc =
               match annotation_tokens with
               | [] -> type_expr_doc annotation
-              | tokens -> type_annotation_tokens_doc tokens
+              | tokens -> declaration_type_annotation_doc tokens
             in
             if
               Doc.is_multiline annotation_doc || type_annotation_breaks_after_colon annotation_tokens
