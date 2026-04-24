@@ -56,12 +56,25 @@ type remove_request = Package_management.remove_request = {
   dependency: Riot_model.Package_name.t;
 }
 
+type dependency_spec_error = Package_management.dependency_spec_error =
+  | RegistryDependencySpecError of Registry_package_spec.error
+  | SourceDependencySpecError of Git_dependency.error
+
+type path_dependency_load_error = Package_management.path_dependency_load_error =
+  | PathDependencyManifestReadFailed of IO.error
+  | PathDependencyTomlParseFailed of Std.Data.Toml.error
+  | PathDependencyManifestDecodeFailed of Riot_model.Package.manifest_error
+
 type package_error = Package_management.error =
   | CurrentPackageNotFound of { cwd: Path.t }
   | PackageNotFound of { package: Riot_model.Package_name.t }
-  | DependencySpecInvalid of { dependency: string; error: string }
+  | DependencySpecInvalid of { dependency: string; error: dependency_spec_error }
   | PathDependencyMustBeRelative of { dependency: string }
-  | PathDependencyLoadFailed of { dependency: string; path: Path.t; error: string }
+  | PathDependencyLoadFailed of {
+      dependency: string;
+      path: Path.t;
+      error: path_dependency_load_error
+    }
   | SourceDependencyLoadFailed of {
       dependency: string;
       source_locator: string;

@@ -2120,6 +2120,53 @@ version = "0.0.1"
                             else
                               Error "expected path add to write discovered package name and refresh riot.lock")))))
 
+let test_add_path_dependency_reports_missing_manifest = fun _ctx ->
+  with_tempdir "riot_deps_add_missing_path"
+    (fun workspace_root ->
+      let workspace_manifest = Path.(workspace_root / Path.v "riot.toml") in
+      let app_root = Path.(workspace_root / Path.v "packages/app") in
+      write_file workspace_manifest
+        {|
+[workspace]
+members = ["packages/app"]
+|};
+      write_package_manifest ~root:app_root
+        {|
+[package]
+name = "app"
+version = "0.0.1"
+|};
+      let workspace_manager = Riot_model.Workspace_manager.create () in
+      Riot_model.Workspace_manager.scan workspace_manager workspace_root
+      |> Result.map_err
+        ~fn:(fun err ->
+          "expected workspace scan to succeed: " ^ Riot_model.Workspace_manager.scan_error_message err)
+      |> Result.and_then
+        ~fn:(fun (workspace, load_errors) ->
+          if not (List.is_empty load_errors) then
+            Error "expected workspace scan to have no load errors"
+          else
+            match Riot_deps.add
+              ~workspace_manager
+              ~workspace
+              ~cwd:app_root
+              ~request:Riot_deps.{ selection = Current; scope = Runtime; dependency = "../missing" }
+              () with
+            | Error (Riot_deps.PathDependencyLoadFailed {
+              dependency;
+              path;
+              error=Riot_deps.PathDependencyManifestReadFailed _
+            }) ->
+                if
+                  String.equal dependency "../missing"
+                  && Path.equal path Path.(workspace_root / Path.v "packages/missing")
+                then
+                  Ok ()
+                else
+                  Error "unexpected missing path dependency payload"
+            | Error err -> Error ("unexpected add error: " ^ Riot_deps.package_error_message err)
+            | Ok () -> Error "expected missing path dependency manifest to fail"))
+
 let test_git_dependency_parse_spec_normalizes_github_source = fun _ctx ->
   match Riot_deps.Git_dependency.parse_spec "https://github.com/riot-tests/widgets-add#main" with
   | Ok { source_locator; ref_ } ->
@@ -2266,8 +2313,17 @@ version = "0.0.1"
               }
               () with
             | Ok () -> Error "expected unsupported non-github source dependency add to fail"
-            | Error (Riot_deps.DependencySpecInvalid { dependency; _ }) ->
-                if String.equal dependency "https://gitlab.com/leostera/widgets" then
+            | Error (Riot_deps.DependencySpecInvalid {
+              dependency;
+              error=Riot_deps.SourceDependencySpecError (Riot_deps.Git_dependency.UnsupportedSourceHost {
+                host;
+                _
+              })
+            }) ->
+                if
+                  String.equal dependency "https://gitlab.com/leostera/widgets"
+                  && String.equal host "gitlab.com"
+                then
                   Ok ()
                 else
                   Error "unexpected unsupported source dependency payload"
@@ -3514,6 +3570,7 @@ let tests =
     case "lockfile store: missing lockfile returns none" test_lockfile_store_returns_none_when_missing;
     case "lockfile store: bubbles parse errors" test_lockfile_store_bubbles_parse_errors;
     case "package management: add discovers path dependency package names and refreshes lockfile" test_add_path_dependency_discovers_package_name_and_refreshes_lock;
+    case "package management: add reports missing path dependency manifests" test_add_path_dependency_reports_missing_manifest;
     case "git dependency: github source spec normalizes into locator and ref" test_git_dependency_parse_spec_normalizes_github_source;
     case "git dependency: reports multiple ref suffixes" test_git_dependency_parse_spec_reports_multiple_ref_suffixes;
     case "git dependency: reports invalid source locator shape" test_git_dependency_parse_source_locator_reports_invalid_shape;

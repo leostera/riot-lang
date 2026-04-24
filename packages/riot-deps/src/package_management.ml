@@ -46,12 +46,25 @@ type remove_request = {
   dependency: Package_name.t;
 }
 
+type dependency_spec_error =
+  | RegistryDependencySpecError of Registry_package_spec.error
+  | SourceDependencySpecError of Git_dependency.error
+
+type path_dependency_load_error =
+  | PathDependencyManifestReadFailed of IO.error
+  | PathDependencyTomlParseFailed of Std.Data.Toml.error
+  | PathDependencyManifestDecodeFailed of Package.manifest_error
+
 type error =
   | CurrentPackageNotFound of { cwd: Path.t }
   | PackageNotFound of { package: Package_name.t }
-  | DependencySpecInvalid of { dependency: string; error: string }
+  | DependencySpecInvalid of { dependency: string; error: dependency_spec_error }
   | PathDependencyMustBeRelative of { dependency: string }
-  | PathDependencyLoadFailed of { dependency: string; path: Path.t; error: string }
+  | PathDependencyLoadFailed of {
+      dependency: string;
+      path: Path.t;
+      error: path_dependency_load_error
+    }
   | SourceDependencyLoadFailed of {
       dependency: string;
       source_locator: string;
@@ -107,6 +120,15 @@ type parsed_dependency =
   | Path of path_dependency
   | Source of source_dependency
 
+let dependency_spec_error_message = function
+  | RegistryDependencySpecError error -> Registry_package_spec.error_message error
+  | SourceDependencySpecError error -> Git_dependency.message error
+
+let path_dependency_load_error_message = function
+  | PathDependencyManifestReadFailed error -> IO.error_message error
+  | PathDependencyTomlParseFailed error -> Data.Toml.error_to_string error
+  | PathDependencyManifestDecodeFailed error -> Package.manifest_error_message error
+
 let no_emit: event_sink = fun _ -> ()
 
 let registry_name = "pkgs.ml"
@@ -135,11 +157,16 @@ let error_message = function
   | PackageNotFound { package } ->
       "workspace package '" ^ Package_name.to_string package ^ "' was not found"
   | DependencySpecInvalid { dependency; error } ->
-      "invalid dependency '" ^ dependency ^ "': " ^ error
+      "invalid dependency '" ^ dependency ^ "': " ^ dependency_spec_error_message error
   | PathDependencyMustBeRelative { dependency } ->
       "path dependency '" ^ dependency ^ "' must be a relative path"
   | PathDependencyLoadFailed { dependency; path; error } ->
-      "failed to load path dependency '" ^ dependency ^ "' from '" ^ Path.to_string path ^ "': " ^ error
+      "failed to load path dependency '"
+      ^ dependency
+      ^ "' from '"
+      ^ Path.to_string path
+      ^ "': "
+      ^ path_dependency_load_error_message error
   | SourceDependencyLoadFailed { dependency; source_locator; ref_; error } ->
       let suffix =
         match ref_ with
@@ -225,7 +252,7 @@ let parse_registry_dependency_spec = fun raw ->
   Registry_package_spec.from_string raw
   |> Result.map_err
     ~fn:(fun error ->
-      DependencySpecInvalid { dependency = raw; error = Registry_package_spec.error_message error })
+      DependencySpecInvalid { dependency = raw; error = RegistryDependencySpecError error })
 
 let is_source_dependency_spec = fun raw ->
   String.starts_with ~prefix:"http://" raw
@@ -256,7 +283,7 @@ let load_path_dependency = fun ~(target:target_manifest) ~raw ->
         PathDependencyLoadFailed {
           dependency = raw;
           path = package_root;
-          error = IO.error_message err
+          error = PathDependencyManifestReadFailed err
         }) in
     let* toml = Data.Toml.parse source
     |> Result.map_err
@@ -264,7 +291,7 @@ let load_path_dependency = fun ~(target:target_manifest) ~raw ->
         PathDependencyLoadFailed {
           dependency = raw;
           path = package_root;
-          error = Data.Toml.error_to_string err
+          error = PathDependencyTomlParseFailed err
         }) in
     let* package = Package.from_toml
       toml
@@ -278,7 +305,7 @@ let load_path_dependency = fun ~(target:target_manifest) ~raw ->
         PathDependencyLoadFailed {
           dependency = raw;
           path = package_root;
-          error = Package.manifest_error_message err
+          error = PathDependencyManifestDecodeFailed err
         }) in
     Ok (Path { name = package.name; path = dep_path })
 
@@ -286,11 +313,11 @@ let load_source_dependency = fun ~(emit:event_sink) ~raw ->
   let* spec = Git_dependency.parse_spec raw
   |> Result.map_err
     ~fn:(fun error ->
-      DependencySpecInvalid { dependency = raw; error = Git_dependency.message error }) in
+      DependencySpecInvalid { dependency = raw; error = SourceDependencySpecError error }) in
   let* () = Git_dependency.parse_source_locator spec.source_locator
   |> Result.map_err
     ~fn:(fun error ->
-      DependencySpecInvalid { dependency = raw; error = Git_dependency.message error })
+      DependencySpecInvalid { dependency = raw; error = SourceDependencySpecError error })
   |> Result.map ~fn:(fun _ -> ()) in
   let emit_materialization_events = should_emit_source_materialization_started
     ~source_locator:spec.source_locator
@@ -742,7 +769,7 @@ let load_source_workspace_from_spec = fun ?(emit = no_emit) ~workspace_manager ?
   let* () = Git_dependency.parse_source_locator parsed.source_locator
   |> Result.map_err
     ~fn:(fun error ->
-      DependencySpecInvalid { dependency = source_spec; error = Git_dependency.message error })
+      DependencySpecInvalid { dependency = source_spec; error = SourceDependencySpecError error })
   |> Result.map ~fn:(fun _ -> ()) in
   let emit_materialization_events = should_emit_source_materialization_started
     ~source_locator:parsed.source_locator
@@ -829,7 +856,7 @@ let load_source_workspace = fun ?(emit = no_emit) ~workspace_manager ?(update = 
   let* parsed = Git_dependency.parse_spec spec
   |> Result.map_err
     ~fn:(fun error ->
-      DependencySpecInvalid { dependency = spec; error = Git_dependency.message error }) in
+      DependencySpecInvalid { dependency = spec; error = SourceDependencySpecError error }) in
   load_source_workspace_from_spec ~workspace_manager ~emit ~update ~spec:parsed ()
 
 let load_registry_workspace_from_spec = fun ?(emit = no_emit) ?registry ~workspace_manager ~spec () ->
