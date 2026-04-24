@@ -38,7 +38,7 @@ type run_error =
     }
   | ProcessExited of int
   | SystemError of string
-  | ExternalTargetLoadFailed of { target: string; reason: string }
+  | ExternalTargetLoadFailed of { target: string; error: Riot_deps.package_error }
 
 let no_event: run_event -> unit = fun _ -> ()
 
@@ -126,10 +126,10 @@ let run_error_message = function
   | ArtifactNotFound { reason; _ } -> reason
   | ProcessExited code -> "process exited with " ^ Int.to_string code
   | SystemError msg -> msg
-  | ExternalTargetLoadFailed { target; reason } -> "failed to load external target '"
+  | ExternalTargetLoadFailed { target; error } -> "failed to load external target '"
   ^ target
   ^ "': "
-  ^ reason
+  ^ Riot_deps.package_error_message error
 
 let run_event_to_json = function
   | Build event -> Riot_build.Event.to_json event
@@ -155,9 +155,7 @@ let load_source_workspace = fun ~on_event ~source_spec ~update ->
     ~update
     ~spec:source_spec
     ()
-  |> Result.map_err
-    ~fn:(fun err ->
-      ExternalTargetLoadFailed { target = source_spec; reason = Riot_deps.package_error_message err })
+  |> Result.map_err ~fn:(fun error -> ExternalTargetLoadFailed { target = source_spec; error })
 
 let find_built_binary_path = fun ~(store:Riot_store.Store.t) ~(output:Riot_build.Build_result.t) ~package_name ~binary_name ->
   let ensure_executable_binary_path path =

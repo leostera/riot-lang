@@ -33,7 +33,7 @@ type run_error =
     }
   | ProcessExited of int
   | SystemError of string
-  | ExternalTargetLoadFailed of { target: string; reason: string }
+  | ExternalTargetLoadFailed of { target: string; error: Riot_deps.package_error }
 val build_scope_for_binary:
   Riot_model.Workspace.t ->
   package_name:Riot_model.Package_name.t ->

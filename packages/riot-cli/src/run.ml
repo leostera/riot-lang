@@ -61,12 +61,10 @@ let parse_package_name = fun package_name ->
   Riot_model.Package_name.from_string package_name
   |> Result.map_err
     ~fn:(fun error ->
-      Failure (
-        "invalid package name '"
-        ^ package_name
-        ^ "': "
-        ^ Riot_model.Package_name.error_message error
-      ))
+      Failure ("invalid package name '"
+      ^ package_name
+      ^ "': "
+      ^ Riot_model.Package_name.error_message error))
 
 let parse_local_target = fun ?package_filter name ->
   match String.split name ~by:":" with
@@ -183,10 +181,10 @@ let run_error_to_json = fun (err: Run_runtime.run_error) ->
       ("kind", Data.Json.String "system_error");
       ("reason", Data.Json.String reason)
     ]
-    | Run_runtime.ExternalTargetLoadFailed { target; reason } -> [
+    | Run_runtime.ExternalTargetLoadFailed { target; error } -> [
       ("kind", Data.Json.String "external_target_load_failed");
       ("target", Data.Json.String target);
-      ("reason", Data.Json.String reason);
+      ("reason", Data.Json.String (Package_error.message error));
     ]
   in
   Data.Json.Object (("type", Data.Json.String "run.error")
