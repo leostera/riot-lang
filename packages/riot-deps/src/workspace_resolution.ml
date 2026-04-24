@@ -126,7 +126,10 @@ let ensure_lock = fun ?(emit = no_emit) ~workspace_manager ~mode ~registry ~(wor
       let current_dependency_hash =
         match Lock_refresh.dependency_hash ~workspace_manager ~workspace_root ~manifest_paths with
         | Ok dependency_hash -> Ok dependency_hash
-        | Error err -> Error (Error.LockRefreshCheckFailed { workspace_root; error = err })
+        | Error err -> Error (Error.LockRefreshCheckFailed {
+          workspace_root;
+          error = Lock_refresh.error_message err
+        })
       in
       let lock_result =
         match current_dependency_hash with
@@ -216,7 +219,10 @@ let ensure_lock = fun ?(emit = no_emit) ~workspace_manager ~mode ~registry ~(wor
               | Error _ when used_existing_lock -> (
                   match Lock_refresh.dependency_hash ~workspace_manager ~workspace_root ~manifest_paths with
                   | Error err ->
-                      let err = Error.LockRefreshCheckFailed { workspace_root; error = err } in
+                      let err = Error.LockRefreshCheckFailed {
+                        workspace_root;
+                        error = Lock_refresh.error_message err
+                      } in
                       emit (Riot_model.Event.DependencyResolutionFailed { error = err });
                       Error err
                   | Ok dependency_hash ->

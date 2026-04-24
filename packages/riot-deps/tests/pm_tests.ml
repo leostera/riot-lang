@@ -1830,7 +1830,7 @@ let test_lock_refresh_requires_lock_when_missing = fun _ctx ->
         ~lockfile:None with
       | Ok true -> Ok ()
       | Ok false -> Error "expected missing lockfile to require refresh"
-      | Error err -> Error err)
+      | Error err -> Error (Riot_deps.Lock_refresh.error_message err))
 
 let test_lock_refresh_false_when_dependency_hash_matches = fun _ctx ->
   with_tempdir "riot_deps_matching_dep_hash"
@@ -1851,7 +1851,7 @@ let test_lock_refresh_false_when_dependency_hash_matches = fun _ctx ->
         ~lockfile:(Some lockfile) with
       | Ok false -> Ok ()
       | Ok true -> Error "expected matching dependency hash to avoid refresh"
-      | Error err -> Error err)
+      | Error err -> Error (Riot_deps.Lock_refresh.error_message err))
 
 let test_lock_refresh_true_when_dependency_hash_changes = fun _ctx ->
   with_tempdir "riot_deps_changed_dep_hash"
@@ -1875,7 +1875,27 @@ let test_lock_refresh_true_when_dependency_hash_changes = fun _ctx ->
         ~lockfile:(Some lockfile) with
       | Ok true -> Ok ()
       | Ok false -> Error "expected dependency hash change to require refresh"
-      | Error err -> Error err)
+      | Error err -> Error (Riot_deps.Lock_refresh.error_message err))
+
+let test_lock_refresh_reports_non_table_dependency_sections = fun _ctx ->
+  with_tempdir "riot_deps_bad_dep_section"
+    (fun workspace_root ->
+      let manifest_path = Path.(workspace_root / Path.v "riot.toml") in
+      Fs.write "dependencies = \"oops\"\n[workspace]\nmembers = []\n" manifest_path
+      |> Result.expect ~msg:"expected manifest write to succeed";
+      let workspace_manager = workspace_manager () in
+      match Riot_deps.Lock_refresh.dependency_hash
+        ~workspace_manager
+        ~workspace_root
+        ~manifest_paths:[ manifest_path ] with
+      | Error (Riot_deps.Lock_refresh.DependencySectionMustBeTable { manifest_path=path; section }) ->
+          if Path.equal path manifest_path && String.equal section "dependencies" then
+            Ok ()
+          else
+            Error "expected dependency-section error to preserve path and section"
+      | Error err -> Error ("unexpected lock refresh error: "
+      ^ Riot_deps.Lock_refresh.error_message err)
+      | Ok _ -> Error "expected non-table dependency section to fail")
 
 let test_lockfile_store_roundtrips = fun _ctx ->
   with_tempdir "riot_deps_lockfile_store"
@@ -3418,6 +3438,7 @@ let tests =
     case "lock refresh: missing lock requires refresh" test_lock_refresh_requires_lock_when_missing;
     case "lock refresh: matching dependency hash avoids refresh" test_lock_refresh_false_when_dependency_hash_matches;
     case "lock refresh: changed dependency hash requires refresh" test_lock_refresh_true_when_dependency_hash_changes;
+    case "lock refresh: reports non-table dependency sections" test_lock_refresh_reports_non_table_dependency_sections;
     case "lockfile store: roundtrips root lockfile" test_lockfile_store_roundtrips;
     case "lockfile store: missing lockfile returns none" test_lockfile_store_returns_none_when_missing;
     case "lockfile store: bubbles parse errors" test_lockfile_store_bubbles_parse_errors;

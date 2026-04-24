@@ -1,6 +1,23 @@
 open Std
 open Std.Result.Syntax
 
+type error =
+  | ManifestLoadFailed of {
+      manifest_path: Path.t;
+      error: Riot_model.Workspace_manager.manifest_load_error
+    }
+  | DependencySectionMustBeTable of { manifest_path: Path.t; section: string }
+  | ManifestMustBeTable of { manifest_path: Path.t }
+
+let error_message = function
+  | ManifestLoadFailed { error; _ } -> Riot_model.Workspace_manager.manifest_load_error_message error
+  | DependencySectionMustBeTable { manifest_path; section } -> "manifest dependency section '["
+  ^ section
+  ^ "]' in '"
+  ^ Path.to_string manifest_path
+  ^ "' must be a table"
+  | ManifestMustBeTable { manifest_path } -> "manifest '" ^ Path.to_string manifest_path ^ "' must decode to a TOML table"
+
 let compare_by_path = fun left right ->
   String.compare (Path.to_string left) (Path.to_string right)
 
@@ -32,26 +49,14 @@ let dependency_section_value = fun ~manifest_path section_name toml ->
             String.equal key section_name) |> Option.map ~fn:(fun (_, value) -> value)
       with
       | Some (Std.Data.Toml.Table _ as value) -> Ok (canonicalize_toml_value value)
-      | Some _ -> Error (format
-        Format.[
-          str "manifest dependency section '[";
-          str section_name;
-          str "]' in '";
-          str (Path.to_string manifest_path);
-          str "' must be a table";
-        ])
+      | Some _ -> Error (DependencySectionMustBeTable { manifest_path; section = section_name })
       | None -> Ok (Std.Data.Toml.Table [])
     )
-  | _ -> Error (format
-    Format.[
-      str "manifest '";
-      str (Path.to_string manifest_path);
-      str "' must decode to a TOML table";
-    ])
+  | _ -> Error (ManifestMustBeTable { manifest_path })
 
 let load_manifest_toml = fun ~workspace_manager manifest_path ->
   Riot_model.Workspace_manager.load_riot_toml workspace_manager manifest_path
-  |> Result.map_err ~fn:Riot_model.Workspace_manager.manifest_load_error_message
+  |> Result.map_err ~fn:(fun error -> ManifestLoadFailed { manifest_path; error })
 
 let manifest_dependency_fingerprint = fun ~workspace_manager ~workspace_root manifest_path ->
   let* toml = load_manifest_toml ~workspace_manager manifest_path in
