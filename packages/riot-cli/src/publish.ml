@@ -23,6 +23,7 @@ let command =
         flag "workspace" |> long "workspace" |> help "Publish workspace packages in dependency order";
         flag "dry-run" |> long "dry-run" |> help "Run local publish checks without uploading";
         flag "skip-check" |> long "skip-check" |> help "Skip the `riot fix --check` preflight step";
+        flag "json" |> long "json" |> help "Emit machine-readable JSONL events";
       ]
 
 let message = function
@@ -195,6 +196,153 @@ let write_publish_event = fun ~workspace_root ~seen_registry_updates ~displayed_
   | Riot_publish.PackagePublished published -> out
     (render_publishing ~package:published.package_name ~version:published.package_version)
 
+let json_version_or_null = function
+  | Some version -> Data.Json.String (Std.Version.to_string version)
+  | None -> Data.Json.Null
+
+let publish_stage_json = function
+  | `fmt -> Data.Json.String "fmt"
+  | `fix -> Data.Json.String "fix"
+  | `build -> Data.Json.String "build"
+  | `metadata -> Data.Json.String "metadata"
+
+let published_location_json = fun (location: Pkgs_ml.Registry.published_artifact_location) ->
+  Data.Json.Object [
+    ("key", Data.Json.String location.key);
+    ("url", Data.Json.String location.url);
+  ]
+
+let published_record_json = fun (record: Pkgs_ml.Registry.published_record) ->
+  Data.Json.Object [
+    ("key", Data.Json.String record.key);
+    ("created", Data.Json.Bool record.created);
+  ]
+
+let published_release_json = fun (release: Pkgs_ml.Registry.published_release) ->
+  Data.Json.Object [
+    ("package", Data.Json.String release.package_name);
+    ("version", Data.Json.String release.package_version);
+    ("artifact_sha256", Data.Json.String release.artifact_sha256);
+    ("manifest", published_location_json release.manifest);
+    ("source_archive", published_location_json release.source_archive);
+    ("claim", published_record_json release.claim);
+    ("release", published_record_json release.release);
+    (
+      "materialization",
+      Data.Json.Object [
+        ("manifest", Data.Json.Bool release.materialization.manifest);
+        ("source", Data.Json.Bool release.materialization.source);
+      ]
+    );
+  ]
+
+let prepared_publish_json = fun ~workspace_root (prepared: Riot_deps.Publisher.prepared_publish) ->
+  Data.Json.Object [
+    ("package", Data.Json.String (Package_name.to_string prepared.package.name));
+    ("version", Data.Json.String (Std.Version.to_string prepared.version));
+    ("locator", Data.Json.String prepared.locator);
+    ("selector", Data.Json.String prepared.selector);
+    (
+      "artifact_path",
+      Data.Json.String (relative_or_absolute ~root:workspace_root prepared.artifact_path)
+    );
+  ]
+
+let json_event = fun kind fields -> Data.Json.Object (("type", Data.Json.String kind) :: fields)
+
+let publish_event_to_json = fun ~workspace_root event ->
+  match event with
+  | Riot_publish.Fmt event -> Some (json_event
+    "publish.fmt"
+    [ ("event", Krasny.Report.event_to_json ~root:workspace_root event); ])
+  | Riot_publish.Fix event -> Some (json_event
+    "publish.fix"
+    [ ("event", Riot_fix.Event.to_json event) ])
+  | Riot_publish.Build build_event -> Riot_build.Event.to_json build_event
+  | Riot_publish.CheckStarted { package; version; stage } -> Some (json_event
+    "publish.check.started"
+    [
+      ("package", Data.Json.String (Package_name.to_string package));
+      ("version", json_version_or_null version);
+      ("stage", publish_stage_json stage);
+    ])
+  | Riot_publish.CheckFinished { package; version; stage } -> Some (json_event
+    "publish.check.finished"
+    [
+      ("package", Data.Json.String (Package_name.to_string package));
+      ("version", json_version_or_null version);
+      ("stage", publish_stage_json stage);
+    ])
+  | Riot_publish.Packing { package; version; artifact_path } -> Some (json_event
+    "publish.packing"
+    [
+      ("package", Data.Json.String (Package_name.to_string package));
+      ("version", Data.Json.String (Std.Version.to_string version));
+      ("artifact_path", Data.Json.String (relative_or_absolute ~root:workspace_root artifact_path));
+    ])
+  | Riot_publish.SkippedNotPublic { package; version } -> Some (json_event
+    "publish.skipped"
+    [
+      ("package", Data.Json.String (Package_name.to_string package));
+      ("version", json_version_or_null version);
+      ("reason", Data.Json.String "not_public");
+    ])
+  | Riot_publish.SkippedAlreadyPublished { package; version } -> Some (json_event
+    "publish.skipped"
+    [
+      ("package", Data.Json.String (Package_name.to_string package));
+      ("version", Data.Json.String (Std.Version.to_string version));
+      ("reason", Data.Json.String "already_published");
+    ])
+  | Riot_publish.DryRunPlanned prepared -> Some (json_event
+    "publish.planned"
+    [ ("publish", prepared_publish_json ~workspace_root prepared); ])
+  | Riot_publish.PackagePublished published -> Some (json_event
+    "publish.published"
+    [ ("release", published_release_json published); ])
+
+let publish_outcome_json = fun ~workspace_root outcome ->
+  match outcome with
+  | Riot_publish.SkippedNotPublicPackage { package; version } -> Data.Json.Object [
+    ("status", Data.Json.String "skipped");
+    ("package", Data.Json.String (Package_name.to_string package));
+    ("version", json_version_or_null version);
+    ("reason", Data.Json.String "not_public");
+  ]
+  | Riot_publish.Skipped { package; version } -> Data.Json.Object [
+    ("status", Data.Json.String "skipped");
+    ("package", Data.Json.String (Package_name.to_string package));
+    ("version", Data.Json.String (Std.Version.to_string version));
+    ("reason", Data.Json.String "already_published");
+  ]
+  | Riot_publish.Planned prepared -> Data.Json.Object [
+    ("status", Data.Json.String "planned");
+    ("publish", prepared_publish_json ~workspace_root prepared);
+  ]
+  | Riot_publish.Published release -> Data.Json.Object [
+    ("status", Data.Json.String "published");
+    ("release", published_release_json release);
+  ]
+
+let write_json_line = fun json -> println (Data.Json.to_string json)
+
+let write_publish_event_json = fun ~workspace_root event ->
+  publish_event_to_json ~workspace_root event |> Option.for_each ~fn:write_json_line
+
+let write_publish_error_json = fun error ->
+  write_json_line
+    (json_event
+      "publish.error"
+      [ ("message", Data.Json.String (Riot_publish.publish_error_message error)); ])
+
+let write_publish_completed_json = fun ~workspace_root outcomes ->
+  write_json_line
+    (json_event
+      "publish.completed"
+      [
+        ("outcomes", Data.Json.Array (List.map outcomes ~fn:(publish_outcome_json ~workspace_root)));
+      ])
+
 let run = fun (workspace: Workspace.t) matches ->
   let package_name =
     match ArgParser.get_one matches "package" with
@@ -207,6 +355,9 @@ let run = fun (workspace: Workspace.t) matches ->
   match resolve_request ~package_name ~workspace_mode:(ArgParser.get_flag matches "workspace") with
   | Error err -> fail err
   | Ok request ->
+      let json = ArgParser.get_flag matches "json" in
+      if json then
+        Build.reset_json_clock ~started_at:(Time.Instant.now ());
       let mode =
         if ArgParser.get_flag matches "dry-run" then
           Riot_publish.DryRun
@@ -216,15 +367,28 @@ let run = fun (workspace: Workspace.t) matches ->
       let seen_registry_updates = HashSet.create () in
       let displayed_packages = HashSet.create () in
       let progress = Build.{ built_count = 0; cached_count = 0; failed_count = 0; skipped_count = 0 } in
-      match Riot_publish.publish
-        ~on_event:(write_publish_event
-          ~workspace_root:workspace.root
-          ~seen_registry_updates
-          ~displayed_packages
-          ~progress)
-        ~workspace
-        ~request:(publish_request ~skip_check:(ArgParser.get_flag matches "skip-check") request)
-        ~mode
-        () with
-      | Error err -> fail (PublishFailed err)
-      | Ok _results -> Ok ()
+      match
+        Riot_publish.publish
+          ~on_event:(
+            if json then
+              write_publish_event_json ~workspace_root:workspace.root
+            else
+              write_publish_event
+                ~workspace_root:workspace.root
+                ~seen_registry_updates
+                ~displayed_packages
+                ~progress
+          )
+          ~workspace
+          ~request:(publish_request ~skip_check:(ArgParser.get_flag matches "skip-check") request)
+          ~mode
+          ()
+      with
+      | Error err ->
+          if json then
+            write_publish_error_json err;
+          fail (PublishFailed err)
+      | Ok results ->
+          if json then
+            write_publish_completed_json ~workspace_root:workspace.root results;
+          Ok ()

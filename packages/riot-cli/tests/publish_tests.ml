@@ -43,6 +43,15 @@ let test_publish_accepts_skip_check_flag = fun _ctx ->
       else
         Error "expected --skip-check flag to be parsed"
 
+let test_publish_accepts_json_flag = fun _ctx ->
+  match parse_publish [ "publish"; "--json" ] with
+  | Error err -> Error ("expected publish args to parse: " ^ err)
+  | Ok matches ->
+      if ArgParser.get_flag matches "json" then
+        Ok ()
+      else
+        Error "expected --json flag to be parsed"
+
 let test_publish_conflicting_selection_fails = fun _ctx ->
   match Riot_cli.Publish.resolve_request ~package_name:(Some (package_name "demo")) ~workspace_mode:true with
   | Error Riot_cli.Publish.ConflictingSelection -> Ok ()
@@ -55,6 +64,7 @@ let tests =
     case "publish: parse --workspace flag" test_publish_accepts_workspace_flag;
     case "publish: parse --dry-run flag" test_publish_accepts_dry_run_flag;
     case "publish: parse --skip-check flag" test_publish_accepts_skip_check_flag;
+    case "publish: parse --json flag" test_publish_accepts_json_flag;
     case "publish: conflicting selection fails" test_publish_conflicting_selection_fails;
   ]
 
