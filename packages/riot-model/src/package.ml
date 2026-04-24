@@ -577,7 +577,7 @@ let is_workspace_member: t -> bool = fun pkg ->
   not (String.starts_with ~prefix:"../" rel_str || Path.is_absolute pkg.relative_path)
 
 (** Validate package name according to Riot naming conventions *)
-let validate_name = fun name -> Package_name.from_string name |> Result.map_err ~fn:Package_name.error_message
+let validate_name = Package_name.from_string
 
 let version_parse_error_to_string = fun err ->
   match err with

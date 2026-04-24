@@ -278,7 +278,12 @@ let load_path_dependency = fun ~(target:target_manifest) ~raw ->
       ~path:package_root
       ~relative_path:dep_path
     |> Result.map_err
-      ~fn:(fun err -> PathDependencyLoadFailed { dependency = raw; path = package_root; error = err }) in
+      ~fn:(fun err ->
+        PathDependencyLoadFailed {
+          dependency = raw;
+          path = package_root;
+          error = Package.manifest_error_message err
+        }) in
     Ok (Path { name = package.name; path = dep_path })
 
 let load_source_dependency = fun ~(emit:event_sink) ~raw ->
@@ -349,7 +354,7 @@ let load_source_dependency = fun ~(emit:event_sink) ~raw ->
         dependency = raw;
         source_locator = spec.source_locator;
         ref_ = spec.ref_;
-        error
+        error = Package_manifest.error_message error
       }) in
   if emit_materialization_events then
     emit
@@ -466,6 +471,7 @@ let decode_detached_package = fun ~package_root ->
     ~workspace_build_deps:[]
     ~path:package_root
     ~relative_path:(Path.v ".")
+  |> Result.map_err ~fn:Riot_model.Package_manifest.error_message
 
 let dependency_lists_for_package = fun scope (pkg: Riot_model.Package_manifest.t) ->
   match scope with
@@ -513,11 +519,10 @@ let dependency_names_for_section = fun ~manifest_path ~section ->
                   ~fn:(fun error ->
                     ManifestUpdateFailed {
                       path = manifest_path;
-                      error =
-                        "invalid dependency name '"
-                        ^ name
-                        ^ "': "
-                        ^ Riot_model.Package_name.error_message error
+                      error = "invalid dependency name '"
+                      ^ name
+                      ^ "': "
+                      ^ Riot_model.Package_name.error_message error
                     }) in
                 loop (name :: acc) rest
           in
@@ -703,7 +708,7 @@ let lookup_named_package = fun ~(emit:event_sink) ~registry (parsed: registry_de
           RegistryLookupFailed {
             package = document.name;
             registry = registry_name;
-            error = Riot_model.Package_name.error_message error;
+            error = Riot_model.Package_name.error_message error
           }) in
       emit
         (Riot_model.Event.PackageMetadataFetchFinished {
@@ -924,7 +929,7 @@ let load_registry_workspace_from_spec = fun ?(emit = no_emit) ?registry ~workspa
         package = package_name_string;
         version = release.version;
         registry = registry_name;
-        error = err
+        error = Riot_model.Package_manifest.error_message err
       }) in
   let* loaded = ensure_loaded_workspace
     ~workspace_manager
@@ -1151,8 +1156,12 @@ let update = fun ?(on_event = no_emit) ~workspace_manager ~(workspace:Riot_model
     | Error _ -> None
   in
   let* scanned_workspace = reload_workspace ~workspace_manager ~workspace_root:workspace.root in
-  let* lockfile =
-    refresh_lock ~workspace_manager ~emit ~mode:Dep_solver.Unlock ~registry ~workspace:scanned_workspace in
+  let* lockfile = refresh_lock
+    ~workspace_manager
+    ~emit
+    ~mode:Dep_solver.Unlock
+    ~registry
+    ~workspace:scanned_workspace in
   Option.for_each previous_lock
     ~fn:(fun previous ->
       let updates = emit_updated_packages ~emit ~previous lockfile in

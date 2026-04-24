@@ -7,7 +7,7 @@ let registry_name = "pkgs.ml"
 type error =
   | MissingPackageSpec
   | InvalidPackageSpec of string
-  | InvalidPackageName of string
+  | InvalidPackageName of Package_name.error
   | InvalidVersion of string
   | NotLoggedIn
   | ConfigFailed of string
@@ -24,7 +24,7 @@ let command =
 let message = function
   | MissingPackageSpec -> "missing package release, expected <name>@<version>"
   | InvalidPackageSpec value -> "invalid package release '" ^ value ^ "', expected <name>@<version>"
-  | InvalidPackageName err -> err
+  | InvalidPackageName err -> Package_name.error_message err
   | InvalidVersion err -> "invalid version: " ^ err
   | NotLoggedIn -> "not logged in to pkgs.ml; run 'riot login'"
   | ConfigFailed err -> err

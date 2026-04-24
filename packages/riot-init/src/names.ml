@@ -4,7 +4,7 @@ open Riot_model
 let validate_name = fun name ->
   match Package.validate_name name with
   | Ok package_name -> Ok package_name
-  | Error msg -> Error (Failure msg)
+  | Error err -> Error (Failure (Package_name.error_message err))
 
 let validate_workspace_name = fun name ->
   if String.length name = 0 then

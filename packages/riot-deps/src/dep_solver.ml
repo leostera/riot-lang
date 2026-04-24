@@ -27,11 +27,10 @@ let event_package_name = fun package_name ->
   |> Result.map_err
     ~fn:(fun error ->
       Error.Unexpected {
-        error =
-          "invalid package name '"
-          ^ package_name
-          ^ "': "
-          ^ Riot_model.Package_name.error_message error;
+        error = "invalid package name '"
+        ^ package_name
+        ^ "': "
+        ^ Riot_model.Package_name.error_message error
       })
 
 type resolved_dependency = {
@@ -116,7 +115,12 @@ let load_path_dependency_package = fun ~declared_from ~dependency_name dep_path 
     ~path:package_root
     ~relative_path:dep_path
   |> Result.map_err
-    ~fn:(fun err -> Error.PathDependencyDecodeFailed { dependency_name; manifest_path; error = err })
+    ~fn:(fun err ->
+      Error.PathDependencyDecodeFailed {
+        dependency_name;
+        manifest_path;
+        error = Riot_model.Package_manifest.error_message err
+      })
 
 let path_dependency_has_external_fallback = fun (dep: Riot_model.Package.dependency) ->
   Option.is_some dep.source.source_locator || Option.is_some dep.source.version
@@ -162,7 +166,11 @@ let load_source_dependency_package = fun ~dependency_name ~source_locator ~ref_ 
     ~relative_path
   |> Result.map_err
     ~fn:(fun err ->
-      Error.SourceDependencyDecodeFailed { dependency_name; manifest_path; error = err })
+      Error.SourceDependencyDecodeFailed {
+        dependency_name;
+        manifest_path;
+        error = Riot_model.Package_manifest.error_message err
+      })
 
 let package_id_key = fun (id: Riot_model.Lockfile.package_id) ->
   let registry =
@@ -1013,7 +1021,7 @@ let load_registry_package_manifest = fun (catalog: catalog) ~package_name ~versi
                 ^ "@"
                 ^ version
                 ^ "': "
-                ^ err
+                ^ Riot_model.Package_manifest.error_message err
               } in
               catalog.ctx.emit
                 (Riot_model.Event.PackageManifestFetchFailed {
@@ -1601,11 +1609,10 @@ let registry_package_id_of_solution = fun (catalog: catalog) ~package_name versi
   |> Result.map_err
     ~fn:(fun error ->
       Error.Unexpected {
-        error =
-          "invalid package name '"
-          ^ package_name
-          ^ "': "
-          ^ Riot_model.Package_name.error_message error;
+        error = "invalid package name '"
+        ^ package_name
+        ^ "': "
+        ^ Riot_model.Package_name.error_message error
       }) in
   match find_existing_registry_package_version
     ~registry_name
