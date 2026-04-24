@@ -594,7 +594,7 @@ let render_module_graph_dependency_walk = fun graph ->
 let load_repo_workspace = fun () ->
   let manager = Riot_model.Workspace_manager.create () in
   match Riot_model.Workspace_manager.scan manager (Path.v ".") with
-  | Error err -> Error ("workspace scan failed: " ^ err)
+  | Error err -> Error ("workspace scan failed: " ^ Riot_model.Workspace_manager.scan_error_message err)
   | Ok (workspace_manifest, errors) ->
       if List.is_empty errors then
         Ok (Riot_model.Workspace.make_realized

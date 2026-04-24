@@ -125,9 +125,11 @@ let render_tab = fun ~active index ((title, _)) ->
 
 let view = fun model ->
   let open Element in
-    let _, content = List.nth model.tabs model.active_tab in
+    let _, content = List.get_unchecked model.tabs ~at:model.active_tab in
     (* Render tab bar *)
-    let tab_elements = List.mapi (render_tab ~active:model.active_tab) model.tabs in
+    let tab_elements = model.tabs
+    |> List.enumerate
+    |> List.map ~fn:(fun (index, tab) -> render_tab ~active:model.active_tab index tab) in
     let tab_bar = row ~style:Style.(empty |> margin (Margin.make ~bottom:1 ())) tab_elements in
     (* Content area *)
     let content_area = container

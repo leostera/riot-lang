@@ -160,7 +160,7 @@ and encode_document = fun fields ->
   let* encoded_length = int32_of_length "document" (payload_len + 5) in
   let buffer = IO.Buffer.create ~size:(payload_len + 5) in
   add_int32_le buffer encoded_length;
-  List.iter (IO.Buffer.add_string buffer) encoded_fields;
+  List.for_each encoded_fields ~fn:(IO.Buffer.add_string buffer);
   IO.Buffer.add_char buffer '\x00';
   Ok (IO.Buffer.contents buffer)
 

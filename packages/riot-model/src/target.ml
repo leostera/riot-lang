@@ -8,9 +8,7 @@ type t = System.TargetTriple.t = {
 }
 
 type error = System.TargetTriple.error =
-  | InvalidTripletFormat of {
-      value: string;
-    }
+  | InvalidTripletFormat of { value: string }
 
 module Set = struct
   type elt = t

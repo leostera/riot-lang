@@ -400,8 +400,7 @@ let self_closing_tags = [
   "wbr";
 ]
 
-let is_self_closing = fun tag ->
-  List.mem tag self_closing_tags
+let is_self_closing = fun tag -> List.contains self_closing_tags ~value:tag
 
 let rec to_html = fun t ->
   match t with

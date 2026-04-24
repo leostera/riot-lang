@@ -20,8 +20,8 @@ let visible_text_range = fun ~box ~scissor ->
 let render_to_string = fun commands ->
   let buf = Buffer.create ~size:1_024 in
   let scissor_box = ref None in
-  List.iter
-    (fun command ->
+  List.for_each commands
+    ~fn:(fun command ->
       match command.Render.command_type with
       | Render.ScissorStart rect ->
           scissor_box := Some rect
@@ -104,8 +104,8 @@ let render_to_string = fun commands ->
         _
       } ->
           let lines = String.split_on_char '\n' content in
-          List.iteri
-            (fun line_index line ->
+          lines |> List.enumerate |> List.for_each
+            ~fn:(fun (line_index, line) ->
               let row = Utils.rect_row_start command.bounding_box + line_index in
               if row < Utils.rect_row_end command.bounding_box then
                 let col_start, visible_col_start, visible_col_end = visible_text_range
@@ -130,11 +130,10 @@ let render_to_string = fun commands ->
                           (Utils.text_formats ~color ~weight ~decoration)
                           clipped)
                     end)
-            lines
       | Render.Custom { data } ->
           let lines = String.split_on_char '\n' data in
-          List.iteri
-            (fun line_index line ->
+          lines |> List.enumerate |> List.for_each
+            ~fn:(fun (line_index, line) ->
               let row = Utils.rect_row_start command.bounding_box + line_index in
               if row < Utils.rect_row_end command.bounding_box then
                 let col_start, visible_col_start, visible_col_end = visible_text_range
@@ -154,9 +153,7 @@ let render_to_string = fun commands ->
                         buf
                         (Tty.Escape_seq.cursor_position_seq (row + 1) (visible_col_start + 1));
                       Buffer.add_string buf clipped
-                    end)
-            lines)
-    commands;
+                    end));
   Buffer.contents buf
 
 let render = fun commands -> print (render_to_string commands)

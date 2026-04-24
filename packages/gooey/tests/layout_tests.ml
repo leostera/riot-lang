@@ -25,7 +25,7 @@ let rectangle_boxes = fun commands ->
 
 let find_text_box = fun commands expected ->
   text_commands commands
-  |> List.find_opt (fun (content, _) -> content = expected)
+  |> List.find ~fn:(fun (content, _) -> content = expected)
   |> Option.map ~fn:(fun (_, box) -> box)
 
 let test_single_text_uses_terminal_cell_measurement = fun _ctx ->

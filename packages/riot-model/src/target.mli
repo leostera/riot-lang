@@ -1,10 +1,7 @@
 open Std
 
 type error = System.TargetTriple.error =
-  | InvalidTripletFormat of {
-      value: string;
-    }
-
+  | InvalidTripletFormat of { value: string }
 type t = System.TargetTriple.t = {
   architecture: string;
   vendor: string;

@@ -349,8 +349,8 @@ and measure_children_for_intrinsic_size:
   Super.Config.t ->
   unit = fun node ~parent_inner_width ~parent_inner_height config ->
   let direction = node.style.direction in
-  List.iter
-    (fun child ->
+  List.for_each node.children
+    ~fn:(fun child ->
       let forced_main =
         if is_main_axis_grow direction child.style then
           Some 0.0
@@ -358,7 +358,6 @@ and measure_children_for_intrinsic_size:
           None
       in
       measure_child child direction ~parent_inner_width ~parent_inner_height ~forced_main config)
-    node.children
 
 and measure_children_for_final_size:
   layout_node ->
@@ -369,11 +368,10 @@ and measure_children_for_final_size:
   let direction = node.style.direction in
   let gap_count = Math.list_last_index node.children in
   let gap_space = Float.of_int (node.style.child_gap * gap_count) in
-  List.iter
-    (fun child ->
+  List.for_each node.children
+    ~fn:(fun child ->
       if not (is_main_axis_grow direction child.style) then
-        measure_child child direction ~parent_inner_width ~parent_inner_height ~forced_main:None config)
-    node.children;
+        measure_child child direction ~parent_inner_width ~parent_inner_height ~forced_main:None config);
   let fixed_outer_main =
     List.fold_left node.children ~init:0.0
       ~fn:(fun acc child ->
@@ -413,8 +411,8 @@ and measure_children_for_final_size:
   in
   let remaining = Math.clamp_non_negative
     (total_available -. gap_space -. fixed_outer_main -. grow_margin_main) in
-  List.iter
-    (fun child ->
+  List.for_each node.children
+    ~fn:(fun child ->
       if is_main_axis_grow direction child.style then
         let share =
           if Float.compare total_weight 0.0 > 0 then
@@ -429,7 +427,6 @@ and measure_children_for_final_size:
           ~parent_inner_height
           ~forced_main:(Some share)
           config)
-    node.children
 
 and measure_child:
   layout_node ->
@@ -518,8 +515,8 @@ and arrange_children: layout_node -> unit = fun node ->
     style
     (Math.clamp_non_negative (inner_main -. total_children_main)) in
   let cursor = ref main_offset in
-  List.iter
-    (fun child ->
+  List.for_each node.children
+    ~fn:(fun child ->
       let child_outer_cross =
         match style.direction with
         | Style.LeftToRight -> Box_model.outer_height child
@@ -544,7 +541,6 @@ and arrange_children: layout_node -> unit = fun node ->
         | Style.LeftToRight -> Box_model.outer_width child
         | Style.TopToBottom -> Box_model.outer_height child
       ) +. Float.of_int style.child_gap)
-    node.children
 
 let rect_equal = fun (left: Geometry.Rect.t) (right: Geometry.Rect.t) ->
   Float.compare left.x right.x = 0
@@ -658,10 +654,14 @@ let rec generate_commands: layout_node -> clipped_command Vector.t -> Geometry.R
     | Element.Text { content; _ } ->
         push_text node commands ~clip_stack:child_clip_stack content
     | Element.Container _ ->
-        List.iter (fun child -> generate_commands child commands child_clip_stack) node.children
+        List.for_each
+          node.children
+          ~fn:(fun child -> generate_commands child commands child_clip_stack)
     | Element.Custom { render; _ } ->
         let custom_commands = render node.final_box in
-        List.iter (fun command -> push_annotated commands ~clip_stack:child_clip_stack command) custom_commands
+        List.for_each
+          custom_commands
+          ~fn:(fun command -> push_annotated commands ~clip_stack:child_clip_stack command)
     | Element.Empty ->
         ()
   )
@@ -701,12 +701,12 @@ let rec emit_scissor_ends = fun output z_index ->
         }
 
 let emit_scissor_starts = fun output z_index rects ->
-  List.iter
-    (fun rect ->
+  List.for_each
+    rects
+    ~fn:(fun rect ->
       Vector.push
         output
         ~value:{ Render.bounding_box = rect; command_type = Render.ScissorStart rect; z_index })
-    rects
 
 let emit_scissor_transition = fun output ~current ~target ~z_index ->
   let common = common_prefix_length current target in

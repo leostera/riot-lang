@@ -443,11 +443,10 @@ let with_capacity = fun capacity -> RawTable.create capacity
 
 let of_list = fun pairs ->
   let map = create () in
-  List.iter
-    (fun ((k, v)) ->
+  List.for_each pairs
+    ~fn:(fun ((k, v)) ->
       let _ = RawTable.insert map k v in
-      ())
-    pairs;
+      ());
   map
 
 (* Basic operations *)

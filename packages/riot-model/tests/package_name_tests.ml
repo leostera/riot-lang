@@ -8,11 +8,8 @@ let test_from_string_accepts_valid_package_name = fun _ctx ->
         Ok ()
       else
         Error "expected package name to roundtrip through Package_name.to_string"
-  | Error err ->
-      Error (
-        "expected valid package name, got error: "
-        ^ Riot_model.Package_name.error_message err
-      )
+  | Error err -> Error ("expected valid package name, got error: "
+  ^ Riot_model.Package_name.error_message err)
 
 let test_from_string_rejects_invalid_leading_character = fun _ctx ->
   match Riot_model.Package_name.from_string "Riot" with
@@ -22,11 +19,8 @@ let test_from_string_rejects_invalid_leading_character = fun _ctx ->
         Ok ()
       else
         Error "expected lowercase-leading validation error to include a lowercase suggestion"
-  | Error err ->
-      Error (
-        "expected InvalidLeadingCharacter, got: "
-        ^ Riot_model.Package_name.error_message err
-      )
+  | Error err -> Error ("expected InvalidLeadingCharacter, got: "
+  ^ Riot_model.Package_name.error_message err)
 
 let test_from_string_rejects_invalid_suffix = fun _ctx ->
   match Riot_model.Package_name.from_string "riot-" with
@@ -36,11 +30,7 @@ let test_from_string_rejects_invalid_suffix = fun _ctx ->
         Ok ()
       else
         Error "expected trailing delimiter validation error to preserve the bad value"
-  | Error err ->
-      Error (
-        "expected TrailingDelimiter, got: "
-        ^ Riot_model.Package_name.error_message err
-      )
+  | Error err -> Error ("expected TrailingDelimiter, got: " ^ Riot_model.Package_name.error_message err)
 
 let tests =
   Test.[

@@ -23,8 +23,8 @@ let () =
   let commands = Gooey.layout ~config ui in
   (* Print all rectangle widths *)
   println ("Total commands: " ^ Int.to_string (List.length commands));
-  List.iter
-    (fun cmd ->
+  List.for_each commands
+    ~fn:(fun cmd ->
       match cmd.Render.command_type with
       | Render.Rectangle _ -> println
         ("Rectangle: x="
@@ -47,4 +47,3 @@ let () =
         ^ " h="
         ^ Float.to_string cmd.bounding_box.height)
       | _ -> ())
-    commands

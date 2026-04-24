@@ -124,8 +124,8 @@ let render_to_string = fun commands ->
   else
     let max_row = ref 0 in
     let max_col = ref 0 in
-    List.iter
-      (fun command ->
+    List.for_each commands
+      ~fn:(fun command ->
         match command.Render.command_type with
         | Render.ScissorStart _
         | Render.ScissorEnd ->
@@ -136,8 +136,7 @@ let render_to_string = fun commands ->
             max_col := Int.max !max_col (Utils.rect_col_end command.bounding_box)
         | _ ->
             max_row := Int.max !max_row (Utils.rect_row_end command.bounding_box);
-            max_col := Int.max !max_col (Utils.rect_col_end command.bounding_box))
-      commands;
+            max_col := Int.max !max_col (Utils.rect_col_end command.bounding_box));
     if !max_row = 0 || !max_col = 0 then
       ""
     else
@@ -148,8 +147,8 @@ let render_to_string = fun commands ->
       in
       let custom_segments = ref [] in
       let scissor_box = ref None in
-      List.iter
-        (fun (index, command) ->
+      List.for_each (index_commands commands)
+        ~fn:(fun (index, command) ->
           match command.Render.command_type with
           | Render.ScissorStart rect ->
               scissor_box := Some rect
@@ -230,8 +229,8 @@ let render_to_string = fun commands ->
               let row_start = Utils.rect_row_start command.bounding_box in
               let row_end = Int.min !max_row (Utils.rect_row_end command.bounding_box) in
               let lines = String.split_on_char '\n' content in
-              List.iteri
-                (fun line_index line ->
+              lines |> List.enumerate |> List.for_each
+                ~fn:(fun (line_index, line) ->
                   let row = row_start + line_index in
                   if row < row_end then
                     let col_start = Utils.rect_col_start command.bounding_box in
@@ -242,8 +241,8 @@ let render_to_string = fun commands ->
                       ~limit:!max_col in
                     let cursor = ref col_start in
                     let graphemes = String.into_grapheme_iter line |> Std.Iter.Iterator.to_list in
-                    List.iter
-                      (fun grapheme ->
+                    List.for_each graphemes
+                      ~fn:(fun grapheme ->
                         let grapheme_string = Std.Unicode.Grapheme.to_string grapheme in
                         let grapheme_width = Std.Unicode.Grapheme.width grapheme in
                         let next_col = !cursor + grapheme_width in
@@ -270,16 +269,14 @@ let render_to_string = fun commands ->
                             cursor := next_col
                           end
                         else
-                          cursor := next_col)
-                      graphemes)
-                lines
+                          cursor := next_col))
           | Render.Custom { data } ->
               let lines = String.split_on_char '\n' data in
               let row_start = Utils.rect_row_start command.bounding_box in
               let row_end = Int.min !max_row (Utils.rect_row_end command.bounding_box) in
               let col_start = Utils.rect_col_start command.bounding_box in
-              List.iteri
-                (fun line_index line ->
+              lines |> List.enumerate |> List.for_each
+                ~fn:(fun (line_index, line) ->
                   let row = row_start + line_index in
                   if row < row_end then
                     let visible_col_start, visible_col_end = Utils.visible_col_range
@@ -298,9 +295,7 @@ let render_to_string = fun commands ->
                           command_order = index;
                           data = clipped
                         }
-                        :: !custom_segments)
-                lines)
-        (index_commands commands);
+                        :: !custom_segments));
       let rows =
         List.fold_left !custom_segments ~init:[] ~fn:(fun acc segment -> segment :: acc)
         |> List.sort

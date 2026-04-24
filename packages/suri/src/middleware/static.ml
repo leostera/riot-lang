@@ -79,7 +79,8 @@ module Mime = struct
       else
         ext
     in
-    List.assoc_opt (String.lowercase_ascii ext) extension_map |> Option.unwrap_or ~default:"application/octet-stream"
+    Std.Collections.Proplist.get extension_map ~key:(String.lowercase_ascii ext)
+    |> Option.unwrap_or ~default:"application/octet-stream"
 end
 
 (** Security checks for path traversal and dotfiles *)

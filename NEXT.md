@@ -4,11 +4,20 @@
 
 # Before Announcing
 
+* PREVENT direct access to transitive dependencies: if you depend on Std, you can't directly use Kernel -- this avoids circumventing things like using Kernel.List instead of Std.Collections.List unless you epxlicitly depend on Kernel
+
+* riot build should show very pretty planning errors
+
 * make Std.Collections.Queue actor-safe -- ideally all the collections should be lockfree concurrency-safe?
 
 * riot build output should show `Building pkg (vsn)` if the package is not local/workspace
 
-* riot publish --json
+* riot buiild should show `Building pkg (vsn, arch)` when building for multiple architectures
+
+
+* lockfile should automatically remove packages that are no longer in the workspace
+
+* riot publish --json 
 
 * Perf:
     * everywhere we're using Cell + list we probably should just use Colletions.Vector 
@@ -19,6 +28,7 @@
 * riot-deps make workspace_manager a required param instead of an optinoal one
 
 * riot build takes _ages_ to plan big packages like std: is it syn?
+
 * regression: cold riot build takes _ages_ on syn.deps? 
 
 * lint: if a function uses raise, it should be called _unchecked
@@ -47,6 +57,12 @@
 * `riot check` should be able to type-check Riot! 
 
 * `riot lsp` doesn't use 200gb of ram
+
+* `riot refactor` ? 
+    * rename-package
+    * rename-module
+    * rename-type
+    * rename-value
 
 
 # Next

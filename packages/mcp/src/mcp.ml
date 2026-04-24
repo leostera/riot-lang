@@ -742,11 +742,11 @@ module MakeProtocol (T : ToolProtocol): McpApplicationProtocol with type tool_re
         match params with
         | Jsonrpc.Named fields -> (
             let name =
-              match List.assoc_opt "name" fields with
+              match Std.Collections.Proplist.get fields ~key:"name" with
               | Some (Json.String s) -> s
               | _ -> ""
             in
-            let arguments = List.assoc_opt "arguments" fields in
+            let arguments = Std.Collections.Proplist.get fields ~key:"arguments" in
             match T.tool_call_to_request name arguments with
             | Ok req -> Ok (CallTool req)
             | Error e -> Error (Json.String e)
@@ -758,7 +758,7 @@ module MakeProtocol (T : ToolProtocol): McpApplicationProtocol with type tool_re
     | "resources/read" -> (
         match params with
         | Jsonrpc.Named fields -> (
-            match List.assoc_opt "uri" fields with
+            match Std.Collections.Proplist.get fields ~key:"uri" with
             | Some (Json.String uri) -> Ok (ReadResource { uri })
             | _ -> Error (Json.String "Missing uri parameter")
           )

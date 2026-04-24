@@ -65,7 +65,7 @@ let initial_model = {
     ~percent:0.0
     ~width:40
     ~show_percentage:true
-    ~color:(`Gradient (Style.color "#FF00FF", Style.color "#00FFFF"))
+    ~color:(`Gradient (Tty.Color.make "#FF00FF", Tty.Color.make "#00FFFF"))
     ();
   waiting_to_quit = false
 }

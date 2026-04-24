@@ -19,7 +19,7 @@ let clone_workspace_with_target = fun (workspace: Riot_model.Workspace.t) ~targe
 let load_repo_workspace = fun () ->
   let manager = Riot_model.Workspace_manager.create () in
   match Riot_model.Workspace_manager.scan manager (Path.v ".") with
-  | Error err -> Error ("workspace scan failed: " ^ err)
+  | Error err -> Error ("workspace scan failed: " ^ Riot_model.Workspace_manager.scan_error_message err)
   | Ok (workspace, errors) ->
       if List.is_empty errors then
         let open Std.Result.Syntax in

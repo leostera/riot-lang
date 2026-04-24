@@ -64,9 +64,10 @@ let home = fun conn _req ->
 let submit_form = fun conn _req ->
   let body_params = Conn.body_params conn in
   (* Extract form fields *)
-  let name = List.assoc_opt "name" body_params |> Option.unwrap_or ~default:"Unknown" in
-  let email = List.assoc_opt "email" body_params |> Option.unwrap_or ~default:"unknown@example.com" in
-  let message = List.assoc_opt "message" body_params |> Option.unwrap_or ~default:"" in
+  let name = Std.Collections.Proplist.get body_params ~key:"name" |> Option.unwrap_or ~default:"Unknown" in
+  let email = Std.Collections.Proplist.get body_params ~key:"email" |> Option.unwrap_or ~default:"unknown@example.com" in
+  let message = Std.Collections.Proplist.get body_params ~key:"message"
+  |> Option.unwrap_or ~default:"" in
   let html = {|<!DOCTYPE html>
 <html>
 <head>
@@ -103,8 +104,8 @@ let submit_form = fun conn _req ->
 let api_handler = fun conn _req ->
   let body_params = Conn.body_params conn in
   (* Extract JSON fields *)
-  let name = List.assoc_opt "name" body_params |> Option.unwrap_or ~default:"Unknown" in
-  let action = List.assoc_opt "action" body_params |> Option.unwrap_or ~default:"none" in
+  let name = Std.Collections.Proplist.get body_params ~key:"name" |> Option.unwrap_or ~default:"Unknown" in
+  let action = Std.Collections.Proplist.get body_params ~key:"action" |> Option.unwrap_or ~default:"none" in
   (* Create JSON response *)
   let response_json = Data.Json.(Object [
     ("success", Bool true);

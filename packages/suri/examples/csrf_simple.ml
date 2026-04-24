@@ -55,7 +55,7 @@ let submit_handler = fun conn req ->
   (* Get form data from body_params (parsed by body_parser middleware) *)
   let params = Conn.body_params conn in
   let user_name =
-    match List.assoc_opt "name" params with
+    match Std.Collections.Proplist.get params ~key:"name" with
     | Option.Some n -> n
     | Option.None -> "Anonymous"
   in
@@ -78,7 +78,7 @@ let submit_ajax_handler = fun conn req ->
   (* Get JSON data from body_params (parsed by body_parser middleware) *)
   let params = Conn.body_params conn in
   let user_name =
-    match List.assoc_opt "name" params with
+    match Std.Collections.Proplist.get params ~key:"name" with
     | Option.Some n -> n
     | Option.None -> "Anonymous"
   in

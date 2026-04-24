@@ -118,26 +118,26 @@ let update = fun event model ->
 
 let render_digit = fun d ->
   if d >= 0 && d <= 9 then
-    digits.(d)
+    Array.get_unchecked digits ~at:d
   else
     space
 
 (* Render time as large ASCII art *)
 
 let render_time_ascii = fun time_str ->
-  let chars = String.to_seq time_str |> List.of_seq in
+  let chars = String.fold_left ~fn:(fun acc ch -> ch :: acc) ~init:[] time_str |> List.rev in
   (* Convert each character to its ASCII art representation *)
   let char_to_art = function
     | '0' .. '9' as c -> render_digit (Char.code c - Char.code '0')
     | ':' -> colon
     | _ -> space
   in
-  let art_chars = List.map char_to_art chars in
+  let art_chars = List.map ~fn:char_to_art chars in
   (* Combine ASCII art horizontally, line by line *)
   let lines = ref [] in
   for row = 0 to 4 do
     let line_parts =
-      List.map (fun art -> art.(row)) art_chars
+      List.map ~fn:(fun art -> Array.get_unchecked art ~at:row) art_chars
     in
     let line = String.concat "" line_parts in
     lines := line :: !lines
@@ -164,7 +164,7 @@ let view = fun model ->
     let ascii_lines = render_time_ascii time_str in
     (* Create elements for each line of ASCII art *)
     let ascii_elements =
-      List.map (fun line -> text ~style:Style.(empty |> fg (`rgb (0, 255, 127)) |> bold) line) ascii_lines
+      List.map ~fn:(fun line -> text ~style:Style.(empty |> fg (`rgb (0, 255, 127)) |> bold) line) ascii_lines
     in
     (* Center everything *)
     column

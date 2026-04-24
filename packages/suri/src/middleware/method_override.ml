@@ -18,7 +18,7 @@ let middleware = fun ?(param = "_method") () ~conn ~next ->
   | Net.Http.Method.Post -> (
       (* Check body params for _method parameter *)
       let body_params = Conn.body_params conn in
-      match List.assoc_opt param body_params with
+      match Std.Collections.Proplist.get body_params ~key:param with
       | Some method_str -> (
           (* Try to parse as valid override method *)
           match parse_override_method method_str with

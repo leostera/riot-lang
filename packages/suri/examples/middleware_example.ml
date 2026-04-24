@@ -58,7 +58,8 @@ let about_handler = fun conn _req ->
 let api_data_handler = fun conn _req ->
   (* Get the request ID from the response headers (set by request_id middleware) *)
   let resp_headers = Conn.resp_headers conn in
-  let request_id = List.assoc_opt "x-request-id" resp_headers |> Option.unwrap_or ~default:"unknown" in
+  let request_id = Std.Collections.Proplist.get resp_headers ~key:"x-request-id"
+  |> Option.unwrap_or ~default:"unknown" in
   let data = Data.Json.obj
     [
       ("message", Data.Json.string "Hello from API");

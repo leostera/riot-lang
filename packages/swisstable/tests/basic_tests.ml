@@ -91,18 +91,18 @@ let tests = [
       let map = Swisstable.of_list [ ("a", 1); ("b", 2); ("c", 3) ] in
       let keys = Swisstable.keys map in
       Test.assert_equal ~expected:3 ~actual:(List.length keys);
-      Test.assert_true (List.mem "a" keys);
-      Test.assert_true (List.mem "b" keys);
-      Test.assert_true (List.mem "c" keys);
+      Test.assert_true (List.contains keys ~value:"a");
+      Test.assert_true (List.contains keys ~value:"b");
+      Test.assert_true (List.contains keys ~value:"c");
       Ok ());
   Test.case "values"
     (fun _ctx ->
       let map = Swisstable.of_list [ ("a", 1); ("b", 2); ("c", 3) ] in
       let values = Swisstable.values map in
       Test.assert_equal ~expected:3 ~actual:(List.length values);
-      Test.assert_true (List.mem 1 values);
-      Test.assert_true (List.mem 2 values);
-      Test.assert_true (List.mem 3 values);
+      Test.assert_true (List.contains values ~value:1);
+      Test.assert_true (List.contains values ~value:2);
+      Test.assert_true (List.contains values ~value:3);
       Ok ());
   Test.case "iter"
     (fun _ctx ->
@@ -127,8 +127,8 @@ let tests = [
       let map = Swisstable.of_list [ ("a", 1); ("b", 2) ] in
       let list = Swisstable.to_list map in
       Test.assert_equal ~expected:2 ~actual:(List.length list);
-      Test.assert_true (List.mem ("a", 1) list);
-      Test.assert_true (List.mem ("b", 2) list);
+      Test.assert_true (List.contains list ~value:("a", 1));
+      Test.assert_true (List.contains list ~value:("b", 2));
       Ok ());
   Test.case "entry - Occupied"
     (fun _ctx ->

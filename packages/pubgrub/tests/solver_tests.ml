@@ -710,20 +710,22 @@ let test_solver_randomized_small_graphs_match_bruteforce =
                             graph.root_deps
                             ~fn:(fun dep ->
                               (dep.package, fuzz_ranges_of_versions dep.allowed_versions)));
-                        List.iter
-                          (fun (package: fuzz_package_spec) ->
-                            List.iter
-                              (fun (version_spec: fuzz_version_spec) ->
-                                Pubgrub.add_package
-                                  provider
-                                  package.name
-                                  (fuzz_pub_version version_spec.version)
-                                  (List.map
-                                    version_spec.deps
-                                    ~fn:(fun dep ->
-                                      (dep.package, fuzz_ranges_of_versions dep.allowed_versions))))
-                              package.versions)
-                          graph.packages;
+                        let add_version (package: fuzz_package_spec) (
+                          version_spec: fuzz_version_spec
+                        ) =
+                          Pubgrub.add_package
+                            provider
+                            package.name
+                            (fuzz_pub_version version_spec.version)
+                            (List.map
+                              version_spec.deps
+                              ~fn:(fun dep ->
+                                (dep.package, fuzz_ranges_of_versions dep.allowed_versions)))
+                        in
+                        let add_package (package: fuzz_package_spec) = List.for_each
+                          package.versions
+                          ~fn:(add_version package) in
+                        List.for_each graph.packages ~fn:add_package;
                         provider
                       )
                   )
@@ -785,20 +787,20 @@ let test_solver_randomized_insertion_order_is_deterministic =
           (List.map
             root_deps
             ~fn:(fun dep -> (dep.package, fuzz_ranges_of_versions dep.allowed_versions)));
-        List.iter
-          (fun (package: fuzz_package_spec) ->
-            List.iter
-              (fun (version_spec: fuzz_version_spec) ->
-                let deps = maybe_reverse_list version_spec.deps in
-                Pubgrub.add_package
-                  provider
-                  package.name
-                  (fuzz_pub_version version_spec.version)
-                  (List.map
-                    deps
-                    ~fn:(fun dep -> (dep.package, fuzz_ranges_of_versions dep.allowed_versions))))
-              (maybe_reverse_list package.versions))
-          (maybe_reverse_list graph.packages);
+        let add_version (package: fuzz_package_spec) (version_spec: fuzz_version_spec) =
+          let deps = maybe_reverse_list version_spec.deps in
+          Pubgrub.add_package
+            provider
+            package.name
+            (fuzz_pub_version version_spec.version)
+            (List.map
+              deps
+              ~fn:(fun dep -> (dep.package, fuzz_ranges_of_versions dep.allowed_versions)))
+        in
+        let add_package (package: fuzz_package_spec) = List.for_each
+          (maybe_reverse_list package.versions)
+          ~fn:(add_version package) in
+        List.for_each (maybe_reverse_list graph.packages) ~fn:add_package;
         provider
       in
       check_property ~ctx ~name:"small graph determinism" ~config
@@ -2445,9 +2447,7 @@ let test_large_graph_30_packages =
         "f"
         (v 1 0 0)
         [ ("m2", Pubgrub.full); ("n2", Pubgrub.full); ("o2", Pubgrub.full) ];
-      List.iter
-        (fun pkg ->
-          Pubgrub.add_package provider pkg (v 1 0 0) [])
+      List.for_each
         [
           "g";
           "h";
@@ -2464,7 +2464,9 @@ let test_large_graph_30_packages =
           "m2";
           "n2";
           "o2";
-        ];
+        ]
+        ~fn:(fun pkg ->
+          Pubgrub.add_package provider pkg (v 1 0 0) []);
       assert_solution 22 (Pubgrub.solve (Pubgrub.to_provider provider) "root" (v 1 0 0)))
 
 let test_conflict_missing_dependency =
@@ -2513,10 +2515,9 @@ let test_balanced_tree =
         "l2-d"
         (v 1 0 0)
         [ ("l3-g", Pubgrub.full); ("l3-h", Pubgrub.full) ];
-      List.iter
-        (fun pkg ->
-          Pubgrub.add_package provider pkg (v 1 0 0) [])
-        [ "l3-a"; "l3-b"; "l3-c"; "l3-d"; "l3-e"; "l3-f"; "l3-g"; "l3-h" ];
+      List.for_each [ "l3-a"; "l3-b"; "l3-c"; "l3-d"; "l3-e"; "l3-f"; "l3-g"; "l3-h" ]
+        ~fn:(fun pkg ->
+          Pubgrub.add_package provider pkg (v 1 0 0) []);
       assert_solution 15 (Pubgrub.solve (Pubgrub.to_provider provider) "root" (v 1 0 0)))
 
 let test_monorepo_structure =

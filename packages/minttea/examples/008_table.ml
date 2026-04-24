@@ -183,7 +183,7 @@ let update = fun event model ->
       (* Get selected row index and find corresponding user *)
       let selected_user =
         match Table.selected_index model.table with
-        | Some idx when idx < List.length model.users -> Some (List.nth model.users idx)
+        | Some idx -> List.get model.users ~at:idx
         | _ -> None
       in
       ({ model with selected_user }, Command.Noop)
@@ -241,7 +241,7 @@ let () =
     Table.column ~title:"Joined" ~width:12;
   ] in
   (* Convert users to rows *)
-  let rows = List.map user_to_row users in
+  let rows = List.map users ~fn:user_to_row in
   (* Create table *)
   let table = Table.make columns rows |> Table.set_height ~height:10 |> Table.focus in
   let initial_model = { table; selected_user = None; users } in

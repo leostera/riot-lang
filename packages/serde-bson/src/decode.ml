@@ -67,24 +67,22 @@ let rec option_backend: 'value. state -> 'value De.t -> 'value option = fun stat
 and list_backend: 'value. state -> 'value De.t -> 'value vec = fun state decode ->
   let values = expect_array state.current in
   let result = Vector.with_capacity ~size:(List.length values) in
-  List.iter
-    (fun value ->
+  List.for_each values
+    ~fn:(fun value ->
       Vector.push result
         ~value:(with_current state value
           (fun () ->
-            decode.run backend state)))
-    values;
+            decode.run backend state)));
   result
 
 and array_backend: 'value. state -> 'value De.t -> 'value array = fun state decode ->
   let values = expect_array state.current in
   let items = ref [] in
-  List.iter
-    (fun value ->
+  List.for_each values
+    ~fn:(fun value ->
       items := with_current state value
         (fun () ->
-          decode.run backend state) :: !items)
-    values;
+          decode.run backend state) :: !items);
   Array.from_list (List.rev !items)
 
 and record_backend:
@@ -95,11 +93,10 @@ and record_backend:
   finish:('acc -> 'value) ->
   'value = fun state ~fields ~init ~step ~finish ->
   let acc = ref init in
-  List.iter
-    (fun (key, field_value) ->
+  List.for_each (expect_document state.current)
+    ~fn:(fun (key, field_value) ->
       let tag = De.Fields.match_slice fields key ~offset:0 ~length:(String.length key) in
-      acc := with_current state field_value (fun () -> step !acc tag))
-    (expect_document state.current);
+      acc := with_current state field_value (fun () -> step !acc tag));
   finish !acc
 
 and record_mut_backend:
@@ -110,11 +107,10 @@ and record_mut_backend:
   finish:('builder -> 'value) ->
   'value = fun state ~fields ~create ~step ~finish ->
   let builder = create () in
-  List.iter
-    (fun (key, field_value) ->
+  List.for_each (expect_document state.current)
+    ~fn:(fun (key, field_value) ->
       let tag = De.Fields.match_slice fields key ~offset:0 ~length:(String.length key) in
-      with_current state field_value (fun () -> step builder tag))
-    (expect_document state.current);
+      with_current state field_value (fun () -> step builder tag));
   finish builder
 
 and variant_backend: 'value. state -> 'value De.compiled_variant_cases -> 'value = fun state cases ->

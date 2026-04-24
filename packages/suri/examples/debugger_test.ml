@@ -52,7 +52,7 @@ let home_handler = fun conn _req ->
 
 let user_handler = fun conn req ->
   let params = Conn.params conn in
-  let id = List.assoc "id" params in
+  let id = Std.Collections.Proplist.get params ~key:"id" |> Option.unwrap_or ~default:"" in
   let result = process_user_request id in
   conn |> Conn.respond ~status:Ok ~body:result |> Conn.send
 

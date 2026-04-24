@@ -39,8 +39,8 @@ type t =
 
 let find_header = fun name headers ->
   let name_lower = String.lowercase_ascii name in
-  List.find_opt
-    (fun h ->
+  List.find headers
+    ~fn:(fun h ->
       match h with
       | ContentType _ -> name_lower = "content-type"
       | ContentDisposition _ -> name_lower = "content-disposition"
@@ -48,7 +48,6 @@ let find_header = fun name headers ->
       | ContentId _ -> name_lower = "content-id"
       | ContentDescription _ -> name_lower = "content-description"
       | Other (n, _) -> String.lowercase_ascii n = name_lower)
-    headers
 
 let percent_decode = fun s ->
   let len = String.length s in
@@ -240,7 +239,7 @@ let parse_content_disposition = fun value ->
         let (_, parameters) = parse_content_type_string ("x;" ^ rest) in
         (dtype, parameters)
   in
-  let filename = List.assoc_opt "filename" params in
+  let filename = Std.Collections.Proplist.get params ~key:"filename" in
   match String.lowercase_ascii disp_type with
   | "inline" -> Inline { filename }
   | "attachment" -> Attachment { filename }
@@ -293,7 +292,7 @@ let rec parse = fun ~headers ~body ->
   | Some (ContentType ct) ->
       let full_type = ct.media_type ^ "/" ^ ct.subtype in
       if String.starts_with ~prefix:"multipart/" full_type then
-        match List.assoc_opt "boundary" ct.parameters with
+        match Std.Collections.Proplist.get ct.parameters ~key:"boundary" with
         | None -> Error "Multipart message missing boundary parameter"
         | Some boundary ->
             let parts = parse_multipart boundary body in

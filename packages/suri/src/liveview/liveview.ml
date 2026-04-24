@@ -172,7 +172,7 @@ module MountHandler (C : Component) = struct
   (** Extract session token from query parameters *)
   let extract_session_token = fun conn ->
     let params = Middleware.Conn.query_params conn in
-    List.assoc_opt "session" params
+    Std.Collections.Proplist.get params ~key:"session"
 
   (** Get secret from Suri config *)
   let get_secret = fun () ->

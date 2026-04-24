@@ -647,9 +647,9 @@ let test_parser_rebuilds_nested_tables_inside_array_items = fun _ctx ->
     ] in
   match Serde_toml__Parse.from_string source with
   | Ok (Serde_toml__Toml_value.Table items) -> (
-      match List.assoc_opt "crew" items with
+      match Std.Collections.Proplist.get items ~key:"crew" with
       | Some (Serde_toml__Toml_value.Array [ Serde_toml__Toml_value.Table first ]) ->
-          if Option.is_some (List.assoc_opt "pose" first) then
+          if Option.is_some (Std.Collections.Proplist.get first ~key:"pose") then
             Ok ()
           else
             let root_keys = items |> List.map ~fn:(fun (key, _) -> key) |> String.concat ", " in
@@ -685,9 +685,9 @@ let test_roundtrips_rosters = fun _ctx ->
   let* () =
     match Serde_toml__Parse.from_string encoded with
     | Ok (Serde_toml__Toml_value.Table items) -> (
-        match List.assoc_opt "crew" items with
+        match Std.Collections.Proplist.get items ~key:"crew" with
         | Some (Serde_toml__Toml_value.Array (Serde_toml__Toml_value.Table first :: _)) ->
-            let has key = Option.is_some (List.assoc_opt key first) in
+            let has key = Option.is_some (Std.Collections.Proplist.get first ~key) in
             if has "name" && has "pet" && has "flag" && has "pose" then
               Ok ()
             else

@@ -93,14 +93,13 @@ let rec encode_value = fun buffer value ->
       add_text buffer value
   | Array values ->
       add_header buffer major_array (Int64.of_int (List.length values));
-      List.iter (encode_value buffer) values
+      List.for_each values ~fn:(encode_value buffer)
   | Map items ->
       add_header buffer major_map (Int64.of_int (List.length items));
-      List.iter
-        (fun (key, value) ->
+      List.for_each items
+        ~fn:(fun (key, value) ->
           add_text buffer key;
           encode_value buffer value)
-        items
 
 let to_string = fun value ->
   let buffer = IO.Buffer.create ~size:128 in

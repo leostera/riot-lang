@@ -37,8 +37,8 @@ let parse_fields = fun input ->
   |> List.filter ~fn:(fun ((key, value)) -> not (String.equal key "" && String.equal value "")) in
   let groups = Vector.create () in
   let indices = HashMap.create () in
-  List.iter
-    (fun ((key, value)) ->
+  List.for_each pairs
+    ~fn:(fun ((key, value)) ->
       match HashMap.get indices ~key with
       | Some index ->
           let group = Vector.get_unchecked groups ~at:index in
@@ -48,8 +48,7 @@ let parse_fields = fun input ->
           let values = Vector.with_capacity ~size:4 in
           Vector.push values ~value;
           Vector.push groups ~value:(({ key; values }: grouped_field_acc));
-          ignore (HashMap.insert indices ~key ~value:index))
-    pairs;
+          ignore (HashMap.insert indices ~key ~value:index));
   Array.init ~count:(Vector.len groups)
     ~fn:(fun index ->
       let group = Vector.get_unchecked groups ~at:index in

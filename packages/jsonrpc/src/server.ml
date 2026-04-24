@@ -48,9 +48,11 @@ let handle_message = fun (type req res) (server: (req, res) t) (reply: string ->
           Log.trace ("[JSONRPC SERVER] Looking for handler for method: " ^ request.method_);
           Log.trace
             ("[JSONRPC SERVER] Available handlers: " ^ Int.to_string (List.length server.handlers));
-          List.iter (fun h -> Log.trace ("[JSONRPC SERVER]   - " ^ h.method_)) server.handlers;
+          List.for_each
+            server.handlers
+            ~fn:(fun h -> Log.trace ("[JSONRPC SERVER]   - " ^ h.method_));
           (* Find handler for method *)
-          match List.find_opt (fun h -> h.method_ = request.method_) server.handlers with
+          match List.find server.handlers ~fn:(fun h -> h.method_ = request.method_) with
           | None ->
               (* Method not found - can't send typed response, just log/ignore *)
               Log.trace ("[JSONRPC SERVER] No handler found for method: " ^ request.method_);

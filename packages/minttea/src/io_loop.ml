@@ -67,7 +67,7 @@ let rec loop = fun state ->
           Log.trace ("[IO_LOOP] READ INPUT: " ^ input);
           (* Parse input through ANSI parser *)
           let events = Ansi_parser.parse_string state.parser input in
-          List.iter (fun event -> send state.parent (Input event)) events;
+          List.for_each events ~fn:(fun event -> send state.parent (Input event));
           (* If no events were generated and it's a simple character *)
           if List.length events = 0 && String.length input = 1 then
             (

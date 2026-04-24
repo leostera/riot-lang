@@ -135,7 +135,7 @@ let update = fun event model ->
             let len = String.length current in
             let value =
               if len > 0 then
-                String.sub current 0 (len - 1)
+                String.sub current ~offset:0 ~len:(len - 1)
               else
                 ""
             in
@@ -146,7 +146,7 @@ let update = fun event model ->
             let len = String.length current in
             let value =
               if len > 0 then
-                String.sub current 0 (len - 1)
+                String.sub current ~offset:0 ~len:(len - 1)
               else
                 ""
             in
@@ -157,7 +157,7 @@ let update = fun event model ->
             let len = String.length current in
             let value =
               if len > 0 then
-                String.sub current 0 (len - 1)
+                String.sub current ~offset:0 ~len:(len - 1)
               else
                 ""
             in

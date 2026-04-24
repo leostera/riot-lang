@@ -5,6 +5,7 @@ let normalize_label = fun label ->
   let normalized = String.lowercase_ascii label in
   let transformed =
     String.map
+      ~fn:
       (fun ch ->
         if
           (ch >= 'a' && ch <= 'z')
@@ -21,13 +22,13 @@ let normalize_label = fun label ->
   let trim_underscores = fun value ->
     let len = String.length value in
     let rec skip_left idx =
-      if idx >= len || not (Char.equal value.[idx] '_') then
+      if idx >= len || not (Char.equal (String.get_unchecked value ~at:idx) '_') then
         idx
       else
         skip_left (idx + 1)
     in
     let rec skip_right idx =
-      if idx < 0 || not (Char.equal value.[idx] '_') then
+      if idx < 0 || not (Char.equal (String.get_unchecked value ~at:idx) '_') then
         idx
       else
         skip_right (idx - 1)
@@ -37,7 +38,7 @@ let normalize_label = fun label ->
     if left > right then
       "fixture"
     else
-      String.sub value left (right - left + 1)
+      String.sub value ~offset:left ~len:(right - left + 1)
   in
   trim_underscores transformed
 
@@ -46,7 +47,7 @@ let fixture_test_name = fun index fixture ->
     Option.unwrap_or ~default:"fixture" fixture.section
   in
   let example =
-    Option.map Int.to_string fixture.example
+    Option.map ~fn:Int.to_string fixture.example
     |> Option.unwrap_or ~default:(Int.to_string (index + 1))
   in
   "markdown/spec/" ^ normalize_label section ^ "/" ^ example ^ "_" ^ Int.to_string index
@@ -60,7 +61,8 @@ let test_fixture = fun fixture index ctx ->
 
 let fixture_cases = fun () ->
   all_spec_fixtures ()
-  |> List.mapi (fun index fixture ->
+  |> List.enumerate
+  |> List.map ~fn:(fun (index, fixture) ->
     Test.case
       (fixture_test_name index fixture)
       (fun ctx -> test_fixture fixture index ctx))
@@ -114,6 +116,7 @@ let () =
       Test.Cli.main
         ~name:"markdown-spec-fixtures"
         ~tests:(cases ())
-        ~args)
+        ~args
+        ())
     ~args:Env.args
     ()

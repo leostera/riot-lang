@@ -52,16 +52,17 @@ let handle = fun config conn ->
         let body_params =
           if
             String.starts_with ~prefix:"application/x-www-form-urlencoded" content_type
-            && List.mem Urlencoded config.parsers
+            && List.contains config.parsers ~value:Urlencoded
           then
             parse_urlencoded body
           else if
-            String.starts_with ~prefix:"application/json" content_type && List.mem Json config.parsers
+            String.starts_with ~prefix:"application/json" content_type
+            && List.contains config.parsers ~value:Json
           then
             parse_json body
           else if
             String.starts_with ~prefix:"multipart/form-data" content_type
-            && List.mem Multipart config.parsers
+            && List.contains config.parsers ~value:Multipart
           then
             let parts = String.split_on_char ';' content_type in
             let boundary_opt =

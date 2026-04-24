@@ -115,7 +115,7 @@ let test_content_type_parsing = fun _ctx ->
       match get_content_type part with
       | Some ct ->
           if ct.media_type = "text" && ct.subtype = "html" then
-            match List.assoc_opt "charset" ct.parameters with
+            match Std.Collections.Proplist.get ct.parameters ~key:"charset" with
             | Some "utf-8" -> Ok ()
             | Some other -> Error ("Expected charset=utf-8, got " ^ other)
             | None -> Error "No charset parameter found"

@@ -217,8 +217,8 @@ let view = fun t ->
             (start, min (total - 1) (start + t.height - 1))
         in
         (* Render visible items *)
-        List.iteri
-          (fun idx item ->
+        items |> List.enumerate |> List.for_each
+          ~fn:(fun (idx, item) ->
             if idx >= start_idx && idx <= end_idx then
               begin
                 let is_selected = idx = t.selected in
@@ -240,7 +240,6 @@ let view = fun t ->
                 add_string buf prefix;
                 add_string buf line
               end)
-          items
       end;
     (* Show filter input at bottom if active *)
     if t.filtering_active then

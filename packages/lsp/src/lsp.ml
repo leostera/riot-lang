@@ -40,9 +40,7 @@ let rec unsupported_json_kind = fun expected ->
   | Json.Embed t -> unsupported_json_kind expected t
 
 module Decode = struct
-  let field = fun name ->
-    fun fields ->
-      List.assoc_opt name fields
+  let field = fun name -> fun fields -> Std.Collections.Proplist.get fields ~key:name
 
   let object_fields = fun context ->
     function

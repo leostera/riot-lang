@@ -75,7 +75,7 @@ let make_workspace_with_sources = fun ?toolchain_targets ~root ~packages () ->
 let load_prepared_workspace = fun ~root ->
   let workspace_manager = Riot_model.Workspace_manager.create () in
   match Riot_model.Workspace_manager.scan workspace_manager root with
-  | Error err -> Error ("workspace scan failed: " ^ err)
+  | Error err -> Error ("workspace scan failed: " ^ Riot_model.Workspace_manager.scan_error_message err)
   | Ok (workspace, load_errors) ->
       if not (List.is_empty load_errors) then
         Error "workspace scan produced load errors"
@@ -320,7 +320,7 @@ let test_nested_udp_workspace_builds_across_file_creation_orders = fun _ctx ->
                 | Error err -> Error ("workspace scan failed for creation order "
                 ^ order_name
                 ^ ": "
-                ^ err)
+                ^ Riot_model.Workspace_manager.scan_error_message err)
                 | Ok (workspace, load_errors) ->
                     if not (List.is_empty load_errors) then
                       Error ("workspace scan had load errors for creation order " ^ order_name)

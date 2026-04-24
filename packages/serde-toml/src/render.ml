@@ -81,25 +81,23 @@ let rec add_inline_value = fun buffer value ->
         IO.Buffer.add_string buffer "false"
   | Array values ->
       IO.Buffer.add_char buffer '[';
-      List.iteri
-        (fun index item ->
+      values |> List.enumerate |> List.for_each
+        ~fn:(fun (index, item) ->
           if not (Int.equal index 0) then
             IO.Buffer.add_string buffer ", ";
-          add_inline_value buffer item)
-        values;
+          add_inline_value buffer item);
       IO.Buffer.add_char buffer ']'
   | Table [] ->
       IO.Buffer.add_string buffer "{}"
   | Table items ->
       IO.Buffer.add_string buffer "{ ";
-      List.iteri
-        (fun index (key, item) ->
+      items |> List.enumerate |> List.for_each
+        ~fn:(fun (index, (key, item)) ->
           if not (Int.equal index 0) then
             IO.Buffer.add_string buffer ", ";
           IO.Buffer.add_string buffer key;
           IO.Buffer.add_string buffer " = ";
-          add_inline_value buffer item)
-        items;
+          add_inline_value buffer item);
       IO.Buffer.add_string buffer " }"
 
 let dotted_path = fun path ->
@@ -109,8 +107,8 @@ let partition_items = fun items ->
   let scalars = ref [] in
   let tables = ref [] in
   let arrays_of_tables = ref [] in
-  List.iter
-    (fun ((key, value) as entry) ->
+  List.for_each items
+    ~fn:(fun ((key, value) as entry) ->
       match value with
       | Table nested -> tables := (key, nested) :: !tables
       | Array values when not (List.is_empty values) && List.for_all is_table values -> arrays_of_tables := (
@@ -118,39 +116,36 @@ let partition_items = fun items ->
         values
       )
       :: !arrays_of_tables
-      | _ -> scalars := entry :: !scalars)
-    items;
+      | _ -> scalars := entry :: !scalars);
   (List.rev !scalars, List.rev !tables, List.rev !arrays_of_tables)
 
 let rec render_table_body = fun buffer path items ->
   let scalars, tables, arrays_of_tables = partition_items items in
-  List.iter
-    (fun (key, value) ->
+  List.for_each scalars
+    ~fn:(fun (key, value) ->
       IO.Buffer.add_string buffer key;
       IO.Buffer.add_string buffer " = ";
       add_inline_value buffer value;
-      IO.Buffer.add_char buffer '\n')
-    scalars;
+      IO.Buffer.add_char buffer '\n');
   if
     not (List.is_empty scalars)
     && (not (List.is_empty tables) || not (List.is_empty arrays_of_tables))
   then
     IO.Buffer.add_char buffer '\n';
-  List.iteri
-    (fun index (key, nested) ->
+  tables |> List.enumerate |> List.for_each
+    ~fn:(fun (index, (key, nested)) ->
       if not (Int.equal index 0) then
         IO.Buffer.add_char buffer '\n';
       IO.Buffer.add_char buffer '[';
       IO.Buffer.add_string buffer (dotted_path (path @ [ key ]));
       IO.Buffer.add_string buffer "]\n";
-      render_table_body buffer (path @ [ key ]) nested)
-    tables;
+      render_table_body buffer (path @ [ key ]) nested);
   if not (List.is_empty tables) && not (List.is_empty arrays_of_tables) then
     IO.Buffer.add_char buffer '\n';
-  List.iteri
-    (fun outer_index (key, values) ->
-      List.iteri
-        (fun inner_index value ->
+  arrays_of_tables |> List.enumerate |> List.for_each
+    ~fn:(fun (outer_index, (key, values)) ->
+      values |> List.enumerate |> List.for_each
+        ~fn:(fun (inner_index, value) ->
           if not (Int.equal outer_index 0 && Int.equal inner_index 0) then
             IO.Buffer.add_char buffer '\n';
           match value with
@@ -159,9 +154,7 @@ let rec render_table_body = fun buffer path items ->
               IO.Buffer.add_string buffer (dotted_path (path @ [ key ]));
               IO.Buffer.add_string buffer "]]\n";
               render_table_body buffer (path @ [ key ]) nested
-          | _ -> panic "Render.render_table_body: expected table in array-of-tables")
-        values)
-    arrays_of_tables
+          | _ -> panic "Render.render_table_body: expected table in array-of-tables"))
 
 let to_string = function
   | Table items ->

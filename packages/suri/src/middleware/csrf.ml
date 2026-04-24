@@ -169,11 +169,11 @@ let middleware = fun ?(param_name = "_csrf_token") ?(header_name = "x-csrf-token
       let req_headers = Conn.headers conn in
       let request_token =
         (* Try body_params first (parsed by body_parser middleware) *)
-        match Conn.body_params conn |> List.assoc_opt param_name with
+        match Std.Collections.Proplist.get (Conn.body_params conn) ~key:param_name with
         | Option.Some token -> Option.some token
         | Option.None -> (* Try URL parameters *)
           (
-            match Conn.params conn |> List.assoc_opt param_name with
+            match Std.Collections.Proplist.get (Conn.params conn) ~key:param_name with
             | Option.Some token -> Option.some token
             | Option.None ->
                 (* Try header as last resort *)

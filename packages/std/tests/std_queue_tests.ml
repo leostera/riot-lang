@@ -80,12 +80,11 @@ let spawn_producers = fun ~parent ~queue ~batches ~yield_every ~on_done ->
           spawn
             (fun () ->
               wait_for_go ();
-              List.iteri
-                (fun index value ->
+              batch |> List.enumerate |> List.for_each
+                ~fn:(fun (index, value) ->
                   Queue.push queue ~value;
                   if index mod yield_every = 0 then
-                    yield ())
-                batch;
+                    yield ());
               on_done ();
               send parent (Queue_producer_done producer);
               Ok ())

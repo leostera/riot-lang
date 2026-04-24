@@ -105,15 +105,14 @@ let count_indent = fun line_number text ->
 let preprocess = fun input ->
   let raw_lines = String.split_on_char '\n' input in
   let lines = ref [] in
-  List.iteri
-    (fun index raw_line ->
+  raw_lines |> List.enumerate |> List.for_each
+    ~fn:(fun (index, raw_line) ->
       let number = index + 1 in
       let line = raw_line |> strip_trailing_cr |> strip_comment |> trim_right in
       if not (String.equal (String.trim line) "") then
         let indent = count_indent number line in
         let text = String.sub line ~offset:indent ~len:(String.length line - indent) in
-        lines := { number; indent; text } :: !lines)
-    raw_lines;
+        lines := { number; indent; text } :: !lines);
   let lines = List.rev !lines in
   let lines =
     match lines with
@@ -125,11 +124,10 @@ let preprocess = fun input ->
     | { text="..."; _ } :: rest -> List.rev rest
     | _ -> lines
   in
-  List.iter
-    (fun line ->
+  List.for_each lines
+    ~fn:(fun line ->
       if String.equal line.text "---" || String.equal line.text "..." then
-        fail_line line.number "multiple YAML documents are not supported")
-    lines;
+        fail_line line.number "multiple YAML documents are not supported");
   Array.of_list lines
 
 let skip_spaces = fun text index ->

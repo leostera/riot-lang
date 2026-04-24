@@ -5,15 +5,15 @@ let test_value_conversions = fun () ->
   Log.info "Testing value conversions...";
   let int_val = Value.int 42 in
   assert (Value.to_int int_val = Some 42);
-  assert (Value.to_string int_val = None);
+  assert (Value.to_string_value int_val = None);
   assert (not (Value.is_null int_val));
   let str_val = Value.string "hello" in
-  assert (Value.to_string str_val = Some "hello");
+  assert (Value.to_string_value str_val = Some "hello");
   assert (Value.to_int str_val = None);
   let null_val = Value.null in
   assert (Value.is_null null_val);
   assert (Value.to_int null_val = None);
-  assert (Value.to_string null_val = None);
+  assert (Value.to_string_value null_val = None);
   Log.info "Value conversions: OK"
 
 let test_row_access = fun () ->
@@ -26,9 +26,9 @@ let test_row_access = fun () ->
   assert (Row.get "missing" row = None);
   let fields = Row.fields row in
   assert (List.length fields = 3);
-  assert (List.mem "id" fields);
-  assert (List.mem "name" fields);
-  assert (List.mem "active" fields);
+  assert (List.contains fields ~value:"id");
+  assert (List.contains fields ~value:"name");
+  assert (List.contains fields ~value:"active");
   Log.info "Row access: OK"
 
 let test_value_equality = fun () ->

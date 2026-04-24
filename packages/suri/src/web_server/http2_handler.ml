@@ -115,10 +115,10 @@ let send_data = fun conn stream_id data end_stream ->
 
 (** Convert HTTP/2 headers to Request.t *)
 let headers_to_request = fun conn headers body ->
-  let method_ = List.assoc_opt ":method" headers
+  let method_ = Std.Collections.Proplist.get headers ~key:":method"
   |> Option.map ~fn:Net.Http.Method.of_string
   |> Option.unwrap_or ~default:Net.Http.Method.Get in
-  let uri = List.assoc_opt ":path" headers |> Option.unwrap_or ~default:"/" in
+  let uri = Std.Collections.Proplist.get headers ~key:":path" |> Option.unwrap_or ~default:"/" in
   let headers =
     List.filter ~fn:(fun ((k, _)) -> not (String.starts_with ~prefix:":" k)) headers
   in

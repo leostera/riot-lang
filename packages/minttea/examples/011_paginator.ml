@@ -119,7 +119,7 @@ let update = fun event model ->
       ({ model with current_page }, Command.Noop)
   | Event.KeyDown (Event.Key s, _) when String.length s = 1 -> (* Jump to page by number *)
     (
-      match s.[0] with
+      match String.get_unchecked s ~at:0 with
       | '1' .. '5' as c ->
           let page = Char.code c - Char.code '0' - 1 in
           let max_page = List.length model.pages - 1 in
@@ -134,15 +134,12 @@ let update = fun event model ->
 
 let view = fun model ->
   let open Element in
-    let page_content =
-      try List.nth model.pages model.current_page with
-      | _ -> "Page not found"
-    in
+    let page_content = List.get model.pages ~at:model.current_page |> Option.unwrap_or ~default:"Page not found" in
     (* Create page indicator dots *)
     let total_pages = List.length model.pages in
     let dots =
-      List.init total_pages
-        (fun i ->
+      List.init ~count:total_pages
+        ~fn:(fun i ->
           if i = model.current_page then
             "●"
           else

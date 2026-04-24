@@ -19,7 +19,7 @@ let user_to_json = fun user ->
   Data.Json.(obj [ ("id", int user.id); ("name", string user.name); ("email", string user.email); ])
 
 let users_to_json = fun users ->
-  let user_jsons = List.map user_to_json users in
+  let user_jsons = List.map ~fn:user_to_json users in
   Data.Json.array user_jsons
 
 (* CORS middleware *)
@@ -59,11 +59,11 @@ let users_list_handler = fun conn req ->
 
 let user_handler = fun conn req ->
   let params = Conn.params conn in
-  match List.assoc_opt "id" params with
+  match Std.Collections.Proplist.get params ~key:"id" with
   | Some id_str -> (
       try
         let id = Int.of_string id_str in
-        match List.find_opt (fun u -> u.id = id) users with
+        match List.find users ~fn:(fun u -> u.id = id) with
         | Some user ->
             let json = user_to_json user in
             conn

@@ -151,8 +151,8 @@ let rec render_value = fun buffer indent value ->
         render_value buffer (indent + 2) payload
       )
   | Seq items ->
-      List.iter
-        (fun item ->
+      List.for_each items
+        ~fn:(fun item ->
           if is_inline_value item then
             (
               add_indent buffer indent;
@@ -166,10 +166,9 @@ let rec render_value = fun buffer indent value ->
             IO.Buffer.add_char buffer '\n';
             render_value buffer (indent + 2) item
           ))
-        items
   | Map fields ->
-      List.iter
-        (fun (key, value) ->
+      List.for_each fields
+        ~fn:(fun (key, value) ->
           add_indent buffer indent;
           add_quoted_string buffer key;
           IO.Buffer.add_char buffer ':';
@@ -183,7 +182,6 @@ let rec render_value = fun buffer indent value ->
             IO.Buffer.add_char buffer '\n';
             render_value buffer (indent + 2) value
           ))
-        fields
 
 let to_string = fun value ->
   let buffer = IO.Buffer.create ~size:256 in

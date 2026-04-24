@@ -10,11 +10,11 @@ type error =
 
 let error_message = function
   | Empty -> "Package name cannot be empty"
-  | InvalidLeadingCharacter { suggestion; _ } ->
-      "Package name must start with a lowercase letter. Try '" ^ suggestion ^ "' instead"
+  | InvalidLeadingCharacter { suggestion; _ } -> "Package name must start with a lowercase letter. Try '"
+  ^ suggestion
+  ^ "' instead"
   | TrailingDelimiter _ -> "Package name cannot end with hyphen or underscore"
-  | InvalidCharacterSet _ ->
-      "Package name can only contain lowercase letters, numbers, hyphens, and underscores"
+  | InvalidCharacterSet _ -> "Package name can only contain lowercase letters, numbers, hyphens, and underscores"
 
 let from_string = fun name ->
   let is_alpha c = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') in

@@ -15,7 +15,9 @@ let () =
   match solve (to_provider provider) "root" (v 1 0 0) with
   | Ok (Solver.Success solution) ->
       Log.info "Solution found:";
-      List.iter (fun ((pkg, ver)) -> Log.info ("  " ^ pkg ^ "@" ^ (version_to_string ver))) solution
+      List.for_each
+        solution
+        ~fn:(fun ((pkg, ver)) -> Log.info ("  " ^ pkg ^ "@" ^ (version_to_string ver)))
   | Ok (Solver.Failure conflict) ->
       Log.error ("No solution found:\n" ^ (explain_conflict conflict))
   | Error err ->

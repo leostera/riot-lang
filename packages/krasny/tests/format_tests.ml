@@ -1204,7 +1204,7 @@ module M = struct end
         source);
   Test.case "format preserves syntax hash for selected codebase files"
     (fun _ctx ->
-      List.iter assert_roundtrip_hash workspace_files;
+      List.for_each workspace_files ~fn:assert_roundtrip_hash;
       Ok ());
   Test.case "runner skips hidden and build directories"
     (fun _ctx ->
@@ -1264,8 +1264,8 @@ module M = struct end
           Test.assert_equal ~expected:0 ~actual:result.summary.failed_files;
           let needs_result =
             result.files
-            |> List.find_opt
-              (fun file_result ->
+            |> List.find
+              ~fn:(fun file_result ->
                 String.equal (Path.to_string file_result.Krasny.Runner.file) (Path.to_string needs))
             |> Option.expect ~msg:"needs result missing"
           in
@@ -1298,8 +1298,8 @@ module M = struct end
           Test.assert_equal ~expected:0 ~actual:result.summary.failed_files;
           let needs_result =
             result.files
-            |> List.find_opt
-              (fun file_result ->
+            |> List.find
+              ~fn:(fun file_result ->
                 String.equal (Path.to_string file_result.Krasny.Runner.file) (Path.to_string needs))
             |> Option.expect ~msg:"verify result missing"
           in
@@ -1328,8 +1328,8 @@ module M = struct end
           Test.assert_equal ~expected:"let x = 1 + 2\n\nlet f x = x + 1\n" ~actual:formatted_source;
           let file_result =
             result.files
-            |> List.find_opt
-              (fun file_result ->
+            |> List.find
+              ~fn:(fun file_result ->
                 String.equal (Path.to_string file_result.Krasny.Runner.file) (Path.to_string needs))
             |> Option.expect ~msg:"format result missing"
           in
@@ -1350,8 +1350,8 @@ module M = struct end
           Test.assert_equal ~expected:1 ~actual:result.summary.failed_files;
           let file_result =
             result.files
-            |> List.find_opt
-              (fun file_result ->
+            |> List.find
+              ~fn:(fun file_result ->
                 String.equal (Path.to_string file_result.Krasny.Runner.file) (Path.to_string broken))
             |> Option.expect ~msg:"broken result missing"
           in

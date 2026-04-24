@@ -80,11 +80,11 @@ let check_etag_match = fun conn resp_headers ->
       (* Handle multiple ETags in If-None-Match (comma-separated) *)
       let client_etags = String.split_on_char ',' client_etag |> List.map ~fn:String.trim in
       (* Check for wildcard match *)
-      if List.mem "*" client_etags then
+      if List.contains client_etags ~value:"*" then
         true
       else
         (* Check if server ETag matches any client ETag *)
-        List.mem server_etag client_etags
+        List.contains client_etags ~value:server_etag
   | _ -> false
 
 (** Check if Last-Modified matches If-Modified-Since header *)

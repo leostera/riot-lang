@@ -903,7 +903,7 @@ module Writer = struct
     write_string buf statement_name;
     write_string buf query;
     write_int16 buf (List.length param_types);
-    List.iter (fun oid -> write_int32 buf oid) param_types;
+    List.for_each param_types ~fn:(fun oid -> write_int32 buf oid);
     let content = Buffer.contents buf in
     let length = String.length content + 4 in
     let result = Buffer.create ~size:(length + 1) in
@@ -918,11 +918,10 @@ module Writer = struct
     write_string buf statement_name;
     write_int16 buf 0;
     write_int16 buf (List.length params);
-    List.iter
-      (fun param ->
+    List.for_each params
+      ~fn:(fun param ->
         write_int32 buf (String.length param);
-        Buffer.add_string buf param)
-      params;
+        Buffer.add_string buf param);
     write_int16 buf 0;
     let content = Buffer.contents buf in
     let length = String.length content + 4 in

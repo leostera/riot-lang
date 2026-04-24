@@ -12,7 +12,7 @@ let is_origin_allowed = fun origins origin ->
 
 (** Get the origin value to send in response headers *)
 let get_response_origin = fun origins origin credentials ->
-  if List.mem "*" origins && not credentials then
+  if List.contains origins ~value:"*" && not credentials then
     "*"
   else
     origin
@@ -21,7 +21,7 @@ let get_response_origin = fun origins origin credentials ->
 let middleware = fun ~origins ?(methods = [ Net.Http.Method.Put; Patch; Delete ]) ?(headers = []) ?(credentials = false) ?(expose = []) ?max_age () ->
   (* Validate configuration *)
   let () =
-    if List.mem "*" origins && credentials then
+    if List.contains origins ~value:"*" && credentials then
       Log.warn "[CORS] Warning: Wildcard origin with credentials is a security risk!"
   in
   fun ~conn ~next ->

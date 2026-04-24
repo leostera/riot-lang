@@ -332,7 +332,7 @@ let test_variant_payload_uses_singleton_document = fun _ctx ->
   let manifest = { sample_manifest with mode = Navigator "Nami" } in
   match Serde_bson.to_string manifest_encode manifest with
   | Ok encoded ->
-      if List.mem 0x03 (byte_values encoded) then
+      if List.contains (byte_values encoded) ~value:0x03 then
         Ok ()
       else
         Error "expected BSON variant payload to include an embedded document type"

@@ -113,9 +113,9 @@ let tests = [
       let _ = Swisstable.insert map 3 30 in
       let keys = Swisstable.keys map in
       Test.assert_equal ~expected:3 ~actual:(List.length keys);
-      Test.assert_true (List.mem 1 keys);
-      Test.assert_true (List.mem 2 keys);
-      Test.assert_true (List.mem 3 keys);
+      Test.assert_true (List.contains keys ~value:1);
+      Test.assert_true (List.contains keys ~value:2);
+      Test.assert_true (List.contains keys ~value:3);
       Ok ());
   Test.case "values"
     (fun _ctx ->
@@ -125,9 +125,9 @@ let tests = [
       let _ = Swisstable.insert map 3 30 in
       let values = Swisstable.values map in
       Test.assert_equal ~expected:3 ~actual:(List.length values);
-      Test.assert_true (List.mem 10 values);
-      Test.assert_true (List.mem 20 values);
-      Test.assert_true (List.mem 30 values);
+      Test.assert_true (List.contains values ~value:10);
+      Test.assert_true (List.contains values ~value:20);
+      Test.assert_true (List.contains values ~value:30);
       Ok ());
   Test.case "from_iter (of_list)"
     (fun _ctx ->
@@ -259,8 +259,8 @@ let tests = [
       let _ = Swisstable.insert map 2 20 in
       let list = Swisstable.to_list map in
       Test.assert_equal ~expected:2 ~actual:(List.length list);
-      Test.assert_true (List.mem (1, 10) list);
-      Test.assert_true (List.mem (2, 20) list);
+      Test.assert_true (List.contains list ~value:(1, 10));
+      Test.assert_true (List.contains list ~value:(2, 20));
       Ok ());
   Test.case "or_insert with existing key"
     (fun _ctx ->

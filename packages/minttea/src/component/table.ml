@@ -200,8 +200,8 @@ let view = fun tbl ->
       in
       (* Render visible rows *)
       let first_row = ref true in
-      List.iteri
-        (fun idx row_data ->
+      tbl.rows |> List.enumerate |> List.for_each
+        ~fn:(fun (idx, row_data) ->
           if idx >= start_idx && idx <= end_idx then
             begin
               (* Pad row to match column count *)
@@ -222,6 +222,5 @@ let view = fun tbl ->
               let is_selected = tbl.focused && idx = tbl.cursor in
               B.add_string buf (render_row tbl.columns padded_row is_selected tbl.cursor_char)
             end)
-        tbl.rows
     end;
   B.contents buf

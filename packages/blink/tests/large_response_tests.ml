@@ -57,7 +57,7 @@ let test_large_json_response = fun _ctx ->
                     (* Verify it has expected structure for OpenAI API *)
                     match json with
                     | Data.Json.Object fields -> (
-                        match List.assoc_opt "choices" fields with
+                        match Std.Collections.Proplist.get fields ~key:"choices" with
                         | Some (Data.Json.Array _choices) ->
                             (* Success! We got a complete JSON response with the expected structure *)
                             Ok ()
@@ -90,8 +90,8 @@ let test_streamed_response = fun _ctx ->
           (* Read response, printing each chunk as it arrives *)
           let chunk_count = ref 0 in
           let on_message msgs =
-            List.iter
-              (fun msg ->
+            List.for_each msgs
+              ~fn:(fun msg ->
                 match msg with
                 | Blink.Connection.Data chunk ->
                     chunk_count := !chunk_count + 1;
@@ -109,7 +109,6 @@ let test_streamed_response = fun _ctx ->
                     Log.info "Headers received"
                 | Blink.Connection.Done ->
                     Log.info "Done!")
-              msgs
           in
           match Blink.await ~on_message conn with
           | Error _err -> Error "Response read failed"
@@ -172,8 +171,10 @@ let test_sse_parsing = fun _ctx ->
             Error "No SSE events received"
           else (
             (* Log each event *)
-            List.iteri
-              (fun i event ->
+            events
+            |> List.enumerate
+            |> List.for_each
+              ~fn:(fun (i, event) ->
                 Log.info
                   ("SSE Event "
                   ^ string_of_int (i + 1)
@@ -181,8 +182,7 @@ let test_sse_parsing = fun _ctx ->
                   ^ Blink.SSE.(String.sub
                     event.data
                     ~offset:0
-                    ~len:(min 80 (String.length event.data)))))
-              events;
+                    ~len:(min 80 (String.length event.data)))));
             (* Verify each event has JSON data *)
             let all_valid_json =
               List.for_all

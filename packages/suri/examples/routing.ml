@@ -35,7 +35,8 @@ let about_handler = fun conn req ->
 let health_handler = fun conn req ->
   (* Get the request ID that was added by request_id middleware *)
   let resp_headers = Conn.resp_headers conn in
-  let request_id = List.assoc_opt "x-request-id" resp_headers |> Option.unwrap_or ~default:"unknown" in
+  let request_id = Std.Collections.Proplist.get resp_headers ~key:"x-request-id"
+  |> Option.unwrap_or ~default:"unknown" in
   let json = Data.Json.obj
     [
       ("status", Data.Json.string "ok");

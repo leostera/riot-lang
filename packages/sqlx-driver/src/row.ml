@@ -2,8 +2,7 @@ open Std
 
 type t = (string * Value.t) list
 
-let get = fun field row ->
-  List.assoc_opt field row
+let get = fun field row -> Std.Collections.Proplist.get row ~key:field
 
 let fields = fun row -> List.map ~fn:(fun (field, _) -> field) row
 

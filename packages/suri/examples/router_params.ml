@@ -21,11 +21,11 @@ let articles = [
 
 let article_handler = fun conn req ->
   let params = Conn.params conn in
-  match List.assoc_opt "id" params with
+  match Std.Collections.Proplist.get params ~key:"id" with
   | Some id_str -> (
       try
         let id = Int.of_string id_str in
-        match List.find_opt (fun a -> a.id = id) articles with
+        match List.find articles ~fn:(fun a -> a.id = id) with
         | Some article ->
             let json = Data.Json.obj
               [
@@ -65,8 +65,9 @@ let article_handler = fun conn req ->
 let articles_list_handler = fun conn req ->
   let articles_json =
     List.map
-      (fun a -> Data.Json.obj [ ("id", Data.Json.int a.id); ("title", Data.Json.string a.title); ])
       articles
+      ~fn:(fun a ->
+        Data.Json.obj [ ("id", Data.Json.int a.id); ("title", Data.Json.string a.title); ])
   in
   let json = Data.Json.array articles_json in
   conn

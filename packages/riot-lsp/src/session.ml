@@ -61,7 +61,7 @@ let remove_document = fun state uri ->
   }
 
 let find_document = fun state uri ->
-  List.find_opt (fun document -> uri_equal document.uri uri) state.documents
+  List.find state.documents ~fn:(fun document -> uri_equal document.uri uri)
 
 let response_error = fun ~id ~code ~message ?data () ->
   Lsp.error_response_to_json ~id Lsp.{ code; message; data }
@@ -168,8 +168,8 @@ let typ_target_files = fun state ->
 
 let text_for_path = fun state path ->
   let key = Path.normalize path |> Path.to_string in
-  state.documents |> List.find_opt
-    (fun document ->
+  state.documents |> List.find
+    ~fn:(fun document ->
       match document_path_key document with
       | Some candidate -> String.equal candidate key
       | None -> false) |> function

@@ -63,17 +63,6 @@ let flat_map = fun values ~fn ->
 
 let for_each = fun values ~fn -> Kernel.List.for_each values ~fn
 
-let iter = fun fn values -> for_each values ~fn
-
-let iteri = fun fn values ->
-  let rec loop index = function
-    | [] -> ()
-    | value :: rest ->
-        fn index value;
-        loop (index + 1) rest
-  in
-  loop 0 values
-
 let fold_left = fun values ~init ~fn -> Kernel.List.fold_left values ~acc:init ~fn:fn
 
 let fold_right = fun values ~init ~fn -> Kernel.List.fold_right values ~acc:init ~fn:fn
@@ -103,19 +92,6 @@ let contains = fun values ~value -> Kernel.List.contains values ~value
 let mem = fun value values -> contains values ~value
 
 let find = fun values ~fn -> Kernel.List.find values ~fn
-
-let find_opt = fun fn values -> find values ~fn
-
-let assoc_opt = fun key values ->
-  let rec loop = function
-    | [] -> None
-    | (current_key, value) :: rest ->
-        if compare current_key key = 0 then
-          Some value
-        else
-          loop rest
-  in
-  loop values
 
 let filter = fun values ~fn -> Kernel.List.filter values ~fn
 

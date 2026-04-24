@@ -7,10 +7,7 @@ let home_handler = fun conn req ->
   (* Get current count from session *)
   let count =
     match Middleware.Session.get_value "count" session with
-    | Option.Some n -> (
-        try int_of_string n with
-        | _ -> 0
-      )
+    | Option.Some n -> Int.of_string_opt n |> Option.unwrap_or ~default:0
     | Option.None -> 0
   in
   (* Increment count *)

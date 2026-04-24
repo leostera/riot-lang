@@ -64,13 +64,12 @@ let spawn_connection = fun (Config { driver; driver_config; _ }) ->
   Connection.create (Connection.Config { driver; config = driver_config })
 
 let find_available = fun connections ->
-  List.find_opt
-    (
+  List.find (Cell.get connections)
+    ~fn:(
       function
       | Available _ -> true
       | _ -> false
     )
-    (Cell.get connections)
 
 let mark_in_use = fun connections conn requester ->
   Cell.set connections
@@ -220,13 +219,12 @@ let pool_supervisor = fun
         send reply_to (PoolResponse (Stats stats));
         loop ()
     | Shutdown ->
-        List.iter
-          (
+        List.for_each (Cell.get state.connections)
+          ~fn:(
             function
             | Available conn
             | InUse (conn, _, _) -> Connection.close conn
-          )
-          (Cell.get state.connections);
+          );
         ()
   in
   loop ()

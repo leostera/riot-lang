@@ -45,11 +45,10 @@ let sanitize_realm = fun realm ->
     realm;
   let chars = List.rev !chars in
   let bytes = IO.Bytes.create ~size:(List.length chars) in
-  List.iteri
-    (fun index char ->
+  chars |> List.enumerate |> List.for_each
+    ~fn:(fun (index, char) ->
       let _ = IO.Bytes.set_unchecked bytes ~at:index ~char in
-      ())
-    chars;
+      ());
   String.from_bytes bytes
 
 (** {1 Credential Parsing} *)

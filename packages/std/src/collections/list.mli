@@ -37,10 +37,6 @@ val flat_map: 'value list -> fn:('value -> 'mapped list) -> 'mapped list
 
 val for_each: 'value list -> fn:('value -> unit) -> unit
 
-val iter: ('value -> unit) -> 'value list -> unit
-
-val iteri: (int -> 'value -> unit) -> 'value list -> unit
-
 val fold_left: 'value list -> init:'acc -> fn:('acc -> 'value -> 'acc) -> 'acc
 
 val fold_right: 'value list -> init:'acc -> fn:('value -> 'acc -> 'acc) -> 'acc
@@ -57,13 +53,7 @@ val exists: ('value -> bool) -> 'value list -> bool
 
 val contains: 'value list -> value:'value -> bool
 
-val mem: 'value -> 'value list -> bool
-
 val find: 'value list -> fn:('value -> bool) -> 'value option
-
-val find_opt: ('value -> bool) -> 'value list -> 'value option
-
-val assoc_opt: 'key -> ('key * 'value) list -> 'value option
 
 val filter: 'value list -> fn:('value -> bool) -> 'value list
 

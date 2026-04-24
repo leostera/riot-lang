@@ -352,7 +352,7 @@ let table_of_toml = function
   | _ -> panic "serde_toml_bench: expected table"
 
 let field = fun table key ->
-  match List.assoc_opt key table with
+  match Std.Collections.Proplist.get table ~key with
   | Some value -> value
   | None -> panic ("serde_toml_bench: missing field '" ^ key ^ "'")
 
@@ -380,7 +380,7 @@ let berth_of_toml = fun value ->
 
 let vec_of_list = fun values ->
   let vec = Vector.with_capacity ~size:(List.length values) in
-  List.iter (fun value -> Vector.push vec ~value) values;
+  List.for_each values ~fn:(fun value -> Vector.push vec ~value);
   vec
 
 let manifest_of_toml = fun value ->

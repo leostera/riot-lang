@@ -26,11 +26,10 @@ let swisstable_gen = fun key_gen value_gen ->
   Generator.map
     (fun pairs ->
       let map = Swisstable.create () in
-      List.iter
-        (fun ((k, v)) ->
+      List.for_each pairs
+        ~fn:(fun ((k, v)) ->
           let _ = Swisstable.insert map k v in
-          ())
-        pairs;
+          ());
       map)
     (Generator.list (Generator.pair key_gen value_gen))
 
@@ -256,14 +255,15 @@ let many_insertions_prop =
       (* Limit test size *)
       let map = Swisstable.create () in
       (* Insert all pairs *)
-      List.iter
-        (fun ((k, v)) ->
+      List.for_each pairs
+        ~fn:(fun ((k, v)) ->
           let _ = Swisstable.insert map k v in
-          ())
-        pairs;
+          ());
       (* Build reference map using HashMap to deduplicate *)
       let ref_map = Collections.HashMap.create () in
-      List.iter (fun ((k, v)) -> Collections.HashMap.insert ref_map ~key:k ~value:v |> ignore) pairs;
+      List.for_each
+        pairs
+        ~fn:(fun ((k, v)) -> Collections.HashMap.insert ref_map ~key:k ~value:v |> ignore);
       (* Verify all unique keys are accessible and match reference *)
       Collections.HashMap.for_each ref_map
         ~fn:(fun k expected_v ->
@@ -283,13 +283,14 @@ let length_invariant_prop =
       let map = Swisstable.create () in
       (* Count unique keys using reference HashMap *)
       let ref_map = Collections.HashMap.create () in
-      List.iter (fun ((k, v)) -> Collections.HashMap.insert ref_map ~key:k ~value:v |> ignore) pairs;
+      List.for_each
+        pairs
+        ~fn:(fun ((k, v)) -> Collections.HashMap.insert ref_map ~key:k ~value:v |> ignore);
       (* Insert all into swisstable *)
-      List.iter
-        (fun ((k, v)) ->
+      List.for_each pairs
+        ~fn:(fun ((k, v)) ->
           let _ = Swisstable.insert map k v in
-          ())
-        pairs;
+          ());
       (* Length should equal unique keys *)
       Swisstable.len map = Collections.HashMap.length ref_map)
 

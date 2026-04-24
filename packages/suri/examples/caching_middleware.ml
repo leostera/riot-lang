@@ -20,8 +20,7 @@ let users = [
   ("3", "Charlie", "charlie@example.com");
 ]
 
-let find_user = fun id ->
-  List.find_opt (fun ((uid, _, _)) -> uid = id) users
+let find_user = fun id -> List.find users ~fn:(fun ((uid, _, _)) -> uid = id)
 
 (** Routes demonstrating the middleware *)
 let routes = Middleware.Router.[get "/"
@@ -131,7 +130,7 @@ get "/api/users"
 get "/api/user/:id"
   (fun conn req ->
     let params = Conn.params conn in
-    match List.assoc_opt "id" params with
+    match Std.Collections.Proplist.get params ~key:"id" with
     | Some id -> (
         match find_user id with
         | Some (_, name, email) ->
@@ -163,7 +162,7 @@ get "/api/user/:id"
 delete "/api/user/:id"
   (fun conn req ->
     let params = Conn.params conn in
-    match List.assoc_opt "id" params with
+    match Std.Collections.Proplist.get params ~key:"id" with
     | Some id ->
         let method_str = Net.Http.Method.to_string (Conn.method_ conn) in
         let message = "{\"message\":\"User "

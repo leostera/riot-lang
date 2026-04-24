@@ -53,12 +53,11 @@ let get_equivalence_prop =
       let swiss = Swisstable.create () in
       let hash = Collections.HashMap.create () in
       (* Populate both *)
-      List.iter
-        (fun ((k, v)) ->
+      List.for_each insert_pairs
+        ~fn:(fun ((k, v)) ->
           let _ = Swisstable.insert swiss k v in
           let _ = Collections.HashMap.insert hash ~key:k ~value:v in
-          ())
-        insert_pairs;
+          ());
       (* Verify gets match *)
       List.for_all (fun k -> Swisstable.get swiss k = Collections.HashMap.get hash ~key:k) get_keys)
 
@@ -72,12 +71,11 @@ let remove_equivalence_prop =
       let swiss = Swisstable.create () in
       let hash = Collections.HashMap.create () in
       (* Populate both *)
-      List.iter
-        (fun ((k, v)) ->
+      List.for_each insert_pairs
+        ~fn:(fun ((k, v)) ->
           let _ = Swisstable.insert swiss k v in
           let _ = Collections.HashMap.insert hash ~key:k ~value:v in
-          ())
-        insert_pairs;
+          ());
       (* Verify removes match *)
       let all_match =
         List.for_all
@@ -101,12 +99,11 @@ let contains_equivalence_prop =
       let swiss = Swisstable.create () in
       let hash = Collections.HashMap.create () in
       (* Populate both *)
-      List.iter
-        (fun ((k, v)) ->
+      List.for_each insert_pairs
+        ~fn:(fun ((k, v)) ->
           let _ = Swisstable.insert swiss k v in
           let _ = Collections.HashMap.insert hash ~key:k ~value:v in
-          ())
-        insert_pairs;
+          ());
       (* Verify contains_key matches *)
       List.for_all
         (fun k -> Swisstable.contains_key swiss k = Collections.HashMap.contains_key hash k)
@@ -120,12 +117,11 @@ let clear_equivalence_prop =
       let swiss = Swisstable.create () in
       let hash = Collections.HashMap.create () in
       (* Populate both *)
-      List.iter
-        (fun ((k, v)) ->
+      List.for_each pairs
+        ~fn:(fun ((k, v)) ->
           let _ = Swisstable.insert swiss k v in
           let _ = Collections.HashMap.insert hash ~key:k ~value:v in
-          ())
-        pairs;
+          ());
       (* Clear both *)
       Swisstable.clear swiss;
       Collections.HashMap.clear hash;
@@ -144,21 +140,17 @@ let to_list_equivalence_prop =
       let swiss = Swisstable.create () in
       let hash = Collections.HashMap.create () in
       (* Populate both *)
-      List.iter
-        (fun ((k, v)) ->
+      List.for_each pairs
+        ~fn:(fun ((k, v)) ->
           let _ = Swisstable.insert swiss k v in
           let _ = Collections.HashMap.insert hash ~key:k ~value:v in
-          ())
-        pairs;
+          ());
       let swiss_list = Swisstable.to_list swiss in
       let hash_list = Collections.HashMap.to_list hash in
       (* Same length *)
       if not (Collections.List.length swiss_list = Collections.List.length hash_list) then
         fail "to_list lengths differ";
-      List.for_all
-        (fun entry ->
-          List.mem entry hash_list)
-        swiss_list)
+      List.for_all (fun entry -> List.contains hash_list ~value:entry) swiss_list)
 
 (* Property 7: keys produce same keys (modulo order) *)
 
@@ -170,21 +162,17 @@ let keys_equivalence_prop =
       let swiss = Swisstable.create () in
       let hash = Collections.HashMap.create () in
       (* Populate both *)
-      List.iter
-        (fun ((k, v)) ->
+      List.for_each pairs
+        ~fn:(fun ((k, v)) ->
           let _ = Swisstable.insert swiss k v in
           let _ = Collections.HashMap.insert hash ~key:k ~value:v in
-          ())
-        pairs;
+          ());
       let swiss_keys = Swisstable.keys swiss in
       let hash_keys = Collections.HashMap.keys hash in
       (* Same length *)
       if not (Collections.List.length swiss_keys = Collections.List.length hash_keys) then
         fail "keys lengths differ";
-      List.for_all
-        (fun k ->
-          List.mem k hash_keys)
-        swiss_keys)
+      List.for_all (fun k -> List.contains hash_keys ~value:k) swiss_keys)
 
 (* Property 8: values produce same values (modulo order) *)
 
@@ -196,12 +184,11 @@ let values_equivalence_prop =
       let swiss = Swisstable.create () in
       let hash = Collections.HashMap.create () in
       (* Populate both *)
-      List.iter
-        (fun ((k, v)) ->
+      List.for_each pairs
+        ~fn:(fun ((k, v)) ->
           let _ = Swisstable.insert swiss k v in
           let _ = Collections.HashMap.insert hash ~key:k ~value:v in
-          ())
-        pairs;
+          ());
       let swiss_values = Swisstable.values swiss in
       let hash_values = Collections.HashMap.values hash in
       (* Same length *)
@@ -219,12 +206,11 @@ let fold_equivalence_prop =
       let swiss = Swisstable.create () in
       let hash = Collections.HashMap.create () in
       (* Populate both *)
-      List.iter
-        (fun ((k, v)) ->
+      List.for_each pairs
+        ~fn:(fun ((k, v)) ->
           let _ = Swisstable.insert swiss k v in
           let _ = Collections.HashMap.insert hash ~key:k ~value:v in
-          ())
-        pairs;
+          ());
       (* Count entries *)
       let swiss_count =
         Swisstable.fold (fun _ _ acc -> acc + 1) swiss 0
@@ -253,12 +239,11 @@ let or_insert_equivalence_prop =
       let swiss = Swisstable.create () in
       let hash = Collections.HashMap.create () in
       (* Populate both *)
-      List.iter
-        (fun ((k, v)) ->
+      List.for_each pairs
+        ~fn:(fun ((k, v)) ->
           let _ = Swisstable.insert swiss k v in
           let _ = Collections.HashMap.insert hash ~key:k ~value:v in
-          ())
-        pairs;
+          ());
       (* Test or_insert *)
       let r1 = Swisstable.or_insert swiss key default in
       let r2 = Collections.HashMap.or_insert hash ~key ~default in
@@ -278,12 +263,11 @@ let many_ops_equivalence_prop =
       let swiss = Swisstable.create () in
       let hash = Collections.HashMap.create () in
       (* Insert all *)
-      List.iter
-        (fun ((k, v)) ->
+      List.for_each pairs
+        ~fn:(fun ((k, v)) ->
           let _ = Swisstable.insert swiss k v in
           let _ = Collections.HashMap.insert hash ~key:k ~value:v in
-          ())
-        pairs;
+          ());
       (* Remove half *)
       let keys_to_remove =
         List.enumerate pairs
@@ -294,12 +278,11 @@ let many_ops_equivalence_prop =
             else
               None)
       in
-      List.iter
-        (fun ((k, _)) ->
+      List.for_each keys_to_remove
+        ~fn:(fun ((k, _)) ->
           let _ = Swisstable.remove swiss k in
           let _ = Collections.HashMap.remove hash ~key:k in
-          ())
-        keys_to_remove;
+          ());
       (* Verify lengths match *)
       if not (Swisstable.len swiss = Collections.HashMap.length hash) then
         fail "Lengths differ after mixed operations";

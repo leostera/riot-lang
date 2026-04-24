@@ -185,16 +185,15 @@ let user_key_multiple_prop =
     (fun pairs ->
       let map = Swisstable.create () in
       (* Insert all users *)
-      List.iter
-        (fun ((user, value)) ->
+      List.for_each pairs
+        ~fn:(fun ((user, value)) ->
           let _ = Swisstable.insert map user value in
-          ())
-        pairs;
+          ());
       (* Build reference to handle duplicates *)
       let ref_map = Collections.HashMap.create () in
-      List.iter
-        (fun ((user, value)) -> Collections.HashMap.insert ref_map ~key:user ~value |> ignore)
-        pairs;
+      List.for_each
+        pairs
+        ~fn:(fun ((user, value)) -> Collections.HashMap.insert ref_map ~key:user ~value |> ignore);
       (* Verify all accessible *)
       Collections.HashMap.for_each ref_map
         ~fn:(fun user expected_value ->
@@ -255,12 +254,11 @@ let event_key_multiple_prop =
       let map = Swisstable.create () in
       let ref_map = Collections.HashMap.create () in
       (* Insert all events *)
-      List.iter
-        (fun ((event, value)) ->
+      List.for_each pairs
+        ~fn:(fun ((event, value)) ->
           let _ = Swisstable.insert map event value in
           let _ = Collections.HashMap.insert ref_map ~key:event ~value in
-          ())
-        pairs;
+          ());
       (* Verify lengths match *)
       if not (Swisstable.len map = Collections.HashMap.length ref_map) then
         fail "Event map lengths differ";
@@ -342,12 +340,11 @@ let customer_key_multiple_prop =
       let map = Swisstable.create () in
       let ref_map = Collections.HashMap.create () in
       (* Insert all *)
-      List.iter
-        (fun ((customer, value)) ->
+      List.for_each pairs
+        ~fn:(fun ((customer, value)) ->
           let _ = Swisstable.insert map customer value in
           let _ = Collections.HashMap.insert ref_map ~key:customer ~value in
-          ())
-        pairs;
+          ());
       (* Verify equivalence *)
       if not (Swisstable.len map = Collections.HashMap.length ref_map) then
         fail "Customer map lengths differ";
@@ -382,12 +379,11 @@ let collision_point_prop =
       let map = Swisstable.create () in
       let ref_map = Collections.HashMap.create () in
       (* Insert all *)
-      List.iter
-        (fun ((p, v)) ->
+      List.for_each small_pairs
+        ~fn:(fun ((p, v)) ->
           let _ = Swisstable.insert map p v in
           let _ = Collections.HashMap.insert ref_map ~key:p ~value:v in
-          ())
-        small_pairs;
+          ());
       (* Verify lengths match *)
       if not (Swisstable.len map = Collections.HashMap.length ref_map) then
         fail "Lengths differ after collision test";

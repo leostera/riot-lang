@@ -78,14 +78,13 @@ let from_json = fun json ->
           match get_field "values" json with
           | Option.Some (Object pairs) ->
               let hm = HashMap.create () in
-              List.iter
-                (fun ((k, v)) ->
+              List.for_each pairs
+                ~fn:(fun ((k, v)) ->
                   match get_string v with
                   | Option.Some s ->
                       let _ = HashMap.insert hm ~key:k ~value:s in
                       ()
-                  | Option.None -> ())
-                pairs;
+                  | Option.None -> ());
               hm
           | _ -> HashMap.create ()
         in
@@ -213,7 +212,7 @@ let middleware = fun ~secret ?(cookie_name = "_suri_session") ?(max_age = 86_400
       | Option.Some header ->
           let cookies = Http.Http1.Cookie.parse header in
           (
-            match List.assoc_opt cookie_name cookies with
+            match Std.Collections.Proplist.get cookies ~key:cookie_name with
             | Option.None -> create ~cookie_name ~secret ()
             | Option.Some cookie_value -> (
                 match from_cookie_value ~cookie_name ~secret cookie_value with

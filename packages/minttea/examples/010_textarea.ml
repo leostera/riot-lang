@@ -75,7 +75,7 @@ let update = fun event model ->
       let len = String.length model.text in
       let text =
         if len > 0 then
-          String.sub model.text 0 (len - 1)
+          String.sub model.text ~offset:0 ~len:(len - 1)
         else
           ""
       in

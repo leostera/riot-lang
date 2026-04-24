@@ -36,10 +36,9 @@ module DB = struct
     }; ]
 
   let find_user = fun username ->
-    List.find_opt
-      (fun u ->
+    List.find users
+      ~fn:(fun u ->
         String.equal u.username username)
-      users
 
   let verify_password = fun user password ->
     (* In real app: use bcrypt, argon2, etc. *)

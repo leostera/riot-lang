@@ -133,15 +133,10 @@ let parse_package_names = fun package_names ->
     | package_name :: rest -> (
         match Riot_model.Package_name.from_string package_name with
         | Ok package_name -> loop (package_name :: acc) rest
-        | Error error ->
-            Error (
-              Failure (
-                "invalid package name '"
-                ^ package_name
-                ^ "': "
-                ^ Riot_model.Package_name.error_message error
-              )
-            )
+        | Error error -> Error (Failure ("invalid package name '"
+        ^ package_name
+        ^ "': "
+        ^ Riot_model.Package_name.error_message error))
       )
   in
   loop [] package_names
@@ -561,8 +556,8 @@ let print_history_table = fun ~current_partial ~baseline ~current_cv ~baseline_c
   let header = history_table_header ~label_width ~column_width ~current_partial history in
   let noise_margin_percent = noise_margin_percent ~current_cv ~baseline_cv in
   println header;
-  metric_specs |> List.iter
-    (fun (label, project) ->
+  metric_specs |> List.for_each
+    ~fn:(fun (label, project) ->
       let current_value = project current in
       let delta_value = delta_percent current_value (project baseline) in
       let delta_cell = render_delta_text delta_value
@@ -615,8 +610,8 @@ let print_gc_history_table = fun ~current_partial ~(baseline:History.bench_stati
   let column_width = 12 in
   let header = history_table_header ~label_width ~column_width ~current_partial history in
   println header;
-  gc_metric_specs |> List.iter
-    (fun (label, project) ->
+  gc_metric_specs |> List.for_each
+    ~fn:(fun (label, project) ->
       let current_value = project current.gc in
       let baseline_value = project baseline.gc in
       let delta_value = current_value - baseline_value in
@@ -639,8 +634,8 @@ let print_gc_rate_history_table = fun ~current_partial ~(baseline:History.bench_
   let column_width = 12 in
   let header = history_table_header ~label_width ~column_width ~current_partial history in
   println header;
-  gc_metric_specs |> List.iter
-    (fun (label, project) ->
+  gc_metric_specs |> List.for_each
+    ~fn:(fun (label, project) ->
       let current_value = gc_per_iteration (project current.gc) current.iterations in
       let baseline_value = gc_per_iteration (project baseline.gc) baseline.iterations in
       let delta_value =
@@ -960,8 +955,8 @@ let write_bench_event = fun ?history_comparison ~current_partial state (
                 ~fn:(fun (history: History.suite_history) ->
                   history.comparisons |> List.filter
                     ~fn:(fun (comparison_history: History.comparison_case_history) ->
-                      String.equal comparison_history.description comparison.description) |> List.iter
-                    (print_comparison_case_history ~current_partial)));
+                      String.equal comparison_history.description comparison.description) |> List.for_each
+                    ~fn:(print_comparison_case_history ~current_partial)));
           print_command_output Command.{ stdout; stderr; status = 0 }
         );
       reset_suite_render state

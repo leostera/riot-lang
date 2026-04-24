@@ -25,8 +25,8 @@ let () =
   let commands = layout ~config ui in
   (* Print results *)
   println ("Generated " ^ Int.to_string (List.length commands) ^ " render commands:");
-  List.iter
-    (fun cmd ->
+  List.for_each commands
+    ~fn:(fun cmd ->
       match cmd.Render.command_type with
       | Render.Rectangle { color; _ } ->
           let `rgb (r, g, b) = color in
@@ -75,4 +75,3 @@ let () =
           println "  ScissorEnd"
       | Render.Custom _ ->
           println "  Custom")
-    commands

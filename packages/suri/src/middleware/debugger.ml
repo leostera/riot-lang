@@ -427,10 +427,9 @@ let get_package_sources = fun package_name ->
       | Result.Error _ -> None
       | Result.Ok package_name_t -> (
           match
-            List.find_opt
-              (fun (manifest: Riot_model.Package_manifest.t) ->
+            List.find workspace.packages
+              ~fn:(fun (manifest: Riot_model.Package_manifest.t) ->
                 Riot_model.Package_name.equal manifest.name package_name_t)
-              workspace.packages
           with
           | None -> None
           | Some manifest ->
@@ -452,7 +451,9 @@ let find_source_via_riot = fun sandbox_info ->
   | None -> None
   | Some sources ->
       (* Find source file that ends with the relative path *)
-      List.find_opt (fun src_file -> String.ends_with ~suffix:sandbox_info.relative_path src_file) sources
+      List.find
+        sources
+        ~fn:(fun src_file -> String.ends_with ~suffix:sandbox_info.relative_path src_file)
 
 (** Resolve sandbox path to actual workspace source file
     
@@ -761,7 +762,7 @@ let find_source_for_module = fun package_name module_name ->
   | None -> None
   | Some sources ->
       let ml_name = module_name ^ ".ml" in
-      List.find_opt (fun src_file -> String.ends_with ~suffix:ml_name src_file) sources
+      List.find sources ~fn:(fun src_file -> String.ends_with ~suffix:ml_name src_file)
 
 (** Render a single stack frame with optional source snippet *)
 let render_stack_frame = fun frame ->

@@ -55,23 +55,26 @@ let receive_response: type req res. (req, res) t -> (res Common.response, Common
       | Ok json -> (
           match json with
           | Json.Object fields -> (
-              match (List.assoc_opt "jsonrpc" fields, List.assoc_opt "id" fields) with
+              match (
+                Std.Collections.Proplist.get fields ~key:"jsonrpc",
+                Std.Collections.Proplist.get fields ~key:"id"
+              ) with
               | Some (Json.String "2.0"), Some id_json -> (
                   match Common.id_of_json id_json with
                   | Ok id -> (
-                      match List.assoc_opt "error" fields with
+                      match Std.Collections.Proplist.get fields ~key:"error" with
                       | Some (Json.Object err_fields) ->
                           let code =
-                            match List.assoc_opt "code" err_fields with
+                            match Std.Collections.Proplist.get err_fields ~key:"code" with
                             | Some (Json.Int c) -> c
                             | _ -> (-1)
                           in
                           let message =
-                            match List.assoc_opt "message" err_fields with
+                            match Std.Collections.Proplist.get err_fields ~key:"message" with
                             | Some (Json.String m) -> m
                             | _ -> "Unknown error"
                           in
-                          let data = List.assoc_opt "data" err_fields in
+                          let data = Std.Collections.Proplist.get err_fields ~key:"data" in
                           Error (Common.UnknownServerError { code; message; data })
                       | Some err_json ->
                           Error (Common.UnknownServerError {
@@ -80,7 +83,7 @@ let receive_response: type req res. (req, res) t -> (res Common.response, Common
                             data = Some err_json
                           })
                       | None -> (
-                          match List.assoc_opt "result" fields with
+                          match Std.Collections.Proplist.get fields ~key:"result" with
                           | Some result_json -> (
                               match P.response_of_json result_json with
                               | Ok parsed_result -> Ok {
@@ -142,19 +145,19 @@ let call (type req res) (client: (req, res) t) ~method_ ?params (): (res, Common
           | Ok json -> (
               match json with
               | Json.Object fields -> (
-                  match List.assoc_opt "error" fields with
+                  match Std.Collections.Proplist.get fields ~key:"error" with
                   | Some (Json.Object err_fields) ->
                       let code =
-                        match List.assoc_opt "code" err_fields with
+                        match Std.Collections.Proplist.get err_fields ~key:"code" with
                         | Some (Json.Int c) -> c
                         | _ -> (-1)
                       in
                       let message =
-                        match List.assoc_opt "message" err_fields with
+                        match Std.Collections.Proplist.get err_fields ~key:"message" with
                         | Some (Json.String m) -> m
                         | _ -> "Unknown error"
                       in
-                      let data = List.assoc_opt "data" err_fields in
+                      let data = Std.Collections.Proplist.get err_fields ~key:"data" in
                       Error (Common.UnknownServerError { code; message; data })
                   | Some err_json ->
                       Error (Common.UnknownServerError {
@@ -163,7 +166,7 @@ let call (type req res) (client: (req, res) t) ~method_ ?params (): (res, Common
                         data = Some err_json
                       })
                   | None -> (
-                      match List.assoc_opt "result" fields with
+                      match Std.Collections.Proplist.get fields ~key:"result" with
                       | Some result_json -> (
                           match P.response_of_json result_json with
                           | Ok parsed_result -> Ok parsed_result
@@ -224,11 +227,14 @@ let call_batch: type req res. (req, res) t -> req list -> (res Common.response l
                     let* responses = acc in
                     match json_resp with
                     | Json.Object fields -> (
-                        match (List.assoc_opt "jsonrpc" fields, List.assoc_opt "id" fields) with
+                        match (
+                          Std.Collections.Proplist.get fields ~key:"jsonrpc",
+                          Std.Collections.Proplist.get fields ~key:"id"
+                        ) with
                         | Some (Json.String "2.0"), Some id_json -> (
                             match Common.id_of_json id_json with
                             | Ok id -> (
-                                match List.assoc_opt "result" fields with
+                                match Std.Collections.Proplist.get fields ~key:"result" with
                                 | Some result_json -> (
                                     match P.response_of_json result_json with
                                     | Ok parsed_result -> Ok ({

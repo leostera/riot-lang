@@ -21,7 +21,7 @@ module Registry = struct
     registry.commands <- (Cmd.name, cmd) :: registry.commands
 
   let get = fun name ->
-    List.find_opt (fun ((n, _)) -> n = name) registry.commands
+    List.find registry.commands ~fn:(fun ((n, _)) -> n = name)
     |> Option.map ~fn:(fun (_, command) -> command)
 
   let list = fun () -> registry.commands

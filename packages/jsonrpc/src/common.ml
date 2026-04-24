@@ -89,15 +89,18 @@ let request_to_json = fun (req: request) ->
 let request_of_json = fun json ->
   match json with
   | Json.Object fields -> (
-      match (List.assoc_opt "jsonrpc" fields, List.assoc_opt "method" fields) with
+      match (
+        Std.Collections.Proplist.get fields ~key:"jsonrpc",
+        Std.Collections.Proplist.get fields ~key:"method"
+      ) with
       | Some (Json.String "2.0"), Some (Json.String method_) -> (
           let params =
-            match List.assoc_opt "params" fields with
+            match Std.Collections.Proplist.get fields ~key:"params" with
             | None -> Ok NoParams
             | Some p -> params_of_json p
           in
           let id_result =
-            match List.assoc_opt "id" fields with
+            match Std.Collections.Proplist.get fields ~key:"id" with
             | None -> Ok None
             | Some j -> (
                 match id_of_json j with
