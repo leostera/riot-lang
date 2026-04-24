@@ -8,3 +8,13 @@ type t = Kernel.Order.t =
   | EQ
   | GT
 val compare: 'value -> 'value -> t
+
+val is_lt: t -> bool
+
+val is_lte: t -> bool
+
+val is_eq: t -> bool
+
+val is_gte: t -> bool
+
+val is_gt: t -> bool
