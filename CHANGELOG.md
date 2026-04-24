@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.0.24 - 2026-04-24
+
+### riot
+- `riot build` now renders structured planning failures as targeted detail lines and keeps package status labels readable for versions, dev artifacts, and multi-target builds.
+- Build output now distinguishes workspace dev artifacts such as tests and benches, including labels like `serde-json (test, aarch64-apple-darwin)` when multiple targets are active.
+- `riot init` scaffolds workspace defaults for agents, development config, git hooks, Riot GC config, and starter `Std.Log` setup.
+
+### package-management
+- Reworked package, workspace, registry, lockfile, and publish/install/run error paths to carry structured typed errors through Riot internals and render strings only at the CLI edge.
+- Improved lock refresh and registry-cache failure reporting so package-management flows preserve actionable error context.
+
+### std
+- Collapsed concurrent queue variants into a single lock-free queue surface.
+- Migrated comparison APIs toward `Std.Order.t` return values across the stack.
+
 ## 0.0.23 - 2026-04-23
 
 ### riot

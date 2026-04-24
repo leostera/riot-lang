@@ -7,26 +7,7 @@
 * PREVENT direct access to transitive dependencies: if you depend on Std, you can't directly use Kernel -- this avoids circumventing things like using Kernel.List instead of Std.Collections.List unless you epxlicitly depend on Kernel
 
 
-
-* riot build should show very pretty planning errors
-
-* riot build output should show `Building pkg (vsn)` if the package is not local/workspace
-
-* riot buiild should show `Building pkg (vsn, arch)` when building for multiple architectures
-
-* lockfile should automatically remove packages that are no longer in the workspace
-
-* riot init should initialize:
-    * .agents/skills/riot/*
-    * config/dev.toml
-    * .githooks/pre-commit   <- runs fmt / fix / build / test --fast
-    * .riot/config.toml      <- default config for gc
-    * Std.Log should be set up by default on the generated template code
-
-* Perf:
-    * everywhere we're using Cell + list we probably should just use Colletions.Vector 
-
-
+* Perf: everywhere we're using Cell + list we probably should just use Colletions.Vector 
 
 * riot publish --json
 
