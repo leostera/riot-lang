@@ -213,6 +213,67 @@ let next_steps = fun ~cwd ~target_dir ~path_arg ~is_library ~package_name ->
 
 let emit = fun ~on_event event -> on_event event
 
+let write_template_file = fun ~on_event target_dir (file: Template_assets.file) ->
+  let path = Path.(target_dir / Path.v file.relative_path) in
+  let parent = Path.parent path in
+  let* () =
+    match parent with
+    | None -> Ok ()
+    | Some parent -> Fs.create_dir_all parent
+    |> Result.map_err ~fn:(fun err -> Failure ("Failed to create template directory: " ^ IO.error_message err))
+  in
+  let* () = Fs.write file.content path
+  |> Result.map_err ~fn:(fun err -> Failure ("Failed to create " ^ file.relative_path ^ ": " ^ IO.error_message err))
+  in
+  let* () =
+    if file.executable then
+      Fs.set_permissions path Fs.Permissions.executable
+      |> Result.map_err ~fn:(fun err ->
+        Failure ("Failed to make " ^ file.relative_path ^ " executable: " ^ IO.error_message err))
+    else
+      Ok ()
+  in
+  emit ~on_event (ScaffoldCreated { path = file.relative_path });
+  Ok ()
+
+let create_embedded_skill = fun ~on_event target_dir ->
+  Template_assets.riot_skill_files
+  |> List.fold_left
+    ~init:(Ok ())
+    ~fn:(fun acc file ->
+      let* () = acc in
+      write_template_file ~on_event target_dir file)
+
+let create_dev_config = fun ~on_event target_dir workspace_name ->
+  write_template_file
+    ~on_event
+    target_dir
+    Template_assets.{
+      relative_path = "config/dev.toml";
+      content = dev_config_toml ~workspace_name;
+      executable = false;
+    }
+
+let create_workspace_riot_config = fun ~on_event target_dir ->
+  write_template_file
+    ~on_event
+    target_dir
+    Template_assets.{
+      relative_path = ".riot/config.toml";
+      content = workspace_riot_config_toml;
+      executable = false;
+    }
+
+let create_pre_commit_hook = fun ~on_event target_dir ->
+  write_template_file
+    ~on_event
+    target_dir
+    Template_assets.{
+      relative_path = ".githooks/pre-commit";
+      content = pre_commit_hook;
+      executable = true;
+    }
+
 (** Create workspace riot.toml *)
 let create_workspace_toml = fun ~on_event target_dir workspace_name package_name ->
   let content = {|[workspace]
@@ -488,7 +549,7 @@ std = "*"
       ^ workspace_name
       ^ "\"\n"
     else
-      "open Std\n\nlet main = fun ~args:_ ->\n  println (" ^ module_name ^ ".hello ());\n  Ok ()\n\nlet () = Actors.run ~main ~args:Env.args ()\n"
+      "open Std\n\nlet main = fun ~args:_ ->\n  Std.Config.load ();\n  Std.Log.set_level Info;\n  let _ = Std.Log.start_link () in\n  Log.info (" ^ module_name ^ ".hello ());\n  Ok ()\n\nlet () = Actors.run ~main ~args:Env.args ()\n"
   in
   let ml_path =
     if is_library then
@@ -612,6 +673,10 @@ let run = fun ~on_event matches ->
       let* () = create_workspace_toml ~on_event target_dir workspace_name validated_package_name in
       let* () = create_toolchain_toml ~on_event target_dir in
       let* () = create_gitignore ~on_event target_dir in
+      let* () = create_embedded_skill ~on_event target_dir in
+      let* () = create_dev_config ~on_event target_dir workspace_name in
+      let* () = create_pre_commit_hook ~on_event target_dir in
+      let* () = create_workspace_riot_config ~on_event target_dir in
       let* () = create_readme ~on_event target_dir workspace_name validated_package_name is_library in
       let* () = create_dockerfile ~on_event target_dir workspace_name validated_package_name is_library in
       let* () = create_ci_workflow ~on_event target_dir in

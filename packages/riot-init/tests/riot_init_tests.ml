@@ -37,6 +37,13 @@ let assert_contains = fun path needle ->
   else
     Error ("expected " ^ Path.to_string path ^ " to contain: " ^ needle)
 
+let assert_executable = fun path ->
+  let* metadata = Fs.metadata path |> Result.map_err ~fn:IO.error_message in
+  if Fs.Permissions.user_execute (Fs.Metadata.permissions metadata) then
+    Ok ()
+  else
+    Error ("expected file to be executable: " ^ Path.to_string path)
+
 let path_error_to_string = function
   | Path.InvalidUtf8 { path } -> "invalid UTF-8 path: " ^ path
   | Path.SystemInvalidUtf8 { syscall; path } -> syscall ^ ": invalid UTF-8 path: " ^ path
@@ -76,9 +83,22 @@ let test_init_scaffolds_library_workspace = fun _ctx ->
       let* () = assert_exists Path.(workspace_root / Path.v "Dockerfile") in
       let* () = assert_exists
         Path.(workspace_root / Path.v ".github" / Path.v "workflows" / Path.v "ci.yml") in
+      let* () = assert_exists Path.(workspace_root / Path.v ".agents" / Path.v "skills" / Path.v "riot" / Path.v "SKILL.md") in
+      let* () = assert_exists
+        Path.(workspace_root / Path.v ".agents" / Path.v "skills" / Path.v "riot" / Path.v "references" / Path.v "commands.md") in
+      let* () = assert_exists Path.(workspace_root / Path.v "config" / Path.v "dev.toml") in
+      let* () = assert_exists Path.(workspace_root / Path.v ".riot" / Path.v "config.toml") in
+      let* () = assert_exists Path.(workspace_root / Path.v ".githooks" / Path.v "pre-commit") in
+      let* () = assert_executable Path.(workspace_root / Path.v ".githooks" / Path.v "pre-commit") in
       let* () = assert_exists
         Path.(workspace_root / Path.v "packages" / Path.v "demo-app" / Path.v "tests" / Path.v test_file) in
       let* () = assert_contains Path.(workspace_root / Path.v "README.md") ".github/workflows/ci.yml" in
+      let* () = assert_contains
+        Path.(workspace_root / Path.v ".agents" / Path.v "skills" / Path.v "riot" / Path.v "SKILL.md")
+        "riot build" in
+      let* () = assert_contains Path.(workspace_root / Path.v "config" / Path.v "dev.toml") {|name = "demo-app"|} in
+      let* () = assert_contains Path.(workspace_root / Path.v ".riot" / Path.v "config.toml") "[riot.cache]" in
+      let* () = assert_contains Path.(workspace_root / Path.v ".githooks" / Path.v "pre-commit") "riot test --small" in
       let* () = assert_contains Path.(workspace_root / Path.v "README.md") "riot new --lib ./packages/my-new-library" in
       let* () = assert_contains Path.(workspace_root / Path.v "README.md") "riot new --bin ./packages/my-new-binary" in
       let* () = assert_contains Path.(workspace_root / Path.v "Dockerfile") "RUN riot test" in
@@ -105,6 +125,11 @@ let test_init_scaffolds_binary_workspace = fun _ctx ->
       let test_file = String.lowercase_ascii module_name ^ "_tests.ml" in
       let* () = assert_exists
         Path.(workspace_root / Path.v "packages" / Path.v "demo-bin" / Path.v "src" / Path.v "main.ml") in
+      let* () = assert_exists Path.(workspace_root / Path.v ".agents" / Path.v "skills" / Path.v "riot" / Path.v "SKILL.md") in
+      let* () = assert_exists Path.(workspace_root / Path.v "config" / Path.v "dev.toml") in
+      let* () = assert_exists Path.(workspace_root / Path.v ".riot" / Path.v "config.toml") in
+      let* () = assert_exists Path.(workspace_root / Path.v ".githooks" / Path.v "pre-commit") in
+      let* () = assert_executable Path.(workspace_root / Path.v ".githooks" / Path.v "pre-commit") in
       let* () = assert_exists
         Path.(workspace_root
         / Path.v "packages"
@@ -114,6 +139,15 @@ let test_init_scaffolds_binary_workspace = fun _ctx ->
       let* () = assert_exists
         Path.(workspace_root / Path.v "packages" / Path.v "demo-bin" / Path.v "tests" / Path.v test_file) in
       let* () = assert_contains Path.(workspace_root / Path.v "Dockerfile") "ENTRYPOINT [\"/usr/local/bin/demo-bin\"]" in
+      let* () = assert_contains
+        Path.(workspace_root / Path.v "packages" / Path.v "demo-bin" / Path.v "src" / Path.v "main.ml")
+        "Std.Config.load ()" in
+      let* () = assert_contains
+        Path.(workspace_root / Path.v "packages" / Path.v "demo-bin" / Path.v "src" / Path.v "main.ml")
+        "Std.Log.set_level Info" in
+      let* () = assert_contains
+        Path.(workspace_root / Path.v "packages" / Path.v "demo-bin" / Path.v "src" / Path.v "main.ml")
+        "Std.Log.start_link ()" in
       let* () = assert_contains
         Path.(workspace_root / Path.v "packages" / Path.v "demo-bin" / Path.v "src" / Path.v "main.ml")
         (module_name ^ ".hello ()") in
