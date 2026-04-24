@@ -84,7 +84,7 @@ let manifest_json_fields = fun ~(workspace_manager:Workspace_manager.t) path ->
   | Error err -> [
     ("manifest_path", Data.Json.String (Path.to_string manifest_path));
     ("manifest", Data.Json.Null);
-    ("manifest_error", Data.Json.String err);
+    ("manifest_error", Data.Json.String (Workspace_manager.manifest_load_error_message err));
   ]
 
 let package_json = fun ~(workspace_manager:Workspace_manager.t) ~(workspace:Workspace_manifest.t) (

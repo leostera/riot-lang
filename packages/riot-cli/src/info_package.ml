@@ -70,7 +70,7 @@ let load_manifest = fun path ->
   let workspace_manager = Riot_model.Workspace_manager.create () in
   match Riot_model.Workspace_manager.load_riot_toml workspace_manager path with
   | Ok manifest -> (Some manifest, None)
-  | Error err -> (None, Some err)
+  | Error err -> (None, Some (Riot_model.Workspace_manager.manifest_load_error_message err))
 
 let registry_of_optional = fun ?registry () ->
   match registry with

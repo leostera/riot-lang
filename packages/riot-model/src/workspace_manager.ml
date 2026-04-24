@@ -5,6 +5,10 @@ open Std.Sync.Cell
 
 let riot_toml = Path.v "riot.toml"
 
+type manifest_load_error =
+  | ManifestReadFailed of { path: Path.t; error: IO.error }
+  | ManifestParseFailed of { path: Path.t; error: Data.Toml.error }
+
 type load_error =
   | PackageNotFound of {
       dependant: string option;  (* None for workspace-level deps *)
@@ -34,19 +38,23 @@ let trace_workspace_manager = fun message ->
   let _ = message in
   ()
 
+let manifest_load_error_message = function
+  | ManifestReadFailed { path; error } -> "failed to read manifest '"
+  ^ Path.to_string path
+  ^ "': "
+  ^ IO.error_message error
+  | ManifestParseFailed { path; error } -> "failed to parse manifest '"
+  ^ Path.to_string path
+  ^ "': "
+  ^ Data.Toml.error_to_string error
+
 let load_riot_toml = fun t manifest_path ->
   let _ = t in
   match Fs.read_to_string manifest_path with
-  | Error err -> Error ("failed to read manifest '"
-  ^ Path.to_string manifest_path
-  ^ "': "
-  ^ IO.error_message err)
+  | Error err -> Error (ManifestReadFailed { path = manifest_path; error = err })
   | Ok content -> (
       match Data.Toml.parse content with
-      | Error err -> Error ("failed to parse manifest '"
-      ^ Path.to_string manifest_path
-      ^ "': "
-      ^ Data.Toml.error_to_string err)
+      | Error err -> Error (ManifestParseFailed { path = manifest_path; error = err })
       | Ok toml -> Ok toml
     )
 
@@ -124,12 +132,12 @@ let load_member_package:
   match Fs.exists toml_path with
   | Ok true -> (
       match load_riot_toml t toml_path with
-      | Error err when String.starts_with ~prefix:"failed to read" err ->
+      | Error (ManifestReadFailed _) ->
           (
             None,
             [ PackageTomlReadFailed { package = member_name; path = Path.to_string member_path } ]
           )
-      | Error _ ->
+      | Error (ManifestParseFailed _) ->
           (
             None,
             [ PackageTomlParseFailed { package = member_name; path = Path.to_string member_path } ]
@@ -204,7 +212,7 @@ let rec load_external_package:
           | Ok true -> (
               seen := dep.name :: !seen;
               match load_riot_toml t toml_path with
-              | Error err when String.starts_with ~prefix:"failed to read" err ->
+              | Error (ManifestReadFailed _) ->
                   (
                     [],
                     [
@@ -214,7 +222,7 @@ let rec load_external_package:
                       }
                     ]
                   )
-              | Error _ ->
+              | Error (ManifestParseFailed _) ->
                   (
                     [],
                     [
@@ -386,10 +394,10 @@ let build_workspace:
 let build_single_package_workspace: t -> Path.t -> (Workspace_manifest.t * load_error list, string) result = fun t package_root ->
   let manifest_path = Path.(package_root / riot_toml) in
   match load_riot_toml t manifest_path with
-  | Error err when String.starts_with ~prefix:"failed to read" err ->
+  | Error (ManifestReadFailed _) ->
       Error "Failed to read package TOML"
   | Error err ->
-      Error ("Failed to parse package TOML: " ^ err)
+      Error ("Failed to parse package TOML: " ^ manifest_load_error_message err)
   | Ok toml -> (
       match Package_manifest.from_toml
         toml
@@ -442,10 +450,10 @@ let scan: t -> Path.t -> ((Workspace_manifest.t * load_error list), string) resu
               let toml_path = Path.(workspace_root / riot_toml) in
               let result =
                 match load_riot_toml t toml_path with
-                | Error err when String.starts_with ~prefix:"failed to read" err ->
+                | Error (ManifestReadFailed _) ->
                     Error "Failed to read workspace TOML"
                 | Error err ->
-                    Error ("Failed to parse workspace TOML: " ^ err)
+                    Error ("Failed to parse workspace TOML: " ^ manifest_load_error_message err)
                 | Ok toml -> (
                     let workspace_of_toml_started_at = Time.Instant.now () in
                     match Workspace_manifest.of_toml toml with

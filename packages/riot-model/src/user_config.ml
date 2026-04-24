@@ -11,12 +11,26 @@ type t = {
   registries: (string * registry) list;
 }
 
+type registry_field =
+  | Api_url
+  | Cdn_url
+  | Api_token
+
+type config_error =
+  | RegistryMustBeTable
+
+type registry_error =
+  | InvalidDefaultUri of { field: registry_field; error: Net.Uri.error }
+  | InvalidUri of { field: registry_field; error: Net.Uri.error }
+  | FieldMustBeString of registry_field
+  | RegistryEntryMustBeTable
+
 type error =
-  | ReadFailed of { path: Path.t; error: string }
-  | ParseFailed of { path: Path.t; error: string }
-  | WriteFailed of { path: Path.t; error: string }
-  | InvalidConfig of { error: string }
-  | InvalidRegistryConfig of { registry_name: string; error: string }
+  | ReadFailed of { path: Path.t; error: IO.error }
+  | ParseFailed of { path: Path.t; error: Toml.error }
+  | WriteFailed of { path: Path.t; error: IO.error }
+  | InvalidConfig of config_error
+  | InvalidRegistryConfig of { registry_name: string; error: registry_error }
 
 let ( let* ) result fn = Result.and_then result ~fn
 
@@ -35,15 +49,13 @@ let default = {
   ]
 }
 
-let message = function
-  | ReadFailed { path; error } -> "failed to read config '" ^ Path.to_string path ^ "': " ^ error
-  | ParseFailed { path; error } -> "failed to parse config '" ^ Path.to_string path ^ "': " ^ error
-  | WriteFailed { path; error } -> "failed to write config '" ^ Path.to_string path ^ "': " ^ error
-  | InvalidConfig { error } -> "invalid config: " ^ error
-  | InvalidRegistryConfig { registry_name; error } -> "invalid registry config for '"
-  ^ registry_name
-  ^ "': "
-  ^ error
+let registry_field_name = function
+  | Api_url -> "api_url"
+  | Cdn_url -> "cdn_url"
+  | Api_token -> "api_token"
+
+let config_error_message = function
+  | RegistryMustBeTable -> "top-level 'registry' entry must be a table"
 
 let uri_error_message = function
   | Net.Uri.InvalidScheme -> "invalid scheme"
@@ -54,23 +66,48 @@ let uri_error_message = function
   | Net.Uri.InvalidFormat -> "invalid format"
   | Net.Uri.TooLong -> "uri too long"
 
+let registry_error_message = function
+  | InvalidDefaultUri { field; error } -> "invalid default "
+  ^ registry_field_name field
+  ^ ": "
+  ^ uri_error_message error
+  | InvalidUri { field; error } -> "field '"
+  ^ registry_field_name field
+  ^ "' must be a valid URI: "
+  ^ uri_error_message error
+  | FieldMustBeString field -> "field '" ^ registry_field_name field ^ "' must be a string"
+  | RegistryEntryMustBeTable -> "registry entry must be a table"
+
+let message = function
+  | ReadFailed { path; error } -> "failed to read config '"
+  ^ Path.to_string path
+  ^ "': "
+  ^ IO.error_message error
+  | ParseFailed { path; error } -> "failed to parse config '"
+  ^ Path.to_string path
+  ^ "': "
+  ^ Toml.error_to_string error
+  | WriteFailed { path; error } -> "failed to write config '"
+  ^ Path.to_string path
+  ^ "': "
+  ^ IO.error_message error
+  | InvalidConfig error -> "invalid config: " ^ config_error_message error
+  | InvalidRegistryConfig { registry_name; error } -> "invalid registry config for '"
+  ^ registry_name
+  ^ "': "
+  ^ registry_error_message error
+
 let default_api_url = fun ~registry_name ->
   Net.Uri.of_string ("https://api." ^ registry_name)
   |> Result.map_err
     ~fn:(fun error ->
-      InvalidRegistryConfig {
-        registry_name;
-        error = "invalid default api_url: " ^ uri_error_message error
-      })
+      InvalidRegistryConfig { registry_name; error = InvalidDefaultUri { field = Api_url; error } })
 
 let default_cdn_url = fun ~registry_name ->
   Net.Uri.of_string ("https://cdn." ^ registry_name)
   |> Result.map_err
     ~fn:(fun error ->
-      InvalidRegistryConfig {
-        registry_name;
-        error = "invalid default cdn_url: " ^ uri_error_message error
-      })
+      InvalidRegistryConfig { registry_name; error = InvalidDefaultUri { field = Cdn_url; error } })
 
 let default_registry = fun ~registry_name ->
   let* api_url = default_api_url ~registry_name in
@@ -87,14 +124,8 @@ let registry_of_toml = fun ~registry_name value ->
         | Some (Toml.String url) -> Net.Uri.of_string url
         |> Result.map_err
           ~fn:(fun error ->
-            InvalidRegistryConfig {
-              registry_name;
-              error = "field 'api_url' must be a valid URI: " ^ uri_error_message error
-            })
-        | Some _ -> Error (InvalidRegistryConfig {
-          registry_name;
-          error = "field 'api_url' must be a string"
-        })
+            InvalidRegistryConfig { registry_name; error = InvalidUri { field = Api_url; error } })
+        | Some _ -> Error (InvalidRegistryConfig { registry_name; error = FieldMustBeString Api_url })
       in
       let* cdn_url =
         match Fields.get "cdn_url" fields with
@@ -102,14 +133,8 @@ let registry_of_toml = fun ~registry_name value ->
         | Some (Toml.String url) -> Net.Uri.of_string url
         |> Result.map_err
           ~fn:(fun error ->
-            InvalidRegistryConfig {
-              registry_name;
-              error = "field 'cdn_url' must be a valid URI: " ^ uri_error_message error
-            })
-        | Some _ -> Error (InvalidRegistryConfig {
-          registry_name;
-          error = "field 'cdn_url' must be a string"
-        })
+            InvalidRegistryConfig { registry_name; error = InvalidUri { field = Cdn_url; error } })
+        | Some _ -> Error (InvalidRegistryConfig { registry_name; error = FieldMustBeString Cdn_url })
       in
       let api_token =
         match Fields.get "api_token" fields with
@@ -117,11 +142,11 @@ let registry_of_toml = fun ~registry_name value ->
         | Some (Toml.String token) -> Ok (Some token)
         | Some _ -> Error (InvalidRegistryConfig {
           registry_name;
-          error = "field 'api_token' must be a string"
+          error = FieldMustBeString Api_token
         })
       in
       Result.map api_token ~fn:(fun api_token -> { api_url; cdn_url; api_token })
-  | _ -> Error (InvalidRegistryConfig { registry_name; error = "registry entry must be a table" })
+  | _ -> Error (InvalidRegistryConfig { registry_name; error = RegistryEntryMustBeTable })
 
 let normalize_registry_name = fun name ->
   let len = String.length name in
@@ -173,20 +198,20 @@ let of_toml = fun value ->
       | None -> Ok empty
       | Some (Toml.Table registry_fields) -> collect_registries ~path:[] [] registry_fields
       |> Result.map ~fn:(fun registries -> { registries = List.reverse registries })
-      | Some _ -> Error (InvalidConfig { error = "top-level 'registry' entry must be a table" })
+      | Some _ -> Error (InvalidConfig RegistryMustBeTable)
     )
   | _ -> Ok empty
 
 let load = fun path ->
   match Fs.read_to_string path with
-  | Error io_error -> Error (ReadFailed { path; error = IO.error_message io_error })
+  | Error io_error -> Error (ReadFailed { path; error = io_error })
   | Ok source -> (
       match Toml.parse source with
-      | Error parse_error -> Error (ParseFailed { path; error = Toml.error_to_string parse_error })
+      | Error parse_error -> Error (ParseFailed { path; error = parse_error })
       | Ok toml -> (
           match of_toml toml with
           | Ok config -> Ok config
-          | Error (InvalidConfig { error }) -> Error (ParseFailed { path; error })
+          | Error (InvalidConfig _ as err) -> Error err
           | Error _ as err -> err
         )
     )
@@ -208,7 +233,7 @@ let to_string = fun config ->
 
 let save = fun config path ->
   Fs.write (to_string config) path
-  |> Result.map_err ~fn:(fun io_error -> WriteFailed { path; error = IO.error_message io_error })
+  |> Result.map_err ~fn:(fun io_error -> WriteFailed { path; error = io_error })
 
 let upsert_registry = fun config ~registry_name ~update ->
   let rec loop acc = function

@@ -160,7 +160,7 @@ let load_api_token = fun ~registry_name ->
   | Error io_error ->
       Error (PublishConfigLoadFailed (Riot_model.User_config.ReadFailed {
         path = config_path;
-        error = IO.error_message io_error
+        error = io_error
       }))
   | Ok false ->
       Error (MissingApiToken { registry_name; path = config_path })

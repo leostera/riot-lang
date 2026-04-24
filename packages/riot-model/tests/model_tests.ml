@@ -923,6 +923,25 @@ minttea = "not-a-version"
           | _ -> Error "expected invalid member manifest to surface as a workspace load error"
         ))
 
+let test_workspace_manager_load_riot_toml_returns_typed_parse_errors = fun _ctx ->
+  with_tempdir "riot_model_workspace_toml_parse_error"
+    (fun root ->
+      let manifest_path = Path.(root / Path.v "riot.toml") in
+      let* () =
+        Fs.write
+          {|
+[workspace]
+members = [
+|}
+          manifest_path |> Result.map_err ~fn:IO.error_message
+      in
+      let workspace_manager = Riot_model.Workspace_manager.create () in
+      match Riot_model.Workspace_manager.load_riot_toml workspace_manager manifest_path with
+      | Error (Riot_model.Workspace_manager.ManifestParseFailed { path; _ }) when Path.equal path manifest_path -> Ok ()
+      | Error err -> Error ("expected typed manifest parse error, got "
+      ^ Riot_model.Workspace_manager.manifest_load_error_message err)
+      | Ok _ -> Error "expected invalid riot.toml to fail parsing")
+
 let test_workspace_manager_skips_missing_path_dependencies_with_registry_fallback = fun _ctx ->
   with_tempdir "riot_model_workspace_missing_path_fallback"
     (fun root ->
@@ -1126,6 +1145,24 @@ let test_user_config_save_roundtrips_default_registry_config = fun _ctx ->
           | Some _ -> Error "expected saved default config to keep missing api_token"
         ))
 
+let test_user_config_rejects_non_string_registry_api_url = fun _ctx ->
+  let toml =
+    Std.Data.Toml.parse
+      {|
+[registry."pkgs.ml"]
+api_url = 42
+|}
+    |> Result.expect ~msg:"expected user config TOML to parse"
+  in
+  match Riot_model.User_config.of_toml toml with
+  | Error (Riot_model.User_config.InvalidRegistryConfig {
+    registry_name;
+    error=Riot_model.User_config.FieldMustBeString Riot_model.User_config.Api_url;
+
+  }) when String.equal registry_name "pkgs.ml" -> Ok ()
+  | Error err -> Error ("expected typed api_url field error, got " ^ Riot_model.User_config.message err)
+  | Ok _ -> Error "expected non-string registry api_url to fail"
+
 let test_workspace_operational_config_defaults_when_missing = fun _ctx ->
   with_tempdir "riot_model_workspace_operational_config_missing"
     (fun tmpdir ->
@@ -1196,6 +1233,31 @@ flakey_max_retry = 3
           else
             Error "expected .riot/config.toml to parse riot.test policy")
 
+let test_workspace_operational_config_rejects_invalid_max_size_unit = fun _ctx ->
+  with_tempdir "riot_model_workspace_operational_config_invalid_size"
+    (fun tmpdir ->
+      let riot_dir = Path.(tmpdir / Path.v ".riot") in
+      Result.expect (Fs.create_dir_all riot_dir) ~msg:"Failed to create .riot directory";
+      Result.expect
+        (
+          Fs.write
+            {|
+[riot.cache]
+max_size = "3 frogs"
+|}
+            Path.(riot_dir / Path.v "config.toml")
+        )
+        ~msg:"Failed to write .riot/config.toml";
+      match Riot_model.Workspace_operational_config.load ~workspace_root:tmpdir with
+      | Error (Riot_model.Workspace_operational_config.InvalidConfig {
+        error=CacheConfig (InvalidMaxSize (UnsupportedUnit unit_name));
+        _;
+
+      }) when String.equal unit_name "frogs" -> Ok ()
+      | Error err -> Error ("expected typed max_size unit error, got "
+      ^ Riot_model.Workspace_operational_config.message err)
+      | Ok _ -> Error "expected invalid max_size unit to fail")
+
 let test_debug_profile_defaults_to_native_with_debug_symbols = fun _ctx ->
   let profile = Riot_model.Profile.debug in
   let flags = Riot_model.Profile.to_compiler_flags profile in
@@ -1258,6 +1320,7 @@ let tests =
     case "workspace: star dependency becomes unconstrained registry dependency" test_workspace_star_requirement_becomes_unconstrained_registry_dep;
     case "workspace manager: package path deps resolve relative to declaring package" test_workspace_manager_resolves_member_path_dependencies_relative_to_package;
     case "workspace manager: member manifest decode failures surface as load errors" test_workspace_manager_reports_member_manifest_decode_errors;
+    case "workspace manager: load_riot_toml returns typed parse errors" test_workspace_manager_load_riot_toml_returns_typed_parse_errors;
     case "workspace manager: missing path+version deps defer to external resolution" test_workspace_manager_skips_missing_path_dependencies_with_registry_fallback;
     case "workspace manager: standalone package scan synthesizes workspace" test_workspace_manager_synthesizes_single_package_workspace;
     case "user config: parses empty registry entry" test_user_config_parses_empty_registry_entry;
@@ -1265,9 +1328,11 @@ let tests =
     case "user config: parses registry API token" test_user_config_parses_registry_api_token;
     case "user config: loads config file" test_user_config_load_reads_config_file;
     case "user config: saves default registry config" test_user_config_save_roundtrips_default_registry_config;
+    case "user config: rejects non-string registry api_url" test_user_config_rejects_non_string_registry_api_url;
     case "workspace operational config: defaults when missing" test_workspace_operational_config_defaults_when_missing;
     case "workspace operational config: parses riot.cache" test_workspace_operational_config_parses_riot_cache;
     case "workspace operational config: parses riot.test" test_workspace_operational_config_parses_riot_test;
+    case "workspace operational config: rejects invalid max_size unit" test_workspace_operational_config_rejects_invalid_max_size_unit;
     case "profile: debug defaults to native with debug symbols" test_debug_profile_defaults_to_native_with_debug_symbols;
     case "profile: release defaults to strict native optimization" test_release_profile_defaults_to_strict_native_optimization;
   ]

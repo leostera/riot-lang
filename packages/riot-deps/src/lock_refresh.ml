@@ -51,6 +51,7 @@ let dependency_section_value = fun ~manifest_path section_name toml ->
 
 let load_manifest_toml = fun ~workspace_manager manifest_path ->
   Riot_model.Workspace_manager.load_riot_toml workspace_manager manifest_path
+  |> Result.map_err ~fn:Riot_model.Workspace_manager.manifest_load_error_message
 
 let manifest_dependency_fingerprint = fun ~workspace_manager ~workspace_root manifest_path ->
   let* toml = load_manifest_toml ~workspace_manager manifest_path in

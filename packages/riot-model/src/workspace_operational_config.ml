@@ -16,10 +16,35 @@ type t = {
   test: test_policy;
 }
 
+type value_error =
+  | MissingNumberPrefix
+  | UnsupportedUnit of string
+  | InvalidNumber of string
+  | NegativeValue
+
+type cache_error =
+  | KeepGenerationsMustBePositiveInt
+  | MaxSizeMustBeString
+  | InvalidMaxSize of value_error
+
+type test_error =
+  | SmallTestTimeoutMustBeDurationString
+  | SmallTestTimeoutMustBeNonNegativeInt
+  | InvalidSmallTestTimeout of value_error
+  | FlakyMaxRetriesMustBeNonNegativeInt
+  | FlakyMaxRetriesMustBeInt
+
+type invalid_config_error =
+  | RiotMustBeTable
+  | RiotCacheMustBeTable
+  | RiotTestMustBeTable
+  | CacheConfig of cache_error
+  | TestConfig of test_error
+
 type error =
-  | ReadFailed of { path: Path.t; error: string }
-  | ParseFailed of { path: Path.t; error: string }
-  | InvalidConfig of { path: Path.t; error: string }
+  | ReadFailed of { path: Path.t; error: IO.error }
+  | ParseFailed of { path: Path.t; error: Toml.error }
+  | InvalidConfig of { path: Path.t; error: invalid_config_error }
 
 let default_cache_policy = { keep_generations = 10; max_size_bytes = Int64.mul 50L 1_073_741_824L }
 
@@ -27,16 +52,44 @@ let default_test_policy = { small_test_timeout = None; flaky_max_retries = 0 }
 
 let default = { cache = default_cache_policy; test = default_test_policy }
 
+let value_error_message = function
+  | MissingNumberPrefix -> "must start with a number"
+  | UnsupportedUnit unit_name -> "unsupported unit '" ^ unit_name ^ "'"
+  | InvalidNumber value -> "invalid number '" ^ value ^ "'"
+  | NegativeValue -> "must be non-negative"
+
+let cache_error_message = function
+  | KeepGenerationsMustBePositiveInt -> "riot.cache.keep_generations must be greater than 0"
+  | MaxSizeMustBeString -> "riot.cache.max_size must be a string like \"50 GiB\""
+  | InvalidMaxSize error -> "riot.cache.max_size " ^ value_error_message error
+
+let test_error_message = function
+  | SmallTestTimeoutMustBeDurationString -> "riot.test.small_test_timeout must be a duration string like \"500ms\""
+  | SmallTestTimeoutMustBeNonNegativeInt -> "riot.test.small_test_timeout must be non-negative"
+  | InvalidSmallTestTimeout error -> "riot.test.small_test_timeout " ^ value_error_message error
+  | FlakyMaxRetriesMustBeNonNegativeInt -> "riot.test.flaky_max_retries must be greater than or equal to 0"
+  | FlakyMaxRetriesMustBeInt -> "riot.test.flaky_max_retries must be an integer"
+
+let invalid_config_error_message = function
+  | RiotMustBeTable -> "top-level [riot] must be a table"
+  | RiotCacheMustBeTable -> "top-level [riot.cache] must be a table"
+  | RiotTestMustBeTable -> "top-level [riot.test] must be a table"
+  | CacheConfig error -> cache_error_message error
+  | TestConfig error -> test_error_message error
+
 let message = function
   | ReadFailed { path; error } -> "failed to read workspace config '"
   ^ Path.to_string path
   ^ "': "
-  ^ error
+  ^ IO.error_message error
   | ParseFailed { path; error } -> "failed to parse workspace config '"
   ^ Path.to_string path
   ^ "': "
-  ^ error
-  | InvalidConfig { path; error } -> "invalid workspace config '" ^ Path.to_string path ^ "': " ^ error
+  ^ Toml.error_to_string error
+  | InvalidConfig { path; error } -> "invalid workspace config '"
+  ^ Path.to_string path
+  ^ "': "
+  ^ invalid_config_error_message error
 
 let normalize_size = fun raw ->
   let raw = String.trim raw in
@@ -99,16 +152,16 @@ let parse_max_size = fun raw ->
   in
   let number_str, unit_str = split 0 in
   if String.equal number_str "" then
-    Error "max_size must start with a number"
+    Error MissingNumberPrefix
   else
     match unit_multiplier unit_str with
-    | None -> Error ("unsupported max_size unit '" ^ unit_str ^ "'")
+    | None -> Error (UnsupportedUnit unit_str)
     | Some multiplier -> (
         match Float.parse number_str with
-        | None -> Error ("invalid max_size value '" ^ raw ^ "'")
+        | None -> Error (InvalidNumber raw)
         | Some number ->
             if number < 0.0 then
-              Error "max_size must be non-negative"
+              Error NegativeValue
             else
               let bytes = number *. Int64.to_float multiplier in
               Ok (Int64.from_float bytes)
@@ -121,20 +174,21 @@ let parse_cache_policy = fun ~path fields ->
     | Some value -> (
         match Toml.get_int value with
         | Some n when n > 0 -> Ok n
-        | Some _ -> Error "riot.cache.keep_generations must be greater than 0"
-        | None -> Error "riot.cache.keep_generations must be an integer"
+        | Some _ -> Error KeepGenerationsMustBePositiveInt
+        | None -> Error KeepGenerationsMustBePositiveInt
       )
   in
   let max_size_bytes =
     match Fields.get "max_size" fields with
     | None -> Ok default_cache_policy.max_size_bytes
     | Some (Toml.String raw) -> parse_max_size raw
-    | Some _ -> Error "riot.cache.max_size must be a string like \"50 GiB\""
+    |> Result.map_err ~fn:(fun error -> InvalidMaxSize error)
+    | Some _ -> Error MaxSizeMustBeString
   in
   match keep_generations, max_size_bytes with
   | Ok keep_generations, Ok max_size_bytes -> Ok { keep_generations; max_size_bytes }
   | (Error error, _)
-  | (_, Error error) -> Error (InvalidConfig { path; error })
+  | (_, Error error) -> Error (InvalidConfig { path; error = CacheConfig error })
 
 let normalize_duration = fun raw ->
   let raw = String.trim raw in
@@ -190,16 +244,16 @@ let parse_duration = fun raw ->
   in
   let number_str, unit_str = split 0 in
   if String.equal number_str "" then
-    Error "small_test_timeout must start with a number"
+    Error MissingNumberPrefix
   else
     match duration_unit_seconds unit_str with
-    | None -> Error ("unsupported small_test_timeout unit '" ^ unit_str ^ "'")
+    | None -> Error (UnsupportedUnit unit_str)
     | Some multiplier -> (
         match Float.parse number_str with
-        | None -> Error ("invalid small_test_timeout value '" ^ raw ^ "'")
+        | None -> Error (InvalidNumber raw)
         | Some number ->
             if number < 0.0 then
-              Error "small_test_timeout must be non-negative"
+              Error NegativeValue
             else
               Ok (Time.Duration.from_secs_float (number *. multiplier))
       )
@@ -213,12 +267,14 @@ let parse_test_policy = fun ~path fields ->
     | None ->
         Ok default_test_policy.small_test_timeout
     | Some (Toml.String raw) ->
-        parse_duration raw |> Result.map ~fn:Option.some
+        parse_duration raw
+        |> Result.map ~fn:Option.some
+        |> Result.map_err ~fn:(fun error -> InvalidSmallTestTimeout error)
     | Some value -> (
         match Toml.get_int value with
         | Some millis when millis >= 0 -> Ok (Some (Time.Duration.from_millis millis))
-        | Some _ -> Error "riot.test.small_test_timeout must be non-negative"
-        | None -> Error "riot.test.small_test_timeout must be a duration string like \"500ms\""
+        | Some _ -> Error SmallTestTimeoutMustBeNonNegativeInt
+        | None -> Error SmallTestTimeoutMustBeDurationString
       )
   in
   let flaky_max_retries =
@@ -229,14 +285,14 @@ let parse_test_policy = fun ~path fields ->
     | Some value -> (
         match Toml.get_int value with
         | Some n when n >= 0 -> Ok n
-        | Some _ -> Error "riot.test.flaky_max_retries must be greater than or equal to 0"
-        | None -> Error "riot.test.flaky_max_retries must be an integer"
+        | Some _ -> Error FlakyMaxRetriesMustBeNonNegativeInt
+        | None -> Error FlakyMaxRetriesMustBeInt
       )
   in
   match small_test_timeout, flaky_max_retries with
   | Ok small_test_timeout, Ok flaky_max_retries -> Ok { small_test_timeout; flaky_max_retries }
   | (Error error, _)
-  | (_, Error error) -> Error (InvalidConfig { path; error })
+  | (_, Error error) -> Error (InvalidConfig { path; error = TestConfig error })
 
 let of_toml = fun ~path toml ->
   match toml with
@@ -249,19 +305,13 @@ let of_toml = fun ~path toml ->
             match Fields.get "cache" riot_fields with
             | None -> Ok default_cache_policy
             | Some (Toml.Table cache_fields) -> parse_cache_policy ~path cache_fields
-            | Some _ -> Error (InvalidConfig {
-              path;
-              error = "top-level [riot.cache] must be a table"
-            })
+            | Some _ -> Error (InvalidConfig { path; error = RiotCacheMustBeTable })
           in
           let test =
             match Fields.get "test" riot_fields with
             | None -> Ok default_test_policy
             | Some (Toml.Table test_fields) -> parse_test_policy ~path test_fields
-            | Some _ -> Error (InvalidConfig {
-              path;
-              error = "top-level [riot.test] must be a table"
-            })
+            | Some _ -> Error (InvalidConfig { path; error = RiotTestMustBeTable })
           in
           (
             match cache, test with
@@ -271,9 +321,9 @@ let of_toml = fun ~path toml ->
           )
         )
       | Some _ ->
-          Error (InvalidConfig { path; error = "top-level [riot] must be a table" })
+          Error (InvalidConfig { path; error = RiotMustBeTable })
     )
-  | _ -> Error (InvalidConfig { path; error = "workspace config must be a TOML table" })
+  | _ -> Error (InvalidConfig { path; error = RiotMustBeTable })
 
 let load = fun ~workspace_root ->
   let path = Riot_dirs.workspace_operational_config_path ~workspace_root in
@@ -281,13 +331,13 @@ let load = fun ~workspace_root ->
   | Ok false ->
       Ok default
   | Error err ->
-      Error (ReadFailed { path; error = IO.error_message err })
+      Error (ReadFailed { path; error = err })
   | Ok true -> (
       match Fs.read_to_string path with
-      | Error err -> Error (ReadFailed { path; error = IO.error_message err })
+      | Error err -> Error (ReadFailed { path; error = err })
       | Ok source -> (
           match Toml.parse source with
-          | Error err -> Error (ParseFailed { path; error = Toml.error_to_string err })
+          | Error err -> Error (ParseFailed { path; error = err })
           | Ok toml -> of_toml ~path toml
         )
     )

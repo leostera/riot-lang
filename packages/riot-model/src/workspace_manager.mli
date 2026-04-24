@@ -1,18 +1,23 @@
 open Std
 
 type t
+type manifest_load_error =
+  | ManifestReadFailed of { path: Path.t; error: IO.error }
+  | ManifestParseFailed of { path: Path.t; error: Std.Data.Toml.error }
 type load_error =
   | PackageNotFound of { dependant: string option; package: string; path: string }
   | PackageTomlReadFailed of { package: string; path: string }
   | PackageTomlParseFailed of { package: string; path: string }
   | PackageFromTomlFailed of { package: string; path: string; error: string }
+val manifest_load_error_message: manifest_load_error -> string
+
 val load_error_to_string: load_error -> string
 
 val create: unit -> t
 
 val clear_cache: t -> unit
 
-val load_riot_toml: t -> Path.t -> (Std.Data.Toml.value, string) result
+val load_riot_toml: t -> Path.t -> (Std.Data.Toml.value, manifest_load_error) result
 
 (** Starting from the given directory, walk up the filesystem tree looking for a
     riot.toml with a [workspace] section. Returns None if no workspace is found.

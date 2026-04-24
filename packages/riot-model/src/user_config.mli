@@ -8,12 +8,23 @@ type registry = {
 type t = {
   registries: (string * registry) list;
 }
+type registry_field =
+  | Api_url
+  | Cdn_url
+  | Api_token
+type config_error =
+  | RegistryMustBeTable
+type registry_error =
+  | InvalidDefaultUri of { field: registry_field; error: Net.Uri.error }
+  | InvalidUri of { field: registry_field; error: Net.Uri.error }
+  | FieldMustBeString of registry_field
+  | RegistryEntryMustBeTable
 type error =
-  | ReadFailed of { path: Path.t; error: string }
-  | ParseFailed of { path: Path.t; error: string }
-  | WriteFailed of { path: Path.t; error: string }
-  | InvalidConfig of { error: string }
-  | InvalidRegistryConfig of { registry_name: string; error: string }
+  | ReadFailed of { path: Path.t; error: IO.error }
+  | ParseFailed of { path: Path.t; error: Std.Data.Toml.error }
+  | WriteFailed of { path: Path.t; error: IO.error }
+  | InvalidConfig of config_error
+  | InvalidRegistryConfig of { registry_name: string; error: registry_error }
 val empty: t
 
 val default: t
