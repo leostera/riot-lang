@@ -8,7 +8,19 @@ let package_name = fun name ->
 let version = fun value ->
   Std.Version.parse value |> Result.expect ~msg:("invalid version: " ^ value)
 
-let make_package = fun ?(workspace_member = true) ?version name ->
+let target = fun value ->
+  Riot_model.Target.from_string value |> Result.expect ~msg:("invalid target: " ^ value)
+
+let empty_sources =
+  Riot_model.Package.{
+    src = [];
+    native = [];
+    tests = [];
+    examples = [];
+    bench = [];
+  }
+
+let make_package = fun ?(workspace_member = true) ?version ?(sources = empty_sources) ?(binaries = []) name ->
   let relative_path =
     if workspace_member then
       Path.v name
@@ -26,6 +38,8 @@ let make_package = fun ?(workspace_member = true) ?version name ->
         is_public = Some true
       }
     )
+    ~binaries
+    ~sources
     ()
 
 let parse_build = fun args ->
@@ -173,6 +187,42 @@ let test_display_package_name_shows_external_package_version = fun _ctx ->
   let package = make_package ~workspace_member:false ~version:(version "1.2.3") "serde-json" in
   Test.assert_equal
     ~expected:"serde-json (1.2.3)"
+    ~actual:(Riot_cli.Build.display_package_name package);
+  Ok ()
+
+let test_display_package_name_shows_external_package_version_and_target = fun _ctx ->
+  let package = make_package ~workspace_member:false ~version:(version "1.2.3") "serde-json" in
+  Test.assert_equal
+    ~expected:"serde-json (1.2.3, aarch64-apple-darwin)"
+    ~actual:(Riot_cli.Build.display_package_name
+      ~build_target:(target "aarch64-apple-darwin")
+      ~show_target:true
+      package);
+  Ok ()
+
+let test_display_package_name_shows_workspace_test_and_target = fun _ctx ->
+  let package = make_package
+    ~sources:(Riot_model.Package.{
+      empty_sources
+      with tests = [ Path.v "tests/serde_json_tests.ml" ]
+    })
+    "serde-json" in
+  Test.assert_equal
+    ~expected:"serde-json (test, aarch64-apple-darwin)"
+    ~actual:(Riot_cli.Build.display_package_name
+      ~build_target:(target "aarch64-apple-darwin")
+      ~show_target:true
+      package);
+  Ok ()
+
+let test_display_package_name_shows_workspace_bench = fun _ctx ->
+  let package = make_package
+    ~binaries:[
+      Riot_model.Package.{ name = "serde_json_bench"; path = Path.v "bench/serde_json_bench.ml" }
+    ]
+    "serde-json" in
+  Test.assert_equal
+    ~expected:"serde-json (bench)"
     ~actual:(Riot_cli.Build.display_package_name package);
   Ok ()
 
@@ -962,6 +1012,9 @@ let tests =
   Test.[
     case "build: workspace package labels stay bare" test_display_package_name_keeps_workspace_package_bare;
     case "build: external package labels show version" test_display_package_name_shows_external_package_version;
+    case "build: external package labels show version and target" test_display_package_name_shows_external_package_version_and_target;
+    case "build: workspace test package labels show artifact and target" test_display_package_name_shows_workspace_test_and_target;
+    case "build: workspace bench package labels show artifact" test_display_package_name_shows_workspace_bench;
     case "build: planning error lines explain internal module violations" test_planning_error_lines_describe_internal_module_violation;
     case "build: workspace planning error lines explain missing dependencies" test_workspace_planning_error_lines_describe_missing_dependencies;
     case "build: planning error lines indent multiline reasons" test_planning_error_lines_indent_multiline_reasons;

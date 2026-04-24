@@ -26,6 +26,8 @@ type build_progress = {
   (** Number of skipped packages reported so far. *)
   mutable skipped_count: int;
 }
+type render_state
+val create_render_state: unit -> render_state
 
 (** Command definition for [riot build]. *)
 val command: Std.ArgParser.command
@@ -46,9 +48,11 @@ val write_build_event_json: Riot_build.Event.t -> unit
 (** Format a package label for build output.
 
     Workspace packages render as their bare package name. External packages
-    include the resolved version when present.
+    include the resolved version when present. Dev artifact and target details
+    are appended when requested by the caller.
 *)
-val display_package_name: Riot_model.Package.t -> string
+val display_package_name:
+  ?build_target:Riot_model.Target.t -> ?show_target:bool -> Riot_model.Package.t -> string
 
 (** Render a structured planner error into human-readable detail lines. *)
 val planning_error_lines: Riot_planner.Planning_error.t -> string list
@@ -61,13 +65,15 @@ val build_failure_detail_lines: Riot_build.Build_result.failure -> string list
 
 (** Render a build event in the selected output mode. *)
 val write_build_event:
+  ?render_state:render_state ->
   mode:output_mode ->
   seen_registry_updates:string Std.Collections.HashSet.t ->
   Riot_build.Event.t ->
   unit
 
 (** Render a build phase event in the selected output mode. *)
-val write_build_phase_event: mode:output_mode -> Riot_build.Event.runtime_phase -> unit
+val write_build_phase_event:
+  ?render_state:render_state -> mode:output_mode -> Riot_build.Event.runtime_phase -> unit
 
 (** Render a package-manager event in the selected output mode. *)
 val write_pm_event:

@@ -28,6 +28,12 @@ type build_progress = {
   mutable skipped_count: int;
 }
 
+type render_state = {
+  mutable target_count: int option;
+}
+
+let create_render_state = fun () -> { target_count = None }
+
 type request = {
   workspace: Workspace.t;
   packages: Riot_model.Package_name.t list;
@@ -108,14 +114,49 @@ let write_build_event_json = fun event ->
   | Some json -> write_json_event json
   | None -> ()
 
-let display_package_name = fun (package: Riot_model.Package.t) ->
-  let name = Riot_model.Package_name.to_string package.name in
-  if Riot_model.Package.is_workspace_member package then
-    name
+let path_has_prefix = fun ~prefix path -> String.starts_with ~prefix (Path.to_string path)
+
+let package_has_dev_artifact = fun ~(prefix:string) (package: Riot_model.Package.t) sources ->
+  not (List.is_empty sources)
+  || List.any
+    package.binaries
+    ~fn:(fun (binary: Riot_model.Package.binary) -> path_has_prefix ~prefix binary.path)
+
+let workspace_artifact_labels = fun (package: Riot_model.Package.t) ->
+  if not (Riot_model.Package.is_workspace_member package) then
+    []
   else
-    match package.publish.version with
-    | Some version -> name ^ " (" ^ Std.Version.to_string version ^ ")"
-    | None -> name
+    [
+      ("test", package_has_dev_artifact ~prefix:"tests/" package package.sources.tests);
+      ("example", package_has_dev_artifact ~prefix:"examples/" package package.sources.examples);
+      ("bench", package_has_dev_artifact ~prefix:"bench/" package package.sources.bench);
+    ]
+    |> List.filter_map
+      ~fn:(fun (label, enabled) ->
+        if enabled then
+          Some label
+        else
+          None)
+
+let display_package_name = fun ?build_target ?(show_target = false) (package: Riot_model.Package.t) ->
+  let name = Riot_model.Package_name.to_string package.name in
+  let version_details =
+    if Riot_model.Package.is_workspace_member package then
+      []
+    else
+      match package.publish.version with
+      | Some version -> [ Std.Version.to_string version ]
+      | None -> []
+  in
+  let target_details =
+    match build_target with
+    | Some target when show_target -> [ Riot_model.Target.to_string target ]
+    | _ -> []
+  in
+  let details = version_details @ workspace_artifact_labels package @ target_details in
+  match details with
+  | [] -> name
+  | details -> name ^ " (" ^ String.concat ", " details ^ ")"
 
 let labeled_multiline_lines = fun ~label value ->
   match String.split value ~by:"\n" with
@@ -271,35 +312,57 @@ let telemetry_package_error_message = function
   | Build_telemetry.ActionDependenciesFailed { failed } -> "failed dependencies: "
   ^ String.concat ", " (List.map failed ~fn:Graph.SimpleGraph.Node_id.to_string)
 
-let write_build_telemetry_event = fun ~mode event ->
+let show_target_in_package_labels = function
+  | Some { target_count=Some target_count } -> target_count > 1
+  | Some { target_count=None }
+  | None -> false
+
+let display_build_package_name = fun ?render_state ~build_target package ->
+  display_package_name ~build_target ~show_target:(show_target_in_package_labels render_state) package
+
+let write_build_telemetry_event = fun ?render_state ~mode event ->
   match mode with
   | Json -> write_build_event_json (Riot_build.Event.Telemetry event)
   | Human -> (
       match event with
-      | Build_telemetry.CompilationStarted { package; _ } ->
-          out ("    \027[1;32mBuilding\027[0m " ^ display_package_name package)
-      | Build_telemetry.BuildCompleted { package; status=`Fresh; _ } ->
-          out ("       \027[1;32mBuilt\027[0m " ^ display_package_name package)
-      | Build_telemetry.BuildCompleted { package; status=`Cached; _ } ->
-          out ("      \027[1;34mCached\027[0m " ^ display_package_name package)
-      | Build_telemetry.BuildSkipped { package; reason; _ } ->
-          out ("      \027[1;33mSkipped\027[0m " ^ display_package_name package ^ ": " ^ reason)
-      | Build_telemetry.BuildFailed { package; error=PlanningFailed planning_error; _ } ->
-          out ("      \027[1;31mFailed\027[0m " ^ display_package_name package);
-          planning_error_lines planning_error
-          |> List.for_each ~fn:(fun line -> out ("        " ^ line))
-      | Build_telemetry.BuildFailed { package; error; _ } ->
+      | Build_telemetry.CompilationStarted { package; build_target; _ } ->
+          out
+            ("    \027[1;32mBuilding\027[0m "
+            ^ display_build_package_name ?render_state ~build_target package)
+      | Build_telemetry.BuildCompleted { package; build_target; status=`Fresh; _ } ->
+          out
+            ("       \027[1;32mBuilt\027[0m "
+            ^ display_build_package_name ?render_state ~build_target package)
+      | Build_telemetry.BuildCompleted { package; build_target; status=`Cached; _ } ->
+          out
+            ("      \027[1;34mCached\027[0m "
+            ^ display_build_package_name ?render_state ~build_target package)
+      | Build_telemetry.BuildSkipped { package; build_target; reason; _ } ->
+          out
+            ("      \027[1;33mSkipped\027[0m "
+            ^ display_build_package_name ?render_state ~build_target package
+            ^ ": "
+            ^ reason)
+      | Build_telemetry.BuildFailed { package; build_target; error=PlanningFailed planning_error; _ } ->
           out
             ("      \027[1;31mFailed\027[0m "
-            ^ display_package_name package
+            ^ display_build_package_name ?render_state ~build_target package);
+          planning_error_lines planning_error
+          |> List.for_each ~fn:(fun line -> out ("        " ^ line))
+      | Build_telemetry.BuildFailed { package; build_target; error; _ } ->
+          out
+            ("      \027[1;31mFailed\027[0m "
+            ^ display_build_package_name ?render_state ~build_target package
             ^ ": "
             ^ telemetry_package_error_message error)
-      | Build_telemetry.PackageOcamlcWarnings { package; messages; _ } ->
+      | Build_telemetry.PackageOcamlcWarnings { package; build_target; messages; _ } ->
           messages
           |> List.for_each
             ~fn:(fun message ->
               out_prefixed_payload
-                ~prefix:("     \027[1;33mWarning\027[0m " ^ display_package_name package ^ ": ")
+                ~prefix:("     \027[1;33mWarning\027[0m "
+                ^ display_build_package_name ?render_state ~build_target package
+                ^ ": ")
                 message)
       | Build_telemetry.BuildStarted _
       | Build_telemetry.WorkspacePlanStarted _
@@ -325,7 +388,12 @@ let write_build_telemetry_event = fun ~mode event ->
           ()
     )
 
-let write_build_phase_event = fun ~mode phase ->
+let write_build_phase_event = fun ?render_state ~mode phase ->
+  (
+    match (render_state, phase) with
+    | Some state, Riot_build.Event.TargetsResolved { target_count } -> state.target_count <- Some target_count
+    | _ -> ()
+  );
   match mode with
   | Json -> write_build_event_json (Riot_build.Event.Phase phase)
   | Human -> (
@@ -677,13 +745,13 @@ let write_cache_gc_event = fun ~mode event ->
         ^ error)
     )
 
-let write_build_event = fun ~mode ~seen_registry_updates event ->
+let write_build_event = fun ?render_state ~mode ~seen_registry_updates event ->
   match event with
   | Riot_build.Event.Pm event -> write_pm_event ~mode ~seen_registry_updates event
   | Riot_build.Event.BuildingTarget { target; host } -> write_building_target_event ~mode ~target ~host
   | Riot_build.Event.CacheGc event -> write_cache_gc_event ~mode event
-  | Riot_build.Event.Telemetry event -> write_build_telemetry_event ~mode event
-  | Riot_build.Event.Phase phase -> write_build_phase_event ~mode phase
+  | Riot_build.Event.Telemetry event -> write_build_telemetry_event ?render_state ~mode event
+  | Riot_build.Event.Phase phase -> write_build_phase_event ?render_state ~mode phase
 
 let write_package_not_found_error = fun ~mode ~package_name ~available_packages ->
   let package_name = Riot_model.Package_name.to_string package_name in
@@ -891,6 +959,7 @@ let run_request = fun (request: request) ->
   let start_time = Time.Instant.now () in
   reset_json_clock ~started_at:start_time;
   let progress = { built_count = 0; cached_count = 0; failed_count = 0; skipped_count = 0 } in
+  let render_state = create_render_state () in
   let attempted_build = ref false in
   let pm_session_id = Riot_model.Session_id.make () in
   let emit_pm_kind kind = write_pm_event
@@ -902,7 +971,7 @@ let run_request = fun (request: request) ->
     | Riot_build.Event.Pm kind -> emit_pm_kind kind.kind
     | _ ->
         attempted_build := true;
-        write_build_event ~mode:request.output_mode ~seen_registry_updates event
+        write_build_event ~render_state ~mode:request.output_mode ~seen_registry_updates event
   in
   let result =
     Riot_build.build

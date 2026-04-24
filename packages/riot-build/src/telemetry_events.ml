@@ -121,12 +121,14 @@ type Telemetry.event +=
   | CompilationStarted of {
       session_id: Session_id.t;
       package: Package.t;
-      target: Workspace_planner.target
+      target: Workspace_planner.target;
+      build_target: Target.t
     }
   | PackageOcamlcWarnings of {
       session_id: Session_id.t;
       package: Package.t;
       target: Workspace_planner.target;
+      build_target: Target.t;
       source: warning_source;
       messages: string list
     }
@@ -134,6 +136,7 @@ type Telemetry.event +=
       session_id: Session_id.t;
       package: Package.t;
       target: Workspace_planner.target;
+      build_target: Target.t;
       status: 
         [
           `Fresh
@@ -145,12 +148,14 @@ type Telemetry.event +=
       session_id: Session_id.t;
       package: Package.t;
       target: Workspace_planner.target;
+      build_target: Target.t;
       error: package_error
     }
   | BuildSkipped of {
       session_id: Session_id.t;
       package: Package.t;
       target: Workspace_planner.target;
+      build_target: Target.t;
       reason: string
     }
   | ActionStarted of { session_id: Session_id.t; package: Package.t; action: Action_node.t }
@@ -247,6 +252,18 @@ let target_of_json = function
       |> Result.map_err ~fn:(fun error -> Data.Json.string (Package_name.error_message error))
   | _ ->
       Error (Data.Json.String "Invalid target")
+
+let build_target_to_json = fun target -> Data.Json.String (Target.to_string target)
+
+let build_target_of_json = function
+  | Data.Json.String target -> Target.from_string target
+  |> Result.map_err ~fn:(fun error -> Data.Json.String (Target.error_message error))
+  | _ -> Error (Data.Json.String "Invalid build target")
+
+let build_target_from_fields = fun fields ->
+  match Data.Json.get_field "build_target" (Data.Json.Object fields) with
+  | Some build_target_json -> build_target_of_json build_target_json
+  | None -> Ok Target.current
 
 let action_to_json = fun (action: Action_node.t) ->
   let action_hash = Crypto.Digest.hex (Action_node.get_hash action) in
@@ -507,17 +524,19 @@ let to_json: Telemetry.event -> Data.Json.t option = function
         ("target", target_to_json target);
         ("breakdown", planning_breakdown_to_json breakdown);
       ])
-  | CompilationStarted { session_id; package; target } ->
+  | CompilationStarted { session_id; package; target; build_target } ->
       Some (Data.Json.Object [
         ("type", Data.Json.String "CompilationStarted");
         ("session_id", Data.Json.String (Session_id.to_string session_id));
         ("package", Package.to_json package);
         ("target", target_to_json target);
+        ("build_target", build_target_to_json build_target);
       ])
   | PackageOcamlcWarnings {
     session_id;
     package;
     target;
+    build_target;
     source;
     messages
   } ->
@@ -526,6 +545,7 @@ let to_json: Telemetry.event -> Data.Json.t option = function
         ("session_id", Data.Json.String (Session_id.to_string session_id));
         ("package", Package.to_json package);
         ("target", target_to_json target);
+        ("build_target", build_target_to_json build_target);
         ("source", warning_source_to_json source);
         ("messages", Data.Json.Array (List.map messages ~fn:(fun msg -> Data.Json.String msg)));
       ])
@@ -533,6 +553,7 @@ let to_json: Telemetry.event -> Data.Json.t option = function
     session_id;
     package;
     target;
+    build_target;
     status;
     duration
   } ->
@@ -542,6 +563,7 @@ let to_json: Telemetry.event -> Data.Json.t option = function
           ("session_id", Data.Json.String (Session_id.to_string session_id));
           ("package", Package.to_json package);
           ("target", target_to_json target);
+          ("build_target", build_target_to_json build_target);
           (
             "status",
             Data.Json.String (
@@ -553,7 +575,13 @@ let to_json: Telemetry.event -> Data.Json.t option = function
           ("duration_ms", Data.Json.Int (Time.Duration.to_millis duration));
         ]
       )
-  | BuildFailed { session_id; package; target; error } ->
+  | BuildFailed {
+    session_id;
+    package;
+    target;
+    build_target;
+    error
+  } ->
       let error_json =
         match error with
         | PlanningFailed planning_err -> Data.Json.Object [
@@ -585,14 +613,22 @@ let to_json: Telemetry.event -> Data.Json.t option = function
         ("session_id", Data.Json.String (Session_id.to_string session_id));
         ("package", Package.to_json package);
         ("target", target_to_json target);
+        ("build_target", build_target_to_json build_target);
         ("error", error_json);
       ])
-  | BuildSkipped { session_id; package; target; reason } ->
+  | BuildSkipped {
+    session_id;
+    package;
+    target;
+    build_target;
+    reason
+  } ->
       Some (Data.Json.Object [
         ("type", Data.Json.String "BuildSkipped");
         ("session_id", Data.Json.String (Session_id.to_string session_id));
         ("package", Package.to_json package);
         ("target", target_to_json target);
+        ("build_target", build_target_to_json build_target);
         ("reason", Data.Json.String reason);
       ])
   | ActionStarted { session_id; package; action } ->
@@ -977,9 +1013,15 @@ let from_json: Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json -
               | Ok package ->
                   let session_id = Session_id.of_string session_id_str in
                   (
-                    match target_of_json target_json with
-                    | Ok target -> Ok (CompilationStarted { session_id; package; target })
-                    | Error e -> Error e
+                    match (target_of_json target_json, build_target_from_fields fields) with
+                    | Ok target, Ok build_target -> Ok (CompilationStarted {
+                      session_id;
+                      package;
+                      target;
+                      build_target
+                    })
+                    | Error e, _ -> Error e
+                    | _, Error e -> Error e
                   )
               | Error e -> Error (Data.Json.String e)
             )
@@ -996,8 +1038,12 @@ let from_json: Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json -
           | Some (Data.Json.String session_id_str), Some package_json, Some target_json, Some source_json, Some (Data.Json.Array messages_json) -> (
               match Package.from_json package_json with
               | Ok package -> (
-                  match (target_of_json target_json, warning_source_of_json source_json) with
-                  | Ok target, Ok source ->
+                  match (
+                    target_of_json target_json,
+                    build_target_from_fields fields,
+                    warning_source_of_json source_json
+                  ) with
+                  | Ok target, Ok build_target, Ok source ->
                       let rec collect_messages acc = function
                         | [] -> Ok (List.reverse acc)
                         | Data.Json.String msg :: rest -> collect_messages (msg :: acc) rest
@@ -1012,14 +1058,19 @@ let from_json: Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json -
                                 session_id;
                                 package;
                                 target;
+                                build_target;
                                 source;
                                 messages;
                               }
                             )
                         | Error e -> Error e
                       )
-                  | (Error e, _)
-                  | (_, Error e) -> Error e
+                  | Error e, _, _ ->
+                      Error e
+                  | _, Error e, _ ->
+                      Error e
+                  | _, _, Error e ->
+                      Error e
                 )
               | Error e -> Error (Data.Json.String e)
             )
@@ -1035,8 +1086,8 @@ let from_json: Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json -
           | (Some package_json, Some target_json, Some (Data.Json.String status_str), Some (Data.Json.Int duration_ms)) -> (
               match Package.from_json package_json with
               | Ok package -> (
-                  match target_of_json target_json with
-                  | Ok target ->
+                  match (target_of_json target_json, build_target_from_fields fields) with
+                  | Ok target, Ok build_target ->
                       let status =
                         match status_str with
                         | "cached" -> `Cached
@@ -1048,11 +1099,15 @@ let from_json: Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json -
                           session_id = get_session_id fields;
                           package;
                           target;
+                          build_target;
                           status;
                           duration;
                         }
                       )
-                  | Error e -> Error e
+                  | Error e, _ ->
+                      Error e
+                  | _, Error e ->
+                      Error e
                 )
               | Error e -> Error (Data.Json.String e)
             )
@@ -1228,15 +1283,20 @@ let from_json: Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json -
                     | _ -> Ok (ExecutionFailed { message = "Invalid error format" })
                   in
                   (
-                    match (target_of_json target_json, error_result) with
-                    | Ok target, Ok error -> Ok (BuildFailed {
-                      session_id = get_session_id fields;
-                      package;
-                      target;
-                      error
-                    })
-                    | Error e, _ -> Error e
-                    | _, Error e -> Error e
+                    match (target_of_json target_json, build_target_from_fields fields, error_result) with
+                    | Ok target, Ok build_target, Ok error ->
+                        Ok (
+                          BuildFailed {
+                            session_id = get_session_id fields;
+                            package;
+                            target;
+                            build_target;
+                            error;
+                          }
+                        )
+                    | Error e, _, _ -> Error e
+                    | _, Error e, _ -> Error e
+                    | _, _, Error e -> Error e
                   )
               | Error e -> Error (Data.Json.String e)
             )
@@ -1251,14 +1311,19 @@ let from_json: Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json -
           | (Some package_json, Some target_json, Some (Data.Json.String reason)) -> (
               match Package.from_json package_json with
               | Ok package -> (
-                  match target_of_json target_json with
-                  | Ok target -> Ok (BuildSkipped {
-                    session_id = get_session_id fields;
-                    package;
-                    target;
-                    reason
-                  })
-                  | Error e -> Error e
+                  match (target_of_json target_json, build_target_from_fields fields) with
+                  | Ok target, Ok build_target ->
+                      Ok (
+                        BuildSkipped {
+                          session_id = get_session_id fields;
+                          package;
+                          target;
+                          build_target;
+                          reason;
+                        }
+                      )
+                  | Error e, _ -> Error e
+                  | _, Error e -> Error e
                 )
               | Error e -> Error (Data.Json.String e)
             )

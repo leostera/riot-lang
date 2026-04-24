@@ -331,6 +331,7 @@ let emits_visible_progress = function
 let plan_detailed = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(package:Package.t) ~build_ctx ->
   let start = Instant.now () in
   let session_id = build_ctx.Build_ctx.session_id in
+  let build_target = Build_ctx.target_triplet build_ctx in
   let package_name = package.Package.name in
   let package_name_string = Package_name.to_string package_name in
   Log.info ("Package " ^ package_name_string ^ ": computing content hash with dependencies");
@@ -347,12 +348,15 @@ let plan_detailed = fun ~workspace ~toolchain ~store ~package_graph ~package_key
       let duration = Instant.duration_since ~earlier:start (Instant.now ()) in
       (* Don't mark as Failed in graph - planning errors don't have a hash *)
       Telemetry.emit
-        (BuildFailed {
-          session_id;
-          package;
-          target = Workspace_planner.Package package_name;
-          error = PlanningFailed err
-        });
+        (
+          BuildFailed {
+            session_id;
+            package;
+            target = Workspace_planner.Package package_name;
+            build_target;
+            error = PlanningFailed err;
+          }
+        );
       Final_result {
         result =
           {
@@ -373,12 +377,15 @@ let plan_detailed = fun ~workspace ~toolchain ~store ~package_graph ~package_key
       (* Don't mark as Failed - this is a transient planning state *)
       let error_variant = ExecutionFailed { message = error } in
       Telemetry.emit
-        (BuildFailed {
-          session_id;
-          package;
-          target = Workspace_planner.Package package_name;
-          error = error_variant
-        });
+        (
+          BuildFailed {
+            session_id;
+            package;
+            target = Workspace_planner.Package package_name;
+            build_target;
+            error = error_variant;
+          }
+        );
       Final_result {
         result =
           {
@@ -398,12 +405,15 @@ let plan_detailed = fun ~workspace ~toolchain ~store ~package_graph ~package_key
       let reason = "needs " ^ summarize_package_names failed_names in
       Log.info ("Package " ^ package_name_string ^ ": SKIPPED (" ^ reason ^ ")");
       Telemetry.emit
-        (BuildSkipped {
-          session_id;
-          package;
-          target = Workspace_planner.Package package_name;
-          reason
-        });
+        (
+          BuildSkipped {
+            session_id;
+            package;
+            target = Workspace_planner.Package package_name;
+            build_target;
+            reason;
+          }
+        );
       Final_result {
         result =
           {
@@ -430,6 +440,7 @@ let plan_detailed = fun ~workspace ~toolchain ~store ~package_graph ~package_key
               session_id;
               package;
               target = Workspace_planner.Package package_name;
+              build_target;
               source = `Cached;
               messages = artifact.ocamlc_warnings;
             }
@@ -441,6 +452,7 @@ let plan_detailed = fun ~workspace ~toolchain ~store ~package_graph ~package_key
               session_id;
               package;
               target = Workspace_planner.Package package_name;
+              build_target;
               status = `Cached;
               duration;
             }
@@ -490,12 +502,20 @@ let execution_outputs = fun (execution_plan: execution_plan) ->
   Action_graph.nodes execution_plan.action_graph
   |> List.flat_map ~fn:(fun (node: Action_node.t) -> node.value.outs)
 
-let failed_execution_result = fun ~session_id ~(execution_plan:execution_plan) ~(error:package_error) ~graph_error ->
+let failed_execution_result = fun ~session_id ~build_target ~(execution_plan:execution_plan) ~(error:package_error) ~graph_error ->
   let package = execution_plan.package in
   let package_name = package.Package.name in
   let duration = Instant.duration_since ~earlier:execution_plan.started_at (Instant.now ()) in
   Telemetry.emit
-    (BuildFailed { session_id; package; target = Workspace_planner.Package package_name; error });
+    (
+      BuildFailed {
+        session_id;
+        package;
+        target = Workspace_planner.Package package_name;
+        build_target;
+        error;
+      }
+    );
   {
     result =
       {
@@ -530,7 +550,12 @@ let prepare_execution = fun ~workspace ~toolchain ~store ~execution_plan ~build_
     && List.length (Action_graph.nodes execution_plan.action_graph) > 0
   then
     Telemetry.emit
-      (CompilationStarted { session_id; package; target = Workspace_planner.Package package_name });
+      (CompilationStarted {
+        session_id;
+        package;
+        target = Workspace_planner.Package package_name;
+        build_target = target_triplet
+      });
   let inputs = execution_inputs execution_plan in
   try
     let sandbox = Sandbox.create
@@ -545,7 +570,12 @@ let prepare_execution = fun ~workspace ~toolchain ~store ~execution_plan ~build_
   | exn ->
       let error_msg = "Exception: " ^ Kernel.Exception.to_string exn in
       let error = ExecutionFailed { message = error_msg } in
-      Error (failed_execution_result ~session_id ~execution_plan ~error ~graph_error:error_msg)
+      Error (failed_execution_result
+        ~session_id
+        ~build_target:target_triplet
+        ~execution_plan
+        ~error
+        ~graph_error:error_msg)
 
 let execute_action = fun ~store ~(prepared_execution:prepared_execution) ~build_ctx ~completed action ->
   Action_executor.execute_node
@@ -582,6 +612,7 @@ let finalize_execution = fun ~workspace ~store ~(prepared_execution:prepared_exe
         cleanup_and_return
           (failed_execution_result
             ~session_id
+            ~build_target:target_triplet
             ~execution_plan
             ~error
             ~graph_error:(package_error_to_string error))
@@ -608,6 +639,7 @@ let finalize_execution = fun ~workspace ~store ~(prepared_execution:prepared_exe
                 session_id;
                 package;
                 target = Workspace_planner.Package package_name;
+                build_target = target_triplet;
                 source = `Fresh;
                 messages = ocamlc_warnings;
               }
@@ -620,6 +652,7 @@ let finalize_execution = fun ~workspace ~store ~(prepared_execution:prepared_exe
                 session_id;
                 package;
                 target = Workspace_planner.Package package_name;
+                build_target = target_triplet;
                 status = `Fresh;
                 duration;
               }
@@ -651,7 +684,12 @@ let finalize_execution = fun ~workspace ~store ~(prepared_execution:prepared_exe
       let error_msg = "Exception: " ^ Kernel.Exception.to_string exn in
       let error = ExecutionFailed { message = error_msg } in
       cleanup_and_return
-        (failed_execution_result ~session_id ~execution_plan ~error ~graph_error:error_msg)
+        (failed_execution_result
+          ~session_id
+          ~build_target:target_triplet
+          ~execution_plan
+          ~error
+          ~graph_error:error_msg)
 
 let execute_detailed = fun ~workspace ~toolchain ~store ~execution_plan ~build_ctx ->
   match prepare_execution ~workspace ~toolchain ~store ~execution_plan ~build_ctx with

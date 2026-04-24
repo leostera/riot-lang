@@ -121,12 +121,14 @@ type Telemetry.event +=
   | CompilationStarted of {
       session_id: Session_id.t;
       package: Package.t;
-      target: Workspace_planner.target
+      target: Workspace_planner.target;
+      build_target: Target.t
     }
   | PackageOcamlcWarnings of {
       session_id: Session_id.t;
       package: Package.t;
       target: Workspace_planner.target;
+      build_target: Target.t;
       source: warning_source;
       messages: string list
     }
@@ -134,6 +136,7 @@ type Telemetry.event +=
       session_id: Session_id.t;
       package: Package.t;
       target: Workspace_planner.target;
+      build_target: Target.t;
       status: 
         [
           `Fresh
@@ -145,12 +148,14 @@ type Telemetry.event +=
       session_id: Session_id.t;
       package: Package.t;
       target: Workspace_planner.target;
+      build_target: Target.t;
       error: package_error
     }
   | BuildSkipped of {
       session_id: Session_id.t;
       package: Package.t;
       target: Workspace_planner.target;
+      build_target: Target.t;
       reason: string
     }
   | ActionStarted of { session_id: Session_id.t; package: Package.t; action: Action_node.t }
