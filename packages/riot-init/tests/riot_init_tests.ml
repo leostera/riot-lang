@@ -83,9 +83,15 @@ let test_init_scaffolds_library_workspace = fun _ctx ->
       let* () = assert_exists Path.(workspace_root / Path.v "Dockerfile") in
       let* () = assert_exists
         Path.(workspace_root / Path.v ".github" / Path.v "workflows" / Path.v "ci.yml") in
-      let* () = assert_exists Path.(workspace_root / Path.v ".agents" / Path.v "skills" / Path.v "riot" / Path.v "SKILL.md") in
       let* () = assert_exists
-        Path.(workspace_root / Path.v ".agents" / Path.v "skills" / Path.v "riot" / Path.v "references" / Path.v "commands.md") in
+        Path.(workspace_root / Path.v ".agents" / Path.v "skills" / Path.v "riot" / Path.v "SKILL.md") in
+      let* () = assert_exists
+        Path.(workspace_root
+        / Path.v ".agents"
+        / Path.v "skills"
+        / Path.v "riot"
+        / Path.v "references"
+        / Path.v "commands.md") in
       let* () = assert_exists Path.(workspace_root / Path.v "config" / Path.v "dev.toml") in
       let* () = assert_exists Path.(workspace_root / Path.v ".riot" / Path.v "config.toml") in
       let* () = assert_exists Path.(workspace_root / Path.v ".githooks" / Path.v "pre-commit") in
@@ -125,7 +131,8 @@ let test_init_scaffolds_binary_workspace = fun _ctx ->
       let test_file = String.lowercase_ascii module_name ^ "_tests.ml" in
       let* () = assert_exists
         Path.(workspace_root / Path.v "packages" / Path.v "demo-bin" / Path.v "src" / Path.v "main.ml") in
-      let* () = assert_exists Path.(workspace_root / Path.v ".agents" / Path.v "skills" / Path.v "riot" / Path.v "SKILL.md") in
+      let* () = assert_exists
+        Path.(workspace_root / Path.v ".agents" / Path.v "skills" / Path.v "riot" / Path.v "SKILL.md") in
       let* () = assert_exists Path.(workspace_root / Path.v "config" / Path.v "dev.toml") in
       let* () = assert_exists Path.(workspace_root / Path.v ".riot" / Path.v "config.toml") in
       let* () = assert_exists Path.(workspace_root / Path.v ".githooks" / Path.v "pre-commit") in

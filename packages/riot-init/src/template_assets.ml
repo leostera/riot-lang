@@ -6,10 +6,10 @@ type file = {
   executable: bool;
 }
 
-let riot_skill_files = [
-  {
+let riot_skill_files = [ {
     relative_path = ".agents/skills/riot/SKILL.md";
-    content = {|---
+    content =
+      {|---
 name: riot
 description: Build, configure, run, test, benchmark, format, and troubleshoot projects that use the Riot toolchain. Use when Codex needs to work with `riot.toml`, `.riot/config.toml`, `ocaml-toolchain.toml`, `riot init`, `riot add`, `riot build`, `riot run`, `riot test`, `riot bench`, `riot fmt`, or `riot fix` in a Riot workspace or detached Riot package.
 ---
@@ -129,19 +129,19 @@ higher priority than this generic user skill.
   behavior looks surprising.
 |};
     executable = false;
-  };
-  {
+  }; {
     relative_path = ".agents/skills/riot/agents/openai.yaml";
-    content = {|interface:
+    content =
+      {|interface:
   display_name: "Riot"
   short_description: "Build, run, and test Riot projects"
   default_prompt: "Use $riot to create, build, run, test, or troubleshoot a Riot workspace."
 |};
     executable = false;
-  };
-  {
+  }; {
     relative_path = ".agents/skills/riot/references/commands.md";
-    content = {|# Command patterns
+    content =
+      {|# Command patterns
 
 Use this reference when you know the task and need the right Riot command
 shape.
@@ -294,10 +294,10 @@ riot fmt --check --json
 ```
 |};
     executable = false;
-  };
-  {
+  }; {
     relative_path = ".agents/skills/riot/references/testing.md";
-    content = {|# Testing and benchmarking
+    content =
+      {|# Testing and benchmarking
 
 Use this reference when the task involves `riot test`, `riot bench`, suite
 selection, or repository-shared test policy.
@@ -381,10 +381,10 @@ riot bench --json
 ```
 |};
     executable = false;
-  };
-  {
+  }; {
     relative_path = ".agents/skills/riot/references/troubleshooting.md";
-    content = {|# Troubleshooting
+    content =
+      {|# Troubleshooting
 
 Use this reference when Riot behavior seems surprising or a command that should
 be simple does not behave as expected.
@@ -461,10 +461,10 @@ Checks:
 - avoid mixing unrelated external setup steps into a normal Riot workflow
 |};
     executable = false;
-  };
-  {
+  }; {
     relative_path = ".agents/skills/riot/references/workspaces.md";
-    content = {|# Workspaces and config
+    content =
+      {|# Workspaces and config
 
 Use this reference when you need to decide what kind of Riot project you are in
 and which config file owns a behavior.
@@ -574,8 +574,7 @@ That means `riot run` may work without extra manifest boilerplate when the
 package layout is conventional.
 |};
     executable = false;
-  };
-]
+  }; ]
 
 let dev_config_toml = fun ~workspace_name ->
   {|[app]
