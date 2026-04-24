@@ -118,52 +118,48 @@ let display_package_name = fun (package: Riot_model.Package.t) ->
     | None -> name
 
 let planning_error_lines = function
-  | Riot_planner.Planning_error.CyclicDependency { cycle } -> [
-    "planner error: cyclic dependency detected";
-    "cycle: " ^ String.concat " -> " cycle;
-  ]
-  | Riot_planner.Planning_error.ScanFailed { path; reason } -> [
-    "planner error: failed to scan package sources";
-    "path: " ^ Path.to_string path;
-    "reason: " ^ reason;
-  ]
-  | Riot_planner.Planning_error.DependencyAnalysisFailed { reason } -> [
-    "planner error: dependency analysis failed";
-    "reason: " ^ reason;
-  ]
-  | Riot_planner.Planning_error.GraphBuildFailed { reason } -> [
-    "planner error: failed to build module graph";
-    "reason: " ^ reason;
-  ]
+  | Riot_planner.Planning_error.CyclicDependency { cycle } ->
+      [ "planner error: cyclic dependency detected"; "cycle: " ^ String.concat " -> " cycle; ]
+  | Riot_planner.Planning_error.ScanFailed { path; reason } ->
+      [
+        "planner error: failed to scan package sources";
+        "path: " ^ Path.to_string path;
+        "reason: " ^ reason;
+      ]
+  | Riot_planner.Planning_error.DependencyAnalysisFailed { reason } ->
+      [ "planner error: dependency analysis failed"; "reason: " ^ reason; ]
+  | Riot_planner.Planning_error.GraphBuildFailed { reason } ->
+      [ "planner error: failed to build module graph"; "reason: " ^ reason; ]
   | Riot_planner.Planning_error.TargetDependsOnInternalLibraryModule {
     target_name;
     source;
     requested_module;
     internal_module;
     public_module;
-  } -> [
-    "planner error: target reaches a library-internal module";
-    "target: " ^ target_name;
-    "source: " ^ Path.to_string source;
-    "requested module: " ^ requested_module;
-    "internal module: " ^ internal_module;
-    "public module: " ^ public_module;
-    "help: use " ^ public_module ^ "." ^ requested_module ^ " instead";
-  ]
+
+  } ->
+      [
+        "planner error: target reaches a library-internal module";
+        "target: " ^ target_name;
+        "source: " ^ Path.to_string source;
+        "requested module: " ^ requested_module;
+        "internal module: " ^ internal_module;
+        "public module: " ^ public_module;
+        "help: use " ^ public_module ^ "." ^ requested_module ^ " instead";
+      ]
   | Riot_planner.Planning_error.TargetDependsOnNamespacedInternalLibraryModule {
     target_name;
     source;
     requested_module;
     internal_module;
     public_module;
+
   } ->
-      let public_leaf =
-        internal_module
-        |> String.split ~by:"__"
-        |> List.reverse
-        |> List.head
-        |> Option.unwrap_or ~default:requested_module
-      in
+      let public_leaf = internal_module
+      |> String.split ~by:"__"
+      |> List.reverse
+      |> List.head
+      |> Option.unwrap_or ~default:requested_module in
       [
         "planner error: target reaches a namespaced library-internal module";
         "target: " ^ target_name;
@@ -180,32 +176,50 @@ let planning_error_lines = function
     other_target_name;
     other_target_module;
     public_module;
-  } -> [
-    "planner error: target reaches another target root";
-    "target: " ^ target_name;
-    "source: " ^ Path.to_string source;
-    "requested module: " ^ requested_module;
-    "other target: " ^ other_target_name;
-    "other target module: " ^ other_target_module;
-    "public module: " ^ public_module;
-    "help: move shared code behind " ^ public_module ^ " or a shared helper module";
-  ]
-  | Riot_planner.Planning_error.Exception { exn } -> [
-    "planner error: unexpected exception";
-    "reason: " ^ Kernel.Exception.to_string exn;
-  ]
+
+  } ->
+      [
+        "planner error: target reaches another target root";
+        "target: " ^ target_name;
+        "source: " ^ Path.to_string source;
+        "requested module: " ^ requested_module;
+        "other target: " ^ other_target_name;
+        "other target module: " ^ other_target_module;
+        "public module: " ^ public_module;
+        "help: move shared code behind " ^ public_module ^ " or a shared helper module";
+      ]
+  | Riot_planner.Planning_error.Exception { exn } ->
+      [ "planner error: unexpected exception"; "reason: " ^ Kernel.Exception.to_string exn; ]
 
 let workspace_load_error_line = function
-  | Riot_model.Workspace_manager.PackageNotFound { package; path; dependant=None } ->
-      "missing package: " ^ package ^ " (" ^ path ^ ")"
-  | Riot_model.Workspace_manager.PackageNotFound { package; path; dependant=Some dependant } ->
-      "missing package: " ^ package ^ " (required by " ^ dependant ^ ", " ^ path ^ ")"
-  | Riot_model.Workspace_manager.PackageTomlReadFailed { package; path } ->
-      "failed to read package toml: " ^ package ^ " (" ^ path ^ ")"
-  | Riot_model.Workspace_manager.PackageTomlParseFailed { package; path } ->
-      "failed to parse package toml: " ^ package ^ " (" ^ path ^ ")"
-  | Riot_model.Workspace_manager.PackageFromTomlFailed { package; path; error } ->
-      "failed to load package manifest: " ^ package ^ " (" ^ path ^ "): " ^ error
+  | Riot_model.Workspace_manager.PackageNotFound { package; path; dependant=None } -> "missing package: "
+  ^ package
+  ^ " ("
+  ^ path
+  ^ ")"
+  | Riot_model.Workspace_manager.PackageNotFound { package; path; dependant=Some dependant } -> "missing package: "
+  ^ package
+  ^ " (required by "
+  ^ dependant
+  ^ ", "
+  ^ path
+  ^ ")"
+  | Riot_model.Workspace_manager.PackageTomlReadFailed { package; path } -> "failed to read package toml: "
+  ^ package
+  ^ " ("
+  ^ path
+  ^ ")"
+  | Riot_model.Workspace_manager.PackageTomlParseFailed { package; path } -> "failed to parse package toml: "
+  ^ package
+  ^ " ("
+  ^ path
+  ^ ")"
+  | Riot_model.Workspace_manager.PackageFromTomlFailed { package; path; error } -> "failed to load package manifest: "
+  ^ package
+  ^ " ("
+  ^ path
+  ^ "): "
+  ^ Riot_model.Package_manifest.error_message error
 
 let workspace_planning_error_lines = function
   | Riot_planner.Workspace_planner.PackageNotFound { name; available } -> [
@@ -216,8 +230,7 @@ let workspace_planning_error_lines = function
   ]
   | Riot_planner.Workspace_planner.PackagesNotFound { names; available } -> [
     "planner error: packages not found";
-    "packages: "
-    ^ String.concat ", " (List.map names ~fn:Riot_model.Package_name.to_string);
+    "packages: " ^ String.concat ", " (List.map names ~fn:Riot_model.Package_name.to_string);
     "available packages: "
     ^ String.concat ", " (List.map available ~fn:Riot_model.Package_name.to_string);
   ]
@@ -225,14 +238,13 @@ let workspace_planning_error_lines = function
     "planner error: package cycle detected";
     "cycle: " ^ String.concat " -> " cycle;
   ]
-  | Riot_planner.Workspace_planner.MissingDependencies { missing } ->
-      "planner error: missing dependencies"
-      :: List.map missing
-        ~fn:(fun (dep: Riot_planner.Package_graph.missing_dependency) ->
-          "missing: " ^ dep.package ^ " -> " ^ dep.dependency)
-  | Riot_planner.Workspace_planner.PackageLoadFailed { errors } ->
-      "planner error: failed to load workspace packages"
-      :: List.map errors ~fn:workspace_load_error_line
+  | Riot_planner.Workspace_planner.MissingDependencies { missing } -> "planner error: missing dependencies"
+  :: List.map
+    missing
+    ~fn:(fun (dep: Riot_planner.Package_graph.missing_dependency) ->
+      "missing: " ^ dep.package ^ " -> " ^ dep.dependency)
+  | Riot_planner.Workspace_planner.PackageLoadFailed { errors } -> "planner error: failed to load workspace packages"
+  :: List.map errors ~fn:workspace_load_error_line
 
 let out_prefixed_payload = fun ~prefix payload ->
   match String.split payload ~by:"\n" with
@@ -255,29 +267,31 @@ let write_build_telemetry_event = fun ~mode event ->
   | Json -> write_build_event_json (Riot_build.Event.Telemetry event)
   | Human -> (
       match event with
-      | Build_telemetry.CompilationStarted { package; _ } -> out
-        ("    \027[1;32mBuilding\027[0m " ^ display_package_name package)
-      | Build_telemetry.BuildCompleted { package; status=`Fresh; _ } -> out
-        ("       \027[1;32mBuilt\027[0m " ^ display_package_name package)
-      | Build_telemetry.BuildCompleted { package; status=`Cached; _ } -> out
-        ("      \027[1;34mCached\027[0m " ^ display_package_name package)
-      | Build_telemetry.BuildSkipped { package; reason; _ } -> out
-        ("      \027[1;33mSkipped\027[0m " ^ display_package_name package ^ ": " ^ reason)
+      | Build_telemetry.CompilationStarted { package; _ } ->
+          out ("    \027[1;32mBuilding\027[0m " ^ display_package_name package)
+      | Build_telemetry.BuildCompleted { package; status=`Fresh; _ } ->
+          out ("       \027[1;32mBuilt\027[0m " ^ display_package_name package)
+      | Build_telemetry.BuildCompleted { package; status=`Cached; _ } ->
+          out ("      \027[1;34mCached\027[0m " ^ display_package_name package)
+      | Build_telemetry.BuildSkipped { package; reason; _ } ->
+          out ("      \027[1;33mSkipped\027[0m " ^ display_package_name package ^ ": " ^ reason)
       | Build_telemetry.BuildFailed { package; error=PlanningFailed planning_error; _ } ->
           out ("      \027[1;31mFailed\027[0m " ^ display_package_name package);
           planning_error_lines planning_error
           |> List.for_each ~fn:(fun line -> out ("        " ^ line))
-      | Build_telemetry.BuildFailed { package; error; _ } -> out
-        ("      \027[1;31mFailed\027[0m "
-        ^ display_package_name package
-        ^ ": "
-        ^ telemetry_package_error_message error)
-      | Build_telemetry.PackageOcamlcWarnings { package; messages; _ } -> messages
-      |> List.for_each
-        ~fn:(fun message ->
-          out_prefixed_payload
-            ~prefix:("     \027[1;33mWarning\027[0m " ^ display_package_name package ^ ": ")
-            message)
+      | Build_telemetry.BuildFailed { package; error; _ } ->
+          out
+            ("      \027[1;31mFailed\027[0m "
+            ^ display_package_name package
+            ^ ": "
+            ^ telemetry_package_error_message error)
+      | Build_telemetry.PackageOcamlcWarnings { package; messages; _ } ->
+          messages
+          |> List.for_each
+            ~fn:(fun message ->
+              out_prefixed_payload
+                ~prefix:("     \027[1;33mWarning\027[0m " ^ display_package_name package ^ ": ")
+                message)
       | Build_telemetry.BuildStarted _
       | Build_telemetry.WorkspacePlanStarted _
       | Build_telemetry.WorkspacePlanCompleted _
@@ -296,8 +310,10 @@ let write_build_telemetry_event = fun ~mode event ->
       | Build_telemetry.CacheHit _
       | Build_telemetry.CacheMiss _
       | Build_telemetry.WorkspaceStarted _
-      | Build_telemetry.WorkspaceCompleted _ -> ()
-      | _ -> ()
+      | Build_telemetry.WorkspaceCompleted _ ->
+          ()
+      | _ ->
+          ()
     )
 
 let write_build_phase_event = fun ~mode phase ->
@@ -520,15 +536,10 @@ let parse_package_names = fun package_names ->
     | package_name :: rest -> (
         match Riot_model.Package_name.from_string package_name with
         | Ok package_name -> loop (package_name :: acc) rest
-        | Error error ->
-            Error (
-              Failure (
-                "invalid package name '"
-                ^ package_name
-                ^ "': "
-                ^ Riot_model.Package_name.error_message error
-              )
-            )
+        | Error error -> Error (Failure ("invalid package name '"
+        ^ package_name
+        ^ "': "
+        ^ Riot_model.Package_name.error_message error))
       )
   in
   loop [] package_names
@@ -692,111 +703,147 @@ let write_packages_not_found_error = fun ~mode ~package_names ~available_package
 
 let write_build_error = fun ~mode err ->
   match err with
-  | Riot_build.TargetSelectionFailed { pattern; available_targets } -> write_command_error
-    ~mode
-    "NoTargetsMatched"
-    [
-      ("pattern", Data.Json.String pattern);
-      (
-        "available_targets",
-        Data.Json.Array (List.map
-          available_targets
-          ~fn:(fun target -> Data.Json.String (Riot_model.Target.to_string target)))
-      );
-    ]
-    (Riot_build.error_message err)
-  | Riot_build.PackageNotFound { package_name; available_packages } -> write_package_not_found_error
-    ~mode
-    ~package_name
-    ~available_packages
-  | Riot_build.PackagesNotFound { package_names; available_packages } -> write_packages_not_found_error
-    ~mode
-    ~package_names
-    ~available_packages
-  | Riot_build.ToolchainInstallFailed { target; error } -> write_command_error
-    ~mode
-    "ToolchainInstallFailed"
-    [
-      ("target", Data.Json.String (Riot_model.Target.to_string target));
-      ("reason", Data.Json.String error);
-    ]
-    (Riot_build.error_message err)
-  | Riot_build.ToolchainInitializationFailed { target; error } -> write_command_error
-    ~mode
-    "ToolchainInitializationFailed"
-    [
-      ("target", Data.Json.String (Riot_model.Target.to_string target));
-      ("reason", Data.Json.String error);
-    ]
-    (Riot_build.error_message err)
-  | Riot_build.BuildFailed { errors } -> write_command_error
-    ~mode
-    "BuildFailed"
-    [ ("errors", Data.Json.Array (List.map errors ~fn:Riot_build.Build_result.failure_to_json)); ]
-    (Riot_build.error_message err)
+  | Riot_build.TargetSelectionFailed { pattern; available_targets } ->
+      write_command_error
+        ~mode
+        "NoTargetsMatched"
+        [
+          ("pattern", Data.Json.String pattern);
+          (
+            "available_targets",
+            Data.Json.Array (List.map
+              available_targets
+              ~fn:(fun target -> Data.Json.String (Riot_model.Target.to_string target)))
+          );
+        ]
+        (Riot_build.error_message err)
+  | Riot_build.PackageNotFound { package_name; available_packages } ->
+      write_package_not_found_error ~mode ~package_name ~available_packages
+  | Riot_build.PackagesNotFound { package_names; available_packages } ->
+      write_packages_not_found_error ~mode ~package_names ~available_packages
+  | Riot_build.ToolchainInstallFailed { target; error } ->
+      write_command_error
+        ~mode
+        "ToolchainInstallFailed"
+        [
+          ("target", Data.Json.String (Riot_model.Target.to_string target));
+          ("reason", Data.Json.String error);
+        ]
+        (Riot_build.error_message err)
+  | Riot_build.ToolchainInitializationFailed { target; error } ->
+      write_command_error
+        ~mode
+        "ToolchainInitializationFailed"
+        [
+          ("target", Data.Json.String (Riot_model.Target.to_string target));
+          ("reason", Data.Json.String error);
+        ]
+        (Riot_build.error_message err)
+  | Riot_build.BuildFailed { errors } ->
+      write_command_error
+        ~mode
+        "BuildFailed"
+        [
+          ("errors", Data.Json.Array (List.map errors ~fn:Riot_build.Build_result.failure_to_json));
+        ]
+        (Riot_build.error_message err)
   | Riot_build.PlanningFailed planning_error ->
       if mode = Json then
         write_json_event
-          (command_error_event_to_json
-            "PlanningFailed"
-            [ ("error", Riot_planner.Workspace_planner.(
-                match planning_error with
-                | PackageNotFound { name; available } -> Data.Json.obj [
-                  ("type", Data.Json.string "package_not_found");
-                  ("name", Data.Json.string (Riot_model.Package_name.to_string name));
-                  ("available", Data.Json.array (List.map available ~fn:(fun pkg ->
-                    Data.Json.string (Riot_model.Package_name.to_string pkg))));
-                ]
-                | PackagesNotFound { names; available } -> Data.Json.obj [
-                  ("type", Data.Json.string "packages_not_found");
-                  ("names", Data.Json.array (List.map names ~fn:(fun pkg ->
-                    Data.Json.string (Riot_model.Package_name.to_string pkg))));
-                  ("available", Data.Json.array (List.map available ~fn:(fun pkg ->
-                    Data.Json.string (Riot_model.Package_name.to_string pkg))));
-                ]
-                | CycleDetected { cycle } -> Data.Json.obj [
-                  ("type", Data.Json.string "cycle_detected");
-                  ("cycle", Data.Json.array (List.map cycle ~fn:Data.Json.string));
-                ]
-                | MissingDependencies { missing } -> Data.Json.obj [
-                  ("type", Data.Json.string "missing_dependencies");
-                  ("missing", Data.Json.array (List.map missing ~fn:(fun dep ->
-                    Data.Json.obj [
-                      ("package", Data.Json.string dep.package);
-                      ("dependency", Data.Json.string dep.dependency);
-                    ])));
-                ]
-                | PackageLoadFailed { errors } -> Data.Json.obj [
-                  ("type", Data.Json.string "package_load_failed");
-                  ("errors", Data.Json.array (List.map errors ~fn:(fun error ->
-                    Data.Json.string (workspace_load_error_line error))));
-                ]))
-            ])
+          (
+            command_error_event_to_json "PlanningFailed"
+              [ (
+                  "error",
+                  Riot_planner.Workspace_planner.(match planning_error with
+                  | PackageNotFound { name; available } -> Data.Json.obj
+                    [
+                      ("type", Data.Json.string "package_not_found");
+                      ("name", Data.Json.string (Riot_model.Package_name.to_string name));
+                      (
+                        "available",
+                        Data.Json.array
+                          (List.map
+                            available
+                            ~fn:(fun pkg -> Data.Json.string (Riot_model.Package_name.to_string pkg)))
+                      );
+                    ]
+                  | PackagesNotFound { names; available } -> Data.Json.obj
+                    [
+                      ("type", Data.Json.string "packages_not_found");
+                      (
+                        "names",
+                        Data.Json.array
+                          (List.map
+                            names
+                            ~fn:(fun pkg -> Data.Json.string (Riot_model.Package_name.to_string pkg)))
+                      );
+                      (
+                        "available",
+                        Data.Json.array
+                          (List.map
+                            available
+                            ~fn:(fun pkg -> Data.Json.string (Riot_model.Package_name.to_string pkg)))
+                      );
+                    ]
+                  | CycleDetected { cycle } -> Data.Json.obj
+                    [
+                      ("type", Data.Json.string "cycle_detected");
+                      ("cycle", Data.Json.array (List.map cycle ~fn:Data.Json.string));
+                    ]
+                  | MissingDependencies { missing } -> Data.Json.obj
+                    [
+                      ("type", Data.Json.string "missing_dependencies");
+                      (
+                        "missing",
+                        Data.Json.array
+                          (List.map
+                            missing
+                            ~fn:(fun dep ->
+                              Data.Json.obj
+                                [
+                                  ("package", Data.Json.string dep.package);
+                                  ("dependency", Data.Json.string dep.dependency);
+                                ]))
+                      );
+                    ]
+                  | PackageLoadFailed { errors } -> Data.Json.obj
+                    [
+                      ("type", Data.Json.string "package_load_failed");
+                      (
+                        "errors",
+                        Data.Json.array
+                          (List.map
+                            errors
+                            ~fn:(fun error -> Data.Json.string (workspace_load_error_line error)))
+                      );
+                    ])
+                ) ]
+          )
       else (
         out "\027[1;31mError\027[0m: planning failed";
         workspace_planning_error_lines planning_error
         |> List.for_each ~fn:(fun line -> out ("  " ^ line))
       )
-  | Riot_build.CycleDetected { cycle_nodes } -> write_command_error
-    ~mode
-    "CycleDetected"
-    [ ("cycle_nodes", Data.Json.Array (List.map cycle_nodes ~fn:Data.Json.string)) ]
-    (Riot_build.error_message err)
-  | Riot_build.BuildAlreadyRunning { lock_path } -> write_command_error
-    ~mode
-    "BuildAlreadyRunning"
-    [ ("lock_path", Data.Json.String (Path.to_string lock_path)) ]
-    (Riot_build.error_message err)
-  | Riot_build.InvalidRequestedParallelism value -> write_command_error
-    ~mode
-    "InvalidRequestedParallelism"
-    [ ("value", Data.Json.Int value) ]
-    (Riot_build.error_message err)
-  | Riot_build.UnexpectedError { reason } -> write_command_error
-    ~mode
-    "UnexpectedError"
-    [ ("reason", Data.Json.String reason) ]
-    reason
+  | Riot_build.CycleDetected { cycle_nodes } ->
+      write_command_error
+        ~mode
+        "CycleDetected"
+        [ ("cycle_nodes", Data.Json.Array (List.map cycle_nodes ~fn:Data.Json.string)) ]
+        (Riot_build.error_message err)
+  | Riot_build.BuildAlreadyRunning { lock_path } ->
+      write_command_error
+        ~mode
+        "BuildAlreadyRunning"
+        [ ("lock_path", Data.Json.String (Path.to_string lock_path)) ]
+        (Riot_build.error_message err)
+  | Riot_build.InvalidRequestedParallelism value ->
+      write_command_error
+        ~mode
+        "InvalidRequestedParallelism"
+        [ ("value", Data.Json.Int value) ]
+        (Riot_build.error_message err)
+  | Riot_build.UnexpectedError { reason } ->
+      write_command_error ~mode "UnexpectedError" [ ("reason", Data.Json.String reason) ] reason
 
 let record_output_progress = fun progress output ->
   Riot_build.Build_result.packages output |> List.for_each

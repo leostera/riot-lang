@@ -15,10 +15,7 @@ let make_package = fun ?(workspace_member = true) ?version name ->
     else
       Path.v ("../registry/" ^ name)
   in
-  Riot_model.Package.make
-    ~name:(package_name name)
-    ~path:(Path.v ("/tmp/" ^ name))
-    ~relative_path
+  Riot_model.Package.make ~name:(package_name name) ~path:(Path.v ("/tmp/" ^ name)) ~relative_path
     ?publish:(
       match version with
       | None -> None
@@ -26,8 +23,9 @@ let make_package = fun ?(workspace_member = true) ?version name ->
         version = Some version;
         description = None;
         license = None;
-        is_public = Some true;
-      })
+        is_public = Some true
+      }
+    )
     ()
 
 let parse_build = fun args ->
@@ -179,15 +177,16 @@ let test_display_package_name_shows_external_package_version = fun _ctx ->
   Ok ()
 
 let test_planning_error_lines_describe_internal_module_violation = fun _ctx ->
-  let lines =
-    Riot_cli.Build.planning_error_lines
-      (Riot_planner.Planning_error.TargetDependsOnInternalLibraryModule {
+  let lines = Riot_cli.Build.planning_error_lines
+    (
+      Riot_planner.Planning_error.TargetDependsOnInternalLibraryModule {
         target_name = "main";
         source = Path.v "src/main.ml";
         requested_module = "A";
         internal_module = "Demo__A";
         public_module = "Demo";
-      })
+      }
+    )
   in
   Test.assert_equal
     ~expected:[
@@ -203,15 +202,13 @@ let test_planning_error_lines_describe_internal_module_violation = fun _ctx ->
   Ok ()
 
 let test_workspace_planning_error_lines_describe_missing_dependencies = fun _ctx ->
-  let lines =
-    Riot_cli.Build.workspace_planning_error_lines
-      (Riot_planner.Workspace_planner.MissingDependencies {
-        missing = [
-          { package = "demo"; dependency = "std" };
-          { package = "demo"; dependency = "tty" };
-        ]
-      })
-  in
+  let lines = Riot_cli.Build.workspace_planning_error_lines
+    (Riot_planner.Workspace_planner.MissingDependencies {
+      missing = [
+        { package = "demo"; dependency = "std" };
+        { package = "demo"; dependency = "tty" };
+      ]
+    }) in
   Test.assert_equal
     ~expected:[
       "planner error: missing dependencies";
@@ -928,10 +925,8 @@ let tests =
   Test.[
     case "build: workspace package labels stay bare" test_display_package_name_keeps_workspace_package_bare;
     case "build: external package labels show version" test_display_package_name_shows_external_package_version;
-    case "build: planning error lines explain internal module violations"
-      test_planning_error_lines_describe_internal_module_violation;
-    case "build: workspace planning error lines explain missing dependencies"
-      test_workspace_planning_error_lines_describe_missing_dependencies;
+    case "build: planning error lines explain internal module violations" test_planning_error_lines_describe_internal_module_violation;
+    case "build: workspace planning error lines explain missing dependencies" test_workspace_planning_error_lines_describe_missing_dependencies;
     case "build: accept multiple package arguments" test_build_accepts_multiple_packages;
     case "build: usage shows repeated package flag" test_build_usage_shows_repeated_package_flag;
     case "build: reject positional package args" test_build_rejects_positional_package_args;

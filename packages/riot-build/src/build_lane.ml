@@ -105,7 +105,12 @@ let workspace_plan_error_to_string = function
         | Riot_model.Workspace_manager.PackageTomlParseFailed { package; path } ->
             "failed to parse package toml: " ^ package ^ " (" ^ path ^ ")"
         | Riot_model.Workspace_manager.PackageFromTomlFailed { package; path; error } ->
-            "failed to parse package toml for " ^ package ^ " (" ^ path ^ "): " ^ error
+            "failed to parse package toml for "
+            ^ package
+            ^ " ("
+            ^ path
+            ^ "): "
+            ^ Riot_model.Package_manifest.error_message error
       in
       "package load failed: " ^ String.concat "; " (List.map errors ~fn:format_load_error)
 
