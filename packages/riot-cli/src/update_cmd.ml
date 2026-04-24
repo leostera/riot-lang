@@ -15,7 +15,7 @@ let command =
     |> args [ flag "json" |> long "json" |> help "Render events as JSON"; ]
 
 let message = function
-  | UpdateFailed error -> Riot_deps.package_error_message error
+  | UpdateFailed error -> Package_error.message error
 
 let fail = fun err ->
   out ("\027[1;31mError\027[0m: " ^ message err);

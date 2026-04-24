@@ -35,7 +35,7 @@ let message = function
   | ConflictingScope -> "cannot combine --build with --dev"
   | InvalidPackageName error -> error
   | CurrentDirUnavailable error -> "failed to determine current directory: " ^ error
-  | RemoveFailed error -> Riot_deps.package_error_message error
+  | RemoveFailed error -> Package_error.message error
 
 let path_error_message = function
   | Path.InvalidUtf8 { path } -> "invalid UTF-8 path: " ^ path

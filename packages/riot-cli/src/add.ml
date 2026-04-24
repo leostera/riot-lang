@@ -37,7 +37,7 @@ let message = function
   | CurrentDirUnavailable error -> "failed to determine current directory: " ^ error
   | WorkspaceBootstrapFailed error -> "failed to initialize riot workspace: " ^ error
   | WorkspaceLoadFailed error -> "failed to load initialized riot workspace: " ^ error
-  | AddFailed error -> Riot_deps.package_error_message error
+  | AddFailed error -> Package_error.message error
 
 let path_error_message = function
   | Path.InvalidUtf8 { path } -> "invalid UTF-8 path: " ^ path
@@ -94,18 +94,18 @@ let bootstrap_empty_workspace = fun ~root ->
     ~workspace_manager
     ~workspace_root:root
     ~manifest_paths:[ manifest_path ]
-  |> Result.map_err ~fn:(fun err -> WorkspaceBootstrapFailed err) in
+  |> Result.map_err
+    ~fn:(fun err -> WorkspaceBootstrapFailed (Riot_deps.Lock_refresh.error_message err)) in
   let lockfile = Riot_model.Lockfile.{ format_version = 1; dependency_hash; packages = [] } in
   Riot_deps.Lockfile_store.write ~workspace_root:root lockfile
-  |> Result.map_err ~fn:(fun err -> WorkspaceBootstrapFailed err)
+  |> Result.map_err
+    ~fn:(fun err -> WorkspaceBootstrapFailed (Riot_deps.Lockfile_store.error_message err))
 
 let load_workspace = fun ~root ->
   let workspace_manager = Riot_model.Workspace_manager.create () in
   let* (workspace, load_errors) = Riot_model.Workspace_manager.scan workspace_manager root
   |> Result.map_err
-    ~fn:(fun err ->
-      WorkspaceLoadFailed (Riot_model.Workspace_manager.scan_error_message err))
-  in
+    ~fn:(fun err -> WorkspaceLoadFailed (Riot_model.Workspace_manager.scan_error_message err)) in
   if List.is_empty load_errors then
     Ok workspace
   else

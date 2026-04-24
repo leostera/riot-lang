@@ -19,7 +19,7 @@ let command =
 let message = function
   | MissingQuery -> "missing search query"
   | InvalidLimit value -> "invalid --limit value '" ^ value ^ "'"
-  | SearchFailed error -> Riot_deps.package_error_message error
+  | SearchFailed error -> Package_error.message error
 
 let fail = fun err ->
   eprintln ("\027[1;31mError\027[0m: " ^ message err);

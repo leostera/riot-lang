@@ -93,7 +93,9 @@ let test_add_bootstraps_empty_workspace_outside_workspace = fun _ctx ->
       |> Result.map_err ~fn:Riot_cli.Add.message in
       let* manifest_source = Result.map_err (Fs.read manifest_path) ~fn:IO.error_message in
       let* lockfile = Riot_deps.Lockfile_store.read ~workspace_root
-      |> Result.map_err ~fn:(fun err -> "expected lockfile read to succeed: " ^ err) in
+      |> Result.map_err
+        ~fn:(fun err ->
+          "expected lockfile read to succeed: " ^ Riot_deps.Lockfile_store.error_message err) in
       let* matches = parse_add [ "add"; "hello" ] in
       let* selection = Riot_cli.Add.selection_of_matches ~default_selection:Riot_deps.Workspace matches
       |> Result.map_err ~fn:Riot_cli.Add.message in
@@ -101,9 +103,7 @@ let test_add_bootstraps_empty_workspace_outside_workspace = fun _ctx ->
       let* (_workspace, load_errors) = Riot_model.Workspace_manager.scan workspace_manager workspace_root
       |> Result.map_err
         ~fn:(fun err ->
-          "expected workspace scan to succeed: "
-          ^ Riot_model.Workspace_manager.scan_error_message err)
-      in
+          "expected workspace scan to succeed: " ^ Riot_model.Workspace_manager.scan_error_message err) in
       if not (String.contains manifest_source "[workspace]") then
         Error "expected bootstrap manifest to include [workspace]"
       else if not (String.contains manifest_source "members = []") then
