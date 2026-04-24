@@ -2048,6 +2048,46 @@ version = "0.0.1"
             Error "unexpected dependency-not-found payload for inherited dependency removal"
       | Error err -> Error ("unexpected remove error: " ^ Riot_deps.package_error_message err))
 
+let test_remove_reports_typed_manifest_update_errors = fun _ctx ->
+  with_tempdir "riot_deps_remove_bad_manifest"
+    (fun workspace_root ->
+      let app_root = Path.(workspace_root / Path.v "packages/app") in
+      let app_manifest = Path.(app_root / Path.v "riot.toml") in
+      write_file app_manifest
+        {|
+dependencies = "not-a-table"
+
+[package]
+name = "app"
+version = "0.0.1"
+|};
+      let workspace = make_workspace_manifest
+        ~workspace_root
+        [
+          make_package
+            ~name:"app"
+            ~path:app_root
+            ~dependencies:[ dependency "std" (source ~version:Std.Version.any ()) ]
+            ()
+        ] in
+      let workspace_manager = Riot_model.Workspace_manager.create () in
+      match Riot_deps.remove
+        ~workspace_manager
+        ~workspace
+        ~cwd:app_root
+        ~request:Riot_deps.{ selection = Current; scope = Runtime; dependency = package_name "std" }
+        () with
+      | Ok () -> Error "expected remove to report typed manifest update error"
+      | Error (Riot_deps.ManifestUpdateFailed (Riot_deps.Manifest_edit.DependencySectionMustBeTable {
+        path;
+        section
+      })) ->
+          if Path.equal path app_manifest && String.equal section "dependencies" then
+            Ok ()
+          else
+            Error "unexpected manifest update payload for non-table dependency section"
+      | Error err -> Error ("unexpected remove error: " ^ Riot_deps.package_error_message err))
+
 let test_add_path_dependency_discovers_package_name_and_refreshes_lock = fun _ctx ->
   with_tempdir "riot_deps_add_path"
     (fun workspace_root ->
@@ -3625,6 +3665,7 @@ let tests =
     case "package management: add not-found message lists search suggestions" test_package_error_message_lists_search_suggestions;
     case "package management: search returns registry results" test_search_returns_registry_results;
     case "package management: remove rejects dependencies only inherited from workspace root" test_remove_reports_missing_package_dependency_when_only_inherited_from_workspace;
+    case "package management: remove reports typed manifest update errors" test_remove_reports_typed_manifest_update_errors;
     case "ensure lock: refreshes missing lock and resolves workspace graph" test_ensure_lock_refreshes_missing_lock_and_resolves_workspace;
     case "ensure lock: uses existing fresh lock" test_ensure_lock_uses_existing_fresh_lock;
     case "ensure lock: materializes registry packages during projection" test_ensure_lock_materializes_registry_packages_during_projection;

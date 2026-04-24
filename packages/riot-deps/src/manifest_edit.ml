@@ -13,6 +13,14 @@ let section_name = function
 type error =
   | ReadFailed of { path: Path.t; error: IO.error }
   | WriteFailed of { path: Path.t; error: IO.error }
+  | TomlParseFailed of { path: Path.t; error: Std.Data.Toml.error }
+  | InvalidDependencyName of {
+      path: Path.t;
+      dependency: string;
+      error: Riot_model.Package_name.error
+    }
+  | DependencySectionMustBeTable of { path: Path.t; section: string }
+  | ManifestMustBeTable of { path: Path.t }
 
 let error_message = function
   | ReadFailed { path; error } -> "failed to read manifest '"
@@ -23,6 +31,21 @@ let error_message = function
   ^ Path.to_string path
   ^ "': "
   ^ IO.error_message error
+  | TomlParseFailed { path; error } -> "failed to parse manifest '"
+  ^ Path.to_string path
+  ^ "': "
+  ^ Std.Data.Toml.error_to_string error
+  | InvalidDependencyName { path; dependency; error } ->
+      "manifest '"
+      ^ Path.to_string path
+      ^ "' has invalid dependency name '"
+      ^ dependency
+      ^ "': "
+      ^ Riot_model.Package_name.error_message error
+  | DependencySectionMustBeTable { path; section } ->
+      "manifest '" ^ Path.to_string path ^ "' section [" ^ section ^ "] must be a table"
+  | ManifestMustBeTable { path } ->
+      "manifest '" ^ Path.to_string path ^ "' root must be a TOML table"
 
 let quoted = fun value -> Std.Data.Toml.to_string (Std.Data.Toml.String value)
 

@@ -20,6 +20,8 @@ module Git_provenance = Git_provenance
 
 module Publisher = Publisher
 
+module Manifest_edit = Manifest_edit
+
 module Package_management = Package_management
 
 type dependency_scope = Package_management.dependency_scope =
@@ -98,7 +100,7 @@ type package_error = Package_management.error =
     }
   | RegistryReleaseYanked of { package: string; version: string; registry: string }
   | RegistryVersionNotFound of { package: string; requirement: string; registry: string }
-  | ManifestUpdateFailed of { path: Path.t; error: string }
+  | ManifestUpdateFailed of Manifest_edit.error
   | DependencyNotFoundInSection of { path: Path.t; section: string; dependency: string }
   | WorkspaceReloadFailed of { workspace_root: Path.t; error: string }
   | WorkspaceReloadHadErrors of { workspace_root: Path.t; errors: string list }

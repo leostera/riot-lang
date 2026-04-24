@@ -93,7 +93,7 @@ type error =
     }
   | RegistryReleaseYanked of { package: string; version: string; registry: string }
   | RegistryVersionNotFound of { package: string; requirement: string; registry: string }
-  | ManifestUpdateFailed of { path: Path.t; error: string }
+  | ManifestUpdateFailed of Manifest_edit.error
   | DependencyNotFoundInSection of { path: Path.t; section: string; dependency: string }
   | WorkspaceReloadFailed of { workspace_root: Path.t; error: string }
   | WorkspaceReloadHadErrors of { workspace_root: Path.t; errors: string list }
@@ -232,8 +232,8 @@ let error_message = function
       ^ "' in registry '"
       ^ registry
       ^ "'"
-  | ManifestUpdateFailed { path; error } ->
-      "failed to update manifest '" ^ Path.to_string path ^ "': " ^ error
+  | ManifestUpdateFailed error ->
+      Manifest_edit.error_message error
   | DependencyNotFoundInSection { path; section; dependency } ->
       "dependency '"
       ^ dependency
@@ -530,17 +530,11 @@ let dependency_names_for_section = fun ~manifest_path ~section ->
   let* source = Fs.read_to_string manifest_path
   |> Result.map_err
     ~fn:(fun err ->
-      ManifestUpdateFailed {
-        path = manifest_path;
-        error = "failed to read manifest: " ^ IO.error_message err
-      }) in
+      ManifestUpdateFailed (Manifest_edit.ReadFailed { path = manifest_path; error = err })) in
   let* toml = Data.Toml.parse source
   |> Result.map_err
     ~fn:(fun err ->
-      ManifestUpdateFailed {
-        path = manifest_path;
-        error = "failed to parse manifest TOML: " ^ Data.Toml.error_to_string err
-      }) in
+      ManifestUpdateFailed (Manifest_edit.TomlParseFailed { path = manifest_path; error = err })) in
   match toml with
   | Data.Toml.Table fields -> (
       match
@@ -557,26 +551,21 @@ let dependency_names_for_section = fun ~manifest_path ~section ->
                 let* name = Riot_model.Package_name.from_string name
                 |> Result.map_err
                   ~fn:(fun error ->
-                    ManifestUpdateFailed {
+                    ManifestUpdateFailed (Manifest_edit.InvalidDependencyName {
                       path = manifest_path;
-                      error = "invalid dependency name '"
-                      ^ name
-                      ^ "': "
-                      ^ Riot_model.Package_name.error_message error
-                    }) in
+                      dependency = name;
+                      error
+                    })) in
                 loop (name :: acc) rest
           in
           loop [] dep_items
       | Some _ ->
-          Error (ManifestUpdateFailed {
+          Error (ManifestUpdateFailed (Manifest_edit.DependencySectionMustBeTable {
             path = manifest_path;
-            error = "[" ^ section_name ^ "] must be a table"
-          })
+            section = section_name
+          }))
     )
-  | _ -> Error (ManifestUpdateFailed {
-    path = manifest_path;
-    error = "manifest root must be a TOML table"
-  })
+  | _ -> Error (ManifestUpdateFailed (Manifest_edit.ManifestMustBeTable { path = manifest_path }))
 
 let filter_dependencies_by_names = fun names dependencies ->
   List.filter
@@ -1125,8 +1114,7 @@ let update_manifest = fun ~(emit:event_sink) ~(target:target_manifest) ~scope ~d
     ~section:(scope_to_section scope)
     ~dependencies
   |> Result.map_err
-    ~fn:(fun error ->
-      ManifestUpdateFailed { path = target.path; error = Manifest_edit.error_message error })
+    ~fn:(fun error -> ManifestUpdateFailed error)
   |> Result.map
     ~fn:(fun () ->
       emit
