@@ -386,6 +386,7 @@ let list_tests_cmd =
       flag "large" |> long "large" |> help "List only tests marked large";
       flag "flaky" |> long "flaky" |> help "List only tests marked flaky";
       option "pattern" |> long "pattern" |> help "Deprecated alias for the positional query argument";
+      option "ctx" |> long "ctx" |> help "Structured runner context JSON";
     ]
 
 let get_suite_info name args: Reporter.suite_info =

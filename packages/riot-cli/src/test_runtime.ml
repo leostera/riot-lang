@@ -1020,21 +1020,13 @@ let run_suite = fun ~on_event ~workspace_root ~suite ?source_file ~built_binarie
           }
     )
 
-let list_suite_binary_capture = fun ~workspace_root ~(suite:suite_binary) ~extra_args binary_path ->
+let list_suite_binary_capture = fun ~(suite:suite_binary) ~extra_args binary_path ->
   let extra_args = remove_list_args extra_args @ [ "--json" ] in
-  let ctx_json = suite_ctx_json_value
-    ~workspace_root
-    ~package_name:suite.package_name
-    ~binary_path
-    ~built_binaries:[]
-    () in
-  let cmd = Command.make
-    (Path.to_string binary_path)
-    ~args:("list-tests" :: extra_args @ [ ctx_json_arg; ctx_json ]) in
+  let cmd = Command.make (Path.to_string binary_path) ~args:("list-tests" :: extra_args) in
   Command.output cmd
 
 let list_suite = fun ~(workspace:Workspace.t) ~suite ~extra_args binary_path ->
-  match list_suite_binary_capture ~workspace_root:workspace.root ~suite ~extra_args binary_path with
+  match list_suite_binary_capture ~suite ~extra_args binary_path with
   | Error (Command.SystemError reason) -> Error (SuiteExecutionError { suite; reason })
   | Ok output -> (
       match parse_listed_tests_output output.stdout with

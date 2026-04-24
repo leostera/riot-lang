@@ -58,6 +58,28 @@ let assert_contains = fun path needle ->
   else
     Error ("expected " ^ Path.to_string path ^ " to contain `" ^ needle ^ "`")
 
+let assert_not_contains = fun path needle ->
+  let* content = Fs.read_to_string path |> Result.map_err ~fn:IO.error_message in
+  if String.contains content needle then
+    Error ("expected " ^ Path.to_string path ^ " not to contain `" ^ needle ^ "`")
+  else
+    Ok ()
+
+let assert_executable = fun path ->
+  let* metadata = Fs.metadata path |> Result.map_err ~fn:IO.error_message in
+  let permissions = Fs.Metadata.permissions metadata in
+  if Fs.Permissions.user_execute permissions then
+    Ok ()
+  else
+    Error ("expected path to be executable: " ^ Path.to_string path)
+
+let assert_output_contains = fun ~cmd (output: command_output) needle ->
+  let text = output.stdout ^ output.stderr in
+  if String.contains text needle then
+    Ok ()
+  else
+    Error (cmd ^ " output did not contain `" ^ needle ^ "`: " ^ render_output output)
+
 let with_tempdir_result = fun ?prefix fn ->
   match Fs.with_tempdir ?prefix fn with
   | Ok result -> result

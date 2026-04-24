@@ -228,6 +228,35 @@ let test_list_tests_respects_filters = fun _ctx ->
     else
       Error ("unexpected filtered list test names: " ^ String.concat ", " names)
 
+let test_list_tests_accepts_ctx_flag = fun _ctx ->
+  let ctx_json = "{\"workspace_root\":\"/tmp/demo-workspace\",\
+     \"package_name\":\"demo\",\
+     \"binary_path\":\"/tmp/sample-suite\",\
+     \"source_file\":\"/tmp/sample-suite.ml\",\
+     \"built_binaries\":[{\"name\":\"demo\",\"path\":\"/tmp/demo-bin\"}]}"
+  in
+  let output = run_sample_capture [ "list-tests"; "ctx_probe"; "--json"; "--ctx"; ctx_json ] in
+  if not (Int.equal output.status 0) then
+    Error ("expected list-tests --ctx to succeed, got "
+    ^ Int.to_string output.status
+    ^ ": "
+    ^ output.stdout)
+  else
+    let names =
+      listed_test_fields_from_json output.stdout
+      |> List.filter_map ~fn:(assoc_value "name")
+      |> List.filter_map
+        ~fn:(
+          function
+          | Data.Json.String name -> Some name
+          | _ -> None
+        )
+    in
+    if names = [ "ctx_probe" ] then
+      Ok ()
+    else
+      Error ("unexpected list-tests --ctx names: " ^ String.concat ", " names)
+
 let test_run_tests_pattern_matches_suffix_substring = fun _ctx ->
   let output = run_sample_capture [ "run-tests"; "_large"; "--format"; "json" ] in
   if not (Int.equal output.status 0) then
@@ -564,6 +593,7 @@ let meta_tests = [
   Test.case ~size:Large "list-tests lists all sample cases" test_list_tests_lists_all_cases;
   Test.case ~size:Large "list-tests --json includes metadata" test_list_tests_json_includes_metadata;
   Test.case ~size:Large "list-tests respects filters" test_list_tests_respects_filters;
+  Test.case ~size:Large "list-tests accepts --ctx" test_list_tests_accepts_ctx_flag;
   Test.case ~size:Large "run-tests pattern matches suffix substring" test_run_tests_pattern_matches_suffix_substring;
   Test.case ~size:Large "run-tests pattern matches middle substring" test_run_tests_pattern_matches_middle_substring;
   Test.case ~size:Large "run-tests succeeds when the query matches no tests" test_run_tests_returns_success_with_zero_matches;
