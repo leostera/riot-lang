@@ -99,7 +99,10 @@ let ensure_lock = fun ?(emit = no_emit) ~workspace_manager ~mode ~registry ~(wor
           });
         Ok ()
     | Error err ->
-        let err = Error.LockfileWriteFailed { path = lock_path; error = err } in
+        let err = Error.LockfileWriteFailed {
+          path = lock_path;
+          error = Lockfile_store.error_message err
+        } in
         emit (Riot_model.Event.LockfileWriteFailed { path = lock_path_str; error = err });
         Error err
   in
@@ -113,7 +116,10 @@ let ensure_lock = fun ?(emit = no_emit) ~workspace_manager ~mode ~registry ~(wor
     () in
   match Lockfile_store.read ~workspace_root with
   | Error err ->
-      let err = Error.LockfileReadFailed { path = lock_path; error = err } in
+      let err = Error.LockfileReadFailed {
+        path = lock_path;
+        error = Lockfile_store.error_message err
+      } in
       emit (Riot_model.Event.LockfileReadFailed { path = lock_path_str; error = err });
       Error err
   | Ok existing_lock ->

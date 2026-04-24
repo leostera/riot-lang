@@ -1896,10 +1896,12 @@ let test_lockfile_store_roundtrips = fun _ctx ->
         }
       in
       match Riot_deps.Lockfile_store.write ~workspace_root lockfile with
-      | Error err -> Error ("expected lockfile write to succeed: " ^ err)
+      | Error err -> Error ("expected lockfile write to succeed: "
+      ^ Riot_deps.Lockfile_store.error_message err)
       | Ok () -> (
           match Riot_deps.Lockfile_store.read ~workspace_root with
-          | Error err -> Error ("expected lockfile read to succeed: " ^ err)
+          | Error err -> Error ("expected lockfile read to succeed: "
+          ^ Riot_deps.Lockfile_store.error_message err)
           | Ok None -> Error "expected written lockfile to exist"
           | Ok (Some reloaded) ->
               if
@@ -1920,7 +1922,7 @@ let test_lockfile_store_returns_none_when_missing = fun _ctx ->
       match Riot_deps.Lockfile_store.read ~workspace_root with
       | Ok None -> Ok ()
       | Ok (Some _) -> Error "expected missing lockfile to return none"
-      | Error err -> Error err)
+      | Error err -> Error (Riot_deps.Lockfile_store.error_message err))
 
 let test_lockfile_store_bubbles_parse_errors = fun _ctx ->
   with_tempdir "riot_deps_invalid_lockfile"
@@ -1929,13 +1931,17 @@ let test_lockfile_store_bubbles_parse_errors = fun _ctx ->
       Fs.write "not = [valid\n" lock_path |> Result.expect ~msg:"expected invalid lockfile write to succeed";
       match Riot_deps.Lockfile_store.read ~workspace_root with
       | Ok _ -> Error "expected invalid lockfile to fail"
-      | Error err ->
-          if
-            String.contains err "failed to parse lockfile TOML" || String.contains err "failed to decode lockfile"
-          then
+      | Error (Riot_deps.Lockfile_store.TomlParseFailed { path; _ }) ->
+          if Path.equal path lock_path then
             Ok ()
           else
-            Error ("unexpected error: " ^ err))
+            Error "expected TOML parse error to preserve lockfile path"
+      | Error (Riot_deps.Lockfile_store.DecodeFailed { path; _ }) ->
+          if Path.equal path lock_path then
+            Ok ()
+          else
+            Error "expected lockfile decode error to preserve lockfile path"
+      | Error err -> Error ("unexpected error: " ^ Riot_deps.Lockfile_store.error_message err))
 
 let test_remove_reports_missing_package_dependency_when_only_inherited_from_workspace = fun _ctx ->
   with_tempdir "riot_deps_remove_inherited"
@@ -2026,7 +2032,10 @@ version = "0.0.1"
                 |> Result.and_then
                   ~fn:(fun manifest_source ->
                     Riot_deps.Lockfile_store.read ~workspace_root
-                    |> Result.map_err ~fn:(fun err -> "expected lockfile read to succeed: " ^ err)
+                    |> Result.map_err
+                      ~fn:(fun err ->
+                        "expected lockfile read to succeed: "
+                        ^ Riot_deps.Lockfile_store.error_message err)
                     |> Result.and_then
                       ~fn:(fun maybe_lockfile ->
                         match maybe_lockfile with
