@@ -49,6 +49,16 @@ val write: writer:IO.Writer.t -> Syn.Parser2.parse_result -> (unit, [
     | `Write of IO.error
   ]) result
 
+module Doc: module type of Doc
+
+module Solver: module type of Solver
+
+module Printer: module type of Printer
+
+module Lower: module type of Lower
+
+module Lower2: module type of Lower2
+
 module Runner: module type of Runner
 
 module Report: module type of Report

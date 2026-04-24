@@ -714,17 +714,23 @@ let tests = [
   Test.case
     "lower2 formats simple value declarations"
     (fun _ctx -> assert_format2_mli ~expected:"val id: 'a -> 'a\n" "val id : 'a -> 'a\n");
-  Test.case "lower2 keeps long value declarations inline after colon breaks"
+  Test.case "lower2 fully breaks long value declarations after the colon"
     (fun _ctx ->
       assert_format2_mli
         ~expected:"val resolve_module_path:\n\
-          \  lookup -> current_path:string list -> target_path:string list -> interface_source option\n"
+          \  lookup ->\n\
+          \  current_path:string list ->\n\
+          \  target_path:string list ->\n\
+          \  interface_source option\n"
         "val resolve_module_path: lookup -> current_path:string list -> target_path:string list -> interface_source option\n");
-  Test.case "lower2 breaks medium value declarations after the colon"
+  Test.case "lower2 fully breaks medium value declarations after the colon"
     (fun _ctx ->
       assert_format2_mli
         ~expected:"val materialize_package_exports:\n\
-          \  t -> exports:export_entry list -> target_dir:Std.Path.t -> (unit, error) result\n"
+          \  t ->\n\
+          \  exports:export_entry list ->\n\
+          \  target_dir:Std.Path.t ->\n\
+          \  (unit, error) result\n"
         "val materialize_package_exports: t -> exports:export_entry list -> target_dir:Std.Path.t -> (unit, error) result\n");
   Test.case
     "lower2 keeps fitting labeled value declarations inline"
@@ -732,17 +738,32 @@ let tests = [
       assert_format2_mli
         ~expected:"val request: t -> Net.Http.Request.t -> ?body:string -> unit -> (unit, Error.t) result\n"
         "val request: t -> Net.Http.Request.t -> ?body:string -> unit -> (unit, Error.t) result\n");
-  Test.case "lower2 keeps wider labeled value declarations grouped after the colon"
+  Test.case "lower2 fully breaks wider labeled value declarations after the colon"
     (fun _ctx ->
       assert_format2_mli
         ~expected:"val parse:\n\
-          \  ?max_request_line:int -> ?max_headers:int -> ?max_header_length:int -> string -> Std.Net.Http.Request.t parse_result\n"
-        "val parse:\n\
           \  ?max_request_line:int ->\n\
           \  ?max_headers:int ->\n\
           \  ?max_header_length:int ->\n\
           \  string ->\n\
-          \  Std.Net.Http.Request.t parse_result\n");
+          \  Std.Net.Http.Request.t parse_result\n"
+        "val parse: ?max_request_line:int -> ?max_headers:int -> ?max_header_length:int -> string -> Std.Net.Http.Request.t parse_result\n");
+  Test.case "lower2 fully breaks named parameter declarations after the colon"
+    (fun _ctx ->
+      assert_format2_mli
+        ~expected:"val make:\n\
+          \  name:string ->\n\
+          \  value:string ->\n\
+          \  ?max_age:int ->\n\
+          \  ?expires:string ->\n\
+          \  ?path:string ->\n\
+          \  ?domain:string ->\n\
+          \  ?secure:bool ->\n\
+          \  ?http_only:bool ->\n\
+          \  ?same_site:same_site ->\n\
+          \  unit ->\n\
+          \  t\n"
+        "val make: name:string -> value:string -> ?max_age:int -> ?expires:string -> ?path:string -> ?domain:string -> ?secure:bool -> ?http_only:bool -> ?same_site:same_site -> unit -> t\n");
   Test.case "lower2 keeps adjacent type and module declarations compact"
     (fun _ctx ->
       assert_format2_mli

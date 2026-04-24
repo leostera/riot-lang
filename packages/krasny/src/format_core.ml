@@ -40,11 +40,8 @@ let format_error_to_string = function
   | Cannot_lower err ->
       err
 
-let finalize_rendered_output = fun rendered ->
-  if String.length rendered = 0 || String.ends_with ~suffix:"\n" rendered then
-    rendered
-  else
-    rendered ^ "\n"
+let output_size_hint = fun (result: Syn.Parser2.parse_result) ->
+  IO.IoVec.IoSlice.length result.source + 1
 
 let source_slice = fun source ->
   match IO.IoVec.IoSlice.from_string source with
@@ -64,9 +61,11 @@ let format = fun (result: Syn.Parser2.parse_result) ->
     | Error err -> Error (Cannot_lower (Lower2.error_to_string err))
     | Ok rendered ->
         yield ();
-        let rendered = Solver.solve ~width:100 rendered |> Printer.to_string in
+        let size_hint = output_size_hint result in
+        let solved = Solver.solve ~width:100 rendered in
+        let rendered = Printer.to_string ~size_hint ~final_newline:true solved in
         yield ();
-        Ok (finalize_rendered_output rendered)
+        Ok rendered
 
 let format_source = fun ~filename source -> parse_source ~filename source |> format
 

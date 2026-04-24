@@ -27,6 +27,7 @@ type node = {
   raw_lo: int;
   raw_hi: int;
   full_width: int;
+  token_width: int;
 }
 
 type t = {
@@ -47,6 +48,7 @@ type frame = {
   mutable has_range: bool;
   mutable frame_raw_lo: int;
   mutable frame_raw_hi: int;
+  mutable frame_token_width: int;
 }
 
 let raw_at = fun raw_tokens raw_index -> Vector.get_unchecked raw_tokens ~at:raw_index
@@ -83,6 +85,18 @@ let include_child_range = fun ~(nodes:node Vector.t) ~(tokens:token_leaf Vector.
   | Node node_id ->
       let node = Vector.get_unchecked nodes ~at:node_id in
       include_range frame ~lo:node.raw_lo ~hi:node.raw_hi
+  | Missing _ ->
+      ()
+
+let include_child_token_width = fun ~(raw_tokens:Raw_token.t Vector.t) ~(nodes:node Vector.t) ~(tokens:token_leaf Vector.t) frame child ->
+  match child with
+  | Token token_id ->
+      let token = Vector.get_unchecked tokens ~at:token_id in
+      frame.frame_token_width <- Int.(frame.frame_token_width
+      + Raw_token.width (raw_at raw_tokens token.body_raw))
+  | Node node_id ->
+      let node = Vector.get_unchecked nodes ~at:node_id in
+      frame.frame_token_width <- Int.(frame.frame_token_width + node.token_width)
   | Missing _ ->
       ()
 
@@ -146,7 +160,13 @@ module Builder = struct
     if Int.(depth > 0) then
       let frame = Vector.get_unchecked builder.frame_stack ~at:Int.(depth - 1) in
       Vector.push builder.pending_children ~value:child;
-      include_child_range ~nodes:builder.node_store ~tokens:builder.token_leaves frame child
+      include_child_range ~nodes:builder.node_store ~tokens:builder.token_leaves frame child;
+      include_child_token_width
+        ~raw_tokens:builder.raw_tokens
+        ~nodes:builder.node_store
+        ~tokens:builder.token_leaves
+        frame
+        child
 
   let start_node = fun builder ->
     let depth = Vector.length builder.frame_stack in
@@ -158,6 +178,7 @@ module Builder = struct
         has_range = false;
         frame_raw_lo = 0;
         frame_raw_hi = 0;
+        frame_token_width = 0;
       };
     { depth }
 
@@ -206,6 +227,7 @@ module Builder = struct
         raw_lo;
         raw_hi;
         full_width;
+        token_width = frame.frame_token_width;
       }
       in
       let node_id = Vector.length builder.node_store in
@@ -306,6 +328,7 @@ module Builder = struct
             raw_lo = 0;
             raw_hi = 0;
             full_width = 0;
+            token_width = 0;
           }
           in
           Vector.push builder.node_store ~value:node;
@@ -338,7 +361,8 @@ let build = fun ~source ~token_stream ~events ->
     if Int.(depth > 0) then
       let frame = Vector.get_unchecked frame_stack ~at:Int.(depth - 1) in
       Vector.push pending_children ~value:child;
-      include_child_range ~nodes ~tokens frame child
+      include_child_range ~nodes ~tokens frame child;
+      include_child_token_width ~raw_tokens ~nodes ~tokens frame child
   in
   let push_node kind = Vector.push frame_stack
     ~value:{
@@ -347,6 +371,7 @@ let build = fun ~source ~token_stream ~events ->
       has_range = false;
       frame_raw_lo = 0;
       frame_raw_hi = 0;
+      frame_token_width = 0;
     }
   in
   let copy_pending_children first_child limit =
@@ -389,6 +414,7 @@ let build = fun ~source ~token_stream ~events ->
           raw_lo;
           raw_hi;
           full_width;
+          token_width = frame.frame_token_width;
         }
         in
         let node_id = Vector.length nodes in
@@ -442,6 +468,7 @@ let build = fun ~source ~token_stream ~events ->
           raw_lo = 0;
           raw_hi = 0;
           full_width = 0;
+          token_width = 0;
         }
         in
         Vector.push nodes ~value:node;
@@ -488,6 +515,37 @@ let raw_range_text = fun tree ~raw_lo ~raw_hi ->
     let start = raw_start tree.raw_tokens raw_lo in
     let end_ = raw_end tree.raw_tokens (raw_hi - 1) in
     Slice.sub_unchecked tree.source ~off:start ~len:(end_ - start) |> Slice.to_string
+
+let token_width = fun tree token -> Raw_token.width (raw_at tree.raw_tokens token.body_raw)
+
+let node_token_width = fun _tree node -> node.token_width
+
+let token_contains_char = fun tree token needle ->
+  Raw_token.contains_char ~source:tree.source (raw_at tree.raw_tokens token.body_raw) needle
+
+let token_text_is = fun tree token expected ->
+  let slice = Raw_token.slice ~source:tree.source (raw_at tree.raw_tokens token.body_raw) in
+  let len = Slice.length slice in
+  if not (Int.equal len (String.length expected)) then
+    false
+  else
+    let rec loop index =
+      if Int.(index >= len) then
+        true
+      else if
+        Char.equal (Slice.get_unchecked slice ~at:index) (String.get_unchecked expected ~at:index)
+      then
+        loop Int.(index + 1)
+      else
+        false
+    in
+    loop 0
+
+let token_has_newline = fun tree token ->
+  Raw_token.has_newline (raw_at tree.raw_tokens token.body_raw)
+
+let token_text_slice = fun tree token ->
+  Raw_token.slice ~source:tree.source (raw_at tree.raw_tokens token.body_raw)
 
 let token_text = fun tree token ->
   Raw_token.text_slice ~source:tree.source (raw_at tree.raw_tokens token.body_raw)

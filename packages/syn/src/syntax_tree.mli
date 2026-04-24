@@ -22,6 +22,7 @@ type node = {
   raw_lo: int;
   raw_hi: int;
   full_width: int;
+  token_width: int;
 }
 type t = {
   source: IO.IoVec.IoSlice.t;
@@ -82,6 +83,18 @@ val child: t -> int -> child
 val child_at: t -> node -> int -> child option
 
 val for_each_child: t -> node -> fn:(child -> unit) -> unit
+
+val token_width: t -> token_leaf -> int
+
+val node_token_width: t -> node -> int
+
+val token_contains_char: t -> token_leaf -> char -> bool
+
+val token_text_is: t -> token_leaf -> string -> bool
+
+val token_has_newline: t -> token_leaf -> bool
+
+val token_text_slice: t -> token_leaf -> IO.IoVec.IoSlice.t
 
 val token_text: t -> token_leaf -> string
 

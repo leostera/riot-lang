@@ -6,6 +6,7 @@ type t = {
   kind: Syntax_kind2.t;
   span: Ceibo.Span.t;
   legacy_kind: Token.token_kind;
+  has_newline: bool;
 }
 
 type stream = {
@@ -34,6 +35,8 @@ let is_significant = fun token -> not (is_trivia token)
 
 let width = fun token -> token.span.Ceibo.Span.end_ - token.span.Ceibo.Span.start
 
+let has_newline = fun token -> token.has_newline
+
 let slice = fun ~source token ->
   let len = width token in
   if len <= 0 then
@@ -55,6 +58,22 @@ let contains_char = fun ~source token needle ->
       loop (index + 1)
   in
   loop 0
+
+let span_contains_char = fun ~source span needle ->
+  let start = span.Ceibo.Span.start in
+  let end_ = span.Ceibo.Span.end_ in
+  let rec loop index =
+    if Int.(index >= end_) then
+      false
+    else if Char.equal (Slice.get_unchecked source ~at:index) needle then
+      true
+    else
+      loop Int.(index + 1)
+  in
+  if Int.(start < 0 || end_ > Slice.length source || end_ <= start) then
+    false
+  else
+    loop start
 
 let keyword_kind = function
   | Keyword.And -> Syntax_kind2.AND_KW
@@ -205,15 +224,33 @@ let raw_of_trivia = fun (trivia: Token.trivia) ->
   {
     kind = kind_of_trivia_kind trivia.kind;
     span = trivia.span;
-    legacy_kind = Token.token_kind_of_trivia_kind trivia.kind
+    legacy_kind = Token.token_kind_of_trivia_kind trivia.kind;
+    has_newline = false
   }
 
 let raw_of_token = fun (token: Token.t) ->
-  { kind = kind_of_token_kind token.kind; span = token.span; legacy_kind = token.kind }
+  {
+    kind = kind_of_token_kind token.kind;
+    span = token.span;
+    legacy_kind = token.kind;
+    has_newline = false
+  }
 
-let of_lexer_tokens = fun tokens ->
+let of_lexer_tokens = fun ~source tokens ->
   let token_count = List.length tokens in
   let stream = create_stream_with_capacity ~raw:(token_count * 2) ~significant:token_count in
+  let raw_of_trivia (trivia: Token.trivia) = {
+    kind = kind_of_trivia_kind trivia.kind;
+    span = trivia.span;
+    legacy_kind = Token.token_kind_of_trivia_kind trivia.kind;
+    has_newline = span_contains_char ~source trivia.span '\n'
+  } in
+  let raw_of_token (token: Token.t) = {
+    kind = kind_of_token_kind token.kind;
+    span = token.span;
+    legacy_kind = token.kind;
+    has_newline = span_contains_char ~source token.span '\n'
+  } in
   List.for_each tokens
     ~fn:(fun token ->
       List.for_each

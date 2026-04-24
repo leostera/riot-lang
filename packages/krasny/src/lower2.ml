@@ -16,7 +16,8 @@ let unsupported = fun message -> raise (Unsupported { message })
 
 let blank_line = Doc.concat [ Doc.line; Doc.line ]
 
-let token_doc = fun token -> Doc.text (Ast.Token.text token)
+let token_doc = fun token ->
+  Doc.slice ~has_newline:(Ast.Token.has_newline token) (Ast.Token.slice token)
 
 let token_full_doc = fun token -> Doc.text (Ast.Token.full_text token)
 
@@ -35,10 +36,24 @@ let node_tokens = fun node ->
   Ast.Node.for_each_token node ~fn:(fun token -> tokens := token :: !tokens);
   List.reverse !tokens
 
-let tokens_doc = fun tokens -> Doc.concat (List.map tokens ~fn:token_doc)
+let tokens_doc = fun tokens -> Doc.fast_concat (List.map tokens ~fn:token_doc)
 
 let tokens_text = fun tokens ->
   String.concat "" (List.map tokens ~fn:Ast.Token.text)
+
+let stateful_spaced_token_doc = fun ~initial_state ~piece ~needs_space ~next_state tokens ->
+  let rec loop state previous acc = function
+    | [] -> Doc.fast_concat (List.reverse acc)
+    | token :: rest ->
+        let current = Ast.Token.kind token in
+        let acc =
+          match previous with
+          | Some previous when needs_space ~state previous current -> piece token :: Doc.space :: acc
+          | _ -> piece token :: acc
+        in
+        loop (next_state state token) (Some current) acc rest
+  in
+  loop initial_state None [] tokens
 
 let first_descendant_token = Ast.Node.first_descendant_token
 
@@ -88,19 +103,19 @@ let parenthesized_token_shell_doc = fun tokens ->
       match split_last rest with
       | Some (inner, closing) when Kind.(Ast.Token.kind closing = RPAREN) -> (
           match inner with
-          | [] -> Doc.concat [ token_doc opening; token_doc closing ]
-          | inner -> Doc.concat
+          | [] -> Doc.fast_concat [ token_doc opening; token_doc closing ]
+          | inner -> Doc.fast_concat
             [
               token_doc opening;
               Doc.space;
-              Doc.concat (List.map inner ~fn:token_doc);
+              Doc.fast_concat (List.map inner ~fn:token_doc);
               Doc.space;
               token_doc closing;
             ]
         )
-      | _ -> Doc.concat (List.map (opening :: rest) ~fn:token_doc)
+      | _ -> Doc.fast_concat (List.map (opening :: rest) ~fn:token_doc)
     )
-  | tokens -> Doc.concat (List.map tokens ~fn:token_doc)
+  | tokens -> Doc.fast_concat (List.map tokens ~fn:token_doc)
 
 let token_kind_is = fun token kind -> Kind.(Ast.Token.kind token = kind)
 
@@ -118,15 +133,23 @@ let rec node_tokens = fun node ->
   visit node;
   List.reverse !tokens
 
-let node_token_text_width = fun node ->
-  let rec loop width = function
-    | [] -> width
-    | token :: rest -> loop Int.(width + String.length (Ast.Token.text token)) rest
-  in
-  loop 0 (node_tokens node)
+let node_token_text_width = fun node -> Ast.Node.token_width node
 
 let node_has_token_kind = fun node kind ->
-  List.any (node_tokens node) ~fn:(fun token -> token_kind_is token kind)
+  let found = ref false in
+  Ast.Node.for_each_token node
+    ~fn:(fun token ->
+      if not !found && token_kind_is token kind then
+        found := true);
+  !found
+
+let node_has_leading_comment = fun node ->
+  let found = ref false in
+  Ast.Node.for_each_token node
+    ~fn:(fun token ->
+      if not !found && Ast.Token.has_leading_comment token then
+        found := true);
+  !found
 
 let type_token_needs_space = fun previous current ->
   match previous, current with
@@ -144,20 +167,12 @@ let type_token_needs_space = fun previous current ->
   | _ -> true
 
 let type_tokens_inline_doc = fun tokens ->
-  let rec loop previous acc = function
-    | [] -> acc
-    | token :: rest ->
-        let current = Ast.Token.kind token in
-        let piece = token_doc token in
-        let acc =
-          match previous with
-          | Some previous when type_token_needs_space previous current -> Doc.concat
-            [ acc; Doc.space; piece ]
-          | _ -> Doc.concat [ acc; piece ]
-        in
-        loop (Some current) acc rest
-  in
-  loop None Doc.empty tokens
+  stateful_spaced_token_doc
+    ~initial_state:()
+    ~piece:token_doc
+    ~needs_space:(fun ~state:_ previous current -> type_token_needs_space previous current)
+    ~next_state:(fun () _ -> ())
+    tokens
 
 let starts_attribute_suffix_tokens = fun token rest ->
   token_kind_is token Kind.LBRACKET && match rest with
@@ -204,20 +219,13 @@ let local_module_token_needs_space = fun ~depth previous current ->
   | _ -> true
 
 let local_module_tokens_doc = fun tokens ->
-  let rec loop depth previous acc = function
-    | [] -> acc
-    | token :: rest ->
-        let current = Ast.Token.kind token in
-        let piece = token_doc token in
-        let acc =
-          match previous with
-          | Some previous when local_module_token_needs_space ~depth previous current -> Doc.concat
-            [ acc; Doc.space; piece ]
-          | _ -> Doc.concat [ acc; piece ]
-        in
-        loop (local_module_token_depth_after depth token) (Some current) acc rest
-  in
-  loop 0 None Doc.empty tokens
+  stateful_spaced_token_doc
+    ~initial_state:0
+    ~piece:token_doc
+    ~needs_space:(fun ~state:depth previous current ->
+      local_module_token_needs_space ~depth previous current)
+    ~next_state:local_module_token_depth_after
+    tokens
 
 let local_module_split_top_level_token = fun tokens ~matches ->
   let rec loop before depth = function
@@ -350,18 +358,16 @@ let local_module_struct_body_doc = fun tokens ->
   | _ -> None
 
 let token_text_is = fun token expected ->
-  String.equal (Ast.Token.text token) expected
+  Ast.Token.text_is token expected
 
 let token_is_operator_word = fun token ->
-  match Ast.Token.text token with
-  | "asr"
-  | "land"
-  | "lor"
-  | "lsl"
-  | "lsr"
-  | "lxor"
-  | "mod" -> true
-  | _ -> false
+  Ast.Token.text_is token "asr"
+  || Ast.Token.text_is token "land"
+  || Ast.Token.text_is token "lor"
+  || Ast.Token.text_is token "lsl"
+  || Ast.Token.text_is token "lsr"
+  || Ast.Token.text_is token "lxor"
+  || Ast.Token.text_is token "mod"
 
 let token_is_symbolic_operator_part = fun token ->
   match Ast.Token.kind token with
@@ -1205,29 +1211,25 @@ let shell_token_needs_space = fun previous current ->
   | _ -> true
 
 let bracketed_shell_doc = fun ~empty_message ~for_each_shell_token ->
-  let shell = ref Doc.empty in
-  let first = ref true in
+  let pieces = ref [] in
   let previous = ref None in
   for_each_shell_token
     ~fn:(fun token ->
       let current = Ast.Token.kind token in
-      let piece = token_doc token in
-      let part =
+      let pieces_for_token =
         match !previous with
-        | None ->
-            first := false;
-            piece
-        | Some previous when shell_token_needs_space previous current ->
-            Doc.concat [ Doc.space; piece ]
-        | Some _ ->
-            piece
+        | None -> [ token_doc token ]
+        | Some previous when shell_token_needs_space previous current -> [
+          Doc.space;
+          token_doc token
+        ]
+        | Some _ -> [ token_doc token ]
       in
-      shell := Doc.concat [ !shell; part ];
+      pieces := List.reverse pieces_for_token @ !pieces;
       previous := Some current);
-  if !first then
-    unsupported empty_message
-  else
-    !shell
+  match !previous with
+  | None -> unsupported empty_message
+  | Some _ -> Doc.fast_concat (List.reverse !pieces)
 
 let attribute_shell_doc = fun ~for_each_shell_token ->
   bracketed_shell_doc ~empty_message:"attribute without shell tokens" ~for_each_shell_token
@@ -1255,14 +1257,14 @@ let path_doc = fun path ->
   Ast.Path.for_each_ident path ~fn:(fun token -> segments := token_doc token :: !segments);
   match List.reverse !segments with
   | [] -> parenthesized_token_shell_doc (direct_child_tokens path)
-  | segments -> Doc.join (Doc.text ".") segments
+  | segments -> Doc.fast_join (Doc.text ".") segments
 
 let open_path_doc = fun decl ->
   let segments = ref [] in
   Ast.OpenDeclaration.for_each_path_ident
     decl
     ~fn:(fun token -> segments := token_doc token :: !segments);
-  Doc.join (Doc.text ".") (List.reverse !segments)
+  Doc.fast_join (Doc.text ".") (List.reverse !segments)
 
 let include_path_doc = fun decl ->
   let segments = ref [] in
@@ -1271,7 +1273,7 @@ let include_path_doc = fun decl ->
     ~fn:(fun token -> segments := token_doc token :: !segments);
   match List.reverse !segments with
   | [] -> unsupported "include declaration without target"
-  | segments -> Doc.join (Doc.text ".") segments
+  | segments -> Doc.fast_join (Doc.text ".") segments
 
 let child_expr_docs = fun expr ->
   let docs = ref [] in
@@ -2058,7 +2060,13 @@ and match_case_body_forces_group_break = fun match_case ->
   | Some body -> (
       match Ast.Expr.view body with
       | If _
-      | Sequence _ ->
+      | Let _
+      | Match _
+      | Try _
+      | Sequence _
+      | BindingOperator _
+      | LetModule _
+      | LetException _ ->
           true
       | Parenthesized { inner=Some inner } when not (expr_is_begin_block body) -> (
           match Ast.Expr.view inner with
@@ -2066,14 +2074,7 @@ and match_case_body_forces_group_break = fun match_case ->
           | _ -> false
         )
       | Apply _ ->
-          let _callee, arguments = application_parts body in
-          (
-            match arguments with
-            | first :: _ when expr_multiline_apply_argument_stays_with_callee first -> false
-            | _ -> Int.(List.length arguments >= 4)
-            || Int.(node_token_text_width body > 70)
-            || Doc.is_multiline (application_doc body)
-          )
+          false
       | _ ->
           false
     )
@@ -2428,6 +2429,18 @@ and expr_multiline_apply_argument_breaks_after_callee = fun expr ->
     )
   | _ -> false
 
+and expr_single_apply_argument_groups_with_callee = fun expr ->
+  match Ast.Expr.view expr with
+  | Tuple ->
+      true
+  | Parenthesized { inner=Some inner } -> (
+      match Ast.Expr.view inner with
+      | Tuple -> true
+      | _ -> false
+    )
+  | _ ->
+      false
+
 and application_breaks_after_equal = fun expr inline_body_doc ->
   match Ast.Expr.view expr with
   | Apply _ ->
@@ -2599,6 +2612,8 @@ and application_doc = fun ?(prefer_first_argument_head = false) expr ->
                   first_doc;
                   Doc.indent 2 (Doc.concat [ Doc.break (); Doc.join (Doc.break ()) rest_docs ]);
                 ])
+        | [ argument ], [ argument_doc ] when expr_single_apply_argument_groups_with_callee argument ->
+            Doc.concat [ callee_doc; Doc.space; argument_doc ]
         | _ ->
             Doc.group
               (Doc.concat
@@ -2608,7 +2623,7 @@ and application_doc = fun ?(prefer_first_argument_head = false) expr ->
                 ])
 
 and token_text_equal = fun left right ->
-  String.equal (Ast.Token.text left) (Ast.Token.text right)
+  Ast.Token.text_equal left right
 
 and collect_same_infix_chain = fun operator_text expr acc ->
   match Ast.Expr.view expr with
@@ -2790,23 +2805,11 @@ and expr_case_body_breaks = fun expr ->
   | Match _
   | Try _
   | Sequence _
-  | LetException _ ->
-      true
-  | Literal { token=Some token } ->
-      String.contains (Ast.Token.text token) "\n"
-  | Apply _ ->
-      let _callee, arguments = application_parts expr in
-      (
-        match arguments with
-        | first :: _ when expr_multiline_apply_argument_stays_with_callee first -> false
-        | _ -> Int.(List.length arguments >= 4)
-        || Int.(node_token_text_width expr > 70)
-        || Doc.is_multiline (application_doc expr)
-      )
-  | Parenthesized _ when expr_is_begin_block expr ->
-      true
-  | _ ->
-      false
+  | LetException _ -> true
+  | Literal { token=Some token } -> Ast.Token.contains_char token '\n'
+  | Apply _ -> false
+  | Parenthesized _ when expr_is_begin_block expr -> true
+  | _ -> false
 
 and expr_case_body_stays_with_arrow = fun expr ->
   match Ast.Expr.view expr with
@@ -2992,7 +2995,7 @@ and match_cases_doc = fun expr ->
   let cases = List.reverse !cases in
   let force_body_break =
     match Ast.Expr.view expr with
-    | Function _ -> List.any cases ~fn:match_case_body_forces_group_break
+    | Function _ when Int.(List.length cases >= 3) -> List.any cases ~fn:match_case_body_forces_group_break
     | _ -> false
   in
   let break_long_pattern =
@@ -3028,6 +3031,8 @@ and parenthesized_expr_doc = fun expr inner ->
             [ Doc.lparen; Doc.line; Doc.indent 4 inner_doc; Doc.line; Doc.indent 2 Doc.rparen ]
       | Function _ ->
           Doc.concat [ Doc.lparen; Doc.line; Doc.indent 2 inner_doc; Doc.line; Doc.rparen ]
+      | Tuple ->
+          parenthesized_tuple_expr_doc inner
       | Prefix { operator=Some operator; operand=Some operand } -> (
           match Ast.Expr.view operand with
           | Literal { token=Some token } when String.equal (prefix_operator_text inner operator) "-" -> Doc.concat
@@ -3070,18 +3075,60 @@ and parenthesized_expr_doc_after_keyword = fun expr inner ->
   | Sequence _ -> Doc.concat [ Doc.lparen; Doc.line; Doc.indent 2 inner_doc; Doc.line; Doc.rparen ]
   | _ -> parenthesized_expr_doc expr inner
 
+and application_inline_doc = fun expr ->
+  let callee, arguments = application_parts expr in
+  match arguments with
+  | [] -> expr_doc callee
+  | arguments -> Doc.concat
+    [
+      expr_apply_callee_doc callee;
+      Doc.space;
+      Doc.join Doc.space (List.map arguments ~fn:expr_apply_argument_doc_with_leading_comment);
+    ]
+
+and tuple_expr_item_doc = fun expr ->
+  match Ast.Expr.view expr with
+  | Apply _ -> application_inline_doc expr
+  | _ -> expr_doc expr
+
+and tuple_expr_item_docs = fun expr -> child_expr_docs expr |> List.map ~fn:tuple_expr_item_doc
+
+and tuple_expr_inline_items_doc = fun items ->
+  Doc.fast_join (Doc.fast_concat [ Doc.comma; Doc.space ]) items
+
+and parenthesized_tuple_expr_doc_with_items = fun items ->
+  let grouped_items = Doc.fast_join (Doc.fast_concat [ Doc.comma; Doc.break () ]) items in
+  Doc.group
+    (Doc.fast_concat
+      [
+        Doc.lparen;
+        Doc.indent 2 (Doc.fast_concat [ Doc.softline; grouped_items ]);
+        Doc.softline;
+        Doc.rparen;
+      ])
+
+and parenthesized_tuple_expr_doc = fun expr ->
+  parenthesized_tuple_expr_doc_with_items (tuple_expr_item_docs expr)
+
+and tuple_expr_inline_doc = fun expr ->
+  let items = tuple_expr_item_docs expr in
+  let inline_items = tuple_expr_inline_items_doc items in
+  match Ast.Node.first_child_token expr ~kind:Kind.LPAREN, Ast.Node.first_child_token
+    expr
+    ~kind:Kind.BEGIN_KW with
+  | _, Some _ -> expr_doc expr
+  | Some _, _ -> Doc.concat [ Doc.lparen; inline_items; Doc.rparen ]
+  | None, None -> inline_items
+
 and tuple_expr_doc = fun expr ->
-  let items = child_expr_docs expr |> List.map ~fn:expr_doc in
-  let inline_items = Doc.join (Doc.concat [ Doc.comma; Doc.space ]) items in
-  let multiline_items = Doc.join (Doc.concat [ Doc.comma; Doc.line ]) items in
+  let items = tuple_expr_item_docs expr in
+  let inline_items = tuple_expr_inline_items_doc items in
   match Ast.Node.first_child_token expr ~kind:Kind.LPAREN, Ast.Node.first_child_token
     expr
     ~kind:Kind.BEGIN_KW with
   | _, Some _ -> Doc.concat
     [ Doc.text "begin"; Doc.line; Doc.indent 2 inline_items; Doc.line; Doc.text "end" ]
-  | Some _, _ when List.any items ~fn:Doc.is_multiline || Int.(node_token_text_width expr > 70) -> Doc.concat
-    [ Doc.lparen; Doc.line; Doc.indent 2 multiline_items; Doc.line; Doc.rparen ]
-  | Some _, _ -> Doc.concat [ Doc.lparen; inline_items; Doc.rparen ]
+  | Some _, _ -> parenthesized_tuple_expr_doc_with_items items
   | None, None -> inline_items
 
 and if_else_branch_doc = fun else_token else_branch ->
@@ -3102,12 +3149,26 @@ and if_expr_doc = fun expr condition then_branch else_branch ->
   | Some if_token, Some then_token ->
       let else_token = Ast.Node.first_child_token expr ~kind:Kind.ELSE_KW in
       let condition_doc = expr_doc condition in
-      let condition_breaks =
-        Doc.is_multiline condition_doc || Int.(node_token_text_width condition > 70) in
+      let condition_forces_break =
+        node_has_leading_comment condition
+        || (
+          match Ast.Expr.view condition with
+          | Infix _ -> false
+          | _ -> Doc.is_multiline condition_doc
+        )
+      in
+      let inline_condition_head = Doc.group
+        (Doc.concat
+          [
+            if_keyword_doc if_token;
+            Doc.indent 2 (Doc.concat [ Doc.break (); condition_doc ]);
+            Doc.break ();
+            token_doc then_token;
+          ]) in
       let head =
         Doc.concat
           (
-            if condition_breaks then
+            if condition_forces_break then
               [
                 if_keyword_doc if_token;
                 Doc.line;
@@ -3119,11 +3180,7 @@ and if_expr_doc = fun expr condition then_branch else_branch ->
               ]
             else
               [
-                if_keyword_doc if_token;
-                Doc.space;
-                condition_doc;
-                Doc.space;
-                token_doc then_token;
+                inline_condition_head;
                 Doc.line;
                 Doc.indent 2 (if_then_branch_doc then_branch else_token);
               ]
@@ -3512,7 +3569,7 @@ and list_expr_body_doc = fun expr ->
         false
   in
   let multiline_items_doc ~trailing_semi item_docs = Doc.concat
-    [ Doc.line; Doc.indent 2 (Doc.join (Doc.concat [ Doc.semi; Doc.line ]) item_docs); (
+    [ Doc.line; Doc.indent 2 (Doc.fast_join (Doc.fast_concat [ Doc.semi; Doc.line ]) item_docs); (
         if trailing_semi then
           Doc.semi
         else
@@ -3530,18 +3587,25 @@ and list_expr_body_doc = fun expr ->
   else if List.any item_docs ~fn:Doc.is_multiline then
     multiline_items_doc ~trailing_semi:(expr_list_has_trailing_separator expr items) item_docs
   else if expr_list_has_trailing_separator expr items then
-    Doc.concat
-      [ Doc.space; Doc.join (Doc.concat [ Doc.semi; Doc.space ]) item_docs; Doc.semi; Doc.space; ]
+    Doc.fast_concat
+      [
+        Doc.space;
+        Doc.fast_join (Doc.fast_concat [ Doc.semi; Doc.space ]) item_docs;
+        Doc.semi;
+        Doc.space;
+      ]
   else
     (
       match item_docs with
       | [] -> Doc.empty
-      | item_docs -> Doc.concat
-        [ Doc.space; Doc.join (Doc.concat [ Doc.semi; Doc.space ]) item_docs; Doc.space; ]
+      | item_docs -> Doc.fast_concat
+        [ Doc.space; Doc.fast_join (Doc.fast_concat [ Doc.semi; Doc.space ]) item_docs; Doc.space; ]
     )
 
 and array_expr_body_doc = fun expr ->
-  child_expr_docs expr |> List.map ~fn:expr_doc |> Doc.join (Doc.concat [ Doc.semi; Doc.space ])
+  let item_docs = ref [] in
+  Ast.Expr.for_each_child_expr expr ~fn:(fun child -> item_docs := expr_doc child :: !item_docs);
+  Doc.fast_join (Doc.fast_concat [ Doc.semi; Doc.space ]) (List.reverse !item_docs)
 
 and record_expr_field_value_breaks = fun value value_doc ->
   Doc.is_multiline value_doc || match Ast.Expr.view value with
@@ -3572,9 +3636,9 @@ and record_expr_field_doc = fun (field: Ast.RecordExpr.field) ->
       | Some value ->
           let value_doc = expr_doc value in
           if record_expr_field_value_breaks value value_doc then
-            Doc.concat [ path_doc path; Doc.space; Doc.equal; Doc.line; Doc.indent 2 value_doc ]
+            Doc.fast_concat [ path_doc path; Doc.space; Doc.equal; Doc.line; Doc.indent 2 value_doc ]
           else
-            Doc.concat [ path_doc path; Doc.space; Doc.equal; Doc.space; value_doc ]
+            Doc.fast_concat [ path_doc path; Doc.space; Doc.equal; Doc.space; value_doc ]
       | None -> path_doc path
     )
   | None -> (
@@ -3583,9 +3647,9 @@ and record_expr_field_doc = fun (field: Ast.RecordExpr.field) ->
           let value_doc = expr_doc value in
           let name_doc = local_module_tokens_doc name_tokens in
           if record_expr_field_value_breaks value value_doc then
-            Doc.concat [ name_doc; Doc.space; Doc.equal; Doc.line; Doc.indent 2 value_doc ]
+            Doc.fast_concat [ name_doc; Doc.space; Doc.equal; Doc.line; Doc.indent 2 value_doc ]
           else
-            Doc.concat [ name_doc; Doc.space; Doc.equal; Doc.space; value_doc ]
+            Doc.fast_concat [ name_doc; Doc.space; Doc.equal; Doc.space; value_doc ]
       | _ -> unsupported "unsupported record expression field"
     )
 
@@ -3597,11 +3661,11 @@ and record_expr_field_docs = fun expr ->
   List.reverse !fields
 
 and record_expr_fields_doc = fun expr ->
-  record_expr_field_docs expr |> Doc.join (Doc.concat [ Doc.semi; Doc.space ])
+  record_expr_field_docs expr |> Doc.fast_join (Doc.fast_concat [ Doc.semi; Doc.space ])
 
 and record_expr_body_doc = fun ?(force_multiline = false) expr ->
   let multiline_fields_doc ~trailing_semi fields = Doc.concat
-    [ Doc.line; Doc.indent 2 (Doc.join (Doc.concat [ Doc.semi; Doc.line ]) fields); (
+    [ Doc.line; Doc.indent 2 (Doc.fast_join (Doc.fast_concat [ Doc.semi; Doc.line ]) fields); (
         if trailing_semi then
           Doc.semi
         else
@@ -3611,12 +3675,12 @@ and record_expr_body_doc = fun ?(force_multiline = false) expr ->
   let fields = record_expr_field_docs expr in
   match Ast.RecordExpr.base expr with
   | Some base ->
-      let fields_doc = Doc.join (Doc.concat [ Doc.semi; Doc.space ]) fields in
-      Doc.concat
+      let fields_doc = Doc.fast_join (Doc.fast_concat [ Doc.semi; Doc.space ]) fields in
+      Doc.fast_concat
         [ Doc.space; expr_doc base; Doc.space; Doc.text "with"; (
             match fields_doc with
             | Doc.Empty -> Doc.empty
-            | fields_doc -> Doc.concat [ Doc.space; fields_doc ]
+            | fields_doc -> Doc.fast_concat [ Doc.space; fields_doc ]
           ); Doc.space; ]
   | None -> (
       match fields with
@@ -3625,14 +3689,14 @@ and record_expr_body_doc = fun ?(force_multiline = false) expr ->
         ~trailing_semi:true
         fields
       | fields when force_multiline -> multiline_fields_doc ~trailing_semi:false fields
-      | fields -> Doc.concat
-        [ Doc.space; Doc.join (Doc.concat [ Doc.semi; Doc.space ]) fields; Doc.space; ]
+      | fields -> Doc.fast_concat
+        [ Doc.space; Doc.fast_join (Doc.fast_concat [ Doc.semi; Doc.space ]) fields; Doc.space; ]
     )
 
 and record_expr_doc = fun expr ->
   match Ast.RecordExpr.base expr with
-  | Some _ -> Doc.concat [ Doc.lbrace; record_expr_body_doc expr; Doc.rbrace ]
-  | None -> Doc.concat [ Doc.lbrace; record_expr_body_doc expr; Doc.rbrace ]
+  | Some _ -> Doc.fast_concat [ Doc.lbrace; record_expr_body_doc expr; Doc.rbrace ]
+  | None -> Doc.fast_concat [ Doc.lbrace; record_expr_body_doc expr; Doc.rbrace ]
 
 and expr_child_exprs = fun expr ->
   let children = ref [] in
@@ -4753,20 +4817,12 @@ let declaration_head_token_needs_space = fun previous current ->
   | _ -> true
 
 let declaration_head_tokens_doc = fun tokens ->
-  let rec loop previous acc = function
-    | [] -> acc
-    | token :: rest ->
-        let current = Ast.Token.kind token in
-        let piece = token_doc token in
-        let acc =
-          match previous with
-          | Some previous when declaration_head_token_needs_space previous current -> Doc.concat
-            [ acc; Doc.space; piece ]
-          | _ -> Doc.concat [ acc; piece ]
-        in
-        loop (Some current) acc rest
-  in
-  loop None Doc.empty tokens
+  stateful_spaced_token_doc
+    ~initial_state:()
+    ~piece:token_doc
+    ~needs_space:(fun ~state:_ previous current -> declaration_head_token_needs_space previous current)
+    ~next_state:(fun () _ -> ())
+    tokens
 
 let split_top_level_arrows = fun tokens ->
   let rec loop current groups depth = function
@@ -4795,6 +4851,21 @@ let type_annotation_tokens_doc = fun tokens ->
       in
       Doc.group (Doc.join (Doc.concat [ Doc.space; Doc.arrow; Doc.break () ]) parts)
 
+let declaration_type_annotation_doc = fun tokens ->
+  match split_top_level_arrows tokens with
+  | [ (tokens, false) ] -> type_tokens_inline_doc tokens
+  | parts ->
+      let parts =
+        parts
+        |> List.filter_map
+          ~fn:(fun (part, _has_arrow) ->
+            if List.is_empty part then
+              None
+            else
+              Some (type_tokens_inline_doc part))
+      in
+      Doc.join (Doc.concat [ Doc.space; Doc.arrow; Doc.break () ]) parts
+
 let top_level_arrow_count = fun tokens ->
   let rec loop depth count = function
     | [] -> count
@@ -4810,14 +4881,14 @@ let top_level_arrow_count = fun tokens ->
   loop 0 0 tokens
 
 let tokens_have_long_text = fun ~minimum tokens ->
-  List.any tokens ~fn:(fun token -> Int.(String.length (Ast.Token.text token) >= minimum))
+  List.any tokens ~fn:(fun token -> Ast.Token.width token >= minimum)
 
 let tokens_text_width = fun tokens ->
   let rec loop previous width = function
     | [] -> width
     | token :: rest ->
         let current = Ast.Token.kind token in
-        let width = width + String.length (Ast.Token.text token) + match previous with
+        let width = width + Ast.Token.width token + match previous with
         | Some previous when type_token_needs_space previous current -> 1
         | _ -> 0
         in
@@ -4837,14 +4908,6 @@ let tight_token_rhs_doc = fun head token rhs ->
 
 let tight_doc_rhs = fun head separator rhs ->
   Doc.group (Doc.concat [ head; separator; Doc.indent 2 (Doc.concat [ Doc.break (); rhs ]) ])
-
-let declaration_type_annotation_doc = fun tokens ->
-  let arrow_count = top_level_arrow_count tokens in
-  let width = tokens_text_width tokens in
-  if Int.(arrow_count >= 2) && (tokens_have_long_text ~minimum:30 tokens || Int.(width > 120)) then
-    type_annotation_tokens_doc tokens
-  else
-    type_tokens_inline_doc tokens
 
 let strip_enclosing_token = fun ~opening ~closing tokens ->
   match tokens with
@@ -5579,20 +5642,12 @@ let module_token_needs_space = fun ~depth previous current ->
   | _ -> true
 
 let module_tokens_doc = fun tokens ->
-  let rec loop depth previous acc = function
-    | [] -> acc
-    | token :: rest ->
-        let current = Ast.Token.kind token in
-        let piece = literal_token_doc token in
-        let acc =
-          match previous with
-          | Some previous when module_token_needs_space ~depth previous current -> Doc.concat
-            [ acc; Doc.space; piece ]
-          | _ -> Doc.concat [ acc; piece ]
-        in
-        loop (module_token_depth_after depth token) (Some current) acc rest
-  in
-  loop 0 None Doc.empty tokens
+  stateful_spaced_token_doc
+    ~initial_state:0
+    ~piece:literal_token_doc
+    ~needs_space:(fun ~state:depth previous current -> module_token_needs_space ~depth previous current)
+    ~next_state:module_token_depth_after
+    tokens
 
 let module_expr_tokens_doc = fun tokens ->
   match split_top_level_all tokens ~matches:(fun kind -> Kind.(kind = COMMA)) with
@@ -5670,10 +5725,8 @@ let module_signature_body_val_item_doc = fun tokens ->
       match split_top_level_token rest ~matches:(fun kind -> Kind.(kind = COLON)) with
       | Some (name_tokens, colon_token, type_tokens) ->
           let type_doc = declaration_type_annotation_doc type_tokens in
-          tight_token_rhs_doc
-            (Doc.concat [ token_doc val_token; Doc.space; declaration_name_doc name_tokens ])
-            colon_token
-            type_doc
+          let head = Doc.concat [ token_doc val_token; Doc.space; declaration_name_doc name_tokens ] in
+          tight_token_rhs_doc head colon_token type_doc
       | None -> type_tokens_inline_doc tokens
     )
   | _ -> type_tokens_inline_doc tokens
@@ -6194,11 +6247,9 @@ let signature_body_val_item_doc = fun tokens ->
   | val_token :: rest when token_kind_is val_token Kind.VAL_KW -> (
       match split_top_level_token rest ~matches:(fun kind -> Kind.(kind = COLON)) with
       | Some (name_tokens, colon_token, type_tokens) ->
-          let type_doc = type_annotation_tokens_doc type_tokens in
-          tight_token_rhs_doc
-            (Doc.concat [ token_doc val_token; Doc.space; declaration_name_doc name_tokens ])
-            colon_token
-            type_doc
+          let type_doc = declaration_type_annotation_doc type_tokens in
+          let head = Doc.concat [ token_doc val_token; Doc.space; declaration_name_doc name_tokens ] in
+          tight_token_rhs_doc head colon_token type_doc
       | None -> type_tokens_inline_doc tokens
     )
   | _ -> type_tokens_inline_doc tokens
@@ -6369,10 +6420,8 @@ let value_decl_doc = fun decl ->
       unsupported "value declaration without name"
   | Some (name_tokens, colon_token, ((_ :: _) as annotation_tokens)) ->
       let annotation_doc = declaration_type_annotation_doc annotation_tokens in
-      tight_token_rhs_doc
-        (Doc.concat [ Doc.text "val"; Doc.space; declaration_name_doc name_tokens ])
-        colon_token
-        annotation_doc
+      let head = Doc.concat [ Doc.text "val"; Doc.space; declaration_name_doc name_tokens ] in
+      tight_token_rhs_doc head colon_token annotation_doc
   | None
   | Some (_, _, []) ->
       unsupported "incomplete value declaration"

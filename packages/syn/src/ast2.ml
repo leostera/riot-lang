@@ -481,6 +481,50 @@ module Token = struct
 
   let kind = fun (token: token) -> (syntax_token token).Syntax_tree.kind
 
+  let width = fun (token: token) ->
+    Syntax_tree.token_width token.tree (syntax_token token)
+
+  let contains_char = fun (token: token) needle ->
+    Syntax_tree.token_contains_char token.tree (syntax_token token) needle
+
+  let text_is = fun (token: token) expected ->
+    Syntax_tree.token_text_is token.tree (syntax_token token) expected
+
+  let text_equal = fun (left: token) (right: token) ->
+    let left_width = width left in
+    if not (Int.equal left_width (width right)) then
+      false
+    else if Int.equal left_width 0 then
+      true
+    else
+      let left_raw = Vector.get_unchecked
+        left.tree.Syntax_tree.raw_tokens
+        ~at:(syntax_token left).Syntax_tree.body_raw in
+      let right_raw = Vector.get_unchecked
+        right.tree.Syntax_tree.raw_tokens
+        ~at:(syntax_token right).Syntax_tree.body_raw in
+      let left_slice = Raw_token.slice ~source:left.tree.Syntax_tree.source left_raw in
+      let right_slice = Raw_token.slice ~source:right.tree.Syntax_tree.source right_raw in
+      let rec loop index =
+        if Int.(index >= left_width) then
+          true
+        else if
+          Char.equal
+            (IO.IoVec.IoSlice.get_unchecked left_slice ~at:index)
+            (IO.IoVec.IoSlice.get_unchecked right_slice ~at:index)
+        then
+          loop Int.(index + 1)
+        else
+          false
+      in
+      loop 0
+
+  let slice = fun (token: token) ->
+    Syntax_tree.token_text_slice token.tree (syntax_token token)
+
+  let has_newline = fun (token: token) ->
+    Syntax_tree.token_has_newline token.tree (syntax_token token)
+
   let text = fun (token: token) ->
     Syntax_tree.token_text token.tree (syntax_token token)
 
@@ -550,6 +594,9 @@ module Node = struct
     (node.Syntax_tree.raw_lo, node.Syntax_tree.raw_hi)
 
   let full_width = fun (node: node) -> (syntax_node node).Syntax_tree.full_width
+
+  let token_width = fun (node: node) ->
+    Syntax_tree.node_token_width node.tree (syntax_node node)
 
   let child_count = fun (node: node) -> (syntax_node node).Syntax_tree.child_count
 
@@ -1137,8 +1184,10 @@ end = struct
       None
 
   let field_of_node = fun (field: record_expr_field) ->
-    match first_expr_child field with
-    | Some expr when node_kind_is expr Syntax_kind2.INFIX_EXPR -> (
+    match nth_expr_child field 0, nth_expr_child field 1 with
+    | Some expr, value when node_kind_is expr Syntax_kind2.PATH_EXPR ->
+        { path = Path.cast expr; value; node = field }
+    | Some expr, _ when node_kind_is expr Syntax_kind2.INFIX_EXPR -> (
         match nth_expr_child expr 0, nth_expr_child expr 1 with
         | Some left, Some right ->
             let path =
@@ -1150,21 +1199,9 @@ end = struct
             { path; value = Some right; node = field }
         | _ -> { path = None; value = None; node = field }
       )
-    | Some expr ->
-        let path =
-          if node_kind_is expr Syntax_kind2.PATH_EXPR then
-            Path.cast expr
-          else
-            None
-        in
-        let value =
-          if Option.is_some (Node.first_child_token field ~kind:Syntax_kind2.EQ) then
-            nth_expr_child field 1
-          else
-            None
-        in
-        { path; value; node = field }
-    | None ->
+    | Some expr, value ->
+        { path = Path.cast expr; value; node = field }
+    | None, _ ->
         { path = None; value = None; node = field }
 
   let for_each_field = fun (record: t) ~fn ->

@@ -46,6 +46,18 @@ module Token: sig
   type t = token
   val kind: t -> Syntax_kind2.t
 
+  val width: t -> int
+
+  val contains_char: t -> char -> bool
+
+  val text_is: t -> string -> bool
+
+  val text_equal: t -> t -> bool
+
+  val has_newline: t -> bool
+
+  val slice: t -> IO.IoVec.IoSlice.t
+
   val text: t -> string
 
   val leading_text: t -> string
@@ -70,6 +82,8 @@ module Node: sig
   val raw_range: t -> int * int
 
   val full_width: t -> int
+
+  val token_width: t -> int
 
   val child_count: t -> int
 

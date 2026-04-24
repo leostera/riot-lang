@@ -39,7 +39,7 @@ type checkpoint = {
 }
 
 let create = fun source ->
-  let token_stream = Lexer.tokenize_slice source |> Raw_token.of_lexer_tokens in
+  let token_stream = Lexer.tokenize_slice source |> Raw_token.of_lexer_tokens ~source in
   let raw_tokens = token_stream.Raw_token.raw in
   let significant_tokens = token_stream.Raw_token.significant in
   let raw_len = Vector.length raw_tokens in
@@ -513,13 +513,7 @@ let starts_signature_item_at = fun p ->
   || Syntax_kind2.(peek_kind p 1 = AT)
   || Syntax_kind2.(peek_kind p 1 = ATAT)))
 
-let raw_contains_newline = fun p raw_index ->
-  let raw = raw_at p raw_index in
-  match raw.Raw_token.kind with
-  | Syntax_kind2.WHITESPACE
-  | Syntax_kind2.COMMENT
-  | Syntax_kind2.DOCSTRING -> Raw_token.contains_char ~source:p.source raw '\n'
-  | _ -> false
+let raw_contains_newline = fun p raw_index -> Raw_token.has_newline (raw_at p raw_index)
 
 let leading_trivia_contains_newline = fun p ->
   let current_raw = current_raw_index p in

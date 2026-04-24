@@ -647,12 +647,12 @@ let array_value = [|first_item_identifier; second_item_identifier; third_item_id
 |}
         ~actual;
       Ok ());
-  Test.case "format breaks long tuples without source-length sniffing"
+  Test.case "format breaks tuples that exceed formatter width"
     (fun ctx ->
-      let source = {|let tuple_value = (left_side_identifier, right_side_identifier, final_identifier, fourth_identifier)
+      let source = {|let tuple_value = (left_side_identifier, right_side_identifier, final_identifier, fourth_identifier, fifth_identifier, sixth_identifier)
 |}
       in
-      assert_formatted_ml_snapshot ~ctx ~msg:"long tuples should still break from doc layout" source);
+      assert_formatted_ml_snapshot ~ctx ~msg:"tuples should break from solver width" source);
   Test.case "verify treats normalized punctuation and parens as safe"
     (fun _ctx ->
       with_tempdir "krasny_runner_verify_semantic_hash"
