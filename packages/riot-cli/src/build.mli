@@ -43,6 +43,19 @@ val reset_json_clock: started_at:Std.Time.Instant.t -> unit
 (** Emit a build event as JSON. *)
 val write_build_event_json: Riot_build.Event.t -> unit
 
+(** Format a package label for build output.
+
+    Workspace packages render as their bare package name. External packages
+    include the resolved version when present.
+*)
+val display_package_name: Riot_model.Package.t -> string
+
+(** Render a structured planner error into human-readable detail lines. *)
+val planning_error_lines: Riot_planner.Planning_error.t -> string list
+
+(** Render a structured workspace planning error into human-readable detail lines. *)
+val workspace_planning_error_lines: Riot_planner.Workspace_planner.plan_error -> string list
+
 (** Render a build event in the selected output mode. *)
 val write_build_event:
   mode:output_mode ->

@@ -5,6 +5,7 @@ type build_error =
   | ToolchainInstallFailed of { target: Riot_model.Target.t; error: string }
   | ToolchainInitializationFailed of { target: Riot_model.Target.t; error: string }
   | BuildFailed of { errors: Package_builder.build_result list }
+  | PlanningFailed of Riot_planner.Workspace_planner.plan_error
   | UnexpectedError of { reason: string }
 
 type build_context = {
@@ -80,6 +81,8 @@ let error_message = function
       | _ -> "build failed:\n"
       ^ String.concat "\n" (List.map failures ~fn:Build_result.failure_message)
     )
+  | PlanningFailed error ->
+      Build_lane.error_message (Build_lane.PlanningFailed error)
   | UnexpectedError { reason } ->
       reason
 
@@ -221,7 +224,9 @@ let failed_results = fun results ->
 
 let map_lane_error = fun error -> UnexpectedError { reason = error.Build_work.reason }
 
-let map_prepare_error = fun reason -> UnexpectedError { reason }
+let map_prepare_error = function
+  | Build_lane.PlanningFailed error -> PlanningFailed error
+  | Build_lane.Failure reason -> UnexpectedError { reason }
 
 let run_lanes = fun context ~toolchain ->
   let* lanes = Build_work.prepare_lanes context.build context.resolved ~toolchain

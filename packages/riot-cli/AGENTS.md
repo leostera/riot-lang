@@ -66,6 +66,7 @@
 57. `riot bench --compare N` should stay as a rendering flag in `riot-cli`. Load and align prior suite runs through `riot-bench`, then render current-versus-history tables, including GC diagnostics from the stored stats, or the matching structured JSON event without duplicating history matching logic in the CLI.
 58. Benchmark history recording must be explicit. Only `riot bench --record` should persist runs into `.riot/bench`; plain `riot bench` and `--compare` reads must not create new history files.
 59. `riot build` should keep runtime builds as the default. Use explicit artifact selectors (`--tests`, `--examples`, `--benches`, `--all`) to opt into dev binaries for build-only workflows, and keep those selectors thin wrappers over typed build-request state rather than CLI-side artifact discovery.
+60. `riot build` human output should render structured planner failures as targeted detail lines instead of flattening them into one string. Keep package status labels concise, and show external/non-workspace packages as `name (version)` while leaving workspace packages as bare names.
 
 ## Validate
 

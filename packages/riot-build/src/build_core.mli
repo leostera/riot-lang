@@ -13,7 +13,7 @@ type error =
   | ToolchainInstallFailed of { target: Riot_model.Target.t; error: string }
   | ToolchainInitializationFailed of { target: Riot_model.Target.t; error: string }
   | BuildFailed of { errors: Build_result.failure list }
-  | PlanningFailed of { reason: string }
+  | PlanningFailed of Riot_planner.Workspace_planner.plan_error
   | CycleDetected of { cycle_nodes: string list }
   | BuildAlreadyRunning of { lock_path: Path.t }
   | InvalidRequestedParallelism of int

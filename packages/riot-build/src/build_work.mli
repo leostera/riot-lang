@@ -30,7 +30,7 @@ val prepare_lanes:
   Build_context.t ->
   Resolved_build.t ->
   toolchain:Riot_toolchain.t ->
-  (Build_lane.locked Build_lane.t list, string) result
+  (Build_lane.locked Build_lane.t list, Build_lane.error) result
 
 val release_lanes: Build_lane.locked Build_lane.t list -> unit
 

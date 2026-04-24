@@ -1,7 +1,9 @@
 open Std
 open Std.Result.Syntax
 
-type error = string
+type error =
+  | PlanningFailed of Riot_planner.Workspace_planner.plan_error
+  | Failure of string
 
 type unresolved
 
@@ -61,7 +63,7 @@ let make_build_ctx = fun ~host ~target ~toolchain ~session_id ~profile ~parallel
       ~parallelism
       ()
 
-let plan_error_to_string = function
+let workspace_plan_error_to_string = function
   | Riot_planner.Workspace_planner.PackageNotFound { name; available } ->
       "package not found: "
       ^ Riot_model.Package_name.to_string name
@@ -107,11 +109,15 @@ let plan_error_to_string = function
       in
       "package load failed: " ^ String.concat "; " (List.map errors ~fn:format_load_error)
 
+let error_message = function
+  | PlanningFailed error -> workspace_plan_error_to_string error
+  | Failure reason -> reason
+
 let make_lane_plan = fun lane_target workspace scope ~dev_artifacts ->
   Riot_planner.plan_workspace ~workspace ~target:lane_target ~scope ~load_errors:[] ~dev_artifacts
-  |> Result.map_err ~fn:plan_error_to_string
+  |> Result.map_err ~fn:(fun error -> PlanningFailed error)
 
-let release_on_error = fun lock result ->
+let release_on_error: 'value. Build_lock.t -> ('value, error) result -> ('value, error) result = fun lock result ->
   match result with
   | Ok value -> Ok value
   | Error _ as error ->
@@ -140,7 +146,7 @@ let prepare:
         Build_context.emit_phase context (Event.BuildLockWaiting { lock_path }))
       ~target_dir_root:workspace.target_dir_root
       ~profile:profile.name
-      ~target |> Result.map_err ~fn:Exception.to_string
+      ~target |> Result.map_err ~fn:(fun exn -> Failure (Exception.to_string exn))
   in
   let lane =
     try
@@ -151,10 +157,10 @@ let prepare:
           Riot_toolchain.init_for_target ~config:context.toolchain_config ~target
           |> Result.map_err
             ~fn:(fun reason ->
-              "failed to initialize toolchain for target "
+              Failure ("failed to initialize toolchain for target "
               ^ Riot_model.Target.to_string target
               ^ ": "
-              ^ reason)
+              ^ reason))
       in
       let* plan = make_lane_plan planner_target workspace planner_scope ~dev_artifacts in
       let build_ctx = make_build_ctx
@@ -182,7 +188,7 @@ let prepare:
         package_graph = plan.package_graph;
       }
     with
-    | exn -> Error (Exception.to_string exn)
+    | exn -> Error (Failure (Exception.to_string exn))
   in
   release_on_error lock lane
 

@@ -13,7 +13,7 @@ type error =
   | ToolchainInstallFailed of { target: Riot_model.Target.t; error: string }
   | ToolchainInitializationFailed of { target: Riot_model.Target.t; error: string }
   | BuildFailed of { errors: Build_result.failure list }
-  | PlanningFailed of { reason: string }
+  | PlanningFailed of Riot_planner.Workspace_planner.plan_error
   | CycleDetected of { cycle_nodes: string list }
   | BuildAlreadyRunning of { lock_path: Path.t }
   | InvalidRequestedParallelism of int
@@ -46,8 +46,8 @@ let error_message = function
       | failures -> "build failed:\n"
       ^ String.concat "\n" (List.map failures ~fn:Build_result.failure_message)
     )
-  | PlanningFailed { reason } ->
-      "planning failed: " ^ reason
+  | PlanningFailed error ->
+      "planning failed: " ^ Build_lane.error_message (Build_lane.PlanningFailed error)
   | CycleDetected { cycle_nodes } ->
       "cyclic dependency detected: " ^ String.concat " -> " cycle_nodes
   | BuildAlreadyRunning { lock_path } ->
@@ -88,6 +88,7 @@ let map_runtime_error = function
   | Build_runtime.BuildFailed { errors } -> BuildFailed {
     errors = Build_result.failures_of_build_results errors
   }
+  | Build_runtime.PlanningFailed error -> PlanningFailed error
   | Build_runtime.UnexpectedError { reason } -> UnexpectedError { reason }
 
 let execute_raw = fun ?(allow_partial_failures = false) ?(record_cache_generation = true) context spec ->

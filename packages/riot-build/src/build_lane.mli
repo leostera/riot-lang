@@ -1,9 +1,13 @@
 open Std
 
-type error = string
+type error =
+  | PlanningFailed of Riot_planner.Workspace_planner.plan_error
+  | Failure of string
 type unresolved
 type locked
 type 'stage t
+val error_message: error -> string
+
 val target: 'a t -> Riot_model.Target.t
 
 val workspace: 'a t -> Riot_model.Workspace.t
