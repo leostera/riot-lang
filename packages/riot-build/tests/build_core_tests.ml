@@ -971,8 +971,10 @@ let tests =
       case ~size:Large "build core: build emits runtime phases in order" test_build_emits_runtime_phases_in_order;
       case ~size:Large "build core: build emits detailed telemetry events" test_build_emits_detailed_build_telemetry;
       case ~size:Large "build core: build preserves exact target subsets" test_build_preserves_exact_target_subset;
-      case "build core: build emits multi-target lane outputs and events" test_build_multi_target_outputs_and_events;
-      case "build core: default partial failure defaults to failing in multi-target builds" test_build_multi_target_partial_failures_fail_by_default;
+      case ~size:Large "build core: build emits multi-target lane outputs and events" test_build_multi_target_outputs_and_events;
+      case
+        ~size:Large "build core: default partial failure defaults to failing in multi-target builds"
+        test_build_multi_target_partial_failures_fail_by_default;
       case "build core: rejects zero jobs requests" test_build_rejects_zero_jobs;
       case "build core: rejects zero jobs requests with clear message" test_build_rejects_zero_jobs_with_message;
       case "build core: rejects negative jobs requests" test_build_rejects_negative_jobs;
