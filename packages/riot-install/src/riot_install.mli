@@ -34,7 +34,7 @@ type install_error =
       mode: destination;
       reason: string
     }
-  | ExternalTargetLoadFailed of { target: string; reason: string }
+  | ExternalTargetLoadFailed of { target: string; error: Riot_deps.package_error }
 val install_error_message: install_error -> string
 
 val install_event_to_json: install_event -> Data.Json.t option

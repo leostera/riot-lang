@@ -39,7 +39,7 @@ type install_error =
       mode: destination;
       reason: string
     }
-  | ExternalTargetLoadFailed of { target: string; reason: string }
+  | ExternalTargetLoadFailed of { target: string; error: Riot_deps.package_error }
 
 let no_event: install_event -> unit = fun _ -> ()
 
@@ -70,10 +70,10 @@ let install_error_message = function
   ^ ")"
   ^ ": "
   ^ reason
-  | ExternalTargetLoadFailed { target; reason } -> "failed to load external target '"
+  | ExternalTargetLoadFailed { target; error } -> "failed to load external target '"
   ^ target
   ^ "': "
-  ^ reason
+  ^ Riot_deps.package_error_message error
 
 let path_json = fun path -> Data.Json.String (Path.to_string path)
 
@@ -149,11 +149,8 @@ let load_source_workspace = fun ~on_event ~source_spec ~update ->
     ~spec:source_spec
     ()
   |> Result.map_err
-    ~fn:(fun err ->
-      ExternalTargetLoadFailed {
-        target = Riot_deps.Git_dependency.to_string source_spec;
-        reason = Riot_deps.package_error_message err
-      })
+    ~fn:(fun error ->
+      ExternalTargetLoadFailed { target = Riot_deps.Git_dependency.to_string source_spec; error })
 
 let load_registry_workspace = fun ~on_event ~package_spec ->
   let session_id = Riot_model.Session_id.make () in
@@ -164,10 +161,10 @@ let load_registry_workspace = fun ~on_event ~package_spec ->
     ~spec:package_spec
     ()
   |> Result.map_err
-    ~fn:(fun err ->
+    ~fn:(fun error ->
       ExternalTargetLoadFailed {
         target = Riot_deps.Registry_package_spec.to_string package_spec;
-        reason = Riot_deps.package_error_message err
+        error
       })
 
 let find_built_binary_path = fun ~(store:Riot_store.Store.t) ~(output:Riot_build.Build_result.t) ~package_name ~binary_name ->
