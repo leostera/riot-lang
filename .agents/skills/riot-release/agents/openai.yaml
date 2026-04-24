@@ -1,0 +1,4 @@
+interface:
+  display_name: "Riot Release"
+  short_description: "Prepare, validate, and publish Riot releases"
+  default_prompt: "Use $riot-release to prepare, validate, and publish a Riot release from this repository."
