@@ -58,11 +58,15 @@ type publish_error =
       registry_name: string;
       error: Riot_deps.registry_initialization_error
     }
-  | WorkspaceScanFailed of { workspace_root: Path.t; error: string }
-  | WorkspacePrepareFailed of { workspace_root: Path.t; error: string }
-  | FmtCheckFailed of { package: Package_name.t; error: string }
-  | FixCheckFailed of { package: Package_name.t; error: string }
-  | BuildCheckFailed of { package: Package_name.t; error: string }
+  | WorkspaceScanFailed of { workspace_root: Path.t; error: Riot_model.Workspace_manager.scan_error }
+  | WorkspaceLoadHadErrors of {
+      workspace_root: Path.t;
+      errors: Riot_model.Workspace_manager.load_error list
+    }
+  | WorkspacePrepareFailed of { workspace_root: Path.t; error: Riot_model.Pm_error.t }
+  | FmtCheckFailed of { package: Package_name.t; error: exn }
+  | FixCheckFailed of { package: Package_name.t; error: exn }
+  | BuildCheckFailed of { package: Package_name.t; error: Riot_build.error }
   | PublishPlanFailed of Riot_deps.Publisher.error
   | PublishFailed of { package: Package_name.t; error: Riot_deps.Publisher.error }
 
@@ -97,23 +101,27 @@ let publish_error_message = fun error ->
   | WorkspaceScanFailed { workspace_root; error } -> "failed to scan workspace '"
   ^ Path.to_string workspace_root
   ^ "': "
-  ^ error
+  ^ Workspace_manager.scan_error_message error
+  | WorkspaceLoadHadErrors { workspace_root; errors } -> "failed to load workspace '"
+  ^ Path.to_string workspace_root
+  ^ "': "
+  ^ (errors |> List.map ~fn:Workspace_manager.load_error_to_string |> String.concat "\n")
   | WorkspacePrepareFailed { workspace_root; error } -> "failed to prepare workspace '"
   ^ Path.to_string workspace_root
   ^ "': "
-  ^ error
+  ^ Riot_model.Pm_error.message error
   | FmtCheckFailed { package; error } -> "'riot fmt --check' failed for package '"
   ^ Package_name.to_string package
   ^ "': "
-  ^ error
+  ^ exn_message error
   | FixCheckFailed { package; error } -> "'riot fix --check' failed for package '"
   ^ Package_name.to_string package
   ^ "': "
-  ^ error
+  ^ exn_message error
   | BuildCheckFailed { package; error } -> "'riot build' failed for package '"
   ^ Package_name.to_string package
   ^ "': "
-  ^ error
+  ^ Riot_build.error_message error
   | PublishPlanFailed err -> Riot_deps.Publisher.message err
   | PublishFailed { error; _ } -> Riot_deps.Publisher.message error
 
@@ -199,11 +207,7 @@ let load_workspace_strict = fun workspace_root ->
   let workspace_manager = Workspace_manager.create () in
   let* registry = resolve_registry () in
   match Workspace_manager.scan workspace_manager workspace_root with
-  | Error error ->
-      Error (WorkspaceScanFailed {
-        workspace_root;
-        error = Workspace_manager.scan_error_message error
-      })
+  | Error error -> Error (WorkspaceScanFailed { workspace_root; error })
   | Ok (workspace, load_errors) ->
       if List.is_empty load_errors then
         Riot_deps.ensure_workspace
@@ -212,16 +216,9 @@ let load_workspace_strict = fun workspace_root ->
           ~registry
           ~workspace
           ()
-        |> Result.map_err
-          ~fn:(fun error ->
-            WorkspacePrepareFailed { workspace_root; error = Riot_model.Pm_error.message error })
+        |> Result.map_err ~fn:(fun error -> WorkspacePrepareFailed { workspace_root; error })
       else
-        Error (WorkspaceScanFailed {
-          workspace_root;
-          error = load_errors
-          |> List.map ~fn:Workspace_manager.load_error_to_string
-          |> String.concat "\n"
-        })
+        Error (WorkspaceLoadHadErrors { workspace_root; errors = load_errors })
 
 let profile_of_name = function
   | "release" -> Riot_model.Profile.release
@@ -237,8 +234,7 @@ let build_package = fun ~emit ~(workspace:Workspace.t) ~package_name ~profile ->
       ~scope:Riot_build.Request.Runtime
       ~profile:(profile_of_name profile)
       ())
-  |> Result.map_err
-    ~fn:(fun err -> BuildCheckFailed { package = package_name; error = Riot_build.error_message err })
+  |> Result.map_err ~fn:(fun error -> BuildCheckFailed { package = package_name; error })
 
 let build_package_in_workspace_root = fun ~emit ~workspace_root ~package_name ~profile ->
   let* workspace = load_workspace_strict workspace_root in
@@ -322,8 +318,7 @@ module For_test = struct
   let run_fmt_check_default = fun ~emit ~workspace ~package ->
     let package: Package.t = package in
     Riot_fmt.run_check_paths ~workspace ~on_event:(fun event -> emit (Fmt event)) [ package.path ]
-    |> Result.map_err
-      ~fn:(fun exn -> FmtCheckFailed { package = package.name; error = exn_message exn })
+    |> Result.map_err ~fn:(fun error -> FmtCheckFailed { package = package.name; error })
 
   let run_fix_check_default = fun ~emit ~registry ~workspace ~request:_ ~package ->
     let workspace: Workspace.t = workspace in
@@ -352,7 +347,7 @@ module For_test = struct
         |> Result.map ~fn:(fun _ -> ())
         |> Result.map_err ~fn:(fun err -> Failure (Riot_build.error_message err)))
       fix_request |> Result.map ~fn:(fun _ -> ()) |> Result.map_err
-      ~fn:(fun exn -> FixCheckFailed { package = package.name; error = exn_message exn })
+      ~fn:(fun error -> FixCheckFailed { package = package.name; error })
 
   let run_build_check_default = fun ~emit ~(workspace:Workspace.t) ~package_name ~profile ->
     build_package ~emit ~workspace ~package_name ~profile |> Result.map ~fn:(fun _ -> ())

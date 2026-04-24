@@ -177,18 +177,78 @@ let test_workspace_selection_orders_public_packages_only = fun _ctx ->
         Ok ()
 
 let test_publish_error_message_renders_typed_registry_initialization_error = fun _ctx ->
-  let message =
-    Riot_publish.publish_error_message
-      (Riot_publish.RegistryInitializationFailed {
-        registry_name = "pkgs.ml";
-        error = Riot_deps.RegistryFilesystemInitializationFailed "permission denied"
-      })
-  in
+  let message = Riot_publish.publish_error_message
+    (Riot_publish.RegistryInitializationFailed {
+      registry_name = "pkgs.ml";
+      error = Riot_deps.RegistryFilesystemInitializationFailed "permission denied"
+    }) in
   let expected = "failed to initialize registry 'pkgs.ml': permission denied" in
   if String.equal message expected then
     Ok ()
   else
     Error ("unexpected registry initialization message: " ^ message)
+
+let test_publish_error_message_renders_typed_workspace_errors = fun _ctx ->
+  let workspace_root = Path.v "/workspace" in
+  let scan_message = Riot_publish.publish_error_message
+    (Riot_publish.WorkspaceScanFailed {
+      workspace_root;
+      error = Riot_model.Workspace_manager.NoWorkspaceRootFound
+    }) in
+  let load_message = Riot_publish.publish_error_message
+    (Riot_publish.WorkspaceLoadHadErrors {
+      workspace_root;
+      errors = [
+        Riot_model.Workspace_manager.PackageTomlReadFailed {
+          package = "dep";
+          path = "deps/dep/riot.toml"
+        }
+      ]
+    }) in
+  let prepare_message = Riot_publish.publish_error_message
+    (Riot_publish.WorkspacePrepareFailed {
+      workspace_root;
+      error = Riot_model.Pm_error.Unexpected { error = "lock refresh failed" }
+    }) in
+  let expected_scan = "failed to scan workspace '/workspace': no workspace root found" in
+  let expected_load = "failed to load workspace '/workspace': package 'dep': failed to read riot.toml at path deps/dep/riot.toml" in
+  let expected_prepare = "failed to prepare workspace '/workspace': lock refresh failed" in
+  if not (String.equal scan_message expected_scan) then
+    Error ("unexpected workspace scan message: " ^ scan_message)
+  else if not (String.equal load_message expected_load) then
+    Error ("unexpected workspace load message: " ^ load_message)
+  else if not (String.equal prepare_message expected_prepare) then
+    Error ("unexpected workspace prepare message: " ^ prepare_message)
+  else
+    Ok ()
+
+let test_publish_error_message_renders_typed_build_check_error = fun _ctx ->
+  let package = package_name "demo" in
+  let message = Riot_publish.publish_error_message
+    (Riot_publish.BuildCheckFailed {
+      package;
+      error = Riot_build.UnexpectedError { reason = "compiler unavailable" }
+    }) in
+  let expected = "'riot build' failed for package 'demo': compiler unavailable" in
+  if String.equal message expected then
+    Ok ()
+  else
+    Error ("unexpected build check message: " ^ message)
+
+let test_publish_error_message_renders_check_exceptions = fun _ctx ->
+  let package = package_name "demo" in
+  let fmt_message = Riot_publish.publish_error_message
+    (Riot_publish.FmtCheckFailed { package; error = Failure "formatting failed" }) in
+  let fix_message = Riot_publish.publish_error_message
+    (Riot_publish.FixCheckFailed { package; error = Failure "lint failed" }) in
+  let expected_fmt = "'riot fmt --check' failed for package 'demo': formatting failed" in
+  let expected_fix = "'riot fix --check' failed for package 'demo': lint failed" in
+  if not (String.equal fmt_message expected_fmt) then
+    Error ("unexpected fmt check message: " ^ fmt_message)
+  else if not (String.equal fix_message expected_fix) then
+    Error ("unexpected fix check message: " ^ fix_message)
+  else
+    Ok ()
 
 let tests =
   Test.[
@@ -196,9 +256,10 @@ let tests =
     case "publish selection: missing package errors" test_missing_package_errors;
     case "publish selection: private package is skipped" test_private_package_is_skipped;
     case "publish selection: workspace orders public packages only" test_workspace_selection_orders_public_packages_only;
-    case
-      "publish selection: renders typed registry initialization errors"
-      test_publish_error_message_renders_typed_registry_initialization_error;
+    case "publish selection: renders typed registry initialization errors" test_publish_error_message_renders_typed_registry_initialization_error;
+    case "publish selection: renders typed workspace errors" test_publish_error_message_renders_typed_workspace_errors;
+    case "publish selection: renders typed build check errors" test_publish_error_message_renders_typed_build_check_error;
+    case "publish selection: renders check exceptions" test_publish_error_message_renders_check_exceptions;
   ]
 
 let name = "Riot Publish Selection Tests"

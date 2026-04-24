@@ -50,11 +50,15 @@ type publish_error =
       registry_name: string;
       error: Riot_deps.registry_initialization_error
     }
-  | WorkspaceScanFailed of { workspace_root: Path.t; error: string }
-  | WorkspacePrepareFailed of { workspace_root: Path.t; error: string }
-  | FmtCheckFailed of { package: Riot_model.Package_name.t; error: string }
-  | FixCheckFailed of { package: Riot_model.Package_name.t; error: string }
-  | BuildCheckFailed of { package: Riot_model.Package_name.t; error: string }
+  | WorkspaceScanFailed of { workspace_root: Path.t; error: Riot_model.Workspace_manager.scan_error }
+  | WorkspaceLoadHadErrors of {
+      workspace_root: Path.t;
+      errors: Riot_model.Workspace_manager.load_error list
+    }
+  | WorkspacePrepareFailed of { workspace_root: Path.t; error: Riot_model.Pm_error.t }
+  | FmtCheckFailed of { package: Riot_model.Package_name.t; error: exn }
+  | FixCheckFailed of { package: Riot_model.Package_name.t; error: exn }
+  | BuildCheckFailed of { package: Riot_model.Package_name.t; error: Riot_build.error }
   | PublishPlanFailed of Riot_deps.Publisher.error
   | PublishFailed of { package: Riot_model.Package_name.t; error: Riot_deps.Publisher.error }
 val publish_error_message: publish_error -> string
