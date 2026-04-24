@@ -2,11 +2,11 @@ open Std
 open Riot_model
 open Std.Result.Syntax
 
-type package_kind = Riot_init_types.package_kind =
+type package_kind = Types.package_kind =
   | Library
   | Binary
 
-type event = Riot_init_types.event =
+type event = Types.event =
   | WorkspaceInitializationStarted of { name: string; target_dir: Path.t }
   | ScaffoldCreated of { path: string }
   | WorkspaceInitializationCompleted of {
@@ -26,9 +26,9 @@ let command =
         flag "bin" |> long "bin" |> help "Create binary package";
       ]
 
-let new_package = Riot_init_package.new_package
+let new_package = Scaffold.new_package
 
-let new_standalone_package = Riot_init_package.new_standalone_package
+let new_standalone_package = Scaffold.new_standalone_package
 
 let next_steps = fun ~cwd ~target_dir ~path_arg ~is_library ~package_name ->
   let steps = ref [] in
@@ -64,18 +64,16 @@ let run = fun ~on_event matches ->
       | Some name -> name
       | None -> Path.basename target_dir
     in
-    let* workspace_name = Riot_init_names.validate_workspace_name workspace_name in
-    let package_name = Riot_init_names.starter_package_name workspace_name in
-    let* validated_package_name = Riot_init_names.validate_name package_name in
+    let* workspace_name = Names.validate_workspace_name workspace_name in
+    let package_name = Names.starter_package_name workspace_name in
+    let* validated_package_name = Names.validate_name package_name in
     let validated_package_name = Package_name.to_string validated_package_name in
     let* () =
       match Fs.create_dir_all target_dir with
       | Ok () -> Ok ()
       | Error _ -> Error (Failure "Failed to create directory")
     in
-    Riot_init_types.emit
-      ~on_event
-      (WorkspaceInitializationStarted { name = workspace_name; target_dir });
+    Types.emit ~on_event (WorkspaceInitializationStarted { name = workspace_name; target_dir });
     let* () =
       Templates.materialize
         Templates.{
@@ -86,10 +84,10 @@ let run = fun ~on_event matches ->
           is_library;
         } |> Result.map_err ~fn:(fun message -> Failure message)
     in
-    Riot_init_types.emit
+    Types.emit
       ~on_event
       (WorkspaceInitializationCompleted {
         next_steps = next_steps ~cwd ~target_dir ~path_arg ~is_library ~package_name:validated_package_name;
-        package_hints = Riot_init_types.package_hints
+        package_hints = Types.package_hints
       });
     Ok ()

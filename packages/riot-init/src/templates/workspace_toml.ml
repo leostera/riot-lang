@@ -1,6 +1,6 @@
 open Std
 
-let materialize = fun (config: Template_config.t) ->
+let materialize = fun (config: Context.t) ->
   let content = {|[workspace]
 name = "|} ^ config.workspace_name ^ {|"
 members = [
@@ -14,4 +14,4 @@ members = [
 kind = "native"
 |}
   in
-  Template_writer.write_file config ~relative_path:"riot.toml" ~content ~executable:false
+  Writer.write_file config ~relative_path:"riot.toml" ~content ~executable:false

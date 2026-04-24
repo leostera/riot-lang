@@ -6,8 +6,8 @@ let scaffold_package = fun ~path ~name ~is_library ->
   let src_dir = Path.(path / Path.v "src") in
   let* () = Fs.create_dir_all src_dir
   |> Result.map_err ~fn:(fun _ -> "Failed to create src directory") in
-  let module_name = Riot_init_names.package_module_name name in
-  let module_file_stem = Riot_init_names.module_name_to_file_stem module_name in
+  let module_name = Names.package_module_name name in
+  let module_file_stem = Names.module_name_to_file_stem module_name in
   let main_ml =
     if is_library then
       Path.(src_dir / Path.v (module_file_stem ^ ".ml"))
@@ -49,7 +49,7 @@ let scaffold_package = fun ~path ~name ~is_library ->
 
 let new_package = fun ~workspace ~path ~name ~is_library ->
   let* (created_path, created_name) = scaffold_package ~path ~name ~is_library in
-  let* () = Riot_init_manifest.add_workspace_member ~workspace ~path in
+  let* () = Manifest.add_workspace_member ~workspace ~path in
   Ok (created_path, created_name)
 
 let new_standalone_package = fun ~path ~name ~is_library -> scaffold_package ~path ~name ~is_library

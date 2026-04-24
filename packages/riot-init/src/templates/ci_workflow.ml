@@ -1,7 +1,7 @@
 open Std
 
-let materialize = fun (config: Template_config.t) ->
-  Template_writer.write_file config ~relative_path:".github/workflows/ci.yml"
+let materialize = fun (config: Context.t) ->
+  Writer.write_file config ~relative_path:".github/workflows/ci.yml"
     ~content:{|name: CI
 
 on:

@@ -1,14 +1,14 @@
 open Std.Result.Syntax
 
-type config = Template_config.t = {
-  on_event: Riot_init_types.event -> unit;
+type config = Context.t = {
+  on_event: Types.event -> unit;
   target_dir: Std.Path.t;
   workspace_name: string;
   package_name: string;
   is_library: bool;
 }
 
-type error = Template_config.error
+type error = Context.error
 
 let materialize = fun config ->
   let* () = Workspace_toml.materialize config in

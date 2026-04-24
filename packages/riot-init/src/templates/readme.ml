@@ -1,6 +1,6 @@
 open Std
 
-let materialize = fun (config: Template_config.t) ->
+let materialize = fun (config: Context.t) ->
   let running_section =
     if config.is_library then
       ""
@@ -84,4 +84,4 @@ Then add the new package path to `riot.toml` workspace members.
 - `.github/workflows/ci.yml` - GitHub Actions starter workflow
 |}
   in
-  Template_writer.write_file config ~relative_path:"README.md" ~content ~executable:false
+  Writer.write_file config ~relative_path:"README.md" ~content ~executable:false

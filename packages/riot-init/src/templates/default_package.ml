@@ -41,12 +41,12 @@ let test_ml = fun ~workspace_name ~module_name ~test_file_stem ->
   ^ "\" ~tests ~args ()) ~args:Env.args ()\n"
 
 let write = fun config ~relative_path ~content ->
-  Template_writer.write_file config ~emit:false ~relative_path ~content ~executable:false
+  Writer.write_file config ~emit:false ~relative_path ~content ~executable:false
 
-let materialize = fun (config: Template_config.t) ->
-  let module_name = Riot_init_names.package_name_to_module_name config.package_name in
-  let module_file_stem = Riot_init_names.module_name_to_file_stem module_name in
-  let test_file_stem = Riot_init_names.module_name_to_test_file_stem module_name in
+let materialize = fun (config: Context.t) ->
+  let module_name = Names.package_name_to_module_name config.package_name in
+  let module_file_stem = Names.module_name_to_file_stem module_name in
+  let test_file_stem = Names.module_name_to_test_file_stem module_name in
   let package_root = "packages/" ^ config.package_name in
   let src_root = package_root ^ "/src" in
   let tests_root = package_root ^ "/tests" in
@@ -85,5 +85,5 @@ let materialize = fun (config: Template_config.t) ->
     config
     ~relative_path:(tests_root ^ "/" ^ test_file_stem ^ ".ml")
     ~content:(test_ml ~workspace_name:config.workspace_name ~module_name ~test_file_stem) in
-  Template_writer.emit_created config (package_root ^ "/");
+  Writer.emit_created config (package_root ^ "/");
   Ok ()

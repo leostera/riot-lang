@@ -1,10 +1,10 @@
 open Std
 open Std.Result.Syntax
 
-let emit_created = fun (config: Template_config.t) path ->
-  Riot_init_types.emit ~on_event:config.on_event (ScaffoldCreated { path })
+let emit_created = fun (config: Context.t) path ->
+  Types.emit ~on_event:config.on_event (ScaffoldCreated { path })
 
-let write_file = fun ?(emit = true) (config: Template_config.t) ~relative_path ~content ~executable ->
+let write_file = fun ?(emit = true) (config: Context.t) ~relative_path ~content ~executable ->
   let path = Path.(config.target_dir / Path.v relative_path) in
   let* () =
     match Path.parent path with
