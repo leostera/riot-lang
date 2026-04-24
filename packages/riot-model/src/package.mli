@@ -94,6 +94,51 @@ type manifest_spec = {
   fix_providers: Fix_provider.t list;
   publish: publish_metadata;
 }
+type publish_field =
+  | PublishVersion
+  | PublishDescription
+  | PublishLicense
+  | PublishPublic
+type dependency_field =
+  | DependencyWorkspace
+  | DependencyPath
+  | DependencySource
+  | DependencyGithub
+  | DependencyRef
+  | DependencyVersion
+type publish_metadata_error =
+  | PackageSectionMustBeTable
+  | InvalidPackageVersion of {
+      package_name: string;
+      version: string;
+      error: Std.Version.parse_error
+    }
+  | NonStringPublishField of { package_name: string; field: publish_field }
+  | NonBooleanPublicFlag of { package_name: string }
+type dependency_error =
+  | InvalidDependencyName of { raw_name: string; error: Package_name.error }
+  | InvalidDependencyRequirement of {
+      dependency_name: string;
+      requirement: string;
+      error: Std.Version.parse_error
+    }
+  | NonBooleanWorkspaceFlag of { dependency_name: string }
+  | NonStringDependencyField of { dependency_name: string; field: dependency_field }
+  | DependencyCannotSpecifySourceAndGithub of { dependency_name: string }
+  | WorkspaceDependencyCannotSpecifyOverrides of { dependency_name: string }
+  | DependencyRefRequiresSource of { dependency_name: string }
+  | BuiltinDependencyCannotSpecifyOverrides of { dependency_name: string }
+  | BuiltinDependencyVersionRequirementNotSupported of {
+      dependency_name: string;
+      requirement: string
+    }
+  | DependencyMustBeStringOrTable of { dependency_name: string }
+type manifest_error =
+  | ManifestMustBeTable
+  | InvalidPackageName of { raw_name: string; error: Package_name.error }
+  | InvalidPublishMetadata of publish_metadata_error
+  | DependencySectionMustBeTable of { section_name: string }
+  | InvalidDependency of dependency_error
 type t = private {
   name: Package_name.t;
   path: Path.t;
@@ -145,7 +190,7 @@ val from_toml:
   workspace_build_deps:dependency list ->
   path:Path.t ->
   relative_path:Path.t ->
-  (t, string) result
+  (t, manifest_error) result
 
 val parse_manifest_spec:
   Std.Data.Toml.value ->
@@ -154,7 +199,9 @@ val parse_manifest_spec:
   workspace_build_deps:dependency list ->
   path:Path.t ->
   relative_path:Path.t ->
-  (manifest_spec, string) result
+  (manifest_spec, manifest_error) result
+
+val manifest_error_message: manifest_error -> string
 
 val realize_manifest_spec: intent:realization_intent -> manifest_spec -> t
 

@@ -57,6 +57,35 @@ path = "examples/custom.ml"
       else
         Error "expected package manifest to keep only declared binaries and metadata")
 
+let test_manifest_from_toml_returns_typed_dependency_errors = fun _ctx ->
+  let manifest =
+    Std.Data.Toml.parse
+      {|
+[package]
+name = "demo"
+version = "0.1.0"
+
+[dependencies]
+std = "not-a-semver-range"
+|}
+    |> Result.expect ~msg:"Expected package TOML to parse"
+  in
+  match Riot_model.Package_manifest.from_toml
+    manifest
+    ~workspace_deps:[]
+    ~workspace_dev_deps:[]
+    ~workspace_build_deps:[]
+    ~path:(Path.v "/tmp/demo")
+    ~relative_path:(Path.v "packages/demo") with
+  | Error (Riot_model.Package.InvalidDependency (Riot_model.Package.InvalidDependencyRequirement {
+    dependency_name;
+    requirement;
+    _
+  })) when String.equal dependency_name "std" && String.equal requirement "not-a-semver-range" -> Ok ()
+  | Error err -> Error ("expected typed dependency requirement error, got "
+  ^ Riot_model.Package_manifest.error_message err)
+  | Ok _ -> Error "expected invalid dependency requirement to fail package manifest parsing"
+
 let test_manifest_realize_runtime_discovers_runtime_inputs_only = fun _ctx ->
   with_tempdir "riot_model_package_manifest_runtime"
     (fun tmpdir ->
@@ -339,6 +368,7 @@ path = "tests/demo_tests.ml"
 
 let tests = [
   Test.case "package manifest: from_toml keeps declared metadata only" test_manifest_from_toml_keeps_declared_metadata_only;
+  Test.case "package manifest: from_toml returns typed dependency errors" test_manifest_from_toml_returns_typed_dependency_errors;
   Test.case "package manifest: runtime realization discovers runtime inputs only" test_manifest_realize_runtime_discovers_runtime_inputs_only;
   Test.case "package manifest: runtime realization keeps nested runtime modules" test_manifest_realize_runtime_keeps_nested_runtime_modules;
   Test.case "package manifest: runtime realization stays complete across repeated parallel scans" test_manifest_realize_runtime_stays_complete_across_repeated_parallel_scans;

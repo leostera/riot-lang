@@ -8,7 +8,7 @@ type load_error =
   | PackageNotFound of { dependant: string option; package: string; path: string }
   | PackageTomlReadFailed of { package: string; path: string }
   | PackageTomlParseFailed of { package: string; path: string }
-  | PackageFromTomlFailed of { package: string; path: string; error: string }
+  | PackageFromTomlFailed of { package: string; path: string; error: Package_manifest.error }
 val manifest_load_error_message: manifest_load_error -> string
 
 val load_error_to_string: load_error -> string

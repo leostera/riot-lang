@@ -28,6 +28,8 @@ type compiler_config = Package.compiler_config
 
 type foreign_dependency = Package.foreign_dependency
 
+type error = Package.manifest_error
+
 type t = Package.manifest_spec = {
   name: Package_name.t;
   path: Path.t;
@@ -68,5 +70,7 @@ let is_workspace_member = fun manifest ->
 let all_dependencies = fun manifest -> manifest.dependencies @ manifest.dev_dependencies @ manifest.build_dependencies
 
 let from_toml = Package.parse_manifest_spec
+
+let error_message = Package.manifest_error_message
 
 let realize = Package.realize_manifest_spec

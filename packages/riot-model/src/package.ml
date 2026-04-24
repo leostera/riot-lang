@@ -118,6 +118,56 @@ type manifest_spec = {
   publish: publish_metadata;
 }
 
+type publish_field =
+  | PublishVersion
+  | PublishDescription
+  | PublishLicense
+  | PublishPublic
+
+type dependency_field =
+  | DependencyWorkspace
+  | DependencyPath
+  | DependencySource
+  | DependencyGithub
+  | DependencyRef
+  | DependencyVersion
+
+type publish_metadata_error =
+  | PackageSectionMustBeTable
+  | InvalidPackageVersion of {
+      package_name: string;
+      version: string;
+      error: Std.Version.parse_error
+    }
+  | NonStringPublishField of { package_name: string; field: publish_field }
+  | NonBooleanPublicFlag of { package_name: string }
+
+type dependency_error =
+  | InvalidDependencyName of { raw_name: string; error: Package_name.error }
+  | InvalidDependencyRequirement of {
+      dependency_name: string;
+      requirement: string;
+      error: Std.Version.parse_error
+    }
+  | NonBooleanWorkspaceFlag of { dependency_name: string }
+  | NonStringDependencyField of { dependency_name: string; field: dependency_field }
+  | DependencyCannotSpecifySourceAndGithub of { dependency_name: string }
+  | WorkspaceDependencyCannotSpecifyOverrides of { dependency_name: string }
+  | DependencyRefRequiresSource of { dependency_name: string }
+  | BuiltinDependencyCannotSpecifyOverrides of { dependency_name: string }
+  | BuiltinDependencyVersionRequirementNotSupported of {
+      dependency_name: string;
+      requirement: string
+    }
+  | DependencyMustBeStringOrTable of { dependency_name: string }
+
+type manifest_error =
+  | ManifestMustBeTable
+  | InvalidPackageName of { raw_name: string; error: Package_name.error }
+  | InvalidPublishMetadata of publish_metadata_error
+  | DependencySectionMustBeTable of { section_name: string }
+  | InvalidDependency of dependency_error
+
 type t = {
   name: Package_name.t;
   path: Path.t;
@@ -527,8 +577,7 @@ let is_workspace_member: t -> bool = fun pkg ->
   not (String.starts_with ~prefix:"../" rel_str || Path.is_absolute pkg.relative_path)
 
 (** Validate package name according to Riot naming conventions *)
-let validate_name = fun name ->
-  Package_name.from_string name |> Result.map_err ~fn:Package_name.error_message
+let validate_name = fun name -> Package_name.from_string name |> Result.map_err ~fn:Package_name.error_message
 
 let version_parse_error_to_string = fun err ->
   match err with
@@ -536,8 +585,76 @@ let version_parse_error_to_string = fun err ->
   | Version.Invalid_version_segment segment -> "invalid version segment: " ^ segment
   | Version.Invalid_pre_release_segment segment -> "invalid pre-release segment: " ^ segment
 
+let publish_field_name = function
+  | PublishVersion -> "version"
+  | PublishDescription -> "description"
+  | PublishLicense -> "license"
+  | PublishPublic -> "public"
+
+let dependency_field_name = function
+  | DependencyWorkspace -> "workspace"
+  | DependencyPath -> "path"
+  | DependencySource -> "source"
+  | DependencyGithub -> "github"
+  | DependencyRef -> "ref"
+  | DependencyVersion -> "version"
+
+let publish_metadata_error_message = function
+  | PackageSectionMustBeTable -> "[package] must be a table"
+  | InvalidPackageVersion { package_name; version; error } -> "package '"
+  ^ package_name
+  ^ "' has invalid version '"
+  ^ version
+  ^ "': "
+  ^ version_parse_error_to_string error
+  | NonStringPublishField { package_name; field } -> "package '"
+  ^ package_name
+  ^ "' has non-string "
+  ^ publish_field_name field
+  | NonBooleanPublicFlag { package_name } -> "package '" ^ package_name ^ "' has non-boolean public flag"
+
+let dependency_error_message = function
+  | InvalidDependencyName { raw_name; error } -> "dependency '"
+  ^ raw_name
+  ^ "' has invalid package name: "
+  ^ Package_name.error_message error
+  | InvalidDependencyRequirement { dependency_name; requirement; error } -> "dependency '"
+  ^ dependency_name
+  ^ "' has invalid version requirement '"
+  ^ requirement
+  ^ "': "
+  ^ version_parse_error_to_string error
+  | NonBooleanWorkspaceFlag { dependency_name } -> "dependency '" ^ dependency_name ^ "' has non-boolean workspace flag"
+  | NonStringDependencyField { dependency_name; field } -> "dependency '"
+  ^ dependency_name
+  ^ "' has non-string "
+  ^ dependency_field_name field
+  | DependencyCannotSpecifySourceAndGithub { dependency_name } -> "dependency '"
+  ^ dependency_name
+  ^ "' cannot specify both source and github"
+  | WorkspaceDependencyCannotSpecifyOverrides { dependency_name } -> "dependency '"
+  ^ dependency_name
+  ^ "' cannot combine workspace = true with path, source, ref, or version"
+  | DependencyRefRequiresSource { dependency_name } -> "dependency '" ^ dependency_name ^ "' cannot specify ref without source"
+  | BuiltinDependencyCannotSpecifyOverrides { dependency_name } -> "builtin dependency '"
+  ^ dependency_name
+  ^ "' does not support path or source overrides"
+  | BuiltinDependencyVersionRequirementNotSupported { dependency_name; requirement } -> "builtin dependency '"
+  ^ dependency_name
+  ^ "' does not support version requirement '"
+  ^ requirement
+  ^ "'"
+  | DependencyMustBeStringOrTable { dependency_name } -> "dependency '" ^ dependency_name ^ "' must be a string or table"
+
+let manifest_error_message = function
+  | ManifestMustBeTable -> "package manifest must be a table"
+  | InvalidPackageName { raw_name=_; error } -> Package_name.error_message error
+  | InvalidPublishMetadata error -> publish_metadata_error_message error
+  | DependencySectionMustBeTable { section_name } -> "[" ^ section_name ^ "] must be a table"
+  | InvalidDependency error -> dependency_error_message error
+
 (** Package TOML parsing *)
-let parse_name: (string * Toml.value) list -> string -> (Package_name.t, string) result = fun items fallback ->
+let parse_name: (string * Toml.value) list -> string -> (Package_name.t, manifest_error) result = fun items fallback ->
   let raw_name =
     match Fields.get "package" items with
     | Some (Toml.Table pkg_items) -> (
@@ -547,37 +664,37 @@ let parse_name: (string * Toml.value) list -> string -> (Package_name.t, string)
       )
     | _ -> fallback
   in
-  validate_name raw_name
+  Package_name.from_string raw_name
+  |> Result.map_err ~fn:(fun error -> InvalidPackageName { raw_name; error })
 
-let parse_publish_metadata: (string * Toml.value) list -> (publish_metadata, string) result = fun items ->
+let parse_publish_metadata:
+  (string * Toml.value) list -> (publish_metadata, publish_metadata_error) result = fun items ->
   let parse_version = fun ~package_name ->
     function
     | Toml.String raw_version -> (
         match Version.parse (String.trim raw_version) with
         | Ok version -> Ok (Some version)
-        | Error err -> Error ("package '"
-        ^ package_name
-        ^ "' has invalid version '"
-        ^ raw_version
-        ^ "': "
-        ^ version_parse_error_to_string err)
+        | Error error -> Error (InvalidPackageVersion { package_name; version = raw_version; error })
       )
-    | _ -> Error ("package '" ^ package_name ^ "' has non-string version")
+    | _ -> Error (NonStringPublishField { package_name; field = PublishVersion })
   in
   let parse_optional_string = fun ~package_name ~field ->
     function
     | Toml.String value -> Ok (Some value)
-    | _ -> Error ("package '" ^ package_name ^ "' has non-string " ^ field)
+    | _ -> Error (NonStringPublishField { package_name; field })
   in
   let parse_public = fun ~package_name ->
     function
     | Toml.Bool value -> Ok (Some value)
-    | _ -> Error ("package '" ^ package_name ^ "' has non-boolean public flag")
+    | _ -> Error (NonBooleanPublicFlag { package_name })
   in
   match Fields.get "package" items with
   | Some (Toml.Table pkg_items) ->
-      let* package_name = parse_name items "<package>" in
-      let package_name = Package_name.to_string package_name in
+      let package_name =
+        match Fields.get "name" pkg_items with
+        | Some (Toml.String name) -> name
+        | _ -> "<package>"
+      in
       let version =
         match Fields.get "version" pkg_items with
         | Some value -> parse_version ~package_name value
@@ -585,12 +702,12 @@ let parse_publish_metadata: (string * Toml.value) list -> (publish_metadata, str
       in
       let description =
         match Fields.get "description" pkg_items with
-        | Some value -> parse_optional_string ~package_name ~field:"description" value
+        | Some value -> parse_optional_string ~package_name ~field:PublishDescription value
         | None -> Ok None
       in
       let license =
         match Fields.get "license" pkg_items with
-        | Some value -> parse_optional_string ~package_name ~field:"license" value
+        | Some value -> parse_optional_string ~package_name ~field:PublishLicense value
         | None -> Ok None
       in
       let is_public =
@@ -612,7 +729,7 @@ let parse_publish_metadata: (string * Toml.value) list -> (publish_metadata, str
         | (_, _, _, Error err) -> Error err
       )
   | Some _ ->
-      Error "[package] must be a table"
+      Error PackageSectionMustBeTable
   | None ->
       Ok default_publish_metadata
 
@@ -630,12 +747,7 @@ let validate_requirement = fun ~dependency_name requirement ->
   let trimmed = String.trim requirement in
   match Version.parse_requirement trimmed with
   | Ok requirement -> Ok requirement
-  | Error err -> Error ("dependency '"
-  ^ dependency_name
-  ^ "' has invalid version requirement '"
-  ^ requirement
-  ^ "': "
-  ^ version_parse_error_to_string err)
+  | Error error -> Error (InvalidDependencyRequirement { dependency_name; requirement; error })
 
 let requirement_is_any = fun requirement ->
   String.equal (Version.requirement_to_string requirement) "*"
@@ -676,23 +788,22 @@ let validate_dependency_source = fun ~dependency_name source ->
     || Option.is_some source.ref_
     || Option.is_some source.version)
   then
-    Error ("dependency '" ^ dependency_name ^ "' cannot combine workspace = true with path, source, ref, or version")
+    Error (WorkspaceDependencyCannotSpecifyOverrides { dependency_name })
   else if Option.is_some source.ref_ && Option.is_none source.source_locator then
-    Error ("dependency '" ^ dependency_name ^ "' cannot specify ref without source")
+    Error (DependencyRefRequiresSource { dependency_name })
   else if
     source.builtin
     && (Option.is_some source.path || Option.is_some source.source_locator || Option.is_some source.ref_)
   then
-    Error ("builtin dependency '" ^ dependency_name ^ "' does not support path or source overrides")
+    Error (BuiltinDependencyCannotSpecifyOverrides { dependency_name })
   else if source.builtin then
     match source.version with
     | None -> Ok { source with version = Some Version.any }
     | Some version when requirement_is_any version -> Ok source
-    | Some version -> Error ("builtin dependency '"
-    ^ dependency_name
-    ^ "' does not support version requirement '"
-    ^ Version.requirement_to_string version
-    ^ "'")
+    | Some version -> Error (BuiltinDependencyVersionRequirementNotSupported {
+      dependency_name;
+      requirement = Version.requirement_to_string version
+    })
   else if
     source.workspace
     || Option.is_some source.path
@@ -704,8 +815,9 @@ let validate_dependency_source = fun ~dependency_name source ->
     Ok { source with version = Some Version.any }
 
 let parse_dependency:
-  string -> Toml.value -> workspace_deps:dependency list -> (dependency, string) result = fun raw_name value ~workspace_deps ->
-  let* name = Package_name.from_string raw_name |> Result.map_err ~fn:Package_name.error_message in
+  string -> Toml.value -> workspace_deps:dependency list -> (dependency, dependency_error) result = fun raw_name value ~workspace_deps ->
+  let* name = Package_name.from_string raw_name
+  |> Result.map_err ~fn:(fun error -> InvalidDependencyName { raw_name; error }) in
   let dependency_name = Package_name.to_string name in
   match value with
   | Toml.Table attrs -> (
@@ -719,34 +831,43 @@ let parse_dependency:
           |> Result.map ~fn:(fun source -> { name; source })
         )
       | Some _ ->
-          Error ("dependency '" ^ dependency_name ^ "' has non-boolean workspace flag")
+          Error (NonBooleanWorkspaceFlag { dependency_name })
       | _ -> (
           let path =
             match Fields.get "path" attrs with
             | Some (Toml.String path_str) -> Ok (Some (Path.v path_str))
-            | Some _ -> Error ("dependency '" ^ dependency_name ^ "' has non-string path")
+            | Some _ -> Error (NonStringDependencyField { dependency_name; field = DependencyPath })
             | None -> Ok None
           in
           let source_locator =
             match Fields.get "source" attrs, Fields.get "github" attrs with
-            | Some _, Some _ -> Error ("dependency '" ^ dependency_name ^ "' cannot specify both source and github")
+            | Some _, Some _ -> Error (DependencyCannotSpecifySourceAndGithub { dependency_name })
             | Some (Toml.String locator), None -> Ok (Some (normalize_source_locator locator))
-            | Some _, None -> Error ("dependency '" ^ dependency_name ^ "' has non-string source locator")
+            | Some _, None -> Error (NonStringDependencyField {
+              dependency_name;
+              field = DependencySource
+            })
             | None, Some (Toml.String github) -> Ok (Some (github_locator_of_value github))
-            | None, Some _ -> Error ("dependency '" ^ dependency_name ^ "' has non-string github shorthand")
+            | None, Some _ -> Error (NonStringDependencyField {
+              dependency_name;
+              field = DependencyGithub
+            })
             | None, None -> Ok None
           in
           let ref_ =
             match Fields.get "ref" attrs with
             | Some (Toml.String ref_) -> Ok (Some (String.trim ref_))
-            | Some _ -> Error ("dependency '" ^ dependency_name ^ "' has non-string ref")
+            | Some _ -> Error (NonStringDependencyField { dependency_name; field = DependencyRef })
             | None -> Ok None
           in
           let version =
             match Fields.get "version" attrs with
             | Some (Toml.String requirement) -> validate_requirement ~dependency_name requirement
             |> Result.map ~fn:(fun version -> Some version)
-            | Some _ -> Error ("dependency '" ^ dependency_name ^ "' has non-string version requirement")
+            | Some _ -> Error (NonStringDependencyField {
+              dependency_name;
+              field = DependencyVersion
+            })
             | None -> Ok None
           in
           match path, source_locator, ref_, version with
@@ -775,10 +896,12 @@ let parse_dependency:
       |> Result.map ~fn:(fun source -> { name; source })
     )
   | _ ->
-      Error ("dependency '" ^ dependency_name ^ "' must be a string or table")
+      Error (DependencyMustBeStringOrTable { dependency_name })
 
 let parse_dependencies:
-  (string * Toml.value) list -> workspace_deps:dependency list -> (dependency list, string) result = fun items ~workspace_deps ->
+  (string * Toml.value) list ->
+  workspace_deps:dependency list ->
+  (dependency list, dependency_error) result = fun items ~workspace_deps ->
   let rec loop acc entries =
     match entries with
     | [] -> Ok (List.reverse acc)
@@ -793,7 +916,8 @@ let parse_dependencies:
 let parse_dependency_section = fun section_name items ~(workspace_deps:dependency list) ->
   match Fields.get section_name items with
   | Some (Toml.Table dep_items) -> parse_dependencies dep_items ~workspace_deps
-  | Some _ -> Error ("[" ^ section_name ^ "] must be a table")
+  |> Result.map_err ~fn:(fun error -> InvalidDependency error)
+  | Some _ -> Error (DependencySectionMustBeTable { section_name })
   | None -> Ok []
 
 let dependency_source_to_json = fun source ->
@@ -897,6 +1021,7 @@ let dependency_source_of_json = fun json ->
             | Some Json.Null
             | None -> Ok None
             | Some (Json.String requirement) -> validate_requirement ~dependency_name:"<json>" requirement
+            |> Result.map_err ~fn:dependency_error_message
             |> Result.map ~fn:(fun version -> Some version)
             | _ -> Error "path dependency source has non-string version requirement"
           in
@@ -910,7 +1035,7 @@ let dependency_source_of_json = fun json ->
                   source_locator;
                   ref_;
                   version;
-                }
+                } |> Result.map_err ~fn:dependency_error_message
           | (Error err, _, _, _)
           | (_, Error err, _, _)
           | (_, _, Error err, _)
@@ -929,7 +1054,9 @@ let dependency_source_of_json = fun json ->
                 version = Some Version.any;
               }
           | Some (Json.String requirement) ->
-              validate_requirement ~dependency_name:"<json>" requirement |> Result.map
+              validate_requirement ~dependency_name:"<json>" requirement
+              |> Result.map_err ~fn:dependency_error_message
+              |> Result.map
                 ~fn:(fun version ->
                   {
                     workspace = false;
@@ -980,6 +1107,7 @@ let dependency_source_of_json = fun json ->
           let version =
             match Fields.get "version" fields with
             | Some (Json.String requirement) -> validate_requirement ~dependency_name:"<json>" requirement
+            |> Result.map_err ~fn:dependency_error_message
             |> Result.map ~fn:(fun version -> Some version)
             | Some Json.Null -> Ok None
             | Some _ -> Error "dependency source version must be a string"
@@ -995,7 +1123,7 @@ let dependency_source_of_json = fun json ->
                   source_locator;
                   ref_;
                   version;
-                }
+                } |> Result.map_err ~fn:dependency_error_message
           | (Error err, _, _, _, _, _)
           | (_, Error err, _, _, _, _)
           | (_, _, Error err, _, _, _)
@@ -1736,13 +1864,13 @@ let parse_manifest_spec:
   workspace_build_deps:dependency list ->
   path:Path.t ->
   relative_path:Path.t ->
-  (manifest_spec, string) result = fun toml ~workspace_deps ~workspace_dev_deps ~workspace_build_deps ~path ~relative_path ->
+  (manifest_spec, manifest_error) result = fun toml ~workspace_deps ~workspace_dev_deps ~workspace_build_deps ~path ~relative_path ->
   match toml with
   | Toml.Table items -> (
       let fallback_name = Path.basename path in
       let* name = parse_name items fallback_name in
       match parse_publish_metadata items with
-      | Error _ as err -> err
+      | Error error -> Error (InvalidPublishMetadata error)
       | Ok publish ->
           match parse_dependency_section "dependencies" items ~workspace_deps with
           | Error _ as err -> err
@@ -1818,7 +1946,7 @@ let parse_manifest_spec:
                           }
                       )
     )
-  | _ -> Error "TOML is not a table"
+  | _ -> Error ManifestMustBeTable
 
 let realize_manifest_spec = fun ~(intent:realization_intent) (manifest: manifest_spec) ->
   let excluded_relpaths = provider_excluded_relpaths ~package_path:manifest.path manifest.fix_providers in
@@ -1872,7 +2000,7 @@ let from_toml:
   workspace_build_deps:dependency list ->
   path:Path.t ->
   relative_path:Path.t ->
-  (t, string) result = fun toml ~workspace_deps ~workspace_dev_deps ~workspace_build_deps ~path ~relative_path ->
+  (t, manifest_error) result = fun toml ~workspace_deps ~workspace_dev_deps ~workspace_build_deps ~path ~relative_path ->
   parse_manifest_spec toml ~workspace_deps ~workspace_dev_deps ~workspace_build_deps ~path ~relative_path
   |> Result.map ~fn:(realize_manifest_spec ~intent:Dev)
 
@@ -1958,10 +2086,8 @@ let from_json: Json.t -> (t, string) result = fun json ->
                       | Json.Object dep_fields -> (
                           match (Fields.get "name" dep_fields, Fields.get "source" dep_fields) with
                           | Some (Json.String dep_name), Some source_json -> (
-                              let* dep_name =
-                                Package_name.from_string dep_name
-                                |> Result.map_err ~fn:Package_name.error_message
-                              in
+                              let* dep_name = Package_name.from_string dep_name
+                              |> Result.map_err ~fn:Package_name.error_message in
                               let* source = dependency_source_of_json source_json in
                               loop ({ name = dep_name; source } :: acc) rest
                             )

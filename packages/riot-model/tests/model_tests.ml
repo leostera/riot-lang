@@ -843,17 +843,14 @@ std = { version = 123 }
     |> Result.expect ~msg:"expected workspace TOML to parse"
   in
   match Riot_model.Workspace_manifest.of_toml manifest with
-  | Error (Riot_model.Workspace_manifest.DependencyError
-      (Riot_model.Workspace_manifest.DependencyFieldMustBeString {
-        dependency_name = "std";
-        field = Riot_model.Workspace_manifest.Version;
-      })) ->
-      Ok ()
-  | Error err ->
-      Error ("expected typed dependency version error, got "
-      ^ Riot_model.Workspace_manifest.error_message err)
-  | Ok _ ->
-      Error "expected workspace manifest parse to fail for non-string dependency version"
+  | Error (Riot_model.Workspace_manifest.DependencyError (Riot_model.Workspace_manifest.DependencyFieldMustBeString {
+    dependency_name="std";
+    field=Riot_model.Workspace_manifest.Version;
+
+  })) -> Ok ()
+  | Error err -> Error ("expected typed dependency version error, got "
+  ^ Riot_model.Workspace_manifest.error_message err)
+  | Ok _ -> Error "expected workspace manifest parse to fail for non-string dependency version"
 
 let test_workspace_manager_resolves_member_path_dependencies_relative_to_package = fun _ctx ->
   with_tempdir "riot_model_workspace_paths"
@@ -938,13 +935,23 @@ minttea = "not-a-version"
       | Error err -> Error err
       | Ok (_workspace, errors) -> (
           match errors with
-          | [ Riot_model.Workspace_manager.PackageFromTomlFailed { package; error; _ } ] ->
-              if
-                String.equal package "app" && String.contains error "invalid version requirement 'not-a-version'"
-              then
-                Ok ()
-              else
-                Error ("unexpected member decode error: " ^ error)
+          | [
+            Riot_model.Workspace_manager.PackageFromTomlFailed {
+              package;
+              error=Riot_model.Package.InvalidDependency (Riot_model.Package.InvalidDependencyRequirement {
+                dependency_name;
+                requirement;
+                _;
+
+              });
+              _;
+
+            }
+          ] when String.equal package "app"
+          && String.equal dependency_name "minttea"
+          && String.equal requirement "not-a-version" -> Ok ()
+          | [ Riot_model.Workspace_manager.PackageFromTomlFailed { error; _ } ] -> Error ("unexpected member decode error: "
+          ^ Riot_model.Package_manifest.error_message error)
           | _ -> Error "expected invalid member manifest to surface as a workspace load error"
         ))
 

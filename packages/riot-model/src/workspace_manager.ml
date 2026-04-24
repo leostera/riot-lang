@@ -17,7 +17,7 @@ type load_error =
     }
   | PackageTomlReadFailed of { package: string; path: string }
   | PackageTomlParseFailed of { package: string; path: string }
-  | PackageFromTomlFailed of { package: string; path: string; error: string }
+  | PackageFromTomlFailed of { package: string; path: string; error: Package_manifest.error }
 
 type t = {
   workspace_roots: (string, Path.t option) HashMap.t;
@@ -406,7 +406,7 @@ let build_single_package_workspace: t -> Path.t -> (Workspace_manifest.t * load_
         ~workspace_build_deps:[]
         ~path:package_root
         ~relative_path:(Path.v ".") with
-      | Error err -> Error ("Failed to parse package manifest: " ^ err)
+      | Error err -> Error ("Failed to parse package manifest: " ^ Package_manifest.error_message err)
       | Ok package ->
           let package_name = Package_name.to_string package.name in
           let seen = Cell.create [ package.name ] in
@@ -457,9 +457,8 @@ let scan: t -> Path.t -> ((Workspace_manifest.t * load_error list), string) resu
                 | Ok toml -> (
                     let workspace_of_toml_started_at = Time.Instant.now () in
                     match Workspace_manifest.of_toml toml with
-                    | Error err ->
-                        Error ("Failed to parse workspace manifest: "
-                        ^ Workspace_manifest.error_message err)
+                    | Error err -> Error ("Failed to parse workspace manifest: "
+                    ^ Workspace_manifest.error_message err)
                     | Ok workspace_manifest ->
                         let () = trace_workspace_manager
                           ("workspace-of-toml-us="
@@ -505,4 +504,9 @@ let load_error_to_string = function
   | PackageTomlParseFailed { package; path } ->
       "package '" ^ package ^ "': failed to parse riot.toml at path " ^ path
   | PackageFromTomlFailed { package; path; error } ->
-      "package '" ^ package ^ "': failed to load from riot.toml at path " ^ path ^ ": " ^ error
+      "package '"
+      ^ package
+      ^ "': failed to load from riot.toml at path "
+      ^ path
+      ^ ": "
+      ^ Package_manifest.error_message error

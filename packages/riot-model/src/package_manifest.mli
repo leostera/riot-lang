@@ -18,6 +18,7 @@ type realization_intent = Package.realization_intent =
 type profile_override = Package.profile_override
 type compiler_config = Package.compiler_config
 type foreign_dependency = Package.foreign_dependency
+type error = Package.manifest_error
 type t = Package.manifest_spec
 val of_package: Package.t -> t
 
@@ -32,6 +33,8 @@ val from_toml:
   workspace_build_deps:dependency list ->
   path:Path.t ->
   relative_path:Path.t ->
-  (t, string) result
+  (t, error) result
+
+val error_message: error -> string
 
 val realize: intent:realization_intent -> t -> Package.t
