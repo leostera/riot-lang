@@ -457,7 +457,9 @@ let scan: t -> Path.t -> ((Workspace_manifest.t * load_error list), string) resu
                 | Ok toml -> (
                     let workspace_of_toml_started_at = Time.Instant.now () in
                     match Workspace_manifest.of_toml toml with
-                    | Error msg -> Error ("Failed to parse workspace manifest: " ^ msg)
+                    | Error err ->
+                        Error ("Failed to parse workspace manifest: "
+                        ^ Workspace_manifest.error_message err)
                     | Ok workspace_manifest ->
                         let () = trace_workspace_manager
                           ("workspace-of-toml-us="

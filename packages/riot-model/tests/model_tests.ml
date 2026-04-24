@@ -830,6 +830,31 @@ std = "*"
       Ok ()
   | _ -> Error "expected '*' workspace dependency to become an unconstrained registry dependency"
 
+let test_workspace_dependency_non_string_version_returns_typed_error = fun _ctx ->
+  let manifest =
+    Std.Data.Toml.parse
+      {|
+[workspace]
+members = []
+
+[dependencies]
+std = { version = 123 }
+|}
+    |> Result.expect ~msg:"expected workspace TOML to parse"
+  in
+  match Riot_model.Workspace_manifest.of_toml manifest with
+  | Error (Riot_model.Workspace_manifest.DependencyError
+      (Riot_model.Workspace_manifest.DependencyFieldMustBeString {
+        dependency_name = "std";
+        field = Riot_model.Workspace_manifest.Version;
+      })) ->
+      Ok ()
+  | Error err ->
+      Error ("expected typed dependency version error, got "
+      ^ Riot_model.Workspace_manifest.error_message err)
+  | Ok _ ->
+      Error "expected workspace manifest parse to fail for non-string dependency version"
+
 let test_workspace_manager_resolves_member_path_dependencies_relative_to_package = fun _ctx ->
   with_tempdir "riot_model_workspace_paths"
     (fun root ->
@@ -1318,6 +1343,7 @@ let tests =
     case "package: registry dependency JSON roundtrips" test_package_json_roundtrips_registry_requirement;
     case "workspace: registry dependency requirement parses structurally" test_workspace_dependency_requirement_parses_structurally;
     case "workspace: star dependency becomes unconstrained registry dependency" test_workspace_star_requirement_becomes_unconstrained_registry_dep;
+    case "workspace: non-string dependency version returns typed error" test_workspace_dependency_non_string_version_returns_typed_error;
     case "workspace manager: package path deps resolve relative to declaring package" test_workspace_manager_resolves_member_path_dependencies_relative_to_package;
     case "workspace manager: member manifest decode failures surface as load errors" test_workspace_manager_reports_member_manifest_decode_errors;
     case "workspace manager: load_riot_toml returns typed parse errors" test_workspace_manager_load_riot_toml_returns_typed_parse_errors;

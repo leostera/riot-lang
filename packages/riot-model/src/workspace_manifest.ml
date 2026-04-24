@@ -27,44 +27,111 @@ type manifest = {
   target_dir: string option;
 }
 
+type dependency_field =
+  | Path
+  | Source
+  | Github
+  | Ref
+  | Version
+
+type dependency_error =
+  | InvalidDependencyName of { raw_name: string; error: Package_name.error }
+  | InvalidDependencyRequirement of {
+      dependency_name: string;
+      requirement: string;
+      error: Version.parse_error;
+    }
+  | DependencyCannotUseWorkspaceFlag of { dependency_name: string }
+  | DependencyFieldMustBeString of { dependency_name: string; field: dependency_field }
+  | DependencyCannotSpecifySourceAndGithub of { dependency_name: string }
+  | DependencyRefRequiresSource of { dependency_name: string }
+  | BuiltinDependencyDoesNotSupportOverrides of { dependency_name: string }
+  | BuiltinDependencyDoesNotSupportVersionRequirement of { dependency_name: string; requirement: string }
+  | DependencyMustBeStringOrTable of { dependency_name: string }
+
+type error =
+  | DependencySectionMustBeTable of { section_name: string }
+  | DependencyError of dependency_error
+
 let version_parse_error_to_string = function
   | Version.Invalid_format msg -> msg
   | Version.Invalid_version_segment segment -> "invalid version segment: " ^ segment
   | Version.Invalid_pre_release_segment segment -> "invalid pre-release segment: " ^ segment
 
+let dependency_field_name = function
+  | Path -> "path"
+  | Source -> "source"
+  | Github -> "github"
+  | Ref -> "ref"
+  | Version -> "version"
+
+let dependency_error_message = function
+  | InvalidDependencyName { raw_name; error } ->
+      "dependency name '" ^ raw_name ^ "' is invalid: " ^ Package_name.error_message error
+  | InvalidDependencyRequirement { dependency_name; requirement; error } ->
+      "dependency '"
+      ^ dependency_name
+      ^ "' has invalid version requirement '"
+      ^ requirement
+      ^ "': "
+      ^ version_parse_error_to_string error
+  | DependencyCannotUseWorkspaceFlag { dependency_name } ->
+      "workspace dependency '" ^ dependency_name ^ "' cannot use workspace = true"
+  | DependencyFieldMustBeString { dependency_name; field } ->
+      "dependency '"
+      ^ dependency_name
+      ^ "' has non-string "
+      ^ dependency_field_name field
+  | DependencyCannotSpecifySourceAndGithub { dependency_name } ->
+      "dependency '" ^ dependency_name ^ "' cannot specify both source and github"
+  | DependencyRefRequiresSource { dependency_name } ->
+      "dependency '" ^ dependency_name ^ "' cannot specify ref without source"
+  | BuiltinDependencyDoesNotSupportOverrides { dependency_name } ->
+      "builtin dependency '" ^ dependency_name ^ "' does not support path or source overrides"
+  | BuiltinDependencyDoesNotSupportVersionRequirement { dependency_name; requirement } ->
+      "builtin dependency '"
+      ^ dependency_name
+      ^ "' does not support version requirement '"
+      ^ requirement
+      ^ "'"
+  | DependencyMustBeStringOrTable { dependency_name } ->
+      "dependency '" ^ dependency_name ^ "' must be a string or table"
+
+let error_message = function
+  | DependencySectionMustBeTable { section_name } -> "[" ^ section_name ^ "] must be a table"
+  | DependencyError error -> dependency_error_message error
+
 let validate_requirement = fun ~dependency_name requirement ->
   let trimmed = String.trim requirement in
   match Version.parse_requirement trimmed with
   | Ok requirement -> Ok requirement
-  | Error err -> Error ("dependency '"
-  ^ dependency_name
-  ^ "' has invalid version requirement '"
-  ^ requirement
-  ^ "': "
-  ^ version_parse_error_to_string err)
+  | Error err -> Error (DependencyError (InvalidDependencyRequirement {
+      dependency_name;
+      requirement;
+      error = err;
+    }))
 
 let requirement_is_any = fun requirement ->
   String.equal (Version.requirement_to_string requirement) "*"
 
 let validate_dependency_source = fun ~dependency_name (source: Package.dependency_source) ->
   if source.workspace then
-    Error ("workspace dependency '" ^ dependency_name ^ "' cannot use workspace = true")
+    Error (DependencyError (DependencyCannotUseWorkspaceFlag { dependency_name }))
   else if Option.is_some source.ref_ && Option.is_none source.source_locator then
-    Error ("dependency '" ^ dependency_name ^ "' cannot specify ref without source")
+    Error (DependencyError (DependencyRefRequiresSource { dependency_name }))
   else if
     source.builtin
     && (Option.is_some source.path || Option.is_some source.source_locator || Option.is_some source.ref_)
   then
-    Error ("builtin dependency '" ^ dependency_name ^ "' does not support path or source overrides")
+    Error (DependencyError (BuiltinDependencyDoesNotSupportOverrides { dependency_name }))
   else if source.builtin then
     match source.version with
     | None -> Ok { source with version = Some Version.any }
     | Some version when requirement_is_any version -> Ok source
-    | Some version -> Error ("builtin dependency '"
-    ^ dependency_name
-    ^ "' does not support version requirement '"
-    ^ Version.requirement_to_string version
-    ^ "'")
+    | Some version -> Error (DependencyError (BuiltinDependencyDoesNotSupportVersionRequirement {
+        dependency_name;
+        requirement = Version.requirement_to_string version;
+      }))
   else if
     Option.is_some source.path || Option.is_some source.source_locator || Option.is_some source.version
   then
@@ -89,8 +156,9 @@ let normalize_source_locator = fun raw ->
 
 let github_locator_of_value = fun value -> "github.com/" ^ String.trim value
 
-let parse_dependency: string -> Toml.value -> (Package.dependency, string) result = fun raw_name value ->
-  let* name = Package_name.from_string raw_name |> Result.map_err ~fn:Package_name.error_message in
+let parse_dependency: string -> Toml.value -> (Package.dependency, error) result = fun raw_name value ->
+  let* name = Package_name.from_string raw_name
+  |> Result.map_err ~fn:(fun error -> DependencyError (InvalidDependencyName { raw_name; error })) in
   let dependency_name = Package_name.to_string name in
   let make_dependency source: Package.dependency = { name; source } in
   match value with
@@ -98,29 +166,46 @@ let parse_dependency: string -> Toml.value -> (Package.dependency, string) resul
       let path =
         match Fields.get "path" attrs with
         | Some (Toml.String path_str) -> Ok (Some (Path.v path_str))
-        | Some _ -> Error ("dependency '" ^ dependency_name ^ "' has non-string path")
+        | Some _ -> Error (DependencyError (DependencyFieldMustBeString {
+            dependency_name;
+            field = Path;
+          }))
         | None -> Ok None
       in
       let source_locator =
         match Fields.get "source" attrs, Fields.get "github" attrs with
-        | Some _, Some _ -> Error ("dependency '" ^ dependency_name ^ "' cannot specify both source and github")
+        | Some _, Some _ -> Error (DependencyError (DependencyCannotSpecifySourceAndGithub {
+            dependency_name;
+          }))
         | Some (Toml.String locator), None -> Ok (Some (normalize_source_locator locator))
-        | Some _, None -> Error ("dependency '" ^ dependency_name ^ "' has non-string source locator")
+        | Some _, None -> Error (DependencyError (DependencyFieldMustBeString {
+            dependency_name;
+            field = Source;
+          }))
         | None, Some (Toml.String github) -> Ok (Some (github_locator_of_value github))
-        | None, Some _ -> Error ("dependency '" ^ dependency_name ^ "' has non-string github shorthand")
+        | None, Some _ -> Error (DependencyError (DependencyFieldMustBeString {
+            dependency_name;
+            field = Github;
+          }))
         | None, None -> Ok None
       in
       let ref_ =
         match Fields.get "ref" attrs with
         | Some (Toml.String ref_) -> Ok (Some (String.trim ref_))
-        | Some _ -> Error ("dependency '" ^ dependency_name ^ "' has non-string ref")
+        | Some _ -> Error (DependencyError (DependencyFieldMustBeString {
+            dependency_name;
+            field = Ref;
+          }))
         | None -> Ok None
       in
       let version =
         match Fields.get "version" attrs with
         | Some (Toml.String requirement) -> validate_requirement ~dependency_name requirement
         |> Result.map ~fn:(fun version -> Some version)
-        | Some _ -> Error ("dependency '" ^ dependency_name ^ "' has non-string version requirement")
+        | Some _ -> Error (DependencyError (DependencyFieldMustBeString {
+            dependency_name;
+            field = Version;
+          }))
         | None -> Ok None
       in
       match path, source_locator, ref_, version with
@@ -154,9 +239,9 @@ let parse_dependency: string -> Toml.value -> (Package.dependency, string) resul
             } |> Result.map ~fn:make_dependency
     )
   | _ ->
-      Error ("dependency '" ^ dependency_name ^ "' must be a string or table")
+      Error (DependencyError (DependencyMustBeStringOrTable { dependency_name }))
 
-let parse_dependencies: (string * Toml.value) list -> (Package.dependency list, string) result = fun items ->
+let parse_dependencies: (string * Toml.value) list -> (Package.dependency list, error) result = fun items ->
   let rec loop acc entries =
     match entries with
     | [] -> Ok (List.reverse acc)
@@ -168,12 +253,12 @@ let parse_dependencies: (string * Toml.value) list -> (Package.dependency list, 
   in
   loop [] items
 
-let parse_dependency_section section_name (toml: Toml.value): (Package.dependency list, string) result =
+let parse_dependency_section section_name (toml: Toml.value): (Package.dependency list, error) result =
   match toml with
   | Toml.Table items -> (
       match Fields.get section_name items with
       | Some (Toml.Table dep_items) -> parse_dependencies dep_items
-      | Some _ -> Error ("[" ^ section_name ^ "] must be a table")
+      | Some _ -> Error (DependencySectionMustBeTable { section_name })
       | None -> Ok []
     )
   | _ -> Ok []
@@ -213,13 +298,19 @@ let parse_workspace_name: Toml.value -> string option = fun toml ->
 
 let parse_workspace_dependencies: Toml.value -> Package.dependency list = fun toml ->
   Log.debug ("[WORKSPACE] parse_workspacE_dependencies has items: " ^ Toml.to_string toml);
-  parse_dependency_section "dependencies" toml |> Result.expect ~msg:"workspace dependencies should be parsed through of_toml"
+  parse_dependency_section "dependencies" toml
+  |> Result.map_err ~fn:error_message
+  |> Result.expect ~msg:"workspace dependencies should be parsed through of_toml"
 
 let parse_workspace_dev_dependencies: Toml.value -> Package.dependency list = fun toml ->
-  parse_dependency_section "dev-dependencies" toml |> Result.expect ~msg:"workspace dev dependencies should be parsed through of_toml"
+  parse_dependency_section "dev-dependencies" toml
+  |> Result.map_err ~fn:error_message
+  |> Result.expect ~msg:"workspace dev dependencies should be parsed through of_toml"
 
 let parse_workspace_build_dependencies: Toml.value -> Package.dependency list = fun toml ->
-  parse_dependency_section "build-dependencies" toml |> Result.expect ~msg:"workspace build dependencies should be parsed through of_toml"
+  parse_dependency_section "build-dependencies" toml
+  |> Result.map_err ~fn:error_message
+  |> Result.expect ~msg:"workspace build dependencies should be parsed through of_toml"
 
 let parse_profile_overrides: Toml.value -> (string * Profile.profile_override) list = fun toml ->
   Log.debug "[WORKSPACE] parse_profile_overrides called";
@@ -277,7 +368,7 @@ let parse_target_dir: Toml.value -> string option = fun toml ->
     )
   | _ -> None
 
-let of_toml: Toml.value -> (manifest, string) result = fun toml ->
+let of_toml: Toml.value -> (manifest, error) result = fun toml ->
   let members = parse_members toml in
   let name = parse_workspace_name toml in
   match parse_dependency_section "dependencies" toml with
@@ -457,7 +548,7 @@ std = ">= 1.2.3"
       |> Result.expect ~msg:"expected workspace toml to parse"
     in
     match of_toml toml with
-    | Error err -> Error err
+    | Error err -> Error (error_message err)
     | Ok manifest -> (
         match manifest.dependencies with
         | [ { Package.source={
@@ -475,6 +566,23 @@ std = ">= 1.2.3"
               Error "expected workspace registry requirement to be parsed structurally"
         | _ -> Error "expected workspace dependency to parse as a registry requirement"
       ) [@test]
+
+  let test_workspace_dependencies_reject_non_string_version (): (unit, string) result =
+    let toml =
+      Std.Data.Toml.parse
+        {|
+[workspace]
+members = []
+
+[dependencies]
+std = { version = 123 }
+|}
+      |> Result.expect ~msg:"expected workspace toml to parse"
+    in
+    match of_toml toml with
+    | Error (DependencyError (DependencyFieldMustBeString { dependency_name = "std"; field = Version })) -> Ok ()
+    | Error err -> Error ("expected non-string version error, got: " ^ error_message err)
+    | Ok _ -> Error "expected workspace manifest parse to fail for non-string dependency version" [@test]
 
   let test_discover_fix_providers (): (unit, string) result =
     let package_toml =
