@@ -1085,7 +1085,9 @@ let update_manifest = fun ~(emit:event_sink) ~(target:target_manifest) ~scope ~d
     ~manifest_path:target.path
     ~section:(scope_to_section scope)
     ~dependencies
-  |> Result.map_err ~fn:(fun error -> ManifestUpdateFailed { path = target.path; error })
+  |> Result.map_err
+    ~fn:(fun error ->
+      ManifestUpdateFailed { path = target.path; error = Manifest_edit.error_message error })
   |> Result.map
     ~fn:(fun () ->
       emit

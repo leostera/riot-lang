@@ -2087,6 +2087,34 @@ let test_git_dependency_parse_spec_normalizes_github_source = fun _ctx ->
   | Error err -> Error ("expected git dependency spec to parse: "
   ^ Riot_deps.Git_dependency.message err)
 
+let test_git_dependency_parse_spec_reports_multiple_ref_suffixes = fun _ctx ->
+  match Riot_deps.Git_dependency.parse_spec "github.com/riot/tests#main#extra" with
+  | Error (Riot_deps.Git_dependency.InvalidSourceSpec {
+    source;
+    reason=Riot_deps.Git_dependency.TooManyRefSuffixes
+  }) ->
+      if String.equal source "github.com/riot/tests#main#extra" then
+        Ok ()
+      else
+        Error "expected invalid source spec to preserve raw source"
+  | Error err -> Error ("expected multiple ref suffix error, got: "
+  ^ Riot_deps.Git_dependency.message err)
+  | Ok _ -> Error "expected source spec with multiple ref suffixes to fail"
+
+let test_git_dependency_parse_source_locator_reports_invalid_shape = fun _ctx ->
+  match Riot_deps.Git_dependency.parse_source_locator "github.com/riot" with
+  | Error (Riot_deps.Git_dependency.InvalidSourceSpec {
+    source;
+    reason=Riot_deps.Git_dependency.InvalidLocatorShape
+  }) ->
+      if String.equal source "github.com/riot" then
+        Ok ()
+      else
+        Error "expected invalid locator shape to preserve raw source"
+  | Error err -> Error ("expected invalid locator shape error, got: "
+  ^ Riot_deps.Git_dependency.message err)
+  | Ok _ -> Error "expected incomplete source locator to fail"
+
 let test_git_dependency_sync_checkout_clones_local_repo = fun _ctx ->
   with_tempdir "riot_deps_git_checkout"
     (fun root ->
@@ -3444,6 +3472,8 @@ let tests =
     case "lockfile store: bubbles parse errors" test_lockfile_store_bubbles_parse_errors;
     case "package management: add discovers path dependency package names and refreshes lockfile" test_add_path_dependency_discovers_package_name_and_refreshes_lock;
     case "git dependency: github source spec normalizes into locator and ref" test_git_dependency_parse_spec_normalizes_github_source;
+    case "git dependency: reports multiple ref suffixes" test_git_dependency_parse_spec_reports_multiple_ref_suffixes;
+    case "git dependency: reports invalid source locator shape" test_git_dependency_parse_source_locator_reports_invalid_shape;
     case "git dependency: github shorthand locator parses for remote commands" test_git_dependency_parse_source_locator_accepts_github_shorthand;
     case "git dependency: sync checkout clones a local repository" test_git_dependency_sync_checkout_clones_local_repo;
     case ~size:Large "git dependency: sync checkout skips fetch without update" test_git_dependency_sync_checkout_skips_fetch_without_update;

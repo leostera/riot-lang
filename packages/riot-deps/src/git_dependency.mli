@@ -21,13 +21,19 @@ type materialized = {
   package_root: Path.t;
   checkout_status: checkout_status;
 }
+type invalid_source_spec =
+  | TooManyRefSuffixes
+  | InvalidLocatorShape
+type command_spawn_error =
+  | CommandError of Command.error
+  | IoError of IO.error
 type error =
-  | InvalidSourceSpec of { source: string; error: string }
+  | InvalidSourceSpec of { source: string; reason: invalid_source_spec }
   | UnsupportedSourceHost of { source: string; host: string }
   | CachedRepositoryInvalid of { path: Path.t }
   | PackageRootMissing of { path: Path.t }
   | GitCommandFailed of { command: string; status: int; stdout: string; stderr: string }
-  | GitCommandSpawnFailed of { command: string; error: string }
+  | GitCommandSpawnFailed of { command: string; error: command_spawn_error }
 val message: error -> string
 
 val looks_like_remote_spec: string -> bool

@@ -10,6 +10,20 @@ let section_name = function
   | Build -> "build-dependencies"
   | Dev -> "dev-dependencies"
 
+type error =
+  | ReadFailed of { path: Path.t; error: IO.error }
+  | WriteFailed of { path: Path.t; error: IO.error }
+
+let error_message = function
+  | ReadFailed { path; error } -> "failed to read manifest '"
+  ^ Path.to_string path
+  ^ "': "
+  ^ IO.error_message error
+  | WriteFailed { path; error } -> "failed to write manifest '"
+  ^ Path.to_string path
+  ^ "': "
+  ^ IO.error_message error
+
 let quoted = fun value -> Std.Data.Toml.to_string (Std.Data.Toml.String value)
 
 let render_dependency_table = fun name fields ->
@@ -147,15 +161,9 @@ let replace_section_lines = fun ~source ~section dependencies ->
 
 let update_dependency_section = fun ~manifest_path ~section ~dependencies ->
   match Fs.read_to_string manifest_path with
-  | Error err -> Error ("failed to read manifest '"
-  ^ Path.to_string manifest_path
-  ^ "': "
-  ^ IO.error_message err)
+  | Error err -> Error (ReadFailed { path = manifest_path; error = err })
   | Ok source ->
       let updated = replace_section_lines ~source ~section dependencies in
       match Fs.write updated manifest_path with
       | Ok () -> Ok ()
-      | Error err -> Error ("failed to write manifest '"
-      ^ Path.to_string manifest_path
-      ^ "': "
-      ^ IO.error_message err)
+      | Error err -> Error (WriteFailed { path = manifest_path; error = err })

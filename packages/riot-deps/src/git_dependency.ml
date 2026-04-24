@@ -25,19 +25,38 @@ type materialized = {
   checkout_status: checkout_status;
 }
 
+type invalid_source_spec =
+  | TooManyRefSuffixes
+  | InvalidLocatorShape
+
+type command_spawn_error =
+  | CommandError of Command.error
+  | IoError of IO.error
+
 type error =
-  | InvalidSourceSpec of { source: string; error: string }
+  | InvalidSourceSpec of { source: string; reason: invalid_source_spec }
   | UnsupportedSourceHost of { source: string; host: string }
   | CachedRepositoryInvalid of { path: Path.t }
   | PackageRootMissing of { path: Path.t }
   | GitCommandFailed of { command: string; status: int; stdout: string; stderr: string }
-  | GitCommandSpawnFailed of { command: string; error: string }
+  | GitCommandSpawnFailed of { command: string; error: command_spawn_error }
 
 let ( let* ) value fn = Result.and_then value ~fn
 
+let invalid_source_spec_message = function
+  | TooManyRefSuffixes -> "expected at most one #ref suffix"
+  | InvalidLocatorShape -> "expected github.com/<owner>/<repo>[/path/to/package]"
+
+let command_error_message = function
+  | Command.SystemError error -> error
+
+let command_spawn_error_message = function
+  | CommandError error -> command_error_message error
+  | IoError error -> IO.error_message error
+
 let message = function
-  | InvalidSourceSpec { source; error } ->
-      "invalid source dependency '" ^ source ^ "': " ^ error
+  | InvalidSourceSpec { source; reason } ->
+      "invalid source dependency '" ^ source ^ "': " ^ invalid_source_spec_message reason
   | UnsupportedSourceHost { source; host } ->
       "source dependency '" ^ source ^ "' uses unsupported host '" ^ host ^ "'"
   | CachedRepositoryInvalid { path } ->
@@ -53,7 +72,7 @@ let message = function
       in
       "git command '" ^ command ^ "' failed (exit " ^ Int.to_string status ^ "): " ^ detail
   | GitCommandSpawnFailed { command; error } ->
-      "failed to spawn git command '" ^ command ^ "': " ^ error
+      "failed to spawn git command '" ^ command ^ "': " ^ command_spawn_error_message error
 
 let split_once = fun ~on text ->
   match String.index_of text ~char:on with
@@ -108,7 +127,7 @@ let parse_spec = fun raw ->
           else
             Some (String.trim ref_);
       }
-  | _ -> Error (InvalidSourceSpec { source = raw; error = "expected at most one #ref suffix" })
+  | _ -> Error (InvalidSourceSpec { source = raw; reason = TooManyRefSuffixes })
 
 let to_string = fun ({ source_locator; ref_=ref_opt }: spec) ->
   match ref_opt with
@@ -141,10 +160,7 @@ let parse_source_locator = fun source_locator ->
           | _ -> Some (Path.v (String.concat "/" rest))
         in
         Ok { host; owner; repo; subdir }
-  | _ -> Error (InvalidSourceSpec {
-    source = source_locator;
-    error = "expected github.com/<owner>/<repo>[/path/to/package]"
-  })
+  | _ -> Error (InvalidSourceSpec { source = source_locator; reason = InvalidLocatorShape })
 
 let run_git = fun ?cwd args ->
   let args =
@@ -174,9 +190,9 @@ let run_git = fun ?cwd args ->
     )
   in
   match Command.output command with
-  | Error (Command.SystemError error) -> Error (GitCommandSpawnFailed {
+  | Error error -> Error (GitCommandSpawnFailed {
     command = Command.to_string command;
-    error
+    error = CommandError error
   })
   | Ok output when not (Int.equal output.status 0) -> Error (GitCommandFailed {
     command = Command.to_string command;
@@ -207,11 +223,11 @@ let sync_checkout = fun ?(update = true) ~repo_dir ~remote_url ~ref_ () ->
   in
   let* has_repo_root = Fs.exists repo_dir
   |> Result.map_err
-    ~fn:(fun err -> GitCommandSpawnFailed { command = "fs.exists"; error = IO.error_message err }) in
+    ~fn:(fun err -> GitCommandSpawnFailed { command = "fs.exists"; error = IoError err }) in
   if has_repo_root then
     let* has_git_dir = Fs.exists repo_git_dir
     |> Result.map_err
-      ~fn:(fun err -> GitCommandSpawnFailed { command = "fs.exists"; error = IO.error_message err }) in
+      ~fn:(fun err -> GitCommandSpawnFailed { command = "fs.exists"; error = IoError err }) in
     if not has_git_dir then
       Error (CachedRepositoryInvalid { path = repo_dir })
     else if update then
@@ -225,8 +241,7 @@ let sync_checkout = fun ?(update = true) ~repo_dir ~remote_url ~ref_ () ->
   else
     let* () = Fs.create_dir_all parent
     |> Result.map_err
-      ~fn:(fun err ->
-        GitCommandSpawnFailed { command = "fs.create_dir_all"; error = IO.error_message err }) in
+      ~fn:(fun err -> GitCommandSpawnFailed { command = "fs.create_dir_all"; error = IoError err }) in
     let* _ = run_git ~cwd:parent [ "clone"; "--quiet"; remote_url; Path.to_string repo_dir ] in
     run_git ~cwd:repo_dir [ "checkout"; "--quiet"; "--force"; checkout_target ~repo_dir ~ref_ ]
     |> Result.map ~fn:(fun _ -> Cloned)
@@ -251,7 +266,7 @@ let materialize = fun ?(update = true) ~source_locator ~ref_ () ->
   in
   let* exists = Fs.exists package_root
   |> Result.map_err
-    ~fn:(fun err -> GitCommandSpawnFailed { command = "fs.exists"; error = IO.error_message err }) in
+    ~fn:(fun err -> GitCommandSpawnFailed { command = "fs.exists"; error = IoError err }) in
   if not exists then
     Error (PackageRootMissing { path = package_root })
   else
