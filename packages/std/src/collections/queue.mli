@@ -1,58 +1,113 @@
-include module type of Queue_core
+(** Lock-free FIFO queue.
 
-module MPSC: sig
-  type 'value t
-  val create: unit -> 'value t
+    `Std.Collections.Queue` is the one shared concurrent queue surface in
+    `std`. It is backed by a non-blocking linked queue and is safe to share
+    across multiple actors, threads, producers, and consumers.
 
-  val with_capacity: size:int -> 'value t
+    The queue is unbounded and does not block. Coordination stays explicit:
+    callers decide whether to spin, sleep, yield, or pair the queue with other
+    signalling primitives.
 
-  val from_list: 'value list -> 'value t
+    Semantics are split into two groups:
 
-  val push: 'value t -> value:'value -> unit
+    - `create`, `push`, and `pop` are the synchronization core. They provide
+      lock-free FIFO enqueue/dequeue behavior.
+    - observational helpers such as `front`, `length`, `is_empty`, `iter`,
+      `to_list`, `append`, `transfer`, and `clear` are convenience operations.
+      They are exact in single-owner code, but under concurrent mutation they
+      are only weakly consistent snapshots or best-effort drains.
 
-  val pop: 'value t -> 'value option
+    In particular:
 
-  val length: 'value t -> int
+    - `with_capacity` keeps the API shape for callers that want a constructor
+      with a size hint, but the linked queue does not preallocate.
+    - `front`, `length`, and `is_empty` may become stale immediately when other
+      producers or consumers race.
+    - traversal helpers (`for_each`, `fold_left`, `to_list`, `contains`,
+      `iter`) walk the currently reachable chain and may miss or include
+      concurrent changes.
+    - drain/move helpers (`clear`, `append`, `transfer`, `mut_iter`) are built
+      on repeated `pop`, so concurrent producers may interleave with them.
+*)
+type 'value t
 
-  val is_empty: 'value t -> bool
+(** Create an empty queue. *)
+val create: unit -> 'value t
 
-  val clear: 'value t -> unit
-end
+(** Create an empty queue.
 
-module SPMC: sig
-  type 'value t
-  val create: unit -> 'value t
+    The capacity hint is accepted for compatibility but ignored by the
+    lock-free linked implementation.
+*)
+val with_capacity: size:int -> 'value t
 
-  val with_capacity: size:int -> 'value t
+(** Build a queue from a list in FIFO order. *)
+val from_list: 'value list -> 'value t
 
-  val from_list: 'value list -> 'value t
+(** Enqueue one value. Safe under concurrent producers. *)
+val push: 'value t -> value:'value -> unit
 
-  val push: 'value t -> value:'value -> unit
+(** Dequeue one value from the front of the queue. Safe under concurrent
+    consumers. *)
+val pop: 'value t -> 'value option
 
-  val pop: 'value t -> 'value option
+(** Observe the current front value without removing it.
 
-  val length: 'value t -> int
+    Under concurrent mutation this is only a weak snapshot.
+*)
+val front: 'value t -> 'value option
 
-  val is_empty: 'value t -> bool
+(** Observe the current queue length.
 
-  val clear: 'value t -> unit
-end
+    Exact in single-owner code. Under concurrent mutation this is a moving
+    approximation derived from successful enqueue/dequeue operations.
+*)
+val length: 'value t -> int
 
-module MPMC: sig
-  type 'value t
-  val create: unit -> 'value t
+(** Observe whether the queue is currently empty. Weakly consistent under
+    concurrent mutation. *)
+val is_empty: 'value t -> bool
 
-  val with_capacity: size:int -> 'value t
+(** Pop until the queue appears empty.
 
-  val from_list: 'value list -> 'value t
+    Exact in single-owner code. Under concurrent producers it drains the values
+    it can observe and may return before later pushes arrive.
+*)
+val clear: 'value t -> unit
 
-  val push: 'value t -> value:'value -> unit
+(** Visit the currently reachable values in FIFO order.
 
-  val pop: 'value t -> 'value option
+    Under concurrent mutation this is a weak snapshot traversal.
+*)
+val for_each: 'value t -> fn:('value -> unit) -> unit
 
-  val length: 'value t -> int
+(** Fold over the currently reachable values in FIFO order.
 
-  val is_empty: 'value t -> bool
+    Under concurrent mutation this is a weak snapshot traversal.
+*)
+val fold_left: 'value t -> init:'acc -> fn:('acc -> 'value -> 'acc) -> 'acc
 
-  val clear: 'value t -> unit
-end
+(** Collect the currently reachable values into a list in FIFO order.
+
+    Under concurrent mutation this is a weak snapshot.
+*)
+val to_list: 'value t -> 'value list
+
+(** Snapshot-style membership test over the currently reachable values. *)
+val contains: 'value t -> value:'value -> bool
+
+(** Drain values observed in the right queue into the left queue. *)
+val append: 'value t -> 'value t -> unit
+
+(** Drain values observed in [src] into [dst]. *)
+val transfer: src:'value t -> dst:'value t -> unit
+
+(** Immutable iterator over a weak snapshot of the queue contents. *)
+val iter: 'value t -> 'value Iter.Iterator.t
+
+(** Mutable iterator that repeatedly pops from the queue.
+
+    Cloning the iterator snapshots the currently reachable values into a fresh
+    queue.
+*)
+val mut_iter: 'value t -> 'value Iter.MutIterator.t
