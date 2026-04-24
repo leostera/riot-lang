@@ -28,7 +28,28 @@ type t = {
   dependency_hash: string;
   packages: package list;
 }
-val of_toml: Std.Data.Toml.value -> (t, string) result
+type container =
+  | Lockfile
+  | Package
+  | PackageId
+  | Dependency
+  | DependencyList
+  | Provenance
+type error =
+  | ExpectedTable of { container: container }
+  | ExpectedArray of { container: container }
+  | MissingField of { container: container; field: string }
+  | InvalidFieldType of { container: container; field: string; expected: string }
+  | InvalidPackageName of {
+      container: container;
+      field: string;
+      value: string;
+      error: Package_name.error
+    }
+  | UnknownProvenanceKind of { value: string }
+val error_message: error -> string
+
+val of_toml: Std.Data.Toml.value -> (t, error) result
 
 val to_toml: t -> Std.Data.Toml.value
 

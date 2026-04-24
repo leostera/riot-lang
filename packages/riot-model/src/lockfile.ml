@@ -35,6 +35,92 @@ type t = {
   packages: package list;
 }
 
+type container =
+  | Lockfile
+  | Package
+  | PackageId
+  | Dependency
+  | DependencyList
+  | Provenance
+
+type error =
+  | ExpectedTable of { container: container }
+  | ExpectedArray of { container: container }
+  | MissingField of { container: container; field: string }
+  | InvalidFieldType of { container: container; field: string; expected: string }
+  | InvalidPackageName of {
+      container: container;
+      field: string;
+      value: string;
+      error: Package_name.error
+    }
+  | UnknownProvenanceKind of { value: string }
+
+let container_name = function
+  | Lockfile -> "lockfile"
+  | Package -> "lockfile package"
+  | PackageId -> "lockfile package id"
+  | Dependency -> "lockfile dependency"
+  | DependencyList -> "lockfile dependency list"
+  | Provenance -> "lockfile provenance"
+
+let error_message = function
+  | ExpectedTable { container } -> container_name container ^ " must be a table"
+  | ExpectedArray { container } -> container_name container ^ " must be an array"
+  | MissingField { container; field } -> container_name container
+  ^ " is missing required field '"
+  ^ field
+  ^ "'"
+  | InvalidFieldType { container; field; expected } -> container_name container
+  ^ " field '"
+  ^ field
+  ^ "' must be "
+  ^ expected
+  | InvalidPackageName { container; field; value; error } -> container_name container
+  ^ " field '"
+  ^ field
+  ^ "' contains invalid package name '"
+  ^ value
+  ^ "': "
+  ^ Package_name.error_message error
+  | UnknownProvenanceKind { value } -> "unknown lockfile provenance kind '" ^ value ^ "'"
+
+let require_table = fun container value ->
+  match value with
+  | Toml.Table fields -> Ok fields
+  | _ -> Error (ExpectedTable { container })
+
+let require_array = fun container value ->
+  match value with
+  | Toml.Array items -> Ok items
+  | _ -> Error (ExpectedArray { container })
+
+let required_string_field = fun container ~field fields ->
+  match Fields.get field fields with
+  | Some (Toml.String value) -> Ok value
+  | Some _ -> Error (InvalidFieldType { container; field; expected = "a string" })
+  | None -> Error (MissingField { container; field })
+
+let optional_string_field = fun ~field fields ->
+  match Fields.get field fields with
+  | Some (Toml.String value) -> Some value
+  | _ -> None
+
+let required_int_field = fun container ~field fields ->
+  match Fields.get field fields with
+  | Some (Toml.Int value) -> Ok value
+  | Some _ -> Error (InvalidFieldType { container; field; expected = "an integer" })
+  | None -> Error (MissingField { container; field })
+
+let required_array_field = fun container ~field fields ->
+  match Fields.get field fields with
+  | Some value -> require_array container value
+  | None -> Error (MissingField { container; field })
+
+let parse_package_name = fun container ~field value ->
+  Package_name.from_string value
+  |> Result.map_err ~fn:(fun error -> InvalidPackageName { container; field; value; error })
+
 let package_id_to_toml = fun (id: package_id) ->
   let fields = [ ("name", Toml.String (Package_name.to_string id.name)) ] in
   let fields =
@@ -55,52 +141,21 @@ let package_id_to_toml = fun (id: package_id) ->
   Toml.Table (List.reverse fields)
 
 let package_id_of_toml = fun value ->
-  match value with
-  | Toml.Table fields -> (
-      match Fields.get "name" fields with
-      | Some (Toml.String name) ->
-          let* name = Package_name.from_string name |> Result.map_err ~fn:Package_name.error_message in
-          let registry =
-            match Fields.get "registry" fields with
-            | Some (Toml.String registry) -> Some registry
-            | _ -> None
-          in
-          let version =
-            match Fields.get "version" fields with
-            | Some (Toml.String version) -> Some version
-            | _ -> None
-          in
-          let sha256 =
-            match Fields.get "sha256" fields with
-            | Some (Toml.String sha256) -> Some sha256
-            | _ -> None
-          in
-          Ok { registry; name; version; sha256 }
-      | _ -> Error "lockfile package id is missing required field 'name'"
-    )
-  | _ -> Error "lockfile package id must be a table"
+  let* fields = require_table PackageId value in
+  let* raw_name = required_string_field PackageId ~field:"name" fields in
+  let* name = parse_package_name PackageId ~field:"name" raw_name in
+  let registry = optional_string_field ~field:"registry" fields in
+  let version = optional_string_field ~field:"version" fields in
+  let sha256 = optional_string_field ~field:"sha256" fields in
+  Ok { registry; name; version; sha256 }
 
 let package_id_of_fields = fun fields ->
-  match Fields.get "name" fields with
-  | Some (Toml.String name) ->
-      let* name = Package_name.from_string name |> Result.map_err ~fn:Package_name.error_message in
-      let registry =
-        match Fields.get "registry" fields with
-        | Some (Toml.String registry) -> Some registry
-        | _ -> None
-      in
-      let version =
-        match Fields.get "version" fields with
-        | Some (Toml.String version) -> Some version
-        | _ -> None
-      in
-      let sha256 =
-        match Fields.get "sha256" fields with
-        | Some (Toml.String sha256) -> Some sha256
-        | _ -> None
-      in
-      Ok { registry; name; version; sha256 }
-  | _ -> Error "lockfile package is missing required field 'name'"
+  let* raw_name = required_string_field Package ~field:"name" fields in
+  let* name = parse_package_name Package ~field:"name" raw_name in
+  let registry = optional_string_field ~field:"registry" fields in
+  let version = optional_string_field ~field:"version" fields in
+  let sha256 = optional_string_field ~field:"sha256" fields in
+  Ok { registry; name; version; sha256 }
 
 let provenance_to_toml = fun provenance ->
   match provenance with
@@ -120,38 +175,23 @@ let provenance_to_toml = fun provenance ->
       Toml.Table [ ("kind", Toml.String "registry"); ("registry", Toml.String registry) ]
 
 let provenance_of_toml = fun value ->
-  match value with
-  | Toml.Table fields -> (
-      match Fields.get "kind" fields with
-      | Some (Toml.String "workspace") ->
-          Ok Workspace
-      | Some (Toml.String "path") -> (
-          match Fields.get "path" fields with
-          | Some (Toml.String path) -> Ok (Path (Path.v path))
-          | _ -> Error "lockfile path provenance is missing required field 'path'"
-        )
-      | Some (Toml.String "source") -> (
-          match Fields.get "locator" fields with
-          | Some (Toml.String locator) ->
-              let ref_ =
-                match Fields.get "ref" fields with
-                | Some (Toml.String ref_) -> Some ref_
-                | _ -> None
-              in
-              Ok (Source { locator; ref_ })
-          | _ -> Error "lockfile source provenance is missing required field 'locator'"
-        )
-      | Some (Toml.String "registry") -> (
-          match Fields.get "registry" fields with
-          | Some (Toml.String registry) -> Ok (Registry { registry })
-          | _ -> Error "lockfile registry provenance is missing required field 'registry'"
-        )
-      | Some (Toml.String kind) ->
-          Error ("unknown lockfile provenance kind '" ^ kind ^ "'")
-      | _ ->
-          Error "lockfile provenance is missing required field 'kind'"
-    )
-  | _ -> Error "lockfile provenance must be a table"
+  let* fields = require_table Provenance value in
+  let* kind = required_string_field Provenance ~field:"kind" fields in
+  match kind with
+  | "workspace" ->
+      Ok Workspace
+  | "path" ->
+      let* path = required_string_field Provenance ~field:"path" fields in
+      Ok (Path (Path.v path))
+  | "source" ->
+      let* locator = required_string_field Provenance ~field:"locator" fields in
+      let ref_ = optional_string_field ~field:"ref" fields in
+      Ok (Source { locator; ref_ })
+  | "registry" ->
+      let* registry = required_string_field Provenance ~field:"registry" fields in
+      Ok (Registry { registry })
+  | value ->
+      Error (UnknownProvenanceKind { value })
 
 let dependency_to_toml = fun (dep: dependency) ->
   let should_use_flat_registry_shape =
@@ -186,70 +226,54 @@ let dependency_to_toml = fun (dep: dependency) ->
     ]
 
 let dependency_of_toml = fun value ->
-  match value with
-  | Toml.Table fields -> (
-      match Fields.get "name" fields with
-      | Some (Toml.String name) -> (
-          let* name = Package_name.from_string name |> Result.map_err ~fn:Package_name.error_message in
-          match Fields.get "package" fields with
-          | Some package_value -> package_id_of_toml package_value
-          |> Result.map ~fn:(fun package -> { name; package })
-          | None ->
-              let package_name =
-                match Fields.get "package_name" fields with
-                | Some (Toml.String package_name) ->
-                    let* package_name =
-                      Package_name.from_string package_name
-                      |> Result.map_err ~fn:Package_name.error_message
-                    in
-                    Ok package_name
-                | _ -> Ok name
-              in
-              let* package_name = package_name in
-              let registry =
-                match Fields.get "registry" fields with
-                | Some (Toml.String registry) -> Some registry
-                | _ ->
-                    if List.any fields
-                        ~fn:(fun (field_name, _value) ->
-                          String.equal field_name "version") || List.any fields
-                        ~fn:(fun (field_name, _value) ->
-                          String.equal field_name "sha256") then
-                      Some "pkgs.ml"
-                    else
-                      None
-              in
-              let version =
-                match Fields.get "version" fields with
-                | Some (Toml.String version) -> Some version
-                | _ -> None
-              in
-              let sha256 =
-                match Fields.get "sha256" fields with
-                | Some (Toml.String sha256) -> Some sha256
-                | _ -> None
-              in
-              Ok { name; package = { name = package_name; registry; version; sha256 } }
-        )
-      | _ -> Error "lockfile dependency must contain 'name'"
-    )
-  | _ -> Error "lockfile dependency must be a table"
+  let* fields = require_table Dependency value in
+  let* raw_name = required_string_field Dependency ~field:"name" fields in
+  let* name = parse_package_name Dependency ~field:"name" raw_name in
+  match Fields.get "package" fields with
+  | Some package_value -> package_id_of_toml package_value
+  |> Result.map ~fn:(fun package -> { name; package })
+  | None ->
+      let package_name =
+        match Fields.get "package_name" fields with
+        | Some (Toml.String package_name) -> parse_package_name Dependency ~field:"package_name" package_name
+        | Some _ -> Error (InvalidFieldType {
+          container = Dependency;
+          field = "package_name";
+          expected = "a string"
+        })
+        | None -> Ok name
+      in
+      let* package_name = package_name in
+      let registry =
+        match Fields.get "registry" fields with
+        | Some (Toml.String registry) -> Some registry
+        | _ ->
+            if List.any fields
+                ~fn:(fun (field_name, _value) ->
+                  String.equal field_name "version") || List.any fields
+                ~fn:(fun (field_name, _value) ->
+                  String.equal field_name "sha256") then
+              Some "pkgs.ml"
+            else
+              None
+      in
+      let version = optional_string_field ~field:"version" fields in
+      let sha256 = optional_string_field ~field:"sha256" fields in
+      Ok { name; package = { name = package_name; registry; version; sha256 } }
 
 let dependency_list_to_toml = fun deps -> Toml.Array (List.map deps ~fn:dependency_to_toml)
 
 let dependency_list_of_toml = fun value ->
-  match value with
-  | Toml.Array items ->
-      let rec loop acc = function
-        | [] -> Ok (List.reverse acc)
-        | item :: rest -> (
-            match dependency_of_toml item with
-            | Ok dep -> loop (dep :: acc) rest
-            | Error _ as err -> err
-          )
-      in
-      loop [] items
-  | _ -> Error "lockfile dependency list must be an array"
+  let* items = require_array DependencyList value in
+  let rec loop acc = function
+    | [] -> Ok (List.reverse acc)
+    | item :: rest -> (
+        match dependency_of_toml item with
+        | Ok dep -> loop (dep :: acc) rest
+        | Error _ as err -> err
+      )
+  in
+  loop [] items
 
 let package_to_toml = fun (pkg: package) ->
   let fields = [
@@ -282,57 +306,41 @@ let package_to_toml = fun (pkg: package) ->
   Toml.Table (List.reverse fields)
 
 let package_of_toml = fun value ->
-  match value with
-  | Toml.Table fields -> (
-      match Fields.get "provenance" fields, Fields.get "dependencies" fields, Fields.get
-        "build_dependencies"
-        fields, Fields.get "dev_dependencies" fields with
-      | Some provenance_value, Some dependencies_value, Some build_dependencies_value, Some dev_dependencies_value -> (
-          let id_result =
-            match Fields.get "id" fields with
-            | Some id_value -> package_id_of_toml id_value
-            | None -> package_id_of_fields fields
-          in
-          match id_result with
-          | Error _ as err -> err
-          | Ok id -> (
-              let root =
-                match Fields.get "root" fields with
-                | Some (Toml.String root) -> Some (Path.v root)
-                | _ -> (
-                    match Fields.get "path" fields with
-                    | Some (Toml.String legacy_path) -> Some (Path.v legacy_path)
-                    | _ -> None
-                  )
-              in
-              match provenance_of_toml provenance_value with
-              | Error _ as err -> err
-              | Ok provenance -> (
-                  match dependency_list_of_toml dependencies_value with
-                  | Error _ as err -> err
-                  | Ok dependencies -> (
-                      match dependency_list_of_toml build_dependencies_value with
-                      | Error _ as err -> err
-                      | Ok build_dependencies -> (
-                          match dependency_list_of_toml dev_dependencies_value with
-                          | Error _ as err -> err
-                          | Ok dev_dependencies ->
-                              Ok {
-                                id;
-                                root;
-                                provenance;
-                                dependencies;
-                                build_dependencies;
-                                dev_dependencies;
-                              }
-                        )
-                    )
-                )
-            )
-        )
-      | _ -> Error "lockfile package is missing required fields"
-    )
-  | _ -> Error "lockfile package must be a table"
+  let* fields = require_table Package value in
+  let* provenance_value =
+    match Fields.get "provenance" fields with
+    | Some value -> Ok value
+    | None -> Error (MissingField { container = Package; field = "provenance" })
+  in
+  let* dependencies_value = required_array_field Package ~field:"dependencies" fields in
+  let* build_dependencies_value = required_array_field Package ~field:"build_dependencies" fields in
+  let* dev_dependencies_value = required_array_field Package ~field:"dev_dependencies" fields in
+  let* id =
+    match Fields.get "id" fields with
+    | Some id_value -> package_id_of_toml id_value
+    | None -> package_id_of_fields fields
+  in
+  let root =
+    match Fields.get "root" fields with
+    | Some (Toml.String root) -> Some (Path.v root)
+    | _ -> (
+        match Fields.get "path" fields with
+        | Some (Toml.String legacy_path) -> Some (Path.v legacy_path)
+        | _ -> None
+      )
+  in
+  let* provenance = provenance_of_toml provenance_value in
+  let* dependencies = dependency_list_of_toml (Toml.Array dependencies_value) in
+  let* build_dependencies = dependency_list_of_toml (Toml.Array build_dependencies_value) in
+  let* dev_dependencies = dependency_list_of_toml (Toml.Array dev_dependencies_value) in
+  Ok {
+    id;
+    root;
+    provenance;
+    dependencies;
+    build_dependencies;
+    dev_dependencies;
+  }
 
 let to_toml = fun (lockfile: t) ->
   let fields = [
@@ -343,24 +351,19 @@ let to_toml = fun (lockfile: t) ->
   Toml.Table (List.reverse fields)
 
 let of_toml = fun value ->
-  match value with
-  | Toml.Table fields -> (
-      match Fields.get "format_version" fields, Fields.get "dependency_hash" fields, Fields.get
-        "packages"
-        fields with
-      | Some (Toml.Int format_version), Some (Toml.String dependency_hash), Some (Toml.Array packages) ->
-          let rec loop acc = function
-            | [] -> Ok { format_version; dependency_hash; packages = List.reverse acc }
-            | pkg :: rest -> (
-                match package_of_toml pkg with
-                | Ok pkg -> loop (pkg :: acc) rest
-                | Error _ as err -> err
-              )
-          in
-          loop [] packages
-      | _ -> Error "lockfile is missing required fields 'format_version', 'dependency_hash', and 'packages'"
-    )
-  | _ -> Error "lockfile must be a table"
+  let* fields = require_table Lockfile value in
+  let* format_version = required_int_field Lockfile ~field:"format_version" fields in
+  let* dependency_hash = required_string_field Lockfile ~field:"dependency_hash" fields in
+  let* packages = required_array_field Lockfile ~field:"packages" fields in
+  let rec loop acc = function
+    | [] -> Ok { format_version; dependency_hash; packages = List.reverse acc }
+    | pkg :: rest -> (
+        match package_of_toml pkg with
+        | Ok pkg -> loop (pkg :: acc) rest
+        | Error _ as err -> err
+      )
+  in
+  loop [] packages
 
 let render_string = fun value -> Toml.to_string (Toml.String value)
 

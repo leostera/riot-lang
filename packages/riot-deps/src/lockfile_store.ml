@@ -25,7 +25,7 @@ let read = fun ~workspace_root ->
               | Error err -> Error ("failed to decode lockfile '"
               ^ Path.to_string lock_path
               ^ "': "
-              ^ err)
+              ^ Riot_model.Lockfile.error_message err)
             )
         )
     )
