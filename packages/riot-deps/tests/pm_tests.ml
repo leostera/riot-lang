@@ -704,6 +704,21 @@ public = true
         )
       | Error err -> Error err)
 
+let test_git_provenance_reports_non_git_repository = fun _ctx ->
+  with_tempdir "riot_deps_git_provenance_not_git"
+    (fun root ->
+      match Riot_deps.Git_provenance.discover ~package_root:root with
+      | Error (Riot_deps.Git_provenance.NotGitRepository { path }) ->
+          let canonical_root = Fs.canonicalize root |> Result.expect ~msg:"expected temp root to canonicalize" in
+          if Path.equal path canonical_root then
+            Ok ()
+          else
+            Error "expected not-git-repository error to preserve package root"
+      | Error err ->
+          Error ("expected not-git-repository error, got: " ^ Riot_deps.Git_provenance.message err)
+      | Ok _ ->
+          Error "expected git provenance discovery outside a git repository to fail")
+
 let test_publisher_publish_discovers_git_provenance = fun _ctx ->
   with_tempdir "riot_deps_publish_with_git_provenance"
     (fun root ->
@@ -3512,6 +3527,7 @@ let tests =
     case "publisher: validate registry deps skips workspace publish set" test_publisher_validate_registry_dependencies_skips_workspace_publish_set;
     case ~size:Large "git provenance: discovers nested package locator" test_git_provenance_discovers_nested_package_locator;
     case ~size:Large "git provenance: discovers repo root locator" test_git_provenance_discovers_repo_root_locator;
+    case "git provenance: reports non-git repositories" test_git_provenance_reports_non_git_repository;
     case "publisher: prepare_publish discovers git provenance automatically" test_publisher_prepare_publish_discovers_git_provenance_without_registry;
     case "publisher: publish discovers git provenance automatically" test_publisher_publish_discovers_git_provenance;
   ]

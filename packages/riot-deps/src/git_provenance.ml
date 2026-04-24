@@ -11,16 +11,19 @@ type t = {
 type error =
   | NotGitRepository of { path: Path.t }
   | MissingOriginRemote of { path: Path.t }
-  | InvalidRepositoryRoot of { path: string; error: string }
+  | InvalidRepositoryRoot of { path: string; error: Path.error }
   | PackageOutsideRepository of { package_root: Path.t; repository_root: Path.t }
   | UnsupportedRemoteUrl of { url: string }
   | GitCommandFailed of { command: string; status: int; stdout: string; stderr: string }
-  | GitCommandSpawnFailed of { command: string; error: string }
+  | GitCommandSpawnFailed of { command: string; error: Command.error }
 
 let path_error_message = function
   | Path.InvalidUtf8 { path } -> "invalid utf8 path: " ^ path
   | Path.SystemInvalidUtf8 { syscall; path } -> "invalid utf8 from " ^ syscall ^ ": " ^ path
   | Path.SystemError msg -> msg
+
+let command_error_message = function
+  | Command.SystemError error -> error
 
 let message = function
   | NotGitRepository { path } ->
@@ -28,7 +31,7 @@ let message = function
   | MissingOriginRemote { path } ->
       "git repository at '" ^ Path.to_string path ^ "' is missing remote 'origin'"
   | InvalidRepositoryRoot { path; error } ->
-      "git returned invalid repository root '" ^ path ^ "': " ^ error
+      "git returned invalid repository root '" ^ path ^ "': " ^ path_error_message error
   | PackageOutsideRepository { package_root; repository_root } ->
       "package root '"
       ^ Path.to_string package_root
@@ -46,7 +49,7 @@ let message = function
       in
       "git command '" ^ command ^ "' failed (exit " ^ Int.to_string status ^ "): " ^ detail
   | GitCommandSpawnFailed { command; error } ->
-      "failed to spawn git command '" ^ command ^ "': " ^ error
+      "failed to spawn git command '" ^ command ^ "': " ^ command_error_message error
 
 let run_git = fun ~cwd args ->
   let command = Command.make
@@ -64,7 +67,7 @@ let run_git = fun ~cwd args ->
     ]
     @ args) in
   match Command.output command with
-  | Error (Command.SystemError error) ->
+  | Error error ->
       Error (GitCommandSpawnFailed { command = Command.to_string command; error })
   | Ok output when not (Int.equal output.status 0) ->
       let stderr = String.trim output.stderr in
@@ -151,10 +154,7 @@ let discover = fun ~package_root ->
   | Error _ as err -> err
   | Ok repository_root_str -> (
       match Path.from_string repository_root_str with
-      | Error err -> Error (InvalidRepositoryRoot {
-        path = repository_root_str;
-        error = path_error_message err
-      })
+      | Error err -> Error (InvalidRepositoryRoot { path = repository_root_str; error = err })
       | Ok repository_root -> (
           match package_subdir_from_root ~repository_root ~package_root with
           | Error _ as err -> err
