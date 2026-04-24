@@ -1,5 +1,0 @@
-type response = ?headers:(string * string) list ->
-?version:Net.Http.Version.t ->
-?body:string ->
-unit ->
-t

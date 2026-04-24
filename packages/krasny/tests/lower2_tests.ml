@@ -470,8 +470,7 @@ let tests = [
       assert_format2_mli
         ~expected:"val get: (module ConfigSpec with type t = 'a) -> ('a, error) result\n"
         "val get: (module ConfigSpec with type t = 'a) -> ('a, error) result\n");
-  Test.case
-    "lower2 formats let module expressions"
+  Test.case "lower2 formats let module expressions"
     (fun _ctx ->
       assert_format2_ml
         ~expected:(top_level
@@ -479,8 +478,15 @@ let tests = [
             "let value = let module M = Foo.Bar in result";
             "let empty = let module Empty = struct end in done_";
             "let packed = let module D = (val driver : Driver with type t = _) in body";
+            "let nested =\n\
+             \  let module ByteIter = struct\n\
+             \    let next = fun state ->\n\
+             \      let scratch = state in\n\
+             \      scratch\n\
+             \  end in\n\
+             \  consume";
           ])
-        "let value = let module M = Foo.Bar in result\nlet empty = let module Empty = struct end in done_\nlet packed = let module D = (val driver : Driver with type t = _) in body\n");
+        "let value = let module M = Foo.Bar in result\nlet empty = let module Empty = struct end in done_\nlet packed = let module D = (val driver : Driver with type t = _) in body\nlet nested = let module ByteIter = struct let next = fun state -> let scratch = state in scratch end in consume\n");
   Test.case
     "lower2 formats let exception expressions"
     (fun _ctx ->
@@ -640,6 +646,34 @@ let tests = [
           \  else\n\
           \    false\n"
         "let classify ready input = if ready then match input with | '!' | '^' -> bump (); true | _ -> false else false\n");
+  Test.case "lower2 breaks multiline labeled applications after equals"
+    (fun _ctx ->
+      assert_format2_ml
+        ~expected:"let () =\n\
+          \  Runtime.run\n\
+          \    ~main:(fun ~args -> Bench.Cli.main ~name:\"Vector Benchmarks\" ~benchmarks ~args)\n\
+          \    ~args:Env.args\n\
+          \    ()\n"
+        "let () = Runtime.run ~main:(fun ~args -> Bench.Cli.main ~name:\"Vector Benchmarks\" ~benchmarks ~args) ~args:Env.args ()\n");
+  Test.case
+    "lower2 keeps medium pipelines inline in arrow bodies"
+    (fun _ctx ->
+      assert_format2_ml
+        ~expected:"let about_handler = fun conn req -> conn |> Conn.respond ~status:Ok ~body:\"Suri - High-performance web framework\" |> Conn.send\n"
+        "let about_handler = fun conn req -> conn |> Conn.respond ~status:Ok ~body:\"Suri - High-performance web framework\" |> Conn.send\n");
+  Test.case
+    "lower2 keeps @@ fun applications bare"
+    (fun _ctx -> assert_format2_ml ~expected:"let () = start ~apps:[] @@ fun () -> main ()\n" "let () = start ~apps:[] @@ fun () -> main ()\n");
+  Test.case "lower2 breaks long pipelines after arrow bodies"
+    (fun _ctx ->
+      assert_format2_ml
+        ~expected:"let home_handler = fun conn req ->\n\
+          \  conn\n\
+          \  |> Conn.with_status Ok\n\
+          \  |> Conn.with_header \"Content-Type\" \"text/html\"\n\
+          \  |> Conn.with_body html\n\
+          \  |> Conn.send\n"
+        "let home_handler = fun conn req -> conn |> Conn.with_status Ok |> Conn.with_header \"Content-Type\" \"text/html\" |> Conn.with_body html |> Conn.send\n");
   Test.case
     "lower2 formats type aliases with parameters"
     (fun _ctx -> assert_format2_mli ~expected:"type 'a t = 'a list\n" "type 'a t = 'a list\n");
@@ -652,6 +686,18 @@ let tests = [
   Test.case
     "lower2 formats simple value declarations"
     (fun _ctx -> assert_format2_mli ~expected:"val id: 'a -> 'a\n" "val id : 'a -> 'a\n");
+  Test.case
+    "lower2 keeps adjacent signature values separated"
+    (fun _ctx ->
+      assert_format2_mli
+        ~expected:"module type Intf = sig\n  val name: string\n\n  val connect: Net.Addr.stream_addr -> Net.Uri.t -> (Connection.t, Error.t) result\nend\n"
+        "module type Intf = sig\nval name:string\nval connect: Net.Addr.stream_addr -> Net.Uri.t -> (Connection.t, Error.t) result\nend\n");
+  Test.case
+    "lower2 formats module struct bodies from nested items"
+    (fun _ctx ->
+      assert_format2_ml
+        ~expected:"module Tcp: Intf = struct\n  let name = \"tcp\"\n\n  let connect = fun addr uri ->\n    match Net.TcpStream.connect addr with\n    | Ok sock ->\n        let reader = Net.TcpStream.to_reader sock in\n        let writer = Net.TcpStream.to_writer sock in\n        Ok\n          (Connection.make\n            ~reader\n            ~writer\n            ~of_io_error:Error.of_io_error\n            ~uri)\n    | Error _ -> Error value\nend\n"
+        "module Tcp: Intf = struct\nlet name = \"tcp\"\nlet connect = fun addr uri -> match Net.TcpStream.connect addr with | Ok sock -> let reader = Net.TcpStream.to_reader sock in let writer = Net.TcpStream.to_writer sock in Ok (Connection.make ~reader ~writer ~of_io_error:Error.of_io_error ~uri) | Error _ -> Error value\nend\n");
   Test.case
     "lower2 rejects unsupported shapes instead of replaying source"
     (fun _ctx -> assert_format2_ml_fails "let object_value = object end\n");

@@ -1302,6 +1302,8 @@ module LetModuleExpr: sig
 
   val module_body: t -> module_body
 
+  val module_body_node: t -> node option
+
   val body: t -> expr option
 
   val for_each_module_body_path_ident: t -> fn:(token -> unit) -> unit
@@ -1357,31 +1359,6 @@ end = struct
       )
     | None -> None
 
-  let range_is_path = fun expr start stop ->
-    let rec loop index saw_ident expect_ident =
-      if index >= stop then
-        saw_ident && not expect_ident
-      else
-        match child_token_at expr index with
-        | Some token when token_kind_is token Syntax_kind2.IDENT && expect_ident -> loop
-          (index + 1)
-          true
-          false
-        | Some token when token_kind_is token Syntax_kind2.DOT && saw_ident && not expect_ident -> loop
-          (index + 1)
-          saw_ident
-          true
-        | _ -> false
-    in
-    loop start false true
-
-  let range_has_exact_tokens = fun expr start stop left right ->
-    Int.equal (start + 2) stop
-    && match child_token_at expr start, child_token_at expr (start + 1) with
-    | Some left_token, Some right_token -> token_kind_is left_token left
-    && token_kind_is right_token right
-    | _ -> false
-
   let module_body_bounds = fun expr ->
     match equals_index expr, in_index expr with
     | Some equals_index, Some in_index when equals_index < in_index -> Some (
@@ -1390,33 +1367,68 @@ end = struct
     )
     | _ -> None
 
+  let module_body_node = fun expr ->
+    let body_group_node =
+      match module_body_bounds expr with
+      | Some (start, stop) ->
+          let rec loop index =
+            if index >= stop then
+              None
+            else
+              match Node.child_at expr index with
+              | Some (Syntax_tree.Node id) ->
+                  let node = wrap_node expr.tree id in
+                  if
+                    node_matches
+                      node
+                      (fun kind -> is_module_expr_kind kind || Syntax_kind2.(kind = MODULE_EXPR))
+                  then
+                    Some node
+                  else
+                    loop (index + 1)
+              | Some (Syntax_tree.Token _)
+              | Some (Syntax_tree.Missing _)
+              | None -> loop (index + 1)
+          in
+          loop start
+      | None -> None
+    in
+    match body_group_node with
+    | Some node -> (
+        match Node.kind node with
+        | Syntax_kind2.MODULE_EXPR -> first_child_node_matching node ~matches:is_module_expr_kind
+        | kind when is_module_expr_kind kind -> Some node
+        | _ -> None
+      )
+    | None -> None
+
   let module_body = fun expr ->
-    match module_body_bounds expr with
-    | Some (start, stop) when range_is_path expr start stop -> Path
-    | Some (start, stop) when range_has_exact_tokens
-      expr
-      start
-      stop
-      Syntax_kind2.STRUCT_KW
-      Syntax_kind2.END_KW -> EmptyStruct
+    let has_child_node_kind node expected =
+      let found = ref false in
+      Node.for_each_child_node node
+        ~fn:(fun child ->
+          if node_kind_is child expected then
+            found := true);
+      !found
+    in
+    match module_body_node expr with
+    | Some node when node_kind_is node Syntax_kind2.PATH_MODULE_EXPR -> Path
+    | Some node when node_kind_is node Syntax_kind2.STRUCT_MODULE_EXPR ->
+        if has_child_node_kind node Syntax_kind2.STRUCTURE_ITEM then
+          Unsupported
+        else
+          EmptyStruct
     | _ -> Unsupported
 
   let body = first_expr_child
 
   let for_each_module_body_path_ident = fun expr ~fn ->
-    match module_body_bounds expr with
-    | Some (start, stop) when range_is_path expr start stop ->
-        let rec loop index =
-          if index < stop then
-            (
-              match child_token_at expr index with
-              | Some token when token_kind_is token Syntax_kind2.IDENT ->
-                  fn token;
-                  loop (index + 1)
-              | _ -> loop (index + 1)
-            )
-        in
-        loop start
+    match module_body_node expr with
+    | Some node when node_kind_is node Syntax_kind2.PATH_MODULE_EXPR ->
+        for_each_token_in_node node
+          ~fn:(fun token ->
+            if token_kind_is token Syntax_kind2.IDENT then
+              fn token)
     | _ -> ()
 end
 
@@ -2241,6 +2253,8 @@ module Parameter: sig
   val cast: Node.t -> t option
 
   val view: t -> view
+
+  val has_explicit_pattern_parens: t -> bool
 end = struct
   type t = parameter
 
@@ -2279,6 +2293,9 @@ end = struct
       default = first_expr_child parameter
     }
     | _ -> Unknown parameter
+
+  let has_explicit_pattern_parens = fun parameter ->
+    Option.is_some (Node.first_child_token parameter ~kind:Syntax_kind2.LPAREN)
 end
 
 module MatchCase: sig
@@ -3013,6 +3030,7 @@ module ModuleDeclaration = struct
 
   type body =
     | Path
+    | Struct
     | EmptyStruct
     | EmptySig
     | Sig
@@ -3150,12 +3168,16 @@ module ModuleDeclaration = struct
       | _ -> None
 
     let module_expr = fun member ->
-      match find_node member ~matches:is_module_expr_kind with
+      match find_node
+        member
+        ~matches:(fun kind -> is_module_expr_kind kind || Syntax_kind2.(kind = MODULE_EXPR)) with
       | Some node -> first_specific_module_expr node
       | None -> None
 
     let module_type = fun member ->
-      match find_node member ~matches:is_module_type_kind with
+      match find_node
+        member
+        ~matches:(fun kind -> is_module_type_kind kind || Syntax_kind2.(kind = MODULE_TYPE_EXPR)) with
       | Some node -> first_specific_module_type node
       | None -> None
   end
@@ -3248,7 +3270,7 @@ module ModuleDeclaration = struct
     || node_kind_is node Syntax_kind2.PATH_MODULE_TYPE -> Path
     | Some node when node_kind_is node Syntax_kind2.STRUCT_MODULE_EXPR ->
         if has_child_node_kind node Syntax_kind2.STRUCTURE_ITEM then
-          Unsupported
+          Struct
         else
           EmptyStruct
     | Some node when node_kind_is node Syntax_kind2.SIGNATURE_MODULE_TYPE ->
@@ -3258,10 +3280,20 @@ module ModuleDeclaration = struct
           EmptySig
     | _ -> Unsupported
 
+  let structure_body_node = fun decl ->
+    match body_specific_node decl with
+    | Some node when node_kind_is node Syntax_kind2.STRUCT_MODULE_EXPR -> Some node
+    | _ -> None
+
   let signature_body_node = fun decl ->
     match body_specific_node decl with
     | Some node when node_kind_is node Syntax_kind2.SIGNATURE_MODULE_TYPE -> Some node
     | _ -> None
+
+  let struct_token = fun decl ->
+    match structure_body_node decl with
+    | Some node -> Node.first_child_token node ~kind:Syntax_kind2.STRUCT_KW
+    | None -> None
 
   let sig_token = fun decl ->
     match signature_body_node decl with
@@ -3269,9 +3301,13 @@ module ModuleDeclaration = struct
     | None -> None
 
   let end_token = fun decl ->
-    match signature_body_node decl with
+    match structure_body_node decl with
     | Some node -> Node.first_child_token node ~kind:Syntax_kind2.END_KW
-    | None -> None
+    | None -> (
+        match signature_body_node decl with
+        | Some node -> Node.first_child_token node ~kind:Syntax_kind2.END_KW
+        | None -> None
+      )
 
   let for_each_body_path_ident = fun decl ~fn ->
     match body_specific_node decl with
@@ -3282,6 +3318,22 @@ module ModuleDeclaration = struct
             if token_kind_is token Syntax_kind2.IDENT then
               fn token)
     | _ -> ()
+
+  let for_each_structure_item = fun decl ~fn ->
+    match structure_body_node decl with
+    | Some node -> for_each_child_node_matching
+      node
+      ~matches:(fun kind -> Syntax_kind2.(kind = STRUCTURE_ITEM))
+      ~fn
+    | None -> ()
+
+  let for_each_signature_item = fun decl ~fn ->
+    match signature_body_node decl with
+    | Some node -> for_each_child_node_matching
+      node
+      ~matches:(fun kind -> Syntax_kind2.(kind = SIGNATURE_ITEM))
+      ~fn
+    | None -> ()
 
   let for_each_sig_body_token = fun decl ~fn ->
     match signature_body_node decl with
@@ -3406,6 +3458,14 @@ module ModuleTypeDeclaration = struct
             if token_kind_is token Syntax_kind2.IDENT then
               fn token)
     | _ -> ()
+
+  let for_each_signature_item = fun decl ~fn ->
+    match signature_body_node decl with
+    | Some node -> for_each_child_node_matching
+      node
+      ~matches:(fun kind -> Syntax_kind2.(kind = SIGNATURE_ITEM))
+      ~fn
+    | None -> ()
 
   let for_each_sig_body_token = fun decl ~fn ->
     match signature_body_node decl with

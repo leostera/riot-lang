@@ -1493,7 +1493,7 @@ let test_first_class_module_views = fun _ctx ->
   Ok ()
 
 let test_let_module_expression_views = fun _ctx ->
-  let source = "let value = let module M = Foo.Bar in result\nlet empty = let module Empty = struct end in done_\n" in
+  let source = "let value = let module M = Foo.Bar in result\nlet empty = let module Empty = struct end in done_\nlet nested = let module ByteIter = struct\n  let next = fun state ->\n    let scratch = state in\n    scratch\nend in consume\n" in
   let root = parse_ml source |> Result.expect ~msg:"expected parse2 source file" in
   let value_expr = nth_structure_item root 0
   |> require_some ~msg:"expected let module item"
@@ -1535,6 +1535,15 @@ let test_let_module_expression_views = fun _ctx ->
   Test.assert_equal
     ~expected:Ast2.LetModuleExpr.EmptyStruct
     ~actual:(Ast2.LetModuleExpr.module_body empty_module);
+  let nested_expr = nth_structure_item root 2
+  |> require_some ~msg:"expected nested let module item"
+  |> binding_of_structure_item
+  |> Result.expect ~msg:"expected nested outer binding"
+  |> body_of_binding
+  |> Result.expect ~msg:"expected nested let module body" in
+  let nested_module = Ast2.LetModuleExpr.cast nested_expr |> require_some ~msg:"expected nested let module view" in
+  let nested_body = Ast2.LetModuleExpr.module_body_node nested_module |> require_some ~msg:"expected nested module body node" in
+  Test.assert_equal ~expected:SyntaxKind2.STRUCT_MODULE_EXPR ~actual:(Ast2.Node.kind nested_body);
   Ok ()
 
 let test_let_exception_expression_views = fun _ctx ->

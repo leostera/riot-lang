@@ -1,9 +1,0 @@
-module BitMask = struct
-  [@inline always]
-
-  let lowest_set_bit_index mask =
-    if mask = 0 then
-      None
-    else
-      Some mask
-end

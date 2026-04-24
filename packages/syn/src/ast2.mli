@@ -308,6 +308,8 @@ module Parameter: sig
   val cast: Node.t -> t option
 
   val view: t -> view
+
+  val has_explicit_pattern_parens: t -> bool
 end
 
 module MatchCase: sig
@@ -470,6 +472,8 @@ module LetModuleExpr: sig
   val in_token: t -> Token.t option
 
   val module_body: t -> module_body
+
+  val module_body_node: t -> Node.t option
 
   val body: t -> expr option
 
@@ -748,6 +752,7 @@ module ModuleDeclaration: sig
 
   type body =
     | Path
+    | Struct
     | EmptyStruct
     | EmptySig
     | Sig
@@ -768,11 +773,17 @@ module ModuleDeclaration: sig
 
   val body: t -> body
 
+  val struct_token: t -> Token.t option
+
   val sig_token: t -> Token.t option
 
   val end_token: t -> Token.t option
 
   val for_each_body_path_ident: t -> fn:(Token.t -> unit) -> unit
+
+  val for_each_structure_item: t -> fn:(structure_item -> unit) -> unit
+
+  val for_each_signature_item: t -> fn:(signature_item -> unit) -> unit
 
   val for_each_sig_body_token: t -> fn:(Token.t -> unit) -> unit
 end
@@ -801,6 +812,8 @@ module ModuleTypeDeclaration: sig
   val end_token: t -> Token.t option
 
   val for_each_body_path_ident: t -> fn:(Token.t -> unit) -> unit
+
+  val for_each_signature_item: t -> fn:(signature_item -> unit) -> unit
 
   val for_each_sig_body_token: t -> fn:(Token.t -> unit) -> unit
 

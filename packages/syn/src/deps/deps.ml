@@ -1544,6 +1544,8 @@ module Ast2_deps = struct
         let deps = collect_direct_type_extension_path env deps node in
         let deps = collect_direct_type_payload_paths env deps node in
         collect_child_nodes collect_node env deps node
+    | Syntax_kind2.OPAQUE_TYPE ->
+        Ok (collect_direct_module_refs_between env deps node 0 (A.Node.child_count node))
     | Syntax_kind2.STRUCTURE_ITEM ->
         let* (deps, _, _) = collect_structure_item env deps Env.empty node in
         Ok deps
@@ -1708,7 +1710,9 @@ module Ast2_deps = struct
         | None -> Ok (deps, Env.bound)
       )
     | Syntax_kind2.TYPEOF_MODULE_TYPE -> (
-        match first_child_node_matching node ~matches:is_module_expr_kind with
+        match first_child_node_matching
+          node
+          ~matches:(fun kind -> is_module_expr_kind kind || Syntax_kind2.(kind = MODULE_EXPR)) with
         | Some module_expr -> module_binding env deps module_expr
         | None -> Ok (deps, Env.bound)
       )
@@ -1848,8 +1852,16 @@ module Ast2_deps = struct
           | None -> Ok (deps, env, bindings))
 
   and collect_module_type_decl env deps node =
-    match find_node_between node 0 (A.Node.child_count node) ~matches:is_module_type_kind with
-    | Some module_type -> collect_module_type env deps module_type
+    match first_child_node_matching
+      node
+      ~matches:(fun kind -> Syntax_kind2.(kind = MODULE_TYPE_DECL_BODY)) with
+    | Some body -> (
+        match first_child_node_matching
+          body
+          ~matches:(fun kind -> is_module_type_kind kind || Syntax_kind2.(kind = MODULE_TYPE_EXPR)) with
+        | Some module_type -> collect_module_type env deps module_type
+        | None -> Ok deps
+      )
     | None -> Ok deps
 
   and include_structure_binding env deps node =

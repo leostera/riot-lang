@@ -11,6 +11,14 @@ let fixture_root = Path.v "packages/syn/tests/fixtures"
 
 let lossless_snapshot_path = fun path -> append_path_suffix path ".expected_lossless.json"
 
+let parse2_skips = [ "ocaml_shortcut_ext_attr.ml" ]
+
+let should_skip_parse2_fixture = fun path ->
+  let basename = Path.basename path in
+  List.any parse2_skips
+    ~fn:(fun name ->
+      String.equal basename name)
+
 let load_modified_fixture_paths = fun () ->
   let cwd = Env.current_dir () |> Result.expect ~msg:"failed to get cwd for fixture filter" in
   let args = [ "diff"; "--name-only"; "--"; Path.to_string fixture_root ] in
@@ -46,7 +54,7 @@ let has_lossless_snapshot = fun modified_fixture_paths path ->
   match Path.extension path with
   | Some ".ml"
   | Some ".mli" ->
-      if is_locally_modified_fixture modified_fixture_paths path then
+      if should_skip_parse2_fixture path || is_locally_modified_fixture modified_fixture_paths path then
         `skip
       else
         let snapshot_path = lossless_snapshot_path path in

@@ -1,5 +1,0 @@
-let add_edge node ~depends_on =
-  node.deps <- depends_on.id :: node.deps
-
-(** Generate DOT format output for visualization *)
-let to_dot graph = graph
