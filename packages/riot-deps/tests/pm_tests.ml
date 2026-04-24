@@ -1704,7 +1704,7 @@ version = "0.2.0"
           else
             Error "expected refresh to preserve existing locked registry selections")
 
-let test_lock_refresh_preserves_existing_external_nodes = fun _ctx ->
+let test_lock_refresh_discards_stale_external_nodes = fun _ctx ->
   let app_pkg = make_package ~name:"app" ~path:(Path.v "/workspace/packages/app") () in
   let existing_lock =
     Riot_model.Lockfile.{
@@ -1734,18 +1734,54 @@ let test_lock_refresh_preserves_existing_external_nodes = fun _ctx ->
     }
   in
   match run_lock_deps ~mode:Refresh ~existing_lock:(Some existing_lock) [ app_pkg ] with
-  | Error err -> Error ("expected refresh lock to preserve existing nodes: " ^ pm_error_message err)
+  | Error err -> Error ("expected refresh lock to discard stale existing nodes: "
+  ^ pm_error_message err)
   | Ok lockfile ->
       if
-        List.length lockfile.packages = 2
-        && ((List.get lockfile.packages ~at:1 |> Option.expect ~msg:"expected std lock package").id.name
-        |> has_name "std")
-        && ((List.get lockfile.packages ~at:1 |> Option.expect ~msg:"expected std lock package").id.version
-        = Some "0.1.0")
+        List.length lockfile.packages = 1
+        && ((List.head lockfile.packages |> Option.expect ~msg:"expected app lock package").id.name
+        |> has_name "app")
       then
         Ok ()
       else
-        Error "expected refresh to preserve existing external lock nodes"
+        Error "expected refresh to discard stale external lock nodes"
+
+let test_lock_refresh_discards_removed_workspace_packages = fun _ctx ->
+  let app_pkg = make_package ~name:"app" ~path:(Path.v "/workspace/packages/app") () in
+  let existing_lock =
+    Riot_model.Lockfile.{
+      format_version = 1;
+      dependency_hash = "test";
+      packages =
+        [ {
+            id = { registry = None; name = package_name "app"; version = None; sha256 = None };
+            root = Some (Path.v "packages/app");
+            provenance = Workspace;
+            dependencies = [];
+            build_dependencies = [];
+            dev_dependencies = [];
+          }; {
+            id = { registry = None; name = package_name "old-app"; version = None; sha256 = None };
+            root = Some (Path.v "packages/old-app");
+            provenance = Workspace;
+            dependencies = [];
+            build_dependencies = [];
+            dev_dependencies = [];
+          } ];
+    }
+  in
+  match run_lock_deps ~mode:Refresh ~existing_lock:(Some existing_lock) [ app_pkg ] with
+  | Error err -> Error ("expected refresh lock to discard removed workspace packages: "
+  ^ pm_error_message err)
+  | Ok lockfile ->
+      if
+        List.length lockfile.packages = 1
+        && ((List.head lockfile.packages |> Option.expect ~msg:"expected app lock package").id.name
+        |> has_name "app")
+      then
+        Ok ()
+      else
+        Error "expected refresh to discard removed workspace packages"
 
 let test_unlock_discards_existing_external_nodes = fun _ctx ->
   let app_pkg = make_package ~name:"app" ~path:(Path.v "/workspace/packages/app") () in
@@ -1924,7 +1960,9 @@ version = "0.0.1"
         ~workspace_root
         ~dependencies:[ dependency "std" (source ~version:Std.Version.any ()) ]
         [ make_package ~name:"app" ~path:app_root () ] in
+      let workspace_manager = Riot_model.Workspace_manager.create () in
       match Riot_deps.remove
+        ~workspace_manager
         ~workspace
         ~cwd:app_root
         ~request:Riot_deps.{ selection = Current; scope = Runtime; dependency = package_name "std" }
@@ -1973,6 +2011,7 @@ version = "0.0.1"
             Error "expected workspace scan to have no load errors"
           else
             Riot_deps.add
+              ~workspace_manager
               ~workspace
               ~cwd:app_root
               ~request:Riot_deps.{ selection = Current; scope = Runtime; dependency = "../lib" }
@@ -2113,6 +2152,7 @@ version = "0.0.1"
             Error "expected workspace scan to have no load errors"
           else
             match Riot_deps.add
+              ~workspace_manager
               ~workspace
               ~cwd:app_root
               ~request:Riot_deps.{
@@ -3322,7 +3362,8 @@ let tests =
     case "dep solver: handles cyclic registry dependencies" test_lock_deps_handles_cyclic_registry_dependencies;
     case "dep solver: handles cyclic local path dependencies" test_lock_deps_handles_cyclic_local_path_dependencies;
     case "dep solver: refresh preserves existing registry versions" test_lock_refresh_preserves_existing_registry_version;
-    case "dep solver: refresh preserves existing external nodes" test_lock_refresh_preserves_existing_external_nodes;
+    case "dep solver: refresh discards stale external nodes" test_lock_refresh_discards_stale_external_nodes;
+    case "dep solver: refresh discards removed workspace packages" test_lock_refresh_discards_removed_workspace_packages;
     case "dep solver: unlock discards existing external nodes" test_unlock_discards_existing_external_nodes;
     case "lock refresh: missing lock requires refresh" test_lock_refresh_requires_lock_when_missing;
     case "lock refresh: matching dependency hash avoids refresh" test_lock_refresh_false_when_dependency_hash_matches;

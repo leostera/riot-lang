@@ -31,6 +31,7 @@
 25. Package-name validation belongs in `Package_name`. New typed boundaries should prefer `Package_name.t` over raw strings for parsed package identities, and `Package.validate_name` is only a compatibility wrapper.
 26. Scoped package projections for `Runtime` and `Dev` must preserve `build_dependencies` as hash-relevant metadata. Those scopes still exclude build-only outputs, but changing a manifest build-dependency path/version/source must invalidate the package cache.
 27. `Package.for_scope` may further narrow `Dev` projections by artifact kind. When callers select only tests, examples, or benches, keep the filtered binaries and source buckets aligned so planner/build consumers see one coherent scoped package instead of a full dev package plus ad hoc downstream filtering.
+28. Typed parse boundaries belong here. Modules such as `Package_name` and `Target` should return structured error variants plus `error_message`; do not introduce new stringly parse errors when the rest of the build stack needs to branch on failure shape.
 
 ## Validate
 

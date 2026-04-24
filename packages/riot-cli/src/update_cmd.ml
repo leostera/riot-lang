@@ -32,10 +32,12 @@ let run = fun ~workspace matches ->
     else
       Build.Human
   in
+  let workspace_manager = Riot_model.Workspace_manager.create () in
   let pm_session_id = Riot_model.Session_id.make () in
   let seen_registry_updates = HashSet.create () in
   match Riot_deps.update
     ~on_event:(write_event ~mode ~pm_session_id ~seen_registry_updates)
+    ~workspace_manager
     ~workspace
     () with
   | Ok () -> Ok ()

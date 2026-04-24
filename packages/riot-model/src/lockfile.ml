@@ -59,7 +59,7 @@ let package_id_of_toml = fun value ->
   | Toml.Table fields -> (
       match Fields.get "name" fields with
       | Some (Toml.String name) ->
-          let* name = Package_name.from_string name in
+          let* name = Package_name.from_string name |> Result.map_err ~fn:Package_name.error_message in
           let registry =
             match Fields.get "registry" fields with
             | Some (Toml.String registry) -> Some registry
@@ -83,7 +83,7 @@ let package_id_of_toml = fun value ->
 let package_id_of_fields = fun fields ->
   match Fields.get "name" fields with
   | Some (Toml.String name) ->
-      let* name = Package_name.from_string name in
+      let* name = Package_name.from_string name |> Result.map_err ~fn:Package_name.error_message in
       let registry =
         match Fields.get "registry" fields with
         | Some (Toml.String registry) -> Some registry
@@ -190,7 +190,7 @@ let dependency_of_toml = fun value ->
   | Toml.Table fields -> (
       match Fields.get "name" fields with
       | Some (Toml.String name) -> (
-          let* name = Package_name.from_string name in
+          let* name = Package_name.from_string name |> Result.map_err ~fn:Package_name.error_message in
           match Fields.get "package" fields with
           | Some package_value -> package_id_of_toml package_value
           |> Result.map ~fn:(fun package -> { name; package })
@@ -198,7 +198,10 @@ let dependency_of_toml = fun value ->
               let package_name =
                 match Fields.get "package_name" fields with
                 | Some (Toml.String package_name) ->
-                    let* package_name = Package_name.from_string package_name in
+                    let* package_name =
+                      Package_name.from_string package_name
+                      |> Result.map_err ~fn:Package_name.error_message
+                    in
                     Ok package_name
                 | _ -> Ok name
               in

@@ -90,7 +90,7 @@ let normalize_source_locator = fun raw ->
 let github_locator_of_value = fun value -> "github.com/" ^ String.trim value
 
 let parse_dependency: string -> Toml.value -> (Package.dependency, string) result = fun raw_name value ->
-  let* name = Package_name.from_string raw_name in
+  let* name = Package_name.from_string raw_name |> Result.map_err ~fn:Package_name.error_message in
   let dependency_name = Package_name.to_string name in
   let make_dependency source: Package.dependency = { name; source } in
   match value with

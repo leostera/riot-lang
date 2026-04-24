@@ -10,6 +10,8 @@ val load_error_to_string: load_error -> string
 
 val create: unit -> t
 
+val clear_cache: t -> unit
+
 val load_riot_toml: t -> Path.t -> (Std.Data.Toml.value, string) result
 
 (** Starting from the given directory, walk up the filesystem tree looking for a

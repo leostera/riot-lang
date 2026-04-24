@@ -684,7 +684,7 @@ let package_name_json = fun package -> Json.String (Package_name.to_string packa
 let package_names_json = fun packages -> Json.Array (List.map packages ~fn:package_name_json)
 
 let package_name_of_json = function
-  | Json.String package -> Package_name.from_string package
+  | Json.String package -> Package_name.from_string package |> Result.map_err ~fn:Package_name.error_message
   | _ -> Error "invalid package name"
 
 let package_names_of_json = function

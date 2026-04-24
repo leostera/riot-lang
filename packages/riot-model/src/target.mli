@@ -1,5 +1,10 @@
 open Std
 
+type error = System.TargetTriple.error =
+  | InvalidTripletFormat of {
+      value: string;
+    }
+
 type t = System.TargetTriple.t = {
   architecture: string;
   vendor: string;
@@ -37,7 +42,9 @@ type resolve_error = {
 }
 val current: t
 
-val from_string: string -> (t, string) result
+val error_message: error -> string
+
+val from_string: string -> (t, error) result
 
 val to_string: t -> string
 

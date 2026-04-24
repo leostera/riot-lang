@@ -59,7 +59,7 @@ let selection_of_matches = fun ?(default_selection = Riot_deps.Current) matches 
       Error ConflictingTarget
   | Some package, false ->
       let* package_name = Package_name.from_string package
-      |> Result.map_err ~fn:(fun error -> InvalidPackageName error) in
+      |> Result.map_err ~fn:(fun error -> InvalidPackageName (Package_name.error_message error)) in
       Ok (Riot_deps.Package package_name)
   | None, true ->
       Ok Riot_deps.Workspace
@@ -118,6 +118,7 @@ let run_request = fun ?(default_selection = Riot_deps.Current) ~workspace ~cwd m
     else
       Build.Human
   in
+  let workspace_manager = Riot_model.Workspace_manager.create () in
   let dependency =
     match ArgParser.get_one matches "dependency" with
     | Some dependency -> Ok dependency
@@ -131,6 +132,7 @@ let run_request = fun ?(default_selection = Riot_deps.Current) ~workspace ~cwd m
       (
         match Riot_deps.add
           ~on_event:(write_event ~mode ~pm_session_id ~seen_registry_updates)
+          ~workspace_manager
           ~workspace
           ~cwd
           ~request

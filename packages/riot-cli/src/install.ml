@@ -27,7 +27,13 @@ type target =
 let parse_package_name = fun package_name ->
   Riot_model.Package_name.from_string package_name
   |> Result.map_err
-    ~fn:(fun error -> Failure ("invalid package name '" ^ package_name ^ "': " ^ error))
+    ~fn:(fun error ->
+      Failure (
+        "invalid package name '"
+        ^ package_name
+        ^ "': "
+        ^ Riot_model.Package_name.error_message error
+      ))
 
 let display_path = fun ~workspace_root path ->
   match Path.strip_prefix path ~prefix:workspace_root with

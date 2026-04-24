@@ -1,5 +1,10 @@
 (** Platform identity and executable metadata for the current host. *)
 module Host: sig
+  type error =
+    | InvalidTripletFormat of {
+        value: string;
+      }
+
   type t = {
     architecture: string;
     vendor: string;
@@ -12,7 +17,9 @@ module Host: sig
   val to_string: t -> string
 
   (** Use `from_string value` to parse `arch-vendor-os[-abi]`. *)
-  val from_string: string -> (t, string) Result.t
+  val error_message: error -> string
+
+  val from_string: string -> (t, error) Result.t
 
   val equal: t -> t -> bool
 end

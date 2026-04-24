@@ -29,6 +29,7 @@
 23. Remote source materialization is cache-first by default for `riot run` / `riot install`. Reuse the cached checkout when it already exists, and only fetch/refresh it when the caller explicitly passes `~update:true`.
 24. Public external-install/run boundaries should prefer typed parsed specs (`Git_dependency.spec`, registry package spec values) over raw strings. Keep string parsing at the CLI edge or inside compatibility wrappers.
 25. Package-manager request types should prefer `Riot_model.Package_name.t` over raw strings whenever the value is semantically a package name. Parse names at the CLI edge and only stringify them again for manifest text, registry APIs, paths, or JSON/error rendering.
+26. `add` / `remove` / `update` should take an explicit caller-owned `Workspace_manager.t`, clear its cache after manifest rewrites, rescan, and rebuild `riot.lock` from the fresh workspace state. Refresh must drop stale external or removed workspace packages instead of preserving them from the previous lockfile.
 
 ## Validate
 

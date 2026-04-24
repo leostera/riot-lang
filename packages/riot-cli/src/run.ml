@@ -60,7 +60,13 @@ let no_runnable_binaries_message = fun ?package_name () ->
 let parse_package_name = fun package_name ->
   Riot_model.Package_name.from_string package_name
   |> Result.map_err
-    ~fn:(fun error -> Failure ("invalid package name '" ^ package_name ^ "': " ^ error))
+    ~fn:(fun error ->
+      Failure (
+        "invalid package name '"
+        ^ package_name
+        ^ "': "
+        ^ Riot_model.Package_name.error_message error
+      ))
 
 let parse_local_target = fun ?package_filter name ->
   match String.split name ~by:":" with

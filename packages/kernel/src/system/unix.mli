@@ -1,4 +1,9 @@
 module Host: sig
+  type error =
+    | InvalidTripletFormat of {
+        value: string;
+      }
+
   type t = {
     architecture: string;
     vendor: string;
@@ -9,7 +14,9 @@ module Host: sig
 
   val to_string: t -> string
 
-  val from_string: string -> (t, string) Result.t
+  val error_message: error -> string
+
+  val from_string: string -> (t, error) Result.t
 
   val equal: t -> t -> bool
 end

@@ -14,10 +14,18 @@ let from_string = fun spec ->
   | [ name ] ->
       Riot_model.Package_name.from_string (String.trim name)
       |> Result.map ~fn:(fun name -> { name; requirement = Some Std.Version.any })
-      |> Result.map_err ~fn:(fun error -> Invalid_spec { spec; error })
+      |> Result.map_err ~fn:(fun error ->
+        Invalid_spec {
+          spec;
+          error = Riot_model.Package_name.error_message error;
+        })
   | [name;requirement] ->
       let* name = Riot_model.Package_name.from_string (String.trim name)
-      |> Result.map_err ~fn:(fun error -> Invalid_spec { spec; error }) in
+      |> Result.map_err ~fn:(fun error ->
+        Invalid_spec {
+          spec;
+          error = Riot_model.Package_name.error_message error;
+        }) in
       let requirement = String.trim requirement in
       let* requirement =
         Std.Version.parse_requirement requirement |> Result.map_err

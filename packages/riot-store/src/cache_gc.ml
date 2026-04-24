@@ -255,7 +255,8 @@ let generation_lane_of_json = fun json ->
     match Data.Json.get_field "target" json with
     | Some value -> (
         match Data.Json.get_string value with
-        | Some target -> Riot_model.Target.from_string target
+        | Some target ->
+            Riot_model.Target.from_string target |> Result.map_err ~fn:Riot_model.Target.error_message
         | None -> Error "generation lane is missing string field 'target'"
       )
     | None -> Error "generation lane is missing string field 'target'"

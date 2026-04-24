@@ -40,7 +40,10 @@ let has_text = fun value -> not (String.equal value "")
 let parse_selector = fun pattern ->
   match split_once pattern ':' with
   | Some (package_name, rest) when has_text package_name && has_text rest -> (
-      let* package_name = Riot_model.Package_name.from_string package_name in
+      let* package_name =
+        Riot_model.Package_name.from_string package_name
+        |> Result.map_err ~fn:Riot_model.Package_name.error_message
+      in
       match split_once rest ':' with
       | Some (suite_name, query) when has_text suite_name && has_text query -> Ok (
         Some package_name,

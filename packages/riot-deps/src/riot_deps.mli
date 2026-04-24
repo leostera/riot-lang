@@ -142,6 +142,7 @@ val ensure_workspace:
 
 val add:
   ?on_event:event_sink ->
+  workspace_manager:Riot_model.Workspace_manager.t ->
   workspace:Riot_model.Workspace_manifest.t ->
   cwd:Path.t ->
   request:add_request ->
@@ -156,6 +157,7 @@ val search:
 
 val remove:
   ?on_event:event_sink ->
+  workspace_manager:Riot_model.Workspace_manager.t ->
   workspace:Riot_model.Workspace_manifest.t ->
   cwd:Path.t ->
   request:remove_request ->
@@ -164,6 +166,7 @@ val remove:
 
 val update:
   ?on_event:event_sink ->
+  workspace_manager:Riot_model.Workspace_manager.t ->
   workspace:Riot_model.Workspace_manifest.t ->
   unit ->
   (unit, package_error) result

@@ -527,7 +527,8 @@ let is_workspace_member: t -> bool = fun pkg ->
   not (String.starts_with ~prefix:"../" rel_str || Path.is_absolute pkg.relative_path)
 
 (** Validate package name according to Riot naming conventions *)
-let validate_name = fun name -> Package_name.from_string name
+let validate_name = fun name ->
+  Package_name.from_string name |> Result.map_err ~fn:Package_name.error_message
 
 let version_parse_error_to_string = fun err ->
   match err with
@@ -704,7 +705,7 @@ let validate_dependency_source = fun ~dependency_name source ->
 
 let parse_dependency:
   string -> Toml.value -> workspace_deps:dependency list -> (dependency, string) result = fun raw_name value ~workspace_deps ->
-  let* name = Package_name.from_string raw_name in
+  let* name = Package_name.from_string raw_name |> Result.map_err ~fn:Package_name.error_message in
   let dependency_name = Package_name.to_string name in
   match value with
   | Toml.Table attrs -> (
@@ -1945,7 +1946,7 @@ let from_json: Json.t -> (t, string) result = fun json ->
   | Json.Object fields -> (
       match (Fields.get "name" fields, Fields.get "path" fields, Fields.get "relative_path" fields) with
       | (Some (Json.String name), Some (Json.String path_str), Some (Json.String rel_path_str)) -> (
-          let* name = Package_name.from_string name in
+          let* name = Package_name.from_string name |> Result.map_err ~fn:Package_name.error_message in
           let parse_dependencies_field field_name =
             match Fields.get field_name fields with
             | Some (Json.Array deps) ->
@@ -1957,7 +1958,10 @@ let from_json: Json.t -> (t, string) result = fun json ->
                       | Json.Object dep_fields -> (
                           match (Fields.get "name" dep_fields, Fields.get "source" dep_fields) with
                           | Some (Json.String dep_name), Some source_json -> (
-                              let* dep_name = Package_name.from_string dep_name in
+                              let* dep_name =
+                                Package_name.from_string dep_name
+                                |> Result.map_err ~fn:Package_name.error_message
+                              in
                               let* source = dependency_source_of_json source_json in
                               loop ({ name = dep_name; source } :: acc) rest
                             )

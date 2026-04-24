@@ -5,12 +5,20 @@ let test_target_triple_roundtrips_the_current_host = fun _ctx ->
   match System.TargetTriple.from_string rendered with
   | Ok parsed when System.TargetTriple.equal parsed System.host_triple -> Ok ()
   | Ok _ -> Error "System.TargetTriple.from_string should roundtrip System.host_triple"
-  | Error message -> Error ("expected current host triple to parse, got: " ^ message)
+  | Error error ->
+      Error (
+        "expected current host triple to parse, got: "
+        ^ System.TargetTriple.error_message error
+      )
 
 let test_target_triple_rejects_incomplete_values = fun _ctx ->
   match System.TargetTriple.from_string "wasm32-wasi" with
   | Ok _ -> Error "System.TargetTriple.from_string should reject incomplete target triples"
-  | Error _ -> Ok ()
+  | Error (System.TargetTriple.InvalidTripletFormat { value }) ->
+      if String.equal value "wasm32-wasi" then
+        Ok ()
+      else
+        Error "System.TargetTriple should report the rejected triple value"
 
 let test_host_triple_matches_current_target_triple = fun _ctx ->
   if System.TargetTriple.equal System.host_triple System.TargetTriple.current then

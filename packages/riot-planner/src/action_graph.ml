@@ -1035,7 +1035,7 @@ let from_json = fun json ->
                               in
                               (
                                 match Package_name.from_string pkg_name with
-                                | Error err -> Error err
+                                | Error err -> Error (Package_name.error_message err)
                                 | Ok package_name ->
                                     let package = Package.synthetic
                                       ~name:package_name

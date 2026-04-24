@@ -26,7 +26,13 @@ let event_package_name = fun package_name ->
   Riot_model.Package_name.from_string package_name
   |> Result.map_err
     ~fn:(fun error ->
-      Error.Unexpected { error = "invalid package name '" ^ package_name ^ "': " ^ error })
+      Error.Unexpected {
+        error =
+          "invalid package name '"
+          ^ package_name
+          ^ "': "
+          ^ Riot_model.Package_name.error_message error;
+      })
 
 type resolved_dependency = {
   dependency: Riot_model.Lockfile.dependency;
@@ -829,12 +835,6 @@ let rec lock_packages = fun ~(ctx:context) ~state acc_workspace acc_external pac
       | Error _ as err -> err
     )
 
-let keep_existing_package = fun workspace_packages (pkg: Riot_model.Lockfile.package) ->
-  let workspace_names =
-    List.map workspace_packages ~fn:(fun (pkg: Riot_model.Package_manifest.t) -> pkg.name)
-  in
-  not (List.contains workspace_names ~value:pkg.id.name)
-
 let resolve_root_scope = fun ~(ctx:context) ~state ~(declared_from:Path.t) deps ->
   match resolve_manifest_dependencies ~ctx ~state ~required_by:None ~declared_from [] [] deps with
   | Error _ as err -> err
@@ -1600,7 +1600,13 @@ let registry_package_id_of_solution = fun (catalog: catalog) ~package_name versi
   let* package_name_t = Riot_model.Package_name.from_string package_name
   |> Result.map_err
     ~fn:(fun error ->
-      Error.Unexpected { error = "invalid package name '" ^ package_name ^ "': " ^ error }) in
+      Error.Unexpected {
+        error =
+          "invalid package name '"
+          ^ package_name
+          ^ "': "
+          ^ Riot_model.Package_name.error_message error;
+      }) in
   match find_existing_registry_package_version
     ~registry_name
     ~existing_lock:catalog.ctx.existing_lock
@@ -1858,15 +1864,8 @@ let lock_deps = fun ?(emit = no_emit) ~mode ~registry ~existing_lock ~workspace 
       let* workspace_lock_packages = lock_workspace_packages [] workspace_packages in
       let* external_local_packages = lock_external_local_packages [] selected_external_local_names in
       let* registry_packages = lock_registry_packages [] selected_registry_names in
-      let preserved =
-        match (mode, existing_lock) with
-        | Unlock, _ -> []
-        | Refresh, Some (existing_lock: Riot_model.Lockfile.t) -> existing_lock.packages
-        |> List.filter ~fn:(keep_existing_package workspace_packages)
-        | Refresh, None -> []
-      in
       let packages = merge_lock_packages
-        (workspace_lock_packages @ external_local_packages @ registry_packages @ preserved) in
+        (workspace_lock_packages @ external_local_packages @ registry_packages) in
       let runtime_packages, build_packages, dev_packages = dependency_counts packages in
       emit
         (Riot_model.Event.DependencyUniverseBuilt {

@@ -22,6 +22,10 @@ type t = {
 
 let create = fun () -> { workspace_roots = HashMap.create (); scans = HashMap.create () }
 
+let clear_cache = fun t ->
+  HashMap.clear t.workspace_roots;
+  HashMap.clear t.scans
+
 let path_key = fun path -> Path.to_string path
 
 let elapsed_us_since = fun started_at -> Time.Instant.elapsed started_at |> Time.Duration.to_micros

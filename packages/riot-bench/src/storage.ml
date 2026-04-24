@@ -360,11 +360,14 @@ let stored_suite_run_of_json = fun json ->
   let* run_id = required_string fields "run_id" in
   let* suite_fields = required_object fields "suite" in
   let* package_name_string = required_string suite_fields "package" in
-  let* package_name = Riot_model.Package_name.from_string package_name_string in
+  let* package_name =
+    Riot_model.Package_name.from_string package_name_string
+    |> Result.map_err ~fn:Riot_model.Package_name.error_message
+  in
   let* suite_name = required_string suite_fields "name" in
   let* profile = required_string suite_fields "profile" in
   let* target_string = required_string suite_fields "target" in
-  let* target = Target.from_string target_string in
+  let* target = Target.from_string target_string |> Result.map_err ~fn:Target.error_message in
   let* selection_fields = required_object fields "selection" in
   let* filter = get_optional_string selection_fields "filter" in
   let* partial = required_bool selection_fields "partial" in

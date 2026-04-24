@@ -799,7 +799,7 @@ let require_json_target_field = fun name json ->
       | Error msg -> Error ("Toolchain manifest field '"
       ^ name
       ^ "' must be a valid target triple: "
-      ^ msg)
+      ^ Riot_model.Target.error_message msg)
     )
 
 let optional_json_string_field = fun name json ->

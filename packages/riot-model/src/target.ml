@@ -7,6 +7,11 @@ type t = System.TargetTriple.t = {
   abi: string option;
 }
 
+type error = System.TargetTriple.error =
+  | InvalidTripletFormat of {
+      value: string;
+    }
+
 module Set = struct
   type elt = t
 
@@ -49,6 +54,8 @@ type resolve_error = {
 }
 
 let current = System.TargetTriple.current
+
+let error_message = System.TargetTriple.error_message
 
 let from_string = System.TargetTriple.from_string
 

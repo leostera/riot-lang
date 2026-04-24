@@ -8,25 +8,39 @@ let test_from_string_accepts_valid_package_name = fun _ctx ->
         Ok ()
       else
         Error "expected package name to roundtrip through Package_name.to_string"
-  | Error err -> Error ("expected valid package name, got error: " ^ err)
+  | Error err ->
+      Error (
+        "expected valid package name, got error: "
+        ^ Riot_model.Package_name.error_message err
+      )
 
 let test_from_string_rejects_invalid_leading_character = fun _ctx ->
   match Riot_model.Package_name.from_string "Riot" with
   | Ok _ -> Error "expected uppercase-leading package name to be rejected"
-  | Error err ->
-      if String.contains err "start with a lowercase letter" then
+  | Error (Riot_model.Package_name.InvalidLeadingCharacter { suggestion; _ }) ->
+      if String.equal suggestion "riot" then
         Ok ()
       else
-        Error ("expected lowercase-leading validation error, got: " ^ err)
+        Error "expected lowercase-leading validation error to include a lowercase suggestion"
+  | Error err ->
+      Error (
+        "expected InvalidLeadingCharacter, got: "
+        ^ Riot_model.Package_name.error_message err
+      )
 
 let test_from_string_rejects_invalid_suffix = fun _ctx ->
   match Riot_model.Package_name.from_string "riot-" with
   | Ok _ -> Error "expected trailing hyphen package name to be rejected"
-  | Error err ->
-      if String.contains err "cannot end with hyphen or underscore" then
+  | Error (Riot_model.Package_name.TrailingDelimiter { value }) ->
+      if String.equal value "riot-" then
         Ok ()
       else
-        Error ("expected trailing delimiter validation error, got: " ^ err)
+        Error "expected trailing delimiter validation error to preserve the bad value"
+  | Error err ->
+      Error (
+        "expected TrailingDelimiter, got: "
+        ^ Riot_model.Package_name.error_message err
+      )
 
 let tests =
   Test.[

@@ -230,7 +230,7 @@ let target_of_json = function
             | [] -> Ok []
             | package_name :: rest -> (
                 match Package_name.from_string package_name with
-                | Error error -> Error (Data.Json.String error)
+                | Error error -> Error (Data.Json.String (Package_name.error_message error))
                 | Ok package_name -> (
                     match loop rest with
                     | Ok rest -> Ok (package_name :: rest)
@@ -244,7 +244,7 @@ let target_of_json = function
   | Data.Json.String pkg ->
       Package_name.from_string pkg
       |> Result.map ~fn:(fun pkg -> Workspace_planner.Package pkg)
-      |> Result.map_err ~fn:Data.Json.string
+      |> Result.map_err ~fn:(fun error -> Data.Json.string (Package_name.error_message error))
   | _ ->
       Error (Data.Json.String "Invalid target")
 

@@ -102,6 +102,7 @@ val load_registry_workspace_from_spec:
 
 val add:
   ?on_event:event_sink ->
+  workspace_manager:Riot_model.Workspace_manager.t ->
   workspace:Riot_model.Workspace_manifest.t ->
   cwd:Path.t ->
   request:add_request ->
@@ -110,6 +111,7 @@ val add:
 
 val remove:
   ?on_event:event_sink ->
+  workspace_manager:Riot_model.Workspace_manager.t ->
   workspace:Riot_model.Workspace_manifest.t ->
   cwd:Path.t ->
   request:remove_request ->
@@ -120,4 +122,8 @@ val search:
   ?registry:Pkgs_ml.Registry.t -> request:search_request -> unit -> (suggested_package list, error) result
 
 val update:
-  ?on_event:event_sink -> workspace:Riot_model.Workspace_manifest.t -> unit -> (unit, error) result
+  ?on_event:event_sink ->
+  workspace_manager:Riot_model.Workspace_manager.t ->
+  workspace:Riot_model.Workspace_manifest.t ->
+  unit ->
+  (unit, error) result

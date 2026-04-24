@@ -247,7 +247,7 @@ let run = fun (workspace: Workspace.t) matches ->
     | None -> Ok None
     | Some package_name -> Package_name.from_string package_name
     |> Result.map ~fn:Option.some
-    |> Result.map_err ~fn:(fun error -> Failure error)
+    |> Result.map_err ~fn:(fun error -> Failure (Package_name.error_message error))
   in
   let* package_name = package_name in
   match resolve_request ~package_name ~workspace_mode:(ArgParser.get_flag matches "workspace") with

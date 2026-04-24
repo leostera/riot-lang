@@ -40,7 +40,15 @@ let parse_package_names = fun package_names ->
     | package_name :: rest -> (
         match Riot_model.Package_name.from_string package_name with
         | Ok package_name -> loop (package_name :: acc) rest
-        | Error error -> Error (Failure ("invalid package name '" ^ package_name ^ "': " ^ error))
+        | Error error ->
+            Error (
+              Failure (
+                "invalid package name '"
+                ^ package_name
+                ^ "': "
+                ^ Riot_model.Package_name.error_message error
+              )
+            )
       )
   in
   loop [] package_names

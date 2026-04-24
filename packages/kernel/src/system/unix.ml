@@ -11,6 +11,11 @@ module FFI = struct
 end
 
 module Host = struct
+  type error =
+    | InvalidTripletFormat of {
+        value: string;
+      }
+
   type t = {
     architecture: string;
     vendor: string;
@@ -32,6 +37,9 @@ module Host = struct
 
   let substring = fun value ~offset ~len ->
     value |> Bytes.from_string |> Bytes.sub_unchecked ~offset ~len |> Bytes.to_string
+
+  let error_message = function
+    | InvalidTripletFormat { value } -> String.concat "" [ "invalid host triplet format: "; value ]
 
   let rec reverse_parts = function
     | [] -> []
@@ -55,13 +63,13 @@ module Host = struct
         loop start (index + 1) acc
     in
     if length = 0 then
-      Result.Error "invalid host triplet format: "
+      Result.Error (InvalidTripletFormat { value })
     else
       loop 0 0 []
 
   let from_string = fun value ->
     match split_triplet value with
-    | Result.Error _ -> Result.Error (String.concat "" [ "invalid host triplet format: "; value ])
+    | Result.Error _ -> Result.Error (InvalidTripletFormat { value })
     | Result.Ok [architecture;vendor;os] -> Result.Ok { architecture; vendor; os; abi = None }
     | Result.Ok [architecture;vendor;os;abi] -> Result.Ok {
       architecture;
@@ -69,7 +77,7 @@ module Host = struct
       os;
       abi = Some abi
     }
-    | Result.Ok _ -> Result.Error (String.concat "" [ "invalid host triplet format: "; value ])
+    | Result.Ok _ -> Result.Error (InvalidTripletFormat { value })
 
   let current =
     let abi = FFI.abi () in
