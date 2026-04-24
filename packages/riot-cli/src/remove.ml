@@ -7,8 +7,8 @@ type error =
   | MissingDependency
   | ConflictingTarget
   | ConflictingScope
-  | InvalidPackageName of string
-  | CurrentDirUnavailable of string
+  | InvalidPackageName of Riot_model.Package_name.error
+  | CurrentDirUnavailable of Path.error
   | RemoveFailed of Riot_deps.package_error
 
 let out = eprintln
@@ -29,14 +29,6 @@ let command =
         flag "json" |> long "json" |> help "Render events as JSON";
       ]
 
-let message = function
-  | MissingDependency -> "missing dependency name"
-  | ConflictingTarget -> "cannot combine --workspace with --package"
-  | ConflictingScope -> "cannot combine --build with --dev"
-  | InvalidPackageName error -> error
-  | CurrentDirUnavailable error -> "failed to determine current directory: " ^ error
-  | RemoveFailed error -> Package_error.message error
-
 let path_error_message = function
   | Path.InvalidUtf8 { path } -> "invalid UTF-8 path: " ^ path
   | Path.SystemInvalidUtf8 { syscall; path } -> "system call '"
@@ -44,6 +36,14 @@ let path_error_message = function
   ^ "' returned invalid UTF-8 path: "
   ^ path
   | Path.SystemError error -> error
+
+let message = function
+  | MissingDependency -> "missing dependency name"
+  | ConflictingTarget -> "cannot combine --workspace with --package"
+  | ConflictingScope -> "cannot combine --build with --dev"
+  | InvalidPackageName error -> Package_name.error_message error
+  | CurrentDirUnavailable error -> "failed to determine current directory: " ^ path_error_message error
+  | RemoveFailed error -> Package_error.message error
 
 let fail = fun err ->
   out ("\027[1;31mError\027[0m: " ^ message err);
@@ -57,7 +57,7 @@ let selection_of_matches = fun matches ->
       Error ConflictingTarget
   | Some package, false ->
       let* package_name = Package_name.from_string package
-      |> Result.map_err ~fn:(fun error -> InvalidPackageName (Package_name.error_message error)) in
+      |> Result.map_err ~fn:(fun error -> InvalidPackageName error) in
       Ok (Riot_deps.Package package_name)
   | None, true ->
       Ok Riot_deps.Workspace
@@ -88,7 +88,7 @@ let run = fun ~workspace matches ->
   let dependency =
     match ArgParser.get_one matches "dependency" with
     | Some dependency -> Package_name.from_string dependency
-    |> Result.map_err ~fn:(fun error -> InvalidPackageName (Package_name.error_message error))
+    |> Result.map_err ~fn:(fun error -> InvalidPackageName error)
     | None -> Error MissingDependency
   in
   match dependency, selection_of_matches matches, scope_of_matches matches, Env.current_dir () with
@@ -112,7 +112,7 @@ let run = fun ~workspace matches ->
   | (_, _, Error err, _) ->
       fail err
   | _, _, _, Error err ->
-      fail (CurrentDirUnavailable (path_error_message err))
+      fail (CurrentDirUnavailable err)
 
 let run_without_workspace = fun _matches ->
   out no_workspace_message;

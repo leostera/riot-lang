@@ -3,14 +3,23 @@ open Std.Collections
 open Std.Result.Syntax
 open Riot_model
 
+type workspace_bootstrap_error =
+  | BootstrapManifestWriteFailed of { path: Path.t; error: IO.error }
+  | BootstrapDependencyHashFailed of Riot_deps.Lock_refresh.error
+  | BootstrapLockfileWriteFailed of Riot_deps.Lockfile_store.error
+
+type workspace_load_error =
+  | WorkspaceScanFailed of Riot_model.Workspace_manager.scan_error
+  | WorkspaceLoadHadErrors of Riot_model.Workspace_manager.load_error list
+
 type error =
   | MissingDependency
   | ConflictingTarget
   | ConflictingScope
-  | InvalidPackageName of string
-  | CurrentDirUnavailable of string
-  | WorkspaceBootstrapFailed of string
-  | WorkspaceLoadFailed of string
+  | InvalidPackageName of Riot_model.Package_name.error
+  | CurrentDirUnavailable of Path.error
+  | WorkspaceBootstrapFailed of workspace_bootstrap_error
+  | WorkspaceLoadFailed of workspace_load_error
   | AddFailed of Riot_deps.package_error
 
 let out = eprintln
@@ -29,16 +38,6 @@ let command =
         flag "json" |> long "json" |> help "Render events as JSON";
       ]
 
-let message = function
-  | MissingDependency -> "missing dependency name"
-  | ConflictingTarget -> "cannot combine --workspace with --package"
-  | ConflictingScope -> "cannot combine --build with --dev"
-  | InvalidPackageName error -> error
-  | CurrentDirUnavailable error -> "failed to determine current directory: " ^ error
-  | WorkspaceBootstrapFailed error -> "failed to initialize riot workspace: " ^ error
-  | WorkspaceLoadFailed error -> "failed to load initialized riot workspace: " ^ error
-  | AddFailed error -> Package_error.message error
-
 let path_error_message = function
   | Path.InvalidUtf8 { path } -> "invalid UTF-8 path: " ^ path
   | Path.SystemInvalidUtf8 { syscall; path } -> "system call '"
@@ -46,6 +45,32 @@ let path_error_message = function
   ^ "' returned invalid UTF-8 path: "
   ^ path
   | Path.SystemError error -> error
+
+let workspace_bootstrap_error_message = function
+  | BootstrapManifestWriteFailed { path; error } -> "failed to write manifest '"
+  ^ Path.to_string path
+  ^ "': "
+  ^ IO.error_message error
+  | BootstrapDependencyHashFailed error -> Riot_deps.Lock_refresh.error_message error
+  | BootstrapLockfileWriteFailed error -> Riot_deps.Lockfile_store.error_message error
+
+let workspace_load_error_message = function
+  | WorkspaceScanFailed error -> Riot_model.Workspace_manager.scan_error_message error
+  | WorkspaceLoadHadErrors errors -> errors
+  |> List.map ~fn:Riot_model.Workspace_manager.load_error_to_string
+  |> String.concat "; "
+
+let message = function
+  | MissingDependency -> "missing dependency name"
+  | ConflictingTarget -> "cannot combine --workspace with --package"
+  | ConflictingScope -> "cannot combine --build with --dev"
+  | InvalidPackageName error -> Package_name.error_message error
+  | CurrentDirUnavailable error -> "failed to determine current directory: " ^ path_error_message error
+  | WorkspaceBootstrapFailed error -> "failed to initialize riot workspace: "
+  ^ workspace_bootstrap_error_message error
+  | WorkspaceLoadFailed error -> "failed to load initialized riot workspace: "
+  ^ workspace_load_error_message error
+  | AddFailed error -> Package_error.message error
 
 let fail = fun err ->
   out ("\027[1;31mError\027[0m: " ^ message err);
@@ -59,7 +84,7 @@ let selection_of_matches = fun ?(default_selection = Riot_deps.Current) matches 
       Error ConflictingTarget
   | Some package, false ->
       let* package_name = Package_name.from_string package
-      |> Result.map_err ~fn:(fun error -> InvalidPackageName (Package_name.error_message error)) in
+      |> Result.map_err ~fn:(fun error -> InvalidPackageName error) in
       Ok (Riot_deps.Package package_name)
   | None, true ->
       Ok Riot_deps.Workspace
@@ -89,30 +114,26 @@ let bootstrap_empty_workspace = fun ~root ->
   let manifest_path = Path.(root / Path.v "riot.toml") in
   let workspace_manager = Riot_model.Workspace_manager.create () in
   let* () = Fs.write empty_workspace_manifest_source manifest_path
-  |> Result.map_err ~fn:(fun err -> WorkspaceBootstrapFailed (IO.error_message err)) in
+  |> Result.map_err
+    ~fn:(fun error ->
+      WorkspaceBootstrapFailed (BootstrapManifestWriteFailed { path = manifest_path; error })) in
   let* dependency_hash = Riot_deps.Lock_refresh.dependency_hash
     ~workspace_manager
     ~workspace_root:root
     ~manifest_paths:[ manifest_path ]
-  |> Result.map_err
-    ~fn:(fun err -> WorkspaceBootstrapFailed (Riot_deps.Lock_refresh.error_message err)) in
+  |> Result.map_err ~fn:(fun error -> WorkspaceBootstrapFailed (BootstrapDependencyHashFailed error)) in
   let lockfile = Riot_model.Lockfile.{ format_version = 1; dependency_hash; packages = [] } in
   Riot_deps.Lockfile_store.write ~workspace_root:root lockfile
-  |> Result.map_err
-    ~fn:(fun err -> WorkspaceBootstrapFailed (Riot_deps.Lockfile_store.error_message err))
+  |> Result.map_err ~fn:(fun error -> WorkspaceBootstrapFailed (BootstrapLockfileWriteFailed error))
 
 let load_workspace = fun ~root ->
   let workspace_manager = Riot_model.Workspace_manager.create () in
   let* (workspace, load_errors) = Riot_model.Workspace_manager.scan workspace_manager root
-  |> Result.map_err
-    ~fn:(fun err -> WorkspaceLoadFailed (Riot_model.Workspace_manager.scan_error_message err)) in
+  |> Result.map_err ~fn:(fun error -> WorkspaceLoadFailed (WorkspaceScanFailed error)) in
   if List.is_empty load_errors then
     Ok workspace
   else
-    let error = load_errors
-    |> List.map ~fn:Riot_model.Workspace_manager.load_error_to_string
-    |> String.concat "; " in
-    Error (WorkspaceLoadFailed error)
+    Error (WorkspaceLoadFailed (WorkspaceLoadHadErrors load_errors))
 
 let run_request = fun ?(default_selection = Riot_deps.Current) ~workspace ~cwd matches ->
   let mode =
@@ -150,7 +171,7 @@ let run_request = fun ?(default_selection = Riot_deps.Current) ~workspace ~cwd m
 let run = fun ~workspace matches ->
   match Env.current_dir () with
   | Ok cwd -> run_request ~workspace ~cwd matches
-  | Error err -> fail (CurrentDirUnavailable (path_error_message err))
+  | Error err -> fail (CurrentDirUnavailable err)
 
 let run_without_workspace = fun ~cwd matches ->
   match bootstrap_empty_workspace ~root:cwd with

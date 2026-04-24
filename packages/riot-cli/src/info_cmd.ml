@@ -12,8 +12,12 @@ type workspace_kind =
 
 type workspace_scan =
   | NoWorkspace
-  | ScanFailed of string
+  | ScanFailed of workspace_scan_error
   | Loaded of Riot_model.Workspace_manifest.t * Riot_model.Workspace_manager.load_error list
+
+and workspace_scan_error =
+  | CurrentDirReadFailed of Path.error
+  | WorkspaceScanFailed of Riot_model.Workspace_manager.scan_error
 
 let command =
   let open ArgParser in
@@ -30,6 +34,18 @@ let target_of_matches: ArgParser.matches -> target = fun matches ->
   | None
   | Some "workspace" -> Workspace_target
   | Some target -> Package_target target
+
+let path_error_message = function
+  | Path.InvalidUtf8 { path } -> "invalid UTF-8 path: " ^ path
+  | Path.SystemInvalidUtf8 { syscall; path } -> "system call '"
+  ^ syscall
+  ^ "' returned invalid UTF-8 path: "
+  ^ path
+  | Path.SystemError error -> error
+
+let workspace_scan_error_message = function
+  | CurrentDirReadFailed error -> "failed to read current directory: " ^ path_error_message error
+  | WorkspaceScanFailed error -> Workspace_manager.scan_error_message error
 
 let rec toml_json = function
   | Data.Toml.String value -> Data.Json.String value
@@ -278,11 +294,12 @@ let run = fun ~(workspace_scan:workspace_scan) matches ->
             eprintln "❌ Not in a riot workspace";
           Error (Failure message)
       | ScanFailed err ->
+          let message = workspace_scan_error_message err in
           if json then
-            print_json (error_json ~kind:"scan_failed" ~message:err)
+            print_json (error_json ~kind:"scan_failed" ~message)
           else
-            eprintln ("\027[1;31mError\027[0m: " ^ err);
-          Error (Failure err)
+            eprintln ("\027[1;31mError\027[0m: " ^ message);
+          Error (Failure message)
     )
   | Package_target target ->
       let local_workspace =

@@ -125,11 +125,51 @@ let test_add_bootstraps_empty_workspace_outside_workspace = fun _ctx ->
             else
               Error "expected bootstrap to create a loadable empty workspace and default add to the workspace root")
 
+let test_add_message_renders_typed_command_errors = fun _ctx ->
+  let open Riot_cli.Add in
+    let manifest_path = Path.v "/workspace/riot.toml" in
+    let bootstrap_message = message
+      (WorkspaceBootstrapFailed (BootstrapDependencyHashFailed (Riot_deps.Lock_refresh.ManifestMustBeTable {
+        manifest_path
+      }))) in
+    let load_message = message
+      (WorkspaceLoadFailed (WorkspaceLoadHadErrors [
+        Riot_model.Workspace_manager.PackageTomlParseFailed {
+          package = "dep";
+          path = "deps/dep/riot.toml"
+        }
+      ])) in
+    let cwd_message = message (CurrentDirUnavailable (Path.SystemError "cwd unavailable")) in
+    let expected_bootstrap = "failed to initialize riot workspace: manifest '/workspace/riot.toml' must decode to a TOML table" in
+    let expected_load = "failed to load initialized riot workspace: package 'dep': failed to parse riot.toml at path deps/dep/riot.toml" in
+    let expected_cwd = "failed to determine current directory: cwd unavailable" in
+    if not (String.equal bootstrap_message expected_bootstrap) then
+      Error ("unexpected add bootstrap message: " ^ bootstrap_message)
+    else if not (String.equal load_message expected_load) then
+      Error ("unexpected add workspace load message: " ^ load_message)
+    else if not (String.equal cwd_message expected_cwd) then
+      Error ("unexpected add current-dir message: " ^ cwd_message)
+    else
+      Ok ()
+
 let test_remove_outside_workspace_message = fun _ctx ->
   let* matches = parse_remove [ "rm"; "hello" ] in
   let* () = Result.map_err (Riot_cli.Remove.run_without_workspace matches) ~fn:Kernel.Exception.to_string in
   Test.assert_equal ~expected:"No riot.toml, so nothing to remove" ~actual:Riot_cli.Remove.no_workspace_message;
   Ok ()
+
+let test_remove_message_renders_typed_command_errors = fun _ctx ->
+  let open Riot_cli.Remove in
+    let package_message = message (InvalidPackageName Riot_model.Package_name.Empty) in
+    let cwd_message = message (CurrentDirUnavailable (Path.SystemError "cwd unavailable")) in
+    let expected_package = Riot_model.Package_name.error_message Riot_model.Package_name.Empty in
+    let expected_cwd = "failed to determine current directory: cwd unavailable" in
+    if not (String.equal package_message expected_package) then
+      Error ("unexpected remove package-name message: " ^ package_message)
+    else if not (String.equal cwd_message expected_cwd) then
+      Error ("unexpected remove current-dir message: " ^ cwd_message)
+    else
+      Ok ()
 
 let test_update_outside_workspace_message = fun _ctx ->
   let* matches = parse_update [ "update" ] in
@@ -161,7 +201,9 @@ let test_new_outside_workspace_creates_standalone_package = fun _ctx ->
 let tests =
   Test.[
     case "package commands: add bootstraps an empty workspace outside a workspace" test_add_bootstraps_empty_workspace_outside_workspace;
+    case "package commands: add renders typed command errors" test_add_message_renders_typed_command_errors;
     case "package commands: remove outside a workspace reports no riot.toml" test_remove_outside_workspace_message;
+    case "package commands: remove renders typed command errors" test_remove_message_renders_typed_command_errors;
     case "package commands: update outside a workspace reports no riot.toml" test_update_outside_workspace_message;
     case "package commands: new outside a workspace creates a standalone package" test_new_outside_workspace_creates_standalone_package;
   ]

@@ -64,7 +64,7 @@ let path_error_message = function
 
 type workspace_scan =
   | NoWorkspace
-  | ScanFailed of string
+  | ScanFailed of Info_cmd.workspace_scan_error
   | Loaded of Riot_model.Workspace_manifest.t * Riot_model.Workspace_manager.load_error list
 
 let cli_trace_origin = ref (Time.Instant.now ())
@@ -86,14 +86,14 @@ let normalize_args = function
 (** Get workspace scan status *)
 let scan_workspace = fun () ->
   match Env.current_dir () with
-  | Error err -> ScanFailed ("failed to read current directory: " ^ path_error_message err)
+  | Error err -> ScanFailed (Info_cmd.CurrentDirReadFailed err)
   | Ok cwd ->
       let workspace_manager = Riot_model.Workspace_manager.create () in
       (
         match Riot_model.Workspace_manager.scan workspace_manager cwd with
         | Ok (workspace, load_errors) -> Loaded (workspace, load_errors)
         | Error Riot_model.Workspace_manager.NoWorkspaceRootFound -> NoWorkspace
-        | Error err -> ScanFailed (Riot_model.Workspace_manager.scan_error_message err)
+        | Error err -> ScanFailed (Info_cmd.WorkspaceScanFailed err)
       )
 
 let report_workspace_load_errors = fun load_errors ->
@@ -108,7 +108,7 @@ let require_clean_workspace = fun workspace_scan_opt ->
       eprintln "❌ Not in a riot workspace";
       Error (Failure "Not in a riot workspace")
   | ScanFailed err ->
-      eprintln ("\027[1;31mError\027[0m: " ^ err);
+      eprintln ("\027[1;31mError\027[0m: " ^ Info_cmd.workspace_scan_error_message err);
       Error (Failure "Workspace scan failed")
   | Loaded (_workspace, load_errors) when List.length load_errors > 0 ->
       report_workspace_load_errors load_errors;
@@ -294,7 +294,8 @@ let run = fun ~args ->
             ^ " load_errors="
             ^ Int.to_string (List.length load_errors))
           | NoWorkspace -> trace_cli "scan-workspace-no-workspace"
-          | ScanFailed err -> trace_cli ("scan-workspace-failed reason=" ^ err)
+          | ScanFailed err -> trace_cli
+            ("scan-workspace-failed reason=" ^ Info_cmd.workspace_scan_error_message err)
         in
         let _ =
           workspace_scan_cache := Some workspace_scan
@@ -368,7 +369,7 @@ let run = fun ~args ->
                 | NoWorkspace ->
                     (None, None)
                 | ScanFailed err ->
-                    (None, Some err)
+                    (None, Some (Info_cmd.workspace_scan_error_message err))
               in
               Run.run_with_workspace_info ~workspace ~workspace_error run_matches
             )
@@ -544,7 +545,7 @@ let run = fun ~args ->
                 | NoWorkspace ->
                     (None, None)
                 | ScanFailed err ->
-                    (None, Some err)
+                    (None, Some (Info_cmd.workspace_scan_error_message err))
               in
               Install.run_with_workspace_info ~workspace ~workspace_error install_matches
             )

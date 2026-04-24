@@ -203,6 +203,20 @@ let test_info_package_json_omits_registry_for_workspace_package = fun _ctx ->
           | Some Data.Json.Null, Some (Data.Json.String _), Some (Data.Json.String "demo/riot.toml"), Some (Data.Json.Bool false) -> Ok ()
           | _ -> Error "expected workspace package json to omit registry paths and include workspace path metadata")
 
+let test_info_workspace_scan_error_message_renders_typed_errors = fun _ctx ->
+  let cwd_message = Riot_cli.Info_cmd.workspace_scan_error_message
+    (Riot_cli.Info_cmd.CurrentDirReadFailed (Path.SystemError "cwd unavailable")) in
+  let scan_message = Riot_cli.Info_cmd.workspace_scan_error_message
+    (Riot_cli.Info_cmd.WorkspaceScanFailed Riot_model.Workspace_manager.NoWorkspaceRootFound) in
+  let expected_cwd = "failed to read current directory: cwd unavailable" in
+  let expected_scan = "no workspace root found" in
+  if not (String.equal cwd_message expected_cwd) then
+    Error ("unexpected current-dir scan message: " ^ cwd_message)
+  else if not (String.equal scan_message expected_scan) then
+    Error ("unexpected workspace scan message: " ^ scan_message)
+  else
+    Ok ()
+
 let tests =
   Test.[
     case "info package: bare local package prefers workspace metadata" test_info_package_prefers_local_workspace_package;
@@ -210,6 +224,7 @@ let tests =
     case "info package: registry target materializes release and paths" test_info_package_loads_registry_release_and_paths;
     case "info package: json includes registry paths and links" test_info_package_json_includes_registry_paths_and_links;
     case "info package: workspace json omits registry paths" test_info_package_json_omits_registry_for_workspace_package;
+    case "info workspace: renders typed scan errors" test_info_workspace_scan_error_message_renders_typed_errors;
   ]
 
 let name = "Riot CLI Info Tests"
