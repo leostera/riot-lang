@@ -46,6 +46,16 @@ type source_dependency_load_error =
   | SourceDependencyManifestDecodeFailed of Riot_model.Package.manifest_error
 type registry_initialization_error =
   | RegistryFilesystemInitializationFailed of string
+type registry_lookup_error =
+  | RegistryPackageDocumentReadFailed of string
+  | RegistryPackageNameDecodeFailed of Riot_model.Package_name.error
+type registry_search_error =
+  | RegistrySearchRequestFailed of string
+type registry_materialization_error =
+  | RegistryPackageMaterializationFailed of Error.t
+  | RegistryPackageManifestReadFailed of IO.error
+  | RegistryPackageTomlParseFailed of Std.Data.Toml.error
+  | RegistryPackageManifestDecodeFailed of Riot_model.Package.manifest_error
 type error =
   | CurrentPackageNotFound of { cwd: Path.t }
   | PackageNotFound of { package: Riot_model.Package_name.t }
@@ -66,14 +76,22 @@ type error =
       registry: string;
       error: registry_initialization_error
     }
-  | RegistryLookupFailed of { package: string; registry: string; error: string }
+  | RegistryLookupFailed of {
+      package: string;
+      registry: string;
+      error: registry_lookup_error
+    }
   | RegistryMaterializationFailed of {
       package: string;
       version: string;
       registry: string;
-      error: string
+      error: registry_materialization_error
     }
-  | RegistrySearchFailed of { query: string; registry: string; error: string }
+  | RegistrySearchFailed of {
+      query: string;
+      registry: string;
+      error: registry_search_error
+    }
   | RegistryPackageNotFound of {
       package: string;
       registry: string;

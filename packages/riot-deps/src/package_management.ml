@@ -64,6 +64,19 @@ type source_dependency_load_error =
 type registry_initialization_error =
   | RegistryFilesystemInitializationFailed of string
 
+type registry_lookup_error =
+  | RegistryPackageDocumentReadFailed of string
+  | RegistryPackageNameDecodeFailed of Package_name.error
+
+type registry_search_error =
+  | RegistrySearchRequestFailed of string
+
+type registry_materialization_error =
+  | RegistryPackageMaterializationFailed of Deps_error.t
+  | RegistryPackageManifestReadFailed of IO.error
+  | RegistryPackageTomlParseFailed of Std.Data.Toml.error
+  | RegistryPackageManifestDecodeFailed of Package.manifest_error
+
 type error =
   | CurrentPackageNotFound of { cwd: Path.t }
   | PackageNotFound of { package: Package_name.t }
@@ -84,14 +97,22 @@ type error =
       registry: string;
       error: registry_initialization_error
     }
-  | RegistryLookupFailed of { package: string; registry: string; error: string }
+  | RegistryLookupFailed of {
+      package: string;
+      registry: string;
+      error: registry_lookup_error
+    }
   | RegistryMaterializationFailed of {
       package: string;
       version: string;
       registry: string;
-      error: string
+      error: registry_materialization_error
     }
-  | RegistrySearchFailed of { query: string; registry: string; error: string }
+  | RegistrySearchFailed of {
+      query: string;
+      registry: string;
+      error: registry_search_error
+    }
   | RegistryPackageNotFound of {
       package: string;
       registry: string;
@@ -156,6 +177,19 @@ let source_dependency_load_error_message = function
 let registry_initialization_error_message = function
   | RegistryFilesystemInitializationFailed error -> error
 
+let registry_lookup_error_message = function
+  | RegistryPackageDocumentReadFailed error -> error
+  | RegistryPackageNameDecodeFailed error -> Package_name.error_message error
+
+let registry_search_error_message = function
+  | RegistrySearchRequestFailed error -> error
+
+let registry_materialization_error_message = function
+  | RegistryPackageMaterializationFailed error -> Deps_error.message error
+  | RegistryPackageManifestReadFailed error -> IO.error_message error
+  | RegistryPackageTomlParseFailed error -> Data.Toml.error_to_string error
+  | RegistryPackageManifestDecodeFailed error -> Package.manifest_error_message error
+
 let no_emit: event_sink = fun _ -> ()
 
 let registry_name = "pkgs.ml"
@@ -213,7 +247,12 @@ let error_message = function
       ^ "': "
       ^ registry_initialization_error_message error
   | RegistryLookupFailed { package; registry; error } ->
-      "failed to look up package '" ^ package ^ "' in registry '" ^ registry ^ "': " ^ error
+      "failed to look up package '"
+      ^ package
+      ^ "' in registry '"
+      ^ registry
+      ^ "': "
+      ^ registry_lookup_error_message error
   | RegistryMaterializationFailed { package; version; registry; error } ->
       "failed to materialize package '"
       ^ package
@@ -222,9 +261,14 @@ let error_message = function
       ^ "' from registry '"
       ^ registry
       ^ "': "
-      ^ error
+      ^ registry_materialization_error_message error
   | RegistrySearchFailed { query; registry; error } ->
-      "failed to search registry '" ^ registry ^ "' for '" ^ query ^ "': " ^ error
+      "failed to search registry '"
+      ^ registry
+      ^ "' for '"
+      ^ query
+      ^ "': "
+      ^ registry_search_error_message error
   | RegistryPackageNotFound { package; registry; suggestions } ->
       let base = "package '" ^ package ^ "' was not found in registry '" ^ registry ^ "'" in
       (
@@ -710,7 +754,7 @@ let search = fun ?registry ~(request:search_request) () ->
       RegistrySearchFailed {
         query = request.query;
         registry = Pkgs_ml.Registry.name registry;
-        error
+        error = RegistrySearchRequestFailed error
       }) in
   Ok (List.map results ~fn:suggested_package_of_search_result)
 
@@ -738,7 +782,11 @@ let lookup_named_package = fun ~(emit:event_sink) ~registry (parsed: registry_de
               error
             }
           });
-        RegistryLookupFailed { package = package_name_string; registry = registry_name; error })
+        RegistryLookupFailed {
+          package = package_name_string;
+          registry = registry_name;
+          error = RegistryPackageDocumentReadFailed error
+        })
   in
   match document with
   | None ->
@@ -764,7 +812,7 @@ let lookup_named_package = fun ~(emit:event_sink) ~registry (parsed: registry_de
           RegistryLookupFailed {
             package = document.name;
             registry = registry_name;
-            error = Riot_model.Package_name.error_message error
+            error = RegistryPackageNameDecodeFailed error
           }) in
       emit
         (Riot_model.Event.PackageMetadataFetchFinished {
@@ -902,7 +950,11 @@ let load_registry_workspace_from_spec = fun ?(emit = no_emit) ?registry ~workspa
   let* document = Pkgs_ml.Registry.read_package_document registry ~package_name:package_name_string
   |> Result.map_err
     ~fn:(fun error ->
-      RegistryLookupFailed { package = package_name_string; registry = registry_name; error }) in
+      RegistryLookupFailed {
+        package = package_name_string;
+        registry = registry_name;
+        error = RegistryPackageDocumentReadFailed error
+      }) in
   let* document =
     match document with
     | Some document -> Ok document
@@ -951,7 +1003,7 @@ let load_registry_workspace_from_spec = fun ?(emit = no_emit) ?registry ~workspa
         package = package_name_string;
         version = release.version;
         registry = registry_name;
-        error = Deps_error.message err
+        error = RegistryPackageMaterializationFailed err
       }) in
   let manifest_path = Path.(package_root / Path.v "riot.toml") in
   let* manifest_source = Fs.read_to_string manifest_path
@@ -961,7 +1013,7 @@ let load_registry_workspace_from_spec = fun ?(emit = no_emit) ?registry ~workspa
         package = package_name_string;
         version = release.version;
         registry = registry_name;
-        error = IO.error_message err
+        error = RegistryPackageManifestReadFailed err
       }) in
   let* toml = Data.Toml.parse manifest_source
   |> Result.map_err
@@ -970,7 +1022,7 @@ let load_registry_workspace_from_spec = fun ?(emit = no_emit) ?registry ~workspa
         package = package_name_string;
         version = release.version;
         registry = registry_name;
-        error = Data.Toml.error_to_string err
+        error = RegistryPackageTomlParseFailed err
       }) in
   let* package = Riot_model.Package_manifest.from_toml
     toml
@@ -985,7 +1037,7 @@ let load_registry_workspace_from_spec = fun ?(emit = no_emit) ?registry ~workspa
         package = package_name_string;
         version = release.version;
         registry = registry_name;
-        error = Riot_model.Package_manifest.error_message err
+        error = RegistryPackageManifestDecodeFailed err
       }) in
   let* loaded = ensure_loaded_workspace
     ~workspace_manager

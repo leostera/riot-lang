@@ -2451,6 +2451,35 @@ let test_package_error_message_renders_typed_registry_initialization_errors = fu
   else
     Error "expected typed registry initialization errors to render through package_error_message"
 
+let test_package_error_message_renders_typed_registry_operation_errors = fun _ctx ->
+  let lookup_message = Riot_deps.package_error_message
+    (Riot_deps.RegistryLookupFailed {
+      package = "widgets";
+      registry = "pkgs.ml";
+      error = Riot_deps.RegistryPackageDocumentReadFailed "lookup failed"
+    }) in
+  let search_message = Riot_deps.package_error_message
+    (Riot_deps.RegistrySearchFailed {
+      query = "widg";
+      registry = "pkgs.ml";
+      error = Riot_deps.RegistrySearchRequestFailed "search failed"
+    }) in
+  let materialization_message = Riot_deps.package_error_message
+    (Riot_deps.RegistryMaterializationFailed {
+      package = "widgets";
+      version = "0.1.0";
+      registry = "pkgs.ml";
+      error = Riot_deps.RegistryPackageManifestDecodeFailed Package.ManifestMustBeTable
+    }) in
+  if
+    String.contains lookup_message "lookup failed"
+    && String.contains search_message "search failed"
+    && String.contains materialization_message "package manifest must be a table"
+  then
+    Ok ()
+  else
+    Error "expected typed registry operation errors to render through package_error_message"
+
 let test_package_error_message_lists_search_suggestions = fun _ctx ->
   let message = Riot_deps.package_error_message
     (Riot_deps.RegistryPackageNotFound {
@@ -3703,6 +3732,7 @@ let tests =
     case "package management: renders typed source dependency load errors" test_package_error_message_renders_typed_source_dependency_errors;
     case "package management: renders typed workspace reload errors" test_package_error_message_renders_typed_workspace_reload_errors;
     case "package management: renders typed registry initialization errors" test_package_error_message_renders_typed_registry_initialization_errors;
+    case ~size:Large "package management: renders typed registry operation errors" test_package_error_message_renders_typed_registry_operation_errors;
     case "package management: add not-found message lists search suggestions" test_package_error_message_lists_search_suggestions;
     case "package management: search returns registry results" test_search_returns_registry_results;
     case "package management: remove rejects dependencies only inherited from workspace root" test_remove_reports_missing_package_dependency_when_only_inherited_from_workspace;
