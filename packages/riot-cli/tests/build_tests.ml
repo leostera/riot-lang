@@ -218,6 +218,43 @@ let test_workspace_planning_error_lines_describe_missing_dependencies = fun _ctx
     ~actual:lines;
   Ok ()
 
+let test_planning_error_lines_indent_multiline_reasons = fun _ctx ->
+  let lines = Riot_cli.Build.planning_error_lines
+    (Riot_planner.Planning_error.DependencyAnalysisFailed {
+      reason = "failed to parse tests/solver_tests.ml\n\nhint: add )"
+    }) in
+  Test.assert_equal
+    ~expected:[
+      "planner error: dependency analysis failed";
+      "reason: failed to parse tests/solver_tests.ml";
+      "";
+      "  hint: add )";
+    ]
+    ~actual:lines;
+  Ok ()
+
+let test_build_failure_detail_lines_render_planning_errors = fun _ctx ->
+  let failure: Riot_build.Build_result.failure = {
+    package_name = package_name "demo";
+    package_key = Riot_model.Package.key_of_string "demo:runtime";
+    reason = Riot_build.Build_result.PackagePlanningFailed (Riot_planner.Planning_error.DependencyAnalysisFailed {
+      reason = "failed to parse src/demo.ml\nhint: add end"
+    });
+    message = "raw fallback should not be rendered";
+    ocamlc_warnings = [];
+    duration_ms = 12;
+  }
+  in
+  Test.assert_equal
+    ~expected:[
+      "package: demo";
+      "  planner error: dependency analysis failed";
+      "  reason: failed to parse src/demo.ml";
+      "    hint: add end";
+    ]
+    ~actual:(Riot_cli.Build.build_failure_detail_lines failure);
+  Ok ()
+
 let test_build_usage_shows_repeated_package_flag = fun _ctx ->
   let usage = ArgParser.usage_string Riot_cli.Build.command in
   if String.equal usage "Usage: build [OPTIONS]" then
@@ -927,6 +964,8 @@ let tests =
     case "build: external package labels show version" test_display_package_name_shows_external_package_version;
     case "build: planning error lines explain internal module violations" test_planning_error_lines_describe_internal_module_violation;
     case "build: workspace planning error lines explain missing dependencies" test_workspace_planning_error_lines_describe_missing_dependencies;
+    case "build: planning error lines indent multiline reasons" test_planning_error_lines_indent_multiline_reasons;
+    case "build: final failure lines render planning errors" test_build_failure_detail_lines_render_planning_errors;
     case "build: accept multiple package arguments" test_build_accepts_multiple_packages;
     case "build: usage shows repeated package flag" test_build_usage_shows_repeated_package_flag;
     case "build: reject positional package args" test_build_rejects_positional_package_args;

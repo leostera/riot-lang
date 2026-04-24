@@ -56,6 +56,9 @@ val planning_error_lines: Riot_planner.Planning_error.t -> string list
 (** Render a structured workspace planning error into human-readable detail lines. *)
 val workspace_planning_error_lines: Riot_planner.Workspace_planner.plan_error -> string list
 
+(** Render one package failure from the final build error summary. *)
+val build_failure_detail_lines: Riot_build.Build_result.failure -> string list
+
 (** Render a build event in the selected output mode. *)
 val write_build_event:
   mode:output_mode ->

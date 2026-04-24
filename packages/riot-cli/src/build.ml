@@ -117,19 +117,27 @@ let display_package_name = fun (package: Riot_model.Package.t) ->
     | Some version -> name ^ " (" ^ Std.Version.to_string version ^ ")"
     | None -> name
 
+let labeled_multiline_lines = fun ~label value ->
+  match String.split value ~by:"\n" with
+  | [] -> [ label ^ ":" ]
+  | first :: rest ->
+      (label ^ ": " ^ first) :: List.map rest
+        ~fn:(fun line ->
+          if String.equal line "" then
+            ""
+          else
+            "  " ^ line)
+
 let planning_error_lines = function
   | Riot_planner.Planning_error.CyclicDependency { cycle } ->
       [ "planner error: cyclic dependency detected"; "cycle: " ^ String.concat " -> " cycle; ]
   | Riot_planner.Planning_error.ScanFailed { path; reason } ->
-      [
-        "planner error: failed to scan package sources";
-        "path: " ^ Path.to_string path;
-        "reason: " ^ reason;
-      ]
+      [ "planner error: failed to scan package sources"; "path: " ^ Path.to_string path; ]
+      @ labeled_multiline_lines ~label:"reason" reason
   | Riot_planner.Planning_error.DependencyAnalysisFailed { reason } ->
-      [ "planner error: dependency analysis failed"; "reason: " ^ reason; ]
+      "planner error: dependency analysis failed" :: labeled_multiline_lines ~label:"reason" reason
   | Riot_planner.Planning_error.GraphBuildFailed { reason } ->
-      [ "planner error: failed to build module graph"; "reason: " ^ reason; ]
+      "planner error: failed to build module graph" :: labeled_multiline_lines ~label:"reason" reason
   | Riot_planner.Planning_error.TargetDependsOnInternalLibraryModule {
     target_name;
     source;
@@ -189,7 +197,8 @@ let planning_error_lines = function
         "help: move shared code behind " ^ public_module ^ " or a shared helper module";
       ]
   | Riot_planner.Planning_error.Exception { exn } ->
-      [ "planner error: unexpected exception"; "reason: " ^ Kernel.Exception.to_string exn; ]
+      "planner error: unexpected exception"
+      :: labeled_multiline_lines ~label:"reason" (Kernel.Exception.to_string exn)
 
 let workspace_load_error_line = function
   | Riot_model.Workspace_manager.PackageNotFound { package; path; dependant=None } -> "missing package: "
@@ -468,6 +477,26 @@ let write_command_error = fun ~mode kind details human_message ->
   | Json -> write_json_event (command_error_event_to_json kind details)
   | Human -> out ("\027[1;31mError\027[0m: " ^ human_message)
 
+let build_failure_detail_lines = fun (failure: Riot_build.Build_result.failure) ->
+  let package_name = Riot_model.Package_name.to_string failure.package_name in
+  match failure.reason with
+  | Riot_build.Build_result.PackagePlanningFailed planning_error -> ("package: " ^ package_name)
+  :: List.map (planning_error_lines planning_error) ~fn:(fun line -> "  " ^ line)
+  | _ -> [ package_name ^ ": " ^ failure.message ]
+
+let write_build_failed_error = fun ~mode errors ->
+  match mode with
+  | Json -> write_json_event
+    (command_error_event_to_json
+      "BuildFailed"
+      [ ("errors", Data.Json.Array (List.map errors ~fn:Riot_build.Build_result.failure_to_json)); ])
+  | Human ->
+      out "\027[1;31mError\027[0m: build failed";
+      errors
+      |> List.for_each
+        ~fn:(fun failure ->
+          build_failure_detail_lines failure |> List.for_each ~fn:(fun line -> out ("  " ^ line)))
+
 let command =
   let open ArgParser in
     let open Arg in
@@ -740,13 +769,7 @@ let write_build_error = fun ~mode err ->
         ]
         (Riot_build.error_message err)
   | Riot_build.BuildFailed { errors } ->
-      write_command_error
-        ~mode
-        "BuildFailed"
-        [
-          ("errors", Data.Json.Array (List.map errors ~fn:Riot_build.Build_result.failure_to_json));
-        ]
-        (Riot_build.error_message err)
+      write_build_failed_error ~mode errors
   | Riot_build.PlanningFailed planning_error ->
       if mode = Json then
         write_json_event

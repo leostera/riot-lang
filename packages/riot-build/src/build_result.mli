@@ -3,10 +3,20 @@ open Std
 type failure = {
   package_name: Riot_model.Package_name.t;
   package_key: Riot_model.Package.key;
+  reason: failure_reason;
   message: string;
   ocamlc_warnings: string list;
   duration_ms: int;
 }
+
+and failure_reason =
+  | PackagePlanningFailed of Riot_planner.Planning_error.t
+  | PackageExecutionFailed of { message: string }
+  | PackageActionFailed of { message: string }
+  | PackageActionOutputsNotCreated of { missing: Std.Path.t list }
+  | PackageActionDependenciesFailed of { failed: Std.Graph.SimpleGraph.Node_id.t list }
+  | PackageSkipped of { reason: string }
+  | UnknownFailure
 type package_status =
   | Built of Riot_store.Artifact.t
   | Cached of Riot_store.Artifact.t

@@ -9,10 +9,20 @@ type package_scope =
 type failure = {
   package_name: Riot_model.Package_name.t;
   package_key: Riot_model.Package.key;
+  reason: failure_reason;
   message: string;
   ocamlc_warnings: string list;
   duration_ms: int;
 }
+
+and failure_reason =
+  | PackagePlanningFailed of Riot_planner.Planning_error.t
+  | PackageExecutionFailed of { message: string }
+  | PackageActionFailed of { message: string }
+  | PackageActionOutputsNotCreated of { missing: Std.Path.t list }
+  | PackageActionDependenciesFailed of { failed: Std.Graph.SimpleGraph.Node_id.t list }
+  | PackageSkipped of { reason: string }
+  | UnknownFailure
 
 type package_status =
   | Built of Riot_store.Artifact.t
@@ -153,17 +163,69 @@ let rec find_export_in_artifacts = fun artifacts export_name ->
 
 let find_export = fun t export_name -> find_export_in_artifacts t.artifacts export_name
 
+let failure_reason_of_package_error = function
+  | Package_builder.PlanningFailed planning_error -> PackagePlanningFailed planning_error
+  | Package_builder.ExecutionFailed { message } -> PackageExecutionFailed { message }
+  | Package_builder.ActionExecutionFailed { message } -> PackageActionFailed { message }
+  | Package_builder.ActionOutputsNotCreated { missing } -> PackageActionOutputsNotCreated { missing }
+  | Package_builder.ActionDependenciesFailed { failed } -> PackageActionDependenciesFailed { failed }
+
+let failure_reason_message = function
+  | PackagePlanningFailed planning_error -> "Planning failed: "
+  ^ Riot_planner.Planning_error.to_string planning_error
+  | PackageExecutionFailed { message } -> "Execution failed: " ^ message
+  | PackageActionFailed { message } -> "Action failed: " ^ message
+  | PackageActionOutputsNotCreated { missing } -> "Outputs not created: "
+  ^ String.concat ", " (List.map missing ~fn:Path.to_string)
+  | PackageActionDependenciesFailed { failed } -> "Dependencies failed: "
+  ^ Int.to_string (List.length failed)
+  ^ " actions"
+  | PackageSkipped { reason } -> "Skipped: " ^ reason
+  | UnknownFailure -> "Build failed"
+
+let failure_reason_to_json = function
+  | PackagePlanningFailed planning_error -> Data.Json.Object [
+    ("type", Data.Json.String "planning_failed");
+    ("error", Riot_planner.Planning_error.to_json planning_error);
+  ]
+  | PackageExecutionFailed { message } -> Data.Json.Object [
+    ("type", Data.Json.String "execution_failed");
+    ("message", Data.Json.String message);
+  ]
+  | PackageActionFailed { message } -> Data.Json.Object [
+    ("type", Data.Json.String "action_failed");
+    ("message", Data.Json.String message);
+  ]
+  | PackageActionOutputsNotCreated { missing } -> Data.Json.Object [
+    ("type", Data.Json.String "outputs_not_created");
+    (
+      "missing",
+      Data.Json.Array (List.map missing ~fn:(fun path -> Data.Json.String (Path.to_string path)))
+    );
+  ]
+  | PackageActionDependenciesFailed { failed } -> Data.Json.Object [
+    ("type", Data.Json.String "dependencies_failed");
+    ("failed_count", Data.Json.Int (List.length failed));
+  ]
+  | PackageSkipped { reason } -> Data.Json.Object [
+    ("type", Data.Json.String "skipped");
+    ("reason", Data.Json.String reason);
+  ]
+  | UnknownFailure -> Data.Json.Object [ ("type", Data.Json.String "unknown"); ]
+
 let failure_of_build_result = fun (result: Package_builder.build_result) ->
-  let message =
+  let reason =
     match result.status with
-    | Package_builder.Failed error -> Package_builder.package_error_to_string error
-    | Package_builder.Skipped { reason } -> "Skipped: " ^ reason
+    | Package_builder.Failed error -> failure_reason_of_package_error error
+    | Package_builder.Skipped { reason } -> PackageSkipped { reason }
     | Package_builder.Built _
-    | Package_builder.Cached _ -> "Build failed"
+    | Package_builder.Cached _ -> UnknownFailure
   in
+  let message = failure_reason_message reason in
   {
     package_name = result.package.name;
     package_key = result.package_key;
+    reason;
     message;
     ocamlc_warnings = result.ocamlc_warnings;
     duration_ms = Int.from_float (Time.Duration.to_secs_float result.duration *. 1000.0);
@@ -175,6 +237,7 @@ let failure_to_json = fun (failure: failure) ->
   Data.Json.Object [
     ("package_name", Data.Json.String (Riot_model.Package_name.to_string failure.package_name));
     ("package_key", Data.Json.String (Riot_model.Package.key_to_string failure.package_key));
+    ("reason", failure_reason_to_json failure.reason);
     ("message", Data.Json.String failure.message);
     ("ocamlc_warnings", Data.Json.Array (List.map failure.ocamlc_warnings ~fn:Data.Json.string));
     ("duration_ms", Data.Json.Int failure.duration_ms);
