@@ -179,12 +179,16 @@ let run = fun matches ->
     | Some ("list", _) ->
         let cwd = Env.current_dir () |> Result.expect ~msg:"Failed to get cwd" in
         let workspace_manager = Workspace_manager.create () in
-        let (workspace, _) = Workspace_manager.scan workspace_manager cwd |> Result.expect ~msg:"Failed to scan workspace" in
+        let (workspace, _) = Workspace_manager.scan workspace_manager cwd
+        |> Result.map_err ~fn:Workspace_manager.scan_error_message
+        |> Result.expect ~msg:"Failed to scan workspace" in
         run_list workspace
     | Some ("install", _) ->
         let cwd = Env.current_dir () |> Result.expect ~msg:"Failed to get cwd" in
         let workspace_manager = Workspace_manager.create () in
-        let (workspace, _) = Workspace_manager.scan workspace_manager cwd |> Result.expect ~msg:"Failed to scan workspace" in
+        let (workspace, _) = Workspace_manager.scan workspace_manager cwd
+        |> Result.map_err ~fn:Workspace_manager.scan_error_message
+        |> Result.expect ~msg:"Failed to scan workspace" in
         run_install workspace
     | _ ->
         println "Usage: riot toolchain <list|install|list-available>";

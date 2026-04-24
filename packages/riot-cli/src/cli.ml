@@ -92,8 +92,8 @@ let scan_workspace = fun () ->
       (
         match Riot_model.Workspace_manager.scan workspace_manager cwd with
         | Ok (workspace, load_errors) -> Loaded (workspace, load_errors)
-        | Error "No workspace root found" -> NoWorkspace
-        | Error err -> ScanFailed err
+        | Error Riot_model.Workspace_manager.NoWorkspaceRootFound -> NoWorkspace
+        | Error err -> ScanFailed (Riot_model.Workspace_manager.scan_error_message err)
       )
 
 let report_workspace_load_errors = fun load_errors ->

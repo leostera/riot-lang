@@ -431,7 +431,13 @@ let select_materialized_package = fun ~(workspace:Riot_model.Workspace_manifest.
 
 let scan_workspace_from_root = fun ~workspace_manager ~package_root () ->
   let* (workspace, load_errors) = Riot_model.Workspace_manager.scan workspace_manager package_root
-  |> Result.map_err ~fn:(fun error -> WorkspaceReloadFailed { workspace_root = package_root; error }) in
+  |> Result.map_err
+    ~fn:(fun error ->
+      WorkspaceReloadFailed {
+        workspace_root = package_root;
+        error = Riot_model.Workspace_manager.scan_error_message error
+      })
+  in
   match load_errors with
   | [] -> Ok workspace
   | load_errors ->
@@ -1018,7 +1024,13 @@ let dependency_of_parsed = function
 let reload_workspace = fun ~workspace_manager ~(workspace_root:Path.t) ->
   Riot_model.Workspace_manager.clear_cache workspace_manager;
   let* (workspace, load_errors) = Riot_model.Workspace_manager.scan workspace_manager workspace_root
-  |> Result.map_err ~fn:(fun error -> WorkspaceReloadFailed { workspace_root; error }) in
+  |> Result.map_err
+    ~fn:(fun error ->
+      WorkspaceReloadFailed {
+        workspace_root;
+        error = Riot_model.Workspace_manager.scan_error_message error
+      })
+  in
   match load_errors with
   | [] -> Ok workspace
   | load_errors ->

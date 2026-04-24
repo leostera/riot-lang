@@ -102,7 +102,10 @@ let bootstrap_empty_workspace = fun ~root ->
 let load_workspace = fun ~root ->
   let workspace_manager = Riot_model.Workspace_manager.create () in
   let* (workspace, load_errors) = Riot_model.Workspace_manager.scan workspace_manager root
-  |> Result.map_err ~fn:(fun err -> WorkspaceLoadFailed err) in
+  |> Result.map_err
+    ~fn:(fun err ->
+      WorkspaceLoadFailed (Riot_model.Workspace_manager.scan_error_message err))
+  in
   if List.is_empty load_errors then
     Ok workspace
   else

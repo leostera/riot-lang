@@ -2004,7 +2004,10 @@ version = "0.0.1"
 |};
       let workspace_manager = Riot_model.Workspace_manager.create () in
       Riot_model.Workspace_manager.scan workspace_manager workspace_root
-      |> Result.map_err ~fn:(fun err -> "expected workspace scan to succeed: " ^ err)
+      |> Result.map_err
+        ~fn:(fun err ->
+          "expected workspace scan to succeed: "
+          ^ Riot_model.Workspace_manager.scan_error_message err)
       |> Result.and_then
         ~fn:(fun (workspace, load_errors) ->
           if not (List.is_empty load_errors) then
@@ -2145,7 +2148,10 @@ version = "0.0.1"
 |};
       let workspace_manager = Riot_model.Workspace_manager.create () in
       Riot_model.Workspace_manager.scan workspace_manager workspace_root
-      |> Result.map_err ~fn:(fun err -> "expected workspace scan to succeed: " ^ err)
+      |> Result.map_err
+        ~fn:(fun err ->
+          "expected workspace scan to succeed: "
+          ^ Riot_model.Workspace_manager.scan_error_message err)
       |> Result.and_then
         ~fn:(fun (workspace, load_errors) ->
           if not (List.is_empty load_errors) then

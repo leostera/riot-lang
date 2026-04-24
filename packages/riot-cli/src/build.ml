@@ -965,7 +965,7 @@ let load_workspace_strict = fun cwd ->
   |> Result.map_err ~fn:(fun err -> Failure err) in
   match Workspace_manager.scan workspace_manager cwd with
   | Error err ->
-      Error (Failure err)
+      Error (Failure (Workspace_manager.scan_error_message err))
   | Ok (_workspace, load_errors) when List.length load_errors > 0 ->
       print_workspace_load_errors load_errors;
       Error (Failure "Workspace load failed")

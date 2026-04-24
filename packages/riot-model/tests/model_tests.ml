@@ -893,7 +893,7 @@ version = "0.1.0"
 |};
       let workspace_manager = Riot_model.Workspace_manager.create () in
       match Riot_model.Workspace_manager.scan workspace_manager root with
-      | Error err -> Error err
+      | Error err -> Error (Riot_model.Workspace_manager.scan_error_message err)
       | Ok (workspace, errors) ->
           if errors != [] then
             Error ("expected no workspace loading errors, got: "
@@ -932,7 +932,7 @@ minttea = "not-a-version"
 |};
       let workspace_manager = Riot_model.Workspace_manager.create () in
       match Riot_model.Workspace_manager.scan workspace_manager root with
-      | Error err -> Error err
+      | Error err -> Error (Riot_model.Workspace_manager.scan_error_message err)
       | Ok (_workspace, errors) -> (
           match errors with
           | [
@@ -974,6 +974,49 @@ members = [
       ^ Riot_model.Workspace_manager.manifest_load_error_message err)
       | Ok _ -> Error "expected invalid riot.toml to fail parsing")
 
+let test_workspace_manager_scan_reports_no_workspace_root = fun _ctx ->
+  with_tempdir "riot_model_workspace_scan_missing_root"
+    (fun root ->
+      let original_dir = Env.current_dir () in
+      let result =
+        let* () = Env.set_current_dir root |> Result.map_err ~fn:path_error_message in
+        let workspace_manager = Riot_model.Workspace_manager.create () in
+        match Riot_model.Workspace_manager.scan workspace_manager (Path.v ".") with
+        | Error Riot_model.Workspace_manager.NoWorkspaceRootFound -> Ok ()
+        | Error err -> Error ("expected NoWorkspaceRootFound, got "
+        ^ Riot_model.Workspace_manager.scan_error_message err)
+        | Ok _ -> Error "expected workspace scan without manifests to fail"
+      in
+      let _ =
+        match original_dir with
+        | Ok dir -> Env.set_current_dir dir
+        | Error _ -> Ok ()
+      in
+      result)
+
+let test_workspace_manager_scan_reports_typed_workspace_manifest_errors = fun _ctx ->
+  with_tempdir "riot_model_workspace_scan_manifest_error"
+    (fun root ->
+      let manifest_path = Path.(root / Path.v "riot.toml") in
+      let* () =
+        Fs.write
+          {|
+[workspace]
+members = ["packages/app"]
+
+[dependencies]
+std = "not-a-version"
+|}
+          manifest_path |> Result.map_err ~fn:IO.error_message
+      in
+      let workspace_manager = Riot_model.Workspace_manager.create () in
+      match Riot_model.Workspace_manager.scan workspace_manager root with
+      | Error (Riot_model.Workspace_manager.WorkspaceManifestDecodeFailed { path; _ })
+        when Path.equal path manifest_path -> Ok ()
+      | Error err -> Error ("expected typed workspace manifest decode error, got "
+      ^ Riot_model.Workspace_manager.scan_error_message err)
+      | Ok _ -> Error "expected invalid workspace manifest to fail scan")
+
 let test_workspace_manager_skips_missing_path_dependencies_with_registry_fallback = fun _ctx ->
   with_tempdir "riot_model_workspace_missing_path_fallback"
     (fun root ->
@@ -998,7 +1041,7 @@ std = { path = "../std", version = "*" }
 |};
       let workspace_manager = Riot_model.Workspace_manager.create () in
       match Riot_model.Workspace_manager.scan workspace_manager root with
-      | Error err -> Error err
+      | Error err -> Error (Riot_model.Workspace_manager.scan_error_message err)
       | Ok (workspace, errors) ->
           if not (List.is_empty errors) then
             Error ("expected missing path+version dependency to defer to later resolution, got: "
@@ -1041,7 +1084,7 @@ path = "src/demo.ml"
         let* () = Env.set_current_dir root |> Result.map_err ~fn:path_error_message in
         let workspace_manager = Riot_model.Workspace_manager.create () in
         match Riot_model.Workspace_manager.scan workspace_manager (Path.v ".") with
-        | Error err -> Error err
+        | Error err -> Error (Riot_model.Workspace_manager.scan_error_message err)
         | Ok (workspace, errors) ->
             if not (List.is_empty errors) then
               Error ("expected no standalone package load errors, got: "
@@ -1354,6 +1397,8 @@ let tests =
     case "workspace manager: package path deps resolve relative to declaring package" test_workspace_manager_resolves_member_path_dependencies_relative_to_package;
     case "workspace manager: member manifest decode failures surface as load errors" test_workspace_manager_reports_member_manifest_decode_errors;
     case "workspace manager: load_riot_toml returns typed parse errors" test_workspace_manager_load_riot_toml_returns_typed_parse_errors;
+    case "workspace manager: scan reports missing workspace roots" test_workspace_manager_scan_reports_no_workspace_root;
+    case "workspace manager: scan reports typed workspace manifest errors" test_workspace_manager_scan_reports_typed_workspace_manifest_errors;
     case "workspace manager: missing path+version deps defer to external resolution" test_workspace_manager_skips_missing_path_dependencies_with_registry_fallback;
     case "workspace manager: standalone package scan synthesizes workspace" test_workspace_manager_synthesizes_single_package_workspace;
     case "user config: parses empty registry entry" test_user_config_parses_empty_registry_entry;

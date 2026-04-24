@@ -99,7 +99,11 @@ let test_add_bootstraps_empty_workspace_outside_workspace = fun _ctx ->
       |> Result.map_err ~fn:Riot_cli.Add.message in
       let workspace_manager = Riot_model.Workspace_manager.create () in
       let* (_workspace, load_errors) = Riot_model.Workspace_manager.scan workspace_manager workspace_root
-      |> Result.map_err ~fn:(fun err -> "expected workspace scan to succeed: " ^ err) in
+      |> Result.map_err
+        ~fn:(fun err ->
+          "expected workspace scan to succeed: "
+          ^ Riot_model.Workspace_manager.scan_error_message err)
+      in
       if not (String.contains manifest_source "[workspace]") then
         Error "expected bootstrap manifest to include [workspace]"
       else if not (String.contains manifest_source "members = []") then

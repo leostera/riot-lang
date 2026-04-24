@@ -188,7 +188,11 @@ let load_workspace_strict = fun workspace_root ->
   let workspace_manager = Workspace_manager.create () in
   let* registry = resolve_registry () in
   match Workspace_manager.scan workspace_manager workspace_root with
-  | Error error -> Error (WorkspaceScanFailed { workspace_root; error })
+  | Error error ->
+      Error (WorkspaceScanFailed {
+        workspace_root;
+        error = Workspace_manager.scan_error_message error
+      })
   | Ok (workspace, load_errors) ->
       if List.is_empty load_errors then
         Riot_deps.ensure_workspace

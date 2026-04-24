@@ -67,10 +67,11 @@ let run = fun matches ->
         let workspace_manager = Riot_model.Workspace_manager.create () in
         (
           match Riot_model.Workspace_manager.scan workspace_manager cwd with
-          | Error "No workspace root found" ->
+          | Error Riot_model.Workspace_manager.NoWorkspaceRootFound ->
               run_without_workspace path path_obj name is_library
           | Error err ->
-              fail ("Failed to scan workspace: " ^ err)
+              fail ("Failed to scan workspace: "
+              ^ Riot_model.Workspace_manager.scan_error_message err)
           | Ok (workspace, _load_errors) ->
               let package_kind =
                 if is_library then
