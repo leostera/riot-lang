@@ -994,7 +994,7 @@ let trimmed_leading_comment_token_doc = fun token ->
     ~fn:(fun ~kind ~text ->
       if Kind.(kind = COMMENT || kind = DOCSTRING) then
         (
-          let comment = text |> strip_trailing_whitespace |> Doc.text in
+          let comment = text |> strip_trailing_whitespace |> Doc.raw_text in
           doc := if !first then
             comment
           else
@@ -2164,6 +2164,15 @@ and expr_parens_can_elide = fun expr ->
   | Parenthesized { inner=Some inner } -> expr_parens_can_elide inner
   | _ -> false
 
+and expr_local_open_delimited_has_module_path = fun expr ->
+  match Ast.LocalOpenExpr.cast expr with
+  | Some local_open -> (
+      match Ast.LocalOpenExpr.view local_open with
+      | Delimited { module_path=Some _; _ } -> true
+      | _ -> false
+    )
+  | None -> false
+
 and expr_parens_can_elide_in_apply_argument = fun expr ->
   match Ast.Expr.view expr with
   | Path _
@@ -2171,6 +2180,8 @@ and expr_parens_can_elide_in_apply_argument = fun expr ->
   | ArrayIndex _
   | StringIndex _
   | PolyVariant { payload=None } ->
+      true
+  | Prefix { operator=Some operator; operand=Some _ } when token_kind_is operator Kind.BANG ->
       true
   | LocalOpen _ -> (
       match Ast.LocalOpenExpr.cast expr with
@@ -2205,6 +2216,9 @@ and expr_apply_argument_doc = fun expr ->
   | Parenthesized { inner=Some inner } -> parenthesized_expr_doc_as_apply_argument expr inner
   | Parenthesized { inner=None } -> expr_doc_with_view expr view
   | Tuple when expr_tuple_has_explicit_delimiter expr -> expr_doc_with_view expr view
+  | Prefix { operator=Some operator; operand=Some _ } when token_kind_is operator Kind.BANG -> expr_doc_with_view
+    expr
+    view
   | Path _
   | Literal _
   | List
@@ -2805,11 +2819,21 @@ and expr_case_body_breaks = fun expr ->
   | Match _
   | Try _
   | Sequence _
-  | LetException _ -> true
-  | Literal { token=Some token } -> Ast.Token.contains_char token '\n'
-  | Apply _ -> false
-  | Parenthesized _ when expr_is_begin_block expr -> true
-  | _ -> false
+  | LetException _ ->
+      true
+  | Literal { token=Some token } ->
+      Ast.Token.contains_char token '\n'
+  | Apply _ ->
+      let _callee, arguments = application_parts expr in
+      (
+        match arguments with
+        | first :: _ when expr_multiline_apply_argument_stays_with_callee first -> false
+        | _ -> Doc.is_multiline (application_doc expr)
+      )
+  | Parenthesized _ when expr_is_begin_block expr ->
+      true
+  | _ ->
+      false
 
 and expr_case_body_stays_with_arrow = fun expr ->
   match Ast.Expr.view expr with
@@ -2857,6 +2881,7 @@ and expr_infix_operand_doc = fun expr ->
   let view = Ast.Expr.view expr in
   match view with
   | Tuple when expr_tuple_has_explicit_delimiter expr -> expr_doc_with_view expr view
+  | LocalOpen _ when expr_local_open_delimited_has_module_path expr -> expr_doc_with_view expr view
   | Tuple
   | Sequence _
   | Let _
@@ -2882,7 +2907,8 @@ and expr_doc = fun expr -> expr_doc_with_view expr (Ast.Expr.view expr)
 
 and expr_consumes_boundary_leading_comment = fun expr ->
   match Ast.Expr.view expr with
-  | If _ -> true
+  | If _
+  | Sequence _ -> true
   | _ -> false
 
 and expr_has_unconsumed_boundary_leading_comment = fun expr ->
@@ -3133,11 +3159,9 @@ and tuple_expr_doc = fun expr ->
 
 and if_else_branch_doc = fun else_token else_branch ->
   match Ast.Expr.view else_branch with
-  | If _ when not (Ast.Token.has_leading_comment else_token)
-  && not (expr_has_leading_comment else_branch) -> Doc.concat
+  | If _ when not (expr_has_leading_comment else_branch) -> Doc.concat
     [ token_doc else_token; Doc.space; expr_doc else_branch ]
-  | Parenthesized { inner=Some inner } when not (Ast.Token.has_leading_comment else_token)
-  && not (expr_has_leading_comment else_branch)
+  | Parenthesized { inner=Some inner } when not (expr_has_leading_comment else_branch)
   && not (expr_is_begin_block else_branch) -> Doc.concat
     [ token_doc else_token; Doc.space; parenthesized_expr_doc_after_keyword else_branch inner ]
   | _ -> Doc.concat [ token_doc else_token; Doc.line; Doc.indent 2 (expr_doc else_branch) ]

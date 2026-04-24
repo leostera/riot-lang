@@ -44,6 +44,11 @@ let solve = fun ~width doc ->
           fits (width - last_line_width value) rest
         else
           fits (remaining - String.length value) rest
+    | (_, _, Doc.RawText value) :: rest ->
+        if String.contains value "\n" then
+          fits (width - last_line_width value) rest
+        else
+          fits (remaining - String.length value) rest
     | (_, _, Doc.Slice value) :: rest ->
         if value.Doc.has_newline then
           fits (width - last_slice_line_width value) rest
@@ -77,6 +82,11 @@ let solve = fun ~width doc ->
           (Doc.text value, last_line_width value)
         else
           (Doc.text value, column + String.length value)
+    | Doc.RawText value ->
+        if String.contains value "\n" then
+          (Doc.raw_text value, last_line_width value)
+        else
+          (Doc.raw_text value, column + String.length value)
     | Doc.Slice value ->
         if value.Doc.has_newline then
           (Doc.slice ~has_newline:true value.Doc.value, last_slice_line_width value)

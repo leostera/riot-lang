@@ -33,6 +33,8 @@ let to_string = fun ?(size_hint = 1_024) ?(final_newline = false) doc ->
         line_start
     | Doc.Text value ->
         write_text ~line_start ~indent value
+    | Doc.RawText value ->
+        write_raw_text ~line_start ~indent value
     | Doc.Slice value ->
         write_slice ~line_start ~indent value
     | Doc.Space ->
@@ -90,6 +92,16 @@ let to_string = fun ?(size_hint = 1_024) ?(final_newline = false) doc ->
         loop line_start segment_start Int.(index + 1)
     in
     loop line_start 0 0
+  and write_raw_text ~line_start ~indent value =
+    let length = String.length value in
+    if length = 0 then
+      line_start
+    else (
+      if line_start then
+        write_indent indent;
+      IO.Buffer.add_string buffer value;
+      Char.equal (String.get_unchecked value ~at:Int.(length - 1)) '\n'
+    )
   and write_slice ~line_start ~indent ({ Doc.value; has_newline }: Doc.slice) =
     if not has_newline then
       write_slice_segment ~line_start ~indent value ~off:0 ~len:(Slice.length value)

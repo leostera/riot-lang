@@ -10,6 +10,7 @@ type slice = {
 type t =
   | Empty
   | Text of string
+  | RawText of string
   | Slice of slice
   | Space
   | Spaces of int
@@ -26,6 +27,12 @@ let text = fun value ->
     Empty
   else
     Text value
+
+let raw_text = fun value ->
+  if value = "" then
+    Empty
+  else
+    RawText value
 
 let slice = fun ~has_newline value ->
   if Slice.length value = 0 then
@@ -161,6 +168,7 @@ let wrapped = fun left doc right -> concat [ left; doc; right ]
 let rec is_multiline = function
   | Empty -> false
   | Text value -> String.contains value "\n"
+  | RawText value -> String.contains value "\n"
   | Slice value -> value.has_newline
   | Space -> false
   | Spaces _ -> false

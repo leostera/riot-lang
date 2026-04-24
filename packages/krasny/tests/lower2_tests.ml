@@ -336,6 +336,12 @@ let tests = [
     "lower2 formats sequence expressions"
     (fun _ctx -> assert_format2_ml ~expected:"let run =\n  first;\n  second\n" "let run = first; second\n");
   Test.case
+    "lower2 does not duplicate sequence-leading comments"
+    (fun _ctx ->
+      assert_format2_ml
+        ~expected:"let run = fun () ->\n  (* first *)\n  first;\n  (* second *)\n  second\n"
+        "let run = fun () -> (* first *) first; (* second *) second\n");
+  Test.case
     "lower2 preserves trailing sequence bodies in and-bindings"
     (fun _ctx ->
       assert_format2_ml ~expected:"let rec f () =\n  log \"f\";\n\nand g () =\n  log \"g\";\n" "let rec f () = log \"f\";\nand g () = log \"g\";\n");
@@ -408,6 +414,9 @@ let tests = [
           ])
         "let char_ok = identifier_character source.[index - 1]\nlet item_ok = consume values.(index)\n");
   Test.case
+    "lower2 keeps deref prefix expressions bare in apply arguments"
+    (fun _ctx -> assert_format2_ml ~expected:"let count_text = string_of_int !chunk_count\n" "let count_text = string_of_int !chunk_count\n");
+  Test.case
     "lower2 formats record expressions and patterns"
     (fun _ctx ->
       assert_format2_ml
@@ -442,6 +451,12 @@ let tests = [
             "let Foo.Bar.(x) = value"
           ])
         "let value = let open Foo.Bar in result\nlet scoped = send pid Server.(Telemetry (Stop { reply_to = self (); request_id }))\nlet store = Contentstore.create ~root:Path.(tmpdir / Path.v \"cache\") ~ns:(namespace parts)\nlet Foo.Bar.(x) = value\n");
+  Test.case
+    "lower2 keeps delimited local opens bare in infix operands"
+    (fun _ctx ->
+      assert_format2_ml
+        ~expected:"let preview = \"SSE Event: \" ^ Blink.SSE.(String.sub data ~offset:0 ~len:size)\n"
+        "let preview = \"SSE Event: \" ^ Blink.SSE.(String.sub data ~offset:0 ~len:size)\n");
   Test.case
     "lower2 formats first-class module expressions"
     (fun _ctx ->
@@ -633,6 +648,18 @@ let tests = [
           \  else\n\
           \    done_ ()\n"
         "let render ok = if ok then log (); next () else done_ ()\n");
+  Test.case "lower2 keeps else-if chains after else-boundary comments"
+    (fun _ctx ->
+      assert_format2_ml
+        ~expected:"let classify flag other =\n\
+          \  if flag then\n\
+          \    one\n\
+          \    (* before next branch *)\n\
+          \  else if other then\n\
+          \    two\n\
+          \  else\n\
+          \    three\n"
+        "let classify flag other = if flag then one (* before next branch *) else if other then two else three\n");
   Test.case "lower2 keeps match-case sequences inside if then branches"
     (fun _ctx ->
       assert_format2_ml
