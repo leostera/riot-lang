@@ -316,6 +316,14 @@ let tests = [
       assert_format2_ml
         ~expected:"let make:\n  type socket err. reader:(socket, err) reader ->\n  writer:(socket, err) writer ->\n  of_io_error:(err -> error) ->\n  uri:uri ->\n  t = fun ~reader ~writer ~of_io_error ~uri -> make_conn reader writer of_io_error uri\n"
         "let make : type socket err. reader:(socket, err) reader -> writer:(socket, err) writer -> of_io_error:(err -> error) -> uri:uri -> t = fun ~reader ~writer ~of_io_error ~uri -> make_conn reader writer of_io_error uri\n");
+  Test.case "lower2 keeps non-polymorphic typed let annotations flat after the colon"
+    (fun _ctx ->
+      assert_format2_ml
+        ~expected:{ocaml|let make:
+  reader:IO.Reader.t -> writer:IO.Writer.t -> of_io_error:(IO.error -> Error.t) -> uri:Net.Uri.t -> t = fun ~reader ~writer ~of_io_error ~uri -> body
+|ocaml}
+        {ocaml|let make : reader:IO.Reader.t -> writer:IO.Writer.t -> of_io_error:(IO.error -> Error.t) -> uri:Net.Uri.t -> t = fun ~reader ~writer ~of_io_error ~uri -> body
+|ocaml});
   Test.case
     "lower2 formats mutual recursive let bindings"
     (fun _ctx -> assert_format2_ml ~expected:"let rec f = g\n\nand g = f\n" "let rec f = g\nand g = f\n");
@@ -385,6 +393,99 @@ let tests = [
       assert_format2_ml
         ~expected:"let run json =\n  match json with\n  | Data.Json.Object fields -> (\n      match List.assoc_opt \"choices\" fields with\n      | Some (Data.Json.Array _choices) ->\n          Ok ()\n      | Some _ -> Error \"bad\"\n      | None -> Ok ()\n    )\n  | _ -> Error \"Response is not a JSON object\"\n"
         "let run json = match json with | Data.Json.Object fields -> (match List.assoc_opt \"choices\" fields with | Some (Data.Json.Array _choices) -> Ok () | Some _ -> Error \"bad\" | None -> Ok ()) | _ -> Error \"Response is not a JSON object\"\n");
+  Test.case "lower2 keeps parenthesized sequence bodies on long qualified cases"
+    (fun _ctx ->
+      assert_format2_ml
+        ~expected:{ocaml|let receive parsed =
+  match parsed with
+  | Http.Ws.Parser.Done frame -> (
+      Buffer.clear buffer;
+      Ok frame
+    )
+  | Http.Ws.Parser.Need_more -> (
+      read_more ();
+      receive parsed
+    )
+|ocaml}
+        {ocaml|let receive parsed = match parsed with | Http.Ws.Parser.Done frame -> (Buffer.clear buffer; Ok frame) | Http.Ws.Parser.Need_more -> (read_more (); receive parsed)
+|ocaml});
+  Test.case "lower2 keeps parenthesized let bodies on long qualified cases"
+    (fun _ctx ->
+      assert_format2_ml
+        ~expected:{ocaml|let receive parsed =
+  match parsed with
+  | Http.Ws.Parser.Need_more -> (
+      let reader = to_reader stream in
+      let chunk = read reader in
+      match chunk with
+      | Ok data -> data
+      | Error error -> error
+    )
+  | Http.Ws.Parser.Done frame -> frame
+|ocaml}
+        {ocaml|let receive parsed = match parsed with | Http.Ws.Parser.Need_more -> (let reader = to_reader stream in let chunk = read reader in match chunk with | Ok data -> data | Error error -> error) | Http.Ws.Parser.Done frame -> frame
+|ocaml});
+  Test.case "lower2 indents commented parenthesized match bodies in cases"
+    (fun _ctx ->
+      assert_format2_ml
+        ~expected:{ocaml|let next state =
+  match parse_event state.buffer with
+  | Some event -> Some event
+  | None -> (
+      (* Need more data from connection *)
+      match stream state.conn with
+      | Error _error -> None
+      | Ok _messages -> next state
+    )
+|ocaml}
+        {ocaml|let next state = match parse_event state.buffer with | Some event -> Some event | None -> ((* Need more data from connection *) match stream state.conn with | Error _error -> None | Ok _messages -> next state)
+|ocaml});
+  Test.case "lower2 breaks parenthesized match after else"
+    (fun _ctx ->
+      assert_format2_ml
+        ~expected:{ocaml|let pick header =
+  if ready then
+    Ok ()
+  else
+    (
+      match header with
+      | Some "chunked" -> Ok ()
+      | Some other -> Error other
+      | None -> Error "missing"
+    )
+|ocaml}
+        {ocaml|let pick header = if ready then Ok () else (match header with | Some "chunked" -> Ok () | Some other -> Error other | None -> Error "missing")
+|ocaml});
+  Test.case "lower2 keeps comments before else branch bodies"
+    (fun _ctx ->
+      assert_format2_ml
+        ~expected:{ocaml|let next state =
+  if state.done_ then
+    None
+  else
+    (* Try to parse an event from current buffer *)
+    match parse_event state.buffer with
+    | Some event -> Some event
+    | None ->
+        (* Try parsing again with new data *)
+        next state
+|ocaml}
+        {ocaml|let next state = if state.done_ then None else (* Try to parse an event from current buffer *) match parse_event state.buffer with | Some event -> Some event | None -> (* Try parsing again with new data *) next state
+|ocaml});
+  Test.case "lower2 wraps parenthesized infix arguments containing match"
+    (fun _ctx ->
+      assert_format2_ml
+        ~expected:{ocaml|let log first_event = Log.info
+  (
+    "First event: " ^ (
+      match first_event with
+      | Some _ -> "got one"
+      | None -> "none"
+    )
+  )
+|ocaml}
+        {ocaml|let log first_event = Log.info ("First event: " ^ (match first_event with | Some _ -> "got one" | None -> "none"))
+|ocaml});
   Test.case
     "lower2 formats labels and optional labels"
     (fun _ctx -> assert_format2_ml ~expected:"let f ~x ?y = g ~x ?y\n" "let f ~x ?y = g ~x ?y\n");
@@ -478,7 +579,7 @@ let tests = [
             "let value = let open Foo.Bar in result";
             "let scoped = send pid Server.(Telemetry (Stop { reply_to = self (); request_id }))";
             "let store = Contentstore.create ~root:Path.(tmpdir / Path.v \"cache\") ~ns:(namespace parts)";
-            "let Foo.Bar.(x) = value"
+            "let Foo.Bar.(x) = value";
           ])
         "let value = let open Foo.Bar in result\nlet scoped = send pid Server.(Telemetry (Stop { reply_to = self (); request_id }))\nlet store = Contentstore.create ~root:Path.(tmpdir / Path.v \"cache\") ~ns:(namespace parts)\nlet Foo.Bar.(x) = value\n");
   Test.case
@@ -532,6 +633,15 @@ let tests = [
              \  consume";
           ])
         "let value = let module M = Foo.Bar in result\nlet empty = let module Empty = struct end in done_\nlet packed = let module D = (val driver : Driver with type t = _) in body\nlet nested = let module ByteIter = struct let next = fun state -> let scratch = state in scratch end in consume\n");
+  Test.case "lower2 breaks let module before multiline bodies"
+    (fun _ctx ->
+      assert_format2_ml
+        ~expected:{ocaml|let await = fun conn ->
+  let module I = SSEIterator in
+  Iter.MutIterator.make (module I) { I.conn; buffer = ""; done_ = false }
+|ocaml}
+        {ocaml|let await = fun conn -> let module I = SSEIterator in Iter.MutIterator.make (module I) { I.conn; buffer = ""; done_ = false }
+|ocaml});
   Test.case
     "lower2 formats let exception expressions"
     (fun _ctx ->
@@ -656,7 +766,7 @@ let tests = [
             "module Http1: module type of Foo.Bar";
             "module Empty: sig end";
             "module type S = Foo.S";
-            "module type Abstract"
+            "module type Abstract";
           ])
         "module Alias : Foo.S\nmodule Http1 : module type of Foo.Bar\nmodule Empty : sig end\nmodule type S = Foo.S\nmodule type Abstract\n");
   Test.case "lower2 keeps include constraints in one signature item"
@@ -771,24 +881,22 @@ let tests = [
   Test.case
     "lower2 formats simple value declarations"
     (fun _ctx -> assert_format2_mli ~expected:"val id: 'a -> 'a\n" "val id : 'a -> 'a\n");
-  Test.case "lower2 fully breaks long value declarations after the colon"
+  Test.case "lower2 breaks long value declarations after the colon"
     (fun _ctx ->
       assert_format2_mli
-        ~expected:"val resolve_module_path:\n\
-          \  lookup ->\n\
-          \  current_path:string list ->\n\
-          \  target_path:string list ->\n\
-          \  interface_source option\n"
-        "val resolve_module_path: lookup -> current_path:string list -> target_path:string list -> interface_source option\n");
-  Test.case "lower2 fully breaks medium value declarations after the colon"
+        ~expected:{ocaml|val resolve_module_path:
+  lookup -> current_path:string list -> target_path:string list -> interface_source option
+|ocaml}
+        {ocaml|val resolve_module_path: lookup -> current_path:string list -> target_path:string list -> interface_source option
+|ocaml});
+  Test.case "lower2 breaks medium value declarations after the colon"
     (fun _ctx ->
       assert_format2_mli
-        ~expected:"val materialize_package_exports:\n\
-          \  t ->\n\
-          \  exports:export_entry list ->\n\
-          \  target_dir:Std.Path.t ->\n\
-          \  (unit, error) result\n"
-        "val materialize_package_exports: t -> exports:export_entry list -> target_dir:Std.Path.t -> (unit, error) result\n");
+        ~expected:{ocaml|val materialize_package_exports:
+  t -> exports:export_entry list -> target_dir:Std.Path.t -> (unit, error) result
+|ocaml}
+        {ocaml|val materialize_package_exports: t -> exports:export_entry list -> target_dir:Std.Path.t -> (unit, error) result
+|ocaml});
   Test.case
     "lower2 keeps fitting labeled value declarations inline"
     (fun _ctx ->
@@ -838,6 +946,17 @@ let tests = [
           (** Multi-target toolchain support *)\n\
           val get_host_triple: unit -> Riot_model.Target.t\n"
         "val hash: t -> Crypto.hash\n\n(** Compute a hash of the toolchain for cache invalidation *)\n\n(** Multi-target toolchain support *)\nval get_host_triple: unit -> Riot_model.Target.t\n");
+  Test.case "lower2 keeps adjacent leading docstrings tight"
+    (fun _ctx ->
+      assert_format2_mli
+        ~expected:{ocaml|(** Module overview. *)
+(** Item doc. *)
+type t
+|ocaml}
+        {ocaml|(** Module overview. *)
+(** Item doc. *)
+type t
+|ocaml});
   Test.case
     "lower2 keeps section headings tight to following signature docs"
     (fun _ctx ->
@@ -850,12 +969,44 @@ let tests = [
       assert_format2_mli
         ~expected:"module type Intf = sig\n  val name: string\n\n  val connect: Net.Addr.stream_addr -> Net.Uri.t -> (Connection.t, Error.t) result\nend\n"
         "module type Intf = sig\nval name:string\nval connect: Net.Addr.stream_addr -> Net.Uri.t -> (Connection.t, Error.t) result\nend\n");
-  Test.case
-    "lower2 formats module struct bodies from nested items"
+  Test.case "lower2 formats module struct bodies from nested items"
     (fun _ctx ->
       assert_format2_ml
-        ~expected:"module Tcp: Intf = struct\n  let name = \"tcp\"\n\n  let connect = fun addr uri ->\n    match Net.TcpStream.connect addr with\n    | Ok sock ->\n        let reader = Net.TcpStream.to_reader sock in\n        let writer = Net.TcpStream.to_writer sock in\n        Ok\n          (Connection.make\n            ~reader\n            ~writer\n            ~of_io_error:Error.of_io_error\n            ~uri)\n    | Error _ -> Error value\nend\n"
-        "module Tcp: Intf = struct\nlet name = \"tcp\"\nlet connect = fun addr uri -> match Net.TcpStream.connect addr with | Ok sock -> let reader = Net.TcpStream.to_reader sock in let writer = Net.TcpStream.to_writer sock in Ok (Connection.make ~reader ~writer ~of_io_error:Error.of_io_error ~uri) | Error _ -> Error value\nend\n");
+        ~expected:{ocaml|module Tcp: Intf = struct
+  let name = "tcp"
+
+  let connect = fun addr uri ->
+    match Net.TcpStream.connect addr with
+    | Ok sock ->
+        let reader = Net.TcpStream.to_reader sock in
+        let writer = Net.TcpStream.to_writer sock in
+        Ok (Connection.make ~reader ~writer ~of_io_error:Error.of_io_error ~uri)
+    | Error _ -> Error value
+end
+|ocaml}
+        {ocaml|module Tcp: Intf = struct
+let name = "tcp"
+let connect = fun addr uri -> match Net.TcpStream.connect addr with | Ok sock -> let reader = Net.TcpStream.to_reader sock in let writer = Net.TcpStream.to_writer sock in Ok (Connection.make ~reader ~writer ~of_io_error:Error.of_io_error ~uri) | Error _ -> Error value
+end
+|ocaml});
+  Test.case "lower2 keeps adjacent module structures separated"
+    (fun _ctx ->
+      assert_format2_ml
+        ~expected:{ocaml|module Tcp: Intf = struct
+  let name = "tcp"
+end
+
+module Tls: Intf = struct
+  let name = "tls"
+end
+|ocaml}
+        {ocaml|module Tcp: Intf = struct
+let name = "tcp"
+end
+module Tls: Intf = struct
+let name = "tls"
+end
+|ocaml});
   Test.case
     "lower2 rejects unsupported shapes instead of replaying source"
     (fun _ctx -> assert_format2_ml_fails "let object_value = object end\n");

@@ -8,10 +8,6 @@ type fixture = {
   slice: IO.IoVec.IoSlice.t;
 }
 
-type 'a memo = {
-  mutable value: 'a option;
-}
-
 let checksum = ref 0
 
 let make_slice = fun source -> IO.IoVec.IoSlice.from_string source |> Result.expect ~msg:"failed to create format pipeline benchmark source slice"
@@ -25,139 +21,132 @@ let unicode_tables_fixture = load_fixture
   ~name:"unicode tables implementation"
   (Path.v "packages/std/src/unicode/unicode_tables.ml")
 
-let memo = fun () -> { value = None }
-
-let memoized = fun cache compute ->
-  match cache.value with
-  | Some value -> value
-  | None ->
-      let value = compute () in
-      cache.value <- Some value;
-      value
-
-let cst_source_file_cache = memo ()
-
-let ast2_source_file_cache = memo ()
-
-let lower1_doc_cache = memo ()
-
-let lower2_doc_cache = memo ()
-
-let solved1_doc_cache = memo ()
-
-let solved2_doc_cache = memo ()
-
-let cst_source_file = fun () ->
-  memoized cst_source_file_cache
-    (fun () ->
-      match Syn.build_cst
-        (Syn.parse ~filename:unicode_tables_fixture.path unicode_tables_fixture.source) with
-      | Ok source_file -> source_file
-      | Error error ->
-          let message =
-            match error with
-            | Syn.Parse_diagnostics diagnostics -> "parse diagnostics: "
-            ^ Int.to_string (List.length diagnostics)
-            | Syn.Cst_builder_error err -> "CST builder error: " ^ err.Syn.CstBuilder.message
-          in
-          panic
-            ("failed to build CST for " ^ Path.to_string unicode_tables_fixture.path ^ ": " ^ message))
-
-let ast2_source_file = fun () ->
-  memoized
-    ast2_source_file_cache
-    (fun () ->
-      Syn.Ast2.SourceFile.make
-        (Syn.parse2 ~filename:unicode_tables_fixture.path unicode_tables_fixture.slice).Syn.Parser2.tree)
-
-let lower1_doc = fun () ->
-  memoized lower1_doc_cache
-    (fun () ->
-      match Krasny.Lower.source_file (cst_source_file ()) with
-      | Ok doc -> doc
-      | Error error -> panic
-        ("format pipeline lower1 failed for "
-        ^ Path.to_string unicode_tables_fixture.path
-        ^ ": "
-        ^ Krasny.Lower.error_to_string error))
-
-let lower2_doc = fun () ->
-  memoized lower2_doc_cache
-    (fun () ->
-      match Krasny.Lower2.source_file (ast2_source_file ()) with
-      | Ok doc -> doc
-      | Error error -> panic
-        ("format pipeline lower2 failed for "
-        ^ Path.to_string unicode_tables_fixture.path
-        ^ ": "
-        ^ Krasny.Lower2.error_to_string error))
-
-let solved1_doc = fun () ->
-  memoized solved1_doc_cache (fun () -> Krasny.Solver.solve ~width:100 (lower1_doc ()))
-
-let solved2_doc = fun () ->
-  memoized solved2_doc_cache (fun () -> Krasny.Solver.solve ~width:100 (lower2_doc ()))
-
 let touch_int = fun value -> checksum := !checksum lxor value
 
 let touch_string = fun value -> checksum := !checksum lxor String.length value
 
+let finalize_rendered_output = fun rendered ->
+  if String.length rendered = 0 || String.ends_with ~suffix:"\n" rendered then
+    rendered
+  else
+    rendered ^ "\n"
+
+let build_cst_error_to_string = function
+  | Syn.Parse_diagnostics diagnostics -> "parse diagnostics: "
+  ^ Int.to_string (List.length diagnostics)
+  | Syn.Cst_builder_error err -> "CST builder error: " ^ err.Syn.CstBuilder.message
+
+let parse2_diagnostics_to_string = fun diagnostics ->
+  let count = Vector.length diagnostics in
+  if count = 0 then
+    "parse2 diagnostics prevented formatting"
+  else
+    let first = Vector.get_unchecked diagnostics ~at:0 |> Syn.Diagnostic.to_string in
+    if count = 1 then
+      first
+    else
+      first ^ " (+" ^ Int.to_string (count - 1) ^ " more)"
+
+let parse1 = fun () -> Syn.parse ~filename:unicode_tables_fixture.path unicode_tables_fixture.source
+
+let parse2 = fun () -> Syn.parse2 ~filename:unicode_tables_fixture.path unicode_tables_fixture.slice
+
+let build_cst = fun parsed ->
+  match Syn.build_cst parsed with
+  | Ok source_file -> source_file
+  | Error error -> panic
+    ("format pipeline benchmark failed to build CST for "
+    ^ Path.to_string unicode_tables_fixture.path
+    ^ ": "
+    ^ build_cst_error_to_string error)
+
+let ast2_source_file = fun (parsed: Syn.Parser2.parse_result) ->
+  let diagnostics = parsed.Syn.Parser2.diagnostics in
+  if Vector.length diagnostics > 0 then
+    panic
+      ("format pipeline benchmark failed to parse2 "
+      ^ Path.to_string unicode_tables_fixture.path
+      ^ ": "
+      ^ parse2_diagnostics_to_string diagnostics)
+  else
+    Syn.Ast2.SourceFile.make parsed.Syn.Parser2.tree
+
+let lower1 = fun source_file ->
+  match Krasny.Lower.source_file source_file with
+  | Ok doc -> doc
+  | Error error -> panic
+    ("format pipeline benchmark failed to lower1 "
+    ^ Path.to_string unicode_tables_fixture.path
+    ^ ": "
+    ^ Krasny.Lower.error_to_string error)
+
+let lower2 = fun source_file ->
+  match Krasny.Lower2.source_file source_file with
+  | Ok doc -> doc
+  | Error error -> panic
+    ("format pipeline benchmark failed to lower2 "
+    ^ Path.to_string unicode_tables_fixture.path
+    ^ ": "
+    ^ Krasny.Lower2.error_to_string error)
+
+let solve = fun doc -> Krasny.Solver.solve ~width:100 doc
+
+let print1 = fun doc -> doc |> Krasny.Printer.to_string |> finalize_rendered_output
+
+let print2 = fun doc ->
+  Krasny.Printer.to_string
+    ~size_hint:(String.length unicode_tables_fixture.source + 1)
+    ~final_newline:true
+    doc
+
 let bench_parse1 = fun () ->
-  let result = Syn.parse ~filename:unicode_tables_fixture.path unicode_tables_fixture.source in
+  let result = parse1 () in
   let width = Syn.Ceibo.Green.width (Syn.Ceibo.Green.Node result.Syn.Parser.tree) in
   touch_int width
 
 let bench_parse2 = fun () ->
-  let result = Syn.parse2 ~filename:unicode_tables_fixture.path unicode_tables_fixture.slice in
+  let result = parse2 () in
   let width = (Syn.SyntaxTree.root result.Syn.Parser2.tree).Syn.SyntaxTree.full_width in
   touch_int width
 
+let bench_source1 = fun () ->
+  let source_file = parse1 () |> build_cst in
+  match Syn.Cst.SourceFile.kind source_file with
+  | `Implementation -> touch_int 1
+  | `Interface -> touch_int 2
+
+let bench_source2 = fun () ->
+  let source_file = parse2 () |> ast2_source_file in
+  touch_int (Syn.Ast2.Node.full_width source_file)
+
 let bench_lower1 = fun () ->
-  touch_int
-    (
-      if Krasny.Doc.is_multiline (lower1_doc ()) then
-        1
-      else
-        0
-    )
+  let _doc = parse1 () |> build_cst |> lower1 in
+  touch_int 1
 
 let bench_lower2 = fun () ->
-  touch_int
-    (
-      if Krasny.Doc.is_multiline (lower2_doc ()) then
-        1
-      else
-        0
-    )
+  let _doc = parse2 () |> ast2_source_file |> lower2 in
+  touch_int 1
 
 let bench_solve1 = fun () ->
-  let doc = Krasny.Solver.solve ~width:100 (lower1_doc ()) in
-  touch_int
-    (
-      if Krasny.Doc.is_multiline doc then
-        1
-      else
-        0
-    )
+  let _doc = parse1 () |> build_cst |> lower1 |> solve in
+  touch_int 1
 
 let bench_solve2 = fun () ->
-  let doc = Krasny.Solver.solve ~width:100 (lower2_doc ()) in
-  touch_int
-    (
-      if Krasny.Doc.is_multiline doc then
-        1
-      else
-        0
-    )
+  let _doc = parse2 () |> ast2_source_file |> lower2 |> solve in
+  touch_int 1
 
-let bench_print1 = fun () -> solved1_doc () |> Krasny.Printer.to_string |> touch_string
+let bench_print1 = fun () ->
+  let formatted = parse1 () |> build_cst |> lower1 |> solve |> print1 in
+  touch_string formatted
 
-let bench_print2 = fun () -> solved2_doc () |> Krasny.Printer.to_string |> touch_string
+let bench_print2 = fun () ->
+  let formatted = parse2 () |> ast2_source_file |> lower2 |> solve |> print2 in
+  touch_string formatted
 
-let bench_format1 = fun () -> solved1_doc () |> Krasny.Printer.to_string |> touch_string
+let bench_format1 = bench_print1
 
 let bench_format2 = fun () ->
-  Krasny.format2 (Syn.parse2 ~filename:unicode_tables_fixture.path unicode_tables_fixture.slice)
+  Krasny.format2 (parse2 ())
   |> Result.expect ~msg:"format2 pipeline benchmark should format unicode tables"
   |> touch_string
 
@@ -165,19 +154,19 @@ let huge_config: Bench.bench_config = { iterations = 1; warmup = 0 }
 
 let make_case = fun name fn -> Bench.make_case_with_config ~config:huge_config name fn
 
-let benchmarks = [ Bench.compare "krasny pipeline: unicode tables implementation"
-    [
-      make_case "parse1" bench_parse1;
-      make_case "parse2" bench_parse2;
-      make_case "lower1" bench_lower1;
-      make_case "lower2" bench_lower2;
-      make_case "solve1" bench_solve1;
-      make_case "solve2" bench_solve2;
-      make_case "print1" bench_print1;
-      make_case "print2" bench_print2;
-      make_case "format1" bench_format1;
-      make_case "format2" bench_format2;
-    ]; ]
+let compare_stage = fun stage old_case new_case ->
+  Bench.compare
+    ("krasny pipeline: " ^ stage ^ " " ^ unicode_tables_fixture.name)
+    [ make_case "old" old_case; make_case "new" new_case; ]
+
+let benchmarks = [
+  compare_stage "parse" bench_parse1 bench_parse2;
+  compare_stage "source repr" bench_source1 bench_source2;
+  compare_stage "lower cumulative" bench_lower1 bench_lower2;
+  compare_stage "solve cumulative" bench_solve1 bench_solve2;
+  compare_stage "print cumulative" bench_print1 bench_print2;
+  compare_stage "format path" bench_format1 bench_format2;
+]
 
 let () =
   Runtime.run
