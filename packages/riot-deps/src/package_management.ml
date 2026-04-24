@@ -61,6 +61,9 @@ type source_dependency_load_error =
   | SourceDependencyTomlParseFailed of Std.Data.Toml.error
   | SourceDependencyManifestDecodeFailed of Package.manifest_error
 
+type registry_initialization_error =
+  | RegistryFilesystemInitializationFailed of string
+
 type error =
   | CurrentPackageNotFound of { cwd: Path.t }
   | PackageNotFound of { package: Package_name.t }
@@ -77,7 +80,10 @@ type error =
       ref_: string option;
       error: source_dependency_load_error
     }
-  | RegistryInitializationFailed of { registry: string; error: string }
+  | RegistryInitializationFailed of {
+      registry: string;
+      error: registry_initialization_error
+    }
   | RegistryLookupFailed of { package: string; registry: string; error: string }
   | RegistryMaterializationFailed of {
       package: string;
@@ -147,6 +153,9 @@ let source_dependency_load_error_message = function
   | SourceDependencyTomlParseFailed error -> Data.Toml.error_to_string error
   | SourceDependencyManifestDecodeFailed error -> Package.manifest_error_message error
 
+let registry_initialization_error_message = function
+  | RegistryFilesystemInitializationFailed error -> error
+
 let no_emit: event_sink = fun _ -> ()
 
 let registry_name = "pkgs.ml"
@@ -199,7 +208,10 @@ let error_message = function
       ^ "': "
       ^ source_dependency_load_error_message error
   | RegistryInitializationFailed { registry; error } ->
-      "failed to initialize registry '" ^ registry ^ "': " ^ error
+      "failed to initialize registry '"
+      ^ registry
+      ^ "': "
+      ^ registry_initialization_error_message error
   | RegistryLookupFailed { package; registry; error } ->
       "failed to look up package '" ^ package ^ "' in registry '" ^ registry ^ "': " ^ error
   | RegistryMaterializationFailed { package; version; registry; error } ->
@@ -427,7 +439,11 @@ let parse_dependency_spec = fun ~(target:target_manifest) raw ->
 let init_registry = fun () ->
   Pkgs_ml.Registry.create_filesystem ~registry_name ()
   |> Result.map_err
-    ~fn:(fun error -> RegistryInitializationFailed { registry = registry_name; error })
+    ~fn:(fun error ->
+      RegistryInitializationFailed {
+        registry = registry_name;
+        error = RegistryFilesystemInitializationFailed error
+      })
 
 let ensure_loaded_workspace = fun ~workspace_manager ~registry ~(workspace:Workspace_manifest.t) ~package_name () ->
   let* workspace = Workspace_resolution.ensure_workspace

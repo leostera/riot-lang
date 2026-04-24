@@ -2437,6 +2437,20 @@ let test_package_error_message_renders_typed_workspace_reload_errors = fun _ctx 
   else
     Error "expected typed workspace reload errors to render through package_error_message"
 
+let test_package_error_message_renders_typed_registry_initialization_errors = fun _ctx ->
+  let message = Riot_deps.package_error_message
+    (Riot_deps.RegistryInitializationFailed {
+      registry = "pkgs.ml";
+      error = Riot_deps.RegistryFilesystemInitializationFailed "missing home directory"
+    }) in
+  if
+    String.contains message "failed to initialize registry 'pkgs.ml'"
+    && String.contains message "missing home directory"
+  then
+    Ok ()
+  else
+    Error "expected typed registry initialization errors to render through package_error_message"
+
 let test_package_error_message_lists_search_suggestions = fun _ctx ->
   let message = Riot_deps.package_error_message
     (Riot_deps.RegistryPackageNotFound {
@@ -3688,6 +3702,7 @@ let tests =
     case "package management: add rejects unsupported source dependency specs" test_add_rejects_unsupported_source_dependency_specs;
     case "package management: renders typed source dependency load errors" test_package_error_message_renders_typed_source_dependency_errors;
     case "package management: renders typed workspace reload errors" test_package_error_message_renders_typed_workspace_reload_errors;
+    case "package management: renders typed registry initialization errors" test_package_error_message_renders_typed_registry_initialization_errors;
     case "package management: add not-found message lists search suggestions" test_package_error_message_lists_search_suggestions;
     case "package management: search returns registry results" test_search_returns_registry_results;
     case "package management: remove rejects dependencies only inherited from workspace root" test_remove_reports_missing_package_dependency_when_only_inherited_from_workspace;
