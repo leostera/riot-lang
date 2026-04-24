@@ -12,6 +12,8 @@ val from_list: 'value list -> 'value t
 
 val push: 'value t -> value:'value -> unit
 
+val push_unchecked: 'value t -> value:'value -> unit
+
 val pop: 'value t -> 'value option
 
 val insert: 'value t -> at:int -> value:'value -> unit
@@ -47,6 +49,10 @@ val reserve: 'value t -> size:int -> unit
 val for_each: 'value t -> fn:('value -> unit) -> unit
 
 val append: 'value t -> 'value t -> unit
+
+val extend: 'value t -> 'value t -> unit
+
+val concat: 'value t -> 'value t -> 'value t
 
 val split_off: 'value t -> at:int -> 'value t
 

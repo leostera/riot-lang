@@ -30,6 +30,15 @@ let dedupe = fun values ->
   in
   loop [] values
 
+let vector_push_reversed = fun vector values ->
+  let rec loop = function
+    | [] -> ()
+    | value :: rest ->
+        loop rest;
+        Vector.push vector ~value
+  in
+  loop values
+
 let rec take = fun count values ->
   match count, values with
   | (0, _)
@@ -253,9 +262,10 @@ let string = fun value ->
         shrink_length half (String.sub value ~offset:0 ~len:half :: acc)
     in
     let shortened = shrink_length len [] in
-    let rec shrink_chars index acc =
-      if index >= len then
-        acc
+    let shrunk_chars = Vector.with_capacity ~size:len in
+    let rec shrink_chars index =
+      if index < 0 then
+        ()
       else
         let current_char = String.get_unchecked value ~at:index in
         let shrunk =
@@ -263,9 +273,11 @@ let string = fun value ->
             (char current_char)
             ~fn:(fun char' -> string_replace_at value ~at:index ~char:char')
         in
-        shrink_chars (index + 1) (List.reverse_append shrunk acc)
+        vector_push_reversed shrunk_chars shrunk;
+        shrink_chars (index - 1)
     in
-    dedupe (removed @ shortened @ shrink_chars 0 [])
+    shrink_chars (len - 1);
+    dedupe (removed @ shortened @ (Vector.to_array shrunk_chars |> Array.to_list))
 
 (* === COLLECTION SHRINKERS === *)
 
@@ -299,18 +311,22 @@ let list = fun elem_shrinker ->
           shrink_length half (take half lst :: acc)
       in
       let shortened = shrink_length len [] in
-      let rec shrink_elements index acc =
-        match nth lst ~at:index with
-        | None -> acc
-        | Some value ->
-            let shrunk =
-              List.map
-                (elem_shrinker value)
-                ~fn:(fun value' -> replace_nth lst ~at:index ~value:value')
-            in
-            shrink_elements (index + 1) (List.reverse_append shrunk acc)
+      let shrunk_elements = Vector.with_capacity ~size:len in
+      let rec shrink_elements index =
+        if index < 0 then
+          ()
+        else
+          let value = nth lst ~at:index |> Option.expect ~msg:"valid shrink element index" in
+          let shrunk =
+            List.map
+              (elem_shrinker value)
+              ~fn:(fun value' -> replace_nth lst ~at:index ~value:value')
+          in
+          vector_push_reversed shrunk_elements shrunk;
+          shrink_elements (index - 1)
       in
-      dedupe (removed @ shortened @ shrink_elements 0 [])
+      shrink_elements (len - 1);
+      dedupe (removed @ shortened @ (Vector.to_array shrunk_elements |> Array.to_list))
 
 let array = fun elem_shrinker ->
   fun arr ->

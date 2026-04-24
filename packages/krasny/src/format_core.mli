@@ -7,10 +7,15 @@ type format_error =
   | Cannot_lower of string
 val format_error_to_string: format_error -> string
 
+type write_error =
+  | Format_failed of format_error
+  | Write_failed of IO.error
 val parse_source: filename:Path.t -> string -> Syn.Parser2.parse_result
 
 val format: Syn.Parser2.parse_result -> (string, format_error) result
 
 val format_source: filename:Path.t -> string -> (string, format_error) result
+
+val write: writer:IO.Writer.t -> Syn.Parser2.parse_result -> (unit, write_error) result
 
 val format2: Syn.Parser2.parse_result -> (string, format_error) result

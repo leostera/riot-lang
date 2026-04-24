@@ -25,6 +25,37 @@ let touch_int = fun value -> checksum := !checksum lxor value
 
 let touch_string = fun value -> checksum := !checksum lxor String.length value
 
+type counting_sink = {
+  mutable bytes: int;
+}
+
+let counting_writer =
+  let module Write = struct
+    type t = counting_sink
+
+    let write = fun sink ~from ->
+      let bytes = IO.Buffer.readable_bytes from in
+      sink.bytes <- sink.bytes + bytes;
+      Ok bytes
+
+    let write_vectored = fun sink ~from ->
+      let bytes = ref 0 in
+      IO.IoVec.for_each from ~fn:(fun slice -> bytes := !bytes + IO.IoSlice.length slice);
+      sink.bytes <- sink.bytes + !bytes;
+      Ok !bytes
+
+    let flush = fun _sink -> Ok ()
+  end in
+  fun () ->
+    let sink = { bytes = 0 } in
+    (sink, IO.Writer.from_sink (module Write) sink)
+
+let write_string_to_sink = fun formatted ->
+  let sink, writer = counting_writer () in
+  IO.write_all writer ~from:(IO.Buffer.from_string formatted) |> Result.expect ~msg:"format pipeline benchmark should write format1 output";
+  IO.flush writer |> Result.expect ~msg:"format pipeline benchmark should flush format1 output";
+  touch_int sink.bytes
+
 let finalize_rendered_output = fun rendered ->
   if String.length rendered = 0 || String.ends_with ~suffix:"\n" rendered then
     rendered
@@ -82,7 +113,7 @@ let lower1 = fun source_file ->
 
 let lower2 = fun source_file ->
   match Krasny.Lower2.source_file source_file with
-  | Ok doc -> doc
+  | Ok formatted -> formatted
   | Error error -> panic
     ("format pipeline benchmark failed to lower2 "
     ^ Path.to_string unicode_tables_fixture.path
@@ -98,6 +129,29 @@ let print2 = fun doc ->
     ~size_hint:(String.length unicode_tables_fixture.source + 1)
     ~final_newline:true
     doc
+
+let unicode_size_hint = String.length unicode_tables_fixture.source + 1
+
+let memo = fun compute ->
+  let value = ref None in
+  fun () ->
+    match !value with
+    | Some value -> value
+    | None ->
+        let computed = compute () in
+        value := Some computed;
+        computed
+
+let unicode_lower1_doc =
+  memo (fun () -> parse1 () |> build_cst |> lower1)
+
+let old_solve_print = fun doc ->
+  doc
+  |> Krasny.Solver.solve ~width:100
+  |> Krasny.Printer.to_string ~size_hint:unicode_size_hint ~final_newline:true
+
+let stream_solve_print = fun doc ->
+  Krasny.Solver.to_string ~width:100 ~size_hint:unicode_size_hint ~final_newline:true doc
 
 let bench_parse1 = fun () ->
   let result = parse1 () in
@@ -124,48 +178,62 @@ let bench_lower1 = fun () ->
   touch_int 1
 
 let bench_lower2 = fun () ->
-  let _doc = parse2 () |> ast2_source_file |> lower2 in
-  touch_int 1
+  let formatted = parse2 () |> ast2_source_file |> lower2 in
+  touch_string formatted
 
 let bench_solve1 = fun () ->
   let _doc = parse1 () |> build_cst |> lower1 |> solve in
-  touch_int 1
-
-let bench_solve2 = fun () ->
-  let _doc = parse2 () |> ast2_source_file |> lower2 |> solve in
   touch_int 1
 
 let bench_print1 = fun () ->
   let formatted = parse1 () |> build_cst |> lower1 |> solve |> print1 in
   touch_string formatted
 
-let bench_print2 = fun () ->
-  let formatted = parse2 () |> ast2_source_file |> lower2 |> solve |> print2 in
-  touch_string formatted
+let bench_old_solve_print1 = fun () -> unicode_lower1_doc () |> old_solve_print |> touch_string
 
-let bench_format1 = bench_print1
+let bench_stream_solve_print1 = fun () -> unicode_lower1_doc () |> stream_solve_print |> touch_string
 
-let bench_format2 = fun () ->
-  Krasny.format2 (parse2 ())
-  |> Result.expect ~msg:"format2 pipeline benchmark should format unicode tables"
-  |> touch_string
+let bench_format1_to_sink = fun () ->
+  let formatted = parse1 () |> build_cst |> lower1 |> solve |> print1 in
+  write_string_to_sink formatted
+
+let bench_write2_to_sink = fun () ->
+  let sink, writer = counting_writer () in
+  Krasny.write ~writer (parse2 ()) |> Result.expect ~msg:"streaming format pipeline benchmark should write unicode tables";
+  touch_int sink.bytes
 
 let huge_config: Bench.bench_config = { iterations = 1; warmup = 0 }
 
+let solver_config: Bench.bench_config = { iterations = 5; warmup = 10 }
+
 let make_case = fun name fn -> Bench.make_case_with_config ~config:huge_config name fn
+
+let make_solver_case = fun name fn -> Bench.make_case_with_config ~config:solver_config name fn
 
 let compare_stage = fun stage old_case new_case ->
   Bench.compare
     ("krasny pipeline: " ^ stage ^ " " ^ unicode_tables_fixture.name)
     [ make_case "old" old_case; make_case "new" new_case; ]
 
+let compare_solver = fun doc_name old_case stream_case ->
+  Bench.compare
+    ("krasny solver: solve+print " ^ doc_name ^ " " ^ unicode_tables_fixture.name)
+    [
+      make_solver_case "old solve+print" old_case;
+      make_solver_case "stream solve+print" stream_case;
+    ]
+
 let benchmarks = [
   compare_stage "parse" bench_parse1 bench_parse2;
   compare_stage "source repr" bench_source1 bench_source2;
-  compare_stage "lower cumulative" bench_lower1 bench_lower2;
-  compare_stage "solve cumulative" bench_solve1 bench_solve2;
-  compare_stage "print cumulative" bench_print1 bench_print2;
-  compare_stage "format path" bench_format1 bench_format2;
+  compare_stage "format from tree" bench_print1 bench_lower2;
+  compare_solver "lower1 doc" bench_old_solve_print1 bench_stream_solve_print1;
+  Bench.compare
+    ("krasny pipeline: format to writer " ^ unicode_tables_fixture.name)
+    [
+      make_case "format1 string->writer" bench_format1_to_sink;
+      make_case "Krasny.write" bench_write2_to_sink;
+    ];
 ]
 
 let () =

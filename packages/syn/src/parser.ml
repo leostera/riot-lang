@@ -627,9 +627,9 @@ let make_error_node = fun parser ~diagnostic ~consumed_tokens ->
 module Children = struct
   type elt = (Syntax_kind.t, string) Ceibo.Green.element
 
-  let create = fun () -> ref []
+  let create = fun () -> Vector.with_capacity ~size:8
 
-  let push = fun t elt -> t := elt :: !t
+  let push = fun t elt -> Vector.push t ~value:elt
 
   let push_node = fun t node -> push t (Ceibo.Green.Node node)
 
@@ -640,11 +640,11 @@ module Children = struct
     | Present token -> push_token parser t token
     | Missing -> ()
 
-  let push_elements = fun t xs -> t := List.reverse_append xs !t
+  let push_elements = fun t xs -> List.for_each xs ~fn:(push t)
 
   let push_recovered_tokens = fun parser t tokens -> push_elements t (tokens_to_green parser tokens)
 
-  let elements = fun t -> List.reverse !t
+  let elements = fun t -> Array.to_list (Vector.to_array t)
 
   let finish = fun kind t -> make_node kind (elements t)
 end
@@ -1750,39 +1750,43 @@ and parse_poly_variant_type = fun parser ->
           (None, [])
       in
       (* Parse variant row fields in source order, preserving explicit separators. *)
-      let push_children acc children = List.reverse_append children acc in
-      let rec parse_fields acc =
+      let field_children = Vector.with_capacity ~size:8 in
+      let push_children children =
+        List.for_each children ~fn:(fun child -> Vector.push field_children ~value:child)
+      in
+      let rec parse_fields () =
         match peek_kind parser with
-        | Token.CloseDelim Token.Bracket -> acc
+        | Token.CloseDelim Token.Bracket -> ()
         | _ ->
-            let acc =
+            (
               match peek_kind parser with
               | Token.Pipe ->
                   let pipe = consume parser in
                   let trivia_after_pipe = consume_trivia parser in
                   push_children
-                    acc
                     ([ make_token parser pipe ] @ tokens_to_green parser trivia_after_pipe)
-              | _ -> acc
-            in
-            let acc, consumed_field =
+              | _ -> ()
+            );
+            let consumed_field =
               match peek_kind parser with
               | Token.Backtick ->
                   let tag = parse_poly_variant_tag parser in
-                  (push_children acc [ Ceibo.Green.Node tag ], true)
+                  push_children [ Ceibo.Green.Node tag ];
+                  true
               | Token.Ident _ ->
                   let typ = parse_typexpr parser in
-                  (push_children acc [ Ceibo.Green.Node typ ], true)
+                  push_children [ Ceibo.Green.Node typ ];
+                  true
               | _ ->
-                  (acc, false)
+                  false
             in
             if consumed_field then
               let trivia_after_field = consume_trivia parser in
-              parse_fields (push_children acc (tokens_to_green parser trivia_after_field))
-            else
-              acc
+              push_children (tokens_to_green parser trivia_after_field);
+              parse_fields ()
       in
-      let field_children = parse_fields [] |> List.reverse in
+      parse_fields ();
+      let field_children = Array.to_list (Vector.to_array field_children) in
       let close_bracket =
         expect
           parser

@@ -1,4 +1,5 @@
 open Std
+open Std.Collections
 module Slice = IO.IoVec.IoSlice
 
 let append_subslice_unchecked = fun buffer slice ~off ~len ->
@@ -58,13 +59,16 @@ let to_string = fun ?(size_hint = 1_024) ?(final_newline = false) doc ->
         true
     | Doc.Break flat ->
         write ~line_start ~indent (Doc.text flat)
-    | Doc.Group doc ->
-        write ~line_start ~indent doc
+    | Doc.Group group ->
+        write ~line_start ~indent group.Doc.doc
     | Doc.Concat docs ->
-        List.fold_left
-          docs
-          ~init:line_start
-          ~fn:(fun line_start doc -> write ~line_start ~indent doc)
+        let rec loop line_start index =
+          if Int.compare index (Vector.length docs) >= 0 then
+            line_start
+          else
+            loop (write ~line_start ~indent (Vector.get_unchecked docs ~at:index)) (Int.add index 1)
+        in
+        loop line_start 0
     | Doc.Indent (extra, doc) ->
         write ~line_start ~indent:(indent + extra) doc
   and write_text ~line_start ~indent value =

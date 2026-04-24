@@ -11,7 +11,7 @@ open Std
       Property.property
         "list reverse is involutive"
         Arbitrary.(list int)
-        (fun xs -> List.rev (List.rev xs) = xs)
+        (fun xs -> List.reverse (List.reverse xs) = xs)
     ```
 *)
 type property_result =

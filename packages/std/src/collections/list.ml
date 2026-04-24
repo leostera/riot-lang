@@ -4,40 +4,23 @@ type 'value t = 'value list
 
 let length = Kernel.List.length
 
-let compare_lengths = fun ~left ~right ->
-  let rec loop left_values right_values =
-    match (left_values, right_values) with
-    | [], [] -> 0
-    | [], _ -> (-1)
-    | _, [] -> 1
-    | _ :: next_left, _ :: next_right -> loop next_left next_right
-  in
-  loop left right
-
 let is_empty = Kernel.List.is_empty
 
 let append = Kernel.List.append
 
 let reverse = Kernel.List.reverse
 
-let rev = reverse
-
-let rec reverse_append = fun left right ->
-  match left with
-  | [] -> right
-  | value :: rest -> reverse_append rest (value :: right)
-
 let concat = Kernel.List.concat
 
-let init = fun ~count ~fn -> Kernel.List.init ~count ~fn
+let init = Kernel.List.init
 
 let head = Kernel.List.head
 
 let tail = Kernel.List.tail
 
-let get = fun values ~at -> Kernel.List.get values ~at
+let get = Kernel.List.get
 
-let get_unchecked = fun values ~at -> Kernel.List.get_unchecked values ~at
+let get_unchecked = Kernel.List.get_unchecked
 
 let rec take = fun list ~len ->
   match list with
@@ -88,8 +71,6 @@ let any = fun values ~fn ->
 let exists = fun fn values -> any values ~fn
 
 let contains = fun values ~value -> Kernel.List.contains values ~value
-
-let mem = fun value values -> contains values ~value
 
 let find = fun values ~fn -> Kernel.List.find values ~fn
 

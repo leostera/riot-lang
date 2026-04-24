@@ -12,12 +12,6 @@ let test_length = fun _ctx ->
   else
     Error "expected List.length [] = 0"
 
-let test_compare_lengths = fun _ctx ->
-  if List.compare_lengths ~left:[ 1 ] ~right:[ 1; 2 ] < 0 then
-    Ok ()
-  else
-    Error "expected shorter list to compare below longer list"
-
 let test_is_empty = fun _ctx ->
   if List.is_empty [] && not (List.is_empty [ 1 ]) then
     Ok ()
@@ -35,12 +29,6 @@ let test_reverse = fun _ctx ->
     Ok ()
   else
     Error "expected List.reverse to invert order"
-
-let test_reverse_append = fun _ctx ->
-  if List.reverse_append [ 1; 2 ] [ 3; 4 ] = [ 2; 1; 3; 4 ] then
-    Ok ()
-  else
-    Error "expected List.reverse_append to reverse left before appending"
 
 let test_concat = fun _ctx ->
   let actual = List.concat [ [ "a"; "b" ]; [ "c" ]; [ "d"; "e" ] ] in
@@ -173,11 +161,9 @@ let test_unzip = fun _ctx ->
 let tests =
   Test.[
     case "List.length [] = 0" test_length;
-    case "List.compare_lengths shorter vs longer is negative" test_compare_lengths;
     case "List.is_empty reflects list contents" test_is_empty;
     case "List.append concatenates inputs" test_append;
     case "List.reverse flips order" test_reverse;
-    case "List.reverse_append reverses left before appending" test_reverse_append;
     case "List.concat preserves input order" test_concat;
     case "List.init maps indices" test_init;
     case "List.head [] returns None" test_head_none;

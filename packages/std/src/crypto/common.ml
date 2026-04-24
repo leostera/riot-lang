@@ -1,8 +1,9 @@
 open Kernel
+open Collections
 module IoVec = IO.IoVec
 
 type state = {
-  mutable buffers_rev: bytes list;
+  buffers: bytes Vector.t;
 }
 
 external int32_to_int: int32 -> int = "%int32_to_int"
@@ -14,11 +15,11 @@ external int64_logand: int64 -> int64 -> int64 = "%int64_and"
 
 external int64_shift_right_logical: int64 -> int -> int64 = "%int64_lsr"
 
-let create_state = fun () -> { buffers_rev = [] }
+let create_state = fun () -> { buffers = Vector.with_capacity ~size:4 }
 
 let push_bytes = fun state buffer ->
   if Bytes.length buffer > 0 then
-    state.buffers_rev <- buffer :: state.buffers_rev
+    Vector.push state.buffers ~value:buffer
 
 let write_string = fun state value ->
   if String.length value > 0 then
@@ -95,13 +96,8 @@ let rec iter_list f = function
       f head;
       iter_list f tail
 
-let rec reverse_append left right =
-  match left with
-  | [] -> right
-  | head :: tail -> reverse_append tail (head :: right)
-
 let finish_iovec = fun digest state ->
-  let buffers = Array.from_list (reverse_append state.buffers_rev []) in
+  let buffers = Vector.to_array state.buffers in
   match IoVec.from_bytes_array buffers with
   | Ok iovec -> digest iovec
   | Error error -> SystemError.panic

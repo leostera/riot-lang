@@ -6,6 +6,10 @@ type format_error =
   | Cannot_parse of Syn.Diagnostic.t Vector.t
   | Cannot_lower of string
 
+type write_error =
+  | Format_failed of format_error
+  | Write_failed of IO.error
+
 let parse2_diagnostics_to_string = fun diagnostics ->
   let count = Vector.length diagnostics in
   if count = 0 then
@@ -57,16 +61,30 @@ let format = fun (result: Syn.Parser2.parse_result) ->
     Error (Cannot_parse diagnostics)
   else
     let source_file = Syn.Ast2.SourceFile.make result.Syn.Parser2.tree in
-    match Lower2.source_file source_file with
+    let size_hint = output_size_hint result in
+    match Lower2.source_file ~width:100 ~size_hint source_file with
     | Error err -> Error (Cannot_lower (Lower2.error_to_string err))
     | Ok rendered ->
         yield ();
-        let size_hint = output_size_hint result in
-        let solved = Solver.solve ~width:100 rendered in
-        let rendered = Printer.to_string ~size_hint ~final_newline:true solved in
         yield ();
         Ok rendered
 
 let format_source = fun ~filename source -> parse_source ~filename source |> format
+
+let write = fun ~writer (result: Syn.Parser2.parse_result) ->
+  yield ();
+  let diagnostics = result.Syn.Parser2.diagnostics in
+  if Vector.length diagnostics > 0 then
+    Error (Format_failed (Cannot_parse diagnostics))
+  else
+    let source_file = Syn.Ast2.SourceFile.make result.Syn.Parser2.tree in
+    match Streaming_lower.write ~writer ~width:100 source_file with
+    | Error (Streaming_lower.Cannot_format err) ->
+        Error (Format_failed (Cannot_lower (Streaming_lower.error_to_string err)))
+    | Error (Streaming_lower.Cannot_write err) ->
+        Error (Write_failed err)
+    | Ok () ->
+        yield ();
+        Ok ()
 
 let format2 = format

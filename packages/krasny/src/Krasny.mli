@@ -13,11 +13,14 @@ val format_error_to_string: format_error -> string
 
 (** `format_error_to_string err` renders formatter failures into a concise
     human-readable string. *)
+type write_error = Format_core.write_error =
+  | Format_failed of format_error
+  | Write_failed of IO.error
 
 (** `format result` renders a parser2 result into formatted OCaml source.
 
-    The current implementation lowers the supported Ast2 typed-view subset
-    through an internal document tree before rendering to text. Files fail
+    The current implementation walks the supported Ast2 typed-view subset
+    through the streaming formatter. Files fail
     formatting when parser2 reports diagnostics or when the Ast2 surface does
     not yet expose enough structure for a purely structural lowering. Non-empty
     formatted output always ends with a final newline. *)
@@ -44,12 +47,13 @@ val syntax_hash: Syn.Parser2.parse_result -> string
 val syntax_hash_source: filename:Path.t -> string -> string
 
 (** `write ~writer result` renders a parse result into the provided writer. *)
-val write: writer:IO.Writer.t -> Syn.Parser2.parse_result -> (unit, [
-    `Format of format_error
-    | `Write of IO.error
-  ]) result
+val write: writer:IO.Writer.t -> Syn.Parser2.parse_result -> (unit, write_error) result
 
 module Doc: module type of Doc
+
+module Stream_doc: module type of Stream_doc
+
+module Streaming_lower: module type of Streaming_lower
 
 module Solver: module type of Solver
 

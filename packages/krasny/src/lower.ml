@@ -2359,9 +2359,14 @@ let rec collapse_redundant_parenthesized_expression = function
   | _ -> None
 
 let same_operator_tokens = fun left right ->
-  List.compare_lengths ~left ~right = 0 && List.all (List.zip left right)
-    ~fn:(fun (left, right) ->
-      Syn.Cst.Token.same_text left right)
+  let rec loop left right =
+    match (left, right) with
+    | [], [] -> true
+    | left :: left_rest, right :: right_rest -> Syn.Cst.Token.same_text left right
+    && loop left_rest right_rest
+    | _ -> false
+  in
+  loop left right
 
 let doc_of_operator_tokens = fun operator_tokens ->
   operator_tokens |> List.map ~fn:doc_of_token |> Doc.concat
@@ -4007,21 +4012,27 @@ let make_lowerer =
             cases;
         ]
   and flatten_fun_expression ({ parameters; return_type; body; _ }: Syn.Cst.fun_expression) =
-    let rec loop = fun acc ->
-      function
-      | Syn.Cst.Expression (Syn.Cst.Expression.Fun ({ return_type=Some _; _ } as body)) -> (
-        List.reverse acc,
-        Syn.Cst.Expression (Syn.Cst.Expression.Fun body)
-      )
-      | Syn.Cst.Cases _ as body -> (List.reverse acc, body)
-      | Syn.Cst.Expression (Syn.Cst.Expression.Fun { parameters; body; return_type=None; _ }) -> loop
-        (List.reverse_append parameters acc)
-        body
-      | Syn.Cst.Expression expression -> (List.reverse acc, Syn.Cst.Expression expression)
+    let accumulated = Vector.with_capacity ~size:(List.length parameters) in
+    let push_parameters parameters =
+      List.for_each parameters ~fn:(fun parameter -> Vector.push accumulated ~value:parameter)
+    in
+    let result body = (Array.to_list (Vector.to_array accumulated), body) in
+    let rec loop = function
+      | Syn.Cst.Expression (Syn.Cst.Expression.Fun ({ return_type=Some _; _ } as body)) ->
+          result (Syn.Cst.Expression (Syn.Cst.Expression.Fun body))
+      | Syn.Cst.Cases _ as body ->
+          result body
+      | Syn.Cst.Expression (Syn.Cst.Expression.Fun { parameters; body; return_type=None; _ }) ->
+          push_parameters parameters;
+          loop body
+      | Syn.Cst.Expression expression ->
+          result (Syn.Cst.Expression expression)
     in
     match return_type with
     | Some _ -> (parameters, body)
-    | None -> loop (List.reverse parameters) body
+    | None ->
+        push_parameters parameters;
+        loop body
   and render_fun_expression ({
       keyword_token;
       colon_token;

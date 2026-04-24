@@ -93,7 +93,7 @@ let green_token_kinds = fun node ->
     | Ceibo.Green.Token token -> token.kind :: acc
     | Ceibo.Green.Node node -> Ceibo.Green.children node |> List.fold_left ~init:acc ~fn:loop
   in
-  loop [] (Ceibo.Green.Node node) |> List.rev
+  loop [] (Ceibo.Green.Node node) |> List.reverse
 
 let tests = [
   Test.case "ceibo tokens preserve leading trivia separately from token body width"
@@ -149,7 +149,7 @@ let tests = [
   Test.case "lexer attaches trailing file trivia to EOF leading trivia"
     (fun _ctx ->
       let tokens = Syn.Lexer.tokenize "let x = 1\n(* tail *)\n" in
-      match List.rev tokens with
+      match List.reverse tokens with
       | eof :: _ ->
           Test.assert_equal ~expected:Syn.Token.EOF ~actual:eof.Syn.Token.kind;
           (
@@ -258,7 +258,7 @@ let tests = [
   Test.case "parse results retain original tokens with EOF-owned trailing trivia"
     (fun _ctx ->
       let result = parse_ml "let x = 1\n(* tail *)\n" in
-      match List.rev result.tokens with
+      match List.reverse result.tokens with
       | eof :: _ ->
           Test.assert_equal ~expected:Syn.Token.EOF ~actual:eof.Syn.Token.kind;
           (

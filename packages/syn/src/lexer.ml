@@ -1,4 +1,5 @@
 open Std
+open Std.Collections
 open Std.IO
 
 type t = Cursor.t
@@ -1057,9 +1058,23 @@ let next = fun cursor delim_stack ->
         make_token ~kind:(Token.Unknown c) ~span:(Ceibo.Span.make ~start ~end_)
 
 let tokenize_cursor = fun cursor ->
-  let attach_pending_trivia token pending_rev = Token.with_leading_trivia
-    token
-    (List.reverse_append pending_rev token.Token.leading_trivia) in
+  let attach_pending_trivia token pending_rev =
+    Token.with_leading_trivia token
+      (
+        let pending_count = List.length pending_rev in
+        let leading = token.Token.leading_trivia in
+        let trivia = Vector.with_capacity ~size:(pending_count + List.length leading) in
+        let rec push_pending = function
+          | [] -> ()
+          | item :: rest ->
+              push_pending rest;
+              Vector.push trivia ~value:item
+        in
+        push_pending pending_rev;
+        List.for_each leading ~fn:(fun item -> Vector.push trivia ~value:item);
+        Array.to_list (Vector.to_array trivia)
+      )
+  in
   let rec lex_all delim_stack pending_trivia_rev acc =
     yield ();
     let token = next cursor delim_stack in

@@ -23,30 +23,37 @@ let with_tempdir = fun prefix fn ->
   | Ok result -> result
   | Error err -> Error (IO.error_message err)
 
+let buffer_writer = fun buffer ->
+  let module Write = struct
+    type t = IO.Buffer.t
+
+    let write = fun buffer ~from ->
+      let len = IO.Buffer.readable_bytes from in
+      let _ = IO.Buffer.append_slice buffer (IO.Buffer.readable from) |> Result.expect ~msg:"failed to append writer buffer" in
+      Ok len
+
+    let write_vectored = fun buffer ~from ->
+      let written = ref 0 in
+      IO.IoVec.for_each from
+        ~fn:(fun segment ->
+          written := !written + IO.IoSlice.length segment;
+          let _ = IO.Buffer.append_slice buffer segment |> Result.expect ~msg:"failed to append writer iovec segment" in
+          ());
+      Ok !written
+
+    let flush = fun _buffer -> Ok ()
+  end in
+  IO.Writer.from_sink (module Write) buffer
+
+let capture_write = fun result ->
+  let buffer = IO.Buffer.create ~size:128 in
+  let writer = buffer_writer buffer in
+  Krasny.write ~writer result |> Result.expect ~msg:"write should render into the supplied writer";
+  IO.Buffer.contents buffer
+
 let capture_json_event = fun ~root event ->
   let buffer = IO.Buffer.create ~size:128 in
-  let writer =
-    let module Write = struct
-      type t = IO.Buffer.t
-
-      let write = fun buffer ~from ->
-        let len = IO.Buffer.readable_bytes from in
-        let _ = IO.Buffer.append_slice buffer (IO.Buffer.readable from) |> Result.expect ~msg:"failed to append writer buffer" in
-        Ok len
-
-      let write_vectored = fun buffer ~from ->
-        let written = ref 0 in
-        IO.IoVec.for_each from
-          ~fn:(fun segment ->
-            written := !written + IO.IoSlice.length segment;
-            let _ = IO.Buffer.append_slice buffer segment |> Result.expect ~msg:"failed to append writer iovec segment" in
-            ());
-        Ok !written
-
-      let flush = fun _buffer -> Ok ()
-    end in
-    IO.Writer.from_sink (module Write) buffer
-  in
+  let writer = buffer_writer buffer in
   Krasny.Report.write_json_event ~writer ~root event |> Result.expect ~msg:"failed to serialize json event";
   IO.Buffer.contents buffer |> String.trim
 
@@ -124,6 +131,72 @@ let tests = [
       let actual = parse_ml "" |> Krasny.format |> Result.expect ~msg:"empty files should still format" in
       Test.assert_equal ~expected:"" ~actual;
       Ok ());
+  Test.case "write renders formatted output into the supplied writer"
+    (fun _ctx ->
+      let source = "let x = 1 + 2\n" in
+      let parsed = parse_ml source in
+      let expected = Krasny.format parsed |> Result.expect ~msg:"format should render the same source" in
+      let actual = capture_write parsed in
+      Test.assert_equal ~expected ~actual;
+      Ok ());
+  Test.case "write matches format for generated table records"
+    (fun _ctx ->
+      let source = {ocaml|let _co = {
+  r16 = [|{ lo = 0xe000; hi = 0xf8ff; stride = 1 };|];
+  r32 = [||];
+  latin_offset = 0
+}
+|ocaml}
+      in
+      let parsed = parse_ml source in
+      let expected = Krasny.format parsed |> Result.expect ~msg:"format should render generated table record" in
+      let actual = capture_write parsed in
+      Test.assert_equal ~expected ~actual;
+      Ok ());
+  Test.case "write matches format for try expressions"
+    (fun _ctx ->
+      let source = {ocaml|let value = try read () with | Failure -> 0
+|ocaml}
+      in
+      let parsed = parse_ml source in
+      let expected = Krasny.format parsed |> Result.expect ~msg:"format should render try expressions" in
+      let actual = capture_write parsed in
+      Test.assert_equal ~expected ~actual;
+      Ok ());
+  Test.case "write matches format for lazy exception and interval patterns"
+    (fun ctx ->
+      let source = {ocaml|let force = function | lazy value -> value
+let recovered = match read () with | exception Failure -> 0 | value -> value
+let classify = function | 'a' .. 'z' -> 1 | _ -> 0
+|ocaml}
+      in
+      let parsed = parse_ml source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|let force = function
+  | lazy value -> value
+
+let recovered =
+  match read () with
+  | exception Failure -> 0
+  | value -> value
+
+let classify = function
+  | 'a' .. 'z' -> 1
+  | _ -> 0
+|ocaml});
+  Test.case "write formats polymorphic variants"
+    (fun ctx ->
+      let source = {ocaml|let classify = function | `Alpha -> `Seen | `Beta value -> value
+|ocaml}
+      in
+      let parsed = parse_ml source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|let classify = function
+  | `Alpha -> `Seen
+  | `Beta value -> value
+|ocaml});
   Test.case "format keeps explicit fun rhs bindings explicit"
     (fun _ctx ->
       let source = "let id = fun x -> x\n" in
@@ -1414,7 +1487,7 @@ module M = struct end
               ~on_result:(fun file_result -> seen := Path.to_string file_result.file :: !seen)
               ()
           in
-          Test.assert_equal ~expected:[ Path.to_string keep ] ~actual:(List.rev !seen);
+          Test.assert_equal ~expected:[ Path.to_string keep ] ~actual:(List.reverse !seen);
           Test.assert_equal ~expected:1 ~actual:result.summary.total_files;
           Ok ()));
   Test.case "streaming runner scans roots and streams file results"

@@ -24,14 +24,8 @@ let to_string = fun value ->
   | Bytes value -> Kernel.Bytes.to_string value
 
 let format = fun values ->
-  let rec reverse_append left right =
-    match left with
-    | [] -> right
-    | value :: rest -> reverse_append rest (value :: right)
-  in
-  let rec collect acc remaining =
-    match remaining with
-    | [] -> Kernel.String.concat "" (reverse_append acc [])
-    | value :: rest -> collect (to_string value :: acc) rest
-  in
-  collect [] values
+  let parts = Collections.Vector.with_capacity ~size:(Kernel.List.length values) in
+  Kernel.List.for_each
+    values
+    ~fn:(fun value -> Collections.Vector.push parts ~value:(to_string value));
+  Kernel.String.concat "" (Collections.Array.to_list (Collections.Vector.to_array parts))

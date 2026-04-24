@@ -566,9 +566,13 @@ let rec diff = fun a b ->
     | _ -> [ { Diff.path; kind = Diff.Changed (a, b) } ]
   and diff_arrays path xs ys =
     let max_len = max (List.length xs) (List.length ys) in
-    let rec loop acc idx =
+    let diffs_acc = Vector.with_capacity ~size:max_len in
+    let push_diffs diffs =
+      List.for_each diffs ~fn:(fun diff -> Vector.push diffs_acc ~value:diff)
+    in
+    let rec loop idx =
       if idx >= max_len then
-        List.reverse acc
+        Array.to_list (Vector.to_array diffs_acc)
       else
         let x_opt = List.get xs ~at:idx in
         let y_opt = List.get ys ~at:idx in
@@ -576,17 +580,20 @@ let rec diff = fun a b ->
         match (x_opt, y_opt) with
         | Some x, Some y ->
             let diffs = diff_at_path idx_path x y in
-            loop (List.reverse_append diffs acc) (idx + 1)
+            push_diffs diffs;
+            loop (idx + 1)
         | Some x, None ->
             let diff = { Diff.path = idx_path; kind = Diff.Removed x } in
-            loop (diff :: acc) (idx + 1)
+            Vector.push diffs_acc ~value:diff;
+            loop (idx + 1)
         | None, Some y ->
             let diff = { Diff.path = idx_path; kind = Diff.Added y } in
-            loop (diff :: acc) (idx + 1)
+            Vector.push diffs_acc ~value:diff;
+            loop (idx + 1)
         | None, None ->
-            loop acc (idx + 1)
+            loop (idx + 1)
     in
-    loop [] 0
+    loop 0
   and diff_objects path xs ys =
     let all_keys =
       let xs_keys =
@@ -597,9 +604,13 @@ let rec diff = fun a b ->
       in
       List.unique ~compare:String.compare (List.sort (xs_keys @ ys_keys) ~compare:String.compare)
     in
-    let rec loop acc keys =
+    let diffs_acc = Vector.with_capacity ~size:(List.length all_keys) in
+    let push_diffs diffs =
+      List.for_each diffs ~fn:(fun diff -> Vector.push diffs_acc ~value:diff)
+    in
+    let rec loop keys =
       match keys with
-      | [] -> List.reverse acc
+      | [] -> Array.to_list (Vector.to_array diffs_acc)
       | key :: rest ->
           let x_opt = List.find xs ~fn:(fun (item_key, _) -> item_key = key)
           |> Option.map ~fn:(fun (_, value) -> value) in
@@ -613,8 +624,9 @@ let rec diff = fun a b ->
             | None, Some y -> [ { Diff.path = key_path; kind = Diff.Added y } ]
             | None, None -> []
           in
-          loop (List.reverse_append new_diffs acc) rest
+          push_diffs new_diffs;
+          loop rest
     in
-    loop [] all_keys
+    loop all_keys
   in
   diff_at_path [] a b

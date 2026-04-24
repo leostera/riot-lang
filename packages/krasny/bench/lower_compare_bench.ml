@@ -1,12 +1,62 @@
 open Std
+open Std.Collections
 
-type fixture = {
+type source_fixture = {
   name: string;
   path: Path.t;
   source: string;
 }
 
+type fixture = {
+  fixture_name: string;
+  fixture_path: Path.t;
+  old_source_file: Syn.Cst.SourceFile.t;
+  new_source_file: Syn.Ast2.SourceFile.t;
+}
+
 let checksum = ref 0
+
+let touch_int = fun value -> checksum := !checksum lxor value
+
+let build_cst_error_to_string = function
+  | Syn.Parse_diagnostics diagnostics -> "parse diagnostics: "
+  ^ Int.to_string (List.length diagnostics)
+  | Syn.Cst_builder_error err -> "CST builder error: " ^ err.Syn.CstBuilder.message
+
+let parse2_diagnostics_to_string = fun diagnostics ->
+  let count = Vector.length diagnostics in
+  if count = 0 then
+    "parse2 diagnostics prevented lowering"
+  else
+    let first = Vector.get_unchecked diagnostics ~at:0 |> Syn.Diagnostic.to_string in
+    if count = 1 then
+      first
+    else
+      first ^ " (+" ^ Int.to_string (count - 1) ^ " more)"
+
+let source_slice = fun source -> IO.IoVec.IoSlice.from_string source |> Result.expect ~msg:"failed to create lower benchmark source slice"
+
+let parse1_source_file = fun ~path source ->
+  let parsed = Syn.parse ~filename:path source in
+  match Syn.build_cst parsed with
+  | Ok source_file -> source_file
+  | Error error -> panic
+    ("lower benchmark failed to build CST for "
+    ^ Path.to_string path
+    ^ ": "
+    ^ build_cst_error_to_string error)
+
+let parse2_source_file = fun ~path source ->
+  let parsed = Syn.parse2 ~filename:path (source_slice source) in
+  let diagnostics = parsed.Syn.Parser2.diagnostics in
+  if Vector.length diagnostics > 0 then
+    panic
+      ("lower benchmark failed to parse2 "
+      ^ Path.to_string path
+      ^ ": "
+      ^ parse2_diagnostics_to_string diagnostics)
+  else
+    Syn.Ast2.SourceFile.make parsed.Syn.Parser2.tree
 
 let make_fixture = fun ~name ~path source -> { name; path; source }
 
@@ -15,12 +65,44 @@ let load_fixture = fun ~name path ->
   |> Result.expect ~msg:("failed to read lower benchmark fixture: " ^ Path.to_string path) in
   make_fixture ~name ~path source
 
-let touch_formatted = fun formatted -> checksum := !checksum lxor String.length formatted
+let prepare_fixture = fun fixture ->
+  {
+    fixture_name = fixture.name;
+    fixture_path = fixture.path;
+    old_source_file = parse1_source_file ~path:fixture.path fixture.source;
+    new_source_file = parse2_source_file ~path:fixture.path fixture.source
+  }
 
-let bench_format = fun fixture ->
-  let parsed = Krasny.parse_source ~filename:fixture.path fixture.source in
-  let formatted = Krasny.format parsed |> Result.expect ~msg:"benchmark source should format" in
-  touch_formatted formatted
+let touch_old_doc = function
+  | Krasny.Doc.Empty -> touch_int 0
+  | Krasny.Doc.Text text
+  | Krasny.Doc.RawText text -> touch_int (String.length text)
+  | Krasny.Doc.Slice slice -> touch_int (IO.IoVec.IoSlice.length slice.value)
+  | Krasny.Doc.Space -> touch_int 1
+  | Krasny.Doc.Spaces count -> touch_int count
+  | Krasny.Doc.Line -> touch_int 2
+  | Krasny.Doc.Break flat -> touch_int (String.length flat)
+  | Krasny.Doc.Group _ -> touch_int 3
+  | Krasny.Doc.Concat docs -> touch_int (Vector.length docs)
+  | Krasny.Doc.Indent (spaces, _) -> touch_int spaces
+
+let lower1 = fun fixture ->
+  match Krasny.Lower.source_file fixture.old_source_file with
+  | Ok doc -> touch_old_doc doc
+  | Error error -> panic
+    ("lower benchmark failed to lower1 "
+    ^ Path.to_string fixture.fixture_path
+    ^ ": "
+    ^ Krasny.Lower.error_to_string error)
+
+let format2_from_ast = fun fixture ->
+  match Krasny.Lower2.source_file fixture.new_source_file with
+  | Ok formatted -> touch_int (String.length formatted)
+  | Error error -> panic
+    ("lower benchmark failed to format2 from ast "
+    ^ Path.to_string fixture.fixture_path
+    ^ ": "
+    ^ Krasny.Lower2.error_to_string error)
 
 let tiny_config: Bench.bench_config = { iterations = 2_000; warmup = 100 }
 
@@ -28,10 +110,17 @@ let small_config: Bench.bench_config = { iterations = 500; warmup = 50 }
 
 let medium_config: Bench.bench_config = { iterations = 100; warmup = 10 }
 
-let compare_fixture = fun ~config fixture ->
-  Bench.with_config ~config ("krasny format: " ^ fixture.name) (fun () -> bench_format fixture)
+let compare_fixture = fun ~config fixture -> (config, fixture)
 
-let benchmarks = [
+let benchmark_fixture = fun ~config fixture ->
+  Bench.compare
+    ("krasny lower: " ^ fixture.fixture_name)
+    [
+      Bench.make_case_with_config ~config "old" (fun () -> lower1 fixture);
+      Bench.make_case_with_config ~config "new" (fun () -> format2_from_ast fixture);
+    ]
+
+let source_fixtures = [
   compare_fixture
     ~config:tiny_config
     (make_fixture ~name:"tiny let binding" ~path:(Path.v "sample.ml") "let x = 1 + 2\n");
@@ -152,10 +241,15 @@ let benchmarks = [
       (Path.v "packages/krasny/tests/fixtures/0981_top_level_letrec_blank_line.ml"));
 ]
 
+let benchmarks = fun () ->
+  List.map
+    source_fixtures
+    ~fn:(fun (config, source_fixture) -> source_fixture |> prepare_fixture |> benchmark_fixture ~config)
+
 let () =
   Runtime.run
     ~main:(fun ~args ->
-      let result = Bench.Cli.main ~name:"krasny lower comparison" ~benchmarks ~args in
+      let result = Bench.Cli.main ~name:"krasny lower comparison" ~benchmarks:(benchmarks ()) ~args in
       if !checksum = Int.min_int then
         panic "unreachable lower benchmark checksum";
       result)

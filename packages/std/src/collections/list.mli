@@ -1,17 +1,11 @@
 type 'value t = 'value list
 val length: 'value list -> int
 
-val compare_lengths: left:'left list -> right:'right list -> int
-
 val is_empty: 'value list -> bool
 
 val append: 'value list -> 'value list -> 'value list
 
 val reverse: 'value list -> 'value list
-
-val rev: 'value list -> 'value list
-
-val reverse_append: 'value list -> 'value list -> 'value list
 
 val concat: 'value list list -> 'value list
 

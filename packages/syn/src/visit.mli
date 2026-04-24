@@ -46,7 +46,7 @@ open Std
             walk.descend_expression expressions expr);
       }
     in
-    Syn.Visit.source_file visitor [] source_file |> List.rev
+    Syn.Visit.source_file visitor [] source_file |> List.reverse
     ```
 
     Example: inspect `let` bindings but skip their bodies entirely.
@@ -63,7 +63,7 @@ open Std
             | None -> names);
       }
     in
-    Syn.Visit.source_file visitor [] source_file |> List.rev
+    Syn.Visit.source_file visitor [] source_file |> List.reverse
     ```
 
     Example: traverse an `if` expression in a custom order.

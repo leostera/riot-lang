@@ -151,6 +151,57 @@ let test_append = fun _ctx ->
   else
     Error "expected append to move right into left and clear right"
 
+let test_concat = fun _ctx ->
+  let left = Vector.from_list [ 1; 2 ] in
+  let right = Vector.from_list [ 3; 4 ] in
+  let combined = Vector.concat left right in
+  if
+    Array.to_list (Vector.to_array combined) = [ 1; 2; 3; 4 ]
+    && Array.to_list (Vector.to_array left) = [ 1; 2 ]
+    && Array.to_list (Vector.to_array right) = [ 3; 4 ]
+  then
+    Ok ()
+  else
+    Error "expected concat to copy both vectors without mutating inputs"
+
+let test_concat_empty = fun _ctx ->
+  let left = Vector.concat (Vector.create ()) (Vector.from_list [ 1 ]) in
+  let right = Vector.concat (Vector.from_list [ 1 ]) (Vector.create ()) in
+  if Array.to_list (Vector.to_array left) = [ 1 ] && Array.to_list (Vector.to_array right) = [ 1 ] then
+    Ok ()
+  else
+    Error "expected concat to handle empty inputs"
+
+let test_push_unchecked = fun _ctx ->
+  let vector = Vector.with_capacity ~size:2 in
+  Vector.push_unchecked vector ~value:1;
+  Vector.push_unchecked vector ~value:2;
+  if Array.to_list (Vector.to_array vector) = [ 1; 2 ] then
+    Ok ()
+  else
+    Error "expected push_unchecked to append without changing value order"
+
+let test_extend = fun _ctx ->
+  let left = Vector.from_list [ 1; 2 ] in
+  let right = Vector.from_list [ 3; 4 ] in
+  Vector.extend left right;
+  if
+    Array.to_list (Vector.to_array left) = [ 1; 2; 3; 4 ]
+    && Array.to_list (Vector.to_array right) = [ 3; 4 ]
+  then
+    Ok ()
+  else
+    Error "expected extend to mutate left and keep right unchanged"
+
+let test_extend_empty = fun _ctx ->
+  let left = Vector.from_list [ 1 ] in
+  let right = Vector.create () in
+  Vector.extend left right;
+  if Array.to_list (Vector.to_array left) = [ 1 ] && Vector.is_empty right then
+    Ok ()
+  else
+    Error "expected extend to handle an empty right vector"
+
 let test_split_off = fun _ctx ->
   let vector = Vector.from_list [ 1; 2; 3; 4 ] in
   let tail = Vector.split_off vector ~at:2 in
@@ -211,6 +262,11 @@ let tests =
     case "Vector.truncate past length reports out of bounds" test_truncate_past_length;
     case "Vector.reserve increases capacity" test_reserve;
     case "Vector.append moves right into left and clears right" test_append;
+    case "Vector.concat copies inputs in order" test_concat;
+    case "Vector.concat handles empty inputs" test_concat_empty;
+    case "Vector.push_unchecked appends within capacity" test_push_unchecked;
+    case "Vector.extend mutates left and keeps right" test_extend;
+    case "Vector.extend handles empty right" test_extend_empty;
     case "Vector.split_off divides prefix and tail" test_split_off;
     case "Vector.sort orders values ascending" test_sort;
     case "Vector.reverse flips value order" test_reverse;

@@ -6,7 +6,13 @@ type format_error = Format_core.format_error =
   | Cannot_parse of Syn.Diagnostic.t Vector.t
   | Cannot_lower of string
 
+type write_error = Format_core.write_error =
+  | Format_failed of format_error
+  | Write_failed of IO.error
+
 module Doc = Doc
+module Stream_doc = Stream_doc
+module Streaming_lower = Streaming_lower
 module Solver = Solver
 module Printer = Printer
 module Lower = Lower
@@ -28,9 +34,4 @@ let syntax_hash = Runner.syntax_hash2
 
 let syntax_hash_source = fun ~filename source -> parse_source ~filename source |> syntax_hash
 
-let write = fun ~writer result ->
-  match format result with
-  | Error err -> Error (`Format err)
-  | Ok formatted ->
-      let buffer = IO.Buffer.from_string formatted in
-      IO.write_all writer ~from:buffer |> Result.map_err ~fn:(fun err -> `Write err)
+let write = Format_core.write

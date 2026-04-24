@@ -891,7 +891,7 @@ let test_trailing_sequence_before_and_views = fun _ctx ->
   in
   let bindings = ref [] in
   Ast2.LetDeclaration.for_each_binding decl ~fn:(fun binding -> bindings := binding :: !bindings);
-  match List.rev !bindings with
+  match List.reverse !bindings with
   | [f_binding;g_binding] ->
       let assert_trailing_sequence binding expected_name =
         let pattern = pattern_of_binding binding |> Result.expect ~msg:"expected binding pattern" in
