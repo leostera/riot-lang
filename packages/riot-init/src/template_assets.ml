@@ -42,18 +42,20 @@ higher priority than this generic user skill.
   workspace.
 - Read [references/workspaces.md](references/workspaces.md) for the workspace,
   package, and config-file mental model.
+- Read [references/modules.md](references/modules.md) when a task touches module
+  visibility, public APIs, or dependency boundaries.
 
 ### Add or update dependencies
 
 - Use `riot add <package>`.
 - Use `riot rm <package>`.
-- Use `riot update` or `riot update <package>`.
+- Use `riot update` to re-resolve the workspace and refresh `riot.lock`.
 - Prefer changing Riot manifests over introducing a second dependency workflow.
 
 ### Build or typecheck
 
 - Use `riot build` for the full workspace.
-- Use `riot build <package>` when the task is package-local.
+- Use `riot build -p <package>` when the task is package-local.
 - Use `riot check` when the task is primarily about typing rather than a full
   build.
 - Read [references/commands.md](references/commands.md) for command patterns.
@@ -68,16 +70,21 @@ higher priority than this generic user skill.
 ### Run tests or benchmarks
 
 - Use `riot test` for the default test pass.
-- Use `riot test <query>` to filter cases by name.
-- Use `riot test <package:suite>` to narrow suite discovery.
+- Use `riot test -p <package>` to narrow by package.
+- Use `riot test -f <query>` to filter suites and cases by substring.
 - Use `riot bench` for benchmarks.
-- Read [references/testing.md](references/testing.md) for selector and policy
-  details.
+- Use `riot bench -p <package> -f <query>` for focused benchmarks.
+- Read [references/testing.md](references/testing.md) for test authoring and
+  selector details.
+- Read [references/benchmarking.md](references/benchmarking.md) for benchmark
+  authoring, `--warmup`, `--record`, and `--compare`.
 
 ### Troubleshoot
 
 - First check root detection, selector shape, and build-lane assumptions.
 - Then check config file placement and target-dir assumptions.
+- For module availability errors, read [references/modules.md](references/modules.md)
+  before changing manifests or imports.
 - Read [references/troubleshooting.md](references/troubleshooting.md).
 
 ## Core rules
@@ -96,11 +103,11 @@ higher priority than this generic user skill.
 
 ## Command selection rules
 
-- If the user asks whether one package builds, start with `riot build <package>`
+- If the user asks whether one package builds, start with `riot build -p <package>`
   before `riot build`.
 - If the user asks about one binary, prefer `riot run -p <package> <binary>`
   over guessing an artifact path.
-- If the user asks about one failing suite, prefer `riot test <package:suite>`
+- If the user asks about one failing suite, prefer `riot test -p <package> -f <suite>`
   before a workspace-wide `riot test`.
 - If the user asks for machine-readable output, prefer Riot commands with
   `--json` instead of scraping pretty text.
@@ -110,8 +117,9 @@ higher priority than this generic user skill.
 ## Testing and selection rules
 
 - Use `-p` or `--package` for package narrowing when the command supports it.
-- For `riot test`, `package:suite` narrows suite discovery.
-- Plain trailing query text filters test-case names.
+- For `riot test` and `riot bench`, use `-f` or `--filter` to filter suites and
+  cases by substring.
+- Without `-p`, a filter shaped like `package:suite` narrows suite discovery.
 - `riot test --small`, `riot test --large`, and `riot test --flaky` partition
   the matched case set.
 - Repository-shared test policy lives in `.riot/config.toml` under
@@ -121,10 +129,14 @@ higher priority than this generic user skill.
 
 - Read [references/workspaces.md](references/workspaces.md) for workspace roots,
   detached packages, manifests, and output directories.
+- Read [references/modules.md](references/modules.md) for Riot's module graph,
+  direct dependency visibility, and target privacy rules.
 - Read [references/commands.md](references/commands.md) for practical command
   patterns.
-- Read [references/testing.md](references/testing.md) for test and benchmark
-  workflows.
+- Read [references/testing.md](references/testing.md) for test authoring and
+  selection workflows.
+- Read [references/benchmarking.md](references/benchmarking.md) for benchmark
+  authoring, selection, recording, and comparison workflows.
 - Read [references/troubleshooting.md](references/troubleshooting.md) when Riot
   behavior looks surprising.
 |};
@@ -162,23 +174,39 @@ riot new packages/my-package
 
 ## Dependencies
 
-Add a dependency:
+Add a runtime dependency to the current package:
 
 ```sh
 riot add std
 ```
 
-Remove a dependency:
+Add to a specific manifest or scope:
+
+```sh
+riot add -p my-package serde-json
+riot add --workspace std
+riot add --dev propane
+riot add --build codegen-tool
+```
+
+Remove a dependency from the current package:
 
 ```sh
 riot rm std
+```
+
+Remove from a specific manifest or scope:
+
+```sh
+riot rm -p my-package serde-json
+riot rm --workspace std
+riot rm --dev propane
 ```
 
 Refresh dependencies:
 
 ```sh
 riot update
-riot update std
 ```
 
 ## Build and typecheck
@@ -192,7 +220,37 @@ riot build
 Build one package:
 
 ```sh
-riot build my-package
+riot build -p my-package
+```
+
+Build several packages:
+
+```sh
+riot build -p app -p worker
+```
+
+Compile development artifacts:
+
+```sh
+riot build --tests
+riot build --examples
+riot build --benches
+riot build --all
+```
+
+Build for another target or all configured targets:
+
+```sh
+riot build -x linux
+riot build -x aarch64-apple-darwin
+riot build --all-targets
+```
+
+Use release profile or limit parallelism:
+
+```sh
+riot build --release
+riot build -j 4
 ```
 
 Typecheck the workspace or a package:
@@ -200,6 +258,8 @@ Typecheck the workspace or a package:
 ```sh
 riot check
 riot check -p my-package
+riot check --json
+riot check --explain TYP2001
 ```
 
 When the task is narrow, prefer package-scoped commands before workspace-wide
@@ -219,6 +279,13 @@ Disambiguate by package:
 riot run -p my-package my-binary
 ```
 
+List runnable binaries:
+
+```sh
+riot run --list
+riot run --list --json
+```
+
 Forward args after `--`:
 
 ```sh
@@ -229,6 +296,7 @@ Riot can also run remote sources:
 
 ```sh
 riot run leostera/create-riot-app
+riot run --update leostera/create-riot-app
 ```
 
 ## Tests and benchmarks
@@ -242,13 +310,33 @@ riot test
 Filter by test-case name:
 
 ```sh
-riot test parser
+riot test -f parser
 ```
 
-Narrow by suite:
+Narrow by package or repeat the package flag:
 
 ```sh
-riot test my-package:parser_tests
+riot test -p my-package
+riot test -p app -p worker
+```
+
+Filter within a package:
+
+```sh
+riot test -p my-package -f parser
+```
+
+Narrow by suite without a package flag:
+
+```sh
+riot test -f my-package:parser_tests
+```
+
+List matched suites and cases without running them:
+
+```sh
+riot test --list
+riot test -p my-package -f parser --list
 ```
 
 Run only small, large, or flaky cases:
@@ -263,8 +351,21 @@ Run benchmarks:
 
 ```sh
 riot bench
-riot bench hashmap
+riot bench -p my-package
+riot bench -p my-package -f hashmap
+riot bench --list
 ```
+
+Benchmark run controls:
+
+```sh
+riot bench --iterations 100 --warmup 10
+riot bench --record
+riot bench --compare 5
+```
+
+Read [benchmarking.md](benchmarking.md) before recording or comparing benchmark
+history.
 
 ## Formatting and fixes
 
@@ -272,6 +373,8 @@ Check formatting:
 
 ```sh
 riot fmt --check
+riot fmt --check --json
+riot fmt --verify
 ```
 
 Apply or inspect fixes:
@@ -279,6 +382,35 @@ Apply or inspect fixes:
 ```sh
 riot fix --check .
 riot fix --apply .
+riot fix --list-rules
+riot fix --list-diagnostics
+```
+
+## Docs, cleanup, and publishing
+
+Generate docs:
+
+```sh
+riot doc -p my-package
+riot doc --all
+riot doc --release
+riot doc --output docs
+```
+
+Clean build outputs:
+
+```sh
+riot clean
+riot clean --force
+```
+
+Publish packages:
+
+```sh
+riot publish --dry-run
+riot publish -p my-package
+riot publish --workspace
+riot publish --skip-check
 ```
 
 ## Machine-readable output
@@ -291,20 +423,24 @@ riot build --json
 riot test --json
 riot bench --json
 riot fmt --check --json
+riot fix --check --json .
+riot doc --json
+riot clean --json
+riot info --json
 ```
 |};
     executable = false;
   }; {
     relative_path = ".agents/skills/riot/references/testing.md";
     content =
-      {|# Testing and benchmarking
+      {|# Testing
 
-Use this reference when the task involves `riot test`, `riot bench`, suite
-selection, or repository-shared test policy.
+Use this reference when the task involves writing tests, running `riot test`,
+reviewing snapshots, suite selection, or repository-shared test policy.
 
 ## Mental model
 
-At the top level, `riot test` and `riot bench` are Riot commands that:
+At the top level, `riot test` is a Riot command that:
 
 1. build the needed packages once
 2. discover suite binaries
@@ -317,22 +453,106 @@ That means the right user workflow is usually:
 - then narrow by query if needed
 - use `--json` when tooling needs structured results
 
+## Writing unit tests
+
+Use `Std.Test` for normal package tests. Keep unit tests focused on one behavior
+and return `Ok ()` or `Error msg`.
+
+```ocaml
+open Std
+
+let test_adds_numbers = fun _ctx ->
+  Test.assert_equal ~expected:4 ~actual:(2 + 2);
+  Ok ()
+
+let tests = Test.[
+  case "adds numbers" test_adds_numbers;
+]
+
+let () =
+  Runtime.run
+    ~main:(fun ~args -> Test.Cli.main ~name:"math_tests" ~tests ~args ())
+    ~args:Env.args
+    ()
+```
+
+Use `Test.case ~size:Test.Large` for slow or integration-heavy tests. Use
+`Test.case ~reliability:Test.(Flaky { retry_attempts = 2 })` only when the
+behavior is intentionally flaky and retry policy is part of the contract.
+
+## Writing e2e tests
+
+Use e2e tests for black-box behavior that needs real files, commands, or a
+temporary workspace. Mark them large by default:
+
+```ocaml
+let test_cli_smoke = fun _ctx ->
+  (* Create a temp workspace, run the command, then assert on status, files, and
+     key output fragments. *)
+  Ok ()
+
+let tests = Test.[
+  case ~size:Large "cli smoke" test_cli_smoke;
+]
+```
+
+Prefer semantic assertions over whole-output snapshots: check exit status,
+important output fragments, created files, and follow-up command behavior.
+
+## Snapshot tests
+
+Use snapshots when the output is intentionally large or text-shaped, such as
+formatted code, diagnostics, generated files, or serialized JSON.
+
+```ocaml
+let test_rendered_output = fun ctx ->
+  Test.Snapshot.assert_text ~ctx ~actual:(render ())
+```
+
+Use inline snapshots for short expected values that should stay in the test
+file:
+
+```ocaml
+let test_inline_output = fun ctx ->
+  Test.Snapshot.assert_inline_text
+    ~ctx
+    ~actual:"hello\n"
+    ~expected:"hello\n"
+```
+
+External snapshots write pending `*.expected.new` files when output changes.
+Review them before approving:
+
+```sh
+riot snapshots review
+riot snapshots approve
+riot snapshots reject
+```
+
 ## Test selection
 
 These are different selectors:
 
 - `riot test`
   Runs the default test set.
-- `riot test <query>`
-  Filters test cases by substring.
-- `riot test <package:suite>`
-  Narrows suite discovery before running cases.
+- `riot test -p <package>`
+  Runs tests from one package. Repeat `-p` to select multiple packages.
+- `riot test -f <query>`
+  Filters suites and cases by substring.
+- `riot test -p <package> -f <query>`
+  Filters within the selected package or packages.
+- `riot test -f <package:suite>`
+  Narrows suite discovery when no `-p` filter is present.
+- `riot test --list`
+  Lists matched suites and cases without running them.
 - `riot test --small`
   Runs only cases marked small.
 - `riot test --large`
   Runs only cases marked large.
 - `riot test --flaky`
   Runs only cases marked flaky.
+- `riot test --release`
+  Builds and runs tests with the release profile.
 
 Do not confuse package or suite selection with case-name selection.
 
@@ -358,12 +578,7 @@ typically expose subcommands such as:
 - `list-tests`
 - `run-tests [query]`
 
-Benchmark binaries similarly expose:
-
-- `list-benchmarks`
-- `run-benchmarks [query]`
-
-Most user tasks should still go through `riot test` or `riot bench` first.
+Most user tasks should still go through `riot test` first.
 
 ## When to use `--json`
 
@@ -377,8 +592,125 @@ Examples:
 
 ```sh
 riot test --json
-riot bench --json
+riot test -p my-package -f parser --json
 ```
+|};
+    executable = false;
+  }; {
+    relative_path = ".agents/skills/riot/references/benchmarking.md";
+    content =
+      {|# Benchmarking
+
+Use this reference when the task involves writing benchmarks, running
+`riot bench`, recording benchmark history, or comparing performance over time.
+
+## Writing benchmarks
+
+Use `Std.Bench` for benchmark suites. Keep each benchmark body focused on the
+operation being measured, and prepare large fixtures outside the measured
+function when possible.
+
+```ocaml
+open Std
+
+let bench_push () =
+  let values = Collections.Vector.create () in
+  Collections.Vector.push values 42
+
+let benchmarks = Bench.[
+  case "vector push" bench_push;
+  with_config
+    ~config:{ iterations = 1_000; warmup = 50 }
+    "vector push configured"
+    bench_push;
+]
+
+let () =
+  Runtime.run
+    ~main:(fun ~args -> Bench.Cli.main ~name:"vector_bench" ~benchmarks ~args)
+    ~args:Env.args
+    ()
+```
+
+Use comparison benchmarks when several implementations answer the same question:
+
+```ocaml
+let benchmarks = Bench.[
+  compare_with_config
+    ~config:{ iterations = 100; warmup = 10 }
+    "lookup"
+    [
+      make_case "HashMap" bench_hashmap_lookup;
+      make_case "Vector scan" bench_vector_scan;
+    ];
+]
+```
+
+## Running benchmarks
+
+Start narrow and use package filters when possible:
+
+```sh
+riot bench
+riot bench -p my-package
+riot bench -p my-package -f lookup
+riot bench --list
+```
+
+Without `-p`, a filter shaped like `package:suite` narrows suite discovery:
+
+```sh
+riot bench -f my-package:vector_bench
+```
+
+## Iterations and warmup
+
+Benchmark cases can set their own `iterations` and `warmup` counts. CLI flags
+override those counts for the matched run:
+
+```sh
+riot bench -p my-package -f lookup --iterations 200 --warmup 20
+```
+
+Use warmup to let caches, JIT-like runtime paths, and one-time setup noise settle
+before measurement. Increase iterations when measurements are too noisy or when
+comparing small operations.
+
+## Recording and comparing history
+
+Benchmark history is opt-in. Use `--record` when a run should be persisted under
+`.riot/bench` for future comparison:
+
+```sh
+riot bench -p my-package -f lookup --record
+```
+
+Use `--compare <n>` to show up to `n` previous comparable suite runs alongside
+the current result:
+
+```sh
+riot bench -p my-package -f lookup --compare 5
+```
+
+Comparable runs match by package, suite, profile, target, and benchmark case
+name. Use stable benchmark names so history can line up across runs.
+
+## JSON and direct suite debugging
+
+Use `--json` for tooling:
+
+```sh
+riot bench -p my-package -f lookup --json
+```
+
+If you are debugging the generated benchmark binary directly, benchmark suites
+typically expose:
+
+- `list-benchmarks`
+- `run-benchmarks [query]`
+
+Most user tasks should still go through `riot bench` first so Riot can build the
+workspace once and pass the right context to each suite.
 |};
     executable = false;
   }; {
@@ -428,8 +760,8 @@ Symptoms:
 Checks:
 
 - use `-p` or `--package` for package narrowing when supported
-- use `package:suite` to narrow suite discovery
-- use plain trailing text for a test-case query
+- use `-f` or `--filter` for suite and case-name filtering
+- without `-p`, use `-f package:suite` to narrow suite discovery
 - use `--small`, `--large`, and `--flaky` only for case policy filtering
 
 ## Config-placement problems
@@ -493,6 +825,11 @@ Use it for things like:
 - binaries and libraries
 - build profiles
 - build-path settings such as `[riot].target_dir`
+
+Dependency declarations also define module visibility. Source files may use the
+current package modules and the public modules of direct dependencies only. Read
+[modules.md](modules.md) before adding a dependency just to quiet a module
+availability error.
 
 ### `.riot/config.toml`
 
@@ -572,6 +909,90 @@ Riot can treat that as the default runtime binary for the package.
 
 That means `riot run` may work without extra manifest boilerplate when the
 package layout is conventional.
+|};
+    executable = false;
+  }; {
+    relative_path = ".agents/skills/riot/references/modules.md";
+    content =
+      {|# Module system and dependency boundaries
+
+Use this reference when a build fails because a module is unavailable, when you
+are changing package dependencies, or when source files cross package or target
+boundaries.
+
+## Mental model
+
+Riot plans builds from a module graph. Each source file may depend on:
+
+- modules from the same package
+- public top-level modules from direct dependencies
+- regular dependencies plus dev-dependencies when planning test or benchmark
+  targets
+
+Riot does not expose transitive dependencies. If package `app` depends on
+`std`, and `std` depends on `kernel`, `app` may use `Std` but may not use
+`Kernel` unless `app` declares `kernel` as a direct dependency. Prefer the
+public API of the direct dependency when that is the intended abstraction.
+
+## Direct dependency examples
+
+Allowed:
+
+```ocaml
+let path = Std.Path.v "riot.toml"
+```
+
+Not allowed when the package only depends on `std`:
+
+```ocaml
+let path = Kernel.Path.v "riot.toml"
+```
+
+Allowed for tests when `std` is in `[dependencies]`:
+
+```ocaml
+let test_path = Std.Path.v "fixtures/input.txt"
+```
+
+Dev-dependencies add extra modules for test and benchmark planning, but they do
+not replace regular dependencies. Tests inherit normal package dependencies and
+can also use modules from `[dev-dependencies]`.
+
+## Public package modules
+
+Use the top-level module exposed by the dependency package. For example, a
+package that depends on `serde-json` should normally reach JSON APIs through
+`Serde_json`. It should not import modules from packages that `serde-json`
+happens to depend on unless those packages are also direct dependencies.
+
+If a package should expose a helper from one of its dependencies, add that
+helper to the package's public module instead of having downstream packages
+reach through to the transitive dependency.
+
+## Package-local modules
+
+Modules in the same package can depend on each other directly. Keep reusable
+code in package library modules instead of in binary, test, or benchmark
+entrypoints.
+
+When a target needs shared code from the package, import it through the package
+library's public module. If the shared code only lives in another target
+entrypoint, move it into a library or helper module first.
+
+## Fixing module availability errors
+
+When Riot reports that a module is not available:
+
+1. Check whether the source is importing a transitive dependency directly.
+2. Prefer using the direct dependency's public module if it exports the API.
+3. Add a direct dependency only when the package really owns that dependency.
+4. For tests or benchmarks, put test-only packages in `[dev-dependencies]`.
+5. Move target-shared code into the package library rather than importing one
+   target entrypoint from another.
+
+Do not work around these errors by guessing build paths or manually invoking the
+compiler. The module graph is Riot's source of truth for what the package is
+allowed to use.
 |};
     executable = false;
   }; ]
