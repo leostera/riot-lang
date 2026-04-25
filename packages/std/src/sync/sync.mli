@@ -11,7 +11,7 @@ open Kernel
      actor runtime instead of blocking the scheduler;
    - low-level atomics stay non-blocking;
    - mutable wrapper modules such as {!Cell}, {!OnceCell}, {!LazyCell}, and
-     {!RefCell} remain non-blocking local state helpers. 
+     {!RefCell} remain non-blocking local state helpers.
 *)
 module Atomic : sig
   type 'value t = 'value Kernel.Sync.Atomic.t

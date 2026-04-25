@@ -14,7 +14,7 @@ type tm = {
    Use `gettimeofday ()` for wall-clock seconds since the Unix epoch.
 
    This is for calendar conversion and timestamping, not elapsed-time measurement. Use
-   [Monotonic] for durations and scheduler timing. 
+   [Monotonic] for durations and scheduler timing.
 *)
 val gettimeofday: unit -> float
 
@@ -27,7 +27,7 @@ val gmtime: float -> tm
 (**
    Use `mktime tm` to convert local calendar fields back into a Unix timestamp.
 
-   The returned pair includes the normalized `tm` produced by the platform. 
+   The returned pair includes the normalized `tm` produced by the platform.
 *)
 val mktime: tm -> float * tm
 

@@ -10,7 +10,7 @@ open Suri
    - No client-side JavaScript framework needed
 
    Run with: riot run suri:liveview_counter
-   Then open: http://localhost:4000 
+   Then open: http://localhost:4000
 *)
 module Counter = struct
   let id = LiveView.id "counter"

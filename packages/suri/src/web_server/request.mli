@@ -1,7 +1,7 @@
 (**
    # HTTP Request Representation
 
-   Wraps the parsed HTTP request with body data and metadata. 
+   Wraps the parsed HTTP request with body data and metadata.
 *)
 open Std
 

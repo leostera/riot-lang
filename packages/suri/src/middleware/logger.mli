@@ -26,7 +26,7 @@
    2025-01-15 10:30:50 | WARN | GET /slow -> 200 in 1250ms
    2025-01-15 10:30:52 | WARN | GET /missing -> 404 in 0ms
    2025-01-15 10:30:55 | ERROR | GET /error -> 500 in 5ms
-   v} 
+   v}
 *)
 open Std
 
@@ -40,6 +40,6 @@ open Std
    GET / -> 200 in 1ms
    GET /api/users -> 200 in 5ms
    POST /api/login -> 401 in 2ms
-   v} 
+   v}
 *)
 val logger: Pipeline.middleware

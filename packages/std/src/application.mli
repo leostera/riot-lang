@@ -3,7 +3,7 @@ open Global
 
 (**
    Start a list of applications in dependency order.
-   Uses topological sort with cycle detection. 
+   Uses topological sort with cycle detection.
 *)
 type t = { name: string; deps: t list; start: unit -> (Pid.t, exn) result; stop: Pid.t -> unit }
 

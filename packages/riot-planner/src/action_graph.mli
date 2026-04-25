@@ -5,7 +5,6 @@ module G = Std.Graph.SimpleGraph
 
 (** Create an empty action graph *)
 type t
-
 val create: unit -> t
 
 (**
@@ -29,17 +28,28 @@ val hash_action_node: t -> Action_node.t -> Crypto.hash
 (**
    Map a module graph to an action graph and collect all outputs.
 
-   Each module node is transformed into an action node containing the 
+   Each module node is transformed into an action node containing the
    actions needed to build that module. The graph structure (dependencies)
    is preserved, so the action graph mirrors the module graph.
 
    Returns (action_graph, all_outputs) where all_outputs is the complete
    list of files produced by all actions.
 
-   This enables parallelization analysis: nodes without dependencies 
+   This enables parallelization analysis: nodes without dependencies
    between them can be built in parallel.
 *)
-val from_module_graph: ?analyzed_modules:(G.Node_id.t * Module_graph.analyzed_module) list -> package:Package.t -> profile:Profile.t -> ctx:Build_ctx.t -> toolchain:Riot_toolchain.t -> store:Riot_store.Store.t -> depset:Dependency.t list -> needs_unix:bool -> needs_dynlink:bool -> Module_node.t G.t -> t * Path.t list
+val from_module_graph:
+  ?analyzed_modules:(G.Node_id.t * Module_graph.analyzed_module) list ->
+  package:Package.t ->
+  profile:Profile.t ->
+  ctx:Build_ctx.t ->
+  toolchain:Riot_toolchain.t ->
+  store:Riot_store.Store.t ->
+  depset:Dependency.t list ->
+  needs_unix:bool ->
+  needs_dynlink:bool ->
+  Module_node.t G.t ->
+  t * Path.t list
 
 val add_node: t -> Action_node.action_spec -> Action_node.t
 
@@ -59,7 +69,7 @@ val to_action_list: t -> Action.t list
 
    The JSON representation is used as a persisted plan artifact for warm builds.
    It includes node-level package path context and the precomputed node hash so
-   cache-key identity is stable across process boundaries. 
+   cache-key identity is stable across process boundaries.
 *)
 val to_json: t -> Data.Json.t
 
@@ -68,7 +78,7 @@ val to_json: t -> Data.Json.t
 
    This function preserves each node's serialized hash and package path
    metadata rather than recomputing them. Recomputing can diverge from the
-   original Merkle graph and break action-cache lookup. 
+   original Merkle graph and break action-cache lookup.
 *)
 val from_json: Data.Json.t -> (t, string) Result.t
 

@@ -43,7 +43,7 @@
 
    (* Transform errors *) let config = Fs.read (Path.v "config.json") |>
    Result.map_err (fun _ -> "Config file not found") |> Result.and_then
-   parse_json |> Result.expect ~msg:"Failed to load configuration" ``` 
+   parse_json |> Result.expect ~msg:"Failed to load configuration" ```
 *)
 type ('a, 'e) t = ('a, 'e) Kernel.result =
   | Ok of 'a
@@ -51,7 +51,7 @@ type ('a, 'e) t = ('a, 'e) Kernel.result =
 
 (**
    The Result type - either [`Ok`] with a success value or [`Error`] with
-   an error value 
+   an error value
 *)
 (** # Constructors *)
 (**
@@ -59,7 +59,7 @@ type ('a, 'e) t = ('a, 'e) Kernel.result =
 
    ## Examples
 
-   ```ocaml let success = Result.ok 42 (* success = Ok 42 *) ``` 
+   ```ocaml let success = Result.ok 42 (* success = Ok 42 *) ```
 *)
 val ok: 'a -> ('a, 'e) t
 
@@ -69,7 +69,7 @@ val ok: 'a -> ('a, 'e) t
    ## Examples
 
    ```ocaml let failure = Result.err "Something went wrong" (* failure = Error
-   "Something went wrong" *) ``` 
+   "Something went wrong" *) ```
 *)
 val err: 'e -> ('a, 'e) t
 
@@ -81,7 +81,7 @@ val err: 'e -> ('a, 'e) t
 
    ```ocaml let x = Ok 2 in assert (Result.is_ok x);
 
-   let y = Error "Error message" in assert (not (Result.is_ok y)) ``` 
+   let y = Error "Error message" in assert (not (Result.is_ok y)) ```
 *)
 val is_ok: ('a, 'e) t -> bool
 
@@ -90,7 +90,7 @@ val is_ok: ('a, 'e) t -> bool
 
    ## Examples
 
-   ```ocaml if Result.is_error response then Log.error "Request failed" ``` 
+   ```ocaml if Result.is_error response then Log.error "Request failed" ```
 *)
 val is_error: ('a, 'e) t -> bool
 
@@ -101,7 +101,7 @@ val is_error: ('a, 'e) t -> bool
 
    ```ocaml let x = Ok 2 in assert (not (Result.is_err x));
 
-   let y = Error "Error message" in assert (Result.is_err y) ``` 
+   let y = Error "Error message" in assert (Result.is_err y) ```
 *)
 val is_err: ('a, 'e) t -> bool
 
@@ -114,7 +114,7 @@ val is_err: ('a, 'e) t -> bool
    assert (not (Result.is_ok_and (fun v -> v > 5) x));
 
    let y = Error "Error" in assert (not (Result.is_ok_and (fun v -> v > 0) y))
-   ``` 
+   ```
 *)
 val is_ok_and: ('a -> bool) -> ('a, 'e) t -> bool
 
@@ -129,7 +129,7 @@ val is_ok_and: ('a -> bool) -> ('a, 'e) t -> bool
 
    let x = Error "File not found" in assert (is_not_found x);
 
-   let y = Ok 123 in assert (not (is_not_found y)) ``` 
+   let y = Ok 123 in assert (not (is_not_found y)) ```
 *)
 val is_err_and: ('e -> bool) -> ('a, 'e) t -> bool
 
@@ -148,7 +148,7 @@ val is_err_and: ('e -> bool) -> ('a, 'e) t -> bool
    let double = Result.map (fun x -> x * 2) in
 
    assert (double (parse_int "21") = Ok 42); assert (double (parse_int "abc") =
-   Error "Not a number") ``` 
+   Error "Not a number") ```
 *)
 val map: ('a, 'e) t -> fn:('a -> 'b) -> ('b, 'e) t
 
@@ -162,7 +162,7 @@ val map: ('a, 'e) t -> fn:('a -> 'b) -> ('b, 'e) t
 
    let x = Ok 2 in assert (stringify_error x = Ok 2);
 
-   let y = Error 13 in assert (stringify_error y = Error "13") ``` 
+   let y = Error 13 in assert (stringify_error y = Error "13") ```
 *)
 val map_err: ('a, 'e) t -> fn:('e -> 'f) -> ('a, 'f) t
 
@@ -179,7 +179,7 @@ val map_err: ('a, 'e) t -> fn:('e -> 'f) -> ('a, 'f) t
    x = 3);
 
    let y = Error "bar" in assert (Result.map_or ~default:42 String.length y =
-   42) ``` 
+   42) ```
 *)
 val map_or: ('a, 'e) t -> default:'b -> fn:('a -> 'b) -> 'b
 
@@ -198,7 +198,7 @@ val map_or: ('a, 'e) t -> default:'b -> fn:('a -> 'b) -> 'b
    String.length x = 3);
 
    let y = Error "bar" in assert (Result.map_or_else ~default:(fun e ->
-   String.length e) String.length y = 3) ``` 
+   String.length e) String.length y = 3) ```
 *)
 val map_or_else: ('a, 'e) t -> default:('e -> 'b) -> fn:('a -> 'b) -> 'b
 
@@ -220,7 +220,7 @@ val map_or_else: ('a, 'e) t -> default:('e -> 'b) -> fn:('a -> 'b) -> 'b
    Result.and_then (fun x -> divide x 2) (* result = Ok 2 *)
 
    let failed = parse_int "abc" |> Result.and_then (fun x -> divide x 2) (*
-   failed = Error "not an integer" - second operation never runs *) ``` 
+   failed = Error "not an integer" - second operation never runs *) ```
 *)
 val and_then: ('a, 'e) t -> fn:('a -> ('b, 'e) t) -> ('b, 'e) t
 
@@ -236,7 +236,7 @@ val and_then: ('a, 'e) t -> fn:('a -> ('b, 'e) t) -> ('b, 'e) t
    2);
 
    let x = Error "early" in let y = Error "late" in assert (Result.or_ x y =
-   Error "late") ``` 
+   Error "late") ```
 *)
 val or_: ('a, 'e) t -> ('a, 'e) t -> ('a, 'e) t
 
@@ -251,7 +251,7 @@ val or_: ('a, 'e) t -> ('a, 'e) t -> ('a, 'e) t
 
    assert (Result.or_else (Ok 2) sq = Ok 2); assert (Result.or_else (Ok 2) err
    = Ok 2); assert (Result.or_else (Error 3) sq = Ok 9); assert (Result.or_else
-   (Error 3) err = Error 3) ``` 
+   (Error 3) err = Error 3) ```
 *)
 val or_else: ('a, 'e) t -> fn:('e -> ('a, 'f) t) -> ('a, 'f) t
 
@@ -274,7 +274,7 @@ val or_else: ('a, 'e) t -> fn:('e -> ('a, 'f) t) -> ('a, 'f) t
    ## Note
 
    Generally, prefer [`expect`] which provides a more helpful panic message, or
-   [`unwrap_or`] / [`unwrap_or_else`] for non-panicking alternatives. 
+   [`unwrap_or`] / [`unwrap_or_else`] for non-panicking alternatives.
 *)
 (**
    Returns the contained [`Ok`] value or a provided default.
@@ -287,7 +287,7 @@ val or_else: ('a, 'e) t -> fn:('e -> ('a, 'f) t) -> ('a, 'f) t
    ```ocaml let default = 2 in let x = Ok 9 in assert (Result.unwrap_or
    ~default x = 9);
 
-   let y = Error "error" in assert (Result.unwrap_or ~default y = 2) ``` 
+   let y = Error "error" in assert (Result.unwrap_or ~default y = 2) ```
 *)
 val unwrap: ('a, 'e) t -> 'a
 
@@ -298,7 +298,7 @@ val unwrap: ('a, 'e) t -> 'a
 
    ```ocaml let count s = String.length s in assert (Result.unwrap_or_else
    ~fn:(fun () -> 2) (Ok 9) = 9); assert (Result.unwrap_or_else ~fn:(fun () ->
-   count "foo") (Error "bar") = 3) ``` 
+   count "foo") (Error "bar") = 3) ```
 *)
 val unwrap_or: ('a, 'e) t -> default:'a -> 'a
 
@@ -316,7 +316,7 @@ val unwrap_or: ('a, 'e) t -> default:'a -> 'a
    "emergency failure")
 
    (* This will panic: *) let y = Ok 2 in Result.unwrap_err y (* panic: "Called
-   Result.unwrap_err on Ok: 2" *) ``` 
+   Result.unwrap_err on Ok: 2" *) ```
 *)
 val unwrap_or_else: ('a, 'e) t -> fn:(unit -> 'a) -> 'a
 
@@ -342,7 +342,7 @@ val unwrap_or_else: ('a, 'e) t -> fn:(unit -> 'a) -> 'a
    ~msg:"config file should exist at startup" ```
 
    **Hint**: If you're having trouble choosing a message, consider using
-   [`unwrap`] instead. 
+   [`unwrap`] instead.
 *)
 val unwrap_err: ('a, 'e) t -> 'e
 
@@ -357,7 +357,7 @@ val unwrap_err: ('a, 'e) t -> 'e
    ## Examples
 
    ```ocaml let x = Error "emergency failure" in assert (Result.expect_err
-   ~msg:"Testing errors" x = "emergency failure") ``` 
+   ~msg:"Testing errors" x = "emergency failure") ```
 *)
 val expect: msg:string -> ('a, 'e) t -> 'a
 
@@ -370,7 +370,7 @@ val expect: msg:string -> ('a, 'e) t -> 'a
 
    ```ocaml let x = Ok 2 in assert (Result.ok_value x = Some 2);
 
-   let y = Error "Nothing here" in assert (Result.ok_value y = None) ``` 
+   let y = Error "Nothing here" in assert (Result.ok_value y = None) ```
 *)
 val expect_err: msg:string -> ('a, 'e) t -> 'e
 
@@ -386,7 +386,7 @@ val ok_value: ('a, 'e) t -> 'a option
    ```ocaml let x = Ok 2 in assert (Result.err_value x = None);
 
    let y = Error "Nothing here" in assert (Result.err_value y = Some "Nothing
-   here") ``` 
+   here") ```
 *)
 val err_value: ('a, 'e) t -> 'e option
 
@@ -404,7 +404,7 @@ val err_value: ('a, 'e) t -> 'e option
    let result = parse_int "4" |> Result.inspect (fun x -> Printf.printf
    "Original: %d\n" x) |> Result.map (fun x -> x * x) |> Result.inspect (fun x
    -> Printf.printf "Squared: %d\n" x) (* Prints: Original: 4 Squared: 16
-   Returns: Ok 16 *) ``` 
+   Returns: Ok 16 *) ```
 *)
 val inspect: ('a -> unit) -> ('a, 'e) t -> ('a, 'e) t
 
@@ -417,7 +417,7 @@ val inspect: ('a -> unit) -> ('a, 'e) t -> ('a, 'e) t
 
    ```ocaml Fs.read (Path.v "config.json") |> Result.inspect_err (fun e ->
    Log.warning "Failed to load config: %s" e) |> Result.unwrap_or
-   ~default:default_config ``` 
+   ~default:default_config ```
 *)
 val inspect_err: ('e -> unit) -> ('a, 'e) t -> ('a, 'e) t
 
@@ -431,7 +431,7 @@ val inspect_err: ('e -> unit) -> ('a, 'e) t -> ('a, 'e) t
    x; (* Prints: Got: 7 *)
 
    let y = Error "nothing" in Result.iter (fun v -> Printf.printf "Got: %d\n"
-   v) y (* Prints nothing *) ``` 
+   v) y (* Prints nothing *) ```
 *)
 val iter: ('a, 'e) t -> fn:('a -> unit) -> unit
 
@@ -444,7 +444,7 @@ val iter: ('a, 'e) t -> fn:('a -> unit) -> unit
    failed: %s" e ) in
 
    log_error (Error "disk full"); (* Logs error *) log_error (Ok 123) (* Does
-   nothing *) ``` 
+   nothing *) ```
 *)
 val iter_err: ('a, 'e) t -> fn:('e -> unit) -> unit
 
@@ -458,7 +458,7 @@ val iter_err: ('a, 'e) t -> fn:('e -> unit) -> unit
 
    ```ocaml let x = Ok 2 in assert (Result.to_option x = Some 2);
 
-   let y = Error "Nothing here" in assert (Result.to_option y = None) ``` 
+   let y = Error "Nothing here" in assert (Result.to_option y = None) ```
 *)
 val to_option: ('a, 'e) t -> 'a option
 
@@ -477,7 +477,7 @@ val to_option: ('a, 'e) t -> 'a option
 
    (* Common pattern with environment variables *) let port = Sys.getenv_opt
    "PORT" |> Result.of_option ~error:"PORT not set" |> Result.and_then (fun s
-   -> try Ok (int_of_string s) with _ -> Error "PORT must be a number") ``` 
+   -> try Ok (int_of_string s) with _ -> Error "PORT must be a number") ```
 *)
 val from_option: error:'e -> 'a option -> ('a, 'e) t
 
@@ -494,7 +494,7 @@ val from_option: error:'e -> 'a option -> ('a, 'e) t
    let y = Ok None in assert (Result.transpose y = None);
 
    let z = Error "error" in assert (Result.transpose z = Some (Error "error"))
-   ``` 
+   ```
 *)
 val transpose: ('a option, 'e) t -> ('a, 'e) t option
 
@@ -513,7 +513,7 @@ val transpose: ('a option, 'e) t -> ('a, 'e) t option
    error")
 
    (* Flattening is the reverse of nesting *) let nested = Ok (Ok 5) in assert
-   (Result.flatten nested = Ok 5) ``` 
+   (Result.flatten nested = Ok 5) ```
 *)
 val flatten: (('a, 'e) t, 'e) t -> ('a, 'e) t
 
@@ -534,7 +534,7 @@ val flatten: (('a, 'e) t, 'e) t -> ('a, 'e) t
 
    (* Common pattern: validate multiple inputs *) let parse_numbers strings =
    strings |> List.map (fun s -> try Ok (int_of_string s) with _ -> Error
-   (Printf.sprintf "'%s' is not a number" s)) |> Result.all ``` 
+   (Printf.sprintf "'%s' is not a number" s)) |> Result.all ```
 *)
 val all: ('a, 'e) t list -> ('a list, 'e) t
 
@@ -581,7 +581,7 @@ val both: ('a, 'e) t -> ('b, 'e) t -> ('a * 'b, 'e) t
    "Error: failed")
 
    (* Convert any result to an exit code *) let to_exit_code = Result.fold
-   ~ok:(fun _ -> 0) ~error:(fun _ -> 1) ``` 
+   ~ok:(fun _ -> 0) ~error:(fun _ -> 1) ```
 *)
 val fold: ('a, 'e) t -> ok:('a -> 'c) -> error:('e -> 'c) -> 'c
 

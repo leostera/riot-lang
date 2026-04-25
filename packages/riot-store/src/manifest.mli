@@ -23,7 +23,7 @@ val create: ?base_dir:Path.t -> ?ocamlc_warnings:string list -> ?exports:export_
 
 (**
    Create a manifest for stored files. Takes a list of (file_path, size) pairs
-   and calculates hashes. 
+   and calculates hashes.
 *)
 val save: t -> path:Path.t -> (unit, string) result
 

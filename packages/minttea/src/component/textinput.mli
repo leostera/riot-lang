@@ -43,13 +43,13 @@
      |> Textinput.set_echo_mode Password
      |> Textinput.set_echo_char '*'
      |> Textinput.set_placeholder "Enter password"
-   ``` 
+   ```
 *)
 open Std
 
 (** ## Types *)
-type t
 
+type t
 (** A text input instance *)
 type echo_mode =
   | Normal
@@ -57,7 +57,6 @@ type echo_mode =
   | Password
   (* Mask with echo character *)
   | None
-
 (** ## Creation *)
 val make: unit -> t
 
@@ -69,9 +68,10 @@ val make: unit -> t
    - char_limit: unlimited
    - cursor at position 0
    - focused: false
-   - echo_mode: Normal 
+   - echo_mode: Normal
 *)
 (** ## Content *)
+
 val value: t -> string
 
 (** `value input` returns the current input value. *)
@@ -85,6 +85,7 @@ val is_empty: t -> bool
 
 (** `is_empty input` returns true if value is empty string. *)
 (** ## Display *)
+
 val set_prompt: t -> prompt:string -> t
 
 (** `set_prompt input prompt` sets the text shown before the input (e.g. "> "). *)
@@ -97,16 +98,17 @@ val set_width: t -> width:int -> t
    `set_width input width` sets the maximum display width.
 
    Input acts as a horizontally scrolling viewport if text exceeds width.
-   Set to 0 for unlimited width. 
+   Set to 0 for unlimited width.
 *)
 val set_char_limit: t -> limit:int -> t
 
 (**
    `set_char_limit input limit` sets the maximum number of characters.
 
-   Prevents typing beyond this limit. Set to 0 for unlimited. 
+   Prevents typing beyond this limit. Set to 0 for unlimited.
 *)
 (** ## Echo Mode *)
+
 val set_echo_mode: t -> mode:echo_mode -> t
 
 (**
@@ -114,12 +116,13 @@ val set_echo_mode: t -> mode:echo_mode -> t
 
    - Normal: show actual text
    - Password: show echo character for each char
-   - None: show nothing (useful for hidden password entry) 
+   - None: show nothing (useful for hidden password entry)
 *)
 val set_echo_char: t -> char:char -> t
 
 (** `set_echo_char input c` sets the character used in Password mode (default: '*'). *)
 (** ## Focus *)
+
 val focus: t -> t
 
 (** `focus input` gives focus to the input (enables editing, shows cursor). *)
@@ -130,6 +133,7 @@ val is_focused: t -> bool
 
 (** `is_focused input` returns true if input has focus. *)
 (** ## Cursor *)
+
 val cursor_position: t -> int
 
 (** `cursor_position input` returns the cursor position (0-based index). *)
@@ -137,13 +141,14 @@ val set_cursor_position: t -> pos:int -> t
 
 (** `set_cursor_position input pos` moves cursor to position (clamped to valid range). *)
 (** ## Validation *)
+
 val set_validator: t -> validator:(string -> (unit, string) result) option -> t
 
 (**
    `set_validator input validator` sets an optional validation function.
 
    The validator is called after each edit. If it returns `Error msg`,
-   the input is marked as invalid (but still editable). 
+   the input is marked as invalid (but still editable).
 *)
 val is_valid: t -> bool
 
@@ -152,6 +157,7 @@ val validation_error: t -> string option
 
 (** `validation_error input` returns the validation error message, if any. *)
 (** ## Input Handling *)
+
 val handle_key: t -> Event.key -> Event.modifier -> t
 
 (**
@@ -167,17 +173,20 @@ val handle_key: t -> Event.key -> Event.modifier -> t
    - Ctrl+W: delete word backward
    - Character keys: insert at cursor
 
-   Returns updated input. No-op if input is not focused. 
+   Returns updated input. No-op if input is not focused.
 *)
 val handle_paste: t -> string -> t
 
 (**
    `handle_paste input text` inserts pasted text at cursor position.
 
-   Respects char_limit. Only works if focused. 
+   Respects char_limit. Only works if focused.
 *)
 (** ## Rendering *)
-val view: t -> string(**
+
+val view: t -> string
+
+(**
    `view input` renders the text input for display.
 
    Format: `[prompt][visible_text][cursor]`
@@ -185,5 +194,5 @@ val view: t -> string(**
    - Shows placeholder if empty and not focused
    - Applies echo mode (password masking, etc.)
    - Handles horizontal scrolling if width is set
-   - Shows/hides cursor based on focus 
+   - Shows/hides cursor based on focus
 *)

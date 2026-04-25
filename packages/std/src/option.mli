@@ -61,7 +61,7 @@ type 'a t = 'a option =
 
    ## Examples
 
-   ```ocaml let x = Option.some 5 in assert (x = Some 5) ``` 
+   ```ocaml let x = Option.some 5 in assert (x = Some 5) ```
 *)
 val some: 'a -> 'a t
 
@@ -70,7 +70,7 @@ val some: 'a -> 'a t
 
    ## Examples
 
-   ```ocaml let x : int option = Option.none in assert (x = None) ``` 
+   ```ocaml let x : int option = Option.none in assert (x = None) ```
 *)
 val none: 'a t
 
@@ -86,7 +86,7 @@ val none: 'a t
    assert (not (eq (Some 5) (Some 10)));
    assert (not (eq (Some 5) None));
    assert (eq None None)
-   ``` 
+   ```
 *)
 val equal: 'a t -> 'a t -> fn:('a -> 'a -> bool) -> bool
 
@@ -97,7 +97,7 @@ val equal: 'a t -> 'a t -> fn:('a -> 'a -> bool) -> bool
 
    ```ocaml let x = Some 2 in assert (Option.is_some x);
 
-   let y = None in assert (not (Option.is_some y)) ``` 
+   let y = None in assert (not (Option.is_some y)) ```
 *)
 val is_some: 'a t -> bool
 
@@ -108,7 +108,7 @@ val is_some: 'a t -> bool
 
    ```ocaml let x = Some 2 in assert (not (Option.is_none x));
 
-   let y = None in assert (Option.is_none y) ``` 
+   let y = None in assert (Option.is_none y) ```
 *)
 val is_none: 'a t -> bool
 
@@ -121,7 +121,7 @@ val is_none: 'a t -> bool
    ```ocaml let x = Some 2 in assert (Option.is_some_and (fun x -> x > 1) x);
    assert (not (Option.is_some_and (fun x -> x > 5) x));
 
-   let y = None in assert (not (Option.is_some_and (fun x -> x > 1) y)) ``` 
+   let y = None in assert (not (Option.is_some_and (fun x -> x > 1) y)) ```
 *)
 val is_some_and: 'a t -> fn:('a -> bool) -> bool
 
@@ -133,7 +133,7 @@ val is_some_and: 'a t -> fn:('a -> bool) -> bool
    ```ocaml let is_small = Option.is_none_or (fun x -> x < 10) in
 
    assert (is_small None); assert (is_small (Some 5)); assert (not (is_small
-   (Some 20))) ``` 
+   (Some 20))) ```
 *)
 val is_none_or: 'a t -> fn:('a -> bool) -> bool
 
@@ -148,7 +148,7 @@ val is_none_or: 'a t -> fn:('a -> bool) -> bool
    Option.map String.length maybe_string in assert (maybe_len = Some 13);
 
    let none_string : string option = None in let none_len = Option.map
-   String.length none_string in assert (none_len = None) ``` 
+   String.length none_string in assert (none_len = None) ```
 *)
 val map: 'a t -> fn:('a -> 'b) -> 'b t
 
@@ -179,7 +179,7 @@ val map: 'a t -> fn:('a -> 'b) -> 'b t
    (fun v -> v * v) x = 16);
 
    let y = None in assert (Option.map_or_default ~default:(fun () -> 2 * k)
-   (fun v -> v * v) y = 20) ``` 
+   (fun v -> v * v) y = 20) ```
 *)
 val map_or: 'a t -> default:'b -> fn:('a -> 'b) -> 'b
 
@@ -195,7 +195,7 @@ val map_or: 'a t -> default:'b -> fn:('a -> 'b) -> 'b
    String.length x = 3);
 
    let y = None in assert (Option.map_or_else ~default:(fun () -> 2 * k)
-   String.length y = 42) ``` 
+   String.length y = 42) ```
 *)
 val map_or_default: 'a t -> default:(unit -> 'b) -> fn:('a -> 'b) -> 'b
 
@@ -216,7 +216,7 @@ val map_or_else: 'a t -> default:(unit -> 'b) -> fn:('a -> 'b) -> 'b
    "foo");
 
    let x = None in let y : string option = None in assert (Option.and_ x y =
-   None) ``` 
+   None) ```
 *)
 val and_: 'a t -> 'b t -> 'b t
 
@@ -236,7 +236,7 @@ val and_: 'a t -> 'b t -> 'b t
 
    (* Chaining fallible operations *) let result = Sys.getenv_opt "CONFIG_PATH"
    |> Option.and_then (fun path -> try Some (Fs.read (Path.v path) |>
-   Result.unwrap) with _ -> None) |> Option.and_then parse_config ``` 
+   Result.unwrap) with _ -> None) |> Option.and_then parse_config ```
 *)
 val and_then: 'a t -> fn:('a -> 'b t) -> 'b t
 
@@ -264,7 +264,7 @@ val or_: 'a t -> 'a t -> 'a t
 
    assert (Option.or_else (Some "barbarians") vikings = Some "barbarians");
    assert (Option.or_else None vikings = Some "vikings"); assert
-   (Option.or_else None nobody = None) ``` 
+   (Option.or_else None nobody = None) ```
 *)
 val or_else: 'a t -> fn:(unit -> 'a t) -> 'a t
 
@@ -280,7 +280,7 @@ val or_else: 'a t -> fn:(unit -> 'a t) -> 'a t
 
    let x = Some 4 in let y = Some 5 in assert (Option.xor x y = None);
 
-   let x = None in let y = None in assert (Option.xor x y = None) ``` 
+   let x = None in let y = None in assert (Option.xor x y = None) ```
 *)
 val xor: 'a t -> 'a t -> 'a t
 
@@ -302,7 +302,7 @@ val xor: 'a t -> 'a t -> 'a t
    ## Note
 
    Generally, prefer [`expect`] which provides a more helpful panic message, or
-   [`unwrap_or`] / [`unwrap_or_else`] for non-panicking alternatives. 
+   [`unwrap_or`] / [`unwrap_or_else`] for non-panicking alternatives.
 *)
 (**
    Returns the contained [`Some`] value or a provided default.
@@ -313,7 +313,7 @@ val xor: 'a t -> 'a t -> 'a t
    ## Examples
 
    ```ocaml assert (Option.unwrap_or ~default:"bike" (Some "car") = "car");
-   assert (Option.unwrap_or ~default:"bike" None = "bike") ``` 
+   assert (Option.unwrap_or ~default:"bike" None = "bike") ```
 *)
 val unwrap: 'a t -> 'a
 
@@ -324,7 +324,7 @@ val unwrap: 'a t -> 'a
 
    ```ocaml let k = 10 in assert (Option.unwrap_or_else ~fn:(fun () -> 2 * k)
    (Some 4) = 4); assert (Option.unwrap_or_else ~fn:(fun () -> 2 * k) None =
-   20) ``` 
+   20) ```
 *)
 val unwrap_or: 'a t -> default:'a -> 'a
 
@@ -350,7 +350,7 @@ val unwrap_or: 'a t -> default:'a -> 'a
    `Option` to be `Some`:
 
    ```ocaml let config = Sys.getenv_opt "CONFIG_FILE" |> Option.expect
-   ~msg:"env variable CONFIG_FILE should be set by wrapper script" ``` 
+   ~msg:"env variable CONFIG_FILE should be set by wrapper script" ```
 *)
 val unwrap_or_else: 'a t -> fn:(unit -> 'a) -> 'a
 
@@ -366,7 +366,7 @@ val unwrap_or_else: 'a t -> fn:(unit -> 'a) -> 'a
    ```ocaml Option.unwrap_none None; (* Does nothing *)
 
    (* This will panic: *) Option.unwrap_none (Some "value") (* panic: "Called
-   Option.unwrap_none on Some: value" *) ``` 
+   Option.unwrap_none on Some: value" *) ```
 *)
 val expect: msg:string -> 'a t -> 'a
 

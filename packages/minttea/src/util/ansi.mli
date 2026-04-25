@@ -21,9 +21,10 @@
    let long = "\027[1mVery long text here\027[0m"
    let short = Ansi.truncate ~width:10 ~ellipsis:"..." long
    (* Returns "\027[1mVery lo...\027[0m" - preserves bold *)
-   ``` 
+   ```
 *)
 (** ## Width Calculation *)
+
 val width: string -> int
 
 (**
@@ -38,7 +39,7 @@ val width: string -> int
    - Multi-column Unicode characters (counts as 1)
    - Zero-width characters (counts as 1)
 
-   For basic ASCII and styled text, this is accurate. 
+   For basic ASCII and styled text, this is accurate.
 *)
 val strip: string -> string
 
@@ -48,9 +49,10 @@ val strip: string -> string
    Returns only the visible text content. Useful for:
    - Saving plain text
    - Comparing content
-   - Length calculations when you need raw string length 
+   - Length calculations when you need raw string length
 *)
 (** ## Truncation *)
+
 val truncate: width:int -> ?ellipsis:string -> string -> string
 
 (**
@@ -65,16 +67,17 @@ val truncate: width:int -> ?ellipsis:string -> string -> string
    ```ocaml
    truncate ~width:8 "\027[31mVery long text\027[0m"
    (* Returns "\027[31mVery lo…\027[0m" *)
-   ``` 
+   ```
 *)
 (** ## Padding *)
+
 val pad_right: width:int -> char -> string -> string
 
 (**
    `pad_right ~width c str` pads `str` on the right with `c` to reach `width`.
 
    Measures display width correctly, accounting for ANSI codes.
-   If `str` is already wider than `width`, returns it unchanged. 
+   If `str` is already wider than `width`, returns it unchanged.
 *)
 val pad_left: width:int -> char -> string -> string
 
@@ -83,13 +86,14 @@ val pad_center: width:int -> char -> string -> string
 
 (** `pad_center ~width c str` centers `str` and pads with `c` to reach `width`. *)
 (** ## Line Operations *)
+
 val split_lines: string -> string list
 
 (**
    `split_lines str` splits on newlines, preserving ANSI state across lines.
 
    Each line retains its formatting. If a style spans multiple lines,
-   the style is closed and reopened appropriately. 
+   the style is closed and reopened appropriately.
 *)
 val word_wrap: width:int -> string -> string list
 
@@ -106,9 +110,10 @@ val word_wrap: width:int -> string -> string list
    ```ocaml
    word_wrap ~width:10 "This is a very long line"
    (* Returns ["This is a"; "very long"; "line"] *)
-   ``` 
+   ```
 *)
 (** ## Low-level Parsing *)
+
 type ansi_state = {
   bold: bool;
   italic: bool;
@@ -125,10 +130,12 @@ val parse_state: string -> ansi_state
 (**
    `parse_state str` extracts the ANSI formatting state at the end of `str`.
 
-   Useful for continuing formatting across line breaks or concatenations. 
+   Useful for continuing formatting across line breaks or concatenations.
 *)
-val state_to_codes: ansi_state -> string(**
+val state_to_codes: ansi_state -> string
+
+(**
    `state_to_codes state` converts formatting state back to ANSI codes.
 
-   Generates the escape sequence needed to restore this state. 
+   Generates the escape sequence needed to restore this state.
 *)

@@ -128,7 +128,7 @@ let get_break_opportunity = fun ~prev_class ~curr_class ->
 
 (**
    Find all line break opportunities in a string
-   Returns (position, opportunity_type) pairs 
+   Returns (position, opportunity_type) pairs
 *)
 let find_line_breaks = fun s ->
   let len = String.length s in
@@ -173,7 +173,7 @@ let find_line_breaks = fun s ->
 
 (**
    Wrap text to fit within a given width
-   Returns a list of lines 
+   Returns a list of lines
 *)
 let wrap_lines = fun ~width s ->
   if width <= 0 then

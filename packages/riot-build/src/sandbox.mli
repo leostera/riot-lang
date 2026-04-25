@@ -6,13 +6,25 @@ open Riot_planner
 type t
 
 (** Create a sandbox directory for a package build. *)
-val create: workspace:Workspace.t -> ?profile:string -> ?target:Target.t -> unit -> package_name:Package_name.t -> t
+val create:
+  workspace:Workspace.t ->
+  ?profile:string ->
+  ?target:Target.t ->
+  unit ->
+  package_name:Package_name.t ->
+  t
 
 (**
    Prepare an existing sandbox by copying package inputs and dependency object
-   files required by the current execution model. 
+   files required by the current execution model.
 *)
-val prepare: sandbox:t -> package:Package.t -> inputs:Path.t list -> depset:Dependency.t list -> store:Riot_store.Store.t -> unit
+val prepare:
+  sandbox:t ->
+  package:Package.t ->
+  inputs:Path.t list ->
+  depset:Dependency.t list ->
+  store:Riot_store.Store.t ->
+  unit
 
 (** Get the directory path of the sandbox *)
 val get_dir: t -> Path.t
@@ -34,4 +46,14 @@ val cleanup: t -> unit
    @param expected_outputs List of expected output paths (unused currently)
    @param f Function to execute with the sandbox
 *)
-val with_sandbox: workspace:Workspace.t -> ?profile:string -> ?target:Target.t -> package:Package.t -> inputs:Path.t list -> depset:Dependency.t list -> store:Riot_store.Store.t -> expected_outputs:Path.t list -> (t -> 'a) -> 'a
+val with_sandbox:
+  workspace:Workspace.t ->
+  ?profile:string ->
+  ?target:Target.t ->
+  package:Package.t ->
+  inputs:Path.t list ->
+  depset:Dependency.t list ->
+  store:Riot_store.Store.t ->
+  expected_outputs:Path.t list ->
+  (t -> 'a) ->
+  'a

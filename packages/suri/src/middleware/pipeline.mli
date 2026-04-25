@@ -9,7 +9,7 @@
    let timer ~conn ~next =
      let start = Time.Instant.now () in
      let conn' = next conn in
-     Log.debug (Printf.sprintf "Took %.2fms" 
+     Log.debug (Printf.sprintf "Took %.2fms"
        (Time.Instant.elapsed start |> Time.Duration.to_millis));
      conn'
 
@@ -19,11 +19,11 @@
      router routes;
    ]
 
-   let handler socket_conn req = 
+   let handler socket_conn req =
      let conn = Conn.make socket_conn req in
      let conn = Pipeline.run conn app in
      Conn.to_response conn
-   ``` 
+   ```
 *)
 (**
    A middleware function that can wrap the next handler.
@@ -42,7 +42,7 @@
        let conn' = next conn in
        Log.info "After handler";
        conn'
-   ]} 
+   ]}
 *)
 (** A pipeline is a list of middleware *)
 type middleware = conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t

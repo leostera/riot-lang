@@ -51,7 +51,7 @@
 
    - [Time.SystemTime] for system clock measurements
    - [Time.Instant] for monotonic time measurements
-   - [Time.Duration] for time spans 
+   - [Time.Duration] for time spans
 *)
 (** {1 Time Zones} *)
 module Tz : sig
@@ -62,7 +62,7 @@ module Tz : sig
   (**
      Time zone representation:
      - [Etc_UTC]: UTC/GMT timezone
-     - [Local]: System's local timezone 
+     - [Local]: System's local timezone
   *)
   val to_string: t -> string
 
@@ -72,7 +72,7 @@ module Tz : sig
      ## Examples
 
      ```ocaml Tz.to_string Tz.Etc_UTC (* "UTC" *) Tz.to_string Tz.Local (*
-     "Local" *) ``` 
+     "Local" *) ```
   *)
 end
 
@@ -83,7 +83,7 @@ type t = {
   microseconds: int * int;
   (**
      Microseconds and precision, e.g. (426822, 6) means 426822 microseconds
-     with 6 digits of precision 
+     with 6 digits of precision
   *)
   second: int;
   (** Second (0-59) *)
@@ -132,7 +132,7 @@ type naive = {
    - When timezone is implicit or doesn't matter
    - Storing local times without conversion
 
-   To work with actual wall-clock times, convert to {!t} using {!from_naive}. 
+   To work with actual wall-clock times, convert to {!t} using {!from_naive}.
 *)
 (** {1 Creation} *)
 val epoch: t
@@ -146,7 +146,7 @@ val epoch: t
    let epoch = DateTime.epoch in
    (* epoch.year = 1970, epoch.month = 1, epoch.day = 1 *)
    (* epoch.hour = 0, epoch.minute = 0, epoch.second = 0 *)
-   ``` 
+   ```
 *)
 val now: unit -> t
 
@@ -157,7 +157,7 @@ val now: unit -> t
 
    ```ocaml let now = DateTime.now () in Printf.printf "%04d-%02d-%02d
    %02d:%02d:%02d\n" now.year now.month now.day now.hour now.minute now.second
-   (* "2025-08-27 14:07:31" *) ``` 
+   (* "2025-08-27 14:07:31" *) ```
 *)
 val now_utc: unit -> t
 
@@ -167,7 +167,7 @@ val now_utc: unit -> t
    ## Examples
 
    ```ocaml let utc = DateTime.now_utc () in assert (utc.time_zone =
-   Tz.Etc_UTC); assert (utc.utc_offset = 0) ``` 
+   Tz.Etc_UTC); assert (utc.utc_offset = 0) ```
 *)
 val now_naive: unit -> naive
 
@@ -191,7 +191,7 @@ val now_naive: unit -> naive
 
    - Logging timestamps without timezone information
    - Storing local times in databases
-   - Display times that don't need timezone conversion 
+   - Display times that don't need timezone conversion
 *)
 val from_system_time: Time.SystemTime.t -> t
 
@@ -213,7 +213,7 @@ val from_system_time: Time.SystemTime.t -> t
 
    ## Note
 
-   The resulting datetime is in UTC timezone. 
+   The resulting datetime is in UTC timezone.
 *)
 (** {1 Conversion} *)
 val to_system_time: t -> Time.SystemTime.t
@@ -231,7 +231,7 @@ val to_system_time: t -> Time.SystemTime.t
 
    ## Note
 
-   Timezone information is preserved during conversion. 
+   Timezone information is preserved during conversion.
 *)
 val to_naive: t -> naive
 
@@ -254,7 +254,7 @@ val to_naive: t -> naive
 
    - Storing local times without timezone conversion
    - Calendar computations that don't depend on timezone
-   - Displaying times without timezone context 
+   - Displaying times without timezone context
 *)
 val from_naive: naive -> tz:Tz.t -> t
 
@@ -285,7 +285,7 @@ val from_naive: naive -> tz:Tz.t -> t
    ## Note
 
    When using [Tz.Local], the UTC offset is determined by the system's
-   current timezone setting at the time of conversion. 
+   current timezone setting at the time of conversion.
 *)
 val to_iso8601: t -> string
 
@@ -312,7 +312,7 @@ val to_iso8601: t -> string
    - Logging timestamps
    - Storing dates in databases
    - API responses
-   - Interoperability with other systems 
+   - Interoperability with other systems
 *)
 (** {1 Comparison} *)
 val equal: t -> t -> bool
@@ -336,7 +336,7 @@ val equal: t -> t -> bool
 
    This compares the actual point in time, taking timezones into account.
    Two datetimes with different timezone offsets but representing the
-   same moment will be equal. 
+   same moment will be equal.
 *)
 (** {1 Parsing} *)
 type error =
@@ -418,5 +418,5 @@ val parse: string -> (t, error) result(**
    - Missing microseconds default to 0
    - The resulting datetime uses Tz.Local for offset times, Tz.Etc_UTC for "Z"
    - Leap year validation is performed for negative years
-   - Compatible with Elixir's DateTime.from_iso8601/2 parser 
+   - Compatible with Elixir's DateTime.from_iso8601/2 parser
 *)

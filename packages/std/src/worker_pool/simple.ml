@@ -2,7 +2,7 @@
    Simple worker pool - parallel map with controlled concurrency
 
    Provides a simple API for parallel execution: like List.map but with limited
-   workers. 
+   workers.
 *)
 open Global
 open Collections

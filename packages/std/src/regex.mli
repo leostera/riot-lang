@@ -3,7 +3,7 @@
 
    `Std.Regex` owns the syntax tree, simple optimization passes, and the
    rendering step to a concrete pattern string. Compilation and execution stay
-   delegated to {!Kernel.Regex}. 
+   delegated to {!Kernel.Regex}.
 *)
 (** Character-class items. *)
 type char_class_item =

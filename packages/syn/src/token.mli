@@ -17,7 +17,7 @@ open Std
    - **leading_trivia**: Trivia immediately preceding the token
 
    The text of the token is not stored directly - use the span to extract it
-   from the original source when needed. 
+   from the original source when needed.
 *)
 (** # Types *)
 (** Keyword type from the `Keyword` module. *)
@@ -197,7 +197,7 @@ type t = { kind: token_kind; span: Ceibo.Span.t; leading_trivia: trivia list }
 
    Example: ```ocaml delimiter_of_keyword Keyword.Begin = Some BeginEnd
    delimiter_of_keyword Keyword.Struct = Some StructEnd delimiter_of_keyword
-   Keyword.Let = None ``` 
+   Keyword.Let = None ```
 *)
 val delimiter_of_keyword: keyword -> delimiter option
 
@@ -218,7 +218,7 @@ val with_leading_trivia: t -> trivia list -> t
 
    Example: ```ocaml show_kind (Ident "foo") = "identifier" show_kind (Literal
    (Int 42)) = "integer" show_kind Plus = "'+'" show_kind EOF = "end of file"
-   ``` 
+   ```
 *)
 val show_kind: token_kind -> string
 
@@ -230,6 +230,6 @@ val show_kind: token_kind -> string
    Example: ```ocaml
    to_string { kind = Ident "foo"; span = ... } = "identifier"
    to_string { kind = EOF; span = ... } = "end of file"
-   ``` 
+   ```
 *)
 val to_string: t -> string

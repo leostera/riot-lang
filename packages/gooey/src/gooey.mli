@@ -2,7 +2,7 @@
    Terminal UI primitives for Riot.
 
    Gooey is terminal-cell based: text measurement, wrapping, clipping, and
-   renderer behavior are expressed in visible terminal cells. 
+   renderer behavior are expressed in visible terminal cells.
 *)
 module Geometry = Geometry
 

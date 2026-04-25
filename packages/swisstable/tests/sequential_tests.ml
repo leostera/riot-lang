@@ -3,7 +3,7 @@
 
    Tests random sequences of operations (insert, get, remove, clear)
    to verify that Swisstable maintains correctness under arbitrary
-   operation orderings. This catches state management bugs. 
+   operation orderings. This catches state management bugs.
 *)
 open Std
 open Propane

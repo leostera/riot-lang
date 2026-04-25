@@ -60,7 +60,7 @@ open Std
        logger;
        router routes;
      ]
-   ]} 
+   ]}
 *)
 (** {1 Middleware} *)
 (**
@@ -84,6 +84,6 @@ open Std
    - Headers preserved (Content-Length, ETag, etc.)
 
    {b Note}: This middleware must wrap around your handlers to strip
-   the body after response is built. 
+   the body after response is built.
 *)
 val middleware: conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t

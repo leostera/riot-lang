@@ -11,22 +11,22 @@ type error =
 
 (**
    Connect to a TCP endpoint. This will suspend the process until the
-   connection is established. 
+   connection is established.
 *)
 val connect: Addr.stream_addr -> (t, error) Kernel.result
 
 (**
    Read data from the stream. This will suspend the process until data is
-   available. Returns the number of bytes read. 
+   available. Returns the number of bytes read.
 
    @param timeout Optional timeout duration. If specified and no data arrives
-                  within the timeout, raises [Syscall_timeout]. 
+                  within the timeout, raises [Syscall_timeout].
 *)
 val read: t -> bytes -> ?pos:int -> ?len:int -> ?timeout:Time.Duration.t -> unit -> (int, error) Kernel.result
 
 (**
    Write data to the stream. This will suspend the process until the socket is
-   ready for writing. Returns the number of bytes written. 
+   ready for writing. Returns the number of bytes written.
 *)
 val write: t -> bytes -> ?pos:int -> ?len:int -> unit -> (int, error) Kernel.result
 
@@ -49,7 +49,7 @@ val close: t -> unit
      | Ok n -> process_data (Bytes.sub buf 0 n)
      | Error `Closed -> handle_closed ()
      | Error (`System_error msg) -> handle_error msg
-   ]} 
+   ]}
 *)
 val to_reader: t -> IO.Reader.t
 
@@ -68,6 +68,6 @@ val to_reader: t -> IO.Reader.t
      | Ok () -> println "Data sent"
      | Error `Closed -> handle_closed ()
      | Error (`System_error msg) -> handle_error msg
-   ]} 
+   ]}
 *)
 val to_writer: t -> IO.Writer.t

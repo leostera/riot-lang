@@ -33,7 +33,7 @@ module Rng : sig
      use with `Std.Random`.
 
      `fill_bytes state out` must overwrite `out` fully and may mutate `state`
-     internally. 
+     internally.
   *)
   val make: state:'state -> fill_bytes:('state -> bytes -> unit) -> t
 
@@ -41,7 +41,7 @@ module Rng : sig
      Use `standard ?seed ()` to build the secure standard RNG.
 
      - `standard ~seed ()` is deterministic
-     - `standard ()` is seeded from `Kernel.Random.Source` 
+     - `standard ()` is seeded from `Kernel.Random.Source`
   *)
   val standard: ?seed:string -> unit -> (t, error) Result.t
 end
@@ -50,7 +50,7 @@ type 'value distribution
 
 (**
    Use `init ?seed ()` to replace the default global RNG used when `~rng` is
-   omitted from samplers. 
+   omitted from samplers.
 *)
 val init: ?seed:string -> unit -> (unit, error) Result.t
 

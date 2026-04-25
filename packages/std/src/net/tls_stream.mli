@@ -17,22 +17,22 @@
        let host = Net.Uri.host uri |> Option.expect ~msg:"No host" in
        let port = Net.Uri.port uri |> Option.unwrap_or ~default:443 in
 
-       let addr = Net.Addr.of_host_and_port ~host ~port 
+       let addr = Net.Addr.of_host_and_port ~host ~port
                   |> Result.expect ~msg:"Invalid address" in
 
        (* Connect TCP *)
-       let tcp = Net.TcpStream.connect addr 
+       let tcp = Net.TcpStream.connect addr
                  |> Result.expect ~msg:"Connection failed" in
 
        (* Wrap in TLS *)
-       let tls = Net.TlsStream.of_tcp_client ~hostname:host tcp 
+       let tls = Net.TlsStream.of_tcp_client ~hostname:host tcp
                  |> Result.expect ~msg:"TLS handshake failed" in
 
        (* Use reader/writer for generic I/O *)
        let reader = Net.TlsStream.to_reader tls in
        let writer = Net.TlsStream.to_writer tls in
 
-       IO.write_all writer ~buf:"GET / HTTP/1.1\r\n\r\n" 
+       IO.write_all writer ~buf:"GET / HTTP/1.1\r\n\r\n"
        |> Result.expect ~msg:"Write failed";
 
        let buf = Bytes.create 4096 in
@@ -53,9 +53,9 @@
          match Net.TcpListener.accept listener with
          | Ok (tcp, client_addr) ->
              spawn (fun () ->
-               match Net.TlsStream.of_tcp_server 
-                       ~cert_file:"cert.pem" 
-                       ~key_file:"key.pem" 
+               match Net.TlsStream.of_tcp_server
+                       ~cert_file:"cert.pem"
+                       ~key_file:"key.pem"
                        tcp with
                | Ok tls -> handle_client tls
                | Error e -> Log.error "TLS handshake failed"
@@ -72,7 +72,7 @@
      (* TLS works over ANY reader/writer pair *)
      let add_tls reader writer ~hostname =
        Net.TlsStream.of_client_io ~reader ~writer ~hostname ()
-   ]} 
+   ]}
 *)
 open Global
 
@@ -81,7 +81,7 @@ open Global
 
    The type parameters are:
    - ['src] represents the underlying transport source
-   - ['err] represents errors from the underlying transport 
+   - ['err] represents errors from the underlying transport
 *)
 (** TLS-specific errors *)
 type 'src t
@@ -104,7 +104,7 @@ type error =
 
    @param reader Source of encrypted bytes (from network)
    @param writer Destination for encrypted bytes (to network)
-   @param hostname Server hostname for SNI and certificate verification 
+   @param hostname Server hostname for SNI and certificate verification
 *)
 val of_client_io: reader:IO.Reader.t -> writer:IO.Writer.t -> hostname:string -> unit -> (Tcp_stream.t t, error) Kernel.result
 
@@ -112,7 +112,7 @@ val of_client_io: reader:IO.Reader.t -> writer:IO.Writer.t -> hostname:string ->
    Create TLS server from any reader/writer pair.
 
    @param cert_file Path to server certificate (PEM format)
-   @param key_file Path to server private key (PEM format) 
+   @param key_file Path to server private key (PEM format)
 *)
 val of_server_io: reader:IO.Reader.t -> writer:IO.Writer.t -> cert_file:string -> key_file:string -> unit -> (Tcp_stream.t t, error) Kernel.result
 
@@ -124,21 +124,21 @@ val of_server_io: reader:IO.Reader.t -> writer:IO.Writer.t -> cert_file:string -
    Internally converts the socket to reader/writer pairs.
 
    @param mode Either [`Client hostname] for client-side TLS with SNI,
-               or [`Server (cert_file, key_file)] for server-side TLS 
+               or [`Server (cert_file, key_file)] for server-side TLS
 *)
 val of_tcp_socket: mode:[ | `Client of string | `Server of string * string] -> Tcp_stream.t -> (Tcp_stream.t t, error) Kernel.result
 
 (**
    Create TLS client from TCP stream.
 
-   Convenience wrapper around [of_client_io] for TCP sockets. 
+   Convenience wrapper around [of_client_io] for TCP sockets.
 *)
 val of_tcp_client: hostname:string -> Tcp_stream.t -> (Tcp_stream.t t, error) Kernel.result
 
 (**
    Create TLS server from TCP stream.
 
-   Convenience wrapper around [of_server_io] for TCP sockets. 
+   Convenience wrapper around [of_server_io] for TCP sockets.
 *)
 val of_tcp_server: cert_file:string -> key_file:string -> Tcp_stream.t -> (Tcp_stream.t t, error) Kernel.result
 
@@ -160,7 +160,7 @@ val of_tcp_server: cert_file:string -> key_file:string -> Tcp_stream.t -> (Tcp_s
      | Ok n -> process_plaintext (Bytes.sub buf 0 n)
      | Error `Closed -> handle_closed ()
      | Error e -> handle_error e
-   ]} 
+   ]}
 *)
 val to_reader: 'src t -> IO.Reader.t
 
@@ -178,7 +178,7 @@ val to_reader: 'src t -> IO.Reader.t
 
      let* () = IO.write_all writer ~buf:"Hello, world!" in
      IO.flush writer
-   ]} 
+   ]}
 *)
 val to_writer: 'src t -> IO.Writer.t
 
@@ -186,7 +186,7 @@ val to_writer: 'src t -> IO.Writer.t
 (**
    Get negotiated ALPN protocol (e.g., "h2", "http/1.1").
 
-   Returns [None] if no ALPN was negotiated. 
+   Returns [None] if no ALPN was negotiated.
 *)
 val alpn_protocol: 'src t -> string option
 
@@ -194,6 +194,6 @@ val alpn_protocol: 'src t -> string option
    Close the TLS stream.
 
    Note: This does not close the underlying transport - that's the
-   caller's responsibility. 
+   caller's responsibility.
 *)
 val close: 'src t -> unit

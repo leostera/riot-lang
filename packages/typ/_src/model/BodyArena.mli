@@ -97,7 +97,7 @@ type local_module_scope = {
   (**
      Local type declarations owned by the local module body. These stay
      unqualified inside the scope and are qualified when the scope is attached
-     under a module name. 
+     under a module name.
   *)
   type_decls: FileSummary.type_decl list;
 }
@@ -161,7 +161,7 @@ type expr_desc =
   | EModulePack of { module_path: SurfacePath.t; package_type: TypeRepr.t option }
   (**
      Local first-class module pack lowered from `(module M)` where [M] comes
-     from one surrounding [let module M = struct ... end in ...]. 
+     from one surrounding [let module M = struct ... end in ...].
   *)
   | ELocalModulePack of { local_scope: local_module_scope; package_type: TypeRepr.t option }
   (** Local module binding with a scoped module name available in the body. *)

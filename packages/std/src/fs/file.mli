@@ -2,7 +2,7 @@ open Global
 
 (**
    `Std.Fs.File` layers runtime-aware read/write behavior over
-   `Kernel.Fs.File`. It never exposes raw descriptors. 
+   `Kernel.Fs.File`. It never exposes raw descriptors.
 *)
 type t = Kernel.Fs.File.t
 

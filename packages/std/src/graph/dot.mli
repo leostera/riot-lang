@@ -12,9 +12,9 @@
    (* Create a directed graph *)
    let graph = Graph.Dot.create ~name:"dependencies" ~style:Directed
      |> Graph.Dot.add_node ~id:"main" ~label:"main.ml" ()
-     |> Graph.Dot.add_node ~id:"utils" ~label:"utils.ml" 
+     |> Graph.Dot.add_node ~id:"utils" ~label:"utils.ml"
          ~attrs:["color", "blue"; "shape", "box"] ()
-     |> Graph.Dot.add_edge ~from_node:"main" ~to_node:"utils" 
+     |> Graph.Dot.add_edge ~from_node:"main" ~to_node:"utils"
          ~label:"imports" () in
 
    let dot_string = Graph.Dot.to_string graph in

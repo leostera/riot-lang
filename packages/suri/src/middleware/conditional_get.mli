@@ -47,7 +47,7 @@
    {3 Header Preservation}
    On 304 responses, these headers are preserved:
    - Cache-Control
-   - Content-Location  
+   - Content-Location
    - Date
    - ETag
    - Expires
@@ -83,5 +83,5 @@ val middleware: conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t(**
    4. Returns 304 with empty body if content is unchanged
    5. Otherwise returns the full response
 
-   Only applies to GET and HEAD requests. Other methods pass through unchanged. 
+   Only applies to GET and HEAD requests. Other methods pass through unchanged.
 *)

@@ -15,7 +15,7 @@ open Riot_model
    - Package metadata (name, dependencies, binaries)
    - Build profile and target context
    - Source-level package metadata
-   - Hashes of all direct dependencies (transitive cache invalidation) 
+   - Hashes of all direct dependencies (transitive cache invalidation)
 *)
 type plan_result =
   | Cached of {

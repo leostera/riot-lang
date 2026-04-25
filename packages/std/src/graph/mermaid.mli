@@ -17,9 +17,9 @@
      |> Graph.Mermaid.add_node ~id:"end" ~label:"End" ~shape:Circle ()
      |> Graph.Mermaid.add_edge ~from_node:"start" ~to_node:"process" ()
      |> Graph.Mermaid.add_edge ~from_node:"process" ~to_node:"decision" ()
-     |> Graph.Mermaid.add_edge ~from_node:"decision" ~to_node:"end" 
+     |> Graph.Mermaid.add_edge ~from_node:"decision" ~to_node:"end"
          ~label:"Yes" ~style:Solid ()
-     |> Graph.Mermaid.add_edge ~from_node:"decision" ~to_node:"process" 
+     |> Graph.Mermaid.add_edge ~from_node:"decision" ~to_node:"process"
          ~label:"No" ~style:Dotted () in
 
    let mermaid = Graph.Mermaid.to_string diagram

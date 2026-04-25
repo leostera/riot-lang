@@ -18,7 +18,7 @@
          | Ok line -> println line
          | Error msg -> println ("Error: " ^ msg))
      | Error err -> println "Connection failed"
-   ]} 
+   ]}
 *)
 open Global
 
@@ -33,14 +33,14 @@ type error =
 
 (**
    [connect ~host ~port] establishes a TCP connection to the given host and
-   port. Returns [Error] if the connection cannot be established. 
+   port. Returns [Error] if the connection cannot be established.
 *)
 val connect: host:string -> port:int -> (t, error) Kernel.result
 
 (**
    [send client data] sends the string data to the server. The string should
    include any necessary delimiters (e.g., newlines). The entire string will be
-   sent before returning. Returns [Error] if the send fails. 
+   sent before returning. Returns [Error] if the send fails.
 *)
 val send: t -> string -> (unit, string) Kernel.result
 
@@ -52,7 +52,7 @@ val send: t -> string -> (unit, string) Kernel.result
 
    This function blocks until a complete line is available or an error occurs.
    It can be called multiple times to handle streaming responses where each
-   response is newline-delimited. 
+   response is newline-delimited.
 *)
 val receive: t -> (string, string) Kernel.result
 

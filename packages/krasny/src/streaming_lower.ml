@@ -225,6 +225,18 @@ let leading_horizontal_width = fun line ->
   in
   loop 0
 
+let trim_trailing_horizontal = fun line ->
+  let length = String.length line in
+  let rec loop index =
+    if Int.(index < 0) then
+      0
+    else
+      if is_horizontal_whitespace (String.get_unchecked line ~at:index) then
+        loop (Int.sub index 1)
+      else Int.add index 1
+  in
+  String.sub line ~offset:0 ~len:(loop (Int.sub length 1))
+
 let strip_leading_width = fun line width ->
   let length = String.length line in
   let rec loop index remaining =
@@ -281,14 +293,14 @@ let common_docstring_indent = fun lines ~start ~stop ->
   | Some indent -> indent
   | None -> 0
 
-let docstring_closing = fun (docstring: Ast.Token.delimited_trivia) ->
-  match docstring.closing with
+let delimited_trivia_closing = fun (trivia: Ast.Token.delimited_trivia) ->
+  match trivia.closing with
   | Some closing -> closing
   | None -> ""
 
 let normalize_inline_docstring = fun (docstring: Ast.Token.delimited_trivia) ->
   let body = String.trim docstring.content in
-  let closing = docstring_closing docstring in
+  let closing = delimited_trivia_closing docstring in
   if String.is_empty body then
     docstring.opening ^ " " ^ closing
   else docstring.opening ^ " " ^ body ^ " " ^ closing
@@ -300,7 +312,7 @@ let normalize_multiline_docstring = fun (docstring: Ast.Token.delimited_trivia) 
     normalize_inline_docstring docstring
   else
     match first_nonblank_line_index lines, last_nonblank_line_index lines with
-    | (None, _) | (_, None) -> docstring.opening ^ "\n" ^ docstring_closing docstring
+    | (None, _) | (_, None) -> docstring.opening ^ "\n" ^ delimited_trivia_closing docstring
     | Some first_index, Some last_index ->
         let first_is_inline = Int.equal first_index 0 in
         let indent_start =
@@ -317,9 +329,12 @@ let normalize_multiline_docstring = fun (docstring: Ast.Token.delimited_trivia) 
         let add_body_line index =
           let raw_line = Vector.get_unchecked lines ~at:index in
           let line =
-            if first_is_inline && Int.equal index first_index then
-              String.trim raw_line
-            else strip_leading_width raw_line common_indent
+            trim_trailing_horizontal
+              (
+                if first_is_inline && Int.equal index first_index then
+                  String.trim raw_line
+                else strip_leading_width raw_line common_indent
+              )
           in
           if String.is_empty line then
             IO.Buffer.add_char buffer '\n'
@@ -333,13 +348,68 @@ let normalize_multiline_docstring = fun (docstring: Ast.Token.delimited_trivia) 
         IO.Buffer.add_string buffer docstring.opening;
         IO.Buffer.add_char buffer '\n';
         for index = first_index to last_index do add_body_line index done;
-        IO.Buffer.add_string buffer (docstring_closing docstring);
+        IO.Buffer.add_string buffer (delimited_trivia_closing docstring);
         IO.Buffer.contents buffer
 
 let normalize_docstring = fun (docstring: Ast.Token.delimited_trivia) ->
   if String.contains docstring.content "\n" then
     normalize_multiline_docstring docstring
   else normalize_inline_docstring docstring
+
+let normalize_inline_comment = fun (comment: Ast.Token.delimited_trivia) ->
+  let body = String.trim comment.content in
+  let closing = delimited_trivia_closing comment in
+  if String.is_empty body then
+    comment.opening ^ " " ^ closing
+  else comment.opening ^ " " ^ body ^ " " ^ closing
+
+let normalize_multiline_comment = fun (comment: Ast.Token.delimited_trivia) ->
+  let lines = split_lines comment.content in
+  match first_nonblank_line_index lines, last_nonblank_line_index lines with
+  | (None, _) | (_, None) -> comment.opening ^ "\n" ^ delimited_trivia_closing comment
+  | Some first_index, Some last_index ->
+      let first_is_inline = Int.equal first_index 0 in
+      let body_start =
+        if first_is_inline then
+          Int.add first_index 1
+        else first_index
+      in
+      let common_indent =
+        if Int.(body_start > last_index) then
+          0
+        else common_docstring_indent lines ~start:body_start ~stop:last_index
+      in
+      let buffer = IO.Buffer.create ~size:(Int.add (String.length comment.text) 8) in
+      IO.Buffer.add_string buffer comment.opening;
+      if first_is_inline then
+        (
+          let first_line = Vector.get_unchecked lines ~at:first_index |> String.trim in
+          if not (String.is_empty first_line) then
+            (
+              IO.Buffer.add_char buffer ' ';
+              IO.Buffer.add_string buffer first_line
+            )
+        );
+      IO.Buffer.add_char buffer '\n';
+      for index = body_start to last_index do
+        let raw_line = Vector.get_unchecked lines ~at:index in
+        let line = strip_leading_width raw_line common_indent |> trim_trailing_horizontal in
+        if String.is_empty line then
+          IO.Buffer.add_char buffer '\n'
+        else
+          (
+            IO.Buffer.add_string buffer "   ";
+            IO.Buffer.add_string buffer line;
+            IO.Buffer.add_char buffer '\n'
+          )
+      done;
+      IO.Buffer.add_string buffer (delimited_trivia_closing comment);
+      IO.Buffer.contents buffer
+
+let normalize_comment = fun (comment: Ast.Token.delimited_trivia) ->
+  if String.contains comment.content "\n" then
+    normalize_multiline_comment comment
+  else normalize_inline_comment comment
 
 let emit_slice = fun state ~has_newline value ->
   let length = Slice.length value in
@@ -402,7 +472,7 @@ let emit_token_leading_comments_as_lines = fun state token ->
     | Ast.Token.Comment comment ->
         if !emitted then
           emit_line state;
-        emit_text state comment.text;
+        emit_text state (normalize_comment comment);
         emitted := true
     | Ast.Token.Docstring docstring ->
         if !emitted then

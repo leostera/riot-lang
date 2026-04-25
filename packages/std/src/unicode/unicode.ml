@@ -2,7 +2,7 @@
    Unicode - Unicode text processing support
 
    This module provides comprehensive Unicode support including:
-   - Rune (code point) operations  
+   - Rune (code point) operations
    - Grapheme cluster handling with proper UAX #29 support
    - Display width calculation for terminals using complete East Asian Width tables
    - UTF-8 encoding/decoding

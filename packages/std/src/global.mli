@@ -35,7 +35,7 @@
    Mutable cells:
 
    ```ocaml let counter = cell 0 in Sync.Cell.set counter 1; Sync.Cell.get counter (* 1
-   *) ``` 
+   *) ```
 *)
 module Format = Format
 
@@ -190,7 +190,7 @@ val shutdown: status:int -> unit
 
    - Irrecoverable errors
    - Invariant violations
-   - Programmer errors (use assertions instead when possible) 
+   - Programmer errors (use assertions instead when possible)
 *)
 val panic: string -> 'a
 
@@ -210,7 +210,7 @@ val ref: 'a -> 'a Sync.Cell.t
 
    ## See Also
 
-   - [Sync.Cell] for full cell API 
+   - [Sync.Cell] for full cell API
 *)
 val cell: 'a -> 'a Sync.Cell.t
 
@@ -219,7 +219,7 @@ val cell: 'a -> 'a Sync.Cell.t
 
    ## Examples
 
-   ```ocaml print "Processing..." (* Output: Processing... *) ``` 
+   ```ocaml print "Processing..." (* Output: Processing... *) ```
 *)
 val print: string -> unit
 
@@ -261,14 +261,14 @@ val eprintln: string -> unit
 
    - Placeholder for future implementation
    - Self-documenting incomplete code
-   - Fails fast if accidentally called 
+   - Fails fast if accidentally called
 *)
 (**
    Marks code as unimplemented, panicking when called.
 
    ## Examples
 
-   ```ocaml let complex_algorithm () = unimplemented () ``` 
+   ```ocaml let complex_algorithm () = unimplemented () ```
 *)
 val todo: string -> 'a
 

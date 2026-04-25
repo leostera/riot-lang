@@ -54,7 +54,7 @@ val to_list: 'value t -> 'value list
    ## Complexity
 
    - Time: O(1) to create iterator
-   - Space: O(1) 
+   - Space: O(1)
 *)
 val iter: 'value t -> 'value Iter.Iterator.t
 
@@ -76,7 +76,7 @@ val iter: 'value t -> 'value Iter.Iterator.t
    ## Complexity
 
    - Time: O(1) to create iterator
-   - Space: O(1) 
+   - Space: O(1)
 *)
 val mut_iter: 'value t -> 'value Iter.MutIterator.t
 

@@ -312,7 +312,7 @@ val path: ?default:Path.t -> ?required:bool -> ?help:string -> string -> field_s
 
    Example:
    ```ocaml
-   path "data_dir" ~default:(Path.of_string "./data" |> Result.get_ok) 
+   path "data_dir" ~default:(Path.of_string "./data" |> Result.get_ok)
      ~help:"Data storage directory"
    ```
 
@@ -454,7 +454,7 @@ val enum: field_spec -> value list -> field_spec
 
    Example (string enum):
    ```ocaml
-   enum 
+   enum
      (string "log_level" ~default:"info" ~help:"Logging level")
      [String "debug"; String "info"; String "warn"; String "error"]
    ```

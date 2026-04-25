@@ -26,7 +26,7 @@
    Use [DynamicWorkerPool] when tasks are generated dynamically or depend on
    previous results:
 
-   ```ocaml 
+   ```ocaml
 
    type Message.t += TaskResult of string * int
 
@@ -60,7 +60,7 @@
 
    - Task distribution: O(1) per task
    - Overhead: Fixed pool of N workers, minimal scheduling overhead
-   - Memory: O(N) for N workers + task queue 
+   - Memory: O(N) for N workers + task queue
 *)
 open Global
 
@@ -68,12 +68,12 @@ module DynamicWorkerPool : sig
   (**
      A pool of worker processes that execute tasks of type ['task]. The
      [task_ref] field is a phantom type witness used for type-safe pattern
-     matching on [WorkerReady] messages. 
+     matching on [WorkerReady] messages.
   *)
   (**
      An opaque handle to a worker that processes tasks of type ['task]. Can
      only be used with [send_task]. Type safety prevents sending wrong task
-     types. 
+     types.
   *)
   type 'task t = { coordinator_pid: Pid.t; task_ref: 'task Ref.t }
 
@@ -99,7 +99,7 @@ module DynamicWorkerPool : sig
      Use this mode when:
      - Tasks are generated dynamically based on results
      - Task assignment depends on external state
-     - You need fine-grained control over scheduling 
+     - You need fine-grained control over scheduling
   *)
   val start: concurrency:int -> owner:Pid.t -> worker_fn:(owner:Pid.t -> task:'task -> unit) -> unit -> 'task t
 
@@ -111,7 +111,7 @@ module DynamicWorkerPool : sig
      Only call this after receiving [WorkerReady worker] from the pool. Sending
      a task to a busy worker will queue it for that worker.
 
-     Type safety: The worker and task must have matching types. 
+     Type safety: The worker and task must have matching types.
   *)
   (** {1 Lifecycle} *)
 end
@@ -143,6 +143,6 @@ module SimpleWorkerPool : sig
      - Raises: Any exception raised by [fn], re-raised in the caller
 
      The operation blocks until all tasks complete. Workers automatically pull
-     from the task queue as they become ready. 
+     from the task queue as they become ready.
   *)
 end

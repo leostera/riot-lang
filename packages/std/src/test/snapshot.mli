@@ -31,5 +31,5 @@ val assert_inline_text: ctx:Test_context.t -> actual:string -> expected:string -
 (** Compare two inline strings without creating external snapshot artifacts. *)
 val assert_inline_json: ctx:Test_context.t -> actual:Data.Json.t -> expected:Data.Json.t -> (unit, string) result(**
    Compare two inline JSON values after canonicalizing object-key order and
-   rendering them through [Std.Data.Json.to_string_pretty]. 
+   rendering them through [Std.Data.Json.to_string_pretty].
 *)

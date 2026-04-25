@@ -38,7 +38,7 @@
    ```ocaml
    open Sqlx
 
-   let pool = Sqlx.connect 
+   let pool = Sqlx.connect
      ~driver:(module Postgres.Driver)
      Postgres.Config.{ host = "localhost"; ... }
    ```

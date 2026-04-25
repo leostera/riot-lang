@@ -13,7 +13,7 @@ open Suri
    - Custom page layout with side-by-side components
 
    Run with: riot run suri:liveview_multi
-   Then open: http://localhost:9998 
+   Then open: http://localhost:9998
 *)
 (** Counter LiveView - User-driven interactions *)
 module Counter = struct

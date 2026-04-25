@@ -83,12 +83,12 @@ open Global
    - No dates/times
    - No array of tables
 
-   For full TOML 1.0 support, consider using a more complete parser. 
+   For full TOML 1.0 support, consider using a more complete parser.
 *)
 (** {1 Types} *)
 (**
    TOML value representation supporting strings, integers, booleans, arrays,
-   and tables. 
+   and tables.
 *)
 type value =
   | String of string
@@ -136,7 +136,7 @@ val parse: string -> (value, error) result
    ## Examples
 
    ```ocaml match Toml.parse "bad.toml" with | Ok _ -> () | Error err ->
-   Printf.printf "Error: %s\n" (Toml.error_to_string err) ``` 
+   Printf.printf "Error: %s\n" (Toml.error_to_string err) ```
 *)
 val error_to_string: error -> string
 
@@ -150,7 +150,7 @@ val error_to_string: error -> string
    -> ()
 
    (* Or using extractor: *) Toml.get_string value |> Option.iter
-   (Printf.printf "Got: %s\n") ``` 
+   (Printf.printf "Got: %s\n") ```
 *)
 val get_string: value -> string option
 
@@ -163,7 +163,7 @@ val get_string: value -> string option
    -> ()
 
    (* Or using extractor: *) Toml.get_int value |> Option.iter
-   (Printf.printf "Port: %d\n") ``` 
+   (Printf.printf "Port: %d\n") ```
 *)
 val get_int: value -> int option
 
@@ -174,7 +174,7 @@ val get_int: value -> int option
 
    ```ocaml match Toml.get_array value with | Some items -> List.iter (fun item
    -> match Toml.get_string item with | Some s -> Printf.printf "Item: %s\n" s
-   | None -> () ) items | None -> () ``` 
+   | None -> () ) items | None -> () ```
 *)
 val get_array: value -> value list option
 
@@ -187,7 +187,7 @@ val get_array: value -> value list option
    ```ocaml match Toml.get_table root with | Some fields -> (* Look up a
    specific field *) (match List.assoc_opt "server" fields with | Some
    server_table -> (* process server config *) | None -> Log.warn "No server
-   config") | None -> () ``` 
+   config") | None -> () ```
 *)
 val get_table: value -> (string * value) list option
 
@@ -198,6 +198,6 @@ val get_table: value -> (string * value) list option
 
    ```ocaml let toml = Toml.Table
    [("name", Toml.String "my-app");  ("debug", Toml.Bool true)] in
-   Printf.printf "%s\n" (Toml.to_string toml) ``` 
+   Printf.printf "%s\n" (Toml.to_string toml) ```
 *)
 val to_string: ?indent:int -> value -> string

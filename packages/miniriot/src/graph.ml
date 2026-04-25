@@ -110,10 +110,10 @@ let topo_sort = fun graph ->
     graph.nodes;
   (* Calculate in-degrees and reverse dependencies *)
   (* If node A depends on node B (A.deps contains B), then:
-             - B must come before A in the build order
-             - A has an incoming edge FROM B (A's in-degree increases)
-             - B has A as a reverse dependency (when B is processed, A's in-degree decreases)
-          *)
+     - B must come before A in the build order
+     - A has an incoming edge FROM B (A's in-degree increases)
+     - B has A as a reverse dependency (when B is processed, A's in-degree decreases)
+  *)
   Hashtbl.iter
     (fun my_id node ->
       (* For each dependency I have, I have an incoming edge from it *)

@@ -6,7 +6,7 @@ open Suri
 
    Demonstrates routing with middleware pipeline including request ID and logging.
 
-   Run: riot run suri:routing 
+   Run: riot run suri:routing
 *)
 (* Route handlers *)
 let home_handler = fun conn req ->

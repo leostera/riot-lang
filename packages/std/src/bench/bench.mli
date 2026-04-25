@@ -38,7 +38,7 @@ type bench_case = Bench_case.t
 
    - [iterations]: Number of times to run the benchmark for measurement
      (default: 100).
-   - [warmup]: Number of warmup iterations before measurement (default: 10). 
+   - [warmup]: Number of warmup iterations before measurement (default: 10).
 *)
 type bench_config = Bench_case.bench_config = { iterations: int; warmup: int }
 
@@ -124,13 +124,13 @@ val compare: string -> bench_case list -> bench_item
 
 (**
    [compare_with_config ~config description cases] creates a comparison benchmark
-   with custom configuration. 
+   with custom configuration.
 *)
 val compare_with_config: config:bench_config -> string -> bench_case list -> bench_item
 
 (**
    [make_case name fn] creates a benchmark case without wrapping in Single.
-   Useful for building comparison benchmarks. 
+   Useful for building comparison benchmarks.
 *)
 val make_case: string -> (unit -> unit) -> bench_case
 
@@ -149,7 +149,7 @@ module Cli : sig
      Flags:
      - [--format <fmt>]: Output format.
      - [--iterations <n>]: Override iterations.
-     - [--warmup <n>]: Override warmup count. 
+     - [--warmup <n>]: Override warmup count.
   *)
   val main: name:string -> benchmarks:bench_item list -> args:string list -> (unit, Runtime.Actor.exit_reason) result
 end

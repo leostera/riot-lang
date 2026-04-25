@@ -48,6 +48,6 @@ val check: config:TypConfig.t -> source:Source.t -> Check_result.t
    The callback is invoked once per finished module group in dependency order.
    The returned [package_check_result] carries both the final authoritative
    loaded-module index and the final authoritative public-module typings
-   bundle assembled inside the engine. 
+   bundle assembled inside the engine.
 *)
 val fold_package_sources: ?package_name:string -> ?package_fingerprint:Crypto.hash -> config:TypConfig.t -> ordered_sources:prepared_source list -> init:'acc -> f:('acc -> finished_group -> 'acc) -> unit -> ('acc package_check_result, error) result

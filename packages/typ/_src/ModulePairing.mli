@@ -14,7 +14,7 @@ type source_input = {
    source, or both. Pairing reconciles those per-source analyses into one
    canonical [ModuleTypings.t] value and adjusted per-source analyses that
    include signature-inclusion diagnostics when an implementation does not
-   satisfy its interface. 
+   satisfy its interface.
 *)
 type t = {
   (** Authoritative internal module result for the logical module. *)

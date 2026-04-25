@@ -22,12 +22,12 @@ type t = {
   kind: kind;
   (**
      Canonical module identity for this logical source inside the current
-     host-owned session graph. 
+     host-owned session graph.
   *)
   module_name: string;
   (**
      Semantic equivalent of host-side compiler `-open` flags applied before
-     checking this source. 
+     checking this source.
   *)
   implicit_opens: SurfacePath.t list;
   (** Host-owned origin label. *)
@@ -47,13 +47,13 @@ val hash: implicit_opens:SurfacePath.t list -> cst:Syn.Cst.source_file -> Crypto
 
 (**
    Build one logical source record from host-prepared parse and CST
-   artifacts. 
+   artifacts.
 *)
 val make_prepared: source_id:SourceId.t -> kind:kind -> module_name:string -> implicit_opens:SurfacePath.t list -> origin:origin -> revision:int -> source_hash:Crypto.hash -> parse_result:Syn.Parser.parse_result -> cst:Syn.Cst.source_file -> t
 
 (**
    Host-side fallback for simple file-backed inputs that do not already know a
-   richer planner/module identity. 
+   richer planner/module identity.
 *)
 val infer_module_name: origin -> string
 
@@ -65,7 +65,7 @@ val module_name: t -> string
 
    The hash is based on the prepared semantic syntax plus ambient implicit
    opens, but not on [source_id] or [revision], so equivalent logical sources
-   can reuse cached summaries across sessions. 
+   can reuse cached summaries across sessions.
 *)
 val input_hash: t -> Crypto.hash
 

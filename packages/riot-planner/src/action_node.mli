@@ -12,7 +12,6 @@ type action_spec = {
   toolchain: Riot_toolchain.t;
   hash: Crypto.hash;
 }
-
 (**
    Create an action_spec with a pre-computed Merkle hash.
 
@@ -21,11 +20,18 @@ type action_spec = {
    construction completes.
 
    @param dependency_hashes Function to look up hash of a dependency by ID
-   @param deps List of dependency node IDs for this action 
+   @param deps List of dependency node IDs for this action
 *)
 type t = action_spec G.node
-
-val make: actions:Action.t list -> outs:Path.t list -> srcs:Path.t list -> package:Package.t -> toolchain:Riot_toolchain.t -> dependency_hashes:(G.Node_id.t -> Crypto.hash) -> deps:G.Node_id.t list -> action_spec
+val make:
+  actions:Action.t list ->
+  outs:Path.t list ->
+  srcs:Path.t list ->
+  package:Package.t ->
+  toolchain:Riot_toolchain.t ->
+  dependency_hashes:(G.Node_id.t -> Crypto.hash) ->
+  deps:G.Node_id.t list ->
+  action_spec
 
 (**
    Get the pre-computed hash of an action node.
@@ -38,7 +44,7 @@ val make: actions:Action.t list -> outs:Path.t list -> srcs:Path.t list -> packa
 
    This means if ANY source file changes OR any dependency changes OR the
    toolchain changes, the hash changes, invalidating the cache for this node
-   and all downstream nodes. 
+   and all downstream nodes.
 *)
 val get_hash: t -> Crypto.hash
 

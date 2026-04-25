@@ -27,13 +27,13 @@ type error =
 
 (**
    Request handler invoked for each accepted line of input. The [req]
-   parameter does not include the trailing newline. 
+   parameter does not include the trailing newline.
 *)
 type handler = req:string -> Kernel.Net.TcpStream.t -> unit
 
 (**
    Create a TCP server with a bound listener and start accepting connections.
-   This function blocks and runs the accept loop until an error occurs. 
+   This function blocks and runs the accept loop until an error occurs.
 *)
 val listen: ?reuse_addr:bool -> ?reuse_port:bool -> ?backlog:int -> Addr.stream_addr -> handler:handler -> (unit, error) Kernel.result
 

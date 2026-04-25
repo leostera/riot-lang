@@ -29,7 +29,7 @@
    - **base64**: Compact storage, API responses
    - **base64_url**: URLs, filenames, query parameters
    - **bytes**: Raw binary, further processing
-   - **to_int/to_int64**: Hash table indexing, fast comparison 
+   - **to_int/to_int64**: Hash table indexing, fast comparison
 *)
 (** Convert hash to hexadecimal string. *)
 val hex: Hash.t -> string

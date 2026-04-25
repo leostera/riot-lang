@@ -18,7 +18,7 @@ val make: ?module_name:string -> ?function_name:string -> ?file:string -> ?line:
 
 (**
    Merge two metadata records. The second argument takes precedence for
-   conflicting fields, and custom fields are concatenated. 
+   conflicting fields, and custom fields are concatenated.
 *)
 val merge: t -> t -> t
 

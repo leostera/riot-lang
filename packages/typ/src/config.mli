@@ -18,6 +18,6 @@ val without_on_event: t -> t
 
 (**
    Emit one structured event when the config carries a sink. The thunk
-   receives the monotonic timestamp that should be embedded in the event. 
+   receives the monotonic timestamp that should be embedded in the event.
 *)
 val emit_event: t -> (instant_us:int -> Event.t) -> unit

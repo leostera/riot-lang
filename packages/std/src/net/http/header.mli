@@ -44,7 +44,7 @@
    ```ocaml let ct = "application/json; charset=utf-8" in match
    Header.Value.parse_content_type ct with | Ok (media_type, params) -> (*
    media_type = "application/json" *) (* params = [("charset", "utf-8")] *) |
-   Error `InvalidContentType -> () ``` 
+   Error `InvalidContentType -> () ```
 *)
 open Kernel
 open Global
@@ -136,7 +136,7 @@ val remove: t -> name -> t
    headers "Missing" (* None *)
 
    (* Case-insensitive *) Header.get headers "content-type" (* Some "text/html"
-   *) ``` 
+   *) ```
 *)
 val get: t -> name -> value option
 
@@ -169,7 +169,7 @@ val has: t -> name -> bool
    ## Examples
 
    ```ocaml Header.iter (fun name value -> Printf.printf "%s: %s\n" name value
-   ) headers ``` 
+   ) headers ```
 *)
 val iter: (name -> value -> unit) -> t -> unit
 
@@ -191,7 +191,7 @@ val fold: (name -> value -> 'a -> 'a) -> t -> 'a -> 'a
    ```ocaml let headers = Header.empty |> Header.add "Accept" "text/html" |>
    Header.add "Accept" "application/json" in
 
-   Header.length headers (* 2 *) ``` 
+   Header.length headers (* 2 *) ```
 *)
 val length: t -> int
 
@@ -213,7 +213,7 @@ module Name : sig
      ## Examples
 
      ```ocaml Header.set headers Header.Name.content_type "text/html"
-     Header.set headers Header.Name.authorization "Bearer token" ``` 
+     Header.set headers Header.Name.authorization "Bearer token" ```
   *)
   val content_type: name
 
@@ -306,7 +306,7 @@ module Value : sig
      ```ocaml let ct = "application/json; charset=utf-8" in match
      Header.Value.parse_content_type ct with | Ok (media_type, params) -> (*
      media_type = "application/json" *) (* params = [("charset", "utf-8")] *) |
-     Error _ -> () ``` 
+     Error _ -> () ```
   *)
   val parse_content_type: value -> (string * (string * string) list, [`InvalidContentType]) result
 
@@ -319,7 +319,7 @@ module Value : sig
      ("text/html", [("charset", "utf-8")]) *)
 
      Header.Value.parse_content_type "application/json" (* Ok
-     ("application/json", []) *) ``` 
+     ("application/json", []) *) ```
   *)
   val parse_authorization: value -> (string * string, [`InvalidAuthorization]) result
 
@@ -332,7 +332,7 @@ module Value : sig
      "abc123") *)
 
      Header.Value.parse_authorization "Basic dXNlcjpwYXNz" (* Ok ("Basic",
-     "dXNlcjpwYXNz") *) ``` 
+     "dXNlcjpwYXNz") *) ```
   *)
   val parse_cache_control: value -> (string * string option) list
 
@@ -342,7 +342,7 @@ module Value : sig
      ## Examples
 
      ```ocaml Header.Value.parse_cache_control "max-age=3600, must-revalidate"
-     (* [("max-age", Some "3600"); ("must-revalidate", None)] *) ``` 
+     (* [("max-age", Some "3600"); ("must-revalidate", None)] *) ```
   *)
   val parse_accept: value -> (string * float option * (string * string) list) list
 
@@ -353,6 +353,6 @@ module Value : sig
      ## Examples
 
      ```ocaml Header.Value.parse_accept "text/html;q=0.9, application/json" (*
-     [("text/html", Some 0.9, []); ("application/json", None, [])] *) ``` 
+     [("text/html", Some 0.9, []); ("application/json", None, [])] *) ```
   *)
 end

@@ -51,7 +51,7 @@
    - **Binary** - Raw binary data
    - **Ping/Pong** - Keep-alive heartbeat
    - **Close** - Graceful shutdown
-   - **Continuation** - Fragmented message continuation 
+   - **Continuation** - Fragmented message continuation
 *)
 open Std
 
@@ -68,7 +68,7 @@ module Handler : sig
      - handle_frame: Process incoming WebSocket frames
      - handle_message: Process messages from other processes
 
-     This design enables building stateful, message-driven WebSocket applications. 
+     This design enables building stateful, message-driven WebSocket applications.
   *)
   type upgrade_opts = { do_upgrade: bool }
 
@@ -121,7 +121,7 @@ module Handler : sig
        Initialize the handler when connection starts.
 
        Called once when the WebSocket connection is established.
-       Return `ok with initial state or `error if initialization fails. 
+       Return `ok with initial state or `error if initialization fails.
     *)
     val handle_frame: Http.Ws.Frame.t -> Net.TcpStream.t -> state -> (state, [> `Unknown_opcode of int]) handle_result
 
@@ -132,7 +132,7 @@ module Handler : sig
        Can return:
        - `ok state to continue with updated state
        - `push (frames, state) to send frames and update state
-       - `error (state, err) if frame processing fails 
+       - `error (state, err) if frame processing fails
     *)
     val handle_message: Message.t -> state -> (state, [> `Unknown_opcode of int]) handle_result
 
@@ -140,7 +140,7 @@ module Handler : sig
        Handle messages from other processes.
 
        Called when another process sends a message to this handler.
-       Useful for broadcasting, notifications, or coordinating between handlers. 
+       Useful for broadcasting, notifications, or coordinating between handlers.
     *)
   end
 

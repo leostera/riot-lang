@@ -62,7 +62,7 @@ type t
 
    ## Examples
 
-   ```ocaml let resp = Response.create Status.Ok ``` 
+   ```ocaml let resp = Response.create Status.Ok ```
 *)
 val create: Status.t -> t
 
@@ -73,7 +73,7 @@ val create: Status.t -> t
    ## Examples
 
    ```ocaml let status = Response.status resp in if Status.is_success status
-   then Log.info "Success!" ``` 
+   then Log.info "Success!" ```
 *)
 val status: t -> Status.t
 
@@ -82,7 +82,7 @@ val status: t -> Status.t
 
    ## Examples
 
-   ```ocaml Response.version resp (* Version.Http11 *) ``` 
+   ```ocaml Response.version resp (* Version.Http11 *) ```
 *)
 val version: t -> Version.t
 
@@ -92,7 +92,7 @@ val version: t -> Version.t
    ## Examples
 
    ```ocaml let headers = Response.headers resp in Header.iter (fun name value
-   -> Printf.printf "%s: %s\n" name value ) headers ``` 
+   -> Printf.printf "%s: %s\n" name value ) headers ```
 *)
 val headers: t -> Header.t
 
@@ -118,7 +118,7 @@ val body_string: t -> string option
 
    ## Examples
 
-   ```ocaml Response.with_status resp Status.Created ``` 
+   ```ocaml Response.with_status resp Status.Created ```
 *)
 val with_status: t -> Status.t -> t
 
@@ -127,7 +127,7 @@ val with_status: t -> Status.t -> t
 
    ## Examples
 
-   ```ocaml Response.with_version resp Version.Http2 ``` 
+   ```ocaml Response.with_version resp Version.Http2 ```
 *)
 val with_version: t -> Version.t -> t
 
@@ -138,7 +138,7 @@ val with_version: t -> Version.t -> t
 
    ```ocaml let headers = Header.empty |> Header.set "Content-Type" "text/html"
    |> Header.set "Cache-Control" "max-age=3600" in Response.with_headers resp
-   headers ``` 
+   headers ```
 *)
 val with_headers: t -> Header.t -> t
 
@@ -147,7 +147,7 @@ val with_headers: t -> Header.t -> t
 
    ## Examples
 
-   ```ocaml Response.with_header resp "Content-Type" "application/json" ``` 
+   ```ocaml Response.with_header resp "Content-Type" "application/json" ```
 *)
 val with_header: t -> Header.name -> Header.value -> t
 
@@ -173,7 +173,7 @@ val with_body_slice: t -> IO.IoVec.IoSlice.t -> t
 
    ## Examples
 
-   ```ocaml Response.without_body resp ``` 
+   ```ocaml Response.without_body resp ```
 *)
 val without_body: t -> t
 
@@ -183,7 +183,7 @@ val without_body: t -> t
    ## Examples
 
    ```ocaml resp |> Response.add_header "Set-Cookie" "session=abc" |>
-   Response.add_header "Set-Cookie" "token=xyz" ``` 
+   Response.add_header "Set-Cookie" "token=xyz" ```
 *)
 val add_header: t -> Header.name -> Header.value -> t
 
@@ -192,7 +192,7 @@ val add_header: t -> Header.name -> Header.value -> t
 
    ## Examples
 
-   ```ocaml Response.remove_header resp "X-Debug-Info" ``` 
+   ```ocaml Response.remove_header resp "X-Debug-Info" ```
 *)
 val remove_header: t -> Header.name -> t
 
@@ -202,7 +202,7 @@ val remove_header: t -> Header.name -> t
    ## Examples
 
    ```ocaml match Response.get_header resp "Content-Type" with | Some ct ->
-   Printf.printf "Type: %s\n" ct | None -> () ``` 
+   Printf.printf "Type: %s\n" ct | None -> () ```
 *)
 val get_header: t -> Header.name -> Header.value option
 
@@ -212,7 +212,7 @@ val get_header: t -> Header.name -> Header.value option
    ## Examples
 
    ```ocaml if Response.has_header resp "ETag" then Log.info "Response is
-   cacheable" ``` 
+   cacheable" ```
 *)
 val has_header: t -> Header.name -> bool
 
@@ -307,7 +307,7 @@ val accepted: string -> t
 
    ## Examples
 
-   ```ocaml let resp = Response.no_content () ``` 
+   ```ocaml let resp = Response.no_content () ```
 *)
 val no_content: unit -> t
 
@@ -326,7 +326,7 @@ val bad_request: string -> t
    ## Examples
 
    ```ocaml let resp = Response.unauthorized "Authentication required" |>
-   Response.with_header "WWW-Authenticate" "Bearer" ``` 
+   Response.with_header "WWW-Authenticate" "Bearer" ```
 *)
 val unauthorized: string -> t
 
@@ -335,7 +335,7 @@ val unauthorized: string -> t
 
    ## Examples
 
-   ```ocaml let resp = Response.forbidden "Access denied" ``` 
+   ```ocaml let resp = Response.forbidden "Access denied" ```
 *)
 val forbidden: string -> t
 
@@ -344,7 +344,7 @@ val forbidden: string -> t
 
    ## Examples
 
-   ```ocaml let resp = Response.not_found "User not found" ``` 
+   ```ocaml let resp = Response.not_found "User not found" ```
 *)
 val not_found: string -> t
 
@@ -354,7 +354,7 @@ val not_found: string -> t
    ## Examples
 
    ```ocaml let resp = Response.method_not_allowed "POST not allowed on this
-   resource" |> Response.with_header "Allow" "GET, HEAD" ``` 
+   resource" |> Response.with_header "Allow" "GET, HEAD" ```
 *)
 val method_not_allowed: string -> t
 
@@ -364,7 +364,7 @@ val method_not_allowed: string -> t
    ## Examples
 
    ```ocaml let resp = Response.internal_server_error "Database connection
-   failed" ``` 
+   failed" ```
 *)
 val internal_server_error: string -> t
 
@@ -392,6 +392,6 @@ val bad_gateway: string -> t
    ## Examples
 
    ```ocaml let resp = Response.service_unavailable "Maintenance in progress"
-   |> Response.with_header "Retry-After" "3600" ``` 
+   |> Response.with_header "Retry-After" "3600" ```
 *)
 val service_unavailable: string -> t

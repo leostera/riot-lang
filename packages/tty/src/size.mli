@@ -73,19 +73,19 @@ val get: unit -> (t, [`System_error of string]) result
 
    (* With error handling *)
    match Size.get () with
-   | Ok size -> 
+   | Ok size ->
        if size.cols < 80 then
          print_endline "Terminal too narrow!"
    | Error (`System_error msg) ->
        Printf.eprintf "Failed: %s\n" msg
 
    (* With default fallback *)
-   let size = 
-     Size.get () 
+   let size =
+     Size.get ()
      |> Result.value ~default:{ rows = 24; cols = 80 }
    ```
 
-   Note: Size may change if user resizes terminal window. 
+   Note: Size may change if user resizes terminal window.
 *)
 val to_string: t -> string(**
    Convert size to human-readable string.
@@ -95,5 +95,5 @@ val to_string: t -> string(**
    let size = { Size.rows = 24; cols = 80 } in
    Size.to_string size
    (* "{ rows = 24; cols = 80 }" *)
-   ``` 
+   ```
 *)

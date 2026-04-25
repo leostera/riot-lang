@@ -1,11 +1,9 @@
 open Std
 
 type t
-
 type manifest_load_error =
   | ManifestReadFailed of { path: Path.t; error: IO.error }
   | ManifestParseFailed of { path: Path.t; error: Std.Data.Toml.error }
-
 type scan_error =
   | WorkspaceTomlLoadFailed of { path: Path.t; error: manifest_load_error }
   | WorkspaceManifestDecodeFailed of { path: Path.t; error: Workspace_manifest.error }
@@ -13,13 +11,11 @@ type scan_error =
   | PackageManifestDecodeFailed of { path: Path.t; error: Package_manifest.error }
   | NoWorkspaceRootFound
   | ScanException of { message: string }
-
 type load_error =
   | PackageNotFound of { dependant: string option; package: string; path: string }
   | PackageTomlReadFailed of { package: string; path: string }
   | PackageTomlParseFailed of { package: string; path: string }
   | PackageFromTomlFailed of { package: string; path: string; error: Package_manifest.error }
-
 val manifest_load_error_message: manifest_load_error -> string
 
 val scan_error_message: scan_error -> string
@@ -46,7 +42,7 @@ val find_workspace_root: t -> Path.t -> Path.t option
    one-package workspace rooted at that package directory.
 
    Returns the populated workspace and any package load errors encountered
-   while loading external path dependencies. 
+   while loading external path dependencies.
 *)
 val scan: t -> Path.t -> ((Workspace_manifest.t * load_error list), scan_error) result
 

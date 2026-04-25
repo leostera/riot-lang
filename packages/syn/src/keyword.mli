@@ -7,14 +7,14 @@ open Std
    with them.
 
    Keywords are language-level identifiers with special meaning that cannot be
-   used as variable names or other identifiers. 
+   used as variable names or other identifiers.
 *)
 (**
    All OCaml keywords.
 
    This covers standard OCaml keywords from the language specification. Note
    that some keywords like `begin`, `struct`, `sig`, and `object` also serve as
-   opening delimiters. 
+   opening delimiters.
 *)
 (**
    `of_string str` parses a keyword from a string.
@@ -22,7 +22,7 @@ open Std
    Returns `Some keyword` if the string is a valid keyword, `None` otherwise.
 
    Example: ```ocaml Keyword.of_string "let" = Some Let Keyword.of_string "foo"
-   = None Keyword.of_string "if" = Some If ``` 
+   = None Keyword.of_string "if" = Some If ```
 *)
 type t =
   | And
@@ -91,7 +91,7 @@ val of_string: string -> t option
    This is the inverse of `of_string` for valid keywords.
 
    Example: ```ocaml Keyword.to_string Let = "let" Keyword.to_string If = "if"
-   Keyword.to_string True = "true" ``` 
+   Keyword.to_string True = "true" ```
 *)
 val to_string: t -> string
 
@@ -103,7 +103,7 @@ val to_string: t -> string
    These keywords must be matched with a corresponding `end` keyword.
 
    Example: ```ocaml Keyword.is_opening Begin = true Keyword.is_opening Struct
-   = true Keyword.is_opening Let = false ``` 
+   = true Keyword.is_opening Let = false ```
 *)
 val is_opening: t -> bool
 
@@ -114,6 +114,6 @@ val is_opening: t -> bool
    and `object`.
 
    Example: ```ocaml Keyword.is_closing End = true Keyword.is_closing Done =
-   false ``` 
+   false ```
 *)
 val is_closing: t -> bool

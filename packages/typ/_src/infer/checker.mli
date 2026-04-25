@@ -27,6 +27,6 @@ type t = {
 
    Imported package/module state is resolved through [ImportedWorld]. The
    local checker env then carries only lexical/local typing state for the
-   current source. 
+   current source.
 *)
 val infer_file: imported_world:ImportedWorld.t -> config:TypConfig.t -> source:Source.t -> SemanticTree.file -> t

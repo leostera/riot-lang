@@ -34,7 +34,7 @@
 
    All command execution returns a [`Result`] type. Commands that exit with
    non-zero status are NOT considered errors - only system-level failures
-   (command not found, permission denied, etc.) return [`Error`]. 
+   (command not found, permission denied, etc.) return [`Error`].
 *)
 (** # Types *)
 open Global
@@ -47,7 +47,7 @@ type status = int
    By convention:
    - 0 indicates success
    - Non-zero indicates failure
-   - Specific codes may have special meanings per command 
+   - Specific codes may have special meanings per command
 *)
 type output = {
   stdout: string;
@@ -69,7 +69,7 @@ type error =
    System-level errors when spawning or running commands.
 
    Note: A command exiting with non-zero status is NOT an error. Only
-   failures to start the process return [`Error`]. 
+   failures to start the process return [`Error`].
 *)
 (** # Building Commands *)
 val make: ?cwd:string -> ?env:(string * string) list -> ?args:string list -> string -> t
@@ -104,7 +104,7 @@ val make: ?cwd:string -> ?env:(string * string) list -> ?args:string list -> str
    ## Path Resolution
 
    The command is resolved using the system's PATH environment variable unless
-   an absolute path is provided. 
+   an absolute path is provided.
 *)
 val to_string: t -> string
 
@@ -112,7 +112,7 @@ val to_string: t -> string
    Render a command as a shell-style string for logging and debugging.
 
    This is intended for observability only. Execution still goes through the
-   structured command value and does not invoke a shell. 
+   structured command value and does not invoke a shell.
 *)
 (** # Execution *)
 val output: ?on_stdout_line:(string -> unit) -> ?on_idle:(Time.Duration.t -> unit) -> ?idle_interval:Time.Duration.t -> t -> (output, error) result
@@ -144,7 +144,7 @@ val output: ?on_stdout_line:(string -> unit) -> ?on_idle:(Time.Duration.t -> uni
    ## Character Encoding
 
    Output is expected to be UTF-8. Invalid UTF-8 bytes may be replaced with
-   replacement characters. 
+   replacement characters.
 *)
 val status: t -> (status, error) result(**
    Executes command and returns only its exit status.
@@ -177,5 +177,5 @@ val status: t -> (status, error) result(**
 
    ## See Also
 
-   - [`output`] - When you need to capture stdout/stderr 
+   - [`output`] - When you need to capture stdout/stderr
 *)

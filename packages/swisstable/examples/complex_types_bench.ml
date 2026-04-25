@@ -4,8 +4,9 @@ open Std.Bench
 module HashMap = Std.Collections.HashMap
 
 (* ========================================================================
- * Type Definitions for Complex Keys/Values
- * ======================================================================== *)
+   * Type Definitions for Complex Keys/Values
+   * ========================================================================
+*)
 (* Simple user record *)
 type user = { id: int; name: string; email: string }
 
@@ -40,8 +41,9 @@ type order = {
 type customer = { user: user; address: address; order_count: int }
 
 (* ========================================================================
- * Benchmark Configuration
- * ======================================================================== *)
+   * Benchmark Configuration
+   * ========================================================================
+*)
 let small_config = { iterations = 100; warmup = 10 }
 
 let medium_config = { iterations = 50; warmup = 5 }
@@ -49,8 +51,9 @@ let medium_config = { iterations = 50; warmup = 5 }
 let large_config = { iterations = 20; warmup = 2 }
 
 (* ========================================================================
- * Record Keys Benchmarks
- * ======================================================================== *)
+   * Record Keys Benchmarks
+   * ========================================================================
+*)
 (* HashMap: Insert with user record keys *)
 let bench_hashmap_record_keys_insert = fun () ->
   let map = HashMap.create () in
@@ -86,8 +89,9 @@ let bench_swisstable_record_keys_get = fun () ->
   done
 
 (* ========================================================================
- * Variant Keys Benchmarks
- * ======================================================================== *)
+   * Variant Keys Benchmarks
+   * ========================================================================
+*)
 (* HashMap: Insert with variant keys *)
 let bench_hashmap_variant_keys_insert = fun () ->
   let map = HashMap.create () in
@@ -165,8 +169,9 @@ let bench_swisstable_variant_keys_get = fun () ->
   done
 
 (* ========================================================================
- * Tuple Keys Benchmarks
- * ======================================================================== *)
+   * Tuple Keys Benchmarks
+   * ========================================================================
+*)
 (* HashMap: Insert with tuple keys (common for coordinates, multi-part keys) *)
 let bench_hashmap_tuple_keys_insert = fun () ->
   let map = HashMap.create () in
@@ -202,8 +207,9 @@ let bench_swisstable_tuple_keys_get = fun () ->
   done
 
 (* ========================================================================
- * Complex Values Benchmarks (int keys, complex values)
- * ======================================================================== *)
+   * Complex Values Benchmarks (int keys, complex values)
+   * ========================================================================
+*)
 (* HashMap: Insert with complex order values *)
 let bench_hashmap_complex_values_insert = fun () ->
   let map = HashMap.create () in
@@ -291,8 +297,9 @@ let bench_swisstable_complex_values_get = fun () ->
   for i = 0 to 999 do ignore (Swisstable.get map (i * 10)) done
 
 (* ========================================================================
- * Nested Structures Benchmarks
- * ======================================================================== *)
+   * Nested Structures Benchmarks
+   * ========================================================================
+*)
 (* HashMap: Insert with nested customer keys *)
 let bench_hashmap_nested_keys_insert = fun () ->
   let map = HashMap.create () in
@@ -308,8 +315,9 @@ let bench_swisstable_nested_keys_insert = fun () ->
   done
 
 (* ========================================================================
- * Main Benchmark Suite
- * ======================================================================== *)
+   * Main Benchmark Suite
+   * ========================================================================
+*)
 let benchmarks = Bench.[
   compare_with_config ~config:medium_config "record keys: insert 10k users" [ make_case "HashMap" bench_hashmap_record_keys_insert; make_case "Swisstable" bench_swisstable_record_keys_insert ];
   compare_with_config ~config:medium_config "record keys: get from 10k users" [ make_case "HashMap" bench_hashmap_record_keys_get; make_case "Swisstable" bench_swisstable_record_keys_get ];

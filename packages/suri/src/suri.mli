@@ -288,7 +288,7 @@ open Std
 
    ---
 
-   {1 API Reference} 
+   {1 API Reference}
 *)
 (** {2 Top-Level API} *)
 module Config : sig
@@ -297,7 +297,7 @@ module Config : sig
 
      Compound configuration for the entire Suri server including
      network settings, HTTP limits, protocol-specific options, and
-     LiveView session security. 
+     LiveView session security.
   *)
   type t = {
     host: string;
@@ -322,7 +322,7 @@ module Config : sig
      - max_header_count: 100
      - max_header_length: 8192
      - buffer_size: 4096
-     - liveview_secret: "INSECURE-CHANGE-ME-TO-AT-LEAST-32-CHARS" (MUST change in production!) 
+     - liveview_secret: "INSECURE-CHANGE-ME-TO-AT-LEAST-32-CHARS" (MUST change in production!)
   *)
   (** Configuration via Std.Config - see Config.mli for full documentation *)
   val spec: Std.Config.Spec.t
@@ -374,7 +374,7 @@ val start_link: ?config:Config.t -> handler -> (Supervisor.Dynamic.t, [> `Bind_e
 
    @param config Server configuration (defaults to Suri.config())
    @param handler Middleware pipeline (list of Conn.t -> Conn.t)
-   @return Ok supervisor_pid if successful, Error `Bind_error if port binding fails 
+   @return Ok supervisor_pid if successful, Error `Bind_error if port binding fails
 *)
 (** {2 User-Facing Modules} *)
 module Conn = Middleware.Conn
@@ -392,7 +392,7 @@ module Conn = Middleware.Conn
    - [uri], [method_], [headers] - Request accessors
    - [params] - Get route parameters
 
-   See {!Middleware.Conn} for full API. 
+   See {!Middleware.Conn} for full API.
 *)
 module Response = Web_server.Response
 
@@ -402,7 +402,7 @@ module Response = Web_server.Response
    Most users should use [Conn.respond] in middleware, but [Response]
    is useful for building responses directly.
 
-   See {!Web_server.Response} for full documentation. 
+   See {!Web_server.Response} for full documentation.
 *)
 module Request = Web_server.Request
 
@@ -412,7 +412,7 @@ module Request = Web_server.Request
    Most users should use [Conn] methods in middleware, but [Request]
    is useful for extracting request data.
 
-   See {!Web_server.Request} for full documentation. 
+   See {!Web_server.Request} for full documentation.
 *)
 (** {2 Framework Modules} *)
 module Middleware = Middleware
@@ -422,10 +422,10 @@ module Middleware = Middleware
 
    Includes:
    - {!Middleware.Conn} - Connection context
-   - {!Middleware.Pipeline} - Middleware composition  
+   - {!Middleware.Pipeline} - Middleware composition
    - {!Middleware.Router} - Pattern-based routing
 
-   See {!Middleware} for complete documentation. 
+   See {!Middleware} for complete documentation.
 *)
 module Component = Component
 
@@ -441,7 +441,7 @@ module Component = Component
    - 15+ event handlers for LiveView
    - Conditional rendering helpers
 
-   See {!Component} for complete documentation. 
+   See {!Component} for complete documentation.
 *)
 module LiveView = Liveview(**
    Server-rendered components with live updates.
@@ -450,5 +450,5 @@ module LiveView = Liveview(**
    sent to the server over WebSocket and DOM patches are
    sent back to the client.
 
-   See {!LiveView} for complete documentation. 
+   See {!LiveView} for complete documentation.
 *)

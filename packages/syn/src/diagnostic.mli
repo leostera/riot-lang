@@ -20,7 +20,7 @@ open Std
    This enables:
    - Reporting multiple errors in one pass
    - Producing usable trees from incomplete code
-   - Better IDE support (errors don't block analysis) 
+   - Better IDE support (errors don't block analysis)
 *)
 (** # Types *)
 type found_token = {
@@ -45,7 +45,7 @@ type kind =
      Example: `42` in .mli file - not a valid signature item
 
      Expected: "signature item (e.g., val, type, module)" Hint: Expected a
-     signature item like 'val', 'type', or 'module'. 
+     signature item like 'val', 'type', or 'module'.
   *)
   | InvalidPattern of { found: found_token }
   | InvalidExpression of { found: found_token }
@@ -112,13 +112,13 @@ val make: kind:kind -> span:Ceibo.Span.t -> t
 (**
    ## Diagnostic Constructors
 
-   These helpers create specific diagnostic types with helpful hints. 
+   These helpers create specific diagnostic types with helpful hints.
 *)
 (**
    Create a "malformed type variable" diagnostic.
 
    Example: ```ocaml Diagnostic.malformed_type_variable ~found:token ~text:" "
-   ~span:error_span ``` 
+   ~span:error_span ```
 *)
 val malformed_type_variable: found:Token.t -> text:string -> span:Ceibo.Span.t -> t
 
@@ -126,7 +126,7 @@ val malformed_type_variable: found:Token.t -> text:string -> span:Ceibo.Span.t -
    Create a "missing let binding pattern" diagnostic.
 
    Example: ```ocaml Diagnostic.missing_let_binding_pattern ~found:equals_token
-   ~text:"=" ~span:error_span ``` 
+   ~text:"=" ~span:error_span ```
 *)
 val missing_let_binding_pattern: found:Token.t -> text:string -> span:Ceibo.Span.t -> t
 
@@ -134,7 +134,7 @@ val missing_let_binding_pattern: found:Token.t -> text:string -> span:Ceibo.Span
    Create a "missing let binding equals" diagnostic.
 
    Example: ```ocaml Diagnostic.missing_let_binding_equals ~found:int_token
-   ~text:"42" ~span:error_span ``` 
+   ~text:"42" ~span:error_span ```
 *)
 val missing_let_binding_equals: found:Token.t -> text:string -> span:Ceibo.Span.t -> t
 
@@ -142,7 +142,7 @@ val missing_let_binding_equals: found:Token.t -> text:string -> span:Ceibo.Span.
    Create a "missing let binding expression" diagnostic.
 
    Example: ```ocaml Diagnostic.missing_let_binding_expr ~found:eof_token
-   ~text:"" ~span:error_span ``` 
+   ~text:"" ~span:error_span ```
 *)
 val missing_let_binding_expr: found:Token.t -> text:string -> span:Ceibo.Span.t -> t
 
@@ -150,7 +150,7 @@ val missing_let_binding_expr: found:Token.t -> text:string -> span:Ceibo.Span.t 
    Create an "unexpected structure item" diagnostic.
 
    Example: ```ocaml Diagnostic.unexpected_structure_item ~found:token
-   ~text:"42" ~span:error_span ``` 
+   ~text:"42" ~span:error_span ```
 *)
 val unexpected_structure_item: found:Token.t -> text:string -> span:Ceibo.Span.t -> t
 
@@ -180,7 +180,7 @@ val invalid_module_name: found:Token.t -> text:string -> span:Ceibo.Span.t -> t
    Create an "unexpected signature item" diagnostic.
 
    Example: ```ocaml Diagnostic.unexpected_signature_item ~found:token
-   ~text:"42" ~span:error_span ``` 
+   ~text:"42" ~span:error_span ```
 *)
 val unexpected_signature_item: found:Token.t -> text:string -> span:Ceibo.Span.t -> t
 
@@ -284,7 +284,7 @@ val found_token: t -> found_token
    (expected identifier) at 5..6 Invalid syntax in let binding at 12..18 ```
 
    Example: ```ocaml let msg = Diagnostic.to_string diag in Printf.eprintf
-   "Error: %s\n" msg ``` 
+   "Error: %s\n" msg ```
 *)
 val to_string: t -> string
 
@@ -322,6 +322,6 @@ val to_json: t -> Data.Json.t
    Example: ```ocaml match Data.Json.of_string json_str with | Ok json -> (
    match Diagnostic.from_json json with | Ok diag -> (* use diagnostic *) |
    Error msg -> (* handle parse error *) ) | Error _ -> (* handle JSON parse
-   error *) ``` 
+   error *) ```
 *)
 val from_json: Std.Data.Json.t -> (t, string) result

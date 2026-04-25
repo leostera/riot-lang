@@ -36,7 +36,7 @@
    {[
      let header = "token=xyz; Max-Age=86400; Path=/; Secure" in
      match Cookie.parse_set_cookie header with
-     | Some cookie -> 
+     | Some cookie ->
          (* cookie.name = "token" *)
          (* cookie.max_age = Some 86400 *)
      | None -> (* Invalid Set-Cookie *)
@@ -58,16 +58,17 @@
    - Set appropriate [max_age] to limit session lifetime
    - Use [__Host-] or [__Secure-] prefixes for sensitive cookies
 *)
+
 open Std
 
 (** {2 Types} *)
+
 type same_site =
   | Strict
   (** Strictest - no cross-site requests *)
   | Lax
   (** Safe cross-site (GET only) - recommended default *)
   | None
-
 (** Allow all cross-site (requires Secure flag) *)
 type t = {
   name: string;
@@ -89,7 +90,6 @@ type t = {
   same_site: same_site option;
   (** CSRF protection *)
 }
-
 (** {2 Parsing} *)
 (**
    Parse Cookie header into name-value pairs.
@@ -102,7 +102,7 @@ type t = {
    Handles:
    - Multiple cookies separated by semicolons
    - Optional whitespace around names/values
-   - Missing values (treated as empty string) 
+   - Missing values (treated as empty string)
 *)
 val parse: string -> (string * string) list
 
@@ -115,7 +115,7 @@ val parse: string -> (string * string) list
      (* Some { name = "id"; value = "a3"; max_age = Some 3600; secure = true; ... } *)
    ]}
 
-   Returns [None] if header is malformed. 
+   Returns [None] if header is malformed.
 *)
 val parse_set_cookie: string -> t option
 
@@ -129,7 +129,7 @@ val parse_set_cookie: string -> t option
      (* "id=123; Secure; HttpOnly; SameSite=Lax" *)
    ]}
 
-   Automatically includes all set attributes in correct format. 
+   Automatically includes all set attributes in correct format.
 *)
 val to_set_cookie: t -> string
 
@@ -145,11 +145,21 @@ val to_set_cookie: t -> string
 
    {b Example}:
    {[
-     make ~name:"session" ~value:"abc123" 
+     make ~name:"session" ~value:"abc123"
           ~max_age:3600 ~secure:true ()
-   ]} 
+   ]}
 *)
-val make: name:string -> value:string -> ?max_age:int -> ?expires:string -> ?path:string -> ?domain:string -> ?secure:bool -> ?http_only:bool -> ?same_site:same_site -> unit -> t
+val make: name:string ->
+  value:string ->
+  ?max_age:int ->
+  ?expires:string ->
+  ?path:string ->
+  ?domain:string ->
+  ?secure:bool ->
+  ?http_only:bool ->
+  ?same_site:same_site ->
+  unit ->
+  t
 
 (**
    Create a cookie with validation.
@@ -158,9 +168,20 @@ val make: name:string -> value:string -> ?max_age:int -> ?expires:string -> ?pat
    - Name contains only alphanumeric, underscore, hyphen
    - Value contains no control characters or semicolons
 
-   Returns [Error msg] if validation fails. 
+   Returns [Error msg] if validation fails.
 *)
-val make_validated: name:string -> value:string -> ?max_age:int -> ?expires:string -> ?path:string -> ?domain:string -> ?secure:bool -> ?http_only:bool -> ?same_site:same_site -> unit -> (t, string) result
+val make_validated:
+  name:string ->
+  value:string ->
+  ?max_age:int ->
+  ?expires:string ->
+  ?path:string ->
+  ?domain:string ->
+  ?secure:bool ->
+  ?http_only:bool ->
+  ?same_site:same_site ->
+  unit ->
+  (t, string) result
 
 (** {2 Validation} *)
 (** Check if cookie name is valid (alphanumeric + underscore + hyphen). *)

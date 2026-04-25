@@ -3,7 +3,7 @@
 
    Handlers define how connections are processed through lifecycle hooks. The
    key feature is the ability to switch handlers mid-connection via the
-   [Switch] result, enabling protocol upgrades (e.g., HTTP → WebSocket). 
+   [Switch] result, enabling protocol upgrades (e.g., HTTP → WebSocket).
 *)
 open Std
 
@@ -42,6 +42,6 @@ and t =
    type state = my_state type error = my_error
 
    (* Override only what you need *) let handle_data data conn state = ... end
-   ``` 
+   ```
 *)
 val default: ('state, 'error) handler

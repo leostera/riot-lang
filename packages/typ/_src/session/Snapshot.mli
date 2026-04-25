@@ -13,7 +13,7 @@ module SharedCaches : sig
 
      Reusing the same cache scope across repeated rooted snapshots lets hosts
      avoid reanalyzing sources whose revision, loaded-module set, and
-     dependency analysis modes are unchanged. 
+     dependency analysis modes are unchanged.
   *)
   val create: unit -> t
 end
@@ -29,7 +29,7 @@ end
 
    This constructor creates one standalone cache scope for the snapshot. Hosts
    that prepare many rooted snapshots in one execution should prefer
-   [make_with_shared_caches]. 
+   [make_with_shared_caches].
 *)
 val make: revision:int -> roots:SourceId.t list -> config:TypConfig.t -> sources:Source.t list -> t
 
@@ -45,14 +45,14 @@ val roots: t -> SourceId.t list
 (**
    Enumerate all per-source analyses in this snapshot.
 
-   Calling this forces every lazy per-root analysis. 
+   Calling this forces every lazy per-root analysis.
 *)
 val analyses: t -> SourceAnalysis.t list
 
 (**
    Enumerate the in-memory export summaries for every source in this snapshot.
 
-   Calling this forces every lazy per-root analysis. 
+   Calling this forces every lazy per-root analysis.
 *)
 val file_summaries: t -> FileSummary.t list
 
@@ -62,7 +62,7 @@ val file_summaries: t -> FileSummary.t list
 
    When a rooted module has both [.ml] and [.mli] sources in the session, the
    returned typings are paired and interface-shaped. Calling this forces every
-   lazy per-root analysis needed to produce those canonical module typings. 
+   lazy per-root analysis needed to produce those canonical module typings.
 *)
 val module_typings: t -> ModuleTypings.t list
 
@@ -72,7 +72,7 @@ val module_typings: t -> ModuleTypings.t list
 
    This preserves the rooted query boundary while ensuring callers see the
    same canonical [ModuleTypings] that [module_typings] enumerates for that
-   module. 
+   module.
 *)
 val find_module_typings: t -> SourceId.t -> ModuleTypings.t option
 
@@ -85,6 +85,6 @@ val find_module_typings_by_name: t -> string -> ModuleTypings.t option
    For paired [.ml]/[.mli] modules, the returned analysis includes any
    signature-inclusion diagnostics derived from comparing the implementation
    against the interface. Calling this forces analysis only for the requested
-   root source and any same-module siblings needed to pair it. 
+   root source and any same-module siblings needed to pair it.
 *)
 val find_analysis: t -> SourceId.t -> SourceAnalysis.t option

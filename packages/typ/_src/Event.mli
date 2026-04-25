@@ -6,7 +6,7 @@ open Model
 
    These events are intentionally coarse. They expose rooted snapshot
    preparation, module hydration, per-source analysis, and module pairing
-   without forcing hosts to scrape ad hoc log output. 
+   without forcing hosts to scrape ad hoc log output.
 *)
 type analysis_mode =
   | BaseAnalysis

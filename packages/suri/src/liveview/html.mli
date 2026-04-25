@@ -246,7 +246,7 @@ val event_handlers: 'msg attr list -> (string * (string -> 'msg)) list
 (**
    Extract event handlers from attribute list (internal use).
 
-   Used by the LiveView runtime to register event handlers. 
+   Used by the LiveView runtime to register event handlers.
 *)
 val map_action: ('msg_a -> 'msg_b) -> 'msg_a t -> 'msg_b t(**
    Map event handlers to a different message type.

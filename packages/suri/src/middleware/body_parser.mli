@@ -7,7 +7,7 @@
    ## Supported Content Types
 
    - [application/x-www-form-urlencoded] - HTML forms
-   - [application/json] - JSON payloads  
+   - [application/json] - JSON payloads
    - [multipart/form-data] - File uploads (TODO: Phase 2)
 
    ## Example
@@ -38,7 +38,7 @@
        let name = List.assoc_opt "name" (Conn.body_params conn) in
        let email = List.assoc_opt "email" (Conn.body_params conn) in
        (* ... *)
-   ]} 
+   ]}
 *)
 type parser =
   | Urlencoded
@@ -54,7 +54,7 @@ type config = {
   max_body_size: int;
   (**
      Maximum body size in bytes (default: 10MB). Bodies exceeding this are
-     not parsed. 
+     not parsed.
   *)
 }
 
@@ -73,5 +73,5 @@ val make: ?config:config -> unit -> conn:Conn.t -> next:(Conn.t -> Conn.t) -> Co
    Parsed data is stored in [Conn.body_params] for access by handlers and
    downstream middleware (e.g., CSRF protection).
 
-   Bodies larger than [max_body_size] are skipped without parsing. 
+   Bodies larger than [max_body_size] are skipped without parsing.
 *)

@@ -67,13 +67,13 @@ type strategy =
   | RestForOne
   (**
      If one child fails, that child and all children started after it
-     are terminated and restarted 
+     are terminated and restarted
   *)
   | SimpleOneForOne
 
 (**
    Simplified supervisor where all children use the same child_spec.
-   Children are added dynamically. 
+   Children are added dynamically.
 *)
 (** {1 Restart Policies} *)
 type restart =

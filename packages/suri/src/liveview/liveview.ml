@@ -465,7 +465,7 @@ let html_template = fun ~element_id ~ws_path ?title ?styles initial_content ->
        LiveView.serve_runtime ();  (* Serves at /assets/liveview.js *)
        Middleware.router routes;
      ]
-   ]} 
+   ]}
 *)
 let serve_runtime ?(prefix = "/assets/liveview.js") (): Middleware.Pipeline.middleware = fun ~conn ~next ->
   let req_path = Middleware.Conn.uri conn in
@@ -486,7 +486,7 @@ let mount = fun (type s m) ((module C: Component with type state = s and type ms
    The component will connect to its WebSocket endpoint at /suri/live/<id>.
 
    @param module Component module to embed
-   @param args Initialization arguments to pass to the component 
+   @param args Initialization arguments to pass to the component
 *)
 let embed = fun (type a) ((module C: Component with type args = a)) (args_value: a) -> let open Component in
 let element_id = "liveview-" ^ C.id in
@@ -533,7 +533,7 @@ let session_token = Session.encode ~secret ~json in Fragment [ div ~attrs:[
        get "/" home_handler;
        LiveView.live (module Counter);  (* Creates route at /suri/live/counter-<uuid> *)
      ]
-   ]} 
+   ]}
 *)
 let live = fun (type s m) ((module C: Component with type state = s and type msg = m)) ->
   let ws_path = "/suri/live/" ^ C.id in

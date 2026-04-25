@@ -91,24 +91,24 @@ let print_build_plan = fun plan ->
   Printf.printf "Building %d actions...\n" (List.length plan.actions)
 
 (*
-  Printf.printf "\n=== BUILD PLAN ===\n";
-  Printf.printf "Actions: %d\n" (List.length plan.actions);
-  Printf.printf "Outputs: %d\n\n" (List.length plan.outputs);
+   Printf.printf "\n=== BUILD PLAN ===\n";
+   Printf.printf "Actions: %d\n" (List.length plan.actions);
+   Printf.printf "Outputs: %d\n\n" (List.length plan.outputs);
 
-  List.iteri
-    (fun i action ->
-      Printf.printf "%3d. " (i + 1);
-      print_action action)
-    plan.actions;
+   List.iteri
+     (fun i action ->
+       Printf.printf "%3d. " (i + 1);
+       print_action action)
+     plan.actions;
 
-  if plan.outputs <> [] then (
-    Printf.printf "\nExpected outputs:\n";
-    List.iter
-      (fun output -> Printf.printf "  - %s\n" (Filename.basename output))
-      plan.outputs);
+   if plan.outputs <> [] then (
+     Printf.printf "\nExpected outputs:\n";
+     List.iter
+       (fun output -> Printf.printf "  - %s\n" (Filename.basename output))
+       plan.outputs);
 
-  Printf.printf "=== END BUILD PLAN ===\n\n"
-  *)
+   Printf.printf "=== END BUILD PLAN ===\n\n"
+*)
 
 let execute_action = fun ~project_root ~package ~cc_flags ~ld_flags ~uses_stdlib ~uses_unix ~uses_dynlink action ->
   match action with

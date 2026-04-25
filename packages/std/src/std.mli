@@ -21,7 +21,7 @@ module Archive = Archive
    - Shared application configuration
    - In-memory cache
    - Request counter / rate limiter
-   - User session storage 
+   - User session storage
 *)
 module ArgParser = Arg_parser
 
@@ -33,14 +33,14 @@ module ArgParser = Arg_parser
    **Examples:**
    - Build tools (like riot, cargo, npm)
    - Developer utilities
-   - System administration scripts 
+   - System administration scripts
 *)
 module Array = Collections.Array
 
 (**
    **When to use:** Fixed-size arrays
 
-   Use Array for index-addressed collections where the size is known up front. 
+   Use Array for index-addressed collections where the size is known up front.
 *)
 module Bench = Bench
 
@@ -55,14 +55,14 @@ module Bench = Bench
    - Measuring algorithm speed
    - Performance regression testing
 
-   **See also:** {!Test} for unit testing 
+   **See also:** {!Test} for unit testing
 *)
 module Bool = Bool
 
 (**
    **When to use:** Boolean operations
 
-   Extended bool operations with parsing, formatting, and utilities. 
+   Extended bool operations with parsing, formatting, and utilities.
 *)
 module Char = Char
 
@@ -71,7 +71,7 @@ module Char = Char
 
    Extended character operations beyond stdlib.
 
-   **See also:** {!Unicode.Rune} for Unicode code points 
+   **See also:** {!Unicode.Rune} for Unicode code points
 *)
 module Collections = Collections
 
@@ -88,7 +88,7 @@ module Collections = Collections
    - Double-ended operations → Deque
    - Priority ordering → Heap
    - Functional lists → List
-   - Duplicate-friendly key/value lists → Proplist 
+   - Duplicate-friendly key/value lists → Proplist
 *)
 module Compress = Compress
 
@@ -97,7 +97,7 @@ module Compress = Compress
 
    Use Compress for codec-style I/O transformations such as gzip streams.
 
-   **See also:** {!Archive} for tar archives layered on top of readers. 
+   **See also:** {!Archive} for tar archives layered on top of readers.
 *)
 module Command = Command
 
@@ -112,7 +112,7 @@ module Command = Command
    - System administration tasks
    - Integration with external utilities
 
-   **See also:** {!System} for system information 
+   **See also:** {!System} for system information
 *)
 module Config = Config
 
@@ -131,7 +131,7 @@ module Config = Config
    - Namespaced TOML sections
    - Type-safe parsing
    - Environment detection
-   - Deep merging 
+   - Deep merging
 *)
 module Crypto = Crypto
 
@@ -148,7 +148,7 @@ module Crypto = Crypto
 
    **WARNING:** NOT for password hashing - use proper KDFs like Argon2
 
-   **Algorithms:** SHA-256 (recommended), SHA-512, MD5 (legacy only) 
+   **Algorithms:** SHA-256 (recommended), SHA-512, MD5 (legacy only)
 *)
 module Data = Data
 
@@ -159,10 +159,10 @@ module Data = Data
 
    **Use cases:**
    - API communication → Json
-   - Configuration files → Toml  
+   - Configuration files → Toml
    - Data export/import → Csv
    - Legacy systems → Xml
-   - Lisp-like data → Sexp 
+   - Lisp-like data → Sexp
 *)
 module Encoding = Encoding
 
@@ -176,7 +176,7 @@ module Encoding = Encoding
    - Human-friendly binary transport → Base32
    - Binary-in-text payloads → Base64
    - Compact text encodings → Base85
-   - Octal numeric fields → Octal 
+   - Octal numeric fields → Octal
 *)
 module Calendar = Calendar
 
@@ -188,7 +188,7 @@ module Calendar = Calendar
    **Examples:**
    - Birthdays and anniversaries
    - Date-only config values
-   - Day-based retention windows 
+   - Day-based retention windows
 *)
 module Date = Date
 
@@ -205,7 +205,7 @@ module DateTime = DateTime
    - Timezone-aware operations
    - Calendar displays
 
-   **See also:** {!Time.SystemTime} for timestamps, {!Time.Instant} for elapsed time 
+   **See also:** {!Time.SystemTime} for timestamps, {!Time.Instant} for elapsed time
 *)
 module Diff = Diff
 
@@ -218,7 +218,7 @@ module Diff = Diff
    - Configuration change tracking
    - Database record diffing
    - API response comparison
-   - Undo/redo systems 
+   - Undo/redo systems
 *)
 module Env = Env
 
@@ -226,7 +226,7 @@ module Env = Env
    **When to use:** Exception rendering and backtrace capture
 
    Use Exception from packages above `std` when you need exception text or
-   raw backtrace formatting without reaching into `Kernel`. 
+   raw backtrace formatting without reaching into `Kernel`.
 *)
 module Exception = Exception
 
@@ -239,14 +239,14 @@ module Exception = Exception
    - Reading DATABASE_URL, API_KEY
    - Detecting production vs development
    - Platform-specific behavior
-   - Container orchestration config 
+   - Container orchestration config
 *)
 module Float = Float
 
 (**
    **When to use:** Floating-point operations
 
-   Extended float operations with parsing and formatting. 
+   Extended float operations with parsing and formatting.
 *)
 (**
    **When to use:** Filesystem operations
@@ -260,7 +260,7 @@ module Float = Float
    - Querying metadata
    - Watching for changes
 
-   **See also:** {!Path} for path manipulation, {!Fs.File} for streaming 
+   **See also:** {!Path} for path manipulation, {!Fs.File} for streaming
 *)
 module Fs = Fs
 
@@ -274,7 +274,7 @@ module Glob = Glob
    **Modules:**
    - SimpleGraph → dependency tracking with topo sort
    - Dot → Graphviz visualization
-   - Mermaid → Markdown-friendly diagrams 
+   - Mermaid → Markdown-friendly diagrams
 *)
 module Graph = Graph
 
@@ -283,7 +283,7 @@ module Graph = Graph
 
    Use IO for Reader/Writer traits and vectored I/O operations.
 
-   **Most users should use:** {!Fs} or {!Net} instead 
+   **Most users should use:** {!Fs} or {!Net} instead
 *)
 module IO = IO
 
@@ -292,7 +292,7 @@ module IO = IO
 
    Use StringBuilder when you intentionally want to accumulate text into an
    owned `string`. `Std.IO.Buffer` is the off-heap I/O buffer default; this
-   module is the explicit heap-building boundary. 
+   module is the explicit heap-building boundary.
 *)
 module StringBuilder = StringBuilder
 
@@ -301,7 +301,7 @@ module Int = Int
 (**
    **When to use:** Integer operations
 
-   Extended int operations with parsing, formatting, and utilities. 
+   Extended int operations with parsing, formatting, and utilities.
 *)
 module Int32 = Int32
 
@@ -311,7 +311,7 @@ module Int64 = Int64
 (**
    **When to use:** 64-bit integer operations
 
-   Use Int64 for timestamps, large numbers, file sizes. 
+   Use Int64 for timestamps, large numbers, file sizes.
 *)
 module Iter = Iter
 
@@ -323,7 +323,7 @@ module Iter = Iter
    **Use Iterator when:** You need functional, backtrackable iteration
    **Use MutIterator when:** You need efficient, single-pass iteration
    **Use Cursor when:** You're parsing borrowed slices with backtracking
-   **Use MutCursor when:** You need fast, single-pass slice parsing 
+   **Use MutCursor when:** You need fast, single-pass slice parsing
 *)
 module List = Collections.List
 
@@ -332,7 +332,7 @@ module List = Collections.List
 
    Use List for functional programming, pattern matching, recursive algorithms.
 
-   **Prefer Vector when:** You need random access or frequent appends 
+   **Prefer Vector when:** You need random access or frequent appends
 *)
 module Log = Log
 
@@ -345,14 +345,14 @@ module Log = Log
    - Application events
    - Error tracking
    - Debugging
-   - Audit trails 
+   - Audit trails
 *)
 module Message = Message
 
 (**
    **When to use:** Defining extensible message types
 
-   Use Message for building type-safe actor communication protocols. 
+   Use Message for building type-safe actor communication protocols.
 *)
 module Net = Net
 
@@ -366,7 +366,7 @@ module Net = Net
    - TCP clients → TcpStream
    - HTTP → Http.Request, Http.Response
    - TLS/SSL → TlsStream
-   - URLs → Uri 
+   - URLs → Uri
 *)
 module Option = Option
 
@@ -383,7 +383,7 @@ module Order = Order
    - User input that can be empty
    - Function arguments that are optional
 
-   **Prefer Result when:** Absence indicates an error you want to handle 
+   **Prefer Result when:** Absence indicates an error you want to handle
 *)
 module Path = Path
 
@@ -394,14 +394,14 @@ module Path = Path
 
    **Always use Path instead of strings for filesystem paths!**
 
-   **See also:** {!Fs} for filesystem operations 
+   **See also:** {!Fs} for filesystem operations
 *)
 module Pid = Pid
 
 (**
    **When to use:** Process identifiers
 
-   Use Pid for actor/process identification and messaging. 
+   Use Pid for actor/process identification and messaging.
 *)
 module Actor = Actor
 
@@ -409,7 +409,7 @@ module Actor = Actor
    **When to use:** Actor lifecycle and monitoring
 
    Use Actor for spawning, linking, monitoring, and managing actors running on
-   the std runtime. 
+   the std runtime.
 *)
 module Process = Process
 
@@ -425,12 +425,12 @@ module Process = Process
    - Monitoring other processes
    - Process linking for crash propagation
    - Checking if process is alive
-   - Getting process info 
+   - Getting process info
 *)
 (**
    **When to use:** Physical equality and pointer operations
 
-   Rarely needed in normal application code. 
+   Rarely needed in normal application code.
 *)
 module Ptr = Ptr
 
@@ -439,7 +439,7 @@ module Ptr = Ptr
 
    Use Random for simple pseudo-random values like `int`, `bool`, and `char`.
    Initialize the default generator with `Random.init ?seed ()` when you need
-   deterministic runs. 
+   deterministic runs.
 *)
 module Random = Random
 
@@ -447,14 +447,14 @@ module Random = Random
    **When to use:** Representing open, closed, and unbounded intervals
 
    Use Range for interval membership checks, interval intersection, and
-   carrying ordering semantics alongside interval endpoints. 
+   carrying ordering semantics alongside interval endpoints.
 *)
 module Range = Range
 
 (**
    **When to use:** Unique, opaque, type-witnessing references
 
-   Use Ref for ensuring type safety across module boundaries. 
+   Use Ref for ensuring type safety across module boundaries.
 *)
 module Ref = Ref
 
@@ -467,7 +467,7 @@ module Result = Result
 
    Use Runtime when you need direct scheduler, mailbox, timer, or low-level
    actor runtime primitives that sit below the higher-level `Std.Process`,
-   `Std.Global`, and `Std.Timer` helpers. 
+   `Std.Global`, and `Std.Timer` helpers.
 *)
 module Runtime = Runtime
 
@@ -484,7 +484,7 @@ module Runtime = Runtime
 
    **Always use Result instead of exceptions for expected errors!**
 
-   **See also:** {!Option} for missing values without error context 
+   **See also:** {!Option} for missing values without error context
 *)
 module String = String
 
@@ -493,7 +493,7 @@ module String = String
 
    Use String for text manipulation with proper UTF-8 iteration support.
 
-   **See also:** {!Unicode} for advanced text processing 
+   **See also:** {!Unicode} for advanced text processing
 *)
 module Supervisor = Supervisor
 
@@ -514,7 +514,7 @@ module Supervisor = Supervisor
    - Long-running services
    - Connection pools
    - Worker pools
-   - Per-user sessions 
+   - Per-user sessions
 *)
 module Sync = Sync
 
@@ -525,14 +525,14 @@ module Sync = Sync
 
    **Most common:** Cell for mutable values
 
-   **See also:** {!Agent} for concurrent state with actor patterns 
+   **See also:** {!Agent} for concurrent state with actor patterns
 *)
 module System = System
 
 (**
    **When to use:** System information queries
 
-   Use System for OS detection, resource limits, system paths. 
+   Use System for OS detection, resource limits, system paths.
 *)
 module Task = Task
 
@@ -546,7 +546,7 @@ module Task = Task
    - Parallel computations
    - Async I/O operations
 
-   **See also:** {!WorkerPool} for distributing work across workers 
+   **See also:** {!WorkerPool} for distributing work across workers
 *)
 module Telemetry = Telemetry
 
@@ -559,21 +559,21 @@ module Telemetry = Telemetry
    - Request timing
    - Counter metrics
    - Custom events
-   - Performance monitoring 
+   - Performance monitoring
 *)
 (**
    **When to use:** Writing unit tests
 
    Use Test for building test suites with assertions and reporters.
 
-   **Reporters:** TAP, JUnit XML, JSON, Pretty print 
+   **Reporters:** TAP, JUnit XML, JSON, Pretty print
 *)
 module Test = Test
 
 (**
    **When to use:** Concurrency-capacity queries
 
-   Use Thread for runtime thread-budget hints like `available_parallelism`. 
+   Use Thread for runtime thread-budget hints like `available_parallelism`.
 *)
 module Thread = Thread
 
@@ -584,7 +584,7 @@ module Thread = Thread
 
    **Use Duration for:** Time spans, timeouts, delays
    **Use Instant for:** Elapsed time, benchmarking
-   **Use SystemTime for:** Wall-clock timestamps 
+   **Use SystemTime for:** Wall-clock timestamps
 *)
 module Time = Time
 
@@ -613,7 +613,7 @@ module Time = Time
        Option.iter Timer.cancel !timer_ref;
        Ok result
      ) in
-     timer_ref := Some (Timer.send_after operation_pid 
+     timer_ref := Some (Timer.send_after operation_pid
        (Message.Timeout) ~after:duration);
      receive_result operation_pid
    ```
@@ -621,7 +621,7 @@ module Time = Time
    Periodic heartbeat:
    ```ocaml
    let start_heartbeat server =
-     Timer.send_interval server 
+     Timer.send_interval server
        (Message.Heartbeat)
        ~interval:(Duration.of_sec 30)
    ```
@@ -629,12 +629,12 @@ module Time = Time
    Delayed retry:
    ```ocaml
    let retry_after_delay ~delay pid request =
-     Timer.send_after pid 
-       (Message.Retry request) 
+     Timer.send_after pid
+       (Message.Retry request)
        ~after:delay
    ```
 
-   **See also:** {!Time.Duration} for creating time spans 
+   **See also:** {!Time.Duration} for creating time spans
 *)
 module Timer = Timer
 
@@ -653,7 +653,7 @@ module Unicode = Unicode
    - Grapheme → User-perceived characters
    - Utf8 → UTF-8 encoding/decoding
    - Utf16 → UTF-16 line/column conversion
-   - Segmentation → Word/sentence/line breaking 
+   - Segmentation → Word/sentence/line breaking
 *)
 module UUID = Uuid
 
@@ -666,7 +666,7 @@ module UUID = Uuid
    - Database primary keys
    - Request IDs for tracing
    - Session tokens
-   - Distributed system coordination 
+   - Distributed system coordination
 *)
 module Version = Version
 
@@ -679,7 +679,7 @@ module Version = Version
    - Dependency management
    - API versioning
    - Feature flags based on version
-   - Migration scripts 
+   - Migration scripts
 *)
 module WorkerPool = Worker_pool
 
@@ -692,7 +692,7 @@ module WorkerPool = Worker_pool
    - Image processing pipeline
    - Data transformation
    - Batch analytics
-   - Parallel map operations 
+   - Parallel map operations
 *)
 (** Re-exported from Global *)
 include module type of Global
@@ -709,7 +709,7 @@ module Application = Application
    **Examples:**
    - Web app with database app dependency
    - Microservices with shared infrastructure
-   - Plugin systems 
+   - Plugin systems
 *)
 val start: apps:Application.t list -> unit
 
@@ -722,7 +722,7 @@ val start: apps:Application.t list -> unit
    **Example:**
    ```ocaml
    let () = Std.start ~apps:[database_app; web_app]
-   ``` 
+   ```
 *)
 (** Helper Functions from Global *)
 val panic: string -> 'a
@@ -731,14 +731,14 @@ val panic: string -> 'a
    Panic with a message - raises an uncatchable exception.
 
    **When to use:** Unrecoverable errors, invariant violations.
-   **Don't use for:** Expected errors → use Result instead 
+   **Don't use for:** Expected errors → use Result instead
 *)
 val cell: 'a -> 'a Sync.Cell.t
 
 (**
    Create a mutable cell with the given value.
 
-   **Example:** `let counter = cell 0 in Cell.update counter (fun n -> n + 1)` 
+   **Example:** `let counter = cell 0 in Cell.update counter (fun n -> n + 1)`
 *)
 val print: string -> unit
 
@@ -757,7 +757,7 @@ val todo: string -> 'a
 (**
    Mark code as TODO with a message - panics when called.
 
-   **Use for:** Placeholder implementations during development 
+   **Use for:** Placeholder implementations during development
 *)
 val unimplemented: unit -> 'a
 
@@ -780,28 +780,28 @@ val vec: 'a list -> 'a vec
 (**
    Create a vector from a list.
 
-   **Example:** `let v = vec [1; 2; 3] in Vector.push v 4` 
+   **Example:** `let v = vec [1; 2; 3] in Vector.push v 4`
 *)
 val queue: 'a list -> 'a queue
 
 (**
    Create a queue from a list.
 
-   **Example:** `let q = queue [1; 2; 3] in Queue.dequeue q` 
+   **Example:** `let q = queue [1; 2; 3] in Queue.dequeue q`
 *)
 val set: 'a list -> 'a set
 
 (**
    Create a set from a list.
 
-   **Example:** `let s = set [1; 2; 3; 2; 1] in HashSet.len s (* 3 *)` 
+   **Example:** `let s = set [1; 2; 3; 2; 1] in HashSet.len s (* 3 *)`
 *)
 val map: ('k * 'v) list -> ('k, 'v) map
 
 (**
    Create a map from a list of key-value pairs.
 
-   **Example:** `let m = map [("a", 1); ("b", 2)] in HashMap.get m "a"` 
+   **Example:** `let m = map [("a", 1); ("b", 2)] in HashMap.get m "a"`
 *)
 (** Actor Runtime Management *)
 exception Receive_timeout

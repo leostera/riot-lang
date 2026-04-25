@@ -81,7 +81,7 @@ open Global
 (** {1 Types} *)
 (**
    JSON value representation. Supports all standard JSON types: null,
-   booleans, numbers (int/float), strings, arrays, and objects. 
+   booleans, numbers (int/float), strings, arrays, and objects.
 *)
 type t =
   | Null
@@ -177,7 +177,7 @@ val to_string_pretty: ?depth:int -> t -> string
    ## Examples
 
    ```ocaml match Json.of_string bad_input with | Ok _ -> () | Error err ->
-   Log.error "JSON parse failed: %s" (Json.error_to_string err) ``` 
+   Log.error "JSON parse failed: %s" (Json.error_to_string err) ```
 *)
 val error_to_string: error -> string
 
@@ -187,7 +187,7 @@ val error_to_string: error -> string
 
    ## Examples
 
-   ```ocaml Json.null (* Null *) Json.to_string Json.null (* "null" *) ``` 
+   ```ocaml Json.null (* Null *) Json.to_string Json.null (* "null" *) ```
 *)
 val null: t
 
@@ -205,7 +205,7 @@ val bool: bool -> t
 
    ## Examples
 
-   ```ocaml Json.int 42 (* Int 42 *) Json.int (-100) (* Int (-100) *) ``` 
+   ```ocaml Json.int 42 (* Int 42 *) Json.int (-100) (* Int (-100) *) ```
 *)
 val int: int -> t
 
@@ -215,7 +215,7 @@ val int: int -> t
    ## Examples
 
    ```ocaml Json.float 3.14 (* Float 3.14 *) Json.float (-0.5) (* Float (-0.5)
-   *) ``` 
+   *) ```
 *)
 val float: float -> t
 
@@ -225,7 +225,7 @@ val float: float -> t
    ## Examples
 
    ```ocaml Json.string "hello" (* String "hello" *) Json.to_string
-   (Json.string "test") (* "\"test\"" *) ``` 
+   (Json.string "test") (* "\"test\"" *) ```
 *)
 val string: string -> t
 
@@ -237,7 +237,7 @@ val string: string -> t
    ```ocaml Json.array [Json.int 1; Json.int 2; Json.int 3] (* Array
    [Int 1; Int 2; Int 3] *)
 
-   Json.array [] (* Array [] *) ``` 
+   Json.array [] (* Array [] *) ```
 *)
 val array: t list -> t
 
@@ -250,7 +250,7 @@ val array: t list -> t
    [ ("name", Json.string "Alice"); ("age", Json.int 30); ("active", Json.bool
     true) ] (* Object [("name", String "Alice"); ...] *)
 
-   Json.obj [] (* Object [] - empty object *) ``` 
+   Json.obj [] (* Object [] - empty object *) ```
 *)
 val obj: (string * t) list -> t
 
@@ -265,7 +265,7 @@ val obj: (string * t) list -> t
    Json.get_field "x" json (* Some (Int 10) *) Json.get_field "z" json (* None
    \- field doesn't exist *)
 
-   Json.get_field "x" (Json.int 5) (* None - not an object *) ``` 
+   Json.get_field "x" (Json.int 5) (* None - not an object *) ```
 *)
 val get_field: string -> t -> t option
 
@@ -276,7 +276,7 @@ val get_field: string -> t -> t option
 
    ```ocaml Json.get_string (Json.string "hello") (* Some "hello" *)
    Json.get_string (Json.int 42) (* None *) Json.get_string Json.null (* None
-   *) ``` 
+   *) ```
 *)
 val get_string: t -> string option
 
@@ -287,7 +287,7 @@ val get_string: t -> string option
 
    ```ocaml Json.get_int (Json.int 42) (* Some 42 *) Json.get_int (Json.float
    3.14) (* None - is a float *) Json.get_int (Json.string "42") (* None - is a
-   string *) ``` 
+   string *) ```
 *)
 val get_int: t -> int option
 
@@ -297,7 +297,7 @@ val get_int: t -> int option
    ## Examples
 
    ```ocaml Json.get_bool (Json.bool true) (* Some true *) Json.get_bool
-   (Json.int 1) (* None - not a bool *) ``` 
+   (Json.int 1) (* None - not a bool *) ```
 *)
 val get_bool: t -> bool option
 
@@ -309,7 +309,7 @@ val get_bool: t -> bool option
    ```ocaml let json = Json.array [Json.int 1; Json.int 2] in Json.get_array
    json (* Some [Int 1; Int 2] *)
 
-   Json.get_array (Json.string "test") (* None *) ``` 
+   Json.get_array (Json.string "test") (* None *) ```
 *)
 val get_array: t -> t list option
 
@@ -322,7 +322,7 @@ val get_array: t -> t list option
    ```ocaml let json = Json.obj [("a", Json.int 1)] in Json.get_object json (*
    Some [("a", Int 1)] *)
 
-   Json.get_object (Json.array []) (* None *) ``` 
+   Json.get_object (Json.array []) (* None *) ```
 *)
 val get_object: t -> (string * t) list option
 
@@ -362,6 +362,6 @@ val get_object: t -> (string * t) list option
 
    ```ocaml let diff = Json.diff o1 o2 in let additions = Diff.additions diff
    in let removals = Diff.removals diff in let changes = Diff.changes diff in
-   let user_changes = Diff.at_path ["user"] diff ``` 
+   let user_changes = Diff.at_path ["user"] diff ```
 *)
 val diff: t -> t -> t Diff.change list

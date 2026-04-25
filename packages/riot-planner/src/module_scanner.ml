@@ -11,7 +11,7 @@ open Std.Collections
 
    The sorting order ensures:
    - .mli files come before .ml files (interfaces must be compiled first)
-   - Directories come last (allows processing files before descending) 
+   - Directories come last (allows processing files before descending)
 *)
 type entry =
   | ML of string * Path.t
@@ -29,7 +29,7 @@ type entry =
    Directories last
 
    This ensures proper OCaml compilation order and allows processing all files
-   in a directory before descending into subdirectories. 
+   in a directory before descending into subdirectories.
 *)
 let compare_entries = fun e1 e2 ->
   let get_name = function
@@ -61,7 +61,7 @@ let compare_entries = fun e1 e2 ->
    This allows the rest of the build system to work with relative paths while
    filesystem operations use absolute paths.
 
-   Returns entries sorted by type (MLI, ML, C, H, Other, Dir). 
+   Returns entries sorted by type (MLI, ML, C, H, Other, Dir).
 *)
 let rec scan_directory = fun ~from_dir ~rel_path ->
   match Fs.read_dir from_dir with
@@ -115,7 +115,7 @@ let rec scan_directory = fun ~from_dir ~rel_path ->
    Example: root = /home/user/project source_dir = src
 
    This scans /home/user/project/src and returns entries with paths like
-   "src/main.ml", "src/utils/helper.ml" (relative to project root). 
+   "src/main.ml", "src/utils/helper.ml" (relative to project root).
 *)
 let scan = fun ~root ~source_dir ->
   let dir = Path.(root / source_dir) in scan_directory ~from_dir:dir ~rel_path:source_dir

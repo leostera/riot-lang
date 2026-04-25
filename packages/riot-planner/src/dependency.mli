@@ -3,7 +3,7 @@
 
    A dependency summary is planner-owned state: it records immutable identity
    and where that dependency's artifacts are expected to be materialized in
-   the store, without requiring that they are already built. 
+   the store, without requiring that they are already built.
 *)
 open Std
 open Std.Collections
@@ -16,6 +16,6 @@ val library_cmxa: t -> Path.t
 
 (**
    Flatten dependencies and their transitive deps in dependency-first order,
-   deduplicated by package name. 
+   deduplicated by package name.
 *)
 val transitive_closure: t list -> t list

@@ -40,7 +40,7 @@
 
    - I/O-bound operations (network requests, file operations)
    - CPU-bound parallel computations
-   - Running multiple independent operations concurrently 
+   - Running multiple independent operations concurrently
 *)
 open Global
 
@@ -74,7 +74,7 @@ type 'a t
    wrong" ) in
 
    match Task.await failing_task with | Ok _ -> assert false | Error exn ->
-   println "Caught: %s" (Printexc.to_string exn) ``` 
+   println "Caught: %s" (Printexc.to_string exn) ```
 *)
 val async: (unit -> 'a) -> 'a t
 
@@ -98,7 +98,7 @@ val async: (unit -> 'a) -> 'a t
    ## Blocking Behavior
 
    This function blocks the calling thread. Don't call it from within another
-   task if you need to maintain parallelism. 
+   task if you need to maintain parallelism.
 *)
 val await: 'a t -> ('a, exn) result
 
@@ -133,6 +133,6 @@ val await: 'a t -> ('a, exn) result
    ## Order Preservation
 
    Results are returned in the same order as the input task list, regardless of
-   completion order. 
+   completion order.
 *)
 val await_all: 'a t list -> ('a, exn) result list

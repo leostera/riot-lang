@@ -62,11 +62,11 @@
    - Daylight saving time changes
    - Leap seconds
 
-   For measuring durations, use [Instant] which is immune to these changes. 
+   For measuring durations, use [Instant] which is immune to these changes.
 *)
 (**
    A point in wall-clock time from the system's real-time clock. Can be used
-   for timestamps but may not be monotonic. 
+   for timestamps but may not be monotonic.
 *)
 type t
 
@@ -154,7 +154,7 @@ val from_nanos: int64 -> t
 
    ## Note
 
-   This can go backwards if the system clock is adjusted. 
+   This can go backwards if the system clock is adjusted.
 *)
 val now: unit -> t
 
@@ -174,7 +174,7 @@ val duration_since_epoch: unit -> Duration.t
 
    If the system clock is adjusted backwards between measurements, this may
    panic or return an incorrect duration. For reliable duration measurement,
-   use [Instant.duration_since] instead. 
+   use [Instant.duration_since] instead.
 *)
 val duration_since: earlier:t -> t -> Duration.t
 
@@ -193,7 +193,7 @@ val duration_since: earlier:t -> t -> Duration.t
    ## Warning
 
    Subject to clock adjustments. Use [Instant.elapsed] for monotonic time
-   measurement. 
+   measurement.
 *)
 val elapsed: t -> Duration.t
 
@@ -204,7 +204,7 @@ val elapsed: t -> Duration.t
    ## Examples
 
    ```ocaml let now = SystemTime.now () in let expiry = SystemTime.add now
-   (Duration.from_hours 24) in (* expiry is 24 hours from now *) ``` 
+   (Duration.from_hours 24) in (* expiry is 24 hours from now *) ```
 *)
 val add: t -> Duration.t -> t
 
@@ -214,7 +214,7 @@ val add: t -> Duration.t -> t
    ## Examples
 
    ```ocaml let now = SystemTime.now () in let yesterday = SystemTime.sub now
-   (Duration.from_days 1) ``` 
+   (Duration.from_days 1) ```
 *)
 val sub: t -> Duration.t -> t
 
@@ -226,7 +226,7 @@ val sub: t -> Duration.t -> t
    ## Examples
 
    ```ocaml match SystemTime.checked_add time Duration.max with | Some future
-   -> (* OK *) | None -> (* Overflow - time too far in future *) ``` 
+   -> (* OK *) | None -> (* Overflow - time too far in future *) ```
 *)
 val checked_add: t -> Duration.t -> t option
 
@@ -237,7 +237,7 @@ val checked_add: t -> Duration.t -> t option
    ## Examples
 
    ```ocaml match SystemTime.checked_sub time (Duration.from_secs 1000000) with
-   | Some past -> (* OK *) | None -> (* Would be before epoch *) ``` 
+   | Some past -> (* OK *) | None -> (* Would be before epoch *) ```
 *)
 val checked_sub: t -> Duration.t -> t option
 
@@ -249,7 +249,7 @@ val checked_sub: t -> Duration.t -> t option
    ## Examples
 
    ```ocaml let t1 = SystemTime.now () in sleep 0.1; let t2 = SystemTime.now ()
-   in SystemTime.compare t1 t2 (* < 0, t1 is earlier *) ``` 
+   in SystemTime.compare t1 t2 (* < 0, t1 is earlier *) ```
 *)
 val compare: t -> t -> Order.t
 
@@ -267,7 +267,7 @@ val equal: t -> t -> bool
 
    ## Examples
 
-   ```ocaml let earliest = SystemTime.min time1 time2 ``` 
+   ```ocaml let earliest = SystemTime.min time1 time2 ```
 *)
 val min: t -> t -> t
 
@@ -276,7 +276,7 @@ val min: t -> t -> t
 
    ## Examples
 
-   ```ocaml let latest = SystemTime.max time1 time2 ``` 
+   ```ocaml let latest = SystemTime.max time1 time2 ```
 *)
 val max: t -> t -> t
 
@@ -287,7 +287,7 @@ val max: t -> t -> t
    ## Examples
 
    ```ocaml let now = SystemTime.now () in let timestamp =
-   SystemTime.to_unix_timestamp now ``` 
+   SystemTime.to_unix_timestamp now ```
 *)
 val to_unix_timestamp: t -> int
 
@@ -296,7 +296,7 @@ val to_unix_timestamp: t -> int
 
    ## Examples
 
-   ```ocaml let time = SystemTime.from_unix_timestamp 1234567890 ``` 
+   ```ocaml let time = SystemTime.from_unix_timestamp 1234567890 ```
 *)
 val from_unix_timestamp: int -> t
 
@@ -315,6 +315,6 @@ val from_unix_timestamp: int -> t
    ## Note
 
    Subject to system clock adjustments. The value may jump backwards if the
-   system clock is adjusted. 
+   system clock is adjusted.
 *)
 val duration_since_epoch: unit -> Duration.t

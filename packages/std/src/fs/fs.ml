@@ -26,7 +26,7 @@ let path_of_kernel = fun path -> Path.v (Kernel.Path.to_string path)
 
 (**
    Basic filesystem operations - defined first as they're used by other
-   functions 
+   functions
 *)
 let is_directory = fun path -> Kernel.Fs.File.is_directory (kernel_path path) |> convert_kernel_result
 

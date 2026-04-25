@@ -23,7 +23,7 @@ open Std
 
    When your application runs behind a proxy/load balancer:
    - nginx
-   - HAProxy  
+   - HAProxy
    - CloudFlare
    - AWS ALB/ELB
    - Heroku
@@ -81,7 +81,7 @@ open Std
    If you trust: [10.0.1.50]
    Result: 5.6.7.8 (CloudFlare's IP)
 
-   If you trust: [10.0.1.50; 5.6.7.8]  
+   If you trust: [10.0.1.50; 5.6.7.8]
    Result: 1.2.3.4 (Real client!)
    v}
 
@@ -118,7 +118,7 @@ open Std
    v}
 
    {b Note}: Current implementation uses exact IP matching.
-   CIDR range support coming in future version. 
+   CIDR range support coming in future version.
 *)
 (** {1 Middleware} *)
 (**
@@ -158,6 +158,6 @@ open Std
        remote_ip ~proxies:["10.0.1.50"] ~header:"x-real-ip";
        router routes;
      ]
-   ]} 
+   ]}
 *)
 val middleware: ?header:string -> unit -> proxies:string list -> conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t

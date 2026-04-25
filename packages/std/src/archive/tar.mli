@@ -116,7 +116,7 @@ val extract: IO.Reader.t -> into:Path.t -> (unit, extract_error) result
 (**
    Open a tar archive from disk and list its entries.
 
-   This is a convenience wrapper around [`entries`] for filesystem paths. 
+   This is a convenience wrapper around [`entries`] for filesystem paths.
 *)
 val entries_file: Path.t -> (entry list, read_error) result
 

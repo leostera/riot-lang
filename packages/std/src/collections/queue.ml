@@ -4,7 +4,8 @@ open Kernel
 
 (* Michael-Scott style linked FIFO queue with a consumed dummy head node.
    Enqueue and dequeue stay on CAS loops; snapshot helpers walk the currently
-   reachable linked list without trying to freeze concurrent mutation. *)
+   reachable linked list without trying to freeze concurrent mutation.
+*)
 type 'value node = { mutable value: 'value option; next: 'value node option Atomic.t }
 
 type 'value t = { head: 'value node Atomic.t; tail: 'value node Atomic.t; size: int Atomic.t }
@@ -96,7 +97,8 @@ let clear = fun t ->
   loop ()
 
 (* The head always points at a consumed stub node, so snapshot reads start at
-   [head.next] and skip any nodes that concurrent consumers already cleared. *)
+   [head.next] and skip any nodes that concurrent consumers already cleared.
+*)
 let snapshot_values = fun t ->
   let rec loop node_opt acc =
     match node_opt with

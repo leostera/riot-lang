@@ -48,14 +48,14 @@ open Global
    - Data serialization
    - AST representation
    - Protocol messages
-   - Simple database formats 
+   - Simple database formats
 *)
 (** {1 Types} *)
 (**
    S-expression representation.
 
    - [Atom]: A simple string value.
-   - [List]: A nested list of S-expressions. 
+   - [List]: A nested list of S-expressions.
 *)
 type t =
   | Atom of string
@@ -80,7 +80,7 @@ exception Parse_error of string
 
    - Atoms: Any sequence of characters without spaces or parens.
    - Lists: Enclosed in parentheses [(...].
-   - Whitespace: Separates atoms, ignored otherwise. 
+   - Whitespace: Separates atoms, ignored otherwise.
 *)
 val of_string: string -> (t, string) result
 
@@ -96,7 +96,7 @@ val of_string: string -> (t, string) result
 
    ## Raises
 
-   [Parse_error] with an error message if parsing fails. 
+   [Parse_error] with an error message if parsing fails.
 *)
 val parse_exn: string -> t
 
@@ -109,7 +109,7 @@ val parse_exn: string -> t
    match Sexp.parse_many "(first) (second) (third)" with
    | Ok sexps -> List.length sexps  (* 3 *)
    | Error _ -> ()
-   ``` 
+   ```
 *)
 val parse_many: string -> (t list, string) result
 
@@ -122,7 +122,7 @@ val parse_many: string -> (t list, string) result
    ```ocaml
    let s = Sexp.list [Sexp.atom "a"; Sexp.atom "b"] in
    Sexp.to_string s  (* "(a b)" *)
-   ``` 
+   ```
 *)
 val to_string: t -> string
 
@@ -136,7 +136,7 @@ val to_string: t -> string
      Sexp.list [ Sexp.atom "outer"; Sexp.list [ Sexp.atom "inner"; Sexp.atom "value" ] ]
    in
    Sexp.pretty_print nested  (* "(outer (inner value))" *)
-   ``` 
+   ```
 *)
 val pretty_print: t -> string
 
@@ -148,7 +148,7 @@ val pretty_print: t -> string
 
    ```ocaml
    Sexp.atom "hello"  (* Atom "hello" *)
-   ``` 
+   ```
 *)
 val atom: string -> t
 
@@ -160,7 +160,7 @@ val atom: string -> t
    ```ocaml
    Sexp.list [ Sexp.atom "a"; Sexp.atom "b" ]  (* List [Atom "a"; Atom "b"] *)
    Sexp.list []  (* List [] *)
-   ``` 
+   ```
 *)
 val list: t list -> t
 
@@ -173,7 +173,7 @@ val list: t list -> t
    ```ocaml
    Sexp.is_atom (Sexp.atom "foo")  (* true *)
    Sexp.is_atom (Sexp.list [])  (* false *)
-   ``` 
+   ```
 *)
 val is_atom: t -> bool
 
@@ -185,7 +185,7 @@ val is_atom: t -> bool
    ```ocaml
    Sexp.is_list (Sexp.list [])  (* true *)
    Sexp.is_list (Sexp.atom "foo")  (* false *)
-   ``` 
+   ```
 *)
 val is_list: t -> bool
 
@@ -197,7 +197,7 @@ val is_list: t -> bool
    ```ocaml
    Sexp.to_atom (Sexp.atom "hello")  (* Some "hello" *)
    Sexp.to_atom (Sexp.list [])  (* None *)
-   ``` 
+   ```
 *)
 val to_atom: t -> string option
 
@@ -211,7 +211,7 @@ val to_atom: t -> string option
    Sexp.to_list s  (* Some [Atom "a"; Atom "b"] *)
 
    Sexp.to_list (Sexp.atom "foo")  (* None *)
-   ``` 
+   ```
 *)
 val to_list: t -> t list option
 
@@ -228,7 +228,7 @@ val to_list: t -> t list option
      ]
    in
    Sexp.find_atom "name" data  (* Some (List [Atom "name"; Atom "Alice"]) *)
-   ``` 
+   ```
 *)
 val find_atom: string -> t list -> t option
 
@@ -249,7 +249,7 @@ val find_atom: string -> t list -> t option
    match Sexp.assoc "port" pairs with
    | Some (Atom port) -> Printf.printf "Port: %s\n" port
    | _ -> ()
-   ``` 
+   ```
 *)
 val assoc: string -> t list -> t option
 
@@ -267,7 +267,7 @@ module Csexp : sig
 
      let lst = Sexp.list [ Sexp.atom "a"; Sexp.atom "b" ] in
      Csexp.to_string lst  (* "(1:a1:b)" *)
-     ``` 
+     ```
   *)
   val to_string: t -> string
 
@@ -279,7 +279,7 @@ module Csexp : sig
      ```ocaml
      Csexp.of_string "5:hello"  (* Ok (Atom "hello") *)
      Csexp.of_string "(1:a1:b)"  (* Ok (List [Atom "a"; Atom "b"]) *)
-     ``` 
+     ```
   *)
   val of_string: string -> (t, string) result
 end

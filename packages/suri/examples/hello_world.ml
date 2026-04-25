@@ -7,7 +7,7 @@ open Suri
    Demonstrates the minimal Suri API - just a list of middleware!
 
    Run: riot run suri:hello_world
-   Test: curl http://localhost:4000 
+   Test: curl http://localhost:4000
 *)
 let app =
   [

@@ -46,53 +46,57 @@
    ]
 
    let list = Listbox.make ~render:render_item items
-   ``` 
+   ```
 *)
 open Std
 
 (** ## Types *)
+
 type 'a t
 
 (** A list instance containing items of type `'a` *)
 (** ## Creation *)
+
 val make: ?render:('a -> string) -> 'a list -> 'a t
 
 (**
    `make ?render items` creates a new list from items.
 
    - `render` - Optional custom rendering function. Default uses `to_string`.
-   - `items` - List of items to display 
+   - `items` - List of items to display
 *)
 (** ## Configuration *)
+
 val set_height: 'a t -> height:int -> 'a t
 
 (**
    `set_height list h` sets the visible height (number of items shown).
 
-   Set to 0 for unlimited height (show all items). 
+   Set to 0 for unlimited height (show all items).
 *)
 val set_width: 'a t -> width:int -> 'a t
 
 (**
    `set_width list w` sets the display width (for line wrapping/truncation).
 
-   Set to 0 for unlimited width. 
+   Set to 0 for unlimited width.
 *)
 val set_cursor_char: 'a t -> char:string -> 'a t
 
 (**
    `set_cursor_char list char` sets the character shown before selected item.
 
-   Default: "> " 
+   Default: "> "
 *)
 val set_filter_enabled: 'a t -> enabled:bool -> 'a t
 
 (**
    `set_filter_enabled list enabled` enables or disables filtering.
 
-   When enabled, pressing '/' enters filter mode. 
+   When enabled, pressing '/' enters filter mode.
 *)
 (** ## Items *)
+
 val items: 'a t -> 'a list
 
 (** `items list` returns all items (unfiltered). *)
@@ -109,12 +113,13 @@ val selected_index: 'a t -> int option
 
 (** `selected_index list` returns the index of the selected item in visible items. *)
 (** ## Selection *)
+
 val select: 'a t -> int -> 'a t
 
 (**
    `select list idx` selects item at index (in visible items).
 
-   Index is clamped to valid range. 
+   Index is clamped to valid range.
 *)
 val select_next: 'a t -> 'a t
 
@@ -129,6 +134,7 @@ val select_last: 'a t -> 'a t
 
 (** `select_last list` selects the last visible item. *)
 (** ## Filtering *)
+
 val filter_query: 'a t -> string
 
 (** `filter_query list` returns the current filter query string. *)
@@ -138,7 +144,7 @@ val set_filter: 'a t -> filter:string -> 'a t
    `set_filter list query` applies a filter query.
 
    Filters items by substring match on rendered text.
-   Empty string clears filter. 
+   Empty string clears filter.
 *)
 val clear_filter: 'a t -> 'a t
 
@@ -153,6 +159,7 @@ val stop_filtering: 'a t -> 'a t
 
 (** `stop_filtering list` exits filter input mode, keeps current filter. *)
 (** ## Input Handling *)
+
 val handle_key: 'a t -> Event.key -> Event.modifier -> 'a t
 
 (**
@@ -167,10 +174,13 @@ val handle_key: 'a t -> Event.key -> Event.modifier -> 'a t
    - Escape: stop filtering / clear filter
    - Character keys (in filter mode): update filter
 
-   Returns updated list. 
+   Returns updated list.
 *)
 (** ## Rendering *)
-val view: 'a t -> string(**
+
+val view: 'a t -> string
+
+(**
    `view list` renders the list for display.
 
    Format:
@@ -181,5 +191,5 @@ val view: 'a t -> string(**
    ```
 
    If filtering is active, shows filter input at bottom.
-   If height is set, shows only visible window of items. 
+   If height is set, shows only visible window of items.
 *)

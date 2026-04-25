@@ -35,7 +35,7 @@
    | Method | Safe | Idempotent | Cacheable |
    |--------|------|------------|-----------| | GET | ✓ | ✓ | ✓ | | HEAD | ✓ |
    ✓ | ✓ | | POST | ✗ | ✗ | ✗ | | PUT | ✗ | ✓ | ✗ | | DELETE | ✗ | ✓ | ✗ | |
-   PATCH | ✗ | ✗ | ✗ | | OPTIONS | ✓ | ✓ | ✗ | | TRACE | ✓ | ✓ | ✗ | 
+   PATCH | ✗ | ✗ | ✗ | | OPTIONS | ✓ | ✓ | ✗ | | TRACE | ✓ | ✓ | ✗ |
 *)
 type t =
   | Get
@@ -65,7 +65,7 @@ type t =
    ## Examples
 
    ```ocaml Method.of_string "GET" (* Get *) Method.of_string "get" (* Get *)
-   Method.of_string "PURGE" (* Extension "PURGE" *) ``` 
+   Method.of_string "PURGE" (* Extension "PURGE" *) ```
 *)
 val of_string: string -> t
 
@@ -78,7 +78,7 @@ val from_slice: IO.IoVec.IoSlice.t -> t
    ## Examples
 
    ```ocaml Method.to_string Method.Get (* "GET" *) Method.to_string
-   (Method.Extension "PURGE") (* "PURGE" *) ``` 
+   (Method.Extension "PURGE") (* "PURGE" *) ```
 *)
 val to_string: t -> string
 
@@ -90,7 +90,7 @@ val to_string: t -> string
    ## Examples
 
    ```ocaml Method.is_safe Method.Get (* true *) Method.is_safe Method.Post (*
-   false *) ``` 
+   false *) ```
 *)
 val is_safe: t -> bool
 
@@ -103,7 +103,7 @@ val is_safe: t -> bool
 
    ```ocaml Method.is_idempotent Method.Put (* true - PUT same resource twice =
    same result *) Method.is_idempotent Method.Post (* false - POST twice
-   creates two resources *) ``` 
+   creates two resources *) ```
 *)
 val is_idempotent: t -> bool
 
@@ -115,7 +115,7 @@ val is_idempotent: t -> bool
    ## Examples
 
    ```ocaml Method.is_cacheable Method.Get (* true *) Method.is_cacheable
-   Method.Delete (* false *) ``` 
+   Method.Delete (* false *) ```
 *)
 val is_cacheable: t -> bool
 
@@ -124,7 +124,7 @@ val is_cacheable: t -> bool
 
    ## Examples
 
-   ```ocaml Method.compare Method.Get Method.Post (* < 0 *) ``` 
+   ```ocaml Method.compare Method.Get Method.Post (* < 0 *) ```
 *)
 val compare: t -> t -> Order.t
 
@@ -133,6 +133,6 @@ val compare: t -> t -> Order.t
 
    ## Examples
 
-   ```ocaml Method.equal Method.Get Method.Get (* true *) ``` 
+   ```ocaml Method.equal Method.Get Method.Get (* true *) ```
 *)
 val equal: t -> t -> bool

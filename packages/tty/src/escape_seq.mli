@@ -32,7 +32,7 @@
      (* Disable when done *)
      print_string Escape_seq.disable_mouse_all_motion_seq;
      print_string Escape_seq.disable_mouse_extended_mode_seq
-   ]} 
+   ]}
 *)
 (** {1 Constants} *)
 (** The Control Sequence Introducer: ["\x1b["] *)
@@ -91,7 +91,7 @@ val reset_scroll_region_seq: string
    [erase_display_seq mode] returns sequence to clear parts of the screen:
    - [0] = from cursor to end
    - [1] = from cursor to beginning
-   - [2] = entire screen 
+   - [2] = entire screen
 *)
 val erase_display_seq: int -> string
 
@@ -99,7 +99,7 @@ val erase_display_seq: int -> string
    [erase_line_seq mode] returns sequence to clear parts of the line:
    - [0] = from cursor to end
    - [1] = from cursor to beginning
-   - [2] = entire line 
+   - [2] = entire line
 *)
 val erase_line_seq: int -> string
 
@@ -169,13 +169,13 @@ val change_scrolling_region_seq: int -> int -> string
 (** {1 Colors} *)
 (**
    [set_foreground_color_seq color] returns sequence to set text color.
-   [color] should be RGB like ["255;128;0"] 
+   [color] should be RGB like ["255;128;0"]
 *)
 val set_foreground_color_seq: string -> string
 
 (**
    [set_background_color_seq color] returns sequence to set background color.
-   [color] should be RGB like ["255;128;0"] 
+   [color] should be RGB like ["255;128;0"]
 *)
 val set_background_color_seq: string -> string
 
@@ -273,7 +273,7 @@ val end_sync_seq: string
    {[
      let colored = "\x1b[31mRed Text\x1b[0m" in
      strip colored  (* Returns "Red Text" *)
-   ]} 
+   ]}
 *)
 val strip: string -> string
 
@@ -286,6 +286,6 @@ val strip: string -> string
    {[
      let styled = "\x1b[1;32mBold Green\x1b[0m" in
      width styled  (* Returns 10, not 24 *)
-   ]} 
+   ]}
 *)
 val width: string -> int

@@ -18,7 +18,7 @@ let non_empty_bounded_list_arb = fun max elem_arb -> bounded_list_arb ~min:1 max
 
    We generate random sequences of operations and apply them to both
    Swisstable and HashMap, then verify they produce identical results.
-   This catches subtle bugs that unit tests might miss. 
+   This catches subtle bugs that unit tests might miss.
 *)
 (** {1 Model-Based Properties} *)
 (* Property 1: Insert operations produce identical results *)

@@ -15,7 +15,6 @@ type t =
   | TimeSystemTime of Time.SystemTime.error
   | TimeMonotonic of Time.Monotonic.error
   | TimeTimer of Time.Timer.error
-
 val from_async: Async.error -> t
 
 val from_env: Env.error -> t
@@ -51,7 +50,7 @@ val module_name: t -> string
 
 (**
    Extract the shared system error when the wrapped module error is rooted in a
-   `SystemError.t`. 
+   `SystemError.t`.
 *)
 val system: t -> System_error.t option
 

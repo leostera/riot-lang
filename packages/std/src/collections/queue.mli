@@ -51,7 +51,7 @@ val push: 'value t -> value:'value -> unit
 
 (**
    Dequeue one value from the front of the queue. Safe under concurrent
-   consumers. 
+   consumers.
 *)
 val pop: 'value t -> 'value option
 
@@ -72,7 +72,7 @@ val length: 'value t -> int
 
 (**
    Observe whether the queue is currently empty. Weakly consistent under
-   concurrent mutation. 
+   concurrent mutation.
 *)
 val is_empty: 'value t -> bool
 

@@ -7,7 +7,7 @@ open Std
    Each diagnostic constructor is self-contained: it carries its own primary
    source location plus any structured payload that describes what happened.
    Rendering helpers such as {!message} and {!to_json} are derived views over
-   that structured value. 
+   that structured value.
 *)
 type severity =
   | Error

@@ -9,7 +9,7 @@ open Global
 
    The direct `from_slice` entry point avoids copying the whole
    source input into a fresh heap string before parsing. `from_string` stays as
-   the convenience adapter for ordinary callers. 
+   the convenience adapter for ordinary callers.
 *)
 type t = Json.t
 

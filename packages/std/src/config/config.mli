@@ -140,7 +140,7 @@ module type ConfigSpec = sig
 
   (**
      Extract your config type from validated values.
-     Use the helper functions like {!get_string}, {!get_int}, etc. 
+     Use the helper functions like {!get_string}, {!get_int}, etc.
   *)
 end
 
@@ -221,7 +221,7 @@ val get: (module ConfigSpec with type t = 'a) -> ('a, error) result
    Example:
    ```ocaml
    match Config.get (module MyAppConfig) with
-   | Ok config -> 
+   | Ok config ->
        (* Use your typed config *)
        Log.info "Port: %d" config.port
    | Error (NotFound { app }) ->
@@ -454,7 +454,7 @@ val get_map: Spec.value -> string -> Spec.value
 (**
    Extract a nested map value from a map.
 
-   Example: 
+   Example:
    ```ocaml
    let server = Config.get_map conf "server" in
    let host = Config.get_string server "host"

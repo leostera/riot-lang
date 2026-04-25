@@ -49,7 +49,7 @@
    {3 Accessing Parameters}
    {[
      let user_handler conn req =
-       let id = List.assoc_opt "id" (Conn.params conn) 
+       let id = List.assoc_opt "id" (Conn.params conn)
          |> Option.unwrap_or ~default:"unknown" in
        Conn.respond conn ~status:Ok ~body:("User " ^ id) |> Conn.send
    ]}
@@ -98,7 +98,7 @@
    {[
      let app = [
        Middleware.router routes;
-       (fun ~conn ~next:_ -> 
+       (fun ~conn ~next:_ ->
          Conn.respond conn ~status:NotFound ~body:"404 Not Found" |> Conn.send);
      ]
    ]}
@@ -111,7 +111,7 @@
 
    ---
 
-   {1 API Reference} 
+   {1 API Reference}
 *)
 (**
    A route handler receives the connection and the original request.
@@ -132,7 +132,7 @@
        let id = List.assoc_opt "id" (Conn.params conn) |> Option.unwrap_or ~default:"" in
        let body = Web_server.Request.body req in
        Conn.respond conn ~status:Ok ~body:("User " ^ id) |> Conn.send
-   ]} 
+   ]}
 *)
 (** A single route definition with pattern, method, and handler. *)
 type handler = Conn.t -> Web_server.Request.t -> Conn.t
@@ -148,7 +148,7 @@ type route
    {[
      any "/ws" websocket_handler
      any "/flexible" (fun conn req -> Conn.send conn)
-   ]} 
+   ]}
 *)
 type t = route list
 
@@ -160,7 +160,7 @@ val any: string -> handler -> route
    {[
      get "/users" (fun conn req ->
        Conn.respond conn ~status:Ok ~body:"List of users" |> Conn.send)
-   ]} 
+   ]}
 *)
 val get: string -> handler -> route
 
@@ -171,7 +171,7 @@ val get: string -> handler -> route
      post "/users" (fun conn req ->
        let body = Web_server.Request.body req in
        Conn.respond conn ~status:Created ~body:("Created: " ^ body) |> Conn.send)
-   ]} 
+   ]}
 *)
 val post: string -> handler -> route
 
@@ -183,7 +183,7 @@ val post: string -> handler -> route
        let id = List.assoc_opt "id" (Conn.params conn) |> Option.unwrap_or ~default:"" in
        let body = Web_server.Request.body req in
        Conn.respond conn ~status:Ok ~body:("Updated user " ^ id) |> Conn.send)
-   ]} 
+   ]}
 *)
 val put: string -> handler -> route
 
@@ -194,7 +194,7 @@ val put: string -> handler -> route
      patch "/users/:id" (fun conn req ->
        let id = List.assoc_opt "id" (Conn.params conn) |> Option.unwrap_or ~default:"" in
        Conn.respond conn ~status:Ok ~body:("Patched user " ^ id) |> Conn.send)
-   ]} 
+   ]}
 *)
 val patch: string -> handler -> route
 
@@ -205,7 +205,7 @@ val patch: string -> handler -> route
      delete "/users/:id" (fun conn req ->
        let id = List.assoc_opt "id" (Conn.params conn) |> Option.unwrap_or ~default:"" in
        Conn.respond conn ~status:Ok ~body:("Deleted user " ^ id) |> Conn.send)
-   ]} 
+   ]}
 *)
 val delete: string -> handler -> route
 
@@ -215,7 +215,7 @@ val delete: string -> handler -> route
    {[
      head "/resource" (fun conn req ->
        Conn.respond conn ~status:Ok |> Conn.send)
-   ]} 
+   ]}
 *)
 val head: string -> handler -> route
 
@@ -230,7 +230,7 @@ val head: string -> handler -> route
        ];
      ]
      (* Creates routes: /api/health, /api/v1/users *)
-   ]} 
+   ]}
 *)
 val scope: string -> route list -> route
 
@@ -262,7 +262,7 @@ val scope: string -> route list -> route
      ]
    ]}
 
-   The handler module must implement {!Channel.Handler.Intf}. 
+   The handler module must implement {!Channel.Handler.Intf}.
 *)
 val websocket: string -> (module Channel.Handler.Intf with type args = 'a and type state = 's) -> 'a -> route
 
@@ -277,7 +277,7 @@ val websocket: string -> (module Channel.Handler.Intf with type args = 'a and ty
 
    {[
      let routes = [
-       get "/" (fun conn -> 
+       get "/" (fun conn ->
          Conn.respond conn ~status:Ok ~body:"Home" |> Conn.send);
        get "/about" (fun conn ->
          Conn.respond conn ~status:Ok ~body:"About" |> Conn.send);
@@ -288,6 +288,6 @@ val websocket: string -> (module Channel.Handler.Intf with type args = 'a and ty
        logger;
        Router.middleware routes;
      ]
-   ]} 
+   ]}
 *)
 val middleware: t -> Pipeline.middleware

@@ -70,7 +70,7 @@ open Std
        Static.middleware ~at:"/assets" (Path.v "./public") ();
        router routes;
      ]
-   ]} 
+   ]}
 *)
 (** {1 Configuration} *)
 type config = {
@@ -113,7 +113,7 @@ type config = {
 
    - [cache_control]: Cache-Control header. Use [None] for no caching,
      [Some "public, max-age=3600"] for 1 hour, or
-     [Some "public, max-age=31536000, immutable"] for fingerprinted assets. 
+     [Some "public, max-age=31536000, immutable"] for fingerprinted assets.
 *)
 val default_config: config
 
@@ -124,7 +124,7 @@ val default_config: config
    - [dotfiles = `Deny] - Block dotfiles
    - [symlinks = `Follow] - Follow symlinks
    - [headers = []] - No additional headers
-   - [cache_control = Some "public, max-age=3600"] - 1 hour cache 
+   - [cache_control = Some "public, max-age=3600"] - 1 hour cache
 *)
 (** {1 Middleware} *)
 val middleware: ?config:config -> at:string -> Path.t -> unit -> Pipeline.middleware(**
@@ -165,5 +165,5 @@ val middleware: ?config:config -> at:string -> Path.t -> unit -> Pipeline.middle
    {[
      let config = Static.{ default_config with show_directory = true } in
      Static.middleware ~at:"/files" ~config (Path.v "./files") ()
-   ]} 
+   ]}
 *)

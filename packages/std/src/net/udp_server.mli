@@ -28,19 +28,19 @@ type error =
 
 (**
    Datagram handler invoked for each received packet. The [payload] bytes are
-   trimmed to the datagram length. 
+   trimmed to the datagram length.
 *)
 type handler = socket:Udp_socket.t -> from:Addr.datagram_addr -> bytes -> len:int -> unit
 
 (**
    Bind a UDP server socket and remember the packet handler that should run for
-   each datagram. 
+   each datagram.
 *)
 val bind: ?reuse_addr:bool -> ?reuse_port:bool -> ?buffer_size:int -> Addr.datagram_addr -> handler:handler -> (t, error) Kernel.result
 
 (**
    Run the receive loop until an error occurs. Each datagram is dispatched in
-   its own actor so the loop can continue receiving while handlers run. 
+   its own actor so the loop can continue receiving while handlers run.
 *)
 val serve: t -> (unit, error) Kernel.result
 

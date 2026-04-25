@@ -53,7 +53,7 @@ val get: t -> Std.Crypto.hash -> Artifact.t option
 (**
    Check if we have cached artifacts for this hash. Returns Some artifact if
    cached, None if not. The artifact contains the list of files, warnings, and
-   package exports. 
+   package exports.
 *)
 val load_manifest: t -> hash:Std.Crypto.hash -> Manifest.t option
 
@@ -62,14 +62,14 @@ val save: ?ocamlc_warnings:string list -> ?exports:export_entry list -> t -> pac
 
 (**
    Save build outputs to the store. Copies the specified output files from
-   sandbox_dir to the store. 
+   sandbox_dir to the store.
 *)
 (** {1 Artifact Operations} *)
 val promote: t -> Std.Crypto.hash -> target_dir:Std.Path.t -> (unit, error) result
 
 (**
    Promote cached artifacts to the target directory. Returns error if hash not
-   found. 
+   found.
 *)
 val exists: t -> Std.Crypto.hash -> bool
 
@@ -79,13 +79,13 @@ val get_artifact_paths: t -> Artifact.t -> Std.Path.t list
 (**
    Get absolute paths to artifact files in the store's cache. These paths point
    to the immutable content-addressed storage and are guaranteed to exist. Use
-   this instead of relying on target/debug/out which may be cleaned. 
+   this instead of relying on target/debug/out which may be cleaned.
 *)
 val get_artifact_dir: t -> Artifact.t -> Std.Path.t
 
 (**
    Get the cache directory containing an artifact's files. Returns the absolute
-   path to the directory in immutable storage where the artifact is stored. 
+   path to the directory in immutable storage where the artifact is stored.
 *)
 val hash_dir_of: t -> Std.Crypto.hash -> Std.Path.t
 
@@ -93,7 +93,7 @@ val hash_dir_of: t -> Std.Crypto.hash -> Std.Path.t
    Get the immutable cache directory for a hash, whether or not it exists yet.
 
    This is useful for planning and dependency summaries that need a stable
-   output location before execution materializes artifacts. 
+   output location before execution materializes artifacts.
 *)
 val save_plan_bundle: t -> hash:Std.Crypto.hash -> plan:Std.Data.Json.t -> (unit, error) result
 
@@ -102,7 +102,7 @@ val save_plan_bundle: t -> hash:Std.Crypto.hash -> plan:Std.Data.Json.t -> (unit
 
    Plan bundles are persisted in a planner-specific namespace, separate from
    artifact directories, so planning cache writes do not interfere with
-   artifact cache atomicity. 
+   artifact cache atomicity.
 *)
 val load_plan_bundle: t -> hash:Std.Crypto.hash -> Std.Data.Json.t option
 
@@ -112,12 +112,12 @@ val export_source_path: t -> export_entry -> Std.Path.t option
 (**
    Resolve the immutable store path for a single export entry.
 
-   Returns [None] when the export path is absolute. 
+   Returns [None] when the export path is absolute.
 *)
 val materialize_package_exports: t -> exports:export_entry list -> target_dir:Std.Path.t -> (unit, error) result(**
    Materialize package exports from immutable action artifact locations into a
    package out directory.
 
    Each export entry copies from [cache/<action_hash>/<path>] to
-   [target_dir/<name>]. 
+   [target_dir/<name>].
 *)

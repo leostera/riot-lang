@@ -121,7 +121,7 @@ val middleware: ?param_name:string -> ?header_name:string -> ?skip_safe_methods:
        csrf ();
        router routes;
      ]
-   ]} 
+   ]}
 *)
 val get_token: Conn.t -> string
 
@@ -135,7 +135,7 @@ val get_token: Conn.t -> string
    {[
      let token = Csrf.get_token conn in
      (* Use token in custom HTML *)
-   ]} 
+   ]}
 *)
 val hidden_field: Conn.t -> 'msg Component.t
 
@@ -154,7 +154,7 @@ val hidden_field: Conn.t -> 'msg Component.t
          Component.input ~attrs:[Component.name "data"] ();
          Component.button [Component.text "Submit"];
        ]
-   ]} 
+   ]}
 *)
 val meta_tag: Conn.t -> 'msg Component.t(**
    Generate HTML meta tag for AJAX requests.
@@ -175,5 +175,5 @@ val meta_tag: Conn.t -> 'msg Component.t(**
            content
          ];
        ]
-   ]} 
+   ]}
 *)

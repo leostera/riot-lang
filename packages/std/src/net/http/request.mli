@@ -70,7 +70,7 @@ type t
    ## Examples
 
    ```ocaml let uri = Uri.of_string "https://example.com" |> Result.unwrap in
-   let req = Request.create Method.Get uri ``` 
+   let req = Request.create Method.Get uri ```
 *)
 val create: Method.t -> Uri.t -> t
 
@@ -80,7 +80,7 @@ val create: Method.t -> Uri.t -> t
 
    ## Examples
 
-   ```ocaml Request.method_ req (* Method.Get *) ``` 
+   ```ocaml Request.method_ req (* Method.Get *) ```
 *)
 val method_: t -> Method.t
 
@@ -90,7 +90,7 @@ val method_: t -> Method.t
    ## Examples
 
    ```ocaml let uri = Request.uri req in Uri.to_string uri (*
-   "https://example.com/path" *) ``` 
+   "https://example.com/path" *) ```
 *)
 val uri: t -> Uri.t
 
@@ -99,7 +99,7 @@ val uri: t -> Uri.t
 
    ## Examples
 
-   ```ocaml Request.version req (* Version.Http11 *) ``` 
+   ```ocaml Request.version req (* Version.Http11 *) ```
 *)
 val version: t -> Version.t
 
@@ -109,7 +109,7 @@ val version: t -> Version.t
    ## Examples
 
    ```ocaml let headers = Request.headers req in Header.iter (fun name value ->
-   Printf.printf "%s: %s\n" name value ) headers ``` 
+   Printf.printf "%s: %s\n" name value ) headers ```
 *)
 val headers: t -> Header.t
 
@@ -135,7 +135,7 @@ val body_string: t -> string option
 
    ## Examples
 
-   ```ocaml Request.with_method req Method.Post ``` 
+   ```ocaml Request.with_method req Method.Post ```
 *)
 val with_method: t -> Method.t -> t
 
@@ -145,7 +145,7 @@ val with_method: t -> Method.t -> t
    ## Examples
 
    ```ocaml let new_uri = Uri.of_string "https://api.v2.example.com" |>
-   Result.unwrap in Request.with_uri req new_uri ``` 
+   Result.unwrap in Request.with_uri req new_uri ```
 *)
 val with_uri: t -> Uri.t -> t
 
@@ -154,7 +154,7 @@ val with_uri: t -> Uri.t -> t
 
    ## Examples
 
-   ```ocaml Request.with_version req Version.Http2 ``` 
+   ```ocaml Request.with_version req Version.Http2 ```
 *)
 val with_version: t -> Version.t -> t
 
@@ -165,7 +165,7 @@ val with_version: t -> Version.t -> t
 
    ```ocaml let headers = Header.empty |> Header.set "Content-Type"
    "application/json" |> Header.set "Accept" "application/json" in
-   Request.with_headers req headers ``` 
+   Request.with_headers req headers ```
 *)
 val with_headers: t -> Header.t -> t
 
@@ -174,7 +174,7 @@ val with_headers: t -> Header.t -> t
 
    ## Examples
 
-   ```ocaml Request.with_header req "Authorization" "Bearer token" ``` 
+   ```ocaml Request.with_header req "Authorization" "Bearer token" ```
 *)
 val with_header: t -> Header.name -> Header.value -> t
 
@@ -200,7 +200,7 @@ val with_body_slice: t -> IO.IoVec.IoSlice.t -> t
 
    ## Examples
 
-   ```ocaml Request.without_body req ``` 
+   ```ocaml Request.without_body req ```
 *)
 val without_body: t -> t
 
@@ -210,7 +210,7 @@ val without_body: t -> t
    ## Examples
 
    ```ocaml req |> Request.add_header "Accept" "text/html" |>
-   Request.add_header "Accept" "application/json" ``` 
+   Request.add_header "Accept" "application/json" ```
 *)
 val add_header: t -> Header.name -> Header.value -> t
 
@@ -219,7 +219,7 @@ val add_header: t -> Header.name -> Header.value -> t
 
    ## Examples
 
-   ```ocaml Request.remove_header req "X-Debug" ``` 
+   ```ocaml Request.remove_header req "X-Debug" ```
 *)
 val remove_header: t -> Header.name -> t
 
@@ -229,7 +229,7 @@ val remove_header: t -> Header.name -> t
    ## Examples
 
    ```ocaml match Request.get_header req "Content-Type" with | Some ct ->
-   Printf.printf "Content-Type: %s\n" ct | None -> () ``` 
+   Printf.printf "Content-Type: %s\n" ct | None -> () ```
 *)
 val get_header: t -> Header.name -> Header.value option
 
@@ -239,7 +239,7 @@ val get_header: t -> Header.name -> Header.value option
    ## Examples
 
    ```ocaml if Request.has_header req "Authorization" then Log.info "Request is
-   authenticated" ``` 
+   authenticated" ```
 *)
 val has_header: t -> Header.name -> bool
 
@@ -304,7 +304,7 @@ end
    ## Examples
 
    ```ocaml let uri = Uri.of_string "https://api.example.com/users" |>
-   Result.unwrap in let req = Request.get uri ``` 
+   Result.unwrap in let req = Request.get uri ```
 *)
 val get: Uri.t -> t
 
@@ -338,7 +338,7 @@ val put: Uri.t -> string -> t
 
    ## Examples
 
-   ```ocaml let req = Request.delete uri ``` 
+   ```ocaml let req = Request.delete uri ```
 *)
 val delete: Uri.t -> t
 
@@ -347,7 +347,7 @@ val delete: Uri.t -> t
 
    ## Examples
 
-   ```ocaml let req = Request.head uri ``` 
+   ```ocaml let req = Request.head uri ```
 *)
 val head: Uri.t -> t
 
@@ -356,7 +356,7 @@ val head: Uri.t -> t
 
    ## Examples
 
-   ```ocaml let req = Request.options uri ``` 
+   ```ocaml let req = Request.options uri ```
 *)
 val options: Uri.t -> t
 

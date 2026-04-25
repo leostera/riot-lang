@@ -2,7 +2,7 @@ open Global
 
 (**
    Fixture metadata attached to a test context when a case comes from a shared
-   fixture runner. 
+   fixture runner.
 *)
 type fixture = {
   (** Absolute fixture path. *)

@@ -33,7 +33,7 @@ val to_string: t -> string
 
 (**
    Use `unsafe_to_string value` only when the caller already owns `value` and will not mutate it
-   afterward. 
+   afterward.
 *)
 val unsafe_to_string: t -> string
 
@@ -44,6 +44,6 @@ val sub_unchecked: t -> offset:int -> len:int -> t
 
 (**
    Use `sub_string value offset len` to copy the selected byte slice into a fresh immutable
-   string. 
+   string.
 *)
 val sub_string: t -> offset:int -> len:int -> string

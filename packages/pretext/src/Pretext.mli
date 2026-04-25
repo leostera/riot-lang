@@ -47,14 +47,14 @@ val join: t -> t list -> t
    Format a single document.
 
    The root document is implicitly grouped, so [brk] acts like a space when
-   the full document fits within [width]. 
+   the full document fits within [width].
 *)
 val layout_doc: ?width:int -> t -> string
 
 (**
    Format a document list.
 
-   Equivalent to [layout_doc ~width (concat docs)]. 
+   Equivalent to [layout_doc ~width (concat docs)].
 *)
 val layout: ?width:int -> t list -> string
 

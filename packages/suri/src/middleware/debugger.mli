@@ -161,5 +161,5 @@ val debugger: conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t(**
      ]
    ]}
 
-   {b ⚠️ Development only} - do not use in production! 
+   {b ⚠️ Development only} - do not use in production!
 *)

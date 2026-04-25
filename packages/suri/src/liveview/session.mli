@@ -4,7 +4,7 @@ open Std
    Session token signing and verification for LiveView components.
 
    Provides cryptographically signed session tokens to securely pass
-   initialization arguments from HTTP embed to WebSocket mount. 
+   initialization arguments from HTTP embed to WebSocket mount.
 *)
 val encode: secret:string -> json:Data.Json.t -> string
 

@@ -6,7 +6,7 @@ open Std
    [ModuleTypings] is the single host-facing value that build, LSP, and future
    cache layers persist, reload, merge, and hand back into new [Session]s.
    It carries the exported typing facts for one module together with the
-   module identity and source hash a host needs for provenance and reuse. 
+   module identity and source hash a host needs for provenance and reuse.
 *)
 type definition_site = { origin: Source.origin; span: Syn.Ceibo.Span.t }
 
@@ -40,14 +40,14 @@ val of_file_summary: module_name:string -> source_hash:Crypto.hash -> ?value_def
    Recover one per-source [FileSummary] from module typings.
 
    This is mainly useful for tests and compatibility seams that still consume
-   source-local summaries. 
+   source-local summaries.
 *)
 val to_file_summary: source_id:SourceId.t -> t -> FileSummary.t
 
 (**
    Build a deterministic synthetic source hash for module typings that do not
    come from one real source input, such as bootstrap or merged dependency
-   summaries. 
+   summaries.
 *)
 val synthetic_source_hash: module_name:string -> export_result:FileSummary.export_result -> type_decls:FileSummary.type_decl list -> ?value_definitions:value_definition list -> unit -> Crypto.hash
 

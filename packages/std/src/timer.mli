@@ -1,7 +1,7 @@
 (** Opaque timer identifier *)
 (**
    Send a message to a process after a delay. Returns a timer ID
-   that can be used to cancel the timer. 
+   that can be used to cancel the timer.
 *)
 type id = Runtime.Timer.id
 
@@ -9,13 +9,13 @@ val send_after: Pid.t -> Message.t -> after:Time.Duration.t -> id
 
 (**
    Send a message to a process repeatedly at a given interval.
-   Returns a timer ID that can be used to cancel the timer. 
+   Returns a timer ID that can be used to cancel the timer.
 *)
 val send_interval: Pid.t -> Message.t -> interval:Time.Duration.t -> id
 
 (**
    Cancel a timer by its ID. If the timer has already fired or doesn't exist,
-   this is a no-op. 
+   this is a no-op.
 *)
 val cancel: id -> unit
 
@@ -33,7 +33,7 @@ val equal: id -> id -> bool
      expensive_computation ()
    ) in
 
-   Log.info "Operation took %f seconds" 
+   Log.info "Operation took %f seconds"
      (Time.Duration.to_secs_float duration)
    ```
 
@@ -46,7 +46,7 @@ val equal: id -> id -> bool
 
    ## Note
 
-   Uses monotonic clock for accuracy. Time includes any GC pauses that 
-   occur during execution. 
+   Uses monotonic clock for accuracy. Time includes any GC pauses that
+   occur during execution.
 *)
 val measure: (unit -> 'a) -> ('a * Time.Duration.t)

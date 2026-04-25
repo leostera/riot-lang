@@ -356,7 +356,8 @@ let placeholder_source_analysis_cache_key = fun (snapshot: t) (slot: analysis_sl
 let placeholder_module_result_cache_key = fun (snapshot: t) module_name -> digest_key [ shared_cache_namespace snapshot; "partial-module"; module_name ]
 
 (* These caches depend on visible module identities plus canonical local module
-   results, not on replayed ambient payloads. *)
+   results, not on replayed ambient payloads.
+*)
 let rec source_analysis_cache_key = fun (snapshot: t) (slot: analysis_slot) ->
   match Collections.HashMap.get snapshot.source_analysis_keys_cache (SourceId.to_int slot.source_id) with
   | Some (Some cache_key) -> cache_key

@@ -4,13 +4,13 @@ open Std
    Active TCP connection management.
 
    Represents a single active connection to a client with operations for
-   sending, receiving, and querying connection metadata. 
+   sending, receiving, and querying connection metadata.
 *)
 (** An active TCP connection with GADT constructor for protocol negotiation *)
 (**
    [make ~accepted_at ~stream ~buffer_size ~peer ()] creates a new connection.
 
-   [protocol] is the negotiated protocol (e.g., "h2" for HTTP/2) 
+   [protocol] is the negotiated protocol (e.g., "h2" for HTTP/2)
 *)
 type t
 
@@ -22,7 +22,7 @@ val negotiated_protocol: t -> string option
 (**
    [send conn data] sends [data] through the connection.
 
-   Returns [Ok ()] on success or [Error `Closed] if connection closed. 
+   Returns [Ok ()] on success or [Error `Closed] if connection closed.
 *)
 val send: t -> string -> (unit, [> | `Closed]) result
 
@@ -34,7 +34,7 @@ val send: t -> string -> (unit, [> | `Closed]) result
    - [timeout] optional timeout duration for the read operation
 
    Returns [Ok data] with received data, or [Error `Closed] if closed.
-   Raises [Syscall_timeout] if timeout is specified and expires. 
+   Raises [Syscall_timeout] if timeout is specified and expires.
 *)
 val receive: ?limit:int -> ?read_size:int -> ?timeout:Std.Time.Duration.t -> t -> (string, [> | `Closed]) result
 
@@ -56,6 +56,6 @@ val stream: t -> Std.Net.TcpStream.t
 (**
    [send_file conn ?off ~len path] sends a file through the connection.
 
-   TODO: Not yet implemented - will use sendfile optimization when available 
+   TODO: Not yet implemented - will use sendfile optimization when available
 *)
 val send_file: t -> ?off:int -> len:int -> string -> (unit, [> | `Closed]) result

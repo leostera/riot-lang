@@ -23,7 +23,7 @@ val with_config: t -> config:TypConfig.t -> t
 
    Hosts should use this when they already have planner-owned or editor-owned
    parse artifacts and want to seed a session without reparsing the same
-   source again. 
+   source again.
 *)
 val create_source: t -> kind:Source.kind -> module_name:string -> implicit_opens:SurfacePath.t list -> origin:Source.origin -> source_hash:Crypto.hash -> parse_result:Syn.Parser.parse_result -> cst:Syn.Cst.source_file -> t * SourceId.t
 
@@ -32,7 +32,7 @@ val create_source: t -> kind:Source.kind -> module_name:string -> implicit_opens
 
    Hosts use this when planner-owned sources have an internal canonical module
    name but should also satisfy local dependency discovery through shorter
-   package-relative names such as [Cell] or [Sync.Cell]. 
+   package-relative names such as [Cell] or [Sync.Cell].
 *)
 val register_source_alias: t -> SourceId.t -> module_name:string -> t
 
@@ -49,7 +49,7 @@ val remove_source: t -> SourceId.t -> t
    present in the session, expands each rooted logical module to any sibling
    [.ml]/[.mli] sources already present in the session, discovers module
    dependencies for that rooted closure, and returns a structured
-   missing-requirements payload when they are not available. 
+   missing-requirements payload when they are not available.
 *)
 val prepare_snapshot: t -> roots:SourceId.t list -> (Snapshot.t, MissingRequirements.t) result
 
@@ -60,6 +60,6 @@ val prepare_snapshot: t -> roots:SourceId.t list -> (Snapshot.t, MissingRequirem
    callers can query only the files they touch.
 
    This is the whole-session query snapshot over the current session sources.
-   It is not the authoritative cold package-check path. 
+   It is not the authoritative cold package-check path.
 *)
 val snapshot: t -> Snapshot.t

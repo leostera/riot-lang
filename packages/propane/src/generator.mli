@@ -70,10 +70,12 @@ open Std
    ]}
 *)
 (** {1 Core Types} *)
+
 type 'value t
 
 (** A generator that produces random values of type ['value]. *)
 (** {1 Constants} *)
+
 val return: 'value -> 'value t
 
 (** [return v] creates a generator that always returns [v]. *)
@@ -81,6 +83,7 @@ val exactly: 'value -> 'value t
 
 (** Alias for {!return}. *)
 (** {1 Transformations} *)
+
 val map: ('a -> 'b) -> 'a t -> 'b t
 
 (** [map f gen] transforms the values produced by [gen] using [f]. *)
@@ -94,9 +97,10 @@ val and_then: 'a t -> ('a -> 'b t) -> 'b t
 
 (**
    [and_then gen f] creates a dependent generator. First generates a value
-   using [gen], then uses that value to select the next generator via [f]. 
+   using [gen], then uses that value to select the next generator via [f].
 *)
 (** {1 Choice Combinators} *)
+
 val one_of: 'value t list -> 'value t
 
 (**
@@ -118,7 +122,7 @@ val one_of: 'value t list -> 'value t
      ]
    ]}
 
-   @raise Invalid_argument if the list is empty. 
+   @raise Invalid_argument if the list is empty.
 *)
 val frequency: (int * 'value t) list -> 'value t
 
@@ -142,34 +146,38 @@ val frequency: (int * 'value t) list -> 'value t
      ]
    ]}
 
-   @raise Invalid_argument if the list is empty or contains non-positive weights. 
+   @raise Invalid_argument if the list is empty or contains non-positive weights.
 *)
 (** {1 Size Control} *)
+
 val sized: (int -> 'value t) -> 'value t
 
 (**
    [sized f] creates a generator that receives the current size parameter.
-   The size typically controls the complexity of generated values. 
+   The size typically controls the complexity of generated values.
 *)
 val resize: int -> 'value t -> 'value t
 
 (** [resize n gen] runs [gen] with size parameter set to [n]. *)
 (** {1 Recursive Generators} *)
+
 val delay: (unit -> 'value t) -> 'value t
 
 (**
    [delay f] defers the construction of a generator.
-   Useful for creating recursive generators. 
+   Useful for creating recursive generators.
 *)
 val fix: ((int -> 'value t) -> (int -> 'value t)) -> int -> 'value t
 
 (**
    [fix f] creates a recursive size-bounded generator.
    The function [f] receives itself as an argument, allowing recursion.
-   The integer parameter is the size bound. 
+   The integer parameter is the size bound.
 *)
 (** {1 Primitive Generators} *)
+
 (** {2 Integers} *)
+
 val int: int t
 
 (** Generates random integers uniformly distributed. *)
@@ -183,7 +191,7 @@ val int_range: int -> int -> int t
 
 (**
    [int_range low high] generates integers in the range [low] to [high] inclusive.
-   @raise Invalid_argument if [low > high]. 
+   @raise Invalid_argument if [low > high].
 *)
 val int32_range: int32 -> int32 -> int32 t
 
@@ -195,7 +203,7 @@ val int_bound: int -> int t
 
 (**
    [int_bound n] generates integers from 0 to [n] inclusive.
-   @raise Invalid_argument if [n < 0]. 
+   @raise Invalid_argument if [n < 0].
 *)
 val small_int: int t
 
@@ -213,6 +221,7 @@ val non_zero_int: int t
 
 (** Generates non-zero integers. *)
 (** {2 Floats} *)
+
 val float: float t
 
 (** Generates random floats. *)
@@ -226,6 +235,7 @@ val float_negative: float t
 
 (** Generates negative floats. *)
 (** {2 Booleans} *)
+
 val bool: bool t
 
 (** Generates random booleans with equal probability. *)
@@ -233,9 +243,10 @@ val weighted_bool: int -> int -> bool t
 
 (**
    [weighted_bool weight_true weight_false] generates booleans with
-   the given weight distribution. 
+   the given weight distribution.
 *)
 (** {2 Characters} *)
+
 val char: char t
 
 (** Generates random characters. *)
@@ -258,6 +269,7 @@ val char_whitespace: char t
 
 (** Generates whitespace characters. *)
 (** {2 Runes - Unicode support} *)
+
 val rune: Unicode.Rune.t t
 
 (** Generates random Unicode runes. *)
@@ -268,6 +280,7 @@ val rune_printable: Unicode.Rune.t t
 
 (** Generates printable Unicode runes. *)
 (** {2 Strings} *)
+
 val string: string t
 
 (** Generates random strings. *)
@@ -287,6 +300,7 @@ val string_uppercase: string t
 
 (** Generates uppercase strings. *)
 (** {1 Collection Generators} *)
+
 val list: 'value t -> 'value list t
 
 (** [list gen] generates lists of values from [gen]. *)
@@ -306,6 +320,7 @@ val array_size: int t -> 'value t -> 'value array t
 
 (** [array_size size_gen gen] generates arrays with length from [size_gen]. *)
 (** {2 Std Collections} *)
+
 val vector: 'value t -> 'value Collections.Vector.t t
 
 (** Generate Vectors. *)
@@ -347,6 +362,7 @@ val quad: 'a t -> 'b t -> 'c t -> 'd t -> ('a * 'b * 'c * 'd) t
 
 (** Generate quadruples. *)
 (** {1 Option & Result Generators} *)
+
 val option: 'value t -> 'value option t
 
 (** Generate optional values. *)
@@ -360,10 +376,13 @@ val weighted_result: int -> int -> 'value t -> 'error t -> ('value, 'error) resu
 
 (** [weighted_result weight_ok weight_error ok_gen error_gen] generates results with weights. *)
 (** {1 Low-level Interface} *)
+
 val generate: Random.Rng.t -> 'value t -> 'value
 
 (**
    [generate rnd gen] runs the generator with the given random state.
-   This is the low-level interface - most users should use the Property module. 
+   This is the low-level interface - most users should use the Property module.
 *)
-val generate_with_size: Random.Rng.t -> int -> 'value t -> 'value(** [generate_with_size rnd size gen] runs a sized generator. *)
+val generate_with_size: Random.Rng.t -> int -> 'value t -> 'value
+
+(** [generate_with_size rnd size gen] runs a sized generator. *)

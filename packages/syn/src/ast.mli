@@ -86,7 +86,7 @@ module Token : sig
      Delimited comment/docstring trivia split once by the lexer/Ast layer.
 
      `content` excludes the opening and closing delimiters, so formatter and
-     documentation tools do not need to rescan raw comment text. 
+     documentation tools do not need to rescan raw comment text.
   *)
   type delimited_trivia = { text: string; opening: string; content: string; closing: string option }
 
@@ -119,7 +119,7 @@ module Token : sig
 
   (**
      Iterate normalized leading trivia items. Whitespace is structural and
-     comment/docstring delimiters are split from their content. 
+     comment/docstring delimiters are split from their content.
   *)
   val for_each_leading_trivia_item: t -> fn:(leading_trivia -> unit) -> unit
 
@@ -152,7 +152,7 @@ module Node : sig
 
   (**
      Access a raw child edge by index. Most callers should prefer typed view
-     accessors on the domain-specific modules below. 
+     accessors on the domain-specific modules below.
   *)
   val child_at: t -> int -> Syntax_tree.child option
 

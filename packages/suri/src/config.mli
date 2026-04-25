@@ -22,7 +22,7 @@
    ```
 
    If no config is provided, Suri will try to load from Std.Config,
-   and if that fails, it will fall back to default values. 
+   and if that fails, it will fall back to default values.
 *)
 open Std
 
@@ -37,7 +37,7 @@ type t = {
   liveview_secret: string;
   (**
      Secret key for signing LiveView session tokens.
-     Must be at least 32 characters for security. 
+     Must be at least 32 characters for security.
   *)
 }
 
@@ -45,7 +45,7 @@ val default: t
 
 (**
    Default configuration with sensible defaults.
-   Note: Uses a placeholder for liveview_secret - you should override this! 
+   Note: Uses a placeholder for liveview_secret - you should override this!
 *)
 val spec: Std.Config.Spec.t
 

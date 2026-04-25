@@ -7,7 +7,7 @@ open Std.Collections
    Events are the append-only grammar stream used by tests/tools that want to
    inspect parser output before tree construction. The production parser writes
    directly into `Syntax_tree.Builder` to avoid allocating a separate event
-   buffer, but these types remain the explicit contract for the event form. 
+   buffer, but these types remain the explicit contract for the event form.
 *)
 type t =
   | StartNode of Syntax_kind.t option
@@ -20,7 +20,7 @@ type event = t
 
 (**
    Growable event buffer with the same marker/precede discipline as the tree
-   builder. 
+   builder.
 *)
 module Buffer : sig
   type t

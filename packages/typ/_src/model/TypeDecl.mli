@@ -22,12 +22,12 @@ type constructor = {
   scheme: TypeScheme.t;
   (**
      Whether the declaration carried an explicit result type and therefore
-     behaves as a generalized constructor. 
+     behaves as a generalized constructor.
   *)
   generalized: bool;
   (**
      Inline-record payload labels when the constructor was declared as
-     [Ctor of { ... }]. 
+     [Ctor of { ... }].
   *)
   inline_record_labels: label list option;
 }
@@ -66,7 +66,7 @@ type poly_variant_tag = {
 
 (**
    Manifest payload preserved by lowering for non-abstract declarations that do
-   not elaborate into ordinary constructors or labels yet. 
+   not elaborate into ordinary constructors or labels yet.
 *)
 type manifest =
   | Alias of TypeRepr.t
@@ -81,7 +81,7 @@ type manifest =
 
    The current prototype consumes constructor and record-label declarations
    during term inference, while preserving manifest alias and
-   polymorphic-variant declaration detail explicitly for later slices. 
+   polymorphic-variant declaration detail explicitly for later slices.
 *)
 type t = {
   (** Stable descriptor identity for this type constructor. *)

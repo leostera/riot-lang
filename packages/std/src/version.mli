@@ -95,7 +95,7 @@ type t = { major: int; minor: int; patch: int; pre: pre_release_segment list; bu
 
 (**
    Semantic version with major.minor.patch, optional pre-release identifiers,
-   and optional build metadata 
+   and optional build metadata
 *)
 (** Requirement operator for version matching *)
 type requirement_op =
@@ -118,7 +118,7 @@ type requirement
 
 (**
    Version requirement specification (opaque). Includes the unconstrained
-   ["*"] requirement. 
+   ["*"] requirement.
 *)
 type requirement_view =
   | AnyRequirement
@@ -161,7 +161,7 @@ val compare: t -> t -> Order.t
    - Versions are compared by major, then minor, then patch
    - Pre-release versions have lower precedence than normal versions
    - Pre-release identifiers are compared lexicographically
-   - Build metadata is ignored in comparisons 
+   - Build metadata is ignored in comparisons
 *)
 val equal: t -> t -> bool
 
@@ -194,7 +194,7 @@ val parse_requirement: string -> (requirement, parse_error) result
    - "<= 1.2.3" - less than or equal
    - "~> 1.2.3" - allows patch-level changes (>= 1.2.3 and < 1.3.0)
    - "1.2" - any patch release in the 1.2.x line
-   - "1" - any release in the 1.x.y line 
+   - "1" - any release in the 1.x.y line
 *)
 val any: requirement
 

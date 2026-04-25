@@ -14,9 +14,17 @@ type params =
   | Named of (string * Json.t) list
   | NoParams
 
-type prerequest = { method_: string; params: params }
+type prerequest = {
+  method_: string;
+  params: params;
+}
 
-type request = { jsonrpc: string; method_: string; params: params; id: id option }
+type request = {
+  jsonrpc: string;
+  method_: string;
+  params: params;
+  id: id option;
+}
 
 type error =
   | ParseError of { raw_input: string; parse_error: string }
@@ -26,7 +34,11 @@ type error =
   | InternalError of { context: string; details: string }
   | UnknownServerError of { code: int; message: string; data: Json.t option }
 
-type 'res response = { jsonrpc: string; result: 'res; id: id }
+type 'res response = {
+  jsonrpc: string;
+  result: 'res;
+  id: id;
+}
 
 type batch_request = request list
 
@@ -60,12 +72,7 @@ let params_of_json = function
 
 (** Convert request to JSON *)
 let request_to_json = fun (req: request) ->
-  let fields =
-    [
-      "jsonrpc", Json.String req.jsonrpc;
-      "method", Json.String req.method_;
-    ]
-  in
+  let fields = [ ("jsonrpc", Json.String req.jsonrpc); ("method", Json.String req.method_); ] in
   let fields =
     match req.params with
     | NoParams -> fields
@@ -82,54 +89,49 @@ let request_to_json = fun (req: request) ->
 let request_of_json = fun json ->
   match json with
   | Json.Object fields -> (
-    match Std.Collections.Proplist.get fields ~key:"jsonrpc", Std.Collections.Proplist.get fields ~key:"method" with
-    | Some (Json.String "2.0"), Some (Json.String method_) -> (
-      let params =
-        match Std.Collections.Proplist.get fields ~key:"params" with
-        | None -> Ok NoParams
-        | Some p -> params_of_json p
-      in
-      let id_result =
-        match Std.Collections.Proplist.get fields ~key:"id" with
-        | None -> Ok None
-        | Some j -> (
-          match id_of_json j with
-          | Ok parsed_id -> Ok (Some parsed_id)
-          | Error e -> Error e
+      match Std.Collections.Proplist.get fields ~key:"jsonrpc", Std.Collections.Proplist.get
+        fields
+        ~key:"method" with
+      | Some (Json.String "2.0"), Some (Json.String method_) -> (
+          let params =
+            match Std.Collections.Proplist.get fields ~key:"params" with
+            | None -> Ok NoParams
+            | Some p -> params_of_json p
+          in
+          let id_result =
+            match Std.Collections.Proplist.get fields ~key:"id" with
+            | None -> Ok None
+            | Some j -> (
+                match id_of_json j with
+                | Ok parsed_id -> Ok (Some parsed_id)
+                | Error e -> Error e
+              )
+          in
+          match params, id_result with
+          | Ok params, Ok id -> Ok { jsonrpc = "2.0"; method_; params; id }
+          | Error e, _ -> Error e
+          | _, Error e -> Error e
         )
-      in
-      match params, id_result with
-      | Ok params, Ok id ->
-          Ok {
-            jsonrpc = "2.0";
-            method_;
-            params;
-            id
-          }
-      | Error e, _ -> Error e
-      | _, Error e -> Error e
+      | Some (Json.String v), _ ->
+          Error ("Invalid JSON-RPC version: " ^ v ^ " (expected 2.0)")
+      | _ ->
+          Error "Invalid request: missing jsonrpc or method field"
     )
-    | Some (Json.String v), _ -> Error ("Invalid JSON-RPC version: " ^ v ^ " (expected 2.0)")
-    | _ -> Error "Invalid request: missing jsonrpc or method field"
-  )
   | _ -> Error "Request must be an object"
 
 (**
    Note: response_to_json removed - needs to be protocol-specific due to
-   parameterized type 
+   parameterized type
 *)
+
 (**
    Note: response_of_json removed - needs to be protocol-specific due to
-   parameterized type 
+   parameterized type
 *)
+
 (** Helper to make a request *)
 let request = fun ~method_ ?params ?id () ->
-  {
-    jsonrpc = version;
-    method_;
-    params = Option.unwrap_or params ~default:NoParams;
-    id
-  }
+  { jsonrpc = version; method_; params = Option.unwrap_or params ~default:NoParams; id }
 
 (** Create a successful response with result *)
 let result = fun res ~id -> { jsonrpc = version; result = Ok res; id }
@@ -138,12 +140,7 @@ let ok = fun ?(id = Null) res -> { jsonrpc = version; result = res; id }
 
 (** Helper to make a notification (request without id) *)
 let notification = fun ~method_ ?params () ->
-  {
-    jsonrpc = version;
-    method_;
-    params = Option.unwrap_or params ~default:NoParams;
-    id = None
-  }
+  { jsonrpc = version; method_; params = Option.unwrap_or params ~default:NoParams; id = None }
 
 (** Check if a request is a notification *)
 let is_notification = fun (req: request) ->
@@ -152,11 +149,10 @@ let is_notification = fun (req: request) ->
   | Some _ -> false
 
 (* ApplicationProtocol module type *)
+
 module type ApplicationProtocol = sig
   type request
-
   type response
-
   val response_to_json: response -> Json.t
 
   val response_of_json: Json.t -> (response, Json.t) result

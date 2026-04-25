@@ -3,7 +3,7 @@ open Model
 
 (**
    Structured requirements that prevented a rooted snapshot from being
-   prepared. 
+   prepared.
 *)
 type requirement =
   | MissingRootSource of { source_id: SourceId.t }
@@ -21,7 +21,7 @@ val of_list: requirement list -> t
 
    Missing root sources are sorted by [SourceId], and missing module-summary
    requirements are sorted by module name with deduplicated, sorted
-   [requested_by] source ids. 
+   [requested_by] source ids.
 *)
 val requirements: t -> requirement list
 

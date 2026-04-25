@@ -59,14 +59,14 @@
    - [COLORTERM=truecolor] or [COLORTERM=24bit] → Truecolor support
    - [TERM] contains "256color" → 256-color support
    - [TERM] contains "color" → Basic ANSI color support
-   - Otherwise → No color support 
+   - Otherwise → No color support
 *)
 (** Terminal color profile representing color capability level *)
 (**
    [from_env ()] detects the terminal's color capability from environment
    variables like [COLORTERM] and [TERM].
 
-   Returns a profile that matches the detected capability. 
+   Returns a profile that matches the detected capability.
 *)
 type t
 
@@ -80,6 +80,6 @@ val default: t
 
    If the color is already compatible (e.g., ANSI color on ANSI profile), it
    returns the color unchanged. Otherwise, it converts to the closest
-   equivalent color the terminal can display. 
+   equivalent color the terminal can display.
 *)
 val convert: t -> Color.t -> Color.t

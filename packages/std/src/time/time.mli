@@ -28,7 +28,7 @@
 
    | Use Case | Type | |----------|------| | Measure durations | [Instant] | |
    Timeouts/delays | [Duration] | | Timestamps/logging | [SystemTime] | |
-   Benchmarking | [Instant] | | Calendar operations | [DateTime] (separate module) | 
+   Benchmarking | [Instant] | | Calendar operations | [DateTime] (separate module) |
 *)
 module Duration = Duration
 
@@ -63,6 +63,6 @@ val gmtime: float -> tm
    Converts local calendar fields back into a Unix timestamp.
 
    The returned pair includes normalized calendar fields produced by the
-   platform. 
+   platform.
 *)
 val mktime: tm -> float * tm

@@ -35,37 +35,43 @@
 
    let view model =
      Viewport.view model.viewport
-   ``` 
+   ```
 *)
 open Std
 
 (** ## Types *)
-type t
 
+type t
 (** A viewport instance *)
-type wrap_mode = [`None | `Soft]
+type wrap_mode =
+[
+  `None
+  | `Soft
+]
 
 (**
    Text wrapping mode:
    - `` `None`` - No wrapping, lines can exceed viewport width
-   - `` `Soft`` - Soft wrap at word boundaries to fit viewport width 
+   - `` `Soft`` - Soft wrap at word boundaries to fit viewport width
 *)
 (** ## Creation *)
+
 val make: width:int -> height:int -> t
 
 (**
    `make ~width ~height` creates a new viewport with the given dimensions.
 
-   The viewport starts at the top (y_offset = 0) with no content. 
+   The viewport starts at the top (y_offset = 0) with no content.
 *)
 (** ## Content Management *)
+
 val set_content: t -> content:string -> t
 
 (**
    `set_content viewport ~content` sets the content to display.
 
    Content is split into lines. If current scroll position is past
-   the new content's end, viewport scrolls to bottom. 
+   the new content's end, viewport scrolls to bottom.
 *)
 val get_content: t -> string
 
@@ -77,6 +83,7 @@ val visible_lines: t -> int
 
 (** `visible_lines viewport` returns how many lines are currently visible. *)
 (** ## Dimensions *)
+
 val set_width: t -> width:int -> t
 
 (** `set_width viewport ~width` changes the viewport width. *)
@@ -90,6 +97,7 @@ val height: t -> int
 
 (** `height viewport` returns the current height. *)
 (** ## Text Wrapping *)
+
 val set_wrap_mode: t -> mode:wrap_mode -> t
 
 (**
@@ -104,12 +112,13 @@ val set_wrap_mode: t -> mode:wrap_mode -> t
      |> Viewport.set_wrap_mode ~mode:`Soft
      |> Viewport.set_content ~content:"Very long message that exceeds width"
    (* Content will automatically wrap at word boundaries *)
-   ``` 
+   ```
 *)
 val wrap_mode: t -> wrap_mode
 
 (** `wrap_mode viewport` returns the current wrap mode. *)
 (** ## Scrolling *)
+
 val y_offset: t -> int
 
 (** `y_offset viewport` returns the current vertical scroll position (0-based). *)
@@ -118,21 +127,21 @@ val set_y_offset: t -> offset:int -> t
 (**
    `set_y_offset viewport ~offset` sets the vertical scroll position.
 
-   Automatically clamped to valid range `[0, max_offset]`. 
+   Automatically clamped to valid range `[0, max_offset]`.
 *)
 val scroll_up: t -> lines:int -> t
 
 (**
    `scroll_up viewport ~lines` scrolls up by the given number of lines.
 
-   Returns viewport unchanged if already at top. 
+   Returns viewport unchanged if already at top.
 *)
 val scroll_down: t -> lines:int -> t
 
 (**
    `scroll_down viewport ~lines` scrolls down by the given number of lines.
 
-   Returns viewport unchanged if already at bottom. 
+   Returns viewport unchanged if already at bottom.
 *)
 val page_up: t -> t
 
@@ -153,6 +162,7 @@ val goto_bottom: t -> t
 
 (** `goto_bottom viewport` scrolls to the very bottom. *)
 (** ## Position Queries *)
+
 val at_top: t -> bool
 
 (** `at_top viewport` returns true if scrolled to the very top. *)
@@ -166,9 +176,10 @@ val scroll_percent: t -> float
 
    - 0.0 = top
    - 1.0 = bottom
-   - Values in between = proportional position 
+   - Values in between = proportional position
 *)
 (** ## Mouse Support *)
+
 val set_mouse_wheel_enabled: t -> enabled:bool -> t
 
 (** `set_mouse_wheel_enabled viewport ~enabled` enables/disables mouse wheel scrolling. *)
@@ -176,9 +187,12 @@ val set_mouse_wheel_delta: t -> delta:int -> t
 
 (** `set_mouse_wheel_delta viewport ~delta` sets lines per mouse wheel notch (default: 3). *)
 (** ## Rendering *)
-val view: t -> string(**
+
+val view: t -> string
+
+(**
    `view viewport` renders the visible portion of the content.
 
    Returns only the lines that fit in the viewport at the current scroll position.
-   Lines are joined with newlines. 
+   Lines are joined with newlines.
 *)

@@ -12,9 +12,12 @@ open Std
    - Huffman encoding for string values (defined in RFC 7541 Appendix B)
 *)
 (** {1 Types} *)
-(** A header field is a name-value pair *)
-type header = { name: string; value: string }
 
+(** A header field is a name-value pair *)
+type header = {
+  name: string;
+  value: string;
+}
 (** Encoding representation for a header field *)
 type encoding_type =
   | Indexed
@@ -24,18 +27,15 @@ type encoding_type =
   | LiteralWithoutIndexing
   (** Literal without indexing - don't add to table *)
   | LiteralNeverIndexed
-
 (** Literal never indexed - MUST NOT be added to table (e.g., sensitive data) *)
 (** Encoder context maintains the dynamic table state *)
 type encoder
-
 (** Decoder context maintains the dynamic table state *)
 type decoder
-
 (** {1 Encoder} *)
 (**
    Create a new encoder with the given dynamic table size limit.
-   Default is 4096 bytes per RFC 7541. 
+   Default is 4096 bytes per RFC 7541.
 *)
 val create_encoder: ?max_dynamic_table_size:int -> unit -> encoder
 
@@ -59,14 +59,14 @@ val encode_header: encoder -> header -> encoding_type:encoding_type -> bytes
 
 (**
    Update the dynamic table size limit.
-   This is used when receiving SETTINGS_HEADER_TABLE_SIZE from the peer. 
+   This is used when receiving SETTINGS_HEADER_TABLE_SIZE from the peer.
 *)
 val update_max_table_size: encoder -> int -> unit
 
 (** {1 Decoder} *)
 (**
    Create a new decoder with the given dynamic table size limit.
-   Default is 4096 bytes per RFC 7541. 
+   Default is 4096 bytes per RFC 7541.
 *)
 val create_decoder: ?max_dynamic_table_size:int -> unit -> decoder
 
@@ -81,38 +81,38 @@ val decode: decoder -> bytes -> (header list, string) Result.t
 
 (**
    Update the dynamic table size limit.
-   This is used when receiving SETTINGS_HEADER_TABLE_SIZE from the peer. 
+   This is used when receiving SETTINGS_HEADER_TABLE_SIZE from the peer.
 *)
 val update_max_table_size: decoder -> int -> unit
 
 (** {1 Static Table} *)
 (**
    Lookup a header in the static table by index (1-61).
-   Returns None if index is out of range. 
+   Returns None if index is out of range.
 *)
 val static_table_lookup: int -> header option
 
 (**
    Find the index of a header in the static table.
-   Returns None if not found. 
+   Returns None if not found.
 *)
 val static_table_find: name:string -> value:string -> int option
 
 (**
    Find the index of a header name in the static table (value may differ).
-   Returns None if not found. 
+   Returns None if not found.
 *)
 val static_table_find_name: string -> int option
 
 (** {1 Utilities} *)
 (**
    Check if a header name should never be indexed (security-sensitive).
-   Examples: authorization, cookie, set-cookie 
+   Examples: authorization, cookie, set-cookie
 *)
 val is_sensitive_header: string -> bool
 
 (**
    Calculate the size of a header for dynamic table accounting.
-   Per RFC 7541: size = length(name) + length(value) + 32 
+   Per RFC 7541: size = length(name) + length(value) + 32
 *)
 val header_size: header -> int

@@ -8,7 +8,7 @@
    - Nested structures (complex business objects)
 
    These tests validate that polymorphic hashing works correctly
-   with complex types, not just simple integers. 
+   with complex types, not just simple integers.
 *)
 open Std
 open Propane

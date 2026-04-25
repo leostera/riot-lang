@@ -23,7 +23,7 @@
    ## Type-safe Environment Variables
 
    Unlike traditional string-based APIs, this module provides type-safe
-   environment variable access with automatic parsing. 
+   environment variable access with automatic parsing.
 *)
 (** # Command Line *)
 val args: string list
@@ -43,7 +43,7 @@ val args: string list
 
    (* Simple argument parsing *) let verbose = List.mem "--verbose" Env.args in
    let files = List.filter (fun s -> not (String.starts_with ~prefix:"-" s) )
-   (List.tl Env.args) ``` 
+   (List.tl Env.args) ```
 *)
 (** # Working Directory *)
 val current_dir: unit -> (Path.t, Path.error) Result.t
@@ -59,7 +59,7 @@ val current_dir: unit -> (Path.t, Path.error) Result.t
 
    (* Build relative paths *) let config_path = Env.current_dir () |>
    Result.map (fun cwd -> cwd / Path.v "config.toml") |> Result.expect
-   ~msg:"Cannot determine config path" ``` 
+   ~msg:"Cannot determine config path" ```
 *)
 val set_current_dir: Path.t -> (unit, Path.error) Result.t
 
@@ -81,7 +81,7 @@ val set_current_dir: Path.t -> (unit, Path.error) Result.t
    Returns error if:
    - Directory doesn't exist
    - Permission denied
-   - Path is not a directory 
+   - Path is not a directory
 *)
 val home_dir: unit -> Path.t option
 
@@ -102,7 +102,7 @@ val home_dir: unit -> Path.t option
    - Unix/Linux/macOS: Returns `$HOME`
    - Windows: Returns `%USERPROFILE%` or `%HOMEDRIVE%%HOMEPATH%`
 
-   Returns [`None`] if the home directory cannot be determined. 
+   Returns [`None`] if the home directory cannot be determined.
 *)
 (** # Environment Variables *)
 (** Type specifications for environment variable parsing *)
@@ -126,7 +126,7 @@ type 't var_type =
 
    ```ocaml
    (* Read different types *)
-   let port = Env.var Int ~name:"PORT" 
+   let port = Env.var Int ~name:"PORT"
      |> Option.unwrap_or ~default:3000 in
 
    let debug = Env.var Bool ~name:"DEBUG"
@@ -146,7 +146,7 @@ type 't var_type =
    }
 
    let load_config () = {
-     host = Env.var String ~name:"HOST" 
+     host = Env.var String ~name:"HOST"
        |> Option.unwrap_or ~default:"localhost";
      port = Env.var Int ~name:"PORT"
        |> Option.unwrap_or ~default:8080;
@@ -180,14 +180,14 @@ val var: 't var_type -> name:string -> 't option
 
    (* Save and restore *) let old_path = Env.set_var ~name:"PATH"
    ~value:new_path in (* ... do work ... *) Option.iter (fun p -> Env.set_var
-   ~name:"PATH" ~value:p |> ignore ) old_path ``` 
+   ~name:"PATH" ~value:p |> ignore ) old_path ```
 *)
 val set: var:string -> value:string -> string option
 
 (**
    Removes an environment variable.
 
-   Returns the previous value if it existed. 
+   Returns the previous value if it existed.
 *)
 val remove: var:string -> string option
 
@@ -204,6 +204,6 @@ val remove: var:string -> string option
 
    (* Check for required variables *) let check_required names = let env_names
    = Env.vars () |> List.map fst in List.filter (fun name -> not (List.mem name
-   env_names) ) names ``` 
+   env_names) ) names ```
 *)
 val vars: unit -> (string * string) list

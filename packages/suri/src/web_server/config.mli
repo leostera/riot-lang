@@ -1,7 +1,7 @@
 (**
    HTTP server configuration.
 
-   Controls limits and behavior for HTTP request parsing and handling. 
+   Controls limits and behavior for HTTP request parsing and handling.
 *)
 type t = {
   max_request_line_length: int;
@@ -25,6 +25,6 @@ val make: ?max_request_line_length:int -> ?max_header_count:int -> ?max_header_l
    - [max_request_line_length] = 8192 bytes
    - [max_header_count] = 100 headers
    - [max_header_length] = 8192 bytes
-   - [buffer_size] = 4096 bytes 
+   - [buffer_size] = 4096 bytes
 *)
 val default: t(** Default configuration with standard limits *)

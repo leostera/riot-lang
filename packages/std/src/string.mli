@@ -33,7 +33,7 @@
 
    (* Split string into lines *) let lines = String.split_on_char '\n' text
 
-   (* Join strings *) let csv = String.concat "," ["a"; "b"; "c"] ``` 
+   (* Join strings *) let csv = String.concat "," ["a"; "b"; "c"] ```
 *)
 open Iter
 
@@ -58,7 +58,7 @@ val sub: t -> offset:int -> len:int -> t
 
 (**
    Use `init length builder` to construct a fresh string by calling `builder` for each index from
-   left to right. 
+   left to right.
 *)
 val init: len:int -> fn:(int -> char) -> t
 
@@ -93,7 +93,7 @@ val split: by:t -> t -> t list
 
 (**
    Use `split_on_char separator value` as the conventional alias for splitting on a
-   one-character separator. 
+   one-character separator.
 *)
 val split_on_char: char -> t -> t list
 
@@ -150,7 +150,7 @@ val to_bytes: t -> bytes
    ## Performance
 
    UTF-8 decoding has some overhead. For byte-level operations, use standard
-   String functions instead. 
+   String functions instead.
 *)
 val into_mut_iter: string -> Unicode.Rune.t MutIterator.t
 
@@ -175,7 +175,7 @@ val into_mut_iter: string -> Unicode.Rune.t MutIterator.t
    ## UTF-8 Handling
 
    Invalid UTF-8 sequences are replaced with U+FFFD (�). For strict UTF-8
-   validation, check bytes before iteration. 
+   validation, check bytes before iteration.
 *)
 val into_iter: string -> Unicode.Rune.t Iterator.t
 
@@ -198,7 +198,7 @@ val into_iter: string -> Unicode.Rune.t Iterator.t
    String.width "Hello 👋"   (* = 8: 6 for "Hello " + 2 for emoji *)
    ```
 
-   This is essential for proper text alignment in terminals. 
+   This is essential for proper text alignment in terminals.
 *)
 val width: string -> int
 
@@ -215,7 +215,7 @@ val width: string -> int
    ```
 
    Note: This counts code points, not user-perceived characters.
-   Use `grapheme_count` for user-perceived character count. 
+   Use `grapheme_count` for user-perceived character count.
 *)
 val rune_count: string -> int
 
@@ -232,7 +232,7 @@ val rune_count: string -> int
    String.grapheme_count "🏳️‍🌈"       (* = 1: rainbow flag is one grapheme *)
    ```
 
-   This gives the count users would expect when counting "characters". 
+   This gives the count users would expect when counting "characters".
 *)
 val grapheme_count: string -> int
 
@@ -257,7 +257,7 @@ val grapheme_count: string -> int
    (* = "Short" - no truncation needed *)
    ```
 
-   Useful for fitting text in fixed-width terminal columns. 
+   Useful for fitting text in fixed-width terminal columns.
 *)
 val truncate_width: width:int -> ?tail:string -> string -> string
 
@@ -274,7 +274,7 @@ val truncate_width: width:int -> ?tail:string -> string -> string
    (* = "00000000042" *)
    ```
 
-   Uses display width, so handles wide characters correctly. 
+   Uses display width, so handles wide characters correctly.
 *)
 val pad_left: width:int -> char -> string -> string
 
@@ -288,7 +288,7 @@ val pad_left: width:int -> char -> string -> string
    (* = "Hello     " *)
    ```
 
-   Uses display width, so handles wide characters correctly. 
+   Uses display width, so handles wide characters correctly.
 *)
 val pad_right: width:int -> char -> string -> string
 
@@ -302,7 +302,7 @@ val pad_right: width:int -> char -> string -> string
    (* = "    Hi    " *)
    ```
 
-   If padding is uneven, adds extra space on the right. 
+   If padding is uneven, adds extra space on the right.
 *)
 val pad_center: width:int -> char -> string -> string
 
@@ -316,14 +316,14 @@ val pad_center: width:int -> char -> string -> string
    |> Iterator.count  (* = 7: 6 regular chars + 1 family emoji *)
    ```
 
-   Iterates over user-perceived characters, not code points. 
+   Iterates over user-perceived characters, not code points.
 *)
 val into_grapheme_iter: string -> Unicode.Grapheme.t Iterator.t
 
 (**
    Creates a mutable iterator over grapheme clusters.
 
-   Similar to `into_grapheme_iter` but returns a mutable iterator. 
+   Similar to `into_grapheme_iter` but returns a mutable iterator.
 *)
 val into_grapheme_mut_iter: string -> Unicode.Grapheme.t MutIterator.t
 
@@ -337,7 +337,7 @@ val into_grapheme_mut_iter: string -> Unicode.Grapheme.t MutIterator.t
    (* = [5; 11] - after "Hello" and "world" *)
    ```
 
-   Uses simplified word boundary detection. 
+   Uses simplified word boundary detection.
 *)
 val word_boundaries: string -> int list
 
@@ -351,7 +351,7 @@ val word_boundaries: string -> int list
    (* = ["Hello"; "world"] *)
    ```
 
-   Uses simplified word boundary detection. 
+   Uses simplified word boundary detection.
 *)
 val split_words: string -> string list
 
@@ -370,7 +370,7 @@ val split_words: string -> string list
    (* = [(5, Must_break); (11, Dont_break)] *)
    ```
 
-   Useful for text wrapping and line breaking. 
+   Useful for text wrapping and line breaking.
 *)
 val line_breaks: string -> (int * Unicode.line_break) list
 
@@ -384,14 +384,14 @@ val line_breaks: string -> (int * Unicode.line_break) list
    (* = ["Hello"; "beautiful"; "world"] *)
    ```
 
-   Breaks at word boundaries when possible. 
+   Breaks at word boundaries when possible.
 *)
 val wrap: width:int -> string -> string list
 
 (**
    Wrap text at word boundaries to fit within display width.
 
-   Similar to `wrap` but ensures words aren't broken. 
+   Similar to `wrap` but ensures words aren't broken.
 *)
 val wrap_words: width:int -> string -> string list
 
@@ -405,7 +405,7 @@ val wrap_words: width:int -> string -> string list
    String.contains "test" ""              (* = true *)
    ```
 
-   Note: Empty string is considered to be contained in any string. 
+   Note: Empty string is considered to be contained in any string.
 *)
 val contains: string -> string -> bool
 
@@ -415,7 +415,7 @@ val contains: string -> string -> bool
    The reader can be forced to yield smaller chunks, which is useful for
    testing incremental decoders and other streaming APIs.
 
-   @raise Invalid_argument if [chunk_size <= 0]. 
+   @raise Invalid_argument if [chunk_size <= 0].
 *)
 val to_reader: ?chunk_size:int -> string -> IO.Reader.t
 

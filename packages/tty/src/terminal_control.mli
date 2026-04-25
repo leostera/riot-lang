@@ -33,7 +33,7 @@
          (* Steady block cursor for insert mode *)
          Terminal_control.set_cursor_style tty SteadyBlock;
      | Error _ -> ()
-   ]} 
+   ]}
 *)
 (** {1 Synchronized Updates} *)
 val begin_synchronized_update: Terminal.t -> unit
@@ -47,14 +47,14 @@ val begin_synchronized_update: Terminal.t -> unit
    flickering when updating complex UIs.
 
    Not all terminals support this feature. Unsupported terminals will
-   ignore these sequences. 
+   ignore these sequences.
 *)
 val end_synchronized_update: Terminal.t -> unit
 
 (**
    [end_synchronized_update tty] flushes buffered updates to the screen.
 
-   Must be paired with {!begin_synchronized_update}. 
+   Must be paired with {!begin_synchronized_update}.
 *)
 (** {1 Cursor Styling} *)
 (** Cursor appearance styles *)
@@ -80,7 +80,7 @@ val set_cursor_style: Terminal.t -> cursor_style -> unit
    [set_cursor_style tty style] changes the terminal cursor appearance.
 
    Not all terminals support all cursor styles. Unsupported styles
-   may be ignored or fall back to a default. 
+   may be ignored or fall back to a default.
 *)
 (** {1 Line Wrapping} *)
 val enable_line_wrap: Terminal.t -> unit
@@ -89,7 +89,7 @@ val enable_line_wrap: Terminal.t -> unit
    [enable_line_wrap tty] enables automatic line wrapping.
 
    When enabled (the default), text that exceeds the terminal width
-   automatically continues on the next line. 
+   automatically continues on the next line.
 *)
 val disable_line_wrap: Terminal.t -> unit
 
@@ -97,7 +97,7 @@ val disable_line_wrap: Terminal.t -> unit
    [disable_line_wrap tty] disables automatic line wrapping.
 
    When disabled, text that exceeds the terminal width is truncated.
-   Useful for precise cursor positioning and full-screen applications. 
+   Useful for precise cursor positioning and full-screen applications.
 *)
 (** {1 Window Size} *)
 (** Window size information including pixel dimensions *)
@@ -122,13 +122,13 @@ val window_size: Terminal.t -> window_size
    be 0 on platforms that don't support this query.
 
    Note: For basic size queries, use {!Tty.size} which only returns
-   rows and columns. 
+   rows and columns.
 *)
 (** {1 Raw Mode Queries} *)
 val is_raw_mode_enabled: Terminal.t -> bool(**
    [is_raw_mode_enabled tty] checks if the terminal is in raw mode.
 
    Returns [true] if the terminal mode is [Immediate] (raw/cbreak mode),
-   [false] if it's [LineBuffered] (normal mode). This is useful for 
-   debugging or conditional behavior. 
+   [false] if it's [LineBuffered] (normal mode). This is useful for
+   debugging or conditional behavior.
 *)

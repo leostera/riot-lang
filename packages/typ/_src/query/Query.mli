@@ -25,7 +25,7 @@ val file_summary_of: Snapshot.t -> SourceId.t -> FileSummary.t option
 
 (**
    Fetch the canonical host-facing module typings for one rooted source's
-   module, when present. 
+   module, when present.
 *)
 val module_typings_of: Snapshot.t -> SourceId.t -> ModuleTypings.t option
 

@@ -7,7 +7,7 @@ open Std.Data
    `Deps` walks the typed Ast views, records free module names used by a source
    file, and tracks exported module aliases so downstream build planning can
    resolve implicit opens and generated alias modules. It is syntax-only:
-   unresolved or ambiguous names are reported as conservative module roots. 
+   unresolved or ambiguous names are reported as conservative module roots.
 *)
 module Env : sig
   type t
@@ -45,6 +45,6 @@ val to_json: t -> Json.t
 
 (**
    Extract dependencies from a clean parse result. Diagnostics are returned as
-   an error because dependency output from malformed syntax is not stable. 
+   an error because dependency output from malformed syntax is not stable.
 *)
 val of_parse_result: ?env:Env.t -> Parser.parse_result -> (t, parse_error) result

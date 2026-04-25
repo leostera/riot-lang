@@ -14,7 +14,7 @@ type action =
   | Wake_process of Process.t
   (**
      Send a message to a process, for example for [`send_after`] or
-     [`send_interval`] style timers. 
+     [`send_interval`] style timers.
   *)
   | Send_message of Pid.t * Message.t
 

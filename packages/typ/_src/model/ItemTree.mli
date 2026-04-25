@@ -42,7 +42,7 @@ type extension_constructor_item = {
   scheme: TypeScheme.t;
   (**
      Inline-record payload labels when the constructor was declared as
-     [Ctor of { ... }]. 
+     [Ctor of { ... }].
   *)
   inline_record_labels: TypeDecl.label list option;
 }

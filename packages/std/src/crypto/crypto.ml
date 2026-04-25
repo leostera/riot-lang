@@ -5,7 +5,7 @@
    - Multiple hash algorithms (SHA256, SHA512, MD5, etc.)
    - Consistent digest formats (hex, base64, etc.)
    - Extensible design for adding new algorithms
-   - DoS-resistant hashing for HashMap/HashSet 
+   - DoS-resistant hashing for HashMap/HashSet
 *)
 type hash = Hash.t
 

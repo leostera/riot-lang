@@ -39,7 +39,7 @@ open Std
 
    The hot build-check path is package-oriented and incremental. Query and
    editor workflows remain snapshot-oriented, but they share the same
-   semantics and module artifacts. 
+   semantics and module artifacts.
 *)
 module Config : sig
   (** Host configuration for running the `typ` checker stack. *)
@@ -60,7 +60,7 @@ module Config : sig
 
   (**
      Emit one structured event when the config carries a sink. The thunk
-     receives the monotonic timestamp that should be embedded in the event. 
+     receives the monotonic timestamp that should be embedded in the event.
   *)
   val emit_event: t -> (instant_us:int -> Event.t) -> unit
 end
@@ -80,7 +80,7 @@ type checked_source = Analysis.Check_result.t
 
    The caller is responsible for supplying a [Source.t] that already carries
    the parse result and CST. `typ` does not accept raw source text at this
-   boundary. 
+   boundary.
 *)
 val check: config:config -> source:source -> checked_source
 

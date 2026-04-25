@@ -46,7 +46,7 @@ val reset_reductions: t -> int -> unit
 
 (**
    Spend one process-local reduction and report whether the process should
-   perform a scheduler yield. 
+   perform a scheduler yield.
 *)
 val use_reduction: t -> reduction_result
 
@@ -178,13 +178,13 @@ val syscall_timeout: t -> Timer_id.t option
 
 (**
    Return `true` if the current receive-timeout registration matches the timer
-   identifier. 
+   identifier.
 *)
 val has_receive_timeout_id: t -> Timer_id.t -> bool
 
 (**
    Return `true` if the current syscall-timeout registration matches the timer
-   identifier. 
+   identifier.
 *)
 val has_syscall_timeout_id: t -> Timer_id.t -> bool
 

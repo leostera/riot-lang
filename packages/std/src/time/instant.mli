@@ -59,11 +59,11 @@
    - Measuring performance and benchmarking
    - Timing operations and detecting timeouts
    - Rate limiting and throttling
-   - Profiling code sections 
+   - Profiling code sections
 *)
 (**
    A point in time from a monotonic clock. Opaque - cannot be converted to
-   wall-clock time, only compared with other instants. 
+   wall-clock time, only compared with other instants.
 *)
 type t
 
@@ -82,7 +82,7 @@ type t
    Uses the system's monotonic clock:
    - Linux: CLOCK_MONOTONIC
    - macOS: mach_absolute_time
-   - Windows: QueryPerformanceCounter 
+   - Windows: QueryPerformanceCounter
 *)
 val now: unit -> t
 
@@ -101,7 +101,7 @@ val now: unit -> t
    ## Panics
 
    If [earlier] is greater than [self], use [saturating_duration_since] for
-   safe handling. 
+   safe handling.
 *)
 val duration_since: earlier:t -> t -> Duration.t
 
@@ -119,7 +119,7 @@ val duration_since: earlier:t -> t -> Duration.t
    ## Use Case
 
    Use when you want to avoid panics from clock anomalies or incorrect ordering
-   of instants. 
+   of instants.
 *)
 val saturating_duration_since: earlier:t -> t -> Duration.t
 
@@ -133,7 +133,7 @@ val saturating_duration_since: earlier:t -> t -> Duration.t
    time_taken = Instant.elapsed start in
 
    if Duration.to_secs time_taken > 5 then Log.warn "Operation took too long:
-   %fs" (Duration.to_secs_float time_taken) ``` 
+   %fs" (Duration.to_secs_float time_taken) ```
 *)
 val elapsed: t -> Duration.t
 
@@ -148,7 +148,7 @@ val elapsed: t -> Duration.t
    (Duration.from_secs 30) in
 
    (* Check if we've passed the deadline *) if Instant.compare (Instant.now ())
-   deadline >= 0 then handle_timeout () ``` 
+   deadline >= 0 then handle_timeout () ```
 *)
 val add: t -> Duration.t -> t
 
@@ -159,7 +159,7 @@ val add: t -> Duration.t -> t
    ## Examples
 
    ```ocaml let now = Instant.now () in let past = Instant.sub now
-   (Duration.from_secs 10) in ``` 
+   (Duration.from_secs 10) in ```
 *)
 val sub: t -> Duration.t -> t
 
@@ -171,7 +171,7 @@ val sub: t -> Duration.t -> t
    ## Examples
 
    ```ocaml match Instant.checked_add instant Duration.max with | Some future
-   -> (* OK *) | None -> (* Overflow *) ``` 
+   -> (* OK *) | None -> (* Overflow *) ```
 *)
 val checked_add: t -> Duration.t -> t option
 
@@ -182,7 +182,7 @@ val checked_add: t -> Duration.t -> t option
    ## Examples
 
    ```ocaml match Instant.checked_sub instant (Duration.from_secs 1000000) with
-   | Some past -> (* OK *) | None -> (* Would be before epoch *) ``` 
+   | Some past -> (* OK *) | None -> (* Would be before epoch *) ```
 *)
 val checked_sub: t -> Duration.t -> t option
 
@@ -195,7 +195,7 @@ val checked_sub: t -> Duration.t -> t option
 
    ```ocaml let t1 = Instant.now () in let t2 = Instant.now () in
 
-   Instant.compare t1 t2 (* <= 0, t1 should be earlier or equal *) ``` 
+   Instant.compare t1 t2 (* <= 0, t1 should be earlier or equal *) ```
 *)
 val compare: t -> t -> Order.t
 
@@ -204,7 +204,7 @@ val compare: t -> t -> Order.t
 
    ## Examples
 
-   ```ocaml let t1 = Instant.now () in Instant.equal t1 t1 (* true *) ``` 
+   ```ocaml let t1 = Instant.now () in Instant.equal t1 t1 (* true *) ```
 *)
 val equal: t -> t -> bool
 
@@ -213,7 +213,7 @@ val equal: t -> t -> bool
 
    ## Examples
 
-   ```ocaml let earliest = Instant.min instant1 instant2 ``` 
+   ```ocaml let earliest = Instant.min instant1 instant2 ```
 *)
 val min: t -> t -> t
 
@@ -222,6 +222,6 @@ val min: t -> t -> t
 
    ## Examples
 
-   ```ocaml let latest = Instant.max instant1 instant2 ``` 
+   ```ocaml let latest = Instant.max instant1 instant2 ```
 *)
 val max: t -> t -> t

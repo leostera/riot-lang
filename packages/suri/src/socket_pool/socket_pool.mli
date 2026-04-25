@@ -99,9 +99,9 @@ val start_link: host:string -> port:int -> ?acceptors:int -> ?buffer_size:int ->
    Returns [Ok supervisor_pid] with a dynamic supervisor managing acceptors,
    or [Error `Bind_error] if port binding failed.
 
-   The server uses a {!Std.Supervisor.Dynamic} to manage [acceptors] processes 
-   that concurrently accept connections. Each accepted connection spawns a new 
-   Connector process that runs the handler logic. If acceptors crash, they are 
+   The server uses a {!Std.Supervisor.Dynamic} to manage [acceptors] processes
+   that concurrently accept connections. Each accepted connection spawns a new
+   Connector process that runs the handler logic. If acceptors crash, they are
    automatically restarted by the supervisor.
 
    Example:

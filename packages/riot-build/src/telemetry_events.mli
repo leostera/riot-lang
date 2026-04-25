@@ -10,9 +10,13 @@ type package_error =
   | ActionExecutionFailed of { message: string }
   | ActionOutputsNotCreated of { missing: Path.t list }
   | ActionDependenciesFailed of { failed: Graph.SimpleGraph.Node_id.t list }
-
-type package_planning_status = [ | `Planned | `MissingDependencies | `FailedDependencies | `Failed]
-
+type package_planning_status =
+[
+  | `Planned
+  | `MissingDependencies
+  | `FailedDependencies
+  | `Failed
+]
 type package_planning_breakdown = {
   dependency_count: int;
   dependency_check_duration: Time.Duration.t;
@@ -24,7 +28,6 @@ type package_planning_breakdown = {
   plan_bundle_cache_hit: bool;
   module_plan_duration: Time.Duration.t;
 }
-
 type workspace_graph_breakdown = {
   build_node_realization_count: int;
   build_node_realization_duration: Time.Duration.t;
@@ -34,170 +37,185 @@ type workspace_graph_breakdown = {
   dev_node_realization_duration: Time.Duration.t;
   edge_wiring_duration: Time.Duration.t;
 }
-
-type warning_source = [ | `Fresh | `Cached]
+type warning_source =
+[
+  | `Fresh
+  | `Cached
+]
 
 (**
    Telemetry events for build system operations.
 
    These events extend the Std.Telemetry.event type and provide
    detailed information about build progress, cache hits/misses,
-   and failures. 
+   and failures.
 *)
 type Telemetry.event +=
-  | BuildStarted of { session_id: Session_id.t; package: Package.t; target: Workspace_planner.target }
+  | BuildStarted of {
+      session_id: Session_id.t;
+      package: Package.t;
+      target: Workspace_planner.target
+    }
   | WorkspacePlanStarted of {
-    session_id: Session_id.t;
-    target: Workspace_planner.target;
-    workspace_package_count: int;
-  }
+      session_id: Session_id.t;
+      target: Workspace_planner.target;
+      workspace_package_count: int
+    }
   | WorkspacePlanCompleted of {
-    session_id: Session_id.t;
-    target: Workspace_planner.target;
-    workspace_package_count: int;
-    planned_package_count: int;
-    duration: Time.Duration.t;
-  }
+      session_id: Session_id.t;
+      target: Workspace_planner.target;
+      workspace_package_count: int;
+      planned_package_count: int;
+      duration: Time.Duration.t
+    }
   | WorkspaceManifestFilterCompleted of {
-    session_id: Session_id.t;
-    target: Workspace_planner.target;
-    filtered_workspace_package_count: int;
-    duration: Time.Duration.t;
-  }
+      session_id: Session_id.t;
+      target: Workspace_planner.target;
+      filtered_workspace_package_count: int;
+      duration: Time.Duration.t
+    }
   | WorkspaceGraphCreated of {
-    session_id: Session_id.t;
-    target: Workspace_planner.target;
-    node_count: int;
-    breakdown: workspace_graph_breakdown;
-    duration: Time.Duration.t;
-  }
+      session_id: Session_id.t;
+      target: Workspace_planner.target;
+      node_count: int;
+      breakdown: workspace_graph_breakdown;
+      duration: Time.Duration.t
+    }
   | WorkspaceTargetGraphFiltered of {
-    session_id: Session_id.t;
-    target: Workspace_planner.target;
-    node_count: int;
-    duration: Time.Duration.t;
-  }
+      session_id: Session_id.t;
+      target: Workspace_planner.target;
+      node_count: int;
+      duration: Time.Duration.t
+    }
   | WorkspaceTopologicalSortCompleted of {
-    session_id: Session_id.t;
-    target: Workspace_planner.target;
-    sorted_package_count: int;
-    duration: Time.Duration.t;
-  }
+      session_id: Session_id.t;
+      target: Workspace_planner.target;
+      sorted_package_count: int;
+      duration: Time.Duration.t
+    }
   | PlanningWorkspaceStarted of {
-    session_id: Session_id.t;
-    target: Workspace_planner.target;
-    package_count: int;
-  }
+      session_id: Session_id.t;
+      target: Workspace_planner.target;
+      package_count: int
+    }
   | PlanningWorkspaceCompleted of {
-    session_id: Session_id.t;
-    target: Workspace_planner.target;
-    duration: Time.Duration.t;
-    planned_count: int;
-    missing_count: int;
-    failed_count: int;
-  }
+      session_id: Session_id.t;
+      target: Workspace_planner.target;
+      duration: Time.Duration.t;
+      planned_count: int;
+      missing_count: int;
+      failed_count: int
+    }
   | PackagePlanningResult of {
-    session_id: Session_id.t;
-    package: Package.t;
-    target: Workspace_planner.target;
-    status: package_planning_status;
-    duration: Time.Duration.t;
-    reason: string option;
-  }
+      session_id: Session_id.t;
+      package: Package.t;
+      target: Workspace_planner.target;
+      status: package_planning_status;
+      duration: Time.Duration.t;
+      reason: string option
+    }
   | PackagePlanningBreakdown of {
-    session_id: Session_id.t;
-    package: Package.t;
-    target: Workspace_planner.target;
-    breakdown: package_planning_breakdown;
-  }
+      session_id: Session_id.t;
+      package: Package.t;
+      target: Workspace_planner.target;
+      breakdown: package_planning_breakdown
+    }
   | CompilationStarted of {
-    session_id: Session_id.t;
-    package: Package.t;
-    target: Workspace_planner.target;
-    build_target: Target.t;
-  }
+      session_id: Session_id.t;
+      package: Package.t;
+      target: Workspace_planner.target;
+      build_target: Target.t
+    }
   | PackageOcamlcWarnings of {
-    session_id: Session_id.t;
-    package: Package.t;
-    target: Workspace_planner.target;
-    build_target: Target.t;
-    source: warning_source;
-    messages: string list;
-  }
+      session_id: Session_id.t;
+      package: Package.t;
+      target: Workspace_planner.target;
+      build_target: Target.t;
+      source: warning_source;
+      messages: string list
+    }
   | BuildCompleted of {
-    session_id: Session_id.t;
-    package: Package.t;
-    target: Workspace_planner.target;
-    build_target: Target.t;
-    status: [`Fresh | `Cached];
-    duration: Time.Duration.t;
-  }
+      session_id: Session_id.t;
+      package: Package.t;
+      target: Workspace_planner.target;
+      build_target: Target.t;
+      status: 
+        [
+          `Fresh
+          | `Cached
+        ];
+      duration: Time.Duration.t
+    }
   | BuildFailed of {
-    session_id: Session_id.t;
-    package: Package.t;
-    target: Workspace_planner.target;
-    build_target: Target.t;
-    error: package_error;
-  }
+      session_id: Session_id.t;
+      package: Package.t;
+      target: Workspace_planner.target;
+      build_target: Target.t;
+      error: package_error
+    }
   | BuildSkipped of {
-    session_id: Session_id.t;
-    package: Package.t;
-    target: Workspace_planner.target;
-    build_target: Target.t;
-    reason: string;
-  }
+      session_id: Session_id.t;
+      package: Package.t;
+      target: Workspace_planner.target;
+      build_target: Target.t;
+      reason: string
+    }
   | ActionStarted of { session_id: Session_id.t; package: Package.t; action: Action_node.t }
   | ActionCommandStarted of {
-    session_id: Session_id.t;
-    package: Package.t;
-    action: Action_node.t;
-    command: string;
-  }
+      session_id: Session_id.t;
+      package: Package.t;
+      action: Action_node.t;
+      command: string
+    }
   | ActionCompleted of {
-    session_id: Session_id.t;
-    package: Package.t;
-    action: Action_node.t;
-    artifact: Artifact.t;
-    status: [`Fresh | `Cached];
-    duration: Time.Duration.t;
-  }
+      session_id: Session_id.t;
+      package: Package.t;
+      action: Action_node.t;
+      artifact: Artifact.t;
+      status: 
+        [
+          `Fresh
+          | `Cached
+        ];
+      duration: Time.Duration.t
+    }
   | ActionFailed of {
-    session_id: Session_id.t;
-    package: Package.t;
-    action: Action_node.t;
-    error: string;
-  }
+      session_id: Session_id.t;
+      package: Package.t;
+      action: Action_node.t;
+      error: string
+    }
   | CacheHit of {
-    session_id: Session_id.t;
-    package: Package.t;
-    action: Action_node.t;
-    hash: Crypto.hash;
-  }
+      session_id: Session_id.t;
+      package: Package.t;
+      action: Action_node.t;
+      hash: Crypto.hash
+    }
   | CacheMiss of {
-    session_id: Session_id.t;
-    package: Package.t;
-    action: Action_node.t;
-    hash: Crypto.hash;
-  }
+      session_id: Session_id.t;
+      package: Package.t;
+      action: Action_node.t;
+      hash: Crypto.hash
+    }
   | WorkspaceStarted of {
-    session_id: Session_id.t;
-    target: Workspace_planner.target;
-    package_count: int;
-  }
+      session_id: Session_id.t;
+      target: Workspace_planner.target;
+      package_count: int
+    }
   | WorkspaceCompleted of {
-    session_id: Session_id.t;
-    target: Workspace_planner.target;
-    total_duration: Time.Duration.t;
-    cached_count: int;
-    built_count: int;
-    failed_count: int;
-  }
+      session_id: Session_id.t;
+      target: Workspace_planner.target;
+      total_duration: Time.Duration.t;
+      cached_count: int;
+      built_count: int;
+      failed_count: int
+    }
 
 (**
    Convert a telemetry event to JSON.
 
    Returns [Some json] if the event is one of the build telemetry events,
-   or [None] if it's a different type of event. 
+   or [None] if it's a different type of event.
 *)
 val to_json: Telemetry.event -> Data.Json.t option
 
@@ -210,6 +228,6 @@ val event_session_id: Telemetry.event -> Riot_model.Session_id.t option
    Note: Action-related events (ActionStarted, ActionCompleted, etc.) can be
    emitted for logging and debugging, but they are still not currently
    reconstructed to full event values during parsing because Action_node.t does
-   not yet have a reverse deserialization path. 
+   not yet have a reverse deserialization path.
 *)
 val from_json: Data.Json.t -> (Telemetry.event, Data.Json.t) result

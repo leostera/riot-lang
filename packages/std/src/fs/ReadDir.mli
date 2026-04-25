@@ -21,7 +21,7 @@
    - Returns relative entry paths
    - Must call [close] to release resources
 
-   See [Fs.read_dir] for a simpler API that returns all entries at once. 
+   See [Fs.read_dir] for a simpler API that returns all entries at once.
 *)
 open Global
 open Common
@@ -35,7 +35,7 @@ type state = t
    Lightweight kind hint derived from the directory entry itself.
 
    This avoids a metadata syscall on the common path. `Unknown` means the
-   platform could not classify the entry cheaply. 
+   platform could not classify the entry cheaply.
 *)
 type entry_kind = Kernel.Fs.ReadDir.kind =
   | RegularFile
@@ -57,7 +57,7 @@ val open_dir: Path.t -> (t, error) result
 
 (**
    Get next entry from directory, skipping `.` and `..`, along with its cheap
-   kind hint. 
+   kind hint.
 *)
 val next: t -> entry option
 

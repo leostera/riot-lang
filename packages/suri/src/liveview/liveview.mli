@@ -48,7 +48,7 @@ open Std
    - WebSocket connection management (via Channel.Handler)
    - Event routing from browser to server
    - State management per connection (in dedicated process)
-   - Automatic re-rendering on state changes 
+   - Automatic re-rendering on state changes
 *)
 (** {1 Component Interface} *)
 val id: string -> string
@@ -66,7 +66,7 @@ val id: string -> string
        let id = LiveView.id "counter"  (* Results in: "counter-<uuid>" *)
        (* ... *)
      end
-   ]} 
+   ]}
 *)
 type 'msg event =
   | Custom of Message.t
@@ -80,7 +80,7 @@ type 'msg event =
    - [App msg] wraps UI events (clicks, form submissions, etc.)
    - [Custom msg] wraps any Runtime process message (timers, notifications, etc.)
 
-   This allows components to handle both user interactions and server-driven updates. 
+   This allows components to handle both user interactions and server-driven updates.
 *)
 module type Component = sig
   val id: string
@@ -88,7 +88,7 @@ module type Component = sig
   (**
      Unique identifier for this LiveView component.
      Use [LiveView.id "name"] to generate a unique ID.
-     This is used to create both the WebSocket endpoint path and DOM element ID. 
+     This is used to create both the WebSocket endpoint path and DOM element ID.
   *)
   type state
 
@@ -120,7 +120,7 @@ module type Component = sig
          | App Increment -> { state with count = state.count + 1 }
          | Custom (Timer Tick) -> { state with time = current_time () }
          | _ -> state
-     ]} 
+     ]}
   *)
   val render: state:state -> unit -> msg Component.t
 
@@ -146,7 +146,7 @@ val serve_runtime: ?prefix:string -> unit -> Middleware.Pipeline.middleware
        LiveView.serve_runtime ~prefix:"/suri/live.js" ();
        Middleware.router routes;
      ]
-   ]} 
+   ]}
 *)
 (** {1 Mounting LiveViews} *)
 val mount: (module Component with type state = 's and type msg = 'm) -> Middleware.Conn.t -> Channel.Handler.upgrade_opts * Channel.Handler.t
@@ -166,7 +166,7 @@ val mount: (module Component with type state = 's and type msg = 'm) -> Middlewa
    {[
      let (opts, handler) = LiveView.mount (module Counter) conn in
      (* Use with WebSocket upgrade *)
-   ]} 
+   ]}
 *)
 val embed: (module Component with type args = 'args) -> 'args -> 'msg Component.t
 
@@ -175,7 +175,7 @@ val embed: (module Component with type args = 'args) -> 'args -> 'msg Component.
 
    The secret is automatically retrieved from Suri.Config via Std.Config.
 
-   @param module Component module  
+   @param module Component module
    @param args The initialization arguments to pass to the component
 
    Returns the HTML for the LiveView mounting div with embedded session token and bootstrap script.
@@ -204,7 +204,7 @@ val embed: (module Component with type args = 'args) -> 'args -> 'msg Component.
            Component.text (LiveView.embed (module Counter) args);
          ];
        ] in
-       conn 
+       conn
        |> Conn.respond ~status:Ok ~body:(Component.to_html page)
        |> Conn.send
    ]}
@@ -220,7 +220,7 @@ val embed: (module Component with type args = 'args) -> 'args -> 'msg Component.
          ];
        ] in
        (* ... *)
-   ]} 
+   ]}
 *)
 val live: (module Component with type state = 's and type msg = 'm) -> Middleware.Router.route
 
@@ -256,7 +256,7 @@ val live: (module Component with type state = 's and type msg = 'm) -> Middlewar
      ]
 
      Suri.start_link app
-   ]} 
+   ]}
 *)
 (** {1 JavaScript Runtime} *)
 val javascript_runtime: string
@@ -272,7 +272,7 @@ val javascript_runtime: string
          ~headers:[("Content-Type", "application/javascript")]
          ~body:LiveView.javascript_runtime
          ())
-   ]} 
+   ]}
 *)
 val client_script: 'msg Component.t
 
@@ -292,7 +292,7 @@ val client_script: 'msg Component.t
          LiveView.embed (module Counter) conn;
        ];
      ]
-   ]} 
+   ]}
 *)
 val html_template: element_id:string -> ws_path:string -> ?title:string -> ?styles:string -> 'msg Component.t -> string(**
    Generate HTML template with LiveView bootstrapping.
@@ -313,5 +313,5 @@ val html_template: element_id:string -> ws_path:string -> ?title:string -> ?styl
        Component.(div [text "Loading..."])
      in
      Response.ok ~body:page ()
-   ]} 
+   ]}
 *)

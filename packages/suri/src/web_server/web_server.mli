@@ -161,7 +161,7 @@
 
    ---
 
-   {1 API Reference} 
+   {1 API Reference}
 *)
 module Config = Config
 
@@ -178,7 +178,7 @@ module Config = Config
        ()
    ]}
 
-   See {!Config} for all options. 
+   See {!Config} for all options.
 *)
 module Request = Request
 
@@ -203,7 +203,7 @@ module Request = Request
        Response.ok ~body:"OK" ()
    ]}
 
-   See {!Request} for full API. 
+   See {!Request} for full API.
 *)
 module Response = Response
 
@@ -236,7 +236,7 @@ module Response = Response
            Handler.close (Response.not_found ~body:"Page not found" ())
    ]}
 
-   See {!Response} for full API. 
+   See {!Response} for full API.
 *)
 module Handler = Http_handler
 
@@ -245,7 +245,7 @@ module Handler = Http_handler
 
    Handler functions that can return either HTTP responses or protocol upgrades (WebSocket).
 
-   See {!Handler} for full API. 
+   See {!Handler} for full API.
 *)
 module Http1 = Http1_handler
 
@@ -256,7 +256,7 @@ module Http1 = Http1_handler
 
    Most users don't need to use this directly - use {!start_link} instead.
 
-   See {!Http1} for internals. 
+   See {!Http1} for internals.
 *)
 module Http2 = Http2_handler
 

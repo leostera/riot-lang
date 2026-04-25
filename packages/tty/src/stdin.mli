@@ -45,7 +45,7 @@
        in
        wait ();
        Stdin.shutdown old_settings
-   ]} 
+   ]}
 *)
 val read_utf8: unit -> [> `Retry | `End | `Malformed of string | `Read of string]
 
@@ -58,7 +58,7 @@ val read_utf8: unit -> [> `Retry | `End | `Malformed of string | `Read of string
 
    This function should be called after {!make_raw} has configured stdin for raw
    non-blocking mode. It properly handles UTF-8 multi-byte sequences by
-   detecting character boundaries. 
+   detecting character boundaries.
 *)
 val make_raw: unit -> Terminal.t
 
@@ -81,7 +81,7 @@ val make_raw: unit -> Terminal.t
 
    {b Implementation note:} Despite the name "raw mode", this is technically "cbreak mode".
    It disables canonical input and echo but preserves output processing and the
-   terminal's character configuration, which is what TUI applications need. 
+   terminal's character configuration, which is what TUI applications need.
 *)
 val restore: Terminal.t -> unit(**
    [restore (tty_fd, settings)] restores the terminal to its original configuration
@@ -89,5 +89,5 @@ val restore: Terminal.t -> unit(**
 
    The argument must be the tuple returned by {!make_raw}. This should always be
    called before program exit, even in error cases, to prevent leaving the
-   terminal in an unusable state. 
+   terminal in an unusable state.
 *)

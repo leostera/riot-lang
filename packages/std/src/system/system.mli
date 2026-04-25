@@ -7,7 +7,7 @@
    ## See Also
 
    - [Env] for environment variables
-   - [Command] for running external processes 
+   - [Command] for running external processes
 *)
 module TargetTriple = TargetTriple
 

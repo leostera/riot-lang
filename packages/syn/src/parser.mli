@@ -8,7 +8,7 @@ open Std.Collections
    into the lossless tree builder, and always returns a tree plus diagnostics.
    Callers should keep string/file/reader conversion at their boundary and pass
    `IO.IoVec.IoSlice.t` here so all token views can point back into the same
-   source storage. 
+   source storage.
 *)
 type file_kind = [ | `Implementation | `Interface]
 
@@ -17,7 +17,7 @@ type file_kind = [ | `Implementation | `Interface]
 
    `tokens` contains the raw token stream, including trivia. `tree` stores only
    significant token leaves in child arrays; each token leaf still references
-   the raw range that covers its leading trivia. 
+   the raw range that covers its leading trivia.
 *)
 type parse_result = {
   (** Source slice used by tokens, diagnostics, and Ast views. *)
@@ -40,6 +40,6 @@ val parse_interface: IO.IoVec.IoSlice.t -> parse_result
 
 (**
    Parse a source slice, choosing interface grammar for `.mli` filenames and
-   implementation grammar otherwise. 
+   implementation grammar otherwise.
 *)
 val parse: filename:Std.Path.t -> IO.IoVec.IoSlice.t -> parse_result

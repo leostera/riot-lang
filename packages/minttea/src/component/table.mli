@@ -50,30 +50,31 @@
          table_view ^ "\n\nSelected: " ^ String.concat ", " row
      | None ->
          table_view
-   ``` 
+   ```
 *)
 open Std
 
 (** ## Types *)
-type t
 
+type t
 (** A table instance *)
 type column
-
 (** A column definition with title and width *)
 type row = string list
 
 (** A row is a list of cell values (one per column) *)
 (** ## Column Definition *)
+
 val column: title:string -> width:int -> column
 
 (**
    `column ~title ~width` creates a column definition.
 
    - `title` - The column header text
-   - `width` - The column width in characters 
+   - `width` - The column width in characters
 *)
 (** ## Creation *)
+
 val make: column list -> row list -> t
 
 (**
@@ -82,22 +83,23 @@ val make: column list -> row list -> t
    - `columns` - List of column definitions (headers)
    - `rows` - List of data rows
 
-   Note: Each row should have the same number of cells as columns. 
+   Note: Each row should have the same number of cells as columns.
 *)
 (** ## Configuration *)
+
 val set_height: t -> height:int -> t
 
 (**
    `set_height table h` sets the visible height (number of rows shown).
 
-   Set to 0 for unlimited height. Header is not counted in height. 
+   Set to 0 for unlimited height. Header is not counted in height.
 *)
 val set_width: t -> width:int -> t
 
 (**
    `set_width table w` sets the total table width.
 
-   Columns will be sized according to their individual widths. 
+   Columns will be sized according to their individual widths.
 *)
 val set_show_header: t -> show:bool -> t
 
@@ -106,6 +108,7 @@ val set_cursor_char: t -> char:string -> t
 
 (** `set_cursor_char table char` sets the selection indicator. Default: "> " *)
 (** ## Data *)
+
 val columns: t -> column list
 
 (** `columns table` returns the column definitions. *)
@@ -119,6 +122,7 @@ val set_rows: t -> rows:row list -> t
 
 (** `set_rows table rows` replaces all rows. Resets selection to first row. *)
 (** ## Selection *)
+
 val selected_row: t -> row option
 
 (** `selected_row table` returns the currently selected row, if any. *)
@@ -144,6 +148,7 @@ val goto_bottom: t -> t
 
 (** [goto_bottom table] selects the last row. *)
 (** ## Focus *)
+
 val focus: t -> t
 
 (** `focus table` enables keyboard navigation and shows selection. *)
@@ -154,6 +159,7 @@ val is_focused: t -> bool
 
 (** `is_focused table` returns true if table has focus. *)
 (** ## Input Handling *)
+
 val handle_key: t -> Event.key -> Event.modifier -> t
 
 (**
@@ -169,10 +175,13 @@ val handle_key: t -> Event.key -> Event.modifier -> t
    - Home/g: goto first row
    - End/G: goto last row
 
-   Returns updated table. No-op if not focused. 
+   Returns updated table. No-op if not focused.
 *)
 (** ## Rendering *)
-val view: t -> string(**
+
+val view: t -> string
+
+(**
    `view table` renders the table for display.
 
      Format:
@@ -184,6 +193,6 @@ val view: t -> string(**
      3    Charlie             Active
      ```
 
-     Selection is indicated by cursor char. 
-     If height is set, shows scrolling window of rows. 
+     Selection is indicated by cursor char.
+     If height is set, shows scrolling window of rows.
 *)

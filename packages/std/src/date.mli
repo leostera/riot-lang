@@ -22,7 +22,7 @@
 
    - {!Std.Calendar} for low-level Gregorian calendar computations
    - {!Std.DateTime} for timezone-aware calendar datetimes
-   - {!Std.Time.SystemTime} for wall-clock timestamps 
+   - {!Std.Time.SystemTime} for wall-clock timestamps
 *)
 open Global
 

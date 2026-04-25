@@ -60,6 +60,6 @@ val parse_implementation: IO.IoVec.IoSlice.t -> Parser.parse_result
 
 (**
    Parse an existing source slice with file-kind selection based on the
-   filename extension. 
+   filename extension.
 *)
 val parse: filename:Std.Path.t -> IO.IoVec.IoSlice.t -> Parser.parse_result

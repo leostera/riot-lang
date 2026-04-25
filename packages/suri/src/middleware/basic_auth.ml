@@ -5,7 +5,7 @@ open Std
    Constant-time string equality check.
 
    Prevents timing attacks by always comparing the full length of both strings
-   and using bitwise operations instead of short-circuit boolean logic. 
+   and using bitwise operations instead of short-circuit boolean logic.
 *)
 let secure_equal = fun s1 s2 ->
   let len1 = String.length s1 in
@@ -34,8 +34,8 @@ let secure_equal = fun s1 s2 ->
 
    Removes characters that could be used to inject additional headers:
    - carriage return
-   - newline  
-   - quotes (interfere with realm quoting) 
+   - newline
+   - quotes (interfere with realm quoting)
 *)
 let sanitize_realm = fun realm ->
   let chars = ref [] in
@@ -62,7 +62,7 @@ let sanitize_realm = fun realm ->
    (username, password) tuple.
 
    Handles passwords containing colons correctly by only splitting on
-   the first colon. 
+   the first colon.
 *)
 let decode_credentials = fun auth_header ->
   (* Split "Basic <encoded>" *)
@@ -90,7 +90,8 @@ let get_credentials = fun conn ->
 (** {1 Connection State} *)
 (* Unfortunately, the extensible variant system makes this difficult.
    For now, we'll use a workaround: store as a ref and use physical equality.
-   This is safe because we control the lifecycle. *)
+   This is safe because we control the lifecycle.
+*)
 type 'a value_box = { mutable data: 'a option }
 
 let make_box = fun value -> { data = Some value }

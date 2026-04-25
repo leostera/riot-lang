@@ -85,7 +85,7 @@ let get_word_property = fun c ->
    Rules (simplified from UAX #29):
    - Always break around whitespace
    - Don't break Letter × Letter
-   - Don't break Number × Number  
+   - Don't break Number × Number
    - Don't break Letter × Number or Number × Letter (for hex codes, etc.)
    - Don't break around apostrophe in contractions: Letter × Apostrophe × Letter
    - Don't break around underscore: Letter × Underscore × Letter
@@ -111,7 +111,7 @@ let should_break_word = fun ~prev_prop ~curr_prop ~next_prop ->
 
 (**
    Find all word boundaries in a string
-   Returns byte positions where word breaks occur 
+   Returns byte positions where word breaks occur
 *)
 let find_word_boundaries = fun s ->
   let len = String.length s in

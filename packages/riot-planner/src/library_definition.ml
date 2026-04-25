@@ -20,7 +20,7 @@ open Riot_model
      children
    - Subdirectories are only included if they don't have a corresponding file
    - Binary path comparison requires converting absolute paths to relative
-     paths 
+     paths
 *)
 type t = {
   library_module_name: string;
@@ -40,7 +40,7 @@ type t = {
    Example: base = "/home/user/project" path = "/home/user/project/src/main.ml"
    result = "src/main.ml"
 
-   If path doesn't start with base, returns path unchanged. 
+   If path doesn't start with base, returns path unchanged.
 *)
 let make_relative = fun ~base ~path ->
   let base_str = Path.to_string base in
@@ -59,7 +59,7 @@ let make_relative = fun ~base ~path ->
 
    We must convert both to relative paths before comparing to avoid:
    - False matches: src/main.ml shouldn't match some/other/src/main.ml
-   - Basename collisions: a.ml binary shouldn't exclude src/utils/a.ml 
+   - Basename collisions: a.ml binary shouldn't exclude src/utils/a.ml
 *)
 let is_binary_module = fun ~package_path ~binaries path ->
   let bin_rel = make_relative ~base:package_path ~path in List.any binaries ~fn:(
@@ -90,7 +90,7 @@ let is_binary_module = fun ~package_path ~binaries path ->
    - If generated: depend on all child_modules (must reference subdirs)
 
    Edge case: Module names are case-insensitive on some filesystems but
-   case-sensitive in OCaml, so we use Module_name.to_string for comparison. 
+   case-sensitive in OCaml, so we use Module_name.to_string for comparison.
 *)
 let from_entries = fun ~namespace ~library_name ~package_path ~concrete_library_path ~binaries children ->
   let library_module_name = Module_name.of_string library_name |> Module_name.to_string in
@@ -223,7 +223,7 @@ let children_without_lib = fun t -> t.children_without_lib
    GENERATED library interfaces (auto-generated from directory structure):
    - Depend on ALL child_modules (files + subdirectories)
    - Must reference sublibraries: "module Bar = Foo__Bar"
-   - Safe from cycles because generated content is explicit 
+   - Safe from cycles because generated content is explicit
 *)
 let deps_for_library_interface = fun t ->
   if t.has_concrete_ml && t.has_concrete_mli then

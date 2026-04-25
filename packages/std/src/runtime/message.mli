@@ -1,6 +1,6 @@
 (**
    The extensible actor message type. Runtime and application modules extend
-   it with their own variants. 
+   it with their own variants.
 *)
 type t = ..
 

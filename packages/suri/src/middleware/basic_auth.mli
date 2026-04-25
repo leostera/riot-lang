@@ -39,10 +39,10 @@ open Std
    {[
      let app = Middleware.[
        logger;
-       basic_auth 
-         ~username:"admin" 
-         ~password:"secret" 
-         ~realm:"Admin Panel" 
+       basic_auth
+         ~username:"admin"
+         ~password:"secret"
+         ~realm:"Admin Panel"
          ();
        router routes;
      ]
@@ -69,11 +69,11 @@ open Std
    {[
      let handler ~conn ~next:_ =
        match Basic_auth.get "user" conn with
-       | Some user -> 
+       | Some user ->
            Printf.sprintf "Welcome, %s!" user.username
            |> Conn.respond conn ~status:Ok ~body:_
            |> Conn.send
-       | None -> 
+       | None ->
            Conn.respond conn ~status:Unauthorized ~body:"Unauthorized"
            |> Conn.send
    ]}
@@ -84,8 +84,8 @@ open Std
    {[
      let app = Middleware.[
        logger;
-       basic_auth 
-         ~username:"admin" 
+       basic_auth
+         ~username:"admin"
          ~password:"secret"
          ~skip:(fun conn ->
            let path = Conn.request_path conn in
@@ -112,7 +112,7 @@ open Std
    4. Client retries with [Authorization: Basic <base64-credentials>]
    5. Server validates and either:
       - Returns requested resource (200 OK)
-      - Returns 401 again (invalid credentials) 
+      - Returns 401 again (invalid credentials)
 *)
 (** {1 Types} *)
 (**
@@ -128,7 +128,7 @@ open Std
        match Database.find_user username with
        | Some user when verify_password user password -> Some user
        | _ -> None
-   ]} 
+   ]}
 *)
 type 'a validation_fn = username:string -> password:string -> 'a option
 
@@ -152,23 +152,23 @@ type 'a validation_fn = username:string -> password:string -> 'a option
 
    With custom realm:
    {[
-     basic_auth 
-       ~username:"admin" 
-       ~password:"secret" 
-       ~realm:"Admin Panel" 
+     basic_auth
+       ~username:"admin"
+       ~password:"secret"
+       ~realm:"Admin Panel"
        ()
    ]}
 
    Skip public paths:
    {[
-     basic_auth 
-       ~username:"admin" 
+     basic_auth
+       ~username:"admin"
        ~password:"secret"
        ~skip:(fun conn ->
          String.starts_with (Conn.request_path conn) ~prefix:"/public"
        )
        ()
-   ]} 
+   ]}
 *)
 val middleware: ?realm:string -> ?skip:(Conn.t -> bool) -> username:string -> password:string -> unit -> Pipeline.middleware
 
@@ -203,7 +203,7 @@ val middleware: ?realm:string -> ?skip:(Conn.t -> bool) -> username:string -> pa
        match Basic_auth.get "user" conn with
        | Some user -> (* user is what validate returned *)
        | None -> (* should never happen if middleware passed *)
-   ]} 
+   ]}
 *)
 val middleware_with_validation: ?realm:string -> ?skip:(Conn.t -> bool) -> validate:'a validation_fn -> unit -> Pipeline.middleware
 
@@ -217,14 +217,14 @@ val middleware_with_validation: ?realm:string -> ?skip:(Conn.t -> bool) -> valid
    Example:
    {[
      match Basic_auth.get_credentials conn with
-     | Some (username, password) -> 
+     | Some (username, password) ->
          Printf.printf "User: %s\n" username
-     | None -> 
+     | None ->
          print_endline "No credentials provided"
    ]}
 
    This is exposed for advanced use cases. Most applications should use
-   {!middleware} or {!middleware_with_validation} instead. 
+   {!middleware} or {!middleware_with_validation} instead.
 *)
 val get_credentials: Conn.t -> (string * string) option
 
@@ -241,7 +241,7 @@ val get_credentials: Conn.t -> (string * string) option
      match Basic_auth.get "user_role" conn with
      | Some role -> Printf.printf "Role: %s\n" role
      | None -> ()
-   ]} 
+   ]}
 *)
 val assign: string -> 'a -> Conn.t -> Conn.t
 
@@ -258,6 +258,6 @@ val assign: string -> 'a -> Conn.t -> Conn.t
    ]}
 
    {b Note}: The default key used by {!middleware_with_validation} is
-   ["basic_auth_user"]. 
+   ["basic_auth_user"].
 *)
 val get: string -> Conn.t -> 'a option

@@ -38,7 +38,7 @@
    - **2xx Success**: Request successfully received, understood, and accepted
    - **3xx Redirection**: Further action needed to complete request
    - **4xx Client Error**: Request contains bad syntax or cannot be fulfilled
-   - **5xx Server Error**: Server failed to fulfill valid request 
+   - **5xx Server Error**: Server failed to fulfill valid request
 *)
 open Global
 
@@ -182,7 +182,7 @@ type t =
    ## Examples
 
    ```ocaml Status.of_int 200 (* Ok *) Status.of_int 404 (* NotFound *)
-   Status.of_int 999 (* Extension 999 *) ``` 
+   Status.of_int 999 (* Extension 999 *) ```
 *)
 val of_int: int -> t
 
@@ -192,7 +192,7 @@ val of_int: int -> t
    ## Examples
 
    ```ocaml Status.to_int Status.Ok (* 200 *) Status.to_int Status.NotFound (*
-   404 *) ``` 
+   404 *) ```
 *)
 val to_int: t -> int
 
@@ -202,7 +202,7 @@ val to_int: t -> int
    ## Examples
 
    ```ocaml Status.of_string "200" (* Ok (Ok) *) Status.of_string "404" (* Ok
-   (NotFound) *) Status.of_string "abc" (* Error `InvalidStatus *) ``` 
+   (NotFound) *) Status.of_string "abc" (* Error `InvalidStatus *) ```
 *)
 val of_string: string -> (t, [`InvalidStatus]) Kernel.result
 
@@ -212,7 +212,7 @@ val of_string: string -> (t, [`InvalidStatus]) Kernel.result
    ## Examples
 
    ```ocaml Status.to_string Status.Ok (* "200" *) Status.to_string
-   Status.NotFound (* "404" *) ``` 
+   Status.NotFound (* "404" *) ```
 *)
 val to_string: t -> string
 
@@ -223,7 +223,7 @@ val to_string: t -> string
 
    ```ocaml Status.reason_phrase Status.Ok (* "OK" *) Status.reason_phrase
    Status.NotFound (* "Not Found" *) Status.reason_phrase
-   Status.InternalServerError (* "Internal Server Error" *) ``` 
+   Status.InternalServerError (* "Internal Server Error" *) ```
 *)
 val reason_phrase: t -> string
 
@@ -233,7 +233,7 @@ val reason_phrase: t -> string
    ## Examples
 
    ```ocaml Status.is_informational Status.Continue (* true *)
-   Status.is_informational Status.Ok (* false *) ``` 
+   Status.is_informational Status.Ok (* false *) ```
 *)
 val is_informational: t -> bool
 
@@ -254,7 +254,7 @@ val is_success: t -> bool
 
    ```ocaml Status.is_redirection Status.MovedPermanently (* true *)
    Status.is_redirection Status.Found (* true *) Status.is_redirection
-   Status.Ok (* false *) ``` 
+   Status.Ok (* false *) ```
 *)
 val is_redirection: t -> bool
 
@@ -265,7 +265,7 @@ val is_redirection: t -> bool
 
    ```ocaml Status.is_client_error Status.BadRequest (* true *)
    Status.is_client_error Status.NotFound (* true *) Status.is_client_error
-   Status.InternalServerError (* false *) ``` 
+   Status.InternalServerError (* false *) ```
 *)
 val is_client_error: t -> bool
 
@@ -276,7 +276,7 @@ val is_client_error: t -> bool
 
    ```ocaml Status.is_server_error Status.InternalServerError (* true *)
    Status.is_server_error Status.NotImplemented (* true *)
-   Status.is_server_error Status.NotFound (* false *) ``` 
+   Status.is_server_error Status.NotFound (* false *) ```
 *)
 val is_server_error: t -> bool
 
@@ -286,7 +286,7 @@ val is_server_error: t -> bool
    ## Examples
 
    ```ocaml Status.compare Status.Ok Status.NotFound (* < 0, since 200 < 404 *)
-   ``` 
+   ```
 *)
 val compare: t -> t -> Order.t
 
@@ -296,6 +296,6 @@ val compare: t -> t -> Order.t
    ## Examples
 
    ```ocaml Status.equal Status.Ok Status.Ok (* true *) Status.equal Status.Ok
-   Status.NotFound (* false *) ``` 
+   Status.NotFound (* false *) ```
 *)
 val equal: t -> t -> bool

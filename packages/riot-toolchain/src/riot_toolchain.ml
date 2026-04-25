@@ -7,7 +7,7 @@ open Std
    Currently shells out to ocamlc/ocamldep, but designed to support:
    - In-process RAML compiler calls via FFI
    - Multiple compiler backends
-   - Easier testing and mocking 
+   - Easier testing and mocking
 *)
 type source =
   | Version of string

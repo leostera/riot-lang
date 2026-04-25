@@ -56,7 +56,7 @@ open Std
 
      (* Weak ETags (faster, less strict) *)
      etag ~weak:true;
-   ]} 
+   ]}
 *)
 (** {1 Middleware} *)
 (**
@@ -80,6 +80,6 @@ open Std
    - Skips if body is empty
    - Skips if ETag already set
 
-   {b Note}: Use with conditional_get middleware for automatic 304 responses. 
+   {b Note}: Use with conditional_get middleware for automatic 304 responses.
 *)
 val middleware: ?weak:bool -> unit -> conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t

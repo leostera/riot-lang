@@ -24,7 +24,7 @@
      resistance
 
    @see <https://en.wikipedia.org/wiki/Hash_table#Collision_resolution>
-     Hash collision attacks 
+     Hash collision attacks
 *)
 module DefaultHasher : Hasher.Intf
 

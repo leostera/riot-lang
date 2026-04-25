@@ -14,7 +14,7 @@ val to_list: ('key, 'value) t -> ('key * 'value) list
 
 (**
    Returns the first matching binding for [key]. Property lists preserve duplicate
-   keys, so this is the leftmost binding. 
+   keys, so this is the leftmost binding.
 *)
 val get: ('key, 'value) t -> key:'key -> 'value option
 
@@ -28,7 +28,7 @@ val add: ('key, 'value) t -> key:'key -> value:'value -> ('key, 'value) t
 
 (**
    Replaces all bindings for [key] with a single binding, preserving the position
-   of the first matching binding. If [key] is not present, appends the binding. 
+   of the first matching binding. If [key] is not present, appends the binding.
 *)
 val set: ('key, 'value) t -> key:'key -> value:'value -> ('key, 'value) t
 

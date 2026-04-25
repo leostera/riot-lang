@@ -5,7 +5,7 @@
 
    - a process registry shared by all workers
    - one runnable queue per scheduler worker
-   - a dedicated reactor domain for timers and async I/O polling 
+   - a dedicated reactor domain for timers and async I/O polling
 *)
 (** Opaque scheduler runtime handle. *)
 type t
@@ -29,7 +29,7 @@ val spawn_pinned: ?worker_id:Scheduler_id.t -> t -> (unit -> (unit, Process.exit
 
 (**
    Spawn a process on a dedicated blocking lane outside the normal
-   work-stealing scheduler pool. 
+   work-stealing scheduler pool.
 *)
 val spawn_blocked: t -> (unit -> (unit, Process.exit_reason) Kernel.result) -> Pid.t
 
@@ -38,7 +38,7 @@ val self: unit -> Pid.t
 
 (**
    Return the current normal scheduler identifier, or [None] when not running
-   on a normal scheduler worker. 
+   on a normal scheduler worker.
 *)
 val current_worker_id_opt: unit -> Scheduler_id.t option
 

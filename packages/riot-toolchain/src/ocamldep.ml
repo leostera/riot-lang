@@ -87,7 +87,7 @@ let deps = fun t ~cwd ~file ~package_namespace ->
 
 (**
    Get dependencies for a single file with optional flags - returns
-   Module_name.t list 
+   Module_name.t list
 *)
 let deps_with_flags = fun t ~cwd ~file ~flags ~package_namespace ->
   let ocamldep = Path.to_string t in
@@ -121,7 +121,7 @@ let deps_with_flags = fun t ~cwd ~file ~flags ~package_namespace ->
 
 (**
    Get dependencies for multiple files in one ocamldep call - returns (file,
-   deps) list 
+   deps) list
 *)
 let batch_deps = fun t ~cwd ~files ~package_namespace ->
   if files = [] then

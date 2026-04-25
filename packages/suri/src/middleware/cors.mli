@@ -27,7 +27,7 @@
    {3 With credentials}
    {[
      let app = Middleware.[
-       cors 
+       cors
          ~origins:["https://app.example.com"]
          ~credentials:true
          ();
@@ -38,7 +38,7 @@
    {3 With custom headers and methods}
    {[
      let app = Middleware.[
-       cors 
+       cors
          ~origins:["https://api.example.com"]
          ~methods:[GET; POST; PUT; DELETE]
          ~headers:["authorization"; "content-type"]
@@ -134,7 +134,7 @@ open Std
      let app = Middleware.[
        request_id;
        logger;
-       cors 
+       cors
          ~origins:["https://app.production.com"]
          ~methods:[POST; PUT; PATCH; DELETE]
          ~headers:["authorization"; "content-type"]
@@ -160,6 +160,6 @@ open Std
        cors_config;
        router routes;
      ]
-   ]} 
+   ]}
 *)
 val middleware: origins:string list -> ?methods:Net.Http.Method.t list -> ?headers:string list -> ?credentials:bool -> ?expose:string list -> ?max_age:int -> unit -> Pipeline.middleware

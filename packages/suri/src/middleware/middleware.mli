@@ -43,9 +43,9 @@ open Std
 
      (* Build routes *)
      let routes = Middleware.Router.[
-       get "/" (fun ~conn ~next:_ -> 
+       get "/" (fun ~conn ~next:_ ->
          Conn.respond conn ~status:Ok ~body:"Home" |> Conn.send);
-       get "/about" (fun ~conn ~next:_ -> 
+       get "/about" (fun ~conn ~next:_ ->
          Conn.respond conn ~status:Ok ~body:"About" |> Conn.send);
      ]
 
@@ -145,7 +145,7 @@ open Std
 
    ---
 
-   {1 API Reference} 
+   {1 API Reference}
 *)
 module Conn = Conn
 
@@ -161,7 +161,7 @@ module Conn = Conn
    - Custom state (via [assign])
    - Halt flag (stop pipeline)
 
-   See {!Conn} for full API. 
+   See {!Conn} for full API.
 *)
 module Pipeline = Pipeline
 
@@ -182,7 +182,7 @@ module Pipeline = Pipeline
      let conn = Pipeline.run conn app
    ]}
 
-   See {!Pipeline} for full API. 
+   See {!Pipeline} for full API.
 *)
 module Router = Router
 
@@ -211,7 +211,7 @@ module Router = Router
      let router = Router.create routes
    ]}
 
-   See {!Router} for full API. 
+   See {!Router} for full API.
 *)
 module Logger = Logger
 
@@ -247,7 +247,7 @@ module Logger = Logger
      ]
    ]}
 
-   See {!Logger} for full API. 
+   See {!Logger} for full API.
 *)
 module Request_id = Request_id
 
@@ -270,7 +270,7 @@ module Request_id = Request_id
      ]
    ]}
 
-   See {!Request_id} for full API. 
+   See {!Request_id} for full API.
 *)
 module Debugger = Debugger
 
@@ -304,7 +304,7 @@ module Debugger = Debugger
      let app = Middleware.[request_id; logger] @ debug @ [router routes]
    ]}
 
-   See {!Debugger} for full API and examples. 
+   See {!Debugger} for full API and examples.
 *)
 (** {2 Convenience Functions} *)
 (**
@@ -332,7 +332,7 @@ module Debugger = Debugger
          Router.get "/about" about;
        ];
      ]
-   ]} 
+   ]}
 *)
 val router: Router.route list -> Pipeline.middleware
 
@@ -351,7 +351,7 @@ val router: Router.route list -> Pipeline.middleware
 
    Logs format: [METHOD /path -> STATUS in DURATIONms]
 
-   See {!Logger} for full documentation. 
+   See {!Logger} for full documentation.
 *)
 val logger: Pipeline.middleware
 
@@ -372,7 +372,7 @@ val logger: Pipeline.middleware
    Ensures every request has an [x-request-id] header in both
    the request (for handlers) and response (for clients).
 
-   See {!Request_id} for full documentation. 
+   See {!Request_id} for full documentation.
 *)
 val request_id: Pipeline.middleware
 
@@ -399,7 +399,7 @@ val request_id: Pipeline.middleware
    - File:line error locations
    - Automatic console logging
 
-   See {!Debugger} for full documentation and production safety patterns. 
+   See {!Debugger} for full documentation and production safety patterns.
 *)
 val debugger: Pipeline.middleware
 
@@ -428,7 +428,7 @@ module Cors = Cors
      ]
    ]}
 
-   See {!Cors} for full documentation and examples. 
+   See {!Cors} for full documentation and examples.
 *)
 (**
    CORS middleware - simple and direct.
@@ -454,7 +454,7 @@ module Cors = Cors
    - Never use ["*"] with [~credentials:true]
    - Be specific with [~headers]
 
-    See {!Cors.middleware} for full documentation. 
+    See {!Cors.middleware} for full documentation.
 *)
 val cors: origins:string list -> ?methods:Net.Http.Method.t list -> ?headers:string list -> ?credentials:bool -> ?expose:string list -> ?max_age:int -> unit -> Pipeline.middleware
 
@@ -493,7 +493,7 @@ module Session = Session
    {b Warning:} Current crypto is a placeholder. Replace with
    AES-256-GCM for production.
 
-   See {!Session} for full documentation. 
+   See {!Session} for full documentation.
 *)
 (**
    Session middleware - secure cookie-based sessions.
@@ -535,7 +535,7 @@ module Session = Session
      Session.clear session
    ]}
 
-   See {!Session.middleware} for full documentation. 
+   See {!Session.middleware} for full documentation.
 *)
 val session: secret:string -> ?cookie_name:string -> ?max_age:int -> ?secure:bool -> ?same_site:Http.Http1.Cookie.same_site -> unit -> Pipeline.middleware
 
@@ -571,7 +571,7 @@ module Csrf = Csrf
    - Returns 403 Forbidden if token missing/invalid
    - Safe methods (GET, HEAD, OPTIONS) skipped by default
 
-   See {!Csrf} for full documentation. 
+   See {!Csrf} for full documentation.
 *)
 (**
    CSRF protection middleware - validates tokens on unsafe requests.
@@ -605,7 +605,7 @@ module Csrf = Csrf
      Csrf.get_token conn     (* Returns token string *)
    ]}
 
-   See {!Csrf.middleware} for full documentation. 
+   See {!Csrf.middleware} for full documentation.
 *)
 val csrf: ?param_name:string -> ?header_name:string -> ?skip_safe_methods:bool -> ?skip:(Conn.t -> bool) -> unit -> Pipeline.middleware
 
@@ -637,7 +637,7 @@ module Body_parser = Body_parser
        (* ... *)
    ]}
 
-   See {!Body_parser} for full documentation. 
+   See {!Body_parser} for full documentation.
 *)
 (**
    Body parser middleware - parses request bodies automatically.
@@ -668,7 +668,7 @@ module Body_parser = Body_parser
 
    Bodies exceeding [max_body_size] are not parsed (left empty).
 
-   See {!Body_parser.make} for full documentation. 
+   See {!Body_parser.make} for full documentation.
 *)
 val body_parser: ?config:Body_parser.config -> unit -> Pipeline.middleware
 
@@ -703,7 +703,7 @@ module Static = Static
    - Symlinks: Follows or denies based on config
    - File Types: Only serves regular files, not special files
 
-   See {!Static} for full documentation. 
+   See {!Static} for full documentation.
 *)
 (**
    Serve static files from a directory.
@@ -752,7 +752,7 @@ module Static = Static
    - Blocks dotfiles by default
    - Validates paths are within root
 
-   See {!Static.middleware} for full documentation. 
+   See {!Static.middleware} for full documentation.
 *)
 val static: ?config:Static.config -> at:string -> Path.t -> unit -> Pipeline.middleware
 
@@ -795,7 +795,7 @@ module Basic_auth = Basic_auth
    - ✅ Skip paths (allow public routes)
    - ✅ RFC 7617 compliant
 
-   See {!Basic_auth} for full documentation. 
+   See {!Basic_auth} for full documentation.
 *)
 (**
    Basic Auth with static credentials.
@@ -816,8 +816,8 @@ module Basic_auth = Basic_auth
 
    Skip public paths:
    {[
-     basic_auth 
-       ~username:"admin" 
+     basic_auth
+       ~username:"admin"
        ~password:"secret"
        ~skip:(fun conn ->
          String.starts_with (Conn.request_path conn) ~prefix:"/public"
@@ -830,7 +830,7 @@ module Basic_auth = Basic_auth
    - Sanitizes realm to prevent header injection
    - {b REQUIRES HTTPS in production!}
 
-   See {!Basic_auth.middleware} for full documentation. 
+   See {!Basic_auth.middleware} for full documentation.
 *)
 val basic_auth: ?realm:string -> ?skip:(Conn.t -> bool) -> username:string -> password:string -> unit -> Pipeline.middleware
 
@@ -866,7 +866,7 @@ val basic_auth: ?realm:string -> ?skip:(Conn.t -> bool) -> username:string -> pa
        | None -> (* should never happen if middleware passed *)
    ]}
 
-   See {!Basic_auth.middleware_with_validation} for full documentation. 
+   See {!Basic_auth.middleware_with_validation} for full documentation.
 *)
 val basic_auth_with_validation: ?realm:string -> ?skip:(Conn.t -> bool) -> validate:'a Basic_auth.validation_fn -> unit -> Pipeline.middleware
 
@@ -907,7 +907,7 @@ module Accepts = Accepts
 
    {b Important}: Place {b before} body parsing middleware!
 
-   See {!Accepts} for full documentation. 
+   See {!Accepts} for full documentation.
 *)
 (**
    Content negotiation middleware - validates Accept and Content-Type headers.
@@ -949,7 +949,7 @@ module Accepts = Accepts
 
    {b Order matters}: Place before body_parser to avoid parsing unsupported content!
 
-   See {!Accepts.middleware} for full documentation. 
+   See {!Accepts.middleware} for full documentation.
 *)
 val accepts: ?config:Accepts.config -> string list -> Pipeline.middleware
 
@@ -978,7 +978,7 @@ module Head = Head
    This is typically the first middleware in your pipeline.
    No configuration needed - it's completely automatic.
 
-   See {!Head} for full documentation. 
+   See {!Head} for full documentation.
 *)
 (**
    HEAD request handler middleware.
@@ -991,7 +991,7 @@ module Head = Head
    ]}
 
    Automatically strips response bodies for HEAD requests while
-   preserving all headers. No configuration required. 
+   preserving all headers. No configuration required.
 *)
 val head: conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t
 
@@ -1020,7 +1020,7 @@ module Runtime = Request_runtime
 
    Clients receive: [X-Runtime: 0.0234] (seconds)
 
-   See {!Runner} for full documentation. 
+   See {!Runner} for full documentation.
 *)
 (**
    Request timing middleware.
@@ -1033,7 +1033,7 @@ module Runtime = Request_runtime
      ]
    ]}
 
-   Adds [X-Runtime] header with processing time in seconds. 
+   Adds [X-Runtime] header with processing time in seconds.
 *)
 val runner: conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t
 
@@ -1068,7 +1068,7 @@ module Method_override = Method_override
    - Only allows PUT, PATCH, DELETE (not GET)
    - Reads from [_method] parameter by default
 
-   See {!Method_override} for full documentation. 
+   See {!Method_override} for full documentation.
 *)
 (**
    Method override middleware for HTML forms (uses default "_method" param).
@@ -1085,7 +1085,7 @@ module Method_override = Method_override
    Uses the default form parameter name "_method".
    For custom parameter names, use [Method_override.middleware ~param:"..."].
 
-   Place {b after} body_parser so form data is available. 
+   Place {b after} body_parser so form data is available.
 *)
 val method_override: conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t
 
@@ -1125,7 +1125,7 @@ module Remote_ip = Remote_ip
    {b Note:} Current version uses exact IP matching.
    CIDR support planned for future.
 
-   See {!Remote_ip} for full documentation. 
+   See {!Remote_ip} for full documentation.
 *)
 (* No convenience function - use Remote_ip.middleware ~proxies:[...] directly *)
 module Etag = Etag
@@ -1161,7 +1161,7 @@ module Etag = Etag
 
    Pair with {!Conditional_get} for automatic 304 responses.
 
-   See {!Etag} for full documentation. 
+   See {!Etag} for full documentation.
 *)
 (**
    ETag generation middleware (uses strong ETags by default).
@@ -1178,7 +1178,7 @@ module Etag = Etag
    For weak ETags, use [Etag.middleware ~weak:true].
 
    Generates ETags using SHA256 hash of response body.
-   Place before conditional_get in pipeline. 
+   Place before conditional_get in pipeline.
 *)
 val etag: conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t
 
@@ -1225,7 +1225,7 @@ module Conditional_get = Conditional_get
    - Faster responses for cached content
    - Standard HTTP caching
 
-   See {!Conditional_get} for full documentation. 
+   See {!Conditional_get} for full documentation.
 *)
 (**
    Conditional GET middleware for 304 responses.
@@ -1241,6 +1241,6 @@ module Conditional_get = Conditional_get
    Checks If-None-Match and If-Modified-Since headers.
    Returns 304 Not Modified when content hasn't changed.
 
-   Only applies to GET and HEAD requests. 
+   Only applies to GET and HEAD requests.
 *)
 val conditional_get: conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t

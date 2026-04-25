@@ -5,7 +5,7 @@
    mailboxes, timers, async I/O suspension, and process lifecycle.
 
    The separate `actors` package is now a compatibility facade over this
-   module. 
+   module.
 *)
 open Kernel
 
@@ -26,7 +26,7 @@ module Runtime : sig
 
   (**
      Spend one cooperative reduction from the current process-local budget and
-     yield when the budget is exhausted. 
+     yield when the budget is exhausted.
   *)
   val increment_reduction_count: unit -> unit
 end
@@ -141,7 +141,7 @@ module Timer : sig
 
   (**
      Cancel a timer. If the timer has already fired or does not exist, this is
-     a no-op. 
+     a no-op.
   *)
   val cancel: id -> unit
 end
@@ -155,13 +155,13 @@ val spawn: (unit -> (unit, Actor.exit_reason) result) -> Pid.t
 (**
    Spawn an actor pinned to one normal scheduler. When [scheduler] is omitted,
    the runtime prefers the current normal scheduler and otherwise falls back to
-   the normal placement policy. Pinned actors are not work-stolen. 
+   the normal placement policy. Pinned actors are not work-stolen.
 *)
 val spawn_pinned: ?scheduler:int -> (unit -> (unit, Actor.exit_reason) result) -> Pid.t
 
 (**
    Spawn an actor on a dedicated blocking lane outside the normal
-   work-stealing scheduler pool. 
+   work-stealing scheduler pool.
 *)
 val spawn_blocked: (unit -> (unit, Actor.exit_reason) result) -> Pid.t
 
@@ -170,7 +170,7 @@ val spawn_link: (unit -> (unit, Actor.exit_reason) result) -> Pid.t
 
 (**
    Return the current normal scheduler identifier, or [None] when the caller
-   is not running on a normal scheduler worker. 
+   is not running on a normal scheduler worker.
 *)
 val current_scheduler_id: unit -> Scheduler_id.t option
 
@@ -179,25 +179,25 @@ val send: Pid.t -> Message.t -> unit
 
 (**
    Spend one process-local cooperative reduction and yield when the budget is
-   exhausted. 
+   exhausted.
 *)
 val yield: unit -> unit
 
 (**
    A mailbox selector that either returns a decoded message or skips the
-   current mailbox entry. 
+   current mailbox entry.
 *)
 type 'msg selector = Message.t -> [`select of 'msg | `skip]
 
 (**
    Receive a message selected by [`selector`]. Raises
-   [Exception.Receive_timeout] when [`timeout`] expires. 
+   [Exception.Receive_timeout] when [`timeout`] expires.
 *)
 val receive: selector:'value selector -> ?timeout:float -> unit -> 'value
 
 (**
    Receive the next mailbox message. Raises [Exception.Receive_timeout] when
-   [`timeout`] expires. 
+   [`timeout`] expires.
 *)
 val receive_any: ?timeout:float -> unit -> Message.t
 
@@ -206,13 +206,13 @@ val shutdown: status:int -> unit
 
 (**
    Wait for an async source to become ready, then run the continuation.
-   Raises [Exception.Syscall_timeout] when [`timeout`] expires. 
+   Raises [Exception.Syscall_timeout] when [`timeout`] expires.
 *)
 val syscall: ?timeout:float -> name:string -> interest:Kernel.Async.Interest.t -> source:Kernel.Async.Source.t -> (unit -> 'a) -> 'a
 
 (**
    Start the runtime with optional configuration. Defaults to millisecond
-   timer resolution and [Config.default_scheduler_count] workers. 
+   timer resolution and [Config.default_scheduler_count] workers.
 *)
 val run: main:(args:string list -> (unit, Actor.exit_reason) result) -> args:string list -> ?config:Config.t -> unit -> unit
 

@@ -39,7 +39,7 @@
    - Middle 3 bits: group permissions
    - Last 3 bits: other (world) permissions
 
-   Each triple is: read (4), write (2), execute (1) 
+   Each triple is: read (4), write (2), execute (1)
 *)
 (** Unix permission bits for owner, group, and others. *)
 type t
@@ -51,7 +51,7 @@ type t
    ## Examples
 
    ```ocaml Permissions.of_mode 0o644 (* rw-r--r-- *) Permissions.of_mode 0o755
-   (* rwxr-xr-x *) Permissions.of_mode 0o600 (* rw------- *) ``` 
+   (* rwxr-xr-x *) Permissions.of_mode 0o600 (* rw------- *) ```
 *)
 val of_mode: int -> t
 
@@ -61,7 +61,7 @@ val of_mode: int -> t
    ## Examples
 
    ```ocaml let perms = Permissions.read_write in Permissions.to_mode perms (*
-   0o644 *) ``` 
+   0o644 *) ```
 *)
 val to_mode: t -> int
 
@@ -82,7 +82,7 @@ val to_mode: t -> int
    This only checks permission bits. It doesn't consider:
    - ACLs (Access Control Lists)
    - Actual user/group ownership
-   - SELinux/AppArmor policies 
+   - SELinux/AppArmor policies
 *)
 val readonly: t -> bool
 
@@ -98,7 +98,7 @@ val readonly: t -> bool
    ## Warning
 
    `set_readonly false` makes the file world-writable on Unix! This is rarely
-   what you want. Consider setting specific bits instead. 
+   what you want. Consider setting specific bits instead.
 *)
 val set_readonly: t -> bool -> t
 
@@ -134,27 +134,27 @@ val other_execute: t -> bool
 (**
    `rw-r--r--` (0644) - Owner read/write, group/others read-only.
 
-   Common for data files that need to be shared but not modified by others. 
+   Common for data files that need to be shared but not modified by others.
 *)
 val read_write: t
 
 (**
    `rwxr-xr-x` (0755) - Owner read/write/execute, group/others read/execute.
 
-   Common for executable files and directories. 
+   Common for executable files and directories.
 *)
 val executable: t
 
 (**
    `rw-------` (0600) - Owner read/write only, no access for others.
 
-   Common for private data files like SSH keys or credentials. 
+   Common for private data files like SSH keys or credentials.
 *)
 val private_read_write: t
 
 (**
    `rwx------` (0700) - Owner read/write/execute only, no access for others.
 
-   Common for private executables or personal directories. 
+   Common for private executables or personal directories.
 *)
 val private_executable: t

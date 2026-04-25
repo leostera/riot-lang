@@ -11,7 +11,7 @@ open Std
    - [int]: 8-byte signed integer on the wire, range-checked on decode
 
    Records and variants are positional. Field names and constructor names are
-   compile-time schema only and are not written into the payload. 
+   compile-time schema only and are not written into the payload.
 *)
 val size_of: 'value Serde.Ser.t -> 'value -> (int, Serde.error) result
 

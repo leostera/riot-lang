@@ -88,7 +88,7 @@ let in_table: range_table -> int -> bool = fun tbl code ->
       end
 
 (* ============================================ *)
-(* Unicode Category Tables                     *)
+(* Unicode Category Tables *)
 (* ============================================ *)
 (* c *)
 let _c = {

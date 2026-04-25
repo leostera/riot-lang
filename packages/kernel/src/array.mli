@@ -5,7 +5,7 @@ val make: count:int -> value:'value -> 'value t
 
 (**
    Use `init count builder` to allocate an array and call `builder` once per index from left to
-   right. 
+   right.
 *)
 val init: count:int -> fn:(int -> 'value) -> 'value t
 

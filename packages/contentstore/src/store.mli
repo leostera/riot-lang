@@ -2,30 +2,25 @@ open Std
 
 (** Store retention policy handle. *)
 type policy = Policy.t
-
 module Namespace = Namespace
 
 (**
    Generic content-addressable store bound to one namespace under one
-   filesystem root. 
+   filesystem root.
 *)
 type t
-
 type source_path_error =
   | Source_missing
   | Source_not_file
   | Source_not_directory
-
 type io_detail =
   | Fs of Fs.error
   | File of Fs.File.error
-
 (** Store operation error. *)
 type error =
   | Missing of { path: Path.t }
   | Invalid_source_path of { path: Path.t; reason: source_path_error }
   | Io of { op: string; path: Path.t; related_path: Path.t option; detail: io_detail }
-
 val error_message: error -> string
 
 (** Create one logical store handle rooted at [root] scoped to [ns]. *)
@@ -48,7 +43,7 @@ val exists: t -> Crypto.hash -> bool
 
    Successful commits consume [source_dir]. If another writer already committed
    the same [hash], this still succeeds and [source_dir] is treated as
-   disposable. 
+   disposable.
 *)
 val commit_dir: t -> hash:Crypto.hash -> source_dir:Path.t -> (unit, error) result
 

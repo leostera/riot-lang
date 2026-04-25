@@ -4,7 +4,7 @@
    The mailbox is multi-producer/single-consumer:
 
    - multiple schedulers may call [queue] concurrently
-   - only the owner scheduler should call [next] 
+   - only the owner scheduler should call [next]
 *)
 open Kernel
 

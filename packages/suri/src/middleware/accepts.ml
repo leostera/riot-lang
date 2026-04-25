@@ -7,7 +7,7 @@ open Std
    Supports:
    - Exact match: "application/json" = "application/json"
    - Type wildcard: "text/*" matches "text/plain", "text/html", etc.
-   - Full wildcard: "*/*" matches anything 
+   - Full wildcard: "*/*" matches anything
 *)
 let matches_pattern = fun ~pattern ~content_type ->
   match pattern, content_type with
@@ -26,7 +26,7 @@ type accept_entry = { media_type: string; quality: float }
 (**
    Parse quality value from parameter string.
 
-   Example: "q=0.8" -> Some 0.8 
+   Example: "q=0.8" -> Some 0.8
 *)
 let parse_quality = fun param ->
   match String.split_on_char '=' (String.trim param) with
@@ -38,7 +38,7 @@ let parse_quality = fun param ->
 
    Examples:
    - "application/json" -> { media_type = "application/json"; quality = 1.0 }
-   - "text/html;q=0.9" -> { media_type = "text/html"; quality = 0.9 } 
+   - "text/html;q=0.9" -> { media_type = "text/html"; quality = 0.9 }
 *)
 let parse_accept_entry = fun entry ->
   match String.split_on_char ';' entry with
@@ -49,7 +49,7 @@ let parse_accept_entry = fun entry ->
 (**
    Parse full Accept header.
 
-   Returns list sorted by quality (highest first). 
+   Returns list sorted by quality (highest first).
 *)
 let parse_accept = fun header -> String.split_on_char ',' header |> List.map ~fn:String.trim |> List.filter ~fn:(
   fun s -> String.length s > 0
@@ -64,7 +64,7 @@ let parse_accept = fun header -> String.split_on_char ',' header |> List.map ~fn
    Examples:
    - "application/json" -> Some "application/json"
    - "application/json; charset=utf-8" -> Some "application/json"
-   - "multipart/form-data; boundary=..." -> Some "multipart/form-data" 
+   - "multipart/form-data; boundary=..." -> Some "multipart/form-data"
 *)
 let get_base_content_type = fun ct ->
   match String.split_on_char ';' ct with

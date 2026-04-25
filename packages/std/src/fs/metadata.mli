@@ -33,7 +33,7 @@
    Log.info "Modified: %f, Accessed: %f" mtime atime;
 
    match Metadata.created meta with | Some ctime -> Log.info "Created: %f"
-   ctime | None -> Log.info "Creation time not available" ``` 
+   ctime | None -> Log.info "Creation time not available" ```
 *)
 (** File metadata from filesystem stat operations. *)
 type t = Kernel.Fs.File.Metadata.t
@@ -47,14 +47,14 @@ type t = Kernel.Fs.File.Metadata.t
    ```ocaml match Metadata.file_type meta with | `Regular -> "regular file" |
    `Directory -> "directory" | `Symlink -> "symbolic link" | `Block -> "block
    device" | `Character -> "character device" | `Fifo -> "named pipe" | `Socket
-   -> "Unix socket" ``` 
+   -> "Unix socket" ```
 *)
 (**
    Returns [true] if this is a regular file.
 
    ## Examples
 
-   ```ocaml if Metadata.is_file meta then process_file path ``` 
+   ```ocaml if Metadata.is_file meta then process_file path ```
 *)
 val file_type: t -> [ | `Regular | `Directory | `Symlink | `Block | `Character | `Fifo | `Socket | `Unknown]
 
@@ -65,7 +65,7 @@ val is_file: t -> bool
 
    ## Examples
 
-   ```ocaml if Metadata.is_dir meta then list_directory path ``` 
+   ```ocaml if Metadata.is_dir meta then list_directory path ```
 *)
 val is_dir: t -> bool
 
@@ -89,7 +89,7 @@ val is_symlink: t -> bool
    ## Note
 
    For directories, this is the size of the directory structure itself, not the
-   total size of contained files. 
+   total size of contained files.
 *)
 val len: t -> int
 
@@ -99,7 +99,7 @@ val len: t -> int
    ## Examples
 
    ```ocaml let perms = Metadata.permissions meta in if Permissions.user_write
-   perms then modify_file path ``` 
+   perms then modify_file path ```
 *)
 val permissions: t -> Permissions.t
 
@@ -114,7 +114,7 @@ val permissions: t -> Permissions.t
 
    ## Note
 
-   Some filesystems or mount options (noatime) may not update access times. 
+   Some filesystems or mount options (noatime) may not update access times.
 *)
 val accessed: t -> float
 
@@ -124,7 +124,7 @@ val accessed: t -> float
    ## Examples
 
    ```ocaml let mtime = Metadata.modified meta in if mtime > last_build_time
-   then rebuild_needed () ``` 
+   then rebuild_needed () ```
 *)
 val modified: t -> float
 
@@ -140,7 +140,7 @@ val modified: t -> float
 
    - **macOS**: Returns creation time (birth time)
    - **Linux**: Returns None (most filesystems don't track creation time)
-   - **Windows**: Returns creation time 
+   - **Windows**: Returns creation time
 *)
 val created: t -> float option
 
@@ -151,7 +151,7 @@ val created: t -> float option
    ## Examples
 
    ```ocaml let mode = Metadata.mode meta in Printf.printf "Mode: 0o%o\n" mode
-   ``` 
+   ```
 *)
 val mode: t -> int
 
@@ -161,7 +161,7 @@ val mode: t -> int
    ## Examples
 
    ```ocaml let uid = Metadata.uid meta in if uid = Unix.getuid () then
-   Log.info "You own this file" ``` 
+   Log.info "You own this file" ```
 *)
 val uid: t -> int
 
@@ -170,7 +170,7 @@ val uid: t -> int
 
    ## Examples
 
-   ```ocaml let gid = Metadata.gid meta ``` 
+   ```ocaml let gid = Metadata.gid meta ```
 *)
 val gid: t -> int
 
@@ -180,7 +180,7 @@ val gid: t -> int
    ## Examples
 
    ```ocaml let links = Metadata.nlink meta in if links > 1 then Log.info "File
-   has %d hard links" links ``` 
+   has %d hard links" links ```
 *)
 val nlink: t -> int
 
@@ -189,7 +189,7 @@ val nlink: t -> int
 
    ## Examples
 
-   ```ocaml let inode = Metadata.ino meta ``` 
+   ```ocaml let inode = Metadata.ino meta ```
 *)
 val ino: t -> int
 
@@ -198,7 +198,7 @@ val ino: t -> int
 
    ## Examples
 
-   ```ocaml let device = Metadata.dev meta ``` 
+   ```ocaml let device = Metadata.dev meta ```
 *)
 val dev: t -> int
 
@@ -208,6 +208,6 @@ val dev: t -> int
    ## Examples
 
    ```ocaml if Metadata.file_type meta = `Block then let dev_id = Metadata.rdev
-   meta ``` 
+   meta ```
 *)
 val rdev: t -> int

@@ -23,7 +23,7 @@
    - HTTP/1.0 - Basic HTTP
    - HTTP/1.1 - Most common (default)
    - HTTP/2 - Binary protocol with multiplexing
-   - HTTP/3 - QUIC-based protocol 
+   - HTTP/3 - QUIC-based protocol
 *)
 open Global
 
@@ -46,7 +46,7 @@ type t =
 
    Accepted formats:
    - "HTTP/0.9", "HTTP/1.0", "HTTP/1.1"
-   - "HTTP/2", "HTTP/3" 
+   - "HTTP/2", "HTTP/3"
 *)
 val of_string: string -> (t, [`InvalidVersion]) Kernel.result
 
@@ -59,7 +59,7 @@ val from_slice: IO.IoVec.IoSlice.t -> (t, [`InvalidVersion]) Kernel.result
    ## Examples
 
    ```ocaml Version.to_string Version.Http11 (* "HTTP/1.1" *) Version.to_string
-   Version.Http2 (* "HTTP/2" *) ``` 
+   Version.Http2 (* "HTTP/2" *) ```
 *)
 val to_string: t -> string
 
@@ -69,7 +69,7 @@ val to_string: t -> string
    ## Examples
 
    ```ocaml Version.compare Version.Http10 Version.Http11 (* < 0 *)
-   Version.compare Version.Http2 Version.Http11 (* > 0 *) ``` 
+   Version.compare Version.Http2 Version.Http11 (* > 0 *) ```
 *)
 val compare: t -> t -> Order.t
 
@@ -78,7 +78,7 @@ val compare: t -> t -> Order.t
 
    ## Examples
 
-   ```ocaml Version.equal Version.Http11 Version.Http11 (* true *) ``` 
+   ```ocaml Version.equal Version.Http11 Version.Http11 (* true *) ```
 *)
 val equal: t -> t -> bool
 
@@ -91,6 +91,6 @@ val equal: t -> t -> bool
 
    ## Note
 
-   Support may vary by platform and build configuration. 
+   Support may vary by platform and build configuration.
 *)
 val is_supported: t -> bool

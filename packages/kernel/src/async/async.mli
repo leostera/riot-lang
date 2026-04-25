@@ -2,10 +2,9 @@ type error =
   | InvalidTimeoutNs of { timeout_ns: int64 }
   | InvalidMaxEvents of { max_events: int }
   | System of System_error.t
-
 val error_to_string: error -> string
 
-module Token : sig
+module Token: sig
   type t
 
   (** Use `make value` to create a token that carries kernel-owned registration context. *)
@@ -13,7 +12,7 @@ module Token : sig
 
   (**
      Recover the value stored in a token when the caller already owns the registration site and
-     therefore knows the token payload type. 
+     therefore knows the token payload type.
   *)
   val unsafe_value: t -> 'value
 
@@ -25,9 +24,8 @@ module Token : sig
   val equal: t -> t -> bool
 end
 
-module Interest : sig
+module Interest: sig
   type t
-
   val readable: t
 
   val writable: t
@@ -40,7 +38,7 @@ module Interest : sig
   (**
      Use `remove left right` to subtract interest bits.
 
-     The result is `None` when every requested interest bit is removed. 
+     The result is `None` when every requested interest bit is removed.
   *)
   val remove: t -> t -> t option
 
@@ -51,7 +49,7 @@ module Interest : sig
   val is_priority: t -> bool
 end
 
-module Event : sig
+module Event: sig
   type t
 
   (** Use `token event` to recover the token that was registered for the ready source. *)
@@ -70,12 +68,12 @@ module Event : sig
   val is_write_closed: t -> bool
 end
 
-module Adapter : sig
+module Adapter: sig
   (**
      Backend-facing selector plumbing used by kernel-owned source adapters.
-     Application code should prefer `Poll` plus `to_source` values from public modules. 
+     Application code should prefer `Poll` plus `to_source` values from public modules.
   *)
-  module Selector : sig
+  module Selector: sig
     type t
 
     (** Use `make ()` to allocate the backend selector state immediately. *)
@@ -92,7 +90,7 @@ module Adapter : sig
 
     (**
        Use `reregister` to update the token or interests for an already-registered file-descriptor
-       source. 
+       source.
     *)
     val reregister: t -> fd:int -> token:Token.t -> interest:Interest.t -> (unit, error) Result.t
 
@@ -109,22 +107,32 @@ module Adapter : sig
     val deregister_process: t -> pid:int -> (unit, error) Result.t
 
     (** Use `register_timer` to start tracking one timer source with already-split timeout parts. *)
-    val register_timer: t -> timer_id:int -> token:Token.t -> timeout_parts:(int * int) -> repeat:bool -> (unit, error) Result.t
+    val register_timer:
+      t ->
+      timer_id:int ->
+      token:Token.t ->
+      timeout_parts:(int * int) ->
+      repeat:bool ->
+      (unit, error) Result.t
 
     (** Use `reregister_timer` to update an already-registered timer source. *)
-    val reregister_timer: t -> timer_id:int -> token:Token.t -> timeout_parts:(int * int) -> repeat:bool -> (unit, error) Result.t
+    val reregister_timer:
+      t ->
+      timer_id:int ->
+      token:Token.t ->
+      timeout_parts:(int * int) ->
+      repeat:bool ->
+      (unit, error) Result.t
 
     (** Use `deregister_timer selector ~timer_id` to stop tracking one timer source. *)
     val deregister_timer: t -> timer_id:int -> (unit, error) Result.t
   end
 end
 
-module Source : sig
+module Source: sig
   type t
-
   module type Intf = sig
     type t
-
     val register: t -> Adapter.Selector.t -> Token.t -> Interest.t -> (unit, error) Result.t
 
     val reregister: t -> Adapter.Selector.t -> Token.t -> Interest.t -> (unit, error) Result.t
@@ -135,12 +143,12 @@ module Source : sig
   (**
      Backend-facing source constructor. Public consumers should prefer source
      values produced by `Fs.File.to_source`, `Net.*.to_source`, `Process.to_source`,
-     and `Time.Timer.to_source`. 
+     and `Time.Timer.to_source`.
   *)
   val make: (module Intf with type t = 'state) -> 'state -> t
 end
 
-module Poll : sig
+module Poll: sig
   type t
 
   (** Use `make ()` to allocate a poller backed by the current platform selector. *)

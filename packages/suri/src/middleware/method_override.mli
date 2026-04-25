@@ -47,7 +47,7 @@ open Std
    {b Safe}: Only allows specific methods (PUT, PATCH, DELETE)
 
    - ✅ POST + [_method=PUT] → PUT
-   - ✅ POST + [_method=PATCH] → PATCH  
+   - ✅ POST + [_method=PATCH] → PATCH
    - ✅ POST + [_method=DELETE] → DELETE
    - ❌ POST + [_method=GET] → POST (ignored)
    - ❌ GET + [_method=DELETE] → GET (ignored)
@@ -104,7 +104,7 @@ open Std
    Then use in forms:
    {v
    <input type="hidden" name="_http_method" value="DELETE">
-   v} 
+   v}
 *)
 (** {1 Middleware} *)
 (**
@@ -143,6 +143,6 @@ open Std
        (* Delete user with id *)
        Conn.respond conn ~status:Ok ~body:"Deleted" |> Conn.send
      )
-   ]} 
+   ]}
 *)
 val middleware: ?param:string -> unit -> conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t

@@ -24,7 +24,7 @@
      data
    - **Direct API** ([hash_string], etc.): When hashing complete values
 
-   See [Crypto] for the default algorithm and convenience functions. 
+   See [Crypto] for the default algorithm and convenience functions.
 *)
 (** Interface that all hash algorithms must implement *)
 module type Intf = sig

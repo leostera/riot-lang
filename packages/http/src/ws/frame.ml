@@ -9,7 +9,7 @@
    +-+-+-+-+-------+-+-------------+-------------------------------+ |F|R|R|R|
    opcode|M| Payload len | Extended payload length | |I|S|S|S| (4) |A| (7) |
    (16/64) | |N|V|V|V| |S| | (if payload len==126/127) | | |1|2|3| |K| | |
-   +-+-+-+-+-------+-+-------------+ - - - - - - - - - - - - - - - + 
+   +-+-+-+-+-------+-+-------------+ - - - - - - - - - - - - - - - +
 *)
 open Std
 open Std.IO
@@ -28,6 +28,7 @@ type opcode =
   | Pong
 
 (* 0xA *)
+
 type t = {
   fin: bool;
   rsv1: bool;
@@ -56,6 +57,7 @@ let opcode_of_int = function
   | _ -> None
 
 (* XOR unmask the payload *)
+
 let unmask = fun mask payload ->
   let len = String.length payload in
   let result = Bytes.create ~size:len in
@@ -63,17 +65,21 @@ let unmask = fun mask payload ->
     let shift = 8 * (3 - (i mod 4)) in
     let mask_byte = Int32.(logand (shift_right mask shift) 0xffl |> to_int) in
     let payload_byte = payload |> String.get_unchecked ~at:i |> Char.to_int in
-    let _ = Bytes.set result ~at:i ~char:(Char.from_int_unchecked (payload_byte lxor mask_byte)) in ()
+    let _ = Bytes.set result ~at:i ~char:(Char.from_int_unchecked (payload_byte lxor mask_byte)) in
+    ()
   done;
   Bytes.to_string result
 
 (* Generate a random mask *)
+
 let generate_mask = fun () -> Random.bits32 () |> Result.expect ~msg:"failed to generate websocket mask"
 
 (* Apply mask to payload *)
+
 let apply_mask = fun mask payload -> unmask mask payload
 
 (* Create frame helpers *)
+
 let text = fun ?(fin = true) payload ->
   {
     fin;
@@ -82,7 +88,7 @@ let text = fun ?(fin = true) payload ->
     rsv3 = false;
     opcode = Text;
     masked = false;
-    payload
+    payload;
   }
 
 let binary = fun ?(fin = true) payload ->
@@ -93,7 +99,7 @@ let binary = fun ?(fin = true) payload ->
     rsv3 = false;
     opcode = Binary;
     masked = false;
-    payload
+    payload;
   }
 
 let close = fun ?(payload = "") () ->
@@ -104,7 +110,7 @@ let close = fun ?(payload = "") () ->
     rsv3 = false;
     opcode = Close;
     masked = false;
-    payload
+    payload;
   }
 
 let ping = fun ?(payload = "") () ->
@@ -115,7 +121,7 @@ let ping = fun ?(payload = "") () ->
     rsv3 = false;
     opcode = Ping;
     masked = false;
-    payload
+    payload;
   }
 
 let pong = fun ?(payload = "") () ->
@@ -126,7 +132,7 @@ let pong = fun ?(payload = "") () ->
     rsv3 = false;
     opcode = Pong;
     masked = false;
-    payload
+    payload;
   }
 
 let continuation = fun ?(fin = false) payload ->
@@ -137,5 +143,5 @@ let continuation = fun ?(fin = false) payload ->
     rsv3 = false;
     opcode = Continuation;
     masked = false;
-    payload
+    payload;
   }

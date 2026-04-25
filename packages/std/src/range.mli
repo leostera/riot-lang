@@ -27,7 +27,7 @@
 
    Binary operations such as {!intersect}, {!overlaps}, and {!hull} assume
    both input ranges were built with compatible ordering semantics. The left
-   range's comparator is used for those operations. 
+   range's comparator is used for those operations.
 *)
 open Global
 
@@ -36,7 +36,7 @@ open Global
 
    - [Included x] includes the endpoint value itself.
    - [Excluded x] excludes the endpoint value itself.
-   - [Unbounded] leaves that side of the interval open. 
+   - [Unbounded] leaves that side of the interval open.
 *)
 type 'a bound =
   | Included of 'a
@@ -48,7 +48,7 @@ type 'a bound =
 
    The stored comparator determines how endpoints and membership are evaluated.
    Two ranges can only be meaningfully combined if they were built with
-   compatible ordering semantics. 
+   compatible ordering semantics.
 *)
 type 'a t
 
@@ -102,21 +102,21 @@ val contains: 'a t -> 'a -> bool
 
    This is order-based rather than step-based. For example, [(1,2)] is not
    treated as empty just because [int] is discrete; it is only empty when the
-   chosen ordering makes the bounds collapse or cross. 
+   chosen ordering makes the bounds collapse or cross.
 *)
 val is_empty: 'a t -> bool
 
 (**
    Check whether two ranges share at least one value.
 
-   The left-hand range's comparator is used. 
+   The left-hand range's comparator is used.
 *)
 val overlaps: 'a t -> 'a t -> bool
 
 (**
    Compute the overlapping portion of two ranges, if any.
 
-   The left-hand range's comparator is used. 
+   The left-hand range's comparator is used.
 *)
 val intersect: 'a t -> 'a t -> 'a t option
 
@@ -124,12 +124,12 @@ val intersect: 'a t -> 'a t -> 'a t option
    Compute the smallest range that contains both input ranges.
 
    Empty ranges collapse away: [hull empty other] returns [other]. The
-   left-hand range's comparator is used for the merged bounds. 
+   left-hand range's comparator is used for the merged bounds.
 *)
 val hull: 'a t -> 'a t -> 'a t
 
 (**
    Render a range with interval notation such as [[1,5)], [(..,10]], or
-   [(..)]. 
+   [(..)].
 *)
 val to_string: ('a -> string) -> 'a t -> string

@@ -1,9 +1,7 @@
 type t
-
 type error =
   | InvalidNanoseconds of { nanos: int }
   | System of System_error.t
-
 val error_to_string: error -> string
 
 val epoch: t
@@ -19,7 +17,7 @@ val subsec_nanos: t -> int
 (**
    Use `now ()` for an immediate clock read.
 
-   It does not participate in readiness waiting and intentionally stays synchronous. 
+   It does not participate in readiness waiting and intentionally stays synchronous.
 *)
 val now: unit -> (t, error) Result.t
 

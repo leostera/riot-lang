@@ -19,9 +19,9 @@
      open Propane
 
      (* Property: reversing a list twice gives the original *)
-     let list_rev_prop = 
-       property "list reverse is involutive" 
-         Arbitrary.(list int) 
+     let list_rev_prop =
+       property "list reverse is involutive"
+         Arbitrary.(list int)
          (fun lst -> List.reverse (List.reverse lst) = lst)
 
      (* Property with assumptions *)
@@ -62,7 +62,7 @@
      let point_gen =
        Generator.map
          (fun (x, y) -> { x; y })
-         (Generator.pair (Generator.int_range 0 100) 
+         (Generator.pair (Generator.int_range 0 100)
                          (Generator.int_range 0 100))
    ]}
 
@@ -178,7 +178,7 @@
      let email_gen =
        Generator.map
          (fun (name, domain) -> name ^ "@" ^ domain ^ ".com")
-         (Generator.pair 
+         (Generator.pair
            (Generator.string_of Generator.char_lowercase)
            (Generator.string_of Generator.char_lowercase))
 
@@ -245,6 +245,7 @@
    - {!Property} - Defining and checking properties
    - {!Printer} - Pretty-printing values
 *)
+
 module Generator = Generator
 
 (** Random value generation. See {!Generator}. *)
@@ -263,9 +264,11 @@ module Property = Property
 (**
    {1 Convenience API}
 
-   These functions are re-exported from their respective modules for convenience. 
+   These functions are re-exported from their respective modules for convenience.
 *)
+
 (** {2 Property Creation} *)
+
 val property: string -> 'value Arbitrary.t -> ('value -> bool) -> Std.Test.test_case
 
 (**
@@ -302,6 +305,7 @@ val for_all: 'value Arbitrary.t -> ('value -> bool) -> Property.test_property
    ]}
 *)
 (** {2 Assumptions} *)
+
 val implies: bool -> bool -> bool
 
 (**
@@ -360,7 +364,10 @@ val assume_fail: unit -> 'value
    ]}
 *)
 (** {2 Explicit Failures} *)
-val fail: string -> 'value(**
+
+val fail: string -> 'value
+
+(**
    [fail message] explicitly fails a property with a custom error message.
 
    Useful for providing context about why a property failed:

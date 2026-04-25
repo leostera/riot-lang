@@ -36,7 +36,7 @@
    - Content-addressed storage
    - Data integrity verification
    - Non-cryptographic hashing for HashMap/HashSet
-   - Password hashing (use proper KDFs like Argon2, not these!) 
+   - Password hashing (use proper KDFs like Argon2, not these!)
 *)
 (** ## Core Types *)
 type hash = Hash.t

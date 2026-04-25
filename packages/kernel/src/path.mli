@@ -9,7 +9,7 @@ val to_string: t -> string
 (**
    Use `join left right` to concatenate two path segments.
 
-   Empty sides are treated as identity. A separator is inserted only when needed. 
+   Empty sides are treated as identity. A separator is inserted only when needed.
 *)
 val join: t -> t -> t
 

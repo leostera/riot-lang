@@ -14,7 +14,7 @@ open Iter
    - [`into_iter`] turns that plan into a lazy iterator
 
    The convenience helpers [`walk`] and [`to_list`] are layered on top of that
-   iterator surface. 
+   iterator surface.
 *)
 (**
    Lightweight classification for yielded entries.
@@ -22,7 +22,7 @@ open Iter
    This is derived from the directory entry kind on the common path, with a
    metadata fallback only when the platform reports an unknown kind or when
    symlink-following requires it. `Other` covers non-regular filesystem nodes
-   such as block devices, fifos, sockets, and character devices. 
+   such as block devices, fifos, sockets, and character devices.
 *)
 type entry_kind =
   | File
@@ -35,7 +35,7 @@ type entry_kind =
 
    `FileItem` is intentionally opaque so the walker can evolve its internal
    path representation without leaking those details to callers. Use the
-   accessors below instead of destructuring entries directly. 
+   accessors below instead of destructuring entries directly.
 *)
 module FileItem : sig
   (** One discovered filesystem entry. *)
@@ -47,7 +47,7 @@ module FileItem : sig
      This is intended for higher-level walkers layered on top of
      [Std.Fs.ReadDir] that still want to reuse the shared [FileItem] surface.
      The full path remains lazy until callers request it through [path] or
-     [path_string]. 
+     [path_string].
   *)
   val make: path_string:string -> name:string -> depth:int -> kind:entry_kind -> t
 
@@ -65,7 +65,7 @@ module FileItem : sig
 
      - root entries are emitted at depth `0`
      - direct children of a root are depth `1`
-     - and so on 
+     - and so on
   *)
   val depth: t -> int
 
@@ -81,7 +81,7 @@ end
 
    - `path` is the path being processed when the error happened, when known
    - `depth` is the traversal depth associated with that path
-   - `cause` is the underlying filesystem error 
+   - `cause` is the underlying filesystem error
 *)
 type error = { path: Path.t option; depth: int; cause: Common.error }
 
@@ -90,7 +90,7 @@ type error = { path: Path.t option; depth: int; cause: Common.error }
 
    The iterator never raises traversal errors. Instead:
    - `Ok entry` yields a filesystem entry
-   - `Error error` yields a structured error for the current path 
+   - `Error error` yields a structured error for the current path
 *)
 type file_item = (FileItem.t, error) result
 
@@ -103,7 +103,7 @@ type create_error =
 
    - `Continue` keeps traversing normally
    - `Skip_subtree` prunes the current directory after yielding it
-   - `Stop` ends the walk successfully without visiting remaining entries 
+   - `Stop` ends the walk successfully without visiting remaining entries
 *)
 type step =
   | Continue
@@ -147,7 +147,7 @@ type t
      to `false`.
 
    Returns `Error (MinDepthCannotBeMoreThanMaxDepth ...)` if the depth range is
-   invalid. 
+   invalid.
 *)
 val create: roots:Path.t list -> ?sort:bool -> ?follow_symlinks:bool -> ?follow_root_links:bool -> ?max_open:int -> ?min_depth:int -> ?max_depth:int -> ?contents_first:bool -> unit -> (t, create_error) Result.t
 
@@ -159,7 +159,7 @@ val create: roots:Path.t list -> ?sort:bool -> ?follow_symlinks:bool -> ?follow_
 
    Even though the return type is [`Iterator.t`], this should be treated as a
    single-pass streaming iterator backed by live directory handles. Consume it
-   linearly instead of relying on backtracking semantics. 
+   linearly instead of relying on backtracking semantics.
 *)
 val into_iter: t -> file_item Iterator.t
 
@@ -171,7 +171,7 @@ val into_iter: t -> file_item Iterator.t
    `filter_entry` behavior.
 
    Filters compose: applying [`filter_entry`] multiple times keeps only entries
-   accepted by all predicates. 
+   accepted by all predicates.
 *)
 val filter_entry: t -> f:(FileItem.t -> bool) -> t
 
@@ -189,7 +189,7 @@ val filter_entry: t -> f:(FileItem.t -> bool) -> t
      `Error cause`
    - `Stop` ends the walk successfully
 
-   This helper defaults `sort = true` for deterministic callback order. 
+   This helper defaults `sort = true` for deterministic callback order.
 *)
 val walk: roots:Path.t list -> ?sort:bool -> ?follow_symlinks:bool -> f:(FileItem.t -> step) -> unit -> (unit, Common.error) Result.t
 
@@ -204,6 +204,6 @@ val walk: roots:Path.t list -> ?sort:bool -> ?follow_symlinks:bool -> f:(FileIte
    - preserves the traversal order of the underlying iterator
    - omits directory entries when `include_directories = false`
 
-   This helper defaults `sort = true` for deterministic output. 
+   This helper defaults `sort = true` for deterministic output.
 *)
 val to_list: roots:Path.t list -> ?sort:bool -> ?follow_symlinks:bool -> ?include_directories:bool -> unit -> (FileItem.t list, Common.error) Result.t

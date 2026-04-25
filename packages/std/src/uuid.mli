@@ -1,7 +1,7 @@
 (**
    # UUID - Universally unique identifiers
 
-   128-bit universally unique identifiers implementing UUID versions 3, 4, 5, 
+   128-bit universally unique identifiers implementing UUID versions 3, 4, 5,
    and 7 according to {{:https://www.rfc-editor.org/rfc/rfc9562}RFC 9562}.
 
    ## Examples
@@ -83,8 +83,8 @@ type t
 
    ## ⚠️  Security Warning
 
-   Uses OCaml's [Random.State] for generation, which is {b NOT 
-   cryptographically secure}. While suitably random for most purposes 
+   Uses OCaml's [Random.State] for generation, which is {b NOT
+   cryptographically secure}. While suitably random for most purposes
    (request IDs, non-security tokens), it is predictable by an observer.
 
    {b Do not use for}:

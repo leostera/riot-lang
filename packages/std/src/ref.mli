@@ -64,7 +64,7 @@ open Global
 *)
 (**
    A unique identifier for a type ['a]. Each call to [make] creates a fresh
-   identifier that is distinct from all others. 
+   identifier that is distinct from all others.
 *)
 type 'a t
 
@@ -85,7 +85,7 @@ type 'a t
    ## Use Case
 
    Use this to create witness types that prove ownership or capability at
-   runtime. 
+   runtime.
 *)
 val make: unit -> 'a t
 
@@ -97,7 +97,7 @@ val make: unit -> 'a t
 
    ```ocaml let ref1 = Ref.make () in let ref2 = Ref.make () in
 
-   Ref.equal ref1 ref1 (* true *) Ref.equal ref1 ref2 (* false *) ``` 
+   Ref.equal ref1 ref1 (* true *) Ref.equal ref1 ref2 (* false *) ```
 *)
 val equal: 'a t -> 'b t -> bool
 
@@ -107,11 +107,11 @@ val equal: 'a t -> 'b t -> bool
 
    ## Examples
 
-   ```ocaml 
-   let ref1 : int Ref.t = Ref.make () in 
+   ```ocaml
+   let ref1 : int Ref.t = Ref.make () in
    let ref2 : string Ref.t = Ref.make () in
 
-   match Ref.type_equal ref1 ref2 with 
+   match Ref.type_equal ref1 ref2 with
    | Some Type.Eq -> (* proved int = string -- dangerous! *)
    | None -> ()
 
@@ -134,7 +134,7 @@ val type_equal: 'a t -> 'b t -> ('a, 'b) Type.eq option
    (* Some "hello" *)
 
    (* Cast fails - different references *) Ref.cast string_ref int_ref "hello"
-   (* None *) ``` 
+   (* None *) ```
 *)
 val cast: 'a t -> 'b t -> 'a -> 'b option
 
@@ -148,7 +148,7 @@ val cast: 'a t -> 'b t -> 'a -> 'b option
    ```ocaml let old_ref = Ref.make () in let new_ref = Ref.make () in
 
    Ref.is_newer new_ref old_ref (* true *) Ref.is_newer old_ref new_ref (*
-   false *) ``` 
+   false *) ```
 *)
 val is_newer: 'a t -> 'b t -> bool
 
@@ -162,6 +162,6 @@ val is_newer: 'a t -> 'b t -> bool
 
    ```ocaml let ref = Ref.make () in let h = Ref.hash ref in
 
-   let table = Hashtbl.create 16 in Hashtbl.add table h "value" ``` 
+   let table = Hashtbl.create 16 in Hashtbl.add table h "value" ```
 *)
 val hash: 'a t -> int

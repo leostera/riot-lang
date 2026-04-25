@@ -2,7 +2,7 @@
    Dynamic worker pool - core implementation
 
    Workers send WorkerReady messages to owner, who then calls send_task to
-   assign work. 
+   assign work.
 *)
 open Global
 open Types

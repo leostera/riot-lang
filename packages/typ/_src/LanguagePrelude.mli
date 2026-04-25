@@ -6,7 +6,7 @@ open Model
 
    This prelude is intentionally small. It should only contain bindings backed
    by explicit source syntax or core language forms, not ordinary module APIs
-   that should instead arrive through persisted module summaries. 
+   that should instead arrive through persisted module summaries.
 *)
 type env = (SurfacePath.t * TypeScheme.t) list
 

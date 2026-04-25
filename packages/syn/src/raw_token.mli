@@ -7,7 +7,7 @@ open Std.Collections
    Raw tokens include trivia and EOF. The `significant` vector stores indexes
    into `raw` for non-trivia tokens, allowing the parser to advance over only
    grammar-relevant tokens while still preserving all source text for spans,
-   diagnostics, comments, and formatter views. 
+   diagnostics, comments, and formatter views.
 *)
 type t = {
   kind: Syntax_kind.t;
@@ -31,7 +31,7 @@ val push_significant: stream -> t -> int
 (**
    Convert lexer tokens to a raw stream. Whitespace trivia is collapsed to a
    structural whitespace token for formatter-facing views, while comment and
-   docstring trivia keep their source spans. 
+   docstring trivia keep their source spans.
 *)
 val of_lexer_tokens: source:IO.IoVec.IoSlice.t -> Token.t list -> stream
 

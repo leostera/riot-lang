@@ -97,7 +97,7 @@ type 'msg attr =
 
    - ['msg] is the message type for event handlers (e.g., your app's action type)
    - Attributes (class, id, etc.) are rendered in static HTML
-   - Events (on_click, etc.) are only active in LiveView 
+   - Events (on_click, etc.) are only active in LiveView
 *)
 type 'msg t =
   | El of { tag: string; attrs: 'msg attr list; children: 'msg t list }
@@ -115,28 +115,28 @@ val attr: string -> string -> 'msg attr
    {[
      attr "aria-label" "Close button"
      attr "data-user-id" "123"
-   ]} 
+   ]}
 *)
 val class_: string -> 'msg attr
 
 (**
    CSS class attribute.
 
-   Example: [class_ "btn btn-primary"] 
+   Example: [class_ "btn btn-primary"]
 *)
 val style_: string -> 'msg attr
 
 (**
    Inline style attribute.
 
-   Example: [style_ "color: red; font-weight: bold"] 
+   Example: [style_ "color: red; font-weight: bold"]
 *)
 val id: string -> 'msg attr
 
 (**
    Element ID attribute.
 
-   Example: [id "main-content"] 
+   Example: [id "main-content"]
 *)
 val title_: string -> 'msg attr
 
@@ -155,14 +155,14 @@ val type_: string -> 'msg attr
 (**
    Input/button type attribute.
 
-   Examples: [type_ "text"], [type_ "submit"] 
+   Examples: [type_ "text"], [type_ "submit"]
 *)
 val href: string -> 'msg attr
 
 (**
    Link href attribute.
 
-   Example: [href "/products"] 
+   Example: [href "/products"]
 *)
 val src: string -> 'msg attr
 
@@ -175,14 +175,14 @@ val target: string -> 'msg attr
 (**
    Link target attribute.
 
-   Example: [target "_blank"] 
+   Example: [target "_blank"]
 *)
 val rel: string -> 'msg attr
 
 (**
    Link relationship attribute.
 
-   Example: [rel "noopener noreferrer"] 
+   Example: [rel "noopener noreferrer"]
 *)
 val for_: string -> 'msg attr
 
@@ -195,7 +195,7 @@ val method_: string -> 'msg attr
 (**
    Form method attribute.
 
-   Examples: [method_ "GET"], [method_ "POST"] 
+   Examples: [method_ "GET"], [method_ "POST"]
 *)
 val disabled: 'msg attr
 
@@ -220,27 +220,27 @@ val autocomplete: string -> 'msg attr
 (**
    Autocomplete attribute.
 
-   Examples: [autocomplete "off"], [autocomplete "email"] 
+   Examples: [autocomplete "off"], [autocomplete "email"]
 *)
 val data: string -> string -> 'msg attr
 
 (**
    Data attribute.
 
-   Example: [data "user-id" "123"] creates [data-user-id="123"] 
+   Example: [data "user-id" "123"] creates [data-user-id="123"]
 *)
 (**
    {1 Event Handlers}
 
    {b Note:} Events are {b LiveView only}. They are completely ignored
-   when rendering static HTML with [to_html]. 
+   when rendering static HTML with [to_html].
 *)
 val on: string -> (string -> 'msg) -> 'msg attr
 
 (**
    Generic event handler.
 
-   Example: [on "mouseover" (fun _ -> Hover)] 
+   Example: [on "mouseover" (fun _ -> Hover)]
 *)
 val on_click: (string -> 'msg) -> 'msg attr
 
@@ -293,7 +293,7 @@ val on_mouseout: (string -> 'msg) -> 'msg attr
    ]}
 
    Self-closing elements (like [input], [br], [img]) take [unit] instead
-   of children and return ['msg t]. 
+   of children and return ['msg t].
 *)
 (** {2 Document Structure} *)
 val html: ?attrs:'msg attr list -> 'msg t list -> 'msg t
@@ -647,7 +647,7 @@ val el: string -> ?attrs:'msg attr list -> 'msg t list -> 'msg t
      el "custom-widget" ~attrs:[class_ "widget"] [
        text "Custom content"
      ]
-   ]} 
+   ]}
 *)
 (** {1 Content Helpers} *)
 val text: string -> 'msg t
@@ -655,21 +655,21 @@ val text: string -> 'msg t
 (**
    Create a text node.
 
-   Example: [text "Hello, world!"] 
+   Example: [text "Hello, world!"]
 *)
 val int: int -> 'msg t
 
 (**
    Create a text node from an integer.
 
-   Example: [int 42] 
+   Example: [int 42]
 *)
 val float: float -> 'msg t
 
 (**
    Create a text node from a float.
 
-   Example: [float 3.14] 
+   Example: [float 3.14]
 *)
 val fragment: 'msg t list -> 'msg t
 
@@ -682,7 +682,7 @@ val fragment: 'msg t list -> 'msg t
        h1 [text "Title"];
        p [text "Paragraph"];
      ]
-   ]} 
+   ]}
 *)
 val empty: 'msg t
 
@@ -695,7 +695,7 @@ val empty: 'msg t
        p [text "Message"]
      else
        empty
-   ]} 
+   ]}
 *)
 (** {1 Conditional Rendering} *)
 val when_: bool -> 'msg t -> 'msg t
@@ -708,7 +708,7 @@ val when_: bool -> 'msg t -> 'msg t
      when_ (count > 0) (
        p [text "You have items"]
      )
-   ]} 
+   ]}
 *)
 val unless: bool -> 'msg t -> 'msg t
 
@@ -720,7 +720,7 @@ val unless: bool -> 'msg t -> 'msg t
      unless is_loading (
        div [text "Content loaded"]
      )
-   ]} 
+   ]}
 *)
 val maybe: 'a option -> ('a -> 'msg t) -> 'msg t
 
@@ -735,7 +735,7 @@ val maybe: 'a option -> ('a -> 'msg t) -> 'msg t
          text u.name;
        ]
      )
-   ]} 
+   ]}
 *)
 (** {1 Rendering} *)
 val to_html: 'msg t -> string
@@ -756,7 +756,7 @@ val to_html: 'msg t -> string
      to_html page
      (* Output: <div class="container"><h1>Hello</h1><button>Click</button></div> *)
      (* Note: on_click is ignored in static HTML *)
-   ]} 
+   ]}
 *)
 (** {1 Advanced} *)
 val map: ('a -> 'b) -> 'a t -> 'b t
@@ -778,11 +778,11 @@ val map: ('a -> 'b) -> 'a t -> 'b t
        div [
          map (fun msg -> ChildClicked msg) child_component
        ]
-   ]} 
+   ]}
 *)
 val extract_handlers: 'msg t -> (string * (string -> 'msg)) list(**
    Extract all event handlers from a component tree.
 
    Used internally by LiveView runtime to register event handlers.
-   Most users don't need this function. 
+   Most users don't need this function.
 *)

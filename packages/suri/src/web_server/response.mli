@@ -76,14 +76,14 @@
 
    ---
 
-   {1 API Reference} 
+   {1 API Reference}
 *)
 open Std
 
 (**
    HTTP response record.
 
-   Contains status code, headers, HTTP version, and response body. 
+   Contains status code, headers, HTTP version, and response body.
 *)
 (**
    Create a custom HTTP response.
@@ -102,7 +102,7 @@ open Std
        ~headers:[("Content-Type", "text/plain")]
        ~body:"Hello"
        ()
-   ]} 
+   ]}
 *)
 type t = {
   status: Net.Http.Status.t;
@@ -116,14 +116,14 @@ val make: Net.Http.Status.t -> ?headers:(string * string) list -> ?version:Net.H
 (**
    Response builder function type.
 
-   All convenience functions below follow this signature. 
+   All convenience functions below follow this signature.
 *)
 type response = ?headers:(string * string) list -> ?version:Net.Http.Version.t -> ?body:string -> unit -> t
 
 (**
    {1 Success Responses (2xx)}
 
-   Successful responses indicating the request was received and processed. 
+   Successful responses indicating the request was received and processed.
 *)
 (**
    [200 OK] - Standard success response.
@@ -131,7 +131,7 @@ type response = ?headers:(string * string) list -> ?version:Net.Http.Version.t -
    Most common response for successful requests.
 
    Example:
-   {[ ok ~body:"Success" () ]} 
+   {[ ok ~body:"Success" () ]}
 *)
 val ok: response
 
@@ -151,7 +151,7 @@ val ok: response
          ~headers:[("Location", "/users/" ^ user.id)]
          ~body:(user_to_json user)
          ())
-   ]} 
+   ]}
 *)
 val created: response
 
@@ -161,7 +161,7 @@ val created: response
    Use when processing will happen asynchronously.
 
    Example:
-   {[ accepted ~body:"Processing started" () ]} 
+   {[ accepted ~body:"Processing started" () ]}
 *)
 val accepted: response
 
@@ -178,7 +178,7 @@ val non_authoritative_information: response
      delete "/users/:id" (fun _conn _req ->
        delete_user id;
        no_content ())
-   ]} 
+   ]}
 *)
 val no_content: response
 
@@ -200,7 +200,7 @@ val im_used: response
 (**
    {1 Redirection Responses (3xx)}
 
-   Redirects indicating the client should take additional action. 
+   Redirects indicating the client should take additional action.
 *)
 (** [300 Multiple Choices] - Multiple redirect options available. *)
 val multiple_choices: response
@@ -215,7 +215,7 @@ val multiple_choices: response
      moved_permanently
        ~headers:[("Location", "/new-location")]
        ()
-   ]} 
+   ]}
 *)
 val moved_permanently: response
 
@@ -227,7 +227,7 @@ val moved_permanently: response
    Example:
    {[
      found ~headers:[("Location", "/login")] ()
-   ]} 
+   ]}
 *)
 val found: response
 
@@ -243,7 +243,7 @@ val found: response
        see_other
          ~headers:[("Location", "/users/" ^ user.id)]
          ())
-   ]} 
+   ]}
 *)
 val see_other: response
 
@@ -265,7 +265,7 @@ val permanent_redirect: response
 (**
    {1 Client Error Responses (4xx)}
 
-   Errors caused by invalid client requests. 
+   Errors caused by invalid client requests.
 *)
 (**
    [400 Bad Request] - Invalid request syntax or parameters.
@@ -277,7 +277,7 @@ val permanent_redirect: response
      match validate_input req with
      | Ok data -> ok ~body:(process data) ()
      | Error msg -> bad_request ~body:("Invalid: " ^ msg) ()
-   ]} 
+   ]}
 *)
 val bad_request: response
 
@@ -295,7 +295,7 @@ val bad_request: response
            ~body:"Login required"
            ()
      | Some token -> (* ... *)
-   ]} 
+   ]}
 *)
 val unauthorized: response
 
@@ -313,7 +313,7 @@ val payment_required: response
        forbidden ~body:"Access denied" ()
      else
        ok ~body:resource ()
-   ]} 
+   ]}
 *)
 val forbidden: response
 
@@ -327,7 +327,7 @@ val forbidden: response
      match find_user id with
      | Some user -> ok ~body:(user_to_json user) ()
      | None -> not_found ~body:"User not found" ()
-   ]} 
+   ]}
 *)
 val not_found: response
 
@@ -342,7 +342,7 @@ val not_found: response
        ~headers:[("Allow", "GET, POST")]
        ~body:"Method not allowed"
        ()
-   ]} 
+   ]}
 *)
 val method_not_allowed: response
 
@@ -418,7 +418,7 @@ val client_closed_request: response
 (**
    {1 Server Error Responses (5xx)}
 
-   Errors caused by server failures. 
+   Errors caused by server failures.
 *)
 (**
    [500 Internal Server Error] - Generic server error.
@@ -432,7 +432,7 @@ val client_closed_request: response
      with exn ->
        Log.error "Request failed: %s" (Printexc.to_string exn);
        internal_server_error ~body:"Internal server error" ()
-   ]} 
+   ]}
 *)
 val internal_server_error: response
 
@@ -442,7 +442,7 @@ val internal_server_error: response
    Example:
    {[
      not_implemented ~body:"This feature is coming soon" ()
-   ]} 
+   ]}
 *)
 val not_implemented: response
 
@@ -463,7 +463,7 @@ val bad_gateway: response
          ()
      else
        process_request req
-   ]} 
+   ]}
 *)
 val service_unavailable: response
 

@@ -27,7 +27,7 @@ type t
    in
    let lexer = Lexer.create source in
    let tok = Lexer.next lexer []
-   ``` 
+   ```
 *)
 val create: IO.IoVec.IoSlice.t -> t
 
@@ -46,7 +46,7 @@ val create: IO.IoVec.IoSlice.t -> t
    let tok1 = Lexer.next lexer [] in
    let tok2 = Lexer.next lexer [] in
    ignore (tok1, tok2)
-   ``` 
+   ```
 *)
 val next: t -> Token.delimiter list -> Token.t
 
@@ -64,6 +64,6 @@ val next: t -> Token.delimiter list -> Token.t
    ```ocaml
    let tokens = Lexer.tokenize source in
    List.length tokens
-   ``` 
+   ```
 *)
 val tokenize: IO.IoVec.IoSlice.t -> Token.t list

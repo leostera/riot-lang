@@ -1,8 +1,6 @@
 type t
-
 type error =
   | InvalidPort of { port: int }
-
 val error_to_string: error -> string
 
 val make: ip:Ip_addr.t -> port:int -> (t, error) Result.t
@@ -21,6 +19,6 @@ val to_parts: t -> Ip_addr.t * int
 
 (**
    Use `to_string addr` to render socket addresses with bracketed IPv6 text, for example
-   `"[::1]:80"`. 
+   `"[::1]:80"`.
 *)
 val to_string: t -> string

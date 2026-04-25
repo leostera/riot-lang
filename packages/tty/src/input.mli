@@ -13,9 +13,9 @@
 
      let rec event_loop () =
        match Input.read_event () with
-       | `Key (Input.Char 'q', []) -> 
+       | `Key (Input.Char 'q', []) ->
            println "Quit!";
-       | `Key (Input.Char 's', [Ctrl]) -> 
+       | `Key (Input.Char 's', [Ctrl]) ->
            println "Save (Ctrl+S)";
        | `Mouse { button = Left; action = Press; x; y; _ } ->
            println (format "Click at %d,%d" x y);
@@ -45,7 +45,7 @@
          (* Content from bracketed paste *)
          insert_text content
      | _ -> ()
-   ]} 
+   ]}
 *)
 (** {1 Types} *)
 type key =
@@ -207,7 +207,7 @@ val read_event: unit -> event
 
    The terminal must be in raw mode (call {!Stdin.setup} first).
    Enable mouse tracking, bracketed paste, or focus tracking separately
-   using functions from {!Escape_seq} module. 
+   using functions from {!Escape_seq} module.
 *)
 val try_read: unit -> event option
 
@@ -216,7 +216,7 @@ val try_read: unit -> event option
 
    Returns [None] if no event is available, [Some event] otherwise.
    This is a convenience wrapper around {!read_event} that filters
-   out [`Retry] and [`End] results. 
+   out [`Retry] and [`End] results.
 *)
 val parse_escape: string -> event option
 
@@ -224,7 +224,7 @@ val parse_escape: string -> event option
    [parse_escape seq] parses an ANSI escape sequence into an event.
 
    Returns [None] if the sequence is incomplete or unrecognized.
-   This is used internally by {!read_event} but exposed for testing. 
+   This is used internally by {!read_event} but exposed for testing.
 *)
 val key_to_string: key -> string
 

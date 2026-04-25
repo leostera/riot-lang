@@ -2,13 +2,13 @@ open Kernel
 
 (**
    Timeout values for receive and syscall effects. [`after seconds`] uses
-   seconds. 
+   seconds.
 *)
 type timeout = [`infinity | `after of float]
 
 (**
    Receive the next message selected by [`selector`], or abort when the
-   timeout expires. 
+   timeout expires.
 *)
 type _ Effect.t +=
   | Receive : {
@@ -22,7 +22,7 @@ type _ Effect.t +=
 
 (**
    Wait for an async source to become ready for the requested interest, or
-   abort when the timeout expires. 
+   abort when the timeout expires.
 *)
 type _ Effect.t +=
   | Syscall : {

@@ -5,7 +5,6 @@ type 'a override =
   | Inherit
   (** Keep the value from the base profile *)
   | Override of 'a
-
 (** Replace with this value *)
 (** Profile override - partially specified profile fields *)
 type profile_override = {
@@ -22,7 +21,6 @@ type profile_override = {
   ld_flags: string list override;
   ocamlc_flags: string list override;
 }
-
 (** Build profile configuration with individual flag fields *)
 type t = {
   name: string;
@@ -66,7 +64,7 @@ val release: t
    Merge two profiles - override takes precedence per-field
    For booleans and kind: replaced
    For lists: appended (cc_flags, ld_flags, ocamlc_flags) or replaced (warnings, errors, open_modules)
-   For optional int: override if Some, keep base if None 
+   For optional int: override if Some, keep base if None
 *)
 val merge: t -> t -> t
 

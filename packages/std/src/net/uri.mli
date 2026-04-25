@@ -42,7 +42,7 @@ open Global
 
    ```ocaml let base = Uri.of_string "https://example.com/api" |> Result.unwrap
    in let full = Uri.join base "v1/users" |> Result.unwrap in Uri.to_string
-   full (* "https://example.com/api/v1/users" *) ``` 
+   full (* "https://example.com/api/v1/users" *) ```
 *)
 (** A parsed URL/URI with all components. *)
 (** Alias for [t]. *)
@@ -113,7 +113,7 @@ val path_and_query: t -> string
      percent_encode "Hello World"  (* "Hello%20World" *)
      percent_encode "test@example.com"  (* "test%40example.com" *)
      percent_encode "100%"  (* "100%25" *)
-   ]} 
+   ]}
 *)
 val percent_encode: string -> string
 
@@ -129,7 +129,7 @@ val percent_encode: string -> string
      percent_decode "100%25"  (* "100%" *)
    ]}
 
-   Invalid sequences (e.g., "%ZZ") are left as-is. 
+   Invalid sequences (e.g., "%ZZ") are left as-is.
 *)
 val percent_decode: string -> string
 
@@ -143,7 +143,7 @@ val percent_decode: string -> string
    {[
      form_encode "Hello World"  (* "Hello+World" *)
      form_encode "test@example.com"  (* "test%40example.com" *)
-   ]} 
+   ]}
 *)
 val form_encode: string -> string
 
@@ -159,7 +159,7 @@ val form_encode: string -> string
      form_decode "test%40example.com"  (* "test@example.com" *)
    ]}
 
-   Note: Query.parse automatically uses form_decode. 
+   Note: Query.parse automatically uses form_decode.
 *)
 val form_decode: string -> string
 
@@ -265,7 +265,7 @@ module Query : sig
      ]}
 
      {b Breaking Change}: Previously returned encoded values.
-     Now returns decoded values per RFC 3986. 
+     Now returns decoded values per RFC 3986.
   *)
   type t = param list
 
@@ -287,7 +287,7 @@ module Query : sig
      ]}
 
      {b Breaking Change}: Previously did not encode values.
-     Now encodes per application/x-www-form-urlencoded. 
+     Now encodes per application/x-www-form-urlencoded.
   *)
   val to_string: t -> string
 

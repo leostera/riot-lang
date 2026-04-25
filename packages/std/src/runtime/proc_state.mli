@@ -35,13 +35,13 @@ type perform = {
 
 (**
    Create the initial process state from an entry function and its first
-   effect. 
+   effect.
 *)
 val make: ('a -> 'b) -> 'a Effect.t -> 'b t
 
 (**
    Run the process until it finishes, suspends, or exhausts its reduction
-   budget. 
+   budget.
 *)
 val run: consume_reduction:(unit -> bool) -> perform:perform -> 'a t -> 'a t option
 

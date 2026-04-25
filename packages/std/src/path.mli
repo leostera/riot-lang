@@ -33,7 +33,7 @@
 
    Path separators are platform-specific:
    - Unix-like systems: `/`
-   - Windows: `\` (though `/` is also accepted) 
+   - Windows: `\` (though `/` is also accepted)
 *)
 (** The type of filesystem paths. Always contains valid UTF-8. *)
 type t = string
@@ -81,7 +81,7 @@ val from_string_unchecked: string -> t
    config = Path.v "config.toml" in
 
    (* Building paths *) let full_path = home / config (* full_path =
-   "/home/user/config.toml" *) ``` 
+   "/home/user/config.toml" *) ```
 *)
 val v: string -> t
 
@@ -97,7 +97,7 @@ val v: string -> t
    (Path.to_string path);
 
    (* Use with string functions *) let contains_local path = String.contains
-   (Path.to_string path) "local" ``` 
+   (Path.to_string path) "local" ```
 *)
 val to_string: t -> string
 
@@ -112,7 +112,7 @@ val to_string: t -> string
 
    (* Joining absolute paths replaces the first path *) let path1 = Path.v
    "/home/user" in let path2 = Path.v "/etc" in let result = Path.join path1
-   path2 in (* result = "/etc" *) ``` 
+   path2 in (* result = "/etc" *) ```
 *)
 val join: t -> t -> t
 
@@ -128,7 +128,7 @@ val join: t -> t -> t
 
    (* Build paths incrementally *) let home = Path.v (Sys.getenv "HOME") in let
    config = home / Path.v ".config" / Path.v "myapp" in let settings = config /
-   Path.v "settings.json" ``` 
+   Path.v "settings.json" ```
 *)
 val ( / ): t -> t -> t
 
@@ -158,7 +158,7 @@ val parent: t -> t option
    ```ocaml assert (Path.basename (Path.v "/home/user/file.txt") = "file.txt");
    assert (Path.basename (Path.v "/home/user/") = "user"); assert
    (Path.basename (Path.v "/") = ""); assert (Path.basename (Path.v "file.txt")
-   = "file.txt") ``` 
+   = "file.txt") ```
 *)
 val basename: t -> string
 
@@ -175,7 +175,7 @@ val basename: t -> string
    let dir = Path.v "/home/user/" in assert (Path.dirname dir = Path.v
    "/home");
 
-   let root = Path.v "/" in assert (Path.dirname root = Path.v "/") ``` 
+   let root = Path.v "/" in assert (Path.dirname root = Path.v "/") ```
 *)
 val dirname: t -> t
 
@@ -191,7 +191,7 @@ val dirname: t -> t
    (Path.extension (Path.v "archive.tar.gz") = Some "gz"); assert
    (Path.extension (Path.v "README") = None); assert (Path.extension (Path.v
    ".gitignore") = None); assert (Path.extension (Path.v "file.") = Some "")
-   ``` 
+   ```
 *)
 val extension: t -> string option
 
@@ -207,7 +207,7 @@ val extension: t -> string option
    no_ext);
 
    (* Only removes last extension *) let archive = Path.v "file.tar.gz" in
-   assert (Path.remove_extension archive = Path.v "file.tar") ``` 
+   assert (Path.remove_extension archive = Path.v "file.tar") ```
 *)
 val remove_extension: t -> t
 
@@ -216,12 +216,12 @@ val remove_extension: t -> t
 
    ## Examples
 
-   ```ocaml 
-   let path = Path.v "file" in 
+   ```ocaml
+   let path = Path.v "file" in
    assert (Path.add_extension path ~ext:"txt" = Path.v "file.txt");
 
-   (* Adds existing extension *) 
-   let doc = Path.v "document.doc" 
+   (* Adds existing extension *)
+   let doc = Path.v "document.doc"
    in assert (Path.add_extension doc ~ext:"pdf" = Path.v "document.doc.pdf");
    ```
 *)
@@ -232,9 +232,9 @@ val add_extension: t -> ext:string -> t
 
    ## Example
 
-   ```ocaml 
-   (* Replace existing extension *) 
-   let doc = Path.v "document.doc" 
+   ```ocaml
+   (* Replace existing extension *)
+   let doc = Path.v "document.doc"
    in assert (Path.add_extension doc ~ext:"pdf" = Path.v "document.pdf");
    ```
 *)
@@ -252,7 +252,7 @@ val replace_extension: t -> ext:string -> t
    "relative/path"))); assert (not (Path.is_absolute (Path.v "./file")));
 
    (* Platform-specific on Windows *) (* Path.is_absolute (Path.v
-   "C:\\Windows") = true on Windows *) ``` 
+   "C:\\Windows") = true on Windows *) ```
 *)
 val is_absolute: t -> bool
 
@@ -265,7 +265,7 @@ val is_absolute: t -> bool
 
    ```ocaml assert (Path.is_relative (Path.v "file.txt")); assert
    (Path.is_relative (Path.v "./subdir")); assert (Path.is_relative (Path.v
-   "../parent")); assert (not (Path.is_relative (Path.v "/absolute"))) ``` 
+   "../parent")); assert (not (Path.is_relative (Path.v "/absolute"))) ```
 *)
 val is_relative: t -> bool
 
@@ -285,7 +285,7 @@ val is_relative: t -> bool
 
    (* Special components are preserved *) let with_dots = Path.components
    (Path.v "a/./b/../c") in (* with_dots =
-   [Path.v "a"; Path.v "."; Path.v "b"; Path.v ".."; Path.v "c"] *) ``` 
+   [Path.v "a"; Path.v "."; Path.v "b"; Path.v ".."; Path.v "c"] *) ```
 *)
 val components: t -> t list
 
@@ -303,7 +303,7 @@ val components: t -> t list
    Path.v "a/c");
 
    (* Can't go above root *) let above_root = Path.v "/../.." in assert
-   (Path.normalize above_root = Path.v "/") ``` 
+   (Path.normalize above_root = Path.v "/") ```
 *)
 val normalize: t -> t
 
@@ -322,7 +322,7 @@ val normalize: t -> t
    ## Note
 
    Subject to TOCTOU race conditions. The file may be created or deleted
-   between this check and subsequent operations. 
+   between this check and subsequent operations.
 *)
 val exists: t -> bool
 
@@ -336,7 +336,7 @@ val exists: t -> bool
    let file = Path.v "/etc/passwd" in assert (not (Path.is_directory file));
 
    (* Returns false if path doesn't exist *) let missing = Path.v
-   "/does/not/exist" in assert (not (Path.is_directory missing)) ``` 
+   "/does/not/exist" in assert (not (Path.is_directory missing)) ```
 *)
 val is_directory: t -> bool
 
@@ -351,7 +351,7 @@ val is_directory: t -> bool
 
    (* Process only files *) let process_if_file path = if Path.is_file path
    then process_file path else println "Not a file: %s" (Path.to_string path)
-   ``` 
+   ```
 *)
 val is_file: t -> bool
 
@@ -370,14 +370,14 @@ val is_file: t -> bool
    in assert (not (Path.equal p1 p3));
 
    (* Normalize first for semantic equality *) assert (Path.equal
-   (Path.normalize p1) (Path.normalize p3)) ``` 
+   (Path.normalize p1) (Path.normalize p3)) ```
 *)
 val equal: t -> t -> bool
 
 (**
    Orders two paths using their normalized representation.
 
-   This keeps ordering consistent with semantic path equality. 
+   This keeps ordering consistent with semantic path equality.
 *)
 val compare: t -> t -> Order.t
 
@@ -396,6 +396,6 @@ val compare: t -> t -> Order.t
    _ -> println "Not a prefix"
 
    (* Make paths relative to a base directory *) let make_relative ~base path =
-   Path.strip_prefix path ~prefix:base |> Result.unwrap_or ~default:path ``` 
+   Path.strip_prefix path ~prefix:base |> Result.unwrap_or ~default:path ```
 *)
 val strip_prefix: t -> prefix:t -> (t, error) Result.t

@@ -44,7 +44,7 @@ val case: ?size:size -> ?reliability:reliability -> string -> (ctx -> (unit, str
 
 (**
    [property name ~examples fn] creates a property test that ran [examples]
-   test cases. 
+   test cases.
 *)
 val property: ?size:size -> ?reliability:reliability -> string -> examples:int -> (ctx -> (unit, string) result) -> t
 

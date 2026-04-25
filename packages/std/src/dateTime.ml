@@ -254,15 +254,15 @@ type error =
   | Invalid_timezone of string
 
 (* ISO 8601 Parser
- *
- * This parser has full parity with Elixir's DateTime.from_iso8601/2.
- * 
- * Design Philosophy:
- * - Small, composable parser functions in a submodule
- * - Use Option and_then operators let-star to avoid nested matches
- * - Each parser handles one concern (date, time, timezone, etc.)
- * - Main parse function orchestrates using Result for validation
- *)
+   *
+   * This parser has full parity with Elixir's DateTime.from_iso8601/2.
+   *
+   * Design Philosophy:
+   * - Small, composable parser functions in a submodule
+   * - Use Option and_then operators let-star to avoid nested matches
+   * - Each parser handles one concern (date, time, timezone, etc.)
+   * - Main parse function orchestrates using Result for validation
+*)
 module Parser = struct
   (* Option and_then operator for clean parser composition *)
   let ( let* ) opt fn = Option.and_then opt ~fn

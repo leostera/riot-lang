@@ -15,7 +15,7 @@
    ~body:"Hello, World!" ()
 
    let config = Config.make () in let state = Http1.make_handler ~config
-   ~handler () in (* Use with Socket_pool *) ``` 
+   ~handler () in (* Use with Socket_pool *) ```
 *)
 type state
 

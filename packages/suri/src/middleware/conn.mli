@@ -11,7 +11,7 @@ open Std
    ## Example
 
    ```ocaml let handler conn = conn |> Conn.with_status Ok |> Conn.with_body
-   "Hello, World!" |> Conn.send ``` 
+   "Hello, World!" |> Conn.send ```
 *)
 type peer = { ip: string; port: int }
 
@@ -29,7 +29,7 @@ val request: t -> Web_server.Request.t
    Get the original HTTP request.
 
    Most handlers should use the convenience accessors like [method_], [uri], [body],
-   etc. The raw request is available for advanced use cases. 
+   etc. The raw request is available for advanced use cases.
 *)
 val method_: t -> Net.Http.Method.t
 
@@ -63,7 +63,7 @@ val query_params: t -> (string * string) list
      (* params = [("foo", "bar"); ("baz", "qux")] *)
    ]}
 
-   Note: URL-encoded values are automatically decoded. 
+   Note: URL-encoded values are automatically decoded.
 *)
 val body_params: t -> (string * string) list
 
@@ -75,7 +75,7 @@ val resp_headers: t -> (string * string) list
 
 (**
    Get response headers that have been set so far.
-   Useful for reading headers set by upstream middleware. 
+   Useful for reading headers set by upstream middleware.
 *)
 (** ## Response Building *)
 val with_status: Net.Http.Status.t -> t -> t
@@ -120,10 +120,10 @@ val render_component: ?headers:(string * string) list -> Net.Http.Status.t -> 'm
    With custom headers (e.g., caching):
    {[
      let static_page conn =
-       Conn.render_component 
+       Conn.render_component
          ~headers:[("Cache-Control", "public, max-age=3600")]
-         Net.Http.Status.Ok 
-         page 
+         Net.Http.Status.Ok
+         page
          conn
    ]}
 
@@ -134,7 +134,7 @@ val render_component: ?headers:(string * string) list -> Net.Http.Status.t -> 'm
      |> Conn.with_header "Content-Type" "text/html; charset=utf-8"
      |> Conn.with_body (Component.to_html component)
      |> Conn.send
-   ]} 
+   ]}
 *)
 val render_json: ?headers:(string * string) list -> Net.Http.Status.t -> Data.Json.t -> t -> t
 
@@ -163,10 +163,10 @@ val render_json: ?headers:(string * string) list -> Net.Http.Status.t -> Data.Js
    With custom headers (e.g., CORS):
    {[
      let api_users conn =
-       Conn.render_json 
+       Conn.render_json
          ~headers:[("Access-Control-Allow-Origin", "*")]
-         Net.Http.Status.Ok 
-         json 
+         Net.Http.Status.Ok
+         json
          conn
    ]}
 
@@ -177,7 +177,7 @@ val render_json: ?headers:(string * string) list -> Net.Http.Status.t -> Data.Js
      |> Conn.with_header "Content-Type" "application/json"
      |> Conn.with_body (Data.Json.to_string json)
      |> Conn.send
-   ]} 
+   ]}
 *)
 val render_text: ?headers:(string * string) list -> Net.Http.Status.t -> string -> t -> t
 
@@ -200,10 +200,10 @@ val render_text: ?headers:(string * string) list -> Net.Http.Status.t -> string 
    With custom headers (e.g., caching):
    {[
      let robots conn =
-       Conn.render_text 
+       Conn.render_text
          ~headers:[("Cache-Control", "public, max-age=86400")]
-         Net.Http.Status.Ok 
-         "User-agent: *\nDisallow: /admin" 
+         Net.Http.Status.Ok
+         "User-agent: *\nDisallow: /admin"
          conn
    ]}
 
@@ -214,7 +214,7 @@ val render_text: ?headers:(string * string) list -> Net.Http.Status.t -> string 
      |> Conn.with_header "Content-Type" "text/plain; charset=utf-8"
      |> Conn.with_body text
      |> Conn.send
-   ]} 
+   ]}
 *)
 val redirect: ?headers:(string * string) list -> string -> t -> t
 
@@ -237,9 +237,9 @@ val redirect: ?headers:(string * string) list -> string -> t -> t
    With custom headers:
    {[
      let logout conn =
-       Conn.redirect 
+       Conn.redirect
          ~headers:[("Cache-Control", "no-store")]
-         "/login" 
+         "/login"
          conn
    ]}
 
@@ -256,7 +256,7 @@ val redirect: ?headers:(string * string) list -> string -> t -> t
      |> Conn.with_header "Location" path
      |> Conn.with_body ""
      |> Conn.send
-   ]} 
+   ]}
 *)
 (** ## Control Flow *)
 val halt: t -> t
@@ -281,7 +281,7 @@ val with_peer: peer -> t -> t
 
    Used by remote_ip middleware to set the real client IP.
 
-   {b Note}: This is primarily for internal middleware use. 
+   {b Note}: This is primarily for internal middleware use.
 *)
 (**
    Override the request method.
@@ -294,7 +294,7 @@ val with_peer: peer -> t -> t
      let conn = Conn.with_method Net.Http.Method.Delete conn
    ]}
 
-   {b Note}: This is primarily for internal middleware use. 
+   {b Note}: This is primarily for internal middleware use.
 *)
 val socket_conn: t -> Socket_pool.Connection.t
 
@@ -310,7 +310,7 @@ val upgrade_websocket: Channel.Handler.upgrade_opts -> Channel.Handler.t -> t ->
      let websocket_handler conn =
        let (opts, handler) = LiveView.mount (module MyComponent) conn in
        Conn.upgrade_websocket opts handler conn
-   ]} 
+   ]}
 *)
 type upgrade_info = private { opts: Channel.Handler.upgrade_opts; handler: Channel.Handler.t }
 
@@ -318,7 +318,7 @@ val get_upgrade: t -> upgrade_info option
 
 (**
    Get the upgrade info if the connection is upgrading to WebSocket.
-   Used internally by the framework. 
+   Used internally by the framework.
 *)
 (** ## Response Extraction *)
 val to_response: t -> Web_server.Response.t
@@ -329,12 +329,12 @@ type assign_value = ..
 
 (**
    Extensible type for storing arbitrary data in connection.
-   Middleware can extend this type to store their own data. 
+   Middleware can extend this type to store their own data.
 *)
 val assign: string -> assign_value -> t -> unit
 
 (**
    Store arbitrary data in the connection.
-   Used by middleware to pass data down the pipeline. 
+   Used by middleware to pass data down the pipeline.
 *)
 val get_assign: string -> t -> assign_value option(** Retrieve data stored by [assign]. *)

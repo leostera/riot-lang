@@ -48,7 +48,7 @@
    - Setting timeouts for operations
    - Implementing retry delays with backoff
    - Measuring performance with [Instant]
-   - Rate limiting and throttling 
+   - Rate limiting and throttling
 *)
 (** A span of time stored as seconds + nanoseconds. Always non-negative. *)
 type t
@@ -60,7 +60,7 @@ type t
    ## Examples
 
    ```ocaml Duration.is_zero Duration.zero (* true *) Duration.to_secs
-   Duration.zero (* 0 *) ``` 
+   Duration.zero (* 0 *) ```
 *)
 val zero: t
 
@@ -71,7 +71,7 @@ val zero: t
 
    ```ocaml let huge = Duration.from_secs 999_999_999_999 in
    Duration.saturating_add huge huge |> Duration.equal Duration.max_duration (* true *)
-   ``` 
+   ```
 *)
 val max_duration: t
 
@@ -89,7 +89,7 @@ val max_duration: t
    ## Note
 
    Nanoseconds should be in range 0-999,999,999. Values outside this range will
-   be normalized into the seconds component. 
+   be normalized into the seconds component.
 *)
 val make: secs:int -> nanos:int -> t
 
@@ -99,7 +99,7 @@ val make: secs:int -> nanos:int -> t
    ## Examples
 
    ```ocaml let week = Duration.from_days 7 in Duration.to_secs week (* 604800
-   *) ``` 
+   *) ```
 *)
 val from_days: int -> t
 
@@ -108,7 +108,7 @@ val from_days: int -> t
 
    ## Examples
 
-   ```ocaml Duration.from_hours 2 |> Duration.to_secs (* 7200 *) ``` 
+   ```ocaml Duration.from_hours 2 |> Duration.to_secs (* 7200 *) ```
 *)
 val from_hours: int -> t
 
@@ -117,7 +117,7 @@ val from_hours: int -> t
 
    ## Examples
 
-   ```ocaml Duration.from_mins 30 |> Duration.to_secs (* 1800 *) ``` 
+   ```ocaml Duration.from_mins 30 |> Duration.to_secs (* 1800 *) ```
 *)
 val from_mins: int -> t
 
@@ -126,7 +126,7 @@ val from_mins: int -> t
 
    ## Examples
 
-   ```ocaml let timeout = Duration.from_secs 60 in ``` 
+   ```ocaml let timeout = Duration.from_secs 60 in ```
 *)
 val from_secs: int -> t
 
@@ -144,7 +144,7 @@ val from_millis: int -> t
 
    ## Examples
 
-   ```ocaml Duration.from_micros 1_000_000 |> Duration.to_secs (* 1 *) ``` 
+   ```ocaml Duration.from_micros 1_000_000 |> Duration.to_secs (* 1 *) ```
 *)
 val from_micros: int -> t
 
@@ -162,7 +162,7 @@ val from_nanos: int -> t
 
    ## Examples
 
-   ```ocaml Duration.from_weeks 2 |> Duration.to_days (* 14 *) ``` 
+   ```ocaml Duration.from_weeks 2 |> Duration.to_days (* 14 *) ```
 *)
 val from_weeks: int -> t
 
@@ -172,7 +172,7 @@ val from_weeks: int -> t
    ## Examples
 
    ```ocaml let d = Duration.from_secs_float 1.5 in Duration.to_millis d (*
-   1500 *) ``` 
+   1500 *) ```
 *)
 val from_secs_float: float -> t
 
@@ -183,7 +183,7 @@ val from_secs_float: float -> t
    ## Examples
 
    ```ocaml let d = Duration.from_millis 1500 in Duration.to_secs d (* 1 -
-   fractional part discarded *) ``` 
+   fractional part discarded *) ```
 *)
 val to_secs: t -> int
 
@@ -193,7 +193,7 @@ val to_secs: t -> int
    ## Examples
 
    ```ocaml let d = Duration.make ~secs:1 ~nanos:500_000_000 in
-   Duration.to_secs_float d (* 1.5 *) ``` 
+   Duration.to_secs_float d (* 1.5 *) ```
 *)
 val to_secs_float: t -> float
 
@@ -205,7 +205,7 @@ val to_secs_float: t -> float
    ```ocaml let d = Duration.from_secs_float 1.23456 in
    Duration.to_secs_string d (* "1.23" - default precision 2 *)
    Duration.to_secs_string ~precision:4 d (* "1.2346" *)
-   Duration.to_secs_string ~precision:0 d (* "1" *) ``` 
+   Duration.to_secs_string ~precision:0 d (* "1" *) ```
 *)
 val to_secs_string: ?precision:int -> t -> string
 
@@ -214,7 +214,7 @@ val to_secs_string: ?precision:int -> t -> string
 
    ## Examples
 
-   ```ocaml Duration.from_secs 2 |> Duration.to_millis (* 2000 *) ``` 
+   ```ocaml Duration.from_secs 2 |> Duration.to_millis (* 2000 *) ```
 *)
 val to_millis: t -> int
 
@@ -223,7 +223,7 @@ val to_millis: t -> int
 
    ## Examples
 
-   ```ocaml Duration.from_millis 1 |> Duration.to_micros (* 1000 *) ``` 
+   ```ocaml Duration.from_millis 1 |> Duration.to_micros (* 1000 *) ```
 *)
 val to_micros: t -> int
 
@@ -243,7 +243,7 @@ val to_nanos: t -> int64
    ## Examples
 
    ```ocaml let d = Duration.make ~secs:5 ~nanos:123_456_789 in
-   Duration.subsec_millis d (* 123 *) ``` 
+   Duration.subsec_millis d (* 123 *) ```
 *)
 val subsec_millis: t -> int
 
@@ -253,7 +253,7 @@ val subsec_millis: t -> int
    ## Examples
 
    ```ocaml let d = Duration.make ~secs:5 ~nanos:123_456_789 in
-   Duration.subsec_micros d (* 123_456 *) ``` 
+   Duration.subsec_micros d (* 123_456 *) ```
 *)
 val subsec_micros: t -> int
 
@@ -263,7 +263,7 @@ val subsec_micros: t -> int
    ## Examples
 
    ```ocaml let d = Duration.make ~secs:5 ~nanos:123_456_789 in
-   Duration.subsec_nanos d (* 123_456_789 *) Duration.to_secs d (* 5 *) ``` 
+   Duration.subsec_nanos d (* 123_456_789 *) Duration.to_secs d (* 5 *) ```
 *)
 val subsec_nanos: t -> int
 
@@ -275,7 +275,7 @@ val subsec_nanos: t -> int
 
    ```ocaml Duration.is_zero Duration.zero (* true *) Duration.is_zero
    (Duration.from_secs 0) (* true *) Duration.is_zero (Duration.from_nanos 1)
-   (* false *) ``` 
+   (* false *) ```
 *)
 val is_zero: t -> bool
 
@@ -291,7 +291,7 @@ val is_zero: t -> bool
    ## See Also
 
    - [checked_add] for overflow detection
-   - [saturating_add] for clamping behavior 
+   - [saturating_add] for clamping behavior
 *)
 val add: t -> t -> t
 
@@ -301,7 +301,7 @@ val add: t -> t -> t
    ## Examples
 
    ```ocaml let d1 = Duration.from_secs 10 in let d2 = Duration.from_secs 3 in
-   Duration.sub d1 d2 |> Duration.to_secs (* 7 *) ``` 
+   Duration.sub d1 d2 |> Duration.to_secs (* 7 *) ```
 *)
 val sub: t -> t -> t
 
@@ -311,7 +311,7 @@ val sub: t -> t -> t
    ## Examples
 
    ```ocaml Duration.from_secs 5 |> Duration.mul 3 |> Duration.to_secs (* 15 *)
-   ``` 
+   ```
 *)
 val mul: t -> int -> t
 
@@ -321,7 +321,7 @@ val mul: t -> int -> t
    ## Examples
 
    ```ocaml Duration.from_secs 10 |> Duration.div 2 |> Duration.to_secs (* 5 *)
-   ``` 
+   ```
 *)
 val div: t -> int -> t
 
@@ -333,7 +333,7 @@ val div: t -> int -> t
 
    ```ocaml Duration.checked_add Duration.max_duration (Duration.from_secs 1) (* None *)
    Duration.checked_add (Duration.from_secs 5) (Duration.from_secs 3) (* Some
-   8s *) ``` 
+   8s *) ```
 *)
 val checked_add: t -> t -> t option
 
@@ -344,7 +344,7 @@ val checked_add: t -> t -> t option
 
    ```ocaml let d1 = Duration.from_secs 5 in let d2 = Duration.from_secs 10 in
    Duration.checked_sub d1 d2 (* None - would be negative *)
-   Duration.checked_sub d2 d1 (* Some 5s *) ``` 
+   Duration.checked_sub d2 d1 (* Some 5s *) ```
 *)
 val checked_sub: t -> t -> t option
 
@@ -353,7 +353,7 @@ val checked_sub: t -> t -> t option
 
    ## Examples
 
-   ```ocaml Duration.checked_mul Duration.max 2 (* None - overflow *) ``` 
+   ```ocaml Duration.checked_mul Duration.max 2 (* None - overflow *) ```
 *)
 val checked_mul: t -> int -> t option
 
@@ -363,7 +363,7 @@ val checked_mul: t -> int -> t option
    ## Examples
 
    ```ocaml Duration.checked_div (Duration.from_secs 10) 0 (* None *)
-   Duration.checked_div (Duration.from_secs 10) 2 (* Some 5s *) ``` 
+   Duration.checked_div (Duration.from_secs 10) 2 (* Some 5s *) ```
 *)
 val checked_div: t -> int -> t option
 
@@ -385,7 +385,7 @@ val saturating_add: t -> t -> t
 
    ```ocaml let d1 = Duration.from_secs 5 in let d2 = Duration.from_secs 10 in
    let result = Duration.saturating_sub d1 d2 in Duration.is_zero result (*
-   true *) ``` 
+   true *) ```
 *)
 val saturating_sub: t -> t -> t
 
@@ -395,7 +395,7 @@ val saturating_sub: t -> t -> t
    ## Examples
 
    ```ocaml Duration.saturating_mul Duration.max_duration 1000 |> Duration.equal
-   Duration.max_duration (* true *) ``` 
+   Duration.max_duration (* true *) ```
 *)
 val saturating_mul: t -> int -> t
 
@@ -406,7 +406,7 @@ val saturating_mul: t -> int -> t
    ## Examples
 
    ```ocaml Duration.from_secs 10 |> Duration.mul_f64 1.5 |> Duration.to_secs
-   (* 15 *) ``` 
+   (* 15 *) ```
 *)
 val mul_f64: t -> float -> t
 
@@ -416,7 +416,7 @@ val mul_f64: t -> float -> t
    ## Examples
 
    ```ocaml Duration.from_secs 10 |> Duration.div_f64 2.5 |> Duration.to_secs
-   (* 4 *) ``` 
+   (* 4 *) ```
 *)
 val div_f64: t -> float -> t
 
@@ -428,7 +428,7 @@ val div_f64: t -> float -> t
 
    ```ocaml let d1 = Duration.from_secs 5 in let d2 = Duration.from_secs 10 in
    Duration.abs_diff d1 d2 |> Duration.to_secs (* 5 *) Duration.abs_diff d2 d1
-   |> Duration.to_secs (* 5 - same *) ``` 
+   |> Duration.to_secs (* 5 - same *) ```
 *)
 val abs_diff: t -> t -> t
 
@@ -438,7 +438,7 @@ val abs_diff: t -> t -> t
    ## Examples
 
    ```ocaml Duration.min (Duration.from_secs 5) (Duration.from_secs 10) |>
-   Duration.to_secs (* 5 *) ``` 
+   Duration.to_secs (* 5 *) ```
 *)
 val min: t -> t -> t
 
@@ -448,7 +448,7 @@ val min: t -> t -> t
    ## Examples
 
    ```ocaml Duration.max (Duration.from_secs 5) (Duration.from_secs 10) |>
-   Duration.to_secs (* 10 *) ``` 
+   Duration.to_secs (* 10 *) ```
 *)
 val max: t -> t -> t
 
@@ -459,7 +459,7 @@ val max: t -> t -> t
    ## Examples
 
    ```ocaml Duration.compare (Duration.from_secs 5) (Duration.from_secs 10) (*
-   < 0 *) ``` 
+   < 0 *) ```
 *)
 val compare: t -> t -> Order.t
 
@@ -469,6 +469,6 @@ val compare: t -> t -> Order.t
    ## Examples
 
    ```ocaml Duration.equal (Duration.from_secs 5) (Duration.from_millis 5000)
-   (* true *) ``` 
+   (* true *) ```
 *)
 val equal: t -> t -> bool

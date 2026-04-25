@@ -39,7 +39,7 @@ open Std
 
    The hot build-check path is package-oriented and incremental. Query and
    editor workflows remain snapshot-oriented, but they share the same
-   semantics and module artifacts. 
+   semantics and module artifacts.
 *)
 type config = TypConfig.t
 
@@ -52,7 +52,7 @@ type checked_source = Analysis.Check_result.t
 
    The caller is responsible for supplying a [Source.t] that already carries
    the parse result and CST. `typ` does not accept raw source text at this
-   boundary. 
+   boundary.
 *)
 val check: config:config -> source:source -> checked_source
 

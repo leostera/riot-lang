@@ -59,7 +59,7 @@ type missing_dependency = { package: string; dependency: string }
    node, edges represent dependencies. All nodes start as Unplanned.
 
    Returns Error(MissingPackages) if any package depends on packages that are
-   not in the workspace. 
+   not in the workspace.
 *)
 type create_error =
   | MissingPackages of { missing: missing_dependency list }
@@ -107,20 +107,20 @@ val size: t -> int
 
 (**
    Filter the graph to only include the specified package and its transitive
-   dependencies. Returns an empty graph if package not found. 
+   dependencies. Returns an empty graph if package not found.
 *)
 val filter_for_package: t -> Riot_model.Package_name.t -> t
 
 (**
    Filter the graph to include the specified packages and all of their
    transitive dependencies. Returns an empty graph if none of the packages
-   are found. 
+   are found.
 *)
 val filter_for_packages: t -> Riot_model.Package_name.t list -> t
 
 (**
    Return packages in topological order (dependencies before dependents).
-   Raises Cycle_detected if there are circular dependencies. 
+   Raises Cycle_detected if there are circular dependencies.
 *)
 val topological_sort: t -> package_node list
 

@@ -2,7 +2,7 @@
    Lazy HTTP body storage.
 
    `Http.Body.t` keeps request/response payloads on their existing storage until a caller
-   explicitly materializes them. 
+   explicitly materializes them.
 *)
 type t
 

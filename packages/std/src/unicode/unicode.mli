@@ -23,8 +23,8 @@
      let truncated = String.truncate_width ~width:10 "Hello 世界!"
 
      (* Iterate over runes *)
-     String.into_iter "Hello" 
-     |> Iterator.for_each (fun rune -> 
+     String.into_iter "Hello"
+     |> Iterator.for_each (fun rune ->
          Printf.printf "U+%04X\n" (Unicode.Rune.to_int rune))
    ]}
 
@@ -43,7 +43,7 @@ module Rune : sig
   (**
      A Unicode code point (scalar value).
 
-     Valid range: U+0000 to U+10FFFF, excluding surrogates. 
+     Valid range: U+0000 to U+10FFFF, excluding surrogates.
   *)
   (** {2 Constants} *)
   val max: t
@@ -53,7 +53,7 @@ module Rune : sig
 
   (**
      [replacement] is U+FFFD, the Unicode replacement character.
-     Used to represent invalid or unrepresentable characters. 
+     Used to represent invalid or unrepresentable characters.
   *)
   val max_ascii: t
 
@@ -66,7 +66,7 @@ module Rune : sig
 
   (**
      [from_int n] converts an integer to a rune.
-     Returns [None] if n is not a valid Unicode code point. 
+     Returns [None] if n is not a valid Unicode code point.
   *)
   val to_int: t -> int
 
@@ -84,7 +84,7 @@ module Rune : sig
 
   (**
      [from_int_unchecked n] converts an integer to a rune without validation.
-     {b Warning}: Only use if you know [n] is a valid code point. 
+     {b Warning}: Only use if you know [n] is a valid code point.
   *)
   (** {2 Character Classification} *)
   val is_letter: t -> bool
@@ -97,7 +97,7 @@ module Rune : sig
 
   (**
      [is_space r] tests if [r] is a whitespace character.
-     Includes: space, tab, newline, and Unicode spaces. 
+     Includes: space, tab, newline, and Unicode spaces.
   *)
   val is_control: t -> bool
 
@@ -109,7 +109,7 @@ module Rune : sig
 
   (**
      [is_graphic r] tests if [r] is a graphic character.
-     Includes letters, marks, numbers, punctuation, symbols, and spaces. 
+     Includes letters, marks, numbers, punctuation, symbols, and spaces.
   *)
   val is_mark: t -> bool
 
@@ -137,19 +137,19 @@ module Rune : sig
 
   (**
      [to_upper r] converts [r] to uppercase.
-     Returns [r] unchanged if no uppercase mapping exists. 
+     Returns [r] unchanged if no uppercase mapping exists.
   *)
   val to_lower: t -> t
 
   (**
      [to_lower r] converts [r] to lowercase.
-     Returns [r] unchanged if no lowercase mapping exists. 
+     Returns [r] unchanged if no lowercase mapping exists.
   *)
   val to_title: t -> t
 
   (**
      [to_title r] converts [r] to titlecase.
-     Returns [r] unchanged if no titlecase mapping exists. 
+     Returns [r] unchanged if no titlecase mapping exists.
   *)
   (** {2 Display Width} *)
   val width: t -> int
@@ -162,7 +162,7 @@ module Rune : sig
      - 1 for most characters
      - 2 for wide characters (CJK, emoji, etc.)
 
-     This follows EastAsianWidth properties and grapheme cluster rules. 
+     This follows EastAsianWidth properties and grapheme cluster rules.
   *)
   (** {2 East Asian Width Properties} *)
   val is_wide: t -> bool
@@ -175,7 +175,7 @@ module Rune : sig
 
   (**
      [is_ambiguous r] tests if [r] has East Asian Width property "Ambiguous" (A).
-     These characters have width 1 or 2 depending on locale. 
+     These characters have width 1 or 2 depending on locale.
   *)
 end
 
@@ -190,20 +190,20 @@ module Grapheme : sig
      Examples:
      - ['e'; '́'] (e + combining acute accent) = "é"
      - Family emoji = base + zero-width joiners + other emoji
-     - Regional indicator pairs = flags 
+     - Regional indicator pairs = flags
   *)
   val first: string -> (t * string) option
 
   (**
      [first s] returns the first grapheme cluster in [s] and the remaining string.
-     Returns [None] if [s] is empty. 
+     Returns [None] if [s] is empty.
   *)
   val width: t -> int
 
   (**
      [width g] returns the display width of grapheme cluster [g].
 
-     This accounts for combining characters, emoji, and other special cases. 
+     This accounts for combining characters, emoji, and other special cases.
   *)
   val to_string: t -> string
 
@@ -218,7 +218,7 @@ module Utf8 : sig
      [decode_rune s pos] decodes the UTF-8 rune starting at byte position [pos].
 
      Returns [Some (rune, next_pos)] where [next_pos] is the position after the rune.
-     Returns [None] if [pos] is out of bounds or invalid UTF-8. 
+     Returns [None] if [pos] is out of bounds or invalid UTF-8.
   *)
   val encode_rune: Rune.t -> string
 
@@ -235,7 +235,7 @@ module Utf8 : sig
      [rune_length c] returns the expected length of a UTF-8 sequence
      starting with byte [c].
 
-     Returns 1-4 for valid start bytes, 0 for continuation bytes or invalid bytes. 
+     Returns 1-4 for valid start bytes, 0 for continuation bytes or invalid bytes.
   *)
 end
 
@@ -249,7 +249,7 @@ module Utf16 : sig
   (**
      [code_units_of_rune rune] returns how many UTF-16 code units [rune] occupies.
 
-     Most runes occupy 1 code unit; supplementary-plane runes occupy 2. 
+     Most runes occupy 1 code unit; supplementary-plane runes occupy 2.
   *)
   val position_of_offset: string -> offset:int -> position
 
@@ -258,7 +258,7 @@ module Utf16 : sig
      zero-based line and UTF-16 character position.
 
      Offsets are clamped into the document bounds. Newlines reset the UTF-16
-     character count, and both [\n] and [\r\n] are treated as line breaks. 
+     character count, and both [\n] and [\r\n] are treated as line breaks.
   *)
   val offset_of_position: string -> position -> (int, string) Result.t
 
@@ -267,7 +267,7 @@ module Utf16 : sig
      into a UTF-8 byte offset.
 
      Returns [Error _] when the line is out of bounds, the character extends
-     beyond the end of the line, or the position would split a surrogate pair. 
+     beyond the end of the line, or the position would split a surrogate pair.
   *)
 end
 
@@ -287,7 +287,7 @@ module Segmentation : sig
   (**
      [find_word_boundaries s] returns byte positions of word boundaries in [s].
 
-     Follows simplified UAX #29 word segmentation rules. 
+     Follows simplified UAX #29 word segmentation rules.
   *)
   val find_next_word_start: string -> int -> int
 
@@ -295,7 +295,7 @@ module Segmentation : sig
      [find_next_word_start s pos] returns the byte position of the next word
      boundary after [pos].
 
-     Useful for Ctrl+Right arrow navigation. Returns string length if no more words. 
+     Useful for Ctrl+Right arrow navigation. Returns string length if no more words.
   *)
   val find_prev_word_start: string -> int -> int
 
@@ -303,21 +303,21 @@ module Segmentation : sig
      [find_prev_word_start s pos] returns the byte position of the previous word
      boundary before [pos].
 
-     Useful for Ctrl+Left arrow navigation. Returns 0 if at beginning. 
+     Useful for Ctrl+Left arrow navigation. Returns 0 if at beginning.
   *)
   val find_sentence_boundaries: string -> int list
 
   (**
      [find_sentence_boundaries s] returns byte positions of sentence boundaries in [s].
 
-     Follows Unicode UAX #29 sentence segmentation rules. 
+     Follows Unicode UAX #29 sentence segmentation rules.
   *)
   val find_line_breaks: string -> (int * line_break) list
 
   (**
      [find_line_breaks s] returns positions and types of line break opportunities.
 
-     Follows simplified UAX #14 line breaking algorithm. 
+     Follows simplified UAX #14 line breaking algorithm.
   *)
   val wrap_lines: width:int -> string -> string list
 
@@ -326,7 +326,7 @@ module Segmentation : sig
 
      Returns a list of lines, each fitting within [width] cells.
      Breaks at appropriate line break opportunities (spaces, punctuation, CJK boundaries).
-     Handles mandatory breaks (newlines) and forced breaks when no opportunities exist. 
+     Handles mandatory breaks (newlines) and forced breaks when no opportunities exist.
   *)
 end
 
@@ -338,7 +338,7 @@ module Config : sig
      [set_east_asian_width enabled] configures treatment of ambiguous width characters.
 
      When [enabled=true] (for CJK locales), ambiguous characters have width 2.
-     When [enabled=false] (default, for Western locales), they have width 1. 
+     When [enabled=false] (default, for Western locales), they have width 1.
   *)
   val get_east_asian_width: unit -> bool
 

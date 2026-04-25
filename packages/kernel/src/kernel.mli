@@ -3,7 +3,7 @@
 
    The top-level module intentionally exposes just the canonical type homes and the portable
    runtime, filesystem, network, time, environment, and process boundaries that higher layers
-   build on. 
+   build on.
 *)
 module Prelude = Prelude
 

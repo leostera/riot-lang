@@ -14,13 +14,13 @@ open Std.Collections
 
    `raw_lo`/`raw_hi` are an exclusive range into `t.raw_tokens` and include
    leading trivia before the body token. `body_raw` points at the significant
-   raw token that decides this leaf's syntax kind. 
+   raw token that decides this leaf's syntax kind.
 *)
 type token_leaf = { kind: Syntax_kind.t; raw_lo: int; raw_hi: int; body_raw: int }
 
 (**
    Parser-inserted placeholder for a token that was required by the grammar but
-   absent from the source. 
+   absent from the source.
 *)
 type missing = { kind: Syntax_kind.t; offset: int }
 
@@ -35,7 +35,7 @@ type child =
 
    `raw_lo`/`raw_hi` cover raw tokens, including trivia owned by descendant
    token leaves. `full_width` is the byte width of that raw range, while
-   `token_width` counts only significant token text. 
+   `token_width` counts only significant token text.
 *)
 type node = {
   kind: Syntax_kind.t;
@@ -65,7 +65,7 @@ type tree = t
 
    The builder supports `precede`, checkpoints, and restore so recursive parser
    functions can reshape already-emitted children without allocating an
-   intermediate concrete event list. 
+   intermediate concrete event list.
 *)
 module Builder : sig
   type t
@@ -105,7 +105,7 @@ end
    Build a tree from an explicit event buffer.
 
    This is retained for event-buffer based tests/tools. The main parser writes
-   directly into `Builder`. 
+   directly into `Builder`.
 *)
 val build: source:IO.IoVec.IoSlice.t -> token_stream:Raw_token.stream -> events:Event.Buffer.t -> t
 

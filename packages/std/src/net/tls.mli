@@ -2,7 +2,7 @@
    Private TLS engine used by `Std.Net.TlsStream`.
 
    This stays std-owned because it is transport-agnostic policy and buffering layered over
-   OpenSSL, not a kernel readiness or socket primitive. 
+   OpenSSL, not a kernel readiness or socket primitive.
 *)
 open Global
 open IO

@@ -12,8 +12,9 @@ let xlarge_config = { iterations = 3; warmup = 1 }
 
 (* Reduced for 1m items *)
 (* ========================================================================
- * 1m Item Benchmarks
- * ======================================================================== *)
+   * 1m Item Benchmarks
+   * ========================================================================
+*)
 (* HashMap: Insert 1m items *)
 let bench_hashmap_insert_1m = fun () ->
   let map = HashMap.create () in
@@ -80,8 +81,9 @@ let bench_swisstable_remove_from_1m = fun () ->
   for i = 0 to 9_999 do ignore (Swisstable.remove map (i * 100)) done
 
 (* ========================================================================
- * 500K Item Benchmarks (intermediate size)
- * ======================================================================== *)
+   * 500K Item Benchmarks (intermediate size)
+   * ========================================================================
+*)
 (* HashMap: Insert 500k items *)
 let bench_hashmap_insert_500k = fun () ->
   let map = HashMap.create () in
@@ -105,8 +107,9 @@ let bench_swisstable_get_from_500k = fun () ->
   for i = 0 to 9_999 do ignore (Swisstable.get map (i * 50)) done
 
 (* ========================================================================
- * Main benchmark suite
- * ======================================================================== *)
+   * Main benchmark suite
+   * ========================================================================
+*)
 let benchmarks = Bench.[
   compare_with_config ~config:large_config "insert 500k items" [ make_case "HashMap" bench_hashmap_insert_500k; make_case "Swisstable" bench_swisstable_insert_500k ];
   compare_with_config ~config:large_config "get from 500k items" [ make_case "HashMap" bench_hashmap_get_from_500k; make_case "Swisstable" bench_swisstable_get_from_500k ];

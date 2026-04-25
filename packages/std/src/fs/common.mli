@@ -11,8 +11,8 @@ open Global
 
    ```ocaml open Std
 
-   match Fs.read (Path.v "config.json") with 
-   | Ok content -> process content 
+   match Fs.read (Path.v "config.json") with
+   | Ok content -> process content
    | Error err -> Log.error "Filesystem error: %s" (Fs.Common.error_message err)
    ```
 
@@ -20,7 +20,7 @@ open Global
 
    This module is primarily internal. Users typically work with the [Result.t]
    values returned by [Fs] functions and use [Result.expect] or pattern
-   matching for error handling. 
+   matching for error handling.
 *)
 type error = IO.error
 

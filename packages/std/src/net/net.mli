@@ -9,7 +9,7 @@
 
    TCP client:
 
-   ```ocaml open Std 
+   ```ocaml open Std
 
    let client_process () = let addr = Net.Addr.of_host_and_port
    ~host:"example.com" ~port:80 |> Result.expect ~msg:"Invalid address" in
@@ -59,7 +59,7 @@
    - Network clients that need to be concurrent
    - Any I/O-bound network application with many connections
 
-   See [Uri] for URL parsing and [Http] for HTTP-specific functionality. 
+   See [Uri] for URL parsing and [Http] for HTTP-specific functionality.
 *)
 (** Network error types. *)
 type error =

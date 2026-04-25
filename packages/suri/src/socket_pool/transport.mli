@@ -4,7 +4,7 @@ open Std
    Transport layer abstraction.
 
    Abstracts over different transport protocols (TCP, TLS, etc.) to allow
-   pluggable connection handling. 
+   pluggable connection handling.
 *)
 (** Transport layer type *)
 (** [tcp ()] creates a plain TCP transport *)

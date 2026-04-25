@@ -47,7 +47,7 @@
    parsers | {!Cursor} | | Single-pass parsers | {!MutCursor} | | Functional
    style | {!Cursor}, {!Iterator} | | Performance-critical | {!MutCursor},
    {!MutIterator} | | Lazy sequences | {!Iterator}, {!MutIterator} | | Slice
-   parsing | {!Cursor}, {!MutCursor} | 
+   parsing | {!Cursor}, {!MutCursor} |
 *)
 module Iterator : module type of Iterator
 

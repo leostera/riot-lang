@@ -3,7 +3,7 @@
 
    Two modes of operation:
    - DynamicWorkerPool: Manual task assignment via WorkerReady messages
-   - SimpleWorkerPool: Automatic task distribution from pre-queued tasks 
+   - SimpleWorkerPool: Automatic task distribution from pre-queued tasks
 *)
 module DynamicWorkerPool = Dynamic
 

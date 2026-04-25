@@ -3,7 +3,7 @@ open Riot_model
 
 (**
    Workspace-level planner - builds package dependency graph and orders
-   packages for execution 
+   packages for execution
 *)
 type target =
   | All
@@ -38,7 +38,7 @@ type package_plan = {
    sort packages
 
    Returns the ordered list of packages to build. Does NOT plan module/action
-   graphs - that's done lazily per-package by the executor. 
+   graphs - that's done lazily per-package by the executor.
 *)
 type plan_error =
   | PackageNotFound of { name: Package_name.t; available: Package_name.t list }

@@ -8,7 +8,7 @@ open Prelude
 
    1. Combining marks (accents, diacritics)
    2. Zero-Width Joiner (ZWJ) sequences for emoji
-   3. Regional indicators for flags  
+   3. Regional indicators for flags
    4. Hangul syllables (Korean)
    5. Extended pictographic (emoji)
 
@@ -54,7 +54,7 @@ let is_emoji_modifier = fun c -> c >= 0x1_f3fb && c <= 0x1_f3ff
 (* Emoji skin tone modifiers *)
 (**
    Check if a code point is a combining mark (simplified)
-   Full implementation would use Unicode category Mn, Mc, Me 
+   Full implementation would use Unicode category Mn, Mc, Me
 *)
 let is_combining = fun c -> let open Width_tables in
 in_table combining c || is_emoji_modifier c
