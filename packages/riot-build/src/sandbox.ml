@@ -73,8 +73,8 @@ let copy_inputs = fun ~sandbox ~package ~inputs ->
 
 let prepare = fun ~sandbox ~package ~inputs ~depset ~store ->
   (* No longer copy dependencies wholesale - dependencies are resolved via
-         include directories in immutable cache paths, with only required object
-         files copied into the sandbox for linker compatibility. *)
+           include directories in immutable cache paths, with only required object
+           files copied into the sandbox for linker compatibility. *)
   copy_inputs ~sandbox ~package ~inputs;
   copy_object_files ~store ~sandbox ~package ~depset
 

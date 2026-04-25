@@ -602,8 +602,8 @@ let solve_with_stats = fun ?trace_ctx ?(options = default_options) provider root
   Log.debug ("Starting PubGrub solver for " ^ root_package ^ "@" ^ Version.to_string root_version);
   (* Initialize state *)
   (* NOTE: Unlike some implementations, we don't add a not_root incompatibility
-         because root is already decided. Adding it would cause unit_propagation
-         to immediately detect a conflict. *)
+           because root is already decided. Adding it would cause unit_propagation
+           to immediately detect a conflict. *)
   let incompats = create_incompatibility_store () in
   let solution = Partial_solution.empty () in
   let solution = Partial_solution.add_decision solution root_package root_version in

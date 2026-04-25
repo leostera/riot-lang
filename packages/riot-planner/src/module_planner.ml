@@ -124,8 +124,8 @@ let plan_node = fun (input: plan_input) ->
           | None -> ()
         );
         (* Direct deps are used for linking, but compile-time includes need the
-                           full transitive closure because package alias/interface modules can
-                           reference transitive package modules. *)
+                                   full transitive closure because package alias/interface modules can
+                                   reference transitive package modules. *)
         let all_deps = input.depset in
         let transitive_deps = Dependency.transitive_closure all_deps in
         (* Check if any package (including our own) needs unix *)
@@ -152,10 +152,10 @@ let plan_node = fun (input: plan_input) ->
         in
         let binary_libraries =
           (* Binaries and commands need the full transitive runtime library
-                                 closure, not just direct deps, because a direct package library
-                                 like Std can reference modules provided by transitive deps such as
-                                 Kernel and Runtime. Dev-only packages have no local library, but
-                                 their test/example binaries still need the dependency closure. *)
+                                           closure, not just direct deps, because a direct package library
+                                           like Std can reference modules provided by transitive deps such as
+                                           Kernel and Runtime. Dev-only packages have no local library, but
+                                           their test/example binaries still need the dependency closure. *)
           let unix_lib =
             if needs_unix then
               [ Path.v "unix.cmxa" ]

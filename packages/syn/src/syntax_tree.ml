@@ -91,7 +91,7 @@ let include_child_range = fun ~(nodes:node Vector.t) ~(tokens:token_leaf Vector.
   | Token token_id ->
       let token = Vector.get_unchecked tokens ~at:token_id in
       (* Token leaves own the raw trivia range before their significant body
-                     token, so node spans stay lossless without trivia child edges. *)
+                           token, so node spans stay lossless without trivia child edges. *)
       include_range frame ~lo:token.raw_lo ~hi:token.raw_hi
   | Node node_id ->
       let node = Vector.get_unchecked nodes ~at:node_id in

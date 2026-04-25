@@ -319,18 +319,18 @@ let create_with_breakdown ~scope ?(dev_artifacts = { tests = true; examples = tr
         | _ -> ()
       );
       (* Build-phase dependencies are for build-tooling surfaces such as fused
-                     riot-fix providers and future build scripts. Runtime/dev scopes only
-                     materialize pkg.build nodes for packages that declare
-                     build_dependencies, avoiding needless duplicate package planning while
-                     still preserving build-dependency ordering.
+                           riot-fix providers and future build scripts. Runtime/dev scopes only
+                           materialize pkg.build nodes for packages that declare
+                           build_dependencies, avoiding needless duplicate package planning while
+                           still preserving build-dependency ordering.
 
-                     They should not pull build-time libraries into the normal runtime graph
-                     or we recreate cycles like:
+                           They should not pull build-time libraries into the normal runtime graph
+                           or we recreate cycles like:
 
-                       std.runtime -> std.build -> fixme.runtime -> syn.runtime -> std.runtime
+                             std.runtime -> std.build -> fixme.runtime -> syn.runtime -> std.runtime
 
-                     A dedicated Build graph can still wire these edges when build-only
-                     tooling is the target. *)
+                           A dedicated Build graph can still wire these edges when build-only
+                           tooling is the target. *)
       (
         match scope with
         | Build -> List.for_each

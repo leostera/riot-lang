@@ -25,16 +25,16 @@ type blocking_lane = {
 type process_slot = {
   process: Runtime_process.t;
   (* Runtime-owned scheduling metadata.
-         Process continuations/mailboxes live on [Process.t], while ownership and
-         queue membership live here so workers can transfer slots without mutating
-         process internals. *)
+           Process continuations/mailboxes live on [Process.t], while ownership and
+           queue membership live here so workers can transfer slots without mutating
+           process internals. *)
   placement: placement;
   owner_worker: Runtime_scheduler_id.t Runtime_atomic.t;
   mutable blocking_lane: blocking_lane option;
   queued: bool Runtime_atomic.t;
   (* A slot can be requested again while a worker is already stepping its
-         continuation. Preserve that wakeup so it can be re-enqueued once the
-         current step finishes instead of dropping or double-running the process. *)
+           continuation. Preserve that wakeup so it can be re-enqueued once the
+           current step finishes instead of dropping or double-running the process. *)
   executing: bool Runtime_atomic.t;
   pending: bool Runtime_atomic.t;
 }

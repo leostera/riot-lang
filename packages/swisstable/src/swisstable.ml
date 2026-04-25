@@ -127,8 +127,8 @@ module Group = struct
     group_load_simd ctrl idx
 
   (* Convert bitmask (int64) to int for BitMask module 
-         The result from match operations has the high bit (0x80) set for matching bytes.
-         We need to extract bit 7 from each byte position and pack them into an int. *)
+           The result from match operations has the high bit (0x80) set for matching bytes.
+           We need to extract bit 7 from each byte position and pack them into an int. *)
 
   let bitmask_to_int = fun bits ->
     let extract_bit byte_pos = I64.to_int

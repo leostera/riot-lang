@@ -11,9 +11,9 @@ let case =
 
 let test_large_json_response = fun _ctx ->
   (* Test that we can read JSON responses without truncation.
-         This test makes a real HTTP request to an LM Studio instance expected
-         to be running on port 1234. We use the chat completions endpoint with
-         a large response to verify the body isn't truncated. *)
+           This test makes a real HTTP request to an LM Studio instance expected
+           to be running on port 1234. We use the chat completions endpoint with
+           a large response to verify the body isn't truncated. *)
   let request_body = {|{"max_tokens":2000,"temperature":0.7,"model":"qwen/qwen3-coder-30b","messages":[{"role":"system","content":"You are: TestBot\nWrite a long response with at least 500 words about the history of computing."}]}|} in
   (* Build URI *)
   let uri = Net.Uri.of_string "http://127.0.0.1:1234/v1/chat/completions" |> Result.expect ~msg:"Invalid URI" in
@@ -70,8 +70,8 @@ let test_large_json_response = fun _ctx ->
 
 let test_streamed_response = fun _ctx ->
   (* Test that we can read chunked/streamed responses without truncation.
-         When "stream": true is set, the server sends Transfer-Encoding: chunked
-         with Server-Sent Events (SSE) format data chunks. *)
+           When "stream": true is set, the server sends Transfer-Encoding: chunked
+           with Server-Sent Events (SSE) format data chunks. *)
   let request_body = {|{"stream":true,"max_tokens":100,"temperature":0.7,"model":"qwen/qwen3-coder-30b","messages":[{"role":"user","content":"Count from 1 to 5"}]}|} in
   (* Build URI *)
   let uri = Net.Uri.of_string "http://127.0.0.1:1234/v1/chat/completions" |> Result.expect ~msg:"Invalid URI" in

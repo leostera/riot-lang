@@ -177,7 +177,7 @@ module Monotonic = struct
         Cell.set state.last_timestamp_ms clamped_ms;
         (* Generate new UUID with clamped timestamp *)
         (* For MVP, we'll just generate a new one and hope it's >= clamped_ms
-                         A full implementation would rebuild the UUID with exact timestamp *)
+                                 A full implementation would rebuild the UUID with exact timestamp *)
         let new_uuid = v7 () in
         Cell.set state.last_timestamp_ms (extract_timestamp_ms new_uuid);
         new_uuid

@@ -45,7 +45,7 @@ type t = {
   mutable fn: (unit -> (unit, exit_reason) result) option;
   mailbox: Mailbox.t;
   (* Owner-local FIFO for selective-receive skips. Only the owning worker
-         mutates this queue while mailbox sends remain cross-domain MPSC. *)
+           mutates this queue while mailbox sends remain cross-domain MPSC. *)
   save_queue: Message.envelope Queue.t;
   mutable save_queue_size: int;
   mutable ready_tokens: (Async.Token.t * Async.Source.t) list;

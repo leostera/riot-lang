@@ -63,12 +63,12 @@ let first = fun s ->
 let width = fun grapheme ->
   (* Width of a grapheme cluster
 
-         For most graphemes, this is the maximum width of any rune in the cluster.
-         However, for proper handling:
-         - ZWJ sequences (emoji): use the base character's width (typically 2)
-         - Combining marks: width 0, so they don't affect the base
-         - Regional indicators: count as a pair (width 2 for the pair)
-      *)
+           For most graphemes, this is the maximum width of any rune in the cluster.
+           However, for proper handling:
+           - ZWJ sequences (emoji): use the base character's width (typically 2)
+           - Combining marks: width 0, so they don't affect the base
+           - Regional indicators: count as a pair (width 2 for the pair)
+        *)
   match grapheme with
   | [] -> 0
   | runes ->
