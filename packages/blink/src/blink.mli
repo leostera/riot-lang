@@ -1,26 +1,31 @@
 open Std
 
 (** Protocol descriptors exposed by Blink. *)
-module Protocol : module type of Protocol
+module Protocol: module type of Protocol
 
 (** Transport backends exposed by Blink. *)
-module Transport : module type of Transport
+module Transport: module type of Transport
 
 (** HTTP connection interface exposed by Blink. *)
-module Connection : module type of Connection
+module Connection: module type of Connection
 
 (** WebSocket support exposed by Blink. *)
-module WebSocket : module type of Websocket
+module WebSocket: module type of Websocket
 
 (** Blink error definitions. *)
-module Error : module type of Error
+module Error: module type of Error
 
 (** Server-Sent Events support exposed by Blink. *)
-module SSE : module type of Sse
+module SSE: module type of Sse
+
+(** Configurable HTTP client with retry, budget, circuit-breaker, and pooling policies. *)
+module Client: module type of Client
+
+(** Retry policy helpers used by [Blink.Client]. *)
+module RetryPolicy: module type of Client.RetryPolicy
 
 (** Blink client error. *)
 type error = Error.t
-
 (** Streaming HTTP message from a connection. *)
 type message = Connection.message
 
@@ -37,7 +42,8 @@ val stream: Connection.t -> (message list, error) result
 val messages: ?on_message:(message list -> unit) -> Connection.t -> (message list, error) result
 
 (** Wait for the response to complete and return the response plus body. *)
-val await: ?on_message:(message list -> unit) -> Connection.t -> (Net.Http.Response.t * string, error) result
+val await:
+  ?on_message:(message list -> unit) -> Connection.t -> (Net.Http.Response.t * string, error) result
 
 (** Close the connection. *)
 val close: Connection.t -> unit

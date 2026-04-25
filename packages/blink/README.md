@@ -8,6 +8,7 @@ Lightweight, streaming HTTP client built on Riot's process model with support fo
 - **Chunked transfer encoding** - Full support for streaming APIs
 - **Message-based API** - Receive status, headers, and data as separate messages
 - **Three abstraction levels** - Low-level streaming, batch processing, or buffered responses
+- **Managed client policies** - Configure retry, budget, circuit breaker, telemetry, and connection reuse in `Blink.Client`
 - **Built on Std** - Uses `Net.TcpStream`, `IO.Reader/Writer`, and HTTP parsers from `packages/http`
 
 ## Quick Start
@@ -20,23 +21,23 @@ open Std
 
 let () = start ~apps:[] @@ fun () ->
   let open Result.Syntax in
-  
+
   (* Parse URI *)
   let* uri = Net.Uri.of_string "http://example.com" in
-  
+
   (* Connect *)
   let* conn = Blink.connect uri in
-  
+
   (* Create and send request *)
   let req = Net.Http.Request.create Net.Http.Method.Get uri in
   let* () = Blink.request conn req () in
-  
+
   (* Get full response *)
   let* (response, body) = Blink.await conn in
-  
+
   Log.info "Status: %a" Net.Http.Status.pp (Net.Http.Response.status response);
   Log.info "Body length: %d bytes" (String.length body);
-  
+
   Blink.close conn;
   Ok ()
 ```
@@ -48,34 +49,34 @@ Process chunks as they arrive without buffering the entire response:
 ```ocaml
 let () = start ~apps:[] @@ fun () ->
   let open Result.Syntax in
-  
+
   let* uri = Net.Uri.of_string "http://example.com/large-file" in
   let* conn = Blink.connect uri in
-  
+
   let req = Net.Http.Request.create Net.Http.Method.Get uri in
   let* () = Blink.request conn req () in
-  
+
   (* Stream chunks incrementally *)
   let rec process_stream () =
     match Blink.stream conn with
     | Error e -> Error e
     | Ok messages ->
-        List.iter (function
-          | `Status status -> 
+        List.for_each messages ~fn:(function
+          | `Status status ->
               Log.info "Status: %a" Net.Http.Status.pp status
-          | `Headers headers -> 
+          | `Headers headers ->
               Log.info "Received %d headers" (Net.Http.Header.length headers)
-          | `Data chunk -> 
+          | `Data chunk ->
               (* Process chunk immediately - no buffering *)
               write_to_file chunk
-          | `Done -> 
+          | `Done ->
               Log.info "Stream complete"
-        ) messages;
-        
+        );
+
         if List.mem `Done messages then Ok ()
         else process_stream ()
   in
-  
+
   let* () = process_stream () in
   Blink.close conn;
   Ok ()
@@ -86,13 +87,13 @@ let () = start ~apps:[] @@ fun () ->
 ```ocaml
 let download_with_progress url =
   let open Result.Syntax in
-  
+
   let* uri = Net.Uri.of_string url in
   let* conn = Blink.connect uri in
-  
+
   let req = Net.Http.Request.create Net.Http.Method.Get uri in
   let* () = Blink.request conn req () in
-  
+
   let total_bytes = ref 0 in
   let on_progress msgs =
     let bytes = List.fold_left (fun acc -> function
@@ -103,7 +104,7 @@ let download_with_progress url =
     if bytes > 0 then
       Log.info "Downloaded: %d bytes" !total_bytes
   in
-  
+
   let* (response, body) = Blink.await ~on_message:on_progress conn in
   Blink.close conn;
   Ok (response, body)
@@ -114,20 +115,69 @@ let download_with_progress url =
 ```ocaml
 let post_json url data =
   let open Result.Syntax in
-  
+
   let* uri = Net.Uri.of_string url in
   let* conn = Blink.connect uri in
-  
+
   let body = Data.Json.to_string data in
   let req = Net.Http.Request.create Net.Http.Method.Post uri
     |> Net.Http.Request.add_header "content-type" "application/json"
   in
-  
+
   let* () = Blink.request conn req ~body () in
   let* (response, response_body) = Blink.await conn in
-  
+
   Blink.close conn;
   Ok (response, response_body)
+```
+
+### Managed Client
+
+Use `Blink.Client` when callers should share retry, budget, circuit breaker, telemetry, and connection reuse policy.
+
+```ocaml
+let retry_policy = Blink.RetryPolicy.make ~max_attempts:3 () in
+let pool = Blink.Client.Config.pool ~max_idle_per_endpoint:4 () in
+let config =
+  Blink.Client.Config.make
+    ~retry_policy
+    ~connection_policy:(Blink.Client.Config.Pool pool)
+    ()
+in
+let client = Blink.Client.make ~config () in
+
+let req =
+  Blink.Client.Request.make
+    ~method_:Blink.Client.Request.Get
+    ~url:"https://example.com"
+    ()
+in
+
+match Blink.Client.execute client req with
+| Ok (response, telemetry) ->
+    Log.info "Status: %d attempts=%d" response.status (List.length telemetry.attempts)
+| Error error ->
+    Log.error "Request failed: %s" (Blink.Client.error_to_string error)
+```
+
+`Blink.Client` also exposes the same connection-oriented surface as the top-level module:
+`connect`, `request`, `stream`, `messages`, `await`, and `close`. Use this path when raw
+HTTP streams should still share the client's budget, retry, circuit breaker, and pooling
+configuration. SSE and WebSocket helpers are available through `Blink.Client.SSE` and
+`Blink.Client.WebSocket`.
+
+Examples:
+
+- `examples/managed_client.ml` - buffered managed HTTP
+- `examples/managed_sse.ml` - managed connection plus SSE iterator
+- `examples/managed_websocket.ml` - managed WebSocket connection
+
+Validation:
+
+```sh
+riot build -p blink --all --json
+riot test -p blink --json
+riot bench -p blink --json
 ```
 
 ## API Reference
@@ -190,12 +240,12 @@ Read next chunk of response stream. Returns list of messages representing parts 
 ```ocaml
 match Blink.stream conn with
 | Ok messages ->
-    List.iter (function
+    List.for_each messages ~fn:(function
       | `Status s -> handle_status s
       | `Headers h -> handle_headers h
       | `Data chunk -> process_chunk chunk
       | `Done -> finish ()
-    ) messages
+    )
 | Error e -> handle_error e
 ```
 
@@ -223,7 +273,7 @@ in
 match Blink.messages ~on_message:on_batch conn with
 | Ok all_messages ->
     (* Process complete list of messages *)
-    List.iter handle_message all_messages
+    List.for_each all_messages ~fn:handle_message
 | Error e -> handle_error e
 ```
 
@@ -264,7 +314,7 @@ match Blink.await conn with
 ## Error Handling
 
 ```ocaml
-type error = 
+type error =
   [ Net.error              (* `Connection_refused | `Closed | `System_error *)
   | `Parse_error of string (* HTTP parsing failed *)
   | `Protocol_error of string (* Protocol violation *)
@@ -362,15 +412,12 @@ See `packages/blink/test/` for complete working examples:
 
 - HTTP/1.1 only (no HTTP/2 yet)
 - No automatic redirect following
-- No persistent connections/connection pooling
-- No TLS/HTTPS support yet (coming soon)
-- Single request per connection
+- Managed connection pooling is exact-URL scoped
+- Low-level APIs leave connection lifecycle to the caller
 
 ## Future Work
 
-- [ ] HTTPS/TLS support via `ocaml-tls`
 - [ ] HTTP/2 support via `Http.Http2` parser
-- [ ] Connection pooling and reuse
 - [ ] WebSocket upgrade support
 - [ ] Automatic redirect following
 - [ ] Cookie management

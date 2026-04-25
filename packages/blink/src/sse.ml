@@ -1,110 +1,175 @@
 open Std
 
-type event = { data: string; event_type: string option; id: string option }
+type event = {
+  data: string;
+  event_type: string option;
+  id: string option;
+}
 
-(* Internal state for SSE iterator *)
+type parsed =
+  | Event of event
+  | Skip
+  | Done
+
+let delimiter = fun buffer ->
+  let buffer_len = String.length buffer in
+  let matches pattern offset =
+    let pattern_len = String.length pattern in
+    if offset + pattern_len > buffer_len then
+      false
+    else
+      let rec loop index =
+        if index >= pattern_len then
+          true
+        else if
+          Char.equal
+            (String.get_unchecked buffer ~at:(offset + index))
+            (String.get_unchecked pattern ~at:index)
+        then
+          loop (index + 1)
+        else
+          false
+      in
+      loop 0
+  in
+  let rec loop offset =
+    if offset >= buffer_len then
+      None
+    else if matches "\r\n\r\n" offset then
+      Some (offset, 4)
+    else if matches "\n\n" offset || matches "\r\r" offset then
+      Some (offset, 2)
+    else
+      loop (offset + 1)
+  in
+  loop 0
+
+let split_event = fun buffer ->
+  match delimiter buffer with
+  | None -> None
+  | Some (offset, delimiter_len) ->
+      let event_text = String.sub buffer ~offset:0 ~len:offset in
+      let remaining = String.sub
+        buffer
+        ~offset:(offset + delimiter_len)
+        ~len:(String.length buffer - offset - delimiter_len) in
+      Some (event_text, remaining)
+
+let strip_trailing_cr = fun line ->
+  let len = String.length line in
+  if len > 0 && String.get_unchecked line ~at:(len - 1) = '\r' then
+    String.sub line ~offset:0 ~len:(len - 1)
+  else
+    line
+
+let find_colon = fun line ->
+  let rec loop offset =
+    if offset >= String.length line then
+      None
+    else if String.get_unchecked line ~at:offset = ':' then
+      Some offset
+    else
+      loop (offset + 1)
+  in
+  loop 0
+
+let field_value = fun line colon_at ->
+  let raw = String.sub line ~offset:(colon_at + 1) ~len:(String.length line - colon_at - 1) in
+  if String.starts_with ~prefix:" " raw then
+    String.sub raw ~offset:1 ~len:(String.length raw - 1)
+  else
+    raw
+
+let parse_event = fun buffer ->
+  match split_event buffer with
+  | None ->
+      None
+  | Some ("", remaining) ->
+      Some (Skip, remaining)
+  | Some (event_text, remaining) ->
+      let lines = String.split ~by:"\n" event_text in
+      let data_lines = ref [] in
+      let event_type = ref None in
+      let id = ref None in
+      let saw_event_field = ref false in
+      List.for_each lines
+        ~fn:(fun raw_line ->
+          let line = strip_trailing_cr raw_line in
+          if String.equal line "" || String.starts_with ~prefix:":" line then
+            ()
+          else
+            match find_colon line with
+            | None -> ()
+            | Some colon_at ->
+                let field = String.sub line ~offset:0 ~len:colon_at in
+                let value = field_value line colon_at in
+                (
+                  match field with
+                  | "data" ->
+                      saw_event_field := true;
+                      data_lines := value :: !data_lines
+                  | "event" ->
+                      saw_event_field := true;
+                      event_type := Some value
+                  | "id" ->
+                      saw_event_field := true;
+                      id := Some value
+                  | _ ->
+                      ()
+                ));
+      let data = String.concat "\n" (List.reverse !data_lines) in
+      if String.equal data "[DONE]" then
+        Some (Done, remaining)
+      else if !saw_event_field then
+        Some (Event { data; event_type = !event_type; id = !id }, remaining)
+      else
+        Some (Skip, remaining)
+
 module SSEIterator = struct
-  type state = { conn: Connection.t; mutable buffer: string; mutable done_: bool }
+  type state = {
+    conn: Connection.t;
+    mutable buffer: string;
+    mutable done_: bool;
+  }
 
   type item = event
-
-  (* Split string on first occurrence of pattern *)
-  let split_on_pattern = fun pattern str ->
-    let pattern_len = String.length pattern in
-    let rec find_pattern pos =
-      if pos + pattern_len > String.length str then
-        None
-      else
-        if String.sub str ~offset:pos ~len:pattern_len = pattern then
-          Some pos
-        else find_pattern (pos + 1)
-    in
-    match find_pattern 0 with
-    | None -> None
-    | Some pos ->
-        let before = String.sub str ~offset:0 ~len:pos in
-        let after = String.sub str ~offset:(pos + pattern_len) ~len:(String.length str - pos - pattern_len) in Some (before, after)
-
-  (* Parse one complete SSE event from buffer *)
-  let parse_event = fun buffer ->
-    (* SSE events are separated by "\n\n" *)
-    match split_on_pattern "\n\n" buffer with
-    | None -> None
-    | Some ("", remaining) -> (* Empty event, skip it and continue *)
-    Some (None, remaining)
-    | Some (event_str, remaining) ->
-        let lines = String.split ~by:"\n" event_str in
-        let data_lines = ref [] in
-        let event_type = ref None in
-        let id = ref None in
-        List.for_each lines ~fn:(
-          fun line ->
-            let line = String.trim line in
-            if line = "" then
-              ()
-            else
-              if String.starts_with ~prefix:"data: " line then
-                data_lines := String.sub line ~offset:6 ~len:(String.length line - 6) :: !data_lines
-              else
-                if String.starts_with ~prefix:"data:" line then
-                  data_lines := String.sub line ~offset:5 ~len:(String.length line - 5) :: !data_lines
-                else
-                  if String.starts_with ~prefix:"event: " line then
-                    event_type := Some (String.sub line ~offset:7 ~len:(String.length line - 7))
-                  else
-                    if String.starts_with ~prefix:"id: " line then
-                      id := Some (String.sub line ~offset:4 ~len:(String.length line - 4))
-                    else
-                      if String.starts_with ~prefix:":" line then
-                        ()
-                      (* Comment line, ignore *)
-                      else ()
-        );
-        let data = String.concat "\n" (List.reverse !data_lines) in
-        (* Check for [DONE] marker *)
-        if data = "[DONE]" then
-          Some (None, remaining)
-        else
-          let event = { data; event_type = !event_type; id = !id } in Some (Some event, remaining)
 
   let rec next = fun state ->
     if state.done_ then
       None
     else
-      (* Try to parse an event from current buffer *)
       match parse_event state.buffer with
-      | Some (Some event, remaining) ->
+      | Some (Event event, remaining) ->
           state.buffer <- remaining;
           Some event
-      | Some (None, remaining) ->
-          (* Got [DONE] marker or empty event *)
+      | Some (Skip, remaining) ->
+          state.buffer <- remaining;
+          next state
+      | Some (Done, remaining) ->
           state.buffer <- remaining;
           state.done_ <- true;
           None
       | None -> (
-        (* Need more data from connection - this will block until data arrives *)
-        match Connection.stream state.conn with
-        | Error _e ->
-            state.done_ <- true;
-            None
-        | Ok msgs ->
-            (* Accumulate data messages, ignore status/headers *)
-            List.for_each msgs ~fn:(
-              fun msg ->
-                match msg with
-                | Connection.Data chunk -> state.buffer <- state.buffer ^ chunk
-                | Connection.Done -> state.done_ <- true
-                | Connection.Status _ | Connection.Headers _ -> ()
-            );
-            if state.done_ && state.buffer = "" then
+          match Connection.stream state.conn with
+          | Error _ ->
+              state.done_ <- true;
               None
-            else (* Try parsing again with new data *)
-            next state
-      )
+          | Ok msgs ->
+              List.for_each msgs
+                ~fn:(fun msg ->
+                  match msg with
+                  | Connection.Data chunk -> state.buffer <- state.buffer ^ chunk
+                  | Connection.Done -> state.done_ <- true
+                  | Connection.Status _
+                  | Connection.Headers _ -> ());
+              if state.done_ && String.equal state.buffer "" then
+                None
+              else
+                next state
+        )
 
   let size = fun _state -> 0
 
-  (* Unknown size for streaming *)
   let clone = fun state -> { conn = state.conn; buffer = state.buffer; done_ = state.done_ }
 end
 

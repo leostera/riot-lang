@@ -11,4 +11,4 @@
 
 ## Validate
 
-`timeout 30 riot build blink`
+`timeout 30 riot build -p blink --all`

@@ -1,0 +1,641 @@
+open Std
+module Request = Super.Request
+module Response = Super.Response
+module Budget = Super.Budget
+module RetryPolicy = Super.Retry_policy
+module CircuitBreaker = Super.Circuit_breaker
+module Telemetry = Super.Telemetry
+module Config = Super.Config
+
+type transport = Config.transport
+
+type error = {
+  class_: Response.error_class;
+  message: string;
+  telemetry: Telemetry.t;
+}
+
+type pooled_connection = {
+  key: string;
+  conn: Connection.t;
+  mutable last_used_at: Time.Instant.t;
+}
+
+type connection = {
+  key: string;
+  mutable conn: Connection.t;
+  mutable reusable: bool;
+  mutable closed: bool;
+}
+
+type message = Connection.message
+
+type t = {
+  config: Config.t;
+  budget: Budget.t;
+  breaker: CircuitBreaker.t;
+  mutable idle: pooled_connection list;
+}
+
+type send_result = {
+  result: (Response.t, string) result;
+  reusable: bool;
+}
+
+let blink_error_to_string = fun value ->
+  match value with
+  | Error.NetError Net.Connection_refused -> "connection refused"
+  | Error.NetError Net.Closed -> "connection closed"
+  | Error.NetError (Net.System_error error) -> "network system error: " ^ IO.error_message error
+  | Error.TlsError Net.TlsStream.Closed -> "tls closed"
+  | Error.TlsError (Net.TlsStream.Handshake_failed message) -> "tls handshake failed: " ^ message
+  | Error.TlsError (Net.TlsStream.System_error error) -> "tls system error: " ^ IO.error_message error
+  | Error.TlsError (Net.TlsStream.Network_read_failed _) -> "tls network read failed"
+  | Error.TlsError (Net.TlsStream.Network_write_failed _) -> "tls network write failed"
+  | Error.TlsError Net.TlsStream.Tls_not_available -> "tls not available"
+  | Error.TlsError Net.TlsStream.Unsupported_vectored_operation -> "unsupported tls vectored operation"
+  | Error.ParseError message -> "parse error: " ^ message
+  | Error.ProtocolError message -> "protocol error: " ^ message
+  | Error.HandshakeFailed message -> "handshake failed: " ^ message
+  | Error.InvalidFrame -> "invalid frame"
+  | Error.Eof -> "eof"
+  | Error.Closed -> "closed"
+
+let method_to_net = fun value ->
+  match value with
+  | Request.Get -> Net.Http.Method.Get
+  | Request.Post -> Net.Http.Method.Post
+  | Request.Put -> Net.Http.Method.Put
+  | Request.Patch -> Net.Http.Method.Patch
+  | Request.Delete -> Net.Http.Method.Delete
+
+let apply_headers = fun request headers ->
+  List.fold_left headers ~init:request
+    ~fn:(fun request (name, value) ->
+      Net.Http.Request.with_header request name value)
+
+let endpoint_key = fun (request: Request.t) -> request.url
+
+let expired = fun ~now ttl pooled ->
+  let idle_for = Time.Instant.saturating_duration_since ~earlier:pooled.last_used_at now in
+  Time.Duration.compare idle_for ttl != Order.LT
+
+let prune_pool = fun client ->
+  match client.config.connection_policy with
+  | Config.Pool { idle_ttl=Some ttl; _ } ->
+      let now = client.config.now () in
+      let rec loop kept values =
+        match values with
+        | [] -> List.reverse kept
+        | pooled :: rest ->
+            if expired ~now ttl pooled then
+              (
+                Connection.close pooled.conn;
+                loop kept rest
+              )
+            else
+              loop (pooled :: kept) rest
+      in
+      client.idle <- loop [] client.idle
+  | Config.CloseAfterRequest
+  | Config.ReuseConnection
+  | Config.Pool { idle_ttl=None; _ } -> ()
+
+let take_idle = fun key (idle: pooled_connection list) ->
+  let rec loop (kept: pooled_connection list) (values: pooled_connection list) =
+    match values with
+    | [] -> (None, List.reverse kept)
+    | pooled :: rest ->
+        if String.equal pooled.key key then
+          (Some pooled, List.append (List.reverse kept) rest)
+        else
+          loop (pooled :: kept) rest
+  in
+  loop [] idle
+
+let take_connection = fun client key uri ->
+  match client.config.connection_policy with
+  | Config.CloseAfterRequest -> Transport.connect uri
+  | Config.ReuseConnection
+  | Config.Pool _ -> (
+      prune_pool client;
+      match take_idle key client.idle with
+      | (Some pooled, idle) ->
+          client.idle <- idle;
+          Ok pooled.conn
+      | (None, idle) -> (
+          client.idle <- idle;
+          match Transport.connect uri with
+          | Ok conn -> Ok conn
+          | Error error -> Error error
+        )
+    )
+
+let remove_keyed_connections = fun key (idle: pooled_connection list) ->
+  let rec loop (kept: pooled_connection list) (values: pooled_connection list) =
+    match values with
+    | [] -> List.reverse kept
+    | pooled :: rest ->
+        if String.equal pooled.key key then
+          (
+            Connection.close pooled.conn;
+            loop kept rest
+          )
+        else
+          loop (pooled :: kept) rest
+  in
+  loop [] idle
+
+let count_idle_for_key = fun key (idle: pooled_connection list) ->
+  List.fold_left idle ~init:0
+    ~fn:(fun count pooled ->
+      if String.equal pooled.key key then
+        count + 1
+      else
+        count)
+
+let release_connection = fun client key conn ~reusable ->
+  if not reusable then
+    Connection.close conn
+  else
+    let last_used_at = client.config.now () in
+    match client.config.connection_policy with
+    | Config.CloseAfterRequest ->
+        Connection.close conn
+    | Config.ReuseConnection ->
+        client.idle <- { key; conn; last_used_at } :: remove_keyed_connections key client.idle
+    | Config.Pool pool ->
+        prune_pool client;
+        if pool.max_idle_per_endpoint <= 0 then
+          Connection.close conn
+        else if count_idle_for_key key client.idle >= pool.max_idle_per_endpoint then
+          Connection.close conn
+        else
+          client.idle <- { key; conn; last_used_at } :: client.idle
+
+let response_of_net = fun response body ->
+  Response.make
+    ~status:(Net.Http.Status.to_int (Net.Http.Response.status response))
+    ~body
+    ~headers:(Net.Http.Header.to_list (Net.Http.Response.headers response))
+    ()
+
+let send_on_connection = fun conn uri (request: Request.t) ->
+  let net_request = Net.Http.Request.create (method_to_net request.method_) uri in
+  let net_request = apply_headers net_request request.headers in
+  match Connection.request conn net_request ?body:request.body () with
+  | Error error -> {
+    result = Error ("request failed: " ^ blink_error_to_string error);
+    reusable = false
+  }
+  | Ok () -> (
+      match Connection.await conn with
+      | Error error -> {
+        result = Error ("response failed: " ^ blink_error_to_string error);
+        reusable = false
+      }
+      | Ok (response, body) -> { result = Ok (response_of_net response body); reusable = true }
+    )
+
+let low_level_transport = fun client (request: Request.t) ->
+  match Net.Uri.of_string request.url with
+  | Error _ -> Error ("invalid request uri: " ^ request.url)
+  | Ok uri -> (
+      let key = endpoint_key request in
+      match take_connection client key uri with
+      | Error error -> Error ("connect failed: " ^ blink_error_to_string error)
+      | Ok conn ->
+          let sent = send_on_connection conn uri request in
+          release_connection client key conn ~reusable:sent.reusable;
+          sent.result
+    )
+
+let transport = fun client request ->
+  match client.config.transport with
+  | Some transport -> transport request
+  | None -> low_level_transport client request
+
+let make = fun ?(config = Config.make ()) () ->
+  let started = config.now () in
+  {
+    config;
+    budget = Budget.create_with_policy config.budget_policy started;
+    breaker = CircuitBreaker.create ~policy:config.circuit_breaker_policy ();
+    idle = []
+  }
+
+let budget_remaining = fun client -> Budget.remaining client.budget
+
+let circuit_state = fun client -> CircuitBreaker.state client.breaker
+
+let make_telemetry = fun client request ~started_at ~attempts ?final_status ?final_error_class ~budget ~breaker () ->
+  let completed_at = client.config.now () in
+  Telemetry.make
+    ~request
+    ~started_at
+    ~completed_at
+    ~attempts:(List.rev attempts)
+    ?final_status
+    ?final_error_class
+    ~connection_policy:(Config.connection_policy_to_string client.config.connection_policy)
+    ~close_behavior:(Config.close_behavior client.config.connection_policy)
+    ~budget_remaining:(Budget.remaining budget)
+    ~circuit_state:(CircuitBreaker.state breaker)
+    ()
+
+let fail = fun client class_ message telemetry ->
+  client.config.telemetry telemetry;
+  Error { class_; message; telemetry }
+
+let succeed = fun client response telemetry ->
+  client.config.telemetry telemetry;
+  Ok (response, telemetry)
+
+let execute = fun client (request: Request.t) ->
+  let started_at = client.config.now () in
+  let budget = client.budget in
+  let breaker = client.breaker in
+  if not (Budget.allow ~now:started_at budget) then
+    let telemetry =
+      let attempt = Telemetry.attempt
+        ~attempt:0
+        ~started_at
+        ~completed_at:started_at
+        ~lifecycle:Telemetry.Blocked
+        ~error_class:Response.RateLimitedByBudget
+        ~error_message:"request budget exhausted"
+        () in
+      make_telemetry
+        client
+        request
+        ~started_at
+        ~attempts:[ attempt ]
+        ~final_error_class:Response.RateLimitedByBudget
+        ~budget
+        ~breaker
+        ()
+    in
+    fail client Response.RateLimitedByBudget "request budget exhausted" telemetry
+  else if not (CircuitBreaker.allow_request ~now:started_at breaker) then
+    let telemetry =
+      let attempt = Telemetry.attempt
+        ~attempt:0
+        ~started_at
+        ~completed_at:started_at
+        ~lifecycle:Telemetry.Blocked
+        ~error_class:Response.CircuitOpen
+        ~error_message:"circuit breaker open"
+        () in
+      make_telemetry
+        client
+        request
+        ~started_at
+        ~attempts:[ attempt ]
+        ~final_error_class:Response.CircuitOpen
+        ~budget
+        ~breaker
+        ()
+    in
+    fail client Response.CircuitOpen "circuit breaker open" telemetry
+  else
+    let rec loop attempt attempts =
+      let attempt_started_at = client.config.now () in
+      match transport client request with
+      | Ok response ->
+          let completed_at = client.config.now () in
+          if Response.is_success response then
+            (
+              CircuitBreaker.record_success breaker;
+              let attempt_record = Telemetry.attempt
+                ~attempt
+                ~started_at:attempt_started_at
+                ~completed_at
+                ~lifecycle:Telemetry.Completed
+                ~status:response.status
+                () in
+              let telemetry = make_telemetry
+                client
+                request
+                ~started_at
+                ~attempts:(attempt_record :: attempts)
+                ~final_status:response.status
+                ~budget
+                ~breaker
+                () in
+              succeed client response telemetry
+            )
+          else if
+            RetryPolicy.should_retry_status client.config.retry_policy ~attempt response.status
+          then
+            let backoff = RetryPolicy.delay_for_attempt client.config.retry_policy ~attempt in
+            let attempt_record = Telemetry.attempt
+              ~attempt
+              ~started_at:attempt_started_at
+              ~completed_at
+              ~lifecycle:Telemetry.Retrying
+              ~status:response.status
+              ~planned_backoff:backoff
+              () in
+            client.config.sleep backoff;
+            loop (attempt + 1) (attempt_record :: attempts)
+          else (
+            CircuitBreaker.record_failure ~now:completed_at breaker;
+            let class_ =
+              match Response.status_class response.status with
+              | Response.RateLimited -> Response.RateLimitedByBudget
+              | _ -> Response.ServerRejected
+            in
+            let attempt_record = Telemetry.attempt
+              ~attempt
+              ~started_at:attempt_started_at
+              ~completed_at
+              ~lifecycle:Telemetry.Failed
+              ~status:response.status
+              ~error_class:class_
+              ~error_message:("HTTP status " ^ Int.to_string response.status)
+              () in
+            let telemetry = make_telemetry
+              client
+              request
+              ~started_at
+              ~attempts:(attempt_record :: attempts)
+              ~final_status:response.status
+              ~final_error_class:class_
+              ~budget
+              ~breaker
+              () in
+            fail client class_ ("HTTP status " ^ Int.to_string response.status) telemetry
+          )
+      | Error message ->
+          let completed_at = client.config.now () in
+          let class_ = Response.error_class_of_transport_error message in
+          if RetryPolicy.should_retry_error client.config.retry_policy ~attempt class_ then
+            let backoff = RetryPolicy.delay_for_attempt client.config.retry_policy ~attempt in
+            let attempt_record = Telemetry.attempt
+              ~attempt
+              ~started_at:attempt_started_at
+              ~completed_at
+              ~lifecycle:Telemetry.Retrying
+              ~error_class:class_
+              ~error_message:message
+              ~planned_backoff:backoff
+              () in
+            client.config.sleep backoff;
+            loop (attempt + 1) (attempt_record :: attempts)
+          else (
+            CircuitBreaker.record_failure ~now:completed_at breaker;
+            let attempt_record = Telemetry.attempt
+              ~attempt
+              ~started_at:attempt_started_at
+              ~completed_at
+              ~lifecycle:Telemetry.Failed
+              ~error_class:class_
+              ~error_message:message
+              () in
+            let telemetry = make_telemetry
+              client
+              request
+              ~started_at
+              ~attempts:(attempt_record :: attempts)
+              ~final_error_class:class_
+              ~budget
+              ~breaker
+              () in
+            fail client class_ message telemetry
+          )
+    in
+    loop 1 []
+
+let error_to_string = fun error -> Response.error_class_to_string error.class_ ^ ": " ^ error.message
+
+let error_class_of_blink_error = fun ~default value ->
+  match value with
+  | Error.NetError _
+  | Error.TlsError _ -> default
+  | Error.ParseError _ -> Response.ResponseFailed
+  | Error.ProtocolError _ -> Response.InvalidRequest
+  | Error.HandshakeFailed _ -> default
+  | Error.InvalidFrame -> Response.ResponseFailed
+  | Error.Eof
+  | Error.Closed -> default
+
+let with_blink_policy = fun client ~failure_class ~retry operation ->
+  let started_at = client.config.now () in
+  let budget = client.budget in
+  let breaker = client.breaker in
+  if not (Budget.allow ~now:started_at budget) then
+    Error (Error.ProtocolError "blink client request budget exhausted")
+  else if not (CircuitBreaker.allow_request ~now:started_at breaker) then
+    Error (Error.ProtocolError "blink client circuit breaker open")
+  else
+    let rec loop attempt =
+      match operation () with
+      | Ok value ->
+          CircuitBreaker.record_success breaker;
+          Ok value
+      | Error error ->
+          let completed_at = client.config.now () in
+          let class_ = error_class_of_blink_error ~default:failure_class error in
+          if retry && RetryPolicy.should_retry_error client.config.retry_policy ~attempt class_ then
+            (
+              client.config.sleep (RetryPolicy.delay_for_attempt client.config.retry_policy ~attempt);
+              loop (attempt + 1)
+            )
+          else (
+            CircuitBreaker.record_failure ~now:completed_at breaker;
+            Error error
+          )
+    in
+    loop 1
+
+let connect = fun client uri ->
+  let key = Net.Uri.to_string uri in
+  with_blink_policy
+    client
+    ~failure_class:Response.ConnectFailed
+    ~retry:true
+    (fun () -> take_connection client key uri)
+  |> Result.map ~fn:(fun conn -> { key; conn; reusable = true; closed = false })
+
+let retire_connection = fun (connection: connection) ->
+  connection.reusable <- false;
+  if not connection.closed then
+    (
+      Connection.close connection.conn;
+      connection.closed <- true
+    )
+
+let with_connection = fun client (connection: connection) ~failure_class operation ->
+  if connection.closed then
+    Error Error.Closed
+  else
+    with_blink_policy client ~failure_class ~retry:false
+      (fun () ->
+        match operation connection.conn with
+        | Ok value -> Ok value
+        | Error error ->
+            retire_connection connection;
+            Error error)
+
+let request = fun client connection net_request ?body () ->
+  with_connection
+    client
+    connection
+    ~failure_class:Response.RequestFailed (fun conn -> Connection.request conn net_request ?body ())
+
+let stream = fun client connection ->
+  with_connection client connection ~failure_class:Response.ResponseFailed Connection.stream
+
+let messages = fun ?on_message client connection ->
+  with_connection
+    client
+    connection
+    ~failure_class:Response.ResponseFailed (fun conn -> Connection.messages ?on_message conn)
+
+let await = fun ?on_message client connection ->
+  with_connection
+    client
+    connection
+    ~failure_class:Response.ResponseFailed (fun conn -> Connection.await ?on_message conn)
+
+let close = fun client connection ->
+  if not connection.closed then
+    (
+      connection.closed <- true;
+      release_connection client connection.key connection.conn ~reusable:connection.reusable
+    )
+
+module SSE = struct
+  type event = Sse.event = {
+    data: string;
+    event_type: string option;
+    id: string option;
+  }
+
+  module Iterator = struct
+    type state = {
+      client: t;
+      connection: connection;
+      mutable buffer: string;
+      mutable done_: bool;
+    }
+
+    type item = event
+
+    let rec next = fun state ->
+      if state.done_ then
+        None
+      else
+        match Sse.parse_event state.buffer with
+        | Some (Sse.Event event, remaining) ->
+            state.buffer <- remaining;
+            Some event
+        | Some (Sse.Skip, remaining) ->
+            state.buffer <- remaining;
+            next state
+        | Some (Sse.Done, remaining) ->
+            state.buffer <- remaining;
+            state.done_ <- true;
+            None
+        | None -> (
+            match stream state.client state.connection with
+            | Error _ ->
+                state.done_ <- true;
+                None
+            | Ok messages ->
+                List.for_each messages
+                  ~fn:(
+                    function
+                    | Connection.Data chunk -> state.buffer <- state.buffer ^ chunk
+                    | Connection.Done -> state.done_ <- true
+                    | Connection.Status _
+                    | Connection.Headers _ -> ()
+                  );
+                if state.done_ && String.equal state.buffer "" then
+                  None
+                else
+                  next state
+          )
+
+    let size = fun _state -> 0
+
+    let clone = fun state ->
+      {
+        client = state.client;
+        connection = state.connection;
+        buffer = state.buffer;
+        done_ = state.done_
+      }
+  end
+
+  let await = fun client connection ->
+    Iter.MutIterator.make
+      (module Iterator)
+      { Iterator.client = client; connection; buffer = ""; done_ = false }
+end
+
+module WebSocket = struct
+  type client = t
+
+  type t = Websocket.t
+
+  type error = Error.t
+
+  type message = Websocket.message =
+    | Text of string
+    | Binary of string
+    | Ping of string
+    | Pong of string
+    | Close of int option * string
+
+  let connect = fun client uri ->
+    with_blink_policy
+      client
+      ~failure_class:Response.ConnectFailed
+      ~retry:true
+      (fun () -> Websocket.connect uri)
+
+  let send_text = fun client conn text ->
+    with_blink_policy client ~failure_class:Response.RequestFailed ~retry:false
+      (fun () ->
+        Websocket.send_text conn text)
+
+  let send_binary = fun client conn data ->
+    with_blink_policy client ~failure_class:Response.RequestFailed ~retry:false
+      (fun () ->
+        Websocket.send_binary conn data)
+
+  let send_ping = fun client conn ?payload () ->
+    with_blink_policy
+      client
+      ~failure_class:Response.RequestFailed
+      ~retry:false
+      (fun () -> Websocket.send_ping conn ?payload ())
+
+  let send_pong = fun client conn ?payload () ->
+    with_blink_policy
+      client
+      ~failure_class:Response.RequestFailed
+      ~retry:false
+      (fun () -> Websocket.send_pong conn ?payload ())
+
+  let send_close = fun client conn ?code ?reason () ->
+    with_blink_policy
+      client
+      ~failure_class:Response.RequestFailed
+      ~retry:false
+      (fun () -> Websocket.send_close conn ?code ?reason ())
+
+  let receive = fun client conn ->
+    with_blink_policy
+      client
+      ~failure_class:Response.ResponseFailed
+      ~retry:false
+      (fun () -> Websocket.receive conn)
+
+  let close = fun _client conn -> Websocket.close conn
+end
+
+let shutdown = fun client ->
+  List.for_each client.idle ~fn:(fun pooled -> Connection.close pooled.conn);
+  client.idle <- []

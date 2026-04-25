@@ -1,0 +1,129 @@
+open Std
+module H = Blink.Client
+
+let expected_status_class = fun status ->
+  if status = 429 then
+    H.Response.RateLimited
+  else if status >= 100 && status < 200 then
+    H.Response.Informational
+  else if status >= 200 && status < 300 then
+    H.Response.Success
+  else if status >= 300 && status < 400 then
+    H.Response.Redirect
+  else if status >= 400 && status < 500 then
+    H.Response.ClientError
+  else if status >= 500 && status < 600 then
+    H.Response.ServerError
+  else
+    H.Response.UnknownStatus
+
+let property_status_classes_are_range_based = fun _ctx ->
+  for status = (-20) to 620 do
+    Test.assert_equal
+      ~expected:(expected_status_class status)
+      ~actual:(H.Response.status_class status)
+  done;
+  Ok ()
+
+let property_retryable_statuses_match_status_class = fun _ctx ->
+  for status = (-20) to 620 do
+    let expected =
+      match H.Response.status_class status with
+      | H.Response.RateLimited
+      | H.Response.ServerError -> true
+      | H.Response.Informational
+      | H.Response.Success
+      | H.Response.Redirect
+      | H.Response.ClientError
+      | H.Response.UnknownStatus -> false
+    in
+    Test.assert_equal ~expected ~actual:(H.Response.retryable_status status)
+  done;
+  Ok ()
+
+let property_retry_delay_is_monotonic_until_max = fun _ctx ->
+  let max_delay = Time.Duration.from_millis 80 in
+  let policy = H.RetryPolicy.make
+    ~max_attempts:10
+    ~base_delay:(Time.Duration.from_millis 10)
+    ~max_delay
+    ~jitter_nanos:0L
+    () in
+  let previous = ref Time.Duration.zero in
+  for attempt = 1 to 10 do
+    let delay = H.RetryPolicy.delay_for_attempt policy ~attempt in
+    Test.assert_true (Time.Duration.compare delay !previous != Order.LT);
+    Test.assert_true (Time.Duration.compare delay max_delay != Order.GT);
+    previous := delay
+  done;
+  Ok ()
+
+let property_budget_allows_capacity_per_window = fun _ctx ->
+  let now = Time.Instant.now () in
+  let window = Time.Duration.from_secs 10 in
+  for capacity = 0 to 12 do
+    let budget = H.Budget.create ~capacity ~window now in
+    for _request = 1 to capacity do
+      Test.assert_true (H.Budget.allow ~now budget)
+    done;
+    Test.assert_false (H.Budget.allow ~now budget);
+    let reset_at = Time.Instant.add now window in
+    for _request = 1 to capacity do
+      Test.assert_true (H.Budget.allow ~now:reset_at budget)
+    done;
+    Test.assert_false (H.Budget.allow ~now:reset_at budget)
+  done;
+  Ok ()
+
+let property_circuit_breaker_transitions_are_threshold_based = fun _ctx ->
+  let now = Time.Instant.now () in
+  let reset_after = Time.Duration.from_millis 50 in
+  for failure_threshold = 1 to 5 do
+    let policy = H.CircuitBreaker.policy ~failure_threshold ~reset_after () in
+    let breaker = H.CircuitBreaker.create ~policy () in
+    for _failure = 1 to failure_threshold - 1 do
+      H.CircuitBreaker.record_failure ~now breaker;
+      Test.assert_equal ~expected:H.CircuitBreaker.Closed ~actual:(H.CircuitBreaker.state breaker);
+      Test.assert_true (H.CircuitBreaker.allow_request ~now breaker)
+    done;
+    H.CircuitBreaker.record_failure ~now breaker;
+    Test.assert_equal ~expected:H.CircuitBreaker.Open ~actual:(H.CircuitBreaker.state breaker);
+    Test.assert_false (H.CircuitBreaker.allow_request ~now breaker);
+    let reset_at = Time.Instant.add now reset_after in
+    Test.assert_true (H.CircuitBreaker.allow_request ~now:reset_at breaker);
+    Test.assert_equal ~expected:H.CircuitBreaker.HalfOpen ~actual:(H.CircuitBreaker.state breaker);
+    H.CircuitBreaker.record_success breaker;
+    Test.assert_equal ~expected:H.CircuitBreaker.Closed ~actual:(H.CircuitBreaker.state breaker)
+  done;
+  Ok ()
+
+let property_request_descriptions_include_method_and_url = fun _ctx ->
+  let url = "https://example.test/resource" in
+  let methods = [
+    (H.Request.Get, "GET");
+    (H.Request.Post, "POST");
+    (H.Request.Put, "PUT");
+    (H.Request.Patch, "PATCH");
+    (H.Request.Delete, "DELETE");
+  ] in
+  List.for_each methods
+    ~fn:(fun (method_, method_text) ->
+      let request = H.Request.make ~method_ ~url () in
+      Test.assert_equal ~expected:(method_text ^ " " ^ url) ~actual:(H.Request.describe request));
+  Ok ()
+
+let tests =
+  Test.[
+    case "property: status classes are range based" property_status_classes_are_range_based;
+    case "property: retryable statuses match status class" property_retryable_statuses_match_status_class;
+    case "property: retry delay is monotonic until max" property_retry_delay_is_monotonic_until_max;
+    case "property: budget allows capacity per window" property_budget_allows_capacity_per_window;
+    case "property: circuit breaker transitions are threshold based" property_circuit_breaker_transitions_are_threshold_based;
+    case "property: request descriptions include method and url" property_request_descriptions_include_method_and_url;
+  ]
+
+let () =
+  Runtime.run
+    ~main:(fun ~args -> Test.Cli.main ~name:"blink_client_property_tests" ~tests ~args ())
+    ~args:Env.args
+    ()

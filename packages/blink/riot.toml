@@ -16,6 +16,18 @@ path = "examples/simple_https.ml"
 name = "test_https_httpbin"
 path = "examples/test_https_httpbin.ml"
 
+[[bin]]
+name = "managed_client"
+path = "examples/managed_client.ml"
+
+[[bin]]
+name = "managed_sse"
+path = "examples/managed_sse.ml"
+
+[[bin]]
+name = "managed_websocket"
+path = "examples/managed_websocket.ml"
+
 [dependencies]
 std = { path = "../std", version = "*" }
 http = { path = "../http", version = "*" }

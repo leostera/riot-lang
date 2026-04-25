@@ -7,4 +7,4 @@ module type Intf = sig
 end
 
 (** HTTP/1 protocol descriptor. *)
-module Http1 : Intf
+module Http1: Intf
