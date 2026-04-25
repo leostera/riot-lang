@@ -13,7 +13,6 @@
     ignore child
     ```
 *)
-
 open Global
 
 (** Returns the current actor identifier. *)

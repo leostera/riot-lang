@@ -124,7 +124,6 @@ let current_scheduler_id = fun () -> Scheduler.current_worker_id_opt ()
 let send = Scheduler.send
 
 (* Cooperative I/O syscall for actor-aware I/O operations *)
-
 let syscall = fun ~name ~interest ~source ~timeout ->
   Kernel.Effect.perform (Proc_effect.Syscall { name; interest; source; timeout })
 

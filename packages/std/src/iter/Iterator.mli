@@ -31,7 +31,6 @@
     let items = Iterator.to_list iter
     ```
 *)
-
 module type Intf = sig
   type state
   type item

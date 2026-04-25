@@ -26,7 +26,6 @@ type opcode =
   | Pong
 
 (* 0xA *)
-
 type t = {
   fin: bool;
   rsv1: bool;
@@ -55,7 +54,6 @@ let opcode_of_int = function
   | _ -> None
 
 (* XOR unmask the payload *)
-
 let unmask = fun mask payload ->
   let len = String.length payload in
   let result = Bytes.create ~size:len in
@@ -69,15 +67,12 @@ let unmask = fun mask payload ->
   Bytes.to_string result
 
 (* Generate a random mask *)
-
 let generate_mask = fun () -> Random.bits32 () |> Result.expect ~msg:"failed to generate websocket mask"
 
 (* Apply mask to payload *)
-
 let apply_mask = fun mask payload -> unmask mask payload
 
 (* Create frame helpers *)
-
 let text = fun ?(fin = true) payload ->
   {
     fin;

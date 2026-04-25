@@ -21,5 +21,4 @@
       | Error _ -> Log.error "failed to decompress gzip payload"
     ```
 *)
-
 module Gzip = Gzip

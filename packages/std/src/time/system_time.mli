@@ -62,7 +62,6 @@
     - Leap seconds
 
     For measuring durations, use [Instant] which is immune to these changes. *)
-
 (** A point in wall-clock time from the system's real-time clock. Can be used
     for timestamps but may not be monotonic. *)
 type t

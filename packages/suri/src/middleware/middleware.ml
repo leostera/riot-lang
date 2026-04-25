@@ -77,7 +77,6 @@ let method_override = fun ~conn ~next -> Method_override.middleware () ~conn ~ne
 module Remote_ip = Remote_ip
 
 (* No convenience alias - Remote_ip.middleware requires ~proxies parameter *)
-
 (** Convenience alias for Etag.middleware with default param *)
 module Etag = Etag
 

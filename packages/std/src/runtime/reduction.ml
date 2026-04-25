@@ -1,6 +1,5 @@
 (* Runtime module for Riot - provides reduction counting for compiler
    instrumentation. *)
-
 module Runtime_process = Process
 
 let reset_reductions = fun remaining ->

@@ -1,7 +1,6 @@
 open Std
 
 (** Top-level Riot CLI bootstrap and dispatch. *)
-
 (** Build the root command tree for the Riot CLI. *)
 val build_cli: unit -> ArgParser.command
 

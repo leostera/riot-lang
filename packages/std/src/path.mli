@@ -33,7 +33,6 @@
     Path separators are platform-specific:
     - Unix-like systems: `/`
     - Windows: `\` (though `/` is also accepted) *)
-
 (** The type of filesystem paths. Always contains valid UTF-8. *)
 type t = string
 type error =

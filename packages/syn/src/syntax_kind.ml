@@ -1,7 +1,6 @@
 open Std
 
 (* OCaml syntax node kinds for Ceibo green trees *)
-
 type t =
   (* ========================================================================= *)
   (* TRIVIA - Whitespace and comments *)
@@ -288,7 +287,6 @@ type t =
   | MISSING
 
 (* Expected but missing token/node *)
-
 let to_string = function
   | WHITESPACE -> "WHITESPACE"
   | COMMENT -> "COMMENT"

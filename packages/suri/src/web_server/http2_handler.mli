@@ -22,7 +22,6 @@ open Std
     For now, HTTP/2 is detected by the connection preface:
     `PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n`
 *)
-
 type state
 type error =
 [

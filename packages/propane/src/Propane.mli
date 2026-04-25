@@ -244,7 +244,6 @@
     - {!Property} - Defining and checking properties
     - {!Printer} - Pretty-printing values
 *)
-
 module Generator = Generator
 
 (** Random value generation. See {!Generator}. *)
@@ -263,9 +262,7 @@ module Property = Property
 (** {1 Convenience API}
     
     These functions are re-exported from their respective modules for convenience. *)
-
 (** {2 Property Creation} *)
-
 val property: string -> 'value Arbitrary.t -> ('value -> bool) -> Std.Test.test_case
 
 (** [property name arb predicate] creates a property test that can be run
@@ -300,7 +297,6 @@ val for_all: 'value Arbitrary.t -> ('value -> bool) -> Property.test_property
     ]}
 *)
 (** {2 Assumptions} *)
-
 val implies: bool -> bool -> bool
 
 (** [implies precondition conclusion] expresses a conditional property.
@@ -356,7 +352,6 @@ val assume_fail: unit -> 'value
     ]}
 *)
 (** {2 Explicit Failures} *)
-
 val fail: string -> 'value
 
 (** [fail message] explicitly fails a property with a custom error message.

@@ -77,7 +77,6 @@
     
     6. Keep session data small (< 4KB cookie limit)
 *)
-
 open Std
 
 (** Abstract session type *)

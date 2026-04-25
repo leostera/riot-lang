@@ -3,7 +3,6 @@
     Use this package when you need filesystem traversal that respects
     gitignore-style rules, custom ignore files, and explicit override globs.
 *)
-
 (** Ignore-rule match results. *)
 module Match = Match
 

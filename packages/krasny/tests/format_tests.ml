@@ -191,6 +191,63 @@ module type S = sig
   val run: unit -> unit
 end
 |ocaml});
+  Test.case "format keeps signature docstring spacing idempotent"
+    (fun ctx ->
+      let source = {ocaml|open Std
+(** Interface that package commands must implement *)
+module type Command=sig
+val name:string
+(** Command name (must match TOML declaration) *)
+val command:ArgParser.command
+(** Full ArgParser command with subcommands, args, etc. *)
+val run:args:ArgParser.matches->(unit,string)result
+(** Execute the command with parsed arguments *)
+end
+(** Global registry for dynamically loaded commands *)
+module Registry:sig
+val register:(module Command)->unit
+(** Register a command (called by plugin initialization) *)
+val get:string->(module Command)option
+(** Lookup a registered command by name *)
+val list:unit->(string*(module Command))list
+(** List all registered commands *)
+end
+|ocaml} in
+      let first = parse_mli source |> Krasny.format |> Result.expect ~msg:"signature docstrings should format" in
+      let second =
+        parse_mli first |> Krasny.format |> Result.expect ~msg:"formatted signature docstrings should reformat"
+      in
+      Test.assert_equal ~expected:first ~actual:second;
+      Test.Snapshot.assert_inline_text ~ctx ~actual:first
+        ~expected:{ocaml|open Std
+
+(** Interface that package commands must implement *)
+module type Command = sig
+  val name: string
+
+  (** Command name (must match TOML declaration) *)
+  val command: ArgParser.command
+
+  (** Full ArgParser command with subcommands, args, etc. *)
+  val run: args:ArgParser.matches -> (unit, string) result
+
+  (** Execute the command with parsed arguments *)
+end
+
+(** Global registry for dynamically loaded commands *)
+module Registry: sig
+  val register: (module Command) -> unit
+
+  (** Register a command (called by plugin initialization) *)
+  val get: string -> (module Command) option
+
+  (** Lookup a registered command by name *)
+  val list: unit -> (string * (module Command)) list
+
+  (** List all registered commands *)
+end
+|ocaml}
+    );
   Test.case "write preserves terminal docstrings before nested signature end"
     (fun ctx ->
       let source = {ocaml|module S:sig

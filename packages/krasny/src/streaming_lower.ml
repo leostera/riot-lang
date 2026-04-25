@@ -248,17 +248,6 @@ let emit_optional_token = fun state token ->
   | Some token -> emit_token state token
   | None -> ()
 
-let emit_top_level_leading = fun state node ->
-  match Ast.Node.first_descendant_token node with
-  | Some token ->
-      let leading = Ast.Token.leading_text token in
-      if not (String.is_empty (String.trim leading)) then
-        (
-          emit_raw_text state leading;
-          state.suppress_leading_token <- Some token.Ast.id
-        )
-  | None -> ()
-
 let emit_keyword = emit_text
 
 let emit_node_keyword = fun state node ~kind ~fallback ->
@@ -282,6 +271,13 @@ let emit_token_leading_comments_as_lines = fun state token ->
       emit_line state;
       state.suppress_leading_token <- Some token.Ast.id
     )
+
+let emit_top_level_leading = fun state node ->
+  match Ast.Node.first_descendant_token node with
+  | Some token ->
+      if Ast.Token.has_leading_comment token then
+        emit_token_leading_comments_as_lines state token
+  | None -> ()
 
 let emit_node_leading_comments_as_lines = fun state node ->
   match Ast.Node.first_descendant_token node with

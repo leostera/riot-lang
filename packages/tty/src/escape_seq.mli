@@ -33,7 +33,6 @@
       print_string Escape_seq.disable_mouse_extended_mode_seq
     ]} *)
 (** {1 Constants} *)
-
 (** The Control Sequence Introducer: ["\x1b["] *)
 val csi: string
 

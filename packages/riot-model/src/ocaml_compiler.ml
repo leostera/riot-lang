@@ -41,7 +41,6 @@ let warning_to_number = function
   | All -> (-1)
 
 (* Special: use 'a' *)
-
 let warning_to_string = function
   | PartialMatch -> "partial-match"
   | BadModuleName -> "bad-module-name"

@@ -1059,7 +1059,6 @@ let type_declaration_nontrivia_end = fun decl ->
    are already top-level/body items, while object type fields still lift as
    syntax-only members without owned_trivia and should not grow member-stream
    ownership rules until that public CST surface exists. *)
-
 let normalize_record_field_owned_trivia = fun ~source:_ field -> field
 
 let normalize_record_field_sequence_owned_trivia = fun ~source:_ ~source_node:_ fields -> fields

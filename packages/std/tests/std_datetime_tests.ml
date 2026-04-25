@@ -132,7 +132,6 @@ let test_roundtrip = fun _ctx ->
   | Error _ -> Error "Failed to parse ISO 8601 string from to_iso8601"
 
 (* New tests for Elixir compatibility *)
-
 let test_parse_with_space_separator = fun _ctx ->
   match DateTime.parse "2025-08-27 14:07:31Z" with
   | Ok dt ->

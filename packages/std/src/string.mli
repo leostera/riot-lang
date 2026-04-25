@@ -33,7 +33,6 @@
     (* Split string into lines *) let lines = String.split_on_char '\n' text
 
     (* Join strings *) let csv = String.concat "," ["a"; "b"; "c"] ``` *)
-
 open Iter
 
 type t = string

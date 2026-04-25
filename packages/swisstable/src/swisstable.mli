@@ -13,7 +13,6 @@ type ('k, 'v) t
 
 (** The type of hash maps from keys of type ['k] to values of type ['v]. *)
 (** {1 Creation} *)
-
 val create: unit -> ('k, 'v) t
 
 (** Creates a new empty hash map with default capacity. *)
@@ -25,7 +24,6 @@ val of_list: ('k * 'v) list -> ('k, 'v) t
 (** Creates a hash map from a list of key-value pairs.
     If duplicate keys exist, later values override earlier ones. *)
 (** {1 Basic Operations} *)
-
 val insert: ('k, 'v) t -> 'k -> 'v -> 'v option
 
 (** [insert map key value] inserts a key-value pair into the map.
@@ -51,7 +49,6 @@ val clear: ('k, 'v) t -> unit
 
 (** [clear map] removes all elements from the map. *)
 (** {1 Iteration} *)
-
 val keys: ('k, 'v) t -> 'k list
 
 (** [keys map] returns a list of all keys in the map.
@@ -73,7 +70,6 @@ val to_list: ('k, 'v) t -> ('k * 'v) list
 (** [to_list map] converts the map to a list of key-value pairs.
     The order is unspecified. *)
 (** {1 Entry API} *)
-
 type ('k, 'v) entry =
   | Occupied of 'v
   (** Key exists with value *)
@@ -91,7 +87,6 @@ val and_modify: ('k, 'v) t -> 'k -> ('v -> 'v) -> unit
 (** [and_modify map key f] modifies the value if the key exists.
     No effect if the key is absent. *)
 (** {1 Iterators} *)
-
 val into_iter: ('k, 'v) t -> ('k * 'v) Std.Iter.Iterator.t
 
 (** [into_iter map] converts the map into an iterator over key-value pairs. *)

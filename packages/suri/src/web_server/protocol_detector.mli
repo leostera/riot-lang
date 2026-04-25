@@ -12,7 +12,6 @@ open Std
     This handler reads the first few bytes, detects the protocol, and uses
     Socket_pool.Handler.Switch to delegate to the appropriate handler.
 *)
-
 type state
 type error =
 [

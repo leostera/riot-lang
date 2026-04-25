@@ -17,7 +17,6 @@ type t = {
    way that makes older bundles unsafe to hydrate. v4 invalidates v3 entries
    that were computed before CST lifting split multi-argument constructor
    applications correctly. *)
-
 let namespace_version = "v4"
 
 let versioned_namespace = fun suffix ->

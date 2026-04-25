@@ -35,7 +35,6 @@
     |--------|------|------------|-----------| | GET | ✓ | ✓ | ✓ | | HEAD | ✓ |
     ✓ | ✓ | | POST | ✗ | ✗ | ✗ | | PUT | ✗ | ✓ | ✗ | | DELETE | ✗ | ✓ | ✗ | |
     PATCH | ✗ | ✗ | ✗ | | OPTIONS | ✓ | ✓ | ✗ | | TRACE | ✓ | ✓ | ✗ | *)
-
 type t =
   | Get
   (** GET - Retrieve resource *)

@@ -9,7 +9,6 @@
     The default standard RNG is intended to be cryptographically secure. When
     `seed` is omitted, it is initialized from `Kernel.Random.Source`.
 *)
-
 type error =
   | Entropy of Kernel.Random.Source.error
   | InvalidIntBound of { bound: int }
@@ -28,16 +27,16 @@ module Rng: sig
   type t
 
   (** Use `make ~state ~fill_bytes` to package a custom RNG implementation for
-      use with `Std.Random`.
+        use with `Std.Random`.
 
-      `fill_bytes state out` must overwrite `out` fully and may mutate `state`
-      internally. *)
+        `fill_bytes state out` must overwrite `out` fully and may mutate `state`
+        internally. *)
   val make: state:'state -> fill_bytes:('state -> bytes -> unit) -> t
 
   (** Use `standard ?seed ()` to build the secure standard RNG.
 
-      - `standard ~seed ()` is deterministic
-      - `standard ()` is seeded from `Kernel.Random.Source` *)
+        - `standard ~seed ()` is deterministic
+        - `standard ()` is seeded from `Kernel.Random.Source` *)
   val standard: ?seed:string -> unit -> (t, error) Result.t
 end
 

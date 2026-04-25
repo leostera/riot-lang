@@ -8,7 +8,6 @@
     - Text segmentation (words, sentences, line breaks)
 *)
 (** {1 Submodules} *)
-
 (** Width tables for character display width calculation *)
 module Width_tables = Width_tables
 
@@ -40,7 +39,6 @@ module Grapheme = Grapheme
 module Segmentation = Segmentation
 
 (** {1 Type exports} *)
-
 (** Line break type for text segmentation *)
 type line_break = Segmentation.line_break =
   | Must_break

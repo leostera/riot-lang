@@ -7,7 +7,6 @@ module Solver = Solver
 open State
 
 (* Use Super since open Std brings an Env module of its own that shadows ours *)
-
 module Env = Super.Env
 open Env
 

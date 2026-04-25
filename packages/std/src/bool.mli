@@ -1,7 +1,6 @@
 (** # Bool - Boolean helpers
 
     Re-export of the core boolean helpers from [Kernel.Bool]. *)
-
 type t = bool
 val equal: t -> t -> bool
 

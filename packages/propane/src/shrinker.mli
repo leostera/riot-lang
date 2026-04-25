@@ -26,7 +26,6 @@ open Std
 type 'value t = 'value -> 'value list
 
 (** Function that proposes smaller versions of a value. *)
-
 (** Shrinker that produces no candidates.
 
     Use [nil] for types where shrinking is either impossible or not worth the

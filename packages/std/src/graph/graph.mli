@@ -54,7 +54,6 @@
     - Workflow and state machine diagrams
     - Any directed/undirected graph visualization
 *)
-
 module Dot = Dot
 
 (** DOT format generation for Graphviz. *)

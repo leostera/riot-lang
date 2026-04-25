@@ -42,7 +42,6 @@ type color = [
 
 module Internal = struct
   (* Byte-domain sRGB helpers. *)
-
   module Byte_rgb = struct
     let min_channel = 0
 
@@ -68,7 +67,6 @@ module Internal = struct
   end
 
   (* Shared float-domain helpers for clamping and interpolation. *)
-
   module Float_domain = struct
     let clamp = fun ~min:low ~max:high value ->
       if Float.is_nan value then
@@ -84,7 +82,6 @@ module Internal = struct
   end
 
   (* Core XYZ conversion and chromaticity math. *)
-
   module XYZ_space = struct
     let chromaticity = fun x y z ->
       let denom = x +. (15.0 *. y) +. (3.0 *. z) in
@@ -118,7 +115,6 @@ module Internal = struct
   end
 
   (* Named white references and validation for custom references. *)
-
   module White_points = struct
     type named_reference = {
       xyz: xyz;
@@ -168,7 +164,6 @@ module Internal = struct
   end
 
   (* Standard sRGB transfer curve helpers. *)
-
   module Transfer_curve = struct
     let forward_threshold = 0.040_45
 
@@ -199,7 +194,6 @@ module Internal = struct
   end
 
   (* Normalized CIE LUV lightness helpers. *)
-
   module LUV_space = struct
     let epsilon = 216.0 /. 24389.0
 
@@ -220,7 +214,6 @@ module Internal = struct
   end
 
   (* `#rrggbb` RGB codec helpers. *)
-
   module Hex_rgb = struct
     let digit_char = fun value ->
       if value < 10 then
@@ -275,7 +268,6 @@ module Internal = struct
   end
 
   (* Inclusive gradients and clamped interpolation policy. *)
-
   module Interpolation = struct
     let clamp_mix = fun mix -> Float_domain.clamp ~min:0.0 ~max:1.0 mix
 
@@ -297,7 +289,6 @@ module Internal = struct
   end
 
   (* Debug formatting shared by the public API. *)
-
   module Format = struct
     let color = fun value ->
       match value with

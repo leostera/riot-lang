@@ -1,7 +1,6 @@
 open Std
 
 (* Result monad for cleaner error handling *)
-
 let ( let* ) = Result.and_then
 
 module type Intf = sig

@@ -5,7 +5,6 @@ open Std
     This only returns immediate expression children. Wrapper families such as
     module expressions are traversed by the higher-level folds below.
 *)
-
 (** Shared traversal helpers over the typed CST.
 
     These helpers are deliberately mechanical. They answer questions like
@@ -16,7 +15,6 @@ open Std
 val children_of_expression: Cst.Expression.t -> Cst.Expression.t list
 
 (** Pre-order fold over all expressions reachable from the root expression. *)
-
 (** Iterate over all expressions reachable from the root expression in pre-order. *)
 val fold_expression: ('acc -> Cst.Expression.t -> 'acc) -> 'acc -> Cst.Expression.t -> 'acc
 
@@ -30,7 +28,6 @@ val exists_expression: (Cst.Expression.t -> bool) -> Cst.Expression.t -> bool
 val children_of_core_type: Cst.CoreType.t -> Cst.CoreType.t list
 
 (** Pre-order fold over all core types reachable from the root core type. *)
-
 (** Iterate over all core types reachable from the root core type in pre-order. *)
 val fold_core_type: ('acc -> Cst.CoreType.t -> 'acc) -> 'acc -> Cst.CoreType.t -> 'acc
 

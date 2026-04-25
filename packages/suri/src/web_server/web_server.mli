@@ -161,7 +161,6 @@
     ---
 
     {1 API Reference} *)
-
 module Config = Config
 
 (** {b Server Configuration}
@@ -177,7 +176,6 @@ module Config = Config
     ]}
 
     See {!Config} for all options. *)
-
 module Request = Request
 
 (** {b HTTP Request}
@@ -201,7 +199,6 @@ module Request = Request
     ]}
 
     See {!Request} for full API. *)
-
 module Response = Response
 
 (** {b HTTP Response}
@@ -233,7 +230,6 @@ module Response = Response
     ]}
 
     See {!Response} for full API. *)
-
 module Handler = Http_handler
 
 (** {b HTTP Handler}
@@ -241,7 +237,6 @@ module Handler = Http_handler
     Handler functions that can return either HTTP responses or protocol upgrades (WebSocket).
 
     See {!Handler} for full API. *)
-
 module Http1 = Http1_handler
 
 (** {b HTTP/1.1 Protocol Handler}
@@ -251,7 +246,6 @@ module Http1 = Http1_handler
     Most users don't need to use this directly - use {!start_link} instead.
 
     See {!Http1} for internals. *)
-
 module Http2 = Http2_handler
 
 (** HTTP/2 protocol handler *)

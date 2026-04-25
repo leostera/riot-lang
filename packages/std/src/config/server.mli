@@ -4,7 +4,6 @@ type t
 val empty: t
 
 (* Error API *)
-
 type error =
   | App_not_found of { app: string }
   | Load_failed of { message: string }

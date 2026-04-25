@@ -8,7 +8,6 @@ module Arbitrary = Arbitrary
 module Property = Property
 
 (* Convenience re-exports *)
-
 let property = Property.property
 
 let for_all = Property.for_all

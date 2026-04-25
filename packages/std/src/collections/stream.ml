@@ -39,7 +39,6 @@ let mut_iter: type item. item t -> item Iter.MutIterator.t = fun seq ->
     let size = fun _state -> 0
 
     (* Unknown size for lazy sequences *)
-
     let clone = fun state -> { seq = state.seq }
   end in
   Iter.MutIterator.make (module StreamMutIter) { seq }

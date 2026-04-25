@@ -1,5 +1,4 @@
 (** Hasher module type and utilities *)
-
 (** Interface that all hash algorithms must implement *)
 module type Intf = sig
   (** Internal state of the hasher *)

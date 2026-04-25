@@ -43,7 +43,6 @@
     (* Transform errors *) let config = Fs.read (Path.v "config.json") |>
     Result.map_err (fun _ -> "Config file not found") |> Result.and_then
     parse_json |> Result.expect ~msg:"Failed to load configuration" ``` *)
-
 type ('a, 'e) t = ('a, 'e) Kernel.result =
   | Ok of 'a
   | Error of 'e
@@ -51,7 +50,6 @@ type ('a, 'e) t = ('a, 'e) Kernel.result =
 (** The Result type - either [`Ok`] with a success value or [`Error`] with
           an error value *)
 (** # Constructors *)
-
 (** Creates an [`Ok`] value.
 
     ## Examples

@@ -131,7 +131,6 @@ let to_calendar_date = fun date -> date
 let from_calendar_date = fun date -> make ~year:date.year ~month:date.month ~day:date.day
 
 (* Backward-compatible aliases used internally in legacy call sites *)
-
 let of_date_time = from_date_time
 
 let of_gregorian_days = from_gregorian_days

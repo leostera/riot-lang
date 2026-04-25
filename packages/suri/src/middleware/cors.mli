@@ -109,7 +109,6 @@
     - Header names are case-insensitive
     - Check browser's preflight request in DevTools
 *)
-
 open Std
 
 (** CORS middleware with simple configuration.

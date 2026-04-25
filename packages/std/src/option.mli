@@ -49,14 +49,12 @@
     OCaml's `option` is a regular variant type with two constructors. It has no
     runtime overhead compared to manually checking for null or special values.
 *)
-
 type 'a t = 'a option =
   | None
   | Some of 'a
 
 (** The Option type - either [`Some`] value or [`None`] *)
 (** # Constructors *)
-
 (** Creates a [`Some`] value.
 
     ## Examples
@@ -149,7 +147,6 @@ val map: 'a t -> fn:('a -> 'b) -> 'b t
 
     let y = None in assert (Option.map_or ~default:42 String.length y = 42) ```
 *)
-
 (** Returns result of applying function to [`Some`] value, or computes default
     if [`None`].
 

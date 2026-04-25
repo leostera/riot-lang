@@ -20,7 +20,6 @@ open Global
     This module is primarily internal. Users typically work with the [Result.t]
     values returned by [Fs] functions and use [Result.expect] or pattern
     matching for error handling. *)
-
 type error = IO.error
 
 (** Filesystem error type - preserves structured error info. *)

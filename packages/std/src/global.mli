@@ -35,7 +35,6 @@
 
     ```ocaml let counter = cell 0 in Sync.Cell.set counter 1; Sync.Cell.get counter (* 1
     *) ``` *)
-
 module Format = Format
 
 type format = Format.t
@@ -141,7 +140,6 @@ val raise_notrace: exn -> 'value
 val ignore: 'value -> unit
 
 (** {1 Process Management} *)
-
 exception Receive_timeout
 
 exception Syscall_timeout
@@ -162,7 +160,6 @@ val spawn_link: (unit -> (unit, Runtime.Actor.exit_reason) Kernel.result) -> Run
 val send: Runtime.Pid.t -> Runtime.Message.t -> unit
 
 (** Receive a message using a selector *)
-
 (** Receive any message *)
 val receive: selector:'value Runtime.selector -> ?timeout:Time.Duration.t -> unit -> 'value
 
@@ -251,7 +248,6 @@ val eprintln: string -> unit
     - Placeholder for future implementation
     - Self-documenting incomplete code
     - Fails fast if accidentally called *)
-
 (** Marks code as unimplemented, panicking when called.
 
     ## Examples
