@@ -249,7 +249,7 @@ let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~get
         |> List.concat
       in
       (* Deduplicate objects without reordering them: OCaml link order must stay
-                           topological, with dependencies before dependents. *)
+                                 topological, with dependencies before dependents. *)
       let seen_objects = HashSet.create () in
       let objects =
         List.filter_map objects_with_duplicates
@@ -304,9 +304,9 @@ let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~get
       (* Get target platform for looking up dependency flags *)
       let target_platform = Build_ctx.target_platform_name ctx in
       (* NOTE: Dependency ld_flags must be collected here during linking, not in the profile.
-                           The profile contains only the current package's target-specific flags (applied in 
-                           package_planner). When linking, we need flags from ALL dependencies transitively,
-                           which can only be determined at link-time based on the depset. *)
+                                 The profile contains only the current package's target-specific flags (applied in 
+                                 package_planner). When linking, we need flags from ALL dependencies transitively,
+                                 which can only be determined at link-time based on the depset. *)
       let transitive_deps = Dependency.transitive_closure depset in
       let dep_ldflags =
         List.map transitive_deps

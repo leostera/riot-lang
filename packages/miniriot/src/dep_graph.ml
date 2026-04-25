@@ -168,19 +168,19 @@ end = struct
 
   (*
 
-        in this module we want to
+          in this module we want to
 
-        1. save a package's interface name (kernel for packages/kernel)
-        2. associate its outputs with it
+          1. save a package's interface name (kernel for packages/kernel)
+          2. associate its outputs with it
 
-        so that later on when we're creating actions from a dep_graph
-        we can copy the outputs associated with this package
+          so that later on when we're creating actions from a dep_graph
+          we can copy the outputs associated with this package
 
-        and so when adding edges to things we'll basically check if something is an external dep (is in build_results)
-        and if it isn't then complain
+          and so when adding edges to things we'll basically check if something is an external dep (is in build_results)
+          and if it isn't then complain
 
-        i mean we don't need the thing to be magic or super flexible, this is just for bootstrapping riot
-        *)
+          i mean we don't need the thing to be magic or super flexible, this is just for bootstrapping riot
+          *)
 
   type entry = {
     package: Package.t;
@@ -605,7 +605,7 @@ module Dependency_rules = struct
       let common = common_prefix from_parts to_parts in
       (* to_module must be exactly one level below common ancestor *)
       (* from ["Std"; "Net"; "Http"; "Client"; "Pool"] can depend on
-                                       ["Std"; "Net"; "Server"] (Server is sibling of Http) *)
+                                                 ["Std"; "Net"; "Server"] (Server is sibling of Http) *)
       List.length to_parts = List.length common + 1
       && List.length from_parts > List.length common + 1
 end
@@ -668,10 +668,10 @@ and handle_ocaml_module = fun ~t ~ctx file ->
   else
     let node = Ocaml_module.make_node mod_ aliases |> Graph.add_node t.graph in
     (* printf "Handling OCamml module %S (or %S) at %s\n"
-                (Module.module_name mod_ |> Module_name.to_string)
-                (Module.namespaced_name mod_)
-                file.path;
-            *)
+                    (Module.module_name mod_ |> Module_name.to_string)
+                    (Module.namespaced_name mod_)
+                    file.path;
+                *)
     (* Debug Event registration *)
     if Module_name.to_string (Module.module_name mod_) = "Event" then
       Printf.printf
@@ -724,8 +724,8 @@ and handle_library = fun ~t ~ctx { path; name; children } ->
   let impl_file = base_path ^ ".ml" in
   let impl_mod = Module.of_path ~ns impl_file in
   (*
-        printf "Handling library %S at %s\n" (Module.namespaced_name impl_mod) path;
-      *)
+          printf "Handling library %S at %s\n" (Module.namespaced_name impl_mod) path;
+        *)
   let ns = Namespace.add ns (Module.module_name impl_mod) in
   (* Only create modules for ML/MLI files, not directories *)
   let children =
@@ -881,7 +881,7 @@ and handle_library = fun ~t ~ctx { path; name; children } ->
     Graph.add_node t.graph node
   in
   (* If a library has a root .ml but no root .mli, do not synthesize a fake
-           interface node. The implementation-produced .cmi is the public surface. *)
+             interface node. The implementation-produced .cmi is the public surface. *)
   let intf_node, impl_node =
     if has_library_interface_ml && not has_library_interface_mli then
       let impl = Library_interface.make_node
@@ -958,7 +958,7 @@ and handle_library = fun ~t ~ctx { path; name; children } ->
           let subdir_mod_name = Module_name.of_string name in
           let subdir_namespaced_name = Namespace.add ns subdir_mod_name |> Namespace.to_string in
           (* Prefer the sub-library interface when it exists, but fall back to the
-                                                 implementation node when the library exposes its surface via .ml only. *)
+                                                             implementation node when the library exposes its surface via .ml only. *)
           let node_ids = Module_registry.get_by_name t.registry subdir_mod_name in
           let find_subdir_surface expected_kind =
             List.find_map

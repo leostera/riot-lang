@@ -340,7 +340,7 @@ let shutdown = fun t ~status -> request_shutdown t ~status
 
 let enqueue_on_worker = fun t worker_id slot ->
   (* The slot-level queued flag enforces "at most one runnable-queue entry per
-           process" across wakeups, local reschedules, and steals. *)
+             process" across wakeups, local reschedules, and steals. *)
   if is_valid_worker_id t worker_id then
     if try_mark_slot_queued slot then
       (
@@ -1065,7 +1065,7 @@ let attempt_steal = fun t (worker: worker) ->
           scan start_offset (seen + 1)
         else (
           (* Ownership transfer happens before enqueuing locally so future
-                                                 remote wakeups route to the stealing worker. *)
+                                                             remote wakeups route to the stealing worker. *)
           List.for_each batch ~fn:(fun slot -> set_slot_owner_worker slot worker.id);
           push_batch worker batch;
           true
@@ -1128,8 +1128,8 @@ let process_timers = fun t ->
                   match Runtime_process.state proc with
                   | Waiting_io { source; _ } ->
                       (* Syscall timeout resumes the waiting process with
-                                                                           [Syscall_timeout]. The wait registration must be removed
-                                                                           first so a subsequent syscall can reregister cleanly. *)
+                                                                                             [Syscall_timeout]. The wait registration must be removed
+                                                                                             first so a subsequent syscall can reregister cleanly. *)
                       deregister_io_in_reactor
                         t
                         source

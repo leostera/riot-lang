@@ -332,8 +332,8 @@ let gregorian_days_of_iso_w01_1 = fun year ->
   let jan1 = date_to_gregorian_days jan1_date in
   let dow = day_of_week jan1_date in
   (* ISO week 1 is the week with the first Thursday
-           If Jan 1 is Mon-Thu (1-4), week 1 starts on that week's Monday
-           If Jan 1 is Fri-Sun (5-7), week 1 starts next Monday *)
+             If Jan 1 is Mon-Thu (1-4), week 1 starts on that week's Monday
+             If Jan 1 is Fri-Sun (5-7), week 1 starts next Monday *)
   if (weekday_to_int dow) <= 4 then
     jan1 - (weekday_to_int dow) + 1
   else

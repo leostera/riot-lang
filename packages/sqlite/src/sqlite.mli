@@ -54,16 +54,16 @@ module Config: sig
         | `Create
       ];
     (* Database access mode:
-                   - `ReadOnly`: Open existing database for reading only
-                   - `ReadWrite`: Open existing database for reading and writing
-                   - `Create`: Create database if it doesn't exist (implies ReadWrite)
-                *)
+                       - `ReadOnly`: Open existing database for reading only
+                       - `ReadWrite`: Open existing database for reading and writing
+                       - `Create`: Create database if it doesn't exist (implies ReadWrite)
+                    *)
     busy_timeout: Time.Duration.t option;
     (* How long to wait when the database is locked before returning an error.
-                   `None` means return immediately with SQLITE_BUSY. *)
+                       `None` means return immediately with SQLITE_BUSY. *)
     cache_size: int option;
     (* Size of the page cache in pages (default is -2000, meaning 2MB).
-                   Negative values specify cache size in KB. *)
+                       Negative values specify cache size in KB. *)
     synchronous: 
       ([
         `Off
@@ -72,44 +72,44 @@ module Config: sig
         | `Extra
       ]) option;
     (* Synchronous mode controls how SQLite waits for data to reach persistent storage:
-                   - `Off`: No syncs (fast but unsafe)
-                   - `Normal`: Sync at critical moments (balanced)
-                   - `Full`: Sync after every critical operation (safe but slower)
-                   - `Extra`: Like Full but with extra syncs for durability
-                *)
+                       - `Off`: No syncs (fast but unsafe)
+                       - `Normal`: Sync at critical moments (balanced)
+                       - `Full`: Sync after every critical operation (safe but slower)
+                       - `Extra`: Like Full but with extra syncs for durability
+                    *)
   }
   (* `default path` creates a configuration for a file-based database at `path`.
 
-           Default settings:
-           - mode = `Create`
-           - busy_timeout = 5 seconds
-           - cache_size = default (-2000)
-           - synchronous = `Normal`
-        *)
+             Default settings:
+             - mode = `Create`
+             - busy_timeout = 5 seconds
+             - cache_size = default (-2000)
+             - synchronous = `Normal`
+          *)
   val default: Path.t -> t
 
   (* `in_memory ()` creates a configuration for an in-memory database.
 
-           In-memory databases are:
-           - Very fast (no disk I/O)
-           - Temporary (destroyed when connection closes)
-           - Perfect for testing
+             In-memory databases are:
+             - Very fast (no disk I/O)
+             - Temporary (destroyed when connection closes)
+             - Perfect for testing
 
-           Settings optimized for performance:
-           - synchronous = `Off`
-           - No busy timeout (single connection)
-        *)
+             Settings optimized for performance:
+             - synchronous = `Off`
+             - No busy timeout (single connection)
+          *)
   (* `in_memory ()` creates a configuration for an in-memory database.
 
-           In-memory databases are:
-           - Very fast (no disk I/O)
-           - Temporary (destroyed when connection closes)
-           - Perfect for testing
+             In-memory databases are:
+             - Very fast (no disk I/O)
+             - Temporary (destroyed when connection closes)
+             - Perfect for testing
 
-           Settings optimized for performance:
-           - synchronous = `Off`
-           - No busy timeout (single connection)
-        *)
+             Settings optimized for performance:
+             - synchronous = `Off`
+             - No busy timeout (single connection)
+          *)
   val in_memory: unit -> t
 end
 

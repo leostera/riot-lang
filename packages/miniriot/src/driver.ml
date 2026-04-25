@@ -23,18 +23,18 @@ let build_package = fun ~build_results ?(needs_stdlib_and_unix = false) pkg_name
   let dep_graph = Dep_graph.scan ~root:pkg_path ~package:pkg ~build_results in
   File_scanner.print_tree dep_graph.file_tree;
   (* For now, just print what we would build 
-        Printf.printf "\n\nDependency Graph: %s\n" pkg_name;
-        Dep_graph.iter
-          (fun node ->
-            let open Dep_graph in
-            let filename =
-              match node.value.file with
-              | Concrete path -> Filename.basename path
-              | Generated { path; _ } -> Filename.basename path ^ " (generated)"
-            in
-            Printf.printf "  - %s\n%!" filename)
-          dep_graph;
-      *)
+          Printf.printf "\n\nDependency Graph: %s\n" pkg_name;
+          Dep_graph.iter
+            (fun node ->
+              let open Dep_graph in
+              let filename =
+                match node.value.file with
+                | Concrete path -> Filename.basename path
+                | Generated { path; _ } -> Filename.basename path ^ " (generated)"
+              in
+              Printf.printf "  - %s\n%!" filename)
+            dep_graph;
+        *)
   (* Dump graph as dot for debugging *)
   let dot_dir = Printf.sprintf "_build/bootstrap/out/%s" pkg_name in
   Io.mkdir_p dot_dir;
@@ -44,7 +44,7 @@ let build_package = fun ~build_results ?(needs_stdlib_and_unix = false) pkg_name
   Printf.printf "Dumped graph to %s\n" dot_file;
   let build_plan = Action.from_dep_graph dep_graph in
   (* Printf.printf "\n\nBuild Plan: %s\n" pkg_name;
-        Action.print_build_plan build_plan; *)
+          Action.print_build_plan build_plan; *)
   Action.execute_build_plan ~build_results build_plan;
   Action.promote_outputs build_plan;
   (* Register this package's outputs for other packages to use *)

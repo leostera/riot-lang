@@ -2008,8 +2008,8 @@ let apply_delta: int -> case_delta -> int -> int = fun r delta case_type ->
   | Delta d -> r + d
   | UpperLower ->
       (* In an Upper-Lower sequence, the characters at even offsets
-                           are upper case; the ones at odd offsets are lower.
-                           UpperCase=0, LowerCase=1, TitleCase=2 *)
+                                 are upper case; the ones at odd offsets are lower.
+                                 UpperCase=0, LowerCase=1, TitleCase=2 *)
       if case_type = 1 then
         r lor 1
         (* Set low bit *)

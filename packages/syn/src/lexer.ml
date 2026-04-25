@@ -734,8 +734,8 @@ let lex_char = fun cursor token_start ->
 
 let lex_type_var = fun cursor token_start ->
   (* Type variable: 'ident
-           The quote has already been seen, now consume it and return Quote token.
-           The next call to `next` will lex the identifier. *)
+             The quote has already been seen, now consume it and return Quote token.
+             The next call to `next` will lex the identifier. *)
   Cursor.advance cursor;
   let end_ = Cursor.position cursor in
   make_token ~kind:Token.Quote ~span:{ start = token_start; end_ }
