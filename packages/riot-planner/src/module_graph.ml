@@ -480,10 +480,10 @@ and handle_library = fun ~t ~ctx dir name children ->
   let child_modules = Library_definition.child_modules lib_def in
   let children_without_lib = Library_definition.children_without_lib lib_def in
   (* Skip creating library interface nodes for libraries with no OCaml content at all.
-       We still create them if:
-       - There are child modules, OR
-       - There are concrete library interface files (lib.ml/lib.mli exist)
-    *)
+         We still create them if:
+         - There are child modules, OR
+         - There are concrete library interface files (lib.ml/lib.mli exist)
+      *)
   let has_ocaml_content =
     child_modules != []
     || Library_definition.has_concrete_ml lib_def
@@ -1431,8 +1431,8 @@ let wire_dependencies = fun t ->
                 List.for_each (preferred_dependency_nodes dep_node_ids)
                   ~fn:(fun (dep_node_id, dep_node) ->
                     (* Skip self-references: a module can't depend on itself.
-                                   This happens when dependency analysis reports "A" as a dependency of A.ml,
-                                   which actually refers to a different module A (e.g., Bar.A when using 'open Bar'). *)
+                                                     This happens when dependency analysis reports "A" as a dependency of A.ml,
+                                                     which actually refers to a different module A (e.g., Bar.A when using 'open Bar'). *)
                     if G.Node_id.eq dep_node_id node.id then
                       ()
                     else
@@ -1445,12 +1445,12 @@ let add_library_node = fun t ~name ~includes ->
   let lib_node_value = Module_node.make_library ~name ~includes in
   let lib_node = G.add_node t.graph lib_node_value in
   (* Library archive depends on ALL ML/MLI/C modules.
-       Unreachable modules will be filtered later in action_graph.ml based on
-       what the library interface actually references.
+         Unreachable modules will be filtered later in action_graph.ml based on
+         what the library interface actually references.
 
-       IMPORTANT: We iterate over topologically sorted nodes to preserve dependency order.
-       This ensures that when we later collect objects from node.deps, they're in the
-       correct order for linking. *)
+         IMPORTANT: We iterate over topologically sorted nodes to preserve dependency order.
+         This ensures that when we later collect objects from node.deps, they're in the
+         correct order for linking. *)
   let sorted_nodes =
     match G.topo_sort t.graph with
     | Ok sorted -> sorted
@@ -1459,7 +1459,7 @@ let add_library_node = fun t ~name ~includes ->
         []
   in
   (* Add edges in REVERSE topological order because add_edge prepends to deps list.
-       This ensures lib_node.deps ends up in correct topological order. *)
+         This ensures lib_node.deps ends up in correct topological order. *)
   List.for_each (List.reverse sorted_nodes)
     ~fn:(fun (node: Module_node.t G.node) ->
       match node.value.kind with

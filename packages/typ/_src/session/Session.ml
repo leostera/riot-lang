@@ -202,15 +202,17 @@ let remove_source = fun session source_id ->
   match source_of_id session source_id with
   | None -> { session with next_revision = session.next_revision + 1 }
   | Some source ->
-      ({
-        session with
-        next_revision = session.next_revision + 1;
-        sources = List.filter
-          (
-            fun (current_source: Source.t) -> not (SourceId.equal current_source.source_id source_id)
-          )
-          session.sources
-      }) |> fun session -> remove_source_indexes session source
+      (
+        {
+          session with
+          next_revision = session.next_revision + 1;
+          sources = List.filter
+            (
+              fun (current_source: Source.t) -> not (SourceId.equal current_source.source_id source_id)
+            )
+            session.sources
+        }
+      ) |> fun session -> remove_source_indexes session source
 
 let is_uppercase_ascii = fun ch -> ch >= 'A' && ch <= 'Z'
 

@@ -412,14 +412,14 @@ let compute_input_hash = fun ?(planner_version = "planner-artifacts:v20") ~packa
   let module H = Std.Crypto.Sha256 in
   let state = H.create () in
   (* Planner artifact contract version.
-       Bump this when planned output shapes or link-time artifact requirements
-       change in ways that must invalidate cached package artifacts. *)
+         Bump this when planned output shapes or link-time artifact requirements
+         change in ways that must invalidate cached package artifacts. *)
   H.write state planner_version;
   (* Build context (includes resolved profile) *)
   Build_ctx.hash state build_ctx;
   (* Toolchain identity must participate in package cache invalidation so
-       cross-compiled artifacts are rebuilt when the installed compiler/sysroot
-       changes underneath the same target triple. *)
+         cross-compiled artifacts are rebuilt when the installed compiler/sysroot
+         changes underneath the same target triple. *)
   H.write_hash state (Riot_toolchain.hash toolchain);
   (* Package metadata (includes compiler config overrides) *)
   Package.hash state package;
@@ -833,8 +833,8 @@ let plan_package = fun ~workspace ~toolchain ~store ~package_graph ~package_key 
                 ~earlier:plan_bundle_lookup_started_at
                 (Time.Instant.now ()) in
               (* Always produce a concrete plan graph. The old fast path returned dummy
-                     empty graphs keyed off package-level artifact existence, which made
-                     planning correctness depend on execution-time cache state. *)
+                                 empty graphs keyed off package-level artifact existence, which made
+                                 planning correctness depend on execution-time cache state. *)
               Log.info ("Package " ^ Package_name.to_string package.name ^ ": computing plan graph");
               let module_plan_started_at = Time.Instant.now () in
               let plan_input =

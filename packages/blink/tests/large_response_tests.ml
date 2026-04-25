@@ -1,17 +1,19 @@
 open Std
 
-let live_server_enabled = Env.var Env.Bool ~name:"BLINK_RUN_LIVE_SERVER_TESTS" |> Option.unwrap_or ~default:false
+let live_server_enabled = Env.var Env.Bool ~name:"BLINK_RUN_LIVE_SERVER_TESTS"
+|> Option.unwrap_or ~default:false
 
 let case =
   if live_server_enabled then
     Test.case
-  else Test.skip
+  else
+    Test.skip
 
 let test_large_json_response = fun _ctx ->
   (* Test that we can read JSON responses without truncation.
-       This test makes a real HTTP request to an LM Studio instance expected
-       to be running on port 1234. We use the chat completions endpoint with
-       a large response to verify the body isn't truncated. *)
+         This test makes a real HTTP request to an LM Studio instance expected
+         to be running on port 1234. We use the chat completions endpoint with
+         a large response to verify the body isn't truncated. *)
   let request_body = {|{"max_tokens":2000,"temperature":0.7,"model":"qwen/qwen3-coder-30b","messages":[{"role":"system","content":"You are: TestBot\nWrite a long response with at least 500 words about the history of computing."}]}|} in
   (* Build URI *)
   let uri = Net.Uri.of_string "http://127.0.0.1:1234/v1/chat/completions" |> Result.expect ~msg:"Invalid URI" in
@@ -38,31 +40,38 @@ let test_large_json_response = fun _ctx ->
               (* Verify we got a successful response *)
               if status < 200 || status >= 300 then
                 (Error ("Unexpected status: " ^ string_of_int status ^ ", body: " ^ body))
-              (* The key test: verify the response body is complete JSON, not truncated *)
-              else
-                if not (String.ends_with ~suffix:"}" body) then
-                  Error ("Response body truncated! Length: " ^ string_of_int body_len ^ ", Content-Length: " ^ (Option.unwrap_or ~default:"missing" content_length_hdr))
+                (* The key test: verify the response body is complete JSON, not truncated *)
+              else if not (String.ends_with ~suffix:"}" body) then
+                Error ("Response body truncated! Length: "
+                ^ string_of_int body_len
+                ^ ", Content-Length: "
+                ^ (Option.unwrap_or ~default:"missing" content_length_hdr))
                 (* Try to parse as JSON - this will fail if truncated *)
-                else
-                  match Data.Json.of_string body with
-                  | Error err -> Error ("JSON parse failed (body may be truncated): " ^ Data.Json.error_to_string err ^ ", body length: " ^ string_of_int body_len)
-                  | Ok json ->
-                      (* Verify it has expected structure for OpenAI API *)
-                      match json with
-                      | Data.Json.Object fields -> (
+              else
+                match Data.Json.of_string body with
+                | Error err -> Error ("JSON parse failed (body may be truncated): "
+                ^ Data.Json.error_to_string err
+                ^ ", body length: "
+                ^ string_of_int body_len)
+                | Ok json ->
+                    (* Verify it has expected structure for OpenAI API *)
+                    match json with
+                    | Data.Json.Object fields -> (
                         match Std.Collections.Proplist.get fields ~key:"choices" with
-                        | Some (Data.Json.Array _choices) -> (* Success! We got a complete JSON response with the expected structure *)
-                        Ok ()
+                        | Some (Data.Json.Array _choices) ->
+                            (* Success! We got a complete JSON response with the expected structure *)
+                            Ok ()
                         | Some _ -> Error "'choices' field is not an array"
-                        | None -> (* Some error responses may not have choices, which is OK *)
-                        Ok ()
+                        | None ->
+                            (* Some error responses may not have choices, which is OK *)
+                            Ok ()
                       )
-                      | _ -> Error "Response is not a JSON object"
+                    | _ -> Error "Response is not a JSON object"
 
 let test_streamed_response = fun _ctx ->
   (* Test that we can read chunked/streamed responses without truncation.
-       When "stream": true is set, the server sends Transfer-Encoding: chunked
-       with Server-Sent Events (SSE) format data chunks. *)
+         When "stream": true is set, the server sends Transfer-Encoding: chunked
+         with Server-Sent Events (SSE) format data chunks. *)
   let request_body = {|{"stream":true,"max_tokens":100,"temperature":0.7,"model":"qwen/qwen3-coder-30b","messages":[{"role":"user","content":"Count from 1 to 5"}]}|} in
   (* Build URI *)
   let uri = Net.Uri.of_string "http://127.0.0.1:1234/v1/chat/completions" |> Result.expect ~msg:"Invalid URI" in
@@ -80,16 +89,27 @@ let test_streamed_response = fun _ctx ->
       | Ok () ->
           (* Read response, printing each chunk as it arrives *)
           let chunk_count = ref 0 in
-          let on_message msgs = List.for_each msgs ~fn:(
-            fun msg ->
-              match msg with
-              | Blink.Connection.Data chunk ->
-                  chunk_count := !chunk_count + 1;
-                  let preview = chunk in Log.info ("Chunk " ^ string_of_int !chunk_count ^ " (" ^ string_of_int (String.length chunk) ^ " bytes): " ^ preview)
-              | Blink.Connection.Status status -> Log.info ("Status: " ^ string_of_int (Net.Http.Status.to_int status))
-              | Blink.Connection.Headers _headers -> Log.info "Headers received"
-              | Blink.Connection.Done -> Log.info "Done!"
-          ) in
+          let on_message msgs =
+            List.for_each msgs
+              ~fn:(fun msg ->
+                match msg with
+                | Blink.Connection.Data chunk ->
+                    chunk_count := !chunk_count + 1;
+                    let preview = chunk in
+                    Log.info
+                      ("Chunk "
+                      ^ string_of_int !chunk_count
+                      ^ " ("
+                      ^ string_of_int (String.length chunk)
+                      ^ " bytes): "
+                      ^ preview)
+                | Blink.Connection.Status status ->
+                    Log.info ("Status: " ^ string_of_int (Net.Http.Status.to_int status))
+                | Blink.Connection.Headers _headers ->
+                    Log.info "Headers received"
+                | Blink.Connection.Done ->
+                    Log.info "Done!")
+          in
           match Blink.await ~on_message conn with
           | Error _err -> Error "Response read failed"
           | Ok (response, body) ->
@@ -100,18 +120,17 @@ let test_streamed_response = fun _ctx ->
               (* Verify we got a successful response *)
               if status < 200 || status >= 300 then
                 Error ("Unexpected status: " ^ string_of_int status)
-              (* Verify we got some data *)
-              else
-                if body_len < 10 then
-                  Error ("Response body too short: " ^ string_of_int body_len ^ " bytes")
+                (* Verify we got some data *)
+              else if body_len < 10 then
+                Error ("Response body too short: " ^ string_of_int body_len ^ " bytes")
                 (* Verify we got chunked encoding *)
-                else
-                  (
-                    match transfer_encoding_hdr with
-                    | Some "chunked" -> Ok ()
-                    | Some other -> Error ("Expected Transfer-Encoding: chunked, got: " ^ other)
-                    | None -> Error "No Transfer-Encoding header (expected chunked)"
-                  )
+              else
+                (
+                  match transfer_encoding_hdr with
+                  | Some "chunked" -> Ok ()
+                  | Some other -> Error ("Expected Transfer-Encoding: chunked, got: " ^ other)
+                  | None -> Error "No Transfer-Encoding header (expected chunked)"
+                )
 
 let test_sse_parsing = fun _ctx ->
   (* Test the SSE module to parse streaming events *)
@@ -150,33 +169,42 @@ let test_sse_parsing = fun _ctx ->
           (* Verify we got some events *)
           if event_count = 0 then
             Error "No SSE events received"
-          else
-            (
-              (* Log each event *)
-              events |> List.enumerate |> List.for_each ~fn:(
-                fun (i, event) -> Log.info ("SSE Event " ^ string_of_int (i + 1) ^ ": " ^ Blink.SSE.(String.sub event.data ~offset:0 ~len:(min 80 (String.length event.data))))
-              );
-              (* Verify each event has JSON data *)
-              let all_valid_json =
-                List.for_all
-                  (
-                    fun event ->
-                      match Blink.SSE.(Data.Json.of_string event.data) with
-                      | Ok _ -> true
-                      | Error _ -> false
-                  )
-                  events
-              in
-              if not all_valid_json then
-                Error "Some SSE events contained invalid JSON"
-              else
-                (
-                  Log.info ("✓ Parsed " ^ string_of_int event_count ^ " SSE events successfully");
-                  Ok ()
-                )
+          else (
+            (* Log each event *)
+            events
+            |> List.enumerate
+            |> List.for_each
+              ~fn:(fun (i, event) ->
+                Log.info
+                  ("SSE Event "
+                  ^ string_of_int (i + 1)
+                  ^ ": "
+                  ^ Blink.SSE.(String.sub
+                    event.data
+                    ~offset:0
+                    ~len:(min 80 (String.length event.data)))));
+            (* Verify each event has JSON data *)
+            let all_valid_json =
+              List.for_all
+                (fun event ->
+                  match Blink.SSE.(Data.Json.of_string event.data) with
+                  | Ok _ -> true
+                  | Error _ -> false)
+                events
+            in
+            if not all_valid_json then
+              Error "Some SSE events contained invalid JSON"
+            else (
+              Log.info ("✓ Parsed " ^ string_of_int event_count ^ " SSE events successfully");
+              Ok ()
             )
+          )
 
-let tests = [ case "large JSON response without truncation" test_large_json_response; case "streamed/chunked response without truncation" test_streamed_response; case "SSE event parsing" test_sse_parsing ]
+let tests = [
+  case "large JSON response without truncation" test_large_json_response;
+  case "streamed/chunked response without truncation" test_streamed_response;
+  case "SSE event parsing" test_sse_parsing
+]
 
 let test_config = {|
 [[log.handler]]

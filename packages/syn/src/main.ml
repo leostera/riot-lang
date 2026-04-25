@@ -177,7 +177,7 @@ let main ~args =
           command "explain"
           |> about "Explain an error code"
           |> args
-            [ positional "ERROR_CODE" |> help "Error code to explain (e.g. E0001)" |> required true ]
+            [ positional "ERROR_CODE" |> help "Error code to explain (e.g. E0001)" |> required true ];
         ]
   in
   match ArgParser.get_matches cmd args with
