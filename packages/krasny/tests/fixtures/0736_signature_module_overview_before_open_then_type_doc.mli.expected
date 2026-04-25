@@ -6,7 +6,6 @@ type id =
   | String of string
   | Number of int
   | Null
-(** Request/response ID type. *)
 (** Method parameters for JSON-RPC requests. *)
 type params =
   | Positional of Json.t list

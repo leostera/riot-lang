@@ -1,7 +1,6 @@
 open Std
 
 (** # SSE - Server-Sent Events Parser *)
-
 (** SSE event type *)
 type event = {
   data: string;

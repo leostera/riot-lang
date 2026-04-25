@@ -13,7 +13,6 @@ type json = Data.Json.t
 type request_id =
   String of string
   | Number of int
-(** JSON-RPC request ID *)
 type error_code = int
 (** JSON-RPC error code *)
 type error = {

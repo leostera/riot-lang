@@ -2,6 +2,5 @@ type decode_error =
   | Invalid_decoder_state
   (** Decoder in invalid/unexpected state *)
   | Need_more_data
-(** Next declaration doc *)
 type decode_result =
   | Ok
