@@ -1,87 +1,87 @@
-(** # Arg_Parser - Command-line argument parsing
+(**
+   # Arg_Parser - Command-line argument parsing
 
-    Type-safe, declarative command-line argument parser with support for
-    flags, options, positional arguments, subcommands, and validation.
+   Type-safe, declarative command-line argument parser with support for
+   flags, options, positional arguments, subcommands, and validation.
 
-    ## Examples
+   ## Examples
 
-    Basic flag and option parsing:
+   Basic flag and option parsing:
 
-    ```ocaml
-    open Std
+   ```ocaml
+   open Std
 
-    let cmd = Arg_Parser.command "myapp"
-      |> Arg_Parser.about "My application"
-      |> Arg_Parser.version "1.0.0"
-      |> Arg_Parser.args [
-          Arg_Parser.Arg.flag "verbose"
-            |> Arg_Parser.Arg.short 'v'
-            |> Arg_Parser.Arg.help "Enable verbose output";
+   let cmd = Arg_Parser.command "myapp"
+     |> Arg_Parser.about "My application"
+     |> Arg_Parser.version "1.0.0"
+     |> Arg_Parser.args [
+         Arg_Parser.Arg.flag "verbose"
+           |> Arg_Parser.Arg.short 'v'
+           |> Arg_Parser.Arg.help "Enable verbose output";
 
-          Arg_Parser.Arg.option "output"
-            |> Arg_Parser.Arg.short 'o'
-            |> Arg_Parser.Arg.long "output"
-            |> Arg_Parser.Arg.value_name "FILE"
-            |> Arg_Parser.Arg.help "Output file path";
+         Arg_Parser.Arg.option "output"
+           |> Arg_Parser.Arg.short 'o'
+           |> Arg_Parser.Arg.long "output"
+           |> Arg_Parser.Arg.value_name "FILE"
+           |> Arg_Parser.Arg.help "Output file path";
 
-          Arg_Parser.Arg.positional "input"
-            |> Arg_Parser.Arg.required true
-            |> Arg_Parser.Arg.help "Input file";
-        ]
+         Arg_Parser.Arg.positional "input"
+           |> Arg_Parser.Arg.required true
+           |> Arg_Parser.Arg.help "Input file";
+       ]
 
-    let matches = Arg_Parser.get_matches cmd (List.tl (Array.to_list Sys.argv))
-      |> Result.expect ~msg:"Failed to parse arguments"
+   let matches = Arg_Parser.get_matches cmd (List.tl (Array.to_list Sys.argv))
+     |> Result.expect ~msg:"Failed to parse arguments"
 
-    let verbose = Arg_Parser.get_flag matches "verbose" in
-    let output = Arg_Parser.get_one matches "output" in
-    let input = Arg_Parser.get_path matches "input"
-      |> Option.expect ~msg:"Input required"
-    ```
+   let verbose = Arg_Parser.get_flag matches "verbose" in
+   let output = Arg_Parser.get_one matches "output" in
+   let input = Arg_Parser.get_path matches "input"
+     |> Option.expect ~msg:"Input required"
+   ```
 
-    Subcommands:
+   Subcommands:
 
-    ```ocaml
-    let install_cmd = Arg_Parser.command "install"
-      |> Arg_Parser.about "Install a package"
-      |> Arg_Parser.arg (
-          Arg_Parser.Arg.positional "package"
-            |> Arg_Parser.Arg.required true
-        )
+   ```ocaml
+   let install_cmd = Arg_Parser.command "install"
+     |> Arg_Parser.about "Install a package"
+     |> Arg_Parser.arg (
+         Arg_Parser.Arg.positional "package"
+           |> Arg_Parser.Arg.required true
+       )
 
-    let remove_cmd = Arg_Parser.command "remove"
-      |> Arg_Parser.about "Remove a package"
+   let remove_cmd = Arg_Parser.command "remove"
+     |> Arg_Parser.about "Remove a package"
 
-    let cmd = Arg_Parser.command "pkgman"
-      |> Arg_Parser.subcommands [install_cmd; remove_cmd]
+   let cmd = Arg_Parser.command "pkgman"
+     |> Arg_Parser.subcommands [install_cmd; remove_cmd]
 
-    let matches = Arg_Parser.get_matches cmd args
-      |> Result.expect ~msg:"Failed to parse" in
+   let matches = Arg_Parser.get_matches cmd args
+     |> Result.expect ~msg:"Failed to parse" in
 
-    match Arg_Parser.get_subcommand matches with
-    | Some ("install", sub_matches) -> install (Arg_Parser.get_one sub_matches "package")
-    | Some ("remove", sub_matches) -> remove ()
-    | _ -> Arg_Parser.print_help cmd
-    ```
+   match Arg_Parser.get_subcommand matches with
+   | Some ("install", sub_matches) -> install (Arg_Parser.get_one sub_matches "package")
+   | Some ("remove", sub_matches) -> remove ()
+   | _ -> Arg_Parser.print_help cmd
+   ```
 
-    ## Features
+   ## Features
 
-    - Type-safe argument definitions with builder pattern
-    - Flags, options, positional args, trailing args
-    - Subcommands with nested argument handling
-    - Automatic help generation
-    - Environment variable fallbacks
-    - Validation (required, conflicts, possible values)
-    - Multiple values and counting
+   - Type-safe argument definitions with builder pattern
+   - Flags, options, positional args, trailing args
+   - Subcommands with nested argument handling
+   - Automatic help generation
+   - Environment variable fallbacks
+   - Validation (required, conflicts, possible values)
+   - Multiple values and counting
 
-    ## When to Use
+   ## When to Use
 
-    - Command-line tools with complex argument structures
-    - Applications with subcommands (like git, cargo, etc.)
-    - When you need validation and help text generation
+   - Command-line tools with complex argument structures
+   - Applications with subcommands (like git, cargo, etc.)
+   - When you need validation and help text generation
 
-    For simple scripts, manual argv parsing might be sufficient.
+   For simple scripts, manual argv parsing might be sufficient.
 *)
-
 open Global
 
 type action =
@@ -90,12 +90,16 @@ type action =
   | SetFalse
   | Append
   | Count
+
 (** How an argument's value should be set. *)
 type 'a arg
+
 (** Command-line argument definition. *)
 type command
+
 (** Command definition with arguments and subcommands. *)
 type matches
+
 (** Parsed argument matches. *)
 type error =
   | UnknownArgument of string
@@ -108,8 +112,9 @@ type error =
   | TooFewValues of string
 
 (** Parsing errors. *)
-module Arg: sig
+module Arg : sig
   type 'a t = 'a arg
+
   val flag: string -> unit t
 
   val option: string -> unit t

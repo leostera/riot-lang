@@ -32,26 +32,24 @@ let add_unicode_escape = fun buffer code ->
 let float_to_string = fun value ->
   if Float.is_nan value then
     "nan"
-  else if Float.is_infinite value then
-    if (
+  else
+    if Float.is_infinite value then
+      if (
         match Float.compare value 0.0 with
         | Order.LT -> true
-        | Order.EQ
-        | Order.GT -> false
+        | Order.EQ | Order.GT -> false
       ) then
-      "-inf"
+        "-inf"
+      else "inf"
     else
-      "inf"
-  else
-    let text12 = format_float "%.12g" value in
-    if Float.equal value (Float.of_string text12) then
-      text12
-    else
-      let text15 = format_float "%.15g" value in
-      if Float.equal value (Float.of_string text15) then
-        text15
+      let text12 = format_float "%.12g" value in
+      if Float.equal value (Float.of_string text12) then
+        text12
       else
-        format_float "%.18g" value
+        let text15 = format_float "%.15g" value in
+        if Float.equal value (Float.of_string text15) then
+          text15
+        else format_float "%.18g" value
 
 let add_quoted_string = fun buffer value ->
   IO.Buffer.add_char buffer '"';
@@ -73,93 +71,86 @@ let add_quoted_string = fun buffer value ->
 
 let rec add_inline_value = fun buffer value ->
   match value with
-  | String string_value ->
-      add_quoted_string buffer string_value
-  | Int int_value ->
-      IO.Buffer.add_string buffer (Int64.to_string int_value)
-  | Float float_value ->
-      IO.Buffer.add_string buffer (float_to_string float_value)
+  | String string_value -> add_quoted_string buffer string_value
+  | Int int_value -> IO.Buffer.add_string buffer (Int64.to_string int_value)
+  | Float float_value -> IO.Buffer.add_string buffer (float_to_string float_value)
   | Bool bool_value ->
       if bool_value then
         IO.Buffer.add_string buffer "true"
-      else
-        IO.Buffer.add_string buffer "false"
+      else IO.Buffer.add_string buffer "false"
   | Array values ->
       IO.Buffer.add_char buffer '[';
-      values |> List.enumerate |> List.for_each
-        ~fn:(fun (index, item) ->
+      values |> List.enumerate |> List.for_each ~fn:(
+        fun (index, item) ->
           if not (Int.equal index 0) then
             IO.Buffer.add_string buffer ", ";
-          add_inline_value buffer item);
+          add_inline_value buffer item
+      );
       IO.Buffer.add_char buffer ']'
-  | Table [] ->
-      IO.Buffer.add_string buffer "{}"
+  | Table [] -> IO.Buffer.add_string buffer "{}"
   | Table items ->
       IO.Buffer.add_string buffer "{ ";
-      items |> List.enumerate |> List.for_each
-        ~fn:(fun (index, (key, item)) ->
+      items |> List.enumerate |> List.for_each ~fn:(
+        fun (index, (key, item)) ->
           if not (Int.equal index 0) then
             IO.Buffer.add_string buffer ", ";
           IO.Buffer.add_string buffer key;
           IO.Buffer.add_string buffer " = ";
-          add_inline_value buffer item);
+          add_inline_value buffer item
+      );
       IO.Buffer.add_string buffer " }"
 
-let dotted_path = fun path ->
-  String.concat "." path
+let dotted_path = fun path -> String.concat "." path
 
 let partition_items = fun items ->
   let scalars = ref [] in
   let tables = ref [] in
   let arrays_of_tables = ref [] in
-  List.for_each items
-    ~fn:(fun ((key, value) as entry) ->
+  List.for_each items ~fn:(
+    fun ((key, value) as entry) ->
       match value with
       | Table nested -> tables := (key, nested) :: !tables
-      | Array values when not (List.is_empty values) && List.for_all is_table values -> arrays_of_tables := (
-        key,
-        values
-      )
-      :: !arrays_of_tables
-      | _ -> scalars := entry :: !scalars);
+      | Array values when not (List.is_empty values) && List.for_all is_table values -> arrays_of_tables := (key, values) :: !arrays_of_tables
+      | _ -> scalars := entry :: !scalars
+  );
   (List.rev !scalars, List.rev !tables, List.rev !arrays_of_tables)
 
 let rec render_table_body = fun buffer path items ->
   let scalars, tables, arrays_of_tables = partition_items items in
-  List.for_each scalars
-    ~fn:(fun (key, value) ->
+  List.for_each scalars ~fn:(
+    fun (key, value) ->
       IO.Buffer.add_string buffer key;
       IO.Buffer.add_string buffer " = ";
       add_inline_value buffer value;
-      IO.Buffer.add_char buffer '\n');
-  if
-    not (List.is_empty scalars)
-    && (not (List.is_empty tables) || not (List.is_empty arrays_of_tables))
-  then
+      IO.Buffer.add_char buffer '\n'
+  );
+  if not (List.is_empty scalars) && (not (List.is_empty tables) || not (List.is_empty arrays_of_tables)) then
     IO.Buffer.add_char buffer '\n';
-  tables |> List.enumerate |> List.for_each
-    ~fn:(fun (index, (key, nested)) ->
+  tables |> List.enumerate |> List.for_each ~fn:(
+    fun (index, (key, nested)) ->
       if not (Int.equal index 0) then
         IO.Buffer.add_char buffer '\n';
       IO.Buffer.add_char buffer '[';
       IO.Buffer.add_string buffer (dotted_path (path @ [ key ]));
       IO.Buffer.add_string buffer "]\n";
-      render_table_body buffer (path @ [ key ]) nested);
+      render_table_body buffer (path @ [ key ]) nested
+  );
   if not (List.is_empty tables) && not (List.is_empty arrays_of_tables) then
     IO.Buffer.add_char buffer '\n';
-  arrays_of_tables |> List.enumerate |> List.for_each
-    ~fn:(fun (outer_index, (key, values)) ->
-      values |> List.enumerate |> List.for_each
-        ~fn:(fun (inner_index, value) ->
-          if not (Int.equal outer_index 0 && Int.equal inner_index 0) then
-            IO.Buffer.add_char buffer '\n';
-          match value with
-          | Table nested ->
-              IO.Buffer.add_string buffer "[[";
-              IO.Buffer.add_string buffer (dotted_path (path @ [ key ]));
-              IO.Buffer.add_string buffer "]]\n";
-              render_table_body buffer (path @ [ key ]) nested
-          | _ -> panic "Render.render_table_body: expected table in array-of-tables"))
+  arrays_of_tables |> List.enumerate |> List.for_each ~fn:(
+    fun (outer_index, (key, values)) -> values |> List.enumerate |> List.for_each ~fn:(
+      fun (inner_index, value) ->
+        if not (Int.equal outer_index 0 && Int.equal inner_index 0) then
+          IO.Buffer.add_char buffer '\n';
+        match value with
+        | Table nested ->
+            IO.Buffer.add_string buffer "[[";
+            IO.Buffer.add_string buffer (dotted_path (path @ [ key ]));
+            IO.Buffer.add_string buffer "]]\n";
+            render_table_body buffer (path @ [ key ]) nested
+        | _ -> panic "Render.render_table_body: expected table in array-of-tables"
+    )
+  )
 
 let to_string = function
   | Table items ->

@@ -8,5 +8,4 @@ external id: t -> int = "kernel_new_async_token_id"
 
 let hash = fun token -> Int.hash (id token)
 
-let equal = fun left right ->
-  Int.equal (id left) (id right)
+let equal = fun left right -> Int.equal (id left) (id right)

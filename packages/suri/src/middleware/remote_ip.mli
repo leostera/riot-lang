@@ -1,164 +1,163 @@
 open Std
 
-(** {1 Remote IP Middleware}
+(**
+   {1 Remote IP Middleware}
 
-    Extracts the real client IP address from X-Forwarded-For headers when
-    behind proxies or load balancers.
+   Extracts the real client IP address from X-Forwarded-For headers when
+   behind proxies or load balancers.
 
-    {b ⚠️ SECURITY CRITICAL}: Only use with trusted proxy IPs!
+   {b ⚠️ SECURITY CRITICAL}: Only use with trusted proxy IPs!
 
-    {2 Quick Start}
+   {2 Quick Start}
 
-    {[
-      (* Trust specific proxy IPs *)
-      let app = Middleware.[
-        remote_ip ~proxies:["10.0.1.50"; "10.0.1.51"];
-        logger;  (* Now logs real client IP *)
-        router routes;
-      ]
-    ]}
+   {[
+     (* Trust specific proxy IPs *)
+     let app = Middleware.[
+       remote_ip ~proxies:["10.0.1.50"; "10.0.1.51"];
+       logger;  (* Now logs real client IP *)
+       router routes;
+     ]
+   ]}
 
-    {2 Why Use This?}
+   {2 Why Use This?}
 
-    When your application runs behind a proxy/load balancer:
-    - nginx
-    - HAProxy  
-    - CloudFlare
-    - AWS ALB/ELB
-    - Heroku
+   When your application runs behind a proxy/load balancer:
+   - nginx
+   - HAProxy  
+   - CloudFlare
+   - AWS ALB/ELB
+   - Heroku
 
-    The IP you see is the proxy's IP, not the client's!
+   The IP you see is the proxy's IP, not the client's!
 
-    {v
-    Client (1.2.3.4) → Proxy (10.0.1.50) → Your App
-                                            ↑
-                                      Sees 10.0.1.50
-    v}
+   {v
+   Client (1.2.3.4) → Proxy (10.0.1.50) → Your App
+                                           ↑
+                                     Sees 10.0.1.50
+   v}
 
-    This middleware extracts the real client IP from headers:
-    {v
-    X-Forwarded-For: 1.2.3.4, 10.0.1.50
-                     ^^^^^^^^
-                     Real client IP!
-    v}
+   This middleware extracts the real client IP from headers:
+   {v
+   X-Forwarded-For: 1.2.3.4, 10.0.1.50
+                    ^^^^^^^^
+                    Real client IP!
+   v}
 
-    {2 Security}
+   {2 Security}
 
-    {b ⚠️ NEVER trust X-Forwarded-For without validation!}
+   {b ⚠️ NEVER trust X-Forwarded-For without validation!}
 
-    Clients can spoof this header:
-    {v
-    X-Forwarded-For: 127.0.0.1
-    v}
+   Clients can spoof this header:
+   {v
+   X-Forwarded-For: 127.0.0.1
+   v}
 
-    This middleware only trusts IPs from your known proxies.
+   This middleware only trusts IPs from your known proxies.
 
-    {[
-      (* SAFE - only trust your known proxies *)
-      remote_ip ~proxies:["10.0.1.50"; "10.0.1.51"];
+   {[
+     (* SAFE - only trust your known proxies *)
+     remote_ip ~proxies:["10.0.1.50"; "10.0.1.51"];
 
-      (* DANGEROUS - trusts any IP! *)
-      (* DON'T DO THIS! *)
-    ]}
+     (* DANGEROUS - trusts any IP! *)
+     (* DON'T DO THIS! *)
+   ]}
 
-    {2 How It Works}
+   {2 How It Works}
 
-    Given header: [X-Forwarded-For: client, proxy1, proxy2]
+   Given header: [X-Forwarded-For: client, proxy1, proxy2]
 
-    1. Walk the chain from right to left
-    2. Skip trusted proxy IPs
-    3. First untrusted IP = real client
-    4. Update [Conn.peer] with real IP
+   1. Walk the chain from right to left
+   2. Skip trusted proxy IPs
+   3. First untrusted IP = real client
+   4. Update [Conn.peer] with real IP
 
-    {2 Multiple Proxies}
+   {2 Multiple Proxies}
 
-    {v
-    Client (1.2.3.4) → CloudFlare (5.6.7.8) → Your Proxy (10.0.1.50) → App
-    
-    X-Forwarded-For: 1.2.3.4, 5.6.7.8, 10.0.1.50
-    
-    If you trust: [10.0.1.50]
-    Result: 5.6.7.8 (CloudFlare's IP)
-    
-    If you trust: [10.0.1.50; 5.6.7.8]  
-    Result: 1.2.3.4 (Real client!)
-    v}
+   {v
+   Client (1.2.3.4) → CloudFlare (5.6.7.8) → Your Proxy (10.0.1.50) → App
 
-    {2 Custom Headers}
+   X-Forwarded-For: 1.2.3.4, 5.6.7.8, 10.0.1.50
 
-    Different proxies use different headers:
+   If you trust: [10.0.1.50]
+   Result: 5.6.7.8 (CloudFlare's IP)
 
-    {[
-      (* nginx: X-Real-IP *)
-      remote_ip ~proxies:["10.0.1.50"] ~header:"x-real-ip";
+   If you trust: [10.0.1.50; 5.6.7.8]  
+   Result: 1.2.3.4 (Real client!)
+   v}
 
-      (* CloudFlare: CF-Connecting-IP *)
-      remote_ip ~proxies:["173.245.48.1"] ~header:"cf-connecting-ip";
+   {2 Custom Headers}
 
-      (* Standard: X-Forwarded-For (default) *)
-      remote_ip ~proxies:["10.0.1.50"];
-    ]}
+   Different proxies use different headers:
 
-    {2 Common Proxy IP Ranges}
+   {[
+     (* nginx: X-Real-IP *)
+     remote_ip ~proxies:["10.0.1.50"] ~header:"x-real-ip";
 
-    {v
-    Private networks (RFC 1918):
-    - 10.0.0.0/8      (10.0.0.0 - 10.255.255.255)
-    - 172.16.0.0/12   (172.16.0.0 - 172.31.255.255)
-    - 192.168.0.0/16  (192.168.0.0 - 192.168.255.255)
+     (* CloudFlare: CF-Connecting-IP *)
+     remote_ip ~proxies:["173.245.48.1"] ~header:"cf-connecting-ip";
 
-    CloudFlare:
-    - 173.245.48.0/20
-    - 103.21.244.0/22
-    - ... (see CloudFlare docs)
+     (* Standard: X-Forwarded-For (default) *)
+     remote_ip ~proxies:["10.0.1.50"];
+   ]}
 
-    AWS:
-    - Varies by region (check AWS IP ranges)
-    v}
+   {2 Common Proxy IP Ranges}
 
-    {b Note}: Current implementation uses exact IP matching.
-    CIDR range support coming in future version. *)
+   {v
+   Private networks (RFC 1918):
+   - 10.0.0.0/8      (10.0.0.0 - 10.255.255.255)
+   - 172.16.0.0/12   (172.16.0.0 - 172.31.255.255)
+   - 192.168.0.0/16  (192.168.0.0 - 192.168.255.255)
+
+   CloudFlare:
+   - 173.245.48.0/20
+   - 103.21.244.0/22
+   - ... (see CloudFlare docs)
+
+   AWS:
+   - Varies by region (check AWS IP ranges)
+   v}
+
+   {b Note}: Current implementation uses exact IP matching.
+   CIDR range support coming in future version. 
+*)
 (** {1 Middleware} *)
-(** Remote IP middleware - extracts real client IP from proxy headers.
+(**
+   Remote IP middleware - extracts real client IP from proxy headers.
 
-    {[
-      let app = Middleware.[
-        remote_ip ~proxies:["10.0.1.50"; "10.0.1.51"];
-        logger;
-        router routes;
-      ]
-    ]}
+   {[
+     let app = Middleware.[
+       remote_ip ~proxies:["10.0.1.50"; "10.0.1.51"];
+       logger;
+       router routes;
+     ]
+   ]}
 
-    {b Parameters}:
-    - [proxies] - List of trusted proxy IP addresses (exact match)
-    - [header] - Header to check (default: "x-forwarded-for")
+   {b Parameters}:
+   - [proxies] - List of trusted proxy IP addresses (exact match)
+   - [header] - Header to check (default: "x-forwarded-for")
 
-    {b Security}:
-    - Only specify IPs you control and trust
-    - {b Never} include public IPs unless you own them
-    - Empty proxy list = no IP rewriting (safe default)
+   {b Security}:
+   - Only specify IPs you control and trust
+   - {b Never} include public IPs unless you own them
+   - Empty proxy list = no IP rewriting (safe default)
 
-    {b Headers supported}:
-    - [x-forwarded-for] (default) - Standard proxy header
-    - [x-real-ip] - nginx single-IP header
-    - [cf-connecting-ip] - CloudFlare
-    - Custom headers via [~header] parameter
+   {b Headers supported}:
+   - [x-forwarded-for] (default) - Standard proxy header
+   - [x-real-ip] - nginx single-IP header
+   - [cf-connecting-ip] - CloudFlare
+   - Custom headers via [~header] parameter
 
-    {b Example with nginx}:
-    {[
-      (* nginx config:
-         proxy_set_header X-Real-IP $remote_addr;
-         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-      *)
+   {b Example with nginx}:
+   {[
+     (* nginx config:
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+     *)
 
-      let app = Middleware.[
-        remote_ip ~proxies:["10.0.1.50"] ~header:"x-real-ip";
-        router routes;
-      ]
-    ]} *)
-val middleware: ?header:string ->
-  unit ->
-  proxies:string list ->
-  conn:Conn.t ->
-  next:(Conn.t -> Conn.t) ->
-  Conn.t
+     let app = Middleware.[
+       remote_ip ~proxies:["10.0.1.50"] ~header:"x-real-ip";
+       router routes;
+     ]
+   ]} 
+*)
+val middleware: ?header:string -> unit -> proxies:string list -> conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t

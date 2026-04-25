@@ -1,9 +1,6 @@
 open Std
 
-type size = {
-  rows: int;
-  cols: int;
-}
+type size = { rows: int; cols: int }
 
 type error =
   | NoTtyConnected

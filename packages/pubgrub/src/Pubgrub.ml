@@ -1,11 +1,19 @@
 open Std
+
 module Ranges = Ranges
+
 module Term = Term
+
 module Provider = Provider
+
 module Incompatibility = Incompatibility
+
 module Partial_solution = Partial_solution
+
 module Solver = Solver
+
 module Trace = Trace
+
 module Report = Report
 
 type version = Version.t

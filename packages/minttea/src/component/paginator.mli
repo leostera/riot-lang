@@ -1,18 +1,10 @@
 type style =
   | Dots
   | Numerals
+
 type t
-val make:
-  ?style:style ->
-  ?page:int ->
-  ?per_page:int ->
-  ?total_pages:int ->
-  ?active_dot:string ->
-  ?inactive_dot:string ->
-  ?numerals_format:(int -> int -> string) ->
-  ?text_style:Style.t ->
-  unit ->
-  t
+
+val make: ?style:style -> ?page:int -> ?per_page:int -> ?total_pages:int -> ?active_dot:string -> ?inactive_dot:string -> ?numerals_format:(int -> int -> string) -> ?text_style:Style.t -> unit -> t
 
 val set_total_pages: t -> total:int -> t * int
 

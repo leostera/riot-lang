@@ -1,7 +1,8 @@
-(** Shell-completion script generation for Riot.
+(**
+   Shell-completion script generation for Riot.
 
-    Use this module to build shell-specific completion scripts and the
-    completion candidates that depend on the current workspace.
+   Use this module to build shell-specific completion scripts and the
+   completion candidates that depend on the current workspace.
 *)
 type shell =
   | Zsh
@@ -20,22 +21,25 @@ val generate_script: shell -> string
 (** List package names available in the workspace for completion. *)
 val list_packages: Riot_model.Workspace_manifest.t -> string list
 
-(** List runnable binaries as completion labels.
+(**
+   List runnable binaries as completion labels.
 
-    Example return values look like ["serve:my-package"].
+   Example return values look like ["serve:my-package"].
 *)
 val list_binaries: Riot_model.Workspace_manifest.t -> string list
 
-(** List test-suite selectors for completion.
+(**
+   List test-suite selectors for completion.
 
-    Example return values look like ["math-tests:std"].
+   Example return values look like ["math-tests:std"].
 *)
 val list_tests: Riot_model.Workspace_manifest.t -> string list
 
-(** List benchmark selectors for completion.
+(**
+   List benchmark selectors for completion.
 
-    The result also includes package-wide selectors such as ["std:..."] for
-    running all benchmarks in a package.
+   The result also includes package-wide selectors such as ["std:..."] for
+   running all benchmarks in a package.
 *)
 val list_benchmarks: Riot_model.Workspace_manifest.t -> string list
 

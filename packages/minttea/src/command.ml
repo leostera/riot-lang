@@ -1,7 +1,7 @@
 open Std
 
 type mouse_mode =
-  Cell_motion
+  | Cell_motion
   | All_motion
 
 type t =
@@ -22,5 +22,4 @@ type t =
   | SetTimer of { ref: Timer.id Ref.t; duration: Time.Duration.t }
 
 let timer = fun ~after ->
-  let ref = Ref.make () in
-  (ref, SetTimer { ref; duration = after })
+  let ref = Ref.make () in (ref, SetTimer { ref; duration = after })

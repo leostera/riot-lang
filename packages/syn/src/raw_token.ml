@@ -1,5 +1,6 @@
 open Std
 open Std.Collections
+
 module Slice = IO.IoVec.IoSlice
 
 type t = {
@@ -9,15 +10,11 @@ type t = {
   has_newline: bool;
 }
 
-type stream = {
-  raw: t Vector.t;
-  significant: int Vector.t;
-}
+type stream = { raw: t Vector.t; significant: int Vector.t }
 
 let create_stream = fun () -> { raw = Vector.create (); significant = Vector.create () }
 
-let create_stream_with_capacity = fun ~raw ~significant ->
-  { raw = Vector.with_capacity ~size:raw; significant = Vector.with_capacity ~size:significant }
+let create_stream_with_capacity = fun ~raw ~significant -> { raw = Vector.with_capacity ~size:raw; significant = Vector.with_capacity ~size:significant }
 
 let push = fun stream token ->
   let index = Vector.length stream.raw in
@@ -41,8 +38,7 @@ let slice = fun ~source token ->
   let len = width token in
   if len <= 0 then
     Slice.empty
-  else
-    Slice.sub_unchecked source ~off:token.span.Ceibo.Span.start ~len
+  else Slice.sub_unchecked source ~off:token.span.Ceibo.Span.start ~len
 
 let text_slice = fun ~source token -> slice ~source token |> Slice.to_string
 
@@ -52,10 +48,10 @@ let contains_char = fun ~source token needle ->
   let rec loop index =
     if index >= len then
       false
-    else if Slice.get_unchecked slice ~at:index = needle then
-      true
     else
-      loop (index + 1)
+      if Slice.get_unchecked slice ~at:index = needle then
+        true
+      else loop (index + 1)
   in
   loop 0
 
@@ -65,15 +61,14 @@ let span_contains_char = fun ~source span needle ->
   let rec loop index =
     if Int.(index >= end_) then
       false
-    else if Char.equal (Slice.get_unchecked source ~at:index) needle then
-      true
     else
-      loop Int.(index + 1)
+      if Char.equal (Slice.get_unchecked source ~at:index) needle then
+        true
+      else loop Int.(index + 1)
   in
   if Int.(start < 0 || end_ > Slice.length source || end_ <= start) then
     false
-  else
-    loop start
+  else loop start
 
 let keyword_kind = function
   | Keyword.And -> Syntax_kind.AND_KW
@@ -149,10 +144,7 @@ let close_delim_kind = function
   | Token.Brace -> Syntax_kind.RBRACE
   | Token.Bracket -> Syntax_kind.RBRACKET
   | Token.Array -> Syntax_kind.BAR_RBRACKET
-  | Token.BeginEnd
-  | Token.StructEnd
-  | Token.SigEnd
-  | Token.ObjectEnd -> Syntax_kind.END_KW
+  | Token.BeginEnd | Token.StructEnd | Token.SigEnd | Token.ObjectEnd -> Syntax_kind.END_KW
 
 let kind_of_token_kind = function
   | Token.Keyword keyword -> keyword_kind keyword
@@ -244,17 +236,20 @@ let of_lexer_tokens = fun ~source tokens ->
     span = trivia.span;
     legacy_kind = Token.token_kind_of_trivia_kind trivia.kind;
     has_newline = span_contains_char ~source trivia.span '\n'
-  } in
+  }
+  in
   let raw_of_token (token: Token.t) = {
     kind = kind_of_token_kind token.kind;
     span = token.span;
     legacy_kind = token.kind;
     has_newline = span_contains_char ~source token.span '\n'
-  } in
-  List.for_each tokens
-    ~fn:(fun token ->
-      List.for_each
-        token.Token.leading_trivia
-        ~fn:(fun trivia -> ignore (push stream (raw_of_trivia trivia)));
-      ignore (push_significant stream (raw_of_token token)));
+  }
+  in
+  List.for_each tokens ~fn:(
+    fun token ->
+      List.for_each token.Token.leading_trivia ~fn:(
+        fun trivia -> ignore (push stream (raw_of_trivia trivia))
+      );
+      ignore (push_significant stream (raw_of_token token))
+  );
   stream

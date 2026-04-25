@@ -11,6 +11,7 @@ type diagnostic =
   | Lowering of Diagnostic.t
   (** Inference diagnostic emitted by [typ]. *)
   | Typing of Diagnostic.t
+
 type definition = ModuleTypings.definition_site
 
 (** Fetch the full per-source analysis record for one [SourceId]. *)
@@ -22,8 +23,10 @@ val diagnostics: Snapshot.t -> SourceId.t -> diagnostic list
 (** Fetch the full export-facing summary for one source, when present. *)
 val file_summary_of: Snapshot.t -> SourceId.t -> FileSummary.t option
 
-(** Fetch the canonical host-facing module typings for one rooted source's
-    module, when present. *)
+(**
+   Fetch the canonical host-facing module typings for one rooted source's
+   module, when present. 
+*)
 val module_typings_of: Snapshot.t -> SourceId.t -> ModuleTypings.t option
 
 (** Fetch the export trust result for one source, when present. *)

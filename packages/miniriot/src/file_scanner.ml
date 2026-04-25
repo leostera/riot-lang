@@ -1,20 +1,11 @@
 open Stdlib
 
 (** File scanner module for building directory trees *)
-type file = {
-  path: string;
-  name: string;
-  ext: string;
-}
+type file = { path: string; name: string; ext: string }
 
-type dir = {
-  path: string;
-  name: string;
-  children: file_tree list;
-}
-
+type dir = { path: string; name: string; children: file_tree list }
 and file_tree =
-  File of file
+  | File of file
   | Dir of dir
 
 let path = fun t ->
@@ -27,28 +18,28 @@ let rec walk = fun ~root ->
   let name = Filename.basename root in
   if not (Sys.file_exists root) then
     failwith (Printf.sprintf "Path does not exist: %s" root)
-  else if Sys.is_directory root then
-    let entries =
-      Sys.readdir root
-      |> Array.to_list
-      |> List.filter
-        (fun entry ->
-          (* Filter out hidden files and current/parent dir *)
-          entry <> "." && entry <> ".." && not (String.starts_with ~prefix:"." entry))
-    in
-    (* Build full paths and recursively process *)
-    let children =
-      List.map
-        (fun entry ->
-          let full_path = Filename.concat root entry in
-          walk ~root:full_path)
-        entries
-    in
-    Dir { path = root; name; children }
   else
-    (* It's a file *)
-    let ext = Filename.extension name in
-    File { path = root; name; ext }
+    if Sys.is_directory root then
+      let entries =
+        Sys.readdir root |> Array.to_list |> List.filter
+          (
+            fun entry -> (* Filter out hidden files and current/parent dir *)
+            entry <> "." && entry <> ".." && not (String.starts_with ~prefix:"." entry)
+          )
+      in
+      (* Build full paths and recursively process *)
+      let children =
+        List.map
+          (
+            fun entry ->
+              let full_path = Filename.concat root entry in walk ~root:full_path
+          )
+          entries
+      in
+      Dir { path = root; name; children }
+    else
+      (* It's a file *)
+      let ext = Filename.extension name in File { path = root; name; ext }
 
 (** Pretty print a file tree for debugging *)
 let rec print_tree = fun ?(indent = 0) tree ->
@@ -70,5 +61,4 @@ let rec get_directories_only = fun tree ->
   match tree with
   | File _ -> None
   | Dir { path; name; children } ->
-      let dir_children = List.filter_map get_directories_only children in
-      Some (Dir { path; name; children = dir_children })
+      let dir_children = List.filter_map get_directories_only children in Some (Dir { path; name; children = dir_children })

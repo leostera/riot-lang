@@ -1,6 +1,9 @@
 open Std
+
 module Policy = Policy
+
 module Namespace = Namespace
+
 module Store = Store
 
 type t = Store.t

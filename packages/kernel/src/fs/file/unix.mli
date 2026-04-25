@@ -1,7 +1,9 @@
 type t
+
 type error =
   | InvalidSlice of { pos: int; len: int; buffer_len: int }
   | System of System_error.t
+
 val error_to_string: error -> string
 
 type kind =
@@ -13,8 +15,10 @@ type kind =
   | NamedPipe
   | Socket
   | Unknown
-module Metadata: sig
+
+module Metadata : sig
   type t
+
   val file_type: t -> kind
 
   val is_file: t -> bool
@@ -56,16 +60,14 @@ type open_flag =
   | Truncate
   | Append
   | Exclusive
-type pipe = {
-  read_end: t;
-  write_end: t;
-}
+
+type pipe = { read_end: t; write_end: t }
+
 val open_file: Path.t -> flags:open_flag list -> permissions:int -> (t, error) Result.t
 
 val open_read: Path.t -> (t, error) Result.t
 
-val open_write:
-  ?create:bool -> ?truncate:bool -> ?append:bool -> ?perm:int -> Path.t -> (t, error) Result.t
+val open_write: ?create:bool -> ?truncate:bool -> ?append:bool -> ?perm:int -> Path.t -> (t, error) Result.t
 
 val close: t -> (unit, error) Result.t
 

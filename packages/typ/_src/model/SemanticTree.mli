@@ -1,10 +1,12 @@
 open Std
 
-(** Semantic view for one successfully lowered source file.
+(**
+   Semantic view for one successfully lowered source file.
 
-    The long-lived state is split into [ItemTree], [BodyArena], and
-    [OriginMap]. [SemanticTree.file] is a convenience wrapper that keeps those
-    structures together for the current prototype APIs and reports. *)
+   The long-lived state is split into [ItemTree], [BodyArena], and
+   [OriginMap]. [SemanticTree.file] is a convenience wrapper that keeps those
+   structures together for the current prototype APIs and reports. 
+*)
 type file = {
   (** Body-stable top-level item skeleton. *)
   item_tree: ItemTree.t;

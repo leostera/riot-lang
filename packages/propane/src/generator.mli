@@ -1,72 +1,73 @@
 open Std
 
-(** Generator module for creating random values.
-    
-    Inspired by PropEr's proper_gen.erl, this module provides combinators
-    for building random value generators.
-    
-    A generator is a function that takes a random state and produces a value.
-    Generators can be combined using various combinators to create complex
-    generators from simple ones.
-    
-    {1 Quick Examples}
-    
-    {[
-      (* Simple generators *)
-      Generator.int                        (* Random ints *)
-      Generator.string                     (* Random strings *)
-      Generator.bool                       (* Random booleans *)
-      
-      (* Bounded generators *)
-      Generator.int_range 1 10             (* Ints from 1 to 10 *)
-      Generator.char_range 'a' 'z'         (* Lowercase letters *)
-      
-      (* Collection generators *)
-      Generator.list Generator.int         (* Lists of ints *)
-      Generator.pair gen1 gen2             (* Pairs *)
-      Generator.option Generator.string    (* Optional strings *)
-      
-      (* Combinators *)
-      Generator.map (fun x -> x * 2) int   (* Transform values *)
-      Generator.one_of [gen1; gen2; gen3]  (* Pick randomly *)
-      Generator.frequency [                (* Weighted choice *)
-        (9, small_gen);                    (* 90% probability *)
-        (1, large_gen);                    (* 10% probability *)
-      ]
-    ]}
-    
-    {1 Building Custom Generators}
-    
-    {[
-      (* Generate points in 2D space *)
-      type point = { x: int; y: int }
-      
-      let point_gen =
-        Generator.map
-          (fun (x, y) -> { x; y })
-          (Generator.pair (Generator.int_range 0 100)
-                          (Generator.int_range 0 100))
-      
-      (* Generate email addresses *)
-      let email_gen =
-        Generator.map
-          (fun (name, domain) -> name ^ "@" ^ domain ^ ".com")
-          (Generator.pair Generator.string_lowercase
-                          Generator.string_lowercase)
-      
-      (* Generate trees recursively *)
-      let tree_gen =
-        Generator.fix (fun self depth ->
-          if depth = 0 then
-            Generator.map (fun v -> Leaf v) Generator.int
-          else
-            Generator.one_of [
-              Generator.map (fun v -> Leaf v) Generator.int;
-              Generator.map2 (fun l r -> Node (l, r))
-                (self (depth - 1)) (self (depth - 1));
-            ]
-        ) 5
-    ]}
+(**
+   Generator module for creating random values.
+
+   Inspired by PropEr's proper_gen.erl, this module provides combinators
+   for building random value generators.
+
+   A generator is a function that takes a random state and produces a value.
+   Generators can be combined using various combinators to create complex
+   generators from simple ones.
+
+   {1 Quick Examples}
+
+   {[
+     (* Simple generators *)
+     Generator.int                        (* Random ints *)
+     Generator.string                     (* Random strings *)
+     Generator.bool                       (* Random booleans *)
+
+     (* Bounded generators *)
+     Generator.int_range 1 10             (* Ints from 1 to 10 *)
+     Generator.char_range 'a' 'z'         (* Lowercase letters *)
+
+     (* Collection generators *)
+     Generator.list Generator.int         (* Lists of ints *)
+     Generator.pair gen1 gen2             (* Pairs *)
+     Generator.option Generator.string    (* Optional strings *)
+
+     (* Combinators *)
+     Generator.map (fun x -> x * 2) int   (* Transform values *)
+     Generator.one_of [gen1; gen2; gen3]  (* Pick randomly *)
+     Generator.frequency [                (* Weighted choice *)
+       (9, small_gen);                    (* 90% probability *)
+       (1, large_gen);                    (* 10% probability *)
+     ]
+   ]}
+
+   {1 Building Custom Generators}
+
+   {[
+     (* Generate points in 2D space *)
+     type point = { x: int; y: int }
+
+     let point_gen =
+       Generator.map
+         (fun (x, y) -> { x; y })
+         (Generator.pair (Generator.int_range 0 100)
+                         (Generator.int_range 0 100))
+
+     (* Generate email addresses *)
+     let email_gen =
+       Generator.map
+         (fun (name, domain) -> name ^ "@" ^ domain ^ ".com")
+         (Generator.pair Generator.string_lowercase
+                         Generator.string_lowercase)
+
+     (* Generate trees recursively *)
+     let tree_gen =
+       Generator.fix (fun self depth ->
+         if depth = 0 then
+           Generator.map (fun v -> Leaf v) Generator.int
+         else
+           Generator.one_of [
+             Generator.map (fun v -> Leaf v) Generator.int;
+             Generator.map2 (fun l r -> Node (l, r))
+               (self (depth - 1)) (self (depth - 1));
+           ]
+       ) 5
+   ]}
 *)
 (** {1 Core Types} *)
 type 'value t
@@ -91,70 +92,82 @@ val map3: ('a -> 'b -> 'c -> 'd) -> 'a t -> 'b t -> 'c t -> 'd t
 (** [map3 f gen1 gen2 gen3] combines three generators. *)
 val and_then: 'a t -> ('a -> 'b t) -> 'b t
 
-(** [and_then gen f] creates a dependent generator. First generates a value
-    using [gen], then uses that value to select the next generator via [f]. *)
+(**
+   [and_then gen f] creates a dependent generator. First generates a value
+   using [gen], then uses that value to select the next generator via [f]. 
+*)
 (** {1 Choice Combinators} *)
 val one_of: 'value t list -> 'value t
 
-(** [one_of gens] randomly selects one of the generators from [gens] with
-    equal probability.
-    
-    {[
-      (* Generate either a small or large number *)
-      Generator.one_of [
-        Generator.int_range 1 10;
-        Generator.int_range 100 1000;
-      ]
-      
-      (* Generate different shapes *)
-      Generator.one_of [
-        Generator.return Circle;
-        Generator.return Square;
-        Generator.return Triangle;
-      ]
-    ]}
-    
-    @raise Invalid_argument if the list is empty. *)
+(**
+   [one_of gens] randomly selects one of the generators from [gens] with
+   equal probability.
+
+   {[
+     (* Generate either a small or large number *)
+     Generator.one_of [
+       Generator.int_range 1 10;
+       Generator.int_range 100 1000;
+     ]
+
+     (* Generate different shapes *)
+     Generator.one_of [
+       Generator.return Circle;
+       Generator.return Square;
+       Generator.return Triangle;
+     ]
+   ]}
+
+   @raise Invalid_argument if the list is empty. 
+*)
 val frequency: (int * 'value t) list -> 'value t
 
-(** [frequency weighted_gens] randomly selects a generator based on weights.
-    Each element is [(weight, gen)] where weight is a positive integer.
-    
-    Useful for generating realistic distributions:
-    
-    {[
-      (* Generate mostly small numbers, occasionally large *)
-      Generator.frequency [
-        (9, Generator.int_range 0 10);      (* 90% probability *)
-        (1, Generator.int_range 100 1000);  (* 10% probability *)
-      ]
-      
-      (* Generate mostly successful results *)
-      Generator.frequency [
-        (95, Generator.map (fun x -> Ok x) value_gen);
-        (5, Generator.map (fun e -> Error e) error_gen);
-      ]
-    ]}
-    
-    @raise Invalid_argument if the list is empty or contains non-positive weights. *)
+(**
+   [frequency weighted_gens] randomly selects a generator based on weights.
+   Each element is [(weight, gen)] where weight is a positive integer.
+
+   Useful for generating realistic distributions:
+
+   {[
+     (* Generate mostly small numbers, occasionally large *)
+     Generator.frequency [
+       (9, Generator.int_range 0 10);      (* 90% probability *)
+       (1, Generator.int_range 100 1000);  (* 10% probability *)
+     ]
+
+     (* Generate mostly successful results *)
+     Generator.frequency [
+       (95, Generator.map (fun x -> Ok x) value_gen);
+       (5, Generator.map (fun e -> Error e) error_gen);
+     ]
+   ]}
+
+   @raise Invalid_argument if the list is empty or contains non-positive weights. 
+*)
 (** {1 Size Control} *)
 val sized: (int -> 'value t) -> 'value t
 
-(** [sized f] creates a generator that receives the current size parameter.
-    The size typically controls the complexity of generated values. *)
+(**
+   [sized f] creates a generator that receives the current size parameter.
+   The size typically controls the complexity of generated values. 
+*)
 val resize: int -> 'value t -> 'value t
 
 (** [resize n gen] runs [gen] with size parameter set to [n]. *)
 (** {1 Recursive Generators} *)
 val delay: (unit -> 'value t) -> 'value t
 
-(** [delay f] defers the construction of a generator.
-    Useful for creating recursive generators. *)
+(**
+   [delay f] defers the construction of a generator.
+   Useful for creating recursive generators. 
+*)
 val fix: ((int -> 'value t) -> (int -> 'value t)) -> int -> 'value t
 
-(** [fix f] creates a recursive size-bounded generator.
-    The function [f] receives itself as an argument, allowing recursion.
-    The integer parameter is the size bound. *)
+(**
+   [fix f] creates a recursive size-bounded generator.
+   The function [f] receives itself as an argument, allowing recursion.
+   The integer parameter is the size bound. 
+*)
 (** {1 Primitive Generators} *)
 (** {2 Integers} *)
 val int: int t
@@ -168,8 +181,10 @@ val int64: int64 t
 (** Generates random int64 values uniformly distributed. *)
 val int_range: int -> int -> int t
 
-(** [int_range low high] generates integers in the range [low] to [high] inclusive.
-    @raise Invalid_argument if [low > high]. *)
+(**
+   [int_range low high] generates integers in the range [low] to [high] inclusive.
+   @raise Invalid_argument if [low > high]. 
+*)
 val int32_range: int32 -> int32 -> int32 t
 
 (** [int32_range low high] generates int32 values in the range [low] to [high] inclusive. *)
@@ -178,8 +193,10 @@ val int64_range: int64 -> int64 -> int64 t
 (** [int64_range low high] generates int64 values in the range [low] to [high] inclusive. *)
 val int_bound: int -> int t
 
-(** [int_bound n] generates integers from 0 to [n] inclusive.
-    @raise Invalid_argument if [n < 0]. *)
+(**
+   [int_bound n] generates integers from 0 to [n] inclusive.
+   @raise Invalid_argument if [n < 0]. 
+*)
 val small_int: int t
 
 (** Generates small integers (typically 0-100). *)
@@ -214,8 +231,10 @@ val bool: bool t
 (** Generates random booleans with equal probability. *)
 val weighted_bool: int -> int -> bool t
 
-(** [weighted_bool weight_true weight_false] generates booleans with
-    the given weight distribution. *)
+(**
+   [weighted_bool weight_true weight_false] generates booleans with
+   the given weight distribution. 
+*)
 (** {2 Characters} *)
 val char: char t
 
@@ -343,8 +362,8 @@ val weighted_result: int -> int -> 'value t -> 'error t -> ('value, 'error) resu
 (** {1 Low-level Interface} *)
 val generate: Random.Rng.t -> 'value t -> 'value
 
-(** [generate rnd gen] runs the generator with the given random state.
-    This is the low-level interface - most users should use the Property module. *)
-val generate_with_size: Random.Rng.t -> int -> 'value t -> 'value
-
-(** [generate_with_size rnd size gen] runs a sized generator. *)
+(**
+   [generate rnd gen] runs the generator with the given random state.
+   This is the low-level interface - most users should use the Property module. 
+*)
+val generate_with_size: Random.Rng.t -> int -> 'value t -> 'value(** [generate_with_size rnd size gen] runs a sized generator. *)

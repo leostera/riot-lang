@@ -10,17 +10,18 @@ type provenance =
   | DeclaredValue of { name: string; scope_path: SurfacePath.t }
   | Included of { module_path: SurfacePath.t }
   | ModuleAlias of { alias_name: string; module_path: SurfacePath.t }
+
 type binding = {
   ident: BindingId.t;
   path: EntityId.t;
   scheme: TypeScheme.t;
   provenance: provenance;
 }
+
 type bindings = binding list
-type delta = {
-  bindings: bindings;
-  type_decls: FileSummary.type_decl list;
-}
+
+type delta = { bindings: bindings; type_decls: FileSummary.type_decl list }
+
 type t =
   | Empty
   | Snapshot of delta
@@ -28,6 +29,7 @@ type t =
   | BindInScope of t * SurfacePath.t * t
   | Open of t * SurfacePath.t
   | Qualify of t * SurfacePath.t
+
 val empty: t
 
 val snapshot: bindings:bindings -> type_decls:FileSummary.type_decl list -> t

@@ -1,12 +1,13 @@
 open Std
 
-(** HPACK Decoder using IO.Reader (Reentrant)
+(**
+   HPACK Decoder using IO.Reader (Reentrant)
 
-    This decoder is designed for streaming header decompression:
-    - Uses IO.Reader.t instead of bytes directly
-    - Maintains state between calls (reentrant)
-    - Decodes headers incrementally as data arrives
-    - Compatible with HTTP/2 frame boundaries
+   This decoder is designed for streaming header decompression:
+   - Uses IO.Reader.t instead of bytes directly
+   - Maintains state between calls (reentrant)
+   - Decodes headers incrementally as data arrives
+   - Compatible with HTTP/2 frame boundaries
 *)
 (** Decoder state *)
 type decoder
@@ -25,6 +26,7 @@ type decode_error =
   | Invalid_decoder_state
   (** Decoder in invalid/unexpected state *)
   | Need_more_data
+
 (** Not enough data available to complete decoding *)
 (** Decode result *)
 type decode_result =
@@ -35,29 +37,29 @@ type decode_result =
   | Error of decode_error
 
 (** Decode error *)
+(**
+   Decode headers from reader.
 
-(** Decode headers from reader.
+   This is reentrant - you can call it multiple times as data arrives.
+   The decoder automatically handles:
+   - Multi-frame header blocks (HEADERS + CONTINUATION)
+   - Dynamic table updates
+   - Partial reads
 
-    This is reentrant - you can call it multiple times as data arrives.
-    The decoder automatically handles:
-    - Multi-frame header blocks (HEADERS + CONTINUATION)
-    - Dynamic table updates
-    - Partial reads
+   Example usage:
+   {[
+     let decoder = Hpack_reader.create () in
+     let reader = IO.Reader.from_source source stream in
 
-    Example usage:
-    {[
-      let decoder = Hpack_reader.create () in
-      let reader = IO.Reader.from_source source stream in
+     match Hpack_reader.decode decoder reader with
+     | Headers headers -> handle_headers headers
+     | Need_more -> (* Wait for more data *)
+     | Error e -> handle_error e
+   ]}
 
-      match Hpack_reader.decode decoder reader with
-      | Headers headers -> handle_headers headers
-      | Need_more -> (* Wait for more data *)
-      | Error e -> handle_error e
-    ]}
-
-    @param decoder The decoder state
-    @param reader The IO reader
-    @return Decode result
+   @param decoder The decoder state
+   @param reader The IO reader
+   @return Decode result
 *)
 val decode: decoder -> IO.Reader.t -> decode_result
 

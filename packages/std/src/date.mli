@@ -1,37 +1,37 @@
-(** # Date - Civil Gregorian dates
+(**
+   # Date - Civil Gregorian dates
 
-    A date without time-of-day or timezone information.
+   A date without time-of-day or timezone information.
 
-    [Date] is the user-facing civil-date API layered on top of {!Std.Calendar}.
-    Use it for calendar dates, day arithmetic, and ISO 8601 date parsing.
+   [Date] is the user-facing civil-date API layered on top of {!Std.Calendar}.
+   Use it for calendar dates, day arithmetic, and ISO 8601 date parsing.
 
-    ## Examples
+   ## Examples
 
-    ```ocaml
-    open Std
+   ```ocaml
+   open Std
 
-    let birthday = Date.make ~year:1988 ~month:5 ~day:17 |> Result.unwrap in
-    let next_week = Date.add_days birthday 7 in
+   let birthday = Date.make ~year:1988 ~month:5 ~day:17 |> Result.unwrap in
+   let next_week = Date.add_days birthday 7 in
 
-    let iso = Date.to_iso8601 birthday in
-    (* "1988-05-17" *)
-    ```
+   let iso = Date.to_iso8601 birthday in
+   (* "1988-05-17" *)
+   ```
 
-    ## See Also
+   ## See Also
 
-    - {!Std.Calendar} for low-level Gregorian calendar computations
-    - {!Std.DateTime} for timezone-aware calendar datetimes
-    - {!Std.Time.SystemTime} for wall-clock timestamps *)
+   - {!Std.Calendar} for low-level Gregorian calendar computations
+   - {!Std.DateTime} for timezone-aware calendar datetimes
+   - {!Std.Time.SystemTime} for wall-clock timestamps 
+*)
 open Global
 
-type t = Calendar.date = {
-  year: int;
-  month: int;
-  day: int;
-}
+type t = Calendar.date = { year: int; month: int; day: int }
+
 type error =
   | Invalid_format of string
   | Invalid_date of string
+
 val make: year:int -> month:int -> day:int -> (t, error) result
 
 val is_valid: t -> bool

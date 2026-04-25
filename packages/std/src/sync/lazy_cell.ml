@@ -1,9 +1,6 @@
 open Kernel
 
-type 'a t = {
-  storage: 'a option Cell.t;
-  init: unit -> 'a;
-}
+type 'a t = { storage: 'a option Cell.t; init: unit -> 'a }
 
 let create = fun init -> { storage = Cell.create None; init }
 

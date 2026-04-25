@@ -10,9 +10,7 @@ type error =
 
 let error_message = function
   | Empty -> "Package name cannot be empty"
-  | InvalidLeadingCharacter { suggestion; _ } -> "Package name must start with a lowercase letter. Try '"
-  ^ suggestion
-  ^ "' instead"
+  | InvalidLeadingCharacter { suggestion; _ } -> "Package name must start with a lowercase letter. Try '" ^ suggestion ^ "' instead"
   | TrailingDelimiter _ -> "Package name cannot end with hyphen or underscore"
   | InvalidCharacterSet _ -> "Package name can only contain lowercase letters, numbers, hyphens, and underscores"
 
@@ -29,12 +27,13 @@ let from_string = fun name ->
     let last_char = String.get_unchecked name ~at:(String.length name - 1) in
     if not (is_lowercase first_char && is_alpha first_char) then
       Error (InvalidLeadingCharacter { value = name; suggestion = String.lowercase_ascii name })
-    else if last_char = '-' || last_char = '_' then
-      Error (TrailingDelimiter { value = name })
-    else if not (String.for_all ~fn:is_valid_char name) then
-      Error (InvalidCharacterSet { value = name })
     else
-      Ok name
+      if last_char = '-' || last_char = '_' then
+        Error (TrailingDelimiter { value = name })
+      else
+        if not (String.for_all ~fn:is_valid_char name) then
+          Error (InvalidCharacterSet { value = name })
+        else Ok name
 
 let to_string name = name
 

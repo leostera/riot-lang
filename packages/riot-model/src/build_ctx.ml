@@ -26,7 +26,7 @@ let make = fun ~session_id ~profile ?(compilation_mode = HostOnly) ?(parallelism
     compilation_mode;
     profile;
     parallelism;
-    session_id;
+    session_id
   }
 
 let host = fun ctx -> ctx.host

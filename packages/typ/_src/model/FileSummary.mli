@@ -1,21 +1,26 @@
 open Std
 
-(** In-memory export-facing summary for one analyzed source.
+(**
+   In-memory export-facing summary for one analyzed source.
 
-    Once a source finishes checking, the reusable type environment it exports
-    is captured here. Hosts should persist or reload that boundary through
-    {!ModuleTypings} rather than adding serialization concerns to the core
-    semantic layers. *)
+   Once a source finishes checking, the reusable type environment it exports
+   is captured here. Hosts should persist or reload that boundary through
+   {!ModuleTypings} rather than adding serialization concerns to the core
+   semantic layers. 
+*)
 type type_decl = {
   (** Lexical module path that owns the declaration, empty at top level. *)
   scope_path: SurfacePath.t;
   (** Lowered declaration summary exported by the source. *)
   declaration: TypeDecl.t;
 }
+
 type exports = (SurfacePath.t * TypeScheme.t) list
+
 type completeness =
   | Complete
   | Partial
+
 type export_result =
   (** Exports are safe enough for downstream reuse. *)
   | TrustedExport of { exports: exports }
@@ -23,10 +28,12 @@ type export_result =
   | ErroredExport of { exports: exports }
   (** No export can be trusted for this source revision. *)
   | NoExport
+
 type export_status =
   | Trusted
   | Errored
   | Missing
+
 type t = {
   (** Source summarized by this export result. *)
   source_id: SourceId.t;

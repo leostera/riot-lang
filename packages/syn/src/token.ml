@@ -85,16 +85,8 @@ type token_kind =
   | EOF
   | Unknown of char
 
-type t = {
-  kind: token_kind;
-  span: Ceibo.Span.t;
-  leading_trivia: trivia list;
-}
-
-and trivia = {
-  kind: trivia_kind;
-  span: Ceibo.Span.t;
-}
+type t = { kind: token_kind; span: Ceibo.Span.t; leading_trivia: trivia list }
+and trivia = { kind: trivia_kind; span: Ceibo.Span.t }
 
 let delimiter_of_keyword: keyword -> delimiter option = function
   | Begin -> Some BeginEnd
@@ -114,11 +106,11 @@ let trivia_kind_of_token_kind = function
   | Whitespace -> Some WhitespaceTrivia
   | _ -> None
 
-let trivia_of_token = fun token ->
-  Option.map (trivia_kind_of_token_kind token.kind) ~fn:(fun kind -> { kind; span = token.span })
+let trivia_of_token = fun token -> Option.map (trivia_kind_of_token_kind token.kind) ~fn:(
+  fun kind -> { kind; span = token.span }
+)
 
-let trivia_to_token = fun (trivia: trivia) ->
-  { kind = token_kind_of_trivia_kind trivia.kind; span = trivia.span; leading_trivia = [] }
+let trivia_to_token = fun (trivia: trivia) -> { kind = token_kind_of_trivia_kind trivia.kind; span = trivia.span; leading_trivia = [] }
 
 let with_leading_trivia = fun token leading_trivia -> { token with leading_trivia }
 

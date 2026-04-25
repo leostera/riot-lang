@@ -1,8 +1,9 @@
 open Global
+
 module Slice = IO.IoVec.IoSlice
 
 type t =
-  Http09
+  | Http09
   | Http10
   | Http11
   | Http2
@@ -12,10 +13,8 @@ let of_string = function
   | "HTTP/0.9" -> Ok Http09
   | "HTTP/1.0" -> Ok Http10
   | "HTTP/1.1" -> Ok Http11
-  | "HTTP/2"
-  | "HTTP/2.0" -> Ok Http2
-  | "HTTP/3"
-  | "HTTP/3.0" -> Ok Http3
+  | "HTTP/2" | "HTTP/2.0" -> Ok Http2
+  | "HTTP/3" | "HTTP/3.0" -> Ok Http3
   | _ -> Error `InvalidVersion
 
 let from_slice = fun value ->
@@ -49,12 +48,8 @@ let compare = fun v1 v2 ->
 let equal = fun v1 v2 ->
   match compare v1 v2 with
   | Order.EQ -> true
-  | Order.LT
-  | Order.GT -> false
+  | Order.LT | Order.GT -> false
 
 let is_supported = function
-  | Http09
-  | Http10
-  | Http11 -> true
-  | Http2
-  | Http3 -> false
+  | Http09 | Http10 | Http11 -> true
+  | Http2 | Http3 -> false

@@ -1,19 +1,15 @@
 open Std
 
-type t = {
-  http_request: Net.Http.Request.t;
-  body: string;
-  remaining: int;
-}
+type t = { http_request: Net.Http.Request.t; body: string; remaining: int }
 
 let of_http = fun ~body http_request ->
   let remaining =
     match Net.Http.Request.get_header http_request "content-length" with
     | Some len_str -> (
-        match Int.of_string_opt len_str with
-        | Some len -> len - String.length body
-        | None -> 0
-      )
+      match Int.of_string_opt len_str with
+      | Some len -> len - String.length body
+      | None -> 0
+    )
     | None -> 0
   in
   { http_request; body; remaining }

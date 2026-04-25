@@ -31,7 +31,6 @@ type field_type =
   | List of { item_spec: field; default: value list option }
   | DiscriminatedUnion of { discriminant: string; cases: (string * field list) list }
   | Map of field list
-
 and field = {
   name: string;
   field_type: field_type;
@@ -42,13 +41,9 @@ and field = {
 
 type field_spec = field
 
-type t = {
-  app: string;
-  fields: field list;
-}
+type t = { app: string; fields: field list }
 
 (* Global registry of specs - mutable! *)
-
 let registered_specs: t list Sync.Cell.t = cell []
 
 let for_app = fun ~app fields ->
@@ -66,7 +61,7 @@ let string = fun ?default ?(required = false) ?help name ->
     field_type = String { default };
     required;
     help;
-    allowed_values = None;
+    allowed_values = None
   }
 
 let char = fun ?default ?(required = false) ?help name ->
@@ -75,7 +70,7 @@ let char = fun ?default ?(required = false) ?help name ->
     field_type = Char { default };
     required;
     help;
-    allowed_values = None;
+    allowed_values = None
   }
 
 let int = fun ?default ?(required = false) ?help name ->
@@ -84,7 +79,7 @@ let int = fun ?default ?(required = false) ?help name ->
     field_type = Int { default };
     required;
     help;
-    allowed_values = None;
+    allowed_values = None
   }
 
 let int32 = fun ?default ?(required = false) ?help name ->
@@ -93,7 +88,7 @@ let int32 = fun ?default ?(required = false) ?help name ->
     field_type = Int32 { default };
     required;
     help;
-    allowed_values = None;
+    allowed_values = None
   }
 
 let int64 = fun ?default ?(required = false) ?help name ->
@@ -102,7 +97,7 @@ let int64 = fun ?default ?(required = false) ?help name ->
     field_type = Int64 { default };
     required;
     help;
-    allowed_values = None;
+    allowed_values = None
   }
 
 let bool = fun ?default ?(required = false) ?help name ->
@@ -111,7 +106,7 @@ let bool = fun ?default ?(required = false) ?help name ->
     field_type = Bool { default };
     required;
     help;
-    allowed_values = None;
+    allowed_values = None
   }
 
 let float = fun ?default ?(required = false) ?help name ->
@@ -120,7 +115,7 @@ let float = fun ?default ?(required = false) ?help name ->
     field_type = Float { default };
     required;
     help;
-    allowed_values = None;
+    allowed_values = None
   }
 
 let uri = fun ?default ?(required = false) ?help name ->
@@ -129,7 +124,7 @@ let uri = fun ?default ?(required = false) ?help name ->
     field_type = Uri { default };
     required;
     help;
-    allowed_values = None;
+    allowed_values = None
   }
 
 let datetime = fun ?default ?(required = false) ?help name ->
@@ -138,7 +133,7 @@ let datetime = fun ?default ?(required = false) ?help name ->
     field_type = DateTime { default };
     required;
     help;
-    allowed_values = None;
+    allowed_values = None
   }
 
 let path = fun ?default ?(required = false) ?help name ->
@@ -147,7 +142,7 @@ let path = fun ?default ?(required = false) ?help name ->
     field_type = Path { default };
     required;
     help;
-    allowed_values = None;
+    allowed_values = None
   }
 
 let uuid = fun ?default ?(required = false) ?help name ->
@@ -156,7 +151,7 @@ let uuid = fun ?default ?(required = false) ?help name ->
     field_type = Uuid { default };
     required;
     help;
-    allowed_values = None;
+    allowed_values = None
   }
 
 let enum = fun field_spec choices -> { field_spec with allowed_values = Some choices }
@@ -167,7 +162,7 @@ let list = fun item_spec ?default ?(required = false) ?help name ->
     field_type = List { item_spec; default };
     required;
     help;
-    allowed_values = None;
+    allowed_values = None
   }
 
 let discriminated_union = fun ~discriminant ~cases ->
@@ -176,7 +171,7 @@ let discriminated_union = fun ~discriminant ~cases ->
     field_type = DiscriminatedUnion { discriminant; cases };
     required = false;
     help = None;
-    allowed_values = None;
+    allowed_values = None
   }
 
 let map = fun fields ->
@@ -185,7 +180,7 @@ let map = fun fields ->
     field_type = Map fields;
     required = false;
     help = None;
-    allowed_values = None;
+    allowed_values = None
   }
 
 let key = fun name field_spec -> { field_spec with name }

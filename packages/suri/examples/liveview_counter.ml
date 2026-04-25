@@ -1,34 +1,34 @@
 open Std
 open Suri
 
-(** LiveView Counter Example
-    
-    A simple interactive counter demonstrating LiveView capabilities:
-    - Server-side rendering with Component system
-    - Real-time updates over WebSocket
-    - No client-side JavaScript framework needed
-    
-    Run with: riot run suri:liveview_counter
-    Then open: http://localhost:4000 *)
+(**
+   LiveView Counter Example
+
+   A simple interactive counter demonstrating LiveView capabilities:
+   - Server-side rendering with Component system
+   - Real-time updates over WebSocket
+   - No client-side JavaScript framework needed
+
+   Run with: riot run suri:liveview_counter
+   Then open: http://localhost:4000 
+*)
 module Counter = struct
   let id = LiveView.id "counter"
 
   open LiveView
+
   open Component
 
-  type state = {
-    count: int;
-  }
+  type state = { count: int }
 
   type msg =
-    Increment
+    | Increment
     | Decrement
     | Reset
 
   type args = unit
 
   (* No args needed for simple counter *)
-
   let serialize_args = fun () -> Data.Json.Null
 
   let deserialize_args = fun _ -> Ok ()
@@ -49,32 +49,30 @@ module Counter = struct
     new_state
 
   let render = fun ~state () ->
-    div
-      ~attrs:[ class_ "counter-app" ]
+    div ~attrs:[ class_ "counter-app" ]
       [
-        header
-          ~attrs:[ class_ "header" ]
-          [
-            h1 [ text "LiveView Counter" ];
-            p ~attrs:[ class_ "subtitle" ] [ text "Server-side rendering with real-time updates" ];
-          ];
-        div
-          ~attrs:[ class_ "counter-display" ]
-          [
-            div ~attrs:[ class_ "count-label" ] [ text "Current Count:" ];
-            div ~attrs:[ class_ "count-value" ] [ text (Int.to_string state.count) ];
-          ];
-        div
-          ~attrs:[ class_ "controls" ]
-          [
-            button
-              ~attrs:[ class_ "btn btn-decrement"; on_click (fun _ -> Decrement); ]
-              [ text "−" ];
-            button ~attrs:[ class_ "btn btn-reset"; on_click (fun _ -> Reset); ] [ text "Reset" ];
-            button ~attrs:[ class_ "btn btn-increment"; on_click (fun _ -> Increment); ] [ text "+" ];
-          ];
-        footer
-          ~attrs:[ class_ "info" ]
+        header ~attrs:[ class_ "header" ] [ h1 [ text "LiveView Counter" ]; p ~attrs:[ class_ "subtitle" ] [ text "Server-side rendering with real-time updates" ] ];
+        div ~attrs:[ class_ "counter-display" ] [ div ~attrs:[ class_ "count-label" ] [ text "Current Count:" ]; div ~attrs:[ class_ "count-value" ] [ text (Int.to_string state.count) ] ];
+        div ~attrs:[ class_ "controls" ] [ button ~attrs:[
+          class_ "btn btn-decrement";
+          on_click
+            (
+              fun _ -> Decrement
+            );
+        ] [ text "−" ]; button ~attrs:[
+          class_ "btn btn-reset";
+          on_click
+            (
+              fun _ -> Reset
+            );
+        ] [ text "Reset" ]; button ~attrs:[
+          class_ "btn btn-increment";
+          on_click
+            (
+              fun _ -> Increment
+            );
+        ] [ text "+" ] ];
+        footer ~attrs:[ class_ "info" ]
           [
             p
               [
@@ -231,31 +229,29 @@ let page_styles = {|
 |}
 
 (** Home page handler with embedded LiveView *)
-let home_page = fun conn _req ->
-  let open Component in
-    let page = html
-      [
-        head
-          [
-            meta ~attrs:[ attr "charset" "UTF-8" ] ();
-            meta ~attrs:[ attr "viewport" "width=device-width, initial-scale=1.0" ] ();
-            title [ text "LiveView Counter" ];
-            LiveView.client_script;
-            style page_styles;
-          ];
-        body [ div ~attrs:[ id "app" ] [ LiveView.embed (module Counter) (); ]; ];
-      ] in
-    conn |> Conn.render_component Net.Http.Status.Ok page
+let home_page = fun conn _req -> let open Component in
+let page =
+  html
+    [
+      head
+        [
+          meta ~attrs:[ attr "charset" "UTF-8" ] ();
+          meta ~attrs:[ attr "viewport" "width=device-width, initial-scale=1.0" ] ();
+          title [ text "LiveView Counter" ];
+          LiveView.client_script;
+          style page_styles;
+        ];
+      body [ div ~attrs:[ id "app" ] [ LiveView.embed (module Counter) () ] ];
+    ]
+in
+conn |> Conn.render_component Net.Http.Status.Ok page
 
 (* Define routes *)
-
-let routes = Middleware.Router.[get "/" home_page;
-(* Serve home page with custom styles *)
-LiveView.live (module Counter);]
+let routes = Middleware.Router.[ get "/" home_page; (* Serve home page with custom styles *)
+LiveView.live (module Counter) ]
 
 (* App is just a list of middleware! *)
-
-let app = [ Middleware.router routes; ]
+let app = [ Middleware.router routes ]
 
 let main ~args:_ =
   Std.Config.load_file (Path.v "packages/suri/examples/conf.toml");

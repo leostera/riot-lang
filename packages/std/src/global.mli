@@ -1,46 +1,50 @@
-(** # Global - Commonly used utility functions
+(**
+   # Global - Commonly used utility functions
 
-    Global utility functions available throughout `std`. This module owns
-    runtime-facing process helpers plus a small amount of formatting, printing,
-    and panic support.
+   Global utility functions available throughout `std`. This module owns
+   runtime-facing process helpers plus a small amount of formatting, printing,
+   and panic support.
 
-    ## Examples
+   ## Examples
 
-    Printing output:
+   Printing output:
 
-    ```ocaml open Std
+   ```ocaml open Std
 
-    print "Hello, world!"
+   print "Hello, world!"
 
-    println "Value: 42" ```
+   println "Value: 42" ```
 
-    String formatting:
+   String formatting:
 
-    ```ocaml
-    let msg = format Format.[
-      str "Error at line ";
-      int 42;
-      str ": syntax error";
-    ] in
-    (* msg = "Error at line 42: syntax error" *)
-    ```
+   ```ocaml
+   let msg = format Format.[
+     str "Error at line ";
+     int 42;
+     str ": syntax error";
+   ] in
+   (* msg = "Error at line 42: syntax error" *)
+   ```
 
-    Development helpers:
+   Development helpers:
 
-    ```ocaml let implement_later () = todo "Need to implement caching"
+   ```ocaml let implement_later () = todo "Need to implement caching"
 
-    let not_ready () = unimplemented () ```
+   let not_ready () = unimplemented () ```
 
-    Mutable cells:
+   Mutable cells:
 
-    ```ocaml let counter = cell 0 in Sync.Cell.set counter 1; Sync.Cell.get counter (* 1
-    *) ``` *)
+   ```ocaml let counter = cell 0 in Sync.Cell.set counter 1; Sync.Cell.get counter (* 1
+   *) ``` 
+*)
 module Format = Format
 
 type format = Format.t
+
 type ('value, 'error) result = ('value, 'error) Kernel.result =
   | Ok of 'value
   | Error of 'error
+
 val format: format list -> string
 
 val ( = ): 'value -> 'value -> bool
@@ -174,18 +178,20 @@ val yield: unit -> unit
 (** Shutdown the runtime with the given exit status *)
 val shutdown: status:int -> unit
 
-(** Raises a panic exception with the given message. Program terminates unless
-    caught.
+(**
+   Raises a panic exception with the given message. Program terminates unless
+   caught.
 
-    ## Examples
+   ## Examples
 
-    ```ocaml if config_missing then panic "Configuration file not found" ```
+   ```ocaml if config_missing then panic "Configuration file not found" ```
 
-    ## Use Cases
+   ## Use Cases
 
-    - Irrecoverable errors
-    - Invariant violations
-    - Programmer errors (use assertions instead when possible) *)
+   - Irrecoverable errors
+   - Invariant violations
+   - Programmer errors (use assertions instead when possible) 
+*)
 val panic: string -> 'a
 
 val ( ! ): 'a Sync.Cell.t -> 'a
@@ -194,65 +200,76 @@ val ( := ): 'a Sync.Cell.t -> 'a -> unit
 
 val ref: 'a -> 'a Sync.Cell.t
 
-(** Creates a mutable cell containing the given value.
+(**
+   Creates a mutable cell containing the given value.
 
-    ## Examples
+   ## Examples
 
-    ```ocaml let counter = cell 0 in Sync.Cell.update counter (fun n -> n + 1);
-    Sync.Cell.get counter (* 1 *) ```
+   ```ocaml let counter = cell 0 in Sync.Cell.update counter (fun n -> n + 1);
+   Sync.Cell.get counter (* 1 *) ```
 
-    ## See Also
+   ## See Also
 
-    - [Sync.Cell] for full cell API *)
+   - [Sync.Cell] for full cell API 
+*)
 val cell: 'a -> 'a Sync.Cell.t
 
-(** Prints to stdout with immediate flush (no newline).
+(**
+   Prints to stdout with immediate flush (no newline).
 
-    ## Examples
+   ## Examples
 
-    ```ocaml print "Processing..." (* Output: Processing... *) ``` *)
+   ```ocaml print "Processing..." (* Output: Processing... *) ``` 
+*)
 val print: string -> unit
 
-(** Prints to stdout with newline and immediate flush.
+(**
+   Prints to stdout with newline and immediate flush.
 
-    ## Examples
+   ## Examples
 
-    ```ocaml println "Operation complete" (* Output: Operation complete\n *) ```
+   ```ocaml println "Operation complete" (* Output: Operation complete\n *) ```
 *)
 val println: string -> unit
 
-(** Prints to stderr with immediate flush (no newline).
+(**
+   Prints to stderr with immediate flush (no newline).
 
-    ## Examples
+   ## Examples
 
-    ```ocaml eprint "Debug: processing item" (* Output to stderr: Debug: processing item *) ```
+   ```ocaml eprint "Debug: processing item" (* Output to stderr: Debug: processing item *) ```
 *)
 val eprint: string -> unit
 
-(** Prints to stderr with newline and immediate flush.
+(**
+   Prints to stderr with newline and immediate flush.
 
-    ## Examples
+   ## Examples
 
-    ```ocaml eprintln "Error: file not found" (* Output to stderr: Error: file not found\n *) ```
+   ```ocaml eprintln "Error: file not found" (* Output to stderr: Error: file not found\n *) ```
 *)
 val eprintln: string -> unit
 
-(** Marks code as TODO, panicking with the given message when called.
+(**
+   Marks code as TODO, panicking with the given message when called.
 
-    ## Examples
+   ## Examples
 
-    ```ocaml let cache_lookup key = todo "Implement Redis caching" ```
+   ```ocaml let cache_lookup key = todo "Implement Redis caching" ```
 
-    ## Use Cases
+   ## Use Cases
 
-    - Placeholder for future implementation
-    - Self-documenting incomplete code
-    - Fails fast if accidentally called *)
-(** Marks code as unimplemented, panicking when called.
+   - Placeholder for future implementation
+   - Self-documenting incomplete code
+   - Fails fast if accidentally called 
+*)
+(**
+   Marks code as unimplemented, panicking when called.
 
-    ## Examples
+   ## Examples
 
-    ```ocaml let complex_algorithm () = unimplemented () ``` *)
+   ```ocaml let complex_algorithm () = unimplemented () ``` 
+*)
 val todo: string -> 'a
 
 val unimplemented: unit -> 'a

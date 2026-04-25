@@ -10,15 +10,13 @@ type color = Tty.Color.t =
 
 let color = fun ?(profile = Tty.Profile.default) raw ->
   let color = Tty.Color.make raw in
-  let color = Tty.Profile.convert profile color in
-  color
+  let color = Tty.Profile.convert profile color in color
 
 let gradient = Gradient.make
 
 module Border = Border
 
 (* Size specification for width/height *)
-
 type size =
   | Auto
   (* Measure content, use intrinsic size *)
@@ -27,9 +25,7 @@ type size =
   | Flex of float
 
 (* Flexible unit, shares remaining space *)
-
 (* Overflow behavior *)
-
 type overflow =
   | Visible
   (* Don't clip (default) *)
@@ -38,9 +34,7 @@ type overflow =
   | Scroll
 
 (* Future: scrollable (not implemented yet) *)
-
 (* Constraints for Auto/Flex *)
-
 type constraints = {
   min_width: int option;
   max_width: int option;
@@ -69,24 +63,13 @@ type t = {
   underline: bool;
   width: size;
   border: Border.t option;
-  align_horizontal: 
-    ([
-      `Left
-      | `Center
-      | `Right
-    ]) option;
-  align_vertical: 
-    ([
-      `Top
-      | `Center
-      | `Bottom
-    ]) option;
+  align_horizontal: ([`Left | `Center | `Right]) option;
+  align_vertical: ([`Top | `Center | `Bottom]) option;
   overflow: overflow;
   constraints: constraints;
 }
 
 (* Structural equality for styles *)
-
 let equal: t -> t -> bool = fun a b -> a = b
 
 let default = {
@@ -113,7 +96,12 @@ let default = {
   align_horizontal = None;
   align_vertical = None;
   overflow = Visible;
-  constraints = { min_width = None; max_width = None; min_height = None; max_height = None };
+  constraints = {
+    min_width = None;
+    max_width = None;
+    min_height = None;
+    max_height = None
+  }
 }
 
 let bg = fun x t -> { t with background = Some x }
@@ -157,7 +145,6 @@ let align_horizontal = fun x t -> { t with align_horizontal = Some x }
 let align_vertical = fun x t -> { t with align_vertical = Some x }
 
 (* Legacy API - kept for compatibility *)
-
 let height = fun x t -> { t with height = Fixed x }
 
 let width = fun x t ->
@@ -170,7 +157,6 @@ let max_height = fun x t -> { t with constraints = { t.constraints with max_heig
 let max_width = fun x t -> { t with constraints = { t.constraints with max_width = Some x } }
 
 (* New size API *)
-
 let width_auto = fun t -> { t with width = Auto }
 
 let width_fixed = fun x t -> { t with width = Fixed x }
@@ -184,13 +170,11 @@ let height_fixed = fun x t -> { t with height = Fixed x }
 let height_flex = fun x t -> { t with height = Flex x }
 
 (* Constraint API *)
-
 let min_width = fun x t -> { t with constraints = { t.constraints with min_width = Some x } }
 
 let min_height = fun x t -> { t with constraints = { t.constraints with min_height = Some x } }
 
 (* Overflow API *)
-
 let overflow = fun x t -> { t with overflow = x }
 
 let do_render = fun t str ->
@@ -200,28 +184,27 @@ let do_render = fun t str ->
     let pad_right = String.make ~len:t.padding_right ~char:' ' in
     (* Apply horizontal padding to each line *)
     let lines = Util.Ansi.split_lines str in
-    let padded_lines =
-      List.map ~fn:(fun line -> pad_left ^ line ^ pad_right) lines
-    in
+    let padded_lines = List.map ~fn:(
+      fun line -> pad_left ^ line ^ pad_right
+    ) lines in
     let str_with_h_padding = String.concat "\n" padded_lines in
     (* Apply vertical padding (top and bottom) *)
-    let pad_top =
-      String.concat "\n" (List.init ~count:t.padding_top ~fn:(fun _ -> ""))
-    in
-    let pad_bottom =
-      String.concat "\n" (List.init ~count:t.padding_bottom ~fn:(fun _ -> ""))
-    in
-    let result = (
-      if t.padding_top > 0 then
-        pad_top ^ "\n"
-      else
-        ""
-    ) ^ str_with_h_padding ^ (
-      if t.padding_bottom > 0 then
-        "\n" ^ pad_bottom
-      else
-        ""
-    )
+    let pad_top = String.concat "\n" (List.init ~count:t.padding_top ~fn:(
+      fun _ -> ""
+    )) in
+    let pad_bottom = String.concat "\n" (List.init ~count:t.padding_bottom ~fn:(
+      fun _ -> ""
+    )) in
+    let result =
+      (
+        if t.padding_top > 0 then
+          pad_top ^ "\n"
+        else ""
+      ) ^ str_with_h_padding ^ (
+        if t.padding_bottom > 0 then
+          "\n" ^ pad_bottom
+        else ""
+      )
     in
     result
   in
@@ -230,14 +213,12 @@ let do_render = fun t str ->
   let target_width =
     match t.width with
     | Fixed w -> Some w
-    | Auto
-    | Flex _ -> None
+    | Auto | Flex _ -> None
   in
   let target_height =
     match t.height with
     | Fixed h -> Some h
-    | Auto
-    | Flex _ -> None
+    | Auto | Flex _ -> None
   in
   (* Apply horizontal alignment/padding if width is set *)
   let str =
@@ -245,15 +226,13 @@ let do_render = fun t str ->
     | Some w ->
         let align = Option.unwrap_or ~default:`Left t.align_horizontal in
         let lines = Util.Ansi.split_lines str in
-        let aligned_lines =
-          List.map lines
-            ~fn:(fun line ->
-              match align with
-              | `Left -> Util.Ansi.pad_right ~width:w ' ' line
-              | `Right -> Util.Ansi.pad_left ~width:w ' ' line
-              | `Center -> Util.Ansi.pad_center ~width:w ' ' line)
-        in
-        String.concat "\n" aligned_lines
+        let aligned_lines = List.map lines ~fn:(
+          fun line ->
+            match align with
+            | `Left -> Util.Ansi.pad_right ~width:w ' ' line
+            | `Right -> Util.Ansi.pad_left ~width:w ' ' line
+            | `Center -> Util.Ansi.pad_center ~width:w ' ' line
+        ) in String.concat "\n" aligned_lines
     | None -> str
   in
   (* Apply vertical alignment/padding if height is set *)
@@ -264,8 +243,7 @@ let do_render = fun t str ->
         let lines = Util.Ansi.split_lines str in
         let current_height = List.length lines in
         if current_height >= h then
-          let lines = List.take lines ~len:h in
-          String.concat "\n" lines
+          let lines = List.take lines ~len:h in String.concat "\n" lines
         else
           let padding_needed = h - current_height in
           (* Create empty lines that match the target width (if set) so they show background color *)
@@ -276,75 +254,77 @@ let do_render = fun t str ->
           in
           (
             match align with
-            | `Top ->
-                lines @ List.init ~count:padding_needed ~fn:(fun _ -> empty_line)
-            | `Bottom ->
-                List.init ~count:padding_needed ~fn:(fun _ -> empty_line) @ lines
+            | `Top -> lines @ List.init ~count:padding_needed ~fn:(
+              fun _ -> empty_line
+            )
+            | `Bottom -> List.init ~count:padding_needed ~fn:(
+              fun _ -> empty_line
+            ) @ lines
             | `Center ->
                 let top_pad = padding_needed / 2 in
-                let bottom_pad = padding_needed - top_pad in
-                List.init ~count:top_pad ~fn:(fun _ -> empty_line)
-                @ lines
-                @ List.init ~count:bottom_pad ~fn:(fun _ -> empty_line)
+                let bottom_pad = padding_needed - top_pad in (List.init ~count:top_pad ~fn:(
+                  fun _ -> empty_line
+                ) @ lines) @ List.init ~count:bottom_pad ~fn:(
+                  fun _ -> empty_line
+                )
           ) |> String.concat "\n"
     | None -> str
   in
   (* build formatting sequence *)
-  let format_seq =
-    Formatter.[ (
-        if t.blink then
-          [ Blink ]
-        else
-          []
-      ); (
-        if t.bold then
-          [ Bold ]
-        else
-          []
-      ); (
-        if t.faint then
-          [ Faint ]
-        else
-          []
-      ); (
-        if t.italic then
-          [ Italic ]
-        else
-          []
-      ); (
-        if t.reverse then
-          [ Reverse ]
-        else
-          []
-      ); (
-        if t.strikethrough then
-          [ CrossOut ]
-        else
-          []
-      ); (
-        if t.underline then
-          [ Underline ]
-        else
-          []
-      ); (
-        match t.foreground with
-        | Some color when Tty.Color.is_no_color color -> []
-        | Some color -> [ Foreground color ]
-        | None -> []
-      ); (
-        match t.background with
-        | Some color when Tty.Color.is_no_color color -> []
-        | Some color -> [ Background color ]
-        | None -> []
-      ); ]
-    |> List.concat
-  in
+  let format_seq = Formatter.[
+    (
+      if t.blink then
+        [ Blink ]
+      else []
+    );
+    (
+      if t.bold then
+        [ Bold ]
+      else []
+    );
+    (
+      if t.faint then
+        [ Faint ]
+      else []
+    );
+    (
+      if t.italic then
+        [ Italic ]
+      else []
+    );
+    (
+      if t.reverse then
+        [ Reverse ]
+      else []
+    );
+    (
+      if t.strikethrough then
+        [ CrossOut ]
+      else []
+    );
+    (
+      if t.underline then
+        [ Underline ]
+      else []
+    );
+    (
+      match t.foreground with
+      | Some color when Tty.Color.is_no_color color -> []
+      | Some color -> [ Foreground color ]
+      | None -> []
+    );
+    (
+      match t.background with
+      | Some color when Tty.Color.is_no_color color -> []
+      | Some color -> [ Background color ]
+      | None -> []
+    );
+  ] |> List.concat in
   (* render core text *)
   let str =
-    let lines = String.split_on_char '\n' str in
-    List.map lines
-      ~fn:(fun line ->
-        Formatter.format_string format_seq line) |> String.concat "\n"
+    let lines = String.split_on_char '\n' str in List.map lines ~fn:(
+      fun line -> Formatter.format_string format_seq line
+    ) |> String.concat "\n"
   in
   (* handle border *)
   let str =
@@ -366,23 +346,19 @@ let do_render = fun t str ->
     match t.constraints.max_height with
     | Some max_height when max_height > 0 ->
         let lines = String.split_on_char '\n' (Cell.get str) in
-        let lines = List.take lines ~len:max_height in
-        Cell.set str (String.concat "\n" lines)
+        let lines = List.take lines ~len:max_height in Cell.set str (String.concat "\n" lines)
     | _ -> ()
   );
   (
     match t.constraints.max_width with
     | Some max_width when max_width > 0 ->
         let lines = Util.Ansi.split_lines (Cell.get str) in
-        let truncated =
-          List.map lines
-            ~fn:(fun line ->
-              if Util.Ansi.width line > max_width then
-                Util.Ansi.truncate ~width:max_width ~ellipsis:"…" line
-              else
-                line)
-        in
-        Cell.set str (String.concat "\n" truncated)
+        let truncated = List.map lines ~fn:(
+          fun line ->
+            if Util.Ansi.width line > max_width then
+              Util.Ansi.truncate ~width:max_width ~ellipsis:"…" line
+            else line
+        ) in Cell.set str (String.concat "\n" truncated)
     | _ -> ()
   );
   (
@@ -393,27 +369,22 @@ let do_render = fun t str ->
           match target_height with
           | Some h ->
               let lines = String.split_on_char '\n' (Cell.get str) in
-              let lines = List.take lines ~len:h in
-              Cell.set str (String.concat "\n" lines)
+              let lines = List.take lines ~len:h in Cell.set str (String.concat "\n" lines)
           | None -> ()
         );
         (
           match target_width with
           | Some w ->
               let lines = Util.Ansi.split_lines (Cell.get str) in
-              let clipped =
-                List.map lines
-                  ~fn:(fun line ->
-                    if Util.Ansi.width line > w then
-                      Util.Ansi.truncate ~width:w line
-                    else
-                      line)
-              in
-              Cell.set str (String.concat "\n" clipped)
+              let clipped = List.map lines ~fn:(
+                fun line ->
+                  if Util.Ansi.width line > w then
+                    Util.Ansi.truncate ~width:w line
+                  else line
+              ) in Cell.set str (String.concat "\n" clipped)
           | None -> ()
         )
-    | Visible
-    | Scroll -> ()
+    | Visible | Scroll -> ()
   );
   Cell.get str
 

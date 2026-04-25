@@ -1,46 +1,51 @@
-(** # Iterator - Immutable iteration protocol
+(**
+   # Iterator - Immutable iteration protocol
 
-    Immutable iterator protocol for lazy sequence processing. Each call
-    to [next] returns a new iterator, leaving the original unchanged.
+   Immutable iterator protocol for lazy sequence processing. Each call
+   to [next] returns a new iterator, leaving the original unchanged.
 
-    ## Examples
+   ## Examples
 
-    Creating a custom iterator:
+   Creating a custom iterator:
 
-    ```ocaml
-    open Std
+   ```ocaml
+   open Std
 
-    module RangeIter = struct
-      type state = { current : int; stop : int }
-      type item = int
+   module RangeIter = struct
+     type state = { current : int; stop : int }
+     type item = int
 
-      let next state =
-        if state.current >= state.stop then
-          (None, state)
-        else
-          (Some state.current, { state with current = state.current + 1 })
+     let next state =
+       if state.current >= state.stop then
+         (None, state)
+       else
+         (Some state.current, { state with current = state.current + 1 })
 
-      let size state = max 0 (state.stop - state.current)
-    end
+     let size state = max 0 (state.stop - state.current)
+   end
 
-    let range start stop =
-      let module I = RangeIter in
-      Iterator.make (module I) { I.current = start; I.stop }
+   let range start stop =
+     let module I = RangeIter in
+     Iterator.make (module I) { I.current = start; I.stop }
 
-    let iter = range 0 5 in
-    let items = Iterator.to_list iter
-    ```
+   let iter = range 0 5 in
+   let items = Iterator.to_list iter
+   ```
 *)
 module type Intf = sig
   type state
+
   type item
+
   val next: state -> item option * state
 
   val size: state -> int
 end
 
 type ('item, 'state) iter = (module Intf with type item = 'item and type state = 'state)
+
 type 'item t
+
 val make: ('item, 'state) iter -> 'state -> 'item t
 
 val next: 'item t -> 'item option * 'item t

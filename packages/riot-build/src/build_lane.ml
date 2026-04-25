@@ -26,10 +26,7 @@ type 'stage t = {
   package_graph: Riot_planner.Package_graph.t;
 }
 
-let sort_unique_packages = fun package_names ->
-  package_names
-  |> List.unique ~compare:Riot_model.Package_name.compare
-  |> List.sort ~compare:Riot_model.Package_name.compare
+let sort_unique_packages = fun package_names -> package_names |> List.unique ~compare:Riot_model.Package_name.compare |> List.sort ~compare:Riot_model.Package_name.compare
 
 let planner_scope = fun scope ->
   match scope with
@@ -47,70 +44,33 @@ let make_build_ctx = fun ~host ~target ~toolchain ~session_id ~profile ~parallel
     Riot_model.Build_ctx.make ~session_id ~profile ~parallelism ()
   else
     let toolchain_root = Riot_toolchain.path toolchain in
-    let cross_toolchain = Riot_toolchain.CrossCompilingToolchain.detect
-      ~toolchain_root
-      ()
-      ~target_triplet:target in
-    Riot_model.Build_ctx.make
-      ~session_id
-      ~profile
-      ~compilation_mode:(Riot_model.Build_ctx.Cross {
+    let cross_toolchain = Riot_toolchain.CrossCompilingToolchain.detect ~toolchain_root () ~target_triplet:target in Riot_model.Build_ctx.make ~session_id ~profile ~compilation_mode:(
+      Riot_model.Build_ctx.Cross {
         target;
         sysroot = cross_toolchain.sysroot;
         bin_dir = cross_toolchain.bin_dir;
         bin_prefix = cross_toolchain.bin_prefix
-      })
-      ~parallelism
-      ()
+      }
+    ) ~parallelism ()
 
 let workspace_plan_error_to_string = function
-  | Riot_planner.Workspace_planner.PackageNotFound { name; available } ->
-      "package not found: "
-      ^ Riot_model.Package_name.to_string name
-      ^ " (available: "
-      ^ String.concat ", " (List.map available ~fn:Riot_model.Package_name.to_string)
-      ^ ")"
-  | Riot_planner.Workspace_planner.PackagesNotFound { names; available } ->
-      "packages not found: "
-      ^ String.concat ", " (List.map names ~fn:Riot_model.Package_name.to_string)
-      ^ " (available: "
-      ^ String.concat ", " (List.map available ~fn:Riot_model.Package_name.to_string)
-      ^ ")"
-  | Riot_planner.Workspace_planner.CycleDetected { cycle } ->
-      "cycle detected: " ^ String.concat " -> " cycle
-  | Riot_planner.Workspace_planner.MissingDependencies { missing } ->
-      "missing dependencies: "
-      ^ String.concat
-        "; "
-        (List.map
-          missing
-          ~fn:(fun (dep: Riot_planner.Package_graph.missing_dependency) ->
-            dep.package ^ " -> " ^ dep.dependency))
+  | Riot_planner.Workspace_planner.PackageNotFound { name; available } -> "package not found: " ^ Riot_model.Package_name.to_string name ^ " (available: " ^ String.concat ", " (List.map available ~fn:Riot_model.Package_name.to_string) ^ ")"
+  | Riot_planner.Workspace_planner.PackagesNotFound { names; available } -> "packages not found: " ^ String.concat ", " (List.map names ~fn:Riot_model.Package_name.to_string) ^ " (available: " ^ String.concat ", " (List.map available ~fn:Riot_model.Package_name.to_string) ^ ")"
+  | Riot_planner.Workspace_planner.CycleDetected { cycle } -> "cycle detected: " ^ String.concat " -> " cycle
+  | Riot_planner.Workspace_planner.MissingDependencies { missing } -> "missing dependencies: " ^ String.concat "; " (List.map missing ~fn:(
+    fun (dep: Riot_planner.Package_graph.missing_dependency) -> dep.package ^ " -> " ^ dep.dependency
+  ))
   | Riot_planner.Workspace_planner.PackageLoadFailed { errors } ->
       let format_load_error (err: Riot_model.Workspace_manager.load_error) =
         match err with
         | Riot_model.Workspace_manager.PackageNotFound { package; path; dependant } -> (
-            match dependant with
-            | None -> "missing package: " ^ package ^ " (" ^ path ^ ")"
-            | Some parent -> "missing package: "
-            ^ package
-            ^ " (required by "
-            ^ parent
-            ^ ", "
-            ^ path
-            ^ ")"
-          )
-        | Riot_model.Workspace_manager.PackageTomlReadFailed { package; path } ->
-            "failed to read package toml: " ^ package ^ " (" ^ path ^ ")"
-        | Riot_model.Workspace_manager.PackageTomlParseFailed { package; path } ->
-            "failed to parse package toml: " ^ package ^ " (" ^ path ^ ")"
-        | Riot_model.Workspace_manager.PackageFromTomlFailed { package; path; error } ->
-            "failed to parse package toml for "
-            ^ package
-            ^ " ("
-            ^ path
-            ^ "): "
-            ^ Riot_model.Package_manifest.error_message error
+          match dependant with
+          | None -> "missing package: " ^ package ^ " (" ^ path ^ ")"
+          | Some parent -> "missing package: " ^ package ^ " (required by " ^ parent ^ ", " ^ path ^ ")"
+        )
+        | Riot_model.Workspace_manager.PackageTomlReadFailed { package; path } -> "failed to read package toml: " ^ package ^ " (" ^ path ^ ")"
+        | Riot_model.Workspace_manager.PackageTomlParseFailed { package; path } -> "failed to parse package toml: " ^ package ^ " (" ^ path ^ ")"
+        | Riot_model.Workspace_manager.PackageFromTomlFailed { package; path; error } -> "failed to parse package toml for " ^ package ^ " (" ^ path ^ "): " ^ Riot_model.Package_manifest.error_message error
       in
       "package load failed: " ^ String.concat "; " (List.map errors ~fn:format_load_error)
 
@@ -118,9 +78,9 @@ let error_message = function
   | PlanningFailed error -> workspace_plan_error_to_string error
   | Failure reason -> reason
 
-let make_lane_plan = fun lane_target workspace scope ~dev_artifacts ->
-  Riot_planner.plan_workspace ~workspace ~target:lane_target ~scope ~load_errors:[] ~dev_artifacts
-  |> Result.map_err ~fn:(fun error -> PlanningFailed error)
+let make_lane_plan = fun lane_target workspace scope ~dev_artifacts -> Riot_planner.plan_workspace ~workspace ~target:lane_target ~scope ~load_errors:[] ~dev_artifacts |> Result.map_err ~fn:(
+  fun error -> PlanningFailed error
+)
 
 let release_on_error: 'value. Build_lock.t -> ('value, error) result -> ('value, error) result = fun lock result ->
   match result with
@@ -129,12 +89,7 @@ let release_on_error: 'value. Build_lock.t -> ('value, error) result -> ('value,
       Build_lock.release lock;
       error
 
-let prepare:
-  Build_context.t ->
-  Resolved_build.t ->
-  target:Riot_model.Target.t ->
-  toolchain:Riot_toolchain.t ->
-  (locked t, error) result = fun context spec ~target ~toolchain ->
+let prepare: Build_context.t -> Resolved_build.t -> target:Riot_model.Target.t -> toolchain:Riot_toolchain.t -> (locked t, error) result = fun context spec ~target ~toolchain ->
   let workspace = context.workspace in
   let package_names = Resolved_build.package_names spec in
   let scope = Resolved_build.scope spec in
@@ -145,36 +100,24 @@ let prepare:
   let planner_target = planner_target package_names in
   let planner_scope = planner_scope scope in
   let dev_artifacts = Resolved_build.dev_artifacts spec in
-  let* lock =
-    Build_lock.wait
-      ~on_waiting:(fun lock_path ->
-        Build_context.emit_phase context (Event.BuildLockWaiting { lock_path }))
-      ~target_dir_root:workspace.target_dir_root
-      ~profile:profile.name
-      ~target |> Result.map_err ~fn:(fun exn -> Failure (Exception.to_string exn))
+  let* lock = Build_lock.wait ~on_waiting:(
+    fun lock_path -> Build_context.emit_phase context (Event.BuildLockWaiting { lock_path })
+  ) ~target_dir_root:workspace.target_dir_root ~profile:profile.name ~target |> Result.map_err ~fn:(
+    fun exn -> Failure (Exception.to_string exn)
+  )
   in
   let lane =
     try
       let* lane_toolchain =
         if Riot_model.Target.equal target host then
           Ok toolchain
-        else
-          Riot_toolchain.init_for_target ~config:context.toolchain_config ~target
-          |> Result.map_err
-            ~fn:(fun reason ->
-              Failure ("failed to initialize toolchain for target "
-              ^ Riot_model.Target.to_string target
-              ^ ": "
-              ^ reason))
+        else Riot_toolchain.init_for_target ~config:context.toolchain_config ~target |> Result.map_err ~fn:(
+          fun reason -> Failure ("failed to initialize toolchain for target " ^ Riot_model.Target.to_string target ^ ": " ^ reason)
+        )
       in
-      let* plan = make_lane_plan planner_target workspace planner_scope ~dev_artifacts in
-      let build_ctx = make_build_ctx
-        ~host
-        ~target
-        ~toolchain:lane_toolchain
-        ~session_id
-        ~profile
-        ~parallelism:context.parallelism in
+      let* plan = make_lane_plan planner_target workspace planner_scope ~dev_artifacts
+      in
+      let build_ctx = make_build_ctx ~host ~target ~toolchain:lane_toolchain ~session_id ~profile ~parallelism:context.parallelism in
       let store = Riot_store.Store.create_for_lane ~workspace ~profile:profile.name ~target in
       Ok {
         target;
@@ -190,7 +133,7 @@ let prepare:
         lock;
         planner_target;
         package_plan = plan;
-        package_graph = plan.package_graph;
+        package_graph = plan.package_graph
       }
     with
     | exn -> Error (Failure (Exception.to_string exn))
@@ -223,7 +166,6 @@ let package_plan = fun (lane: 'a t) -> lane.package_plan
 
 let package_graph = fun (lane: 'a t) -> lane.package_graph
 
-let package_keys = fun (lane: 'a t) ->
-  List.map lane.package_plan.nodes ~fn:Riot_planner.Package_graph.get_key
+let package_keys = fun (lane: 'a t) -> List.map lane.package_plan.nodes ~fn:Riot_planner.Package_graph.get_key
 
 let release: locked t -> unit = fun lane -> Build_lock.release lane.lock

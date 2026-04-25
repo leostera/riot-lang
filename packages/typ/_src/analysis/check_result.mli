@@ -3,6 +3,7 @@ open Model
 
 (** Shared output types for one checked source. *)
 type env = (string * TypeScheme.t) list
+
 type binding_provenance =
   | LoweredPattern of PatternArenaId.t
   | Prelude
@@ -12,11 +13,13 @@ type binding_provenance =
   | DeclaredValue of { name: string; scope_path: SurfacePath.t }
   | Included of { module_path: SurfacePath.t }
   | ModuleAlias of { alias_name: string; module_path: SurfacePath.t }
+
 type binding_ref = {
   entity_id: EntityId.t;
   surface_path: SurfacePath.t;
   provenance: binding_provenance;
 }
+
 (** Environment snapshot captured before an expression is inferred. *)
 type expr_trace = {
   (** Expression traced by this snapshot. *)
@@ -30,6 +33,7 @@ type expr_trace = {
   (** Final inferred type for the expression. *)
   inferred_type: TypeRepr.t;
 }
+
 (** Export-facing snapshot captured after a top-level item finishes. *)
 type item_trace = {
   (** Item traced by this snapshot. *)
@@ -39,6 +43,7 @@ type item_trace = {
   (** Export environment visible after the item was processed. *)
   exports_after: env;
 }
+
 (** Full result of checking one source input through parse, lower, and infer. *)
 type t = {
   (** Stable logical source identity for the checked source. *)

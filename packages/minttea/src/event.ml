@@ -81,10 +81,7 @@ type mouse_event = {
   shift: bool;
 }
 
-type window_size = {
-  width: int;
-  height: int;
-}
+type window_size = { width: int; height: int }
 
 type t =
   | KeyDown of key * modifier
@@ -103,15 +100,8 @@ let to_string = function
       let key_str = key_to_string key in
       if mod_str = "" then
         "KeyDown(" ^ key_str ^ ")"
-      else
-        "KeyDown(" ^ mod_str ^ "+" ^ key_str ^ ")"
-  | Mouse {
-    button;
-    event_type;
-    x;
-    y;
-    _
-  } ->
+      else "KeyDown(" ^ mod_str ^ "+" ^ key_str ^ ")"
+  | Mouse { button; event_type; x; y; _ } ->
       let btn =
         match button with
         | Left -> "left"
@@ -127,23 +117,16 @@ let to_string = function
         | Motion -> "motion"
       in
       "Mouse(" ^ btn ^ "," ^ evt ^ ",x=" ^ Int.to_string x ^ ",y=" ^ Int.to_string y ^ ")"
-  | Resize { width; height } ->
-      "Resize(w=" ^ Int.to_string width ^ ",h=" ^ Int.to_string height ^ ")"
-  | Timer _ref ->
-      "Timer(...)"
-  | Frame _instant ->
-      "Frame(...)"
+  | Resize { width; height } -> "Resize(w=" ^ Int.to_string width ^ ",h=" ^ Int.to_string height ^ ")"
+  | Timer _ref -> "Timer(...)"
+  | Frame _instant -> "Frame(...)"
   | Paste content ->
       let preview =
         if String.length content > 20 then
           String.sub content ~offset:0 ~len:17 ^ "..."
-        else
-          content
+        else content
       in
       "Paste(" ^ preview ^ ")"
-  | FocusGained ->
-      "FocusGained"
-  | FocusLost ->
-      "FocusLost"
-  | Custom _msg ->
-      "Custom"
+  | FocusGained -> "FocusGained"
+  | FocusLost -> "FocusLost"
+  | Custom _msg -> "Custom"

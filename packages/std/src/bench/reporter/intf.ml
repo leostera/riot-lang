@@ -1,6 +1,4 @@
-type suite_info = {
-  name: string;
-}
+type suite_info = { name: string }
 
 module type Intf = sig
   val init: suite_info -> int -> unit
@@ -9,8 +7,9 @@ module type Intf = sig
 
   val on_result: int -> Bench_result.t -> unit
 
-  val finalize: Bench_result.summary -> unit (* Comparison reporting *)
+  val finalize: Bench_result.summary -> unit
 
+  (* Comparison reporting *)
   (* Comparison reporting *)
   val on_comparison_start: int -> string -> int -> unit
 

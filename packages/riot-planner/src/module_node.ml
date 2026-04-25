@@ -1,6 +1,7 @@
 open Std
 open Std.Collections
 open Riot_model
+
 module G = Std.Graph.SimpleGraph
 
 type kind =
@@ -19,11 +20,7 @@ type file =
   | Concrete of Path.t
   | Generated of { path: Path.t; contents: string }
 
-type t = {
-  file: file;
-  mutable open_modules: t G.node list;
-  kind: kind;
-}
+type t = { file: file; mutable open_modules: t G.node list; kind: kind }
 
 let file_to_string = fun file ->
   match file with
@@ -40,21 +37,23 @@ let make_h = fun path -> { file = Concrete path; open_modules = []; kind = H }
 
 let make_root = fun () -> { file = Concrete (Path.v ""); open_modules = []; kind = Root }
 
-let make_library = fun ~name ~includes ->
-  { file = Concrete (Path.v ""); open_modules = []; kind = Library { name; includes } }
+let make_library = fun ~name ~includes -> { file = Concrete (Path.v ""); open_modules = []; kind = Library { name; includes } }
 
-let make_native = fun ~files ->
-  { file = Concrete (Path.v "native"); open_modules = []; kind = Native { files } }
+let make_native = fun ~files -> { file = Concrete (Path.v "native"); open_modules = []; kind = Native { files } }
 
-let make_package_dependency = fun ~package_name ~root_module ->
-  {
-    file = Concrete (Path.v "");
-    open_modules = [];
-    kind = PackageDependency { package_name; root_module }
-  }
+let make_package_dependency = fun ~package_name ~root_module -> { file = Concrete (Path.v ""); open_modules = []; kind = PackageDependency { package_name; root_module } }
 
 let make_binary = fun ~name ~source ~libraries ~includes ->
-  { file = Concrete source; open_modules = []; kind = Binary { name; source; libraries; includes } }
+  {
+    file = Concrete source;
+    open_modules = [];
+    kind = Binary {
+      name;
+      source;
+      libraries;
+      includes
+    }
+  }
 
 let set_open_modules = fun t modules -> t.open_modules <- modules
 
@@ -66,10 +65,6 @@ let kind_to_string = function
   | Other s -> "Other(" ^ s ^ ")"
   | Root -> "Root"
   | Native { files } -> "Native(" ^ Int.to_string (List.length files) ^ " files)"
-  | PackageDependency { package_name; root_module } -> "PackageDependency("
-  ^ Package_name.to_string package_name
-  ^ ":"
-  ^ root_module
-  ^ ")"
+  | PackageDependency { package_name; root_module } -> "PackageDependency(" ^ Package_name.to_string package_name ^ ":" ^ root_module ^ ")"
   | Library { name; _ } -> "Library(" ^ name ^ ")"
   | Binary { name; _ } -> "Binary(" ^ name ^ ")"

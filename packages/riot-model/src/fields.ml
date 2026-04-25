@@ -1,11 +1,9 @@
 open Std
 
 let get = fun key fields ->
-  match
-    List.find fields
-      ~fn:(fun (field_name, _) ->
-        String.equal field_name key)
-  with
+  match List.find fields ~fn:(
+    fun (field_name, _) -> String.equal field_name key
+  ) with
   | Some (_, value) -> Some value
   | None -> None
 
@@ -13,9 +11,9 @@ let get_first = fun keys fields ->
   let rec loop = function
     | [] -> None
     | key :: rest -> (
-        match get key fields with
-        | Some _ as value -> value
-        | None -> loop rest
-      )
+      match get key fields with
+      | Some _ as value -> value
+      | None -> loop rest
+    )
   in
   loop keys

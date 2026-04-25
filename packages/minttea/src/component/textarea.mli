@@ -63,7 +63,7 @@ type t
 
 val make : unit -> t
 (** [make ()] creates a new empty textarea.
-    
+
     Defaults:
     - width: 40 columns
     - height: 6 rows
@@ -99,7 +99,7 @@ val set_value : t -> value:string -> t
 
 val insert_string : t -> string -> t
 (** [insert_string textarea text] inserts text at cursor position.
-    
+
     Handles newlines properly, splitting into multiple lines. *)
 
 val insert_char : t -> char -> t
@@ -127,7 +127,7 @@ val set_placeholder : t -> placeholder:string -> t
 
 val set_prompt : t -> prompt:string -> t
 (** [set_prompt textarea text] sets prefix shown on each line (e.g. "> ").
-    
+
     Set to "" to disable. *)
 
 val set_show_line_numbers : t -> show:bool -> t
@@ -135,7 +135,7 @@ val set_show_line_numbers : t -> show:bool -> t
 
 val set_end_of_buffer_char : t -> char:char -> t
 (** [set_end_of_buffer_char textarea c] sets char shown on empty lines at end.
-    
+
     Set to ' ' to hide. Default: '~' *)
 
 val set_char_limit : t -> limit:int -> t
@@ -236,7 +236,7 @@ val is_focused : t -> bool
 
 val handle_key : t -> Event.key -> Event.modifier -> t
 (** [handle_key textarea key modifier] processes keyboard input.
-    
+
     {b Navigation:}
     - Up/Ctrl+P: move up
     - Down/Ctrl+N: move down
@@ -248,7 +248,7 @@ val handle_key : t -> Event.key -> Event.modifier -> t
     - End/Ctrl+E: line end
     - Ctrl+Home/Alt+<: document start
     - Ctrl+End/Alt+>: document end
-    
+
     {b Editing:}
     - Enter/Ctrl+M: insert newline
     - Backspace/Ctrl+H: delete char before
@@ -257,20 +257,20 @@ val handle_key : t -> Event.key -> Event.modifier -> t
     - Ctrl+U: delete to line start
     - Ctrl+W/Alt+Backspace: delete word left
     - Alt+D/Alt+Delete: delete word right
-    
+
     {b Advanced:}
     - Ctrl+T: transpose characters
     - Alt+U: uppercase word
     - Alt+L: lowercase word
     - Alt+C: capitalize word
-    
+
     Returns updated textarea. No-op if not focused. *)
 
 (** ## Rendering} *)
 
 val view : t -> string
 (** [view textarea] renders the textarea for display.
-    
+
     Features:
     - Line numbers (if enabled)
     - Prompt on each line
@@ -278,6 +278,6 @@ val view : t -> string
     - Cursor rendering
     - End of buffer markers (~)
     - Placeholder text (when empty and unfocused)
-    
+
     The viewport automatically scrolls to keep cursor visible. *)
 *)

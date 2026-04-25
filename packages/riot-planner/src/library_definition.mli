@@ -2,14 +2,8 @@ open Std
 open Riot_model
 
 type t
-val from_entries:
-  namespace:Namespace.t ->
-  library_name:string ->
-  package_path:Path.t ->
-  concrete_library_path:Path.t option ->
-  binaries:Package.binary list ->
-  Module_scanner.entry list ->
-  t
+
+val from_entries: namespace:Namespace.t -> library_name:string -> package_path:Path.t -> concrete_library_path:Path.t option -> binaries:Package.binary list -> Module_scanner.entry list -> t
 
 val library_module_name: t -> string
 

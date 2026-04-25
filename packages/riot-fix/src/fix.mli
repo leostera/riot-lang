@@ -3,24 +3,23 @@ open Std
 type target = Fixme.Fix.target =
   | Node of Syn.Ast.Node.t
   | Token of Syn.Ast.Token.t
+
 type replacement = Fixme.Fix.replacement =
   | SourceOfNode of Syn.Ast.Node.t
   | SourceOfToken of Syn.Ast.Token.t
   | Text of string
+
 type operation = Fixme.Fix.operation =
   | Delete of { target: target }
   | Replace of { target: target; replacement: replacement }
   | InsertBefore of { anchor: target; content: replacement }
   | InsertAfter of { anchor: target; content: replacement }
   | Swap of { left: target; right: target }
-type fix = Fixme.Fix.fix = {
-  title: string;
-  operations: operation list;
-}
-type text_edit = Fixme.Fix.text_edit = {
-  span: Syn.Ceibo.Span.t;
-  new_text: string;
-}
+
+type fix = Fixme.Fix.fix = { title: string; operations: operation list }
+
+type text_edit = Fixme.Fix.text_edit = { span: Syn.Ceibo.Span.t; new_text: string }
+
 val source_of_node: Syn.Ast.Node.t -> replacement
 
 val source_of_token: Syn.Ast.Token.t -> replacement

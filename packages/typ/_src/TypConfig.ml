@@ -30,15 +30,10 @@ let default = {
   hidden_export_names = hidden_export_names_of ~prelude:default_prelude ~ambient:[];
   ambient_type_decls = default_ambient_type_decls;
   ambient_visible_types = VisibleTypes.of_type_decls default_ambient_type_decls;
-  on_event = None;
+  on_event = None
 }
 
-let with_ambient = fun config ~ambient ->
-  {
-    config
-    with ambient;
-    hidden_export_names = hidden_export_names_of ~prelude:config.prelude ~ambient
-  }
+let with_ambient = fun config ~ambient -> { config with ambient; hidden_export_names = hidden_export_names_of ~prelude:config.prelude ~ambient }
 
 let ambient_type_decls = fun config -> config.ambient_type_decls
 
@@ -46,22 +41,11 @@ let hidden_export_names = fun config -> config.hidden_export_names
 
 let with_hidden_export_names = fun config ~hidden_export_names -> { config with hidden_export_names }
 
-let with_ambient_type_decls = fun config ~ambient_type_decls ->
-  {
-    config
-    with ambient_type_decls;
-    ambient_visible_types = VisibleTypes.of_type_decls ambient_type_decls
-  }
+let with_ambient_type_decls = fun config ~ambient_type_decls -> { config with ambient_type_decls; ambient_visible_types = VisibleTypes.of_type_decls ambient_type_decls }
 
-let with_ambient_visible_types = fun config ~ambient_visible_types ->
-  {
-    config
-    with ambient_visible_types;
-    ambient_type_decls = VisibleTypes.type_decls ambient_visible_types
-  }
+let with_ambient_visible_types = fun config ~ambient_visible_types -> { config with ambient_visible_types; ambient_type_decls = VisibleTypes.type_decls ambient_visible_types }
 
-let with_loaded_modules = fun config ~loaded_modules ->
-  { config with loaded_modules = LoadedModules.of_list loaded_modules }
+let with_loaded_modules = fun config ~loaded_modules -> { config with loaded_modules = LoadedModules.of_list loaded_modules }
 
 let with_loaded_module_index = fun config ~loaded_modules -> { config with loaded_modules }
 

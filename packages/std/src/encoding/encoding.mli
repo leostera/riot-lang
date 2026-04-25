@@ -1,24 +1,25 @@
-(** # Encoding
+(**
+   # Encoding
 
-    Binary-to-text and numeric text encoding helpers.
+   Binary-to-text and numeric text encoding helpers.
 
-    The encoding namespace currently exposes:
+   The encoding namespace currently exposes:
 
-    - [`Base16`] and [`Hex`] for hexadecimal
-    - [`Base32`] for RFC 4648 Base32
-    - [`Base64`] for RFC 4648 Base64
-    - [`Base85`] for Ascii85/Base85
-    - [`Octal`] for octal numeric text encoding and decoding
+   - [`Base16`] and [`Hex`] for hexadecimal
+   - [`Base32`] for RFC 4648 Base32
+   - [`Base64`] for RFC 4648 Base64
+   - [`Base85`] for Ascii85/Base85
+   - [`Octal`] for octal numeric text encoding and decoding
 
-    ## Example
+   ## Example
 
-    ```ocaml
-    open Std
+   ```ocaml
+   open Std
 
-    let auth = Encoding.Base64.encode "aladdin:opensesame" in
-    let mode = Encoding.Octal.encode_int 0o755 in
-    ignore (auth, mode)
-    ```
+   let auth = Encoding.Base64.encode "aladdin:opensesame" in
+   let mode = Encoding.Octal.encode_int 0o755 in
+   ignore (auth, mode)
+   ```
 *)
 module Base16 = Base16
 

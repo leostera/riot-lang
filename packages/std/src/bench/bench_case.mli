@@ -1,9 +1,10 @@
 open Global
 
-(** Configuration for a benchmark.
+(**
+   Configuration for a benchmark.
 
-    - [iterations]: Number of times to run the benchmark for measurement.
-    - [warmup]: Number of warmup iterations before measurement.
+   - [iterations]: Number of times to run the benchmark for measurement.
+   - [warmup]: Number of warmup iterations before measurement.
 *)
 type bench_config = {
   (** Number of measured benchmark iterations. *)
@@ -27,43 +28,46 @@ type t = {
   skip: bool;
 }
 
-(** [case name fn] creates a benchmark with the default configuration.
+(**
+   [case name fn] creates a benchmark with the default configuration.
 
-    The default config is 100 measured iterations and 10 warmup iterations.
+   The default config is 100 measured iterations and 10 warmup iterations.
 
-    ## Example
+   ## Example
 
-    ```ocaml
-    let benchmark =
-      Bench_case.case "vector push" (fun () ->
-        let v = Vector.create () in
-        Vector.push v 42)
-    ```
+   ```ocaml
+   let benchmark =
+     Bench_case.case "vector push" (fun () ->
+       let v = Vector.create () in
+       Vector.push v 42)
+   ```
 *)
 val case: string -> (unit -> unit) -> t
 
-(** [skip name fn] creates a skipped benchmark.
+(**
+   [skip name fn] creates a skipped benchmark.
 
-    ## Example
+   ## Example
 
-    ```ocaml
-    let benchmark = Bench_case.skip "disabled benchmark" (fun () -> ())
-    ```
+   ```ocaml
+   let benchmark = Bench_case.skip "disabled benchmark" (fun () -> ())
+   ```
 *)
 val skip: string -> (unit -> unit) -> t
 
-(** [with_config ~config name fn] creates a benchmark with a custom
-    configuration.
+(**
+   [with_config ~config name fn] creates a benchmark with a custom
+   configuration.
 
-    ## Example
+   ## Example
 
-    ```ocaml
-    let benchmark =
-      Bench_case.with_config
-        ~config:{ iterations = 1_000; warmup = 50 }
-        "hash lookup"
-        (fun () ->
-          ignore (HashMap.find map "key"))
-    ```
+   ```ocaml
+   let benchmark =
+     Bench_case.with_config
+       ~config:{ iterations = 1_000; warmup = 50 }
+       "hash lookup"
+       (fun () ->
+         ignore (HashMap.find map "key"))
+   ```
 *)
 val with_config: config:bench_config -> string -> (unit -> unit) -> t

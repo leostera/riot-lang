@@ -14,10 +14,20 @@ type server_msg =
 let serialize_server_msg = fun msg ->
   match msg with
   | Patch html ->
-      let json = Data.Json.obj [ ("Patch", Data.Json.string html) ] in
+      let json =
+        Data.Json.obj
+          [
+            "Patch", Data.Json.string html;
+          ]
+      in
       Data.Json.to_string json
   | Error msg ->
-      let json = Data.Json.obj [ ("Error", Data.Json.string msg) ] in
+      let json =
+        Data.Json.obj
+          [
+            "Error", Data.Json.string msg;
+          ]
+      in
       Data.Json.to_string json
 
 (** Deserialize client message from JSON *)
@@ -32,10 +42,7 @@ let deserialize_client_msg = fun json_str ->
       | Ok json ->
           (* Check for Event *)
           match Data.Json.get_field "Event" json with
-          | Some (Data.Json.Array [Data.Json.String handler_id;Data.Json.String event_data]) -> Ok (Event {
-            handler_id;
-            event_data
-          })
+          | Some (Data.Json.Array [ Data.Json.String handler_id; Data.Json.String event_data ]) -> Ok (Event { handler_id; event_data })
           | _ -> Error "Unknown message format"
   with
   | exn -> Error "Parse error: invalid JSON format"

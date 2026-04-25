@@ -1,27 +1,34 @@
 open Std
 open Std.Collections
 
-(** Parser events.
+(**
+   Parser events.
 
-    Events are the append-only grammar stream used by tests/tools that want to
-    inspect parser output before tree construction. The production parser writes
-    directly into `Syntax_tree.Builder` to avoid allocating a separate event
-    buffer, but these types remain the explicit contract for the event form. *)
-
+   Events are the append-only grammar stream used by tests/tools that want to
+   inspect parser output before tree construction. The production parser writes
+   directly into `Syntax_tree.Builder` to avoid allocating a separate event
+   buffer, but these types remain the explicit contract for the event form. 
+*)
 type t =
   | StartNode of Syntax_kind.t option
   | FinishNode
   | Token of int
   | Missing of Syntax_kind.t * int
   | Error of Diagnostic.t
+
 type event = t
 
-(** Growable event buffer with the same marker/precede discipline as the tree
-    builder. *)
-module Buffer: sig
+(**
+   Growable event buffer with the same marker/precede discipline as the tree
+   builder. 
+*)
+module Buffer : sig
   type t
+
   type marker
+
   type completed
+
   val create: ?event_capacity:int -> ?diagnostic_capacity:int -> unit -> t
 
   val start_node: t -> marker

@@ -8,7 +8,7 @@ let exn_type_constructor_id = TypeConstructorId.make ~owner:builtin_owner ~local
 
 let normalized_segments = fun path ->
   match SurfacePath.to_segments path with
-  | ["Stdlib";builtin_name] -> [ builtin_name ]
+  | [ "Stdlib"; builtin_name ] -> [ builtin_name ]
   | other -> other
 
 let head_of_path = fun path ->
@@ -19,7 +19,7 @@ let head_of_path = fun path ->
   | _ -> None
 
 let type_of_path = fun path arguments ->
-  match (normalized_segments path, arguments) with
+  match normalized_segments path, arguments with
   | ([ "int" ], []) -> Some TypeRepr.int
   | ([ "float" ], []) -> Some TypeRepr.float
   | ([ "bool" ], []) -> Some TypeRepr.bool
@@ -29,6 +29,6 @@ let type_of_path = fun path arguments ->
   | ([ "array" ], [ argument ]) -> Some (TypeRepr.array argument)
   | ([ "list" ], [ argument ]) -> Some (TypeRepr.list argument)
   | ([ "option" ], [ argument ]) -> Some (TypeRepr.option argument)
-  | ([ "result" ], [ok_ty;error_ty]) -> Some (TypeRepr.result ok_ty error_ty)
+  | ([ "result" ], [ ok_ty; error_ty ]) -> Some (TypeRepr.result ok_ty error_ty)
   | ([ "seq" ], [ argument ]) -> Some (TypeRepr.seq argument)
   | _ -> None

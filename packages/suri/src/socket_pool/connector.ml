@@ -11,31 +11,27 @@ type ('s, 'e) conn_state = {
 }
 
 type internal_msg =
-  Shutdown
+  | Shutdown
 
 type Message.t +=
-  ConnectorMsg of internal_msg
+  | ConnectorMsg of internal_msg
 
 let timeout = Time.Duration.from_millis 1
 
 let rec loop: type s e. Connection.t -> (s, e) Handler.handler -> s -> unit = fun conn handler ctx ->
   (* Check for messages before blocking on TCP *)
   match receive_any ~timeout () with
-  | msg ->
-      (* Handle the actor message *)
-      handle_message_internal msg conn handler ctx
-  | exception Receive_timeout ->
-      (* No messages, proceed to TCP I/O *)
-      try_receive conn handler ctx
-
+  | msg -> (* Handle the actor message *)
+  handle_message_internal msg conn handler ctx
+  | exception Receive_timeout -> (* No messages, proceed to TCP I/O *)
+  try_receive conn handler ctx
 and handle_message_internal: type s e. Message.t -> Connection.t -> (s, e) Handler.handler -> s -> unit = fun msg conn handler ctx ->
   match handler.handle_message msg conn ctx with
   | Continue ctx -> loop conn handler ctx
   | Close ctx -> handler.handle_close conn ctx
-  | Switch (Handler.H { handler=new_handler; state }) -> loop conn new_handler state
+  | Switch (Handler.H { handler = new_handler; state }) -> loop conn new_handler state
   | Error (_state, err) -> Log.error ("message handling error: " ^ (handler.to_string_error err))
   | Ok -> ()
-
 and try_receive: type s e. Connection.t -> (s, e) Handler.handler -> s -> unit = fun conn handler ctx ->
   try
     match Connection.receive conn ~timeout with
@@ -43,33 +39,25 @@ and try_receive: type s e. Connection.t -> (s, e) Handler.handler -> s -> unit =
     | Ok data -> handle_data data conn handler ctx
     | Error `Closed -> handler.handle_close conn ctx
   with
-  | Syscall_timeout ->
-      (* Timeout = no data available within 1ms, loop to check mailbox again *)
-      loop conn handler ctx
-
+  | Syscall_timeout -> (* Timeout = no data available within 1ms, loop to check mailbox again *)
+  loop conn handler ctx
 and handle_data: type s e. string -> Connection.t -> (s, e) Handler.handler -> s -> unit = fun data conn handler ctx ->
   match handler.handle_data data conn ctx with
   | Continue ctx -> loop conn handler ctx
   | Close ctx -> handler.handle_close conn ctx
-  | Switch (Handler.H { handler=new_handler; state }) -> handle_connection conn new_handler state
+  | Switch (Handler.H { handler = new_handler; state }) -> handle_connection conn new_handler state
   | Error (_state, err) -> Log.error ("connection error: " ^ (handler.to_string_error err))
   | Ok -> ()
-
 and handle_connection: type s e. Connection.t -> (s, e) Handler.handler -> s -> unit = fun conn handler ctx ->
   match handler.handle_connection conn ctx with
   | Continue ctx -> loop conn handler ctx
   | Close ctx -> handler.handle_close conn ctx
-  | Switch (Handler.H { handler=new_handler; state }) -> handle_connection conn new_handler state
+  | Switch (Handler.H { handler = new_handler; state }) -> handle_connection conn new_handler state
   | Error (_state, err) -> Log.error ("[Connector] Handler error: " ^ (handler.to_string_error err))
   | Ok -> ()
 
 let init = fun state ->
-  match Transport.handshake
-    state.transport
-    ~accepted_at:state.accepted_at
-    ~stream:state.stream
-    ~peer:state.peer
-    ~buffer_size:state.buffer_size with
+  match Transport.handshake state.transport ~accepted_at:state.accepted_at ~stream:state.stream ~peer:state.peer ~buffer_size:state.buffer_size with
   | Ok conn ->
       handle_connection conn state.handler state.ctx;
       Connection.close conn;
@@ -78,4 +66,8 @@ let init = fun state ->
       Log.error "[Connector] Failed to handshake connection";
       Error (Failure "handshake failed")
 
-let spawn = fun state -> spawn (fun () -> init state)
+let spawn = fun state ->
+  spawn
+    (
+      fun () -> init state
+    )

@@ -1,542 +1,641 @@
-(** # Std - Riot's Standard Library
+(**
+   # Std - Riot's Standard Library
 
-    A complete standard library providing modern primitives for building robust,
-    concurrent, fault-tolerant applications in OCaml.
+   A complete standard library providing modern primitives for building robust,
+   concurrent, fault-tolerant applications in OCaml.
 *)
-
 (** Module Declarations *)
 module Agent = Agent
 
 module Archive = Archive
 
-(** **When to use:** Simple concurrent state access
+(**
+   **When to use:** Simple concurrent state access
 
-    Use Agent when you need a lightweight state server accessed from multiple processes.
-    Perfect for counters, caches, shared configuration, or session storage.
-    
-    **Don't use when:** You need complex request/reply patterns → use GenServer
-    
-    **Examples:**
-    - Shared application configuration
-    - In-memory cache
-    - Request counter / rate limiter
-    - User session storage *)
+   Use Agent when you need a lightweight state server accessed from multiple processes.
+   Perfect for counters, caches, shared configuration, or session storage.
+
+   **Don't use when:** You need complex request/reply patterns → use GenServer
+
+   **Examples:**
+   - Shared application configuration
+   - In-memory cache
+   - Request counter / rate limiter
+   - User session storage 
+*)
 module ArgParser = Arg_parser
 
-(** **When to use:** Parsing command-line arguments
-    
-    Use ArgParser for building CLI tools with flags, options, and subcommands.
-    
-    **Examples:**
-    - Build tools (like riot, cargo, npm)
-    - Developer utilities
-    - System administration scripts *)
+(**
+   **When to use:** Parsing command-line arguments
+
+   Use ArgParser for building CLI tools with flags, options, and subcommands.
+
+   **Examples:**
+   - Build tools (like riot, cargo, npm)
+   - Developer utilities
+   - System administration scripts 
+*)
 module Array = Collections.Array
 
-(** **When to use:** Fixed-size arrays
+(**
+   **When to use:** Fixed-size arrays
 
-    Use Array for index-addressed collections where the size is known up front. *)
+   Use Array for index-addressed collections where the size is known up front. 
+*)
 module Bench = Bench
 
-(** **When to use:** Microbenchmarking performance
-    
-    Use Bench for measuring and comparing performance of code.
-    Simple, low-level benchmarking framework with basic statistics.
-    
-    **Examples:**
-    - Comparing data structure performance
-    - Measuring algorithm speed
-    - Performance regression testing
-    
-    **See also:** {!Test} for unit testing *)
+(**
+   **When to use:** Microbenchmarking performance
+
+   Use Bench for measuring and comparing performance of code.
+   Simple, low-level benchmarking framework with basic statistics.
+
+   **Examples:**
+   - Comparing data structure performance
+   - Measuring algorithm speed
+   - Performance regression testing
+
+   **See also:** {!Test} for unit testing 
+*)
 module Bool = Bool
 
-(** **When to use:** Boolean operations
-    
-    Extended bool operations with parsing, formatting, and utilities. *)
+(**
+   **When to use:** Boolean operations
+
+   Extended bool operations with parsing, formatting, and utilities. 
+*)
 module Char = Char
 
-(** **When to use:** Character classification and conversion
-    
-    Extended character operations beyond stdlib.
-    
-    **See also:** {!Unicode.Rune} for Unicode code points *)
+(**
+   **When to use:** Character classification and conversion
+
+   Extended character operations beyond stdlib.
+
+   **See also:** {!Unicode.Rune} for Unicode code points 
+*)
 module Collections = Collections
 
-(** **When to use:** Working with data structures
-    
-    Parent module containing Vector, HashMap, HashSet, Queue, Deque, Heap, List, and Proplist.
-    
-    Use collections when you need:
-    - Fast lookups → HashMap
-    - Unique values → HashSet
-    - Dynamic arrays → Vector
-    - FIFO queues → Queue
-    - Double-ended operations → Deque
-    - Priority ordering → Heap
-    - Functional lists → List
-    - Duplicate-friendly key/value lists → Proplist *)
+(**
+   **When to use:** Working with data structures
+
+   Parent module containing Vector, HashMap, HashSet, Queue, Deque, Heap, List, and Proplist.
+
+   Use collections when you need:
+   - Fast lookups → HashMap
+   - Unique values → HashSet
+   - Dynamic arrays → Vector
+   - FIFO queues → Queue
+   - Double-ended operations → Deque
+   - Priority ordering → Heap
+   - Functional lists → List
+   - Duplicate-friendly key/value lists → Proplist 
+*)
 module Compress = Compress
 
-(** **When to use:** Streaming compression/decompression
+(**
+   **When to use:** Streaming compression/decompression
 
-    Use Compress for codec-style I/O transformations such as gzip streams.
-    
-    **See also:** {!Archive} for tar archives layered on top of readers. *)
+   Use Compress for codec-style I/O transformations such as gzip streams.
+
+   **See also:** {!Archive} for tar archives layered on top of readers. 
+*)
 module Command = Command
 
-(** **When to use:** Running external programs
-    
-    Use Command when you need to execute shell commands or external tools.
-    
-    **Examples:**
-    - Running git commands
-    - Invoking build tools
-    - System administration tasks
-    - Integration with external utilities
-    
-    **See also:** {!System} for system information *)
+(**
+   **When to use:** Running external programs
+
+   Use Command when you need to execute shell commands or external tools.
+
+   **Examples:**
+   - Running git commands
+   - Invoking build tools
+   - System administration tasks
+   - Integration with external utilities
+
+   **See also:** {!System} for system information 
+*)
 module Config = Config
 
-(** **When to use:** Application configuration management
-    
-    Use Config for type-safe, environment-aware configuration loading.
-    
-    **Examples:**
-    - Loading server configuration
-    - Database connection settings
-    - Environment-specific configs (dev/test/prod)
-    - Multi-app configuration files
-    
-    **Features:**
-    - Namespaced TOML sections
-    - Type-safe parsing
-    - Environment detection
-    - Deep merging *)
+(**
+   **When to use:** Application configuration management
+
+   Use Config for type-safe, environment-aware configuration loading.
+
+   **Examples:**
+   - Loading server configuration
+   - Database connection settings
+   - Environment-specific configs (dev/test/prod)
+   - Multi-app configuration files
+
+   **Features:**
+   - Namespaced TOML sections
+   - Type-safe parsing
+   - Environment detection
+   - Deep merging 
+*)
 module Crypto = Crypto
 
-(** **When to use:** Cryptographic hashing
-    
-    Use Crypto for content-addressable storage, integrity verification, checksums.
-    
-    **Examples:**
-    - Hash-based deduplication
-    - Content verification
-    - Cache keys
-    - Merkle trees
-    
-    **WARNING:** NOT for password hashing - use proper KDFs like Argon2
-    
-    **Algorithms:** SHA-256 (recommended), SHA-512, MD5 (legacy only) *)
+(**
+   **When to use:** Cryptographic hashing
+
+   Use Crypto for content-addressable storage, integrity verification, checksums.
+
+   **Examples:**
+   - Hash-based deduplication
+   - Content verification
+   - Cache keys
+   - Merkle trees
+
+   **WARNING:** NOT for password hashing - use proper KDFs like Argon2
+
+   **Algorithms:** SHA-256 (recommended), SHA-512, MD5 (legacy only) 
+*)
 module Data = Data
 
-(** **When to use:** Parsing/generating data formats
-    
-    Parent module for structured data formats.
-    
-    **Use cases:**
-    - API communication → Json
-    - Configuration files → Toml  
-    - Data export/import → Csv
-    - Legacy systems → Xml
-    - Lisp-like data → Sexp *)
+(**
+   **When to use:** Parsing/generating data formats
+
+   Parent module for structured data formats.
+
+   **Use cases:**
+   - API communication → Json
+   - Configuration files → Toml  
+   - Data export/import → Csv
+   - Legacy systems → Xml
+   - Lisp-like data → Sexp 
+*)
 module Encoding = Encoding
 
-(** **When to use:** Binary/text and numeric encodings
+(**
+   **When to use:** Binary/text and numeric encodings
 
-    Parent module for Base16/Hex, Base32, Base64, Base85, and Octal.
+   Parent module for Base16/Hex, Base32, Base64, Base85, and Octal.
 
-    **Use cases:**
-    - Hex digests and binary inspection → Hex / Base16
-    - Human-friendly binary transport → Base32
-    - Binary-in-text payloads → Base64
-    - Compact text encodings → Base85
-    - Octal numeric fields → Octal *)
+   **Use cases:**
+   - Hex digests and binary inspection → Hex / Base16
+   - Human-friendly binary transport → Base32
+   - Binary-in-text payloads → Base64
+   - Compact text encodings → Base85
+   - Octal numeric fields → Octal 
+*)
 module Calendar = Calendar
 
-(** **When to use:** Working with civil calendar dates
+(**
+   **When to use:** Working with civil calendar dates
 
-    Use Date for date-only values, whole-day arithmetic, and ISO 8601 dates.
+   Use Date for date-only values, whole-day arithmetic, and ISO 8601 dates.
 
-    **Examples:**
-    - Birthdays and anniversaries
-    - Date-only config values
-    - Day-based retention windows *)
+   **Examples:**
+   - Birthdays and anniversaries
+   - Date-only config values
+   - Day-based retention windows 
+*)
 module Date = Date
 
 module DateTime = DateTime
 
-(** **When to use:** Calendar dates and times
-    
-    Use DateTime for human-readable dates, date arithmetic, formatting.
-    
-    **Examples:**
-    - Parsing user-input dates
-    - Date calculations (add 3 months)
-    - Timezone-aware operations
-    - Calendar displays
-    
-    **See also:** {!Time.SystemTime} for timestamps, {!Time.Instant} for elapsed time *)
+(**
+   **When to use:** Calendar dates and times
+
+   Use DateTime for human-readable dates, date arithmetic, formatting.
+
+   **Examples:**
+   - Parsing user-input dates
+   - Date calculations (add 3 months)
+   - Timezone-aware operations
+   - Calendar displays
+
+   **See also:** {!Time.SystemTime} for timestamps, {!Time.Instant} for elapsed time 
+*)
 module Diff = Diff
 
-(** **When to use:** Computing differences between data structures
-    
-    Use Diff for change detection, audit logs, version control.
-    
-    **Examples:**
-    - Configuration change tracking
-    - Database record diffing
-    - API response comparison
-    - Undo/redo systems *)
+(**
+   **When to use:** Computing differences between data structures
+
+   Use Diff for change detection, audit logs, version control.
+
+   **Examples:**
+   - Configuration change tracking
+   - Database record diffing
+   - API response comparison
+   - Undo/redo systems 
+*)
 module Env = Env
 
-(** **When to use:** Exception rendering and backtrace capture
+(**
+   **When to use:** Exception rendering and backtrace capture
 
-    Use Exception from packages above `std` when you need exception text or
-    raw backtrace formatting without reaching into `Kernel`. *)
+   Use Exception from packages above `std` when you need exception text or
+   raw backtrace formatting without reaching into `Kernel`. 
+*)
 module Exception = Exception
 
-(** **When to use:** Environment variables and system info
-    
-    Use Env for reading configuration from environment, detecting OS/arch.
-    
-    **Examples:**
-    - Reading DATABASE_URL, API_KEY
-    - Detecting production vs development
-    - Platform-specific behavior
-    - Container orchestration config *)
+(**
+   **When to use:** Environment variables and system info
+
+   Use Env for reading configuration from environment, detecting OS/arch.
+
+   **Examples:**
+   - Reading DATABASE_URL, API_KEY
+   - Detecting production vs development
+   - Platform-specific behavior
+   - Container orchestration config 
+*)
 module Float = Float
 
-(** **When to use:** Floating-point operations
-    
-    Extended float operations with parsing and formatting. *)
+(**
+   **When to use:** Floating-point operations
 
-(** **When to use:** Filesystem operations
-    
-    Use Fs for all file and directory operations with Result-based error handling.
-    
-    **Common operations:**
-    - Reading/writing files
-    - Creating directories
-    - Copying/moving files
-    - Querying metadata
-    - Watching for changes
-    
-    **See also:** {!Path} for path manipulation, {!Fs.File} for streaming *)
+   Extended float operations with parsing and formatting. 
+*)
+(**
+   **When to use:** Filesystem operations
+
+   Use Fs for all file and directory operations with Result-based error handling.
+
+   **Common operations:**
+   - Reading/writing files
+   - Creating directories
+   - Copying/moving files
+   - Querying metadata
+   - Watching for changes
+
+   **See also:** {!Path} for path manipulation, {!Fs.File} for streaming 
+*)
 module Fs = Fs
 
 module Glob = Glob
 
-(** **When to use:** Graph data structures and visualization
-    
-    Use Graph for dependency graphs, build systems, workflow diagrams.
-    
-    **Modules:**
-    - SimpleGraph → dependency tracking with topo sort
-    - Dot → Graphviz visualization
-    - Mermaid → Markdown-friendly diagrams *)
+(**
+   **When to use:** Graph data structures and visualization
+
+   Use Graph for dependency graphs, build systems, workflow diagrams.
+
+   **Modules:**
+   - SimpleGraph → dependency tracking with topo sort
+   - Dot → Graphviz visualization
+   - Mermaid → Markdown-friendly diagrams 
+*)
 module Graph = Graph
 
-(** **When to use:** Generic I/O abstractions
-    
-    Use IO for Reader/Writer traits and vectored I/O operations.
-    
-    **Most users should use:** {!Fs} or {!Net} instead *)
+(**
+   **When to use:** Generic I/O abstractions
+
+   Use IO for Reader/Writer traits and vectored I/O operations.
+
+   **Most users should use:** {!Fs} or {!Net} instead 
+*)
 module IO = IO
 
-(** **When to use:** Building owned heap strings
+(**
+   **When to use:** Building owned heap strings
 
-    Use StringBuilder when you intentionally want to accumulate text into an
-    owned `string`. `Std.IO.Buffer` is the off-heap I/O buffer default; this
-    module is the explicit heap-building boundary. *)
+   Use StringBuilder when you intentionally want to accumulate text into an
+   owned `string`. `Std.IO.Buffer` is the off-heap I/O buffer default; this
+   module is the explicit heap-building boundary. 
+*)
 module StringBuilder = StringBuilder
 
 module Int = Int
 
-(** **When to use:** Integer operations
-    
-    Extended int operations with parsing, formatting, and utilities. *)
+(**
+   **When to use:** Integer operations
+
+   Extended int operations with parsing, formatting, and utilities. 
+*)
 module Int32 = Int32
 
 (** **When to use:** 32-bit integer operations *)
 module Int64 = Int64
 
-(** **When to use:** 64-bit integer operations
-    
-    Use Int64 for timestamps, large numbers, file sizes. *)
+(**
+   **When to use:** 64-bit integer operations
+
+   Use Int64 for timestamps, large numbers, file sizes. 
+*)
 module Iter = Iter
 
-(** **When to use:** Iteration and parsing utilities
-    
-    Parent module for Iterator, MutIterator, Cursor, and MutCursor.
-    
-    **Use Iterator when:** You need functional, backtrackable iteration
-    **Use MutIterator when:** You need efficient, single-pass iteration
-    **Use Cursor when:** You're parsing borrowed slices with backtracking
-    **Use MutCursor when:** You need fast, single-pass slice parsing *)
+(**
+   **When to use:** Iteration and parsing utilities
+
+   Parent module for Iterator, MutIterator, Cursor, and MutCursor.
+
+   **Use Iterator when:** You need functional, backtrackable iteration
+   **Use MutIterator when:** You need efficient, single-pass iteration
+   **Use Cursor when:** You're parsing borrowed slices with backtracking
+   **Use MutCursor when:** You need fast, single-pass slice parsing 
+*)
 module List = Collections.List
 
-(** **When to use:** Immutable linked lists
-    
-    Use List for functional programming, pattern matching, recursive algorithms.
-    
-    **Prefer Vector when:** You need random access or frequent appends *)
+(**
+   **When to use:** Immutable linked lists
+
+   Use List for functional programming, pattern matching, recursive algorithms.
+
+   **Prefer Vector when:** You need random access or frequent appends 
+*)
 module Log = Log
 
-(** **When to use:** Structured logging
-    
-    Use Log for application logging with levels (Debug, Info, Warn, Error).
-    
-    **Examples:**
-    - Application events
-    - Error tracking
-    - Debugging
-    - Audit trails *)
+(**
+   **When to use:** Structured logging
+
+   Use Log for application logging with levels (Debug, Info, Warn, Error).
+
+   **Examples:**
+   - Application events
+   - Error tracking
+   - Debugging
+   - Audit trails 
+*)
 module Message = Message
 
-(** **When to use:** Defining extensible message types
-    
-    Use Message for building type-safe actor communication protocols. *)
+(**
+   **When to use:** Defining extensible message types
+
+   Use Message for building type-safe actor communication protocols. 
+*)
 module Net = Net
 
-(** **When to use:** Network I/O
-    
-    Parent module for TCP, HTTP, TLS, URI, and network addresses.
-    
-    **Common tasks:**
-    - TCP servers → TcpServer
-    - TCP clients → TcpStream
-    - HTTP → Http.Request, Http.Response
-    - TLS/SSL → TlsStream
-    - URLs → Uri *)
+(**
+   **When to use:** Network I/O
+
+   Parent module for TCP, HTTP, TLS, URI, and network addresses.
+
+   **Common tasks:**
+   - TCP servers → TcpServer
+   - TCP clients → TcpStream
+   - HTTP → Http.Request, Http.Response
+   - TLS/SSL → TlsStream
+   - URLs → Uri 
+*)
 module Option = Option
 
 module Order = Order
 
-(** **When to use:** A value might not exist
-    
-    Use Option when absence is normal and not an error condition.
-    
-    **Examples:**
-    - Optional configuration fields
-    - HashMap lookups (key might not exist)
-    - User input that can be empty
-    - Function arguments that are optional
-    
-    **Prefer Result when:** Absence indicates an error you want to handle *)
+(**
+   **When to use:** A value might not exist
+
+   Use Option when absence is normal and not an error condition.
+
+   **Examples:**
+   - Optional configuration fields
+   - HashMap lookups (key might not exist)
+   - User input that can be empty
+   - Function arguments that are optional
+
+   **Prefer Result when:** Absence indicates an error you want to handle 
+*)
 module Path = Path
 
-(** **When to use:** Working with filesystem paths
-    
-    Use Path for type-safe, UTF-8 validated, cross-platform path operations.
-    
-    **Always use Path instead of strings for filesystem paths!**
-    
-    **See also:** {!Fs} for filesystem operations *)
+(**
+   **When to use:** Working with filesystem paths
+
+   Use Path for type-safe, UTF-8 validated, cross-platform path operations.
+
+   **Always use Path instead of strings for filesystem paths!**
+
+   **See also:** {!Fs} for filesystem operations 
+*)
 module Pid = Pid
 
-(** **When to use:** Process identifiers
-    
-    Use Pid for actor/process identification and messaging. *)
+(**
+   **When to use:** Process identifiers
+
+   Use Pid for actor/process identification and messaging. 
+*)
 module Actor = Actor
 
-(** **When to use:** Actor lifecycle and monitoring
+(**
+   **When to use:** Actor lifecycle and monitoring
 
-    Use Actor for spawning, linking, monitoring, and managing actors running on
-    the std runtime. *)
+   Use Actor for spawning, linking, monitoring, and managing actors running on
+   the std runtime. 
+*)
 module Process = Process
 
-(** **When to use:** Compatibility actor/process surface plus operating system
-    process id access
+(**
+   **When to use:** Compatibility actor/process surface plus operating system
+   process id access
 
-    Use Actor for new actor runtime code. Process currently stays as a
-    compatibility surface and also exposes the current operating system process
-    id through `Process.id ()`.
-    
-    **Examples:**
-    - Monitoring other processes
-    - Process linking for crash propagation
-    - Checking if process is alive
-    - Getting process info *)
+   Use Actor for new actor runtime code. Process currently stays as a
+   compatibility surface and also exposes the current operating system process
+   id through `Process.id ()`.
 
-(** **When to use:** Physical equality and pointer operations
-    
-    Rarely needed in normal application code. *)
+   **Examples:**
+   - Monitoring other processes
+   - Process linking for crash propagation
+   - Checking if process is alive
+   - Getting process info 
+*)
+(**
+   **When to use:** Physical equality and pointer operations
+
+   Rarely needed in normal application code. 
+*)
 module Ptr = Ptr
 
-(** **When to use:** Random value generation
+(**
+   **When to use:** Random value generation
 
-    Use Random for simple pseudo-random values like `int`, `bool`, and `char`.
-    Initialize the default generator with `Random.init ?seed ()` when you need
-    deterministic runs. *)
+   Use Random for simple pseudo-random values like `int`, `bool`, and `char`.
+   Initialize the default generator with `Random.init ?seed ()` when you need
+   deterministic runs. 
+*)
 module Random = Random
 
-(** **When to use:** Representing open, closed, and unbounded intervals
+(**
+   **When to use:** Representing open, closed, and unbounded intervals
 
-    Use Range for interval membership checks, interval intersection, and
-    carrying ordering semantics alongside interval endpoints. *)
+   Use Range for interval membership checks, interval intersection, and
+   carrying ordering semantics alongside interval endpoints. 
+*)
 module Range = Range
 
-(** **When to use:** Unique, opaque, type-witnessing references
-    
-    Use Ref for ensuring type safety across module boundaries. *)
+(**
+   **When to use:** Unique, opaque, type-witnessing references
+
+   Use Ref for ensuring type safety across module boundaries. 
+*)
 module Ref = Ref
 
 module Regex = Regex
 
 module Result = Result
 
-(** **When to use:** Accessing the actor runtime surface that backs `std`
+(**
+   **When to use:** Accessing the actor runtime surface that backs `std`
 
-    Use Runtime when you need direct scheduler, mailbox, timer, or low-level
-    actor runtime primitives that sit below the higher-level `Std.Process`,
-    `Std.Global`, and `Std.Timer` helpers. *)
+   Use Runtime when you need direct scheduler, mailbox, timer, or low-level
+   actor runtime primitives that sit below the higher-level `Std.Process`,
+   `Std.Global`, and `Std.Timer` helpers. 
+*)
 module Runtime = Runtime
 
-(** **When to use:** Explicit error handling
-    
-    Use Result for operations that can fail in expected, recoverable ways.
-    
-    **Examples:**
-    - File I/O (file might not exist)
-    - Parsing (input might be invalid)
-    - Network operations (connection might fail)
-    - Validation (data might not meet requirements)
-    
-    **Always use Result instead of exceptions for expected errors!**
-    
-    **See also:** {!Option} for missing values without error context *)
+(**
+   **When to use:** Explicit error handling
+
+   Use Result for operations that can fail in expected, recoverable ways.
+
+   **Examples:**
+   - File I/O (file might not exist)
+   - Parsing (input might be invalid)
+   - Network operations (connection might fail)
+   - Validation (data might not meet requirements)
+
+   **Always use Result instead of exceptions for expected errors!**
+
+   **See also:** {!Option} for missing values without error context 
+*)
 module String = String
 
-(** **When to use:** UTF-8 string processing
-    
-    Use String for text manipulation with proper UTF-8 iteration support.
-    
-    **See also:** {!Unicode} for advanced text processing *)
+(**
+   **When to use:** UTF-8 string processing
+
+   Use String for text manipulation with proper UTF-8 iteration support.
+
+   **See also:** {!Unicode} for advanced text processing 
+*)
 module Supervisor = Supervisor
 
-(** **When to use:** Building fault-tolerant process trees
-    
-    Use Supervisor for applications that must automatically recover from crashes.
-    
-    **Strategies:**
-    - OneForOne → restart only failed child
-    - OneForAll → restart all children when one fails
-    - RestForOne → restart failed child and those started after
-    - SimpleOneForOne → dynamic children with same spec
-    
-    **Use Dynamic when:** Managing thousands of dynamic children
-    
-    **Examples:**
-    - Long-running services
-    - Connection pools
-    - Worker pools
-    - Per-user sessions *)
+(**
+   **When to use:** Building fault-tolerant process trees
+
+   Use Supervisor for applications that must automatically recover from crashes.
+
+   **Strategies:**
+   - OneForOne → restart only failed child
+   - OneForAll → restart all children when one fails
+   - RestForOne → restart failed child and those started after
+   - SimpleOneForOne → dynamic children with same spec
+
+   **Use Dynamic when:** Managing thousands of dynamic children
+
+   **Examples:**
+   - Long-running services
+   - Connection pools
+   - Worker pools
+   - Per-user sessions 
+*)
 module Sync = Sync
 
-(** **When to use:** Synchronization primitives
-    
-    Use Sync for mutable cells, mutexes, condition variables.
-    
-    **Most common:** Cell for mutable values
-    
-    **See also:** {!Agent} for concurrent state with actor patterns *)
+(**
+   **When to use:** Synchronization primitives
+
+   Use Sync for mutable cells, mutexes, condition variables.
+
+   **Most common:** Cell for mutable values
+
+   **See also:** {!Agent} for concurrent state with actor patterns 
+*)
 module System = System
 
-(** **When to use:** System information queries
-    
-    Use System for OS detection, resource limits, system paths. *)
+(**
+   **When to use:** System information queries
+
+   Use System for OS detection, resource limits, system paths. 
+*)
 module Task = Task
 
-(** **When to use:** Asynchronous task execution
-    
-    Use Task for fire-and-forget or awaitable async operations.
-    
-    **Examples:**
-    - Background jobs
-    - Parallel computations
-    - Async I/O operations
-    
-    **See also:** {!WorkerPool} for distributing work across workers *)
+(**
+   **When to use:** Asynchronous task execution
+
+   Use Task for fire-and-forget or awaitable async operations.
+
+   **Examples:**
+   - Background jobs
+   - Parallel computations
+   - Async I/O operations
+
+   **See also:** {!WorkerPool} for distributing work across workers 
+*)
 module Telemetry = Telemetry
 
-(** **When to use:** Instrumentation and metrics
-    
-    Use Telemetry for adding observability to your application.
-    
-    **Examples:**
-    - Request timing
-    - Counter metrics
-    - Custom events
-    - Performance monitoring *)
+(**
+   **When to use:** Instrumentation and metrics
 
-(** **When to use:** Writing unit tests
-    
-    Use Test for building test suites with assertions and reporters.
-    
-    **Reporters:** TAP, JUnit XML, JSON, Pretty print *)
+   Use Telemetry for adding observability to your application.
+
+   **Examples:**
+   - Request timing
+   - Counter metrics
+   - Custom events
+   - Performance monitoring 
+*)
+(**
+   **When to use:** Writing unit tests
+
+   Use Test for building test suites with assertions and reporters.
+
+   **Reporters:** TAP, JUnit XML, JSON, Pretty print 
+*)
 module Test = Test
 
-(** **When to use:** Concurrency-capacity queries
+(**
+   **When to use:** Concurrency-capacity queries
 
-    Use Thread for runtime thread-budget hints like `available_parallelism`. *)
+   Use Thread for runtime thread-budget hints like `available_parallelism`. 
+*)
 module Thread = Thread
 
-(** **When to use:** Time measurement
-    
-    Parent module for Duration, Instant, and SystemTime.
-    
-    **Use Duration for:** Time spans, timeouts, delays
-    **Use Instant for:** Elapsed time, benchmarking
-    **Use SystemTime for:** Wall-clock timestamps *)
+(**
+   **When to use:** Time measurement
+
+   Parent module for Duration, Instant, and SystemTime.
+
+   **Use Duration for:** Time spans, timeouts, delays
+   **Use Instant for:** Elapsed time, benchmarking
+   **Use SystemTime for:** Wall-clock timestamps 
+*)
 module Time = Time
 
-(** **When to use:** Timed events in actor systems
-    
-    Use Timer for scheduling delayed or periodic messages to processes.
-    Perfect for timeouts, periodic tasks, scheduled events, and heartbeats.
-    
-    **Common use cases:**
-    - Request timeouts (cancel operation after N seconds)
-    - Periodic health checks or heartbeats
-    - Scheduled cleanup tasks
-    - Rate limiting with time windows
-    - Delayed retries
-    - Session expiration
-    
-    **Examples:**
-    
-    Timeout pattern:
-    ```ocaml
-    let with_timeout ~duration operation =
-    let timer_ref = ref None in
-      let operation_pid = spawn (fun () ->
-        let result = operation () in
-        Option.iter Timer.cancel !timer_ref;
-        Ok result
-      ) in
-      timer_ref := Some (Timer.send_after operation_pid 
-        (Message.Timeout) ~after:duration);
-      receive_result operation_pid
-    ```
-    
-    Periodic heartbeat:
-    ```ocaml
-    let start_heartbeat server =
-      Timer.send_interval server 
-        (Message.Heartbeat)
-        ~interval:(Duration.of_sec 30)
-    ```
-    
-    Delayed retry:
-    ```ocaml
-    let retry_after_delay ~delay pid request =
-      Timer.send_after pid 
-        (Message.Retry request) 
-        ~after:delay
-    ```
-    
-    **See also:** {!Time.Duration} for creating time spans *)
+(**
+   **When to use:** Timed events in actor systems
+
+   Use Timer for scheduling delayed or periodic messages to processes.
+   Perfect for timeouts, periodic tasks, scheduled events, and heartbeats.
+
+   **Common use cases:**
+   - Request timeouts (cancel operation after N seconds)
+   - Periodic health checks or heartbeats
+   - Scheduled cleanup tasks
+   - Rate limiting with time windows
+   - Delayed retries
+   - Session expiration
+
+   **Examples:**
+
+   Timeout pattern:
+   ```ocaml
+   let with_timeout ~duration operation =
+   let timer_ref = ref None in
+     let operation_pid = spawn (fun () ->
+       let result = operation () in
+       Option.iter Timer.cancel !timer_ref;
+       Ok result
+     ) in
+     timer_ref := Some (Timer.send_after operation_pid 
+       (Message.Timeout) ~after:duration);
+     receive_result operation_pid
+   ```
+
+   Periodic heartbeat:
+   ```ocaml
+   let start_heartbeat server =
+     Timer.send_interval server 
+       (Message.Heartbeat)
+       ~interval:(Duration.of_sec 30)
+   ```
+
+   Delayed retry:
+   ```ocaml
+   let retry_after_delay ~delay pid request =
+     Timer.send_after pid 
+       (Message.Retry request) 
+       ~after:delay
+   ```
+
+   **See also:** {!Time.Duration} for creating time spans 
+*)
 module Timer = Timer
 
 module Type = Type
@@ -544,89 +643,103 @@ module Type = Type
 (** **When to use:** Type-level programming utilities *)
 module Unicode = Unicode
 
-(** **When to use:** Unicode text processing
-    
-    Use Unicode for proper handling of international text, emoji, terminal width.
-    
-    **Modules:**
-    - Rune → Unicode code points
-    - Grapheme → User-perceived characters
-    - Utf8 → UTF-8 encoding/decoding
-    - Utf16 → UTF-16 line/column conversion
-    - Segmentation → Word/sentence/line breaking *)
+(**
+   **When to use:** Unicode text processing
+
+   Use Unicode for proper handling of international text, emoji, terminal width.
+
+   **Modules:**
+   - Rune → Unicode code points
+   - Grapheme → User-perceived characters
+   - Utf8 → UTF-8 encoding/decoding
+   - Utf16 → UTF-16 line/column conversion
+   - Segmentation → Word/sentence/line breaking 
+*)
 module UUID = Uuid
 
-(** **When to use:** Globally unique identifiers
-    
-    Use UUID for entity IDs, request tracking, distributed coordination.
-    
-    **Examples:**
-    - Database primary keys
-    - Request IDs for tracing
-    - Session tokens
-    - Distributed system coordination *)
+(**
+   **When to use:** Globally unique identifiers
+
+   Use UUID for entity IDs, request tracking, distributed coordination.
+
+   **Examples:**
+   - Database primary keys
+   - Request IDs for tracing
+   - Session tokens
+   - Distributed system coordination 
+*)
 module Version = Version
 
-(** **When to use:** Semantic versioning
-    
-    Use Version for parsing, comparing, and managing semantic versions.
-    
-    **Examples:**
-    - Dependency management
-    - API versioning
-    - Feature flags based on version
-    - Migration scripts *)
+(**
+   **When to use:** Semantic versioning
+
+   Use Version for parsing, comparing, and managing semantic versions.
+
+   **Examples:**
+   - Dependency management
+   - API versioning
+   - Feature flags based on version
+   - Migration scripts 
+*)
 module WorkerPool = Worker_pool
 
-(** **When to use:** Parallel work distribution
-    
-    Use WorkerPool for CPU-bound parallel processing or batch jobs.
-    
-    **Examples:**
-    - Image processing pipeline
-    - Data transformation
-    - Batch analytics
-    - Parallel map operations *)
+(**
+   **When to use:** Parallel work distribution
 
+   Use WorkerPool for CPU-bound parallel processing or batch jobs.
+
+   **Examples:**
+   - Image processing pipeline
+   - Data transformation
+   - Batch analytics
+   - Parallel map operations 
+*)
 (** Re-exported from Global *)
 include module type of Global
 
 (** Application Management *)
 module Application = Application
 
-(** **When to use:** Multi-application systems with dependencies
-    
-    Use Application for composing multiple OTP-style applications with
-    automatic dependency resolution and ordered startup/shutdown.
-    
-    **Examples:**
-    - Web app with database app dependency
-    - Microservices with shared infrastructure
-    - Plugin systems *)
+(**
+   **When to use:** Multi-application systems with dependencies
+
+   Use Application for composing multiple OTP-style applications with
+   automatic dependency resolution and ordered startup/shutdown.
+
+   **Examples:**
+   - Web app with database app dependency
+   - Microservices with shared infrastructure
+   - Plugin systems 
+*)
 val start: apps:Application.t list -> unit
 
-(** Start the runtime with applications.
+(**
+   Start the runtime with applications.
 
-    Applications are started in dependency order.
-    Uses `Runtime.run` under the hood.
-    
-    **Example:**
-    ```ocaml
-    let () = Std.start ~apps:[database_app; web_app]
-    ``` *)
+   Applications are started in dependency order.
+   Uses `Runtime.run` under the hood.
 
+   **Example:**
+   ```ocaml
+   let () = Std.start ~apps:[database_app; web_app]
+   ``` 
+*)
 (** Helper Functions from Global *)
 val panic: string -> 'a
 
-(** Panic with a message - raises an uncatchable exception.
-    
-    **When to use:** Unrecoverable errors, invariant violations.
-    **Don't use for:** Expected errors → use Result instead *)
+(**
+   Panic with a message - raises an uncatchable exception.
+
+   **When to use:** Unrecoverable errors, invariant violations.
+   **Don't use for:** Expected errors → use Result instead 
+*)
 val cell: 'a -> 'a Sync.Cell.t
 
-(** Create a mutable cell with the given value.
-    
-    **Example:** `let counter = cell 0 in Cell.update counter (fun n -> n + 1)` *)
+(**
+   Create a mutable cell with the given value.
+
+   **Example:** `let counter = cell 0 in Cell.update counter (fun n -> n + 1)` 
+*)
 val print: string -> unit
 
 (** Print to stdout with immediate flush (no newline) *)
@@ -641,43 +754,55 @@ val eprintln: string -> unit
 (** Print to stderr with newline and immediate flush *)
 val todo: string -> 'a
 
-(** Mark code as TODO with a message - panics when called.
-    
-    **Use for:** Placeholder implementations during development *)
+(**
+   Mark code as TODO with a message - panics when called.
+
+   **Use for:** Placeholder implementations during development 
+*)
 val unimplemented: unit -> 'a
 
 (** Mark code as unimplemented - panics when called *)
 (** Collection Type Aliases and Constructors *)
 type 'a vec = 'a Collections.Vector.t
+
 (** Vector type alias - dynamically-sized array *)
 type 'a queue = 'a Collections.Queue.t
+
 (** Queue type alias - FIFO queue *)
 type 'a set = 'a Collections.HashSet.t
+
 (** Set type alias - hash-based set *)
 type ('k, 'v) map = ('k, 'v) Collections.HashMap.t
 
 (** Map type alias - hash-based map *)
 val vec: 'a list -> 'a vec
 
-(** Create a vector from a list.
-    
-    **Example:** `let v = vec [1; 2; 3] in Vector.push v 4` *)
+(**
+   Create a vector from a list.
+
+   **Example:** `let v = vec [1; 2; 3] in Vector.push v 4` 
+*)
 val queue: 'a list -> 'a queue
 
-(** Create a queue from a list.
-    
-    **Example:** `let q = queue [1; 2; 3] in Queue.dequeue q` *)
+(**
+   Create a queue from a list.
+
+   **Example:** `let q = queue [1; 2; 3] in Queue.dequeue q` 
+*)
 val set: 'a list -> 'a set
 
-(** Create a set from a list.
-    
-    **Example:** `let s = set [1; 2; 3; 2; 1] in HashSet.len s (* 3 *)` *)
+(**
+   Create a set from a list.
+
+   **Example:** `let s = set [1; 2; 3; 2; 1] in HashSet.len s (* 3 *)` 
+*)
 val map: ('k * 'v) list -> ('k, 'v) map
 
-(** Create a map from a list of key-value pairs.
-    
-    **Example:** `let m = map [("a", 1); ("b", 2)] in HashMap.get m "a"` *)
+(**
+   Create a map from a list of key-value pairs.
 
+   **Example:** `let m = map [("a", 1); ("b", 2)] in HashMap.get m "a"` 
+*)
 (** Actor Runtime Management *)
 exception Receive_timeout
 
@@ -712,6 +837,4 @@ val sleep: Time.Duration.t -> unit
 val yield: unit -> unit
 
 (** Yield control to the scheduler *)
-val shutdown: status:int -> unit
-
-(** Shutdown the runtime with the given exit status *)
+val shutdown: status:int -> unit(** Shutdown the runtime with the given exit status *)

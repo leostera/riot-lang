@@ -20,11 +20,7 @@ type t = {
   requested_parallelism: int option;
 }
 
-let make = fun ~workspace ~packages ~targets ~scope ~profile ?(dev_artifacts = {
-  tests = true;
-  examples = true;
-  benches = true
-}) ?(requested_parallelism = None) () ->
+let make = fun ~workspace ~packages ~targets ~scope ~profile ?(dev_artifacts = {tests = true; examples = true; benches = true}) ?(requested_parallelism = None) () ->
   {
     workspace;
     packages;
@@ -32,7 +28,7 @@ let make = fun ~workspace ~packages ~targets ~scope ~profile ?(dev_artifacts = {
     scope;
     dev_artifacts;
     profile;
-    requested_parallelism;
+    requested_parallelism
   }
 
 module Internal = struct

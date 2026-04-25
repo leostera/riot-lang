@@ -1,7 +1,8 @@
 open Std
 
-module ProtocolError: sig
+module ProtocolError : sig
   type t
+
   val to_json: t -> Data.Json.t
 
   val to_string: t -> string
@@ -10,19 +11,22 @@ module ProtocolError: sig
 end
 
 type operation =
-  Acquire
+  | Acquire
   | Query
   | Transaction
+
 type error =
   | PoolError of Pool.error
   | InvalidValue of { field: string; value: string; expected_type: string; reason: string option }
   | Timeout of { operation: operation; duration: Time.Duration.t }
-module Config: sig
+
+module Config : sig
   type isolation_level =
-    ReadUncommitted
+    | ReadUncommitted
     | ReadCommitted
     | RepeatableRead
     | Serializable
+
   type t = {
     pool_size: int;
     max_idle_time: Time.Duration.t;
@@ -35,28 +39,25 @@ module Config: sig
     log_queries: bool;
     log_slow_queries: Time.Duration.t option;
   }
+
   val default: t
 end
 
-module Connection: module type of Connection
+module Connection : module type of Connection
 
-module Cursor: module type of Cursor
+module Cursor : module type of Cursor
 
-module Row: module type of Sqlx_driver.Row
+module Row : module type of Sqlx_driver.Row
 
-module Value: module type of Sqlx_driver.Value
+module Value : module type of Sqlx_driver.Value
 
-module Transaction: module type of Transaction
+module Transaction : module type of Transaction
 
-module Driver: module type of Sqlx_driver.Driver
+module Driver : module type of Sqlx_driver.Driver
 
-module Pool: module type of Pool
+module Pool : module type of Pool
 
-val connect:
-  ?config:Config.t ->
-  driver:(module Sqlx_driver.Driver.Intf with type config = 'config) ->
-  'config ->
-  (Pool.t, error) result
+val connect: ?config:Config.t -> driver:(module Sqlx_driver.Driver.Intf with type config = 'config) -> 'config -> (Pool.t, error) result
 
 val query: Pool.t -> string -> Value.t list -> (Cursor.t, error) result
 

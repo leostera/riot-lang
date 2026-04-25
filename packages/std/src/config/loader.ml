@@ -2,7 +2,7 @@ open Global
 open Collections
 
 type env =
-  Dev
+  | Dev
   | Test
   | Prod
 
@@ -35,33 +35,30 @@ let load_file = fun path ->
             | Ok value -> Ok value
 
 let load_for_env = fun env ->
-  let path = config_path env in
-  load_file path
+  let path = config_path env in load_file path
 
-let find_field = fun fields name ->
-  List.find fields
-    ~fn:(fun (field_name, _value) ->
-      String.equal field_name name)
+let find_field = fun fields name -> List.find fields ~fn:(
+  fun (field_name, _value) -> String.equal field_name name
+)
 
 let rec extract_app_section = fun app_name toml ->
   match String.split ~by:"." app_name with
-  | [] ->
-      Error "Empty app name"
+  | [] -> Error "Empty app name"
   | [ single ] -> (* Single key - original behavior *)
-    (
-      match Data.Toml.get_table toml with
-      | None -> Error "Root is not a table"
-      | Some fields ->
-          match find_field fields single with
-          | None -> Error ("No [" ^ single ^ "] section found")
-          | Some (_, section) -> Ok section
-    )
+  (
+    match Data.Toml.get_table toml with
+    | None -> Error "Root is not a table"
+    | Some fields ->
+        match find_field fields single with
+        | None -> Error ("No [" ^ single ^ "] section found")
+        | Some (_, section) -> Ok section
+  )
   | first :: rest -> (* Dotted path - navigate recursively *)
-    (
-      match Data.Toml.get_table toml with
-      | None -> Error "Root is not a table"
-      | Some fields ->
-          match find_field fields first with
-          | None -> Error ("No [" ^ first ^ "] section found")
-          | Some (_, next_table) -> extract_app_section (String.concat "." rest) next_table
-    )
+  (
+    match Data.Toml.get_table toml with
+    | None -> Error "Root is not a table"
+    | Some fields ->
+        match find_field fields first with
+        | None -> Error ("No [" ^ first ^ "] section found")
+        | Some (_, next_table) -> extract_app_section (String.concat "." rest) next_table
+  )

@@ -5,18 +5,14 @@ type severity = Fixme.Diagnostic.severity =
   | Warning
   | Info
   | Hint
+
 type kind = Fixme.Diagnostic.kind =
   | Known of { rule_id: Rule_id.t; message: string }
   | Generic of { rule_id: Rule_id.t; message: string }
+
 type t = Fixme.Diagnostic.t
-val make:
-  severity:severity ->
-  kind:kind ->
-  span:Syn.Ceibo.Span.t ->
-  ?suggestion:string ->
-  ?fix:Fix.fix ->
-  unit ->
-  t
+
+val make: severity:severity -> kind:kind -> span:Syn.Ceibo.Span.t -> ?suggestion:string -> ?fix:Fix.fix -> unit -> t
 
 val severity_to_string: severity -> string
 
@@ -52,6 +48,7 @@ type grouped = {
   suggestion: string option;
   fix: Fix.fix option;
 }
+
 val group_diagnostics: t list -> grouped list
 
 val grouped_to_formatted_output: file:Path.t -> source:string -> grouped -> string

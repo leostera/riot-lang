@@ -3,8 +3,7 @@
 module Runtime_process = Process
 
 let reset_reductions = fun remaining ->
-  let current = Scheduler.get_current_process () in
-  Runtime_process.reset_reductions current remaining
+  let current = Scheduler.get_current_process () in Runtime_process.reset_reductions current remaining
 
 let increment_reduction_count = fun () ->
   let current = Scheduler.get_current_process () in

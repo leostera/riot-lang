@@ -1,17 +1,22 @@
 type t = char
+
 val equal: t -> t -> bool
 
 val compare: t -> t -> Order.t
 
-(** Use `of_int value` to build a byte-sized character only when `value` is in the inclusive
-    range `0` to `255`. *)
+(**
+   Use `of_int value` to build a byte-sized character only when `value` is in the inclusive
+   range `0` to `255`. 
+*)
 val from_int: int -> t option
 
 (** Use `chr value` as the conventional alias for `from_int value` that panics on out-of-range input. *)
 val chr: int -> t
 
-(** Use `unsafe_of_int value` only when the caller already knows `value` is in the inclusive
-    range `0` to `255`. *)
+(**
+   Use `unsafe_of_int value` only when the caller already knows `value` is in the inclusive
+   range `0` to `255`. 
+*)
 val from_int_unchecked: int -> t
 
 (** Use `to_int value` to recover the byte value in the inclusive range `0` to `255`. *)

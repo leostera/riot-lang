@@ -1,7 +1,7 @@
 open Std
 
 type protocol_upgrade =
-  WebSocket of Channel.Handler.upgrade_opts * Channel.Handler.t
+  | WebSocket of Channel.Handler.upgrade_opts * Channel.Handler.t
 
 type response =
   | Response of Response.t

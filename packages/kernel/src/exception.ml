@@ -10,16 +10,16 @@ type raw_backtrace_slot
 
 type backtrace_slot =
   | Known_location of {
-      is_raise: bool;
-      filename: string;
-      start_lnum: int;
-      start_char: int;
-      end_offset: int;
-      end_lnum: int;
-      end_char: int;
-      is_inline: bool;
-      defname: string
-    }
+    is_raise: bool;
+    filename: string;
+    start_lnum: int;
+    start_char: int;
+    end_offset: int;
+    end_lnum: int;
+    end_char: int;
+    is_inline: bool;
+    defname: string;
+  }
   | Unknown_location of { is_raise: bool }
 
 external to_string: exn -> string = "kernel_new_exception_to_string"
@@ -49,27 +49,29 @@ let format_backtrace_slot = fun position slot ->
     if is_raise then
       if position = 0 then
         "Raised at"
-      else
-        "Re-raised at"
-    else if position = 0 then
-      "Raised by primitive operation at"
+      else "Re-raised at"
     else
-      "Called from"
+      if position = 0 then
+        "Raised by primitive operation at"
+      else "Called from"
   in
   match slot with
   | Unknown_location { is_raise } ->
       if is_raise then
         None
-      else
-        Some (String.concat "" [ info false; " unknown location" ])
+      else Some (String.concat "" [ info false; " unknown location" ])
   | Known_location location ->
       let lines =
         if location.start_lnum = location.end_lnum then
           String.concat "" [ " "; Int.to_string location.start_lnum ]
         else
-          String.concat
-            ""
-            [ "s "; Int.to_string location.start_lnum; "-"; Int.to_string location.end_lnum ]
+          String.concat ""
+            [
+              "s ";
+              Int.to_string location.start_lnum;
+              "-";
+              Int.to_string location.end_lnum;
+            ]
       in
       Some (
         String.concat ""
@@ -83,15 +85,14 @@ let format_backtrace_slot = fun position slot ->
             (
               if location.is_inline then
                 " (inlined)"
-              else
-                ""
+              else ""
             );
             ", line";
             lines;
             ", characters ";
             Int.to_string location.start_char;
             "-";
-            Int.to_string location.end_char
+            Int.to_string location.end_char;
           ]
       )
 

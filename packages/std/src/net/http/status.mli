@@ -1,44 +1,45 @@
-(** # Net.Http.Status - HTTP status codes
+(**
+   # Net.Http.Status - HTTP status codes
 
-    HTTP status code types and utilities following RFC 7231. Includes all
-    standard status codes from 1xx through 5xx ranges.
+   HTTP status code types and utilities following RFC 7231. Includes all
+   standard status codes from 1xx through 5xx ranges.
 
-    ## Examples
+   ## Examples
 
-    Basic usage:
+   Basic usage:
 
-    ```ocaml open Std.Net.Http
+   ```ocaml open Std.Net.Http
 
-    let status = Status.Ok in Status.to_int status (* 200 *)
-    Status.reason_phrase status (* "OK" *)
+   let status = Status.Ok in Status.to_int status (* 200 *)
+   Status.reason_phrase status (* "OK" *)
 
-    let status = Status.of_int 404 in (* Status.NotFound *) ```
+   let status = Status.of_int 404 in (* Status.NotFound *) ```
 
-    Checking status categories:
+   Checking status categories:
 
-    ```ocaml Status.is_success Status.Ok (* true *) Status.is_client_error
-    Status.NotFound (* true *) Status.is_server_error Status.InternalServerError
-    (* true *)
+   ```ocaml Status.is_success Status.Ok (* true *) Status.is_client_error
+   Status.NotFound (* true *) Status.is_server_error Status.InternalServerError
+   (* true *)
 
-    (* Handling responses *) let handle_response status body = if
-    Status.is_success status then process_success body else if
-    Status.is_client_error status then Log.warn "Client error: %s"
-    (Status.reason_phrase status) else Log.error "Server error: %d"
-    (Status.to_int status) ```
+   (* Handling responses *) let handle_response status body = if
+   Status.is_success status then process_success body else if
+   Status.is_client_error status then Log.warn "Client error: %s"
+   (Status.reason_phrase status) else Log.error "Server error: %d"
+   (Status.to_int status) ```
 
-    Custom status codes:
+   Custom status codes:
 
-    ```ocaml (* Non-standard codes *) let custom = Status.Extension 999 in
-    Status.to_int custom (* 999 *) ```
+   ```ocaml (* Non-standard codes *) let custom = Status.Extension 999 in
+   Status.to_int custom (* 999 *) ```
 
-    ## Status Code Categories
+   ## Status Code Categories
 
-    - **1xx Informational**: Request received, continuing process
-    - **2xx Success**: Request successfully received, understood, and accepted
-    - **3xx Redirection**: Further action needed to complete request
-    - **4xx Client Error**: Request contains bad syntax or cannot be fulfilled
-    - **5xx Server Error**: Server failed to fulfill valid request *)
-
+   - **1xx Informational**: Request received, continuing process
+   - **2xx Success**: Request successfully received, understood, and accepted
+   - **3xx Redirection**: Further action needed to complete request
+   - **4xx Client Error**: Request contains bad syntax or cannot be fulfilled
+   - **5xx Server Error**: Server failed to fulfill valid request 
+*)
 open Global
 
 type t =
@@ -175,105 +176,126 @@ type t =
   (** Custom or non-standard status code. *)
   | Extension of int
 
-(** Creates status code from integer value.
+(**
+   Creates status code from integer value.
 
-    ## Examples
+   ## Examples
 
-    ```ocaml Status.of_int 200 (* Ok *) Status.of_int 404 (* NotFound *)
-    Status.of_int 999 (* Extension 999 *) ``` *)
+   ```ocaml Status.of_int 200 (* Ok *) Status.of_int 404 (* NotFound *)
+   Status.of_int 999 (* Extension 999 *) ``` 
+*)
 val of_int: int -> t
 
-(** Converts status code to integer value.
+(**
+   Converts status code to integer value.
 
-    ## Examples
+   ## Examples
 
-    ```ocaml Status.to_int Status.Ok (* 200 *) Status.to_int Status.NotFound (*
-    404 *) ``` *)
+   ```ocaml Status.to_int Status.Ok (* 200 *) Status.to_int Status.NotFound (*
+   404 *) ``` 
+*)
 val to_int: t -> int
 
-(** Parses status code from string representation.
+(**
+   Parses status code from string representation.
 
-    ## Examples
+   ## Examples
 
-    ```ocaml Status.of_string "200" (* Ok (Ok) *) Status.of_string "404" (* Ok
-    (NotFound) *) Status.of_string "abc" (* Error `InvalidStatus *) ``` *)
-val of_string: string -> (t, [
-    `InvalidStatus
-  ]) Kernel.result
+   ```ocaml Status.of_string "200" (* Ok (Ok) *) Status.of_string "404" (* Ok
+   (NotFound) *) Status.of_string "abc" (* Error `InvalidStatus *) ``` 
+*)
+val of_string: string -> (t, [`InvalidStatus]) Kernel.result
 
-(** Converts status code to string representation of the integer.
+(**
+   Converts status code to string representation of the integer.
 
-    ## Examples
+   ## Examples
 
-    ```ocaml Status.to_string Status.Ok (* "200" *) Status.to_string
-    Status.NotFound (* "404" *) ``` *)
+   ```ocaml Status.to_string Status.Ok (* "200" *) Status.to_string
+   Status.NotFound (* "404" *) ``` 
+*)
 val to_string: t -> string
 
-(** Returns the standard reason phrase for a status code.
+(**
+   Returns the standard reason phrase for a status code.
 
-    ## Examples
+   ## Examples
 
-    ```ocaml Status.reason_phrase Status.Ok (* "OK" *) Status.reason_phrase
-    Status.NotFound (* "Not Found" *) Status.reason_phrase
-    Status.InternalServerError (* "Internal Server Error" *) ``` *)
+   ```ocaml Status.reason_phrase Status.Ok (* "OK" *) Status.reason_phrase
+   Status.NotFound (* "Not Found" *) Status.reason_phrase
+   Status.InternalServerError (* "Internal Server Error" *) ``` 
+*)
 val reason_phrase: t -> string
 
-(** Returns [true] if status code is in 1xx range (informational).
+(**
+   Returns [true] if status code is in 1xx range (informational).
 
-    ## Examples
+   ## Examples
 
-    ```ocaml Status.is_informational Status.Continue (* true *)
-    Status.is_informational Status.Ok (* false *) ``` *)
+   ```ocaml Status.is_informational Status.Continue (* true *)
+   Status.is_informational Status.Ok (* false *) ``` 
+*)
 val is_informational: t -> bool
 
-(** Returns [true] if status code is in 2xx range (success).
+(**
+   Returns [true] if status code is in 2xx range (success).
 
-    ## Examples
+   ## Examples
 
-    ```ocaml Status.is_success Status.Ok (* true *) Status.is_success
-    Status.Created (* true *) Status.is_success Status.NotFound (* false *) ```
+   ```ocaml Status.is_success Status.Ok (* true *) Status.is_success
+   Status.Created (* true *) Status.is_success Status.NotFound (* false *) ```
 *)
 val is_success: t -> bool
 
-(** Returns [true] if status code is in 3xx range (redirection).
+(**
+   Returns [true] if status code is in 3xx range (redirection).
 
-    ## Examples
+   ## Examples
 
-    ```ocaml Status.is_redirection Status.MovedPermanently (* true *)
-    Status.is_redirection Status.Found (* true *) Status.is_redirection
-    Status.Ok (* false *) ``` *)
+   ```ocaml Status.is_redirection Status.MovedPermanently (* true *)
+   Status.is_redirection Status.Found (* true *) Status.is_redirection
+   Status.Ok (* false *) ``` 
+*)
 val is_redirection: t -> bool
 
-(** Returns [true] if status code is in 4xx range (client error).
+(**
+   Returns [true] if status code is in 4xx range (client error).
 
-    ## Examples
+   ## Examples
 
-    ```ocaml Status.is_client_error Status.BadRequest (* true *)
-    Status.is_client_error Status.NotFound (* true *) Status.is_client_error
-    Status.InternalServerError (* false *) ``` *)
+   ```ocaml Status.is_client_error Status.BadRequest (* true *)
+   Status.is_client_error Status.NotFound (* true *) Status.is_client_error
+   Status.InternalServerError (* false *) ``` 
+*)
 val is_client_error: t -> bool
 
-(** Returns [true] if status code is in 5xx range (server error).
+(**
+   Returns [true] if status code is in 5xx range (server error).
 
-    ## Examples
+   ## Examples
 
-    ```ocaml Status.is_server_error Status.InternalServerError (* true *)
-    Status.is_server_error Status.NotImplemented (* true *)
-    Status.is_server_error Status.NotFound (* false *) ``` *)
+   ```ocaml Status.is_server_error Status.InternalServerError (* true *)
+   Status.is_server_error Status.NotImplemented (* true *)
+   Status.is_server_error Status.NotFound (* false *) ``` 
+*)
 val is_server_error: t -> bool
 
-(** Compares two status codes by their integer values.
+(**
+   Compares two status codes by their integer values.
 
-    ## Examples
+   ## Examples
 
-    ```ocaml Status.compare Status.Ok Status.NotFound (* < 0, since 200 < 404 *)
-    ``` *)
+   ```ocaml Status.compare Status.Ok Status.NotFound (* < 0, since 200 < 404 *)
+   ``` 
+*)
 val compare: t -> t -> Order.t
 
-(** Checks if two status codes are equal.
+(**
+   Checks if two status codes are equal.
 
-    ## Examples
+   ## Examples
 
-    ```ocaml Status.equal Status.Ok Status.Ok (* true *) Status.equal Status.Ok
-    Status.NotFound (* false *) ``` *)
+   ```ocaml Status.equal Status.Ok Status.Ok (* true *) Status.equal Status.Ok
+   Status.NotFound (* false *) ``` 
+*)
 val equal: t -> t -> bool

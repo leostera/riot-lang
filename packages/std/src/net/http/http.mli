@@ -1,12 +1,13 @@
-(** HTTP types and utilities.
+(**
+   HTTP types and utilities.
 
-    ## Example
+   ## Example
 
-    ```ocaml
-    let response =
-      Http.Response.ok "hello"
-      |> Http.Response.with_header "content-type" "text/plain"
-    ```
+   ```ocaml
+   let response =
+     Http.Response.ok "hello"
+     |> Http.Response.with_header "content-type" "text/plain"
+   ```
 *)
 module Method = Method
 

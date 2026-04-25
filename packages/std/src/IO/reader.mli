@@ -4,8 +4,10 @@ open Types
 module IoVec = IoVec
 
 type 'value result = ('value, Error.t) Result.t
+
 module type Read = sig
   type t
+
   val read: t -> into:Buffer.t -> int result
 
   val read_vectored: t -> into:IoVec.t -> int result
@@ -14,7 +16,9 @@ module type Read = sig
 end
 
 type 'src source = (module Read with type t = 'src)
+
 type t
+
 val from_source: 'src source -> 'src -> t
 
 val read: t -> into:Buffer.t -> int result

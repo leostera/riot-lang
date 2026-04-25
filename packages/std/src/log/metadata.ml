@@ -16,7 +16,7 @@ let empty = {
   file = None;
   line = None;
   pid = None;
-  custom = [];
+  custom = []
 }
 
 let make = fun ?module_name ?function_name ?file ?line ?pid ?(custom = []) () ->
@@ -26,7 +26,7 @@ let make = fun ?module_name ?function_name ?file ?line ?pid ?(custom = []) () ->
     file;
     line;
     pid;
-    custom;
+    custom
   }
 
 let merge = fun t1 t2 ->
@@ -36,7 +36,7 @@ let merge = fun t1 t2 ->
     file = Option.or_ t2.file t1.file;
     line = Option.or_ t2.line t1.line;
     pid = Option.or_ t2.pid t1.pid;
-    custom = t2.custom @ t1.custom;
+    custom = t2.custom @ t1.custom
   }
 
 let to_string = fun t ->
@@ -82,5 +82,4 @@ let to_string = fun t ->
   let parts = rev [] parts in
   if parts = [] then
     ""
-  else
-    String.concat " " parts
+  else String.concat " " parts

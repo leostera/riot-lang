@@ -1,8 +1,10 @@
-(** `Kernel` is Riot's platform abstraction layer.
+(**
+   `Kernel` is Riot's platform abstraction layer.
 
-    The top-level module intentionally exposes just the canonical type homes and the portable
-    runtime, filesystem, network, time, environment, and process boundaries that higher layers
-    build on. *)
+   The top-level module intentionally exposes just the canonical type homes and the portable
+   runtime, filesystem, network, time, environment, and process boundaries that higher layers
+   build on. 
+*)
 module Prelude = Prelude
 
 include module type of Prelude

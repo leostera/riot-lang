@@ -1,5 +1,7 @@
 open Std
+
 module Method = Std.Net.Http.Method
+
 module IoSlice = IO.IoVec.IoSlice
 
 let test_from_slice_standard = fun _ctx ->
@@ -14,11 +16,7 @@ let test_from_slice_extension = fun _ctx ->
   | Method.Extension "PURGE" -> Ok ()
   | method_ -> Error ("Expected PURGE extension, got " ^ Method.to_string method_)
 
-let tests =
-  Test.[
-    case "from_slice parses standard methods" test_from_slice_standard;
-    case "from_slice preserves extensions" test_from_slice_extension;
-  ]
+let tests = Test.[ case "from_slice parses standard methods" test_from_slice_standard; case "from_slice preserves extensions" test_from_slice_extension ]
 
 let main ~args = Test.Cli.main ~name:"net_http_method" ~tests ~args ()
 

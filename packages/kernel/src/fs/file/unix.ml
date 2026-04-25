@@ -76,10 +76,7 @@ type open_flag =
   | Append
   | Exclusive
 
-type pipe = {
-  read_end: t;
-  write_end: t;
-}
+type pipe = { read_end: t; write_end: t }
 
 let flag_read_only = 1
 
@@ -106,21 +103,20 @@ let kind_of_code = fun value ->
   | 6 -> Socket
   | _ -> Unknown
 
-let metadata_of_tuple = fun (kind_code, perm, size, link_count, owner_uid, owner_gid, device, inode, raw_device, accessed_time_ns, modified_time_ns, changed_time_ns) ->
-  Metadata.{
-    kind = kind_of_code kind_code;
-    perm;
-    size;
-    nlink = link_count;
-    uid = owner_uid;
-    gid = owner_gid;
-    dev = device;
-    ino = inode;
-    rdev = raw_device;
-    accessed_ns = accessed_time_ns;
-    modified_ns = modified_time_ns;
-    changed_ns = changed_time_ns;
-  }
+let metadata_of_tuple = fun (kind_code, perm, size, link_count, owner_uid, owner_gid, device, inode, raw_device, accessed_time_ns, modified_time_ns, changed_time_ns) -> Metadata.{
+  kind = kind_of_code kind_code;
+  perm;
+  size;
+  nlink = link_count;
+  uid = owner_uid;
+  gid = owner_gid;
+  dev = device;
+  ino = inode;
+  rdev = raw_device;
+  accessed_ns = accessed_time_ns;
+  modified_ns = modified_time_ns;
+  changed_ns = changed_time_ns
+}
 
 let flags_to_mask = fun flags ->
   let rec loop acc = function
@@ -172,20 +168,11 @@ module FFI = struct
 
   external realpath: string -> (string, int) Result.t = "kernel_new_fs_file_realpath"
 
-  external stat:
-    string ->
-    ((int * int * int64 * int * int * int * int * int * int * int64 * int64 * int64), int) Result.t
-    = "kernel_new_fs_file_stat"
+  external stat: string -> ((int * int * int64 * int * int * int * int * int * int * int64 * int64 * int64), int) Result.t = "kernel_new_fs_file_stat"
 
-  external lstat:
-    string ->
-    ((int * int * int64 * int * int * int * int * int * int * int64 * int64 * int64), int) Result.t
-    = "kernel_new_fs_file_lstat"
+  external lstat: string -> ((int * int * int64 * int * int * int * int * int * int * int64 * int64 * int64), int) Result.t = "kernel_new_fs_file_lstat"
 
-  external fstat:
-    t ->
-    ((int * int * int64 * int * int * int * int * int * int * int64 * int64 * int64), int) Result.t
-    = "kernel_new_fs_file_fstat"
+  external fstat: t -> ((int * int * int64 * int * int * int * int * int * int * int64 * int64 * int64), int) Result.t = "kernel_new_fs_file_fstat"
 
   external readdir: string -> (string array, int) Result.t = "kernel_new_fs_file_readdir"
 
@@ -196,9 +183,9 @@ module FFI = struct
   external is_tty: t -> bool = "kernel_new_fs_file_isatty"
 end
 
-let open_file = fun path ~flags ~permissions ->
-  FFI.open_file (Path.to_string path) (flags_to_mask flags) permissions
-  |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
+let open_file = fun path ~flags ~permissions -> FFI.open_file (Path.to_string path) (flags_to_mask flags) permissions |> Result.map_err ~fn:(
+  fun code -> System (System_error.from_code code)
+)
 
 let open_read = fun path -> open_file path ~flags:[ ReadOnly ] ~permissions:0
 
@@ -207,50 +194,49 @@ let open_write = fun ?(create = true) ?(truncate = true) ?(append = false) ?(per
     let flags =
       if create then
         Create :: [ WriteOnly ]
-      else
-        [ WriteOnly ]
+      else [ WriteOnly ]
     in
     let flags =
       if truncate then
         Truncate :: flags
-      else
-        flags
+      else flags
     in
     if append then
       Append :: flags
-    else
-      flags
+    else flags
   in
   open_file path ~flags ~permissions:perm
 
-let close = fun fd ->
-  FFI.close fd |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
+let close = fun fd -> FFI.close fd |> Result.map_err ~fn:(
+  fun code -> System (System_error.from_code code)
+)
 
-let try_lock_exclusive = fun fd ->
-  FFI.try_lock_exclusive fd |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
+let try_lock_exclusive = fun fd -> FFI.try_lock_exclusive fd |> Result.map_err ~fn:(
+  fun code -> System (System_error.from_code code)
+)
 
-let unlock = fun fd ->
-  FFI.unlock fd |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
+let unlock = fun fd -> FFI.unlock fd |> Result.map_err ~fn:(
+  fun code -> System (System_error.from_code code)
+)
 
 let error_to_string = fun value ->
   match value with
-  | InvalidSlice { pos; len; buffer_len } -> String.concat
-    ""
-    [
-      "invalid buffer slice: pos=";
-      Int.to_string pos;
-      ", len=";
-      Int.to_string len;
-      ", buffer_len=";
-      Int.to_string buffer_len;
-    ]
+  | InvalidSlice { pos; len; buffer_len } ->
+      String.concat ""
+        [
+          "invalid buffer slice: pos=";
+          Int.to_string pos;
+          ", len=";
+          Int.to_string len;
+          ", buffer_len=";
+          Int.to_string buffer_len;
+        ]
   | System error -> System_error.to_string error
 
 let validate_slice = fun buf ~pos ~len ->
   if pos < 0 || len < 0 || pos + len > Bytes.length buf then
     Result.Error (InvalidSlice { pos; len; buffer_len = Bytes.length buf })
-  else
-    Result.Ok ()
+  else Result.Ok ()
 
 let read = fun fd ?(pos = 0) ?len buf ->
   let len =
@@ -258,8 +244,9 @@ let read = fun fd ?(pos = 0) ?len buf ->
     | Some len -> len
     | None -> Bytes.length buf - pos
   in
-  let* () = validate_slice buf ~pos ~len in
-  FFI.read fd buf pos len |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
+  let* () = validate_slice buf ~pos ~len in FFI.read fd buf pos len |> Result.map_err ~fn:(
+    fun code -> System (System_error.from_code code)
+  )
 
 let write = fun fd ?(pos = 0) ?len buf ->
   let len =
@@ -267,87 +254,84 @@ let write = fun fd ?(pos = 0) ?len buf ->
     | Some len -> len
     | None -> Bytes.length buf - pos
   in
-  let* () = validate_slice buf ~pos ~len in
-  FFI.write fd buf pos len |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
+  let* () = validate_slice buf ~pos ~len in FFI.write fd buf pos len |> Result.map_err ~fn:(
+    fun code -> System (System_error.from_code code)
+  )
 
-let read_vectored = fun fd iovecs ->
-  FFI.readv fd iovecs |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
+let read_vectored = fun fd iovecs -> FFI.readv fd iovecs |> Result.map_err ~fn:(
+  fun code -> System (System_error.from_code code)
+)
 
-let write_vectored = fun fd iovecs ->
-  FFI.writev fd iovecs |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
+let write_vectored = fun fd iovecs -> FFI.writev fd iovecs |> Result.map_err ~fn:(
+  fun code -> System (System_error.from_code code)
+)
 
 let pipe = fun () ->
-  let* (read_end, write_end) = FFI.pipe ()
-  |> Result.map_err ~fn:(fun code -> System (System_error.from_code code)) in
-  Result.Ok { read_end; write_end }
+  let* (read_end, write_end) = FFI.pipe () |> Result.map_err ~fn:(
+    fun code -> System (System_error.from_code code)
+  ) in Result.Ok { read_end; write_end }
 
-let create_dir = fun path ~perm ->
-  FFI.mkdir (Path.to_string path) perm
-  |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
+let create_dir = fun path ~perm -> FFI.mkdir (Path.to_string path) perm |> Result.map_err ~fn:(
+  fun code -> System (System_error.from_code code)
+)
 
-let set_permissions = fun path ~perm ->
-  FFI.chmod (Path.to_string path) perm
-  |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
+let set_permissions = fun path ~perm -> FFI.chmod (Path.to_string path) perm |> Result.map_err ~fn:(
+  fun code -> System (System_error.from_code code)
+)
 
-let remove_dir = fun path ->
-  FFI.rmdir (Path.to_string path)
-  |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
+let remove_dir = fun path -> FFI.rmdir (Path.to_string path) |> Result.map_err ~fn:(
+  fun code -> System (System_error.from_code code)
+)
 
-let remove_file = fun path ->
-  FFI.remove (Path.to_string path)
-  |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
+let remove_file = fun path -> FFI.remove (Path.to_string path) |> Result.map_err ~fn:(
+  fun code -> System (System_error.from_code code)
+)
 
-let rename = fun ~src ~dst ->
-  FFI.rename (Path.to_string src) (Path.to_string dst)
-  |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
+let rename = fun ~src ~dst -> FFI.rename (Path.to_string src) (Path.to_string dst) |> Result.map_err ~fn:(
+  fun code -> System (System_error.from_code code)
+)
 
-let hard_link = fun ~src ~dst ->
-  FFI.link (Path.to_string src) (Path.to_string dst)
-  |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
+let hard_link = fun ~src ~dst -> FFI.link (Path.to_string src) (Path.to_string dst) |> Result.map_err ~fn:(
+  fun code -> System (System_error.from_code code)
+)
 
-let symlink = fun ~src ~dst ->
-  FFI.symlink (Path.to_string src) (Path.to_string dst)
-  |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
+let symlink = fun ~src ~dst -> FFI.symlink (Path.to_string src) (Path.to_string dst) |> Result.map_err ~fn:(
+  fun code -> System (System_error.from_code code)
+)
 
-let read_link = fun path ->
-  FFI.readlink (Path.to_string path)
-  |> Result.map ~fn:Path.from_string
-  |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
+let read_link = fun path -> FFI.readlink (Path.to_string path) |> Result.map ~fn:Path.from_string |> Result.map_err ~fn:(
+  fun code -> System (System_error.from_code code)
+)
 
-let canonicalize = fun path ->
-  FFI.realpath (Path.to_string path)
-  |> Result.map ~fn:Path.from_string
-  |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
+let canonicalize = fun path -> FFI.realpath (Path.to_string path) |> Result.map ~fn:Path.from_string |> Result.map_err ~fn:(
+  fun code -> System (System_error.from_code code)
+)
 
-let metadata = fun path ->
-  FFI.stat (Path.to_string path)
-  |> Result.map ~fn:metadata_of_tuple
-  |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
+let metadata = fun path -> FFI.stat (Path.to_string path) |> Result.map ~fn:metadata_of_tuple |> Result.map_err ~fn:(
+  fun code -> System (System_error.from_code code)
+)
 
-let lstat = fun path ->
-  FFI.lstat (Path.to_string path)
-  |> Result.map ~fn:metadata_of_tuple
-  |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
+let lstat = fun path -> FFI.lstat (Path.to_string path) |> Result.map ~fn:metadata_of_tuple |> Result.map_err ~fn:(
+  fun code -> System (System_error.from_code code)
+)
 
 let symlink_metadata = lstat
 
-let fstat = fun fd ->
-  FFI.fstat fd
-  |> Result.map ~fn:metadata_of_tuple
-  |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
+let fstat = fun fd -> FFI.fstat fd |> Result.map ~fn:metadata_of_tuple |> Result.map_err ~fn:(
+  fun code -> System (System_error.from_code code)
+)
 
-let read_dir_names = fun path ->
-  FFI.readdir (Path.to_string path)
-  |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
+let read_dir_names = fun path -> FFI.readdir (Path.to_string path) |> Result.map_err ~fn:(
+  fun code -> System (System_error.from_code code)
+)
 
-let current_dir = fun () ->
-  FFI.getcwd ()
-  |> Result.map ~fn:Path.from_string
-  |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
+let current_dir = fun () -> FFI.getcwd () |> Result.map ~fn:Path.from_string |> Result.map_err ~fn:(
+  fun code -> System (System_error.from_code code)
+)
 
-let set_current_dir = fun path ->
-  FFI.chdir (Path.to_string path)
-  |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
+let set_current_dir = fun path -> FFI.chdir (Path.to_string path) |> Result.map_err ~fn:(
+  fun code -> System (System_error.from_code code)
+)
 
 let exists = fun path ->
   match metadata path with
@@ -362,12 +346,16 @@ let is_directory = fun path ->
   | Result.Error error -> Result.Error error
 
 let copy = fun ~src ~dst ->
-  let* src_metadata = metadata src in
-  let* src_file = open_read src in
-  let* dst_file = open_write dst in
+  let* src_metadata = metadata src
+  in
+  let* src_file = open_read src
+  in
+  let* dst_file = open_write dst
+  in
   let buffer = Bytes.create ~size:65_536 in
   let rec drain () =
-    let* read_count = read src_file buffer in
+    let* read_count = read src_file buffer
+    in
     if read_count = 0 then
       Result.Ok ()
     else
@@ -375,14 +363,13 @@ let copy = fun ~src ~dst ->
         if remaining = 0 then
           Result.Ok ()
         else
-          let* written = write dst_file ~pos ~len:remaining buffer in
+          let* written = write dst_file ~pos ~len:remaining buffer
+          in
           if written = 0 then
             Result.Error (System System_error.InputOutput)
-          else
-            write_all (pos + written) (remaining - written)
+          else write_all (pos + written) (remaining - written)
       in
-      let* () = write_all 0 read_count in
-      drain ()
+      let* () = write_all 0 read_count in drain ()
   in
   let result = drain () in
   let close_first = close src_file in
@@ -390,11 +377,11 @@ let copy = fun ~src ~dst ->
   match result with
   | Result.Error _ -> result
   | Result.Ok () -> (
-      match (close_first, close_second) with
-      | (Result.Error error, _) -> Result.Error error
-      | (Result.Ok (), Result.Error error) -> Result.Error error
-      | (Result.Ok (), Result.Ok ()) -> set_permissions dst ~perm:(Metadata.permissions src_metadata)
-    )
+    match close_first, close_second with
+    | (Result.Error error, _) -> Result.Error error
+    | (Result.Ok (), Result.Error error) -> Result.Error error
+    | (Result.Ok (), Result.Ok ()) -> set_permissions dst ~perm:(Metadata.permissions src_metadata)
+  )
 
 let is_tty = FFI.is_tty
 
@@ -402,11 +389,9 @@ let to_source = fun fd ->
   let module Source = struct
     type nonrec t = t
 
-    let register = fun fd selector token interest ->
-      Async.Adapter.Selector.register selector ~fd ~token ~interest
+    let register = fun fd selector token interest -> Async.Adapter.Selector.register selector ~fd ~token ~interest
 
-    let reregister = fun fd selector token interest ->
-      Async.Adapter.Selector.reregister selector ~fd ~token ~interest
+    let reregister = fun fd selector token interest -> Async.Adapter.Selector.reregister selector ~fd ~token ~interest
 
     let deregister = fun fd selector -> Async.Adapter.Selector.deregister selector ~fd
   end in

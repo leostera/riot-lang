@@ -2,6 +2,7 @@
 module IoSlice = Kernel.IO.IoVec.IoSlice
 
 type t
+
 val create: string -> t
 
 val from_string: string -> t

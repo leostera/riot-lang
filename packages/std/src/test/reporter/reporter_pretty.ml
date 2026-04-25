@@ -22,20 +22,18 @@ let metadata_suffix = fun size reliability ->
 let attempts_suffix = fun attempts ->
   if attempts <= 1 then
     ""
-  else
-    " after " ^ Int.to_string attempts ^ " attempts"
+  else " after " ^ Int.to_string attempts ^ " attempts"
 
 let init = fun (suite: Intf.suite_info) total ->
   (
-    match (suite.source_file, suite.binary_path) with
+    match suite.source_file, suite.binary_path with
     | Some source, Some binary ->
         println "";
         println ("     Running " ^ Path.to_string source ^ " (" ^ Path.to_string binary ^ ")")
     | Some source, None ->
         println "";
         println ("     Running " ^ Path.to_string source)
-    | None, _ ->
-        ()
+    | None, _ -> ()
   );
   println "";
   println ("running " ^ Int.to_string total ^ " tests")
@@ -54,40 +52,18 @@ let on_result = fun _idx (result: Test_result.t) ->
         | Test_case.UnitTest -> "ok"
         | Test_case.Property { examples } -> Int.to_string examples ^ " examples ok"
       in
-      println
-        (prefix ^ " " ^ result.name ^ metadata ^ " ... " ^ suffix ^ attempts_suffix result.attempts)
+      println (prefix ^ " " ^ result.name ^ metadata ^ " ... " ^ suffix ^ attempts_suffix result.attempts)
   | Test_result.Failed msg ->
-      println
-        (prefix ^ " " ^ result.name ^ metadata ^ " ... FAILED" ^ attempts_suffix result.attempts);
+      println (prefix ^ " " ^ result.name ^ metadata ^ " ... FAILED" ^ attempts_suffix result.attempts);
       println ("       " ^ msg)
-  | Test_result.Timed_out { timeout } ->
-      println
-        (prefix
-        ^ " "
-        ^ result.name
-        ^ metadata
-        ^ " ... TIMED OUT after "
-        ^ Int.to_string (Time.Duration.to_millis timeout)
-        ^ "ms"
-        ^ attempts_suffix result.attempts)
-  | Test_result.Skipped ->
-      println (prefix ^ " " ^ result.name ^ metadata ^ " ... skipped")
+  | Test_result.Timed_out { timeout } -> println (prefix ^ " " ^ result.name ^ metadata ^ " ... TIMED OUT after " ^ Int.to_string (Time.Duration.to_millis timeout) ^ "ms" ^ attempts_suffix result.attempts)
+  | Test_result.Skipped -> println (prefix ^ " " ^ result.name ^ metadata ^ " ... skipped")
 
 let finalize = fun (summary: Test_result.summary) ->
   println "";
   let status =
     if summary.failed > 0 then
       "FAILED"
-    else
-      "ok"
+    else "ok"
   in
-  println
-    ("test result: "
-    ^ status
-    ^ ". "
-    ^ Int.to_string summary.passed
-    ^ " passed; "
-    ^ Int.to_string summary.failed
-    ^ " failed; "
-    ^ Int.to_string summary.skipped
-    ^ " skipped")
+  println ("test result: " ^ status ^ ". " ^ Int.to_string summary.passed ^ " passed; " ^ Int.to_string summary.failed ^ " failed; " ^ Int.to_string summary.skipped ^ " skipped")

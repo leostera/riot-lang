@@ -1,37 +1,39 @@
-(** Low-level ANSI escape sequence primitives.
+(**
+   Low-level ANSI escape sequence primitives.
 
-    This module provides pure functions that return ANSI escape sequence strings.
-    These strings can be printed to stdout to control the terminal.
-    
-    Most users should use higher-level modules like {!Terminal} or {!Style} instead.
+   This module provides pure functions that return ANSI escape sequence strings.
+   These strings can be printed to stdout to control the terminal.
 
-    {1 Example: Using Escape Sequences}
+   Most users should use higher-level modules like {!Terminal} or {!Style} instead.
 
-    {[
-      open Tty
+   {1 Example: Using Escape Sequences}
 
-      (* Get escape sequences as strings *)
-      let move_cursor = Escape_seq.cursor_position_seq 10 20 in
-      let red_color = Escape_seq.set_foreground_color_seq "255;0;0" in
-      let reset = Escape_seq.csi ^ Escape_seq.reset_seq ^ "m" in
-      
-      (* Print them to stdout *)
-      print_string (move_cursor ^ red_color ^ "Red text at 10,20" ^ reset)
-    ]}
+   {[
+     open Tty
 
-    {1 Example: Mouse Tracking}
+     (* Get escape sequences as strings *)
+     let move_cursor = Escape_seq.cursor_position_seq 10 20 in
+     let red_color = Escape_seq.set_foreground_color_seq "255;0;0" in
+     let reset = Escape_seq.csi ^ Escape_seq.reset_seq ^ "m" in
 
-    {[
-      (* Enable mouse motion tracking *)
-      print_string Escape_seq.enable_mouse_all_motion_seq;
-      print_string Escape_seq.enable_mouse_extended_mode_seq;
+     (* Print them to stdout *)
+     print_string (move_cursor ^ red_color ^ "Red text at 10,20" ^ reset)
+   ]}
 
-      (* ... handle mouse events ... *)
+   {1 Example: Mouse Tracking}
 
-      (* Disable when done *)
-      print_string Escape_seq.disable_mouse_all_motion_seq;
-      print_string Escape_seq.disable_mouse_extended_mode_seq
-    ]} *)
+   {[
+     (* Enable mouse motion tracking *)
+     print_string Escape_seq.enable_mouse_all_motion_seq;
+     print_string Escape_seq.enable_mouse_extended_mode_seq;
+
+     (* ... handle mouse events ... *)
+
+     (* Disable when done *)
+     print_string Escape_seq.disable_mouse_all_motion_seq;
+     print_string Escape_seq.disable_mouse_extended_mode_seq
+   ]} 
+*)
 (** {1 Constants} *)
 (** The Control Sequence Introducer: ["\x1b["] *)
 val csi: string
@@ -85,16 +87,20 @@ val restore_screen_seq: string
 (** Sequence to reset scroll region to full screen *)
 val reset_scroll_region_seq: string
 
-(** [erase_display_seq mode] returns sequence to clear parts of the screen:
-    - [0] = from cursor to end
-    - [1] = from cursor to beginning
-    - [2] = entire screen *)
+(**
+   [erase_display_seq mode] returns sequence to clear parts of the screen:
+   - [0] = from cursor to end
+   - [1] = from cursor to beginning
+   - [2] = entire screen 
+*)
 val erase_display_seq: int -> string
 
-(** [erase_line_seq mode] returns sequence to clear parts of the line:
-    - [0] = from cursor to end
-    - [1] = from cursor to beginning
-    - [2] = entire line *)
+(**
+   [erase_line_seq mode] returns sequence to clear parts of the line:
+   - [0] = from cursor to end
+   - [1] = from cursor to beginning
+   - [2] = entire line 
+*)
 val erase_line_seq: int -> string
 
 (** Sequence to clear the entire current line *)
@@ -161,12 +167,16 @@ val scroll_down_seq: int -> string
 val change_scrolling_region_seq: int -> int -> string
 
 (** {1 Colors} *)
-(** [set_foreground_color_seq color] returns sequence to set text color. 
-    [color] should be RGB like ["255;128;0"] *)
+(**
+   [set_foreground_color_seq color] returns sequence to set text color.
+   [color] should be RGB like ["255;128;0"] 
+*)
 val set_foreground_color_seq: string -> string
 
-(** [set_background_color_seq color] returns sequence to set background color. 
-    [color] should be RGB like ["255;128;0"] *)
+(**
+   [set_background_color_seq color] returns sequence to set background color.
+   [color] should be RGB like ["255;128;0"] 
+*)
 val set_background_color_seq: string -> string
 
 (** [set_cursor_color_seq color] returns sequence to set cursor color *)
@@ -254,24 +264,28 @@ val begin_sync_seq: string
 val end_sync_seq: string
 
 (** {1 String Utilities} *)
-(** [strip str] removes all ANSI escape sequences from [str].
-    
-    Returns the string with all ESC[ sequences removed, leaving only
-    the visible text content.
-    
-    {[
-      let colored = "\x1b[31mRed Text\x1b[0m" in
-      strip colored  (* Returns "Red Text" *)
-    ]} *)
+(**
+   [strip str] removes all ANSI escape sequences from [str].
+
+   Returns the string with all ESC[ sequences removed, leaving only
+   the visible text content.
+
+   {[
+     let colored = "\x1b[31mRed Text\x1b[0m" in
+     strip colored  (* Returns "Red Text" *)
+   ]} 
+*)
 val strip: string -> string
 
-(** [width str] calculates the display width of [str] ignoring ANSI codes.
-    
-    Returns the number of visible characters, not counting escape sequences.
-    This is useful for text layout and alignment.
-    
-    {[
-      let styled = "\x1b[1;32mBold Green\x1b[0m" in
-      width styled  (* Returns 10, not 24 *)
-    ]} *)
+(**
+   [width str] calculates the display width of [str] ignoring ANSI codes.
+
+   Returns the number of visible characters, not counting escape sequences.
+   This is useful for text layout and alignment.
+
+   {[
+     let styled = "\x1b[1;32mBold Green\x1b[0m" in
+     width styled  (* Returns 10, not 24 *)
+   ]} 
+*)
 val width: string -> int

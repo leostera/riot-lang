@@ -1,17 +1,18 @@
-(** # Actor - Actor runtime primitives
+(**
+   # Actor - Actor runtime primitives
 
-    Actor management helpers layered on top of the std-owned runtime.
+   Actor management helpers layered on top of the std-owned runtime.
 
-    ## Example
+   ## Example
 
-    ```ocaml
-    let child =
-      Actor.spawn (fun () ->
-        Log.info "child started";
-        Ok ())
-    in
-    ignore child
-    ```
+   ```ocaml
+   let child =
+     Actor.spawn (fun () ->
+       Log.info "child started";
+       Ok ())
+   in
+   ignore child
+   ```
 *)
 open Global
 

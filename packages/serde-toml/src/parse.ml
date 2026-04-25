@@ -1,15 +1,17 @@
 open Std
 open Toml_value
+
 module Array = Collections.Array
+
 module HashMap = Collections.HashMap
+
 module Vector = Collections.Vector
 
 exception Parse_failure of string
 
 let fail = fun message -> raise (Parse_failure message)
 
-let fail_line = fun line_number message ->
-  fail ("line " ^ Int.to_string line_number ^ ": " ^ message)
+let fail_line = fun line_number message -> fail ("line " ^ Int.to_string line_number ^ ": " ^ message)
 
 module Builder = struct
   type value =
@@ -20,97 +22,85 @@ module Builder = struct
     | Array of value Vector.t
     | Array_of_tables of value Vector.t
     | Table of table
-
-  and table = {
-    order: string Vector.t;
-    values: (string, value) HashMap.t;
-  }
+  and table = { order: string Vector.t; values: (string, value) HashMap.t }
 
   let create_table = fun () -> { order = Vector.create (); values = HashMap.create () }
 
   let set_field = fun table key value ->
     if not (HashMap.contains_key table.values key) then
       Vector.push table.order ~value:key;
-    let _ = HashMap.insert table.values ~key ~value in
-    ()
+    let _ = HashMap.insert table.values ~key ~value in ()
 
-  let rec of_toml = fun (value: Toml_value.t) : value ->
+  let rec of_toml = fun (value: Toml_value.t): value ->
     match value with
-    | Toml_value.String value ->
-        String value
-    | Toml_value.Int value ->
-        Int value
-    | Toml_value.Float value ->
-        Float value
-    | Toml_value.Bool value ->
-        Bool value
+    | Toml_value.String value -> String value
+    | Toml_value.Int value -> Int value
+    | Toml_value.Float value -> Float value
+    | Toml_value.Bool value -> Bool value
     | Toml_value.Array values ->
         let items = values |> List.map ~fn:of_toml |> Vector.from_list in
         let ok = ref true in
-        Vector.for_each items
-          ~fn:(fun value ->
+        Vector.for_each items ~fn:(
+          fun value ->
             if !ok then
               match value with
               | Table _ -> ()
-              | _ -> ok := false);
+              | _ -> ok := false
+        );
         if !ok then
           Array_of_tables items
-        else
-          Array items
+        else Array items
     | Toml_value.Table items ->
         let table = create_table () in
-        List.for_each items ~fn:(fun (key, value) -> set_field table key (of_toml value));
+        List.for_each items ~fn:(
+          fun (key, value) -> set_field table key (of_toml value)
+        );
         Table table
 
-  let rec to_toml = fun (value: value) : Toml_value.t ->
+  let rec to_toml = fun (value: value): Toml_value.t ->
     match value with
     | String value -> Toml_value.String value
     | Int value -> Toml_value.Int value
     | Float value -> Toml_value.Float value
     | Bool value -> Toml_value.Bool value
     | Array values -> Toml_value.Array (values |> Vector.to_array |> Array.to_list |> List.map ~fn:to_toml)
-    | Array_of_tables values -> Toml_value.Array (values
-    |> Vector.to_array
-    |> Array.to_list
-    |> List.map ~fn:to_toml)
+    | Array_of_tables values -> Toml_value.Array (values |> Vector.to_array |> Array.to_list |> List.map ~fn:to_toml)
     | Table table -> Toml_value.Table (table_items table)
-
   and table_items = fun table ->
     let items = ref [] in
-    Vector.for_each table.order
-      ~fn:(fun key ->
+    Vector.for_each table.order ~fn:(
+      fun key ->
         match HashMap.get table.values ~key with
         | Some value -> items := (key, to_toml value) :: !items
-        | None -> ());
+        | None -> ()
+    );
     List.rev !items
 
-  let iter_table = fun table fn ->
-    Vector.for_each table.order
-      ~fn:(fun key ->
-        match HashMap.get table.values ~key with
-        | Some value -> fn key value
-        | None -> ())
+  let iter_table = fun table fn -> Vector.for_each table.order ~fn:(
+    fun key ->
+      match HashMap.get table.values ~key with
+      | Some value -> fn key value
+      | None -> ()
+  )
 
   let table_singleton = fun table ->
     if Int.equal (Vector.len table.order) 1 then
       match Vector.get table.order ~at:0 with
-      | Some key -> HashMap.get table.values ~key |> Option.map ~fn:(fun value -> (key, value))
+      | Some key -> HashMap.get table.values ~key |> Option.map ~fn:(
+        fun value -> (key, value)
+      )
       | None -> None
-    else
-      None
+    else None
 
-  let table_is_empty = fun table ->
-    Int.equal (Vector.len table.order) 0
+  let table_is_empty = fun table -> Int.equal (Vector.len table.order) 0
 
   let array_len = function
-    | Array values
-    | Array_of_tables values -> Vector.len values
+    | Array values | Array_of_tables values -> Vector.len values
     | _ -> panic "Parse.Builder.array_len: expected array value"
 
   let array_iter = fun fn ->
     function
-    | Array values
-    | Array_of_tables values -> Vector.for_each values ~fn
+    | Array values | Array_of_tables values -> Vector.for_each values ~fn
     | _ -> panic "Parse.Builder.array_iter: expected array value"
 
   let get_field = fun table key -> HashMap.get table.values ~key
@@ -122,22 +112,20 @@ module Builder = struct
 
   let expect_array_of_tables = fun key value ->
     match value with
-    | Array_of_tables values ->
-        values
+    | Array_of_tables values -> values
     | Array values ->
         let ok = ref true in
-        Vector.for_each values
-          ~fn:(fun value ->
+        Vector.for_each values ~fn:(
+          fun value ->
             if !ok then
               match value with
               | Table _ -> ()
-              | _ -> ok := false);
+              | _ -> ok := false
+        );
         if !ok then
           values
-        else
-          fail ("expected array-of-tables at key '" ^ key ^ "'")
-    | _ ->
-        fail ("expected array-of-tables at key '" ^ key ^ "'")
+        else fail ("expected array-of-tables at key '" ^ key ^ "'")
+    | _ -> fail ("expected array-of-tables at key '" ^ key ^ "'")
 end
 
 let get_or_create_table = fun table key ->
@@ -148,7 +136,7 @@ let get_or_create_table = fun table key ->
       Builder.set_field table key (Builder.Table nested);
       nested
 
-let get_or_create_array_of_tables = fun (table: Builder.table) key : Builder.value Vector.t ->
+let get_or_create_array_of_tables = fun (table: Builder.table) key: Builder.value Vector.t ->
   match Builder.get_field table key with
   | Some value -> Builder.expect_array_of_tables key value
   | None ->
@@ -180,20 +168,15 @@ let rec append_array_table = fun table path ->
 
 let strip_prefix = fun ~prefix path ->
   let rec loop prefix path =
-    match (prefix, path) with
+    match prefix, path with
     | ([], rest) -> Some rest
-    | (expected :: prefix_rest, actual :: path_rest) when String.equal expected actual -> loop
-      prefix_rest
-      path_rest
+    | (expected :: prefix_rest, actual :: path_rest) when String.equal expected actual -> loop prefix_rest path_rest
     | _ -> None
   in
   loop prefix path
 
 let is_ws = function
-  | ' '
-  | '\t'
-  | '\r'
-  | '\n' -> true
+  | ' ' | '\t' | '\r' | '\n' -> true
   | _ -> false
 
 let strip_comment = fun line ->
@@ -203,8 +186,7 @@ let strip_comment = fun line ->
       false
     else
       match String.unsafe_get line index with
-      | '#'
-      | '"' -> true
+      | '#' | '"' -> true
       | _ -> needs_scan (index + 1)
   in
   if not (needs_scan 0) then
@@ -223,24 +205,29 @@ let strip_comment = fun line ->
             IO.Buffer.add_char buffer current;
             if !escaped then
               escaped := false
-            else if Char.equal current '\\' then
-              escaped := true
-            else if Char.equal current '"' then
-              in_string := false;
+            else
+              if Char.equal current '\\' then
+                escaped := true
+              else
+                if Char.equal current '"' then
+                  in_string := false;
             loop (index + 1)
           )
-        else if Char.equal current '"' then
-          (
-            in_string := true;
-            IO.Buffer.add_char buffer current;
-            loop (index + 1)
-          )
-        else if Char.equal current '#' then
-          IO.Buffer.contents buffer
-        else (
-          IO.Buffer.add_char buffer current;
-          loop (index + 1)
-        )
+        else
+          if Char.equal current '"' then
+            (
+              in_string := true;
+              IO.Buffer.add_char buffer current;
+              loop (index + 1)
+            )
+          else
+            if Char.equal current '#' then
+              IO.Buffer.contents buffer
+            else
+              (
+                IO.Buffer.add_char buffer current;
+                loop (index + 1)
+              )
     in
     loop 0
 
@@ -248,29 +235,27 @@ let trim_bounds = fun text ~start ~stop ->
   let rec trim_start index =
     if index >= stop then
       stop
-    else if is_ws (String.unsafe_get text index) then
-      trim_start (index + 1)
     else
-      index
+      if is_ws (String.unsafe_get text index) then
+        trim_start (index + 1)
+      else index
   in
   let rec trim_stop index =
     if index <= start then
       start
-    else if is_ws (String.unsafe_get text (index - 1)) then
-      trim_stop (index - 1)
     else
-      index
+      if is_ws (String.unsafe_get text (index - 1)) then
+        trim_stop (index - 1)
+      else index
   in
   let trimmed_start = trim_start start in
   let trimmed_stop = trim_stop stop in
   if trimmed_start > trimmed_stop then
     (trimmed_stop, trimmed_stop)
-  else
-    (trimmed_start, trimmed_stop)
+  else (trimmed_start, trimmed_stop)
 
 let trim_sub = fun text ~start ~stop ->
-  let (trimmed_start, trimmed_stop) = trim_bounds text ~start ~stop in
-  String.sub text ~offset:trimmed_start ~len:(trimmed_stop - trimmed_start)
+  let (trimmed_start, trimmed_stop) = trim_bounds text ~start ~stop in String.sub text ~offset:trimmed_start ~len:(trimmed_stop - trimmed_start)
 
 let comment_cutoff = fun text ~start ~stop ->
   let in_string = ref false in
@@ -284,21 +269,24 @@ let comment_cutoff = fun text ~start ~stop ->
         (
           if !escaped then
             escaped := false
-          else if Char.equal current '\\' then
-            escaped := true
-          else if Char.equal current '"' then
-            in_string := false;
+          else
+            if Char.equal current '\\' then
+              escaped := true
+            else
+              if Char.equal current '"' then
+                in_string := false;
           loop (index + 1)
         )
-      else if Char.equal current '"' then
-        (
-          in_string := true;
-          loop (index + 1)
-        )
-      else if Char.equal current '#' then
-        index
       else
-        loop (index + 1)
+        if Char.equal current '"' then
+          (
+            in_string := true;
+            loop (index + 1)
+          )
+        else
+          if Char.equal current '#' then
+            index
+          else loop (index + 1)
   in
   loop start
 
@@ -319,20 +307,22 @@ let split_top_level = fun text ~sep ->
     if !in_string then
       if !escaped then
         escaped := false
-      else if Char.equal current '\\' then
-        escaped := true
-      else if Char.equal current '"' then
-        in_string := false
       else
-        match current with
-        | '"' -> in_string := true
-        | '[' -> bracket_depth := !bracket_depth + 1
-        | ']' -> bracket_depth := !bracket_depth - 1
-        | '{' -> brace_depth := !brace_depth + 1
-        | '}' -> brace_depth := !brace_depth - 1
-        | _ ->
-            if Char.equal current sep && Int.equal !bracket_depth 0 && Int.equal !brace_depth 0 then
-              push index
+        if Char.equal current '\\' then
+          escaped := true
+        else
+          if Char.equal current '"' then
+            in_string := false
+          else
+            match current with
+            | '"' -> in_string := true
+            | '[' -> bracket_depth := !bracket_depth + 1
+            | ']' -> bracket_depth := !bracket_depth - 1
+            | '{' -> brace_depth := !brace_depth + 1
+            | '}' -> brace_depth := !brace_depth - 1
+            | _ ->
+                if Char.equal current sep && Int.equal !bracket_depth 0 && Int.equal !brace_depth 0 then
+                  push index
   done;
   parts := String.sub text ~offset:!start ~len:(len - !start) :: !parts;
   List.rev !parts
@@ -342,10 +332,10 @@ let find_non_ws = fun text ~start ->
   let rec loop index =
     if index >= len then
       None
-    else if is_ws (String.unsafe_get text index) then
-      loop (index + 1)
     else
-      Some index
+      if is_ws (String.unsafe_get text index) then
+        loop (index + 1)
+      else Some index
   in
   loop start
 
@@ -364,20 +354,14 @@ let token_has_float_marker = fun token ->
       false
     else
       match String.unsafe_get token index with
-      | '.'
-      | 'e'
-      | 'E' -> true
+      | '.' | 'e' | 'E' -> true
       | _ -> loop (index + 1)
   in
   loop 0
 
 let quoted_key = fun segment ->
   let len = String.length segment in
-  if
-    len >= 2
-    && Char.equal (String.unsafe_get segment 0) '"'
-    && Char.equal (String.unsafe_get segment (len - 1)) '"'
-  then
+  if len >= 2 && Char.equal (String.unsafe_get segment 0) '"' && Char.equal (String.unsafe_get segment (len - 1)) '"' then
     let value_text = String.sub segment ~offset:0 ~len in
     let text_len = String.length value_text in
     let pos = ref 1 in
@@ -413,26 +397,18 @@ let quoted_key = fun segment ->
             fail "unterminated escape in quoted key";
           (
             match String.unsafe_get value_text !pos with
-            | '"' ->
-                IO.Buffer.add_char buffer '"'
-            | '\\' ->
-                IO.Buffer.add_char buffer '\\'
-            | 'b' ->
-                IO.Buffer.add_char buffer '\b'
-            | 'f' ->
-                IO.Buffer.add_char buffer '\012'
-            | 'n' ->
-                IO.Buffer.add_char buffer '\n'
-            | 'r' ->
-                IO.Buffer.add_char buffer '\r'
-            | 't' ->
-                IO.Buffer.add_char buffer '\t'
+            | '"' -> IO.Buffer.add_char buffer '"'
+            | '\\' -> IO.Buffer.add_char buffer '\\'
+            | 'b' -> IO.Buffer.add_char buffer '\b'
+            | 'f' -> IO.Buffer.add_char buffer '\012'
+            | 'n' -> IO.Buffer.add_char buffer '\n'
+            | 'r' -> IO.Buffer.add_char buffer '\r'
+            | 't' -> IO.Buffer.add_char buffer '\t'
             | 'u' ->
                 pos := !pos + 1;
                 read_hex4 ();
                 pos := !pos - 1
-            | _ ->
-                fail "unsupported quoted key escape"
+            | _ -> fail "unsupported quoted key escape"
           );
           pos := !pos + 1
       | current ->
@@ -440,8 +416,7 @@ let quoted_key = fun segment ->
           pos := !pos + 1
     done;
     IO.Buffer.contents buffer
-  else
-    segment
+  else segment
 
 let split_key_path = fun text ->
   let len = String.length text in
@@ -465,33 +440,33 @@ let split_key_path = fun text ->
         (
           if !escaped then
             escaped := false
-          else if Char.equal current '\\' then
-            escaped := true
-          else if Char.equal current '"' then
-            in_string := false;
-          loop (index + 1)
-        )
-      else if Char.equal current '"' then
-        (
-          in_string := true;
-          loop (index + 1)
-        )
-      else if Char.equal current '.' then
-        (
-          push index;
+          else
+            if Char.equal current '\\' then
+              escaped := true
+            else
+              if Char.equal current '"' then
+                in_string := false;
           loop (index + 1)
         )
       else
-        loop (index + 1)
+        if Char.equal current '"' then
+          (
+            in_string := true;
+            loop (index + 1)
+          )
+        else
+          if Char.equal current '.' then
+            (
+              push index;
+              loop (index + 1)
+            )
+          else loop (index + 1)
   in
   loop 0
 
-let parse_key_path = fun text ->
-  split_key_path text
-  |> List.map ~fn:String.trim
-  |> List.map ~fn:quoted_key
-  |> List.map ~fn:String.trim
-  |> List.filter ~fn:(fun segment -> not (String.equal segment ""))
+let parse_key_path = fun text -> split_key_path text |> List.map ~fn:String.trim |> List.map ~fn:quoted_key |> List.map ~fn:String.trim |> List.filter ~fn:(
+  fun segment -> not (String.equal segment "")
+)
 
 let find_assignment_from = fun text ~start ~stop ->
   let in_string = ref false in
@@ -507,10 +482,12 @@ let find_assignment_from = fun text ~start ~stop ->
         (
           if !escaped then
             escaped := false
-          else if Char.equal current '\\' then
-            escaped := true
-          else if Char.equal current '"' then
-            in_string := false;
+          else
+            if Char.equal current '\\' then
+              escaped := true
+            else
+              if Char.equal current '"' then
+                in_string := false;
           loop (index + 1)
         )
       else
@@ -531,10 +508,8 @@ let find_assignment_from = fun text ~start ~stop ->
           | '}' ->
               brace_depth := !brace_depth - 1;
               loop (index + 1)
-          | '=' when Int.equal !bracket_depth 0 && Int.equal !brace_depth 0 ->
-              Some index
-          | _ ->
-              loop (index + 1)
+          | '=' when Int.equal !bracket_depth 0 && Int.equal !brace_depth 0 -> Some index
+          | _ -> loop (index + 1)
         )
   in
   loop start
@@ -570,10 +545,10 @@ let parse_value_text = fun input ->
       match String.get input ~at:(!pos + offset) with
       | None -> fail "unterminated unicode escape"
       | Some char -> (
-          match hex_value char with
-          | Some value -> value
-          | None -> fail "invalid unicode escape"
-        )
+        match hex_value char with
+        | Some value -> value
+        | None -> fail "invalid unicode escape"
+      )
     in
     let code = (decode 0 lsl 12) lor (decode 1 lsl 8) lor (decode 2 lsl 4) lor decode 3 in
     pos := !pos + 4;
@@ -588,8 +563,7 @@ let parse_value_text = fun input ->
     let buffer = IO.Buffer.create ~size:32 in
     let rec loop () =
       match peek () with
-      | None ->
-          fail "unterminated string"
+      | None -> fail "unterminated string"
       | Some '"' ->
           advance ();
           Builder.String (IO.Buffer.contents buffer)
@@ -597,8 +571,7 @@ let parse_value_text = fun input ->
           advance ();
           (
             match peek () with
-            | None ->
-                fail "unterminated escape"
+            | None -> fail "unterminated escape"
             | Some '"' ->
                 IO.Buffer.add_char buffer '"';
                 advance ()
@@ -628,8 +601,7 @@ let parse_value_text = fun input ->
                   | None -> fail "invalid unicode scalar value"
                 in
                 IO.Buffer.add_utf_8_uchar buffer rune
-            | Some _ ->
-                fail "unsupported string escape"
+            | Some _ -> fail "unsupported string escape"
           );
           loop ()
       | Some current ->
@@ -645,8 +617,7 @@ let parse_value_text = fun input ->
     let rec loop () =
       skip_ws ();
       match peek () with
-      | None ->
-          fail "unterminated array"
+      | None -> fail "unterminated array"
       | Some ']' ->
           advance ();
           Builder.Array items
@@ -656,16 +627,14 @@ let parse_value_text = fun input ->
           skip_ws ();
           (
             match peek () with
-            | None ->
-                fail "expected ',' or ']' in array"
+            | None -> fail "expected ',' or ']' in array"
             | Some ',' ->
                 advance ();
                 loop ()
             | Some ']' ->
                 advance ();
                 Builder.Array items
-            | Some _ ->
-                fail "expected ',' or ']' in array"
+            | Some _ -> fail "expected ',' or ']' in array"
           )
     in
     loop ()
@@ -676,8 +645,7 @@ let parse_value_text = fun input ->
     let rec loop () =
       skip_ws ();
       match peek () with
-      | None ->
-          fail "unterminated inline table"
+      | None -> fail "unterminated inline table"
       | Some '}' ->
           advance ();
           Builder.Table items
@@ -692,8 +660,7 @@ let parse_value_text = fun input ->
             | Some index -> index
             | None -> fail "expected '=' in inline table"
           in
-          let key_text = String.sub input ~offset:assignment_start ~len:(eq_index - assignment_start)
-          |> String.trim in
+          let key_text = String.sub input ~offset:assignment_start ~len:(eq_index - assignment_start) |> String.trim in
           pos := eq_index + 1;
           skip_ws ();
           let value = parse_value () in
@@ -701,16 +668,14 @@ let parse_value_text = fun input ->
           skip_ws ();
           (
             match peek () with
-            | None ->
-                fail "expected ',' or '}' in inline table"
+            | None -> fail "expected ',' or '}' in inline table"
             | Some ',' ->
                 advance ();
                 loop ()
             | Some '}' ->
                 advance ();
                 Builder.Table items
-            | Some _ ->
-                fail "expected ',' or '}' in inline table"
+            | Some _ -> fail "expected ',' or '}' in inline table"
           )
     in
     loop ()
@@ -718,12 +683,9 @@ let parse_value_text = fun input ->
     let start = !pos in
     let rec scan () =
       match peek () with
-      | None ->
-          ()
-      | Some (',' | ']' | '}') ->
-          ()
-      | Some current when is_ws current ->
-          ()
+      | None -> ()
+      | Some (',' | ']' | '}') -> ()
+      | Some current when is_ws current -> ()
       | Some _ ->
           advance ();
           scan ()
@@ -733,17 +695,9 @@ let parse_value_text = fun input ->
     if String.equal token "" then
       fail "expected value";
     match token with
-    | "true" ->
-        Builder.Bool true
-    | "false" ->
-        Builder.Bool false
-    | "inf"
-    | "+inf"
-    | "-inf"
-    | "nan"
-    | "+nan"
-    | "-nan" ->
-        Builder.Float (Float.of_string token)
+    | "true" -> Builder.Bool true
+    | "false" -> Builder.Bool false
+    | "inf" | "+inf" | "-inf" | "nan" | "+nan" | "-nan" -> Builder.Float (Float.of_string token)
     | _ ->
         if token_has_float_marker token then
           match float_of_decimal_string token with
@@ -800,8 +754,7 @@ let parse_document = fun content ->
       | Some path -> path
       | None ->
           let path = parse_key_path text in
-          let _ = HashMap.insert key_path_cache ~key:text ~value:path in
-          path
+          let _ = HashMap.insert key_path_cache ~key:text ~value:path in path
     in
     let assign path value =
       match !context with
@@ -809,87 +762,65 @@ let parse_document = fun content ->
       | Array_item_context { current; _ } -> set_table_path current path value
     in
     iter_lines content
-      (fun line_number ~start ~stop ->
-        let stop = comment_cutoff content ~start ~stop in
-        let (start, stop) = trim_bounds content ~start ~stop in
-        if start < stop then
-          if
-            stop - start >= 4
-            && Char.equal (String.unsafe_get content start) '['
-            && Char.equal (String.unsafe_get content (start + 1)) '['
-          then
-            (
-              if
-                not
-                  (Char.equal (String.unsafe_get content (stop - 2)) ']'
-                  && Char.equal (String.unsafe_get content (stop - 1)) ']')
-              then
-                fail_line line_number "unterminated array-of-tables header";
-              let inner = trim_sub content ~start:(start + 2) ~stop:(stop - 2) in
-              let path = parse_cached_key_path inner in
+      (
+        fun line_number ~start ~stop ->
+          let stop = comment_cutoff content ~start ~stop in
+          let (start, stop) = trim_bounds content ~start ~stop in
+          if start < stop then
+            if stop - start >= 4 && Char.equal (String.unsafe_get content start) '[' && Char.equal (String.unsafe_get content (start + 1)) '[' then
               (
-                match !context with
-                | Array_item_context ctx -> (
+                if not (Char.equal (String.unsafe_get content (stop - 2)) ']' && Char.equal (String.unsafe_get content (stop - 1)) ']') then
+                  fail_line line_number "unterminated array-of-tables header";
+                let inner = trim_sub content ~start:(start + 2) ~stop:(stop - 2) in
+                let path = parse_cached_key_path inner in
+                (
+                  match !context with
+                  | Array_item_context ctx -> (
                     let array_path = ctx.array_path in
                     let item = ctx.item in
                     let current = ctx.current in
                     match strip_prefix ~prefix:array_path path with
                     | Some relative when not (List.is_empty relative) && Ptr.equal current item ->
-                        let nested = append_array_table item relative in
-                        context := Array_item_context {
-                          array_path = path;
-                          item = nested;
-                          current = nested
-                        }
+                        let nested = append_array_table item relative in context := Array_item_context { array_path = path; item = nested; current = nested }
                     | _ ->
-                        let nested = append_array_table root path in
-                        context := Array_item_context {
-                          array_path = path;
-                          item = nested;
-                          current = nested
-                        }
+                        let nested = append_array_table root path in context := Array_item_context { array_path = path; item = nested; current = nested }
                   )
-                | Table_context _ ->
-                    let nested = append_array_table root path in
-                    context := Array_item_context {
-                      array_path = path;
-                      item = nested;
-                      current = nested
-                    }
+                  | Table_context _ ->
+                      let nested = append_array_table root path in context := Array_item_context { array_path = path; item = nested; current = nested }
+                )
               )
-            )
-          else if Char.equal (String.unsafe_get content start) '[' then
-            (
-              if not (Char.equal (String.unsafe_get content (stop - 1)) ']') then
-                fail_line line_number "unterminated table header";
-              let inner = trim_sub content ~start:(start + 1) ~stop:(stop - 1) in
-              let path = parse_cached_key_path inner in
-              let next_context =
-                match !context with
-                | Array_item_context ctx -> (
-                    let array_path = ctx.array_path in
-                    let item = ctx.item in
-                    match strip_prefix ~prefix:array_path path with
-                    | Some relative when not (List.is_empty relative) ->
-                        let current = ensure_table_path item relative in
-                        Array_item_context { array_path; item; current }
-                    | _ -> Table_context (ensure_table_path root path)
-                  )
-                | Table_context _ -> Table_context (ensure_table_path root path)
-              in
-              context := next_context
-            )
-          else
-            match find_assignment_from content ~start ~stop with
-            | None -> fail_line line_number "expected key/value assignment"
-            | Some eq_index ->
-                let key_text = trim_sub content ~start ~stop:eq_index in
-                let value_text = trim_sub content ~start:(eq_index + 1) ~stop in
-                let key_path = parse_cached_key_path key_text in
-                if List.is_empty key_path then
-                  fail_line line_number "empty key"
-                else
-                  assign key_path (parse_value_text value_text));
+            else
+              if Char.equal (String.unsafe_get content start) '[' then
+                (
+                  if not (Char.equal (String.unsafe_get content (stop - 1)) ']') then
+                    fail_line line_number "unterminated table header";
+                  let inner = trim_sub content ~start:(start + 1) ~stop:(stop - 1) in
+                  let path = parse_cached_key_path inner in
+                  let next_context =
+                    match !context with
+                    | Array_item_context ctx -> (
+                      let array_path = ctx.array_path in
+                      let item = ctx.item in
+                      match strip_prefix ~prefix:array_path path with
+                      | Some relative when not (List.is_empty relative) ->
+                          let current = ensure_table_path item relative in Array_item_context { array_path; item; current }
+                      | _ -> Table_context (ensure_table_path root path)
+                    )
+                    | Table_context _ -> Table_context (ensure_table_path root path)
+                  in
+                  context := next_context
+                )
+              else
+                match find_assignment_from content ~start ~stop with
+                | None -> fail_line line_number "expected key/value assignment"
+                | Some eq_index ->
+                    let key_text = trim_sub content ~start ~stop:eq_index in
+                    let value_text = trim_sub content ~start:(eq_index + 1) ~stop in
+                    let key_path = parse_cached_key_path key_text in
+                    if List.is_empty key_path then
+                      fail_line line_number "empty key"
+                    else assign key_path (parse_value_text value_text)
+      );
     Ok root
   with
   | Parse_failure reason -> Error (`Msg ("TOML parse error: " ^ reason))

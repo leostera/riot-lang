@@ -173,13 +173,13 @@ let all = fun results ->
   let rec go = fun acc ->
     function
     | [] -> Ok (List.reverse acc)
-    | Ok x :: rest -> go (x :: acc) rest
-    | Error e :: _ -> Error e
+    | (Ok x) :: rest -> go (x :: acc) rest
+    | (Error e) :: _ -> Error e
   in
   go [] results
 
 let both = fun r1 r2 ->
-  match (r1, r2) with
+  match r1, r2 with
   | Ok x, Ok y -> Ok (x, y)
   | Error e, _ -> Error e
   | _, Error e -> Error e

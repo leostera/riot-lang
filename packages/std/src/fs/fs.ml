@@ -7,19 +7,27 @@ open Collections
 include Common
 
 module Event = Event
+
 module Permissions = Permissions
+
 module Metadata = Metadata
+
 module ReadDir = ReadDir
+
 module File = File
+
 module Walker = Walker
+
 module FileWatcher = File_watcher
 
 let kernel_path = fun path -> Kernel.Path.from_string (Path.to_string path)
 
 let path_of_kernel = fun path -> Path.v (Kernel.Path.to_string path)
 
-(** Basic filesystem operations - defined first as they're used by other
-    functions *)
+(**
+   Basic filesystem operations - defined first as they're used by other
+   functions 
+*)
 let is_directory = fun path -> Kernel.Fs.File.is_directory (kernel_path path) |> convert_kernel_result
 
 let rmdir = fun path -> Kernel.Fs.File.remove_dir (kernel_path path) |> convert_kernel_result
@@ -38,34 +46,31 @@ let create_dir_all = fun path ->
     | None -> Ok ()
     | Some parent ->
         match Kernel.Fs.File.exists (kernel_path parent) with
-        | Error error ->
-            Error (of_file_error error)
-        | Ok true ->
-            Ok ()
+        | Error error -> Error (of_file_error error)
+        | Ok true -> Ok ()
         | Ok false -> (
-            match create_parents parent with
-            | Error error -> Error error
-            | Ok () -> (
-                match Kernel.Fs.File.create_dir (kernel_path parent) ~perm:0o755 with
-                | Ok () -> Ok ()
-                | Error (Kernel.Fs.File.System Kernel.SystemError.AlreadyExists) -> Ok ()
-                | Error error -> Error (of_file_error error)
-              )
+          match create_parents parent with
+          | Error error -> Error error
+          | Ok () -> (
+            match Kernel.Fs.File.create_dir (kernel_path parent) ~perm:0o755 with
+            | Ok () -> Ok ()
+            | Error (Kernel.Fs.File.System Kernel.SystemError.AlreadyExists) -> Ok ()
+            | Error error -> Error (of_file_error error)
           )
+        )
   in
   match create_parents path with
   | Error error -> Error error
   | Ok () -> (
-      match Kernel.Fs.File.create_dir (kernel_path path) ~perm:0o755 with
-      | Ok () -> Ok ()
-      | Error (Kernel.Fs.File.System Kernel.SystemError.AlreadyExists) -> Ok ()
-      | Error error -> Error (of_file_error error)
-    )
+    match Kernel.Fs.File.create_dir (kernel_path path) ~perm:0o755 with
+    | Ok () -> Ok ()
+    | Error (Kernel.Fs.File.System Kernel.SystemError.AlreadyExists) -> Ok ()
+    | Error error -> Error (of_file_error error)
+  )
 
 let exists = fun path -> Kernel.Fs.File.exists (kernel_path path) |> convert_kernel_result
 
-let hard_link = fun ~src ~dst ->
-  Kernel.Fs.File.hard_link ~src:(kernel_path src) ~dst:(kernel_path dst) |> convert_kernel_result
+let hard_link = fun ~src ~dst -> Kernel.Fs.File.hard_link ~src:(kernel_path src) ~dst:(kernel_path dst) |> convert_kernel_result
 
 let metadata = fun path -> Kernel.Fs.File.metadata (kernel_path path) |> convert_kernel_result
 
@@ -75,78 +80,72 @@ let read_to_string = fun path ->
   match File.open_read path with
   | Error error -> Error (of_file_error error)
   | Ok file -> (
-      match File.read_to_end file with
-      | Error error ->
-          let _ = File.close file in
-          Error (of_file_error error)
-      | Ok content ->
-          let _ = File.close file in
-          Ok content
-    )
+    match File.read_to_end file with
+    | Error error ->
+        let _ = File.close file in Error (of_file_error error)
+    | Ok content ->
+        let _ = File.close file in Ok content
+  )
 
 let read_dir = fun path ->
   match ReadDir.open_dir path with
   | Error e -> Error e
-  | Ok state -> Ok (MutIterator.make (module ReadDir) state
-  |> MutIterator.map ~fn:(fun (entry: ReadDir.entry) -> entry.path))
+  | Ok state -> Ok (MutIterator.make (module ReadDir) state |> MutIterator.map ~fn:(
+    fun (entry: ReadDir.entry) -> entry.path
+  ))
 
 let remove_file = fun path -> Kernel.Fs.File.remove_file (kernel_path path) |> convert_kernel_result
 
 let remove_dir_all = fun path ->
   let rec remove_recursive path =
     match is_directory path with
-    | Error e ->
-        Error e
-    | Ok false ->
-        (* It's a file *)
-        remove_file path
+    | Error e -> Error e
+    | Ok false -> (* It's a file *)
+    remove_file path
     | Ok true -> (
-        (* It's a directory *)
-        match ReadDir.open_dir path with
-        | Error e -> Error e
-        | Ok dir ->
-            let rec collect_entries acc =
-              match ReadDir.next dir with
-              | None -> Ok (List.reverse acc)
-              | Some entry -> collect_entries (entry.path :: acc)
-            in
-            match collect_entries [] with
-            | Error _ as err -> err
-            | Ok entries ->
-                let rec remove_entries = function
-                  | [] -> rmdir path
-                  | entry_path :: rest -> (
-                      let full_path = Path.join path entry_path in
-                      match remove_recursive full_path with
-                      | Error e -> Error e
-                      | Ok () -> remove_entries rest
-                    )
-                in
-                remove_entries entries
-      )
+      (* It's a directory *)
+      match ReadDir.open_dir path with
+      | Error e -> Error e
+      | Ok dir ->
+          let rec collect_entries acc =
+            match ReadDir.next dir with
+            | None -> Ok (List.reverse acc)
+            | Some entry -> collect_entries (entry.path :: acc)
+          in
+          match collect_entries [] with
+          | Error _ as err -> err
+          | Ok entries ->
+              let rec remove_entries = function
+                | [] -> rmdir path
+                | entry_path :: rest -> (
+                  let full_path = Path.join path entry_path in
+                  match remove_recursive full_path with
+                  | Error e -> Error e
+                  | Ok () -> remove_entries rest
+                )
+              in
+              remove_entries entries
+    )
   in
   remove_recursive path
 
-let rename = fun ~src ~dst ->
-  Kernel.Fs.File.rename ~src:(kernel_path src) ~dst:(kernel_path dst) |> convert_kernel_result
+let rename = fun ~src ~dst -> Kernel.Fs.File.rename ~src:(kernel_path src) ~dst:(kernel_path dst) |> convert_kernel_result
 
-let set_permissions = fun path perm ->
-  Kernel.Fs.File.set_permissions (kernel_path path) ~perm:(Permissions.to_mode perm) |> convert_kernel_result
+let set_permissions = fun path perm -> Kernel.Fs.File.set_permissions (kernel_path path) ~perm:(Permissions.to_mode perm) |> convert_kernel_result
 
 let write = fun content path ->
   match File.create path with
   | Error error -> Error (of_file_error error)
   | Ok file -> (
-      match File.write_all file content with
-      | Error error ->
-          let _ = File.close file in
-          Error (of_file_error error)
-      | Ok () -> (
-          match File.close file with
-          | Ok () -> Ok ()
-          | Error error -> Error (of_file_error error)
-        )
+    match File.write_all file content with
+    | Error error ->
+        let _ = File.close file in Error (of_file_error error)
+    | Ok () -> (
+      match File.close file with
+      | Ok () -> Ok ()
+      | Error error -> Error (of_file_error error)
     )
+  )
 
 let read_link = fun path ->
   match Kernel.Fs.File.read_link (kernel_path path) with
@@ -161,11 +160,9 @@ let dir_exists = fun path -> Kernel.Fs.File.is_directory (kernel_path path) |> c
 
 let stat = fun path -> metadata path
 
-let chmod = fun path perm ->
-  Kernel.Fs.File.set_permissions (kernel_path path) ~perm:(Permissions.to_mode perm) |> convert_kernel_result
+let chmod = fun path perm -> Kernel.Fs.File.set_permissions (kernel_path path) ~perm:(Permissions.to_mode perm) |> convert_kernel_result
 
-let symlink = fun ~src ~dst ->
-  Kernel.Fs.File.symlink ~src:(kernel_path src) ~dst:(kernel_path dst) |> convert_kernel_result
+let symlink = fun ~src ~dst -> Kernel.Fs.File.symlink ~src:(kernel_path src) ~dst:(kernel_path dst) |> convert_kernel_result
 
 let mkdir = fun path perm -> Kernel.Fs.File.create_dir (kernel_path path) ~perm |> convert_kernel_result
 
@@ -185,32 +182,30 @@ let rec remove_dir = fun path ->
         match ReadDir.next dir with
         | None -> Ok ()
         | Some entry -> (
-            let file_path = entry.path in
-            let full_path = Path.join path file_path in
-            match dir_exists full_path with
-            | Error error ->
-                Error error
-            | Ok true -> (
-                match remove_dir full_path with
-                | Error error -> Error error
-                | Ok () -> process_entries ()
-              )
-            | Ok false -> (
-                match remove_file full_path with
-                | Error error -> Error error
-                | Ok () -> process_entries ()
-              )
+          let file_path = entry.path in
+          let full_path = Path.join path file_path in
+          match dir_exists full_path with
+          | Error error -> Error error
+          | Ok true -> (
+            match remove_dir full_path with
+            | Error error -> Error error
+            | Ok () -> process_entries ()
           )
+          | Ok false -> (
+            match remove_file full_path with
+            | Error error -> Error error
+            | Ok () -> process_entries ()
+          )
+        )
       in
       match process_entries () with
       | Error error ->
-          let _ = ReadDir.close dir in
-          Error error
+          let _ = ReadDir.close dir in Error error
       | Ok () -> (
-          match ReadDir.close dir with
-          | Error error -> Error error
-          | Ok () -> rmdir path
-        )
+        match ReadDir.close dir with
+        | Error error -> Error error
+        | Ok () -> rmdir path
+      )
 
 let file_size = fun path ->
   match Kernel.Fs.File.metadata (kernel_path path) with
@@ -220,8 +215,7 @@ let file_size = fun path ->
 let path_separator = fun () ->
   if Kernel.System.unix then
     "/"
-  else
-    "\\"
+  else "\\"
 
 let current_executable = fun () ->
   match Kernel.Env.executable_name with
@@ -241,14 +235,12 @@ let read = fun path ->
   match File.open_read path with
   | Error error -> Error (of_file_error error)
   | Ok file -> (
-      match File.read_to_end file with
-      | Error error ->
-          let _ = File.close file in
-          Error (of_file_error error)
-      | Ok content ->
-          let _ = File.close file in
-          Ok content
-    )
+    match File.read_to_end file with
+    | Error error ->
+        let _ = File.close file in Error (of_file_error error)
+    | Ok content ->
+        let _ = File.close file in Ok content
+  )
 
 let read_file = read
 
@@ -260,14 +252,14 @@ let get_temp_dir = fun () ->
   match Env.get Env.String ~var:"TMPDIR" with
   | Some dir when dir != "" -> dir
   | _ -> (
-      match Env.get Env.String ~var:"TEMP" with
+    match Env.get Env.String ~var:"TEMP" with
+    | Some dir when dir != "" -> dir
+    | _ -> (
+      match Env.get Env.String ~var:"TMP" with
       | Some dir when dir != "" -> dir
-      | _ -> (
-          match Env.get Env.String ~var:"TMP" with
-          | Some dir when dir != "" -> dir
-          | _ -> "/tmp"
-        )
+      | _ -> "/tmp"
     )
+  )
 
 (** Create a unique temporary directory name *)
 let make_temp_dir_name = fun temp_base prefix ->
@@ -275,8 +267,7 @@ let make_temp_dir_name = fun temp_base prefix ->
   let random_suffix =
     match Kernel.Time.Monotonic.now () with
     | Ok time ->
-        let secs, nanos = Kernel.Time.Monotonic.to_parts time in
-        (secs lxor nanos lxor pid) land 0xff_ffff
+        let secs, nanos = Kernel.Time.Monotonic.to_parts time in (secs lxor nanos lxor pid) land 0xff_ffff
     | Error _ -> pid land 0xff_ffff
   in
   (* Convert to 6-digit hex string with leading zeros *)
@@ -290,8 +281,7 @@ let make_temp_dir_name = fun temp_base prefix ->
     done;
     Bytes.to_string s
   in
-  let dir_name = prefix ^ Int.to_string pid ^ "_" ^ hex_suffix in
-  temp_base ^ "/" ^ dir_name
+  let dir_name = prefix ^ Int.to_string pid ^ "_" ^ hex_suffix in temp_base ^ "/" ^ dir_name
 
 (** Create a temporary directory, run a function with it, then clean it up *)
 let with_tempdir = fun ?(prefix = "tmp") fn ->
@@ -305,11 +295,11 @@ let with_tempdir = fun ?(prefix = "tmp") fn ->
       match Path.from_string temp_name with
       | Error _ -> Error (IO.Unknown_error "Failed to create temp directory")
       | Ok temp_path -> (
-          match create_dir temp_path with
-          | Ok () -> Ok temp_path
-          | Error IO.File_exists -> create_unique_tempdir (attempt + 1)
-          | Error error -> Error error
-        )
+        match create_dir temp_path with
+        | Ok () -> Ok temp_path
+        | Error IO.File_exists -> create_unique_tempdir (attempt + 1)
+        | Error error -> Error error
+      )
   in
   try
     match create_unique_tempdir 0 with
@@ -319,37 +309,35 @@ let with_tempdir = fun ?(prefix = "tmp") fn ->
           try Ok (fn temp_path) with
           | e -> Error (IO.Unknown_error (Kernel.Exception.to_string e))
         in
-        let _ = remove_dir_all temp_path in
-        result
+        let _ = remove_dir_all temp_path in result
   with
   | e -> Error (IO.Unknown_error (Kernel.Exception.to_string e))
 
 (** Walk directory tree and call function on each path *)
 let rec walk = fun path fn ->
   match is_directory path with
-  | Error e ->
-      Error e
+  | Error e -> Error e
   | Ok false ->
       fn path;
       Ok ()
   | Ok true -> (
-      fn path;
-      match ReadDir.open_dir path with
-      | Error e -> Error e
-      | Ok dir ->
-          let rec walk_entries () =
-            match ReadDir.next dir with
-            | None -> Ok ()
-            | Some entry -> (
-                let entry_path = entry.path in
-                let full_path = Path.join path entry_path in
-                match walk full_path fn with
-                | Error e -> Error e
-                | Ok () -> walk_entries ()
-              )
-          in
-          walk_entries ()
-    )
+    fn path;
+    match ReadDir.open_dir path with
+    | Error e -> Error e
+    | Ok dir ->
+        let rec walk_entries () =
+          match ReadDir.next dir with
+          | None -> Ok ()
+          | Some entry -> (
+            let entry_path = entry.path in
+            let full_path = Path.join path entry_path in
+            match walk full_path fn with
+            | Error e -> Error e
+            | Ok () -> walk_entries ()
+          )
+        in
+        walk_entries ()
+  )
 
 let is_file = fun path ->
   match metadata path with

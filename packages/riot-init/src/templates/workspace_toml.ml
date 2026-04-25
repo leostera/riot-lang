@@ -12,6 +12,4 @@ members = [
 
 [profile.debug]
 kind = "native"
-|}
-  in
-  Writer.write_file config ~relative_path:"riot.toml" ~content ~executable:false
+|} in Writer.write_file config ~relative_path:"riot.toml" ~content ~executable:false

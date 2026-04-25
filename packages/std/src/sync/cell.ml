@@ -1,8 +1,6 @@
 open Kernel
 
-type 'a t = {
-  mutable value: 'a;
-}
+type 'a t = { mutable value: 'a }
 
 let create = fun value -> { value }
 
@@ -41,7 +39,6 @@ let compare_and_swap = fun cell expected new_value ->
       cell.value <- new_value;
       true
     )
-  else
-    false
+  else false
 
 let equal = fun left right -> left.value = right.value

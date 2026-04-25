@@ -18,8 +18,7 @@ let fixtures_dir = Path.(tests_dir / Path.v "fixtures")
 let manifest_path = Path.(tests_dir / Path.v "format_expectations.txt")
 
 let parse_file = fun path ->
-  let source = Fs.read path |> Result.expect ~msg:"fixture file should exist" in
-  Krasny.parse_source ~filename:path source
+  let source = Fs.read path |> Result.expect ~msg:"fixture file should exist" in Krasny.parse_source ~filename:path source
 
 let tracked_fixtures = fun () ->
   let manifest = Fs.read manifest_path |> Result.expect ~msg:"failed to read krasny fixture manifest" in
@@ -33,16 +32,14 @@ let tracked_fixtures = fun () ->
         else
           let relpath = Path.from_string line |> Result.expect ~msg:"fixture manifest entry should be valid UTF-8" in
           let name = Path.basename relpath in
-          let () = ignore (HashSet.insert tracked ~value:name) in
-          loop rest
+          let () = ignore (HashSet.insert tracked ~value:name) in loop rest
   in
   loop lines
 
 let fixture_filter = fun tracked path ->
   if HashSet.contains tracked ~value:(Path.basename path) then
     `keep
-  else
-    `skip
+  else `skip
 
 let approved_snapshot_path = fun path ->
   match Path.extension path with
@@ -72,13 +69,10 @@ let size_fixture = fun (test: Test.test_case) ->
 
 let main ~args =
   let tracked = tracked_fixtures () in
-  let tests = Test.FixtureRunner.cases
-    ()
-    ~dir:fixtures_dir
-    ~filter:(fixture_filter tracked)
-    ~snapshot_path:(fun path -> Some (approved_snapshot_path path))
-    ~run:(fun ctx -> test_fixture ~ctx)
-  |> List.map ~fn:size_fixture in
-  Test.Cli.main ~name:"krasny:fixtures" ~tests ~args ()
+  let tests = Test.FixtureRunner.cases () ~dir:fixtures_dir ~filter:(fixture_filter tracked) ~snapshot_path:(
+    fun path -> Some (approved_snapshot_path path)
+  ) ~run:(
+    fun ctx -> test_fixture ~ctx
+  ) |> List.map ~fn:size_fixture in Test.Cli.main ~name:"krasny:fixtures" ~tests ~args ()
 
 let () = Runtime.run ~main ~args:Env.args ()

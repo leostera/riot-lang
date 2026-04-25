@@ -1,10 +1,14 @@
 module Conn = Conn
+
 module Pipeline = Pipeline
+
 module Router = Router
+
 module Logger = Logger
 
 (** Convenience alias for Router.middleware *)
 module Request_id = Request_id
+
 module Debugger = Debugger
 
 let router = Router.middleware

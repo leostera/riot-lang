@@ -1,8 +1,11 @@
 open Std
 
 type package = string
+
 type version_ranges = Version.t Ranges.t
+
 type t
+
 val package: t -> package
 
 val ranges: t -> version_ranges

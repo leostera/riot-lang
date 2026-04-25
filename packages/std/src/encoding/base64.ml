@@ -9,40 +9,35 @@ let encode_bytes = fun bytes ->
   let rec encode_block i =
     if i >= len then
       ()
-    else if i + 2 < len then
-      (
-        let b1 = Char.code (Bytes.get_unchecked bytes ~at:i) in
-        let b2 = Char.code (Bytes.get_unchecked bytes ~at:(i + 1)) in
-        let b3 = Char.code (Bytes.get_unchecked bytes ~at:(i + 2)) in
-        Buffer.add_char result (String.get_unchecked table ~at:(b1 lsr 2));
-        Buffer.add_char
-          result
-          (String.get_unchecked table ~at:(((b1 land 0x03) lsl 4) lor (b2 lsr 4)));
-        Buffer.add_char
-          result
-          (String.get_unchecked table ~at:(((b2 land 0x0f) lsl 2) lor (b3 lsr 6)));
-        Buffer.add_char result (String.get_unchecked table ~at:(b3 land 0x3f));
-        encode_block (i + 3)
-      )
-    else if i + 1 < len then
-      (
-        let b1 = Char.code (Bytes.get_unchecked bytes ~at:i) in
-        let b2 = Char.code (Bytes.get_unchecked bytes ~at:(i + 1)) in
-        Buffer.add_char result (String.get_unchecked table ~at:(b1 lsr 2));
-        Buffer.add_char
-          result
-          (String.get_unchecked table ~at:(((b1 land 0x03) lsl 4) lor (b2 lsr 4)));
-        Buffer.add_char result (String.get_unchecked table ~at:((b2 land 0x0f) lsl 2));
-        Buffer.add_char result '=';
-        encode_block (i + 3)
-      )
     else
-      let b1 = Char.code (Bytes.get_unchecked bytes ~at:i) in
-      Buffer.add_char result (String.get_unchecked table ~at:(b1 lsr 2));
-      Buffer.add_char result (String.get_unchecked table ~at:((b1 land 0x03) lsl 4));
-      Buffer.add_char result '=';
-      Buffer.add_char result '=';
-      encode_block (i + 3)
+      if i + 2 < len then
+        (
+          let b1 = Char.code (Bytes.get_unchecked bytes ~at:i) in
+          let b2 = Char.code (Bytes.get_unchecked bytes ~at:(i + 1)) in
+          let b3 = Char.code (Bytes.get_unchecked bytes ~at:(i + 2)) in
+          Buffer.add_char result (String.get_unchecked table ~at:(b1 lsr 2));
+          Buffer.add_char result (String.get_unchecked table ~at:(((b1 land 0x03) lsl 4) lor (b2 lsr 4)));
+          Buffer.add_char result (String.get_unchecked table ~at:(((b2 land 0x0f) lsl 2) lor (b3 lsr 6)));
+          Buffer.add_char result (String.get_unchecked table ~at:(b3 land 0x3f));
+          encode_block (i + 3)
+        )
+      else
+        if i + 1 < len then
+          (
+            let b1 = Char.code (Bytes.get_unchecked bytes ~at:i) in
+            let b2 = Char.code (Bytes.get_unchecked bytes ~at:(i + 1)) in
+            Buffer.add_char result (String.get_unchecked table ~at:(b1 lsr 2));
+            Buffer.add_char result (String.get_unchecked table ~at:(((b1 land 0x03) lsl 4) lor (b2 lsr 4)));
+            Buffer.add_char result (String.get_unchecked table ~at:((b2 land 0x0f) lsl 2));
+            Buffer.add_char result '=';
+            encode_block (i + 3)
+          )
+        else
+          let b1 = Char.code (Bytes.get_unchecked bytes ~at:i) in Buffer.add_char result (String.get_unchecked table ~at:(b1 lsr 2));
+    Buffer.add_char result (String.get_unchecked table ~at:((b1 land 0x03) lsl 4));
+    Buffer.add_char result '=';
+    Buffer.add_char result '=';
+    encode_block (i + 3)
   in
   encode_block 0;
   Buffer.contents result
@@ -69,12 +64,7 @@ let decode = fun str ->
       if i >= len then
         Ok (Buffer.contents result)
       else
-        match (
-          decode_char (String.get_unchecked str ~at:i),
-          decode_char (String.get_unchecked str ~at:(i + 1)),
-          decode_char (String.get_unchecked str ~at:(i + 2)),
-          decode_char (String.get_unchecked str ~at:(i + 3))
-        ) with
+        match decode_char (String.get_unchecked str ~at:i), decode_char (String.get_unchecked str ~at:(i + 1)), decode_char (String.get_unchecked str ~at:(i + 2)), decode_char (String.get_unchecked str ~at:(i + 3)) with
         | Some c1, Some c2, Some c3, Some c4 ->
             let b1 = (c1 lsl 2) lor (c2 lsr 4) in
             let b2 = ((c2 land 0x0f) lsl 4) lor (c3 lsr 2) in

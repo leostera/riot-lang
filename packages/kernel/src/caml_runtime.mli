@@ -82,8 +82,10 @@ external float_of_string: string -> float = "caml_float_of_string"
 
 external int_of_char: char -> int = "%identity"
 
-(** Internal unchecked bridge from an integer that is already known to be a valid byte-sized
-    character. Public checked constructors should live above this module. *)
+(**
+   Internal unchecked bridge from an integer that is already known to be a valid byte-sized
+   character. Public checked constructors should live above this module. 
+*)
 external char_of_int: int -> char = "%identity"
 
 external argv: string array = "%sys_argv"
@@ -109,6 +111,7 @@ type gc_stat = {
   stack_size: int;
   forced_major_collections: int;
 }
+
 external gc_quick_stat: unit -> gc_stat = "caml_gc_quick_stat"
 
 external gc_major: unit -> unit = "caml_gc_major"
@@ -135,12 +138,16 @@ external bytes_blit: bytes -> int -> bytes -> int -> int -> unit = "caml_blit_by
 
 external string_blit: string -> int -> bytes -> int -> int -> unit = "caml_blit_string" [@@noalloc]
 
-(** Internal zero-copy bridge from owned mutable bytes into an immutable string view. Callers must
-    ensure the bytes will not be mutated afterward. *)
+(**
+   Internal zero-copy bridge from owned mutable bytes into an immutable string view. Callers must
+   ensure the bytes will not be mutated afterward. 
+*)
 external bytes_unsafe_to_string: bytes -> string = "%bytes_to_string"
 
-(** Internal zero-copy bridge from an immutable string into mutable bytes. Callers must ensure the
-    bytes view will not be mutated in a way that violates string immutability assumptions. *)
+(**
+   Internal zero-copy bridge from an immutable string into mutable bytes. Callers must ensure the
+   bytes view will not be mutated in a way that violates string immutability assumptions. 
+*)
 external bytes_unsafe_of_string: string -> bytes = "%bytes_of_string"
 
 (** Internal copying bridge from bytes into a fresh immutable string. *)
@@ -177,11 +184,9 @@ external int64_div: int64 -> int64 -> int64 = "%int64_div"
 
 external int64_rem: int64 -> int64 -> int64 = "%int64_mod"
 
-external int64_of_float: float -> int64
-  = "caml_int64_of_float" "caml_int64_of_float_unboxed" [@@unboxed] [@@noalloc]
+external int64_of_float: float -> int64 = "caml_int64_of_float" "caml_int64_of_float_unboxed" [@@unboxed] [@@noalloc]
 
-external int64_to_float: int64 -> float
-  = "caml_int64_to_float" "caml_int64_to_float_unboxed" [@@unboxed] [@@noalloc]
+external int64_to_float: int64 -> float = "caml_int64_to_float" "caml_int64_to_float_unboxed" [@@unboxed] [@@noalloc]
 
 external int64_of_int32: int32 -> int64 = "%int64_of_int32"
 
@@ -211,11 +216,9 @@ external shift_right_int32: int32 -> int -> int32 = "%int32_asr"
 
 external shift_right_logical_int32: int32 -> int -> int32 = "%int32_lsr"
 
-external int32_of_float: float -> int32
-  = "caml_int32_of_float" "caml_int32_of_float_unboxed" [@@unboxed] [@@noalloc]
+external int32_of_float: float -> int32 = "caml_int32_of_float" "caml_int32_of_float_unboxed" [@@unboxed] [@@noalloc]
 
-external int32_to_float: int32 -> float
-  = "caml_int32_to_float" "caml_int32_to_float_unboxed" [@@unboxed] [@@noalloc]
+external int32_to_float: int32 -> float = "caml_int32_to_float" "caml_int32_to_float_unboxed" [@@unboxed] [@@noalloc]
 
 external array_length: 'value array -> int = "%array_length"
 

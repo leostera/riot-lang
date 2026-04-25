@@ -2,7 +2,7 @@ open Global
 
 (** Log levels from least to most severe *)
 type t =
-  Trace
+  | Trace
   | Debug
   | Info
   | Warn
@@ -22,5 +22,4 @@ let to_string = function
   | Warn -> "WARN"
   | Error -> "ERROR"
 
-let compare = fun l1 l2 ->
-  Int.compare (to_int l1) (to_int l2)
+let compare = fun l1 l2 -> Int.compare (to_int l1) (to_int l2)

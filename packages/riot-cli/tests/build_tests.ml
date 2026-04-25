@@ -1,60 +1,51 @@
 open Std
+
 module Test = Std.Test
+
 module HashSet = Std.Collections.HashSet
 
-let package_name = fun name ->
-  Riot_model.Package_name.from_string name |> Result.expect ~msg:("invalid package name: " ^ name)
+let package_name = fun name -> Riot_model.Package_name.from_string name |> Result.expect ~msg:("invalid package name: " ^ name)
 
-let builtin_dependency = fun name ->
-  Riot_model.Package.{
-    name = package_name name;
-    source =
-      {
-        workspace = false;
-        builtin = true;
-        path = None;
-        source_locator = None;
-        ref_ = None;
-        version = None;
-      };
+let builtin_dependency = fun name -> Riot_model.Package.{
+  name = package_name name;
+  source = {
+    workspace = false;
+    builtin = true;
+    path = None;
+    source_locator = None;
+    ref_ = None;
+    version = None
   }
+}
 
-let version = fun value ->
-  Std.Version.parse value |> Result.expect ~msg:("invalid version: " ^ value)
+let version = fun value -> Std.Version.parse value |> Result.expect ~msg:("invalid version: " ^ value)
 
-let target = fun value ->
-  Riot_model.Target.from_string value |> Result.expect ~msg:("invalid target: " ^ value)
+let target = fun value -> Riot_model.Target.from_string value |> Result.expect ~msg:("invalid target: " ^ value)
 
-let empty_sources =
-  Riot_model.Package.{
-    src = [];
-    native = [];
-    tests = [];
-    examples = [];
-    bench = [];
-  }
+let empty_sources = Riot_model.Package.{
+  src = [];
+  native = [];
+  tests = [];
+  examples = [];
+  bench = []
+}
 
 let make_package = fun ?(workspace_member = true) ?version ?(sources = empty_sources) ?(binaries = []) name ->
   let relative_path =
     if workspace_member then
       Path.v name
-    else
-      Path.v ("../registry/" ^ name)
+    else Path.v ("../registry/" ^ name)
   in
-  Riot_model.Package.make ~name:(package_name name) ~path:(Path.v ("/tmp/" ^ name)) ~relative_path
-    ?publish:(
-      match version with
-      | None -> None
-      | Some version -> Some Riot_model.Package.{
-        version = Some version;
-        description = None;
-        license = None;
-        is_public = Some true
-      }
-    )
-    ~binaries
-    ~sources
-    ()
+  Riot_model.Package.make ~name:(package_name name) ~path:(Path.v ("/tmp/" ^ name)) ~relative_path ?publish:(
+    match version with
+    | None -> None
+    | Some version -> Some Riot_model.Package.{
+      version = Some version;
+      description = None;
+      license = None;
+      is_public = Some true
+    }
+  ) ~binaries ~sources ()
 
 let parse_build = fun args ->
   match ArgParser.get_matches Riot_cli.Build.command args with
@@ -91,19 +82,13 @@ let parse_clean = fun args ->
   | Ok matches -> Ok matches
   | Error err -> Error (ArgParser.error_message err)
 
-let parse_toolchain = fun args ->
-  match ArgParser.get_matches Riot_cli.Toolchain_cmd.command args with
-  | Ok matches -> Ok matches
-  | Error err -> Error (ArgParser.error_message err)
-
 let error_line = fun message -> "\027[1;31mError\027[0m: " ^ message
 
 let write_workspace_manifest = fun ~root ~members ->
-  let members = members
-  |> List.map ~fn:(fun member -> "  \"" ^ Path.to_string member ^ "\"")
-  |> String.concat ",\n" in
-  let content = "[workspace]\nmembers = [\n" ^ members ^ "\n]\n" in
-  Fs.write content Path.(root / Path.v "riot.toml") |> Result.expect ~msg:"Write workspace riot.toml failed"
+  let members = members |> List.map ~fn:(
+    fun member -> "  \"" ^ Path.to_string member ^ "\""
+  ) |> String.concat ",\n" in
+  let content = "[workspace]\nmembers = [\n" ^ members ^ "\n]\n" in Fs.write content Path.(root / Path.v "riot.toml") |> Result.expect ~msg:"Write workspace riot.toml failed"
 
 let make_valid_workspace = fun ?target_dir tmpdir ->
   let pkg_dir = Path.(tmpdir / Path.v "demo") in
@@ -115,18 +100,13 @@ let make_valid_workspace = fun ?target_dir tmpdir ->
   let riot_content = "[package]\nname = \"demo\"\nversion = \"0.0.1\"\n\n[lib]\npath = \"src/lib.ml\"\n\n[dependencies]\nstdlib = \"*\"\n" in
   let _ = Fs.write riot_content riot_file |> Result.expect ~msg:"Write riot.toml failed" in
   let _ = write_workspace_manifest ~root:tmpdir ~members:[ Path.v "demo" ] in
-  let package = Riot_model.Package.make ~name:(package_name "demo") ~path:pkg_dir ~relative_path:(Path.v
-    "demo") ~library:{ path = Path.v "src/lib.ml" }
-    ~sources:{
-      src = [ Path.v "src/lib.ml" ];
-      native = [];
-      tests = [];
-      examples = [];
-      bench = [];
-    }
-    ()
-  in
-  Riot_model.Workspace.make_realized ~root:tmpdir ?target_dir ~packages:[ package ] ()
+  let package = Riot_model.Package.make ~name:(package_name "demo") ~path:pkg_dir ~relative_path:(Path.v "demo") ~library:{ path = Path.v "src/lib.ml" } ~sources:{
+    src = [ Path.v "src/lib.ml" ];
+    native = [];
+    tests = [];
+    examples = [];
+    bench = []
+  } () in Riot_model.Workspace.make_realized ~root:tmpdir ?target_dir ~packages:[ package ] ()
 
 let make_workspace_with_dev_binaries = fun ?target_dir tmpdir ->
   let pkg_dir = Path.(tmpdir / Path.v "demo") in
@@ -139,60 +119,49 @@ let make_workspace_with_dev_binaries = fun ?target_dir tmpdir ->
   let _ = Fs.create_dir_all examples_dir |> Result.expect ~msg:"Create examples failed" in
   let _ = Fs.create_dir_all bench_dir |> Result.expect ~msg:"Create bench failed" in
   let _ = Fs.write "let value = 42\n" Path.(src_dir / Path.v "lib.ml") |> Result.expect ~msg:"Write lib failed" in
-  let _ = Fs.write "let main ~args:_ = Stdlib.Ok ()\n" Path.(tests_dir / Path.v "demo_tests.ml")
-  |> Result.expect ~msg:"Write test binary failed" in
-  let _ = Fs.write "let main ~args:_ = Stdlib.Ok ()\n" Path.(examples_dir / Path.v "demo_example.ml")
-  |> Result.expect ~msg:"Write example binary failed" in
-  let _ = Fs.write "let main ~args:_ = Stdlib.Ok ()\n" Path.(bench_dir / Path.v "demo_bench.ml")
-  |> Result.expect ~msg:"Write bench binary failed" in
+  let _ = Fs.write "let main ~args:_ = Stdlib.Ok ()\n" Path.(tests_dir / Path.v "demo_tests.ml") |> Result.expect ~msg:"Write test binary failed" in
+  let _ = Fs.write "let main ~args:_ = Stdlib.Ok ()\n" Path.(examples_dir / Path.v "demo_example.ml") |> Result.expect ~msg:"Write example binary failed" in
+  let _ = Fs.write "let main ~args:_ = Stdlib.Ok ()\n" Path.(bench_dir / Path.v "demo_bench.ml") |> Result.expect ~msg:"Write bench binary failed" in
   let riot_file = Path.(pkg_dir / Path.v "riot.toml") in
   let riot_content = "[package]\nname = \"demo\"\nversion = \"0.0.1\"\n\n[lib]\npath = \"src/lib.ml\"\n" in
   let _ = Fs.write riot_content riot_file |> Result.expect ~msg:"Write riot.toml failed" in
   let _ = write_workspace_manifest ~root:tmpdir ~members:[ Path.v "demo" ] in
-  let package = Riot_model.Package.make ~name:(package_name "demo") ~path:pkg_dir ~relative_path:(Path.v
-    "demo") ~library:{ path = Path.v "src/lib.ml" } ~binaries:[
-    Riot_model.Package.{ name = "demo_tests"; path = Path.v "tests/demo_tests.ml" };
-    Riot_model.Package.{ name = "demo_example"; path = Path.v "examples/demo_example.ml" };
-    Riot_model.Package.{ name = "demo_bench"; path = Path.v "bench/demo_bench.ml" };
-  ] ~dependencies:[ builtin_dependency "stdlib" ]
-    ~sources:{
-      src = [ Path.v "src/lib.ml" ];
-      native = [];
-      tests = [ Path.v "tests/demo_tests.ml" ];
-      examples = [ Path.v "examples/demo_example.ml" ];
-      bench = [ Path.v "bench/demo_bench.ml" ];
-    }
-    ()
-  in
-  Riot_model.Workspace.make_realized ~root:tmpdir ?target_dir ~packages:[ package ] ()
+  let package = Riot_model.Package.make ~name:(package_name "demo") ~path:pkg_dir ~relative_path:(Path.v "demo") ~library:{ path = Path.v "src/lib.ml" } ~binaries:[ Riot_model.Package.{ name = "demo_tests"; path = Path.v "tests/demo_tests.ml" }; Riot_model.Package.{ name = "demo_example"; path = Path.v "examples/demo_example.ml" }; Riot_model.Package.{ name = "demo_bench"; path = Path.v "bench/demo_bench.ml" } ] ~dependencies:[ builtin_dependency "stdlib" ] ~sources:{
+    src = [ Path.v "src/lib.ml" ];
+    native = [];
+    tests = [ Path.v "tests/demo_tests.ml" ];
+    examples = [ Path.v "examples/demo_example.ml" ];
+    bench = [ Path.v "bench/demo_bench.ml" ]
+  } () in Riot_model.Workspace.make_realized ~root:tmpdir ?target_dir ~packages:[ package ] ()
 
 let host_out_package_dir = fun (workspace: Riot_model.Workspace.t) ->
   let host_target = Riot_model.Riot_dirs.host_target () in
-  Riot_model.Riot_dirs.out_dir_in_workspace ~workspace ~profile:"debug" ~target:host_target
-  |> fun out_dir -> Path.(out_dir / Path.v "demo")
+  Riot_model.Riot_dirs.out_dir_in_workspace ~workspace ~profile:"debug" ~target:host_target |> fun out_dir -> Path.(out_dir / Path.v "demo")
 
 let dev_binary_paths = fun (workspace: Riot_model.Workspace.t) ->
-  let package_out_dir = host_out_package_dir workspace in
-  (
-    Path.(package_out_dir / Path.v "demo_tests"),
-    Path.(package_out_dir / Path.v "demo_example"),
-    Path.(package_out_dir / Path.v "demo_bench")
-  )
+  let package_out_dir = host_out_package_dir workspace in (Path.(package_out_dir / Path.v "demo_tests"), Path.(package_out_dir / Path.v "demo_example"), Path.(package_out_dir / Path.v "demo_bench"))
 
 let assert_path_exists = fun path ~message ->
   if Fs.exists path |> Result.unwrap_or ~default:false then
     Ok ()
-  else
-    Error message
+  else Error message
 
 let assert_path_missing = fun path ~message ->
   if Fs.exists path |> Result.unwrap_or ~default:false then
     Error message
-  else
-    Ok ()
+  else Ok ()
 
 let test_build_accepts_multiple_packages = fun _ctx ->
-  match parse_build [ "build"; "-p"; "syn"; "-p"; "krasny"; "-p"; "riot-cli" ] with
+  match parse_build
+    [
+      "build";
+      "-p";
+      "syn";
+      "-p";
+      "krasny";
+      "-p";
+      "riot-cli";
+    ] with
   | Error err -> Error ("expected build args to parse: " ^ err)
   | Ok matches ->
       let actual = ArgParser.get_many matches "package" in
@@ -206,197 +175,156 @@ let test_display_package_name_keeps_workspace_package_bare = fun _ctx ->
 
 let test_display_package_name_shows_external_package_version = fun _ctx ->
   let package = make_package ~workspace_member:false ~version:(version "1.2.3") "serde-json" in
-  Test.assert_equal
-    ~expected:"serde-json (1.2.3)"
-    ~actual:(Riot_cli.Build.display_package_name package);
+  Test.assert_equal ~expected:"serde-json (1.2.3)" ~actual:(Riot_cli.Build.display_package_name package);
   Ok ()
 
 let test_display_package_name_shows_external_package_version_and_target = fun _ctx ->
   let package = make_package ~workspace_member:false ~version:(version "1.2.3") "serde-json" in
-  Test.assert_equal
-    ~expected:"serde-json (1.2.3, aarch64-apple-darwin)"
-    ~actual:(Riot_cli.Build.display_package_name
-      ~build_target:(target "aarch64-apple-darwin")
-      ~show_target:true
-      package);
+  Test.assert_equal ~expected:"serde-json (1.2.3, aarch64-apple-darwin)" ~actual:(Riot_cli.Build.display_package_name ~build_target:(target "aarch64-apple-darwin") ~show_target:true package);
   Ok ()
 
 let test_display_package_name_shows_workspace_test_and_target = fun _ctx ->
-  let package = make_package
-    ~sources:(Riot_model.Package.{
-      empty_sources
-      with tests = [ Path.v "tests/serde_json_tests.ml" ]
-    })
-    "serde-json" in
-  Test.assert_equal
-    ~expected:"serde-json (test, aarch64-apple-darwin)"
-    ~actual:(Riot_cli.Build.display_package_name
-      ~build_target:(target "aarch64-apple-darwin")
-      ~show_target:true
-      package);
+  let package = make_package ~sources:(Riot_model.Package.{ empty_sources with tests = [ Path.v "tests/serde_json_tests.ml" ] }) "serde-json" in
+  Test.assert_equal ~expected:"serde-json (test, aarch64-apple-darwin)" ~actual:(Riot_cli.Build.display_package_name ~build_target:(target "aarch64-apple-darwin") ~show_target:true package);
   Ok ()
 
 let test_display_package_name_shows_workspace_bench = fun _ctx ->
-  let package = make_package
-    ~binaries:[
-      Riot_model.Package.{ name = "serde_json_bench"; path = Path.v "bench/serde_json_bench.ml" }
-    ]
-    "serde-json" in
-  Test.assert_equal
-    ~expected:"serde-json (bench)"
-    ~actual:(Riot_cli.Build.display_package_name package);
+  let package = make_package ~binaries:[ Riot_model.Package.{ name = "serde_json_bench"; path = Path.v "bench/serde_json_bench.ml" } ] "serde-json" in
+  Test.assert_equal ~expected:"serde-json (bench)" ~actual:(Riot_cli.Build.display_package_name package);
   Ok ()
 
 let test_planning_error_lines_describe_internal_module_violation = fun _ctx ->
-  let lines = Riot_cli.Build.planning_error_lines
-    (
-      Riot_planner.Planning_error.TargetDependsOnInternalLibraryModule {
-        target_name = "main";
-        source = Path.v "src/main.ml";
-        requested_module = "A";
-        internal_module = "Demo__A";
-        public_module = "Demo";
-      }
-    )
+  let lines =
+    Riot_cli.Build.planning_error_lines
+      (
+        Riot_planner.Planning_error.TargetDependsOnInternalLibraryModule {
+          target_name = "main";
+          source = Path.v "src/main.ml";
+          requested_module = "A";
+          internal_module = "Demo__A";
+          public_module = "Demo"
+        }
+      )
   in
-  Test.assert_equal
-    ~expected:[
-      error_line "target main imports private module A";
-      "The target source reaches Demo__A, which is internal to this package library.";
-      "target: main";
-      "source: src/main.ml";
-      "requested module: A";
-      "internal module: Demo__A";
-      "public module: Demo";
-      "examples:";
-      "  - use Demo.A instead";
-      "  - move shared target code behind Demo or a shared helper module";
-    ]
-    ~actual:lines;
+  Test.assert_equal ~expected:[
+    error_line "target main imports private module A";
+    "The target source reaches Demo__A, which is internal to this package library.";
+    "target: main";
+    "source: src/main.ml";
+    "requested module: A";
+    "internal module: Demo__A";
+    "public module: Demo";
+    "examples:";
+    "  - use Demo.A instead";
+    "  - move shared target code behind Demo or a shared helper module";
+  ] ~actual:lines;
   Ok ()
 
 let test_planning_error_lines_describe_undeclared_package_module = fun _ctx ->
-  let lines = Riot_cli.Build.planning_error_lines
-    (Riot_planner.Planning_error.SourceDependsOnUndeclaredPackageModule {
-      package_name = "demo";
-      source = Path.v "src/main.ml";
-      requested_module = "Kernel";
-      allowed_modules = [ "Demo"; "Std" ]
-    }) in
-  Test.assert_equal
-    ~expected:[
-      error_line "Kernel is not available to package demo";
-      "The source file imports Kernel, but Riot only exposes modules from this package and its direct dependencies.";
-      "package: demo";
-      "source: src/main.ml";
-      "requested module: Kernel";
-      "available direct modules: Demo, Std";
-      "examples:";
-      "  - add the package that provides Kernel to [dependencies]";
-      "  - or depend through one of the exposed modules above if that is the public API you meant";
-    ]
-    ~actual:lines;
+  let lines =
+    Riot_cli.Build.planning_error_lines
+      (
+        Riot_planner.Planning_error.SourceDependsOnUndeclaredPackageModule {
+          package_name = "demo";
+          source = Path.v "src/main.ml";
+          requested_module = "Kernel";
+          allowed_modules = [ "Demo"; "Std" ]
+        }
+      )
+  in
+  Test.assert_equal ~expected:[
+    error_line "Kernel is not available to package demo";
+    "The source file imports Kernel, but Riot only exposes modules from this package and its direct dependencies.";
+    "package: demo";
+    "source: src/main.ml";
+    "requested module: Kernel";
+    "available direct modules: Demo, Std";
+    "examples:";
+    "  - add the package that provides Kernel to [dependencies]";
+    "  - or depend through one of the exposed modules above if that is the public API you meant";
+  ] ~actual:lines;
   Ok ()
 
 let test_planning_error_lines_describe_invalid_executable_main = fun _ctx ->
-  let lines = Riot_cli.Build.planning_error_lines
-    (
-      Riot_planner.Planning_error.InvalidExecutableMain {
-        package_name = "riot-fix";
-        target_name = "riot-fix";
-        source = Path.v "src/main.ml";
-        file = Path.v "packages/riot-fix/src/main.ml";
-        error = Riot_planner.Planning_error.MissingMain;
-      }
-    )
+  let lines =
+    Riot_cli.Build.planning_error_lines
+      (
+        Riot_planner.Planning_error.InvalidExecutableMain {
+          package_name = "riot-fix";
+          target_name = "riot-fix";
+          source = Path.v "src/main.ml";
+          file = Path.v "packages/riot-fix/src/main.ml";
+          error = Riot_planner.Planning_error.MissingMain
+        }
+      )
   in
-  Test.assert_equal
-    ~expected:[
-      error_line "`riot-fix` has no executable entry point";
-      "";
-      "Riot is building this target as an executable:";
-      "";
-      "    package: riot-fix";
-      "    target:  riot-fix";
-      "    file:    ./packages/riot-fix/src/main.ml";
-      "";
-      "To start the program, Riot needs this file to define a top-level";
-      "`main` function with this shape:";
-      "";
-      "    let main ~args =";
-      "      ...";
-      "      Ok ()";
-      "";
-      "But we could not find one.";
-    ]
-    ~actual:lines;
+  Test.assert_equal ~expected:[
+    error_line "`riot-fix` has no executable entry point";
+    "";
+    "Riot is building this target as an executable:";
+    "";
+    "    package: riot-fix";
+    "    target:  riot-fix";
+    "    file:    ./packages/riot-fix/src/main.ml";
+    "";
+    "To start the program, Riot needs this file to define a top-level";
+    "`main` function with this shape:";
+    "";
+    "    let main ~args =";
+    "      ...";
+    "      Ok ()";
+    "";
+    "But we could not find one.";
+  ] ~actual:lines;
   Ok ()
 
 let test_workspace_planning_error_lines_describe_missing_dependencies = fun _ctx ->
-  let lines = Riot_cli.Build.workspace_planning_error_lines
-    (Riot_planner.Workspace_planner.MissingDependencies {
-      missing = [
-        { package = "demo"; dependency = "std" };
-        { package = "demo"; dependency = "tty" };
-      ]
-    }) in
-  Test.assert_equal
-    ~expected:[
-      error_line "missing package dependencies";
-      "Riot found package dependency edges that do not point at a loaded workspace or resolved package.";
-      "missing: demo -> std";
-      "missing: demo -> tty";
-      "examples:";
-      "  - add the missing package to the workspace";
-      "  - add a registry, path, or workspace dependency entry for the missing package";
-    ]
-    ~actual:lines;
+  let lines = Riot_cli.Build.workspace_planning_error_lines (Riot_planner.Workspace_planner.MissingDependencies { missing = [ { package = "demo"; dependency = "std" }; { package = "demo"; dependency = "tty" } ] }) in
+  Test.assert_equal ~expected:[
+    error_line "missing package dependencies";
+    "Riot found package dependency edges that do not point at a loaded workspace or resolved package.";
+    "missing: demo -> std";
+    "missing: demo -> tty";
+    "examples:";
+    "  - add the missing package to the workspace";
+    "  - add a registry, path, or workspace dependency entry for the missing package";
+  ] ~actual:lines;
   Ok ()
 
 let test_planning_error_lines_indent_multiline_reasons = fun _ctx ->
-  let lines = Riot_cli.Build.planning_error_lines
-    (Riot_planner.Planning_error.DependencyAnalysisFailed {
-      reason = "failed to parse tests/solver_tests.ml\n\nhint: add )"
-    }) in
-  Test.assert_equal
-    ~expected:[
-      error_line "dependency analysis failed";
-      "Riot could not parse or analyze a source file while discovering module dependencies.";
-      "reason: failed to parse tests/solver_tests.ml";
-      "";
-      "  hint: add )";
-    ]
-    ~actual:lines;
+  let lines = Riot_cli.Build.planning_error_lines (Riot_planner.Planning_error.DependencyAnalysisFailed { reason = "failed to parse tests/solver_tests.ml\n\nhint: add )" }) in
+  Test.assert_equal ~expected:[
+    error_line "dependency analysis failed";
+    "Riot could not parse or analyze a source file while discovering module dependencies.";
+    "reason: failed to parse tests/solver_tests.ml";
+    "";
+    "  hint: add )";
+  ] ~actual:lines;
   Ok ()
 
 let test_build_failure_detail_lines_render_planning_errors = fun _ctx ->
   let failure: Riot_build.Build_result.failure = {
     package_name = package_name "demo";
     package_key = Riot_model.Package.key_of_string "demo:runtime";
-    reason = Riot_build.Build_result.PackagePlanningFailed (Riot_planner.Planning_error.DependencyAnalysisFailed {
-      reason = "failed to parse src/demo.ml\nhint: add end"
-    });
+    reason = Riot_build.Build_result.PackagePlanningFailed (Riot_planner.Planning_error.DependencyAnalysisFailed { reason = "failed to parse src/demo.ml\nhint: add end" });
     message = "raw fallback should not be rendered";
     ocamlc_warnings = [];
-    duration_ms = 12;
+    duration_ms = 12
   }
   in
-  Test.assert_equal
-    ~expected:[
-      error_line "dependency analysis failed";
-      "Riot could not parse or analyze a source file while discovering module dependencies.";
-      "reason: failed to parse src/demo.ml";
-      "  hint: add end";
-    ]
-    ~actual:(Riot_cli.Build.build_failure_detail_lines failure);
+  Test.assert_equal ~expected:[
+    error_line "dependency analysis failed";
+    "Riot could not parse or analyze a source file while discovering module dependencies.";
+    "reason: failed to parse src/demo.ml";
+    "  hint: add end";
+  ] ~actual:(Riot_cli.Build.build_failure_detail_lines failure);
   Ok ()
 
 let test_build_usage_shows_repeated_package_flag = fun _ctx ->
   let usage = ArgParser.usage_string Riot_cli.Build.command in
   if String.equal usage "Usage: build [OPTIONS]" then
     Ok ()
-  else
-    Error ("expected repeated package flag usage, got: " ^ usage)
+  else Error ("expected repeated package flag usage, got: " ^ usage)
 
 let test_build_rejects_positional_package_args = fun _ctx ->
   match parse_build [ "build"; "syn" ] with
@@ -404,77 +332,120 @@ let test_build_rejects_positional_package_args = fun _ctx ->
   | Ok _ -> Error "expected positional package arguments to be rejected"
 
 let test_build_accepts_json_flag = fun _ctx ->
-  match parse_build [ "build"; "--json"; "-p"; "syn" ] with
+  match parse_build
+    [
+      "build";
+      "--json";
+      "-p";
+      "syn";
+    ] with
   | Error err -> Error ("expected build args to parse: " ^ err)
   | Ok matches ->
       if ArgParser.get_flag matches "json" then
         Ok ()
-      else
-        Error "expected --json flag to be parsed"
+      else Error "expected --json flag to be parsed"
 
 let test_build_accepts_release_flag = fun _ctx ->
-  match parse_build [ "build"; "--release"; "-p"; "syn" ] with
+  match parse_build
+    [
+      "build";
+      "--release";
+      "-p";
+      "syn";
+    ] with
   | Error err -> Error ("expected build args to parse: " ^ err)
   | Ok matches ->
       if ArgParser.get_flag matches "release" then
         Ok ()
-      else
-        Error "expected --release flag to be parsed"
+      else Error "expected --release flag to be parsed"
 
 let test_build_accepts_jobs_flag = fun _ctx ->
-  match parse_build [ "build"; "--jobs"; "4"; "-p"; "syn" ] with
+  match parse_build
+    [
+      "build";
+      "--jobs";
+      "4";
+      "-p";
+      "syn";
+    ] with
   | Error err -> Error ("expected build args to parse: " ^ err)
   | Ok matches ->
       match ArgParser.get_one matches "jobs" with
       | Some jobs ->
           if String.equal jobs "4" then
             Ok ()
-          else
-            Error ("unexpected --jobs value: " ^ jobs)
+          else Error ("unexpected --jobs value: " ^ jobs)
       | None -> Error "expected --jobs flag to be parsed"
 
 let test_build_accepts_tests_flag = fun _ctx ->
-  match parse_build [ "build"; "--tests"; "-p"; "syn" ] with
+  match parse_build
+    [
+      "build";
+      "--tests";
+      "-p";
+      "syn";
+    ] with
   | Error err -> Error ("expected build args to parse: " ^ err)
   | Ok matches ->
       if ArgParser.get_flag matches "tests" then
         Ok ()
-      else
-        Error "expected --tests flag to be parsed"
+      else Error "expected --tests flag to be parsed"
 
 let test_build_accepts_examples_flag = fun _ctx ->
-  match parse_build [ "build"; "--examples"; "-p"; "syn" ] with
+  match parse_build
+    [
+      "build";
+      "--examples";
+      "-p";
+      "syn";
+    ] with
   | Error err -> Error ("expected build args to parse: " ^ err)
   | Ok matches ->
       if ArgParser.get_flag matches "examples" then
         Ok ()
-      else
-        Error "expected --examples flag to be parsed"
+      else Error "expected --examples flag to be parsed"
 
 let test_build_accepts_benches_flag = fun _ctx ->
-  match parse_build [ "build"; "--benches"; "-p"; "syn" ] with
+  match parse_build
+    [
+      "build";
+      "--benches";
+      "-p";
+      "syn";
+    ] with
   | Error err -> Error ("expected build args to parse: " ^ err)
   | Ok matches ->
       if ArgParser.get_flag matches "benches" then
         Ok ()
-      else
-        Error "expected --benches flag to be parsed"
+      else Error "expected --benches flag to be parsed"
 
 let test_build_accepts_all_flag = fun _ctx ->
-  match parse_build [ "build"; "--all"; "-p"; "syn" ] with
+  match parse_build
+    [
+      "build";
+      "--all";
+      "-p";
+      "syn";
+    ] with
   | Error err -> Error ("expected build args to parse: " ^ err)
   | Ok matches ->
       if ArgParser.get_flag matches "all" then
         Ok ()
-      else
-        Error "expected --all flag to be parsed"
+      else Error "expected --all flag to be parsed"
 
 let test_build_rejects_invalid_jobs_flag = fun _ctx ->
-  match
-    Fs.with_tempdir ~prefix:"riot_cli_build_invalid_jobs"
-      (fun tmpdir ->
+  match Fs.with_tempdir ~prefix:"riot_cli_build_invalid_jobs"
+    (
+      fun tmpdir ->
         let workspace = make_valid_workspace tmpdir in
-        match parse_build [ "build"; "--jobs"; "abc"; "-p"; "demo" ] with
+        match parse_build
+          [
+            "build";
+            "--jobs";
+            "abc";
+            "-p";
+            "demo";
+          ] with
         | Error err -> Error ("expected build args to parse: " ^ err)
         | Ok matches ->
             match Riot_cli.Build.run ~workspace matches with
@@ -482,274 +453,361 @@ let test_build_rejects_invalid_jobs_flag = fun _ctx ->
             | Error (Failure message) ->
                 if String.equal message "invalid --jobs value: abc" then
                   Ok ()
-                else
-                  Error ("unexpected jobs parse error: " ^ message)
-            | Error err -> Error ("expected failure to be Failure: " ^ Exception.to_string err))
-  with
+                else Error ("unexpected jobs parse error: " ^ message)
+            | Error err -> Error ("expected failure to be Failure: " ^ Exception.to_string err)
+    ) with
   | Ok result -> result
   | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
 
 let test_build_accepts_jobs_flag_in_run = fun _ctx ->
-  match
-    Fs.with_tempdir ~prefix:"riot_cli_build_jobs_runtime"
-      (fun tmpdir ->
+  match Fs.with_tempdir ~prefix:"riot_cli_build_jobs_runtime"
+    (
+      fun tmpdir ->
         let workspace = make_valid_workspace tmpdir in
-        match parse_build [ "build"; "--jobs"; "2"; "-p"; "demo" ] with
+        match parse_build
+          [
+            "build";
+            "--jobs";
+            "2";
+            "-p";
+            "demo";
+          ] with
         | Error err -> Error ("expected build args to parse: " ^ err)
         | Ok matches ->
             match Riot_cli.Build.run ~workspace matches with
             | Ok () -> Ok ()
-            | Error err -> Error ("expected build success: " ^ Exception.to_string err))
-  with
+            | Error err -> Error ("expected build success: " ^ Exception.to_string err)
+    ) with
   | Ok result -> result
   | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
 
 let test_build_rejects_zero_jobs_runtime = fun _ctx ->
-  match
-    Fs.with_tempdir ~prefix:"riot_cli_build_zero_jobs"
-      (fun tmpdir ->
+  match Fs.with_tempdir ~prefix:"riot_cli_build_zero_jobs"
+    (
+      fun tmpdir ->
         let workspace = make_valid_workspace tmpdir in
-        match parse_build [ "build"; "--jobs"; "0"; "-p"; "demo" ] with
+        match parse_build
+          [
+            "build";
+            "--jobs";
+            "0";
+            "-p";
+            "demo";
+          ] with
         | Error err -> Error ("expected build args to parse: " ^ err)
         | Ok matches ->
             match Riot_cli.Build.run ~workspace matches with
             | Error (Failure message) when String.equal message "invalid requested parallelism (0): jobs must be >= 1" -> Ok ()
             | Error (Failure message) -> Error ("unexpected failure message: " ^ message)
             | Ok () -> Error "expected zero jobs to be rejected"
-            | Error err -> Error ("expected Failure: " ^ Exception.to_string err))
-  with
+            | Error err -> Error ("expected Failure: " ^ Exception.to_string err)
+    ) with
   | Ok result -> result
   | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
 
 let test_build_rejects_negative_jobs_runtime = fun _ctx ->
-  match
-    Fs.with_tempdir ~prefix:"riot_cli_build_negative_jobs"
-      (fun tmpdir ->
+  match Fs.with_tempdir ~prefix:"riot_cli_build_negative_jobs"
+    (
+      fun tmpdir ->
         let workspace = make_valid_workspace tmpdir in
-        match parse_build [ "build"; "--jobs"; "-1"; "-p"; "demo" ] with
+        match parse_build
+          [
+            "build";
+            "--jobs";
+            "-1";
+            "-p";
+            "demo";
+          ] with
         | Error err -> Error ("expected build args to parse: " ^ err)
         | Ok matches ->
             match Riot_cli.Build.run ~workspace matches with
             | Error (Failure message) when String.equal message "invalid requested parallelism (-1): jobs must be >= 1" -> Ok ()
             | Error (Failure message) -> Error ("unexpected failure message: " ^ message)
             | Ok () -> Error "expected negative jobs to be rejected"
-            | Error err -> Error ("expected Failure: " ^ Exception.to_string err))
-  with
+            | Error err -> Error ("expected Failure: " ^ Exception.to_string err)
+    ) with
   | Ok result -> result
   | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
 
 let test_build_command_accepts_workspace = fun _ctx ->
-  match
-    Fs.with_tempdir ~prefix:"riot_cli_build_command"
-      (fun tmpdir ->
-        let workspace = make_valid_workspace tmpdir in
-        Riot_cli.Build.build_command
-          ~workspace
-          ~show_finished_summary:false
-          ~mode:Riot_cli.Build.Human (Some (package_name "demo"))
-          None)
-  with
+  match Fs.with_tempdir ~prefix:"riot_cli_build_command"
+    (
+      fun tmpdir ->
+        let workspace = make_valid_workspace tmpdir in Riot_cli.Build.build_command ~workspace ~show_finished_summary:false ~mode:Riot_cli.Build.Human (Some (package_name "demo")) None
+    ) with
   | Ok (Ok ()) -> Ok ()
   | Ok (Error err) -> Error ("expected workspace build command to succeed: " ^ Exception.to_string err)
   | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
 
 let test_build_run_accepts_workspace = fun _ctx ->
-  match
-    Fs.with_tempdir ~prefix:"riot_cli_build_command"
-      (fun tmpdir ->
+  match Fs.with_tempdir ~prefix:"riot_cli_build_command"
+    (
+      fun tmpdir ->
         let workspace = make_valid_workspace tmpdir in
-        let matches = parse_build [ "build"; "-p"; "demo" ] |> Result.expect ~msg:"expected build args to parse" in
-        Riot_cli.Build.run ~workspace matches)
-  with
+        let matches = parse_build [ "build"; "-p"; "demo" ] |> Result.expect ~msg:"expected build args to parse" in Riot_cli.Build.run ~workspace matches
+    ) with
   | Ok (Ok ()) -> Ok ()
   | Ok (Error err) -> Error ("expected workspace build run to succeed: " ^ Exception.to_string err)
   | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
 
 let test_build_tests_compile_only_test_binaries = fun _ctx ->
-  match
-    Fs.with_tempdir ~prefix:"riot_cli_build_tests_scope"
-      (fun tmpdir ->
+  match Fs.with_tempdir ~prefix:"riot_cli_build_tests_scope"
+    (
+      fun tmpdir ->
         let workspace = make_workspace_with_dev_binaries tmpdir in
         let test_binary, example_binary, bench_binary = dev_binary_paths workspace in
-        let tests_matches = parse_build [ "build"; "--tests"; "-p"; "demo" ] |> Result.expect ~msg:"expected test build args to parse" in
+        let tests_matches =
+          parse_build
+            [
+              "build";
+              "--tests";
+              "-p";
+              "demo";
+            ] |> Result.expect ~msg:"expected test build args to parse"
+        in
         let open Std.Result.Syntax in
-          let* () =
-            match Riot_cli.Build.run ~workspace tests_matches with
-            | Ok () -> Ok ()
-            | Error err -> Error ("expected test-scoped build success: " ^ Exception.to_string err)
-          in
-          let* () = assert_path_exists test_binary ~message:"expected --tests to materialize test binary" in
-          let* () = assert_path_missing example_binary ~message:"did not expect --tests to materialize example binary" in
-          assert_path_missing bench_binary ~message:"did not expect --tests to materialize bench binary")
-  with
+        let* () =
+          match Riot_cli.Build.run ~workspace tests_matches with
+          | Ok () -> Ok ()
+          | Error err -> Error ("expected test-scoped build success: " ^ Exception.to_string err)
+        in
+        let* () = assert_path_exists test_binary ~message:"expected --tests to materialize test binary"
+        in
+        let* () = assert_path_missing example_binary ~message:"did not expect --tests to materialize example binary" in assert_path_missing bench_binary ~message:"did not expect --tests to materialize bench binary"
+    ) with
   | Ok result -> result
   | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
 
 let test_build_examples_compile_only_example_binaries = fun _ctx ->
-  match
-    Fs.with_tempdir ~prefix:"riot_cli_build_examples_scope"
-      (fun tmpdir ->
+  match Fs.with_tempdir ~prefix:"riot_cli_build_examples_scope"
+    (
+      fun tmpdir ->
         let workspace = make_workspace_with_dev_binaries tmpdir in
         let test_binary, example_binary, bench_binary = dev_binary_paths workspace in
-        let example_matches = parse_build [ "build"; "--examples"; "-p"; "demo" ]
-        |> Result.expect ~msg:"expected example build args to parse" in
+        let example_matches =
+          parse_build
+            [
+              "build";
+              "--examples";
+              "-p";
+              "demo";
+            ] |> Result.expect ~msg:"expected example build args to parse"
+        in
         let open Std.Result.Syntax in
-          let* () =
-            match Riot_cli.Build.run ~workspace example_matches with
-            | Ok () -> Ok ()
-            | Error err -> Error ("expected example-scoped build success: " ^ Exception.to_string err)
-          in
-          let* () = assert_path_missing test_binary ~message:"did not expect --examples to materialize test binary" in
-          let* () = assert_path_exists example_binary ~message:"expected --examples to materialize example binary" in
-          assert_path_missing bench_binary ~message:"did not expect --examples to materialize bench binary")
-  with
+        let* () =
+          match Riot_cli.Build.run ~workspace example_matches with
+          | Ok () -> Ok ()
+          | Error err -> Error ("expected example-scoped build success: " ^ Exception.to_string err)
+        in
+        let* () = assert_path_missing test_binary ~message:"did not expect --examples to materialize test binary"
+        in
+        let* () = assert_path_exists example_binary ~message:"expected --examples to materialize example binary" in assert_path_missing bench_binary ~message:"did not expect --examples to materialize bench binary"
+    ) with
   | Ok result -> result
   | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
 
 let test_build_benches_compile_only_bench_binaries = fun _ctx ->
-  match
-    Fs.with_tempdir ~prefix:"riot_cli_build_benches_scope"
-      (fun tmpdir ->
+  match Fs.with_tempdir ~prefix:"riot_cli_build_benches_scope"
+    (
+      fun tmpdir ->
         let workspace = make_workspace_with_dev_binaries tmpdir in
         let test_binary, example_binary, bench_binary = dev_binary_paths workspace in
-        let bench_matches = parse_build [ "build"; "--benches"; "-p"; "demo" ]
-        |> Result.expect ~msg:"expected bench build args to parse" in
+        let bench_matches =
+          parse_build
+            [
+              "build";
+              "--benches";
+              "-p";
+              "demo";
+            ] |> Result.expect ~msg:"expected bench build args to parse"
+        in
         let open Std.Result.Syntax in
-          let* () =
-            match Riot_cli.Build.run ~workspace bench_matches with
-            | Ok () -> Ok ()
-            | Error err -> Error ("expected bench-scoped build success: " ^ Exception.to_string err)
-          in
-          let* () = assert_path_missing test_binary ~message:"did not expect --benches to materialize test binary" in
-          let* () = assert_path_missing example_binary ~message:"did not expect --benches to materialize example binary" in
-          assert_path_exists bench_binary ~message:"expected --benches to materialize bench binary")
-  with
+        let* () =
+          match Riot_cli.Build.run ~workspace bench_matches with
+          | Ok () -> Ok ()
+          | Error err -> Error ("expected bench-scoped build success: " ^ Exception.to_string err)
+        in
+        let* () = assert_path_missing test_binary ~message:"did not expect --benches to materialize test binary"
+        in
+        let* () = assert_path_missing example_binary ~message:"did not expect --benches to materialize example binary" in assert_path_exists bench_binary ~message:"expected --benches to materialize bench binary"
+    ) with
   | Ok result -> result
   | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
 
 let test_build_all_compiles_all_dev_binaries = fun _ctx ->
-  match
-    Fs.with_tempdir ~prefix:"riot_cli_build_all_scope"
-      (fun tmpdir ->
+  match Fs.with_tempdir ~prefix:"riot_cli_build_all_scope"
+    (
+      fun tmpdir ->
         let workspace = make_workspace_with_dev_binaries tmpdir in
         let test_binary, example_binary, bench_binary = dev_binary_paths workspace in
-        let all_matches = parse_build [ "build"; "--all"; "-p"; "demo" ] |> Result.expect ~msg:"expected all build args to parse" in
+        let all_matches =
+          parse_build
+            [
+              "build";
+              "--all";
+              "-p";
+              "demo";
+            ] |> Result.expect ~msg:"expected all build args to parse"
+        in
         let open Std.Result.Syntax in
-          let* () =
-            match Riot_cli.Build.run ~workspace all_matches with
-            | Ok () -> Ok ()
-            | Error err -> Error ("expected all-artifacts build success: " ^ Exception.to_string err)
-          in
-          let* () = assert_path_exists test_binary ~message:"expected --all to materialize test binary" in
-          let* () = assert_path_exists example_binary ~message:"expected --all to materialize example binary" in
-          assert_path_exists bench_binary ~message:"expected --all to materialize bench binary")
-  with
+        let* () =
+          match Riot_cli.Build.run ~workspace all_matches with
+          | Ok () -> Ok ()
+          | Error err -> Error ("expected all-artifacts build success: " ^ Exception.to_string err)
+        in
+        let* () = assert_path_exists test_binary ~message:"expected --all to materialize test binary"
+        in
+        let* () = assert_path_exists example_binary ~message:"expected --all to materialize example binary" in assert_path_exists bench_binary ~message:"expected --all to materialize bench binary"
+    ) with
   | Ok result -> result
   | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
 
 let test_test_accepts_json_flag = fun _ctx ->
-  match parse_test [ "test"; "--json"; "-p"; "riot-build" ] with
+  match parse_test
+    [
+      "test";
+      "--json";
+      "-p";
+      "riot-build";
+    ] with
   | Error err -> Error ("expected test args to parse: " ^ err)
   | Ok matches ->
       if ArgParser.get_flag matches "json" then
         Ok ()
-      else
-        Error "expected test --json flag to be parsed"
+      else Error "expected test --json flag to be parsed"
 
 let test_test_accepts_release_flag = fun _ctx ->
-  match parse_test [ "test"; "--release"; "-p"; "riot-build" ] with
+  match parse_test
+    [
+      "test";
+      "--release";
+      "-p";
+      "riot-build";
+    ] with
   | Error err -> Error ("expected test args to parse: " ^ err)
   | Ok matches ->
       if ArgParser.get_flag matches "release" then
         Ok ()
-      else
-        Error "expected test --release flag to be parsed"
+      else Error "expected test --release flag to be parsed"
 
 let test_test_accepts_list_flag = fun _ctx ->
-  match parse_test [ "test"; "--list"; "-p"; "riot-build" ] with
+  match parse_test
+    [
+      "test";
+      "--list";
+      "-p";
+      "riot-build";
+    ] with
   | Error err -> Error ("expected test args to parse: " ^ err)
   | Ok matches ->
       if ArgParser.get_flag matches "list" then
         Ok ()
-      else
-        Error "expected test --list flag to be parsed"
+      else Error "expected test --list flag to be parsed"
 
 let test_bench_accepts_json_flag = fun _ctx ->
-  match parse_bench [ "bench"; "--json"; "-p"; "std" ] with
+  match parse_bench
+    [
+      "bench";
+      "--json";
+      "-p";
+      "std";
+    ] with
   | Error err -> Error ("expected bench args to parse: " ^ err)
   | Ok matches ->
       if ArgParser.get_flag matches "json" then
         Ok ()
-      else
-        Error "expected bench --json flag to be parsed"
+      else Error "expected bench --json flag to be parsed"
 
 let test_bench_accepts_release_flag = fun _ctx ->
-  match parse_bench [ "bench"; "--release"; "-p"; "std" ] with
+  match parse_bench
+    [
+      "bench";
+      "--release";
+      "-p";
+      "std";
+    ] with
   | Error err -> Error ("expected bench args to parse: " ^ err)
   | Ok matches ->
       if ArgParser.get_flag matches "release" then
         Ok ()
-      else
-        Error "expected bench --release flag to be parsed"
+      else Error "expected bench --release flag to be parsed"
 
 let test_bench_accepts_list_flag = fun _ctx ->
-  match parse_bench [ "bench"; "--list"; "-p"; "std" ] with
+  match parse_bench
+    [
+      "bench";
+      "--list";
+      "-p";
+      "std";
+    ] with
   | Error err -> Error ("expected bench args to parse: " ^ err)
   | Ok matches ->
       if ArgParser.get_flag matches "list" then
         Ok ()
-      else
-        Error "expected bench --list flag to be parsed"
+      else Error "expected bench --list flag to be parsed"
 
 let test_bench_accepts_iterations_flag = fun _ctx ->
-  match parse_bench [ "bench"; "--iterations"; "500"; "-p"; "std" ] with
+  match parse_bench
+    [
+      "bench";
+      "--iterations";
+      "500";
+      "-p";
+      "std";
+    ] with
   | Error err -> Error ("expected bench args to parse: " ^ err)
   | Ok matches ->
       Test.assert_equal ~expected:(Some 500) ~actual:(ArgParser.get_int matches "iterations");
       Ok ()
 
 let test_bench_accepts_warmup_flag = fun _ctx ->
-  match parse_bench [ "bench"; "--warmup"; "25"; "-p"; "std" ] with
+  match parse_bench
+    [
+      "bench";
+      "--warmup";
+      "25";
+      "-p";
+      "std";
+    ] with
   | Error err -> Error ("expected bench args to parse: " ^ err)
   | Ok matches ->
       Test.assert_equal ~expected:(Some 25) ~actual:(ArgParser.get_int matches "warmup");
       Ok ()
 
 let test_bench_invocation_args_keep_top_level_flags_after_forwarded_args = fun _ctx ->
-  let invocation = Riot_cli.Bench_cmd.bench_invocation_args
-    [
-      "bench";
-      "-p";
-      "serde-json";
-      "-f";
-      "manual decode from parsed tree";
-      "--compare";
-      "3";
-      "--iterations";
-      "500";
-      "--warmup";
-      "25";
-      "--release";
-      "--json";
-    ]
+  let invocation =
+    Riot_cli.Bench_cmd.bench_invocation_args
+      [
+        "bench";
+        "-p";
+        "serde-json";
+        "-f";
+        "manual decode from parsed tree";
+        "--compare";
+        "3";
+        "--iterations";
+        "500";
+        "--warmup";
+        "25";
+        "--release";
+        "--json";
+      ]
   in
-  Test.assert_equal
-    ~expected:[
-      "bench";
-      "-p";
-      "serde-json";
-      "-f";
-      "manual decode from parsed tree";
-      "--compare";
-      "3";
-      "--iterations";
-      "500";
-      "--warmup";
-      "25";
-      "--release";
-      "--json";
-    ]
-    ~actual:invocation.parsed;
+  Test.assert_equal ~expected:[
+    "bench";
+    "-p";
+    "serde-json";
+    "-f";
+    "manual decode from parsed tree";
+    "--compare";
+    "3";
+    "--iterations";
+    "500";
+    "--warmup";
+    "25";
+    "--release";
+    "--json";
+  ] ~actual:invocation.parsed;
   Test.assert_equal ~expected:[] ~actual:invocation.trailing;
   Ok ()
 
@@ -766,8 +824,7 @@ let test_run_accepts_list_flag = fun _ctx ->
   | Ok matches ->
       if ArgParser.get_flag matches "list" then
         Ok ()
-      else
-        Error "expected run --list flag to be parsed"
+      else Error "expected run --list flag to be parsed"
 
 let test_run_accepts_list_json_flag = fun _ctx ->
   match parse_run [ "run"; "--list"; "--json" ] with
@@ -775,8 +832,7 @@ let test_run_accepts_list_json_flag = fun _ctx ->
   | Ok matches ->
       if ArgParser.get_flag matches "list" && ArgParser.get_flag matches "json" then
         Ok ()
-      else
-        Error "expected run --list --json flags to be parsed"
+      else Error "expected run --list --json flags to be parsed"
 
 let test_run_accepts_release_flag = fun _ctx ->
   match parse_run [ "run"; "--release"; "riot" ] with
@@ -784,8 +840,7 @@ let test_run_accepts_release_flag = fun _ctx ->
   | Ok matches ->
       if ArgParser.get_flag matches "release" then
         Ok ()
-      else
-        Error "expected run --release flag to be parsed"
+      else Error "expected run --release flag to be parsed"
 
 let test_run_accepts_update_flag = fun _ctx ->
   match parse_run [ "run"; "--update"; "leostera/hello-world" ] with
@@ -793,8 +848,7 @@ let test_run_accepts_update_flag = fun _ctx ->
   | Ok matches ->
       if ArgParser.get_flag matches "update" then
         Ok ()
-      else
-        Error "expected run --update flag to be parsed"
+      else Error "expected run --update flag to be parsed"
 
 let test_install_accepts_update_flag = fun _ctx ->
   match parse_install [ "install"; "--update"; "leostera/hello-world" ] with
@@ -802,8 +856,7 @@ let test_install_accepts_update_flag = fun _ctx ->
   | Ok matches ->
       if ArgParser.get_flag matches "update" then
         Ok ()
-      else
-        Error "expected install --update flag to be parsed"
+      else Error "expected install --update flag to be parsed"
 
 let test_install_accepts_missing_name = fun _ctx ->
   match parse_install [ "install" ] with
@@ -813,7 +866,13 @@ let test_install_accepts_missing_name = fun _ctx ->
       Ok ()
 
 let test_install_accepts_package_flag = fun _ctx ->
-  match parse_install [ "install"; "--package"; "riot-cli"; "riot" ] with
+  match parse_install
+    [
+      "install";
+      "--package";
+      "riot-cli";
+      "riot";
+    ] with
   | Error err -> Error ("expected install args to parse with --package: " ^ err)
   | Ok matches ->
       Test.assert_equal ~expected:(Some "riot-cli") ~actual:(ArgParser.get_one matches "package");
@@ -825,25 +884,20 @@ let test_info_accepts_json_flag = fun _ctx ->
   | Ok matches ->
       if ArgParser.get_flag matches "json" then
         Ok ()
-      else
-        Error "expected info --json flag to be parsed"
+      else Error "expected info --json flag to be parsed"
 
 let test_info_accepts_workspace_target = fun _ctx ->
   match parse_info [ "info"; "workspace" ] with
   | Error err -> Error ("expected info workspace target to parse: " ^ err)
   | Ok matches ->
-      Test.assert_equal
-        ~expected:Riot_cli.Info_cmd.Workspace_target
-        ~actual:(Riot_cli.Info_cmd.target_of_matches matches);
+      Test.assert_equal ~expected:Riot_cli.Info_cmd.Workspace_target ~actual:(Riot_cli.Info_cmd.target_of_matches matches);
       Ok ()
 
 let test_info_accepts_package_target = fun _ctx ->
   match parse_info [ "info"; "serde-json@1.0.0" ] with
   | Error err -> Error ("expected info package target to parse: " ^ err)
   | Ok matches ->
-      Test.assert_equal
-        ~expected:(Riot_cli.Info_cmd.Package_target "serde-json@1.0.0")
-        ~actual:(Riot_cli.Info_cmd.target_of_matches matches);
+      Test.assert_equal ~expected:(Riot_cli.Info_cmd.Package_target "serde-json@1.0.0") ~actual:(Riot_cli.Info_cmd.target_of_matches matches);
       Ok ()
 
 let test_clean_accepts_json_flag = fun _ctx ->
@@ -852,8 +906,7 @@ let test_clean_accepts_json_flag = fun _ctx ->
   | Ok matches ->
       if ArgParser.get_flag matches "json" then
         Ok ()
-      else
-        Error "expected clean --json flag to be parsed"
+      else Error "expected clean --json flag to be parsed"
 
 let test_clean_accepts_force_flag = fun _ctx ->
   match parse_clean [ "clean"; "--force" ] with
@@ -861,349 +914,232 @@ let test_clean_accepts_force_flag = fun _ctx ->
   | Ok matches ->
       if ArgParser.get_flag matches "force" then
         Ok ()
-      else
-        Error "expected clean --force flag to be parsed"
+      else Error "expected clean --force flag to be parsed"
 
 let test_clean_usage_explains_cache_gc_and_force = fun _ctx ->
   let usage = ArgParser.usage_string Riot_cli.Clean.command in
   if String.equal usage "Usage: clean [OPTIONS]" then
     Ok ()
-  else
-    Error ("expected clean usage to explain cache GC and --force, got: " ^ usage)
+  else Error ("expected clean usage to explain cache GC and --force, got: " ^ usage)
 
 let test_run_defaults_remote_binary_to_repo_name = fun _ctx ->
-  Test.assert_equal
-    ~expected:"hello-world"
-    ~actual:(Riot_cli.Run.default_remote_binary_name "leostera/hello-world");
-  Test.assert_equal
-    ~expected:"hello-world"
-    ~actual:(Riot_cli.Run.default_remote_binary_name "github.com/leostera/hello-world/packages/demo");
+  Test.assert_equal ~expected:"hello-world" ~actual:(Riot_cli.Run.default_remote_binary_name "leostera/hello-world");
+  Test.assert_equal ~expected:"hello-world" ~actual:(Riot_cli.Run.default_remote_binary_name "github.com/leostera/hello-world/packages/demo");
   Ok ()
 
 let test_run_rejects_trailing_remote_binary_separator = fun _ctx ->
-  match Riot_cli.Run.run_with_workspace_info
-    ~workspace:None
-    ~workspace_error:None (parse_run [ "run"; "leostera/hello-world@" ] |> Result.expect ~msg:"expected run args to parse") with
+  match Riot_cli.Run.run_with_workspace_info ~workspace:None ~workspace_error:None (parse_run [ "run"; "leostera/hello-world@" ] |> Result.expect ~msg:"expected run args to parse") with
   | Ok () -> Error "expected trailing @ remote target to fail"
   | Error (Failure message) ->
-      if
-        String.equal message "invalid remote target 'leostera/hello-world@': expected binary name after @"
-      then
+      if String.equal message "invalid remote target 'leostera/hello-world@': expected binary name after @" then
         Ok ()
-      else
-        Error ("unexpected trailing @ error: " ^ message)
+      else Error ("unexpected trailing @ error: " ^ message)
   | Error err -> Error ("unexpected error kind: " ^ Exception.to_string err)
 
 let make_workspace = fun binaries ->
-  let package = Riot_model.Package.make
-    ~name:(package_name "demo")
-    ~path:(Path.v "/workspace/packages/demo")
-    ~relative_path:(Path.v "packages/demo")
-    ~binaries
-    () in
-  Riot_model.Workspace.make_realized ~root:(Path.v "/workspace") ~packages:[ package ] ()
+  let package = Riot_model.Package.make ~name:(package_name "demo") ~path:(Path.v "/workspace/packages/demo") ~relative_path:(Path.v "packages/demo") ~binaries () in Riot_model.Workspace.make_realized ~root:(Path.v "/workspace") ~packages:[ package ] ()
 
-let make_workspace_with_packages = fun packages ->
-  Riot_model.Workspace.make_realized ~root:(Path.v "/workspace") ~packages ()
+let make_workspace_with_packages = fun packages -> Riot_model.Workspace.make_realized ~root:(Path.v "/workspace") ~packages ()
 
 let test_run_build_scope_uses_runtime_for_runtime_binaries = fun _ctx ->
-  let workspace = make_workspace
-    [ Riot_model.Package.{ name = "demo"; path = Path.v "src/demo.ml" } ] in
-  Test.assert_equal
-    ~expected:Riot_cli.Build.Runtime
-    ~actual:(Riot_cli.Run.build_scope_for_binary
-      workspace
-      ~package_name:(package_name "demo")
-      ~binary_name:"demo");
+  let workspace = make_workspace [ Riot_model.Package.{ name = "demo"; path = Path.v "src/demo.ml" } ] in
+  Test.assert_equal ~expected:Riot_cli.Build.Runtime ~actual:(Riot_cli.Run.build_scope_for_binary workspace ~package_name:(package_name "demo") ~binary_name:"demo");
   Ok ()
 
 let test_run_build_scope_uses_dev_for_test_binaries = fun _ctx ->
-  let workspace = make_workspace
-    [ Riot_model.Package.{ name = "pm_tests"; path = Path.v "tests/pm_tests.ml" } ] in
-  Test.assert_equal
-    ~expected:Riot_cli.Build.Dev
-    ~actual:(Riot_cli.Run.build_scope_for_binary
-      workspace
-      ~package_name:(package_name "demo")
-      ~binary_name:"pm_tests");
+  let workspace = make_workspace [ Riot_model.Package.{ name = "pm_tests"; path = Path.v "tests/pm_tests.ml" } ] in
+  Test.assert_equal ~expected:Riot_cli.Build.Dev ~actual:(Riot_cli.Run.build_scope_for_binary workspace ~package_name:(package_name "demo") ~binary_name:"pm_tests");
   Ok ()
 
 let test_run_build_scope_defaults_to_runtime_when_binary_is_missing = fun _ctx ->
   let workspace = make_workspace [] in
-  Test.assert_equal
-    ~expected:Riot_cli.Build.Runtime
-    ~actual:(Riot_cli.Run.build_scope_for_binary
-      workspace
-      ~package_name:(package_name "demo")
-      ~binary_name:"missing");
+  Test.assert_equal ~expected:Riot_cli.Build.Runtime ~actual:(Riot_cli.Run.build_scope_for_binary workspace ~package_name:(package_name "demo") ~binary_name:"missing");
   Ok ()
 
 let test_run_resolves_single_implicit_binary = fun _ctx ->
-  let workspace = make_workspace
-    [ Riot_model.Package.{ name = "hello-world"; path = Path.v "src/hello_world.ml" } ] in
+  let workspace = make_workspace [ Riot_model.Package.{ name = "hello-world"; path = Path.v "src/hello_world.ml" } ] in
   match Riot_cli.Run.resolve_implicit_local_target workspace with
-  | Ok { package_name=resolved_package_name; binary_name } ->
+  | Ok { package_name = resolved_package_name; binary_name } ->
       Test.assert_equal ~expected:(package_name "demo") ~actual:resolved_package_name;
       Test.assert_equal ~expected:"hello-world" ~actual:binary_name;
       Ok ()
   | Error err -> Error ("expected single implicit binary to resolve: " ^ err)
 
 let test_run_resolves_single_implicit_binary_in_package = fun _ctx ->
-  let demo = Riot_model.Package.make
-    ~name:(package_name "demo")
-    ~path:(Path.v "/workspace/packages/demo")
-    ~relative_path:(Path.v "packages/demo")
-    ~binaries:[ Riot_model.Package.{ name = "demo"; path = Path.v "src/demo.ml" } ]
-    () in
-  let util = Riot_model.Package.make
-    ~name:(package_name "util")
-    ~path:(Path.v "/workspace/packages/util")
-    ~relative_path:(Path.v "packages/util")
-    ~binaries:[ Riot_model.Package.{ name = "util"; path = Path.v "src/util.ml" } ]
-    () in
+  let demo = Riot_model.Package.make ~name:(package_name "demo") ~path:(Path.v "/workspace/packages/demo") ~relative_path:(Path.v "packages/demo") ~binaries:[ Riot_model.Package.{ name = "demo"; path = Path.v "src/demo.ml" } ] () in
+  let util = Riot_model.Package.make ~name:(package_name "util") ~path:(Path.v "/workspace/packages/util") ~relative_path:(Path.v "packages/util") ~binaries:[ Riot_model.Package.{ name = "util"; path = Path.v "src/util.ml" } ] () in
   let workspace = make_workspace_with_packages [ demo; util ] in
   match Riot_cli.Run.resolve_implicit_local_target ~package_filter:(package_name "util") workspace with
-  | Ok { package_name=resolved_package_name; binary_name } ->
+  | Ok { package_name = resolved_package_name; binary_name } ->
       Test.assert_equal ~expected:(package_name "util") ~actual:resolved_package_name;
       Test.assert_equal ~expected:"util" ~actual:binary_name;
       Ok ()
   | Error err -> Error ("expected package-filtered implicit binary to resolve: " ^ err)
 
 let test_run_rejects_ambiguous_implicit_binary = fun _ctx ->
-  let demo = Riot_model.Package.make
-    ~name:(package_name "demo")
-    ~path:(Path.v "/workspace/packages/demo")
-    ~relative_path:(Path.v "packages/demo")
-    ~binaries:[ Riot_model.Package.{ name = "demo"; path = Path.v "src/demo.ml" } ]
-    () in
-  let util = Riot_model.Package.make
-    ~name:(package_name "util")
-    ~path:(Path.v "/workspace/packages/util")
-    ~relative_path:(Path.v "packages/util")
-    ~binaries:[ Riot_model.Package.{ name = "util"; path = Path.v "src/util.ml" } ]
-    () in
+  let demo = Riot_model.Package.make ~name:(package_name "demo") ~path:(Path.v "/workspace/packages/demo") ~relative_path:(Path.v "packages/demo") ~binaries:[ Riot_model.Package.{ name = "demo"; path = Path.v "src/demo.ml" } ] () in
+  let util = Riot_model.Package.make ~name:(package_name "util") ~path:(Path.v "/workspace/packages/util") ~relative_path:(Path.v "packages/util") ~binaries:[ Riot_model.Package.{ name = "util"; path = Path.v "src/util.ml" } ] () in
   let workspace = make_workspace_with_packages [ demo; util ] in
   match Riot_cli.Run.resolve_implicit_local_target workspace with
   | Ok _ -> Error "expected implicit run target resolution to reject multiple binaries"
   | Error err ->
       if String.contains err "multiple runnable binaries found" then
         Ok ()
-      else
-        Error ("expected ambiguity error, got: " ^ err)
+      else Error ("expected ambiguity error, got: " ^ err)
 
 let test_run_reports_no_binaries_with_creation_hint = fun _ctx ->
   let workspace = make_workspace [] in
   match Riot_cli.Run.resolve_implicit_local_target workspace with
   | Ok _ -> Error "expected implicit run target resolution to reject missing binaries"
   | Error err ->
-      if
-        String.equal err "no runnable binaries found; pass a binary name or create one with `riot new --bin ./packages/my-binary`"
-      then
+      if String.equal err "no runnable binaries found; pass a binary name or create one with `riot new --bin ./packages/my-binary`" then
         Ok ()
-      else
-        Error ("expected no-binaries hint, got: " ^ err)
+      else Error ("expected no-binaries hint, got: " ^ err)
 
 let test_run_reports_package_without_binaries_with_creation_hint = fun _ctx ->
   let workspace = make_workspace [] in
   match Riot_cli.Run.resolve_implicit_local_target ~package_filter:(package_name "demo") workspace with
   | Ok _ -> Error "expected package-filtered implicit run target resolution to reject missing binaries"
   | Error err ->
-      if
-        String.equal err "package 'demo' has no runnable binaries; create one with `riot new --bin ./packages/my-binary`"
-      then
+      if String.equal err "package 'demo' has no runnable binaries; create one with `riot new --bin ./packages/my-binary`" then
         Ok ()
-      else
-        Error ("expected package no-binaries hint, got: " ^ err)
+      else Error ("expected package no-binaries hint, got: " ^ err)
 
 let test_pm_event_hides_workspace_resolved_packages = fun _ctx ->
   let seen_registry_updates = HashSet.create () in
-  let actual = Riot_cli.Build.format_pm_event
-    ~seen_registry_updates
-    (Riot_model.Event.PackageResolvedForBuild {
-      package = package_name "create-riot-app";
-      version = None;
-      path = "/workspace";
-      workspace = true
-    }) in
+  let actual =
+    Riot_cli.Build.format_pm_event ~seen_registry_updates
+      (
+        Riot_model.Event.PackageResolvedForBuild {
+          package = package_name "create-riot-app";
+          version = None;
+          path = "/workspace";
+          workspace = true
+        }
+      )
+  in
   Test.assert_equal ~expected:None ~actual;
   Ok ()
 
 let test_pm_event_hides_materialization_started = fun _ctx ->
   let seen_registry_updates = HashSet.create () in
-  let actual = Riot_cli.Build.format_pm_event
-    ~seen_registry_updates
-    (Riot_model.Event.PackageMaterializationStarted {
-      package = package_name "std";
-      version = "0.1.0";
-      path = "/cache/std"
-    }) in
+  let actual = Riot_cli.Build.format_pm_event ~seen_registry_updates (Riot_model.Event.PackageMaterializationStarted { package = package_name "std"; version = "0.1.0"; path = "/cache/std" }) in
   Test.assert_equal ~expected:None ~actual;
   Ok ()
 
 let test_pm_event_hides_manifest_fetch_chatter = fun _ctx ->
   let seen_registry_updates = HashSet.create () in
-  let actual = Riot_cli.Build.format_pm_event
-    ~seen_registry_updates
-    (Riot_model.Event.PackageManifestFetchStarted { package = package_name "std"; version = "0.1.0" }) in
+  let actual = Riot_cli.Build.format_pm_event ~seen_registry_updates (Riot_model.Event.PackageManifestFetchStarted { package = package_name "std"; version = "0.1.0" }) in
   Test.assert_equal ~expected:None ~actual;
   Ok ()
 
 let test_pm_event_hides_download_skipped = fun _ctx ->
   let seen_registry_updates = HashSet.create () in
-  let actual = Riot_cli.Build.format_pm_event
-    ~seen_registry_updates
-    (Riot_model.Event.PackageDownloadSkipped {
-      package = package_name "std";
-      version = "0.1.0";
-      path = "/cache/std";
-      reason = "already materialized"
-    }) in
+  let actual =
+    Riot_cli.Build.format_pm_event ~seen_registry_updates
+      (
+        Riot_model.Event.PackageDownloadSkipped {
+          package = package_name "std";
+          version = "0.1.0";
+          path = "/cache/std";
+          reason = "already materialized"
+        }
+      )
+  in
   Test.assert_equal ~expected:None ~actual;
   Ok ()
 
 let test_pm_event_shows_installing_with_padding = fun _ctx ->
   let seen_registry_updates = HashSet.create () in
-  let actual = Riot_cli.Build.format_pm_event
-    ~seen_registry_updates
-    (Riot_model.Event.SourceDependencyMaterializationStarted {
-      source_locator = "leostera/hello-world";
-      ref_ = None
-    }) in
+  let actual = Riot_cli.Build.format_pm_event ~seen_registry_updates (Riot_model.Event.SourceDependencyMaterializationStarted { source_locator = "leostera/hello-world"; ref_ = None }) in
   Test.assert_equal ~expected:(Some "  \027[1;34mInstalling\027[0m leostera/hello-world") ~actual;
   Ok ()
 
 let test_pm_event_shows_locked_package = fun _ctx ->
   let seen_registry_updates = HashSet.create () in
-  let actual = Riot_cli.Build.format_pm_event
-    ~seen_registry_updates
-    (Riot_model.Event.PackageVersionLocked { package = package_name "std"; version = "0.2.0" }) in
+  let actual = Riot_cli.Build.format_pm_event ~seen_registry_updates (Riot_model.Event.PackageVersionLocked { package = package_name "std"; version = "0.2.0" }) in
   Test.assert_equal ~expected:(Some "      \027[1;32mLocked\027[0m std (0.2.0)") ~actual;
   Ok ()
 
 let test_pm_event_shows_up_to_date = fun _ctx ->
   let seen_registry_updates = HashSet.create () in
-  let actual = Riot_cli.Build.format_pm_event
-    ~seen_registry_updates
-    (Riot_model.Event.PackageVersionsUnchanged { packages = 3 }) in
+  let actual = Riot_cli.Build.format_pm_event ~seen_registry_updates (Riot_model.Event.PackageVersionsUnchanged { packages = 3 }) in
   Test.assert_equal ~expected:(Some "    Dependencies are already up to date") ~actual;
   Ok ()
 
-let test_workspace_hint_mentions_riot_init = fun _ctx ->
-  let message = Riot_cli.Workspace_hint.not_in_workspace_message in
-  if not (String.contains message "riot init") then
-    Error "expected no-workspace hint to mention riot init"
-  else if not (String.contains message "riot new <name>") then
-    Error "expected no-workspace hint to mention riot new"
-  else if String.contains message "Error:" then
-    Error "expected no-workspace hint to stay neutral guidance"
-  else
-    Ok ()
-
-let test_toolchain_list_requires_workspace = fun _ctx ->
-  match parse_toolchain [ "toolchain"; "list" ] with
-  | Error err -> Error err
-  | Ok matches ->
-      if Riot_cli.Toolchain_cmd.requires_workspace matches then
-        Ok ()
-      else
-        Error "expected riot toolchain list to require a workspace"
-
-let test_toolchain_install_requires_workspace = fun _ctx ->
-  match parse_toolchain [ "toolchain"; "install" ] with
-  | Error err -> Error err
-  | Ok matches ->
-      if Riot_cli.Toolchain_cmd.requires_workspace matches then
-        Ok ()
-      else
-        Error "expected riot toolchain install to require a workspace"
-
-let test_toolchain_list_available_is_workspace_free = fun _ctx ->
-  match parse_toolchain [ "toolchain"; "list-available" ] with
-  | Error err -> Error err
-  | Ok matches ->
-      if Riot_cli.Toolchain_cmd.requires_workspace matches then
-        Error "expected riot toolchain list-available to stay workspace-free"
-      else
-        Ok ()
-
-let tests =
-  Test.[
-    case "build: workspace package labels stay bare" test_display_package_name_keeps_workspace_package_bare;
-    case "build: external package labels show version" test_display_package_name_shows_external_package_version;
-    case "build: external package labels show version and target" test_display_package_name_shows_external_package_version_and_target;
-    case "build: workspace test package labels show artifact and target" test_display_package_name_shows_workspace_test_and_target;
-    case "build: workspace bench package labels show artifact" test_display_package_name_shows_workspace_bench;
-    case "build: planning error lines explain internal module violations" test_planning_error_lines_describe_internal_module_violation;
-    case "build: planning error lines explain undeclared package modules" test_planning_error_lines_describe_undeclared_package_module;
-    case "build: planning error lines explain invalid executable main" test_planning_error_lines_describe_invalid_executable_main;
-    case "build: workspace planning error lines explain missing dependencies" test_workspace_planning_error_lines_describe_missing_dependencies;
-    case "build: planning error lines indent multiline reasons" test_planning_error_lines_indent_multiline_reasons;
-    case "build: final failure lines render planning errors" test_build_failure_detail_lines_render_planning_errors;
-    case "build: accept multiple package arguments" test_build_accepts_multiple_packages;
-    case "build: usage shows repeated package flag" test_build_usage_shows_repeated_package_flag;
-    case "build: reject positional package args" test_build_rejects_positional_package_args;
-    case "build: parse --json flag" test_build_accepts_json_flag;
-    case "build: parse --release flag" test_build_accepts_release_flag;
-    case "build: parse --tests flag" test_build_accepts_tests_flag;
-    case "build: parse --examples flag" test_build_accepts_examples_flag;
-    case "build: parse --benches flag" test_build_accepts_benches_flag;
-    case "build: parse --all flag" test_build_accepts_all_flag;
-    case "build: parse --jobs flag" test_build_accepts_jobs_flag;
-    case "build: reject invalid --jobs flag" test_build_rejects_invalid_jobs_flag;
-    case "build: accept --jobs flag at runtime" test_build_accepts_jobs_flag_in_run;
-    case "build: reject zero --jobs at runtime" test_build_rejects_zero_jobs_runtime;
-    case "build: reject negative --jobs at runtime" test_build_rejects_negative_jobs_runtime;
-    case "build: command accepts workspace" test_build_command_accepts_workspace;
-    case "build: run accepts workspace" test_build_run_accepts_workspace;
-    case ~size:Large "build: --tests compiles only test binaries" test_build_tests_compile_only_test_binaries;
-    case ~size:Large "build: --examples compiles only example binaries" test_build_examples_compile_only_example_binaries;
-    case ~size:Large "build: --benches compiles only bench binaries" test_build_benches_compile_only_bench_binaries;
-    case ~size:Large "build: --all compiles all dev binaries" test_build_all_compiles_all_dev_binaries;
-    case "test: parse --json flag" test_test_accepts_json_flag;
-    case "test: parse --release flag" test_test_accepts_release_flag;
-    case "test: parse --list flag" test_test_accepts_list_flag;
-    case "bench: parse --json flag" test_bench_accepts_json_flag;
-    case "bench: parse --release flag" test_bench_accepts_release_flag;
-    case "bench: parse --list flag" test_bench_accepts_list_flag;
-    case "bench: parse --iterations flag" test_bench_accepts_iterations_flag;
-    case "bench: parse --warmup flag" test_bench_accepts_warmup_flag;
-    case "bench: keep top-level flags after forwarded args" test_bench_invocation_args_keep_top_level_flags_after_forwarded_args;
-    case "run: parse missing name" test_run_accepts_missing_name;
-    case "run: parse --list flag" test_run_accepts_list_flag;
-    case "run: parse --list --json flags" test_run_accepts_list_json_flag;
-    case "run: parse --release flag" test_run_accepts_release_flag;
-    case "run: parse --update flag" test_run_accepts_update_flag;
-    case "install: parse missing name" test_install_accepts_missing_name;
-    case "install: parse --update flag" test_install_accepts_update_flag;
-    case "install: parse --package flag" test_install_accepts_package_flag;
-    case "info: parse --json flag" test_info_accepts_json_flag;
-    case "info: parse workspace target" test_info_accepts_workspace_target;
-    case "info: parse package target" test_info_accepts_package_target;
-    case "clean: parse --json flag" test_clean_accepts_json_flag;
-    case "clean: parse --force flag" test_clean_accepts_force_flag;
-    case "clean: usage explains cache gc and --force" test_clean_usage_explains_cache_gc_and_force;
-    case "workspace: no-workspace hint explains initialization" test_workspace_hint_mentions_riot_init;
-    case "toolchain: list requires workspace" test_toolchain_list_requires_workspace;
-    case "toolchain: install requires workspace" test_toolchain_install_requires_workspace;
-    case "toolchain: list-available is workspace-free" test_toolchain_list_available_is_workspace_free;
-    case "run: remote source defaults binary to repo name" test_run_defaults_remote_binary_to_repo_name;
-    case "run: trailing @ in remote target is rejected" test_run_rejects_trailing_remote_binary_separator;
-    case "run: runtime binaries use runtime scope" test_run_build_scope_uses_runtime_for_runtime_binaries;
-    case "run: test binaries use dev scope" test_run_build_scope_uses_dev_for_test_binaries;
-    case "run: missing binaries default to runtime scope" test_run_build_scope_defaults_to_runtime_when_binary_is_missing;
-    case "run: single implicit binary resolves" test_run_resolves_single_implicit_binary;
-    case "run: package-filtered implicit binary resolves" test_run_resolves_single_implicit_binary_in_package;
-    case "run: ambiguous implicit binary is rejected" test_run_rejects_ambiguous_implicit_binary;
-    case "run: missing binaries suggest creating one" test_run_reports_no_binaries_with_creation_hint;
-    case "run: package with no binaries suggests creating one" test_run_reports_package_without_binaries_with_creation_hint;
-    case "build: pm events hide workspace resolved packages" test_pm_event_hides_workspace_resolved_packages;
-    case "build: pm materialization start is hidden" test_pm_event_hides_materialization_started;
-    case "build: pm manifest fetch chatter is hidden" test_pm_event_hides_manifest_fetch_chatter;
-    case "build: pm download skipped is hidden" test_pm_event_hides_download_skipped;
-    case "build: pm installing source is shown with padding" test_pm_event_shows_installing_with_padding;
-    case "build: pm locked package is shown" test_pm_event_shows_locked_package;
-    case "build: pm no-op update is shown" test_pm_event_shows_up_to_date;
-  ]
+let tests = Test.[
+  case "build: workspace package labels stay bare" test_display_package_name_keeps_workspace_package_bare;
+  case "build: external package labels show version" test_display_package_name_shows_external_package_version;
+  case "build: external package labels show version and target" test_display_package_name_shows_external_package_version_and_target;
+  case "build: workspace test package labels show artifact and target" test_display_package_name_shows_workspace_test_and_target;
+  case "build: workspace bench package labels show artifact" test_display_package_name_shows_workspace_bench;
+  case "build: planning error lines explain internal module violations" test_planning_error_lines_describe_internal_module_violation;
+  case "build: planning error lines explain undeclared package modules" test_planning_error_lines_describe_undeclared_package_module;
+  case "build: planning error lines explain invalid executable main" test_planning_error_lines_describe_invalid_executable_main;
+  case "build: workspace planning error lines explain missing dependencies" test_workspace_planning_error_lines_describe_missing_dependencies;
+  case "build: planning error lines indent multiline reasons" test_planning_error_lines_indent_multiline_reasons;
+  case "build: final failure lines render planning errors" test_build_failure_detail_lines_render_planning_errors;
+  case "build: accept multiple package arguments" test_build_accepts_multiple_packages;
+  case "build: usage shows repeated package flag" test_build_usage_shows_repeated_package_flag;
+  case "build: reject positional package args" test_build_rejects_positional_package_args;
+  case "build: parse --json flag" test_build_accepts_json_flag;
+  case "build: parse --release flag" test_build_accepts_release_flag;
+  case "build: parse --tests flag" test_build_accepts_tests_flag;
+  case "build: parse --examples flag" test_build_accepts_examples_flag;
+  case "build: parse --benches flag" test_build_accepts_benches_flag;
+  case "build: parse --all flag" test_build_accepts_all_flag;
+  case "build: parse --jobs flag" test_build_accepts_jobs_flag;
+  case "build: reject invalid --jobs flag" test_build_rejects_invalid_jobs_flag;
+  case "build: accept --jobs flag at runtime" test_build_accepts_jobs_flag_in_run;
+  case "build: reject zero --jobs at runtime" test_build_rejects_zero_jobs_runtime;
+  case "build: reject negative --jobs at runtime" test_build_rejects_negative_jobs_runtime;
+  case "build: command accepts workspace" test_build_command_accepts_workspace;
+  case "build: run accepts workspace" test_build_run_accepts_workspace;
+  case ~size:Large "build: --tests compiles only test binaries" test_build_tests_compile_only_test_binaries;
+  case ~size:Large "build: --examples compiles only example binaries" test_build_examples_compile_only_example_binaries;
+  case ~size:Large "build: --benches compiles only bench binaries" test_build_benches_compile_only_bench_binaries;
+  case ~size:Large "build: --all compiles all dev binaries" test_build_all_compiles_all_dev_binaries;
+  case "test: parse --json flag" test_test_accepts_json_flag;
+  case "test: parse --release flag" test_test_accepts_release_flag;
+  case "test: parse --list flag" test_test_accepts_list_flag;
+  case "bench: parse --json flag" test_bench_accepts_json_flag;
+  case "bench: parse --release flag" test_bench_accepts_release_flag;
+  case "bench: parse --list flag" test_bench_accepts_list_flag;
+  case "bench: parse --iterations flag" test_bench_accepts_iterations_flag;
+  case "bench: parse --warmup flag" test_bench_accepts_warmup_flag;
+  case "bench: keep top-level flags after forwarded args" test_bench_invocation_args_keep_top_level_flags_after_forwarded_args;
+  case "run: parse missing name" test_run_accepts_missing_name;
+  case "run: parse --list flag" test_run_accepts_list_flag;
+  case "run: parse --list --json flags" test_run_accepts_list_json_flag;
+  case "run: parse --release flag" test_run_accepts_release_flag;
+  case "run: parse --update flag" test_run_accepts_update_flag;
+  case "install: parse missing name" test_install_accepts_missing_name;
+  case "install: parse --update flag" test_install_accepts_update_flag;
+  case "install: parse --package flag" test_install_accepts_package_flag;
+  case "info: parse --json flag" test_info_accepts_json_flag;
+  case "info: parse workspace target" test_info_accepts_workspace_target;
+  case "info: parse package target" test_info_accepts_package_target;
+  case "clean: parse --json flag" test_clean_accepts_json_flag;
+  case "clean: parse --force flag" test_clean_accepts_force_flag;
+  case "clean: usage explains cache gc and --force" test_clean_usage_explains_cache_gc_and_force;
+  case "run: remote source defaults binary to repo name" test_run_defaults_remote_binary_to_repo_name;
+  case "run: trailing @ in remote target is rejected" test_run_rejects_trailing_remote_binary_separator;
+  case "run: runtime binaries use runtime scope" test_run_build_scope_uses_runtime_for_runtime_binaries;
+  case "run: test binaries use dev scope" test_run_build_scope_uses_dev_for_test_binaries;
+  case "run: missing binaries default to runtime scope" test_run_build_scope_defaults_to_runtime_when_binary_is_missing;
+  case "run: single implicit binary resolves" test_run_resolves_single_implicit_binary;
+  case "run: package-filtered implicit binary resolves" test_run_resolves_single_implicit_binary_in_package;
+  case "run: ambiguous implicit binary is rejected" test_run_rejects_ambiguous_implicit_binary;
+  case "run: missing binaries suggest creating one" test_run_reports_no_binaries_with_creation_hint;
+  case "run: package with no binaries suggests creating one" test_run_reports_package_without_binaries_with_creation_hint;
+  case "build: pm events hide workspace resolved packages" test_pm_event_hides_workspace_resolved_packages;
+  case "build: pm materialization start is hidden" test_pm_event_hides_materialization_started;
+  case "build: pm manifest fetch chatter is hidden" test_pm_event_hides_manifest_fetch_chatter;
+  case "build: pm download skipped is hidden" test_pm_event_hides_download_skipped;
+  case "build: pm installing source is shown with padding" test_pm_event_shows_installing_with_padding;
+  case "build: pm locked package is shown" test_pm_event_shows_locked_package;
+  case "build: pm no-op update is shown" test_pm_event_shows_up_to_date;
+]
 
 let name = "Riot CLI Build Tests"
 

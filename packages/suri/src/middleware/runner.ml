@@ -19,8 +19,7 @@ let middleware = fun ~conn ~next ->
       let len = String.length frac_str in
       if len >= 4 then
         String.sub frac_str ~offset:0 ~len:4
-      else
-        frac_str ^ String.make ~len:(4 - len) ~char:'0'
+      else frac_str ^ String.make ~len:(4 - len) ~char:'0'
     in
     string_of_int whole ^ "." ^ padded
   in

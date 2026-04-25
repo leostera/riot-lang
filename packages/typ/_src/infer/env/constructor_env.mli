@@ -2,16 +2,14 @@ open Std
 open Model
 
 type entry
+
 type t
+
 val empty: t
 
 val of_type_decls: FileSummary.type_decl list -> t
 
-val singleton:
-  owner_path:SurfacePath.t ->
-  owner_type_constructor_id:TypeConstructorId.t ->
-  constructor:TypeDecl.constructor ->
-  t
+val singleton: owner_path:SurfacePath.t -> owner_type_constructor_id:TypeConstructorId.t -> constructor:TypeDecl.constructor -> t
 
 val local_only: t -> t
 

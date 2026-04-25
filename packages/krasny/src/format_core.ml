@@ -17,15 +17,13 @@ let parse2_diagnostics_to_string = fun diagnostics ->
     let first = Vector.get_unchecked diagnostics ~at:0 |> Syn.Diagnostic.to_string in
     if count = 1 then
       first
-    else
-      first ^ " (+" ^ Int.to_string (count - 1) ^ " more)"
+    else first ^ " (+" ^ Int.to_string (count - 1) ^ " more)"
 
 let format_error_to_string = function
   | Cannot_parse diagnostics -> parse2_diagnostics_to_string diagnostics
   | Cannot_lower err -> err
 
-let output_size_hint = fun (result: Syn.Parser.parse_result) ->
-  IO.IoVec.IoSlice.length result.source + 1
+let output_size_hint = fun (result: Syn.Parser.parse_result) -> IO.IoVec.IoSlice.length result.source + 1
 
 let source_slice = fun source ->
   match IO.IoVec.IoSlice.from_string source with
@@ -50,10 +48,11 @@ let buffer_writer = fun buffer ->
 
     let write_vectored = fun buffer ~from ->
       let written = ref 0 in
-      IO.IoVec.for_each from
-        ~fn:(fun segment ->
+      IO.IoVec.for_each from ~fn:(
+        fun segment ->
           append_slice buffer segment;
-          written := !written + IO.IoSlice.length segment);
+          written := !written + IO.IoSlice.length segment
+      );
       Ok !written
 
     let flush = fun _buffer -> Ok ()
@@ -63,8 +62,7 @@ let buffer_writer = fun buffer ->
 let finalize_rendered_output = fun rendered ->
   if String.length rendered = 0 || String.ends_with ~suffix:"\n" rendered then
     rendered
-  else
-    rendered ^ "\n"
+  else rendered ^ "\n"
 
 let stream_format = fun (result: Syn.Parser.parse_result) ~writer ~width ->
   yield ();
@@ -74,10 +72,8 @@ let stream_format = fun (result: Syn.Parser.parse_result) ~writer ~width ->
   else
     let source_file = Syn.Ast.SourceFile.make result.Syn.Parser.tree in
     match Streaming_lower.write ~writer ~width source_file with
-    | Error (Streaming_lower.Cannot_format err) ->
-        Error (Format_failed (Cannot_lower (Streaming_lower.error_to_string err)))
-    | Error (Streaming_lower.Cannot_write err) ->
-        Error (Write_failed err)
+    | Error (Streaming_lower.Cannot_format err) -> Error (Format_failed (Cannot_lower (Streaming_lower.error_to_string err)))
+    | Error (Streaming_lower.Cannot_write err) -> Error (Write_failed err)
     | Ok () ->
         yield ();
         Ok ()
@@ -94,5 +90,4 @@ let write = fun ~writer result -> stream_format result ~writer ~width:100
 
 let format = fun result -> stream_format_to_string result ~width:100
 
-let format_source = fun ~filename source ->
-  parse_source ~filename source |> stream_format_to_string ~width:100
+let format_source = fun ~filename source -> parse_source ~filename source |> stream_format_to_string ~width:100

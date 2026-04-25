@@ -1,12 +1,14 @@
-(** # System - System information and operations
+(**
+   # System - System information and operations
 
-    System-level operations and information queries with a small, explicit
-    surface.
+   System-level operations and information queries with a small, explicit
+   surface.
 
-    ## See Also
+   ## See Also
 
-    - [Env] for environment variables
-    - [Command] for running external processes *)
+   - [Env] for environment variables
+   - [Command] for running external processes 
+*)
 module TargetTriple = TargetTriple
 
 module OS = Os

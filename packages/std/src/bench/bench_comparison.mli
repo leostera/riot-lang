@@ -10,35 +10,37 @@ type t = {
   config: Bench_case.bench_config;
 }
 
-(** [compare description cases] creates a comparison benchmark with the default
-    configuration.
+(**
+   [compare description cases] creates a comparison benchmark with the default
+   configuration.
 
-    ## Example
+   ## Example
 
-    ```ocaml
-    Bench_comparison.compare
-      "insert 10k items"
-      [
-        Bench_case.case "HashMap" (fun () -> ());
-        Bench_case.case "Swisstable" (fun () -> ());
-      ]
-    ```
+   ```ocaml
+   Bench_comparison.compare
+     "insert 10k items"
+     [
+       Bench_case.case "HashMap" (fun () -> ());
+       Bench_case.case "Swisstable" (fun () -> ());
+     ]
+   ```
 *)
 val compare: string -> Bench_case.t list -> t
 
-(** [compare_with_config ~config description cases] creates a comparison benchmark
-    with a custom configuration.
+(**
+   [compare_with_config ~config description cases] creates a comparison benchmark
+   with a custom configuration.
 
-    ## Example
+   ## Example
 
-    ```ocaml
-    Bench_comparison.compare_with_config
-      ~config:{ iterations = 500; warmup = 20 }
-      "sort small vectors"
-      [
-        Bench_case.case "quicksort" (fun () -> ());
-        Bench_case.case "mergesort" (fun () -> ());
-      ]
-    ```
+   ```ocaml
+   Bench_comparison.compare_with_config
+     ~config:{ iterations = 500; warmup = 20 }
+     "sort small vectors"
+     [
+       Bench_case.case "quicksort" (fun () -> ());
+       Bench_case.case "mergesort" (fun () -> ());
+     ]
+   ```
 *)
 val compare_with_config: config:Bench_case.bench_config -> string -> Bench_case.t list -> t

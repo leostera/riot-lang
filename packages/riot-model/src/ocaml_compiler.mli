@@ -9,6 +9,7 @@ type mode =
   | Executable
   (** Link executable (default, no special flag) *)
   | CustomExe
+
 (** Link with C stubs (-custom flag) *)
 (** OCaml compiler warnings *)
 type warning =

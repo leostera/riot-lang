@@ -1,60 +1,62 @@
 open Global
 
-(** # Data.Sexp - S-expression parsing and printing
+(**
+   # Data.Sexp - S-expression parsing and printing
 
-    A library for working with S-expressions (symbolic expressions), a simple
-    and readable data format commonly used in Lisp-like languages and for
-    configuration files.
+   A library for working with S-expressions (symbolic expressions), a simple
+   and readable data format commonly used in Lisp-like languages and for
+   configuration files.
 
-    ## Examples
+   ## Examples
 
-    Basic parsing and construction:
+   Basic parsing and construction:
 
-    ```ocaml open Std.Data
+   ```ocaml open Std.Data
 
-    (* Parse from string *) match Sexp.of_string "(name Alice (age 30))" with |
-    Ok sexp -> Sexp.to_string sexp (* "(name Alice (age 30))" *) | Error msg ->
-    Log.error "Parse error: %s" msg
+   (* Parse from string *) match Sexp.of_string "(name Alice (age 30))" with |
+   Ok sexp -> Sexp.to_string sexp (* "(name Alice (age 30))" *) | Error msg ->
+   Log.error "Parse error: %s" msg
 
-    (* Build programmatically *) let person = Sexp.list
-    [ Sexp.atom "person"; Sexp.list [Sexp.atom "name"; Sexp.atom "Bob"];
-     Sexp.list [Sexp.atom "age"; Sexp.atom "25"] ] in Sexp.to_string person (*
-    "(person (name Bob) (age 25))" *) ```
+   (* Build programmatically *) let person = Sexp.list
+   [ Sexp.atom "person"; Sexp.list [Sexp.atom "name"; Sexp.atom "Bob"];
+    Sexp.list [Sexp.atom "age"; Sexp.atom "25"] ] in Sexp.to_string person (*
+   "(person (name Bob) (age 25))" *) ```
 
-    Extracting data:
+   Extracting data:
 
-    ```ocaml let config = Sexp.of_string "(config (debug true) (port 8080))" |>
-    Result.unwrap in
+   ```ocaml let config = Sexp.of_string "(config (debug true) (port 8080))" |>
+   Result.unwrap in
 
-    match Sexp.to_list config with | Some (Atom "config" :: fields) -> (* Look
-    up specific field *) (match Sexp.assoc "port" fields with | Some (Atom port)
-    -> Printf.printf "Port: %s\n" port | _ -> ()) | _ -> () ```
+   match Sexp.to_list config with | Some (Atom "config" :: fields) -> (* Look
+   up specific field *) (match Sexp.assoc "port" fields with | Some (Atom port)
+   -> Printf.printf "Port: %s\n" port | _ -> ()) | _ -> () ```
 
-    Pretty printing:
+   Pretty printing:
 
-    ```ocaml let complex = Sexp.list
-    [ Sexp.atom "database"; Sexp.list [Sexp.atom "host"; Sexp.atom "localhost"];
-     Sexp.list [Sexp.atom "credentials"; Sexp.list [Sexp.atom "user"; Sexp.atom
-     "admin"]; Sexp.list [Sexp.atom "password"; Sexp.atom "secret"] ] ] in
+   ```ocaml let complex = Sexp.list
+   [ Sexp.atom "database"; Sexp.list [Sexp.atom "host"; Sexp.atom "localhost"];
+    Sexp.list [Sexp.atom "credentials"; Sexp.list [Sexp.atom "user"; Sexp.atom
+    "admin"]; Sexp.list [Sexp.atom "password"; Sexp.atom "secret"] ] ] in
 
-    println (Sexp.pretty_print complex) (* Prints with indentation:
-    (database (host localhost) (credentials (user admin) (password secret))) *)
-    ```
+   println (Sexp.pretty_print complex) (* Prints with indentation:
+   (database (host localhost) (credentials (user admin) (password secret))) *)
+   ```
 
-    ## Use Cases
+   ## Use Cases
 
-    - Configuration files
-    - Data serialization
-    - AST representation
-    - Protocol messages
-    - Simple database formats *)
-
+   - Configuration files
+   - Data serialization
+   - AST representation
+   - Protocol messages
+   - Simple database formats 
+*)
 (** {1 Types} *)
+(**
+   S-expression representation.
 
-(** S-expression representation.
-
-    - [Atom]: A simple string value.
-    - [List]: A nested list of S-expressions. *)
+   - [Atom]: A simple string value.
+   - [List]: A nested list of S-expressions. 
+*)
 type t =
   | Atom of string
   | List of t list
@@ -63,192 +65,221 @@ type t =
 exception Parse_error of string
 
 (** {1 Parsing} *)
-(** Parses a string into an S-expression.
+(**
+   Parses a string into an S-expression.
 
-    ## Examples
+   ## Examples
 
-    ```ocaml
-    Sexp.of_string "(hello world)"  (* Ok (List [Atom "hello"; Atom "world"]) *)
-    Sexp.of_string "atom"  (* Ok (Atom "atom") *)
-    Sexp.of_string "(unclosed"  (* Error "..." *)
-    ```
+   ```ocaml
+   Sexp.of_string "(hello world)"  (* Ok (List [Atom "hello"; Atom "world"]) *)
+   Sexp.of_string "atom"  (* Ok (Atom "atom") *)
+   Sexp.of_string "(unclosed"  (* Error "..." *)
+   ```
 
-    ## Syntax
+   ## Syntax
 
-    - Atoms: Any sequence of characters without spaces or parens.
-    - Lists: Enclosed in parentheses [(...].
-    - Whitespace: Separates atoms, ignored otherwise. *)
+   - Atoms: Any sequence of characters without spaces or parens.
+   - Lists: Enclosed in parentheses [(...].
+   - Whitespace: Separates atoms, ignored otherwise. 
+*)
 val of_string: string -> (t, string) result
 
-(** Parses a string, raising [Parse_error] on failure.
+(**
+   Parses a string, raising [Parse_error] on failure.
 
-    ## Examples
+   ## Examples
 
-    ```ocaml
-    let sexp = Sexp.parse_exn "(foo bar)" in
-    (* Use when you know input is valid *)
-    ```
+   ```ocaml
+   let sexp = Sexp.parse_exn "(foo bar)" in
+   (* Use when you know input is valid *)
+   ```
 
-    ## Raises
+   ## Raises
 
-    [Parse_error] with an error message if parsing fails. *)
+   [Parse_error] with an error message if parsing fails. 
+*)
 val parse_exn: string -> t
 
-(** Parses multiple S-expressions from a string.
+(**
+   Parses multiple S-expressions from a string.
 
-    ## Examples
+   ## Examples
 
-    ```ocaml
-    match Sexp.parse_many "(first) (second) (third)" with
-    | Ok sexps -> List.length sexps  (* 3 *)
-    | Error _ -> ()
-    ``` *)
+   ```ocaml
+   match Sexp.parse_many "(first) (second) (third)" with
+   | Ok sexps -> List.length sexps  (* 3 *)
+   | Error _ -> ()
+   ``` 
+*)
 val parse_many: string -> (t list, string) result
 
 (** {1 Printing} *)
-(** Converts an S-expression to a compact string.
+(**
+   Converts an S-expression to a compact string.
 
-    ## Examples
+   ## Examples
 
-    ```ocaml
-    let s = Sexp.list [Sexp.atom "a"; Sexp.atom "b"] in
-    Sexp.to_string s  (* "(a b)" *)
-    ``` *)
+   ```ocaml
+   let s = Sexp.list [Sexp.atom "a"; Sexp.atom "b"] in
+   Sexp.to_string s  (* "(a b)" *)
+   ``` 
+*)
 val to_string: t -> string
 
-(** Pretty-prints an S-expression with indentation for readability.
+(**
+   Pretty-prints an S-expression with indentation for readability.
 
-    ## Examples
+   ## Examples
 
-    ```ocaml
-    let nested =
-      Sexp.list [ Sexp.atom "outer"; Sexp.list [ Sexp.atom "inner"; Sexp.atom "value" ] ]
-    in
-    Sexp.pretty_print nested  (* "(outer (inner value))" *)
-    ``` *)
+   ```ocaml
+   let nested =
+     Sexp.list [ Sexp.atom "outer"; Sexp.list [ Sexp.atom "inner"; Sexp.atom "value" ] ]
+   in
+   Sexp.pretty_print nested  (* "(outer (inner value))" *)
+   ``` 
+*)
 val pretty_print: t -> string
 
 (** {1 Constructors} *)
-(** Creates an atom S-expression.
+(**
+   Creates an atom S-expression.
 
-    ## Examples
+   ## Examples
 
-    ```ocaml
-    Sexp.atom "hello"  (* Atom "hello" *)
-    ``` *)
+   ```ocaml
+   Sexp.atom "hello"  (* Atom "hello" *)
+   ``` 
+*)
 val atom: string -> t
 
-(** Creates a list S-expression.
+(**
+   Creates a list S-expression.
 
-    ## Examples
+   ## Examples
 
-    ```ocaml
-    Sexp.list [ Sexp.atom "a"; Sexp.atom "b" ]  (* List [Atom "a"; Atom "b"] *)
-    Sexp.list []  (* List [] *)
-    ``` *)
+   ```ocaml
+   Sexp.list [ Sexp.atom "a"; Sexp.atom "b" ]  (* List [Atom "a"; Atom "b"] *)
+   Sexp.list []  (* List [] *)
+   ``` 
+*)
 val list: t list -> t
 
 (** {1 Accessors} *)
-(** Returns [true] if the S-expression is an atom.
+(**
+   Returns [true] if the S-expression is an atom.
 
-    ## Examples
+   ## Examples
 
-    ```ocaml
-    Sexp.is_atom (Sexp.atom "foo")  (* true *)
-    Sexp.is_atom (Sexp.list [])  (* false *)
-    ``` *)
+   ```ocaml
+   Sexp.is_atom (Sexp.atom "foo")  (* true *)
+   Sexp.is_atom (Sexp.list [])  (* false *)
+   ``` 
+*)
 val is_atom: t -> bool
 
-(** Returns [true] if the S-expression is a list.
+(**
+   Returns [true] if the S-expression is a list.
 
-    ## Examples
+   ## Examples
 
-    ```ocaml
-    Sexp.is_list (Sexp.list [])  (* true *)
-    Sexp.is_list (Sexp.atom "foo")  (* false *)
-    ``` *)
+   ```ocaml
+   Sexp.is_list (Sexp.list [])  (* true *)
+   Sexp.is_list (Sexp.atom "foo")  (* false *)
+   ``` 
+*)
 val is_list: t -> bool
 
-(** Extracts the string value if the S-expression is an atom.
+(**
+   Extracts the string value if the S-expression is an atom.
 
-    ## Examples
+   ## Examples
 
-    ```ocaml
-    Sexp.to_atom (Sexp.atom "hello")  (* Some "hello" *)
-    Sexp.to_atom (Sexp.list [])  (* None *)
-    ``` *)
+   ```ocaml
+   Sexp.to_atom (Sexp.atom "hello")  (* Some "hello" *)
+   Sexp.to_atom (Sexp.list [])  (* None *)
+   ``` 
+*)
 val to_atom: t -> string option
 
-(** Extracts the list if the S-expression is a list.
+(**
+   Extracts the list if the S-expression is a list.
 
-    ## Examples
+   ## Examples
 
-    ```ocaml
-    let s = Sexp.list [ Sexp.atom "a"; Sexp.atom "b" ] in
-    Sexp.to_list s  (* Some [Atom "a"; Atom "b"] *)
+   ```ocaml
+   let s = Sexp.list [ Sexp.atom "a"; Sexp.atom "b" ] in
+   Sexp.to_list s  (* Some [Atom "a"; Atom "b"] *)
 
-    Sexp.to_list (Sexp.atom "foo")  (* None *)
-    ``` *)
+   Sexp.to_list (Sexp.atom "foo")  (* None *)
+   ``` 
+*)
 val to_list: t -> t list option
 
-(** Searches for an atom by name in a nested structure.
+(**
+   Searches for an atom by name in a nested structure.
 
-    ## Examples
+   ## Examples
 
-    ```ocaml
-    let data =
-      [
-        Sexp.list [ Sexp.atom "name"; Sexp.atom "Alice" ];
-        Sexp.list [ Sexp.atom "age"; Sexp.atom "30" ];
-      ]
-    in
-    Sexp.find_atom "name" data  (* Some (List [Atom "name"; Atom "Alice"]) *)
-    ``` *)
+   ```ocaml
+   let data =
+     [
+       Sexp.list [ Sexp.atom "name"; Sexp.atom "Alice" ];
+       Sexp.list [ Sexp.atom "age"; Sexp.atom "30" ];
+     ]
+   in
+   Sexp.find_atom "name" data  (* Some (List [Atom "name"; Atom "Alice"]) *)
+   ``` 
+*)
 val find_atom: string -> t list -> t option
 
-(** Association list lookup that finds the value for a key in a list of
-    key-value pairs.
+(**
+   Association list lookup that finds the value for a key in a list of
+   key-value pairs.
 
-    ## Examples
+   ## Examples
 
-    ```ocaml
-    let pairs =
-      [
-        Sexp.list [ Sexp.atom "host"; Sexp.atom "localhost" ];
-        Sexp.list [ Sexp.atom "port"; Sexp.atom "8080" ];
-      ]
-    in
+   ```ocaml
+   let pairs =
+     [
+       Sexp.list [ Sexp.atom "host"; Sexp.atom "localhost" ];
+       Sexp.list [ Sexp.atom "port"; Sexp.atom "8080" ];
+     ]
+   in
 
-    match Sexp.assoc "port" pairs with
-    | Some (Atom port) -> Printf.printf "Port: %s\n" port
-    | _ -> ()
-    ``` *)
+   match Sexp.assoc "port" pairs with
+   | Some (Atom port) -> Printf.printf "Port: %s\n" port
+   | _ -> ()
+   ``` 
+*)
 val assoc: string -> t list -> t option
 
 (** {1 Canonical S-expressions (Csexp)} *)
+module Csexp : sig
+  (**
+     Converts to canonical S-expression format, a length-prefixed,
+     unambiguous encoding.
 
-module Csexp: sig
-  (** Converts to canonical S-expression format, a length-prefixed,
-      unambiguous encoding.
+     ## Examples
 
-      ## Examples
+     ```ocaml
+     let s = Sexp.atom "hello" in
+     Csexp.to_string s  (* "5:hello" *)
 
-      ```ocaml
-      let s = Sexp.atom "hello" in
-      Csexp.to_string s  (* "5:hello" *)
-
-      let lst = Sexp.list [ Sexp.atom "a"; Sexp.atom "b" ] in
-      Csexp.to_string lst  (* "(1:a1:b)" *)
-      ``` *)
+     let lst = Sexp.list [ Sexp.atom "a"; Sexp.atom "b" ] in
+     Csexp.to_string lst  (* "(1:a1:b)" *)
+     ``` 
+  *)
   val to_string: t -> string
 
-  (** Parses canonical S-expression format.
+  (**
+     Parses canonical S-expression format.
 
-      ## Examples
+     ## Examples
 
-      ```ocaml
-      Csexp.of_string "5:hello"  (* Ok (Atom "hello") *)
-      Csexp.of_string "(1:a1:b)"  (* Ok (List [Atom "a"; Atom "b"]) *)
-      ``` *)
+     ```ocaml
+     Csexp.of_string "5:hello"  (* Ok (Atom "hello") *)
+     Csexp.of_string "(1:a1:b)"  (* Ok (List [Atom "a"; Atom "b"]) *)
+     ``` 
+  *)
   val of_string: string -> (t, string) result
 end

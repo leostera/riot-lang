@@ -1,10 +1,8 @@
 open Std
+
 module Diagnostic = Markdown_diagnostic
 
-type source_layout = {
-  lines: string list;
-  line_starts: int list;
-}
+type source_layout = { lines: string list; line_starts: int list }
 
 let make_source_layout = fun source ->
   let lines = String.split ~by:"\n" source in
@@ -13,8 +11,7 @@ let make_source_layout = fun source ->
     | [] -> List.reverse acc
     | head :: tail -> build_starts tail (offset + String.length head + 1) (offset :: acc)
   in
-  let line_starts = build_starts lines 0 [] in
-  { lines; line_starts }
+  let line_starts = build_starts lines 0 [] in { lines; line_starts }
 
 let nth_opt = fun list index ->
   let rec loop idx values =
@@ -23,26 +20,23 @@ let nth_opt = fun list index ->
     | head :: tail ->
         if idx = index then
           Some head
-        else
-          loop (idx + 1) tail
+        else loop (idx + 1) tail
   in
   loop 0 list
 
 let line_for_pos = fun layout pos ->
   let rec loop remaining index current best =
     match remaining with
-    | [] -> (best, current)
+    | [] -> best, current
     | head :: tail ->
         if head > pos then
           (best, current)
-        else
-          loop tail (index + 1) head index
+        else loop tail (index + 1) head index
   in
   if layout.line_starts = [] then
     (0, 0)
   else
-    let line_idx, line_start = loop layout.line_starts 0 0 0 in
-    (line_idx, Int.max 0 (pos - line_start))
+    let line_idx, line_start = loop layout.line_starts 0 0 0 in (line_idx, Int.max 0 (pos - line_start))
 
 let extract_code_snippet = fun layout (span: Ceibo.Span.t) ->
   if layout.lines = [] then
@@ -52,8 +46,7 @@ let extract_code_snippet = fun layout (span: Ceibo.Span.t) ->
     match nth_opt layout.lines line_idx with
     | None -> None
     | Some code_line ->
-        let pointer = String.make ~len:start_col ~char:' ' ^ "^" in
-        Some (code_line, pointer, line_idx + 1)
+        let pointer = String.make ~len:start_col ~char:' ' ^ "^" in Some (code_line, pointer, line_idx + 1)
 
 let format = fun ~file ~source diagnostics ->
   let layout = make_source_layout source in
@@ -65,17 +58,7 @@ let format = fun ~file ~source diagnostics ->
     let line =
       match extract_code_snippet layout diag.span with
       | None -> "  |\n"
-      | Some (code_line, pointer, line_num) -> file
-      ^ "\n"
-      ^ Int.to_string line_num
-      ^ " | "
-      ^ code_line
-      ^ "\n"
-      ^ "  | "
-      ^ pointer
-      ^ " expected "
-      ^ expected
-      ^ "\n"
+      | Some (code_line, pointer, line_num) -> file ^ "\n" ^ Int.to_string line_num ^ " | " ^ code_line ^ "\n" ^ "  | " ^ pointer ^ " expected " ^ expected ^ "\n"
     in
     let rendered_fix =
       match fix with

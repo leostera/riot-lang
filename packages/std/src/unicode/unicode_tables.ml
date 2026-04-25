@@ -1,96 +1,96 @@
 (* Auto-generated from Go's unicode/tables.go - DO NOT EDIT *)
-
 (* Unicode Version: 15.0.0 *)
-
 open Prelude
 open Collections
 
 (** Range of 16-bit Unicode code points *)
 type range16 = {
-  lo: int;  (** Start of range *)
-  hi: int;  (** End of range *)
-  stride: int;  (** Step (1 = all chars, 2 = every other) *)
+  lo: int;
+  (** Start of range *)
+  hi: int;
+  (** End of range *)
+  stride: int;
+  (** Step (1 = all chars, 2 = every other) *)
 }
 
 (** Range of 32-bit Unicode code points *)
 type range32 = {
-  lo: int;  (** Start of range *)
-  hi: int;  (** End of range *)
-  stride: int;  (** Step *)
+  lo: int;
+  (** Start of range *)
+  hi: int;
+  (** End of range *)
+  stride: int;
+  (** Step *)
 }
 
 (** Table of Unicode ranges for a category *)
 type range_table = {
-  r16: range16 array;  (** Ranges for code points < 0x10000 *)
-  r32: range32 array;  (** Ranges for code points >= 0x10000 *)
-  latin_offset: int;  (** Number of R16 entries with Hi <= 0xFF *)
+  r16: range16 array;
+  (** Ranges for code points < 0x10000 *)
+  r32: range32 array;
+  (** Ranges for code points >= 0x10000 *)
+  latin_offset: int;
+  (** Number of R16 entries with Hi <= 0xFF *)
 }
 
 (** Check if code point is in 16-bit range *)
-let in_range16: range16 -> int -> bool = fun r code ->
-  code >= r.lo && code <= r.hi && (r.stride = 1 || (code - r.lo) mod r.stride = 0)
+let in_range16: range16 -> int -> bool = fun r code -> code >= r.lo && code <= r.hi && (r.stride = 1 || (code - r.lo) mod r.stride = 0)
 
 (** Check if code point is in 32-bit range *)
-let in_range32: range32 -> int -> bool = fun r code ->
-  code >= r.lo && code <= r.hi && (r.stride = 1 || (code - r.lo) mod r.stride = 0)
+let in_range32: range32 -> int -> bool = fun r code -> code >= r.lo && code <= r.hi && (r.stride = 1 || (code - r.lo) mod r.stride = 0)
 
 (** Check if code point is in range table using binary search *)
 let in_table: range_table -> int -> bool = fun tbl code ->
   if code < 0 || code > 0x10_ffff then
     false
-  else if code < 0x1_0000 then
-    begin
-      (* Binary search in R16 *)
-      let rec search lo hi =
-        if lo > hi then
-          false
-        else
-          let mid = (lo + hi) / 2 in
-          let range = Array.get_unchecked tbl.r16 ~at:mid in
-          if code < range.lo then
-            search lo (mid - 1)
-          else if code > range.hi then
-            search (mid + 1) hi
-          else
-            in_range16 range code
-      in
-      let len = Array.length tbl.r16 in
-      if len = 0 then
-        false
-      else
-        search 0 (len - 1)
-    end
   else
-    begin
-      (* Binary search in R32 *)
-      let rec search lo hi =
-        if lo > hi then
-          false
-        else
-          let mid = (lo + hi) / 2 in
-          let range = Array.get_unchecked tbl.r32 ~at:mid in
-          if code < range.lo then
-            search lo (mid - 1)
-          else if code > range.hi then
-            search (mid + 1) hi
+    if code < 0x1_0000 then
+      begin
+        (* Binary search in R16 *)
+        let rec search lo hi =
+          if lo > hi then
+            false
           else
-            in_range32 range code
-      in
-      let len = Array.length tbl.r32 in
-      if len = 0 then
-        false
-      else
-        search 0 (len - 1)
-    end
+            let mid = (lo + hi) / 2 in
+            let range = Array.get_unchecked tbl.r16 ~at:mid in
+            if code < range.lo then
+              search lo (mid - 1)
+            else
+              if code > range.hi then
+                search (mid + 1) hi
+              else in_range16 range code
+        in
+        let len = Array.length tbl.r16 in
+        if len = 0 then
+          false
+        else search 0 (len - 1)
+      end
+    else
+      begin
+        (* Binary search in R32 *)
+        let rec search lo hi =
+          if lo > hi then
+            false
+          else
+            let mid = (lo + hi) / 2 in
+            let range = Array.get_unchecked tbl.r32 ~at:mid in
+            if code < range.lo then
+              search lo (mid - 1)
+            else
+              if code > range.hi then
+                search (mid + 1) hi
+              else in_range32 range code
+        in
+        let len = Array.length tbl.r32 in
+        if len = 0 then
+          false
+        else search 0 (len - 1)
+      end
 
 (* ============================================ *)
-
 (* Unicode Category Tables                     *)
-
 (* ============================================ *)
-
 (* c *)
-
 let _c = {
   r16 = [|
     { lo = 0x0000; hi = 0x001f; stride = 1 };
@@ -388,15 +388,16 @@ let _c = {
 }
 
 (* cc *)
-
 let _cc = {
-  r16 = [|{ lo = 0x0000; hi = 0x001f; stride = 1 }; { lo = 0x007f; hi = 0x009f; stride = 1 };|];
+  r16 = [|
+    { lo = 0x0000; hi = 0x001f; stride = 1 };
+    { lo = 0x007f; hi = 0x009f; stride = 1 };
+  |];
   r32 = [||];
   latin_offset = 0
 }
 
 (* cf *)
-
 let _cf = {
   r16 = [|
     { lo = 0x00ad; hi = 0x0600; stride = 1_363 };
@@ -417,7 +418,6 @@ let _cf = {
 }
 
 (* cn *)
-
 let _cn = {
   r16 = [|
     { lo = 0x0378; hi = 0x0379; stride = 1 };
@@ -707,15 +707,12 @@ let _cn = {
 }
 
 (* co *)
-
-let _co = { r16 = [|{ lo = 0xe000; hi = 0xf8ff; stride = 1 };|]; r32 = [||]; latin_offset = 0 }
+let _co = { r16 = [|{ lo = 0xe000; hi = 0xf8ff; stride = 1 }|]; r32 = [||]; latin_offset = 0 }
 
 (* cs *)
-
-let _cs = { r16 = [|{ lo = 0xd800; hi = 0xdfff; stride = 1 };|]; r32 = [||]; latin_offset = 0 }
+let _cs = { r16 = [|{ lo = 0xd800; hi = 0xdfff; stride = 1 }|]; r32 = [||]; latin_offset = 0 }
 
 (* l *)
-
 let _l = {
   r16 = [|
     { lo = 0x0041; hi = 0x005a; stride = 1 };
@@ -1083,7 +1080,6 @@ let _l = {
 }
 
 (* lc *)
-
 let _lc = {
   r16 = [|
     { lo = 0x0041; hi = 0x005a; stride = 1 };
@@ -1178,7 +1174,6 @@ let _lc = {
 }
 
 (* ll *)
-
 let _ll = {
   r16 = [|
     { lo = 0x0061; hi = 0x007a; stride = 1 };
@@ -1309,7 +1304,6 @@ let _ll = {
 }
 
 (* lm *)
-
 let _lm = {
   r16 = [|
     { lo = 0x02b0; hi = 0x02c1; stride = 1 };
@@ -1359,7 +1353,6 @@ let _lm = {
 }
 
 (* lo *)
-
 let _lo = {
   r16 = [|
     { lo = 0x00aa; hi = 0x00ba; stride = 16 };
@@ -1647,7 +1640,6 @@ let _lo = {
 }
 
 (* lt *)
-
 let _lt = {
   r16 = [|
     { lo = 0x01c5; hi = 0x01cb; stride = 3 };
@@ -1663,7 +1655,6 @@ let _lt = {
 }
 
 (* lu *)
-
 let _lu = {
   r16 = [|
     { lo = 0x0041; hi = 0x005a; stride = 1 };
@@ -1781,7 +1772,6 @@ let _lu = {
 }
 
 (* m *)
-
 let _m = {
   r16 = [|
     { lo = 0x0300; hi = 0x036f; stride = 1 };
@@ -1972,7 +1962,6 @@ let _m = {
 }
 
 (* mc *)
-
 let _mc = {
   r16 = [|
     { lo = 0x0903; hi = 0x093b; stride = 56 };
@@ -2079,7 +2068,6 @@ let _mc = {
 }
 
 (* me *)
-
 let _me = {
   r16 = [|
     { lo = 0x0488; hi = 0x0489; stride = 1 };
@@ -2093,7 +2081,6 @@ let _me = {
 }
 
 (* mn *)
-
 let _mn = {
   r16 = [|
     { lo = 0x0300; hi = 0x036f; stride = 1 };
@@ -2285,7 +2272,6 @@ let _mn = {
 }
 
 (* n *)
-
 let _n = {
   r16 = [|
     { lo = 0x0030; hi = 0x0039; stride = 1 };
@@ -2360,7 +2346,6 @@ let _n = {
 }
 
 (* nd *)
-
 let _nd = {
   r16 = [|
     { lo = 0x0030; hi = 0x0039; stride = 1 };
@@ -2406,7 +2391,6 @@ let _nd = {
 }
 
 (* nl *)
-
 let _nl = {
   r16 = [|
     { lo = 0x16ee; hi = 0x16f0; stride = 1 };
@@ -2422,7 +2406,6 @@ let _nl = {
 }
 
 (* no *)
-
 let _no = {
   r16 = [|
     { lo = 0x00b2; hi = 0x00b3; stride = 1 };
@@ -2459,7 +2442,6 @@ let _no = {
 }
 
 (* p *)
-
 let _p = {
   r16 = [|
     { lo = 0x0021; hi = 0x0023; stride = 1 };
@@ -2583,7 +2565,6 @@ let _p = {
 }
 
 (* pc *)
-
 let _pc = {
   r16 = [|
     { lo = 0x005f; hi = 0x203f; stride = 8_160 };
@@ -2597,7 +2578,6 @@ let _pc = {
 }
 
 (* pd *)
-
 let _pd = {
   r16 = [|
     { lo = 0x002d; hi = 0x058a; stride = 1_373 };
@@ -2617,7 +2597,6 @@ let _pd = {
 }
 
 (* pe *)
-
 let _pe = {
   r16 = [|
     { lo = 0x0029; hi = 0x005d; stride = 52 };
@@ -2649,7 +2628,6 @@ let _pe = {
 }
 
 (* pf *)
-
 let _pf = {
   r16 = [|
     { lo = 0x00bb; hi = 0x2019; stride = 8_030 };
@@ -2663,7 +2641,6 @@ let _pf = {
 }
 
 (* pi *)
-
 let _pi = {
   r16 = [|
     { lo = 0x00ab; hi = 0x2018; stride = 8_045 };
@@ -2678,7 +2655,6 @@ let _pi = {
 }
 
 (* po *)
-
 let _po = {
   r16 = [|
     { lo = 0x0021; hi = 0x0023; stride = 1 };
@@ -2800,7 +2776,6 @@ let _po = {
 }
 
 (* ps *)
-
 let _ps = {
   r16 = [|
     { lo = 0x0028; hi = 0x005b; stride = 51 };
@@ -2835,7 +2810,6 @@ let _ps = {
 }
 
 (* s *)
-
 let _s = {
   r16 = [|
     { lo = 0x0024; hi = 0x002b; stride = 7 };
@@ -2973,7 +2947,6 @@ let _s = {
 }
 
 (* sc *)
-
 let _sc = {
   r16 = [|
     { lo = 0x0024; hi = 0x00a2; stride = 126 };
@@ -2995,7 +2968,6 @@ let _sc = {
 }
 
 (* sk *)
-
 let _sk = {
   r16 = [|
     { lo = 0x005e; hi = 0x0060; stride = 2 };
@@ -3029,7 +3001,6 @@ let _sk = {
 }
 
 (* sm *)
-
 let _sm = {
   r16 = [|
     { lo = 0x002b; hi = 0x003c; stride = 17 };
@@ -3081,7 +3052,6 @@ let _sm = {
 }
 
 (* so *)
-
 let _so = {
   r16 = [|
     { lo = 0x00a6; hi = 0x00a9; stride = 3 };
@@ -3189,7 +3159,6 @@ let _so = {
 }
 
 (* z *)
-
 let _z = {
   r16 = [|
     { lo = 0x0020; hi = 0x00a0; stride = 128 };
@@ -3204,15 +3173,12 @@ let _z = {
 }
 
 (* zl *)
-
-let _zl = { r16 = [|{ lo = 0x2028; hi = 0x2028; stride = 1 };|]; r32 = [||]; latin_offset = 0 }
+let _zl = { r16 = [|{ lo = 0x2028; hi = 0x2028; stride = 1 }|]; r32 = [||]; latin_offset = 0 }
 
 (* zp *)
-
-let _zp = { r16 = [|{ lo = 0x2029; hi = 0x2029; stride = 1 };|]; r32 = [||]; latin_offset = 0 }
+let _zp = { r16 = [|{ lo = 0x2029; hi = 0x2029; stride = 1 }|]; r32 = [||]; latin_offset = 0 }
 
 (* zs *)
-
 let _zs = {
   r16 = [|
     { lo = 0x0020; hi = 0x00a0; stride = 128 };
@@ -3226,7 +3192,6 @@ let _zs = {
 }
 
 (* adlam *)
-
 let _adlam = {
   r16 = [||];
   r32 = [|
@@ -3238,7 +3203,6 @@ let _adlam = {
 }
 
 (* ahom *)
-
 let _ahom = {
   r16 = [||];
   r32 = [|
@@ -3250,15 +3214,9 @@ let _ahom = {
 }
 
 (* anatolian_hieroglyphs *)
-
-let _anatolian_hieroglyphs = {
-  r16 = [||];
-  r32 = [|{ lo = 0x01_4400; hi = 0x01_4646; stride = 1 };|];
-  latin_offset = 0
-}
+let _anatolian_hieroglyphs = { r16 = [||]; r32 = [|{ lo = 0x01_4400; hi = 0x01_4646; stride = 1 }|]; latin_offset = 0 }
 
 (* arabic *)
-
 let _arabic = {
   r16 = [|
     { lo = 0x0600; hi = 0x0604; stride = 1 };
@@ -3289,7 +3247,6 @@ let _arabic = {
 }
 
 (* armenian *)
-
 let _armenian = {
   r16 = [|
     { lo = 0x0531; hi = 0x0556; stride = 1 };
@@ -3302,7 +3259,6 @@ let _armenian = {
 }
 
 (* avestan *)
-
 let _avestan = {
   r16 = [||];
   r32 = [|
@@ -3313,19 +3269,19 @@ let _avestan = {
 }
 
 (* balinese *)
-
 let _balinese = {
-  r16 = [|{ lo = 0x1b00; hi = 0x1b4c; stride = 1 }; { lo = 0x1b50; hi = 0x1b7e; stride = 1 };|];
+  r16 = [|
+    { lo = 0x1b00; hi = 0x1b4c; stride = 1 };
+    { lo = 0x1b50; hi = 0x1b7e; stride = 1 };
+  |];
   r32 = [||];
   latin_offset = 0
 }
 
 (* bamum *)
-
-let _bamum = { r16 = [|{ lo = 0xa6a0; hi = 0xa6f7; stride = 1 };|]; r32 = [||]; latin_offset = 0 }
+let _bamum = { r16 = [|{ lo = 0xa6a0; hi = 0xa6f7; stride = 1 }|]; r32 = [||]; latin_offset = 0 }
 
 (* bassa_vah *)
-
 let _bassa_vah = {
   r16 = [||];
   r32 = [|
@@ -3336,15 +3292,16 @@ let _bassa_vah = {
 }
 
 (* batak *)
-
 let _batak = {
-  r16 = [|{ lo = 0x1bc0; hi = 0x1bf3; stride = 1 }; { lo = 0x1bfc; hi = 0x1bff; stride = 1 };|];
+  r16 = [|
+    { lo = 0x1bc0; hi = 0x1bf3; stride = 1 };
+    { lo = 0x1bfc; hi = 0x1bff; stride = 1 };
+  |];
   r32 = [||];
   latin_offset = 0
 }
 
 (* bengali *)
-
 let _bengali = {
   r16 = [|
     { lo = 0x0980; hi = 0x0983; stride = 1 };
@@ -3367,7 +3324,6 @@ let _bengali = {
 }
 
 (* bhaiksuki *)
-
 let _bhaiksuki = {
   r16 = [||];
   r32 = [|
@@ -3380,7 +3336,6 @@ let _bhaiksuki = {
 }
 
 (* bopomofo *)
-
 let _bopomofo = {
   r16 = [|
     { lo = 0x02ea; hi = 0x02eb; stride = 1 };
@@ -3392,7 +3347,6 @@ let _bopomofo = {
 }
 
 (* brahmi *)
-
 let _brahmi = {
   r16 = [||];
   r32 = [|
@@ -3404,39 +3358,35 @@ let _brahmi = {
 }
 
 (* braille *)
-
-let _braille = { r16 = [|{ lo = 0x2800; hi = 0x28ff; stride = 1 };|]; r32 = [||]; latin_offset = 0 }
+let _braille = { r16 = [|{ lo = 0x2800; hi = 0x28ff; stride = 1 }|]; r32 = [||]; latin_offset = 0 }
 
 (* buginese *)
-
 let _buginese = {
-  r16 = [|{ lo = 0x1a00; hi = 0x1a1b; stride = 1 }; { lo = 0x1a1e; hi = 0x1a1f; stride = 1 };|];
+  r16 = [|
+    { lo = 0x1a00; hi = 0x1a1b; stride = 1 };
+    { lo = 0x1a1e; hi = 0x1a1f; stride = 1 };
+  |];
   r32 = [||];
   latin_offset = 0
 }
 
 (* buhid *)
-
-let _buhid = { r16 = [|{ lo = 0x1740; hi = 0x1753; stride = 1 };|]; r32 = [||]; latin_offset = 0 }
+let _buhid = { r16 = [|{ lo = 0x1740; hi = 0x1753; stride = 1 }|]; r32 = [||]; latin_offset = 0 }
 
 (* canadian_aboriginal *)
-
 let _canadian_aboriginal = {
-  r16 = [|{ lo = 0x1400; hi = 0x167f; stride = 1 }; { lo = 0x18b0; hi = 0x18f5; stride = 1 };|];
+  r16 = [|
+    { lo = 0x1400; hi = 0x167f; stride = 1 };
+    { lo = 0x18b0; hi = 0x18f5; stride = 1 };
+  |];
   r32 = [||];
   latin_offset = 0
 }
 
 (* carian *)
-
-let _carian = {
-  r16 = [||];
-  r32 = [|{ lo = 0x01_02a0; hi = 0x01_02d0; stride = 1 };|];
-  latin_offset = 0
-}
+let _carian = { r16 = [||]; r32 = [|{ lo = 0x01_02a0; hi = 0x01_02d0; stride = 1 }|]; latin_offset = 0 }
 
 (* caucasian_albanian *)
-
 let _caucasian_albanian = {
   r16 = [||];
   r32 = [|
@@ -3447,7 +3397,6 @@ let _caucasian_albanian = {
 }
 
 (* chakma *)
-
 let _chakma = {
   r16 = [||];
   r32 = [|
@@ -3458,7 +3407,6 @@ let _chakma = {
 }
 
 (* cham *)
-
 let _cham = {
   r16 = [|
     { lo = 0xaa00; hi = 0xaa36; stride = 1 };
@@ -3471,7 +3419,6 @@ let _cham = {
 }
 
 (* cherokee *)
-
 let _cherokee = {
   r16 = [|
     { lo = 0x13a0; hi = 0x13f5; stride = 1 };
@@ -3483,15 +3430,9 @@ let _cherokee = {
 }
 
 (* chorasmian *)
-
-let _chorasmian = {
-  r16 = [||];
-  r32 = [|{ lo = 0x01_0fb0; hi = 0x01_0fcb; stride = 1 };|];
-  latin_offset = 0
-}
+let _chorasmian = { r16 = [||]; r32 = [|{ lo = 0x01_0fb0; hi = 0x01_0fcb; stride = 1 }|]; latin_offset = 0 }
 
 (* common *)
-
 let _common = {
   r16 = [|
     { lo = 0x0000; hi = 0x0040; stride = 1 };
@@ -3582,7 +3523,6 @@ let _common = {
 }
 
 (* coptic *)
-
 let _coptic = {
   r16 = [|
     { lo = 0x03e2; hi = 0x03ef; stride = 1 };
@@ -3594,7 +3534,6 @@ let _coptic = {
 }
 
 (* cuneiform *)
-
 let _cuneiform = {
   r16 = [||];
   r32 = [|
@@ -3607,7 +3546,6 @@ let _cuneiform = {
 }
 
 (* cypriot *)
-
 let _cypriot = {
   r16 = [||];
   r32 = [|
@@ -3621,15 +3559,9 @@ let _cypriot = {
 }
 
 (* cypro_minoan *)
-
-let _cypro_minoan = {
-  r16 = [||];
-  r32 = [|{ lo = 0x01_2f90; hi = 0x01_2ff2; stride = 1 };|];
-  latin_offset = 0
-}
+let _cypro_minoan = { r16 = [||]; r32 = [|{ lo = 0x01_2f90; hi = 0x01_2ff2; stride = 1 }|]; latin_offset = 0 }
 
 (* cyrillic *)
-
 let _cyrillic = {
   r16 = [|
     { lo = 0x0400; hi = 0x0484; stride = 1 };
@@ -3645,15 +3577,9 @@ let _cyrillic = {
 }
 
 (* deseret *)
-
-let _deseret = {
-  r16 = [||];
-  r32 = [|{ lo = 0x01_0400; hi = 0x01_044f; stride = 1 };|];
-  latin_offset = 0
-}
+let _deseret = { r16 = [||]; r32 = [|{ lo = 0x01_0400; hi = 0x01_044f; stride = 1 }|]; latin_offset = 0 }
 
 (* devanagari *)
-
 let _devanagari = {
   r16 = [|
     { lo = 0x0900; hi = 0x0950; stride = 1 };
@@ -3666,7 +3592,6 @@ let _devanagari = {
 }
 
 (* dives_akuru *)
-
 let _dives_akuru = {
   r16 = [||];
   r32 = [|
@@ -3683,15 +3608,9 @@ let _dives_akuru = {
 }
 
 (* dogra *)
-
-let _dogra = {
-  r16 = [||];
-  r32 = [|{ lo = 0x01_1800; hi = 0x01_183b; stride = 1 };|];
-  latin_offset = 0
-}
+let _dogra = { r16 = [||]; r32 = [|{ lo = 0x01_1800; hi = 0x01_183b; stride = 1 }|]; latin_offset = 0 }
 
 (* duployan *)
-
 let _duployan = {
   r16 = [||];
   r32 = [|
@@ -3705,31 +3624,15 @@ let _duployan = {
 }
 
 (* egyptian_hieroglyphs *)
-
-let _egyptian_hieroglyphs = {
-  r16 = [||];
-  r32 = [|{ lo = 0x01_3000; hi = 0x01_3455; stride = 1 };|];
-  latin_offset = 0
-}
+let _egyptian_hieroglyphs = { r16 = [||]; r32 = [|{ lo = 0x01_3000; hi = 0x01_3455; stride = 1 }|]; latin_offset = 0 }
 
 (* elbasan *)
-
-let _elbasan = {
-  r16 = [||];
-  r32 = [|{ lo = 0x01_0500; hi = 0x01_0527; stride = 1 };|];
-  latin_offset = 0
-}
+let _elbasan = { r16 = [||]; r32 = [|{ lo = 0x01_0500; hi = 0x01_0527; stride = 1 }|]; latin_offset = 0 }
 
 (* elymaic *)
-
-let _elymaic = {
-  r16 = [||];
-  r32 = [|{ lo = 0x01_0fe0; hi = 0x01_0ff6; stride = 1 };|];
-  latin_offset = 0
-}
+let _elymaic = { r16 = [||]; r32 = [|{ lo = 0x01_0fe0; hi = 0x01_0ff6; stride = 1 }|]; latin_offset = 0 }
 
 (* ethiopic *)
-
 let _ethiopic = {
   r16 = [|
     { lo = 0x1200; hi = 0x1248; stride = 1 };
@@ -3770,7 +3673,6 @@ let _ethiopic = {
 }
 
 (* georgian *)
-
 let _georgian = {
   r16 = [|
     { lo = 0x10a0; hi = 0x10c5; stride = 1 };
@@ -3787,23 +3689,12 @@ let _georgian = {
 }
 
 (* glagolitic *)
-
-let _glagolitic = {
-  r16 = [|{ lo = 0x2c00; hi = 0x2c5f; stride = 1 };|];
-  r32 = [||];
-  latin_offset = 0
-}
+let _glagolitic = { r16 = [|{ lo = 0x2c00; hi = 0x2c5f; stride = 1 }|]; r32 = [||]; latin_offset = 0 }
 
 (* gothic *)
-
-let _gothic = {
-  r16 = [||];
-  r32 = [|{ lo = 0x01_0330; hi = 0x01_034a; stride = 1 };|];
-  latin_offset = 0
-}
+let _gothic = { r16 = [||]; r32 = [|{ lo = 0x01_0330; hi = 0x01_034a; stride = 1 }|]; latin_offset = 0 }
 
 (* grantha *)
-
 let _grantha = {
   r16 = [||];
   r32 = [|
@@ -3826,7 +3717,6 @@ let _grantha = {
 }
 
 (* greek *)
-
 let _greek = {
   r16 = [|
     { lo = 0x0370; hi = 0x0373; stride = 1 };
@@ -3864,7 +3754,6 @@ let _greek = {
 }
 
 (* gujarati *)
-
 let _gujarati = {
   r16 = [|
     { lo = 0x0a81; hi = 0x0a83; stride = 1 };
@@ -3887,7 +3776,6 @@ let _gujarati = {
 }
 
 (* gunjala_gondi *)
-
 let _gunjala_gondi = {
   r16 = [||];
   r32 = [|
@@ -3902,7 +3790,6 @@ let _gunjala_gondi = {
 }
 
 (* gurmukhi *)
-
 let _gurmukhi = {
   r16 = [|
     { lo = 0x0a01; hi = 0x0a03; stride = 1 };
@@ -3927,7 +3814,6 @@ let _gurmukhi = {
 }
 
 (* han *)
-
 let _han = {
   r16 = [|
     { lo = 0x2e80; hi = 0x2e99; stride = 1 };
@@ -3946,7 +3832,6 @@ let _han = {
 }
 
 (* hangul *)
-
 let _hangul = {
   r16 = [|
     { lo = 0x1100; hi = 0x11ff; stride = 1 };
@@ -3969,7 +3854,6 @@ let _hangul = {
 }
 
 (* hanifi_rohingya *)
-
 let _hanifi_rohingya = {
   r16 = [||];
   r32 = [|
@@ -3980,11 +3864,9 @@ let _hanifi_rohingya = {
 }
 
 (* hanunoo *)
-
-let _hanunoo = { r16 = [|{ lo = 0x1720; hi = 0x1734; stride = 1 };|]; r32 = [||]; latin_offset = 0 }
+let _hanunoo = { r16 = [|{ lo = 0x1720; hi = 0x1734; stride = 1 }|]; r32 = [||]; latin_offset = 0 }
 
 (* hatran *)
-
 let _hatran = {
   r16 = [||];
   r32 = [|
@@ -3996,7 +3878,6 @@ let _hatran = {
 }
 
 (* hebrew *)
-
 let _hebrew = {
   r16 = [|
     { lo = 0x0591; hi = 0x05c7; stride = 1 };
@@ -4014,15 +3895,16 @@ let _hebrew = {
 }
 
 (* hiragana *)
-
 let _hiragana = {
-  r16 = [|{ lo = 0x3041; hi = 0x3096; stride = 1 }; { lo = 0x309d; hi = 0x309f; stride = 1 };|];
+  r16 = [|
+    { lo = 0x3041; hi = 0x3096; stride = 1 };
+    { lo = 0x309d; hi = 0x309f; stride = 1 };
+  |];
   r32 = [||];
   latin_offset = 0
 }
 
 (* imperial_aramaic *)
-
 let _imperial_aramaic = {
   r16 = [||];
   r32 = [|
@@ -4033,7 +3915,6 @@ let _imperial_aramaic = {
 }
 
 (* inherited *)
-
 let _inherited = {
   r16 = [|
     { lo = 0x0300; hi = 0x036f; stride = 1 };
@@ -4060,7 +3941,6 @@ let _inherited = {
 }
 
 (* inscriptional_pahlavi *)
-
 let _inscriptional_pahlavi = {
   r16 = [||];
   r32 = [|
@@ -4071,7 +3951,6 @@ let _inscriptional_pahlavi = {
 }
 
 (* inscriptional_parthian *)
-
 let _inscriptional_parthian = {
   r16 = [||];
   r32 = [|
@@ -4082,7 +3961,6 @@ let _inscriptional_parthian = {
 }
 
 (* javanese *)
-
 let _javanese = {
   r16 = [|
     { lo = 0xa980; hi = 0xa9cd; stride = 1 };
@@ -4094,7 +3972,6 @@ let _javanese = {
 }
 
 (* kaithi *)
-
 let _kaithi = {
   r16 = [||];
   r32 = [|
@@ -4105,7 +3982,6 @@ let _kaithi = {
 }
 
 (* kannada *)
-
 let _kannada = {
   r16 = [|
     { lo = 0x0c80; hi = 0x0c8c; stride = 1 };
@@ -4127,7 +4003,6 @@ let _kannada = {
 }
 
 (* katakana *)
-
 let _katakana = {
   r16 = [|
     { lo = 0x30a1; hi = 0x30fa; stride = 1 };
@@ -4143,7 +4018,6 @@ let _katakana = {
 }
 
 (* kawi *)
-
 let _kawi = {
   r16 = [||];
   r32 = [|
@@ -4155,15 +4029,16 @@ let _kawi = {
 }
 
 (* kayah_li *)
-
 let _kayah_li = {
-  r16 = [|{ lo = 0xa900; hi = 0xa92d; stride = 1 }; { lo = 0xa92f; hi = 0xa92f; stride = 1 };|];
+  r16 = [|
+    { lo = 0xa900; hi = 0xa92d; stride = 1 };
+    { lo = 0xa92f; hi = 0xa92f; stride = 1 };
+  |];
   r32 = [||];
   latin_offset = 0
 }
 
 (* kharoshthi *)
-
 let _kharoshthi = {
   r16 = [||];
   r32 = [|
@@ -4180,7 +4055,6 @@ let _kharoshthi = {
 }
 
 (* khitan_small_script *)
-
 let _khitan_small_script = {
   r16 = [||];
   r32 = [|
@@ -4191,7 +4065,6 @@ let _khitan_small_script = {
 }
 
 (* khmer *)
-
 let _khmer = {
   r16 = [|
     { lo = 0x1780; hi = 0x17dd; stride = 1 };
@@ -4204,7 +4077,6 @@ let _khmer = {
 }
 
 (* khojki *)
-
 let _khojki = {
   r16 = [||];
   r32 = [|
@@ -4215,7 +4087,6 @@ let _khojki = {
 }
 
 (* khudawadi *)
-
 let _khudawadi = {
   r16 = [||];
   r32 = [|
@@ -4226,7 +4097,6 @@ let _khudawadi = {
 }
 
 (* lao *)
-
 let _lao = {
   r16 = [|
     { lo = 0x0e81; hi = 0x0e82; stride = 1 };
@@ -4246,7 +4116,6 @@ let _lao = {
 }
 
 (* latin *)
-
 let _latin = {
   r16 = [|
     { lo = 0x0041; hi = 0x005a; stride = 1 };
@@ -4286,7 +4155,6 @@ let _latin = {
 }
 
 (* lepcha *)
-
 let _lepcha = {
   r16 = [|
     { lo = 0x1c00; hi = 0x1c37; stride = 1 };
@@ -4298,7 +4166,6 @@ let _lepcha = {
 }
 
 (* limbu *)
-
 let _limbu = {
   r16 = [|
     { lo = 0x1900; hi = 0x191e; stride = 1 };
@@ -4312,7 +4179,6 @@ let _limbu = {
 }
 
 (* linear_a *)
-
 let _linear_a = {
   r16 = [||];
   r32 = [|
@@ -4324,7 +4190,6 @@ let _linear_a = {
 }
 
 (* linear_b *)
-
 let _linear_b = {
   r16 = [||];
   r32 = [|
@@ -4340,19 +4205,12 @@ let _linear_b = {
 }
 
 (* lisu *)
-
-let _lisu = { r16 = [|{ lo = 0xa4d0; hi = 0xa4ff; stride = 1 };|]; r32 = [||]; latin_offset = 0 }
+let _lisu = { r16 = [|{ lo = 0xa4d0; hi = 0xa4ff; stride = 1 }|]; r32 = [||]; latin_offset = 0 }
 
 (* lycian *)
-
-let _lycian = {
-  r16 = [||];
-  r32 = [|{ lo = 0x01_0280; hi = 0x01_029c; stride = 1 };|];
-  latin_offset = 0
-}
+let _lycian = { r16 = [||]; r32 = [|{ lo = 0x01_0280; hi = 0x01_029c; stride = 1 }|]; latin_offset = 0 }
 
 (* lydian *)
-
 let _lydian = {
   r16 = [||];
   r32 = [|
@@ -4363,23 +4221,12 @@ let _lydian = {
 }
 
 (* mahajani *)
-
-let _mahajani = {
-  r16 = [||];
-  r32 = [|{ lo = 0x01_1150; hi = 0x01_1176; stride = 1 };|];
-  latin_offset = 0
-}
+let _mahajani = { r16 = [||]; r32 = [|{ lo = 0x01_1150; hi = 0x01_1176; stride = 1 }|]; latin_offset = 0 }
 
 (* makasar *)
-
-let _makasar = {
-  r16 = [||];
-  r32 = [|{ lo = 0x01_1ee0; hi = 0x01_1ef8; stride = 1 };|];
-  latin_offset = 0
-}
+let _makasar = { r16 = [||]; r32 = [|{ lo = 0x01_1ee0; hi = 0x01_1ef8; stride = 1 }|]; latin_offset = 0 }
 
 (* malayalam *)
-
 let _malayalam = {
   r16 = [|
     { lo = 0x0d00; hi = 0x0d0c; stride = 1 };
@@ -4395,15 +4242,16 @@ let _malayalam = {
 }
 
 (* mandaic *)
-
 let _mandaic = {
-  r16 = [|{ lo = 0x0840; hi = 0x085b; stride = 1 }; { lo = 0x085e; hi = 0x085e; stride = 1 };|];
+  r16 = [|
+    { lo = 0x0840; hi = 0x085b; stride = 1 };
+    { lo = 0x085e; hi = 0x085e; stride = 1 };
+  |];
   r32 = [||];
   latin_offset = 0
 }
 
 (* manichaean *)
-
 let _manichaean = {
   r16 = [||];
   r32 = [|
@@ -4414,7 +4262,6 @@ let _manichaean = {
 }
 
 (* marchen *)
-
 let _marchen = {
   r16 = [||];
   r32 = [|
@@ -4426,7 +4273,6 @@ let _marchen = {
 }
 
 (* masaram_gondi *)
-
 let _masaram_gondi = {
   r16 = [||];
   r32 = [|
@@ -4442,15 +4288,9 @@ let _masaram_gondi = {
 }
 
 (* medefaidrin *)
-
-let _medefaidrin = {
-  r16 = [||];
-  r32 = [|{ lo = 0x01_6e40; hi = 0x01_6e9a; stride = 1 };|];
-  latin_offset = 0
-}
+let _medefaidrin = { r16 = [||]; r32 = [|{ lo = 0x01_6e40; hi = 0x01_6e9a; stride = 1 }|]; latin_offset = 0 }
 
 (* meetei_mayek *)
-
 let _meetei_mayek = {
   r16 = [|
     { lo = 0xaae0; hi = 0xaaf6; stride = 1 };
@@ -4462,7 +4302,6 @@ let _meetei_mayek = {
 }
 
 (* mende_kikakui *)
-
 let _mende_kikakui = {
   r16 = [||];
   r32 = [|
@@ -4473,7 +4312,6 @@ let _mende_kikakui = {
 }
 
 (* meroitic_cursive *)
-
 let _meroitic_cursive = {
   r16 = [||];
   r32 = [|
@@ -4485,15 +4323,9 @@ let _meroitic_cursive = {
 }
 
 (* meroitic_hieroglyphs *)
-
-let _meroitic_hieroglyphs = {
-  r16 = [||];
-  r32 = [|{ lo = 0x01_0980; hi = 0x01_099f; stride = 1 };|];
-  latin_offset = 0
-}
+let _meroitic_hieroglyphs = { r16 = [||]; r32 = [|{ lo = 0x01_0980; hi = 0x01_099f; stride = 1 }|]; latin_offset = 0 }
 
 (* miao *)
-
 let _miao = {
   r16 = [||];
   r32 = [|
@@ -4505,7 +4337,6 @@ let _miao = {
 }
 
 (* modi *)
-
 let _modi = {
   r16 = [||];
   r32 = [|
@@ -4516,7 +4347,6 @@ let _modi = {
 }
 
 (* mongolian *)
-
 let _mongolian = {
   r16 = [|
     { lo = 0x1800; hi = 0x1801; stride = 1 };
@@ -4530,7 +4360,6 @@ let _mongolian = {
 }
 
 (* mro *)
-
 let _mro = {
   r16 = [||];
   r32 = [|
@@ -4542,7 +4371,6 @@ let _mro = {
 }
 
 (* multani *)
-
 let _multani = {
   r16 = [||];
   r32 = [|
@@ -4556,7 +4384,6 @@ let _multani = {
 }
 
 (* myanmar *)
-
 let _myanmar = {
   r16 = [|
     { lo = 0x1000; hi = 0x109f; stride = 1 };
@@ -4568,7 +4395,6 @@ let _myanmar = {
 }
 
 (* nabataean *)
-
 let _nabataean = {
   r16 = [||];
   r32 = [|
@@ -4579,15 +4405,9 @@ let _nabataean = {
 }
 
 (* nag_mundari *)
-
-let _nag_mundari = {
-  r16 = [||];
-  r32 = [|{ lo = 0x01_e4d0; hi = 0x01_e4f9; stride = 1 };|];
-  latin_offset = 0
-}
+let _nag_mundari = { r16 = [||]; r32 = [|{ lo = 0x01_e4d0; hi = 0x01_e4f9; stride = 1 }|]; latin_offset = 0 }
 
 (* nandinagari *)
-
 let _nandinagari = {
   r16 = [||];
   r32 = [|
@@ -4599,7 +4419,6 @@ let _nandinagari = {
 }
 
 (* new_tai_lue *)
-
 let _new_tai_lue = {
   r16 = [|
     { lo = 0x1980; hi = 0x19ab; stride = 1 };
@@ -4612,7 +4431,6 @@ let _new_tai_lue = {
 }
 
 (* newa *)
-
 let _newa = {
   r16 = [||];
   r32 = [|
@@ -4623,15 +4441,16 @@ let _newa = {
 }
 
 (* nko *)
-
 let _nko = {
-  r16 = [|{ lo = 0x07c0; hi = 0x07fa; stride = 1 }; { lo = 0x07fd; hi = 0x07ff; stride = 1 };|];
+  r16 = [|
+    { lo = 0x07c0; hi = 0x07fa; stride = 1 };
+    { lo = 0x07fd; hi = 0x07ff; stride = 1 };
+  |];
   r32 = [||];
   latin_offset = 0
 }
 
 (* nushu *)
-
 let _nushu = {
   r16 = [||];
   r32 = [|
@@ -4642,7 +4461,6 @@ let _nushu = {
 }
 
 (* nyiakeng_puachue_hmong *)
-
 let _nyiakeng_puachue_hmong = {
   r16 = [||];
   r32 = [|
@@ -4655,15 +4473,12 @@ let _nyiakeng_puachue_hmong = {
 }
 
 (* ogham *)
-
-let _ogham = { r16 = [|{ lo = 0x1680; hi = 0x169c; stride = 1 };|]; r32 = [||]; latin_offset = 0 }
+let _ogham = { r16 = [|{ lo = 0x1680; hi = 0x169c; stride = 1 }|]; r32 = [||]; latin_offset = 0 }
 
 (* ol_chiki *)
-
-let _ol_chiki = { r16 = [|{ lo = 0x1c50; hi = 0x1c7f; stride = 1 };|]; r32 = [||]; latin_offset = 0 }
+let _ol_chiki = { r16 = [|{ lo = 0x1c50; hi = 0x1c7f; stride = 1 }|]; r32 = [||]; latin_offset = 0 }
 
 (* old_hungarian *)
-
 let _old_hungarian = {
   r16 = [||];
   r32 = [|
@@ -4675,7 +4490,6 @@ let _old_hungarian = {
 }
 
 (* old_italic *)
-
 let _old_italic = {
   r16 = [||];
   r32 = [|
@@ -4686,23 +4500,12 @@ let _old_italic = {
 }
 
 (* old_north_arabian *)
-
-let _old_north_arabian = {
-  r16 = [||];
-  r32 = [|{ lo = 0x01_0a80; hi = 0x01_0a9f; stride = 1 };|];
-  latin_offset = 0
-}
+let _old_north_arabian = { r16 = [||]; r32 = [|{ lo = 0x01_0a80; hi = 0x01_0a9f; stride = 1 }|]; latin_offset = 0 }
 
 (* old_permic *)
-
-let _old_permic = {
-  r16 = [||];
-  r32 = [|{ lo = 0x01_0350; hi = 0x01_037a; stride = 1 };|];
-  latin_offset = 0
-}
+let _old_permic = { r16 = [||]; r32 = [|{ lo = 0x01_0350; hi = 0x01_037a; stride = 1 }|]; latin_offset = 0 }
 
 (* old_persian *)
-
 let _old_persian = {
   r16 = [||];
   r32 = [|
@@ -4713,39 +4516,18 @@ let _old_persian = {
 }
 
 (* old_sogdian *)
-
-let _old_sogdian = {
-  r16 = [||];
-  r32 = [|{ lo = 0x01_0f00; hi = 0x01_0f27; stride = 1 };|];
-  latin_offset = 0
-}
+let _old_sogdian = { r16 = [||]; r32 = [|{ lo = 0x01_0f00; hi = 0x01_0f27; stride = 1 }|]; latin_offset = 0 }
 
 (* old_south_arabian *)
-
-let _old_south_arabian = {
-  r16 = [||];
-  r32 = [|{ lo = 0x01_0a60; hi = 0x01_0a7f; stride = 1 };|];
-  latin_offset = 0
-}
+let _old_south_arabian = { r16 = [||]; r32 = [|{ lo = 0x01_0a60; hi = 0x01_0a7f; stride = 1 }|]; latin_offset = 0 }
 
 (* old_turkic *)
-
-let _old_turkic = {
-  r16 = [||];
-  r32 = [|{ lo = 0x01_0c00; hi = 0x01_0c48; stride = 1 };|];
-  latin_offset = 0
-}
+let _old_turkic = { r16 = [||]; r32 = [|{ lo = 0x01_0c00; hi = 0x01_0c48; stride = 1 }|]; latin_offset = 0 }
 
 (* old_uyghur *)
-
-let _old_uyghur = {
-  r16 = [||];
-  r32 = [|{ lo = 0x01_0f70; hi = 0x01_0f89; stride = 1 };|];
-  latin_offset = 0
-}
+let _old_uyghur = { r16 = [||]; r32 = [|{ lo = 0x01_0f70; hi = 0x01_0f89; stride = 1 }|]; latin_offset = 0 }
 
 (* oriya *)
-
 let _oriya = {
   r16 = [|
     { lo = 0x0b01; hi = 0x0b03; stride = 1 };
@@ -4768,7 +4550,6 @@ let _oriya = {
 }
 
 (* osage *)
-
 let _osage = {
   r16 = [||];
   r32 = [|
@@ -4779,7 +4560,6 @@ let _osage = {
 }
 
 (* osmanya *)
-
 let _osmanya = {
   r16 = [||];
   r32 = [|
@@ -4790,7 +4570,6 @@ let _osmanya = {
 }
 
 (* pahawh_hmong *)
-
 let _pahawh_hmong = {
   r16 = [||];
   r32 = [|
@@ -4804,27 +4583,15 @@ let _pahawh_hmong = {
 }
 
 (* palmyrene *)
-
-let _palmyrene = {
-  r16 = [||];
-  r32 = [|{ lo = 0x01_0860; hi = 0x01_087f; stride = 1 };|];
-  latin_offset = 0
-}
+let _palmyrene = { r16 = [||]; r32 = [|{ lo = 0x01_0860; hi = 0x01_087f; stride = 1 }|]; latin_offset = 0 }
 
 (* pau_cin_hau *)
-
-let _pau_cin_hau = {
-  r16 = [||];
-  r32 = [|{ lo = 0x01_1ac0; hi = 0x01_1af8; stride = 1 };|];
-  latin_offset = 0
-}
+let _pau_cin_hau = { r16 = [||]; r32 = [|{ lo = 0x01_1ac0; hi = 0x01_1af8; stride = 1 }|]; latin_offset = 0 }
 
 (* phags_pa *)
-
-let _phags_pa = { r16 = [|{ lo = 0xa840; hi = 0xa877; stride = 1 };|]; r32 = [||]; latin_offset = 0 }
+let _phags_pa = { r16 = [|{ lo = 0xa840; hi = 0xa877; stride = 1 }|]; r32 = [||]; latin_offset = 0 }
 
 (* phoenician *)
-
 let _phoenician = {
   r16 = [||];
   r32 = [|
@@ -4835,7 +4602,6 @@ let _phoenician = {
 }
 
 (* psalter_pahlavi *)
-
 let _psalter_pahlavi = {
   r16 = [||];
   r32 = [|
@@ -4847,55 +4613,52 @@ let _psalter_pahlavi = {
 }
 
 (* rejang *)
-
 let _rejang = {
-  r16 = [|{ lo = 0xa930; hi = 0xa953; stride = 1 }; { lo = 0xa95f; hi = 0xa95f; stride = 1 };|];
+  r16 = [|
+    { lo = 0xa930; hi = 0xa953; stride = 1 };
+    { lo = 0xa95f; hi = 0xa95f; stride = 1 };
+  |];
   r32 = [||];
   latin_offset = 0
 }
 
 (* runic *)
-
 let _runic = {
-  r16 = [|{ lo = 0x16a0; hi = 0x16ea; stride = 1 }; { lo = 0x16ee; hi = 0x16f8; stride = 1 };|];
+  r16 = [|
+    { lo = 0x16a0; hi = 0x16ea; stride = 1 };
+    { lo = 0x16ee; hi = 0x16f8; stride = 1 };
+  |];
   r32 = [||];
   latin_offset = 0
 }
 
 (* samaritan *)
-
 let _samaritan = {
-  r16 = [|{ lo = 0x0800; hi = 0x082d; stride = 1 }; { lo = 0x0830; hi = 0x083e; stride = 1 };|];
+  r16 = [|
+    { lo = 0x0800; hi = 0x082d; stride = 1 };
+    { lo = 0x0830; hi = 0x083e; stride = 1 };
+  |];
   r32 = [||];
   latin_offset = 0
 }
 
 (* saurashtra *)
-
 let _saurashtra = {
-  r16 = [|{ lo = 0xa880; hi = 0xa8c5; stride = 1 }; { lo = 0xa8ce; hi = 0xa8d9; stride = 1 };|];
+  r16 = [|
+    { lo = 0xa880; hi = 0xa8c5; stride = 1 };
+    { lo = 0xa8ce; hi = 0xa8d9; stride = 1 };
+  |];
   r32 = [||];
   latin_offset = 0
 }
 
 (* sharada *)
-
-let _sharada = {
-  r16 = [||];
-  r32 = [|{ lo = 0x01_1180; hi = 0x01_11df; stride = 1 };|];
-  latin_offset = 0
-}
+let _sharada = { r16 = [||]; r32 = [|{ lo = 0x01_1180; hi = 0x01_11df; stride = 1 }|]; latin_offset = 0 }
 
 (* shavian *)
-
-let _shavian = {
-  r16 = [||];
-  r32 = [|{ lo = 0x01_0450; hi = 0x01_047f; stride = 1 };|];
-  latin_offset = 0
-}
+let _shavian = { r16 = [||]; r32 = [|{ lo = 0x01_0450; hi = 0x01_047f; stride = 1 }|]; latin_offset = 0 }
 
 (* siddham *)
-
 let _siddham = {
   r16 = [||];
   r32 = [|
@@ -4906,7 +4669,6 @@ let _siddham = {
 }
 
 (* signwriting *)
-
 let _signwriting = {
   r16 = [||];
   r32 = [|
@@ -4918,7 +4680,6 @@ let _signwriting = {
 }
 
 (* sinhala *)
-
 let _sinhala = {
   r16 = [|
     { lo = 0x0d81; hi = 0x0d83; stride = 1 };
@@ -4939,15 +4700,9 @@ let _sinhala = {
 }
 
 (* sogdian *)
-
-let _sogdian = {
-  r16 = [||];
-  r32 = [|{ lo = 0x01_0f30; hi = 0x01_0f59; stride = 1 };|];
-  latin_offset = 0
-}
+let _sogdian = { r16 = [||]; r32 = [|{ lo = 0x01_0f30; hi = 0x01_0f59; stride = 1 }|]; latin_offset = 0 }
 
 (* sora_sompeng *)
-
 let _sora_sompeng = {
   r16 = [||];
   r32 = [|
@@ -4958,31 +4713,22 @@ let _sora_sompeng = {
 }
 
 (* soyombo *)
-
-let _soyombo = {
-  r16 = [||];
-  r32 = [|{ lo = 0x01_1a50; hi = 0x01_1aa2; stride = 1 };|];
-  latin_offset = 0
-}
+let _soyombo = { r16 = [||]; r32 = [|{ lo = 0x01_1a50; hi = 0x01_1aa2; stride = 1 }|]; latin_offset = 0 }
 
 (* sundanese *)
-
 let _sundanese = {
-  r16 = [|{ lo = 0x1b80; hi = 0x1bbf; stride = 1 }; { lo = 0x1cc0; hi = 0x1cc7; stride = 1 };|];
+  r16 = [|
+    { lo = 0x1b80; hi = 0x1bbf; stride = 1 };
+    { lo = 0x1cc0; hi = 0x1cc7; stride = 1 };
+  |];
   r32 = [||];
   latin_offset = 0
 }
 
 (* syloti_nagri *)
-
-let _syloti_nagri = {
-  r16 = [|{ lo = 0xa800; hi = 0xa82c; stride = 1 };|];
-  r32 = [||];
-  latin_offset = 0
-}
+let _syloti_nagri = { r16 = [|{ lo = 0xa800; hi = 0xa82c; stride = 1 }|]; r32 = [||]; latin_offset = 0 }
 
 (* syriac *)
-
 let _syriac = {
   r16 = [|
     { lo = 0x0700; hi = 0x070d; stride = 1 };
@@ -4995,15 +4741,16 @@ let _syriac = {
 }
 
 (* tagalog *)
-
 let _tagalog = {
-  r16 = [|{ lo = 0x1700; hi = 0x1715; stride = 1 }; { lo = 0x171f; hi = 0x171f; stride = 1 };|];
+  r16 = [|
+    { lo = 0x1700; hi = 0x1715; stride = 1 };
+    { lo = 0x171f; hi = 0x171f; stride = 1 };
+  |];
   r32 = [||];
   latin_offset = 0
 }
 
 (* tagbanwa *)
-
 let _tagbanwa = {
   r16 = [|
     { lo = 0x1760; hi = 0x176c; stride = 1 };
@@ -5015,15 +4762,16 @@ let _tagbanwa = {
 }
 
 (* tai_le *)
-
 let _tai_le = {
-  r16 = [|{ lo = 0x1950; hi = 0x196d; stride = 1 }; { lo = 0x1970; hi = 0x1974; stride = 1 };|];
+  r16 = [|
+    { lo = 0x1950; hi = 0x196d; stride = 1 };
+    { lo = 0x1970; hi = 0x1974; stride = 1 };
+  |];
   r32 = [||];
   latin_offset = 0
 }
 
 (* tai_tham *)
-
 let _tai_tham = {
   r16 = [|
     { lo = 0x1a20; hi = 0x1a5e; stride = 1 };
@@ -5037,15 +4785,16 @@ let _tai_tham = {
 }
 
 (* tai_viet *)
-
 let _tai_viet = {
-  r16 = [|{ lo = 0xaa80; hi = 0xaac2; stride = 1 }; { lo = 0xaadb; hi = 0xaadf; stride = 1 };|];
+  r16 = [|
+    { lo = 0xaa80; hi = 0xaac2; stride = 1 };
+    { lo = 0xaadb; hi = 0xaadf; stride = 1 };
+  |];
   r32 = [||];
   latin_offset = 0
 }
 
 (* takri *)
-
 let _takri = {
   r16 = [||];
   r32 = [|
@@ -5056,7 +4805,6 @@ let _takri = {
 }
 
 (* tamil *)
-
 let _tamil = {
   r16 = [|
     { lo = 0x0b82; hi = 0x0b83; stride = 1 };
@@ -5080,7 +4828,6 @@ let _tamil = {
 }
 
 (* tangsa *)
-
 let _tangsa = {
   r16 = [||];
   r32 = [|
@@ -5091,7 +4838,6 @@ let _tangsa = {
 }
 
 (* tangut *)
-
 let _tangut = {
   r16 = [||];
   r32 = [|
@@ -5104,7 +4850,6 @@ let _tangut = {
 }
 
 (* telugu *)
-
 let _telugu = {
   r16 = [|
     { lo = 0x0c00; hi = 0x0c0c; stride = 1 };
@@ -5126,19 +4871,19 @@ let _telugu = {
 }
 
 (* thaana *)
-
-let _thaana = { r16 = [|{ lo = 0x0780; hi = 0x07b1; stride = 1 };|]; r32 = [||]; latin_offset = 0 }
+let _thaana = { r16 = [|{ lo = 0x0780; hi = 0x07b1; stride = 1 }|]; r32 = [||]; latin_offset = 0 }
 
 (* thai *)
-
 let _thai = {
-  r16 = [|{ lo = 0x0e01; hi = 0x0e3a; stride = 1 }; { lo = 0x0e40; hi = 0x0e5b; stride = 1 };|];
+  r16 = [|
+    { lo = 0x0e01; hi = 0x0e3a; stride = 1 };
+    { lo = 0x0e40; hi = 0x0e5b; stride = 1 };
+  |];
   r32 = [||];
   latin_offset = 0
 }
 
 (* tibetan *)
-
 let _tibetan = {
   r16 = [|
     { lo = 0x0f00; hi = 0x0f47; stride = 1 };
@@ -5154,7 +4899,6 @@ let _tibetan = {
 }
 
 (* tifinagh *)
-
 let _tifinagh = {
   r16 = [|
     { lo = 0x2d30; hi = 0x2d67; stride = 1 };
@@ -5166,7 +4910,6 @@ let _tifinagh = {
 }
 
 (* tirhuta *)
-
 let _tirhuta = {
   r16 = [||];
   r32 = [|
@@ -5177,15 +4920,9 @@ let _tirhuta = {
 }
 
 (* toto *)
-
-let _toto = {
-  r16 = [||];
-  r32 = [|{ lo = 0x01_e290; hi = 0x01_e2ae; stride = 1 };|];
-  latin_offset = 0
-}
+let _toto = { r16 = [||]; r32 = [|{ lo = 0x01_e290; hi = 0x01_e2ae; stride = 1 }|]; latin_offset = 0 }
 
 (* ugaritic *)
-
 let _ugaritic = {
   r16 = [||];
   r32 = [|
@@ -5196,11 +4933,9 @@ let _ugaritic = {
 }
 
 (* vai *)
-
-let _vai = { r16 = [|{ lo = 0xa500; hi = 0xa62b; stride = 1 };|]; r32 = [||]; latin_offset = 0 }
+let _vai = { r16 = [|{ lo = 0xa500; hi = 0xa62b; stride = 1 }|]; r32 = [||]; latin_offset = 0 }
 
 (* vithkuqi *)
-
 let _vithkuqi = {
   r16 = [||];
   r32 = [|
@@ -5217,7 +4952,6 @@ let _vithkuqi = {
 }
 
 (* wancho *)
-
 let _wancho = {
   r16 = [||];
   r32 = [|
@@ -5228,7 +4962,6 @@ let _wancho = {
 }
 
 (* warang_citi *)
-
 let _warang_citi = {
   r16 = [||];
   r32 = [|
@@ -5239,7 +4972,6 @@ let _warang_citi = {
 }
 
 (* yezidi *)
-
 let _yezidi = {
   r16 = [||];
   r32 = [|
@@ -5251,23 +4983,19 @@ let _yezidi = {
 }
 
 (* yi *)
-
 let _yi = {
-  r16 = [|{ lo = 0xa000; hi = 0xa48c; stride = 1 }; { lo = 0xa490; hi = 0xa4c6; stride = 1 };|];
+  r16 = [|
+    { lo = 0xa000; hi = 0xa48c; stride = 1 };
+    { lo = 0xa490; hi = 0xa4c6; stride = 1 };
+  |];
   r32 = [||];
   latin_offset = 0
 }
 
 (* zanabazar_square *)
-
-let _zanabazar_square = {
-  r16 = [||];
-  r32 = [|{ lo = 0x01_1a00; hi = 0x01_1a47; stride = 1 };|];
-  latin_offset = 0
-}
+let _zanabazar_square = { r16 = [||]; r32 = [|{ lo = 0x01_1a00; hi = 0x01_1a47; stride = 1 }|]; latin_offset = 0 }
 
 (* ascii_hex_digit *)
-
 let _ascii_hex_digit = {
   r16 = [|
     { lo = 0x0030; hi = 0x0039; stride = 1 };
@@ -5279,7 +5007,6 @@ let _ascii_hex_digit = {
 }
 
 (* bidi_control *)
-
 let _bidi_control = {
   r16 = [|
     { lo = 0x061c; hi = 0x200e; stride = 6_642 };
@@ -5292,7 +5019,6 @@ let _bidi_control = {
 }
 
 (* dash *)
-
 let _dash = {
   r16 = [|
     { lo = 0x002d; hi = 0x058a; stride = 1_373 };
@@ -5314,7 +5040,6 @@ let _dash = {
 }
 
 (* deprecated *)
-
 let _deprecated = {
   r16 = [|
     { lo = 0x0149; hi = 0x0673; stride = 1_322 };
@@ -5328,7 +5053,6 @@ let _deprecated = {
 }
 
 (* diacritic *)
-
 let _diacritic = {
   r16 = [|
     { lo = 0x005e; hi = 0x0060; stride = 2 };
@@ -5447,7 +5171,6 @@ let _diacritic = {
 }
 
 (* extender *)
-
 let _extender = {
   r16 = [|
     { lo = 0x00b7; hi = 0x02d0; stride = 537 };
@@ -5471,7 +5194,6 @@ let _extender = {
 }
 
 (* hex_digit *)
-
 let _hex_digit = {
   r16 = [|
     { lo = 0x0030; hi = 0x0039; stride = 1 };
@@ -5486,7 +5208,6 @@ let _hex_digit = {
 }
 
 (* hyphen *)
-
 let _hyphen = {
   r16 = [|
     { lo = 0x002d; hi = 0x00ad; stride = 128 };
@@ -5501,23 +5222,19 @@ let _hyphen = {
 }
 
 (* ids_binary_operator *)
-
 let _ids_binary_operator = {
-  r16 = [|{ lo = 0x2ff0; hi = 0x2ff1; stride = 1 }; { lo = 0x2ff4; hi = 0x2ffb; stride = 1 };|];
+  r16 = [|
+    { lo = 0x2ff0; hi = 0x2ff1; stride = 1 };
+    { lo = 0x2ff4; hi = 0x2ffb; stride = 1 };
+  |];
   r32 = [||];
   latin_offset = 0
 }
 
 (* ids_trinary_operator *)
-
-let _ids_trinary_operator = {
-  r16 = [|{ lo = 0x2ff2; hi = 0x2ff3; stride = 1 };|];
-  r32 = [||];
-  latin_offset = 0
-}
+let _ids_trinary_operator = { r16 = [|{ lo = 0x2ff2; hi = 0x2ff3; stride = 1 }|]; r32 = [||]; latin_offset = 0 }
 
 (* ideographic *)
-
 let _ideographic = {
   r16 = [|
     { lo = 0x3006; hi = 0x3007; stride = 1 };
@@ -5533,15 +5250,9 @@ let _ideographic = {
 }
 
 (* join_control *)
-
-let _join_control = {
-  r16 = [|{ lo = 0x200c; hi = 0x200d; stride = 1 };|];
-  r32 = [||];
-  latin_offset = 0
-}
+let _join_control = { r16 = [|{ lo = 0x200c; hi = 0x200d; stride = 1 }|]; r32 = [||]; latin_offset = 0 }
 
 (* logical_order_exception *)
-
 let _logical_order_exception = {
   r16 = [|
     { lo = 0x0e40; hi = 0x0e44; stride = 1 };
@@ -5556,15 +5267,16 @@ let _logical_order_exception = {
 }
 
 (* noncharacter_code_point *)
-
 let _noncharacter_code_point = {
-  r16 = [|{ lo = 0xfdd0; hi = 0xfdef; stride = 1 }; { lo = 0xfffe; hi = 0xffff; stride = 1 };|];
+  r16 = [|
+    { lo = 0xfdd0; hi = 0xfdef; stride = 1 };
+    { lo = 0xfffe; hi = 0xffff; stride = 1 };
+  |];
   r32 = [||];
   latin_offset = 0
 }
 
 (* other_alphabetic *)
-
 let _other_alphabetic = {
   r16 = [|
     { lo = 0x0345; hi = 0x05b0; stride = 619 };
@@ -5721,7 +5433,6 @@ let _other_alphabetic = {
 }
 
 (* other_default_ignorable_code_point *)
-
 let _other_default_ignorable_code_point = {
   r16 = [|
     { lo = 0x034f; hi = 0x115f; stride = 3_600 };
@@ -5735,7 +5446,6 @@ let _other_default_ignorable_code_point = {
 }
 
 (* other_grapheme_extend *)
-
 let _other_grapheme_extend = {
   r16 = [|
     { lo = 0x09be; hi = 0x09d7; stride = 25 };
@@ -5754,7 +5464,6 @@ let _other_grapheme_extend = {
 }
 
 (* other_id_continue *)
-
 let _other_id_continue = {
   r16 = [|
     { lo = 0x00b7; hi = 0x0387; stride = 720 };
@@ -5766,7 +5475,6 @@ let _other_id_continue = {
 }
 
 (* other_id_start *)
-
 let _other_id_start = {
   r16 = [|
     { lo = 0x1885; hi = 0x1886; stride = 1 };
@@ -5778,7 +5486,6 @@ let _other_id_start = {
 }
 
 (* other_lowercase *)
-
 let _other_lowercase = {
   r16 = [|
     { lo = 0x00aa; hi = 0x00ba; stride = 16 };
@@ -5807,7 +5514,6 @@ let _other_lowercase = {
 }
 
 (* other_math *)
-
 let _other_math = {
   r16 = [|
     { lo = 0x005e; hi = 0x03d0; stride = 882 };
@@ -5879,15 +5585,16 @@ let _other_math = {
 }
 
 (* other_uppercase *)
-
 let _other_uppercase = {
-  r16 = [|{ lo = 0x2160; hi = 0x216f; stride = 1 }; { lo = 0x24b6; hi = 0x24cf; stride = 1 };|];
+  r16 = [|
+    { lo = 0x2160; hi = 0x216f; stride = 1 };
+    { lo = 0x24b6; hi = 0x24cf; stride = 1 };
+  |];
   r32 = [||];
   latin_offset = 0
 }
 
 (* pattern_syntax *)
-
 let _pattern_syntax = {
   r16 = [|
     { lo = 0x0021; hi = 0x002f; stride = 1 };
@@ -5920,7 +5627,6 @@ let _pattern_syntax = {
 }
 
 (* pattern_white_space *)
-
 let _pattern_white_space = {
   r16 = [|
     { lo = 0x0009; hi = 0x000d; stride = 1 };
@@ -5933,7 +5639,6 @@ let _pattern_white_space = {
 }
 
 (* prepended_concatenation_mark *)
-
 let _prepended_concatenation_mark = {
   r16 = [|
     { lo = 0x0600; hi = 0x0605; stride = 1 };
@@ -5946,7 +5651,6 @@ let _prepended_concatenation_mark = {
 }
 
 (* quotation_mark *)
-
 let _quotation_mark = {
   r16 = [|
     { lo = 0x0022; hi = 0x0027; stride = 5 };
@@ -5965,7 +5669,6 @@ let _quotation_mark = {
 }
 
 (* radical *)
-
 let _radical = {
   r16 = [|
     { lo = 0x2e80; hi = 0x2e99; stride = 1 };
@@ -5977,15 +5680,9 @@ let _radical = {
 }
 
 (* regional_indicator *)
-
-let _regional_indicator = {
-  r16 = [||];
-  r32 = [|{ lo = 0x01_f1e6; hi = 0x01_f1ff; stride = 1 };|];
-  latin_offset = 0
-}
+let _regional_indicator = { r16 = [||]; r32 = [|{ lo = 0x01_f1e6; hi = 0x01_f1ff; stride = 1 }|]; latin_offset = 0 }
 
 (* sentence_terminal *)
-
 let _sentence_terminal = {
   r16 = [|
     { lo = 0x0021; hi = 0x002e; stride = 13 };
@@ -6032,7 +5729,6 @@ let _sentence_terminal = {
 }
 
 (* soft_dotted *)
-
 let _soft_dotted = {
   r16 = [|
     { lo = 0x0069; hi = 0x006a; stride = 1 };
@@ -6051,7 +5747,6 @@ let _soft_dotted = {
 }
 
 (* terminal_punctuation *)
-
 let _terminal_punctuation = {
   r16 = [|
     { lo = 0x0021; hi = 0x002c; stride = 11 };
@@ -6115,7 +5810,6 @@ let _terminal_punctuation = {
 }
 
 (* unified_ideograph *)
-
 let _unified_ideograph = {
   r16 = [|
     { lo = 0x3400; hi = 0x4dbf; stride = 1 };
@@ -6132,7 +5826,6 @@ let _unified_ideograph = {
 }
 
 (* variation_selector *)
-
 let _variation_selector = {
   r16 = [|
     { lo = 0x180b; hi = 0x180d; stride = 1 };
@@ -6144,7 +5837,6 @@ let _variation_selector = {
 }
 
 (* white_space *)
-
 let _white_space = {
   r16 = [|
     { lo = 0x0009; hi = 0x000d; stride = 1 };

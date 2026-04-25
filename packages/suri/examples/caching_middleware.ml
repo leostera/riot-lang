@@ -1,31 +1,36 @@
 open Std
 open Suri
 
-(** Comprehensive example demonstrating all 6 new HTTP middleware:
-    
-    1. Head Handler - Automatically strips body from HEAD requests
-    2. Runtime - Adds X-Runtime header with request timing
-    3. Method Override - Allows HTML forms to use PUT/PATCH/DELETE
-    4. Remote IP - Extracts real client IP behind proxies
-    5. ETag - Generates content-based cache identifiers
-    6. Conditional Get - Returns 304 Not Modified for cached content
-    
-    Run with: riot run suri:caching_middleware
+(**
+   Comprehensive example demonstrating all 6 new HTTP middleware:
+
+   1. Head Handler - Automatically strips body from HEAD requests
+   2. Runtime - Adds X-Runtime header with request timing
+   3. Method Override - Allows HTML forms to use PUT/PATCH/DELETE
+   4. Remote IP - Extracts real client IP behind proxies
+   5. ETag - Generates content-based cache identifiers
+   6. Conditional Get - Returns 304 Not Modified for cached content
+
+   Run with: riot run suri:caching_middleware
 *)
-
 (** Sample data for demonstration *)
-let users = [
-  ("1", "Alice", "alice@example.com");
-  ("2", "Bob", "bob@example.com");
-  ("3", "Charlie", "charlie@example.com");
-]
+let users =
+  [
+    "1", "Alice", "alice@example.com";
+    "2", "Bob", "bob@example.com";
+    "3", "Charlie", "charlie@example.com";
+  ]
 
-let find_user = fun id -> List.find users ~fn:(fun ((uid, _, _)) -> uid = id)
+let find_user = fun id -> List.find users ~fn:(
+  fun ((uid, _, _)) -> uid = id
+)
 
 (** Routes demonstrating the middleware *)
-let routes = Middleware.Router.[get "/"
-  (fun conn req ->
-    let html = {|
+let routes = Middleware.Router.[
+  get "/"
+    (
+      fun conn req ->
+        let html = {|
 <!DOCTYPE html>
 <html>
 <head>
@@ -107,117 +112,76 @@ curl http://localhost:4000/api/ip \
   </div>
 </body>
 </html>
-|}
-    in
-    conn
-    |> Conn.respond ~status:Net.Http.Status.Ok ~body:html
-    |> Conn.with_header "content-type" "text/html; charset=utf-8"
-    |> Conn.send);
-(* List users - demonstrates ETag and conditional GET *)
-get "/api/users"
-  (fun conn req ->
-    let json = {|{"users":[
+|} in conn |> Conn.respond ~status:Net.Http.Status.Ok ~body:html |> Conn.with_header "content-type" "text/html; charset=utf-8" |> Conn.send
+    );
+  (* List users - demonstrates ETag and conditional GET *)
+  get "/api/users"
+    (
+      fun conn req ->
+        let json = {|{"users":[
   {"id":"1","name":"Alice","email":"alice@example.com"},
   {"id":"2","name":"Bob","email":"bob@example.com"},
   {"id":"3","name":"Charlie","email":"charlie@example.com"}
-]}|}
-    in
-    conn
-    |> Conn.respond ~status:Net.Http.Status.Ok ~body:json
-    |> Conn.with_header "content-type" "application/json"
-    |> Conn.send);
-(* Get user - demonstrates ETag, conditional GET, and HEAD support *)
-get "/api/user/:id"
-  (fun conn req ->
-    let params = Conn.params conn in
-    match Std.Collections.Proplist.get params ~key:"id" with
-    | Some id -> (
-        match find_user id with
-        | Some (_, name, email) ->
-            let json =
-              "{\"id\":\""
-              ^ id
-              ^ "\","
-              ^ "\"name\":\""
-              ^ name
-              ^ "\","
-              ^ "\"email\":\""
-              ^ email
-              ^ "\"}"
-            in
-            conn
-            |> Conn.respond ~status:Net.Http.Status.Ok ~body:json
-            |> Conn.with_header "content-type" "application/json"
-            |> Conn.send
-        | None -> conn
-        |> Conn.respond ~status:Net.Http.Status.NotFound ~body:{|{"error":"User not found"}|}
-        |> Conn.with_header "content-type" "application/json"
-        |> Conn.send
-      )
-    | None -> conn
-    |> Conn.respond ~status:Net.Http.Status.BadRequest ~body:{|{"error":"Missing user ID"}|}
-    |> Conn.with_header "content-type" "application/json"
-    |> Conn.send);
-(* Delete user - demonstrates method override *)
-delete "/api/user/:id"
-  (fun conn req ->
-    let params = Conn.params conn in
-    match Std.Collections.Proplist.get params ~key:"id" with
-    | Some id ->
-        let method_str = Net.Http.Method.to_string (Conn.method_ conn) in
-        let message = "{\"message\":\"User "
-        ^ id
-        ^ " would be deleted (demo only)\","
-        ^ "\"method\":\""
-        ^ method_str
-        ^ "\"}" in
-        conn
-        |> Conn.respond ~status:Net.Http.Status.Ok ~body:message
-        |> Conn.with_header "content-type" "application/json"
-        |> Conn.send
-    | None -> conn
-    |> Conn.respond ~status:Net.Http.Status.BadRequest ~body:{|{"error":"Missing user ID"}|}
-    |> Conn.with_header "content-type" "application/json"
-    |> Conn.send);
-(* Show detected IP - demonstrates Remote IP middleware *)
-get "/api/ip"
-  (fun conn req ->
-    let peer = Conn.peer conn in
-    let client_ip = peer.ip in
-    let headers = Conn.headers conn in
-    let forwarded_for = Net.Http.Header.get headers "x-forwarded-for" in
-    let json =
-      match forwarded_for with
-      | Some fwd -> "{\"detected_ip\":\""
-      ^ client_ip
-      ^ "\","
-      ^ "\"x_forwarded_for\":\""
-      ^ fwd
-      ^ "\","
-      ^ "\"note\":\"IP extracted from proxy headers\"}"
-      | None -> "{\"detected_ip\":\"" ^ client_ip ^ "\"," ^ "\"note\":\"Direct connection, no proxy\"}"
-    in
-    conn
-    |> Conn.respond ~status:Net.Http.Status.Ok ~body:json
-    |> Conn.with_header "content-type" "application/json"
-    |> Conn.send);]
+]}|} in conn |> Conn.respond ~status:Net.Http.Status.Ok ~body:json |> Conn.with_header "content-type" "application/json" |> Conn.send
+    );
+  (* Get user - demonstrates ETag, conditional GET, and HEAD support *)
+  get "/api/user/:id"
+    (
+      fun conn req ->
+        let params = Conn.params conn in
+        match Std.Collections.Proplist.get params ~key:"id" with
+        | Some id -> (
+          match find_user id with
+          | Some (_, name, email) ->
+              let json = "{\"id\":\"" ^ id ^ "\"," ^ "\"name\":\"" ^ name ^ "\"," ^ "\"email\":\"" ^ email ^ "\"}" in conn |> Conn.respond ~status:Net.Http.Status.Ok ~body:json |> Conn.with_header "content-type" "application/json" |> Conn.send
+          | None -> conn |> Conn.respond ~status:Net.Http.Status.NotFound ~body:{|{"error":"User not found"}|} |> Conn.with_header "content-type" "application/json" |> Conn.send
+        )
+        | None -> conn |> Conn.respond ~status:Net.Http.Status.BadRequest ~body:{|{"error":"Missing user ID"}|} |> Conn.with_header "content-type" "application/json" |> Conn.send
+    );
+  (* Delete user - demonstrates method override *)
+  delete "/api/user/:id"
+    (
+      fun conn req ->
+        let params = Conn.params conn in
+        match Std.Collections.Proplist.get params ~key:"id" with
+        | Some id ->
+            let method_str = Net.Http.Method.to_string (Conn.method_ conn) in
+            let message = "{\"message\":\"User " ^ id ^ " would be deleted (demo only)\"," ^ "\"method\":\"" ^ method_str ^ "\"}" in conn |> Conn.respond ~status:Net.Http.Status.Ok ~body:message |> Conn.with_header "content-type" "application/json" |> Conn.send
+        | None -> conn |> Conn.respond ~status:Net.Http.Status.BadRequest ~body:{|{"error":"Missing user ID"}|} |> Conn.with_header "content-type" "application/json" |> Conn.send
+    );
+  (* Show detected IP - demonstrates Remote IP middleware *)
+  get "/api/ip"
+    (
+      fun conn req ->
+        let peer = Conn.peer conn in
+        let client_ip = peer.ip in
+        let headers = Conn.headers conn in
+        let forwarded_for = Net.Http.Header.get headers "x-forwarded-for" in
+        let json =
+          match forwarded_for with
+          | Some fwd -> "{\"detected_ip\":\"" ^ client_ip ^ "\"," ^ "\"x_forwarded_for\":\"" ^ fwd ^ "\"," ^ "\"note\":\"IP extracted from proxy headers\"}"
+          | None -> "{\"detected_ip\":\"" ^ client_ip ^ "\"," ^ "\"note\":\"Direct connection, no proxy\"}"
+        in
+        conn |> Conn.respond ~status:Net.Http.Status.Ok ~body:json |> Conn.with_header "content-type" "application/json" |> Conn.send
+    );
+]
 
 let main ~args:_ =
   (* Middleware pipeline showcasing all 6 new features *)
   (* NOTE: remote_ip commented out due to optional parameter type issues in lists *)
   (* To use: let mw = Remote_ip.middleware ~proxies:["..."] in ... mw :: rest ... *)
-  let app =
-    let open Middleware in [
-      request_id;
-      logger;
-      runner;
-      head;
-      body_parser ();
-      method_override;
-      conditional_get;
-      etag;
-      router routes;
-    ] in
+  let app = let open Middleware in
+  [
+    request_id;
+    logger;
+    runner;
+    head;
+    body_parser ();
+    method_override;
+    conditional_get;
+    etag;
+    router routes;
+  ] in
   let config = Suri.config ~port:4_000 () in
   match Suri.start_link ~config app with
   | Ok _supervisor ->

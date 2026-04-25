@@ -1,25 +1,27 @@
 open Global
 
-(** # Common - Filesystem error types
+(**
+   # Common - Filesystem error types
 
-    Common error types and conversion utilities for filesystem operations.
+   Common error types and conversion utilities for filesystem operations.
 
-    ## Error Handling
+   ## Error Handling
 
-    All filesystem operations return [Result.t] with this error type:
+   All filesystem operations return [Result.t] with this error type:
 
-    ```ocaml open Std
+   ```ocaml open Std
 
-    match Fs.read (Path.v "config.json") with 
-    | Ok content -> process content 
-    | Error err -> Log.error "Filesystem error: %s" (Fs.Common.error_message err)
-    ```
+   match Fs.read (Path.v "config.json") with 
+   | Ok content -> process content 
+   | Error err -> Log.error "Filesystem error: %s" (Fs.Common.error_message err)
+   ```
 
-    ## When to Use
+   ## When to Use
 
-    This module is primarily internal. Users typically work with the [Result.t]
-    values returned by [Fs] functions and use [Result.expect] or pattern
-    matching for error handling. *)
+   This module is primarily internal. Users typically work with the [Result.t]
+   values returned by [Fs] functions and use [Result.expect] or pattern
+   matching for error handling. 
+*)
 type error = IO.error
 
 (** Filesystem error type - preserves structured error info. *)

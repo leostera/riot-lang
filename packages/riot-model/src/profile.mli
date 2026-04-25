@@ -5,6 +5,7 @@ type 'a override =
   | Inherit
   (** Keep the value from the base profile *)
   | Override of 'a
+
 (** Replace with this value *)
 (** Profile override - partially specified profile fields *)
 type profile_override = {
@@ -21,25 +22,38 @@ type profile_override = {
   ld_flags: string list override;
   ocamlc_flags: string list override;
 }
+
 (** Build profile configuration with individual flag fields *)
 type t = {
-  name: string;  (** Profile name: "debug", "release", etc. *)
+  name: string;
+  (** Profile name: "debug", "release", etc. *)
   kind: Ocaml_compiler.compilation_kind;
   (* Optimization flags *)
-  inline: int option;  (** -inline N: inlining threshold *)
-  no_assert: bool;  (** -noassert: remove assertions *)
-  compact: bool;  (** -compact: optimize for code size *)
-  unsafe: bool;  (** -unsafe: disable bounds checking *)
+  inline: int option;
+  (** -inline N: inlining threshold *)
+  no_assert: bool;
+  (** -noassert: remove assertions *)
+  compact: bool;
+  (** -compact: optimize for code size *)
+  unsafe: bool;
+  (** -unsafe: disable bounds checking *)
   (* Module handling *)
-  no_alias_deps: bool;  (** -no-alias-deps: no deps for module aliases *)
-  open_modules: string list;  (** -open Module: auto-open modules *)
+  no_alias_deps: bool;
+  (** -no-alias-deps: no deps for module aliases *)
+  open_modules: string list;
+  (** -open Module: auto-open modules *)
   (* Warnings configuration *)
-  warnings: Ocaml_compiler.warning list;  (** Warnings to enable *)
-  errors: Ocaml_compiler.warning list;  (** Warnings to treat as errors *)
+  warnings: Ocaml_compiler.warning list;
+  (** Warnings to enable *)
+  errors: Ocaml_compiler.warning list;
+  (** Warnings to treat as errors *)
   (* Additional flags *)
-  cc_flags: string list;  (** C compiler flags (passed with -ccopt) *)
-  ld_flags: string list;  (** Linker flags (passed with -cclib) *)
-  ocamlc_flags: string list;  (** Additional raw ocamlc/ocamlopt flags *)
+  cc_flags: string list;
+  (** C compiler flags (passed with -ccopt) *)
+  ld_flags: string list;
+  (** Linker flags (passed with -cclib) *)
+  ocamlc_flags: string list;
+  (** Additional raw ocamlc/ocamlopt flags *)
 }
 
 (** Default debug profile - native code with debug symbols and minimal optimization *)
@@ -48,10 +62,12 @@ val debug: t
 (** Default release profile - optimized, strict *)
 val release: t
 
-(** Merge two profiles - override takes precedence per-field
-    For booleans and kind: replaced
-    For lists: appended (cc_flags, ld_flags, ocamlc_flags) or replaced (warnings, errors, open_modules)
-    For optional int: override if Some, keep base if None *)
+(**
+   Merge two profiles - override takes precedence per-field
+   For booleans and kind: replaced
+   For lists: appended (cc_flags, ld_flags, ocamlc_flags) or replaced (warnings, errors, open_modules)
+   For optional int: override if Some, keep base if None 
+*)
 val merge: t -> t -> t
 
 (** Apply a profile_override to a base profile *)

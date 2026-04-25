@@ -19,6 +19,5 @@ let execute = fun ~command_binary ~args ->
       (
         match Process.execv ~program:command_path ~args:argv with
         | Ok () -> Error (Failure "execv returned unexpectedly")
-        | Error error -> Error (Failure ("Failed to exec command: "
-        ^ IO.error_message (IO.of_system_error error)))
+        | Error error -> Error (Failure ("Failed to exec command: " ^ IO.error_message (IO.of_system_error error)))
       )

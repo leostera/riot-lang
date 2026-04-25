@@ -1,7 +1,7 @@
 open Std
 
 type severity =
-  Error
+  | Error
   | Warning
   | Info
   | Hint
@@ -24,7 +24,7 @@ let make = fun ~severity ~kind ~span ?suggestion ?fix () ->
     kind;
     span;
     suggestion;
-    fix;
+    fix
   }
 
 let kind = fun value ->
@@ -35,15 +35,15 @@ let severity = fun diag -> diag.severity
 
 let message = fun diagnostic ->
   match diagnostic with
-  | { kind=Known { message; _ }; _ } -> message
-  | { kind=Generic { message; _ }; _ } -> message
+  | { kind = Known { message; _ }; _ } -> message
+  | { kind = Generic { message; _ }; _ } -> message
 
 let span = fun diag -> diag.span
 
 let rule_id = fun diagnostic ->
   match diagnostic with
-  | { kind=Known { rule_id; _ }; _ } -> rule_id
-  | { kind=Generic { rule_id; _ }; _ } -> rule_id
+  | { kind = Known { rule_id; _ }; _ } -> rule_id
+  | { kind = Generic { rule_id; _ }; _ } -> rule_id
 
 let suggestion = fun diag -> diag.suggestion
 

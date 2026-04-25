@@ -27,11 +27,7 @@ type expr_trace = {
   inferred_type: TypeRepr.t;
 }
 
-type item_trace = {
-  item_id: ItemArenaId.t;
-  binding_names: string list;
-  exports_after: env;
-}
+type item_trace = { item_id: ItemArenaId.t; binding_names: string list; exports_after: env }
 
 type t = {
   source_id: SourceId.t;

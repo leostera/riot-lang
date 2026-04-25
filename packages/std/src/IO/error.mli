@@ -71,6 +71,7 @@ type t =
   | Buffer_full
   | Invalid_data
   | Unknown_error of string
+
 val of_system_error: Kernel.SystemError.t -> t
 
 val of_system_error_code: int -> t

@@ -12,12 +12,7 @@ type t =
   | String_input of { input: string; mutable pos: int }
   | Reader_input of reader_state
 
-type scan_result =
-[
-  `Stop of int * char
-  | `Boundary of int
-  | `Eof of int
-]
+type scan_result = [`Stop of int * char | `Boundary of int | `Eof of int]
 
 let default_capacity = 131_072
 
@@ -29,7 +24,7 @@ let of_reader = fun reader ->
     buffer = IO.Buffer.create ~size:default_capacity;
     base = 0;
     pos = 0;
-    eof = false;
+    eof = false
   }
 
 let position = function
@@ -61,23 +56,21 @@ let reader_append_range = fun dst state ~start ~stop ->
   if Int.(len > 0) then
     IO.Buffer.append_subslice dst (reader_slice state) ~off:start ~len |> Result.expect ~msg:"serde-json buffered input should append borrowed slices"
 
-let reader_match_field_range = fun fields state ~offset ~length ->
-  Serde.De.Fields.match_buffer_range fields state.buffer ~offset ~length
+let reader_match_field_range = fun fields state ~offset ~length -> Serde.De.Fields.match_buffer_range fields state.buffer ~offset ~length
 
 let refill = fun state ->
   if state.eof then
     false
-  else (
-    compact state;
-    match IO.Reader.read state.reader ~into:state.buffer with
-    | Ok 0 ->
-        state.eof <- true;
-        false
-    | Ok _ ->
-        true
-    | Error err ->
-        raise (Serde.Decode_error (`Io_error err))
-  )
+  else
+    (
+      compact state;
+      match IO.Reader.read state.reader ~into:state.buffer with
+      | Ok 0 ->
+          state.eof <- true;
+          false
+      | Ok _ -> true
+      | Error err -> raise (Serde.Decode_error (`Io_error err))
+    )
 
 let ensure = fun input needed ->
   match input with
@@ -86,12 +79,13 @@ let ensure = fun input needed ->
       let rec loop () =
         if Int.(state.pos + needed <= reader_length state) then
           true
-        else if state.eof then
-          false
-        else if refill state then
-          loop ()
         else
-          Int.(state.pos + needed <= reader_length state)
+          if state.eof then
+            false
+          else
+            if refill state then
+              loop ()
+            else Int.(state.pos + needed <= reader_length state)
       in
       loop ()
 
@@ -100,8 +94,7 @@ let peek_char = fun input ~offset ->
     match input with
     | String_input state -> Some (String.unsafe_get state.input (state.pos + offset))
     | Reader_input state -> Some (reader_get_unchecked state ~at:(state.pos + offset))
-  else
-    None
+  else None
 
 let current_char = fun input -> peek_char input ~offset:0
 
@@ -127,19 +120,14 @@ let slice_to_string = fun input ~start ~stop ->
   match input with
   | String_input state -> String.sub state.input ~offset:start ~len:(stop - start)
   | Reader_input state ->
-      let local_start = local_index state start in
-      reader_substring state ~off:local_start ~len:(stop - start)
+      let local_start = local_index state start in reader_substring state ~off:local_start ~len:(stop - start)
 
 let copy_range_to_buffer = fun buffer input ~start ~stop ->
   let length = stop - start in
   if Int.(length > 0) then
     match input with
     | String_input state -> IO.Buffer.add_substring buffer state.input start length
-    | Reader_input state -> reader_append_range
-      buffer
-      state
-      ~start:(local_index state start)
-      ~stop:(local_index state stop)
+    | Reader_input state -> reader_append_range buffer state ~start:(local_index state start) ~stop:(local_index state stop)
 
 let match_field_range = fun fields input ~start ~stop ->
   let length = stop - start in
@@ -156,10 +144,7 @@ let skip_whitespace = function
           pos
         else
           match String.unsafe_get input pos with
-          | ' '
-          | '\t'
-          | '\n'
-          | '\r' -> loop (pos + 1)
+          | ' ' | '\t' | '\n' | '\r' -> loop (pos + 1)
           | _ -> pos
       in
       state.pos <- loop state.pos
@@ -170,10 +155,7 @@ let skip_whitespace = function
             pos
           else
             match reader_get_unchecked state ~at:pos with
-            | ' '
-            | '\t'
-            | '\n'
-            | '\r' -> advance_local (pos + 1)
+            | ' ' | '\t' | '\n' | '\r' -> advance_local (pos + 1)
             | _ -> pos
         in
         state.pos <- advance_local state.pos;
@@ -193,8 +175,7 @@ let scan_while = fun input ~continue ->
           let current = String.unsafe_get state.input pos in
           if continue current then
             loop (pos + 1)
-          else
-            `Stop (pos, current)
+          else `Stop (pos, current)
       in
       loop state.pos
   | Reader_input state ->
@@ -202,8 +183,7 @@ let scan_while = fun input ~continue ->
         if Int.(state.pos >= reader_length state) then
           if refill state then
             loop ()
-          else
-            `Eof (state.base + state.pos)
+          else `Eof (state.base + state.pos)
         else
           let rec scan local =
             if Int.(local >= reader_length state) then
@@ -212,8 +192,7 @@ let scan_while = fun input ~continue ->
               let current = reader_get_unchecked state ~at:local in
               if continue current then
                 scan (local + 1)
-              else
-                `Stop (state.base + local, current)
+              else `Stop (state.base + local, current)
           in
           scan state.pos
       in

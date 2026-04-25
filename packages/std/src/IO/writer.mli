@@ -1,8 +1,10 @@
 open Prelude
 
 type 'value result = ('value, Error.t) Result.t
+
 module type Write = sig
   type t
+
   val write: t -> from:Buffer.t -> int result
 
   val write_vectored: t -> from:IoVec.t -> int result
@@ -11,7 +13,9 @@ module type Write = sig
 end
 
 type 'dst sink = (module Write with type t = 'dst)
+
 type t
+
 val from_sink: 'dst sink -> 'dst -> t
 
 val write: t -> from:Buffer.t -> int result

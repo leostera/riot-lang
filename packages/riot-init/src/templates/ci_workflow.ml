@@ -1,8 +1,6 @@
 open Std
 
-let materialize = fun (config: Context.t) ->
-  Writer.write_file config ~relative_path:".github/workflows/ci.yml"
-    ~content:{|name: CI
+let materialize = fun (config: Context.t) -> Writer.write_file config ~relative_path:".github/workflows/ci.yml" ~content:{|name: CI
 
 on:
   push:
@@ -20,5 +18,4 @@ jobs:
 
       - run: riot build
       - run: riot test
-|}
-    ~executable:false
+|} ~executable:false

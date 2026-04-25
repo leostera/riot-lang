@@ -1,9 +1,6 @@
 open Std
 
-type t = {
-  capture_traces: bool;
-  on_event: (Event.t -> unit) option;
-}
+type t = { capture_traces: bool; on_event: (Event.t -> unit) option }
 
 let default = { capture_traces = true; on_event = None }
 
@@ -21,5 +18,4 @@ let emit_event = fun config build_event ->
   match config.on_event with
   | None -> ()
   | Some on_event ->
-      let instant_us = monotonic_now_us () in
-      on_event (build_event ~instant_us)
+      let instant_us = monotonic_now_us () in on_event (build_event ~instant_us)

@@ -1,35 +1,32 @@
-(** # Encoding.Octal
+(**
+   # Encoding.Octal
 
-    Octal numeric text formatting and parsing helpers.
+   Octal numeric text formatting and parsing helpers.
 
-    This module is for integer values rendered as octal text, which makes it
-    useful for archive metadata, permission strings, and protocol fields that
-    use octal numerals.
+   This module is for integer values rendered as octal text, which makes it
+   useful for archive metadata, permission strings, and protocol fields that
+   use octal numerals.
 
-    Accepted input forms for decoding:
+   Accepted input forms for decoding:
 
-    - bare octal digits such as `"755"`
-    - prefixed octal strings such as `"0o755"`
-    - signed forms such as `"-10"` or `"+0o10"`
+   - bare octal digits such as `"755"`
+   - prefixed octal strings such as `"0o755"`
+   - signed forms such as `"-10"` or `"+0o10"`
 
-    ## Examples
+   ## Examples
 
-    ```ocaml
-    open Std
+   ```ocaml
+   open Std
 
-    let file_mode = Encoding.Octal.encode_int 0o755
-    let parsed = Encoding.Octal.decode_int "755"
-    let signed = Encoding.Octal.decode_int64 "-10"
-    ignore (file_mode, parsed, signed)
-    ```
+   let file_mode = Encoding.Octal.encode_int 0o755
+   let parsed = Encoding.Octal.decode_int "755"
+   let signed = Encoding.Octal.decode_int64 "-10"
+   ignore (file_mode, parsed, signed)
+   ```
 *)
-
 open Global
 
-type decode_error =
-[
-  `Invalid_octal
-]
+type decode_error = [`Invalid_octal]
 
 (** Encode an [`int`] as octal digits. *)
 val encode_int: int -> string

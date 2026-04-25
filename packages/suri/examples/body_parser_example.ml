@@ -2,7 +2,6 @@ open Std
 open Suri
 
 (** Example app demonstrating body_parser middleware with CSRF protection *)
-
 (** Home page with form *)
 let home = fun conn _req ->
   let html = {|<!DOCTYPE html>
@@ -56,9 +55,7 @@ let home = fun conn _req ->
     <li>No manual parsing required!</li>
   </ul>
 </body>
-</html>|}
-  in
-  conn |> Conn.with_status Net.Http.Status.Ok |> Conn.with_body html |> Conn.send
+</html>|} in conn |> Conn.with_status Net.Http.Status.Ok |> Conn.with_body html |> Conn.send
 
 (** Handle form submission *)
 let submit_form = fun conn _req ->
@@ -66,8 +63,7 @@ let submit_form = fun conn _req ->
   (* Extract form fields *)
   let name = Std.Collections.Proplist.get body_params ~key:"name" |> Option.unwrap_or ~default:"Unknown" in
   let email = Std.Collections.Proplist.get body_params ~key:"email" |> Option.unwrap_or ~default:"unknown@example.com" in
-  let message = Std.Collections.Proplist.get body_params ~key:"message"
-  |> Option.unwrap_or ~default:"" in
+  let message = Std.Collections.Proplist.get body_params ~key:"message" |> Option.unwrap_or ~default:"" in
   let html = {|<!DOCTYPE html>
 <html>
 <head>
@@ -96,9 +92,7 @@ let submit_form = fun conn _req ->
   
   <p><a href="/">← Back to form</a></p>
 </body>
-</html>|}
-  in
-  conn |> Conn.with_status Net.Http.Status.Ok |> Conn.with_body html |> Conn.send
+</html>|} in conn |> Conn.with_status Net.Http.Status.Ok |> Conn.with_body html |> Conn.send
 
 (** Handle JSON API request *)
 let api_handler = fun conn _req ->
@@ -108,32 +102,29 @@ let api_handler = fun conn _req ->
   let action = Std.Collections.Proplist.get body_params ~key:"action" |> Option.unwrap_or ~default:"none" in
   (* Create JSON response *)
   let response_json = Data.Json.(Object [
-    ("success", Bool true);
-    ("message", String "Data received and parsed");
-    ("received", Object [ ("name", String name); ("action", String action) ]);
-    ("middleware", String "body_parser automatically parsed the JSON body");
+    "success", Bool true;
+    "message", String "Data received and parsed";
+    "received", Object [
+      "name", String name;
+      "action", String action;
+    ];
+    "middleware", String "body_parser automatically parsed the JSON body";
   ]) in
-  let body = Data.Json.to_string response_json in
-  conn
-  |> Conn.with_status Net.Http.Status.Ok
-  |> Conn.with_header "content-type" "application/json"
-  |> Conn.with_body body
-  |> Conn.send
+  let body = Data.Json.to_string response_json in conn |> Conn.with_status Net.Http.Status.Ok |> Conn.with_header "content-type" "application/json" |> Conn.with_body body |> Conn.send
 
 (** Routes *)
-let routes = Middleware.Router.[get "/" home;
-post "/submit" submit_form;
-post "/api/data" api_handler]
+let routes = Middleware.Router.[ get "/" home; post "/submit" submit_form; post "/api/data" api_handler ]
 
 (** Application with body_parser + CSRF *)
-let app =
-  Middleware.[
-    logger;
-    session ~secret:"development-secret-key-change-in-production" ();
-    body_parser ();
-    csrf ~skip:(fun conn -> String.starts_with ~prefix:"/api/" (Conn.path conn)) ();
-    router routes;
-  ]
+let app = Middleware.[
+  logger;
+  session ~secret:"development-secret-key-change-in-production" ();
+  body_parser ();
+  csrf ~skip:(
+    fun conn -> String.starts_with ~prefix:"/api/" (Conn.path conn)
+  ) ();
+  router routes;
+]
 
 let main ~args:_ =
   let port = 8_080 in

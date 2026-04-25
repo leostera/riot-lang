@@ -30,8 +30,7 @@ type state = {
   owner: Pid.t;
 }
 
-let diagnostic_count = fun result ->
-  Runner.(List.length result.parse_diagnostics + List.length result.diagnostics)
+let diagnostic_count = fun result -> Runner.(List.length result.parse_diagnostics + List.length result.diagnostics)
 
 let should_ignore_file = Fix_config.should_ignore_file
 
@@ -49,25 +48,20 @@ let rec stop_idle_workers = fun state ->
 let rec dispatch_ready_workers = fun state ->
   match Queue.pop state.idle_workers with
   | Some worker -> (
-      match Queue.pop state.file_queue with
-      | Some file_path ->
-          send state.owner (Messages.FileStarted file_path);
-          send worker (Messages.RunTask file_path);
-          let _ = HashMap.insert state.busy_workers ~key:worker ~value:file_path in
-          dispatch_ready_workers state
-      | None -> Queue.push state.idle_workers ~value:worker
-    )
+    match Queue.pop state.file_queue with
+    | Some file_path ->
+        send state.owner (Messages.FileStarted file_path);
+        send worker (Messages.RunTask file_path);
+        let _ = HashMap.insert state.busy_workers ~key:worker ~value:file_path in dispatch_ready_workers state
+    | None -> Queue.push state.idle_workers ~value:worker
+  )
   | None -> ()
 
 let maybe_stop_waiting_workers = fun state ->
   if state.stop_requested || (state.discovery_complete && Queue.is_empty state.file_queue) then
     stop_idle_workers state
 
-let is_complete = fun state ->
-  HashMap.is_empty state.busy_workers
-  && state.stopped_workers = state.total_workers
-  && state.discovery_complete
-  && (state.stop_requested || Queue.is_empty state.file_queue)
+let is_complete = fun state -> HashMap.is_empty state.busy_workers && state.stopped_workers = state.total_workers && state.discovery_complete && (state.stop_requested || Queue.is_empty state.file_queue)
 
 let handle_complete = fun state ->
   let summary = Runner.summarize (List.reverse state.results_rev) in
@@ -95,7 +89,6 @@ let rec loop = fun state ->
     | `StopRequested -> handle_stop_requested state
     | `FileProgress progress -> handle_file_progress state progress
     | `FileResult r -> handle_file_result state r
-
 and handle_scanner_discovered = fun state file ->
   if not state.stop_requested then
     (
@@ -103,45 +96,39 @@ and handle_scanner_discovered = fun state file ->
       dispatch_ready_workers state
     );
   loop state
-
 and handle_scanner_complete = fun state ->
   state.discovery_complete <- true;
   maybe_stop_waiting_workers state;
   if is_complete state then
     handle_complete state
-  else
-    loop state
-
+  else loop state
 and handle_worker_ready = fun state worker ->
   if state.stop_requested then
     (
       stop_worker state worker;
       if is_complete state then
         handle_complete state
-      else
-        loop state
+      else loop state
     )
   else
     match Queue.pop state.file_queue with
     | Some file_path ->
         send state.owner (Messages.FileStarted file_path);
         send worker (Messages.RunTask file_path);
-        let _ = HashMap.insert state.busy_workers ~key:worker ~value:file_path in
-        loop state
+        let _ = HashMap.insert state.busy_workers ~key:worker ~value:file_path in loop state
     | None ->
         if state.discovery_complete then
           (
             stop_worker state worker;
             if is_complete state then
               handle_complete state
-            else
-              loop state
+            else loop state
           )
-        else (
-          Queue.push state.idle_workers ~value:worker;
-          loop state
-        )
-
+        else
+          (
+            Queue.push state.idle_workers ~value:worker;
+            loop state
+          )
 and handle_file_result = fun state r ->
   let _ = HashMap.remove state.busy_workers ~key:r.worker in
   state.results_rev <- r.result :: state.results_rev;
@@ -156,20 +143,16 @@ and handle_file_result = fun state r ->
   maybe_stop_waiting_workers state;
   if is_complete state then
     handle_complete state
-  else
-    loop state
-
+  else loop state
 and handle_file_progress = fun state progress ->
   send state.owner (Messages.FileProgress progress);
   loop state
-
 and handle_stop_requested = fun state ->
   state.stop_requested <- true;
   maybe_stop_waiting_workers state;
   if is_complete state then
     handle_complete state
-  else
-    loop state
+  else loop state
 
 let init = fun config () ->
   let file_queue = Queue.create () in
@@ -177,18 +160,16 @@ let init = fun config () ->
   let discovery_complete =
     match config.input with
     | Files files ->
-        List.for_each files ~fn:(fun f -> Queue.push file_queue ~value:f);
+        List.for_each files ~fn:(
+          fun f -> Queue.push file_queue ~value:f
+        );
         true
     | Roots roots ->
-        let _ = File_scanner.start
-          ~owner:(self ())
-          (File_scanner.create_many ~roots ~should_ignore:(should_ignore_file config.scope) ()) in
-        false
+        let _ = File_scanner.start ~owner:(self ()) (File_scanner.create_many ~roots ~should_ignore:(should_ignore_file config.scope) ()) in false
   in
   for _ = 1 to config.concurrency do
     yield ();
-    let _ = Worker.start { mode = config.mode; scope = config.scope; coordinator = self () } in
-    ()
+    let _ = Worker.start { mode = config.mode; scope = config.scope; coordinator = self () } in ()
   done;
   let state = {
     file_queue;
@@ -203,7 +184,7 @@ let init = fun config () ->
     total_workers = config.concurrency;
     mode = config.mode;
     scope = config.scope;
-    owner = config.owner;
+    owner = config.owner
   }
   in
   loop state

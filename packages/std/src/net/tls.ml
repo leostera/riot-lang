@@ -55,22 +55,25 @@ let read_decrypted = fun engine buf ~pos ~len ->
   let bytes_read = read_decrypted_raw engine buf ~pos ~len in
   if bytes_read > 0 then
     Read bytes_read
-  else if bytes_read = 0 then
-    Eof
-  else if bytes_read = (-1) then
-    Need_network_read
-  else if bytes_read = (-2) then
-    Need_network_write
   else
-    Eof
+    if bytes_read = 0 then
+      Eof
+    else
+      if bytes_read = (-1) then
+        Need_network_read
+      else
+        if bytes_read = (-2) then
+          Need_network_write
+        else Eof
 
 let write_plaintext = fun engine buf ~pos ~len ->
   let bytes_written = write_plaintext_raw engine buf ~pos ~len in
   if bytes_written > 0 then
     Written bytes_written
-  else if bytes_written = (-1) then
-    Need_network_read
-  else if bytes_written = (-2) then
-    Need_network_write
   else
-    Need_network_write
+    if bytes_written = (-1) then
+      Need_network_read
+    else
+      if bytes_written = (-2) then
+        Need_network_write
+      else Need_network_write

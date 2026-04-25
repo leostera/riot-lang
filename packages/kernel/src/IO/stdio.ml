@@ -1,10 +1,6 @@
 open Prelude
 
-type slice_validation = {
-  pos: int;
-  len: int;
-  buffer_len: int;
-}
+type slice_validation = { pos: int; len: int; buffer_len: int }
 
 type error =
   | InvalidSlice of { pos: int; len: int; buffer_len: int }
@@ -12,22 +8,21 @@ type error =
 
 let validate_slice = fun buf ~pos ~len ->
   if pos < 0 || len < 0 || pos + len > Bytes.length buf then
-    Result.Error ({ pos; len; buffer_len = Bytes.length buf }: slice_validation)
-  else
-    Result.Ok ()
+    Result.Error ({ pos; len; buffer_len = Bytes.length buf } : slice_validation)
+  else Result.Ok ()
 
 let error_to_string = fun value ->
   match value with
-  | InvalidSlice { pos; len; buffer_len } -> String.concat
-    ""
-    [
-      "invalid buffer slice: pos=";
-      Int.to_string pos;
-      ", len=";
-      Int.to_string len;
-      ", buffer_len=";
-      Int.to_string buffer_len;
-    ]
+  | InvalidSlice { pos; len; buffer_len } ->
+      String.concat ""
+        [
+          "invalid buffer slice: pos=";
+          Int.to_string pos;
+          ", len=";
+          Int.to_string len;
+          ", buffer_len=";
+          Int.to_string buffer_len;
+        ]
   | System error -> System_error.to_string error
 
 module FFI = struct
@@ -48,18 +43,17 @@ let to_source = fun fd ->
   let module Source = struct
     type nonrec t = int
 
-    let register = fun fd selector token interest ->
-      Async.Adapter.Selector.register selector ~fd ~token ~interest
+    let register = fun fd selector token interest -> Async.Adapter.Selector.register selector ~fd ~token ~interest
 
-    let reregister = fun fd selector token interest ->
-      Async.Adapter.Selector.reregister selector ~fd ~token ~interest
+    let reregister = fun fd selector token interest -> Async.Adapter.Selector.reregister selector ~fd ~token ~interest
 
     let deregister = fun fd selector -> Async.Adapter.Selector.deregister selector ~fd
   end in
   Async.Source.make (module Source) fd
 
-let map_system_error = fun result ->
-  Result.map_err result ~fn:(fun code -> System (System_error.from_code code))
+let map_system_error = fun result -> Result.map_err result ~fn:(
+  fun code -> System (System_error.from_code code)
+)
 
 let validate_buffer_write = fun ?(pos = 0) ?len buffer ->
   let len =

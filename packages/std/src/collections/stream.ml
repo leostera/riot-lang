@@ -3,7 +3,6 @@ open Kernel
 type 'value node =
   | Nil
   | Cons of 'value * 'value t
-
 and 'value t = unit -> 'value node
 
 let iter: type item. item t -> item Iter.Iterator.t = fun seq ->
@@ -14,8 +13,8 @@ let iter: type item. item t -> item Iter.Iterator.t = fun seq ->
 
     let next = fun state ->
       match state () with
-      | Nil -> (None, state)
-      | Cons (value, rest) -> (Some value, rest)
+      | Nil -> None, state
+      | Cons (value, rest) -> Some value, rest
 
     let size = fun _state -> 0
   end in
@@ -23,9 +22,7 @@ let iter: type item. item t -> item Iter.Iterator.t = fun seq ->
 
 let mut_iter: type item. item t -> item Iter.MutIterator.t = fun seq ->
   let module StreamMutIter = struct
-    type state = {
-      mutable seq: item t;
-    }
+    type state = { mutable seq: item t }
 
     type nonrec item = item
 

@@ -24,41 +24,31 @@ type error =
 
 let out = eprintln
 
-let command =
-  let open ArgParser in
-    let open ArgParser.Arg in command "add"
-    |> about "Add a registry, local path, or GitHub dependency and refresh riot.lock"
-    |> args
-      [
-        positional "dependency" |> multiple |> help "Dependency spec: <name>, <name>@<version>, ../path, github.com/<owner>/<repo>[/pkg][#ref], or https://github.com/<owner>/<repo>[/pkg][#ref]";
-        option "package" |> short 'p' |> long "package" |> help "Edit a specific workspace package manifest";
-        flag "workspace" |> long "workspace" |> help "Edit the workspace root manifest";
-        flag "build" |> long "build" |> help "Write into [build-dependencies]";
-        flag "dev" |> long "dev" |> help "Write into [dev-dependencies]";
-        flag "json" |> long "json" |> help "Render events as JSON";
-      ]
+let command = let open ArgParser in
+let open ArgParser.Arg in
+command "add" |> about "Add a registry, local path, or GitHub dependency and refresh riot.lock" |> args
+  [
+    positional "dependency" |> multiple |> help "Dependency spec: <name>, <name>@<version>, ../path, github.com/<owner>/<repo>[/pkg][#ref], or https://github.com/<owner>/<repo>[/pkg][#ref]";
+    option "package" |> short 'p' |> long "package" |> help "Edit a specific workspace package manifest";
+    flag "workspace" |> long "workspace" |> help "Edit the workspace root manifest";
+    flag "build" |> long "build" |> help "Write into [build-dependencies]";
+    flag "dev" |> long "dev" |> help "Write into [dev-dependencies]";
+    flag "json" |> long "json" |> help "Render events as JSON";
+  ]
 
 let path_error_message = function
   | Path.InvalidUtf8 { path } -> "invalid UTF-8 path: " ^ path
-  | Path.SystemInvalidUtf8 { syscall; path } -> "system call '"
-  ^ syscall
-  ^ "' returned invalid UTF-8 path: "
-  ^ path
+  | Path.SystemInvalidUtf8 { syscall; path } -> "system call '" ^ syscall ^ "' returned invalid UTF-8 path: " ^ path
   | Path.SystemError error -> error
 
 let workspace_bootstrap_error_message = function
-  | BootstrapManifestWriteFailed { path; error } -> "failed to write manifest '"
-  ^ Path.to_string path
-  ^ "': "
-  ^ IO.error_message error
+  | BootstrapManifestWriteFailed { path; error } -> "failed to write manifest '" ^ Path.to_string path ^ "': " ^ IO.error_message error
   | BootstrapDependencyHashFailed error -> Riot_deps.Lock_refresh.error_message error
   | BootstrapLockfileWriteFailed error -> Riot_deps.Lockfile_store.error_message error
 
 let workspace_load_error_message = function
   | WorkspaceScanFailed error -> Riot_model.Workspace_manager.scan_error_message error
-  | WorkspaceLoadHadErrors errors -> errors
-  |> List.map ~fn:Riot_model.Workspace_manager.load_error_to_string
-  |> String.concat "; "
+  | WorkspaceLoadHadErrors errors -> errors |> List.map ~fn:Riot_model.Workspace_manager.load_error_to_string |> String.concat "; "
 
 let message = function
   | MissingDependency -> "missing dependency name"
@@ -66,10 +56,8 @@ let message = function
   | ConflictingScope -> "cannot combine --build with --dev"
   | InvalidPackageName error -> Package_name.error_message error
   | CurrentDirUnavailable error -> "failed to determine current directory: " ^ path_error_message error
-  | WorkspaceBootstrapFailed error -> "failed to initialize riot workspace: "
-  ^ workspace_bootstrap_error_message error
-  | WorkspaceLoadFailed error -> "failed to load initialized riot workspace: "
-  ^ workspace_load_error_message error
+  | WorkspaceBootstrapFailed error -> "failed to initialize riot workspace: " ^ workspace_bootstrap_error_message error
+  | WorkspaceLoadFailed error -> "failed to load initialized riot workspace: " ^ workspace_load_error_message error
   | AddFailed error -> Package_error.message error
 
 let fail = fun err ->
@@ -80,16 +68,13 @@ let selection_of_matches = fun ?(default_selection = Riot_deps.Current) matches 
   let package = ArgParser.get_one matches "package" in
   let workspace = ArgParser.get_flag matches "workspace" in
   match package, workspace with
-  | Some _, true ->
-      Error ConflictingTarget
+  | Some _, true -> Error ConflictingTarget
   | Some package, false ->
-      let* package_name = Package_name.from_string package
-      |> Result.map_err ~fn:(fun error -> InvalidPackageName error) in
-      Ok (Riot_deps.Package package_name)
-  | None, true ->
-      Ok Riot_deps.Workspace
-  | None, false ->
-      Ok default_selection
+      let* package_name = Package_name.from_string package |> Result.map_err ~fn:(
+        fun error -> InvalidPackageName error
+      ) in Ok (Riot_deps.Package package_name)
+  | None, true -> Ok Riot_deps.Workspace
+  | None, false -> Ok default_selection
 
 let scope_of_matches = fun matches ->
   let build = ArgParser.get_flag matches "build" in
@@ -100,9 +85,7 @@ let scope_of_matches = fun matches ->
   | false, true -> Ok Riot_deps.Dev
   | false, false -> Ok Riot_deps.Runtime
 
-let write_event = fun ~mode ~pm_session_id ~seen_registry_updates kind ->
-  Riot_model.Event.create ~session_id:pm_session_id ~level:Riot_model.Event.Info kind
-  |> Build.write_pm_event ~mode ~seen_registry_updates
+let write_event = fun ~mode ~pm_session_id ~seen_registry_updates kind -> Riot_model.Event.create ~session_id:pm_session_id ~level:Riot_model.Event.Info kind |> Build.write_pm_event ~mode ~seen_registry_updates
 
 let empty_workspace_manifest_source = {|[workspace]
 members = []
@@ -113,34 +96,33 @@ members = []
 let bootstrap_empty_workspace = fun ~root ->
   let manifest_path = Path.(root / Path.v "riot.toml") in
   let workspace_manager = Riot_model.Workspace_manager.create () in
-  let* () = Fs.write empty_workspace_manifest_source manifest_path
-  |> Result.map_err
-    ~fn:(fun error ->
-      WorkspaceBootstrapFailed (BootstrapManifestWriteFailed { path = manifest_path; error })) in
-  let* dependency_hash = Riot_deps.Lock_refresh.dependency_hash
-    ~workspace_manager
-    ~workspace_root:root
-    ~manifest_paths:[ manifest_path ]
-  |> Result.map_err ~fn:(fun error -> WorkspaceBootstrapFailed (BootstrapDependencyHashFailed error)) in
-  let lockfile = Riot_model.Lockfile.{ format_version = 1; dependency_hash; packages = [] } in
-  Riot_deps.Lockfile_store.write ~workspace_root:root lockfile
-  |> Result.map_err ~fn:(fun error -> WorkspaceBootstrapFailed (BootstrapLockfileWriteFailed error))
+  let* () = Fs.write empty_workspace_manifest_source manifest_path |> Result.map_err ~fn:(
+    fun error -> WorkspaceBootstrapFailed (BootstrapManifestWriteFailed { path = manifest_path; error })
+  )
+  in
+  let* dependency_hash = Riot_deps.Lock_refresh.dependency_hash ~workspace_manager ~workspace_root:root ~manifest_paths:[ manifest_path ] |> Result.map_err ~fn:(
+    fun error -> WorkspaceBootstrapFailed (BootstrapDependencyHashFailed error)
+  )
+  in
+  let lockfile = Riot_model.Lockfile.{ format_version = 1; dependency_hash; packages = [] } in Riot_deps.Lockfile_store.write ~workspace_root:root lockfile |> Result.map_err ~fn:(
+    fun error -> WorkspaceBootstrapFailed (BootstrapLockfileWriteFailed error)
+  )
 
 let load_workspace = fun ~root ->
   let workspace_manager = Riot_model.Workspace_manager.create () in
-  let* (workspace, load_errors) = Riot_model.Workspace_manager.scan workspace_manager root
-  |> Result.map_err ~fn:(fun error -> WorkspaceLoadFailed (WorkspaceScanFailed error)) in
+  let* (workspace, load_errors) = Riot_model.Workspace_manager.scan workspace_manager root |> Result.map_err ~fn:(
+    fun error -> WorkspaceLoadFailed (WorkspaceScanFailed error)
+  )
+  in
   if List.is_empty load_errors then
     Ok workspace
-  else
-    Error (WorkspaceLoadFailed (WorkspaceLoadHadErrors load_errors))
+  else Error (WorkspaceLoadFailed (WorkspaceLoadHadErrors load_errors))
 
 let run_request = fun ?(default_selection = Riot_deps.Current) ~workspace ~cwd matches ->
   let mode =
     if ArgParser.get_flag matches "json" then
       Build.Json
-    else
-      Build.Human
+    else Build.Human
   in
   let workspace_manager = Riot_model.Workspace_manager.create () in
   let dependencies =
@@ -154,19 +136,11 @@ let run_request = fun ?(default_selection = Riot_deps.Current) ~workspace ~cwd m
       let pm_session_id = Riot_model.Session_id.make () in
       let seen_registry_updates = HashSet.create () in
       (
-        match Riot_deps.add
-          ~on_event:(write_event ~mode ~pm_session_id ~seen_registry_updates)
-          ~workspace_manager
-          ~workspace
-          ~cwd
-          ~request
-          () with
+        match Riot_deps.add ~on_event:(write_event ~mode ~pm_session_id ~seen_registry_updates) ~workspace_manager ~workspace ~cwd ~request () with
         | Ok () -> Ok ()
         | Error error -> fail (AddFailed error)
       )
-  | (Error err, _, _)
-  | (_, Error err, _)
-  | (_, _, Error err) -> fail err
+  | (Error err, _, _) | (_, Error err, _) | (_, _, Error err) -> fail err
 
 let run = fun ~workspace matches ->
   match Env.current_dir () with
@@ -177,7 +151,7 @@ let run_without_workspace = fun ~cwd matches ->
   match bootstrap_empty_workspace ~root:cwd with
   | Error err -> fail err
   | Ok () -> (
-      match load_workspace ~root:cwd with
-      | Error err -> fail err
-      | Ok workspace -> run_request ~default_selection:Riot_deps.Workspace ~workspace ~cwd matches
-    )
+    match load_workspace ~root:cwd with
+    | Error err -> fail err
+    | Ok workspace -> run_request ~default_selection:Riot_deps.Workspace ~workspace ~cwd matches
+  )

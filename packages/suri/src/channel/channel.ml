@@ -3,37 +3,26 @@ open Std
 type topic = string
 
 module Handler = struct
-  type upgrade_opts = {
-    do_upgrade: bool;
-  }
+  type upgrade_opts = { do_upgrade: bool }
 
-  type ('state, 'error) handle_result =
-  [
-    `push of Http.Ws.Frame.t list * 'state
-    | `ok of 'state
-    | `error of 'state * 'error
-  ]
+  type ('state, 'error) handle_result = [`push of Http.Ws.Frame.t list * 'state | `ok of 'state | `error of 'state * 'error]
 
   module type Intf = sig
     type state
+
     type args
-    val init: args -> (state, [>
-        `Unknown_opcode of int
-      ]) handle_result
 
-    val handle_frame: Http.Ws.Frame.t -> Net.TcpStream.t -> state -> (state, [>
-        `Unknown_opcode of int
-      ]) handle_result
+    val init: args -> (state, [> `Unknown_opcode of int]) handle_result
 
-    val handle_message: Message.t -> state -> (state, [>
-        `Unknown_opcode of int
-      ]) handle_result
+    val handle_frame: Http.Ws.Frame.t -> Net.TcpStream.t -> state -> (state, [> `Unknown_opcode of int]) handle_result
+
+    val handle_message: Message.t -> state -> (state, [> `Unknown_opcode of int]) handle_result
   end
 
   type t =
-    H: (module Intf with type args = 'a and type state = 'b) * 'b -> t
+    | H : (module Intf with type args = 'a and type state = 'b) * 'b -> t
 
-  let make (type a b) ((module I : Intf with type args = a and type state = b)) (args: a): t =
+  let make (type a b) ((module I: Intf with type args = a and type state = b)) (args: a): t =
     match I.init args with
     | `ok state -> H ((module I), state)
     | `push (_, state) -> H ((module I), state)

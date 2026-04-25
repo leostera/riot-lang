@@ -3,9 +3,13 @@ open Std
 type error =
   | PlanningFailed of Riot_planner.Workspace_planner.plan_error
   | Failure of string
+
 type unresolved
+
 type locked
+
 type 'stage t
+
 val error_message: error -> string
 
 val target: 'a t -> Riot_model.Target.t
@@ -36,11 +40,6 @@ val package_graph: 'a t -> Riot_planner.Package_graph.t
 
 val package_keys: 'a t -> Riot_model.Package.key list
 
-val prepare:
-  Build_context.t ->
-  Resolved_build.t ->
-  target:Riot_model.Target.t ->
-  toolchain:Riot_toolchain.t ->
-  (locked t, error) result
+val prepare: Build_context.t -> Resolved_build.t -> target:Riot_model.Target.t -> toolchain:Riot_toolchain.t -> (locked t, error) result
 
 val release: locked t -> unit

@@ -1,17 +1,18 @@
 open Std
 
-(** Render property-test values into readable counter-examples.
+(**
+   Render property-test values into readable counter-examples.
 
-    Printers matter when a property fails. A good printer tells you what value
-    broke the property without needing to instrument the test manually.
+   Printers matter when a property fails. A good printer tells you what value
+   broke the property without needing to instrument the test manually.
 
-    Example:
-    ```ocaml
-    let user =
-      Printer.pair Printer.string Printer.int
+   Example:
+   ```ocaml
+   let user =
+     Printer.pair Printer.string Printer.int
 
-    user ("leo", 3) = "(\"leo\", 3)"
-    ```
+   user ("leo", 3) = "(\"leo\", 3)"
+   ```
 *)
 type 'value t = 'value -> string
 
@@ -25,10 +26,11 @@ val int32: int32 t
 (** Print [int64] values. *)
 val int64: int64 t
 
-(** Print floating-point values.
+(**
+   Print floating-point values.
 
-    Use [precision] when you want stable output in snapshots or counter-example
-    reports.
+   Use [precision] when you want stable output in snapshots or counter-example
+   reports.
 *)
 val float: ?precision:int -> float t
 
@@ -68,13 +70,14 @@ val deque: 'value t -> 'value Collections.Deque.t t
 (** Print heaps using the given element printer. *)
 val heap: 'value t -> 'value Collections.Heap.t t
 
-(** Print pairs.
+(**
+   Print pairs.
 
-    Example:
-    ```ocaml
-    let show = Printer.pair Printer.int Printer.string in
-    show (1, "ok") = "(1, \"ok\")"
-    ```
+   Example:
+   ```ocaml
+   let show = Printer.pair Printer.int Printer.string in
+   show (1, "ok") = "(1, \"ok\")"
+   ```
 *)
 val pair: 'a t -> 'b t -> ('a * 'b) t
 

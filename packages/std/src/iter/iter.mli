@@ -1,59 +1,62 @@
-(** # Iter - Iteration and Cursor Utilities
+(**
+   # Iter - Iteration and Cursor Utilities
 
-    This module provides iteration and cursor abstractions for traversing
-    sequences and IO slices.
+   This module provides iteration and cursor abstractions for traversing
+   sequences and IO slices.
 
-    ## Iterators
+   ## Iterators
 
-    Iterators provide lazy, composable sequence processing:
+   Iterators provide lazy, composable sequence processing:
 
-    - {!Iterator} - Immutable iterators (functional, backtrackable)
-    - {!MutIterator} - Mutable iterators (efficient, single-pass)
+   - {!Iterator} - Immutable iterators (functional, backtrackable)
+   - {!MutIterator} - Mutable iterators (efficient, single-pass)
 
-    ## Cursors
+   ## Cursors
 
-    Cursors provide byte-slice traversal for parsing:
+   Cursors provide byte-slice traversal for parsing:
 
-    - {!Cursor} - Immutable cursors (backtrackable parsing)
-    - {!MutCursor} - Mutable cursors (efficient single-pass parsing)
+   - {!Cursor} - Immutable cursors (backtrackable parsing)
+   - {!MutCursor} - Mutable cursors (efficient single-pass parsing)
 
-    ## Quick Start
+   ## Quick Start
 
-    Immutable parsing with {!Cursor}:
+   Immutable parsing with {!Cursor}:
 
-    ```ocaml open Std
+   ```ocaml open Std
 
-    let parse_header line =
-      let cursor = Iter.Cursor.create line in
-      match Iter.Cursor.take_until cursor (fun c -> c = ':') with
-      | None -> Error "Invalid header"
-      | Some (key, cursor) ->
-          let cursor = Iter.Cursor.advance cursor |> Option.unwrap in
-          let value, _ = Iter.Cursor.take_while_string cursor (fun c -> c <> '\r') in
-          Ok (String.trim (Std.IO.IoVec.IoSlice.to_string key), String.trim value) ```
+   let parse_header line =
+     let cursor = Iter.Cursor.create line in
+     match Iter.Cursor.take_until cursor (fun c -> c = ':') with
+     | None -> Error "Invalid header"
+     | Some (key, cursor) ->
+         let cursor = Iter.Cursor.advance cursor |> Option.unwrap in
+         let value, _ = Iter.Cursor.take_while_string cursor (fun c -> c <> '\r') in
+         Ok (String.trim (Std.IO.IoVec.IoSlice.to_string key), String.trim value) ```
 
-    Efficient parsing with {!MutCursor}:
+   Efficient parsing with {!MutCursor}:
 
-    ```ocaml let parse_request_line line = let cursor = Iter.MutCursor.create
-    line in let method_ = Iter.MutCursor.take_while_string cursor (fun c -> c <> ' ')
-    in Iter.MutCursor.advance cursor; let path = Iter.MutCursor.take_while cursor
-    (fun c -> c <> ' ') in Iter.MutCursor.advance cursor; let version =
-    Iter.MutCursor.remaining_string cursor in (method_, Std.IO.IoVec.IoSlice.to_string path, version) ```
+   ```ocaml let parse_request_line line = let cursor = Iter.MutCursor.create
+   line in let method_ = Iter.MutCursor.take_while_string cursor (fun c -> c <> ' ')
+   in Iter.MutCursor.advance cursor; let path = Iter.MutCursor.take_while cursor
+   (fun c -> c <> ' ') in Iter.MutCursor.advance cursor; let version =
+   Iter.MutCursor.remaining_string cursor in (method_, Std.IO.IoVec.IoSlice.to_string path, version) ```
 
-    ## When to Use What
+   ## When to Use What
 
-    | Use Case | Recommendation | |----------|----------------| | Backtracking
-    parsers | {!Cursor} | | Single-pass parsers | {!MutCursor} | | Functional
-    style | {!Cursor}, {!Iterator} | | Performance-critical | {!MutCursor},
-    {!MutIterator} | | Lazy sequences | {!Iterator}, {!MutIterator} | | Slice
-    parsing | {!Cursor}, {!MutCursor} | *)
+   | Use Case | Recommendation | |----------|----------------| | Backtracking
+   parsers | {!Cursor} | | Single-pass parsers | {!MutCursor} | | Functional
+   style | {!Cursor}, {!Iterator} | | Performance-critical | {!MutCursor},
+   {!MutIterator} | | Lazy sequences | {!Iterator}, {!MutIterator} | | Slice
+   parsing | {!Cursor}, {!MutCursor} | 
+*)
+module Iterator : module type of Iterator
 
-module Iterator: module type of Iterator
-
-module MutIterator: sig
+module MutIterator : sig
   module type Intf = sig
     type state
+
     type item
+
     val next: state -> item option
 
     val size: state -> int
@@ -62,7 +65,9 @@ module MutIterator: sig
   end
 
   type ('item, 'state) iter = (module Intf with type item = 'item and type state = 'state)
+
   type 'item t
+
   val empty: unit -> 'item t
 
   val singleton: 'item -> 'item t
@@ -112,6 +117,6 @@ module MutIterator: sig
   val for_each: 'a t -> fn:('a -> unit) -> unit
 end
 
-module Cursor: module type of Cursor
+module Cursor : module type of Cursor
 
-module MutCursor: module type of Mut_cursor
+module MutCursor : module type of Mut_cursor

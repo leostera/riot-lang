@@ -1,11 +1,12 @@
-(** Unicode - Unicode text processing support
-    
-    This module provides comprehensive Unicode support including:
-    - Rune (code point) operations  
-    - Grapheme cluster handling with proper UAX #29 support
-    - Display width calculation for terminals using complete East Asian Width tables
-    - UTF-8 encoding/decoding
-    - Text segmentation (words, sentences, line breaks)
+(**
+   Unicode - Unicode text processing support
+
+   This module provides comprehensive Unicode support including:
+   - Rune (code point) operations  
+   - Grapheme cluster handling with proper UAX #29 support
+   - Display width calculation for terminals using complete East Asian Width tables
+   - UTF-8 encoding/decoding
+   - Text segmentation (words, sentences, line breaks)
 *)
 (** {1 Submodules} *)
 (** Width tables for character display width calculation *)
@@ -45,6 +46,4 @@ type line_break = Segmentation.line_break =
   (** Line must break here (e.g., newline) *)
   | Can_break
   (** Line may break here (word boundary) *)
-  | Dont_break
-
-(** Line must not break here *)
+  | Dont_break(** Line must not break here *)

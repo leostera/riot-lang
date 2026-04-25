@@ -1,9 +1,10 @@
 open Std
 
-(** CLI surface for [riot clean].
+(**
+   CLI surface for [riot clean].
 
-    Use this command to run workspace cache cleanup and build-root maintenance
-    through [riot-store]'s cleanup policy.
+   Use this command to run workspace cache cleanup and build-root maintenance
+   through [riot-store]'s cleanup policy.
 *)
 val command: Std.ArgParser.command
 

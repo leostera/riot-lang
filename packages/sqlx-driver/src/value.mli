@@ -1,26 +1,24 @@
 open Std
 
 (* Database value types.
-   
+
    This module defines the core value types that can be stored in and retrieved
    from SQL databases. All database drivers must convert their native types
    to and from these universal value types.
-   
+
    ## Example
-   
+
    ```ocaml
    let id_val = Value.int 42
    let name_val = Value.string "Alice"
    let active_val = Value.bool true
-   
+
    match Value.to_int id_val with
    | Some n -> Printf.printf "ID: %d\n" n
    | None -> print_endline "Not an integer"
    ```
 *)
-
 (* The type of database values *)
-
 type t =
   | Null
   | Int of int
@@ -37,6 +35,7 @@ type t =
   | Uuid of string
   | Json of string
   | Numeric of string
+
 (* ## Constructors *)
 val null: t
 

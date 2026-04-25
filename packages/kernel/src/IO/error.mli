@@ -9,4 +9,5 @@ type t =
   | Split_out_of_bounds of { buffer_length: int; at: int }
   | Commit_out_of_bounds of { writable_bytes: int; requested: int }
   | Consume_out_of_bounds of { readable_bytes: int; requested: int }
+
 val message: t -> string

@@ -2,26 +2,33 @@ open Std
 open Suri
 
 (** Simple API with CORS enabled for cross-origin requests *)
-let routes = Middleware.Router.[get
-  "/api/hello"
-  (fun conn _req ->
-    conn |> Conn.respond ~status:Net.Http.Status.Ok ~body:"Hello from CORS-enabled API!" |> Conn.send);
-get "/api/data"
-  (fun conn _req ->
-    let json = {|{"message": "This is accessible from browsers", "status": "ok"}|} in
-    conn
-    |> Conn.respond ~status:Net.Http.Status.Ok ~body:json
-    |> Conn.with_header "content-type" "application/json"
-    |> Conn.send);
-post "/api/submit"
-  (fun conn _req ->
-    let body = Conn.body conn in
-    Log.info (String.concat "" [ "Received POST data: "; body ]);
-    conn |> Conn.respond ~status:Net.Http.Status.Ok ~body:"Data received!" |> Conn.send);]
+let routes = Middleware.Router.[
+  get "/api/hello"
+    (
+      fun conn _req -> conn |> Conn.respond ~status:Net.Http.Status.Ok ~body:"Hello from CORS-enabled API!" |> Conn.send
+    );
+  get "/api/data"
+    (
+      fun conn _req ->
+        let json = {|{"message": "This is accessible from browsers", "status": "ok"}|} in conn |> Conn.respond ~status:Net.Http.Status.Ok ~body:json |> Conn.with_header "content-type" "application/json" |> Conn.send
+    );
+  post "/api/submit"
+    (
+      fun conn _req ->
+        let body = Conn.body conn in
+        Log.info (String.concat "" [ "Received POST data: "; body ]);
+        conn |> Conn.respond ~status:Net.Http.Status.Ok ~body:"Data received!" |> Conn.send
+    );
+]
 
 let main ~args:_ =
   (* Development mode - allow all origins *)
-  let app = Middleware.[ request_id; logger; cors ~origins:[ "*" ] (); router routes; ] in
+  let app = Middleware.[
+    request_id;
+    logger;
+    cors ~origins:[ "*" ] ();
+    router routes;
+  ] in
   let config = Suri.config ~port:4_000 () in
   match Suri.start_link ~config app with
   | Ok _supervisor ->

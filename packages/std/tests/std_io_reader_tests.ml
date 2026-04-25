@@ -1,5 +1,7 @@
 open Std
+
 module IoVec = IO.IoVec
+
 module Bytes = Kernel.Bytes
 
 module FailingReader = struct
@@ -13,15 +15,9 @@ module FailingReader = struct
 end
 
 module CountingReader = struct
-  type write_state = {
-    mutable written: int;
-  }
+  type write_state = { mutable written: int }
 
-  type t = {
-    data: Bytes.t;
-    mutable offset: int;
-    mutable reads: int;
-  }
+  type t = { data: Bytes.t; mutable offset: int; mutable reads: int }
 
   let create = fun input -> { data = Bytes.from_string input; offset = 0; reads = 0 }
 
@@ -33,11 +29,9 @@ module CountingReader = struct
         (
           match IO.Buffer.ensure_free into 4 with
           | Ok () -> IO.Buffer.writable into
-          | Error error -> Kernel.SystemError.panic
-            ("CountingReader.read.ensure_free: " ^ Kernel.IO.Error.message error)
+          | Error error -> Kernel.SystemError.panic ("CountingReader.read.ensure_free: " ^ Kernel.IO.Error.message error)
         )
-      else
-        IO.Buffer.writable into
+      else IO.Buffer.writable into
     in
     let len = min remaining (IO.IoSlice.length writable) in
     if len > 0 then
@@ -45,8 +39,7 @@ module CountingReader = struct
     begin
       match IO.Buffer.commit into len with
       | Ok () -> ()
-      | Error error -> Kernel.SystemError.panic
-        ("CountingReader.read.commit: " ^ Kernel.IO.Error.message error)
+      | Error error -> Kernel.SystemError.panic ("CountingReader.read.commit: " ^ Kernel.IO.Error.message error)
     end;
     t.offset <- t.offset + len;
     Ok len
@@ -56,20 +49,16 @@ module CountingReader = struct
     let remaining = Bytes.length t.data - t.offset in
     let total = min remaining (IoVec.length bufs) in
     let state: write_state = { written = 0 } in
-    IoVec.for_each bufs
-      ~fn:(fun segment ->
+    IoVec.for_each bufs ~fn:(
+      fun segment ->
         if state.written < total then
           (
             let length = IoVec.IoSlice.length segment in
             let chunk_len = min length (total - state.written) in
-            IoVec.IoSlice.blit_from_bytes_unchecked
-              t.data
-              ~src_off:(t.offset + state.written)
-              segment
-              ~dst_off:0
-              ~len:chunk_len;
+            IoVec.IoSlice.blit_from_bytes_unchecked t.data ~src_off:(t.offset + state.written) segment ~dst_off:0 ~len:chunk_len;
             state.written <- state.written + chunk_len
-          ));
+          )
+    );
     t.offset <- t.offset + total;
     Ok total
 
@@ -123,9 +112,7 @@ let test_read_vectored_fills_segments_in_order = fun _ctx ->
   | Error _ -> Error "IO.Reader.read_vectored should not fail for from_string"
 
 let test_reader_propagates_io_errors = fun _ctx ->
-  let reader =
-    IO.Reader.from_source (module FailingReader) ()
-  in
+  let reader = IO.Reader.from_source (module FailingReader) () in
   let buffer = IO.Buffer.create ~size:4 in
   match IO.read reader ~into:buffer with
   | Error (IO.Unknown_error "boom") -> Ok ()
@@ -137,16 +124,14 @@ let test_from_string_returns_zero_after_eof = fun _ctx ->
   let buffer = IO.Buffer.create ~size:2 in
   match IO.read reader ~into:buffer with
   | Ok 2 -> (
-      IO.Buffer.clear buffer;
-      match IO.read reader ~into:buffer with
-      | Ok 0 -> Ok ()
-      | Ok _ -> Error "reads after EOF should keep returning 0"
-      | Error _ -> Error "reads after EOF should not fail"
-    )
-  | Ok _ ->
-      Error "the first read should consume the full string"
-  | Error _ ->
-      Error "from_string should not fail"
+    IO.Buffer.clear buffer;
+    match IO.read reader ~into:buffer with
+    | Ok 0 -> Ok ()
+    | Ok _ -> Error "reads after EOF should keep returning 0"
+    | Error _ -> Error "reads after EOF should not fail"
+  )
+  | Ok _ -> Error "the first read should consume the full string"
+  | Error _ -> Error "from_string should not fail"
 
 let test_read_exact_reads_requested_bytes = fun _ctx ->
   let reader = IO.Reader.from_string "hello world" in
@@ -171,28 +156,25 @@ let test_bufreader_amortizes_byte_reads = fun _ctx ->
   | Error err -> Error err
 
 let test_bufreader_to_reader_exposes_generic_reads = fun _ctx ->
-  let reader = IO.Reader.from_string "alpha\nbeta"
-  |> IO.BufReader.from_reader ~size:4
-  |> IO.BufReader.to_reader in
+  let reader = IO.Reader.from_string "alpha\nbeta" |> IO.BufReader.from_reader ~size:4 |> IO.BufReader.to_reader in
   let buffer = IO.Buffer.create ~size:8 in
   match IO.Reader.read_to_end reader ~into:buffer with
   | Ok 10 when String.equal (IO.Buffer.contents buffer) "alpha\nbeta" -> Ok ()
   | Ok _ -> Error "BufReader.to_reader should preserve the underlying byte stream"
   | Error _ -> Error "BufReader.to_reader should not fail for in-memory strings"
 
-let tests =
-  Test.[
-    case "empty readers return EOF immediately" test_empty_reader_returns_zero;
-    case "from_string reads small buffers sequentially" test_from_string_reads_small_buffers_sequentially;
-    case "from_bytes read appends one chunk" test_from_bytes_read_into_buffer_appends_available_content;
-    case "from_bytes read_to_end copies the entire content" test_from_bytes_read_to_end_copies_entire_content;
-    case "read_vectored fills segments in order" test_read_vectored_fills_segments_in_order;
-    case "reader propagates io errors" test_reader_propagates_io_errors;
-    case "from_string returns zero after EOF" test_from_string_returns_zero_after_eof;
-    case "read_exact reads the requested bytes" test_read_exact_reads_requested_bytes;
-    case "BufReader amortizes byte reads" test_bufreader_amortizes_byte_reads;
-    case "BufReader.to_reader exposes generic reads" test_bufreader_to_reader_exposes_generic_reads;
-  ]
+let tests = Test.[
+  case "empty readers return EOF immediately" test_empty_reader_returns_zero;
+  case "from_string reads small buffers sequentially" test_from_string_reads_small_buffers_sequentially;
+  case "from_bytes read appends one chunk" test_from_bytes_read_into_buffer_appends_available_content;
+  case "from_bytes read_to_end copies the entire content" test_from_bytes_read_to_end_copies_entire_content;
+  case "read_vectored fills segments in order" test_read_vectored_fills_segments_in_order;
+  case "reader propagates io errors" test_reader_propagates_io_errors;
+  case "from_string returns zero after EOF" test_from_string_returns_zero_after_eof;
+  case "read_exact reads the requested bytes" test_read_exact_reads_requested_bytes;
+  case "BufReader amortizes byte reads" test_bufreader_amortizes_byte_reads;
+  case "BufReader.to_reader exposes generic reads" test_bufreader_to_reader_exposes_generic_reads;
+]
 
 let main ~args = Test.Cli.main ~name:"IO.Reader" ~tests ~args ()
 

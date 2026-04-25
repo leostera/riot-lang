@@ -1,10 +1,11 @@
 open Std
 
-(** Rule-oriented query helpers over Ast views.
+(**
+   Rule-oriented query helpers over Ast views.
 
-    These are intentionally small wrappers around the shared Ast traversal
-    traversal so individual rules can start from semantic-ish collections
-    instead of unpacking `ctx.source_file` manually.
+   These are intentionally small wrappers around the shared Ast traversal
+   traversal so individual rules can start from semantic-ish collections
+   instead of unpacking `ctx.source_file` manually.
 *)
 val structure_items: Rule.context -> Syn.Ast.StructureItem.t list
 

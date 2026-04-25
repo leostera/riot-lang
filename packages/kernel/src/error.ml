@@ -100,5 +100,4 @@ let detail_to_string = fun value ->
   | TimeMonotonic error -> Time.Monotonic.error_to_string error
   | TimeTimer error -> Time.Timer.error_to_string error
 
-let to_string = fun error ->
-  String.concat "" [ module_name error; ": "; detail_to_string error ]
+let to_string = fun error -> String.concat "" [ module_name error; ": "; detail_to_string error ]

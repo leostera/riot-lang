@@ -5,11 +5,7 @@ type token_kind =
   | Newline
   | EOF
 
-type t = {
-  kind: token_kind;
-  span: Ceibo.Span.t;
-  text: string;
-}
+type t = { kind: token_kind; span: Ceibo.Span.t; text: string }
 
 let show_kind = function
   | Line_text -> "line_text"

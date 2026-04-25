@@ -1,11 +1,11 @@
 type id = Timer_id.t
 
 type mode =
-  One_shot
+  | One_shot
   | Interval of int64
 
 type action =
-  Wake_process of Process.t
+  | Wake_process of Process.t
   | Send_message of Pid.t * Message.t
 
 type t = {
@@ -15,11 +15,7 @@ type t = {
   mutable expires_at: int64;
   duration_nanos: int64;
   action: action;
-  mutable status: 
-    [
-      `pending
-      | `cancelled
-    ];
+  mutable status: [`pending | `cancelled];
 }
 
 let make = fun ~now ~duration_nanos ~mode ~action ->
@@ -32,7 +28,7 @@ let make = fun ~now ~duration_nanos ~mode ~action ->
     expires_at;
     duration_nanos;
     action;
-    status = `pending;
+    status = `pending
   }
 
 let is_cancelled = fun t ->
@@ -45,16 +41,14 @@ let cancel = fun t -> t.status <- `cancelled
 let should_fire = fun t ~now ->
   let due =
     match Int64.compare now t.expires_at with
-    | Order.EQ
-    | Order.GT -> true
+    | Order.EQ | Order.GT -> true
     | Order.LT -> false
   in
   if due then
     match is_cancelled t with
     | true -> false
     | false -> true
-  else
-    false
+  else false
 
 let reschedule = fun t ~now ->
   match t.mode with

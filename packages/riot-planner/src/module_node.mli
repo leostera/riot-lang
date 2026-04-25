@@ -14,14 +14,13 @@ type kind =
   | PackageDependency of { package_name: Package_name.t; root_module: string }
   | Library of { name: string; includes: Path.t list }
   | Binary of { name: string; source: Path.t; libraries: Path.t list; includes: Path.t list }
+
 type file =
   | Concrete of Path.t
   | Generated of { path: Path.t; contents: string }
-type t = {
-  file: file;
-  mutable open_modules: t G.node list;
-  kind: kind;
-}
+
+type t = { file: file; mutable open_modules: t G.node list; kind: kind }
+
 val file_to_string: file -> string
 
 val kind_to_string: kind -> string

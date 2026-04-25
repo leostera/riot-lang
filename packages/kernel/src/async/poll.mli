@@ -1,6 +1,5 @@
-type t = {
-  selector: Adapter.Selector.t;
-}
+type t = { selector: Adapter.Selector.t }
+
 val make: unit -> (t, Adapter.error) Result.t
 
 val close: t -> (unit, Adapter.error) Result.t

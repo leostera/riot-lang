@@ -4,15 +4,18 @@ open Std
 type target =
   | Node of Syn.Ast.Node.t
   | Token of Syn.Ast.Token.t
-(** Replacement content for an edit.
 
-    Use [SourceOfNode] or [SourceOfToken] when you want to preserve the exact
-    original source slice. Use [Text] for literal replacement text.
+(**
+   Replacement content for an edit.
+
+   Use [SourceOfNode] or [SourceOfToken] when you want to preserve the exact
+   original source slice. Use [Text] for literal replacement text.
 *)
 type replacement =
   | SourceOfNode of Syn.Ast.Node.t
   | SourceOfToken of Syn.Ast.Token.t
   | Text of string
+
 (** One syntax-directed edit operation. *)
 type operation =
   | Delete of { target: target }
@@ -20,6 +23,7 @@ type operation =
   | InsertBefore of { anchor: target; content: replacement }
   | InsertAfter of { anchor: target; content: replacement }
   | Swap of { left: target; right: target }
+
 (** A named fix composed of one or more edit operations. *)
 type fix = {
   (** Human-readable fix title shown to users. *)
@@ -27,11 +31,9 @@ type fix = {
   (** Operations applied when the fix is executed. *)
   operations: operation list;
 }
+
 (** Concrete text edit produced after lowering a syntax-directed fix. *)
-type text_edit = {
-  span: Syn.Ceibo.Span.t;
-  new_text: string;
-}
+type text_edit = { span: Syn.Ceibo.Span.t; new_text: string }
 
 (** Reuse the exact source slice covered by a syntax node. *)
 val source_of_node: Syn.Ast.Node.t -> replacement
@@ -69,9 +71,10 @@ val insert_after: anchor:target -> content:replacement -> operation
 (** Swap the source covered by two targets. *)
 val swap: left:target -> right:target -> operation
 
-(** Build a named fix from edit operations.
+(**
+   Build a named fix from edit operations.
 
-    Use the title to explain what will change when the fix is applied.
+   Use the title to explain what will change when the fix is applied.
 *)
 val make: title:string -> operations:operation list -> fix
 
@@ -81,9 +84,10 @@ val title: fix -> string
 (** Return the operations belonging to the fix. *)
 val operations: fix -> operation list
 
-(** Apply one operation directly to source text.
+(**
+   Apply one operation directly to source text.
 
-    This is useful when testing or debugging a single rewrite step.
+   This is useful when testing or debugging a single rewrite step.
 *)
 val apply_operation: source:string -> operation -> (string, string) result
 
@@ -93,14 +97,15 @@ val lower_fix: source:string -> fix -> (text_edit list, string) result
 (** Lower multiple fixes into concrete text edits. *)
 val lower_fixes: source:string -> fix list -> (text_edit list, string) result
 
-(** Apply one fix directly to source text.
+(**
+   Apply one fix directly to source text.
 
-    Example:
-    ```ocaml
-    let op = Fix.replace_node_with_text ~target:node ~text:"()" in
-    let fix = Fix.make ~title:"replace with unit" ~operations:[ op ] in
-    Fix.apply_fix ~source fix
-    ```
+   Example:
+   ```ocaml
+   let op = Fix.replace_node_with_text ~target:node ~text:"()" in
+   let fix = Fix.make ~title:"replace with unit" ~operations:[ op ] in
+   Fix.apply_fix ~source fix
+   ```
 *)
 val apply_fix: source:string -> fix -> (string, string) result
 

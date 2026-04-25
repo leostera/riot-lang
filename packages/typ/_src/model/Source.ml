@@ -27,23 +27,25 @@ let module_name_of_origin = function
 
 let sanitize_module_name = fun name ->
   String.map
-    (fun ch ->
-      if ch = '-' then
-        '_'
-      else
-        ch)
+    (
+      fun ch ->
+        if ch = '-' then
+          '_'
+        else ch
+    )
     name
 
 let hash = fun ~implicit_opens ~cst ->
   let module H = Crypto.Sha256 in
   let state = H.create () in
-  H.write state
-    (Syn.Cst.semantic_hash cst |> Crypto.Digest.hex);
+  H.write state (Syn.Cst.semantic_hash cst |> Crypto.Digest.hex);
   H.write state "\x1f";
   implicit_opens |> List.iter
-    (fun module_path ->
-      H.write state (SurfacePath.to_string module_path);
-      H.write state "\x1f");
+    (
+      fun module_path ->
+        H.write state (SurfacePath.to_string module_path);
+        H.write state "\x1f"
+    );
   H.finish state
 
 let infer_module_name = fun origin -> sanitize_module_name (module_name_of_origin origin) |> String.capitalize_ascii
@@ -58,7 +60,7 @@ let make_prepared = fun ~source_id ~kind ~module_name ~implicit_opens ~origin ~r
     source_hash;
     revision;
     parse_result;
-    cst;
+    cst
   }
 
 let module_name = fun source -> source.module_name

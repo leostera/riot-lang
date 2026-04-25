@@ -1,4 +1,5 @@
 type t
+
 val create: size:int -> t
 
 val clear: t -> unit

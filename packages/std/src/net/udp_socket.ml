@@ -8,10 +8,7 @@ type t = Kernel.Net.UdpSocket.t
 type error =
   | System_error of IO.error
 
-type recv_result = {
-  bytes_read: int;
-  from: Addr.datagram_addr;
-}
+type recv_result = { bytes_read: int; from: Addr.datagram_addr }
 
 let io_error_of_udp_error = function
   | Kernel.Net.UdpSocket.InvalidSlice _ -> IO.Invalid_argument
@@ -49,12 +46,7 @@ let recv = fun socket buffer ?(pos = 0) ?len ?timeout () ->
   let rec recv_loop () =
     match Kernel.Net.UdpSocket.recv socket buffer ~pos ~len with
     | Ok bytes_read -> Ok bytes_read
-    | Error Kernel.Net.UdpSocket.WouldBlock -> Runtime.syscall
-      ?timeout
-      ~name:"UdpSocket.recv"
-      ~interest:Interest.readable
-      ~source
-      recv_loop
+    | Error Kernel.Net.UdpSocket.WouldBlock -> Runtime.syscall ?timeout ~name:"UdpSocket.recv" ~interest:Interest.readable ~source recv_loop
     | Error err -> Error (System_error (io_error_of_udp_error err))
   in
   recv_loop ()
@@ -70,12 +62,7 @@ let recv_from = fun socket buffer ?(pos = 0) ?len ?timeout () ->
   let rec recv_loop () =
     match Kernel.Net.UdpSocket.recv_from socket buffer ~pos ~len with
     | Ok (bytes_read, from) -> Ok { bytes_read; from }
-    | Error Kernel.Net.UdpSocket.WouldBlock -> Runtime.syscall
-      ?timeout
-      ~name:"UdpSocket.recv_from"
-      ~interest:Interest.readable
-      ~source
-      recv_loop
+    | Error Kernel.Net.UdpSocket.WouldBlock -> Runtime.syscall ?timeout ~name:"UdpSocket.recv_from" ~interest:Interest.readable ~source recv_loop
     | Error err -> Error (System_error (io_error_of_udp_error err))
   in
   recv_loop ()
@@ -90,11 +77,7 @@ let send = fun socket buffer ?(pos = 0) ?len () ->
   let rec send_loop () =
     match Kernel.Net.UdpSocket.send socket buffer ~pos ~len with
     | Ok bytes_written -> Ok bytes_written
-    | Error Kernel.Net.UdpSocket.WouldBlock -> Runtime.syscall
-      ~name:"UdpSocket.send"
-      ~interest:Interest.writable
-      ~source
-      send_loop
+    | Error Kernel.Net.UdpSocket.WouldBlock -> Runtime.syscall ~name:"UdpSocket.send" ~interest:Interest.writable ~source send_loop
     | Error err -> Error (System_error (io_error_of_udp_error err))
   in
   send_loop ()
@@ -109,11 +92,7 @@ let send_to = fun socket addr buffer ?(pos = 0) ?len () ->
   let rec send_loop () =
     match Kernel.Net.UdpSocket.send_to socket addr buffer ~pos ~len with
     | Ok bytes_written -> Ok bytes_written
-    | Error Kernel.Net.UdpSocket.WouldBlock -> Runtime.syscall
-      ~name:"UdpSocket.send_to"
-      ~interest:Interest.writable
-      ~source
-      send_loop
+    | Error Kernel.Net.UdpSocket.WouldBlock -> Runtime.syscall ~name:"UdpSocket.send_to" ~interest:Interest.writable ~source send_loop
     | Error err -> Error (System_error (io_error_of_udp_error err))
   in
   send_loop ()
@@ -121,12 +100,7 @@ let send_to = fun socket addr buffer ?(pos = 0) ?len () ->
 let local_addr = fun socket ->
   match Kernel.Net.UdpSocket.local_addr socket with
   | Ok addr -> addr
-  | Error err -> panic
-    (format
-      Format.[
-        str "UdpSocket.local_addr failed: ";
-        str (IO.error_message (io_error_of_udp_error err))
-      ])
+  | Error err -> panic (format Format.[ str "UdpSocket.local_addr failed: "; str (IO.error_message (io_error_of_udp_error err)) ])
 
 let close = fun socket ->
   match Kernel.Net.UdpSocket.close socket with

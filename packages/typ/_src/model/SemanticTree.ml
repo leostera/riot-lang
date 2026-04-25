@@ -14,24 +14,18 @@ let empty = {
   diagnostics = []
 }
 
-let find_origin = fun file origin_id ->
-  OriginMap.find file.origin_map origin_id
+let find_origin = fun file origin_id -> OriginMap.find file.origin_map origin_id
 
-let find_item = fun file item_id ->
-  ItemTree.find_item file.item_tree item_id
+let find_item = fun file item_id -> ItemTree.find_item file.item_tree item_id
 
-let find_binding = fun file binding_id ->
-  BodyArena.find_binding file.body_arena binding_id
+let find_binding = fun file binding_id -> BodyArena.find_binding file.body_arena binding_id
 
-let find_pattern = fun file pat_id ->
-  BodyArena.find_pattern file.body_arena pat_id
+let find_pattern = fun file pat_id -> BodyArena.find_pattern file.body_arena pat_id
 
-let find_expr = fun file expr_id ->
-  BodyArena.find_expr file.body_arena expr_id
+let find_expr = fun file expr_id -> BodyArena.find_expr file.body_arena expr_id
 
 let to_string = fun file ->
-  String.concat
-    ""
+  String.concat ""
     [
       "origin map:\n";
       OriginMap.to_string file.origin_map;

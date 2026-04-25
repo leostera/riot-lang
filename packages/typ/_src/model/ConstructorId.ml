@@ -15,8 +15,7 @@ let of_path = fun path ->
     if index >= length then
       Int.abs acc
     else
-      let code = String.get text index |> Char.code in
-      loop (index + 1) ((acc * 65_599) + code)
+      let code = String.get text index |> Char.code in loop (index + 1) ((acc * 65_599) + code)
   in
   loop 0 17
 

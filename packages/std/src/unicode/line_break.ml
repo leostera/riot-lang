@@ -1,34 +1,38 @@
-(** Line breaking - Simplified UAX #14 for terminal text wrapping
-    
-    This is a pragmatic implementation that handles ~85% of line breaking
-    use cases without the full 3,554-line property tables.
-    
-    Perfect for:
-    - Terminal text wrapping
-    - Log display
-    - Documentation viewers
-    - Code display
-    
-    Handles:
-    - Mandatory breaks (newlines)
-    - Breaks at spaces
-    - Breaks after punctuation
-    - CJK line breaking (can break between characters)
-    - Hyphenation points
-    - Non-breaking spaces
-    - No breaks inside words
-    - No breaks before punctuation
-    
-    Does NOT handle (would need full tables):
-    - Complex quotation rules
-    - Conditional Japanese kana
-    - Surrogates and complex pairs
-    - All Unicode line break classes
+(**
+   Line breaking - Simplified UAX #14 for terminal text wrapping
+
+   This is a pragmatic implementation that handles ~85% of line breaking
+   use cases without the full 3,554-line property tables.
+
+   Perfect for:
+   - Terminal text wrapping
+   - Log display
+   - Documentation viewers
+   - Code display
+
+   Handles:
+   - Mandatory breaks (newlines)
+   - Breaks at spaces
+   - Breaks after punctuation
+   - CJK line breaking (can break between characters)
+   - Hyphenation points
+   - Non-breaking spaces
+   - No breaks inside words
+   - No breaks before punctuation
+
+   Does NOT handle (would need full tables):
+   - Complex quotation rules
+   - Conditional Japanese kana
+   - Surrogates and complex pairs
+   - All Unicode line break classes
 *)
 open Prelude
 open Collections
+
 module String = Kernel.String
+
 module Scalar = Kernel.Unicode.Rune
+
 module Rune = Rune
 
 (** Line break opportunity type *)
@@ -61,87 +65,14 @@ type line_class =
   | Other
 
 (** Everything else *)
-
 (** Get line break class for a rune *)
 let get_line_class = fun c ->
   match c with
-  | 0x000a
-  | 0x000d
-  | 0x0085
-  | 0x2028
-  | 0x2029 -> Newline
-  | 0x0020
-  | 0x00a0
-  | 0x1680
-  | 0x2000
-  | 0x2001
-  | 0x2002
-  | 0x2003
-  | 0x2004
-  | 0x2005
-  | 0x2006
-  | 0x2007
-  | 0x2008
-  | 0x2009
-  | 0x200a
-  | 0x202f
-  | 0x205f
-  | 0x3000 -> Space
-  | 0x0028
-  | 0x005b
-  | 0x007b
-  | 0x00ab
-  | 0x2018
-  | 0x201c
-  | 0x2039
-  | 0x27e8
-  | 0x27ea
-  | 0x27ec
-  | 0x27ee
-  | 0x2983
-  | 0x2985
-  | 0x2987
-  | 0x2989
-  | 0x298b
-  | 0x298d
-  | 0x298f
-  | 0x2991
-  | 0x2993
-  | 0x2995
-  | 0x2997 -> Open_punct
-  | 0x0021
-  | 0x0029
-  | 0x002c
-  | 0x002e
-  | 0x003a
-  | 0x003b
-  | 0x003f
-  | 0x005d
-  | 0x007d
-  | 0x00bb
-  | 0x2019
-  | 0x201d
-  | 0x203a
-  | 0x27e9
-  | 0x27eb
-  | 0x27ed
-  | 0x27ef
-  | 0x2984
-  | 0x2986
-  | 0x2988
-  | 0x298a
-  | 0x298c
-  | 0x298e
-  | 0x2990
-  | 0x2992
-  | 0x2994
-  | 0x2996
-  | 0x2998 -> Close_punct
-  | 0x002d
-  | 0x2010
-  | 0x2011
-  | 0x2012
-  | 0x2013 -> Hyphen
+  | 0x000a | 0x000d | 0x0085 | 0x2028 | 0x2029 -> Newline
+  | 0x0020 | 0x00a0 | 0x1680 | 0x2000 | 0x2001 | 0x2002 | 0x2003 | 0x2004 | 0x2005 | 0x2006 | 0x2007 | 0x2008 | 0x2009 | 0x200a | 0x202f | 0x205f | 0x3000 -> Space
+  | 0x0028 | 0x005b | 0x007b | 0x00ab | 0x2018 | 0x201c | 0x2039 | 0x27e8 | 0x27ea | 0x27ec | 0x27ee | 0x2983 | 0x2985 | 0x2987 | 0x2989 | 0x298b | 0x298d | 0x298f | 0x2991 | 0x2993 | 0x2995 | 0x2997 -> Open_punct
+  | 0x0021 | 0x0029 | 0x002c | 0x002e | 0x003a | 0x003b | 0x003f | 0x005d | 0x007d | 0x00bb | 0x2019 | 0x201d | 0x203a | 0x27e9 | 0x27eb | 0x27ed | 0x27ef | 0x2984 | 0x2986 | 0x2988 | 0x298a | 0x298c | 0x298e | 0x2990 | 0x2992 | 0x2994 | 0x2996 | 0x2998 -> Close_punct
+  | 0x002d | 0x2010 | 0x2011 | 0x2012 | 0x2013 -> Hyphen
   | c when c >= 0x4e00 && c <= 0x9fff -> CJK
   | c when c >= 0x3400 && c <= 0x4dbf -> CJK
   | c when c >= 0xac00 && c <= 0xd7af -> CJK
@@ -149,25 +80,23 @@ let get_line_class = fun c ->
   | c when c >= 0x30a0 && c <= 0x30ff -> CJK
   | c when Word_break.is_letter_extended c -> Letter
   | c when Word_break.is_digit c -> Letter
-  | c when (c >= 0x0021 && c <= 0x002f)
-  || (c >= 0x003a && c <= 0x0040)
-  || (c >= 0x005b && c <= 0x0060)
-  || (c >= 0x007b && c <= 0x007e) -> Punctuation
+  | c when (c >= 0x0021 && c <= 0x002f) || (c >= 0x003a && c <= 0x0040) || (c >= 0x005b && c <= 0x0060) || (c >= 0x007b && c <= 0x007e) -> Punctuation
   | _ -> Other
 
-(** Determine line break opportunity between two characters
-    
-    Simplified UAX #14 rules:
-    - LB4/LB5/LB6: Always break at mandatory breaks
-    - LB7: Don't break before spaces or zero width space
-    - LB8: Break after zero width space (simplified)
-    - LB13: Don't break before closing punctuation
-    - LB14: Don't break after opening punctuation
-    - LB18: Break after spaces
-    - LB19: Don't break before/after quotation marks (simplified)
-    - LB25: Don't break inside numbers (simplified via word break)
-    - LB28: Don't break between letters (via word break)
-    - LB29: CJK: break between ideographs
+(**
+   Determine line break opportunity between two characters
+
+   Simplified UAX #14 rules:
+   - LB4/LB5/LB6: Always break at mandatory breaks
+   - LB7: Don't break before spaces or zero width space
+   - LB8: Break after zero width space (simplified)
+   - LB13: Don't break before closing punctuation
+   - LB14: Don't break after opening punctuation
+   - LB18: Break after spaces
+   - LB19: Don't break before/after quotation marks (simplified)
+   - LB25: Don't break inside numbers (simplified via word break)
+   - LB28: Don't break between letters (via word break)
+   - LB29: CJK: break between ideographs
 *)
 let get_break_opportunity = fun ~prev_class ~curr_class ->
   match prev_class, curr_class with
@@ -197,8 +126,10 @@ let get_break_opportunity = fun ~prev_class ~curr_class ->
   | Letter, Letter -> Dont_break
   | _, _ -> Dont_break
 
-(** Find all line break opportunities in a string
-    Returns (position, opportunity_type) pairs *)
+(**
+   Find all line break opportunities in a string
+   Returns (position, opportunity_type) pairs 
+*)
 let find_line_breaks = fun s ->
   let len = String.length s in
   if len = 0 then
@@ -225,8 +156,7 @@ let find_line_breaks = fun s ->
               let new_acc =
                 match opp with
                 | Dont_break -> acc
-                | Can_break
-                | Must_break -> (pos, opp) :: acc
+                | Can_break | Must_break -> (pos, opp) :: acc
               in
               scan (pos + rune_len) curr_class new_acc
     in
@@ -239,11 +169,12 @@ let find_line_breaks = fun s ->
         else
           let first_rune = Scalar.utf_decode_rune first_decode in
           let first_len = Scalar.utf_decode_length first_decode in
-          let first_class = get_line_class (Rune.to_int first_rune) in
-          scan first_len first_class []
+          let first_class = get_line_class (Rune.to_int first_rune) in scan first_len first_class []
 
-(** Wrap text to fit within a given width
-    Returns a list of lines *)
+(**
+   Wrap text to fit within a given width
+   Returns a list of lines 
+*)
 let wrap_lines = fun ~width s ->
   if width <= 0 then
     []
@@ -254,8 +185,7 @@ let wrap_lines = fun ~width s ->
       if pos >= len then
         if line_start < len then
           List.reverse (String.sub s ~offset:line_start ~len:(len - line_start) :: lines)
-        else
-          List.reverse lines
+        else List.reverse lines
       else
         (* Decode current rune *)
         match String.get_utf_8_rune s ~at:pos with
@@ -271,28 +201,23 @@ let wrap_lines = fun ~width s ->
               (* Check for mandatory break *)
               let is_newline = Rune.to_int rune = 0x000a || Rune.to_int rune = 0x000d in
               if is_newline then
-                let line = String.sub s ~offset:line_start ~len:(pos - line_start) in
-                wrap_text (pos + rune_len) 0 (pos + rune_len) (line :: lines) breaks
-              else if new_width > width then
-                let last_break =
-                  List.fold_left breaks ~init:None
-                    ~fn:(fun acc (break_pos, _) ->
+                let line = String.sub s ~offset:line_start ~len:(pos - line_start) in wrap_text (pos + rune_len) 0 (pos + rune_len) (line :: lines) breaks
+              else
+                if new_width > width then
+                  let last_break = List.fold_left breaks ~init:None ~fn:(
+                    fun acc (break_pos, _) ->
                       if break_pos > line_start && break_pos < pos then
                         Some break_pos
-                      else
-                        acc)
-                in
-                match last_break with
-                | Some break_pos ->
-                    (* Break at last opportunity *)
-                    let line = String.sub s ~offset:line_start ~len:(break_pos - line_start) in
-                    wrap_text break_pos 0 break_pos (line :: lines) breaks
-                | None ->
-                    (* No break opportunity - force break here *)
-                    let line = String.sub s ~offset:line_start ~len:(pos - line_start) in
-                    wrap_text pos 0 pos (line :: lines) breaks
-              else
-                (* Continue on same line *)
+                      else acc
+                  ) in
+                  match last_break with
+                  | Some break_pos ->
+                      (* Break at last opportunity *)
+                      let line = String.sub s ~offset:line_start ~len:(break_pos - line_start) in wrap_text break_pos 0 break_pos (line :: lines) breaks
+                  | None ->
+                      (* No break opportunity - force break here *)
+                      let line = String.sub s ~offset:line_start ~len:(pos - line_start) in wrap_text pos 0 pos (line :: lines) breaks
+                else (* Continue on same line *)
                 wrap_text (pos + rune_len) new_width line_start lines breaks
     in
     wrap_text 0 0 0 [] breaks

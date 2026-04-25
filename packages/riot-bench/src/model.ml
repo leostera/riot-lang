@@ -1,11 +1,7 @@
 open Std
 open Riot_model
 
-type gc_stats = {
-  minor_collections: int;
-  major_collections: int;
-  compactions: int;
-}
+type gc_stats = { minor_collections: int; major_collections: int; compactions: int }
 
 type bench_statistics = {
   min: Time.Duration.t;
@@ -23,16 +19,9 @@ type bench_case_status =
   | Failed of string
   | Skipped
 
-type bench_case_result = {
-  index: int;
-  name: string;
-  result: bench_case_status;
-}
+type bench_case_result = { index: int; name: string; result: bench_case_status }
 
-type bench_comparison_case_result = {
-  name: string;
-  statistics: bench_statistics;
-}
+type bench_comparison_case_result = { name: string; statistics: bench_statistics }
 
 type bench_comparison_result = {
   description: string;
@@ -41,12 +30,7 @@ type bench_comparison_result = {
   speedup_ratios: (string * float) list;
 }
 
-type suite_summary = {
-  total: int;
-  completed: int;
-  skipped: int;
-  failed: int;
-}
+type suite_summary = { total: int; completed: int; skipped: int; failed: int }
 
 type suite_run = {
   status: int;
@@ -72,11 +56,7 @@ type stored_suite_run = {
   suite_run: suite_run;
 }
 
-type history_sample = {
-  run_id: string;
-  partial: bool;
-  statistics: bench_statistics;
-}
+type history_sample = { run_id: string; partial: bool; statistics: bench_statistics }
 
 type stability =
   | Stable

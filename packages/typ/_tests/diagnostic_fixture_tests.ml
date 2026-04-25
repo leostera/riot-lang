@@ -14,34 +14,22 @@ let diagnostic_marker_path = fun path ->
 
 let filter_diagnostic_fixture = fun path ->
   match Path.extension path with
-  | Some ".ml"
-  | Some ".mli" ->
+  | Some ".ml" | Some ".mli" ->
       let marker_path = diagnostic_marker_path path in
       let exists = Fs.exists marker_path |> Result.unwrap_or ~default:false in
       if exists then
         `keep
-      else
-        `skip
+      else `skip
   | _ -> `skip
 
 let diagnostics_to_json = fun (report: Check_result.t) ->
   Std.Data.Json.Object [
-    (
-      "parse_diagnostics",
-      Std.Data.Json.Array (List.map Syn.Diagnostic.to_json report.parse_diagnostics)
-    );
-    (
-      "lowering_diagnostics",
-      Std.Data.Json.Array (List.map Diagnostic.to_json report.lowering_diagnostics)
-    );
-    (
-      "typing_diagnostics",
-      Std.Data.Json.Array (List.map Diagnostic.to_json report.typing_diagnostics)
-    );
+    "parse_diagnostics", Std.Data.Json.Array (List.map Syn.Diagnostic.to_json report.parse_diagnostics);
+    "lowering_diagnostics", Std.Data.Json.Array (List.map Diagnostic.to_json report.lowering_diagnostics);
+    "typing_diagnostics", Std.Data.Json.Array (List.map Diagnostic.to_json report.typing_diagnostics);
   ]
 
-let stable_fixture_filename = fun (ctx: Test.FixtureRunner.ctx) ->
-  Path.join diagnostics_dir ctx.fixture_relpath
+let stable_fixture_filename = fun (ctx: Test.FixtureRunner.ctx) -> Path.join diagnostics_dir ctx.fixture_relpath
 
 let parse_failure_report = fun ~filename ->
   fun parse_result ->
@@ -49,11 +37,8 @@ let parse_failure_report = fun ~filename ->
       let source_id = SourceId.of_int 0 in
       let (parse_diagnostics, lowering_diagnostics) =
         match error with
-        | Syn.Parse_diagnostics diagnostics -> (diagnostics, [])
-        | Syn.Cst_builder_error builder_error -> (
-          parse_result.Syn.Parser.diagnostics,
-          [ Diagnostic.CstBuilderError { builder_error } ]
-        )
+        | Syn.Parse_diagnostics diagnostics -> diagnostics, []
+        | Syn.Cst_builder_error builder_error -> parse_result.Syn.Parser.diagnostics, [ Diagnostic.CstBuilderError { builder_error } ]
       in
       {
         Check_result.source_id;
@@ -69,7 +54,7 @@ let parse_failure_report = fun ~filename ->
         type_index = TypeIndex.empty;
         exports = [];
         item_traces = [];
-        expr_traces = [];
+        expr_traces = []
       }
 
 let check_source_text = fun ~filename text ->
@@ -78,32 +63,16 @@ let check_source_text = fun ~filename text ->
   | Ok cst ->
       let origin = Source.Path filename in
       let implicit_opens = [] in
-      let source = Source.make_prepared
-        ~source_id:(SourceId.of_int 0)
-        ~kind:Source.File
-        ~module_name:(Source.infer_module_name origin)
-        ~implicit_opens
-        ~origin
-        ~revision:0
-        ~source_hash:(Source.hash ~implicit_opens ~cst)
-        ~parse_result
-        ~cst in
-      Typ.check ~config:Config.default ~source
+      let source = Source.make_prepared ~source_id:(SourceId.of_int 0) ~kind:Source.File ~module_name:(Source.infer_module_name origin) ~implicit_opens ~origin ~revision:0 ~source_hash:(Source.hash ~implicit_opens ~cst) ~parse_result ~cst in Typ.check ~config:Config.default ~source
   | Error error -> parse_failure_report ~filename parse_result error
 
 let test_fixture = fun ~(ctx:Test.FixtureRunner.ctx) ->
   let source = Fs.read ctx.fixture_path |> Result.expect ~msg:"fixture should exist" in
-  let report = check_source_text ~filename:(stable_fixture_filename ctx) source in
-  Test.Snapshot.assert_json ~ctx:ctx.test ~actual:(diagnostics_to_json report)
+  let report = check_source_text ~filename:(stable_fixture_filename ctx) source in Test.Snapshot.assert_json ~ctx:ctx.test ~actual:(diagnostics_to_json report)
 
 let main ~args =
-  let tests =
-    Test.FixtureRunner.cases
-      ()
-      ~dir:diagnostics_dir
-      ~filter:filter_diagnostic_fixture
-      ~run:(fun ctx -> test_fixture ~ctx)
-  in
-  Test.Cli.main ~name:"typ:diagnostics" ~tests ~args ()
+  let tests = Test.FixtureRunner.cases () ~dir:diagnostics_dir ~filter:filter_diagnostic_fixture ~run:(
+    fun ctx -> test_fixture ~ctx
+  ) in Test.Cli.main ~name:"typ:diagnostics" ~tests ~args ()
 
 let () = Runtime.run ~main ~args:Env.args ()

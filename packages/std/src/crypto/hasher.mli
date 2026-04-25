@@ -1,34 +1,37 @@
-(** # Hasher - Hash algorithm interface
+(**
+   # Hasher - Hash algorithm interface
 
-    Module signature that all hash algorithms implement, providing stateful
-    hashing with incremental updates.
+   Module signature that all hash algorithms implement, providing stateful
+   hashing with incremental updates.
 
-    ## Examples
+   ## Examples
 
-    ```ocaml open Std
+   ```ocaml open Std
 
-    (* Use any algorithm that implements Hasher.Intf *) module H = Crypto.Sha256 in
-    let state = H.create () in
-    H.write state "Part 1";
-    H.write state "Part 2";
-    let hash = H.finish state in
-    Crypto.Digest.hex hash
+   (* Use any algorithm that implements Hasher.Intf *) module H = Crypto.Sha256 in
+   let state = H.create () in
+   H.write state "Part 1";
+   H.write state "Part 2";
+   let hash = H.finish state in
+   Crypto.Digest.hex hash
 
-    (* Direct hashing - one-shot *) let hash = H.hash_string "Hello, World!" in
-    Crypto.Digest.hex hash ```
+   (* Direct hashing - one-shot *) let hash = H.hash_string "Hello, World!" in
+   Crypto.Digest.hex hash ```
 
-    ## When to Use
+   ## When to Use
 
-    - **Stateful API** ([create], [write], [finish]): When hashing streaming
-      data
-    - **Direct API** ([hash_string], etc.): When hashing complete values
+   - **Stateful API** ([create], [write], [finish]): When hashing streaming
+     data
+   - **Direct API** ([hash_string], etc.): When hashing complete values
 
-    See [Crypto] for the default algorithm and convenience functions. *)
+   See [Crypto] for the default algorithm and convenience functions. 
+*)
 (** Interface that all hash algorithms must implement *)
 module type Intf = sig
   (** Internal state of the state *)
   (** Create a new state state *)
   type state
+
   val create: unit -> state
 
   (** Write immutable string data to the state. *)

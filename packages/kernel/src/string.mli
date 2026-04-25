@@ -1,5 +1,7 @@
 type t = string
+
 type utf_decode = Unicode.Rune.utf_decode
+
 val empty: t
 
 val is_empty: t -> bool
@@ -15,8 +17,10 @@ val unsafe_get: t -> int -> char
 
 val sub: t -> offset:int -> len:int -> t
 
-(** Use `init length builder` to construct a fresh string by calling `builder` for each index from
-    left to right. *)
+(**
+   Use `init length builder` to construct a fresh string by calling `builder` for each index from
+   left to right. 
+*)
 val init: len:int -> fn:(int -> char) -> t
 
 (** Use `make length char` to fill a fresh string with repeated copies of `char`. *)

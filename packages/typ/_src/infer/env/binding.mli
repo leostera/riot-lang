@@ -10,9 +10,10 @@ type provenance =
   | DeclaredValue of { name: string; scope_path: SurfacePath.t }
   | Included of { module_path: SurfacePath.t }
   | ModuleAlias of { alias_name: string; module_path: SurfacePath.t }
+
 type t
-val make:
-  id:BindingId.t -> surface_path:SurfacePath.t -> scheme:TypeScheme.t -> provenance:provenance -> t
+
+val make: id:BindingId.t -> surface_path:SurfacePath.t -> scheme:TypeScheme.t -> provenance:provenance -> t
 
 val with_path: EntityId.t -> t -> t
 

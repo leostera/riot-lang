@@ -1,12 +1,9 @@
-module Host: sig
+module Host : sig
   type error =
     | InvalidTripletFormat of { value: string }
-  type t = {
-    architecture: string;
-    vendor: string;
-    os: string;
-    abi: string option;
-  }
+
+  type t = { architecture: string; vendor: string; os: string; abi: string option }
+
   val current: t
 
   val to_string: t -> string
@@ -18,11 +15,12 @@ module Host: sig
   val equal: t -> t -> bool
 end
 
-module OS: sig
+module OS : sig
   type t =
     | Unix
     | Win32
     | Cygwin
+
   val current: t
 
   val to_string: t -> string

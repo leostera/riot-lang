@@ -1,18 +1,21 @@
 open Kernel
 
-(** Synchronization primitives owned by `std`.
+(**
+   Synchronization primitives owned by `std`.
 
-    Public `Std.Sync` primitives are actor-friendly: they do not block an OCaml
-    domain and are safe to use from code running inside {!Std.Runtime}.
+   Public `Std.Sync` primitives are actor-friendly: they do not block an OCaml
+   domain and are safe to use from code running inside {!Std.Runtime}.
 
-    The contract here is:
-    - coordination primitives like {!Mutex} and {!Condition} cooperate with the
-      actor runtime instead of blocking the scheduler;
-    - low-level atomics stay non-blocking;
-    - mutable wrapper modules such as {!Cell}, {!OnceCell}, {!LazyCell}, and
-      {!RefCell} remain non-blocking local state helpers. *)
-module Atomic: sig
+   The contract here is:
+   - coordination primitives like {!Mutex} and {!Condition} cooperate with the
+     actor runtime instead of blocking the scheduler;
+   - low-level atomics stay non-blocking;
+   - mutable wrapper modules such as {!Cell}, {!OnceCell}, {!LazyCell}, and
+     {!RefCell} remain non-blocking local state helpers. 
+*)
+module Atomic : sig
   type 'value t = 'value Kernel.Sync.Atomic.t
+
   val make: 'value -> 'value t
 
   val get: 'value t -> 'value
@@ -26,8 +29,9 @@ module Atomic: sig
   val fetch_and_add: int t -> int -> int
 end
 
-module Cell: sig
+module Cell : sig
   type 'a t
+
   val create: 'a -> 'a t
 
   val get: 'a t -> 'a
@@ -55,8 +59,9 @@ module Cell: sig
   val equal: 'a t -> 'a t -> bool
 end
 
-module Mutex: sig
+module Mutex : sig
   type t
+
   val create: unit -> t
 
   val lock: t -> unit
@@ -66,8 +71,9 @@ module Mutex: sig
   val try_lock: t -> bool
 end
 
-module Condition: sig
+module Condition : sig
   type t
+
   val create: unit -> t
 
   val wait: t -> Mutex.t -> unit
@@ -77,8 +83,9 @@ module Condition: sig
   val broadcast: t -> unit
 end
 
-module OnceCell: sig
+module OnceCell : sig
   type 'a t
+
   val create: unit -> 'a t
 
   val get: 'a t -> 'a option
@@ -89,15 +96,14 @@ module OnceCell: sig
 
   val get_or_try_init: 'a t -> (unit -> ('a, 'e) result) -> ('a, 'e) result
 
-  val set: 'a t -> 'a -> (unit, [
-      `AlreadyInitialized
-    ]) result
+  val set: 'a t -> 'a -> (unit, [`AlreadyInitialized]) result
 
   val is_initialized: 'a t -> bool
 end
 
-module LazyCell: sig
+module LazyCell : sig
   type 'a t
+
   val create: (unit -> 'a) -> 'a t
 
   val get: 'a t -> 'a
@@ -109,10 +115,13 @@ module LazyCell: sig
   val take: 'a t -> 'a option
 end
 
-module RefCell: sig
+module RefCell : sig
   type 'a t
+
   type 'a borrow
+
   type 'a borrow_mut
+
   exception BorrowError of string
 
   exception BorrowMutError of string

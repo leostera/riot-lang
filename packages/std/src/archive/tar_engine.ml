@@ -1,4 +1,5 @@
 open Global
+
 module Bytes = IO.Bytes
 
 type reader
@@ -40,8 +41,7 @@ type skip_result =
   | Need_input
   | Skipped
 
-type raw_header =
-  string * int * string option * int64 * int option * string option
+type raw_header = string * int * string option * int64 * int option * string option
 
 external create_reader_raw: unit -> reader = "std_tar_create_reader"
 
@@ -83,7 +83,7 @@ let header_of_raw = fun (path, kind, other, size, mode, link_target) ->
     kind = entry_kind_of_raw kind other;
     size;
     mode;
-    link_target;
+    link_target
   }
 
 let create_reader = fun () ->
@@ -100,12 +100,12 @@ let next_entry: reader -> (next, error) result = fun reader ->
   match error_of_code error_code with
   | Some err -> Error err
   | None -> (
-      match status_code, raw_header with
-      | 0, _ -> Ok Need_input
-      | 1, Some header -> Ok (Entry (header_of_raw header))
-      | 2, _ -> Ok End
-      | _, _ -> Error (Unknown_error "invalid tar next_entry response")
-    )
+    match status_code, raw_header with
+    | 0, _ -> Ok Need_input
+    | 1, Some header -> Ok (Entry (header_of_raw header))
+    | 2, _ -> Ok End
+    | _, _ -> Error (Unknown_error "invalid tar next_entry response")
+  )
 
 let read_entry_data: reader -> dst:bytes -> dst_pos:int -> dst_len:int -> (read_result, error) result = fun reader ~dst ~dst_pos ~dst_len ->
   check_slice "Std.Archive.Tar_engine.read_entry_data" dst ~pos:dst_pos ~len:dst_len;
@@ -113,22 +113,22 @@ let read_entry_data: reader -> dst:bytes -> dst_pos:int -> dst_len:int -> (read_
   match error_of_code error_code with
   | Some err -> Error err
   | None -> (
-      match status_code with
-      | 0 -> Ok Need_input
-      | 1 -> Ok (Chunk produced)
-      | 2 -> Ok End_of_entry
-      | _ -> Error (Unknown_error "invalid tar read_entry_data response")
-    )
+    match status_code with
+    | 0 -> Ok Need_input
+    | 1 -> Ok (Chunk produced)
+    | 2 -> Ok End_of_entry
+    | _ -> Error (Unknown_error "invalid tar read_entry_data response")
+  )
 
 let skip_entry: reader -> (skip_result, error) result = fun reader ->
   let error_code, status_code = skip_entry_raw reader in
   match error_of_code error_code with
   | Some err -> Error err
   | None -> (
-      match status_code with
-      | 0 -> Ok Need_input
-      | 1 -> Ok Skipped
-      | _ -> Error (Unknown_error "invalid tar skip_entry response")
-    )
+    match status_code with
+    | 0 -> Ok Need_input
+    | 1 -> Ok Skipped
+    | _ -> Error (Unknown_error "invalid tar skip_entry response")
+  )
 
 let close_reader = fun reader -> close_reader_raw reader

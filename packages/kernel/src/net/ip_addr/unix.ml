@@ -20,8 +20,7 @@ let error_to_string = fun value ->
 let from_string = fun value ->
   if FFI.is_valid value then
     Result.Ok value
-  else
-    Result.Error (InvalidText { value })
+  else Result.Error (InvalidText { value })
 
 let to_string = fun value -> value
 

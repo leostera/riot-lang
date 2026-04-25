@@ -8,6 +8,7 @@ type opcode =
   | Close
   | Ping
   | Pong
+
 type t = {
   fin: bool;
   rsv1: bool;
@@ -17,6 +18,7 @@ type t = {
   masked: bool;
   payload: string;
 }
+
 val opcode_to_int: opcode -> int
 
 val opcode_of_int: int -> opcode option

@@ -1,28 +1,29 @@
-(** # Agent - Lightweight parametric state server
-    
-    Agents provide a simple wrapper around state that can be accessed
-    concurrently from different processes. This version uses parametric
-    polymorphism instead of functors for ease of use.
-    
-    ## Example
-    
-    ```ocaml
-    open Std
-    
-    (* Create a counter agent *)
-    let counter = Agent.start (fun () -> 0) in
-    
-    (* Update the counter *)
-    Agent.update counter (fun n -> n + 1);
-    
-    (* Get the current value *)
-    let value = Agent.get counter (fun n -> n) in
-    (* value = 1 *)
-    
-    (* Get and update atomically *)
-    let old_value = Agent.get_and_update counter (fun n -> n, n + 10) in
-    (* old_value = 1, new value = 11 *)
-    ```
+(**
+   # Agent - Lightweight parametric state server
+
+   Agents provide a simple wrapper around state that can be accessed
+   concurrently from different processes. This version uses parametric
+   polymorphism instead of functors for ease of use.
+
+   ## Example
+
+   ```ocaml
+   open Std
+
+   (* Create a counter agent *)
+   let counter = Agent.start (fun () -> 0) in
+
+   (* Update the counter *)
+   Agent.update counter (fun n -> n + 1);
+
+   (* Get the current value *)
+   let value = Agent.get counter (fun n -> n) in
+   (* value = 1 *)
+
+   (* Get and update atomically *)
+   let old_value = Agent.get_and_update counter (fun n -> n, n + 10) in
+   (* old_value = 1, new value = 11 *)
+   ```
 *)
 (** Agent handle parametrized by state type *)
 type 'state t

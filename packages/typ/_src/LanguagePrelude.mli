@@ -1,11 +1,13 @@
 open Std
 open Model
 
-(** Minimal language-level bindings visible in every typing query.
+(**
+   Minimal language-level bindings visible in every typing query.
 
-    This prelude is intentionally small. It should only contain bindings backed
-    by explicit source syntax or core language forms, not ordinary module APIs
-    that should instead arrive through persisted module summaries. *)
+   This prelude is intentionally small. It should only contain bindings backed
+   by explicit source syntax or core language forms, not ordinary module APIs
+   that should instead arrive through persisted module summaries. 
+*)
 type env = (SurfacePath.t * TypeScheme.t) list
 
 (** Minimal syntax-backed intrinsic bindings used by the prototype checker. *)

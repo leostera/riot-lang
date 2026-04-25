@@ -1,9 +1,9 @@
 open Std
 open Std.Collections
+
 module Array = Collections.Array
 
 (* A shrinker is a function that takes a value and returns a list of smaller values *)
-
 type 'value t = 'value -> 'value list
 
 let contains = fun values candidate ->
@@ -13,8 +13,7 @@ let contains = fun values candidate ->
     | value :: rest ->
         if value = candidate then
           true
-        else
-          loop rest
+        else loop rest
   in
   loop values
 
@@ -25,8 +24,7 @@ let dedupe = fun values ->
     | value :: rest ->
         if contains acc value then
           loop acc rest
-        else
-          loop (value :: acc) rest
+        else loop (value :: acc) rest
   in
   loop [] values
 
@@ -41,8 +39,7 @@ let vector_push_reversed = fun vector values ->
 
 let rec take = fun count values ->
   match count, values with
-  | (0, _)
-  | (_, []) -> []
+  | (0, _) | (_, []) -> []
   | count, value :: rest -> value :: take (count - 1) rest
 
 let nth = fun values ~at ->
@@ -52,8 +49,7 @@ let nth = fun values ~at ->
     | value :: rest ->
         if index = at then
           Some value
-        else
-          loop (index + 1) rest
+        else loop (index + 1) rest
   in
   loop 0 values
 
@@ -64,23 +60,19 @@ let replace_nth = fun values ~at ~value ->
     | head :: rest ->
         if index = at then
           value :: rest
-        else
-          head :: loop (index + 1) rest
+        else head :: loop (index + 1) rest
   in
   loop 0 values
 
 let string_remove_at = fun value at ->
   let prefix = String.sub value ~offset:0 ~len:at in
-  let suffix = String.sub value ~offset:(at + 1) ~len:(String.length value - at - 1) in
-  prefix ^ suffix
+  let suffix = String.sub value ~offset:(at + 1) ~len:(String.length value - at - 1) in prefix ^ suffix
 
 let string_replace_at = fun value ~at ~char ->
   let prefix = String.sub value ~offset:0 ~len:at in
-  let suffix = String.sub value ~offset:(at + 1) ~len:(String.length value - at - 1) in
-  prefix ^ String.make ~len:1 ~char ^ suffix
+  let suffix = String.sub value ~offset:(at + 1) ~len:(String.length value - at - 1) in prefix ^ String.make ~len:1 ~char ^ suffix
 
 (* === BASIC SHRINKERS === *)
-
 let nil = fun _value -> []
 
 let towards = fun target ->
@@ -92,14 +84,12 @@ let towards = fun target ->
       let abs_diff =
         if diff < 0 then
           -diff
-        else
-          diff
+        else diff
       in
       let rec halve n acc =
         if n = 0 then
           acc
-        else
-          halve (n / 2) (n :: acc)
+        else halve (n / 2) (n :: acc)
       in
       let steps = halve abs_diff [] in
       let steps =
@@ -107,18 +97,14 @@ let towards = fun target ->
         | _original :: rest -> List.reverse rest
         | [] -> []
       in
-      let smaller_values =
-        List.map steps
-          ~fn:(fun step ->
-            if diff > 0 then
-              target + step
-            else
-              target - step)
-      in
-      target :: smaller_values
+      let smaller_values = List.map steps ~fn:(
+        fun step ->
+          if diff > 0 then
+            target + step
+          else target - step
+      ) in target :: smaller_values
 
 (* === PRIMITIVE SHRINKERS === *)
-
 let int = towards 0
 
 let int_towards = fun target -> towards target
@@ -130,8 +116,7 @@ let int32 = fun value ->
     let rec halve n acc =
       if n = 0l then
         acc
-      else
-        halve (Int32.div n 2l) (n :: acc)
+      else halve (Int32.div n 2l) (n :: acc)
     in
     let steps = halve (Int32.abs value) [] |> List.reverse in
     let smaller_steps =
@@ -139,12 +124,12 @@ let int32 = fun value ->
       | _original :: rest -> List.reverse rest
       | [] -> []
     in
-    0l :: List.map smaller_steps
-      ~fn:(fun step ->
+    0l :: List.map smaller_steps ~fn:(
+      fun step ->
         if value > 0l then
           step
-        else
-          Int32.neg step)
+        else Int32.neg step
+    )
 
 let int64 = fun value ->
   if value = 0L then
@@ -153,8 +138,7 @@ let int64 = fun value ->
     let rec halve n acc =
       if n = 0L then
         acc
-      else
-        halve (Int64.div n 2L) (n :: acc)
+      else halve (Int64.div n 2L) (n :: acc)
     in
     let steps = halve (Int64.abs value) [] |> List.reverse in
     let smaller_steps =
@@ -162,12 +146,12 @@ let int64 = fun value ->
       | _original :: rest -> List.reverse rest
       | [] -> []
     in
-    0L :: List.map smaller_steps
-      ~fn:(fun step ->
+    0L :: List.map smaller_steps ~fn:(
+      fun step ->
         if value > 0L then
           step
-        else
-          Int64.neg step)
+        else Int64.neg step
+    )
 
 let float = fun value ->
   if value = 0.0 then
@@ -176,8 +160,7 @@ let float = fun value ->
     let rec halve n acc =
       if n = 0.0 || Float.abs n < 0.000_1 then
         acc
-      else
-        halve (n /. 2.0) (n :: acc)
+      else halve (n /. 2.0) (n :: acc)
     in
     let steps = halve (Float.abs value) [] |> List.reverse in
     let smaller_steps =
@@ -185,18 +168,17 @@ let float = fun value ->
       | _original :: rest -> List.reverse rest
       | [] -> []
     in
-    0.0 :: List.map smaller_steps
-      ~fn:(fun step ->
+    0.0 :: List.map smaller_steps ~fn:(
+      fun step ->
         if value > 0.0 then
           step
-        else
-          -.step)
+        else -.step
+    )
 
 let bool = fun value ->
   if value then
     [ false ]
-  else
-    []
+  else []
 
 let char = fun value ->
   if value = 'a' then
@@ -211,8 +193,7 @@ let char = fun value ->
       let rec halve n acc =
         if n = 0 then
           acc
-        else
-          halve (n / 2) (n :: acc)
+        else halve (n / 2) (n :: acc)
       in
       let steps = halve diff [] |> List.reverse in
       let smaller_steps =
@@ -220,7 +201,9 @@ let char = fun value ->
         | _original :: rest -> List.reverse rest
         | [] -> []
       in
-      'a' :: List.map smaller_steps ~fn:(fun step -> Char.from_int_unchecked (target_code + step))
+      'a' :: List.map smaller_steps ~fn:(
+        fun step -> Char.from_int_unchecked (target_code + step)
+      )
 
 let rune = fun value ->
   let code = Unicode.Rune.to_int value in
@@ -230,8 +213,7 @@ let rune = fun value ->
     let rec halve n acc =
       if n = 0 then
         acc
-      else
-        halve (n / 2) (n :: acc)
+      else halve (n / 2) (n :: acc)
     in
     let steps = halve code [] |> List.reverse in
     let smaller_steps =
@@ -239,8 +221,7 @@ let rune = fun value ->
       | _original :: rest -> List.reverse rest
       | [] -> []
     in
-    let candidates = 0 :: smaller_steps in
-    List.filter_map candidates ~fn:Unicode.Rune.from_int
+    let candidates = 0 :: smaller_steps in List.filter_map candidates ~fn:Unicode.Rune.from_int
 
 let string = fun value ->
   let len = String.length value in
@@ -250,16 +231,14 @@ let string = fun value ->
     let rec remove_positions index acc =
       if index >= len then
         acc
-      else
-        remove_positions (index + 1) (string_remove_at value index :: acc)
+      else remove_positions (index + 1) (string_remove_at value index :: acc)
     in
     let removed = remove_positions 0 [] in
     let rec shrink_length current acc =
       if current <= 0 then
         acc
       else
-        let half = current / 2 in
-        shrink_length half (String.sub value ~offset:0 ~len:half :: acc)
+        let half = current / 2 in shrink_length half (String.sub value ~offset:0 ~len:half :: acc)
     in
     let shortened = shrink_length len [] in
     let shrunk_chars = Vector.with_capacity ~size:len in
@@ -269,20 +248,17 @@ let string = fun value ->
       else
         (
           let current_char = String.get_unchecked value ~at:index in
-          let shrunk =
-            List.map
-              (char current_char)
-              ~fn:(fun char' -> string_replace_at value ~at:index ~char:char')
-          in
+          let shrunk = List.map (char current_char) ~fn:(
+            fun char' -> string_replace_at value ~at:index ~char:char'
+          ) in
           vector_push_reversed shrunk_chars shrunk;
           shrink_chars (index - 1)
         )
     in
     shrink_chars (len - 1);
-    dedupe (removed @ shortened @ (Vector.to_array shrunk_chars |> Array.to_list))
+  dedupe ((removed @ shortened) @ (Vector.to_array shrunk_chars |> Array.to_list))
 
 (* === COLLECTION SHRINKERS === *)
-
 let list = fun elem_shrinker ->
   fun lst ->
     let len = List.length lst in
@@ -299,8 +275,7 @@ let list = fun elem_shrinker ->
             | x :: xs ->
                 if i = n then
                   xs
-                else
-                  x :: remove_nth (i + 1) xs
+                else x :: remove_nth (i + 1) xs
           in
           remove_at (n + 1) (remove_nth 0 lst :: acc)
       in
@@ -309,8 +284,7 @@ let list = fun elem_shrinker ->
         if curr <= 0 then
           acc
         else
-          let half = curr / 2 in
-          shrink_length half (take half lst :: acc)
+          let half = curr / 2 in shrink_length half (take half lst :: acc)
       in
       let shortened = shrink_length len [] in
       let shrunk_elements = Vector.with_capacity ~size:len in
@@ -320,17 +294,15 @@ let list = fun elem_shrinker ->
         else
           (
             let value = nth lst ~at:index |> Option.expect ~msg:"valid shrink element index" in
-            let shrunk =
-              List.map
-                (elem_shrinker value)
-                ~fn:(fun value' -> replace_nth lst ~at:index ~value:value')
-            in
+            let shrunk = List.map (elem_shrinker value) ~fn:(
+              fun value' -> replace_nth lst ~at:index ~value:value'
+            ) in
             vector_push_reversed shrunk_elements shrunk;
             shrink_elements (index - 1)
           )
       in
       shrink_elements (len - 1);
-      dedupe (removed @ shortened @ (Vector.to_array shrunk_elements |> Array.to_list))
+    dedupe ((removed @ shortened) @ (Vector.to_array shrunk_elements |> Array.to_list))
 
 let array = fun elem_shrinker ->
   fun arr ->
@@ -338,8 +310,7 @@ let array = fun elem_shrinker ->
       let rec build i acc =
         if i < 0 then
           acc
-        else
-          build (i - 1) (Array.get_unchecked a ~at:i :: acc)
+        else build (i - 1) (Array.get_unchecked a ~at:i :: acc)
       in
       build (Array.length a - 1) []
     in
@@ -363,104 +334,101 @@ let array = fun elem_shrinker ->
 
 let vector = fun elem_shrinker ->
   fun vec ->
-    let lst = Vector.iter vec |> Iter.Iterator.to_list in
-    List.map (list elem_shrinker lst) ~fn:Vector.from_list
+    let lst = Vector.iter vec |> Iter.Iterator.to_list in List.map (list elem_shrinker lst) ~fn:Vector.from_list
 
 let hashmap = fun key_shrinker value_shrinker ->
   fun hm ->
     let lst = HashMap.to_list hm in
     let entry_shrinker ((key, value)) =
-      let shrunk_keys =
-        List.map (key_shrinker key) ~fn:(fun key' -> (key', value))
-      in
-      let shrunk_values =
-        List.map (value_shrinker value) ~fn:(fun value' -> (key, value'))
-      in
-      shrunk_keys @ shrunk_values
+      let shrunk_keys = List.map (key_shrinker key) ~fn:(
+        fun key' -> (key', value)
+      ) in
+      let shrunk_values = List.map (value_shrinker value) ~fn:(
+        fun value' -> (key, value')
+      ) in shrunk_keys @ shrunk_values
     in
     List.map (list entry_shrinker lst) ~fn:HashMap.from_list
 
 let hashset = fun elem_shrinker ->
   fun hs ->
-    let lst = HashSet.to_list hs in
-    List.map (list elem_shrinker lst) ~fn:HashSet.from_list
+    let lst = HashSet.to_list hs in List.map (list elem_shrinker lst) ~fn:HashSet.from_list
 
 let queue = fun elem_shrinker ->
   fun q ->
-    let lst = Queue.to_list q in
-    List.map (list elem_shrinker lst) ~fn:Queue.from_list
+    let lst = Queue.to_list q in List.map (list elem_shrinker lst) ~fn:Queue.from_list
 
 let deque = fun elem_shrinker ->
   fun d ->
-    let lst = Deque.iter d |> Iter.Iterator.to_list in
-    List.map (list elem_shrinker lst)
-      ~fn:(fun lst ->
+    let lst = Deque.iter d |> Iter.Iterator.to_list in List.map (list elem_shrinker lst) ~fn:(
+      fun lst ->
         let d' = Deque.create () in
-        List.for_each lst ~fn:(fun value -> Deque.push_back d' ~value);
-        d')
+        List.for_each lst ~fn:(
+          fun value -> Deque.push_back d' ~value
+        );
+        d'
+    )
 
 let heap = fun elem_shrinker ->
   fun h ->
-    let lst = Heap.iter h |> Iter.Iterator.to_list in
-    List.map (list elem_shrinker lst)
-      ~fn:(fun lst ->
+    let lst = Heap.iter h |> Iter.Iterator.to_list in List.map (list elem_shrinker lst) ~fn:(
+      fun lst ->
         let h' = Heap.create () in
-        List.for_each lst ~fn:(fun value -> Heap.push h' ~value);
-        h')
+        List.for_each lst ~fn:(
+          fun value -> Heap.push h' ~value
+        );
+        h'
+    )
 
 (* === TUPLE SHRINKERS === *)
-
 let pair = fun shrinker_a shrinker_b ->
   fun ((a, b)) ->
-    let shrunk_a =
-      List.map (shrinker_a a) ~fn:(fun a' -> (a', b))
-    in
-    let shrunk_b =
-      List.map (shrinker_b b) ~fn:(fun b' -> (a, b'))
-    in
-    shrunk_a @ shrunk_b
+    let shrunk_a = List.map (shrinker_a a) ~fn:(
+      fun a' -> (a', b)
+    ) in
+    let shrunk_b = List.map (shrinker_b b) ~fn:(
+      fun b' -> (a, b')
+    ) in shrunk_a @ shrunk_b
 
 let triple = fun shrinker_a shrinker_b shrinker_c ->
   fun ((a, b, c)) ->
-    let shrunk_a =
-      List.map (shrinker_a a) ~fn:(fun a' -> (a', b, c))
-    in
-    let shrunk_b =
-      List.map (shrinker_b b) ~fn:(fun b' -> (a, b', c))
-    in
-    let shrunk_c =
-      List.map (shrinker_c c) ~fn:(fun c' -> (a, b, c'))
-    in
-    shrunk_a @ shrunk_b @ shrunk_c
+    let shrunk_a = List.map (shrinker_a a) ~fn:(
+      fun a' -> (a', b, c)
+    ) in
+    let shrunk_b = List.map (shrinker_b b) ~fn:(
+      fun b' -> (a, b', c)
+    ) in
+    let shrunk_c = List.map (shrinker_c c) ~fn:(
+      fun c' -> (a, b, c')
+    ) in (shrunk_a @ shrunk_b) @ shrunk_c
 
 (* === OPTION & RESULT SHRINKERS === *)
-
 let option = fun elem_shrinker ->
   fun opt ->
     match opt with
     | None -> []
     | Some x ->
         let none_candidate = [ None ] in
-        let shrunk_some =
-          List.map (elem_shrinker x) ~fn:(fun x' -> Some x')
-        in
-        none_candidate @ shrunk_some
+        let shrunk_some = List.map (elem_shrinker x) ~fn:(
+          fun x' -> Some x'
+        ) in none_candidate @ shrunk_some
 
 let result = fun ok_shrinker err_shrinker ->
   fun res ->
     match res with
-    | Ok x -> List.map (ok_shrinker x) ~fn:(fun x' -> Ok x')
-    | Error e -> List.map (err_shrinker e) ~fn:(fun e' -> Error e')
+    | Ok x -> List.map (ok_shrinker x) ~fn:(
+      fun x' -> Ok x'
+    )
+    | Error e -> List.map (err_shrinker e) ~fn:(
+      fun e' -> Error e'
+    )
 
 (* === COMBINATORS === *)
-
 let map = fun f f_inv shrinker ->
   fun b ->
-    let a = f_inv b in
-    List.map (shrinker a) ~fn:f
+    let a = f_inv b in List.map (shrinker a) ~fn:f
 
-let filter = fun pred shrinker -> fun value -> List.filter (shrinker value) ~fn:pred
+let filter = fun pred shrinker ->
+  fun value -> List.filter (shrinker value) ~fn:pred
 
 (* === LOW-LEVEL INTERFACE === *)
-
 let shrink = fun shrinker value -> shrinker value

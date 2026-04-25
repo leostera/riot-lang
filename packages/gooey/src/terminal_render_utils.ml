@@ -1,10 +1,8 @@
 open Std
 
-let start_cell = fun value ->
-  Int.max 0 (Float.to_int (Float.floor value))
+let start_cell = fun value -> Int.max 0 (Float.to_int (Float.floor value))
 
-let end_cell = fun value ->
-  Int.max 0 (Float.to_int (Float.ceil value))
+let end_cell = fun value -> Int.max 0 (Float.to_int (Float.ceil value))
 
 let rect_col_start = fun (rect: Geometry.Rect.t) -> start_cell rect.x
 
@@ -16,11 +14,7 @@ let rect_row_end = fun (rect: Geometry.Rect.t) -> end_cell (rect.y +. rect.heigh
 
 let rgb_to_color = fun (`rgb (r, g, b)) -> Tty.Color.of_rgb (r, g, b)
 
-let is_inside_rect = fun ~col ~row rect ->
-  col >= rect_col_start rect
-  && col < rect_col_end rect
-  && row >= rect_row_start rect
-  && row < rect_row_end rect
+let is_inside_rect = fun ~col ~row rect -> col >= rect_col_start rect && col < rect_col_end rect && row >= rect_row_start rect && row < rect_row_end rect
 
 let is_inside_scissor = fun ~col ~row scissor ->
   match scissor with
@@ -31,11 +25,10 @@ let visible_col_range = fun ~box ~scissor ~limit ->
   let start_col = rect_col_start box in
   let end_col = Int.min limit (rect_col_end box) in
   match scissor with
-  | None -> (start_col, end_col)
+  | None -> start_col, end_col
   | Some rect ->
       let visible_start = Int.max start_col (rect_col_start rect) in
-      let visible_end = Int.min end_col (rect_col_end rect) in
-      (visible_start, visible_end)
+      let visible_end = Int.min end_col (rect_col_end rect) in (visible_start, visible_end)
 
 let slice_text_by_cells = fun text ~skip ~take ->
   if take <= 0 then
@@ -50,12 +43,13 @@ let slice_text_by_cells = fun text ~skip ~take ->
           let next_col = col + grapheme_width in
           if next_col <= skip then
             loop next_col acc rest
-          else if col < skip then
-            loop next_col acc rest
-          else if next_col > skip + take then
-            List.rev acc |> String.concat ""
           else
-            loop next_col (grapheme_string :: acc) rest
+            if col < skip then
+              loop next_col acc rest
+            else
+              if next_col > skip + take then
+                List.rev acc |> String.concat ""
+              else loop next_col (grapheme_string :: acc) rest
     in
     loop 0 [] graphemes
 

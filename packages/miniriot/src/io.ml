@@ -24,16 +24,14 @@ let mkdir_p = fun dir ->
   create_dirs dir
 
 let copy_file = fun src dst ->
-  let content = read_file src in
-  write_file dst content
+  let content = read_file src in write_file dst content
 
 let copy_file_with_permissions = fun src dst ->
   (* Copy file content *)
   let content = read_file src in
   write_file dst content;
   (* Copy permissions *)
-  let src_stat = Unix.stat src in
-  Unix.chmod dst src_stat.st_perm
+  let src_stat = Unix.stat src in Unix.chmod dst src_stat.st_perm
 
 let run_command cmd: unit =
   let cmd = String.concat " " cmd in
@@ -52,8 +50,7 @@ let run_command_with_output = fun cmd ->
   close_out stdin_ch;
   let rec read_all ch acc =
     try
-      let line = input_line ch in
-      read_all ch (acc ^ line ^ "\n")
+      let line = input_line ch in read_all ch (acc ^ line ^ "\n")
     with
     | End_of_file -> acc
   in

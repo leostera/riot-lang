@@ -1,5 +1,6 @@
 module type Intf = sig
   type t
+
   val is_error: t -> bool
 
   val is_priority: t -> bool
@@ -16,6 +17,7 @@ module type Intf = sig
 end
 
 type t
+
 val make: (module Intf with type t = 'state) -> 'state -> t
 
 val token: t -> Token.t

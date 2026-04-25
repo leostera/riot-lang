@@ -1,11 +1,8 @@
 open Std
+
 module Slice = IO.IoVec.IoSlice
 
-type t = {
-  source: Slice.t;
-  mutable pos: int;
-  length: int;
-}
+type t = { source: Slice.t; mutable pos: int; length: int }
 
 let create = fun source -> { source; pos = 0; length = Slice.length source }
 
@@ -18,14 +15,12 @@ let is_eof = fun t -> t.pos >= t.length
 let peek = fun t ->
   if is_eof t then
     None
-  else
-    Some (Slice.get_unchecked t.source ~at:t.pos)
+  else Some (Slice.get_unchecked t.source ~at:t.pos)
 
 let peek_n = fun t n ->
   if t.pos + n >= t.length then
     None
-  else
-    Some (Slice.get_unchecked t.source ~at:(t.pos + n))
+  else Some (Slice.get_unchecked t.source ~at:(t.pos + n))
 
 let advance = fun t ->
   if not (is_eof t) then
@@ -44,8 +39,7 @@ let skip_while = fun t f ->
 let take_slice = fun t f ->
   let start = t.pos in
   skip_while t f;
-  let len = t.pos - start in
-  Slice.sub_unchecked t.source ~off:start ~len
+  let len = t.pos - start in Slice.sub_unchecked t.source ~off:start ~len
 
 let take_while = fun t f -> take_slice t f |> Slice.to_string
 

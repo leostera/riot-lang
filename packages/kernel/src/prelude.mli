@@ -1,6 +1,7 @@
 type ('value, 'error) result =
   | Ok of 'value
   | Error of 'error
+
 external raise: exn -> 'a = "%raise"
 
 val ( = ): 'value -> 'value -> bool

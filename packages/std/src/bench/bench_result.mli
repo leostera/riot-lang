@@ -7,12 +7,14 @@ type timing = {
   (** Measured duration for the iteration. *)
   duration: Time.Duration.t;
 }
+
 (** GC collection counters observed while measuring a benchmark case. *)
 type gc_stats = Kernel.Gc.quick_stat = {
   minor_collections: int;
   major_collections: int;
   compactions: int;
 }
+
 (** Statistical summary of benchmark timings. *)
 type statistics = {
   (** Fastest recorded duration. *)
@@ -32,11 +34,13 @@ type statistics = {
   (** GC collection deltas observed across the measured iterations. *)
   gc: gc_stats;
 }
+
 (** The outcome of running a benchmark. *)
 type bench_result =
   | Completed of statistics
   | Failed of string
   | Skipped
+
 (** A benchmark result tagged with its index and name. *)
 type t = {
   (** Position of the benchmark in the run. *)
@@ -47,14 +51,15 @@ type t = {
   result: bench_result;
 }
 
-(** [make_statistics timings] computes statistical aggregates from a list of
-    timing samples.
+(**
+   [make_statistics timings] computes statistical aggregates from a list of
+   timing samples.
 
-    ## Example
+   ## Example
 
-    ```ocaml
-    let stats = Bench_result.make_statistics timings
-    ```
+   ```ocaml
+   let stats = Bench_result.make_statistics timings
+   ```
 *)
 val make_statistics: ?gc:gc_stats -> timing list -> statistics
 
@@ -70,18 +75,18 @@ type summary = {
   failed: int;
 }
 
-(** [make_summary results] creates a run summary from benchmark results.
+(**
+   [make_summary results] creates a run summary from benchmark results.
 
-    ## Example
+   ## Example
 
-    ```ocaml
-    let summary = Bench_result.make_summary results
-    ```
+   ```ocaml
+   let summary = Bench_result.make_summary results
+   ```
 *)
 val make_summary: t list -> summary
 
 (** {1 Comparison Results} *)
-
 (** Result of a single case in a comparison benchmark. *)
 type case_result = {
   (** Case name. *)
@@ -89,6 +94,7 @@ type case_result = {
   (** Measured statistics for that case. *)
   statistics: statistics;
 }
+
 (** Result of a comparison benchmark showing relative performance. *)
 type comparison_result = {
   (** Human-readable comparison description. *)
@@ -101,13 +107,14 @@ type comparison_result = {
   speedup_ratios: (string * float) list;
 }
 
-(** [make_comparison_result description case_results] creates a comparison
-    result, identifies the fastest case, and calculates speedup ratios.
+(**
+   [make_comparison_result description case_results] creates a comparison
+   result, identifies the fastest case, and calculates speedup ratios.
 
-    ## Example
+   ## Example
 
-    ```ocaml
-    let comparison = Bench_result.make_comparison_result "insert" case_results
-    ```
+   ```ocaml
+   let comparison = Bench_result.make_comparison_result "insert" case_results
+   ```
 *)
 val make_comparison_result: string -> case_result list -> comparison_result

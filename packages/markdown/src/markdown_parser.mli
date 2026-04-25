@@ -13,6 +13,7 @@ type inline_node =
   | Raw_html of string
   | Link of { label: inline_node list; destination: string; title: string option }
   | Image of { alt: inline_node list; destination: string; title: string option }
+
 (** Parsed table row. *)
 type table_row = {
   (** Cell content for each table column. *)
@@ -20,24 +21,24 @@ type table_row = {
   (** Column alignments. *)
   alignments: table_alignment list;
 }
-
 and table_alignment =
   | Default
   | Left
   | Center
   | Right
+
 (** Parsed block-level markdown content. *)
 type block_node =
   | Heading of { level: int; inlines: inline_node list; span: Ceibo.Span.t }
   | Paragraph of { inlines: inline_node list; span: Ceibo.Span.t }
   | Block_quote of { blocks: block_node list; span: Ceibo.Span.t }
   | List of {
-      ordered: bool;
-      start: int;
-      tight: bool;
-      items: block_node list list;
-      span: Ceibo.Span.t
-    }
+    ordered: bool;
+    start: int;
+    tight: bool;
+    items: block_node list list;
+    span: Ceibo.Span.t;
+  }
   | Task_list_item of { checked: bool; blocks: block_node list; span: Ceibo.Span.t }
   | List_item of { blocks: block_node list; span: Ceibo.Span.t }
   | Code_block of { info: string; code: string; span: Ceibo.Span.t; fenced: bool }
@@ -45,14 +46,17 @@ type block_node =
   | Raw_html of { html: string; span: Ceibo.Span.t }
   | Table of { header: table_row; rows: table_row list; span: Ceibo.Span.t }
   | Error_block of { message: string; span: Ceibo.Span.t }
-(** Markdown flavor.
 
-    Use [Markdown] for baseline markdown parsing and [Gfm] when you want
-    GitHub-style extensions such as tables and task lists.
+(**
+   Markdown flavor.
+
+   Use [Markdown] for baseline markdown parsing and [Gfm] when you want
+   GitHub-style extensions such as tables and task lists.
 *)
 type flavor =
-  Markdown
+  | Markdown
   | Gfm
+
 (** Result of parsing raw markdown source. *)
 type parsed = {
   (** Original source text. *)
@@ -65,9 +69,10 @@ type parsed = {
   diagnostics: Markdown_diagnostic.t list;
 }
 
-(** Parse markdown source into tokens, a green tree, and lowered block nodes.
+(**
+   Parse markdown source into tokens, a green tree, and lowered block nodes.
 
-    Use this lower-level parser interface when you need direct access to the
-    lexer tokens or syntax tree, not just rendered HTML.
+   Use this lower-level parser interface when you need direct access to the
+   lexer tokens or syntax tree, not just rendered HTML.
 *)
 val parse: ?flavor:flavor -> string -> parsed

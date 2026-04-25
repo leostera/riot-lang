@@ -3,7 +3,7 @@ open Global
 type ctx = Test_context.t
 
 type test_result =
-  Pass
+  | Pass
   | Fail of string
   | Error of exn
 
@@ -35,7 +35,7 @@ let case = fun ?(size = Small) ?(reliability = Stable) name fn ->
     size;
     reliability;
     fn;
-    skip = false;
+    skip = false
   }
 
 let property = fun ?(size = Small) ?(reliability = Stable) name ~examples fn ->
@@ -45,7 +45,7 @@ let property = fun ?(size = Small) ?(reliability = Stable) name ~examples fn ->
     size;
     reliability;
     fn;
-    skip = false;
+    skip = false
   }
 
 let skip = fun ?(size = Small) ?(reliability = Stable) name fn ->
@@ -55,7 +55,7 @@ let skip = fun ?(size = Small) ?(reliability = Stable) name fn ->
     size;
     reliability;
     fn;
-    skip = true;
+    skip = true
   }
 
 let todo = fun ?(size = Small) ?(reliability = Stable) name ->
@@ -64,6 +64,8 @@ let todo = fun ?(size = Small) ?(reliability = Stable) name ->
     test_type = UnitTest;
     size;
     reliability;
-    fn = (fun _ctx -> Result.Error "todo");
-    skip = false;
+    fn = (
+      fun _ctx -> Result.Error "todo"
+    );
+    skip = false
   }

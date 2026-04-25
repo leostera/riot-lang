@@ -2,30 +2,25 @@ open Std
 open Std.Iter
 
 type t =
-  | Cursor: {
-      id: string;
-      driver: (module Sqlx_driver.Driver.Intf with type result_set = 'rs);
-      mutable result_set: 'rs;
-      mutable exhausted: bool;
-      mutable row_count: int;
-    } -> t
+  | Cursor : {
+    id: string;
+    driver: (module Sqlx_driver.Driver.Intf with type result_set = 'rs);
+    mutable result_set: 'rs;
+    mutable exhausted: bool;
+    mutable row_count: int;
+  } -> t
 
-let make = fun (type rs) id (result_set: rs) (
-  driver: (module Sqlx_driver.Driver.Intf with type result_set = rs)
-) ->
+let make = fun (type rs) id (result_set: rs) (driver: (module Sqlx_driver.Driver.Intf with type result_set = rs)) ->
   Cursor {
     id;
     driver;
     result_set;
     exhausted = false;
-    row_count = 0;
+    row_count = 0
   }
 
 module RowIterator = struct
-  type state = {
-    cursor: t;
-    mutable exhausted: bool;
-  }
+  type state = { cursor: t; mutable exhausted: bool }
 
   type item = Sqlx_driver.Row.t
 
@@ -61,12 +56,10 @@ module RowIterator = struct
   let clone = fun state -> { cursor = state.cursor; exhausted = state.exhausted }
 end
 
-let to_mut_iter = fun cursor ->
-  MutIterator.make (module RowIterator) { RowIterator.cursor; exhausted = false }
+let to_mut_iter = fun cursor -> MutIterator.make (module RowIterator) { RowIterator.cursor; exhausted = false }
 
 let fetch_one = fun cursor ->
-  let iter = to_mut_iter cursor in
-  MutIterator.next iter
+  let iter = to_mut_iter cursor in MutIterator.next iter
 
 let fetch_many = fun cursor n ->
   let iter = to_mut_iter cursor in

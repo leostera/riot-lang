@@ -11,15 +11,16 @@ type event = {
   id: string option;
 }
 
-(** Return a mutable iterator over SSE events from the connection.
+(**
+   Return a mutable iterator over SSE events from the connection.
 
-    The iterator parses [`data:`], [`event:`], and [`id:`] fields lazily as
-    the response stream advances.
+   The iterator parses [`data:`], [`event:`], and [`id:`] fields lazily as
+   the response stream advances.
 
-    ```ocaml
-    Blink.SSE.await conn
-    |> Iter.MutIterator.for_each (fun event ->
-         Log.info event.data)
-    ```
+   ```ocaml
+   Blink.SSE.await conn
+   |> Iter.MutIterator.for_each (fun event ->
+        Log.info event.data)
+   ```
 *)
 val await: Connection.t -> event Iter.MutIterator.t

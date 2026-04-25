@@ -1,23 +1,28 @@
 open Std
 open Model
 
-(** Structured requirements that prevented a rooted snapshot from being
-    prepared. *)
+(**
+   Structured requirements that prevented a rooted snapshot from being
+   prepared. 
+*)
 type requirement =
   | MissingRootSource of { source_id: SourceId.t }
   | MissingModuleSummary of { module_name: string; requested_by: SourceId.t list }
   | LocalModuleCycle of { module_names: string list; source_ids: SourceId.t list }
+
 (** Opaque collection of missing requirements. *)
 type t
 
 (** Build one missing-requirements payload from prepared requirements. *)
 val of_list: requirement list -> t
 
-(** Enumerate requirements in canonical deterministic order.
+(**
+   Enumerate requirements in canonical deterministic order.
 
-    Missing root sources are sorted by [SourceId], and missing module-summary
-    requirements are sorted by module name with deduplicated, sorted
-    [requested_by] source ids. *)
+   Missing root sources are sorted by [SourceId], and missing module-summary
+   requirements are sorted by module name with deduplicated, sorted
+   [requested_by] source ids. 
+*)
 val requirements: t -> requirement list
 
 (** Whether no requirements are missing. *)

@@ -23,20 +23,17 @@ let compare = Order.compare
 let abs = fun value ->
   if value < 0 then
     0 - value
-  else
-    value
+  else value
 
 let min = fun left right ->
   match compare left right with
-  | Order.LT
-  | Order.EQ -> left
+  | Order.LT | Order.EQ -> left
   | Order.GT -> right
 
 let max = fun left right ->
   match compare left right with
   | Order.LT -> right
-  | Order.EQ
-  | Order.GT -> left
+  | Order.EQ | Order.GT -> left
 
 let succ = fun value -> add value 1
 
@@ -68,15 +65,13 @@ let to_string = fun value ->
     let rec digit_count count current =
       if current = 0 then
         count
-      else
-        digit_count (count + 1) (current / 10)
+      else digit_count (count + 1) (current / 10)
     in
     let digits = digit_count 0 value in
     let width =
       if negative then
         digits + 1
-      else
-        digits
+      else digits
     in
     let out = Caml_runtime.bytes_create width in
     let rec fill index current =
@@ -86,8 +81,7 @@ let to_string = fun value ->
           let digit =
             if digit < 0 then
               -digit
-            else
-              digit
+            else digit
           in
           Caml_runtime.bytes_set out index (Caml_runtime.char_of_int (48 + digit));
           fill (index - 1) (current / 10)
@@ -95,5 +89,5 @@ let to_string = fun value ->
     in
     if negative then
       Caml_runtime.bytes_set out 0 '-';
-    fill (width - 1) value;
-    Caml_runtime.bytes_unsafe_to_string out
+  fill (width - 1) value;
+  Caml_runtime.bytes_unsafe_to_string out

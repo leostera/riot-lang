@@ -14,7 +14,7 @@ type 'model state = {
 }
 
 type control_flow =
-  Halt
+  | Halt
   | Continue
 
 let selector = fun msg ->
@@ -24,7 +24,6 @@ let selector = fun msg ->
   | other -> `select (Event.Custom other)
 
 (* User custom messages *)
-
 let rec loop = fun state ->
   Log.trace "[PROGRAM] Waiting for event...";
   let event = receive ~selector () in
@@ -38,21 +37,17 @@ let rec loop = fun state ->
   match handle_cmd cmd state with
   | Halt -> handle_shutdown state
   | Continue -> loop state
-
 and forward_event = fun event state ->
   (* Forward resize events to renderer *)
   (
     match event with
     | Event.Resize { width; height } -> Renderer.resize state.renderer ~width ~height
     | _ -> ()
-  );
-
+  )
 and handle_cmd = fun cmd state ->
   match cmd with
-  | Quit ->
-      Halt
-  | Noop ->
-      Continue
+  | Quit -> Halt
+  | Noop -> Continue
   | HideCursor ->
       Renderer.hide_cursor state.renderer;
       Continue
@@ -92,15 +87,12 @@ and handle_cmd = fun cmd state ->
       Renderer.set_window_title state.renderer title;
       Continue
   | SetTimer { ref; duration } ->
-      let _ = Timer.send_after (self ()) (Timer ref) ~after:duration in
-      Continue
-  | Seq [] ->
-      Continue
+      let _ = Timer.send_after (self ()) (Timer ref) ~after:duration in Continue
+  | Seq [] -> Continue
   | Seq (cmd :: rest) ->
       match handle_cmd cmd state with
       | Halt -> Halt
       | Continue -> handle_cmd (Seq rest) state
-
 and handle_shutdown = fun state ->
   Log.trace "Shutting down Minttea";
   Renderer.show_cursor state.renderer;
@@ -125,8 +117,7 @@ let run = fun ~app ~config ~initial_model ->
   (* Create TTY once - will be shared by both io_loop and renderer *)
   let tty =
     match Tty.make_raw () with
-    | Ok tty ->
-        tty
+    | Ok tty -> tty
     | Error NoTtyConnected ->
         Log.error "[PROGRAM] Failed to create TTY: Not a TTY";
         panic "Not a TTY"
@@ -144,7 +135,7 @@ let run = fun ~app ~config ~initial_model ->
     tty;
     app;
     config;
-    model = initial_model;
+    model = initial_model
   }
   in
   init state

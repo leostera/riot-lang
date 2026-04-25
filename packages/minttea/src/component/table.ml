@@ -2,10 +2,7 @@ open Std
 open Std.IO
 open Std.Collections
 
-type column = {
-  title: string;
-  width: int;
-}
+type column = { title: string; width: int }
 
 type row = string list
 
@@ -14,8 +11,10 @@ type t = {
   rows: row list;
   cursor: int;
   focused: bool;
-  height: int;  (* 0 = unlimited *)
-  width: int;  (* total width *)
+  height: int;
+  (* 0 = unlimited *)
+  width: int;
+  (* total width *)
   show_header: bool;
   cursor_char: string;
 }
@@ -31,7 +30,7 @@ let make = fun columns rows ->
     height = 0;
     width = 0;
     show_header = true;
-    cursor_char = "> ";
+    cursor_char = "> "
   }
 
 let set_height = fun t ~height:h -> { t with height = max 0 h }
@@ -52,8 +51,7 @@ let set_rows = fun t ~rows ->
   let cursor =
     if t.cursor >= List.length rows then
       max 0 (List.length rows - 1)
-    else
-      t.cursor
+    else t.cursor
   in
   { t with rows; cursor }
 
@@ -62,8 +60,7 @@ let selected_row = fun t -> List.get t.rows ~at:t.cursor
 let selected_index = fun t ->
   if List.length t.rows = 0 then
     None
-  else
-    Some t.cursor
+  else Some t.cursor
 
 let cursor = fun t -> t.cursor
 
@@ -71,14 +68,13 @@ let clamp_cursor = fun t ->
   let len = List.length t.rows in
   if len = 0 then
     { t with cursor = 0 }
-  else
-    { t with cursor = max 0 (min (len - 1) t.cursor) }
+  else { t with cursor = max 0 (min (len - 1) t.cursor) }
 
-let select = fun t idx -> { t with cursor = idx } |> clamp_cursor
+let select = fun t idx -> ({ t with cursor = idx }) |> clamp_cursor
 
-let move_up = fun t n -> { t with cursor = t.cursor - n } |> clamp_cursor
+let move_up = fun t n -> ({ t with cursor = t.cursor - n }) |> clamp_cursor
 
-let move_down = fun t n -> { t with cursor = t.cursor + n } |> clamp_cursor
+let move_down = fun t n -> ({ t with cursor = t.cursor + n }) |> clamp_cursor
 
 let goto_top = fun t -> { t with cursor = 0 }
 
@@ -86,8 +82,7 @@ let goto_bottom = fun t ->
   let len = List.length t.rows in
   if len = 0 then
     t
-  else
-    { t with cursor = len - 1 }
+  else { t with cursor = len - 1 }
 
 let focus = fun t -> { t with focused = true }
 
@@ -98,81 +93,65 @@ let is_focused = fun t -> t.focused
 let handle_key = fun t (key: Event.key) modifier ->
   if not t.focused then
     t
-  else
-    let open Event in
-      let page_size =
-        if t.height > 0 then
-          t.height
-        else
-          10
-      in
-      let half_page = page_size / 2 in
-      match ((key: Event.key)) with
-      | Up
-      | Key "k" when modifier = NoModifier -> move_up t 1
-      | Down
-      | Key "j" when modifier = NoModifier -> move_down t 1
-      | PageUp
-      | Key "b" when modifier = NoModifier -> move_up t page_size
-      | PageDown
-      | Key "f" when modifier = NoModifier -> move_down t page_size
-      | Space -> move_down t page_size
-      | Key "u" when modifier = Ctrl || modifier = NoModifier -> move_up t half_page
-      | Key "d" when modifier = Ctrl || modifier = NoModifier -> move_down t half_page
-      | Home
-      | Key "g" when modifier = NoModifier -> goto_top t
-      | End
-      | Key "G" when modifier = Shift -> goto_bottom t
-      | _ -> t
+  else let open Event in
+  let page_size =
+    if t.height > 0 then
+      t.height
+    else 10
+  in
+  let half_page = page_size / 2 in
+  match ((key : Event.key)) with
+  | Up | Key "k" when modifier = NoModifier -> move_up t 1
+  | Down | Key "j" when modifier = NoModifier -> move_down t 1
+  | PageUp | Key "b" when modifier = NoModifier -> move_up t page_size
+  | PageDown | Key "f" when modifier = NoModifier -> move_down t page_size
+  | Space -> move_down t page_size
+  | Key "u" when modifier = Ctrl || modifier = NoModifier -> move_up t half_page
+  | Key "d" when modifier = Ctrl || modifier = NoModifier -> move_down t half_page
+  | Home | Key "g" when modifier = NoModifier -> goto_top t
+  | End | Key "G" when modifier = Shift -> goto_bottom t
+  | _ -> t
 
 (* Rendering helpers *)
-
 let pad_string = fun s width ->
   let len = String.length s in
   if len >= width then
     if width > 0 then
       String.sub s ~offset:0 ~len:width
-    else
-      s
-  else
-    s ^ String.make ~len:(width - len) ~char:' '
+    else s
+  else s ^ String.make ~len:(width - len) ~char:' '
 
 let truncate_string = fun s width ->
   let len = String.length s in
   if len <= width then
     s
-  else if width > 3 then
-    String.sub s ~offset:0 ~len:(width - 3) ^ "..."
   else
-    String.sub s ~offset:0 ~len:width
+    if width > 3 then
+      String.sub s ~offset:0 ~len:(width - 3) ^ "..."
+    else String.sub s ~offset:0 ~len:width
 
 let render_cell = fun content width ->
-  let truncated = truncate_string content width in
-  pad_string truncated width
+  let truncated = truncate_string content width in pad_string truncated width
 
 let render_separator = fun (columns: column list) ->
-  let parts =
-    List.map ~fn:(fun (col: column) -> String.make ~len:col.width ~char:'-') columns
-  in
-  String.concat "  " parts
+  let parts = List.map ~fn:(
+    fun (col: column) -> String.make ~len:col.width ~char:'-'
+  ) columns in String.concat "  " parts
 
 let render_header = fun (columns: column list) ->
-  let headers =
-    List.map ~fn:(fun (col: column) -> render_cell col.title col.width) columns
-  in
-  String.concat "  " headers
+  let headers = List.map ~fn:(
+    fun (col: column) -> render_cell col.title col.width
+  ) columns in String.concat "  " headers
 
 let render_row = fun (columns: column list) (row_data: string list) is_selected cursor_char ->
   let prefix =
     if is_selected then
       cursor_char
-    else
-      String.make ~len:(String.length cursor_char) ~char:' '
+    else String.make ~len:(String.length cursor_char) ~char:' '
   in
-  let cells =
-    List.map (List.zip columns row_data) ~fn:(fun (col, cell) -> render_cell cell col.width)
-  in
-  prefix ^ String.concat "  " cells
+  let cells = List.map (List.zip columns row_data) ~fn:(
+    fun (col, cell) -> render_cell cell col.width
+  ) in prefix ^ String.concat "  " cells
 
 let view = fun tbl ->
   let module B = Buffer in
@@ -195,13 +174,11 @@ let view = fun tbl ->
           (0, total_rows - 1)
         else
           (* Ensure cursor is visible *)
-          let start = max 0 (min (total_rows - tbl.height) (tbl.cursor - tbl.height / 2)) in
-          (start, min (total_rows - 1) (start + tbl.height - 1))
+          let start = max 0 (min (total_rows - tbl.height) (tbl.cursor - tbl.height / 2)) in (start, min (total_rows - 1) (start + tbl.height - 1))
       in
       (* Render visible rows *)
-      let first_row = ref true in
-      tbl.rows |> List.enumerate |> List.for_each
-        ~fn:(fun (idx, row_data) ->
+      let first_row = ref true in tbl.rows |> List.enumerate |> List.for_each ~fn:(
+        fun (idx, row_data) ->
           if idx >= start_idx && idx <= end_idx then
             begin
               (* Pad row to match column count *)
@@ -209,18 +186,17 @@ let view = fun tbl ->
                 let col_count = List.length tbl.columns in
                 let row_len = List.length row_data in
                 if row_len < col_count then
-                  let padding = Array.to_list (Array.make ~count:(col_count - row_len) ~value:"") in
-                  row_data @ padding
-                else if row_len > col_count then
-                  List.take row_data ~len:col_count
+                  let padding = Array.to_list (Array.make ~count:(col_count - row_len) ~value:"") in row_data @ padding
                 else
-                  row_data
+                  if row_len > col_count then
+                    List.take row_data ~len:col_count
+                  else row_data
               in
               if not !first_row then
                 B.add_char buf '\n';
               first_row := false;
-              let is_selected = tbl.focused && idx = tbl.cursor in
-              B.add_string buf (render_row tbl.columns padded_row is_selected tbl.cursor_char)
-            end)
+              let is_selected = tbl.focused && idx = tbl.cursor in B.add_string buf (render_row tbl.columns padded_row is_selected tbl.cursor_char)
+            end
+      )
     end;
   B.contents buf

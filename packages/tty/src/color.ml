@@ -1,7 +1,7 @@
 open Std
 
 type t =
-  RGB of int * int * int
+  | RGB of int * int * int
   | ANSI of int
   | ANSI256 of int
   | No_color
@@ -27,26 +27,22 @@ let to_255 = fun str ->
 let rgb = fun r g b -> RGB (to_255 r, to_255 g, to_255 b)
 
 let rgb = fun str ->
-  match str
-  |> String.into_iter
-  |> Iter.Iterator.map ~fn:Unicode.Rune.to_char
-  |> Iter.Iterator.to_list
-  |> List.map ~fn:(fun char -> String.make ~len:1 ~char) with
-  | ["#";r1;r2;g1;g2;b1;b2] -> rgb (r1 ^ r2) (g1 ^ g2) (b1 ^ b2)
-  | ["#";r1;g1;b1] -> rgb (r1 ^ r1) (g1 ^ g1) (b1 ^ b1)
+  match str |> String.into_iter |> Iter.Iterator.map ~fn:Unicode.Rune.to_char |> Iter.Iterator.to_list |> List.map ~fn:(
+    fun char -> String.make ~len:1 ~char
+  ) with
+  | [ "#"; r1; r2; g1; g2; b1; b2 ] -> rgb (r1 ^ r2) (g1 ^ g2) (b1 ^ b2)
+  | [ "#"; r1; g1; b1 ] -> rgb (r1 ^ r1) (g1 ^ g1) (b1 ^ b1)
   | _ -> raise (Invalid_color str)
 
 let ansi = fun value ->
   if Int.(value < 0 || value > 15) then
     raise (Invalid_color_num ("ansi", value))
-  else
-    ANSI value
+  else ANSI value
 
 let ansi256 = fun value ->
   if Int.(value < 0 || value > 255) then
     raise (Invalid_color_num ("ansi256", value))
-  else
-    ANSI256 value
+  else ANSI256 value
 
 let no_color = No_color
 
@@ -62,16 +58,13 @@ let make = fun str ->
     | Some i ->
         if Int.(i < 0 || i > 255) then
           raise (Invalid_color_num ("numeric", i))
-        else if i < 16 then
-          ansi i
         else
-          ansi256 i
+          if i < 16 then
+            ansi i
+          else ansi256 i
     | None -> raise (Invalid_color str)
 
-let to_escape_seq: mode:[>
-    `bg
-    | `fg
-  ] -> t -> string = fun ~mode t ->
+let to_escape_seq: mode:[> `bg | `fg] -> t -> string = fun ~mode t ->
   match t with
   | RGB (r, g, b) ->
       let prefix =
@@ -84,14 +77,12 @@ let to_escape_seq: mode:[>
       let bg_mod x =
         if mode = `bg then
           x + 10
-        else
-          x
+        else x
       in
       let c =
         if c < 8 then
           bg_mod c + 30
-        else
-          bg_mod (c - 8) + 90
+        else bg_mod (c - 8) + 90
       in
       Int.to_string c
   | ANSI256 c ->
@@ -101,8 +92,7 @@ let to_escape_seq: mode:[>
         | `bg -> "48;5;"
       in
       prefix ^ Int.to_string c
-  | No_color ->
-      ""
+  | No_color -> ""
 
 let is_no_color = fun t -> t = No_color
 

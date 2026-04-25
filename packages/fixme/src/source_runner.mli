@@ -6,11 +6,10 @@ type progress_phase =
   | AstReady
   | RuleStarted of { rule_id: Rule_id.t }
   | RuleFinished of { rule_id: Rule_id.t; diagnostics: int }
+
 (** Timestamped progress event emitted by [run] or [run_rule]. *)
-type progress_event = {
-  timestamp_ms: int;
-  phase: progress_phase;
-}
+type progress_event = { timestamp_ms: int; phase: progress_phase }
+
 (** Result of running rules against one source file. *)
 type result = {
   (** Syntax tree produced from the parsed source. *)
@@ -21,13 +20,13 @@ type result = {
   parse_diagnostics: Syn.Diagnostic.t list;
 }
 
-(** Run a rule set against source text.
+(**
+   Run a rule set against source text.
 
-    Use [`on_progress`] when you want streaming visibility into parse and
-    per-rule execution phases.
+   Use [`on_progress`] when you want streaming visibility into parse and
+   per-rule execution phases.
 *)
-val run:
-  rules:Rule.t list -> ?filename:Path.t -> ?on_progress:(progress_event -> unit) -> string -> result
+val run: rules:Rule.t list -> ?filename:Path.t -> ?on_progress:(progress_event -> unit) -> string -> result
 
 (** Run a single rule against source text. *)
 val run_rule: rule:Rule.t -> ?filename:Path.t -> ?on_progress:(progress_event -> unit) -> string -> result
@@ -44,8 +43,9 @@ val safe_fixes: result -> Fix.fix list
 (** Return `true` if there are safe fixes that can be applied. *)
 val can_apply_safe_fixes: result -> bool
 
-(** Apply all safe fixes to the original source, if any exist.
+(**
+   Apply all safe fixes to the original source, if any exist.
 
-    Returns [Ok None] when there is nothing safe to apply.
+   Returns [Ok None] when there is nothing safe to apply.
 *)
 val apply_safe_fixes: source:string -> result -> ((string * Fix.fix list) option, string) Result.t

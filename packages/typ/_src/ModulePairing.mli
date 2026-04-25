@@ -6,13 +6,16 @@ type source_input = {
   analysis: SourceAnalysis.t;
   visible_type_decls: FileSummary.type_decl list;
 }
-(** Paired module result for one logical module name.
 
-    A logical module may be backed by an implementation source, an interface
-    source, or both. Pairing reconciles those per-source analyses into one
-    canonical [ModuleTypings.t] value and adjusted per-source analyses that
-    include signature-inclusion diagnostics when an implementation does not
-    satisfy its interface. *)
+(**
+   Paired module result for one logical module name.
+
+   A logical module may be backed by an implementation source, an interface
+   source, or both. Pairing reconciles those per-source analyses into one
+   canonical [ModuleTypings.t] value and adjusted per-source analyses that
+   include signature-inclusion diagnostics when an implementation does not
+   satisfy its interface. 
+*)
 type t = {
   (** Authoritative internal module result for the logical module. *)
   module_result: ModuleTypings.t;

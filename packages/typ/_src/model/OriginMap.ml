@@ -35,24 +35,18 @@ let semantic_id_key = fun value ->
   | Expr expr_id -> (ExprArenaId.to_int expr_id lsl 2) lor 2
   | Pattern pat_id -> (PatternArenaId.to_int pat_id lsl 2) lor 3
 
-let empty = {
-  origins = [];
-  origins_by_id = Collections.HashMap.with_capacity 64;
-  origins_by_semantic_id = Collections.HashMap.with_capacity 64
-}
+let empty = { origins = []; origins_by_id = Collections.HashMap.with_capacity 64; origins_by_semantic_id = Collections.HashMap.with_capacity 64 }
 
 let of_list = fun origins ->
   let origins_by_id = Collections.HashMap.with_capacity (List.length origins) in
   let origins_by_semantic_id = Collections.HashMap.with_capacity (List.length origins) in
   (
     origins |> List.iter
-      (fun (origin: origin) ->
-        let _ = Collections.HashMap.insert origins_by_id (OriginId.to_int origin.origin_id) origin in
-        let _ = Collections.HashMap.insert
-          origins_by_semantic_id
-          (semantic_id_key origin.semantic_id)
-          origin in
-        ())
+      (
+        fun (origin: origin) ->
+          let _ = Collections.HashMap.insert origins_by_id (OriginId.to_int origin.origin_id) origin in
+          let _ = Collections.HashMap.insert origins_by_semantic_id (semantic_id_key origin.semantic_id) origin in ()
+      )
   );
   { origins; origins_by_id; origins_by_semantic_id }
 
@@ -66,18 +60,16 @@ let kind_of_semantic_id = fun value ->
   | Pattern _ -> PatternKind
 
 let semantic_id_equal = fun left right ->
-  match (left, right) with
+  match left, right with
   | Item left, Item right -> ItemArenaId.equal left right
   | Binding left, Binding right -> BindingArenaId.equal left right
   | Expr left, Expr right -> ExprArenaId.equal left right
   | Pattern left, Pattern right -> PatternArenaId.equal left right
   | _ -> false
 
-let find = fun origins origin_id ->
-  Collections.HashMap.get origins.origins_by_id (OriginId.to_int origin_id)
+let find = fun origins origin_id -> Collections.HashMap.get origins.origins_by_id (OriginId.to_int origin_id)
 
-let find_by_semantic_id = fun origins semantic_id ->
-  Collections.HashMap.get origins.origins_by_semantic_id (semantic_id_key semantic_id)
+let find_by_semantic_id = fun origins semantic_id -> Collections.HashMap.get origins.origins_by_semantic_id (semantic_id_key semantic_id)
 
 let find_item = fun origins item_id -> find_by_semantic_id origins (Item item_id)
 
@@ -103,36 +95,43 @@ let semantic_id_to_string = fun value ->
 
 let semantic_id_to_json = fun value ->
   match value with
-  | Item item_id -> Data.Json.Object [
-    ("tag", Data.Json.String "item");
-    ("id", Data.Json.Int (ItemArenaId.to_int item_id));
-  ]
-  | Binding binding_id -> Data.Json.Object [
-    ("tag", Data.Json.String "binding");
-    ("id", Data.Json.Int (BindingArenaId.to_int binding_id));
-  ]
-  | Expr expr_id -> Data.Json.Object [
-    ("tag", Data.Json.String "expr");
-    ("id", Data.Json.Int (ExprArenaId.to_int expr_id));
-  ]
-  | Pattern pat_id -> Data.Json.Object [
-    ("tag", Data.Json.String "pattern");
-    ("id", Data.Json.Int (PatternArenaId.to_int pat_id));
-  ]
+  | Item item_id ->
+      Data.Json.Object [
+        "tag", Data.Json.String "item";
+        "id", Data.Json.Int (ItemArenaId.to_int item_id);
+      ]
+  | Binding binding_id ->
+      Data.Json.Object [
+        "tag", Data.Json.String "binding";
+        "id", Data.Json.Int (BindingArenaId.to_int binding_id);
+      ]
+  | Expr expr_id ->
+      Data.Json.Object [
+        "tag", Data.Json.String "expr";
+        "id", Data.Json.Int (ExprArenaId.to_int expr_id);
+      ]
+  | Pattern pat_id ->
+      Data.Json.Object [
+        "tag", Data.Json.String "pattern";
+        "id", Data.Json.Int (PatternArenaId.to_int pat_id);
+      ]
 
 let span_to_json = fun (span: Syn.Ceibo.Span.t) ->
-  Data.Json.Object [ ("start", Data.Json.Int span.start); ("end", Data.Json.Int span.end_); ]
+  Data.Json.Object [
+    "start", Data.Json.Int span.start;
+    "end", Data.Json.Int span.end_;
+  ]
 
 let origin_to_json = fun (origin: origin) ->
   Data.Json.Object [
-    ("origin_id", Data.Json.Int (OriginId.to_int origin.origin_id));
-    ("source_id", Data.Json.Int (SourceId.to_int origin.source_id));
-    ("source_revision", Data.Json.Int origin.source_revision);
-    ("kind", Data.Json.String (kind_to_string (kind_of_semantic_id origin.semantic_id)));
-    ("semantic_id", semantic_id_to_json origin.semantic_id);
-    ("label", Data.Json.String origin.label);
-    ("syntax_kind", Data.Json.String (Syn.SyntaxKind.to_string origin.syntax_kind));
-    ("span", span_to_json origin.span);
+    "origin_id", Data.Json.Int (OriginId.to_int origin.origin_id);
+    "source_id", Data.Json.Int (SourceId.to_int origin.source_id);
+    "source_revision", Data.Json.Int origin.source_revision;
+    "kind", Data.Json.String (kind_to_string (kind_of_semantic_id origin.semantic_id));
+    "semantic_id", semantic_id_to_json origin.semantic_id;
+    "label", Data.Json.String origin.label;
+    "syntax_kind", Data.Json.String (Syn.SyntaxKind.to_string origin.syntax_kind);
+    "span", span_to_json origin.span;
   ]
 
 let to_json = fun origins -> Data.Json.Array (List.map origin_to_json origins.origins)
@@ -142,23 +141,23 @@ let to_string = fun origins ->
   | [] -> "  none\n"
   | _ ->
       origins.origins |> List.map
-        (fun (origin: origin) ->
-          format
-            Format.[
-              str "  ";
-              str (OriginId.to_string origin.origin_id);
-              str " ";
-              str (kind_to_string (kind_of_semantic_id origin.semantic_id));
-              str " ";
-              str (semantic_id_to_string origin.semantic_id);
-              str " ";
-              str origin.label;
-              str " ";
-              str (Syn.SyntaxKind.to_string origin.syntax_kind);
-              str " @ ";
-              str (Syn.Ceibo.Span.to_string origin.span);
-              str " ";
-              str (SourceId.to_string origin.source_id);
-              str " rev=";
-              int origin.source_revision;
-            ]) |> String.concat "\n" |> fun text -> format Format.[ str text; str "\n" ]
+        (
+          fun (origin: origin) -> format Format.[
+            str "  ";
+            str (OriginId.to_string origin.origin_id);
+            str " ";
+            str (kind_to_string (kind_of_semantic_id origin.semantic_id));
+            str " ";
+            str (semantic_id_to_string origin.semantic_id);
+            str " ";
+            str origin.label;
+            str " ";
+            str (Syn.SyntaxKind.to_string origin.syntax_kind);
+            str " @ ";
+            str (Syn.Ceibo.Span.to_string origin.span);
+            str " ";
+            str (SourceId.to_string origin.source_id);
+            str " rev=";
+            int origin.source_revision;
+          ]
+        ) |> String.concat "\n" |> fun text -> format Format.[ str text; str "\n" ]

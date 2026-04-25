@@ -1,10 +1,11 @@
 open Std
 open Riot_model
 
-(** Build-time benchmarking support used by [riot bench].
+(**
+   Build-time benchmarking support used by [riot bench].
 
-    This module discovers benchmark suites, runs them through the shared build
-    pipeline, and emits structured per-suite and final summary events.
+   This module discovers benchmark suites, runs them through the shared build
+   pipeline, and emits structured per-suite and final summary events.
 *)
 type suite_binary = Test_runtime.suite_binary = {
   (** Package that owns the benchmark suite binary. *)
@@ -12,6 +13,7 @@ type suite_binary = Test_runtime.suite_binary = {
   (** Suite name reported by the benchmark binary. *)
   suite_name: string;
 }
+
 type bench_request = {
   (** Workspace providing the packages and build configuration. *)
   workspace: Workspace.t;
@@ -24,11 +26,9 @@ type bench_request = {
   (** Additional CLI arguments forwarded to each suite binary. *)
   extra_args: string list;
 }
-type bench_gc_stats = {
-  minor_collections: int;
-  major_collections: int;
-  compactions: int;
-}
+
+type bench_gc_stats = { minor_collections: int; major_collections: int; compactions: int }
+
 type bench_statistics = {
   (** Fastest measured iteration. *)
   min: Time.Duration.t;
@@ -47,10 +47,12 @@ type bench_statistics = {
   (** GC collection deltas observed across the measured iterations. *)
   gc: bench_gc_stats;
 }
+
 type bench_case_status =
   | Completed of bench_statistics
   | Failed of string
   | Skipped
+
 type bench_case_result = {
   (** Case index within the suite output. *)
   index: int;
@@ -59,9 +61,11 @@ type bench_case_result = {
   (** Final result for the case. *)
   result: bench_case_status;
 }
+
 type listed_bench_item_kind =
   | Benchmark
   | Comparison
+
 type listed_bench_item = {
   index: int;
   name: string;
@@ -71,17 +75,20 @@ type listed_bench_item = {
   skip: bool;
   cases: string list;
 }
+
 type listed_bench_suite = {
   suite: suite_binary;
   source_path: Path.t option;
   benchmarks: listed_bench_item list;
 }
+
 type bench_comparison_case_result = {
   (** Name of a case participating in the comparison. *)
   name: string;
   (** Timing statistics for that case. *)
   statistics: bench_statistics;
 }
+
 type bench_comparison_result = {
   (** Description reported by the benchmark suite. *)
   description: string;
@@ -92,6 +99,7 @@ type bench_comparison_result = {
   (** Relative speedup ratios keyed by case name. *)
   speedup_ratios: (string * float) list;
 }
+
 type bench_suite_summary = {
   (** Number of benchmark cases seen in the suite. *)
   total: int;
@@ -102,6 +110,7 @@ type bench_suite_summary = {
   (** Number of failed benchmark cases. *)
   failed: int;
 }
+
 type running_bench_case = {
   (** Outer benchmark index within the suite output. *)
   index: int;
@@ -112,46 +121,44 @@ type running_bench_case = {
   (** Configured warmup count. *)
   warmup: int;
 }
+
 type bench_event =
   | Build of Riot_build.Event.t
   | NoSuitesFound of { package_name: Package_name.t option }
   | RunningSuite of suite_binary
   | SuiteHeartbeat of {
-      suite: suite_binary;
-      binary_path: Path.t;
-      elapsed_us: int;
-      active_case: running_bench_case option
-    }
+    suite: suite_binary;
+    binary_path: Path.t;
+    elapsed_us: int;
+    active_case: running_bench_case option;
+  }
   | SuiteProgress of { suite: suite_binary; event: Data.Json.t }
   | SuiteCompleted of {
-      suite: suite_binary;
-      status: int;
-      stdout: string;
-      stderr: string;
-      started_at_us: int option;
-      completed_at_us: int option;
-      duration_us: int option;
-      results: bench_case_result list;
-      comparisons: bench_comparison_result list;
-      summary: bench_suite_summary
-    }
+    suite: suite_binary;
+    status: int;
+    stdout: string;
+    stderr: string;
+    started_at_us: int option;
+    completed_at_us: int option;
+    duration_us: int option;
+    results: bench_case_result list;
+    comparisons: bench_comparison_result list;
+    summary: bench_suite_summary;
+  }
   | Summary of { total: int; completed: int; skipped: int; failed: int }
+
 type bench_error =
   | BuildFailed of Riot_build.error
   | SuiteArtifactNotFound of { suite: suite_binary; reason: string }
   | SuiteExecutionError of { suite: suite_binary; reason: string }
   | SuitesFailed of int
 
-(** Collect benchmark suites available in the workspace.
+(**
+   Collect benchmark suites available in the workspace.
 
-    Use [package_filters] to restrict discovery to selected packages.
+   Use [package_filters] to restrict discovery to selected packages.
 *)
-val collect_suite_binaries:
-  Workspace.t ->
-  ?package_filters:Package_name.t list ->
-  ?suite_filter:string ->
-  unit ->
-  suite_binary list
+val collect_suite_binaries: Workspace.t -> ?package_filters:Package_name.t list -> ?suite_filter:string -> unit -> suite_binary list
 
 (** Render a user-facing error message for a benchmark failure. *)
 val bench_error_message: bench_error -> string
@@ -162,15 +169,12 @@ val bench_event_to_json: bench_event -> Data.Json.t option
 (** Parse a forwarded benchmark progress event into the active case metadata. *)
 val suite_progress_active_case: Data.Json.t -> (running_bench_case option, string) result
 
-val list_benchmarks:
-  ?on_suite:(listed_bench_suite -> unit) ->
-  ?on_suite_error:(suite_binary -> bench_error -> unit) ->
-  bench_request ->
-  (listed_bench_suite list, bench_error) result
+val list_benchmarks: ?on_suite:(listed_bench_suite -> unit) -> ?on_suite_error:(suite_binary -> bench_error -> unit) -> bench_request -> (listed_bench_suite list, bench_error) result
 
-(** Build and run benchmark suites for the given request.
+(**
+   Build and run benchmark suites for the given request.
 
-    Use [on_event] to stream progress and per-suite results to a CLI or other
-    consumer while the run is in progress.
+   Use [on_event] to stream progress and per-suite results to a CLI or other
+   consumer while the run is in progress.
 *)
 val bench: ?on_event:(bench_event -> unit) -> bench_request -> (unit, bench_error) result

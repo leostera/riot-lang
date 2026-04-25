@@ -1,13 +1,14 @@
 open Std
 open Model
 
-module ModuleId: sig
+module ModuleId : sig
   type t =
     | Loaded of LocalModules.RequiredName.t
     | Local of LocalModules.InternalName.t
 end
 
 type t
+
 val empty: unit -> t
 
 val of_loaded_modules: LoadedModules.t -> t
@@ -34,13 +35,11 @@ val lookup_type_decl_by_id: t -> ModuleId.t -> TypeConstructorId.t -> FileSummar
 
 val lookup_constructors: t -> ModuleId.t -> SurfacePath.t -> CompiledScope.constructor_entry list
 
-val lookup_owned_constructor:
-  t -> ModuleId.t -> SurfacePath.t -> TypeConstructorId.t -> CompiledScope.constructor_entry option
+val lookup_owned_constructor: t -> ModuleId.t -> SurfacePath.t -> TypeConstructorId.t -> CompiledScope.constructor_entry option
 
 val lookup_record_decls: t -> ModuleId.t -> string -> CompiledScope.record_decl list
 
-val lookup_record_decl_by_owner:
-  t -> ModuleId.t -> TypeConstructorId.t -> CompiledScope.record_decl option
+val lookup_record_decl_by_owner: t -> ModuleId.t -> TypeConstructorId.t -> CompiledScope.record_decl option
 
 val visible_type_decls: t -> (SurfacePath.t * ModuleId.t) list -> FileSummary.type_decl list
 

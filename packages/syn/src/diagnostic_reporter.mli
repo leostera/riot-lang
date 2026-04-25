@@ -2,7 +2,7 @@ open Std
 
 (* Diagnostic reporting module for pretty-printing parse errors with source context *)
 (* Print diagnostics in a human-readable format with source context.
-    
+
     Example output:
     ```
     ./file.ml
@@ -13,7 +13,7 @@ open Std
         |       ^ expected type variable name but found whitespace
         |
     ```
-    
+
     **Parameters:**
     - `file` - Path to the source file
     - `source` - The source code content

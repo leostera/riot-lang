@@ -3,8 +3,10 @@ type 'value t = 'value array
 (** Use `make count value` to allocate an array filled with repeated aliases of `value`. *)
 val make: count:int -> value:'value -> 'value t
 
-(** Use `init count builder` to allocate an array and call `builder` once per index from left to
-    right. *)
+(**
+   Use `init count builder` to allocate an array and call `builder` once per index from left to
+   right. 
+*)
 val init: count:int -> fn:(int -> 'value) -> 'value t
 
 val length: 'value t -> int

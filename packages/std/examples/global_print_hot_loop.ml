@@ -17,12 +17,7 @@ type message_kind =
   | Small
   | Medium
 
-type config = {
-  iterations: int;
-  warmup: int;
-  mode: mode;
-  message_kind: message_kind;
-}
+type config = { iterations: int; warmup: int; mode: mode; message_kind: message_kind }
 
 let default_config = {
   iterations = 1_000_000;
@@ -74,16 +69,12 @@ let message_for_kind = function
 let parse_args = fun args ->
   let rec loop config = function
     | [] -> Ok config
-    | "--iterations" :: value :: rest -> loop { config with iterations = Int.of_string value } rest
-    | "--warmup" :: value :: rest -> loop { config with warmup = Int.of_string value } rest
-    | "--mode" :: value :: rest -> loop { config with mode = mode_of_string value } rest
-    | "--message" :: value :: rest -> loop
-      { config with message_kind = message_kind_of_string value }
-      rest
-    | "--help" :: _
-    | "-h" :: _ -> Error ()
-    | flag :: [] when String.starts_with ~prefix:"--" flag -> panic
-      ("missing value for argument: " ^ flag)
+    | "--iterations" :: value :: rest -> loop ({ config with iterations = Int.of_string value }) rest
+    | "--warmup" :: value :: rest -> loop ({ config with warmup = Int.of_string value }) rest
+    | "--mode" :: value :: rest -> loop ({ config with mode = mode_of_string value }) rest
+    | "--message" :: value :: rest -> loop ({ config with message_kind = message_kind_of_string value }) rest
+    | "--help" :: _ | "-h" :: _ -> Error ()
+    | flag :: [] when String.starts_with ~prefix:"--" flag -> panic ("missing value for argument: " ^ flag)
     | value :: _ when String.starts_with ~prefix:"--" value -> panic ("unknown argument: " ^ value)
     | value :: _ -> panic ("unexpected positional argument: " ^ value)
   in
@@ -96,8 +87,7 @@ let write_stdout_bytes = fun bytes ~len ->
       | Result.Ok written ->
           if written <= 0 then
             panic "stdout write returned 0 bytes"
-          else
-            loop (pos + written) (remaining - written)
+          else loop (pos + written) (remaining - written)
       | Result.Error error -> panic (Kernel.IO.Stdout.error_to_string error)
   in
   loop 0 len
@@ -115,8 +105,7 @@ let write_stdout_bytes_ffi = fun bytes ~len ->
       | Result.Ok written ->
           if written <= 0 then
             panic "stdout ffi write returned 0 bytes"
-          else
-            loop (pos + written) (remaining - written)
+          else loop (pos + written) (remaining - written)
       | Result.Error code -> panic (Kernel.SystemError.to_string (Kernel.SystemError.from_code code))
   in
   loop 0 len
@@ -127,10 +116,10 @@ let write_stdout_bytes_raw_int = fun bytes ~len ->
       let written = stdout_write_raw_int 1 bytes pos remaining in
       if written > 0 then
         loop (pos + written) (remaining - written)
-      else if written = 0 then
-        panic "stdout raw-int write returned 0 bytes"
       else
-        panic (Kernel.SystemError.to_string (Kernel.SystemError.from_code (-written)))
+        if written = 0 then
+          panic "stdout raw-int write returned 0 bytes"
+        else panic (Kernel.SystemError.to_string (Kernel.SystemError.from_code (-written)))
   in
   loop 0 len
 
@@ -138,21 +127,19 @@ let write_stdout_bytes_raw_native = fun bytes ~len ->
   let written = stdout_write_all_raw_int 1 bytes 0 len in
   if written = len then
     ()
-  else if written = 0 then
-    panic "stdout raw-native write returned 0 bytes"
   else
-    panic (Kernel.SystemError.to_string (Kernel.SystemError.from_code (-written)))
+    if written = 0 then
+      panic "stdout raw-native write returned 0 bytes"
+    else panic (Kernel.SystemError.to_string (Kernel.SystemError.from_code (-written)))
 
 let configure_log = fun format_name ->
-  Config.load_string
-    (
-      format
-        Std.Format.[str "[[log.handler]]\n";
-        str "type = \"stdout\"\n";
-        str "format = \"";
-        str format_name;
-        str "\"\n";]
-    );
+  Config.load_string (format Std.Format.[
+    str "[[log.handler]]\n";
+    str "type = \"stdout\"\n";
+    str "format = \"";
+    str format_name;
+    str "\"\n";
+  ]);
   Log.set_level Log.Info;
   ignore (Log.start_link ())
 
@@ -169,13 +156,10 @@ let run_mode = fun mode message message_bytes message_len ->
   | RawNativeWrite -> write_stdout_bytes_raw_native message_bytes ~len:message_len
 
 let run_loop = fun mode message message_bytes message_len iterations ->
-  for _ = 1 to iterations do
-    run_mode mode message message_bytes message_len
-  done
+  for _ = 1 to iterations do run_mode mode message message_bytes message_len done
 
 let flush_mode = function
-  | LogCompact
-  | LogFull -> Log.flush ()
+  | LogCompact | LogFull -> Log.flush ()
   | _ -> ()
 
 let main ~args =
@@ -211,32 +195,29 @@ let main ~args =
       let per_iteration_nanos =
         if config.iterations > 0 then
           Int64.div total_nanos (Int64.of_int config.iterations)
-        else
-          0L
+        else 0L
       in
-      eprintln
-        (
-          format
-            Std.Format.[str "{";
-            str "\"mode\":\"";
-            str (mode_to_string config.mode);
-            str "\",";
-            str "\"message\":\"";
-            str (message_kind_to_string config.message_kind);
-            str "\",";
-            str "\"iterations\":";
-            str (Int.to_string config.iterations);
-            str ",";
-            str "\"warmup\":";
-            str (Int.to_string config.warmup);
-            str ",";
-            str "\"total_nanos\":";
-            str (Int64.to_string total_nanos);
-            str ",";
-            str "\"per_iteration_nanos\":";
-            str (Int64.to_string per_iteration_nanos);
-            str "}";]
-        );
+      eprintln (format Std.Format.[
+        str "{";
+        str "\"mode\":\"";
+        str (mode_to_string config.mode);
+        str "\",";
+        str "\"message\":\"";
+        str (message_kind_to_string config.message_kind);
+        str "\",";
+        str "\"iterations\":";
+        str (Int.to_string config.iterations);
+        str ",";
+        str "\"warmup\":";
+        str (Int.to_string config.warmup);
+        str ",";
+        str "\"total_nanos\":";
+        str (Int64.to_string total_nanos);
+        str ",";
+        str "\"per_iteration_nanos\":";
+        str (Int64.to_string per_iteration_nanos);
+        str "}";
+      ]);
       Ok ()
 
 let () = Runtime.run ~main ~args:Env.args ()

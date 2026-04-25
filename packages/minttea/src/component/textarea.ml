@@ -389,7 +389,7 @@ let is_focused t = t.focused
 let reposition_viewport t =
   let visible_height = t.height in
   let cursor_row = t.row in
-  
+
   (* Ensure cursor is visible *)
   let new_top =
     if cursor_row < t.viewport_top then
@@ -418,7 +418,7 @@ let handle_key t (key : Event.key) modifier =
       | End, NoModifier | Key "e", Ctrl -> cursor_end t
       | Home, Ctrl -> goto_start t
       | End, Ctrl -> goto_end t
-      
+
       (* Editing *)
       | Enter, NoModifier | Key "m", Ctrl -> insert_newline t
       | Backspace, NoModifier | Key "h", Ctrl -> delete_char_before t
@@ -427,13 +427,13 @@ let handle_key t (key : Event.key) modifier =
       | Key "u", Ctrl -> delete_before_cursor t
       | Backspace, Alt | Key "w", Ctrl -> delete_word_left t
       | Delete, Alt | Key "d", Alt -> delete_word_right t
-      
+
       (* Advanced *)
       | Key "t", Ctrl -> transpose_left t
       | Key "u", Alt -> uppercase_word_right t
       | Key "l", Alt -> lowercase_word_right t
       | Key "c", Alt -> capitalize_word_right t
-      
+
       (* Character input *)
       | Key s, NoModifier when String.length s = 1 ->
           insert_char t s.[0]
@@ -441,7 +441,7 @@ let handle_key t (key : Event.key) modifier =
           insert_char t s.[0]
       | Space, _ -> insert_char t ' '
       | Tab, _ -> insert_char t '\t'
-      
+
       | _ -> t
     in
     reposition_viewport t
@@ -450,7 +450,7 @@ let handle_key t (key : Event.key) modifier =
 let view t =
   let module B = Buffer in
   let buf = B.create 256 in
-  
+
   (* Show placeholder if empty and unfocused *)
   if is_empty t && not t.focused && t.placeholder <> "" then begin
     B.add_string buf t.placeholder;
@@ -459,15 +459,15 @@ let view t =
     let total_lines = Vector.length t.lines in
     let visible_start = t.viewport_top in
     let visible_end = min total_lines (visible_start + t.height) in
-    
+
     (* Calculate line number width *)
     let ln_width = if t.show_line_numbers then
       String.length (string_of_int total_lines) + 1
     else 0 in
-    
+
     for i = visible_start to visible_end - 1 do
       if i > visible_start then B.add_char buf '\n';
-      
+
       (* Line number *)
       if t.show_line_numbers then begin
         let ln_str = string_of_int (i + 1) in
@@ -476,21 +476,21 @@ let view t =
         B.add_string buf ln_str;
         B.add_char buf ' '
       end;
-      
+
       (* Prompt *)
       B.add_string buf t.prompt;
-      
+
       (* Line content *)
       let line = get_line t i in
       B.add_string buf (chars_to_string line);
-      
+
       (* Cursor *)
       if t.focused && i = t.row then begin
         if t.col = List.length line then
           B.add_string buf " "  (* Cursor at end *)
       end
     done;
-    
+
     (* End of buffer markers *)
     let lines_shown = visible_end - visible_start in
     if lines_shown < t.height && t.end_of_buffer_char <> ' ' then begin
@@ -502,7 +502,7 @@ let view t =
         B.add_char buf t.end_of_buffer_char
       done
     end;
-    
+
     B.contents buf
   end
     *)

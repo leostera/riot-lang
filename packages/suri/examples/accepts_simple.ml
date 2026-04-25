@@ -2,75 +2,64 @@ open Std
 open Suri
 
 (** Content negotiation example - JSON-only API *)
-let routes = Middleware.Router.[get "/"
-  (fun conn _req ->
-    let html = String.concat ""
-      [
-        "<html><head><title>Content Negotiation Demo</title></head><body>";
-        "<h1>Content Negotiation Example</h1>";
-        "<p>This API only accepts JSON requests.</p>";
-        "<h2>Try these endpoints:</h2>";
-        "<ul>";
-        "<li><code>GET /api/data</code> - Returns JSON data</li>";
-        "<li><code>POST /api/submit</code> - Accepts JSON only</li>";
-        "</ul>";
-        "<h3>Test commands:</h3>";
-        "<pre>";
-        "# This works (Accept: application/json)\n";
-        "curl -H 'Accept: application/json' http://localhost:3001/api/data\n\n";
-        "# This fails (Accept: text/html)\n";
-        "curl -H 'Accept: text/html' http://localhost:3001/api/data\n\n";
-        "# This works (Content-Type: application/json)\n";
-        "curl -X POST -H 'Content-Type: application/json' \\\n";
-        "     -d '{\"key\":\"value\"}' http://localhost:3001/api/submit\n\n";
-        "# This fails (Content-Type: text/plain)\n";
-        "curl -X POST -H 'Content-Type: text/plain' \\\n";
-        "     -d 'plain text' http://localhost:3001/api/submit";
-        "</pre>";
-        "</body></html>"
-      ]
-    in
-    conn
-    |> Conn.respond ~status:Net.Http.Status.Ok ~body:html
-    |> Conn.with_header "content-type" "text/html"
-    |> Conn.send);
-get "/api/data"
-  (fun conn _req ->
-    let json = {|{"message": "JSON data", "items": [1, 2, 3], "status": "ok"}|} in
-    conn
-    |> Conn.respond ~status:Net.Http.Status.Ok ~body:json
-    |> Conn.with_header "content-type" "application/json"
-    |> Conn.send);
-post "/api/submit"
-  (fun conn _req ->
-    let body = Conn.body conn in
-    let response = String.concat
-      ""
-      [
-        "{\"message\": \"Data received\", \"received_bytes\": ";
-        string_of_int (String.length body);
-        "}"
-      ] in
-    conn
-    |> Conn.respond ~status:Net.Http.Status.Ok ~body:response
-    |> Conn.with_header "content-type" "application/json"
-    |> Conn.send);]
+let routes = Middleware.Router.[
+  get "/"
+    (
+      fun conn _req ->
+        let html =
+          String.concat ""
+            [
+              "<html><head><title>Content Negotiation Demo</title></head><body>";
+              "<h1>Content Negotiation Example</h1>";
+              "<p>This API only accepts JSON requests.</p>";
+              "<h2>Try these endpoints:</h2>";
+              "<ul>";
+              "<li><code>GET /api/data</code> - Returns JSON data</li>";
+              "<li><code>POST /api/submit</code> - Accepts JSON only</li>";
+              "</ul>";
+              "<h3>Test commands:</h3>";
+              "<pre>";
+              "# This works (Accept: application/json)\n";
+              "curl -H 'Accept: application/json' http://localhost:3001/api/data\n\n";
+              "# This fails (Accept: text/html)\n";
+              "curl -H 'Accept: text/html' http://localhost:3001/api/data\n\n";
+              "# This works (Content-Type: application/json)\n";
+              "curl -X POST -H 'Content-Type: application/json' \\\n";
+              "     -d '{\"key\":\"value\"}' http://localhost:3001/api/submit\n\n";
+              "# This fails (Content-Type: text/plain)\n";
+              "curl -X POST -H 'Content-Type: text/plain' \\\n";
+              "     -d 'plain text' http://localhost:3001/api/submit";
+              "</pre>";
+              "</body></html>";
+            ]
+        in
+        conn |> Conn.respond ~status:Net.Http.Status.Ok ~body:html |> Conn.with_header "content-type" "text/html" |> Conn.send
+    );
+  get "/api/data"
+    (
+      fun conn _req ->
+        let json = {|{"message": "JSON data", "items": [1, 2, 3], "status": "ok"}|} in conn |> Conn.respond ~status:Net.Http.Status.Ok ~body:json |> Conn.with_header "content-type" "application/json" |> Conn.send
+    );
+  post "/api/submit"
+    (
+      fun conn _req ->
+        let body = Conn.body conn in
+        let response = String.concat "" [ "{\"message\": \"Data received\", \"received_bytes\": "; string_of_int (String.length body); "}" ] in conn |> Conn.respond ~status:Net.Http.Status.Ok ~body:response |> Conn.with_header "content-type" "application/json" |> Conn.send
+    );
+]
 
 let main ~args:_ =
-  let app =
-    Middleware.[
-      request_id;
-      logger;
-      accepts
-        ~config:Middleware.Accepts.{
-          types = [ "application/json" ];
-          check_accept = true;
-          check_content_type = true;
-          on_reject = None
-        }
-        [];
-      router routes;
-    ] in
+  let app = Middleware.[
+    request_id;
+    logger;
+    accepts ~config:Middleware.Accepts.{
+      types = [ "application/json" ];
+      check_accept = true;
+      check_content_type = true;
+      on_reject = None
+    } [];
+    router routes;
+  ] in
   let config = Suri.config ~port:3_001 () in
   match Suri.start_link ~config app with
   | Ok _supervisor ->

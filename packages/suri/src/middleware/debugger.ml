@@ -338,23 +338,20 @@ type stack_frame = {
 (** Source code snippet with context *)
 type source_snippet = {
   start_line: int;
-  lines: (int * string) list;  (* line_num, content *)
+  lines: (int * string) list;
+  (* line_num, content *)
   error_line: int;
-  source_path: string;  (* Clean workspace-relative path *)
-  found_via_riot: bool;  (* Whether riot server helped resolve *)
+  source_path: string;
+  (* Clean workspace-relative path *)
+  found_via_riot: bool;
+  (* Whether riot server helped resolve *)
 }
 
 (** Resolved source path information *)
-type resolved_path = {
-  resolved_path: string;
-  found_via_riot: bool;
-}
+type resolved_path = { resolved_path: string; found_via_riot: bool }
 
 (** Sandbox path parsing result *)
-type sandbox_info = {
-  package_name: string;
-  relative_path: string;
-}
+type sandbox_info = { package_name: string; relative_path: string }
 
 (** Find substring in string, returns start index *)
 let string_index = fun line pattern ->
@@ -363,10 +360,10 @@ let string_index = fun line pattern ->
   let rec search pos =
     if pos + pattern_len > line_len then
       None
-    else if String.sub line ~offset:pos ~len:pattern_len = pattern then
-      Some pos
     else
-      search (pos + 1)
+      if String.sub line ~offset:pos ~len:pattern_len = pattern then
+        Some pos
+      else search (pos + 1)
   in
   search 0
 
@@ -375,17 +372,18 @@ let string_index_from = fun line start char ->
   let rec search pos =
     if pos >= len then
       None
-    else if Char.equal (String.get_unchecked line ~at:pos) char then
-      Some pos
     else
-      search (pos + 1)
+      if Char.equal (String.get_unchecked line ~at:pos) char then
+        Some pos
+      else search (pos + 1)
   in
   search start
 
-(** Parse sandbox path to extract package and relative path
-    
-    Input: /path/_build/debug/sandbox/suri-abc123/examples/file.ml
-    Output: Some { package_name = "suri"; relative_path = "examples/file.ml" }
+(**
+   Parse sandbox path to extract package and relative path
+
+   Input: /path/_build/debug/sandbox/suri-abc123/examples/file.ml
+   Output: Some { package_name = "suri"; relative_path = "examples/file.ml" }
 *)
 let parse_sandbox_path = fun path ->
   match string_index path "/sandbox/" with
@@ -409,11 +407,7 @@ let parse_sandbox_path = fun path ->
                 | Some dash_pos -> String.sub pkg_with_hash ~offset:0 ~len:dash_pos
               in
               let after_slash = slash_pos + 1 in
-              let relative_path = String.sub
-                rest
-                ~offset:after_slash
-                ~len:(String.length rest - after_slash) in
-              Some { package_name; relative_path }
+              let relative_path = String.sub rest ~offset:after_slash ~len:(String.length rest - after_slash) in Some { package_name; relative_path }
         )
 
 (** Try to connect to riot server and get package sources *)
@@ -423,47 +417,37 @@ let get_package_sources = fun package_name ->
   match Riot_model.Workspace_manager.scan workspace_manager cwd with
   | Error _ -> None
   | Ok (workspace, _load_errors) -> (
-      match Riot_model.Package_name.from_string package_name with
-      | Result.Error _ -> None
-      | Result.Ok package_name_t -> (
-          match
-            List.find workspace.packages
-              ~fn:(fun (manifest: Riot_model.Package_manifest.t) ->
-                Riot_model.Package_name.equal manifest.name package_name_t)
-          with
-          | None -> None
-          | Some manifest ->
-              let package = Riot_model.Workspace_manifest.realize_package
-                ~intent:Riot_model.Package.Build manifest in
-              let sources = package.sources.src
-              @ package.sources.tests
-              @ package.sources.examples
-              @ package.sources.bench
-              @ package.sources.native
-              |> List.map ~fn:Path.to_string in
-              Some sources
-        )
+    match Riot_model.Package_name.from_string package_name with
+    | Result.Error _ -> None
+    | Result.Ok package_name_t -> (
+      match List.find workspace.packages ~fn:(
+        fun (manifest: Riot_model.Package_manifest.t) -> Riot_model.Package_name.equal manifest.name package_name_t
+      ) with
+      | None -> None
+      | Some manifest ->
+          let package = Riot_model.Workspace_manifest.realize_package ~intent:Riot_model.Package.Build manifest in
+          let sources = (((package.sources.src @ package.sources.tests) @ package.sources.examples) @ package.sources.bench) @ package.sources.native |> List.map ~fn:Path.to_string in Some sources
     )
+  )
 
 (** Find actual source file path from sandbox path using riot server *)
 let find_source_via_riot = fun sandbox_info ->
   match get_package_sources sandbox_info.package_name with
   | None -> None
-  | Some sources ->
-      (* Find source file that ends with the relative path *)
-      List.find
-        sources
-        ~fn:(fun src_file -> String.ends_with ~suffix:sandbox_info.relative_path src_file)
+  | Some sources -> (* Find source file that ends with the relative path *)
+  List.find sources ~fn:(
+    fun src_file -> String.ends_with ~suffix:sandbox_info.relative_path src_file
+  )
 
-(** Resolve sandbox path to actual workspace source file
-    
-    Strategy:
-    1. Parse sandbox path to get package + relative path
-    2. Query riot server for package sources
-    3. Match against relative path
-    4. Return clean workspace-relative path
+(**
+   Resolve sandbox path to actual workspace source file
+
+   Strategy:
+   1. Parse sandbox path to get package + relative path
+   2. Query riot server for package sources
+   3. Match against relative path
+   4. Return clean workspace-relative path
 *)
-
 (** Make a path relative to the workspace root *)
 let make_workspace_relative = fun path ->
   let cwd = Std.Env.current_dir () |> Result.expect ~msg:"Failed to get current directory" in
@@ -478,30 +462,30 @@ let make_workspace_relative = fun path ->
         (* Remove leading slash if present *)
         if String.length relative > 0 && String.get_unchecked relative ~at:0 = '/' then
           "." ^ relative
-        else
-          "./" ^ relative
-      else
-        path
+        else "./" ^ relative
+      else path
 
 let resolve_source_path = fun path ->
   match parse_sandbox_path path with
-  | None ->
-      (* Not a sandbox path, make it relative to workspace *)
-      { resolved_path = make_workspace_relative path; found_via_riot = false }
+  | None -> (* Not a sandbox path, make it relative to workspace *)
+  { resolved_path = make_workspace_relative path; found_via_riot = false }
   | Some sandbox_info -> (* Try to find via riot server *)
-    (
-      match find_source_via_riot sandbox_info with
-      | Some actual_path -> {
-        resolved_path = make_workspace_relative actual_path;
-        found_via_riot = true
-      }
-      | None ->
-          (* Fallback: construct expected path *)
-          let fallback = String.concat
-            ""
-            [ "./packages/"; sandbox_info.package_name; "/"; sandbox_info.relative_path ] in
-          { resolved_path = fallback; found_via_riot = false }
-    )
+  (
+    match find_source_via_riot sandbox_info with
+    | Some actual_path -> { resolved_path = make_workspace_relative actual_path; found_via_riot = true }
+    | None ->
+        (* Fallback: construct expected path *)
+        let fallback =
+          String.concat ""
+            [
+              "./packages/";
+              sandbox_info.package_name;
+              "/";
+              sandbox_info.relative_path;
+            ]
+        in
+        { resolved_path = fallback; found_via_riot = false }
+  )
 
 (** Extract quoted string after a pattern *)
 let extract_quoted = fun line pattern ->
@@ -536,52 +520,52 @@ let extract_number = fun line pattern ->
         try Some (Int.of_string num_str) with
         | Failure _ -> None
 
-(** Parse a backtrace line into a stack frame
-    
-    OCaml backtrace format examples:
-    - "Raised at Stdlib.failwith in file "stdlib.ml", line 29, characters 17-33"
-    - "Called from Mymodule.handler in file "handler.ml", line 42, characters 5-20"
-    - "Re-raised at file "main.ml", line 100, characters 10-25"
+(**
+   Parse a backtrace line into a stack frame
+
+   OCaml backtrace format examples:
+   - "Raised at Stdlib.failwith in file "stdlib.ml", line 29, characters 17-33"
+   - "Called from Mymodule.handler in file "handler.ml", line 42, characters 5-20"
+   - "Re-raised at file "main.ml", line 100, characters 10-25"
 *)
 let parse_frame_line = fun line ->
   let file =
     if String.contains line "\"" then
       extract_quoted line "file"
-    else
-      None
+    else None
   in
   let line_num = extract_number line "line " in
   let char_range =
     match extract_number line "characters " with
     | None -> None
     | Some start -> (* Find the dash and extract end number *)
-      (
-        match string_index line "characters " with
-        | None -> None
-        | Some idx ->
-            let after = idx + String.length "characters " in
-            let rest = String.sub line ~offset:after ~len:(String.length line - after) in
-            (
-              match String.index_of rest ~char:'-' with
-              | None -> None
-              | Some dash_pos ->
-                  let after_dash = dash_pos + 1 in
-                  let rec find_digits acc pos =
-                    if pos >= String.length rest then
-                      acc
-                    else
-                      match String.get_unchecked rest ~at:pos with
-                      | '0' .. '9' as c -> find_digits (acc ^ String.make ~len:1 ~char:c) (pos + 1)
-                      | _ -> acc
-                  in
-                  let end_str = find_digits "" after_dash in
-                  if end_str = "" then
-                    None
+    (
+      match string_index line "characters " with
+      | None -> None
+      | Some idx ->
+          let after = idx + String.length "characters " in
+          let rest = String.sub line ~offset:after ~len:(String.length line - after) in
+          (
+            match String.index_of rest ~char:'-' with
+            | None -> None
+            | Some dash_pos ->
+                let after_dash = dash_pos + 1 in
+                let rec find_digits acc pos =
+                  if pos >= String.length rest then
+                    acc
                   else
-                    try Some (start, Int.of_string end_str) with
-                    | Failure _ -> None
-            )
-      )
+                    match String.get_unchecked rest ~at:pos with
+                    | '0' .. '9' as c -> find_digits (acc ^ String.make ~len:1 ~char:c) (pos + 1)
+                    | _ -> acc
+                in
+                let end_str = find_digits "" after_dash in
+                if end_str = "" then
+                  None
+                else
+                  try Some (start, Int.of_string end_str) with
+                  | Failure _ -> None
+          )
+    )
   in
   let function_name =
     if String.starts_with ~prefix:"Raised at " line then
@@ -593,51 +577,42 @@ let parse_frame_line = fun line ->
         | Some space_pos -> Some (String.sub rest ~offset:0 ~len:space_pos |> String.trim)
         | None -> Some (String.trim rest)
       )
-    else if String.starts_with ~prefix:"Called from " line then
-      let after = 12 in
-      (* length of "Called from " *)
-      let rest = String.sub line ~offset:after ~len:(String.length line - after) in
-      (
-        match String.index_of rest ~char:' ' with
-        | Some space_pos -> Some (String.sub rest ~offset:0 ~len:space_pos |> String.trim)
-        | None -> Some (String.trim rest)
-      )
-    else if String.starts_with ~prefix:"Re-raised at " line then
-      Some "Re-raised"
     else
-      None
+      if String.starts_with ~prefix:"Called from " line then
+        let after = 12 in
+        (* length of "Called from " *)
+        let rest = String.sub line ~offset:after ~len:(String.length line - after) in
+        (
+          match String.index_of rest ~char:' ' with
+          | Some space_pos -> Some (String.sub rest ~offset:0 ~len:space_pos |> String.trim)
+          | None -> Some (String.trim rest)
+        )
+      else
+        if String.starts_with ~prefix:"Re-raised at " line then
+          Some "Re-raised"
+        else None
   in
   {
     file;
     line = line_num;
     char_range;
     function_name;
-    raw = line;
+    raw = line
   }
 
 (** Check if a frame should be hidden from the stack trace *)
 let should_hide_frame = fun frame ->
   match frame.function_name with
-  | Some fn ->
-      (* Hide panic, raise, and other runtime error handling functions *)
-      String.starts_with ~prefix:"Std.Global.panic" fn
-      || String.starts_with ~prefix:"Std__Global.panic" fn
-      || String.starts_with ~prefix:"Kernel.Global0.panic" fn
-      || String.starts_with ~prefix:"Kernel.Global0.raise" fn
-      || String.starts_with ~prefix:"Kernel__Global0.panic" fn
-      || String.starts_with ~prefix:"Kernel__Global0.raise" fn
-      || String.starts_with ~prefix:"Stdlib.raise" fn
-      || String.starts_with ~prefix:"Stdlib.failwith" fn
-      || String.starts_with ~prefix:"Stdlib.invalid_arg" fn
-      || String.starts_with ~prefix:"CamlinternalLazy" fn
+  | Some fn -> (* Hide panic, raise, and other runtime error handling functions *)
+  String.starts_with ~prefix:"Std.Global.panic" fn || String.starts_with ~prefix:"Std__Global.panic" fn || String.starts_with ~prefix:"Kernel.Global0.panic" fn || String.starts_with ~prefix:"Kernel.Global0.raise" fn || String.starts_with ~prefix:"Kernel__Global0.panic" fn || String.starts_with ~prefix:"Kernel__Global0.raise" fn || String.starts_with ~prefix:"Stdlib.raise" fn || String.starts_with ~prefix:"Stdlib.failwith" fn || String.starts_with ~prefix:"Stdlib.invalid_arg" fn || String.starts_with ~prefix:"CamlinternalLazy" fn
   | None -> false
 
 (** Parse full backtrace into list of stack frames *)
-let parse_backtrace = fun backtrace ->
-  String.split_on_char '\n' backtrace
-  |> List.filter ~fn:(fun line -> String.trim line != "")
-  |> List.map ~fn:parse_frame_line
-  |> List.filter ~fn:(fun frame -> not (should_hide_frame frame))
+let parse_backtrace = fun backtrace -> String.split_on_char '\n' backtrace |> List.filter ~fn:(
+  fun line -> String.trim line != ""
+) |> List.map ~fn:parse_frame_line |> List.filter ~fn:(
+  fun frame -> not (should_hide_frame frame)
+)
 
 (** Try to find and read a source file using riot server resolution *)
 let try_read_file = fun file ->
@@ -661,71 +636,53 @@ let extract_source = fun ~file ~line ~context ->
         let start_line = max 1 (line - context) in
         let end_line = min total_lines (line + context) in
         (* Extract the relevant lines with line numbers *)
-        let lines =
-          List.init ~count:(end_line - start_line + 1)
-            ~fn:(fun i ->
-              let line_num = start_line + i in
-              let line_content = List.get_unchecked all_lines ~at:(line_num - 1) in
-              (line_num, line_content))
-        in
+        let lines = List.init ~count:(end_line - start_line + 1) ~fn:(
+          fun i ->
+            let line_num = start_line + i in
+            let line_content = List.get_unchecked all_lines ~at:(line_num - 1) in (line_num, line_content)
+        ) in
         Some {
           start_line;
           lines;
           error_line = line;
           source_path = resolved.resolved_path;
-          found_via_riot = resolved.found_via_riot;
+          found_via_riot = resolved.found_via_riot
         }
 
 (** Render source code snippet *)
-let render_snippet = fun snippet ->
-  let open Component in
-    let line_number_divs =
-      List.map
-        ~fn:(fun ((line_num, _)) ->
-          let is_error = line_num = snippet.error_line in
-          let classes =
-            if is_error then
-              "line-number highlighted-line"
-            else
-              "line-number"
-          in
-          div
-            ~attrs:[ class_ classes; attr "data-line-number" (Int.to_string line_num) ]
-            [ text (Int.to_string line_num) ])
-        snippet.lines
+let render_snippet = fun snippet -> let open Component in
+let line_number_divs = List.map ~fn:(
+  fun ((line_num, _)) ->
+    let is_error = line_num = snippet.error_line in
+    let classes =
+      if is_error then
+        "line-number highlighted-line"
+      else "line-number"
     in
-    (* Each line gets its own code block for syntax highlighting *)
-    let code_line_divs =
-      List.map
-        ~fn:(fun ((line_num, content)) ->
-          let is_error = line_num = snippet.error_line in
-          let classes =
-            if is_error then
-              "code-line highlighted-line"
-            else
-              "code-line"
-          in
-          div
-            ~attrs:[ class_ classes; attr "id" (String.concat "" [ "LC"; Int.to_string line_num ]) ]
-            [ pre [ code ~attrs:[ class_ "language-ocaml" ] [ text content ] ] ])
-        snippet.lines
+    div ~attrs:[ class_ classes; attr "data-line-number" (Int.to_string line_num) ] [ text (Int.to_string line_num) ]
+) snippet.lines in
+(* Each line gets its own code block for syntax highlighting *)
+let code_line_divs = List.map ~fn:(
+  fun ((line_num, content)) ->
+    let is_error = line_num = snippet.error_line in
+    let classes =
+      if is_error then
+        "code-line highlighted-line"
+      else "code-line"
     in
-    div
-      ~attrs:[ class_ "source-snippet" ]
-      [
-        div ~attrs:[ class_ "line-numbers" ] line_number_divs;
-        div ~attrs:[ class_ "source-code" ] code_line_divs;
-      ]
+    div ~attrs:[ class_ classes; attr "id" (String.concat "" [ "LC"; Int.to_string line_num ]) ] [ pre [ code ~attrs:[ class_ "language-ocaml" ] [ text content ] ] ]
+) snippet.lines in div ~attrs:[ class_ "source-snippet" ] [ div ~attrs:[ class_ "line-numbers" ] line_number_divs; div ~attrs:[ class_ "source-code" ] code_line_divs ]
 
-(** Extract module name from function name
-    
-    Examples:
-    - "Debugger_test.process_user_request" -> "Debugger_test"
-    - "Suri__Middleware__Debugger.debugger" -> "Suri.Middleware.Debugger"
-    - "Std__Global.panic" -> "Std.Global"
-    - "Kernel__Global0.raise" -> "Kernel.Global0"
-    
-    Returns the qualified module name (with dots) for CodeDB lookup.
+(**
+   Extract module name from function name
+
+   Examples:
+   - "Debugger_test.process_user_request" -> "Debugger_test"
+   - "Suri__Middleware__Debugger.debugger" -> "Suri.Middleware.Debugger"
+   - "Std__Global.panic" -> "Std.Global"
+   - "Kernel__Global0.raise" -> "Kernel.Global0"
+
+   Returns the qualified module name (with dots) for CodeDB lookup.
 *)
 let extract_module_from_function = fun func_name ->
   (* Split by dot to get module part *)
@@ -736,228 +693,196 @@ let extract_module_from_function = fun func_name ->
       (* Check if it's in canonical form (Foo__Bar__Baz) or simple form (Foo_bar) *)
       if String.contains module_part "_" then
         let components = String.split_on_char '_' module_part in
-        let non_empty =
-          List.filter ~fn:(fun s -> s != "") components
-        in
+        let non_empty = List.filter ~fn:(
+          fun s -> s != ""
+        ) components in
         (* If all components start with uppercase, it's canonical form *)
         let all_capitalized =
           List.for_all
-            (fun s ->
-              String.length s > 0
-              && String.get_unchecked s ~at:0 >= 'A' && String.get_unchecked s ~at:0 <= 'Z')
+            (
+              fun s -> String.length s > 0 && String.get_unchecked s ~at:0 >= 'A' && String.get_unchecked s ~at:0 <= 'Z'
+            )
             non_empty
         in
         if all_capitalized then
           Some (String.concat "." non_empty)
-        else
-          (* Simple or mixed: just capitalize the whole thing *)
-          Some (String.capitalize_ascii module_part)
-      else
-        (* No underscores - just return as-is (already capitalized) *)
-        Some module_part
+        else (* Simple or mixed: just capitalize the whole thing *)
+        Some (String.capitalize_ascii module_part)
+      else (* No underscores - just return as-is (already capitalized) *)
+      Some module_part
 
 (** Find source file for a module using riot server *)
 let find_source_for_module = fun package_name module_name ->
   match get_package_sources package_name with
   | None -> None
   | Some sources ->
-      let ml_name = module_name ^ ".ml" in
-      List.find sources ~fn:(fun src_file -> String.ends_with ~suffix:ml_name src_file)
+      let ml_name = module_name ^ ".ml" in List.find sources ~fn:(
+        fun src_file -> String.ends_with ~suffix:ml_name src_file
+      )
 
 (** Render a single stack frame with optional source snippet *)
-let render_stack_frame = fun frame ->
-  let open Component in
-    let snippet =
-      match (frame.file, frame.line, frame.function_name) with
-      | Some file, Some line, _ -> (* Try the file path first *)
-        (
-          match extract_source ~file ~line ~context:5 with
-          | Some s -> Some s
-          | None -> (* File path didn't work, try using function name *)
+let render_stack_frame = fun frame -> let open Component in
+let snippet =
+  match frame.file, frame.line, frame.function_name with
+  | Some file, Some line, _ -> (* Try the file path first *)
+  (
+    match extract_source ~file ~line ~context:5 with
+    | Some s -> Some s
+    | None -> (* File path didn't work, try using function name *)
+    (
+      match frame.function_name with
+      | None -> None
+      | Some func_name -> (* Extract module name from function *)
+      (
+        match extract_module_from_function func_name with
+        | None -> None
+        | Some module_name ->
+            (* Try to guess package from file path *)
+            let package_guess =
+              match parse_sandbox_path file with
+              | Some si -> si.package_name
+              | None -> "suri"
+            in
+            (* Find source file for this module *)
             (
-              match frame.function_name with
+              match find_source_for_module package_guess module_name with
               | None -> None
-              | Some func_name -> (* Extract module name from function *)
-                (
-                  match extract_module_from_function func_name with
-                  | None -> None
-                  | Some module_name ->
-                      (* Try to guess package from file path *)
-                      let package_guess =
-                        match parse_sandbox_path file with
-                        | Some si -> si.package_name
-                        | None -> "suri"
-                      in
-                      (* Find source file for this module *)
-                      (
-                        match find_source_for_module package_guess module_name with
-                        | None -> None
-                        | Some source_file -> extract_source ~file:source_file ~line ~context:5
-                      )
-                )
+              | Some source_file -> extract_source ~file:source_file ~line ~context:5
             )
+      )
+    )
+  )
+  | _, Some line, Some func_name -> (* No file path, but we have function name and line *)
+  (
+    match extract_module_from_function func_name with
+    | None -> None
+    | Some module_name ->
+        (* Try different packages *)
+        let packages =
+          [
+            "suri";
+            "std";
+            "kernel";
+            "http";
+            "blink";
+          ]
+        in
+        let rec try_packages = function
+          | [] -> None
+          | pkg :: rest -> (
+            match find_source_for_module pkg module_name with
+            | None -> try_packages rest
+            | Some source_file -> extract_source ~file:source_file ~line ~context:5
+          )
+        in
+        try_packages packages
+  )
+  | _ -> None
+in
+(* Determine what file info to display *)
+let file_info, riot_badge =
+  match snippet with
+  | Some s ->
+      let path_display = s.source_path in
+      let info =
+        match frame.line with
+        | Some l -> path_display ^ ":" ^ Int.to_string l
+        | None -> path_display
+      in
+      let badge =
+        if s.found_via_riot then
+          span ~attrs:[ class_ "riot-badge"; attr "title" "Path resolved via riot server" ] [ text "✓" ]
+        else text ""
+      in
+      (info, badge)
+  | None ->
+      (* No snippet available - show function name as fallback *)
+      let display =
+        match frame.function_name with
+        | Some fn -> fn
+        | None -> (
+          match frame.file with
+          | Some f -> f
+          | None -> "(unknown)"
         )
-      | _, Some line, Some func_name -> (* No file path, but we have function name and line *)
+      in
+      let info =
+        match frame.line with
+        | Some l -> display ^ ":" ^ Int.to_string l
+        | None -> display
+      in
+      (info, text "")
+in
+div ~attrs:[ class_ "stack-frame" ]
+  [
+    div ~attrs:[ class_ "frame-header" ]
+      [
+        span ~attrs:[ class_ "frame-location" ] [ text file_info; text " "; riot_badge ];
         (
-          match extract_module_from_function func_name with
-          | None -> None
-          | Some module_name ->
-              (* Try different packages *)
-              let packages = [ "suri"; "std"; "kernel"; "http"; "blink" ] in
-              let rec try_packages = function
-                | [] -> None
-                | pkg :: rest -> (
-                    match find_source_for_module pkg module_name with
-                    | None -> try_packages rest
-                    | Some source_file -> extract_source ~file:source_file ~line ~context:5
-                  )
-              in
-              try_packages packages
-        )
-      | _ ->
-          None
-    in
-    (* Determine what file info to display *)
-    let file_info, riot_badge =
+          match frame.function_name with
+          | Some name -> span ~attrs:[ class_ "frame-function" ] [ text (" in " ^ name) ]
+          | None -> text ""
+        );
+      ];
+    (
       match snippet with
-      | Some s ->
-          let path_display = s.source_path in
-          let info =
-            match frame.line with
-            | Some l -> path_display ^ ":" ^ Int.to_string l
-            | None -> path_display
-          in
-          let badge =
-            if s.found_via_riot then
-              span
-                ~attrs:[ class_ "riot-badge"; attr "title" "Path resolved via riot server" ]
-                [ text "✓" ]
-            else
-              text ""
-          in
-          (info, badge)
-      | None ->
-          (* No snippet available - show function name as fallback *)
-          let display =
-            match frame.function_name with
-            | Some fn -> fn
-            | None -> (
-                match frame.file with
-                | Some f -> f
-                | None -> "(unknown)"
-              )
-          in
-          let info =
-            match frame.line with
-            | Some l -> display ^ ":" ^ Int.to_string l
-            | None -> display
-          in
-          (info, text "")
-    in
-    div ~attrs:[ class_ "stack-frame" ]
-      [ div ~attrs:[ class_ "frame-header" ]
-          [ span ~attrs:[ class_ "frame-location" ] [ text file_info; text " "; riot_badge; ]; (
-              match frame.function_name with
-              | Some name -> span ~attrs:[ class_ "frame-function" ] [ text (" in " ^ name) ]
-              | None -> text ""
-            ); ]; (
-          match snippet with
-          | Some s -> render_snippet s
-          | None ->
-              (* No source available *)
-              div ~attrs:[ class_ "source-unavailable" ] [ text "Source file not available."; ]
-        ); ]
+      | Some s -> render_snippet s
+      | None -> (* No source available *)
+      div ~attrs:[ class_ "source-unavailable" ] [ text "Source file not available." ]
+    );
+  ]
 
 (** Render request inspector *)
-let render_request = fun conn ->
-  let open Component in
-    let method_str = Conn.method_ conn |> Net.Http.Method.to_string in
-    let path = Conn.path conn in
-    let headers = Conn.headers conn in
-    let params = Conn.params conn in
-    let body_str = Conn.body conn in
-    div ~attrs:[ class_ "request-inspector" ]
-      [
-        h2 [ text "📨 Request" ];
-        div
-          ~attrs:[ class_ "request-line" ]
-          [ strong [ text (method_str ^ " ") ]; code [ text path ]; ];
-        (
-          if Net.Http.Header.is_empty headers then
-            text ""
-          else
-            Fragment [ h3 [ text "Headers" ]; table ~attrs:[ class_ "headers-table" ]
-                (Net.Http.Header.to_list headers
-                |> List.map
-                  ~fn:(fun ((name, value)) ->
-                    tr
-                      [
-                        td ~attrs:[ class_ "header-name" ] [ code [ text name ] ];
-                        td ~attrs:[ class_ "header-value" ] [ text value ];
-                      ])); ]
-        );
-        (
-          if params = [] then
-            text ""
-          else
-            Fragment [
-              h3 [ text "Parameters" ];
-              table
-                ~attrs:[ class_ "params-table" ]
-                (List.map
-                  ~fn:(fun ((name, value)) ->
-                    tr
-                      [
-                        td ~attrs:[ class_ "param-name" ] [ code [ text name ] ];
-                        td ~attrs:[ class_ "param-value" ] [ text value ];
-                      ])
-                  params);
-            ]
-        );
-        (
-          if body_str = "" then
-            text ""
-          else
-            Fragment [ h3 [ text "Body" ]; pre ~attrs:[ class_ "request-body" ] [ text body_str ]; ]
-        );
-      ]
+let render_request = fun conn -> let open Component in
+let method_str = Conn.method_ conn |> Net.Http.Method.to_string in
+let path = Conn.path conn in
+let headers = Conn.headers conn in
+let params = Conn.params conn in
+let body_str = Conn.body conn in
+div ~attrs:[ class_ "request-inspector" ]
+  [
+    h2 [ text "📨 Request" ];
+    div ~attrs:[ class_ "request-line" ] [ strong [ text (method_str ^ " ") ]; code [ text path ] ];
+    (
+      if Net.Http.Header.is_empty headers then
+        text ""
+      else Fragment [ h3 [ text "Headers" ]; table ~attrs:[ class_ "headers-table" ] (Net.Http.Header.to_list headers |> List.map ~fn:(
+        fun ((name, value)) -> tr [ td ~attrs:[ class_ "header-name" ] [ code [ text name ] ]; td ~attrs:[ class_ "header-value" ] [ text value ] ]
+      )) ]
+    );
+    (
+      if params = [] then
+        text ""
+      else Fragment [ h3 [ text "Parameters" ]; table ~attrs:[ class_ "params-table" ] (List.map ~fn:(
+        fun ((name, value)) -> tr [ td ~attrs:[ class_ "param-name" ] [ code [ text name ] ]; td ~attrs:[ class_ "param-value" ] [ text value ] ]
+      ) params) ]
+    );
+    (
+      if body_str = "" then
+        text ""
+      else Fragment [ h3 [ text "Body" ]; pre ~attrs:[ class_ "request-body" ] [ text body_str ] ]
+    );
+  ]
 
 (** Render response inspector (shows partial response state) *)
-let render_response = fun conn ->
-  let open Component in
-    let resp_headers = Conn.resp_headers conn in
-    let response = Conn.to_response conn in
-    let status = response.Web_server.Response.status in
-    let status_code = Net.Http.Status.to_int status in
-    let status_text = Net.Http.Status.to_string status in
-    div ~attrs:[ class_ "response-inspector" ]
-      [
-        h2 [ text "📤 Response (before error)" ];
-        div
-          ~attrs:[ class_ "response-status" ]
-          [
-            strong [ text "Status: " ];
-            code [ text (Int.to_string status_code ^ " " ^ status_text) ];
-          ];
-        (
-          if resp_headers = [] then
-            text ""
-          else
-            Fragment [
-              h3 [ text "Headers" ];
-              table
-                ~attrs:[ class_ "headers-table" ]
-                (List.map
-                  ~fn:(fun ((name, value)) ->
-                    tr
-                      [
-                        td ~attrs:[ class_ "header-name" ] [ code [ text name ] ];
-                        td ~attrs:[ class_ "header-value" ] [ text value ];
-                      ])
-                  resp_headers);
-            ]
-        );
-      ]
+let render_response = fun conn -> let open Component in
+let resp_headers = Conn.resp_headers conn in
+let response = Conn.to_response conn in
+let status = response.Web_server.Response.status in
+let status_code = Net.Http.Status.to_int status in
+let status_text = Net.Http.Status.to_string status in
+div ~attrs:[ class_ "response-inspector" ]
+  [
+    h2 [ text "📤 Response (before error)" ];
+    div ~attrs:[ class_ "response-status" ] [ strong [ text "Status: " ]; code [ text (Int.to_string status_code ^ " " ^ status_text) ] ];
+    (
+      if resp_headers = [] then
+        text ""
+      else Fragment [ h3 [ text "Headers" ]; table ~attrs:[ class_ "headers-table" ] (List.map ~fn:(
+        fun ((name, value)) -> tr [ td ~attrs:[ class_ "header-name" ] [ code [ text name ] ]; td ~attrs:[ class_ "header-value" ] [ text value ] ]
+      ) resp_headers) ]
+    );
+  ]
 
 (** CSS styles for the error page *)
 let error_page_styles = {|
@@ -1401,78 +1326,26 @@ details[open] summary {
 |}
 
 (** Main error page component *)
-let render_error_page = fun ~conn ~exn ~backtrace ->
-  let open Component in
-    let exception_str = Exception.to_string exn in
-    let frames = parse_backtrace backtrace in
-    let method_str = Conn.method_ conn |> Net.Http.Method.to_string in
-    let path = Conn.path conn in
-    html
+let render_error_page = fun ~conn ~exn ~backtrace -> let open Component in
+let exception_str = Exception.to_string exn in
+let frames = parse_backtrace backtrace in
+let method_str = Conn.method_ conn |> Net.Http.Method.to_string in
+let path = Conn.path conn in
+html
+  [
+    head
       [
-        head
-          [
-            meta ~attrs:[ attr "charset" "UTF-8" ] ();
-            meta ~attrs:[ attr "viewport" "width=device-width, initial-scale=1.0" ] ();
-            title [ text "500 Internal Server Error" ];
-            link
-              ~attrs:[
-                attr "rel" "stylesheet";
-                attr "href" "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/default.min.css"
-              ]
-              ();
-            style error_page_styles;
-            script
-              ~attrs:[
-                attr "src" "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"
-              ]
-              "";
-            script
-              ~attrs:[
-                attr "src" "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/languages/ocaml.min.js"
-              ]
-              "";
-            script "hljs.highlightAll();";
-          ];
-        body
-          [
-            div
-              ~attrs:[ class_ "error-container" ]
-              [
-                div
-                  ~attrs:[ class_ "error-header" ]
-                  [
-                    h1
-                      [
-                        span [ text (exception_str ^ " at " ^ method_str ^ " " ^ path) ];
-                        span ~attrs:[ class_ "suri-brand" ] [ text "SURI" ];
-                      ];
-                    div ~attrs:[ class_ "exception-type" ] [ text exception_str ];
-                  ];
-                div
-                  ~attrs:[ class_ "error-body" ]
-                  [
-                    div
-                      ~attrs:[ class_ "left-column" ]
-                      [
-                        div
-                          ~attrs:[ class_ "section" ]
-                          [
-                            h2 [ text "📚 Stack Trace" ];
-                            Fragment (List.map ~fn:render_stack_frame frames);
-                            details
-                              [
-                                summary [ text "🔍 Show Raw Backtrace" ];
-                                div ~attrs:[ class_ "raw-backtrace" ] [ text backtrace ];
-                              ];
-                          ];
-                      ];
-                    div
-                      ~attrs:[ class_ "right-column" ]
-                      [ render_request conn; render_response conn; ];
-                  ];
-              ];
-          ];
-      ]
+        meta ~attrs:[ attr "charset" "UTF-8" ] ();
+        meta ~attrs:[ attr "viewport" "width=device-width, initial-scale=1.0" ] ();
+        title [ text "500 Internal Server Error" ];
+        link ~attrs:[ attr "rel" "stylesheet"; attr "href" "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/default.min.css" ] ();
+        style error_page_styles;
+        script ~attrs:[ attr "src" "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js" ] "";
+        script ~attrs:[ attr "src" "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/languages/ocaml.min.js" ] "";
+        script "hljs.highlightAll();";
+      ];
+    body [ div ~attrs:[ class_ "error-container" ] [ div ~attrs:[ class_ "error-header" ] [ h1 [ span [ text (exception_str ^ " at " ^ method_str ^ " " ^ path) ]; span ~attrs:[ class_ "suri-brand" ] [ text "SURI" ] ]; div ~attrs:[ class_ "exception-type" ] [ text exception_str ] ]; div ~attrs:[ class_ "error-body" ] [ div ~attrs:[ class_ "left-column" ] [ div ~attrs:[ class_ "section" ] [ h2 [ text "📚 Stack Trace" ]; Fragment (List.map ~fn:render_stack_frame frames); details [ summary [ text "🔍 Show Raw Backtrace" ]; div ~attrs:[ class_ "raw-backtrace" ] [ text backtrace ] ] ] ]; div ~attrs:[ class_ "right-column" ] [ render_request conn; render_response conn ] ] ] ];
+  ]
 
 (** Debugger middleware - catches exceptions, displays error page, logs, and reraises *)
 let debugger = fun ~conn ~next ->
@@ -1484,14 +1357,19 @@ let debugger = fun ~conn ~next ->
       let method_str = Conn.method_ conn |> Net.Http.Method.to_string in
       let path = Conn.path conn in
       (* Log the error *)
-      Log.error (String.concat "" [ method_str; " "; path; " -> Exception: "; exception_str ]);
+      Log.error
+        (
+          String.concat ""
+            [
+              method_str;
+              " ";
+              path;
+              " -> Exception: ";
+              exception_str;
+            ]
+        );
       (* Build error page *)
       let error_page = render_error_page ~conn ~exn ~backtrace in
       (* Set 500 error response *)
-      let _ = conn
-      |> Conn.with_status InternalServerError
-      |> Conn.with_header "Content-Type" "text/html; charset=utf-8"
-      |> Conn.with_body (Component.to_html error_page)
-      |> Conn.send in
-      (* Reraise the exception after writing response *)
+      let _ = conn |> Conn.with_status InternalServerError |> Conn.with_header "Content-Type" "text/html; charset=utf-8" |> Conn.with_body (Component.to_html error_page) |> Conn.send in (* Reraise the exception after writing response *)
       raise exn

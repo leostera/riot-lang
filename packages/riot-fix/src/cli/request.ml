@@ -5,18 +5,14 @@ type action =
   | ListDiagnostics of { format: Reporter.format }
   | ExplainRule of { rule_id: Rule_id.t }
   | Run of {
-      mode: Runner.mode;
-      limit: int option;
-      target: Path.t;
-      output_mode: Types.output_mode;
-      use_generated_runner: bool
-    }
+    mode: Runner.mode;
+    limit: int option;
+    target: Path.t;
+    output_mode: Types.output_mode;
+    use_generated_runner: bool;
+  }
 
-type t = {
-  cwd: Path.t;
-  scope: Fix_config.scope option;
-  action: action;
-}
+type t = { cwd: Path.t; scope: Fix_config.scope option; action: action }
 
 let parse_limit = fun matches ->
   match ArgParser.get_int matches "limit" with
@@ -27,8 +23,7 @@ let parse_limit = fun matches ->
 let reporter_format = fun matches ->
   if ArgParser.get_flag matches "json" then
     Reporter.Json
-  else
-    Reporter.Text
+  else Reporter.Text
 
 let output_mode = fun format -> Types.Report format
 
@@ -42,14 +37,13 @@ let check_request = fun ~cwd ~target ->
   {
     cwd;
     scope;
-    action =
-      Run {
-        mode = Runner.Check;
-        limit = None;
-        target;
-        output_mode = Types.Silent;
-        use_generated_runner = use_generated_runner scope;
-      };
+    action = Run {
+      mode = Runner.Check;
+      limit = None;
+      target;
+      output_mode = Types.Silent;
+      use_generated_runner = use_generated_runner scope
+    }
   }
 
 let of_matches = fun matches ->
@@ -65,28 +59,22 @@ let of_matches = fun matches ->
         Error (Failure "cannot use both --apply and --check")
       else
         let action =
-          match ArgParser.get_flag matches "list-rules", ArgParser.get_flag matches "list-diagnostics", ArgParser.get_one
-            matches
-            "explain" with
-          | true, _, _ ->
-              ListRules { format }
-          | false, true, _ ->
-              ListDiagnostics { format }
-          | false, false, Some rule_id ->
-              ExplainRule { rule_id = Rule_id.of_string rule_id }
+          match ArgParser.get_flag matches "list-rules", ArgParser.get_flag matches "list-diagnostics", ArgParser.get_one matches "explain" with
+          | true, _, _ -> ListRules { format }
+          | false, true, _ -> ListDiagnostics { format }
+          | false, false, Some rule_id -> ExplainRule { rule_id = Rule_id.of_string rule_id }
           | false, false, None ->
               let mode =
                 if apply then
                   Runner.Apply
-                else
-                  Runner.Check
+                else Runner.Check
               in
               Run {
                 mode;
                 limit;
                 target = Common.resolve_target matches;
                 output_mode = output_mode format;
-                use_generated_runner = use_generated_runner scope;
+                use_generated_runner = use_generated_runner scope
               }
         in
         Ok { cwd; scope; action }

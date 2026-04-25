@@ -219,8 +219,7 @@ let name = function
 
 let explain = function
   | E0001_MalformedTypeVariable -> {|Type variables must be written as 'a, 'b, etc. with no space or comments between the quote and name.|}
-  | E0002_MissingLetBindingPattern ->
-      {|
+  | E0002_MissingLetBindingPattern -> {|
 The left side of a let-expression allows you to pattern match on values to assign them to variables, but also to deconstruct them and access their inner values.
 
    ```ocaml
@@ -236,8 +235,7 @@ Beware that pattern matching on only one of many possible values will lead to ru
   | E0004_MissingLetBindingExpr -> {|Every let binding needs a value on the right side of the =.|}
   | E0005_UnexpectedStructureItem -> {|Structure items are top-level declarations like let, type, or module.|}
   | E0006_UnexpectedSignatureItem -> {|Signature items are declarations in .mli files like val, type, or module.|}
-  | E0007_InvalidPattern ->
-      {|
+  | E0007_InvalidPattern -> {|
 The left side of a let-expression allows you to pattern match on values to assign them to variables, but also to deconstruct them and access their inner values.
 
    ```ocaml
@@ -251,8 +249,7 @@ Beware that pattern matching on only one of many possible values will lead to ru
 |}
   | E0008_InvalidExpression -> {|Expected a value, function call, or operator expression.|}
   | E0009_InvalidConstant -> {|Constants must be integers, floats, strings, or characters.|}
-  | E0010_InvalidTypeExpression ->
-      {|Expected a type like int, string, 'a, or a type constructor.
+  | E0010_InvalidTypeExpression -> {|Expected a type like int, string, 'a, or a type constructor.
 
 If this appears after `type foo =` and you meant `foo` to be abstract, write `type foo` without the `=`.|}
   | E0011_MissingLetKeyword -> {|Internal parser error - this is likely a bug in the parser.|}
@@ -264,8 +261,7 @@ If this appears after `type foo =` and you meant `foo` to be abstract, write `ty
   | E0017_MultiCharLiteral -> {|Character literals can only contain a single character. Use a string "..." for multiple characters.|}
   | E0018_UnclosedCharLiteral -> {|Character literals must be closed with a single quote '.|}
   | E0019_UnclosedTypeParams -> {|Type parameter lists must be closed with a closing parenthesis ). For example: type ('a, 'b) t = ...|}
-  | E0020_MissingBinaryOperand ->
-      {|Binary operators like +, -, *, =, etc. require both a left and right operand.
+  | E0020_MissingBinaryOperand -> {|Binary operators like +, -, *, =, etc. require both a left and right operand.
 
 For example:
   ```ocaml
@@ -279,8 +275,7 @@ If you want to create a partially applied operator function, use parentheses:
   let add_one = (+) 1
   ```
 |}
-  | E0021_ConsecutiveBinaryOperators ->
-      {|Consecutive binary operators are not allowed. Each operator needs both operands.
+  | E0021_ConsecutiveBinaryOperators -> {|Consecutive binary operators are not allowed. Each operator needs both operands.
 
 For example:
   ```ocaml
@@ -293,8 +288,7 @@ If you intended to write a positive or negative number, attach the sign directly
   let x = 1 + (-2)  (* correct: adding negative 2 *)
   ```
 |}
-  | E0022_InvalidTypeParameter ->
-      {|Type parameters must start with a single quote followed by a lowercase letter.
+  | E0022_InvalidTypeParameter -> {|Type parameters must start with a single quote followed by a lowercase letter.
 
 Valid type parameters:
   ```ocaml
@@ -310,8 +304,7 @@ Invalid type parameters:
   type ! t            (* error: ! is not valid *)
   ```
 |}
-  | E0023_UppercaseTypeVariable ->
-      {|Type variables must use lowercase letters.
+  | E0023_UppercaseTypeVariable -> {|Type variables must use lowercase letters.
 
 Type variables in OCaml always start with a single quote followed by a lowercase identifier:
   ```ocaml
@@ -323,8 +316,7 @@ Type variables in OCaml always start with a single quote followed by a lowercase
 
 Fix: change 'A to 'a, or 'MyType to 'my_type
 |}
-  | E0024_UppercaseTypeName ->
-      {|Type names must start with a lowercase letter.
+  | E0024_UppercaseTypeName -> {|Type names must start with a lowercase letter.
 
 In OCaml, type names use lowercase identifiers:
   ```ocaml
@@ -337,8 +329,7 @@ In OCaml, type names use lowercase identifiers:
 Fix: change MyType to my_type or myType
 Note: Uppercase identifiers are reserved for modules and constructors.
 |}
-  | E0025_BracketedTypeParameters ->
-      {|OCaml uses parentheses for type parameters, not angle brackets.
+  | E0025_BracketedTypeParameters -> {|OCaml uses parentheses for type parameters, not angle brackets.
 
 OCaml syntax uses ('a, 'b) style type parameters, not <A, B> like other languages:
   ```ocaml
@@ -355,8 +346,7 @@ OCaml syntax uses ('a, 'b) style type parameters, not <A, B> like other language
 
 Fix: replace <A, B> with ('a, 'b) and use lowercase type variables.
 |}
-  | E0026_ListDoubleSemicolon ->
-      {|List elements must be separated by a single semicolon.
+  | E0026_ListDoubleSemicolon -> {|List elements must be separated by a single semicolon.
 
 In OCaml lists, elements are separated by semicolons (;), not commas:
   ```ocaml
@@ -373,8 +363,7 @@ In OCaml lists, elements are separated by semicolons (;), not commas:
 Fix: use a single semicolon (;) between list elements.
 Note: Double semicolons (;;) are used as top-level statement terminators in the REPL, not in lists.
 |}
-  | E0027_IfMissingThen ->
-      {|If-expressions require the 'then' keyword after the condition.
+  | E0027_IfMissingThen -> {|If-expressions require the 'then' keyword after the condition.
 
 In OCaml, if-expressions have the syntax: if condition then expr1 else expr2
   ```ocaml
@@ -389,8 +378,7 @@ In OCaml, if-expressions have the syntax: if condition then expr1 else expr2
 
 Fix: add the 'then' keyword after the condition and before the then-branch.
 |}
-  | E0028_MatchMissingScrutinee ->
-      {|Match-expressions require an expression to match on (the scrutinee).
+  | E0028_MatchMissingScrutinee -> {|Match-expressions require an expression to match on (the scrutinee).
 
 In OCaml, match-expressions have the syntax: match expr with | pattern -> result
   ```ocaml
@@ -404,8 +392,7 @@ In OCaml, match-expressions have the syntax: match expr with | pattern -> result
 
 Fix: add an expression after 'match' and before 'with'.
 |}
-  | E0029_MatchMissingWith ->
-      {|Match-expressions require the 'with' keyword after the scrutinee.
+  | E0029_MatchMissingWith -> {|Match-expressions require the 'with' keyword after the scrutinee.
 
 In OCaml, match-expressions have the syntax: match expr with | pattern -> result
   ```ocaml
@@ -418,8 +405,7 @@ In OCaml, match-expressions have the syntax: match expr with | pattern -> result
 
 Fix: add 'with' keyword after the expression being matched.
 |}
-  | E0030_MatchMissingPattern ->
-      {|Match cases require a pattern before the arrow (->).
+  | E0030_MatchMissingPattern -> {|Match cases require a pattern before the arrow (->).
 
 In OCaml, each match case has the syntax: | pattern -> result
   ```ocaml
@@ -433,8 +419,7 @@ In OCaml, each match case has the syntax: | pattern -> result
 
 Fix: add a pattern before the '->' arrow.
 |}
-  | E0031_MatchGuardMissingExpr ->
-      {|Match guards require an expression after the 'when' keyword.
+  | E0031_MatchGuardMissingExpr -> {|Match guards require an expression after the 'when' keyword.
 
 In OCaml, match guards have the syntax: | pattern when condition -> result
   ```ocaml
@@ -447,8 +432,7 @@ In OCaml, match guards have the syntax: | pattern when condition -> result
 
 Fix: add a boolean expression after 'when'.
 |}
-  | E0032_TuplePatternExtraComma ->
-      {|Tuple patterns cannot have leading, trailing, or consecutive commas.
+  | E0032_TuplePatternExtraComma -> {|Tuple patterns cannot have leading, trailing, or consecutive commas.
 
 In OCaml, tuple patterns require at least two elements separated by single commas:
   ```ocaml
@@ -465,8 +449,7 @@ In OCaml, tuple patterns require at least two elements separated by single comma
 
 Fix: remove extra commas and ensure at least two patterns.
 |}
-  | E0033_ConstructorPatternNeedsParens ->
-      {|Constructor patterns with multiple arguments need parentheses.
+  | E0033_ConstructorPatternNeedsParens -> {|Constructor patterns with multiple arguments need parentheses.
 
 In OCaml, constructors take a single argument. For multiple values, use tuples:
   ```ocaml
@@ -482,8 +465,7 @@ In OCaml, constructors take a single argument. For multiple values, use tuples:
 
 Fix: wrap multiple arguments in parentheses to form a tuple.
 |}
-  | E0034_ConsPatternMissingHead ->
-      {|Cons patterns (::) require a head element before the operator.
+  | E0034_ConsPatternMissingHead -> {|Cons patterns (::) require a head element before the operator.
 
 In OCaml, the cons operator (::) constructs lists with head :: tail:
   ```ocaml
@@ -497,8 +479,7 @@ In OCaml, the cons operator (::) constructs lists with head :: tail:
 
 Fix: add a pattern before the :: operator.
 |}
-  | E0035_ConsPatternMissingTail ->
-      {|Cons patterns (::) require a tail element after the operator.
+  | E0035_ConsPatternMissingTail -> {|Cons patterns (::) require a tail element after the operator.
 
 In OCaml, the cons operator (::) constructs lists with head :: tail:
   ```ocaml
@@ -512,8 +493,7 @@ In OCaml, the cons operator (::) constructs lists with head :: tail:
 
 Fix: add a pattern after the :: operator.
 |}
-  | E0036_OrPatternMissing ->
-      {|Or-patterns (|) require patterns on both sides of the operator.
+  | E0036_OrPatternMissing -> {|Or-patterns (|) require patterns on both sides of the operator.
 
 In OCaml, or-patterns match multiple alternatives:
   ```ocaml
@@ -530,8 +510,7 @@ In OCaml, or-patterns match multiple alternatives:
 
 Fix: add patterns on both sides of the | operator.
 |}
-  | E0037_OrPatternDouble ->
-      {|Or-patterns cannot have consecutive | operators without a pattern between them.
+  | E0037_OrPatternDouble -> {|Or-patterns cannot have consecutive | operators without a pattern between them.
 
 In OCaml, or-patterns require a pattern between each | operator:
   ```ocaml
@@ -546,8 +525,7 @@ In OCaml, or-patterns require a pattern between each | operator:
 
 Fix: add a pattern between the | operators or remove one |.
 |}
-  | E0038_MutableFieldMissingName ->
-      {|Record fields declared as mutable must have a field name.
+  | E0038_MutableFieldMissingName -> {|Record fields declared as mutable must have a field name.
 
 In OCaml, mutable record fields are declared as:
   ```ocaml
@@ -556,8 +534,7 @@ In OCaml, mutable record fields are declared as:
 
 The 'mutable' keyword must be followed by a field name.
 |}
-  | E0039_RecordFieldMissingColon ->
-      {|Record field declarations require a colon followed by a type.
+  | E0039_RecordFieldMissingColon -> {|Record field declarations require a colon followed by a type.
 
 In OCaml, record fields are declared as:
   ```ocaml
@@ -566,8 +543,7 @@ In OCaml, record fields are declared as:
 
 Each field name must be followed by a colon and then the field's type.
 |}
-  | E0040_RecordFieldMissingType ->
-      {|Record field declarations require a type after the colon.
+  | E0040_RecordFieldMissingType -> {|Record field declarations require a type after the colon.
 
 In OCaml, record fields are declared as:
   ```ocaml
@@ -576,8 +552,7 @@ In OCaml, record fields are declared as:
 
 After the colon, you must specify the type for the field.
 |}
-  | E0041_PolyTypeMissingVarName ->
-      {|Polymorphic type annotations require type variable names after each quote.
+  | E0041_PolyTypeMissingVarName -> {|Polymorphic type annotations require type variable names after each quote.
 
 In OCaml, polymorphic types use explicit quantifiers:
   ```ocaml
@@ -587,8 +562,7 @@ In OCaml, polymorphic types use explicit quantifiers:
 
 Each quote (') must be followed by a type variable name like 'a, 'b, etc.
 |}
-  | E0042_PolyTypeMissingDot ->
-      {|Polymorphic type annotations require a dot after the type variables.
+  | E0042_PolyTypeMissingDot -> {|Polymorphic type annotations require a dot after the type variables.
 
 In OCaml, polymorphic types use this syntax:
   ```ocaml
@@ -598,8 +572,7 @@ In OCaml, polymorphic types use this syntax:
 
 The type variables ('a, 'b, etc.) must be followed by a dot (.) before the actual type.
 |}
-  | E0043_UnexpectedClosingDelimiter ->
-      {|This closing delimiter does not match any still-open delimiter in the current parse context.
+  | E0043_UnexpectedClosingDelimiter -> {|This closing delimiter does not match any still-open delimiter in the current parse context.
 
 This often means a list, tuple, record, array, or block was closed twice:
   ```ocaml
@@ -610,8 +583,7 @@ This often means a list, tuple, record, array, or block was closed twice:
 
 Fix: remove the extra closing delimiter, or add the matching opening delimiter earlier if something was left out.
 |}
-  | E0044_MissingModuleDeclEquals ->
-      {|Module declarations need an = between the module name and the module expression.
+  | E0044_MissingModuleDeclEquals -> {|Module declarations need an = between the module name and the module expression.
 
 In OCaml implementations, module bindings look like:
   ```ocaml
@@ -622,16 +594,14 @@ In OCaml implementations, module bindings look like:
 
 Fix: add = between the module name (or constrained module declaration) and the module expression.
 |}
-  | E0045_MissingExternalColon ->
-      {|External declarations need a : between the external name and its type.
+  | E0045_MissingExternalColon -> {|External declarations need a : between the external name and its type.
 
 In OCaml:
   ```ocaml
   external sqrt : float -> float = "caml_sqrt_float"
   ```
 |}
-  | E0046_MissingExceptionName ->
-      {|Exception declarations need a constructor name after the exception keyword.
+  | E0046_MissingExceptionName -> {|Exception declarations need a constructor name after the exception keyword.
 
 In OCaml:
   ```ocaml
@@ -639,8 +609,7 @@ In OCaml:
   exception Parse_error of string
   ```
 |}
-  | E0047_MissingModulePath ->
-      {|This construct expects a module name or module path.
+  | E0047_MissingModulePath -> {|This construct expects a module name or module path.
 
 Examples:
   ```ocaml
@@ -648,8 +617,7 @@ Examples:
   open Stdlib.List
   ```
 |}
-  | E0048_MissingModuleTypeName ->
-      {|Module type declarations need a name after `module type`.
+  | E0048_MissingModuleTypeName -> {|Module type declarations need a name after `module type`.
 
 In OCaml:
   ```ocaml
@@ -658,8 +626,7 @@ In OCaml:
   end
   ```
 |}
-  | E0049_MissingModuleTypeExpr ->
-      {|A module type declaration needs a module type expression after the =.
+  | E0049_MissingModuleTypeExpr -> {|A module type declaration needs a module type expression after the =.
 
 Examples:
   ```ocaml
@@ -667,8 +634,7 @@ Examples:
   module type S = module type of M
   ```
 |}
-  | E0050_MissingModuleExpr ->
-      {|This construct expects a module expression.
+  | E0050_MissingModuleExpr -> {|This construct expects a module expression.
 
 Examples:
   ```ocaml
@@ -677,8 +643,7 @@ Examples:
   let x = (module struct let y = 1 end)
   ```
 |}
-  | E0051_MissingWithKeyword ->
-      {|Module type constraints use the `with` keyword before the constraint list.
+  | E0051_MissingWithKeyword -> {|Module type constraints use the `with` keyword before the constraint list.
 
 In OCaml:
   ```ocaml
@@ -688,8 +653,7 @@ In OCaml:
 
 If you see `type` immediately after a module type path, insert `with` before it.
 |}
-  | E0052_InvalidModuleName ->
-      {|Module names must start with an uppercase letter.
+  | E0052_InvalidModuleName -> {|Module names must start with an uppercase letter.
 
 In OCaml:
   ```ocaml

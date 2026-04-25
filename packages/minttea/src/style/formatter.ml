@@ -32,5 +32,4 @@ let format_string = fun seqs line ->
   let seqs = List.map ~fn:to_string seqs |> String.concat ";" in
   if seqs = "" then
     line
-  else
-    Escape_seq.csi ^ seqs ^ "m" ^ line ^ Escape_seq.csi ^ Escape_seq.reset_seq ^ "m"
+  else Escape_seq.csi ^ seqs ^ "m" ^ line ^ Escape_seq.csi ^ Escape_seq.reset_seq ^ "m"

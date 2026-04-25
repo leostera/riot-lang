@@ -2,6 +2,7 @@ open Std
 
 (** HTTP connection handle. *)
 type t
+
 (** Incremental message emitted while reading a response. *)
 type message =
   | Data of string
@@ -10,8 +11,7 @@ type message =
   | Status of Net.Http.Status.t
 
 (** Build a connection from reader and writer handles. *)
-val make:
-  reader:IO.Reader.t -> writer:IO.Writer.t -> of_io_error:(IO.error -> Error.t) -> uri:Net.Uri.t -> t
+val make: reader:IO.Reader.t -> writer:IO.Writer.t -> of_io_error:(IO.error -> Error.t) -> uri:Net.Uri.t -> t
 
 (** Send an HTTP request on the connection. *)
 val request: t -> Net.Http.Request.t -> ?body:string -> unit -> (unit, Error.t) result

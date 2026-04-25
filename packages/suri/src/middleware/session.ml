@@ -9,35 +9,33 @@ type session_data = {
 }
 
 (** Session handle *)
-type t = {
-  data: session_data;
-  cookie_name: string;
-  secret: string;
-  mutable modified: bool;
-}
+type t = { data: session_data; cookie_name: string; secret: string; mutable modified: bool }
 
 (** Extend Conn.assign_value to store sessions *)
 type Conn.assign_value +=
-  Session_data of t
+  | Session_data of t
 
 (** Create empty session *)
 let create = fun ~cookie_name ~secret () ->
   let now = Time.SystemTime.secs (Time.SystemTime.now ()) |> Int64.of_int in
   let data = { values = HashMap.create (); created_at = now; expires_at = Option.none } in
-  { data; cookie_name; secret; modified = false }
+  {
+    data;
+    cookie_name;
+    secret;
+    modified = false
+  }
 
 (** Get value from session *)
 let get_value = fun key session -> HashMap.get session.data.values ~key
 
 (** Put value in session *)
 let put = fun key value session ->
-  let _ = HashMap.insert session.data.values ~key ~value in
-  session.modified <- true
+  let _ = HashMap.insert session.data.values ~key ~value in session.modified <- true
 
 (** Delete value from session *)
 let delete = fun key session ->
-  let _ = HashMap.remove session.data.values ~key in
-  session.modified <- true
+  let _ = HashMap.remove session.data.values ~key in session.modified <- true
 
 (** Clear all session data *)
 let clear = fun session ->
@@ -48,72 +46,68 @@ let clear = fun session ->
 let is_expired = fun session ->
   match session.data.expires_at with
   | Option.Some exp ->
-      let now = Time.SystemTime.secs (Time.SystemTime.now ()) |> Int64.of_int in
-      Int64.compare now exp = Order.GT
+      let now = Time.SystemTime.secs (Time.SystemTime.now ()) |> Int64.of_int in Int64.compare now exp = Order.GT
   | Option.None -> false
 
 (** Check if session was modified *)
 let is_modified = fun session -> session.modified
 
 (** {1 JSON Serialization} *)
-
 (** Serialize session data to JSON *)
-let to_json = fun data ->
-  let open Data.Json in
-    let values_list = HashMap.to_list data.values |> List.map ~fn:(fun ((k, v)) -> (k, string v)) in
-    obj
-      [ ("values", obj values_list); ("created_at", int (Int64.to_int data.created_at)); (
-          "expires_at",
-          match data.expires_at with
-          | Option.Some exp -> int (Int64.to_int exp)
-          | Option.None -> null
-        ); ]
+let to_json = fun data -> let open Data.Json in
+let values_list = HashMap.to_list data.values |> List.map ~fn:(
+  fun ((k, v)) -> (k, string v)
+) in
+obj
+  [
+    "values", obj values_list;
+    "created_at", int (Int64.to_int data.created_at);
+    ("expires_at", match data.expires_at with
+    | Option.Some exp -> int (Int64.to_int exp)
+    | Option.None -> null);
+  ]
 
 (** Deserialize session data from JSON *)
-let from_json = fun json ->
-  let open Data.Json in
-    match json with
-    | Object _ ->
-        let values =
-          match get_field "values" json with
-          | Option.Some (Object pairs) ->
-              let hm = HashMap.create () in
-              List.for_each pairs
-                ~fn:(fun ((k, v)) ->
-                  match get_string v with
-                  | Option.Some s ->
-                      let _ = HashMap.insert hm ~key:k ~value:s in
-                      ()
-                  | Option.None -> ());
-              hm
-          | _ -> HashMap.create ()
-        in
-        let created_at =
-          match get_field "created_at" json with
-          | Option.Some v -> (
-              match get_int v with
-              | Option.Some n -> Int64.of_int n
-              | Option.None -> Time.SystemTime.secs (Time.SystemTime.now ()) |> Int64.of_int
-            )
-          | Option.None -> Time.SystemTime.secs (Time.SystemTime.now ()) |> Int64.of_int
-        in
-        let expires_at =
-          match get_field "expires_at" json with
-          | Option.Some (Null) ->
-              Option.none
-          | Option.Some v -> (
-              match get_int v with
-              | Option.Some n -> Option.some (Int64.of_int n)
-              | Option.None -> Option.none
-            )
-          | Option.None ->
-              Option.none
-        in
-        Option.some { values; created_at; expires_at }
-    | _ -> Option.none
+let from_json = fun json -> let open Data.Json in
+match json with
+| Object _ ->
+    let values =
+      match get_field "values" json with
+      | Option.Some (Object pairs) ->
+          let hm = HashMap.create () in
+          List.for_each pairs ~fn:(
+            fun ((k, v)) ->
+              match get_string v with
+              | Option.Some s ->
+                  let _ = HashMap.insert hm ~key:k ~value:s in ()
+              | Option.None -> ()
+          );
+          hm
+      | _ -> HashMap.create ()
+    in
+    let created_at =
+      match get_field "created_at" json with
+      | Option.Some v -> (
+        match get_int v with
+        | Option.Some n -> Int64.of_int n
+        | Option.None -> Time.SystemTime.secs (Time.SystemTime.now ()) |> Int64.of_int
+      )
+      | Option.None -> Time.SystemTime.secs (Time.SystemTime.now ()) |> Int64.of_int
+    in
+    let expires_at =
+      match get_field "expires_at" json with
+      | Option.Some (Null) -> Option.none
+      | Option.Some v -> (
+        match get_int v with
+        | Option.Some n -> Option.some (Int64.of_int n)
+        | Option.None -> Option.none
+      )
+      | Option.None -> Option.none
+    in
+    Option.some { values; created_at; expires_at }
+| _ -> Option.none
 
 (** {1 Basic Crypto (XOR placeholder - NOT SECURE for production)} *)
-
 (** Simple XOR encryption - placeholder for real AES-GCM *)
 let encrypt = fun ~secret data ->
   let secret_len = String.length secret in
@@ -122,8 +116,7 @@ let encrypt = fun ~secret data ->
   for i = data_len - 1 downto 0 do
     let secret_byte = String.get_unchecked secret ~at:(i mod secret_len) in
     let data_byte = String.get_unchecked data ~at:i in
-    let encrypted_byte = Char.chr (Char.code secret_byte lxor Char.code data_byte) in
-    IO.Bytes.set_unchecked bytes ~at:i ~char:encrypted_byte
+    let encrypted_byte = Char.chr (Char.code secret_byte lxor Char.code data_byte) in IO.Bytes.set_unchecked bytes ~at:i ~char:encrypted_byte
   done;
   String.from_bytes bytes
 
@@ -143,11 +136,9 @@ let sign = fun ~secret data ->
 
 (** Verify signature *)
 let verify = fun ~secret data signature ->
-  let expected = sign ~secret data in
-  String.equal expected signature
+  let expected = sign ~secret data in String.equal expected signature
 
 (** {1 Cookie Serialization} *)
-
 (** Serialize session to cookie value *)
 let to_cookie_value = fun session ->
   let json = to_json session.data in
@@ -156,14 +147,13 @@ let to_cookie_value = fun session ->
   let encrypted = encrypt ~secret:session.secret json_str in
   let encrypted_b64 = Encoding.Base64.encode encrypted in
   (* Sign *)
-  let signature = sign ~secret:session.secret encrypted_b64 in
-  (* Return: encrypted.signature *)
+  let signature = sign ~secret:session.secret encrypted_b64 in (* Return: encrypted.signature *)
   String.concat "." [ encrypted_b64; signature ]
 
 (** Deserialize session from cookie value *)
 let from_cookie_value = fun ~cookie_name ~secret cookie_value ->
   match String.split_on_char '.' cookie_value with
-  | [encrypted_b64;signature] ->
+  | [ encrypted_b64; signature ] ->
       (* Verify signature *)
       if not (verify ~secret encrypted_b64 signature) then
         Result.err "Invalid signature"
@@ -177,10 +167,17 @@ let from_cookie_value = fun ~cookie_name ~secret cookie_value ->
               (
                 match Data.Json.of_string json_str with
                 | Result.Ok json -> (
-                    match from_json json with
-                    | Option.Some data -> Result.ok { data; cookie_name; secret; modified = false }
-                    | Option.None -> Result.err "Invalid session data"
-                  )
+                  match from_json json with
+                  | Option.Some data ->
+                      Result.ok
+                        {
+                          data;
+                          cookie_name;
+                          secret;
+                          modified = false
+                        }
+                  | Option.None -> Result.err "Invalid session data"
+                )
                 | Result.Error _err -> Result.err "Invalid JSON in session"
               )
           | Result.Error _ -> Result.err "Invalid base64 encoding"
@@ -188,7 +185,6 @@ let from_cookie_value = fun ~cookie_name ~secret cookie_value ->
   | _ -> Result.err "Invalid cookie format"
 
 (** {1 Middleware} *)
-
 (** Storage key for session in connection *)
 let session_key = "suri.session"
 
@@ -196,9 +192,8 @@ let session_key = "suri.session"
 let get = fun conn ->
   match Conn.get_assign session_key conn with
   | Option.Some (Session_data session) -> session
-  | _ ->
-      (* This shouldn't happen if middleware is installed *)
-      create ~cookie_name:"_suri_session" ~secret:"" ()
+  | _ -> (* This shouldn't happen if middleware is installed *)
+  create ~cookie_name:"_suri_session" ~secret:"" ()
 
 (** Session middleware *)
 let middleware = fun ~secret ?(cookie_name = "_suri_session") ?(max_age = 86_400) ?(secure = false) ?(same_site = Http.Http1.Cookie.Lax) () ->
@@ -215,16 +210,14 @@ let middleware = fun ~secret ?(cookie_name = "_suri_session") ?(max_age = 86_400
             match Std.Collections.Proplist.get cookies ~key:cookie_name with
             | Option.None -> create ~cookie_name ~secret ()
             | Option.Some cookie_value -> (
-                match from_cookie_value ~cookie_name ~secret cookie_value with
-                | Result.Ok sess ->
-                    if is_expired sess then
-                      create ~cookie_name ~secret ()
-                    else
-                      sess
-                | Result.Error _err ->
-                    (* Invalid cookie - create new session *)
+              match from_cookie_value ~cookie_name ~secret cookie_value with
+              | Result.Ok sess ->
+                  if is_expired sess then
                     create ~cookie_name ~secret ()
-              )
+                  else sess
+              | Result.Error _err -> (* Invalid cookie - create new session *)
+              create ~cookie_name ~secret ()
+            )
           )
     in
     (* Store session in connection *)
@@ -235,17 +228,7 @@ let middleware = fun ~secret ?(cookie_name = "_suri_session") ?(max_age = 86_400
     if is_modified session then
       begin
         let cookie_value = to_cookie_value session in
-        let cookie = Http.Http1.Cookie.make
-          ~name:cookie_name
-          ~value:cookie_value
-          ~max_age
-          ~path:"/"
-          ~secure
-          ~http_only:true
-          ~same_site
-          () in
-        let set_cookie_header = Http.Http1.Cookie.to_set_cookie cookie in
-        Conn.with_header "set-cookie" set_cookie_header conn'
+        let cookie = Http.Http1.Cookie.make ~name:cookie_name ~value:cookie_value ~max_age ~path:"/" ~secure ~http_only:true ~same_site () in
+        let set_cookie_header = Http.Http1.Cookie.to_set_cookie cookie in Conn.with_header "set-cookie" set_cookie_header conn'
       end
-    else
-      conn'
+    else conn'

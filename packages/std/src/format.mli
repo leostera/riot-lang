@@ -5,6 +5,7 @@ type t =
   | Bool of bool
   | Int of int
   | Bytes of bytes
+
 val str: string -> t
 
 val char: char -> t

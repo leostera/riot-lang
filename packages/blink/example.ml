@@ -21,4 +21,5 @@ let main = fun () ->
       Log.info "Body preview: %s" (String.sub body 0 (min 200 (String.length body)));
       ()
 
-let () = start ~apps:[] @@ fun () -> main ()
+let () =
+  start ~apps:[] @@ fun () -> main ()

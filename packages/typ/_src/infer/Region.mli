@@ -2,7 +2,9 @@ open Std
 open Model
 
 type t
+
 type frame
+
 val create: unit -> t
 
 val current_level: t -> int

@@ -23,24 +23,21 @@ let make = fun ?(style = default_style) ?(blink = true) ?(fps = default_fps) () 
     blink;
     fps;
     show = true;
-    style;
+    style
   }
 
 let update = fun t (e: Event.t) ->
   match e with
   | Frame now when t.blink ->
       if Fps.tick ~now t.fps = `frame then
-        let show = not t.show in
-        { t with show }
-      else
-        t
+        let show = not t.show in { t with show }
+      else t
   | _ -> t
 
 let view = fun t ~text_style str ->
   if t.show && t.focus then
     Style.render t.style str
-  else
-    Style.render text_style str
+  else Style.render text_style str
 
 let focus = fun t -> { t with focus = true; show = true }
 

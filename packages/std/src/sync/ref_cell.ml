@@ -14,10 +14,7 @@ type borrow_state =
   | Borrowed of int
   | BorrowedMut
 
-type 'a t = {
-  mutable value: 'a;
-  mutable state: borrow_state;
-}
+type 'a t = { mutable value: 'a; mutable state: borrow_state }
 
 exception BorrowError of string
 
@@ -35,8 +32,7 @@ let borrow = fun cell ->
   | Borrowed count ->
       cell.state <- Borrowed (Int.succ count);
       (cell, cell.value)
-  | BorrowedMut ->
-      raise (BorrowError "Cannot borrow while mutably borrowed")
+  | BorrowedMut -> raise (BorrowError "Cannot borrow while mutably borrowed")
 
 let release_borrow = fun (cell, _) ->
   match cell.state with
@@ -51,10 +47,8 @@ let borrow_mut = fun cell ->
   | Available ->
       cell.state <- BorrowedMut;
       cell
-  | Borrowed _ ->
-      raise (BorrowMutError "Cannot mutably borrow while borrowed")
-  | BorrowedMut ->
-      raise (BorrowMutError "Already mutably borrowed")
+  | Borrowed _ -> raise (BorrowMutError "Cannot mutably borrow while borrowed")
+  | BorrowedMut -> raise (BorrowMutError "Already mutably borrowed")
 
 let get_mut = fun cell ->
   match cell.state with
@@ -73,16 +67,29 @@ let release_borrow_mut = fun cell ->
 
 let with_borrow = fun cell f ->
   let borrow = borrow cell in
-  protect ~finally:(fun () -> release_borrow borrow)
-    (fun () ->
-      let _, value = borrow in
-      f value)
+  protect ~finally:(
+    fun () -> release_borrow borrow
+  )
+    (
+      fun () ->
+        let _, value = borrow in f value
+    )
 
 let with_borrow_mut = fun cell f ->
   let borrow = borrow_mut cell in
-  protect
-    ~finally:(fun () -> release_borrow_mut borrow)
-    (fun () -> f (fun () -> get_mut borrow) (fun value -> set_mut borrow value))
+  protect ~finally:(
+    fun () -> release_borrow_mut borrow
+  )
+    (
+      fun () ->
+        f
+          (
+            fun () -> get_mut borrow
+          )
+          (
+            fun value -> set_mut borrow value
+          )
+    )
 
 let try_borrow = fun cell ->
   try Ok (borrow cell) with

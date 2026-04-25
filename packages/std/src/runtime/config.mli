@@ -8,19 +8,19 @@ type timer_resolution =
   | Microsecond
   (** Nanosecond-resolution timers with the highest precision. *)
   | Nanosecond
+
 (** Runtime configuration values. *)
-type t = {
-  timer_resolution: timer_resolution;
-  scheduler_count: int;
-}
+type t = { timer_resolution: timer_resolution; scheduler_count: int }
 
 (** Default runtime configuration. *)
 val default: t
 
-(** Default number of worker schedulers.
+(**
+   Default number of worker schedulers.
 
-    The default is `max 1 (System.available_parallelism - 1)`, reserving one
-    core for the dedicated reactor domain that owns timer and I/O polling. *)
+   The default is `max 1 (System.available_parallelism - 1)`, reserving one
+   core for the dedicated reactor domain that owns timer and I/O polling. 
+*)
 val default_scheduler_count: int
 
 (** Return the number of runnable workers configured for this runtime. *)

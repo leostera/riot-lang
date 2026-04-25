@@ -3,14 +3,12 @@ open Sync
 open Collections
 
 (* # Supervisor - OTP-style process supervision *)
-
 type t = Pid.t
 
 (** Convert supervisor to Pid *)
 let to_pid: t -> Pid.t = fun sup -> sup
 
 (** {1 Supervision Strategies} *)
-
 type strategy =
   | OneForOne
   | OneForAll
@@ -18,27 +16,23 @@ type strategy =
   | SimpleOneForOne
 
 (** {1 Restart Policies} *)
-
 type restart =
   | Permanent
   | Temporary
   | Transient
 
 (** {1 Shutdown Behavior} *)
-
 type shutdown =
   | BrutalKill
   | Timeout of Time.Duration.t
   | Infinity
 
 (** {1 Child Types} *)
-
 type child_type =
   | Worker
   | Supervisor
 
 (** {1 Child Specification} *)
-
 type child_spec = {
   id: string;
   start: unit -> Pid.t;
@@ -48,61 +42,39 @@ type child_spec = {
   significant: bool;
 }
 
-let child_spec = fun ~id ~start ?(restart = Permanent) ?(shutdown = Timeout (Time.Duration.from_secs
-  5)) ?(child_type = Worker) ?(significant = false) () ->
+let child_spec = fun ~id ~start ?(restart = Permanent) ?(shutdown = Timeout (Time.Duration.from_secs 5)) ?(child_type = Worker) ?(significant = false) () ->
   {
     id;
     start;
     restart;
     shutdown;
     child_type;
-    significant;
+    significant
   }
 
 (** {1 Intensity (Restart Limits)} *)
-
-type intensity = {
-  max_restarts: int;
-  window: Time.Duration.t;
-}
+type intensity = { max_restarts: int; window: Time.Duration.t }
 
 (** {1 Child State} *)
-
-type child_state = {
-  spec: child_spec;
-  pid: Pid.t option;
-  monitor: Actor.Monitor.t option;
-}
+type child_state = { spec: child_spec; pid: Pid.t option; monitor: Actor.Monitor.t option }
 
 (** {1 Supervisor State} *)
-
 type supervisor_state = {
   strategy: strategy;
   intensity: intensity;
   children: child_state list Cell.t;
-  restarts: (Time.Instant.t * string) list Cell.t;  (* (timestamp, child_id) *)
+  restarts: (Time.Instant.t * string) list Cell.t;
+  (* (timestamp, child_id) *)
 }
 
 (** {1 Public Types for Messages} *)
+type child_info = { id: string; pid: Pid.t option; child_type: child_type; restart: restart }
 
-type child_info = {
-  id: string;
-  pid: Pid.t option;
-  child_type: child_type;
-  restart: restart;
-}
-
-type child_count = {
-  specs: int;
-  active: int;
-  supervisors: int;
-  workers: int;
-}
+type child_count = { specs: int; active: int; supervisors: int; workers: int }
 
 type count = child_count
 
 (** {1 Supervisor Messages} *)
-
 type Message.t +=
   | Supervisor_which_children of { reply_to: Pid.t }
   | Supervisor_which_children_reply of { children: child_info list }
@@ -120,13 +92,12 @@ type Message.t +=
 let start_child = fun spec ->
   try
     let pid = spec.start () in
-    let monitor = Actor.monitor pid in
-    Some (pid, monitor)
+    let monitor = Actor.monitor pid in Some (pid, monitor)
   with
   | _exn -> None
 
 let should_restart = fun (spec: child_spec) reason ->
-  match (spec.restart, reason) with
+  match spec.restart, reason with
   | Permanent, _ -> true
   | Temporary, _ -> false
   | Transient, Ok () -> false
@@ -136,93 +107,79 @@ let terminate_child_process = fun (child_state: child_state) ->
   match child_state.pid with
   | None -> ()
   | Some pid -> (
-      match child_state.spec.shutdown with
-      | BrutalKill ->
-          (* TODO: Need Process.kill or Process.exit API in actors *)
-          send pid (Actor.EXIT { from = self (); reason = Error (Failure "killed") })
-      | Timeout _timeout ->
-          (* TODO: Implement graceful shutdown with timeout *)
-          send pid (Actor.EXIT { from = self (); reason = Error (Failure "shutdown") })
-      | Infinity ->
-          (* TODO: Implement graceful shutdown without timeout *)
-          send pid (Actor.EXIT { from = self (); reason = Error (Failure "shutdown") })
-    )
+    match child_state.spec.shutdown with
+    | BrutalKill -> (* TODO: Need Process.kill or Process.exit API in actors *)
+    send pid (Actor.EXIT { from = self (); reason = Error (Failure "killed") })
+    | Timeout _timeout -> (* TODO: Implement graceful shutdown with timeout *)
+    send pid (Actor.EXIT { from = self (); reason = Error (Failure "shutdown") })
+    | Infinity -> (* TODO: Implement graceful shutdown without timeout *)
+    send pid (Actor.EXIT { from = self (); reason = Error (Failure "shutdown") })
+  )
 
 let add_restart = fun state child_id ->
   let timestamp = Time.Instant.now () in
-  let restarts = Cell.get state.restarts in
-  Cell.set state.restarts ((timestamp, child_id) :: restarts)
+  let restarts = Cell.get state.restarts in Cell.set state.restarts ((timestamp, child_id) :: restarts)
 
 let prune_old_restarts = fun state ->
   let current_time = Time.Instant.now () in
   let cutoff = Time.Instant.sub current_time state.intensity.window in
   let restarts = Cell.get state.restarts in
-  let recent =
-    List.filter restarts
-      ~fn:(fun ((ts, _)) ->
-        match Time.Instant.compare ts cutoff with
-        | Order.LT -> false
-        | Order.EQ
-        | Order.GT -> true)
-  in
-  Cell.set state.restarts recent
+  let recent = List.filter restarts ~fn:(
+    fun ((ts, _)) ->
+      match Time.Instant.compare ts cutoff with
+      | Order.LT -> false
+      | Order.EQ | Order.GT -> true
+  ) in Cell.set state.restarts recent
 
 let check_intensity = fun state ->
   prune_old_restarts state;
-  let restart_count = List.length (Cell.get state.restarts) in
-  restart_count <= state.intensity.max_restarts
+  let restart_count = List.length (Cell.get state.restarts) in restart_count <= state.intensity.max_restarts
 
 (** {1 Restart Strategies} *)
-
 let restart_one_for_one = fun state child_id reason ->
   let children: child_state list = Cell.get state.children in
-  let updated =
-    List.map children
-      ~fn:(fun (child: child_state) ->
-        let spec: child_spec = child.spec in
-        if spec.id = child_id && should_restart spec reason then
+  let updated = List.map children ~fn:(
+    fun (child: child_state) ->
+      let spec: child_spec = child.spec in
+      if spec.id = child_id && should_restart spec reason then
+        (
+          (* Terminate old process if still alive *)
           (
-            (* Terminate old process if still alive *)
-            (
-              match child.monitor with
-              | Some mon -> Actor.demonitor mon
-              | None -> ()
-            );
-            (* Start new process *)
-            match start_child child.spec with
-            | Some (pid, monitor) ->
-                add_restart state child_id;
-                { child with pid = Some pid; monitor = Some monitor }
-            | None -> { child with pid = None; monitor = None }
-          )
-        else
-          child)
-  in
-  Cell.set state.children updated
+            match child.monitor with
+            | Some mon -> Actor.demonitor mon
+            | None -> ()
+          );
+          (* Start new process *)
+          match start_child child.spec with
+          | Some (pid, monitor) ->
+              add_restart state child_id;
+              { child with pid = Some pid; monitor = Some monitor }
+          | None -> { child with pid = None; monitor = None }
+        )
+      else child
+  ) in Cell.set state.children updated
 
 let restart_one_for_all = fun state _child_id reason ->
   let children = Cell.get state.children in
   (* Terminate all children *)
   List.for_each children ~fn:terminate_child_process;
-  List.for_each children
-    ~fn:(fun child ->
+  List.for_each children ~fn:(
+    fun child ->
       match child.monitor with
       | Some mon -> Actor.demonitor mon
-      | None -> ());
+      | None -> ()
+  );
   (* Restart all children *)
-  let updated =
-    List.map children
-      ~fn:(fun child ->
-        if should_restart child.spec reason then
-          match start_child child.spec with
-          | Some (pid, monitor) ->
-              add_restart state child.spec.id;
-              { child with pid = Some pid; monitor = Some monitor }
-          | None -> { child with pid = None; monitor = None }
-        else
-          { child with pid = None; monitor = None })
-  in
-  Cell.set state.children updated
+  let updated = List.map children ~fn:(
+    fun child ->
+      if should_restart child.spec reason then
+        match start_child child.spec with
+        | Some (pid, monitor) ->
+            add_restart state child.spec.id;
+            { child with pid = Some pid; monitor = Some monitor }
+        | None -> { child with pid = None; monitor = None }
+      else { child with pid = None; monitor = None }
+  ) in Cell.set state.children updated
 
 let restart_rest_for_one = fun state child_id reason ->
   let children = Cell.get state.children in
@@ -258,114 +215,111 @@ let restart_rest_for_one = fun state child_id reason ->
                     add_restart state child.spec.id;
                     { child with pid = Some pid; monitor = Some monitor }
                 | None -> { child with pid = None; monitor = None }
-              else if idx >= failed_idx then
-                { child with pid = None; monitor = None }
               else
-                child
+                if idx >= failed_idx then
+                  { child with pid = None; monitor = None }
+                else child
             in
             mapped :: map_from (idx + 1) rest
       in
-      let updated = map_from 0 children in
-      Cell.set state.children updated
+      let updated = map_from 0 children in Cell.set state.children updated
 
 let handle_child_exit = fun state child_id reason ->
   (* Check if child is significant *)
   let children = Cell.get state.children in
-  let is_significant =
-    List.any children ~fn:(fun child -> child.spec.id = child_id && child.spec.significant)
-  in
+  let is_significant = List.any children ~fn:(
+    fun child -> child.spec.id = child_id && child.spec.significant
+  ) in
   if is_significant then
     Error (Failure ("Significant child " ^ child_id ^ " terminated"))
-  else (
-    (* Apply restart strategy *)
+  else
     (
-      match state.strategy with
-      | OneForOne -> restart_one_for_one state child_id reason
-      | OneForAll -> restart_one_for_all state child_id reason
-      | RestForOne -> restart_rest_for_one state child_id reason
-      | SimpleOneForOne -> restart_one_for_one state child_id reason
-    );
-    (* Check restart intensity *)
-    if check_intensity state then
-      Ok ()
-    else
-      Error (Failure "Max restart intensity reached")
-  )
+      (* Apply restart strategy *)
+      (
+        match state.strategy with
+        | OneForOne -> restart_one_for_one state child_id reason
+        | OneForAll -> restart_one_for_all state child_id reason
+        | RestForOne -> restart_rest_for_one state child_id reason
+        | SimpleOneForOne -> restart_one_for_one state child_id reason
+      );
+      (* Check restart intensity *)
+      if check_intensity state then
+        Ok ()
+      else Error (Failure "Max restart intensity reached")
+    )
 
 (** {1 Message Handlers} *)
-
 let handle_which_children = fun state reply_to ->
   let children = Cell.get state.children in
-  let child_infos =
-    List.map
-      children
-      ~fn:(fun child ->
-        {
-          id = child.spec.id;
-          pid = child.pid;
-          child_type = child.spec.child_type;
-          restart = child.spec.restart
-        })
-  in
+  let child_infos = List.map children ~fn:(
+    fun child ->
+      {
+        id = child.spec.id;
+        pid = child.pid;
+        child_type = child.spec.child_type;
+        restart = child.spec.restart
+      }
+  ) in
   send reply_to (Supervisor_which_children_reply { children = child_infos });
   Ok ()
 
 let handle_count_children = fun state reply_to ->
   let children: child_state list = Cell.get state.children in
   let specs = List.length children in
-  let active =
-    List.fold_left children ~init:0
-      ~fn:(fun acc (child: child_state) ->
-        match child.pid with
-        | Some _ -> acc + 1
-        | None -> acc)
-  in
-  let supervisors =
-    List.fold_left children ~init:0
-      ~fn:(fun acc (child: child_state) ->
-        match child.spec.child_type with
-        | Supervisor -> acc + 1
-        | _ -> acc)
-  in
-  let workers =
-    List.fold_left children ~init:0
-      ~fn:(fun acc (child: child_state) ->
-        match child.spec.child_type with
-        | Worker -> acc + 1
-        | _ -> acc)
-  in
-  send reply_to (Supervisor_count_children_reply { count = { specs; active; supervisors; workers } });
+  let active = List.fold_left children ~init:0 ~fn:(
+    fun acc (child: child_state) ->
+      match child.pid with
+      | Some _ -> acc + 1
+      | None -> acc
+  ) in
+  let supervisors = List.fold_left children ~init:0 ~fn:(
+    fun acc (child: child_state) ->
+      match child.spec.child_type with
+      | Supervisor -> acc + 1
+      | _ -> acc
+  ) in
+  let workers = List.fold_left children ~init:0 ~fn:(
+    fun acc (child: child_state) ->
+      match child.spec.child_type with
+      | Worker -> acc + 1
+      | _ -> acc
+  ) in
+  send reply_to
+    (
+      Supervisor_count_children_reply {
+        count = {
+          specs;
+          active;
+          supervisors;
+          workers
+        }
+      }
+    );
   Ok ()
 
 let handle_delete_child = fun state reply_to id ->
   if state.strategy = SimpleOneForOne then
     (
-      send
-        reply_to
-        (Supervisor_delete_child_reply {
-          result = Error "Cannot delete child from SimpleOneForOne supervisor"
-        });
+      send reply_to (Supervisor_delete_child_reply { result = Error "Cannot delete child from SimpleOneForOne supervisor" });
       Ok ()
     )
   else
     (
       let children = Cell.get state.children in
-      let child_opt =
-        List.find children ~fn:(fun c -> c.spec.id = id)
-      in
+      let child_opt = List.find children ~fn:(
+        fun c -> c.spec.id = id
+      ) in
       match child_opt with
       | None ->
           send reply_to (Supervisor_delete_child_reply { result = Error ("Child not found: " ^ id) });
           Ok ()
       | Some child when Option.is_some child.pid ->
-          send
-            reply_to
-            (Supervisor_delete_child_reply { result = Error ("Child is still running: " ^ id) });
+          send reply_to (Supervisor_delete_child_reply { result = Error ("Child is still running: " ^ id) });
           Ok ()
       | Some _child ->
-          let updated =
-            List.filter children ~fn:(fun c -> c.spec.id != id)
-          in
+          let updated = List.filter children ~fn:(
+            fun c -> c.spec.id != id
+          ) in
           Cell.set state.children updated;
           send reply_to (Supervisor_delete_child_reply { result = Ok () });
           Ok ()
@@ -374,73 +328,55 @@ let handle_delete_child = fun state reply_to id ->
 let handle_restart_child = fun state reply_to id ->
   if state.strategy = SimpleOneForOne then
     (
-      send
-        reply_to
-        (Supervisor_restart_child_reply {
-          result = Error "Cannot restart child in SimpleOneForOne supervisor"
-        });
+      send reply_to (Supervisor_restart_child_reply { result = Error "Cannot restart child in SimpleOneForOne supervisor" });
       Ok ()
     )
   else
     (
       let children = Cell.get state.children in
-      let child_opt =
-        List.find children ~fn:(fun c -> c.spec.id = id)
-      in
+      let child_opt = List.find children ~fn:(
+        fun c -> c.spec.id = id
+      ) in
       match child_opt with
       | None ->
-          send
-            reply_to
-            (Supervisor_restart_child_reply { result = Error ("Child not found: " ^ id) });
+          send reply_to (Supervisor_restart_child_reply { result = Error ("Child not found: " ^ id) });
           Ok ()
       | Some child when Option.is_some child.pid ->
-          send
-            reply_to
-            (Supervisor_restart_child_reply { result = Error ("Child already running: " ^ id) });
+          send reply_to (Supervisor_restart_child_reply { result = Error ("Child already running: " ^ id) });
           Ok ()
       | Some child -> (
-          match start_child child.spec with
-          | Some (pid, monitor) ->
-              let updated =
-                List.map children
-                  ~fn:(fun (c: child_state) ->
-                    if c.spec.id = id then
-                      { c with pid = Some pid; monitor = Some monitor }
-                    else
-                      c)
-              in
-              Cell.set state.children updated;
-              send reply_to (Supervisor_restart_child_reply { result = Ok pid });
-              Ok ()
-          | None ->
-              send
-                reply_to
-                (Supervisor_restart_child_reply { result = Error ("Failed to start child: " ^ id) });
-              Ok ()
-        )
+        match start_child child.spec with
+        | Some (pid, monitor) ->
+            let updated = List.map children ~fn:(
+              fun (c: child_state) ->
+                if c.spec.id = id then
+                  { c with pid = Some pid; monitor = Some monitor }
+                else c
+            ) in
+            Cell.set state.children updated;
+            send reply_to (Supervisor_restart_child_reply { result = Ok pid });
+            Ok ()
+        | None ->
+            send reply_to (Supervisor_restart_child_reply { result = Error ("Failed to start child: " ^ id) });
+            Ok ()
+      )
     )
 
 let handle_terminate_child = fun state reply_to id ->
   if state.strategy = SimpleOneForOne then
     (
-      send
-        reply_to
-        (Supervisor_terminate_child_reply {
-          result = Error "Cannot terminate child in SimpleOneForOne supervisor"
-        });
+      send reply_to (Supervisor_terminate_child_reply { result = Error "Cannot terminate child in SimpleOneForOne supervisor" });
       Ok ()
     )
   else
     (
       let children = Cell.get state.children in
-      let child_opt =
-        List.find children ~fn:(fun c -> c.spec.id = id)
-      in
+      let child_opt = List.find children ~fn:(
+        fun c -> c.spec.id = id
+      ) in
       match child_opt with
       | None ->
-          send
-            reply_to
-            (Supervisor_terminate_child_reply { result = Error ("Child not found: " ^ id) });
+          send reply_to (Supervisor_terminate_child_reply { result = Error ("Child not found: " ^ id) });
           Ok ()
       | Some child ->
           terminate_child_process child;
@@ -449,14 +385,12 @@ let handle_terminate_child = fun state reply_to id ->
             | Some mon -> Actor.demonitor mon
             | None -> ()
           );
-          let updated =
-            List.map children
-              ~fn:(fun (c: child_state) ->
-                if c.spec.id = id then
-                  { c with pid = None; monitor = None }
-                else
-                  c)
-          in
+          let updated = List.map children ~fn:(
+            fun (c: child_state) ->
+              if c.spec.id = id then
+                { c with pid = None; monitor = None }
+              else c
+          ) in
           Cell.set state.children updated;
           send reply_to (Supervisor_terminate_child_reply { result = Ok () });
           Ok ()
@@ -470,7 +404,6 @@ let handle_stop = fun state reply_to ->
   Ok ()
 
 (** {1 Supervisor Loop} *)
-
 let rec loop = fun state ->
   let selector msg =
     match msg with
@@ -487,53 +420,49 @@ let rec loop = fun state ->
   | Actor.DOWN { pid; reason; _ } ->
       (* Find which child died *)
       let children: child_state list = Cell.get state.children in
-      let child_opt =
-        List.find children ~fn:(fun (c: child_state) -> c.pid = Some pid)
-      in
+      let child_opt = List.find children ~fn:(
+        fun (c: child_state) -> c.pid = Some pid
+      ) in
       (
         match child_opt with
         | Some child -> (
-            match handle_child_exit state child.spec.id reason with
-            | Ok () -> loop state
-            | Error exn -> Error exn
-          )
-        | None ->
-            (* UnkTime.Instant.nown child, ignore *)
-            loop state
+          match handle_child_exit state child.spec.id reason with
+          | Ok () -> loop state
+          | Error exn -> Error exn
+        )
+        | None -> (* UnkTime.Instant.nown child, ignore *)
+        loop state
       )
   | Supervisor_which_children { reply_to } -> (
-      match handle_which_children state reply_to with
-      | Ok () -> loop state
-      | Error exn -> Error exn
-    )
+    match handle_which_children state reply_to with
+    | Ok () -> loop state
+    | Error exn -> Error exn
+  )
   | Supervisor_count_children { reply_to } -> (
-      match handle_count_children state reply_to with
-      | Ok () -> loop state
-      | Error exn -> Error exn
-    )
+    match handle_count_children state reply_to with
+    | Ok () -> loop state
+    | Error exn -> Error exn
+  )
   | Supervisor_delete_child { reply_to; id } -> (
-      match handle_delete_child state reply_to id with
-      | Ok () -> loop state
-      | Error exn -> Error exn
-    )
+    match handle_delete_child state reply_to id with
+    | Ok () -> loop state
+    | Error exn -> Error exn
+  )
   | Supervisor_restart_child { reply_to; id } -> (
-      match handle_restart_child state reply_to id with
-      | Ok () -> loop state
-      | Error exn -> Error exn
-    )
+    match handle_restart_child state reply_to id with
+    | Ok () -> loop state
+    | Error exn -> Error exn
+  )
   | Supervisor_terminate_child { reply_to; id } -> (
-      match handle_terminate_child state reply_to id with
-      | Ok () -> loop state
-      | Error exn -> Error exn
-    )
-  | Supervisor_stop { reply_to } ->
-      handle_stop state reply_to
-  | _ ->
-      (* Should never happen since selector filters *)
-      loop state
+    match handle_terminate_child state reply_to id with
+    | Ok () -> loop state
+    | Error exn -> Error exn
+  )
+  | Supervisor_stop { reply_to } -> handle_stop state reply_to
+  | _ -> (* Should never happen since selector filters *)
+  loop state
 
 (** {1 Starting Supervisors} *)
-
 let init_supervisor = fun strategy intensity children () ->
   let intensity =
     match intensity with
@@ -541,24 +470,26 @@ let init_supervisor = fun strategy intensity children () ->
     | None -> { max_restarts = 3; window = Time.Duration.from_secs 5 }
   in
   (* Start all children *)
-  let child_states =
-    List.map children
-      ~fn:(fun spec ->
-        match start_child spec with
-        | Some (pid, monitor) -> { spec; pid = Some pid; monitor = Some monitor }
-        | None -> { spec; pid = None; monitor = None })
+  let child_states = List.map children ~fn:(
+    fun spec ->
+      match start_child spec with
+      | Some (pid, monitor) -> { spec; pid = Some pid; monitor = Some monitor }
+      | None -> { spec; pid = None; monitor = None }
+  ) in
+  let state = {
+    strategy;
+    intensity;
+    children = cell child_states;
+    restarts = cell []
+  }
   in
-  let state = { strategy; intensity; children = cell child_states; restarts = cell [] } in
   loop state
 
-let start_link = fun ~strategy ?intensity ~children () ->
-  spawn (init_supervisor strategy intensity children)
+let start_link = fun ~strategy ?intensity ~children () -> spawn (init_supervisor strategy intensity children)
 
-let start = fun ~strategy ?intensity ~children () ->
-  spawn (init_supervisor strategy intensity children)
+let start = fun ~strategy ?intensity ~children () -> spawn (init_supervisor strategy intensity children)
 
 (** {1 Child Management} *)
-
 let which_children = fun supervisor ->
   send supervisor (Supervisor_which_children { reply_to = self () });
   let selector msg =
@@ -605,7 +536,6 @@ let terminate_child = fun supervisor ~id ->
   receive ~selector ()
 
 (** {1 Stopping Supervisors} *)
-
 let stop = fun supervisor ->
   send supervisor (Supervisor_stop { reply_to = self () });
   let selector msg =
@@ -616,7 +546,6 @@ let stop = fun supervisor ->
   receive ~selector ()
 
 (** {1 Dynamic Supervision} *)
-
 module Dynamic = struct
   type t = Pid.t
 
@@ -638,11 +567,11 @@ module Dynamic = struct
 
   type Message.t +=
     | Dynamic_start_child of {
-        reply_to: Pid.t;
-        start: unit -> Pid.t;
-        restart: restart;
-        shutdown: shutdown
-      }
+      reply_to: Pid.t;
+      start: unit -> Pid.t;
+      restart: restart;
+      shutdown: shutdown;
+    }
     | Dynamic_start_child_reply of { result: (Pid.t, string) result }
     | Dynamic_terminate_child of { reply_to: Pid.t; pid: Pid.t }
     | Dynamic_terminate_child_reply of { result: (unit, string) result }
@@ -663,96 +592,101 @@ module Dynamic = struct
     in
     match receive ~selector () with
     | Actor.DOWN { pid; reason; _ } -> (
-        match HashMap.get state.children ~key:pid with
-        | None -> dynamic_loop state
-        | Some child ->
-            let _ = HashMap.remove state.children ~key:pid in
-            if should_restart
-                {
-                  id = "";
-                  start = (fun () -> pid);
-                  restart = child.restart;
-                  shutdown = child.shutdown;
-                  child_type = Worker;
-                  significant = false;
-                }
-                reason then
-              (
-                (* Add restart record *)
-                let timestamp = Time.Instant.now () in
-                let restarts = Cell.get state.restarts in
-                Cell.set state.restarts ((timestamp, pid) :: restarts);
-                (* Check intensity *)
-                let current_time = Time.Instant.now () in
-                let cutoff = Time.Instant.sub current_time state.intensity.window in
-                let recent =
-                  List.filter (Cell.get state.restarts)
-                    ~fn:(fun ((ts, _)) ->
-                      match Time.Instant.compare ts cutoff with
-                      | Order.LT -> false
-                      | Order.EQ
-                      | Order.GT -> true)
-                in
-                Cell.set state.restarts recent;
-                if List.length recent > state.intensity.max_restarts then
-                  Error (Failure "Max restart intensity reached")
-                else
-                  dynamic_loop state
-              )
-            else
-              dynamic_loop state
-      )
+      match HashMap.get state.children ~key:pid with
+      | None -> dynamic_loop state
+      | Some child ->
+          let _ = HashMap.remove state.children ~key:pid in
+          if should_restart
+            {
+              id = "";
+              start = (
+                fun () -> pid
+              );
+              restart = child.restart;
+              shutdown = child.shutdown;
+              child_type = Worker;
+              significant = false
+            }
+            reason then
+            (
+              (* Add restart record *)
+              let timestamp = Time.Instant.now () in
+              let restarts = Cell.get state.restarts in
+              Cell.set state.restarts ((timestamp, pid) :: restarts);
+              (* Check intensity *)
+              let current_time = Time.Instant.now () in
+              let cutoff = Time.Instant.sub current_time state.intensity.window in
+              let recent = List.filter (Cell.get state.restarts) ~fn:(
+                fun ((ts, _)) ->
+                  match Time.Instant.compare ts cutoff with
+                  | Order.LT -> false
+                  | Order.EQ | Order.GT -> true
+              ) in
+              Cell.set state.restarts recent;
+              if List.length recent > state.intensity.max_restarts then
+                Error (Failure "Max restart intensity reached")
+              else dynamic_loop state
+            )
+          else dynamic_loop state
+    )
     | Dynamic_start_child { reply_to; start; restart; shutdown } -> (
-        match state.max_children with
-        | Some max when HashMap.length state.children >= max ->
-            send reply_to (Dynamic_start_child_reply { result = Error "max_children_reached" });
+      match state.max_children with
+      | Some max when HashMap.length state.children >= max ->
+          send reply_to (Dynamic_start_child_reply { result = Error "max_children_reached" });
+          dynamic_loop state
+      | _ -> (
+        try
+          let pid = start () in
+          let monitor = Actor.monitor pid in
+          let _ = HashMap.insert state.children ~key:pid ~value:{
+            pid;
+            monitor;
+            restart;
+            shutdown
+          } in
+          send reply_to (Dynamic_start_child_reply { result = Ok pid });
+          dynamic_loop state
+        with
+        | exn ->
+            send reply_to (Dynamic_start_child_reply { result = Error (Kernel.Exception.to_string exn) });
             dynamic_loop state
-        | _ -> (
-            try
-              let pid = start () in
-              let monitor = Actor.monitor pid in
-              let _ = HashMap.insert
-                state.children
-                ~key:pid
-                ~value:{ pid; monitor; restart; shutdown } in
-              send reply_to (Dynamic_start_child_reply { result = Ok pid });
-              dynamic_loop state
-            with
-            | exn ->
-                send
-                  reply_to
-                  (Dynamic_start_child_reply { result = Error (Kernel.Exception.to_string exn) });
-                dynamic_loop state
-          )
       )
+    )
     | Dynamic_terminate_child { reply_to; pid } -> (
-        match HashMap.get state.children ~key:pid with
-        | None ->
-            send reply_to (Dynamic_terminate_child_reply { result = Error "not_found" });
-            dynamic_loop state
-        | Some child ->
-            Actor.demonitor child.monitor;
-            let _ = HashMap.remove state.children ~key:pid in
-            (* TODO: Actually terminate the child based on shutdown spec *)
-            send pid (Actor.EXIT { from = self (); reason = Error (Failure "shutdown") });
-            send reply_to (Dynamic_terminate_child_reply { result = Ok () });
-            dynamic_loop state
-      )
+      match HashMap.get state.children ~key:pid with
+      | None ->
+          send reply_to (Dynamic_terminate_child_reply { result = Error "not_found" });
+          dynamic_loop state
+      | Some child ->
+          Actor.demonitor child.monitor;
+          let _ = HashMap.remove state.children ~key:pid in
+          (* TODO: Actually terminate the child based on shutdown spec *)
+          send pid (Actor.EXIT { from = self (); reason = Error (Failure "shutdown") });
+          send reply_to (Dynamic_terminate_child_reply { result = Ok () });
+          dynamic_loop state
+    )
     | Dynamic_which_children { reply_to } ->
-        let pids = HashMap.to_list state.children |> List.map ~fn:(fun (pid, _) -> pid) in
+        let pids = HashMap.to_list state.children |> List.map ~fn:(
+          fun (pid, _) -> pid
+        ) in
         send reply_to (Dynamic_which_children_reply { children = pids });
         dynamic_loop state
     | Dynamic_count_children { reply_to } ->
         let total = HashMap.length state.children in
-        send
-          reply_to
-          (Dynamic_count_children_reply {
-            count = { specs = total; active = total; supervisors = 0; workers = total }
-          });
+        send reply_to
+          (
+            Dynamic_count_children_reply {
+              count = {
+                specs = total;
+                active = total;
+                supervisors = 0;
+                workers = total
+              }
+            }
+          );
         dynamic_loop state
-    | _ ->
-        (* Should never happen since selector filters *)
-        dynamic_loop state
+    | _ -> (* Should never happen since selector filters *)
+    dynamic_loop state
 
   let init_dynamic = fun intensity max_children () ->
     let intensity =
@@ -765,16 +699,24 @@ module Dynamic = struct
       max_children;
       children = HashMap.with_capacity ~size:16;
       restarts = cell []
-    } in
+    }
+    in
     dynamic_loop state
 
   let start_link = fun ?intensity ?max_children () -> spawn (init_dynamic intensity max_children)
 
   let start = fun ?intensity ?max_children () -> spawn (init_dynamic intensity max_children)
 
-  let start_child = fun supervisor ~start ?(restart = Permanent) ?(shutdown = Timeout (Time.Duration.from_secs
-    5)) () ->
-    send supervisor (Dynamic_start_child { reply_to = self (); start; restart; shutdown });
+  let start_child = fun supervisor ~start ?(restart = Permanent) ?(shutdown = Timeout (Time.Duration.from_secs 5)) () ->
+    send supervisor
+      (
+        Dynamic_start_child {
+          reply_to = self ();
+          start;
+          restart;
+          shutdown
+        }
+      );
     let selector msg =
       match msg with
       | Dynamic_start_child_reply { result } -> `select result

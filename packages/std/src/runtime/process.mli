@@ -3,12 +3,15 @@ open Kernel
 
 (** The reason a process exited. *)
 type exit_reason = exn
+
 (** Opaque reference to a monitor registration. *)
 type monitor_ref
+
 (** Process flags. *)
 type flag =
   | TrapExit of bool
-module Messages: sig
+
+module Messages : sig
   type Message.t +=
     | EXIT of { from: Pid.t; reason: (unit, exit_reason) result }
     | DOWN of { ref: monitor_ref; pid: Pid.t; reason: (unit, exit_reason) result }
@@ -23,8 +26,10 @@ type state =
   | Running
   | Exited of (unit, exit_reason) result
   | Finalized
+
 (** Opaque process handle. *)
 type t
+
 (** Result of spending one cooperative scheduling reduction. *)
 type reduction_result =
   | Continue
@@ -39,8 +44,10 @@ val init: t -> unit
 (** Reset the process-local reduction budget to a new positive value. *)
 val reset_reductions: t -> int -> unit
 
-(** Spend one process-local reduction and report whether the process should
-    perform a scheduler yield. *)
+(**
+   Spend one process-local reduction and report whether the process should
+   perform a scheduler yield. 
+*)
 val use_reduction: t -> reduction_result
 
 (** Return the process identifier. *)
@@ -169,12 +176,16 @@ val clear_syscall_timeout: t -> unit
 (** Return the current syscall timeout timer identifier, if any. *)
 val syscall_timeout: t -> Timer_id.t option
 
-(** Return `true` if the current receive-timeout registration matches the timer
-    identifier. *)
+(**
+   Return `true` if the current receive-timeout registration matches the timer
+   identifier. 
+*)
 val has_receive_timeout_id: t -> Timer_id.t -> bool
 
-(** Return `true` if the current syscall-timeout registration matches the timer
-    identifier. *)
+(**
+   Return `true` if the current syscall-timeout registration matches the timer
+   identifier. 
+*)
 val has_syscall_timeout_id: t -> Timer_id.t -> bool
 
 (** Mark the current receive timeout as fired. *)

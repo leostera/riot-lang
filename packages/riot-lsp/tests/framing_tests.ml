@@ -1,8 +1,7 @@
 open Std
 
 let parse_roundtrip = fun payload ->
-  let encoded = Riot_lsp.Framing.encode payload in
-  Riot_lsp.Framing.decode_one encoded
+  let encoded = Riot_lsp.Framing.encode payload in Riot_lsp.Framing.decode_one encoded
 
 let test_encode_and_decode_roundtrip = fun _ctx ->
   let payload = "{\"jsonrpc\":\"2.0\",\"method\":\"initialized\"}" in
@@ -11,10 +10,10 @@ let test_encode_and_decode_roundtrip = fun _ctx ->
   | Ok (decoded, rest) ->
       if not (String.equal decoded payload) then
         Error "decoded payload did not match original"
-      else if not (String.equal rest "") then
-        Error "expected no trailing data after decode"
       else
-        Ok ()
+        if not (String.equal rest "") then
+          Error "expected no trailing data after decode"
+        else Ok ()
 
 let test_decode_handles_lf_headers = fun _ctx ->
   let payload = "{\"hello\":\"world\"}" in
@@ -24,10 +23,10 @@ let test_decode_handles_lf_headers = fun _ctx ->
   | Ok (decoded, rest) ->
       if not (String.equal decoded payload) then
         Error "decoded LF payload did not match original"
-      else if not (String.equal rest "") then
-        Error "expected no trailing LF payload data"
       else
-        Ok ()
+        if not (String.equal rest "") then
+          Error "expected no trailing LF payload data"
+        else Ok ()
 
 let test_decode_requires_content_length = fun _ctx ->
   match Riot_lsp.Framing.decode_one "Content-Type: application/vscode-jsonrpc; charset=utf-8\r\n\r\n{}" with
@@ -49,20 +48,16 @@ let test_decode_returns_unconsumed_tail = fun _ctx ->
         | Ok (decoded_second, final_rest) ->
             if not (String.equal decoded_second second) then
               Error "decoded second payload did not match"
-            else if not (String.equal final_rest "") then
-              Error "expected no trailing bytes after second payload"
             else
-              Ok ()
+              if not (String.equal final_rest "") then
+                Error "expected no trailing bytes after second payload"
+              else Ok ()
 
-let main ~args = Test.Cli.main
-  ~name:"riot-lsp framing tests"
-  ~tests:[
-    Test.case "encode and decode roundtrip" test_encode_and_decode_roundtrip;
-    Test.case "decode handles LF headers" test_decode_handles_lf_headers;
-    Test.case "decode requires Content-Length" test_decode_requires_content_length;
-    Test.case "decode returns unconsumed tail" test_decode_returns_unconsumed_tail;
-  ]
-  ~args
-  ()
+let main ~args = Test.Cli.main ~name:"riot-lsp framing tests" ~tests:[
+  Test.case "encode and decode roundtrip" test_encode_and_decode_roundtrip;
+  Test.case "decode handles LF headers" test_decode_handles_lf_headers;
+  Test.case "decode requires Content-Length" test_decode_requires_content_length;
+  Test.case "decode returns unconsumed tail" test_decode_returns_unconsumed_tail;
+] ~args ()
 
 let () = Runtime.run ~main ~args:Env.args ()

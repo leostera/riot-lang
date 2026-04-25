@@ -14,6 +14,7 @@ type read_error =
   | Source_error of IO.error
   (** The upstream compressed source reader failed. *)
   | Gzip_error of error
+
 (** The gzip payload was malformed or incomplete. *)
 (** Errors returned by streaming compression or decompression into a writer. *)
 type stream_error =
@@ -22,6 +23,7 @@ type stream_error =
   | Stream_destination_error of IO.error
   (** The destination writer failed. *)
   | Stream_gzip_error of error
+
 (** The gzip engine rejected the payload or output stream. *)
 (** Errors returned by file-based compression helpers. *)
 type file_error =
@@ -30,131 +32,137 @@ type file_error =
   | File_gzip_error of error
 
 (** The gzip engine rejected the payload or output stream. *)
+(**
+   Wrap a compressed reader as a decompressed reader.
 
-(** Wrap a compressed reader as a decompressed reader.
+   The returned reader incrementally inflates gzip data as it is consumed.
+   This is the most composable entry point and is intended to layer naturally
+   with other streaming APIs such as [`Std.Archive.Tar.entries`] or
+   [`Std.Archive.Tar.extract`].
 
-    The returned reader incrementally inflates gzip data as it is consumed.
-    This is the most composable entry point and is intended to layer naturally
-    with other streaming APIs such as [`Std.Archive.Tar.entries`] or
-    [`Std.Archive.Tar.extract`].
+   ## Example
 
-    ## Example
+   ```ocaml
+   open Std
 
-    ```ocaml
-    open Std
-
-    let extract_tar_gz archive_path output_dir =
-      match Fs.File.open_read archive_path with
-      | Error _ -> Error "failed to open archive"
-      | Ok file ->
-          Kernel.Fun.protect
-            ~finally:(fun () -> ignore (Fs.File.close file))
-            (fun () ->
-              let gz_reader = Compress.Gzip.to_reader (Fs.File.to_reader file) in
-              Archive.Tar.extract gz_reader ~into:output_dir
-              |> Result.map_err (fun _ -> "failed to extract tar.gz"))
-    ```
+   let extract_tar_gz archive_path output_dir =
+     match Fs.File.open_read archive_path with
+     | Error _ -> Error "failed to open archive"
+     | Ok file ->
+         Kernel.Fun.protect
+           ~finally:(fun () -> ignore (Fs.File.close file))
+           (fun () ->
+             let gz_reader = Compress.Gzip.to_reader (Fs.File.to_reader file) in
+             Archive.Tar.extract gz_reader ~into:output_dir
+             |> Result.map_err (fun _ -> "failed to extract tar.gz"))
+   ```
 *)
 val to_reader: IO.Reader.t -> IO.Reader.t
 
-(** Stream-compress data from a reader into a gzip writer.
+(**
+   Stream-compress data from a reader into a gzip writer.
 
-    This function reads uncompressed bytes from the source reader, emits gzip
-    bytes into the destination writer, and flushes the destination writer when
-    compression completes.
+   This function reads uncompressed bytes from the source reader, emits gzip
+   bytes into the destination writer, and flushes the destination writer when
+   compression completes.
 
-    ## Example
+   ## Example
 
-    ```ocaml
-    open Std
+   ```ocaml
+   open Std
 
-    let gzip src dst =
-      match Compress.Gzip.compress src dst with
-      | Ok () -> Log.info "stream compressed"
-      | Error _ -> Log.error "gzip compression failed"
-    ```
+   let gzip src dst =
+     match Compress.Gzip.compress src dst with
+     | Ok () -> Log.info "stream compressed"
+     | Error _ -> Log.error "gzip compression failed"
+   ```
 *)
 val compress: IO.Reader.t -> IO.Writer.t -> (unit, stream_error) result
 
-(** Stream-decompress gzip data from a reader into a writer.
+(**
+   Stream-decompress gzip data from a reader into a writer.
 
-    This function processes input incrementally and flushes the destination
-    writer when decompression completes.
+   This function processes input incrementally and flushes the destination
+   writer when decompression completes.
 
-    ## Example
+   ## Example
 
-    ```ocaml
-    open Std
+   ```ocaml
+   open Std
 
-    let gunzip src dst =
-      match Compress.Gzip.decompress src dst with
-      | Ok () -> Log.info "stream decompressed"
-      | Error _ -> Log.error "gzip decompression failed"
-    ```
+   let gunzip src dst =
+     match Compress.Gzip.decompress src dst with
+     | Ok () -> Log.info "stream decompressed"
+     | Error _ -> Log.error "gzip decompression failed"
+   ```
 *)
 val decompress: IO.Reader.t -> IO.Writer.t -> (unit, stream_error) result
 
-(** Compress a file into gzip format.
+(**
+   Compress a file into gzip format.
 
-    ## Example
+   ## Example
 
-    ```ocaml
-    open Std
+   ```ocaml
+   open Std
 
-    let () =
-      match Compress.Gzip.compress_file ~src:(Path.v "payload.txt") ~dst:(Path.v "payload.txt.gz") with
-      | Ok () -> Log.info "file compressed"
-      | Error _ -> Log.error "file compression failed"
-    ```
+   let () =
+     match Compress.Gzip.compress_file ~src:(Path.v "payload.txt") ~dst:(Path.v "payload.txt.gz") with
+     | Ok () -> Log.info "file compressed"
+     | Error _ -> Log.error "file compression failed"
+   ```
 *)
 val compress_file: src:Path.t -> dst:Path.t -> (unit, file_error) result
 
-(** Decompress a gzip-compressed file into another file.
+(**
+   Decompress a gzip-compressed file into another file.
 
-    ## Example
+   ## Example
 
-    ```ocaml
-    open Std
+   ```ocaml
+   open Std
 
-    let () =
-      match Compress.Gzip.decompress_file ~src:(Path.v "payload.txt.gz") ~dst:(Path.v "payload.txt") with
-      | Ok () -> Log.info "file decompressed"
-      | Error _ -> Log.error "file decompression failed"
-    ```
+   let () =
+     match Compress.Gzip.decompress_file ~src:(Path.v "payload.txt.gz") ~dst:(Path.v "payload.txt") with
+     | Ok () -> Log.info "file decompressed"
+     | Error _ -> Log.error "file decompression failed"
+   ```
 *)
 val decompress_file: src:Path.t -> dst:Path.t -> (unit, file_error) result
 
-(** Compress a string entirely in memory.
+(**
+   Compress a string entirely in memory.
 
-    This is a convenience helper for tests, fixtures, and small payloads. Use
-    [`compress`] for large or streaming inputs.
+   This is a convenience helper for tests, fixtures, and small payloads. Use
+   [`compress`] for large or streaming inputs.
 
-    ## Example
+   ## Example
 
-    ```ocaml
-    open Std
+   ```ocaml
+   open Std
 
-    match Compress.Gzip.compress_string "hello\n" with
-    | Ok payload -> Log.info "encoded %d bytes" (String.length payload)
-    | Error _ -> Log.error "failed to encode gzip payload"
-    ```
+   match Compress.Gzip.compress_string "hello\n" with
+   | Ok payload -> Log.info "encoded %d bytes" (String.length payload)
+   | Error _ -> Log.error "failed to encode gzip payload"
+   ```
 *)
 val compress_string: string -> (string, error) result
 
-(** Decompress a gzip-compressed string entirely in memory.
+(**
+   Decompress a gzip-compressed string entirely in memory.
 
-    This is a convenience helper for tests, fixtures, and small payloads. Use
-    [`to_reader`] or [`decompress`] for large or streaming inputs.
+   This is a convenience helper for tests, fixtures, and small payloads. Use
+   [`to_reader`] or [`decompress`] for large or streaming inputs.
 
-    ## Example
+   ## Example
 
-    ```ocaml
-    open Std
+   ```ocaml
+   open Std
 
-    let payload = "\x1f\x8b..." in
-    match Compress.Gzip.decompress_string payload with
-    | Ok text -> Log.info "decoded: %s" text
-    | Error _ -> Log.error "invalid gzip payload"
-    ```
+   let payload = "\x1f\x8b..." in
+   match Compress.Gzip.decompress_string payload with
+   | Ok text -> Log.info "decoded: %s" text
+   | Error _ -> Log.error "invalid gzip payload"
+   ```
 *)
 val decompress_string: string -> (string, error) result

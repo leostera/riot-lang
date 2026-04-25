@@ -17,8 +17,11 @@ module Trace = Trace
 module Report = Report
 
 type version = Version.t
+
 type 'v ranges = 'v Ranges.t
+
 type package = string
+
 val version_of_string: string -> (version, Version.parse_error) result
 
 val version_to_string: version -> string
@@ -55,20 +58,8 @@ val to_provider: Provider.offline -> string Provider.t
 
 val default_options: Solver.options
 
-val solve_with_stats:
-  ?trace_ctx:Trace.t ->
-  ?options:Solver.options ->
-  string Provider.t ->
-  package ->
-  version ->
-  Solver.outcome
+val solve_with_stats: ?trace_ctx:Trace.t -> ?options:Solver.options -> string Provider.t -> package -> version -> Solver.outcome
 
-val solve:
-  ?trace_ctx:Trace.t ->
-  ?options:Solver.options ->
-  string Provider.t ->
-  package ->
-  version ->
-  (Solver.solve_result, string) result
+val solve: ?trace_ctx:Trace.t -> ?options:Solver.options -> string Provider.t -> package -> version -> (Solver.solve_result, string) result
 
 val explain_conflict: Incompatibility.t -> string

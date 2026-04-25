@@ -1,32 +1,28 @@
 open Std
 open Std.Collections
 
-(** Vector-backed lossless syntax tree.
+(**
+   Vector-backed lossless syntax tree.
 
-    The tree stores nodes, significant token leaves, and child edges in separate
-    vectors. Child arrays intentionally omit trivia. Each token leaf records the
-    raw token range that belongs to that source position, so leading whitespace,
-    comments, and docstrings remain recoverable without allocating trivia nodes.
+   The tree stores nodes, significant token leaves, and child edges in separate
+   vectors. Child arrays intentionally omit trivia. Each token leaf records the
+   raw token range that belongs to that source position, so leading whitespace,
+   comments, and docstrings remain recoverable without allocating trivia nodes.
 *)
+(**
+   Significant token leaf in the tree.
 
-(** Significant token leaf in the tree.
+   `raw_lo`/`raw_hi` are an exclusive range into `t.raw_tokens` and include
+   leading trivia before the body token. `body_raw` points at the significant
+   raw token that decides this leaf's syntax kind. 
+*)
+type token_leaf = { kind: Syntax_kind.t; raw_lo: int; raw_hi: int; body_raw: int }
 
-    `raw_lo`/`raw_hi` are an exclusive range into `t.raw_tokens` and include
-    leading trivia before the body token. `body_raw` points at the significant
-    raw token that decides this leaf's syntax kind. *)
-type token_leaf = {
-  kind: Syntax_kind.t;
-  raw_lo: int;
-  raw_hi: int;
-  body_raw: int;
-}
-
-(** Parser-inserted placeholder for a token that was required by the grammar but
-    absent from the source. *)
-type missing = {
-  kind: Syntax_kind.t;
-  offset: int;
-}
+(**
+   Parser-inserted placeholder for a token that was required by the grammar but
+   absent from the source. 
+*)
+type missing = { kind: Syntax_kind.t; offset: int }
 
 (** Child edge stored in a node's contiguous child range. *)
 type child =
@@ -34,11 +30,13 @@ type child =
   | Token of int
   | Missing of missing
 
-(** Syntax node metadata.
+(**
+   Syntax node metadata.
 
-    `raw_lo`/`raw_hi` cover raw tokens, including trivia owned by descendant
-    token leaves. `full_width` is the byte width of that raw range, while
-    `token_width` counts only significant token text. *)
+   `raw_lo`/`raw_hi` cover raw tokens, including trivia owned by descendant
+   token leaves. `full_width` is the byte width of that raw range, while
+   `token_width` counts only significant token text. 
+*)
 type node = {
   kind: Syntax_kind.t;
   first_child: int;
@@ -59,25 +57,26 @@ type t = {
   children: child Vector.t;
   root: int;
 }
+
 type tree = t
 
-(** Streaming tree builder used by the parser.
+(**
+   Streaming tree builder used by the parser.
 
-    The builder supports `precede`, checkpoints, and restore so recursive parser
-    functions can reshape already-emitted children without allocating an
-    intermediate concrete event list. *)
-module Builder: sig
+   The builder supports `precede`, checkpoints, and restore so recursive parser
+   functions can reshape already-emitted children without allocating an
+   intermediate concrete event list. 
+*)
+module Builder : sig
   type t
+
   type marker
+
   type completed
+
   type checkpoint
-  val create:
-    source:IO.IoVec.IoSlice.t ->
-    token_stream:Raw_token.stream ->
-    ?event_capacity:int ->
-    ?diagnostic_capacity:int ->
-    unit ->
-    t
+
+  val create: source:IO.IoVec.IoSlice.t -> token_stream:Raw_token.stream -> ?event_capacity:int -> ?diagnostic_capacity:int -> unit -> t
 
   val start_node: t -> marker
 
@@ -102,10 +101,12 @@ module Builder: sig
   val finish: t -> tree
 end
 
-(** Build a tree from an explicit event buffer.
+(**
+   Build a tree from an explicit event buffer.
 
-    This is retained for event-buffer based tests/tools. The main parser writes
-    directly into `Builder`. *)
+   This is retained for event-buffer based tests/tools. The main parser writes
+   directly into `Builder`. 
+*)
 val build: source:IO.IoVec.IoSlice.t -> token_stream:Raw_token.stream -> events:Event.Buffer.t -> t
 
 val root: t -> node

@@ -29,8 +29,7 @@ let shift_right_logical = Caml_runtime.shift_right_logical_int64
 let abs = fun value ->
   match Order.compare value 0L with
   | Order.LT -> Caml_runtime.int64_neg value
-  | Order.EQ
-  | Order.GT -> value
+  | Order.EQ | Order.GT -> value
 
 let neg = Caml_runtime.int64_neg
 

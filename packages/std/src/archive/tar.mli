@@ -11,6 +11,7 @@ type entry_kind =
   | Hardlink
   (** Hard link entry. *)
   | Other of string
+
 (** Any other tar typeflag not modeled explicitly. *)
 (** Metadata for a single tar archive entry. *)
 type entry = {
@@ -25,6 +26,7 @@ type entry = {
   (** Link target for link entries, when present. *)
   link_target: Path.t option;
 }
+
 (** Tar-level failures surfaced by the high-level API. *)
 type error =
   | Engine_error of Tar_engine.error
@@ -45,6 +47,7 @@ type read_error =
   | Entries_source_error of IO.error
   (** The upstream reader failed while feeding tar data. *)
   | Entries_error of error
+
 (** The tar archive itself was invalid or unsafe. *)
 (** Errors raised while extracting archive contents. *)
 type extract_error =
@@ -55,78 +58,82 @@ type extract_error =
   | Extract_error of error
 
 (** The archive itself was invalid or contained unsafe entries. *)
+(**
+   List entries from a tar archive.
 
-(** List entries from a tar archive.
+   This consumes the entire archive from the provided reader and returns the
+   entry metadata in archive order.
 
-    This consumes the entire archive from the provided reader and returns the
-    entry metadata in archive order.
+   ## Example
 
-    ## Example
+   ```ocaml
+   open Std
 
-    ```ocaml
-    open Std
-
-    let list_archive path =
-      match Fs.File.open_read path with
-      | Error _ -> Error "failed to open archive"
-      | Ok file ->
-              Global.protect
-            ~finally:(fun () -> ignore (Fs.File.close file))
-            (fun () ->
-              match Archive.Tar.entries (Fs.File.to_reader file) with
-              | Ok entries ->
-                  List.iter
-                    (fun (entry : Archive.Tar.entry) ->
-                      Log.info "entry: %s" (Path.to_string entry.path))
-                    entries;
-                  Ok ()
-              | Error _ -> Error "failed to decode tar archive")
-    ```
+   let list_archive path =
+     match Fs.File.open_read path with
+     | Error _ -> Error "failed to open archive"
+     | Ok file ->
+             Global.protect
+           ~finally:(fun () -> ignore (Fs.File.close file))
+           (fun () ->
+             match Archive.Tar.entries (Fs.File.to_reader file) with
+             | Ok entries ->
+                 List.iter
+                   (fun (entry : Archive.Tar.entry) ->
+                     Log.info "entry: %s" (Path.to_string entry.path))
+                   entries;
+                 Ok ()
+             | Error _ -> Error "failed to decode tar archive")
+   ```
 *)
 val entries: IO.Reader.t -> (entry list, read_error) result
 
-(** Extract a tar archive into a directory.
+(**
+   Extract a tar archive into a directory.
 
-    Extraction is conservative by default:
+   Extraction is conservative by default:
 
-    - absolute paths are rejected
-    - path traversal through [`..`] is rejected
-    - duplicate normalized target paths are rejected
-    - symlinks and hardlinks are rejected in v1
+   - absolute paths are rejected
+   - path traversal through [`..`] is rejected
+   - duplicate normalized target paths are rejected
+   - symlinks and hardlinks are rejected in v1
 
-    Only regular files and directories are materialized on disk.
+   Only regular files and directories are materialized on disk.
 
-    ## Example
+   ## Example
 
-    ```ocaml
-    open Std
+   ```ocaml
+   open Std
 
-    let extract_archive src into =
-      match Archive.Tar.extract src ~into with
-      | Ok () -> Log.info "archive extracted into %s" (Path.to_string into)
-      | Error _ -> Log.error "failed to extract archive"
-    ```
+   let extract_archive src into =
+     match Archive.Tar.extract src ~into with
+     | Ok () -> Log.info "archive extracted into %s" (Path.to_string into)
+     | Error _ -> Log.error "failed to extract archive"
+   ```
 *)
 val extract: IO.Reader.t -> into:Path.t -> (unit, extract_error) result
 
-(** Open a tar archive from disk and list its entries.
+(**
+   Open a tar archive from disk and list its entries.
 
-    This is a convenience wrapper around [`entries`] for filesystem paths. *)
+   This is a convenience wrapper around [`entries`] for filesystem paths. 
+*)
 val entries_file: Path.t -> (entry list, read_error) result
 
-(** Open a tar archive from disk and extract it into a directory.
+(**
+   Open a tar archive from disk and extract it into a directory.
 
-    This is a convenience wrapper around [`extract`] for filesystem paths.
+   This is a convenience wrapper around [`extract`] for filesystem paths.
 
-    ## Example
+   ## Example
 
-    ```ocaml
-    open Std
+   ```ocaml
+   open Std
 
-    let () =
-      match Archive.Tar.extract_file ~archive:(Path.v "package.tar") ~into:(Path.v "./out") with
-      | Ok () -> Log.info "archive extracted"
-      | Error _ -> Log.error "archive extraction failed"
-    ```
+   let () =
+     match Archive.Tar.extract_file ~archive:(Path.v "package.tar") ~into:(Path.v "./out") with
+     | Ok () -> Log.info "archive extracted"
+     | Error _ -> Log.error "archive extraction failed"
+   ```
 *)
 val extract_file: archive:Path.t -> into:Path.t -> (unit, extract_error) result

@@ -18,7 +18,13 @@ let test_value_conversions = fun () ->
 
 let test_row_access = fun () ->
   Log.info "Testing row access...";
-  let row = [ ("id", Value.int 1); ("name", Value.string "Alice"); ("active", Value.bool true); ] in
+  let row =
+    [
+      "id", Value.int 1;
+      "name", Value.string "Alice";
+      "active", Value.bool true;
+    ]
+  in
   assert (Row.get "id" row = Some (Value.int 1));
   assert (Row.int "id" row = Some 1);
   assert (Row.string "name" row = Some "Alice");

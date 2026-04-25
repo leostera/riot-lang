@@ -11,13 +11,11 @@ let rec run_pipeline = fun t conn ->
       let next conn' =
         if Conn.halted conn' || Conn.sent conn' then
           conn'
-        else
-          run_pipeline rest conn'
+        else run_pipeline rest conn'
       in
       middleware ~conn ~next
 
 let run = fun conn t ->
   if Conn.halted conn then
     conn
-  else
-    run_pipeline t conn
+  else run_pipeline t conn

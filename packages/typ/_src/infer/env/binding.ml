@@ -30,19 +30,16 @@ let make = fun ~id ~surface_path ~scheme ~provenance ->
     name = path_name surface_path;
     path = EntityId.resolved ~binding_id:id ~surface_path;
     scheme;
-    provenance;
+    provenance
   }
 
-let with_path = fun path binding ->
-  { binding with name = path_name (EntityId.surface_path path); path }
+let with_path = fun path binding -> { binding with name = path_name (EntityId.surface_path path); path }
 
 let id = fun binding -> binding.id
 
-let same = fun left right ->
-  BindingId.equal left.id right.id
+let same = fun left right -> BindingId.equal left.id right.id
 
-let compare = fun left right ->
-  BindingId.compare left.id right.id
+let compare = fun left right -> BindingId.compare left.id right.id
 
 let name = fun binding -> binding.name
 
@@ -54,8 +51,7 @@ let scheme = fun binding -> binding.scheme
 
 let provenance = fun binding -> binding.provenance
 
-let with_surface_path = fun surface_path binding ->
-  with_path (EntityId.resolved ~binding_id:binding.id ~surface_path) binding
+let with_surface_path = fun surface_path binding -> with_path (EntityId.resolved ~binding_id:binding.id ~surface_path) binding
 
 let with_scheme = fun scheme binding -> { binding with scheme }
 

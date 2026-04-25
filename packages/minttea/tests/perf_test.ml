@@ -6,7 +6,6 @@ open Minttea
    - Scene diff comparison
    - Only rendering when scenes change
 *)
-
 let test_scene_diff_optimization = fun () ->
   (* This would need to be run in a TTY environment *)
   println "Scene diff optimization test would verify:";

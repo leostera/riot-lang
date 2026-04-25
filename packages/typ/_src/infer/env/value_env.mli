@@ -3,6 +3,7 @@ open Analysis
 open Model
 
 type t
+
 val empty: t
 
 val of_bindings: Binding.t list -> t
@@ -11,15 +12,9 @@ val find_same: t -> BindingId.t -> Binding.t option
 
 val local_only: t -> t
 
-val of_entries:
-  make_id:(SurfacePath.t -> BindingId.t) -> provenance:Binding.provenance -> TypConfig.env -> t
+val of_entries: make_id:(SurfacePath.t -> BindingId.t) -> provenance:Binding.provenance -> TypConfig.env -> t
 
-val singleton:
-  make_id:(SurfacePath.t -> BindingId.t) ->
-  name:string ->
-  scheme:TypeScheme.t ->
-  provenance:Binding.provenance ->
-  t
+val singleton: make_id:(SurfacePath.t -> BindingId.t) -> name:string -> scheme:TypeScheme.t -> provenance:Binding.provenance -> t
 
 val bindings: t -> Binding.t list
 

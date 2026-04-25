@@ -23,12 +23,12 @@ let get_or_try_init = fun cell f ->
   match Cell.get cell with
   | Some value -> Ok value
   | None -> (
-      match f () with
-      | Ok value ->
-          Cell.set cell (Some value);
-          Ok value
-      | Error _ as error -> error
-    )
+    match f () with
+    | Ok value ->
+        Cell.set cell (Some value);
+        Ok value
+    | Error _ as error -> error
+  )
 
 let set = fun cell value ->
   match Cell.get cell with

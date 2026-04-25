@@ -1,12 +1,15 @@
-(** Tree-shaped regular-expression DSL layered over {!Kernel.Regex}.
+(**
+   Tree-shaped regular-expression DSL layered over {!Kernel.Regex}.
 
-    `Std.Regex` owns the syntax tree, simple optimization passes, and the
-    rendering step to a concrete pattern string. Compilation and execution stay
-    delegated to {!Kernel.Regex}. *)
+   `Std.Regex` owns the syntax tree, simple optimization passes, and the
+   rendering step to a concrete pattern string. Compilation and execution stay
+   delegated to {!Kernel.Regex}. 
+*)
 (** Character-class items. *)
 type char_class_item =
   | Single of char
   | Range of char * char
+
 (** Regular-expression syntax tree. *)
 type t =
   | Empty
@@ -18,18 +21,15 @@ type t =
   | Seq of t list
   | Alt of t list
   | Repeat of { expr: t; min: int; max: int option }
+
 (** A compiled regular expression. *)
 type regex
+
 (** Regex compile errors are surfaced directly from {!Kernel.Regex}. *)
-type compile_error = Kernel.Regex.compile_error = {
-  message: string;
-  offset: int option;
-}
+type compile_error = Kernel.Regex.compile_error = { message: string; offset: int option }
+
 (** The first match span returned by {!find}. *)
-type match_ = Kernel.Regex.match_ = {
-  start: int;
-  stop: int;
-}
+type match_ = Kernel.Regex.match_ = { start: int; stop: int }
 
 (** Empty regex fragment. *)
 val empty: t

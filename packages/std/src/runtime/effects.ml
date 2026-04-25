@@ -8,11 +8,7 @@ end
 
 let yield = fun () -> Effect.perform Proc_effect.Yield
 
-type 'msg selector =
-  Message.t -> [
-    `select of 'msg
-    | `skip
-  ]
+type 'msg selector = Message.t -> [`select of 'msg | `skip]
 
 let receive_any = fun ?timeout () ->
   let timeout =
@@ -20,7 +16,15 @@ let receive_any = fun ?timeout () ->
     | None -> `infinity
     | Some after -> `after after
   in
-  Effect.perform (Proc_effect.Receive { selector = (fun msg -> `select msg); timeout })
+  Effect.perform
+    (
+      Proc_effect.Receive {
+        selector = (
+          fun msg -> `select msg
+        );
+        timeout
+      }
+    )
 
 let receive = fun ~selector ?timeout () ->
   let timeout =
@@ -38,5 +42,13 @@ let syscall = fun ?timeout ~name ~interest ~source cb ->
     | None -> `infinity
     | Some after -> `after after
   in
-  Effect.perform (Proc_effect.Syscall { name; interest; source; timeout });
+  Effect.perform
+    (
+      Proc_effect.Syscall {
+        name;
+        interest;
+        source;
+        timeout
+      }
+    );
   cb ()

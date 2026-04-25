@@ -4,6 +4,7 @@ type env =
   | Dev
   | Test
   | Prod
+
 val detect_env: unit -> env
 
 val env_to_string: env -> string

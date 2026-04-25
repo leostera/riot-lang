@@ -14,20 +14,21 @@ type suite_info = {
   built_binaries: Test_context.built_binary list;
 }
 
-(** Reporter interface used by the test runner.
+(**
+   Reporter interface used by the test runner.
 
-    ## Example
+   ## Example
 
-    ```ocaml
-    module Reporter : Test.Reporter.Intf.Intf = struct
-      let init suite_info total =
-        Log.info "running %d tests for %s" total suite_info.name
+   ```ocaml
+   module Reporter : Test.Reporter.Intf.Intf = struct
+     let init suite_info total =
+       Log.info "running %d tests for %s" total suite_info.name
 
-      let on_result _index _result = ()
+     let on_result _index _result = ()
 
-      let finalize _summary = ()
-    end
-    ```
+     let finalize _summary = ()
+   end
+   ```
 *)
 module type Intf = sig
   (** Called once before any tests are executed. *)

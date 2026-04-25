@@ -2,6 +2,7 @@
 (** Opaque type representing a worker ID *)
 (** Create a worker ID from an integer *)
 type t
+
 val make: int -> t
 
 (** Convert worker ID to string for display *)

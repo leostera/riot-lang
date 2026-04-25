@@ -50,7 +50,6 @@
    A child marked as `significant:true` will cause the supervisor to
    terminate if that child terminates, regardless of the supervision strategy.
 *)
-
 open Global
 
 type t
@@ -60,21 +59,23 @@ val to_pid: t -> Pid.t
 
 (** Convert supervisor to Pid *)
 (** {1 Supervision Strategies} *)
-
 type strategy =
   | OneForOne
   (** If one child fails, only that child is restarted *)
   | OneForAll
   (** If one child fails, all children are terminated and restarted *)
   | RestForOne
-  (** If one child fails, that child and all children started after it
-          are terminated and restarted *)
+  (**
+     If one child fails, that child and all children started after it
+     are terminated and restarted 
+  *)
   | SimpleOneForOne
 
-(** Simplified supervisor where all children use the same child_spec.
-          Children are added dynamically. *)
+(**
+   Simplified supervisor where all children use the same child_spec.
+   Children are added dynamically. 
+*)
 (** {1 Restart Policies} *)
-
 type restart =
   | Permanent
   (** Always restart the child, regardless of exit reason *)
@@ -84,7 +85,6 @@ type restart =
 
 (** Restart only if the child terminates abnormally (with error) *)
 (** {1 Shutdown Behavior} *)
-
 type shutdown =
   | BrutalKill
   (** Terminate immediately with no cleanup *)
@@ -94,7 +94,6 @@ type shutdown =
 
 (** Wait forever for graceful shutdown (use for supervisors) *)
 (** {1 Child Types} *)
-
 type child_type =
   | Worker
   (** A regular worker process *)
@@ -102,7 +101,6 @@ type child_type =
 
 (** A nested supervisor *)
 (** {1 Child Specification} *)
-
 type child_spec = {
   id: string;
   (** Unique identifier for this child *)
@@ -117,196 +115,199 @@ type child_spec = {
   significant: bool;
   (** If true, supervisor terminates when this child terminates *)
 }
-val child_spec:
-  id:string ->
-  start:(unit -> Pid.t) ->
-  ?restart:restart ->
-  ?shutdown:shutdown ->
-  ?child_type:child_type ->
-  ?significant:bool ->
-  unit ->
-  child_spec
 
-(** Create a child specification with sensible defaults.
+val child_spec: id:string -> start:(unit -> Pid.t) -> ?restart:restart -> ?shutdown:shutdown -> ?child_type:child_type -> ?significant:bool -> unit -> child_spec
 
-    Defaults:
-    - restart: [Permanent]
-    - shutdown: [Timeout 5.0]
-    - child_type: [Worker]
-    - significant: [false]
+(**
+   Create a child specification with sensible defaults.
 
-    Example:
-    ```ocaml
-    let worker =
-      Supervisor.child_spec
-        ~id:"my_worker"
-        ~start:(fun () -> spawn my_worker_fn)
-        ()
-    ```
+   Defaults:
+   - restart: [Permanent]
+   - shutdown: [Timeout 5.0]
+   - child_type: [Worker]
+   - significant: [false]
+
+   Example:
+   ```ocaml
+   let worker =
+     Supervisor.child_spec
+       ~id:"my_worker"
+       ~start:(fun () -> spawn my_worker_fn)
+       ()
+   ```
 *)
 (** {1 Intensity (Restart Limits)} *)
+type intensity = { max_restarts: int; window: Time.Duration.t }
 
-type intensity = {
-  max_restarts: int;
-  window: Time.Duration.t;
-}
+(**
+   Maximum restarts within a time window.
 
-(** Maximum restarts within a time window.
+   Example:
+   ```ocaml
+   { max_restarts = 5; window = Time.Duration.from_secs 10 }
+   ```
 
-    Example:
-    ```ocaml
-    { max_restarts = 5; window = Time.Duration.from_secs 10 }
-    ```
-
-    If this limit is exceeded, the supervisor terminates.
+   If this limit is exceeded, the supervisor terminates.
 *)
 (** {1 Starting Supervisors} *)
-
 val start_link: strategy:strategy -> ?intensity:intensity -> children:child_spec list -> unit -> t
 
-(** Start a supervisor linked to the current process.
+(**
+   Start a supervisor linked to the current process.
 
-    If the current process exits, the supervisor (and all children) exit.
-    If the supervisor exceeds restart intensity, it exits.
+   If the current process exits, the supervisor (and all children) exit.
+   If the supervisor exceeds restart intensity, it exits.
 
-    Example:
-    ```ocaml
-    let sup = Supervisor.start_link
-      ~strategy:OneForOne
-      ~intensity:{ max_restarts = 3; window = Duration.of_sec 5 }
-      ~children:[worker1; worker2]
-      ()
-    ```
+   Example:
+   ```ocaml
+   let sup = Supervisor.start_link
+     ~strategy:OneForOne
+     ~intensity:{ max_restarts = 3; window = Duration.of_sec 5 }
+     ~children:[worker1; worker2]
+     ()
+   ```
 *)
 val start: strategy:strategy -> ?intensity:intensity -> children:child_spec list -> unit -> t
 
-(** Start a supervisor without linking.
+(**
+   Start a supervisor without linking.
 
-    The supervisor continues running even if the caller exits.
+   The supervisor continues running even if the caller exits.
 *)
 (** {1 Child Management} *)
-
 type child_info = {
   id: string;
-  pid: Pid.t option;  (** [None] if child is not running *)
+  pid: Pid.t option;
+  (** [None] if child is not running *)
   child_type: child_type;
   restart: restart;
 }
+
 val which_children: t -> child_info list
 
-(** Get list of all children (running or not).
+(**
+   Get list of all children (running or not).
 
-    Example:
-    ```ocaml
-    let children = Supervisor.which_children sup in
-    List.iter (fun info ->
-      match info.pid with
-      | Some pid -> println "Child %s running: %s" info.id (Pid.to_string pid)
-      | None -> println "Child %s not running" info.id
-    ) children
-    ```
+   Example:
+   ```ocaml
+   let children = Supervisor.which_children sup in
+   List.iter (fun info ->
+     match info.pid with
+     | Some pid -> println "Child %s running: %s" info.id (Pid.to_string pid)
+     | None -> println "Child %s not running" info.id
+   ) children
+   ```
 *)
 type child_count = {
-  specs: int;  (** Total number of child specs *)
-  active: int;  (** Number of actively running children *)
-  supervisors: int;  (** Number of supervisor children *)
-  workers: int;  (** Number of worker children *)
+  specs: int;
+  (** Total number of child specs *)
+  active: int;
+  (** Number of actively running children *)
+  supervisors: int;
+  (** Number of supervisor children *)
+  workers: int;
+  (** Number of worker children *)
 }
+
 type count = child_count
 
 (** Alias for compatibility *)
 val count_children: t -> child_count
 
-(** Count children by type and status.
+(**
+   Count children by type and status.
 
-    Example:
-    ```ocaml
-    let count = Supervisor.count_children sup in
-    println "Active: %d/%d workers, %d supervisors"
-      count.active count.specs count.supervisors
-    ```
+   Example:
+   ```ocaml
+   let count = Supervisor.count_children sup in
+   println "Active: %d/%d workers, %d supervisors"
+     count.active count.specs count.supervisors
+   ```
 *)
 val delete_child: t -> id:string -> (unit, string) Kernel.result
 
-(** Remove a child specification.
+(**
+   Remove a child specification.
 
-    The child must not be running. Use [terminate_child] first if needed.
+   The child must not be running. Use [terminate_child] first if needed.
 
-    Returns [Error] if:
-    - Child is still running
-    - Child ID not found
-    - Strategy is [Simple_one_for_one] (not supported)
+   Returns [Error] if:
+   - Child is still running
+   - Child ID not found
+   - Strategy is [Simple_one_for_one] (not supported)
 
-    Example:
-    ```ocaml
-    match Supervisor.delete_child sup ~id:"worker_1" with
-    | Ok () -> println "Child spec removed"
-    | Error msg -> println "Failed: %s" msg
-    ```
+   Example:
+   ```ocaml
+   match Supervisor.delete_child sup ~id:"worker_1" with
+   | Ok () -> println "Child spec removed"
+   | Error msg -> println "Failed: %s" msg
+   ```
 *)
 val restart_child: t -> id:string -> (Pid.t, string) Kernel.result
 
-(** Restart a child that is not currently running.
+(**
+   Restart a child that is not currently running.
 
-    Returns [Error] if:
-    - Child is already running
-    - Child ID not found
-    - Strategy is [Simple_one_for_one] (not supported)
+   Returns [Error] if:
+   - Child is already running
+   - Child ID not found
+   - Strategy is [Simple_one_for_one] (not supported)
 
-    Example:
-    ```ocaml
-    match Supervisor.restart_child sup ~id:"worker_1" with
-    | Ok pid -> println "Restarted: %s" (Pid.to_string pid)
-    | Error msg -> println "Failed: %s" msg
-    ```
+   Example:
+   ```ocaml
+   match Supervisor.restart_child sup ~id:"worker_1" with
+   | Ok pid -> println "Restarted: %s" (Pid.to_string pid)
+   | Error msg -> println "Failed: %s" msg
+   ```
 *)
 val terminate_child: t -> id:string -> (unit, string) Kernel.result
 
-(** Terminate a running child according to its shutdown spec.
+(**
+   Terminate a running child according to its shutdown spec.
 
-    The child spec remains, so the child can be restarted with [restart_child].
+   The child spec remains, so the child can be restarted with [restart_child].
 
-    Returns [Error] if:
-    - Child ID not found
-    - Strategy is [Simple_one_for_one] (not supported)
+   Returns [Error] if:
+   - Child ID not found
+   - Strategy is [Simple_one_for_one] (not supported)
 
-    Example:
-    ```ocaml
-    match Supervisor.terminate_child sup ~id:"worker_1" with
-    | Ok () -> println "Child terminated"
-    | Error msg -> println "Failed: %s" msg
-    ```
+   Example:
+   ```ocaml
+   match Supervisor.terminate_child sup ~id:"worker_1" with
+   | Ok () -> println "Child terminated"
+   | Error msg -> println "Failed: %s" msg
+   ```
 *)
 (** {1 Stopping Supervisors} *)
-
 val stop: t -> unit
 
-(** Stop the supervisor and all children gracefully.
+(**
+   Stop the supervisor and all children gracefully.
 
-    Children are stopped in reverse order of startup.
-    Each child is stopped according to its shutdown specification.
+   Children are stopped in reverse order of startup.
+   Each child is stopped according to its shutdown specification.
 *)
 (** {1 Dynamic Supervision} *)
+module Dynamic : sig
+  (**
+     Dynamic supervisor for managing many children at runtime.
 
-module Dynamic: sig
-  (** Dynamic supervisor for managing many children at runtime.
+     Optimized for scenarios with thousands or millions of children.
+     Only supports [OneForOne] strategy.
 
-      Optimized for scenarios with thousands or millions of children.
-      Only supports [OneForOne] strategy.
+     Example:
+     ```ocaml
+     let sup = Supervisor.Dynamic.start_link
+       ~max_children:(Some 1000)
+       ()
 
-      Example:
-      ```ocaml
-      let sup = Supervisor.Dynamic.start_link
-        ~max_children:(Some 1000)
-        ()
-
-      (* Add children dynamically *)
-      match Supervisor.Dynamic.start_child sup
-        ~start:(fun () -> spawn_worker 42)
-        () with
-      | Ok pid -> println "Worker started: %s" (Pid.to_string pid)
-      | Error msg -> println "Failed: %s" msg
-      ```
+     (* Add children dynamically *)
+     match Supervisor.Dynamic.start_child sup
+       ~start:(fun () -> spawn_worker 42)
+       () with
+     | Ok pid -> println "Worker started: %s" (Pid.to_string pid)
+     | Error msg -> println "Failed: %s" msg
+     ```
   *)
   type t
 
@@ -315,50 +316,47 @@ module Dynamic: sig
 
   val start_link: ?intensity:intensity -> ?max_children:int -> unit -> t
 
-  (** Start a dynamic supervisor.
+  (**
+     Start a dynamic supervisor.
 
-      - [intensity]: Default [{ max_restarts = 3; window = Duration.of_sec 5 }]
-      - [max_children]: Optional limit on number of children
+     - [intensity]: Default [{ max_restarts = 3; window = Duration.of_sec 5 }]
+     - [max_children]: Optional limit on number of children
 
-      Example:
-      ```ocaml
-      let sup = Supervisor.Dynamic.start_link
-        ~max_children:(Some 10_000)
-        ()
-      ```
+     Example:
+     ```ocaml
+     let sup = Supervisor.Dynamic.start_link
+       ~max_children:(Some 10_000)
+       ()
+     ```
   *)
   val start: ?intensity:intensity -> ?max_children:int -> unit -> t
 
   (** Start a dynamic supervisor without linking *)
-  val start_child:
-    t ->
-    start:(unit -> Pid.t) ->
-    ?restart:restart ->
-    ?shutdown:shutdown ->
-    unit ->
-    (Pid.t, string) Kernel.result
+  val start_child: t -> start:(unit -> Pid.t) -> ?restart:restart -> ?shutdown:shutdown -> unit -> (Pid.t, string) Kernel.result
 
-  (** Start a new child process.
+  (**
+     Start a new child process.
 
-      Returns [Error] if [max_children] limit is reached.
+     Returns [Error] if [max_children] limit is reached.
 
-      Example:
-      ```ocaml
-      match Supervisor.Dynamic.start_child sup
-        ~start:(fun () -> spawn my_worker)
-        ~restart:Transient
-        () with
-      | Ok pid -> (* child started *)
-      | Error "max_children_reached" -> (* too many children *)
-      ```
+     Example:
+     ```ocaml
+     match Supervisor.Dynamic.start_child sup
+       ~start:(fun () -> spawn my_worker)
+       ~restart:Transient
+       () with
+     | Ok pid -> (* child started *)
+     | Error "max_children_reached" -> (* too many children *)
+     ```
   *)
   val terminate_child: t -> Pid.t -> (unit, string) Kernel.result
 
-  (** Terminate a child by PID.
+  (**
+     Terminate a child by PID.
 
-      The child spec is removed (unlike regular supervisor).
+     The child spec is removed (unlike regular supervisor).
 
-      Returns [Error "not_found"] if PID is not a child.
+     Returns [Error "not_found"] if PID is not a child.
   *)
   val which_children: t -> Pid.t list
 

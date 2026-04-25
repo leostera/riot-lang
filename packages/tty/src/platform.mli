@@ -1,11 +1,14 @@
 open Std
 
 type fd = int
+
 type termios
+
 type when_to_apply =
   | Now
   | Drain
   | Flush
+
 val stdin_fd: unit -> fd
 
 val stdout_fd: unit -> fd

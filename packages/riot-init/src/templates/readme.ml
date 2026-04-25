@@ -4,8 +4,7 @@ let materialize = fun (config: Context.t) ->
   let running_section =
     if config.is_library then
       ""
-    else
-      {|
+    else {|
 ### Running
 
 Run the starter binary:
@@ -24,8 +23,7 @@ Verify the workspace in Docker:
 docker build -t |} ^ config.workspace_name ^ {| .
 ```
 |}
-    else
-      {|
+    else {|
 ### Containers
 
 Build the starter application container:
@@ -82,6 +80,4 @@ Then add the new package path to `riot.toml` workspace members.
 - `ocaml-toolchain.toml` - OCaml toolchain version
 - `Dockerfile` - Container build template
 - `.github/workflows/ci.yml` - GitHub Actions starter workflow
-|}
-  in
-  Writer.write_file config ~relative_path:"README.md" ~content ~executable:false
+|} in Writer.write_file config ~relative_path:"README.md" ~content ~executable:false

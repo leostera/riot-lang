@@ -2,12 +2,18 @@ open Std
 
 module type Intf = sig
   type config
-  type connection
-  type statement
-  type result_set
-  type error
-  val name: string (* Error conversion - optional but recommended *)
 
+  type connection
+
+  type statement
+
+  type result_set
+
+  type error
+
+  val name: string
+
+  (* Error conversion - optional but recommended *)
   (* Error conversion - optional but recommended *)
   val error_to_string: error -> string
 
@@ -33,10 +39,5 @@ module type Intf = sig
 
   val rollback: connection -> (unit, error) result
 
-  val set_isolation_level: connection -> [
-      | `Read_uncommitted
-      | `Read_committed
-      | `Repeatable_read
-      | `Serializable
-    ] -> (unit, error) result
+  val set_isolation_level: connection -> [ | `Read_uncommitted | `Read_committed | `Repeatable_read | `Serializable] -> (unit, error) result
 end

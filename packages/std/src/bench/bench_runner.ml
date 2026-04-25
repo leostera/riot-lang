@@ -8,20 +8,14 @@ type config = {
 
 type run_summary = Bench_result.summary
 
-let gc_delta ~(before:Kernel.Gc.quick_stat) ~(after_:Kernel.Gc.quick_stat) : Bench_result.gc_stats = {
-  minor_collections = Int.max 0 (after_.minor_collections - before.minor_collections);
-  major_collections = Int.max 0 (after_.major_collections - before.major_collections);
-  compactions = Int.max 0 (after_.compactions - before.compactions)
-}
+let gc_delta ~(before:Kernel.Gc.quick_stat) ~(after_:Kernel.Gc.quick_stat): Bench_result.gc_stats = { minor_collections = Int.max 0 (after_.minor_collections - before.minor_collections); major_collections = Int.max 0 (after_.major_collections - before.major_collections); compactions = Int.max 0 (after_.compactions - before.compactions) }
 
 let run_single_benchmark = fun index (bench: Bench_case.t) ->
   if bench.skip then
     Bench_result.{ index; name = bench.name; result = Skipped }
   else
     try
-      for _i = 1 to bench.config.warmup do
-        bench.fn ()
-      done;
+      for _i = 1 to bench.config.warmup do bench.fn () done;
       let gc_before = Kernel.Gc.quick_stat () in
       (* Measurement phase *)
       let timings = ref [] in
@@ -29,23 +23,17 @@ let run_single_benchmark = fun index (bench: Bench_case.t) ->
         let start = Time.Instant.now () in
         bench.fn ();
         let finish = Time.Instant.now () in
-        let duration = Time.Instant.duration_since ~earlier:start finish in
-        timings := Bench_result.{ iteration = i; duration } :: !timings
+        let duration = Time.Instant.duration_since ~earlier:start finish in timings := Bench_result.{ iteration = i; duration } :: !timings
       done;
       let gc_after = Kernel.Gc.quick_stat () in
       (* Calculate statistics *)
-      let stats = Bench_result.make_statistics
-        ~gc:(gc_delta ~before:gc_before ~after_:gc_after)
-        (List.reverse !timings) in
-      Bench_result.{ index; name = bench.name; result = Completed stats }
+      let stats = Bench_result.make_statistics ~gc:(gc_delta ~before:gc_before ~after_:gc_after) (List.reverse !timings) in Bench_result.{ index; name = bench.name; result = Completed stats }
     with
     | exn ->
-        let msg = Kernel.Exception.to_string exn in
-        Bench_result.{ index; name = bench.name; result = Failed msg }
+        let msg = Kernel.Exception.to_string exn in Bench_result.{ index; name = bench.name; result = Failed msg }
 
 (* Run a comparison benchmark *)
-
-let run_comparison = fun index ((module R : Reporter.Intf.Intf)) (comp: Bench_comparison.t) ->
+let run_comparison = fun index ((module R: Reporter.Intf.Intf)) (comp: Bench_comparison.t) ->
   R.on_comparison_start index comp.description (List.length comp.cases);
   (* Run each case and collect results *)
   let case_results =
@@ -74,17 +62,15 @@ let run_comparison = fun index ((module R : Reporter.Intf.Intf)) (comp: Bench_co
     in
     loop 0 [] comp.cases
   in
-  let valid_results =
-    List.filter_map case_results ~fn:(fun x -> x)
-  in
+  let valid_results = List.filter_map case_results ~fn:(
+    fun x -> x
+  ) in
   (* Create and report comparison summary *)
   if List.length valid_results >= 2 then
     begin
-      let comp_result = Bench_result.make_comparison_result comp.description valid_results in
-      R.on_comparison_summary comp_result
+      let comp_result = Bench_result.make_comparison_result comp.description valid_results in R.on_comparison_summary comp_result
     end
-  else
-    println "  (not enough valid results for comparison)"
+  else println "  (not enough valid results for comparison)"
 
 type bench_item =
   | Single of Bench_case.t
@@ -95,23 +81,20 @@ let run_benchmarks = fun ~config benchmarks ->
   R.init config.suite_info (List.length benchmarks);
   let results = ref [] in
   let global_index = ref 0 in
-  List.for_each benchmarks
-    ~fn:(fun item ->
+  List.for_each benchmarks ~fn:(
+    fun item ->
       match item with
       | Single (bench: Bench_case.t) ->
           global_index := !global_index + 1;
           if not bench.skip then
-            R.on_case_start
-              !global_index
-              bench.name
-              ~iterations:bench.config.iterations
-              ~warmup:bench.config.warmup;
+            R.on_case_start !global_index bench.name ~iterations:bench.config.iterations ~warmup:bench.config.warmup;
           let result = run_single_benchmark !global_index bench in
           R.on_result result.index result;
           results := result :: !results
       | Compare comp ->
           global_index := !global_index + 1;
-          run_comparison !global_index (module R) comp);
+          run_comparison !global_index (module R) comp
+  );
   let summary = Bench_result.make_summary (List.reverse !results) in
   R.finalize summary;
   summary

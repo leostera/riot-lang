@@ -1,16 +1,18 @@
 open Std
 
-(** HTTP/2 Frame Parser using IO.Reader (Reentrant)
+(**
+   HTTP/2 Frame Parser using IO.Reader (Reentrant)
 
-    This parser is designed for streaming, non-blocking I/O:
-    - Uses IO.Reader.t instead of bytes directly
-    - Maintains state between calls (reentrant)
-    - Returns Need_more when data is incomplete
-    - Never blocks or allocates large buffers upfront
+   This parser is designed for streaming, non-blocking I/O:
+   - Uses IO.Reader.t instead of bytes directly
+   - Maintains state between calls (reentrant)
+   - Returns Need_more when data is incomplete
+   - Never blocks or allocates large buffers upfront
 *)
 (** Parser configuration *)
 type config = {
-  max_frame_size: int;  (** Maximum frame size (default: 16384) *)
+  max_frame_size: int;
+  (** Maximum frame size (default: 16384) *)
 }
 
 (** Default configuration *)
@@ -33,6 +35,7 @@ type parse_error =
   | Invalid_payload_length of { frame_type: string; expected: int; actual: int }
   (** Payload length doesn't match frame type requirements *)
   | Incomplete_settings_payload
+
 (** SETTINGS payload is not multiple of 6 bytes *)
 (** Parse result *)
 type parse_result =
@@ -43,35 +46,35 @@ type parse_result =
   | Error of parse_error
 
 (** Parse error *)
+(**
+   Parse the next frame from the reader.
 
-(** Parse the next frame from the reader.
+   This function is reentrant - you can call it multiple times as data arrives.
+   The parser state tracks where it left off.
 
-    This function is reentrant - you can call it multiple times as data arrives.
-    The parser state tracks where it left off.
+   Example usage:
+   {[
+     let parser = Parser_reader.create () in
+     let reader = IO.Reader.from_source source stream in
 
-    Example usage:
-    {[
-      let parser = Parser_reader.create () in
-      let reader = IO.Reader.from_source source stream in
+     let rec read_frames () =
+       match Parser_reader.parse parser reader with
+       | Frame frame ->
+           (* Process frame *)
+           handle_frame frame;
+           read_frames ()  (* Parse next frame *)
+       | Need_more ->
+           (* Wait for more data, then call again *)
+           yield ();
+           read_frames ()
+       | Error e ->
+           (* Handle error *)
+           handle_error e
+   ]}
 
-      let rec read_frames () =
-        match Parser_reader.parse parser reader with
-        | Frame frame ->
-            (* Process frame *)
-            handle_frame frame;
-            read_frames ()  (* Parse next frame *)
-        | Need_more ->
-            (* Wait for more data, then call again *)
-            yield ();
-            read_frames ()
-        | Error e ->
-            (* Handle error *)
-            handle_error e
-    ]}
-
-    @param state The parser state
-    @param reader The IO reader to read from
-    @return Parse result
+   @param state The parser state
+   @param reader The IO reader to read from
+   @return Parse result
 *)
 val parse: state -> IO.Reader.t -> parse_result
 

@@ -10,8 +10,9 @@ type t = {
   message: string;
 }
 
-(** Format an explanation as user-facing text.
+(**
+   Format an explanation as user-facing text.
 
-    Use this when showing rule help in a terminal or structured report.
+   Use this when showing rule help in a terminal or structured report.
 *)
 val format: t -> string

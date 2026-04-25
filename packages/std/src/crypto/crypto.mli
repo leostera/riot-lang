@@ -1,49 +1,48 @@
-(** # Crypto - Cryptographic hashing
+(**
+   # Crypto - Cryptographic hashing
 
-    Unified interface for cryptographic hash algorithms with support for
-    multiple algorithms, digest formats, and DoS-resistant hashing.
+   Unified interface for cryptographic hash algorithms with support for
+   multiple algorithms, digest formats, and DoS-resistant hashing.
 
-    ## Examples
+   ## Examples
 
-    Basic hashing:
+   Basic hashing:
 
-    ```ocaml open Std
+   ```ocaml open Std
 
-    let hash = Crypto.hash_string "Hello, World!" in let hex_digest =
-    Crypto.Digest.hex hash in (*
-    "315f5bdb76d078c43b8ac0064e4a0164612b1fce77c869345bfc94c75894edd3" *)
+   let hash = Crypto.hash_string "Hello, World!" in let hex_digest =
+   Crypto.Digest.hex hash in (*
+   "315f5bdb76d078c43b8ac0064e4a0164612b1fce77c869345bfc94c75894edd3" *)
 
-    let hash = Crypto.hash_int 42 in let b64_digest = Crypto.Digest.base64 hash
-    ```
+   let hash = Crypto.hash_int 42 in let b64_digest = Crypto.Digest.base64 hash
+   ```
 
-    Using specific algorithms:
+   Using specific algorithms:
 
-    ```ocaml module H = Crypto.Sha256 in let state = H.create () in
-    H.write state "Hello";
-    H.write state ", World!";
-    let hash = H.finish state in
-    Crypto.Digest.hex hash ```
+   ```ocaml module H = Crypto.Sha256 in let state = H.create () in
+   H.write state "Hello";
+   H.write state ", World!";
+   let hash = H.finish state in
+   Crypto.Digest.hex hash ```
 
-    ## Available Algorithms
+   ## Available Algorithms
 
-    - **SHA-256**: Secure, widely used, 256-bit output
-    - **SHA-512**: More secure, 512-bit output
-    - **MD5**: Legacy, not cryptographically secure (use for checksums only)
+   - **SHA-256**: Secure, widely used, 256-bit output
+   - **SHA-512**: More secure, 512-bit output
+   - **MD5**: Legacy, not cryptographically secure (use for checksums only)
 
-    ## Use Cases
+   ## Use Cases
 
-    - Content-addressed storage
-    - Data integrity verification
-    - Non-cryptographic hashing for HashMap/HashSet
-    - Password hashing (use proper KDFs like Argon2, not these!) *)
-
+   - Content-addressed storage
+   - Data integrity verification
+   - Non-cryptographic hashing for HashMap/HashSet
+   - Password hashing (use proper KDFs like Argon2, not these!) 
+*)
 (** ## Core Types *)
-
 type hash = Hash.t
 
 (** Universal hash type produced by all hash algorithms. *)
 (** ## Modules *)
-
 module Hash = Hash
 
 module Hasher = Hasher
@@ -53,17 +52,15 @@ module Digest = Digest
 
 (** Digest formatting functions *)
 (** ## Algorithms *)
+module Sha1 : Hasher.Intf
 
-module Sha1: Hasher.Intf
+module Sha256 : Hasher.Intf
 
-module Sha256: Hasher.Intf
+module Sha512 : Hasher.Intf
 
-module Sha512: Hasher.Intf
-
-module Md5: Hasher.Intf
+module Md5 : Hasher.Intf
 
 (** ## Defaults *)
-
 module DefaultHasher = Default.DefaultHasher
 
 (** Default hasher for general use *)
@@ -71,7 +68,6 @@ module RandomState = Default.RandomState
 
 (** Random state for HashMap/HashSet *)
 (** ## Convenience Functions *)
-
 val hash_string: string -> hash
 
 (** Hash a string directly. *)

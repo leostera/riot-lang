@@ -1,7 +1,11 @@
 open Prelude
+
 module Buffer = Buffer
+
 module Error = Error
+
 module IoVec = IoVec
+
 module Writer = Writer
 
 type t = unit
@@ -15,11 +19,7 @@ let write = fun ~from ->
   let rec loop () =
     match Kernel.IO.Stdout.write_vectored (Buffer.to_iovec from) with
     | Ok value -> Ok value
-    | Error (Kernel.IO.Stdout.System error) when Kernel.SystemError.would_block error -> Runtime.syscall
-      ~name:"IO.Stdout.write"
-      ~interest:Kernel.Async.Interest.writable
-      ~source
-      loop
+    | Error (Kernel.IO.Stdout.System error) when Kernel.SystemError.would_block error -> Runtime.syscall ~name:"IO.Stdout.write" ~interest:Kernel.Async.Interest.writable ~source loop
     | Error (Kernel.IO.Stdout.System error) -> Error (Error.of_system_error error)
     | Error (Kernel.IO.Stdout.InvalidSlice _) -> Error Error.Invalid_argument
   in
@@ -33,11 +33,7 @@ let write_vectored = fun ~from ->
     let rec loop () =
       match Kernel.IO.Stdout.write_vectored from with
       | Ok value -> Ok value
-      | Error (Kernel.IO.Stdout.System error) when Kernel.SystemError.would_block error -> Runtime.syscall
-        ~name:"IO.Stdout.write_vectored"
-        ~interest:Kernel.Async.Interest.writable
-        ~source
-        loop
+      | Error (Kernel.IO.Stdout.System error) when Kernel.SystemError.would_block error -> Runtime.syscall ~name:"IO.Stdout.write_vectored" ~interest:Kernel.Async.Interest.writable ~source loop
       | Error (Kernel.IO.Stdout.System error) -> Error (Error.of_system_error error)
       | Error (Kernel.IO.Stdout.InvalidSlice _) -> Error Error.Invalid_argument
     in
@@ -48,11 +44,7 @@ let flush = fun () ->
   let rec loop () =
     match Kernel.IO.Stdout.flush () with
     | Ok () -> Ok ()
-    | Error (Kernel.IO.Stdout.System error) when Kernel.SystemError.would_block error -> Runtime.syscall
-      ~name:"IO.Stdout.flush"
-      ~interest:Kernel.Async.Interest.writable
-      ~source
-      loop
+    | Error (Kernel.IO.Stdout.System error) when Kernel.SystemError.would_block error -> Runtime.syscall ~name:"IO.Stdout.flush" ~interest:Kernel.Async.Interest.writable ~source loop
     | Error (Kernel.IO.Stdout.System error) -> Error (Error.of_system_error error)
     | Error (Kernel.IO.Stdout.InvalidSlice _) -> Error Error.Invalid_argument
   in

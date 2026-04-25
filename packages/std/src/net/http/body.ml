@@ -12,8 +12,7 @@ let length = function
   | String value -> String.length value
   | Slice value -> IO.IoVec.IoSlice.length value
 
-let is_empty = fun value ->
-  Int.equal (length value) 0
+let is_empty = fun value -> Int.equal (length value) 0
 
 let to_string = function
   | String value -> value

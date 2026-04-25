@@ -47,27 +47,18 @@ let of_host_and_port_datagram = fun ~host ~port ->
 let split_host_port = fun value ->
   if String.length value = 0 then
     None
-  else if String.get_unchecked value ~at:0 = '[' then
-    match String.index_of value ~char:']' with
-    | None -> None
-    | Some close_index ->
-        if
-          close_index + 1 >= String.length value
-          || String.get_unchecked value ~at:(close_index + 1) != ':'
-        then
-          None
-        else
-          Some (
-            String.sub value ~offset:1 ~len:(close_index - 1),
-            String.sub value ~offset:(close_index + 2) ~len:(String.length value - close_index - 2)
-          )
   else
-    match String.last_index value ':' with
-    | None -> None
-    | Some index -> Some (
-      String.sub value ~offset:0 ~len:index,
-      String.sub value ~offset:(index + 1) ~len:(String.length value - index - 1)
-    )
+    if String.get_unchecked value ~at:0 = '[' then
+      match String.index_of value ~char:']' with
+      | None -> None
+      | Some close_index ->
+          if close_index + 1 >= String.length value || String.get_unchecked value ~at:(close_index + 1) != ':' then
+            None
+          else Some (String.sub value ~offset:1 ~len:(close_index - 1), String.sub value ~offset:(close_index + 2) ~len:(String.length value - close_index - 2))
+    else
+      match String.last_index value ':' with
+      | None -> None
+      | Some index -> Some (String.sub value ~offset:0 ~len:index, String.sub value ~offset:(index + 1) ~len:(String.length value - index - 1))
 
 let parse_port = fun value ->
   match Int.parse value with
@@ -78,19 +69,19 @@ let parse = fun s ->
   match split_host_port s with
   | None -> Error (Invalid_format "missing port")
   | Some (host, port_text) -> (
-      match parse_port port_text with
-      | Error err -> Error err
-      | Ok port -> of_host_and_port ~host ~port
-    )
+    match parse_port port_text with
+    | Error err -> Error err
+    | Ok port -> of_host_and_port ~host ~port
+  )
 
 let parse_datagram = fun s ->
   match split_host_port s with
   | None -> Error (Invalid_format "missing port")
   | Some (host, port_text) -> (
-      match parse_port port_text with
-      | Error err -> Error err
-      | Ok port -> of_host_and_port_datagram ~host ~port
-    )
+    match parse_port port_text with
+    | Error err -> Error err
+    | Ok port -> of_host_and_port_datagram ~host ~port
+  )
 
 let ip = fun addr -> Kernel.Net.IpAddr.to_string (Kernel.Net.SocketAddr.ip addr)
 

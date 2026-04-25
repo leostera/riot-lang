@@ -1,7 +1,9 @@
 open Std
 
 type package = string
+
 type version = Version.t
+
 type event =
   | Iteration of { iteration: int; next_package: package }
   | PickedPackage of { package: package; ranges: version Ranges.t }
@@ -9,19 +11,21 @@ type event =
   | NoVersionAvailable of { package: package; ranges: version Ranges.t }
   | DerivedConstraint of { package: package; incompatibility: Incompatibility.t; changed: bool }
   | ConflictResolvedDifferent of {
-      package: package;
-      previous_level: int;
-      incompatibility: Incompatibility.t
-    }
+    package: package;
+    previous_level: int;
+    incompatibility: Incompatibility.t;
+  }
   | ConflictResolvedSame of {
-      package: package;
-      incompatibility: Incompatibility.t;
-      cause: Incompatibility.t;
-      prior: Incompatibility.t
-    }
+    package: package;
+    incompatibility: Incompatibility.t;
+    cause: Incompatibility.t;
+    prior: Incompatibility.t;
+  }
   | LearnedIncompatibility of { package: package; incompatibility: Incompatibility.t }
   | Solved of { solution: (package * version) list }
+
 type t
+
 val create: unit -> t
 
 val record: t -> event -> unit

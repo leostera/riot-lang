@@ -10,10 +10,10 @@ module type Intf = sig
 end
 
 (** Plain TCP transport. *)
-module Tcp: Intf
+module Tcp : Intf
 
 (** TLS transport. *)
-module Tls: Intf
+module Tls : Intf
 
 (** Connect to the URI using the appropriate transport. *)
 val connect: Net.Uri.t -> (Connection.t, Error.t) result

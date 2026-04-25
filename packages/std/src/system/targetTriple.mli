@@ -1,12 +1,14 @@
 (** Platform identity and executable metadata for a concrete target triple. *)
 type error = Kernel.System.Host.error =
   | InvalidTripletFormat of { value: string }
+
 type t = Kernel.System.Host.t = {
   architecture: string;
   vendor: string;
   os: string;
   abi: string option;
 }
+
 val current: t
 
 (** Render as `arch-vendor-os[-abi]`. *)

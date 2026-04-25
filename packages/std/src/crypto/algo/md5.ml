@@ -9,31 +9,23 @@ let write = Common.write_string
 
 let write_hash = Common.write_hash
 
-let write_unit = fun state () ->
-  Common.push_bytes state (Common.bytes_of_unit ())
+let write_unit = fun state () -> Common.push_bytes state (Common.bytes_of_unit ())
 
-let write_int = fun state value ->
-  Common.push_bytes state (Common.bytes_of_int value)
+let write_int = fun state value -> Common.push_bytes state (Common.bytes_of_int value)
 
-let write_int32 = fun state value ->
-  Common.push_bytes state (Common.bytes_of_int32 value)
+let write_int32 = fun state value -> Common.push_bytes state (Common.bytes_of_int32 value)
 
-let write_int64 = fun state value ->
-  Common.push_bytes state (Common.bytes_of_int64 value)
+let write_int64 = fun state value -> Common.push_bytes state (Common.bytes_of_int64 value)
 
-let write_float = fun state value ->
-  Common.push_bytes state (Common.bytes_of_float value)
+let write_float = fun state value -> Common.push_bytes state (Common.bytes_of_float value)
 
-let write_bool = fun state value ->
-  Common.push_bytes state (Common.bytes_of_bool value)
+let write_bool = fun state value -> Common.push_bytes state (Common.bytes_of_bool value)
 
-let write_list = fun writer state lst ->
-  Common.iter_list (writer state) lst
+let write_list = fun writer state lst -> Common.iter_list (writer state) lst
 
 let write_array = fun writer state arr -> Array.for_each arr ~fn:(writer state)
 
-let finish = fun state ->
-  Common.finish_iovec Ffi.md5_iovec state
+let finish = fun state -> Common.finish_iovec Ffi.md5_iovec state
 
 let hash_string = Common.hash_string_with Ffi.md5_iovec
 
@@ -72,9 +64,10 @@ let hash_bool = fun b ->
 let hash_list = fun hasher lst ->
   let state = create () in
   write_list
-    (fun s x ->
-      let h = hasher x in
-      write_hash s h)
+    (
+      fun s x ->
+        let h = hasher x in write_hash s h
+    )
     state
     lst;
   finish state
@@ -82,9 +75,10 @@ let hash_list = fun hasher lst ->
 let hash_array = fun hasher arr ->
   let state = create () in
   write_array
-    (fun s x ->
-      let h = hasher x in
-      write_hash s h)
+    (
+      fun s x ->
+        let h = hasher x in write_hash s h
+    )
     state
     arr;
   finish state

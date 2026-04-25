@@ -2,6 +2,7 @@ open Std
 
 type error =
   | InvalidRequestedParallelism of int
+
 type t = {
   session_id: Riot_model.Session_id.t;
   workspace: Riot_model.Workspace.t;
@@ -11,6 +12,7 @@ type t = {
   parallelism: int;
   on_event: Event.t -> unit;
 }
+
 val make: ?on_event:(Event.t -> unit) -> Request.t -> (t, error) result
 
 val emit_phase: t -> Event.runtime_phase -> unit

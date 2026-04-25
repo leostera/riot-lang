@@ -11,6 +11,7 @@ type label = {
   (** Whether the field was declared mutable. *)
   mutable_: bool;
 }
+
 (** One exported constructor recovered from a lowered type declaration. *)
 type constructor = {
   (** Stable descriptor identity for this constructor. *)
@@ -19,13 +20,18 @@ type constructor = {
   name: string;
   (** Constructor scheme derived from the declaration payload. *)
   scheme: TypeScheme.t;
-  (** Whether the declaration carried an explicit result type and therefore
-      behaves as a generalized constructor. *)
+  (**
+     Whether the declaration carried an explicit result type and therefore
+     behaves as a generalized constructor. 
+  *)
   generalized: bool;
-  (** Inline-record payload labels when the constructor was declared as
-      [Ctor of { ... }]. *)
+  (**
+     Inline-record payload labels when the constructor was declared as
+     [Ctor of { ... }]. 
+  *)
   inline_record_labels: label list option;
 }
+
 (** Bound kind carried by lowered polymorphic-variant declarations. *)
 type variance =
   | Covariant
@@ -49,6 +55,7 @@ type poly_variant_bound =
   | Exact
   | UpperBound
   | LowerBound
+
 (** One tag recovered from a lowered polymorphic-variant declaration. *)
 type poly_variant_tag = {
   (** Surface tag name without the backtick prefix. *)
@@ -56,20 +63,26 @@ type poly_variant_tag = {
   (** Optional payload type carried by the tag. *)
   payload_type: TypeRepr.t option;
 }
-(** Manifest payload preserved by lowering for non-abstract declarations that do
-    not elaborate into ordinary constructors or labels yet. *)
+
+(**
+   Manifest payload preserved by lowering for non-abstract declarations that do
+   not elaborate into ordinary constructors or labels yet. 
+*)
 type manifest =
   | Alias of TypeRepr.t
   | PolyVariant of {
-      bound: poly_variant_bound;
-      tags: poly_variant_tag list;
-      inherited: TypeRepr.t list
-    }
-(** Lowered semantic summary for one type declaration item.
+    bound: poly_variant_bound;
+    tags: poly_variant_tag list;
+    inherited: TypeRepr.t list;
+  }
 
-    The current prototype consumes constructor and record-label declarations
-    during term inference, while preserving manifest alias and
-    polymorphic-variant declaration detail explicitly for later slices. *)
+(**
+   Lowered semantic summary for one type declaration item.
+
+   The current prototype consumes constructor and record-label declarations
+   during term inference, while preserving manifest alias and
+   polymorphic-variant declaration detail explicitly for later slices. 
+*)
 type t = {
   (** Stable descriptor identity for this type constructor. *)
   type_constructor_id: TypeConstructorId.t;

@@ -94,11 +94,9 @@ let on_mouseout = fun handler -> Event ("mouseout", handler)
 
 (** HTML Element Constructors *)
 (* Generic element builder *)
-
 let el = fun tag ?(attrs = []) children -> El { tag; attrs; children }
 
 (* Document structure *)
-
 let html = fun ?(attrs = []) children -> El { tag = "html"; attrs; children }
 
 let head = fun ?(attrs = []) children -> El { tag = "head"; attrs; children }
@@ -118,7 +116,6 @@ let style = fun ?(attrs = []) content -> El { tag = "style"; attrs; children = [
 let script = fun ?(attrs = []) content -> El { tag = "script"; attrs; children = [ Text content ] }
 
 (* Content sectioning *)
-
 let header = fun ?(attrs = []) children -> El { tag = "header"; attrs; children }
 
 let nav = fun ?(attrs = []) children -> El { tag = "nav"; attrs; children }
@@ -140,7 +137,6 @@ let hgroup = fun ?(attrs = []) children -> El { tag = "hgroup"; attrs; children 
 let search = fun ?(attrs = []) children -> El { tag = "search"; attrs; children }
 
 (* Text content *)
-
 let div = fun ?(attrs = []) children -> El { tag = "div"; attrs; children }
 
 let p = fun ?(attrs = []) children -> El { tag = "p"; attrs; children }
@@ -174,7 +170,6 @@ let figcaption = fun ?(attrs = []) children -> El { tag = "figcaption"; attrs; c
 let menu = fun ?(attrs = []) children -> El { tag = "menu"; attrs; children }
 
 (* Inline text semantics *)
-
 let a = fun ?(attrs = []) children -> El { tag = "a"; attrs; children }
 
 let abbr = fun ?(attrs = []) children -> El { tag = "abbr"; attrs; children }
@@ -234,7 +229,6 @@ let del = fun ?(attrs = []) children -> El { tag = "del"; attrs; children }
 let ins = fun ?(attrs = []) children -> El { tag = "ins"; attrs; children }
 
 (* Lists *)
-
 let ul = fun ?(attrs = []) children -> El { tag = "ul"; attrs; children }
 
 let ol = fun ?(attrs = []) children -> El { tag = "ol"; attrs; children }
@@ -248,7 +242,6 @@ let dt = fun ?(attrs = []) children -> El { tag = "dt"; attrs; children }
 let dd = fun ?(attrs = []) children -> El { tag = "dd"; attrs; children }
 
 (* Tables *)
-
 let table = fun ?(attrs = []) children -> El { tag = "table"; attrs; children }
 
 let caption = fun ?(attrs = []) children -> El { tag = "caption"; attrs; children }
@@ -270,7 +263,6 @@ let col = fun ?(attrs = []) () -> El { tag = "col"; attrs; children = [] }
 let colgroup = fun ?(attrs = []) children -> El { tag = "colgroup"; attrs; children }
 
 (* Forms *)
-
 let form = fun ?(attrs = []) children -> El { tag = "form"; attrs; children }
 
 let fieldset = fun ?(attrs = []) children -> El { tag = "fieldset"; attrs; children }
@@ -300,7 +292,6 @@ let progress = fun ?(attrs = []) children -> El { tag = "progress"; attrs; child
 let meter = fun ?(attrs = []) children -> El { tag = "meter"; attrs; children }
 
 (* Interactive *)
-
 let details = fun ?(attrs = []) children -> El { tag = "details"; attrs; children }
 
 let summary = fun ?(attrs = []) children -> El { tag = "summary"; attrs; children }
@@ -308,7 +299,6 @@ let summary = fun ?(attrs = []) children -> El { tag = "summary"; attrs; childre
 let dialog = fun ?(attrs = []) children -> El { tag = "dialog"; attrs; children }
 
 (* Image and multimedia *)
-
 let area = fun ?(attrs = []) () -> El { tag = "area"; attrs; children = [] }
 
 let audio = fun ?(attrs = []) children -> El { tag = "audio"; attrs; children }
@@ -322,7 +312,6 @@ let track = fun ?(attrs = []) () -> El { tag = "track"; attrs; children = [] }
 let video = fun ?(attrs = []) children -> El { tag = "video"; attrs; children }
 
 (* Embedded content *)
-
 let embed = fun ?(attrs = []) () -> El { tag = "embed"; attrs; children = [] }
 
 let iframe = fun ?(attrs = []) children -> El { tag = "iframe"; attrs; children }
@@ -334,13 +323,11 @@ let picture = fun ?(attrs = []) children -> El { tag = "picture"; attrs; childre
 let source = fun ?(attrs = []) () -> El { tag = "source"; attrs; children = [] }
 
 (* Scripting *)
-
 let canvas = fun ?(attrs = []) children -> El { tag = "canvas"; attrs; children }
 
 let noscript = fun ?(attrs = []) children -> El { tag = "noscript"; attrs; children }
 
 (* SVG and MathML *)
-
 let svg = fun ?(attrs = []) children -> El { tag = "svg"; attrs; children }
 
 let math = fun ?(attrs = []) children -> El { tag = "math"; attrs; children }
@@ -360,14 +347,12 @@ let empty = Fragment []
 let when_ = fun condition element ->
   if condition then
     element
-  else
-    empty
+  else empty
 
 let unless = fun condition element ->
   if not condition then
     element
-  else
-    empty
+  else empty
 
 let maybe = fun opt f ->
   match opt with
@@ -376,60 +361,51 @@ let maybe = fun opt f ->
 
 (** Rendering *)
 (* Web Components *)
-
 let slot = fun ?(attrs = []) children -> El { tag = "slot"; attrs; children }
 
 let template = fun ?(attrs = []) children -> El { tag = "template"; attrs; children }
 
 (** Rendering *)
 (* Self-closing tags per HTML5 spec *)
-
-let self_closing_tags = [
-  "area";
-  "base";
-  "br";
-  "col";
-  "embed";
-  "hr";
-  "img";
-  "input";
-  "link";
-  "meta";
-  "source";
-  "track";
-  "wbr";
-]
+let self_closing_tags =
+  [
+    "area";
+    "base";
+    "br";
+    "col";
+    "embed";
+    "hr";
+    "img";
+    "input";
+    "link";
+    "meta";
+    "source";
+    "track";
+    "wbr";
+  ]
 
 let is_self_closing = fun tag -> List.contains self_closing_tags ~value:tag
 
 let rec to_html = fun t ->
   match t with
-  | Text str ->
-      str
-  | Fragment children ->
-      String.concat "" (List.map ~fn:to_html children)
+  | Text str -> str
+  | Fragment children -> String.concat "" (List.map ~fn:to_html children)
   | El { tag; attrs; children } ->
       let attrs_str = attrs_to_string attrs in
       let attrs_part =
         if attrs_str = "" then
           ""
-        else
-          " " ^ attrs_str
+        else " " ^ attrs_str
       in
       if is_self_closing tag then
         "<" ^ tag ^ attrs_part ^ " />"
       else
-        let children_html = String.concat "" (List.map ~fn:to_html children) in
-        "<" ^ tag ^ attrs_part ^ ">" ^ children_html ^ "</" ^ tag ^ ">"
-
-and attrs_to_string = fun attrs ->
-  attrs |> List.filter_map
-    ~fn:(
-      function
-      | Attr (k, v) -> Some (k ^ "=\"" ^ escape_attr v ^ "\"")
-      | Event _ -> None
-    ) |> String.concat " "
-
+        let children_html = String.concat "" (List.map ~fn:to_html children) in "<" ^ tag ^ attrs_part ^ ">" ^ children_html ^ "</" ^ tag ^ ">"
+and attrs_to_string = fun attrs -> attrs |> List.filter_map ~fn:(
+  function
+  | Attr (k, v) -> Some (k ^ "=\"" ^ escape_attr v ^ "\"")
+  | Event _ -> None
+) |> String.concat " "
 and escape_attr = fun str ->
   (* HTML attribute escaping *)
   let buf = IO.Buffer.create ~size:(String.length str) in
@@ -448,15 +424,11 @@ and escape_attr = fun str ->
 (** Advanced *)
 let rec map = fun f t ->
   match t with
-  | Text str ->
-      Text str
-  | Fragment children ->
-      Fragment (List.map ~fn:(map f) children)
+  | Text str -> Text str
+  | Fragment children -> Fragment (List.map ~fn:(map f) children)
   | El { tag; attrs; children } ->
       let attrs' = List.map ~fn:(map_attr f) attrs in
-      let children' = List.map ~fn:(map f) children in
-      El { tag; attrs = attrs'; children = children' }
-
+      let children' = List.map ~fn:(map f) children in El { tag; attrs = attrs'; children = children' }
 and map_attr = fun f attr ->
   match attr with
   | Attr (k, v) -> Attr (k, v)
@@ -465,20 +437,13 @@ and map_attr = fun f attr ->
 let extract_handlers = fun t ->
   let rec go = fun acc ->
     function
-    | Text _ ->
-        acc
-    | Fragment children ->
-        List.fold_left children ~init:acc ~fn:go
+    | Text _ -> acc
+    | Fragment children -> List.fold_left children ~init:acc ~fn:go
     | El { attrs; children; _ } ->
-        let attr_handlers =
-          List.filter_map
-            ~fn:(
-              function
-              | Event (name, handler) -> Some (name, handler)
-              | Attr _ -> None
-            )
-            attrs
-        in
-        List.fold_left children ~init:(attr_handlers @ acc) ~fn:go
+        let attr_handlers = List.filter_map ~fn:(
+          function
+          | Event (name, handler) -> Some (name, handler)
+          | Attr _ -> None
+        ) attrs in List.fold_left children ~init:(attr_handlers @ acc) ~fn:go
   in
   go [] t

@@ -1,24 +1,30 @@
 open Global
 
-(** Network address handling.
+(**
+   Network address handling.
 
-    ## Example
+   ## Example
 
-    ```ocaml
-    let addr = Addr.of_host_and_port ~host:"127.0.0.1" ~port:8080 |> Result.unwrap
-    let host = Addr.ip addr
-    let port = Addr.port addr
-    ```
+   ```ocaml
+   let addr = Addr.of_host_and_port ~host:"127.0.0.1" ~port:8080 |> Result.unwrap
+   let host = Addr.ip addr
+   let port = Addr.port addr
+   ```
 *)
 type 't raw_addr = Kernel.Net.SocketAddr.t
+
 (** TCP address family tag. *)
 type tcp_addr = Kernel.Net.IpAddr.t
+
 (** Stream socket address. *)
 type stream_addr = Kernel.Net.SocketAddr.t
+
 (** Datagram socket address. *)
 type datagram_addr = Kernel.Net.SocketAddr.t
+
 (** Any network socket address. *)
 type socket_addr = Kernel.Net.SocketAddr.t
+
 (** Errors returned while parsing or constructing addresses. *)
 type error =
   | System_error of IO.error

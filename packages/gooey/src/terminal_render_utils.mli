@@ -23,8 +23,4 @@ val visible_col_range: box:Geometry.Rect.t -> scissor:Geometry.Rect.t option -> 
 
 val slice_text_by_cells: string -> skip:int -> take:int -> string
 
-val text_formats:
-  color:Colors.rgb ->
-  weight:Style.font_weight ->
-  decoration:Style.text_decoration ->
-  Ansi_formatter.format list
+val text_formats: color:Colors.rgb -> weight:Style.font_weight -> decoration:Style.text_decoration -> Ansi_formatter.format list

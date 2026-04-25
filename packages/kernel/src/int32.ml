@@ -17,8 +17,7 @@ let neg = Caml_runtime.int32_neg
 let abs = fun value ->
   match Order.compare value 0l with
   | Order.LT -> neg value
-  | Order.EQ
-  | Order.GT -> value
+  | Order.EQ | Order.GT -> value
 
 let add = Caml_runtime.int32_add
 

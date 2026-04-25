@@ -1,102 +1,104 @@
-(** {1 Suri.Component - Type-Safe HTML Component System}
+(**
+   {1 Suri.Component - Type-Safe HTML Component System}
 
-    A unified component system for building HTML UIs that work seamlessly
-    with both static HTML rendering and LiveView interactive applications.
+   A unified component system for building HTML UIs that work seamlessly
+   with both static HTML rendering and LiveView interactive applications.
 
-    {2 Philosophy}
+   {2 Philosophy}
 
-    - Write components once, render anywhere (static HTML or LiveView)
-    - Event handlers are LiveView-only (ignored in static HTML)
-    - Type-safe, composable, React-style component trees
-    - No inline JavaScript - use LiveView for interactivity
+   - Write components once, render anywhere (static HTML or LiveView)
+   - Event handlers are LiveView-only (ignored in static HTML)
+   - Type-safe, composable, React-style component trees
+   - No inline JavaScript - use LiveView for interactivity
 
-    {2 Quick Start}
+   {2 Quick Start}
 
-    {3 Static HTML}
-    
-    {[
-      open Suri.Component
+   {3 Static HTML}
 
-      let my_page =
-        div ~attrs:[class_ "container"] [
-          h1 [text "Welcome"];
-          p [text "Build type-safe HTML with components!"];
-          button ~attrs:[class_ "btn"] [text "Click me"]
-        ]
+   {[
+     open Suri.Component
 
-      let html_string = to_html my_page
-    ]}
+     let my_page =
+       div ~attrs:[class_ "container"] [
+         h1 [text "Welcome"];
+         p [text "Build type-safe HTML with components!"];
+         button ~attrs:[class_ "btn"] [text "Click me"]
+       ]
 
-    {3 LiveView (Interactive)}
+     let html_string = to_html my_page
+   ]}
 
-    {[
-      open Suri.Component
+   {3 LiveView (Interactive)}
 
-      type msg = Increment | Decrement
+   {[
+     open Suri.Component
 
-      let counter_view count =
-        div [
-          h1 [text "Counter"];
-          div [text (Int.to_string count)];
-          button ~attrs:[on_click (fun _ -> Increment)] [text "+"];
-          button ~attrs:[on_click (fun _ -> Decrement)] [text "-"];
-        ]
+     type msg = Increment | Decrement
 
-      (* Same tree works for static preview: *)
-      let preview = to_html (counter_view 0)
+     let counter_view count =
+       div [
+         h1 [text "Counter"];
+         div [text (Int.to_string count)];
+         button ~attrs:[on_click (fun _ -> Increment)] [text "+"];
+         button ~attrs:[on_click (fun _ -> Decrement)] [text "-"];
+       ]
 
-      (* And for LiveView rendering: *)
-      let render state = counter_view state.count
-    ]}
+     (* Same tree works for static preview: *)
+     let preview = to_html (counter_view 0)
 
-    {2 Core Concepts}
+     (* And for LiveView rendering: *)
+     let render state = counter_view state.count
+   ]}
 
-    {3 Components are Trees}
+   {2 Core Concepts}
 
-    Every component is a tree of:
-    - {b Elements} - 115+ HTML5 tags with attributes and children
-    - {b Text} - String content
-    - {b Fragments} - Lists of components without a wrapper
+   {3 Components are Trees}
 
-    {3 Attributes vs Events}
+   Every component is a tree of:
+   - {b Elements} - 115+ HTML5 tags with attributes and children
+   - {b Text} - String content
+   - {b Fragments} - Lists of components without a wrapper
 
-    - {b Attributes} (class, id, href, etc.) render in static HTML
-    - {b Events} (on_click, on_submit, etc.) only work in LiveView
-    - In static rendering, events are completely ignored
+   {3 Attributes vs Events}
 
-    {3 Design Systems}
+   - {b Attributes} (class, id, href, etc.) render in static HTML
+   - {b Events} (on_click, on_submit, etc.) only work in LiveView
+   - In static rendering, events are completely ignored
 
-    Build reusable component libraries:
-    {[
-      module MyDesign = struct
-        let card ?(class_extra = "") children =
-          div ~attrs:[
-            class_ ("card " ^ class_extra);
-            style_ "border: 1px solid #ccc; padding: 16px";
-          ] children
+   {3 Design Systems}
 
-        let button_primary children =
-          button ~attrs:[class_ "btn btn-primary"] children
-      end
+   Build reusable component libraries:
+   {[
+     module MyDesign = struct
+       let card ?(class_extra = "") children =
+         div ~attrs:[
+           class_ ("card " ^ class_extra);
+           style_ "border: 1px solid #ccc; padding: 16px";
+         ] children
 
-      let my_page =
-        MyDesign.card [
-          h1 [text "Products"];
-          MyDesign.button_primary [text "Buy Now"]
-        ]
-    ]}
+       let button_primary children =
+         button ~attrs:[class_ "btn btn-primary"] children
+     end
+
+     let my_page =
+       MyDesign.card [
+         h1 [text "Products"];
+         MyDesign.button_primary [text "Buy Now"]
+       ]
+   ]}
 *)
-
 (** {1 Core Types} *)
-
 type 'msg attr =
   | Attr of string * string
   | Event of string * (string -> 'msg)
-(** HTML attribute or event handler.
-    
-    - ['msg] is the message type for event handlers (e.g., your app's action type)
-    - Attributes (class, id, etc.) are rendered in static HTML
-    - Events (on_click, etc.) are only active in LiveView *)
+
+(**
+   HTML attribute or event handler.
+
+   - ['msg] is the message type for event handlers (e.g., your app's action type)
+   - Attributes (class, id, etc.) are rendered in static HTML
+   - Events (on_click, etc.) are only active in LiveView 
+*)
 type 'msg t =
   | El of { tag: string; attrs: 'msg attr list; children: 'msg t list }
   | Text of string
@@ -104,31 +106,38 @@ type 'msg t =
 
 (** Component tree - can be an element, text, or fragment. *)
 (** {1 Creating Attributes} *)
-
 val attr: string -> string -> 'msg attr
 
-(** Create any HTML attribute.
-    
-    Examples:
-    {[
-      attr "aria-label" "Close button"
-      attr "data-user-id" "123"
-    ]} *)
+(**
+   Create any HTML attribute.
+
+   Examples:
+   {[
+     attr "aria-label" "Close button"
+     attr "data-user-id" "123"
+   ]} 
+*)
 val class_: string -> 'msg attr
 
-(** CSS class attribute.
-    
-    Example: [class_ "btn btn-primary"] *)
+(**
+   CSS class attribute.
+
+   Example: [class_ "btn btn-primary"] 
+*)
 val style_: string -> 'msg attr
 
-(** Inline style attribute.
-    
-    Example: [style_ "color: red; font-weight: bold"] *)
+(**
+   Inline style attribute.
+
+   Example: [style_ "color: red; font-weight: bold"] 
+*)
 val id: string -> 'msg attr
 
-(** Element ID attribute.
-    
-    Example: [id "main-content"] *)
+(**
+   Element ID attribute.
+
+   Example: [id "main-content"] 
+*)
 val title_: string -> 'msg attr
 
 (** Title attribute (tooltip text). *)
@@ -143,14 +152,18 @@ val placeholder: string -> 'msg attr
 (** Form input placeholder text. *)
 val type_: string -> 'msg attr
 
-(** Input/button type attribute.
-    
-    Examples: [type_ "text"], [type_ "submit"] *)
+(**
+   Input/button type attribute.
+
+   Examples: [type_ "text"], [type_ "submit"] 
+*)
 val href: string -> 'msg attr
 
-(** Link href attribute.
-    
-    Example: [href "/products"] *)
+(**
+   Link href attribute.
+
+   Example: [href "/products"] 
+*)
 val src: string -> 'msg attr
 
 (** Image/script source attribute. *)
@@ -159,14 +172,18 @@ val alt: string -> 'msg attr
 (** Image alt text. *)
 val target: string -> 'msg attr
 
-(** Link target attribute.
-    
-    Example: [target "_blank"] *)
+(**
+   Link target attribute.
+
+   Example: [target "_blank"] 
+*)
 val rel: string -> 'msg attr
 
-(** Link relationship attribute.
-    
-    Example: [rel "noopener noreferrer"] *)
+(**
+   Link relationship attribute.
+
+   Example: [rel "noopener noreferrer"] 
+*)
 val for_: string -> 'msg attr
 
 (** Label for attribute (links label to input). *)
@@ -175,9 +192,11 @@ val action: string -> 'msg attr
 (** Form action URL. *)
 val method_: string -> 'msg attr
 
-(** Form method attribute.
-    
-    Examples: [method_ "GET"], [method_ "POST"] *)
+(**
+   Form method attribute.
+
+   Examples: [method_ "GET"], [method_ "POST"] 
+*)
 val disabled: 'msg attr
 
 (** Boolean disabled attribute. *)
@@ -198,24 +217,31 @@ val autofocus: 'msg attr
 (** Boolean autofocus attribute. *)
 val autocomplete: string -> 'msg attr
 
-(** Autocomplete attribute.
-    
-    Examples: [autocomplete "off"], [autocomplete "email"] *)
+(**
+   Autocomplete attribute.
+
+   Examples: [autocomplete "off"], [autocomplete "email"] 
+*)
 val data: string -> string -> 'msg attr
 
-(** Data attribute.
-    
-    Example: [data "user-id" "123"] creates [data-user-id="123"] *)
-(** {1 Event Handlers} 
+(**
+   Data attribute.
 
-    {b Note:} Events are {b LiveView only}. They are completely ignored
-    when rendering static HTML with [to_html]. *)
+   Example: [data "user-id" "123"] creates [data-user-id="123"] 
+*)
+(**
+   {1 Event Handlers}
 
+   {b Note:} Events are {b LiveView only}. They are completely ignored
+   when rendering static HTML with [to_html]. 
+*)
 val on: string -> (string -> 'msg) -> 'msg attr
 
-(** Generic event handler.
-    
-    Example: [on "mouseover" (fun _ -> Hover)] *)
+(**
+   Generic event handler.
+
+   Example: [on "mouseover" (fun _ -> Hover)] 
+*)
 val on_click: (string -> 'msg) -> 'msg attr
 
 (** Click event handler. *)
@@ -258,18 +284,18 @@ val on_mouseover: (string -> 'msg) -> 'msg attr
 val on_mouseout: (string -> 'msg) -> 'msg attr
 
 (** Mouse out event handler. *)
-(** {1 HTML Elements} 
+(**
+   {1 HTML Elements}
 
-    All element constructors follow the pattern:
-    {[
-      element_name : ?attrs:'msg attr list -> 'msg t list -> 'msg t
-    ]}
-    
-    Self-closing elements (like [input], [br], [img]) take [unit] instead
-    of children and return ['msg t]. *)
+   All element constructors follow the pattern:
+   {[
+     element_name : ?attrs:'msg attr list -> 'msg t list -> 'msg t
+   ]}
 
+   Self-closing elements (like [input], [br], [img]) take [unit] instead
+   of children and return ['msg t]. 
+*)
 (** {2 Document Structure} *)
-
 val html: ?attrs:'msg attr list -> 'msg t list -> 'msg t
 
 (** Root HTML element *)
@@ -298,7 +324,6 @@ val script: ?attrs:'msg attr list -> string -> 'msg t
 
 (** Inline or external JavaScript *)
 (** {2 Content Sectioning} *)
-
 val header: ?attrs:'msg attr list -> 'msg t list -> 'msg t
 
 (** Introductory content or navigation *)
@@ -330,7 +355,6 @@ val search: ?attrs:'msg attr list -> 'msg t list -> 'msg t
 
 (** Search or filtering section *)
 (** {2 Text Content} *)
-
 val div: ?attrs:'msg attr list -> 'msg t list -> 'msg t
 
 (** Generic container (block-level) *)
@@ -380,7 +404,6 @@ val menu: ?attrs:'msg attr list -> 'msg t list -> 'msg t
 
 (** Unordered list of items (semantic alternative to ul) *)
 (** {2 Inline Text Semantics} *)
-
 val a: ?attrs:'msg attr list -> 'msg t list -> 'msg t
 
 (** Hyperlink *)
@@ -469,7 +492,6 @@ val ins: ?attrs:'msg attr list -> 'msg t list -> 'msg t
 
 (** Inserted text *)
 (** {2 Lists} *)
-
 val ul: ?attrs:'msg attr list -> 'msg t list -> 'msg t
 
 val ol: ?attrs:'msg attr list -> 'msg t list -> 'msg t
@@ -547,7 +569,6 @@ val meter: ?attrs:'msg attr list -> 'msg t list -> 'msg t
 
 (** Scalar measurement within range *)
 (** {2 Interactive Elements} *)
-
 val details: ?attrs:'msg attr list -> 'msg t list -> 'msg t
 
 (** Disclosure widget (expandable/collapsible) *)
@@ -558,7 +579,6 @@ val dialog: ?attrs:'msg attr list -> 'msg t list -> 'msg t
 
 (** Dialog box or modal *)
 (** {2 Image and Multimedia} *)
-
 val area: ?attrs:'msg attr list -> unit -> 'msg t
 
 (** Clickable area in image map *)
@@ -578,7 +598,6 @@ val video: ?attrs:'msg attr list -> 'msg t list -> 'msg t
 
 (** Video content *)
 (** {2 Embedded Content} *)
-
 val embed: ?attrs:'msg attr list -> unit -> 'msg t
 
 (** External content (plugin) *)
@@ -595,7 +614,6 @@ val source: ?attrs:'msg attr list -> unit -> 'msg t
 
 (** Media resource for picture/audio/video *)
 (** {2 Scripting} *)
-
 val canvas: ?attrs:'msg attr list -> 'msg t list -> 'msg t
 
 (** Graphics canvas (2D/WebGL) *)
@@ -603,7 +621,6 @@ val noscript: ?attrs:'msg attr list -> 'msg t list -> 'msg t
 
 (** Fallback for disabled JavaScript *)
 (** {2 SVG and MathML} *)
-
 val svg: ?attrs:'msg attr list -> 'msg t list -> 'msg t
 
 (** SVG graphics container *)
@@ -611,7 +628,6 @@ val math: ?attrs:'msg attr list -> 'msg t list -> 'msg t
 
 (** MathML mathematical notation *)
 (** {2 Web Components} *)
-
 val slot: ?attrs:'msg attr list -> 'msg t list -> 'msg t
 
 (** Web component placeholder *)
@@ -619,137 +635,154 @@ val template: ?attrs:'msg attr list -> 'msg t list -> 'msg t
 
 (** HTML template (not rendered initially) *)
 (** {2 Generic Element Builder} *)
-
 val el: string -> ?attrs:'msg attr list -> 'msg t list -> 'msg t
 
-(** Create any HTML element by tag name.
-    
-    Useful for custom elements or elements not yet covered.
-    
-    Example:
-    {[
-      el "custom-widget" ~attrs:[class_ "widget"] [
-        text "Custom content"
-      ]
-    ]} *)
-(** {1 Content Helpers} *)
+(**
+   Create any HTML element by tag name.
 
+   Useful for custom elements or elements not yet covered.
+
+   Example:
+   {[
+     el "custom-widget" ~attrs:[class_ "widget"] [
+       text "Custom content"
+     ]
+   ]} 
+*)
+(** {1 Content Helpers} *)
 val text: string -> 'msg t
 
-(** Create a text node.
-    
-    Example: [text "Hello, world!"] *)
+(**
+   Create a text node.
+
+   Example: [text "Hello, world!"] 
+*)
 val int: int -> 'msg t
 
-(** Create a text node from an integer.
-    
-    Example: [int 42] *)
+(**
+   Create a text node from an integer.
+
+   Example: [int 42] 
+*)
 val float: float -> 'msg t
 
-(** Create a text node from a float.
-    
-    Example: [float 3.14] *)
+(**
+   Create a text node from a float.
+
+   Example: [float 3.14] 
+*)
 val fragment: 'msg t list -> 'msg t
 
-(** Group elements without a wrapper.
-    
-    Useful for conditional rendering or loops:
-    {[
-      fragment [
-        h1 [text "Title"];
-        p [text "Paragraph"];
-      ]
-    ]} *)
+(**
+   Group elements without a wrapper.
+
+   Useful for conditional rendering or loops:
+   {[
+     fragment [
+       h1 [text "Title"];
+       p [text "Paragraph"];
+     ]
+   ]} 
+*)
 val empty: 'msg t
 
-(** Empty content (renders nothing).
-    
-    Useful for conditional rendering:
-    {[
-      if show_message then
-        p [text "Message"]
-      else
-        empty
-    ]} *)
-(** {1 Conditional Rendering} *)
+(**
+   Empty content (renders nothing).
 
+   Useful for conditional rendering:
+   {[
+     if show_message then
+       p [text "Message"]
+     else
+       empty
+   ]} 
+*)
+(** {1 Conditional Rendering} *)
 val when_: bool -> 'msg t -> 'msg t
 
-(** Render element only if condition is true.
-    
-    Example:
-    {[
-      when_ (count > 0) (
-        p [text "You have items"]
-      )
-    ]} *)
+(**
+   Render element only if condition is true.
+
+   Example:
+   {[
+     when_ (count > 0) (
+       p [text "You have items"]
+     )
+   ]} 
+*)
 val unless: bool -> 'msg t -> 'msg t
 
-(** Render element only if condition is false.
-    
-    Example:
-    {[
-      unless is_loading (
-        div [text "Content loaded"]
-      )
-    ]} *)
+(**
+   Render element only if condition is false.
+
+   Example:
+   {[
+     unless is_loading (
+       div [text "Content loaded"]
+     )
+   ]} 
+*)
 val maybe: 'a option -> ('a -> 'msg t) -> 'msg t
 
-(** Render element if option is Some.
-    
-    Example:
-    {[
-      maybe user (fun u ->
-        div [
-          text "Welcome, ";
-          text u.name;
-        ]
-      )
-    ]} *)
-(** {1 Rendering} *)
+(**
+   Render element if option is Some.
 
+   Example:
+   {[
+     maybe user (fun u ->
+       div [
+         text "Welcome, ";
+         text u.name;
+       ]
+     )
+   ]} 
+*)
+(** {1 Rendering} *)
 val to_html: 'msg t -> string
 
-(** Render component tree to HTML string.
-    
-    - Event handlers are ignored (LiveView only)
-    - Self-closing tags are properly formatted
-    - Attributes are HTML-escaped
-    
-    Example:
-    {[
-      let page = div ~attrs:[class_ "container"] [
-        h1 [text "Hello"];
-        button ~attrs:[on_click (fun _ -> Click)] [text "Click"]
-      ] in
-      to_html page
-      (* Output: <div class="container"><h1>Hello</h1><button>Click</button></div> *)
-      (* Note: on_click is ignored in static HTML *)
-    ]} *)
-(** {1 Advanced} *)
+(**
+   Render component tree to HTML string.
 
+   - Event handlers are ignored (LiveView only)
+   - Self-closing tags are properly formatted
+   - Attributes are HTML-escaped
+
+   Example:
+   {[
+     let page = div ~attrs:[class_ "container"] [
+       h1 [text "Hello"];
+       button ~attrs:[on_click (fun _ -> Click)] [text "Click"]
+     ] in
+     to_html page
+     (* Output: <div class="container"><h1>Hello</h1><button>Click</button></div> *)
+     (* Note: on_click is ignored in static HTML *)
+   ]} 
+*)
+(** {1 Advanced} *)
 val map: ('a -> 'b) -> 'a t -> 'b t
 
-(** Transform event handlers from one message type to another.
-    
-    Essential for component composition with nested message types.
-    
-    Example:
-    {[
-      type parent_msg = ChildClicked of child_msg | Other
-      type child_msg = Increment | Decrement
+(**
+   Transform event handlers from one message type to another.
 
-      let child_component = (* returns child_msg t *)
-        button ~attrs:[on_click (fun _ -> Increment)] [text "+"]
+   Essential for component composition with nested message types.
 
-      let parent_component =
-        div [
-          map (fun msg -> ChildClicked msg) child_component
-        ]
-    ]} *)
-val extract_handlers: 'msg t -> (string * (string -> 'msg)) list
+   Example:
+   {[
+     type parent_msg = ChildClicked of child_msg | Other
+     type child_msg = Increment | Decrement
 
-(** Extract all event handlers from a component tree.
-    
-    Used internally by LiveView runtime to register event handlers.
-    Most users don't need this function. *)
+     let child_component = (* returns child_msg t *)
+       button ~attrs:[on_click (fun _ -> Increment)] [text "+"]
+
+     let parent_component =
+       div [
+         map (fun msg -> ChildClicked msg) child_component
+       ]
+   ]} 
+*)
+val extract_handlers: 'msg t -> (string * (string -> 'msg)) list(**
+   Extract all event handlers from a component tree.
+
+   Used internally by LiveView runtime to register event handlers.
+   Most users don't need this function. 
+*)

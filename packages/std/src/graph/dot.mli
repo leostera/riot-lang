@@ -1,73 +1,71 @@
-(** # Dot - Graphviz DOT format generation
+(**
+   # Dot - Graphviz DOT format generation
 
-    Generate DOT format strings for rendering with Graphviz tools
-    (dot, neato, fdp, etc.).
+   Generate DOT format strings for rendering with Graphviz tools
+   (dot, neato, fdp, etc.).
 
-    ## Examples
+   ## Examples
 
-    ```ocaml
-    open Std
+   ```ocaml
+   open Std
 
-    (* Create a directed graph *)
-    let graph = Graph.Dot.create ~name:"dependencies" ~style:Directed
-      |> Graph.Dot.add_node ~id:"main" ~label:"main.ml" ()
-      |> Graph.Dot.add_node ~id:"utils" ~label:"utils.ml" 
-          ~attrs:["color", "blue"; "shape", "box"] ()
-      |> Graph.Dot.add_edge ~from_node:"main" ~to_node:"utils" 
-          ~label:"imports" () in
+   (* Create a directed graph *)
+   let graph = Graph.Dot.create ~name:"dependencies" ~style:Directed
+     |> Graph.Dot.add_node ~id:"main" ~label:"main.ml" ()
+     |> Graph.Dot.add_node ~id:"utils" ~label:"utils.ml" 
+         ~attrs:["color", "blue"; "shape", "box"] ()
+     |> Graph.Dot.add_edge ~from_node:"main" ~to_node:"utils" 
+         ~label:"imports" () in
 
-    let dot_string = Graph.Dot.to_string graph in
-    (* digraph dependencies {
-         main [label="main.ml"];
-         utils [label="utils.ml", color="blue", shape="box"];
-         main -> utils [label="imports"];
-       } *)
+   let dot_string = Graph.Dot.to_string graph in
+   (* digraph dependencies {
+        main [label="main.ml"];
+        utils [label="utils.ml", color="blue", shape="box"];
+        main -> utils [label="imports"];
+      } *)
 
-    (* Write to file and render *)
-    Fs.write (Path.v "graph.dot") dot_string |> ignore;
-    (* Then: dot -Tpng graph.dot -o graph.png *)
-    ```
+   (* Write to file and render *)
+   Fs.write (Path.v "graph.dot") dot_string |> ignore;
+   (* Then: dot -Tpng graph.dot -o graph.png *)
+   ```
 
-    Undirected graph:
+   Undirected graph:
 
-    ```ocaml
-    let graph = Graph.Dot.create ~name:"network" ~style:Undirected
-      |> Graph.Dot.add_node ~id:"A" ()
-      |> Graph.Dot.add_node ~id:"B" ()
-      |> Graph.Dot.add_edge ~from_node:"A" ~to_node:"B" ()
-    (* Uses -- instead of -> for edges *)
-    ```
+   ```ocaml
+   let graph = Graph.Dot.create ~name:"network" ~style:Undirected
+     |> Graph.Dot.add_node ~id:"A" ()
+     |> Graph.Dot.add_node ~id:"B" ()
+     |> Graph.Dot.add_edge ~from_node:"A" ~to_node:"B" ()
+   (* Uses -- instead of -> for edges *)
+   ```
 
-    ## Attributes
+   ## Attributes
 
-    Common node attributes:
-    - `shape`: box, circle, diamond, ellipse, plaintext
-    - `color`: red, blue, "#ff0000"
-    - `style`: filled, dashed, bold
-    - `fontsize`: "12", "14"
+   Common node attributes:
+   - `shape`: box, circle, diamond, ellipse, plaintext
+   - `color`: red, blue, "#ff0000"
+   - `style`: filled, dashed, bold
+   - `fontsize`: "12", "14"
 
-    Common edge attributes:
-    - `color`, `style`, `weight`, `arrowhead`
+   Common edge attributes:
+   - `color`, `style`, `weight`, `arrowhead`
 
-    See Graphviz documentation for complete attribute list.
+   See Graphviz documentation for complete attribute list.
 
-    ## When to Use
+   ## When to Use
 
-    - Module dependency visualization
-    - Call graphs and data flow diagrams
-    - State machine diagrams
-    - Any graph visualization with Graphviz
+   - Module dependency visualization
+   - Call graphs and data flow diagrams
+   - State machine diagrams
+   - Any graph visualization with Graphviz
 *)
-
 type graph_style =
   | Directed
   | Undirected
+
 (** Graph style - directed (->) or undirected (--). *)
-type node = {
-  id: string;
-  label: string option;
-  attrs: (string * string) list;
-}
+type node = { id: string; label: string option; attrs: (string * string) list }
+
 (** Node with optional label and Graphviz attributes. *)
 type edge = {
   from_node: string;
@@ -75,6 +73,7 @@ type edge = {
   label: string option;
   attrs: (string * string) list;
 }
+
 (** Edge with optional label and Graphviz attributes. *)
 type t = {
   name: string;
@@ -91,16 +90,7 @@ val create: name:string -> style:graph_style -> t
 val add_node: t -> id:string -> ?label:string -> ?attrs:(string * string) list -> unit -> t
 
 (** Add a node to the graph. *)
-val add_edge:
-  t ->
-  from_node:string ->
-  to_node:string ->
-  ?label:string ->
-  ?attrs:(string * string) list ->
-  unit ->
-  t
+val add_edge: t -> from_node:string -> to_node:string -> ?label:string -> ?attrs:(string * string) list -> unit -> t
 
 (** Add an edge to the graph. *)
-val to_string: t -> string
-
-(** Convert graph to DOT format string. *)
+val to_string: t -> string(** Convert graph to DOT format string. *)

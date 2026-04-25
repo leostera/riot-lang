@@ -1,35 +1,26 @@
 (** A module name with namespace support *)
 open Std
 
-type t = {
-  filename: Path.t;
-  namespace: Namespace.t;
-  name: string;
-}
+type t = { filename: Path.t; namespace: Namespace.t; name: string }
 
 let make = fun ~filename ~namespace ~name -> { filename; namespace; name }
 
-let sanitize_name = fun name ->
-  String.map
-    ~fn:(fun c ->
-      if c = '-' then
-        '_'
-      else
-        c)
-    name
+let sanitize_name = fun name -> String.map ~fn:(
+  fun c ->
+    if c = '-' then
+      '_'
+    else c
+) name
 
 let of_filename = fun ?(namespace = Namespace.empty) filename ->
-  let name = Path.remove_extension filename |> Path.basename |> sanitize_name |> String.capitalize_ascii in
-  { filename; namespace; name }
+  let name = Path.remove_extension filename |> Path.basename |> sanitize_name |> String.capitalize_ascii in { filename; namespace; name }
 
 let of_string = fun ?(namespace = Namespace.empty) s ->
   let name = sanitize_name s |> String.capitalize_ascii in
-  let filename = Path.v s in
-  { filename; namespace; name }
+  let filename = Path.v s in { filename; namespace; name }
 
 let of_path = fun path ->
-  let name = Path.remove_extension path |> Path.basename |> sanitize_name |> String.capitalize_ascii in
-  { filename = path; namespace = Namespace.empty; name }
+  let name = Path.remove_extension path |> Path.basename |> sanitize_name |> String.capitalize_ascii in { filename = path; namespace = Namespace.empty; name }
 
 let filename = fun t -> t.filename
 
@@ -45,7 +36,6 @@ let qualified_name = fun t ->
   | ns -> Namespace.to_string (Namespace.append t.namespace t.name)
 
 (* Output file names based on qualified names *)
-
 let cma = fun t -> qualified_name t ^ ".cma" |> Path.v
 
 let cmxa = fun t -> qualified_name t ^ ".cmxa" |> Path.v
@@ -70,6 +60,5 @@ let canonical_mli = fun t -> qualified_name t ^ ".mli" |> Path.v
 
 let canonical_ml = fun t -> qualified_name t ^ ".ml" |> Path.v
 
-let binary = fun t ->
-  (* Get the base name without extension from the original filename *)
-  Path.remove_extension t.filename |> Path.basename |> sanitize_name
+let binary = fun t -> (* Get the base name without extension from the original filename *)
+Path.remove_extension t.filename |> Path.basename |> sanitize_name

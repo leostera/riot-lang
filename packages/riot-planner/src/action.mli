@@ -3,52 +3,53 @@ open Riot_model
 
 type t =
   | CompileInterface of {
-      source: Path.t;
-      outputs: Path.t list;
-      includes: Path.t list;
-      flags: Riot_toolchain.Ocamlc.compiler_flag list
-    }
+    source: Path.t;
+    outputs: Path.t list;
+    includes: Path.t list;
+    flags: Riot_toolchain.Ocamlc.compiler_flag list;
+  }
   | CompileImplementation of {
-      source: Path.t;
-      outputs: Path.t list;
-      includes: Path.t list;
-      flags: Riot_toolchain.Ocamlc.compiler_flag list
-    }
+    source: Path.t;
+    outputs: Path.t list;
+    includes: Path.t list;
+    flags: Riot_toolchain.Ocamlc.compiler_flag list;
+  }
   | GenerateInterface of {
-      source: Path.t;
-      outputs: Path.t list;
-      includes: Path.t list;
-      flags: Riot_toolchain.Ocamlc.compiler_flag list
-    }
+    source: Path.t;
+    outputs: Path.t list;
+    includes: Path.t list;
+    flags: Riot_toolchain.Ocamlc.compiler_flag list;
+  }
   | CompileC of { source: Path.t; outputs: Path.t list; ccflags: string list }
   | CreateLibrary of { outputs: Path.t list; objects: Path.t list; includes: Path.t list }
   | CreateExecutable of {
-      outputs: Path.t list;
-      objects: Path.t list;
-      libraries: Path.t list;
-      includes: Path.t list;
-      cclibs: Path.t list;
-      ccopt_flags: string list;
-      cclib_flags: string list
-    }
+    outputs: Path.t list;
+    objects: Path.t list;
+    libraries: Path.t list;
+    includes: Path.t list;
+    cclibs: Path.t list;
+    ccopt_flags: string list;
+    cclib_flags: string list;
+  }
   | CreateSharedLibrary of {
-      outputs: Path.t list;
-      objects: Path.t list;
-      libraries: Path.t list;
-      includes: Path.t list;
-      cclibs: Path.t list;
-      ccopt_flags: string list;
-      cclib_flags: string list
-    }
+    outputs: Path.t list;
+    objects: Path.t list;
+    libraries: Path.t list;
+    includes: Path.t list;
+    cclibs: Path.t list;
+    ccopt_flags: string list;
+    cclib_flags: string list;
+  }
   | CopyFile of { source: Path.t; destination: Path.t }
   | WriteFile of { destination: Path.t; content: string }
   | BuildForeignDependency of {
-      name: string;
-      path: Path.t;
-      build_cmd: string list;
-      outputs: Path.t list;
-      env: (string * string) list
-    }
+    name: string;
+    path: Path.t;
+    build_cmd: string list;
+    outputs: Path.t list;
+    env: (string * string) list;
+  }
+
 val hash: t -> Std.Crypto.hash
 
 val to_string: t -> string

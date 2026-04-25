@@ -1,9 +1,11 @@
-module Error: module type of Error
+module Error : module type of Error
 
-module IoVec: sig
-  module IoSlice: sig
+module IoVec : sig
+  module IoSlice : sig
     type t
+
     type error = Error.t
+
     val empty: t
 
     val create: size:int -> (t, error) Result.t
@@ -34,8 +36,7 @@ module IoVec: sig
 
     val blit_unchecked: src:t -> src_off:int -> dst:t -> dst_off:int -> len:int -> unit
 
-    val blit_from_bytes:
-      bytes -> src_off:int -> t -> dst_off:int -> len:int -> (unit, error) Result.t
+    val blit_from_bytes: bytes -> src_off:int -> t -> dst_off:int -> len:int -> (unit, error) Result.t
 
     val blit_from_bytes_unchecked: bytes -> src_off:int -> t -> dst_off:int -> len:int -> unit
 
@@ -43,8 +44,7 @@ module IoVec: sig
 
     val blit_to_bytes_unchecked: t -> src_off:int -> bytes -> dst_off:int -> len:int -> unit
 
-    val blit_from_string:
-      string -> src_off:int -> t -> dst_off:int -> len:int -> (unit, error) Result.t
+    val blit_from_string: string -> src_off:int -> t -> dst_off:int -> len:int -> (unit, error) Result.t
 
     val blit_from_string_unchecked: string -> src_off:int -> t -> dst_off:int -> len:int -> unit
 
@@ -66,8 +66,11 @@ module IoVec: sig
   end
 
   type segment = IoSlice.t
+
   type t
+
   type error = Error.t
+
   val empty: t
 
   val create: ?count:int -> size:int -> unit -> (t, error) Result.t
@@ -95,11 +98,13 @@ module IoVec: sig
   val to_string: t -> string
 end
 
-module Buffer: sig
+module Buffer : sig
   module IoSlice = IoVec.IoSlice
 
   type t
+
   type error = Error.t
+
   val create: ?size:int -> unit -> (t, error) Result.t
 
   val length: t -> int
@@ -147,10 +152,11 @@ module Buffer: sig
   val to_string: t -> string
 end
 
-module Stdin: sig
+module Stdin : sig
   type error =
     | InvalidSlice of { pos: int; len: int; buffer_len: int }
     | System of System_error.t
+
   val error_to_string: error -> string
 
   val read: ?pos:int -> ?len:int -> bytes -> (int, error) Result.t
@@ -160,10 +166,11 @@ module Stdin: sig
   val to_source: unit -> Async.Source.t
 end
 
-module Stdout: sig
+module Stdout : sig
   type error =
     | InvalidSlice of { pos: int; len: int; buffer_len: int }
     | System of System_error.t
+
   val error_to_string: error -> string
 
   val write: ?pos:int -> ?len:int -> bytes -> (int, error) Result.t
@@ -179,10 +186,11 @@ module Stdout: sig
   val to_source: unit -> Async.Source.t
 end
 
-module Stderr: sig
+module Stderr : sig
   type error =
     | InvalidSlice of { pos: int; len: int; buffer_len: int }
     | System of System_error.t
+
   val error_to_string: error -> string
 
   val write: ?pos:int -> ?len:int -> bytes -> (int, error) Result.t

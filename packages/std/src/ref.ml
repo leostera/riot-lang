@@ -2,7 +2,7 @@ open Global
 open Sync
 
 type 'a t =
-  Ref of int64 [@@unboxed]
+  | Ref of int64 [@@unboxed]
 
 let __current__ = Atomic.make 0L
 
@@ -11,14 +11,12 @@ let rec make = fun () ->
   let current = last |> Int64.succ in
   if Atomic.compare_and_set __current__ last current then
     Ref last
-  else
-    make ()
+  else make ()
 
-let equal = fun (Ref a) (Ref b) ->
-  Int64.equal a b
+let equal = fun (Ref a) (Ref b) -> Int64.equal a b
 
 let type_equal: type a b. a t -> b t -> (a, b) Type.eq option = fun a b ->
-  match (a, b) with
+  match a, b with
   | Ref a', Ref b' when Int64.equal a' b' -> Some (Kernel.dangerously_cast_value Type.Equal)
   | _ -> None
 
@@ -32,7 +30,6 @@ let cast: type a b. a t -> b t -> a -> b option = fun a b value ->
 let is_newer = fun (Ref a) (Ref b) ->
   match Int64.compare a b with
   | Order.GT -> true
-  | Order.LT
-  | Order.EQ -> false
+  | Order.LT | Order.EQ -> false
 
 let hash = fun (Ref a) -> Int64.hash a

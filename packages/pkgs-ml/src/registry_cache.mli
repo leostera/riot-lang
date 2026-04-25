@@ -2,14 +2,17 @@ open Std
 
 (** On-disk cache layout for one registry. *)
 type t
+
 type create_error =
   | HomeDirectoryUnavailable
+
 val create_error_message: create_error -> string
 
-(** Create a registry cache rooted under the Riot home directory.
+(**
+   Create a registry cache rooted under the Riot home directory.
 
-    Use [`riot_home`] to override the default Riot home location in tests or
-    custom environments.
+   Use [`riot_home`] to override the default Riot home location in tests or
+   custom environments.
 *)
 val create: ?riot_home:Path.t -> registry_name:string -> unit -> (t, create_error) result
 

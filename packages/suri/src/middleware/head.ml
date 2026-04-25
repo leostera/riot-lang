@@ -1,12 +1,14 @@
 open Std
 
-(** HEAD request handler middleware
-    
-    Simply strips the response body for HEAD requests.
-    Routes can still match HEAD explicitly, or they'll 404 like any unmatched method.
-    
-    The key insight: HEAD responses MUST NOT have a body per HTTP spec,
-    regardless of how the route is defined. *)
+(**
+   HEAD request handler middleware
+
+   Simply strips the response body for HEAD requests.
+   Routes can still match HEAD explicitly, or they'll 404 like any unmatched method.
+
+   The key insight: HEAD responses MUST NOT have a body per HTTP spec,
+   regardless of how the route is defined. 
+*)
 let middleware = fun ~conn ~next ->
   let original_method = Conn.method_ conn in
   let conn' = next conn in

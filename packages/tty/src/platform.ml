@@ -54,8 +54,7 @@ let get_size = fun fd -> map_error (get_size_raw fd)
 
 let get_attributes = fun fd -> map_error (get_attributes_raw fd)
 
-let set_attributes = fun fd when_to_apply termios ->
-  map_error (set_attributes_raw fd when_to_apply termios)
+let set_attributes = fun fd when_to_apply termios -> map_error (set_attributes_raw fd when_to_apply termios)
 
 let read = fun fd bytes ~offset ~len -> map_error (read_raw fd bytes offset len)
 

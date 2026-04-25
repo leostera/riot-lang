@@ -4,6 +4,7 @@ type single_result =
   | Failed of string
   | Timed_out of { timeout: Time.Duration.t }
   | Skipped
+
 (** A test result tagged with its index and name. *)
 type t = {
   (** Position of the test in the run. *)
@@ -23,6 +24,7 @@ type t = {
   (** Time spent executing this test case. *)
   duration: Time.Duration.t;
 }
+
 (** Summary of all test results in a run. *)
 type summary = {
   (** Total number of tests considered. *)
@@ -39,12 +41,13 @@ type summary = {
   duration: Time.Duration.t;
 }
 
-(** [make_summary results] creates a summary from individual test results.
+(**
+   [make_summary results] creates a summary from individual test results.
 
-    ## Example
+   ## Example
 
-    ```ocaml
-    let summary = Test_result.make_summary results
-    ```
+   ```ocaml
+   let summary = Test_result.make_summary results
+   ```
 *)
 val make_summary: t list -> summary

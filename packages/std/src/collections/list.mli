@@ -1,4 +1,5 @@
 type 'value t = 'value list
+
 val length: 'value list -> int
 
 val compare_lengths: left:'left list -> right:'right list -> int
@@ -23,9 +24,10 @@ val get: 'value list -> at:int -> 'value option
 
 val get_unchecked: 'value list -> at:int -> 'value
 
-(** Take at most `len` items rom a list. Returns Empty on empty list otherwise
-    returns at most Len Elements. If lem is larger can the input list returns
-    the whole list.
+(**
+   Take at most `len` items rom a list. Returns Empty on empty list otherwise
+   returns at most Len Elements. If lem is larger can the input list returns
+   the whole list.
 *)
 val take: 'value list -> len:int -> 'value list
 

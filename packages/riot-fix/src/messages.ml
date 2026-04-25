@@ -1,15 +1,8 @@
 open Std
 
-type file_result = {
-  worker: Pid.t;
-  result: Runner.file_result;
-}
+type file_result = { worker: Pid.t; result: Runner.file_result }
 
-type file_progress = {
-  worker: Pid.t;
-  file: Path.t;
-  event: Fixme.Source_runner.progress_event;
-}
+type file_progress = { worker: Pid.t; file: Path.t; event: Fixme.Source_runner.progress_event }
 
 type Message.t +=
   | ScannerDiscovered of Path.t

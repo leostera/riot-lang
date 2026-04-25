@@ -1,7 +1,9 @@
 module IoSlice = IoVec.IoSlice
 
 type t
+
 type error = Error.t
+
 val create: ?size:int -> unit -> (t, error) Result.t
 
 val length: t -> int

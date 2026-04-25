@@ -2,14 +2,14 @@ open Std
 open Std.IO
 
 type t =
-  | Conn: {
-      protocol: string option;
-      stream: Net.TcpStream.t;
-      peer: Net.Addr.stream_addr;
-      default_read_size: int;
-      accepted_at: Time.Instant.t;
-      connected_at: Time.Instant.t;
-    } -> t
+  | Conn : {
+    protocol: string option;
+    stream: Net.TcpStream.t;
+    peer: Net.Addr.stream_addr;
+    default_read_size: int;
+    accepted_at: Time.Instant.t;
+    connected_at: Time.Instant.t;
+  } -> t
 
 let make = fun ?(protocol = None) ~accepted_at ~stream ~buffer_size ~peer () ->
   Conn {
@@ -18,19 +18,14 @@ let make = fun ?(protocol = None) ~accepted_at ~stream ~buffer_size ~peer () ->
     peer;
     default_read_size = buffer_size;
     accepted_at;
-    connected_at = Time.Instant.now ();
+    connected_at = Time.Instant.now ()
   }
 
 let negotiated_protocol = fun (Conn t) -> t.protocol
 
 let receive = fun ?(limit = 1_024) ?read_size ?timeout (Conn { default_read_size; stream; _ }) ->
   let read_size = Option.unwrap_or ~default:default_read_size read_size in
-  Log.trace
-    ("receive with read_size of "
-    ^ string_of_int read_size
-    ^ " (using limit="
-    ^ string_of_int limit
-    ^ ")");
+  Log.trace ("receive with read_size of " ^ string_of_int read_size ^ " (using limit=" ^ string_of_int limit ^ ")");
   let capacity = Int.min limit read_size in
   let buf = Bytes.create ~size:capacity in
   match Net.TcpStream.read stream buf ?timeout () with
@@ -45,7 +40,6 @@ let rec send = fun conn data ->
       Log.trace ("sent " ^ string_of_int (String.length data) ^ " bytes");
       Ok ()
   | Error e -> Error e
-
 and do_send = fun (Conn { stream; _ }) data ->
   let buf = Bytes.from_string data in
   match Net.TcpStream.write stream buf () with
@@ -62,6 +56,5 @@ let stream = fun (Conn { stream; _ }) -> stream
 
 let close = fun (Conn { stream; _ }) -> Net.TcpStream.close stream
 
-let send_file = fun (Conn _) ?off:_ ~len:_ _path ->
-  (* TODO: implement sendfile optimization *)
-  Ok ()
+let send_file = fun (Conn _) ?off:_ ~len:_ _path -> (* TODO: implement sendfile optimization *)
+Ok ()

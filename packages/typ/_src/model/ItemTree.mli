@@ -11,6 +11,7 @@ type type_item = {
   (** Lowered declaration summary used to populate constructor environments. *)
   declaration: TypeDecl.t;
 }
+
 (** One exception declaration exported as a term-level constructor. *)
 type exception_item = {
   (** Stable item identity. *)
@@ -24,6 +25,7 @@ type exception_item = {
   (** Constructor scheme used by expressions, patterns, and [raise]. *)
   scheme: TypeScheme.t;
 }
+
 (** One extensible-variant constructor exported as a term-level constructor. *)
 type extension_constructor_item = {
   (** Stable item identity. *)
@@ -38,10 +40,13 @@ type extension_constructor_item = {
   constructor_name: string;
   (** Constructor scheme used by expressions and patterns. *)
   scheme: TypeScheme.t;
-  (** Inline-record payload labels when the constructor was declared as
-      [Ctor of { ... }]. *)
+  (**
+     Inline-record payload labels when the constructor was declared as
+     [Ctor of { ... }]. 
+  *)
   inline_record_labels: TypeDecl.label list option;
 }
+
 (** Body-stable item skeleton for one lowered source. *)
 type value_item = {
   (** Stable item identity. *)
@@ -55,6 +60,7 @@ type value_item = {
   (** Whether the item's binding group is recursive. *)
   recursive: bool;
 }
+
 type declared_value_item = {
   (** Stable item identity. *)
   item_id: ItemArenaId.t;
@@ -67,6 +73,7 @@ type declared_value_item = {
   (** Declared type scheme introduced for downstream use. *)
   scheme: TypeScheme.t;
 }
+
 type unsupported_item = {
   (** Stable item identity. *)
   item_id: ItemArenaId.t;
@@ -77,6 +84,7 @@ type unsupported_item = {
   (** Short recovery summary naming the unsupported syntax family. *)
   summary: string;
 }
+
 type open_item = {
   (** Stable item identity. *)
   item_id: ItemArenaId.t;
@@ -87,6 +95,7 @@ type open_item = {
   (** Lowered module path opened for later sibling items. *)
   module_path: SurfacePath.t;
 }
+
 type include_item = {
   (** Stable item identity. *)
   item_id: ItemArenaId.t;
@@ -97,6 +106,7 @@ type include_item = {
   (** Lowered module path whose exports are spliced into the current scope. *)
   module_path: SurfacePath.t;
 }
+
 type module_alias_item = {
   (** Stable item identity. *)
   item_id: ItemArenaId.t;
@@ -109,6 +119,7 @@ type module_alias_item = {
   (** Lowered module path whose exports are rebound under [alias_name]. *)
   module_path: SurfacePath.t;
 }
+
 type item =
   (** Type declaration with exported constructor schemes. *)
   | Type of type_item
@@ -128,6 +139,7 @@ type item =
   | ModuleAlias of module_alias_item
   (** Placeholder top-level item produced by recovery. *)
   | Unsupported of unsupported_item
+
 (** Ordered top-level item skeleton for one file. *)
 type t
 

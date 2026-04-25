@@ -1,5 +1,7 @@
 module Runner = Runner
+
 module Assertions = Assertions
+
 module Cli = Cli
 
 module Context = struct
@@ -7,6 +9,7 @@ module Context = struct
 end
 
 module Snapshot = Snapshot
+
 module FixtureRunner = Fixture_runner
 
 type test_result = Test_case.test_result

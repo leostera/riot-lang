@@ -1,4 +1,5 @@
 open Global
+
 module Slice = IO.IoVec.IoSlice
 
 type t =
@@ -51,40 +52,16 @@ let to_string = function
   | Extension s -> s
 
 let is_safe = function
-  | Get
-  | Head
-  | Options
-  | Trace -> true
-  | Post
-  | Put
-  | Delete
-  | Connect
-  | Patch
-  | Extension _ -> false
+  | Get | Head | Options | Trace -> true
+  | Post | Put | Delete | Connect | Patch | Extension _ -> false
 
 let is_idempotent = function
-  | Get
-  | Head
-  | Put
-  | Delete
-  | Options
-  | Trace -> true
-  | Post
-  | Connect
-  | Patch
-  | Extension _ -> false
+  | Get | Head | Put | Delete | Options | Trace -> true
+  | Post | Connect | Patch | Extension _ -> false
 
 let is_cacheable = function
-  | Get
-  | Head
-  | Post -> true
-  | Put
-  | Delete
-  | Connect
-  | Options
-  | Trace
-  | Patch
-  | Extension _ -> false
+  | Get | Head | Post -> true
+  | Put | Delete | Connect | Options | Trace | Patch | Extension _ -> false
 
 let compare = fun m1 m2 ->
   let method_priority = function
@@ -99,12 +76,11 @@ let compare = fun m1 m2 ->
     | Patch -> 8
     | Extension _ -> 9
   in
-  match (m1, m2) with
+  match m1, m2 with
   | Extension s1, Extension s2 -> String.compare s1 s2
   | _ -> Int.compare (method_priority m1) (method_priority m2)
 
 let equal = fun m1 m2 ->
   match compare m1 m2 with
   | Order.EQ -> true
-  | Order.LT
-  | Order.GT -> false
+  | Order.LT | Order.GT -> false

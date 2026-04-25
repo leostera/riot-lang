@@ -2,18 +2,13 @@
 open Std
 
 type version =
-  V0
+  | V0
   | V1
-type file_entry = {
-  path: Path.t;
-  hash: string;
-  size: int;
-}
-type export_entry = {
-  name: string;
-  path: Path.t;
-  action_hash: string;
-}
+
+type file_entry = { path: Path.t; hash: string; size: int }
+
+type export_entry = { name: string; path: Path.t; action_hash: string }
+
 type t = {
   version: version;
   package: string;
@@ -23,18 +18,13 @@ type t = {
   ocamlc_warnings: string list;
   exports: export_entry list;
 }
-val create:
-  ?base_dir:Path.t ->
-  ?ocamlc_warnings:string list ->
-  ?exports:export_entry list ->
-  unit ->
-  package:string ->
-  build_hash:string ->
-  files:(Path.t * int) list ->
-  t
 
-(** Create a manifest for stored files. Takes a list of (file_path, size) pairs
-    and calculates hashes. *)
+val create: ?base_dir:Path.t -> ?ocamlc_warnings:string list -> ?exports:export_entry list -> unit -> package:string -> build_hash:string -> files:(Path.t * int) list -> t
+
+(**
+   Create a manifest for stored files. Takes a list of (file_path, size) pairs
+   and calculates hashes. 
+*)
 val save: t -> path:Path.t -> (unit, string) result
 
 (** Save manifest to a JSON file *)
@@ -44,6 +34,4 @@ val load: path:Path.t -> (t, string) result
 val to_json: t -> Std.Data.Json.t
 
 (** Convert manifest to JSON *)
-val of_json: Std.Data.Json.t -> (t, string) result
-
-(** Parse manifest from JSON *)
+val of_json: Std.Data.Json.t -> (t, string) result(** Parse manifest from JSON *)

@@ -28,8 +28,13 @@ let rec loop = fun state ->
   | None -> panic "Worker received task with mismatched type"
 
 let init = fun ~coordinator ~owner ~worker_fn ~task_ref () ->
-  let state = { coordinator; owner; worker_fn; task_ref } in
+  let state = {
+    coordinator;
+    owner;
+    worker_fn;
+    task_ref
+  }
+  in
   loop state
 
-let start = fun ~coordinator ~owner ~worker_fn ~task_ref ->
-  spawn (init ~coordinator ~owner ~worker_fn ~task_ref)
+let start = fun ~coordinator ~owner ~worker_fn ~task_ref -> spawn (init ~coordinator ~owner ~worker_fn ~task_ref)

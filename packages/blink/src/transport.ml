@@ -14,16 +14,12 @@ module Tcp: Intf = struct
 
   let connect = fun addr uri ->
     match Net.TcpStream.connect addr with
-    | Error Net.TcpStream.Closed ->
-        Error (Error.NetError Net.Closed)
-    | Error Net.TcpStream.Connection_refused ->
-        Error (Error.NetError Net.Connection_refused)
-    | Error (Net.TcpStream.System_error error) ->
-        Error (Error.NetError (Net.System_error error))
+    | Error Net.TcpStream.Closed -> Error (Error.NetError Net.Closed)
+    | Error Net.TcpStream.Connection_refused -> Error (Error.NetError Net.Connection_refused)
+    | Error (Net.TcpStream.System_error error) -> Error (Error.NetError (Net.System_error error))
     | Ok sock ->
         let reader = Net.TcpStream.to_reader sock in
-        let writer = Net.TcpStream.to_writer sock in
-        Ok (Connection.make ~reader ~writer ~of_io_error:Error.of_io_error ~uri)
+        let writer = Net.TcpStream.to_writer sock in Ok (Connection.make ~reader ~writer ~of_io_error:Error.of_io_error ~uri)
 end
 
 module Tls: Intf = struct
@@ -31,20 +27,16 @@ module Tls: Intf = struct
 
   let connect = fun addr uri ->
     match Net.TcpStream.connect addr with
-    | Error Net.TcpStream.Closed ->
-        Error (Error.NetError Net.Closed)
-    | Error Net.TcpStream.Connection_refused ->
-        Error (Error.NetError Net.Connection_refused)
-    | Error (Net.TcpStream.System_error s) ->
-        Error (Error.NetError (Net.System_error s))
+    | Error Net.TcpStream.Closed -> Error (Error.NetError Net.Closed)
+    | Error Net.TcpStream.Connection_refused -> Error (Error.NetError Net.Connection_refused)
+    | Error (Net.TcpStream.System_error s) -> Error (Error.NetError (Net.System_error s))
     | Ok sock ->
         let hostname = Net.Uri.host uri |> Option.unwrap_or ~default:"localhost" in
         match Net.TlsStream.of_tcp_client ~hostname sock with
         | Error e -> Error (Error.TlsError e)
         | Ok tls ->
             let reader = Net.TlsStream.to_reader tls in
-            let writer = Net.TlsStream.to_writer tls in
-            Ok (Connection.make ~reader ~writer ~of_io_error:Error.of_io_error ~uri)
+            let writer = Net.TlsStream.to_writer tls in Ok (Connection.make ~reader ~writer ~of_io_error:Error.of_io_error ~uri)
 end
 
 let connect = fun uri ->
@@ -57,16 +49,11 @@ let connect = fun uri ->
   let port = Net.Uri.port uri |> Option.unwrap_or ~default:default_port in
   Log.info "connecting!";
   match Net.Addr.of_host_and_port ~host ~port with
-  | Error (Net.Addr.System_error io_err) ->
-      Error (Error.NetError (Net.System_error io_err))
-  | Error (Net.Addr.Invalid_port_number _ | Net.Addr.Invalid_format _) ->
-      Error (Error.NetError (Net.System_error IO.Invalid_argument))
+  | Error (Net.Addr.System_error io_err) -> Error (Error.NetError (Net.System_error io_err))
+  | Error (Net.Addr.Invalid_port_number _ | Net.Addr.Invalid_format _) -> Error (Error.NetError (Net.System_error IO.Invalid_argument))
   | Ok addr -> (
-      match Net.Uri.scheme uri with
-      | Some "https"
-      | Some "wss" -> Tls.connect addr uri
-      | Some "http"
-      | Some "ws"
-      | None -> Tcp.connect addr uri
-      | Some _ -> Tcp.connect addr uri
-    )
+    match Net.Uri.scheme uri with
+    | Some "https" | Some "wss" -> Tls.connect addr uri
+    | Some "http" | Some "ws" | None -> Tcp.connect addr uri
+    | Some _ -> Tcp.connect addr uri
+  )

@@ -1,12 +1,15 @@
-(** Multicore scheduler entrypoint for the actor runtime.
+(**
+   Multicore scheduler entrypoint for the actor runtime.
 
-    The runtime owns:
+   The runtime owns:
 
-    - a process registry shared by all workers
-    - one runnable queue per scheduler worker
-    - a dedicated reactor domain for timers and async I/O polling *)
+   - a process registry shared by all workers
+   - one runnable queue per scheduler worker
+   - a dedicated reactor domain for timers and async I/O polling 
+*)
 (** Opaque scheduler runtime handle. *)
 type t
+
 (** Snapshot of scheduler counters used for multicore tracing. *)
 type trace_counters = {
   steals: int;
@@ -22,18 +25,21 @@ val get_scheduler: unit -> t
 val spawn: t -> (unit -> (unit, Process.exit_reason) Kernel.result) -> Pid.t
 
 (** Spawn a process pinned to a single normal scheduler. *)
-val spawn_pinned:
-  ?worker_id:Scheduler_id.t -> t -> (unit -> (unit, Process.exit_reason) Kernel.result) -> Pid.t
+val spawn_pinned: ?worker_id:Scheduler_id.t -> t -> (unit -> (unit, Process.exit_reason) Kernel.result) -> Pid.t
 
-(** Spawn a process on a dedicated blocking lane outside the normal
-    work-stealing scheduler pool. *)
+(**
+   Spawn a process on a dedicated blocking lane outside the normal
+   work-stealing scheduler pool. 
+*)
 val spawn_blocked: t -> (unit -> (unit, Process.exit_reason) Kernel.result) -> Pid.t
 
 (** Return the PID of the currently running process in this domain context. *)
 val self: unit -> Pid.t
 
-(** Return the current normal scheduler identifier, or [None] when not running
-    on a normal scheduler worker. *)
+(**
+   Return the current normal scheduler identifier, or [None] when not running
+   on a normal scheduler worker. 
+*)
 val current_worker_id_opt: unit -> Scheduler_id.t option
 
 (** Send a message by PID through the runtime-wide process registry. *)
@@ -49,8 +55,7 @@ val shutdown: t -> status:int -> unit
 val run: config:Config.t -> main:(unit -> (unit, Process.exit_reason) Kernel.result) -> int
 
 (** Register a timer in the reactor-owned timer wheel. *)
-val add_timer:
-  t -> now:int64 -> duration_nanos:int64 -> mode:Timer.mode -> action:Timer.action -> Timer.id
+val add_timer: t -> now:int64 -> duration_nanos:int64 -> mode:Timer.mode -> action:Timer.action -> Timer.id
 
 (** Cancel a timer in the reactor-owned timer wheel. *)
 val cancel_timer: t -> Timer.id -> unit

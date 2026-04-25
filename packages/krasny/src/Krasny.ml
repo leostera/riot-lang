@@ -10,8 +10,11 @@ type write_error = Format_core.write_error =
   | Write_failed of IO.error
 
 module Stream_doc = Stream_doc
+
 module Streaming_lower = Streaming_lower
+
 module Runner = Runner
+
 module Report = Report
 
 let format_error_to_string = Format_core.format_error_to_string

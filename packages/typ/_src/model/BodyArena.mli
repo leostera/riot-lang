@@ -36,13 +36,13 @@ type pattern_desc =
   | PPolyVariant of { tag: string; payload: PatternArenaId.t option }
   (** Recovery pattern preserved after unsupported surface syntax. *)
   | PUnsupported of string
-
 and record_pattern_field = {
   (** Stable field label name as it appeared in the source. *)
   label: string;
   (** Lowered child pattern bound for this field. *)
   pattern_id: PatternArenaId.t;
 }
+
 type pattern_node = {
   (** Best-effort stable pattern identifier. *)
   pat_id: PatternArenaId.t;
@@ -53,6 +53,7 @@ type pattern_node = {
   (** Semantic payload for the pattern. *)
   desc: pattern_desc;
 }
+
 type match_case = {
   (** Pattern tested by this case. *)
   pattern_id: PatternArenaId.t;
@@ -61,6 +62,7 @@ type match_case = {
   (** Body expression evaluated when the pattern matches. *)
   body_id: ExprArenaId.t;
 }
+
 type label =
   (** Ordinary unlabeled argument or parameter. *)
   | Positional
@@ -68,6 +70,7 @@ type label =
   | Labeled of string
   (** An optional argument or parameter introduced with `?label:`. *)
   | Optional of string
+
 type function_parameter = {
   (** Calling-convention label preserved from the source surface. *)
   label: label;
@@ -76,6 +79,7 @@ type function_parameter = {
   (** Lowered default expression for optional parameters such as `?(x = expr)`. *)
   default_value_id: ExprArenaId.t option;
 }
+
 type apply_argument = {
   (** Calling-convention label preserved from the call site. *)
   label: label;
@@ -84,17 +88,20 @@ type apply_argument = {
   (** Lowered argument value expression. *)
   value_id: ExprArenaId.t;
 }
-type local_module_binding_group = {
-  binding_ids: BindingArenaId.t list;
-}
+
+type local_module_binding_group = { binding_ids: BindingArenaId.t list }
+
 type local_module_scope = {
   (** Value-binding groups introduced by the local module body. *)
   binding_groups: local_module_binding_group list;
-  (** Local type declarations owned by the local module body. These stay
-      unqualified inside the scope and are qualified when the scope is attached
-      under a module name. *)
+  (**
+     Local type declarations owned by the local module body. These stay
+     unqualified inside the scope and are qualified when the scope is attached
+     under a module name. 
+  *)
   type_decls: FileSummary.type_decl list;
 }
+
 type expr_desc =
   (** Variable reference. *)
   | EVar of SurfacePath.t
@@ -120,12 +127,12 @@ type expr_desc =
   | EWhile of { condition_id: ExprArenaId.t; body_id: ExprArenaId.t }
   (** Integer for-loop with a scoped iterator, integer bounds, and a unit body. *)
   | EFor of {
-      iterator_pattern_id: PatternArenaId.t;
-      descending: bool;
-      start_id: ExprArenaId.t;
-      end_id: ExprArenaId.t;
-      body_id: ExprArenaId.t
-    }
+    iterator_pattern_id: PatternArenaId.t;
+    descending: bool;
+    start_id: ExprArenaId.t;
+    end_id: ExprArenaId.t;
+    body_id: ExprArenaId.t;
+  }
   (** Function expression with parameter patterns and one body expression. *)
   | EFun of function_parameter list * ExprArenaId.t
   (** Application with one callee and labeled or positional arguments. *)
@@ -152,8 +159,10 @@ type expr_desc =
   | ECoerce of { value_id: ExprArenaId.t; target_type: TypeRepr.t }
   (** First-class module pack expression lowered from `(module M [: S])`. *)
   | EModulePack of { module_path: SurfacePath.t; package_type: TypeRepr.t option }
-  (** Local first-class module pack lowered from `(module M)` where [M] comes
-      from one surrounding [let module M = struct ... end in ...]. *)
+  (**
+     Local first-class module pack lowered from `(module M)` where [M] comes
+     from one surrounding [let module M = struct ... end in ...]. 
+  *)
   | ELocalModulePack of { local_scope: local_module_scope; package_type: TypeRepr.t option }
   (** Local module binding with a scoped module name available in the body. *)
   | ELocalModule of { module_name: string; local_scope: local_module_scope; body_id: ExprArenaId.t }
@@ -163,14 +172,12 @@ type expr_desc =
   | EUnsupported of string
   (** Recovery hole introduced during lowering. *)
   | EHole of string
-
 and record_expr_field = {
   (** Stable field label name as it appeared in the source. *)
   label: string;
   (** Lowered child expression used for this field. *)
   value_id: ExprArenaId.t;
 }
-
 and expr_node = {
   (** Best-effort stable expression identifier. *)
   expr_id: ExprArenaId.t;
@@ -179,7 +186,6 @@ and expr_node = {
   (** Semantic payload for the expression. *)
   desc: expr_desc;
 }
-
 and binding = {
   (** Stable binding identifier. *)
   binding_id: BindingArenaId.t;
@@ -198,6 +204,7 @@ and binding = {
   (** Whether the binding participates in a recursive group. *)
   recursive: bool;
 }
+
 (** Arena-style storage for patterns, bindings, and expressions. *)
 type t
 

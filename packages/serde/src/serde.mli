@@ -1,16 +1,7 @@
 open Std
 
 (** Errors produced while encoding or decoding values through a [Serde] backend. *)
-type error =
-[
-  `invalid_field_type
-  | `missing_field
-  | `no_more_data
-  | `unimplemented
-  | `invalid_tag
-  | `Msg of string
-  | `Io_error of IO.error
-]
+type error = [`invalid_field_type | `missing_field | `no_more_data | `unimplemented | `invalid_tag | `Msg of string | `Io_error of IO.error]
 
 (** Internal exception used by format backends to abort decoding fast. *)
 exception Decode_error of error
@@ -19,11 +10,12 @@ exception Decode_error of error
 exception Encode_error of error
 
 (** Fast, format-agnostic deserializer descriptions. *)
-module De: sig
+module De : sig
   (** Precompiled field matchers used by record decoders. *)
-  module Fields: sig
+  module Fields : sig
     (** A field case maps an input key to a decoder tag. *)
     type 'tag case
+
     (** A compiled field matcher. *)
     type 'tag t
 
@@ -65,18 +57,14 @@ module De: sig
   type 'value t = {
     run: 'state. 'state backend -> 'state -> 'value;
   }
-
   (** A variant constructor description. *)
   and 'value variant_case =
-    | Unit: string * 'value -> 'value variant_case
-    | Newtype: string * 'payload t * ('payload -> 'value) -> 'value variant_case
-
+    | Unit : string * 'value -> 'value variant_case
+    | Newtype : string * 'payload t * ('payload -> 'value) -> 'value variant_case
   (** A list of variant constructor descriptions. *)
   and 'value variant_cases = 'value variant_case list
-
   (** A compiled array of variant constructor descriptions used by format backends. *)
   and 'value compiled_variant_cases = 'value variant_case array
-
   (** The operations a concrete format backend must implement. *)
   and 'state backend = {
     bool: 'state -> bool;
@@ -89,33 +77,23 @@ module De: sig
     option: 'value. 'state -> 'value t -> 'value option;
     list: 'value. 'state -> 'value t -> 'value vec;
     array: 'value. 'state -> 'value t -> 'value array;
-    record:
-      'field 'acc 'value. 'state ->
-      fields:'field Fields.t ->
-      init:'acc ->
-      step:('acc -> 'field option -> 'acc) ->
-      finish:('acc -> 'value) ->
-      'value;
-    record_mut:
-      'field 'builder 'value. 'state ->
-      fields:'field Fields.t ->
-      create:(unit -> 'builder) ->
-      step:('builder -> 'field option -> unit) ->
-      finish:('builder -> 'value) ->
-      'value;
+    record: 'field 'acc 'value. 'state -> fields:'field Fields.t -> init:'acc -> step:('acc -> 'field option -> 'acc) -> finish:('acc -> 'value) -> 'value;
+    record_mut: 'field 'builder 'value. 'state -> fields:'field Fields.t -> create:(unit -> 'builder) -> step:('builder -> 'field option -> unit) -> finish:('builder -> 'value) -> 'value;
     variant: 'value. 'state -> 'value compiled_variant_cases -> 'value;
   }
+
   (** Reader passed into record steps so fields can decode nested values. *)
   type reader = {
     read: 'value. 'value t -> 'value;
   }
 
   (** Variant constructor helpers. *)
-  module Variant: sig
+  module Variant : sig
     (** A single variant constructor case. *)
     type 'value case = 'value variant_case =
-      | Unit: string * 'value -> 'value case
-      | Newtype: string * 'payload t * ('payload -> 'value) -> 'value case
+      | Unit : string * 'value -> 'value case
+      | Newtype : string * 'payload t * ('payload -> 'value) -> 'value case
+
     (** A list of variant constructor cases. *)
     type 'value cases = 'value case list
 
@@ -151,7 +129,7 @@ module De: sig
   val run: 'value t -> 'state backend -> 'state -> ('value, error) result
 
   (** Monadic syntax helpers for decoder construction. *)
-  module Syntax: sig
+  module Syntax : sig
     val ( let* ): 'value t -> ('value -> 'next t) -> 'next t
 
     val ( let+ ): 'value t -> ('value -> 'next) -> 'next t
@@ -194,27 +172,17 @@ module De: sig
   val array: 'value t -> 'value array t
 
   (** Decode a record-shaped value. *)
-  val record:
-    fields:'field Fields.t ->
-    init:'acc ->
-    step:(reader -> 'acc -> 'field option -> 'acc) ->
-    finish:('acc -> 'value) ->
-    'value t
+  val record: fields:'field Fields.t -> init:'acc -> step:(reader -> 'acc -> 'field option -> 'acc) -> finish:('acc -> 'value) -> 'value t
 
   (** Decode a record-shaped value through a mutable builder. *)
-  val record_mut:
-    fields:'field Fields.t ->
-    create:(unit -> 'builder) ->
-    step:(reader -> 'builder -> 'field option -> unit) ->
-    finish:('builder -> 'value) ->
-    'value t
+  val record_mut: fields:'field Fields.t -> create:(unit -> 'builder) -> step:(reader -> 'builder -> 'field option -> unit) -> finish:('builder -> 'value) -> 'value t
 
   (** Decode a tagged variant value. *)
   val variant: 'value Variant.cases -> 'value t
 end
 
 (** Error helpers for user-facing reporting. *)
-module Error: sig
+module Error : sig
   (** The serde error type. *)
   type t = error
 
@@ -223,27 +191,22 @@ module Error: sig
 end
 
 (** Fast, format-agnostic serializer descriptions. *)
-module Ser: sig
+module Ser : sig
   (** A format-agnostic serializer description. *)
   type 'value t = {
     run: 'state. 'state backend -> 'state -> 'value -> unit;
   }
-
   (** A single record field encoder. *)
   and 'value field =
-    | Field: string * 'field t * ('value -> 'field) -> 'value field
-
+    | Field : string * 'field t * ('value -> 'field) -> 'value field
   (** A compiled list of record field encoders. *)
   and 'value fields = 'value field array
-
   (** A single tagged variant encoder case. *)
   and 'value variant_case =
-    | Unit: string * ('value -> bool) -> 'value variant_case
-    | Newtype: string * 'payload t * ('value -> 'payload option) -> 'value variant_case
-
+    | Unit : string * ('value -> bool) -> 'value variant_case
+    | Newtype : string * 'payload t * ('value -> 'payload option) -> 'value variant_case
   (** A compiled list of tagged variant encoder cases. *)
   and 'value variant_cases = 'value variant_case array
-
   (** The operations a concrete format backend must implement. *)
   and 'state backend = {
     bool: 'state -> bool -> unit;
@@ -261,17 +224,17 @@ module Ser: sig
   }
 
   (** Field encoder helpers. *)
-  module Field: sig
+  module Field : sig
     (** Encode a named field by projecting its value out of the parent record. *)
     val make: string -> 'field t -> ('value -> 'field) -> 'value field
   end
 
   (** Tagged variant encoder helpers. *)
-  module Variant: sig
+  module Variant : sig
     (** A single tagged variant encoder case. *)
     type 'value case = 'value variant_case =
-      | Unit: string * ('value -> bool) -> 'value case
-      | Newtype: string * 'payload t * ('value -> 'payload option) -> 'value case
+      | Unit : string * ('value -> bool) -> 'value case
+      | Newtype : string * 'payload t * ('value -> 'payload option) -> 'value case
 
     (** Match a unit constructor by predicate. *)
     val unit: string -> ('value -> bool) -> 'value case

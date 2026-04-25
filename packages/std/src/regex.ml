@@ -1,4 +1,5 @@
 open Global
+
 module List = Collections.List
 
 type char_class_item =
@@ -16,20 +17,11 @@ type t =
   | Alt of t list
   | Repeat of { expr: t; min: int; max: int option }
 
-type compile_error = Kernel.Regex.compile_error = {
-  message: string;
-  offset: int option;
-}
+type compile_error = Kernel.Regex.compile_error = { message: string; offset: int option }
 
-type match_ = Kernel.Regex.match_ = {
-  start: int;
-  stop: int;
-}
+type match_ = Kernel.Regex.match_ = { start: int; stop: int }
 
-type regex = {
-  source: string;
-  compiled: Kernel.Regex.t;
-}
+type regex = { source: string; compiled: Kernel.Regex.t }
 
 let empty = Empty
 
@@ -60,17 +52,15 @@ let rec optimize = function
       let rec collect acc = function
         | [] -> List.reverse acc
         | item :: rest -> (
-            match optimize item with
-            | Empty -> collect acc rest
-            | Seq nested -> collect acc (nested @ rest)
-            | item -> collect (item :: acc) rest
-          )
+          match optimize item with
+          | Empty -> collect acc rest
+          | Seq nested -> collect acc (nested @ rest)
+          | item -> collect (item :: acc) rest
+        )
       in
       let items = collect [] items in
       let rec merge_literals acc = function
-        | Literal left :: Literal right :: rest -> merge_literals
-          acc
-          (Literal (left ^ right) :: rest)
+        | (Literal left) :: (Literal right) :: rest -> merge_literals acc (Literal (left ^ right) :: rest)
         | item :: rest -> merge_literals (item :: acc) rest
         | [] -> List.reverse acc
       in
@@ -85,10 +75,10 @@ let rec optimize = function
       let rec collect acc = function
         | [] -> List.reverse acc
         | item :: rest -> (
-            match optimize item with
-            | Alt nested -> collect acc (nested @ rest)
-            | item -> collect (item :: acc) rest
-          )
+          match optimize item with
+          | Alt nested -> collect acc (nested @ rest)
+          | item -> collect (item :: acc) rest
+        )
       in
       let items = collect [] items in
       begin
@@ -105,42 +95,24 @@ let rec optimize = function
         | _ when min = 1 && max = Some 1 -> expr
         | _ -> Repeat { expr; min; max }
       end
-  | regex ->
-      regex
+  | regex -> regex
 
 let escape_literal = fun value ->
   let fragments = ref [] in
-  String.for_each
-    ~fn:(fun ch ->
+  String.for_each ~fn:(
+    fun ch ->
       let fragment =
         match ch with
-        | '\\'
-        | '.'
-        | '^'
-        | '$'
-        | '|'
-        | '('
-        | ')'
-        | '['
-        | ']'
-        | '{'
-        | '}'
-        | '*'
-        | '+'
-        | '?' -> "\\" ^ String.make ~len:1 ~char:ch
+        | '\\' | '.' | '^' | '$' | '|' | '(' | ')' | '[' | ']' | '{' | '}' | '*' | '+' | '?' -> "\\" ^ String.make ~len:1 ~char:ch
         | ch -> String.make ~len:1 ~char:ch
       in
-      fragments := fragment :: !fragments)
-    value;
+      fragments := fragment :: !fragments
+  ) value;
   !fragments |> List.reverse |> String.concat ""
 
 let escape_class_char = fun ch ->
   match ch with
-  | '\\'
-  | ']'
-  | '['
-  | '^'
-  | '-' -> "\\" ^ String.make ~len:1 ~char:ch
+  | '\\' | ']' | '[' | '^' | '-' -> "\\" ^ String.make ~len:1 ~char:ch
   | ch -> String.make ~len:1 ~char:ch
 
 let char_class_item_to_string = function
@@ -148,49 +120,32 @@ let char_class_item_to_string = function
   | Range (left, right) -> escape_class_char left ^ "-" ^ escape_class_char right
 
 let rec is_atomic = function
-  | Empty
-  | Start_of_text
-  | End_of_text
-  | Literal _
-  | Any_char
-  | Char_class _ -> true
-  | Seq _
-  | Alt _
-  | Repeat _ -> false
+  | Empty | Start_of_text | End_of_text | Literal _ | Any_char | Char_class _ -> true
+  | Seq _ | Alt _ | Repeat _ -> false
 
 let rec regex_to_string = function
-  | Empty ->
-      ""
-  | Start_of_text ->
-      "^"
-  | End_of_text ->
-      "$"
-  | Literal value ->
-      escape_literal value
-  | Any_char ->
-      "."
+  | Empty -> ""
+  | Start_of_text -> "^"
+  | End_of_text -> "$"
+  | Literal value -> escape_literal value
+  | Any_char -> "."
   | Char_class { negated; items } ->
       let prefix =
         if negated then
           "[^"
-        else
-          "["
+        else "["
       in
-      let body = String.concat "" (List.map items ~fn:char_class_item_to_string) in
-      prefix ^ body ^ "]"
-  | Seq items ->
-      String.concat "" (List.map items ~fn:regex_to_string)
-  | Alt items ->
-      "(?:" ^ String.concat "|" (List.map items ~fn:regex_to_string) ^ ")"
+      let body = String.concat "" (List.map items ~fn:char_class_item_to_string) in prefix ^ body ^ "]"
+  | Seq items -> String.concat "" (List.map items ~fn:regex_to_string)
+  | Alt items -> "(?:" ^ String.concat "|" (List.map items ~fn:regex_to_string) ^ ")"
   | Repeat { expr; min; max } ->
       let inner =
         if is_atomic expr then
           regex_to_string expr
-        else
-          "(?:" ^ regex_to_string expr ^ ")"
+        else "(?:" ^ regex_to_string expr ^ ")"
       in
       let suffix =
-        match (min, max) with
+        match min, max with
         | 0, None -> "*"
         | 1, None -> "+"
         | 0, Some 1 -> "?"
@@ -213,8 +168,6 @@ let compile = fun regex -> from_string (to_string regex)
 
 let source = fun regex -> regex.source
 
-let is_match = fun regex haystack ->
-  Kernel.Regex.is_match regex.compiled haystack
+let is_match = fun regex haystack -> Kernel.Regex.is_match regex.compiled haystack
 
-let find = fun regex haystack ->
-  Kernel.Regex.find regex.compiled haystack
+let find = fun regex haystack -> Kernel.Regex.find regex.compiled haystack

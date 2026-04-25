@@ -6,9 +6,11 @@ type cross_config = {
   bin_dir: Path.t option;
   bin_prefix: string;
 }
+
 type compilation_mode =
   | HostOnly
   | Cross of cross_config
+
 type t = {
   host: Target.t;
   compilation_mode: compilation_mode;
@@ -16,13 +18,8 @@ type t = {
   parallelism: int;
   session_id: Session_id.t;
 }
-val make:
-  session_id:Session_id.t ->
-  profile:Profile.t ->
-  ?compilation_mode:compilation_mode ->
-  ?parallelism:int ->
-  unit ->
-  t
+
+val make: session_id:Session_id.t -> profile:Profile.t -> ?compilation_mode:compilation_mode -> ?parallelism:int -> unit -> t
 
 val host: t -> Target.t
 

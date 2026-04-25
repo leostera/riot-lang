@@ -23,12 +23,9 @@ let file = fun path -> Path { path }
 let static = fun toml_string -> Static { toml_string }
 
 let load = function
-  | Empty ->
-      Error "Cannot load from empty provider"
-  | Env { env } ->
-      Loader.load_for_env env
-  | Path { path } ->
-      Loader.load_file (Path.to_string path)
+  | Empty -> Error "Cannot load from empty provider"
+  | Env { env } -> Loader.load_for_env env
+  | Path { path } -> Loader.load_file (Path.to_string path)
   | Static { toml_string } ->
       match Data.Toml.parse toml_string with
       | Error err -> Error ("TOML parse error: " ^ Data.Toml.error_to_string err)

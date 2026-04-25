@@ -2,23 +2,30 @@ open Std
 
 (** Store retention policy handle. *)
 type policy = Policy.t
+
 module Namespace = Namespace
 
-(** Generic content-addressable store bound to one namespace under one
-    filesystem root. *)
+(**
+   Generic content-addressable store bound to one namespace under one
+   filesystem root. 
+*)
 type t
+
 type source_path_error =
   | Source_missing
   | Source_not_file
   | Source_not_directory
+
 type io_detail =
   | Fs of Fs.error
   | File of Fs.File.error
+
 (** Store operation error. *)
 type error =
   | Missing of { path: Path.t }
   | Invalid_source_path of { path: Path.t; reason: source_path_error }
   | Io of { op: string; path: Path.t; related_path: Path.t option; detail: io_detail }
+
 val error_message: error -> string
 
 (** Create one logical store handle rooted at [root] scoped to [ns]. *)
@@ -36,11 +43,13 @@ val hash_dir_of: t -> Crypto.hash -> Path.t
 (** Check whether a hash-addressed directory currently exists. *)
 val exists: t -> Crypto.hash -> bool
 
-(** Atomically commit [source_dir] into the hash-addressed tree location for [hash].
+(**
+   Atomically commit [source_dir] into the hash-addressed tree location for [hash].
 
-    Successful commits consume [source_dir]. If another writer already committed
-    the same [hash], this still succeeds and [source_dir] is treated as
-    disposable. *)
+   Successful commits consume [source_dir]. If another writer already committed
+   the same [hash], this still succeeds and [source_dir] is treated as
+   disposable. 
+*)
 val commit_dir: t -> hash:Crypto.hash -> source_dir:Path.t -> (unit, error) result
 
 (** Save one immutable object keyed by [hash]. *)

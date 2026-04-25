@@ -1,9 +1,11 @@
-(** Process mailbox for message passing.
+(**
+   Process mailbox for message passing.
 
-    The mailbox is multi-producer/single-consumer:
+   The mailbox is multi-producer/single-consumer:
 
-    - multiple schedulers may call [queue] concurrently
-    - only the owner scheduler should call [next] *)
+   - multiple schedulers may call [queue] concurrently
+   - only the owner scheduler should call [next] 
+*)
 open Kernel
 
 (** Opaque mailbox type containing queued messages. *)

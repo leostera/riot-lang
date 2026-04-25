@@ -76,8 +76,7 @@ let main ~args:_ =
           done;
           Bytes.to_string s
         in
-        println
-          ("   First rune of '" ^ s ^ "': U+" ^ hex_str ^ " at byte position " ^ Int.to_string next_pos)
+        println ("   First rune of '" ^ s ^ "': U+" ^ hex_str ^ " at byte position " ^ Int.to_string next_pos)
     | None -> println "   Failed to decode"
   );
   println ("   Is valid UTF-8: " ^ Bool.to_string (Unicode.Utf8.is_valid s));
@@ -87,12 +86,7 @@ let main ~args:_ =
   let s7 = "Hello 世界 World!" in
   println ("   Original: '" ^ s7 ^ "' (width: " ^ Int.to_string (String.width s7) ^ ")");
   let truncated = String.truncate_width ~width:10 s7 in
-  println
-    ("   Truncated to width 10: '"
-    ^ truncated
-    ^ "' (width: "
-    ^ Int.to_string (String.width truncated)
-    ^ ")");
+  println ("   Truncated to width 10: '" ^ truncated ^ "' (width: " ^ Int.to_string (String.width truncated) ^ ")");
   println "";
   (* Example 8: Padding with width awareness *)
   println "8. Padding strings (width-aware):";

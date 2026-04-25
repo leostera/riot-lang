@@ -1,6 +1,7 @@
 open Global
 
 type t
+
 val empty: t
 
 (* Error API *)
@@ -9,6 +10,7 @@ type error =
   | Load_failed of { message: string }
   | Validation_failed of { app: string; message: string }
   | Patch_failed of { message: string }
+
 val error_to_json: error -> Data.Json.t
 
 val error_to_string: error -> string

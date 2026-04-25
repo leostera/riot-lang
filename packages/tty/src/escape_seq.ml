@@ -163,8 +163,7 @@ let strip = fun str ->
       let c = String.get_unchecked str ~at:j in
       if (c >= '@' && c <= '~') then
         j + 1
-      else
-        skip_csi (j + 1)
+      else skip_csi (j + 1)
   in
   let rec skip_osc j =
     if j >= len then
@@ -173,29 +172,29 @@ let strip = fun str ->
       let c = String.get_unchecked str ~at:j in
       if Char.equal c '\x07' then
         j + 1
-      else if Char.equal c '\x1b' then
-        if j + 1 < len && Char.equal (String.get_unchecked str ~at:(j + 1)) '\\' then
-          j + 2
-        else
-          skip_osc (j + 1)
       else
-        skip_osc (j + 1)
+        if Char.equal c '\x1b' then
+          if j + 1 < len && Char.equal (String.get_unchecked str ~at:(j + 1)) '\\' then
+            j + 2
+          else skip_osc (j + 1)
+        else skip_osc (j + 1)
   in
   let rec scan i =
     if i >= len then
       Buffer.contents buf
-    else if String.get_unchecked str ~at:i = '\x1b' then
-      if i + 1 < len then
-        match String.get_unchecked str ~at:(i + 1) with
-        | '[' -> scan (skip_csi (i + 2))
-        | ']' -> scan (skip_osc (i + 2))
-        | _ -> scan (i + 1)
+    else
+      if String.get_unchecked str ~at:i = '\x1b' then
+        if i + 1 < len then
+          match String.get_unchecked str ~at:(i + 1) with
+          | '[' -> scan (skip_csi (i + 2))
+          | ']' -> scan (skip_osc (i + 2))
+          | _ -> scan (i + 1)
+        else scan (i + 1)
       else
-        scan (i + 1)
-    else begin
-      Buffer.add_char buf (String.get_unchecked str ~at:i);
-      scan (i + 1)
-    end
+        begin
+          Buffer.add_char buf (String.get_unchecked str ~at:i);
+          scan (i + 1)
+        end
   in
   scan 0
 

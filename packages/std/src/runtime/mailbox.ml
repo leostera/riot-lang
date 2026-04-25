@@ -1,6 +1,8 @@
 open Kernel
 open Collections
+
 module Runtime_mutex = Kernel.Sync.Mutex
+
 module Runtime_atomic = Kernel.Sync.Atomic
 
 type t = {
@@ -21,16 +23,14 @@ let create = fun () ->
 let queue = fun t msg ->
   Runtime_mutex.lock t.producer_lock;
   t.inbox_rev <- msg :: t.inbox_rev;
-  let _ = Runtime_atomic.fetch_and_add t.size 1 in
-  Runtime_mutex.unlock t.producer_lock
+  let _ = Runtime_atomic.fetch_and_add t.size 1 in Runtime_mutex.unlock t.producer_lock
 
 let pop_outbox = fun t ->
   match t.outbox with
   | [] -> None
   | msg :: rest ->
       t.outbox <- rest;
-      let _ = Runtime_atomic.fetch_and_add t.size (-1) in
-      Some msg
+      let _ = Runtime_atomic.fetch_and_add t.size (-1) in Some msg
 
 let next = fun t ->
   match pop_outbox t with
@@ -42,12 +42,12 @@ let next = fun t ->
       Runtime_mutex.unlock t.producer_lock;
       if List.is_empty drained then
         None
-      else (
-        t.outbox <- List.reverse drained;
-        pop_outbox t
-      )
+      else
+        (
+          t.outbox <- List.reverse drained;
+          pop_outbox t
+        )
 
 let size = fun t -> Runtime_atomic.get t.size
 
-let is_empty = fun t ->
-  Int.equal (Runtime_atomic.get t.size) 0
+let is_empty = fun t -> Int.equal (Runtime_atomic.get t.size) 0

@@ -1,38 +1,45 @@
 type t
+
 type watch_id = int
-type event = {
-  path: Path.t;
-  flags: int32;
-  event_id: int64;
-}
+
+type event = { path: Path.t; flags: int32; event_id: int64 }
+
 type event_kind =
   | Created
   | Modified
   | Deleted
   | Renamed
   | Metadata
+
 type error =
   | Closed
   | AlreadyWatching
   | System of System_error.t
+
 val error_to_string: error -> string
 
-(** Use `create ()` to allocate a filesystem watcher handle.
+(**
+   Use `create ()` to allocate a filesystem watcher handle.
 
-    The watcher is inert until `watch` installs a root. *)
+   The watcher is inert until `watch` installs a root. 
+*)
 val create: unit -> (t, error) Result.t
 
-(** Use `watch watcher ~path ~latency` to begin watching one root path.
+(**
+   Use `watch watcher ~path ~latency` to begin watching one root path.
 
-    The current Unix backend supports a single active root per watcher handle. *)
+   The current Unix backend supports a single active root per watcher handle. 
+*)
 val watch: t -> path:Path.t -> latency:float -> (watch_id, error) Result.t
 
-(** Use `unwatch watcher watch_id` to stop the current watch root.
+(**
+   Use `unwatch watcher watch_id` to stop the current watch root.
 
-    Unknown watch identifiers are ignored so callers can treat cleanup as best-effort. *)
+   Unknown watch identifiers are ignored so callers can treat cleanup as best-effort. 
+*)
 val unwatch: t -> watch_id -> (unit, error) Result.t
 
-module Flag: sig
+module Flag : sig
   val created: int32
 
   val removed: int32
@@ -72,10 +79,12 @@ end
 
 val decode_event_kind: int32 -> event_kind
 
-(** Use `poll watcher` to read every currently buffered event without blocking.
+(**
+   Use `poll watcher` to read every currently buffered event without blocking.
 
-    When no complete event is ready, it reports `System WouldBlock` so higher layers can wait
-    through `to_source`. *)
+   When no complete event is ready, it reports `System WouldBlock` so higher layers can wait
+   through `to_source`. 
+*)
 val poll: t -> (event list, error) Result.t
 
 (** Use `stop watcher` to release watcher resources permanently. *)

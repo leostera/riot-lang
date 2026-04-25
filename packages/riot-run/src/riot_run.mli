@@ -7,6 +7,7 @@ type run_request = {
   profile: string;
   args: string list;
 }
+
 type source_run_request = {
   source_spec: string;
   binary_name: string;
@@ -14,34 +15,33 @@ type source_run_request = {
   update: bool;
   args: string list;
 }
+
 type runnable_binary = {
   package_name: Riot_model.Package_name.t;
   binary_name: string;
   source_path: Path.t;
 }
+
 type run_event =
   | Build of Riot_build.Event.t
   | RunningBinary of { package: Riot_model.Package_name.t; binary: string; args: string list }
+
 type run_error =
   | BinaryNotFound of { binary_name: string }
   | BinaryNotFoundInPackage of { package_name: Riot_model.Package_name.t; binary_name: string }
   | BuildFailed of Riot_build.error
   | ArtifactNotFound of {
-      package_name: Riot_model.Package_name.t;
-      binary_name: string;
-      reason: string
-    }
+    package_name: Riot_model.Package_name.t;
+    binary_name: string;
+    reason: string;
+  }
   | ProcessExited of int
   | SystemError of string
   | ExternalTargetLoadFailed of { target: string; error: Riot_deps.package_error }
-val build_scope_for_binary:
-  Riot_model.Workspace.t ->
-  package_name:Riot_model.Package_name.t ->
-  binary_name:string ->
-  Riot_build.Request.scope
 
-val list_binaries:
-  Riot_model.Workspace.t -> ?package_filter:Riot_model.Package_name.t -> unit -> runnable_binary list
+val build_scope_for_binary: Riot_model.Workspace.t -> package_name:Riot_model.Package_name.t -> binary_name:string -> Riot_build.Request.scope
+
+val list_binaries: Riot_model.Workspace.t -> ?package_filter:Riot_model.Package_name.t -> unit -> runnable_binary list
 
 val run_error_message: run_error -> string
 

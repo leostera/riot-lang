@@ -1,10 +1,11 @@
 open Std
 
-(** Installed Riot release metadata.
+(**
+   Installed Riot release metadata.
 
-    Use this module when the CLI needs to report its own release identity,
-    compare installed versions, or stamp outbound requests with version-aware
-    agent strings.
+   Use this module when the CLI needs to report its own release identity,
+   compare installed versions, or stamp outbound requests with version-aware
+   agent strings.
 *)
 type t = {
   (** Stable release identifier, such as a version tag. *)
@@ -28,10 +29,11 @@ val of_path: Path.t -> (t, string) result
 (** Parse version metadata from a JSON string. *)
 val of_json_string: string -> (t, string) result
 
-(** Parse a plain version string into release metadata when possible.
+(**
+   Parse a plain version string into release metadata when possible.
 
-    Use this for lightweight version inputs that do not come from a full JSON
-    metadata file.
+   Use this for lightweight version inputs that do not come from a full JSON
+   metadata file.
 *)
 val of_version_string: string -> t option
 
@@ -53,10 +55,11 @@ val version_string_of: t -> string
 (** Render the version string for the currently running CLI. *)
 val version_string: unit -> string
 
-(** Render a human-facing release label.
+(**
+   Render a human-facing release label.
 
-    Example return values include strings like ["0.1.0"] or a dev label with a
-    short build identifier when installed metadata is incomplete.
+   Example return values include strings like ["0.1.0"] or a dev label with a
+   short build identifier when installed metadata is incomplete.
 *)
 val release_label: t -> string
 

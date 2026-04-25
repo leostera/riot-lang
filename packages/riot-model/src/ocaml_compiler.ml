@@ -88,10 +88,9 @@ let warning_code = function
   | All -> "a"
   | warning -> warning_to_number warning |> Int.to_string
 
-let render_warning_spec = fun ~sign warnings ->
-  warnings
-  |> List.map ~fn:(fun warning -> String.make ~len:1 ~char:sign ^ warning_code warning)
-  |> String.concat ""
+let render_warning_spec = fun ~sign warnings -> warnings |> List.map ~fn:(
+  fun warning -> String.make ~len:1 ~char:sign ^ warning_code warning
+) |> String.concat ""
 
 let parse_warning_spec = fun ~sign spec ->
   let warning_of_code = function
@@ -108,83 +107,70 @@ let parse_warning_spec = fun ~sign spec ->
   if String.is_empty spec || not (String.starts_with ~prefix:(String.make ~len:1 ~char:sign) spec) then
     None
   else
-    String.split ~by:(String.make ~len:1 ~char:sign) spec
-    |> List.filter ~fn:(fun token -> not (String.is_empty token))
-    |> List.fold_left ~init:(Ok [])
-      ~fn:(fun acc token ->
-        match (acc, warning_of_code token) with
+    String.split ~by:(String.make ~len:1 ~char:sign) spec |> List.filter ~fn:(
+      fun token -> not (String.is_empty token)
+    ) |> List.fold_left ~init:(Ok []) ~fn:(
+      fun acc token ->
+        match acc, warning_of_code token with
         | Error _, _ -> acc
         | Ok warnings, Some warning -> Ok (warning :: warnings)
-        | Ok _, None -> Error ())
-    |> function
-    | Ok warnings -> Some (List.reverse warnings)
-    | Error () -> None
+        | Ok _, None -> Error ()
+    ) |> function
+      | Ok warnings -> Some (List.reverse warnings)
+      | Error () -> None
 
-let flags_to_string = fun flags ->
-  List.fold_left flags ~init:[]
-    ~fn:(fun acc flag ->
-      match flag with
-      | Open m -> acc @ [ "-open"; m ]
-      | NoAliasDeps -> acc @ [ "-no-alias-deps" ]
-      | NoStdlib -> acc @ [ "-nostdlib" ]
-      | NoPervasives -> acc @ [ "-nopervasives" ]
-      | Inline threshold -> acc @ [ "-inline"; Int.to_string threshold ]
-      | NoAssert -> acc @ [ "-noassert" ]
-      | Compact -> acc @ [ "-compact" ]
-      | Unsafe -> acc @ [ "-unsafe" ]
-      | Impl file -> acc @ [ "-impl"; Path.to_string file ]
-      | Warning warnings ->
-          if List.is_empty warnings then
-            acc
-          else
-            acc @ [ "-w"; render_warning_spec ~sign:'-' warnings ]
-      | WarnError warnings ->
-          if List.is_empty warnings then
-            acc
-          else
-            acc @ [ "-warn-error"; render_warning_spec ~sign:'+' warnings ]
-      | Raw flag -> acc @ [ flag ]
-      | LinkAll -> acc @ [ "-linkall" ])
+let flags_to_string = fun flags -> List.fold_left flags ~init:[] ~fn:(
+  fun acc flag ->
+    match flag with
+    | Open m -> acc @ [ "-open"; m ]
+    | NoAliasDeps -> acc @ [ "-no-alias-deps" ]
+    | NoStdlib -> acc @ [ "-nostdlib" ]
+    | NoPervasives -> acc @ [ "-nopervasives" ]
+    | Inline threshold -> acc @ [ "-inline"; Int.to_string threshold ]
+    | NoAssert -> acc @ [ "-noassert" ]
+    | Compact -> acc @ [ "-compact" ]
+    | Unsafe -> acc @ [ "-unsafe" ]
+    | Impl file -> acc @ [ "-impl"; Path.to_string file ]
+    | Warning warnings ->
+        if List.is_empty warnings then
+          acc
+        else acc @ [ "-w"; render_warning_spec ~sign:'-' warnings ]
+    | WarnError warnings ->
+        if List.is_empty warnings then
+          acc
+        else acc @ [ "-warn-error"; render_warning_spec ~sign:'+' warnings ]
+    | Raw flag -> acc @ [ flag ]
+    | LinkAll -> acc @ [ "-linkall" ]
+)
 
 let flags_of_string = fun raw_flags ->
   let rec go acc = function
-    | [] ->
-        List.reverse acc
-    | "-open" :: mod_name :: rest ->
-        go (Open mod_name :: acc) rest
-    | "-no-alias-deps" :: rest ->
-        go (NoAliasDeps :: acc) rest
-    | "-nostdlib" :: rest ->
-        go (NoStdlib :: acc) rest
-    | "-nopervasives" :: rest ->
-        go (NoPervasives :: acc) rest
+    | [] -> List.reverse acc
+    | "-open" :: mod_name :: rest -> go (Open mod_name :: acc) rest
+    | "-no-alias-deps" :: rest -> go (NoAliasDeps :: acc) rest
+    | "-nostdlib" :: rest -> go (NoStdlib :: acc) rest
+    | "-nopervasives" :: rest -> go (NoPervasives :: acc) rest
     | "-inline" :: threshold :: rest -> (
-        match Int.parse threshold with
-        | Some parsed -> go (Inline parsed :: acc) rest
-        | None -> go (Raw threshold :: Raw "-inline" :: acc) rest
-      )
-    | "-noassert" :: rest ->
-        go (NoAssert :: acc) rest
-    | "-compact" :: rest ->
-        go (Compact :: acc) rest
-    | "-unsafe" :: rest ->
-        go (Unsafe :: acc) rest
-    | "-impl" :: file :: rest ->
-        go (Impl (Path.v file) :: acc) rest
+      match Int.parse threshold with
+      | Some parsed -> go (Inline parsed :: acc) rest
+      | None -> go (Raw threshold :: Raw "-inline" :: acc) rest
+    )
+    | "-noassert" :: rest -> go (NoAssert :: acc) rest
+    | "-compact" :: rest -> go (Compact :: acc) rest
+    | "-unsafe" :: rest -> go (Unsafe :: acc) rest
+    | "-impl" :: file :: rest -> go (Impl (Path.v file) :: acc) rest
     | "-w" :: warning_spec :: rest -> (
-        match parse_warning_spec ~sign:'-' warning_spec with
-        | Some warnings -> go (Warning warnings :: acc) rest
-        | None -> go (Raw warning_spec :: Raw "-w" :: acc) rest
-      )
+      match parse_warning_spec ~sign:'-' warning_spec with
+      | Some warnings -> go (Warning warnings :: acc) rest
+      | None -> go (Raw warning_spec :: Raw "-w" :: acc) rest
+    )
     | "-warn-error" :: warning_spec :: rest -> (
-        match parse_warning_spec ~sign:'+' warning_spec with
-        | Some warnings -> go (WarnError warnings :: acc) rest
-        | None -> go (Raw warning_spec :: Raw "-warn-error" :: acc) rest
-      )
-    | "-linkall" :: rest ->
-        go (LinkAll :: acc) rest
-    | raw :: rest ->
-        go (Raw raw :: acc) rest
+      match parse_warning_spec ~sign:'+' warning_spec with
+      | Some warnings -> go (WarnError warnings :: acc) rest
+      | None -> go (Raw warning_spec :: Raw "-warn-error" :: acc) rest
+    )
+    | "-linkall" :: rest -> go (LinkAll :: acc) rest
+    | raw :: rest -> go (Raw raw :: acc) rest
   in
   go [] raw_flags
 

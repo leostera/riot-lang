@@ -7,9 +7,11 @@ type link_set = {
   repository_url: string option;
   source_url: string option;
 }
+
 type source_kind =
   | Workspace
   | Registry
+
 type t = {
   requested: string;
   name: Riot_model.Package_name.t;
@@ -31,16 +33,10 @@ type t = {
   load_errors: string list;
   links: link_set;
 }
-type error = {
-  kind: string;
-  message: string;
-}
-val resolve:
-  ?registry:Pkgs_ml.Registry.t ->
-  local_workspace:(Riot_model.Workspace_manifest.t * Riot_model.Workspace_manager.load_error list) option ->
-  target:string ->
-  unit ->
-  (t, error) result
+
+type error = { kind: string; message: string }
+
+val resolve: ?registry:Pkgs_ml.Registry.t -> local_workspace:(Riot_model.Workspace_manifest.t * Riot_model.Workspace_manager.load_error list) option -> target:string -> unit -> (t, error) result
 
 val to_json: t -> Data.Json.t
 

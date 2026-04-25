@@ -3,6 +3,7 @@ type t = {
   bindings: Typing_context.value_binding list;
   typing_context: Typing_context.t;
 }
+
 val empty: t
 
 val is_ok: t -> bool

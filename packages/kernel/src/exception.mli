@@ -1,6 +1,9 @@
 type t = exn = ..
+
 type raw_backtrace
+
 type raw_backtrace_entry = private int
+
 val to_string: exn -> string
 
 val raise_notrace: exn -> 'value

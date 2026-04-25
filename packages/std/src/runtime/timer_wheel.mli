@@ -6,8 +6,7 @@ type t
 val create: config:Config.t -> t
 
 (** Add a timer to the wheel and return its identifier. *)
-val add_timer:
-  t -> now:int64 -> duration_nanos:int64 -> mode:Timer.mode -> action:Timer.action -> Timer.id
+val add_timer: t -> now:int64 -> duration_nanos:int64 -> mode:Timer.mode -> action:Timer.action -> Timer.id
 
 (** Reinsert an existing interval timer without changing its identifier. *)
 val reschedule_timer: t -> now:int64 -> Timer.t -> unit

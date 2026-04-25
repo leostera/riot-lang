@@ -1,23 +1,24 @@
 open Std
 
-(** Describe how to generate, shrink, and print values for a property.
+(**
+   Describe how to generate, shrink, and print values for a property.
 
-    Use an arbitrary when Propane needs the full story for a type:
-    how to make values, how to simplify a failing example, and how to show
-    the result in an error report.
+   Use an arbitrary when Propane needs the full story for a type:
+   how to make values, how to simplify a failing example, and how to show
+   the result in an error report.
 
-    Example:
-    ```ocaml
-    type point = { x: int; y: int }
+   Example:
+   ```ocaml
+   type point = { x: int; y: int }
 
-    let point =
-      Arbitrary.make
-        ~shrink:(fun { x; y } ->
-          List.map (fun x -> { x; y }) (Shrinker.int x)
-          @ List.map (fun y -> { x; y }) (Shrinker.int y))
-        ~print:(fun { x; y } -> Printf.sprintf "{ x = %d; y = %d }" x y)
-        Generator.(map (fun (x, y) -> { x; y }) (pair int int))
-    ```
+   let point =
+     Arbitrary.make
+       ~shrink:(fun { x; y } ->
+         List.map (fun x -> { x; y }) (Shrinker.int x)
+         @ List.map (fun y -> { x; y }) (Shrinker.int y))
+       ~print:(fun { x; y } -> Printf.sprintf "{ x = %d; y = %d }" x y)
+       Generator.(map (fun (x, y) -> { x; y }) (pair int int))
+   ```
 *)
 type 'value t = {
   (** Generator used to create candidate test values. *)
@@ -31,18 +32,13 @@ type 'value t = {
 }
 
 (** Complete specification for a value type used in property testing. *)
+(**
+   Build an arbitrary from its components.
 
-(** Build an arbitrary from its components.
-
-    Use [make] when the built-in arbitraries are close, but you need custom
-    shrinking, printing, or size measurement for a domain type.
+   Use [make] when the built-in arbitraries are close, but you need custom
+   shrinking, printing, or size measurement for a domain type.
 *)
-val make:
-  ?shrink:'value Shrinker.t ->
-  ?print:'value Printer.t ->
-  ?small:('value -> int) ->
-  'value Generator.t ->
-  'value t
+val make: ?shrink:'value Shrinker.t -> ?print:'value Printer.t -> ?small:('value -> int) -> 'value Generator.t -> 'value t
 
 (** Generate, shrink, and print integers. *)
 val int: int t
@@ -68,10 +64,11 @@ val rune: Unicode.Rune.t t
 (** Generate, shrink, and print strings. *)
 val string: string t
 
-(** Lift an arbitrary over element values into an arbitrary over lists.
+(**
+   Lift an arbitrary over element values into an arbitrary over lists.
 
-    Use this for APIs that consume ordered sequences and where shrinking should
-    try both dropping elements and simplifying individual entries.
+   Use this for APIs that consume ordered sequences and where shrinking should
+   try both dropping elements and simplifying individual entries.
 *)
 val list: 'value t -> 'value list t
 
@@ -96,49 +93,53 @@ val deque: 'value t -> 'value Collections.Deque.t t
 (** Arbitrary for heaps built from an element arbitrary. *)
 val heap: 'value t -> 'value Collections.Heap.t t
 
-(** Combine two arbitraries into one for pairs.
+(**
+   Combine two arbitraries into one for pairs.
 
-    Example:
-    ```ocaml
-    let coordinates = Arbitrary.pair Arbitrary.int Arbitrary.int
-    ```
+   Example:
+   ```ocaml
+   let coordinates = Arbitrary.pair Arbitrary.int Arbitrary.int
+   ```
 *)
 val pair: 'a t -> 'b t -> ('a * 'b) t
 
 (** Combine three arbitraries into one for triples. *)
 val triple: 'a t -> 'b t -> 'c t -> ('a * 'b * 'c) t
 
-(** Arbitrary for optional values.
+(**
+   Arbitrary for optional values.
 
-    Failing values may shrink from [Some x] to [None], or to a smaller
-    [Some x'] when the element arbitrary supports shrinking.
+   Failing values may shrink from [Some x] to [None], or to a smaller
+   [Some x'] when the element arbitrary supports shrinking.
 *)
 val option: 'value t -> 'value option t
 
 (** Arbitrary for result values. *)
 val result: 'value t -> 'error t -> ('value, 'error) result t
 
-(** Transform an arbitrary through an isomorphism.
+(**
+   Transform an arbitrary through an isomorphism.
 
-    Use [map to_ from arb] when you already have an arbitrary for a simpler
-    representation and want to reuse it for a wrapper type.
+   Use [map to_ from arb] when you already have an arbitrary for a simpler
+   representation and want to reuse it for a wrapper type.
 
-    Example:
-    ```ocaml
-    type port = Port of int
+   Example:
+   ```ocaml
+   type port = Port of int
 
-    let port =
-      Arbitrary.map
-        (fun n -> Port n)
-        (fun (Port n) -> n)
-        Arbitrary.int
-    ```
+   let port =
+     Arbitrary.map
+       (fun n -> Port n)
+       (fun (Port n) -> n)
+       Arbitrary.int
+   ```
 *)
 val map: ('a -> 'b) -> ('b -> 'a) -> 'a t -> 'b t
 
-(** Replace only the generator of an arbitrary.
+(**
+   Replace only the generator of an arbitrary.
 
-    Use this when the shrinking and printing behavior is already right, but the
-    value distribution should change.
+   Use this when the shrinking and printing behavior is already right, but the
+   value distribution should change.
 *)
 val map_gen: 'value Generator.t -> 'value t -> 'value t

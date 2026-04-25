@@ -1,4 +1,5 @@
 type t
+
 val resolved: binding_id:Binding_id.t -> surface_path:Surface_path.t -> t
 
 val of_binding_id: Binding_id.t -> t

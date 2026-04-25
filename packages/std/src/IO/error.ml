@@ -100,8 +100,7 @@ let of_system_error = function
   | Kernel.SystemError.MessageTooLong -> Message_too_long
   | Kernel.SystemError.NoSuchProcess -> Process_down
   | Kernel.SystemError.DirectoryNotEmpty -> Directory_not_empty
-  | Kernel.SystemError.Unknown code -> Unknown_error ("Unknown system error code "
-  ^ Kernel.Int.to_string code)
+  | Kernel.SystemError.Unknown code -> Unknown_error ("Unknown system error code " ^ Kernel.Int.to_string code)
 
 let of_system_error_code = fun code -> of_system_error (Kernel.SystemError.from_code code)
 

@@ -34,27 +34,20 @@ let from_slice = fun source ->
   let peek () =
     if !pos >= len then
       None
-    else
-      Some (Slice.get_unchecked source ~at:!pos)
+    else Some (Slice.get_unchecked source ~at:!pos)
   in
-  let advance () =
-    pos := !pos + 1
-  in
+  let advance () = pos := !pos + 1 in
   let text_range ~off ~len =
     match Slice.sub source ~off ~len with
     | Ok slice -> Slice.to_string slice
-    | Error error -> raise
-      (Failure ("JsonStream.slice range invariant failed: " ^ Kernel.IO.Error.message error))
+    | Error error -> raise (Failure ("JsonStream.slice range invariant failed: " ^ Kernel.IO.Error.message error))
   in
   let rec skip_whitespace () =
     if !pos >= len then
       ()
     else
       match peek () with
-      | Some ' '
-      | Some '\t'
-      | Some '\n'
-      | Some '\r' ->
+      | Some ' ' | Some '\t' | Some '\n' | Some '\r' ->
           advance ();
           skip_whitespace ()
       | _ -> ()
@@ -67,12 +60,10 @@ let from_slice = fun source ->
       let rec loop index =
         if index >= prefix_len then
           true
-        else if
-          Slice.get_unchecked source ~at:(offset + index) != String.get_unchecked prefix ~at:index
-        then
-          false
         else
-          loop (index + 1)
+          if Slice.get_unchecked source ~at:(offset + index) != String.get_unchecked prefix ~at:index then
+            false
+          else loop (index + 1)
       in
       loop 0
   in
@@ -95,29 +86,20 @@ let from_slice = fun source ->
         let decode_at index =
           match hex_value (Slice.get_unchecked source ~at:index) with
           | Some value -> value
-          | None -> raise_error
-            (Unexpected_character {
-              position = index;
-              character = Slice.get_unchecked source ~at:index;
-              expected = "hex digit"
-            })
+          | None -> raise_error (Unexpected_character { position = index; character = Slice.get_unchecked source ~at:index; expected = "hex digit" })
         in
-        let code = (decode_at (!pos + 1) lsl 12)
-        lor (decode_at (!pos + 2) lsl 8)
-        lor (decode_at (!pos + 3) lsl 4)
-        lor decode_at (!pos + 4) in
+        let code = (decode_at (!pos + 1) lsl 12) lor (decode_at (!pos + 2) lsl 8) lor (decode_at (!pos + 3) lsl 4) lor decode_at (!pos + 4) in
         let rune =
           match Kernel.Unicode.Rune.from_int code with
           | Ok rune -> rune
-          | Error (Kernel.Unicode.Rune.BadRune { int }) -> raise_error
-            (Unknown_error ("invalid unicode scalar value " ^ Int.to_string int))
+          | Error (Kernel.Unicode.Rune.BadRune { int }) -> raise_error (Unknown_error ("invalid unicode scalar value " ^ Int.to_string int))
         in
         advance ();
-        advance ();
-        advance ();
-        advance ();
-        advance ();
-        Buffer.add_string buffer (Kernel.Unicode.Rune.to_string rune)
+      advance ();
+      advance ();
+      advance ();
+      advance ();
+      Buffer.add_string buffer (Kernel.Unicode.Rune.to_string rune)
     in
     let rec loop () =
       if !pos >= len then
@@ -157,21 +139,18 @@ let from_slice = fun source ->
               | Some 't' ->
                   Buffer.add_char buffer '\t';
                   advance ()
-              | Some 'u' ->
-                  parse_unicode_escape ()
+              | Some 'u' -> parse_unicode_escape ()
               | Some c ->
                   Buffer.add_char buffer c;
                   advance ()
-              | None ->
-                  raise_error (Unterminated_string { position = !pos })
+              | None -> raise_error (Unterminated_string { position = !pos })
             );
             loop ()
         | Some c ->
             Buffer.add_char buffer c;
             advance ();
             loop ()
-        | None ->
-            raise_error (Unterminated_string { position = !pos })
+        | None -> raise_error (Unterminated_string { position = !pos })
     in
     loop ()
   in
@@ -187,8 +166,7 @@ let from_slice = fun source ->
           is_float := true;
           advance ();
           consume ()
-      | _ ->
-          ()
+      | _ -> ()
     in
     consume ();
     let num_str = text_range ~off:start ~len:(!pos - start) in
@@ -204,8 +182,7 @@ let from_slice = fun source ->
   let rec parse_value () =
     skip_whitespace ();
     match peek () with
-    | None ->
-        raise_error (Unexpected_end_of_input { expected = "value" })
+    | None -> raise_error (Unexpected_end_of_input { expected = "value" })
     | Some 'n' ->
         let start_pos = !pos in
         if has_prefix_at !pos "null" then
@@ -217,10 +194,10 @@ let from_slice = fun source ->
           let found =
             if !pos + 4 <= len then
               text_range ~off:!pos ~len:4
-            else if !pos < len then
-              text_range ~off:!pos ~len:(len - !pos)
             else
-              ""
+              if !pos < len then
+                text_range ~off:!pos ~len:(len - !pos)
+              else ""
           in
           raise_error (Invalid_literal { expected = "null"; position = start_pos; found })
     | Some 't' ->
@@ -234,10 +211,10 @@ let from_slice = fun source ->
           let found =
             if !pos + 4 <= len then
               text_range ~off:!pos ~len:4
-            else if !pos < len then
-              text_range ~off:!pos ~len:(len - !pos)
             else
-              ""
+              if !pos < len then
+                text_range ~off:!pos ~len:(len - !pos)
+              else ""
           in
           raise_error (Invalid_literal { expected = "true"; position = start_pos; found })
     | Some 'f' ->
@@ -251,14 +228,13 @@ let from_slice = fun source ->
           let found =
             if !pos + 5 <= len then
               text_range ~off:!pos ~len:5
-            else if !pos < len then
-              text_range ~off:!pos ~len:(len - !pos)
             else
-              ""
+              if !pos < len then
+                text_range ~off:!pos ~len:(len - !pos)
+              else ""
           in
           raise_error (Invalid_literal { expected = "false"; position = start_pos; found })
-    | Some '"' ->
-        String (parse_string ())
+    | Some '"' -> String (parse_string ())
     | Some '[' ->
         advance ();
         skip_whitespace ();
@@ -278,12 +254,8 @@ let from_slice = fun source ->
             | Some ']' ->
                 advance ();
                 Array (List.reverse (item :: acc))
-            | Some c ->
-                raise_error
-                  (Expected_comma_or_bracket { kind = "array"; position = !pos; found = Some c })
-            | None ->
-                raise_error
-                  (Expected_comma_or_bracket { kind = "array"; position = !pos; found = None })
+            | Some c -> raise_error (Expected_comma_or_bracket { kind = "array"; position = !pos; found = Some c })
+            | None -> raise_error (Expected_comma_or_bracket { kind = "array"; position = !pos; found = None })
           in
           parse_items []
     | Some '{' ->
@@ -320,18 +292,12 @@ let from_slice = fun source ->
             | Some '}' ->
                 advance ();
                 Object (List.reverse ((key, value) :: acc))
-            | Some c ->
-                raise_error
-                  (Expected_comma_or_bracket { kind = "object"; position = !pos; found = Some c })
-            | None ->
-                raise_error
-                  (Expected_comma_or_bracket { kind = "object"; position = !pos; found = None })
+            | Some c -> raise_error (Expected_comma_or_bracket { kind = "object"; position = !pos; found = Some c })
+            | None -> raise_error (Expected_comma_or_bracket { kind = "object"; position = !pos; found = None })
           in
           parse_fields []
-    | Some ('-' | '0' .. '9') ->
-        parse_number ()
-    | Some c ->
-        raise_error (Unexpected_character { position = !pos; character = c; expected = "value" })
+    | Some ('-' | '0' .. '9') -> parse_number ()
+    | Some c -> raise_error (Unexpected_character { position = !pos; character = c; expected = "value" })
   in
   try
     skip_whitespace ();
@@ -339,8 +305,7 @@ let from_slice = fun source ->
     skip_whitespace ();
     if !pos < len then
       Error (Extra_input_after_value { position = !pos })
-    else
-      Ok result
+    else Ok result
   with
   | Json_parse_error err -> Error err
   | Failure message -> Error (Unknown_error message)

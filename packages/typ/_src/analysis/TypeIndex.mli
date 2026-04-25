@@ -12,8 +12,10 @@ type entry = {
   (** Final inferred type for the indexed expression. *)
   inferred_type: TypeRepr.t;
 }
+
 (** Per-source type index used by [Query.type_at]. *)
 type t
+
 (** Minimal traced expression payload used to build the type index. *)
 type traced_expr = {
   (** Expression traced by inference. *)

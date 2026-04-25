@@ -3,6 +3,7 @@ open Std
 
 (** Create a module from a namespace and filename *)
 type t
+
 val make: namespace:Namespace.t -> filename:Path.t -> t
 
 (** Get the simple module name (e.g., "Path") *)
@@ -19,10 +20,7 @@ val filename: t -> Path.t
 
 (** Get whether this is an implementation or interface file *)
 (** Get the compiled interface filename (e.g., "Std__Path.cmi") *)
-val kind: t -> [
-    | `implementation
-    | `interface
-  ]
+val kind: t -> [ | `implementation | `interface]
 
 val cmi: t -> Path.t
 

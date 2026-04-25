@@ -1,71 +1,50 @@
 open Std
 open Suri
 
-(** Static Files Middleware Example
-    
-    Demonstrates serving static files with security, caching, and directory browsing.
-    
-    Static files are located in: packages/suri/examples/public/
-    
-    Run with: riot run suri:static_example
-    Then visit: http://localhost:8080/public/
-*)
+(**
+   Static Files Middleware Example
 
+   Demonstrates serving static files with security, caching, and directory browsing.
+
+   Static files are located in: packages/suri/examples/public/
+
+   Run with: riot run suri:static_example
+   Then visit: http://localhost:8080/public/
+*)
 (** API routes (dynamic content) *)
 let api_status = fun conn _req ->
   let json = Data.Json.(Object [
-    ("status", String "ok");
-    ("message", String "API is running");
-    ("static_middleware", String "enabled");
-  ]) in
-  conn
-  |> Conn.respond ~status:Net.Http.Status.Ok ~body:(Data.Json.to_string json)
-  |> Conn.with_header "content-type" "application/json"
-  |> Conn.send
+    "status", String "ok";
+    "message", String "API is running";
+    "static_middleware", String "enabled";
+  ]) in conn |> Conn.respond ~status:Net.Http.Status.Ok ~body:(Data.Json.to_string json) |> Conn.with_header "content-type" "application/json" |> Conn.send
 
 let api_info = fun conn _req ->
   let json = Data.Json.(Object [
-    ("name", String "Static Files Example");
-    (
-      "features",
-      Array [
-        String "Security (path traversal, dotfiles)";
-        String "Caching (ETag, Last-Modified, 304)";
-        String "MIME type detection";
-        String "Directory browsing";
-      ]
-    );
-    (
-      "endpoints",
-      Array [ String "GET /api/status"; String "GET /api/info"; String "GET /public/*"; ]
-    );
-  ]) in
-  conn
-  |> Conn.respond ~status:Net.Http.Status.Ok ~body:(Data.Json.to_string json)
-  |> Conn.with_header "content-type" "application/json"
-  |> Conn.send
+    "name", String "Static Files Example";
+    "features", Array [
+      String "Security (path traversal, dotfiles)";
+      String "Caching (ETag, Last-Modified, 304)";
+      String "MIME type detection";
+      String "Directory browsing";
+    ];
+    "endpoints", Array [ String "GET /api/status"; String "GET /api/info"; String "GET /public/*" ];
+  ]) in conn |> Conn.respond ~status:Net.Http.Status.Ok ~body:(Data.Json.to_string json) |> Conn.with_header "content-type" "application/json" |> Conn.send
 
 (** Root redirect *)
-let root = fun conn _req ->
-  conn
-  |> Conn.respond ~status:Net.Http.Status.MovedPermanently ~body:""
-  |> Conn.with_header "location" "/public/"
-  |> Conn.send
+let root = fun conn _req -> conn |> Conn.respond ~status:Net.Http.Status.MovedPermanently ~body:"" |> Conn.with_header "location" "/public/" |> Conn.send
 
 (** API routes *)
-let routes = Middleware.Router.[get "/" root;
-get "/api/status" api_status;
-get "/api/info" api_info]
+let routes = Middleware.Router.[ get "/" root; get "/api/status" api_status; get "/api/info" api_info ]
 
 (** Application with static files middleware *)
-let app =
-  Middleware.[
-    request_id;
-    logger;
-    static ~at:"/public" (Path.v "./packages/suri/examples/public") ();
-    static ~at:"/browse" ~config:{ Static.default_config with show_directory = true } (Path.v "./") ();
-    router routes;
-  ]
+let app = Middleware.[
+  request_id;
+  logger;
+  static ~at:"/public" (Path.v "./packages/suri/examples/public") ();
+  static ~at:"/browse" ~config:({ Static.default_config with show_directory = true }) (Path.v "./") ();
+  router routes;
+]
 
 let main ~args:_ =
   Log.(set_level Debug);

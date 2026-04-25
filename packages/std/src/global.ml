@@ -118,12 +118,10 @@ let spawn_link = Runtime.spawn_link
 let send = Runtime.send
 
 let receive = fun ~selector ?timeout () ->
-  let timeout = Option.map timeout ~fn:Time.Duration.to_secs_float in
-  Runtime.receive ~selector ?timeout ()
+  let timeout = Option.map timeout ~fn:Time.Duration.to_secs_float in Runtime.receive ~selector ?timeout ()
 
 let receive_any = fun ?timeout () ->
-  let timeout = Option.map timeout ~fn:Time.Duration.to_secs_float in
-  Runtime.receive_any ?timeout ()
+  let timeout = Option.map timeout ~fn:Time.Duration.to_secs_float in Runtime.receive_any ?timeout ()
 
 let sleep = fun timeout ->
   let selector _msg = `skip in
@@ -138,8 +136,7 @@ let panic = Kernel.SystemError.panic
 
 let ( ! ) = fun cell -> Sync.Cell.get cell
 
-let ( := ) = fun cell value ->
-  Sync.Cell.set cell value
+let ( := ) = fun cell value -> Sync.Cell.set cell value
 
 let ref = fun value -> Sync.Cell.create value
 

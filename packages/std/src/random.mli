@@ -1,13 +1,14 @@
-(** # Random
+(**
+   # Random
 
-    Pseudo-random sampling with a secure standard RNG and composable
-    distributions.
+   Pseudo-random sampling with a secure standard RNG and composable
+   distributions.
 
-    `Std.Random` exposes one default global RNG through `Rng.standard`, plus a
-    distribution API for composing larger random values.
+   `Std.Random` exposes one default global RNG through `Rng.standard`, plus a
+   distribution API for composing larger random values.
 
-    The default standard RNG is intended to be cryptographically secure. When
-    `seed` is omitted, it is initialized from `Kernel.Random.Source`.
+   The default standard RNG is intended to be cryptographically secure. When
+   `seed` is omitted, it is initialized from `Kernel.Random.Source`.
 *)
 type error =
   | Entropy of Kernel.Random.Source.error
@@ -21,36 +22,44 @@ type error =
   | InvalidProbability of { probability: float }
   | EmptyPopulation
   | InvalidSampleSize of { requested: int; available: int }
+
 val error_to_string: error -> string
 
-module Rng: sig
+module Rng : sig
   type t
 
-  (** Use `make ~state ~fill_bytes` to package a custom RNG implementation for
-        use with `Std.Random`.
+  (**
+     Use `make ~state ~fill_bytes` to package a custom RNG implementation for
+     use with `Std.Random`.
 
-        `fill_bytes state out` must overwrite `out` fully and may mutate `state`
-        internally. *)
+     `fill_bytes state out` must overwrite `out` fully and may mutate `state`
+     internally. 
+  *)
   val make: state:'state -> fill_bytes:('state -> bytes -> unit) -> t
 
-  (** Use `standard ?seed ()` to build the secure standard RNG.
+  (**
+     Use `standard ?seed ()` to build the secure standard RNG.
 
-        - `standard ~seed ()` is deterministic
-        - `standard ()` is seeded from `Kernel.Random.Source` *)
+     - `standard ~seed ()` is deterministic
+     - `standard ()` is seeded from `Kernel.Random.Source` 
+  *)
   val standard: ?seed:string -> unit -> (t, error) Result.t
 end
 
 type 'value distribution
 
-(** Use `init ?seed ()` to replace the default global RNG used when `~rng` is
-    omitted from samplers. *)
+(**
+   Use `init ?seed ()` to replace the default global RNG used when `~rng` is
+   omitted from samplers. 
+*)
 val init: ?seed:string -> unit -> (unit, error) Result.t
 
 (** Use `sample ?rng distribution` to draw one value from `distribution`. *)
 val sample: ?rng:Rng.t -> 'value distribution -> ('value, error) Result.t
 
-module Distribution: sig
+module Distribution : sig
   type 'value t = 'value distribution
+
   val sample: ?rng:Rng.t -> 'value t -> ('value, error) Result.t
 
   val map: ('a -> 'b) -> 'a t -> 'b t
@@ -150,5 +159,4 @@ val choose_n: ?rng:Rng.t -> 'a list -> int -> ('a list, error) Result.t
 
 val choose_n_array: ?rng:Rng.t -> 'a array -> int -> ('a array, error) Result.t
 
-val choose_n_vec:
-  ?rng:Rng.t -> 'a Collections.Vector.t -> int -> ('a Collections.Vector.t, error) Result.t
+val choose_n_vec: ?rng:Rng.t -> 'a Collections.Vector.t -> int -> ('a Collections.Vector.t, error) Result.t

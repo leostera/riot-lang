@@ -63,10 +63,7 @@ let test_parse_string_with_escapes = fun _ctx ->
 
 let test_parse_string_with_unicode_escape = fun _ctx ->
   match Json.of_string {|"\u0000\t\u001F"|} with
-  | Ok (Json.String s) when String.length s = 3
-  && Char.code (String.get_unchecked s ~at:0) = 0
-  && Char.code (String.get_unchecked s ~at:1) = 9
-  && Char.code (String.get_unchecked s ~at:2) = 31 -> Ok ()
+  | Ok (Json.String s) when String.length s = 3 && Char.code (String.get_unchecked s ~at:0) = 0 && Char.code (String.get_unchecked s ~at:1) = 9 && Char.code (String.get_unchecked s ~at:2) = 31 -> Ok ()
   | _ -> Error "Failed to parse string with unicode escapes"
 
 let test_parse_empty_string = fun _ctx ->
@@ -81,12 +78,12 @@ let test_parse_empty_array = fun _ctx ->
 
 let test_parse_array_with_numbers = fun _ctx ->
   match Json.of_string "[1, 2, 3]" with
-  | Ok (Json.Array [Json.Int 1;Json.Int 2;Json.Int 3]) -> Ok ()
+  | Ok (Json.Array [ Json.Int 1; Json.Int 2; Json.Int 3 ]) -> Ok ()
   | _ -> Error "Failed to parse array with numbers"
 
 let test_parse_nested_array = fun _ctx ->
   match Json.of_string "[[1, 2], [3, 4]]" with
-  | Ok (Json.Array [Json.Array _;Json.Array _]) -> Ok ()
+  | Ok (Json.Array [ Json.Array _; Json.Array _ ]) -> Ok ()
   | _ -> Error "Failed to parse nested array"
 
 let test_parse_empty_object = fun _ctx ->
@@ -122,66 +119,80 @@ let test_parse_whitespace = fun _ctx ->
 let test_serialize_null = fun _ctx ->
   if Json.to_string Json.null = "null" then
     Ok ()
-  else
-    Error "Failed to serialize null"
+  else Error "Failed to serialize null"
 
 let test_serialize_bool = fun _ctx ->
   if Json.to_string (Json.bool true) = "true" then
     Ok ()
-  else
-    Error "Failed to serialize bool"
+  else Error "Failed to serialize bool"
 
 let test_serialize_int = fun _ctx ->
   if Json.to_string (Json.int 42) = "42" then
     Ok ()
-  else
-    Error "Failed to serialize int"
+  else Error "Failed to serialize int"
 
 let test_serialize_string = fun _ctx ->
   if Json.to_string (Json.string "hello") = {|"hello"|} then
     Ok ()
-  else
-    Error "Failed to serialize string"
+  else Error "Failed to serialize string"
 
 let test_serialize_string_escapes_control_characters = fun _ctx ->
   let serialized = Json.to_string (Json.string "\000\t\031") in
   if String.equal serialized {|"\u0000\t\u001F"|} then
     Ok ()
-  else
-    Error ("Failed to escape control characters: " ^ serialized)
+  else Error ("Failed to escape control characters: " ^ serialized)
 
 let test_serialize_array = fun _ctx ->
   let json = Json.array [ Json.int 1; Json.int 2 ] in
   if Json.to_string json = "[1,2]" then
     Ok ()
-  else
-    Error "Failed to serialize array"
+  else Error "Failed to serialize array"
 
 let test_serialize_object = fun _ctx ->
-  let json = Json.obj [ ("a", Json.int 1) ] in
+  let json =
+    Json.obj
+      [
+        "a", Json.int 1;
+      ]
+  in
   if Json.to_string json = {|{"a":1}|} then
     Ok ()
-  else
-    Error "Failed to serialize object"
+  else Error "Failed to serialize object"
 
 let test_serialize_object_pretty = fun _ctx ->
-  let json = Json.obj [ ("a", Json.int 1); ("items", Json.array [ Json.int 2; Json.int 3 ]); ] in
+  let json =
+    Json.obj
+      [
+        "a", Json.int 1;
+        "items", Json.array [ Json.int 2; Json.int 3 ];
+      ]
+  in
   let expected = "{\n" ^ "  \"a\": 1,\n" ^ "  \"items\": [\n" ^ "    2,\n" ^ "    3\n" ^ "  ]\n" ^ "}" in
   if String.equal (Json.to_string_pretty json) expected then
     Ok ()
-  else
-    Error ("Failed to serialize pretty JSON:\n" ^ Json.to_string_pretty json)
+  else Error ("Failed to serialize pretty JSON:\n" ^ Json.to_string_pretty json)
 
 let test_roundtrip = fun _ctx ->
-  let original = Json.obj
-    [ ("name", Json.string "Alice"); ("age", Json.int 30); ("active", Json.bool true); ] in
+  let original =
+    Json.obj
+      [
+        "name", Json.string "Alice";
+        "age", Json.int 30;
+        "active", Json.bool true;
+      ]
+  in
   let serialized = Json.to_string original in
   match Json.of_string serialized with
   | Ok parsed when parsed = original -> Ok ()
   | _ -> Error "Roundtrip failed"
 
 let test_roundtrip_control_characters = fun _ctx ->
-  let original = Json.obj [ ("stdout", Json.string "\000\t\031") ] in
+  let original =
+    Json.obj
+      [
+        "stdout", Json.string "\000\t\031";
+      ]
+  in
   let serialized = Json.to_string original in
   match Json.of_string serialized with
   | Ok parsed when parsed = original -> Ok ()
@@ -189,7 +200,12 @@ let test_roundtrip_control_characters = fun _ctx ->
   | Error err -> Error ("Roundtrip with control characters failed: " ^ Json.error_to_string err)
 
 let test_get_field = fun _ctx ->
-  let json = Json.obj [ ("key", Json.string "value") ] in
+  let json =
+    Json.obj
+      [
+        "key", Json.string "value";
+      ]
+  in
   match Json.get_field "key" json with
   | Some (Json.String "value") -> Ok ()
   | _ -> Error "Failed to get field"
@@ -207,46 +223,45 @@ let test_get_int = fun _ctx ->
 let test_get_array = fun _ctx ->
   let json = Json.array [ Json.int 1; Json.int 2 ] in
   match Json.get_array json with
-  | Some [Json.Int 1;Json.Int 2] -> Ok ()
+  | Some [ Json.Int 1; Json.Int 2 ] -> Ok ()
   | _ -> Error "Failed to get array"
 
-let tests =
-  Test.[
-    case "parse null" test_parse_null;
-    case "parse true" test_parse_true;
-    case "parse false" test_parse_false;
-    case "parse integer" test_parse_integer;
-    case "parse negative integer" test_parse_negative_integer;
-    case "parse float" test_parse_float;
-    case "parse scientific notation" test_parse_scientific_notation;
-    case "parse simple string" test_parse_simple_string;
-    case "parse string with escapes" test_parse_string_with_escapes;
-    case "parse string with unicode escapes" test_parse_string_with_unicode_escape;
-    case "parse empty string" test_parse_empty_string;
-    case "parse empty array" test_parse_empty_array;
-    case "parse array with numbers" test_parse_array_with_numbers;
-    case "parse nested array" test_parse_nested_array;
-    case "parse empty object" test_parse_empty_object;
-    case "parse simple object" test_parse_simple_object;
-    case "parse object with multiple fields" test_parse_object_multiple_fields;
-    case "parse nested object" test_parse_nested_object;
-    case "parse object with array" test_parse_object_with_array;
-    case "parse with whitespace" test_parse_whitespace;
-    case "serialize null" test_serialize_null;
-    case "serialize bool" test_serialize_bool;
-    case "serialize int" test_serialize_int;
-    case "serialize string" test_serialize_string;
-    case "serialize string escapes control characters" test_serialize_string_escapes_control_characters;
-    case "serialize array" test_serialize_array;
-    case "serialize object" test_serialize_object;
-    case "serialize object pretty" test_serialize_object_pretty;
-    case "roundtrip" test_roundtrip;
-    case "roundtrip control characters" test_roundtrip_control_characters;
-    case "get field" test_get_field;
-    case "get string" test_get_string;
-    case "get int" test_get_int;
-    case "get array" test_get_array;
-  ]
+let tests = Test.[
+  case "parse null" test_parse_null;
+  case "parse true" test_parse_true;
+  case "parse false" test_parse_false;
+  case "parse integer" test_parse_integer;
+  case "parse negative integer" test_parse_negative_integer;
+  case "parse float" test_parse_float;
+  case "parse scientific notation" test_parse_scientific_notation;
+  case "parse simple string" test_parse_simple_string;
+  case "parse string with escapes" test_parse_string_with_escapes;
+  case "parse string with unicode escapes" test_parse_string_with_unicode_escape;
+  case "parse empty string" test_parse_empty_string;
+  case "parse empty array" test_parse_empty_array;
+  case "parse array with numbers" test_parse_array_with_numbers;
+  case "parse nested array" test_parse_nested_array;
+  case "parse empty object" test_parse_empty_object;
+  case "parse simple object" test_parse_simple_object;
+  case "parse object with multiple fields" test_parse_object_multiple_fields;
+  case "parse nested object" test_parse_nested_object;
+  case "parse object with array" test_parse_object_with_array;
+  case "parse with whitespace" test_parse_whitespace;
+  case "serialize null" test_serialize_null;
+  case "serialize bool" test_serialize_bool;
+  case "serialize int" test_serialize_int;
+  case "serialize string" test_serialize_string;
+  case "serialize string escapes control characters" test_serialize_string_escapes_control_characters;
+  case "serialize array" test_serialize_array;
+  case "serialize object" test_serialize_object;
+  case "serialize object pretty" test_serialize_object_pretty;
+  case "roundtrip" test_roundtrip;
+  case "roundtrip control characters" test_roundtrip_control_characters;
+  case "get field" test_get_field;
+  case "get string" test_get_string;
+  case "get int" test_get_int;
+  case "get array" test_get_array;
+]
 
 let main ~args = Test.Cli.main ~name:"json" ~tests ~args ()
 

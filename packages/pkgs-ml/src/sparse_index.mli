@@ -8,11 +8,10 @@ type config = {
   index_base_url: string;
   artifact_base_url: string;
 }
+
 (** Dependency entry from a package document. *)
-type dependency = {
-  name: string;
-  raw: Data.Json.t;
-}
+type dependency = { name: string; raw: Data.Json.t }
+
 (** Published release entry in a package document. *)
 type release = {
   version: string;
@@ -35,6 +34,7 @@ type release = {
   yanked_at: string option;
   yanked_by_github_login: string option;
 }
+
 (** Sparse-index package document. *)
 type package_document = {
   schema_version: int;
@@ -84,12 +84,10 @@ val package_document_of_string: string -> (package_document, string) result
 val read_cached_config: Registry_cache.t -> (config option, string) result
 
 (** Read one cached package document, if present. *)
-val read_cached_package_document:
-  Registry_cache.t -> package_name:string -> (package_document option, string) result
+val read_cached_package_document: Registry_cache.t -> package_name:string -> (package_document option, string) result
 
 (** Write the sparse-index config source into the cache. *)
 val write_cached_config: Registry_cache.t -> source:string -> (unit, string) result
 
 (** Write a package document source into the cache. *)
-val write_cached_package_document:
-  Registry_cache.t -> package_name:string -> source:string -> (unit, string) result
+val write_cached_package_document: Registry_cache.t -> package_name:string -> source:string -> (unit, string) result

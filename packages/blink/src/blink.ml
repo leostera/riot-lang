@@ -1,9 +1,15 @@
 open Std
+
 module Protocol = Protocol
+
 module Transport = Transport
+
 module Connection = Connection
+
 module WebSocket = Websocket
+
 module Error = Error
+
 module SSE = Sse
 
 type error = Error.t
