@@ -207,6 +207,43 @@ module type S = sig
   val run: unit -> unit
 end
 |ocaml});
+  Test.case "write normalizes multiline docstring indentation"
+    (fun ctx ->
+      let source = {ocaml|module ANSI:sig
+(** Convert an ANSI palette entry to RGB.
+
+          Use this when you need a concrete RGB value for a terminal color.
+
+          Indices outside `0..255` are clamped to the nearest valid palette entry.
+
+          Example:
+          ```ocaml
+          ANSI.to_rgb (`ansi 9) = `rgb (255, 0, 0)
+          ```
+      *)
+val to_rgb:int->rgb
+end
+|ocaml}
+      in
+      let parsed = parse_mli source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|module ANSI : sig
+  (**
+     Convert an ANSI palette entry to RGB.
+
+     Use this when you need a concrete RGB value for a terminal color.
+
+     Indices outside `0..255` are clamped to the nearest valid palette entry.
+
+     Example:
+     ```ocaml
+     ANSI.to_rgb (`ansi 9) = `rgb (255, 0, 0)
+     ```
+  *)
+  val to_rgb: int -> rgb
+end
+|ocaml});
   Test.case "format keeps signature docstring spacing idempotent"
     (fun ctx ->
       let source = {ocaml|open Std

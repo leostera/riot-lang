@@ -88,6 +88,7 @@
 81. Render module declaration heads from the original CST shell tokens too. Use `ModuleSignature.keyword_token` / `rec_token` and `ModuleStructure.keyword_token` / `rec_token` so comments attached to `module`, `and`, or `rec` survive formatting instead of being lost behind synthesized keywords.
 82. Render object/class member modifiers from CST-carried tokens too. Preserve comments on `!`, `private`, `mutable`, and `virtual` by lowering `modifier_tokens` and virtual-definition tokens directly instead of rebuilding those shells from booleans.
 83. Keep new fixture migrations on the shared `Std.Test.FixtureRunner` + `Std.Test.Snapshot` path. When a `krasny` fixture family already has adjacent approved outputs, point `snapshot_path` at those `.expected` files instead of inventing a second storage convention.
+84. Format Ast2 docstrings from `Ast2.Token.for_each_leading_trivia_item` separated opening/content/closing fields. Do not rescan raw docstring text in the formatter just to remove `(**` or `*)`.
 
 ## Validate
 

@@ -104,6 +104,27 @@ let test_source_file_and_let_binding_views = fun _ctx ->
     | _ -> Error "expected literal expression body"
   )
 
+let test_token_leading_docstring_trivia_parts = fun _ctx ->
+  let root = parse_mli {ocaml|(** hello *)
+val x:int
+|ocaml} |> Result.expect ~msg:"expected parse2 source file" in
+  let item = nth_signature_item root 0 |> require_some ~msg:"expected value item" in
+  let token = Ast2.Node.first_descendant_token item |> require_some ~msg:"expected value token" in
+  let docstring = ref None in
+  Ast2.Token.for_each_leading_trivia_item token ~fn:(
+    function
+    | Ast2.Token.Docstring doc -> docstring := Some doc
+    | Ast2.Token.Comment _ | Ast2.Token.Whitespace _ -> ()
+  );
+  match !docstring with
+  | Some doc ->
+      Test.assert_equal ~expected:"(** hello *)" ~actual:doc.text;
+      Test.assert_equal ~expected:"(**" ~actual:doc.opening;
+      Test.assert_equal ~expected:" hello " ~actual:doc.content;
+      Test.assert_equal ~expected:(Some "*)") ~actual:doc.closing;
+      Ok ()
+  | None -> Error "expected leading docstring trivia"
+
 let test_expression_views = fun _ctx ->
   let source = "let x = if ready then 1 else 2\nlet y = match x with | 0 -> 1 | _ -> 2\n" in
   let root = parse_ml source |> Result.expect ~msg:"expected parse2 source file" in
@@ -2050,6 +2071,7 @@ let test_loop_body_sequence_boundaries = fun _ctx ->
 
 let tests = [
   Test.case "ast2 exposes source file and let binding views" test_source_file_and_let_binding_views;
+  Test.case "ast2 exposes separated docstring trivia parts" test_token_leading_docstring_trivia_parts;
   Test.case "ast2 exposes if and match expression views" test_expression_views;
   Test.case "ast2 exposes assignment operator tokens" test_assignment_operator_views;
   Test.case "ast2 preserves trailing sequence bodies before and-bindings" test_trailing_sequence_before_and_views;

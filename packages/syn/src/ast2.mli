@@ -44,6 +44,19 @@ val root: Syntax_tree.t -> node
 
 module Token: sig
   type t = token
+
+  type delimited_trivia = {
+    text: string;
+    opening: string;
+    content: string;
+    closing: string option;
+  }
+
+  type leading_trivia =
+    | Whitespace of { text: string }
+    | Comment of delimited_trivia
+    | Docstring of delimited_trivia
+
   val kind: t -> Syntax_kind2.t
 
   val width: t -> int
@@ -63,6 +76,8 @@ module Token: sig
   val leading_text: t -> string
 
   val for_each_leading_trivia: t -> fn:(kind:Syntax_kind2.t -> text:string -> unit) -> unit
+
+  val for_each_leading_trivia_item: t -> fn:(leading_trivia -> unit) -> unit
 
   val has_leading_comment: t -> bool
 

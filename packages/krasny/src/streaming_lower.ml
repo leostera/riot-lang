@@ -179,6 +179,91 @@ let emit_text = fun state value ->
 
 let is_horizontal_whitespace = fun char -> Char.equal char ' ' || Char.equal char '\t'
 
+let count_newlines = fun text ->
+  let length = String.length text in
+  let rec loop index count =
+    if Int.(index >= length) then
+      count
+    else if Char.equal (String.get_unchecked text ~at:index) '\n' then
+      loop (Int.add index 1) (Int.add count 1)
+    else
+      loop (Int.add index 1) count
+  in
+  loop 0 0
+
+let split_lines = fun text ->
+  let length = String.length text in
+  let lines = Vector.with_capacity ~size:(Int.add (count_newlines text) 1) in
+  let rec loop segment_start index =
+    if Int.(index >= length) then
+      Vector.push
+        lines
+        ~value:(String.sub text ~offset:segment_start ~len:(Int.sub length segment_start))
+    else if Char.equal (String.get_unchecked text ~at:index) '\n' then
+      (
+        Vector.push
+          lines
+          ~value:(String.sub text ~offset:segment_start ~len:(Int.sub index segment_start));
+        loop (Int.add index 1) (Int.add index 1)
+      )
+    else
+      loop segment_start (Int.add index 1)
+  in
+  loop 0 0;
+  lines
+
+let docstring_closing = fun (docstring: Ast.Token.delimited_trivia) ->
+  match docstring.closing with
+  | Some closing -> closing
+  | None -> ""
+
+let normalize_inline_docstring = fun (docstring: Ast.Token.delimited_trivia) ->
+  let body = String.trim docstring.content in
+  let closing = docstring_closing docstring in
+  if String.is_empty body then
+    docstring.opening ^ " " ^ closing
+  else
+    docstring.opening ^ " " ^ body ^ " " ^ closing
+
+let normalize_multiline_docstring = fun (docstring: Ast.Token.delimited_trivia) ->
+  let lines = split_lines docstring.content in
+  let line_count = Vector.length lines in
+  if Int.(line_count <= 1) then
+    normalize_inline_docstring docstring
+  else
+    let last_index = Int.sub line_count 1 in
+    let first = Vector.get_unchecked lines ~at:0 |> String.trim in
+    let last = Vector.get_unchecked lines ~at:last_index in
+    let buffer = IO.Buffer.create ~size:(Int.add (String.length docstring.text) 8) in
+    let add_body_line line =
+      let line = String.trim line in
+      if String.is_empty line then
+        IO.Buffer.add_char buffer '\n'
+      else (
+        IO.Buffer.add_string buffer "   ";
+        IO.Buffer.add_string buffer line;
+        IO.Buffer.add_char buffer '\n'
+      )
+    in
+    IO.Buffer.add_string buffer docstring.opening;
+    IO.Buffer.add_char buffer '\n';
+    if not (String.is_empty first) then
+      add_body_line first;
+    for index = 1 to Int.sub line_count 2 do
+      let line = Vector.get_unchecked lines ~at:index in
+      add_body_line line
+    done;
+    if not (String.is_empty (String.trim last)) then
+      add_body_line last;
+    IO.Buffer.add_string buffer (docstring_closing docstring);
+    IO.Buffer.contents buffer
+
+let normalize_docstring = fun (docstring: Ast.Token.delimited_trivia) ->
+  if String.contains docstring.content "\n" then
+    normalize_multiline_docstring docstring
+  else
+    normalize_inline_docstring docstring
+
 let raw_breaks_before_text = fun value ->
   let length = String.length value in
   let rec loop index =
@@ -349,15 +434,21 @@ let emit_node_keyword = fun state node ~kind ~fallback ->
 
 let emit_token_leading_comments_as_lines = fun state token ->
   let emitted = ref false in
-  Ast.Token.for_each_leading_trivia token
-    ~fn:(fun ~kind ~text ->
-      if Kind.(kind = COMMENT || kind = DOCSTRING) then
-        (
+  Ast.Token.for_each_leading_trivia_item token
+    ~fn:(
+      function
+      | Ast.Token.Comment comment ->
           if !emitted then
             emit_line state;
-          emit_text state text;
+          emit_text state comment.text;
           emitted := true
-        ));
+      | Ast.Token.Docstring docstring ->
+          if !emitted then
+            emit_line state;
+          emit_text state (normalize_docstring docstring);
+          emitted := true
+      | Ast.Token.Whitespace _ -> ()
+    );
   if !emitted then
     (
       emit_line state;

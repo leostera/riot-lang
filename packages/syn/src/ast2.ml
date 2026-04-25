@@ -476,8 +476,22 @@ let for_each_token_after_child_token = fun (node: node) ~matches ~fn ->
           ()
     )
 
+module Lex_token = Token
+
 module Token = struct
   type t = token
+
+  type delimited_trivia = {
+    text: string;
+    opening: string;
+    content: string;
+    closing: string option;
+  }
+
+  type leading_trivia =
+    | Whitespace of { text: string }
+    | Comment of delimited_trivia
+    | Docstring of delimited_trivia
 
   let kind = fun (token: token) -> (syntax_token token).Syntax_tree.kind
 
@@ -544,6 +558,44 @@ module Token = struct
           fn
             ~kind:raw.Raw_token.kind
             ~text:(Raw_token.text_slice ~source:token.tree.Syntax_tree.source raw);
+          loop Int.(raw_index + 1)
+        )
+    in
+    loop syntax_token.Syntax_tree.raw_lo
+
+  let closing_if_terminated = fun terminated ->
+    if terminated then
+      Some "*)"
+    else
+      None
+
+  let leading_trivia_item_of_raw = fun (token: token) raw ->
+    let text = Raw_token.text_slice ~source:token.tree.Syntax_tree.source raw in
+    match raw.Raw_token.legacy_kind with
+    | Lex_token.Whitespace -> Whitespace { text }
+    | Lex_token.Comment { value; terminated } ->
+        Comment {
+          text;
+          opening = "(*";
+          content = value;
+          closing = closing_if_terminated terminated;
+        }
+    | Lex_token.Docstring { value; terminated } ->
+        Docstring {
+          text;
+          opening = "(**";
+          content = value;
+          closing = closing_if_terminated terminated;
+        }
+    | _ -> panic "Ast2.Token.leading_trivia_item_of_raw received non-trivia raw token"
+
+  let for_each_leading_trivia_item = fun (token: token) ~fn ->
+    let syntax_token = syntax_token token in
+    let rec loop raw_index =
+      if Int.(raw_index < syntax_token.Syntax_tree.body_raw) then
+        (
+          let raw = Vector.get_unchecked token.tree.Syntax_tree.raw_tokens ~at:raw_index in
+          fn (leading_trivia_item_of_raw token raw);
           loop Int.(raw_index + 1)
         )
     in

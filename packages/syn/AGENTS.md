@@ -86,6 +86,7 @@
 76. Prefer shared `Std.Test.FixtureRunner` plus `Std.Test.Snapshot` for fixture-backed parser/diagnostic suites instead of package-local expected-file harnesses; keep fixture selection path-typed with `Std.Path.t`.
 77. In the shared root worktree, fixture-backed `syn` suites may skip fixture source files that already have local edits so snapshot churn stays scoped to the agent editing those inputs. Clean trees should still exercise the full approved fixture corpus.
 78. Keep `Syn.Deps` differential against the vendored `ocamldep` algorithm. When extending deps coverage, add oracles under `packages/syn/tests/deps_fixtures/` and regenerate adjacent `*.expected.ocamldep` files from the real tool before approving the JSON snapshots.
+79. Keep docstring trivia delimiter structure explicit on `Ast2.Token`. The lexer-owned docstring content should remain delimiter-free, while Ast2 consumers can still access lossless raw text plus separated opening/content/closing fields instead of rescanning comment text.
 
 ## Validate
 
