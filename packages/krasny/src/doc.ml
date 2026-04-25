@@ -107,7 +107,7 @@ let rec flat_measure = function
 and flat_measure_vector docs =
   let length = Vector.length docs in
   let rec loop index measure =
-    if measure.stops_at_line || Int.compare index length >= 0 then
+    if measure.stops_at_line || Int.(index >= length) then
       Some measure
     else
       match flat_measure (Vector.get_unchecked docs ~at:index) with
@@ -154,7 +154,7 @@ let rec flattened_count = function
   | Concat docs ->
       let length = Vector.length docs in
       let rec loop index count =
-        if Int.compare index length >= 0 then
+        if Int.(index >= length) then
           count
         else
           loop
@@ -175,7 +175,7 @@ let flattened_count_list = fun docs ->
 let flattened_count_vector = fun docs ->
   let length = Vector.length docs in
   let rec loop index count =
-    if Int.compare index length >= 0 then
+    if Int.(index >= length) then
       count
     else
       loop (Int.add index 1) (Int.add count (flattened_count (Vector.get_unchecked docs ~at:index)))
@@ -201,7 +201,7 @@ let joined_count_vector = fun separator docs ->
   let separator_count = flattened_count separator in
   let length = Vector.length docs in
   let rec loop index count =
-    if Int.compare index length >= 0 then
+    if Int.(index >= length) then
       count
     else
       let count =
@@ -213,30 +213,6 @@ let joined_count_vector = fun separator docs ->
       loop (Int.add index 1) (Int.add count (flattened_count (Vector.get_unchecked docs ~at:index)))
   in
   loop 0 0
-
-let can_extend_raw = fun docs ->
-  let length = Vector.length docs in
-  if Int.compare length 8 < 0 then
-    false
-  else
-    let rec loop index =
-      if Int.compare index length >= 0 then
-        true
-      else
-        match Vector.get_unchecked docs ~at:index with
-        | Empty
-        | Space
-        | Spaces _
-        | Break _
-        | Concat _ -> false
-        | Text _
-        | RawText _
-        | Slice _
-        | Line
-        | Group _
-        | Indent _ -> loop (Int.add index 1)
-    in
-    loop 0
 
 let fast_concat = function
   | [] -> Empty
@@ -257,8 +233,8 @@ let fast_join = fun separator docs ->
         | [] -> ()
         | doc :: rest ->
             if not first then
-              Vector.push_unchecked output ~value:separator;
-            Vector.push_unchecked output ~value:doc;
+              Vector.push output ~value:separator;
+            Vector.push output ~value:doc;
             loop false rest
       in
       loop true docs;
@@ -268,13 +244,13 @@ let concat_with = fun ~flattened_size ~iter ->
   let output = Vector.with_capacity ~size:(Int.max 0 flattened_size) in
   let push doc =
     let length = Vector.length output in
-    if Int.compare length (Vector.capacity output) < 0 then
-      Vector.push_unchecked output ~value:doc
+    if Int.(length < Vector.capacity output) then
+      Vector.push output ~value:doc
     else
       Vector.push output ~value:doc
   in
   let add_spaces count =
-    if Int.compare count 0 <= 0 then
+    if Int.(count <= 0) then
       ()
     else
       let current_length = Vector.length output in
@@ -314,20 +290,15 @@ let concat_with = fun ~flattened_size ~iter ->
         push doc
   and append_vector docs =
     let docs_length = Vector.length docs in
-    if can_extend_raw docs && Int.compare docs_length (Vector.length output) > 0 then
-      Vector.extend output docs
-    else
-      (
-        let rec loop index =
-          if Int.compare index docs_length >= 0 then
-            ()
-          else (
-            append_doc (Vector.get_unchecked docs ~at:index);
-            loop (Int.add index 1)
-          )
-        in
-        loop 0
+    let rec loop index =
+      if Int.(index >= docs_length) then
+        ()
+      else (
+        append_doc (Vector.get_unchecked docs ~at:index);
+        loop (Int.add index 1)
       )
+    in
+    loop 0
   in
   iter append_doc;
   doc_vector output
@@ -367,10 +338,10 @@ let join_vector = fun separator docs ->
       concat_with ~flattened_size:(joined_count_vector separator docs)
         ~iter:(fun append_doc ->
           let rec loop index =
-            if Int.compare index length >= 0 then
+            if Int.(index >= length) then
               ()
             else (
-              if Int.compare index 0 > 0 then
+              if Int.(index > 0) then
                 append_doc separator;
               append_doc (Vector.get_unchecked docs ~at:index);
               loop (Int.add index 1)
@@ -411,7 +382,7 @@ let rec is_multiline = function
       is_multiline group.doc
   | Concat docs ->
       let rec loop index =
-        if Int.compare index (Vector.length docs) >= 0 then
+        if Int.(index >= Vector.length docs) then
           false
         else if is_multiline (Vector.get_unchecked docs ~at:index) then
           true

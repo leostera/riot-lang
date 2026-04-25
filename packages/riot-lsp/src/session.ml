@@ -312,9 +312,13 @@ let workspace_edit_of_text = fun document text ->
   }
 
 let maybe_format_text = fun document text ->
-  match Krasny.format_source ~filename:(filename_of_uri document.uri) text with
-  | Ok formatted -> formatted
-  | Error _ -> text
+  let parse_result = Syn.parse ~filename:(filename_of_uri document.uri) text in
+  if not (List.is_empty parse_result.diagnostics) then
+    text
+  else
+    match Krasny.format parse_result with
+    | Ok formatted -> formatted
+    | Error _ -> text
 
 let finalized_workspace_edit_of_text = fun document text ->
   let text = maybe_format_text document text in
@@ -950,10 +954,8 @@ let handle_formatting = fun state ->
               ();
           ]
         | Some document ->
-            let parse_result = Krasny.parse_source
-              ~filename:(filename_of_uri document.uri)
-              document.text in
-            if not (Collections.Vector.is_empty parse_result.diagnostics) then
+            let parse_result = Syn.parse ~filename:(filename_of_uri document.uri) document.text in
+            if not (List.is_empty parse_result.diagnostics) then
               ok state [ Lsp.response_to_json ~id Lsp.Text_document_methods.Formatting.request None ]
             else
               match Krasny.format parse_result with

@@ -54,7 +54,55 @@ let source_slice = fun source ->
 
 let parse_source = fun ~filename source -> Syn.parse2 ~filename (source_slice source)
 
-let format = fun (result: Syn.Parser2.parse_result) ->
+let buffer_writer = fun buffer ->
+  let append_slice buffer slice =
+    match IO.Buffer.append_slice buffer slice with
+    | Ok () -> ()
+    | Error error -> panic ("Format_core.buffer_writer: " ^ Kernel.IO.Error.message error)
+  in
+  let module Write = struct
+    type t = IO.Buffer.t
+
+    let write = fun buffer ~from ->
+      let len = IO.Buffer.readable_bytes from in
+      append_slice buffer (IO.Buffer.readable from);
+      Ok len
+
+    let write_vectored = fun buffer ~from ->
+      let written = ref 0 in
+      IO.IoVec.for_each from
+        ~fn:(fun segment ->
+          append_slice buffer segment;
+          written := !written + IO.IoSlice.length segment);
+      Ok !written
+
+    let flush = fun _buffer -> Ok ()
+  end in
+  IO.Writer.from_sink (module Write) buffer
+
+let finalize_rendered_output = fun rendered ->
+  if String.length rendered = 0 || String.ends_with ~suffix:"\n" rendered then
+    rendered
+  else
+    rendered ^ "\n"
+
+let format = fun (result: Syn.Parser.parse_result) ->
+  yield ();
+  match Syn.build_cst result with
+  | Error err -> Error (Cannot_build_cst err)
+  | Ok source_file ->
+      yield ();
+      (
+        match Lower.source_file source_file with
+        | Error err -> Error (Cannot_lower (Lower.error_to_string err))
+        | Ok rendered ->
+            yield ();
+            let rendered = Solver.solve ~width:100 rendered |> Printer.to_string in
+            yield ();
+            Ok (finalize_rendered_output rendered)
+      )
+
+let format2 = fun (result: Syn.Parser2.parse_result) ->
   yield ();
   let diagnostics = result.Syn.Parser2.diagnostics in
   if Vector.length diagnostics > 0 then
@@ -69,16 +117,14 @@ let format = fun (result: Syn.Parser2.parse_result) ->
         yield ();
         Ok rendered
 
-let format_source = fun ~filename source -> parse_source ~filename source |> format
-
-let write = fun ~writer (result: Syn.Parser2.parse_result) ->
+let stream_format = fun (result: Syn.Parser2.parse_result) ~writer ~width ->
   yield ();
   let diagnostics = result.Syn.Parser2.diagnostics in
   if Vector.length diagnostics > 0 then
     Error (Format_failed (Cannot_parse diagnostics))
   else
     let source_file = Syn.Ast2.SourceFile.make result.Syn.Parser2.tree in
-    match Streaming_lower.write ~writer ~width:100 source_file with
+    match Streaming_lower.write ~writer ~width source_file with
     | Error (Streaming_lower.Cannot_format err) ->
         Error (Format_failed (Cannot_lower (Streaming_lower.error_to_string err)))
     | Error (Streaming_lower.Cannot_write err) ->
@@ -87,4 +133,17 @@ let write = fun ~writer (result: Syn.Parser2.parse_result) ->
         yield ();
         Ok ()
 
-let format2 = format
+let stream_format_to_string = fun (result: Syn.Parser2.parse_result) ~width ->
+  let buffer = IO.Buffer.create ~size:(output_size_hint result) in
+  let writer = buffer_writer buffer in
+  match stream_format result ~writer ~width with
+  | Ok () -> Ok (IO.Buffer.contents buffer)
+  | Error (Format_failed err) -> Error err
+  | Error (Write_failed err) -> Error (Cannot_lower ("buffer write failed: " ^ IO.error_message err))
+
+let write = fun ~writer result -> stream_format result ~writer ~width:100
+
+let format_streaming = fun result -> stream_format_to_string result ~width:100
+
+let format_source = fun ~filename source ->
+  parse_source ~filename source |> stream_format_to_string ~width:100

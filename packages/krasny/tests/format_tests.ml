@@ -1,5 +1,15 @@
 open Std
 
+module Krasny_parser2 = struct
+  include Krasny
+
+  let format = Krasny.format2
+
+  let syntax_hash = Krasny.syntax_hash2
+end
+
+module Krasny = Krasny_parser2
+
 let sample_ml = Path.v "sample.ml"
 
 let workspace_files = [
@@ -48,8 +58,12 @@ let buffer_writer = fun buffer ->
 let capture_write = fun result ->
   let buffer = IO.Buffer.create ~size:128 in
   let writer = buffer_writer buffer in
-  Krasny.write ~writer result |> Result.expect ~msg:"write should render into the supplied writer";
-  IO.Buffer.contents buffer
+  match Krasny.stream_format result ~writer ~width:100 with
+  | Ok () -> IO.Buffer.contents buffer
+  | Error (Krasny.Format_failed err) -> panic
+    ("stream_format should render into the supplied writer: " ^ Krasny.format_error_to_string err)
+  | Error (Krasny.Write_failed err) -> panic
+    ("stream_format should write into the supplied writer: " ^ IO.error_message err)
 
 let capture_json_event = fun ~root event ->
   let buffer = IO.Buffer.create ~size:128 in
@@ -120,6 +134,24 @@ let tests = [
       Test.assert_equal ~expected:source ~actual:formatted;
       Test.assert_equal ~expected:expected_hash ~actual:actual_hash;
       Ok ());
+  Test.case "syntax hash normalizes formatter-safe punctuation"
+    (fun _ctx ->
+      let expected =
+        parse_ml
+          {ocaml|type row={x:int;y:int}
+let check=pos+pattern_len>String.length str
+|ocaml}
+        |> Krasny.syntax_hash
+      in
+      let actual =
+        parse_ml
+          {ocaml|type row={x:int;y:int;}
+let check=(pos+pattern_len)>(String.length str)
+|ocaml}
+        |> Krasny.syntax_hash
+      in
+      Test.assert_equal ~expected ~actual;
+      Ok ());
   Test.case "format adds a final newline to non-empty output"
     (fun _ctx ->
       let source = "let x = 1 + 2" in
@@ -139,6 +171,1013 @@ let tests = [
       let actual = capture_write parsed in
       Test.assert_equal ~expected ~actual;
       Ok ());
+  Test.case "write renders simple interfaces"
+    (fun ctx ->
+      let source = {ocaml|val id : 'a -> 'a
+type 'a t = 'a list
+module type S = sig
+  val run : unit -> unit
+end
+|ocaml}
+      in
+      let parsed = parse_mli source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|val id: 'a -> 'a
+
+type 'a t = 'a list
+
+module type S = sig
+  val run: unit -> unit
+end
+|ocaml});
+  Test.case "write preserves terminal docstrings before nested signature end"
+    (fun ctx ->
+      let source = {ocaml|module S:sig
+val x:int
+(** keep me *)
+end
+|ocaml}
+      in
+      let parsed = parse_mli source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|module S : sig
+  val x: int
+
+  (** keep me *)
+end
+|ocaml});
+  Test.case "write preserves module functor parameters"
+    (fun ctx ->
+      let source = {ocaml|module Make(Order:Std_order.Ordered)=struct
+let empty=Empty
+end
+|ocaml}
+      in
+      let parsed = parse_ml source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|module Make (Order: Std_order.Ordered) = struct
+  let empty = Empty
+end
+|ocaml});
+  Test.case "write preserves variant constructor docstrings in interfaces"
+    (fun ctx ->
+      let source = {ocaml|type 'a parse_result=|Done of{value:'a;remaining:string}
+(** Successfully parsed + remaining input *)
+|Need_more
+(** Need more data to continue parsing *)
+|Error of string
+(** Parse error with message *)
+val find_substring:needle:string->string->int option
+|ocaml}
+      in
+      let parsed = parse_mli source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|type 'a parse_result =
+  | Done of { value: 'a; remaining: string }
+  (** Successfully parsed + remaining input *)
+  | Need_more
+  (** Need more data to continue parsing *)
+  | Error of string
+
+
+(** Parse error with message *)
+val find_substring: needle:string -> string -> int option
+|ocaml});
+  Test.case "write renders short record types inline"
+    (fun ctx ->
+      let source = {ocaml|type error=|OutOfBoundsSet of{length:int;at:int}
+type row={left:int;right:string}
+|ocaml}
+      in
+      let parsed = parse_mli source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|type error =
+  | OutOfBoundsSet of { length: int; at: int }
+
+type row = { left: int; right: string }
+|ocaml});
+  Test.case "write preserves terminal record field docstrings"
+    (fun ctx ->
+      let source = {ocaml|type cookie={name:string;value:string;same_site:same_site option;
+(** CSRF protection *)}
+|ocaml}
+      in
+      let parsed = parse_mli source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|type cookie = {
+  name: string;
+  value: string;
+  same_site: same_site option;
+  (** CSRF protection *)
+}
+|ocaml});
+  Test.case "write renders type alias record representations"
+    (fun ctx ->
+      let source = {ocaml|type point=Base.point=private{x:int;y:string}
+type export_entry=Manifest.export_entry={name:string;path:Std.Path.t;action_hash:string}
+|ocaml}
+      in
+      let parsed = parse_mli source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|type point = Base.point = private { x: int; y: string }
+
+type export_entry = Manifest.export_entry = { name: string; path: Std.Path.t; action_hash: string }
+|ocaml});
+  Test.case "write preserves assignment operators"
+    (fun ctx ->
+      let source = {ocaml|let update state remaining=state.buffer<-remaining
+let assign r=r:=1
+|ocaml}
+      in
+      let parsed = parse_ml source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|let update state remaining = state.buffer <- remaining
+
+let assign r = r := 1
+|ocaml});
+  Test.case "write preserves labeled wildcard function parameters"
+    (fun ctx ->
+      let source = {ocaml|let run=fun ~args:_->()
+|ocaml}
+      in
+      let parsed = parse_ml source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|let run = fun ~args: _ -> ()
+|ocaml});
+  Test.case "write preserves let binding annotations exactly once"
+    (fun ctx ->
+      let source = {ocaml|let make:reader:IO.Reader.t->writer:IO.Writer.t->of_io_error:(IO.error->Error.t)->uri:Net.Uri.t->t=fun ~reader ~writer ~of_io_error ~uri->Ok ()
+|ocaml}
+      in
+      let parsed = parse_ml source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|let make: reader:IO.Reader.t -> writer:IO.Writer.t -> of_io_error:(IO.error -> Error.t) -> uri:Net.Uri.t -> t = fun ~reader ~writer ~of_io_error ~uri -> Ok ()
+|ocaml});
+  Test.case "write preserves comments before else tokens"
+    (fun ctx ->
+      let source = {ocaml|let parse line=if line="" then()else if String.starts_with ~prefix:":" line then()(* keep comment *)else()
+|ocaml}
+      in
+      let parsed = parse_ml source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|let parse line =
+  if line = "" then
+    ()
+  else
+    if String.starts_with ~prefix:":" line then
+      ()
+    (* keep comment *)else ()
+|ocaml});
+  Test.case "write preserves EOF-owned trailing comments"
+    (fun ctx ->
+      let source = {ocaml|let close=fun _conn->()
+(* Reader/writer don't need explicit close *)
+|ocaml}
+      in
+      let parsed = parse_ml source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|let close = fun _conn -> ()
+(* Reader/writer don't need explicit close *)
+|ocaml});
+  Test.case "write renders parenthesized type constructor arguments"
+    (fun ctx ->
+      let source = {ocaml|val set:'value t->at:int->value:'value->(unit,error) Kernel.result
+val mapper:(int->string) option
+val pair:('a*'b) box
+val nested:('a,'e) result option
+val triple:(int,string,bool) Graph_scheduler.node_result
+type close=Close of int option*string
+type timing={microseconds:int*int}
+|ocaml}
+      in
+      let parsed = parse_mli source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|val set: 'value t -> at:int -> value:'value -> (unit, error) Kernel.result
+
+val mapper: (int -> string) option
+
+val pair: ('a * 'b) box
+
+val nested: ('a, 'e) result option
+
+val triple: (int, string, bool) Graph_scheduler.node_result
+
+type close =
+  | Close of int option * string
+
+type timing = { microseconds: int * int }
+|ocaml});
+  Test.case "write renders operator value declarations"
+    (fun ctx ->
+      let source = {ocaml|val(=):'a->'a->bool
+val( |> ):'a->('a->'b)->'b
+val( * ):int->int->int
+val( ** ):float->float->float
+|ocaml}
+      in
+      let parsed = parse_mli source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|val ( = ): 'a -> 'a -> bool
+
+val ( |> ): 'a -> ('a -> 'b) -> 'b
+
+val ( * ): int -> int -> int
+
+val ( ** ): float -> float -> float
+|ocaml});
+  Test.case "write renders include declarations"
+    (fun ctx ->
+      let source = {ocaml|include   Kernel.Process
+module type S=sig include  Map.S end
+|ocaml}
+      in
+      let parsed = parse_ml source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|include Kernel.Process
+
+module type S = sig
+  include Map.S
+end
+|ocaml});
+  Test.case "write renders adjacent opens tightly"
+    (fun ctx ->
+      let source = {ocaml|open Std
+open Std.Collections
+let value=1
+|ocaml}
+      in
+      let parsed = parse_ml source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|open Std
+open Std.Collections
+
+let value = 1
+|ocaml});
+  Test.case "write renders record updates"
+    (fun ctx ->
+      let source = {ocaml|let next={state with count=state.count+1;ready=true}
+|ocaml}
+      in
+      let parsed = parse_ml source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|let next = { state with count = state.count + 1; ready = true }
+|ocaml});
+  Test.case "write renders coercion expressions"
+    (fun ctx ->
+      let source = {ocaml|let color=((`rgb (1,2,3):>color))
+let named=(value:>Service.t)
+|ocaml}
+      in
+      let parsed = parse_ml source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|let color = ((`rgb (1, 2, 3) :> color))
+
+let named = (value :> Service.t)
+|ocaml});
+  Test.case "write renders local-open patterns"
+    (fun ctx ->
+      let source = {ocaml|let fin=fun Frame.{fin;opcode}->fin
+let value=fun M.(Some x)->x
+|ocaml}
+      in
+      let parsed = parse_ml source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|let fin = fun Frame.{ fin; opcode } -> fin
+
+let value = fun M.(Some x) -> x
+|ocaml});
+  Test.case "write renders operator bindings and local-open operator values"
+    (fun ctx ->
+      let source = {ocaml|let(+)=add
+let( let* )=bind
+let ( .@() ) x y=get x y
+let mul=Stdlib.( * )
+let modulo=Stdlib.(mod)
+let value=M.(Some x)
+|ocaml}
+      in
+      let parsed = parse_ml source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|let ( + ) = add
+
+let ( let* ) = bind
+
+let ( .@() ) x y = get x y
+
+let mul = Stdlib.( * )
+
+let modulo = Stdlib.( mod )
+
+let value = M.(Some x)
+|ocaml});
+  Test.case "write renders polymorphic variants with qualified record payloads"
+    (fun ctx ->
+      let source = {ocaml|let item=Some(`Definition Cst.ClassDefinition.{syntax_node=node;class_body=body})
+|ocaml}
+      in
+      let parsed = parse_ml source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|let item = Some (`Definition Cst.ClassDefinition.{ syntax_node = node; class_body = body })
+|ocaml});
+  Test.case "write renders binding operator expressions"
+    (fun ctx ->
+      let source = {ocaml|let one=let* item=read () in Ok item
+let both=let* a=read_a () and* b=read_b () in Ok (a,b)
+|ocaml}
+      in
+      let parsed = parse_ml source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|let one =
+  let* item = read () in Ok item
+
+let both =
+  let* a = read_a ()
+  and* b = read_b ()
+  in
+  Ok (a, b)
+|ocaml});
+  Test.case "write keeps @@ fun applications bare"
+    (fun ctx ->
+      let source = {ocaml|let ()=start ~apps:[]@@fun ()->main ()
+|ocaml}
+      in
+      let parsed = parse_ml source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|let () =
+  start ~apps:[] @@ fun () -> main ()
+|ocaml});
+  Test.case "write keeps pipeline fun operands bare"
+    (fun ctx ->
+      let source = {ocaml|let headers=headers|>fun h->Net.Http.Header.add h "host" "localhost"
+|ocaml}
+      in
+      let parsed = parse_ml source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|let headers =
+  headers |> fun h -> Net.Http.Header.add h "host" "localhost"
+|ocaml});
+  Test.case "write parenthesizes tuple function bodies"
+    (fun ctx ->
+      let source = {ocaml|let pair=fun a b->(a,b)
+let triple=map3(fun a b c->(a,b,c))x y z
+|ocaml}
+      in
+      let parsed = parse_ml source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|let pair = fun a b -> (a, b)
+
+let triple =
+  map3
+    (
+      fun a b c -> (a, b, c)
+    )
+    x
+    y
+    z
+|ocaml});
+  Test.case "write parenthesizes tuple let bodies inside function arguments"
+    (fun ctx ->
+      let source = {ocaml|let make=list_init count(fun index->let weight=if heavy&&index=0 then 99 else 1 in (weight,Generator.return index))
+|ocaml}
+      in
+      let parsed = parse_ml source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|let make =
+  list_init count
+    (
+      fun index ->
+        let weight =
+          if heavy && (index = 0) then
+            99
+          else 1
+        in
+        (weight, Generator.return index)
+    )
+|ocaml});
+  Test.case "write parenthesizes tuple if branches"
+    (fun ctx ->
+      let source = {ocaml|let make=fun res fastest->if res.name=fastest.name then res.name,1.0 else let ratio=calculate fastest.mean res.mean in(res.name,ratio)
+|ocaml}
+      in
+      let parsed = parse_ml source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|let make = fun res fastest ->
+  if res.name = fastest.name then
+    (res.name, 1.0)
+  else
+    let ratio = calculate fastest.mean res.mean in (res.name, ratio)
+|ocaml});
+  Test.case "write keeps infix application operands bare when precedence allows it"
+    (fun ctx ->
+      let source = {ocaml|let length=String.length b|>Int.to_string
+let line=Net.Http.Method.to_string method_^" "^resource^"\r\n"
+|ocaml}
+      in
+      let parsed = parse_ml source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|let length = String.length b |> Int.to_string
+
+let line = Net.Http.Method.to_string method_ ^ " " ^ resource ^ "\r\n"
+|ocaml});
+  Test.case "write keeps low-precedence right infix operands bare"
+    (fun ctx ->
+      let source = {ocaml|let ok=response<>""&&let parts=String.split ~by:":" response in match parts with|[_;value]->String.trim value=expected|_->false
+|ocaml}
+      in
+      let parsed = parse_ml source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|let ok =
+  (response <> "") && let parts = String.split ~by:":" response in
+  match parts with
+  | [ _; value ] -> String.trim value = expected
+  | _ -> false
+|ocaml});
+  Test.case "write keeps cons chains right associative"
+    (fun ctx ->
+      let source = {ocaml|let fields=timestamp_field()::("type",Data.Json.String"file")::fields
+|ocaml}
+      in
+      let parsed = parse_ml source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|let fields = timestamp_field () :: ("type", Data.Json.String "file") :: fields
+|ocaml});
+  Test.case "write keeps infix precedence parens minimal"
+    (fun ctx ->
+      let source = {ocaml|let values=fun slice last_newline line_start len->let width=Int.(Slice.length slice-last_newline-1) in let ok=line_start&&len>0 in if ok then width else 0
+|ocaml}
+      in
+      let parsed = parse_ml source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|let values = fun slice last_newline line_start len ->
+  let width = Int.(Slice.length slice - last_newline - 1) in
+  let ok = line_start && len > 0 in
+  if ok then
+    width
+  else 0
+|ocaml});
+  Test.case "write parenthesizes tuple sequence operands"
+    (fun ctx ->
+      let source = {ocaml|let render=fun line_start column->if line_start then(line_start,column+1)else(IO.Buffer.add_char buffer ' ';(false,column+1))
+|ocaml}
+      in
+      let parsed = parse_ml source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|let render = fun line_start column ->
+  if line_start then
+    (line_start, column + 1)
+  else
+    (
+      IO.Buffer.add_char buffer ' ';
+      (false, column + 1)
+    )
+|ocaml});
+  Test.case "write parenthesizes list tuple items with match components"
+    (fun ctx ->
+      let source = {ocaml|let fields=[("error",match result.error with|Some error->String error|None->Null);("diagnostics",match result.diagnostics with|Some diagnostics->Array diagnostics|None->Null)]
+|ocaml}
+      in
+      let parsed = parse_ml source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|let fields =
+  [
+    ("error", match result.error with
+    | Some error -> String error
+    | None -> Null);
+    ("diagnostics", match result.diagnostics with
+    | Some diagnostics -> Array diagnostics
+    | None -> Null);
+  ]
+|ocaml});
+  Test.case "write parenthesizes keyword body sequences"
+    (fun ctx ->
+      let source = {ocaml|let run=fun cond->if cond then done_ else (let value=next() in push value;loop())
+|ocaml}
+      in
+      let parsed = parse_ml source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|let run = fun cond ->
+  if cond then
+    done_
+  else
+    (
+      let value = next () in
+      push value;
+      loop ()
+    )
+|ocaml});
+  Test.case "write keeps match case keyword body sequences unwrapped"
+    (fun ctx ->
+      let source = {ocaml|let f=fun cond->match x with|Some data->if cond then let result=foo in bar;baz else qux
+|ocaml}
+      in
+      let parsed = parse_ml source in
+      let actual = capture_write parsed in
+      let reparsed = parse_ml actual in
+      Test.assert_equal ~expected:(Krasny.syntax_hash parsed) ~actual:(Krasny.syntax_hash reparsed);
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|let f = fun cond ->
+  match x with
+  | Some data ->
+      if cond then
+        let result = foo in bar;
+        baz
+      else qux
+|ocaml});
+  Test.case "write renders loop expressions"
+    (fun ctx ->
+      let source = {ocaml|let sum=ref 0
+let ()=for i=0 to 10 do sum:=!sum+i done
+let ()=while !sum<100 do sum:=!sum+1 done
+|ocaml}
+      in
+      let parsed = parse_ml source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|let sum = ref 0
+
+let () =
+  for i = 0 to 10 do
+    sum := !sum + i
+  done
+
+let () =
+  while !sum < 100 do
+    sum := !sum + 1
+  done
+|ocaml});
+  Test.case "write normalizes trailing sequence semicolons"
+    (fun ctx ->
+      let source = {ocaml|let run=fun ()->match x with|A->foo ();bar ();|B->baz ()
+|ocaml}
+      in
+      let parsed = parse_ml source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|let run = fun () ->
+  match x with
+  | A ->
+    foo ();
+    bar ()
+  | B -> baz ()
+|ocaml});
+  Test.case "write keeps local let in on inline bindings"
+    (fun ctx ->
+      let source = {ocaml|let run=fun response body->let status=Net.Http.Response.status response in Log.info "Status: %a" Net.Http.Status.pp status;Log.info "Body length: %d bytes" (String.length body);()
+|ocaml}
+      in
+      let parsed = parse_ml source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|let run = fun response body ->
+  let status = Net.Http.Response.status response in
+  Log.info "Status: %a" Net.Http.Status.pp status;
+  Log.info "Body length: %d bytes" (String.length body);
+  ()
+|ocaml});
+  Test.case "write breaks multiline match application arguments"
+    (fun ctx ->
+      let source = {ocaml|let main=fun result->match result with|Error e->Log.error "Request failed: %s" (match e with|`Connection_failed msg->format "Connection: %s" msg|`Read_error msg->format "Read: %s" msg)|Ok body->Log.info "Body: %s" body
+|ocaml}
+      in
+      let parsed = parse_ml source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|let main = fun result ->
+  match result with
+  | Error e ->
+      Log.error "Request failed: %s"
+        (
+          match e with
+          | `Connection_failed msg -> format "Connection: %s" msg
+          | `Read_error msg -> format "Read: %s" msg
+        )
+  | Ok body -> Log.info "Body: %s" body
+|ocaml});
+  Test.case "write breaks parenthesized infix arguments containing matches"
+    (fun ctx ->
+      let source = {ocaml|let show=fun first_event->Log.info ("First event: "^(match first_event with|Some _->"got one"|None->"none"))
+|ocaml}
+      in
+      let parsed = parse_ml source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|let show = fun first_event ->
+  Log.info
+    (
+      "First event: " ^ (
+        match first_event with
+        | Some _ -> "got one"
+        | None -> "none"
+      )
+    )
+|ocaml});
+  Test.case "write renders assert expressions"
+    (fun ctx ->
+      let source = {ocaml|let check=fun x->assert(x=1);assert(not(x=2))
+|ocaml}
+      in
+      let parsed = parse_ml source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|let check = fun x ->
+  assert (x = 1);
+  assert (not (x = 2))
+|ocaml});
+  Test.case "write renders local exception expressions"
+    (fun ctx ->
+      let source = {ocaml|let run=fun value->let exception Stop of int*string in raise(Stop(value,"x"))
+|ocaml}
+      in
+      let parsed = parse_ml source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|let run = fun value ->
+  let exception Stop of int * string in
+  raise (Stop (value, "x"))
+|ocaml});
+  Test.case "write renders attribute and extension expressions"
+    (fun ctx ->
+      let source = {ocaml|let tagged=match result with|Ok ()->Ok ()[@test]|Error err->Error err[@test]
+let loc=Loc.get[%atomic.loc value.contents]
+|ocaml}
+      in
+      let parsed = parse_ml source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|let tagged =
+  match result with
+  | Ok () -> Ok () [@test]
+  | Error err -> Error err [@test]
+
+let loc = Loc.get [%atomic.loc value.contents]
+|ocaml});
+  Test.case "write preserves structure item attribute suffixes"
+    (fun ctx ->
+      let source = {ocaml|module Tests=struct let x=1 end[@test]
+module type S=sig val x:int end[@test]
+|ocaml}
+      in
+      let parsed = parse_ml source in
+      let actual = capture_write parsed in
+      let reparsed = parse_ml actual in
+      Test.assert_equal ~expected:(Krasny.syntax_hash parsed) ~actual:(Krasny.syntax_hash reparsed);
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|module Tests = struct
+  let x = 1
+end [@test]
+
+module type S = sig
+  val x: int
+end [@test]
+|ocaml});
+  Test.case "write preserves signature item attribute suffixes"
+    (fun ctx ->
+      let source = {ocaml|module Tests:sig val x:int end[@test]
+|ocaml}
+      in
+      let parsed = parse_mli source in
+      let actual = capture_write parsed in
+      let reparsed = parse_mli actual in
+      Test.assert_equal ~expected:(Krasny.syntax_hash parsed) ~actual:(Krasny.syntax_hash reparsed);
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|module Tests : sig
+  val x: int
+end [@test]
+|ocaml});
+  Test.case "write renders let module expressions"
+    (fun ctx ->
+      let source = {ocaml|let value=let module M=Existing in M.run ()
+let run=let module Box=struct
+let x=1
+let y=x+1
+end in Box.y
+|ocaml}
+      in
+      let parsed = parse_ml source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|let value =
+  let module M = Existing in
+  M.run ()
+
+let run =
+  let module Box = struct
+    let x = 1
+
+    let y = x + 1
+  end in
+  Box.y
+|ocaml});
+  Test.case "write renders first-class module expressions"
+    (fun ctx ->
+      let source = {ocaml|let sink=IO.Writer.from_sink (module Write) ()
+let packed=(module Service:Service.Intf)
+let init=let module R=(val config.reporter:Reporter.Intf) in R.init ()
+|ocaml}
+      in
+      let parsed = parse_ml source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|let sink = IO.Writer.from_sink (module Write) ()
+
+let packed = (module Service : Service.Intf)
+
+let init =
+  let module R = (val config.reporter : Reporter.Intf) in
+  R.init ()
+|ocaml});
+  Test.case "write renders first-class module packs and unpacks with constraints"
+    (fun ctx ->
+      let source = {ocaml|let unpack=let module D=(val driver) in D.run()
+let unpack_ascribed=let module P=(val server.protocol_mod:Common.ApplicationProtocol with type request=req and type response=res) in P.run()
+let pack=make (module FilterIter:Intf with type state=a t and type item=a) iter
+|ocaml}
+      in
+      let parsed = parse_ml source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|let unpack =
+  let module D = (val driver) in
+  D.run ()
+
+let unpack_ascribed =
+  let module P = (val server.protocol_mod : Common.ApplicationProtocol with type request = req and type response = res) in
+  P.run ()
+
+let pack = make (module FilterIter : Intf with type state = a t and type item = a) iter
+|ocaml});
+  Test.case "write renders GADT inline record constructors"
+    (fun ctx ->
+      let source = {ocaml|type t=| Conn:{protocol:(module Protocol.Intf);mutable state:int}->t
+|ocaml}
+      in
+      let parsed = parse_ml source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|type t =
+  | Conn : {
+    protocol: (module Protocol.Intf);
+    mutable state: int
+  } -> t
+|ocaml});
+  Test.case "write renders first-class module type aliases"
+    (fun ctx ->
+      let source = {ocaml|type 'dst sink=(module Write with type t='dst)
+type ('item,'state) iter=(module Intf with type item='item and type state='state)
+|ocaml}
+      in
+      let parsed = parse_ml source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|type 'dst sink = (module Write with type t = 'dst)
+
+type ('item, 'state) iter = (module Intf with type item = 'item and type state = 'state)
+|ocaml});
+  Test.case "write renders type extension declarations"
+    (fun ctx ->
+      let source = {ocaml|type Message.t+=|Actor_self_reply of Pid.t|Actor_stop
+type _ Effect.t+=Yield:unit Effect.t
+|ocaml}
+      in
+      let parsed = parse_ml source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|type Message.t +=
+  | Actor_self_reply of Pid.t
+  | Actor_stop
+
+type _ Effect.t +=
+  | Yield : unit Effect.t
+|ocaml});
+  Test.case "write renders extensible and private type declarations"
+    (fun ctx ->
+      let source = {ocaml|type event=..
+type 'a effect='a eff=..
+type raw=private int
+type state=private|Uninitialized|Runnable
+|ocaml}
+      in
+      let parsed = parse_ml source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|type event = ..
+
+type 'a effect = 'a eff = ..
+
+type raw = private int
+
+type state =
+  private | Uninitialized
+  | Runnable
+|ocaml});
+  Test.case "write renders module type-of declarations"
+    (fun ctx ->
+      let source = {ocaml|module Protocol:module type of Protocol
+module Error:module type of Error
+|ocaml}
+      in
+      let parsed = parse_mli source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|module Protocol : module type of Protocol
+
+module Error : module type of Error
+|ocaml});
+  Test.case "write renders constrained module declarations"
+    (fun ctx ->
+      let source = {ocaml|module Make(Order:Order.Ordered):S with type key=Order.t
+module Driver:Sqlx_driver.Driver.Intf with type config=Config.t
+|ocaml}
+      in
+      let parsed = parse_mli source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|module Make (Order : Order.Ordered) : S with type key = Order.t
+
+module Driver : Sqlx_driver.Driver.Intf with type config = Config.t
+|ocaml});
+  Test.case "write preserves chained module type constraint connectors"
+    (fun ctx ->
+      let source = {ocaml|module Protocol:Jsonrpc.ApplicationProtocol with type request=request and type response=response=struct end
+module type S=sig include Jsonrpc.ApplicationProtocol with type request:=request and type response:=response end
+|ocaml}
+      in
+      let parsed = parse_ml source in
+      let actual = capture_write parsed in
+      let reparsed = parse_ml actual in
+      Test.assert_equal ~expected:(Krasny.syntax_hash parsed) ~actual:(Krasny.syntax_hash reparsed);
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|module Protocol: Jsonrpc.ApplicationProtocol with type request = request and type response = response = struct end
+
+module type S = sig
+  include Jsonrpc.ApplicationProtocol with type request := request and type response := response
+end
+|ocaml});
+  Test.case "write renders applied and ascribed module declarations"
+    (fun ctx ->
+      let source = {ocaml|module Name_map=Collections.Map.Make(String)
+module Owner_map=Collections.Map.Make(struct
+type t=TypeConstructorId.t
+let compare=TypeConstructorId.compare
+end)
+module Mock:Driver.Intf with type config=unit=struct
+type config=unit
+let name="Mock"
+end
+|ocaml}
+      in
+      let parsed = parse_ml source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|module Name_map = Collections.Map.Make (String)
+
+module Owner_map = Collections.Map.Make (struct
+  type t = TypeConstructorId.t
+
+  let compare = TypeConstructorId.compare
+end)
+
+module Mock : Driver.Intf with type config = unit = struct
+  type config = unit
+
+  let name = "Mock"
+end
+|ocaml});
+  Test.case "write renders polymorphic variant type aliases"
+    (fun ctx ->
+      let source = {ocaml|type decode_error=[`Invalid_octal|`Other of string]
+type color=[ansi|rgb]
+|ocaml}
+      in
+      let parsed = parse_ml source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|type decode_error = [`Invalid_octal | `Other of string]
+
+type color = [ansi | rgb]
+|ocaml});
+  Test.case "write preserves leading bar polymorphic variant types"
+    (fun ctx ->
+      let source = {ocaml|val connect:mode:[ |`Client of string|`Server of string*string]->unit
+|ocaml}
+      in
+      let parsed = parse_mli source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|val connect: mode:[ | `Client of string | `Server of string * string] -> unit
+|ocaml});
+  Test.case "write preserves include module type of declarations"
+    (fun ctx ->
+      let source = {ocaml|include  module type of   Global
+|ocaml}
+      in
+      let parsed = parse_mli source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|include module type of Global
+|ocaml});
+  Test.case "write renders external and exception declarations"
+    (fun ctx ->
+      let source = {ocaml|external int64_bits_of_float:float->int64="caml_int64_bits_of_float" "caml_int64_bits_of_float_unboxed"[@@unboxed][@@noalloc]
+exception Assumption_failed
+exception Property_failed of string
+exception Alias=Failure
+|ocaml}
+      in
+      let parsed = parse_ml source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|external int64_bits_of_float: float -> int64 = "caml_int64_bits_of_float" "caml_int64_bits_of_float_unboxed" [@@ unboxed] [@@ noalloc]
+
+exception Assumption_failed
+
+exception Property_failed of string
+
+exception Alias = Failure
+|ocaml});
+  Test.case "write renders item attributes attached to declarations"
+    (fun ctx ->
+      let source = {ocaml|type perform={perform:'a 'b.('a step->'b t)->'a Effect.t->'b t}[@@unboxed]
+external round_float:float->float="caml_round_float" "caml_round"[@@unboxed][@@noalloc]
+|ocaml}
+      in
+      let parsed = parse_mli source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|type perform = {
+  perform: 'a 'b. ('a step -> 'b t) -> 'a Effect.t -> 'b t
+} [@@ unboxed]
+
+external round_float: float -> float = "caml_round_float" "caml_round" [@@ unboxed] [@@ noalloc]
+|ocaml});
+  Test.case "write preserves abstract type declaration attributes"
+    (fun ctx ->
+      let source = {ocaml|type('a,'b)stack[@@immediate]
+type last_fiber[@@immediate]
+|ocaml}
+      in
+      let parsed = parse_ml source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|type ('a, 'b) stack [@@ immediate]
+
+type last_fiber [@@ immediate]
+|ocaml});
+  Test.case "write preserves variant representation attributes"
+    (fun ctx ->
+      let source = {ocaml|type 'a t=Ref of int64[@@unboxed]
+|ocaml}
+      in
+      let parsed = parse_ml source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|type 'a t =
+  | Ref of int64 [@@ unboxed]
+|ocaml});
+  Test.case "stream formatter rejects unsupported type bodies"
+    (fun ctx ->
+      let source = {ocaml|type color = [ ansi | rgb | xyz ]
+|ocaml}
+      in
+      match Krasny.stream_format_to_string (parse_ml source) ~width:100 with
+      | Ok _ -> Error "stream formatter should reject unsupported type body"
+      | Error err ->
+          let actual = Krasny.format_error_to_string err in
+          Test.Snapshot.assert_inline_text ~ctx ~actual ~expected:{ocaml|unsupported type declaration body|ocaml});
   Test.case "write matches format for generated table records"
     (fun _ctx ->
       let source = {ocaml|let _co = {
@@ -309,6 +1348,157 @@ let bind =
         ~ctx
         ~msg:"match case layout should not preserve source newlines after arrows"
         source);
+  Test.case "write keeps parenthesized match case bodies attached to arrows"
+    (fun ctx ->
+      let source = {ocaml|let get=fun value->match value with|Some x->(match x with|Some y->y|None->0)|None->0
+|ocaml}
+      in
+      let parsed = parse_ml source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|let get = fun value ->
+  match value with
+  | Some x -> (
+    match x with
+    | Some y -> y
+    | None -> 0
+  )
+  | None -> 0
+|ocaml});
+  Test.case "write keeps tuple match case bodies bare"
+    (fun ctx ->
+      let source = {ocaml|let next=fun x->match x with|Some y->(Some y,x)|None->(None,x)
+|ocaml}
+      in
+      let parsed = parse_ml source in
+      let actual = capture_write parsed in
+      let reparsed = parse_ml actual in
+      Test.assert_equal ~expected:(Krasny.syntax_hash parsed) ~actual:(Krasny.syntax_hash reparsed);
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|let next = fun x ->
+  match x with
+  | Some y -> Some y, x
+  | None -> None, x
+|ocaml});
+  Test.case "write keeps commented tuple match case bodies safe"
+    (fun ctx ->
+      let source = {ocaml|let update event model=match event with|`Clear->(* Clear selection *)({model with selected_user=None},Command.Noop)|_->(model,Command.Noop)
+|ocaml}
+      in
+      let parsed = parse_ml source in
+      let actual = capture_write parsed in
+      let reparsed = parse_ml actual in
+      Test.assert_equal ~expected:(Krasny.syntax_hash parsed) ~actual:(Krasny.syntax_hash reparsed);
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|let update event model =
+  match event with
+  | `Clear ->
+      (* Clear selection *)
+      { model with selected_user = None }, Command.Noop
+  | _ -> model, Command.Noop
+|ocaml});
+  Test.case "write parenthesizes tuple cases inside parenthesized matches"
+    (fun ctx ->
+      let source = {ocaml|let x=match a with|A->(match b with|C->(d,e)|F->g)|B->(h,i)
+|ocaml}
+      in
+      let parsed = parse_ml source in
+      let actual = capture_write parsed in
+      let reparsed = parse_ml actual in
+      Test.assert_equal ~expected:(Krasny.syntax_hash parsed) ~actual:(Krasny.syntax_hash reparsed);
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|let x =
+  match a with
+  | A -> (
+    match b with
+    | C -> (d, e)
+    | F -> g
+  )
+  | B -> h, i
+|ocaml});
+  Test.case "write parenthesizes tuple cases inside delimited let matches"
+    (fun ctx ->
+      let source = {ocaml|let f=fun control->(let raw=raw_of_control control in match control with|Csi body->(match parse body with|Some event->(state,[event])|None->(state,[`Unknown raw]))|Escape->(state,[]))
+|ocaml}
+      in
+      let parsed = parse_ml source in
+      let actual = capture_write parsed in
+      let reparsed = parse_ml actual in
+      Test.assert_equal ~expected:(Krasny.syntax_hash parsed) ~actual:(Krasny.syntax_hash reparsed);
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|let f = fun control ->
+  (
+    let raw = raw_of_control control in
+    match control with
+    | Csi body -> (
+      match parse body with
+      | Some event -> (state, [ event ])
+      | None -> (state, [
+        `Unknown raw;
+      ])
+    )
+    | Escape -> (state, [])
+  )
+|ocaml});
+  Test.case "write preserves nested tuple expression values"
+    (fun ctx ->
+      let source = {ocaml|let value=((a,b),c)
+let record={microseconds=(micros,6);other=x}
+|ocaml}
+      in
+      let parsed = parse_ml source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|let value = (a, b), c
+
+let record = {
+  microseconds = (micros, 6);
+  other = x
+}
+|ocaml});
+  Test.case "write keeps unparenthesized tuple arity flat"
+    (fun ctx ->
+      let source = {ocaml|let triple=match a,b,c with|Some x,Some y,Some z->x|_->fallback
+|ocaml}
+      in
+      let parsed = parse_ml source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|let triple =
+  match a, b, c with
+  | Some x, Some y, Some z -> x
+  | _ -> fallback
+|ocaml});
+  Test.case "write preserves tuple pattern application payloads"
+    (fun ctx ->
+      let source = {ocaml|let value=fun x->match x with|Some(a,b)->a|None->b
+|ocaml}
+      in
+      let parsed = parse_ml source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|let value = fun x ->
+  match x with
+  | Some (a, b) -> a
+  | None -> b
+|ocaml});
+  Test.case "write preserves comments before local and bindings"
+    (fun ctx ->
+      let source = {ocaml|let value=let rec first=fun()->0
+(* keep before second *)
+and second=fun()->1 in first()+second()
+|ocaml}
+      in
+      let parsed = parse_ml source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|let value =
+  let rec first = fun () -> 0
+  (* keep before second *)
+  and second = fun () -> 1
+  in
+  first () + second ()
+|ocaml});
   Test.case "format polymorphic variant heads from explicit tag tokens"
     (fun ctx ->
       let source = {|let classify = function
@@ -392,6 +1582,21 @@ type u = {
       Test.assert_equal ~expected:source ~actual;
       assert_idempotent ~source ~msg:"prefix minus with nested prefix operators should stay stable across repeated formatting";
       Ok ());
+  Test.case "write preserves nested prefix operator tokens"
+    (fun ctx ->
+      let source = {ocaml|let value=- !acc
+let flipped=not !flag
+|ocaml}
+      in
+      let parsed = parse_ml source in
+      let actual = capture_write parsed in
+      let reparsed = parse_ml actual in
+      Test.assert_equal ~expected:(Krasny.syntax_hash parsed) ~actual:(Krasny.syntax_hash reparsed);
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|let value = - !acc
+
+let flipped = not !flag
+|ocaml});
   Test.case "format keeps curried nullary constructor fun parameters separate"
     (fun _ctx ->
       let source = {|let cast_worker:
@@ -453,6 +1658,21 @@ let z = x.%(0)
         ~ctx
         ~msg:"index expressions should format from CST-carried delimiters, not token replay"
         source);
+  Test.case "write keeps index expressions bare as application arguments"
+    (fun ctx ->
+      let source = {ocaml|let a content pos=Some content.[!pos]
+let b arr=Ok arr.(0)
+|ocaml}
+      in
+      let parsed = parse_ml source in
+      let actual = capture_write parsed in
+      let reparsed = parse_ml actual in
+      Test.assert_equal ~expected:(Krasny.syntax_hash parsed) ~actual:(Krasny.syntax_hash reparsed);
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|let a content pos = Some content.[!pos]
+
+let b arr = Ok arr.(0)
+|ocaml});
   Test.case "format signed literal patterns from structural sign tokens"
     (fun ctx ->
       let source = {|let classify = function | -1 -> `Neg | +2 -> `Pos | _ -> `Other
@@ -462,6 +1682,31 @@ let z = x.%(0)
         ~ctx
         ~msg:"signed literal patterns should format from CST-carried sign tokens"
         source);
+  Test.case "write preserves signed literal constructor payload patterns"
+    (fun ctx ->
+      let source = {ocaml|let parse=function|Ok (Json.Int -123)->Ok ()|Ok (Json.Float -1.5)->Ok ()|_->Error "no"
+|ocaml}
+      in
+      let parsed = parse_ml source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|let parse = function
+  | Ok (Json.Int -123) -> Ok ()
+  | Ok (Json.Float -1.5) -> Ok ()
+  | _ -> Error "no"
+|ocaml});
+  Test.case "write keeps record field wildcard values closed"
+    (fun ctx ->
+      let source = {ocaml|let show=function|Error {exception_=_;backtrace}->backtrace|_->""
+|ocaml}
+      in
+      let parsed = parse_ml source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|let show = function
+  | Error { exception_ = _; backtrace } -> backtrace
+  | _ -> ""
+|ocaml});
   Test.case "format leaves a blank line before docstring-led top-level items"
     (fun _ctx ->
       let source = {|let first = 1
@@ -726,15 +1971,14 @@ let array_value = [|first_item_identifier; second_item_identifier; third_item_id
 |}
       in
       assert_formatted_ml_snapshot ~ctx ~msg:"tuples should break from solver width" source);
-  Test.case "verify treats normalized punctuation and parens as safe"
+  Test.case "verify treats stream formatter rewrites as safe"
     (fun _ctx ->
       with_tempdir "krasny_runner_verify_semantic_hash"
         (fun tmpdir ->
           let parens = Path.(tmpdir / Path.v "parens.ml") in
           let listy = Path.(tmpdir / Path.v "listy.ml") in
           let recordy = Path.(tmpdir / Path.v "recordy.ml") in
-          let varianty = Path.(tmpdir / Path.v "varianty.ml") in
-          Fs.write "let x = configure ~style:(Style.Grow)\n" parens |> Result.expect ~msg:"write parens";
+          Fs.write "let x = configure    ~style:(Style.Grow)\n" parens |> Result.expect ~msg:"write parens";
           Fs.write
             {|let cmd =
   f [
@@ -753,15 +1997,154 @@ let array_value = [|first_item_identifier; second_item_identifier; third_item_id
     }
 |record_fixture}
             recordy |> Result.expect ~msg:"write recordy";
-          Fs.write
-            "type severity = Error | Warning | Info | Hint\n\n\
-               type color = [ ansi | rgb | xyz ]\n"
-            varianty |> Result.expect ~msg:"write varianty";
-          let result = Krasny.Runner.run_verify [ parens; listy; recordy; varianty ] in
-          Test.assert_equal ~expected:4 ~actual:result.summary.total_files;
-          Test.assert_equal ~expected:4 ~actual:result.summary.would_reformat;
+          let result = Krasny.Runner.run_verify [ parens; listy; recordy ] in
+          Test.assert_equal ~expected:3 ~actual:result.summary.total_files;
+          Test.assert_equal ~expected:3 ~actual:result.summary.would_reformat;
           Test.assert_equal ~expected:0 ~actual:result.summary.unsafe_to_format;
           Ok ()));
+  Test.case "syntax hash normalizes commented pipeline parens"
+    (fun _ctx ->
+      let original = parse_ml
+        {ocaml|let run events=if List.is_empty events then Error "empty" else (
+(* Log each event *)
+events|>List.enumerate|>List.for_each ~fn:(fun (_i,event)->ignore event);
+Ok())
+|ocaml}
+      in
+      let with_parens = parse_ml
+        {ocaml|let run events=if List.is_empty events then Error "empty" else (
+(* Log each event *)
+(events|>List.enumerate)|>List.for_each ~fn:(fun (_i,event)->ignore event);
+Ok())
+|ocaml}
+      in
+      Test.assert_equal
+        ~expected:(Krasny.syntax_hash2 original)
+        ~actual:(Krasny.syntax_hash2 with_parens);
+      Ok ());
+  Test.case "syntax hash normalizes tuple edge parens"
+    (fun _ctx ->
+      let parenthesized = parse_ml
+        {ocaml|let pair=(left,right)
+|ocaml}
+      in
+      let bare = parse_ml
+        {ocaml|let pair=left,right
+|ocaml}
+      in
+      Test.assert_equal
+        ~expected:(Krasny.syntax_hash2 parenthesized)
+        ~actual:(Krasny.syntax_hash2 bare);
+      let parenthesized_triple = parse_ml
+        {ocaml|let result={value=(a,b,c);remaining=d}
+|ocaml}
+      in
+      let bare_triple = parse_ml
+        {ocaml|let result={value=a,b,c;remaining=d}
+|ocaml}
+      in
+      Test.assert_equal
+        ~expected:(Krasny.syntax_hash2 parenthesized_triple)
+        ~actual:(Krasny.syntax_hash2 bare_triple);
+      let nested_pair = parse_ml
+        {ocaml|let result=(a,b),c
+|ocaml}
+      in
+      Test.assert_false
+        (String.equal (Krasny.syntax_hash2 bare_triple) (Krasny.syntax_hash2 nested_pair));
+      Ok ());
+  Test.case "syntax hash normalizes leading variant pipes"
+    (fun _ctx ->
+      let without_first_pipe = parse_mli
+        {ocaml|type role=Client|Server
+|ocaml}
+      in
+      let with_first_pipe = parse_mli
+        {ocaml|type role=|Client|Server
+|ocaml}
+      in
+      Test.assert_equal
+        ~expected:(Krasny.syntax_hash2 without_first_pipe)
+        ~actual:(Krasny.syntax_hash2 with_first_pipe);
+      Ok ());
+  Test.case "syntax hash normalizes record pattern trailing semis"
+    (fun _ctx ->
+      let with_trailing_semi = parse_ml
+        {ocaml|let get=function|Some {left;right;}->left+right|None->0
+|ocaml}
+      in
+      let without_trailing_semi = parse_ml
+        {ocaml|let get=function|Some {left;right}->left+right|None->0
+|ocaml}
+      in
+      Test.assert_equal
+        ~expected:(Krasny.syntax_hash2 with_trailing_semi)
+        ~actual:(Krasny.syntax_hash2 without_trailing_semi);
+      Ok ());
+  Test.case "syntax hash normalizes list pattern trailing semis"
+    (fun _ctx ->
+      let with_trailing_semi = parse_ml
+        {ocaml|let get=function|[left;right;]->left+right|[|left;right;|]->left+right|_->0
+|ocaml}
+      in
+      let without_trailing_semi = parse_ml
+        {ocaml|let get=function|[left;right]->left+right|[|left;right|]->left+right|_->0
+|ocaml}
+      in
+      Test.assert_equal
+        ~expected:(Krasny.syntax_hash2 with_trailing_semi)
+        ~actual:(Krasny.syntax_hash2 without_trailing_semi);
+      Ok ());
+  Test.case "syntax hash normalizes constructor pattern parens"
+    (fun _ctx ->
+      let parenthesized = parse_ml
+        {ocaml|let sum=function|(Some value)::rest->value|_->0
+|ocaml}
+      in
+      let bare = parse_ml
+        {ocaml|let sum=function|Some value::rest->value|_->0
+|ocaml}
+      in
+      Test.assert_equal
+        ~expected:(Krasny.syntax_hash2 parenthesized)
+        ~actual:(Krasny.syntax_hash2 bare);
+      Ok ());
+  Test.case "syntax hash normalizes trailing sequence semis"
+    (fun _ctx ->
+      let with_trailing_semi = parse_ml
+        {ocaml|let run=function|Ok value->println value;|Error error->println error
+|ocaml}
+      in
+      let without_trailing_semi = parse_ml
+        {ocaml|let run=function|Ok value->println value|Error error->println error
+|ocaml}
+      in
+      Test.assert_equal
+        ~expected:(Krasny.syntax_hash2 with_trailing_semi)
+        ~actual:(Krasny.syntax_hash2 without_trailing_semi);
+      Ok ());
+  Test.case "syntax hash normalizes trivia line indentation"
+    (fun _ctx ->
+      let shallow = parse_mli
+        {ocaml|module S:sig
+val run:unit->unit
+(** doc
+    details *)
+end
+|ocaml}
+      in
+      let indented = parse_mli
+        {ocaml|module S:sig
+val run:unit->unit
+(** doc
+      details *)
+end
+|ocaml}
+      in
+      Test.assert_equal
+        ~expected:(Krasny.syntax_hash2 shallow)
+        ~actual:(Krasny.syntax_hash2 indented);
+      Ok ());
   Test.case "format keeps function and match lowering idempotent"
     (fun _ctx ->
       let source = {|let f = function x, y -> x + y

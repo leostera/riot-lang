@@ -199,7 +199,7 @@ let bench_format1_to_sink = fun () ->
 
 let bench_write2_to_sink = fun () ->
   let sink, writer = counting_writer () in
-  Krasny.write ~writer (parse2 ()) |> Result.expect ~msg:"streaming format pipeline benchmark should write unicode tables";
+  Krasny.stream_format (parse2 ()) ~writer ~width:100 |> Result.expect ~msg:"streaming format pipeline benchmark should write unicode tables";
   touch_int sink.bytes
 
 let huge_config: Bench.bench_config = { iterations = 1; warmup = 0 }
@@ -232,7 +232,7 @@ let benchmarks = [
     ("krasny pipeline: format to writer " ^ unicode_tables_fixture.name)
     [
       make_case "format1 string->writer" bench_format1_to_sink;
-      make_case "Krasny.write" bench_write2_to_sink;
+      make_case "Krasny.stream_format" bench_write2_to_sink;
     ];
 ]
 

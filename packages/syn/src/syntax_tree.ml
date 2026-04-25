@@ -53,6 +53,15 @@ type frame = {
 
 let raw_at = fun raw_tokens raw_index -> Vector.get_unchecked raw_tokens ~at:raw_index
 
+let truncate_vector = fun vector ~len ->
+  let length = Vector.length vector in
+  if Int.(len < 0) || Int.(len > length) then
+    panic "Syntax_tree.truncate_vector received an out-of-bounds length"
+  else if Int.equal len 0 then
+    Vector.clear vector
+  else if Int.(len < length) then
+    ignore (Vector.split_off vector ~at:len)
+
 let raw_start = fun raw_tokens raw_index ->
   if Int.(raw_index < 0) || Int.(raw_index >= Vector.length raw_tokens) then
     0
@@ -201,12 +210,12 @@ module Builder = struct
       panic "Syntax_tree.Builder.complete called with no open node"
     else
       let frame = Vector.get_unchecked builder.frame_stack ~at:Int.(depth - 1) in
-      Vector.truncate_unchecked builder.frame_stack ~len:Int.(depth - 1);
+      truncate_vector builder.frame_stack ~len:Int.(depth - 1);
       let pending_limit = Vector.length builder.pending_children in
       let first_child = Vector.length builder.child_store in
       copy_pending_children builder frame.first_pending_child pending_limit;
       let child_count = Int.(pending_limit - frame.first_pending_child) in
-      Vector.truncate_unchecked builder.pending_children ~len:frame.first_pending_child;
+      truncate_vector builder.pending_children ~len:frame.first_pending_child;
       let raw_lo, raw_hi, full_width =
         if frame.has_range then
           let width =
@@ -257,7 +266,7 @@ module Builder = struct
       if not (same_child last_child completed.child) then
         panic "Syntax_tree.Builder.precede expected the completed child to be last"
       else (
-        Vector.truncate_unchecked builder.pending_children ~len:last_index;
+        truncate_vector builder.pending_children ~len:last_index;
         let marker = start_node builder in
         push_child builder completed.child;
         marker
@@ -304,12 +313,12 @@ module Builder = struct
     }
 
   let restore = fun builder checkpoint ->
-    Vector.truncate_unchecked builder.token_leaves ~len:checkpoint.token_leaves_len;
-    Vector.truncate_unchecked builder.node_store ~len:checkpoint.node_store_len;
-    Vector.truncate_unchecked builder.child_store ~len:checkpoint.child_store_len;
-    Vector.truncate_unchecked builder.pending_children ~len:checkpoint.pending_children_len;
-    Vector.truncate_unchecked builder.frame_stack ~len:checkpoint.frame_stack_len;
-    Vector.truncate_unchecked builder.diagnostics ~len:checkpoint.diagnostics_len;
+    truncate_vector builder.token_leaves ~len:checkpoint.token_leaves_len;
+    truncate_vector builder.node_store ~len:checkpoint.node_store_len;
+    truncate_vector builder.child_store ~len:checkpoint.child_store_len;
+    truncate_vector builder.pending_children ~len:checkpoint.pending_children_len;
+    truncate_vector builder.frame_stack ~len:checkpoint.frame_stack_len;
+    truncate_vector builder.diagnostics ~len:checkpoint.diagnostics_len;
     builder.root_id <- checkpoint.root_id;
     builder.next_raw_lo <- checkpoint.next_raw_lo;
     builder.event_count <- checkpoint.event_count
@@ -389,12 +398,12 @@ let build = fun ~source ~token_stream ~events ->
     if Int.(depth > 0) then
       (
         let frame = Vector.get_unchecked frame_stack ~at:Int.(depth - 1) in
-        Vector.truncate_unchecked frame_stack ~len:Int.(depth - 1);
+        truncate_vector frame_stack ~len:Int.(depth - 1);
         let pending_limit = Vector.length pending_children in
         let first_child = Vector.length children_store in
         copy_pending_children frame.first_pending_child pending_limit;
         let child_count = Int.(pending_limit - frame.first_pending_child) in
-        Vector.truncate_unchecked pending_children ~len:frame.first_pending_child;
+        truncate_vector pending_children ~len:frame.first_pending_child;
         let raw_lo, raw_hi, full_width =
           if frame.has_range then
             let width =

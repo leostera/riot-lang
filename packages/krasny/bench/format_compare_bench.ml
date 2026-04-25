@@ -84,15 +84,18 @@ let bench_format1_to_sink = fun fixture ->
 let bench_write2_to_sink = fun fixture ->
   let parsed = Syn.parse2 ~filename:fixture.path fixture.slice in
   let sink, writer = counting_writer () in
-  match Krasny.write ~writer parsed with
+  match Krasny.stream_format parsed ~writer ~width:100 with
   | Ok () -> touch_int sink.bytes
   | Error (Krasny.Format_failed error) -> panic
-    ("Krasny.write failed to format "
+    ("Krasny.stream_format failed to format "
     ^ Path.to_string fixture.path
     ^ ": "
     ^ Krasny.format_error_to_string error)
   | Error (Krasny.Write_failed error) -> panic
-    ("Krasny.write failed to write " ^ Path.to_string fixture.path ^ ": " ^ IO.error_message error)
+    ("Krasny.stream_format failed to write "
+    ^ Path.to_string fixture.path
+    ^ ": "
+    ^ IO.error_message error)
 
 let tiny_config: Bench.bench_config = { iterations = 2_000; warmup = 100 }
 
@@ -111,7 +114,7 @@ let compare_fixture = fun ~config fixture ->
     ("krasny format: " ^ fixture.name)
     [
       make_case ~config "format1 string->writer" (fun () -> bench_format1_to_sink fixture);
-      make_case ~config "Krasny.write" (fun () -> bench_write2_to_sink fixture);
+      make_case ~config "Krasny.stream_format" (fun () -> bench_write2_to_sink fixture);
     ]
 
 let benchmarks = [

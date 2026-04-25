@@ -88,7 +88,7 @@ let flush_if_needed = fun writer ->
 let last_line_width = fun text ->
   let length = String.length text in
   let rec loop index =
-    if Int.compare index 0 < 0 then
+    if Int.(index < 0) then
       length
     else if Char.equal (String.get_unchecked text ~at:index) '\n' then
       Int.sub (Int.sub length index) 1
@@ -226,7 +226,7 @@ let flat_measure = function
 let flat_measure_vector = fun docs ->
   let length = Vector.length docs in
   let rec loop index measure =
-    if measure.Doc.stops_at_line || Int.compare index length >= 0 then
+    if measure.Doc.stops_at_line || Int.(index >= length) then
       Some measure
     else
       match flat_measure (Vector.get_unchecked docs ~at:index) with
@@ -242,7 +242,7 @@ let is_multiline = function
 let is_multiline_vector = fun docs ->
   let length = Vector.length docs in
   let rec loop index =
-    if Int.compare index length >= 0 then
+    if Int.(index >= length) then
       false
     else if is_multiline (Vector.get_unchecked docs ~at:index) then
       true
@@ -338,7 +338,7 @@ let doc_vector = fun docs ->
         ~emit:(fun writer ->
           let length = Vector.length docs in
           let rec loop index =
-            if Int.compare index length < 0 then
+            if Int.(index < length) then
               (
                 emit_doc writer (Vector.get_unchecked docs ~at:index);
                 loop (Int.add index 1)
@@ -357,7 +357,7 @@ let concat_with = fun ~iter ->
   let output = Vector.with_capacity ~size:8 in
   let push doc = Vector.push output ~value:doc in
   let add_spaces count =
-    if Int.compare count 0 > 0 then
+    if Int.(count > 0) then
       let current_length = Vector.length output in
       if Int.equal current_length 0 then
         push (spaces count)
@@ -393,7 +393,7 @@ let concat_with = fun ~iter ->
   and append_vector docs =
     let length = Vector.length docs in
     let rec loop index =
-      if Int.compare index length < 0 then
+      if Int.(index < length) then
         (
           append_doc (Vector.get_unchecked docs ~at:index);
           loop (Int.add index 1)
@@ -434,9 +434,9 @@ let join_vector = fun separator docs ->
       concat_with
         ~iter:(fun append_doc ->
           let rec loop index =
-            if Int.compare index length < 0 then
+            if Int.(index < length) then
               (
-                if Int.compare index 0 > 0 then
+                if Int.(index > 0) then
                   append_doc separator;
                 append_doc (Vector.get_unchecked docs ~at:index);
                 loop (Int.add index 1)
@@ -456,8 +456,8 @@ let fast_join = fun separator docs ->
         | [] -> ()
         | doc :: rest ->
             if not first then
-              Vector.push_unchecked output ~value:separator;
-            Vector.push_unchecked output ~value:doc;
+              Vector.push output ~value:separator;
+            Vector.push output ~value:doc;
             loop false rest
       in
       loop true docs;
@@ -469,7 +469,7 @@ let lines = fun docs -> join line docs
 
 let rec push_many indent mode docs rest =
   let rec loop index acc =
-    if Int.compare index 0 < 0 then
+    if Int.(index < 0) then
       acc
     else
       loop (Int.sub index 1) ((indent, mode, Vector.get_unchecked docs ~at:index) :: acc)
@@ -519,7 +519,7 @@ let rec fits = fun ~width remaining ->
 
 let group_mode = fun writer doc flat_measure ->
   match flat_measure with
-  | Some measure when Int.compare measure.Doc.flat_width (writer.width - writer.column) <= 0 -> Flat
+  | Some measure when Int.(measure.Doc.flat_width <= writer.width - writer.column) -> Flat
   | _ when fits ~width:writer.width (writer.width - writer.column) [ (writer.indent, Flat, doc) ] -> Flat
   | _ -> Break
 

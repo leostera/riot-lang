@@ -3053,6 +3053,19 @@ and parse_variant_constructor = fun p ~signature ->
         bump p;
         if at_type_decl_member_boundary p ~signature || at p Syntax_kind2.PIPE then
           Event.Buffer.missing p.events ~kind:Syntax_kind2.IDENT ~offset:(current_offset p)
+        else if at p Syntax_kind2.LBRACE then
+          (
+            ignore (parse_record_type p);
+            if at p Syntax_kind2.ARROW then
+              (
+                bump p;
+                if at_type_decl_member_boundary p ~signature || at p Syntax_kind2.PIPE then
+                  Event.Buffer.missing p.events ~kind:Syntax_kind2.IDENT ~offset:(current_offset p)
+                else
+                  ignore
+                    (parse_type_expr p ~allow_leading_poly_type_after_newline:false ~stop_at_arrow:false)
+              )
+          )
         else
           ignore
             (parse_type_expr p ~allow_leading_poly_type_after_newline:false ~stop_at_arrow:false)
@@ -3125,11 +3138,27 @@ and type_decl_body_needs_opaque_parse = fun p ~signature ->
   match current_kind p with
   | Syntax_kind2.PIPE
   | Syntax_kind2.LBRACE
-  | Syntax_kind2.LBRACKET
-  | Syntax_kind2.LBRACKET_BAR
   | Syntax_kind2.PRIVATE_KW -> true
-  | Syntax_kind2.LPAREN when Syntax_kind2.(peek_kind p 1 = MODULE_KW) -> true
+  | Syntax_kind2.LPAREN when Syntax_kind2.(peek_kind p 1 = MODULE_KW) -> false
   | _ -> type_decl_body_contains_unsupported_type_syntax p ~signature
+
+and parse_type_decl_representation = fun p ~signature ->
+  if
+    at p Syntax_kind2.LBRACE
+    || (at p Syntax_kind2.PRIVATE_KW && Syntax_kind2.(peek_kind p 1 = LBRACE))
+  then
+    ignore (parse_record_type p)
+  else if
+    at p Syntax_kind2.PIPE
+    || starts_bare_variant_constructor p
+    || (at p Syntax_kind2.PRIVATE_KW
+    && (Syntax_kind2.(peek_kind p 1 = PIPE) || starts_bare_variant_constructor_at p 1))
+  then
+    ignore (parse_variant_type p ~signature)
+  else if at p Syntax_kind2.DOTDOT then
+    bump p
+  else
+    consume_until_type_decl_member_boundary p ~signature 0
 
 and parse_type_decl_body = fun p ~signature ->
   if
@@ -3148,7 +3177,12 @@ and parse_type_decl_body = fun p ~signature ->
     consume_type_body p ~signature
   else (
     parse_type_expr p ~allow_leading_poly_type_after_newline:false ~stop_at_arrow:false;
-    if
+    if at p Syntax_kind2.EQ then
+      (
+        bump p;
+        parse_type_decl_representation p ~signature
+      )
+    else if
       not
         (is_eof p || at_item_boundary p ~signature || at p Syntax_kind2.AND_KW || at p Syntax_kind2.CONSTRAINT_KW)
     then

@@ -1,6 +1,16 @@
 open Std
 open Std.Collections
 
+module Krasny_parser2 = struct
+  include Krasny
+
+  let format = Krasny.format2
+
+  let syntax_hash = Krasny.syntax_hash2
+end
+
+module Krasny = Krasny_parser2
+
 let tests_dir = Path.v "packages/krasny/tests"
 
 let fixtures_dir = Path.(tests_dir / Path.v "fixtures")

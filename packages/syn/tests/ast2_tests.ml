@@ -150,6 +150,26 @@ let test_expression_views = fun _ctx ->
       Ok ()
   | _ -> Error "expected match expression"
 
+let test_assignment_operator_views = fun _ctx ->
+  let root = parse_ml "let update state remaining = state.buffer <- remaining\nlet assign r = r := 1\n"
+  |> Result.expect ~msg:"expected parse2 source file" in
+  let assignment_body index = nth_structure_item root index
+  |> require_some ~msg:"expected assignment structure item"
+  |> binding_of_structure_item
+  |> Result.expect ~msg:"expected assignment binding"
+  |> body_of_binding
+  |> Result.expect ~msg:"expected assignment body" in
+  let assert_assignment_operator body expected =
+    match Ast2.Expr.view body with
+    | Ast2.Expr.Assign { operator=Some operator; _ } -> Test.assert_equal
+      ~expected
+      ~actual:(Ast2.Token.text operator)
+    | _ -> panic ("expected assignment operator " ^ expected)
+  in
+  assert_assignment_operator (assignment_body 0) "<-";
+  assert_assignment_operator (assignment_body 1) ":=";
+  Ok ()
+
 let test_labeled_application_after_poly_variant_argument = fun _ctx ->
   let source = "let parse_interface ~source tokens = parse ~cst_kind:`Interface \
      ~parse_item:parse_signature_item ~source ~tokens\n"
@@ -657,6 +677,34 @@ let test_type_declaration_body_group_views = fun _ctx ->
       Test.assert_equal ~expected:[ "int"; "string" ] ~actual:(List.reverse !field_types);
       Ok ()
   | _ -> Error "expected point type declaration"
+
+let test_type_alias_record_representation_views = fun _ctx ->
+  let root = parse_mli "type point=Base.point=private{x:int;y:string}\n" |> Result.expect ~msg:"expected parse2 interface" in
+  let type_item = nth_signature_item root 0 |> require_some ~msg:"expected type item" in
+  match Ast2.SignatureItem.view type_item with
+  | Ast2.SignatureItem.Type decl ->
+      let member =
+        Ast2.TypeDeclaration.fold_members decl None
+          (fun acc member ->
+            match acc with
+            | Some _ -> acc
+            | None -> Some member)
+        |> require_some ~msg:"expected type member"
+      in
+      let manifest = Ast2.TypeDeclaration.Member.manifest member |> require_some ~msg:"expected manifest alias" in
+      assert_type_path_last_ident manifest "point";
+      let record = Ast2.TypeDeclaration.Member.record_type member |> require_some ~msg:"expected record representation" in
+      Test.assert_true (Option.is_some (Ast2.RecordType.private_token record));
+      let field_names = Vector.with_capacity ~size:2 in
+      Ast2.RecordType.for_each_field record
+        ~fn:(fun field ->
+          let name = Ast2.RecordField.name field |> require_some ~msg:"expected field name" in
+          Vector.push field_names ~value:(Ast2.Token.text name));
+      Test.assert_equal ~expected:2 ~actual:(Vector.length field_names);
+      Test.assert_equal ~expected:"x" ~actual:(Vector.get_unchecked field_names ~at:0);
+      Test.assert_equal ~expected:"y" ~actual:(Vector.get_unchecked field_names ~at:1);
+      Ok ()
+  | _ -> Error "expected type declaration"
 
 let test_abstract_type_attribute_boundary_views = fun _ctx ->
   let source = "type ('a, 'b) stack [@@immediate]\nlet next = 1\n" in
@@ -2003,6 +2051,7 @@ let test_loop_body_sequence_boundaries = fun _ctx ->
 let tests = [
   Test.case "ast2 exposes source file and let binding views" test_source_file_and_let_binding_views;
   Test.case "ast2 exposes if and match expression views" test_expression_views;
+  Test.case "ast2 exposes assignment operator tokens" test_assignment_operator_views;
   Test.case "ast2 preserves trailing sequence bodies before and-bindings" test_trailing_sequence_before_and_views;
   Test.case "ast2 keeps labels after polymorphic variant arguments as application arguments" test_labeled_application_after_poly_variant_argument;
   Test.case "ast2 exposes tuple and cons pattern views" test_pattern_views;
@@ -2016,6 +2065,7 @@ let tests = [
   Test.case "ast2 exposes type declaration parameters" test_type_declaration_parameters;
   Test.case "ast2 exposes type declaration member views" test_type_declaration_member_views;
   Test.case "ast2 exposes type declaration body group views" test_type_declaration_body_group_views;
+  Test.case "ast2 exposes type alias record representations" test_type_alias_record_representation_views;
   Test.case "ast2 preserves abstract type attributes before later structure items" test_abstract_type_attribute_boundary_views;
   Test.case "ast2 exposes type extensions and structured exception views" test_type_extension_and_exception_views;
   Test.case "ast2 preserves exception declarations after function bindings" test_exception_after_function_binding_views;

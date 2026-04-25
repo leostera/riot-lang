@@ -87,7 +87,7 @@ let syntax_node = fun (node: node) ->
 let syntax_token = fun (token: token) ->
   Syntax_tree.token token.tree token.id
 
-let kind_is = Syntax_kind2.( = )
+let kind_is = Syntax_kind2.is
 
 let node_kind_is = fun (node: node) kind -> kind_is (syntax_node node).Syntax_tree.kind kind
 
@@ -744,6 +744,102 @@ module TypeExpr = struct
   let for_each_child_type = fun (type_expr: type_expr) ~fn ->
     for_each_child_node_matching type_expr ~matches:is_type_expr_kind ~fn
 
+  let child_token_kind_is_in = fun node index kind ->
+    match child_token_kind_at node index with
+    | Some actual -> Syntax_kind2.(actual = kind)
+    | None -> false
+
+  let attribute_suffix_start_at = fun node close_index ->
+    if not (child_token_kind_is_in node close_index Syntax_kind2.RBRACKET) then
+      None
+    else
+      let rec loop index depth =
+        if Int.(index < 0) then
+          None
+        else if child_token_kind_is_in node index Syntax_kind2.RBRACKET then
+          loop Int.(index - 1) Int.(depth + 1)
+        else if child_token_kind_is_in node index Syntax_kind2.LBRACKET then
+          if Int.equal depth 1 then
+            let next = Int.add index 1 in
+            if
+              child_token_kind_is_in node next Syntax_kind2.AT
+              || child_token_kind_is_in node next Syntax_kind2.ATAT
+            then
+              Some index
+            else
+              None
+          else
+            loop Int.(index - 1) Int.(depth - 1)
+        else
+          loop Int.(index - 1) depth
+      in
+      loop Int.(close_index - 1) 1
+
+  let last_non_attribute_suffix_child_index = fun node ->
+    let rec loop index =
+      if Int.(index < 0) then
+        (-1)
+      else
+        match attribute_suffix_start_at node index with
+        | Some start -> loop Int.(start - 1)
+        | None -> index
+    in
+    loop Int.(Node.child_count node - 1)
+
+  let first_attribute_suffix_child_index = fun (type_expr: type_expr) ->
+    let last_body_index = last_non_attribute_suffix_child_index type_expr in
+    let first_suffix_index = Int.add last_body_index 1 in
+    if Int.(first_suffix_index < Node.child_count type_expr) then
+      match child_token_kind_at type_expr first_suffix_index with
+      | Some Syntax_kind2.LBRACKET -> Some first_suffix_index
+      | _ -> None
+    else
+      None
+
+  let inner_without_attribute_suffix = fun (type_expr: type_expr) ->
+    match first_attribute_suffix_child_index type_expr with
+    | None -> None
+    | Some first_suffix_index ->
+        let rec loop index =
+          if Int.(index >= first_suffix_index) then
+            None
+          else
+            match Node.child_at type_expr index with
+            | Some (Syntax_tree.Node id) ->
+                let node = wrap_node type_expr.tree id in
+                if node_matches node is_type_expr_kind then
+                  Some node
+                else
+                  loop (Int.add index 1)
+            | Some (Syntax_tree.Token _)
+            | Some (Syntax_tree.Missing _)
+            | None -> loop (Int.add index 1)
+        in
+        loop 0
+
+  let for_each_attribute_suffix_token = fun (type_expr: type_expr) ~fn ->
+    match first_attribute_suffix_child_index type_expr with
+    | None -> ()
+    | Some first_suffix_index ->
+        let rec loop index =
+          if Int.(index < Node.child_count type_expr) then
+            (
+              (
+                match Node.child_at type_expr index with
+                | Some (Syntax_tree.Token id) ->
+                    fn (wrap_token type_expr.tree id)
+                | Some (Syntax_tree.Node id) ->
+                    let node = wrap_node type_expr.tree id in
+                    Node.for_each_token node ~fn
+                | Some (Syntax_tree.Missing _)
+                | None ->
+                    ()
+              );
+              loop (Int.add index 1)
+            )
+        in
+        loop first_suffix_index
+
   let for_each_poly_type_name = fun (type_expr: type_expr) ~fn ->
     let type_expr = unwrap_poly_node type_expr in
     let before_dot = ref true in
@@ -896,7 +992,7 @@ module Expr: sig
     | Apply of { callee: t option; argument: t option }
     | Infix of { left: t option; operator: token option; right: t option }
     | Prefix of { operator: token option; operand: t option }
-    | Assign of { target: t option; value: t option }
+    | Assign of { target: t option; operator: token option; value: t option }
     | FieldAccess of { target: t option; field: token option }
     | MethodCall of { target: t option; method_: token option }
     | PolyVariant of { payload: t option }
@@ -952,7 +1048,7 @@ end = struct
     | Apply of { callee: t option; argument: t option }
     | Infix of { left: t option; operator: token option; right: t option }
     | Prefix of { operator: token option; operand: t option }
-    | Assign of { target: t option; value: t option }
+    | Assign of { target: t option; operator: token option; value: t option }
     | FieldAccess of { target: t option; field: token option }
     | MethodCall of { target: t option; method_: token option }
     | PolyVariant of { payload: t option }
@@ -1061,6 +1157,7 @@ end = struct
     }
     | Syntax_kind2.ASSIGN_EXPR -> Assign {
       target = nth_expr_child expr 0;
+      operator = first_direct_token expr;
       value = nth_expr_child expr 1
     }
     | Syntax_kind2.FIELD_ACCESS_EXPR -> FieldAccess {
@@ -2156,15 +2253,27 @@ end = struct
       None
 
   let open_wildcard = fun (record: t) ->
-    let found = ref None in
-    Node.for_each_child_node record
-      ~fn:(fun child ->
-        match !found with
-        | Some _ -> ()
-        | None ->
+    let rec loop index previous_token_kind =
+      if index >= Node.child_count record then
+        None
+      else
+        match Node.child_at record index with
+        | Some (Syntax_tree.Token id) ->
+            let token = wrap_token record.tree id in
+            loop (index + 1) (Some (Token.kind token))
+        | Some (Syntax_tree.Node id) ->
+            let child = wrap_node record.tree id in
             if node_kind_is child Syntax_kind2.WILDCARD_PATTERN then
-              found := Node.first_child_token child ~kind:Syntax_kind2.UNDERSCORE);
-    !found
+              match previous_token_kind with
+              | Some kind when Syntax_kind2.(kind = EQ) -> loop (index + 1) previous_token_kind
+              | _ -> Node.first_child_token child ~kind:Syntax_kind2.UNDERSCORE
+            else
+              loop (index + 1) previous_token_kind
+        | Some (Syntax_tree.Missing _)
+        | None ->
+            loop (index + 1) previous_token_kind
+    in
+    loop 0 None
 
   let child_node_at = fun (record: t) index ->
     match Node.child_at record index with
@@ -3356,6 +3465,25 @@ module ModuleDeclaration = struct
               fn token)
     | _ -> ()
 
+  let typeof_body_node = fun decl ->
+    match body_specific_node decl with
+    | Some node when node_kind_is node Syntax_kind2.TYPEOF_MODULE_TYPE -> Some node
+    | _ -> None
+
+  let has_typeof_body = fun decl ->
+    match typeof_body_node decl with
+    | Some _ -> true
+    | None -> false
+
+  let for_each_typeof_body_path_ident = fun decl ~fn ->
+    match typeof_body_node decl with
+    | Some node ->
+        for_each_token_in_node node
+          ~fn:(fun token ->
+            if token_kind_is token Syntax_kind2.IDENT then
+              fn token)
+    | None -> ()
+
   let for_each_structure_item = fun decl ~fn ->
     match structure_body_node decl with
     | Some node -> for_each_child_node_matching
@@ -3654,6 +3782,8 @@ module IncludeDeclaration = struct
         | None -> find_body (index + 1)
     in
     find_body 0
+
+  let body_node = first_specific_body
 
   let first_path_ident = fun decl ->
     match first_specific_body decl with

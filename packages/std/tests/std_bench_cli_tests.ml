@@ -24,10 +24,7 @@ let json_output_lines = fun stdout ->
   |> List.filter ~fn:(fun line -> not (String.equal (String.trim line) ""))
 
 let parse_json_output = fun stdout ->
-  let line = json_output_lines stdout
-  |> List.reverse
-  |> List.get ~at:0
-  |> Option.unwrap_or ~default:stdout in
+  let line = json_output_lines stdout |> List.rev |> List.get ~at:0 |> Option.unwrap_or ~default:stdout in
   Data.Json.of_string line |> Result.expect ~msg:"failed to parse json output"
 
 let assoc_value = fun key entries ->

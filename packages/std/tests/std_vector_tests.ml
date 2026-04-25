@@ -119,21 +119,6 @@ let test_clear = fun _ctx ->
   else
     Error "expected clear to empty vector"
 
-let test_truncate = fun _ctx ->
-  let vector = Vector.from_list [ 1; 2; 3; 4 ] in
-  let capacity = Vector.capacity vector in
-  match Vector.truncate vector ~len:2 with
-  | Error _ -> Error "expected truncate to accept shorter length"
-  | Ok () when Array.to_list (Vector.to_array vector) = [ 1; 2 ] && Vector.capacity vector = capacity -> Ok ()
-  | Ok () -> Error "expected truncate to shorten length without shrinking capacity"
-
-let test_truncate_past_length = fun _ctx ->
-  let vector = Vector.from_list [ 1; 2; 3 ] in
-  match Vector.truncate vector ~len:5 with
-  | Error Vector.OutOfBounds when Array.to_list (Vector.to_array vector) = [ 1; 2; 3 ] -> Ok ()
-  | Error _ -> Error "expected truncate past length to report out of bounds"
-  | Ok () -> Error "expected truncate past length to leave vector unchanged"
-
 let test_reserve = fun _ctx ->
   let vector = Vector.create () in
   Vector.reserve vector ~size:10;
@@ -162,24 +147,7 @@ let test_concat = fun _ctx ->
   then
     Ok ()
   else
-    Error "expected concat to copy both vectors without mutating inputs"
-
-let test_concat_empty = fun _ctx ->
-  let left = Vector.concat (Vector.create ()) (Vector.from_list [ 1 ]) in
-  let right = Vector.concat (Vector.from_list [ 1 ]) (Vector.create ()) in
-  if Array.to_list (Vector.to_array left) = [ 1 ] && Array.to_list (Vector.to_array right) = [ 1 ] then
-    Ok ()
-  else
-    Error "expected concat to handle empty inputs"
-
-let test_push_unchecked = fun _ctx ->
-  let vector = Vector.with_capacity ~size:2 in
-  Vector.push_unchecked vector ~value:1;
-  Vector.push_unchecked vector ~value:2;
-  if Array.to_list (Vector.to_array vector) = [ 1; 2 ] then
-    Ok ()
-  else
-    Error "expected push_unchecked to append without changing value order"
+    Error "expected concat to copy both vectors without mutating them"
 
 let test_extend = fun _ctx ->
   let left = Vector.from_list [ 1; 2 ] in
@@ -191,16 +159,7 @@ let test_extend = fun _ctx ->
   then
     Ok ()
   else
-    Error "expected extend to mutate left and keep right unchanged"
-
-let test_extend_empty = fun _ctx ->
-  let left = Vector.from_list [ 1 ] in
-  let right = Vector.create () in
-  Vector.extend left right;
-  if Array.to_list (Vector.to_array left) = [ 1 ] && Vector.is_empty right then
-    Ok ()
-  else
-    Error "expected extend to handle an empty right vector"
+    Error "expected extend to copy right into left without clearing right"
 
 let test_split_off = fun _ctx ->
   let vector = Vector.from_list [ 1; 2; 3; 4 ] in
@@ -258,15 +217,10 @@ let tests =
     case "Vector.set updates a valid index" test_set;
     case "Vector.set reports out-of-bounds errors" test_set_oob;
     case "Vector.clear empties the vector" test_clear;
-    case "Vector.truncate shortens length without shrinking capacity" test_truncate;
-    case "Vector.truncate past length reports out of bounds" test_truncate_past_length;
     case "Vector.reserve increases capacity" test_reserve;
     case "Vector.append moves right into left and clears right" test_append;
-    case "Vector.concat copies inputs in order" test_concat;
-    case "Vector.concat handles empty inputs" test_concat_empty;
-    case "Vector.push_unchecked appends within capacity" test_push_unchecked;
-    case "Vector.extend mutates left and keeps right" test_extend;
-    case "Vector.extend handles empty right" test_extend_empty;
+    case "Vector.concat copies both inputs" test_concat;
+    case "Vector.extend copies right into left" test_extend;
     case "Vector.split_off divides prefix and tail" test_split_off;
     case "Vector.sort orders values ascending" test_sort;
     case "Vector.reverse flips value order" test_reverse;

@@ -498,13 +498,15 @@ let equal = fun left right ->
   | (MISSING, MISSING) -> true
   | _ -> false
 
-let not_equal = fun left right -> not (equal left right)
+let is = Std.Ptr.equal
 
-let ( = ) = equal
+let equal = is
+
+let not_equal = fun left right -> not (is left right)
+
+let ( = ) = is
 
 let ( != ) = not_equal
-
-let is = Std.Ptr.equal
 
 let to_string = function
   | WHITESPACE -> "WHITESPACE"

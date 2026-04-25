@@ -12,6 +12,12 @@ let test_length = fun _ctx ->
   else
     Error "expected List.length [] = 0"
 
+let test_compare_lengths = fun _ctx ->
+  if List.compare_lengths ~left:[ 1 ] ~right:[ 1; 2 ] < 0 then
+    Ok ()
+  else
+    Error "expected shorter list to compare below longer list"
+
 let test_is_empty = fun _ctx ->
   if List.is_empty [] && not (List.is_empty [ 1 ]) then
     Ok ()
@@ -161,6 +167,7 @@ let test_unzip = fun _ctx ->
 let tests =
   Test.[
     case "List.length [] = 0" test_length;
+    case "List.compare_lengths shorter vs longer is negative" test_compare_lengths;
     case "List.is_empty reflects list contents" test_is_empty;
     case "List.append concatenates inputs" test_append;
     case "List.reverse flips order" test_reverse;

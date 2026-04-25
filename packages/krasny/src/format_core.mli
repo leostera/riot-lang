@@ -12,10 +12,17 @@ type write_error =
   | Write_failed of IO.error
 val parse_source: filename:Path.t -> string -> Syn.Parser2.parse_result
 
-val format: Syn.Parser2.parse_result -> (string, format_error) result
+val format: Syn.Parser.parse_result -> (string, format_error) result
 
 val format_source: filename:Path.t -> string -> (string, format_error) result
 
+val stream_format:
+  Syn.Parser2.parse_result -> writer:IO.Writer.t -> width:int -> (unit, write_error) result
+
+val stream_format_to_string: Syn.Parser2.parse_result -> width:int -> (string, format_error) result
+
 val write: writer:IO.Writer.t -> Syn.Parser2.parse_result -> (unit, write_error) result
+
+val format_streaming: Syn.Parser2.parse_result -> (string, format_error) result
 
 val format2: Syn.Parser2.parse_result -> (string, format_error) result

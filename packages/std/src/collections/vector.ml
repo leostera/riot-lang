@@ -6,7 +6,6 @@ type 'value t = {
 }
 
 type error =
-  | OutOfBounds
   | OutOfBoundsSet of { length: int; at: int }
 
 let create = fun () -> { data = [||]; length = 0 }
@@ -47,10 +46,6 @@ let reserve = fun vector ~size ->
 
 let push = fun vector ~value ->
   ensure_capacity vector (Int.add vector.length 1);
-  Array.set_unchecked vector.data ~at:vector.length ~value;
-  vector.length <- Int.add vector.length 1
-
-let push_unchecked = fun vector ~value ->
   Array.set_unchecked vector.data ~at:vector.length ~value;
   vector.length <- Int.add vector.length 1
 
@@ -111,16 +106,6 @@ let remove = fun vector ~at ->
 
 let clear = fun vector -> vector.length <- 0
 
-let truncate_unchecked = fun vector ~len -> vector.length <- len
-
-let truncate = fun vector ~len:new_length ->
-  if Int.(new_length < 0) || Int.(new_length > len vector) then
-    Error OutOfBounds
-  else (
-    truncate_unchecked vector ~len:new_length;
-    Ok ()
-  )
-
 let to_array = fun vector -> Array.sub vector.data ~offset:0 ~len:vector.length
 
 let for_each = fun vector ~fn ->
@@ -143,6 +128,15 @@ let append = fun left right ->
       right.length <- 0
     )
 
+let concat = fun left right ->
+  let left_length = length left in
+  let right_length = length right in
+  let combined_length = Int.add left_length right_length in
+  let data = Array.make ~count:combined_length ~value:(dangerously_cast_value 0) in
+  Array.blit left.data ~src_offset:0 ~dst:data ~dst_offset:0 ~len:left_length;
+  Array.blit right.data ~src_offset:0 ~dst:data ~dst_offset:left_length ~len:right_length;
+  { data; length = combined_length }
+
 let extend = fun left right ->
   let left_length = length left in
   let right_length = length right in
@@ -152,15 +146,6 @@ let extend = fun left right ->
   Array.blit right.data ~src_offset:0 ~dst:data ~dst_offset:left_length ~len:right_length;
   left.data <- data;
   left.length <- combined_length
-
-let concat = fun left right ->
-  let left_length = length left in
-  let right_length = length right in
-  let combined_length = Int.add left_length right_length in
-  let data = Array.make ~count:combined_length ~value:(dangerously_cast_value 0) in
-  Array.blit left.data ~src_offset:0 ~dst:data ~dst_offset:0 ~len:left_length;
-  Array.blit right.data ~src_offset:0 ~dst:data ~dst_offset:left_length ~len:right_length;
-  { data; length = combined_length }
 
 let split_off = fun vector ~at ->
   if at < 0 || at > vector.length then
@@ -197,12 +182,13 @@ let sort = fun vector -> sort_with vector ~compare
 let sort_by = fun vector ~compare -> sort_with vector ~compare
 
 let reverse = fun vector ->
-  for index = 0 to Int.div (Int.sub vector.length 1) 2 do
-    let opposite = Int.sub (Int.sub vector.length 1) index in
-    let value = Array.get_unchecked vector.data ~at:index in
-    Array.set_unchecked vector.data ~at:index ~value:(Array.get_unchecked vector.data ~at:opposite);
-    Array.set_unchecked vector.data ~at:opposite ~value
-  done
+  if Int.(vector.length > 1) then
+    for index = 0 to Int.div (Int.sub vector.length 1) 2 do
+      let opposite = Int.sub (Int.sub vector.length 1) index in
+      let value = Array.get_unchecked vector.data ~at:index in
+      Array.set_unchecked vector.data ~at:index ~value:(Array.get_unchecked vector.data ~at:opposite);
+      Array.set_unchecked vector.data ~at:opposite ~value
+    done
 
 let first = fun vector ->
   if Int.equal vector.length 0 then

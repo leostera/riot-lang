@@ -3883,7 +3883,7 @@ and expr_doc_with_view = fun ~arena expr (view: Ast.Expr.view) ->
       Stream_doc.concat [ Stream_doc.text "lazy"; Stream_doc.space; expr_doc ~arena argument ]
   | Lazy _ ->
       unsupported "lazy expression without argument"
-  | Assign { target=Some target; value=Some value } ->
+  | Assign { target=Some target; value=Some value; _ } ->
       Stream_doc.concat
         [
           expr_doc ~arena target;
@@ -4638,7 +4638,7 @@ and binding_operator_expr_doc = fun ~arena expr ->
       unsupported "binding operator expression without body"
   | _, Some in_token, Some body ->
       let rec has_multiline_clause index =
-        if Int.compare index (Vector.length clauses) >= 0 then
+        if Int.(index >= Vector.length clauses) then
           false
         else
           let clause, doc = Vector.get_unchecked clauses ~at:index in

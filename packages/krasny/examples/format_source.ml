@@ -6,7 +6,7 @@ let source = "let  add  x   y= x+y"
 
 let main ~args:_ =
   let parsed = Krasny.parse_source ~filename:(Path.v "example.ml") source in
-  match Krasny.format parsed with
+  match Krasny.stream_format_to_string parsed ~width:100 with
   | Ok formatted ->
       println formatted;
       Ok ()

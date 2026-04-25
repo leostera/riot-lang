@@ -267,14 +267,16 @@ let string = fun value ->
       if index < 0 then
         ()
       else
-        let current_char = String.get_unchecked value ~at:index in
-        let shrunk =
-          List.map
-            (char current_char)
-            ~fn:(fun char' -> string_replace_at value ~at:index ~char:char')
-        in
-        vector_push_reversed shrunk_chars shrunk;
-        shrink_chars (index - 1)
+        (
+          let current_char = String.get_unchecked value ~at:index in
+          let shrunk =
+            List.map
+              (char current_char)
+              ~fn:(fun char' -> string_replace_at value ~at:index ~char:char')
+          in
+          vector_push_reversed shrunk_chars shrunk;
+          shrink_chars (index - 1)
+        )
     in
     shrink_chars (len - 1);
     dedupe (removed @ shortened @ (Vector.to_array shrunk_chars |> Array.to_list))
@@ -316,14 +318,16 @@ let list = fun elem_shrinker ->
         if index < 0 then
           ()
         else
-          let value = nth lst ~at:index |> Option.expect ~msg:"valid shrink element index" in
-          let shrunk =
-            List.map
-              (elem_shrinker value)
-              ~fn:(fun value' -> replace_nth lst ~at:index ~value:value')
-          in
-          vector_push_reversed shrunk_elements shrunk;
-          shrink_elements (index - 1)
+          (
+            let value = nth lst ~at:index |> Option.expect ~msg:"valid shrink element index" in
+            let shrunk =
+              List.map
+                (elem_shrinker value)
+                ~fn:(fun value' -> replace_nth lst ~at:index ~value:value')
+            in
+            vector_push_reversed shrunk_elements shrunk;
+            shrink_elements (index - 1)
+          )
       in
       shrink_elements (len - 1);
       dedupe (removed @ shortened @ (Vector.to_array shrunk_elements |> Array.to_list))

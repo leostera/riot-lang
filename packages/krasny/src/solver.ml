@@ -16,7 +16,7 @@ let append_subslice_unchecked = fun buffer slice ~off ~len ->
 let last_line_width = fun text ->
   let length = String.length text in
   let rec loop index =
-    if Int.compare index 0 < 0 then
+    if Int.(index < 0) then
       length
     else if Char.equal (String.get_unchecked text ~at:index) '\n' then
       Int.sub (Int.sub length index) 1
@@ -43,7 +43,7 @@ let last_slice_line_width = fun value ->
 
 let rec push_many indent mode docs rest =
   let rec loop index acc =
-    if Int.compare index 0 < 0 then
+    if Int.(index < 0) then
       acc
     else
       loop (Int.sub index 1) ((indent, mode, Vector.get_unchecked docs ~at:index) :: acc)
@@ -91,7 +91,7 @@ let rec fits = fun ~width remaining ->
 let group_mode = fun ~width ~column ~indent group ->
   match group.Doc.flat_measure with
   | Some measure ->
-      if Int.compare measure.Doc.flat_width (width - column) <= 0 then
+      if Int.(measure.Doc.flat_width <= width - column) then
         Flat
       else if fits ~width (width - column) [ (indent, Flat, group.Doc.doc) ] then
         Flat
@@ -107,7 +107,7 @@ let solve = fun ~width doc ->
   let rec solve_many ~column ~indent ~mode docs =
     let solved_docs = Vector.with_capacity ~size:(Vector.length docs) in
     let rec loop column index =
-      if Int.compare index (Vector.length docs) >= 0 then
+      if Int.(index >= Vector.length docs) then
         (Doc.fast_concat_vector solved_docs, column)
       else
         let solved_doc, column = solve_doc
@@ -195,7 +195,7 @@ let to_string = fun ~width ?(size_hint = 1_024) ?(final_newline = false) doc ->
   let rec render_many ~line_start ~column ~indent ~mode docs =
     let length = Vector.length docs in
     let rec loop line_start column index =
-      if Int.compare index length >= 0 then
+      if Int.(index >= length) then
         (line_start, column)
       else
         let line_start, column = render_doc

@@ -45,7 +45,7 @@ let explanations = fun () -> [ explanation ]
 
 let is_test_source_path = fun path ->
   let basename =
-    match path |> String.split_on_char '/' |> List.reverse with
+    match path |> String.split_on_char '/' |> List.rev with
     | basename :: _ -> basename
     | [] -> path
   in
@@ -119,7 +119,7 @@ let callback_argument_of_call = fun expr ->
   if not (is_test_callback_callee (expression_name head)) then
     None
   else
-    match List.reverse (positional_arguments arguments) with
+    match List.rev (positional_arguments arguments) with
     | callback :: _ -> Some callback
     | [] -> None
 

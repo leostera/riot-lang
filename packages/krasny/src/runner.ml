@@ -138,6 +138,8 @@ let is_redundant_paren_inner_kind = function
   | Syn.SyntaxKind.UNIT_LITERAL
   | Syn.SyntaxKind.LIST_EXPR
   | Syn.SyntaxKind.ARRAY_EXPR
+  | Syn.SyntaxKind.ARRAY_INDEX_EXPR
+  | Syn.SyntaxKind.STRING_INDEX_EXPR
   | Syn.SyntaxKind.RECORD_EXPR
   | Syn.SyntaxKind.RECORD_UPDATE_EXPR
   | Syn.SyntaxKind.TUPLE_EXPR
@@ -255,9 +257,10 @@ let syntax_hash2 = fun (result: Syn.Parser2.parse_result) ->
   let trivia_buffer = IO.Buffer.create ~size:256 in
   let write_kind kind = IO.Buffer.add_string buffer (Kind.to_string kind) in
   let write_trivia_kind kind = IO.Buffer.add_string trivia_buffer (Kind.to_string kind) in
-  let is_comment_like_trivia = function
-    | Kind.COMMENT
-    | Kind.DOCSTRING -> true
+  let is_tuple_kind = function
+    | Kind.TUPLE_EXPR
+    | Kind.TUPLE_PATTERN
+    | Kind.TUPLE_TYPE -> true
     | _ -> false
   in
   let is_redundant_paren_inner_kind = function
@@ -269,8 +272,13 @@ let syntax_hash2 = fun (result: Syn.Parser2.parse_result) ->
     | Kind.TUPLE_EXPR
     | Kind.LIST_EXPR
     | Kind.ARRAY_EXPR
+    | Kind.ARRAY_INDEX_EXPR
+    | Kind.STRING_INDEX_EXPR
     | Kind.RECORD_EXPR
-    | Kind.RECORD_UPDATE_EXPR -> true
+    | Kind.RECORD_UPDATE_EXPR
+    | Kind.APPLY_EXPR
+    | Kind.INFIX_EXPR
+    | Kind.APPLY_PATTERN -> true
     | _ -> false
   in
   let should_skip_token ~parent_kind token =
@@ -280,53 +288,88 @@ let syntax_hash2 = fun (result: Syn.Parser2.parse_result) ->
     | Some Kind.LIST_EXPR -> String.equal token_text "["
     || String.equal token_text "]"
     || String.equal token_text ";"
+    | Some Kind.LIST_PATTERN -> String.equal token_text "["
+    || String.equal token_text "]"
+    || String.equal token_text ";"
+    | Some Kind.TUPLE_EXPR -> String.equal token_text "(" || String.equal token_text ")"
     | Some Kind.ARRAY_EXPR -> String.equal token_text "[|"
+    || String.equal token_text "|]"
+    || String.equal token_text ";"
+    | Some Kind.ARRAY_PATTERN -> String.equal token_text "[|"
     || String.equal token_text "|]"
     || String.equal token_text ";"
     | Some Kind.RECORD_EXPR
     | Some Kind.RECORD_UPDATE_EXPR
+    | Some Kind.RECORD_PATTERN
     | Some Kind.RECORD_TYPE
+    | Some Kind.RECORD_FIELD
     | Some Kind.RECORD_EXPR_FIELD -> String.equal token_text ";"
     | Some Kind.TYPE_DECL
     | Some Kind.VARIANT_TYPE -> String.equal token_text "|"
+    | Some Kind.VARIANT_CONSTRUCTOR -> String.equal token_text "|"
     | _ -> false
   in
+  let tuple_node_has_paren_token node =
+    let found = ref false in
+    Ast.Node.for_each_child node
+      ~fn:(fun child ->
+        match child with
+        | Syn.SyntaxTree.Token id ->
+            let token: Ast.Token.t = { tree = result.tree; id } in
+            let token_text = Ast.Token.text token in
+            if String.equal token_text "(" || String.equal token_text ")" then
+              found := true
+        | Syn.SyntaxTree.Node _
+        | Syn.SyntaxTree.Missing _ -> ());
+    !found
+  in
   let redundant_paren_child node =
-    let has_comment_like = ref false in
-    Ast.Node.for_each_token node
-      ~fn:(fun token ->
-        Ast.Token.for_each_leading_trivia token
-          ~fn:(fun ~kind ~text:_ ->
-            if is_comment_like_trivia kind then
-              has_comment_like := true));
-    if !has_comment_like then
-      None
-    else
-      let meaningful_child = ref None in
-      let meaningful_count = ref 0 in
-      Ast.Node.for_each_child node
-        ~fn:(fun child ->
-          match child with
-          | Syn.SyntaxTree.Token id ->
-              let token: Ast.Token.t = { tree = result.tree; id } in
-              let token_text = Ast.Token.text token in
-              if not (String.equal token_text "(" || String.equal token_text ")") then
-                (
-                  meaningful_count := Int.succ !meaningful_count;
-                  meaningful_child := Some child
-                )
-          | Syn.SyntaxTree.Node _
-          | Syn.SyntaxTree.Missing _ ->
-              meaningful_count := Int.succ !meaningful_count;
-              meaningful_child := Some child);
-      match (!meaningful_count, !meaningful_child) with
-      | 1, Some (Syn.SyntaxTree.Node id as child) ->
-          let inner: Ast.Node.t = { tree = result.tree; id } in
-          if is_redundant_paren_inner_kind (Ast.Node.kind inner) then
-            Some child
-          else
-            None
-      | _ -> None
+    let meaningful_child = ref None in
+    let meaningful_count = ref 0 in
+    Ast.Node.for_each_child node
+      ~fn:(fun child ->
+        match child with
+        | Syn.SyntaxTree.Token id ->
+            let token: Ast.Token.t = { tree = result.tree; id } in
+            let token_text = Ast.Token.text token in
+            if not (String.equal token_text "(" || String.equal token_text ")") then
+              (
+                meaningful_count := Int.succ !meaningful_count;
+                meaningful_child := Some child
+              )
+        | Syn.SyntaxTree.Node _
+        | Syn.SyntaxTree.Missing _ ->
+            meaningful_count := Int.succ !meaningful_count;
+            meaningful_child := Some child);
+    match (!meaningful_count, !meaningful_child) with
+    | 1, Some (Syn.SyntaxTree.Node id as child) ->
+        let inner: Ast.Node.t = { tree = result.tree; id } in
+        if is_redundant_paren_inner_kind (Ast.Node.kind inner) then
+          Some child
+        else
+          None
+    | _ -> None
+  in
+  let trailing_sequence_child node =
+    let meaningful_child = ref None in
+    let meaningful_count = ref 0 in
+    Ast.Node.for_each_child node
+      ~fn:(fun child ->
+        match child with
+        | Syn.SyntaxTree.Token id ->
+            let token: Ast.Token.t = { tree = result.tree; id } in
+            if not (String.equal (Ast.Token.text token) ";") then
+              (
+                meaningful_count := Int.succ !meaningful_count;
+                meaningful_child := Some child
+              )
+        | Syn.SyntaxTree.Node _
+        | Syn.SyntaxTree.Missing _ ->
+            meaningful_count := Int.succ !meaningful_count;
+            meaningful_child := Some child);
+    match (!meaningful_count, !meaningful_child) with
+    | 1, Some (Syn.SyntaxTree.Node _ as child) -> Some child
+    | _ -> None
   in
   let write_trivia ~kind ~text =
     if Kind.(kind = COMMENT || kind = DOCSTRING) then
@@ -334,7 +377,18 @@ let syntax_hash2 = fun (result: Syn.Parser2.parse_result) ->
         IO.Buffer.add_string trivia_buffer "R(";
         write_trivia_kind kind;
         IO.Buffer.add_string trivia_buffer ":";
-        IO.Buffer.add_string trivia_buffer text;
+        let length = String.length text in
+        let rec write_text index at_line_start =
+          if Int.(index < length) then
+            let char = String.get_unchecked text ~at:index in
+            if at_line_start && (Char.equal char ' ' || Char.equal char '\t') then
+              write_text (Int.succ index) true
+            else (
+              IO.Buffer.add_char trivia_buffer char;
+              write_text (Int.succ index) (Char.equal char '\n')
+            )
+        in
+        write_text 0 true;
         IO.Buffer.add_string trivia_buffer ")"
       )
   in
@@ -345,19 +399,57 @@ let syntax_hash2 = fun (result: Syn.Parser2.parse_result) ->
     IO.Buffer.add_string buffer "[";
     Ast.Node.for_each_child node ~fn:(write_child ~parent_kind:(Some node_kind));
     IO.Buffer.add_string buffer "])"
+  and write_token_trivia token = Ast.Token.for_each_leading_trivia token ~fn:write_trivia
   and write_token token =
-    Ast.Token.for_each_leading_trivia token ~fn:write_trivia;
+    write_token_trivia token;
     IO.Buffer.add_string buffer "T(";
     write_kind (Ast.Token.kind token);
     IO.Buffer.add_string buffer ":";
     IO.Buffer.add_string buffer (Ast.Token.text token);
     IO.Buffer.add_string buffer ")"
+  and write_redundant_paren node =
+    Ast.Node.for_each_child node
+      ~fn:(fun child ->
+        match child with
+        | Syn.SyntaxTree.Token id ->
+            let token: Ast.Token.t = { tree = result.tree; id } in
+            let token_text = Ast.Token.text token in
+            if String.equal token_text "(" || String.equal token_text ")" then
+              write_token_trivia token
+        | Syn.SyntaxTree.Node _ ->
+            write_child ~parent_kind:(Some Kind.PAREN_EXPR) child
+        | Syn.SyntaxTree.Missing _ ->
+            ())
+  and write_trailing_sequence node =
+    Ast.Node.for_each_child node
+      ~fn:(fun child ->
+        match child with
+        | Syn.SyntaxTree.Token id ->
+            let token: Ast.Token.t = { tree = result.tree; id } in
+            if String.equal (Ast.Token.text token) ";" then
+              write_token_trivia token
+        | Syn.SyntaxTree.Node _ ->
+            write_child ~parent_kind:(Some Kind.SEQUENCE_EXPR) child
+        | Syn.SyntaxTree.Missing _ ->
+            ())
   and write_child ~parent_kind = function
     | Syn.SyntaxTree.Node id ->
-        write_element (Syn.SyntaxTree.Node id)
+        let node: Ast.Node.t = { tree = result.tree; id } in
+        let node_kind = Ast.Node.kind node in
+        (
+          match parent_kind with
+          | Some parent_kind when Kind.(parent_kind = node_kind)
+          && is_tuple_kind node_kind
+          && not (tuple_node_has_paren_token node) -> Ast.Node.for_each_child
+            node
+            ~fn:(write_child ~parent_kind:(Some node_kind))
+          | _ -> write_element (Syn.SyntaxTree.Node id)
+        )
     | Syn.SyntaxTree.Token id ->
         let token: Ast.Token.t = { tree = result.tree; id } in
-        if not (should_skip_token ~parent_kind token) then
+        if should_skip_token ~parent_kind token then
+          write_token_trivia token
+        else
           write_token token
     | Syn.SyntaxTree.Missing missing ->
         IO.Buffer.add_string buffer "M(";
@@ -366,9 +458,13 @@ let syntax_hash2 = fun (result: Syn.Parser2.parse_result) ->
   and write_element = function
     | Syn.SyntaxTree.Node id ->
         let node: Ast.Node.t = { tree = result.tree; id } in
-        if Kind.(Ast.Node.kind node = PAREN_EXPR) then
+        if Kind.(Ast.Node.kind node = PAREN_EXPR || Ast.Node.kind node = PAREN_PATTERN) then
           match redundant_paren_child node with
-          | Some child -> write_child ~parent_kind:(Some Kind.PAREN_EXPR) child
+          | Some _child -> write_redundant_paren node
+          | None -> write_node node
+        else if Kind.(Ast.Node.kind node = SEQUENCE_EXPR) then
+          match trailing_sequence_child node with
+          | Some _child -> write_trailing_sequence node
           | None -> write_node node
         else
           write_node node
@@ -410,7 +506,7 @@ let format_file = fun ~mode file ->
     ~error:(Some ("Failed to read " ^ Path.to_string file))
   | Ok source ->
       let parsed = Format_core.parse_source ~filename:file source in
-      match Format_core.format parsed with
+      match Format_core.stream_format_to_string parsed ~width:100 with
       | Ok formatted ->
           let result =
             if String.equal source formatted then

@@ -134,6 +134,10 @@ module TypeExpr: sig
   val for_each_poly_type_name: t -> fn:(Token.t -> unit) -> unit
 
   val for_each_child_type: t -> fn:(t -> unit) -> unit
+
+  val inner_without_attribute_suffix: t -> t option
+
+  val for_each_attribute_suffix_token: t -> fn:(Token.t -> unit) -> unit
 end
 
 module RecordField: sig
@@ -384,7 +388,7 @@ module Expr: sig
     | Apply of { callee: t option; argument: t option }
     | Infix of { left: t option; operator: Token.t option; right: t option }
     | Prefix of { operator: Token.t option; operand: t option }
-    | Assign of { target: t option; value: t option }
+    | Assign of { target: t option; operator: Token.t option; value: t option }
     | FieldAccess of { target: t option; field: Token.t option }
     | MethodCall of { target: t option; method_: Token.t option }
     | PolyVariant of { payload: t option }
@@ -795,6 +799,10 @@ module ModuleDeclaration: sig
 
   val for_each_body_path_ident: t -> fn:(Token.t -> unit) -> unit
 
+  val has_typeof_body: t -> bool
+
+  val for_each_typeof_body_path_ident: t -> fn:(Token.t -> unit) -> unit
+
   val for_each_structure_item: t -> fn:(structure_item -> unit) -> unit
 
   val for_each_signature_item: t -> fn:(signature_item -> unit) -> unit
@@ -865,6 +873,8 @@ module IncludeDeclaration: sig
   val cast: Node.t -> t option
 
   val path_text: t -> string
+
+  val body_node: t -> Node.t option
 
   val first_path_ident: t -> Token.t option
 

@@ -63,7 +63,7 @@ let to_string = fun ?(size_hint = 1_024) ?(final_newline = false) doc ->
         write ~line_start ~indent group.Doc.doc
     | Doc.Concat docs ->
         let rec loop line_start index =
-          if Int.compare index (Vector.length docs) >= 0 then
+          if Int.(index >= Vector.length docs) then
             line_start
           else
             loop (write ~line_start ~indent (Vector.get_unchecked docs ~at:index)) (Int.add index 1)
