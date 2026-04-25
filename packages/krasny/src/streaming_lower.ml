@@ -224,6 +224,77 @@ let split_lines = fun text ->
   loop 0 0;
   lines
 
+let is_blank_line = fun line -> String.is_empty (String.trim line)
+
+let leading_horizontal_width = fun line ->
+  let length = String.length line in
+  let rec loop index =
+    if Int.(index >= length) then
+      length
+    else if is_horizontal_whitespace (String.get_unchecked line ~at:index) then
+      loop (Int.add index 1)
+    else
+      index
+  in
+  loop 0
+
+let strip_leading_width = fun line width ->
+  let length = String.length line in
+  let rec loop index remaining =
+    if Int.(remaining <= 0 || index >= length) then
+      index
+    else if is_horizontal_whitespace (String.get_unchecked line ~at:index) then
+      loop (Int.add index 1) (Int.sub remaining 1)
+    else
+      index
+  in
+  let offset = loop 0 width in
+  String.sub line ~offset ~len:(Int.sub length offset)
+
+let first_nonblank_line_index = fun lines ->
+  let length = Vector.length lines in
+  let rec loop index =
+    if Int.(index >= length) then
+      None
+    else if is_blank_line (Vector.get_unchecked lines ~at:index) then
+      loop (Int.add index 1)
+    else
+      Some index
+  in
+  loop 0
+
+let last_nonblank_line_index = fun lines ->
+  let rec loop index =
+    if Int.(index < 0) then
+      None
+    else if is_blank_line (Vector.get_unchecked lines ~at:index) then
+      loop (Int.sub index 1)
+    else
+      Some index
+  in
+  loop (Int.sub (Vector.length lines) 1)
+
+let common_docstring_indent = fun lines ~start ~stop ->
+  let rec loop index current =
+    if Int.(index > stop) then
+      current
+    else
+      let line = Vector.get_unchecked lines ~at:index in
+      if is_blank_line line then
+        loop (Int.add index 1) current
+      else
+        let indent = leading_horizontal_width line in
+        let current =
+          match current with
+          | None -> Some indent
+          | Some current -> Some (Int.min current indent)
+        in
+        loop (Int.add index 1) current
+  in
+  match loop start None with
+  | Some indent -> indent
+  | None -> 0
+
 let docstring_closing = fun (docstring: Ast.Token.delimited_trivia) ->
   match docstring.closing with
   | Some closing -> closing
@@ -242,13 +313,31 @@ let normalize_multiline_docstring = fun (docstring: Ast.Token.delimited_trivia) 
   let line_count = Vector.length lines in
   if Int.(line_count <= 1) then
     normalize_inline_docstring docstring
-  else
-    let last_index = Int.sub line_count 1 in
-    let first = Vector.get_unchecked lines ~at:0 |> String.trim in
-    let last = Vector.get_unchecked lines ~at:last_index in
+  else match first_nonblank_line_index lines, last_nonblank_line_index lines with
+  | None, _ | _, None -> docstring.opening ^ "\n" ^ docstring_closing docstring
+  | Some first_index, Some last_index ->
+    let first_is_inline = Int.equal first_index 0 in
+    let indent_start =
+      if first_is_inline then
+        Int.add first_index 1
+      else
+        first_index
+    in
+    let common_indent =
+      if Int.(indent_start > last_index) then
+        0
+      else
+        common_docstring_indent lines ~start:indent_start ~stop:last_index
+    in
     let buffer = IO.Buffer.create ~size:(Int.add (String.length docstring.text) 8) in
-    let add_body_line line =
-      let line = String.trim line in
+    let add_body_line index =
+      let raw_line = Vector.get_unchecked lines ~at:index in
+      let line =
+        if first_is_inline && Int.equal index first_index then
+          String.trim raw_line
+        else
+          strip_leading_width raw_line common_indent
+      in
       if String.is_empty line then
         IO.Buffer.add_char buffer '\n'
       else (
@@ -259,14 +348,9 @@ let normalize_multiline_docstring = fun (docstring: Ast.Token.delimited_trivia) 
     in
     IO.Buffer.add_string buffer docstring.opening;
     IO.Buffer.add_char buffer '\n';
-    if not (String.is_empty first) then
-      add_body_line first;
-    for index = 1 to Int.sub line_count 2 do
-      let line = Vector.get_unchecked lines ~at:index in
-      add_body_line line
+    for index = first_index to last_index do
+      add_body_line index
     done;
-    if not (String.is_empty (String.trim last)) then
-      add_body_line last;
     IO.Buffer.add_string buffer (docstring_closing docstring);
     IO.Buffer.contents buffer
 

@@ -244,6 +244,37 @@ end
   val to_rgb: int -> rgb
 end
 |ocaml});
+  Test.case "write preserves relative indentation inside docstrings"
+    (fun ctx ->
+      let source = {ocaml|module Blink:sig
+(** # SSE
+
+    ```ocaml
+    Blink.SSE.await conn
+    |> Iter.MutIterator.for_each (fun event ->
+         Log.info event.data)
+    ```
+*)
+val await:unit->unit
+end
+|ocaml}
+      in
+      let parsed = parse_mli source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|module Blink : sig
+  (**
+     # SSE
+
+     ```ocaml
+     Blink.SSE.await conn
+     |> Iter.MutIterator.for_each (fun event ->
+          Log.info event.data)
+     ```
+  *)
+  val await: unit -> unit
+end
+|ocaml});
   Test.case "write collapses blank lines before leading comments"
     (fun ctx ->
       let source = {ocaml|let test=fun _ctx ->
