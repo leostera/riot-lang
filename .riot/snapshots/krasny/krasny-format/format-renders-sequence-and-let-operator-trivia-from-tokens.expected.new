@@ -1,0 +1,11 @@
+let run = fun () ->
+  first;
+  (* keep before second *)
+  second;
+  (** keep before third *)
+  third
+
+let bind =
+  let* value = (* keep before bound value *)
+  compute in (* keep before body *)
+  finish value

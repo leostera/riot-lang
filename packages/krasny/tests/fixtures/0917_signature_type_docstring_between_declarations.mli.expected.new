@@ -1,0 +1,4 @@
+type a
+
+(** docstring *)
+type b
