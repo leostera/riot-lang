@@ -293,7 +293,7 @@ let run_with_workspace_info = fun ~workspace ~workspace_error matches ->
   else if list_mode then
     match workspace with
     | None ->
-        let message = Option.unwrap_or ~default:"Not in a riot workspace" workspace_error in
+        let message = Option.unwrap_or ~default:Workspace_hint.not_in_workspace_message workspace_error in
         write_workspace_error ~mode:output_mode message;
         Error (Failure message)
     | Some workspace ->
@@ -332,7 +332,9 @@ let run_with_workspace_info = fun ~workspace ~workspace_error matches ->
             ~fn:(fun { package_name; binary_name } ->
               Local { package_name = Some package_name; binary_name })
           |> Result.map_err ~fn:(fun err -> Failure err)
-          | None -> Error (Failure (Option.unwrap_or ~default:"Not in a riot workspace" workspace_error))
+          | None -> Error (Failure (Option.unwrap_or
+            ~default:Workspace_hint.not_in_workspace_message
+            workspace_error))
         )
     in
     match resolved_target with
@@ -364,7 +366,9 @@ let run_with_workspace_info = fun ~workspace ~workspace_error matches ->
                       profile;
                       args = extra;
                     } |> Result.map_err ~fn:(fun err -> `Run err)
-              | None -> Error (`Cli (Option.unwrap_or ~default:"Not in a riot workspace" workspace_error))
+              | None -> Error (`Cli (Option.unwrap_or
+                ~default:Workspace_hint.not_in_workspace_message
+                workspace_error))
             )
         in
         match result with

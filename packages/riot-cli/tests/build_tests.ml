@@ -91,6 +91,11 @@ let parse_clean = fun args ->
   | Ok matches -> Ok matches
   | Error err -> Error (ArgParser.error_message err)
 
+let parse_toolchain = fun args ->
+  match ArgParser.get_matches Riot_cli.Toolchain_cmd.command args with
+  | Ok matches -> Ok matches
+  | Error err -> Error (ArgParser.error_message err)
+
 let error_line = fun message -> "\027[1;31mError\027[0m: " ^ message
 
 let write_workspace_manifest = fun ~root ~members ->
@@ -1083,6 +1088,44 @@ let test_pm_event_shows_up_to_date = fun _ctx ->
   Test.assert_equal ~expected:(Some "    Dependencies are already up to date") ~actual;
   Ok ()
 
+let test_workspace_hint_mentions_riot_init = fun _ctx ->
+  let message = Riot_cli.Workspace_hint.not_in_workspace_message in
+  if not (String.contains message "riot init") then
+    Error "expected no-workspace hint to mention riot init"
+  else if not (String.contains message "riot new <name>") then
+    Error "expected no-workspace hint to mention riot new"
+  else if String.contains message "Error:" then
+    Error "expected no-workspace hint to stay neutral guidance"
+  else
+    Ok ()
+
+let test_toolchain_list_requires_workspace = fun _ctx ->
+  match parse_toolchain [ "toolchain"; "list" ] with
+  | Error err -> Error err
+  | Ok matches ->
+      if Riot_cli.Toolchain_cmd.requires_workspace matches then
+        Ok ()
+      else
+        Error "expected riot toolchain list to require a workspace"
+
+let test_toolchain_install_requires_workspace = fun _ctx ->
+  match parse_toolchain [ "toolchain"; "install" ] with
+  | Error err -> Error err
+  | Ok matches ->
+      if Riot_cli.Toolchain_cmd.requires_workspace matches then
+        Ok ()
+      else
+        Error "expected riot toolchain install to require a workspace"
+
+let test_toolchain_list_available_is_workspace_free = fun _ctx ->
+  match parse_toolchain [ "toolchain"; "list-available" ] with
+  | Error err -> Error err
+  | Ok matches ->
+      if Riot_cli.Toolchain_cmd.requires_workspace matches then
+        Error "expected riot toolchain list-available to stay workspace-free"
+      else
+        Ok ()
+
 let tests =
   Test.[
     case "build: workspace package labels stay bare" test_display_package_name_keeps_workspace_package_bare;
@@ -1139,6 +1182,10 @@ let tests =
     case "clean: parse --json flag" test_clean_accepts_json_flag;
     case "clean: parse --force flag" test_clean_accepts_force_flag;
     case "clean: usage explains cache gc and --force" test_clean_usage_explains_cache_gc_and_force;
+    case "workspace: no-workspace hint explains initialization" test_workspace_hint_mentions_riot_init;
+    case "toolchain: list requires workspace" test_toolchain_list_requires_workspace;
+    case "toolchain: install requires workspace" test_toolchain_install_requires_workspace;
+    case "toolchain: list-available is workspace-free" test_toolchain_list_available_is_workspace_free;
     case "run: remote source defaults binary to repo name" test_run_defaults_remote_binary_to_repo_name;
     case "run: trailing @ in remote target is rejected" test_run_rejects_trailing_remote_binary_separator;
     case "run: runtime binaries use runtime scope" test_run_build_scope_uses_runtime_for_runtime_binaries;

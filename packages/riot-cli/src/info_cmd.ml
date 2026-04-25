@@ -287,11 +287,11 @@ let run = fun ~(workspace_scan:workspace_scan) matches ->
             print_workspace ~load_errors workspace;
           Ok ()
       | NoWorkspace ->
-          let message = "Not in a riot workspace" in
+          let message = Workspace_hint.not_in_workspace_message in
           if json then
             print_json (error_json ~kind:"no_workspace" ~message)
           else
-            eprintln "❌ Not in a riot workspace";
+            Workspace_hint.print_not_in_workspace ();
           Error (Failure message)
       | ScanFailed err ->
           let message = workspace_scan_error_message err in

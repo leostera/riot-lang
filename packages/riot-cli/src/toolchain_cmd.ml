@@ -171,25 +171,29 @@ let run_list_available = fun () ->
       eprintln ("❌ " ^ msg);
       Error (Failure msg)
 
-let run = fun matches ->
+let requires_workspace = fun matches ->
+  let open ArgParser in
+    match get_subcommand matches with
+    | Some ("list", _)
+    | Some ("install", _) -> true
+    | Some ("list-available", _)
+    | _ -> false
+
+let run = fun ?workspace matches ->
   let open ArgParser in
     match get_subcommand matches with
     | Some ("list-available", _) ->
         run_list_available ()
-    | Some ("list", _) ->
-        let cwd = Env.current_dir () |> Result.expect ~msg:"Failed to get cwd" in
-        let workspace_manager = Workspace_manager.create () in
-        let (workspace, _) = Workspace_manager.scan workspace_manager cwd
-        |> Result.map_err ~fn:Workspace_manager.scan_error_message
-        |> Result.expect ~msg:"Failed to scan workspace" in
-        run_list workspace
-    | Some ("install", _) ->
-        let cwd = Env.current_dir () |> Result.expect ~msg:"Failed to get cwd" in
-        let workspace_manager = Workspace_manager.create () in
-        let (workspace, _) = Workspace_manager.scan workspace_manager cwd
-        |> Result.map_err ~fn:Workspace_manager.scan_error_message
-        |> Result.expect ~msg:"Failed to scan workspace" in
-        run_install workspace
+    | Some ("list", _) -> (
+        match workspace with
+        | Some workspace -> run_list workspace
+        | None -> Error (Failure Workspace_hint.not_in_workspace_failure)
+      )
+    | Some ("install", _) -> (
+        match workspace with
+        | Some workspace -> run_install workspace
+        | None -> Error (Failure Workspace_hint.not_in_workspace_failure)
+      )
     | _ ->
         println "Usage: riot toolchain <list|install|list-available>";
         Error (Failure "Unknown subcommand")

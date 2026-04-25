@@ -184,7 +184,9 @@ let run_with_workspace_info = fun ~workspace ~workspace_error matches ->
               ~fn:(fun (Run.{ package_name; binary_name }) ->
                 Local { package_name = Some package_name; binary_name; registry_fallback = None })
             |> Result.map_err ~fn:(fun err -> Failure err)
-            | None -> Error (Failure (Option.unwrap_or ~default:"Not in a riot workspace" workspace_error))
+            | None -> Error (Failure (Option.unwrap_or
+              ~default:Workspace_hint.not_in_workspace_message
+              workspace_error))
           )
       with
       | Error (Failure message) ->

@@ -105,8 +105,8 @@ let report_workspace_load_errors = fun load_errors ->
 let require_clean_workspace = fun workspace_scan_opt ->
   match workspace_scan_opt with
   | NoWorkspace ->
-      eprintln "❌ Not in a riot workspace";
-      Error (Failure "Not in a riot workspace")
+      Workspace_hint.print_not_in_workspace ();
+      Error (Failure Workspace_hint.not_in_workspace_failure)
   | ScanFailed err ->
       eprintln ("\027[1;31mError\027[0m: " ^ Info_cmd.workspace_scan_error_message err);
       Error (Failure "Workspace scan failed")
@@ -117,8 +117,8 @@ let require_clean_workspace = fun workspace_scan_opt ->
       Ok workspace
 
 let fail_not_in_workspace = fun () ->
-  eprintln "❌ Not in a riot workspace";
-  Error (Failure "Not in a riot workspace")
+  Workspace_hint.print_not_in_workspace ();
+  Error (Failure Workspace_hint.not_in_workspace_failure)
 
 type current_manifest_status =
   | Missing_manifest of Path.t
@@ -366,7 +366,7 @@ let run = fun ~args ->
                     (None, Some (workspace_load_error_message load_errors))
                   )
                 | NoWorkspace ->
-                    (None, None)
+                    (None, Some Workspace_hint.not_in_workspace_message)
                 | ScanFailed err ->
                     (None, Some (Info_cmd.workspace_scan_error_message err))
               in
@@ -542,7 +542,7 @@ let run = fun ~args ->
                     (None, Some (workspace_load_error_message load_errors))
                   )
                 | NoWorkspace ->
-                    (None, None)
+                    (None, Some Workspace_hint.not_in_workspace_message)
                 | ScanFailed err ->
                     (None, Some (Info_cmd.workspace_scan_error_message err))
               in
@@ -574,7 +574,12 @@ let run = fun ~args ->
                 )
             )
           | Some ("toolchain", toolchain_matches) ->
-              Toolchain_cmd.run toolchain_matches
+              if Toolchain_cmd.requires_workspace toolchain_matches then
+                match require_clean_workspace (get_workspace_scan ()) with
+                | Ok workspace -> Toolchain_cmd.run ~workspace toolchain_matches
+                | Error _ as e -> e
+              else
+                Toolchain_cmd.run toolchain_matches
           | Some ("upgrade", upgrade_matches) ->
               Upgrade.run upgrade_matches
           | Some ("version", _) ->
