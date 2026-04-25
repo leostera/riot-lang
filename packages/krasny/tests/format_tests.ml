@@ -644,6 +644,19 @@ let line = Net.Http.Method.to_string method_ ^ " " ^ resource ^ "\r\n"
       Test.Snapshot.assert_inline_text ~ctx ~actual
         ~expected:{ocaml|let multiplier = 10.0 ** Float.from_int precision
 |ocaml});
+  Test.case "write keeps bare polymorphic variant application arguments split"
+    (fun ctx ->
+      let source = {ocaml|let seq=Color.to_escape_seq ~mode:`fg color
+let ok=assert_relation `Satisfied (Pubgrub.Partial_solution.relation solution incompat)
+|ocaml}
+      in
+      let parsed = parse_ml source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|let seq = Color.to_escape_seq ~mode:`fg color
+
+let ok = assert_relation `Satisfied (Pubgrub.Partial_solution.relation solution incompat)
+|ocaml});
   Test.case "write keeps cons chains right associative"
     (fun ctx ->
       let source = {ocaml|let fields=timestamp_field()::("type",Data.Json.String"file")::fields

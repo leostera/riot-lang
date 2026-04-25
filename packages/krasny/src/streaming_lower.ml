@@ -2406,7 +2406,7 @@ and render_apply_flat = fun state callee args ->
   let callee, base_args = collect_apply callee in
   let render_arg arg =
     emit_space state;
-    render_expr_atom state arg
+    render_apply_argument state arg
   in
   render_expr_atom state callee;
   Vector.for_each base_args ~fn:render_arg;
@@ -2431,18 +2431,52 @@ and render_in_body_expr = fun state expr ->
   | _ -> render_expr state expr
 
 and render_poly_variant_expr = fun state expr payload ->
-  (
-    match first_ident_token expr with
-    | Some tag ->
-        emit_text state "`";
-        emit_token state tag
-    | None -> unsupported_node "polymorphic variant expression without tag" expr
-  );
+  render_poly_variant_tag state expr;
   match payload with
   | Some payload ->
       emit_space state;
       render_expr_atom state payload
   | None -> ()
+
+and render_poly_variant_tag = fun state expr ->
+  match first_ident_token expr with
+  | Some tag ->
+      emit_text state "`";
+      emit_token state tag
+  | None -> unsupported_node "polymorphic variant expression without tag" expr
+
+and render_apply_argument = fun state arg ->
+  let rec render_split_arg arg =
+    match Ast.Expr.view arg with
+    | PolyVariant { payload=Some payload } ->
+        render_poly_variant_tag state arg;
+        emit_space state;
+        render_split_arg payload
+    | LabeledArg { label=Some label; value=Some value } -> (
+        match Ast.Expr.view value with
+        | PolyVariant { payload=Some payload } ->
+            emit_text state "~";
+            emit_token state label;
+            emit_text state ":";
+            render_poly_variant_tag state value;
+            emit_space state;
+            render_split_arg payload
+        | _ -> render_expr_atom state arg
+      )
+    | OptionalArg { label=Some label; value=Some value } -> (
+        match Ast.Expr.view value with
+        | PolyVariant { payload=Some payload } ->
+            emit_text state "?";
+            emit_token state label;
+            emit_text state ":";
+            render_poly_variant_tag state value;
+            emit_space state;
+            render_split_arg payload
+        | _ -> render_expr_atom state arg
+      )
+    | _ -> render_expr_atom state arg
+  in
+  render_split_arg arg
 
 and expr_is_constructor_like_callee = fun expr ->
   match Ast.Expr.view expr with
@@ -2487,12 +2521,12 @@ and render_apply_expr = fun state expr ->
             if should_break then
               (
                 emit_line state;
-                with_indent state 2 (fun () -> render_expr_atom state arg);
+                with_indent state 2 (fun () -> render_apply_argument state arg);
                 loop (Int.add index 1) true
               )
             else (
               emit_space state;
-              render_expr_atom state arg;
+              render_apply_argument state arg;
               loop (Int.add index 1) breaking
             )
           )
