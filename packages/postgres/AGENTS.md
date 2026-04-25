@@ -10,4 +10,4 @@
 
 ## Validate
 
-`timeout 30 riot build postgres`
+`timeout 30 riot build -p postgres --all`

@@ -15,6 +15,7 @@ type message_type =
 
 module Sqlstate = struct
   (* PostgreSQL SQLSTATE codes - https://www.postgresql.org/docs/current/errcodes-appendix.html *)
+
   type t =
     (* Class 00 — Successful Completion *)
     | SuccessfulCompletion
@@ -131,11 +132,17 @@ module Sqlstate = struct
     | UnknownSqlstate of string
 
   (* Other/Unknown *)
+
   (* Other/Unknown *)
+
   (* Other/Unknown *)
+
   (* Other/Unknown *)
+
   (* Other/Unknown *)
+
   (* Parse SQLSTATE string into typed variant *)
+
   let of_string = fun code ->
     match code with
     | "00000" -> SuccessfulCompletion
@@ -239,6 +246,7 @@ module Sqlstate = struct
     | code -> UnknownSqlstate code
 
   (* Convert sqlstate back to string for display *)
+
   let to_string = function
     | SuccessfulCompletion -> "successful_completion"
     | Warning -> "warning"
@@ -343,44 +351,29 @@ end
 
 module Error = struct
   (* PostgreSQL error/notice structured type *)
+
   type t = {
-    severity: string option;
-    (* 'S' - ERROR, FATAL, PANIC, WARNING, NOTICE, etc. *)
-    sqlstate: Sqlstate.t option;
-    (* 'C' - 5-character SQLSTATE code *)
-    message: string;
-    (* 'M' - Primary human-readable error message *)
-    detail: string option;
-    (* 'D' - Optional detail message *)
-    hint: string option;
-    (* 'H' - Optional hint for fixing the error *)
-    position: int option;
-    (* 'P' - Character position in query string *)
-    internal_position: int option;
-    (* 'p' - Internal query position *)
-    internal_query: string option;
-    (* 'q' - Internal query text *)
-    where_context: string option;
-    (* 'W' - Context (stack trace) *)
-    schema_name: string option;
-    (* 's' - Schema name *)
-    table_name: string option;
-    (* 't' - Table name *)
-    column_name: string option;
-    (* 'c' - Column name *)
-    datatype_name: string option;
-    (* 'd' - Data type name *)
-    constraint_name: string option;
-    (* 'n' - Constraint name *)
-    source_file: string option;
-    (* 'F' - Source file name *)
-    source_line: int option;
-    (* 'L' - Source line number *)
-    source_routine: string option;
-    (* 'R' - Source routine name *)
+    severity: string option;  (* 'S' - ERROR, FATAL, PANIC, WARNING, NOTICE, etc. *)
+    sqlstate: Sqlstate.t option;  (* 'C' - 5-character SQLSTATE code *)
+    message: string;  (* 'M' - Primary human-readable error message *)
+    detail: string option;  (* 'D' - Optional detail message *)
+    hint: string option;  (* 'H' - Optional hint for fixing the error *)
+    position: int option;  (* 'P' - Character position in query string *)
+    internal_position: int option;  (* 'p' - Internal query position *)
+    internal_query: string option;  (* 'q' - Internal query text *)
+    where_context: string option;  (* 'W' - Context (stack trace) *)
+    schema_name: string option;  (* 's' - Schema name *)
+    table_name: string option;  (* 't' - Table name *)
+    column_name: string option;  (* 'c' - Column name *)
+    datatype_name: string option;  (* 'd' - Data type name *)
+    constraint_name: string option;  (* 'n' - Constraint name *)
+    source_file: string option;  (* 'F' - Source file name *)
+    source_line: int option;  (* 'L' - Source line number *)
+    source_routine: string option;  (* 'R' - Source routine name *)
   }
 
   (* Direct field accessors *)
+
   let severity = fun err -> err.severity
 
   let sqlstate = fun err -> err.sqlstate
@@ -416,135 +409,108 @@ module Error = struct
   let source_routine = fun err -> err.source_routine
 
   (* Parse error from JSON *)
-  let from_json = fun json -> let open Data.Json in
-  let get_string key =
-    match get_field key json with
-    | Some (String s) -> Some s
-    | _ -> None
-  in
-  let get_int key =
-    match get_field key json with
-    | Some (Int n) -> Some n
-    | _ -> None
-  in
-  {
-    severity = get_string "severity";
-    sqlstate = (
-      match get_string "sqlstate" with
-      | Some s -> Some (Sqlstate.of_string s)
-      | None -> None
-    );
-    message = (
-      match get_string "message" with
-      | Some m -> m
-      | None -> "Unknown error"
-    );
-    detail = get_string "detail";
-    hint = get_string "hint";
-    position = get_int "position";
-    internal_position = None;
-    internal_query = None;
-    where_context = get_string "context";
-    schema_name = get_string "schema";
-    table_name = get_string "table";
-    column_name = get_string "column";
-    datatype_name = None;
-    constraint_name = get_string "constraint";
-    source_file = None;
-    source_line = None;
-    source_routine = None
-  }
+
+  let from_json = fun json ->
+    let open Data.Json in
+      let get_string key =
+        match get_field key json with
+        | Some (String s) -> Some s
+        | _ -> None
+      in
+      let get_int key =
+        match get_field key json with
+        | Some (Int n) -> Some n
+        | _ -> None
+      in
+      {
+        severity = get_string "severity";
+        sqlstate =
+          (
+            match get_string "sqlstate" with
+            | Some s -> Some (Sqlstate.of_string s)
+            | None -> None
+          );
+        message =
+          (
+            match get_string "message" with
+            | Some m -> m
+            | None -> "Unknown error"
+          );
+        detail = get_string "detail";
+        hint = get_string "hint";
+        position = get_int "position";
+        internal_position = None;
+        internal_query = None;
+        where_context = get_string "context";
+        schema_name = get_string "schema";
+        table_name = get_string "table";
+        column_name = get_string "column";
+        datatype_name = None;
+        constraint_name = get_string "constraint";
+        source_file = None;
+        source_line = None;
+        source_routine = None;
+      }
 
   (* Convert error to JSON *)
-  let to_json = fun err -> let open Data.Json in
-  let fields =
-    [
-      "message", string err.message;
-    ]
-  in
-  let fields =
-    match err.severity with
-    | Some sev ->
-        fields @ [
-          "severity", string sev;
-        ]
-    | None -> fields
-  in
-  let fields =
-    match err.sqlstate with
-    | Some code ->
-        fields @ [
-          "sqlstate", string (Sqlstate.to_string code);
-        ]
-    | None -> fields
-  in
-  let fields =
-    match err.detail with
-    | Some d ->
-        fields @ [
-          "detail", string d;
-        ]
-    | None -> fields
-  in
-  let fields =
-    match err.hint with
-    | Some h ->
-        fields @ [
-          "hint", string h;
-        ]
-    | None -> fields
-  in
-  let fields =
-    match err.position with
-    | Some p ->
-        fields @ [
-          "position", int p;
-        ]
-    | None -> fields
-  in
-  let fields =
-    match err.constraint_name with
-    | Some n ->
-        fields @ [
-          "constraint", string n;
-        ]
-    | None -> fields
-  in
-  let fields =
-    match err.schema_name with
-    | Some s ->
-        fields @ [
-          "schema", string s;
-        ]
-    | None -> fields
-  in
-  let fields =
-    match err.table_name with
-    | Some t ->
-        fields @ [
-          "table", string t;
-        ]
-    | None -> fields
-  in
-  let fields =
-    match err.column_name with
-    | Some c ->
-        fields @ [
-          "column", string c;
-        ]
-    | None -> fields
-  in
-  let fields =
-    match err.where_context with
-    | Some w ->
-        fields @ [
-          "context", string w;
-        ]
-    | None -> fields
-  in
-  obj fields
+
+  let to_json = fun err ->
+    let open Data.Json in
+      let fields = [ ("message", string err.message); ] in
+      let fields =
+        match err.severity with
+        | Some sev -> fields @ [ ("severity", string sev) ]
+        | None -> fields
+      in
+      let fields =
+        match err.sqlstate with
+        | Some code -> fields @ [ ("sqlstate", string (Sqlstate.to_string code)) ]
+        | None -> fields
+      in
+      let fields =
+        match err.detail with
+        | Some d -> fields @ [ ("detail", string d) ]
+        | None -> fields
+      in
+      let fields =
+        match err.hint with
+        | Some h -> fields @ [ ("hint", string h) ]
+        | None -> fields
+      in
+      let fields =
+        match err.position with
+        | Some p -> fields @ [ ("position", int p) ]
+        | None -> fields
+      in
+      let fields =
+        match err.constraint_name with
+        | Some n -> fields @ [ ("constraint", string n) ]
+        | None -> fields
+      in
+      let fields =
+        match err.schema_name with
+        | Some s -> fields @ [ ("schema", string s) ]
+        | None -> fields
+      in
+      let fields =
+        match err.table_name with
+        | Some t -> fields @ [ ("table", string t) ]
+        | None -> fields
+      in
+      let fields =
+        match err.column_name with
+        | Some c -> fields @ [ ("column", string c) ]
+        | None -> fields
+      in
+      let fields =
+        match err.where_context with
+        | Some w -> fields @ [ ("context", string w) ]
+        | None -> fields
+      in
+      obj fields
 
   (* Format error for display *)
+
   let to_string = fun err ->
     let parts = [ "Postgres error: " ^ err.message ] in
     (* Add SQLSTATE with name *)
@@ -585,8 +551,9 @@ module Error = struct
     in
     (* Add schema/table/column if present *)
     let parts =
-      match err.schema_name, err.table_name, err.column_name with
-      | Some s, Some t, Some c -> parts @ [ "Location: schema \"" ^ s ^ "\", table \"" ^ t ^ "\", column \"" ^ c ^ "\"" ]
+      match (err.schema_name, err.table_name, err.column_name) with
+      | Some s, Some t, Some c -> parts
+      @ [ "Location: schema \"" ^ s ^ "\", table \"" ^ t ^ "\", column \"" ^ c ^ "\"" ]
       | Some s, Some t, None -> parts @ [ "Location: schema \"" ^ s ^ "\", table \"" ^ t ^ "\"" ]
       | None, Some t, Some c -> parts @ [ "Location: table \"" ^ t ^ "\", column \"" ^ c ^ "\"" ]
       | Some s, None, Some c -> parts @ [ "Location: schema \"" ^ s ^ "\", column \"" ^ c ^ "\"" ]
@@ -700,6 +667,7 @@ end
 
 module Oid = struct
   (* PostgreSQL Object ID - used for tables, types, and other database objects *)
+
   type t = int
 
   let of_int = fun n -> n
@@ -709,28 +677,37 @@ module Oid = struct
   let zero = 0
 
   (* Special value: not from a table *)
+
   let to_string = fun t -> string_of_int t
 end
 
 module ColumnAttr = struct
   (* Column attribute number within table *)
+
   type t =
     | NotFromTable
     (* 0 - computed column or not from a specific table *)
     | Position of int
 
   (* 0 - computed column or not from a specific table *)
+
   (* 0 - computed column or not from a specific table *)
+
   (* 0 - computed column or not from a specific table *)
+
   (* 0 - computed column or not from a specific table *)
+
   (* 0 - computed column or not from a specific table *)
+
   (* 1..n - column position in table *)
+
   let of_int = function
     | 0 -> NotFromTable
     | n when n > 0 -> Position n
     | n -> Position n
 
   (* Defensive: treat negative as position *)
+
   let to_int = function
     | NotFromTable -> 0
     | Position n -> n
@@ -742,6 +719,7 @@ end
 
 module TypeSize = struct
   (* Type size in bytes *)
+
   type t =
     | VariableLength
     (* -1: varchar, text, bytea, etc. *)
@@ -750,11 +728,17 @@ module TypeSize = struct
     | Fixed of int
 
   (* -2: cstring *)
+
   (* -2: cstring *)
+
   (* -2: cstring *)
+
   (* -2: cstring *)
+
   (* -2: cstring *)
+
   (* >0: fixed number of bytes *)
+
   let of_int = function
     | -1 -> VariableLength
     | -2 -> NullTerminated
@@ -762,6 +746,7 @@ module TypeSize = struct
     | n -> Fixed n
 
   (* Defensive: treat other negatives as fixed *)
+
   let to_int = function
     | VariableLength -> (-1)
     | NullTerminated -> (-2)
@@ -775,17 +760,24 @@ end
 
 module TypeModifier = struct
   (* Type-specific modifier (e.g., varchar length, numeric precision) *)
+
   type t =
     | NoModifier
     (* -1: no type modifier *)
     | Modifier of int
 
   (* -1: no type modifier *)
+
   (* -1: no type modifier *)
+
   (* -1: no type modifier *)
+
   (* -1: no type modifier *)
+
   (* -1: no type modifier *)
+
   (* Type-specific encoded value *)
+
   let of_int = function
     | -1 -> NoModifier
     | n -> Modifier n
@@ -801,8 +793,9 @@ end
 
 module Format = struct
   (* Data format code *)
+
   type t =
-    | Text
+    Text
     | Binary
 
   let of_int = function
@@ -811,6 +804,7 @@ module Format = struct
     | _ -> Text
 
   (* Default to text for unknown values *)
+
   let to_int = function
     | Text -> 0
     | Binary -> 1
@@ -834,7 +828,7 @@ module Row = struct
   type description = field list
 
   type value =
-    | Null
+    Null
     | Value of string
 
   type data = value list
@@ -844,6 +838,9 @@ type backend_message =
   | AuthenticationOk
   | AuthenticationCleartextPassword
   | AuthenticationMD5Password of bytes
+  | AuthenticationSASL of string list
+  | AuthenticationSASLContinue of string
+  | AuthenticationSASLFinal of string
   | BackendKeyData of { process_id: int; secret_key: int }
   | ParameterStatus of { name: string; value: string }
   | ReadyForQuery of char
@@ -897,6 +894,32 @@ module Writer = struct
     Buffer.add_string result (String.sub content ~offset:4 ~len:(len - 4));
     Buffer.contents result
 
+  let password_message = fun password ->
+    let buf = Buffer.create ~size:(String.length password + 6) in
+    Buffer.add_char buf 'p';
+    write_int32 buf (String.length password + 5);
+    write_string buf password;
+    Buffer.contents buf
+
+  let sasl_initial_response = fun ~mechanism ~response ->
+    let buf = Buffer.create ~size:(String.length mechanism + String.length response + 16) in
+    Buffer.add_char buf 'p';
+    let content = Buffer.create ~size:(String.length mechanism + String.length response + 8) in
+    write_string content mechanism;
+    write_int32 content (String.length response);
+    Buffer.add_string content response;
+    let content = Buffer.contents content in
+    write_int32 buf (String.length content + 4);
+    Buffer.add_string buf content;
+    Buffer.contents buf
+
+  let sasl_response = fun response ->
+    let buf = Buffer.create ~size:(String.length response + 5) in
+    Buffer.add_char buf 'p';
+    write_int32 buf (String.length response + 4);
+    Buffer.add_string buf response;
+    Buffer.contents buf
+
   let query_message = fun sql ->
     let buf = Buffer.create ~size:(String.length sql + 8) in
     Buffer.add_char buf 'Q';
@@ -909,9 +932,7 @@ module Writer = struct
     write_string buf statement_name;
     write_string buf query;
     write_int16 buf (List.length param_types);
-    List.for_each param_types ~fn:(
-      fun oid -> write_int32 buf oid
-    );
+    List.for_each param_types ~fn:(fun oid -> write_int32 buf oid);
     let content = Buffer.contents buf in
     let length = String.length content + 4 in
     let result = Buffer.create ~size:(length + 1) in
@@ -926,11 +947,10 @@ module Writer = struct
     write_string buf statement_name;
     write_int16 buf 0;
     write_int16 buf (List.length params);
-    List.for_each params ~fn:(
-      fun param ->
+    List.for_each params
+      ~fn:(fun param ->
         write_int32 buf (String.length param);
-        Buffer.add_string buf param
-    );
+        Buffer.add_string buf param);
     write_int16 buf 0;
     let content = Buffer.contents buf in
     let length = String.length content + 4 in
@@ -978,41 +998,88 @@ module Writer = struct
 end
 
 module Reader = struct
+  let read_cstrings = fun reader ->
+    let rec loop acc =
+      match Binary_reader.read_string reader with
+      | None -> List.rev acc
+      | Some "" -> List.rev acc
+      | Some value -> loop (value :: acc)
+    in
+    loop []
+
+  let read_remaining_string = fun reader ->
+    let remaining = Binary_reader.remaining reader in
+    match Binary_reader.read_bytes reader remaining with
+    | Some bytes -> Bytes.to_string bytes
+    | None -> ""
+
   let parse_backend_message = fun msg_type _length bytes ->
     let reader = Binary_reader.create bytes in
     let msg_char = Char.chr msg_type in
     match msg_char with
     | 'R' -> (
-      let auth_type = Binary_reader.read_int32 reader |> Option.expect ~msg:"Protocol error: expected auth_type in Authentication message" in
-      match auth_type with
-      | 0 -> AuthenticationOk
-      | 3 -> AuthenticationCleartextPassword
-      | 5 ->
-          let salt = Binary_reader.read_bytes reader 4 |> Option.expect ~msg:"Protocol error: expected salt in \
-                      AuthenticationMD5Password" in AuthenticationMD5Password salt
-      | n -> panic ("Unknown authentication type: " ^ string_of_int n)
-    )
+        let auth_type = Binary_reader.read_int32 reader |> Option.expect ~msg:"Protocol error: expected auth_type in Authentication message" in
+        match auth_type with
+        | 0 ->
+            AuthenticationOk
+        | 3 ->
+            AuthenticationCleartextPassword
+        | 5 ->
+            let salt =
+              Binary_reader.read_bytes reader 4
+              |> Option.expect
+                ~msg:"Protocol error: expected salt in \
+                      AuthenticationMD5Password"
+            in
+            AuthenticationMD5Password salt
+        | 10 ->
+            AuthenticationSASL (read_cstrings reader)
+        | 11 ->
+            AuthenticationSASLContinue (read_remaining_string reader)
+        | 12 ->
+            AuthenticationSASLFinal (read_remaining_string reader)
+        | n ->
+            panic ("Unknown authentication type: " ^ string_of_int n)
+      )
     | 'K' ->
         let process_id = Binary_reader.read_int32 reader |> Option.expect ~msg:"Protocol error: expected process_id in BackendKeyData" in
-        let secret_key = Binary_reader.read_int32 reader |> Option.expect ~msg:"Protocol error: expected secret_key in BackendKeyData" in BackendKeyData { process_id; secret_key }
+        let secret_key = Binary_reader.read_int32 reader |> Option.expect ~msg:"Protocol error: expected secret_key in BackendKeyData" in
+        BackendKeyData { process_id; secret_key }
     | 'S' ->
         let name = Binary_reader.read_string reader |> Option.expect ~msg:"Protocol error: expected name in ParameterStatus" in
-        let value = Binary_reader.read_string reader |> Option.expect ~msg:"Protocol error: expected value in ParameterStatus" in ParameterStatus { name; value }
+        let value = Binary_reader.read_string reader |> Option.expect ~msg:"Protocol error: expected value in ParameterStatus" in
+        ParameterStatus { name; value }
     | 'Z' ->
-        let status = Binary_reader.read_byte reader |> Option.expect ~msg:"Protocol error: expected status in ReadyForQuery" in ReadyForQuery (Char.chr status)
+        let status = Binary_reader.read_byte reader |> Option.expect ~msg:"Protocol error: expected status in ReadyForQuery" in
+        ReadyForQuery (Char.chr status)
     | 'T' ->
         let field_count = Binary_reader.read_int16 reader |> Option.expect ~msg:"Protocol error: expected field_count in RowDescription" in
         let rec read_fields n acc =
           if n = 0 then
             List.rev acc
           else
-            let name = Binary_reader.read_string reader |> Option.expect ~msg:("Protocol error: expected field name (field " ^ string_of_int (field_count - n + 1)) in
-            let table_oid = Binary_reader.read_int32 reader |> Option.expect ~msg:("Protocol error: expected table_oid (field " ^ name ^ ")") |> Oid.of_int in
-            let column_attr = Binary_reader.read_int16 reader |> Option.expect ~msg:("Protocol error: expected column_attr (field " ^ name ^ ")") |> ColumnAttr.of_int in
-            let type_oid = Binary_reader.read_int32 reader |> Option.expect ~msg:("Protocol error: expected type_oid (field " ^ name ^ ")") |> TypeOid.of_int in
-            let type_size = Binary_reader.read_int16 reader |> Option.expect ~msg:("Protocol error: expected type_size (field " ^ name ^ ")") |> TypeSize.of_int in
-            let type_modifier = Binary_reader.read_int32 reader |> Option.expect ~msg:("Protocol error: expected type_modifier (field " ^ name ^ ")") |> TypeModifier.of_int in
-            let format = Binary_reader.read_int16 reader |> Option.expect ~msg:("Protocol error: expected format (field " ^ name ^ ")") |> Format.of_int in
+            let name = Binary_reader.read_string reader
+            |> Option.expect
+              ~msg:("Protocol error: expected field name (field "
+              ^ string_of_int (field_count - n + 1)) in
+            let table_oid = Binary_reader.read_int32 reader
+            |> Option.expect ~msg:("Protocol error: expected table_oid (field " ^ name ^ ")")
+            |> Oid.of_int in
+            let column_attr = Binary_reader.read_int16 reader
+            |> Option.expect ~msg:("Protocol error: expected column_attr (field " ^ name ^ ")")
+            |> ColumnAttr.of_int in
+            let type_oid = Binary_reader.read_int32 reader
+            |> Option.expect ~msg:("Protocol error: expected type_oid (field " ^ name ^ ")")
+            |> TypeOid.of_int in
+            let type_size = Binary_reader.read_int16 reader
+            |> Option.expect ~msg:("Protocol error: expected type_size (field " ^ name ^ ")")
+            |> TypeSize.of_int in
+            let type_modifier = Binary_reader.read_int32 reader
+            |> Option.expect ~msg:("Protocol error: expected type_modifier (field " ^ name ^ ")")
+            |> TypeModifier.of_int in
+            let format = Binary_reader.read_int16 reader
+            |> Option.expect ~msg:("Protocol error: expected format (field " ^ name ^ ")")
+            |> Format.of_int in
             let field: Row.field = {
               Row.name;
               table_oid;
@@ -1020,7 +1087,7 @@ module Reader = struct
               type_size;
               type_oid;
               type_modifier;
-              format
+              format;
             }
             in
             read_fields (n - 1) (field :: acc)
@@ -1032,52 +1099,67 @@ module Reader = struct
           if n = 0 then
             List.rev acc
           else
-            let col_len = Binary_reader.read_int32 reader |> Option.expect ~msg:("Protocol error: expected column_length (col " ^ string_of_int (col_count - n + 1) ^ ")") in
+            let col_len = Binary_reader.read_int32 reader
+            |> Option.expect
+              ~msg:("Protocol error: expected column_length (col "
+              ^ string_of_int (col_count - n + 1)
+              ^ ")") in
             if col_len = (-1) then
               read_columns (n - 1) (Row.Null :: acc)
             else
-              let value = Binary_reader.read_cstring reader col_len |> Option.expect ~msg:("Protocol error: expected column_value (col " ^ string_of_int (col_count - n + 1) ^ ", len=" ^ string_of_int col_len ^ "). Buffer underrun - possible network issue.") in read_columns (n - 1) (Row.Value value :: acc)
+              let value = Binary_reader.read_cstring reader col_len
+              |> Option.expect
+                ~msg:("Protocol error: expected column_value (col "
+                ^ string_of_int (col_count - n + 1)
+                ^ ", len="
+                ^ string_of_int col_len
+                ^ "). Buffer underrun - possible network issue.") in
+              read_columns (n - 1) (Row.Value value :: acc)
         in
         DataRow (read_columns col_count [])
     | 'C' ->
-        let tag = Binary_reader.read_string reader |> Option.expect ~msg:"Protocol error: expected tag in CommandComplete" in CommandComplete tag
-    | 'E' | 'N' ->
+        let tag = Binary_reader.read_string reader |> Option.expect ~msg:"Protocol error: expected tag in CommandComplete" in
+        CommandComplete tag
+    | 'E'
+    | 'N' ->
         (* Build error record by reading all fields *)
         let rec read_fields err =
           if Binary_reader.is_eof reader then
             err
           else
             match Binary_reader.read_byte reader with
-            | None -> err
-            | Some 0 -> err
+            | None ->
+                err
+            | Some 0 ->
+                err
             | Some field_code -> (
-              let field_char = Char.chr field_code in
-              match Binary_reader.read_string reader with
-              | None -> err
-              | Some value ->
-                  let err =
-                    match field_char with
-                    | 'S' -> { err with Error.severity = Some value }
-                    | 'C' -> { err with Error.sqlstate = Some (Sqlstate.of_string value) }
-                    | 'M' -> { err with Error.message = value }
-                    | 'D' -> { err with Error.detail = Some value }
-                    | 'H' -> { err with Error.hint = Some value }
-                    | 'P' -> { err with Error.position = Int.parse value }
-                    | 'p' -> { err with Error.internal_position = Int.parse value }
-                    | 'q' -> { err with Error.internal_query = Some value }
-                    | 'W' -> { err with Error.where_context = Some value }
-                    | 's' -> { err with Error.schema_name = Some value }
-                    | 't' -> { err with Error.table_name = Some value }
-                    | 'c' -> { err with Error.column_name = Some value }
-                    | 'd' -> { err with Error.datatype_name = Some value }
-                    | 'n' -> { err with Error.constraint_name = Some value }
-                    | 'F' -> { err with Error.source_file = Some value }
-                    | 'L' -> { err with Error.source_line = Int.parse value }
-                    | 'R' -> { err with Error.source_routine = Some value }
-                    | _ -> err
-                  in
-                  read_fields err
-            )
+                let field_char = Char.chr field_code in
+                match Binary_reader.read_string reader with
+                | None -> err
+                | Some value ->
+                    let err =
+                      match field_char with
+                      | 'S' -> { err with Error.severity = Some value }
+                      | 'C' -> { err with Error.sqlstate = Some (Sqlstate.of_string value) }
+                      | 'M' -> { err with Error.message = value }
+                      | 'D' -> { err with Error.detail = Some value }
+                      | 'H' -> { err with Error.hint = Some value }
+                      | 'P' -> { err with Error.position = Int.parse value }
+                      | 'p' -> { err with Error.internal_position = Int.parse value }
+                      | 'q' -> { err with Error.internal_query = Some value }
+                      | 'W' -> { err with Error.where_context = Some value }
+                      | 's' -> { err with Error.schema_name = Some value }
+                      | 't' -> { err with Error.table_name = Some value }
+                      | 'c' -> { err with Error.column_name = Some value }
+                      | 'd' -> { err with Error.datatype_name = Some value }
+                      | 'n' -> { err with Error.constraint_name = Some value }
+                      | 'F' -> { err with Error.source_file = Some value }
+                      | 'L' -> { err with Error.source_line = Int.parse value }
+                      | 'R' -> { err with Error.source_routine = Some value }
+                      | _ -> err
+                    in
+                    read_fields err
+              )
         in
         let empty_error: Error.t = {
           Error.severity = None;
@@ -1096,25 +1178,34 @@ module Reader = struct
           constraint_name = None;
           source_file = None;
           source_line = None;
-          source_routine = None
+          source_routine = None;
         }
         in
         let error = read_fields empty_error in
         if msg_char = 'E' then
           ErrorResponse error
-        else NoticeResponse error
-    | '1' -> ParseComplete
-    | '2' -> BindComplete
-    | '3' -> CloseComplete
-    | 'n' -> NoData
-    | 'I' -> EmptyQueryResponse
+        else
+          NoticeResponse error
+    | '1' ->
+        ParseComplete
+    | '2' ->
+        BindComplete
+    | '3' ->
+        CloseComplete
+    | 'n' ->
+        NoData
+    | 'I' ->
+        EmptyQueryResponse
     | 't' ->
         let param_count = Binary_reader.read_int16 reader |> Option.expect ~msg:"Protocol error: expected param_count in ParameterDescription" in
         let rec read_oids n acc =
           if n = 0 then
             List.rev acc
           else
-            let oid = Binary_reader.read_int32 reader |> Option.expect ~msg:"Protocol error: expected OID in ParameterDescription" |> TypeOid.of_int in read_oids (n - 1) (oid :: acc)
+            let oid = Binary_reader.read_int32 reader
+            |> Option.expect ~msg:"Protocol error: expected OID in ParameterDescription"
+            |> TypeOid.of_int in
+            read_oids (n - 1) (oid :: acc)
         in
         ParameterDescription (read_oids param_count [])
     | c ->
@@ -1124,7 +1215,8 @@ module Reader = struct
           let to_hex_char n =
             if n < 10 then
               Char.chr (48 + n)
-            else Char.chr (87 + n)
+            else
+              Char.chr (87 + n)
           in
           String.make ~len:1 ~char:(to_hex_char h) ^ String.make ~len:1 ~char:(to_hex_char l)
         in

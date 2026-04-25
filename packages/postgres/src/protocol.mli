@@ -11,8 +11,7 @@ type message_type =
   | Describe
   | Close
   | Sync
-
-module Sqlstate : sig
+module Sqlstate: sig
   type t =
     (* Class 00 — Successful Completion *)
     | SuccessfulCompletion
@@ -127,13 +126,12 @@ module Sqlstate : sig
     | IndexCorrupted
     (* Other/Unknown *)
     | UnknownSqlstate of string
-
   val of_string: string -> t
 
   val to_string: t -> string
 end
 
-module Error : sig
+module Error: sig
   type t = {
     severity: string option;
     sqlstate: Sqlstate.t option;
@@ -153,7 +151,6 @@ module Error : sig
     source_line: int option;
     source_routine: string option;
   }
-
   val severity: t -> string option
 
   val sqlstate: t -> Sqlstate.t option
@@ -195,7 +192,7 @@ module Error : sig
   val from_json: Data.Json.t -> t
 end
 
-module TypeOid : sig
+module TypeOid: sig
   type t =
     | Bool
     | Bytea
@@ -218,7 +215,6 @@ module TypeOid : sig
     | Uuid
     | Jsonb
     | Unknown of int
-
   val of_int: int -> t
 
   val to_int: t -> int
@@ -226,9 +222,8 @@ module TypeOid : sig
   val to_string: t -> string
 end
 
-module Oid : sig
+module Oid: sig
   type t = int
-
   val of_int: int -> t
 
   val to_int: t -> int
@@ -238,11 +233,10 @@ module Oid : sig
   val to_string: t -> string
 end
 
-module ColumnAttr : sig
+module ColumnAttr: sig
   type t =
     | NotFromTable
     | Position of int
-
   val of_int: int -> t
 
   val to_int: t -> int
@@ -250,12 +244,11 @@ module ColumnAttr : sig
   val to_string: t -> string
 end
 
-module TypeSize : sig
+module TypeSize: sig
   type t =
     | VariableLength
     | NullTerminated
     | Fixed of int
-
   val of_int: int -> t
 
   val to_int: t -> int
@@ -263,11 +256,10 @@ module TypeSize : sig
   val to_string: t -> string
 end
 
-module TypeModifier : sig
+module TypeModifier: sig
   type t =
     | NoModifier
     | Modifier of int
-
   val of_int: int -> t
 
   val to_int: t -> int
@@ -275,11 +267,10 @@ module TypeModifier : sig
   val to_string: t -> string
 end
 
-module Format : sig
+module Format: sig
   type t =
-    | Text
+    Text
     | Binary
-
   val of_int: int -> t
 
   val to_int: t -> int
@@ -287,7 +278,7 @@ module Format : sig
   val to_string: t -> string
 end
 
-module Row : sig
+module Row: sig
   type field = {
     name: string;
     table_oid: Oid.t;
@@ -297,13 +288,10 @@ module Row : sig
     type_modifier: TypeModifier.t;
     format: Format.t;
   }
-
   type description = field list
-
   type value =
-    | Null
+    Null
     | Value of string
-
   type data = value list
 end
 
@@ -311,6 +299,9 @@ type backend_message =
   | AuthenticationOk
   | AuthenticationCleartextPassword
   | AuthenticationMD5Password of bytes
+  | AuthenticationSASL of string list
+  | AuthenticationSASLContinue of string
+  | AuthenticationSASLFinal of string
   | BackendKeyData of { process_id: int; secret_key: int }
   | ParameterStatus of { name: string; value: string }
   | ReadyForQuery of char
@@ -325,9 +316,14 @@ type backend_message =
   | NoData
   | ParameterDescription of TypeOid.t list
   | EmptyQueryResponse
-
-module Writer : sig
+module Writer: sig
   val startup_message: user:string -> database:string -> application_name:string option -> string
+
+  val password_message: string -> string
+
+  val sasl_initial_response: mechanism:string -> response:string -> string
+
+  val sasl_response: string -> string
 
   val query_message: string -> string
 
@@ -346,6 +342,6 @@ module Writer : sig
   val terminate_message: unit -> string
 end
 
-module Reader : sig
+module Reader: sig
   val parse_backend_message: int -> int -> bytes -> backend_message
 end
