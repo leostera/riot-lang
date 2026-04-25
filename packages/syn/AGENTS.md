@@ -87,6 +87,7 @@
 77. In the shared root worktree, fixture-backed `syn` suites may skip fixture source files that already have local edits so snapshot churn stays scoped to the agent editing those inputs. Clean trees should still exercise the full approved fixture corpus.
 78. Keep `Syn.Deps` differential against the vendored `ocamldep` algorithm. When extending deps coverage, add oracles under `packages/syn/tests/deps_fixtures/` and regenerate adjacent `*.expected.ocamldep` files from the real tool before approving the JSON snapshots.
 79. Keep docstring trivia delimiter structure explicit on `Ast2.Token`. The lexer-owned docstring content should remain delimiter-free, while Ast2 consumers can still access lossless raw text plus separated opening/content/closing fields instead of rescanning comment text.
+80. Keep formatter-facing Ast2 whitespace trivia collapsed. The lossless backing tree may retain exact raw whitespace for spans and diagnostics, but `Ast2.Token` trivia views should expose whitespace as a structural marker, not a byte-for-byte source-preservation string.
 
 ## Validate
 

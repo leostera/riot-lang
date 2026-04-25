@@ -489,7 +489,7 @@ module Token = struct
   }
 
   type leading_trivia =
-    | Whitespace of { text: string }
+    | Whitespace
     | Comment of delimited_trivia
     | Docstring of delimited_trivia
 
@@ -549,15 +549,18 @@ module Token = struct
       ~raw_lo:syntax_token.Syntax_tree.raw_lo
       ~raw_hi:syntax_token.Syntax_tree.body_raw
 
+  let leading_trivia_text = fun (token: token) raw ->
+    match raw.Raw_token.legacy_kind with
+    | Lex_token.Whitespace -> " "
+    | _ -> Raw_token.text_slice ~source:token.tree.Syntax_tree.source raw
+
   let for_each_leading_trivia = fun (token: token) ~fn ->
     let syntax_token = syntax_token token in
     let rec loop raw_index =
       if Int.(raw_index < syntax_token.Syntax_tree.body_raw) then
         (
           let raw = Vector.get_unchecked token.tree.Syntax_tree.raw_tokens ~at:raw_index in
-          fn
-            ~kind:raw.Raw_token.kind
-            ~text:(Raw_token.text_slice ~source:token.tree.Syntax_tree.source raw);
+          fn ~kind:raw.Raw_token.kind ~text:(leading_trivia_text token raw);
           loop Int.(raw_index + 1)
         )
     in
@@ -570,24 +573,22 @@ module Token = struct
       None
 
   let leading_trivia_item_of_raw = fun (token: token) raw ->
-    let text = Raw_token.text_slice ~source:token.tree.Syntax_tree.source raw in
     match raw.Raw_token.legacy_kind with
-    | Lex_token.Whitespace -> Whitespace { text }
+    | Lex_token.Whitespace ->
+        Whitespace
     | Lex_token.Comment { value; terminated } ->
-        Comment {
-          text;
-          opening = "(*";
-          content = value;
-          closing = closing_if_terminated terminated;
-        }
+        let text = Raw_token.text_slice ~source:token.tree.Syntax_tree.source raw in
+        Comment { text; opening = "(*"; content = value; closing = closing_if_terminated terminated }
     | Lex_token.Docstring { value; terminated } ->
+        let text = Raw_token.text_slice ~source:token.tree.Syntax_tree.source raw in
         Docstring {
           text;
           opening = "(**";
           content = value;
-          closing = closing_if_terminated terminated;
+          closing = closing_if_terminated terminated
         }
-    | _ -> panic "Ast2.Token.leading_trivia_item_of_raw received non-trivia raw token"
+    | _ ->
+        panic "Ast2.Token.leading_trivia_item_of_raw received non-trivia raw token"
 
   let for_each_leading_trivia_item = fun (token: token) ~fn ->
     let syntax_token = syntax_token token in
@@ -614,6 +615,9 @@ module Token = struct
           loop Int.(raw_index + 1)
     in
     loop syntax_token.Syntax_tree.raw_lo
+
+  let has_leading_whitespace = fun token ->
+    has_leading_raw token ~matches:(fun kind -> Syntax_kind2.(kind = WHITESPACE))
 
   let has_leading_comment = fun token ->
     has_leading_raw token ~matches:(fun kind -> Syntax_kind2.(kind = COMMENT || kind = DOCSTRING))

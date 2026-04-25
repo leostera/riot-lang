@@ -244,6 +244,25 @@ end
   val to_rgb: int -> rgb
 end
 |ocaml});
+  Test.case "write collapses blank lines before leading comments"
+    (fun ctx ->
+      let source = {ocaml|let test=fun _ctx ->
+
+
+
+
+  (* keep *)
+  let value=1 in value
+|ocaml}
+      in
+      let parsed = parse_ml source in
+      let actual = capture_write parsed in
+      Test.assert_false (has_trailing_horizontal_whitespace actual);
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|let test = fun _ctx ->
+  (* keep *)
+  let value = 1 in value
+|ocaml});
   Test.case "format keeps signature docstring spacing idempotent"
     (fun ctx ->
       let source = {ocaml|open Std

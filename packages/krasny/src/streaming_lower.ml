@@ -142,6 +142,19 @@ let write_slice_segment = fun state value ~off ~len ->
       state.line_start <- false
     )
 
+let is_horizontal_whitespace = fun char -> Char.equal char ' ' || Char.equal char '\t'
+
+let trim_whitespace_only_segment = fun value ~start ~stop ->
+  let rec loop index =
+    if Int.(index >= stop) then
+      start
+    else if is_horizontal_whitespace (String.get_unchecked value ~at:index) then
+      loop (Int.add index 1)
+    else
+      stop
+  in
+  loop start
+
 let emit_line = fun state ->
   state.pending_spaces <- 0;
   IO.Buffer.add_char state.buffer '\n';
@@ -164,7 +177,8 @@ let emit_text = fun state value ->
         )
       else if Char.equal (String.get_unchecked value ~at:index) '\n' then
         (
-          write_string_segment state value ~off:segment_start ~len:Int.(index - segment_start);
+          let segment_end = trim_whitespace_only_segment value ~start:segment_start ~stop:index in
+          write_string_segment state value ~off:segment_start ~len:Int.(segment_end - segment_start);
           state.pending_spaces <- 0;
           IO.Buffer.add_char state.buffer '\n';
           flush_if_needed state;
@@ -176,8 +190,6 @@ let emit_text = fun state value ->
         loop segment_start Int.(index + 1) saw_newline
     in
     loop 0 0 false
-
-let is_horizontal_whitespace = fun char -> Char.equal char ' ' || Char.equal char '\t'
 
 let count_newlines = fun text ->
   let length = String.length text in
@@ -264,80 +276,6 @@ let normalize_docstring = fun (docstring: Ast.Token.delimited_trivia) ->
   else
     normalize_inline_docstring docstring
 
-let raw_breaks_before_text = fun value ->
-  let length = String.length value in
-  let rec loop index =
-    if Int.(index >= length) then
-      false
-    else
-      let char = String.get_unchecked value ~at:index in
-      if Char.equal char '\n' then
-        true
-      else if is_horizontal_whitespace char then
-        loop (Int.add index 1)
-      else
-        false
-  in
-  loop 0
-
-let trim_whitespace_only_segment = fun value ~start ~stop ->
-  let rec loop index =
-    if Int.(index >= stop) then
-      start
-    else if is_horizontal_whitespace (String.get_unchecked value ~at:index) then
-      loop (Int.add index 1)
-    else
-      stop
-  in
-  loop start
-
-let emit_raw_text = fun state value ->
-  let length = String.length value in
-  if Int.(length > 0) then
-    (
-      let starts_with_break = raw_breaks_before_text value in
-      if state.line_start then
-        (
-          state.pending_spaces <- 0;
-          if not starts_with_break then
-            write_indent state
-        )
-      else if starts_with_break then
-        state.pending_spaces <- 0
-      else
-        write_pending_spaces state;
-      let rec loop segment_start index saw_newline =
-        if Int.(index >= length) then
-          (
-            let segment_length = Int.sub length segment_start in
-            if Int.(segment_length > 0) then
-              IO.Buffer.add_substring state.buffer value segment_start segment_length;
-            saw_newline
-          )
-        else if Char.equal (String.get_unchecked value ~at:index) '\n' then
-          (
-            let segment_end = trim_whitespace_only_segment value ~start:segment_start ~stop:index in
-            let segment_length = Int.sub segment_end segment_start in
-            if Int.(segment_length > 0) then
-              IO.Buffer.add_substring state.buffer value segment_start segment_length;
-            state.pending_spaces <- 0;
-            IO.Buffer.add_char state.buffer '\n';
-            flush_if_needed state;
-            loop Int.(index + 1) Int.(index + 1) true
-          )
-        else
-          loop segment_start Int.(index + 1) saw_newline
-      in
-      let saw_newline = loop 0 0 false in
-      flush_if_needed state;
-      state.wrote <- true;
-      state.line_start <- Char.equal (String.get_unchecked value ~at:Int.(length - 1)) '\n';
-      state.column <- if saw_newline then
-        last_line_width value
-      else
-        state.column + length
-    )
-
 let emit_slice = fun state ~has_newline value ->
   let length = Slice.length value in
   if Int.(length > 0) then
@@ -391,14 +329,39 @@ let with_delimited_expr = fun state fn ->
   fn ();
   state.delimited_expr_depth <- previous
 
+let emit_token_leading_comments_as_lines = fun state token ->
+  let emitted = ref false in
+  Ast.Token.for_each_leading_trivia_item token
+    ~fn:(
+      function
+      | Ast.Token.Comment comment ->
+          if !emitted then
+            emit_line state;
+          emit_text state comment.text;
+          emitted := true
+      | Ast.Token.Docstring docstring ->
+          if !emitted then
+            emit_line state;
+          emit_text state (normalize_docstring docstring);
+          emitted := true
+      | Ast.Token.Whitespace ->
+          ()
+    );
+  if !emitted then
+    (
+      emit_line state;
+      state.suppress_leading_token <- Some token.Ast.id
+    )
+
 let emit_leading_trivia_before_token = fun state token ->
   match state.suppress_leading_token with
   | Some id when Int.equal id token.Ast.id -> state.suppress_leading_token <- None
   | _ ->
       if Ast.Token.has_leading_comment token then
-        let leading = Ast.Token.leading_text token in
-        if not (String.is_empty (String.trim leading)) then
-          emit_raw_text state leading
+        (
+          emit_token_leading_comments_as_lines state token;
+          state.suppress_leading_token <- None
+        )
 
 let emit_node_leading_trivia = fun state node ->
   match Ast.Node.first_descendant_token node with
@@ -407,12 +370,7 @@ let emit_node_leading_trivia = fun state node ->
       | Some id when Int.equal id token.Ast.id -> ()
       | _ ->
           if Ast.Token.has_leading_comment token then
-            let leading = Ast.Token.leading_text token in
-            if not (String.is_empty (String.trim leading)) then
-              (
-                emit_raw_text state leading;
-                state.suppress_leading_token <- Some token.Ast.id
-              )
+            emit_token_leading_comments_as_lines state token
     )
   | None -> ()
 
@@ -431,29 +389,6 @@ let emit_node_keyword = fun state node ~kind ~fallback ->
   match Ast.Node.first_child_token node ~kind with
   | Some token -> emit_token state token
   | None -> emit_keyword state fallback
-
-let emit_token_leading_comments_as_lines = fun state token ->
-  let emitted = ref false in
-  Ast.Token.for_each_leading_trivia_item token
-    ~fn:(
-      function
-      | Ast.Token.Comment comment ->
-          if !emitted then
-            emit_line state;
-          emit_text state comment.text;
-          emitted := true
-      | Ast.Token.Docstring docstring ->
-          if !emitted then
-            emit_line state;
-          emit_text state (normalize_docstring docstring);
-          emitted := true
-      | Ast.Token.Whitespace _ -> ()
-    );
-  if !emitted then
-    (
-      emit_line state;
-      state.suppress_leading_token <- Some token.Ast.id
-    )
 
 let emit_top_level_leading = fun state node ->
   match Ast.Node.first_descendant_token node with
@@ -1592,7 +1527,7 @@ let parameter_colon_has_leading_space = fun parameter ->
           if Kind.(Ast.Token.kind token = COLON) then
             found := Some token);
   match !found with
-  | Some colon -> not (String.is_empty (Ast.Token.leading_text colon))
+  | Some colon -> Ast.Token.has_leading_whitespace colon
   | None -> false
 
 let rec render_pattern = fun state pattern ->
@@ -5082,10 +5017,9 @@ let render_source_file = fun state source_file ->
 
 let emit_source_file_trailing = fun state source_file ->
   match Ast.Node.first_child_token source_file ~kind:Kind.EOF with
-  | Some token when Ast.Token.has_leading_comment token ->
-      let leading = Ast.Token.leading_text token in
-      if not (String.is_empty (String.trim leading)) then
-        emit_raw_text state leading
+  | Some token when Ast.Token.has_leading_comment token -> emit_token_leading_comments_as_lines
+    state
+    token
   | Some _
   | None -> ()
 

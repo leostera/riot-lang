@@ -105,17 +105,23 @@ let test_source_file_and_let_binding_views = fun _ctx ->
   )
 
 let test_token_leading_docstring_trivia_parts = fun _ctx ->
-  let root = parse_mli {ocaml|(** hello *)
+  let root =
+    parse_mli
+      {ocaml|(** hello *)
 val x:int
-|ocaml} |> Result.expect ~msg:"expected parse2 source file" in
+|ocaml}
+    |> Result.expect ~msg:"expected parse2 source file"
+  in
   let item = nth_signature_item root 0 |> require_some ~msg:"expected value item" in
   let token = Ast2.Node.first_descendant_token item |> require_some ~msg:"expected value token" in
   let docstring = ref None in
-  Ast2.Token.for_each_leading_trivia_item token ~fn:(
-    function
-    | Ast2.Token.Docstring doc -> docstring := Some doc
-    | Ast2.Token.Comment _ | Ast2.Token.Whitespace _ -> ()
-  );
+  Ast2.Token.for_each_leading_trivia_item token
+    ~fn:(
+      function
+      | Ast2.Token.Docstring doc -> docstring := Some doc
+      | Ast2.Token.Comment _
+      | Ast2.Token.Whitespace -> ()
+    );
   match !docstring with
   | Some doc ->
       Test.assert_equal ~expected:"(** hello *)" ~actual:doc.text;
@@ -1982,7 +1988,7 @@ let test_if_then_branch_sequence_boundaries = fun _ctx ->
   |> body_of_binding
   |> Result.expect ~msg:"expected without_else body" in
   match Ast2.Expr.view without_else_body with
-  | Ast2.Expr.Sequence { left=Some left; right=Some _;  } -> (
+  | Ast2.Expr.Sequence { left=Some left; right=Some _ } -> (
       match Ast2.Expr.view left with
       | Ast2.Expr.If { else_branch=None; _ } -> Ok ()
       | _ -> Error "expected outer sequence to keep no-else if on the left"
