@@ -2,16 +2,16 @@ open Std
 
 (** Syntax target an edit should act on. *)
 type target =
-  | Node of Syn.Cst.syntax_node
-  | Token of Syn.Cst.syntax_token
+  | Node of Syn.Ast.Node.t
+  | Token of Syn.Ast.Token.t
 (** Replacement content for an edit.
 
     Use [SourceOfNode] or [SourceOfToken] when you want to preserve the exact
     original source slice. Use [Text] for literal replacement text.
 *)
 type replacement =
-  | SourceOfNode of Syn.Cst.syntax_node
-  | SourceOfToken of Syn.Cst.syntax_token
+  | SourceOfNode of Syn.Ast.Node.t
+  | SourceOfToken of Syn.Ast.Token.t
   | Text of string
 (** One syntax-directed edit operation. *)
 type operation =
@@ -34,10 +34,10 @@ type text_edit = {
 }
 
 (** Reuse the exact source slice covered by a syntax node. *)
-val source_of_node: Syn.Cst.syntax_node -> replacement
+val source_of_node: Syn.Ast.Node.t -> replacement
 
 (** Reuse the exact source slice covered by a syntax token. *)
-val source_of_token: Syn.Cst.syntax_token -> replacement
+val source_of_token: Syn.Ast.Token.t -> replacement
 
 (** Use literal text as replacement content. *)
 val text: string -> replacement
@@ -46,19 +46,19 @@ val text: string -> replacement
 val delete: target:target -> operation
 
 (** Delete a syntax node. *)
-val delete_node: Syn.Cst.syntax_node -> operation
+val delete_node: Syn.Ast.Node.t -> operation
 
 (** Replace a target with the given replacement content. *)
 val replace: target:target -> replacement:replacement -> operation
 
 (** Replace one syntax node with the exact source of another node. *)
-val replace_node: target:Syn.Cst.syntax_node -> replacement:Syn.Cst.syntax_node -> operation
+val replace_node: target:Syn.Ast.Node.t -> replacement:Syn.Ast.Node.t -> operation
 
 (** Replace a syntax node with literal text. *)
-val replace_node_with_text: target:Syn.Cst.syntax_node -> text:string -> operation
+val replace_node_with_text: target:Syn.Ast.Node.t -> text:string -> operation
 
 (** Replace a syntax token with literal text. *)
-val replace_token_with_text: target:Syn.Cst.syntax_token -> text:string -> operation
+val replace_token_with_text: target:Syn.Ast.Token.t -> text:string -> operation
 
 (** Insert content immediately before the anchor. *)
 val insert_before: anchor:target -> content:replacement -> operation

@@ -3,7 +3,7 @@ open Std
 (** Progress phase emitted while running rules against one source file. *)
 type progress_phase =
   | Parsed of { parse_diagnostics: int }
-  | CstBuilt
+  | AstReady
   | RuleStarted of { rule_id: Rule_id.t }
   | RuleFinished of { rule_id: Rule_id.t; diagnostics: int }
 (** Timestamped progress event emitted by [run] or [run_rule]. *)
@@ -13,8 +13,8 @@ type progress_event = {
 }
 (** Result of running rules against one source file. *)
 type result = {
-  (** Green tree produced from the parsed source. *)
-  tree: Rule.green_tree;
+  (** Syntax tree produced from the parsed source. *)
+  tree: Rule.syntax_tree;
   (** Diagnostics produced by all executed rules. *)
   diagnostics: Diagnostic.t list;
   (** Parse diagnostics produced before rule execution. *)

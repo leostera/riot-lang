@@ -1,14 +1,20 @@
 open Std
 
-(** Traversal helpers for Syn CST.
+(** Traversal helpers for Syn Ast views.
 
-    Use this module inside rules when you want common CST queries without
-    rewriting the same red-tree traversal code each time.
+    Use this module inside rules when you want common Ast queries without
+    rewriting the same syntax-tree traversal code each time.
 *)
-type red_tree = (Syn.SyntaxKind.t, string) Syn.Ceibo.Red.syntax_node
-type red_node = (Syn.SyntaxKind.t, string) Syn.Ceibo.Red.syntax_node
-type red_token = (Syn.SyntaxKind.t, string) Syn.Ceibo.Red.syntax_token
-type red_element = (Syn.SyntaxKind.t, string) Syn.Ceibo.Red.syntax_element
+type syntax_tree = Syn.Ast.Node.t
+type syntax_node = Syn.Ast.Node.t
+type syntax_token = Syn.Ast.Token.t
+type syntax_element =
+  | Node of syntax_node
+  | Token of syntax_token
+type red_tree = syntax_tree
+type red_node = syntax_node
+type red_token = syntax_token
+type red_element = syntax_element
 (** {1 Finding Nodes} *)
 (** Return all nodes in [tree] that satisfy [predicate].
 
@@ -19,7 +25,7 @@ type red_element = (Syn.SyntaxKind.t, string) Syn.Ceibo.Red.syntax_element
     ```ocaml
     let open_nodes =
       Traversal.find_nodes
-        (fun node -> Syn.Ceibo.Red.SyntaxNode.kind node = OPEN_STMT)
+        (fun node -> Syn.Ast.Node.kind node = OPEN_DECLARATION)
         tree
     ```
 *)
@@ -27,7 +33,7 @@ val find_nodes: (red_node -> bool) -> red_tree -> red_node list
 
 (** Return all nodes of the given syntax kind.
 
-    Use this when a rule targets one specific CST node kind.
+    Use this when a rule targets one specific Ast node kind.
 *)
 val find_by_kind: Syn.SyntaxKind.t -> red_tree -> red_node list
 
@@ -83,16 +89,16 @@ val fold: 'acc visitor -> 'acc -> red_tree -> 'acc
 (** Return `true` if the syntax kind is trivia. *)
 val is_trivia: Syn.SyntaxKind.t -> bool
 
-(** {1 Typed CST Helpers} *)
+(** {1 Typed Ast Helpers} *)
 (** Return the expressions reachable from the structure item.
 
-    Use this when a rule operates over expressions but starts from typed CST
+    Use this when a rule operates over expressions but starts from typed Ast
     structure items.
 *)
-val expressions_of_structure_item: Syn.Cst.StructureItem.t -> Syn.Cst.Expression.t list
+val expressions_of_structure_item: Syn.Ast.StructureItem.t -> Syn.Ast.Expr.t list
 
 (** Return the already-lifted let bindings reachable from the structure item.
 
     The returned list preserves item-local order.
 *)
-val let_bindings_of_structure_item: Syn.Cst.StructureItem.t -> Syn.Cst.LetBinding.t list
+val let_bindings_of_structure_item: Syn.Ast.StructureItem.t -> Syn.Ast.LetBinding.t list

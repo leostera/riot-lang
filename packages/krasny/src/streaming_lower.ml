@@ -1,7 +1,7 @@
 open Std
 open Std.Collections
-module Ast = Syn.Ast2
-module Kind = Syn.SyntaxKind2
+module Ast = Syn.Ast
+module Kind = Syn.SyntaxKind
 module Slice = IO.IoVec.IoSlice
 
 type error = {
@@ -313,46 +313,48 @@ let normalize_multiline_docstring = fun (docstring: Ast.Token.delimited_trivia) 
   let line_count = Vector.length lines in
   if Int.(line_count <= 1) then
     normalize_inline_docstring docstring
-  else match first_nonblank_line_index lines, last_nonblank_line_index lines with
-  | None, _ | _, None -> docstring.opening ^ "\n" ^ docstring_closing docstring
-  | Some first_index, Some last_index ->
-    let first_is_inline = Int.equal first_index 0 in
-    let indent_start =
-      if first_is_inline then
-        Int.add first_index 1
-      else
-        first_index
-    in
-    let common_indent =
-      if Int.(indent_start > last_index) then
-        0
-      else
-        common_docstring_indent lines ~start:indent_start ~stop:last_index
-    in
-    let buffer = IO.Buffer.create ~size:(Int.add (String.length docstring.text) 8) in
-    let add_body_line index =
-      let raw_line = Vector.get_unchecked lines ~at:index in
-      let line =
-        if first_is_inline && Int.equal index first_index then
-          String.trim raw_line
-        else
-          strip_leading_width raw_line common_indent
-      in
-      if String.is_empty line then
-        IO.Buffer.add_char buffer '\n'
-      else (
-        IO.Buffer.add_string buffer "   ";
-        IO.Buffer.add_string buffer line;
-        IO.Buffer.add_char buffer '\n'
-      )
-    in
-    IO.Buffer.add_string buffer docstring.opening;
-    IO.Buffer.add_char buffer '\n';
-    for index = first_index to last_index do
-      add_body_line index
-    done;
-    IO.Buffer.add_string buffer (docstring_closing docstring);
-    IO.Buffer.contents buffer
+  else
+    match first_nonblank_line_index lines, last_nonblank_line_index lines with
+    | (None, _)
+    | (_, None) -> docstring.opening ^ "\n" ^ docstring_closing docstring
+    | Some first_index, Some last_index ->
+        let first_is_inline = Int.equal first_index 0 in
+        let indent_start =
+          if first_is_inline then
+            Int.add first_index 1
+          else
+            first_index
+        in
+        let common_indent =
+          if Int.(indent_start > last_index) then
+            0
+          else
+            common_docstring_indent lines ~start:indent_start ~stop:last_index
+        in
+        let buffer = IO.Buffer.create ~size:(Int.add (String.length docstring.text) 8) in
+        let add_body_line index =
+          let raw_line = Vector.get_unchecked lines ~at:index in
+          let line =
+            if first_is_inline && Int.equal index first_index then
+              String.trim raw_line
+            else
+              strip_leading_width raw_line common_indent
+          in
+          if String.is_empty line then
+            IO.Buffer.add_char buffer '\n'
+          else (
+            IO.Buffer.add_string buffer "   ";
+            IO.Buffer.add_string buffer line;
+            IO.Buffer.add_char buffer '\n'
+          )
+        in
+        IO.Buffer.add_string buffer docstring.opening;
+        IO.Buffer.add_char buffer '\n';
+        for index = first_index to last_index do
+          add_body_line index
+        done;
+        IO.Buffer.add_string buffer (docstring_closing docstring);
+        IO.Buffer.contents buffer
 
 let normalize_docstring = fun (docstring: Ast.Token.delimited_trivia) ->
   if String.contains docstring.content "\n" then
@@ -1806,21 +1808,20 @@ and loose_parameter_binding_annotation = fun parameter ->
   match Ast.Pattern.view parameter with
   | LabeledParam parameter -> (
       match Ast.Parameter.view parameter with
-      | Labeled { pattern=Some annotation; _ }
-        when (not (Ast.Parameter.has_explicit_pattern_parens parameter))
-             && parameter_colon_has_leading_space parameter ->
-          Some annotation
+      | Labeled { pattern=Some annotation; _ } when (not
+        (Ast.Parameter.has_explicit_pattern_parens parameter))
+      && parameter_colon_has_leading_space parameter -> Some annotation
       | _ -> None
     )
   | OptionalParam parameter -> (
       match Ast.Parameter.view parameter with
-      | Optional { pattern=Some annotation; _ }
-        when (not (Ast.Parameter.has_explicit_pattern_parens parameter))
-             && parameter_colon_has_leading_space parameter ->
-          Some annotation
+      | Optional { pattern=Some annotation; _ } when (not
+        (Ast.Parameter.has_explicit_pattern_parens parameter))
+      && parameter_colon_has_leading_space parameter -> Some annotation
       | _ -> None
     )
-  | _ -> None
+  | _ ->
+      None
 
 and render_parameter_label_only = fun state parameter ->
   match Ast.Pattern.view parameter with
@@ -1838,7 +1839,8 @@ and render_parameter_label_only = fun state parameter ->
           emit_token state label
       | _ -> emit_parameter_token_stream state parameter
     )
-  | _ -> render_pattern state parameter
+  | _ ->
+      render_pattern state parameter
 
 and render_local_open_pattern = fun state pattern ->
   let path_tokens = Vector.with_capacity ~size:(Ast.Node.child_count pattern) in
@@ -2624,9 +2626,7 @@ and render_infix_left_operand = fun state ~operator_text left ->
     && (expr_can_be_bare_caret_operand left || expr_is_infix_with_operator_text left operator_text)
   then
     render_expr state left
-  else if
-    String.equal operator_text "::" && expr_is_infix_with_operator_text left operator_text
-  then
+  else if String.equal operator_text "::" && expr_is_infix_with_operator_text left operator_text then
     render_expr state left
   else if infix_left_operand_can_be_bare ~parent_operator:operator_text left then
     render_expr state left
@@ -2725,7 +2725,8 @@ and render_apply_argument = fun state arg ->
             render_split_arg payload
         | _ -> render_expr_atom state arg
       )
-    | _ -> render_expr_atom state arg
+    | _ ->
+        render_expr_atom state arg
   in
   render_split_arg arg
 
@@ -2753,8 +2754,12 @@ and render_apply_expr = fun state expr ->
   if same_ast_node expr callee then
     unsupported_node "apply expression resolved to itself" expr;
   match Ast.Expr.view callee with
-  | Infix { left=Some left; operator=Some operator; right=Some right } ->
-      render_infix_expr_with_right_apply state left operator right args
+  | Infix { left=Some left; operator=Some operator; right=Some right } -> render_infix_expr_with_right_apply
+    state
+    left
+    operator
+    right
+    args
   | _ ->
       render_expr_atom state callee;
       let rec loop index breaking =
@@ -3729,11 +3734,11 @@ and render_let_binding_tail = fun state binding ->
         emit_space state;
         (
           match loose_binding_annotation with
-          | Some (loose_index, _) when Int.equal index loose_index ->
-              render_parameter_label_only state parameter
+          | Some (loose_index, _) when Int.equal index loose_index -> render_parameter_label_only
+            state
+            parameter
           | Some _
-          | None ->
-              render_pattern state parameter
+          | None -> render_pattern state parameter
         );
         render_parameters (Int.add index 1)
       )
@@ -3755,8 +3760,8 @@ and render_let_binding_tail = fun state binding ->
         emit_text state ":";
         emit_space state;
         render_type_expr state annotation
-    | Some _, None
-    | None, None ->
+    | (Some _, None)
+    | (None, None) ->
         ()
   );
   emit_space state;

@@ -1,12 +1,12 @@
 open Std
 
 type target = Fixme.Fix.target =
-  | Node of Syn.Cst.syntax_node
-  | Token of Syn.Cst.syntax_token
+  | Node of Syn.Ast.Node.t
+  | Token of Syn.Ast.Token.t
 
 type replacement = Fixme.Fix.replacement =
-  | SourceOfNode of Syn.Cst.syntax_node
-  | SourceOfToken of Syn.Cst.syntax_token
+  | SourceOfNode of Syn.Ast.Node.t
+  | SourceOfToken of Syn.Ast.Token.t
   | Text of string
 
 type operation = Fixme.Fix.operation =
@@ -68,10 +68,18 @@ let apply_fixes = Fixme.Fix.apply_fixes
 
 let validate_fix = Fixme.Fix.validate_fix
 
+let span_of_node = fun node ->
+  let start, end_ = Syn.Ast.Node.raw_range node in
+  Syn.Ceibo.Span.make ~start ~end_
+
+let span_of_token = fun token ->
+  let start, end_ = Syn.Ast.Token.raw_range token in
+  Syn.Ceibo.Span.make ~start ~end_
+
 let target_to_json target =
   match target with
   | Node node ->
-      let span = Syn.Ceibo.Red.SyntaxNode.span node in
+      let span = span_of_node node in
       Data.Json.Object [
         ("kind", Data.Json.String "node");
         (
@@ -80,7 +88,7 @@ let target_to_json target =
         );
       ]
   | Token token ->
-      let span = Syn.Ceibo.Red.SyntaxToken.span token in
+      let span = span_of_token token in
       Data.Json.Object [
         ("kind", Data.Json.String "token");
         (
@@ -92,7 +100,7 @@ let target_to_json target =
 let replacement_to_json replacement =
   match replacement with
   | SourceOfNode node ->
-      let span = Syn.Ceibo.Red.SyntaxNode.span node in
+      let span = span_of_node node in
       Data.Json.Object [
         ("kind", Data.Json.String "source_of_node");
         (
@@ -101,7 +109,7 @@ let replacement_to_json replacement =
         );
       ]
   | SourceOfToken token ->
-      let span = Syn.Ceibo.Red.SyntaxToken.span token in
+      let span = span_of_token token in
       Data.Json.Object [
         ("kind", Data.Json.String "source_of_token");
         (

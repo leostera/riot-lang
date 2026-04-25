@@ -1,101 +1,16 @@
 open Std
-open Std.Collections
 
 let rule_id = Rule_id.of_string "snake-case-record-fields"
 
-let rule_description = "Record field names should use snake_case instead of camelCase"
+let rule_description = "Rule disabled while Syn Ast migration is in progress"
 
 let rule_explain = {|
-Record fields are ordinary value-level names that happen to live inside a record type.
-Keeping them in `snake_case` makes them line up with local bindings, named arguments,
-and accessors instead of introducing a new naming convention in the middle of a data
-model.
-
-This matters even more for public records, where field names become part of the API and
-show up throughout construction, updates, and pattern matching.
-
-Use names like `display_name`, `created_at`, and `max_retries` so the field surface
-stays predictable and easy to skim.
+This rule is temporarily disabled while riot-fix migrates from the removed Syn CST
+API to Syn Ast views. The rule id remains loadable so catalogs and provider wiring
+continue to work during the parser cleanup.
 |}
 
-let is_upper = fun ch -> ch >= 'A' && ch <= 'Z'
-
-let is_lower = fun ch -> ch >= 'a' && ch <= 'z'
-
-let is_digit = fun ch -> ch >= '0' && ch <= '9'
-
-let to_snake_case = fun text ->
-  let pieces = ref [] in
-  let push piece =
-    pieces := piece :: !pieces
-  in
-  let prev_was_lower_or_digit = ref false in
-  String.for_each text
-    ~fn:(fun ch ->
-      if is_upper ch then
-        (
-          if !prev_was_lower_or_digit then
-            push "_";
-          push (String.make ~len:1 ~char:(Char.lowercase_ascii ch));
-          prev_was_lower_or_digit := false
-        )
-      else (
-        push (String.make ~len:1 ~char:ch);
-        prev_was_lower_or_digit := is_lower ch || is_digit ch
-      ));
-  String.concat "" (List.reverse !pieces)
-
-let should_flag_field_name = fun text -> not (String.equal text (to_snake_case text))
-
-let make_fix = fun token replacement ->
-  Fix.make
-    ~title:("Rename record field " ^ Syn.Ceibo.Red.SyntaxToken.text token ^ " to " ^ replacement)
-    ~operations:[ Fix.replace_token_with_text ~target:token ~text:replacement; ]
-
-let make_diagnostic = fun token ->
-  let original = Syn.Ceibo.Red.SyntaxToken.text token in
-  let replacement = to_snake_case original in
-  Diagnostic.make
-    ~severity:Warning
-    ~kind:(Diagnostic.Known { rule_id; message = rule_description })
-    ~span:(Syn.Ceibo.Red.SyntaxToken.span token)
-    ~suggestion:("Rename " ^ original ^ " to " ^ replacement)
-    ~fix:(make_fix token replacement)
-    ()
-
-let diagnostics_for_decl type_declaration =
-  match type_declaration with
-  | Syn.Cst.TypeDeclaration.{ type_definition=Syn.Cst.TypeDefinition.Record { fields; _ }; _ } ->
-      fields |> List.filter_map
-        ~fn:(fun field ->
-          let name = Syn.Cst.RecordField.name field in
-          if should_flag_field_name name then
-            let token = Syn.Cst.RecordField.field_name_token field |> Syn.Cst.Token.syntax_token in
-            Some (make_diagnostic token)
-          else
-            None)
-  | _ -> []
-
-let diagnostics_for_items = fun source_file ->
-  match source_file with
-  | Syn.Cst.Implementation { items; _ } ->
-      items |> List.map
-        ~fn:(
-          function
-          | Syn.Cst.StructureItem.TypeDeclaration decl -> diagnostics_for_decl decl
-          | _ -> []
-        ) |> List.concat
-  | Syn.Cst.Interface { items; _ } ->
-      items |> List.map
-        ~fn:(
-          function
-          | Syn.Cst.SignatureItem.TypeDeclaration decl -> diagnostics_for_decl decl
-          | _ -> []
-        ) |> List.concat
-
-let check_tree = fun (ctx: Rule.context) _red_root ->
-  let source_file = ctx.cst in
-  diagnostics_for_items source_file
+let check_tree = fun _ctx _root -> []
 
 let make = fun () ->
   Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain ~run:check_tree ()

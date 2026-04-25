@@ -2,23 +2,23 @@ open Std
 
 (** Rule definition. *)
 type t
-(** Green tree passed through rule infrastructure when needed. *)
-type green_tree = (Syn.SyntaxKind.t, string) Syn.Ceibo.Green.node
-(** Red tree used during rule traversal. *)
-type red_tree = (Syn.SyntaxKind.t, string) Syn.Ceibo.Red.syntax_node
+(** Syntax tree passed through rule infrastructure when needed. *)
+type syntax_tree = Syn.SyntaxTree.t
+(** Root Ast node used during rule traversal. *)
+type syntax_root = Syn.Ast.Node.t
 (** Source context made available to a rule run. *)
 type context = {
   (** Path of the file being checked. *)
   file_path: string;
   (** Original source text. *)
   source: string;
-  (** Parsed source file CST. *)
-  cst: Syn.Cst.source_file;
+  (** Parsed source file view. *)
+  source_file: Syn.Ast.SourceFile.t;
 }
 
 (** Create a lint rule.
 
-    Use [run] to inspect the red tree and return diagnostics. [explain] should
+    Use [run] to inspect the Ast root and return diagnostics. [explain] should
     provide the longer markdown explanation shown when the rule is documented.
 *)
 val make:
@@ -26,7 +26,7 @@ val make:
   description:string ->
   explain:string ->
   ?enabled:bool ->
-  run:(context -> red_tree -> Diagnostic.t list) ->
+  run:(context -> syntax_root -> Diagnostic.t list) ->
   unit ->
   t
 
@@ -46,4 +46,4 @@ val explanation: t -> Explanation.t
 val enabled: t -> bool
 
 (** Run the rule over a parsed source tree and return diagnostics. *)
-val run: t -> context -> red_tree -> Diagnostic.t list
+val run: t -> context -> syntax_root -> Diagnostic.t list

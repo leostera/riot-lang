@@ -42,7 +42,7 @@ module Rules: module type of Rules
 (** Built-in lint rules *)
 module Traversal: module type of Traversal
 
-(** CST traversal helpers *)
+(** Ast traversal helpers *)
 module Source_runner: module type of Fixme.Source_runner
 
 (** Pure rule execution and safe-fix application on source strings *)
@@ -51,7 +51,7 @@ module Rule_test: module type of Fixme.Rule_test
 (** Test helper for running rules, applying fixes, and rerunning on updated source *)
 module Rule_query: module type of Rule_query
 
-(** Rule-oriented CST query helpers built on top of `Syn.Visit` *)
+(** Rule-oriented Ast query helpers *)
 module File_scanner: module type of File_scanner
 
 (** File system scanner for finding OCaml source files *)

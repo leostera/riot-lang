@@ -35,6 +35,9 @@ module SyntaxTree: module type of Syntax_tree
 (** Typed views over the lossless syntax tree. *)
 module Ast: module type of Ast
 
+(** Ast-driven visitor with internal typed-view memoization. *)
+module Visitor: module type of Visitor
+
 (** Structured parser diagnostics. *)
 module Diagnostic: module type of Diagnostic
 

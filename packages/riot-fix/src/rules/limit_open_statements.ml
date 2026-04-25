@@ -1,58 +1,16 @@
 open Std
-open Std.Collections
 
 let rule_id = Rule_id.of_string "limit-open-statements"
 
-let rule_description = "Prefer no more than two open statements per file"
+let rule_description = "Rule disabled while Syn Ast migration is in progress"
 
 let rule_explain = {|
-Each file-wide `open` saves a little typing, but it also hides where names come from.
-Once a file stacks several of them, readers have to keep a mental import table in
-their head before they can tell whether `Response`, `parse`, or `empty` is local or
-imported.
-
-Past a small number, the convenience stops paying for the ambiguity. The remaining
-modules are usually better referenced explicitly as `Http.Response`, `Json.decode`,
-or `Uri.of_string`. If the scope is genuinely tiny, a local open is easier to audit
-than another file-wide one.
-
-Two well-chosen opens usually remain readable. A pile of them usually means the file
-has become too implicit.
+This rule is temporarily disabled while riot-fix migrates from the removed Syn CST
+API to Syn Ast views. The rule id remains loadable so catalogs and provider wiring
+continue to work during the parser cleanup.
 |}
 
-let open_statements = fun source_file ->
-  match source_file with
-  | Syn.Cst.Implementation { items; _ } ->
-      items |> List.filter_map
-        ~fn:(
-          function
-          | Syn.Cst.StructureItem.OpenStatement stmt -> Some stmt
-          | _ -> None
-        )
-  | Syn.Cst.Interface { items; _ } ->
-      items |> List.filter_map
-        ~fn:(
-          function
-          | Syn.Cst.SignatureItem.OpenStatement stmt -> Some stmt
-          | _ -> None
-        )
-
-let diagnostic_for_open_count = fun opens ->
-  if List.length opens <= 2 then
-    None
-  else
-    match opens with
-    | _first :: _second :: third_open :: _ -> Some (Diagnostic.make
-      ~severity:Warning
-      ~kind:(Diagnostic.Known { rule_id; message = rule_description })
-      ~span:(Syn.Cst.OpenStatement.syntax_node third_open |> Syn.Ceibo.Red.SyntaxNode.span)
-      ~suggestion:"Keep only the most useful opens and qualify the remaining names."
-      ())
-    | _ -> None
-
-let check_tree = fun (ctx: Rule.context) _red_root ->
-  let source_file = ctx.cst in
-  open_statements source_file |> diagnostic_for_open_count |> Option.to_list
+let check_tree = fun _ctx _root -> []
 
 let make = fun () ->
   Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain ~run:check_tree ()

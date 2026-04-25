@@ -163,11 +163,17 @@ let format_failed_file = fun (file_result: Krasny.Runner.file_result) ->
   match Fs.read file_result.file with
   | Error _ -> Path.to_string file_result.file ^ ": " ^ error_text ^ "\n"
   | Ok source ->
-      let parsed = Syn.parse ~filename:file_result.file source in
-      if List.is_empty parsed.diagnostics then
+      let slice =
+        match IO.IoVec.IoSlice.from_string source with
+        | Ok slice -> slice
+        | Error err -> panic ("failed to create parser source slice: " ^ Kernel.IO.Error.message err)
+      in
+      let parsed = Syn.parse ~filename:file_result.file slice in
+      let diagnostics = Std.Collections.Vector.to_array parsed.diagnostics |> Array.to_list in
+      if List.is_empty diagnostics then
         Path.to_string file_result.file ^ ": " ^ error_text ^ "\n"
       else
-        Syn.DiagnosticReporter.format ~file:(Path.to_string file_result.file) ~source parsed.diagnostics
+        Syn.DiagnosticReporter.format ~file:(Path.to_string file_result.file) ~source diagnostics
 
 let write_failed_file = fun ~writer file_result ->
   let buffer = IO.Buffer.from_string (format_failed_file file_result) in

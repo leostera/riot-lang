@@ -2,7 +2,7 @@ open Std
 
 type t
 type result = Fixme.Source_runner.result = {
-  tree: Rule.green_tree;
+  tree: Rule.syntax_tree;
   diagnostics: Diagnostic.t list;
   parse_diagnostics: Syn.Diagnostic.t list;
 }

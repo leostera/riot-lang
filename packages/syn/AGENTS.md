@@ -8,7 +8,8 @@ and Ast typed-view layer.
 1. Keep one parser path. `Syn.Parser` is the streaming parser implementation,
    and public parse entrypoints should accept source slices rather than strings.
 2. Do not reintroduce the old Ceibo parser, typed `Cst`, CST builder, CST JSON
-   snapshots, or visitor/traversal stack.
+   snapshots, or CST visitor/traversal stack. Shared traversal should go
+   through the Ast-driven `Syn.Visitor`.
 3. Preserve lossless parsing. Raw tokens, spans, diagnostics, comments, and
    docstrings must stay recoverable from the streaming parser tree.
 4. Keep parser-built syntax trees trivia-free in child arrays. Comments,

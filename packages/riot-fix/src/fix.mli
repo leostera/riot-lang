@@ -1,11 +1,11 @@
 open Std
 
 type target = Fixme.Fix.target =
-  | Node of Syn.Cst.syntax_node
-  | Token of Syn.Cst.syntax_token
+  | Node of Syn.Ast.Node.t
+  | Token of Syn.Ast.Token.t
 type replacement = Fixme.Fix.replacement =
-  | SourceOfNode of Syn.Cst.syntax_node
-  | SourceOfToken of Syn.Cst.syntax_token
+  | SourceOfNode of Syn.Ast.Node.t
+  | SourceOfToken of Syn.Ast.Token.t
   | Text of string
 type operation = Fixme.Fix.operation =
   | Delete of { target: target }
@@ -21,23 +21,23 @@ type text_edit = Fixme.Fix.text_edit = {
   span: Syn.Ceibo.Span.t;
   new_text: string;
 }
-val source_of_node: Syn.Cst.syntax_node -> replacement
+val source_of_node: Syn.Ast.Node.t -> replacement
 
-val source_of_token: Syn.Cst.syntax_token -> replacement
+val source_of_token: Syn.Ast.Token.t -> replacement
 
 val text: string -> replacement
 
 val delete: target:target -> operation
 
-val delete_node: Syn.Cst.syntax_node -> operation
+val delete_node: Syn.Ast.Node.t -> operation
 
 val replace: target:target -> replacement:replacement -> operation
 
-val replace_node: target:Syn.Cst.syntax_node -> replacement:Syn.Cst.syntax_node -> operation
+val replace_node: target:Syn.Ast.Node.t -> replacement:Syn.Ast.Node.t -> operation
 
-val replace_node_with_text: target:Syn.Cst.syntax_node -> text:string -> operation
+val replace_node_with_text: target:Syn.Ast.Node.t -> text:string -> operation
 
-val replace_token_with_text: target:Syn.Cst.syntax_token -> text:string -> operation
+val replace_token_with_text: target:Syn.Ast.Token.t -> text:string -> operation
 
 val insert_before: anchor:target -> content:replacement -> operation
 

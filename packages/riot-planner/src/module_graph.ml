@@ -61,7 +61,6 @@ type analyzed_module = {
   source_hash: Crypto.hash;
   implicit_opens: string list;
   parse_result: Syn.Parser.parse_result;
-  cst: (Syn.Cst.source_file, Syn.build_cst_error) result;
   deps: (Syn.Deps.t, Syn.Deps.parse_error) result;
   resolved_deps: Module_name.t list;
   resolved_dep_ids: G.Node_id.t list;
@@ -112,12 +111,10 @@ let sanitize_module_name = fun name ->
         ch)
     name
 
-let source_hash = fun ~implicit_opens ~cst ->
+let source_hash = fun ~implicit_opens ~source ->
   let module H = Crypto.Sha256 in
   let state = H.create () in
-  let () = H.write state
-    (Syn.Cst.semantic_hash cst |> Crypto.Digest.hex)
-  in
+  let () = H.write state source in
   let () = H.write state "\x1f" in
   let () =
     implicit_opens
@@ -127,6 +124,11 @@ let source_hash = fun ~implicit_opens ~cst ->
         H.write state "\x1f")
   in
   H.finish state
+
+let source_slice = fun source ->
+  match IO.IoVec.IoSlice.from_string source with
+  | Ok slice -> slice
+  | Error error -> panic ("failed to create parser source slice: " ^ Kernel.IO.Error.message error)
 
 let rec filter_entries = fun ~allowed entries ->
   let allowed_strings = List.map allowed ~fn:Path.to_string in
@@ -181,41 +183,64 @@ let binary_for_path = fun config path ->
       let bin_rel = make_relative ~base:config.package.path ~path:bin.path |> Path.normalize in
       Path.equal path_rel bin_rel)
 
-let executable_parameter_to_string = function
-  | Syn.Cst.Parameter.Positional parameter -> (
-      match parameter.name_token with
-      | Some token -> Syn.Cst.Token.text token
-      | None -> "<positional>"
+let rec executable_parameter_to_string = fun parameter ->
+  let module Ast = Syn.Ast in
+  match Ast.Pattern.view parameter with
+  | Ast.Pattern.LabeledParam param -> (
+      match Ast.Parameter.view param with
+      | Ast.Parameter.Labeled { label=Some label; _ } -> "~" ^ Ast.Token.text label
+      | _ -> "~<unknown>"
     )
-  | Syn.Cst.Parameter.Labeled parameter ->
-      "~" ^ Syn.Cst.Token.text parameter.label_token
-  | Syn.Cst.Parameter.Optional parameter ->
-      "?" ^ Syn.Cst.Token.text parameter.label_token
-  | Syn.Cst.Parameter.LocallyAbstract _ ->
+  | Ast.Pattern.OptionalParam param
+  | Ast.Pattern.OptionalParamDefault param -> (
+      match Ast.Parameter.view param with
+      | Ast.Parameter.Optional { label=Some label; _ }
+      | Ast.Parameter.OptionalDefault { label=Some label; _ } -> "?" ^ Ast.Token.text label
+      | _ -> "?<unknown>"
+    )
+  | Ast.Pattern.LocallyAbstractType ->
       "(type ...)"
+  | Ast.Pattern.Parenthesized { inner=Some inner } ->
+      executable_parameter_to_string inner
+  | _ ->
+      Ast.Node.text parameter
 
-let is_labeled_args_parameter = function
-  | Syn.Cst.Parameter.Labeled parameter -> String.equal (Syn.Cst.Token.text parameter.label_token) "args"
-  | _ -> false
+let rec is_labeled_args_parameter = fun parameter ->
+  let module Ast = Syn.Ast in
+  match Ast.Pattern.view parameter with
+  | Ast.Pattern.LabeledParam param -> (
+      match Ast.Parameter.view param with
+      | Ast.Parameter.Labeled { label=Some label; _ } -> String.equal (Ast.Token.text label) "args"
+      | _ -> false
+    )
+  | Ast.Pattern.Parenthesized { inner=Some inner } ->
+      is_labeled_args_parameter inner
+  | _ ->
+      false
 
-let let_binding_name = fun binding ->
-  Syn.Cst.LetBinding.binding_name_token binding |> Option.map ~fn:Syn.Cst.Token.text
+let rec pattern_binding_name = fun pattern ->
+  let module Ast = Syn.Ast in
+  match Ast.Pattern.view pattern with
+  | Ast.Pattern.Path { path } -> Ast.Path.last_ident path |> Option.map ~fn:Ast.Token.text
+  | Ast.Pattern.Parenthesized { inner=Some inner } -> pattern_binding_name inner
+  | _ -> None
+
+let let_binding_name = fun binding -> Syn.Ast.LetBinding.pattern binding |> Option.and_then ~fn:pattern_binding_name
 
 let executable_main_bindings = fun source_file ->
-  match Syn.Cst.SourceFile.structure_items source_file with
-  | None -> []
-  | Some items ->
-      items |> List.filter_map
-        ~fn:(
-          function
-          | Syn.Cst.StructureItem.LetBinding binding -> Some (binding
-          :: Syn.Cst.LetBinding.and_bindings binding)
-          | _ -> None
-        ) |> List.concat |> List.filter
-        ~fn:(fun binding ->
-          match let_binding_name binding with
-          | Some name -> String.equal name "main"
-          | None -> false)
+  let module Ast = Syn.Ast in
+  let bindings = Vector.with_capacity ~size:(Ast.Node.child_count source_file) in
+  Ast.SourceFile.for_each_structure_item source_file
+    ~fn:(fun item ->
+      match Ast.StructureItem.view item with
+      | Ast.StructureItem.Let decl ->
+          Ast.LetDeclaration.for_each_binding decl
+            ~fn:(fun binding ->
+              match let_binding_name binding with
+              | Some name when String.equal name "main" -> Vector.push bindings ~value:binding
+              | _ -> ())
+      | _ -> ());
+  Vector.to_array bindings |> Array.to_list
 
 let package_source_file = fun config source ->
   match Path.to_string config.package.relative_path with
@@ -236,7 +261,11 @@ let validate_executable_main = fun ~package_name ~target_name ~source ~file sour
         }
       )
   | [ binding ] ->
-      let parameters = Syn.Cst.LetBinding.parameters binding in
+      let parameters = Vector.with_capacity ~size:(Syn.Ast.Node.child_count binding) in
+      Syn.Ast.LetBinding.for_each_parameter
+        binding
+        ~fn:(fun parameter -> Vector.push parameters ~value:parameter);
+      let parameters = Vector.to_array parameters |> Array.to_list in
       (
         match parameters with
         | [ parameter ] when is_labeled_args_parameter parameter -> Ok ()
@@ -813,7 +842,7 @@ let dependency_root_export_env = fun config env (group: source_group) group_entr
                   (Module_name.to_string library_module_name) in
                 let alias_module_segments = Namespace.to_list alias_namespace @ [ "Aliases" ] in
                 let parse_env = Syn.Deps.Env.open_path env ~path:alias_module_segments in
-                let parse_result = Syn.parse ~filename:display_path source in
+                let parse_result = Syn.parse ~filename:display_path (source_slice source) in
                 match Syn.Deps.of_parse_result ~env:parse_env parse_result with
                 | Error _ -> env
                 | Ok deps -> Syn.Deps.Env.add_binding
@@ -902,7 +931,7 @@ let prime_dependency_root_exports = fun dependency_config env root_export_source
           let module_segments = qualified_name_segments qualified_name in
           let alias_segments = module_segments @ [ "Aliases" ] in
           let parse_env = Syn.Deps.Env.open_path env ~path:alias_segments in
-          let parse_result = Syn.parse ~filename:display_path text in
+          let parse_result = Syn.parse ~filename:display_path (source_slice text) in
           match Syn.Deps.of_parse_result ~env:parse_env parse_result with
           | Error _ -> env
           | Ok deps -> Syn.Deps.Env.add_binding
@@ -1089,10 +1118,6 @@ let wire_dependencies = fun t ->
         ^ Path.to_string path
         ^ " for dependency analysis: "
         ^ String.concat "; " messages
-    | Syn.Deps.Cst_builder_error err -> "failed to build CST for "
-    ^ Path.to_string path
-    ^ " during dependency analysis: "
-    ^ err.message
   in
   let raw_source_text (node: Module_node.t G.node) =
     let source_result =
@@ -1169,27 +1194,23 @@ let wire_dependencies = fun t ->
     | Error _ as err -> err
     | Ok (raw_text, display_path) ->
         let implicit_opens = implicit_open_modules node.value.open_modules in
-        let parse_result = Syn.parse ~filename:display_path raw_text in
-        let cst = Syn.build_cst parse_result in
+        let parse_result = Syn.parse ~filename:display_path (source_slice raw_text) in
+        let source_file = Syn.Ast.SourceFile.make parse_result.tree in
         let executable_main_validation =
-          match cst, binary_for_path t.config path with
-          | Ok cst, Some binary ->
+          match binary_for_path t.config path with
+          | Some binary when Vector.length parse_result.diagnostics = 0 ->
               let source = make_relative ~base:t.config.package.path ~path:binary.path in
               validate_executable_main
                 ~package_name:(Package_name.to_string t.config.package.name)
                 ~target_name:binary.name
                 ~source
                 ~file:(package_source_file t.config source)
-                cst
+                source_file
           | _ -> Ok ()
         in
         let deps_env = deps_env_with_implicit_opens (Cell.get t.deps_env) node.value.open_modules in
         let deps = Syn.Deps.of_parse_result ~env:deps_env parse_result in
-        let source_hash =
-          match cst with
-          | Ok cst -> source_hash ~implicit_opens ~cst
-          | Error _ -> Crypto.hash_string ""
-        in
+        let source_hash = source_hash ~implicit_opens ~source:raw_text in
         let requested_deps =
           match deps, node.value.file with
           | Ok deps, Module_node.Concrete _ -> Syn.Deps.modules deps
@@ -1223,7 +1244,6 @@ let wire_dependencies = fun t ->
           source_hash;
           implicit_opens;
           parse_result;
-          cst;
           deps;
           resolved_deps;
           resolved_dep_ids;

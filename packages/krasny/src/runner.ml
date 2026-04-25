@@ -111,148 +111,9 @@ let collect_ocaml_files = fun ?(should_ignore = fun _ -> false) ~roots () ->
   loop iter;
   !files |> List.sort ~compare:compare_paths |> List.unique ~compare:compare_paths
 
-let is_trivia_kind = function
-  | Syn.SyntaxKind.WHITESPACE -> true
-  | _ -> false
-
-let is_docstring_kind = function
-  | Syn.SyntaxKind.DOCSTRING -> true
-  | _ -> false
-
-let is_comment_like_kind = function
-  | Syn.SyntaxKind.COMMENT
-  | Syn.SyntaxKind.DOCSTRING -> true
-  | _ -> false
-
-let is_redundant_paren_inner_kind = function
-  | Syn.SyntaxKind.IDENT_EXPR
-  | Syn.SyntaxKind.PATH_EXPR
-  | Syn.SyntaxKind.FIELD_ACCESS_EXPR
-  | Syn.SyntaxKind.CONSTRUCTOR_EXPR
-  | Syn.SyntaxKind.POLY_VARIANT_EXPR
-  | Syn.SyntaxKind.INT_LITERAL
-  | Syn.SyntaxKind.FLOAT_LITERAL
-  | Syn.SyntaxKind.STRING_LITERAL
-  | Syn.SyntaxKind.CHAR_LITERAL
-  | Syn.SyntaxKind.BOOL_LITERAL
-  | Syn.SyntaxKind.UNIT_LITERAL
-  | Syn.SyntaxKind.LIST_EXPR
-  | Syn.SyntaxKind.ARRAY_EXPR
-  | Syn.SyntaxKind.ARRAY_INDEX_EXPR
-  | Syn.SyntaxKind.STRING_INDEX_EXPR
-  | Syn.SyntaxKind.RECORD_EXPR
-  | Syn.SyntaxKind.RECORD_UPDATE_EXPR
-  | Syn.SyntaxKind.TUPLE_EXPR
-  | Syn.SyntaxKind.PAREN_EXPR -> true
-  | _ -> false
-
 let syntax_hash = fun (result: Syn.Parser.parse_result) ->
-  let buffer = IO.Buffer.create ~size:1_024 in
-  let docstring_buffer = IO.Buffer.create ~size:256 in
-  let rec should_skip_token ~parent_kind token =
-    let token_kind = Syn.Ceibo.Green.kind (Syn.Ceibo.Green.Token token) in
-    let token_text = Syn.Ceibo.Green.text (Syn.Ceibo.Green.Token token) |> Option.expect ~msg:"green token text" in
-    if is_trivia_kind token_kind || is_docstring_kind token_kind then
-      true
-    else
-      match parent_kind with
-      | Some Syn.SyntaxKind.PAREN_EXPR -> String.equal token_text "(" || String.equal token_text ")"
-      | Some Syn.SyntaxKind.LIST_EXPR -> String.equal token_text "["
-      || String.equal token_text "]"
-      || String.equal token_text ";"
-      | Some Syn.SyntaxKind.ARRAY_EXPR -> String.equal token_text "[|"
-      || String.equal token_text "|]"
-      || String.equal token_text ";"
-      | Some Syn.SyntaxKind.RECORD_EXPR
-      | Some Syn.SyntaxKind.RECORD_UPDATE_EXPR -> String.equal token_text ";"
-      | Some Syn.SyntaxKind.TYPE_RECORD -> String.equal token_text ";"
-      | Some Syn.SyntaxKind.TYPE_DECL
-      | Some Syn.SyntaxKind.TYPE_POLY_VARIANT -> String.equal token_text "|"
-      | _ -> false
-  and redundant_paren_child node =
-    let has_comment_like =
-      List.any (Syn.Ceibo.Green.children node)
-        ~fn:(
-          function
-          | Syn.Ceibo.Green.Token token ->
-              let token_kind = Syn.Ceibo.Green.kind (Syn.Ceibo.Green.Token token) in
-              is_comment_like_kind token_kind
-          | Syn.Ceibo.Green.Node _ -> false
-        )
-    in
-    if has_comment_like then
-      None
-    else
-      let meaningful_children =
-        Syn.Ceibo.Green.children node
-        |> List.filter
-          ~fn:(
-            function
-            | Syn.Ceibo.Green.Token token ->
-                let token_kind = Syn.Ceibo.Green.kind (Syn.Ceibo.Green.Token token) in
-                let token_text = Syn.Ceibo.Green.text (Syn.Ceibo.Green.Token token)
-                |> Option.expect ~msg:"green token text" in
-                not (is_trivia_kind token_kind)
-                && not (String.equal token_text "(" || String.equal token_text ")")
-            | Syn.Ceibo.Green.Node _ -> true
-          )
-      in
-      match meaningful_children with
-      | [ Syn.Ceibo.Green.Node inner as child ] when is_redundant_paren_inner_kind
-        (Syn.Ceibo.Green.kind (Syn.Ceibo.Green.Node inner)) -> Some child
-      | [ Syn.Ceibo.Green.Token token as child ] when is_redundant_paren_inner_kind
-        (Syn.Ceibo.Green.kind (Syn.Ceibo.Green.Token token)) -> Some child
-      | _ -> None
-  and write_token token =
-    let token_kind = Syn.Ceibo.Green.kind (Syn.Ceibo.Green.Token token) in
-    let token_text = Syn.Ceibo.Green.text (Syn.Ceibo.Green.Token token) |> Option.expect ~msg:"green token text" in
-    IO.Buffer.add_string buffer "T(";
-    IO.Buffer.add_string buffer (Syn.SyntaxKind.to_string token_kind);
-    IO.Buffer.add_string buffer ":";
-    IO.Buffer.add_string buffer token_text;
-    IO.Buffer.add_string buffer ")"
-  and write_docstring token =
-    let token_text = Syn.Ceibo.Green.text (Syn.Ceibo.Green.Token token) |> Option.expect ~msg:"green token text" in
-    IO.Buffer.add_string docstring_buffer "D(";
-    IO.Buffer.add_string docstring_buffer token_text;
-    IO.Buffer.add_string docstring_buffer ")"
-  and write_child = fun ~parent_kind ->
-    function
-    | Syn.Ceibo.Green.Token token ->
-        if is_docstring_kind (Syn.Ceibo.Green.kind (Syn.Ceibo.Green.Token token)) then
-          write_docstring token
-        else if not (should_skip_token ~parent_kind token) then
-          write_token token
-    | Syn.Ceibo.Green.Node _ as element -> write_element element
-  and write_node node =
-    let node_kind = Syn.Ceibo.Green.kind (Syn.Ceibo.Green.Node node) in
-    IO.Buffer.add_string buffer "N(";
-    IO.Buffer.add_string buffer (Syn.SyntaxKind.to_string node_kind);
-    IO.Buffer.add_string buffer "[";
-    List.for_each (Syn.Ceibo.Green.children node) ~fn:(write_child ~parent_kind:(Some node_kind));
-    IO.Buffer.add_string buffer "])"
-  and write_element = function
-    | Syn.Ceibo.Green.Token token ->
-        let token_kind = Syn.Ceibo.Green.kind (Syn.Ceibo.Green.Token token) in
-        if not (is_trivia_kind token_kind) then
-          write_token token
-    | Syn.Ceibo.Green.Node node ->
-        let node_kind = Syn.Ceibo.Green.kind (Syn.Ceibo.Green.Node node) in
-        if Syn.SyntaxKind.(node_kind = PAREN_EXPR) then
-          match redundant_paren_child node with
-          | Some child -> write_child ~parent_kind:(Some Syn.SyntaxKind.PAREN_EXPR) child
-          | None -> write_node node
-        else
-          write_node node
-  in
-  write_node result.tree;
-  IO.Buffer.add_string buffer "|DOCS|";
-  IO.Buffer.add_string buffer (IO.Buffer.contents docstring_buffer);
-  IO.Buffer.contents buffer |> Crypto.Sha256.hash_string |> Crypto.Digest.hex
-
-let syntax_hash2 = fun (result: Syn.Parser2.parse_result) ->
-  let module Ast = Syn.Ast2 in
-  let module Kind = Syn.SyntaxKind2 in
+  let module Ast = Syn.Ast in
+  let module Kind = Syn.SyntaxKind in
   let buffer = IO.Buffer.create ~size:1_024 in
   let trivia_buffer = IO.Buffer.create ~size:256 in
   let write_kind kind = IO.Buffer.add_string buffer (Kind.to_string kind) in
@@ -516,9 +377,9 @@ let format_file = fun ~mode file ->
               | Check ->
                   finalize file start ~status:Needs_formatting ~needs_formatting:true ~error:None
               | Verify ->
-                  let original_hash = syntax_hash2 parsed in
+                  let original_hash = syntax_hash parsed in
                   let reparsed = Format_core.parse_source ~filename:file formatted in
-                  let formatted_hash = syntax_hash2 reparsed in
+                  let formatted_hash = syntax_hash reparsed in
                   if String.equal original_hash formatted_hash then
                     finalize file start ~status:Would_reformat ~needs_formatting:true ~error:None
                   else

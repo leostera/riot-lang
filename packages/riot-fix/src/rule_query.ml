@@ -1,44 +1,37 @@
 open Std
+open Std.Collections
+module Ast = Syn.Ast
+
+let to_list = fun vector -> Vector.to_array vector |> Array.to_list
 
 let structure_items = fun (ctx: Rule.context) ->
-  match ctx.cst with
-  | Syn.Cst.Implementation implementation -> implementation.items
-  | Syn.Cst.Interface _ -> []
+  let items = Vector.with_capacity ~size:(Ast.Node.child_count ctx.source_file) in
+  Ast.SourceFile.for_each_structure_item
+    ctx.source_file
+    ~fn:(fun item -> Vector.push items ~value:item);
+  to_list items
 
 let signature_items = fun (ctx: Rule.context) ->
-  match ctx.cst with
-  | Syn.Cst.Interface interface -> interface.items
-  | Syn.Cst.Implementation _ -> []
+  let items = Vector.with_capacity ~size:(Ast.Node.child_count ctx.source_file) in
+  Ast.SourceFile.for_each_signature_item
+    ctx.source_file
+    ~fn:(fun item -> Vector.push items ~value:item);
+  to_list items
 
 let expressions = fun (ctx: Rule.context) ->
-  Syn.Visit.source_file
-    {
-      Syn.Visit.default
-      with visit_expression =
-        (fun expressions walk expression ->
-          walk.descend_expression (expression :: expressions) expression);
-    }
-    []
-    ctx.cst |> List.reverse
+  Traversal.find_nodes
+    (fun node -> Option.is_some (Ast.Expr.cast node))
+    ((ctx.source_file: Ast.Node.t))
+  |> List.filter_map ~fn:Ast.Expr.cast
 
 let let_bindings = fun (ctx: Rule.context) ->
-  Syn.Visit.source_file
-    {
-      Syn.Visit.default
-      with visit_let_binding =
-        (fun bindings walk binding ->
-          walk.descend_let_binding (binding :: bindings) binding);
-    }
-    []
-    ctx.cst |> List.reverse
+  Traversal.find_nodes
+    (fun node -> Option.is_some (Ast.LetBinding.cast node))
+    ((ctx.source_file: Ast.Node.t))
+  |> List.filter_map ~fn:Ast.LetBinding.cast
 
 let type_declarations = fun (ctx: Rule.context) ->
-  Syn.Visit.source_file
-    {
-      Syn.Visit.default
-      with visit_type_declaration =
-        (fun declarations walk declaration ->
-          walk.descend_type_declaration (declaration :: declarations) declaration);
-    }
-    []
-    ctx.cst |> List.reverse
+  Traversal.find_nodes
+    (fun node -> Option.is_some (Ast.TypeDeclaration.cast node))
+    ((ctx.source_file: Ast.Node.t))
+  |> List.filter_map ~fn:Ast.TypeDeclaration.cast

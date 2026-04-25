@@ -1,13 +1,13 @@
 open Std
 
-type green_tree = (Syn.SyntaxKind.t, string) Syn.Ceibo.Green.node
+type syntax_tree = Syn.SyntaxTree.t
 
-type red_tree = (Syn.SyntaxKind.t, string) Syn.Ceibo.Red.syntax_node
+type syntax_root = Syn.Ast.Node.t
 
 type context = {
   file_path: string;
   source: string;
-  cst: Syn.Cst.source_file;
+  source_file: Syn.Ast.SourceFile.t;
 }
 
 type t = {
@@ -15,7 +15,7 @@ type t = {
   description: string;
   explain: string;
   enabled: bool;
-  run: context -> red_tree -> Diagnostic.t list;
+  run: context -> syntax_root -> Diagnostic.t list;
 }
 
 let make = fun ~id ~description ~explain ?(enabled = true) ~run () ->

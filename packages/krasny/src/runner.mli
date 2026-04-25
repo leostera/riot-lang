@@ -35,8 +35,6 @@ type run_result = {
 }
 val syntax_hash: Syn.Parser.parse_result -> string
 
-val syntax_hash2: Syn.Parser2.parse_result -> string
-
 val collect_ocaml_files: ?should_ignore:(Path.t -> bool) -> roots:Path.t list -> unit -> Path.t list
 
 val check_file: Path.t -> file_result

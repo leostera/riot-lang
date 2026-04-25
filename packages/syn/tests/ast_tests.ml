@@ -82,6 +82,14 @@ let assert_type_path_last_ident = fun type_expr expected ->
   | Ast.TypeExpr.Path { path } -> assert_last_ident_text path expected
   | _ -> panic "expected path type"
 
+let vector_to_list = fun vector -> Vector.to_array vector |> Array.to_list
+
+type visitor_capture = {
+  let_names: string Vector.t;
+  token_texts: string Vector.t;
+  leave_count: int;
+}
+
 let test_source_file_and_let_binding_views = fun _ctx ->
   let root = parse_ml "let x = 1\n" |> Result.expect ~msg:"expected parse source file" in
   (
@@ -562,8 +570,7 @@ let test_type_declaration_parameters = fun _ctx ->
             Ast.Token.text name,
             Option.map variance ~fn:Ast.Token.text
           )
-          | Ast.TypeDeclaration.Wildcard { wildcard; _ } -> wildcard_param := Some (Ast.Token.text
-            wildcard)
+          | Ast.TypeDeclaration.Wildcard { wildcard; _ } -> wildcard_param := Some (Ast.Token.text wildcard)
         );
       (
         match !named with
@@ -1229,9 +1236,7 @@ let test_record_views = fun _ctx ->
   let pattern_fields = ref [] in
   Ast.RecordPattern.for_each_field pattern_view
     ~fn:(fun field ->
-      let name = field.Ast.RecordPattern.path
-      |> require_some ~msg:"expected pattern field path"
-      |> last_path_text in
+      let name = field.Ast.RecordPattern.path |> require_some ~msg:"expected pattern field path" |> last_path_text in
       pattern_fields := (name, Option.is_some field.Ast.RecordPattern.pattern) :: !pattern_fields);
   Test.assert_equal ~expected:[ ("x", false); ("y", true) ] ~actual:(List.reverse !pattern_fields);
   let wildcard = Ast.RecordPattern.open_wildcard pattern_view |> require_some ~msg:"expected open record wildcard" in
@@ -1496,11 +1501,7 @@ let test_local_open_labeled_argument_views = fun _ctx ->
             let local_open = Ast.LocalOpenExpr.cast value |> require_some ~msg:"expected local open root value" in
             (
               match Ast.LocalOpenExpr.view local_open with
-              | Ast.LocalOpenExpr.Delimited {
-                module_path=Some module_path;
-                body=Some inner_body;
-                _
-              } ->
+              | Ast.LocalOpenExpr.Delimited { module_path=Some module_path; body=Some inner_body; _ } ->
                   Test.assert_equal ~expected:"Path" ~actual:(last_path_text module_path);
                   (
                     match Ast.Expr.view inner_body with
@@ -1823,9 +1824,7 @@ let test_special_pattern_views = fun _ctx ->
   |> binding_of_structure_item
   |> Result.expect ~msg:"expected special pattern binding" in
   let parameters = ref [] in
-  Ast.LetBinding.for_each_parameter
-    binding
-    ~fn:(fun pattern -> parameters := pattern :: !parameters);
+  Ast.LetBinding.for_each_parameter binding ~fn:(fun pattern -> parameters := pattern :: !parameters);
   match List.reverse !parameters with
   | [locally_abstract;first_class_module] ->
       (
@@ -1867,9 +1866,7 @@ let test_first_class_module_pattern_with_constraints_view = fun _ctx ->
   |> binding_of_structure_item
   |> Result.expect ~msg:"expected constrained module pattern binding" in
   let parameters = ref [] in
-  Ast.LetBinding.for_each_parameter
-    binding
-    ~fn:(fun pattern -> parameters := pattern :: !parameters);
+  Ast.LetBinding.for_each_parameter binding ~fn:(fun pattern -> parameters := pattern :: !parameters);
   match List.reverse !parameters with
   | [ first_class_module ] -> (
       match Ast.Pattern.view first_class_module with
@@ -1892,9 +1889,7 @@ let test_typed_labeled_parameter_view = fun _ctx ->
   |> binding_of_structure_item
   |> Result.expect ~msg:"expected typed labeled parameter binding" in
   let parameters = ref [] in
-  Ast.LetBinding.for_each_parameter
-    binding
-    ~fn:(fun pattern -> parameters := pattern :: !parameters);
+  Ast.LetBinding.for_each_parameter binding ~fn:(fun pattern -> parameters := pattern :: !parameters);
   match List.reverse !parameters with
   | [_locally_abstract;_iter;labeled] -> (
       match Ast.Pattern.view labeled with
@@ -1931,9 +1926,7 @@ let test_optional_default_labeled_parameter_view = fun _ctx ->
   |> binding_of_structure_item
   |> Result.expect ~msg:"expected optional default binding" in
   let parameters = ref [] in
-  Ast.LetBinding.for_each_parameter
-    binding
-    ~fn:(fun pattern -> parameters := pattern :: !parameters);
+  Ast.LetBinding.for_each_parameter binding ~fn:(fun pattern -> parameters := pattern :: !parameters);
   match List.reverse !parameters with
   | [optional;_types] -> (
       match Ast.Pattern.view optional with
@@ -2077,6 +2070,62 @@ let test_loop_body_sequence_boundaries = fun _ctx ->
     )
   | _ -> Error "expected count body to be a for expression"
 
+let test_ast_visitor_threads_state_and_skips_subtrees = fun _ctx ->
+  let root =
+    parse_ml
+      {ocaml|let x = if ready then 1 else 2
+let y = 3
+|ocaml}
+    |> Result.expect ~msg:"expected parse source file"
+  in
+  let initial = {
+    let_names = Vector.with_capacity ~size:2;
+    token_texts = Vector.with_capacity ~size:16;
+    leave_count = 0
+  } in
+  let hooks = {
+    Syn.Visitor.empty_hooks
+    with enter_token =
+      Some (fun visitor token ->
+        Vector.push (Syn.Visitor.ctx visitor).token_texts ~value:(Ast.Token.text token);
+        visitor);
+    enter_let_binding =
+      Some (fun visitor binding ->
+        (
+          match Ast.LetBinding.pattern binding with
+          | Some pattern -> (
+              match Ast.Node.first_descendant_token pattern with
+              | Some name -> Vector.push
+                (Syn.Visitor.ctx visitor).let_names
+                ~value:(Ast.Token.text name)
+              | None -> ()
+            )
+          | None -> ()
+        );
+        (visitor, Syn.Visitor.Continue));
+    enter_expr =
+      Some (fun visitor expr ->
+        match Ast.Node.kind expr with
+        | Syn.SyntaxKind.IF_EXPR -> (visitor, Syn.Visitor.Skip_subtree)
+        | _ -> (visitor, Syn.Visitor.Continue));
+    leave_node =
+      Some (fun visitor _node ->
+        let ctx = Syn.Visitor.ctx visitor in
+        Syn.Visitor.with_ctx visitor { ctx with leave_count = ctx.leave_count + 1 });
+  }
+  in
+  let visitor = Syn.Visitor.make ~ctx:initial ~hooks in
+  let visitor = Syn.Visitor.visit_source_file visitor root in
+  let ctx = Syn.Visitor.ctx visitor in
+  Test.assert_equal ~expected:[ "x"; "y" ] ~actual:(vector_to_list ctx.let_names);
+  let token_texts = vector_to_list ctx.token_texts in
+  if List.contains token_texts ~value:"ready" then
+    Error "expected skipped if-expression subtree not to visit condition tokens"
+  else if ctx.leave_count <= 0 then
+    Error "expected leave_node hook to thread updated context"
+  else
+    Ok ()
+
 let tests = [
   Test.case "ast exposes source file and let binding views" test_source_file_and_let_binding_views;
   Test.case "ast exposes separated docstring trivia parts" test_token_leading_docstring_trivia_parts;
@@ -2127,6 +2176,7 @@ let tests = [
   Test.case "ast keeps if then-branch sequences inside explicit else branches" test_if_then_branch_sequence_boundaries;
   Test.case "ast keeps match-case sequences inside if then-branch matches" test_if_then_match_case_sequence_boundaries;
   Test.case "ast keeps while and for body sequences inside done boundaries" test_loop_body_sequence_boundaries;
+  Test.case "ast visitor threads state and skips subtrees" test_ast_visitor_threads_state_and_skips_subtrees;
 ]
 
 let main ~args = Test.Cli.main ~name:"syn-ast" ~tests ~args ()

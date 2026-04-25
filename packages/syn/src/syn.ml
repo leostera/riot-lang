@@ -10,6 +10,7 @@ module RawToken = Raw_token
 module Event = Event
 module SyntaxTree = Syntax_tree
 module Ast = Ast
+module Visitor = Visitor
 module Diagnostic = Diagnostic
 module Parser = Parser
 module DiagnosticReporter = Diagnostic_reporter

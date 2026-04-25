@@ -41,7 +41,7 @@ let to_json event =
             ("stage", String "parsed");
             ("parse_diagnostics", Int parse_diagnostics)
           ]
-          | CstBuilt -> [ ("stage", String "cst_built") ]
+          | AstReady -> [ ("stage", String "ast_ready") ]
           | RuleStarted { rule_id } -> [
             ("stage", String "rule_started");
             ("rule_id", String (Rule_id.to_string rule_id))
