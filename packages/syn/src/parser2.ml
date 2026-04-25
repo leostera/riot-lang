@@ -690,10 +690,43 @@ let can_start_atom = function
   | _ -> false
 
 let missing_binding_expr_boundary = fun p ~signature ~top_level ->
+  let let_expr_has_in_before_item_boundary () =
+    let next_depth depth kind =
+      match kind with
+      | Syntax_kind2.LPAREN
+      | Syntax_kind2.LBRACE
+      | Syntax_kind2.LBRACKET
+      | Syntax_kind2.LBRACKET_BAR
+      | Syntax_kind2.BEGIN_KW
+      | Syntax_kind2.OBJECT_KW
+      | Syntax_kind2.STRUCT_KW
+      | Syntax_kind2.SIG_KW -> depth + 1
+      | Syntax_kind2.RPAREN
+      | Syntax_kind2.RBRACE
+      | Syntax_kind2.RBRACKET
+      | Syntax_kind2.BAR_RBRACKET
+      | Syntax_kind2.END_KW when depth > 0 -> depth - 1
+      | _ -> depth
+    in
+    let rec loop position depth =
+      let kind = kind_at_position p position in
+      if Syntax_kind2.(kind = EOF) then
+        false
+      else if Int.equal depth 0 && position > p.pos && at_item_boundary_at p position ~signature then
+        false
+      else if Int.equal depth 0 && Syntax_kind2.(kind = IN_KW) then
+        true
+      else
+        loop (position + 1) (next_depth depth kind)
+    in
+    Syntax_kind2.(current_kind p = LET_KW) && loop p.pos 0
+  in
   is_eof p
   || (top_level
   && at_item_boundary p ~signature
-  && not (can_start_atom (current_kind p) && leading_trivia_has_post_newline_indent p))
+  && not
+    (can_start_atom (current_kind p)
+    && (leading_trivia_has_post_newline_indent p || let_expr_has_in_before_item_boundary ())))
 
 let can_start_pattern_atom = function
   | Syntax_kind2.IDENT

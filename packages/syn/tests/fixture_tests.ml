@@ -93,51 +93,24 @@ let test_fixture = fun ~(ctx:Test.FixtureRunner.ctx) ->
       ^ " bytes, got "
       ^ Int.to_string root.SyntaxTree.full_width)
 
-let test_tagged_quoted_string_cst = fun _ctx ->
+let test_tagged_quoted_string_token = fun _ctx ->
   let source = "let explanation = {explain|hello|explain}\n" in
-  let parse_result = Syn.parse ~filename:(Path.v "tagged_quoted_string.ml") source in
-  if List.length parse_result.Parser.diagnostics > 0 then
-    let diagnostics = parse_result.Parser.diagnostics
-    |> List.map ~fn:Diagnostic.to_string
-    |> String.concat "\n" in
-    Error ("unexpected parse diagnostics:\n" ^ diagnostics)
+  let slice = source_slice source in
+  let parse_result = Syn.parse2 ~filename:(Path.v "tagged_quoted_string.ml") slice in
+  if Vector.length parse_result.Parser2.diagnostics > 0 then
+    Error ("unexpected parse2 diagnostics:\n" ^ diagnostics_to_string parse_result.Parser2.diagnostics)
   else
-    match Syn.build_cst parse_result with
-    | Ok cst -> (
-        match cst with
-        | Syn.Cst.Implementation {
-          items=Syn.Cst.StructureItem.LetBinding {
-            value=Syn.Cst.Expression.Literal (Syn.Cst.Literal.String {
-              delimiter=Syn.Cst.Quoted { marker };
-              contents;
-              terminated;
-              _
-            });
-            _
-          } :: _;
-          _
-        } ->
-            if String.equal marker "explain" && String.equal contents "hello" && terminated then
-              Ok ()
-            else
-              Error ("unexpected tagged string CST payload: marker="
-              ^ marker
-              ^ ", contents="
-              ^ contents
-              ^ ", terminated="
-              ^ Bool.to_string terminated)
-        | _ -> Error "unexpected CST shape for tagged quoted string literal"
-      )
-    | Error (Syn.Cst_builder_error err) ->
-        Error ("expected CST builder to succeed, got "
-        ^ err.Syn.CstBuilder.message
-        ^ " @ "
-        ^ Syn.SyntaxKind.to_string err.Syn.CstBuilder.syntax_kind
-        ^ " in "
-        ^ String.concat " > " err.Syn.CstBuilder.context)
-    | Error (Syn.Parse_diagnostics diagnostics) ->
-        let diagnostics = diagnostics |> List.map ~fn:Diagnostic.to_string |> String.concat "\n" in
-        Error ("unexpected build_cst parse diagnostics:\n" ^ diagnostics)
+    let root = Ast2.root parse_result.Parser2.tree in
+    let string_token = ref None in
+    Ast2.Node.for_each_token root
+      ~fn:(fun token ->
+        if SyntaxKind2.(Ast2.Token.kind token = STRING) then
+          string_token := Some token);
+    match !string_token with
+    | Some token ->
+        Test.assert_equal ~expected:"{explain|hello|explain}" ~actual:(Ast2.Token.text token);
+        Ok ()
+    | None -> Error "expected tagged quoted string token"
 
 let main ~args =
   let modified_fixture_paths = load_modified_fixture_paths () in
@@ -149,7 +122,7 @@ let main ~args =
       ~snapshot_path:(fun path -> Some (lossless_snapshot_path path))
       ~run:(fun ctx -> test_fixture ~ctx)
   in
-  let tests = Test.case "tagged_quoted_string_cst" test_tagged_quoted_string_cst :: fixture_tests in
+  let tests = Test.case "tagged_quoted_string_token" test_tagged_quoted_string_token :: fixture_tests in
   Test.Cli.main ~name:"syn-fixtures" ~tests ~args ()
 
 let () = Runtime.run ~main ~args:Env.args ()

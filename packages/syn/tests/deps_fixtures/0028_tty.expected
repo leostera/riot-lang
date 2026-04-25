@@ -4,8 +4,6 @@
     "Bytes",
     "Char",
     "Color",
-    "Control",
-    "Data",
     "Escape_seq",
     "Exception",
     "Fs",

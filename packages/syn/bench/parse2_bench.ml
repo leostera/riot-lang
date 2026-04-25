@@ -90,7 +90,9 @@ let selected_benchmarks = fun () ->
       (load_fixture "docstrings" (Path.v "packages/syn/tests/fixtures/ocaml_docstrings.ml"));
     fixture_benchmark
       ~config:large_config
-      (load_fixture "large cst fixture" (Path.v "packages/syn/tests/deps_fixtures/0029_cst_tests.ml"));
+      (load_fixture
+        "vendored makedepend"
+        (Path.v "packages/syn/tests/deps_fixtures/0027_vendored_makedepend.ml"));
   ]
 
 let corpus_benchmark = fun () ->

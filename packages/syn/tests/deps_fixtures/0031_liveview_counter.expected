@@ -1,6 +1,5 @@
 {
   "modules": [
-    "Actors",
     "Component",
     "Conn",
     "Data",
@@ -11,6 +10,7 @@
     "Middleware",
     "Net",
     "Path",
+    "Runtime",
     "Std",
     "Supervisor",
     "Suri",

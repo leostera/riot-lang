@@ -1,98 +1,36 @@
 # syn AGENTS
 
-`syn` is the OCaml lexer, parser, CST, and diagnostics layer.
+`syn` is the OCaml lexer, streaming parser, lossless syntax tree, diagnostics,
+and Ast2 typed-view layer.
 
 ## Rules
 
-1. Preserve lossless parsing. Token and trivia retention matter.
-2. Parser recovery changes are user-facing because tooling builds on diagnostics.
-3. Keep syntax tree changes coordinated with any tooling that consumes `syn`, especially `riot-fix` and `riot-eval`.
-4. Prefer explicit syntax kinds and spans over inferred structure.
-5. Keep `Syn.Cst` faithful to the successful `Ceibo` parse. If a syntax family cannot be lifted precisely, bail from the builder instead of introducing public placeholder nodes.
-6. During the structural-formatting push, prefer exposing explicit CST facts for valid syntax over preserving formatter-policy convenience; if `krasny` still needs to reconstruct a fact, that fact likely belongs here.
-7. Keep the CST root explicit about implementation vs interface files; do not collapse `.ml` and `.mli` structure into one ambiguous top-level shape.
-8. Keep file-level item families split between `StructureItem` and `SignatureItem`; do not reintroduce a shared mixed top-level item enum.
-9. Keep `cst.ml` focused on public types, `cst_builder.ml` focused on lifting, and `cst_json.ml` focused on fixture serialization.
-10. Keep shared CST recursion in `visit.ml`; syntax consumers should not each reimplement their own expression and type walkers.
-11. Keep parsing and CST construction split: `Parser.parse_*` and `Syn.parse*` return Ceibo trees plus diagnostics, while `Syn.build_cst` performs the explicit faithful lift.
-12. Keep `Ceibo` sourced from `packages/ceibo`; do not reintroduce a vendored `packages/syn/src/ceibo` copy.
-13. Keep pattern attributes orthogonal to pattern shape; attach them via `Pattern.attributes` instead of a `Pattern.Attribute` wrapper node.
-14. Keep expression attributes orthogonal to expression shape; attach them via `Expression.attributes` instead of wrapper nodes or postfix-shell `Apply` artifacts.
-15. Keep record-expression fields parsetree-like: always lift a field value expression, and preserve punning with explicit metadata instead of `None`.
-16. Keep packed first-class module expressions direct: `Expression.ModulePack.module_expression` should be the packed payload itself, and any `: S` ascription should stay in explicit `package_type` fields instead of being rewritten as an inner `ModuleExpression.Constraint`.
-16. Keep grouped declaration families recursive by construction. Use `and_binding` / `next_and_declaration` links on the owning node; do not expose list-materializing grouped-declaration helpers or reintroduce separate mutual-group wrapper nodes.
-17. Keep standalone top-level comments and docstrings explicit in the CST item stream; do not bury their ownership in enclosing declaration spans.
-18. Keep nested `sig ... end` and `struct ... end` syntax-node lifts normalized the same way as file-level lifts; callers should not have to provide extra source text just to get correct trivia ownership.
-19. Keep raw trivia ownership explicit on declaration nodes that can carry inline comments/docstrings, even before higher-level sequence normalization decides whether adjacent docstrings stay standalone or attach to a neighbor.
-20. Keep local opens limited to the real OCaml pattern/expression surface. Expression local opens should preserve their original `let`/`open`/`in`, `.` and delimiter tokens via explicit `LetOpen` / `Delimited` CST variants; do not reintroduce `LOCAL_OPEN_TYPE`, core-type local opens, or class-type local opens.
-20. Keep token-attached trivia as the source of truth; do not reintroduce standalone trivia tree children in Ceibo.
-21. Keep `Lexer.tokenize` emitting only real tokens plus `Token.EOF`, with trailing file trivia on `Token.EOF.leading_trivia`.
-22. Keep `Parser.parse_result.tokens` as the original lexer token stream, and use that stream as the source of truth for file-level standalone trivia instead of re-lexing source text.
-23. Keep parser-built green trees trivia-free in normal paths: parser control flow may still consume token-attached leading trivia explicitly, but green child arrays should represent trivia through token `leading_trivia`, not standalone trivia elements.
-24. Keep top-level structure/signature doc ownership on one shared ordered-item pass; do not let those normalization rules fork by item family again.
-25. Keep top-level standalone comment/doc ordering driven by token order: derive file items from each item’s first-token leading trivia plus `EOF.leading_trivia`, not by subtracting syntax-node spans from the file.
-26. Keep nested `sig ... end` and `struct ... end` bodies exposed through shape-specific CST-node helpers such as `CstBuilder.signature_items_of_module_type` and `CstBuilder.structure_items_of_module_expression`; callers should not have to relift raw nested syntax anchors by hand just to get normalized item ownership, and wrong-shape requests should fail explicitly instead of returning `Ok None`.
-27. Keep grouped `type ... and ...` ownership member-driven: normalize each member from its own `TYPE_DECL` token stream, then reassemble the public grouped declaration, instead of redistributing docs/headings out of the grouped parent node by source-span slicing.
-28. Keep red traversal aligned with that same contract for parser-built trees: `SyntaxNode.children`, `direct_tokens`, and `tokens` should already be trivia-free, with comments/docstrings reachable through `SyntaxToken.leading_trivia`.
-29. Keep Ceibo child APIs list-first. Do not bounce `Green.children` or `Red.SyntaxNode.children` through `Array.of_list` / `Array.to_list` in hot paths; prefer `fold_children` or direct list iteration.
-29. Keep member doc ownership leading-only: constructor docstrings in inter-member gaps should attach to the next constructor's `owned_trivia.leading`, while postfix comments may still bubble backward onto the previous constructor and terminal constructor docstrings stay standalone.
-30. Keep record field doc ownership leading-only: field docstrings in inter-field gaps should attach to the next field's `owned_trivia.leading`, while postfix comments may still bubble backward onto the previous field and terminal `}`-owned docs/comments must be preserved without stealing them for the last field.
-31. Keep explicit member-stream normalization limited to repeated member grammars with public member `owned_trivia` today: variant constructors and record fields. Exception declarations stay on the ordinary ordered-item path, and object type fields should not gain member-stream ownership rules until the CST gives them `owned_trivia` and a renderer contract.
-32. Keep doc kind explicit on `Cst.Docstring`: section-vs-ordinary classification should be computed once during CST lift and then reused by ordered-item ownership and nested-body normalization, instead of being rediscovered from raw docstring text in normal paths.
-33. Keep nested `sig ... end` and `struct ... end` helper item streams terminal-trivia-complete: standalone comments/docstrings that live on the closing token's `leading_trivia` must surface as final nested items, not be left for downstream source-gap recovery.
-34. Keep nested `sig ... end` and `struct ... end` helper item streams built from token order, not child-gap archaeology: surface standalone comments/docstrings from each nested item's first-token `leading_trivia` plus the closing token's `leading_trivia`, then let the ordered-item pass normalize ownership exactly like the top level.
-35. Keep grouped `type ... and ...` member-leading trivia sourced from the separator token stream during normalization: later members must inherit the `and` token's `leading_trivia` after raw-node owned-trivia recomputation, not via early lift-time patches that get overwritten.
-36. Keep record-body helper streams public and token-order-complete: `CstBuilder.record_field_items_of_fields` must emit normalized `RecordField` items plus any remaining standalone `}`-owned comments/docstrings after field-owned spans are excluded, so downstream renderers never need raw record-node interleaving or closing-token recovery.
-37. Keep `sig ... end` on an explicit `SIG_EXPR` syntax kind. Do not route signature module-type bodies back through `IDENT_EXPR` plus token-text sniffing in the parser or CST builder.
-38. Keep `Cst.owned_trivia` public and explicit: `leading`, `inner`, and `trailing` are the stable CST ownership buckets consumed by `krasny` and CST JSON, not a temporary migration wrapper to hide behind source-gap recovery.
-39. Keep optional parameter structure lossless in `Syn.Cst`: preserve typed binding patterns and `default_value` as real CST fields instead of forcing downstream tools to recover them from parameter source text.
-40. Keep sequence separator structure explicit in `Syn.Cst`: `sequence_expression.separator_tokens` is the token-order-complete list of `;` boundaries. Do not duplicate per-step trivia into CST convenience fields when the same fact is already structurally reachable from the separator tokens plus neighboring expression nodes.
-41. Keep binding-operator clause boundaries explicit in `Syn.Cst`: `binding_operator_binding.equals_token` and `let_operator_expression.in_token` must stay public so downstream renderers do not reconstruct `let*` / `and*` separators from subtree token scans or source text.
-42. Do not keep payload relift helpers on the public surface while payloads are opaque-only. Consumers should treat `Cst.Payload.Opaque` as the whole contract.
-43. If we ever want structured OCaml payloads again, add them back intentionally as a new CST contract instead of reviving syntax-node-anchor side channels.
-44. Keep attribute and extension payloads opaque by default. Preserve their shell-local token slice as `Cst.Payload.Opaque` instead of guessing that the payload grammar is OCaml.
-45. Keep split-sigil floating annotations payload-free during CST lift. Forms such as `[@@@foo]` and `[%%%foo]` must not misparse the trailing sigil token as raw payload text.
-46. Keep explicit nested item-anchor helpers non-duplicating: once `item_syntax_nodes` already includes lifted floating-attribute siblings, downstream relift helpers must not split the same `TYPE_DECL` a second time.
-47. Keep the optional leading `type` keyword explicit on `Cst.CoreType.Poly` via `type_keyword_token`. Downstream tools should not rescan raw poly-type tokens just to distinguish `type a. ...` from `'a. ...`.
-48. Keep quoted-vs-bare `Cst.CoreType.Var` spelling explicit. Preserve the optional apostrophe on quoted vars via `sigil_token` instead of forcing downstream tools to infer `'a` vs `a` from raw token scans or ad hoc string rewriting.
-49. Keep index-expression delimiters explicit on `Cst.index_expression`. Preserve the opening punctuation token sequence and closing token so downstream renderers can print `.[ ]`, `.( )`, and extended `.%( )` forms without raw token-text reconstruction.
-50. Keep leading `+` / `-` explicit on signed int/float constants via `sign_token` when the constant node owns that sign, so downstream tools do not rescan literal syntax-node tokens just to preserve signed literal patterns.
-51. Keep core-type alias binder spelling explicit on `Cst.CoreType.Alias`. Preserve the optional alias-variable apostrophe via `sigil_token` instead of forcing downstream tools to synthesize `'whole` from bare name text.
-52. Keep named and optional parameter sugar decisions explicit in `Syn.Cst`. Preserve whether the binding name matches the label via `binding_name_matches_label` so downstream tools do not compare label text with binding-pattern identifiers to choose `~label` vs `~label:pattern`.
-53. Keep token-level operator/name classification explicit on `Syn.Cst.Token`. Expose fixed operators, operator-like identifiers, and same-spelling token comparisons through helpers such as `fixed_operator`, `is_operator_like_name`, `is_identifier_like_name`, and `same_text` so downstream tools do not rescan raw token text for `|>`, `&&`, `||`, `mod`, or similar cases.
-54. Keep token-owned trivia explicit on `Syn.Cst.Token` too. Downstream tools that need the original token-carried trivia should read `Token.leading_trivia` plus `trivia_of_syntax_trivia`, not ask parent CST nodes to duplicate those lists as convenience fields.
-55. Keep top-level phrase separators explicit on `Syn.Cst.SourceFile`. Expose source-file `;;` spelling through `SourceFile.phrase_separator_tokens` so downstream renderers do not reach around the public CST root to scan direct source-file tokens by hand.
-56. Keep source-file phrase-boundary ownership explicit too. Preserve per-item `trailing_phrase_separator_tokens` on implementation/interface roots so downstream renderers do not recompute `;;` attachment by scanning item spans after CST construction.
-57. Keep `Pattern.PolyVariantInherit.type_path` free of the leading `#` sigil. Preserve `#color` and `#M.color` as ordinary identifier/module paths after the sigil so downstream renderers can print the `#` once structurally instead of recovering or duplicating it from token text.
-58. Keep CST boundary-trivia access explicit when downstream tools still need token-attached leading trivia around body/branch boundaries. Use `Syn.Cst.leading_trivia_after`, `leading_trivia_before_node`, and `leading_trivia_after_token_before_node` instead of having formatters walk `Ceibo.Red.SyntaxNode.tokens` directly.
-59. Keep generic token-body span access explicit in `Syn.Cst` too. If downstream tools need a node’s real-token span without leading trivia, expose that through `Syn.Cst.token_body_span` instead of having formatters scan `Ceibo.Red.SyntaxNode.tokens` themselves.
-60. Keep diagnostics-only syntax-kind access explicit in `Syn.Cst` as well. If downstream tools only need a node kind for unsupported-shape reporting, expose that through `Syn.Cst.syntax_kind` and stringify it only at the edge instead of calling `Ceibo.Red.SyntaxNode.kind` directly.
-61. When a keyword or separator defines a stable grammar boundary, preserve the original tokens first. Only add an explicit CST boundary field when the structure itself would otherwise be missing; do not duplicate token-owned trivia into convenience fields that downstream tools can already reach through CST-carried tokens and child nodes.
-62. Keep class and class-type declaration shell modifiers explicit in `Syn.Cst`. Shortcut forms such as `class%foo [@foo] x = ...` and `class type%foo [@foo] t = ...` should expose their shell extension/attributes directly instead of forcing downstream tools to recover them from raw declaration syntax.
-63. Keep class and class-type body helper streams token-order-complete just like records and objects. `CstBuilder.class_field_items_of_fields` and `class_type_field_items_of_fields` should surface trailing `end`-owned comments/docstrings so downstream renderers never need class-body archaeology.
-64. Prefer valid-shape sums over `option * option` declaration records. `class` declarations should not be representable as “missing both type and body”, and the same tightening should happen for other shared declaration nodes when practical.
-64. Keep `module` bindings split by file context. Implementation-side `module M = ...` forms belong on `ModuleStructure`; interface-side `module M : S` forms belong on `ModuleSignature`; grouped `module rec ... and ...` declarations should chain through `next_and_declaration` instead of a separate recursive wrapper node.
-65. Keep `let_binding` pattern-first. Do not cache a parallel `binding_name` field alongside `binding_pattern`; simple binding names should be derived only when the pattern shape actually carries one.
-66. Keep syntax-optional adornments as optional fields, not fake grammar branches. If attributes, annotations, or constraints are optional in the language, model them with `option` on the valid node shape instead of introducing branch constructors just for presence/absence.
-67. Split class/object member definitions along real grammar alternatives. Concrete methods/values should require bodies and keep optional type annotations, while virtual methods/values should require types and forbid bodies; initializers should require bodies outright.
-68. Keep expression type annotations and coercions on one explicit `Expression.TypeAscription` node with valid inner variants. Do not split ordinary `: t` away from `:> t` / `: t :> u` into parallel nullable record shapes again.
-69. Keep `class` items split by file context. Structure-side `class ... = ...` forms belong on `ClassDefinition`; interface-side `class ... : ...` forms belong on `ClassDeclaration`; do not reintroduce a shared cross-context class node.
-70. Keep CST invariants local to construction. Do not reintroduce a whole-tree post-construction validation walk on the hot `build_cst` path; builder helpers should construct valid nodes directly and enforce any remaining invariants at the point where the facts are available.
-71. Keep nested `sig ... end` and `struct ... end` relift paths going through the same payload-node ordered-item builders as file-level lifts. Nested helper item streams must preserve inter-item comments/docstrings, not just declaration nodes.
-72. Keep body/branch trivia token-owned when possible. Comments/docstrings after `->`, `=`, `in`, `then`, `else`, or an opening delimiter should stay reachable through the relevant CST-carried token plus the following child node instead of being copied into parallel trivia fields.
-73. Keep declaration separator tokens when trivia can attach to them. `ModuleTypeDeclaration`, `ValueDeclaration`, and `ExternalDeclaration` should preserve their original `=` / `:` tokens so downstream tools never synthesize those boundaries and lose separator-owned comments.
-74. Keep module declaration head tokens explicit on the recursive chain. `ModuleSignature` and `ModuleStructure` should preserve their original `module` / `and` shell token on each node plus any explicit `rec` token, instead of collapsing that shell down to `is_recursive` alone.
-75. Keep object/class member modifiers token-backed too. Preserve `!`, `private`, `mutable`, and `virtual` as ordered modifier tokens or definition-local tokens instead of collapsing them to booleans that drop attached comments/docstrings.
-76. Prefer shared `Std.Test.FixtureRunner` plus `Std.Test.Snapshot` for fixture-backed parser/diagnostic suites instead of package-local expected-file harnesses; keep fixture selection path-typed with `Std.Path.t`.
-77. In the shared root worktree, fixture-backed `syn` suites may skip fixture source files that already have local edits so snapshot churn stays scoped to the agent editing those inputs. Clean trees should still exercise the full approved fixture corpus.
-78. Keep `Syn.Deps` differential against the vendored `ocamldep` algorithm. When extending deps coverage, add oracles under `packages/syn/tests/deps_fixtures/` and regenerate adjacent `*.expected.ocamldep` files from the real tool before approving the JSON snapshots.
-79. Keep docstring trivia delimiter structure explicit on `Ast2.Token`. The lexer-owned docstring content should remain delimiter-free, while Ast2 consumers can still access lossless raw text plus separated opening/content/closing fields instead of rescanning comment text.
-80. Keep formatter-facing Ast2 whitespace trivia collapsed. The lossless backing tree may retain exact raw whitespace for spans and diagnostics, but `Ast2.Token` trivia views should expose whitespace as a structural marker, not a byte-for-byte source-preservation string.
+1. Keep one parser path. `Parser2` is the implementation, and `Syn.Parser` is
+   only a compatibility alias for that same module.
+2. Do not reintroduce the old Ceibo parser, typed `Cst`, CST builder, CST JSON
+   snapshots, or visitor/traversal stack.
+3. Preserve lossless parsing. Raw tokens, spans, diagnostics, comments, and
+   docstrings must stay recoverable from the streaming parser tree.
+4. Keep parser-built syntax trees trivia-free in child arrays. Comments,
+   docstrings, and whitespace belong in token-attached leading trivia.
+5. Keep formatter-facing Ast2 whitespace trivia collapsed. Exact raw whitespace
+   can stay in the backing tree for spans and diagnostics, but Ast2 token views
+   should expose whitespace as a structural marker.
+6. Keep docstring delimiter structure explicit on `Ast2.Token`: opening,
+   delimiter-free content, and optional closing delimiter must be available
+   without rescanning raw comment text.
+7. Prefer explicit `SyntaxKind2` facts and spans over inferred syntax shape.
+8. When syntax support grows, add parser/Ast2 coverage before relying on that
+   syntax from downstream packages.
+9. Keep `Syn.Deps` on the Ast2 path and differential against `ocamldep`-style
+   expectations for dependency behavior.
+10. Prefer `Std.Test.FixtureRunner` plus `Std.Test.Snapshot` for fixture-backed
+    parser and diagnostic suites.
 
 ## Validate
 
-`timeout 30 riot build syn`
-`timeout 180 riot test syn:deps_fixture_tests`
-`timeout 180 riot test syn:fixture_tests`
-`timeout 180 riot test syn:diagnostic_tests`
-`timeout 600 riot test syn:cst_fixture_tests`
+`timeout 120 riot build -p syn --json`
+`timeout 180 riot test -p syn -f deps --json`
+`timeout 180 riot test -p syn -f fixture --json`
+`timeout 180 riot test -p syn -f diagnostic --json`
+`timeout 180 riot test -p syn -f ast2 --json`

@@ -18,11 +18,6 @@ let render_actual = fun ~fixture_path ->
   | Error (Syn.Deps.Parse_diagnostics diagnostics) -> "parse diagnostics:\n"
   ^ String.concat "\n" (List.map diagnostics ~fn:Diagnostic.to_string)
   ^ "\n"
-  | Error (Syn.Deps.Cst_builder_error err) -> "cst builder error: "
-  ^ err.Syn.CstBuilder.message
-  ^ " @ "
-  ^ Syn.SyntaxKind.to_string err.Syn.CstBuilder.syntax_kind
-  ^ "\n"
 
 let test_fixture = fun ~(ctx:Test.FixtureRunner.ctx) ->
   Test.Snapshot.assert_with

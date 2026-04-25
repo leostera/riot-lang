@@ -4,6 +4,8 @@ open Syn
 module Ast2 = Syn.Ast2
 module Iterator = Iter.Iterator
 
+let ( let* ) = fun result fn -> Result.and_then result ~fn
+
 let source_slice = fun source ->
   match IO.IoVec.IoSlice.from_string source with
   | Ok slice -> slice
@@ -986,7 +988,7 @@ let test_trailing_sequence_before_and_views = fun _ctx ->
         | Ast2.Expr.Sequence { left=Some _; right=None } -> Ok ()
         | _ -> Error "expected trailing sequence expression body"
       in
-      assert_trailing_sequence f_binding "f";
+      let* () = assert_trailing_sequence f_binding "f" in
       assert_trailing_sequence g_binding "g"
   | _ -> Error "expected two recursive bindings"
 
@@ -1382,13 +1384,13 @@ let test_local_open_views = fun _ctx ->
   let dot_token = Ast2.LocalOpenPattern.dot_token local_open_pattern |> require_some ~msg:"expected local open dot" in
   let inner = Ast2.LocalOpenPattern.pattern local_open_pattern |> require_some ~msg:"expected inner local open pattern" in
   Test.assert_equal ~expected:"." ~actual:(Ast2.Token.text dot_token);
-  (
+  let* () =
     match Ast2.Pattern.view inner with
     | Ast2.Pattern.Path { path } ->
         Test.assert_equal ~expected:"x" ~actual:(last_path_text path);
         Ok ()
     | _ -> Error "expected local open inner path pattern"
-  );
+  in
   let local_open_record_pattern = nth_structure_item root 2
   |> require_some ~msg:"expected local open record pattern item"
   |> binding_of_structure_item
@@ -1487,7 +1489,7 @@ let test_local_open_labeled_argument_views = fun _ctx ->
   );
   match arguments with
   | [root_arg;ns_arg] ->
-      (
+      let* () =
         match Ast2.Expr.view root_arg with
         | Ast2.Expr.LabeledArg { label=Some label; value=Some value } ->
             Test.assert_equal ~expected:"root" ~actual:(Ast2.Token.text label);
@@ -1508,7 +1510,7 @@ let test_local_open_labeled_argument_views = fun _ctx ->
               | _ -> Error "expected complete labeled local open"
             )
         | _ -> Error "expected labeled root argument"
-      );
+      in
       (
         match Ast2.Expr.view ns_arg with
         | Ast2.Expr.LabeledArg { label=Some label; value=Some _ } ->
@@ -2127,5 +2129,6 @@ let tests = [
   Test.case "ast2 keeps while and for body sequences inside done boundaries" test_loop_body_sequence_boundaries;
 ]
 
-let () =
-  Actors.run ~main:(fun ~args -> Test.Cli.main ~name:"syn-ast2" ~tests ~args ()) ~args:Env.args ()
+let main ~args = Test.Cli.main ~name:"syn-ast2" ~tests ~args ()
+
+let () = Std.Runtime.run ~main ~args:Env.args ()

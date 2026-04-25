@@ -7,7 +7,6 @@ let parse_modules = fun ~env ~filename source ->
   | Ok deps -> Ok (Syn.Deps.modules deps)
   | Error (Syn.Deps.Parse_diagnostics diagnostics) -> Error ("parse diagnostics: "
   ^ String.concat "; " (List.map diagnostics ~fn:Syn.Diagnostic.to_string))
-  | Error (Syn.Deps.Cst_builder_error err) -> Error ("cst builder error: " ^ err.message)
 
 let alias_exports = fun names ->
   List.fold_left
@@ -81,17 +80,17 @@ let test_deps_collect_opened_module_root_for_exported_child = fun _ctx ->
   | Error err -> Error err
 
 let test_deps_ignore_lowercase_field_access_roots = fun _ctx ->
-  let source = "\n\
-    type opts = { follow_symlinks: bool }\n\
-    type iterator_state = { roots: int list; opts: opts }\n\
-    let update = fun state -> { state.opts with follow_symlinks = false }\n\
-    let size = fun state -> List.length state.roots\n\
-    let make =\n\
-      let module Base = struct\n\
-        type state = iterator_state\n\
-        let size = fun state -> List.length state.roots\n\
-      end in\n\
-      ()\n"
+  let source = {ocaml|type opts = { follow_symlinks: bool }
+type iterator_state = { roots: int list; opts: opts }
+let update = fun state -> { state.opts with follow_symlinks = false }
+let size = fun state -> List.length state.roots
+let make =
+let module Base = struct
+  type state = iterator_state
+  let size = fun state -> List.length state.roots
+end in
+()
+|ocaml}
   in
   match parse_modules ~env:Syn.Deps.Env.empty ~filename:"walker.ml" source with
   | Ok modules when modules = [ "List" ] -> Ok ()
@@ -148,6 +147,35 @@ let test_deps_collect_field_access_modules_from_implicit_alias_opens = fun _ctx 
   | Ok modules -> Error ("expected deps [Libc], got [" ^ String.concat ", " modules ^ "]")
   | Error err -> Error err
 
+let test_deps_ignore_polymorphic_variant_tags = fun _ctx ->
+  let source = {ocaml|type t = {
+  mutable active: [
+    `Data
+    | `Control
+  ];
+}
+let set_data = fun t -> t.active <- `Data
+|ocaml}
+  in
+  match parse_modules ~env:Syn.Deps.Env.empty ~filename:"tags.ml" source with
+  | Ok [] -> Ok ()
+  | Ok modules -> Error ("expected deps [], got [" ^ String.concat ", " modules ^ "]")
+  | Error err -> Error err
+
+let test_deps_ignore_local_module_type_in_first_class_module = fun _ctx ->
+  let source = {ocaml|module type Intf = sig
+  type state
+  type item
+end
+
+type ('item, 'state) iter = (module Intf with type item = 'item and type state = External.state)
+|ocaml}
+  in
+  match parse_modules ~env:Syn.Deps.Env.empty ~filename:"iter.ml" source with
+  | Ok modules when modules = [ "External" ] -> Ok ()
+  | Ok modules -> Error ("expected deps [External], got [" ^ String.concat ", " modules ^ "]")
+  | Error err -> Error err
+
 let name = "syn-deps"
 
 let tests =
@@ -162,6 +190,8 @@ let tests =
     case "deps ignore lowercase field access roots" test_deps_ignore_lowercase_field_access_roots;
     case "deps collect variant payload modules from implicit alias opens" test_deps_collect_variant_payload_modules_from_implicit_alias_opens;
     case "deps collect field access modules from implicit alias opens" test_deps_collect_field_access_modules_from_implicit_alias_opens;
+    case "deps ignore polymorphic variant tags" test_deps_ignore_polymorphic_variant_tags;
+    case "deps ignore local module type in first class module" test_deps_ignore_local_module_type_in_first_class_module;
   ]
 
 let main ~args = Test.Cli.main ~name ~tests ~args ()

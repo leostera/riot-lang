@@ -20,7 +20,7 @@ Use it as a router: pick the most relevant existing AGENTS file before making ch
 - `packages/jsonrpc/AGENTS.md`: JSON-RPC framing and codec behavior
 - `packages/lsp/AGENTS.md`: Language Server Protocol types, codecs, and typed method descriptors
 - `packages/mcp/AGENTS.md`: MCP transport and protocol types
-- `packages/syn/AGENTS.md`: parser, lexer, CST, diagnostics
+- `packages/syn/AGENTS.md`: lexer, streaming parser, Ast2 views, diagnostics
 - `packages/krasny/AGENTS.md`: OCaml formatter, document layout, syntax-to-text rendering
 - `editors/riot.nvim/AGENTS.md`: Neovim plugin, editor-facing Riot command integration
 - `editors/vscode-riot-ml/AGENTS.md`: VS Code extension, editor-facing Riot command integration

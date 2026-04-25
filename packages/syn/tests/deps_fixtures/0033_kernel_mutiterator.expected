@@ -1,7 +1,6 @@
 {
   "modules": [
     "Global0",
-    "Intf",
     "Option",
     "Stdlib"
   ]
