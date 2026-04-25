@@ -311,7 +311,20 @@ let assign r = r := 1
       let parsed = parse_ml source in
       let actual = capture_write parsed in
       Test.Snapshot.assert_inline_text ~ctx ~actual
-        ~expected:{ocaml|let run = fun ~args: _ -> ()
+        ~expected:{ocaml|let run = fun ~args:_ -> ()
+|ocaml});
+  Test.case "write preserves renamed labeled function parameters"
+    (fun ctx ->
+      let source = {ocaml|let index_of=fun value ~char:needle ~fn:predicate->if predicate needle then Some value else None
+|ocaml}
+      in
+      let parsed = parse_ml source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|let index_of = fun value ~char:needle ~fn:predicate ->
+  if predicate needle then
+    Some value
+  else None
 |ocaml});
   Test.case "write preserves let binding annotations exactly once"
     (fun ctx ->

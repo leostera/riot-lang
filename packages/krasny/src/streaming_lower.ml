@@ -1341,6 +1341,63 @@ let collect_tuple_pattern_items = fun pattern ->
   push_items pattern;
   items
 
+let path_single_ident_token = fun path ->
+  let found = ref None in
+  let count = ref 0 in
+  Ast.Path.for_each_ident path
+    ~fn:(fun token ->
+      count := Int.add !count 1;
+      if Int.equal !count 1 then
+        found := Some token);
+  if Int.equal !count 1 then
+    !found
+  else
+    None
+
+let rec pattern_binding_ident_token = fun pattern ->
+  match Ast.Pattern.view pattern with
+  | Path { path } -> path_single_ident_token path
+  | Parenthesized { inner=Some inner }
+  | Constraint { pattern=Some inner; _ }
+  | Attribute { inner=Some inner } -> pattern_binding_ident_token inner
+  | _ -> None
+
+let parameter_pattern_matches_label = fun label pattern ->
+  match pattern_binding_ident_token pattern with
+  | Some binding -> Ast.Token.text_equal label binding
+  | None -> false
+
+let split_typed_parameter_pattern = fun pattern ->
+  match Ast.Pattern.view pattern with
+  | Constraint { pattern=Some pattern; annotation=Some annotation } -> Some (pattern, annotation)
+  | _ -> None
+
+let parameter_pattern_requires_parens = fun pattern ->
+  match Ast.Pattern.view pattern with
+  | Alias _ -> true
+  | _ -> false
+
+let parameter_token_wants_space_before = fun previous token ->
+  let current_kind = Ast.Token.kind token in
+  let previous_kind = Ast.Token.kind previous in
+  if Kind.(previous_kind = COLON || current_kind = COLON) then
+    false
+  else
+    token_wants_space_before previous token
+
+let emit_parameter_token_stream = fun state parameter ->
+  let previous = ref None in
+  Ast.Node.for_each_token parameter
+    ~fn:(fun token ->
+      (
+        match !previous with
+        | Some previous when parameter_token_wants_space_before previous token -> emit_space state
+        | Some _
+        | None -> ()
+      );
+      emit_token state token;
+      previous := Some token)
+
 let rec render_pattern = fun state pattern ->
   match Ast.Pattern.view pattern with
   | Wildcard ->
@@ -1463,10 +1520,10 @@ let rec render_pattern = fun state pattern ->
       render_pattern state pattern
   | Exception _ ->
       unsupported_node "exception pattern without payload" pattern
-  | LabeledParam _
-  | OptionalParam _
-  | OptionalParamDefault _ ->
-      emit_token_stream state pattern
+  | LabeledParam parameter
+  | OptionalParam parameter
+  | OptionalParamDefault parameter ->
+      render_parameter state parameter
   | LocallyAbstractType
   | FirstClassModule ->
       emit_token_stream state pattern
@@ -1477,6 +1534,57 @@ let rec render_pattern = fun state pattern ->
   | Error _
   | Unknown _ ->
       unsupported_node "unsupported pattern" pattern
+
+and render_parameter_pattern = fun state parameter pattern ->
+  let needs_parens =
+    Ast.Parameter.has_explicit_pattern_parens parameter || parameter_pattern_requires_parens pattern in
+  if needs_parens then
+    (
+      emit_text state "(";
+      render_pattern state pattern;
+      emit_text state ")"
+    )
+  else
+    render_pattern state pattern
+
+and render_named_parameter = fun state ~sigil parameter label pattern ->
+  match split_typed_parameter_pattern pattern with
+  | Some (inner, annotation) when parameter_pattern_matches_label label inner ->
+      emit_text state sigil;
+      emit_text state "(";
+      render_pattern state inner;
+      emit_text state ":";
+      render_type_expr state annotation;
+      emit_text state ")"
+  | _ when parameter_pattern_matches_label label pattern ->
+      emit_text state sigil;
+      emit_token state label
+  | _ ->
+      emit_text state sigil;
+      emit_token state label;
+      emit_text state ":";
+      render_parameter_pattern state parameter pattern
+
+and render_parameter = fun state parameter ->
+  match Ast.Parameter.view parameter with
+  | Labeled { label=Some label; pattern=None } ->
+      emit_text state "~";
+      emit_token state label
+  | Labeled { label=Some label; pattern=Some pattern } ->
+      render_named_parameter state ~sigil:"~" parameter label pattern
+  | Labeled _ ->
+      unsupported_node "labeled parameter without label" parameter
+  | Optional { label=Some label; pattern=None } ->
+      emit_text state "?";
+      emit_token state label
+  | Optional { label=Some label; pattern=Some pattern } ->
+      render_named_parameter state ~sigil:"?" parameter label pattern
+  | Optional _ ->
+      unsupported_node "optional parameter without label" parameter
+  | OptionalDefault _ ->
+      emit_parameter_token_stream state parameter
+  | Unknown _ ->
+      unsupported_node "unsupported parameter" parameter
 
 and render_local_open_pattern = fun state pattern ->
   let path_tokens = Vector.with_capacity ~size:(Ast.Node.child_count pattern) in
