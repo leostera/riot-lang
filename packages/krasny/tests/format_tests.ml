@@ -563,6 +563,35 @@ transitive_deps
   *)
   let transitive_deps = deps () in transitive_deps
 |ocaml});
+  Test.case "format keeps constructor record update arguments idempotent"
+    (fun ctx ->
+      let source = {ocaml|let parse_payload=fun frame payload_data->
+match frame.frame_type with
+|Frame.Headers->Ok {frame with payload=Frame.HeadersPayload {pad_length=None;stream_dependency=None;weight=None;exclusive=false;header_block_fragment=payload_data;}}
+|Frame.Data->Ok {frame with payload=Frame.DataPayload {data=payload_data;pad_length=None}}
+|ocaml}
+      in
+      let first = parse_ml source |> Krasny.format |> Result.expect ~msg:"constructor record update argument should format" in
+      let second = parse_ml first |> Krasny.format |> Result.expect ~msg:"formatted constructor record update argument should reformat" in
+      Test.assert_equal ~expected:first ~actual:second;
+      Test.Snapshot.assert_inline_text ~ctx ~actual:first
+        ~expected:{ocaml|let parse_payload = fun frame payload_data ->
+  match frame.frame_type with
+  | Frame.Headers ->
+      Ok (
+        {
+          frame with
+          payload = Frame.HeadersPayload {
+            pad_length = None;
+            stream_dependency = None;
+            weight = None;
+            exclusive = false;
+            header_block_fragment = payload_data
+          }
+        }
+      )
+  | Frame.Data -> Ok ({ frame with payload = Frame.DataPayload { data = payload_data; pad_length = None } })
+|ocaml});
   Test.case "write renders parenthesized type constructor arguments"
     (fun ctx ->
       let source = {ocaml|val set:'value t->at:int->value:'value->(unit,error) Kernel.result

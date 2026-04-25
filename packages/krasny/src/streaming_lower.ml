@@ -2216,27 +2216,7 @@ let rec render_expr = fun state expr ->
       with_indent state 2 render_inner;
       emit_line state;
       emit_text state "end"
-  | Parenthesized { inner = Some inner } when not (same_ast_node expr inner) ->
-      let render_inner () =
-        with_delimited_expr state
-          (
-            fun () -> render_expr state inner
-          )
-      in
-      if expr_is_multiline inner then
-        (
-          emit_text state "(";
-          emit_line state;
-          with_indent state 2 render_inner;
-          emit_line state;
-          emit_text state ")"
-        )
-      else
-        (
-          emit_text state "(";
-          render_inner ();
-          emit_text state ")"
-        )
+  | Parenthesized { inner = Some inner } when not (same_ast_node expr inner) -> render_parenthesized_expr state inner
   | Parenthesized { inner = Some inner } ->
       emit_text state "(";
       with_delimited_expr state
@@ -2323,10 +2303,28 @@ let rec render_expr = fun state expr ->
 and render_expr_atom = fun state expr ->
   match Ast.Expr.view expr with
   | Path _ | Literal _ | FieldAccess _ | Prefix _ | Parenthesized _ | Array | List | Record | ArrayIndex _ | StringIndex _ | FirstClassModule | Extension | LocalOpen _ | LabeledArg _ | PolyVariant { payload = None } | OptionalArg _ -> render_expr state expr
-  | _ ->
+  | _ -> render_parenthesized_expr state expr
+and render_parenthesized_expr = fun state expr ->
+  let render_inner () =
+    with_delimited_expr state
+      (
+        fun () -> render_expr state expr
+      )
+  in
+  if expr_is_multiline expr then
+    (
       emit_text state "(";
-      render_expr state expr;
+      emit_line state;
+      with_indent state 2 render_inner;
+      emit_line state;
       emit_text state ")"
+    )
+  else
+    (
+      emit_text state "(";
+      render_inner ();
+      emit_text state ")"
+    )
 and render_infix_left_operand = fun state ~operator_text left ->
   if String.equal operator_text "@@" then
     render_expr state left
