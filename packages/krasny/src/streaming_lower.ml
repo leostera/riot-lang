@@ -1398,6 +1398,19 @@ let emit_parameter_token_stream = fun state parameter ->
       emit_token state token;
       previous := Some token)
 
+let parameter_colon_has_leading_space = fun parameter ->
+  let found = ref None in
+  Ast.Node.for_each_token parameter
+    ~fn:(fun token ->
+      match !found with
+      | Some _ -> ()
+      | None ->
+          if Kind.(Ast.Token.kind token = COLON) then
+            found := Some token);
+  match !found with
+  | Some colon -> not (String.is_empty (Ast.Token.leading_text colon))
+  | None -> false
+
 let rec render_pattern = fun state pattern ->
   match Ast.Pattern.view pattern with
   | Wildcard ->
@@ -1585,6 +1598,44 @@ and render_parameter = fun state parameter ->
       emit_parameter_token_stream state parameter
   | Unknown _ ->
       unsupported_node "unsupported parameter" parameter
+
+and loose_parameter_binding_annotation = fun parameter ->
+  match Ast.Pattern.view parameter with
+  | LabeledParam parameter -> (
+      match Ast.Parameter.view parameter with
+      | Labeled { pattern=Some annotation; _ }
+        when (not (Ast.Parameter.has_explicit_pattern_parens parameter))
+             && parameter_colon_has_leading_space parameter ->
+          Some annotation
+      | _ -> None
+    )
+  | OptionalParam parameter -> (
+      match Ast.Parameter.view parameter with
+      | Optional { pattern=Some annotation; _ }
+        when (not (Ast.Parameter.has_explicit_pattern_parens parameter))
+             && parameter_colon_has_leading_space parameter ->
+          Some annotation
+      | _ -> None
+    )
+  | _ -> None
+
+and render_parameter_label_only = fun state parameter ->
+  match Ast.Pattern.view parameter with
+  | LabeledParam parameter -> (
+      match Ast.Parameter.view parameter with
+      | Labeled { label=Some label; _ } ->
+          emit_text state "~";
+          emit_token state label
+      | _ -> emit_parameter_token_stream state parameter
+    )
+  | OptionalParam parameter -> (
+      match Ast.Parameter.view parameter with
+      | Optional { label=Some label; _ } ->
+          emit_text state "?";
+          emit_token state label
+      | _ -> emit_parameter_token_stream state parameter
+    )
+  | _ -> render_pattern state parameter
 
 and render_local_open_pattern = fun state pattern ->
   let path_tokens = Vector.with_capacity ~size:(Ast.Node.child_count pattern) in
@@ -3445,6 +3496,22 @@ and render_let_expr = fun state expr body ->
 
 and render_let_binding_tail = fun state binding ->
   let view = Ast.LetBinding.view binding in
+  let annotation = Ast.LetBinding.type_annotation binding in
+  let parameters = Vector.with_capacity ~size:(Ast.Node.child_count binding) in
+  Ast.LetBinding.for_each_parameter binding ~fn:(fun param -> Vector.push parameters ~value:param);
+  let parameter_count = Vector.length parameters in
+  let loose_binding_annotation =
+    if Int.(parameter_count > 0) then
+      (
+        let last_index = Int.sub parameter_count 1 in
+        let last = Vector.get_unchecked parameters ~at:last_index in
+        match loose_parameter_binding_annotation last with
+        | Some annotation -> Some (last_index, annotation)
+        | None -> None
+      )
+    else
+      None
+  in
   let pattern_contains_annotation annotation =
     match view.pattern with
     | Some pattern -> pattern_contains_type_annotation pattern annotation
@@ -3455,19 +3522,41 @@ and render_let_binding_tail = fun state binding ->
     | Some pattern -> render_pattern state pattern
     | None -> unsupported_node "let binding without pattern" binding
   );
-  Ast.LetBinding.for_each_parameter binding
-    ~fn:(fun param ->
-      emit_space state;
-      render_pattern state param);
+  let rec render_parameters index =
+    if Int.(index < parameter_count) then
+      (
+        let parameter = Vector.get_unchecked parameters ~at:index in
+        emit_space state;
+        (
+          match loose_binding_annotation with
+          | Some (loose_index, _) when Int.equal index loose_index ->
+              render_parameter_label_only state parameter
+          | Some _
+          | None ->
+              render_pattern state parameter
+        );
+        render_parameters (Int.add index 1)
+      )
+  in
+  render_parameters 0;
   (
-    match Ast.LetBinding.type_annotation binding with
-    | Some annotation when not (pattern_contains_annotation annotation) ->
+    match (annotation, loose_binding_annotation) with
+    | Some annotation, Some _ ->
+        emit_space state;
         emit_text state ":";
         emit_space state;
         render_type_expr state annotation
-    | Some _ ->
-        ()
-    | None ->
+    | None, Some (_, annotation) ->
+        emit_space state;
+        emit_text state ":";
+        emit_space state;
+        emit_token_stream state annotation
+    | Some annotation, None when not (pattern_contains_annotation annotation) ->
+        emit_text state ":";
+        emit_space state;
+        render_type_expr state annotation
+    | Some _, None
+    | None, None ->
         ()
   );
   emit_space state;

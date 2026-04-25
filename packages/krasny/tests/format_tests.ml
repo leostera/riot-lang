@@ -1683,6 +1683,21 @@ let make ~start ~finish ~steps : color array = steps
 |}
         ~actual;
       Ok ());
+  Test.case "write keeps binding return type annotations loose after named parameters"
+    (fun ctx ->
+      let source = {ocaml|let symmetric ~h ~v : margin={left=h;right=h;top=v;bottom=v}
+|ocaml}
+      in
+      let parsed = parse_ml source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|let symmetric ~h ~v : margin = {
+  left = h;
+  right = h;
+  top = v;
+  bottom = v
+}
+|ocaml});
   Test.case "format index expressions from explicit delimiter tokens"
     (fun ctx ->
       let source = {|let x = s.[0]
