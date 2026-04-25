@@ -2,10 +2,10 @@ open Std
 open Std.Collections
 
 type t =
-  | StartNode of Syntax_kind2.t option
+  | StartNode of Syntax_kind.t option
   | FinishNode
   | Token of int
-  | Missing of Syntax_kind2.t * int
+  | Missing of Syntax_kind.t * int
   | Error of Diagnostic.t
 
 type event = t
@@ -24,7 +24,7 @@ module Buffer = struct
 
   type completed = {
     start_index: int;
-    kind: Syntax_kind2.t;
+    kind: Syntax_kind.t;
   }
 
   let create = fun ?(event_capacity = 0) ?(diagnostic_capacity = 0) () ->

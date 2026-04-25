@@ -11,20 +11,20 @@ type fixture = {
 
 let checksum = ref 0
 
-let make_slice = fun source -> IO.IoVec.IoSlice.from_string source |> Result.expect ~msg:"failed to create parse2 benchmark source slice"
+let make_slice = fun source -> IO.IoVec.IoSlice.from_string source |> Result.expect ~msg:"failed to create parse benchmark source slice"
 
 let load_fixture = fun name path ->
   let source = Fs.read path
-  |> Result.expect ~msg:("failed to read parse2 benchmark fixture: " ^ Path.to_string path) in
+  |> Result.expect ~msg:("failed to read parse benchmark fixture: " ^ Path.to_string path) in
   { name; path; source; slice = make_slice source }
 
-let touch_parse2 = fun (result: Parser2.parse_result) ->
-  let root = SyntaxTree.root result.Parser2.tree in
-  checksum := !checksum lxor root.SyntaxTree.full_width lxor Vector.length result.Parser2.diagnostics
+let touch_parse = fun (result: Parser.parse_result) ->
+  let root = SyntaxTree.root result.Parser.tree in
+  checksum := !checksum lxor root.SyntaxTree.full_width lxor Vector.length result.Parser.diagnostics
 
-let bench_parse2 = fun fixture ->
-  let result = parse2 ~filename:fixture.path fixture.slice in
-  touch_parse2 result
+let bench_parse = fun fixture ->
+  let result = parse ~filename:fixture.path fixture.slice in
+  touch_parse result
 
 let is_source_file = fun path ->
   match Path.extension path with
@@ -52,11 +52,11 @@ let load_valid_fixture_corpus = fun () ->
     () |> Result.expect ~msg:"failed to walk syn fixture corpus";
   fixtures
 
-let bench_parse2_corpus = fun fixtures ->
+let bench_parse_corpus = fun fixtures ->
   let rec loop index =
     if index < Vector.length fixtures then
       (
-        bench_parse2 (Vector.get_unchecked fixtures ~at:index);
+        bench_parse (Vector.get_unchecked fixtures ~at:index);
         loop (index + 1)
       )
   in
@@ -73,7 +73,7 @@ let large_config: Bench.bench_config = { iterations = 12; warmup = 2 }
 let corpus_config: Bench.bench_config = { iterations = 3; warmup = 1 }
 
 let fixture_benchmark = fun ~config fixture ->
-  Bench.with_config ~config ("parse2: " ^ fixture.name) (fun () -> bench_parse2 fixture)
+  Bench.with_config ~config ("parse: " ^ fixture.name) (fun () -> bench_parse fixture)
 
 let selected_benchmarks = fun () ->
   [
@@ -99,17 +99,17 @@ let corpus_benchmark = fun () ->
   let fixtures = load_valid_fixture_corpus () in
   Bench.with_config
     ~config:corpus_config
-    ("parse2: valid fixture corpus (" ^ Int.to_string (Vector.length fixtures) ^ " files)")
-    (fun () -> bench_parse2_corpus fixtures)
+    ("parse: valid fixture corpus (" ^ Int.to_string (Vector.length fixtures) ^ " files)")
+    (fun () -> bench_parse_corpus fixtures)
 
 let benchmarks = fun () -> selected_benchmarks () @ [ corpus_benchmark () ]
 
 let () =
   Runtime.run
     ~main:(fun ~args ->
-      let result = Bench.Cli.main ~name:"syn parse2" ~benchmarks:(benchmarks ()) ~args in
+      let result = Bench.Cli.main ~name:"syn parse" ~benchmarks:(benchmarks ()) ~args in
       if !checksum = Int.min_int then
-        panic "unreachable parse2 benchmark checksum";
+        panic "unreachable parse benchmark checksum";
       result)
     ~args:Env.args
     ()

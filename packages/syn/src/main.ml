@@ -56,13 +56,13 @@ let parse_result_to_json = fun result ->
   Data.Json.Object [ (
       "kind",
       Data.Json.String (
-        match result.Syn.Parser2.kind with
+        match result.Syn.Parser.kind with
         | `Implementation -> "implementation"
         | `Interface -> "interface"
       )
-    ); ("diagnostics", vector_to_json result.Syn.Parser2.diagnostics ~fn:Syn.Diagnostic.to_json); (
+    ); ("diagnostics", vector_to_json result.Syn.Parser.diagnostics ~fn:Syn.Diagnostic.to_json); (
       "tree",
-      Syn.SyntaxTree.to_json result.Syn.Parser2.tree
+      Syn.SyntaxTree.to_json result.Syn.Parser.tree
     ) ]
 
 let diagnostics_to_list = fun diagnostics -> Vector.iter diagnostics |> Iterator.to_list
@@ -75,7 +75,7 @@ let handle_token_stream = fun sub_matches ->
       Log.error ("Error reading file " ^ file);
       System.exit 1
   | Ok content ->
-      let tokens = Syn.Lexer.tokenize content in
+      let tokens = Syn.Lexer.tokenize (slice_of_file_contents content) in
       if json then
         let json_tokens = List.map tokens ~fn:(token_to_json ~source:content) in
         println (Data.Json.to_string (Data.Json.array json_tokens))
@@ -90,16 +90,16 @@ let handle_parse = fun sub_matches ->
       Log.error ("Error reading file " ^ file);
       System.exit 1
   | Ok source ->
-      let result = Syn.Parser2.parse ~filename:(Path.v file) (slice_of_file_contents source) in
+      let result = Syn.Parser.parse ~filename:(Path.v file) (slice_of_file_contents source) in
       if json then
         println (Data.Json.to_string (parse_result_to_json result))
-      else if Vector.length result.Syn.Parser2.diagnostics != 0 then
+      else if Vector.length result.Syn.Parser.diagnostics != 0 then
         Syn.DiagnosticReporter.print
           ~file
           ~source
-          (diagnostics_to_list result.Syn.Parser2.diagnostics)
+          (diagnostics_to_list result.Syn.Parser.diagnostics)
       else
-        let root = Syn.SyntaxTree.root result.Syn.Parser2.tree in
+        let root = Syn.SyntaxTree.root result.Syn.Parser.tree in
         Log.info ("Parsed successfully: " ^ Int.to_string root.Syn.SyntaxTree.full_width ^ " bytes")
 
 let handle_explain = fun sub_matches ->
@@ -132,13 +132,6 @@ let main ~args =
               positional "FILE" |> help "OCaml source file to parse" |> required true;
               flag "json" |> long "json" |> help "Output syntax tree as JSON"
             ];
-          command "parse2"
-          |> about "Alias for parse"
-          |> args
-            [
-              positional "FILE" |> help "OCaml source file to parse" |> required true;
-              flag "json" |> long "json" |> help "Output syntax tree as JSON"
-            ];
           command "explain"
           |> about "Explain an error code"
           |> args
@@ -155,8 +148,7 @@ let main ~args =
       | Some ("tokenize", sub_matches) ->
           handle_token_stream sub_matches;
           Ok ()
-      | Some ("parse", sub_matches)
-      | Some ("parse2", sub_matches) ->
+      | Some ("parse", sub_matches) ->
           handle_parse sub_matches;
           Ok ()
       | Some ("explain", sub_matches) ->

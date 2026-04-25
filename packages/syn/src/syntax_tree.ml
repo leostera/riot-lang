@@ -4,14 +4,14 @@ open Std.Data
 module Slice = IO.IoVec.IoSlice
 
 type token_leaf = {
-  kind: Syntax_kind2.t;
+  kind: Syntax_kind.t;
   raw_lo: int;
   raw_hi: int;
   body_raw: int;
 }
 
 type missing = {
-  kind: Syntax_kind2.t;
+  kind: Syntax_kind.t;
   offset: int;
 }
 
@@ -21,7 +21,7 @@ type child =
   | Missing of missing
 
 type node = {
-  kind: Syntax_kind2.t;
+  kind: Syntax_kind.t;
   first_child: int;
   child_count: int;
   raw_lo: int;
@@ -43,7 +43,7 @@ type t = {
 type tree = t
 
 type frame = {
-  kind: Syntax_kind2.t;
+  kind: Syntax_kind.t;
   first_pending_child: int;
   mutable has_range: bool;
   mutable frame_raw_lo: int;
@@ -90,6 +90,8 @@ let include_child_range = fun ~(nodes:node Vector.t) ~(tokens:token_leaf Vector.
   match child with
   | Token token_id ->
       let token = Vector.get_unchecked tokens ~at:token_id in
+      (* Token leaves own the raw trivia range before their significant body
+         token, so node spans stay lossless without trivia child edges. *)
       include_range frame ~lo:token.raw_lo ~hi:token.raw_hi
   | Node node_id ->
       let node = Vector.get_unchecked nodes ~at:node_id in
@@ -128,7 +130,7 @@ module Builder = struct
 
   type completed = {
     child: child;
-    kind: Syntax_kind2.t;
+    kind: Syntax_kind.t;
   }
 
   type t = {
@@ -182,7 +184,7 @@ module Builder = struct
     builder.event_count <- Int.(builder.event_count + 1);
     Vector.push builder.frame_stack
       ~value:{
-        kind = Syntax_kind2.ERROR;
+        kind = Syntax_kind.ERROR;
         first_pending_child = Vector.length builder.pending_children;
         has_range = false;
         frame_raw_lo = 0;
@@ -252,7 +254,7 @@ module Builder = struct
     match left, right with
     | (Node left, Node right)
     | (Token left, Token right) -> Int.(left = right)
-    | Missing left, Missing right -> Syntax_kind2.is left.kind right.kind
+    | Missing left, Missing right -> Syntax_kind.is left.kind right.kind
     && Int.(left.offset = right.offset)
     | _ -> false
 
@@ -279,6 +281,8 @@ module Builder = struct
       let token_id = Vector.length builder.token_leaves in
       let token = {
         kind = raw.Raw_token.kind;
+        (* Attach any raw trivia since the previous significant token to this
+           leaf; the child array still contains only grammar-significant tokens. *)
         raw_lo = builder.next_raw_lo;
         raw_hi =
           Int.(raw_index + 1);
@@ -331,7 +335,7 @@ module Builder = struct
       | Some root -> root
       | None ->
           let node = {
-            kind = Syntax_kind2.SOURCE_FILE;
+            kind = Syntax_kind.SOURCE_FILE;
             first_child = 0;
             child_count = 0;
             raw_lo = 0;
@@ -440,6 +444,8 @@ let build = fun ~source ~token_stream ~events ->
       let token_id = Vector.length tokens in
       let token = {
         kind = raw.Raw_token.kind;
+        (* `next_raw_lo` points at the first raw token not yet attached to a
+           significant leaf, which folds leading trivia into this token leaf. *)
         raw_lo = !next_raw_lo;
         raw_hi =
           Int.(raw_index + 1);
@@ -456,7 +462,7 @@ let build = fun ~source ~token_stream ~events ->
         (
           match Event.Buffer.get_unchecked events ~at:index with
           | Event.StartNode (Some kind) -> push_node kind
-          | Event.StartNode None -> push_node Syntax_kind2.ERROR
+          | Event.StartNode None -> push_node Syntax_kind.ERROR
           | Event.FinishNode -> pop_node ()
           | Event.Token raw_index -> push_token raw_index
           | Event.Missing (kind, offset) -> push_child (Missing { kind; offset })
@@ -471,7 +477,7 @@ let build = fun ~source ~token_stream ~events ->
     | Some root -> root
     | None ->
         let node = {
-          kind = Syntax_kind2.SOURCE_FILE;
+          kind = Syntax_kind.SOURCE_FILE;
           first_child = 0;
           child_count = 0;
           raw_lo = 0;
@@ -567,7 +573,7 @@ let span_json = fun span ->
 let raw_token_json = fun tree index token ->
   Json.Object [
     ("index", Json.Int index);
-    ("kind", Json.String (Syntax_kind2.to_string token.Raw_token.kind));
+    ("kind", Json.String (Syntax_kind.to_string token.Raw_token.kind));
     ("span", span_json token.Raw_token.span);
     ("text", Json.String (Raw_token.text_slice ~source:tree.source token))
   ]
@@ -577,7 +583,7 @@ let rec child_json = fun tree child ->
   | Token token_id ->
       let token = token tree token_id in
       Json.Object [
-        ("kind", Json.String (Syntax_kind2.to_string token.kind));
+        ("kind", Json.String (Syntax_kind.to_string token.kind));
         ("raw_lo", Json.Int token.raw_lo);
         ("raw_hi", Json.Int token.raw_hi);
         ("text", Json.String (token_text tree token))
@@ -585,7 +591,7 @@ let rec child_json = fun tree child ->
   | Missing missing ->
       Json.Object [
         ("kind", Json.String "MISSING");
-        ("expected", Json.String (Syntax_kind2.to_string missing.kind));
+        ("expected", Json.String (Syntax_kind.to_string missing.kind));
         ("offset", Json.Int missing.offset)
       ]
   | Node node_id ->
@@ -599,7 +605,7 @@ and node_json = fun tree node_id ->
     node
     ~fn:(fun child -> children_json := child_json tree child :: !children_json);
   Json.Object [
-    ("kind", Json.String (Syntax_kind2.to_string node.kind));
+    ("kind", Json.String (Syntax_kind.to_string node.kind));
     ("raw_lo", Json.Int node.raw_lo);
     ("raw_hi", Json.Int node.raw_hi);
     ("full_width", Json.Int node.full_width);

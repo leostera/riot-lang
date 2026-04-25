@@ -25,8 +25,8 @@ let test_diagnostic = fun ~(ctx:Test.FixtureRunner.ctx) ->
     | Error error -> panic
       ("failed to create diagnostic source slice: " ^ Kernel.IO.Error.message error)
   in
-  let parse_result = Syn.parse2 ~filename:ctx.fixture_path source in
-  let actual_diagnostics = parse_result.Parser2.diagnostics in
+  let parse_result = Syn.parse ~filename:ctx.fixture_path source in
+  let actual_diagnostics = parse_result.Parser.diagnostics in
   let items = ref [] in
   Vector.iter actual_diagnostics
   |> Iterator.for_each ~fn:(fun diagnostic -> items := Diagnostic.to_json diagnostic :: !items);

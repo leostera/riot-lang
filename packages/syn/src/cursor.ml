@@ -7,12 +7,7 @@ type t = {
   length: int;
 }
 
-let from_slice = fun source -> { source; pos = 0; length = Slice.length source }
-
-let create = fun source ->
-  match Slice.from_string source with
-  | Ok source -> from_slice source
-  | Error error -> panic ("Syn.Cursor.create: " ^ Kernel.IO.Error.message error)
+let create = fun source -> { source; pos = 0; length = Slice.length source }
 
 let source = fun t -> t.source
 

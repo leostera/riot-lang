@@ -87,160 +87,160 @@ let syntax_node = fun (node: node) ->
 let syntax_token = fun (token: token) ->
   Syntax_tree.token token.tree token.id
 
-let kind_is = Syntax_kind2.is
+let kind_is = Syntax_kind.is
 
 let node_kind_is = fun (node: node) kind -> kind_is (syntax_node node).Syntax_tree.kind kind
 
 let token_kind_is = fun (token: token) kind -> kind_is (syntax_token token).Syntax_tree.kind kind
 
 let is_expr_kind = function
-  | Syntax_kind2.LET_EXPR
-  | Syntax_kind2.LOCAL_OPEN_EXPR
-  | Syntax_kind2.LET_MODULE_EXPR
-  | Syntax_kind2.LET_EXCEPTION_EXPR
-  | Syntax_kind2.BINDING_OPERATOR_EXPR
-  | Syntax_kind2.FIRST_CLASS_MODULE_EXPR
-  | Syntax_kind2.EXTENSION_EXPR
-  | Syntax_kind2.UNREACHABLE_EXPR
-  | Syntax_kind2.OBJECT_EXPR
-  | Syntax_kind2.NEW_EXPR
-  | Syntax_kind2.IF_EXPR
-  | Syntax_kind2.MATCH_EXPR
-  | Syntax_kind2.FUN_EXPR
-  | Syntax_kind2.FUNCTION_EXPR
-  | Syntax_kind2.TRY_EXPR
-  | Syntax_kind2.WHILE_EXPR
-  | Syntax_kind2.FOR_EXPR
-  | Syntax_kind2.ASSERT_EXPR
-  | Syntax_kind2.LAZY_EXPR
-  | Syntax_kind2.ATTRIBUTE_EXPR
-  | Syntax_kind2.SEQUENCE_EXPR
-  | Syntax_kind2.APPLY_EXPR
-  | Syntax_kind2.INFIX_EXPR
-  | Syntax_kind2.PREFIX_EXPR
-  | Syntax_kind2.ASSIGN_EXPR
-  | Syntax_kind2.FIELD_ACCESS_EXPR
-  | Syntax_kind2.METHOD_CALL_EXPR
-  | Syntax_kind2.POLY_VARIANT_EXPR
-  | Syntax_kind2.LABELED_ARG
-  | Syntax_kind2.OPTIONAL_ARG
-  | Syntax_kind2.ARRAY_INDEX_EXPR
-  | Syntax_kind2.STRING_INDEX_EXPR
-  | Syntax_kind2.TYPED_EXPR
-  | Syntax_kind2.PATH_EXPR
-  | Syntax_kind2.LITERAL_EXPR
-  | Syntax_kind2.PAREN_EXPR
-  | Syntax_kind2.TUPLE_EXPR
-  | Syntax_kind2.LIST_EXPR
-  | Syntax_kind2.ARRAY_EXPR
-  | Syntax_kind2.RECORD_EXPR
-  | Syntax_kind2.RECORD_UPDATE_EXPR -> true
+  | Syntax_kind.LET_EXPR
+  | Syntax_kind.LOCAL_OPEN_EXPR
+  | Syntax_kind.LET_MODULE_EXPR
+  | Syntax_kind.LET_EXCEPTION_EXPR
+  | Syntax_kind.BINDING_OPERATOR_EXPR
+  | Syntax_kind.FIRST_CLASS_MODULE_EXPR
+  | Syntax_kind.EXTENSION_EXPR
+  | Syntax_kind.UNREACHABLE_EXPR
+  | Syntax_kind.OBJECT_EXPR
+  | Syntax_kind.NEW_EXPR
+  | Syntax_kind.IF_EXPR
+  | Syntax_kind.MATCH_EXPR
+  | Syntax_kind.FUN_EXPR
+  | Syntax_kind.FUNCTION_EXPR
+  | Syntax_kind.TRY_EXPR
+  | Syntax_kind.WHILE_EXPR
+  | Syntax_kind.FOR_EXPR
+  | Syntax_kind.ASSERT_EXPR
+  | Syntax_kind.LAZY_EXPR
+  | Syntax_kind.ATTRIBUTE_EXPR
+  | Syntax_kind.SEQUENCE_EXPR
+  | Syntax_kind.APPLY_EXPR
+  | Syntax_kind.INFIX_EXPR
+  | Syntax_kind.PREFIX_EXPR
+  | Syntax_kind.ASSIGN_EXPR
+  | Syntax_kind.FIELD_ACCESS_EXPR
+  | Syntax_kind.METHOD_CALL_EXPR
+  | Syntax_kind.POLY_VARIANT_EXPR
+  | Syntax_kind.LABELED_ARG
+  | Syntax_kind.OPTIONAL_ARG
+  | Syntax_kind.ARRAY_INDEX_EXPR
+  | Syntax_kind.STRING_INDEX_EXPR
+  | Syntax_kind.TYPED_EXPR
+  | Syntax_kind.PATH_EXPR
+  | Syntax_kind.LITERAL_EXPR
+  | Syntax_kind.PAREN_EXPR
+  | Syntax_kind.TUPLE_EXPR
+  | Syntax_kind.LIST_EXPR
+  | Syntax_kind.ARRAY_EXPR
+  | Syntax_kind.RECORD_EXPR
+  | Syntax_kind.RECORD_UPDATE_EXPR -> true
   | _ -> false
 
 let is_pattern_kind = function
-  | Syntax_kind2.WILDCARD_PATTERN
-  | Syntax_kind2.PATH_PATTERN
-  | Syntax_kind2.APPLY_PATTERN
-  | Syntax_kind2.LITERAL_PATTERN
-  | Syntax_kind2.PAREN_PATTERN
-  | Syntax_kind2.TUPLE_PATTERN
-  | Syntax_kind2.LIST_PATTERN
-  | Syntax_kind2.ARRAY_PATTERN
-  | Syntax_kind2.RECORD_PATTERN
-  | Syntax_kind2.POLY_VARIANT_PATTERN
-  | Syntax_kind2.EXTENSION_PATTERN
-  | Syntax_kind2.ATTRIBUTE_PATTERN
-  | Syntax_kind2.LOCAL_OPEN_PATTERN
-  | Syntax_kind2.LOCALLY_ABSTRACT_TYPE_PATTERN
-  | Syntax_kind2.FIRST_CLASS_MODULE_PATTERN
-  | Syntax_kind2.INTERVAL_PATTERN
-  | Syntax_kind2.CONSTRAINT_PATTERN
-  | Syntax_kind2.ALIAS_PATTERN
-  | Syntax_kind2.OR_PATTERN
-  | Syntax_kind2.CONS_PATTERN
-  | Syntax_kind2.LAZY_PATTERN
-  | Syntax_kind2.EXCEPTION_PATTERN
-  | Syntax_kind2.LABELED_PARAM
-  | Syntax_kind2.OPTIONAL_PARAM
-  | Syntax_kind2.OPTIONAL_PARAM_DEFAULT -> true
+  | Syntax_kind.WILDCARD_PATTERN
+  | Syntax_kind.PATH_PATTERN
+  | Syntax_kind.APPLY_PATTERN
+  | Syntax_kind.LITERAL_PATTERN
+  | Syntax_kind.PAREN_PATTERN
+  | Syntax_kind.TUPLE_PATTERN
+  | Syntax_kind.LIST_PATTERN
+  | Syntax_kind.ARRAY_PATTERN
+  | Syntax_kind.RECORD_PATTERN
+  | Syntax_kind.POLY_VARIANT_PATTERN
+  | Syntax_kind.EXTENSION_PATTERN
+  | Syntax_kind.ATTRIBUTE_PATTERN
+  | Syntax_kind.LOCAL_OPEN_PATTERN
+  | Syntax_kind.LOCALLY_ABSTRACT_TYPE_PATTERN
+  | Syntax_kind.FIRST_CLASS_MODULE_PATTERN
+  | Syntax_kind.INTERVAL_PATTERN
+  | Syntax_kind.CONSTRAINT_PATTERN
+  | Syntax_kind.ALIAS_PATTERN
+  | Syntax_kind.OR_PATTERN
+  | Syntax_kind.CONS_PATTERN
+  | Syntax_kind.LAZY_PATTERN
+  | Syntax_kind.EXCEPTION_PATTERN
+  | Syntax_kind.LABELED_PARAM
+  | Syntax_kind.OPTIONAL_PARAM
+  | Syntax_kind.OPTIONAL_PARAM_DEFAULT -> true
   | _ -> false
 
 let is_parameter_kind = function
-  | Syntax_kind2.LABELED_PARAM
-  | Syntax_kind2.OPTIONAL_PARAM
-  | Syntax_kind2.OPTIONAL_PARAM_DEFAULT -> true
+  | Syntax_kind.LABELED_PARAM
+  | Syntax_kind.OPTIONAL_PARAM
+  | Syntax_kind.OPTIONAL_PARAM_DEFAULT -> true
   | _ -> false
 
 let is_path_kind = function
-  | Syntax_kind2.PATH_EXPR
-  | Syntax_kind2.PATH_PATTERN
-  | Syntax_kind2.PATH_TYPE
-  | Syntax_kind2.PATH_MODULE_EXPR
-  | Syntax_kind2.PATH_MODULE_TYPE -> true
+  | Syntax_kind.PATH_EXPR
+  | Syntax_kind.PATH_PATTERN
+  | Syntax_kind.PATH_TYPE
+  | Syntax_kind.PATH_MODULE_EXPR
+  | Syntax_kind.PATH_MODULE_TYPE -> true
   | _ -> false
 
 let is_type_expr_kind = function
-  | Syntax_kind2.TYPE_EXPR
-  | Syntax_kind2.PATH_TYPE
-  | Syntax_kind2.VAR_TYPE
-  | Syntax_kind2.WILDCARD_TYPE
-  | Syntax_kind2.ARROW_TYPE
-  | Syntax_kind2.POLY_TYPE
-  | Syntax_kind2.LABELED_TYPE
-  | Syntax_kind2.TUPLE_TYPE
-  | Syntax_kind2.APPLY_TYPE
-  | Syntax_kind2.PAREN_TYPE
-  | Syntax_kind2.OPAQUE_TYPE -> true
+  | Syntax_kind.TYPE_EXPR
+  | Syntax_kind.PATH_TYPE
+  | Syntax_kind.VAR_TYPE
+  | Syntax_kind.WILDCARD_TYPE
+  | Syntax_kind.ARROW_TYPE
+  | Syntax_kind.POLY_TYPE
+  | Syntax_kind.LABELED_TYPE
+  | Syntax_kind.TUPLE_TYPE
+  | Syntax_kind.APPLY_TYPE
+  | Syntax_kind.PAREN_TYPE
+  | Syntax_kind.OPAQUE_TYPE -> true
   | _ -> false
 
 let is_record_type_kind = function
-  | Syntax_kind2.RECORD_TYPE -> true
+  | Syntax_kind.RECORD_TYPE -> true
   | _ -> false
 
 let is_record_field_kind = function
-  | Syntax_kind2.RECORD_FIELD -> true
+  | Syntax_kind.RECORD_FIELD -> true
   | _ -> false
 
 let is_record_expr_field_kind = function
-  | Syntax_kind2.RECORD_EXPR_FIELD -> true
+  | Syntax_kind.RECORD_EXPR_FIELD -> true
   | _ -> false
 
 let is_variant_type_kind = function
-  | Syntax_kind2.VARIANT_TYPE -> true
+  | Syntax_kind.VARIANT_TYPE -> true
   | _ -> false
 
 let is_variant_constructor_kind = function
-  | Syntax_kind2.VARIANT_CONSTRUCTOR -> true
+  | Syntax_kind.VARIANT_CONSTRUCTOR -> true
   | _ -> false
 
 let is_module_expr_kind = function
-  | Syntax_kind2.MODULE_EXPR
-  | Syntax_kind2.PATH_MODULE_EXPR
-  | Syntax_kind2.STRUCT_MODULE_EXPR
-  | Syntax_kind2.FUNCTOR_MODULE_EXPR
-  | Syntax_kind2.APPLY_MODULE_EXPR
-  | Syntax_kind2.CONSTRAINT_MODULE_EXPR
-  | Syntax_kind2.PAREN_MODULE_EXPR
-  | Syntax_kind2.OPAQUE_MODULE_EXPR -> true
+  | Syntax_kind.MODULE_EXPR
+  | Syntax_kind.PATH_MODULE_EXPR
+  | Syntax_kind.STRUCT_MODULE_EXPR
+  | Syntax_kind.FUNCTOR_MODULE_EXPR
+  | Syntax_kind.APPLY_MODULE_EXPR
+  | Syntax_kind.CONSTRAINT_MODULE_EXPR
+  | Syntax_kind.PAREN_MODULE_EXPR
+  | Syntax_kind.OPAQUE_MODULE_EXPR -> true
   | _ -> false
 
 let is_module_type_kind = function
-  | Syntax_kind2.MODULE_TYPE_EXPR
-  | Syntax_kind2.PATH_MODULE_TYPE
-  | Syntax_kind2.SIGNATURE_MODULE_TYPE
-  | Syntax_kind2.TYPEOF_MODULE_TYPE
-  | Syntax_kind2.FUNCTOR_MODULE_TYPE
-  | Syntax_kind2.WITH_MODULE_TYPE
-  | Syntax_kind2.PAREN_MODULE_TYPE
-  | Syntax_kind2.OPAQUE_MODULE_TYPE -> true
+  | Syntax_kind.MODULE_TYPE_EXPR
+  | Syntax_kind.PATH_MODULE_TYPE
+  | Syntax_kind.SIGNATURE_MODULE_TYPE
+  | Syntax_kind.TYPEOF_MODULE_TYPE
+  | Syntax_kind.FUNCTOR_MODULE_TYPE
+  | Syntax_kind.WITH_MODULE_TYPE
+  | Syntax_kind.PAREN_MODULE_TYPE
+  | Syntax_kind.OPAQUE_MODULE_TYPE -> true
   | _ -> false
 
 let is_match_case_kind = function
-  | Syntax_kind2.MATCH_CASE -> true
+  | Syntax_kind.MATCH_CASE -> true
   | _ -> false
 
 let is_let_binding_kind = function
-  | Syntax_kind2.LET_BINDING -> true
+  | Syntax_kind.LET_BINDING -> true
   | _ -> false
 
 let node_matches = fun (node: node) matches -> matches (syntax_node node).Syntax_tree.kind
@@ -393,12 +393,12 @@ let child_token_kind_at = fun (node: node) index ->
   | None -> None
 
 let first_ident_token = fun (node: node) ->
-  first_child_token_matching node ~matches:(fun kind -> Syntax_kind2.(kind = IDENT))
+  first_child_token_matching node ~matches:(fun kind -> Syntax_kind.(kind = IDENT))
 
 let first_ident_or_underscore_token = fun (node: node) ->
   first_child_token_matching
     node
-    ~matches:(fun kind -> Syntax_kind2.(kind = IDENT || kind = UNDERSCORE))
+    ~matches:(fun kind -> Syntax_kind.(kind = IDENT || kind = UNDERSCORE))
 
 let last_ident_token = fun (node: node) ->
   let found = ref None in
@@ -407,7 +407,7 @@ let last_ident_token = fun (node: node) ->
       function
       | Syntax_tree.Token id ->
           let token = wrap_token node.tree id in
-          if token_kind_is token Syntax_kind2.IDENT then
+          if token_kind_is token Syntax_kind.IDENT then
             found := Some token
       | Syntax_tree.Node _
       | Syntax_tree.Missing _ -> ()
@@ -588,7 +588,7 @@ module Token = struct
           closing = closing_if_terminated terminated
         }
     | _ ->
-        panic "Ast2.Token.leading_trivia_item_of_raw received non-trivia raw token"
+        panic "Ast.Token.leading_trivia_item_of_raw received non-trivia raw token"
 
   let for_each_leading_trivia_item = fun (token: token) ~fn ->
     let syntax_token = syntax_token token in
@@ -617,13 +617,13 @@ module Token = struct
     loop syntax_token.Syntax_tree.raw_lo
 
   let has_leading_whitespace = fun token ->
-    has_leading_raw token ~matches:(fun kind -> Syntax_kind2.(kind = WHITESPACE))
+    has_leading_raw token ~matches:(fun kind -> Syntax_kind.(kind = WHITESPACE))
 
   let has_leading_comment = fun token ->
-    has_leading_raw token ~matches:(fun kind -> Syntax_kind2.(kind = COMMENT || kind = DOCSTRING))
+    has_leading_raw token ~matches:(fun kind -> Syntax_kind.(kind = COMMENT || kind = DOCSTRING))
 
   let has_leading_docstring = fun token ->
-    has_leading_raw token ~matches:(fun kind -> Syntax_kind2.(kind = DOCSTRING))
+    has_leading_raw token ~matches:(fun kind -> Syntax_kind.(kind = DOCSTRING))
 
   let full_text = fun (token: token) ->
     let raw_lo, raw_hi =
@@ -683,10 +683,10 @@ module Node = struct
   let for_each_token = for_each_token_in_node
 
   let first_child_node = fun (node: node) ~kind:expected_kind ->
-    first_child_node_matching node ~matches:(fun kind -> Syntax_kind2.(kind = expected_kind))
+    first_child_node_matching node ~matches:(fun kind -> Syntax_kind.(kind = expected_kind))
 
   let first_child_token = fun (node: node) ~kind:expected_kind ->
-    first_child_token_matching node ~matches:(fun kind -> Syntax_kind2.(kind = expected_kind))
+    first_child_token_matching node ~matches:(fun kind -> Syntax_kind.(kind = expected_kind))
 
   let first_token = fun (node: node) -> first_child_token_matching node ~matches:(fun _ -> true)
 
@@ -728,14 +728,14 @@ module TypeExpr = struct
         UnknownSeparator
       else
         match child_token_at type_expr index with
-        | Some token when token_kind_is token Syntax_kind2.STAR -> Star
-        | Some token when token_kind_is token Syntax_kind2.COMMA -> Comma
+        | Some token when token_kind_is token Syntax_kind.STAR -> Star
+        | Some token when token_kind_is token Syntax_kind.COMMA -> Comma
         | _ -> loop (index + 1)
     in
     loop 0
 
   let rec unwrap_poly_node = fun type_expr ->
-    if node_kind_is type_expr Syntax_kind2.TYPE_EXPR then
+    if node_kind_is type_expr Syntax_kind.TYPE_EXPR then
       match first_child_node_matching type_expr ~matches:is_type_expr_kind with
       | Some child -> unwrap_poly_node child
       | None -> type_expr
@@ -744,55 +744,55 @@ module TypeExpr = struct
 
   let rec view = fun (type_expr: type_expr) ->
     match Node.kind type_expr with
-    | Syntax_kind2.TYPE_EXPR -> (
+    | Syntax_kind.TYPE_EXPR -> (
         match first_child_node_matching type_expr ~matches:is_type_expr_kind, nth_child_node_matching
           type_expr
           1
           ~matches:is_type_expr_kind with
         | Some child, None -> (
             match Node.kind child with
-            | Syntax_kind2.TYPE_EXPR -> Opaque type_expr
+            | Syntax_kind.TYPE_EXPR -> Opaque type_expr
             | _ -> view child
           )
         | _ -> Opaque type_expr
       )
-    | Syntax_kind2.PATH_TYPE ->
+    | Syntax_kind.PATH_TYPE ->
         Path { path = type_expr }
-    | Syntax_kind2.VAR_TYPE ->
+    | Syntax_kind.VAR_TYPE ->
         Var { name = last_ident_token type_expr }
-    | Syntax_kind2.WILDCARD_TYPE ->
+    | Syntax_kind.WILDCARD_TYPE ->
         Wildcard
-    | Syntax_kind2.ARROW_TYPE ->
+    | Syntax_kind.ARROW_TYPE ->
         Arrow {
           left = nth_child_node_matching type_expr 0 ~matches:is_type_expr_kind;
           right = nth_child_node_matching type_expr 1 ~matches:is_type_expr_kind
         }
-    | Syntax_kind2.POLY_TYPE ->
+    | Syntax_kind.POLY_TYPE ->
         Poly { body = first_child_node_matching type_expr ~matches:is_type_expr_kind }
-    | Syntax_kind2.LABELED_TYPE ->
+    | Syntax_kind.LABELED_TYPE ->
         Labeled {
           optional_token = first_child_token_matching
             type_expr
-            ~matches:(fun kind -> Syntax_kind2.(kind = QUESTION));
+            ~matches:(fun kind -> Syntax_kind.(kind = QUESTION));
           label = first_ident_token type_expr;
           annotation = first_child_node_matching type_expr ~matches:is_type_expr_kind
         }
-    | Syntax_kind2.TUPLE_TYPE ->
+    | Syntax_kind.TUPLE_TYPE ->
         Tuple {
           left = nth_child_node_matching type_expr 0 ~matches:is_type_expr_kind;
           right = nth_child_node_matching type_expr 1 ~matches:is_type_expr_kind;
           separator = tuple_separator type_expr
         }
-    | Syntax_kind2.APPLY_TYPE ->
+    | Syntax_kind.APPLY_TYPE ->
         Apply {
           argument = nth_child_node_matching type_expr 0 ~matches:is_type_expr_kind;
           constructor = nth_child_node_matching type_expr 1 ~matches:is_type_expr_kind
         }
-    | Syntax_kind2.PAREN_TYPE ->
+    | Syntax_kind.PAREN_TYPE ->
         Parenthesized { inner = first_child_node_matching type_expr ~matches:is_type_expr_kind }
-    | Syntax_kind2.OPAQUE_TYPE ->
+    | Syntax_kind.OPAQUE_TYPE ->
         Opaque type_expr
-    | Syntax_kind2.ERROR ->
+    | Syntax_kind.ERROR ->
         Error type_expr
     | _ ->
         Unknown type_expr
@@ -802,24 +802,24 @@ module TypeExpr = struct
 
   let child_token_kind_is_in = fun node index kind ->
     match child_token_kind_at node index with
-    | Some actual -> Syntax_kind2.(actual = kind)
+    | Some actual -> Syntax_kind.(actual = kind)
     | None -> false
 
   let attribute_suffix_start_at = fun node close_index ->
-    if not (child_token_kind_is_in node close_index Syntax_kind2.RBRACKET) then
+    if not (child_token_kind_is_in node close_index Syntax_kind.RBRACKET) then
       None
     else
       let rec loop index depth =
         if Int.(index < 0) then
           None
-        else if child_token_kind_is_in node index Syntax_kind2.RBRACKET then
+        else if child_token_kind_is_in node index Syntax_kind.RBRACKET then
           loop Int.(index - 1) Int.(depth + 1)
-        else if child_token_kind_is_in node index Syntax_kind2.LBRACKET then
+        else if child_token_kind_is_in node index Syntax_kind.LBRACKET then
           if Int.equal depth 1 then
             let next = Int.add index 1 in
             if
-              child_token_kind_is_in node next Syntax_kind2.AT
-              || child_token_kind_is_in node next Syntax_kind2.ATAT
+              child_token_kind_is_in node next Syntax_kind.AT
+              || child_token_kind_is_in node next Syntax_kind.ATAT
             then
               Some index
             else
@@ -847,7 +847,7 @@ module TypeExpr = struct
     let first_suffix_index = Int.add last_body_index 1 in
     if Int.(first_suffix_index < Node.child_count type_expr) then
       match child_token_kind_at type_expr first_suffix_index with
-      | Some Syntax_kind2.LBRACKET -> Some first_suffix_index
+      | Some Syntax_kind.LBRACKET -> Some first_suffix_index
       | _ -> None
     else
       None
@@ -904,9 +904,9 @@ module TypeExpr = struct
         function
         | Syntax_tree.Token id ->
             let token = wrap_token type_expr.tree id in
-            if token_kind_is token Syntax_kind2.DOT then
+            if token_kind_is token Syntax_kind.DOT then
               before_dot := false
-            else if !before_dot && token_kind_is token Syntax_kind2.IDENT then
+            else if !before_dot && token_kind_is token Syntax_kind.IDENT then
               fn token
         | Syntax_tree.Node _
         | Syntax_tree.Missing _ -> ()
@@ -914,7 +914,7 @@ module TypeExpr = struct
 
   let poly_type_keyword_token = fun (type_expr: type_expr) ->
     let type_expr = unwrap_poly_node type_expr in
-    first_child_token_matching type_expr ~matches:(fun kind -> Syntax_kind2.(kind = TYPE_KW))
+    first_child_token_matching type_expr ~matches:(fun kind -> Syntax_kind.(kind = TYPE_KW))
 end
 
 module RecordField = struct
@@ -926,11 +926,11 @@ module RecordField = struct
     else
       None
 
-  let mutable_token = fun field -> Node.first_child_token field ~kind:Syntax_kind2.MUTABLE_KW
+  let mutable_token = fun field -> Node.first_child_token field ~kind:Syntax_kind.MUTABLE_KW
 
   let name = first_ident_token
 
-  let colon_token = fun field -> Node.first_child_token field ~kind:Syntax_kind2.COLON
+  let colon_token = fun field -> Node.first_child_token field ~kind:Syntax_kind.COLON
 
   let type_annotation = fun field -> first_child_node_matching field ~matches:is_type_expr_kind
 end
@@ -944,11 +944,11 @@ module RecordType = struct
     else
       None
 
-  let private_token = fun record_type -> Node.first_child_token record_type ~kind:Syntax_kind2.PRIVATE_KW
+  let private_token = fun record_type -> Node.first_child_token record_type ~kind:Syntax_kind.PRIVATE_KW
 
-  let opening_token = fun record_type -> Node.first_child_token record_type ~kind:Syntax_kind2.LBRACE
+  let opening_token = fun record_type -> Node.first_child_token record_type ~kind:Syntax_kind.LBRACE
 
-  let closing_token = fun record_type -> Node.first_child_token record_type ~kind:Syntax_kind2.RBRACE
+  let closing_token = fun record_type -> Node.first_child_token record_type ~kind:Syntax_kind.RBRACE
 
   let for_each_field = fun record_type ~fn ->
     for_each_child_node_matching record_type ~matches:is_record_field_kind ~fn
@@ -963,13 +963,13 @@ module VariantConstructor = struct
     else
       None
 
-  let pipe_token = fun constructor -> Node.first_child_token constructor ~kind:Syntax_kind2.PIPE
+  let pipe_token = fun constructor -> Node.first_child_token constructor ~kind:Syntax_kind.PIPE
 
   let name = first_ident_token
 
-  let of_token = fun constructor -> Node.first_child_token constructor ~kind:Syntax_kind2.OF_KW
+  let of_token = fun constructor -> Node.first_child_token constructor ~kind:Syntax_kind.OF_KW
 
-  let colon_token = fun constructor -> Node.first_child_token constructor ~kind:Syntax_kind2.COLON
+  let colon_token = fun constructor -> Node.first_child_token constructor ~kind:Syntax_kind.COLON
 
   let payload_type = fun constructor ->
     match of_token constructor with
@@ -993,7 +993,7 @@ module VariantType = struct
     else
       None
 
-  let private_token = fun variant_type -> Node.first_child_token variant_type ~kind:Syntax_kind2.PRIVATE_KW
+  let private_token = fun variant_type -> Node.first_child_token variant_type ~kind:Syntax_kind.PRIVATE_KW
 
   let for_each_constructor = fun variant_type ~fn ->
     for_each_child_node_matching variant_type ~matches:is_variant_constructor_kind ~fn
@@ -1017,7 +1017,7 @@ module Path = struct
   let for_each_ident = fun (path: path) ~fn ->
     Node.for_each_child_token path
       ~fn:(fun token ->
-        if token_kind_is token Syntax_kind2.IDENT then
+        if token_kind_is token Syntax_kind.IDENT then
           fn token)
 end
 
@@ -1135,13 +1135,13 @@ end = struct
       node
       ~matches:(fun kind ->
         not
-          (Syntax_kind2.(kind = IDENT)
-          || Syntax_kind2.(kind = INT)
-          || Syntax_kind2.(kind = FLOAT)
-          || Syntax_kind2.(kind = STRING)
-          || Syntax_kind2.(kind = CHAR)
-          || Syntax_kind2.(kind = TRUE_KW)
-          || Syntax_kind2.(kind = FALSE_KW)))
+          (Syntax_kind.(kind = IDENT)
+          || Syntax_kind.(kind = INT)
+          || Syntax_kind.(kind = FLOAT)
+          || Syntax_kind.(kind = STRING)
+          || Syntax_kind.(kind = CHAR)
+          || Syntax_kind.(kind = TRUE_KW)
+          || Syntax_kind.(kind = FALSE_KW)))
 
   let first_direct_token = fun (node: node) ->
     first_child_token_matching node ~matches:(fun _kind -> true)
@@ -1150,110 +1150,110 @@ end = struct
 
   let view = fun (expr: expr) ->
     match Node.kind expr with
-    | Syntax_kind2.LET_EXPR -> Let {
+    | Syntax_kind.LET_EXPR -> Let {
       first_binding = first_let_binding_child expr;
       body = nth_expr_child expr 0
     }
-    | Syntax_kind2.LOCAL_OPEN_EXPR -> LocalOpen { body = nth_expr_child expr 1 }
-    | Syntax_kind2.LET_MODULE_EXPR -> LetModule { body = first_expr_child expr }
-    | Syntax_kind2.LET_EXCEPTION_EXPR -> LetException { body = first_expr_child expr }
-    | Syntax_kind2.BINDING_OPERATOR_EXPR -> BindingOperator {
+    | Syntax_kind.LOCAL_OPEN_EXPR -> LocalOpen { body = nth_expr_child expr 1 }
+    | Syntax_kind.LET_MODULE_EXPR -> LetModule { body = first_expr_child expr }
+    | Syntax_kind.LET_EXCEPTION_EXPR -> LetException { body = first_expr_child expr }
+    | Syntax_kind.BINDING_OPERATOR_EXPR -> BindingOperator {
       first_binding = first_let_binding_child expr;
       body = nth_expr_child expr 0
     }
-    | Syntax_kind2.FIRST_CLASS_MODULE_EXPR -> FirstClassModule
-    | Syntax_kind2.EXTENSION_EXPR -> Extension
-    | Syntax_kind2.UNREACHABLE_EXPR -> Unreachable
-    | Syntax_kind2.OBJECT_EXPR -> Object
-    | Syntax_kind2.NEW_EXPR -> New
-    | Syntax_kind2.IF_EXPR -> If {
+    | Syntax_kind.FIRST_CLASS_MODULE_EXPR -> FirstClassModule
+    | Syntax_kind.EXTENSION_EXPR -> Extension
+    | Syntax_kind.UNREACHABLE_EXPR -> Unreachable
+    | Syntax_kind.OBJECT_EXPR -> Object
+    | Syntax_kind.NEW_EXPR -> New
+    | Syntax_kind.IF_EXPR -> If {
       condition = nth_expr_child expr 0;
       then_branch = nth_expr_child expr 1;
       else_branch = nth_expr_child expr 2
     }
-    | Syntax_kind2.MATCH_EXPR -> Match {
+    | Syntax_kind.MATCH_EXPR -> Match {
       scrutinee = nth_expr_child expr 0;
       first_case = first_match_case_child expr
     }
-    | Syntax_kind2.FUN_EXPR -> Fun { body = nth_expr_child expr 0 }
-    | Syntax_kind2.FUNCTION_EXPR -> Function { first_case = first_match_case_child expr }
-    | Syntax_kind2.TRY_EXPR -> Try {
+    | Syntax_kind.FUN_EXPR -> Fun { body = nth_expr_child expr 0 }
+    | Syntax_kind.FUNCTION_EXPR -> Function { first_case = first_match_case_child expr }
+    | Syntax_kind.TRY_EXPR -> Try {
       body = nth_expr_child expr 0;
       first_case = first_match_case_child expr
     }
-    | Syntax_kind2.WHILE_EXPR -> While {
+    | Syntax_kind.WHILE_EXPR -> While {
       condition = nth_expr_child expr 0;
       body = nth_expr_child expr 1
     }
-    | Syntax_kind2.FOR_EXPR -> For {
+    | Syntax_kind.FOR_EXPR -> For {
       pattern = first_pattern_child expr;
       start_ = nth_expr_child expr 0;
       stop = nth_expr_child expr 1;
       body = nth_expr_child expr 2
     }
-    | Syntax_kind2.ASSERT_EXPR -> Assert { argument = first_expr_child expr }
-    | Syntax_kind2.LAZY_EXPR -> Lazy { argument = first_expr_child expr }
-    | Syntax_kind2.ATTRIBUTE_EXPR -> Attribute { inner = first_expr_child expr }
-    | Syntax_kind2.SEQUENCE_EXPR -> Sequence {
+    | Syntax_kind.ASSERT_EXPR -> Assert { argument = first_expr_child expr }
+    | Syntax_kind.LAZY_EXPR -> Lazy { argument = first_expr_child expr }
+    | Syntax_kind.ATTRIBUTE_EXPR -> Attribute { inner = first_expr_child expr }
+    | Syntax_kind.SEQUENCE_EXPR -> Sequence {
       left = nth_expr_child expr 0;
       right = nth_expr_child expr 1
     }
-    | Syntax_kind2.APPLY_EXPR -> Apply {
+    | Syntax_kind.APPLY_EXPR -> Apply {
       callee = nth_expr_child expr 0;
       argument = nth_expr_child expr 1
     }
-    | Syntax_kind2.INFIX_EXPR -> Infix {
+    | Syntax_kind.INFIX_EXPR -> Infix {
       left = nth_expr_child expr 0;
       operator = first_direct_token expr;
       right = nth_expr_child expr 1
     }
-    | Syntax_kind2.PREFIX_EXPR -> Prefix {
+    | Syntax_kind.PREFIX_EXPR -> Prefix {
       operator = first_operator_token expr;
       operand = first_expr_child expr
     }
-    | Syntax_kind2.ASSIGN_EXPR -> Assign {
+    | Syntax_kind.ASSIGN_EXPR -> Assign {
       target = nth_expr_child expr 0;
       operator = first_direct_token expr;
       value = nth_expr_child expr 1
     }
-    | Syntax_kind2.FIELD_ACCESS_EXPR -> FieldAccess {
+    | Syntax_kind.FIELD_ACCESS_EXPR -> FieldAccess {
       target = nth_expr_child expr 0;
       field = last_ident_token expr
     }
-    | Syntax_kind2.METHOD_CALL_EXPR -> MethodCall {
+    | Syntax_kind.METHOD_CALL_EXPR -> MethodCall {
       target = nth_expr_child expr 0;
       method_ = last_ident_token expr
     }
-    | Syntax_kind2.POLY_VARIANT_EXPR -> PolyVariant { payload = first_expr_child expr }
-    | Syntax_kind2.PATH_EXPR -> Path { path = expr }
-    | Syntax_kind2.LITERAL_EXPR -> Literal { token = literal_token expr }
-    | Syntax_kind2.PAREN_EXPR -> Parenthesized { inner = first_expr_child expr }
-    | Syntax_kind2.TUPLE_EXPR -> Tuple
-    | Syntax_kind2.LIST_EXPR -> List
-    | Syntax_kind2.ARRAY_EXPR -> Array
-    | Syntax_kind2.RECORD_EXPR -> Record
-    | Syntax_kind2.RECORD_UPDATE_EXPR -> RecordUpdate
-    | Syntax_kind2.ARRAY_INDEX_EXPR -> ArrayIndex {
+    | Syntax_kind.POLY_VARIANT_EXPR -> PolyVariant { payload = first_expr_child expr }
+    | Syntax_kind.PATH_EXPR -> Path { path = expr }
+    | Syntax_kind.LITERAL_EXPR -> Literal { token = literal_token expr }
+    | Syntax_kind.PAREN_EXPR -> Parenthesized { inner = first_expr_child expr }
+    | Syntax_kind.TUPLE_EXPR -> Tuple
+    | Syntax_kind.LIST_EXPR -> List
+    | Syntax_kind.ARRAY_EXPR -> Array
+    | Syntax_kind.RECORD_EXPR -> Record
+    | Syntax_kind.RECORD_UPDATE_EXPR -> RecordUpdate
+    | Syntax_kind.ARRAY_INDEX_EXPR -> ArrayIndex {
       target = nth_expr_child expr 0;
       index = nth_expr_child expr 1
     }
-    | Syntax_kind2.STRING_INDEX_EXPR -> StringIndex {
+    | Syntax_kind.STRING_INDEX_EXPR -> StringIndex {
       target = nth_expr_child expr 0;
       index = nth_expr_child expr 1
     }
-    | Syntax_kind2.TYPED_EXPR -> Typed {
+    | Syntax_kind.TYPED_EXPR -> Typed {
       expr = first_expr_child expr;
       annotation = first_type_expr_child expr
     }
-    | Syntax_kind2.LABELED_ARG -> LabeledArg {
+    | Syntax_kind.LABELED_ARG -> LabeledArg {
       label = first_ident_token expr;
       value = first_expr_child expr
     }
-    | Syntax_kind2.OPTIONAL_ARG -> OptionalArg {
+    | Syntax_kind.OPTIONAL_ARG -> OptionalArg {
       label = first_ident_token expr;
       value = first_expr_child expr
     }
-    | Syntax_kind2.ERROR -> Error expr
+    | Syntax_kind.ERROR -> Error expr
     | _ -> Unknown expr
 
   let for_each_child_expr = fun (expr: expr) ~fn ->
@@ -1274,7 +1274,7 @@ end = struct
   type t = expr
 
   let cast = fun (expr: expr) ->
-    if node_kind_is expr Syntax_kind2.ATTRIBUTE_EXPR then
+    if node_kind_is expr Syntax_kind.ATTRIBUTE_EXPR then
       Some expr
     else
       None
@@ -1293,7 +1293,7 @@ end = struct
   type t = expr
 
   let cast = fun (expr: expr) ->
-    if node_kind_is expr Syntax_kind2.EXTENSION_EXPR then
+    if node_kind_is expr Syntax_kind.EXTENSION_EXPR then
       Some expr
     else
       None
@@ -1324,27 +1324,27 @@ end = struct
 
   let cast = fun (expr: expr) ->
     if
-      node_kind_is expr Syntax_kind2.RECORD_EXPR || node_kind_is expr Syntax_kind2.RECORD_UPDATE_EXPR
+      node_kind_is expr Syntax_kind.RECORD_EXPR || node_kind_is expr Syntax_kind.RECORD_UPDATE_EXPR
     then
       Some expr
     else
       None
 
   let base = fun (record: t) ->
-    if node_kind_is record Syntax_kind2.RECORD_UPDATE_EXPR then
+    if node_kind_is record Syntax_kind.RECORD_UPDATE_EXPR then
       nth_expr_child record 0
     else
       None
 
   let field_of_node = fun (field: record_expr_field) ->
     match nth_expr_child field 0, nth_expr_child field 1 with
-    | Some expr, value when node_kind_is expr Syntax_kind2.PATH_EXPR ->
+    | Some expr, value when node_kind_is expr Syntax_kind.PATH_EXPR ->
         { path = Path.cast expr; value; node = field }
-    | Some expr, _ when node_kind_is expr Syntax_kind2.INFIX_EXPR -> (
+    | Some expr, _ when node_kind_is expr Syntax_kind.INFIX_EXPR -> (
         match nth_expr_child expr 0, nth_expr_child expr 1 with
         | Some left, Some right ->
             let path =
-              if node_kind_is left Syntax_kind2.PATH_EXPR then
+              if node_kind_is left Syntax_kind.PATH_EXPR then
                 Path.cast left
               else
                 None
@@ -1412,7 +1412,7 @@ end = struct
       }
 
   let cast = fun (expr: expr) ->
-    if node_kind_is expr Syntax_kind2.LOCAL_OPEN_EXPR then
+    if node_kind_is expr Syntax_kind.LOCAL_OPEN_EXPR then
       Some expr
     else
       None
@@ -1426,14 +1426,14 @@ end = struct
     match first_child_token_matching
       expr
       ~matches:(fun kind ->
-        Syntax_kind2.(kind = LPAREN || kind = LBRACKET || kind = LBRACKET_BAR || kind = LBRACE)) with
+        Syntax_kind.(kind = LPAREN || kind = LBRACKET || kind = LBRACKET_BAR || kind = LBRACE)) with
     | Some token -> Some token
     | None -> (
         match nth_expr_child expr 1 with
         | Some body -> first_child_token_matching
           body
           ~matches:(fun kind ->
-            Syntax_kind2.(kind = LBRACKET || kind = LBRACKET_BAR || kind = LBRACE))
+            Syntax_kind.(kind = LBRACKET || kind = LBRACKET_BAR || kind = LBRACE))
         | None -> None
       )
 
@@ -1441,31 +1441,31 @@ end = struct
     match first_child_token_matching
       expr
       ~matches:(fun kind ->
-        Syntax_kind2.(kind = RPAREN || kind = RBRACKET || kind = BAR_RBRACKET || kind = RBRACE)) with
+        Syntax_kind.(kind = RPAREN || kind = RBRACKET || kind = BAR_RBRACKET || kind = RBRACE)) with
     | Some token -> Some token
     | None -> (
         match nth_expr_child expr 1 with
         | Some body -> first_child_token_matching
           body
           ~matches:(fun kind ->
-            Syntax_kind2.(kind = RBRACKET || kind = BAR_RBRACKET || kind = RBRACE))
+            Syntax_kind.(kind = RBRACKET || kind = BAR_RBRACKET || kind = RBRACE))
         | None -> None
       )
 
   let view = fun expr ->
-    if has_child_token_kind expr Syntax_kind2.LET_KW then
+    if has_child_token_kind expr Syntax_kind.LET_KW then
       LetOpen {
-        let_token = Node.first_child_token expr ~kind:Syntax_kind2.LET_KW;
-        open_token = Node.first_child_token expr ~kind:Syntax_kind2.OPEN_KW;
-        bang_token = Node.first_child_token expr ~kind:Syntax_kind2.BANG;
+        let_token = Node.first_child_token expr ~kind:Syntax_kind.LET_KW;
+        open_token = Node.first_child_token expr ~kind:Syntax_kind.OPEN_KW;
+        bang_token = Node.first_child_token expr ~kind:Syntax_kind.BANG;
         module_path = path_expr_child expr 0;
-        in_token = Node.first_child_token expr ~kind:Syntax_kind2.IN_KW;
+        in_token = Node.first_child_token expr ~kind:Syntax_kind.IN_KW;
         body = nth_expr_child expr 1;
       }
     else
       Delimited {
         module_path = path_expr_child expr 0;
-        dot_token = Node.first_child_token expr ~kind:Syntax_kind2.DOT;
+        dot_token = Node.first_child_token expr ~kind:Syntax_kind.DOT;
         opening_token = opening_token expr;
         body = nth_expr_child expr 1;
         closing_token = closing_token expr;
@@ -1506,18 +1506,18 @@ end = struct
     | Unsupported
 
   let cast = fun (expr: expr) ->
-    if node_kind_is expr Syntax_kind2.LET_MODULE_EXPR then
+    if node_kind_is expr Syntax_kind.LET_MODULE_EXPR then
       Some expr
     else
       None
 
-  let let_token = fun expr -> Node.first_child_token expr ~kind:Syntax_kind2.LET_KW
+  let let_token = fun expr -> Node.first_child_token expr ~kind:Syntax_kind.LET_KW
 
-  let module_token = fun expr -> Node.first_child_token expr ~kind:Syntax_kind2.MODULE_KW
+  let module_token = fun expr -> Node.first_child_token expr ~kind:Syntax_kind.MODULE_KW
 
-  let equals_token = fun expr -> Node.first_child_token expr ~kind:Syntax_kind2.EQ
+  let equals_token = fun expr -> Node.first_child_token expr ~kind:Syntax_kind.EQ
 
-  let in_token = fun expr -> Node.first_child_token expr ~kind:Syntax_kind2.IN_KW
+  let in_token = fun expr -> Node.first_child_token expr ~kind:Syntax_kind.IN_KW
 
   let token_index = fun expr ~from ~matches ->
     let count = Node.child_count expr in
@@ -1532,19 +1532,19 @@ end = struct
     loop from
 
   let module_index = fun expr ->
-    token_index expr ~from:0 ~matches:(fun kind -> Syntax_kind2.(kind = MODULE_KW))
+    token_index expr ~from:0 ~matches:(fun kind -> Syntax_kind.(kind = MODULE_KW))
 
   let equals_index = fun expr ->
-    token_index expr ~from:0 ~matches:(fun kind -> Syntax_kind2.(kind = EQ))
+    token_index expr ~from:0 ~matches:(fun kind -> Syntax_kind.(kind = EQ))
 
   let in_index = fun expr ->
-    token_index expr ~from:0 ~matches:(fun kind -> Syntax_kind2.(kind = IN_KW))
+    token_index expr ~from:0 ~matches:(fun kind -> Syntax_kind.(kind = IN_KW))
 
   let name = fun expr ->
     match module_index expr with
     | Some module_index -> (
         match child_token_at expr (module_index + 1) with
-        | Some token when token_kind_is token Syntax_kind2.IDENT -> Some token
+        | Some token when token_kind_is token Syntax_kind.IDENT -> Some token
         | _ -> None
       )
     | None -> None
@@ -1571,7 +1571,7 @@ end = struct
                   if
                     node_matches
                       node
-                      (fun kind -> is_module_expr_kind kind || Syntax_kind2.(kind = MODULE_EXPR))
+                      (fun kind -> is_module_expr_kind kind || Syntax_kind.(kind = MODULE_EXPR))
                   then
                     Some node
                   else
@@ -1586,7 +1586,7 @@ end = struct
     match body_group_node with
     | Some node -> (
         match Node.kind node with
-        | Syntax_kind2.MODULE_EXPR -> first_child_node_matching node ~matches:is_module_expr_kind
+        | Syntax_kind.MODULE_EXPR -> first_child_node_matching node ~matches:is_module_expr_kind
         | kind when is_module_expr_kind kind -> Some node
         | _ -> None
       )
@@ -1602,9 +1602,9 @@ end = struct
       !found
     in
     match module_body_node expr with
-    | Some node when node_kind_is node Syntax_kind2.PATH_MODULE_EXPR -> Path
-    | Some node when node_kind_is node Syntax_kind2.STRUCT_MODULE_EXPR ->
-        if has_child_node_kind node Syntax_kind2.STRUCTURE_ITEM then
+    | Some node when node_kind_is node Syntax_kind.PATH_MODULE_EXPR -> Path
+    | Some node when node_kind_is node Syntax_kind.STRUCT_MODULE_EXPR ->
+        if has_child_node_kind node Syntax_kind.STRUCTURE_ITEM then
           Unsupported
         else
           EmptyStruct
@@ -1614,10 +1614,10 @@ end = struct
 
   let for_each_module_body_path_ident = fun expr ~fn ->
     match module_body_node expr with
-    | Some node when node_kind_is node Syntax_kind2.PATH_MODULE_EXPR ->
+    | Some node when node_kind_is node Syntax_kind.PATH_MODULE_EXPR ->
         for_each_token_in_node node
           ~fn:(fun token ->
-            if token_kind_is token Syntax_kind2.IDENT then
+            if token_kind_is token Syntax_kind.IDENT then
               fn token)
     | _ -> ()
 end
@@ -1643,18 +1643,18 @@ end = struct
   type t = expr
 
   let cast = fun (expr: expr) ->
-    if node_kind_is expr Syntax_kind2.LET_EXCEPTION_EXPR then
+    if node_kind_is expr Syntax_kind.LET_EXCEPTION_EXPR then
       Some expr
     else
       None
 
-  let let_token = fun expr -> Node.first_child_token expr ~kind:Syntax_kind2.LET_KW
+  let let_token = fun expr -> Node.first_child_token expr ~kind:Syntax_kind.LET_KW
 
-  let exception_token = fun expr -> Node.first_child_token expr ~kind:Syntax_kind2.EXCEPTION_KW
+  let exception_token = fun expr -> Node.first_child_token expr ~kind:Syntax_kind.EXCEPTION_KW
 
-  let of_token = fun expr -> Node.first_child_token expr ~kind:Syntax_kind2.OF_KW
+  let of_token = fun expr -> Node.first_child_token expr ~kind:Syntax_kind.OF_KW
 
-  let in_token = fun expr -> Node.first_child_token expr ~kind:Syntax_kind2.IN_KW
+  let in_token = fun expr -> Node.first_child_token expr ~kind:Syntax_kind.IN_KW
 
   let token_index = fun expr ~from ~matches ->
     let count = Node.child_count expr in
@@ -1669,19 +1669,19 @@ end = struct
     loop from
 
   let exception_index = fun expr ->
-    token_index expr ~from:0 ~matches:(fun kind -> Syntax_kind2.(kind = EXCEPTION_KW))
+    token_index expr ~from:0 ~matches:(fun kind -> Syntax_kind.(kind = EXCEPTION_KW))
 
   let of_index = fun expr ->
-    token_index expr ~from:0 ~matches:(fun kind -> Syntax_kind2.(kind = OF_KW))
+    token_index expr ~from:0 ~matches:(fun kind -> Syntax_kind.(kind = OF_KW))
 
   let in_index = fun expr ->
-    token_index expr ~from:0 ~matches:(fun kind -> Syntax_kind2.(kind = IN_KW))
+    token_index expr ~from:0 ~matches:(fun kind -> Syntax_kind.(kind = IN_KW))
 
   let name = fun expr ->
     match exception_index expr with
     | Some exception_index -> (
         match child_token_at expr (exception_index + 1) with
-        | Some token when token_kind_is token Syntax_kind2.IDENT -> Some token
+        | Some token when token_kind_is token Syntax_kind.IDENT -> Some token
         | _ -> None
       )
     | None -> None
@@ -1719,12 +1719,12 @@ end = struct
   type t = expr
 
   let cast = fun (expr: expr) ->
-    if node_kind_is expr Syntax_kind2.UNREACHABLE_EXPR then
+    if node_kind_is expr Syntax_kind.UNREACHABLE_EXPR then
       Some expr
     else
       None
 
-  let dot_token = fun expr -> Node.first_child_token expr ~kind:Syntax_kind2.DOT
+  let dot_token = fun expr -> Node.first_child_token expr ~kind:Syntax_kind.DOT
 end
 
 module FirstClassModuleExpr: sig
@@ -1766,18 +1766,18 @@ end = struct
     | UnsupportedAscription
 
   let cast = fun (expr: expr) ->
-    if node_kind_is expr Syntax_kind2.FIRST_CLASS_MODULE_EXPR then
+    if node_kind_is expr Syntax_kind.FIRST_CLASS_MODULE_EXPR then
       Some expr
     else
       None
 
-  let opening_token = fun expr -> Node.first_child_token expr ~kind:Syntax_kind2.LPAREN
+  let opening_token = fun expr -> Node.first_child_token expr ~kind:Syntax_kind.LPAREN
 
-  let module_token = fun expr -> Node.first_child_token expr ~kind:Syntax_kind2.MODULE_KW
+  let module_token = fun expr -> Node.first_child_token expr ~kind:Syntax_kind.MODULE_KW
 
-  let colon_token = fun expr -> Node.first_child_token expr ~kind:Syntax_kind2.COLON
+  let colon_token = fun expr -> Node.first_child_token expr ~kind:Syntax_kind.COLON
 
-  let closing_token = fun expr -> Node.first_child_token expr ~kind:Syntax_kind2.RPAREN
+  let closing_token = fun expr -> Node.first_child_token expr ~kind:Syntax_kind.RPAREN
 
   let token_index = fun expr ~from ~matches ->
     let count = Node.child_count expr in
@@ -1797,11 +1797,11 @@ end = struct
         saw_ident && not expect_ident
       else
         match child_token_at expr index with
-        | Some token when token_kind_is token Syntax_kind2.IDENT && expect_ident -> loop
+        | Some token when token_kind_is token Syntax_kind.IDENT && expect_ident -> loop
           (index + 1)
           true
           false
-        | Some token when token_kind_is token Syntax_kind2.DOT && saw_ident && not expect_ident -> loop
+        | Some token when token_kind_is token Syntax_kind.DOT && saw_ident && not expect_ident -> loop
           (index + 1)
           saw_ident
           true
@@ -1810,22 +1810,22 @@ end = struct
     loop start false true
 
   let module_path_bounds = fun expr ->
-    match token_index expr ~from:0 ~matches:(fun kind -> Syntax_kind2.(kind = MODULE_KW)) with
+    match token_index expr ~from:0 ~matches:(fun kind -> Syntax_kind.(kind = MODULE_KW)) with
     | None -> None
     | Some module_index ->
         let start = module_index + 1 in
         token_index
           expr
           ~from:start
-          ~matches:(fun kind -> Syntax_kind2.(kind = COLON || kind = RPAREN))
+          ~matches:(fun kind -> Syntax_kind.(kind = COLON || kind = RPAREN))
         |> Option.map ~fn:(fun stop -> (start, stop))
 
   let ascription_bounds = fun expr ->
-    match token_index expr ~from:0 ~matches:(fun kind -> Syntax_kind2.(kind = COLON)) with
+    match token_index expr ~from:0 ~matches:(fun kind -> Syntax_kind.(kind = COLON)) with
     | None -> None
     | Some colon_index ->
         let start = colon_index + 1 in
-        token_index expr ~from:start ~matches:(fun kind -> Syntax_kind2.(kind = RPAREN))
+        token_index expr ~from:start ~matches:(fun kind -> Syntax_kind.(kind = RPAREN))
         |> Option.map ~fn:(fun stop -> (start, stop))
 
   let module_path = fun expr ->
@@ -1844,7 +1844,7 @@ end = struct
       if index < stop then
         (
           match child_token_at expr index with
-          | Some token when token_kind_is token Syntax_kind2.IDENT ->
+          | Some token when token_kind_is token Syntax_kind.IDENT ->
               fn token;
               loop (index + 1)
           | _ -> loop (index + 1)
@@ -1895,20 +1895,20 @@ end = struct
   }
 
   let cast = fun (expr: expr) ->
-    if node_kind_is expr Syntax_kind2.BINDING_OPERATOR_EXPR then
+    if node_kind_is expr Syntax_kind.BINDING_OPERATOR_EXPR then
       Some expr
     else
       None
 
-  let in_token = fun (expr: t) -> Node.first_child_token expr ~kind:Syntax_kind2.IN_KW
+  let in_token = fun (expr: t) -> Node.first_child_token expr ~kind:Syntax_kind.IN_KW
 
   let body = first_expr_child
 
   let binding_operator_keyword = fun token ->
-    token_kind_is token Syntax_kind2.LET_KW || token_kind_is token Syntax_kind2.AND_KW
+    token_kind_is token Syntax_kind.LET_KW || token_kind_is token Syntax_kind.AND_KW
 
   let binding_operator_suffix = fun token ->
-    token_kind_is token Syntax_kind2.STAR || token_kind_is token Syntax_kind2.PLUS
+    token_kind_is token Syntax_kind.STAR || token_kind_is token Syntax_kind.PLUS
 
   let for_each_clause = fun (expr: t) ~fn ->
     let child_count = Node.child_count expr in
@@ -2022,7 +2022,7 @@ end = struct
     first_child_token_matching
       pattern
       ~matches:(fun kind ->
-        Syntax_kind2.(kind = INT
+        Syntax_kind.(kind = INT
         || kind = FLOAT
         || kind = STRING
         || kind = CHAR
@@ -2033,54 +2033,54 @@ end = struct
     first_child_token_matching
       pattern
       ~matches:(fun kind ->
-        Syntax_kind2.(kind = PLUS || kind = MINUS || kind = PLUSDOT || kind = MINUSDOT))
+        Syntax_kind.(kind = PLUS || kind = MINUS || kind = PLUSDOT || kind = MINUSDOT))
 
   let view = fun (pattern: pattern) ->
     match Node.kind pattern with
-    | Syntax_kind2.WILDCARD_PATTERN -> Wildcard
-    | Syntax_kind2.PATH_PATTERN -> Path { path = pattern }
-    | Syntax_kind2.APPLY_PATTERN -> Apply {
+    | Syntax_kind.WILDCARD_PATTERN -> Wildcard
+    | Syntax_kind.PATH_PATTERN -> Path { path = pattern }
+    | Syntax_kind.APPLY_PATTERN -> Apply {
       callee = nth_pattern_child pattern 0;
       argument = nth_pattern_child pattern 1
     }
-    | Syntax_kind2.LITERAL_PATTERN -> Literal { token = literal_token pattern }
-    | Syntax_kind2.PAREN_PATTERN -> Parenthesized { inner = first_pattern_child pattern }
-    | Syntax_kind2.TUPLE_PATTERN -> Tuple
-    | Syntax_kind2.LIST_PATTERN -> List
-    | Syntax_kind2.ARRAY_PATTERN -> Array
-    | Syntax_kind2.RECORD_PATTERN -> Record
-    | Syntax_kind2.POLY_VARIANT_PATTERN -> PolyVariant
-    | Syntax_kind2.EXTENSION_PATTERN -> Extension
-    | Syntax_kind2.ATTRIBUTE_PATTERN -> Attribute { inner = first_pattern_child pattern }
-    | Syntax_kind2.LOCAL_OPEN_PATTERN -> LocalOpen
-    | Syntax_kind2.LOCALLY_ABSTRACT_TYPE_PATTERN -> LocallyAbstractType
-    | Syntax_kind2.FIRST_CLASS_MODULE_PATTERN -> FirstClassModule
-    | Syntax_kind2.INTERVAL_PATTERN -> Interval {
+    | Syntax_kind.LITERAL_PATTERN -> Literal { token = literal_token pattern }
+    | Syntax_kind.PAREN_PATTERN -> Parenthesized { inner = first_pattern_child pattern }
+    | Syntax_kind.TUPLE_PATTERN -> Tuple
+    | Syntax_kind.LIST_PATTERN -> List
+    | Syntax_kind.ARRAY_PATTERN -> Array
+    | Syntax_kind.RECORD_PATTERN -> Record
+    | Syntax_kind.POLY_VARIANT_PATTERN -> PolyVariant
+    | Syntax_kind.EXTENSION_PATTERN -> Extension
+    | Syntax_kind.ATTRIBUTE_PATTERN -> Attribute { inner = first_pattern_child pattern }
+    | Syntax_kind.LOCAL_OPEN_PATTERN -> LocalOpen
+    | Syntax_kind.LOCALLY_ABSTRACT_TYPE_PATTERN -> LocallyAbstractType
+    | Syntax_kind.FIRST_CLASS_MODULE_PATTERN -> FirstClassModule
+    | Syntax_kind.INTERVAL_PATTERN -> Interval {
       left = nth_pattern_child pattern 0;
       right = nth_pattern_child pattern 1
     }
-    | Syntax_kind2.CONSTRAINT_PATTERN -> Constraint {
+    | Syntax_kind.CONSTRAINT_PATTERN -> Constraint {
       pattern = first_pattern_child pattern;
       annotation = first_type_expr_child pattern
     }
-    | Syntax_kind2.ALIAS_PATTERN -> Alias {
+    | Syntax_kind.ALIAS_PATTERN -> Alias {
       pattern = nth_pattern_child pattern 0;
       alias = nth_pattern_child pattern 1
     }
-    | Syntax_kind2.OR_PATTERN -> Or {
+    | Syntax_kind.OR_PATTERN -> Or {
       left = nth_pattern_child pattern 0;
       right = nth_pattern_child pattern 1
     }
-    | Syntax_kind2.CONS_PATTERN -> Cons {
+    | Syntax_kind.CONS_PATTERN -> Cons {
       head = nth_pattern_child pattern 0;
       tail = nth_pattern_child pattern 1
     }
-    | Syntax_kind2.LAZY_PATTERN -> Lazy { pattern = first_pattern_child pattern }
-    | Syntax_kind2.EXCEPTION_PATTERN -> Exception { pattern = first_pattern_child pattern }
-    | Syntax_kind2.LABELED_PARAM -> LabeledParam pattern
-    | Syntax_kind2.OPTIONAL_PARAM -> OptionalParam pattern
-    | Syntax_kind2.OPTIONAL_PARAM_DEFAULT -> OptionalParamDefault pattern
-    | Syntax_kind2.ERROR -> Error pattern
+    | Syntax_kind.LAZY_PATTERN -> Lazy { pattern = first_pattern_child pattern }
+    | Syntax_kind.EXCEPTION_PATTERN -> Exception { pattern = first_pattern_child pattern }
+    | Syntax_kind.LABELED_PARAM -> LabeledParam pattern
+    | Syntax_kind.OPTIONAL_PARAM -> OptionalParam pattern
+    | Syntax_kind.OPTIONAL_PARAM_DEFAULT -> OptionalParamDefault pattern
+    | Syntax_kind.ERROR -> Error pattern
     | _ -> Unknown pattern
 
   let for_each_child_pattern = fun (pattern: pattern) ~fn ->
@@ -2098,7 +2098,7 @@ end = struct
   type t = pattern
 
   let cast = fun (pattern: pattern) ->
-    if node_kind_is pattern Syntax_kind2.ATTRIBUTE_PATTERN then
+    if node_kind_is pattern Syntax_kind.ATTRIBUTE_PATTERN then
       Some pattern
     else
       None
@@ -2117,7 +2117,7 @@ end = struct
   type t = pattern
 
   let cast = fun (pattern: pattern) ->
-    if node_kind_is pattern Syntax_kind2.EXTENSION_PATTERN then
+    if node_kind_is pattern Syntax_kind.EXTENSION_PATTERN then
       Some pattern
     else
       None
@@ -2140,21 +2140,21 @@ end = struct
   type t = pattern
 
   let cast = fun (pattern: pattern) ->
-    if node_kind_is pattern Syntax_kind2.LOCALLY_ABSTRACT_TYPE_PATTERN then
+    if node_kind_is pattern Syntax_kind.LOCALLY_ABSTRACT_TYPE_PATTERN then
       Some pattern
     else
       None
 
-  let opening_token = fun pattern -> Node.first_child_token pattern ~kind:Syntax_kind2.LPAREN
+  let opening_token = fun pattern -> Node.first_child_token pattern ~kind:Syntax_kind.LPAREN
 
-  let type_token = fun pattern -> Node.first_child_token pattern ~kind:Syntax_kind2.TYPE_KW
+  let type_token = fun pattern -> Node.first_child_token pattern ~kind:Syntax_kind.TYPE_KW
 
-  let closing_token = fun pattern -> Node.first_child_token pattern ~kind:Syntax_kind2.RPAREN
+  let closing_token = fun pattern -> Node.first_child_token pattern ~kind:Syntax_kind.RPAREN
 
   let for_each_type_name = fun pattern ~fn ->
     Node.for_each_child_token pattern
       ~fn:(fun token ->
-        if token_kind_is token Syntax_kind2.IDENT then
+        if token_kind_is token Syntax_kind.IDENT then
           fn token)
 end
 
@@ -2188,18 +2188,18 @@ end = struct
     | UnsupportedAscription
 
   let cast = fun (pattern: pattern) ->
-    if node_kind_is pattern Syntax_kind2.FIRST_CLASS_MODULE_PATTERN then
+    if node_kind_is pattern Syntax_kind.FIRST_CLASS_MODULE_PATTERN then
       Some pattern
     else
       None
 
-  let opening_token = fun pattern -> Node.first_child_token pattern ~kind:Syntax_kind2.LPAREN
+  let opening_token = fun pattern -> Node.first_child_token pattern ~kind:Syntax_kind.LPAREN
 
-  let module_token = fun pattern -> Node.first_child_token pattern ~kind:Syntax_kind2.MODULE_KW
+  let module_token = fun pattern -> Node.first_child_token pattern ~kind:Syntax_kind.MODULE_KW
 
-  let colon_token = fun pattern -> Node.first_child_token pattern ~kind:Syntax_kind2.COLON
+  let colon_token = fun pattern -> Node.first_child_token pattern ~kind:Syntax_kind.COLON
 
-  let closing_token = fun pattern -> Node.first_child_token pattern ~kind:Syntax_kind2.RPAREN
+  let closing_token = fun pattern -> Node.first_child_token pattern ~kind:Syntax_kind.RPAREN
 
   let token_index = fun pattern ~from ~matches ->
     let count = Node.child_count pattern in
@@ -2214,14 +2214,14 @@ end = struct
     loop from
 
   let module_index = fun pattern ->
-    token_index pattern ~from:0 ~matches:(fun kind -> Syntax_kind2.(kind = MODULE_KW))
+    token_index pattern ~from:0 ~matches:(fun kind -> Syntax_kind.(kind = MODULE_KW))
 
   let binder = fun pattern ->
     match module_index pattern with
     | Some module_index -> (
         match child_token_at pattern (module_index + 1) with
-        | Some token when token_kind_is token Syntax_kind2.IDENT
-        || token_kind_is token Syntax_kind2.UNDERSCORE -> Some token
+        | Some token when token_kind_is token Syntax_kind.IDENT
+        || token_kind_is token Syntax_kind.UNDERSCORE -> Some token
         | _ -> None
       )
     | None -> None
@@ -2232,11 +2232,11 @@ end = struct
         saw_ident && not expect_ident
       else
         match child_token_at pattern index with
-        | Some token when token_kind_is token Syntax_kind2.IDENT && expect_ident -> loop
+        | Some token when token_kind_is token Syntax_kind.IDENT && expect_ident -> loop
           (index + 1)
           true
           false
-        | Some token when token_kind_is token Syntax_kind2.DOT && saw_ident && not expect_ident -> loop
+        | Some token when token_kind_is token Syntax_kind.DOT && saw_ident && not expect_ident -> loop
           (index + 1)
           saw_ident
           true
@@ -2245,11 +2245,11 @@ end = struct
     loop start false true
 
   let ascription_bounds = fun pattern ->
-    match token_index pattern ~from:0 ~matches:(fun kind -> Syntax_kind2.(kind = COLON)) with
+    match token_index pattern ~from:0 ~matches:(fun kind -> Syntax_kind.(kind = COLON)) with
     | None -> None
     | Some colon_index ->
         let start = colon_index + 1 in
-        token_index pattern ~from:start ~matches:(fun kind -> Syntax_kind2.(kind = RPAREN))
+        token_index pattern ~from:start ~matches:(fun kind -> Syntax_kind.(kind = RPAREN))
         |> Option.map ~fn:(fun stop -> (start, stop))
 
   let ascription = fun pattern ->
@@ -2263,7 +2263,7 @@ end = struct
       if index < stop then
         (
           match child_token_at pattern index with
-          | Some token when token_kind_is token Syntax_kind2.IDENT ->
+          | Some token when token_kind_is token Syntax_kind.IDENT ->
               fn token;
               loop (index + 1)
           | _ -> loop (index + 1)
@@ -2303,7 +2303,7 @@ end = struct
   }
 
   let cast = fun (pattern: pattern) ->
-    if node_kind_is pattern Syntax_kind2.RECORD_PATTERN then
+    if node_kind_is pattern Syntax_kind.RECORD_PATTERN then
       Some pattern
     else
       None
@@ -2319,10 +2319,10 @@ end = struct
             loop (index + 1) (Some (Token.kind token))
         | Some (Syntax_tree.Node id) ->
             let child = wrap_node record.tree id in
-            if node_kind_is child Syntax_kind2.WILDCARD_PATTERN then
+            if node_kind_is child Syntax_kind.WILDCARD_PATTERN then
               match previous_token_kind with
-              | Some kind when Syntax_kind2.(kind = EQ) -> loop (index + 1) previous_token_kind
-              | _ -> Node.first_child_token child ~kind:Syntax_kind2.UNDERSCORE
+              | Some kind when Syntax_kind.(kind = EQ) -> loop (index + 1) previous_token_kind
+              | _ -> Node.first_child_token child ~kind:Syntax_kind.UNDERSCORE
             else
               loop (index + 1) previous_token_kind
         | Some (Syntax_tree.Missing _)
@@ -2352,10 +2352,10 @@ end = struct
         ()
       else
         match child_node_at record index with
-        | Some child when node_kind_is child Syntax_kind2.PATH_PATTERN ->
+        | Some child when node_kind_is child Syntax_kind.PATH_PATTERN ->
             let pattern, next =
               match child_token_kind_at record (index + 1) with
-              | Some kind when Syntax_kind2.(kind = EQ) -> (
+              | Some kind when Syntax_kind.(kind = EQ) -> (
                   match child_node_at record (index + 2) with
                   | Some value when node_matches value is_pattern_kind -> (Some value, index + 3)
                   | _ -> (None, index + 2)
@@ -2364,7 +2364,7 @@ end = struct
             in
             fn { path = Path.cast child; pattern; node = child };
             loop next
-        | Some child when node_kind_is child Syntax_kind2.WILDCARD_PATTERN ->
+        | Some child when node_kind_is child Syntax_kind.WILDCARD_PATTERN ->
             loop (index + 1)
         | Some child when node_matches child is_pattern_kind ->
             fn { path = None; pattern = None; node = child };
@@ -2393,18 +2393,18 @@ end = struct
   type t = pattern
 
   let cast = fun (pattern: pattern) ->
-    if node_kind_is pattern Syntax_kind2.LOCAL_OPEN_PATTERN then
+    if node_kind_is pattern Syntax_kind.LOCAL_OPEN_PATTERN then
       Some pattern
     else
       None
 
-  let dot_token = fun pattern -> Node.first_child_token pattern ~kind:Syntax_kind2.DOT
+  let dot_token = fun pattern -> Node.first_child_token pattern ~kind:Syntax_kind.DOT
 
   let delimiter_child = first_pattern_child
 
   let opening_token = fun pattern ->
     let matches kind =
-      Syntax_kind2.(kind = LPAREN || kind = LBRACE || kind = LBRACKET || kind = LBRACKET_BAR) in
+      Syntax_kind.(kind = LPAREN || kind = LBRACE || kind = LBRACKET || kind = LBRACKET_BAR) in
     match first_child_token_matching pattern ~matches with
     | Some token -> Some token
     | None -> (
@@ -2415,7 +2415,7 @@ end = struct
 
   let closing_token = fun pattern ->
     let matches kind =
-      Syntax_kind2.(kind = RPAREN || kind = RBRACE || kind = RBRACKET || kind = BAR_RBRACKET) in
+      Syntax_kind.(kind = RPAREN || kind = RBRACE || kind = RBRACKET || kind = BAR_RBRACKET) in
     match first_child_token_matching pattern ~matches with
     | Some token -> Some token
     | None -> (
@@ -2433,10 +2433,10 @@ end = struct
         ()
       else
         match child_token_at pattern index with
-        | Some token when token_kind_is token Syntax_kind2.LPAREN ->
+        | Some token when token_kind_is token Syntax_kind.LPAREN ->
             ()
         | Some token ->
-            if token_kind_is token Syntax_kind2.IDENT then
+            if token_kind_is token Syntax_kind.IDENT then
               fn token;
             loop (index + 1)
         | None ->
@@ -2477,19 +2477,19 @@ end = struct
     | Some token -> Some token
     | None -> first_descendant_token_matching
       parameter
-      ~matches:(fun kind -> Syntax_kind2.(kind = IDENT))
+      ~matches:(fun kind -> Syntax_kind.(kind = IDENT))
 
   let view = fun (parameter: parameter) ->
     match Node.kind parameter with
-    | Syntax_kind2.LABELED_PARAM -> Labeled {
+    | Syntax_kind.LABELED_PARAM -> Labeled {
       label = parameter_label_token parameter;
       pattern = first_pattern_child parameter
     }
-    | Syntax_kind2.OPTIONAL_PARAM -> Optional {
+    | Syntax_kind.OPTIONAL_PARAM -> Optional {
       label = parameter_label_token parameter;
       pattern = first_pattern_child parameter
     }
-    | Syntax_kind2.OPTIONAL_PARAM_DEFAULT -> OptionalDefault {
+    | Syntax_kind.OPTIONAL_PARAM_DEFAULT -> OptionalDefault {
       label = parameter_label_token parameter;
       pattern = first_pattern_child parameter;
       default = first_expr_child parameter
@@ -2497,7 +2497,7 @@ end = struct
     | _ -> Unknown parameter
 
   let has_explicit_pattern_parens = fun parameter ->
-    Option.is_some (Node.first_child_token parameter ~kind:Syntax_kind2.LPAREN)
+    Option.is_some (Node.first_child_token parameter ~kind:Syntax_kind.LPAREN)
 end
 
 module MatchCase: sig
@@ -2527,7 +2527,7 @@ end = struct
 
   let view = fun (match_case: match_case) ->
     let guard, body =
-      if has_child_token_kind match_case Syntax_kind2.WHEN_KW then
+      if has_child_token_kind match_case Syntax_kind.WHEN_KW then
         (nth_expr_child match_case 0, nth_expr_child match_case 1)
       else
         (None, nth_expr_child match_case 0)
@@ -2602,12 +2602,12 @@ module LetDeclaration = struct
   type t = let_declaration
 
   let cast = fun (node: node) ->
-    if node_kind_is node Syntax_kind2.LET_DECL then
+    if node_kind_is node Syntax_kind.LET_DECL then
       Some node
     else
       None
 
-  let rec_token = fun (decl: let_declaration) -> Node.first_child_token decl ~kind:Syntax_kind2.REC_KW
+  let rec_token = fun (decl: let_declaration) -> Node.first_child_token decl ~kind:Syntax_kind.REC_KW
 
   let first_binding = first_let_binding_child
 
@@ -2635,13 +2635,13 @@ module TypeDeclaration = struct
     | Wildcard of { wildcard: Token.t; variance: Token.t option; injective: Token.t option }
 
   let cast = fun (node: node) ->
-    if node_kind_is node Syntax_kind2.TYPE_DECL then
+    if node_kind_is node Syntax_kind.TYPE_DECL then
       Some node
     else
       None
 
   let first_member_node = fun decl ->
-    first_child_node_matching decl ~matches:(fun kind -> Syntax_kind2.(kind = TYPE_DECL_MEMBER))
+    first_child_node_matching decl ~matches:(fun kind -> Syntax_kind.(kind = TYPE_DECL_MEMBER))
 
   let member_or_decl = fun decl ->
     match first_member_node decl with
@@ -2650,9 +2650,9 @@ module TypeDeclaration = struct
 
   let for_each_token = fun decl ~fn -> for_each_token_in_node decl ~fn
 
-  let keyword_token = fun decl -> Node.first_child_token (member_or_decl decl) ~kind:Syntax_kind2.TYPE_KW
+  let keyword_token = fun decl -> Node.first_child_token (member_or_decl decl) ~kind:Syntax_kind.TYPE_KW
 
-  let nonrec_token = fun decl -> Node.first_child_token (member_or_decl decl) ~kind:Syntax_kind2.NONREC_KW
+  let nonrec_token = fun decl -> Node.first_child_token (member_or_decl decl) ~kind:Syntax_kind.NONREC_KW
 
   let child_token_at_node = fun node index ->
     match Node.child_at node index with
@@ -2675,12 +2675,12 @@ module TypeDeclaration = struct
 
   let rec collect_type_parameter_modifiers_in = fun node index variance injective ->
     match child_token_at_node node index with
-    | Some token when token_kind_is token Syntax_kind2.PLUS || token_kind_is token Syntax_kind2.MINUS -> collect_type_parameter_modifiers_in
+    | Some token when token_kind_is token Syntax_kind.PLUS || token_kind_is token Syntax_kind.MINUS -> collect_type_parameter_modifiers_in
       node
       (index + 1)
       (Some token)
       injective
-    | Some token when token_kind_is token Syntax_kind2.BANG -> collect_type_parameter_modifiers_in
+    | Some token when token_kind_is token Syntax_kind.BANG -> collect_type_parameter_modifiers_in
       node
       (index + 1)
       variance
@@ -2690,12 +2690,12 @@ module TypeDeclaration = struct
   let skip_type_parameter_in = fun node index ->
     let index, _, _ = collect_type_parameter_modifiers_in node index None None in
     match child_token_kind_at_node node index with
-    | Some Syntax_kind2.QUOTE -> (
+    | Some Syntax_kind.QUOTE -> (
         match child_token_kind_at_node node (index + 1) with
-        | Some Syntax_kind2.IDENT -> index + 2
+        | Some Syntax_kind.IDENT -> index + 2
         | _ -> index + 1
       )
-    | Some Syntax_kind2.UNDERSCORE ->
+    | Some Syntax_kind.UNDERSCORE ->
         index + 1
     | _ ->
         index
@@ -2703,14 +2703,14 @@ module TypeDeclaration = struct
   let emit_type_parameter_in = fun node index ~fn ->
     let index, variance, injective = collect_type_parameter_modifiers_in node index None None in
     match child_token_at_node node index with
-    | Some quote when token_kind_is quote Syntax_kind2.QUOTE -> (
+    | Some quote when token_kind_is quote Syntax_kind.QUOTE -> (
         match child_token_at_node node (index + 1) with
-        | Some name when token_kind_is name Syntax_kind2.IDENT ->
+        | Some name when token_kind_is name Syntax_kind.IDENT ->
             fn (Named { name; quote = Some quote; variance; injective });
             index + 2
         | _ -> index + 1
       )
-    | Some wildcard when token_kind_is wildcard Syntax_kind2.UNDERSCORE ->
+    | Some wildcard when token_kind_is wildcard Syntax_kind.UNDERSCORE ->
         fn (Wildcard { wildcard; variance; injective });
         index + 1
     | _ ->
@@ -2718,8 +2718,8 @@ module TypeDeclaration = struct
 
   let rec skip_parenthesized_type_parameters_in = fun node index ->
     match child_token_kind_at_node node index with
-    | Some Syntax_kind2.RPAREN -> index + 1
-    | Some Syntax_kind2.EOF
+    | Some Syntax_kind.RPAREN -> index + 1
+    | Some Syntax_kind.EOF
     | None -> index
     | _ -> skip_parenthesized_type_parameters_in node (index + 1)
 
@@ -2742,22 +2742,22 @@ module TypeDeclaration = struct
     let node = member_or_decl decl in
     let rec loop index =
       match child_token_at_node node index with
-      | Some token when token_kind_is token Syntax_kind2.TYPE_KW
-      || token_kind_is token Syntax_kind2.NONREC_KW ->
+      | Some token when token_kind_is token Syntax_kind.TYPE_KW
+      || token_kind_is token Syntax_kind.NONREC_KW ->
           loop (index + 1)
-      | Some token when token_kind_is token Syntax_kind2.LPAREN ->
+      | Some token when token_kind_is token Syntax_kind.LPAREN ->
           loop (skip_parenthesized_type_parameters_in node (index + 1))
-      | Some token when token_kind_is token Syntax_kind2.PLUS
-      || token_kind_is token Syntax_kind2.MINUS
-      || token_kind_is token Syntax_kind2.BANG
-      || token_kind_is token Syntax_kind2.QUOTE
-      || token_kind_is token Syntax_kind2.UNDERSCORE ->
+      | Some token when token_kind_is token Syntax_kind.PLUS
+      || token_kind_is token Syntax_kind.MINUS
+      || token_kind_is token Syntax_kind.BANG
+      || token_kind_is token Syntax_kind.QUOTE
+      || token_kind_is token Syntax_kind.UNDERSCORE ->
           let next = skip_type_parameter_in node index in
           if next > index then
             loop next
           else
             None
-      | Some token when token_kind_is token Syntax_kind2.IDENT ->
+      | Some token when token_kind_is token Syntax_kind.IDENT ->
           Some token
       | _ ->
           None
@@ -2768,11 +2768,11 @@ module TypeDeclaration = struct
     let node = member_or_decl decl in
     let rec parse_parenthesized index =
       match child_token_kind_at_node node index with
-      | Some Syntax_kind2.RPAREN ->
+      | Some Syntax_kind.RPAREN ->
           index + 1
-      | Some Syntax_kind2.COMMA ->
+      | Some Syntax_kind.COMMA ->
           parse_parenthesized (index + 1)
-      | Some Syntax_kind2.EOF
+      | Some Syntax_kind.EOF
       | None ->
           index
       | _ ->
@@ -2787,16 +2787,16 @@ module TypeDeclaration = struct
     in
     let rec parse_head index =
       match child_token_at_node node index with
-      | Some token when token_kind_is token Syntax_kind2.TYPE_KW
-      || token_kind_is token Syntax_kind2.NONREC_KW ->
+      | Some token when token_kind_is token Syntax_kind.TYPE_KW
+      || token_kind_is token Syntax_kind.NONREC_KW ->
           parse_head (index + 1)
-      | Some token when token_kind_is token Syntax_kind2.LPAREN ->
+      | Some token when token_kind_is token Syntax_kind.LPAREN ->
           parse_head (parse_parenthesized (index + 1))
-      | Some token when token_kind_is token Syntax_kind2.PLUS
-      || token_kind_is token Syntax_kind2.MINUS
-      || token_kind_is token Syntax_kind2.BANG
-      || token_kind_is token Syntax_kind2.QUOTE
-      || token_kind_is token Syntax_kind2.UNDERSCORE ->
+      | Some token when token_kind_is token Syntax_kind.PLUS
+      || token_kind_is token Syntax_kind.MINUS
+      || token_kind_is token Syntax_kind.BANG
+      || token_kind_is token Syntax_kind.QUOTE
+      || token_kind_is token Syntax_kind.UNDERSCORE ->
           let next = emit_type_parameter_in node index ~fn in
           if next > index then
             parse_head next
@@ -2895,8 +2895,8 @@ module TypeDeclaration = struct
           None
         else
           match child_token_at member index with
-          | Some token when token_kind_is token Syntax_kind2.NONREC_KW -> Some token
-          | Some token when token_kind_is token Syntax_kind2.IDENT -> None
+          | Some token when token_kind_is token Syntax_kind.NONREC_KW -> Some token
+          | Some token when token_kind_is token Syntax_kind.IDENT -> None
           | _ -> loop (index + 1)
       in
       loop 0
@@ -2904,23 +2904,23 @@ module TypeDeclaration = struct
     let name = fun member ->
       let rec loop index =
         match child_token_at member index with
-        | Some token when token_kind_is token Syntax_kind2.TYPE_KW
-        || token_kind_is token Syntax_kind2.AND_KW
-        || token_kind_is token Syntax_kind2.NONREC_KW ->
+        | Some token when token_kind_is token Syntax_kind.TYPE_KW
+        || token_kind_is token Syntax_kind.AND_KW
+        || token_kind_is token Syntax_kind.NONREC_KW ->
             loop (index + 1)
-        | Some token when token_kind_is token Syntax_kind2.LPAREN ->
+        | Some token when token_kind_is token Syntax_kind.LPAREN ->
             loop (skip_parenthesized_type_parameters_in member.node (index + 1))
-        | Some token when token_kind_is token Syntax_kind2.PLUS
-        || token_kind_is token Syntax_kind2.MINUS
-        || token_kind_is token Syntax_kind2.BANG
-        || token_kind_is token Syntax_kind2.QUOTE
-        || token_kind_is token Syntax_kind2.UNDERSCORE ->
+        | Some token when token_kind_is token Syntax_kind.PLUS
+        || token_kind_is token Syntax_kind.MINUS
+        || token_kind_is token Syntax_kind.BANG
+        || token_kind_is token Syntax_kind.QUOTE
+        || token_kind_is token Syntax_kind.UNDERSCORE ->
             let next = skip_type_parameter_in member.node index in
             if next > index then
               loop next
             else
               None
-        | Some token when token_kind_is token Syntax_kind2.IDENT ->
+        | Some token when token_kind_is token Syntax_kind.IDENT ->
             Some token
         | _ ->
             None
@@ -2930,11 +2930,11 @@ module TypeDeclaration = struct
     let for_each_parameter = fun member ~fn ->
       let rec parse_parenthesized index =
         match child_token_kind_at member index with
-        | Some Syntax_kind2.RPAREN ->
+        | Some Syntax_kind.RPAREN ->
             index + 1
-        | Some Syntax_kind2.COMMA ->
+        | Some Syntax_kind.COMMA ->
             parse_parenthesized (index + 1)
-        | Some Syntax_kind2.EOF
+        | Some Syntax_kind.EOF
         | None ->
             index
         | _ ->
@@ -2949,17 +2949,17 @@ module TypeDeclaration = struct
       in
       let rec parse_head index =
         match child_token_at member index with
-        | Some token when token_kind_is token Syntax_kind2.TYPE_KW
-        || token_kind_is token Syntax_kind2.AND_KW
-        || token_kind_is token Syntax_kind2.NONREC_KW ->
+        | Some token when token_kind_is token Syntax_kind.TYPE_KW
+        || token_kind_is token Syntax_kind.AND_KW
+        || token_kind_is token Syntax_kind.NONREC_KW ->
             parse_head (index + 1)
-        | Some token when token_kind_is token Syntax_kind2.LPAREN ->
+        | Some token when token_kind_is token Syntax_kind.LPAREN ->
             parse_head (parse_parenthesized (index + 1))
-        | Some token when token_kind_is token Syntax_kind2.PLUS
-        || token_kind_is token Syntax_kind2.MINUS
-        || token_kind_is token Syntax_kind2.BANG
-        || token_kind_is token Syntax_kind2.QUOTE
-        || token_kind_is token Syntax_kind2.UNDERSCORE ->
+        | Some token when token_kind_is token Syntax_kind.PLUS
+        || token_kind_is token Syntax_kind.MINUS
+        || token_kind_is token Syntax_kind.BANG
+        || token_kind_is token Syntax_kind.QUOTE
+        || token_kind_is token Syntax_kind.UNDERSCORE ->
             let next = emit_type_parameter_in member.node index ~fn in
             if next > index then
               parse_head next
@@ -2979,7 +2979,7 @@ module TypeDeclaration = struct
         function
         | Syntax_tree.Node id ->
             let node = wrap_node decl.tree id in
-            if node_kind_is node Syntax_kind2.TYPE_DECL_MEMBER then
+            if node_kind_is node Syntax_kind.TYPE_DECL_MEMBER then
               (
                 saw_member := true;
                 fn { declaration = decl; node; start_index = !index; stop_index = !index + 1 }
@@ -3010,7 +3010,7 @@ module TypeExtensionDeclaration = struct
     | Wildcard of { wildcard: Token.t; variance: Token.t option; injective: Token.t option }
 
   let cast = fun (node: node) ->
-    if node_kind_is node Syntax_kind2.TYPE_EXTENSION_DECL then
+    if node_kind_is node Syntax_kind.TYPE_EXTENSION_DECL then
       Some node
     else
       None
@@ -3018,36 +3018,36 @@ module TypeExtensionDeclaration = struct
   let head_node = fun decl ->
     first_child_node_matching
       decl
-      ~matches:(fun kind -> Syntax_kind2.(kind = TYPE_EXTENSION_DECL_HEAD))
+      ~matches:(fun kind -> Syntax_kind.(kind = TYPE_EXTENSION_DECL_HEAD))
 
   let body_node = fun decl ->
     first_child_node_matching
       decl
-      ~matches:(fun kind -> Syntax_kind2.(kind = TYPE_EXTENSION_DECL_BODY))
+      ~matches:(fun kind -> Syntax_kind.(kind = TYPE_EXTENSION_DECL_BODY))
 
   let keyword_token = fun decl ->
     match head_node decl with
-    | Some head -> Node.first_child_token head ~kind:Syntax_kind2.TYPE_KW
+    | Some head -> Node.first_child_token head ~kind:Syntax_kind.TYPE_KW
     | None -> None
 
   let plus_token = fun decl ->
     match body_node decl with
-    | Some body -> Node.first_child_token body ~kind:Syntax_kind2.PLUS
+    | Some body -> Node.first_child_token body ~kind:Syntax_kind.PLUS
     | None -> None
 
   let equals_token = fun decl ->
     match body_node decl with
-    | Some body -> Node.first_child_token body ~kind:Syntax_kind2.EQ
+    | Some body -> Node.first_child_token body ~kind:Syntax_kind.EQ
     | None -> None
 
   let rec collect_type_parameter_modifiers = fun decl index variance injective ->
     match child_token_at decl index with
-    | Some token when token_kind_is token Syntax_kind2.PLUS || token_kind_is token Syntax_kind2.MINUS -> collect_type_parameter_modifiers
+    | Some token when token_kind_is token Syntax_kind.PLUS || token_kind_is token Syntax_kind.MINUS -> collect_type_parameter_modifiers
       decl
       (index + 1)
       (Some token)
       injective
-    | Some token when token_kind_is token Syntax_kind2.BANG -> collect_type_parameter_modifiers
+    | Some token when token_kind_is token Syntax_kind.BANG -> collect_type_parameter_modifiers
       decl
       (index + 1)
       variance
@@ -3057,12 +3057,12 @@ module TypeExtensionDeclaration = struct
   let skip_type_parameter = fun decl index ->
     let index, _, _ = collect_type_parameter_modifiers decl index None None in
     match child_token_kind_at decl index with
-    | Some Syntax_kind2.QUOTE -> (
+    | Some Syntax_kind.QUOTE -> (
         match child_token_kind_at decl (index + 1) with
-        | Some Syntax_kind2.IDENT -> index + 2
+        | Some Syntax_kind.IDENT -> index + 2
         | _ -> index + 1
       )
-    | Some Syntax_kind2.UNDERSCORE ->
+    | Some Syntax_kind.UNDERSCORE ->
         index + 1
     | _ ->
         index
@@ -3070,14 +3070,14 @@ module TypeExtensionDeclaration = struct
   let emit_type_parameter = fun decl index ~fn ->
     let index, variance, injective = collect_type_parameter_modifiers decl index None None in
     match child_token_at decl index with
-    | Some quote when token_kind_is quote Syntax_kind2.QUOTE -> (
+    | Some quote when token_kind_is quote Syntax_kind.QUOTE -> (
         match child_token_at decl (index + 1) with
-        | Some name when token_kind_is name Syntax_kind2.IDENT ->
+        | Some name when token_kind_is name Syntax_kind.IDENT ->
             fn (Named { name; quote = Some quote; variance; injective });
             index + 2
         | _ -> index + 1
       )
-    | Some wildcard when token_kind_is wildcard Syntax_kind2.UNDERSCORE ->
+    | Some wildcard when token_kind_is wildcard Syntax_kind.UNDERSCORE ->
         fn (Wildcard { wildcard; variance; injective });
         index + 1
     | _ ->
@@ -3085,8 +3085,8 @@ module TypeExtensionDeclaration = struct
 
   let rec skip_parenthesized_type_parameters = fun decl index ->
     match child_token_kind_at decl index with
-    | Some Syntax_kind2.RPAREN -> index + 1
-    | Some Syntax_kind2.EOF
+    | Some Syntax_kind.RPAREN -> index + 1
+    | Some Syntax_kind.EOF
     | None -> index
     | _ -> skip_parenthesized_type_parameters decl (index + 1)
 
@@ -3096,11 +3096,11 @@ module TypeExtensionDeclaration = struct
     | Some head ->
         let rec parse_parenthesized index =
           match child_token_kind_at head index with
-          | Some Syntax_kind2.RPAREN ->
+          | Some Syntax_kind.RPAREN ->
               index + 1
-          | Some Syntax_kind2.COMMA ->
+          | Some Syntax_kind.COMMA ->
               parse_parenthesized (index + 1)
-          | Some Syntax_kind2.EOF
+          | Some Syntax_kind.EOF
           | None ->
               index
           | _ ->
@@ -3115,15 +3115,15 @@ module TypeExtensionDeclaration = struct
         in
         let rec parse_head index =
           match child_token_at head index with
-          | Some token when token_kind_is token Syntax_kind2.TYPE_KW ->
+          | Some token when token_kind_is token Syntax_kind.TYPE_KW ->
               parse_head (index + 1)
-          | Some token when token_kind_is token Syntax_kind2.LPAREN ->
+          | Some token when token_kind_is token Syntax_kind.LPAREN ->
               parse_head (parse_parenthesized (index + 1))
-          | Some token when token_kind_is token Syntax_kind2.PLUS
-          || token_kind_is token Syntax_kind2.MINUS
-          || token_kind_is token Syntax_kind2.BANG
-          || token_kind_is token Syntax_kind2.QUOTE
-          || token_kind_is token Syntax_kind2.UNDERSCORE ->
+          | Some token when token_kind_is token Syntax_kind.PLUS
+          || token_kind_is token Syntax_kind.MINUS
+          || token_kind_is token Syntax_kind.BANG
+          || token_kind_is token Syntax_kind.QUOTE
+          || token_kind_is token Syntax_kind.UNDERSCORE ->
               let next = emit_type_parameter head index ~fn in
               if next > index then
                 parse_head next
@@ -3138,10 +3138,10 @@ module TypeExtensionDeclaration = struct
     | Some head ->
         let rec parse_name index =
           match child_token_at head index with
-          | Some token when token_kind_is token Syntax_kind2.IDENT ->
+          | Some token when token_kind_is token Syntax_kind.IDENT ->
               fn token;
               parse_name (index + 1)
-          | Some token when token_kind_is token Syntax_kind2.DOT ->
+          | Some token when token_kind_is token Syntax_kind.DOT ->
               parse_name (index + 1)
           | Some _ ->
               parse_name (index + 1)
@@ -3150,15 +3150,15 @@ module TypeExtensionDeclaration = struct
         in
         let rec parse_head index =
           match child_token_at head index with
-          | Some token when token_kind_is token Syntax_kind2.TYPE_KW ->
+          | Some token when token_kind_is token Syntax_kind.TYPE_KW ->
               parse_head (index + 1)
-          | Some token when token_kind_is token Syntax_kind2.LPAREN ->
+          | Some token when token_kind_is token Syntax_kind.LPAREN ->
               parse_head (skip_parenthesized_type_parameters head (index + 1))
-          | Some token when token_kind_is token Syntax_kind2.PLUS
-          || token_kind_is token Syntax_kind2.MINUS
-          || token_kind_is token Syntax_kind2.BANG
-          || token_kind_is token Syntax_kind2.QUOTE
-          || token_kind_is token Syntax_kind2.UNDERSCORE ->
+          | Some token when token_kind_is token Syntax_kind.PLUS
+          || token_kind_is token Syntax_kind.MINUS
+          || token_kind_is token Syntax_kind.BANG
+          || token_kind_is token Syntax_kind.QUOTE
+          || token_kind_is token Syntax_kind.UNDERSCORE ->
               let next = skip_type_parameter head index in
               if next > index then
                 parse_head next
@@ -3184,20 +3184,20 @@ let child_token_kind_is = fun node index kind ->
   | None -> false
 
 let attribute_suffix_start_at = fun node close_index ->
-  if not (child_token_kind_is node close_index Syntax_kind2.RBRACKET) then
+  if not (child_token_kind_is node close_index Syntax_kind.RBRACKET) then
     None
   else
     let rec loop index depth =
       if Int.(index < 0) then
         None
-      else if child_token_kind_is node index Syntax_kind2.RBRACKET then
+      else if child_token_kind_is node index Syntax_kind.RBRACKET then
         loop Int.(index - 1) Int.(depth + 1)
-      else if child_token_kind_is node index Syntax_kind2.LBRACKET then
+      else if child_token_kind_is node index Syntax_kind.LBRACKET then
         if Int.equal depth 1 then
           let next = Int.(index + 1) in
           if
-            child_token_kind_is node next Syntax_kind2.AT
-            || child_token_kind_is node next Syntax_kind2.ATAT
+            child_token_kind_is node next Syntax_kind.AT
+            || child_token_kind_is node next Syntax_kind.ATAT
           then
             Some index
           else
@@ -3239,13 +3239,13 @@ module ModuleDeclaration = struct
     | Unsupported
 
   let cast = fun (node: node) ->
-    if node_kind_is node Syntax_kind2.MODULE_DECL then
+    if node_kind_is node Syntax_kind.MODULE_DECL then
       Some node
     else
       None
 
   let first_member_node = fun decl ->
-    first_child_node_matching decl ~matches:(fun kind -> Syntax_kind2.(kind = MODULE_DECL_MEMBER))
+    first_child_node_matching decl ~matches:(fun kind -> Syntax_kind.(kind = MODULE_DECL_MEMBER))
 
   let member_or_decl = fun decl ->
     match first_member_node decl with
@@ -3254,7 +3254,7 @@ module ModuleDeclaration = struct
 
   let name = fun decl -> first_ident_or_underscore_token (member_or_decl decl)
 
-  let rec_token = fun decl -> Node.first_child_token (member_or_decl decl) ~kind:Syntax_kind2.REC_KW
+  let rec_token = fun decl -> Node.first_child_token (member_or_decl decl) ~kind:Syntax_kind.REC_KW
 
   let is_recursive = fun decl ->
     match rec_token decl with
@@ -3264,7 +3264,7 @@ module ModuleDeclaration = struct
   let separator_token = fun decl ->
     first_child_token_matching
       (member_or_decl decl)
-      ~matches:(fun kind -> Syntax_kind2.(kind = EQ || kind = COLON))
+      ~matches:(fun kind -> Syntax_kind.(kind = EQ || kind = COLON))
 
   module Member = struct
     type t = member
@@ -3359,27 +3359,27 @@ module ModuleDeclaration = struct
 
     let first_specific_module_expr = fun node ->
       match Node.kind node with
-      | Syntax_kind2.MODULE_EXPR -> first_child_node_matching node ~matches:is_module_expr_kind
+      | Syntax_kind.MODULE_EXPR -> first_child_node_matching node ~matches:is_module_expr_kind
       | kind when is_module_expr_kind kind -> Some node
       | _ -> None
 
     let first_specific_module_type = fun node ->
       match Node.kind node with
-      | Syntax_kind2.MODULE_TYPE_EXPR -> first_child_node_matching node ~matches:is_module_type_kind
+      | Syntax_kind.MODULE_TYPE_EXPR -> first_child_node_matching node ~matches:is_module_type_kind
       | kind when is_module_type_kind kind -> Some node
       | _ -> None
 
     let module_expr = fun member ->
       match find_node
         member
-        ~matches:(fun kind -> is_module_expr_kind kind || Syntax_kind2.(kind = MODULE_EXPR)) with
+        ~matches:(fun kind -> is_module_expr_kind kind || Syntax_kind.(kind = MODULE_EXPR)) with
       | Some node -> first_specific_module_expr node
       | None -> None
 
     let module_type = fun member ->
       match find_node
         member
-        ~matches:(fun kind -> is_module_type_kind kind || Syntax_kind2.(kind = MODULE_TYPE_EXPR)) with
+        ~matches:(fun kind -> is_module_type_kind kind || Syntax_kind.(kind = MODULE_TYPE_EXPR)) with
       | Some node -> first_specific_module_type node
       | None -> None
   end
@@ -3392,7 +3392,7 @@ module ModuleDeclaration = struct
         function
         | Syntax_tree.Node id ->
             let node = wrap_node decl.tree id in
-            if node_kind_is node Syntax_kind2.MODULE_DECL_MEMBER then
+            if node_kind_is node Syntax_kind.MODULE_DECL_MEMBER then
               (
                 saw_member := true;
                 fn { declaration = decl; node; start_index = !index; stop_index = !index + 1 }
@@ -3423,7 +3423,7 @@ module ModuleDeclaration = struct
         None
       else
         match child_token_at node index with
-        | Some token when token_kind_is token Syntax_kind2.EQ || token_kind_is token Syntax_kind2.COLON -> Some index
+        | Some token when token_kind_is token Syntax_kind.EQ || token_kind_is token Syntax_kind.COLON -> Some index
         | _ -> loop (index + 1)
     in
     loop 0
@@ -3448,8 +3448,8 @@ module ModuleDeclaration = struct
 
   let first_specific_module_body = fun node ->
     match Node.kind node with
-    | Syntax_kind2.MODULE_EXPR -> first_child_node_matching node ~matches:is_module_expr_kind
-    | Syntax_kind2.MODULE_TYPE_EXPR -> first_child_node_matching node ~matches:is_module_type_kind
+    | Syntax_kind.MODULE_EXPR -> first_child_node_matching node ~matches:is_module_expr_kind
+    | Syntax_kind.MODULE_TYPE_EXPR -> first_child_node_matching node ~matches:is_module_type_kind
     | kind when is_module_expr_kind kind || is_module_type_kind kind -> Some node
     | _ -> None
 
@@ -3468,15 +3468,15 @@ module ModuleDeclaration = struct
 
   let body = fun decl ->
     match body_specific_node decl with
-    | Some node when node_kind_is node Syntax_kind2.PATH_MODULE_EXPR
-    || node_kind_is node Syntax_kind2.PATH_MODULE_TYPE -> Path
-    | Some node when node_kind_is node Syntax_kind2.STRUCT_MODULE_EXPR ->
-        if has_child_node_kind node Syntax_kind2.STRUCTURE_ITEM then
+    | Some node when node_kind_is node Syntax_kind.PATH_MODULE_EXPR
+    || node_kind_is node Syntax_kind.PATH_MODULE_TYPE -> Path
+    | Some node when node_kind_is node Syntax_kind.STRUCT_MODULE_EXPR ->
+        if has_child_node_kind node Syntax_kind.STRUCTURE_ITEM then
           Struct
         else
           EmptyStruct
-    | Some node when node_kind_is node Syntax_kind2.SIGNATURE_MODULE_TYPE ->
-        if has_child_node_kind node Syntax_kind2.SIGNATURE_ITEM then
+    | Some node when node_kind_is node Syntax_kind.SIGNATURE_MODULE_TYPE ->
+        if has_child_node_kind node Syntax_kind.SIGNATURE_ITEM then
           Sig
         else
           EmptySig
@@ -3484,46 +3484,46 @@ module ModuleDeclaration = struct
 
   let structure_body_node = fun decl ->
     match body_specific_node decl with
-    | Some node when node_kind_is node Syntax_kind2.STRUCT_MODULE_EXPR -> Some node
+    | Some node when node_kind_is node Syntax_kind.STRUCT_MODULE_EXPR -> Some node
     | _ -> None
 
   let signature_body_node = fun decl ->
     match body_specific_node decl with
-    | Some node when node_kind_is node Syntax_kind2.SIGNATURE_MODULE_TYPE -> Some node
+    | Some node when node_kind_is node Syntax_kind.SIGNATURE_MODULE_TYPE -> Some node
     | _ -> None
 
   let struct_token = fun decl ->
     match structure_body_node decl with
-    | Some node -> Node.first_child_token node ~kind:Syntax_kind2.STRUCT_KW
+    | Some node -> Node.first_child_token node ~kind:Syntax_kind.STRUCT_KW
     | None -> None
 
   let sig_token = fun decl ->
     match signature_body_node decl with
-    | Some node -> Node.first_child_token node ~kind:Syntax_kind2.SIG_KW
+    | Some node -> Node.first_child_token node ~kind:Syntax_kind.SIG_KW
     | None -> None
 
   let end_token = fun decl ->
     match structure_body_node decl with
-    | Some node -> Node.first_child_token node ~kind:Syntax_kind2.END_KW
+    | Some node -> Node.first_child_token node ~kind:Syntax_kind.END_KW
     | None -> (
         match signature_body_node decl with
-        | Some node -> Node.first_child_token node ~kind:Syntax_kind2.END_KW
+        | Some node -> Node.first_child_token node ~kind:Syntax_kind.END_KW
         | None -> None
       )
 
   let for_each_body_path_ident = fun decl ~fn ->
     match body_specific_node decl with
-    | Some node when node_kind_is node Syntax_kind2.PATH_MODULE_EXPR
-    || node_kind_is node Syntax_kind2.PATH_MODULE_TYPE ->
+    | Some node when node_kind_is node Syntax_kind.PATH_MODULE_EXPR
+    || node_kind_is node Syntax_kind.PATH_MODULE_TYPE ->
         for_each_token_in_node node
           ~fn:(fun token ->
-            if token_kind_is token Syntax_kind2.IDENT then
+            if token_kind_is token Syntax_kind.IDENT then
               fn token)
     | _ -> ()
 
   let typeof_body_node = fun decl ->
     match body_specific_node decl with
-    | Some node when node_kind_is node Syntax_kind2.TYPEOF_MODULE_TYPE -> Some node
+    | Some node when node_kind_is node Syntax_kind.TYPEOF_MODULE_TYPE -> Some node
     | _ -> None
 
   let has_typeof_body = fun decl ->
@@ -3536,7 +3536,7 @@ module ModuleDeclaration = struct
     | Some node ->
         for_each_token_in_node node
           ~fn:(fun token ->
-            if token_kind_is token Syntax_kind2.IDENT then
+            if token_kind_is token Syntax_kind.IDENT then
               fn token)
     | None -> ()
 
@@ -3544,7 +3544,7 @@ module ModuleDeclaration = struct
     match structure_body_node decl with
     | Some node -> for_each_child_node_matching
       node
-      ~matches:(fun kind -> Syntax_kind2.(kind = STRUCTURE_ITEM))
+      ~matches:(fun kind -> Syntax_kind.(kind = STRUCTURE_ITEM))
       ~fn
     | None -> ()
 
@@ -3552,7 +3552,7 @@ module ModuleDeclaration = struct
     match signature_body_node decl with
     | Some node -> for_each_child_node_matching
       node
-      ~matches:(fun kind -> Syntax_kind2.(kind = SIGNATURE_ITEM))
+      ~matches:(fun kind -> Syntax_kind.(kind = SIGNATURE_ITEM))
       ~fn
     | None -> ()
 
@@ -3566,9 +3566,9 @@ module ModuleDeclaration = struct
             function
             | Syntax_tree.Token id ->
                 let token = wrap_token node.tree id in
-                if token_kind_is token Syntax_kind2.SIG_KW then
+                if token_kind_is token Syntax_kind.SIG_KW then
                   inside := true
-                else if token_kind_is token Syntax_kind2.END_KW then
+                else if token_kind_is token Syntax_kind.END_KW then
                   inside := false
                 else if !inside then
                   fn token
@@ -3592,16 +3592,16 @@ module ModuleTypeDeclaration = struct
     | Unsupported
 
   let cast = fun (node: node) ->
-    if node_kind_is node Syntax_kind2.MODULE_TYPE_DECL then
+    if node_kind_is node Syntax_kind.MODULE_TYPE_DECL then
       Some node
     else
       None
 
   let head_node = fun decl ->
-    first_child_node_matching decl ~matches:(fun kind -> Syntax_kind2.(kind = MODULE_TYPE_DECL_HEAD))
+    first_child_node_matching decl ~matches:(fun kind -> Syntax_kind.(kind = MODULE_TYPE_DECL_HEAD))
 
   let body_group = fun decl ->
-    first_child_node_matching decl ~matches:(fun kind -> Syntax_kind2.(kind = MODULE_TYPE_DECL_BODY))
+    first_child_node_matching decl ~matches:(fun kind -> Syntax_kind.(kind = MODULE_TYPE_DECL_BODY))
 
   let name = fun decl ->
     match head_node decl with
@@ -3610,7 +3610,7 @@ module ModuleTypeDeclaration = struct
 
   let equals_token = fun decl ->
     match body_group decl with
-    | Some body -> Node.first_child_token body ~kind:Syntax_kind2.EQ
+    | Some body -> Node.first_child_token body ~kind:Syntax_kind.EQ
     | None -> None
 
   let for_each_head_token = fun decl ~fn ->
@@ -3622,12 +3622,12 @@ module ModuleTypeDeclaration = struct
     match body_group decl with
     | Some body -> first_child_node_matching
       body
-      ~matches:(fun kind -> Syntax_kind2.(kind = MODULE_TYPE_EXPR))
+      ~matches:(fun kind -> Syntax_kind.(kind = MODULE_TYPE_EXPR))
     | None -> None
 
   let first_specific_module_type = fun node ->
     match Node.kind node with
-    | Syntax_kind2.MODULE_TYPE_EXPR -> first_child_node_matching node ~matches:is_module_type_kind
+    | Syntax_kind.MODULE_TYPE_EXPR -> first_child_node_matching node ~matches:is_module_type_kind
     | kind when is_module_type_kind kind -> Some node
     | _ -> None
 
@@ -3647,36 +3647,36 @@ module ModuleTypeDeclaration = struct
   let body = fun decl ->
     match body_group decl, body_specific_node decl with
     | None, _ -> Abstract
-    | Some _, Some node when node_kind_is node Syntax_kind2.PATH_MODULE_TYPE -> Path
-    | Some _, Some node when node_kind_is node Syntax_kind2.SIGNATURE_MODULE_TYPE ->
-        if has_child_node_kind node Syntax_kind2.SIGNATURE_ITEM then
+    | Some _, Some node when node_kind_is node Syntax_kind.PATH_MODULE_TYPE -> Path
+    | Some _, Some node when node_kind_is node Syntax_kind.SIGNATURE_MODULE_TYPE ->
+        if has_child_node_kind node Syntax_kind.SIGNATURE_ITEM then
           Sig
         else
           EmptySig
-    | Some _, Some node when node_kind_is node Syntax_kind2.WITH_MODULE_TYPE -> With
+    | Some _, Some node when node_kind_is node Syntax_kind.WITH_MODULE_TYPE -> With
     | Some _, _ -> Unsupported
 
   let signature_body_node = fun decl ->
     match body_specific_node decl with
-    | Some node when node_kind_is node Syntax_kind2.SIGNATURE_MODULE_TYPE -> Some node
+    | Some node when node_kind_is node Syntax_kind.SIGNATURE_MODULE_TYPE -> Some node
     | _ -> None
 
   let sig_token = fun decl ->
     match signature_body_node decl with
-    | Some node -> Node.first_child_token node ~kind:Syntax_kind2.SIG_KW
+    | Some node -> Node.first_child_token node ~kind:Syntax_kind.SIG_KW
     | None -> None
 
   let end_token = fun decl ->
     match signature_body_node decl with
-    | Some node -> Node.first_child_token node ~kind:Syntax_kind2.END_KW
+    | Some node -> Node.first_child_token node ~kind:Syntax_kind.END_KW
     | None -> None
 
   let for_each_body_path_ident = fun decl ~fn ->
     match body_specific_node decl with
-    | Some node when node_kind_is node Syntax_kind2.PATH_MODULE_TYPE ->
+    | Some node when node_kind_is node Syntax_kind.PATH_MODULE_TYPE ->
         for_each_token_in_node node
           ~fn:(fun token ->
-            if token_kind_is token Syntax_kind2.IDENT then
+            if token_kind_is token Syntax_kind.IDENT then
               fn token)
     | _ -> ()
 
@@ -3684,7 +3684,7 @@ module ModuleTypeDeclaration = struct
     match signature_body_node decl with
     | Some node -> for_each_child_node_matching
       node
-      ~matches:(fun kind -> Syntax_kind2.(kind = SIGNATURE_ITEM))
+      ~matches:(fun kind -> Syntax_kind.(kind = SIGNATURE_ITEM))
       ~fn
     | None -> ()
 
@@ -3698,9 +3698,9 @@ module ModuleTypeDeclaration = struct
             function
             | Syntax_tree.Token id ->
                 let token = wrap_token node.tree id in
-                if token_kind_is token Syntax_kind2.SIG_KW then
+                if token_kind_is token Syntax_kind.SIG_KW then
                   inside := true
-                else if token_kind_is token Syntax_kind2.END_KW then
+                else if token_kind_is token Syntax_kind.END_KW then
                   inside := false
                 else if !inside then
                   fn token
@@ -3713,7 +3713,7 @@ module ModuleTypeDeclaration = struct
 
   let constrained_body_node = fun decl ->
     match body_specific_node decl with
-    | Some node when node_kind_is node Syntax_kind2.WITH_MODULE_TYPE -> Some node
+    | Some node when node_kind_is node Syntax_kind.WITH_MODULE_TYPE -> Some node
     | _ -> None
 
   let base_module_type = fun decl ->
@@ -3728,8 +3728,8 @@ module ModuleTypeDeclaration = struct
         Node.for_each_child_node node
           ~fn:(fun child ->
             if
-              node_kind_is child Syntax_kind2.WITH_TYPE_CONSTRAINT
-              || node_kind_is child Syntax_kind2.WITH_MODULE_CONSTRAINT
+              node_kind_is child Syntax_kind.WITH_TYPE_CONSTRAINT
+              || node_kind_is child Syntax_kind.WITH_MODULE_CONSTRAINT
             then
               fn child)
 end
@@ -3744,7 +3744,7 @@ module ModuleTypeConstraint = struct
 
   let cast = fun (node: node) ->
     if
-      node_kind_is node Syntax_kind2.WITH_TYPE_CONSTRAINT || node_kind_is node Syntax_kind2.WITH_MODULE_CONSTRAINT
+      node_kind_is node Syntax_kind.WITH_TYPE_CONSTRAINT || node_kind_is node Syntax_kind.WITH_MODULE_CONSTRAINT
     then
       Some node
     else
@@ -3768,15 +3768,15 @@ module ModuleTypeConstraint = struct
   let module_body = fun constraint_ -> nth_child_node_matching constraint_ 1 ~matches:is_module_expr_kind
 
   let view = fun (constraint_: t) ->
-    if node_kind_is constraint_ Syntax_kind2.WITH_TYPE_CONSTRAINT then
+    if node_kind_is constraint_ Syntax_kind.WITH_TYPE_CONSTRAINT then
       Type {
         path = type_path constraint_;
         operator = first_child_token_matching
           constraint_
-          ~matches:(fun kind -> Syntax_kind2.(kind = EQ || kind = COLONEQ || kind = PLUS));
+          ~matches:(fun kind -> Syntax_kind.(kind = EQ || kind = COLONEQ || kind = PLUS));
         body = type_body constraint_
       }
-    else if node_kind_is constraint_ Syntax_kind2.WITH_MODULE_CONSTRAINT then
+    else if node_kind_is constraint_ Syntax_kind.WITH_MODULE_CONSTRAINT then
       Module { path = module_path constraint_; body = module_body constraint_ }
     else
       Unknown constraint_
@@ -3786,7 +3786,7 @@ module OpenDeclaration = struct
   type t = open_declaration
 
   let cast = fun (node: node) ->
-    if node_kind_is node Syntax_kind2.OPEN_DECL then
+    if node_kind_is node Syntax_kind.OPEN_DECL then
       Some node
     else
       None
@@ -3800,7 +3800,7 @@ module OpenDeclaration = struct
   let for_each_path_ident = fun decl ~fn ->
     Node.for_each_child_token decl
       ~fn:(fun token ->
-        if token_kind_is token Syntax_kind2.IDENT then
+        if token_kind_is token Syntax_kind.IDENT then
           fn token)
 end
 
@@ -3808,7 +3808,7 @@ module IncludeDeclaration = struct
   type t = include_declaration
 
   let cast = fun (node: node) ->
-    if node_kind_is node Syntax_kind2.INCLUDE_DECL then
+    if node_kind_is node Syntax_kind.INCLUDE_DECL then
       Some node
     else
       None
@@ -3826,8 +3826,8 @@ module IncludeDeclaration = struct
             if node_matches node (fun kind -> is_module_expr_kind kind || is_module_type_kind kind) then
               (
                 match Node.kind node with
-                | Syntax_kind2.MODULE_EXPR -> first_child_node_matching node ~matches:is_module_expr_kind
-                | Syntax_kind2.MODULE_TYPE_EXPR -> first_child_node_matching node ~matches:is_module_type_kind
+                | Syntax_kind.MODULE_EXPR -> first_child_node_matching node ~matches:is_module_expr_kind
+                | Syntax_kind.MODULE_TYPE_EXPR -> first_child_node_matching node ~matches:is_module_type_kind
                 | kind when is_module_expr_kind kind || is_module_type_kind kind -> Some node
                 | _ -> None
               )
@@ -3856,7 +3856,7 @@ module IncludeDeclaration = struct
     | Some node ->
         for_each_token_in_node node
           ~fn:(fun token ->
-            if token_kind_is token Syntax_kind2.IDENT then
+            if token_kind_is token Syntax_kind.IDENT then
               fn token)
     | None -> ()
 end
@@ -3867,7 +3867,7 @@ let for_each_declaration_name_token = fun decl ~keyword ~fn ->
   Node.for_each_child_token decl
     ~fn:(fun token ->
       if not !done_ then
-        if token_kind_is token Syntax_kind2.COLON then
+        if token_kind_is token Syntax_kind.COLON then
           done_ := true
         else if !seen_keyword then
           fn token
@@ -3878,46 +3878,46 @@ module ValueDeclaration = struct
   type t = value_declaration
 
   let cast = fun (node: node) ->
-    if node_kind_is node Syntax_kind2.VAL_DECL then
+    if node_kind_is node Syntax_kind.VAL_DECL then
       Some node
     else
       None
 
   let name = first_ident_token
 
-  let colon_token = fun decl -> Node.first_child_token decl ~kind:Syntax_kind2.COLON
+  let colon_token = fun decl -> Node.first_child_token decl ~kind:Syntax_kind.COLON
 
   let type_annotation = first_type_expr_child
 
   let for_each_name_token = fun decl ~fn ->
-    for_each_declaration_name_token decl ~keyword:Syntax_kind2.VAL_KW ~fn
+    for_each_declaration_name_token decl ~keyword:Syntax_kind.VAL_KW ~fn
 
   let for_each_annotation_token = fun decl ~fn ->
-    for_each_token_after_child_token decl ~matches:(fun kind -> Syntax_kind2.(kind = COLON)) ~fn
+    for_each_token_after_child_token decl ~matches:(fun kind -> Syntax_kind.(kind = COLON)) ~fn
 end
 
 module ExternalDeclaration = struct
   type t = external_declaration
 
   let cast = fun (node: node) ->
-    if node_kind_is node Syntax_kind2.EXTERNAL_DECL then
+    if node_kind_is node Syntax_kind.EXTERNAL_DECL then
       Some node
     else
       None
 
   let name = first_ident_token
 
-  let colon_token = fun decl -> Node.first_child_token decl ~kind:Syntax_kind2.COLON
+  let colon_token = fun decl -> Node.first_child_token decl ~kind:Syntax_kind.COLON
 
   let type_annotation = first_type_expr_child
 
   let for_each_name_token = fun decl ~fn ->
-    for_each_declaration_name_token decl ~keyword:Syntax_kind2.EXTERNAL_KW ~fn
+    for_each_declaration_name_token decl ~keyword:Syntax_kind.EXTERNAL_KW ~fn
 
   let for_each_primitive_string = fun decl ~fn ->
     Node.for_each_child_token decl
       ~fn:(fun token ->
-        if token_kind_is token Syntax_kind2.STRING then
+        if token_kind_is token Syntax_kind.STRING then
           fn token)
 
   let for_each_attribute_token = fun decl ~fn ->
@@ -3927,7 +3927,7 @@ module ExternalDeclaration = struct
       ~fn:(fun token ->
         if !after_primitives then
           fn token
-        else if token_kind_is token Syntax_kind2.STRING then
+        else if token_kind_is token Syntax_kind.STRING then
           seen_primitive := true
         else if !seen_primitive then
           (
@@ -3949,17 +3949,17 @@ module ExceptionDeclaration = struct
     | Payload of { of_token: token option; payload: payload option }
 
   let cast = fun (node: node) ->
-    if node_kind_is node Syntax_kind2.EXCEPTION_DECL then
+    if node_kind_is node Syntax_kind.EXCEPTION_DECL then
       Some node
     else
       None
 
   let head_node = fun decl ->
-    first_child_node_matching decl ~matches:(fun kind -> Syntax_kind2.(kind = EXCEPTION_DECL_HEAD))
+    first_child_node_matching decl ~matches:(fun kind -> Syntax_kind.(kind = EXCEPTION_DECL_HEAD))
 
   let keyword_token = fun decl ->
     match head_node decl with
-    | Some head -> Node.first_child_token head ~kind:Syntax_kind2.EXCEPTION_KW
+    | Some head -> Node.first_child_token head ~kind:Syntax_kind.EXCEPTION_KW
     | None -> None
 
   let name = fun decl ->
@@ -3970,15 +3970,15 @@ module ExceptionDeclaration = struct
   let view = fun decl ->
     match first_child_node_matching
       decl
-      ~matches:(fun kind -> Syntax_kind2.(kind = EXCEPTION_ALIAS || kind = EXCEPTION_PAYLOAD)) with
-    | Some rhs when node_kind_is rhs Syntax_kind2.EXCEPTION_ALIAS ->
+      ~matches:(fun kind -> Syntax_kind.(kind = EXCEPTION_ALIAS || kind = EXCEPTION_PAYLOAD)) with
+    | Some rhs when node_kind_is rhs Syntax_kind.EXCEPTION_ALIAS ->
         let path =
           match first_child_node_matching rhs ~matches:is_path_kind with
           | Some path -> Path.cast path
           | None -> None
         in
-        Alias { equals_token = Node.first_child_token rhs ~kind:Syntax_kind2.EQ; path }
-    | Some rhs when node_kind_is rhs Syntax_kind2.EXCEPTION_PAYLOAD ->
+        Alias { equals_token = Node.first_child_token rhs ~kind:Syntax_kind.EQ; path }
+    | Some rhs when node_kind_is rhs Syntax_kind.EXCEPTION_PAYLOAD ->
         let payload =
           match first_child_node_matching rhs ~matches:is_record_type_kind with
           | Some record -> Some (Record record)
@@ -3988,7 +3988,7 @@ module ExceptionDeclaration = struct
               | None -> None
             )
         in
-        Payload { of_token = Node.first_child_token rhs ~kind:Syntax_kind2.OF_KW; payload }
+        Payload { of_token = Node.first_child_token rhs ~kind:Syntax_kind.OF_KW; payload }
     | _ ->
         Bare
 end
@@ -3997,7 +3997,7 @@ module ClassDeclaration = struct
   type t = class_declaration
 
   let cast = fun (node: node) ->
-    if node_kind_is node Syntax_kind2.CLASS_DECL then
+    if node_kind_is node Syntax_kind.CLASS_DECL then
       Some node
     else
       None
@@ -4009,7 +4009,7 @@ module ExtensionItem = struct
   type t = extension_item
 
   let cast = fun (node: node) ->
-    if node_kind_is node Syntax_kind2.EXTENSION_ITEM then
+    if node_kind_is node Syntax_kind.EXTENSION_ITEM then
       Some node
     else
       None
@@ -4021,7 +4021,7 @@ module AttributeItem = struct
   type t = attribute_item
 
   let cast = fun (node: node) ->
-    if node_kind_is node Syntax_kind2.ATTRIBUTE_ITEM then
+    if node_kind_is node Syntax_kind.ATTRIBUTE_ITEM then
       Some node
     else
       None
@@ -4033,7 +4033,7 @@ module ExprItem = struct
   type t = expr_item
 
   let cast = fun (node: node) ->
-    if node_kind_is node Syntax_kind2.EXPR_ITEM then
+    if node_kind_is node Syntax_kind.EXPR_ITEM then
       Some node
     else
       None
@@ -4062,32 +4062,32 @@ module StructureItem = struct
     | Unknown of Node.t
 
   let cast = fun (node: node) ->
-    if node_kind_is node Syntax_kind2.STRUCTURE_ITEM then
+    if node_kind_is node Syntax_kind.STRUCTURE_ITEM then
       Some node
     else
       None
 
   let declaration = fun (item: structure_item) ->
-    first_child_node_matching item ~matches:(fun kind -> not (Syntax_kind2.(kind = ERROR)))
+    first_child_node_matching item ~matches:(fun kind -> not (Syntax_kind.(kind = ERROR)))
 
   let view = fun (item: structure_item) ->
     match declaration item with
     | Some node -> (
         match Node.kind node with
-        | Syntax_kind2.LET_DECL -> Let node
-        | Syntax_kind2.TYPE_DECL -> Type node
-        | Syntax_kind2.TYPE_EXTENSION_DECL -> TypeExtension node
-        | Syntax_kind2.MODULE_DECL -> Module node
-        | Syntax_kind2.MODULE_TYPE_DECL -> ModuleType node
-        | Syntax_kind2.OPEN_DECL -> Open node
-        | Syntax_kind2.INCLUDE_DECL -> Include node
-        | Syntax_kind2.EXTERNAL_DECL -> External node
-        | Syntax_kind2.EXCEPTION_DECL -> Exception node
-        | Syntax_kind2.CLASS_DECL -> Class node
-        | Syntax_kind2.EXTENSION_ITEM -> Extension node
-        | Syntax_kind2.ATTRIBUTE_ITEM -> Attribute node
-        | Syntax_kind2.EXPR_ITEM -> Expr node
-        | Syntax_kind2.ERROR -> Error node
+        | Syntax_kind.LET_DECL -> Let node
+        | Syntax_kind.TYPE_DECL -> Type node
+        | Syntax_kind.TYPE_EXTENSION_DECL -> TypeExtension node
+        | Syntax_kind.MODULE_DECL -> Module node
+        | Syntax_kind.MODULE_TYPE_DECL -> ModuleType node
+        | Syntax_kind.OPEN_DECL -> Open node
+        | Syntax_kind.INCLUDE_DECL -> Include node
+        | Syntax_kind.EXTERNAL_DECL -> External node
+        | Syntax_kind.EXCEPTION_DECL -> Exception node
+        | Syntax_kind.CLASS_DECL -> Class node
+        | Syntax_kind.EXTENSION_ITEM -> Extension node
+        | Syntax_kind.ATTRIBUTE_ITEM -> Attribute node
+        | Syntax_kind.EXPR_ITEM -> Expr node
+        | Syntax_kind.ERROR -> Error node
         | kind when is_expr_kind kind -> Expr node
         | _ -> Unknown node
       )
@@ -4114,7 +4114,7 @@ module SignatureItem = struct
     | Unknown of Node.t
 
   let cast = fun (node: node) ->
-    if node_kind_is node Syntax_kind2.SIGNATURE_ITEM then
+    if node_kind_is node Syntax_kind.SIGNATURE_ITEM then
       Some node
     else
       None
@@ -4126,19 +4126,19 @@ module SignatureItem = struct
     match declaration item with
     | Some node -> (
         match Node.kind node with
-        | Syntax_kind2.VAL_DECL -> Value node
-        | Syntax_kind2.TYPE_DECL -> Type node
-        | Syntax_kind2.TYPE_EXTENSION_DECL -> TypeExtension node
-        | Syntax_kind2.MODULE_DECL -> Module node
-        | Syntax_kind2.MODULE_TYPE_DECL -> ModuleType node
-        | Syntax_kind2.OPEN_DECL -> Open node
-        | Syntax_kind2.INCLUDE_DECL -> Include node
-        | Syntax_kind2.EXTERNAL_DECL -> External node
-        | Syntax_kind2.EXCEPTION_DECL -> Exception node
-        | Syntax_kind2.CLASS_DECL -> Class node
-        | Syntax_kind2.EXTENSION_ITEM -> Extension node
-        | Syntax_kind2.ATTRIBUTE_ITEM -> Attribute node
-        | Syntax_kind2.ERROR -> Error node
+        | Syntax_kind.VAL_DECL -> Value node
+        | Syntax_kind.TYPE_DECL -> Type node
+        | Syntax_kind.TYPE_EXTENSION_DECL -> TypeExtension node
+        | Syntax_kind.MODULE_DECL -> Module node
+        | Syntax_kind.MODULE_TYPE_DECL -> ModuleType node
+        | Syntax_kind.OPEN_DECL -> Open node
+        | Syntax_kind.INCLUDE_DECL -> Include node
+        | Syntax_kind.EXTERNAL_DECL -> External node
+        | Syntax_kind.EXCEPTION_DECL -> Exception node
+        | Syntax_kind.CLASS_DECL -> Class node
+        | Syntax_kind.EXTENSION_ITEM -> Extension node
+        | Syntax_kind.ATTRIBUTE_ITEM -> Attribute node
+        | Syntax_kind.ERROR -> Error node
         | _ -> Unknown node
       )
     | None -> Unknown item
@@ -4148,20 +4148,20 @@ module Implementation = struct
   type t = implementation
 
   let cast = fun (node: node) ->
-    if node_kind_is node Syntax_kind2.IMPLEMENTATION then
+    if node_kind_is node Syntax_kind.IMPLEMENTATION then
       Some node
     else
       None
 
   let for_each_item = fun (impl: implementation) ~fn ->
-    for_each_child_node_matching impl ~matches:(fun kind -> Syntax_kind2.(kind = STRUCTURE_ITEM)) ~fn
+    for_each_child_node_matching impl ~matches:(fun kind -> Syntax_kind.(kind = STRUCTURE_ITEM)) ~fn
 end
 
 module Interface = struct
   type t = interface
 
   let cast = fun (node: node) ->
-    if node_kind_is node Syntax_kind2.INTERFACE then
+    if node_kind_is node Syntax_kind.INTERFACE then
       Some node
     else
       None
@@ -4169,7 +4169,7 @@ module Interface = struct
   let for_each_item = fun (interface: interface) ~fn ->
     for_each_child_node_matching
       interface
-      ~matches:(fun kind -> Syntax_kind2.(kind = SIGNATURE_ITEM))
+      ~matches:(fun kind -> Syntax_kind.(kind = SIGNATURE_ITEM))
       ~fn
 end
 
@@ -4184,10 +4184,10 @@ module SourceFile = struct
   let make = root
 
   let implementation = fun (source_file: source_file) ->
-    Node.first_child_node source_file ~kind:Syntax_kind2.IMPLEMENTATION
+    Node.first_child_node source_file ~kind:Syntax_kind.IMPLEMENTATION
 
   let interface = fun (source_file: source_file) ->
-    Node.first_child_node source_file ~kind:Syntax_kind2.INTERFACE
+    Node.first_child_node source_file ~kind:Syntax_kind.INTERFACE
 
   let view = fun (source_file: source_file) ->
     match implementation source_file with

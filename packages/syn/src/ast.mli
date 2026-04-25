@@ -1,5 +1,13 @@
 open Std
 
+(** Typed views over `Syntax_tree`.
+
+    Ast values are small handles: a tree pointer plus a node or token id. They
+    do not own syntax, allocate a second CST, or guarantee that a node is
+    complete. Accessors return `option` where recovery or malformed input can
+    leave a child missing.
+*)
+
 type node = {
   tree: Syntax_tree.t;
   id: int;
@@ -40,10 +48,17 @@ type record_expr_field = node
 type variant_type = node
 type variant_constructor = node
 type path = node
+
+(** Root view for a parsed syntax tree. *)
 val root: Syntax_tree.t -> node
 
 module Token: sig
   type t = token
+
+  (** Delimited comment/docstring trivia split once by the lexer/Ast layer.
+
+      `content` excludes the opening and closing delimiters, so formatter and
+      documentation tools do not need to rescan raw comment text. *)
   type delimited_trivia = {
     text: string;
     opening: string;
@@ -54,7 +69,8 @@ module Token: sig
     | Whitespace
     | Comment of delimited_trivia
     | Docstring of delimited_trivia
-  val kind: t -> Syntax_kind2.t
+
+  val kind: t -> Syntax_kind.t
 
   val width: t -> int
 
@@ -70,10 +86,14 @@ module Token: sig
 
   val text: t -> string
 
+  (** Materialize all leading trivia attached to this token. *)
   val leading_text: t -> string
 
-  val for_each_leading_trivia: t -> fn:(kind:Syntax_kind2.t -> text:string -> unit) -> unit
+  (** Iterate raw leading trivia as syntax kind/text pairs. *)
+  val for_each_leading_trivia: t -> fn:(kind:Syntax_kind.t -> text:string -> unit) -> unit
 
+  (** Iterate normalized leading trivia items. Whitespace is structural and
+      comment/docstring delimiters are split from their content. *)
   val for_each_leading_trivia_item: t -> fn:(leading_trivia -> unit) -> unit
 
   val has_leading_whitespace: t -> bool
@@ -84,12 +104,13 @@ module Token: sig
 
   val full_text: t -> string
 
+  (** Raw-token range owned by this token, including leading trivia. *)
   val raw_range: t -> int * int
 end
 
 module Node: sig
   type t = node
-  val kind: t -> Syntax_kind2.t
+  val kind: t -> Syntax_kind.t
 
   val text: t -> string
 
@@ -101,6 +122,8 @@ module Node: sig
 
   val child_count: t -> int
 
+  (** Access a raw child edge by index. Most callers should prefer typed view
+      accessors on the domain-specific modules below. *)
   val child_at: t -> int -> Syntax_tree.child option
 
   val for_each_child: t -> fn:(Syntax_tree.child -> unit) -> unit
@@ -111,9 +134,9 @@ module Node: sig
 
   val for_each_token: t -> fn:(Token.t -> unit) -> unit
 
-  val first_child_node: t -> kind:Syntax_kind2.t -> t option
+  val first_child_node: t -> kind:Syntax_kind.t -> t option
 
-  val first_child_token: t -> kind:Syntax_kind2.t -> Token.t option
+  val first_child_token: t -> kind:Syntax_kind.t -> Token.t option
 
   val first_token: t -> Token.t option
 
@@ -682,7 +705,7 @@ module TypeDeclaration: sig
 
     val child_node_at: t -> int -> Node.t option
 
-    val child_token_kind_is: t -> int -> Syntax_kind2.t -> bool
+    val child_token_kind_is: t -> int -> Syntax_kind.t -> bool
 
     val for_each_child: t -> fn:(Syntax_tree.child -> unit) -> unit
 
@@ -763,7 +786,7 @@ module ModuleDeclaration: sig
 
     val child_node_at: t -> int -> Node.t option
 
-    val child_token_kind_is: t -> int -> Syntax_kind2.t -> bool
+    val child_token_kind_is: t -> int -> Syntax_kind.t -> bool
 
     val for_each_child: t -> fn:(Syntax_tree.child -> unit) -> unit
 
@@ -773,9 +796,9 @@ module ModuleDeclaration: sig
 
     val name: t -> Token.t option
 
-    val find_token: t -> Syntax_kind2.t -> int option
+    val find_token: t -> Syntax_kind.t -> int option
 
-    val find_node: t -> matches:(Syntax_kind2.t -> bool) -> Node.t option
+    val find_node: t -> matches:(Syntax_kind.t -> bool) -> Node.t option
 
     val module_expr: t -> Node.t option
 

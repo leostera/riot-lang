@@ -1,8 +1,11 @@
 open Std
 open Syn
 
+let source_slice = fun source ->
+  IO.IoVec.IoSlice.from_string source |> Result.expect ~msg:"failed to create deps test source slice"
+
 let parse_modules = fun ~env ~filename source ->
-  let parse_result = Syn.parse ~filename:(Path.v filename) source in
+  let parse_result = Syn.parse ~filename:(Path.v filename) (source_slice source) in
   match Syn.Deps.of_parse_result ~env parse_result with
   | Ok deps -> Ok (Syn.Deps.modules deps)
   | Error (Syn.Deps.Parse_diagnostics diagnostics) -> Error ("parse diagnostics: "

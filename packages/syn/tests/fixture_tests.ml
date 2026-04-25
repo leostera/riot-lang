@@ -11,11 +11,11 @@ let fixture_root = Path.v "packages/syn/tests/fixtures"
 
 let lossless_snapshot_path = fun path -> append_path_suffix path ".expected_lossless.json"
 
-let parse2_skips = [ "ocaml_shortcut_ext_attr.ml" ]
+let parse_skips = [ "ocaml_shortcut_ext_attr.ml" ]
 
-let should_skip_parse2_fixture = fun path ->
+let should_skip_parse_fixture = fun path ->
   let basename = Path.basename path in
-  List.any parse2_skips
+  List.any parse_skips
     ~fn:(fun name ->
       String.equal basename name)
 
@@ -54,7 +54,7 @@ let has_lossless_snapshot = fun modified_fixture_paths path ->
   match Path.extension path with
   | Some ".ml"
   | Some ".mli" ->
-      if should_skip_parse2_fixture path || is_locally_modified_fixture modified_fixture_paths path then
+      if should_skip_parse_fixture path || is_locally_modified_fixture modified_fixture_paths path then
         `skip
       else
         let snapshot_path = lossless_snapshot_path path in
@@ -79,16 +79,16 @@ let diagnostics_to_string = fun diagnostics ->
 let test_fixture = fun ~(ctx:Test.FixtureRunner.ctx) ->
   let source = Fs.read ctx.fixture_path |> Result.expect ~msg:"Failed to read fixture" in
   let source = source_slice source in
-  let parse_result = Syn.parse2 ~filename:ctx.fixture_path source in
-  if Vector.length parse_result.Parser2.diagnostics > 0 then
-    Error ("unexpected parse2 diagnostics:\n" ^ diagnostics_to_string parse_result.Parser2.diagnostics)
+  let parse_result = Syn.parse ~filename:ctx.fixture_path source in
+  if Vector.length parse_result.Parser.diagnostics > 0 then
+    Error ("unexpected parse diagnostics:\n" ^ diagnostics_to_string parse_result.Parser.diagnostics)
   else
-    let root = SyntaxTree.root parse_result.Parser2.tree in
+    let root = SyntaxTree.root parse_result.Parser.tree in
     let source_length = IO.IoVec.IoSlice.length source in
     if root.SyntaxTree.full_width = source_length then
       Ok ()
     else
-      Error ("parse2 root width mismatch: expected "
+      Error ("parse root width mismatch: expected "
       ^ Int.to_string source_length
       ^ " bytes, got "
       ^ Int.to_string root.SyntaxTree.full_width)
@@ -96,19 +96,19 @@ let test_fixture = fun ~(ctx:Test.FixtureRunner.ctx) ->
 let test_tagged_quoted_string_token = fun _ctx ->
   let source = "let explanation = {explain|hello|explain}\n" in
   let slice = source_slice source in
-  let parse_result = Syn.parse2 ~filename:(Path.v "tagged_quoted_string.ml") slice in
-  if Vector.length parse_result.Parser2.diagnostics > 0 then
-    Error ("unexpected parse2 diagnostics:\n" ^ diagnostics_to_string parse_result.Parser2.diagnostics)
+  let parse_result = Syn.parse ~filename:(Path.v "tagged_quoted_string.ml") slice in
+  if Vector.length parse_result.Parser.diagnostics > 0 then
+    Error ("unexpected parse diagnostics:\n" ^ diagnostics_to_string parse_result.Parser.diagnostics)
   else
-    let root = Ast2.root parse_result.Parser2.tree in
+    let root = Ast.root parse_result.Parser.tree in
     let string_token = ref None in
-    Ast2.Node.for_each_token root
+    Ast.Node.for_each_token root
       ~fn:(fun token ->
-        if SyntaxKind2.(Ast2.Token.kind token = STRING) then
+        if SyntaxKind.(Ast.Token.kind token = STRING) then
           string_token := Some token);
     match !string_token with
     | Some token ->
-        Test.assert_equal ~expected:"{explain|hello|explain}" ~actual:(Ast2.Token.text token);
+        Test.assert_equal ~expected:"{explain|hello|explain}" ~actual:(Ast.Token.text token);
         Ok ()
     | None -> Error "expected tagged quoted string token"
 
