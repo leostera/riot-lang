@@ -1184,10 +1184,7 @@ let wire_dependencies = fun t ->
           | _ -> Ok ()
         in
         let deps_env = deps_env_with_implicit_opens (Cell.get t.deps_env) node.value.open_modules in
-        let deps =
-          let source = IO.IoVec.IoSlice.from_string raw_text |> Result.expect ~msg:"module graph dependency analysis source should be sliceable" in
-          Syn.parse2 ~filename:display_path source |> Syn.Deps.of_parse2_result ~env:deps_env
-        in
+        let deps = Syn.Deps.of_parse_result ~env:deps_env parse_result in
         let source_hash =
           match cst with
           | Ok cst -> source_hash ~implicit_opens ~cst
