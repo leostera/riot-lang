@@ -31,6 +31,7 @@ type state = {
   mutable line_start: bool;
   mutable column: int;
   mutable indent: int;
+  mutable pending_spaces: int;
   mutable wrote: bool;
   mutable suppress_leading_token: int option;
   mutable delimited_expr_depth: int;
@@ -97,25 +98,52 @@ let write_indent = fun state ->
   in
   loop state.indent
 
+let write_pending_spaces = fun state ->
+  let count = state.pending_spaces in
+  if Int.(count > 0) then
+    (
+      for _ = 1 to count do
+        IO.Buffer.add_char state.buffer ' '
+      done;
+      state.pending_spaces <- 0;
+      flush_if_needed state;
+      state.wrote <- true
+    )
+
 let write_string_segment = fun state value ~off ~len ->
-  if state.line_start && Int.(len > 0) then
-    write_indent state;
-  IO.Buffer.add_substring state.buffer value off len;
-  flush_if_needed state;
   if Int.(len > 0) then
-    state.wrote <- true;
-  state.line_start <- state.line_start && Int.equal len 0
+    (
+      if state.line_start then
+        (
+          state.pending_spaces <- 0;
+          write_indent state
+        )
+      else
+        write_pending_spaces state;
+      IO.Buffer.add_substring state.buffer value off len;
+      flush_if_needed state;
+      state.wrote <- true;
+      state.line_start <- false
+    )
 
 let write_slice_segment = fun state value ~off ~len ->
-  if state.line_start && Int.(len > 0) then
-    write_indent state;
-  append_subslice_unchecked state.buffer value ~off ~len;
-  flush_if_needed state;
   if Int.(len > 0) then
-    state.wrote <- true;
-  state.line_start <- state.line_start && Int.equal len 0
+    (
+      if state.line_start then
+        (
+          state.pending_spaces <- 0;
+          write_indent state
+        )
+      else
+        write_pending_spaces state;
+      append_subslice_unchecked state.buffer value ~off ~len;
+      flush_if_needed state;
+      state.wrote <- true;
+      state.line_start <- false
+    )
 
 let emit_line = fun state ->
+  state.pending_spaces <- 0;
   IO.Buffer.add_char state.buffer '\n';
   flush_if_needed state;
   state.wrote <- true;
@@ -137,6 +165,7 @@ let emit_text = fun state value ->
       else if Char.equal (String.get_unchecked value ~at:index) '\n' then
         (
           write_string_segment state value ~off:segment_start ~len:Int.(index - segment_start);
+          state.pending_spaces <- 0;
           IO.Buffer.add_char state.buffer '\n';
           flush_if_needed state;
           state.wrote <- true;
@@ -148,17 +177,77 @@ let emit_text = fun state value ->
     in
     loop 0 0 false
 
+let is_horizontal_whitespace = fun char -> Char.equal char ' ' || Char.equal char '\t'
+
+let raw_breaks_before_text = fun value ->
+  let length = String.length value in
+  let rec loop index =
+    if Int.(index >= length) then
+      false
+    else
+      let char = String.get_unchecked value ~at:index in
+      if Char.equal char '\n' then
+        true
+      else if is_horizontal_whitespace char then
+        loop (Int.add index 1)
+      else
+        false
+  in
+  loop 0
+
+let trim_whitespace_only_segment = fun value ~start ~stop ->
+  let rec loop index =
+    if Int.(index >= stop) then
+      start
+    else if is_horizontal_whitespace (String.get_unchecked value ~at:index) then
+      loop (Int.add index 1)
+    else
+      stop
+  in
+  loop start
+
 let emit_raw_text = fun state value ->
   let length = String.length value in
   if Int.(length > 0) then
     (
+      let starts_with_break = raw_breaks_before_text value in
       if state.line_start then
-        write_indent state;
-      IO.Buffer.add_string state.buffer value;
+        (
+          state.pending_spaces <- 0;
+          if not starts_with_break then
+            write_indent state
+        )
+      else if starts_with_break then
+        state.pending_spaces <- 0
+      else
+        write_pending_spaces state;
+      let rec loop segment_start index saw_newline =
+        if Int.(index >= length) then
+          (
+            let segment_length = Int.sub length segment_start in
+            if Int.(segment_length > 0) then
+              IO.Buffer.add_substring state.buffer value segment_start segment_length;
+            saw_newline
+          )
+        else if Char.equal (String.get_unchecked value ~at:index) '\n' then
+          (
+            let segment_end = trim_whitespace_only_segment value ~start:segment_start ~stop:index in
+            let segment_length = Int.sub segment_end segment_start in
+            if Int.(segment_length > 0) then
+              IO.Buffer.add_substring state.buffer value segment_start segment_length;
+            state.pending_spaces <- 0;
+            IO.Buffer.add_char state.buffer '\n';
+            flush_if_needed state;
+            loop Int.(index + 1) Int.(index + 1) true
+          )
+        else
+          loop segment_start Int.(index + 1) saw_newline
+      in
+      let saw_newline = loop 0 0 false in
       flush_if_needed state;
       state.wrote <- true;
       state.line_start <- Char.equal (String.get_unchecked value ~at:Int.(length - 1)) '\n';
-      state.column <- if String.contains value "\n" then
+      state.column <- if saw_newline then
         last_line_width value
       else
         state.column + length
@@ -170,7 +259,12 @@ let emit_slice = fun state ~has_newline value ->
     if has_newline then
       (
         if state.line_start then
-          write_indent state;
+          (
+            state.pending_spaces <- 0;
+            write_indent state
+          )
+        else
+          write_pending_spaces state;
         append_subslice_unchecked state.buffer value ~off:0 ~len:length;
         flush_if_needed state;
         state.wrote <- true;
@@ -186,9 +280,7 @@ let emit_space = fun state ->
   if state.line_start then
     state.column <- state.column + 1
   else (
-    IO.Buffer.add_char state.buffer ' ';
-    flush_if_needed state;
-    state.wrote <- true;
+    state.pending_spaces <- Int.add state.pending_spaces 1;
     state.column <- state.column + 1
   )
 
@@ -296,6 +388,11 @@ let emit_token_or_keyword = fun state token ~fallback ->
   | None -> emit_text state fallback
 
 let token_has_leading_comment = function
+  | Some token -> Ast.Token.has_leading_comment token
+  | None -> false
+
+let node_has_leading_comment = fun node ->
+  match Ast.Node.first_descendant_token node with
   | Some token -> Ast.Token.has_leading_comment token
   | None -> false
 
@@ -1750,10 +1847,7 @@ let expr_first_token_text_is = fun expr expected ->
   | Some token -> token_text_is token expected
   | None -> false
 
-let expr_has_leading_comment = fun expr ->
-  match Ast.Node.first_descendant_token expr with
-  | Some token -> Ast.Token.has_leading_comment token
-  | None -> false
+let expr_has_leading_comment = fun expr -> node_has_leading_comment expr
 
 let collect_apply = fun expr ->
   let args = Vector.with_capacity ~size:4 in
@@ -3779,6 +3873,7 @@ and render_include_declaration = fun state decl ->
   | None -> unsupported_node "include declaration without target" decl
 
 and render_record_type_field = fun state ~last field ->
+  emit_node_leading_comments_as_lines state field;
   (
     match Ast.RecordField.mutable_token field with
     | Some token ->
@@ -3843,8 +3938,20 @@ and record_type_has_terminal_trivia = fun record_type ->
   | Some closing -> Ast.Token.has_leading_comment closing
   | None -> false
 
+and record_type_fields_have_leading_comment = fun fields ->
+  let length = Vector.length fields in
+  let rec loop index =
+    if Int.(index >= length) then
+      false
+    else if node_has_leading_comment (Vector.get_unchecked fields ~at:index) then
+      true
+    else
+      loop (Int.add index 1)
+  in
+  loop 0
+
 and record_type_should_inline = fun state record_type fields ->
-  if record_type_has_terminal_trivia record_type then
+  if record_type_has_terminal_trivia record_type || record_type_fields_have_leading_comment fields then
     false
   else
     match record_type_flat_width fields with
@@ -4900,6 +5007,7 @@ let write = fun ~writer ?(width = 100) ?(buffer_size = 4_096) source_file ->
     line_start = true;
     column = 0;
     indent = 0;
+    pending_spaces = 0;
     wrote = false;
     suppress_leading_token = None;
     delimited_expr_depth = 0;

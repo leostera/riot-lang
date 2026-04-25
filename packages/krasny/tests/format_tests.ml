@@ -65,6 +65,22 @@ let capture_write = fun result ->
   | Error (Krasny.Write_failed err) -> panic
     ("stream_format should write into the supplied writer: " ^ IO.error_message err)
 
+let has_trailing_horizontal_whitespace = fun text ->
+  let length = String.length text in
+  let rec loop index =
+    if Int.(index >= length) then
+      false
+    else if Char.equal (String.get_unchecked text ~at:index) '\n' && Int.(index > 0) then
+      let previous = String.get_unchecked text ~at:(Int.sub index 1) in
+      if Char.equal previous ' ' || Char.equal previous '\t' then
+        true
+      else
+        loop (Int.add index 1)
+    else
+      loop (Int.add index 1)
+  in
+  loop 0
+
 let capture_json_event = fun ~root event ->
   let buffer = IO.Buffer.create ~size:128 in
   let writer = buffer_writer buffer in
@@ -755,6 +771,24 @@ let ok = assert_relation `Satisfied (Pubgrub.Partial_solution.relation solution 
       IO.Buffer.add_char buffer ' ';
       (false, column + 1)
     )
+|ocaml});
+  Test.case "write trims pending spaces before record field docstrings"
+    (fun ctx ->
+      let source = {ocaml|type context={(** Path of the file being checked. *)file_path:string;(** Original source text. *)source:string;(** Parsed source file CST. *)cst:Syn.Cst.source_file}
+|ocaml}
+      in
+      let parsed = parse_mli source in
+      let actual = capture_write parsed in
+      Test.assert_false (has_trailing_horizontal_whitespace actual);
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|type context = {
+  (** Path of the file being checked. *)
+  file_path: string;
+  (** Original source text. *)
+  source: string;
+  (** Parsed source file CST. *)
+  cst: Syn.Cst.source_file;
+}
 |ocaml});
   Test.case "write parenthesizes list tuple items with match components"
     (fun ctx ->

@@ -13,6 +13,7 @@ type writer = {
   mutable line_start: bool;
   mutable column: int;
   mutable indent: int;
+  mutable pending_spaces: int;
   mutable mode: mode;
 }
 
@@ -122,21 +123,49 @@ let write_indent = fun writer ->
   in
   loop writer.indent
 
+let write_pending_spaces = fun writer ->
+  let count = writer.pending_spaces in
+  if count > 0 then
+    (
+      for _ = 1 to count do
+        IO.Buffer.add_char writer.buffer ' '
+      done;
+      writer.pending_spaces <- 0;
+      flush_if_needed writer
+    )
+
 let write_string_segment = fun writer value ~off ~len ->
-  if writer.line_start && len > 0 then
-    write_indent writer;
-  IO.Buffer.add_substring writer.buffer value off len;
-  flush_if_needed writer;
-  writer.line_start <- writer.line_start && len = 0
+  if len > 0 then
+    (
+      if writer.line_start then
+        (
+          writer.pending_spaces <- 0;
+          write_indent writer
+        )
+      else
+        write_pending_spaces writer;
+      IO.Buffer.add_substring writer.buffer value off len;
+      flush_if_needed writer;
+      writer.line_start <- false
+    )
 
 let write_slice_segment = fun writer value ~off ~len ->
-  if writer.line_start && len > 0 then
-    write_indent writer;
-  append_subslice_unchecked writer.buffer value ~off ~len;
-  flush_if_needed writer;
-  writer.line_start <- writer.line_start && len = 0
+  if len > 0 then
+    (
+      if writer.line_start then
+        (
+          writer.pending_spaces <- 0;
+          write_indent writer
+        )
+      else
+        write_pending_spaces writer;
+      append_subslice_unchecked writer.buffer value ~off ~len;
+      flush_if_needed writer;
+      writer.line_start <- false
+    )
 
 let emit_line = fun writer ->
+  writer.pending_spaces <- 0;
   IO.Buffer.add_char writer.buffer '\n';
   flush_if_needed writer;
   writer.line_start <- true;
@@ -156,6 +185,7 @@ let emit_text = fun writer value ->
     else if Char.equal (String.get_unchecked value ~at:index) '\n' then
       (
         write_string_segment writer value ~off:segment_start ~len:Int.(index - segment_start);
+        writer.pending_spaces <- 0;
         IO.Buffer.add_char writer.buffer '\n';
         writer.line_start <- true;
         loop Int.(index + 1) Int.(index + 1) true
@@ -165,16 +195,76 @@ let emit_text = fun writer value ->
   in
   loop 0 0 false
 
+let is_horizontal_whitespace = fun char -> Char.equal char ' ' || Char.equal char '\t'
+
+let raw_breaks_before_text = fun value ->
+  let length = String.length value in
+  let rec loop index =
+    if Int.(index >= length) then
+      false
+    else
+      let char = String.get_unchecked value ~at:index in
+      if Char.equal char '\n' then
+        true
+      else if is_horizontal_whitespace char then
+        loop (Int.add index 1)
+      else
+        false
+  in
+  loop 0
+
+let trim_whitespace_only_segment = fun value ~start ~stop ->
+  let rec loop index =
+    if Int.(index >= stop) then
+      start
+    else if is_horizontal_whitespace (String.get_unchecked value ~at:index) then
+      loop (Int.add index 1)
+    else
+      stop
+  in
+  loop start
+
 let emit_raw_text = fun writer value ->
   let length = String.length value in
   if Int.(length > 0) then
     (
+      let starts_with_break = raw_breaks_before_text value in
       if writer.line_start then
-        write_indent writer;
-      IO.Buffer.add_string writer.buffer value;
+        (
+          writer.pending_spaces <- 0;
+          if not starts_with_break then
+            write_indent writer
+        )
+      else if starts_with_break then
+        writer.pending_spaces <- 0
+      else
+        write_pending_spaces writer;
+      let rec loop segment_start index saw_newline =
+        if Int.(index >= length) then
+          (
+            let segment_length = Int.sub length segment_start in
+            if Int.(segment_length > 0) then
+              IO.Buffer.add_substring writer.buffer value segment_start segment_length;
+            saw_newline
+          )
+        else if Char.equal (String.get_unchecked value ~at:index) '\n' then
+          (
+            let segment_end = trim_whitespace_only_segment value ~start:segment_start ~stop:index in
+            let segment_length = Int.sub segment_end segment_start in
+            if Int.(segment_length > 0) then
+              IO.Buffer.add_substring writer.buffer value segment_start segment_length;
+            writer.pending_spaces <- 0;
+            IO.Buffer.add_char writer.buffer '\n';
+            flush_if_needed writer;
+            loop Int.(index + 1) Int.(index + 1) true
+          )
+        else
+          loop segment_start Int.(index + 1) saw_newline
+      in
+      let saw_newline = loop 0 0 false in
       flush_if_needed writer;
       writer.line_start <- Char.equal (String.get_unchecked value ~at:Int.(length - 1)) '\n';
-      writer.column <- if String.contains value "\n" then
+      writer.column <- if saw_newline then
         last_line_width value
       else
         writer.column + length
@@ -186,7 +276,12 @@ let emit_slice = fun writer ~has_newline value ->
     if has_newline then
       (
         if writer.line_start then
-          write_indent writer;
+          (
+            writer.pending_spaces <- 0;
+            write_indent writer
+          )
+        else
+          write_pending_spaces writer;
         append_subslice_unchecked writer.buffer value ~off:0 ~len:length;
         writer.line_start <- Char.equal (Slice.get_unchecked value ~at:Int.(length - 1)) '\n';
         writer.column <- last_slice_line_width value
@@ -289,9 +384,7 @@ let space =
       if writer.line_start then
         writer.column <- writer.column + 1
       else (
-        IO.Buffer.add_char writer.buffer ' ';
-        flush_if_needed writer;
-        writer.line_start <- false;
+        writer.pending_spaces <- writer.pending_spaces + 1;
         writer.column <- writer.column + 1
       ))
 
@@ -306,11 +399,7 @@ let spaces = fun count ->
         if writer.line_start then
           writer.column <- writer.column + count
         else (
-          for _ = 1 to count do
-            IO.Buffer.add_char writer.buffer ' '
-          done;
-          flush_if_needed writer;
-          writer.line_start <- false;
+          writer.pending_spaces <- writer.pending_spaces + count;
           writer.column <- writer.column + count
         ))
 
@@ -582,6 +671,7 @@ let to_string = fun ~width ?(size_hint = 1_024) ?(final_newline = false) doc ->
     line_start = true;
     column = 0;
     indent = 0;
+    pending_spaces = 0;
     mode = Break;
   }
   in
@@ -599,6 +689,7 @@ let write = fun ~writer ?(buffer_size = 4_096) ~width ?(final_newline = false) d
     line_start = true;
     column = 0;
     indent = 0;
+    pending_spaces = 0;
     mode = Break;
   }
   in
