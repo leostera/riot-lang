@@ -1,8 +1,10 @@
 type t
+
 type error =
   | File of Fs.File.error
   | InvalidStatus of { tag: int }
   | System of System_error.t
+
 val error_to_string: error -> string
 
 type status =
@@ -10,7 +12,8 @@ type status =
   | Exited of int
   | Signaled of int
   | Stopped of int
-module Stdin: sig
+
+module Stdin : sig
   type t =
     | Null
     | Pipe
@@ -18,7 +21,7 @@ module Stdin: sig
     | File of Fs.File.t
 end
 
-module Stdout: sig
+module Stdout : sig
   type t =
     | Null
     | Pipe
@@ -26,7 +29,7 @@ module Stdout: sig
     | File of Fs.File.t
 end
 
-module Stderr: sig
+module Stderr : sig
   type t =
     | Null
     | Pipe
@@ -36,13 +39,12 @@ module Stderr: sig
 end
 
 type input_stdio = Stdin.t
+
 type output_stdio = Stdout.t
+
 type error_stdio = Stderr.t
-type stdio_config = {
-  stdin: input_stdio;
-  stdout: output_stdio;
-  stderr: error_stdio;
-}
+
+type stdio_config = { stdin: input_stdio; stdout: output_stdio; stderr: error_stdio }
 
 (** Default stdio inherits the parent process streams. *)
 val default_stdio: stdio_config
@@ -52,14 +54,7 @@ val default_stdio: stdio_config
 
    Waiting for exit stays separate through `try_wait` and `to_source`.
 *)
-val spawn:
-  program:string ->
-  args:string array ->
-  ?env:(string * string) array ->
-  ?current_dir:Path.t ->
-  stdio:stdio_config ->
-  unit ->
-  (t, error) Result.t
+val spawn: program:string -> args:string array -> ?env:(string * string) array -> ?current_dir:Path.t -> stdio:stdio_config -> unit -> (t, error) Result.t
 
 val pid: t -> int
 

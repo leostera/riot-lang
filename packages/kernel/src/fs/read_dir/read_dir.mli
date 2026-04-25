@@ -7,14 +7,15 @@ type kind = File.kind =
   | NamedPipe
   | Socket
   | Unknown
-type entry = {
-  path: Path.t;
-  kind: kind;
-}
+
+type entry = { path: Path.t; kind: kind }
+
 type t
+
 type error =
   | Closed
   | File of File.error
+
 val error_to_string: error -> string
 
 (**

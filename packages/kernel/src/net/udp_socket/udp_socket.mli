@@ -1,4 +1,5 @@
 type t
+
 type error =
   | InvalidSlice of { pos: int; len: int; buffer_len: int }
   | InvalidSocketAddr of { ip: string; port: int }
@@ -13,6 +14,7 @@ type error =
   | AddressInUse
   | AddressNotAvailable
   | System of System_error.t
+
 val error_to_string: error -> string
 
 (** Use `bind addr` to create a nonblocking UDP socket immediately. *)

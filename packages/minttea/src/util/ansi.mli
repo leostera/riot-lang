@@ -24,7 +24,6 @@
    ```
 *)
 (** ## Width Calculation *)
-
 val width: string -> int
 
 (**
@@ -52,7 +51,6 @@ val strip: string -> string
    - Length calculations when you need raw string length
 *)
 (** ## Truncation *)
-
 val truncate: width:int -> ?ellipsis:string -> string -> string
 
 (**
@@ -70,7 +68,6 @@ val truncate: width:int -> ?ellipsis:string -> string -> string
    ```
 *)
 (** ## Padding *)
-
 val pad_right: width:int -> char -> string -> string
 
 (**
@@ -86,7 +83,6 @@ val pad_center: width:int -> char -> string -> string
 
 (** `pad_center ~width c str` centers `str` and pads with `c` to reach `width`. *)
 (** ## Line Operations *)
-
 val split_lines: string -> string list
 
 (**
@@ -113,7 +109,6 @@ val word_wrap: width:int -> string -> string list
    ```
 *)
 (** ## Low-level Parsing *)
-
 type ansi_state = {
   bold: bool;
   italic: bool;
@@ -132,9 +127,7 @@ val parse_state: string -> ansi_state
 
    Useful for continuing formatting across line breaks or concatenations.
 *)
-val state_to_codes: ansi_state -> string
-
-(**
+val state_to_codes: ansi_state -> string(**
    `state_to_codes state` converts formatting state back to ANSI codes.
 
    Generates the escape sequence needed to restore this state.

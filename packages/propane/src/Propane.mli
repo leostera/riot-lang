@@ -245,7 +245,6 @@
    - {!Property} - Defining and checking properties
    - {!Printer} - Pretty-printing values
 *)
-
 module Generator = Generator
 
 (** Random value generation. See {!Generator}. *)
@@ -266,9 +265,7 @@ module Property = Property
 
    These functions are re-exported from their respective modules for convenience.
 *)
-
 (** {2 Property Creation} *)
-
 val property: string -> 'value Arbitrary.t -> ('value -> bool) -> Std.Test.test_case
 
 (**
@@ -305,7 +302,6 @@ val for_all: 'value Arbitrary.t -> ('value -> bool) -> Property.test_property
    ]}
 *)
 (** {2 Assumptions} *)
-
 val implies: bool -> bool -> bool
 
 (**
@@ -364,10 +360,7 @@ val assume_fail: unit -> 'value
    ]}
 *)
 (** {2 Explicit Failures} *)
-
-val fail: string -> 'value
-
-(**
+val fail: string -> 'value(**
    [fail message] explicitly fails a property with a custom error message.
 
    Useful for providing context about why a property failed:

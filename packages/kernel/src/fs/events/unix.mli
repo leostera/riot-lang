@@ -1,20 +1,21 @@
 type t
+
 type watch_id = int
-type event = {
-  path: Path.t;
-  flags: int32;
-  event_id: int64;
-}
+
+type event = { path: Path.t; flags: int32; event_id: int64 }
+
 type event_kind =
   | Created
   | Modified
   | Deleted
   | Renamed
   | Metadata
+
 type error =
   | Closed
   | AlreadyWatching
   | System of System_error.t
+
 val error_to_string: error -> string
 
 (**
@@ -38,7 +39,7 @@ val watch: t -> path:Path.t -> latency:float -> (watch_id, error) Result.t
 *)
 val unwatch: t -> watch_id -> (unit, error) Result.t
 
-module Flag: sig
+module Flag : sig
   val created: int32
 
   val removed: int32

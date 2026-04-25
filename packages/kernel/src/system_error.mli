@@ -27,6 +27,7 @@ type t =
   | NoSuchProcess
   | DirectoryNotEmpty
   | Unknown of int
+
 val from_code: int -> t
 
 val to_string: t -> string

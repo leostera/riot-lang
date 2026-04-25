@@ -12,12 +12,9 @@ open Std
    - Huffman encoding for string values (defined in RFC 7541 Appendix B)
 *)
 (** {1 Types} *)
-
 (** A header field is a name-value pair *)
-type header = {
-  name: string;
-  value: string;
-}
+type header = { name: string; value: string }
+
 (** Encoding representation for a header field *)
 type encoding_type =
   | Indexed
@@ -27,11 +24,14 @@ type encoding_type =
   | LiteralWithoutIndexing
   (** Literal without indexing - don't add to table *)
   | LiteralNeverIndexed
+
 (** Literal never indexed - MUST NOT be added to table (e.g., sensitive data) *)
 (** Encoder context maintains the dynamic table state *)
 type encoder
+
 (** Decoder context maintains the dynamic table state *)
 type decoder
+
 (** {1 Encoder} *)
 (**
    Create a new encoder with the given dynamic table size limit.

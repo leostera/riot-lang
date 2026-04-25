@@ -9,6 +9,7 @@ open Common
    [Error msg] if parsing fails.
 *)
 type t = Std.Net.Http.Response.t
+
 val parse_slice: IO.IoVec.IoSlice.t -> t parse_result
 
 val parse: string -> t parse_result

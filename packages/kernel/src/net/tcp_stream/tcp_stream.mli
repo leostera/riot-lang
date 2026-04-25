@@ -1,8 +1,10 @@
 type t
+
 type shutdown =
   | Read
   | Write
   | ReadWrite
+
 type error =
   | InvalidSlice of { pos: int; len: int; buffer_len: int }
   | InvalidSocketAddr of { ip: string; port: int }
@@ -16,6 +18,7 @@ type error =
   | ConnectionAborted
   | NetworkUnreachable
   | System of System_error.t
+
 val error_to_string: error -> string
 
 type connect_result =

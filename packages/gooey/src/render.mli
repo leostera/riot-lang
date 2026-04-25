@@ -10,17 +10,11 @@
 open Std
 
 (** Border width specification *)
-type border_width = {
-  left: int;
-  right: int;
-  top: int;
-  bottom: int;
-}
+type border_width = { left: int; right: int; top: int; bottom: int }
+
 (** Rectangle render data *)
-type rectangle_data = {
-  color: Colors.rgb;
-  corner_radius: Style.corner_radius;
-}
+type rectangle_data = { color: Colors.rgb; corner_radius: Style.corner_radius }
+
 (** Text render data *)
 type text_data = {
   content: string;
@@ -30,12 +24,10 @@ type text_data = {
   weight: Style.font_weight;
   decoration: Style.text_decoration;
 }
+
 (** Border render data *)
-type border_data = {
-  width: border_width;
-  color: Colors.rgb;
-  corner_radius: Style.corner_radius;
-}
+type border_data = { width: border_width; color: Colors.rgb; corner_radius: Style.corner_radius }
+
 (** Render command type *)
 type command_type =
   | Rectangle of rectangle_data
@@ -46,15 +38,13 @@ type command_type =
   | ScissorEnd
   (** End clipping region *)
   | Custom of { data: string }
+
 (**
    Plain terminal text payload clipped to the command bounding box and active scissor.
    Non-terminal backends may choose not to interpret it.
 *)
 (** A single render command *)
-type command = {
-  bounding_box: Geometry.Rect.t;
-  command_type: command_type;
-  z_index: int;
-}
+type command = { bounding_box: Geometry.Rect.t; command_type: command_type; z_index: int }
+
 (** List of render commands *)
 type command_list = command list

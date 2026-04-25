@@ -6,10 +6,7 @@ open Std
 
    Spans are represented as raw offsets into the original source.
 *)
-type t = {
-  start: int;
-  end_: int;
-}
+type t = { start: int; end_: int }
 
 (** Create a span from two offsets. *)
 val make: start:int -> end_:int -> t

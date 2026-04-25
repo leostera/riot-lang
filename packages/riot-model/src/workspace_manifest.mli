@@ -6,26 +6,29 @@ type dependency_field =
   | Github
   | Ref
   | Version
+
 type dependency_error =
   | InvalidDependencyName of { raw_name: string; error: Package_name.error }
   | InvalidDependencyRequirement of {
-      dependency_name: string;
-      requirement: string;
-      error: Std.Version.parse_error
-    }
+    dependency_name: string;
+    requirement: string;
+    error: Std.Version.parse_error;
+  }
   | DependencyCannotUseWorkspaceFlag of { dependency_name: string }
   | DependencyFieldMustBeString of { dependency_name: string; field: dependency_field }
   | DependencyCannotSpecifySourceAndGithub of { dependency_name: string }
   | DependencyRefRequiresSource of { dependency_name: string }
   | BuiltinDependencyDoesNotSupportOverrides of { dependency_name: string }
   | BuiltinDependencyDoesNotSupportVersionRequirement of {
-      dependency_name: string;
-      requirement: string
-    }
+    dependency_name: string;
+    requirement: string;
+  }
   | DependencyMustBeStringOrTable of { dependency_name: string }
+
 type error =
   | DependencySectionMustBeTable of { section_name: string }
   | DependencyError of dependency_error
+
 type t = {
   name: string option;
   root: Path.t;
@@ -36,6 +39,7 @@ type t = {
   build_dependencies: Package.dependency list;
   profile_overrides: (string * Package.profile_override) list;
 }
+
 type manifest = {
   name: string option;
   members: Path.t list;
@@ -45,6 +49,7 @@ type manifest = {
   profile_overrides: (string * Package.profile_override) list;
   target_dir: string option;
 }
+
 val dependency_field_name: dependency_field -> string
 
 val dependency_error_message: dependency_error -> string
@@ -53,29 +58,9 @@ val error_message: error -> string
 
 val of_toml: Std.Data.Toml.value -> (manifest, error) result
 
-val make:
-  ?name:string ->
-  root:Path.t ->
-  packages:Package_manifest.t list ->
-  ?dependencies:Package.dependency list ->
-  ?dev_dependencies:Package.dependency list ->
-  ?build_dependencies:Package.dependency list ->
-  ?profile_overrides:(string * Package.profile_override) list ->
-  ?target_dir:string ->
-  unit ->
-  t
+val make: ?name:string -> root:Path.t -> packages:Package_manifest.t list -> ?dependencies:Package.dependency list -> ?dev_dependencies:Package.dependency list -> ?build_dependencies:Package.dependency list -> ?profile_overrides:(string * Package.profile_override) list -> ?target_dir:string -> unit -> t
 
-val make_realized:
-  ?name:string ->
-  root:Path.t ->
-  packages:Package.t list ->
-  ?dependencies:Package.dependency list ->
-  ?dev_dependencies:Package.dependency list ->
-  ?build_dependencies:Package.dependency list ->
-  ?profile_overrides:(string * Package.profile_override) list ->
-  ?target_dir:string ->
-  unit ->
-  t
+val make_realized: ?name:string -> root:Path.t -> packages:Package.t list -> ?dependencies:Package.dependency list -> ?dev_dependencies:Package.dependency list -> ?build_dependencies:Package.dependency list -> ?profile_overrides:(string * Package.profile_override) list -> ?target_dir:string -> unit -> t
 
 val dependencies_for_scope: Package.dependency_scope -> t -> Package.dependency list
 
