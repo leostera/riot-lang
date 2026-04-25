@@ -1430,8 +1430,6 @@ module M = struct end
             Ok ()));
 ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args:_ -> Test.Cli.main ~name:"krasny:format" ~tests ~args:Env.args ())
-    ~args:Env.args
-    ()
+let main ~args:_ = Test.Cli.main ~name:"krasny:format" ~tests ~args:Env.args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

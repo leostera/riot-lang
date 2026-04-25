@@ -310,5 +310,6 @@ let tests =
     case "parse negative year leap" test_parse_negative_year_leap;
   ]
 
-let () =
-  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"datetime" ~tests ~args ()) ~args:Env.args ()
+let main ~args = Test.Cli.main ~name:"datetime" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

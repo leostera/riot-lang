@@ -291,8 +291,6 @@ let tests = [
   Test.case "mixed workloads do not cross-corrupt" test_mixed_workload_does_not_cross_corrupt;
 ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"contentstore_store_concurrency_tests" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main ~name:"contentstore_store_concurrency_tests" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

@@ -150,5 +150,6 @@ let tests =
     case "margin and gap stack cleanly" test_margin_and_gap_stack_cleanly;
   ]
 
-let () =
-  Actors.run ~main:(fun ~args -> Test.Cli.main ~name:"integration" ~tests ~args ()) ~args:Env.args ()
+let main ~args = Test.Cli.main ~name:"integration" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

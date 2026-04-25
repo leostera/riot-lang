@@ -320,8 +320,6 @@ let tests =
     case "parser_flushes_unclosed_paste" test_parser_flushes_unclosed_paste;
   ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"tty_input_parser" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main ~name:"tty_input_parser" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

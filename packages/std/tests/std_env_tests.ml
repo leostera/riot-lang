@@ -248,8 +248,6 @@ let tests =
     case "set_current_dir rejects non-directory paths" test_set_current_dir_to_non_directory_returns_error;
   ]
 
-let () =
-  Runtime.run
-    ~main:(fun ~args -> Test.Cli.main ~execution_mode:Test.Cli.Linear ~name:"env" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main ~execution_mode:Test.Cli.Linear ~name:"env" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

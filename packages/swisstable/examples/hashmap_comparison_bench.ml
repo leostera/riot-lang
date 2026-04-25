@@ -243,8 +243,6 @@ let benchmarks =
       ];
   ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args -> Bench.Cli.main ~name:"HashMap vs Swisstable Performance" ~benchmarks ~args)
-    ~args:Env.args
-    ()
+let main ~args = Bench.Cli.main ~name:"HashMap vs Swisstable Performance" ~benchmarks ~args
+
+let () = Runtime.run ~main ~args:Env.args ()

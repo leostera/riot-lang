@@ -382,26 +382,26 @@ LiveView.live (module Status);]
 
 let app = [ Middleware.router routes; ]
 
-let () =
-  Actors.run ~args:Env.args ()
-    ~main:(fun ~args:_ ->
-      let config = Suri.config ~port:9_998 () in
-      match Suri.start_link ~config app with
-      | Ok supervisor ->
-          Log.info "╔═══════════════════════════════════════════════════╗";
-          Log.info "║  Multiple LiveViews running!                     ║";
-          Log.info "║  http://localhost:9998                           ║";
-          Log.info "║                                                   ║";
-          Log.info "║  Counter: User interactions                      ║";
-          Log.info "║  Status: Server-side timestamp rendering         ║";
-          Log.info "╚═══════════════════════════════════════════════════╝";
-          let count = Supervisor.Dynamic.count_children supervisor in
-          Log.info ("Started with " ^ Int.to_string count.active ^ " acceptors");
-          let rec loop () =
-            sleep (Time.Duration.from_secs 100);
-            loop ()
-          in
-          loop ()
-      | Error `Bind_error ->
-          Log.error "Failed to bind to port 9998";
-          Error (Failure "Failed to start server"))
+let main ~args:_ =
+  let config = Suri.config ~port:9_998 () in
+  match Suri.start_link ~config app with
+  | Ok supervisor ->
+      Log.info "╔═══════════════════════════════════════════════════╗";
+      Log.info "║  Multiple LiveViews running!                     ║";
+      Log.info "║  http://localhost:9998                           ║";
+      Log.info "║                                                   ║";
+      Log.info "║  Counter: User interactions                      ║";
+      Log.info "║  Status: Server-side timestamp rendering         ║";
+      Log.info "╚═══════════════════════════════════════════════════╝";
+      let count = Supervisor.Dynamic.count_children supervisor in
+      Log.info ("Started with " ^ Int.to_string count.active ^ " acceptors");
+      let rec loop () =
+        sleep (Time.Duration.from_secs 100);
+        loop ()
+      in
+      loop ()
+  | Error `Bind_error ->
+      Log.error "Failed to bind to port 9998";
+      Error (Failure "Failed to start server")
+
+let () = Runtime.run ~main ~args:Env.args ()

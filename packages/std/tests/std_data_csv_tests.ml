@@ -168,5 +168,6 @@ let tests =
     case "headers" test_headers;
   ]
 
-let () =
-  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"csv" ~tests ~args ()) ~args:Env.args ()
+let main ~args = Test.Cli.main ~name:"csv" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

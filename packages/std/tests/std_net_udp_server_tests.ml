@@ -100,8 +100,6 @@ let test_udp_server_serves_one_datagram = fun _ctx ->
 let tests =
   Test.[ case "UdpServer bind and serve handle a datagram" test_udp_server_serves_one_datagram; ]
 
-let () =
-  Runtime.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"std_net_udp_server_tests" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main ~name:"std_net_udp_server_tests" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

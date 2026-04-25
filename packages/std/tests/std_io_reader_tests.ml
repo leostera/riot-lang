@@ -194,5 +194,6 @@ let tests =
     case "BufReader.to_reader exposes generic reads" test_bufreader_to_reader_exposes_generic_reads;
   ]
 
-let () =
-  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"IO.Reader" ~tests ~args ()) ~args:Env.args ()
+let main ~args = Test.Cli.main ~name:"IO.Reader" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

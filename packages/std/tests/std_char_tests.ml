@@ -90,5 +90,6 @@ let tests =
     case "Char.uppercase_ascii leaves digits unchanged" test_uppercase_ascii_non_alpha;
   ]
 
-let () =
-  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"char" ~tests ~args ()) ~args:Env.args ()
+let main ~args = Test.Cli.main ~name:"char" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

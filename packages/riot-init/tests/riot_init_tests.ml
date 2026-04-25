@@ -160,10 +160,10 @@ let test_init_scaffolds_binary_workspace = fun _ctx ->
         (module_name ^ ".hello ()") in
       let* () = assert_contains
         Path.(workspace_root / Path.v "packages" / Path.v "demo-bin" / Path.v "src" / Path.v "main.ml")
-        "let main = fun ~args:_ ->" in
+        "let main ~args:_ =" in
       let* () = assert_contains
         Path.(workspace_root / Path.v "packages" / Path.v "demo-bin" / Path.v "src" / Path.v "main.ml")
-        "let () = Actors.run ~main ~args:Env.args ()" in
+        "let () = Runtime.run ~main ~args:Env.args ()" in
       assert_contains
         Path.(workspace_root / Path.v "packages" / Path.v "demo-bin" / Path.v "tests" / Path.v test_file)
         "starter greeting")
@@ -383,9 +383,6 @@ let tests =
     case "new_standalone_package scaffolds a detached package from a typed path" test_new_standalone_package_scaffolds_a_detached_package;
   ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args ->
-      Test.Cli.main ~execution_mode:Test.Cli.Linear ~name:"riot_init_tests" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main ~execution_mode:Test.Cli.Linear ~name:"riot_init_tests" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

@@ -233,12 +233,10 @@ let benchmark_suite = fun fixture ->
       (bench_decode_reader fixture);
   ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args ->
-      let small_fixture = build_fixture small_fixture_spec in
-      let large_fixture = build_fixture large_fixture_spec in
-      let benchmarks = benchmark_suite small_fixture @ benchmark_suite large_fixture in
-      Bench.Cli.main ~name:"parquet benchmarks" ~benchmarks ~args)
-    ~args:Env.args
-    ()
+let main ~args =
+  let small_fixture = build_fixture small_fixture_spec in
+  let large_fixture = build_fixture large_fixture_spec in
+  let benchmarks = benchmark_suite small_fixture @ benchmark_suite large_fixture in
+  Bench.Cli.main ~name:"parquet benchmarks" ~benchmarks ~args
+
+let () = Runtime.run ~main ~args:Env.args ()

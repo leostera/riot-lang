@@ -18,17 +18,15 @@ open Global
         case "vector push" bench_vector_push;
       ]
 
-      let () =
-        Runtime.run
-          ~main:(fun ~args ->
-            let config = Bench.Runner.{
-              reporter = (module Bench.Reporter.Default);
-              suite_info = { name = "My Benchmarks" };
-            } in
-            let _summary = Bench.Runner.run_benchmarks ~config benchmarks in
-            Ok ()
-          )
-          ~args:Env.args ()
+      let main ~args:_ =
+        let config = Bench.Runner.{
+          reporter = (module Bench.Reporter.Default);
+          suite_info = { name = "My Benchmarks" };
+        } in
+      let _summary = Bench.Runner.run_benchmarks ~config benchmarks in
+      Ok ()
+
+      let () = Runtime.run ~main ~args:Env.args ()
     ]}
 *)
 

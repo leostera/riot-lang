@@ -384,8 +384,6 @@ let benchmarks =
       ];
   ]
 
-let () =
-  Runtime.run
-    ~main:(fun ~args -> Bench.Cli.main ~name:"std_io_ioslice_bench" ~benchmarks ~args)
-    ~args:Env.args
-    ()
+let main ~args = Bench.Cli.main ~name:"std_io_ioslice_bench" ~benchmarks ~args
+
+let () = Runtime.run ~main ~args:Env.args ()

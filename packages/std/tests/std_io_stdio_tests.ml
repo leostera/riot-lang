@@ -73,5 +73,6 @@ let tests =
     case "IO.stderr handles empty writer operations" test_stderr_writer_handles_empty_operations;
   ]
 
-let () =
-  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"IO.Stdio" ~tests ~args ()) ~args:Env.args ()
+let main ~args = Test.Cli.main ~name:"IO.Stdio" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

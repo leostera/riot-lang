@@ -38,4 +38,6 @@ let app = App.make ~init ~update ~view ()
 
 (* Run it with initial model *)
 
-let () = Minttea.start app "Hello, World!"
+let main ~args:_ = Minttea.run "Hello, World!" app
+
+let () = Runtime.run ~main ~args:Env.args ()

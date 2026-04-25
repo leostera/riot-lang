@@ -180,5 +180,6 @@ let tests =
     case "complex document" test_complex_document;
   ]
 
-let () =
-  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"xml" ~tests ~args ()) ~args:Env.args ()
+let main ~args = Test.Cli.main ~name:"xml" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

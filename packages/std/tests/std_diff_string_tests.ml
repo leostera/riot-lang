@@ -98,5 +98,6 @@ let tests =
     case "whitespace changes" test_diff_whitespace_changes;
   ]
 
-let () =
-  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"string-diff" ~tests ~args ()) ~args:Env.args ()
+let main ~args = Test.Cli.main ~name:"string-diff" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

@@ -92,8 +92,6 @@ let benchmarks =
     with_config ~config:heavy "pubgrub solve deep chain" bench_solve_deep_chain;
   ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args -> Bench.Cli.main ~name:"pubgrub benchmarks" ~benchmarks ~args)
-    ~args:Env.args
-    ()
+let main ~args = Bench.Cli.main ~name:"pubgrub benchmarks" ~benchmarks ~args
+
+let () = Runtime.run ~main ~args:Env.args ()

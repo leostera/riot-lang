@@ -135,29 +135,27 @@ let app =
     router routes;
   ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args:_ ->
-      let port = 8_080 in
-      let config = Suri.config ~port () in
-      Log.info "===========================================";
-      Log.info "🚀 Body Parser + CSRF Example";
-      Log.info "===========================================";
-      Log.info (String.concat "" [ "Server: http://localhost:"; string_of_int port ]);
-      Log.info "✨ Features:";
-      Log.info "  - HTML form with CSRF protection";
-      Log.info "  - JSON API endpoint (/api/data)";
-      Log.info "  - Automatic body parsing (urlencoded & JSON)";
-      Log.info "===========================================";
-      match Suri.start_link ~config app with
-      | Ok _supervisor ->
-          let rec loop () =
-            sleep (Time.Duration.from_secs 100);
-            loop ()
-          in
-          loop ()
-      | Error `Bind_error ->
-          Log.error "Failed to bind to port 8080";
-          Error (Failure "Failed to start server"))
-    ~args:Env.args
-    ()
+let main ~args:_ =
+  let port = 8_080 in
+  let config = Suri.config ~port () in
+  Log.info "===========================================";
+  Log.info "🚀 Body Parser + CSRF Example";
+  Log.info "===========================================";
+  Log.info (String.concat "" [ "Server: http://localhost:"; string_of_int port ]);
+  Log.info "✨ Features:";
+  Log.info "  - HTML form with CSRF protection";
+  Log.info "  - JSON API endpoint (/api/data)";
+  Log.info "  - Automatic body parsing (urlencoded & JSON)";
+  Log.info "===========================================";
+  match Suri.start_link ~config app with
+  | Ok _supervisor ->
+      let rec loop () =
+        sleep (Time.Duration.from_secs 100);
+        loop ()
+      in
+      loop ()
+  | Error `Bind_error ->
+      Log.error "Failed to bind to port 8080";
+      Error (Failure "Failed to start server")
+
+let () = Runtime.run ~main ~args:Env.args ()

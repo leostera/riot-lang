@@ -202,5 +202,6 @@ let tests =
     case "stdin_stdout_stderr_fds" test_stdin_stdout_stderr_fds;
   ]
 
-let () =
-  Actors.run ~main:(fun ~args -> Test.Cli.main ~name:"tty_api" ~tests ~args ()) ~args:Env.args ()
+let main ~args = Test.Cli.main ~name:"tty_api" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

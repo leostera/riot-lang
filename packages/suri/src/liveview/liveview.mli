@@ -66,7 +66,7 @@ val id: string -> string
     ]} *)
 type 'msg event =
   | Custom of Message.t
-  (** Any Actors message from other processes *)
+  (** Any Runtime message from other processes *)
   | App of 'msg
 
 (** Component-specific messages from UI events *)
@@ -74,7 +74,7 @@ type 'msg event =
 (** Event wrapper for component messages.
     
     - [App msg] wraps UI events (clicks, form submissions, etc.)
-    - [Custom msg] wraps any Actors process message (timers, notifications, etc.)
+    - [Custom msg] wraps any Runtime process message (timers, notifications, etc.)
     
     This allows components to handle both user interactions and server-driven updates. *)
 module type Component = sig

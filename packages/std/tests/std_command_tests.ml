@@ -241,7 +241,7 @@ let meta_main = fun ~args ->
   in
   Test.Cli.main ~name:"std_command_tests" ~tests:meta_tests ~args:(normalize_args args) ()
 
-let main = fun ~args ->
+let main ~args =
   match args with
   | _ :: "capture-both-streams" :: _ -> capture_main ()
   | _ :: "capture-stdout-lines" :: _ -> capture_stdout_lines_main ()

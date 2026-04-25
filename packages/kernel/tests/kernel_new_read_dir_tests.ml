@@ -188,7 +188,11 @@ let tests = [
   Test.case "Fs.ReadDir read_name rejects reads after close" test_read_name_after_close_is_rejected;
 ]
 
-let main = fun ~args ->
-  Test.Cli.main ~execution_mode:Test.Cli.Linear ~name:"kernel_new_read_dir_tests" ~tests ~args ()
+let main ~args = Test.Cli.main
+  ~execution_mode:Test.Cli.Linear
+  ~name:"kernel_new_read_dir_tests"
+  ~tests
+  ~args
+  ()
 
-let () = Actors.run ~main ~args:Env.args ()
+let () = Runtime.run ~main ~args:Env.args ()

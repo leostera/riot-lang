@@ -82,8 +82,6 @@ let benchmarks =
     with_config ~config:medium "pretext multiline text" bench_multiline_text;
   ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args -> Bench.Cli.main ~name:"pretext benchmarks" ~benchmarks ~args)
-    ~args:Env.args
-    ()
+let main ~args = Bench.Cli.main ~name:"pretext benchmarks" ~benchmarks ~args
+
+let () = Runtime.run ~main ~args:Env.args ()

@@ -169,8 +169,6 @@ let benchmarks =
     with_config ~config:{ iterations = 200; warmup = 20 } "tty parser.chunked plain typing" bench_parser_chunked_plain_typing;
   ]
 
-let () =
-  Runtime.run
-    ~main:(fun ~args -> Bench.Cli.main ~name:"tty benchmarks" ~benchmarks ~args)
-    ~args:Env.args
-    ()
+let main ~args = Bench.Cli.main ~name:"tty benchmarks" ~benchmarks ~args
+
+let () = Runtime.run ~main ~args:Env.args ()

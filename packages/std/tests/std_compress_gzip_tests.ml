@@ -110,8 +110,6 @@ let tests =
     case "gzip large roundtrip" test_large_roundtrip;
   ]
 
-let () =
-  Runtime.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"std_compress_gzip" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main ~name:"std_compress_gzip" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

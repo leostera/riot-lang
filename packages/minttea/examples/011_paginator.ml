@@ -177,8 +177,10 @@ let app = App.make ~init ~update ~view ()
 
 (* Run it *)
 
-let () =
+let main ~args:_ =
   let pages = generate_pages () in
   let initial_model = { current_page = 0; pages } in
   let config = Minttea.config () in
-  Minttea.start ~config app initial_model
+  Minttea.run ~config initial_model app
+
+let () = Runtime.run ~main ~args:Env.args ()

@@ -201,5 +201,6 @@ let tests =
     case "Vector.mut_iter yields items in order" test_mut_iter;
   ]
 
-let () =
-  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"vector" ~tests ~args ()) ~args:Env.args ()
+let main ~args = Test.Cli.main ~name:"vector" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

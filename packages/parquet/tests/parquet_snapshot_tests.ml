@@ -355,8 +355,6 @@ let tests = [
   Test.case "parquet snapshot nested file layout" test_snapshot_nested_file_layout;
 ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"parquet_snapshot_tests" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main ~name:"parquet_snapshot_tests" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

@@ -251,8 +251,6 @@ let tests = [
   Test.case "commit_dir is safe when the source dir starts inside the store" test_commit_dir_source_inside_store_is_safe;
 ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"contentstore_store_tree_tests" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main ~name:"contentstore_store_tree_tests" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

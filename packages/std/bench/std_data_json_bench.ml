@@ -65,8 +65,6 @@ let benchmarks =
           Bench.make_case "JsonStream.from_slice" (fun () -> bench_json_stream_slice fixture.slice);
         ])
 
-let () =
-  Runtime.run
-    ~main:(fun ~args -> Bench.Cli.main ~name:"std_data_json_bench" ~benchmarks ~args)
-    ~args:Env.args
-    ()
+let main ~args = Bench.Cli.main ~name:"std_data_json_bench" ~benchmarks ~args
+
+let () = Runtime.run ~main ~args:Env.args ()

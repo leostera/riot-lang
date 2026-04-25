@@ -114,5 +114,6 @@ let tests =
     case "error_message renders details" test_error_message_preserves_details;
   ]
 
-let () =
-  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"io_iovec" ~tests ~args ()) ~args:Env.args ()
+let main ~args = Test.Cli.main ~name:"io_iovec" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

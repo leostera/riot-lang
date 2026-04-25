@@ -257,9 +257,7 @@ LiveView.live (module Counter);]
 
 let app = [ Middleware.router routes; ]
 
-let () =
-  Actors.run ~args:Env.args ()
-    ~main:(fun ~args:_ ->
+let main ~args:_ =
       Std.Config.load_file (Path.v "packages/suri/examples/conf.toml");
       let _ = Std.Log.start_link () in
       let config = Suri.config ~port:9_999 () in
@@ -280,4 +278,6 @@ let () =
           loop ()
       | Error `Bind_error ->
           Log.error "Failed to bind to port 9999";
-          Error (Failure "Failed to start server"))
+          Error (Failure "Failed to start server")
+
+let () = Runtime.run ~main ~args:Env.args ()

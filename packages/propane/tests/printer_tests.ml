@@ -73,8 +73,6 @@ let tests =
     case "hashset printer is stable" test_hashset_printer_is_stable;
   ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"propane/printer_tests" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main ~name:"propane/printer_tests" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

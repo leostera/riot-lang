@@ -11,8 +11,6 @@ let tests =
       let actual = Fs.read ctx.fixture_path |> Result.expect ~msg:"read fixture" in
       Test.Snapshot.assert_text ~ctx:ctx.test ~actual)
 
-let () =
-  Runtime.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"std_fixture_runner_tests" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main ~name:"std_fixture_runner_tests" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

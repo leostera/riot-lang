@@ -330,44 +330,42 @@ let test_json_at_path = Test.case "filter JSON diffs by path" @@ fun _ctx ->
     ^ " and "
     ^ Int.to_string (List.length user_age_changes))
 
-let () =
-  Runtime.run
-    ~main:(fun ~args ->
-      let all_tests = [
-        test_diff_identical_nulls;
-        test_diff_identical_bools;
-        test_diff_different_bools;
-        test_diff_identical_ints;
-        test_diff_different_ints;
-        test_diff_identical_floats;
-        test_diff_different_floats;
-        test_diff_identical_strings;
-        test_diff_different_strings;
-        test_diff_different_types;
-        test_diff_empty_arrays;
-        test_diff_identical_arrays;
-        test_diff_array_element_changed;
-        test_diff_array_shorter;
-        test_diff_array_longer;
-        test_diff_array_completely_different;
-        test_diff_nested_arrays;
-        test_diff_empty_objects;
-        test_diff_identical_objects;
-        test_diff_object_field_added;
-        test_diff_object_field_removed;
-        test_diff_object_field_changed;
-        test_diff_object_multiple_changes;
-        test_diff_nested_objects;
-        test_diff_object_with_array;
-        test_diff_complex_nested_structure;
-        test_diff_null_to_value;
-        test_diff_value_to_null;
-        test_diff_empty_string_values;
-        test_diff_object_key_ordering;
-        test_json_diff_with_helpers;
-        test_json_at_path;
-      ]
-      in
-      Test.Cli.main ~name:"json-diff" ~tests:all_tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args =
+  let all_tests = [
+    test_diff_identical_nulls;
+    test_diff_identical_bools;
+    test_diff_different_bools;
+    test_diff_identical_ints;
+    test_diff_different_ints;
+    test_diff_identical_floats;
+    test_diff_different_floats;
+    test_diff_identical_strings;
+    test_diff_different_strings;
+    test_diff_different_types;
+    test_diff_empty_arrays;
+    test_diff_identical_arrays;
+    test_diff_array_element_changed;
+    test_diff_array_shorter;
+    test_diff_array_longer;
+    test_diff_array_completely_different;
+    test_diff_nested_arrays;
+    test_diff_empty_objects;
+    test_diff_identical_objects;
+    test_diff_object_field_added;
+    test_diff_object_field_removed;
+    test_diff_object_field_changed;
+    test_diff_object_multiple_changes;
+    test_diff_nested_objects;
+    test_diff_object_with_array;
+    test_diff_complex_nested_structure;
+    test_diff_null_to_value;
+    test_diff_value_to_null;
+    test_diff_empty_string_values;
+    test_diff_object_key_ordering;
+    test_json_diff_with_helpers;
+    test_json_at_path;
+  ]
+  in
+  Test.Cli.main ~name:"json-diff" ~tests:all_tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

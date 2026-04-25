@@ -266,16 +266,14 @@ let benchmark_suite = fun fixture ->
       (bench_ensure_lock_warm fixture);
   ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args ->
-      match
-        Fs.with_tempdir ~prefix:"riot_deps_bench"
-          (fun root ->
-            let fixture = prepare_fixture root in
-            Bench.Cli.main ~name:"riot-deps warm path" ~benchmarks:(benchmark_suite fixture) ~args)
-      with
-      | Ok result -> result
-      | Error err -> panic ("failed to prepare warm lock benchmark: " ^ IO.error_message err))
-    ~args:Env.args
-    ()
+let main ~args =
+  match
+    Fs.with_tempdir ~prefix:"riot_deps_bench"
+      (fun root ->
+        let fixture = prepare_fixture root in
+        Bench.Cli.main ~name:"riot-deps warm path" ~benchmarks:(benchmark_suite fixture) ~args)
+  with
+  | Ok result -> result
+  | Error err -> panic ("failed to prepare warm lock benchmark: " ^ IO.error_message err)
+
+let () = Runtime.run ~main ~args:Env.args ()

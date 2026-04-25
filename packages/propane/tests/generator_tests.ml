@@ -137,8 +137,6 @@ let tests =
     case "float spans both signs" test_float_spans_both_signs;
   ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"propane/generator_tests" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main ~name:"propane/generator_tests" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

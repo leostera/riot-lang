@@ -89,5 +89,6 @@ let tests =
     case "Int.to_string renders decimals" test_to_string;
   ]
 
-let () =
-  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"int" ~tests ~args ()) ~args:Env.args ()
+let main ~args = Test.Cli.main ~name:"int" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

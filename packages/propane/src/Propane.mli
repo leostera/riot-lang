@@ -34,10 +34,10 @@
       (* Run tests *)
       let tests = [ list_rev_prop; division_prop ]
       
-      let () =
-        Actors.run 
-          ~main:(fun ~args -> Test.Cli.main ~name:"my-tests" ~tests ~args) 
-          ~args:Env.args ()
+      let main ~args =
+        Test.Cli.main ~name:"my-tests" ~tests ~args ()
+
+      let () = Runtime.run ~main ~args:Env.args ()
     ]}
     
     {1 Core Concepts}

@@ -1,6 +1,6 @@
 open Std
 
-let () =
+let main ~args:_ =
   Log.set_level Log.Info;
   Log.info "=== UUID v7 (timestamp-ordered) ===";
   let id1 = UUID.v7 () in
@@ -21,4 +21,7 @@ let () =
   Log.info ("Random 1: " ^ UUID.to_string rand1);
   Log.info ("Random 2: " ^ UUID.to_string rand2);
   Log.info "";
-  Log.info "✓ UUID generation works!"
+  Log.info "✓ UUID generation works!";
+  Ok ()
+
+let () = Runtime.run ~main ~args:Env.args ()

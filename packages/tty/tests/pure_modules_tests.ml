@@ -392,8 +392,6 @@ let tests =
     case "size_to_string" test_size_to_string;
   ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"tty_pure_modules" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main ~name:"tty_pure_modules" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

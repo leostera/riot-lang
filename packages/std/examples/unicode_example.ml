@@ -2,7 +2,7 @@
 open Std
 open Std.IO
 
-let () =
+let main ~args:_ =
   println "=== Std.Unicode Example ===\n";
   (* Example 1: Basic ASCII *)
   println "1. Basic ASCII string:";
@@ -102,4 +102,7 @@ let () =
   println ("   Right-padded to 10: '" ^ String.pad_right ~width:10 ' ' s8 ^ "'");
   println ("   Center-padded to 10: '" ^ String.pad_center ~width:10 ' ' s8 ^ "'");
   println "";
-  println "Example completed!"
+  println "Example completed!";
+  Ok ()
+
+let () = Runtime.run ~main ~args:Env.args ()

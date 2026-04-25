@@ -241,5 +241,6 @@ let tests =
     case "Calendar.seconds_to_time" test_seconds_to_time;
   ]
 
-let () =
-  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"calendar" ~tests ~args ()) ~args:Env.args ()
+let main ~args = Test.Cli.main ~name:"calendar" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

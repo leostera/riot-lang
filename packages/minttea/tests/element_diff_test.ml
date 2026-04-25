@@ -48,8 +48,11 @@ let test_rendering_optimization = fun () ->
   println "• Much simpler than scene graph comparison";
   println "• Frame counter should now increment by 1 each frame"
 
-let () =
+let main ~args:_ =
   println "\n=== Minttea Element Diff Test ===\n";
   test_element_equality ();
   test_rendering_optimization ();
-  println "\n=== All Element Diff Tests Passed! ===\n"
+  println "\n=== All Element Diff Tests Passed! ===\n";
+  Ok ()
+
+let () = Runtime.run ~main ~args:Env.args ()

@@ -104,8 +104,6 @@ let tests =
     case "all different" test_diff_all_different;
   ]
 
-let () =
-  Runtime.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"hashmap-diff" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main ~name:"hashmap-diff" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

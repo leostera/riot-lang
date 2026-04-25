@@ -178,7 +178,7 @@ let flush_mode = function
   | LogFull -> Log.flush ()
   | _ -> ()
 
-let main = fun ~args ->
+let main ~args =
   let args =
     match args with
     | [] -> []

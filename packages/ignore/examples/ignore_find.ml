@@ -76,7 +76,7 @@ let rec run_repeated = fun config walker remaining total ->
     | Error err -> Error err
     | Ok count -> run_repeated config walker (remaining - 1) (total + count)
 
-let main = fun ~args ->
+let main ~args =
   let args =
     match args with
     | [] -> []
@@ -118,4 +118,4 @@ let main = fun ~args ->
               Ok ()
     )
 
-let () = Actors.run ~main ~args:Env.args ()
+let () = Runtime.run ~main ~args:Env.args ()

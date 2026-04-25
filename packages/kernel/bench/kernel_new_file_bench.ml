@@ -223,8 +223,6 @@ let benchmarks =
     with_config ~config:{ iterations = 15; warmup = 3 } "file read_dir_names: 128 entries" bench_read_dir_names_large;
   ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args -> Bench.Cli.main ~name:"kernel_new_file_bench" ~benchmarks ~args)
-    ~args:Env.args
-    ()
+let main ~args = Bench.Cli.main ~name:"kernel_new_file_bench" ~benchmarks ~args
+
+let () = Runtime.run ~main ~args:Env.args ()

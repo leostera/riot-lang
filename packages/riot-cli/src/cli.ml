@@ -598,7 +598,7 @@ let run = fun ~args ->
             )
         )
 
-let main = fun ~args ->
+let main ~args =
   if not (is_lsp_invocation args) then
     initialize_runtime ();
   let result = run ~args in

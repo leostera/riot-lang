@@ -126,5 +126,6 @@ let tests =
     case "to_string renders signed decimal" test_to_string_renders_signed_decimal;
   ]
 
-let () =
-  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"int32" ~tests ~args ()) ~args:Env.args ()
+let main ~args = Test.Cli.main ~name:"int32" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

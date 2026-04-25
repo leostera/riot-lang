@@ -599,14 +599,12 @@ let large_benchmark_suite = fun fixture ->
       (bench_encode_serde fixture);
   ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args ->
-      let fixture = load_fixture () in
-      let large_fixture = load_large_fixture fixture in
-      Bench.Cli.main
-        ~name:"serde-json large payload benchmarks"
-        ~benchmarks:(benchmark_suite fixture @ large_benchmark_suite large_fixture)
-        ~args)
-    ~args:Env.args
-    ()
+let main ~args =
+  let fixture = load_fixture () in
+  let large_fixture = load_large_fixture fixture in
+  Bench.Cli.main
+    ~name:"serde-json large payload benchmarks"
+    ~benchmarks:(benchmark_suite fixture @ large_benchmark_suite large_fixture)
+    ~args
+
+let () = Runtime.run ~main ~args:Env.args ()

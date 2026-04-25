@@ -101,6 +101,6 @@ let tests = [
   Test.case "suite progress ignores non-completed events" test_suite_progress_test_case_result_ignores_non_completed_event;
 ]
 
-let main = fun ~args -> Test.Cli.main ~name:"test_runtime_tests" ~tests ~args ()
+let main ~args = Test.Cli.main ~name:"test_runtime_tests" ~tests ~args ()
 
 let () = Runtime.run ~main ~args:Env.args ()

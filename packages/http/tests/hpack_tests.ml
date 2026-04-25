@@ -45,8 +45,6 @@ let tests = [
   Test.case "encode_simple_header" test_encode_simple_header;
 ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args:_ -> Test.Cli.main ~name:"http:hpack" ~tests ~args:Env.args ())
-    ~args:Env.args
-    ()
+let main ~args:_ = Test.Cli.main ~name:"http:hpack" ~tests ~args:Env.args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

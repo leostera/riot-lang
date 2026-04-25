@@ -76,5 +76,6 @@ let tests =
     case "utf16 offset_of_position rejects character beyond line" test_offset_of_position_rejects_character_beyond_line;
   ]
 
-let () =
-  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"utf16" ~tests ~args ()) ~args:Env.args ()
+let main ~args = Test.Cli.main ~name:"utf16" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

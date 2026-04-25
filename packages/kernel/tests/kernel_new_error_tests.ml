@@ -104,6 +104,6 @@ let tests = [
   Test.case "Error.to_string prefixes the stable module name" test_error_to_string_prefixes_the_stable_module_name;
 ]
 
-let main = fun ~args -> Test.Cli.main ~name:"kernel_new_error_tests" ~tests ~args ()
+let main ~args = Test.Cli.main ~name:"kernel_new_error_tests" ~tests ~args ()
 
-let () = Actors.run ~main ~args:Env.args ()
+let () = Runtime.run ~main ~args:Env.args ()

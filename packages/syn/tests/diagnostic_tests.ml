@@ -41,16 +41,14 @@ let filter_diagnostic_fixture = fun path ->
         `skip
   | _ -> `skip
 
-let () =
-  Actors.run
-    ~main:(fun ~args ->
-      let tests =
-        Test.FixtureRunner.cases
-          ()
-          ~dir:(Path.v "packages/syn/tests/diagnostics")
-          ~filter:filter_diagnostic_fixture
-          ~run:(fun ctx -> test_diagnostic ~ctx)
-      in
-      Test.Cli.main ~name:"syn-diagnostics" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args =
+  let tests =
+    Test.FixtureRunner.cases
+      ()
+      ~dir:(Path.v "packages/syn/tests/diagnostics")
+      ~filter:filter_diagnostic_fixture
+      ~run:(fun ctx -> test_diagnostic ~ctx)
+  in
+  Test.Cli.main ~name:"syn-diagnostics" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

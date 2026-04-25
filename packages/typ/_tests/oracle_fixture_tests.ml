@@ -1648,17 +1648,15 @@ let test_fixture = fun ~(ctx:Test.FixtureRunner.ctx) ->
       ~stage:"snapshot_assertion"
       (fun () -> Test.Snapshot.assert_json ~ctx:ctx.test ~actual:actual_json)
 
-let () =
-  Actors.run
-    ~main:(fun ~args ->
-      let tests =
-        Test.FixtureRunner.cases
-          ()
-          ~dir:fixtures_dir
-          ~filter:fixture_filter
-          ~snapshot_path:(fun path -> Some (approved_snapshot_path path))
-          ~run:(fun ctx -> test_fixture ~ctx)
-      in
-      Test.Cli.main ~name:"typ:oracle_fixtures" ~tests ~args)
-    ~args:Std.Env.args
-    ()
+let main ~args =
+  let tests =
+    Test.FixtureRunner.cases
+      ()
+      ~dir:fixtures_dir
+      ~filter:fixture_filter
+      ~snapshot_path:(fun path -> Some (approved_snapshot_path path))
+      ~run:(fun ctx -> test_fixture ~ctx)
+  in
+  Test.Cli.main ~name:"typ:oracle_fixtures" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Std.Env.args ()

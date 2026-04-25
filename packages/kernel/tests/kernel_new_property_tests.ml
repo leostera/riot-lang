@@ -955,7 +955,11 @@ let tests = [
   udp_loopback_roundtrips_small_payload;
 ]
 
-let main = fun ~args ->
-  Test.Cli.main ~execution_mode:Test.Cli.Linear ~name:"kernel_new_property_tests" ~tests ~args ()
+let main ~args = Test.Cli.main
+  ~execution_mode:Test.Cli.Linear
+  ~name:"kernel_new_property_tests"
+  ~tests
+  ~args
+  ()
 
-let () = Actors.run ~main ~args:Env.args ()
+let () = Runtime.run ~main ~args:Env.args ()

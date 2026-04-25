@@ -211,8 +211,6 @@ let tests =
     case "map_gen replaces only the generator" test_map_gen_replaces_only_the_generator;
   ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"propane/arbitrary_tests" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main ~name:"propane/arbitrary_tests" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

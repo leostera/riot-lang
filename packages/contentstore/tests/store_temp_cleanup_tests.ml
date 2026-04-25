@@ -113,8 +113,6 @@ let tests = [
   Test.case "failed save_file cleans immutable temp files" test_failed_save_file_cleans_immutable_temp_files;
 ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"contentstore_store_temp_cleanup_tests" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main ~name:"contentstore_store_temp_cleanup_tests" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

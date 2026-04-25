@@ -55,18 +55,16 @@ let test_fixture = fun ~(ctx:Test.FixtureRunner.ctx) ->
   | Error _ as err -> err
   | Ok () -> assert_roundtrip_hash ~fixture_path:ctx.fixture_path ~formatted
 
-let () =
-  Actors.run
-    ~main:(fun ~args ->
-      let tracked = tracked_fixtures () in
-      let tests =
-        Test.FixtureRunner.cases
-          ()
-          ~dir:fixtures_dir
-          ~filter:(fixture_filter tracked)
-          ~snapshot_path:(fun path -> Some (approved_snapshot_path path))
-          ~run:(fun ctx -> test_fixture ~ctx)
-      in
-      Test.Cli.main ~name:"krasny:fixtures" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args =
+  let tracked = tracked_fixtures () in
+  let tests =
+    Test.FixtureRunner.cases
+      ()
+      ~dir:fixtures_dir
+      ~filter:(fixture_filter tracked)
+      ~snapshot_path:(fun path -> Some (approved_snapshot_path path))
+      ~run:(fun ctx -> test_fixture ~ctx)
+  in
+  Test.Cli.main ~name:"krasny:fixtures" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

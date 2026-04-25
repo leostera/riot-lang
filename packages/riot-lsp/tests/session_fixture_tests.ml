@@ -104,16 +104,14 @@ let test_fixture = fun ~(ctx:Test.FixtureRunner.ctx) ->
     ~actual:(normalize_snapshot_tokens
       (Json.to_string_pretty (Riot_lsp.Session.outcome_to_json outcome) ^ "\n"))
 
-let () =
-  Actors.run
-    ~main:(fun ~args ->
-      let tests =
-        Test.FixtureRunner.cases
-          ()
-          ~dir:fixture_root
-          ~filter:keep_jsonl
-          ~run:(fun ctx -> test_fixture ~ctx)
-      in
-      Test.Cli.main ~name:"riot-lsp session fixtures" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args =
+  let tests =
+    Test.FixtureRunner.cases
+      ()
+      ~dir:fixture_root
+      ~filter:keep_jsonl
+      ~run:(fun ctx -> test_fixture ~ctx)
+  in
+  Test.Cli.main ~name:"riot-lsp session fixtures" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

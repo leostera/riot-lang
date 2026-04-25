@@ -169,5 +169,6 @@ let tests =
     case "Task.async starts eagerly before await" test_async_starts_eagerly;
   ]
 
-let () =
-  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"Task" ~tests ~args ()) ~args:Env.args ()
+let main ~args = Test.Cli.main ~name:"Task" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

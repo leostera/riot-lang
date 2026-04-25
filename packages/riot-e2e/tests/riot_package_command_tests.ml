@@ -72,9 +72,11 @@ let test_package_commands_handle_multiple_local_dependencies =
 
 let tests = [ test_package_commands_handle_multiple_local_dependencies ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args ->
-      Test.Cli.main ~execution_mode:Test.Cli.Linear ~name:"riot-e2e:package-commands" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main
+  ~execution_mode:Test.Cli.Linear
+  ~name:"riot-e2e:package-commands"
+  ~tests
+  ~args
+  ()
+
+let () = Runtime.run ~main ~args:Env.args ()

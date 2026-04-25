@@ -92,15 +92,13 @@ let test_recursive_type_decl_summary_roundtrip = fun ctx ->
     \  | Text of string\n\
     \  | Emphasis of inline_node list\n"
 
-let () =
-  Actors.run
-    ~main:(fun ~args ->
-      let tests = [
-        Test.case "trusted summary roundtrips through persisted json" test_trusted_summary_roundtrip;
-        Test.case "errored summary roundtrips through persisted json" test_errored_summary_roundtrip;
-        Test.case "type declarations roundtrip through persisted json" test_type_decl_summary_roundtrip;
-        Test.case "recursive type declarations roundtrip through persisted json" test_recursive_type_decl_summary_roundtrip;
-      ] in
-      Test.Cli.main ~name:"typ:module_typings" ~tests ~args)
-    ~args:Env.args
-    ()
+let main ~args =
+  let tests = [
+    Test.case "trusted summary roundtrips through persisted json" test_trusted_summary_roundtrip;
+    Test.case "errored summary roundtrips through persisted json" test_errored_summary_roundtrip;
+    Test.case "type declarations roundtrip through persisted json" test_type_decl_summary_roundtrip;
+    Test.case "recursive type declarations roundtrip through persisted json" test_recursive_type_decl_summary_roundtrip;
+  ] in
+  Test.Cli.main ~name:"typ:module_typings" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

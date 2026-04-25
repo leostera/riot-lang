@@ -149,5 +149,6 @@ let tests =
     case "reader writer copy loops reconstruct payloads" test_reader_writer_copy_loop_reconstructs_payload;
   ]
 
-let () =
-  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"IO.Writer" ~tests ~args ()) ~args:Env.args ()
+let main ~args = Test.Cli.main ~name:"IO.Writer" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

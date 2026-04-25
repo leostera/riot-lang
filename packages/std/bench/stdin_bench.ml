@@ -490,7 +490,7 @@ let benchmarks =
       (run_case Std_lines);
   ]
 
-let main = fun ~args ->
+let main ~args =
   match args with
   | _exe :: "--worker" :: worker_args ->
       let (mode, expected_bytes, expected_lines) = parse_worker_args worker_args in

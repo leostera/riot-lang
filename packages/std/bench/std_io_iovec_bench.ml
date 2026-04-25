@@ -113,8 +113,6 @@ let benchmarks =
       (bench_for_each medium_iovec);
   ]
 
-let () =
-  Runtime.run
-    ~main:(fun ~args -> Bench.Cli.main ~name:"std_io_iovec_bench" ~benchmarks ~args)
-    ~args:Env.args
-    ()
+let main ~args = Bench.Cli.main ~name:"std_io_iovec_bench" ~benchmarks ~args
+
+let () = Runtime.run ~main ~args:Env.args ()

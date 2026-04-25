@@ -135,14 +135,12 @@ let test_store_ignores_legacy_v3_namespace = fun _ctx ->
             )
         ))
 
-let () =
-  Actors.run
-    ~main:(fun ~args ->
-      let tests = [
-        Test.case "store roundtrips current namespace" test_store_roundtrips_current_namespace;
-        Test.case "store ignores legacy v2 namespace" test_store_ignores_legacy_v2_namespace;
-        Test.case "store ignores legacy v3 namespace" test_store_ignores_legacy_v3_namespace;
-      ] in
-      Test.Cli.main ~name:"typ:store" ~tests ~args)
-    ~args:Env.args
-    ()
+let main ~args =
+  let tests = [
+    Test.case "store roundtrips current namespace" test_store_roundtrips_current_namespace;
+    Test.case "store ignores legacy v2 namespace" test_store_ignores_legacy_v2_namespace;
+    Test.case "store ignores legacy v3 namespace" test_store_ignores_legacy_v3_namespace;
+  ] in
+  Test.Cli.main ~name:"typ:store" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

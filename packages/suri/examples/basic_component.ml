@@ -237,6 +237,9 @@ let html = to_html my_page|} ] ]
         footer [ p [ text "Built with "; strong [ text "Suri.Component" ]; text " | © 2025" ] ]
       ] ]
 
-let () =
+let main ~args:_ =
   let html = to_html welcome_page in
-  println html
+  println html;
+  Ok ()
+
+let () = Runtime.run ~main ~args:Env.args ()

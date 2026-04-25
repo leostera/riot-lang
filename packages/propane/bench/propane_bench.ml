@@ -139,8 +139,6 @@ let benchmarks =
       (bench_shrinking_failure ());
   ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args -> Bench.Cli.main ~name:"propane benchmarks" ~benchmarks ~args)
-    ~args:Env.args
-    ()
+let main ~args = Bench.Cli.main ~name:"propane benchmarks" ~benchmarks ~args
+
+let () = Runtime.run ~main ~args:Env.args ()

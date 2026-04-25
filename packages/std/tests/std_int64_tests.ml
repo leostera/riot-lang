@@ -131,5 +131,6 @@ let tests =
     case "hash is stable for the same value" test_hash_is_stable_for_the_same_value;
   ]
 
-let () =
-  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"int64" ~tests ~args ()) ~args:Env.args ()
+let main ~args = Test.Cli.main ~name:"int64" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

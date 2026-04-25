@@ -38,8 +38,6 @@ let string_concat_prop =
 
 let tests = [ list_rev_prop; division_prop; vector_length_prop; string_concat_prop ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"propane-basic-examples" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main ~name:"propane-basic-examples" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

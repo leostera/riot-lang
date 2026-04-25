@@ -62,5 +62,6 @@ let tests =
     case "range_of_offsets handles multiline utf16 ranges" test_range_of_offsets_multiline;
   ]
 
-let () =
-  Actors.run ~main:(fun ~args -> Test.Cli.main ~name:"utf16" ~tests ~args ()) ~args:Env.args ()
+let main ~args = Test.Cli.main ~name:"utf16" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

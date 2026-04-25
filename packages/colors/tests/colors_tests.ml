@@ -777,5 +777,6 @@ let tests =
     case "blend regressions and gradient helpers stay stable" test_blend_regressions_and_gradients;
   ]
 
-let () =
-  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"colors" ~tests ~args ()) ~args:Env.args ()
+let main ~args = Test.Cli.main ~name:"colors" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

@@ -366,8 +366,6 @@ let tests =
     case "serde-urlencoded encodes top-level unit as empty" test_encodes_top_level_unit_as_empty;
   ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"serde_urlencoded_tests" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main ~name:"serde_urlencoded_tests" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

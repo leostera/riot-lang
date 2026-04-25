@@ -1,7 +1,7 @@
 open Std
 open Gooey
 
-let () =
+let main ~args:_ =
   (* Create a simple UI *)
   let ui = Element.column
     ~style:Style.(empty |> padding (Style.Padding.all 2))
@@ -74,4 +74,7 @@ let () =
       | Render.ScissorEnd ->
           println "  ScissorEnd"
       | Render.Custom _ ->
-          println "  Custom")
+          println "  Custom");
+  Ok ()
+
+let () = Runtime.run ~main ~args:Env.args ()

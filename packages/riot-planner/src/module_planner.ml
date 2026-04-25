@@ -152,7 +152,7 @@ let plan_node = fun (input: plan_input) ->
           (* Binaries and commands need the full transitive runtime library
              closure, not just direct deps, because a direct package library
              like Std can reference modules provided by transitive deps such as
-             Kernel and Actors. Dev-only packages have no local library, but
+             Kernel and Runtime. Dev-only packages have no local library, but
              their test/example binaries still need the dependency closure. *)
           let unix_lib =
             if needs_unix then

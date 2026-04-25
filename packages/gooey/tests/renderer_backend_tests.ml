@@ -211,8 +211,6 @@ let tests =
     case "terminal renderers treat text size as a render no op" test_terminal_renderers_treat_text_size_as_a_render_no_op;
   ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"renderer_backends" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main ~name:"renderer_backends" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

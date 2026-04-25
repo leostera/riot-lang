@@ -231,7 +231,7 @@ let app = App.make ~init ~update ~view ()
 
 (* Run it *)
 
-let () =
+let main ~args:_ =
   (* Define table columns *)
   let columns = [
     Table.column ~title:"ID" ~width:5;
@@ -246,4 +246,6 @@ let () =
   let table = Table.make columns rows |> Table.set_height ~height:10 |> Table.focus in
   let initial_model = { table; selected_user = None; users } in
   let config = Minttea.config () in
-  Minttea.start ~config app initial_model
+  Minttea.run ~config initial_model app
+
+let () = Runtime.run ~main ~args:Env.args ()

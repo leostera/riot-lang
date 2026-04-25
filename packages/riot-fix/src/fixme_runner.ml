@@ -346,7 +346,7 @@ let library_source = fun plan ->
 
 let main_source = String.concat
   "\n"
-  [ "open Std"; ""; "let () ="; "  Actors.run ~main:Fixme_runner.main ~args:Env.args ()"; ""; ]
+  [ "open Std"; ""; "let () ="; "  Runtime.run ~main:Fixme_runner.main ~args:Env.args ()"; ""; ]
 
 let ensure_directories = fun plan ->
   List.for_each

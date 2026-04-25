@@ -339,8 +339,6 @@ let tests = [
   Test.case "serde-cbor rejects trailing bytes" test_rejects_trailing_bytes;
 ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"serde_cbor_tests" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main ~name:"serde_cbor_tests" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

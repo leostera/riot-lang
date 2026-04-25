@@ -70,8 +70,6 @@ let benchmarks =
       (bench_consume_and_refill ~count:4_096 ~chunk:small_chunk);
   ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args -> Bench.Cli.main ~name:"kernel_new_io_buffer_bench" ~benchmarks ~args)
-    ~args:Env.args
-    ()
+let main ~args = Bench.Cli.main ~name:"kernel_new_io_buffer_bench" ~benchmarks ~args
+
+let () = Runtime.run ~main ~args:Env.args ()

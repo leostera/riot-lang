@@ -239,8 +239,6 @@ let tests =
     case "compare and equal are consistent" test_compare_and_equal_are_consistent;
   ]
 
-let () =
-  Runtime.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"time_duration" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main ~name:"time_duration" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

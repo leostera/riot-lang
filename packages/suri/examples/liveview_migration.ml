@@ -326,7 +326,7 @@ let comparison_page: msg t = html
       ]; ]
 
 (** Demo Output *)
-let () =
+let main ~args:_ =
   println "=== STATIC HTML (No Interactivity) ===";
   println (to_html static_page);
   println "";
@@ -337,4 +337,7 @@ let () =
   println (to_html comparison_page);
   println "";
   println "💡 The same Component.t type works for both static and interactive!";
-  println "   Events are ignored in static HTML, active in LiveView."
+  println "   Events are ignored in static HTML, active in LiveView.";
+  Ok ()
+
+let () = Runtime.run ~main ~args:Env.args ()

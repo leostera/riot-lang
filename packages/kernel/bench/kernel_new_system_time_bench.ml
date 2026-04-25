@@ -151,8 +151,6 @@ let benchmarks =
     with_config ~config:{ iterations = 20; warmup = 5 } "time timer same-tick wakeups: 16" bench_timer_many_same_tick_wakeups;
   ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args -> Bench.Cli.main ~name:"kernel_new_system_time_bench" ~benchmarks ~args)
-    ~args:Env.args
-    ()
+let main ~args = Bench.Cli.main ~name:"kernel_new_system_time_bench" ~benchmarks ~args
+
+let () = Runtime.run ~main ~args:Env.args ()

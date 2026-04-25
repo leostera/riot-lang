@@ -464,29 +464,27 @@ let as_color = (midpoint :> color)
   else
     expected_optional_error "expected explicit polyvariant coercion scheme" expected actual
 
-let () =
-  Actors.run
-    ~main:(fun ~args ->
-      let tests = [
-        Test.case "summary2 roundtrips env summaries" test_summary2_roundtrip;
-        Test.case "env replay matches nested module lookups" test_env_replay_matches_lookup;
-        Test.case "builtin type constructors only expose syntax backed names" test_builtin_type_constructors_only_expose_syntax_backed_names;
-        Test.case "bind_in_scope keeps local module names" test_bind_in_scope_keeps_local_module_names;
-        Test.case "include entries strip module prefix once" test_include_entries_strip_module_prefix_once;
-        Test.case "module alias entries prefix once" test_module_alias_entries_prefix_once;
-        Test.case "item scope replay keeps module paths stable" test_item_scope_replay_keeps_module_paths_stable;
-        Test.case "export render keeps nested module paths stable" test_export_render_keeps_nested_module_paths_stable;
-        Test.case "direct infer keeps include module paths stable" test_direct_infer_keeps_include_module_paths_stable;
-        Test.case "direct infer rebinding replaces visible export" test_direct_infer_rebinding_replaces_visible_export;
-        Test.case "direct infer rebinding replaces visible nested export" test_direct_infer_rebinding_replaces_visible_nested_export;
-        Test.case "direct infer polyvariant expression uses named alias" test_direct_infer_poly_variant_expression_uses_named_alias;
-        Test.case "direct infer anonymous polyvariant expression keeps structural type" test_direct_infer_anonymous_poly_variant_expression_keeps_structural_type;
-        Test.case "direct infer polyvariant parameter uses named alias" test_direct_infer_poly_variant_parameter_uses_named_alias;
-        Test.case "direct infer polyvariant match uses common named alias" test_direct_infer_poly_variant_match_uses_common_named_alias;
-        Test.case "direct infer polyvariant match prefers widest visible alias" test_direct_infer_poly_variant_match_prefers_widest_visible_alias;
-        Test.case "direct infer explicit polyvariant coercion uses target alias" test_direct_infer_explicit_poly_variant_coercion_uses_target_alias;
-      ]
-      in
-      Test.Cli.main ~name:"typ:env2" ~tests ~args)
-    ~args:Std_env.args
-    ()
+let main ~args =
+  let tests = [
+    Test.case "summary2 roundtrips env summaries" test_summary2_roundtrip;
+    Test.case "env replay matches nested module lookups" test_env_replay_matches_lookup;
+    Test.case "builtin type constructors only expose syntax backed names" test_builtin_type_constructors_only_expose_syntax_backed_names;
+    Test.case "bind_in_scope keeps local module names" test_bind_in_scope_keeps_local_module_names;
+    Test.case "include entries strip module prefix once" test_include_entries_strip_module_prefix_once;
+    Test.case "module alias entries prefix once" test_module_alias_entries_prefix_once;
+    Test.case "item scope replay keeps module paths stable" test_item_scope_replay_keeps_module_paths_stable;
+    Test.case "export render keeps nested module paths stable" test_export_render_keeps_nested_module_paths_stable;
+    Test.case "direct infer keeps include module paths stable" test_direct_infer_keeps_include_module_paths_stable;
+    Test.case "direct infer rebinding replaces visible export" test_direct_infer_rebinding_replaces_visible_export;
+    Test.case "direct infer rebinding replaces visible nested export" test_direct_infer_rebinding_replaces_visible_nested_export;
+    Test.case "direct infer polyvariant expression uses named alias" test_direct_infer_poly_variant_expression_uses_named_alias;
+    Test.case "direct infer anonymous polyvariant expression keeps structural type" test_direct_infer_anonymous_poly_variant_expression_keeps_structural_type;
+    Test.case "direct infer polyvariant parameter uses named alias" test_direct_infer_poly_variant_parameter_uses_named_alias;
+    Test.case "direct infer polyvariant match uses common named alias" test_direct_infer_poly_variant_match_uses_common_named_alias;
+    Test.case "direct infer polyvariant match prefers widest visible alias" test_direct_infer_poly_variant_match_prefers_widest_visible_alias;
+    Test.case "direct infer explicit polyvariant coercion uses target alias" test_direct_infer_explicit_poly_variant_coercion_uses_target_alias;
+  ]
+  in
+  Test.Cli.main ~name:"typ:env2" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Std_env.args ()

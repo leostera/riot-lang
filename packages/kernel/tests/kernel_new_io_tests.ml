@@ -172,6 +172,6 @@ let tests = [
   Test.case "Kernel.IO.Stderr source register/deregister roundtrips" test_stderr_source_register_and_deregister;
 ]
 
-let main = fun ~args -> Test.Cli.main ~name:"kernel_new_io_tests" ~tests ~args ()
+let main ~args = Test.Cli.main ~name:"kernel_new_io_tests" ~tests ~args ()
 
-let () = Actors.run ~main ~args:Env.args ()
+let () = Runtime.run ~main ~args:Env.args ()

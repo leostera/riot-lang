@@ -50,11 +50,12 @@
         router routes;
       ]
       
-      let () = Actors.run ~args:Env.args () ~main:(fun ~args:_ ->
+      let main ~args:_ =
         match Suri.start_link app with
         | Ok _ -> (* ... *)
         | Error _ -> (* ... *)
-      )
+
+      let () = Runtime.run ~main ~args:Env.args ()
     ]}
     
     ## Production Safety

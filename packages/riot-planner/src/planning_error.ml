@@ -1,6 +1,11 @@
 open Std
 open Std.Collections
 
+type executable_main_error =
+  | MissingMain
+  | MultipleMainDefinitions of { count: int }
+  | InvalidMainParameters of { parameters: string list }
+
 type t =
   | CyclicDependency of { cycle: string list }
   | ScanFailed of { path: Path.t; reason: string }
@@ -34,7 +39,28 @@ type t =
       requested_module: string;
       allowed_modules: string list
     }
+  | InvalidExecutableMain of {
+      package_name: string;
+      target_name: string;
+      source: Path.t;
+      file: Path.t;
+      error: executable_main_error
+    }
   | Exception of { exn: exn }
+
+let executable_main_error_to_string = function
+  | MissingMain ->
+      "it does not define a top-level `let main ~args = ...` binding"
+  | MultipleMainDefinitions { count } ->
+      "it defines " ^ Int.to_string count ^ " top-level `main` bindings; executable entrypoints must define exactly one"
+  | InvalidMainParameters { parameters } ->
+      let parameter_list =
+        match parameters with
+        | [] -> "<none>"
+        | _ -> String.concat ", " parameters
+      in
+      "`main` must be written with exactly one labeled `~args` parameter, for example `let main ~args = Ok ()`; found parameters: "
+      ^ parameter_list
 
 let to_string = function
   | CyclicDependency { cycle } -> "Cyclic dependency detected: " ^ String.concat " -> " cycle
@@ -119,7 +145,34 @@ let to_string = function
   ^ "', but that module is not provided by this package or one of its direct dependencies. Allowed package modules: "
   ^ String.concat ", " allowed_modules
   ^ "."
+  | InvalidExecutableMain {
+    package_name;
+    target_name;
+    source;
+    file;
+    error
+  } -> "Package '"
+  ^ package_name
+  ^ "' executable target '"
+  ^ target_name
+  ^ "' source '"
+  ^ Path.to_string source
+  ^ "' file '"
+  ^ Path.to_string file
+  ^ "' has an invalid entrypoint: "
+  ^ executable_main_error_to_string error
+  ^ "."
   | Exception { exn } -> "Unexpected exception: " ^ Exception.to_string exn
+
+let executable_main_error_to_json = function
+  | MissingMain -> Data.Json.obj [ ("type", Data.Json.string "missing_main") ]
+  | MultipleMainDefinitions { count } -> Data.Json.obj
+    [ ("type", Data.Json.string "multiple_main_definitions"); ("count", Data.Json.Int count) ]
+  | InvalidMainParameters { parameters } -> Data.Json.obj
+    [
+      ("type", Data.Json.string "invalid_main_parameters");
+      ("parameters", Data.Json.array (List.map parameters ~fn:Data.Json.string))
+    ]
 
 let to_json = function
   | CyclicDependency { cycle } -> Data.Json.obj
@@ -196,6 +249,21 @@ let to_json = function
       ("source", Data.Json.string (Path.to_string source));
       ("requested_module", Data.Json.string requested_module);
       ("allowed_modules", Data.Json.array (List.map allowed_modules ~fn:Data.Json.string))
+    ]
+  | InvalidExecutableMain {
+    package_name;
+    target_name;
+    source;
+    file;
+    error
+  } -> Data.Json.obj
+    [
+      ("type", Data.Json.string "invalid_executable_main");
+      ("package_name", Data.Json.string package_name);
+      ("target_name", Data.Json.string target_name);
+      ("source", Data.Json.string (Path.to_string source));
+      ("file", Data.Json.string (Path.to_string file));
+      ("error", executable_main_error_to_json error)
     ]
   | Exception { exn } -> Data.Json.obj
     [

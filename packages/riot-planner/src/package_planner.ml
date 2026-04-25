@@ -418,7 +418,7 @@ let plan_bundle_of_json = fun ~(package:Package.t) json ->
     - Action graph (derived from module graph)
 
     If input_hash hasn't changed, we know the full hash is the same! *)
-let compute_input_hash = fun ?(planner_version = "planner-artifacts:v17") ~package ~depset ~workspace ~profile ~build_ctx ~toolchain () ->
+let compute_input_hash = fun ?(planner_version = "planner-artifacts:v18") ~package ~depset ~workspace ~profile ~build_ctx ~toolchain () ->
   let module H = Std.Crypto.Sha256 in
   let state = H.create () in
   (* Planner artifact contract version.

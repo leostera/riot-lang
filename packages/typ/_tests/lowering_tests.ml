@@ -428,7 +428,7 @@ let test_include_module_type_of_lowers_to_include_item = fun ctx ->
   let source = String.concat
     "\n"
     [
-      "include module type of Actors.Process";
+      "include module type of Runtime.Process";
       "val spawn : (unit -> (unit, exit_reason) result) -> Pid.t";
       "";
     ] in
@@ -455,19 +455,17 @@ let test_include_module_type_with_constraint_lowers_to_include_item = fun ctx ->
     source in
   Test.Snapshot.assert_inline_json ~ctx ~actual:(actual_type_item_lowering_json report) ~expected:expected_include_module_type_with_constraint_lowering_json
 
-let () =
-  Actors.run
-    ~main:(fun ~args ->
-      let tests = [
-        Test.case "fun cases preserve preceding parameters during lowering" test_fun_cases_preserve_preceding_parameters;
-        Test.case "abstract type declarations lower to type items" test_abstract_type_declarations_lower_to_type_items;
-        Test.case "manifest type aliases lower to type items" test_manifest_type_aliases_lower_to_type_items;
-        Test.case "arrow type aliases preserve labels during lowering" test_arrow_type_aliases_preserve_labels_during_lowering;
-        Test.case "polymorphic-variant type declarations lower to type items" test_poly_variant_type_declarations_lower_to_type_items;
-        Test.case "include module type of lowers to include items" test_include_module_type_of_lowers_to_include_item;
-        Test.case "include dotted module path lowers to include item" test_include_dotted_module_path_lowers_to_include_item;
-        Test.case "include module type with constraint lowers to include item" test_include_module_type_with_constraint_lowers_to_include_item;
-      ] in
-      Test.Cli.main ~name:"typ:lowering" ~tests ~args)
-    ~args:Env.args
-    ()
+let main ~args =
+  let tests = [
+    Test.case "fun cases preserve preceding parameters during lowering" test_fun_cases_preserve_preceding_parameters;
+    Test.case "abstract type declarations lower to type items" test_abstract_type_declarations_lower_to_type_items;
+    Test.case "manifest type aliases lower to type items" test_manifest_type_aliases_lower_to_type_items;
+    Test.case "arrow type aliases preserve labels during lowering" test_arrow_type_aliases_preserve_labels_during_lowering;
+    Test.case "polymorphic-variant type declarations lower to type items" test_poly_variant_type_declarations_lower_to_type_items;
+    Test.case "include module type of lowers to include items" test_include_module_type_of_lowers_to_include_item;
+    Test.case "include dotted module path lowers to include item" test_include_dotted_module_path_lowers_to_include_item;
+    Test.case "include module type with constraint lowers to include item" test_include_module_type_with_constraint_lowers_to_include_item;
+  ] in
+  Test.Cli.main ~name:"typ:lowering" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

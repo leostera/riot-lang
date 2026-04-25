@@ -113,8 +113,6 @@ let tests = [
   Test.case "successful writes leave no temp files behind" test_writes_leave_no_temp_files;
 ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"contentstore_store_layout_tests" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main ~name:"contentstore_store_layout_tests" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

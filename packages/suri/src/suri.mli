@@ -2,7 +2,7 @@ open Std
 
 (** {1 Suri - High-Performance Web Framework for OCaml}
 
-    Suri is a modern, actor-based web framework built on {!Std} and {!Actors}.
+    Suri is a modern, actor-based web framework built on {!Std} and {!Runtime}.
     It provides everything you need to build fast, fault-tolerant web applications
     with type safety and elegant concurrency.
 
@@ -17,7 +17,7 @@ open Std
     {2:why Why Suri?}
 
     {b ✅ Actor-Based Concurrency}
-    - Built on Actors's lightweight processes
+    - Built on Std.Runtime's lightweight processes
     - Supervised connection pools with automatic restart
     - Handle thousands of concurrent connections efficiently
 
@@ -50,7 +50,7 @@ open Std
         (fun conn -> Conn.respond conn ~status:Ok ~body:"Hello, World!")
       ]
 
-      let () = Actors.run ~args:Env.args () ~main:(fun ~args:_ ->
+      let main ~args:_ =
         match Suri.start_link app with
         | Ok _ ->
             Log.info "Server running on http://0.0.0.0:4000";
@@ -58,7 +58,8 @@ open Std
             loop ()
         | Error `Bind_error ->
             Error (Failure "Failed to bind")
-      )
+
+      let () = Runtime.run ~main ~args:Env.args ()
     ]}
 
     {3 With Custom Port}
@@ -97,7 +98,7 @@ open Std
         Middleware.Router.middleware routes;
       ]
 
-      let () = Actors.run ~args:Env.args () ~main:(fun ~args:_ ->
+      let main ~args:_ =
         match Suri.start_link app with
         | Ok _ ->
             Log.info "Server running";
@@ -105,7 +106,8 @@ open Std
             loop ()
         | Error `Bind_error ->
             Error (Failure "Failed to bind")
-      )
+
+      let () = Runtime.run ~main ~args:Env.args ()
     ]}
 
     {3 Custom Port}
@@ -147,7 +149,7 @@ open Std
         let conn = Middleware.Pipeline.run conn app in
         close (Middleware.Conn.to_response conn)
 
-      let () = Actors.run ~args:Env.args () ~main:(fun ~args:_ ->
+      let main ~args:_ =
         match Suri.start_link ~handler () with
         | Ok _ ->
             Log.info "Server with routing on http://0.0.0.0:4000";
@@ -155,7 +157,8 @@ open Std
             loop ()
         | Error `Bind_error ->
             Error (Failure "Failed to bind")
-      )
+
+      let () = Runtime.run ~main ~args:Env.args ()
     ]}
 
     {3 Type-Safe Components}

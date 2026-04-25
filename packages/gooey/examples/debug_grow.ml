@@ -5,7 +5,7 @@ open Gooey
 
 let text_measurer = fun ~constraints text style -> Config.default_text_measurer ~constraints text style
 
-let () =
+let main ~args:_ =
   (* Create UI: Three columns (Fixed 20, Grow, Fixed 15) *)
   let ui = Element.row
     [
@@ -46,4 +46,7 @@ let () =
         ^ Float.to_string cmd.bounding_box.width
         ^ " h="
         ^ Float.to_string cmd.bounding_box.height)
-      | _ -> ())
+      | _ -> ());
+  Ok ()
+
+let () = Runtime.run ~main ~args:Env.args ()

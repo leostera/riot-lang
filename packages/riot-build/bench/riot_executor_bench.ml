@@ -251,14 +251,11 @@ let benchmark_suite = fun root ->
       (make_execute_graph_cache_hit_bench root ~count:16 ~concurrency:4);
   ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args ->
-      match Fs.with_tempdir
-        ~prefix:"riot_executor_bench"
-        (fun root ->
-          Bench.Cli.main ~name:"riot-build benchmarks" ~benchmarks:(benchmark_suite root) ~args) with
-      | Ok result -> result
-      | Error err -> panic ("failed to prepare riot-build bench fixture: " ^ IO.error_message err))
-    ~args:Env.args
-    ()
+let main ~args =
+  match Fs.with_tempdir
+    ~prefix:"riot_executor_bench"
+    (fun root -> Bench.Cli.main ~name:"riot-build benchmarks" ~benchmarks:(benchmark_suite root) ~args) with
+  | Ok result -> result
+  | Error err -> panic ("failed to prepare riot-build bench fixture: " ^ IO.error_message err)
+
+let () = Runtime.run ~main ~args:Env.args ()

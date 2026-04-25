@@ -164,5 +164,6 @@ let tests =
     case "deps collect field access modules from implicit alias opens" test_deps_collect_field_access_modules_from_implicit_alias_opens;
   ]
 
-let () =
-  Actors.run ~main:(fun ~args -> Test.Cli.main ~name ~tests ~args ()) ~args:Env.args ()
+let main ~args = Test.Cli.main ~name ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

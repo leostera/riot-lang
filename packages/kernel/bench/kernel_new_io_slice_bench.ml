@@ -68,8 +68,6 @@ let benchmarks =
       (bench_to_string medium_slice);
   ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args -> Bench.Cli.main ~name:"kernel_new_io_slice_bench" ~benchmarks ~args)
-    ~args:Env.args
-    ()
+let main ~args = Bench.Cli.main ~name:"kernel_new_io_slice_bench" ~benchmarks ~args
+
+let () = Runtime.run ~main ~args:Env.args ()

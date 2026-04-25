@@ -6,7 +6,7 @@ let command =
   let open ArgParser in
     let open ArgParser.Arg in command name |> about "Run a minttea TUI demo"
 
-let main = fun ~args ->
+let main ~args =
   match ArgParser.get_matches command args with
   | Error err ->
       ArgParser.print_error err;
@@ -30,5 +30,5 @@ let should_autorun =
 
 let () =
   if should_autorun then
-    let _ = Actors.run ~main ~args:Std.Env.args () in
+    let _ = Runtime.run ~main ~args:Std.Env.args () in
     ()

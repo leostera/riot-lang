@@ -142,5 +142,6 @@ let tests =
     case "multiple mutations preserve final contents" test_multiple_mutations_preserve_final_contents;
   ]
 
-let () =
-  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"io_bytes" ~tests ~args ()) ~args:Env.args ()
+let main ~args = Test.Cli.main ~name:"io_bytes" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

@@ -33,6 +33,6 @@ let tests = [
   Test.case "Std.IO.IoBuffer to_iovec views the readable region" test_iobuffer_to_iovec_views_readable_region;
 ]
 
-let main = fun ~args -> Test.Cli.main ~name:"std_io_iobuffer_tests" ~tests ~args ()
+let main ~args = Test.Cli.main ~name:"std_io_iobuffer_tests" ~tests ~args ()
 
-let () = Actors.run ~main ~args:Env.args ()
+let () = Runtime.run ~main ~args:Env.args ()

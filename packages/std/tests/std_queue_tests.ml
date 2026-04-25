@@ -585,5 +585,6 @@ let tests =
     case ~size:Large "Queue preserves every value with concurrent producers and consumers" test_mixed_producers_and_consumers_preserve_every_value;
   ]
 
-let () =
-  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"queue" ~tests ~args ()) ~args:Env.args ()
+let main ~args = Test.Cli.main ~name:"queue" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

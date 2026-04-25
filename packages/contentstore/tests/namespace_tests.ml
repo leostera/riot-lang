@@ -46,8 +46,6 @@ let tests = [
   Test.case "namespace accepts unicode parts" test_namespace_accepts_unicode_parts;
 ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"contentstore_namespace_tests" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main ~name:"contentstore_namespace_tests" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

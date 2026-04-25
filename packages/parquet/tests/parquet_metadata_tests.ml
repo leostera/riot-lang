@@ -102,8 +102,6 @@ let tests = [
   Test.case "parquet metadata rejects trailing bytes" test_rejects_trailing_metadata_bytes;
 ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"parquet_metadata_tests" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main ~name:"parquet_metadata_tests" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

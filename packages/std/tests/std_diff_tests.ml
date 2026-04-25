@@ -129,27 +129,25 @@ let test_at_path_no_match = Test.case "at_path with no match" @@ fun _ctx ->
   else
     Error "Expected no matches"
 
-let () =
-  Runtime.run
-    ~main:(fun ~args ->
-      let all_tests = [
-        test_path_component_key;
-        test_path_component_index;
-        test_kind_added;
-        test_kind_removed;
-        test_kind_changed;
-        test_change_empty_path;
-        test_change_nested_path;
-        test_change_mixed_path;
-        test_has_changes_empty;
-        test_has_changes_with_changes;
-        test_additions_filter;
-        test_removals_filter;
-        test_changes_filter;
-        test_at_path_exact_match;
-        test_at_path_no_match;
-      ]
-      in
-      Test.Cli.main ~name:"diff" ~tests:all_tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args =
+  let all_tests = [
+    test_path_component_key;
+    test_path_component_index;
+    test_kind_added;
+    test_kind_removed;
+    test_kind_changed;
+    test_change_empty_path;
+    test_change_nested_path;
+    test_change_mixed_path;
+    test_has_changes_empty;
+    test_has_changes_with_changes;
+    test_additions_filter;
+    test_removals_filter;
+    test_changes_filter;
+    test_at_path_exact_match;
+    test_at_path_no_match;
+  ]
+  in
+  Test.Cli.main ~name:"diff" ~tests:all_tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

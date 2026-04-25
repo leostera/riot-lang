@@ -123,8 +123,6 @@ let benchmarks =
     with_config ~config "zero-copy line writev: medium" (bench_zero_copy_line_writev medium_message);
   ]
 
-let () =
-  Runtime.run
-    ~main:(fun ~args -> Bench.Cli.main ~name:"Global Print Benchmarks" ~benchmarks ~args)
-    ~args:Env.args
-    ()
+let main ~args = Bench.Cli.main ~name:"Global Print Benchmarks" ~benchmarks ~args
+
+let () = Runtime.run ~main ~args:Env.args ()

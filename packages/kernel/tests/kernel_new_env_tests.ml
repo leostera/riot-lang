@@ -215,7 +215,11 @@ let tests = [
   Test.case "Env.set_current_dir rejects regular files cleanly" test_set_current_dir_regular_file_fails_cleanly;
 ]
 
-let main = fun ~args ->
-  Test.Cli.main ~execution_mode:Test.Cli.Linear ~name:"kernel_new_env_tests" ~tests ~args ()
+let main ~args = Test.Cli.main
+  ~execution_mode:Test.Cli.Linear
+  ~name:"kernel_new_env_tests"
+  ~tests
+  ~args
+  ()
 
-let () = Actors.run ~main ~args:Env.args ()
+let () = Runtime.run ~main ~args:Env.args ()

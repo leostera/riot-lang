@@ -146,9 +146,6 @@ let tests =
     case "default_is_snapshot" test_default_is_snapshot;
   ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args ->
-      Test.Cli.main ~execution_mode:Test.Cli.Linear ~name:"tty_profile" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main ~execution_mode:Test.Cli.Linear ~name:"tty_profile" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

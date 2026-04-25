@@ -67,48 +67,46 @@ let app =
     router routes;
   ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args:_ ->
-      Log.(set_level Debug);
-      let port = 8_080 in
-      let config = Suri.config ~port () in
-      Log.info "===========================================";
-      Log.info "🎉 Static Files Middleware Example";
-      Log.info "===========================================";
-      Log.info (String.concat "" [ "Server: http://localhost:"; string_of_int port; "/" ]);
-      Log.info "";
-      Log.info "📂 Endpoints:";
-      Log.info "  http://localhost:8080/              → Redirects to /public/";
-      Log.info "  http://localhost:8080/public/       → index.html (auto)";
-      Log.info "  http://localhost:8080/public/about.html";
-      Log.info "  http://localhost:8080/public/assets/style.css → CSS with MIME type";
-      Log.info "  http://localhost:8080/public/assets/app.js   → JavaScript";
-      Log.info "  http://localhost:8080/browse/       → Directory listing";
-      Log.info "";
-      Log.info "🔒 Security Tests:";
-      Log.info "  http://localhost:8080/public/../../../etc/passwd → 403 Forbidden";
-      Log.info "  http://localhost:8080/public/.env.example → 403 Forbidden (dotfile)";
-      Log.info "";
-      Log.info "💾 Caching:";
-      Log.info "  - First visit: 200 OK with ETag header";
-      Log.info "  - Refresh: 304 Not Modified (cached!)";
-      Log.info "  - Check Network tab in DevTools";
-      Log.info "";
-      Log.info "🌐 API Endpoints:";
-      Log.info "  http://localhost:8080/api/status";
-      Log.info "  http://localhost:8080/api/info";
-      Log.info "";
-      Log.info "===========================================";
-      match Suri.start_link ~config app with
-      | Ok _supervisor ->
-          let rec loop () =
-            sleep (Time.Duration.from_secs 100);
-            loop ()
-          in
-          loop ()
-      | Error `Bind_error ->
-          Log.error "Failed to bind to port 8080";
-          Error (Failure "Failed to start server"))
-    ~args:Env.args
-    ()
+let main ~args:_ =
+  Log.(set_level Debug);
+  let port = 8_080 in
+  let config = Suri.config ~port () in
+  Log.info "===========================================";
+  Log.info "🎉 Static Files Middleware Example";
+  Log.info "===========================================";
+  Log.info (String.concat "" [ "Server: http://localhost:"; string_of_int port; "/" ]);
+  Log.info "";
+  Log.info "📂 Endpoints:";
+  Log.info "  http://localhost:8080/              → Redirects to /public/";
+  Log.info "  http://localhost:8080/public/       → index.html (auto)";
+  Log.info "  http://localhost:8080/public/about.html";
+  Log.info "  http://localhost:8080/public/assets/style.css → CSS with MIME type";
+  Log.info "  http://localhost:8080/public/assets/app.js   → JavaScript";
+  Log.info "  http://localhost:8080/browse/       → Directory listing";
+  Log.info "";
+  Log.info "🔒 Security Tests:";
+  Log.info "  http://localhost:8080/public/../../../etc/passwd → 403 Forbidden";
+  Log.info "  http://localhost:8080/public/.env.example → 403 Forbidden (dotfile)";
+  Log.info "";
+  Log.info "💾 Caching:";
+  Log.info "  - First visit: 200 OK with ETag header";
+  Log.info "  - Refresh: 304 Not Modified (cached!)";
+  Log.info "  - Check Network tab in DevTools";
+  Log.info "";
+  Log.info "🌐 API Endpoints:";
+  Log.info "  http://localhost:8080/api/status";
+  Log.info "  http://localhost:8080/api/info";
+  Log.info "";
+  Log.info "===========================================";
+  match Suri.start_link ~config app with
+  | Ok _supervisor ->
+      let rec loop () =
+        sleep (Time.Duration.from_secs 100);
+        loop ()
+      in
+      loop ()
+  | Error `Bind_error ->
+      Log.error "Failed to bind to port 8080";
+      Error (Failure "Failed to start server")
+
+let () = Runtime.run ~main ~args:Env.args ()

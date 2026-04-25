@@ -378,6 +378,9 @@ let example_page: unit t = html
           ];
       ]; ]
 
-let () =
+let main ~args:_ =
   let html = to_html example_page in
-  println html
+  println html;
+  Ok ()
+
+let () = Runtime.run ~main ~args:Env.args ()

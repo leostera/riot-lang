@@ -6,7 +6,7 @@ module G = Graph.SimpleGraph
 let test_toolchain = Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
 |> Result.expect ~msg:"Failed to initialize toolchain"
 
-let planner_artifacts_version = "planner-artifacts:v16"
+let planner_artifacts_version = "planner-artifacts:v18"
 
 let legacy_planner_artifacts_version = "planner-artifacts:v12"
 
@@ -198,6 +198,28 @@ let find_create_executable_named = fun action_graph name ->
 
 let path_list_to_string = fun paths ->
   String.concat ", " (List.map paths ~fn:Path.to_string)
+
+let binary_main = fun expression -> "let main ~args:_ =\n  " ^ expression ^ ";\n  Ok ()\n"
+
+let plan_single_binary_source = fun ~tmpdir source_text ->
+  let package = make_package_with_files
+    ~library:None
+    ~tmpdir
+    ~package_name:"entry-demo"
+    ~files:[ ("src/main.ml", source_text) ]
+    ~binaries:[ ("entry-demo", "src/main.ml") ] in
+  let workspace = make_test_workspace tmpdir [ package ] in
+  let store = Riot_store.Store.create ~workspace in
+  let package_graph = Riot_planner.Package_graph.create ~scope:Riot_planner.Package_graph.Runtime workspace
+  |> Result.expect ~msg:"package graph should build" in
+  let package_key = Riot_planner.Package_graph.package_key
+    ~package_name:(Package_name.to_string package.name)
+    Riot_planner.Package_graph.Runtime in
+  let build_ctx = Riot_model.Build_ctx.make
+    ~session_id:(Riot_model.Session_id.make ())
+    ~profile:Riot_model.Profile.debug
+    () in
+  plan_package_raw ~workspace ~store ~package_graph ~package_key ~build_ctx
 
 let has_compile_implementation_for_source = fun actions source ->
   List.any actions
@@ -654,7 +676,7 @@ let test_dev_scope_test_binaries_include_private_helpers = fun _ctx ->
           ~binaries:[ ("foo_tests", "tests/foo_tests.ml") ]
           ~files:[
             ("tests/helper.ml", "let value = 1\n");
-            ("tests/foo_tests.ml", "let () = ignore Helper.value\n");
+            ("tests/foo_tests.ml", binary_main "ignore Helper.value");
           ] with
         | Error _ as err -> err
         | Ok (_package, action_graph) ->
@@ -684,10 +706,10 @@ let test_dev_scope_no_library_tests_include_package_named_helpers = fun _ctx ->
           ~package_name:"hello-world"
           ~binaries:[ ("hello_world_tests", "tests/hello_world_tests.ml") ]
           ~files:[
-            ("src/main.ml", "let () = ignore (Hello_world.hello ())\n");
+            ("src/main.ml", binary_main "ignore (Hello_world.hello ())");
             ("src/hello_world.mli", "val hello : unit -> string\n");
             ("src/hello_world.ml", "let hello () = \"Hello from hello-world\"\n");
-            ("tests/hello_world_tests.ml", "let value = Hello_world.hello ()\n");
+            ("tests/hello_world_tests.ml", binary_main "ignore (Hello_world.hello ())");
           ] with
         | Error _ as err -> err
         | Ok (_package, action_graph) ->
@@ -728,7 +750,7 @@ let test_dev_scope_tests_can_import_own_runtime_library_root = fun _ctx ->
           ~binaries:[ ("self_lib_tests", "tests/self_lib_tests.ml") ]
           ~files:[
             ("src/self_lib.ml", "let value = 1\n");
-            ("tests/self_lib_tests.ml", "let value = Self_lib.value\n");
+            ("tests/self_lib_tests.ml", binary_main "ignore Self_lib.value");
           ] with
         | Error _ as err -> err
         | Ok (_package, action_graph) -> (
@@ -760,7 +782,7 @@ let test_dev_scope_example_binaries_include_private_helpers = fun _ctx ->
           ~binaries:[ ("demo", "examples/demo.ml") ]
           ~files:[
             ("examples/helper.ml", "let value = 1\n");
-            ("examples/demo.ml", "let () = ignore Helper.value\n");
+            ("examples/demo.ml", binary_main "ignore Helper.value");
           ] with
         | Error _ as err -> err
         | Ok (_package, action_graph) ->
@@ -791,7 +813,7 @@ let test_dev_scope_bench_binaries_include_private_helpers = fun _ctx ->
           ~binaries:[ ("foo_bench", "bench/foo_bench.ml") ]
           ~files:[
             ("bench/helper.ml", "let value = 1\n");
-            ("bench/foo_bench.ml", "let () = ignore Helper.value\n");
+            ("bench/foo_bench.ml", binary_main "ignore Helper.value");
           ] with
         | Error _ as err -> err
         | Ok (_package, action_graph) ->
@@ -826,11 +848,11 @@ let test_dev_scope_keeps_private_helpers_separated_by_root = fun _ctx ->
           ]
           ~files:[
             ("tests/test_helper.ml", "let value = 1\n");
-            ("tests/foo_tests.ml", "let () = ignore Test_helper.value\n");
+            ("tests/foo_tests.ml", binary_main "ignore Test_helper.value");
             ("examples/example_helper.ml", "let value = 2\n");
-            ("examples/demo.ml", "let () = ignore Example_helper.value\n");
+            ("examples/demo.ml", binary_main "ignore Example_helper.value");
             ("bench/bench_helper.ml", "let value = 3\n");
-            ("bench/foo_bench.ml", "let () = ignore Bench_helper.value\n");
+            ("bench/foo_bench.ml", binary_main "ignore Bench_helper.value");
           ] with
         | Error _ as err -> err
         | Ok (_package, action_graph) ->
@@ -1016,6 +1038,128 @@ let test_build_scope_excludes_runtime_and_dev_roots = fun _ctx ->
         | Ok result ->
             Error ("expected helper build package plan to return Planned, got "
             ^ describe_plan_result result))
+  with
+  | Ok result -> result
+  | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
+
+let test_binary_entrypoint_accepts_single_labeled_args_main = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"planner_binary_main_valid"
+      (fun tmpdir ->
+        match plan_single_binary_source ~tmpdir "let main ~args:_ = Ok ()\n" with
+        | Ok (Riot_planner.Package_planner.Planned _) -> Ok ()
+        | Ok result -> Error ("expected package to be planned, got " ^ describe_plan_result result)
+        | Error err -> Error ("expected valid executable main, got "
+        ^ Riot_planner.Planning_error.to_string err))
+  with
+  | Ok result -> result
+  | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
+
+let test_binary_entrypoint_rejects_fun_labeled_args_main = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"planner_binary_main_fun_invalid"
+      (fun tmpdir ->
+        match plan_single_binary_source ~tmpdir "let main = fun ~args -> Ok ()\n" with
+        | Error (Riot_planner.Planning_error.InvalidExecutableMain {
+          error=Riot_planner.Planning_error.InvalidMainParameters { parameters };
+          _;
+
+        }) ->
+            if parameters = [] then
+              Ok ()
+            else
+              Error ("expected no direct main parameters, got " ^ String.concat ", " parameters)
+        | Error err -> Error ("expected invalid-main-parameters executable error, got "
+        ^ Riot_planner.Planning_error.to_string err)
+        | Ok _ -> Error "expected planner to reject fun-expression executable main")
+  with
+  | Ok result -> result
+  | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
+
+let test_binary_entrypoint_requires_main_binding = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"planner_binary_main_missing"
+      (fun tmpdir ->
+        match plan_single_binary_source ~tmpdir "let () = print_endline \"hello\"\n" with
+        | Error (Riot_planner.Planning_error.InvalidExecutableMain {
+          target_name;
+          source;
+          error=Riot_planner.Planning_error.MissingMain;
+
+        }) ->
+            if not (String.equal target_name "entry-demo") then
+              Error ("expected target entry-demo, got " ^ target_name)
+            else if not (Path.equal source (Path.v "src/main.ml")) then
+              Error ("expected source src/main.ml, got " ^ Path.to_string source)
+            else
+              Ok ()
+        | Error err -> Error ("expected missing-main executable error, got "
+        ^ Riot_planner.Planning_error.to_string err)
+        | Ok _ -> Error "expected planner to reject missing executable main")
+  with
+  | Ok result -> result
+  | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
+
+let test_binary_entrypoint_rejects_multiple_main_bindings = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"planner_binary_main_duplicate"
+      (fun tmpdir ->
+        let source = "let main ~args:_ = Ok ()\nlet main ~args:_ = Ok ()\n" in
+        match plan_single_binary_source ~tmpdir source with
+        | Error (Riot_planner.Planning_error.InvalidExecutableMain {
+          error=Riot_planner.Planning_error.MultipleMainDefinitions { count };
+          _;
+
+        }) ->
+            if count = 2 then
+              Ok ()
+            else
+              Error ("expected duplicate count 2, got " ^ Int.to_string count)
+        | Error err -> Error ("expected duplicate-main executable error, got "
+        ^ Riot_planner.Planning_error.to_string err)
+        | Ok _ -> Error "expected planner to reject duplicate executable main bindings")
+  with
+  | Ok result -> result
+  | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
+
+let test_binary_entrypoint_rejects_positional_args_parameter = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"planner_binary_main_positional"
+      (fun tmpdir ->
+        match plan_single_binary_source ~tmpdir "let main args = Ok ()\n" with
+        | Error (Riot_planner.Planning_error.InvalidExecutableMain {
+          error=Riot_planner.Planning_error.InvalidMainParameters { parameters };
+          _;
+
+        }) ->
+            if parameters = [ "args" ] then
+              Ok ()
+            else
+              Error ("expected positional args parameter, got " ^ String.concat ", " parameters)
+        | Error err -> Error ("expected invalid-main-parameters executable error, got "
+        ^ Riot_planner.Planning_error.to_string err)
+        | Ok _ -> Error "expected planner to reject positional executable main args")
+  with
+  | Ok result -> result
+  | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
+
+let test_binary_entrypoint_rejects_extra_parameters = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"planner_binary_main_extra_parameter"
+      (fun tmpdir ->
+        match plan_single_binary_source ~tmpdir "let main ~args () = Ok ()\n" with
+        | Error (Riot_planner.Planning_error.InvalidExecutableMain {
+          error=Riot_planner.Planning_error.InvalidMainParameters { parameters };
+          _;
+
+        }) ->
+            if parameters = [ "~args"; "<positional>" ] then
+              Ok ()
+            else
+              Error ("expected ~args and positional parameter, got " ^ String.concat ", " parameters)
+        | Error err -> Error ("expected invalid-main-parameters executable error, got "
+        ^ Riot_planner.Planning_error.to_string err)
+        | Ok _ -> Error "expected planner to reject executable main with extra parameters")
   with
   | Ok result -> result
   | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
@@ -1700,7 +1844,7 @@ let test_planner_rejects_direct_internal_library_access = fun _ctx ->
           ~files:[
             ("src/berrybot.ml", "module A = A\n");
             ("src/a.ml", "let value = 42\n");
-            ("src/main.ml", "let () = ignore A.value\n");
+            ("src/main.ml", binary_main "ignore A.value");
           ]
           ~binaries:[ ("berrybot", "src/main.ml") ] in
         let workspace = make_test_workspace tmpdir [ package ] in
@@ -1753,7 +1897,7 @@ let test_planner_rejects_namespaced_internal_library_access = fun _ctx ->
           ~files:[
             ("src/berrybot.ml", "module A = A\n");
             ("src/a.ml", "let value = 42\n");
-            ("src/main.ml", "let () = ignore Berrybot__A.value\n");
+            ("src/main.ml", binary_main "ignore Berrybot__A.value");
           ]
           ~binaries:[ ("berrybot", "src/main.ml") ] in
         let workspace = make_test_workspace tmpdir [ package ] in
@@ -1806,8 +1950,11 @@ let test_planner_rejects_direct_other_binary_root_access = fun _ctx ->
           ~files:[
             ("src/berrybot.ml", "module A = A\n");
             ("src/a.ml", "let value = 42\n");
-            ("src/main.ml", "let () = Admin.run ()\n");
-            ("src/admin.ml", "let run () = ignore Berrybot.A.value\n");
+            ("src/main.ml", binary_main "Admin.run ()");
+            (
+              "src/admin.ml",
+              "let run () = ignore Berrybot.A.value\n\nlet main ~args:_ =\n  run ();\n  Ok ()\n"
+            );
           ]
           ~binaries:[ ("berrybot", "src/main.ml"); ("admin", "src/admin.ml") ] in
         let workspace = make_test_workspace tmpdir [ package ] in
@@ -1863,8 +2010,11 @@ let test_planner_rejects_namespaced_other_binary_root_access = fun _ctx ->
           ~files:[
             ("src/berrybot.ml", "module A = A\n");
             ("src/a.ml", "let value = 42\n");
-            ("src/main.ml", "let () = Berrybot__Admin.run ()\n");
-            ("src/admin.ml", "let run () = ignore Berrybot.A.value\n");
+            ("src/main.ml", binary_main "Berrybot__Admin.run ()");
+            (
+              "src/admin.ml",
+              "let run () = ignore Berrybot.A.value\n\nlet main ~args:_ =\n  run ();\n  Ok ()\n"
+            );
           ]
           ~binaries:[ ("berrybot", "src/main.ml"); ("admin", "src/admin.ml") ] in
         let workspace = make_test_workspace tmpdir [ package ] in
@@ -2375,7 +2525,9 @@ let test_legacy_krasny_plan_bundle_with_bad_root_module_is_ignored_after_version
         let _ = Fs.create_dir_all src_dir |> Result.expect ~msg:"expected krasny src dir creation to succeed" in
         let _ = Fs.write "let format value = value\n" Path.(src_dir / Path.v "Krasny.ml")
         |> Result.expect ~msg:"expected Krasny.ml write to succeed" in
-        let _ = Fs.write "let () = ignore (Krasny.format \"ok\")\n" Path.(src_dir / Path.v "main.ml")
+        let _ = Fs.write
+          (binary_main "ignore (Krasny.format \"ok\")")
+          Path.(src_dir / Path.v "main.ml")
         |> Result.expect ~msg:"expected main.ml write to succeed" in
         let package = Riot_model.Package.make ~name:(Package_name.from_string "krasny"
         |> Result.expect ~msg:"expected valid package name") ~path:package_root ~relative_path:(Path.v
@@ -2473,6 +2625,12 @@ let tests =
     case "dev scope example binaries include private helpers" test_dev_scope_example_binaries_include_private_helpers;
     case "dev scope bench binaries include private helpers" test_dev_scope_bench_binaries_include_private_helpers;
     case "dev scope keeps private helpers separated by root" test_dev_scope_keeps_private_helpers_separated_by_root;
+    case "binary entrypoint accepts single labeled args main" test_binary_entrypoint_accepts_single_labeled_args_main;
+    case "binary entrypoint rejects fun labeled args main" test_binary_entrypoint_rejects_fun_labeled_args_main;
+    case "binary entrypoint requires main binding" test_binary_entrypoint_requires_main_binding;
+    case "binary entrypoint rejects multiple main bindings" test_binary_entrypoint_rejects_multiple_main_bindings;
+    case "binary entrypoint rejects positional args parameter" test_binary_entrypoint_rejects_positional_args_parameter;
+    case "binary entrypoint rejects extra parameters" test_binary_entrypoint_rejects_extra_parameters;
     case ~size:Large "kernel input hash is not empty digest" test_kernel_input_hash_is_not_empty_digest;
     case "plan bundle cache hit restores module and action graphs" test_plan_bundle_cache_hit_restores_module_and_action_graphs;
     case "cached artifact and exports short-circuit without plan bundle" test_cached_artifact_and_exports_short_circuit_without_plan_bundle;
@@ -2499,5 +2657,6 @@ let tests =
 
 let name = "Planner Package Planning Tests"
 
-let () =
-  Actors.run ~main:(fun ~args -> Test.Cli.main ~name ~tests ~args ()) ~args:Env.args ()
+let main ~args = Test.Cli.main ~name ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

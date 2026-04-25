@@ -88,8 +88,6 @@ let tests =
     case "option shrinker can drop the payload" test_option_shrinker_can_drop_the_payload;
   ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"propane/shrinker_tests" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main ~name:"propane/shrinker_tests" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

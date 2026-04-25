@@ -68,6 +68,6 @@ let tests = [
   Test.case "Buffer to_iovec views the readable region" test_to_iovec_views_readable_slice;
 ]
 
-let main = fun ~args -> Test.Cli.main ~name:"kernel_new_io_buffer_tests" ~tests ~args ()
+let main ~args = Test.Cli.main ~name:"kernel_new_io_buffer_tests" ~tests ~args ()
 
-let () = Actors.run ~main ~args:Env.args ()
+let () = Runtime.run ~main ~args:Env.args ()

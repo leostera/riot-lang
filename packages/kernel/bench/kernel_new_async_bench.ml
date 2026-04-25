@@ -287,8 +287,6 @@ let benchmarks =
     with_config ~config:{ iterations = 25; warmup = 5 } "async mixed-source wakeup" bench_mixed_source_poll;
   ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args -> Bench.Cli.main ~name:"kernel_new_async_bench" ~benchmarks ~args)
-    ~args:Env.args
-    ()
+let main ~args = Bench.Cli.main ~name:"kernel_new_async_bench" ~benchmarks ~args
+
+let () = Runtime.run ~main ~args:Env.args ()

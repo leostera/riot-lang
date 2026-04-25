@@ -162,9 +162,9 @@ let benchmarks = fun () ->
   ] in
   fixtures |> List.map ~fn:benchmark_group |> List.concat
 
-let () =
-  Runtime.run
-    ~main:(fun ~args ->
-      Bench.Cli.main ~name:"Riot Model Source Scan Benchmarks" ~benchmarks:(benchmarks ()) ~args)
-    ~args:Env.args
-    ()
+let main ~args = Bench.Cli.main
+  ~name:"Riot Model Source Scan Benchmarks"
+  ~benchmarks:(benchmarks ())
+  ~args
+
+let () = Runtime.run ~main ~args:Env.args ()

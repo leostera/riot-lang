@@ -2,7 +2,7 @@
 open Std
 open Std.Collections
 
-let () =
+let main ~args:_ =
   println "=== Word Navigation Example ===\n";
   (* Example 1: Basic English text *)
   println "1. Basic English text:";
@@ -106,4 +106,7 @@ let () =
   in
   show_back_navigation (String.length text);
   println "";
-  println "Word navigation example completed!"
+  println "Word navigation example completed!";
+  Ok ()
+
+let () = Runtime.run ~main ~args:Env.args ()

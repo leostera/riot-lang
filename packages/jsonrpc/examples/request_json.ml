@@ -1,7 +1,7 @@
 open Std
 open Jsonrpc
 
-let main = fun ~args:_ ->
+let main ~args:_ =
   let request = Jsonrpc.request
     ~method_:"ping"
     ~params:(Named [ ("client", Data.Json.string "riot") ])
@@ -10,4 +10,4 @@ let main = fun ~args:_ ->
   println (Data.Json.to_string_pretty (Jsonrpc.request_to_json request));
   Ok ()
 
-let () = Actors.run ~main ~args:Env.args ()
+let () = Runtime.run ~main ~args:Env.args ()

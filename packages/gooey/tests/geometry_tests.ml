@@ -37,5 +37,6 @@ let tests =
     case "Viewport creation" test_viewport_creation;
   ]
 
-let () =
-  Actors.run ~main:(fun ~args -> Test.Cli.main ~name:"geometry" ~tests ~args ()) ~args:Env.args ()
+let main ~args = Test.Cli.main ~name:"geometry" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

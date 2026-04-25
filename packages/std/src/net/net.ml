@@ -1,4 +1,4 @@
-(** Network I/O operations for Actors *)
+(** Network I/O operations for the actor runtime *)
 type error =
   | Connection_refused
   | Closed

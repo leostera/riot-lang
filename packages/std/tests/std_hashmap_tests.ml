@@ -241,5 +241,6 @@ let tests =
     case "HashMap.mut_iter yields only live entries" test_mut_iter_after_removals;
   ]
 
-let () =
-  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"hashmap" ~tests ~args ()) ~args:Env.args ()
+let main ~args = Test.Cli.main ~name:"hashmap" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

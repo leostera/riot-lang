@@ -211,8 +211,6 @@ let tests =
     case "Node_id accessors are internally consistent" test_node_id_accessors_are_consistent;
   ]
 
-let () =
-  Runtime.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"graph_simple_graph" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main ~name:"graph_simple_graph" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

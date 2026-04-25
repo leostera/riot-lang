@@ -202,47 +202,47 @@ get "/api/ip"
     |> Conn.with_header "content-type" "application/json"
     |> Conn.send);]
 
-let () =
-  Actors.run ~args:Env.args ()
-    ~main:(fun ~args:_ ->
-      (* Middleware pipeline showcasing all 6 new features *)
-      (* NOTE: remote_ip commented out due to optional parameter type issues in lists *)
-      (* To use: let mw = Remote_ip.middleware ~proxies:["..."] in ... mw :: rest ... *)
-      let app =
-        let open Middleware in [
-          request_id;
-          logger;
-          runner;
-          head;
-          body_parser ();
-          method_override;
-          conditional_get;
-          etag;
-          router routes;
-        ] in
-      let config = Suri.config ~port:4_000 () in
-      match Suri.start_link ~config app with
-      | Ok _supervisor ->
-          Log.info "===========================================";
-          Log.info "🚀 HTTP Caching & Middleware Demo";
-          Log.info "===========================================";
-          Log.info "Server: http://localhost:4000";
-          Log.info "";
-          Log.info "⭐ NEW MIDDLEWARE ACTIVE (5 features):";
-          Log.info "  ✅ Head Handler - Auto HEAD support";
-          Log.info "  ✅ Runner - X-Runtime timing header";
-          Log.info "  ✅ Method Override - Forms can DELETE/PUT";
-          Log.info "  ✅ ETag - Content-based cache IDs";
-          Log.info "  ✅ Conditional Get - 304 Not Modified";
-          Log.info "";
-          Log.info "Visit http://localhost:4000 for interactive examples!";
-          Log.info "===========================================";
-          (* Keep alive *)
-          let rec loop () =
-            sleep (Time.Duration.from_secs 100);
-            loop ()
-          in
-          loop ()
-      | Error `Bind_error ->
-          Log.error "Failed to bind to port 4000";
-          Error (Failure "Failed to start server"))
+let main ~args:_ =
+  (* Middleware pipeline showcasing all 6 new features *)
+  (* NOTE: remote_ip commented out due to optional parameter type issues in lists *)
+  (* To use: let mw = Remote_ip.middleware ~proxies:["..."] in ... mw :: rest ... *)
+  let app =
+    let open Middleware in [
+      request_id;
+      logger;
+      runner;
+      head;
+      body_parser ();
+      method_override;
+      conditional_get;
+      etag;
+      router routes;
+    ] in
+  let config = Suri.config ~port:4_000 () in
+  match Suri.start_link ~config app with
+  | Ok _supervisor ->
+      Log.info "===========================================";
+      Log.info "🚀 HTTP Caching & Middleware Demo";
+      Log.info "===========================================";
+      Log.info "Server: http://localhost:4000";
+      Log.info "";
+      Log.info "⭐ NEW MIDDLEWARE ACTIVE (5 features):";
+      Log.info "  ✅ Head Handler - Auto HEAD support";
+      Log.info "  ✅ Runner - X-Runtime timing header";
+      Log.info "  ✅ Method Override - Forms can DELETE/PUT";
+      Log.info "  ✅ ETag - Content-based cache IDs";
+      Log.info "  ✅ Conditional Get - 304 Not Modified";
+      Log.info "";
+      Log.info "Visit http://localhost:4000 for interactive examples!";
+      Log.info "===========================================";
+      (* Keep alive *)
+      let rec loop () =
+        sleep (Time.Duration.from_secs 100);
+        loop ()
+      in
+      loop ()
+  | Error `Bind_error ->
+      Log.error "Failed to bind to port 4000";
+      Error (Failure "Failed to start server")
+
+let () = Runtime.run ~main ~args:Env.args ()

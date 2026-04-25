@@ -76,5 +76,6 @@ let tests =
     case "Build_ctx.hash changes when compilation_mode changes" test_hash_changes_when_compilation_mode_changes;
   ]
 
-let () =
-  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"build_ctx" ~tests ~args ()) ~args:Env.args ()
+let main ~args = Test.Cli.main ~name:"build_ctx" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

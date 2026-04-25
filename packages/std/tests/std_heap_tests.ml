@@ -198,5 +198,6 @@ let tests =
     case "Heap.mut_iter drains the heap" test_mut_iter;
   ]
 
-let () =
-  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"heap" ~tests ~args ()) ~args:Env.args ()
+let main ~args = Test.Cli.main ~name:"heap" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

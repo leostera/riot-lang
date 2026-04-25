@@ -562,5 +562,6 @@ let tests =
     case "int values both forms" test_int_values_both_forms;
   ]
 
-let () =
-  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"config" ~tests ~args ()) ~args:Env.args ()
+let main ~args = Test.Cli.main ~name:"config" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

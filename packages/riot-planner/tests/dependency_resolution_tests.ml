@@ -491,7 +491,9 @@ let test_module_graph_opened_public_root_resolves_children_to_public_module = fu
         |> Result.expect ~msg:"expected syn.ml write to succeed" in
         let _ = Fs.write "let value = 42\n" Path.(src_dir / Path.v "token.ml")
         |> Result.expect ~msg:"expected token.ml write to succeed" in
-        let _ = Fs.write "open Syn\nlet _ = Token.value\n" Path.(src_dir / Path.v "main.ml")
+        let _ = Fs.write
+          "open Syn\nlet main ~args:_ =\n  ignore Token.value;\n  Ok ()\n"
+          Path.(src_dir / Path.v "main.ml")
         |> Result.expect ~msg:"expected main.ml write to succeed" in
         let package = Riot_model.Package.make ~name:(Package_name.from_string "syn"
         |> Result.expect ~msg:"expected valid package name") ~path:package_root ~relative_path:(Path.v
@@ -1722,5 +1724,6 @@ let tests =
 
 let name = "Planner Dependency Resolution Tests"
 
-let () =
-  Actors.run ~main:(fun ~args -> Test.Cli.main ~name ~tests ~args ()) ~args:Env.args ()
+let main ~args = Test.Cli.main ~name ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

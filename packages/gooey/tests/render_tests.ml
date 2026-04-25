@@ -205,5 +205,6 @@ let tests =
     case "clipped container emits scissor commands" test_clipped_container_emits_scissor_commands;
   ]
 
-let () =
-  Actors.run ~main:(fun ~args -> Test.Cli.main ~name:"render" ~tests ~args ()) ~args:Env.args ()
+let main ~args = Test.Cli.main ~name:"render" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

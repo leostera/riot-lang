@@ -74,6 +74,6 @@ let tests = [
   Test.case "Fs.with_tempdir retries collisions under concurrency" test_with_tempdir_retries_collisions_under_concurrency;
 ]
 
-let main = fun ~args -> Test.Cli.main ~name:"std_fs_tests" ~tests ~args ()
+let main ~args = Test.Cli.main ~name:"std_fs_tests" ~tests ~args ()
 
 let () = Runtime.run ~main ~args:Env.args ()

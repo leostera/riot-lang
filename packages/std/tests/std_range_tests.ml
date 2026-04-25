@@ -102,5 +102,6 @@ let tests =
     case "stored compare controls membership" test_range_uses_stored_compare;
   ]
 
-let () =
-  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"range" ~tests ~args ()) ~args:Env.args ()
+let main ~args = Test.Cli.main ~name:"range" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

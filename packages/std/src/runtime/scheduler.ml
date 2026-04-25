@@ -98,7 +98,7 @@ let reset_trace_counters = fun t ->
 let ensure_can_run_once = fun () ->
   if not (Atomic.compare_and_set has_run false true) then
     panic
-      "Actors.run can only be called once per process. Each test should be \
+      "Runtime.run can only be called once per process. Each test should be \
        in a separate executable."
 
 let make_response = fun () ->

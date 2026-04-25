@@ -69,5 +69,6 @@ let tests =
     case "padding" test_padding;
   ]
 
-let () =
-  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"base32" ~tests ~args ()) ~args:Env.args ()
+let main ~args = Test.Cli.main ~name:"base32" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

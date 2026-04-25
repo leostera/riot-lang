@@ -110,13 +110,11 @@ let gfm_cases = fun () ->
 
 let cases = fun () -> fixture_cases () @ gfm_cases ()
 
-let () =
-  Actors.run
-    ~main:(fun ~args ->
+let main ~args =
       Test.Cli.main
         ~name:"markdown-spec-fixtures"
         ~tests:(cases ())
         ~args
-        ())
-    ~args:Env.args
-    ()
+        ()
+
+let () = Runtime.run ~main ~args:Env.args ()

@@ -465,9 +465,8 @@ let benchmarks =
       ];
   ]
 
-let () =
+let main ~args =
   println "HashMap vs Swisstable - Complex Types Performance\n";
-  Actors.run
-    ~main:(fun ~args -> Bench.Cli.main ~name:"Complex Types Benchmarks" ~benchmarks ~args)
-    ~args:Env.args
-    ()
+  Bench.Cli.main ~name:"Complex Types Benchmarks" ~benchmarks ~args
+
+let () = Runtime.run ~main ~args:Env.args ()

@@ -630,8 +630,6 @@ let benchmarks =
       (bench_parse_borrowed github_navigation_request_slice);
   ]
 
-let () =
-  Runtime.run
-    ~main:(fun ~args -> Bench.Cli.main ~name:"http1_parser_bench" ~benchmarks ~args)
-    ~args:Env.args
-    ()
+let main ~args = Bench.Cli.main ~name:"http1_parser_bench" ~benchmarks ~args
+
+let () = Runtime.run ~main ~args:Env.args ()

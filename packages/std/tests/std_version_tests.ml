@@ -238,5 +238,6 @@ let tests =
     case "Version.matches tilde requirements within the minor line" test_matches_tilde_requirement;
   ]
 
-let () =
-  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"Version" ~tests ~args ()) ~args:Env.args ()
+let main ~args = Test.Cli.main ~name:"Version" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

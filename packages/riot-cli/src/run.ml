@@ -206,6 +206,7 @@ let write_run_error = fun ~mode (err: Run_runtime.run_error) ->
   | Build.Json -> write_json_event (run_error_to_json err)
   | Build.Human -> (
       match err with
+      | Run_runtime.ProcessExited _ -> ()
       | Run_runtime.BinaryNotFound { binary_name } -> out
         ("error: binary '" ^ binary_name ^ "' not found")
       | err -> out ("error: " ^ Run_runtime.run_error_message err)

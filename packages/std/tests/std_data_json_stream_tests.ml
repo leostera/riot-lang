@@ -83,5 +83,6 @@ let tests =
     case "large numeric arrays match Json" test_large_numeric_array_matches_json;
   ]
 
-let () =
-  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"json_stream" ~tests ~args ()) ~args:Env.args ()
+let main ~args = Test.Cli.main ~name:"json_stream" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

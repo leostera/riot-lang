@@ -241,9 +241,6 @@ let tests = [
     (fun _ctx -> assert_property "reopen preserves reachable workload data" reopen_preserves_reachable_workload);
 ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args ->
-      Test.Cli.main ~name:"contentstore_store_workload_property_tests" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main ~name:"contentstore_store_workload_property_tests" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

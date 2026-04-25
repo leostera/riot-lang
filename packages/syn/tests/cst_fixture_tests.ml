@@ -48,17 +48,15 @@ let test_cst_fixture = fun ~(ctx:Test.FixtureRunner.ctx) ->
     ~render:(fun json -> Json.to_string_pretty json ^ "\n")
     ~actual:actual_json
 
-let () =
-  Actors.run
-    ~main:(fun ~args ->
-      let tests =
-        Test.FixtureRunner.cases
-          ()
-          ~dir:fixture_root
-          ~filter:has_cst_snapshot
-          ~snapshot_path:(fun path -> Some (cst_snapshot_path path))
-          ~run:(fun ctx -> test_cst_fixture ~ctx)
-      in
-      Test.Cli.main ~name:"syn-cst-fixtures" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args =
+  let tests =
+    Test.FixtureRunner.cases
+      ()
+      ~dir:fixture_root
+      ~filter:has_cst_snapshot
+      ~snapshot_path:(fun path -> Some (cst_snapshot_path path))
+      ~run:(fun ctx -> test_cst_fixture ~ctx)
+  in
+  Test.Cli.main ~name:"syn-cst-fixtures" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

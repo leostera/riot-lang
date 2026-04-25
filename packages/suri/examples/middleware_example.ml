@@ -98,30 +98,30 @@ get "/api/data" api_data_handler;]
 
 let app = Middleware.[ request_id; logger; timer_middleware; cors_middleware; router routes; ]
 
-let () =
-  Actors.run ~args:Env.args ()
-    ~main:(fun ~args:_ ->
-      match Suri.start_link app with
-      | Ok supervisor ->
-          Log.info "🚀 Middleware example server on http://0.0.0.0:4000";
-          Log.info "   Middleware stack:";
-          Log.info "     1. Request ID - generates/preserves x-request-id";
-          Log.info "     2. Logger - logs all requests";
-          Log.info "     3. Timer - measures request duration";
-          Log.info "     4. CORS - adds cross-origin headers";
-          Log.info "     5. Router - matches routes";
-          Log.info "";
-          Log.info "   Try:";
-          Log.info "     curl -v http://localhost:4000/";
-          Log.info "     curl http://localhost:4000/api/data";
-          Log.info "     curl -H \"x-request-id: my-custom-id\" http://localhost:4000/";
-          let count = Supervisor.Dynamic.count_children supervisor in
-          Log.info ("   " ^ Int.to_string count.active ^ " acceptors ready");
-          let rec loop () =
-            sleep (Time.Duration.from_secs 100);
-            loop ()
-          in
-          loop ()
-      | Error `Bind_error ->
-          Log.error "Failed to bind to port 4000";
-          Error (Failure "Failed to start server"))
+let main ~args:_ =
+  match Suri.start_link app with
+  | Ok supervisor ->
+      Log.info "🚀 Middleware example server on http://0.0.0.0:4000";
+      Log.info "   Middleware stack:";
+      Log.info "     1. Request ID - generates/preserves x-request-id";
+      Log.info "     2. Logger - logs all requests";
+      Log.info "     3. Timer - measures request duration";
+      Log.info "     4. CORS - adds cross-origin headers";
+      Log.info "     5. Router - matches routes";
+      Log.info "";
+      Log.info "   Try:";
+      Log.info "     curl -v http://localhost:4000/";
+      Log.info "     curl http://localhost:4000/api/data";
+      Log.info "     curl -H \"x-request-id: my-custom-id\" http://localhost:4000/";
+      let count = Supervisor.Dynamic.count_children supervisor in
+      Log.info ("   " ^ Int.to_string count.active ^ " acceptors ready");
+      let rec loop () =
+        sleep (Time.Duration.from_secs 100);
+        loop ()
+      in
+      loop ()
+  | Error `Bind_error ->
+      Log.error "Failed to bind to port 4000";
+      Error (Failure "Failed to start server")
+
+let () = Runtime.run ~main ~args:Env.args ()

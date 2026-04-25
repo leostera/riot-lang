@@ -3115,8 +3115,6 @@ let all_tests =
   in
   base_tests @ web_tests @ db_tests @ compiler_tests @ reference_tests
 
-let () =
-  Actors.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"pubgrub" ~tests:all_tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main ~name:"pubgrub" ~tests:all_tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

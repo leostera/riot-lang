@@ -240,5 +240,6 @@ let tests = [
     (fun _ctx -> assert_property "unknown sequences are not dropped or duplicated" unknown_sequences_are_not_dropped_or_duplicated);
 ]
 
-let () =
-  Actors.run ~main:(fun ~args -> Test.Cli.main ~name:"tty_property" ~tests ~args ()) ~args:Env.args ()
+let main ~args = Test.Cli.main ~name:"tty_property" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

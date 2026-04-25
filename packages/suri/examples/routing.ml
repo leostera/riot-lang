@@ -62,23 +62,23 @@ get "/api/health" health_handler;]
 
 let app = Middleware.[ request_id; logger; router routes; ]
 
-let () =
-  Actors.run ~args:Env.args ()
-    ~main:(fun ~args:_ ->
-      match Suri.start_link app with
-      | Ok supervisor ->
-          Log.info "🚀 Server with routing on http://0.0.0.0:4000";
-          Log.info "   Routes:";
-          Log.info "     GET  /           - Home page";
-          Log.info "     GET  /about      - About page";
-          Log.info "     GET  /api/health - Health check";
-          let count = Supervisor.Dynamic.count_children supervisor in
-          Log.info ("   Running with " ^ Int.to_string count.active ^ " acceptors");
-          let rec loop () =
-            sleep (Time.Duration.from_secs 100);
-            loop ()
-          in
-          loop ()
-      | Error `Bind_error ->
-          Log.error "Failed to bind to port 4000";
-          Error (Failure "Failed to start server"))
+let main ~args:_ =
+  match Suri.start_link app with
+  | Ok supervisor ->
+      Log.info "🚀 Server with routing on http://0.0.0.0:4000";
+      Log.info "   Routes:";
+      Log.info "     GET  /           - Home page";
+      Log.info "     GET  /about      - About page";
+      Log.info "     GET  /api/health - Health check";
+      let count = Supervisor.Dynamic.count_children supervisor in
+      Log.info ("   Running with " ^ Int.to_string count.active ^ " acceptors");
+      let rec loop () =
+        sleep (Time.Duration.from_secs 100);
+        loop ()
+      in
+      loop ()
+  | Error `Bind_error ->
+      Log.error "Failed to bind to port 4000";
+      Error (Failure "Failed to start server")
+
+let () = Runtime.run ~main ~args:Env.args ()

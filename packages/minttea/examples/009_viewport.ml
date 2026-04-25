@@ -137,10 +137,12 @@ let app = App.make ~init ~update ~view ()
 
 (* Run it *)
 
-let () =
+let main ~args:_ =
   let content = generate_content () in
   (* Create viewport with fixed height *)
   let viewport = Viewport.make ~width:70 ~height:15 |> Viewport.set_content ~content in
   let initial_model = { viewport; content } in
   let config = Minttea.config () in
-  Minttea.start ~config app initial_model
+  Minttea.run ~config initial_model app
+
+let () = Runtime.run ~main ~args:Env.args ()

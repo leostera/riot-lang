@@ -219,8 +219,6 @@ let tests = [
   Test.case "save_file rejects directory source" test_save_file_rejects_directory_source;
 ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"contentstore_store_object_tests" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main ~name:"contentstore_store_object_tests" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

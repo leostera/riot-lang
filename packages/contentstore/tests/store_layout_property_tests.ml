@@ -110,8 +110,6 @@ let tests = [
     (fun _ctx -> assert_property "layout domains are disjoint" layout_domains_are_disjoint);
 ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"contentstore_store_layout_property_tests" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main ~name:"contentstore_store_layout_property_tests" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

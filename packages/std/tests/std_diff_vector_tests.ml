@@ -103,5 +103,6 @@ let tests =
     case "mixed changes" test_diff_mixed_changes;
   ]
 
-let () =
-  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"vector-diff" ~tests ~args ()) ~args:Env.args ()
+let main ~args = Test.Cli.main ~name:"vector-diff" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

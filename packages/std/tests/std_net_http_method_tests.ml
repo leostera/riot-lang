@@ -20,8 +20,6 @@ let tests =
     case "from_slice preserves extensions" test_from_slice_extension;
   ]
 
-let () =
-  Runtime.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"net_http_method" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main ~name:"net_http_method" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

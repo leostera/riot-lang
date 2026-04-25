@@ -31,6 +31,6 @@ let tests = [
   Test.case "Gc.full_major keeps counters monotonic" test_full_major_keeps_counters_monotonic;
 ]
 
-let main = fun ~args -> Test.Cli.main ~name:"kernel_new_gc_tests" ~tests ~args ()
+let main ~args = Test.Cli.main ~name:"kernel_new_gc_tests" ~tests ~args ()
 
-let () = Actors.run ~main ~args:Env.args ()
+let () = Runtime.run ~main ~args:Env.args ()

@@ -19,38 +19,38 @@ post "/api/submit"
     Log.info (String.concat "" [ "Received POST data: "; body ]);
     conn |> Conn.respond ~status:Net.Http.Status.Ok ~body:"Data received!" |> Conn.send);]
 
-let () =
-  Actors.run ~args:Env.args ()
-    ~main:(fun ~args:_ ->
-      (* Development mode - allow all origins *)
-      let app = Middleware.[ request_id; logger; cors ~origins:[ "*" ] (); router routes; ] in
-      let config = Suri.config ~port:4_000 () in
-      match Suri.start_link ~config app with
-      | Ok _supervisor ->
-          Log.info "===========================================";
-          Log.info "CORS Example Server Running";
-          Log.info "===========================================";
-          Log.info "Server: http://localhost:4000";
-          Log.info "";
-          Log.info "Try these endpoints:";
-          Log.info "  GET  /api/hello";
-          Log.info "  GET  /api/data";
-          Log.info "  POST /api/submit";
-          Log.info "";
-          Log.info "Test with curl:";
-          Log.info "  curl -H 'Origin: https://example.com' http://localhost:4000/api/hello";
-          Log.info "";
-          Log.info "Test preflight:";
-          Log.info "  curl -X OPTIONS -H 'Origin: https://example.com' \\";
-          Log.info "       -H 'Access-Control-Request-Method: POST' \\";
-          Log.info "       http://localhost:4000/api/submit";
-          Log.info "===========================================";
-          (* Keep alive *)
-          let rec loop () =
-            sleep (Time.Duration.from_secs 100);
-            loop ()
-          in
-          loop ()
-      | Error `Bind_error ->
-          Log.error "Failed to bind to port 4000";
-          Error (Failure "Failed to start server"))
+let main ~args:_ =
+  (* Development mode - allow all origins *)
+  let app = Middleware.[ request_id; logger; cors ~origins:[ "*" ] (); router routes; ] in
+  let config = Suri.config ~port:4_000 () in
+  match Suri.start_link ~config app with
+  | Ok _supervisor ->
+      Log.info "===========================================";
+      Log.info "CORS Example Server Running";
+      Log.info "===========================================";
+      Log.info "Server: http://localhost:4000";
+      Log.info "";
+      Log.info "Try these endpoints:";
+      Log.info "  GET  /api/hello";
+      Log.info "  GET  /api/data";
+      Log.info "  POST /api/submit";
+      Log.info "";
+      Log.info "Test with curl:";
+      Log.info "  curl -H 'Origin: https://example.com' http://localhost:4000/api/hello";
+      Log.info "";
+      Log.info "Test preflight:";
+      Log.info "  curl -X OPTIONS -H 'Origin: https://example.com' \\";
+      Log.info "       -H 'Access-Control-Request-Method: POST' \\";
+      Log.info "       http://localhost:4000/api/submit";
+      Log.info "===========================================";
+      (* Keep alive *)
+      let rec loop () =
+        sleep (Time.Duration.from_secs 100);
+        loop ()
+      in
+      loop ()
+  | Error `Bind_error ->
+      Log.error "Failed to bind to port 4000";
+      Error (Failure "Failed to start server")
+
+let () = Runtime.run ~main ~args:Env.args ()

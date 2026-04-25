@@ -8,7 +8,7 @@ let sparse_config_source = {|{
   "artifact_base_url": "https://cdn.pkgs.ml"
 }|}
 
-let main = fun ~args:_ ->
+let main ~args:_ =
   let cache = Pkgs_ml.Registry_cache.create
     ~riot_home:(Path.v "/tmp/pkgs-ml-example")
     ~registry_name:"pkgs.ml"
@@ -28,4 +28,4 @@ let main = fun ~args:_ ->
   println ("package document url: " ^ Net.Uri.to_string package_url);
   Ok ()
 
-let () = Actors.run ~main ~args:Env.args ()
+let () = Runtime.run ~main ~args:Env.args ()

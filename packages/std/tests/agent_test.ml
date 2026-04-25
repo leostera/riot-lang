@@ -79,4 +79,8 @@ let run_test = fun () ->
   println "✓ Type polymorphism tests passed!\n";
   println "=== All Agent tests passed! ===\n"
 
-let () = Runtime.run @@ fun () -> spawn run_test |> ignore
+let main ~args:_ =
+  run_test ();
+  Ok ()
+
+let () = Runtime.run ~main ~args:Env.args ()

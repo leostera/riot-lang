@@ -92,5 +92,6 @@ let tests =
     case "Agent.start_link supports normal operations" test_agent_start_link_supports_operations;
   ]
 
-let () =
-  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"agent" ~tests ~args ()) ~args:Env.args ()
+let main ~args = Test.Cli.main ~name:"agent" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

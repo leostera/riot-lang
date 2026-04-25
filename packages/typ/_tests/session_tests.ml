@@ -5796,7 +5796,7 @@ let test_include_module_type_of_canonicalizes_loaded_nominal_types = fun _ctx ->
   in
   let source = prepared_source ~filename:"process.mli"
     ~text:{ocaml|
-      include module type of Actors.Process
+      include module type of Runtime.Process
       val spawn: (unit -> (unit, exit_reason) result) -> int
     |ocaml}
   in
@@ -5842,7 +5842,7 @@ let test_include_module_type_of_loaded_modules_canonicalizes_nominal_types = fun
   let config = Config.default |> Config.with_loaded_modules ~loaded_modules:[ loaded_actors ] in
   let session = Session.empty ~config in
   let source = {ocaml|
-    include module type of Actors.Process
+    include module type of Runtime.Process
     val spawn: (unit -> (unit, exit_reason) result) -> int
   |ocaml}
   in
@@ -5894,7 +5894,7 @@ type ('ok, 'error) result =
     seed_session
     ~kind:Source.File
     ~origin:(Source.Label "global.mli")
-    ~text:"val spawn : (unit -> (unit, Actors.Process.exit_reason) Kernel.result) -> int\n" in
+    ~text:"val spawn : (unit -> (unit, Runtime.Process.exit_reason) Kernel.result) -> int\n" in
   let (seed_session, std_source_id) = create_source
     seed_session
     ~kind:Source.File
@@ -5926,7 +5926,7 @@ type ('a, 'e) result = ('a, 'e) Kernel.result =
 
 exception Abort
 
-let task (): (unit, Actors.Process.exit_reason) result = Error Abort
+let task (): (unit, Runtime.Process.exit_reason) result = Error Abort
 
 let pid = Std.spawn task
 |ocaml}
@@ -6332,7 +6332,7 @@ let test_source_analysis_with_loaded_modules_canonicalizes_nominal_types = fun _
   let config = Config.default |> Config.with_loaded_modules ~loaded_modules in
   let source = prepared_source ~filename:"process.mli"
     ~text:{ocaml|
-      include module type of Actors.Process
+      include module type of Runtime.Process
       val spawn: (unit -> (unit, exit_reason) result) -> int
     |ocaml}
   in
@@ -9315,12 +9315,12 @@ type ('a, 'b) eq =
   in
   let (session, _pid_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "pid.ml")
     ~text:{ocaml|
-include Actors.Pid
+include Runtime.Pid
 |ocaml}
   in
   let (session, _message_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "message.ml")
     ~text:{ocaml|
-include Actors.Message
+include Runtime.Message
 |ocaml}
   in
   let (session, _ref_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "ref.ml")
@@ -9336,22 +9336,22 @@ let type_equal : type a b. a t -> b t -> (a, b) Type.eq option = fun _ _ -> None
   in
   let (session, _global_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "global.ml")
     ~text:{ocaml|
-type ('a, 'e) result = ('a, 'e) Actors.result =
+type ('a, 'e) result = ('a, 'e) Runtime.result =
   | Ok of 'a
   | Error of 'e
 
-type 'msg selector = 'msg Actors.selector
+type 'msg selector = 'msg Runtime.selector
 
-let self = Actors.self
+let self = Runtime.self
 
-let send = Actors.send
+let send = Runtime.send
 
 let receive = fun ~selector ?timeout () ->
-  Actors.receive ~selector ?timeout ()
+  Runtime.receive ~selector ?timeout ()
 
-let spawn = Actors.spawn
+let spawn = Runtime.spawn
 
-let spawn_link = Actors.spawn_link
+let spawn_link = Runtime.spawn_link
 
 let panic : string -> 'a = fun _ ->
   let rec loop () = loop () in
@@ -9423,12 +9423,12 @@ end
   in
   let (session, _message_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "message.ml")
     ~text:{ocaml|
-include Actors.Message
+include Runtime.Message
 |ocaml}
   in
   let (session, _global_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "global.ml")
     ~text:{ocaml|
-let send : Actors.Message.t -> unit = fun _ -> ()
+let send : Runtime.Message.t -> unit = fun _ -> ()
 |ocaml}
   in
   let (session, source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "worker.ml")
@@ -9590,7 +9590,7 @@ let spawn_link : (unit -> (unit, Process.exit_reason) Kernel.result) -> Pid.t = 
   in
   let (session, _pid_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "pid.ml")
     ~text:{ocaml|
-include Actors.Pid
+include Runtime.Pid
 |ocaml}
   in
   let (session, _global_source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "global.ml")
@@ -9599,9 +9599,9 @@ type ('a, 'e) result = ('a, 'e) Kernel.result =
   | Ok of 'a
   | Error of 'e
 
-let spawn = Actors.spawn
+let spawn = Runtime.spawn
 
-let spawn_link = Actors.spawn_link
+let spawn_link = Runtime.spawn_link
 |ocaml}
   in
   let (session, source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "worker.ml")
@@ -9829,189 +9829,177 @@ let test_expansive_covariant_record_types_still_generalize = fun _ctx ->
     let () = Test.assert_equal ~expected:(Some "'a. 'a box") ~actual:boxed_type in
     Ok ()
 
-let () =
-  Actors.run
-    ~main:(fun ~args ->
-      let tests = [
-        Test.case "local module aliases include public wrapper spellings" test_local_module_aliases_include_public_wrapper_spellings;
-        Test.case "contextual local module depth prefers deeper shared prefix" test_contextual_local_module_depth_prefers_deeper_shared_prefix;
-        Test.case "contextual local module depth keeps single segment suffixes" test_contextual_local_module_depth_keeps_single_segment_suffixes;
-        Test.case "local module implicit opens skip enclosing alias wrappers" test_local_module_implicit_opens_skip_enclosing_alias_wrappers;
-        Test.case "source id stays stable across updates" test_source_id_stays_stable_across_updates;
-        Test.case "snapshots remain immutable after updates" test_snapshots_remain_immutable_after_updates;
-        Test.case "type_at uses smallest indexed expression" test_type_at_uses_smallest_indexed_expression;
-        Test.case "definition_at uses local pattern origin" test_definition_at_uses_local_pattern_origin;
-        Test.case "definition_at uses exported module typings" test_definition_at_uses_exported_module_typings;
-        Test.case "definition_at prefers interface export origin" test_definition_at_prefers_interface_export_origin;
-        Test.case "definition_at follows include reexports" test_definition_at_follows_include_reexports;
-        Test.case "snapshot without traces still reports diagnostics and module typings" test_snapshot_without_traces_still_reports_diagnostics_and_module_typings;
-        Test.case "snapshot exposes implicit file modules" test_snapshot_exposes_implicit_file_modules;
-        Test.case "prepare_snapshot uses implicit-opened alias modules with internal names" test_prepare_snapshot_uses_implicit_opened_alias_modules_with_internal_names;
-        Test.case "prepare_snapshot resolves internal module dependencies by local alias" test_prepare_snapshot_resolves_internal_module_dependencies_by_local_alias;
-        Test.case "prepare_snapshot prefers internal local alias dependencies over loaded modules" test_prepare_snapshot_prefers_internal_local_alias_dependencies_over_loaded_modules;
-        Test.case "prepare_snapshot uses internal local alias dependencies transitively" test_prepare_snapshot_uses_internal_local_alias_dependencies_transitively;
-        Test.case "prepare_snapshot internal local alias dependencies ignore source order" test_prepare_snapshot_internal_local_alias_dependencies_ignore_source_order;
-        Test.case "prepare_snapshot nested internal local alias dependencies typecheck" test_prepare_snapshot_nested_internal_local_alias_dependencies_typecheck;
-        Test.case "fold_package_sources resolves contextual local modules" test_fold_package_sources_resolves_contextual_local_modules;
-        Test.case "fold_package_sources reports local module cycles" test_fold_package_sources_reports_local_module_cycles;
-        Test.case "fold_package_sources resolves root local module wrappers" test_fold_package_sources_resolves_root_local_module_wrappers;
-        Test.case "fold_package_sources shares imported world semantics for open alias include" test_fold_package_sources_shares_imported_world_semantics_for_open_alias_include;
-        Test.case "fold_package_sources persists package bundle" test_fold_package_sources_persists_package_bundle;
-        Test.case "fold_package_sources keeps base loaded modules immutable" test_fold_package_sources_keeps_base_loaded_modules_immutable;
-        Test.case "prepare_snapshot shares imported world semantics for open alias include" test_prepare_snapshot_shares_imported_world_semantics_for_open_alias_include;
-        Test.case "prepare_snapshot nested unix submodule sees sibling ip_addr exports" test_prepare_snapshot_nested_unix_submodule_sees_sibling_ip_addr_exports;
-        Test.case "prepare_snapshot wrapper module reexports unix exports to sibling modules" test_prepare_snapshot_wrapper_module_reexports_unix_exports_to_sibling_modules;
-        Test.case "prepare_snapshot wrapper module preserves same-path nominal value types" test_prepare_snapshot_wrapper_module_preserves_same_path_nominal_value_types;
-        Test.case "prepare_snapshot wrapper module preserves local result error surface" test_prepare_snapshot_wrapper_module_preserves_local_result_error_surface;
-        Test.case "prepare_snapshot partial wrapper preserves nested module exports" test_prepare_snapshot_partial_wrapper_preserves_nested_module_exports;
-        Test.case "prepare_snapshot paired module alias preserves interface-shaped sibling types" test_prepare_snapshot_paired_module_alias_preserves_interface_shaped_sibling_types;
-        Test.case "prepare_snapshot nested module alias canonicalizes sibling error types" test_prepare_snapshot_nested_module_alias_canonicalizes_sibling_error_types;
-        Test.case "prepare_snapshot kernel named wrapper alias preserves nested error types" test_prepare_snapshot_kernel_named_wrapper_alias_preserves_nested_error_types;
-        Test.case "prepare_snapshot multiple wrapper aliases preserve nested error types" test_prepare_snapshot_multiple_wrapper_aliases_preserve_nested_error_types;
-        Test.case "prepare_snapshot nested include wrapper alias preserves error types" test_prepare_snapshot_nested_include_wrapper_alias_preserves_error_types;
-        Test.case "prepare_snapshot planner aliases preserve nested constructor owners" test_prepare_snapshot_planner_aliases_preserve_nested_constructor_owners;
-        Test.case "prepare_snapshot query order preserves in-progress wrapper exports" test_prepare_snapshot_query_order_preserves_in_progress_wrapper_exports;
-        Test.case "prepare_snapshot net wrapper graph preserves ip_addr exports" test_prepare_snapshot_net_wrapper_graph_preserves_ip_addr_exports;
-        Test.case "prepare_snapshot net wrapper graph preserves ip_addr exports with paired unix" test_prepare_snapshot_net_wrapper_graph_preserves_ip_addr_exports_with_paired_unix;
-        Test.case "implicit opens do not leak into module exports" test_implicit_opens_do_not_leak_into_module_exports;
-        Test.case "snapshot exports interface declarations" test_snapshot_exports_interface_declarations;
-        Test.case "snapshot exports interface externals" test_snapshot_exports_interface_externals;
-        Test.case "snapshot collects module typings" test_snapshot_collects_module_typings;
-        Test.case "snapshot module typings are canonical per module" test_snapshot_module_typings_are_canonical_per_module;
-        Test.case "query module_typings_of uses the canonical root typings" test_query_module_typings_of_uses_canonical_root_typings;
-        Test.case "paired modules export interface-shaped module typings" test_paired_modules_export_interface_shaped_module_typings;
-        Test.case "paired modules export interface-shaped file summaries" test_paired_modules_export_interface_shaped_file_summaries;
-        Test.case "paired modules report signature inclusion mismatches" test_paired_modules_report_signature_inclusion_mismatches;
-        Test.case "paired modules skip signature inclusion for errored implementation" test_paired_modules_skip_signature_inclusion_for_errored_implementation;
-        Test.case "paired modules skip signature inclusion for unsupported interface types" test_paired_modules_skip_signature_inclusion_for_unsupported_interface_types;
-        Test.case "paired modules accept manifest alias specialization" test_paired_modules_accept_manifest_alias_specialization;
-        Test.case "paired modules canonicalize builtin aliases in signature inclusion" test_paired_modules_canonicalize_builtin_aliases_in_signature_inclusion;
-        Test.case "paired modules accept manifest alias value usage in signature inclusion" test_paired_modules_accept_manifest_alias_value_usage_in_signature_inclusion;
-        Test.case "manifest option aliases canonicalize during inference" test_manifest_option_aliases_canonicalize_during_inference;
-        Test.case "manifest aliases canonicalize across modules" test_manifest_aliases_canonicalize_across_modules;
-        Test.case "paired modules accept option manifest aliases in signature inclusion" test_paired_modules_accept_option_manifest_aliases_in_signature_inclusion;
-        Test.case "source input hash ignores source id and revision" test_source_input_hash_ignores_source_id_and_revision;
-        Test.case "source input hash ignores comments and docstrings" test_source_input_hash_ignores_comments_and_docstrings;
-        Test.case "source input hash changes with implicit opens" test_source_input_hash_changes_with_implicit_opens;
-        Test.case "snapshot uses loaded module typings" test_snapshot_uses_loaded_module_typings;
-        Test.case "prepare_snapshot hydrates module typings from store" test_prepare_snapshot_hydrates_module_typings_from_store;
-        Test.case "prepare_snapshot keeps the store read-only during query forcing" test_prepare_snapshot_keeps_store_read_only_during_query_forcing;
-        Test.case "fold_package_sources persists module typings from the authoritative engine" test_fold_package_sources_persists_module_typings_from_authoritative_engine;
-        Test.case "prepare_snapshot emits structured events" test_prepare_snapshot_emits_structured_events;
-        Test.case "prepare_snapshot emits structured diagnostics in events" test_prepare_snapshot_emits_structured_diagnostics_in_events;
-        Test.case "prepare_snapshot keeps imported value payloads out of ambient bindings" test_prepare_snapshot_keeps_imported_value_payloads_out_of_ambient_bindings;
-        Test.case "prepare_snapshot keeps diagnostics and exports stable after module forcing" test_prepare_snapshot_keeps_diagnostics_and_exports_stable_after_module_forcing;
-        Test.case "prepare_snapshot only pairs required local modules" test_prepare_snapshot_only_pairs_required_local_modules;
-        Test.case "prepare_snapshot reuses shared transitive local modules" test_prepare_snapshot_reuses_shared_transitive_local_modules;
-        Test.case "prepare_snapshot reuses paired local modules across rooted snapshots" test_prepare_snapshot_reuses_paired_local_modules_across_rooted_snapshots;
-        Test.case "prepare_snapshot reuses shared implicit-open alias modules" test_prepare_snapshot_reuses_shared_implicit_open_alias_modules;
-        Test.case "prepare_snapshot store hydration emits structured events" test_prepare_snapshot_store_hydration_emits_structured_events;
-        Test.case "prepare_snapshot missing requirements emit structured events" test_prepare_snapshot_missing_requirements_emit_structured_events;
-        Test.case
-          "prepare_snapshot missing requirements through include do not trigger nested typing"
-          test_prepare_snapshot_missing_requirements_through_include_do_not_trigger_nested_typing;
-        Test.case "prepare_snapshot discovers local nested module dependencies" test_prepare_snapshot_discovers_local_nested_module_dependencies;
-        Test.case "prepare_snapshot discovers local include dependencies" test_prepare_snapshot_discovers_local_include_dependencies;
-        Test.case "prepare_snapshot discovers local implicit-open dependencies" test_prepare_snapshot_discovers_local_implicit_open_dependencies;
-        Test.case "prepare_snapshot reports local module cycles before typing" test_prepare_snapshot_reports_local_module_cycles_before_typing;
-        Test.case "prepare_snapshot reports match coverage diagnostics" test_prepare_snapshot_reports_match_coverage_diagnostics;
-        Test.case "prepare_snapshot includes interface sibling dependencies" test_prepare_snapshot_includes_interface_sibling_dependencies;
-        Test.case "loaded module typings override store" test_loaded_module_typings_override_store;
-        Test.case "snapshot uses sibling source record types" test_snapshot_uses_sibling_source_record_types;
-        Test.case "snapshot uses loaded module record types" test_snapshot_uses_loaded_module_record_types;
-        Test.case "include reexports loaded module record types" test_include_reexports_loaded_module_record_types;
-        Test.case "module alias reexports loaded module record types" test_module_alias_reexports_loaded_module_record_types;
-        Test.case "include reexports loaded module typings" test_include_reexports_loaded_module_typings;
-        Test.case "include reexports package-shaped loaded module typings" test_include_reexports_package_shaped_loaded_module_typings;
-        Test.case "include module type of canonicalizes loaded nominal types" test_include_module_type_of_canonicalizes_loaded_nominal_types;
-        Test.case "include module type of loaded modules canonicalizes nominal types" test_include_module_type_of_loaded_modules_canonicalizes_nominal_types;
-        Test.case "loaded module reexports canonicalize dependency result aliases" test_loaded_module_reexports_canonicalize_dependency_result_aliases;
-        Test.case "operator pattern bindings lower and typecheck" test_operator_pattern_bindings_lower_and_typecheck;
-        Test.case "cons patterns lower and typecheck" test_cons_patterns_lower_and_typecheck;
-        Test.case "recursive operator bindings typecheck" test_recursive_operator_bindings_typecheck;
-        Test.case "language prelude supports <> operator" test_language_prelude_supports_angle_not_equal;
-        Test.case "kernel ops surface typechecks" test_kernel_ops_surface_typechecks;
-        Test.case "opened sibling double underscore exports typecheck" test_opened_sibling_double_underscore_exports_typecheck;
-        Test.case "paired modules allow private top-level exception helpers" test_paired_modules_allow_private_top_level_exception_helpers;
-        Test.case "paired modules include sibling exports during signature inclusion" test_paired_modules_include_sibling_exports_during_signature_inclusion;
-        Test.case "paired modules include paired sibling exports during signature inclusion" test_paired_modules_include_paired_sibling_exports_during_signature_inclusion;
-        Test.case "nonrec same-name option alias prefers outer type" test_nonrec_same_name_option_alias_prefers_outer_type;
-        Test.case "nonrec same-name result alias prefers outer type" test_nonrec_same_name_result_alias_prefers_outer_type;
-        Test.case "source analysis with loaded modules canonicalizes nominal types" test_source_analysis_with_loaded_modules_canonicalizes_nominal_types;
-        Test.case "source analysis with opened loaded module canonicalizes nominal types" test_source_analysis_with_opened_loaded_module_canonicalizes_nominal_types;
-        Test.case "snapshot exports opened loaded nominal types from implementation" test_snapshot_exports_opened_loaded_nominal_types_from_implementation;
-        Test.case "snapshot type declarations use opened sibling nominal types" test_snapshot_type_decls_use_opened_sibling_nominal_types;
-        Test.case "prepare_snapshot type declarations use opened sibling nominal types" test_prepare_snapshot_type_decls_use_opened_sibling_nominal_types;
-        Test.case "prepare_snapshot type declarations use opened loaded nominal types" test_prepare_snapshot_type_decls_use_opened_loaded_nominal_types;
-        Test.case
-          "prepare_snapshot type declarations use opened loaded nominal types with underscored module name"
-          test_prepare_snapshot_type_decls_use_opened_loaded_nominal_types_with_underscored_module_name;
-        Test.case "prepare_snapshot canonicalizes sibling structural polyvariant exports" test_prepare_snapshot_polyvariant_exports_canonicalize_sibling_structural_types;
-        Test.case
-          "prepare_snapshot canonicalizes sibling structural polyvariant exports inside arrows"
-          test_prepare_snapshot_polyvariant_exports_canonicalize_sibling_structural_types_inside_arrows;
-        Test.case "module aliases reexport loaded module typings" test_module_alias_reexports_loaded_module_typings;
-        Test.case "module aliases reexport same-named local modules" test_module_alias_reexports_same_named_local_modules;
-        Test.case "loaded module typings preserve nested same-named alias exports" test_loaded_module_typings_preserve_nested_same_named_alias_exports;
-        Test.case
-          "paired loaded module typings preserve nested alias exports across include chains"
-          test_paired_loaded_module_typings_preserve_nested_alias_exports_across_include_chain;
-        Test.case "prepare_snapshot uses nested exports from local include of loaded module" test_prepare_snapshot_uses_nested_exports_from_local_include_of_loaded_module;
-        Test.case "sibling sources use loaded module record reexports" test_sibling_source_uses_loaded_module_record_reexport;
-        Test.case "prepare_snapshot is rooted" test_prepare_snapshot_is_rooted;
-        Test.case "prepare_snapshot reports missing roots" test_prepare_snapshot_reports_missing_roots;
-        Test.case "prepare_snapshot reports missing module summaries" test_prepare_snapshot_reports_missing_module_summary;
-        Test.case "prepare_snapshot collects transitive missing modules" test_prepare_snapshot_collects_transitive_missing_modules;
-        Test.case "prepare_snapshot collects missing modules from qualified references" test_prepare_snapshot_collects_missing_module_for_qualified_reference;
-        Test.case "prepare_snapshot keeps nested sibling modules out of top-level requirements" test_prepare_snapshot_keeps_nested_sibling_modules_out_of_top_level_requirements;
-        Test.case
-          "prepare_snapshot keeps loaded nested module exports out of top-level requirements"
-          test_prepare_snapshot_keeps_loaded_nested_module_exports_out_of_top_level_requirements;
-        Test.case "prepare_snapshot imports bare local module exports into rooted analysis" test_prepare_snapshot_imports_bare_local_module_exports_into_rooted_analysis;
-        Test.case "prepare_snapshot canonicalizes missing requirements" test_prepare_snapshot_canonicalizes_missing_requirements;
-        Test.case "prepare_snapshot sorts missing modules by name" test_prepare_snapshot_sorts_missing_modules_by_name;
-        Test.case "prepare_snapshot uses local Prelude variant constructors" test_prepare_snapshot_uses_local_prelude_variant_constructors;
-        Test.case "prepare_snapshot uses sibling Int module with local Prelude" test_prepare_snapshot_uses_sibling_int_module_with_local_prelude;
-        Test.case "prepare_snapshot types mutable record field assignment" test_prepare_snapshot_types_mutable_record_field_assignment;
-        Test.case "prepare_snapshot types local source module pack" test_prepare_snapshot_types_local_source_module_pack;
-        Test.case "check_source recovers when rooted preparation reports missing module summaries" test_check_source_recovers_when_snapshot_preparation_reports_missing_module_summaries;
-        Test.case "match guards typecheck in pattern scope" test_match_guards_typecheck_in_pattern_scope;
-        Test.case "optional arguments can be omitted and reordered" test_optional_arguments_can_be_omitted_and_reordered;
-        Test.case "optional argument forwarding preserves option wrapper" test_optional_argument_forwarding_preserves_option_wrapper;
-        Test.case "inline record constructor payloads use constructor owner" test_inline_record_constructor_payloads_use_constructor_owner;
-        Test.case "explicit locally abstract let annotations are checked" test_explicit_locally_abstract_let_annotations_are_checked;
-        Test.case "for loops lower and typecheck" test_for_loops_lower_and_typecheck;
-        Test.case "if branches do not capture trailing sequences" test_if_branches_do_not_capture_trailing_sequences;
-        Test.case "let operators lower and typecheck" test_let_operator_lower_and_typecheck;
-        Test.case "external identity cast token shape typechecks" test_external_identity_cast_token_shape_typechecks;
-        Test.case "first-class module pack and unpack typecheck" test_first_class_module_pack_and_unpack_typecheck;
-        Test.case "first-class module existential event shape typechecks" test_first_class_module_existential_event_shape_typechecks;
-        Test.case "prepare_snapshot paired module preserves first-class module value signatures" test_prepare_snapshot_paired_module_preserves_first_class_module_value_signatures;
-        Test.case
-          "prepare_snapshot paired module allows hidden manifest alias with same variant shape"
-          test_prepare_snapshot_paired_module_allows_hidden_manifest_alias_with_same_variant_shape;
-        Test.case "GADT constructor existentials typecheck" test_gadt_constructor_existentials_typecheck;
-        Test.case "GADT tuple constructor existentials typecheck" test_gadt_tuple_constructor_existentials_typecheck;
-        Test.case "selector receive with existential constructors typechecks" test_selector_receive_with_existential_constructors_typecheck;
-        Test.case "extensible selector agent shape typechecks" test_extensible_selector_agent_shape_typechecks;
-        Test.case "loaded module selector agent shape typechecks" test_loaded_module_selector_agent_shape_typechecks;
-        Test.case "snapshot exposes loaded module agent support exports" test_snapshot_exposes_loaded_module_agent_support_exports;
-        Test.case "deps collect loaded module agent dependencies" test_deps_collect_loaded_module_agent_dependencies;
-        Test.case "selector alias chain across loaded modules typechecks" test_selector_alias_chain_across_loaded_modules_typechecks;
-        Test.case "included extensible types preserve constructor identity across siblings" test_included_extensible_types_preserve_constructor_identity_across_siblings;
-        Test.case "loaded module ref shape typechecks" test_loaded_module_ref_shape_typechecks;
-        Test.case "spawn alias chain across loaded modules typechecks" test_spawn_alias_chain_across_loaded_modules_typechecks;
-        Test.case "function body annotation alias chain exports canonical result" test_function_body_annotation_alias_chain_exports_canonical_result;
-        Test.case "extensible variant constructors lower and typecheck" test_extensible_variant_constructors_lower_and_typecheck;
-        Test.case "expansive bindings stay monomorphic" test_expansive_bindings_stay_monomorphic;
-        Test.case "nonexpansive list bindings still generalize" test_nonexpansive_list_bindings_still_generalize;
-        Test.case "expansive covariant lists still generalize" test_expansive_covariant_lists_still_generalize;
-        Test.case "expansive covariant nominal types still generalize" test_expansive_covariant_nominal_types_still_generalize;
-        Test.case "expansive covariant record types still generalize" test_expansive_covariant_record_types_still_generalize;
-        Test.case "fun cases keep preceding parameters in scope" test_fun_cases_keep_preceding_parameters;
-        Test.case "records flow through snapshot queries" test_records_flow_through_snapshot_queries;
-      ]
-      in
-      Test.Cli.main ~name:"typ:session" ~tests ~args)
-    ~args:Std.Env.args
-    ()
+let main ~args =
+  let tests = [
+    Test.case "local module aliases include public wrapper spellings" test_local_module_aliases_include_public_wrapper_spellings;
+    Test.case "contextual local module depth prefers deeper shared prefix" test_contextual_local_module_depth_prefers_deeper_shared_prefix;
+    Test.case "contextual local module depth keeps single segment suffixes" test_contextual_local_module_depth_keeps_single_segment_suffixes;
+    Test.case "local module implicit opens skip enclosing alias wrappers" test_local_module_implicit_opens_skip_enclosing_alias_wrappers;
+    Test.case "source id stays stable across updates" test_source_id_stays_stable_across_updates;
+    Test.case "snapshots remain immutable after updates" test_snapshots_remain_immutable_after_updates;
+    Test.case "type_at uses smallest indexed expression" test_type_at_uses_smallest_indexed_expression;
+    Test.case "definition_at uses local pattern origin" test_definition_at_uses_local_pattern_origin;
+    Test.case "definition_at uses exported module typings" test_definition_at_uses_exported_module_typings;
+    Test.case "definition_at prefers interface export origin" test_definition_at_prefers_interface_export_origin;
+    Test.case "definition_at follows include reexports" test_definition_at_follows_include_reexports;
+    Test.case "snapshot without traces still reports diagnostics and module typings" test_snapshot_without_traces_still_reports_diagnostics_and_module_typings;
+    Test.case "snapshot exposes implicit file modules" test_snapshot_exposes_implicit_file_modules;
+    Test.case "prepare_snapshot uses implicit-opened alias modules with internal names" test_prepare_snapshot_uses_implicit_opened_alias_modules_with_internal_names;
+    Test.case "prepare_snapshot resolves internal module dependencies by local alias" test_prepare_snapshot_resolves_internal_module_dependencies_by_local_alias;
+    Test.case "prepare_snapshot prefers internal local alias dependencies over loaded modules" test_prepare_snapshot_prefers_internal_local_alias_dependencies_over_loaded_modules;
+    Test.case "prepare_snapshot uses internal local alias dependencies transitively" test_prepare_snapshot_uses_internal_local_alias_dependencies_transitively;
+    Test.case "prepare_snapshot internal local alias dependencies ignore source order" test_prepare_snapshot_internal_local_alias_dependencies_ignore_source_order;
+    Test.case "prepare_snapshot nested internal local alias dependencies typecheck" test_prepare_snapshot_nested_internal_local_alias_dependencies_typecheck;
+    Test.case "fold_package_sources resolves contextual local modules" test_fold_package_sources_resolves_contextual_local_modules;
+    Test.case "fold_package_sources reports local module cycles" test_fold_package_sources_reports_local_module_cycles;
+    Test.case "fold_package_sources resolves root local module wrappers" test_fold_package_sources_resolves_root_local_module_wrappers;
+    Test.case "fold_package_sources shares imported world semantics for open alias include" test_fold_package_sources_shares_imported_world_semantics_for_open_alias_include;
+    Test.case "fold_package_sources persists package bundle" test_fold_package_sources_persists_package_bundle;
+    Test.case "fold_package_sources keeps base loaded modules immutable" test_fold_package_sources_keeps_base_loaded_modules_immutable;
+    Test.case "prepare_snapshot shares imported world semantics for open alias include" test_prepare_snapshot_shares_imported_world_semantics_for_open_alias_include;
+    Test.case "prepare_snapshot nested unix submodule sees sibling ip_addr exports" test_prepare_snapshot_nested_unix_submodule_sees_sibling_ip_addr_exports;
+    Test.case "prepare_snapshot wrapper module reexports unix exports to sibling modules" test_prepare_snapshot_wrapper_module_reexports_unix_exports_to_sibling_modules;
+    Test.case "prepare_snapshot wrapper module preserves same-path nominal value types" test_prepare_snapshot_wrapper_module_preserves_same_path_nominal_value_types;
+    Test.case "prepare_snapshot wrapper module preserves local result error surface" test_prepare_snapshot_wrapper_module_preserves_local_result_error_surface;
+    Test.case "prepare_snapshot partial wrapper preserves nested module exports" test_prepare_snapshot_partial_wrapper_preserves_nested_module_exports;
+    Test.case "prepare_snapshot paired module alias preserves interface-shaped sibling types" test_prepare_snapshot_paired_module_alias_preserves_interface_shaped_sibling_types;
+    Test.case "prepare_snapshot nested module alias canonicalizes sibling error types" test_prepare_snapshot_nested_module_alias_canonicalizes_sibling_error_types;
+    Test.case "prepare_snapshot kernel named wrapper alias preserves nested error types" test_prepare_snapshot_kernel_named_wrapper_alias_preserves_nested_error_types;
+    Test.case "prepare_snapshot multiple wrapper aliases preserve nested error types" test_prepare_snapshot_multiple_wrapper_aliases_preserve_nested_error_types;
+    Test.case "prepare_snapshot nested include wrapper alias preserves error types" test_prepare_snapshot_nested_include_wrapper_alias_preserves_error_types;
+    Test.case "prepare_snapshot planner aliases preserve nested constructor owners" test_prepare_snapshot_planner_aliases_preserve_nested_constructor_owners;
+    Test.case "prepare_snapshot query order preserves in-progress wrapper exports" test_prepare_snapshot_query_order_preserves_in_progress_wrapper_exports;
+    Test.case "prepare_snapshot net wrapper graph preserves ip_addr exports" test_prepare_snapshot_net_wrapper_graph_preserves_ip_addr_exports;
+    Test.case "prepare_snapshot net wrapper graph preserves ip_addr exports with paired unix" test_prepare_snapshot_net_wrapper_graph_preserves_ip_addr_exports_with_paired_unix;
+    Test.case "implicit opens do not leak into module exports" test_implicit_opens_do_not_leak_into_module_exports;
+    Test.case "snapshot exports interface declarations" test_snapshot_exports_interface_declarations;
+    Test.case "snapshot exports interface externals" test_snapshot_exports_interface_externals;
+    Test.case "snapshot collects module typings" test_snapshot_collects_module_typings;
+    Test.case "snapshot module typings are canonical per module" test_snapshot_module_typings_are_canonical_per_module;
+    Test.case "query module_typings_of uses the canonical root typings" test_query_module_typings_of_uses_canonical_root_typings;
+    Test.case "paired modules export interface-shaped module typings" test_paired_modules_export_interface_shaped_module_typings;
+    Test.case "paired modules export interface-shaped file summaries" test_paired_modules_export_interface_shaped_file_summaries;
+    Test.case "paired modules report signature inclusion mismatches" test_paired_modules_report_signature_inclusion_mismatches;
+    Test.case "paired modules skip signature inclusion for errored implementation" test_paired_modules_skip_signature_inclusion_for_errored_implementation;
+    Test.case "paired modules skip signature inclusion for unsupported interface types" test_paired_modules_skip_signature_inclusion_for_unsupported_interface_types;
+    Test.case "paired modules accept manifest alias specialization" test_paired_modules_accept_manifest_alias_specialization;
+    Test.case "paired modules canonicalize builtin aliases in signature inclusion" test_paired_modules_canonicalize_builtin_aliases_in_signature_inclusion;
+    Test.case "paired modules accept manifest alias value usage in signature inclusion" test_paired_modules_accept_manifest_alias_value_usage_in_signature_inclusion;
+    Test.case "manifest option aliases canonicalize during inference" test_manifest_option_aliases_canonicalize_during_inference;
+    Test.case "manifest aliases canonicalize across modules" test_manifest_aliases_canonicalize_across_modules;
+    Test.case "paired modules accept option manifest aliases in signature inclusion" test_paired_modules_accept_option_manifest_aliases_in_signature_inclusion;
+    Test.case "source input hash ignores source id and revision" test_source_input_hash_ignores_source_id_and_revision;
+    Test.case "source input hash ignores comments and docstrings" test_source_input_hash_ignores_comments_and_docstrings;
+    Test.case "source input hash changes with implicit opens" test_source_input_hash_changes_with_implicit_opens;
+    Test.case "snapshot uses loaded module typings" test_snapshot_uses_loaded_module_typings;
+    Test.case "prepare_snapshot hydrates module typings from store" test_prepare_snapshot_hydrates_module_typings_from_store;
+    Test.case "prepare_snapshot keeps the store read-only during query forcing" test_prepare_snapshot_keeps_store_read_only_during_query_forcing;
+    Test.case "fold_package_sources persists module typings from the authoritative engine" test_fold_package_sources_persists_module_typings_from_authoritative_engine;
+    Test.case "prepare_snapshot emits structured events" test_prepare_snapshot_emits_structured_events;
+    Test.case "prepare_snapshot emits structured diagnostics in events" test_prepare_snapshot_emits_structured_diagnostics_in_events;
+    Test.case "prepare_snapshot keeps imported value payloads out of ambient bindings" test_prepare_snapshot_keeps_imported_value_payloads_out_of_ambient_bindings;
+    Test.case "prepare_snapshot keeps diagnostics and exports stable after module forcing" test_prepare_snapshot_keeps_diagnostics_and_exports_stable_after_module_forcing;
+    Test.case "prepare_snapshot only pairs required local modules" test_prepare_snapshot_only_pairs_required_local_modules;
+    Test.case "prepare_snapshot reuses shared transitive local modules" test_prepare_snapshot_reuses_shared_transitive_local_modules;
+    Test.case "prepare_snapshot reuses paired local modules across rooted snapshots" test_prepare_snapshot_reuses_paired_local_modules_across_rooted_snapshots;
+    Test.case "prepare_snapshot reuses shared implicit-open alias modules" test_prepare_snapshot_reuses_shared_implicit_open_alias_modules;
+    Test.case "prepare_snapshot store hydration emits structured events" test_prepare_snapshot_store_hydration_emits_structured_events;
+    Test.case "prepare_snapshot missing requirements emit structured events" test_prepare_snapshot_missing_requirements_emit_structured_events;
+    Test.case "prepare_snapshot missing requirements through include do not trigger nested typing" test_prepare_snapshot_missing_requirements_through_include_do_not_trigger_nested_typing;
+    Test.case "prepare_snapshot discovers local nested module dependencies" test_prepare_snapshot_discovers_local_nested_module_dependencies;
+    Test.case "prepare_snapshot discovers local include dependencies" test_prepare_snapshot_discovers_local_include_dependencies;
+    Test.case "prepare_snapshot discovers local implicit-open dependencies" test_prepare_snapshot_discovers_local_implicit_open_dependencies;
+    Test.case "prepare_snapshot reports local module cycles before typing" test_prepare_snapshot_reports_local_module_cycles_before_typing;
+    Test.case "prepare_snapshot reports match coverage diagnostics" test_prepare_snapshot_reports_match_coverage_diagnostics;
+    Test.case "prepare_snapshot includes interface sibling dependencies" test_prepare_snapshot_includes_interface_sibling_dependencies;
+    Test.case "loaded module typings override store" test_loaded_module_typings_override_store;
+    Test.case "snapshot uses sibling source record types" test_snapshot_uses_sibling_source_record_types;
+    Test.case "snapshot uses loaded module record types" test_snapshot_uses_loaded_module_record_types;
+    Test.case "include reexports loaded module record types" test_include_reexports_loaded_module_record_types;
+    Test.case "module alias reexports loaded module record types" test_module_alias_reexports_loaded_module_record_types;
+    Test.case "include reexports loaded module typings" test_include_reexports_loaded_module_typings;
+    Test.case "include reexports package-shaped loaded module typings" test_include_reexports_package_shaped_loaded_module_typings;
+    Test.case "include module type of canonicalizes loaded nominal types" test_include_module_type_of_canonicalizes_loaded_nominal_types;
+    Test.case "include module type of loaded modules canonicalizes nominal types" test_include_module_type_of_loaded_modules_canonicalizes_nominal_types;
+    Test.case "loaded module reexports canonicalize dependency result aliases" test_loaded_module_reexports_canonicalize_dependency_result_aliases;
+    Test.case "operator pattern bindings lower and typecheck" test_operator_pattern_bindings_lower_and_typecheck;
+    Test.case "cons patterns lower and typecheck" test_cons_patterns_lower_and_typecheck;
+    Test.case "recursive operator bindings typecheck" test_recursive_operator_bindings_typecheck;
+    Test.case "language prelude supports <> operator" test_language_prelude_supports_angle_not_equal;
+    Test.case "kernel ops surface typechecks" test_kernel_ops_surface_typechecks;
+    Test.case "opened sibling double underscore exports typecheck" test_opened_sibling_double_underscore_exports_typecheck;
+    Test.case "paired modules allow private top-level exception helpers" test_paired_modules_allow_private_top_level_exception_helpers;
+    Test.case "paired modules include sibling exports during signature inclusion" test_paired_modules_include_sibling_exports_during_signature_inclusion;
+    Test.case "paired modules include paired sibling exports during signature inclusion" test_paired_modules_include_paired_sibling_exports_during_signature_inclusion;
+    Test.case "nonrec same-name option alias prefers outer type" test_nonrec_same_name_option_alias_prefers_outer_type;
+    Test.case "nonrec same-name result alias prefers outer type" test_nonrec_same_name_result_alias_prefers_outer_type;
+    Test.case "source analysis with loaded modules canonicalizes nominal types" test_source_analysis_with_loaded_modules_canonicalizes_nominal_types;
+    Test.case "source analysis with opened loaded module canonicalizes nominal types" test_source_analysis_with_opened_loaded_module_canonicalizes_nominal_types;
+    Test.case "snapshot exports opened loaded nominal types from implementation" test_snapshot_exports_opened_loaded_nominal_types_from_implementation;
+    Test.case "snapshot type declarations use opened sibling nominal types" test_snapshot_type_decls_use_opened_sibling_nominal_types;
+    Test.case "prepare_snapshot type declarations use opened sibling nominal types" test_prepare_snapshot_type_decls_use_opened_sibling_nominal_types;
+    Test.case "prepare_snapshot type declarations use opened loaded nominal types" test_prepare_snapshot_type_decls_use_opened_loaded_nominal_types;
+    Test.case
+      "prepare_snapshot type declarations use opened loaded nominal types with underscored module name"
+      test_prepare_snapshot_type_decls_use_opened_loaded_nominal_types_with_underscored_module_name;
+    Test.case "prepare_snapshot canonicalizes sibling structural polyvariant exports" test_prepare_snapshot_polyvariant_exports_canonicalize_sibling_structural_types;
+    Test.case "prepare_snapshot canonicalizes sibling structural polyvariant exports inside arrows" test_prepare_snapshot_polyvariant_exports_canonicalize_sibling_structural_types_inside_arrows;
+    Test.case "module aliases reexport loaded module typings" test_module_alias_reexports_loaded_module_typings;
+    Test.case "module aliases reexport same-named local modules" test_module_alias_reexports_same_named_local_modules;
+    Test.case "loaded module typings preserve nested same-named alias exports" test_loaded_module_typings_preserve_nested_same_named_alias_exports;
+    Test.case "paired loaded module typings preserve nested alias exports across include chains" test_paired_loaded_module_typings_preserve_nested_alias_exports_across_include_chain;
+    Test.case "prepare_snapshot uses nested exports from local include of loaded module" test_prepare_snapshot_uses_nested_exports_from_local_include_of_loaded_module;
+    Test.case "sibling sources use loaded module record reexports" test_sibling_source_uses_loaded_module_record_reexport;
+    Test.case "prepare_snapshot is rooted" test_prepare_snapshot_is_rooted;
+    Test.case "prepare_snapshot reports missing roots" test_prepare_snapshot_reports_missing_roots;
+    Test.case "prepare_snapshot reports missing module summaries" test_prepare_snapshot_reports_missing_module_summary;
+    Test.case "prepare_snapshot collects transitive missing modules" test_prepare_snapshot_collects_transitive_missing_modules;
+    Test.case "prepare_snapshot collects missing modules from qualified references" test_prepare_snapshot_collects_missing_module_for_qualified_reference;
+    Test.case "prepare_snapshot keeps nested sibling modules out of top-level requirements" test_prepare_snapshot_keeps_nested_sibling_modules_out_of_top_level_requirements;
+    Test.case "prepare_snapshot keeps loaded nested module exports out of top-level requirements" test_prepare_snapshot_keeps_loaded_nested_module_exports_out_of_top_level_requirements;
+    Test.case "prepare_snapshot imports bare local module exports into rooted analysis" test_prepare_snapshot_imports_bare_local_module_exports_into_rooted_analysis;
+    Test.case "prepare_snapshot canonicalizes missing requirements" test_prepare_snapshot_canonicalizes_missing_requirements;
+    Test.case "prepare_snapshot sorts missing modules by name" test_prepare_snapshot_sorts_missing_modules_by_name;
+    Test.case "prepare_snapshot uses local Prelude variant constructors" test_prepare_snapshot_uses_local_prelude_variant_constructors;
+    Test.case "prepare_snapshot uses sibling Int module with local Prelude" test_prepare_snapshot_uses_sibling_int_module_with_local_prelude;
+    Test.case "prepare_snapshot types mutable record field assignment" test_prepare_snapshot_types_mutable_record_field_assignment;
+    Test.case "prepare_snapshot types local source module pack" test_prepare_snapshot_types_local_source_module_pack;
+    Test.case "check_source recovers when rooted preparation reports missing module summaries" test_check_source_recovers_when_snapshot_preparation_reports_missing_module_summaries;
+    Test.case "match guards typecheck in pattern scope" test_match_guards_typecheck_in_pattern_scope;
+    Test.case "optional arguments can be omitted and reordered" test_optional_arguments_can_be_omitted_and_reordered;
+    Test.case "optional argument forwarding preserves option wrapper" test_optional_argument_forwarding_preserves_option_wrapper;
+    Test.case "inline record constructor payloads use constructor owner" test_inline_record_constructor_payloads_use_constructor_owner;
+    Test.case "explicit locally abstract let annotations are checked" test_explicit_locally_abstract_let_annotations_are_checked;
+    Test.case "for loops lower and typecheck" test_for_loops_lower_and_typecheck;
+    Test.case "if branches do not capture trailing sequences" test_if_branches_do_not_capture_trailing_sequences;
+    Test.case "let operators lower and typecheck" test_let_operator_lower_and_typecheck;
+    Test.case "external identity cast token shape typechecks" test_external_identity_cast_token_shape_typechecks;
+    Test.case "first-class module pack and unpack typecheck" test_first_class_module_pack_and_unpack_typecheck;
+    Test.case "first-class module existential event shape typechecks" test_first_class_module_existential_event_shape_typechecks;
+    Test.case "prepare_snapshot paired module preserves first-class module value signatures" test_prepare_snapshot_paired_module_preserves_first_class_module_value_signatures;
+    Test.case "prepare_snapshot paired module allows hidden manifest alias with same variant shape" test_prepare_snapshot_paired_module_allows_hidden_manifest_alias_with_same_variant_shape;
+    Test.case "GADT constructor existentials typecheck" test_gadt_constructor_existentials_typecheck;
+    Test.case "GADT tuple constructor existentials typecheck" test_gadt_tuple_constructor_existentials_typecheck;
+    Test.case "selector receive with existential constructors typechecks" test_selector_receive_with_existential_constructors_typecheck;
+    Test.case "extensible selector agent shape typechecks" test_extensible_selector_agent_shape_typechecks;
+    Test.case "loaded module selector agent shape typechecks" test_loaded_module_selector_agent_shape_typechecks;
+    Test.case "snapshot exposes loaded module agent support exports" test_snapshot_exposes_loaded_module_agent_support_exports;
+    Test.case "deps collect loaded module agent dependencies" test_deps_collect_loaded_module_agent_dependencies;
+    Test.case "selector alias chain across loaded modules typechecks" test_selector_alias_chain_across_loaded_modules_typechecks;
+    Test.case "included extensible types preserve constructor identity across siblings" test_included_extensible_types_preserve_constructor_identity_across_siblings;
+    Test.case "loaded module ref shape typechecks" test_loaded_module_ref_shape_typechecks;
+    Test.case "spawn alias chain across loaded modules typechecks" test_spawn_alias_chain_across_loaded_modules_typechecks;
+    Test.case "function body annotation alias chain exports canonical result" test_function_body_annotation_alias_chain_exports_canonical_result;
+    Test.case "extensible variant constructors lower and typecheck" test_extensible_variant_constructors_lower_and_typecheck;
+    Test.case "expansive bindings stay monomorphic" test_expansive_bindings_stay_monomorphic;
+    Test.case "nonexpansive list bindings still generalize" test_nonexpansive_list_bindings_still_generalize;
+    Test.case "expansive covariant lists still generalize" test_expansive_covariant_lists_still_generalize;
+    Test.case "expansive covariant nominal types still generalize" test_expansive_covariant_nominal_types_still_generalize;
+    Test.case "expansive covariant record types still generalize" test_expansive_covariant_record_types_still_generalize;
+    Test.case "fun cases keep preceding parameters in scope" test_fun_cases_keep_preceding_parameters;
+    Test.case "records flow through snapshot queries" test_records_flow_through_snapshot_queries;
+  ]
+  in
+  Test.Cli.main ~name:"typ:session" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Std.Env.args ()

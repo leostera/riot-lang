@@ -156,5 +156,6 @@ let tests =
     case "color parser integrates with style api" test_color_parser_integrates_with_style_api;
   ]
 
-let () =
-  Actors.run ~main:(fun ~args -> Test.Cli.main ~name:"style" ~tests ~args ()) ~args:Env.args ()
+let main ~args = Test.Cli.main ~name:"style" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

@@ -137,9 +137,6 @@ let benchmark_suite = fun () ->
     bench_lower_bundle "lower kernel-new hot lowering bundle x250" prepared_hot_sources;
   ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args ->
-      Bench.Cli.main ~name:"typ lowering benchmarks" ~benchmarks:(benchmark_suite ()) ~args)
-    ~args:Env.args
-    ()
+let main ~args = Bench.Cli.main ~name:"typ lowering benchmarks" ~benchmarks:(benchmark_suite ()) ~args
+
+let () = Runtime.run ~main ~args:Env.args ()

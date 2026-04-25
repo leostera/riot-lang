@@ -27,18 +27,18 @@ let library_ml = fun ~workspace_name ->
 let library_mli = fun ~workspace_name -> "(** Return the starter greeting for " ^ workspace_name ^ ". *)\nval hello: unit -> string\n"
 
 let binary_main_ml = fun ~module_name ->
-  "open Std\n\nlet main = fun ~args:_ ->\n  Std.Config.load ();\n  Std.Log.set_level Info;\n  let _ = Std.Log.start_link () in\n  Log.info ("
+  "open Std\n\nlet main ~args:_ =\n  Std.Config.load ();\n  Std.Log.set_level Info;\n  let _ = Std.Log.start_link () in\n  Log.info ("
   ^ module_name
-  ^ ".hello ());\n  Ok ()\n\nlet () = Actors.run ~main ~args:Env.args ()\n"
+  ^ ".hello ());\n  Ok ()\n\nlet () = Runtime.run ~main ~args:Env.args ()\n"
 
 let test_ml = fun ~workspace_name ~module_name ~test_file_stem ->
   "open Std\n\nlet test_starter_greeting = fun _ctx ->\n  Test.assert_equal ~expected:\"Hello from "
   ^ workspace_name
   ^ "\" ~actual:("
   ^ module_name
-  ^ ".hello ());\n  Ok ()\n\nlet tests =\n  Test.[ case \"starter greeting\" test_starter_greeting ]\n\nlet () =\n  Actors.run ~main:(fun ~args -> Test.Cli.main ~name:\""
+  ^ ".hello ());\n  Ok ()\n\nlet tests =\n  Test.[ case \"starter greeting\" test_starter_greeting ]\n\nlet main ~args =\n  Test.Cli.main ~name:\""
   ^ test_file_stem
-  ^ "\" ~tests ~args ()) ~args:Env.args ()\n"
+  ^ "\" ~tests ~args ()\n\nlet () = Runtime.run ~main ~args:Env.args ()\n"
 
 let write = fun config ~relative_path ~content ->
   Writer.write_file config ~emit:false ~relative_path ~content ~executable:false

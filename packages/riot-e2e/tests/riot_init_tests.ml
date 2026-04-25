@@ -151,9 +151,11 @@ let tests = [
   test_riot_init_dotted_workspace_normalizes_starter_package;
 ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args ->
-      Test.Cli.main ~execution_mode:Test.Cli.Linear ~name:"riot-e2e:riot-init" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main
+  ~execution_mode:Test.Cli.Linear
+  ~name:"riot-e2e:riot-init"
+  ~tests
+  ~args
+  ()
+
+let () = Runtime.run ~main ~args:Env.args ()

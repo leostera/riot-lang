@@ -65,5 +65,6 @@ let tests =
     case "to_string renders bytes" test_to_string_handles_bytes;
   ]
 
-let () =
-  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"format" ~tests ~args ()) ~args:Env.args ()
+let main ~args = Test.Cli.main ~name:"format" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

@@ -75,5 +75,6 @@ let tests =
     case "binary roundtrip" test_roundtrip_binary;
   ]
 
-let () =
-  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"base85" ~tests ~args ()) ~args:Env.args ()
+let main ~args = Test.Cli.main ~name:"base85" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

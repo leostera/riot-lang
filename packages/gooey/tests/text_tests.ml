@@ -165,5 +165,6 @@ let tests =
     case "text size is a terminal layout no op" test_text_size_is_a_terminal_layout_no_op;
   ]
 
-let () =
-  Actors.run ~main:(fun ~args -> Test.Cli.main ~name:"text" ~tests ~args ()) ~args:Env.args ()
+let main ~args = Test.Cli.main ~name:"text" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

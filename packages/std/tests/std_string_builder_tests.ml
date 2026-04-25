@@ -33,8 +33,6 @@ let tests =
     case "utf-8 runes materialize as text" test_add_utf_8_uchar_materializes_utf8;
   ]
 
-let () =
-  Runtime.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"string_builder" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main ~name:"string_builder" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

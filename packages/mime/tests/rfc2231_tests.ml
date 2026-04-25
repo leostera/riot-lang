@@ -149,5 +149,6 @@ let tests =
     case "Encoding variant detection" test_encoding_detection;
   ]
 
-let () =
-  Actors.run ~main:(fun ~args -> Test.Cli.main ~name:"mime" ~tests ~args ()) ~args:Env.args ()
+let main ~args = Test.Cli.main ~name:"mime" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

@@ -225,8 +225,6 @@ let tests = [
   Test.case "open_named_object missing is structured" test_named_missing_is_structured;
 ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"contentstore_store_named_object_tests" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main ~name:"contentstore_store_named_object_tests" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

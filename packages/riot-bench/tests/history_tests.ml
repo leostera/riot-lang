@@ -507,8 +507,6 @@ let tests = [
   Test.case "bench history marks noisy cases from coefficient of variation" test_compare_suite_run_marks_noisy_cases;
 ]
 
-let () =
-  Runtime.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"riot_bench_history_tests" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main ~name:"riot_bench_history_tests" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

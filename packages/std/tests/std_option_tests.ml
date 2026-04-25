@@ -119,5 +119,6 @@ let tests =
     case "Option.all collects all present values" test_all;
   ]
 
-let () =
-  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"option" ~tests ~args ()) ~args:Env.args ()
+let main ~args = Test.Cli.main ~name:"option" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

@@ -19,7 +19,7 @@ let scaffold_package = fun ~path ~name ~is_library ->
     if is_library then
       "open Std\n\n(** Main module for " ^ name ^ " library *)\n"
     else
-      "open Std\n\nlet main = fun ~args:_ ->\n  println \"Hello, World!\";\n  Ok ()\n\nlet () = Actors.run ~main ~args:Env.args ()\n"
+      "open Std\n\nlet main ~args:_ =\n  println \"Hello, World!\";\n  Ok ()\n\nlet () = Runtime.run ~main ~args:Env.args ()\n"
   in
   let mli_content =
     if is_library then

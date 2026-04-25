@@ -52,4 +52,6 @@ let initial_model = { spinner = Component.Spinner.dot () }
 
 (* Run it *)
 
-let () = start app initial_model
+let main ~args:_ = Minttea.run initial_model app
+
+let () = Runtime.run ~main ~args:Env.args ()

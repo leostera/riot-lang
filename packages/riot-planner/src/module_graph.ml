@@ -174,6 +174,96 @@ let is_binary = fun config path ->
       let bin_abs_rel = make_relative ~base:config.package.path ~path:bin.path in
       Path.equal path bin_rel && Path.equal bin_rel bin_abs_rel)
 
+let binary_for_path = fun config path ->
+  let path_rel = make_relative ~base:config.package.path ~path |> Path.normalize in
+  List.find config.package.binaries
+    ~fn:(fun (bin: Package.binary) ->
+      let bin_rel = make_relative ~base:config.package.path ~path:bin.path |> Path.normalize in
+      Path.equal path_rel bin_rel)
+
+let executable_parameter_to_string = function
+  | Syn.Cst.Parameter.Positional parameter -> (
+      match parameter.name_token with
+      | Some token -> Syn.Cst.Token.text token
+      | None -> "<positional>"
+    )
+  | Syn.Cst.Parameter.Labeled parameter ->
+      "~" ^ Syn.Cst.Token.text parameter.label_token
+  | Syn.Cst.Parameter.Optional parameter ->
+      "?" ^ Syn.Cst.Token.text parameter.label_token
+  | Syn.Cst.Parameter.LocallyAbstract _ ->
+      "(type ...)"
+
+let is_labeled_args_parameter = function
+  | Syn.Cst.Parameter.Labeled parameter -> String.equal (Syn.Cst.Token.text parameter.label_token) "args"
+  | _ -> false
+
+let let_binding_name = fun binding ->
+  Syn.Cst.LetBinding.binding_name_token binding |> Option.map ~fn:Syn.Cst.Token.text
+
+let executable_main_bindings = fun source_file ->
+  match Syn.Cst.SourceFile.structure_items source_file with
+  | None -> []
+  | Some items ->
+      items |> List.filter_map
+        ~fn:(
+          function
+          | Syn.Cst.StructureItem.LetBinding binding -> Some (binding
+          :: Syn.Cst.LetBinding.and_bindings binding)
+          | _ -> None
+        ) |> List.concat |> List.filter
+        ~fn:(fun binding ->
+          match let_binding_name binding with
+          | Some name -> String.equal name "main"
+          | None -> false)
+
+let package_source_file = fun config source ->
+  match Path.to_string config.package.relative_path with
+  | "."
+  | "" -> source
+  | _ -> Path.(config.package.relative_path / source)
+
+let validate_executable_main = fun ~package_name ~target_name ~source ~file source_file ->
+  match executable_main_bindings source_file with
+  | [] ->
+      Error (
+        Planning_error.InvalidExecutableMain {
+          package_name;
+          target_name;
+          source;
+          file;
+          error = Planning_error.MissingMain;
+        }
+      )
+  | [ binding ] ->
+      let parameters = Syn.Cst.LetBinding.parameters binding in
+      (
+        match parameters with
+        | [ parameter ] when is_labeled_args_parameter parameter -> Ok ()
+        | _ ->
+            Error (
+              Planning_error.InvalidExecutableMain {
+                package_name;
+                target_name;
+                source;
+                file;
+                error = Planning_error.InvalidMainParameters {
+                  parameters = List.map parameters ~fn:executable_parameter_to_string
+                };
+              }
+            )
+      )
+  | bindings ->
+      Error (
+        Planning_error.InvalidExecutableMain {
+          package_name;
+          target_name;
+          source;
+          file;
+          error = Planning_error.MultipleMainDefinitions { count = List.length bindings };
+        }
+      )
+
 (** Recursively scan directory entries and build graph nodes.
 
     Processing order (entries are pre-sorted by Module_scanner): 1. MLI files
@@ -1081,6 +1171,18 @@ let wire_dependencies = fun t ->
         let implicit_opens = implicit_open_modules node.value.open_modules in
         let parse_result = Syn.parse ~filename:display_path raw_text in
         let cst = Syn.build_cst parse_result in
+        let executable_main_validation =
+          match cst, binary_for_path t.config path with
+          | Ok cst, Some binary ->
+              let source = make_relative ~base:t.config.package.path ~path:binary.path in
+              validate_executable_main
+                ~package_name:(Package_name.to_string t.config.package.name)
+                ~target_name:binary.name
+                ~source
+                ~file:(package_source_file t.config source)
+                cst
+          | _ -> Ok ()
+        in
         let deps_env = deps_env_with_implicit_opens (Cell.get t.deps_env) node.value.open_modules in
         let deps = Syn.Deps.of_parse_result ~env:deps_env parse_result in
         let source_hash =
@@ -1190,15 +1292,19 @@ let wire_dependencies = fun t ->
           | _ -> ()
         in
         (
-          match deps, node.value.file with
-          | Ok _, Module_node.Concrete _ -> Ok resolved_deps
-          | Error err, Module_node.Concrete _ -> Error (Planning_error.DependencyAnalysisFailed {
-            reason = stringify_dependency_error path err
-          })
-          | Ok _, Module_node.Generated _ -> Ok []
-          | Error err, Module_node.Generated _ -> Error (Planning_error.DependencyAnalysisFailed {
-            reason = stringify_dependency_error path err
-          })
+          match executable_main_validation with
+          | Error _ as error -> error
+          | Ok () -> (
+              match deps, node.value.file with
+              | Ok _, Module_node.Concrete _ -> Ok resolved_deps
+              | Error err, Module_node.Concrete _ -> Error (Planning_error.DependencyAnalysisFailed {
+                reason = stringify_dependency_error path err
+              })
+              | Ok _, Module_node.Generated _ -> Ok []
+              | Error err, Module_node.Generated _ -> Error (Planning_error.DependencyAnalysisFailed {
+                reason = stringify_dependency_error path err
+              })
+            )
         )
   in
   let export_source_node_ids =

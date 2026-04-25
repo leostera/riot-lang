@@ -268,5 +268,6 @@ let tests =
     case "Deque.mut_iter drains items in order" test_mut_iter;
   ]
 
-let () =
-  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"deque" ~tests ~args ()) ~args:Env.args ()
+let main ~args = Test.Cli.main ~name:"deque" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

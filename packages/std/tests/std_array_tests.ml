@@ -175,5 +175,6 @@ let tests =
     case "Array.mut_iter yields items in order" test_mut_iter;
   ]
 
-let () =
-  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"array" ~tests ~args ()) ~args:Env.args ()
+let main ~args = Test.Cli.main ~name:"array" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

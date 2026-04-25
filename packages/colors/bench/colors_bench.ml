@@ -157,8 +157,6 @@ let benchmarks =
     with_config ~config:heavy "colors rgb.gradient 64" bench_rgb_gradient_64;
   ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args -> Bench.Cli.main ~name:"colors benchmarks" ~benchmarks ~args)
-    ~args:Env.args
-    ()
+let main ~args = Bench.Cli.main ~name:"colors benchmarks" ~benchmarks ~args
+
+let () = Runtime.run ~main ~args:Env.args ()

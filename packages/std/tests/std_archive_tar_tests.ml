@@ -201,8 +201,6 @@ let tests =
     case "tar extract skips AppleDouble entries" test_extract_skips_appledouble_entries;
   ]
 
-let () =
-  Runtime.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"std_archive_tar" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main ~name:"std_archive_tar" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

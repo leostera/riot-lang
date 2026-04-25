@@ -113,26 +113,26 @@ get "/api/users/:id" user_handler;]
 
 let app = Middleware.[ logger; cors_middleware; router routes; ]
 
-let () =
-  Actors.run ~args:Env.args ()
-    ~main:(fun ~args:_ ->
-      Std.Config.load_file (Path.v "packages/suri/examples/conf.toml");
-      let _ = Std.Log.start_link () in
-      Log.(set_level Info);
-      match Suri.start_link app with
-      | Ok supervisor ->
-          Log.info "🚀 JSON API server on http://0.0.0.0:4000";
-          Log.info "   Try these commands:";
-          Log.info "     curl http://localhost:4000/api/users";
-          Log.info "     curl http://localhost:4000/api/users/1";
-          Log.info "     curl http://localhost:4000/api/users/2";
-          let count = Supervisor.Dynamic.count_children supervisor in
-          Log.info ("   " ^ Int.to_string count.active ^ " acceptors ready");
-          let rec loop () =
-            sleep (Time.Duration.from_secs 100);
-            loop ()
-          in
-          loop ()
-      | Error `Bind_error ->
-          Log.error "Failed to bind to port 4000";
-          Error (Failure "Failed to start server"))
+let main ~args:_ =
+  Std.Config.load_file (Path.v "packages/suri/examples/conf.toml");
+  let _ = Std.Log.start_link () in
+  Log.(set_level Info);
+  match Suri.start_link app with
+  | Ok supervisor ->
+      Log.info "🚀 JSON API server on http://0.0.0.0:4000";
+      Log.info "   Try these commands:";
+      Log.info "     curl http://localhost:4000/api/users";
+      Log.info "     curl http://localhost:4000/api/users/1";
+      Log.info "     curl http://localhost:4000/api/users/2";
+      let count = Supervisor.Dynamic.count_children supervisor in
+      Log.info ("   " ^ Int.to_string count.active ^ " acceptors ready");
+      let rec loop () =
+        sleep (Time.Duration.from_secs 100);
+        loop ()
+      in
+      loop ()
+  | Error `Bind_error ->
+      Log.error "Failed to bind to port 4000";
+      Error (Failure "Failed to start server")
+
+let () = Runtime.run ~main ~args:Env.args ()

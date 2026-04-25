@@ -26,14 +26,11 @@ let test_riot_new_binary_creates_a_standalone_package_that_runs =
 
 let tests = [ test_riot_new_binary_creates_a_standalone_package_that_runs ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args ->
-      Test.Cli.main
-        ~execution_mode:Test.Cli.Linear
-        ~name:"riot-e2e:riot-new-standalone-bin"
-        ~tests
-        ~args
-        ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main
+  ~execution_mode:Test.Cli.Linear
+  ~name:"riot-e2e:riot-new-standalone-bin"
+  ~tests
+  ~args
+  ()
+
+let () = Runtime.run ~main ~args:Env.args ()

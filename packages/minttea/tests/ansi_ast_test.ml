@@ -34,7 +34,10 @@ let test_public_layout_rendering = fun () ->
   assert_contains "layout rendering" output "second";
   println "Minttea public layout rendering works"
 
-let () =
+let main ~args:_ =
   test_public_text_rendering ();
   test_public_style_rendering ();
-  test_public_layout_rendering ()
+  test_public_layout_rendering ();
+  Ok ()
+
+let () = Runtime.run ~main ~args:Env.args ()

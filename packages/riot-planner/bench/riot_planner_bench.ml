@@ -252,14 +252,11 @@ let benchmark_suite = fun root ->
       (make_plan_package_warm_bench root);
   ]
 
-let () =
-  Runtime.run
-    ~main:(fun ~args ->
-      match Fs.with_tempdir
-        ~prefix:"riot_planner_bench"
-        (fun root ->
-          Bench.Cli.main ~name:"riot-planner benchmarks" ~benchmarks:(benchmark_suite root) ~args) with
-      | Ok result -> result
-      | Error err -> panic ("failed to prepare riot-planner bench fixture: " ^ IO.error_message err))
-    ~args:Env.args
-    ()
+let main ~args =
+  match Fs.with_tempdir
+    ~prefix:"riot_planner_bench"
+    (fun root -> Bench.Cli.main ~name:"riot-planner benchmarks" ~benchmarks:(benchmark_suite root) ~args) with
+  | Ok result -> result
+  | Error err -> panic ("failed to prepare riot-planner bench fixture: " ^ IO.error_message err)
+
+let () = Runtime.run ~main ~args:Env.args ()

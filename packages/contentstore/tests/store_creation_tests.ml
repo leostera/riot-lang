@@ -172,8 +172,6 @@ let tests = [
   Test.case "reserved-like namespace parts are isolated safely" test_reserved_like_namespace_parts_are_isolated;
 ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"contentstore_store_creation_tests" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main ~name:"contentstore_store_creation_tests" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

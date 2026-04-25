@@ -54,18 +54,15 @@ let test_decode_returns_unconsumed_tail = fun _ctx ->
             else
               Ok ()
 
-let () =
-  Actors.run
-    ~main:(fun ~args ->
-      Test.Cli.main
-        ~name:"riot-lsp framing tests"
-        ~tests:[
-          Test.case "encode and decode roundtrip" test_encode_and_decode_roundtrip;
-          Test.case "decode handles LF headers" test_decode_handles_lf_headers;
-          Test.case "decode requires Content-Length" test_decode_requires_content_length;
-          Test.case "decode returns unconsumed tail" test_decode_returns_unconsumed_tail;
-        ]
-        ~args
-        ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main
+  ~name:"riot-lsp framing tests"
+  ~tests:[
+    Test.case "encode and decode roundtrip" test_encode_and_decode_roundtrip;
+    Test.case "decode handles LF headers" test_decode_handles_lf_headers;
+    Test.case "decode requires Content-Length" test_decode_requires_content_length;
+    Test.case "decode returns unconsumed tail" test_decode_returns_unconsumed_tail;
+  ]
+  ~args
+  ()
+
+let () = Runtime.run ~main ~args:Env.args ()

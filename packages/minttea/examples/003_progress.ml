@@ -72,9 +72,11 @@ let initial_model = {
 
 (* Run it *)
 
-let () =
+let main ~args:_ =
   (* TODO: Implement FileHandler for logging to file *)
   (* Log.(set_log_file (Path.v "./stdout.log")); *)
   Log.(set_level Trace);
   let config = Minttea.config () in
-  Minttea.start ~config app initial_model
+  Minttea.run ~config initial_model app
+
+let () = Runtime.run ~main ~args:Env.args ()

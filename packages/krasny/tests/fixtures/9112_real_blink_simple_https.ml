@@ -1,7 +1,6 @@
 open Std
 
-let () =
-  Actors.run ~main:(fun ~args ->
+let main ~args =
     (* Parse command-line arguments *)
     let cmd = ArgParser.command "simple_https"
       |> ArgParser.about "Simple HTTPS client example"
@@ -113,4 +112,6 @@ let () =
     Blink.close conn;
     println "Connection closed.";
     Ok ()
-  ) ~args:Env.args ()
+
+
+let () = Runtime.run ~main ~args:Env.args ()

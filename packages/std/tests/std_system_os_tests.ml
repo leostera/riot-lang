@@ -21,8 +21,6 @@ let test_os_predicates_match_current_os = fun _ctx ->
 let tests =
   Test.[ case "System OS predicates agree with the current OS" test_os_predicates_match_current_os; ]
 
-let () =
-  Runtime.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"std_system_os_tests" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main ~name:"std_system_os_tests" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

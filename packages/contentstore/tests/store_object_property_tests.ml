@@ -138,8 +138,6 @@ let tests = [
     (fun _ctx -> assert_property "successful object writes leave no temp files" successful_object_writes_leave_no_temp_files);
 ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"contentstore_store_object_property_tests" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main ~name:"contentstore_store_object_property_tests" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

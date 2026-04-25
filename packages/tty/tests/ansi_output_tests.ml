@@ -165,8 +165,6 @@ let tests =
     case "disable_focus_tracking" test_disable_focus_tracking;
   ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"tty_ansi_output" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main ~name:"tty_ansi_output" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

@@ -16,14 +16,13 @@ open Global
     ## Example
 
     ```ocaml
-    let () =
-      Runtime.run
-        ~main:(fun ~args ->
-          Bench.Cli.main
-            ~name:"My Benchmarks"
-            ~benchmarks:[ ... ]
-            ~args)
-        ~args:Env.args ()
+    let main ~args =
+      Bench.Cli.main
+        ~name:"My Benchmarks"
+        ~benchmarks:[ ... ]
+        ~args
+
+    let () = Runtime.run ~main ~args:Env.args ()
     ```
 *)
 val main:

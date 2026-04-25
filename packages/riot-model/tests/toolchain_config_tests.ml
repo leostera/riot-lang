@@ -59,8 +59,6 @@ let tests =
     case "Toolchain_config.from_root parses local path sources" test_from_workspace_parses_local_path_sources;
   ]
 
-let () =
-  Runtime.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"toolchain_config" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main ~name:"toolchain_config" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

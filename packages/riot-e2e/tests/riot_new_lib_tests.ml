@@ -30,9 +30,11 @@ let test_riot_new_library_adds_workspace_member_and_builds =
 
 let tests = [ test_riot_new_library_adds_workspace_member_and_builds ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args ->
-      Test.Cli.main ~execution_mode:Test.Cli.Linear ~name:"riot-e2e:riot-new-lib" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main
+  ~execution_mode:Test.Cli.Linear
+  ~name:"riot-e2e:riot-new-lib"
+  ~tests
+  ~args
+  ()
+
+let () = Runtime.run ~main ~args:Env.args ()

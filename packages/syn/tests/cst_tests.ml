@@ -7023,5 +7023,6 @@ let lifted =
       | _ -> Error "expected polymorphic variant payload to lift as local-open expression");
 ]
 
-let () =
-  Actors.run ~main:(fun ~args -> Test.Cli.main ~name:"syn-cst" ~tests ~args ()) ~args:Env.args ()
+let main ~args = Test.Cli.main ~name:"syn-cst" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

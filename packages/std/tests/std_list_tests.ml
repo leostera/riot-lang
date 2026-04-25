@@ -200,5 +200,6 @@ let tests =
     case "List.unzip splits pair lists" test_unzip;
   ]
 
-let () =
-  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"list" ~tests ~args ()) ~args:Env.args ()
+let main ~args = Test.Cli.main ~name:"list" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

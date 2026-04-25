@@ -143,8 +143,6 @@ let tests =
     case "chain and for_each preserve order" test_chain_and_for_each_preserve_order;
   ]
 
-let () =
-  Runtime.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"iter_mut_iterator" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main ~name:"iter_mut_iterator" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

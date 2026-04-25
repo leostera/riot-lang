@@ -907,5 +907,6 @@ let tests =
     case "integration wrap and width" test_integration_wrap_and_width;
   ]
 
-let () =
-  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"unicode" ~tests ~args ()) ~args:Env.args ()
+let main ~args = Test.Cli.main ~name:"unicode" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

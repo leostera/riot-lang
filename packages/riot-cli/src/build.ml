@@ -173,6 +173,17 @@ let red_error = "\027[1;31mError\027[0m"
 
 let error_line = fun message -> red_error ^ ": " ^ message
 
+let display_planner_file = fun path ->
+  let path_text = Path.to_string path in
+  if
+    Path.is_absolute path
+    || String.starts_with ~prefix:"./" path_text
+    || String.starts_with ~prefix:"../" path_text
+  then
+    path_text
+  else
+    "./" ^ path_text
+
 let planning_error_lines = function
   | Riot_planner.Planning_error.CyclicDependency { cycle } ->
       [
@@ -292,6 +303,57 @@ let planning_error_lines = function
         "  - move shared code behind " ^ public_module;
         "  - move shared code into a helper module that both targets can import";
       ]
+  | Riot_planner.Planning_error.InvalidExecutableMain {
+    package_name;
+    target_name;
+    file;
+    error;
+    _
+  } ->
+      let file = display_planner_file file in
+      let headline, reason_lines =
+        match error with
+        | Riot_planner.Planning_error.MissingMain ->
+            ("`" ^ target_name ^ "` has no executable entry point", [ "But we could not find one." ])
+        | Riot_planner.Planning_error.MultipleMainDefinitions { count } ->
+            (
+              "`" ^ target_name ^ "` has more than one executable entry point",
+              [
+                "But we found " ^ Int.to_string count ^ " top-level `main` definitions.";
+                "Executable targets must define exactly one.";
+              ]
+            )
+        | Riot_planner.Planning_error.InvalidMainParameters { parameters } ->
+            let parameters =
+              match parameters with
+              | [] -> "<none>"
+              | parameters -> String.concat ", " parameters
+            in
+            (
+              "`" ^ target_name ^ "` has an invalid executable entry point",
+              [
+                "But the `main` function we found does not have that shape.";
+                "found parameters: " ^ parameters;
+              ]
+            )
+      in
+      [
+        error_line headline;
+        "";
+        "Riot is building this target as an executable:";
+        "";
+        "    package: " ^ package_name;
+        "    target:  " ^ target_name;
+        "    file:    " ^ file;
+        "";
+        "To start the program, Riot needs this file to define a top-level";
+        "`main` function with this shape:";
+        "";
+        "    let main ~args =";
+        "      ...";
+        "      Ok ()";
+        "";
+      ] @ reason_lines
   | Riot_planner.Planning_error.Exception { exn } ->
       [
         error_line "unexpected planner exception";
@@ -620,9 +682,23 @@ let write_command_error = fun ~mode kind details human_message ->
 let build_failure_detail_lines = fun (failure: Riot_build.Build_result.failure) ->
   let package_name = Riot_model.Package_name.to_string failure.package_name in
   match failure.reason with
-  | Riot_build.Build_result.PackagePlanningFailed planning_error -> ("package: " ^ package_name)
-  :: List.map (planning_error_lines planning_error) ~fn:(fun line -> "  " ^ line)
-  | _ -> [ package_name ^ ": " ^ failure.message ]
+  | Riot_build.Build_result.PackagePlanningFailed planning_error -> planning_error_lines planning_error
+  | _ -> [ error_line (package_name ^ " failed"); failure.message; ]
+
+let write_failure_blocks = fun failures ->
+  let rec loop = function
+    | [] ->
+        ()
+    | [ failure ] ->
+        out "";
+        build_failure_detail_lines failure |> List.for_each ~fn:out;
+        out ""
+    | failure :: rest ->
+        out "";
+        build_failure_detail_lines failure |> List.for_each ~fn:out;
+        loop rest
+  in
+  loop failures
 
 let write_build_failed_error = fun ~mode errors ->
   match mode with
@@ -630,12 +706,16 @@ let write_build_failed_error = fun ~mode errors ->
     (command_error_event_to_json
       "BuildFailed"
       [ ("errors", Data.Json.Array (List.map errors ~fn:Riot_build.Build_result.failure_to_json)); ])
-  | Human ->
-      out "\027[1;31mError\027[0m: build failed";
-      errors
-      |> List.for_each
-        ~fn:(fun failure ->
-          build_failure_detail_lines failure |> List.for_each ~fn:(fun line -> out ("  " ^ line)))
+  | Human -> (
+      match errors with
+      | [] ->
+          out "\027[1;31mError\027[0m: build failed"
+      | [ failure ] ->
+          write_failure_blocks [ failure ]
+      | failures ->
+          out "\027[1;31mError\027[0m: build failed";
+          write_failure_blocks failures
+    )
 
 let command =
   let open ArgParser in

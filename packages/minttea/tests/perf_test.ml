@@ -21,7 +21,10 @@ let test_scene_diff_optimization = fun () ->
   println "✓ Expensive rendering only when needed";
   println "✓ Game-engine-like render loop"
 
-let () =
+let main ~args:_ =
   println "\n=== Minttea Performance Architecture Test ===\n";
   test_scene_diff_optimization ();
-  println "\n=== All Architecture Tests Complete ===\n"
+  println "\n=== All Architecture Tests Complete ===\n";
+  Ok ()
+
+let () = Runtime.run ~main ~args:Env.args ()

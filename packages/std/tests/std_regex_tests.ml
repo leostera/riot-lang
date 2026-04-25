@@ -26,6 +26,6 @@ let tests = [ Test.case "regex DSL compiles and matches"
       Test.assert_false (Regex.is_match regex "fooZZbar");
       Ok ()); ]
 
-let main = fun ~args -> Test.Cli.main ~name:"std_regex_tests" ~tests ~args ()
+let main ~args = Test.Cli.main ~name:"std_regex_tests" ~tests ~args ()
 
 let () = Runtime.run ~main ~args:Env.args ()

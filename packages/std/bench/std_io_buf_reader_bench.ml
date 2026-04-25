@@ -210,8 +210,6 @@ let benchmarks =
   in
   line_benchmarks @ rune_benchmarks
 
-let () =
-  Runtime.run
-    ~main:(fun ~args -> Bench.Cli.main ~name:"std_io_buf_reader_bench" ~benchmarks ~args)
-    ~args:Env.args
-    ()
+let main ~args = Bench.Cli.main ~name:"std_io_buf_reader_bench" ~benchmarks ~args
+
+let () = Runtime.run ~main ~args:Env.args ()

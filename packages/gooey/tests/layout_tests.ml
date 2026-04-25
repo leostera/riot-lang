@@ -308,5 +308,6 @@ let tests =
     case "zero-sized children do not advance siblings" test_zero_sized_children_do_not_advance_siblings;
   ]
 
-let () =
-  Actors.run ~main:(fun ~args -> Test.Cli.main ~name:"layout" ~tests ~args ()) ~args:Env.args ()
+let main ~args = Test.Cli.main ~name:"layout" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

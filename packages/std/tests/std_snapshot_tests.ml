@@ -265,8 +265,6 @@ let tests = [
   test_fixture_snapshot_uses_explicit_snapshot_path;
 ]
 
-let () =
-  Runtime.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"std_snapshot_tests" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main ~name:"std_snapshot_tests" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

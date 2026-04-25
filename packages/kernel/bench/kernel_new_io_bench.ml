@@ -129,8 +129,6 @@ let benchmarks =
     with_config ~config:{ iterations = 50; warmup = 10 } "io stderr source poll/close" bench_stderr_source_poll;
   ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args -> Bench.Cli.main ~name:"kernel_new_io_bench" ~benchmarks ~args)
-    ~args:Env.args
-    ()
+let main ~args = Bench.Cli.main ~name:"kernel_new_io_bench" ~benchmarks ~args
+
+let () = Runtime.run ~main ~args:Env.args ()

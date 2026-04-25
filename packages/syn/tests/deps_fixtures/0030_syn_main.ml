@@ -192,7 +192,7 @@ let handle_explain = fun sub_matches ->
       Log.error ("Unknown error code: " ^ error_code);
       exit 1
 
-let main = fun ~args ->
+let main ~args =
   (* Parse command line arguments *)
   let cmd =
     let open ArgParser in
@@ -257,4 +257,4 @@ let main = fun ~args ->
           Error (Failure "missing subcommand")
     )
 
-let () = Actors.run ~main ~args:Env.args ()
+let () = Runtime.run ~main ~args:Env.args ()

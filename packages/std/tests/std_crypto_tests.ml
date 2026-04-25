@@ -196,5 +196,6 @@ let tests =
     case "hash_array is order sensitive" test_hash_array_is_order_sensitive;
   ]
 
-let () =
-  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"crypto" ~tests ~args ()) ~args:Env.args ()
+let main ~args = Test.Cli.main ~name:"crypto" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

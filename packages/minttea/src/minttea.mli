@@ -147,5 +147,5 @@ val app:
 (** Run the application *)
 val run: ?config:Config.t -> 'model -> 'model App.t -> (unit, exn) result
 
-(** Start the application with Actors runtime *)
+(** Start the application with Std.Runtime *)
 val start: ?config:Config.t -> 'model App.t -> 'model -> unit

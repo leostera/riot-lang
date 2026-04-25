@@ -99,8 +99,6 @@ let tests =
     case "remaining is empty at EOF" test_remaining_is_empty_at_eof;
   ]
 
-let () =
-  Runtime.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"iter_mut_cursor" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main ~name:"iter_mut_cursor" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

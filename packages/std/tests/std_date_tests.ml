@@ -54,5 +54,6 @@ let tests =
     case "today_utc matches DateTime.now_utc" test_today_utc_matches_datetime_now_utc;
   ]
 
-let () =
-  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"date" ~tests ~args ()) ~args:Env.args ()
+let main ~args = Test.Cli.main ~name:"date" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

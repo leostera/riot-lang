@@ -159,7 +159,7 @@ let app = App.make ~init ~update ~view ()
 
 (* Run it *)
 
-let () =
+let main ~args:_ =
   let initial_model = {
     fps = Fps.of_int 60;
     box_x = 10.0;
@@ -173,4 +173,6 @@ let () =
   }
   in
   let config = Minttea.config ~fps:60 () in
-  Minttea.start ~config app initial_model
+  Minttea.run ~config initial_model app
+
+let () = Runtime.run ~main ~args:Env.args ()

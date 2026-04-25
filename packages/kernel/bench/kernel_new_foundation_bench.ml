@@ -29,8 +29,6 @@ let benchmarks =
     with_config ~config:{ iterations = 50; warmup = 10 } "foundation string of_bytes: 4KiB" bench_string_of_bytes;
   ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args -> Bench.Cli.main ~name:"kernel_new_foundation_bench" ~benchmarks ~args)
-    ~args:Env.args
-    ()
+let main ~args = Bench.Cli.main ~name:"kernel_new_foundation_bench" ~benchmarks ~args
+
+let () = Runtime.run ~main ~args:Env.args ()

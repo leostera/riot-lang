@@ -115,8 +115,6 @@ let tests = [
   precondition_prop;
 ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"propane-assumptions-examples" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main ~name:"propane-assumptions-examples" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

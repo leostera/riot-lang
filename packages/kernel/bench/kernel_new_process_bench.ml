@@ -294,8 +294,6 @@ let benchmarks =
     with_config ~config:{ iterations = 15; warmup = 3 } "process many child exit sources" bench_many_process_exit_sources;
   ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args -> Bench.Cli.main ~name:"kernel_new_process_bench" ~benchmarks ~args)
-    ~args:Env.args
-    ()
+let main ~args = Bench.Cli.main ~name:"kernel_new_process_bench" ~benchmarks ~args
+
+let () = Runtime.run ~main ~args:Env.args ()

@@ -736,6 +736,8 @@ let index_of_path = fun paths target ->
   in
   loop 0 paths
 
+let binary_main = fun expression -> "let main ~args:_ =\n  " ^ expression ^ ";\n  Ok ()\n"
+
 let plan_actions_for_package = fun ~tmpdir ~package_name ~files ?(binaries = []) ?library () ->
   let package_root = Path.(tmpdir / Path.v "packages" / Path.v package_name) in
   let src_dir = Path.(package_root / Path.v "src") in
@@ -1145,7 +1147,7 @@ let test_binary_actions_include_target_private_modules = fun _ctx ->
             ("src/splitdemo.ml", "module A = A\n");
             ("src/a.ml", "let library_value = 1\n");
             ("src/b.ml", "let private_value = 2\n");
-            ("src/main.ml", "let () = ignore B.private_value\n");
+            ("src/main.ml", binary_main "ignore B.private_value");
             ("src/orphan.ml", "let orphan = 3\n");
           ]
           () with
@@ -1229,7 +1231,7 @@ let test_binary_actions_follow_transitive_private_reachability = fun _ctx ->
             ("src/transitivedemo.ml", "let library_only = 0\n");
             ("src/c.ml", "let value = 41\n");
             ("src/b.ml", "let value = C.value + 1\n");
-            ("src/main.ml", "let () = ignore B.value\n");
+            ("src/main.ml", binary_main "ignore B.value");
             ("src/orphan.ml", "let orphan = 7\n");
           ]
           () with
@@ -1288,7 +1290,7 @@ let test_executable_actions_do_not_duplicate_library_owned_modules = fun _ctx ->
           ~files:[
             ("src/shareddemo.ml", "module Shared = Shared\n");
             ("src/shared.ml", "let value = 1\n");
-            ("src/main.ml", "let () = ignore Shareddemo.Shared.value\n");
+            ("src/main.ml", binary_main "ignore Shareddemo.Shared.value");
           ]
           () with
         | Error _ as err -> err
@@ -1328,7 +1330,7 @@ let test_executable_actions_allow_private_helpers_without_a_library = fun _ctx -
           ~binaries:[ ("standalone", "src/main.ml") ]
           ~files:[
             ("src/helper.ml", "let value = 1\n");
-            ("src/main.ml", "let () = ignore Helper.value\n");
+            ("src/main.ml", binary_main "ignore Helper.value");
             ("src/orphan.ml", "let orphan = 0\n");
           ]
           () with
@@ -1377,7 +1379,7 @@ let test_binary_actions_without_private_helpers = fun _ctx ->
           ~files:[
             ("src/nohelperdemo.ml", "module Shared = Shared\n");
             ("src/shared.ml", "let value = 1\n");
-            ("src/main.ml", "let () = ignore Nohelperdemo.Shared.value\n");
+            ("src/main.ml", binary_main "ignore Nohelperdemo.Shared.value");
           ]
           () with
         | Error _ as err -> err
@@ -1428,7 +1430,7 @@ let test_binary_actions_include_multiple_private_helpers = fun _ctx ->
             ("src/multidemo.ml", "let library_value = 1\n");
             ("src/a.ml", "let value = 10\n");
             ("src/b.ml", "let value = 20\n");
-            ("src/main.ml", "let () = ignore (A.value + B.value)\n");
+            ("src/main.ml", binary_main "ignore (A.value + B.value)");
           ]
           () with
         | Error _ as err -> err
@@ -1472,8 +1474,8 @@ let test_multiple_binaries_share_private_helper = fun _ctx ->
           ~binaries:[ ("main", "src/main.ml"); ("tool", "src/tool.ml") ]
           ~files:[
             ("src/shared.ml", "let value = 1\n");
-            ("src/main.ml", "let () = ignore Shared.value\n");
-            ("src/tool.ml", "let () = ignore Shared.value\n");
+            ("src/main.ml", binary_main "ignore Shared.value");
+            ("src/tool.ml", binary_main "ignore Shared.value");
           ]
           () with
         | Error _ as err -> err
@@ -1520,8 +1522,8 @@ let test_multiple_binaries_keep_private_helpers_separate = fun _ctx ->
           ~files:[
             ("src/a.ml", "let value = 1\n");
             ("src/b.ml", "let value = 2\n");
-            ("src/main.ml", "let () = ignore A.value\n");
-            ("src/tool.ml", "let () = ignore B.value\n");
+            ("src/main.ml", binary_main "ignore A.value");
+            ("src/tool.ml", binary_main "ignore B.value");
           ]
           () with
         | Error _ as err -> err
@@ -1570,7 +1572,7 @@ let test_binary_only_package_links_package_named_private_helper = fun _ctx ->
           ~binaries:[ ("hello-world", "src/main.ml") ]
           ~files:[
             ("src/hello_world.ml", "let hello = fun () -> \"Hello from hello-world\"\n");
-            ("src/main.ml", "let () = print_endline (Hello_world.hello ())\n");
+            ("src/main.ml", binary_main "print_endline (Hello_world.hello ())");
           ]
           () with
         | Error _ as err -> err
@@ -1609,7 +1611,7 @@ let test_private_helper_can_depend_on_library_owned_module = fun _ctx ->
             ("src/librarymixdemo.ml", "module A = A\n");
             ("src/a.ml", "let value = 10\n");
             ("src/b.ml", "let value = Librarymixdemo.A.value + 20\n");
-            ("src/main.ml", "let () = ignore B.value\n");
+            ("src/main.ml", binary_main "ignore B.value");
           ]
           () with
         | Error _ as err -> err
@@ -1663,8 +1665,8 @@ let test_private_helper_links_only_into_reaching_binary = fun _ctx ->
           ~binaries:[ ("main", "src/main.ml"); ("tool", "src/tool.ml") ]
           ~files:[
             ("src/shared.ml", "let value = 1\n");
-            ("src/main.ml", "let () = ignore Shared.value\n");
-            ("src/tool.ml", "let () = ()\n");
+            ("src/main.ml", binary_main "ignore Shared.value");
+            ("src/tool.ml", binary_main "()");
           ]
           () with
         | Error _ as err -> err
@@ -1710,7 +1712,7 @@ let test_binary_compile_depends_on_public_library_root_not_internal_modules = fu
           ~files:[
             ("src/berrybot.ml", "module A = A\n");
             ("src/a.ml", "let value = 10\n");
-            ("src/main.ml", "let () = ignore Berrybot.A.value\n");
+            ("src/main.ml", binary_main "ignore Berrybot.A.value");
           ]
           () with
         | Error _ as err -> err
@@ -1746,7 +1748,7 @@ let test_binary_compile_does_not_reach_internal_library_modules_directly = fun _
           ~files:[
             ("src/berrybot.ml", "module A = A\n");
             ("src/a.ml", "let value = 10\n");
-            ("src/main.ml", "let () = ignore A.value\n");
+            ("src/main.ml", binary_main "ignore A.value");
           ]
           () with
         | Error _ as err -> err
@@ -1798,5 +1800,6 @@ let tests =
 
 let name = "Planner Action Graph Tests"
 
-let () =
-  Actors.run ~main:(fun ~args -> Test.Cli.main ~name ~tests ~args ()) ~args:Env.args ()
+let main ~args = Test.Cli.main ~name ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

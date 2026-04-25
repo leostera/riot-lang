@@ -210,5 +210,6 @@ let tests =
     case "is_file reports files" test_is_file_is_true_for_created_files;
   ]
 
-let () =
-  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"path" ~tests ~args ()) ~args:Env.args ()
+let main ~args = Test.Cli.main ~name:"path" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

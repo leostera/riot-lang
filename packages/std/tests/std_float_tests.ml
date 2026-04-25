@@ -99,5 +99,6 @@ let tests =
     case "Float operators mirror runtime float operations" test_operator_syntax;
   ]
 
-let () =
-  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"float" ~tests ~args ()) ~args:Env.args ()
+let main ~args = Test.Cli.main ~name:"float" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

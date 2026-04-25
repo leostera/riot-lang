@@ -390,8 +390,6 @@ let tests =
     case "serde-json decodes negative int64 across reader chunk boundary" test_decodes_negative_int64_across_reader_chunk_boundary;
   ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"serde_json_tests" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main ~name:"serde_json_tests" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

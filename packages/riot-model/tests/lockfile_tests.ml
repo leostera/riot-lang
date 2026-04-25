@@ -105,5 +105,6 @@ let tests =
     case "Lockfile.of_toml reports unknown provenance kinds" test_of_toml_reports_unknown_provenance_kind;
   ]
 
-let () =
-  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"lockfile" ~tests ~args ()) ~args:Env.args ()
+let main ~args = Test.Cli.main ~name:"lockfile" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

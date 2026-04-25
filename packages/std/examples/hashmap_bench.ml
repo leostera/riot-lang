@@ -127,8 +127,6 @@ let benchmarks =
     with_config ~config:{ iterations = 20; warmup = 2 } "contains_key: from 100k items" bench_contains_key_from_100k;
   ]
 
-let () =
-  Runtime.run
-    ~main:(fun ~args -> Bench.Cli.main ~name:"HashMap Benchmarks" ~benchmarks ~args)
-    ~args:Env.args
-    ()
+let main ~args = Bench.Cli.main ~name:"HashMap Benchmarks" ~benchmarks ~args
+
+let () = Runtime.run ~main ~args:Env.args ()

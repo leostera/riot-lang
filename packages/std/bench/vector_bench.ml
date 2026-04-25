@@ -102,8 +102,6 @@ let benchmarks =
       (bench_append_preallocated_dst 100_000);
   ]
 
-let () =
-  Runtime.run
-    ~main:(fun ~args -> Bench.Cli.main ~name:"Vector Benchmarks" ~benchmarks ~args)
-    ~args:Env.args
-    ()
+let main ~args = Bench.Cli.main ~name:"Vector Benchmarks" ~benchmarks ~args
+
+let () = Runtime.run ~main ~args:Env.args ()

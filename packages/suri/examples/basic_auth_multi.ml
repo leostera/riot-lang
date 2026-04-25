@@ -64,58 +64,58 @@ get "/admin" admin_handler;
 get "/api/users" api_users_handler;
 get "/api/posts" api_posts_handler;]
 
-let () =
-  Actors.run ~args:Env.args ()
-    ~main:(fun ~args:_ ->
-      (* Strategy: Use skip functions to apply different auth to different paths *)
-      let app =
-        Middleware.[
-          request_id;
-          logger;
-          basic_auth ~username:"admin" ~password:"secret" ~realm:"Admin Area"
-            ~skip:(fun conn ->
-              let path = Conn.path conn in
-              (* Skip everything except /admin *)
-              not (String.equal path "/admin"))
-            ();
-          basic_auth ~username:"api" ~password:"key123" ~realm:"API Access"
-            ~skip:(fun conn ->
-              let path = Conn.path conn in
-              (* Skip everything except /api/* *)
-              not (String.starts_with path ~prefix:"/api"))
-            ();
-          router routes;
-        ]
+let main ~args:_ =
+  (* Strategy: Use skip functions to apply different auth to different paths *)
+  let app =
+    Middleware.[
+      request_id;
+      logger;
+      basic_auth ~username:"admin" ~password:"secret" ~realm:"Admin Area"
+        ~skip:(fun conn ->
+          let path = Conn.path conn in
+          (* Skip everything except /admin *)
+          not (String.equal path "/admin"))
+        ();
+      basic_auth ~username:"api" ~password:"key123" ~realm:"API Access"
+        ~skip:(fun conn ->
+          let path = Conn.path conn in
+          (* Skip everything except /api/* *)
+          not (String.starts_with path ~prefix:"/api"))
+        ();
+      router routes;
+    ]
+  in
+  let config = Suri.config ~port:3_002 () in
+  match Suri.start_link ~config app with
+  | Ok _supervisor ->
+      Log.info "===========================================";
+      Log.info "Multi-Credential Basic Auth Example";
+      Log.info "===========================================";
+      Log.info "Server: http://localhost:3002";
+      Log.info "";
+      Log.info "Routes and Credentials:";
+      Log.info "  /          - Public (no auth)";
+      Log.info "  /admin     - admin:secret";
+      Log.info "  /api/users - api:key123";
+      Log.info "  /api/posts - api:key123";
+      Log.info "";
+      Log.info "Test commands:";
+      Log.info "  curl http://localhost:3002/";
+      Log.info "  curl -u admin:secret http://localhost:3002/admin";
+      Log.info "  curl -u api:key123 http://localhost:3002/api/users";
+      Log.info "  curl -u api:key123 http://localhost:3002/api/posts";
+      Log.info "";
+      Log.info "These should fail (wrong credentials):";
+      Log.info "  curl -u api:key123 http://localhost:3002/admin";
+      Log.info "  curl -u admin:secret http://localhost:3002/api/users";
+      Log.info "===========================================";
+      let rec loop () =
+        sleep (Time.Duration.from_secs 100);
+        loop ()
       in
-      let config = Suri.config ~port:3_002 () in
-      match Suri.start_link ~config app with
-      | Ok _supervisor ->
-          Log.info "===========================================";
-          Log.info "Multi-Credential Basic Auth Example";
-          Log.info "===========================================";
-          Log.info "Server: http://localhost:3002";
-          Log.info "";
-          Log.info "Routes and Credentials:";
-          Log.info "  /          - Public (no auth)";
-          Log.info "  /admin     - admin:secret";
-          Log.info "  /api/users - api:key123";
-          Log.info "  /api/posts - api:key123";
-          Log.info "";
-          Log.info "Test commands:";
-          Log.info "  curl http://localhost:3002/";
-          Log.info "  curl -u admin:secret http://localhost:3002/admin";
-          Log.info "  curl -u api:key123 http://localhost:3002/api/users";
-          Log.info "  curl -u api:key123 http://localhost:3002/api/posts";
-          Log.info "";
-          Log.info "These should fail (wrong credentials):";
-          Log.info "  curl -u api:key123 http://localhost:3002/admin";
-          Log.info "  curl -u admin:secret http://localhost:3002/api/users";
-          Log.info "===========================================";
-          let rec loop () =
-            sleep (Time.Duration.from_secs 100);
-            loop ()
-          in
-          loop ()
-      | Error `Bind_error ->
-          Log.error "Failed to bind to port 3002";
-          Error (Failure "Failed to start server"))
+      loop ()
+  | Error `Bind_error ->
+      Log.error "Failed to bind to port 3002";
+      Error (Failure "Failed to start server")
+
+let () = Runtime.run ~main ~args:Env.args ()

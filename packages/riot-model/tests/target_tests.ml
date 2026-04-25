@@ -128,5 +128,6 @@ let tests =
     case "Target.resolve reports available targets on a miss" test_resolve_reports_available_targets_on_miss;
   ]
 
-let () =
-  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"target" ~tests ~args ()) ~args:Env.args ()
+let main ~args = Test.Cli.main ~name:"target" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

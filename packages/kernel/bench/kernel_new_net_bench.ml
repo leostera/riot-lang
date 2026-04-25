@@ -657,8 +657,6 @@ let benchmarks =
     with_config ~config:{ iterations = 20; warmup = 5 } "net tcp many-stream readiness" bench_tcp_many_stream_readiness;
   ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args -> Bench.Cli.main ~name:"kernel_new_net_bench" ~benchmarks ~args)
-    ~args:Env.args
-    ()
+let main ~args = Bench.Cli.main ~name:"kernel_new_net_bench" ~benchmarks ~args
+
+let () = Runtime.run ~main ~args:Env.args ()

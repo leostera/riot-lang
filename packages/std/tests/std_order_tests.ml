@@ -40,8 +40,6 @@ let tests =
     case "Order predicates compose with compare results" test_order_predicates_compose_with_compare;
   ]
 
-let () =
-  Runtime.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"std_order_tests" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main ~name:"std_order_tests" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

@@ -51,9 +51,6 @@ let tests = [
   Test.case "named objects are namespaced" test_named_objects_are_namespaced;
 ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args ->
-      Test.Cli.main ~name:"contentstore_store_namespace_isolation_tests" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main ~name:"contentstore_store_namespace_isolation_tests" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

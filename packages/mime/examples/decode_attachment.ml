@@ -9,7 +9,7 @@ let headers = [
 
 let body = "SGVsbG8gV29ybGQ="
 
-let main = fun ~args:_ ->
+let main ~args:_ =
   match Mime.parse ~headers ~body with
   | Ok (SinglePart part) ->
       let filename = Mime.get_filename part |> Option.unwrap_or ~default:"<none>" in
@@ -22,4 +22,4 @@ let main = fun ~args:_ ->
   | Error err ->
       Error (Failure err)
 
-let () = Actors.run ~main ~args:Env.args ()
+let () = Runtime.run ~main ~args:Env.args ()

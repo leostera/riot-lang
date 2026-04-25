@@ -105,5 +105,6 @@ let tests =
     case "Actor.spawn_link reports abnormal exit when trapping exits" test_actor_spawn_link_reports_abnormal_exit;
   ]
 
-let () =
-  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"Actor" ~tests ~args ()) ~args:Env.args ()
+let main ~args = Test.Cli.main ~name:"Actor" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

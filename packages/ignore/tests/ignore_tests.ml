@@ -300,6 +300,6 @@ let tests = [ Test.case "ignore walker skips hidden directories by default"
       let* labeled_sets = collect [] configs in
       compare_labeled_sets labeled_sets); ]
 
-let main = fun ~args -> Test.Cli.main ~name:"ignore_tests" ~tests ~args ()
+let main ~args = Test.Cli.main ~name:"ignore_tests" ~tests ~args ()
 
-let () = Actors.run ~main ~args:Env.args ()
+let () = Runtime.run ~main ~args:Env.args ()

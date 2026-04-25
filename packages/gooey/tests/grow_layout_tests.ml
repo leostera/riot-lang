@@ -97,8 +97,6 @@ let tests =
     case "negative remaining space clamps to zero" test_negative_remaining_space_clamps_to_zero;
   ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"grow_layout_tests" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main ~name:"grow_layout_tests" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

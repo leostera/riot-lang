@@ -64,8 +64,6 @@ let tests = [
   Test.case "parquet rejects wrong footer sizes" test_rejects_wrong_footer_size;
 ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"parquet_footer_tests" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main ~name:"parquet_footer_tests" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

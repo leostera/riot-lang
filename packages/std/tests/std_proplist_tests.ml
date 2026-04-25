@@ -105,5 +105,6 @@ let tests =
     case "Proplist.iter yields pairs in order" test_iter_yields_pairs_in_order;
   ]
 
-let () =
-  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"proplist" ~tests ~args ()) ~args:Env.args ()
+let main ~args = Test.Cli.main ~name:"proplist" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

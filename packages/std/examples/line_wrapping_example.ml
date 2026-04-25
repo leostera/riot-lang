@@ -2,7 +2,7 @@
 open Std
 open Std.Collections
 
-let () =
+let main ~args:_ =
   let print_numbered_lines lines ~show_width =
     List.for_each (List.enumerate lines)
       ~fn:(fun (i, line) ->
@@ -85,4 +85,7 @@ let () =
       println ("   │ " ^ line ^ padding ^ " │"));
   println "   └──────────────────────────────────────────────────────────────────────┘";
   println "";
-  println "Line wrapping example completed!"
+  println "Line wrapping example completed!";
+  Ok ()
+
+let () = Runtime.run ~main ~args:Env.args ()

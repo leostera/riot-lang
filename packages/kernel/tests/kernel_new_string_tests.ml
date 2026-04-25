@@ -88,6 +88,6 @@ let tests = [
   Test.case "String.starts_with is raw prefix matching" test_starts_with_is_raw_prefix_not_path_segment_match;
 ]
 
-let main = fun ~args -> Test.Cli.main ~name:"kernel_new_string_tests" ~tests ~args ()
+let main ~args = Test.Cli.main ~name:"kernel_new_string_tests" ~tests ~args ()
 
-let () = Actors.run ~main ~args:Env.args ()
+let () = Runtime.run ~main ~args:Env.args ()

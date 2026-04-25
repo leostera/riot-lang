@@ -446,8 +446,6 @@ let tests = [
   variant_overwrite_prop;
 ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"swisstable-complex-key-tests" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main ~name:"swisstable-complex-key-tests" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

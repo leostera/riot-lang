@@ -134,8 +134,6 @@ let tests =
     case "for_each visits items in order" test_for_each_visits_items_in_order;
   ]
 
-let () =
-  Runtime.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"iter_iterator" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main ~name:"iter_iterator" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

@@ -53,5 +53,6 @@ let tests =
     case "octal decode invalid" test_decode_invalid;
   ]
 
-let () =
-  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"octal" ~tests ~args ()) ~args:Env.args ()
+let main ~args = Test.Cli.main ~name:"octal" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

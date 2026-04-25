@@ -133,8 +133,6 @@ let tests =
     case "SystemTime.duration_since_epoch is non-negative" test_duration_since_epoch_is_non_negative;
   ]
 
-let () =
-  Runtime.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"Time.SystemTime" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main ~name:"Time.SystemTime" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

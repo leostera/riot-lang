@@ -62,7 +62,7 @@ let format_result = function
         Std.Format.[str "Type error:\n";
         str msg]
 
-let main = fun ~args:_ ->
+let main ~args:_ =
   (* Get current working directory as workspace root *)
   let workspace = Path.v "." in
   Log.info

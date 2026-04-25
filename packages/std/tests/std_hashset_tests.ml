@@ -202,5 +202,6 @@ let tests =
     case "HashSet.mut_iter yields each member once" test_mut_iter;
   ]
 
-let () =
-  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"hashset" ~tests ~args ()) ~args:Env.args ()
+let main ~args = Test.Cli.main ~name:"hashset" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

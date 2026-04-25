@@ -98,17 +98,15 @@ let test_fixture = fun ~(ctx:Test.FixtureRunner.ctx) ->
     ~ctx:ctx.test
     ~actual:(Json.to_string_pretty (result_to_json result) ^ "\n")
 
-let () =
-  Actors.run
-    ~main:(fun ~args ->
-      let tests =
-        Test.FixtureRunner.cases
-          ()
-          ~dir:fixture_root
-          ~filter:keep_ml
-          ~snapshot_path:approved_snapshot_path
-          ~run:(fun ctx -> test_fixture ~ctx)
-      in
-      Test.Cli.main ~name:"riot-fix autofix fixtures" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args =
+  let tests =
+    Test.FixtureRunner.cases
+      ()
+      ~dir:fixture_root
+      ~filter:keep_ml
+      ~snapshot_path:approved_snapshot_path
+      ~run:(fun ctx -> test_fixture ~ctx)
+  in
+  Test.Cli.main ~name:"riot-fix autofix fixtures" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

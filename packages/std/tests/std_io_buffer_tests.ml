@@ -107,5 +107,6 @@ let tests =
     case "clear resets length and contents" test_clear_resets_length_and_contents;
   ]
 
-let () =
-  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"io_buffer" ~tests ~args ()) ~args:Env.args ()
+let main ~args = Test.Cli.main ~name:"io_buffer" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

@@ -30,8 +30,6 @@ let tests =
     case "System.host_triple matches System.TargetTriple.current" test_host_triple_matches_current_target_triple;
   ]
 
-let () =
-  Runtime.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"std_system_target_triple_tests" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main ~name:"std_system_target_triple_tests" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

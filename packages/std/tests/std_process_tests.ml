@@ -17,5 +17,6 @@ let tests =
     case "Process.default_stdio inherits stdio" test_process_default_stdio_inherits;
   ]
 
-let () =
-  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"Process" ~tests ~args ()) ~args:Env.args ()
+let main ~args = Test.Cli.main ~name:"Process" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

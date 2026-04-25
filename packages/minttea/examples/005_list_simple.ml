@@ -91,7 +91,9 @@ let app = App.make ~init ~update ~view ()
 
 (* Run it *)
 
-let () =
+let main ~args:_ =
   let initial_model = { list = Listbox.make items |> Listbox.set_height ~height:10; selected = None } in
   let config = Minttea.config () in
-  Minttea.start ~config app initial_model
+  Minttea.run ~config initial_model app
+
+let () = Runtime.run ~main ~args:Env.args ()

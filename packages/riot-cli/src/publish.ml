@@ -254,7 +254,7 @@ let publish_event_to_json = fun ~workspace_root event ->
   match event with
   | Riot_publish.Fmt event -> Some (json_event
     "publish.fmt"
-    [ ("event", Krasny.Report.event_to_json ~root:workspace_root event); ])
+    [ ("event", Riot_fmt.event_to_json ~root:workspace_root event); ])
   | Riot_publish.Fix event -> Some (json_event
     "publish.fix"
     [ ("event", Riot_fix.Event.to_json event) ])

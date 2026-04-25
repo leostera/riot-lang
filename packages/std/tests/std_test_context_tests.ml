@@ -74,8 +74,6 @@ let tests = [
   test_ctx_derives_workspace_root;
 ]
 
-let () =
-  Runtime.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"std_test_context" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main ~name:"std_test_context" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

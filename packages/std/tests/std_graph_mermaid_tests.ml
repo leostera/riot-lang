@@ -96,8 +96,6 @@ let tests =
     case "all added nodes and edges appear in the output" test_all_nodes_and_edges_appear_once;
   ]
 
-let () =
-  Runtime.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"graph_mermaid" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main ~name:"graph_mermaid" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

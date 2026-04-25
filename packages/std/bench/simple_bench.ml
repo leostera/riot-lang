@@ -27,8 +27,6 @@ let benchmarks =
 
 (* Main entry point using new Bench.Cli *)
 
-let () =
-  Runtime.run
-    ~main:(fun ~args -> Bench.Cli.main ~name:"Simple Benchmarks" ~benchmarks ~args)
-    ~args:Env.args
-    ()
+let main ~args = Bench.Cli.main ~name:"Simple Benchmarks" ~benchmarks ~args
+
+let () = Runtime.run ~main ~args:Env.args ()

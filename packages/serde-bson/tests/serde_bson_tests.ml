@@ -348,8 +348,6 @@ let tests = [
   Test.case "serde-bson variants with payloads use singleton documents" test_variant_payload_uses_singleton_document;
 ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"serde_bson_tests" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main ~name:"serde_bson_tests" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

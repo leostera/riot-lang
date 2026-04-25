@@ -49,13 +49,14 @@ let test_value_comparison = fun () ->
   assert (Value.compare (Value.int 1) Value.null = Order.GT);
   Log.info "Value comparison: OK"
 
-let main = fun () ->
+let main ~args:_ =
   Log.set_level Log.Debug;
   Log.info "Starting SQLx tests...";
   test_value_conversions ();
   test_row_access ();
   test_value_equality ();
   test_value_comparison ();
-  Log.info "All tests passed!"
+  Log.info "All tests passed!";
+  Ok ()
 
-let () = main ()
+let () = Runtime.run ~main ~args:Env.args ()

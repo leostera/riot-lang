@@ -108,5 +108,6 @@ let tests =
     case "empty element" test_empty_element;
   ]
 
-let () =
-  Actors.run ~main:(fun ~args -> Test.Cli.main ~name:"element" ~tests ~args ()) ~args:Env.args ()
+let main ~args = Test.Cli.main ~name:"element" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

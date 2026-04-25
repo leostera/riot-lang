@@ -99,5 +99,6 @@ let tests =
     case "special characters are escaped" test_special_characters_are_escaped;
   ]
 
-let () =
-  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"graph_dot" ~tests ~args ()) ~args:Env.args ()
+let main ~args = Test.Cli.main ~name:"graph_dot" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

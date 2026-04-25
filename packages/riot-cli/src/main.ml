@@ -1,6 +1,7 @@
 open Std
 
-(** Main entry point for riot *)
-let () =
-  Std.Log.(set_level Info);
-  Runtime.run ~main:Riot_cli.Cli.main ~args:Env.args ()
+let main ~args =
+  Log.(set_level Info);
+  Riot_cli.Cli.main ~args
+
+let () = Runtime.run ~main ~args:Env.args ()

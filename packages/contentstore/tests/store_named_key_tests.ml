@@ -63,8 +63,6 @@ let tests = [
   Test.case "empty named key roundtrip" test_named_empty_key_roundtrip;
 ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"contentstore_store_named_key_tests" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main ~name:"contentstore_store_named_key_tests" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

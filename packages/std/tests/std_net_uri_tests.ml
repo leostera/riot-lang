@@ -633,5 +633,6 @@ let tests =
     case "full roundtrip" test_full_roundtrip;
   ]
 
-let () =
-  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"net_uri" ~tests ~args ()) ~args:Env.args ()
+let main ~args = Test.Cli.main ~name:"net_uri" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

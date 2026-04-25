@@ -156,8 +156,6 @@ let tests = [ Test.case "apply single operation"
       Test.assert_error actual;
       Ok ()) ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args:_ -> Test.Cli.main ~name:"riot-fix:fix" ~tests ~args:Env.args ())
-    ~args:Env.args
-    ()
+let main ~args:_ = Test.Cli.main ~name:"riot-fix:fix" ~tests ~args:Env.args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

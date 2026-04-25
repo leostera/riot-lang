@@ -39,8 +39,6 @@ let tests =
     case "Package_name.from_string rejects invalid suffixes" test_from_string_rejects_invalid_suffix;
   ]
 
-let () =
-  Runtime.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"package_name" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main ~name:"package_name" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

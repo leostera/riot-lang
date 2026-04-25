@@ -30,16 +30,14 @@ let test_fixture = fun ~(ctx:Test.FixtureRunner.ctx) ->
     ~render:(fun value -> value)
     ~actual:(render_actual ~fixture_path:ctx.fixture_path)
 
-let () =
-  Actors.run
-    ~main:(fun ~args ->
-      let tests =
-        Test.FixtureRunner.cases
-          ()
-          ~dir:fixture_root
-          ~filter:has_expected
-          ~run:(fun ctx -> test_fixture ~ctx)
-      in
-      Test.Cli.main ~name:"syn-deps-fixtures" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args =
+  let tests =
+    Test.FixtureRunner.cases
+      ()
+      ~dir:fixture_root
+      ~filter:has_expected
+      ~run:(fun ctx -> test_fixture ~ctx)
+  in
+  Test.Cli.main ~name:"syn-deps-fixtures" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

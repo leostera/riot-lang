@@ -35,9 +35,11 @@ let hello = fun () ->
 
 let tests = [ test_build_reports_direct_dependency_module_boundary ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args ->
-      Test.Cli.main ~execution_mode:Test.Cli.Linear ~name:"riot-e2e:planning-errors" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main
+  ~execution_mode:Test.Cli.Linear
+  ~name:"riot-e2e:planning-errors"
+  ~tests
+  ~args
+  ()
+
+let () = Runtime.run ~main ~args:Env.args ()

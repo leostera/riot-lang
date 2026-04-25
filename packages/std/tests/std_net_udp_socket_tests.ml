@@ -175,8 +175,6 @@ let tests =
     case "UdpSocket connect enables send and recv without explicit peers" test_udp_socket_connect_supports_send_and_recv;
   ]
 
-let () =
-  Runtime.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"std_net_udp_socket_tests" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main ~name:"std_net_udp_socket_tests" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

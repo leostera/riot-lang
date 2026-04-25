@@ -4,6 +4,8 @@ open Riot_model
 
 type event = Krasny.Report.event
 
+let event_to_json = fun ~root event -> Krasny.Report.event_to_json ~root event
+
 let command =
   let open ArgParser.Arg in command "fmt"
   |> about "Format OCaml with krasny"

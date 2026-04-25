@@ -111,8 +111,6 @@ let tests = [
   Test.case "parquet writes to writers" test_writes_to_writer;
 ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"parquet_io_tests" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main ~name:"parquet_io_tests" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

@@ -96,16 +96,14 @@ let test_fixture = fun ~(ctx:Test.FixtureRunner.ctx) ->
   let report = check_source_text ~filename:(stable_fixture_filename ctx) source in
   Test.Snapshot.assert_json ~ctx:ctx.test ~actual:(diagnostics_to_json report)
 
-let () =
-  Actors.run
-    ~main:(fun ~args ->
-      let tests =
-        Test.FixtureRunner.cases
-          ()
-          ~dir:diagnostics_dir
-          ~filter:filter_diagnostic_fixture
-          ~run:(fun ctx -> test_fixture ~ctx)
-      in
-      Test.Cli.main ~name:"typ:diagnostics" ~tests ~args)
-    ~args:Env.args
-    ()
+let main ~args =
+  let tests =
+    Test.FixtureRunner.cases
+      ()
+      ~dir:diagnostics_dir
+      ~filter:filter_diagnostic_fixture
+      ~run:(fun ctx -> test_fixture ~ctx)
+  in
+  Test.Cli.main ~name:"typ:diagnostics" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

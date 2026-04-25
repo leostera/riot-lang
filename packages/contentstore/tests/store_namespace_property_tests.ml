@@ -102,9 +102,6 @@ let tests = [
     (fun _ctx -> assert_property "named writes stay in their namespace" named_writes_stay_in_their_namespace);
 ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args ->
-      Test.Cli.main ~name:"contentstore_store_namespace_property_tests" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main ~name:"contentstore_store_namespace_property_tests" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

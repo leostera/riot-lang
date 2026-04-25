@@ -245,8 +245,6 @@ let tests =
     case "BufReader.peek and consume validate counts" test_peek_and_consume_validate_counts;
   ]
 
-let () =
-  Runtime.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"IO.BufReader" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main ~name:"IO.BufReader" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

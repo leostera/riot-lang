@@ -166,5 +166,6 @@ let tests =
     case "csexp roundtrip" test_csexp_roundtrip;
   ]
 
-let () =
-  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"sexp" ~tests ~args ()) ~args:Env.args ()
+let main ~args = Test.Cli.main ~name:"sexp" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

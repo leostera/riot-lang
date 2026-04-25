@@ -639,7 +639,7 @@ let meta_main = fun ~args ->
   in
   Test.Cli.main ~name:"std_test_cli_tests" ~tests:meta_tests ~args:(normalize_args args) ()
 
-let main = fun ~args ->
+let main ~args =
   match args with
   | _ :: "sample" :: _ -> sample_main ~args
   | _ :: "sample-linear" :: _ -> linear_sample_main ~args

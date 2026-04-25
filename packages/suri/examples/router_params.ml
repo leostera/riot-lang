@@ -110,27 +110,27 @@ get "/articles/:id" article_handler;]
 
 let app = [ Middleware.router routes; ]
 
-let () =
-  Actors.run ~args:Env.args ()
-    ~main:(fun ~args:_ ->
-      match Suri.start_link app with
-      | Ok supervisor ->
-          Log.info "🚀 Router params example on http://0.0.0.0:4000";
-          Log.info "   Routes:";
-          Log.info "     GET  /              - Home page";
-          Log.info "     GET  /articles      - List articles";
-          Log.info "     GET  /articles/:id  - Get article by ID";
-          Log.info "";
-          Log.info "   Try:";
-          Log.info "     curl http://localhost:4000/articles";
-          Log.info "     curl http://localhost:4000/articles/1";
-          let count = Supervisor.Dynamic.count_children supervisor in
-          Log.info ("   " ^ Int.to_string count.active ^ " acceptors ready");
-          let rec loop () =
-            sleep (Time.Duration.from_secs 100);
-            loop ()
-          in
-          loop ()
-      | Error `Bind_error ->
-          Log.error "Failed to bind to port 4000";
-          Error (Failure "Failed to start server"))
+let main ~args:_ =
+  match Suri.start_link app with
+  | Ok supervisor ->
+      Log.info "🚀 Router params example on http://0.0.0.0:4000";
+      Log.info "   Routes:";
+      Log.info "     GET  /              - Home page";
+      Log.info "     GET  /articles      - List articles";
+      Log.info "     GET  /articles/:id  - Get article by ID";
+      Log.info "";
+      Log.info "   Try:";
+      Log.info "     curl http://localhost:4000/articles";
+      Log.info "     curl http://localhost:4000/articles/1";
+      let count = Supervisor.Dynamic.count_children supervisor in
+      Log.info ("   " ^ Int.to_string count.active ^ " acceptors ready");
+      let rec loop () =
+        sleep (Time.Duration.from_secs 100);
+        loop ()
+      in
+      loop ()
+  | Error `Bind_error ->
+      Log.error "Failed to bind to port 4000";
+      Error (Failure "Failed to start server")
+
+let () = Runtime.run ~main ~args:Env.args ()

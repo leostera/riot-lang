@@ -443,7 +443,7 @@ let tests = [
       Ok ());
   Test.case "no-unnecessary-rec skips anonymous bindings safely"
     (fun _ctx ->
-      let source = "let () = Actors.run ~main:(fun ~args -> Bench.Cli.main ~name:\"bench\" ~benchmarks:Bench.[] ~args) ~args:Env.args ()\n" in
+      let source = "let main ~args = Bench.Cli.main ~name:\"bench\" ~benchmarks:Bench.[] ~args) ~args:Env.args ()\n" in
       let pipeline = Riot_fix.Pipeline.make ~rules:[ Riot_fix.Rules.No_unnecessary_rec.make () ] () in
       let result = Riot_fix.Pipeline.run pipeline source in
       Test.assert_equal ~expected:[] ~actual:(diagnostic_rule_ids result.diagnostics);
@@ -2201,7 +2201,7 @@ let render x y z =
           in
           let plan = Riot_fix.Fixme_runner.materialize ~workspace_root ~target_dir_root [ provider ] in
           let source = read_file plan.main_path in
-          Test.assert_true (String.contains source "Actors.run ~main:Fixme_runner.main");
+          Test.assert_true (String.contains source "Runtime.run ~main:Fixme_runner.main");
           Ok ()));
   Test.case "fixme runner binary path uses workspace build dir"
     (fun _ctx ->
@@ -2391,9 +2391,6 @@ let render x y z =
       Ok ());
 ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args:_ ->
-      Test.Cli.main ~execution_mode:Test.Cli.Linear ~name:"riot-fix:runner" ~tests ~args:Env.args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main ~execution_mode:Test.Cli.Linear ~name:"riot-fix:runner" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

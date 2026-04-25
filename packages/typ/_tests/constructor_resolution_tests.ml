@@ -155,12 +155,10 @@ let test_constructor_resolution_uses_expected_type = fun _ctx ->
               ~actual:make_button_scheme
       )
 
-let () =
-  Actors.run
-    ~main:(fun ~args ->
-      let tests = [
-        Test.case "constructor resolution uses expected types across patterns and expressions" test_constructor_resolution_uses_expected_type;
-      ] in
-      Test.Cli.main ~name:"typ:constructor_resolution" ~tests ~args)
-    ~args:Env.args
-    ()
+let main ~args =
+  let tests = [
+    Test.case "constructor resolution uses expected types across patterns and expressions" test_constructor_resolution_uses_expected_type;
+  ] in
+  Test.Cli.main ~name:"typ:constructor_resolution" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

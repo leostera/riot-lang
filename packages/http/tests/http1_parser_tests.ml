@@ -341,8 +341,6 @@ let tests =
     case "sse_comment" test_sse_comment;
   ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args:_ -> Test.Cli.main ~name:"http:http1_parser" ~tests ~args:Env.args ())
-    ~args:Env.args
-    ()
+let main ~args:_ = Test.Cli.main ~name:"http:http1_parser" ~tests ~args:Env.args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

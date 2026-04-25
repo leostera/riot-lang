@@ -21,8 +21,6 @@ let tests =
     case "from_slice rejects invalid versions" test_from_slice_invalid;
   ]
 
-let () =
-  Runtime.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"net_http_version" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main ~name:"net_http_version" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

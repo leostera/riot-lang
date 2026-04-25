@@ -5,6 +5,20 @@ module HashSet = Std.Collections.HashSet
 let package_name = fun name ->
   Riot_model.Package_name.from_string name |> Result.expect ~msg:("invalid package name: " ^ name)
 
+let builtin_dependency = fun name ->
+  Riot_model.Package.{
+    name = package_name name;
+    source =
+      {
+        workspace = false;
+        builtin = true;
+        path = None;
+        source_locator = None;
+        ref_ = None;
+        version = None;
+      };
+  }
+
 let version = fun value ->
   Std.Version.parse value |> Result.expect ~msg:("invalid version: " ^ value)
 
@@ -93,7 +107,7 @@ let make_valid_workspace = fun ?target_dir tmpdir ->
   let ml_file = Path.(src_dir / Path.v "lib.ml") in
   let _ = Fs.write "let value = 42\n" ml_file |> Result.expect ~msg:"Write ml failed" in
   let riot_file = Path.(pkg_dir / Path.v "riot.toml") in
-  let riot_content = "[package]\nname = \"demo\"\nversion = \"0.0.1\"\n\n[lib]\npath = \"src/lib.ml\"\n" in
+  let riot_content = "[package]\nname = \"demo\"\nversion = \"0.0.1\"\n\n[lib]\npath = \"src/lib.ml\"\n\n[dependencies]\nstdlib = \"*\"\n" in
   let _ = Fs.write riot_content riot_file |> Result.expect ~msg:"Write riot.toml failed" in
   let _ = write_workspace_manifest ~root:tmpdir ~members:[ Path.v "demo" ] in
   let package = Riot_model.Package.make ~name:(package_name "demo") ~path:pkg_dir ~relative_path:(Path.v
@@ -120,11 +134,11 @@ let make_workspace_with_dev_binaries = fun ?target_dir tmpdir ->
   let _ = Fs.create_dir_all examples_dir |> Result.expect ~msg:"Create examples failed" in
   let _ = Fs.create_dir_all bench_dir |> Result.expect ~msg:"Create bench failed" in
   let _ = Fs.write "let value = 42\n" Path.(src_dir / Path.v "lib.ml") |> Result.expect ~msg:"Write lib failed" in
-  let _ = Fs.write "let value = 1\n" Path.(tests_dir / Path.v "demo_tests.ml")
+  let _ = Fs.write "let main ~args:_ = Stdlib.Ok ()\n" Path.(tests_dir / Path.v "demo_tests.ml")
   |> Result.expect ~msg:"Write test binary failed" in
-  let _ = Fs.write "let value = 2\n" Path.(examples_dir / Path.v "demo_example.ml")
+  let _ = Fs.write "let main ~args:_ = Stdlib.Ok ()\n" Path.(examples_dir / Path.v "demo_example.ml")
   |> Result.expect ~msg:"Write example binary failed" in
-  let _ = Fs.write "let value = 3\n" Path.(bench_dir / Path.v "demo_bench.ml")
+  let _ = Fs.write "let main ~args:_ = Stdlib.Ok ()\n" Path.(bench_dir / Path.v "demo_bench.ml")
   |> Result.expect ~msg:"Write bench binary failed" in
   let riot_file = Path.(pkg_dir / Path.v "riot.toml") in
   let riot_content = "[package]\nname = \"demo\"\nversion = \"0.0.1\"\n\n[lib]\npath = \"src/lib.ml\"\n" in
@@ -135,7 +149,7 @@ let make_workspace_with_dev_binaries = fun ?target_dir tmpdir ->
     Riot_model.Package.{ name = "demo_tests"; path = Path.v "tests/demo_tests.ml" };
     Riot_model.Package.{ name = "demo_example"; path = Path.v "examples/demo_example.ml" };
     Riot_model.Package.{ name = "demo_bench"; path = Path.v "bench/demo_bench.ml" };
-  ]
+  ] ~dependencies:[ builtin_dependency "stdlib" ]
     ~sources:{
       src = [ Path.v "src/lib.ml" ];
       native = [];
@@ -279,6 +293,40 @@ let test_planning_error_lines_describe_undeclared_package_module = fun _ctx ->
     ~actual:lines;
   Ok ()
 
+let test_planning_error_lines_describe_invalid_executable_main = fun _ctx ->
+  let lines = Riot_cli.Build.planning_error_lines
+    (
+      Riot_planner.Planning_error.InvalidExecutableMain {
+        package_name = "riot-fix";
+        target_name = "riot-fix";
+        source = Path.v "src/main.ml";
+        file = Path.v "packages/riot-fix/src/main.ml";
+        error = Riot_planner.Planning_error.MissingMain;
+      }
+    )
+  in
+  Test.assert_equal
+    ~expected:[
+      error_line "`riot-fix` has no executable entry point";
+      "";
+      "Riot is building this target as an executable:";
+      "";
+      "    package: riot-fix";
+      "    target:  riot-fix";
+      "    file:    ./packages/riot-fix/src/main.ml";
+      "";
+      "To start the program, Riot needs this file to define a top-level";
+      "`main` function with this shape:";
+      "";
+      "    let main ~args =";
+      "      ...";
+      "      Ok ()";
+      "";
+      "But we could not find one.";
+    ]
+    ~actual:lines;
+  Ok ()
+
 let test_workspace_planning_error_lines_describe_missing_dependencies = fun _ctx ->
   let lines = Riot_cli.Build.workspace_planning_error_lines
     (Riot_planner.Workspace_planner.MissingDependencies {
@@ -330,11 +378,10 @@ let test_build_failure_detail_lines_render_planning_errors = fun _ctx ->
   in
   Test.assert_equal
     ~expected:[
-      "package: demo";
-      "  " ^ error_line "dependency analysis failed";
-      "  Riot could not parse or analyze a source file while discovering module dependencies.";
-      "  reason: failed to parse src/demo.ml";
-      "    hint: add end";
+      error_line "dependency analysis failed";
+      "Riot could not parse or analyze a source file while discovering module dependencies.";
+      "reason: failed to parse src/demo.ml";
+      "  hint: add end";
     ]
     ~actual:(Riot_cli.Build.build_failure_detail_lines failure);
   Ok ()
@@ -1045,6 +1092,7 @@ let tests =
     case "build: workspace bench package labels show artifact" test_display_package_name_shows_workspace_bench;
     case "build: planning error lines explain internal module violations" test_planning_error_lines_describe_internal_module_violation;
     case "build: planning error lines explain undeclared package modules" test_planning_error_lines_describe_undeclared_package_module;
+    case "build: planning error lines explain invalid executable main" test_planning_error_lines_describe_invalid_executable_main;
     case "build: workspace planning error lines explain missing dependencies" test_workspace_planning_error_lines_describe_missing_dependencies;
     case "build: planning error lines indent multiline reasons" test_planning_error_lines_indent_multiline_reasons;
     case "build: final failure lines render planning errors" test_build_failure_detail_lines_render_planning_errors;
@@ -1112,5 +1160,6 @@ let tests =
 
 let name = "Riot CLI Build Tests"
 
-let () =
-  Actors.run ~main:(fun ~args -> Test.Cli.main ~name ~tests ~args ()) ~args:Env.args ()
+let main ~args = Test.Cli.main ~name ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

@@ -720,57 +720,55 @@ port = "9090"
     )
   | _ -> Error "Parse failed"
 
-let () =
-  Runtime.run
-    ~main:(fun ~args ->
-      let all_tests = [
-        test_simple_string;
-        test_quoted_string_with_escapes;
-        test_boolean_true;
-        test_boolean_false;
-        test_integer_positive;
-        test_integer_negative;
-        test_integer_zero;
-        test_integer_in_array;
-        test_bare_string;
-        test_simple_array;
-        test_string_array;
-        test_empty_array;
-        test_nested_array;
-        test_simple_inline_table;
-        test_multiple_inline_tables;
-        test_inline_table_multiple_keys;
-        test_inline_table_with_bool;
-        test_nested_inline_tables;
-        test_simple_section;
-        test_multiple_sections;
-        test_nested_section_names;
-        test_array_of_tables_simple;
-        test_array_of_tables_empty;
-        test_array_of_tables_multiple_keys;
-        test_array_of_tables_dotted_path;
-        test_line_comment;
-        test_inline_comment;
-        test_comment_in_section;
-        test_leading_whitespace;
-        test_trailing_whitespace;
-        test_whitespace_around_equals;
-        test_empty_lines;
-        test_empty_string;
-        test_empty_inline_table;
-        test_empty_document;
-        test_only_comments;
-        test_real_riot_toml;
-        test_typical_package_toml;
-        test_workspace_toml;
-        test_mixed_inline_and_section_tables;
-        test_unterminated_string;
-        test_unterminated_array;
-        test_unterminated_inline_table;
-        test_missing_equals;
-        test_duplicate_keys_in_section;
-      ]
-      in
-      Test.Cli.main ~name:"toml" ~tests:all_tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args =
+  let all_tests = [
+    test_simple_string;
+    test_quoted_string_with_escapes;
+    test_boolean_true;
+    test_boolean_false;
+    test_integer_positive;
+    test_integer_negative;
+    test_integer_zero;
+    test_integer_in_array;
+    test_bare_string;
+    test_simple_array;
+    test_string_array;
+    test_empty_array;
+    test_nested_array;
+    test_simple_inline_table;
+    test_multiple_inline_tables;
+    test_inline_table_multiple_keys;
+    test_inline_table_with_bool;
+    test_nested_inline_tables;
+    test_simple_section;
+    test_multiple_sections;
+    test_nested_section_names;
+    test_array_of_tables_simple;
+    test_array_of_tables_empty;
+    test_array_of_tables_multiple_keys;
+    test_array_of_tables_dotted_path;
+    test_line_comment;
+    test_inline_comment;
+    test_comment_in_section;
+    test_leading_whitespace;
+    test_trailing_whitespace;
+    test_whitespace_around_equals;
+    test_empty_lines;
+    test_empty_string;
+    test_empty_inline_table;
+    test_empty_document;
+    test_only_comments;
+    test_real_riot_toml;
+    test_typical_package_toml;
+    test_workspace_toml;
+    test_mixed_inline_and_section_tables;
+    test_unterminated_string;
+    test_unterminated_array;
+    test_unterminated_inline_table;
+    test_missing_equals;
+    test_duplicate_keys_in_section;
+  ]
+  in
+  Test.Cli.main ~name:"toml" ~tests:all_tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

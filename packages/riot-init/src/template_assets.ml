@@ -469,11 +469,10 @@ let tests = Test.[
   case "adds numbers" test_adds_numbers;
 ]
 
-let () =
-  Runtime.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"math_tests" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args =
+  Test.Cli.main ~name:"math_tests" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()
 ```
 
 Use `Test.case ~size:Test.Large` for slow or integration-heavy tests. Use
@@ -625,11 +624,10 @@ let benchmarks = Bench.[
     bench_push;
 ]
 
-let () =
-  Runtime.run
-    ~main:(fun ~args -> Bench.Cli.main ~name:"vector_bench" ~benchmarks ~args)
-    ~args:Env.args
-    ()
+let main ~args =
+  Bench.Cli.main ~name:"vector_bench" ~benchmarks ~args
+
+let () = Runtime.run ~main ~args:Env.args ()
 ```
 
 Use comparison benchmarks when several implementations answer the same question:

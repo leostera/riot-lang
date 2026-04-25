@@ -117,8 +117,6 @@ let tests = [
   Test.case "commit_dir failure reports structured context" test_commit_dir_failure_reports_context;
 ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"contentstore_store_error_tests" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main ~name:"contentstore_store_error_tests" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

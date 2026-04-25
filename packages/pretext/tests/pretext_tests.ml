@@ -57,5 +57,6 @@ let tests =
     case "multiline text honors indent after break" test_multiline_text_honors_indent_after_break;
   ]
 
-let () =
-  Actors.run ~main:(fun ~args -> Test.Cli.main ~name:"pretext" ~tests ~args ()) ~args:Env.args ()
+let main ~args = Test.Cli.main ~name:"pretext" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

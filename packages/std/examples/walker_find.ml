@@ -54,7 +54,7 @@ let rec parse_args = fun config ->
       in
       parse_args { config with roots } rest
 
-let main = fun ~args ->
+let main ~args =
   let args =
     match args with
     | [] -> []

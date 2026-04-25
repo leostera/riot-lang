@@ -84,7 +84,7 @@ let test_pool_creation = fun () ->
       Pool.shutdown pool;
       Log.info "Pool creation: OK"
 
-let main = fun () ->
+let main ~args:_ =
   Log.set_level Log.Debug;
   Log.info "Starting pool tests...";
   let _pid =
@@ -94,6 +94,7 @@ let main = fun () ->
         Log.info "All pool tests passed!";
         Ok ())
   in
-  yield ()
+  yield ();
+  Ok ()
 
-let () = main ()
+let () = Runtime.run ~main ~args:Env.args ()

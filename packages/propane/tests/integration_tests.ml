@@ -123,8 +123,6 @@ let tests =
     case "hashmap failures use a stable printer" test_hashmap_failures_use_a_stable_printer;
   ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"propane/integration_tests" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main ~name:"propane/integration_tests" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

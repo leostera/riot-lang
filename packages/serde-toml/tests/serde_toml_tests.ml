@@ -802,8 +802,6 @@ let tests =
     case "serde-toml rejects top-level scalars" test_rejects_top_level_scalars;
   ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"serde_toml_tests" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main ~name:"serde_toml_tests" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

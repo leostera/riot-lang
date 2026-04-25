@@ -298,14 +298,11 @@ let tests =
     case "property reads PROPANE_MAX_SIZE" test_property_reads_PROPANE_MAX_SIZE;
   ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args ->
-      Test.Cli.main
-        ~execution_mode:Test.Cli.Linear
-        ~name:"propane/property_runner_tests"
-        ~tests
-        ~args
-        ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main
+  ~execution_mode:Test.Cli.Linear
+  ~name:"propane/property_runner_tests"
+  ~tests
+  ~args
+  ()
+
+let () = Runtime.run ~main ~args:Env.args ()

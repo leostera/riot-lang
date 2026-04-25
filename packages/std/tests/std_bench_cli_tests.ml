@@ -261,7 +261,7 @@ let meta_main = fun ~args ->
   in
   Test.Cli.main ~name:"std_bench_cli_tests" ~tests:meta_tests ~args:(normalize_args args) ()
 
-let main = fun ~args ->
+let main ~args =
   match args with
   | _ :: "sample" :: _ -> sample_main ~args
   | _ -> meta_main ~args

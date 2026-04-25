@@ -473,9 +473,6 @@ let tests = [
         concurrent_producers_and_consumers_preserve_every_value);
 ]
 
-let () =
-  Runtime.run
-    ~main:(fun ~args ->
-      Test.Cli.main ~execution_mode:Test.Cli.Linear ~name:"queue_property" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main ~execution_mode:Test.Cli.Linear ~name:"queue_property" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

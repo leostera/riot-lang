@@ -46,5 +46,6 @@ let tests =
     case "Bool.to_string false" test_to_string_false;
   ]
 
-let () =
-  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"bool" ~tests ~args ()) ~args:Env.args ()
+let main ~args = Test.Cli.main ~name:"bool" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

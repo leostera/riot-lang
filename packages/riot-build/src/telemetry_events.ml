@@ -1179,6 +1179,32 @@ let from_json: Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json -
                                       message = "Planning failed: graph build failed"
                                     })
                                   )
+                                | Some (Data.Json.String "source_depends_on_undeclared_package_module") -> (
+                                    match (
+                                      get_field planning_fields ~name:"package_name",
+                                      get_field planning_fields ~name:"source",
+                                      get_field planning_fields ~name:"requested_module",
+                                      get_field planning_fields ~name:"allowed_modules"
+                                    ) with
+                                    | (Some (Data.Json.String package_name), Some (Data.Json.String source), Some (Data.Json.String requested_module), Some (Data.Json.Array allowed_modules)) ->
+                                        let allowed_modules =
+                                          List.filter_map allowed_modules
+                                            ~fn:(
+                                              function
+                                              | Data.Json.String allowed_module -> Some allowed_module
+                                              | _ -> None
+                                            )
+                                        in
+                                        Ok (PlanningFailed (Planning_error.SourceDependsOnUndeclaredPackageModule {
+                                          package_name;
+                                          source = Path.v source;
+                                          requested_module;
+                                          allowed_modules
+                                        }))
+                                    | _ -> Ok (ExecutionFailed {
+                                      message = "Planning failed: source depends on undeclared package module"
+                                    })
+                                  )
                                 | Some (Data.Json.String "target_depends_on_internal_library_module") -> (
                                     match (
                                       get_field planning_fields ~name:"target_name",
@@ -1225,6 +1251,105 @@ let from_json: Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json -
                                         )
                                     | _ -> Ok (ExecutionFailed {
                                       message = "Planning failed: target depends on namespaced internal library module"
+                                    })
+                                  )
+                                | Some (Data.Json.String "target_depends_on_other_target_root") -> (
+                                    match (
+                                      get_field planning_fields ~name:"target_name",
+                                      get_field planning_fields ~name:"source",
+                                      get_field planning_fields ~name:"requested_module",
+                                      get_field planning_fields ~name:"other_target_name",
+                                      get_field planning_fields ~name:"other_target_module",
+                                      get_field planning_fields ~name:"public_module"
+                                    ) with
+                                    | (Some (Data.Json.String target_name), Some (Data.Json.String source), Some (Data.Json.String requested_module), Some (Data.Json.String other_target_name), Some (Data.Json.String other_target_module), Some (Data.Json.String public_module)) ->
+                                        Ok (
+                                          PlanningFailed (
+                                            Planning_error.TargetDependsOnOtherTargetRoot {
+                                              target_name;
+                                              source = Path.v source;
+                                              requested_module;
+                                              other_target_name;
+                                              other_target_module;
+                                              public_module;
+                                            }
+                                          )
+                                        )
+                                    | _ -> Ok (ExecutionFailed {
+                                      message = "Planning failed: target depends on other target root"
+                                    })
+                                  )
+                                | Some (Data.Json.String "invalid_executable_main") -> (
+                                    let executable_main_error_of_json = function
+                                      | Data.Json.Object fields -> (
+                                          match get_field fields ~name:"type" with
+                                          | Some (Data.Json.String "missing_main") ->
+                                              Some Planning_error.MissingMain
+                                          | Some (Data.Json.String "multiple_main_definitions") -> (
+                                              match get_field fields ~name:"count" with
+                                              | Some (Data.Json.Int count) -> Some (Planning_error.MultipleMainDefinitions {
+                                                count
+                                              })
+                                              | _ -> None
+                                            )
+                                          | Some (Data.Json.String "invalid_main_parameters") -> (
+                                              match get_field fields ~name:"parameters" with
+                                              | Some (Data.Json.Array parameters) ->
+                                                  let parameters =
+                                                    List.filter_map parameters
+                                                      ~fn:(
+                                                        function
+                                                        | Data.Json.String parameter -> Some parameter
+                                                        | _ -> None
+                                                      )
+                                                  in
+                                                  Some (Planning_error.InvalidMainParameters {
+                                                    parameters
+                                                  })
+                                              | _ -> None
+                                            )
+                                          | _ ->
+                                              None
+                                        )
+                                      | _ -> None
+                                    in
+                                    match (
+                                      get_field planning_fields ~name:"package_name",
+                                      get_field planning_fields ~name:"target_name",
+                                      get_field planning_fields ~name:"source",
+                                      get_field planning_fields ~name:"file",
+                                      get_field planning_fields ~name:"error"
+                                    ) with
+                                    | (package_name_json, Some (Data.Json.String target_name), Some (Data.Json.String source), file_json, Some error_json) -> (
+                                        match executable_main_error_of_json error_json with
+                                        | Some error ->
+                                            let package_name =
+                                              match package_name_json with
+                                              | Some (Data.Json.String package_name) -> package_name
+                                              | _ -> "<unknown>"
+                                            in
+                                            let file =
+                                              match file_json with
+                                              | Some (Data.Json.String file) -> Path.v file
+                                              | _ -> Path.v source
+                                            in
+                                            Ok (
+                                              PlanningFailed (
+                                                Planning_error.InvalidExecutableMain {
+                                                  package_name;
+                                                  target_name;
+                                                  source = Path.v source;
+                                                  file;
+                                                  error;
+                                                }
+                                              )
+                                            )
+                                        | None -> Ok (ExecutionFailed {
+                                          message = "Planning failed: invalid executable main"
+                                        })
+                                      )
+                                    | _ -> Ok (ExecutionFailed {
+                                      message = "Planning failed: invalid executable main"
                                     })
                                   )
                                 | Some (Data.Json.String "exception") -> (

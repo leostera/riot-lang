@@ -49,12 +49,10 @@ let test_local_open_exposes_nested_modules = fun _ctx ->
   else
     Ok ()
 
-let () =
-  Actors.run
-    ~main:(fun ~args ->
-      let tests = [
-        Test.case "local open exposes nested modules from ambient module exports" test_local_open_exposes_nested_modules;
-      ] in
-      Test.Cli.main ~name:"typ:env_open" ~tests ~args)
-    ~args:Std_env.args
-    ()
+let main ~args =
+  let tests = [
+    Test.case "local open exposes nested modules from ambient module exports" test_local_open_exposes_nested_modules;
+  ] in
+  Test.Cli.main ~name:"typ:env_open" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Std_env.args ()

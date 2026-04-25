@@ -72,6 +72,6 @@ let tests = [
   Test.case "Std.Net.Http.Response builder accepts body data" test_response_builder_body_data;
 ]
 
-let main = fun ~args -> Test.Cli.main ~name:"std_net_http_body_tests" ~tests ~args ()
+let main ~args = Test.Cli.main ~name:"std_net_http_body_tests" ~tests ~args ()
 
-let () = Actors.run ~main ~args:Env.args ()
+let () = Runtime.run ~main ~args:Env.args ()

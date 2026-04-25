@@ -192,14 +192,11 @@ let benchmark_suite = fun root ->
     with_config ~config:fast_config "riot-store load plan bundle" (make_bench_load_plan_bundle root);
   ]
 
-let () =
-  Runtime.run
-    ~main:(fun ~args ->
-      match Fs.with_tempdir
-        ~prefix:"riot_store_bench"
-        (fun root ->
-          Bench.Cli.main ~name:"riot-store benchmarks" ~benchmarks:(benchmark_suite root) ~args) with
-      | Ok result -> result
-      | Error err -> panic ("failed to prepare riot-store bench fixture: " ^ IO.error_message err))
-    ~args:Env.args
-    ()
+let main ~args =
+  match Fs.with_tempdir
+    ~prefix:"riot_store_bench"
+    (fun root -> Bench.Cli.main ~name:"riot-store benchmarks" ~benchmarks:(benchmark_suite root) ~args) with
+  | Ok result -> result
+  | Error err -> panic ("failed to prepare riot-store bench fixture: " ^ IO.error_message err)
+
+let () = Runtime.run ~main ~args:Env.args ()

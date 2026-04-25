@@ -55,8 +55,6 @@ let benchmarks =
       [ make_case "Array.set" bench_array_set_100; make_case "Vector.push" bench_vector_push_100; ];
   ]
 
-let () =
-  Runtime.run
-    ~main:(fun ~args -> Bench.Cli.main ~name:"Example Benchmarks" ~benchmarks ~args)
-    ~args:Env.args
-    ()
+let main ~args = Bench.Cli.main ~name:"Example Benchmarks" ~benchmarks ~args
+
+let () = Runtime.run ~main ~args:Env.args ()

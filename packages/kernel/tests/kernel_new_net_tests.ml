@@ -1777,7 +1777,11 @@ let tests = [
   Test.case "Net.UdpSocket send and recv after close report bad file descriptor" test_udp_send_and_recv_after_close_report_bad_file_descriptor;
 ]
 
-let main = fun ~args ->
-  Test.Cli.main ~execution_mode:Test.Cli.Linear ~name:"kernel_new_net_tests" ~tests ~args ()
+let main ~args = Test.Cli.main
+  ~execution_mode:Test.Cli.Linear
+  ~name:"kernel_new_net_tests"
+  ~tests
+  ~args
+  ()
 
-let () = Actors.run ~main ~args:Env.args ()
+let () = Runtime.run ~main ~args:Env.args ()

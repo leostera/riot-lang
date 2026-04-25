@@ -188,8 +188,6 @@ let benchmarks =
     with_config ~config:heavy "gooey renderer fullscreen dashboard" bench_fullscreen_renderer;
   ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args -> Bench.Cli.main ~name:"gooey benchmarks" ~benchmarks ~args)
-    ~args:Env.args
-    ()
+let main ~args = Bench.Cli.main ~name:"gooey benchmarks" ~benchmarks ~args
+
+let () = Runtime.run ~main ~args:Env.args ()

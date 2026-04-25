@@ -109,5 +109,6 @@ let tests =
     case "Result.iter_err runs callback on Error" test_iter_err;
   ]
 
-let () =
-  Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"result" ~tests ~args ()) ~args:Env.args ()
+let main ~args = Test.Cli.main ~name:"result" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

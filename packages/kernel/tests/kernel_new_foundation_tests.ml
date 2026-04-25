@@ -298,6 +298,6 @@ let tests = [
   Test.case "IoVec.sub with len=0 is empty" test_iovec_sub_zero_length_is_empty;
 ]
 
-let main = fun ~args -> Test.Cli.main ~name:"kernel_new_foundation_tests" ~tests ~args ()
+let main ~args = Test.Cli.main ~name:"kernel_new_foundation_tests" ~tests ~args ()
 
-let () = Actors.run ~main ~args:Env.args ()
+let () = Runtime.run ~main ~args:Env.args ()

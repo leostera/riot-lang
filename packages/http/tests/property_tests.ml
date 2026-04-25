@@ -200,8 +200,6 @@ let tests = [
   request_parse_prop;
 ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args:_ -> Test.Cli.main ~name:"http:properties" ~tests ~args:Env.args ())
-    ~args:Env.args
-    ()
+let main ~args:_ = Test.Cli.main ~name:"http:properties" ~tests ~args:Env.args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

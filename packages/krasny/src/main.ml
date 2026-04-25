@@ -28,7 +28,7 @@ let handle_syntax_hash = fun file ->
       let result = parse_file ~file ~source in
       print (Krasny.syntax_hash result)
 
-let main = fun ~args ->
+let main ~args =
   let cmd =
     let open ArgParser in
       let open ArgParser.Arg in command "krasny"
@@ -64,4 +64,4 @@ let main = fun ~args ->
           Error (Failure "missing subcommand")
     )
 
-let () = Actors.run ~main ~args:Env.args ()
+let () = Runtime.run ~main ~args:Env.args ()

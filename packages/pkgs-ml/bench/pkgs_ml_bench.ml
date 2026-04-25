@@ -182,8 +182,6 @@ let benchmarks =
       (make_bench_materialize_release_hit ());
   ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args -> Bench.Cli.main ~name:"pkgs-ml benchmarks" ~benchmarks ~args)
-    ~args:Env.args
-    ()
+let main ~args = Bench.Cli.main ~name:"pkgs-ml benchmarks" ~benchmarks ~args
+
+let () = Runtime.run ~main ~args:Env.args ()

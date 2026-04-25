@@ -38,6 +38,6 @@ let tests = [
   Test.case "Std.IO.IoSlice renders detailed errors" test_io_slice_error_message_preserves_details;
 ]
 
-let main = fun ~args -> Test.Cli.main ~name:"std_io_slice_tests" ~tests ~args ()
+let main ~args = Test.Cli.main ~name:"std_io_slice_tests" ~tests ~args ()
 
-let () = Actors.run ~main ~args:Env.args ()
+let () = Runtime.run ~main ~args:Env.args ()

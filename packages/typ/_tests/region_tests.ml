@@ -43,12 +43,10 @@ let test_local_reachable_vars_include_nested_escaped_vars = fun _ctx ->
             str "]";
           ]))
 
-let () =
-  Actors.run
-    ~main:(fun ~args ->
-      let tests = [
-        Test.case "local reachable vars include nested escaped vars" test_local_reachable_vars_include_nested_escaped_vars;
-      ] in
-      Test.Cli.main ~name:"typ:region" ~tests ~args)
-    ~args:Std.Env.args
-    ()
+let main ~args =
+  let tests = [
+    Test.case "local reachable vars include nested escaped vars" test_local_reachable_vars_include_nested_escaped_vars;
+  ] in
+  Test.Cli.main ~name:"typ:region" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Std.Env.args ()

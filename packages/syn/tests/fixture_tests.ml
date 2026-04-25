@@ -161,19 +161,17 @@ let test_tagged_quoted_string_cst = fun _ctx ->
         let diagnostics = diagnostics |> List.map ~fn:Diagnostic.to_string |> String.concat "\n" in
         Error ("unexpected build_cst parse diagnostics:\n" ^ diagnostics)
 
-let () =
-  Actors.run
-    ~main:(fun ~args ->
-      let modified_fixture_paths = load_modified_fixture_paths () in
-      let fixture_tests =
-        Test.FixtureRunner.cases
-          ()
-          ~dir:fixture_root
-          ~filter:(has_lossless_snapshot modified_fixture_paths)
-          ~snapshot_path:(fun path -> Some (lossless_snapshot_path path))
-          ~run:(fun ctx -> test_fixture ~ctx)
-      in
-      let tests = Test.case "tagged_quoted_string_cst" test_tagged_quoted_string_cst :: fixture_tests in
-      Test.Cli.main ~name:"syn-fixtures" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args =
+  let modified_fixture_paths = load_modified_fixture_paths () in
+  let fixture_tests =
+    Test.FixtureRunner.cases
+      ()
+      ~dir:fixture_root
+      ~filter:(has_lossless_snapshot modified_fixture_paths)
+      ~snapshot_path:(fun path -> Some (lossless_snapshot_path path))
+      ~run:(fun ctx -> test_fixture ~ctx)
+  in
+  let tests = Test.case "tagged_quoted_string_cst" test_tagged_quoted_string_cst :: fixture_tests in
+  Test.Cli.main ~name:"syn-fixtures" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

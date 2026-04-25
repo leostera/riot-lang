@@ -312,8 +312,6 @@ let benchmarks =
       (make_bench_commit_dir ~file_count:1_000 ~file_size:256);
   ]
 
-let () =
-  Runtime.run
-    ~main:(fun ~args -> Bench.Cli.main ~name:"contentstore benchmarks" ~benchmarks ~args)
-    ~args:Env.args
-    ()
+let main ~args = Bench.Cli.main ~name:"contentstore benchmarks" ~benchmarks ~args
+
+let () = Runtime.run ~main ~args:Env.args ()
