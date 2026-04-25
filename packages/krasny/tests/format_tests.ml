@@ -2956,6 +2956,22 @@ let status_char mode summary =
       in
       assert_idempotent ~source ~msg:"boolean match conditions should stay stable";
       Ok ());
+  Test.case "format keeps simple nested match case bodies idempotent"
+    (fun ctx ->
+      let source = {ocaml|let finish=fun lane lane_result->{had_partial_failure=lane_had_error lane||match lane_result with|Some result->Lane_result.had_partial_failure result|None->false;}
+|ocaml}
+      in
+      let first = parse_ml source |> Krasny.format |> Result.expect ~msg:"nested match field should format" in
+      let second = parse_ml first |> Krasny.format |> Result.expect ~msg:"formatted nested match field should reformat" in
+      Test.assert_equal ~expected:first ~actual:second;
+      Test.Snapshot.assert_inline_text ~ctx ~actual:first
+        ~expected:{ocaml|let finish = fun lane lane_result ->
+  {
+    had_partial_failure = lane_had_error lane || match lane_result with
+    | Some result -> Lane_result.had_partial_failure result
+    | None -> false
+  }
+|ocaml});
   Test.case "format keeps top-level lowered fun phrases separated"
     (fun _ctx ->
       let source = {|open Std

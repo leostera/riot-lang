@@ -1861,6 +1861,7 @@ and expr_is_multiline_with_budget = fun budget expr ->
     unsupported_node "cyclic expression while classifying multiline layout" expr;
   let next_budget = Int.sub budget 1 in
   match Ast.Expr.view expr with
+  | Sequence { left = Some left; right = None } when not (same_ast_node expr left) -> expr_is_multiline_with_budget next_budget left
   | If _ | Let _ | Match _ | Fun _ | Function _ | Try _ | LetModule _ | LetException _ | BindingOperator _ | Sequence _ | While _ | For _ -> true
   | Record | RecordUpdate -> not (record_expr_should_inline expr)
   | Parenthesized { inner = Some inner } when expr_first_token_text_is expr "begin" -> expr_is_multiline_with_budget next_budget inner
@@ -1991,6 +1992,10 @@ and expr_is_inline_with_budget = fun budget expr ->
   | List -> list_expr_should_inline expr
   | Record -> record_expr_should_inline expr
   | RecordUpdate -> record_expr_should_inline expr
+  | Sequence { left = Some left; right = None } ->
+      if same_ast_node expr left then
+        false
+      else expr_is_inline_with_budget next_budget left
   | Typed { expr = Some inner; _ } -> expr_is_inline_with_budget next_budget inner
   | _ -> false
 and array_expr_should_inline = fun expr ->
