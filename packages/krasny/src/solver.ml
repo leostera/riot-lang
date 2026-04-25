@@ -11,7 +11,7 @@ type frame = int * mode * Doc.t
 let append_subslice_unchecked = fun buffer slice ~off ~len ->
   match IO.Buffer.append_subslice buffer slice ~off ~len with
   | Ok () -> ()
-  | Error error -> panic ("Solver.append_subslice: " ^ Kernel.IO.Error.message error)
+  | Error error -> panic ("Solver.append_subslice: " ^ IO.IoVec.error_message error)
 
 let last_line_width = fun text ->
   let length = String.length text in

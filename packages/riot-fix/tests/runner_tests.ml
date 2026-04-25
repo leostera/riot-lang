@@ -1,4 +1,5 @@
 open Std
+module Vector = Std.Collections.Vector
 
 let write_file = fun path content -> Fs.write content path |> Result.expect ~msg:"failed to write test fixture"
 
@@ -33,6 +34,33 @@ let diagnostic_rule_ids = fun diagnostics ->
   diagnostics
   |> List.map ~fn:(fun diag -> Riot_fix.Rule_id.to_string (Riot_fix.Diagnostic.rule_id diag))
   |> List.sort ~compare:String.compare
+
+let source_slice = fun source -> IO.IoVec.IoSlice.from_string source |> Result.expect ~msg:"failed to create riot-fix runner test source slice"
+
+let rule_context = fun ~file_path source ->
+  let filename = Path.v file_path in
+  let parsed = Syn.parse ~filename (source_slice source) in
+  if Vector.length parsed.Syn.Parser.diagnostics > 0 then
+    panic ("expected diagnostics-free parse for " ^ file_path);
+  Riot_fix.Rule.{ file_path; source; source_file = Syn.Ast.SourceFile.make parsed.Syn.Parser.tree }
+
+let binding_name = fun binding ->
+  match Syn.Ast.LetBinding.pattern binding with
+  | Some pattern -> (
+      match Syn.Ast.Pattern.view pattern with
+      | Syn.Ast.Pattern.Path { path } -> (
+          match Syn.Ast.Path.last_ident path with
+          | Some token -> Syn.Ast.Token.text token
+          | None -> ""
+        )
+      | _ -> ""
+    )
+  | None -> ""
+
+let type_declaration_name = fun declaration ->
+  match Syn.Ast.TypeDeclaration.name declaration with
+  | Some token -> Syn.Ast.Token.text token
+  | None -> ""
 
 let assert_explanation_contains = fun ~rule_id ~snippet ->
   let rule_id = Riot_fix.Rule_id.of_string rule_id in
@@ -2249,54 +2277,30 @@ let render x y z =
           let second_plan = Riot_fix.Fixme_runner.plan ~workspace_root ~target_dir_root [ provider ] in
           Test.assert_false (String.equal first_plan.provider_hash second_plan.provider_hash);
           Ok ()));
-  Test.case "rule query collects expressions from the typed CST"
+  Test.case "rule query collects expressions from the typed Ast"
     (fun _ctx ->
-      let result = Syn.parse_implementation "let render x = let y = x + 1 in y; y\n" in
-      let cst = Syn.build_cst result |> Result.expect ~msg:"expected typed CST for diagnostics-free parse" in
-      let expressions = Riot_fix.Rule_query.expressions
-        Riot_fix.Rule.{
-          file_path = "sample.ml";
-          source = "let render x = let y = x + 1 in y; y\n";
-          cst
-        } in
+      let source = "let render x = let y = x + 1 in y; y\n" in
+      let expressions = Riot_fix.Rule_query.expressions (rule_context ~file_path:"sample.ml" source) in
       Test.assert_true (List.length expressions >= 5);
       Ok ());
-  Test.case "rule query collects let bindings from the typed CST"
+  Test.case "rule query collects let bindings from the typed Ast"
     (fun _ctx ->
-      let result = Syn.parse_implementation "let render x = x\nlet other y = let z = y in z\n" in
-      let cst = Syn.build_cst result |> Result.expect ~msg:"expected typed CST for diagnostics-free parse" in
-      let bindings = Riot_fix.Rule_query.let_bindings
-        Riot_fix.Rule.{
-          file_path = "sample.ml";
-          source = "let render x = x\nlet other y = let z = y in z\n";
-          cst
-        } in
+      let source = "let render x = x\nlet other y = let z = y in z\n" in
+      let bindings = Riot_fix.Rule_query.let_bindings (rule_context ~file_path:"sample.ml" source) in
       Test.assert_equal
         ~expected:[ "render"; "other" ]
-        ~actual:(bindings |> List.map ~fn:Syn.Cst.LetBinding.name);
+        ~actual:(bindings |> List.map ~fn:binding_name);
       Ok ());
   Test.case "rule query collects type declarations from implementations and interfaces"
     (fun _ctx ->
-      let implementation = Syn.parse_implementation "type user = { name : string }\nlet render x = x\n" in
-      let interface = Syn.parse_interface "type service\nval render : int -> int\n" in
-      let implementation_cst = Syn.build_cst implementation |> Result.expect ~msg:"expected typed CST for diagnostics-free parse" in
-      let interface_cst = Syn.build_cst interface |> Result.expect ~msg:"expected typed CST for diagnostics-free parse" in
+      let implementation_source = "type user = { name : string }\nlet render x = x\n" in
+      let interface_source = "type service\nval render : int -> int\n" in
       let implementation_types = Riot_fix.Rule_query.type_declarations
-        Riot_fix.Rule.{
-          file_path = "sample.ml";
-          source = "type user = { name : string }\nlet render x = x\n";
-          cst = implementation_cst
-        }
-      |> List.map
-        ~fn:(fun declaration -> Syn.Cst.Token.text (Syn.Cst.TypeDeclaration.name_token declaration)) in
+        (rule_context ~file_path:"sample.ml" implementation_source)
+      |> List.map ~fn:type_declaration_name in
       let interface_types = Riot_fix.Rule_query.type_declarations
-        Riot_fix.Rule.{
-          file_path = "sample.mli";
-          source = "type service\nval render : int -> int\n";
-          cst = interface_cst
-        }
-      |> List.map
-        ~fn:(fun declaration -> Syn.Cst.Token.text (Syn.Cst.TypeDeclaration.name_token declaration)) in
+        (rule_context ~file_path:"sample.mli" interface_source)
+      |> List.map ~fn:type_declaration_name in
       Test.assert_equal ~expected:[ "user" ] ~actual:implementation_types;
       Test.assert_equal ~expected:[ "service" ] ~actual:interface_types;
       Ok ());

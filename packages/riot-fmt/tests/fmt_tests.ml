@@ -1,5 +1,6 @@
 open Std
 module Test = Std.Test
+module Vector = Std.Collections.Vector
 
 let with_tempdir = fun prefix fn ->
   match Fs.with_tempdir ~prefix fn with
@@ -14,6 +15,10 @@ let parse_fmt = fun args ->
 let make_capture_writer = fun () ->
   let chunks = ref [] in
   ((fun chunk -> chunks := chunk :: !chunks), fun () -> !chunks |> List.reverse |> String.concat "")
+
+let source_slice = fun source -> IO.IoVec.IoSlice.from_string source |> Result.expect ~msg:"failed to create riot-fmt test source slice"
+
+let diagnostics_to_list = fun diagnostics -> diagnostics |> Vector.to_array |> Array.to_list
 
 let parse_jsonl = fun output ->
   output
@@ -132,11 +137,14 @@ let test_fmt_prints_syn_diagnostics_for_syntax_errors = fun _ctx ->
       let matches = parse_fmt [ "fmt"; Path.to_string broken ] |> Result.expect ~msg:"parse fmt args" in
       let stdout, stdout_contents = make_capture_writer () in
       let stderr, stderr_contents = make_capture_writer () in
-      let parsed = Syn.parse ~filename:broken source in
-      if List.is_empty parsed.diagnostics then
+      let parsed = Syn.parse ~filename:broken (source_slice source) in
+      if Vector.length parsed.diagnostics = 0 then
         Error "expected broken source to produce syn diagnostics"
       else
-        let expected = Syn.DiagnosticReporter.format ~file:(Path.to_string broken) ~source parsed.diagnostics in
+        let expected = Syn.DiagnosticReporter.format
+          ~file:(Path.to_string broken)
+          ~source
+          (diagnostics_to_list parsed.diagnostics) in
         (
           match Riot_fmt.run ~stdout ~stderr matches with
           | Ok () -> Error "expected syntax error formatting to fail"
@@ -155,11 +163,14 @@ let test_fmt_check_prints_syn_diagnostics_for_syntax_errors = fun _ctx ->
       let matches = parse_fmt [ "fmt"; "--check"; Path.to_string broken ] |> Result.expect ~msg:"parse fmt check args" in
       let stdout, stdout_contents = make_capture_writer () in
       let stderr, stderr_contents = make_capture_writer () in
-      let parsed = Syn.parse ~filename:broken source in
-      if List.is_empty parsed.diagnostics then
+      let parsed = Syn.parse ~filename:broken (source_slice source) in
+      if Vector.length parsed.diagnostics = 0 then
         Error "expected broken source to produce syn diagnostics"
       else
-        let expected = Syn.DiagnosticReporter.format ~file:(Path.to_string broken) ~source parsed.diagnostics in
+        let expected = Syn.DiagnosticReporter.format
+          ~file:(Path.to_string broken)
+          ~source
+          (diagnostics_to_list parsed.diagnostics) in
         (
           match Riot_fmt.run ~stdout ~stderr matches with
           | Ok () -> Error "expected syntax error fmt --check to fail"
@@ -178,8 +189,8 @@ let test_fmt_json_includes_structured_syn_diagnostics_for_syntax_errors = fun _c
       let matches = parse_fmt [ "fmt"; "--json"; Path.to_string broken ] |> Result.expect ~msg:"parse fmt json args" in
       let stdout, stdout_contents = make_capture_writer () in
       let stderr, stderr_contents = make_capture_writer () in
-      let parsed = Syn.parse ~filename:broken source in
-      if List.is_empty parsed.diagnostics then
+      let parsed = Syn.parse ~filename:broken (source_slice source) in
+      if Vector.length parsed.diagnostics = 0 then
         Error "expected broken source to produce syn diagnostics"
       else
         (
@@ -196,7 +207,9 @@ let test_fmt_json_includes_structured_syn_diagnostics_for_syntax_errors = fun _c
                     | _ -> false)
                 |> Option.expect ~msg:"file event missing"
               in
-              let expected = Some (Data.Json.Array (List.map parsed.diagnostics ~fn:Syn.Diagnostic.to_json)) in
+              let expected = Some (Data.Json.Array (parsed.diagnostics
+              |> diagnostics_to_list
+              |> List.map ~fn:Syn.Diagnostic.to_json)) in
               Test.assert_equal ~expected ~actual:(Data.Json.get_field "diagnostics" file_event);
               Test.assert_equal ~expected:"" ~actual:(stderr_contents ());
               Ok ()

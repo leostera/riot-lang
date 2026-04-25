@@ -8,19 +8,19 @@ let sample_mli = Path.v "sample.mli"
 let source_slice = fun source ->
   match IO.IoVec.IoSlice.from_string source with
   | Ok slice -> slice
-  | Error error -> panic ("failed to create source slice: " ^ Kernel.IO.Error.message error)
+  | Error error -> panic ("failed to create source slice: " ^ IO.IoSlice.error_message error)
 
-let parse2_ml = fun source -> Syn.parse2 ~filename:sample_ml (source_slice source)
+let parse2_ml = fun source -> Syn.parse ~filename:sample_ml (source_slice source)
 
-let parse2_mli = fun source -> Syn.parse2 ~filename:sample_mli (source_slice source)
+let parse2_mli = fun source -> Syn.parse ~filename:sample_mli (source_slice source)
 
-let format2_ml = fun source -> parse2_ml source |> Krasny.format2
+let format2_ml = fun source -> parse2_ml source |> Krasny.format
 
-let format2_mli = fun source -> parse2_mli source |> Krasny.format2
+let format2_mli = fun source -> parse2_mli source |> Krasny.format
 
-let parse2_source = fun ~filename source -> Syn.parse2 ~filename (source_slice source)
+let parse2_source = fun ~filename source -> Syn.parse ~filename (source_slice source)
 
-let format2_source = fun ~filename source -> parse2_source ~filename source |> Krasny.format2
+let format2_source = fun ~filename source -> parse2_source ~filename source |> Krasny.format
 
 let top_level = fun items -> String.concat "\n\n" items ^ "\n"
 
@@ -1015,8 +1015,6 @@ end
     (fun _ctx -> assert_lower2_manifest_fixtures ());
 ]
 
-let () =
-  Actors.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"krasny:lower2" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main ~name:"krasny:lower2" ~tests ~args ()
+
+let () = Std.Runtime.run ~main:main ~args:Std.Env.args ()

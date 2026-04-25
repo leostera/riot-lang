@@ -1,3 +1,1 @@
-open Std
-
-val lower_source_file: source:Model.Source.t -> Syn.Cst.source_file -> Semantic_tree.t
+val lower_source_file: source:Model.Source.t -> Syn.Parser.parse_result -> Semantic_tree.t

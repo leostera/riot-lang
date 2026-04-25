@@ -12,21 +12,13 @@ let fixture_filter = fun path ->
   | Some ".mli" -> `keep
   | _ -> `skip
 
+let source_slice = fun source -> IO.IoVec.IoSlice.from_string source |> Result.expect ~msg:"failed to create lowering test source slice"
+
 let lowering_test = fun (ctx: Test.FixtureRunner.ctx) ->
   let* file = Fs.read ctx.fixture_path |> Result.map_err ~fn:IO.error_message in
-  let parse_result = Syn.parse ~filename:ctx.fixture_path file in
-  let* cst =
-    Syn.build_cst parse_result |> Result.map_err
-      ~fn:(
-        function
-        | Syn.Parse_diagnostics diagnostics -> diagnostics
-        |> List.map ~fn:Syn.Diagnostic.to_string
-        |> String.concat "\n"
-        | Syn.Cst_builder_error { message } -> message
-      )
-  in
+  let parse_result = Syn.parse ~filename:ctx.fixture_path (source_slice file) in
   let source = Typ.Model.Source.make ~text:file in
-  let semtree = Typ.Lower.lower ~source cst in
+  let semtree = Typ.Lower.lower ~source parse_result in
   let* json_text = Serde_json.to_string Typ.Lower.serializer semtree
   |> Result.map_err ~fn:Serde.Error.to_string in
   let* json = Data.Json.of_string json_text |> Result.map_err ~fn:Data.Json.error_to_string in

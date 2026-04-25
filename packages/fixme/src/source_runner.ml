@@ -39,7 +39,7 @@ let trace = fun ?filename message ->
 let source_slice = fun source ->
   match IO.IoVec.IoSlice.from_string source with
   | Ok slice -> slice
-  | Error error -> panic ("failed to create parser source slice: " ^ Kernel.IO.Error.message error)
+  | Error error -> panic ("failed to create parser source slice: " ^ IO.IoSlice.error_message error)
 
 let parse ?filename source: Syn.Parser.parse_result =
   let source = source_slice source in

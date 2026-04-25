@@ -104,12 +104,10 @@ let corpus_benchmark = fun () ->
 
 let benchmarks = fun () -> selected_benchmarks () @ [ corpus_benchmark () ]
 
-let () =
-  Runtime.run
-    ~main:(fun ~args ->
-      let result = Bench.Cli.main ~name:"syn parse" ~benchmarks:(benchmarks ()) ~args in
-      if !checksum = Int.min_int then
-        panic "unreachable parse benchmark checksum";
-      result)
-    ~args:Env.args
-    ()
+let main ~args =
+  let result = Bench.Cli.main ~name:"syn parse" ~benchmarks:(benchmarks ()) ~args in
+  if !checksum = Int.min_int then
+    panic "unreachable parse benchmark checksum";
+  result
+
+let () = Runtime.run ~main ~args:Env.args ()

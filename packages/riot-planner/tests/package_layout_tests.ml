@@ -47,10 +47,11 @@ let node_path = fun (node: Riot_planner.Module_node.t G.node) ->
   | Riot_planner.Module_node.Concrete path -> path
   | Riot_planner.Module_node.Generated { path; _ } -> path
 
+let source_slice = fun source -> IO.IoVec.IoSlice.from_string source |> Result.expect ~msg:"failed to create package-layout test source slice"
+
 let analyzed_module = fun (node: Riot_planner.Module_node.t G.node) ~source ->
   let display_path = node_path node in
-  let parse_result = Syn.parse ~filename:display_path source in
-  let cst = Syn.build_cst parse_result in
+  let parse_result = Syn.parse ~filename:display_path (source_slice source) in
   let deps = Syn.Deps.of_parse_result parse_result in
   (
     node.id,
@@ -59,7 +60,6 @@ let analyzed_module = fun (node: Riot_planner.Module_node.t G.node) ~source ->
       source_hash = Crypto.hash_string source;
       implicit_opens = [];
       parse_result;
-      cst;
       deps;
       resolved_deps = [];
       resolved_dep_ids = node.deps;

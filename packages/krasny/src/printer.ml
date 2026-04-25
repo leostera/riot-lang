@@ -5,7 +5,7 @@ module Slice = IO.IoVec.IoSlice
 let append_subslice_unchecked = fun buffer slice ~off ~len ->
   match IO.Buffer.append_subslice buffer slice ~off ~len with
   | Ok () -> ()
-  | Error error -> panic ("Printer.append_subslice: " ^ Kernel.IO.Error.message error)
+  | Error error -> panic ("Printer.append_subslice: " ^ IO.IoVec.error_message error)
 
 let to_string = fun ?(size_hint = 1_024) ?(final_newline = false) doc ->
   let buffer = IO.Buffer.create ~size:(Int.max 0 size_hint) in

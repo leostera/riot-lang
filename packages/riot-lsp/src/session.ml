@@ -3,6 +3,7 @@ open Std.Data
 open Std.Result.Syntax
 open Typ.Diagnostics
 open Typ.Model
+module Vector = Std.Collections.Vector
 
 let lint_rules = Riot_fix.Pipeline.default_rules ()
 
@@ -101,11 +102,7 @@ let filename_of_document = fun (document: document) ->
   | Some path -> path
   | None -> filename_of_uri document.uri
 
-let prepared_parse_artifacts = fun ~filename text ->
-  let parse_result = Syn.parse ~filename text in
-  match Syn.build_cst parse_result with
-  | Ok cst -> Some (parse_result, cst)
-  | Error _ -> None
+let source_slice = fun text -> IO.IoVec.IoSlice.from_string text |> Result.expect ~msg:"failed to create LSP parser source slice"
 
 let add_prepared_typ_source = fun session ->
   fun ~kind:_ ->
@@ -312,8 +309,8 @@ let workspace_edit_of_text = fun document text ->
   }
 
 let maybe_format_text = fun document text ->
-  let parse_result = Syn.parse ~filename:(filename_of_uri document.uri) text in
-  if not (List.is_empty parse_result.diagnostics) then
+  let parse_result = Syn.parse ~filename:(filename_of_uri document.uri) (source_slice text) in
+  if Vector.length parse_result.diagnostics > 0 then
     text
   else
     match Krasny.format parse_result with
@@ -393,13 +390,16 @@ let query_position_of_lsp_position = fun text position ->
   | Error _ -> None
   | Ok offset -> Some offset
 
-let range_of_span = fun text span ->
-  Lsp.Utf16.range_of_offsets text ~start_offset:span.Ceibo.Span.start ~end_offset:span.end_
+let range_of_span = fun text (span: Syn.Ceibo.Span.t) ->
+  Lsp.Utf16.range_of_offsets text ~start_offset:span.start ~end_offset:span.end_
 
-let range_of_syntax_node = fun text syntax_node ->
-  range_of_span text (Syn.Cst.token_body_span syntax_node)
+let range_of_node = fun text node ->
+  let start, end_ = Syn.Ast.Node.raw_range node in
+  range_of_span text (Syn.Ceibo.Span.make ~start ~end_)
 
-let range_of_token = fun text token -> range_of_span text (Syn.Cst.Token.span token)
+let range_of_token = fun text token ->
+  let start, end_ = Syn.Ast.Token.raw_range token in
+  range_of_span text (Syn.Ceibo.Span.make ~start ~end_)
 
 let range_of_tokens = fun text tokens ->
   match tokens with
@@ -408,39 +408,87 @@ let range_of_tokens = fun text tokens ->
       let last =
         List.fold_left rest ~init:first ~fn:(fun _ token -> token)
       in
-      let first_span = Syn.Cst.Token.span first in
-      let last_span = Syn.Cst.Token.span last in
-      Lsp.Utf16.range_of_offsets text ~start_offset:first_span.start ~end_offset:last_span.end_
+      let start, _ = Syn.Ast.Token.raw_range first in
+      let _, end_ = Syn.Ast.Token.raw_range last in
+      Lsp.Utf16.range_of_offsets text ~start_offset:start ~end_offset:end_
 
-let text_of_name_tokens = fun tokens -> tokens |> List.map ~fn:Syn.Cst.Token.text |> String.concat ""
+let text_of_name_tokens = fun tokens -> tokens |> List.map ~fn:Syn.Ast.Token.text |> String.concat ""
 
-let rec binding_name_tokens_of_pattern = function
-  | Syn.Cst.Pattern.Identifier { name_token; _ } -> Some [ name_token ]
-  | Syn.Cst.Pattern.Operator { operator_tokens; _ } -> Some operator_tokens
-  | Syn.Cst.Pattern.Alias { name_token; _ } -> Some [ name_token ]
-  | Syn.Cst.Pattern.Typed { pattern; _ }
-  | Syn.Cst.Pattern.Lazy { pattern; _ }
-  | Syn.Cst.Pattern.LocalOpen { pattern; _ } -> binding_name_tokens_of_pattern pattern
-  | Syn.Cst.Pattern.Parenthesized { inner; _ } -> binding_name_tokens_of_pattern inner
-  | _ -> None
+let vector_to_list = fun vector -> Vector.to_array vector |> Array.to_list
 
-let rec value_like_type_is_function = function
-  | Syn.Cst.CoreType.Arrow _ -> true
-  | Syn.Cst.CoreType.Alias { type_; _ }
-  | Syn.Cst.CoreType.Attribute { type_; _ }
-  | Syn.Cst.CoreType.Parenthesized { inner=type_; _ }
-  | Syn.Cst.CoreType.Poly { body=type_; _ } -> value_like_type_is_function type_
+let collect_tokens = fun ~size collect ->
+  let tokens = Vector.with_capacity ~size in
+  collect ~fn:(fun token -> Vector.push tokens ~value:token);
+  vector_to_list tokens
+
+let rec binding_name_tokens_of_parameter = fun parameter ->
+  match Syn.Ast.Parameter.view parameter with
+  | Syn.Ast.Parameter.Labeled { pattern=Some pattern; _ }
+  | Syn.Ast.Parameter.Optional { pattern=Some pattern; _ }
+  | Syn.Ast.Parameter.OptionalDefault { pattern=Some pattern; _ } -> binding_name_tokens_of_pattern pattern
+  | Syn.Ast.Parameter.Labeled { label=Some label; _ }
+  | Syn.Ast.Parameter.Optional { label=Some label; _ }
+  | Syn.Ast.Parameter.OptionalDefault { label=Some label; _ } -> Some [ label ]
+  | Syn.Ast.Parameter.Labeled _
+  | Syn.Ast.Parameter.Optional _
+  | Syn.Ast.Parameter.OptionalDefault _
+  | Syn.Ast.Parameter.Unknown _ -> None
+
+and binding_name_tokens_of_pattern = fun pattern ->
+  match Syn.Ast.Pattern.view pattern with
+  | Syn.Ast.Pattern.Path { path } -> (
+      match Syn.Ast.Path.last_ident path with
+      | Some token -> Some [ token ]
+      | None -> None
+    )
+  | Syn.Ast.Pattern.Alias { alias=Some alias; _ }
+  | Syn.Ast.Pattern.Constraint { pattern=Some alias; _ }
+  | Syn.Ast.Pattern.Lazy { pattern=Some alias }
+  | Syn.Ast.Pattern.Exception { pattern=Some alias }
+  | Syn.Ast.Pattern.Parenthesized { inner=Some alias }
+  | Syn.Ast.Pattern.Attribute { inner=Some alias } ->
+      binding_name_tokens_of_pattern alias
+  | Syn.Ast.Pattern.LabeledParam parameter
+  | Syn.Ast.Pattern.OptionalParam parameter
+  | Syn.Ast.Pattern.OptionalParamDefault parameter ->
+      binding_name_tokens_of_parameter parameter
+  | Syn.Ast.Pattern.Wildcard
+  | Syn.Ast.Pattern.Apply _
+  | Syn.Ast.Pattern.Literal _
+  | Syn.Ast.Pattern.Parenthesized _
+  | Syn.Ast.Pattern.Tuple
+  | Syn.Ast.Pattern.List
+  | Syn.Ast.Pattern.Array
+  | Syn.Ast.Pattern.Record
+  | Syn.Ast.Pattern.PolyVariant
+  | Syn.Ast.Pattern.Extension
+  | Syn.Ast.Pattern.Attribute _
+  | Syn.Ast.Pattern.LocalOpen
+  | Syn.Ast.Pattern.LocallyAbstractType
+  | Syn.Ast.Pattern.FirstClassModule
+  | Syn.Ast.Pattern.Interval _
+  | Syn.Ast.Pattern.Constraint _
+  | Syn.Ast.Pattern.Alias _
+  | Syn.Ast.Pattern.Or _
+  | Syn.Ast.Pattern.Cons _
+  | Syn.Ast.Pattern.Lazy _
+  | Syn.Ast.Pattern.Exception _
+  | Syn.Ast.Pattern.Error _
+  | Syn.Ast.Pattern.Unknown _ ->
+      None
+
+let rec value_like_type_is_function = fun type_ ->
+  match Syn.Ast.TypeExpr.view type_ with
+  | Syn.Ast.TypeExpr.Arrow _ -> true
+  | Syn.Ast.TypeExpr.Parenthesized { inner=Some inner }
+  | Syn.Ast.TypeExpr.Poly { body=Some inner } -> value_like_type_is_function inner
   | _ -> false
 
-let symbol_kind_of_type_definition = function
-  | Syn.Cst.TypeDefinition.Variant _
-  | Syn.Cst.TypeDefinition.PolyVariant _ -> Lsp.Symbol_kind.Enum
-  | Syn.Cst.TypeDefinition.Record _ -> Lsp.Symbol_kind.Struct
-  | Syn.Cst.TypeDefinition.Abstract
-  | Syn.Cst.TypeDefinition.Alias _
-  | Syn.Cst.TypeDefinition.Extensible _
-  | Syn.Cst.TypeDefinition.FirstClassModule _
-  | Syn.Cst.TypeDefinition.Object _ -> Lsp.Symbol_kind.Struct
+let symbol_kind_of_type_member = fun member ->
+  if Option.is_some (Syn.Ast.TypeDeclaration.Member.variant_type member) then
+    Lsp.Symbol_kind.Enum
+  else
+    Lsp.Symbol_kind.Struct
 
 let symbol_children = function
   | [] -> None
@@ -451,349 +499,259 @@ let document_symbol_of_named_item = fun ~text ~name ~kind ~syntax_node ~selectio
     Lsp.Document_symbol_item.name;
     detail;
     kind;
-    range = range_of_syntax_node text syntax_node;
+    range = range_of_node text syntax_node;
     selection_range;
     children;
   }
 
-let rec let_binding_group_symbols = fun text (binding: Syn.Cst.LetBinding.t) ->
-  let current =
-    match binding_name_tokens_of_pattern (Syn.Cst.LetBinding.binding_pattern binding) with
-    | None -> []
-    | Some name_tokens ->
-        let kind =
-          if Syn.Cst.LetBinding.is_function binding then
-            Lsp.Symbol_kind.Function
-          else
-            Lsp.Symbol_kind.Variable
-        in
-        [
+let let_binding_symbol = fun text binding ->
+  match Syn.Ast.LetBinding.pattern binding |> Option.and_then ~fn:binding_name_tokens_of_pattern with
+  | None -> []
+  | Some name_tokens ->
+      let has_parameters = ref false in
+      Syn.Ast.LetBinding.for_each_parameter binding ~fn:(fun _ -> has_parameters := true);
+      let kind =
+        match Syn.Ast.LetBinding.type_annotation binding with
+        | Some type_ when value_like_type_is_function type_ -> Lsp.Symbol_kind.Function
+        | _ when !has_parameters -> Lsp.Symbol_kind.Function
+        | _ -> Lsp.Symbol_kind.Variable
+      in
+      [
+        document_symbol_of_named_item
+          ~text
+          ~name:(text_of_name_tokens name_tokens)
+          ~kind
+          ~syntax_node:binding
+          ~selection_range:(range_of_tokens text name_tokens)
+          ()
+      ]
+
+let let_declaration_symbols = fun text declaration ->
+  let symbols = Vector.with_capacity ~size:2 in
+  Syn.Ast.LetDeclaration.for_each_binding
+    declaration
+    ~fn:(fun binding ->
+      let_binding_symbol text binding
+      |> List.for_each ~fn:(fun symbol -> Vector.push symbols ~value:symbol));
+  vector_to_list symbols
+
+let type_declaration_symbols = fun text declaration ->
+  Syn.Ast.TypeDeclaration.fold_members declaration []
+    (fun acc member ->
+      match Syn.Ast.TypeDeclaration.Member.name member with
+      | None -> acc
+      | Some name -> document_symbol_of_named_item
+        ~text
+        ~name:(Syn.Ast.Token.text name)
+        ~kind:(symbol_kind_of_type_member member)
+        ~syntax_node:declaration
+        ~selection_range:(range_of_token text name)
+        ()
+      :: acc) |> List.reverse
+
+let type_extension_symbols = fun text declaration ->
+  match Syn.Ast.TypeExtensionDeclaration.name declaration with
+  | None -> []
+  | Some name -> [
+    document_symbol_of_named_item
+      ~text
+      ~name:(Syn.Ast.Token.text name)
+      ~kind:Lsp.Symbol_kind.Enum
+      ~syntax_node:declaration
+      ~selection_range:(range_of_token text name)
+      ()
+  ]
+
+let rec collect_structure_symbols = fun text collect ->
+  let items = Vector.with_capacity ~size:8 in
+  collect ~fn:(fun item -> Vector.push items ~value:item);
+  structure_item_symbols text (vector_to_list items)
+
+and collect_signature_symbols = fun text collect ->
+  let items = Vector.with_capacity ~size:8 in
+  collect ~fn:(fun item -> Vector.push items ~value:item);
+  signature_item_symbols text (vector_to_list items)
+
+and module_declaration_children = fun text declaration ->
+  match Syn.Ast.ModuleDeclaration.body declaration with
+  | Syn.Ast.ModuleDeclaration.Struct -> collect_structure_symbols
+    text
+    (Syn.Ast.ModuleDeclaration.for_each_structure_item declaration)
+  | Syn.Ast.ModuleDeclaration.Sig -> collect_signature_symbols
+    text
+    (Syn.Ast.ModuleDeclaration.for_each_signature_item declaration)
+  | Syn.Ast.ModuleDeclaration.Path
+  | Syn.Ast.ModuleDeclaration.EmptyStruct
+  | Syn.Ast.ModuleDeclaration.EmptySig
+  | Syn.Ast.ModuleDeclaration.Unsupported -> []
+
+and module_declaration_symbols = fun text declaration ->
+  Syn.Ast.ModuleDeclaration.fold_members declaration []
+    (fun acc member ->
+      match Syn.Ast.ModuleDeclaration.Member.name member with
+      | None -> acc
+      | Some name ->
+          let children = module_declaration_children text declaration in
           document_symbol_of_named_item
             ~text
-            ~name:(text_of_name_tokens name_tokens)
-            ~kind
-            ~syntax_node:(Syn.Cst.LetBinding.syntax_node binding)
-            ~selection_range:(range_of_tokens text name_tokens)
+            ~name:(Syn.Ast.Token.text name)
+            ~kind:Lsp.Symbol_kind.Module
+            ~syntax_node:declaration
+            ~selection_range:(range_of_token text name)
+            ?children:(symbol_children children)
             ()
-        ]
-  in
-  current @ (
-    match Syn.Cst.LetBinding.and_binding binding with
-    | None -> []
-    | Some next -> let_binding_group_symbols text next
-  )
+          :: acc) |> List.reverse
 
-let rec type_declaration_group_symbols = fun text (declaration: Syn.Cst.TypeDeclaration.t) ->
-  let current = [
+and module_type_declaration_symbols = fun text declaration ->
+  match Syn.Ast.ModuleTypeDeclaration.name declaration with
+  | None -> []
+  | Some name ->
+      let children =
+        match Syn.Ast.ModuleTypeDeclaration.body declaration with
+        | Syn.Ast.ModuleTypeDeclaration.Sig -> collect_signature_symbols
+          text
+          (Syn.Ast.ModuleTypeDeclaration.for_each_signature_item declaration)
+        | Syn.Ast.ModuleTypeDeclaration.Abstract
+        | Syn.Ast.ModuleTypeDeclaration.Path
+        | Syn.Ast.ModuleTypeDeclaration.EmptySig
+        | Syn.Ast.ModuleTypeDeclaration.With
+        | Syn.Ast.ModuleTypeDeclaration.Unsupported -> []
+      in
+      [
+        document_symbol_of_named_item
+          ~text
+          ~name:(Syn.Ast.Token.text name)
+          ~kind:Lsp.Symbol_kind.Interface
+          ~syntax_node:declaration
+          ~selection_range:(range_of_token text name)
+          ?children:(symbol_children children)
+          ()
+      ]
+
+and class_symbols = fun text declaration ->
+  match Syn.Ast.ClassDeclaration.name declaration with
+  | None -> []
+  | Some name -> [
     document_symbol_of_named_item
       ~text
-      ~name:(Syn.Cst.Token.text (Syn.Cst.TypeDeclaration.name_token declaration))
-      ~kind:(symbol_kind_of_type_definition (Syn.Cst.TypeDeclaration.type_definition declaration))
-      ~syntax_node:(Syn.Cst.TypeDeclaration.syntax_node declaration)
-      ~selection_range:(range_of_token text (Syn.Cst.TypeDeclaration.name_token declaration))
+      ~name:(Syn.Ast.Token.text name)
+      ~kind:Lsp.Symbol_kind.Class
+      ~syntax_node:declaration
+      ~selection_range:(range_of_token text name)
       ()
-  ] in
-  current @ (
-    match Syn.Cst.TypeDeclaration.next_and_declaration declaration with
-    | None -> []
-    | Some next -> type_declaration_group_symbols text next
-  )
+  ]
 
-let rec module_structure_group_symbols = fun text (declaration: Syn.Cst.ModuleStructure.t) ->
-  let children = module_expression_symbols
+and exception_symbols = fun text declaration ->
+  match Syn.Ast.ExceptionDeclaration.name declaration with
+  | None -> []
+  | Some name -> [
+    document_symbol_of_named_item
+      ~text
+      ~name:(Syn.Ast.Token.text name)
+      ~kind:Lsp.Symbol_kind.Event
+      ~syntax_node:declaration
+      ~selection_range:(range_of_token text name)
+      ()
+  ]
+
+and value_like_declaration_symbols = fun text ~syntax_node ~name_tokens ~type_annotation ->
+  match name_tokens with
+  | [] -> []
+  | _ ->
+      let kind =
+        match type_annotation with
+        | Some type_ when value_like_type_is_function type_ -> Lsp.Symbol_kind.Function
+        | _ -> Lsp.Symbol_kind.Variable
+      in
+      [
+        document_symbol_of_named_item
+          ~text
+          ~name:(text_of_name_tokens name_tokens)
+          ~kind
+          ~syntax_node
+          ~selection_range:(range_of_tokens text name_tokens)
+          ()
+      ]
+
+and value_declaration_symbols = fun text declaration ->
+  let name_tokens = collect_tokens ~size:2 (Syn.Ast.ValueDeclaration.for_each_name_token declaration) in
+  value_like_declaration_symbols
     text
-    (Syn.Cst.ModuleStructure.module_expression declaration) in
-  let current = [
-    document_symbol_of_named_item
-      ~text
-      ~name:(Syn.Cst.ModuleStructure.name declaration)
-      ~kind:Lsp.Symbol_kind.Module
-      ~syntax_node:(Syn.Cst.ModuleStructure.syntax_node declaration)
-      ~selection_range:(range_of_token text (Syn.Cst.ModuleStructure.module_name_token declaration))
-      ?children:(symbol_children children)
-      ()
-  ] in
-  current @ (
-    match Syn.Cst.ModuleStructure.next_and_declaration declaration with
-    | None -> []
-    | Some next -> module_structure_group_symbols text next
-  )
+    ~syntax_node:declaration
+    ~name_tokens
+    ~type_annotation:(Syn.Ast.ValueDeclaration.type_annotation declaration)
 
-and module_signature_group_symbols = fun text (declaration: Syn.Cst.ModuleSignature.t) ->
-  let children =
-    match Syn.Cst.ModuleSignature.definition declaration with
-    | Signature module_type -> module_type_symbols text module_type
-    | Alias module_expression -> module_expression_symbols text module_expression
-  in
-  let current = [
-    document_symbol_of_named_item
-      ~text
-      ~name:(Syn.Cst.ModuleSignature.name declaration)
-      ~kind:Lsp.Symbol_kind.Module
-      ~syntax_node:(Syn.Cst.ModuleSignature.syntax_node declaration)
-      ~selection_range:(range_of_token text (Syn.Cst.ModuleSignature.module_name_token declaration))
-      ?children:(symbol_children children)
-      ()
-  ] in
-  current @ (
-    match Syn.Cst.ModuleSignature.next_and_declaration declaration with
-    | None -> []
-    | Some next -> module_signature_group_symbols text next
-  )
-
-and module_expression_symbols = fun text ->
-  function
-  | Syn.Cst.ModuleExpression.Structure _ as module_expression -> (
-      match Syn.CstBuilder.structure_items_of_module_expression module_expression with
-      | Ok items -> structure_item_symbols text items
-      | Error _ -> []
-    )
-  | Syn.Cst.ModuleExpression.Functor { body; _ } ->
-      module_expression_symbols text body
-  | Syn.Cst.ModuleExpression.Constraint { module_expression; _ }
-  | Syn.Cst.ModuleExpression.Parenthesized { inner=module_expression; _ }
-  | Syn.Cst.ModuleExpression.Attribute { module_expression; _ } ->
-      module_expression_symbols text module_expression
-  | Syn.Cst.ModuleExpression.Path _
-  | Syn.Cst.ModuleExpression.Apply _
-  | Syn.Cst.ModuleExpression.ApplyUnit _
-  | Syn.Cst.ModuleExpression.ModuleUnpack _
-  | Syn.Cst.ModuleExpression.Extension _ ->
-      []
-
-and module_type_symbols = fun text ->
-  function
-  | Syn.Cst.ModuleType.Signature _ as module_type -> (
-      match Syn.CstBuilder.signature_items_of_module_type module_type with
-      | Ok items -> signature_item_symbols text items
-      | Error _ -> []
-    )
-  | Syn.Cst.ModuleType.Functor { result; _ } ->
-      module_type_symbols text result
-  | Syn.Cst.ModuleType.With { base; _ }
-  | Syn.Cst.ModuleType.Parenthesized { inner=base; _ }
-  | Syn.Cst.ModuleType.Attribute { module_type=base; _ } ->
-      module_type_symbols text base
-  | Syn.Cst.ModuleType.Path _
-  | Syn.Cst.ModuleType.TypeOf _
-  | Syn.Cst.ModuleType.Extension _ ->
-      []
+and external_declaration_symbols = fun text declaration ->
+  let name_tokens = collect_tokens
+    ~size:2
+    (Syn.Ast.ExternalDeclaration.for_each_name_token declaration) in
+  value_like_declaration_symbols
+    text
+    ~syntax_node:declaration
+    ~name_tokens
+    ~type_annotation:(Syn.Ast.ExternalDeclaration.type_annotation declaration)
 
 and structure_item_symbols = fun text items ->
   items |> List.map
     ~fn:(fun item ->
-      match item with
-      | Syn.Cst.StructureItem.TypeDeclaration declaration ->
-          type_declaration_group_symbols text declaration
-      | Syn.Cst.StructureItem.TypeExtension declaration ->
-          [
-            document_symbol_of_named_item
-              ~text
-              ~name:(Syn.Cst.Token.text (Syn.Cst.TypeExtension.name_token declaration))
-              ~kind:Lsp.Symbol_kind.Enum
-              ~syntax_node:(Syn.Cst.TypeExtension.syntax_node declaration)
-              ~selection_range:(range_of_token text (Syn.Cst.TypeExtension.name_token declaration))
-              ()
-          ]
-      | Syn.Cst.StructureItem.LetBinding binding ->
-          let_binding_group_symbols text binding
-      | Syn.Cst.StructureItem.ClassDeclaration declaration ->
-          [
-            document_symbol_of_named_item
-              ~text
-              ~name:(Syn.Cst.ClassDefinition.name declaration)
-              ~kind:Lsp.Symbol_kind.Class
-              ~syntax_node:(Syn.Cst.ClassDefinition.syntax_node declaration)
-              ~selection_range:(range_of_token
-                text
-                (Syn.Cst.ClassDefinition.class_name_token declaration))
-              ()
-          ]
-      | Syn.Cst.StructureItem.ClassTypeDeclaration declaration ->
-          [
-            document_symbol_of_named_item
-              ~text
-              ~name:(Syn.Cst.Token.text declaration.class_type_name)
-              ~kind:Lsp.Symbol_kind.Interface
-              ~syntax_node:declaration.syntax_node
-              ~selection_range:(range_of_token text declaration.class_type_name)
-              ()
-          ]
-      | Syn.Cst.StructureItem.ModuleDeclaration declaration ->
-          module_structure_group_symbols text declaration
-      | Syn.Cst.StructureItem.ModuleTypeDeclaration declaration ->
-          let children =
-            match Syn.Cst.ModuleTypeDeclaration.module_type declaration with
-            | None -> []
-            | Some module_type -> module_type_symbols text module_type
-          in
-          [
-            document_symbol_of_named_item
-              ~text
-              ~name:(Syn.Cst.ModuleTypeDeclaration.name declaration)
-              ~kind:Lsp.Symbol_kind.Interface
-              ~syntax_node:(Syn.Cst.ModuleTypeDeclaration.syntax_node declaration)
-              ~selection_range:(range_of_token
-                text
-                (Syn.Cst.ModuleTypeDeclaration.module_type_name_token declaration))
-              ?children:(symbol_children children)
-              ()
-          ]
-      | Syn.Cst.StructureItem.ExternalDeclaration declaration ->
-          let kind =
-            if value_like_type_is_function declaration.type_ then
-              Lsp.Symbol_kind.Function
-            else
-              Lsp.Symbol_kind.Variable
-          in
-          [
-            document_symbol_of_named_item
-              ~text
-              ~name:(text_of_name_tokens declaration.name_tokens)
-              ~kind
-              ~syntax_node:declaration.syntax_node
-              ~selection_range:(range_of_tokens text declaration.name_tokens)
-              ()
-          ]
-      | Syn.Cst.StructureItem.ExceptionDeclaration declaration ->
-          [
-            document_symbol_of_named_item
-              ~text
-              ~name:(Syn.Cst.Token.text declaration.name_token)
-              ~kind:Lsp.Symbol_kind.Event
-              ~syntax_node:declaration.syntax_node
-              ~selection_range:(range_of_token text declaration.name_token)
-              ()
-          ]
-      | Syn.Cst.StructureItem.Expression _
-      | Syn.Cst.StructureItem.Attribute _
-      | Syn.Cst.StructureItem.Extension _
-      | Syn.Cst.StructureItem.OpenStatement _
-      | Syn.Cst.StructureItem.Docstring _
-      | Syn.Cst.StructureItem.Comment _
-      | Syn.Cst.StructureItem.IncludeStatement _ ->
-          []) |> List.concat
+      match Syn.Ast.StructureItem.view item with
+      | Syn.Ast.StructureItem.Let declaration -> let_declaration_symbols text declaration
+      | Syn.Ast.StructureItem.Type declaration -> type_declaration_symbols text declaration
+      | Syn.Ast.StructureItem.TypeExtension declaration -> type_extension_symbols text declaration
+      | Syn.Ast.StructureItem.Module declaration -> module_declaration_symbols text declaration
+      | Syn.Ast.StructureItem.ModuleType declaration -> module_type_declaration_symbols text declaration
+      | Syn.Ast.StructureItem.External declaration -> external_declaration_symbols text declaration
+      | Syn.Ast.StructureItem.Exception declaration -> exception_symbols text declaration
+      | Syn.Ast.StructureItem.Class declaration -> class_symbols text declaration
+      | Syn.Ast.StructureItem.Open _
+      | Syn.Ast.StructureItem.Include _
+      | Syn.Ast.StructureItem.Extension _
+      | Syn.Ast.StructureItem.Attribute _
+      | Syn.Ast.StructureItem.Expr _
+      | Syn.Ast.StructureItem.Error _
+      | Syn.Ast.StructureItem.Unknown _ -> []) |> List.concat
 
 and signature_item_symbols = fun text items ->
   items |> List.map
     ~fn:(fun item ->
-      match item with
-      | Syn.Cst.SignatureItem.TypeDeclaration declaration ->
-          type_declaration_group_symbols text declaration
-      | Syn.Cst.SignatureItem.TypeExtension declaration ->
-          [
-            document_symbol_of_named_item
-              ~text
-              ~name:(Syn.Cst.Token.text (Syn.Cst.TypeExtension.name_token declaration))
-              ~kind:Lsp.Symbol_kind.Enum
-              ~syntax_node:(Syn.Cst.TypeExtension.syntax_node declaration)
-              ~selection_range:(range_of_token text (Syn.Cst.TypeExtension.name_token declaration))
-              ()
-          ]
-      | Syn.Cst.SignatureItem.ClassDeclaration declaration ->
-          [
-            document_symbol_of_named_item
-              ~text
-              ~name:(Syn.Cst.ClassDeclaration.name declaration)
-              ~kind:Lsp.Symbol_kind.Class
-              ~syntax_node:(Syn.Cst.ClassDeclaration.syntax_node declaration)
-              ~selection_range:(range_of_token
-                text
-                (Syn.Cst.ClassDeclaration.class_name_token declaration))
-              ()
-          ]
-      | Syn.Cst.SignatureItem.ClassTypeDeclaration declaration ->
-          [
-            document_symbol_of_named_item
-              ~text
-              ~name:(Syn.Cst.Token.text declaration.class_type_name)
-              ~kind:Lsp.Symbol_kind.Interface
-              ~syntax_node:declaration.syntax_node
-              ~selection_range:(range_of_token text declaration.class_type_name)
-              ()
-          ]
-      | Syn.Cst.SignatureItem.ModuleDeclaration declaration ->
-          module_signature_group_symbols text declaration
-      | Syn.Cst.SignatureItem.ModuleTypeDeclaration declaration ->
-          let children =
-            match Syn.Cst.ModuleTypeDeclaration.module_type declaration with
-            | None -> []
-            | Some module_type -> module_type_symbols text module_type
-          in
-          [
-            document_symbol_of_named_item
-              ~text
-              ~name:(Syn.Cst.ModuleTypeDeclaration.name declaration)
-              ~kind:Lsp.Symbol_kind.Interface
-              ~syntax_node:(Syn.Cst.ModuleTypeDeclaration.syntax_node declaration)
-              ~selection_range:(range_of_token
-                text
-                (Syn.Cst.ModuleTypeDeclaration.module_type_name_token declaration))
-              ?children:(symbol_children children)
-              ()
-          ]
-      | Syn.Cst.SignatureItem.ValueDeclaration declaration ->
-          let kind =
-            if value_like_type_is_function declaration.type_ then
-              Lsp.Symbol_kind.Function
-            else
-              Lsp.Symbol_kind.Variable
-          in
-          [
-            document_symbol_of_named_item
-              ~text
-              ~name:(text_of_name_tokens declaration.name_tokens)
-              ~kind
-              ~syntax_node:declaration.syntax_node
-              ~selection_range:(range_of_tokens text declaration.name_tokens)
-              ()
-          ]
-      | Syn.Cst.SignatureItem.ExternalDeclaration declaration ->
-          let kind =
-            if value_like_type_is_function declaration.type_ then
-              Lsp.Symbol_kind.Function
-            else
-              Lsp.Symbol_kind.Variable
-          in
-          [
-            document_symbol_of_named_item
-              ~text
-              ~name:(text_of_name_tokens declaration.name_tokens)
-              ~kind
-              ~syntax_node:declaration.syntax_node
-              ~selection_range:(range_of_tokens text declaration.name_tokens)
-              ()
-          ]
-      | Syn.Cst.SignatureItem.ExceptionDeclaration declaration ->
-          [
-            document_symbol_of_named_item
-              ~text
-              ~name:(Syn.Cst.Token.text declaration.name_token)
-              ~kind:Lsp.Symbol_kind.Event
-              ~syntax_node:declaration.syntax_node
-              ~selection_range:(range_of_token text declaration.name_token)
-              ()
-          ]
-      | Syn.Cst.SignatureItem.Attribute _
-      | Syn.Cst.SignatureItem.Extension _
-      | Syn.Cst.SignatureItem.OpenStatement _
-      | Syn.Cst.SignatureItem.Docstring _
-      | Syn.Cst.SignatureItem.Comment _
-      | Syn.Cst.SignatureItem.IncludeStatement _ ->
-          []) |> List.concat
+      match Syn.Ast.SignatureItem.view item with
+      | Syn.Ast.SignatureItem.Value declaration -> value_declaration_symbols text declaration
+      | Syn.Ast.SignatureItem.Type declaration -> type_declaration_symbols text declaration
+      | Syn.Ast.SignatureItem.TypeExtension declaration -> type_extension_symbols text declaration
+      | Syn.Ast.SignatureItem.Module declaration -> module_declaration_symbols text declaration
+      | Syn.Ast.SignatureItem.ModuleType declaration -> module_type_declaration_symbols text declaration
+      | Syn.Ast.SignatureItem.External declaration -> external_declaration_symbols text declaration
+      | Syn.Ast.SignatureItem.Exception declaration -> exception_symbols text declaration
+      | Syn.Ast.SignatureItem.Class declaration -> class_symbols text declaration
+      | Syn.Ast.SignatureItem.Open _
+      | Syn.Ast.SignatureItem.Include _
+      | Syn.Ast.SignatureItem.Extension _
+      | Syn.Ast.SignatureItem.Attribute _
+      | Syn.Ast.SignatureItem.Error _
+      | Syn.Ast.SignatureItem.Unknown _ -> []) |> List.concat
 
 let document_symbols_for_document = fun document ->
-  match prepared_parse_artifacts ~filename:(filename_of_document document) document.text with
-  | None -> Some []
-  | Some (_, cst) ->
-      let symbols =
-        match cst with
-        | Syn.Cst.Implementation implementation -> structure_item_symbols
-          document.text
-          implementation.items
-        | Syn.Cst.Interface interface -> signature_item_symbols document.text interface.items
-      in
-      Some symbols
+  let parsed = Syn.parse ~filename:(filename_of_document document) (source_slice document.text) in
+  if Vector.length parsed.Syn.Parser.diagnostics > 0 then
+    Some []
+  else
+    let root = Syn.Ast.SourceFile.make parsed.Syn.Parser.tree in
+    let symbols =
+      match Syn.Ast.SourceFile.view root with
+      | Syn.Ast.SourceFile.Implementation implementation ->
+          let items = Vector.with_capacity ~size:16 in
+          Syn.Ast.Implementation.for_each_item
+            implementation
+            ~fn:(fun item -> Vector.push items ~value:item);
+          structure_item_symbols document.text (vector_to_list items)
+      | Syn.Ast.SourceFile.Interface interface ->
+          let items = Vector.with_capacity ~size:16 in
+          Syn.Ast.Interface.for_each_item interface ~fn:(fun item -> Vector.push items ~value:item);
+          signature_item_symbols document.text (vector_to_list items)
+      | Syn.Ast.SourceFile.Empty ->
+          []
+    in
+    Some symbols
 
 let hover_for_document = fun state ->
   fun document ->
@@ -954,8 +912,10 @@ let handle_formatting = fun state ->
               ();
           ]
         | Some document ->
-            let parse_result = Syn.parse ~filename:(filename_of_uri document.uri) document.text in
-            if not (List.is_empty parse_result.diagnostics) then
+            let parse_result = Syn.parse
+              ~filename:(filename_of_uri document.uri)
+              (source_slice document.text) in
+            if Vector.length parse_result.diagnostics > 0 then
               ok state [ Lsp.response_to_json ~id Lsp.Text_document_methods.Formatting.request None ]
             else
               match Krasny.format parse_result with

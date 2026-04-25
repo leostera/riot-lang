@@ -40,7 +40,7 @@ type state = {
 let append_subslice_unchecked = fun buffer slice ~off ~len ->
   match IO.Buffer.append_subslice buffer slice ~off ~len with
   | Ok () -> ()
-  | Error error -> panic ("Streaming_lower.append_subslice: " ^ Kernel.IO.Error.message error)
+  | Error error -> panic ("Streaming_lower.append_subslice: " ^ IO.IoVec.error_message error)
 
 let flush = fun state ->
   match state.sink.error with

@@ -4,6 +4,11 @@ open Riot_model
 module Test = Std.Test
 module G = Std.Graph.SimpleGraph
 
+let deps_error_to_string = function
+  | Syn.Deps.Parse_diagnostics diagnostics -> String.concat
+    "; "
+    (List.map diagnostics ~fn:Syn.Diagnostic.to_string)
+
 let make_package = fun name ->
   Riot_model.Package.make
     ~name:(Package_name.from_string name
@@ -550,16 +555,7 @@ let test_module_graph_opened_public_root_resolves_children_to_public_module = fu
             ) with
             | Ok syn_node, Ok token_node, Ok main_node, Some analyzed_main -> (
                 match analyzed_main.deps with
-                | Error err ->
-                    Error (
-                      "dependency analysis failed: " ^ (
-                        match err with
-                        | Syn.Deps.Parse_diagnostics diagnostics -> String.concat
-                          "; "
-                          (List.map diagnostics ~fn:Syn.Diagnostic.to_string)
-                        | Syn.Deps.Cst_builder_error build_err -> build_err.message
-                      )
-                    )
+                | Error err -> Error ("dependency analysis failed: " ^ deps_error_to_string err)
                 | Ok deps ->
                     let modules = Syn.Deps.modules deps in
                     let depends_on_syn = List.any main_node.deps ~fn:(G.Node_id.eq syn_node.id) in
@@ -685,16 +681,7 @@ let test_module_graph_implicit_alias_opens_resolve_nested_leaf_modules = fun _ct
             ) with
             | Ok unix_node, Ok result_node, Ok system_error_node, Ok socket_addr_node, Some analyzed_unix -> (
                 match analyzed_unix.deps with
-                | Error err ->
-                    Error (
-                      "dependency analysis failed: " ^ (
-                        match err with
-                        | Syn.Deps.Parse_diagnostics diagnostics -> String.concat
-                          "; "
-                          (List.map diagnostics ~fn:Syn.Diagnostic.to_string)
-                        | Syn.Deps.Cst_builder_error build_err -> build_err.message
-                      )
-                    )
+                | Error err -> Error ("dependency analysis failed: " ^ deps_error_to_string err)
                 | Ok deps ->
                     let modules = Syn.Deps.modules deps in
                     let depends_on_result = List.any unix_node.deps ~fn:(G.Node_id.eq result_node.id) in
@@ -828,16 +815,7 @@ let test_module_graph_implicit_root_alias_resolves_public_child_root = fun _ctx 
             ) with
             | Ok process_node, Ok fs_node, Ok fs_file_node, Ok system_error_node, Some analyzed_process -> (
                 match analyzed_process.deps with
-                | Error err ->
-                    Error (
-                      "dependency analysis failed: " ^ (
-                        match err with
-                        | Syn.Deps.Parse_diagnostics diagnostics -> String.concat
-                          "; "
-                          (List.map diagnostics ~fn:Syn.Diagnostic.to_string)
-                        | Syn.Deps.Cst_builder_error build_err -> build_err.message
-                      )
-                    )
+                | Error err -> Error ("dependency analysis failed: " ^ deps_error_to_string err)
                 | Ok deps ->
                     let modules = Syn.Deps.modules deps in
                     let depends_on_fs = List.any process_node.deps ~fn:(G.Node_id.eq fs_node.id) in

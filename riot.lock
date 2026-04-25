@@ -1,6 +1,6 @@
 format_version = 1
 
-dependency_hash = "40b834717072f420"
+dependency_hash = "20cad16ef6ddb9a4"
 
 [[packages]]
 name = "blink"
@@ -335,14 +335,6 @@ name = "riot-cmd"
 root = "packages/riot-cmd"
 provenance = { kind = "workspace" }
 dependencies = [{ name = "std", package = { name = "std" } }]
-build_dependencies = []
-dev_dependencies = []
-
-[[packages]]
-name = "riot-eval"
-root = "packages/riot-eval"
-provenance = { kind = "workspace" }
-dependencies = [{ name = "riot-toolchain", package = { name = "riot-toolchain" } }, { name = "std", package = { name = "std" } }, { name = "syn", package = { name = "syn" } }]
 build_dependencies = []
 dev_dependencies = []
 

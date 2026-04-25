@@ -24,6 +24,8 @@ module Env = struct
 
   let empty = []
 
+  let open_fallback_key = "\000open_fallback"
+
   let bound = Node (Names.empty, [])
 
   let singleton_name = Names.singleton
@@ -155,15 +157,34 @@ module Env = struct
       ~fn:(fun (key, _) ->
         String.equal key name) |> Option.map ~fn:(fun (_, value) -> value)
 
+  let open_fallback_free = fun env ->
+    match find open_fallback_key env with
+    | Some (Node (free, _)) -> Some free
+    | None -> None
+
+  let add_open_fallback = fun env ~free_names ->
+    let existing =
+      match open_fallback_free env with
+      | Some names -> names
+      | None -> Names.empty
+    in
+    add open_fallback_key (Node (Names.union existing free_names, [])) env
+
+  let has_children = function
+    | Node (_, children) -> not (List.is_empty children)
+
   let rec lookup_free segments env =
     match segments with
     | [] -> None
     | segment :: rest ->
         match find segment env with
-        | None -> None
+        | None -> open_fallback_free env
         | Some (Node (free, children)) -> (
             match rest with
-            | [] -> Some free
+            | [] ->
+                Some free
+            | _ when not (List.is_empty free) ->
+                Some free
             | _ -> (
                 match lookup_free rest children with
                 | Some free -> Some free
@@ -322,6 +343,11 @@ module Ast_deps = struct
           segments := A.Token.text token :: !segments);
     List.reverse !segments
 
+  let ast_path_segments = fun path ->
+    let segments = Vector.with_capacity ~size:4 in
+    A.Path.for_each_ident path ~fn:(fun token -> Vector.push segments ~value:(A.Token.text token));
+    Vector.to_array segments |> Array.to_list
+
   let add_parent_segments = fun env deps segments ->
     match drop_last segments with
     | head :: _ as parent when is_module_head head -> add_path env deps parent
@@ -336,7 +362,11 @@ module Ast_deps = struct
     let deps = add_module_segments env deps segments in
     let binding =
       match Env.lookup_map segments env with
-      | Some node -> node
+      | Some node -> (
+          match Env.top_free node with
+          | [] -> node
+          | free_names -> Env.rebind free_names node
+        )
       | None -> (
           match segments with
           | [ name ] -> Env.make_leaf name
@@ -345,10 +375,25 @@ module Ast_deps = struct
     in
     (deps, binding)
 
-  let open_alias = fun env deps segments ->
+  let open_alias = fun ?(fallback = false) env deps segments ->
     let deps, binding = module_alias env deps segments in
     let deps = add_names deps (Env.top_free binding) in
-    (deps, Env.merge_children env binding)
+    let env = Env.merge_children env binding in
+    let env =
+      if fallback && not (Env.has_children binding) then
+        match segments with
+        | head :: _ when is_module_head head ->
+            let free_names =
+              match Env.top_free binding with
+              | [] -> [ head ]
+              | names -> names
+            in
+            Env.add_open_fallback env ~free_names
+        | _ -> env
+      else
+        env
+    in
+    (deps, env)
 
   let direct_path_between = fun node start stop ->
     let rec loop index expect_ident acc =
@@ -637,13 +682,9 @@ module Ast_deps = struct
         Ok deps
     | Syntax_kind.LOCAL_OPEN_EXPR
     | Syntax_kind.LOCAL_OPEN_PATTERN ->
-        let segments = path_segments node in
-        let deps, env =
-          match segments with
-          | head :: _ when is_module_head head -> open_alias env deps segments
-          | _ -> (deps, env)
-        in
-        collect_child_nodes collect_node env deps node
+        collect_local_open env deps node
+    | Syntax_kind.LET_BINDING ->
+        collect_let_binding env deps node
     | Syntax_kind.LET_MODULE_EXPR ->
         collect_let_module_expr env deps node
     | Syntax_kind.FUN_EXPR ->
@@ -668,6 +709,84 @@ module Ast_deps = struct
         Ok deps
     | _ ->
         collect_child_nodes collect_node env deps node
+
+  and collect_local_open env deps node =
+    match A.Expr.cast node with
+    | Some expr -> (
+        match A.LocalOpenExpr.cast expr with
+        | Some local_open ->
+            let module_path, body =
+              match A.LocalOpenExpr.view local_open with
+              | A.LocalOpenExpr.LetOpen { module_path; body; _ }
+              | A.LocalOpenExpr.Delimited { module_path; body; _ } -> (module_path, body)
+            in
+            let deps, env =
+              match module_path with
+              | Some path -> (
+                  match ast_path_segments path with
+                  | head :: _ as segments when is_module_head head -> open_alias
+                    ~fallback:true
+                    env
+                    deps
+                    segments
+                  | _ -> (deps, env)
+                )
+              | None -> (deps, env)
+            in
+            (
+              match body with
+              | Some body -> collect_node env deps body
+              | None -> Ok deps
+            )
+        | None -> collect_local_open_fallback env deps node
+      )
+    | None -> collect_local_open_fallback env deps node
+
+  and collect_local_open_fallback env deps node =
+    let segments = path_segments node in
+    let deps, env =
+      match segments with
+      | head :: _ when is_module_head head -> open_alias ~fallback:true env deps segments
+      | _ -> (deps, env)
+    in
+    collect_child_nodes collect_node env deps node
+
+  and collect_let_binding env deps node =
+    match A.LetBinding.cast node with
+    | None -> collect_child_nodes collect_node env deps node
+    | Some binding ->
+        let parameters = Vector.with_capacity ~size:4 in
+        A.LetBinding.for_each_parameter
+          binding
+          ~fn:(fun parameter -> Vector.push parameters ~value:parameter);
+        let* deps =
+          match A.LetBinding.pattern binding with
+          | Some pattern -> collect_node env deps pattern
+          | None -> Ok deps
+        in
+        let* deps =
+          Vector.iter parameters |> Iterator.fold ~init:(Ok deps)
+            ~fn:(fun parameter acc ->
+              let* deps = acc in
+              collect_node env deps parameter)
+        in
+        let* deps =
+          match A.LetBinding.type_annotation binding with
+          | Some annotation -> collect_node env deps annotation
+          | None -> Ok deps
+        in
+        let env =
+          match A.LetBinding.pattern binding with
+          | Some pattern -> bind_pattern_modules env pattern
+          | None -> env
+        in
+        let env = Vector.iter parameters
+        |> Iterator.fold ~init:env ~fn:(fun parameter env -> bind_pattern_modules env parameter) in
+        (
+          match A.LetBinding.body binding with
+          | Some body -> collect_node env deps body
+          | None -> Ok deps
+        )
 
   and collect_let_module_expr env deps node =
     let count = A.Node.child_count node in
@@ -1001,7 +1120,7 @@ module Ast_deps = struct
     let count = A.Node.child_count node in
     match direct_path_between node 1 count with
     | Some (head :: _ as segments) when is_module_head head ->
-        Ok (open_alias env deps segments)
+        Ok (open_alias ~fallback:true env deps segments)
     | Some _ ->
         Ok (deps, env)
     | None ->

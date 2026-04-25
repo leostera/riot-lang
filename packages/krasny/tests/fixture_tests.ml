@@ -4,9 +4,9 @@ open Std.Collections
 module Krasny_parser2 = struct
   include Krasny
 
-  let format = Krasny.format2
+  let format = Krasny.format
 
-  let syntax_hash = Krasny.syntax_hash2
+  let syntax_hash = Krasny.syntax_hash
 end
 
 module Krasny = Krasny_parser2
@@ -72,15 +72,13 @@ let size_fixture = fun (test: Test.test_case) ->
 
 let main ~args =
   let tracked = tracked_fixtures () in
-  let tests =
-    Test.FixtureRunner.cases
-      ()
-      ~dir:fixtures_dir
-      ~filter:(fixture_filter tracked)
-      ~snapshot_path:(fun path -> Some (approved_snapshot_path path))
-      ~run:(fun ctx -> test_fixture ~ctx)
-    |> List.map ~fn:size_fixture
-  in
+  let tests = Test.FixtureRunner.cases
+    ()
+    ~dir:fixtures_dir
+    ~filter:(fixture_filter tracked)
+    ~snapshot_path:(fun path -> Some (approved_snapshot_path path))
+    ~run:(fun ctx -> test_fixture ~ctx)
+  |> List.map ~fn:size_fixture in
   Test.Cli.main ~name:"krasny:fixtures" ~tests ~args ()
 
 let () = Runtime.run ~main ~args:Env.args ()

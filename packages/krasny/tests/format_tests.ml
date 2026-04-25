@@ -1,15 +1,5 @@
 open Std
 
-module Krasny_parser2 = struct
-  include Krasny
-
-  let format = Krasny.format2
-
-  let syntax_hash = Krasny.syntax_hash2
-end
-
-module Krasny = Krasny_parser2
-
 let sample_ml = Path.v "sample.ml"
 
 let workspace_files = [
@@ -315,11 +305,10 @@ val get:string->(module Command)option
 val list:unit->(string*(module Command))list
 (** List all registered commands *)
 end
-|ocaml} in
-      let first = parse_mli source |> Krasny.format |> Result.expect ~msg:"signature docstrings should format" in
-      let second =
-        parse_mli first |> Krasny.format |> Result.expect ~msg:"formatted signature docstrings should reformat"
+|ocaml}
       in
+      let first = parse_mli source |> Krasny.format |> Result.expect ~msg:"signature docstrings should format" in
+      let second = parse_mli first |> Krasny.format |> Result.expect ~msg:"formatted signature docstrings should reformat" in
       Test.assert_equal ~expected:first ~actual:second;
       Test.Snapshot.assert_inline_text ~ctx ~actual:first
         ~expected:{ocaml|open Std
@@ -349,8 +338,7 @@ module Registry: sig
 
   (** List all registered commands *)
 end
-|ocaml}
-    );
+|ocaml});
   Test.case "write preserves terminal docstrings before nested signature end"
     (fun ctx ->
       let source = {ocaml|module S:sig
@@ -2248,8 +2236,8 @@ Ok())
 |ocaml}
       in
       Test.assert_equal
-        ~expected:(Krasny.syntax_hash2 original)
-        ~actual:(Krasny.syntax_hash2 with_parens);
+        ~expected:(Krasny.syntax_hash original)
+        ~actual:(Krasny.syntax_hash with_parens);
       Ok ());
   Test.case "syntax hash normalizes tuple edge parens"
     (fun _ctx ->
@@ -2262,8 +2250,8 @@ Ok())
 |ocaml}
       in
       Test.assert_equal
-        ~expected:(Krasny.syntax_hash2 parenthesized)
-        ~actual:(Krasny.syntax_hash2 bare);
+        ~expected:(Krasny.syntax_hash parenthesized)
+        ~actual:(Krasny.syntax_hash bare);
       let parenthesized_triple = parse_ml
         {ocaml|let result={value=(a,b,c);remaining=d}
 |ocaml}
@@ -2273,14 +2261,14 @@ Ok())
 |ocaml}
       in
       Test.assert_equal
-        ~expected:(Krasny.syntax_hash2 parenthesized_triple)
-        ~actual:(Krasny.syntax_hash2 bare_triple);
+        ~expected:(Krasny.syntax_hash parenthesized_triple)
+        ~actual:(Krasny.syntax_hash bare_triple);
       let nested_pair = parse_ml
         {ocaml|let result=(a,b),c
 |ocaml}
       in
       Test.assert_false
-        (String.equal (Krasny.syntax_hash2 bare_triple) (Krasny.syntax_hash2 nested_pair));
+        (String.equal (Krasny.syntax_hash bare_triple) (Krasny.syntax_hash nested_pair));
       Ok ());
   Test.case "syntax hash normalizes leading variant pipes"
     (fun _ctx ->
@@ -2293,8 +2281,8 @@ Ok())
 |ocaml}
       in
       Test.assert_equal
-        ~expected:(Krasny.syntax_hash2 without_first_pipe)
-        ~actual:(Krasny.syntax_hash2 with_first_pipe);
+        ~expected:(Krasny.syntax_hash without_first_pipe)
+        ~actual:(Krasny.syntax_hash with_first_pipe);
       Ok ());
   Test.case "syntax hash normalizes record pattern trailing semis"
     (fun _ctx ->
@@ -2307,8 +2295,8 @@ Ok())
 |ocaml}
       in
       Test.assert_equal
-        ~expected:(Krasny.syntax_hash2 with_trailing_semi)
-        ~actual:(Krasny.syntax_hash2 without_trailing_semi);
+        ~expected:(Krasny.syntax_hash with_trailing_semi)
+        ~actual:(Krasny.syntax_hash without_trailing_semi);
       Ok ());
   Test.case "syntax hash normalizes list pattern trailing semis"
     (fun _ctx ->
@@ -2321,8 +2309,8 @@ Ok())
 |ocaml}
       in
       Test.assert_equal
-        ~expected:(Krasny.syntax_hash2 with_trailing_semi)
-        ~actual:(Krasny.syntax_hash2 without_trailing_semi);
+        ~expected:(Krasny.syntax_hash with_trailing_semi)
+        ~actual:(Krasny.syntax_hash without_trailing_semi);
       Ok ());
   Test.case "syntax hash normalizes constructor pattern parens"
     (fun _ctx ->
@@ -2335,8 +2323,8 @@ Ok())
 |ocaml}
       in
       Test.assert_equal
-        ~expected:(Krasny.syntax_hash2 parenthesized)
-        ~actual:(Krasny.syntax_hash2 bare);
+        ~expected:(Krasny.syntax_hash parenthesized)
+        ~actual:(Krasny.syntax_hash bare);
       Ok ());
   Test.case "syntax hash normalizes trailing sequence semis"
     (fun _ctx ->
@@ -2349,8 +2337,8 @@ Ok())
 |ocaml}
       in
       Test.assert_equal
-        ~expected:(Krasny.syntax_hash2 with_trailing_semi)
-        ~actual:(Krasny.syntax_hash2 without_trailing_semi);
+        ~expected:(Krasny.syntax_hash with_trailing_semi)
+        ~actual:(Krasny.syntax_hash without_trailing_semi);
       Ok ());
   Test.case "syntax hash normalizes trivia line indentation"
     (fun _ctx ->
@@ -2370,9 +2358,7 @@ val run:unit->unit
 end
 |ocaml}
       in
-      Test.assert_equal
-        ~expected:(Krasny.syntax_hash2 shallow)
-        ~actual:(Krasny.syntax_hash2 indented);
+      Test.assert_equal ~expected:(Krasny.syntax_hash shallow) ~actual:(Krasny.syntax_hash indented);
       Ok ());
   Test.case "format keeps function and match lowering idempotent"
     (fun _ctx ->

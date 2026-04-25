@@ -1,23 +1,44 @@
 open Std
 
-let synthetic_token = fun ~span ~text ->
-  let green = Syn.Ceibo.Green.make_token
-    ~leading_trivia:[]
-    ~kind:Syn.SyntaxKind.WHITESPACE
-    ~text
-    ~width:(String.length text) in
-  Syn.Ceibo.Red.new_token green span
+let source_slice = fun source -> IO.IoVec.IoSlice.from_string source |> Result.expect ~msg:"failed to create riot-fix test source slice"
 
-let find_token_by_text = fun red_root text ->
-  Syn.Ceibo.Red.SyntaxNode.tokens red_root |> List.find
+let parse_source_file = fun source ->
+  let parsed = Syn.parse ~filename:(Path.v "fix_test.ml") (source_slice source) in
+  if Std.Collections.Vector.length parsed.Syn.Parser.diagnostics > 0 then
+    panic "riot-fix test source should parse";
+  Syn.Ast.SourceFile.make parsed.Syn.Parser.tree
+
+let span_of_token = fun token ->
+  let start, end_ = Syn.Ast.Token.raw_range token in
+  Syn.Ceibo.Span.make ~start ~end_
+
+let find_token_by_text = fun root text ->
+  let found = ref None in
+  Syn.Ast.Node.for_each_token root
     ~fn:(fun token ->
-      String.equal (Syn.Ceibo.Red.SyntaxToken.text token) text)
+      if Option.is_none !found && String.equal (Syn.Ast.Token.text token) text then
+        found := Some token);
+  !found
+
+let token_by_text_at = fun source text ~start ->
+  let root = parse_source_file source in
+  let found = ref None in
+  Syn.Ast.Node.for_each_token root
+    ~fn:(fun token ->
+      let token_start, _ = Syn.Ast.Token.raw_range token in
+      if
+        Option.is_none !found && token_start = start && String.equal (Syn.Ast.Token.text token) text
+      then
+        found := Some token);
+  match !found with
+  | Some token -> token
+  | None -> panic ("expected to find token " ^ text ^ " at offset " ^ Int.to_string start)
 
 let warning_diagnostic = fun ~rule_id ~message ~token ~fix ->
   Riot_fix.Diagnostic.make
     ~severity:Warning
     ~kind:(Riot_fix.Diagnostic.Known { rule_id; message })
-    ~span:(Syn.Ceibo.Red.SyntaxToken.span token)
+    ~span:(span_of_token token)
     ~fix
     ()
 
@@ -43,22 +64,17 @@ let overlapping_replace_rule = fun ~rule_id ~needle ~replacement ~overlap_text -
       match find_token_by_text red_root needle with
       | None -> []
       | Some token ->
-          let span = Syn.Ceibo.Red.SyntaxToken.span token in
-          let overlap_span = Syn.Ceibo.Span.make ~start:(span.start + 1) ~end_:span.end_ in
-          let overlap_token = synthetic_token ~span:overlap_span ~text:overlap_text in
           let fix = Riot_fix.Fix.make
             ~title:message
-            ~operations:[
-              Riot_fix.Fix.replace_token_with_text ~target:overlap_token ~text:replacement
-            ] in
-          [ warning_diagnostic ~rule_id ~message ~token:overlap_token ~fix ])
+            ~operations:[ Riot_fix.Fix.replace_node_with_text ~target:red_root ~text:replacement ] in
+          ignore overlap_text;
+          [ warning_diagnostic ~rule_id ~message ~token ~fix ])
     ()
 
 let tests = [ Test.case "apply single operation"
     (fun _ctx ->
       let source = "open Stdlib\n" in
-      let span = Syn.Ceibo.Span.make ~start:5 ~end_:11 in
-      let token = synthetic_token ~span ~text:"Stdlib" in
+      let token = token_by_text_at source "Stdlib" ~start:5 in
       let actual = Riot_fix.Fix.apply_operation
         ~source
         (Riot_fix.Fix.replace_token_with_text ~target:token ~text:"Std")
@@ -67,9 +83,9 @@ let tests = [ Test.case "apply single operation"
       Ok ()); Test.case "apply multiple operations in descending span order"
     (fun _ctx ->
       let source = "open Stdlib\nlet q : int Queue.t = Queue.create ()\n" in
-      let stdlib_token = synthetic_token ~span:(Syn.Ceibo.Span.make ~start:5 ~end_:11) ~text:"Stdlib" in
-      let queue_type_token = synthetic_token ~span:(Syn.Ceibo.Span.make ~start:24 ~end_:29) ~text:"Queue" in
-      let queue_value_token = synthetic_token ~span:(Syn.Ceibo.Span.make ~start:34 ~end_:39) ~text:"Queue" in
+      let stdlib_token = token_by_text_at source "Stdlib" ~start:5 in
+      let queue_type_token = token_by_text_at source "Queue" ~start:24 in
+      let queue_value_token = token_by_text_at source "Queue" ~start:34 in
       let fixes = [
         Riot_fix.Fix.make
           ~title:"replace Queue"
@@ -89,13 +105,13 @@ let tests = [ Test.case "apply single operation"
       Ok ()); Test.case "reject overlapping operations"
     (fun _ctx ->
       let source = "open Stdlib\n" in
-      let left = synthetic_token ~span:(Syn.Ceibo.Span.make ~start:5 ~end_:8) ~text:"Std" in
-      let right = synthetic_token ~span:(Syn.Ceibo.Span.make ~start:7 ~end_:11) ~text:"lib" in
+      let root = parse_source_file source in
+      let token = token_by_text_at source "Stdlib" ~start:5 in
       let fix = Riot_fix.Fix.make
         ~title:"bad overlap"
         ~operations:[
-          Riot_fix.Fix.replace_token_with_text ~target:left ~text:"Std";
-          Riot_fix.Fix.replace_token_with_text ~target:right ~text:"Std"
+          Riot_fix.Fix.replace_token_with_text ~target:token ~text:"Std";
+          Riot_fix.Fix.replace_node_with_text ~target:root ~text:"open Std\n"
         ] in
       Test.assert_error (Riot_fix.Fix.apply_fix ~source fix);
       Ok ()); Test.case "source runner skips linting when parsing fails"

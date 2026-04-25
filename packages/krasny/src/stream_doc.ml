@@ -60,7 +60,7 @@ let is_empty = function
 let append_subslice_unchecked = fun buffer slice ~off ~len ->
   match IO.Buffer.append_subslice buffer slice ~off ~len with
   | Ok () -> ()
-  | Error error -> panic ("Stream_doc.append_subslice: " ^ Kernel.IO.Error.message error)
+  | Error error -> panic ("Stream_doc.append_subslice: " ^ IO.IoVec.error_message error)
 
 let flush = fun writer ->
   match writer.sink with

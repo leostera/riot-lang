@@ -1,8 +1,7 @@
 open Std
 open Syn
 
-let source_slice = fun source ->
-  IO.IoVec.IoSlice.from_string source |> Result.expect ~msg:"failed to create deps test source slice"
+let source_slice = fun source -> IO.IoVec.IoSlice.from_string source |> Result.expect ~msg:"failed to create deps test source slice"
 
 let parse_modules = fun ~env ~filename source ->
   let parse_result = Syn.parse ~filename:(Path.v filename) (source_slice source) in
@@ -69,6 +68,44 @@ let test_deps_do_not_collect_exported_children_from_module_alias = fun _ctx ->
   match parse_modules ~env ~filename:"kernel_new_addr_tests.ml" "module Kernel = Kernel\nlet len = Kernel.Array.length values\n" with
   | Ok modules when modules = [ "Kernel" ] -> Ok ()
   | Ok modules -> Error ("expected deps [Kernel], got [" ^ String.concat ", " modules ^ "]")
+  | Error err -> Error err
+
+let test_deps_do_not_collect_scoped_exported_children_from_module_alias = fun _ctx ->
+  let env = Syn.Deps.Env.empty
+  |> Syn.Deps.Env.add_scoped_binding
+    ~path:[ "Kernel" ]
+    ~free_names:[ "Kernel" ]
+    ~exports:(alias_exports [ "Array"; "Result" ]) in
+  match parse_modules ~env ~filename:"kernel_new_addr_tests.ml" "module Kernel = Kernel\nlet len = Kernel.Array.length values\n" with
+  | Ok modules when modules = [ "Kernel" ] -> Ok ()
+  | Ok modules -> Error ("expected deps [Kernel], got [" ^ String.concat ", " modules ^ "]")
+  | Error err -> Error err
+
+let test_deps_do_not_collect_exported_children_from_facade_alias = fun _ctx ->
+  let env = Syn.Deps.Env.empty
+  |> Syn.Deps.Env.add_scoped_binding
+    ~path:[ "Syntax_tree" ]
+    ~free_names:[ "Syntax_tree" ]
+    ~exports:(alias_exports [ "Builder" ]) in
+  match parse_modules ~env ~filename:"syn.ml" "module SyntaxTree = Syntax_tree\n" with
+  | Ok modules when modules = [ "Syntax_tree" ] -> Ok ()
+  | Ok modules -> Error ("expected deps [Syntax_tree], got [" ^ String.concat ", " modules ^ "]")
+  | Error err -> Error err
+
+let test_deps_open_scoped_root_keeps_child_modules_on_opened_root = fun _ctx ->
+  let env = Syn.Deps.Env.empty
+  |> Syn.Deps.Env.add_scoped_binding
+    ~path:[ "Std" ]
+    ~free_names:[ "Std" ]
+    ~exports:(alias_exports [ "Array" ]) in
+  let source = {ocaml|open Std
+
+let length = fun values -> Array.length values
+|ocaml}
+  in
+  match parse_modules ~env ~filename:"stdin_bench.ml" source with
+  | Ok modules when modules = [ "Std" ] -> Ok ()
+  | Ok modules -> Error ("expected deps [Std], got [" ^ String.concat ", " modules ^ "]")
   | Error err -> Error err
 
 let test_deps_collect_opened_module_root_for_exported_child = fun _ctx ->
@@ -179,6 +216,44 @@ type ('item, 'state) iter = (module Intf with type item = 'item and type state =
   | Ok modules -> Error ("expected deps [External], got [" ^ String.concat ", " modules ^ "]")
   | Error err -> Error err
 
+let test_deps_bind_first_class_module_function_parameter = fun _ctx ->
+  let source = {ocaml|module type ConfigSpec = sig
+  type t
+  val spec: t
+  val get: t -> string
+end
+
+let get (type a) ((module M : ConfigSpec with type t = a)) =
+  M.get M.spec
+|ocaml}
+  in
+  match parse_modules ~env:Syn.Deps.Env.empty ~filename:"config.ml" source with
+  | Ok [] -> Ok ()
+  | Ok modules -> Error ("expected deps [], got [" ^ String.concat ", " modules ^ "]")
+  | Error err -> Error err
+
+let test_deps_local_open_keeps_child_modules_on_opened_root = fun _ctx ->
+  let source = {ocaml|let output = fun mod_ ->
+  let open Dep_graph in
+  Module.cmi mod_
+|ocaml}
+  in
+  match parse_modules ~env:Syn.Deps.Env.empty ~filename:"action.ml" source with
+  | Ok modules when modules = [ "Dep_graph" ] -> Ok ()
+  | Ok modules -> Error ("expected deps [Dep_graph], got [" ^ String.concat ", " modules ^ "]")
+  | Error err -> Error err
+
+let test_deps_open_keeps_child_modules_on_opened_root = fun _ctx ->
+  let source = {ocaml|open Std
+
+let length = fun values -> Array.length values
+|ocaml}
+  in
+  match parse_modules ~env:Syn.Deps.Env.empty ~filename:"stdin_bench.ml" source with
+  | Ok modules when modules = [ "Std" ] -> Ok ()
+  | Ok modules -> Error ("expected deps [Std], got [" ^ String.concat ", " modules ^ "]")
+  | Error err -> Error err
+
 let name = "syn-deps"
 
 let tests =
@@ -189,12 +264,18 @@ let tests =
     case "deps collect opened public root module instead of child module" test_deps_collect_opened_public_root_module_instead_of_child_module;
     case "deps collect qualified public root module instead of child module" test_deps_collect_qualified_public_root_module_instead_of_child_module;
     case "deps do not collect exported children from module alias" test_deps_do_not_collect_exported_children_from_module_alias;
+    case "deps do not collect scoped exported children from module alias" test_deps_do_not_collect_scoped_exported_children_from_module_alias;
+    case "deps do not collect exported children from facade alias" test_deps_do_not_collect_exported_children_from_facade_alias;
+    case "deps open scoped root keeps child modules on opened root" test_deps_open_scoped_root_keeps_child_modules_on_opened_root;
     case "deps collect opened module root for exported child" test_deps_collect_opened_module_root_for_exported_child;
     case "deps ignore lowercase field access roots" test_deps_ignore_lowercase_field_access_roots;
     case "deps collect variant payload modules from implicit alias opens" test_deps_collect_variant_payload_modules_from_implicit_alias_opens;
     case "deps collect field access modules from implicit alias opens" test_deps_collect_field_access_modules_from_implicit_alias_opens;
     case "deps ignore polymorphic variant tags" test_deps_ignore_polymorphic_variant_tags;
     case "deps ignore local module type in first class module" test_deps_ignore_local_module_type_in_first_class_module;
+    case "deps bind first class module function parameter" test_deps_bind_first_class_module_function_parameter;
+    case "deps local open keeps child modules on opened root" test_deps_local_open_keeps_child_modules_on_opened_root;
+    case "deps open keeps child modules on opened root" test_deps_open_keeps_child_modules_on_opened_root;
   ]
 
 let main ~args = Test.Cli.main ~name ~tests ~args ()

@@ -1,15 +1,15 @@
-val unsupported_syntax: Syn.Cst.syntax_node -> string -> Diagnostics.Diagnostic.t
+val unsupported_syntax: Syn.Ast.Node.t -> string -> Diagnostics.Diagnostic.t
 
-val unsupported_type: Syn.Cst.syntax_node -> string -> Diagnostics.Diagnostic.t
+val unsupported_type: Syn.Ast.Node.t -> string -> Diagnostics.Diagnostic.t
 
-val check_core_type: Syn.Cst.core_type -> Diagnostics.Diagnostic.t list
+val check_core_type: Syn.Ast.TypeExpr.t -> Diagnostics.Diagnostic.t list
 
-val check_type_definition: Syn.Cst.TypeDefinition.t -> Diagnostics.Diagnostic.t list
+val check_type_definition: Syn.Ast.Node.t -> Diagnostics.Diagnostic.t list
 
-val check_type_declaration: Syn.Cst.TypeDeclaration.t -> Diagnostics.Diagnostic.t list
+val check_type_declaration: Syn.Ast.TypeDeclaration.t -> Diagnostics.Diagnostic.t list
 
-val check_value_declaration: Syn.Cst.value_declaration -> Diagnostics.Diagnostic.t list
+val check_value_declaration: Syn.Ast.ValueDeclaration.t -> Diagnostics.Diagnostic.t list
 
-val check_external_declaration: Syn.Cst.external_declaration -> Diagnostics.Diagnostic.t list
+val check_external_declaration: Syn.Ast.ExternalDeclaration.t -> Diagnostics.Diagnostic.t list
 
-val check_exception_rhs: Syn.Cst.exception_rhs -> Diagnostics.Diagnostic.t list
+val check_exception_rhs: Syn.Ast.Node.t -> Diagnostics.Diagnostic.t list

@@ -9,7 +9,7 @@ let ( let* ) = fun result fn -> Result.and_then result ~fn
 let source_slice = fun source ->
   match IO.IoVec.IoSlice.from_string source with
   | Ok slice -> slice
-  | Error error -> panic ("failed to create source slice: " ^ Kernel.IO.Error.message error)
+  | Error error -> panic ("failed to create source slice: " ^ IO.IoVec.error_message error)
 
 let diagnostics_to_string = fun diagnostics ->
   let items = ref [] in

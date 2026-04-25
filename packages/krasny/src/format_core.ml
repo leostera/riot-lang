@@ -30,7 +30,7 @@ let output_size_hint = fun (result: Syn.Parser.parse_result) ->
 let source_slice = fun source ->
   match IO.IoVec.IoSlice.from_string source with
   | Ok slice -> slice
-  | Error error -> panic ("failed to create parser source slice: " ^ Kernel.IO.Error.message error)
+  | Error error -> panic ("failed to create parser source slice: " ^ IO.IoSlice.error_message error)
 
 let parse_source = fun ~filename source -> Syn.parse ~filename (source_slice source)
 
@@ -38,7 +38,7 @@ let buffer_writer = fun buffer ->
   let append_slice buffer slice =
     match IO.Buffer.append_slice buffer slice with
     | Ok () -> ()
-    | Error error -> panic ("Format_core.buffer_writer: " ^ Kernel.IO.Error.message error)
+    | Error error -> panic ("Format_core.buffer_writer: " ^ IO.IoVec.error_message error)
   in
   let module Write = struct
     type t = IO.Buffer.t

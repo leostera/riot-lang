@@ -84,18 +84,19 @@ Replace direct `Pervasives` references with `Std`.
 
   let make_fix = fun token replacement ->
     Api.Fix.make
-      ~title:("Replace " ^ Syn.Ceibo.Red.SyntaxToken.text token ^ " with " ^ replacement)
+      ~title:("Replace " ^ Syn.Ast.Token.text token ^ " with " ^ replacement)
       ~operations:[ Api.Fix.replace_token_with_text ~target:token ~text:replacement ]
 
   let make_diagnostic = fun token ->
-    let text = Syn.Ceibo.Red.SyntaxToken.text token in
+    let text = Syn.Ast.Token.text token in
     let suggestion = make_suggestion text in
     let fix = replacement_for text |> Option.map ~fn:(make_fix token) in
     let kind = Api.Diagnostic.Known { rule_id = package_rule_id; message = make_message text } in
+    let start, end_ = Syn.Ast.Token.raw_range token in
     Api.Diagnostic.make
       ~severity:Warning
       ~kind
-      ~span:(Syn.Ceibo.Red.SyntaxToken.span token)
+      ~span:(Syn.Ceibo.Span.make ~start ~end_)
       ?suggestion
       ?fix
       ()
@@ -116,70 +117,12 @@ Replace direct `Pervasives` references with `Std`.
             let _ = HashMap.insert seen ~key ~value:true in
             true)
 
-  let check_tree = fun (_ctx: Api.Rule.context) red_root ->
-    let open Syn.Ceibo.Red in
-      let open Syn.SyntaxKind in
-        let open_stmts = Api.Traversal.find_by_kind OPEN_STMT red_root in
-        let path_exprs = Api.Traversal.find_by_kind PATH_EXPR red_root in
-        let field_access_exprs = Api.Traversal.find_by_kind FIELD_ACCESS_EXPR red_root in
-        let module_paths = Api.Traversal.find_by_kind MODULE_PATH red_root in
-        let module_type_paths = Api.Traversal.find_by_kind MODULE_TYPE_PATH red_root in
-        let type_constructors = Api.Traversal.find_by_kind TYPE_CONSTR red_root in
-        let diagnostic_for_first_token node =
-          match Api.Traversal.first_non_trivia_token node with
-          | Some token ->
-              let text = Syn.Ceibo.Red.SyntaxToken.text token in
-              if List.contains forbidden_modules ~value:text then
-                Some (make_diagnostic token)
-              else
-                None
-          | None -> None
-        in
-        let diagnostic_for_open_stmt node =
-          let non_trivia_children =
-            Syn.Ceibo.Red.SyntaxNode.children node
-            |> List.filter
-              ~fn:(
-                function
-                | Token token -> not (Api.Traversal.is_trivia (Syn.Ceibo.Red.SyntaxToken.kind token))
-                | Node _ -> true
-              )
-          in
-          match non_trivia_children with
-          | _open_kw :: Node module_path :: _ ->
-              diagnostic_for_first_token module_path
-          | _open_kw :: Token token :: _ ->
-              let text = Syn.Ceibo.Red.SyntaxToken.text token in
-              if List.contains forbidden_modules ~value:text then
-                Some (make_diagnostic token)
-              else
-                None
-          | _ ->
-              None
-        in
-        let diagnostic_for_field_access node =
-          match Api.Traversal.first_non_trivia_child node with
-          | Some (Node receiver) ->
-              diagnostic_for_first_token receiver
-          | Some (Token token) ->
-              let text = Syn.Ceibo.Red.SyntaxToken.text token in
-              if List.contains forbidden_modules ~value:text then
-                Some (make_diagnostic token)
-              else
-                None
-          | None ->
-              None
-        in
-        dedupe_diagnostics
-          (List.concat
-            [
-              List.filter_map open_stmts ~fn:diagnostic_for_open_stmt;
-              List.filter_map path_exprs ~fn:diagnostic_for_first_token;
-              List.filter_map field_access_exprs ~fn:diagnostic_for_field_access;
-              List.filter_map module_paths ~fn:diagnostic_for_first_token;
-              List.filter_map module_type_paths ~fn:diagnostic_for_first_token;
-              List.filter_map type_constructors ~fn:diagnostic_for_first_token;
-            ])
+  let check_tree = fun (_ctx: Api.Rule.context) root ->
+    Api.Traversal.find_tokens
+      (fun token -> List.contains forbidden_modules ~value:(Syn.Ast.Token.text token))
+      root
+    |> List.map ~fn:make_diagnostic
+    |> dedupe_diagnostics
 
   let rule = fun () ->
     Api.Rule.make
