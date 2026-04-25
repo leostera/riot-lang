@@ -1463,6 +1463,40 @@ and render_type_expr_after_colon = fun state type_expr ->
       emit_space state;
       render_type_expr state type_expr
     )
+and type_expr_is_arrow = fun type_expr ->
+  match Ast.TypeExpr.view type_expr with
+  | Arrow _ -> true
+  | _ -> false
+and render_multiline_type_arrow = fun state type_expr ->
+  match Ast.TypeExpr.inner_without_attribute_suffix type_expr with
+  | Some inner ->
+      render_multiline_type_arrow state inner;
+      render_type_expr_attribute_suffix state type_expr
+  | None -> (
+    match Ast.TypeExpr.view type_expr with
+    | Arrow { left = Some left; right = Some right } ->
+        render_type_arrow_left state left;
+        emit_space state;
+        emit_text state "->";
+        emit_line state;
+        render_multiline_type_arrow state right
+    | Arrow _ -> unsupported_node "incomplete arrow type" type_expr
+    | _ -> render_type_expr state type_expr
+  )
+and type_expr_should_break_after_colon = fun state ~suffix_width type_expr ->
+  if type_expr_starts_with_gt type_expr || not (type_expr_is_arrow type_expr) then
+    false
+  else
+    match type_expr_flat_width type_expr with
+    | Some width -> Int.(width + 1 + suffix_width > state.width - state.column)
+    | None -> false
+and render_type_expr_after_tight_colon = fun state ~suffix_width type_expr ->
+  if type_expr_should_break_after_colon state ~suffix_width type_expr then
+    (
+      emit_line state;
+      with_indent state 2 (fun () -> render_multiline_type_arrow state type_expr)
+    )
+  else render_type_expr_after_colon state type_expr
 
 let pattern_tuple_has_parens = fun pattern -> Option.is_some (Ast.Node.first_child_token pattern ~kind:Kind.LPAREN)
 
@@ -2250,9 +2284,8 @@ let rec render_expr = fun state expr ->
   | RecordUpdate -> render_record_expr state ~inline:false expr
   | Typed { expr = Some inner; annotation = Some annotation } ->
       render_expr state inner;
-      emit_space state;
       emit_text state ":";
-      render_type_expr_after_colon state annotation
+      render_type_expr_after_tight_colon state ~suffix_width:0 annotation
   | Typed _ -> unsupported_node "incomplete typed expression" expr
   | Tuple ->
       let items = collect_tuple_expr_items expr in emit_joined_vector state items ~sep:(
@@ -2309,6 +2342,13 @@ and render_expr_atom = fun state expr ->
   match Ast.Expr.view expr with
   | Path _ | Literal _ | FieldAccess _ | Prefix _ | Parenthesized _ | Array | List | Record | ArrayIndex _ | StringIndex _ | FirstClassModule | Extension | LocalOpen _ | LabeledArg _ | PolyVariant { payload = None } | OptionalArg _ -> render_expr state expr
   | _ -> render_parenthesized_expr state expr
+and parenthesized_expr_should_multiline = fun state expr ->
+  if expr_is_multiline expr then
+    true
+  else
+    match Ast.Expr.view expr with
+    | Typed { annotation = Some annotation; _ } -> type_expr_should_break_after_colon state ~suffix_width:1 annotation
+    | _ -> false
 and render_parenthesized_expr = fun state expr ->
   let render_inner () =
     with_delimited_expr state
@@ -2316,7 +2356,7 @@ and render_parenthesized_expr = fun state expr ->
         fun () -> render_expr state expr
       )
   in
-  if expr_is_multiline expr then
+  if parenthesized_expr_should_multiline state expr then
     (
       emit_text state "(";
       emit_line state;
@@ -3619,10 +3659,15 @@ and render_record_type_field = fun state ~last field ->
     | None -> unsupported_node "record type field without name" field
   );
   emit_text state ":";
-  emit_space state;
   (
     match Ast.RecordField.type_annotation field with
-    | Some annotation -> render_type_expr state annotation
+    | Some annotation ->
+        let suffix_width =
+          if last then
+            0
+          else 1
+        in
+        render_type_expr_after_tight_colon state ~suffix_width annotation
     | None -> unsupported_node "record type field without annotation" field
   );
   if not last then

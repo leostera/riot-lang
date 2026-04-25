@@ -1,3 +1,0 @@
-let rec first x = second x
-(* Parse signature item (top-level in .mli files) *)
-and second x = x

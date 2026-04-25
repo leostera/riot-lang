@@ -1,5 +1,0 @@
-let op = (+)
-
-let is_plus = function
-  | ( + ) -> true
-  | _ -> false

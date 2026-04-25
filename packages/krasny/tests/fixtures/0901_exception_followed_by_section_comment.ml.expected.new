@@ -1,4 +1,0 @@
-exception Exit = Stdlib.Exit
-
-(* Exception helpers *)
-let raise = Stdlib.raise

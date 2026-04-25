@@ -1,4 +1,4 @@
-let op = ( + )
+let op = (+)
 
 let is_plus = function
   | ( + ) -> true
