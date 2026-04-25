@@ -2136,42 +2136,7 @@ let rec render_expr = fun state expr ->
   | Assign _ ->
       unsupported_node "incomplete assign expression" expr
   | Infix { left=Some left; operator=Some operator; right=Some right } ->
-      let operator_text = token_text operator in
-      if String.equal operator_text "@@" then
-        render_expr state left
-      else if expr_can_be_bare_infix_left_operand left then
-        render_expr state left
-      else if
-        String.equal operator_text "|>"
-        && (expr_can_be_bare_pipe_left_operand left || expr_is_infix_with_operator_text left operator_text)
-      then
-        render_expr state left
-      else if
-        String.equal operator_text "^"
-        && (expr_can_be_bare_caret_operand left || expr_is_infix_with_operator_text left operator_text)
-      then
-        render_expr state left
-      else if
-        String.equal operator_text "::" && expr_is_infix_with_operator_text left operator_text
-      then
-        render_expr state left
-      else if infix_left_operand_can_be_bare ~parent_operator:operator_text left then
-        render_expr state left
-      else
-        render_expr_atom state left;
-      emit_space state;
-      emit_token state operator;
-      emit_space state;
-      if
-        String.equal operator_text "@@"
-        || expr_can_be_bare_infix_right_operand right
-        || (String.equal operator_text "|>" && expr_can_follow_pipe_bare right)
-        || (String.equal operator_text "^" && expr_can_be_bare_caret_operand right)
-        || infix_right_operand_can_be_bare ~parent_operator:operator_text right
-      then
-        render_expr state right
-      else
-        render_expr_atom state right
+      render_infix_expr state left operator right
   | Infix _ ->
       unsupported_node "incomplete infix expression" expr
   | Prefix { operator=Some operator; operand=Some operand } ->
@@ -2393,6 +2358,68 @@ and render_expr_atom = fun state expr ->
       render_expr state expr;
       emit_text state ")"
 
+and render_infix_left_operand = fun state ~operator_text left ->
+  if String.equal operator_text "@@" then
+    render_expr state left
+  else if expr_can_be_bare_infix_left_operand left then
+    render_expr state left
+  else if
+    String.equal operator_text "|>"
+    && (expr_can_be_bare_pipe_left_operand left || expr_is_infix_with_operator_text left operator_text)
+  then
+    render_expr state left
+  else if
+    String.equal operator_text "^"
+    && (expr_can_be_bare_caret_operand left || expr_is_infix_with_operator_text left operator_text)
+  then
+    render_expr state left
+  else if
+    String.equal operator_text "::" && expr_is_infix_with_operator_text left operator_text
+  then
+    render_expr state left
+  else if infix_left_operand_can_be_bare ~parent_operator:operator_text left then
+    render_expr state left
+  else
+    render_expr_atom state left
+
+and render_infix_right_operand = fun state ~operator_text right ->
+  if
+    String.equal operator_text "@@"
+    || expr_can_be_bare_infix_right_operand right
+    || (String.equal operator_text "|>" && expr_can_follow_pipe_bare right)
+    || (String.equal operator_text "^" && expr_can_be_bare_caret_operand right)
+    || infix_right_operand_can_be_bare ~parent_operator:operator_text right
+  then
+    render_expr state right
+  else
+    render_expr_atom state right
+
+and render_infix_expr = fun state left operator right ->
+  let operator_text = token_text operator in
+  render_infix_left_operand state ~operator_text left;
+  emit_space state;
+  emit_token state operator;
+  emit_space state;
+  render_infix_right_operand state ~operator_text right
+
+and render_apply_flat = fun state callee args ->
+  let callee, base_args = collect_apply callee in
+  let render_arg arg =
+    emit_space state;
+    render_expr_atom state arg
+  in
+  render_expr_atom state callee;
+  Vector.for_each base_args ~fn:render_arg;
+  Vector.for_each args ~fn:render_arg
+
+and render_infix_expr_with_right_apply = fun state left operator right args ->
+  let operator_text = token_text operator in
+  render_infix_left_operand state ~operator_text left;
+  emit_space state;
+  emit_token state operator;
+  emit_space state;
+  render_apply_flat state right args
+
 and render_keyword_body_expr = fun state expr ->
   match Ast.Expr.view expr with
   | Tuple -> render_expr_atom state expr
@@ -2440,33 +2467,37 @@ and render_apply_expr = fun state expr ->
   in
   if same_ast_node expr callee then
     unsupported_node "apply expression resolved to itself" expr;
-  render_expr_atom state callee;
-  let rec loop index breaking =
-    if Int.(index < arg_count) then
-      (
-        let arg = Vector.get_unchecked args ~at:index in
-        let should_break =
-          if not break_before_multiline_args then
-            false
-          else if breaking then
-            true
-          else
-            expr_is_multiline arg
-        in
-        if should_break then
+  match Ast.Expr.view callee with
+  | Infix { left=Some left; operator=Some operator; right=Some right } ->
+      render_infix_expr_with_right_apply state left operator right args
+  | _ ->
+      render_expr_atom state callee;
+      let rec loop index breaking =
+        if Int.(index < arg_count) then
           (
-            emit_line state;
-            with_indent state 2 (fun () -> render_expr_atom state arg);
-            loop (Int.add index 1) true
+            let arg = Vector.get_unchecked args ~at:index in
+            let should_break =
+              if not break_before_multiline_args then
+                false
+              else if breaking then
+                true
+              else
+                expr_is_multiline arg
+            in
+            if should_break then
+              (
+                emit_line state;
+                with_indent state 2 (fun () -> render_expr_atom state arg);
+                loop (Int.add index 1) true
+              )
+            else (
+              emit_space state;
+              render_expr_atom state arg;
+              loop (Int.add index 1) breaking
+            )
           )
-        else (
-          emit_space state;
-          render_expr_atom state arg;
-          loop (Int.add index 1) breaking
-        )
-      )
-  in
-  loop 0 false
+      in
+      loop 0 false
 
 and render_if_expr = fun state expr condition then_branch else_branch ->
   emit_node_keyword state expr ~kind:Kind.IF_KW ~fallback:"if";

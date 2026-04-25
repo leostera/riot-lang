@@ -634,6 +634,16 @@ let line = Net.Http.Method.to_string method_ ^ " " ^ resource ^ "\r\n"
   | [ _; value ] -> String.trim value = expected
   | _ -> false
 |ocaml});
+  Test.case "write keeps application on the right side of exponent infix"
+    (fun ctx ->
+      let source = {ocaml|let multiplier=10.0**Float.from_int precision
+|ocaml}
+      in
+      let parsed = parse_ml source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|let multiplier = 10.0 ** Float.from_int precision
+|ocaml});
   Test.case "write keeps cons chains right associative"
     (fun ctx ->
       let source = {ocaml|let fields=timestamp_field()::("type",Data.Json.String"file")::fields
