@@ -1,4 +1,5 @@
 open Std
+module Vector = Collections.Vector
 
 (** Override behavior - either inherit from base or override with new value *)
 type 'a override =
@@ -339,55 +340,47 @@ let from_toml: (string * Std.Data.Toml.value) list -> base:t -> t = fun table_it
 
 (** Convert profile to OCaml compiler flags *)
 let to_compiler_flags = fun profile ->
-  let flags = [] in
-  let flags =
+  let flags = Vector.with_capacity
+    ~size:(7 + List.length profile.open_modules + List.length profile.ocamlc_flags) in
+  (
     match profile.inline with
-    | Some n -> Ocaml_compiler.Inline n :: flags
-    | None -> flags
-  in
-  let flags =
+    | Some n -> Vector.push flags ~value:(Ocaml_compiler.Inline n)
+    | None -> ()
+  );
+  (
     if profile.no_assert then
-      Ocaml_compiler.NoAssert :: flags
-    else
-      flags
-  in
-  let flags =
+      Vector.push flags ~value:Ocaml_compiler.NoAssert
+  );
+  (
     if profile.compact then
-      Ocaml_compiler.Compact :: flags
-    else
-      flags
-  in
-  let flags =
+      Vector.push flags ~value:Ocaml_compiler.Compact
+  );
+  (
     if profile.unsafe then
-      Ocaml_compiler.Unsafe :: flags
-    else
-      flags
-  in
-  let flags =
+      Vector.push flags ~value:Ocaml_compiler.Unsafe
+  );
+  (
     if profile.no_alias_deps then
-      Ocaml_compiler.NoAliasDeps :: flags
-    else
-      flags
-  in
-  let flags =
-    List.fold_left profile.open_modules ~init:flags ~fn:(fun acc m -> Ocaml_compiler.Open m :: acc)
-  in
-  let flags =
+      Vector.push flags ~value:Ocaml_compiler.NoAliasDeps
+  );
+  profile.open_modules
+  |> List.for_each ~fn:(fun m -> Vector.push flags ~value:(Ocaml_compiler.Open m));
+  (
     if List.is_empty profile.warnings then
-      flags
+      ()
     else
-      Ocaml_compiler.Warning profile.warnings :: flags
-  in
-  let flags =
+      Vector.push flags ~value:(Ocaml_compiler.Warning profile.warnings)
+  );
+  (
     if List.is_empty profile.errors then
-      flags
+      ()
     else
-      Ocaml_compiler.WarnError profile.errors :: flags
-  in
-  let flags =
-    List.reverse_append (List.map profile.ocamlc_flags ~fn:(fun flag -> Ocaml_compiler.Raw flag)) flags
-  in
-  Ocaml_compiler.flags_to_string (List.reverse flags)
+      Vector.push flags ~value:(Ocaml_compiler.WarnError profile.errors)
+  );
+  profile.ocamlc_flags
+  |> List.for_each ~fn:(fun flag -> Vector.push flags ~value:(Ocaml_compiler.Raw flag));
+  Ocaml_compiler.flags_to_string
+    (Vector.to_array flags |> Array.to_list)
 
 (** Hash profile into a Sha256 hasher state *)
 let hash = fun state profile ->

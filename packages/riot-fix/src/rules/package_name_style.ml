@@ -29,7 +29,9 @@ let rec find_package_root_components = fun prefix ->
   function
   | []
   | [ _ ] -> None
-  | "packages" :: package_dir :: _ -> Some (List.reverse_append prefix [ "packages"; package_dir ])
+  | "packages" :: package_dir :: _ -> Some (List.append
+    (List.reverse prefix)
+    [ "packages"; package_dir ])
   | segment :: rest -> find_package_root_components (segment :: prefix) rest
 
 let package_root_for_file = fun path ->

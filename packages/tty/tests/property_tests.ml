@@ -1,6 +1,7 @@
 open Std
 open Propane
 module Test = Std.Test
+module Vector = Collections.Vector
 
 let examples = 10_000
 
@@ -39,16 +40,20 @@ let parse_whole = fun trace ->
   event_strings (events @ flushed)
 
 let parse_bytewise = fun trace ->
-  let rec loop parser chunks acc =
+  let events = Vector.with_capacity ~size:(String.length trace) in
+  let rec loop parser chunks =
     match chunks with
     | [] ->
         let _, flushed = Tty.Input.Parser.flush parser in
-        List.reverse_append (List.reverse (event_strings flushed)) acc |> List.reverse
+        event_strings flushed |> List.for_each ~fn:(fun event -> Vector.push events ~value:event);
+        Vector.to_array events |> Array.to_list
     | chunk :: rest ->
-        let parser, events = Tty.Input.Parser.feed parser chunk in
-        loop parser rest (List.reverse_append (List.reverse (event_strings events)) acc)
+        let parser, chunk_events = Tty.Input.Parser.feed parser chunk in
+        event_strings chunk_events
+        |> List.for_each ~fn:(fun event -> Vector.push events ~value:event);
+        loop parser rest
   in
-  loop (Tty.Input.Parser.create ()) (byte_chunks trace) []
+  loop (Tty.Input.Parser.create ()) (byte_chunks trace)
 
 let short_printable = Arbitrary.make
   ~print:String.escaped

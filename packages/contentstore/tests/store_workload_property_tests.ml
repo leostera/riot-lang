@@ -41,8 +41,8 @@ let update_named_expectation = fun expected key content ->
   let rec loop acc remaining =
     match remaining with
     | [] -> List.reverse ((key, content) :: acc)
-    | (existing_key, _) :: rest when String.equal existing_key key -> List.reverse_append
-      acc
+    | (existing_key, _) :: rest when String.equal existing_key key -> List.append
+      (List.reverse acc)
       ((key, content) :: rest)
     | entry :: rest -> loop (entry :: acc) rest
   in

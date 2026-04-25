@@ -1,5 +1,6 @@
 open Std
 module Buffer = IO.Buffer
+module Vector = Collections.Vector
 
 type message =
   | Data of string
@@ -196,18 +197,19 @@ let stream = fun (Conn conn as c) ->
       parse_chunks []
 
 let messages = fun ?(on_message = fun _ -> ()) conn ->
-  let rec loop acc =
+  let acc = Vector.with_capacity ~size:16 in
+  let rec loop () =
     match stream conn with
     | Error e -> Error e
     | Ok msgs ->
         on_message msgs;
-        let acc = List.reverse_append (List.reverse msgs) acc in
+        msgs |> List.for_each ~fn:(fun msg -> Vector.push acc ~value:msg);
         if List.contains msgs ~value:Done then
-          Ok (List.reverse acc)
+          Ok (Vector.to_array acc |> Array.to_list)
         else
-          loop acc
+          loop ()
   in
-  loop []
+  loop ()
 
 let await = fun ?(on_message = fun _ -> ()) (Conn conn as c) ->
   match messages ~on_message c with

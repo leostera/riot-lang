@@ -60,7 +60,10 @@ let looks_like_flag = fun value -> String.starts_with ~prefix:"-" value
 let bench_invocation_args = fun argv ->
   let rec loop parsed trailing = function
     | [] -> { parsed = List.reverse parsed; trailing = List.reverse trailing }
-    | "--" :: rest -> { parsed = List.reverse parsed; trailing = List.reverse_append trailing rest }
+    | "--" :: rest -> {
+      parsed = List.reverse parsed;
+      trailing = List.append (List.reverse trailing) rest
+    }
     | arg :: rest when is_known_flag_without_value arg -> loop (arg :: parsed) trailing rest
     | arg :: value :: rest when is_known_flag_with_value arg -> loop
       (value :: arg :: parsed)

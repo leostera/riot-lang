@@ -3,6 +3,7 @@ open Std.Result.Syntax
 open Riot_model
 open Riot_build
 open ArgParser
+module Vector = Collections.Vector
 
 let command =
   let open ArgParser in
@@ -90,11 +91,16 @@ type timing_summary = {
   mutable measured_duration_us: int;
   mutable measured_test_count: int;
   mutable slowest_tests: slow_test list;
-  mutable failed_tests: failed_test list;
+  failed_tests: failed_test Vector.t;
 }
 
 let empty_timing_summary = fun () ->
-  { measured_duration_us = 0; measured_test_count = 0; slowest_tests = []; failed_tests = [] }
+  {
+    measured_duration_us = 0;
+    measured_test_count = 0;
+    slowest_tests = [];
+    failed_tests = Vector.with_capacity ~size:8
+  }
 
 let take = fun limit values ->
   let rec loop remaining acc rest =
@@ -186,27 +192,22 @@ let record_suite_timing = fun ~small_only ~large_only (timing: timing_summary) ~
   |> sort_summary_tests ~small_only ~large_only
   |> take 5 in
   timing.slowest_tests <- slowest_tests;
-  timing.failed_tests <- List.reverse_append
-    (
-      summary.results |> List.filter_map
-        ~fn:(fun (result: Test_runtime.test_case_result) ->
-          match result.result with
-          | Test_runtime.Failed message -> Some (
-            { suite_label; test_name = result.name; message; duration_us = result.duration_us }: failed_test
-          )
-          | Test_runtime.Timed_out { timeout_ms } -> Some (
-            {
-              suite_label;
-              test_name = result.name;
-              message = timeout_message timeout_ms;
-              duration_us = result.duration_us
-            }:
-              failed_test
-          )
-          | Test_runtime.Passed
-          | Test_runtime.Skipped -> None)
-    )
-    timing.failed_tests
+  summary.results |> List.for_each
+    ~fn:(fun (result: Test_runtime.test_case_result) ->
+      match result.result with
+      | Test_runtime.Failed message -> Vector.push
+        timing.failed_tests
+        ~value:{ suite_label; test_name = result.name; message; duration_us = result.duration_us }
+      | Test_runtime.Timed_out { timeout_ms } -> Vector.push
+        timing.failed_tests
+        ~value:{
+          suite_label;
+          test_name = result.name;
+          message = timeout_message timeout_ms;
+          duration_us = result.duration_us
+        }
+      | Test_runtime.Passed
+      | Test_runtime.Skipped -> ())
 
 let print_summary = fun ~small_only ~large_only ~label ~total ~passed ~failed ~skipped ~(timing:timing_summary) ->
   println "";
@@ -240,10 +241,10 @@ let print_summary = fun ~small_only ~large_only ~label ~total ~passed ~failed ~s
                 ^ ")"))
         )
     );
-  if not (List.is_empty timing.failed_tests) then
+  if not (Vector.is_empty timing.failed_tests) then
     (
       println "  Failed tests:";
-      timing.failed_tests |> List.reverse |> List.enumerate |> List.for_each
+      timing.failed_tests |> Vector.to_array |> Array.to_list |> List.enumerate |> List.for_each
         ~fn:(fun (idx, (test: failed_test)) ->
           println
             ("    "

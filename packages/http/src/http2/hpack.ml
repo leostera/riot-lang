@@ -4,6 +4,7 @@ open Std.IO
 (* Use Array from Collections *)
 
 module Array = Collections.Array
+module Vector = Collections.Vector
 
 (* Use Cell from Sync *)
 
@@ -573,12 +574,15 @@ let decode_header_block = fun decoder data offset ->
         )
 
 let decode = fun decoder data ->
-  let rec decode_all acc offset =
+  let headers = Vector.with_capacity ~size:8 in
+  let rec decode_all offset =
     if offset >= Bytes.length data then
-      Ok (List.reverse acc)
+      Ok (Vector.to_array headers |> Array.to_list)
     else
       match decode_header_block decoder data offset with
       | Error e -> Error e
-      | Ok (headers, new_offset) -> decode_all (List.reverse_append headers acc) new_offset
+      | Ok (decoded, new_offset) ->
+          decoded |> List.for_each ~fn:(fun header -> Vector.push headers ~value:header);
+          decode_all new_offset
   in
-  decode_all [] 0
+  decode_all 0

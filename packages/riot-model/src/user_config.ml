@@ -243,7 +243,7 @@ let upsert_registry = fun config ~registry_name ~update ->
         | Error _ -> List.reverse acc
       )
     | (name, registry) :: rest when String.equal name registry_name ->
-        List.reverse_append acc ((name, update registry) :: rest)
+        List.append (List.reverse acc) ((name, update registry) :: rest)
     | entry :: rest ->
         loop (entry :: acc) rest
   in

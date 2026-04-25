@@ -484,7 +484,7 @@ and resolve_registry_dependency = fun ~(ctx:context) ~state ~required_by (
                                 | Error _ as err -> err
                                 | Ok (resolved, state) -> resolve_release_dependencies
                                   ~state
-                                  (List.reverse_append resolved.packages acc_packages)
+                                  (List.append (List.reverse resolved.packages) acc_packages)
                                   (resolved.dependency :: acc_dependencies)
                                   rest
                               )
@@ -720,7 +720,7 @@ and resolve_manifest_dependencies = fun ~(ctx:context) ~state ~required_by ~decl
                 ~state
                 ~required_by
                 ~declared_from
-                (List.reverse_append resolved.packages acc_packages)
+                (List.append (List.reverse resolved.packages) acc_packages)
                 (resolved.dependency :: acc_dependencies)
                 rest
             )
@@ -732,7 +732,7 @@ and resolve_manifest_dependencies = fun ~(ctx:context) ~state ~required_by ~decl
                 ~state
                 ~required_by
                 ~declared_from
-                (List.reverse_append resolved.packages acc_packages)
+                (List.append (List.reverse resolved.packages) acc_packages)
                 (resolved.dependency :: acc_dependencies)
                 rest
             )
@@ -767,7 +767,7 @@ and resolve_manifest_dependencies = fun ~(ctx:context) ~state ~required_by ~decl
                         ~state
                         ~required_by
                         ~declared_from
-                        (List.reverse_append resolved.packages acc_packages)
+                        (List.append (List.reverse resolved.packages) acc_packages)
                         (resolved.dependency :: acc_dependencies)
                         rest
                     )
@@ -782,7 +782,7 @@ and resolve_manifest_dependencies = fun ~(ctx:context) ~state ~required_by ~decl
             ~state
             ~required_by
             ~declared_from
-            (List.reverse_append resolved.packages acc_packages)
+            (List.append (List.reverse resolved.packages) acc_packages)
             (resolved.dependency :: acc_dependencies)
             rest
         )
@@ -816,7 +816,7 @@ and resolve_manifest_dependencies = fun ~(ctx:context) ~state ~required_by ~decl
                     ~state
                     ~required_by
                     ~declared_from
-                    (List.reverse_append resolved.packages acc_packages)
+                    (List.append (List.reverse resolved.packages) acc_packages)
                     (resolved.dependency :: acc_dependencies)
                     rest
                 )
@@ -838,7 +838,7 @@ let rec lock_packages = fun ~(ctx:context) ~state acc_workspace acc_external pac
         ~ctx
         ~state
         (pkg :: acc_workspace)
-        (List.reverse_append external_packages acc_external)
+        (List.append (List.reverse external_packages) acc_external)
         rest
       | Error _ as err -> err
     )

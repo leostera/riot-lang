@@ -1,6 +1,7 @@
 open Std
 open Std.Result.Syntax
 open Riot_model
+module Vector = Collections.Vector
 
 type suite_binary = {
   package_name: Package_name.t;
@@ -1207,7 +1208,7 @@ let test = fun ?(on_event = no_event) (request: test_request) ->
         let passed = ref 0 in
         let failed = ref 0 in
         let skipped = ref 0 in
-        let failed_tests = ref [] in
+        let failed_tests = Vector.with_capacity ~size:8 in
         let rec loop = function
           | [] ->
               on_event
@@ -1217,7 +1218,7 @@ let test = fun ?(on_event = no_event) (request: test_request) ->
                     passed = !passed;
                     failed = !failed;
                     skipped = !skipped;
-                    failed_tests = List.reverse !failed_tests;
+                    failed_tests = Vector.to_array failed_tests |> Array.to_list;
                   }
                 );
               if !failed > 0 then
@@ -1257,27 +1258,27 @@ let test = fun ?(on_event = no_event) (request: test_request) ->
                       passed := !passed + suite_output.summary.passed;
                       failed := !failed + suite_output.summary.failed;
                       skipped := !skipped + suite_output.summary.skipped;
-                      failed_tests := List.reverse_append
-                        (
-                          suite_output.summary.results |> List.filter_map
-                            ~fn:(fun (result: test_case_result) ->
-                              match result.result with
-                              | Failed message -> Some {
-                                suite = suite_output.suite;
-                                name = result.name;
-                                message;
-                                duration_us = result.duration_us
-                              }
-                              | Timed_out { timeout_ms } -> Some {
-                                suite = suite_output.suite;
-                                name = result.name;
-                                message = "timed out after " ^ Int.to_string timeout_ms ^ "ms";
-                                duration_us = result.duration_us
-                              }
-                              | Passed
-                              | Skipped -> None)
-                        )
-                        !failed_tests;
+                      suite_output.summary.results |> List.for_each
+                        ~fn:(fun (result: test_case_result) ->
+                          match result.result with
+                          | Failed message -> Vector.push
+                            failed_tests
+                            ~value:{
+                              suite = suite_output.suite;
+                              name = result.name;
+                              message;
+                              duration_us = result.duration_us
+                            }
+                          | Timed_out { timeout_ms } -> Vector.push
+                            failed_tests
+                            ~value:{
+                              suite = suite_output.suite;
+                              name = result.name;
+                              message = "timed out after " ^ Int.to_string timeout_ms ^ "ms";
+                              duration_us = result.duration_us
+                            }
+                          | Passed
+                          | Skipped -> ());
                       on_event
                         (
                           SuiteCompleted {

@@ -1,5 +1,6 @@
 open Std
 open Std.Data
+module Vector = Collections.Vector
 module Artifacts = Wir.Artifacts
 module Types = Wir.Types
 module Core = Raml_core.Core_ir
@@ -371,29 +372,34 @@ let rec compile_expr = fun ~layout ~imports ~env expr ->
             ~fn:(fun (key, value) ->
               let _ = Collections.HashMap.insert env' ~key ~value in
               ());
-          let instructions_rev = ref [] in
-          let errors_rev = ref [] in
+          let instructions = Vector.with_capacity ~size:(List.length let_.bindings + 1) in
+          let errors = Vector.with_capacity ~size:(List.length let_.bindings) in
           List.iter
             (fun (binding: Types.Expr.binding) ->
               match compile_expr ~layout ~imports ~env:env' binding.expr with
               | Ok compiled ->
-                  instructions_rev := compiled.instructions :: !instructions_rev;
+                  Vector.push instructions ~value:compiled.instructions;
                   let _ = Collections.HashMap.insert
                     env'
                     ~key:(entity_key binding.entity_id)
                     ~value:compiled.value in
                   ()
-              | Error errors -> errors_rev := List.reverse_append errors !errors_rev)
+              | Error compile_errors -> compile_errors
+              |> List.for_each ~fn:(fun error -> Vector.push errors ~value:error))
             let_.bindings;
-          match List.rev !errors_rev with
-          | [] ->
+          if Vector.is_empty errors then
+            (
               let* body = compile_expr ~layout ~imports ~env:env' let_.body in
+              Vector.push instructions ~value:body.instructions;
               Ok {
-                instructions = Binary.concat
-                  (List.reverse_append !instructions_rev [ body.instructions ]);
-                value = body.value
+                instructions =
+                  Binary.concat
+                    (Vector.to_array instructions |> Array.to_list);
+                value = body.value;
               }
-          | errors -> Error errors
+            )
+          else
+            Error (Vector.to_array errors |> Array.to_list)
     end
   | Types.Expr.If_then_else if_then_else ->
       let* condition = compile_expr ~layout ~imports ~env if_then_else.condition in
@@ -474,20 +480,27 @@ let compile_init_item = fun ~layout ~imports ~env item ->
 
 let compile_start = fun ~layout ~imports (linked_program: Artifacts.Linked_program.t) ->
   let env = Collections.HashMap.create () in
-  let instructions_rev = ref [] in
-  let errors_rev = ref [] in
+  let init_count = linked_program.objects
+  |> List.fold_left ~init:0 ~fn:(fun count object_ -> count + List.length object_.program.init) in
+  let instructions = Vector.with_capacity ~size:init_count in
+  let errors = Vector.with_capacity ~size:init_count in
   List.iter
     (fun (object_: Artifacts.Object.t) ->
       List.iter
         (fun item ->
           match compile_init_item ~layout ~imports ~env item with
-          | Ok instructions -> instructions_rev := instructions :: !instructions_rev
-          | Error errors -> errors_rev := List.reverse_append errors !errors_rev)
+          | Ok item_instructions -> Vector.push instructions ~value:item_instructions
+          | Error compile_errors -> compile_errors
+          |> List.for_each ~fn:(fun error -> Vector.push errors ~value:error))
         object_.program.init)
     linked_program.objects;
-  match List.rev !errors_rev with
-  | [] -> Ok (Binary.concat (List.rev !instructions_rev))
-  | errors -> Error errors
+  if Vector.is_empty errors then
+    Ok (
+      Binary.concat
+        (Vector.to_array instructions |> Array.to_list)
+    )
+  else
+    Error (Vector.to_array errors |> Array.to_list)
 
 let data_segments = fun layout ->
   Collections.HashMap.fold_left

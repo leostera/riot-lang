@@ -424,7 +424,7 @@ let attach_docstring_to_constructor_groups = fun doc (detail_groups: Doctree.ite
           loop (group :: prefix) rest
         else
           match List.reverse group.details with
-          | [] -> (List.reverse_append prefix (group :: rest), false)
+          | [] -> (List.append (List.reverse prefix) (group :: rest), false)
           | (last_detail: Doctree.item_detail) :: rev_tail ->
               let updated_group = {
                 group
@@ -435,7 +435,7 @@ let attach_docstring_to_constructor_groups = fun doc (detail_groups: Doctree.ite
                   }
                   :: rev_tail)
               } in
-              (List.reverse_append prefix (updated_group :: rest), true)
+              (List.append (List.reverse prefix) (updated_group :: rest), true)
   in
   loop [] detail_groups
 
@@ -452,13 +452,15 @@ let attach_pending_doc_to_recent_variant = fun pending_doc (acc_items: Doctree.i
               let updated_groups, attached = attach_docstring_to_constructor_groups doc item.detail_groups in
               if attached then
                 (
-                  List.reverse_append prefix ({ item with detail_groups = updated_groups } :: rest),
+                  List.append
+                    (List.reverse prefix)
+                    ({ item with detail_groups = updated_groups } :: rest),
                   None
                 )
               else
-                (List.reverse_append prefix (item :: rest), Some doc)
+                (List.append (List.reverse prefix) (item :: rest), Some doc)
             else
-              (List.reverse_append prefix (item :: rest), Some doc)
+              (List.append (List.reverse prefix) (item :: rest), Some doc)
       in
       loop [] acc_items
 
@@ -611,7 +613,7 @@ let rec module_of_signature_items = fun ~lookup ~source ~source_path ~path ?docs
               (Syn.Cst.token_body_span syntax_node).end_
               next_overview
               None
-              (List.reverse_append new_items acc_items)
+              (List.append (List.reverse new_items) acc_items)
               acc_modules
               rest
         | Syn.Cst.SignatureItem.ValueDeclaration decl ->
@@ -632,7 +634,7 @@ let rec module_of_signature_items = fun ~lookup ~source ~source_path ~path ?docs
               (Syn.Cst.token_body_span syntax_node).end_
               next_overview
               None
-              (List.reverse_append new_items acc_items)
+              (List.append (List.reverse new_items) acc_items)
               acc_modules
               rest
         | Syn.Cst.SignatureItem.ExternalDeclaration decl ->
@@ -653,7 +655,7 @@ let rec module_of_signature_items = fun ~lookup ~source ~source_path ~path ?docs
               (Syn.Cst.token_body_span syntax_node).end_
               next_overview
               None
-              (List.reverse_append new_items acc_items)
+              (List.append (List.reverse new_items) acc_items)
               acc_modules
               rest
         | _ ->

@@ -1047,8 +1047,8 @@ let upsert_dependency = fun (dependencies: Riot_model.Package.dependency list) (
   ) =
     match remaining with
     | [] -> List.reverse (replacement :: acc)
-    | current :: rest when Riot_model.Package_name.equal current.name dependency.name -> List.reverse_append
-      acc
+    | current :: rest when Riot_model.Package_name.equal current.name dependency.name -> List.append
+      (List.reverse acc)
       (replacement :: rest)
     | current :: rest -> loop (current :: acc) rest
   in

@@ -1733,9 +1733,10 @@ and parse_list = fun flavor lines start ->
                         (index, List.reverse acc, had_blank)
                 )
         in
-        let rec collect_items index acc diagnostics loose =
+        let diagnostics = Vector.with_capacity ~size:4 in
+        let rec collect_items index acc loose =
           if index >= Array.length lines then
-            (List.reverse acc, index, List.reverse diagnostics, loose)
+            (List.reverse acc, index, Vector.to_array diagnostics |> Array.to_list, loose)
           else
             match parse_list_marker (array_at lines index).text with
             | Some marker when list_item_marker marker
@@ -1826,15 +1827,13 @@ and parse_list = fun flavor lines start ->
                   | None -> Syntax_kind.List_item
                 in
                 let item = node item_kind body_blocks in
-                collect_items
-                  next_index
-                  (item :: acc)
-                  (List.reverse_append body_diagnostics diagnostics)
-                  (loose || item_loose)
+                body_diagnostics
+                |> List.for_each ~fn:(fun diagnostic -> Vector.push diagnostics ~value:diagnostic);
+                collect_items next_index (item :: acc) (loose || item_loose)
               )
-            | _ -> (List.reverse acc, index, List.reverse diagnostics, loose)
+            | _ -> (List.reverse acc, index, Vector.to_array diagnostics |> Array.to_list, loose)
         in
-        let items, next, diagnostics, loose = collect_items start [] [] false in
+        let items, next, diagnostics, loose = collect_items start [] false in
         if items = [] then
           None
         else
@@ -2047,7 +2046,7 @@ let parse = fun ?(flavor = Markdown) source ->
   let control_diagnostics = make_control_diagnostics source in
   try
     let blocks, diagnostics = parse_blocks ~flavor lines 0 in
-    let diagnostics = List.reverse_append control_diagnostics diagnostics in
+    let diagnostics = List.append control_diagnostics diagnostics in
     let tree = Ceibo.Green.make_node ~kind:Syntax_kind.Document ~children:blocks in
     { source; tokens; tree; diagnostics }
   with
@@ -2062,5 +2061,5 @@ let parse = fun ?(flavor = Markdown) source ->
         tree = Ceibo.Green.make_node
           ~kind:Syntax_kind.Document
           ~children:[ node Syntax_kind.Error [ token Syntax_kind.Text message ] ];
-        diagnostics = List.reverse_append control_diagnostics [ diagnostic ]
+        diagnostics = List.append control_diagnostics [ diagnostic ]
       }

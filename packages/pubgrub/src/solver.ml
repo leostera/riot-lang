@@ -39,7 +39,7 @@ let equal_incompatibility_terms = fun left right ->
   let right_terms = Incompatibility.terms right in
   let rec remove_first_match term acc = function
     | [] -> None
-    | candidate :: tail when equal_term term candidate -> Some (List.reverse_append acc tail)
+    | candidate :: tail when equal_term term candidate -> Some (List.append (List.reverse acc) tail)
     | candidate :: tail -> remove_first_match term (candidate :: acc) tail
   in
   let rec consume unmatched remaining =
