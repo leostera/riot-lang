@@ -262,9 +262,9 @@ let write_workspace_error = fun ~mode message ->
         ])
   | Build.Human -> out ("error: " ^ message)
 
-let binary_source_label = fun ~(workspace:Riot_model.Workspace.t) (
-  binary: Run_runtime.runnable_binary
-) ->
+let binary_source_label = fun
+  ~(workspace:Riot_model.Workspace.t)
+  (binary: Run_runtime.runnable_binary) ->
   match Path.strip_prefix binary.source_path ~prefix:workspace.root with
   | Ok relative_path -> Path.to_string relative_path
   | Error _ -> Path.to_string binary.source_path

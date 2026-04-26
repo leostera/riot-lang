@@ -730,7 +730,15 @@ let add_ocaml_stdlib_exports = fun env ~root_module ->
           ~path:[ module_name ]
           ~free_names:[ root_module ])
 
-let rec build_deps_env_for_library = fun (env, root_export_sources) ~package_path ~binaries ~namespace ~public_root_name ~library_name ~concrete_library_path children ->
+let rec build_deps_env_for_library = fun
+  (env, root_export_sources)
+  ~package_path
+  ~binaries
+  ~namespace
+  ~public_root_name
+  ~library_name
+  ~concrete_library_path
+  children ->
   let lib_def =
     Library_definition.from_entries
       ~namespace
@@ -861,7 +869,11 @@ let rec build_deps_env_for_library = fun (env, root_export_sources) ~package_pat
             (env, root_export_sources)
       | _ -> (env, root_export_sources))
 
-let build_deps_env_for_group = fun config (env, root_export_sources) (group: source_group) group_entries ->
+let build_deps_env_for_group = fun
+  config
+  (env, root_export_sources)
+  (group: source_group)
+  group_entries ->
   match group.root_mode with
   | Loose_sources -> (env, root_export_sources)
   | Library_root { library_name } ->

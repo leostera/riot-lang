@@ -19,7 +19,12 @@ type t = {
   session_id: Session_id.t;
 }
 
-let make = fun ~session_id ~profile ?(compilation_mode = HostOnly) ?(parallelism = Thread.available_parallelism) () ->
+let make = fun
+  ~session_id
+  ~profile
+  ?(compilation_mode = HostOnly)
+  ?(parallelism = Thread.available_parallelism)
+  () ->
   let host = Target.current in
   {
     host;

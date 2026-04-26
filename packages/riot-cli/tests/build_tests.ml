@@ -38,7 +38,12 @@ let empty_sources =
     bench = [];
   }
 
-let make_package = fun ?(workspace_member = true) ?version ?(sources = empty_sources) ?(binaries = []) name ->
+let make_package = fun
+  ?(workspace_member = true)
+  ?version
+  ?(sources = empty_sources)
+  ?(binaries = [])
+  name ->
   let relative_path =
     if workspace_member then
       Path.v name
@@ -658,10 +663,13 @@ let test_build_tests_compile_only_test_binaries = fun _ctx ->
       in
       let* () = assert_path_exists
         test_binary
-        ~message:"expected --tests to materialize test binary" in let* () =
+        ~message:"expected --tests to materialize test binary"
+      in
+      let* () =
         assert_path_missing
           example_binary
-          ~message:"did not expect --tests to materialize example binary" in
+          ~message:"did not expect --tests to materialize example binary"
+      in
       assert_path_missing bench_binary ~message:"did not expect --tests to materialize bench binary") with
   | Ok result -> result
   | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
@@ -685,10 +693,13 @@ let test_build_examples_compile_only_example_binaries = fun _ctx ->
       let* () =
         assert_path_missing
           test_binary
-          ~message:"did not expect --examples to materialize test binary" in let* () =
+          ~message:"did not expect --examples to materialize test binary"
+      in
+      let* () =
         assert_path_exists
           example_binary
-          ~message:"expected --examples to materialize example binary" in
+          ~message:"expected --examples to materialize example binary"
+      in
       assert_path_missing
         bench_binary
         ~message:"did not expect --examples to materialize bench binary") with
@@ -714,10 +725,13 @@ let test_build_benches_compile_only_bench_binaries = fun _ctx ->
       let* () =
         assert_path_missing
           test_binary
-          ~message:"did not expect --benches to materialize test binary" in let* () =
+          ~message:"did not expect --benches to materialize test binary"
+      in
+      let* () =
         assert_path_missing
           example_binary
-          ~message:"did not expect --benches to materialize example binary" in
+          ~message:"did not expect --benches to materialize example binary"
+      in
       assert_path_exists bench_binary ~message:"expected --benches to materialize bench binary") with
   | Ok result -> result
   | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
@@ -738,8 +752,10 @@ let test_build_all_compiles_all_dev_binaries = fun _ctx ->
         | Ok () -> Ok ()
         | Error err -> Error ("expected all-artifacts build success: " ^ Exception.to_string err)
       in
-      let* () = assert_path_exists test_binary ~message:"expected --all to materialize test binary" in let* () =
-        assert_path_exists example_binary ~message:"expected --all to materialize example binary" in
+      let* () = assert_path_exists test_binary ~message:"expected --all to materialize test binary" in
+      let* () =
+        assert_path_exists example_binary ~message:"expected --all to materialize example binary"
+      in
       assert_path_exists bench_binary ~message:"expected --all to materialize bench binary") with
   | Ok result -> result
   | Error err -> Error ("tempdir failed: " ^ IO.error_message err)

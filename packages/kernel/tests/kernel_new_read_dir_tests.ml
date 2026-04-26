@@ -73,7 +73,8 @@ let test_open_dir_reads_snapshotted_names = fun _ctx ->
           file
           (fun () ->
             let* _ = lift_file (Kernel.Fs.File.write file (Kernel.Bytes.from_string "alpha")) in
-            Ok ()) in
+            Ok ())
+      in
       let* dir = lift (Kernel.Fs.ReadDir.open_dir root) in
       let later_file = Kernel.Path.(root / "later.txt") in
       let* later = lift_file (Kernel.Fs.File.open_write later_file) in
@@ -82,7 +83,8 @@ let test_open_dir_reads_snapshotted_names = fun _ctx ->
           later
           (fun () ->
             let* _ = lift_file (Kernel.Fs.File.write later (Kernel.Bytes.from_string "later")) in
-            Ok ()) in
+            Ok ())
+      in
       protect
         ~finally:(fun () ->
           let _ = Kernel.Fs.ReadDir.close dir in
@@ -115,7 +117,8 @@ let test_read_entry_reports_entry_kinds = fun _ctx ->
           file
           (fun () ->
             let* _ = lift_file (Kernel.Fs.File.write file (Kernel.Bytes.from_string "alpha")) in
-            Ok ()) in
+            Ok ())
+      in
       let* () = lift_file (Kernel.Fs.File.symlink ~src:child_file ~dst:child_link) in
       protect
         ~finally:(fun () ->
@@ -167,7 +170,8 @@ let test_read_entry_surfaces_removed_entries = fun _ctx ->
           file
           (fun () ->
             let* _ = lift_file (Kernel.Fs.File.write file (Kernel.Bytes.from_string "alpha")) in
-            Ok ()) in
+            Ok ())
+      in
       let* dir = lift (Kernel.Fs.ReadDir.open_dir root) in
       let* () = lift_file (Kernel.Fs.File.remove_file child_file) in
       protect

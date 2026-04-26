@@ -205,7 +205,11 @@ let load_registry_workspace = fun ~on_event ~package_spec ->
         error;
       })
 
-let find_built_binary_path = fun ~(store:Riot_store.Store.t) ~(output:Riot_build.Build_result.t) ~package_name ~binary_name ->
+let find_built_binary_path = fun
+  ~(store:Riot_store.Store.t)
+  ~(output:Riot_build.Build_result.t)
+  ~package_name
+  ~binary_name ->
   match Riot_build.Build_result.find_package output package_name
   |> Option.and_then
     ~fn:(fun package_output -> Riot_build.Build_result.find_export package_output binary_name) with
@@ -328,7 +332,8 @@ let install_workspace = fun ~on_event ~workspace ~package_name ~binary_name ~des
       ~src:binary_path
       ~dst:destination_path
       ~binary:binary_name
-      ~mode:destination in
+      ~mode:destination
+  in
   let duration = Time.Instant.duration_since ~earlier:started_at (Time.Instant.now ()) in
   on_event
     (

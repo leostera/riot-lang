@@ -14,7 +14,9 @@ let parse_init = fun args ->
   | Ok matches -> Ok matches
   | Error err -> Error (ArgParser.error_message err)
 
-let rec run_init = fun args -> let* _events = run_init_with_events args in Ok ()
+let rec run_init = fun args ->
+  let* _events = run_init_with_events args in
+  Ok ()
 
 and run_init_with_events = fun args ->
   let* matches = parse_init args in
@@ -98,64 +100,91 @@ let test_init_scaffolds_library_workspace = fun _ctx ->
         |> to_string)
       in
       let test_file = String.lowercase_ascii module_name ^ "_tests.ml" in
-      let* () = assert_exists Path.(workspace_root / Path.v "Dockerfile") in let* () =
+      let* () = assert_exists Path.(workspace_root / Path.v "Dockerfile") in
+      let* () =
         assert_exists
-          Path.(workspace_root / Path.v ".github" / Path.v "workflows" / Path.v "ci.yml") in let* () =
+          Path.(workspace_root / Path.v ".github" / Path.v "workflows" / Path.v "ci.yml")
+      in
+      let* () =
         assert_exists
           Path.(workspace_root
           / Path.v ".agents"
           / Path.v "skills"
           / Path.v "riot"
-          / Path.v "SKILL.md") in let* () =
+          / Path.v "SKILL.md")
+      in
+      let* () =
         assert_exists
           Path.(workspace_root
           / Path.v ".agents"
           / Path.v "skills"
           / Path.v "riot"
           / Path.v "references"
-          / Path.v "commands.md") in let* () =
-        assert_exists Path.(workspace_root / Path.v "config" / Path.v "dev.toml") in let* () =
-        assert_exists Path.(workspace_root / Path.v ".riot" / Path.v "config.toml") in let* () =
-        assert_exists Path.(workspace_root / Path.v ".githooks" / Path.v "pre-commit") in let* () =
-        assert_executable Path.(workspace_root / Path.v ".githooks" / Path.v "pre-commit") in let* () =
+          / Path.v "commands.md")
+      in
+      let* () = assert_exists Path.(workspace_root / Path.v "config" / Path.v "dev.toml") in
+      let* () = assert_exists Path.(workspace_root / Path.v ".riot" / Path.v "config.toml") in
+      let* () = assert_exists Path.(workspace_root / Path.v ".githooks" / Path.v "pre-commit") in
+      let* () = assert_executable Path.(workspace_root / Path.v ".githooks" / Path.v "pre-commit") in
+      let* () =
         assert_exists
           Path.(workspace_root
           / Path.v "packages"
           / Path.v "demo-app"
           / Path.v "tests"
-          / Path.v test_file) in let* () =
-        assert_contains Path.(workspace_root / Path.v "README.md") ".github/workflows/ci.yml" in let* () =
+          / Path.v test_file)
+      in
+      let* () = assert_contains
+        Path.(workspace_root / Path.v "README.md")
+        ".github/workflows/ci.yml"
+      in
+      let* () =
         assert_contains
           Path.(workspace_root
           / Path.v ".agents"
           / Path.v "skills"
           / Path.v "riot"
           / Path.v "SKILL.md")
-          "riot build" in let* () =
+          "riot build"
+      in
+      let* () =
         assert_contains
           Path.(workspace_root / Path.v "config" / Path.v "dev.toml")
-          {|name = "demo-app"|} in let* () =
-        assert_contains Path.(workspace_root / Path.v ".riot" / Path.v "config.toml") "[riot.cache]" in let* () =
+          {|name = "demo-app"|}
+      in
+      let* () =
+        assert_contains Path.(workspace_root / Path.v ".riot" / Path.v "config.toml") "[riot.cache]"
+      in
+      let* () =
         assert_contains
           Path.(workspace_root / Path.v ".githooks" / Path.v "pre-commit")
-          "riot test --small" in let* () =
+          "riot test --small"
+      in
+      let* () =
         assert_contains
           Path.(workspace_root / Path.v "README.md")
-          "riot new --lib ./packages/my-new-library" in let* () =
+          "riot new --lib ./packages/my-new-library"
+      in
+      let* () =
         assert_contains
           Path.(workspace_root / Path.v "README.md")
-          "riot new --bin ./packages/my-new-binary" in let* () =
-        assert_contains Path.(workspace_root / Path.v "Dockerfile") "RUN riot test" in let* () =
+          "riot new --bin ./packages/my-new-binary"
+      in
+      let* () = assert_contains Path.(workspace_root / Path.v "Dockerfile") "RUN riot test" in
+      let* () =
         assert_contains
           Path.(workspace_root / Path.v ".github" / Path.v "workflows" / Path.v "ci.yml")
-          "uses: leostera/riot/docker/setup-riot@main" in let* () =
+          "uses: leostera/riot/docker/setup-riot@main"
+      in
+      let* () =
         assert_contains
           Path.(workspace_root
           / Path.v "packages"
           / Path.v "demo-app"
           / Path.v "src"
           / Path.v (module_file_stem module_name ^ ".ml"))
-          "let hello = fun () -> \"Hello from demo-app\"" in
+          "let hello = fun () -> \"Hello from demo-app\""
+      in
       assert_contains
         Path.(workspace_root
         / Path.v "packages"
@@ -181,74 +210,95 @@ let test_init_scaffolds_binary_workspace = fun _ctx ->
           / Path.v "packages"
           / Path.v "demo-bin"
           / Path.v "src"
-          / Path.v "main.ml") in let* () =
+          / Path.v "main.ml")
+      in
+      let* () =
         assert_exists
           Path.(workspace_root
           / Path.v ".agents"
           / Path.v "skills"
           / Path.v "riot"
-          / Path.v "SKILL.md") in let* () =
-        assert_exists Path.(workspace_root / Path.v "config" / Path.v "dev.toml") in let* () =
-        assert_exists Path.(workspace_root / Path.v ".riot" / Path.v "config.toml") in let* () =
-        assert_exists Path.(workspace_root / Path.v ".githooks" / Path.v "pre-commit") in let* () =
-        assert_executable Path.(workspace_root / Path.v ".githooks" / Path.v "pre-commit") in let* () =
+          / Path.v "SKILL.md")
+      in
+      let* () = assert_exists Path.(workspace_root / Path.v "config" / Path.v "dev.toml") in
+      let* () = assert_exists Path.(workspace_root / Path.v ".riot" / Path.v "config.toml") in
+      let* () = assert_exists Path.(workspace_root / Path.v ".githooks" / Path.v "pre-commit") in
+      let* () = assert_executable Path.(workspace_root / Path.v ".githooks" / Path.v "pre-commit") in
+      let* () =
         assert_exists
           Path.(workspace_root
           / Path.v "packages"
           / Path.v "demo-bin"
           / Path.v "src"
-          / Path.v (module_file_stem module_name ^ ".ml")) in let* () =
+          / Path.v (module_file_stem module_name ^ ".ml"))
+      in
+      let* () =
         assert_exists
           Path.(workspace_root
           / Path.v "packages"
           / Path.v "demo-bin"
           / Path.v "tests"
-          / Path.v test_file) in let* () =
+          / Path.v test_file)
+      in
+      let* () =
         assert_contains
           Path.(workspace_root / Path.v "Dockerfile")
-          "ENTRYPOINT [\"/usr/local/bin/demo-bin\"]" in let* () =
+          "ENTRYPOINT [\"/usr/local/bin/demo-bin\"]"
+      in
+      let* () =
         assert_contains
           Path.(workspace_root
           / Path.v "packages"
           / Path.v "demo-bin"
           / Path.v "src"
           / Path.v "main.ml")
-          "Std.Config.load ()" in let* () =
+          "Std.Config.load ()"
+      in
+      let* () =
         assert_contains
           Path.(workspace_root
           / Path.v "packages"
           / Path.v "demo-bin"
           / Path.v "src"
           / Path.v "main.ml")
-          "Std.Log.set_level Info" in let* () =
+          "Std.Log.set_level Info"
+      in
+      let* () =
         assert_contains
           Path.(workspace_root
           / Path.v "packages"
           / Path.v "demo-bin"
           / Path.v "src"
           / Path.v "main.ml")
-          "Std.Log.start_link ()" in let* () =
+          "Std.Log.start_link ()"
+      in
+      let* () =
         assert_contains
           Path.(workspace_root
           / Path.v "packages"
           / Path.v "demo-bin"
           / Path.v "src"
           / Path.v "main.ml")
-          (module_name ^ ".hello ()") in let* () =
+          (module_name ^ ".hello ()")
+      in
+      let* () =
         assert_contains
           Path.(workspace_root
           / Path.v "packages"
           / Path.v "demo-bin"
           / Path.v "src"
           / Path.v "main.ml")
-          "let main ~args:_ =" in let* () =
+          "let main ~args:_ ="
+      in
+      let* () =
         assert_contains
           Path.(workspace_root
           / Path.v "packages"
           / Path.v "demo-bin"
           / Path.v "src"
           / Path.v "main.ml")
-          "let () = Runtime.run ~main ~args:Env.args ()" in
+          "let () = Runtime.run ~main ~args:Env.args ()"
+      in
       assert_contains
         Path.(workspace_root
         / Path.v "packages"
@@ -268,7 +318,8 @@ let test_init_dot_scaffolds_current_directory = fun _ctx ->
       in
       let* events =
         with_current_dir_result workspace_root (fun () ->
-          run_init_with_events [ "init"; "." ]) in
+          run_init_with_events [ "init"; "." ])
+      in
       let module_name =
         Riot_model.Module_name.(of_string "agents-ml"
         |> to_string)
@@ -282,7 +333,8 @@ let test_init_dot_scaffolds_current_directory = fun _ctx ->
           / Path.v "packages"
           / Path.v "agents-ml"
           / Path.v "tests"
-          / Path.v test_file) in
+          / Path.v test_file)
+      in
       let* () = assert_exists Path.(workspace_root / Path.v "Dockerfile") in
       match completion_event events with
       | Some (Riot_init.WorkspaceInitializationCompleted { next_steps; package_hints }) ->
@@ -323,7 +375,8 @@ let test_init_without_path_defaults_to_current_directory = fun _ctx ->
       in
       let* events =
         with_current_dir_result workspace_root (fun () ->
-          run_init_with_events [ "init" ]) in
+          run_init_with_events [ "init" ])
+      in
       let module_name =
         Riot_model.Module_name.(of_string "default-dot"
         |> to_string)
@@ -337,7 +390,8 @@ let test_init_without_path_defaults_to_current_directory = fun _ctx ->
           / Path.v "packages"
           / Path.v "default-dot"
           / Path.v "tests"
-          / Path.v test_file) in
+          / Path.v test_file)
+      in
       match completion_event events with
       | Some (Riot_init.WorkspaceInitializationCompleted { next_steps; _ }) ->
           if List.any next_steps ~fn:(fun step ->
@@ -361,31 +415,46 @@ let test_init_preserves_dotted_workspace_names = fun _ctx ->
         |> to_string)
       in
       let test_file = String.lowercase_ascii module_name ^ "_tests.ml" in
-      let* () = assert_exists Path.(workspace_root / Path.v "riot.toml") in let* () =
-        assert_contains Path.(workspace_root / Path.v "riot.toml") {|name = "arewedown.dev"|} in let* () =
+      let* () = assert_exists Path.(workspace_root / Path.v "riot.toml") in
+      let* () = assert_contains
+        Path.(workspace_root / Path.v "riot.toml")
+        {|name = "arewedown.dev"|}
+      in
+      let* () =
         assert_contains
           Path.(workspace_root / Path.v "riot.toml")
           {|members = [
-  "packages/arewedown-dev"|} in let* () =
+  "packages/arewedown-dev"|}
+      in
+      let* () =
         assert_exists
-          Path.(workspace_root / Path.v "packages" / Path.v "arewedown-dev" / Path.v "riot.toml") in let* () =
+          Path.(workspace_root / Path.v "packages" / Path.v "arewedown-dev" / Path.v "riot.toml")
+      in
+      let* () =
         assert_contains
           Path.(workspace_root / Path.v "packages" / Path.v "arewedown-dev" / Path.v "riot.toml")
-          {|name = "arewedown-dev"|} in let* () =
+          {|name = "arewedown-dev"|}
+      in
+      let* () =
         assert_contains
           Path.(workspace_root / Path.v "packages" / Path.v "arewedown-dev" / Path.v "riot.toml")
           {|[[bin]]
-name = "arewedown-dev"|} in let* () =
+name = "arewedown-dev"|}
+      in
+      let* () =
         assert_exists
           Path.(workspace_root
           / Path.v "packages"
           / Path.v "arewedown-dev"
           / Path.v "tests"
-          / Path.v test_file) in let* () =
-        assert_contains Path.(workspace_root / Path.v "README.md") "riot run arewedown-dev" in let* () =
+          / Path.v test_file)
+      in
+      let* () = assert_contains Path.(workspace_root / Path.v "README.md") "riot run arewedown-dev" in
+      let* () =
         assert_contains
           Path.(workspace_root / Path.v "Dockerfile")
-          "/app/_build/release/*/arewedown-dev" in
+          "/app/_build/release/*/arewedown-dev"
+      in
       assert_contains
         Path.(workspace_root / Path.v "Dockerfile")
         {|ENTRYPOINT ["/usr/local/bin/arewedown-dev"]|})
@@ -406,26 +475,31 @@ members = [
 ]
 |}
             Path.(workspace_root / Path.v "riot.toml"))
-          ~fn:IO.error_message in
+          ~fn:IO.error_message
+      in
       let workspace = Riot_model.Workspace_manifest.make ~root:workspace_root ~packages:[] () in
       let package_dir = Path.(workspace_root / Path.v "packages" / Path.v "demo-lib") in
       let* (_created_path, created_name) =
-        Riot_init.new_package ~workspace ~path:package_dir ~name:"demo-lib" ~is_library:true in
+        Riot_init.new_package ~workspace ~path:package_dir ~name:"demo-lib" ~is_library:true
+      in
       let module_name = package_module_name "demo-lib" in
       let* () = assert_exists Path.(package_dir / Path.v "riot.toml") in
       let* () =
         assert_exists
-          Path.(package_dir / Path.v "src" / Path.v (module_file_stem module_name ^ ".ml")) in
+          Path.(package_dir / Path.v "src" / Path.v (module_file_stem module_name ^ ".ml"))
+      in
       let* () =
         assert_exists
-          Path.(package_dir / Path.v "src" / Path.v (module_file_stem module_name ^ ".mli")) in
+          Path.(package_dir / Path.v "src" / Path.v (module_file_stem module_name ^ ".mli"))
+      in
       let* () =
         assert_contains
           Path.(workspace_root / Path.v "riot.toml")
           {|members = [
   "packages/demo",
   "packages/demo-lib",
-]|} in
+]|}
+      in
       if String.equal created_name "demo-lib" then
         Ok ()
       else
@@ -443,25 +517,30 @@ let test_new_package_updates_workspace_members_for_absolute_paths = fun _ctx ->
 [workspace]
 members = []
 |} Path.(workspace_root / Path.v "riot.toml"))
-          ~fn:IO.error_message in
+          ~fn:IO.error_message
+      in
       let workspace = Riot_model.Workspace_manifest.make ~root:workspace_root ~packages:[] () in
       let package_dir = Path.(workspace_root / Path.v "packages" / Path.v "demo-lib") in
       let* (_created_path, created_name) =
-        Riot_init.new_package ~workspace ~path:package_dir ~name:"demo-lib" ~is_library:true in
+        Riot_init.new_package ~workspace ~path:package_dir ~name:"demo-lib" ~is_library:true
+      in
       let module_name = package_module_name "demo-lib" in
       let* () = assert_exists Path.(package_dir / Path.v "riot.toml") in
       let* () =
         assert_exists
-          Path.(package_dir / Path.v "src" / Path.v (module_file_stem module_name ^ ".ml")) in
+          Path.(package_dir / Path.v "src" / Path.v (module_file_stem module_name ^ ".ml"))
+      in
       let* () =
         assert_exists
-          Path.(package_dir / Path.v "src" / Path.v (module_file_stem module_name ^ ".mli")) in
+          Path.(package_dir / Path.v "src" / Path.v (module_file_stem module_name ^ ".mli"))
+      in
       let* () =
         assert_contains
           Path.(workspace_root / Path.v "riot.toml")
           {|members = [
   "packages/demo-lib",
-]|} in
+]|}
+      in
       if String.equal created_name "demo-lib" then
         Ok ()
       else
@@ -473,15 +552,18 @@ let test_new_standalone_package_scaffolds_a_detached_package = fun _ctx ->
     (fun tempdir ->
       let package_dir = Path.(tempdir / Path.v "demo-lib") in
       let* (_created_path, created_name) =
-        Riot_init.new_standalone_package ~path:package_dir ~name:"demo-lib" ~is_library:true in
+        Riot_init.new_standalone_package ~path:package_dir ~name:"demo-lib" ~is_library:true
+      in
       let module_name = package_module_name "demo-lib" in
       let* () = assert_exists Path.(package_dir / Path.v "riot.toml") in
       let* () =
         assert_exists
-          Path.(package_dir / Path.v "src" / Path.v (module_file_stem module_name ^ ".ml")) in
+          Path.(package_dir / Path.v "src" / Path.v (module_file_stem module_name ^ ".ml"))
+      in
       let* () =
         assert_exists
-          Path.(package_dir / Path.v "src" / Path.v (module_file_stem module_name ^ ".mli")) in
+          Path.(package_dir / Path.v "src" / Path.v (module_file_stem module_name ^ ".mli"))
+      in
       if String.equal created_name "demo-lib" then
         Ok ()
       else

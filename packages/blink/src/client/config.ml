@@ -49,7 +49,16 @@ let close_behavior = fun value ->
 
 let default_budget_policy = Budget.policy ~capacity:100 ~window:(Time.Duration.from_secs 10)
 
-let make = fun ?(retry_policy = RetryPolicy.default) ?(now = Time.Instant.now) ?(sleep = fun _ -> ()) ?transport ?(connection_policy = CloseAfterRequest) ?(budget_policy = default_budget_policy) ?(circuit_breaker_policy = CircuitBreaker.default_policy) ?(telemetry = fun _ -> ()) () ->
+let make = fun
+  ?(retry_policy = RetryPolicy.default)
+  ?(now = Time.Instant.now)
+  ?(sleep = fun _ -> ())
+  ?transport
+  ?(connection_policy = CloseAfterRequest)
+  ?(budget_policy = default_budget_policy)
+  ?(circuit_breaker_policy = CircuitBreaker.default_policy)
+  ?(telemetry = fun _ -> ())
+  () ->
   {
     retry_policy;
     now;

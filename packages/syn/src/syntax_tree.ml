@@ -98,7 +98,12 @@ let include_child_range = fun ~(nodes:node Vector.t) ~(tokens:token_leaf Vector.
       include_range frame ~lo:node.raw_lo ~hi:node.raw_hi
   | Missing _ -> ()
 
-let include_child_token_width = fun ~(raw_tokens:Raw_token.t Vector.t) ~(nodes:node Vector.t) ~(tokens:token_leaf Vector.t) frame child ->
+let include_child_token_width = fun
+  ~(raw_tokens:Raw_token.t Vector.t)
+  ~(nodes:node Vector.t)
+  ~(tokens:token_leaf Vector.t)
+  frame
+  child ->
   match child with
   | Token token_id ->
       let token = Vector.get_unchecked tokens ~at:token_id in

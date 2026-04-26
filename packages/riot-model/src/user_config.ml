@@ -123,8 +123,10 @@ let default_cdn_url = fun ~registry_name ->
         error = InvalidDefaultUri { field = Cdn_url; error };
       })
 
-let default_registry = fun ~registry_name -> let* api_url = default_api_url ~registry_name in let* cdn_url =
-  default_cdn_url ~registry_name in Ok { api_url; cdn_url; api_token = None }
+let default_registry = fun ~registry_name ->
+  let* api_url = default_api_url ~registry_name in
+  let* cdn_url = default_cdn_url ~registry_name in
+  Ok { api_url; cdn_url; api_token = None }
 
 let registry_of_toml = fun ~registry_name value ->
   match value with

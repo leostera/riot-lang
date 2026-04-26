@@ -390,21 +390,21 @@ let key_value_arb = Arbitrary.make ~print:print_key_value key_value_gen
 
 let schema_element_gen =
   Generator.map3
-    (fun (type_, type_length, repetition_type) (name, num_children, converted_type) (
-      scale,
-      precision,
-      field_id
-    ) -> ({
-      type_;
-      type_length;
-      repetition_type;
-      name;
-      num_children;
-      converted_type;
-      scale;
-      precision;
-      field_id;
-    }: Parquet.schema_element))
+    (fun
+      (type_, type_length, repetition_type)
+      (name, num_children, converted_type)
+      (scale, precision, field_id) ->
+      ({
+        type_;
+        type_length;
+        repetition_type;
+        name;
+        num_children;
+        converted_type;
+        scale;
+        precision;
+        field_id;
+      }: Parquet.schema_element))
     (Generator.triple
       (Generator.option physical_type_gen)
       (Generator.option small_int32_gen)
@@ -454,34 +454,33 @@ let column_order_list_gen = Generator.list_size small_size_gen column_order_gen
 
 let column_metadata_gen =
   Generator.map3
-    (fun (type_, encodings, path_in_schema, codec) (
-      num_values,
-      total_uncompressed_size,
-      total_compressed_size,
-      data_page_offset
-    ) (
-      key_value_metadata,
-      index_page_offset,
-      dictionary_page_offset,
-      encoding_stats,
-      bloom_filter_offset,
-      bloom_filter_length
-    ) -> ({
-      type_;
-      encodings;
-      path_in_schema;
-      codec;
-      num_values;
-      total_uncompressed_size;
-      total_compressed_size;
-      key_value_metadata;
-      data_page_offset;
-      index_page_offset;
-      dictionary_page_offset;
-      encoding_stats;
-      bloom_filter_offset;
-      bloom_filter_length;
-    }: Parquet.column_metadata))
+    (fun
+      (type_, encodings, path_in_schema, codec)
+      (num_values, total_uncompressed_size, total_compressed_size, data_page_offset)
+      (
+        key_value_metadata,
+        index_page_offset,
+        dictionary_page_offset,
+        encoding_stats,
+        bloom_filter_offset,
+        bloom_filter_length
+      ) ->
+      ({
+        type_;
+        encodings;
+        path_in_schema;
+        codec;
+        num_values;
+        total_uncompressed_size;
+        total_compressed_size;
+        key_value_metadata;
+        data_page_offset;
+        index_page_offset;
+        dictionary_page_offset;
+        encoding_stats;
+        bloom_filter_offset;
+        bloom_filter_length;
+      }: Parquet.column_metadata))
     (Generator.map2
       (fun (type_, encodings) (path_in_schema, codec) -> (type_, encodings, path_in_schema, codec))
       (Generator.pair physical_type_gen encoding_list_gen)
@@ -496,17 +495,18 @@ let column_metadata_gen =
       (Generator.pair small_int64_gen small_int64_gen)
       (Generator.pair small_int64_gen small_int64_gen))
     (Generator.map3
-      (fun (key_value_metadata, index_page_offset) (dictionary_page_offset, encoding_stats) (
-        bloom_filter_offset,
-        bloom_filter_length
-      ) -> (
-        key_value_metadata,
-        index_page_offset,
-        dictionary_page_offset,
-        encoding_stats,
-        bloom_filter_offset,
-        bloom_filter_length
-      ))
+      (fun
+        (key_value_metadata, index_page_offset)
+        (dictionary_page_offset, encoding_stats)
+        (bloom_filter_offset, bloom_filter_length) ->
+        (
+          key_value_metadata,
+          index_page_offset,
+          dictionary_page_offset,
+          encoding_stats,
+          bloom_filter_offset,
+          bloom_filter_length
+        ))
       (Generator.pair (Generator.option key_value_list_gen) (Generator.option small_int64_gen))
       (Generator.pair
         (Generator.option small_int64_gen)
@@ -517,20 +517,20 @@ let column_metadata_arb = Arbitrary.make ~print:print_column_metadata column_met
 
 let column_chunk_gen =
   Generator.map3
-    (fun (file_path, file_offset, meta_data) (offset_index_offset, offset_index_length) (
-      column_index_offset,
-      column_index_length,
-      encrypted_column_metadata
-    ) -> ({
-      file_path;
-      file_offset;
-      meta_data;
-      offset_index_offset;
-      offset_index_length;
-      column_index_offset;
-      column_index_length;
-      encrypted_column_metadata;
-    }: Parquet.column_chunk))
+    (fun
+      (file_path, file_offset, meta_data)
+      (offset_index_offset, offset_index_length)
+      (column_index_offset, column_index_length, encrypted_column_metadata) ->
+      ({
+        file_path;
+        file_offset;
+        meta_data;
+        offset_index_offset;
+        offset_index_length;
+        column_index_offset;
+        column_index_length;
+        encrypted_column_metadata;
+      }: Parquet.column_chunk))
     (Generator.triple
       (Generator.option small_string_gen)
       small_int64_gen
@@ -547,18 +547,19 @@ let column_chunk_list_gen = Generator.list_size small_size_gen column_chunk_gen
 
 let row_group_gen =
   Generator.map3
-    (fun (columns, total_byte_size, num_rows) (sorting_columns, file_offset) (
-      total_compressed_size,
-      ordinal
-    ) -> ({
-      columns;
-      total_byte_size;
-      num_rows;
-      sorting_columns;
-      file_offset;
-      total_compressed_size;
-      ordinal;
-    }: Parquet.row_group))
+    (fun
+      (columns, total_byte_size, num_rows)
+      (sorting_columns, file_offset)
+      (total_compressed_size, ordinal) ->
+      ({
+        columns;
+        total_byte_size;
+        num_rows;
+        sorting_columns;
+        file_offset;
+        total_compressed_size;
+        ordinal;
+      }: Parquet.row_group))
     (Generator.triple column_chunk_list_gen small_int64_gen small_int64_gen)
     (Generator.pair (Generator.option sorting_column_list_gen) (Generator.option small_int64_gen))
     (Generator.pair (Generator.option small_int64_gen) (Generator.option small_i16_gen))

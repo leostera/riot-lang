@@ -167,7 +167,9 @@ let normalize_source_locator = fun raw ->
 
 let github_locator_of_value = fun value -> "github.com/" ^ String.trim value
 
-let parse_dependency: string -> Toml.value -> (Package.dependency, error) result = fun raw_name value ->
+let parse_dependency: string -> Toml.value -> (Package.dependency, error) result = fun
+  raw_name
+  value ->
   let* name =
     Package_name.from_string raw_name
     |> Result.map_err ~fn:(fun error -> DependencyError (InvalidDependencyName { raw_name; error }))
@@ -247,7 +249,8 @@ let parse_dependency: string -> Toml.value -> (Package.dependency, error) result
     )
   | _ -> Error (DependencyError (DependencyMustBeStringOrTable { dependency_name }))
 
-let parse_dependencies: (string * Toml.value) list -> (Package.dependency list, error) result = fun items ->
+let parse_dependencies: (string * Toml.value) list -> (Package.dependency list, error) result = fun
+  items ->
   let rec loop acc entries =
     match entries with
     | [] -> Ok (List.reverse acc)

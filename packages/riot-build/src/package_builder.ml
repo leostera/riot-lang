@@ -274,7 +274,8 @@ let summarize_package_names = fun names ->
       in
       shown_str ^ ", and " ^ hidden_label
 
-let compute_export_entries: Action_graph.t -> Riot_store.Store.export_entry list = fun action_graph ->
+let compute_export_entries: Action_graph.t -> Riot_store.Store.export_entry list = fun
+  action_graph ->
   let entries =
     Action_graph.nodes action_graph
     |> List.flat_map
@@ -349,7 +350,14 @@ let emits_visible_progress = function
   | Riot_planner.Package_graph.Runtime
   | Riot_planner.Package_graph.Dev -> true
 
-let plan_detailed = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(package:Package.t) ~build_ctx ->
+let plan_detailed = fun
+  ~workspace
+  ~toolchain
+  ~store
+  ~package_graph
+  ~package_key
+  ~(package:Package.t)
+  ~build_ctx ->
   let start = Instant.now () in
   let session_id = build_ctx.Build_ctx.session_id in
   let build_target = Build_ctx.target_triplet build_ctx in
@@ -534,7 +542,12 @@ let execution_outputs = fun (execution_plan: execution_plan) ->
   Action_graph.nodes execution_plan.action_graph
   |> List.flat_map ~fn:(fun (node: Action_node.t) -> node.value.outs)
 
-let failed_execution_result = fun ~session_id ~build_target ~(execution_plan:execution_plan) ~(error:package_error) ~graph_error ->
+let failed_execution_result = fun
+  ~session_id
+  ~build_target
+  ~(execution_plan:execution_plan)
+  ~(error:package_error)
+  ~graph_error ->
   let package = execution_plan.package in
   let package_name = package.Package.name in
   let duration = Instant.duration_since ~earlier:execution_plan.started_at (Instant.now ()) in
@@ -613,7 +626,12 @@ let prepare_execution = fun ~workspace ~toolchain ~store ~execution_plan ~build_
         ~error
         ~graph_error:error_msg)
 
-let execute_action = fun ~store ~(prepared_execution:prepared_execution) ~build_ctx ~completed action ->
+let execute_action = fun
+  ~store
+  ~(prepared_execution:prepared_execution)
+  ~build_ctx
+  ~completed
+  action ->
   Action_executor.execute_node
     ~completed
     ~store
@@ -622,7 +640,12 @@ let execute_action = fun ~store ~(prepared_execution:prepared_execution) ~build_
     (Sandbox.get_dir prepared_execution.sandbox)
     action
 
-let finalize_execution = fun ~workspace ~store ~(prepared_execution:prepared_execution) ~completed ~build_ctx ->
+let finalize_execution = fun
+  ~workspace
+  ~store
+  ~(prepared_execution:prepared_execution)
+  ~completed
+  ~build_ctx ->
   let execution_plan = prepared_execution.execution_plan in
   let session_id = build_ctx.Build_ctx.session_id in
   let profile_name = build_ctx.Build_ctx.profile.name in
@@ -760,7 +783,14 @@ let execute_detailed = fun ~workspace ~toolchain ~store ~execution_plan ~build_c
           ());
       finalize_execution ~workspace ~store ~prepared_execution ~completed ~build_ctx
 
-let build_detailed = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~package ~build_ctx ->
+let build_detailed = fun
+  ~workspace
+  ~toolchain
+  ~store
+  ~package_graph
+  ~package_key
+  ~package
+  ~build_ctx ->
   match plan_detailed ~workspace ~toolchain ~store ~package_graph ~package_key ~package ~build_ctx with
   | Final_result detailed_result -> detailed_result
   | Execution_required execution_plan ->

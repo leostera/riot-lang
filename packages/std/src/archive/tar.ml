@@ -215,7 +215,8 @@ let entries = fun reader ->
                   |> Result.map_err ~fn:(fun err ->
                     Entries_error err)
                 in
-                let* () = drain_entry_entries source tar_reader in loop (entry :: acc)
+                let* () = drain_entry_entries source tar_reader in
+                loop (entry :: acc)
             | Ok Engine.Need_input -> panic "next_entry_entries must not return Need_input"
           in
           loop [])

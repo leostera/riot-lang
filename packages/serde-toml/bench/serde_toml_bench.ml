@@ -477,13 +477,14 @@ let equal_manifest = fun (left: manifest) (right: manifest) ->
   && equal_lists equal_stop (vec_to_list left.stops) (vec_to_list right.stops)
   && equal_lists equal_stop (Array.to_list left.mirrors) (Array.to_list right.mirrors)
 
-let build_fixture = fun ({
-  label;
-  tag_count;
-  score_count;
-  stop_count;
-  string_repeat
-}: fixture_spec) ->
+let build_fixture = fun
+  ({
+    label;
+    tag_count;
+    score_count;
+    stop_count;
+    string_repeat
+  }: fixture_spec) ->
   let value: manifest = {
     ship = repeat "thousand-sunny-logbook-" string_repeat;
     emergency = false;

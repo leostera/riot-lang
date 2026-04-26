@@ -88,6 +88,7 @@ let add_workspace_member = fun ~(workspace:Workspace_manifest.t) ~path ->
     |> Result.map_err ~fn:IO.error_message
   in
   let* updated_source =
-    add_workspace_member_to_source ~member:(Path.to_string relative_path) manifest_source in
+    add_workspace_member_to_source ~member:(Path.to_string relative_path) manifest_source
+  in
   Fs.write updated_source manifest_path
   |> Result.map_err ~fn:(fun err -> "Failed to update workspace manifest: " ^ IO.error_message err)

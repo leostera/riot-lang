@@ -111,7 +111,8 @@ let read_once = fun poll ~token file ->
     | Kernel.Result.Ok count -> Ok (Kernel.Bytes.sub_string buffer ~offset:0 ~len:count)
     | Kernel.Result.Error error ->
         if is_would_block error then
-          let* () = wait_readable poll ~token (Kernel.Fs.File.to_source file) in loop ()
+          let* () = wait_readable poll ~token (Kernel.Fs.File.to_source file) in
+          loop ()
         else
           Error (Kernel.Fs.File.error_to_string error)
   in
@@ -125,7 +126,8 @@ let read_all = fun poll ~token file ->
     | Kernel.Result.Ok count -> loop (Kernel.Bytes.sub_string buffer ~offset:0 ~len:count :: parts)
     | Kernel.Result.Error error ->
         if is_would_block error then
-          let* () = wait_readable poll ~token (Kernel.Fs.File.to_source file) in loop parts
+          let* () = wait_readable poll ~token (Kernel.Fs.File.to_source file) in
+          loop parts
         else
           Error (Kernel.Fs.File.error_to_string error)
   in
@@ -144,7 +146,8 @@ let write_all = fun poll ~token file buffer ->
             loop (pos + written) (len - written)
       | Kernel.Result.Error error ->
           if is_would_block error then
-            let* () = wait_writable poll ~token (Kernel.Fs.File.to_source file) in loop pos len
+            let* () = wait_writable poll ~token (Kernel.Fs.File.to_source file) in
+            loop pos len
           else
             Error (Kernel.Fs.File.error_to_string error)
   in
@@ -159,13 +162,15 @@ let wait_for_exit = fun poll ~token process ->
     | None ->
         let source = Kernel.Process.to_source process in
         let* () =
-          lift_async (Kernel.Async.Poll.register poll token Kernel.Async.Interest.priority source) in
+          lift_async (Kernel.Async.Poll.register poll token Kernel.Async.Interest.priority source)
+        in
         protect
           ~finally:(fun () ->
             let _ = Kernel.Async.Poll.deregister poll source in
             ())
-          (fun () -> let* _ = lift_async (Kernel.Async.Poll.poll ~timeout:exit_poll_timeout poll) in
-          loop ())
+          (fun () ->
+            let* _ = lift_async (Kernel.Async.Poll.poll ~timeout:exit_poll_timeout poll) in
+            loop ())
   in
   loop ()
 
@@ -196,14 +201,16 @@ let send_signal_command = fun ~signal process ->
         ~program:"/bin/kill"
         ~args:[|signal; Kernel.Int.to_string (Kernel.Process.pid process)|]
         ~stdio
-        ()) in
+        ())
+  in
   with_process
     helper
     (fun helper ->
       with_poll
         (fun poll ->
           let* status =
-            wait_for_exit poll ~token:(Kernel.Async.Token.make ("kill-helper", signal)) helper in
+            wait_for_exit poll ~token:(Kernel.Async.Token.make ("kill-helper", signal)) helper
+          in
           if status = Kernel.Process.Exited 0 then
             Ok ()
           else
@@ -218,7 +225,8 @@ let test_current_pid_is_positive = fun _ctx ->
 let test_stdout_pipe_roundtrips = fun _ctx ->
   let stdio = Kernel.Process.{ stdin = Stdin.Null; stdout = Stdout.Pipe; stderr = Stderr.Null } in
   let* process =
-    lift_process (Kernel.Process.spawn ~program:"/bin/echo" ~args:[|"-n"; "hello"|] ~stdio ()) in
+    lift_process (Kernel.Process.spawn ~program:"/bin/echo" ~args:[|"-n"; "hello"|] ~stdio ())
+  in
   with_process
     process
     (fun process ->
@@ -265,7 +273,8 @@ let test_stderr_redirect_to_stdout_merges_streams = fun _ctx ->
         ~program:"/bin/sh"
         ~args:[|"-c"; "printf out; printf err >&2"|]
         ~stdio
-        ()) in
+        ())
+  in
   with_process
     process
     (fun process ->
@@ -289,7 +298,8 @@ let test_stdout_and_stderr_pipes_remain_drainable_after_exit = fun _ctx ->
         ~program:"/bin/sh"
         ~args:[|"-c"; "printf out; printf err >&2"|]
         ~stdio
-        ()) in
+        ())
+  in
   with_process
     process
     (fun process ->
@@ -311,7 +321,8 @@ let test_stdout_and_stderr_pipes_remain_drainable_after_exit = fun _ctx ->
 let test_try_wait_reports_running_then_exit = fun _ctx ->
   let stdio = Kernel.Process.{ stdin = Stdin.Null; stdout = Stdout.Null; stderr = Stderr.Null } in
   let* process =
-    lift_process (Kernel.Process.spawn ~program:"/bin/sh" ~args:[|"-c"; "sleep 0.05"|] ~stdio ()) in
+    lift_process (Kernel.Process.spawn ~program:"/bin/sh" ~args:[|"-c"; "sleep 0.05"|] ~stdio ())
+  in
   with_process
     process
     (fun process ->
@@ -330,7 +341,8 @@ let test_try_wait_reports_running_then_exit = fun _ctx ->
 let test_process_source_reports_exit_ready = fun _ctx ->
   let stdio = Kernel.Process.{ stdin = Stdin.Null; stdout = Stdout.Null; stderr = Stderr.Null } in
   let* process =
-    lift_process (Kernel.Process.spawn ~program:"/bin/sh" ~args:[|"-c"; "sleep 0.01"|] ~stdio ()) in
+    lift_process (Kernel.Process.spawn ~program:"/bin/sh" ~args:[|"-c"; "sleep 0.01"|] ~stdio ())
+  in
   with_process
     process
     (fun process ->
@@ -345,7 +357,8 @@ let test_process_source_reports_exit_ready = fun _ctx ->
 let test_process_source_reregister_updates_token = fun _ctx ->
   let stdio = Kernel.Process.{ stdin = Stdin.Null; stdout = Stdout.Null; stderr = Stderr.Null } in
   let* process =
-    lift_process (Kernel.Process.spawn ~program:"/bin/sh" ~args:[|"-c"; "sleep 0.02"|] ~stdio ()) in
+    lift_process (Kernel.Process.spawn ~program:"/bin/sh" ~args:[|"-c"; "sleep 0.02"|] ~stdio ())
+  in
   with_process
     process
     (fun process ->
@@ -356,7 +369,8 @@ let test_process_source_reregister_updates_token = fun _ctx ->
           let token_b = Kernel.Async.Token.make "second-process-token" in
           let* () =
             lift_async
-              (Kernel.Async.Poll.register poll token_a Kernel.Async.Interest.priority source) in
+              (Kernel.Async.Poll.register poll token_a Kernel.Async.Interest.priority source)
+          in
           protect
             ~finally:(fun () ->
               let _ = Kernel.Async.Poll.deregister poll source in
@@ -364,7 +378,8 @@ let test_process_source_reregister_updates_token = fun _ctx ->
             (fun () ->
               let* () =
                 lift_async
-                  (Kernel.Async.Poll.reregister poll token_b Kernel.Async.Interest.priority source) in
+                  (Kernel.Async.Poll.reregister poll token_b Kernel.Async.Interest.priority source)
+              in
               let* () = wait_for_priority_token poll ~token:token_b in
               match Kernel.Process.try_wait process with
               | Kernel.Result.Ok (Some (Kernel.Process.Exited 0)) -> Ok ()
@@ -375,7 +390,8 @@ let test_process_source_reregister_updates_token = fun _ctx ->
 let test_process_close_preserves_registered_exit_source = fun _ctx ->
   let stdio = Kernel.Process.{ stdin = Stdin.Null; stdout = Stdout.Pipe; stderr = Stderr.Null } in
   let* process =
-    lift_process (Kernel.Process.spawn ~program:"/bin/sh" ~args:[|"-c"; "sleep 0.02"|] ~stdio ()) in
+    lift_process (Kernel.Process.spawn ~program:"/bin/sh" ~args:[|"-c"; "sleep 0.02"|] ~stdio ())
+  in
   with_process
     process
     (fun process ->
@@ -384,7 +400,8 @@ let test_process_close_preserves_registered_exit_source = fun _ctx ->
           let source = Kernel.Process.to_source process in
           let token = Kernel.Async.Token.make "closed-process-source" in
           let* () =
-            lift_async (Kernel.Async.Poll.register poll token Kernel.Async.Interest.priority source) in
+            lift_async (Kernel.Async.Poll.register poll token Kernel.Async.Interest.priority source)
+          in
           protect
             ~finally:(fun () ->
               let _ = Kernel.Async.Poll.deregister poll source in
@@ -401,7 +418,8 @@ let test_process_close_preserves_registered_exit_source = fun _ctx ->
 let test_process_source_deregister_before_close_is_harmless = fun _ctx ->
   let stdio = Kernel.Process.{ stdin = Stdin.Null; stdout = Stdout.Null; stderr = Stderr.Null } in
   let* process =
-    lift_process (Kernel.Process.spawn ~program:"/bin/sh" ~args:[|"-c"; "sleep 0.02"|] ~stdio ()) in
+    lift_process (Kernel.Process.spawn ~program:"/bin/sh" ~args:[|"-c"; "sleep 0.02"|] ~stdio ())
+  in
   with_process
     process
     (fun process ->
@@ -414,7 +432,8 @@ let test_process_source_deregister_before_close_is_harmless = fun _ctx ->
                 poll
                 (Kernel.Async.Token.make "process-deregister-then-close")
                 Kernel.Async.Interest.priority
-                source) in
+                source)
+          in
           let* () = lift_async (Kernel.Async.Poll.deregister poll source) in
           let* () = lift_process (Kernel.Process.close process) in
           let* status = wait_for_exit poll ~token:(Kernel.Async.Token.make 533) process in
@@ -426,7 +445,8 @@ let test_process_source_deregister_before_close_is_harmless = fun _ctx ->
 let test_try_wait_is_stable_after_priority_readiness = fun _ctx ->
   let stdio = Kernel.Process.{ stdin = Stdin.Null; stdout = Stdout.Null; stderr = Stderr.Null } in
   let* process =
-    lift_process (Kernel.Process.spawn ~program:"/bin/sh" ~args:[|"-c"; "sleep 0.02"|] ~stdio ()) in
+    lift_process (Kernel.Process.spawn ~program:"/bin/sh" ~args:[|"-c"; "sleep 0.02"|] ~stdio ())
+  in
   with_process
     process
     (fun process ->
@@ -435,7 +455,8 @@ let test_try_wait_is_stable_after_priority_readiness = fun _ctx ->
           let source = Kernel.Process.to_source process in
           let token = Kernel.Async.Token.make "process-priority-then-try-wait" in
           let* () =
-            lift_async (Kernel.Async.Poll.register poll token Kernel.Async.Interest.priority source) in
+            lift_async (Kernel.Async.Poll.register poll token Kernel.Async.Interest.priority source)
+          in
           protect
             ~finally:(fun () ->
               let _ = Kernel.Async.Poll.deregister poll source in
@@ -451,7 +472,8 @@ let test_try_wait_is_stable_after_priority_readiness = fun _ctx ->
 let test_kill_reports_signaled_status = fun _ctx ->
   let stdio = Kernel.Process.{ stdin = Stdin.Null; stdout = Stdout.Null; stderr = Stderr.Null } in
   let* process =
-    lift_process (Kernel.Process.spawn ~program:"/bin/sh" ~args:[|"-c"; "sleep 5"|] ~stdio ()) in
+    lift_process (Kernel.Process.spawn ~program:"/bin/sh" ~args:[|"-c"; "sleep 5"|] ~stdio ())
+  in
   with_process
     process
     (fun process ->
@@ -467,7 +489,8 @@ let test_kill_reports_signaled_status = fun _ctx ->
 let test_sigterm_reports_signaled_status = fun _ctx ->
   let stdio = Kernel.Process.{ stdin = Stdin.Null; stdout = Stdout.Null; stderr = Stderr.Null } in
   let* process =
-    lift_process (Kernel.Process.spawn ~program:"/bin/sh" ~args:[|"-c"; "sleep 5"|] ~stdio ()) in
+    lift_process (Kernel.Process.spawn ~program:"/bin/sh" ~args:[|"-c"; "sleep 5"|] ~stdio ())
+  in
   with_process
     process
     (fun process ->
@@ -483,7 +506,8 @@ let test_sigterm_reports_signaled_status = fun _ctx ->
 let test_kill_then_close_preserves_signaled_status = fun _ctx ->
   let stdio = Kernel.Process.{ stdin = Stdin.Pipe; stdout = Stdout.Pipe; stderr = Stderr.Null } in
   let* process =
-    lift_process (Kernel.Process.spawn ~program:"/bin/sh" ~args:[|"-c"; "sleep 5"|] ~stdio ()) in
+    lift_process (Kernel.Process.spawn ~program:"/bin/sh" ~args:[|"-c"; "sleep 5"|] ~stdio ())
+  in
   with_process
     process
     (fun process ->
@@ -500,7 +524,8 @@ let test_kill_then_close_preserves_signaled_status = fun _ctx ->
 let test_close_then_kill_preserves_signaled_status = fun _ctx ->
   let stdio = Kernel.Process.{ stdin = Stdin.Pipe; stdout = Stdout.Pipe; stderr = Stderr.Null } in
   let* process =
-    lift_process (Kernel.Process.spawn ~program:"/bin/sh" ~args:[|"-c"; "sleep 5"|] ~stdio ()) in
+    lift_process (Kernel.Process.spawn ~program:"/bin/sh" ~args:[|"-c"; "sleep 5"|] ~stdio ())
+  in
   with_process
     process
     (fun process ->
@@ -517,7 +542,8 @@ let test_close_then_kill_preserves_signaled_status = fun _ctx ->
 let test_non_zero_exit_status_roundtrips = fun _ctx ->
   let stdio = Kernel.Process.{ stdin = Stdin.Null; stdout = Stdout.Null; stderr = Stderr.Null } in
   let* process =
-    lift_process (Kernel.Process.spawn ~program:"/bin/sh" ~args:[|"-c"; "exit 7"|] ~stdio ()) in
+    lift_process (Kernel.Process.spawn ~program:"/bin/sh" ~args:[|"-c"; "exit 7"|] ~stdio ())
+  in
   with_process
     process
     (fun process ->
@@ -538,7 +564,8 @@ let test_spawn_applies_custom_environment = fun _ctx ->
         ~args:[|"-c"; "printf %s \"$KERNEL_NEW_PROCESS_TEST\""|]
         ~env:[|("KERNEL_NEW_PROCESS_TEST", "env-ok")|]
         ~stdio
-        ()) in
+        ())
+  in
   with_process
     process
     (fun process ->
@@ -561,7 +588,8 @@ let test_spawn_applies_current_dir = fun _ctx ->
       let stdio = Kernel.Process.{ stdin = Stdin.Null; stdout = Stdout.Pipe; stderr = Stderr.Null } in
       let* process =
         lift_process
-          (Kernel.Process.spawn ~program:"/bin/pwd" ~args:[||] ~current_dir:tempdir ~stdio ()) in
+          (Kernel.Process.spawn ~program:"/bin/pwd" ~args:[||] ~current_dir:tempdir ~stdio ())
+      in
       with_process
         process
         (fun process ->
@@ -583,7 +611,8 @@ let test_spawn_applies_current_dir = fun _ctx ->
                   in
                   let* expected = lift_file (Kernel.Fs.File.canonicalize tempdir) in
                   let* actual =
-                    lift_file (Kernel.Fs.File.canonicalize (Kernel.Path.from_string output)) in
+                    lift_file (Kernel.Fs.File.canonicalize (Kernel.Path.from_string output))
+                  in
                   if
                     Kernel.Path.to_string actual = Kernel.Path.to_string expected
                     && status = Kernel.Process.Exited 0
@@ -604,8 +633,10 @@ let test_file_backed_stdio_roundtrips = fun _ctx ->
           input_file
           (fun () ->
             let* _ =
-              lift_file (Kernel.Fs.File.write input_file (Kernel.Bytes.from_string "file-stdio")) in
-            Ok ()) in
+              lift_file (Kernel.Fs.File.write input_file (Kernel.Bytes.from_string "file-stdio"))
+            in
+            Ok ())
+      in
       let* stdin_file = lift_file (Kernel.Fs.File.open_read input_path) in
       protect
         ~finally:(fun () ->
@@ -613,7 +644,8 @@ let test_file_backed_stdio_roundtrips = fun _ctx ->
           ())
         (fun () ->
           let* stdout_file =
-            lift_file (Kernel.Fs.File.open_write ~create:true ~truncate:true output_path) in
+            lift_file (Kernel.Fs.File.open_write ~create:true ~truncate:true output_path)
+          in
           protect
             ~finally:(fun () ->
               let _ = Kernel.Fs.File.close stdout_file in
@@ -627,14 +659,16 @@ let test_file_backed_stdio_roundtrips = fun _ctx ->
                 }
               in
               let* process =
-                lift_process (Kernel.Process.spawn ~program:"/bin/cat" ~args:[||] ~stdio ()) in
+                lift_process (Kernel.Process.spawn ~program:"/bin/cat" ~args:[||] ~stdio ())
+              in
               let* status =
                 with_process
                   process
                   (fun process ->
                     with_poll
                       (fun poll ->
-                        wait_for_exit poll ~token:(Kernel.Async.Token.make 529) process)) in
+                        wait_for_exit poll ~token:(Kernel.Async.Token.make 529) process))
+              in
               let* output = lift_file (Kernel.Fs.File.open_read output_path) in
               let buffer = Kernel.Bytes.create ~size:32 in
               let* payload =
@@ -642,7 +676,8 @@ let test_file_backed_stdio_roundtrips = fun _ctx ->
                   output
                   (fun () ->
                     let* count = lift_file (Kernel.Fs.File.read output buffer) in
-                    Ok (Kernel.Bytes.sub_string buffer ~offset:0 ~len:count)) in
+                    Ok (Kernel.Bytes.sub_string buffer ~offset:0 ~len:count))
+              in
               if status = Kernel.Process.Exited 0 && payload = "file-stdio" then
                 Ok ()
               else
@@ -660,8 +695,10 @@ let test_file_backed_stdio_uses_no_kernel_pipes = fun _ctx ->
           input_file
           (fun () ->
             let* _ =
-              lift_file (Kernel.Fs.File.write input_file (Kernel.Bytes.from_string "file-stdio")) in
-            Ok ()) in
+              lift_file (Kernel.Fs.File.write input_file (Kernel.Bytes.from_string "file-stdio"))
+            in
+            Ok ())
+      in
       let* stdin_file = lift_file (Kernel.Fs.File.open_read input_path) in
       protect
         ~finally:(fun () ->
@@ -669,7 +706,8 @@ let test_file_backed_stdio_uses_no_kernel_pipes = fun _ctx ->
           ())
         (fun () ->
           let* stdout_file =
-            lift_file (Kernel.Fs.File.open_write ~create:true ~truncate:true output_path) in
+            lift_file (Kernel.Fs.File.open_write ~create:true ~truncate:true output_path)
+          in
           protect
             ~finally:(fun () ->
               let _ = Kernel.Fs.File.close stdout_file in
@@ -683,14 +721,16 @@ let test_file_backed_stdio_uses_no_kernel_pipes = fun _ctx ->
                 }
               in
               let* process =
-                lift_process (Kernel.Process.spawn ~program:"/usr/bin/true" ~args:[||] ~stdio ()) in
+                lift_process (Kernel.Process.spawn ~program:"/usr/bin/true" ~args:[||] ~stdio ())
+              in
               with_process
                 process
                 (fun process ->
                   let* status =
                     with_poll
                       (fun poll ->
-                        wait_for_exit poll ~token:(Kernel.Async.Token.make 532) process) in
+                        wait_for_exit poll ~token:(Kernel.Async.Token.make 532) process)
+                  in
                   if
                     status = Kernel.Process.Exited 0
                     && Kernel.Process.stdin process = None
@@ -725,7 +765,8 @@ let test_inherited_stdio_uses_no_kernel_pipes = fun _ctx ->
 let test_requested_pipe_ownership_matches_stdio = fun _ctx ->
   let stdio = Kernel.Process.{ stdin = Stdin.Pipe; stdout = Stdout.Null; stderr = Stderr.Pipe } in
   let* process =
-    lift_process (Kernel.Process.spawn ~program:"/bin/sh" ~args:[|"-c"; "cat >&2"|] ~stdio ()) in
+    lift_process (Kernel.Process.spawn ~program:"/bin/sh" ~args:[|"-c"; "cat >&2"|] ~stdio ())
+  in
   with_process
     process
     (fun process ->
@@ -762,9 +803,10 @@ let test_process_close_tolerates_preclosed_pipe_handles = fun _ctx ->
   let* process = lift_process (Kernel.Process.spawn ~program:"/bin/cat" ~args:[||] ~stdio ()) in
   match (Kernel.Process.stdin process, Kernel.Process.stdout process) with
   | (Some stdin, Some stdout) ->
-      let* () = lift_file (Kernel.Fs.File.close stdin) in let* () =
-        lift_file (Kernel.Fs.File.close stdout) in let* () =
-        lift_process (Kernel.Process.close process) in Ok ()
+      let* () = lift_file (Kernel.Fs.File.close stdin) in
+      let* () = lift_file (Kernel.Fs.File.close stdout) in
+      let* () = lift_process (Kernel.Process.close process) in
+      Ok ()
   | _ ->
       let _ = Kernel.Process.close process in
       Error "expected process pipes to exist"
@@ -772,7 +814,8 @@ let test_process_close_tolerates_preclosed_pipe_handles = fun _ctx ->
 let test_try_wait_is_stable_after_exit = fun _ctx ->
   let stdio = Kernel.Process.{ stdin = Stdin.Null; stdout = Stdout.Null; stderr = Stderr.Null } in
   let* process =
-    lift_process (Kernel.Process.spawn ~program:"/bin/sh" ~args:[|"-c"; "exit 0"|] ~stdio ()) in
+    lift_process (Kernel.Process.spawn ~program:"/bin/sh" ~args:[|"-c"; "exit 0"|] ~stdio ())
+  in
   with_process
     process
     (fun process ->
@@ -789,7 +832,8 @@ let test_try_wait_is_stable_after_exit = fun _ctx ->
 let test_kill_after_exit_reports_no_such_process = fun _ctx ->
   let stdio = Kernel.Process.{ stdin = Stdin.Null; stdout = Stdout.Null; stderr = Stderr.Null } in
   let* process =
-    lift_process (Kernel.Process.spawn ~program:"/bin/sh" ~args:[|"-c"; "exit 0"|] ~stdio ()) in
+    lift_process (Kernel.Process.spawn ~program:"/bin/sh" ~args:[|"-c"; "exit 0"|] ~stdio ())
+  in
   with_process
     process
     (fun process ->
@@ -804,9 +848,10 @@ let test_kill_after_exit_reports_no_such_process = fun _ctx ->
 
 let test_process_close_is_idempotent = fun _ctx ->
   let stdio = Kernel.Process.{ stdin = Stdin.Pipe; stdout = Stdout.Pipe; stderr = Stderr.Null } in
-  let* process = lift_process (Kernel.Process.spawn ~program:"/bin/cat" ~args:[||] ~stdio ()) in let* () =
-    lift_process (Kernel.Process.close process) in let* () =
-    lift_process (Kernel.Process.close process) in Ok ()
+  let* process = lift_process (Kernel.Process.spawn ~program:"/bin/cat" ~args:[||] ~stdio ()) in
+  let* () = lift_process (Kernel.Process.close process) in
+  let* () = lift_process (Kernel.Process.close process) in
+  Ok ()
 
 let test_repeated_spawn_and_poll_exit_stays_healthy = fun _ctx ->
   let stdio = Kernel.Process.{ stdin = Stdin.Null; stdout = Stdout.Null; stderr = Stderr.Null } in
@@ -817,19 +862,22 @@ let test_repeated_spawn_and_poll_exit_stays_healthy = fun _ctx ->
           Ok ()
         else
           let* process =
-            lift_process (Kernel.Process.spawn ~program:"/usr/bin/true" ~args:[||] ~stdio ()) in
+            lift_process (Kernel.Process.spawn ~program:"/usr/bin/true" ~args:[||] ~stdio ())
+          in
           let outcome =
             with_process
               process
               (fun process ->
                 let* status =
-                  wait_for_exit poll ~token:(Kernel.Async.Token.make (600 + remaining)) process in
+                  wait_for_exit poll ~token:(Kernel.Async.Token.make (600 + remaining)) process
+                in
                 if status = Kernel.Process.Exited 0 then
                   Ok ()
                 else
                   Error "expected repeated spawned process to exit cleanly")
           in
-          let* () = outcome in loop (remaining - 1)
+          let* () = outcome in
+          loop (remaining - 1)
       in
       loop 32)
 
@@ -842,7 +890,8 @@ let test_many_process_sources_report_burst_exit_readiness = fun _ctx ->
           Ok (List.reverse acc)
         else
           let* process =
-            lift_process (Kernel.Process.spawn ~program:"/bin/cat" ~args:[||] ~stdio ()) in
+            lift_process (Kernel.Process.spawn ~program:"/bin/cat" ~args:[||] ~stdio ())
+          in
           spawn_many (remaining - 1) (process :: acc)
       in
       let* processes = spawn_many 12 [] in
@@ -865,7 +914,8 @@ let test_many_process_sources_report_burst_exit_readiness = fun _ctx ->
                 match Kernel.Process.stdin process with
                 | None -> Error "expected burst-exit process to own a stdin pipe"
                 | Some stdin ->
-                    let* () = lift_file (Kernel.Fs.File.close stdin) in trigger_exit_burst rest
+                    let* () = lift_file (Kernel.Fs.File.close stdin) in
+                    trigger_exit_burst rest
               )
           in
           let rec register index = function
@@ -877,7 +927,9 @@ let test_many_process_sources_report_burst_exit_readiness = fun _ctx ->
                       poll
                       (Kernel.Async.Token.make index)
                       Kernel.Async.Interest.priority
-                      (Kernel.Process.to_source process)) in register (index + 1) rest
+                      (Kernel.Process.to_source process))
+                in
+                register (index + 1) rest
           in
           let seen = Kernel.Array.make ~count:12 ~value:false in
           let rec mark = function
@@ -920,7 +972,8 @@ let test_many_process_sources_report_burst_exit_readiness = fun _ctx ->
               Error "expected many process sources to report exit readiness after a burst exit"
             else
               let* events =
-                lift_async (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:32 poll) in
+                lift_async (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:32 poll)
+              in
               mark events;
             poll_until (attempts - 1)
           in
@@ -934,8 +987,10 @@ let test_many_process_sources_report_burst_exit_readiness = fun _ctx ->
                 | _ ->
                     Error "expected burst-exit processes to stay observable through repeated try_wait"
           in
-          let* () = register 0 processes in let* () = trigger_exit_burst processes in let* () =
-            poll_until 16 in verify processes))
+          let* () = register 0 processes in
+          let* () = trigger_exit_burst processes in
+          let* () = poll_until 16 in
+          verify processes))
 
 let test_many_process_sources_report_burst_signals = fun _ctx ->
   let stdio = Kernel.Process.{ stdin = Stdin.Null; stdout = Stdout.Null; stderr = Stderr.Null } in
@@ -947,7 +1002,8 @@ let test_many_process_sources_report_burst_signals = fun _ctx ->
         else
           let* process =
             lift_process
-              (Kernel.Process.spawn ~program:"/bin/sh" ~args:[|"-c"; "sleep 5"|] ~stdio ()) in
+              (Kernel.Process.spawn ~program:"/bin/sh" ~args:[|"-c"; "sleep 5"|] ~stdio ())
+          in
           spawn_many (remaining - 1) (process :: acc)
       in
       let* processes = spawn_many 12 [] in
@@ -966,7 +1022,8 @@ let test_many_process_sources_report_burst_signals = fun _ctx ->
           let rec signal_all = function
             | [] -> Ok ()
             | process :: rest ->
-                let* () = lift_process (Kernel.Process.kill process ~signal:15) in signal_all rest
+                let* () = lift_process (Kernel.Process.kill process ~signal:15) in
+                signal_all rest
           in
           let rec register index = function
             | [] -> Ok ()
@@ -977,7 +1034,9 @@ let test_many_process_sources_report_burst_signals = fun _ctx ->
                       poll
                       (Kernel.Async.Token.make index)
                       Kernel.Async.Interest.priority
-                      (Kernel.Process.to_source process)) in register (index + 1) rest
+                      (Kernel.Process.to_source process))
+                in
+                register (index + 1) rest
           in
           let seen = Kernel.Array.make ~count:12 ~value:false in
           let rec mark = function
@@ -1020,7 +1079,8 @@ let test_many_process_sources_report_burst_signals = fun _ctx ->
               Error "expected many process sources to report signaled readiness after a kill burst"
             else
               let* events =
-                lift_async (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:32 poll) in
+                lift_async (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:32 poll)
+              in
               mark events;
             poll_until (attempts - 1)
           in
@@ -1035,8 +1095,10 @@ let test_many_process_sources_report_burst_signals = fun _ctx ->
                 | _ ->
                     Error "expected burst-signaled processes to stay observable through repeated try_wait"
           in
-          let* () = register 0 processes in let* () = signal_all processes in let* () = poll_until
-            16 in verify processes))
+          let* () = register 0 processes in
+          let* () = signal_all processes in
+          let* () = poll_until 16 in
+          verify processes))
 
 let test_default_stdio_is_all_inherit = fun _ctx ->
   match Kernel.Process.default_stdio with
@@ -1047,7 +1109,8 @@ let test_default_stdio_is_all_inherit = fun _ctx ->
 let test_process_pid_is_positive_and_stable_before_and_after_exit = fun _ctx ->
   let stdio = Kernel.Process.{ stdin = Stdin.Null; stdout = Stdout.Null; stderr = Stderr.Null } in
   let* process =
-    lift_process (Kernel.Process.spawn ~program:"/bin/sh" ~args:[|"-c"; "exit 0"|] ~stdio ()) in
+    lift_process (Kernel.Process.spawn ~program:"/bin/sh" ~args:[|"-c"; "exit 0"|] ~stdio ())
+  in
   with_process
     process
     (fun process ->
@@ -1088,7 +1151,8 @@ let test_stdin_null_delivers_immediate_eof_to_the_child = fun _ctx ->
         ~program:"/bin/sh"
         ~args:[|"-c"; "if IFS= read -r line; then exit 1; else exit 0; fi"|]
         ~stdio
-        ()) in
+        ())
+  in
   with_process
     process
     (fun process ->
@@ -1108,7 +1172,8 @@ let test_stdout_null_discards_stdout_without_creating_a_pipe = fun _ctx ->
         ~program:"/bin/sh"
         ~args:[|"-c"; "printf out; printf err >&2"|]
         ~stdio
-        ()) in
+        ())
+  in
   with_process
     process
     (fun process ->
@@ -1132,7 +1197,8 @@ let test_stderr_null_discards_stderr_without_creating_a_pipe = fun _ctx ->
         ~program:"/bin/sh"
         ~args:[|"-c"; "printf out; printf err >&2"|]
         ~stdio
-        ()) in
+        ())
+  in
   with_process
     process
     (fun process ->
@@ -1167,7 +1233,8 @@ let test_spawn_with_empty_env_still_inherits_unrelated_parent_vars = fun _ctx ->
                 ~args:[|"-c"; "test \"$RIOT_KERNEL_NEW_PROCESS_PARENT_VAR\" = present"|]
                 ~env:[||]
                 ~stdio
-                ()) in
+                ())
+          in
           with_process
             process
             (fun process ->
@@ -1206,7 +1273,8 @@ let test_spawn_env_override_leaves_unrelated_parent_vars_intact = fun _ctx ->
                 |]
                 ~env:[|(replaced, "after")|]
                 ~stdio
-                ()) in
+                ())
+          in
           with_process
             process
             (fun process ->
@@ -1231,7 +1299,8 @@ let test_file_backed_stdin_honors_the_current_file_offset = fun _ctx ->
           input_file
           (fun () ->
             let* written =
-              lift_file (Kernel.Fs.File.write input_file (Kernel.Bytes.from_string "012345")) in
+              lift_file (Kernel.Fs.File.write input_file (Kernel.Bytes.from_string "012345"))
+            in
             if written = 6 then
               Ok ()
             else
@@ -1256,7 +1325,8 @@ let test_file_backed_stdin_honors_the_current_file_offset = fun _ctx ->
               }
             in
             let* process =
-              lift_process (Kernel.Process.spawn ~program:"/bin/cat" ~args:[||] ~stdio ()) in
+              lift_process (Kernel.Process.spawn ~program:"/bin/cat" ~args:[||] ~stdio ())
+            in
             with_process
               process
               (fun process ->
@@ -1266,7 +1336,8 @@ let test_file_backed_stdin_honors_the_current_file_offset = fun _ctx ->
                     with_poll
                       (fun poll ->
                         let* status =
-                          wait_for_exit poll ~token:(Kernel.Async.Token.make 919) process in
+                          wait_for_exit poll ~token:(Kernel.Async.Token.make 919) process
+                        in
                         let* payload = read_all poll ~token:(Kernel.Async.Token.make 920) stdout in
                         if status = Kernel.Process.Exited 0 && payload = "2345" then
                           Ok ()
@@ -1277,7 +1348,8 @@ let test_try_wait_observes_stopped_processes = fun _ctx ->
   let stdio = Kernel.Process.{ stdin = Stdin.Null; stdout = Stdout.Null; stderr = Stderr.Null } in
   let* process =
     lift_process
-      (Kernel.Process.spawn ~program:"/bin/sh" ~args:[|"-c"; "while :; do sleep 1; done"|] ~stdio ()) in
+      (Kernel.Process.spawn ~program:"/bin/sh" ~args:[|"-c"; "while :; do sleep 1; done"|] ~stdio ())
+  in
   with_process
     process
     (fun process ->
@@ -1286,7 +1358,8 @@ let test_try_wait_observes_stopped_processes = fun _ctx ->
           let source = Kernel.Process.to_source process in
           let token = Kernel.Async.Token.make 921 in
           let* () =
-            lift_async (Kernel.Async.Poll.register poll token Kernel.Async.Interest.priority source) in
+            lift_async (Kernel.Async.Poll.register poll token Kernel.Async.Interest.priority source)
+          in
           protect
             ~finally:(fun () ->
               let _ = Kernel.Async.Poll.deregister poll source in
@@ -1312,7 +1385,8 @@ let test_stopped_then_continued_process_eventually_reports_final_exit = fun _ctx
   let stdio = Kernel.Process.{ stdin = Stdin.Null; stdout = Stdout.Null; stderr = Stderr.Null } in
   let* process =
     lift_process
-      (Kernel.Process.spawn ~program:"/bin/sh" ~args:[|"-c"; "kill -STOP $$; exit 0"|] ~stdio ()) in
+      (Kernel.Process.spawn ~program:"/bin/sh" ~args:[|"-c"; "kill -STOP $$; exit 0"|] ~stdio ())
+  in
   with_process
     process
     (fun process ->
@@ -1321,7 +1395,8 @@ let test_stopped_then_continued_process_eventually_reports_final_exit = fun _ctx
           let source = Kernel.Process.to_source process in
           let token = Kernel.Async.Token.make 923 in
           let* () =
-            lift_async (Kernel.Async.Poll.register poll token Kernel.Async.Interest.priority source) in
+            lift_async (Kernel.Async.Poll.register poll token Kernel.Async.Interest.priority source)
+          in
           protect
             ~finally:(fun () ->
               let _ = Kernel.Async.Poll.deregister poll source in
@@ -1351,7 +1426,8 @@ let test_stopped_then_continued_process_eventually_reports_final_exit = fun _ctx
 let test_kill_rejects_invalid_signal_numbers = fun _ctx ->
   let stdio = Kernel.Process.{ stdin = Stdin.Null; stdout = Stdout.Null; stderr = Stderr.Null } in
   let* process =
-    lift_process (Kernel.Process.spawn ~program:"/bin/sh" ~args:[|"-c"; "sleep 0.05"|] ~stdio ()) in
+    lift_process (Kernel.Process.spawn ~program:"/bin/sh" ~args:[|"-c"; "sleep 0.05"|] ~stdio ())
+  in
   with_process
     process
     (fun process ->
@@ -1384,7 +1460,8 @@ let test_spawn_regular_file_current_dir_reports_not_directory = fun _ctx ->
         with_file
           file
           (fun () ->
-            lift_file (Kernel.Fs.File.write file (Kernel.Bytes.from_string "riot"))) in
+            lift_file (Kernel.Fs.File.write file (Kernel.Bytes.from_string "riot")))
+      in
       let stdio = Kernel.Process.{ stdin = Stdin.Null; stdout = Stdout.Null; stderr = Stderr.Null } in
       match Kernel.Process.spawn
         ~program:"/usr/bin/true"

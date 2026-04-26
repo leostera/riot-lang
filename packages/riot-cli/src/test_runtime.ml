@@ -232,7 +232,11 @@ let realized_test_packages = fun ?(package_filters = []) (workspace: Workspace.t
   |> List.filter ~fn:Package.is_workspace_member
   |> List.filter ~fn:(fun (pkg: Package.t) -> matches_package_filters package_filters pkg.name)
 
-let collect_suite_binaries = fun (workspace: Workspace.t) ?(package_filters = []) ?suite_filter () ->
+let collect_suite_binaries = fun
+  (workspace: Workspace.t)
+  ?(package_filters = [])
+  ?suite_filter
+  () ->
   realized_test_packages ~package_filters workspace
   |> List.flat_map
     ~fn:(fun (pkg: Package.t) ->
@@ -362,7 +366,8 @@ let test_type_of_json = fun json ->
   match kind with
   | "test" -> Ok Test
   | "property" ->
-      let* examples_json = field "examples" fields in let* examples = get_int examples_json in
+      let* examples_json = field "examples" fields in
+      let* examples = get_int examples_json in
       Ok (Property { examples })
   | other -> Error ("unknown test type " ^ other)
 
@@ -403,10 +408,12 @@ let test_status_of_json = fun json ->
   | "passed" -> Ok Passed
   | "skipped" -> Ok Skipped
   | "failed" ->
-      let* message_json = field "message" fields in let* message = get_string message_json in
+      let* message_json = field "message" fields in
+      let* message = get_string message_json in
       Ok (Failed message)
   | "timed_out" ->
-      let* timeout_json = field "timeout_ms" fields in let* timeout_ms = get_int timeout_json in
+      let* timeout_json = field "timeout_ms" fields in
+      let* timeout_ms = get_int timeout_json in
       Ok (Timed_out { timeout_ms })
   | other -> Error ("unknown test status " ^ other)
 
@@ -501,12 +508,18 @@ let listed_test_case_of_json = fun json ->
     skip;
   }
 
-let test_summary_of_json = fun json -> let* fields = get_object json in let* total_json =
-  field "total" fields in let* passed_json = field "passed" fields in let* failed_json =
-  field "failed" fields in let* skipped_json = field "skipped" fields in let* total =
-  get_int total_json in let* passed = get_int passed_json in let* failed = get_int failed_json in let* skipped =
-  get_int skipped_json in let* duration_us = optional_int_field "duration_us" fields in
-Ok (total, passed, failed, skipped, Option.unwrap_or ~default:0 duration_us)
+let test_summary_of_json = fun json ->
+  let* fields = get_object json in
+  let* total_json = field "total" fields in
+  let* passed_json = field "passed" fields in
+  let* failed_json = field "failed" fields in
+  let* skipped_json = field "skipped" fields in
+  let* total = get_int total_json in
+  let* passed = get_int passed_json in
+  let* failed = get_int failed_json in
+  let* skipped = get_int skipped_json in
+  let* duration_us = optional_int_field "duration_us" fields in
+  Ok (total, passed, failed, skipped, Option.unwrap_or ~default:0 duration_us)
 
 let parse_test_suite_output = fun stdout ->
   let* (prefix_stdout, json_line) = split_json_stdout stdout in
@@ -530,16 +543,11 @@ let parse_test_suite_output = fun stdout ->
         let* result = test_result_of_json index test_json in
         parse_results (index + 1) (result :: acc) rest
   in
-  let* results = parse_results 1 [] tests in let* (
-    total,
-    passed,
-    failed,
-    skipped,
-    summary_duration_us
-  ) = test_summary_of_json summary_json in let* started_at_us =
-    optional_int_field "started_at_us" fields in let* completed_at_us =
-    optional_int_field "completed_at_us" fields in let* duration_us =
-    optional_int_field "duration_us" fields in
+  let* results = parse_results 1 [] tests in
+  let* (total, passed, failed, skipped, summary_duration_us) = test_summary_of_json summary_json in
+  let* started_at_us = optional_int_field "started_at_us" fields in
+  let* completed_at_us = optional_int_field "completed_at_us" fields in
+  let* duration_us = optional_int_field "duration_us" fields in
   Ok (
     prefix_stdout,
     started_at_us,
@@ -566,7 +574,9 @@ let parse_listed_tests_output = fun stdout ->
   let* tests = get_array tests_json in
   let rec loop acc = function
     | [] -> Ok (List.reverse acc)
-    | json :: rest -> let* listed = listed_test_case_of_json json in loop (listed :: acc) rest
+    | json :: rest ->
+        let* listed = listed_test_case_of_json json in
+        loop (listed :: acc) rest
   in
   loop [] tests
 
@@ -829,9 +839,14 @@ let materialized_export_path = fun ~(workspace:Workspace.t) ~profile ~package_na
   in
   Path.(out_dir / Path.v (Package_name.to_string package_name) / Path.v export_name)
 
-let find_export_path_in_output = fun ~(workspace:Workspace.t) ~profile ~(store:Riot_store.Store.t) ~kind ~package_name ~export_name (
-  output: Riot_build.Build_result.t
-) ->
+let find_export_path_in_output = fun
+  ~(workspace:Workspace.t)
+  ~profile
+  ~(store:Riot_store.Store.t)
+  ~kind
+  ~package_name
+  ~export_name
+  (output: Riot_build.Build_result.t) ->
   let fallback_path = materialized_export_path ~workspace ~profile ~package_name ~export_name in
   let ensure_materialized_fallback () =
     match Fs.exists fallback_path with
@@ -853,9 +868,12 @@ let find_export_path_in_output = fun ~(workspace:Workspace.t) ~profile ~(store:R
       | None -> ensure_materialized_fallback ()
     )
 
-let find_suite_binary_path_in_output = fun ~(workspace:Workspace.t) ~profile ~(store:Riot_store.Store.t) ~(suite:suite_binary) (
-  output: Riot_build.Build_result.t
-) ->
+let find_suite_binary_path_in_output = fun
+  ~(workspace:Workspace.t)
+  ~profile
+  ~(store:Riot_store.Store.t)
+  ~(suite:suite_binary)
+  (output: Riot_build.Build_result.t) ->
   find_export_path_in_output
     ~workspace
     ~profile
@@ -866,7 +884,13 @@ let find_suite_binary_path_in_output = fun ~(workspace:Workspace.t) ~profile ~(s
     output
   |> Result.map_err ~fn:(fun reason -> SuiteArtifactNotFound { suite; reason })
 
-let suite_ctx_json_value = fun ~workspace_root ~package_name ?source_file ~binary_path ~built_binaries () ->
+let suite_ctx_json_value = fun
+  ~workspace_root
+  ~package_name
+  ?source_file
+  ~binary_path
+  ~built_binaries
+  () ->
   let built_binaries_json =
     built_binaries
     |> List.map
@@ -916,9 +940,12 @@ let reachable_runtime_packages = fun packages start_package_name ->
   visit [] start_package_name
   |> List.reverse
 
-let runtime_output_built_binaries = fun ~(workspace:Workspace.t) ~package_name ~profile ~(store:Riot_store.Store.t) (
-  output: Riot_build.Build_result.t
-) ->
+let runtime_output_built_binaries = fun
+  ~(workspace:Workspace.t)
+  ~package_name
+  ~profile
+  ~(store:Riot_store.Store.t)
+  (output: Riot_build.Build_result.t) ->
   let packages = runtime_output_packages ~workspace output in
   reachable_runtime_packages packages package_name
   |> List.flat_map
@@ -939,7 +966,14 @@ let runtime_output_built_binaries = fun ~(workspace:Workspace.t) ~package_name ~
 
 let run_suite_args = fun extra_args -> ("run-tests" :: remove_json_args extra_args) @ [ "--json" ]
 
-let run_suite = fun ~on_event ~workspace_root ~suite ?source_file ~built_binaries ~extra_args binary_path ->
+let run_suite = fun
+  ~on_event
+  ~workspace_root
+  ~suite
+  ?source_file
+  ~built_binaries
+  ~extra_args
+  binary_path ->
   let ctx_json =
     suite_ctx_json_value
       ~workspace_root
@@ -1047,9 +1081,10 @@ let resolve_suite_binaries = fun ~(workspace:Workspace.t) ~profile ~store ~suite
   in
   loop [] [] suites
 
-let list_tests = fun ?(on_suite = no_listed_suite) ?(on_suite_error = no_list_error) (
-  request: test_request
-) ->
+let list_tests = fun
+  ?(on_suite = no_listed_suite)
+  ?(on_suite_error = no_list_error)
+  (request: test_request) ->
   let suites =
     collect_suite_binaries
       request.workspace

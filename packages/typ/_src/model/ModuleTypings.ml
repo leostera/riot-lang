@@ -199,9 +199,9 @@ let canonicalize_scheme_for_persistence = fun canonicalize_type scheme ->
   else
     TypeScheme.of_explicit ~quantified body2
 
-let canonicalize_type_decl_for_persistence = fun canonicalize_type (
-  type_decl: FileSummary.type_decl
-) ->
+let canonicalize_type_decl_for_persistence = fun
+  canonicalize_type
+  (type_decl: FileSummary.type_decl) ->
   let declaration = type_decl.declaration in
   let manifest =
     match declaration.manifest with
@@ -296,7 +296,13 @@ let complete = fun ~module_name ~source_hash ?(type_decls = []) ?(value_definiti
     compiled_scope = compiled_scope_of_payload ~export_result ~type_decls;
   }
 
-let partial = fun ~module_name ~source_hash ?(type_decls = []) ?(value_definitions = []) ?exports () ->
+let partial = fun
+  ~module_name
+  ~source_hash
+  ?(type_decls = [])
+  ?(value_definitions = [])
+  ?exports
+  () ->
   let export_result =
     match exports with
     | Some exports -> FileSummary.ErroredExport { exports }
@@ -338,9 +344,11 @@ let missing = fun ~module_name ~source_hash ?(type_decls = []) ?(value_definitio
     ~value_definitions
     ()
 
-let of_file_summary = fun ~module_name ~source_hash ?(value_definitions = []) (
-  summary: FileSummary.t
-) ->
+let of_file_summary = fun
+  ~module_name
+  ~source_hash
+  ?(value_definitions = [])
+  (summary: FileSummary.t) ->
   let (export_result, type_decls) =
     canonicalize_payload_for_persistence
       ~export_result:summary.export_result
@@ -743,7 +751,12 @@ let payload_to_json = fun ~completeness ~export_result ~type_decls ~value_defini
     ("value_definitions", value_definitions_to_json value_definitions);
   ]
 
-let synthetic_source_hash = fun ~module_name ~export_result ~type_decls ?(value_definitions = []) () ->
+let synthetic_source_hash = fun
+  ~module_name
+  ~export_result
+  ~type_decls
+  ?(value_definitions = [])
+  () ->
   let completeness =
     match export_result with
     | FileSummary.TrustedExport _ -> FileSummary.Complete
@@ -763,10 +776,12 @@ let label_of_json = fun json ->
   match tag with
   | "nolabel" -> Ok TypeRepr.Nolabel
   | "labeled" ->
-      let* label_json = field "label" fields in let* label = get_string label_json in
+      let* label_json = field "label" fields in
+      let* label = get_string label_json in
       Ok (TypeRepr.Labelled label)
   | "optional" ->
-      let* label_json = field "label" fields in let* label = get_string label_json in
+      let* label_json = field "label" fields in
+      let* label = get_string label_json in
       Ok (TypeRepr.Optional label)
   | other -> Error (format Format.[ str "unknown module typings type label tag "; str other ])
 
@@ -782,20 +797,26 @@ let rec type_of_json = fun json ->
   | "char" -> Ok TypeRepr.char
   | "unit" -> Ok TypeRepr.unit_
   | "option" ->
-      let* element_json = field "element" fields in let* element = type_of_json element_json in
+      let* element_json = field "element" fields in
+      let* element = type_of_json element_json in
       Ok (TypeRepr.option element)
   | "result" ->
-      let* ok_json = field "ok" fields in let* error_json = field "error" fields in let* ok_ty =
-        type_of_json ok_json in let* error_ty = type_of_json error_json in
+      let* ok_json = field "ok" fields in
+      let* error_json = field "error" fields in
+      let* ok_ty = type_of_json ok_json in
+      let* error_ty = type_of_json error_json in
       Ok (TypeRepr.result ok_ty error_ty)
   | "array" ->
-      let* element_json = field "element" fields in let* element = type_of_json element_json in
+      let* element_json = field "element" fields in
+      let* element = type_of_json element_json in
       Ok (TypeRepr.array element)
   | "list" ->
-      let* element_json = field "element" fields in let* element = type_of_json element_json in
+      let* element_json = field "element" fields in
+      let* element = type_of_json element_json in
       Ok (TypeRepr.list element)
   | "seq" ->
-      let* element_json = field "element" fields in let* element = type_of_json element_json in
+      let* element_json = field "element" fields in
+      let* element = type_of_json element_json in
       Ok (TypeRepr.seq element)
   | "package" ->
       let* values_json = field "values" fields in
@@ -803,11 +824,15 @@ let rec type_of_json = fun json ->
       let rec loop acc = function
         | [] -> Ok (List.rev acc)
         | value_json :: rest ->
-            let* value_fields = get_object value_json in let* name_json = field "name" value_fields in let* scheme_json =
-              field "scheme" value_fields in let* name = get_string name_json in let* scheme =
-              scheme_of_json scheme_json in loop (TypeRepr.package_value ~name ~scheme :: acc) rest
+            let* value_fields = get_object value_json in
+            let* name_json = field "name" value_fields in
+            let* scheme_json = field "scheme" value_fields in
+            let* name = get_string name_json in
+            let* scheme = scheme_of_json scheme_json in
+            loop (TypeRepr.package_value ~name ~scheme :: acc) rest
       in
-      let* values = loop [] values_json in Ok (TypeRepr.package ~values)
+      let* values = loop [] values_json in
+      Ok (TypeRepr.package ~values)
   | "named" ->
       let* type_constructor_json = field "type_constructor_id" fields in
       let* type_constructor_id = TypeConstructorId.of_json type_constructor_json in
@@ -818,7 +843,9 @@ let rec type_of_json = fun json ->
       let* arguments_json = get_array arguments_json in
       let rec loop acc = function
         | [] -> Ok (List.rev acc)
-        | head :: tail -> let* argument = type_of_json head in loop (argument :: acc) tail
+        | head :: tail ->
+            let* argument = type_of_json head in
+            loop (argument :: acc) tail
       in
       let* arguments = loop [] arguments_json in
       Ok (TypeRepr.named ~head:(TypeRepr.named_head ~type_constructor_id ~name) ~arguments)
@@ -859,7 +886,8 @@ let rec type_of_json = fun json ->
       let rec parse_inherited acc = function
         | [] -> Ok (List.rev acc)
         | value :: rest ->
-            let* inherited_type = type_of_json value in parse_inherited (inherited_type :: acc) rest
+            let* inherited_type = type_of_json value in
+            parse_inherited (inherited_type :: acc) rest
       in
       let* inherited = parse_inherited [] inherited_json in
       Ok (TypeRepr.poly_variant ~bound ~tags ~inherited)
@@ -868,18 +896,28 @@ let rec type_of_json = fun json ->
       let* members_json = get_array members_json in
       let rec loop acc = function
         | [] -> Ok (List.rev acc)
-        | head :: tail -> let* member = type_of_json head in loop (member :: acc) tail
+        | head :: tail ->
+            let* member = type_of_json head in
+            loop (member :: acc) tail
       in
-      let* members = loop [] members_json in Ok (TypeRepr.tuple members)
+      let* members = loop [] members_json in
+      Ok (TypeRepr.tuple members)
   | "arrow" ->
-      let* label_json = field "label" fields in let* lhs_json = field "lhs" fields in let* rhs_json =
-        field "rhs" fields in let* label = label_of_json label_json in let* lhs =
-        type_of_json lhs_json in let* rhs = type_of_json rhs_json in
+      let* label_json = field "label" fields in
+      let* lhs_json = field "lhs" fields in
+      let* rhs_json = field "rhs" fields in
+      let* label = label_of_json label_json in
+      let* lhs = type_of_json lhs_json in
+      let* rhs = type_of_json rhs_json in
       Ok (TypeRepr.arrow ~label ~lhs ~rhs)
   | "var" ->
-      let* id_json = field "id" fields in let* id = get_int id_json in Ok (TypeRepr.make_var id)
+      let* id_json = field "id" fields in
+      let* id = get_int id_json in
+      Ok (TypeRepr.make_var id)
   | "hole" ->
-      let* id_json = field "id" fields in let* id = get_int id_json in Ok (TypeRepr.hole id)
+      let* id_json = field "id" fields in
+      let* id = get_int id_json in
+      Ok (TypeRepr.hole id)
   | other -> Error (format Format.[ str "unknown module typings type tag "; str other ])
 
 and scheme_of_json = function
@@ -908,9 +946,12 @@ let exports_of_json = fun json ->
   let rec loop acc = function
     | [] -> Ok (List.rev acc)
     | value :: rest ->
-        let* fields = get_object value in let* name_json = field "name" fields in let* scheme_json =
-          field "scheme" fields in let* name = get_string name_json in let* scheme =
-          scheme_of_json scheme_json in loop ((SurfacePath.of_string name, scheme) :: acc) rest
+        let* fields = get_object value in
+        let* name_json = field "name" fields in
+        let* scheme_json = field "scheme" fields in
+        let* name = get_string name_json in
+        let* scheme = scheme_of_json scheme_json in
+        loop ((SurfacePath.of_string name, scheme) :: acc) rest
   in
   loop [] values
 
@@ -918,7 +959,9 @@ let int_list_of_json = fun json ->
   let* values = get_array json in
   let rec loop acc = function
     | [] -> Ok (List.rev acc)
-    | value :: rest -> let* value = get_int value in loop (value :: acc) rest
+    | value :: rest ->
+        let* value = get_int value in
+        loop (value :: acc) rest
   in
   loop [] values
 
@@ -926,7 +969,9 @@ let string_list_of_json = fun json ->
   let* values = get_array json in
   let rec loop acc = function
     | [] -> Ok (List.rev acc)
-    | value :: rest -> let* value = get_string value in loop (value :: acc) rest
+    | value :: rest ->
+        let* value = get_string value in
+        loop (value :: acc) rest
   in
   loop [] values
 
@@ -974,7 +1019,8 @@ let constructor_of_json = fun json ->
         let rec parse_labels acc = function
           | [] -> Ok (Some (List.rev acc))
           | label_json :: rest ->
-              let* label = parse_label_json label_json in parse_labels (label :: acc) rest
+              let* label = parse_label_json label_json in
+              parse_labels (label :: acc) rest
         in
         parse_labels [] labels_json
     | None -> Ok None
@@ -1001,7 +1047,8 @@ let label_decl_of_json = fun json ->
     | Data.Json.Bool mutable_ -> Ok mutable_
     | other -> error_expected "bool" other
   in
-  let* mutable_ = mutable_ in Ok ({
+  let* mutable_ = mutable_ in
+  Ok ({
     TypeDecl.label_id = LabelId.of_int label_id;
     name;
     field_type;
@@ -1019,8 +1066,8 @@ let poly_variant_tag_of_json = fun json ->
         |> Result.map Option.some
     | None -> Ok None
   in
-  let* payload_type = payload_type in Ok ({ TypeDecl.name = name; payload_type }:
-    TypeDecl.poly_variant_tag)
+  let* payload_type = payload_type in
+  Ok ({ TypeDecl.name = name; payload_type }: TypeDecl.poly_variant_tag)
 
 let manifest_of_json = fun json ->
   let* fields = get_object json in
@@ -1028,7 +1075,8 @@ let manifest_of_json = fun json ->
   let* tag = get_string tag_json in
   match tag with
   | "alias" ->
-      let* type_json = field "type" fields in let* manifest_type = type_of_json type_json in
+      let* type_json = field "type" fields in
+      let* manifest_type = type_of_json type_json in
       Ok (TypeDecl.Alias manifest_type)
   | "poly_variant" ->
       let* bound_json = field "bound" fields in
@@ -1048,14 +1096,16 @@ let manifest_of_json = fun json ->
       let rec parse_tags acc = function
         | [] -> Ok (List.rev acc)
         | value :: rest ->
-            let* tag = poly_variant_tag_of_json value in parse_tags (tag :: acc) rest
+            let* tag = poly_variant_tag_of_json value in
+            parse_tags (tag :: acc) rest
       in
       let* tags = parse_tags [] tags_json in
       let* inherited_json = get_array inherited_json in
       let rec parse_inherited acc = function
         | [] -> Ok (List.rev acc)
         | value :: rest ->
-            let* inherited = type_of_json value in parse_inherited (inherited :: acc) rest
+            let* inherited = type_of_json value in
+            parse_inherited (inherited :: acc) rest
       in
       let* inherited = parse_inherited [] inherited_json in
       Ok (TypeDecl.PolyVariant { bound; tags; inherited })
@@ -1100,13 +1150,16 @@ let type_decl_of_json = fun json ->
   let rec parse_constructors acc = function
     | [] -> Ok (List.rev acc)
     | value :: rest ->
-        let* constructor = constructor_of_json value in parse_constructors (constructor :: acc) rest
+        let* constructor = constructor_of_json value in
+        parse_constructors (constructor :: acc) rest
   in
   let* constructors = parse_constructors [] constructors_json in
   let* labels_json = get_array labels_json in
   let rec parse_labels acc = function
     | [] -> Ok (List.rev acc)
-    | value :: rest -> let* label = label_decl_of_json value in parse_labels (label :: acc) rest
+    | value :: rest ->
+        let* label = label_decl_of_json value in
+        parse_labels (label :: acc) rest
   in
   let* labels = parse_labels [] labels_json in
   let manifest =
@@ -1143,7 +1196,9 @@ let type_decls_of_json = fun json ->
   let* values = get_array json in
   let rec loop acc = function
     | [] -> Ok (List.rev acc)
-    | value :: rest -> let* type_decl = type_decl_of_json value in loop (type_decl :: acc) rest
+    | value :: rest ->
+        let* type_decl = type_decl_of_json value in
+        loop (type_decl :: acc) rest
   in
   loop [] values
 
@@ -1197,19 +1252,25 @@ let value_definition_target_of_json = fun json ->
   let* tag = get_string tag_json in
   match tag with
   | "site" ->
-      let* origin_json = field "origin" fields in let* span_json = field "span" fields in let* origin =
-        source_origin_of_json origin_json in let* span = span_of_json span_json in
+      let* origin_json = field "origin" fields in
+      let* span_json = field "span" fields in
+      let* origin = source_origin_of_json origin_json in
+      let* span = span_of_json span_json in
       Ok (Site { origin; span })
   | "export" ->
-      let* path_json = field "path" fields in let* path = get_string path_json in
+      let* path_json = field "path" fields in
+      let* path = get_string path_json in
       Ok (Export (SurfacePath.of_string path))
   | other ->
       Error (format Format.[ str "unknown module typings value definition target tag "; str other ])
 
-let value_definition_of_json = fun json -> let* fields = get_object json in let* export_name_json =
-  field "export_name" fields in let* target_json = field "target" fields in let* export_name =
-  get_string export_name_json in let* target = value_definition_target_of_json target_json in
-Ok { export_name = SurfacePath.of_string export_name; target }
+let value_definition_of_json = fun json ->
+  let* fields = get_object json in
+  let* export_name_json = field "export_name" fields in
+  let* target_json = field "target" fields in
+  let* export_name = get_string export_name_json in
+  let* target = value_definition_target_of_json target_json in
+  Ok { export_name = SurfacePath.of_string export_name; target }
 
 let value_definitions_of_json = fun value ->
   match value with
@@ -1217,7 +1278,8 @@ let value_definitions_of_json = fun value ->
       let rec loop acc = function
         | [] -> Ok (List.rev acc)
         | value :: rest ->
-            let* definition = value_definition_of_json value in loop (definition :: acc) rest
+            let* definition = value_definition_of_json value in
+            loop (definition :: acc) rest
       in
       loop [] values
   | other -> error_expected "array" other

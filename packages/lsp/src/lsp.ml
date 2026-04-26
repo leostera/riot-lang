@@ -66,7 +66,9 @@ module Decode = struct
       | Json.Array items ->
           let rec loop acc = function
             | [] -> Ok (List.rev acc)
-            | item :: rest -> let* decoded = decode item in loop (decoded :: acc) rest
+            | item :: rest ->
+                let* decoded = decode item in
+                loop (decoded :: acc) rest
           in
           loop [] items
       | value -> Error (unsupported_json_kind (context ^ " array") value)
@@ -85,7 +87,9 @@ module Decode = struct
         fun fields ->
           match field name fields with
           | None -> Ok None
-          | Some value -> let* decoded = decode (context ^ "." ^ name) value in Ok (Some decoded)
+          | Some value ->
+              let* decoded = decode (context ^ "." ^ name) value in
+              Ok (Some decoded)
 end
 
 module Encode = struct
@@ -165,9 +169,11 @@ module Position = struct
     Json.obj
       [ ("line", Json.int line); ("character", Json.int character); ]
 
-  let of_json = fun value -> let* fields = Decode.object_fields "position" value in let* line =
-    Decode.required "position" "line" Decode.int fields in let* character =
-    Decode.required "position" "character" Decode.int fields in Ok { line; character }
+  let of_json = fun value ->
+    let* fields = Decode.object_fields "position" value in
+    let* line = Decode.required "position" "line" Decode.int fields in
+    let* character = Decode.required "position" "character" Decode.int fields in
+    Ok { line; character }
 end
 
 module Range = struct
@@ -180,9 +186,11 @@ module Range = struct
     Json.obj
       [ ("start", Position.to_json start_); ("end", Position.to_json end_); ]
 
-  let of_json = fun value -> let* fields = Decode.object_fields "range" value in let* start_ =
-    Decode.required "range" "start" (ignore_context Position.of_json) fields in let* end_ =
-    Decode.required "range" "end" (ignore_context Position.of_json) fields in Ok { start_; end_ }
+  let of_json = fun value ->
+    let* fields = Decode.object_fields "range" value in
+    let* start_ = Decode.required "range" "start" (ignore_context Position.of_json) fields in
+    let* end_ = Decode.required "range" "end" (ignore_context Position.of_json) fields in
+    Ok { start_; end_ }
 end
 
 module Location = struct
@@ -195,9 +203,11 @@ module Location = struct
     Json.obj
       [ ("uri", Uri.to_json uri); ("range", Range.to_json range); ]
 
-  let of_json = fun value -> let* fields = Decode.object_fields "location" value in let* uri =
-    Decode.required "location" "uri" (ignore_context Uri.of_json) fields in let* range =
-    Decode.required "location" "range" (ignore_context Range.of_json) fields in Ok { uri; range }
+  let of_json = fun value ->
+    let* fields = Decode.object_fields "location" value in
+    let* uri = Decode.required "location" "uri" (ignore_context Uri.of_json) fields in
+    let* range = Decode.required "location" "range" (ignore_context Range.of_json) fields in
+    Ok { uri; range }
 end
 
 module Markup_kind = struct
@@ -216,7 +226,9 @@ module Markup_kind = struct
 
   let to_json = fun value -> Json.string (to_string value)
 
-  let of_json = fun value -> let* value = Decode.string "markupKind" value in of_string value
+  let of_json = fun value ->
+    let* value = Decode.string "markupKind" value in
+    of_string value
 end
 
 module Markup_content = struct
@@ -229,9 +241,11 @@ module Markup_content = struct
     Json.obj
       [ ("kind", Markup_kind.to_json kind); ("value", Json.string value); ]
 
-  let of_json = fun value -> let* fields = Decode.object_fields "markupContent" value in let* kind =
-    Decode.required "markupContent" "kind" (ignore_context Markup_kind.of_json) fields in let* value =
-    Decode.required "markupContent" "value" Decode.string fields in Ok { kind; value }
+  let of_json = fun value ->
+    let* fields = Decode.object_fields "markupContent" value in
+    let* kind = Decode.required "markupContent" "kind" (ignore_context Markup_kind.of_json) fields in
+    let* value = Decode.required "markupContent" "value" Decode.string fields in
+    Ok { kind; value }
 end
 
 module Hover_result = struct
@@ -245,9 +259,13 @@ module Hover_result = struct
     let fields = Encode.field_opt "range" Range.to_json range fields in
     Json.obj (List.rev fields)
 
-  let of_json = fun value -> let* fields = Decode.object_fields "hover" value in let* contents =
-    Decode.required "hover" "contents" (ignore_context Markup_content.of_json) fields in let* range =
-    Decode.optional "hover" "range" (ignore_context Range.of_json) fields in Ok { contents; range }
+  let of_json = fun value ->
+    let* fields = Decode.object_fields "hover" value in
+    let* contents =
+      Decode.required "hover" "contents" (ignore_context Markup_content.of_json) fields
+    in
+    let* range = Decode.optional "hover" "range" (ignore_context Range.of_json) fields in
+    Ok { contents; range }
 end
 
 module Symbol_kind = struct
@@ -338,7 +356,9 @@ module Symbol_kind = struct
 
   let to_json = fun value -> Json.int (to_int value)
 
-  let of_json = fun value -> let* value = Decode.int "symbolKind" value in of_int value
+  let of_json = fun value ->
+    let* value = Decode.int "symbolKind" value in
+    of_int value
 end
 
 module Document_symbol_item = struct
@@ -383,13 +403,15 @@ module Document_symbol_item = struct
     let* kind = Decode.required "documentSymbol" "kind" (ignore_context Symbol_kind.of_json) fields in
     let* range = Decode.required "documentSymbol" "range" (ignore_context Range.of_json) fields in
     let* selection_range =
-      Decode.required "documentSymbol" "selectionRange" (ignore_context Range.of_json) fields in
+      Decode.required "documentSymbol" "selectionRange" (ignore_context Range.of_json) fields
+    in
     let* children =
       Decode.optional
         "documentSymbol"
         "children"
         (ignore_context (Decode.list "documentSymbol.children" of_json))
-        fields in
+        fields
+    in
     Ok {
       name;
       detail;
@@ -479,9 +501,14 @@ module Diagnostic = struct
       Decode.optional
         "diagnostic"
         "severity"
-        (ignore_context
-          (fun value -> let* value = Decode.int "diagnostic.severity" value in severity_of_int value))
-        fields in
+        (
+          ignore_context
+            (fun value ->
+              let* value = Decode.int "diagnostic.severity" value in
+              severity_of_int value)
+        )
+        fields
+    in
     let* code = Decode.optional "diagnostic" "code" Decode.string fields in
     let* source = Decode.optional "diagnostic" "source" Decode.string fields in
     let* message = Decode.required "diagnostic" "message" Decode.string fields in
@@ -489,14 +516,18 @@ module Diagnostic = struct
       Decode.optional
         "diagnostic"
         "tags"
-        (ignore_context
-          (fun value ->
-            Decode.list
-              "diagnostic.tags"
-              (fun value ->
-                let* value = Decode.int "diagnostic.tags[]" value in tag_of_int value)
-              value))
-        fields in
+        (
+          ignore_context
+            (fun value ->
+              Decode.list
+                "diagnostic.tags"
+                (fun value ->
+                  let* value = Decode.int "diagnostic.tags[]" value in
+                  tag_of_int value)
+                value)
+        )
+        fields
+    in
     let data = Decode.field "data" fields in
     Ok {
       range;
@@ -519,9 +550,11 @@ module Text_edit = struct
     Json.obj
       [ ("range", Range.to_json range); ("newText", Json.string new_text); ]
 
-  let of_json = fun value -> let* fields = Decode.object_fields "textEdit" value in let* range =
-    Decode.required "textEdit" "range" (ignore_context Range.of_json) fields in let* new_text =
-    Decode.required "textEdit" "newText" Decode.string fields in Ok { range; new_text }
+  let of_json = fun value ->
+    let* fields = Decode.object_fields "textEdit" value in
+    let* range = Decode.required "textEdit" "range" (ignore_context Range.of_json) fields in
+    let* new_text = Decode.required "textEdit" "newText" Decode.string fields in
+    Ok { range; new_text }
 end
 
 module Workspace_edit = struct
@@ -554,7 +587,8 @@ module Workspace_edit = struct
           let* edits = Decode.list "workspaceEdit.changes" Text_edit.of_json edits_json in
           loop ((Uri.of_string uri, edits) :: acc) rest
     in
-    let* changes = loop [] changes_fields in Ok { changes }
+    let* changes = loop [] changes_fields in
+    Ok { changes }
 end
 
 module Command = struct
@@ -615,7 +649,9 @@ module Action_kind = struct
 
   let to_json = fun value -> Json.string (to_string value)
 
-  let of_json = fun value -> let* value = Decode.string "actionKind" value in Ok (of_string value)
+  let of_json = fun value ->
+    let* value = Decode.string "actionKind" value in
+    Ok (of_string value)
 end
 
 module Code_action = struct
@@ -662,7 +698,8 @@ module Code_action = struct
         "codeAction"
         "diagnostics"
         (ignore_context (Decode.list "codeAction.diagnostics" Diagnostic.of_json))
-        fields in
+        fields
+    in
     let* is_preferred = Decode.optional "codeAction" "isPreferred" Decode.bool fields in
     let* edit = Decode.optional "codeAction" "edit" (ignore_context Workspace_edit.of_json) fields in
     let* command = Decode.optional "codeAction" "command" (ignore_context Command.of_json) fields in
@@ -716,9 +753,11 @@ module Client_info = struct
     let fields = Encode.field_opt "version" Json.string version fields in
     Json.obj (List.rev fields)
 
-  let of_json = fun value -> let* fields = Decode.object_fields "clientInfo" value in let* name =
-    Decode.required "clientInfo" "name" Decode.string fields in let* version =
-    Decode.optional "clientInfo" "version" Decode.string fields in Ok { name; version }
+  let of_json = fun value ->
+    let* fields = Decode.object_fields "clientInfo" value in
+    let* name = Decode.required "clientInfo" "name" Decode.string fields in
+    let* version = Decode.optional "clientInfo" "version" Decode.string fields in
+    Ok { name; version }
 end
 
 module Server_info = struct
@@ -732,9 +771,11 @@ module Server_info = struct
     let fields = Encode.field_opt "version" Json.string version fields in
     Json.obj (List.rev fields)
 
-  let of_json = fun value -> let* fields = Decode.object_fields "serverInfo" value in let* name =
-    Decode.required "serverInfo" "name" Decode.string fields in let* version =
-    Decode.optional "serverInfo" "version" Decode.string fields in Ok { name; version }
+  let of_json = fun value ->
+    let* fields = Decode.object_fields "serverInfo" value in
+    let* name = Decode.required "serverInfo" "name" Decode.string fields in
+    let* version = Decode.optional "serverInfo" "version" Decode.string fields in
+    Ok { name; version }
 end
 
 module Workspace_folder = struct
@@ -747,9 +788,11 @@ module Workspace_folder = struct
     Json.obj
       [ ("uri", Uri.to_json uri); ("name", Json.string name); ]
 
-  let of_json = fun value -> let* fields = Decode.object_fields "workspaceFolder" value in let* uri =
-    Decode.required "workspaceFolder" "uri" (ignore_context Uri.of_json) fields in let* name =
-    Decode.required "workspaceFolder" "name" Decode.string fields in Ok { uri; name }
+  let of_json = fun value ->
+    let* fields = Decode.object_fields "workspaceFolder" value in
+    let* uri = Decode.required "workspaceFolder" "uri" (ignore_context Uri.of_json) fields in
+    let* name = Decode.required "workspaceFolder" "name" Decode.string fields in
+    Ok { uri; name }
 end
 
 module Text_document = struct
@@ -788,7 +831,9 @@ module Text_document = struct
 
     let to_json = fun value -> Json.int (to_int value)
 
-    let of_json = fun value -> let* value = Decode.int "textDocumentSyncKind" value in of_int value
+    let of_json = fun value ->
+      let* value = Decode.int "textDocumentSyncKind" value in
+      of_int value
   end
 
   type sync_options = {
@@ -817,9 +862,10 @@ module Text_document = struct
 
     let to_json = fun ({ uri }: identifier) -> Json.obj [ ("uri", Uri.to_json uri); ]
 
-    let of_json = fun value -> let* fields = Decode.object_fields "textDocumentIdentifier" value in let* uri =
-      Decode.required "textDocumentIdentifier" "uri" (ignore_context Uri.of_json) fields in
-    Ok { uri }
+    let of_json = fun value ->
+      let* fields = Decode.object_fields "textDocumentIdentifier" value in
+      let* uri = Decode.required "textDocumentIdentifier" "uri" (ignore_context Uri.of_json) fields in
+      Ok { uri }
   end
 
   module Versioned_identifier = struct
@@ -829,11 +875,13 @@ module Text_document = struct
       Json.obj
         [ ("uri", Uri.to_json uri); ("version", Json.int version); ]
 
-    let of_json = fun value -> let* fields =
-      Decode.object_fields "versionedTextDocumentIdentifier" value in let* uri =
-      Decode.required "versionedTextDocumentIdentifier" "uri" (ignore_context Uri.of_json) fields in let* version =
-      Decode.required "versionedTextDocumentIdentifier" "version" Decode.int fields in
-    Ok { uri; version }
+    let of_json = fun value ->
+      let* fields = Decode.object_fields "versionedTextDocumentIdentifier" value in
+      let* uri =
+        Decode.required "versionedTextDocumentIdentifier" "uri" (ignore_context Uri.of_json) fields
+      in
+      let* version = Decode.required "versionedTextDocumentIdentifier" "version" Decode.int fields in
+      Ok { uri; version }
   end
 
   module Item = struct
@@ -874,11 +922,14 @@ module Text_document = struct
     let fields = Encode.field_opt "save" Json.bool save fields in
     Json.obj (List.rev fields)
 
-  let sync_options_of_json = fun value -> let* fields =
-    Decode.object_fields "textDocumentSync" value in let* open_close =
-    Decode.optional "textDocumentSync" "openClose" Decode.bool fields in let* change =
-    Decode.optional "textDocumentSync" "change" (ignore_context Sync_kind.of_json) fields in let* save =
-    Decode.optional "textDocumentSync" "save" Decode.bool fields in Ok { open_close; change; save }
+  let sync_options_of_json = fun value ->
+    let* fields = Decode.object_fields "textDocumentSync" value in
+    let* open_close = Decode.optional "textDocumentSync" "openClose" Decode.bool fields in
+    let* change =
+      Decode.optional "textDocumentSync" "change" (ignore_context Sync_kind.of_json) fields
+    in
+    let* save = Decode.optional "textDocumentSync" "save" Decode.bool fields in
+    Ok { open_close; change; save }
 
   let content_change_event_to_json = fun { range; range_length; text } ->
     let fields = [ ("text", Json.string text); ] in
@@ -886,12 +937,12 @@ module Text_document = struct
     let fields = Encode.field_opt "rangeLength" Json.int range_length fields in
     Json.obj (List.rev fields)
 
-  let content_change_event_of_json = fun value -> let* fields =
-    Decode.object_fields "contentChangeEvent" value in let* range =
-    Decode.optional "contentChangeEvent" "range" (ignore_context Range.of_json) fields in let* range_length =
-    Decode.optional "contentChangeEvent" "rangeLength" Decode.int fields in let* text =
-    Decode.required "contentChangeEvent" "text" Decode.string fields in
-  Ok { range; range_length; text }
+  let content_change_event_of_json = fun value ->
+    let* fields = Decode.object_fields "contentChangeEvent" value in
+    let* range = Decode.optional "contentChangeEvent" "range" (ignore_context Range.of_json) fields in
+    let* range_length = Decode.optional "contentChangeEvent" "rangeLength" Decode.int fields in
+    let* text = Decode.required "contentChangeEvent" "text" Decode.string fields in
+    Ok { range; range_length; text }
 
   let formatting_options_to_json = fun options ->
     let fields = List.rev options.extra in
@@ -909,11 +960,14 @@ module Text_document = struct
     let* tab_size = Decode.required "formattingOptions" "tabSize" Decode.int fields in
     let* insert_spaces = Decode.required "formattingOptions" "insertSpaces" Decode.bool fields in
     let* trim_trailing_whitespace =
-      Decode.optional "formattingOptions" "trimTrailingWhitespace" Decode.bool fields in
+      Decode.optional "formattingOptions" "trimTrailingWhitespace" Decode.bool fields
+    in
     let* insert_final_newline =
-      Decode.optional "formattingOptions" "insertFinalNewline" Decode.bool fields in
+      Decode.optional "formattingOptions" "insertFinalNewline" Decode.bool fields
+    in
     let* trim_final_newlines =
-      Decode.optional "formattingOptions" "trimFinalNewlines" Decode.bool fields in
+      Decode.optional "formattingOptions" "trimFinalNewlines" Decode.bool fields
+    in
     let is_known = function
       | "tabSize"
       | "insertSpaces"
@@ -1027,25 +1081,32 @@ module Initialize = struct
       let fields = Encode.field_opt "resolveProvider" Json.bool resolve_provider fields in
       Json.obj (List.rev fields)
 
-    let code_action_options_of_json = fun value -> let* fields =
-      Decode.object_fields "serverCapabilities.codeActionProvider" value in let* code_action_kinds =
-      Decode.optional
-        "serverCapabilities.codeActionProvider"
-        "codeActionKinds"
-        (ignore_context
-          (Decode.list "serverCapabilities.codeActionProvider.codeActionKinds" Action_kind.of_json))
-        fields in let* resolve_provider =
-      Decode.optional "serverCapabilities.codeActionProvider" "resolveProvider" Decode.bool fields in
-    Ok { code_action_kinds; resolve_provider }
+    let code_action_options_of_json = fun value ->
+      let* fields = Decode.object_fields "serverCapabilities.codeActionProvider" value in
+      let* code_action_kinds =
+        Decode.optional
+          "serverCapabilities.codeActionProvider"
+          "codeActionKinds"
+          (ignore_context
+            (Decode.list "serverCapabilities.codeActionProvider.codeActionKinds" Action_kind.of_json))
+          fields
+      in
+      let* resolve_provider =
+        Decode.optional "serverCapabilities.codeActionProvider" "resolveProvider" Decode.bool fields
+      in
+      Ok { code_action_kinds; resolve_provider }
 
     let text_document_sync_to_json = function
       | Kind kind -> Text_document.Sync_kind.to_json kind
       | Sync_options options -> Text_document.sync_options_to_json options
 
     let text_document_sync_of_json = function
-      | Json.Int _ as value -> let* kind = Text_document.Sync_kind.of_json value in Ok (Kind kind)
+      | Json.Int _ as value ->
+          let* kind = Text_document.Sync_kind.of_json value in
+          Ok (Kind kind)
       | Json.Object _ as value ->
-          let* options = Text_document.sync_options_of_json value in Ok (Sync_options options)
+          let* options = Text_document.sync_options_of_json value in
+          Ok (Sync_options options)
       | value -> Error (unsupported_json_kind "serverCapabilities.textDocumentSync value" value)
 
     let code_action_provider_to_json = function
@@ -1055,7 +1116,8 @@ module Initialize = struct
     let code_action_provider_of_json = function
       | Json.Bool value -> Ok (Bool value)
       | Json.Object _ as value ->
-          let* options = code_action_options_of_json value in Ok (Provider_options options)
+          let* options = code_action_options_of_json value in
+          Ok (Provider_options options)
       | value -> Error (unsupported_json_kind "serverCapabilities.codeActionProvider value" value)
 
     let to_json = fun capabilities ->
@@ -1103,26 +1165,32 @@ module Initialize = struct
     let of_json = fun value ->
       let* fields = Decode.object_fields "serverCapabilities" value in
       let* position_encoding =
-        Decode.optional "serverCapabilities" "positionEncoding" Decode.string fields in
+        Decode.optional "serverCapabilities" "positionEncoding" Decode.string fields
+      in
       let* text_document_sync =
         Decode.optional
           "serverCapabilities"
           "textDocumentSync"
           (ignore_context text_document_sync_of_json)
-          fields in
+          fields
+      in
       let* document_formatting_provider =
-        Decode.optional "serverCapabilities" "documentFormattingProvider" Decode.bool fields in
+        Decode.optional "serverCapabilities" "documentFormattingProvider" Decode.bool fields
+      in
       let* definition_provider =
-        Decode.optional "serverCapabilities" "definitionProvider" Decode.bool fields in
+        Decode.optional "serverCapabilities" "definitionProvider" Decode.bool fields
+      in
       let* hover_provider = Decode.optional "serverCapabilities" "hoverProvider" Decode.bool fields in
       let* document_symbol_provider =
-        Decode.optional "serverCapabilities" "documentSymbolProvider" Decode.bool fields in
+        Decode.optional "serverCapabilities" "documentSymbolProvider" Decode.bool fields
+      in
       let* code_action_provider =
         Decode.optional
           "serverCapabilities"
           "codeActionProvider"
           (ignore_context code_action_provider_of_json)
-          fields in
+          fields
+      in
       let experimental = Decode.field "experimental" fields in
       Ok {
         position_encoding;
@@ -1179,7 +1247,8 @@ module Initialize = struct
       (fun fields ->
         let* process_id = Decode.optional "initialize" "processId" Decode.int fields in
         let* client_info =
-          Decode.optional "initialize" "clientInfo" (ignore_context Client_info.of_json) fields in
+          Decode.optional "initialize" "clientInfo" (ignore_context Client_info.of_json) fields
+        in
         let* root_uri = Decode.optional "initialize" "rootUri" (ignore_context Uri.of_json) fields in
         let capabilities =
           Option.unwrap_or (Decode.field "capabilities" fields) ~default:(Json.obj [])
@@ -1191,7 +1260,8 @@ module Initialize = struct
             "initialize"
             "workspaceFolders"
             (ignore_context (Decode.list "initialize.workspaceFolders" Workspace_folder.of_json))
-            fields in
+            fields
+        in
         Ok {
           process_id;
           client_info;
@@ -1207,14 +1277,19 @@ module Initialize = struct
     let fields = Encode.field_opt "serverInfo" Server_info.to_json server_info fields in
     Json.obj (List.rev fields)
 
-  let result_of_json = fun value -> let* fields = Decode.object_fields "initializeResult" value in let* capabilities =
-    Decode.required
-      "initializeResult"
-      "capabilities"
-      (ignore_context Server_capabilities.of_json)
-      fields in let* server_info =
-    Decode.optional "initializeResult" "serverInfo" (ignore_context Server_info.of_json) fields in
-  Ok { capabilities; server_info }
+  let result_of_json = fun value ->
+    let* fields = Decode.object_fields "initializeResult" value in
+    let* capabilities =
+      Decode.required
+        "initializeResult"
+        "capabilities"
+        (ignore_context Server_capabilities.of_json)
+        fields
+    in
+    let* server_info =
+      Decode.optional "initializeResult" "serverInfo" (ignore_context Server_info.of_json) fields
+    in
+    Ok { capabilities; server_info }
 
   let request =
     Method.request
@@ -1275,12 +1350,15 @@ module Text_document_requests = struct
     let params_of_jsonrpc =
       Params.object_params
         "textDocument/didOpen"
-        (fun fields -> let* text_document =
-          Decode.required
-            "textDocument/didOpen"
-            "textDocument"
-            (ignore_context Text_document.Item.of_json)
-            fields in Ok { text_document })
+        (fun fields ->
+          let* text_document =
+            Decode.required
+              "textDocument/didOpen"
+              "textDocument"
+              (ignore_context Text_document.Item.of_json)
+              fields
+          in
+          Ok { text_document })
 
     let notification =
       Method.notification ~name:"textDocument/didOpen" ~params_of_jsonrpc ~params_to_jsonrpc
@@ -1305,20 +1383,25 @@ module Text_document_requests = struct
     let params_of_jsonrpc =
       Params.object_params
         "textDocument/didChange"
-        (fun fields -> let* text_document =
-          Decode.required
-            "textDocument/didChange"
-            "textDocument"
-            (ignore_context Text_document.Versioned_identifier.of_json)
-            fields in let* content_changes =
-          Decode.required
-            "textDocument/didChange"
-            "contentChanges"
-            (ignore_context
-              (Decode.list
-                "textDocument/didChange.contentChanges"
-                Text_document.content_change_event_of_json))
-            fields in Ok { text_document; content_changes })
+        (fun fields ->
+          let* text_document =
+            Decode.required
+              "textDocument/didChange"
+              "textDocument"
+              (ignore_context Text_document.Versioned_identifier.of_json)
+              fields
+          in
+          let* content_changes =
+            Decode.required
+              "textDocument/didChange"
+              "contentChanges"
+              (ignore_context
+                (Decode.list
+                  "textDocument/didChange.contentChanges"
+                  Text_document.content_change_event_of_json))
+              fields
+          in
+          Ok { text_document; content_changes })
 
     let notification =
       Method.notification ~name:"textDocument/didChange" ~params_of_jsonrpc ~params_to_jsonrpc
@@ -1336,12 +1419,15 @@ module Text_document_requests = struct
     let params_of_jsonrpc =
       Params.object_params
         "textDocument/didClose"
-        (fun fields -> let* text_document =
-          Decode.required
-            "textDocument/didClose"
-            "textDocument"
-            (ignore_context Text_document.Identifier.of_json)
-            fields in Ok { text_document })
+        (fun fields ->
+          let* text_document =
+            Decode.required
+              "textDocument/didClose"
+              "textDocument"
+              (ignore_context Text_document.Identifier.of_json)
+              fields
+          in
+          Ok { text_document })
 
     let notification =
       Method.notification ~name:"textDocument/didClose" ~params_of_jsonrpc ~params_to_jsonrpc
@@ -1366,19 +1452,26 @@ module Text_document_requests = struct
     let params_of_jsonrpc =
       Params.object_params
         "textDocument/publishDiagnostics"
-        (fun fields -> let* uri =
-          Decode.required
-            "textDocument/publishDiagnostics"
-            "uri"
-            (ignore_context Uri.of_json)
-            fields in let* version =
-          Decode.optional "textDocument/publishDiagnostics" "version" Decode.int fields in let* diagnostics =
-          Decode.required
-            "textDocument/publishDiagnostics"
-            "diagnostics"
-            (ignore_context
-              (Decode.list "textDocument/publishDiagnostics.diagnostics" Diagnostic.of_json))
-            fields in Ok { uri; version; diagnostics })
+        (fun fields ->
+          let* uri =
+            Decode.required
+              "textDocument/publishDiagnostics"
+              "uri"
+              (ignore_context Uri.of_json)
+              fields
+          in
+          let* version =
+            Decode.optional "textDocument/publishDiagnostics" "version" Decode.int fields
+          in
+          let* diagnostics =
+            Decode.required
+              "textDocument/publishDiagnostics"
+              "diagnostics"
+              (ignore_context
+                (Decode.list "textDocument/publishDiagnostics.diagnostics" Diagnostic.of_json))
+              fields
+          in
+          Ok { uri; version; diagnostics })
 
     let notification =
       Method.notification
@@ -1405,14 +1498,18 @@ module Text_document_requests = struct
     let params_of_jsonrpc =
       Params.object_params
         "textDocument/hover"
-        (fun fields -> let* text_document =
-          Decode.required
-            "textDocument/hover"
-            "textDocument"
-            (ignore_context Text_document.Identifier.of_json)
-            fields in let* position =
-          Decode.required "textDocument/hover" "position" (ignore_context Position.of_json) fields in
-        Ok { text_document; position })
+        (fun fields ->
+          let* text_document =
+            Decode.required
+              "textDocument/hover"
+              "textDocument"
+              (ignore_context Text_document.Identifier.of_json)
+              fields
+          in
+          let* position =
+            Decode.required "textDocument/hover" "position" (ignore_context Position.of_json) fields
+          in
+          Ok { text_document; position })
 
     let result_to_json = function
       | None -> Json.Null
@@ -1420,7 +1517,9 @@ module Text_document_requests = struct
 
     let result_of_json = function
       | Json.Null -> Ok None
-      | Json.Object _ as value -> let* hover = Hover_result.of_json value in Ok (Some hover)
+      | Json.Object _ as value ->
+          let* hover = Hover_result.of_json value in
+          Ok (Some hover)
       | value -> Error (unsupported_json_kind "textDocument/hover result object" value)
 
     let request =
@@ -1450,17 +1549,22 @@ module Text_document_requests = struct
     let params_of_jsonrpc =
       Params.object_params
         "textDocument/definition"
-        (fun fields -> let* text_document =
-          Decode.required
-            "textDocument/definition"
-            "textDocument"
-            (ignore_context Text_document.Identifier.of_json)
-            fields in let* position =
-          Decode.required
-            "textDocument/definition"
-            "position"
-            (ignore_context Position.of_json)
-            fields in Ok { text_document; position })
+        (fun fields ->
+          let* text_document =
+            Decode.required
+              "textDocument/definition"
+              "textDocument"
+              (ignore_context Text_document.Identifier.of_json)
+              fields
+          in
+          let* position =
+            Decode.required
+              "textDocument/definition"
+              "position"
+              (ignore_context Position.of_json)
+              fields
+          in
+          Ok { text_document; position })
 
     let result_to_json = function
       | None -> Json.Null
@@ -1468,7 +1572,9 @@ module Text_document_requests = struct
 
     let result_of_json = function
       | Json.Null -> Ok None
-      | Json.Object _ as value -> let* location = Location.of_json value in Ok (Some [ location ])
+      | Json.Object _ as value ->
+          let* location = Location.of_json value in
+          Ok (Some [ location ])
       | Json.Array _ as value ->
           let* locations = Decode.list "textDocument/definition result" Location.of_json value in
           Ok (Some locations)
@@ -1498,12 +1604,15 @@ module Text_document_requests = struct
     let params_of_jsonrpc =
       Params.object_params
         "textDocument/documentSymbol"
-        (fun fields -> let* text_document =
-          Decode.required
-            "textDocument/documentSymbol"
-            "textDocument"
-            (ignore_context Text_document.Identifier.of_json)
-            fields in Ok { text_document })
+        (fun fields ->
+          let* text_document =
+            Decode.required
+              "textDocument/documentSymbol"
+              "textDocument"
+              (ignore_context Text_document.Identifier.of_json)
+              fields
+          in
+          Ok { text_document })
 
     let result_to_json = function
       | None -> Json.Null
@@ -1513,7 +1622,8 @@ module Text_document_requests = struct
       | Json.Null -> Ok None
       | Json.Array _ as value ->
           let* symbols =
-            Decode.list "textDocument/documentSymbol result" Document_symbol_item.of_json value in
+            Decode.list "textDocument/documentSymbol result" Document_symbol_item.of_json value
+          in
           Ok (Some symbols)
       | value -> Error (unsupported_json_kind "textDocument/documentSymbol result array" value)
 
@@ -1544,17 +1654,22 @@ module Text_document_requests = struct
     let params_of_jsonrpc =
       Params.object_params
         "textDocument/formatting"
-        (fun fields -> let* text_document =
-          Decode.required
-            "textDocument/formatting"
-            "textDocument"
-            (ignore_context Text_document.Identifier.of_json)
-            fields in let* options =
-          Decode.required
-            "textDocument/formatting"
-            "options"
-            (ignore_context Text_document.formatting_options_of_json)
-            fields in Ok { text_document; options })
+        (fun fields ->
+          let* text_document =
+            Decode.required
+              "textDocument/formatting"
+              "textDocument"
+              (ignore_context Text_document.Identifier.of_json)
+              fields
+          in
+          let* options =
+            Decode.required
+              "textDocument/formatting"
+              "options"
+              (ignore_context Text_document.formatting_options_of_json)
+              fields
+          in
+          Ok { text_document; options })
 
     let result_to_json = function
       | None -> Json.Null
@@ -1603,19 +1718,24 @@ module Text_document_requests = struct
       let fields = Encode.field_opt "triggerKind" Json.int trigger_kind fields in
       Json.obj (List.rev fields)
 
-    let context_of_json = fun value -> let* fields = Decode.object_fields "codeActionContext" value in let* diagnostics =
-      Decode.required
-        "codeActionContext"
-        "diagnostics"
-        (ignore_context (Decode.list "codeActionContext.diagnostics" Diagnostic.of_json))
-        fields in let* only =
-      Decode.optional
-        "codeActionContext"
-        "only"
-        (ignore_context (Decode.list "codeActionContext.only" Action_kind.of_json))
-        fields in let* trigger_kind =
-      Decode.optional "codeActionContext" "triggerKind" Decode.int fields in
-    Ok { diagnostics; only; trigger_kind }
+    let context_of_json = fun value ->
+      let* fields = Decode.object_fields "codeActionContext" value in
+      let* diagnostics =
+        Decode.required
+          "codeActionContext"
+          "diagnostics"
+          (ignore_context (Decode.list "codeActionContext.diagnostics" Diagnostic.of_json))
+          fields
+      in
+      let* only =
+        Decode.optional
+          "codeActionContext"
+          "only"
+          (ignore_context (Decode.list "codeActionContext.only" Action_kind.of_json))
+          fields
+      in
+      let* trigger_kind = Decode.optional "codeActionContext" "triggerKind" Decode.int fields in
+      Ok { diagnostics; only; trigger_kind }
 
     let params_to_jsonrpc = fun { text_document; range; context } ->
       Params.named
@@ -1628,18 +1748,25 @@ module Text_document_requests = struct
     let params_of_jsonrpc =
       Params.object_params
         "textDocument/codeAction"
-        (fun fields -> let* text_document =
-          Decode.required
-            "textDocument/codeAction"
-            "textDocument"
-            (ignore_context Text_document.Identifier.of_json)
-            fields in let* range =
-          Decode.required "textDocument/codeAction" "range" (ignore_context Range.of_json) fields in let* context =
-          Decode.required
-            "textDocument/codeAction"
-            "context"
-            (ignore_context context_of_json)
-            fields in Ok { text_document; range; context })
+        (fun fields ->
+          let* text_document =
+            Decode.required
+              "textDocument/codeAction"
+              "textDocument"
+              (ignore_context Text_document.Identifier.of_json)
+              fields
+          in
+          let* range =
+            Decode.required "textDocument/codeAction" "range" (ignore_context Range.of_json) fields
+          in
+          let* context =
+            Decode.required
+              "textDocument/codeAction"
+              "context"
+              (ignore_context context_of_json)
+              fields
+          in
+          Ok { text_document; range; context })
 
     let result_to_json = function
       | None -> Json.Null
@@ -1649,7 +1776,8 @@ module Text_document_requests = struct
       | Json.Null -> Ok None
       | Json.Array _ as value ->
           let* actions =
-            Decode.list "textDocument/codeAction result" Code_action_or_command.of_json value in
+            Decode.list "textDocument/codeAction result" Code_action_or_command.of_json value
+          in
           Ok (Some actions)
       | value -> Error (unsupported_json_kind "textDocument/codeAction result array" value)
 
@@ -1694,7 +1822,9 @@ let request_of_json:
     else
       match request.id with
       | None -> Error ("request `" ^ method_.Method.name ^ "` is missing an id")
-      | Some id -> let* params = method_.Method.params_of_jsonrpc request.params in Ok (id, params)
+      | Some id ->
+          let* params = method_.Method.params_of_jsonrpc request.params in
+          Ok (id, params)
 
 let response_to_json:
   type params res. id:Jsonrpc.id ->
@@ -1733,9 +1863,11 @@ let response_of_json:
             | Some value -> Ok value
             | None -> Error "missing required field `response.result`"
           in
-          let* result = method_.Method.result_of_json result_json in Ok (id, result)
+          let* result = method_.Method.result_of_json result_json in
+          Ok (id, result)
 
-let notification_to_json: type params. params Method.notification -> params -> Json.t = fun method_ ->
+let notification_to_json: type params. params Method.notification -> params -> Json.t = fun
+  method_ ->
   fun params ->
     Jsonrpc.notification
       ~method_:method_.Method.name

@@ -207,7 +207,8 @@ let test_remove_accepts_multiple_dependencies = fun _ctx ->
 let test_update_outside_workspace_message = fun _ctx ->
   let* matches = parse_update [ "update" ] in
   let* () =
-    Result.map_err (Riot_cli.Update_cmd.run_without_workspace matches) ~fn:Exception.to_string in
+    Result.map_err (Riot_cli.Update_cmd.run_without_workspace matches) ~fn:Exception.to_string
+  in
   Test.assert_equal
     ~expected:"No riot.toml, so nothing to update"
     ~actual:Riot_cli.Update_cmd.no_workspace_message;
@@ -230,13 +231,16 @@ let test_new_outside_workspace_creates_standalone_package = fun _ctx ->
         |> Result.map_err ~fn:Exception.to_string
       in
       let* package_exists =
-        Result.map_err (Fs.exists Path.(package_root / Path.v "riot.toml")) ~fn:IO.error_message in
+        Result.map_err (Fs.exists Path.(package_root / Path.v "riot.toml")) ~fn:IO.error_message
+      in
       let* main_exists =
         Result.map_err
           (Fs.exists Path.(package_root / Path.v "src" / Path.v "HelloWorld.ml"))
-          ~fn:IO.error_message in
+          ~fn:IO.error_message
+      in
       let* manifest_source =
-        Result.map_err (Fs.read Path.(package_root / Path.v "riot.toml")) ~fn:IO.error_message in
+        Result.map_err (Fs.read Path.(package_root / Path.v "riot.toml")) ~fn:IO.error_message
+      in
       if package_exists && main_exists && String.contains manifest_source "[package]" then
         Ok ()
       else

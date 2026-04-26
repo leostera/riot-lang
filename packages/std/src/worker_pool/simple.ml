@@ -40,7 +40,8 @@ type Message.t +=
 
 let rec loop: type task res. (task, res) state -> (unit, Actor.exit_reason) result = fun state ->
   let selector:
-    ([`WorkerReady of task worker | `TaskResult of int * res | `TaskError of int * exn]) selector = fun msg ->
+    ([`WorkerReady of task worker | `TaskResult of int * res | `TaskError of int * exn]) selector = fun
+    msg ->
     match msg with
     | Dynamic.WorkerReady worker -> (
         match Ref.type_equal state.pool.task_ref worker.task_ref with

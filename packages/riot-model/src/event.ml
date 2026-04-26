@@ -875,7 +875,9 @@ let package_names_of_json = function
   | Json.Array packages ->
       let rec loop acc = function
         | [] -> Ok (List.reverse acc)
-        | json :: rest -> let* package = package_name_of_json json in loop (package :: acc) rest
+        | json :: rest ->
+            let* package = package_name_of_json json in
+            loop (package :: acc) rest
       in
       loop [] packages
   | _ -> Error "invalid package names"

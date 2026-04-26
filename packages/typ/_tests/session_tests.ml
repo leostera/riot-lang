@@ -389,7 +389,13 @@ let update_source_text = fun session source_id ~kind ~origin ~text ->
     ~parse_result
     ~cst
 
-let make_source_with_implicit_opens = fun ~implicit_opens ~source_id ~kind ~origin ~revision ~text ->
+let make_source_with_implicit_opens = fun
+  ~implicit_opens
+  ~source_id
+  ~kind
+  ~origin
+  ~revision
+  ~text ->
   let filename =
     match origin with
     | Source.Path path -> path
@@ -475,7 +481,13 @@ let imported_world_of_loaded_modules = fun loaded_modules (source: Source.t) ->
     ~package_env:(PackageEnv.of_loaded_modules loaded_modules_index)
     ~scope_view:(ScopeView.create ~visible_modules ~implicit_open_modules)
 
-let prepared_check_source = fun ~source_id ~filename ~internal_module_name ~local_module_name ~public_module_name ~text ->
+let prepared_check_source = fun
+  ~source_id
+  ~filename
+  ~internal_module_name
+  ~local_module_name
+  ~public_module_name
+  ~text ->
   let path = Path.v filename in
   let origin = Source.Label filename in
   let kind = Source.File in
@@ -910,7 +922,8 @@ let test_prepare_snapshot_resolves_internal_module_dependencies_by_local_alias =
         else
           Error (format Format.[ str "unexpected value type: "; str (show_option value_type) ])
 
-let test_prepare_snapshot_prefers_internal_local_alias_dependencies_over_loaded_modules = fun _ctx ->
+let test_prepare_snapshot_prefers_internal_local_alias_dependencies_over_loaded_modules = fun
+  _ctx ->
   let session = Session.empty ~config:Config.default in
   let unix_text =
     {ocaml|
@@ -6418,7 +6431,8 @@ let test_prepare_snapshot_missing_requirements_emit_structured_events = fun _ctx
             )
           )
 
-let test_prepare_snapshot_missing_requirements_through_include_do_not_trigger_nested_typing = fun _ctx ->
+let test_prepare_snapshot_missing_requirements_through_include_do_not_trigger_nested_typing = fun
+  _ctx ->
   let events = ref [] in
   let config =
     Config.default
@@ -8098,7 +8112,8 @@ let test_prepare_snapshot_type_decls_use_opened_loaded_nominal_types = fun _ctx 
             | Failure message -> Error message
           )
 
-let test_prepare_snapshot_type_decls_use_opened_loaded_nominal_types_with_underscored_module_name = fun _ctx ->
+let test_prepare_snapshot_type_decls_use_opened_loaded_nominal_types_with_underscored_module_name = fun
+  _ctx ->
   let seed_session = Session.empty ~config:Config.default in
   let (seed_session, parser_source_id) =
     create_source
@@ -8183,7 +8198,8 @@ let test_prepare_snapshot_polyvariant_exports_canonicalize_sibling_structural_ty
           ^ " but got "
           ^ Option.unwrap_or ~default:"<none>" actual)
 
-let test_prepare_snapshot_polyvariant_exports_canonicalize_sibling_structural_types_inside_arrows = fun _ctx ->
+let test_prepare_snapshot_polyvariant_exports_canonicalize_sibling_structural_types_inside_arrows = fun
+  _ctx ->
   let session = Session.empty ~config:Config.default in
   let (session, _ansi_table_source_id) =
     create_source
@@ -8382,7 +8398,8 @@ let test_loaded_module_typings_preserve_nested_same_named_alias_exports = fun _c
           let () = Test.assert_equal ~expected:(Some "int") ~actual:answer_type in
           Ok ()
 
-let test_paired_loaded_module_typings_preserve_nested_alias_exports_across_include_chain = fun _ctx ->
+let test_paired_loaded_module_typings_preserve_nested_alias_exports_across_include_chain = fun
+  _ctx ->
   let kernel_seed_session = Session.empty ~config:Config.default in
   let (kernel_seed_session, _cell_impl_source_id) =
     create_source
@@ -8904,7 +8921,8 @@ let test_prepare_snapshot_keeps_nested_sibling_modules_out_of_top_level_requirem
       else
         Error (String.concat "\n" [ "expected"; expected; "actual"; actual; ])
 
-let test_prepare_snapshot_keeps_loaded_nested_module_exports_out_of_top_level_requirements = fun _ctx ->
+let test_prepare_snapshot_keeps_loaded_nested_module_exports_out_of_top_level_requirements = fun
+  _ctx ->
   let seed_session = Session.empty ~config:Config.default in
   let (seed_session, colors_source_id) =
     create_source
@@ -9268,7 +9286,8 @@ let test_prepare_snapshot_types_local_source_module_pack = fun _ctx ->
         else
           Error ("unexpected to_source type: " ^ show_option to_source_type)
 
-let test_check_source_recovers_when_snapshot_preparation_reports_missing_module_summaries = fun _ctx ->
+let test_check_source_recovers_when_snapshot_preparation_reports_missing_module_summaries = fun
+  _ctx ->
   let report =
     check_source_text
       ~filename:(Path.v "uses_missing_module.ml")
@@ -9904,7 +9923,8 @@ let test_prepare_snapshot_paired_module_preserves_first_class_module_value_signa
               str (show_option is_error_type);
             ])
 
-let test_prepare_snapshot_paired_module_allows_hidden_manifest_alias_with_same_variant_shape = fun _ctx ->
+let test_prepare_snapshot_paired_module_allows_hidden_manifest_alias_with_same_variant_shape = fun
+  _ctx ->
   let session = Session.empty ~config:Config.default in
   let (session, adapter_intf_source_id) =
     create_source
@@ -10067,7 +10087,8 @@ let test_prepare_snapshot_include_prefers_local_unix_wrapper_over_loaded_unix = 
               str (show_option open_file_type);
             ])
 
-let test_prepare_snapshot_include_uses_interface_shaped_exports_from_errored_local_wrapper = fun _ctx ->
+let test_prepare_snapshot_include_uses_interface_shaped_exports_from_errored_local_wrapper = fun
+  _ctx ->
   let session = Session.empty ~config:Config.default in
   let (session, path_intf_source_id) =
     create_source

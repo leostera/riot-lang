@@ -786,21 +786,28 @@ let canonicalize_scheme = fun (state: t) scheme ->
     (canonicalize_type state)
     scheme
 
-let canonicalize_scheme_with_name_resolution = fun ~resolve_named_type_decl ~resolve_named_type_head scheme ->
+let canonicalize_scheme_with_name_resolution = fun
+  ~resolve_named_type_decl
+  ~resolve_named_type_head
+  scheme ->
   canonicalize_scheme_with
     (resolve_type_with ~make:TypeRepr.of_desc ~resolve_named_type_decl ~resolve_named_type_head)
     scheme
 
-let canonicalize_type_with_name_resolution = fun ~resolve_named_type_decl ~resolve_named_type_head ty ->
+let canonicalize_type_with_name_resolution = fun
+  ~resolve_named_type_decl
+  ~resolve_named_type_head
+  ty ->
   resolve_type_with
     ~make:TypeRepr.of_desc
     ~resolve_named_type_decl
     ~resolve_named_type_head
     ty
 
-let canonicalize_type_decl_with_name_resolution = fun ~resolve_named_type_decl ~resolve_named_type_head (
-  type_decl: FileSummary.type_decl
-) ->
+let canonicalize_type_decl_with_name_resolution = fun
+  ~resolve_named_type_decl
+  ~resolve_named_type_head
+  (type_decl: FileSummary.type_decl) ->
   let canonicalize_type =
     resolve_type_with ~make:TypeRepr.of_desc ~resolve_named_type_decl ~resolve_named_type_head
   in

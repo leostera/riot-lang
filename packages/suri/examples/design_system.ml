@@ -104,7 +104,11 @@ module MyDesign = struct
       ]
       children
 
-  let button_base = fun ?(class_extra = "") ?(bg_color = primary_color) ?(text_color = "white") children ->
+  let button_base = fun
+    ?(class_extra = "")
+    ?(bg_color = primary_color)
+    ?(text_color = "white")
+    children ->
     button
       ~attrs:[
         class_ ("btn " ^ class_extra);

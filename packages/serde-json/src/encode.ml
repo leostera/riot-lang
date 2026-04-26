@@ -136,7 +136,10 @@ let float_to_json = fun value ->
     else
       text
 
-let rec list_backend: 'value. state -> 'value Serde.Ser.t -> 'value vec -> unit = fun state encode values ->
+let rec list_backend: 'value. state -> 'value Serde.Ser.t -> 'value vec -> unit = fun
+  state
+  encode
+  values ->
   write_char state '[';
   let first = ref true in
   Vector.for_each
@@ -149,7 +152,10 @@ let rec list_backend: 'value. state -> 'value Serde.Ser.t -> 'value vec -> unit 
       encode.run backend state value);
   write_char state ']'
 
-and array_backend: 'value. state -> 'value Serde.Ser.t -> 'value array -> unit = fun state encode values ->
+and array_backend: 'value. state -> 'value Serde.Ser.t -> 'value array -> unit = fun
+  state
+  encode
+  values ->
   write_char state '[';
   for index = 0 to Array.length values - 1 do
     if not (Int.equal index 0) then
@@ -161,7 +167,10 @@ and array_backend: 'value. state -> 'value Serde.Ser.t -> 'value array -> unit =
   done;
   write_char state ']'
 
-and record_backend: 'value. state -> 'value Serde.Ser.fields -> 'value -> unit = fun state fields value ->
+and record_backend: 'value. state -> 'value Serde.Ser.fields -> 'value -> unit = fun
+  state
+  fields
+  value ->
   write_char state '{';
   for index = 0 to Array.length fields - 1 do
     if not (Int.equal index 0) then
@@ -174,7 +183,10 @@ and record_backend: 'value. state -> 'value Serde.Ser.fields -> 'value -> unit =
   done;
   write_char state '}'
 
-and variant_backend: 'value. state -> 'value Serde.Ser.variant_cases -> 'value -> unit = fun state cases value ->
+and variant_backend: 'value. state -> 'value Serde.Ser.variant_cases -> 'value -> unit = fun
+  state
+  cases
+  value ->
   let rec loop index =
     if Int.equal index (Array.length cases) then
       raise (Serde.Encode_error `invalid_tag)
@@ -230,7 +242,8 @@ let to_string = fun encode value ->
     escaped_literals = [];
   }
   in
-  let* () = Serde.Ser.run encode backend state value in Ok (IO.Buffer.contents state.output)
+  let* () = Serde.Ser.run encode backend state value in
+  Ok (IO.Buffer.contents state.output)
 
 let to_writer = fun encode writer value ->
   let state = {

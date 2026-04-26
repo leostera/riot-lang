@@ -142,7 +142,14 @@ let make_broken_workspace = fun ?target_dir tmpdir ->
   in
   Riot_model.Workspace.make_realized ~root:tmpdir ?target_dir ~packages:[ package ] ()
 
-let make_request = fun ~workspace ?(packages = [package_name "demo"]) ?(targets = Riot_model.Target.Host) ?(scope = Riot_build.Request.Runtime) ?(profile = Riot_model.Profile.debug) ?(requested_parallelism = None) () ->
+let make_request = fun
+  ~workspace
+  ?(packages = [package_name "demo"])
+  ?(targets = Riot_model.Target.Host)
+  ?(scope = Riot_build.Request.Runtime)
+  ?(profile = Riot_model.Profile.debug)
+  ?(requested_parallelism = None)
+  () ->
   Riot_build.Request.make
     ~workspace
     ~packages
@@ -688,11 +695,14 @@ let test_build_preserves_exact_target_subset = fun _ctx ->
                 expect_int
                   ~label:"resolved target count"
                   ~expected:expected_target_count
-                  ~actual:count in let* () =
+                  ~actual:count
+              in
+              let* () =
                 expect_int
                   ~label:"started target count"
                   ~expected:expected_target_count
-                  ~actual:!started_count in
+                  ~actual:!started_count
+              in
               expect_int
                 ~label:"finished target count"
                 ~expected:expected_target_count
@@ -758,29 +768,34 @@ let test_build_multi_target_outputs_and_events = fun _ctx ->
                 expect_int
                   ~label:"resolved target count"
                   ~expected:expected_target_count
-                  ~actual:count in
+                  ~actual:count
+              in
               let* () =
                 expect_int
                   ~label:"started target count"
                   ~expected:expected_target_count
-                  ~actual:(List.length !started_targets) in
+                  ~actual:(List.length !started_targets)
+              in
               let* () =
                 expect_int
                   ~label:"finished target count"
                   ~expected:expected_target_count
-                  ~actual:(List.length !finished_targets) in
+                  ~actual:(List.length !finished_targets)
+              in
               let started_sorted = sort_target_names !started_targets in
               let finished_sorted = sort_target_names !finished_targets in
               let* () =
                 expect_string_list
                   ~label:"started targets"
                   ~expected:expected_target_names
-                  ~actual:started_sorted in
+                  ~actual:started_sorted
+              in
               let* () =
                 expect_string_list
                   ~label:"finished targets"
                   ~expected:expected_target_names
-                  ~actual:finished_sorted in
+                  ~actual:finished_sorted
+              in
               Test.assert_false !any_partial_failure;
               let build_result_status =
                 if not (List.all !finished_counts ~fn:(fun result_count ->
@@ -889,22 +904,26 @@ let test_build_multi_target_partial_failures_fail_by_default = fun _ctx ->
                 expect_int
                   ~label:"resolved target count"
                   ~expected:expected_target_count
-                  ~actual:count in
+                  ~actual:count
+              in
               let* () =
                 expect_int
                   ~label:"started target count"
                   ~expected:expected_target_count
-                  ~actual:(List.length !started_targets) in
+                  ~actual:(List.length !started_targets)
+              in
               let* () =
                 expect_int
                   ~label:"finished target count"
                   ~expected:expected_target_count
-                  ~actual:(List.length !finished_targets) in
+                  ~actual:(List.length !finished_targets)
+              in
               let* () =
                 expect_int
                   ~label:"partial failure flag count"
                   ~expected:expected_target_count
-                  ~actual:(List.length !partial_failure_flags) in
+                  ~actual:(List.length !partial_failure_flags)
+              in
               if not (List.all !partial_failure_flags ~fn:(fun partial ->
                 partial)) then
                 Error "expected each target build to report partial failures"
@@ -916,7 +935,8 @@ let test_build_multi_target_partial_failures_fail_by_default = fun _ctx ->
                   expect_string_list
                     ~label:"started targets"
                     ~expected:expected_targets
-                    ~actual:(sort_target_names !started_targets) in
+                    ~actual:(sort_target_names !started_targets)
+                in
                 expect_string_list
                   ~label:"finished targets"
                   ~expected:expected_targets

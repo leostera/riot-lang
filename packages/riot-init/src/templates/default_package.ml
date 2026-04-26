@@ -75,18 +75,22 @@ let materialize = fun (config: Context.t) ->
         write
           config
           ~relative_path:(src_root ^ "/" ^ module_file_stem ^ ".ml")
-          ~content:(library_ml ~workspace_name:config.workspace_name) in
+          ~content:(library_ml ~workspace_name:config.workspace_name)
+      in
       write
         config
         ~relative_path:(src_root ^ "/" ^ module_file_stem ^ ".mli")
         ~content:(library_mli ~workspace_name:config.workspace_name)
     else
       let* () =
-        write config ~relative_path:(src_root ^ "/main.ml") ~content:(binary_main_ml ~module_name) in let* () =
+        write config ~relative_path:(src_root ^ "/main.ml") ~content:(binary_main_ml ~module_name)
+      in
+      let* () =
         write
           config
           ~relative_path:(src_root ^ "/" ^ module_file_stem ^ ".ml")
-          ~content:(library_ml ~workspace_name:config.workspace_name) in
+          ~content:(library_ml ~workspace_name:config.workspace_name)
+      in
       write
         config
         ~relative_path:(src_root ^ "/" ^ module_file_stem ^ ".mli")

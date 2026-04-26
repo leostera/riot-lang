@@ -19,7 +19,13 @@ module ProtocolDetector = Protocol_detector
    @param acceptors Number of concurrent acceptor processes (defaults to available parallelism)
    @return Ok supervisor_pid or Error if binding fails
 *)
-let start_link = fun ?(host = "0.0.0.0") ~port ?(acceptors = Std.Thread.available_parallelism) ~config ~handler () ->
+let start_link = fun
+  ?(host = "0.0.0.0")
+  ~port
+  ?(acceptors = Std.Thread.available_parallelism)
+  ~config
+  ~handler
+  () ->
   let handler_state = Http1.make_handler ~config ~handler () in
   let socket_handler: (Http1.state, Http1.error) Socket_pool.Handler.handler = {
     handle_connection = Http1.handle_connection;

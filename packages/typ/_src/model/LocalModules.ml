@@ -289,7 +289,10 @@ let common_prefix_length = fun left right ->
   in
   loop 0
 
-let contextual_match_depth = fun ~current_module_name ~required_module_name ~candidate_module_name ->
+let contextual_match_depth = fun
+  ~current_module_name
+  ~required_module_name
+  ~candidate_module_name ->
   let current_segments = (internal_entry current_module_name).segments in
   let candidate = internal_entry candidate_module_name in
   let best =

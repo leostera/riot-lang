@@ -160,9 +160,11 @@ let test_timer_rejects_non_positive_timeout = fun _ctx ->
   | Kernel.Result.Ok _ ->
       Error "expected timer source construction to reject a non-positive timeout"
 
-let test_timer_after_ns_wakes_poll = fun _ctx -> with_poll
-  (fun poll -> let* timer = lift_timer (Kernel.Time.Timer.after_ns 5_000_000L) in
-  wait_for_timer poll ~token:(Kernel.Async.Token.make 700) timer)
+let test_timer_after_ns_wakes_poll = fun _ctx ->
+  with_poll
+    (fun poll ->
+      let* timer = lift_timer (Kernel.Time.Timer.after_ns 5_000_000L) in
+      wait_for_timer poll ~token:(Kernel.Async.Token.make 700) timer)
 
 let test_timer_after_ns_fires_only_once_per_registration = fun _ctx ->
   with_poll
@@ -171,7 +173,8 @@ let test_timer_after_ns_fires_only_once_per_registration = fun _ctx ->
       let source = Kernel.Time.Timer.to_source timer in
       let token = Kernel.Async.Token.make 704 in
       let* () =
-        lift_async (Kernel.Async.Poll.register poll token Kernel.Async.Interest.readable source) in
+        lift_async (Kernel.Async.Poll.register poll token Kernel.Async.Interest.readable source)
+      in
       protect
         ~finally:(fun () ->
           let _ = Kernel.Async.Poll.deregister poll source in
@@ -193,15 +196,18 @@ let test_timer_after_ns_can_be_rearmed_after_fire = fun _ctx ->
       let second_token = Kernel.Async.Token.make "second-after-ns" in
       let* () =
         lift_async
-          (Kernel.Async.Poll.register poll first_token Kernel.Async.Interest.readable source) in
+          (Kernel.Async.Poll.register poll first_token Kernel.Async.Interest.readable source)
+      in
       protect
         ~finally:(fun () ->
           let _ = Kernel.Async.Poll.deregister poll source in
           ())
         (fun () ->
-          let* () = wait_for_readable_token poll ~token:first_token in let* () =
+          let* () = wait_for_readable_token poll ~token:first_token in
+          let* () =
             lift_async
-              (Kernel.Async.Poll.reregister poll second_token Kernel.Async.Interest.readable source) in
+              (Kernel.Async.Poll.reregister poll second_token Kernel.Async.Interest.readable source)
+          in
           wait_for_readable_token poll ~token:second_token))
 
 let test_many_same_tick_timers_wake_the_poller = fun _ctx ->
@@ -224,7 +230,9 @@ let test_many_same_tick_timers_wake_the_poller = fun _ctx ->
                   poll
                   (Kernel.Async.Token.make index)
                   Kernel.Async.Interest.readable
-                  (Kernel.Time.Timer.to_source timer)) in register (index + 1) rest
+                  (Kernel.Time.Timer.to_source timer))
+            in
+            register (index + 1) rest
       in
       let seen = Kernel.Array.make ~count:12 ~value:false in
       let rec mark = function
@@ -250,7 +258,8 @@ let test_many_same_tick_timers_wake_the_poller = fun _ctx ->
           Error "expected many same-tick timers to wake the poller"
         else
           let* events =
-            lift_async (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:32 poll) in
+            lift_async (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:32 poll)
+          in
           mark events;
         if all_seen 0 then
           Ok ()
@@ -266,7 +275,8 @@ let test_timer_every_ns_repeats = fun _ctx ->
       let source = Kernel.Time.Timer.to_source timer in
       let token = Kernel.Async.Token.make 701 in
       let* () =
-        lift_async (Kernel.Async.Poll.register poll token Kernel.Async.Interest.readable source) in
+        lift_async (Kernel.Async.Poll.register poll token Kernel.Async.Interest.readable source)
+      in
       protect
         ~finally:(fun () ->
           let _ = Kernel.Async.Poll.deregister poll source in
@@ -277,7 +287,8 @@ let test_timer_every_ns_repeats = fun _ctx ->
               Ok ()
             else
               let* events =
-                lift_async (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:8 poll) in
+                lift_async (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:8 poll)
+              in
               if
                 List.any
                   events
@@ -299,7 +310,8 @@ let test_timer_reregister_updates_token = fun _ctx ->
       let token_a = Kernel.Async.Token.make "first-timer-token" in
       let token_b = Kernel.Async.Token.make "second-timer-token" in
       let* () =
-        lift_async (Kernel.Async.Poll.register poll token_a Kernel.Async.Interest.readable source) in
+        lift_async (Kernel.Async.Poll.register poll token_a Kernel.Async.Interest.readable source)
+      in
       protect
         ~finally:(fun () ->
           let _ = Kernel.Async.Poll.deregister poll source in
@@ -307,8 +319,10 @@ let test_timer_reregister_updates_token = fun _ctx ->
         (fun () ->
           let* () =
             lift_async
-              (Kernel.Async.Poll.reregister poll token_b Kernel.Async.Interest.readable source) in let* () =
-            wait_for_readable_token poll ~token:token_b in Ok ()))
+              (Kernel.Async.Poll.reregister poll token_b Kernel.Async.Interest.readable source)
+          in
+          let* () = wait_for_readable_token poll ~token:token_b in
+          Ok ()))
 
 let test_timer_repeated_register_reregister_and_deregister_stays_healthy = fun _ctx ->
   with_poll
@@ -323,10 +337,12 @@ let test_timer_repeated_register_reregister_and_deregister_stays_healthy = fun _
           let token_b = Kernel.Async.Token.make ("timer-reregistered", remaining) in
           let* () =
             lift_async
-              (Kernel.Async.Poll.register poll token_a Kernel.Async.Interest.readable source) in
+              (Kernel.Async.Poll.register poll token_a Kernel.Async.Interest.readable source)
+          in
           let* () =
             lift_async
-              (Kernel.Async.Poll.reregister poll token_b Kernel.Async.Interest.readable source) in
+              (Kernel.Async.Poll.reregister poll token_b Kernel.Async.Interest.readable source)
+          in
           let* () = wait_for_readable_token poll ~token:token_b in
           let* () = lift_async (Kernel.Async.Poll.deregister poll source) in
           let* quiet = lift_async (Kernel.Async.Poll.poll ~timeout:20_000_000L ~max_events:8 poll) in
@@ -346,7 +362,8 @@ let test_timer_source_can_be_reused_after_deregister = fun _ctx ->
       let second_token = Kernel.Async.Token.make "second-timer-registration" in
       let* () =
         lift_async
-          (Kernel.Async.Poll.register poll first_token Kernel.Async.Interest.readable source) in
+          (Kernel.Async.Poll.register poll first_token Kernel.Async.Interest.readable source)
+      in
       let* () = lift_async (Kernel.Async.Poll.deregister poll source) in
       let* quiet = lift_async (Kernel.Async.Poll.poll ~timeout:20_000_000L ~max_events:8 poll) in
       if has_readable_token first_token quiet then
@@ -354,7 +371,8 @@ let test_timer_source_can_be_reused_after_deregister = fun _ctx ->
       else
         let* () =
           lift_async
-            (Kernel.Async.Poll.register poll second_token Kernel.Async.Interest.readable source) in
+            (Kernel.Async.Poll.register poll second_token Kernel.Async.Interest.readable source)
+        in
         protect
           ~finally:(fun () ->
             let _ = Kernel.Async.Poll.deregister poll source in
@@ -369,7 +387,8 @@ let test_timer_deregister_after_after_ns_fire_is_harmless = fun _ctx ->
       let source = Kernel.Time.Timer.to_source timer in
       let token = Kernel.Async.Token.make "after-ns-deregistered" in
       let* () =
-        lift_async (Kernel.Async.Poll.register poll token Kernel.Async.Interest.readable source) in
+        lift_async (Kernel.Async.Poll.register poll token Kernel.Async.Interest.readable source)
+      in
       let* () = wait_for_readable_token poll ~token in
       let* () = lift_async (Kernel.Async.Poll.deregister poll source) in
       let* quiet = lift_async (Kernel.Async.Poll.poll ~timeout:20_000_000L ~max_events:8 poll) in
@@ -385,7 +404,8 @@ let test_timer_deregister_after_first_tick_stops_future_events = fun _ctx ->
       let source = Kernel.Time.Timer.to_source timer in
       let token = Kernel.Async.Token.make 702 in
       let* () =
-        lift_async (Kernel.Async.Poll.register poll token Kernel.Async.Interest.readable source) in
+        lift_async (Kernel.Async.Poll.register poll token Kernel.Async.Interest.readable source)
+      in
       protect
         ~finally:(fun () ->
           let _ = Kernel.Async.Poll.deregister poll source in
@@ -397,7 +417,8 @@ let test_timer_deregister_after_first_tick_stops_future_events = fun _ctx ->
           else
             let* () = lift_async (Kernel.Async.Poll.deregister poll source) in
             let* second =
-              lift_async (Kernel.Async.Poll.poll ~timeout:20_000_000L ~max_events:8 poll) in
+              lift_async (Kernel.Async.Poll.poll ~timeout:20_000_000L ~max_events:8 poll)
+            in
             if has_readable_token token second then
               Error "expected deregistered timer to stop producing events"
             else
@@ -410,7 +431,8 @@ let test_timer_deregister_before_first_tick_stays_quiet = fun _ctx ->
       let source = Kernel.Time.Timer.to_source timer in
       let token = Kernel.Async.Token.make "timer-deregister-before-first-tick" in
       let* () =
-        lift_async (Kernel.Async.Poll.register poll token Kernel.Async.Interest.readable source) in
+        lift_async (Kernel.Async.Poll.register poll token Kernel.Async.Interest.readable source)
+      in
       let* () = lift_async (Kernel.Async.Poll.deregister poll source) in
       let* quiet = lift_async (Kernel.Async.Poll.poll ~timeout:20_000_000L ~max_events:8 poll) in
       if has_readable_token token quiet then
@@ -427,7 +449,8 @@ let test_timer_every_ns_spacing_is_reasonable = fun _ctx ->
       let token = Kernel.Async.Token.make 703 in
       let* start = lift_monotonic (Kernel.Time.Monotonic.now ()) in
       let* () =
-        lift_async (Kernel.Async.Poll.register poll token Kernel.Async.Interest.readable source) in
+        lift_async (Kernel.Async.Poll.register poll token Kernel.Async.Interest.readable source)
+      in
       protect
         ~finally:(fun () ->
           let _ = Kernel.Async.Poll.deregister poll source in
@@ -443,7 +466,8 @@ let test_timer_every_ns_spacing_is_reasonable = fun _ctx ->
                 Error "expected repeating timer ticks to stay within a reasonable tolerance"
             else
               let* events =
-                lift_async (Kernel.Async.Poll.poll ~timeout:200_000_000L ~max_events:8 poll) in
+                lift_async (Kernel.Async.Poll.poll ~timeout:200_000_000L ~max_events:8 poll)
+              in
               if has_readable_token token events then
                 wait_for_ticks (seen + 1)
               else
@@ -460,7 +484,8 @@ let test_timer_after_ns_elapsed_time_is_reasonable = fun _ctx ->
       let token = Kernel.Async.Token.make 705 in
       let* start = lift_monotonic (Kernel.Time.Monotonic.now ()) in
       let* () =
-        lift_async (Kernel.Async.Poll.register poll token Kernel.Async.Interest.readable source) in
+        lift_async (Kernel.Async.Poll.register poll token Kernel.Async.Interest.readable source)
+      in
       protect
         ~finally:(fun () ->
           let _ = Kernel.Async.Poll.deregister poll source in
@@ -554,7 +579,8 @@ let test_one_shot_timer_stays_quiet_before_deadline = fun _ctx ->
       let token = Kernel.Async.Token.make 15 in
       let source = Kernel.Time.Timer.to_source timer in
       let* () =
-        lift_async (Kernel.Async.Poll.register poll token Kernel.Async.Interest.readable source) in
+        lift_async (Kernel.Async.Poll.register poll token Kernel.Async.Interest.readable source)
+      in
       protect
         ~finally:(fun () ->
           let _ = Kernel.Async.Poll.deregister poll source in
@@ -574,7 +600,8 @@ let test_reregistering_one_shot_before_fire_resets_the_deadline = fun _ctx ->
       let token = Kernel.Async.Token.make 16 in
       let replacement = Kernel.Async.Token.make 17 in
       let* () =
-        lift_async (Kernel.Async.Poll.register poll token Kernel.Async.Interest.readable source) in
+        lift_async (Kernel.Async.Poll.register poll token Kernel.Async.Interest.readable source)
+      in
       protect
         ~finally:(fun () ->
           let _ = Kernel.Async.Poll.deregister poll source in
@@ -586,7 +613,8 @@ let test_reregistering_one_shot_before_fire_resets_the_deadline = fun _ctx ->
           else
             let* () =
               lift_async
-                (Kernel.Async.Poll.reregister poll replacement Kernel.Async.Interest.readable source) in
+                (Kernel.Async.Poll.reregister poll replacement Kernel.Async.Interest.readable source)
+            in
             let* quiet_after = lift_async (Kernel.Async.Poll.poll ~timeout:15_000_000L poll) in
             if has_readable_token replacement quiet_after then
               Error "expected reregister to reset the one-shot deadline from the new call site"

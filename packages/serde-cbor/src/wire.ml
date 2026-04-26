@@ -145,30 +145,41 @@ let read_byte = fun input ->
   input.pos <- input.pos + 1;
   Ok value
 
-let read_uint16_be = fun input -> let* b0 = read_byte input in let* b1 = read_byte input in
-Ok ((b0 lsl 8) lor b1)
+let read_uint16_be = fun input ->
+  let* b0 = read_byte input in
+  let* b1 = read_byte input in
+  Ok ((b0 lsl 8) lor b1)
 
-let read_uint32_be = fun input -> let* b0 = read_byte input in let* b1 = read_byte input in let* b2 =
-  read_byte input in let* b3 = read_byte input in
-Ok Int64.(logor
-  (shift_left (of_int b0) 24)
-  (logor (shift_left (of_int b1) 16) (logor (shift_left (of_int b2) 8) (of_int b3))))
+let read_uint32_be = fun input ->
+  let* b0 = read_byte input in
+  let* b1 = read_byte input in
+  let* b2 = read_byte input in
+  let* b3 = read_byte input in
+  Ok Int64.(logor
+    (shift_left (of_int b0) 24)
+    (logor (shift_left (of_int b1) 16) (logor (shift_left (of_int b2) 8) (of_int b3))))
 
-let read_uint64_be = fun input -> let open Int64 in
-let* b0 = read_byte input in let* b1 = read_byte input in let* b2 = read_byte input in let* b3 =
-  read_byte input in let* b4 = read_byte input in let* b5 = read_byte input in let* b6 =
-  read_byte input in let* b7 = read_byte input in
-Ok (logor
-  (shift_left (of_int b0) 56)
-  (logor
-    (shift_left (of_int b1) 48)
+let read_uint64_be = fun input ->
+  let open Int64 in
+  let* b0 = read_byte input in
+  let* b1 = read_byte input in
+  let* b2 = read_byte input in
+  let* b3 = read_byte input in
+  let* b4 = read_byte input in
+  let* b5 = read_byte input in
+  let* b6 = read_byte input in
+  let* b7 = read_byte input in
+  Ok (logor
+    (shift_left (of_int b0) 56)
     (logor
-      (shift_left (of_int b2) 40)
+      (shift_left (of_int b1) 48)
       (logor
-        (shift_left (of_int b3) 32)
+        (shift_left (of_int b2) 40)
         (logor
-          (shift_left (of_int b4) 24)
-          (logor (shift_left (of_int b5) 16) (logor (shift_left (of_int b6) 8) (of_int b7))))))))
+          (shift_left (of_int b3) 32)
+          (logor
+            (shift_left (of_int b4) 24)
+            (logor (shift_left (of_int b5) 16) (logor (shift_left (of_int b6) 8) (of_int b7))))))))
 
 let decode_half = fun bits ->
   let sign =
@@ -253,9 +264,13 @@ let rec read_value = fun input ->
   let minor = lead land 0x1f in
   match major with
   | 0 ->
-      let* value = read_argument input minor in let* value = int_of_positive value in Ok (Int value)
+      let* value = read_argument input minor in
+      let* value = int_of_positive value in
+      Ok (Int value)
   | 1 ->
-      let* raw = read_argument input minor in let* value = int_of_negative raw in Ok (Int value)
+      let* raw = read_argument input minor in
+      let* value = int_of_negative raw in
+      Ok (Int value)
   | 3 ->
       read_text input minor
       |> Result.map ~fn:(fun value -> Text value)
@@ -265,7 +280,8 @@ let rec read_value = fun input ->
         if Int.equal remaining 0 then
           Ok (Array (List.rev acc))
         else
-          let* value = read_value input in loop (remaining - 1) (value :: acc)
+          let* value = read_value input in
+          loop (remaining - 1) (value :: acc)
       in
       loop length []
   | 5 ->
@@ -280,10 +296,13 @@ let rec read_value = fun input ->
             | Text value -> Ok value
             | _ -> error "serde-cbor map keys must be text strings"
           in
-          let* value = read_value input in loop (remaining - 1) ((key, value) :: acc)
+          let* value = read_value input in
+          loop (remaining - 1) ((key, value) :: acc)
       in
       loop length []
-  | 6 -> let* _tag = read_argument input minor in read_value input
+  | 6 ->
+      let* _tag = read_argument input minor in
+      read_value input
   | 7 -> (
       match minor with
       | 20 -> Ok (Bool false)
@@ -293,8 +312,11 @@ let rec read_value = fun input ->
           read_uint16_be input
           |> Result.map ~fn:(fun bits -> Float (decode_half bits))
       | 26 ->
-          let* bits = read_uint32_be input in Ok (Float (Int32.float_of_bits (Int64.to_int32 bits)))
-      | 27 -> let* bits = read_uint64_be input in Ok (Float (Int64.float_of_bits bits))
+          let* bits = read_uint32_be input in
+          Ok (Float (Int32.float_of_bits (Int64.to_int32 bits)))
+      | 27 ->
+          let* bits = read_uint64_be input in
+          Ok (Float (Int64.float_of_bits bits))
       | _ -> error "serde-cbor encountered an unsupported simple value"
     )
   | _ -> error "serde-cbor encountered an invalid major type"

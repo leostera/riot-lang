@@ -524,7 +524,8 @@ let test_filesystem_registry_refetches_stale_cached_config = fun _ctx ->
       in
       let* () = Pkgs_ml.Sparse_index.write_cached_config
         cache
-        ~source:sparse_index_config_json_stale in
+        ~source:sparse_index_config_json_stale
+      in
       let* () = set_old_mtime (Pkgs_ml.Sparse_index.config_cache_path cache) in
       let (fetch, requests) =
         make_fetch_recorder
@@ -562,7 +563,8 @@ let test_filesystem_registry_refetches_stale_cached_package_document = fun _ctx 
         Pkgs_ml.Sparse_index.write_cached_package_document
           cache
           ~package_name:"kernel"
-          ~source:sparse_index_kernel_json in
+          ~source:sparse_index_kernel_json
+      in
       let* () = set_old_mtime (Pkgs_ml.Sparse_index.package_cache_path cache ~package_name:"kernel") in
       let fresh_kernel_json =
         {|{

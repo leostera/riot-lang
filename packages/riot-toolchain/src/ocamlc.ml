@@ -471,7 +471,20 @@ let make_invocation = fun ?(output_mode = Normal) ~cwd command_string ->
     output_mode;
   }
 
-let build_invocation = fun t ~cwd ?cc ?(includes = []) ?(libs = []) ?(cclibs = []) ?(ccflags = []) ?(ccopt_flags = []) ?(cclib_flags = []) ?(output = None) ?(mode = Compile) ?(flags = []) sources ->
+let build_invocation = fun
+  t
+  ~cwd
+  ?cc
+  ?(includes = [])
+  ?(libs = [])
+  ?(cclibs = [])
+  ?(ccflags = [])
+  ?(ccopt_flags = [])
+  ?(cclib_flags = [])
+  ?(output = None)
+  ?(mode = Compile)
+  ?(flags = [])
+  sources ->
   let ocamlc = base_command t in
   let include_flags = make_include_flags (List.map includes ~fn:Path.to_string) in
   let cc_flag =
@@ -632,7 +645,17 @@ let create_library = fun t ~cwd ~includes ~output objects ->
     ~mode:Library
     (List.map objects ~fn:Path.to_string)
 
-let create_executable = fun t ~cwd ~includes ~output ~libs ?cc ?(cclibs = []) ?(ccopt_flags = []) ?(cclib_flags = []) objects ->
+let create_executable = fun
+  t
+  ~cwd
+  ~includes
+  ~output
+  ~libs
+  ?cc
+  ?(cclibs = [])
+  ?(ccopt_flags = [])
+  ?(cclib_flags = [])
+  objects ->
   let includes_with_dot = Path.v "." :: includes in
   build_invocation
     t
@@ -648,7 +671,17 @@ let create_executable = fun t ~cwd ~includes ~output ~libs ?cc ?(cclibs = []) ?(
     ~flags:[ LinkAll ]
     (List.map objects ~fn:Path.to_string)
 
-let create_shared_library = fun t ~cwd ~includes ~output ~libs ?cc ?(cclibs = []) ?(ccopt_flags = []) ?(cclib_flags = []) objects ->
+let create_shared_library = fun
+  t
+  ~cwd
+  ~includes
+  ~output
+  ~libs
+  ?cc
+  ?(cclibs = [])
+  ?(ccopt_flags = [])
+  ?(cclib_flags = [])
+  objects ->
   let includes_with_dot = Path.v "." :: includes in
   build_invocation
     t

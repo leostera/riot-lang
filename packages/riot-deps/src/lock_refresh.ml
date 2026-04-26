@@ -60,17 +60,17 @@ let load_manifest_toml = fun ~workspace_manager manifest_path ->
   Riot_model.Workspace_manager.load_riot_toml workspace_manager manifest_path
   |> Result.map_err ~fn:(fun error -> ManifestLoadFailed { manifest_path; error })
 
-let manifest_dependency_fingerprint = fun ~workspace_manager ~workspace_root manifest_path -> let* toml =
-  load_manifest_toml ~workspace_manager manifest_path in let* dependencies =
-  dependency_section_value ~manifest_path "dependencies" toml in let* build_dependencies =
-  dependency_section_value ~manifest_path "build-dependencies" toml in let* dev_dependencies =
-  dependency_section_value ~manifest_path "dev-dependencies" toml in
-Ok (Std.Data.Toml.Table [
-  ("manifest", Std.Data.Toml.String (manifest_id ~workspace_root manifest_path));
-  ("dependencies", dependencies);
-  ("build-dependencies", build_dependencies);
-  ("dev-dependencies", dev_dependencies);
-])
+let manifest_dependency_fingerprint = fun ~workspace_manager ~workspace_root manifest_path ->
+  let* toml = load_manifest_toml ~workspace_manager manifest_path in
+  let* dependencies = dependency_section_value ~manifest_path "dependencies" toml in
+  let* build_dependencies = dependency_section_value ~manifest_path "build-dependencies" toml in
+  let* dev_dependencies = dependency_section_value ~manifest_path "dev-dependencies" toml in
+  Ok (Std.Data.Toml.Table [
+    ("manifest", Std.Data.Toml.String (manifest_id ~workspace_root manifest_path));
+    ("dependencies", dependencies);
+    ("build-dependencies", build_dependencies);
+    ("dev-dependencies", dev_dependencies);
+  ])
 
 let dependency_hash = fun ~workspace_manager ~workspace_root ~manifest_paths ->
   let manifest_paths = List.unique manifest_paths ~compare:compare_by_path in
@@ -87,7 +87,8 @@ let dependency_hash = fun ~workspace_manager ~workspace_root ~manifest_paths ->
         )
     | manifest_path :: rest ->
         let* fingerprint =
-          manifest_dependency_fingerprint ~workspace_manager ~workspace_root manifest_path in
+          manifest_dependency_fingerprint ~workspace_manager ~workspace_root manifest_path
+        in
         loop (fingerprint :: acc) rest
   in
   loop [] manifest_paths

@@ -186,7 +186,11 @@ let is_public_package = fun (package: Package.t) ->
   | Some false
   | None -> false
 
-let select_packages = fun ~(workspace_publish_order:packages:Package.t list -> (Package.t list, publish_error) result) ~(emit:publish_event -> unit) ~(workspace:Workspace.t) request ->
+let select_packages = fun
+  ~(workspace_publish_order:packages:Package.t list -> (Package.t list, publish_error) result)
+  ~(emit:publish_event -> unit)
+  ~(workspace:Workspace.t)
+  request ->
   let packages = workspace_packages workspace in
   let public_packages = List.filter packages ~fn:is_public_package in
   match request.selection with
@@ -275,8 +279,9 @@ let build_package = fun ~emit ~(workspace:Workspace.t) ~package_name ~profile ->
       ())
   |> Result.map_err ~fn:(fun error -> BuildCheckFailed { package = package_name; error })
 
-let build_package_in_workspace_root = fun ~emit ~workspace_root ~package_name ~profile -> let* workspace =
-  load_workspace_strict workspace_root in build_package ~emit ~workspace ~package_name ~profile
+let build_package_in_workspace_root = fun ~emit ~workspace_root ~package_name ~profile ->
+  let* workspace = load_workspace_strict workspace_root in
+  build_package ~emit ~workspace ~package_name ~profile
 
 let fix_request_for_publish = fun ~cwd ~target ->
   let request = Riot_fix.check_request ~cwd ~target in
@@ -364,7 +369,12 @@ module For_test = struct
     let fix_request = fix_request_for_publish ~cwd:workspace.root ~target:package.path in
     Riot_fix.fix
       ~on_event:(fun event -> emit (Fix event))
-      ~build_package:(fun ~(workspace:Workspace_manifest.t) ~package_name ~profile ?(transform_workspace = fun workspace -> workspace) () ->
+      ~build_package:(fun
+        ~(workspace:Workspace_manifest.t)
+        ~package_name
+        ~profile
+        ?(transform_workspace = fun workspace -> workspace)
+        () ->
         let workspace_manager = Workspace_manager.create () in
         match Riot_deps.ensure_workspace
           ~workspace_manager
@@ -429,15 +439,21 @@ module For_test = struct
     publish_prepared = publish_prepared_default;
   }
 
-  let run_publish_checks = fun ~deps ~emit ~registry ~(workspace:Workspace.t) ~request ~publishing_workspace_packages (
-    package: Package.t
-  ) ->
+  let run_publish_checks = fun
+    ~deps
+    ~emit
+    ~registry
+    ~(workspace:Workspace.t)
+    ~request
+    ~publishing_workspace_packages
+    (package: Package.t) ->
     let* () =
       run_check
         ~emit
         ~package_name:package.name
         ~version:package.publish.version
-        ~stage:`fmt (fun () -> deps.run_fmt_check ~emit ~workspace ~package) in
+        ~stage:`fmt (fun () -> deps.run_fmt_check ~emit ~workspace ~package)
+    in
     let* () =
       if request.skip_check then
         Ok ()
@@ -458,7 +474,9 @@ module For_test = struct
             ~emit
             ~workspace
             ~package_name:package.name
-            ~profile:"release") in run_check
+            ~profile:"release")
+    in
+    run_check
       ~emit
       ~package_name:package.name
       ~version:package.publish.version
@@ -468,7 +486,17 @@ module For_test = struct
           ~publishing_workspace_packages
           ~package)
 
-  let rec run_packages = fun ~deps ~(emit:publish_event -> unit) ~registry ~(workspace:Workspace.t) ~request ~publishing_workspace_packages ~api_token_opt ~mode acc packages ->
+  let rec run_packages = fun
+    ~deps
+    ~(emit:publish_event -> unit)
+    ~registry
+    ~(workspace:Workspace.t)
+    ~request
+    ~publishing_workspace_packages
+    ~api_token_opt
+    ~mode
+    acc
+    packages ->
     match packages with
     | [] -> Ok (List.reverse acc)
     | (package: Package.t) :: rest ->
@@ -503,8 +531,11 @@ module For_test = struct
               ~workspace
               ~request
               ~publishing_workspace_packages
-              package in let* prepared =
-            deps.prepare_publish_artifact ~target_dir_root:workspace.target_dir_root plan in
+              package
+          in
+          let* prepared =
+            deps.prepare_publish_artifact ~target_dir_root:workspace.target_dir_root plan
+          in
           emit
             (Packing {
               package = package.name;
@@ -574,7 +605,8 @@ module For_test = struct
         ~workspace_publish_order:deps.workspace_publish_order
         ~emit:on_event
         ~workspace
-        request in
+        request
+    in
     let publishing_workspace_packages = List.map packages ~fn:(fun (pkg: Package.t) -> pkg.name) in
     let* api_token_opt =
       match mode with

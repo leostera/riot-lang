@@ -96,7 +96,13 @@ let is_binary_module = fun ~package_path ~binaries path ->
    Edge case: Module names are case-insensitive on some filesystems but
    case-sensitive in OCaml, so we use Module_name.to_string for comparison.
 *)
-let from_entries = fun ~namespace ~library_name ~package_path ~concrete_library_path ~binaries children ->
+let from_entries = fun
+  ~namespace
+  ~library_name
+  ~package_path
+  ~concrete_library_path
+  ~binaries
+  children ->
   let library_module_name =
     Module_name.of_string library_name
     |> Module_name.to_string

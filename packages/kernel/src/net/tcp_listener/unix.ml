@@ -70,7 +70,8 @@ let accept = fun listener ->
     FFI.accept listener
     |> Result.map_err ~fn:(fun code -> error_of_system (System_error.from_code code))
   in
-  let* addr = socket_addr_of_pair addr in Result.Ok (stream, addr)
+  let* addr = socket_addr_of_pair addr in
+  Result.Ok (stream, addr)
 
 let close = fun listener ->
   FFI.close listener

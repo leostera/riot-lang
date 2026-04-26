@@ -53,7 +53,21 @@ type t = {
   middle_bottom: string option;
 }
 
-let make = fun ?top ?left ?bottom ?right ?top_left ?top_right ?bottom_left ?bottom_right ?middle_left ?middle_right ?middle ?middle_top ?middle_bottom () ->
+let make = fun
+  ?top
+  ?left
+  ?bottom
+  ?right
+  ?top_left
+  ?top_right
+  ?bottom_left
+  ?bottom_right
+  ?middle_left
+  ?middle_right
+  ?middle
+  ?middle_top
+  ?middle_bottom
+  () ->
   {
     top;
     left;

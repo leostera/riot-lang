@@ -78,7 +78,9 @@ let registry_of_optional = fun ?registry () ->
 let local_workspace_package:
   (Riot_model.Workspace_manifest.t * Riot_model.Workspace_manager.load_error list) option ->
   Riot_model.Package_name.t ->
-  (Riot_model.Workspace_manifest.t * Riot_model.Workspace_manager.load_error list * Riot_model.Package_manifest.t) option = fun local_workspace package_name ->
+  (Riot_model.Workspace_manifest.t * Riot_model.Workspace_manager.load_error list * Riot_model.Package_manifest.t) option = fun
+  local_workspace
+  package_name ->
   match local_workspace with
   | None -> None
   | Some ((workspace: Riot_model.Workspace_manifest.t), load_errors) ->
@@ -208,9 +210,11 @@ let registry_package_info = fun ?registry ~target (parsed: Riot_deps.Registry_pa
             )
         )
 
-let workspace_package_info = fun ~workspace_root ~target ~load_errors (
-  pkg: Riot_model.Package_manifest.t
-) ->
+let workspace_package_info = fun
+  ~workspace_root
+  ~target
+  ~load_errors
+  (pkg: Riot_model.Package_manifest.t) ->
   let version = Option.map pkg.publish.version ~fn:Std.Version.to_string in
   let root = Path.normalize pkg.path in
   let manifest_path = manifest_path root in

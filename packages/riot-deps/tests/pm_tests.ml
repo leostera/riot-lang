@@ -33,7 +33,13 @@ let make_sources = fun () ->
     bench = [];
   }
 
-let make_package = fun ?(dependencies = []) ?(build_dependencies = []) ?(dev_dependencies = []) ~name ~path () ->
+let make_package = fun
+  ?(dependencies = [])
+  ?(build_dependencies = [])
+  ?(dev_dependencies = [])
+  ~name
+  ~path
+  () ->
   let name = package_name name in
   let publish =
     Package.{
@@ -121,8 +127,8 @@ let make_registry_with_releases = fun ~packages ~releases ->
     ~releases
     ()
 
-let make_release_source = fun ?(files = []) ~package_name ~version manifest_toml:
-  Pkgs_ml.Registry.release_source ->
+let make_release_source = fun
+  ?(files = []) ~package_name ~version manifest_toml: Pkgs_ml.Registry.release_source ->
   {
     package_name;
     version;
@@ -164,7 +170,12 @@ let workspace_package = fun ~workspace_root (pkg: Package.t) ->
 
 let manifests_of_packages = fun packages -> List.map packages ~fn:Package_manifest.of_package
 
-let make_workspace_manifest = fun ?(workspace_root = Path.v "/workspace") ?(dependencies = []) ?(dev_dependencies = []) ?(build_dependencies = []) packages ->
+let make_workspace_manifest = fun
+  ?(workspace_root = Path.v "/workspace")
+  ?(dependencies = [])
+  ?(dev_dependencies = [])
+  ?(build_dependencies = [])
+  packages ->
   let packages = List.map packages ~fn:(workspace_package ~workspace_root) in
   Riot_model.Workspace_manifest.make_realized
     ~root:workspace_root
@@ -174,7 +185,12 @@ let make_workspace_manifest = fun ?(workspace_root = Path.v "/workspace") ?(depe
     ~build_dependencies
     ()
 
-let make_workspace = fun ?(workspace_root = Path.v "/workspace") ?(dependencies = []) ?(dev_dependencies = []) ?(build_dependencies = []) packages ->
+let make_workspace = fun
+  ?(workspace_root = Path.v "/workspace")
+  ?(dependencies = [])
+  ?(dev_dependencies = [])
+  ?(build_dependencies = [])
+  packages ->
   let packages = List.map packages ~fn:(workspace_package ~workspace_root) in
   Riot_model.Workspace.make_realized
     ~root:workspace_root
@@ -184,11 +200,21 @@ let make_workspace = fun ?(workspace_root = Path.v "/workspace") ?(dependencies 
     ~build_dependencies
     ()
 
-let run_lock_deps = fun ?emit ?(registry = make_registry []) ?(workspace_root = Path.v "/workspace") ~mode ~existing_lock packages ->
+let run_lock_deps = fun
+  ?emit
+  ?(registry = make_registry [])
+  ?(workspace_root = Path.v "/workspace")
+  ~mode
+  ~existing_lock
+  packages ->
   let workspace = make_workspace_manifest ~workspace_root packages in
   Riot_deps.Dep_solver.lock_deps ?emit ~mode ~registry ~existing_lock ~workspace ()
 
-let ensure_lock = fun ?emit ?(registry = make_registry []) ?(workspace_root = Path.v "/workspace") packages ->
+let ensure_lock = fun
+  ?emit
+  ?(registry = make_registry [])
+  ?(workspace_root = Path.v "/workspace")
+  packages ->
   let workspace = make_workspace_manifest ~workspace_root packages in
   Riot_deps.ensure_lock
     ?emit
@@ -323,7 +349,9 @@ type recorded_request = {
   body: string option;
 }
 
-let make_fetch_recorder = fun ?(post_handler = fun _uri ~headers:_ ~body:_ -> Error "unexpected POST") get_handler ->
+let make_fetch_recorder = fun
+  ?(post_handler = fun _uri ~headers:_ ~body:_ -> Error "unexpected POST")
+  get_handler ->
   let requests = ref [] in
   let record ~method_ uri ~headers ~body =
     requests := {

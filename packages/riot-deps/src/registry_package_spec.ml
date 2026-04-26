@@ -31,8 +31,9 @@ let parse_name = fun spec raw_name ->
 
 let from_string = fun spec ->
   match String.split ~by:"@" spec with
-  | [ name ] -> let* name = parse_name spec name in
-  Ok { name; requirement = Some Std.Version.any }
+  | [ name ] ->
+      let* name = parse_name spec name in
+      Ok { name; requirement = Some Std.Version.any }
   | [ name; requirement ] ->
       let* name = parse_name spec name in
       let requirement = String.trim requirement in

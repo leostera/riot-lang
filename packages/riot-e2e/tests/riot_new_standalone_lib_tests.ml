@@ -20,14 +20,15 @@ let test_riot_new_library_creates_a_standalone_package_that_builds =
         (fun root ->
           let package_root = Path.(root / Path.v package_name) in
           let module_name = package_module_name package_name in
-          let* new_output = run_riot ctx ~cwd:root [ "new"; "--lib"; package_name ] in let* _ =
-            expect_success ~cmd:"riot new --lib" new_output in let* () =
-            assert_exists Path.(package_root / Path.v "riot.toml") in let* () =
-            assert_exists Path.(package_root / Path.v "src" / Path.v (module_name ^ ".ml")) in let* () =
-            assert_exists Path.(package_root / Path.v "src" / Path.v (module_name ^ ".mli")) in let* () =
-            assert_contains Path.(package_root / Path.v "riot.toml") {|[package]|} in let* build_output =
-            run_riot ctx ~cwd:package_root [ "build" ] in let* _ =
-            expect_success ~cmd:"riot build" build_output in Ok ()))
+          let* new_output = run_riot ctx ~cwd:root [ "new"; "--lib"; package_name ] in
+          let* _ = expect_success ~cmd:"riot new --lib" new_output in
+          let* () = assert_exists Path.(package_root / Path.v "riot.toml") in
+          let* () = assert_exists Path.(package_root / Path.v "src" / Path.v (module_name ^ ".ml")) in
+          let* () = assert_exists Path.(package_root / Path.v "src" / Path.v (module_name ^ ".mli")) in
+          let* () = assert_contains Path.(package_root / Path.v "riot.toml") {|[package]|} in
+          let* build_output = run_riot ctx ~cwd:package_root [ "build" ] in
+          let* _ = expect_success ~cmd:"riot build" build_output in
+          Ok ()))
 
 let tests = [ test_riot_new_library_creates_a_standalone_package_that_builds ]
 

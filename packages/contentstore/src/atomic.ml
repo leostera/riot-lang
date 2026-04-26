@@ -93,11 +93,13 @@ let link_temp_if_absent = fun ~temp ~dst ->
   cleanup_file temp;
   result
 
-let write_object_if_absent = fun ~temp ~dst ~content -> let* () = write_temp_file ~temp ~content in
-link_temp_if_absent ~temp ~dst
+let write_object_if_absent = fun ~temp ~dst ~content ->
+  let* () = write_temp_file ~temp ~content in
+  link_temp_if_absent ~temp ~dst
 
-let copy_file_if_absent = fun ~source ~temp ~dst -> let* () = copy_to_temp ~src:source ~temp in
-link_temp_if_absent ~temp ~dst
+let copy_file_if_absent = fun ~source ~temp ~dst ->
+  let* () = copy_to_temp ~src:source ~temp in
+  link_temp_if_absent ~temp ~dst
 
 let replace_with_temp = fun ~temp ~dst ->
   let result =
@@ -112,11 +114,13 @@ let replace_with_temp = fun ~temp ~dst ->
       cleanup_file temp;
       error
 
-let replace_with_object = fun ~temp ~dst ~content -> let* () = write_temp_file ~temp ~content in
-replace_with_temp ~temp ~dst
+let replace_with_object = fun ~temp ~dst ~content ->
+  let* () = write_temp_file ~temp ~content in
+  replace_with_temp ~temp ~dst
 
-let replace_with_file = fun ~source ~temp ~dst -> let* () = copy_to_temp ~src:source ~temp in
-replace_with_temp ~temp ~dst
+let replace_with_file = fun ~source ~temp ~dst ->
+  let* () = copy_to_temp ~src:source ~temp in
+  replace_with_temp ~temp ~dst
 
 let rec copy_tree = fun ~src ~dst ->
   let* () = ensure_dir dst in

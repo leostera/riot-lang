@@ -622,7 +622,12 @@ let choose_version = fun stats provider state pkg ranges ->
    ============================================================================
 *)
 
-let solve_with_stats = fun ?trace_ctx ?(options = default_options) provider root_package root_version ->
+let solve_with_stats = fun
+  ?trace_ctx
+  ?(options = default_options)
+  provider
+  root_package
+  root_version ->
   let stats = empty_stats () in
   let finish result = { result; stats = snapshot_stats stats } in
   let max_iterations = Int.max 0 options.max_iterations in

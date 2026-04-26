@@ -17,14 +17,16 @@ let test_riot_new_binary_adds_workspace_member_and_runs =
         (fun workspace_root ->
           let package_root = Path.(workspace_root / Path.v "packages" / Path.v package_name) in
           let* new_output =
-            run_riot ctx ~cwd:workspace_root [ "new"; "--bin"; "./packages/extra-binary" ] in
+            run_riot ctx ~cwd:workspace_root [ "new"; "--bin"; "./packages/extra-binary" ]
+          in
           let* _ = expect_success ~cmd:"riot new --bin" new_output in
           let* () = assert_exists Path.(package_root / Path.v "riot.toml") in
           let* () = assert_exists Path.(package_root / Path.v "src" / Path.v "main.ml") in
           let* () =
             assert_contains
               Path.(workspace_root / Path.v "riot.toml")
-              {|  "packages/extra-binary",|} in
+              {|  "packages/extra-binary",|}
+          in
           let* build_output = run_riot ctx ~cwd:workspace_root [ "build"; "-p"; package_name ] in
           let* _ = expect_success ~cmd:"riot build -p extra-binary" build_output in
           let* run_output = run_riot ctx ~cwd:workspace_root [ "run"; package_name ] in

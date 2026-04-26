@@ -226,7 +226,13 @@ let get = fun conn ->
       create ~cookie_name:"_suri_session" ~secret:"" ()
 
 (** Session middleware *)
-let middleware = fun ~secret ?(cookie_name = "_suri_session") ?(max_age = 86_400) ?(secure = false) ?(same_site = Http.Http1.Cookie.Lax) () ->
+let middleware = fun
+  ~secret
+  ?(cookie_name = "_suri_session")
+  ?(max_age = 86_400)
+  ?(secure = false)
+  ?(same_site = Http.Http1.Cookie.Lax)
+  () ->
   fun ~conn ~next ->
     (* Try to load session from cookie *)
     let headers = Conn.headers conn in

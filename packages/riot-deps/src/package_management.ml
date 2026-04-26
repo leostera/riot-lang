@@ -522,7 +522,12 @@ let init_registry = fun () ->
         error = RegistryFilesystemInitializationFailed error;
       })
 
-let ensure_loaded_workspace = fun ~workspace_manager ~registry ~(workspace:Workspace_manifest.t) ~package_name () ->
+let ensure_loaded_workspace = fun
+  ~workspace_manager
+  ~registry
+  ~(workspace:Workspace_manifest.t)
+  ~package_name
+  () ->
   let* workspace =
     Workspace_resolution.ensure_workspace
       ~workspace_manager
@@ -534,7 +539,11 @@ let ensure_loaded_workspace = fun ~workspace_manager ~registry ~(workspace:Works
   in
   Ok { workspace; package_name }
 
-let select_materialized_package = fun ~(workspace:Riot_model.Workspace_manifest.t) ?preferred_package_name ~package_root () ->
+let select_materialized_package = fun
+  ~(workspace:Riot_model.Workspace_manifest.t)
+  ?preferred_package_name
+  ~package_root
+  () ->
   match Riot_model.Workspace_manifest.find_package_for_path workspace ~path:package_root with
   | Some pkg -> Ok pkg.name
   | None -> (
@@ -589,7 +598,9 @@ let scan_workspace_from_root = fun ~workspace_manager ~package_root () ->
   | load_errors ->
       Error (WorkspaceReloadHadErrors { workspace_root = workspace.root; errors = load_errors })
 
-let matching_release_of_document = fun (document: Pkgs_ml.Sparse_index.package_document) requirement ->
+let matching_release_of_document = fun
+  (document: Pkgs_ml.Sparse_index.package_document)
+  requirement ->
   let matches =
     List.filter_map
       document.releases
@@ -754,7 +765,9 @@ let dependency_exists = fun ~(package_name:string) document requirement ->
   in
   loop document.Pkgs_ml.Sparse_index.releases
 
-let yanked_release_of_document = fun (document: Pkgs_ml.Sparse_index.package_document) requirement ->
+let yanked_release_of_document = fun
+  (document: Pkgs_ml.Sparse_index.package_document)
+  requirement ->
   List.find
     document.releases
     ~fn:(fun (release: Pkgs_ml.Sparse_index.release) ->
@@ -889,7 +902,12 @@ let lookup_named_package = fun ~(emit:event_sink) ~registry (parsed: registry_de
               })
         )
 
-let load_source_workspace_from_spec = fun ?(emit = no_emit) ~workspace_manager ?(update = true) ~spec () ->
+let load_source_workspace_from_spec = fun
+  ?(emit = no_emit)
+  ~workspace_manager
+  ?(update = true)
+  ~spec
+  () ->
   let parsed = spec in
   let source_spec = Git_dependency.to_string spec in
   let* () =
@@ -937,8 +955,11 @@ let load_source_workspace_from_spec = fun ?(emit = no_emit) ~workspace_manager ?
           ()
     | Error _ ->
         let* workspace =
-          scan_workspace_from_root ~workspace_manager ~package_root:materialized.package_root () in let* package_name =
-          select_materialized_package ~workspace ~package_root:materialized.package_root () in
+          scan_workspace_from_root ~workspace_manager ~package_root:materialized.package_root ()
+        in
+        let* package_name =
+          select_materialized_package ~workspace ~package_root:materialized.package_root ()
+        in
         ensure_loaded_workspace ~workspace_manager ~registry ~workspace ~package_name ()
   in
   let* loaded = loaded in
@@ -989,7 +1010,12 @@ let load_source_workspace = fun ?(emit = no_emit) ~workspace_manager ?(update = 
   in
   load_source_workspace_from_spec ~workspace_manager ~emit ~update ~spec:parsed ()
 
-let load_registry_workspace_from_spec = fun ?(emit = no_emit) ?registry ~workspace_manager ~spec () ->
+let load_registry_workspace_from_spec = fun
+  ?(emit = no_emit)
+  ?registry
+  ~workspace_manager
+  ~spec
+  () ->
   let parsed = spec in
   let package_name = registry_dependency_name parsed in
   let package_name_string = Riot_model.Package_name.to_string package_name in
@@ -1126,13 +1152,13 @@ let load_registry_workspace_from_spec = fun ?(emit = no_emit) ?registry ~workspa
     );
   Ok loaded
 
-let load_registry_workspace = fun ?(emit = no_emit) ?registry ~workspace_manager ~spec () -> let* parsed =
-  parse_registry_dependency_spec spec in
-load_registry_workspace_from_spec ~workspace_manager ~emit ?registry ~spec:parsed ()
+let load_registry_workspace = fun ?(emit = no_emit) ?registry ~workspace_manager ~spec () ->
+  let* parsed = parse_registry_dependency_spec spec in
+  load_registry_workspace_from_spec ~workspace_manager ~emit ?registry ~spec:parsed ()
 
-let upsert_dependency = fun (dependencies: Riot_model.Package.dependency list) (
-  (dependency: Riot_model.Package.dependency) as replacement
-) ->
+let upsert_dependency = fun
+  (dependencies: Riot_model.Package.dependency list)
+  ((dependency: Riot_model.Package.dependency) as replacement) ->
   let rec loop (acc: Riot_model.Package.dependency list) (
     remaining: Riot_model.Package.dependency list
   ) =
@@ -1204,7 +1230,14 @@ let reload_workspace = fun ~workspace_manager ~(workspace_root:Path.t) ->
   | [] -> Ok workspace
   | load_errors -> Error (WorkspaceReloadHadErrors { workspace_root; errors = load_errors })
 
-let refresh_lock = fun ?existing_lock ~workspace_manager ~(emit:event_sink) ~mode ~registry ~(workspace:Riot_model.Workspace_manifest.t) () ->
+let refresh_lock = fun
+  ?existing_lock
+  ~workspace_manager
+  ~(emit:event_sink)
+  ~mode
+  ~registry
+  ~(workspace:Riot_model.Workspace_manifest.t)
+  () ->
   Workspace_resolution.ensure_lock
     ?existing_lock
     ~workspace_manager
@@ -1238,9 +1271,10 @@ let lock_package_version_map = fun (lockfile: Riot_model.Lockfile.t) ->
       | (Some key, Some version) -> (key, version) :: acc
       | _ -> acc)
 
-let emit_updated_packages = fun ~(emit:event_sink) ~(previous:Riot_model.Lockfile.t) (
-  current: Riot_model.Lockfile.t
-) ->
+let emit_updated_packages = fun
+  ~(emit:event_sink)
+  ~(previous:Riot_model.Lockfile.t)
+  (current: Riot_model.Lockfile.t) ->
   let previous_versions = lock_package_version_map previous in
   List.fold_left
     current.packages
@@ -1271,7 +1305,13 @@ let parsed_dependency_name = function
   | Path parsed -> Package_name.to_string parsed.name
   | Source parsed -> Package_name.to_string parsed.name
 
-let update_manifest_many = fun ~(emit:event_sink) ~(target:target_manifest) ~scope ~dependencies ~operation ~updated_dependencies ->
+let update_manifest_many = fun
+  ~(emit:event_sink)
+  ~(target:target_manifest)
+  ~scope
+  ~dependencies
+  ~operation
+  ~updated_dependencies ->
   Manifest_edit.update_dependency_section
     ~manifest_path:target.path
     ~section:(scope_to_section scope)
@@ -1292,7 +1332,13 @@ let update_manifest_many = fun ~(emit:event_sink) ~(target:target_manifest) ~sco
               }
             )))
 
-let add = fun ?(on_event = no_emit) ~workspace_manager ~(workspace:Riot_model.Workspace_manifest.t) ~cwd ~(request:add_request) () ->
+let add = fun
+  ?(on_event = no_emit)
+  ~workspace_manager
+  ~(workspace:Riot_model.Workspace_manifest.t)
+  ~cwd
+  ~(request:add_request)
+  () ->
   let emit = on_event in
   let* target = target_manifest ~workspace ~cwd request.selection request.scope in
   let* registry = init_registry () in
@@ -1331,10 +1377,19 @@ let add = fun ?(on_event = no_emit) ~workspace_manager ~(workspace:Riot_model.Wo
       ~operation:`Add
       ~updated_dependencies:(List.map parsed_dependencies ~fn:parsed_dependency_name)
   in
-  let* workspace = reload_workspace ~workspace_manager ~workspace_root:workspace.root in let* _lockfile =
-    refresh_lock ~workspace_manager ~emit ~mode:Dep_solver.Refresh ~registry ~workspace () in Ok ()
+  let* workspace = reload_workspace ~workspace_manager ~workspace_root:workspace.root in
+  let* _lockfile =
+    refresh_lock ~workspace_manager ~emit ~mode:Dep_solver.Refresh ~registry ~workspace ()
+  in
+  Ok ()
 
-let remove = fun ?(on_event = no_emit) ~workspace_manager ~(workspace:Riot_model.Workspace_manifest.t) ~cwd ~(request:remove_request) () ->
+let remove = fun
+  ?(on_event = no_emit)
+  ~workspace_manager
+  ~(workspace:Riot_model.Workspace_manifest.t)
+  ~cwd
+  ~(request:remove_request)
+  () ->
   let emit = on_event in
   let* registry = init_registry () in
   let* target = target_manifest ~workspace ~cwd request.selection request.scope in
@@ -1351,7 +1406,8 @@ let remove = fun ?(on_event = no_emit) ~workspace_manager ~(workspace:Riot_model
         else
           remove_all dependencies rest
   in
-  let* dependencies = remove_all target.dependencies request.dependencies in let* () =
+  let* dependencies = remove_all target.dependencies request.dependencies in
+  let* () =
     update_manifest_many
       ~emit
       ~target
@@ -1360,8 +1416,11 @@ let remove = fun ?(on_event = no_emit) ~workspace_manager ~(workspace:Riot_model
       ~operation:`Remove
       ~updated_dependencies:(List.map request.dependencies ~fn:Package_name.to_string)
   in
-  let* workspace = reload_workspace ~workspace_manager ~workspace_root:workspace.root in let* _lockfile =
-    refresh_lock ~workspace_manager ~emit ~mode:Dep_solver.Refresh ~registry ~workspace () in Ok ()
+  let* workspace = reload_workspace ~workspace_manager ~workspace_root:workspace.root in
+  let* _lockfile =
+    refresh_lock ~workspace_manager ~emit ~mode:Dep_solver.Refresh ~registry ~workspace ()
+  in
+  Ok ()
 
 let package_requested_for_update = fun requested (pkg: Riot_model.Lockfile.package) ->
   List.contains
@@ -1377,7 +1436,13 @@ let existing_lock_for_targeted_update = fun requested (lockfile: Riot_model.Lock
       ~fn:(fun pkg -> not (package_requested_for_update requested pkg));
   }
 
-let update = fun ?(on_event = no_emit) ?registry ~workspace_manager ~(workspace:Riot_model.Workspace_manifest.t) ~(request:update_request) () ->
+let update = fun
+  ?(on_event = no_emit)
+  ?registry
+  ~workspace_manager
+  ~(workspace:Riot_model.Workspace_manifest.t)
+  ~(request:update_request)
+  () ->
   let emit = on_event in
   let* registry =
     match registry with

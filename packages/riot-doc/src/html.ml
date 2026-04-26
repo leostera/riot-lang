@@ -637,7 +637,9 @@ let render_module = fun (package_doc: Doctree.package_doc) (module_doc: Doctree.
   ^ "</body>\n"
   ^ "</html>\n"
 
-let render_module_source = fun (package_doc: Doctree.package_doc) (module_doc: Doctree.module_doc) ->
+let render_module_source = fun
+  (package_doc: Doctree.package_doc)
+  (module_doc: Doctree.module_doc) ->
   render_common_head
     (asset_prefix module_doc ^ "assets/doc.css")
     (Doctree.module_full_name module_doc ^ " source")

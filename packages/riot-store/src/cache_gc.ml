@@ -442,7 +442,8 @@ let read_state = fun ~(workspace:Workspace.t) ->
       |> Result.map_err
         ~fn:(fun err -> "failed to parse cache state JSON: " ^ Data.Json.error_to_string err)
     in
-    let* state = cache_state_of_json json in Ok (Some state)
+    let* state = cache_state_of_json json in
+    Ok (Some state)
 
 let write_receipt = fun ~(workspace:Workspace.t) receipt ->
   let* () = ensure_generations_root ~workspace in
@@ -472,7 +473,8 @@ let read_receipt_file = fun path ->
     |> Result.map_err
       ~fn:(fun err -> "failed to parse generation receipt JSON: " ^ Data.Json.error_to_string err)
   in
-  let* receipt = receipt_of_json json in Ok { path; receipt }
+  let* receipt = receipt_of_json json in
+  Ok { path; receipt }
 
 let load_latest_receipt = fun ~(workspace:Workspace.t) ->
   match receipt_paths_desc ~workspace with
@@ -494,11 +496,13 @@ let load_receipts = fun ~(workspace:Workspace.t) ->
   in
   loop [] paths
 
-let write_canonical_receipts = fun ~(workspace:Workspace.t) receipts -> List.fold_left
-  receipts
-  ~init:(Ok ())
-  ~fn:(fun acc_result (receipt_file: receipt_file) -> let* () = acc_result in
-  write_receipt ~workspace receipt_file.receipt)
+let write_canonical_receipts = fun ~(workspace:Workspace.t) receipts ->
+  List.fold_left
+    receipts
+    ~init:(Ok ())
+    ~fn:(fun acc_result (receipt_file: receipt_file) ->
+      let* () = acc_result in
+      write_receipt ~workspace receipt_file.receipt)
 
 let generation_hashes_of_receipts = fun receipts ->
   let seen = HashSet.create () in
@@ -515,9 +519,10 @@ let generation_hashes_of_receipts = fun receipts ->
         ))
   |> List.reverse
 
-let rebuild_generation_hashes = fun ~(workspace:Workspace.t) -> let* receipts =
-  load_receipts ~workspace in let* () = write_canonical_receipts ~workspace receipts in
-Ok (generation_hashes_of_receipts receipts)
+let rebuild_generation_hashes = fun ~(workspace:Workspace.t) ->
+  let* receipts = load_receipts ~workspace in
+  let* () = write_canonical_receipts ~workspace receipts in
+  Ok (generation_hashes_of_receipts receipts)
 
 let path_size_bytes = fun root ->
   if not (path_exists root) then
@@ -554,7 +559,8 @@ let collect_cache_entries = fun ~(workspace:Workspace.t) ->
     | [] -> Ok (List.reverse acc)
     | profile_dir :: rest ->
         let target_dirs = list_subdirectories profile_dir in
-        let* acc = collect_targets acc target_dirs in collect_profiles acc rest
+        let* acc = collect_targets acc target_dirs in
+        collect_profiles acc rest
   and collect_targets acc = function
     | [] -> Ok acc
     | target_dir :: rest ->
@@ -567,8 +573,11 @@ let collect_cache_entries = fun ~(workspace:Workspace.t) ->
           List.fold_left
             hash_dirs
             ~init:(Ok acc)
-            ~fn:(fun acc_result dir -> let* acc = acc_result in let* size_bytes =
-              path_size_bytes dir in Ok ({ hash = Path.basename dir; dir; size_bytes } :: acc)) in
+            ~fn:(fun acc_result dir ->
+              let* acc = acc_result in
+              let* size_bytes = path_size_bytes dir in
+              Ok ({ hash = Path.basename dir; dir; size_bytes } :: acc))
+        in
         collect_targets acc rest
   in
   collect_profiles [] profile_dirs
@@ -586,14 +595,17 @@ let load_or_rebuild_tracked_size = fun ~(workspace:Workspace.t) ->
         match state.generation_hashes with
         | Some generation_hashes -> Ok generation_hashes
         | None ->
-            let* generation_hashes = rebuild_generation_hashes ~workspace in let* () =
+            let* generation_hashes = rebuild_generation_hashes ~workspace in
+            let* () =
               write_state
                 ~workspace
                 {
                   tracked_size_bytes = state.tracked_size_bytes;
                   generation_hashes = Some generation_hashes;
                   receipt_count = Some (List.length generation_hashes);
-                } in Ok generation_hashes
+                }
+            in
+            Ok generation_hashes
       in
       Ok ({ tracked_size_bytes = state.tracked_size_bytes; generation_hashes; rebuilt = false }:
         tracked_size_snapshot)
@@ -601,14 +613,17 @@ let load_or_rebuild_tracked_size = fun ~(workspace:Workspace.t) ->
   | Error _ ->
       let* entries = collect_cache_entries ~workspace in
       let tracked_size_bytes = total_size entries in
-      let* generation_hashes = rebuild_generation_hashes ~workspace in let* () =
+      let* generation_hashes = rebuild_generation_hashes ~workspace in
+      let* () =
         write_state
           ~workspace
           {
             tracked_size_bytes;
             generation_hashes = Some generation_hashes;
             receipt_count = Some (List.length generation_hashes);
-          } in Ok ({ tracked_size_bytes; generation_hashes; rebuilt = true }: tracked_size_snapshot)
+          }
+      in
+      Ok ({ tracked_size_bytes; generation_hashes; rebuilt = true }: tracked_size_snapshot)
 
 let take = fun n list ->
   let rec loop acc remaining count =
@@ -715,12 +730,18 @@ let run_gc = fun ~(workspace:Workspace.t) ~policy ~generation_hashes ->
     List.fold_left
       deleted_entries
       ~init:(Ok ())
-      ~fn:(fun acc (entry: cache_entry) -> let* () = acc in delete_path entry.dir ~kind:"directory") in
+      ~fn:(fun acc (entry: cache_entry) ->
+        let* () = acc in
+        delete_path entry.dir ~kind:"directory")
+  in
   let* () =
     List.fold_left
       deleted_receipts
       ~init:(Ok ())
-      ~fn:(fun acc receipt_path -> let* () = acc in delete_path receipt_path ~kind:"file") in
+      ~fn:(fun acc receipt_path ->
+        let* () = acc in
+        delete_path receipt_path ~kind:"file")
+  in
   let* () =
     write_state
       ~workspace
@@ -728,7 +749,8 @@ let run_gc = fun ~(workspace:Workspace.t) ~policy ~generation_hashes ->
         tracked_size_bytes = size_after_bytes;
         generation_hashes = Some kept_hashes;
         receipt_count = Some (List.length kept_hashes);
-      } in
+      }
+  in
   Ok {
     ran_gc = true;
     kept_generations = List.length kept_hashes;
@@ -833,9 +855,14 @@ let added_size_for_new_entries = fun ~(workspace:Workspace.t) new_entries ->
         Ok acc
       else
         let _ = HashSet.insert seen ~value:key in
-        let* size_bytes = path_size_bytes dir in Ok (Int64.add acc size_bytes))
+        let* size_bytes = path_size_bytes dir in
+        Ok (Int64.add acc size_bytes))
 
-let record_successful_build_with_events = fun ~(workspace:Workspace.t) ~on_event ~lanes ~new_entries ->
+let record_successful_build_with_events = fun
+  ~(workspace:Workspace.t)
+  ~on_event
+  ~lanes
+  ~new_entries ->
   let lanes = normalize_lanes lanes in
   let generation_hash = generation_hash_of_lanes lanes in
   let receipt = { hash = generation_hash; lanes } in

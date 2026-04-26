@@ -58,7 +58,9 @@ let rec toml_json = function
       Data.Json.Object (List.map fields ~fn:(fun (key, value) -> (key, toml_json value)))
   | Data.Toml.Bool value -> Data.Json.Bool value
 
-let workspace_kind = fun ~(workspace_manager:Workspace_manager.t) (workspace: Workspace_manifest.t) ->
+let workspace_kind = fun
+  ~(workspace_manager:Workspace_manager.t)
+  (workspace: Workspace_manifest.t) ->
   let manifest_path = Path.(workspace.root / Path.v "riot.toml") in
   match Workspace_manager.load_riot_toml workspace_manager manifest_path with
   | Ok toml -> (
@@ -110,9 +112,10 @@ let manifest_json_fields = fun ~(workspace_manager:Workspace_manager.t) path ->
         ("manifest_error", Data.Json.String (Workspace_manager.manifest_load_error_message err));
       ]
 
-let package_json = fun ~(workspace_manager:Workspace_manager.t) ~(workspace:Workspace_manifest.t) (
-  pkg: Package_manifest.t
-) ->
+let package_json = fun
+  ~(workspace_manager:Workspace_manager.t)
+  ~(workspace:Workspace_manifest.t)
+  (pkg: Package_manifest.t) ->
   let package_root = Path.normalize pkg.path in
   let fields =
     [
@@ -127,9 +130,10 @@ let package_json = fun ~(workspace_manager:Workspace_manager.t) ~(workspace:Work
   in
   Data.Json.Object fields
 
-let workspace_json = fun ~(workspace_manager:Workspace_manager.t) ~(load_errors:Workspace_manager.load_error list) (
-  workspace: Workspace_manifest.t
-) ->
+let workspace_json = fun
+  ~(workspace_manager:Workspace_manager.t)
+  ~(load_errors:Workspace_manager.load_error list)
+  (workspace: Workspace_manifest.t) ->
   let kind = workspace_kind ~workspace_manager workspace in
   let workspace_root = Path.normalize workspace.root in
   let fields =
@@ -165,9 +169,9 @@ let error_json = fun ~kind ~message ->
     ("error", Data.Json.String message);
   ]
 
-let print_workspace = fun ~(load_errors:Workspace_manager.load_error list) (
-  workspace: Workspace_manifest.t
-) ->
+let print_workspace = fun
+  ~(load_errors:Workspace_manager.load_error list)
+  (workspace: Workspace_manifest.t) ->
   let workspace_manager = Workspace_manager.create () in
   let kind = workspace_kind ~workspace_manager workspace in
   let workspace_manifest_path = manifest_path workspace.root in

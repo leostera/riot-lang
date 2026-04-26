@@ -62,9 +62,10 @@ let benchmark_history = fun previous_runs (current_result: bench_case_result) ->
           history;
         }
 
-let comparison_case_history = fun previous_runs description (
-  current_case: bench_comparison_case_result
-) ->
+let comparison_case_history = fun
+  previous_runs
+  description
+  (current_case: bench_comparison_case_result) ->
   let history =
     List.filter_map
       previous_runs

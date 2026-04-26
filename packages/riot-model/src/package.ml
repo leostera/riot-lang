@@ -354,7 +354,22 @@ let canonicalize = fun (pkg: t) ->
     fix_providers = List.sort pkg.fix_providers ~compare:compare_fix_provider;
   }
 
-let make = fun ~name ~path ~relative_path ?(dependencies = []) ?(dev_dependencies = []) ?(build_dependencies = []) ?(foreign_dependencies = []) ?(binaries = []) ?library ?(sources = empty_sources) ?(compiler = {profile_overrides = []; target_overrides = []}) ?(commands = []) ?(fix_providers = []) ?(publish = default_publish_metadata) () ->
+let make = fun
+  ~name
+  ~path
+  ~relative_path
+  ?(dependencies = [])
+  ?(dev_dependencies = [])
+  ?(build_dependencies = [])
+  ?(foreign_dependencies = [])
+  ?(binaries = [])
+  ?library
+  ?(sources = empty_sources)
+  ?(compiler = {profile_overrides = []; target_overrides = []})
+  ?(commands = [])
+  ?(fix_providers = [])
+  ?(publish = default_publish_metadata)
+  () ->
   canonicalize
     {
       name;
@@ -547,7 +562,11 @@ let resolve_scope = fun ~scope_name ~manifest_dependencies ~lock_dependencies ->
   in
   loop [] manifest_dependencies
 
-let resolve = fun ~(package:t) ~(lock_package:Lockfile.package) ~manifest_path ~materialized_root ->
+let resolve = fun
+  ~(package:t)
+  ~(lock_package:Lockfile.package)
+  ~manifest_path
+  ~materialized_root ->
   match resolve_scope
     ~scope_name:"runtime"
     ~manifest_dependencies:package.dependencies
@@ -666,7 +685,9 @@ let manifest_error_message = function
   | InvalidDependency error -> dependency_error_message error
 
 (** Package TOML parsing *)
-let parse_name: (string * Toml.value) list -> string -> (Package_name.t, manifest_error) result = fun items fallback ->
+let parse_name: (string * Toml.value) list -> string -> (Package_name.t, manifest_error) result = fun
+  items
+  fallback ->
   let raw_name =
     match Fields.get "package" items with
     | Some (Toml.Table pkg_items) -> (
@@ -747,7 +768,9 @@ let parse_publish_metadata:
   | Some _ -> Error PackageSectionMustBeTable
   | None -> Ok default_publish_metadata
 
-let resolve_workspace_dependency: Package_name.t -> dependency list -> dependency = fun name workspace_deps ->
+let resolve_workspace_dependency: Package_name.t -> dependency list -> dependency = fun
+  name
+  workspace_deps ->
   match List.find workspace_deps ~fn:(fun (d: dependency) -> Package_name.equal d.name name) with
   | Some dep -> dep
   | None ->
@@ -784,7 +807,14 @@ let normalize_source_locator = fun raw ->
 
 let github_locator_of_value = fun value -> "github.com/" ^ String.trim value
 
-let make_source = fun ?(workspace = false) ?(builtin = false) ?path ?source_locator ?ref_ ?version () ->
+let make_source = fun
+  ?(workspace = false)
+  ?(builtin = false)
+  ?path
+  ?source_locator
+  ?ref_
+  ?version
+  () ->
   {
     workspace;
     builtin;
@@ -1380,7 +1410,9 @@ let parse_foreign_dependencies:
           results
       )
 
-let parse_binary: Toml.value -> package_path:Path.t -> (binary, string) result = fun value ~package_path ->
+let parse_binary: Toml.value -> package_path:Path.t -> (binary, string) result = fun
+  value
+  ~package_path ->
   match value with
   | Toml.Table items -> (
       match (Fields.get "name" items, Fields.get "path" items) with
@@ -1760,7 +1792,9 @@ let scan_sources ~(package_path:Path.t) ?(excluded_relpaths = []) (): sources =
   scan_sources_for_intent ~intent:Dev ~package_path ~excluded_relpaths ()
 
 (** Autodiscover test binaries from test files ending in _tests.ml or -tests.ml *)
-let autodiscover_test_binaries: sources -> package_path:Path.t -> binary list = fun sources ~package_path ->
+let autodiscover_test_binaries: sources -> package_path:Path.t -> binary list = fun
+  sources
+  ~package_path ->
   List.filter_map
     ~fn:(fun test_file ->
       let filename = Path.basename test_file in
@@ -1780,14 +1814,18 @@ let autodiscover_test_binaries: sources -> package_path:Path.t -> binary list = 
     sources.tests
 
 (** Autodiscover a default runtime binary from src/main.ml when no explicit [[bin]] exists. *)
-let autodiscover_main_binary: sources -> package_name:Package_name.t -> binary list = fun sources ~package_name ->
+let autodiscover_main_binary: sources -> package_name:Package_name.t -> binary list = fun
+  sources
+  ~package_name ->
   if List.any sources.src ~fn:(fun path -> Path.equal path (Path.v "src/main.ml")) then
     [ { name = Package_name.to_string package_name; path = Path.v "src/main.ml" } ]
   else
     []
 
 (** Autodiscover example binaries from any .ml file in examples/ directory *)
-let autodiscover_example_binaries: sources -> package_path:Path.t -> binary list = fun sources ~package_path ->
+let autodiscover_example_binaries: sources -> package_path:Path.t -> binary list = fun
+  sources
+  ~package_path ->
   List.filter_map
     ~fn:(fun example_file ->
       let filename = Path.basename example_file in
@@ -1803,7 +1841,9 @@ let autodiscover_example_binaries: sources -> package_path:Path.t -> binary list
     sources.examples
 
 (** Autodiscover benchmark binaries from bench files ending in _bench.ml *)
-let autodiscover_bench_binaries: sources -> package_path:Path.t -> binary list = fun sources ~package_path ->
+let autodiscover_bench_binaries: sources -> package_path:Path.t -> binary list = fun
+  sources
+  ~package_path ->
   List.filter_map
     ~fn:(fun bench_file ->
       let filename = Path.basename bench_file in
@@ -1856,7 +1896,12 @@ let declared_binaries_for_intent = fun ~(intent:realization_intent) binaries ->
       | Some bucket -> keep bucket
       | None -> false)
 
-let autodiscovered_binaries_for_intent = fun ~(intent:realization_intent) ~(sources:sources) ~package_name ~package_path ~declared_binaries ->
+let autodiscovered_binaries_for_intent = fun
+  ~(intent:realization_intent)
+  ~(sources:sources)
+  ~package_name
+  ~package_path
+  ~declared_binaries ->
   let runtime_binaries =
     if has_declared_binary_in_bucket declared_binaries Src then
       []
@@ -1891,7 +1936,9 @@ let autodiscovered_binaries_for_intent = fun ~(intent:realization_intent) ~(sour
   | Doc
   | Check -> []
 
-let merge_binaries: declared:binary list -> autodiscovered:binary list -> binary list = fun ~declared ~autodiscovered ->
+let merge_binaries: declared:binary list -> autodiscovered:binary list -> binary list = fun
+  ~declared
+  ~autodiscovered ->
   let seen_paths =
     declared
     |> List.map ~fn:(fun (bin: binary) -> Path.to_string bin.path)
@@ -1916,7 +1963,13 @@ let parse_manifest_spec:
   workspace_build_deps:dependency list ->
   path:Path.t ->
   relative_path:Path.t ->
-  (manifest_spec, manifest_error) result = fun toml ~workspace_deps ~workspace_dev_deps ~workspace_build_deps ~path ~relative_path ->
+  (manifest_spec, manifest_error) result = fun
+  toml
+  ~workspace_deps
+  ~workspace_dev_deps
+  ~workspace_build_deps
+  ~path
+  ~relative_path ->
   match toml with
   | Toml.Table items -> (
       let fallback_name = Path.basename path in
@@ -2062,7 +2115,13 @@ let from_toml:
   workspace_build_deps:dependency list ->
   path:Path.t ->
   relative_path:Path.t ->
-  (t, manifest_error) result = fun toml ~workspace_deps ~workspace_dev_deps ~workspace_build_deps ~path ~relative_path ->
+  (t, manifest_error) result = fun
+  toml
+  ~workspace_deps
+  ~workspace_dev_deps
+  ~workspace_build_deps
+  ~path
+  ~relative_path ->
   parse_manifest_spec
     toml
     ~workspace_deps
@@ -2585,7 +2644,14 @@ module Tests = struct
     Package_name.from_string value
     |> Result.expect ~msg:"expected valid package name"
 
-  let source = fun ?(workspace = false) ?(builtin = false) ?path ?source_locator ?ref_ ?version () ->
+  let source = fun
+    ?(workspace = false)
+    ?(builtin = false)
+    ?path
+    ?source_locator
+    ?ref_
+    ?version
+    () ->
     {
       workspace;
       builtin;

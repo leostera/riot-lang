@@ -185,7 +185,8 @@ let write_all = fun poll ~token file buffer ->
             loop (pos + written) (len - written)
       | Error error ->
           if is_would_block error then
-            let* () = wait_writable poll ~token (Kernel.Fs.File.to_source file) in loop pos len
+            let* () = wait_writable poll ~token (Kernel.Fs.File.to_source file) in
+            loop pos len
           else
             Error (Kernel.Fs.File.error_to_string error)
   in
@@ -199,7 +200,8 @@ let read_all = fun poll ~token file ->
     | Ok count -> loop (Kernel.Bytes.sub_string buffer ~offset:0 ~len:count :: parts)
     | Error error ->
         if is_would_block error then
-          let* () = wait_readable poll ~token (Kernel.Fs.File.to_source file) in loop parts
+          let* () = wait_readable poll ~token (Kernel.Fs.File.to_source file) in
+          loop parts
         else
           Error (Kernel.Fs.File.error_to_string error)
   in
@@ -213,13 +215,15 @@ let wait_for_exit = fun poll ~token process ->
     | None ->
         let source = Kernel.Process.to_source process in
         let* () =
-          lift_async (Kernel.Async.Poll.register poll token Kernel.Async.Interest.priority source) in
+          lift_async (Kernel.Async.Poll.register poll token Kernel.Async.Interest.priority source)
+        in
         protect
           ~finally:(fun () ->
             let _ = Kernel.Async.Poll.deregister poll source in
             ())
-          (fun () -> let* _ = lift_async (Kernel.Async.Poll.poll ~timeout:1_000_000L poll) in
-          loop ())
+          (fun () ->
+            let* _ = lift_async (Kernel.Async.Poll.poll ~timeout:1_000_000L poll) in
+            loop ())
   in
   loop ()
 
@@ -235,7 +239,8 @@ let run_worker_process = fun mode payload ->
   |]
   in
   let* process =
-    lift_process (Kernel.Process.spawn ~program:(Path.to_string executable_path) ~args ~stdio ()) in
+    lift_process (Kernel.Process.spawn ~program:(Path.to_string executable_path) ~args ~stdio ())
+  in
   protect
     ~finally:(fun () ->
       let _ = Kernel.Process.close process in
@@ -250,18 +255,21 @@ let run_worker_process = fun mode payload ->
                   poll
                   ~token:(Kernel.Async.Token.make ("stdin-bench-write", mode_to_string mode))
                   stdin_file
-                  (Kernel.Bytes.from_string payload.data) in
+                  (Kernel.Bytes.from_string payload.data)
+              in
               let* () = lift_file (Kernel.Fs.File.close stdin_file) in
               let* status =
                 wait_for_exit
                   poll
                   ~token:(Kernel.Async.Token.make ("stdin-bench-exit", mode_to_string mode))
-                  process in
+                  process
+              in
               let* stderr =
                 read_all
                   poll
                   ~token:(Kernel.Async.Token.make ("stdin-bench-stderr", mode_to_string mode))
-                  stderr_file in
+                  stderr_file
+              in
               match status with
               | Kernel.Process.Exited 0 -> Ok ()
               | _ ->

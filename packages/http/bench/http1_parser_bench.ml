@@ -163,7 +163,11 @@ module BaselineParser = struct
                   ~acc:((name, value) :: acc)
                   (StringCursor.create remaining)
 
-  let parse = fun ?(max_request_line = 8_192) ?(max_headers = 100) ?(max_header_length = 8_192) input ->
+  let parse = fun
+    ?(max_request_line = 8_192)
+    ?(max_headers = 100)
+    ?(max_header_length = 8_192)
+    input ->
     match parse_request_line ~max_length:max_request_line input with
     | Need_more -> Need_more
     | Error error -> Error error
@@ -320,7 +324,12 @@ module BorrowedParser = struct
           )
       )
 
-  let rec parse_headers = fun ?(max_count = 100) ?(max_length = 8_192) ?(acc = []) ?(count = 0) cursor ->
+  let rec parse_headers = fun
+    ?(max_count = 100)
+    ?(max_length = 8_192)
+    ?(acc = [])
+    ?(count = 0)
+    cursor ->
     if count >= max_count then
       Error "Too many headers"
     else
@@ -345,7 +354,11 @@ module BorrowedParser = struct
                   ~count:(count + 1)
                   next_cursor
 
-  let parse = fun ?(max_request_line = 8_192) ?(max_headers = 100) ?(max_header_length = 8_192) input ->
+  let parse = fun
+    ?(max_request_line = 8_192)
+    ?(max_headers = 100)
+    ?(max_header_length = 8_192)
+    input ->
     match parse_request_line ~max_length:max_request_line input with
     | Need_more -> Need_more
     | Error error -> Error error

@@ -89,7 +89,8 @@ let test_file_scalar_write_roundtrips = fun _ctx ->
           file
           (fun () ->
             let* read = lift (Kernel.Fs.File.read file buf) in
-            Ok (Kernel.Bytes.sub_string buf ~offset:0 ~len:read)) in
+            Ok (Kernel.Bytes.sub_string buf ~offset:0 ~len:read))
+      in
       if Kernel.String.equal actual "hello kernel-new" then
         Ok ()
       else
@@ -123,7 +124,8 @@ let test_file_vectored_write_roundtrips = fun _ctx ->
           file
           (fun () ->
             let* read = lift (Kernel.Fs.File.read file buf) in
-            Ok (Kernel.Bytes.sub_string buf ~offset:0 ~len:read)) in
+            Ok (Kernel.Bytes.sub_string buf ~offset:0 ~len:read))
+      in
       if Kernel.String.equal actual "hello vectored world" then
         Ok ()
       else
@@ -153,7 +155,8 @@ let test_file_read_and_write_respect_pos_and_len = fun _ctx ->
           file
           (fun () ->
             let* read = lift (Kernel.Fs.File.read file ~pos:3 ~len:7 buf) in
-            Ok (read, Kernel.Bytes.to_string buf)) in
+            Ok (read, Kernel.Bytes.to_string buf))
+      in
       let (read, contents) = actual in
       if read = 7 && Kernel.String.equal contents "xxxpayloadyyy" then
         Ok ()
@@ -172,7 +175,9 @@ let test_create_dir_and_read_dir_names = fun _ctx ->
         with_file
           file
           (fun () ->
-            let* _ = lift (Kernel.Fs.File.write file (Kernel.Bytes.from_string "a")) in Ok ()) in
+            let* _ = lift (Kernel.Fs.File.write file (Kernel.Bytes.from_string "a")) in
+            Ok ())
+      in
       let* names = lift (Kernel.Fs.File.read_dir_names tempdir) in
       let has_child =
         Kernel.Array.fold_left
@@ -205,7 +210,9 @@ let test_symlink_metadata_and_canonicalize = fun _ctx ->
         with_file
           file
           (fun () ->
-            let* _ = lift (Kernel.Fs.File.write file (Kernel.Bytes.from_string "kernel")) in Ok ()) in
+            let* _ = lift (Kernel.Fs.File.write file (Kernel.Bytes.from_string "kernel")) in
+            Ok ())
+      in
       protect
         ~finally:(fun () ->
           let _ = Kernel.Fs.File.remove_file link in
@@ -244,7 +251,9 @@ let test_dangling_symlink_still_has_symlink_metadata = fun _ctx ->
         with_file
           file
           (fun () ->
-            let* _ = lift (Kernel.Fs.File.write file (Kernel.Bytes.from_string "kernel")) in Ok ()) in
+            let* _ = lift (Kernel.Fs.File.write file (Kernel.Bytes.from_string "kernel")) in
+            Ok ())
+      in
       let* () = lift (Kernel.Fs.File.symlink ~src:target ~dst:link) in
       protect
         ~finally:(fun () ->
@@ -270,7 +279,9 @@ let test_metadata_reports_missing_target_for_dangling_symlink = fun _ctx ->
         with_file
           file
           (fun () ->
-            let* _ = lift (Kernel.Fs.File.write file (Kernel.Bytes.from_string "kernel")) in Ok ()) in
+            let* _ = lift (Kernel.Fs.File.write file (Kernel.Bytes.from_string "kernel")) in
+            Ok ())
+      in
       let* () = lift (Kernel.Fs.File.symlink ~src:target ~dst:link) in
       protect
         ~finally:(fun () ->
@@ -297,7 +308,9 @@ let test_lstat_matches_symlink_metadata = fun _ctx ->
         with_file
           file
           (fun () ->
-            let* _ = lift (Kernel.Fs.File.write file (Kernel.Bytes.from_string "kernel")) in Ok ()) in
+            let* _ = lift (Kernel.Fs.File.write file (Kernel.Bytes.from_string "kernel")) in
+            Ok ())
+      in
       protect
         ~finally:(fun () ->
           let _ = Kernel.Fs.File.remove_file link in
@@ -328,7 +341,9 @@ let test_metadata_follows_symlink_but_remove_only_unlinks_symlink = fun _ctx ->
         with_file
           file
           (fun () ->
-            let* _ = lift (Kernel.Fs.File.write file (Kernel.Bytes.from_string "kernel")) in Ok ()) in
+            let* _ = lift (Kernel.Fs.File.write file (Kernel.Bytes.from_string "kernel")) in
+            Ok ())
+      in
       let* () = lift (Kernel.Fs.File.symlink ~src:target ~dst:link) in
       let* followed = lift (Kernel.Fs.File.metadata link) in
       let* raw = lift (Kernel.Fs.File.symlink_metadata link) in
@@ -355,8 +370,12 @@ let test_copy_and_rename_roundtrip = fun _ctx ->
       let payload = Kernel.Bytes.from_string "copy me" in
       let* file = lift (Kernel.Fs.File.open_write source) in
       let* () =
-        with_file file (fun () ->
-          let* _ = lift (Kernel.Fs.File.write file payload) in Ok ()) in
+        with_file
+          file
+          (fun () ->
+            let* _ = lift (Kernel.Fs.File.write file payload) in
+            Ok ())
+      in
       let* () = lift (Kernel.Fs.File.copy ~src:source ~dst:copied) in
       let* () = lift (Kernel.Fs.File.rename ~src:copied ~dst:renamed) in
       let* file = lift (Kernel.Fs.File.open_read renamed) in
@@ -366,7 +385,8 @@ let test_copy_and_rename_roundtrip = fun _ctx ->
           file
           (fun () ->
             let* read = lift (Kernel.Fs.File.read file buf) in
-            Ok (Kernel.Bytes.sub_string buf ~offset:0 ~len:read)) in
+            Ok (Kernel.Bytes.sub_string buf ~offset:0 ~len:read))
+      in
       let* exists = lift (Kernel.Fs.File.exists renamed) in
       if exists && Kernel.String.equal actual "copy me" then
         Ok ()
@@ -384,9 +404,11 @@ let test_fstat_matches_path_metadata = fun _ctx ->
         with_file
           file
           (fun () ->
-            let* _ = lift (Kernel.Fs.File.write file payload) in let* fd_metadata =
-              lift (Kernel.Fs.File.fstat file) in let* path_metadata =
-              lift (Kernel.Fs.File.metadata path) in Ok (path_metadata, fd_metadata)) in
+            let* _ = lift (Kernel.Fs.File.write file payload) in
+            let* fd_metadata = lift (Kernel.Fs.File.fstat file) in
+            let* path_metadata = lift (Kernel.Fs.File.metadata path) in
+            Ok (path_metadata, fd_metadata))
+      in
       if
         Kernel.Fs.File.Metadata.ino path_metadata = Kernel.Fs.File.Metadata.ino fd_metadata
         && Kernel.Fs.File.Metadata.len path_metadata = Kernel.Fs.File.Metadata.len fd_metadata
@@ -408,7 +430,9 @@ let test_hard_link_updates_link_count_and_remove_ops = fun _ctx ->
         with_file
           file
           (fun () ->
-            let* _ = lift (Kernel.Fs.File.write file (Kernel.Bytes.from_string "linked")) in Ok ()) in
+            let* _ = lift (Kernel.Fs.File.write file (Kernel.Bytes.from_string "linked")) in
+            Ok ())
+      in
       let* () = lift (Kernel.Fs.File.hard_link ~src:source ~dst:link) in
       let* source_metadata = lift (Kernel.Fs.File.metadata source) in
       let* link_metadata = lift (Kernel.Fs.File.metadata link) in
@@ -439,7 +463,9 @@ let test_remove_nonempty_dir_reports_resource_busy = fun _ctx ->
         with_file
           file
           (fun () ->
-            let* _ = lift (Kernel.Fs.File.write file (Kernel.Bytes.from_string "x")) in Ok ()) in
+            let* _ = lift (Kernel.Fs.File.write file (Kernel.Bytes.from_string "x")) in
+            Ok ())
+      in
       match Kernel.Fs.File.remove_dir directory with
       | Kernel.Result.Error (Kernel.Fs.File.System Kernel.SystemError.DirectoryNotEmpty) -> Ok ()
       | Kernel.Result.Error error -> Error (Kernel.Fs.File.error_to_string error)
@@ -458,7 +484,9 @@ let test_exists_and_is_directory_report_expected_kinds = fun _ctx ->
         with_file
           file
           (fun () ->
-            let* _ = lift (Kernel.Fs.File.write file (Kernel.Bytes.from_string "x")) in Ok ()) in
+            let* _ = lift (Kernel.Fs.File.write file (Kernel.Bytes.from_string "x")) in
+            Ok ())
+      in
       let* dir_exists = lift (Kernel.Fs.File.exists directory) in
       let* file_exists = lift (Kernel.Fs.File.exists file_path) in
       let* missing_exists = lift (Kernel.Fs.File.exists missing) in
@@ -498,7 +526,8 @@ let test_read_vectored_roundtrips = fun _ctx ->
           file
           (fun () ->
             let* read = lift (Kernel.Fs.File.read_vectored file iov) in
-            Ok (read, Kernel.IO.IoVec.to_string iov)) in
+            Ok (read, Kernel.IO.IoVec.to_string iov))
+      in
       let (read, contents) = actual in
       let prefix = Kernel.Bytes.sub_string (Kernel.Bytes.from_string contents) ~offset:0 ~len:read in
       if
@@ -563,9 +592,10 @@ let test_repeated_pipe_open_and_close_stays_healthy = fun _ctx ->
     if remaining = 0 then
       Ok ()
     else
-      let* pipe = lift (Kernel.Fs.File.pipe ()) in let* () =
-        lift (Kernel.Fs.File.close pipe.read_end) in let* () =
-        lift (Kernel.Fs.File.close pipe.write_end) in loop (remaining - 1)
+      let* pipe = lift (Kernel.Fs.File.pipe ()) in
+      let* () = lift (Kernel.Fs.File.close pipe.read_end) in
+      let* () = lift (Kernel.Fs.File.close pipe.write_end) in
+      loop (remaining - 1)
   in
   loop 256
 
@@ -710,7 +740,8 @@ let test_vectored_write_subslice_roundtrips = fun _ctx ->
           file
           (fun () ->
             let* read = lift (Kernel.Fs.File.read file buffer) in
-            Ok (Kernel.Bytes.sub_string buffer ~offset:0 ~len:read)) in
+            Ok (Kernel.Bytes.sub_string buffer ~offset:0 ~len:read))
+      in
       if Kernel.String.equal actual "hello kernel" then
         Ok ()
       else
@@ -884,7 +915,8 @@ let test_hard_link_remove_original_preserves_alias_and_decrements_link_count = f
           alias_file
           (fun () ->
             let* read = lift (Kernel.Fs.File.read alias_file buffer) in
-            Ok (Kernel.Bytes.sub_string buffer ~offset:0 ~len:read)) in
+            Ok (Kernel.Bytes.sub_string buffer ~offset:0 ~len:read))
+      in
       let* original_exists = lift (Kernel.Fs.File.exists original) in
       let* alias_exists = lift (Kernel.Fs.File.exists alias) in
       if
@@ -929,7 +961,8 @@ let test_scalar_partial_io_slice_matrix_roundtrips = fun _ctx ->
                 file
                 (fun () ->
                   let* read = lift (Kernel.Fs.File.read file buffer) in
-                  Ok (read, Kernel.Bytes.sub_string buffer ~offset:0 ~len:read)) in
+                  Ok (read, Kernel.Bytes.sub_string buffer ~offset:0 ~len:read))
+            in
             let (read, contents) = actual in
             let expected = Kernel.Bytes.sub_string payload ~offset:pos ~len in
             if read != len || not (Kernel.String.equal contents expected) then
@@ -979,7 +1012,8 @@ let test_vectored_partial_io_slice_matrix_roundtrips = fun _ctx ->
                 file
                 (fun () ->
                   let* read = lift (Kernel.Fs.File.read file buffer) in
-                  Ok (read, Kernel.Bytes.sub_string buffer ~offset:0 ~len:read)) in
+                  Ok (read, Kernel.Bytes.sub_string buffer ~offset:0 ~len:read))
+            in
             let (read, contents) = actual in
             let expected = String.sub flattened ~offset:pos ~len in
             if read != len || not (Kernel.String.equal contents expected) then
@@ -1037,7 +1071,8 @@ let test_read_dir_names_handles_larger_snapshots_with_renames_and_removes = fun 
         else
           let* () =
             lift
-              (Kernel.Fs.File.rename ~src:(path_for "entry" index) ~dst:(path_for "renamed" index)) in
+              (Kernel.Fs.File.rename ~src:(path_for "entry" index) ~dst:(path_for "renamed" index))
+          in
           rename_prefix (index + 1)
       in
       let rec remove_suffix index =
@@ -1126,7 +1161,8 @@ let test_open_write_append_preserves_existing_bytes = fun _ctx ->
           file
           (fun () ->
             let* read = lift (Kernel.Fs.File.read file buffer) in
-            Ok (Kernel.Bytes.sub_string buffer ~offset:0 ~len:read)) in
+            Ok (Kernel.Bytes.sub_string buffer ~offset:0 ~len:read))
+      in
       if payload = "oldnew" then
         Ok ()
       else
@@ -1155,7 +1191,8 @@ let test_read_len_zero_is_a_no_op = fun _ctx ->
           file
           (fun () ->
             let* read = lift (Kernel.Fs.File.read file ~pos:2 ~len:0 buffer) in
-            Ok (read, Kernel.Bytes.to_string buffer)) in
+            Ok (read, Kernel.Bytes.to_string buffer))
+      in
       match actual with
       | (0, "unchanged") -> Ok ()
       | _ -> Error "expected File.read ~len:0 to leave the buffer unchanged and return zero")
@@ -1171,14 +1208,16 @@ let test_write_len_zero_is_a_no_op = fun _ctx ->
           file
           (fun () ->
             lift
-              (Kernel.Fs.File.write file ~pos:1 ~len:0 (Kernel.Bytes.from_string "riot"))) in
+              (Kernel.Fs.File.write file ~pos:1 ~len:0 (Kernel.Bytes.from_string "riot")))
+      in
       if written != 0 then
         Error "expected File.write ~len:0 to report zero bytes written"
       else
         let* file = lift (Kernel.Fs.File.open_read path) in
         let buffer = Kernel.Bytes.create ~size:8 in
         let* read = with_file file (fun () ->
-          lift (Kernel.Fs.File.read file buffer)) in
+          lift (Kernel.Fs.File.read file buffer))
+        in
         if read = 0 then
           Ok ()
         else
@@ -1194,7 +1233,8 @@ let test_read_rejects_negative_pos = fun _ctx ->
         with_file
           file
           (fun () ->
-            lift (Kernel.Fs.File.write file (Kernel.Bytes.from_string "riot"))) in
+            lift (Kernel.Fs.File.write file (Kernel.Bytes.from_string "riot")))
+      in
       let* file = lift (Kernel.Fs.File.open_read path) in
       let buffer = Kernel.Bytes.create ~size:4 in
       protect
@@ -1233,7 +1273,8 @@ let test_read_rejects_slices_past_the_buffer_end = fun _ctx ->
         with_file
           file
           (fun () ->
-            lift (Kernel.Fs.File.write file (Kernel.Bytes.from_string "riot"))) in
+            lift (Kernel.Fs.File.write file (Kernel.Bytes.from_string "riot")))
+      in
       let* file = lift (Kernel.Fs.File.open_read path) in
       let buffer = Kernel.Bytes.create ~size:4 in
       protect
@@ -1298,7 +1339,8 @@ let test_read_vectored_ignores_zero_length_segments = fun _ctx ->
           file
           (fun () ->
             let* read = lift (Kernel.Fs.File.read_vectored file iov) in
-            Ok (read, Kernel.IO.IoVec.to_string iov)) in
+            Ok (read, Kernel.IO.IoVec.to_string iov))
+      in
       match actual with
       | (4, "riot") -> Ok ()
       | _ -> Error "expected read_vectored to ignore zero-length segments and preserve the payload")
@@ -1315,14 +1357,16 @@ let test_write_vectored_zero_total_length_is_a_no_op = fun _ctx ->
       in
       let* file = lift (Kernel.Fs.File.open_write path) in
       let* written = with_file file (fun () ->
-        lift (Kernel.Fs.File.write_vectored file iov)) in
+        lift (Kernel.Fs.File.write_vectored file iov))
+      in
       if written != 0 then
         Error "expected write_vectored with zero total length to report zero bytes written"
       else
         let* file = lift (Kernel.Fs.File.open_read path) in
         let buffer = Kernel.Bytes.create ~size:8 in
         let* read = with_file file (fun () ->
-          lift (Kernel.Fs.File.read file buffer)) in
+          lift (Kernel.Fs.File.read file buffer))
+        in
         if read = 0 then
           Ok ()
         else
@@ -1349,7 +1393,8 @@ let test_remove_dir_on_regular_file_reports_not_directory = fun _ctx ->
         with_file
           file
           (fun () ->
-            lift (Kernel.Fs.File.write file (Kernel.Bytes.from_string "riot"))) in
+            lift (Kernel.Fs.File.write file (Kernel.Bytes.from_string "riot")))
+      in
       match Kernel.Fs.File.remove_dir path with
       | Kernel.Result.Error (Kernel.Fs.File.System Kernel.SystemError.NotDirectory) -> Ok ()
       | Kernel.Result.Error error -> Error (Kernel.Fs.File.error_to_string error)
@@ -1378,7 +1423,8 @@ let test_read_link_on_non_symlink_reports_invalid_argument = fun _ctx ->
         with_file
           file
           (fun () ->
-            lift (Kernel.Fs.File.write file (Kernel.Bytes.from_string "riot"))) in
+            lift (Kernel.Fs.File.write file (Kernel.Bytes.from_string "riot")))
+      in
       match Kernel.Fs.File.read_link path with
       | Kernel.Result.Error (Kernel.Fs.File.System Kernel.SystemError.InvalidArgument) -> Ok ()
       | Kernel.Result.Error error -> Error (Kernel.Fs.File.error_to_string error)
@@ -1428,7 +1474,8 @@ let test_copy_overwrites_existing_destination_bytes = fun _ctx ->
           destination_file
           (fun () ->
             let* written =
-              lift (Kernel.Fs.File.write destination_file (Kernel.Bytes.from_string "old-old")) in
+              lift (Kernel.Fs.File.write destination_file (Kernel.Bytes.from_string "old-old"))
+            in
             if written = 7 then
               Ok ()
             else
@@ -1442,7 +1489,8 @@ let test_copy_overwrites_existing_destination_bytes = fun _ctx ->
           destination_file
           (fun () ->
             let* read = lift (Kernel.Fs.File.read destination_file buffer) in
-            Ok (Kernel.Bytes.sub_string buffer ~offset:0 ~len:read)) in
+            Ok (Kernel.Bytes.sub_string buffer ~offset:0 ~len:read))
+      in
       if payload = "new" then
         Ok ()
       else
@@ -1486,7 +1534,8 @@ let test_copy_preserves_large_payloads_beyond_the_internal_chunk_size = fun _ctx
           destination_file
           (fun () ->
             let* read = lift (Kernel.Fs.File.read destination_file buffer) in
-            Ok (read, Kernel.Bytes.to_string buffer)) in
+            Ok (read, Kernel.Bytes.to_string buffer))
+      in
       match actual with
       | (read, contents) when read = Kernel.Bytes.length payload
       && contents = Kernel.Bytes.to_string payload -> Ok ()
@@ -1537,10 +1586,11 @@ let test_fstat_continues_to_describe_the_open_file_after_rename = fun _ctx ->
             if written != 6 then
               Error "expected rename fixture write to make progress"
             else
-              let* before = lift (Kernel.Fs.File.fstat file) in let* () =
-                lift (Kernel.Fs.File.rename ~src:original ~dst:moved) in let* after =
-                lift (Kernel.Fs.File.fstat file) in let* by_path =
-                lift (Kernel.Fs.File.metadata moved) in Ok (before, after, by_path))
+              let* before = lift (Kernel.Fs.File.fstat file) in
+              let* () = lift (Kernel.Fs.File.rename ~src:original ~dst:moved) in
+              let* after = lift (Kernel.Fs.File.fstat file) in
+              let* by_path = lift (Kernel.Fs.File.metadata moved) in
+              Ok (before, after, by_path))
       in
       match actual with
       | (before, after, by_path) ->

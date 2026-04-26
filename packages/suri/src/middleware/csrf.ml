@@ -153,7 +153,12 @@ let is_safe_method = fun method_ ->
 (** {1 Middleware} *)
 
 (** CSRF protection middleware *)
-let middleware = fun ?(param_name = "_csrf_token") ?(header_name = "x-csrf-token") ?(skip_safe_methods = true) ?skip () ->
+let middleware = fun
+  ?(param_name = "_csrf_token")
+  ?(header_name = "x-csrf-token")
+  ?(skip_safe_methods = true)
+  ?skip
+  () ->
   fun ~conn ~next ->
     (* Check if we should skip CSRF for this request *)
     let should_skip =

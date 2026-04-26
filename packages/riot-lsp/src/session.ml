@@ -529,7 +529,15 @@ let symbol_children = function
   | [] -> None
   | children -> Some children
 
-let document_symbol_of_named_item = fun ~text ~name ~kind ~syntax_node ~selection_range ?detail ?children () ->
+let document_symbol_of_named_item = fun
+  ~text
+  ~name
+  ~kind
+  ~syntax_node
+  ~selection_range
+  ?detail
+  ?children
+  () ->
   {
     Lsp.Document_symbol_item.name;
     detail;
@@ -861,10 +869,14 @@ let apply_change = fun text ->
     | None -> Ok change.text
     | Some range -> splice_text text range change.text
 
-let apply_changes = fun text -> fun changes -> List.fold_left
-  changes
-  ~init:(Ok text)
-  ~fn:(fun acc change -> let* current = acc in apply_change current change)
+let apply_changes = fun text ->
+  fun changes ->
+    List.fold_left
+      changes
+      ~init:(Ok text)
+      ~fn:(fun acc change ->
+        let* current = acc in
+        apply_change current change)
 
 let capabilities = {
   Lsp.Initialize.Server_capabilities.position_encoding = Some "utf-16";

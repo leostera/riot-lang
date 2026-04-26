@@ -171,7 +171,11 @@ let load_source_workspace = fun ~on_event ~source_spec ~update ->
     ()
   |> Result.map_err ~fn:(fun error -> ExternalTargetLoadFailed { target = source_spec; error })
 
-let find_built_binary_path = fun ~(store:Riot_store.Store.t) ~(output:Riot_build.Build_result.t) ~package_name ~binary_name ->
+let find_built_binary_path = fun
+  ~(store:Riot_store.Store.t)
+  ~(output:Riot_build.Build_result.t)
+  ~package_name
+  ~binary_name ->
   let ensure_executable_binary_path path =
     match Fs.metadata path with
     | Error err -> Error ("failed to read binary metadata: " ^ IO.error_message err)
@@ -218,7 +222,8 @@ let run = fun ?(on_event = no_event) (request: run_request) ->
     resolve_binary
       ~workspace:request.workspace
       ~package_name:request.package_name
-      ~binary_name:request.binary_name in
+      ~binary_name:request.binary_name
+  in
   let scope =
     build_scope_for_binary request.workspace ~package_name ~binary_name:request.binary_name
   in
@@ -252,7 +257,8 @@ let run = fun ?(on_event = no_event) (request: run_request) ->
 
 let run_source = fun ?(on_event = no_event) (request: source_run_request) ->
   let* loaded =
-    load_source_workspace ~on_event ~source_spec:request.source_spec ~update:request.update in
+    load_source_workspace ~on_event ~source_spec:request.source_spec ~update:request.update
+  in
   run
     ~on_event
     {

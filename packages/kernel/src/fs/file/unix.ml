@@ -103,20 +103,21 @@ let kind_of_code = fun value ->
   | 6 -> Socket
   | _ -> Unknown
 
-let metadata_of_tuple = fun (
-  kind_code,
-  perm,
-  size,
-  link_count,
-  owner_uid,
-  owner_gid,
-  device,
-  inode,
-  raw_device,
-  accessed_time_ns,
-  modified_time_ns,
-  changed_time_ns
-) ->
+let metadata_of_tuple = fun
+  (
+    kind_code,
+    perm,
+    size,
+    link_count,
+    owner_uid,
+    owner_gid,
+    device,
+    inode,
+    raw_device,
+    accessed_time_ns,
+    modified_time_ns,
+    changed_time_ns
+  ) ->
   Metadata.{
     kind = kind_of_code kind_code;
     perm;
@@ -404,7 +405,8 @@ let copy = fun ~src ~dst ->
           else
             write_all (pos + written) (remaining - written)
       in
-      let* () = write_all 0 read_count in drain ()
+      let* () = write_all 0 read_count in
+      drain ()
   in
   let result = drain () in
   let close_first = close src_file in

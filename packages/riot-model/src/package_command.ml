@@ -22,7 +22,10 @@ let status_string: t -> string = fun cmd ->
   else
     "not built"
 
-let parse_from_toml: Toml.value list -> package_name:Package_name.t -> package_path:Path.t -> t list = fun toml_entries ~package_name ~package_path ->
+let parse_from_toml: Toml.value list -> package_name:Package_name.t -> package_path:Path.t -> t list = fun
+  toml_entries
+  ~package_name
+  ~package_path ->
   List.filter_map
     toml_entries
     ~fn:(fun cmd_toml ->

@@ -74,7 +74,14 @@ let run_result = fun ~mode ~scope ~limit ~files ->
     ~files
     ~on_result:(fun _ -> ())
 
-let run_with_coordinator = fun ?(on_event = Types.no_event) ~output_mode ~mode ~scope ~limit ~roots () ->
+let run_with_coordinator = fun
+  ?(on_event = Types.no_event)
+  ~output_mode
+  ~mode
+  ~scope
+  ~limit
+  ~roots
+  () ->
   let concurrency = recommended_concurrency ~limit in
   on_event (Types.Start { mode; concurrency });
   (
@@ -231,7 +238,15 @@ let generated_runner_args = fun ~cwd ~mode ~limit ~target ~output_mode ->
   push (Path.to_string (absolute_target ~cwd target));
   !args
 
-let run_generated_runner = fun ~cwd ~(build_package:Types.build_package) ~report_output ~mode ~limit ~target ~output_mode scope ->
+let run_generated_runner = fun
+  ~cwd
+  ~(build_package:Types.build_package)
+  ~report_output
+  ~mode
+  ~limit
+  ~target
+  ~output_mode
+  scope ->
   let workspace = Fix_config.workspace scope in
   let workspace_root = Fix_config.workspace_root scope in
   let target_dir_root = Fix_config.target_dir_root scope in

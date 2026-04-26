@@ -579,26 +579,27 @@ let stop_array_gen = Generator.array_size (Generator.int_range 0 4) stop_gen
 
 let sample_gen =
   Generator.map3
-    (fun (((title, active), count), (small, big, ratio)) (nickname, (status, (pet, pose))) (
-      tags,
-      (scores, (stops, mirrors))
-    ) -> ({
-      title;
-      active;
-      count;
-      small;
-      big;
-      ratio;
-      nickname;
-      status;
-      pet;
-      marker = ();
-      pose;
-      tags;
-      scores;
-      stops;
-      mirrors;
-    }: sample))
+    (fun
+      (((title, active), count), (small, big, ratio))
+      (nickname, (status, (pet, pose)))
+      (tags, (scores, (stops, mirrors))) ->
+      ({
+        title;
+        active;
+        count;
+        small;
+        big;
+        ratio;
+        nickname;
+        status;
+        pet;
+        marker = ();
+        pose;
+        tags;
+        scores;
+        stops;
+        mirrors;
+      }: sample))
     (Generator.pair
       (Generator.pair (Generator.pair Generator.string Generator.bool) Generator.int)
       (Generator.triple Generator.int32 Generator.int64 finite_float_gen))

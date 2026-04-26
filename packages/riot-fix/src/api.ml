@@ -45,7 +45,8 @@ type fix_response =
       output: string;
     }
 
-let unavailable_build_package = fun ~workspace:_ ~package_name:_ ~profile:_ ?transform_workspace:_ () ->
+let unavailable_build_package = fun
+  ~workspace:_ ~package_name:_ ~profile:_ ?transform_workspace:_ () ->
   Error (Failure "No build_package callback was provided")
 
 let check_request = Cli.Request.check_request
@@ -73,7 +74,11 @@ let response_output response =
 
 let no_event = fun (_: Event.t) -> ()
 
-let fix = fun ?(build_package = unavailable_build_package) ?(on_event = no_event) ?output_mode request ->
+let fix = fun
+  ?(build_package = unavailable_build_package)
+  ?(on_event = no_event)
+  ?output_mode
+  request ->
   let output_mode =
     match output_mode with
     | Some output_mode -> output_mode

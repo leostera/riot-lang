@@ -178,7 +178,18 @@ let decision_for_entry = fun config frames entry ->
     else
       Ok Match.None_
 
-let create = fun ~roots ?(concurrency = Thread.available_parallelism) ?(sort = false) ?(follow_symlinks = false) ?(hidden = true) ?(parents = true) ?(ignore = true) ?(git_ignore = true) ?(custom_ignore_filenames = []) ?(overrides = []) () ->
+let create = fun
+  ~roots
+  ?(concurrency = Thread.available_parallelism)
+  ?(sort = false)
+  ?(follow_symlinks = false)
+  ?(hidden = true)
+  ?(parents = true)
+  ?(ignore = true)
+  ?(git_ignore = true)
+  ?(custom_ignore_filenames = [])
+  ?(overrides = [])
+  () ->
   let concurrency = Int.max 1 concurrency in
   let root =
     match roots with

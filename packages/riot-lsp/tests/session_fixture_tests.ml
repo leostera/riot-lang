@@ -106,11 +106,12 @@ let run_fixture = fun path ->
         })
   )
 
-let test_fixture = fun ~(ctx:Test.FixtureRunner.ctx) -> let* outcome = run_fixture ctx.fixture_path in
-Test.Snapshot.assert_text
-  ~ctx:ctx.test
-  ~actual:(normalize_snapshot_tokens
-    (Json.to_string_pretty (Riot_lsp.Session.outcome_to_json outcome) ^ "\n"))
+let test_fixture = fun ~(ctx:Test.FixtureRunner.ctx) ->
+  let* outcome = run_fixture ctx.fixture_path in
+  Test.Snapshot.assert_text
+    ~ctx:ctx.test
+    ~actual:(normalize_snapshot_tokens
+      (Json.to_string_pretty (Riot_lsp.Session.outcome_to_json outcome) ^ "\n"))
 
 let main ~args =
   let tests =

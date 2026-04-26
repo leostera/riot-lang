@@ -22,14 +22,20 @@ let prepare_workspace = fun (workspace: Riot_model.Workspace_manifest.t) ->
     ()
   |> Result.map_err ~fn:(fun err -> Failure (Riot_model.Pm_error.message err))
 
-let build_package = fun ~mode ~(workspace:Riot_model.Workspace_manifest.t) ~package_name ~profile ?(transform_workspace = fun workspace -> workspace) () -> let* workspace =
-  prepare_workspace workspace in
-Build.build_command
-  ~workspace:(transform_workspace workspace)
+let build_package = fun
   ~mode
+  ~(workspace:Riot_model.Workspace_manifest.t)
+  ~package_name
   ~profile
-  (Some package_name)
-  None
+  ?(transform_workspace = fun workspace -> workspace)
+  () ->
+  let* workspace = prepare_workspace workspace in
+  Build.build_command
+    ~workspace:(transform_workspace workspace)
+    ~mode
+    ~profile
+    (Some package_name)
+    None
 
 let run = fun matches ->
   match Riot_fix.fix_request_of_matches matches with

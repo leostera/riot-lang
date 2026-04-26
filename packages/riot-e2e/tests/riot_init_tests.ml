@@ -14,13 +14,16 @@ let test_riot_init_default_workspace_builds_and_tests =
         ctx
         workspace_name
         (fun workspace_root ->
-          let* () = assert_exists Path.(workspace_root / Path.v "riot.toml") in let* () =
+          let* () = assert_exists Path.(workspace_root / Path.v "riot.toml") in
+          let* () =
             assert_exists
-              Path.(workspace_root / Path.v "packages" / Path.v workspace_name / Path.v "riot.toml") in let* build_output =
-            run_riot ctx ~cwd:workspace_root [ "build" ] in let* _ =
-            expect_success ~cmd:"riot build" build_output in let* test_output =
-            run_riot ctx ~cwd:workspace_root [ "test" ] in let* _ =
-            expect_success ~cmd:"riot test" test_output in Ok ()))
+              Path.(workspace_root / Path.v "packages" / Path.v workspace_name / Path.v "riot.toml")
+          in
+          let* build_output = run_riot ctx ~cwd:workspace_root [ "build" ] in
+          let* _ = expect_success ~cmd:"riot build" build_output in
+          let* test_output = run_riot ctx ~cwd:workspace_root [ "test" ] in
+          let* _ = expect_success ~cmd:"riot test" test_output in
+          Ok ()))
 
 let test_riot_init_default_workspace_has_no_runnable_binary =
   Test.case
@@ -32,8 +35,10 @@ let test_riot_init_default_workspace_has_no_runnable_binary =
         ctx
         workspace_name
         (fun workspace_root ->
-          let* run_output = run_riot ctx ~cwd:workspace_root [ "run" ] in let* _ =
-            expect_failure_contains ~cmd:"riot run" ~needle:"no runnable binaries found" run_output in
+          let* run_output = run_riot ctx ~cwd:workspace_root [ "run" ] in
+          let* _ =
+            expect_failure_contains ~cmd:"riot run" ~needle:"no runnable binaries found" run_output
+          in
           Ok ()))
 
 let test_riot_init_binary_workspace_runs =
@@ -70,50 +75,72 @@ let test_riot_init_scaffolds_operational_defaults =
           in
           let package_root = Path.(workspace_root / Path.v "packages" / Path.v workspace_name) in
           let pre_commit = Path.(workspace_root / Path.v ".githooks" / Path.v "pre-commit") in
-          let* () = assert_exists Path.(skill_root / Path.v "SKILL.md") in let* () =
-            assert_exists Path.(skill_root / Path.v "agents" / Path.v "openai.yaml") in let* () =
-            assert_exists Path.(skill_root / Path.v "references" / Path.v "commands.md") in let* () =
-            assert_exists Path.(skill_root / Path.v "references" / Path.v "testing.md") in let* () =
-            assert_exists Path.(skill_root / Path.v "references" / Path.v "benchmarking.md") in let* () =
-            assert_exists Path.(skill_root / Path.v "references" / Path.v "modules.md") in let* () =
-            assert_exists Path.(workspace_root / Path.v "config" / Path.v "dev.toml") in let* () =
-            assert_exists Path.(workspace_root / Path.v ".riot" / Path.v "config.toml") in let* () =
-            assert_exists pre_commit in let* () = assert_executable pre_commit in let* () =
-            assert_contains pre_commit "riot fmt" in let* () = assert_contains pre_commit "riot fix" in let* () =
-            assert_contains pre_commit "riot build" in let* () =
-            assert_contains pre_commit "riot test --small" in let* () =
+          let* () = assert_exists Path.(skill_root / Path.v "SKILL.md") in
+          let* () = assert_exists Path.(skill_root / Path.v "agents" / Path.v "openai.yaml") in
+          let* () = assert_exists Path.(skill_root / Path.v "references" / Path.v "commands.md") in
+          let* () = assert_exists Path.(skill_root / Path.v "references" / Path.v "testing.md") in
+          let* () = assert_exists Path.(skill_root / Path.v "references" / Path.v "benchmarking.md") in
+          let* () = assert_exists Path.(skill_root / Path.v "references" / Path.v "modules.md") in
+          let* () = assert_exists Path.(workspace_root / Path.v "config" / Path.v "dev.toml") in
+          let* () = assert_exists Path.(workspace_root / Path.v ".riot" / Path.v "config.toml") in
+          let* () = assert_exists pre_commit in
+          let* () = assert_executable pre_commit in
+          let* () = assert_contains pre_commit "riot fmt" in
+          let* () = assert_contains pre_commit "riot fix" in
+          let* () = assert_contains pre_commit "riot build" in
+          let* () = assert_contains pre_commit "riot test --small" in
+          let* () =
             assert_contains
               Path.(workspace_root / Path.v "config" / Path.v "dev.toml")
-              {|name = "operational-defaults"|} in let* () =
+              {|name = "operational-defaults"|}
+          in
+          let* () =
             assert_contains
               Path.(workspace_root / Path.v ".riot" / Path.v "config.toml")
-              "[riot.cache]" in let* () =
-            assert_contains Path.(skill_root / Path.v "SKILL.md") "references/modules.md" in let* () =
+              "[riot.cache]"
+          in
+          let* () = assert_contains Path.(skill_root / Path.v "SKILL.md") "references/modules.md" in
+          let* () =
             assert_contains
               Path.(skill_root / Path.v "references" / Path.v "commands.md")
-              "riot test -p my-package -f parser" in let* () =
+              "riot test -p my-package -f parser"
+          in
+          let* () =
             assert_contains
               Path.(skill_root / Path.v "references" / Path.v "commands.md")
-              "riot bench --iterations 100 --warmup 10" in let* () =
+              "riot bench --iterations 100 --warmup 10"
+          in
+          let* () =
             assert_contains
               Path.(skill_root / Path.v "references" / Path.v "testing.md")
-              "Writing e2e tests" in let* () =
+              "Writing e2e tests"
+          in
+          let* () =
             assert_contains
               Path.(skill_root / Path.v "references" / Path.v "benchmarking.md")
-              "riot bench -p my-package -f lookup --compare 5" in let* () =
+              "riot bench -p my-package -f lookup --compare 5"
+          in
+          let* () =
             assert_contains
               Path.(skill_root / Path.v "references" / Path.v "modules.md")
-              "Riot does not expose transitive dependencies" in let* () =
+              "Riot does not expose transitive dependencies"
+          in
+          let* () =
             assert_contains
               Path.(skill_root / Path.v "references" / Path.v "modules.md")
-              "Tests inherit normal package dependencies" in let* () =
+              "Tests inherit normal package dependencies"
+          in
+          let* () =
             assert_contains
               Path.(package_root / Path.v "src" / Path.v "main.ml")
-              "Std.Config.load ();" in let* () =
+              "Std.Config.load ();"
+          in
+          let* () =
             assert_contains
               Path.(package_root / Path.v "src" / Path.v "main.ml")
-              "Std.Log.start_link ()" in let* () =
-            assert_contains Path.(package_root / Path.v "src" / Path.v "main.ml") "Log.info" in
+              "Std.Log.start_link ()"
+          in
+          let* () = assert_contains Path.(package_root / Path.v "src" / Path.v "main.ml") "Log.info" in
           Ok ()))
 
 let test_riot_run_list_json_reports_generated_binary =
@@ -127,13 +154,17 @@ let test_riot_run_list_json_reports_generated_binary =
         ctx
         workspace_name
         (fun workspace_root ->
-          let* run_output = run_riot ctx ~cwd:workspace_root [ "run"; "--list"; "--json" ] in let* run_output =
-            expect_success ~cmd:"riot run --list --json" run_output in let* () =
-            assert_output_contains ~cmd:"riot run --list --json" run_output {|"type":"RunList"|} in let* () =
+          let* run_output = run_riot ctx ~cwd:workspace_root [ "run"; "--list"; "--json" ] in
+          let* run_output = expect_success ~cmd:"riot run --list --json" run_output in
+          let* () =
+            assert_output_contains ~cmd:"riot run --list --json" run_output {|"type":"RunList"|}
+          in
+          let* () =
             assert_output_contains
               ~cmd:"riot run --list --json"
               run_output
-              {|"selector":"run-list-e2e:run-list-e2e"|} in
+              {|"selector":"run-list-e2e:run-list-e2e"|}
+          in
           assert_output_contains
             ~cmd:"riot run --list --json"
             run_output
@@ -153,20 +184,27 @@ let test_riot_test_list_json_filters_generated_starter_test =
             run_riot
               ctx
               ~cwd:workspace_root
-              [ "test"; "--list"; "--json"; "-p"; workspace_name; "-f"; "starter"; ] in let* test_output =
-            expect_success ~cmd:"riot test --list --json" test_output in let* () =
+              [ "test"; "--list"; "--json"; "-p"; workspace_name; "-f"; "starter"; ]
+          in
+          let* test_output = expect_success ~cmd:"riot test --list --json" test_output in
+          let* () =
             assert_output_contains
               ~cmd:"riot test --list --json"
               test_output
-              {|"type":"TestCaseListed"|} in let* () =
+              {|"type":"TestCaseListed"|}
+          in
+          let* () =
             assert_output_contains
               ~cmd:"riot test --list --json"
               test_output
-              {|"name":"starter greeting"|} in let* () =
+              {|"name":"starter greeting"|}
+          in
+          let* () =
             assert_output_contains
               ~cmd:"riot test --list --json"
               test_output
-              {|"type":"TestListCompleted"|} in
+              {|"type":"TestListCompleted"|}
+          in
           assert_output_contains ~cmd:"riot test --list --json" test_output {|"test_count":1|}))
 
 let test_riot_bench_list_json_succeeds_without_benchmarks =
@@ -180,12 +218,15 @@ let test_riot_bench_list_json_succeeds_without_benchmarks =
         workspace_name
         (fun workspace_root ->
           let* bench_output =
-            run_riot ctx ~cwd:workspace_root [ "bench"; "--list"; "--json"; "-p"; workspace_name; ] in let* bench_output =
-            expect_success ~cmd:"riot bench --list --json" bench_output in let* () =
+            run_riot ctx ~cwd:workspace_root [ "bench"; "--list"; "--json"; "-p"; workspace_name; ]
+          in
+          let* bench_output = expect_success ~cmd:"riot bench --list --json" bench_output in
+          let* () =
             assert_output_contains
               ~cmd:"riot bench --list --json"
               bench_output
-              {|"type":"BenchListCompleted"|} in
+              {|"type":"BenchListCompleted"|}
+          in
           assert_output_contains
             ~cmd:"riot bench --list --json"
             bench_output
@@ -203,19 +244,21 @@ let test_riot_init_dotted_workspace_normalizes_starter_package =
         workspace_name
         (fun workspace_root ->
           let* () =
-            assert_contains Path.(workspace_root / Path.v "riot.toml") {|name = "arewedown.dev"|} in
+            assert_contains Path.(workspace_root / Path.v "riot.toml") {|name = "arewedown.dev"|}
+          in
           let starter_manifest =
             Path.(workspace_root
             / Path.v "packages"
             / Path.v starter_package_name
             / Path.v "riot.toml")
           in
-          let* () = assert_exists starter_manifest in let* () =
-            assert_contains starter_manifest {|name = "arewedown-dev"|} in let* build_output =
-            run_riot ctx ~cwd:workspace_root [ "build" ] in let* _ =
-            expect_success ~cmd:"riot build" build_output in let* test_output =
-            run_riot ctx ~cwd:workspace_root [ "test" ] in let* _ =
-            expect_success ~cmd:"riot test" test_output in Ok ()))
+          let* () = assert_exists starter_manifest in
+          let* () = assert_contains starter_manifest {|name = "arewedown-dev"|} in
+          let* build_output = run_riot ctx ~cwd:workspace_root [ "build" ] in
+          let* _ = expect_success ~cmd:"riot build" build_output in
+          let* test_output = run_riot ctx ~cwd:workspace_root [ "test" ] in
+          let* _ = expect_success ~cmd:"riot test" test_output in
+          Ok ()))
 
 let tests = [
   test_riot_init_default_workspace_builds_and_tests;

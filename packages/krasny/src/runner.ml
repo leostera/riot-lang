@@ -628,7 +628,13 @@ let summarize = fun ~duration files ->
             already_formatted = acc.already_formatted + 1;
           })
 
-let run_streaming = fun ~mode ?(concurrency = Thread.available_parallelism) ?(should_ignore = fun _ -> false) ~roots ~on_result () ->
+let run_streaming = fun
+  ~mode
+  ?(concurrency = Thread.available_parallelism)
+  ?(should_ignore = fun _ -> false)
+  ~roots
+  ~on_result
+  () ->
   let concurrency = max 1 concurrency in
   let run_ref = Ref.make () in
   let owner = self () in
@@ -687,7 +693,11 @@ let run_format_streaming = fun ?concurrency ?should_ignore ~roots ~on_result () 
     ~on_result
     ()
 
-let run_batch = fun ~mode ?(concurrency = Thread.available_parallelism) ?(should_ignore = fun _ -> false) files ->
+let run_batch = fun
+  ~mode
+  ?(concurrency = Thread.available_parallelism)
+  ?(should_ignore = fun _ -> false)
+  files ->
   let concurrency = max 1 concurrency in
   let start = Time.Instant.now () in
   let check_fn =

@@ -73,9 +73,10 @@ let lock_package_version_map = fun (lockfile_opt: Riot_model.Lockfile.t option) 
           | (Some key, Some version) -> (key, version) :: acc
           | _ -> acc)
 
-let emit_locked_packages = fun ~(emit:event_sink) ~(previous_lock:Riot_model.Lockfile.t option) (
-  current_lock: Riot_model.Lockfile.t
-) ->
+let emit_locked_packages = fun
+  ~(emit:event_sink)
+  ~(previous_lock:Riot_model.Lockfile.t option)
+  (current_lock: Riot_model.Lockfile.t) ->
   let previous_versions = lock_package_version_map previous_lock in
   List.for_each
     current_lock.packages
@@ -98,7 +99,14 @@ let lockfile_with_dependency_hash = fun dependency_hash (lockfile: Riot_model.Lo
   dependency_hash = dependency_hash;
 }
 
-let ensure_lock = fun ?(emit = no_emit) ?existing_lock ~workspace_manager ~mode ~registry ~(workspace:Riot_model.Workspace_manifest.t) () ->
+let ensure_lock = fun
+  ?(emit = no_emit)
+  ?existing_lock
+  ~workspace_manager
+  ~mode
+  ~registry
+  ~(workspace:Riot_model.Workspace_manifest.t)
+  () ->
   let workspace_root = workspace.root in
   let manifest_paths = workspace_manifest_paths workspace in
   let packages = root_packages_for_workspace workspace in
@@ -321,21 +329,27 @@ let ensure_lock = fun ?(emit = no_emit) ?existing_lock ~workspace_manager ~mode 
                   Ok (lockfile, resolved)
             )
 
-let ensure_workspace = fun ?(emit = no_emit) ~workspace_manager ~mode ~registry ~(workspace:Riot_model.Workspace_manifest.t) () -> let* (
-  _lockfile,
-  resolved_packages
-) = ensure_lock ~workspace_manager ~emit ~mode ~registry ~workspace () in
-Ok (Riot_model.Workspace.make
-  ?name:workspace.name
-  ~root:workspace.root
-  ~packages:(List.map
-    resolved_packages
-    ~fn:(fun (pkg: Riot_model.Package.resolved) ->
-      Riot_model.Package_manifest.of_package
-        pkg.package))
-  ~dependencies:workspace.dependencies
-  ~dev_dependencies:workspace.dev_dependencies
-  ~build_dependencies:workspace.build_dependencies
-  ~profile_overrides:workspace.profile_overrides
-  ~target_dir:(Path.to_string workspace.target_dir_root)
-  ())
+let ensure_workspace = fun
+  ?(emit = no_emit)
+  ~workspace_manager
+  ~mode
+  ~registry
+  ~(workspace:Riot_model.Workspace_manifest.t)
+  () ->
+  let* (_lockfile, resolved_packages) =
+    ensure_lock ~workspace_manager ~emit ~mode ~registry ~workspace ()
+  in
+  Ok (Riot_model.Workspace.make
+    ?name:workspace.name
+    ~root:workspace.root
+    ~packages:(List.map
+      resolved_packages
+      ~fn:(fun (pkg: Riot_model.Package.resolved) ->
+        Riot_model.Package_manifest.of_package
+          pkg.package))
+    ~dependencies:workspace.dependencies
+    ~dev_dependencies:workspace.dev_dependencies
+    ~build_dependencies:workspace.build_dependencies
+    ~profile_overrides:workspace.profile_overrides
+    ~target_dir:(Path.to_string workspace.target_dir_root)
+    ())

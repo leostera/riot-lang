@@ -177,7 +177,10 @@ let dependencies_for_scope = fun scope (pkg: Package.t) ->
   | Runtime -> pkg.dependencies
   | Dev -> pkg.dependencies @ pkg.dev_dependencies
 
-let projected_package = fun ?(dev_artifacts = {tests = true; examples = true; benches = true}) scope pkg ->
+let projected_package = fun
+  ?(dev_artifacts = {tests = true; examples = true; benches = true})
+  scope
+  pkg ->
   match scope with
   | Build -> Package.for_scope Package.Build pkg
   | Runtime -> Package.for_scope Package.Normal pkg

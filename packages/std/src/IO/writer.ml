@@ -24,7 +24,9 @@ let write: t -> from:Buffer.t -> int result = fun (Writer (((module Sink) as sin
   let _ = sink in
   Sink.write dst ~from
 
-let write_vectored: t -> from:IoVec.t -> int result = fun (Writer (((module Sink) as sink), dst)) ~from ->
+let write_vectored: t -> from:IoVec.t -> int result = fun
+  (Writer (((module Sink) as sink), dst))
+  ~from ->
   let _ = sink in
   Sink.write_vectored dst ~from
 

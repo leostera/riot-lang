@@ -54,7 +54,16 @@ let next_page = fun t ->
   else
     { t with page = t.page + 1 }
 
-let make = fun ?(style = Numerals) ?(page = 0) ?(per_page = 1) ?(total_pages = 1) ?(active_dot = "•") ?(inactive_dot = "○") ?(numerals_format = fun page total -> Int.to_string page ^ "/" ^ Int.to_string total) ?(text_style = Style.default) () ->
+let make = fun
+  ?(style = Numerals)
+  ?(page = 0)
+  ?(per_page = 1)
+  ?(total_pages = 1)
+  ?(active_dot = "•")
+  ?(inactive_dot = "○")
+  ?(numerals_format = fun page total -> Int.to_string page ^ "/" ^ Int.to_string total)
+  ?(text_style = Style.default)
+  () ->
   {
     style;
     page;

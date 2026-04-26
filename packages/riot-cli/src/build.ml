@@ -143,7 +143,10 @@ let workspace_artifact_labels = fun (package: Riot_model.Package.t) ->
         else
           None)
 
-let display_package_name = fun ?build_target ?(show_target = false) (package: Riot_model.Package.t) ->
+let display_package_name = fun
+  ?build_target
+  ?(show_target = false)
+  (package: Riot_model.Package.t) ->
   let name = Riot_model.Package_name.to_string package.name in
   let version_details =
     if Riot_model.Package.is_workspace_member package then
@@ -839,7 +842,17 @@ let parse_package_names = fun package_names ->
   in
   loop [] package_names
 
-let make_request = fun ~workspace ?(scope = Runtime) ?(dev_artifacts = {tests = true; examples = true; benches = true}) ?(profile = Riot_model.Profile.debug) ?(mode = Human) ?(show_finished_summary = true) ?(requested_parallelism = None) ~packages ~targets () ->
+let make_request = fun
+  ~workspace
+  ?(scope = Runtime)
+  ?(dev_artifacts = {tests = true; examples = true; benches = true})
+  ?(profile = Riot_model.Profile.debug)
+  ?(mode = Human)
+  ?(show_finished_summary = true)
+  ?(requested_parallelism = None)
+  ~packages
+  ~targets
+  () ->
   {
     workspace;
     packages;
@@ -1294,7 +1307,16 @@ let load_workspace_strict = fun cwd ->
       in
       Ok { workspace }
 
-let build_command = fun ~workspace ?(scope = Runtime) ?(dev_artifacts = {tests = true; examples = true; benches = true}) ?(profile = "debug") ?(mode = Human) ?(show_finished_summary = true) ?(requested_parallelism = None) package_opt target_arch ->
+let build_command = fun
+  ~workspace
+  ?(scope = Runtime)
+  ?(dev_artifacts = {tests = true; examples = true; benches = true})
+  ?(profile = "debug")
+  ?(mode = Human)
+  ?(show_finished_summary = true)
+  ?(requested_parallelism = None)
+  package_opt
+  target_arch ->
   let packages =
     package_opt
     |> Option.to_list
@@ -1322,7 +1344,15 @@ let build_command = fun ~workspace ?(scope = Runtime) ?(dev_artifacts = {tests =
         ()
     )
 
-let build_packages_command = fun ~workspace ?(scope = Runtime) ?(dev_artifacts = {tests = true; examples = true; benches = true}) ?(mode = Human) ?(show_finished_summary = true) ?(requested_parallelism = None) package_names target_arch ->
+let build_packages_command = fun
+  ~workspace
+  ?(scope = Runtime)
+  ?(dev_artifacts = {tests = true; examples = true; benches = true})
+  ?(mode = Human)
+  ?(show_finished_summary = true)
+  ?(requested_parallelism = None)
+  package_names
+  target_arch ->
   match parse_package_names package_names with
   | Error _ as err -> err
   | Ok packages ->

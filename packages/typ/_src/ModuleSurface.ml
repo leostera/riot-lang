@@ -261,12 +261,14 @@ let rebind_export_target = fun ~from_module_name ~to_module_name target ->
       in
       ModuleTypings.Export rebound_path
 
-let rebind_value_definition = fun ~from_module_name ~to_module_name (
-  definition: ModuleTypings.value_definition
-) -> {
-  definition with
-  target = rebind_export_target ~from_module_name ~to_module_name definition.target;
-}
+let rebind_value_definition = fun
+  ~from_module_name
+  ~to_module_name
+  (definition: ModuleTypings.value_definition) ->
+  {
+    definition with
+    target = rebind_export_target ~from_module_name ~to_module_name definition.target;
+  }
 
 let rebind_module_typings = fun ~module_name typings ->
   let type_decls = qualify_signature_type_decls ~module_name (ModuleTypings.type_decls typings) in

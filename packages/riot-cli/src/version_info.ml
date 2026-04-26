@@ -17,8 +17,9 @@ let riot_home_dir = fun () ->
   | Some home -> Ok Path.(home / Path.v ".riot")
   | None -> Error "failed to determine home directory"
 
-let metadata_path = fun () -> let* riot_home = riot_home_dir () in
-Ok Path.(riot_home / Path.v "release.json")
+let metadata_path = fun () ->
+  let* riot_home = riot_home_dir () in
+  Ok Path.(riot_home / Path.v "release.json")
 
 let json_of_metadata = fun t ->
   Data.Json.Object [
@@ -152,7 +153,9 @@ let read_installed = fun () ->
           |> Result.to_option
     )
 
-let write_installed = fun t -> let* path = metadata_path () in write_path ~path t
+let write_installed = fun t ->
+  let* path = metadata_path () in
+  write_path ~path t
 
 let version_string_of = fun metadata ->
   "riot " ^ metadata.release_id ^ " (build " ^ metadata.build_sha ^ ")"

@@ -640,7 +640,9 @@ module Protocol: Jsonrpc.ApplicationProtocol with type request = request and typ
     in
     { Jsonrpc.method_ = req.method_name; params }
 
-  let request_of_params: string -> Jsonrpc.params -> (request, Json.t) result = fun method_ params ->
+  let request_of_params: string -> Jsonrpc.params -> (request, Json.t) result = fun
+    method_
+    params ->
     let id = String "0" in
     Ok {
       jsonrpc = "2.0";

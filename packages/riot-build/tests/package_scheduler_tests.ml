@@ -95,7 +95,12 @@ let make_workspace = fun ?toolchain_targets ~root ~packages () ->
   );
   Riot_model.Workspace.make_realized ~root ~packages ()
 
-let make_request = fun ~workspace ~packages ?(targets = Riot_model.Target.Host) ?(requested_parallelism = None) () ->
+let make_request = fun
+  ~workspace
+  ~packages
+  ?(targets = Riot_model.Target.Host)
+  ?(requested_parallelism = None)
+  () ->
   Riot_build.Request.make
     ~workspace
     ~packages
@@ -387,16 +392,17 @@ let test_package_scheduler_phase_events_have_consistent_counts = fun _ctx ->
         let planning_ok =
           planning_counts
           |> List.all
-            ~fn:(fun (
-              package_count,
-              deferred_count,
-              execution_required_count,
-              finalized_count,
-              cached_count,
-              skipped_count,
-              failed_count,
-              error_count
-            ) ->
+            ~fn:(fun
+              (
+                package_count,
+                deferred_count,
+                execution_required_count,
+                finalized_count,
+                cached_count,
+                skipped_count,
+                failed_count,
+                error_count
+              ) ->
               package_count = execution_required_count + finalized_count + error_count
               && deferred_count <= package_count
               && cached_count <= finalized_count

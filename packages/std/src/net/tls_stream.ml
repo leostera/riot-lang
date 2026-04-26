@@ -83,10 +83,13 @@ let do_handshake = fun t ->
         | Need_network_read ->
             (* TLS needs encrypted data from network *)
             (* But first, flush any pending output (e.g., ClientHello) *)
-            let* () = flush_to_network t in let* () = read_from_network t in handshake_loop ()
+            let* () = flush_to_network t in
+            let* () = read_from_network t in
+            handshake_loop ()
         | Need_network_write ->
             (* TLS needs to send encrypted data to network *)
-            let* () = flush_to_network t in handshake_loop ()
+            let* () = flush_to_network t in
+            handshake_loop ()
       )
   in
   handshake_loop ()
@@ -160,10 +163,12 @@ let read_plaintext t dst: (int, error) Result.t =
     | Eof -> Ok 0
     | Need_network_read ->
         (* TLS needs more encrypted data from network *)
-        let* () = read_from_network t in read_loop ()
+        let* () = read_from_network t in
+        read_loop ()
     | Need_network_write ->
         (* TLS needs to send encrypted data to network *)
-        let* () = flush_to_network t in read_loop ()
+        let* () = flush_to_network t in
+        read_loop ()
   in
   match t.state with
   | `Eof -> Ok 0
@@ -190,13 +195,16 @@ let write_plaintext_bytes t src_bytes: (int, error) Result.t =
       match Tls.write_plaintext t.engine src_bytes ~pos ~len:remaining with
       | Written n ->
           (* Flush encrypted data to network *)
-          let* () = flush_to_network t in write_loop (pos + n) (remaining - n)
+          let* () = flush_to_network t in
+          write_loop (pos + n) (remaining - n)
       | Need_network_read ->
           (* SSL needs more input (renegotiation?) *)
-          let* () = read_from_network t in write_loop pos remaining
+          let* () = read_from_network t in
+          write_loop pos remaining
       | Need_network_write ->
           (* Need to flush first *)
-          let* () = flush_to_network t in write_loop pos remaining
+          let* () = flush_to_network t in
+          write_loop pos remaining
   in
   match t.state with
   | `Eof -> Error Closed

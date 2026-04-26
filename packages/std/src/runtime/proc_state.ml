@@ -69,7 +69,10 @@ let make = fun fn eff ->
   let k = Effect.Shallow.fiber fn in
   Suspended (k, eff)
 
-let run: type a. consume_reduction:(unit -> bool) -> perform:perform -> a t -> a t option = fun ~consume_reduction ~perform t ->
+let run: type a. consume_reduction:(unit -> bool) -> perform:perform -> a t -> a t option = fun
+  ~consume_reduction
+  ~perform
+  t ->
   let exception Yield of a t in
   let exception Unwind in
   let t = Cell.create t in

@@ -118,7 +118,11 @@ let map_runtime_error = function
   | Build_runtime.PlanningFailed error -> PlanningFailed error
   | Build_runtime.UnexpectedError { reason } -> UnexpectedError { reason }
 
-let execute_raw = fun ?(allow_partial_failures = false) ?(record_cache_generation = true) context spec ->
+let execute_raw = fun
+  ?(allow_partial_failures = false)
+  ?(record_cache_generation = true)
+  context
+  spec ->
   Build_runtime.execute ~allow_partial_failures ~record_cache_generation context spec
   |> Result.map_err ~fn:map_runtime_error
 
@@ -126,6 +130,8 @@ let execute = fun context spec ->
   execute_raw context spec
   |> Result.map ~fn:Build_result.of_build_results
 
-let build = fun ?on_event request -> let open Std.Result.Syntax in
-let* context = make_context ?on_event request in let* spec = resolve context request in
-execute context spec
+let build = fun ?on_event request ->
+  let open Std.Result.Syntax in
+  let* context = make_context ?on_event request in
+  let* spec = resolve context request in
+  execute context spec

@@ -16,9 +16,15 @@ type ('s, 'e) pool_state = {
 }
 
 (** Start a supervised pool of acceptors *)
-let start_link = fun ~host ~port ?(acceptors = 100) ?(buffer_size = 4_096) ?(transport = Transport.tcp ()) (type s e) (
-  handler: (s, e) Handler.handler
-) (initial_ctx: s) ->
+let start_link = fun
+  ~host
+  ~port
+  ?(acceptors = 100)
+  ?(buffer_size = 4_096)
+  ?(transport = Transport.tcp ())
+  (type s e)
+  (handler: (s, e) Handler.handler)
+  (initial_ctx: s) ->
   match Net.Addr.of_host_and_port ~host ~port with
   | Error _ -> Error `Bind_error
   | Ok addr -> (

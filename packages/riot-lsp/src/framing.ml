@@ -119,7 +119,8 @@ let read = fun input ->
             loop (offset + read) (remaining - read)
           )
     in
-    let* () = loop 0 content_length in Ok (IO.Bytes.to_string buffer)
+    let* () = loop 0 content_length in
+    Ok (IO.Bytes.to_string buffer)
   in
   let rec read_headers acc =
     let* raw_line = read_line () in
@@ -139,7 +140,8 @@ let read = fun input ->
   match headers_opt with
   | None -> Ok None
   | Some headers ->
-      let* content_length = parse_content_length headers in let* payload = read_exact content_length in
+      let* content_length = parse_content_length headers in
+      let* payload = read_exact content_length in
       Ok (Some payload)
 
 let write = fun output payload ->

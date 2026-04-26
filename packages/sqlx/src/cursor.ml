@@ -10,9 +10,11 @@ type t =
       mutable row_count: int;
     } -> t
 
-let make = fun (type rs) id (result_set: rs) (
-  driver: (module Sqlx_driver.Driver.Intf with type result_set = rs)
-) ->
+let make = fun
+  (type rs)
+  id
+  (result_set: rs)
+  (driver: (module Sqlx_driver.Driver.Intf with type result_set = rs)) ->
   Cursor {
     id;
     driver;

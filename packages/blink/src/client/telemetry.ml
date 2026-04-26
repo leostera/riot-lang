@@ -46,7 +46,16 @@ let lifecycle_to_string = fun value ->
   | Retrying -> "retrying"
   | Blocked -> "blocked"
 
-let attempt = fun ~attempt ~started_at ~completed_at ~lifecycle ?status ?error_class ?error_message ?planned_backoff () ->
+let attempt = fun
+  ~attempt
+  ~started_at
+  ~completed_at
+  ~lifecycle
+  ?status
+  ?error_class
+  ?error_message
+  ?planned_backoff
+  () ->
   {
     attempt;
     started_at;
@@ -60,7 +69,18 @@ let attempt = fun ~attempt ~started_at ~completed_at ~lifecycle ?status ?error_c
     planned_backoff;
   }
 
-let make = fun ~request ~started_at ~completed_at ~attempts ?final_status ?final_error_class ~connection_policy ~close_behavior ?budget_remaining ~circuit_state () ->
+let make = fun
+  ~request
+  ~started_at
+  ~completed_at
+  ~attempts
+  ?final_status
+  ?final_error_class
+  ~connection_policy
+  ~close_behavior
+  ?budget_remaining
+  ~circuit_state
+  () ->
   {
     request;
     started_at;

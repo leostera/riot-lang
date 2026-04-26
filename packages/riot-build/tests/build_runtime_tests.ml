@@ -160,7 +160,14 @@ let make_request = fun ~workspace ?(profile = Riot_model.Profile.debug) () ->
     ~profile
     ()
 
-let make_runtime_request = fun ~workspace ~package_names ~targets ?(scope = Riot_build.Request.Runtime) ?(profile = Riot_model.Profile.debug) ?(requested_parallelism = None) () ->
+let make_runtime_request = fun
+  ~workspace
+  ~package_names
+  ~targets
+  ?(scope = Riot_build.Request.Runtime)
+  ?(profile = Riot_model.Profile.debug)
+  ?(requested_parallelism = None)
+  () ->
   Riot_build.Request.make
     ~workspace
     ~packages:package_names
@@ -170,7 +177,15 @@ let make_runtime_request = fun ~workspace ~package_names ~targets ?(scope = Riot
     ~requested_parallelism
     ()
 
-let make_runtime_inputs = fun ?on_event ~workspace ~package_names ~targets ?scope ?profile ?requested_parallelism () ->
+let make_runtime_inputs = fun
+  ?on_event
+  ~workspace
+  ~package_names
+  ~targets
+  ?scope
+  ?profile
+  ?requested_parallelism
+  () ->
   let request =
     make_runtime_request
       ~workspace

@@ -252,7 +252,8 @@ module Rng = struct
       | None ->
           let out = Bytes.create ~size:40 in
           let* () =
-            Result.map_err (Kernel.Random.Source.fill_bytes out) ~fn:(fun error -> Entropy error) in
+            Result.map_err (Kernel.Random.Source.fill_bytes out) ~fn:(fun error -> Entropy error)
+          in
           Ok out
 
     let of_seed_bytes = fun seed ->
@@ -281,8 +282,9 @@ module Rng = struct
         ~value:(load_le32 seed 36);
       { words; buffer = Bytes.create ~size:64; offset = 64 }
 
-    let create = fun ?seed () -> let* seed = seed_bytes ?seed () in
-    Ok (make ~state:(of_seed_bytes seed) ~fill_bytes)
+    let create = fun ?seed () ->
+      let* seed = seed_bytes ?seed () in
+      Ok (make ~state:(of_seed_bytes seed) ~fill_bytes)
   end
 
   let standard = Standard.create
@@ -411,8 +413,10 @@ module Distribution = struct
 
   let map = fun fn distribution rng -> Result.map (distribution rng) ~fn
 
-  let map2 = fun fn left right rng -> let* left = left rng in let* right = right rng in
-  Ok (fn left right)
+  let map2 = fun fn left right rng ->
+    let* left = left rng in
+    let* right = right rng in
+    Ok (fn left right)
 
   let tuple = fun left right -> map2 (fun first second -> (first, second)) left right
 
@@ -431,7 +435,8 @@ module Distribution = struct
         if count <= 0 then
           Ok (List.reverse acc)
         else
-          let* value = distribution rng in loop (count - 1) (value :: acc)
+          let* value = distribution rng in
+          loop (count - 1) (value :: acc)
       in
       loop len []
 

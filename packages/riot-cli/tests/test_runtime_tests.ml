@@ -33,10 +33,10 @@ let test_suite_heartbeat_event_to_json = fun _ctx ->
       elapsed_us = 1_234;
     }) with
   | Some (Data.Json.Object fields) ->
-      let* () = expect_field fields "type" (Data.Json.String "SuiteHeartbeat") in let* () =
-        expect_field fields "package" (Data.Json.String "demo") in let* () =
-        expect_field fields "suite" (Data.Json.String "demo_tests") in let* () =
-        expect_field fields "binary_path" (Data.Json.String "/tmp/demo_tests") in
+      let* () = expect_field fields "type" (Data.Json.String "SuiteHeartbeat") in
+      let* () = expect_field fields "package" (Data.Json.String "demo") in
+      let* () = expect_field fields "suite" (Data.Json.String "demo_tests") in
+      let* () = expect_field fields "binary_path" (Data.Json.String "/tmp/demo_tests") in
       expect_field fields "elapsed_us" (Data.Json.Int 1_234)
   | Some json -> Error ("expected object json, got: " ^ Data.Json.to_string json)
   | None -> Error "expected suite heartbeat event to render json"

@@ -139,7 +139,8 @@ let release_of_json = fun json ->
           ~context:"release"
           ~field:"artifact_sha256"
           ~fallback:"sha"
-          fields in
+          fields
+      in
       let* description = optional_string_field ~field:"description" fields in
       let* license = optional_string_field ~field:"license" fields in
       let* homepage = optional_string_field ~field:"homepage" fields in
@@ -203,7 +204,8 @@ let config_of_json = fun json ->
       let* schema_version = int_field ~context:"config" ~field:"schema_version" fields in
       let* kind = string_field ~context:"config" ~field:"kind" fields in
       let* package_path_strategy =
-        string_field ~context:"config" ~field:"package_path_strategy" fields in
+        string_field ~context:"config" ~field:"package_path_strategy" fields
+      in
       let* index_base_url = string_field ~context:"config" ~field:"index_base_url" fields in
       let* artifact_base_url = string_field ~context:"config" ~field:"artifact_base_url" fields in
       Ok {

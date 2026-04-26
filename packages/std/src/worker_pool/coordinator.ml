@@ -24,7 +24,9 @@ let rec loop: type task. task state -> (unit, Actor.exit_reason) result = fun st
       | None -> panic "Received worker of the wrong type?!"
     )
 
-and handle_worker_ready: type task. task state -> task worker -> (unit, Actor.exit_reason) result = fun state worker ->
+and handle_worker_ready: type task. task state -> task worker -> (unit, Actor.exit_reason) result = fun
+  state
+  worker ->
   let _ = HashMap.remove state.busy_workers ~key:worker.pid in
   send state.owner PublicMessages.(WorkerReady worker);
   Queue.push state.idle_workers ~value:worker.pid;

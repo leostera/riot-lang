@@ -110,9 +110,13 @@ let requested_modules = fun analyzed_module ->
   | Ok deps -> Syn.Deps.modules deps
   | Error _ -> []
 
-let classify_other_target_root_error = fun ~target_name ~source ~requested_modules ~other_target_name ~public_module (
-  dep_node: Module_node.t G.node
-) ->
+let classify_other_target_root_error = fun
+  ~target_name
+  ~source
+  ~requested_modules
+  ~other_target_name
+  ~public_module
+  (dep_node: Module_node.t G.node) ->
   match dep_node.value.kind with
   | Module_node.ML mod_
   | Module_node.MLI mod_ ->
@@ -139,9 +143,12 @@ let classify_other_target_root_error = fun ~target_name ~source ~requested_modul
       }
   | _ -> panic "expected concrete ML/MLI dependency when classifying other target root error"
 
-let classify_internal_module_error = fun ~target_name ~source ~requested_modules (
-  dep_node: Module_node.t G.node
-) ~public_module ->
+let classify_internal_module_error = fun
+  ~target_name
+  ~source
+  ~requested_modules
+  (dep_node: Module_node.t G.node)
+  ~public_module ->
   match dep_node.value.kind with
   | Module_node.ML mod_
   | Module_node.MLI mod_ ->
@@ -172,7 +179,15 @@ let classify_internal_module_error = fun ~target_name ~source ~requested_modules
         }
   | _ -> panic "expected concrete ML/MLI dependency when classifying internal module error"
 
-let validate_target_source = fun ~target_name ~(source_node:Module_node.t G.node) ~library_reachable_set ~public_root_ids ~public_module ~module_graph ~analyzed_modules_by_id ~other_target_root_ids ->
+let validate_target_source = fun
+  ~target_name
+  ~(source_node:Module_node.t G.node)
+  ~library_reachable_set
+  ~public_root_ids
+  ~public_module
+  ~module_graph
+  ~analyzed_modules_by_id
+  ~other_target_root_ids ->
   let nodes_to_check =
     let reachable = target_reachable_set [ source_node ] module_graph in
     HashSet.to_list reachable

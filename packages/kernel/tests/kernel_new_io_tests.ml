@@ -140,8 +140,9 @@ let test_stdin_source_register_and_deregister = fun _ctx ->
       let token = Kernel.Async.Token.make "kernel-io-stdin" in
       match Kernel.Async.Poll.register poll token Kernel.Async.Interest.readable source with
       | Kernel.Result.Ok () ->
-          let* _events = lift_async (Kernel.Async.Poll.poll ~timeout:0L poll) in let* () =
-            lift_async (Kernel.Async.Poll.deregister poll source) in Ok ()
+          let* _events = lift_async (Kernel.Async.Poll.poll ~timeout:0L poll) in
+          let* () = lift_async (Kernel.Async.Poll.deregister poll source) in
+          Ok ()
       | Kernel.Result.Error (Kernel.Async.System Kernel.SystemError.InvalidArgument) -> Ok ()
       | Kernel.Result.Error error -> Error (Kernel.Async.error_to_string error))
 
@@ -151,9 +152,11 @@ let test_stdout_source_register_and_deregister = fun _ctx ->
       let source = Kernel.IO.Stdout.to_source () in
       let token = Kernel.Async.Token.make "kernel-io-stdout" in
       let* () =
-        lift_async (Kernel.Async.Poll.register poll token Kernel.Async.Interest.writable source) in let* _events =
-        lift_async (Kernel.Async.Poll.poll ~timeout:0L poll) in let* () =
-        lift_async (Kernel.Async.Poll.deregister poll source) in Ok ())
+        lift_async (Kernel.Async.Poll.register poll token Kernel.Async.Interest.writable source)
+      in
+      let* _events = lift_async (Kernel.Async.Poll.poll ~timeout:0L poll) in
+      let* () = lift_async (Kernel.Async.Poll.deregister poll source) in
+      Ok ())
 
 let test_stderr_source_register_and_deregister = fun _ctx ->
   with_poll
@@ -161,9 +164,11 @@ let test_stderr_source_register_and_deregister = fun _ctx ->
       let source = Kernel.IO.Stderr.to_source () in
       let token = Kernel.Async.Token.make "kernel-io-stderr" in
       let* () =
-        lift_async (Kernel.Async.Poll.register poll token Kernel.Async.Interest.writable source) in let* _events =
-        lift_async (Kernel.Async.Poll.poll ~timeout:0L poll) in let* () =
-        lift_async (Kernel.Async.Poll.deregister poll source) in Ok ())
+        lift_async (Kernel.Async.Poll.register poll token Kernel.Async.Interest.writable source)
+      in
+      let* _events = lift_async (Kernel.Async.Poll.poll ~timeout:0L poll) in
+      let* () = lift_async (Kernel.Async.Poll.deregister poll source) in
+      Ok ())
 
 let tests = [
   Test.case "Kernel.IO.Stdin.read len=0 is a no-op" test_stdin_read_len_zero_noop;

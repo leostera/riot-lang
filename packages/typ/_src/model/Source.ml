@@ -61,7 +61,16 @@ let infer_module_name = fun origin ->
   sanitize_module_name (module_name_of_origin origin)
   |> String.capitalize_ascii
 
-let make_prepared = fun ~source_id ~kind ~module_name ~implicit_opens ~origin ~revision ~source_hash ~parse_result ~cst ->
+let make_prepared = fun
+  ~source_id
+  ~kind
+  ~module_name
+  ~implicit_opens
+  ~origin
+  ~revision
+  ~source_hash
+  ~parse_result
+  ~cst ->
   {
     source_id;
     kind;

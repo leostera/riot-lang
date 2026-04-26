@@ -391,7 +391,10 @@ let module_graph_of_json = fun json ->
     )
   | _ -> Error "module graph payload must be an object"
 
-let plan_bundle_to_json = fun ~(package:Package.t) ~(module_graph:Module_node.t G.t) ~(action_graph:Action_graph.t) ->
+let plan_bundle_to_json = fun
+  ~(package:Package.t)
+  ~(module_graph:Module_node.t G.t)
+  ~(action_graph:Action_graph.t) ->
   Std.Data.Json.Object [
     ("version", Std.Data.Json.Int 1);
     ("package", Std.Data.Json.String (Package_name.to_string package.name));
@@ -437,7 +440,15 @@ let plan_bundle_of_json = fun ~(package:Package.t) json ->
 
    If input_hash hasn't changed, we know the full hash is the same!
 *)
-let compute_input_hash = fun ?(planner_version = "planner-artifacts:v20") ~package ~depset ~workspace ~profile ~build_ctx ~toolchain () ->
+let compute_input_hash = fun
+  ?(planner_version = "planner-artifacts:v20")
+  ~package
+  ~depset
+  ~workspace
+  ~profile
+  ~build_ctx
+  ~toolchain
+  () ->
   let module H = Std.Crypto.Sha256 in
   let state = H.create () in
   (* Planner artifact contract version.
@@ -508,7 +519,8 @@ let check_dependencies_built = fun ~store ~package_graph ~package_key ->
   in
   let unplanned = ref [] in
   let failed = ref [] in
-  let rec summarize_dependency: Package_graph.package_node -> Dependency.t option = fun node_value ->
+  let rec summarize_dependency: Package_graph.package_node -> Dependency.t option = fun
+    node_value ->
     let pkg = Package_graph.get_package node_value in
     let is_ordering_only_self_dependency =
       String.equal (Package_name.to_string pkg.Package.name) current_package_name && match (
@@ -587,7 +599,14 @@ let check_dependencies_built = fun ~store ~package_graph ~package_key ->
   else
     Ok depset
 
-let plan_package = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~package ~build_ctx ->
+let plan_package = fun
+  ~workspace
+  ~toolchain
+  ~store
+  ~package_graph
+  ~package_key
+  ~package
+  ~build_ctx ->
   let dependency_check_started_at = Time.Instant.now () in
   match check_dependencies_built ~store ~package_graph ~package_key with
   | Error (Failed failed) ->

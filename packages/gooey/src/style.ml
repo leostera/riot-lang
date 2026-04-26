@@ -162,12 +162,13 @@ let bg = fun color t -> { t with background = Some color }
 
 let fg = fun color t -> { t with foreground = Some color }
 
-let border = fun ?(width = 1) ?color ?(radius = {top_left = 0.0; top_right = 0.0; bottom_left = 0.0; bottom_right = 0.0}) () t -> {
-  t with
-  border_width = width;
-  border_color = color;
-  corner_radius = radius;
-}
+let border = fun
+  ?(width = 1)
+  ?color
+  ?(radius = {top_left = 0.0; top_right = 0.0; bottom_left = 0.0; bottom_right = 0.0})
+  ()
+  t ->
+  { t with border_width = width; border_color = color; corner_radius = radius }
 
 let text_size = fun size t -> { t with text_size = size }
 
@@ -275,7 +276,12 @@ module Margin = struct
 end
 
 module CornerRadius = struct
-  let make = fun ?(top_left = 0.0) ?(top_right = 0.0) ?(bottom_left = 0.0) ?(bottom_right = 0.0) () ->
+  let make = fun
+    ?(top_left = 0.0)
+    ?(top_right = 0.0)
+    ?(bottom_left = 0.0)
+    ?(bottom_right = 0.0)
+    () ->
     {
       top_left;
       top_right;

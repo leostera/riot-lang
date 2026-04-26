@@ -87,12 +87,14 @@ let resolve_target_names = fun context request ->
   Riot_model.Target.resolve ~host ~configured_targets (Request.Internal.targets request)
   |> Result.map_err ~fn:(fun err -> TargetSelectionFailed err)
 
-let resolve = fun context request -> let open Std.Result.Syntax in
-let* package_names =
-  resolve_package_names context.Build_context.workspace (Request.Internal.packages request) in let* targets =
-  resolve_target_names context request in
-Ok (make
-  ~package_names
-  ~targets
-  ~scope:(Request.Internal.scope request)
-  ~dev_artifacts:(Request.Internal.dev_artifacts request))
+let resolve = fun context request ->
+  let open Std.Result.Syntax in
+  let* package_names =
+    resolve_package_names context.Build_context.workspace (Request.Internal.packages request)
+  in
+  let* targets = resolve_target_names context request in
+  Ok (make
+    ~package_names
+    ~targets
+    ~scope:(Request.Internal.scope request)
+    ~dev_artifacts:(Request.Internal.dev_artifacts request))

@@ -434,7 +434,15 @@ let module_doc_of_empty = fun ~source_path ~path ?docstring ~snippet () ->
     modules = [];
   }
 
-let rec module_of_signature_items = fun ~lookup ~source ~source_path ~path ?docstring ~is_source_root ~snippet items ->
+let rec module_of_signature_items = fun
+  ~lookup
+  ~source
+  ~source_path
+  ~path
+  ?docstring
+  ~is_source_root
+  ~snippet
+  items ->
   let acc_items = Vector.with_capacity ~size:(List.length items) in
   let acc_modules = Vector.with_capacity ~size:4 in
   let overview = ref None in

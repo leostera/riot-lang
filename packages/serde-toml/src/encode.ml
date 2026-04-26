@@ -21,7 +21,10 @@ let child_state = fun ?(allow_omit = false) () -> { value = None; allow_omit }
 
 let set = fun state value -> state.value <- Some value
 
-let rec encode_list: 'value. state -> 'value Serde.Ser.t -> 'value vec -> unit = fun state encode values ->
+let rec encode_list: 'value. state -> 'value Serde.Ser.t -> 'value vec -> unit = fun
+  state
+  encode
+  values ->
   let items = ref [] in
   Vector.for_each
     values
@@ -31,7 +34,10 @@ let rec encode_list: 'value. state -> 'value Serde.Ser.t -> 'value vec -> unit =
       items := expect_value child "array element" :: !items);
   set state (Toml_value.Array (List.rev !items))
 
-and encode_array: 'value. state -> 'value Serde.Ser.t -> 'value array -> unit = fun state encode values ->
+and encode_array: 'value. state -> 'value Serde.Ser.t -> 'value array -> unit = fun
+  state
+  encode
+  values ->
   let items = ref [] in
   for index = 0 to Array.length values - 1 do
     let child = child_state () in
@@ -43,7 +49,10 @@ and encode_array: 'value. state -> 'value Serde.Ser.t -> 'value array -> unit = 
   done;
   set state (Toml_value.Array (List.rev !items))
 
-and encode_record: 'value. state -> 'value Serde.Ser.fields -> 'value -> unit = fun state fields value ->
+and encode_record: 'value. state -> 'value Serde.Ser.fields -> 'value -> unit = fun
+  state
+  fields
+  value ->
   let items = ref [] in
   for index = 0 to Array.length fields - 1 do
     match Array.get_unchecked fields ~at:index with
@@ -56,7 +65,10 @@ and encode_record: 'value. state -> 'value Serde.Ser.fields -> 'value -> unit = 
   done;
   set state (Toml_value.Table (List.rev !items))
 
-and encode_variant: 'value. state -> 'value Serde.Ser.variant_cases -> 'value -> unit = fun state cases value ->
+and encode_variant: 'value. state -> 'value Serde.Ser.variant_cases -> 'value -> unit = fun
+  state
+  cases
+  value ->
   let rec loop index =
     if Int.equal index (Array.length cases) then
       raise (Serde.Encode_error `invalid_tag)

@@ -1146,7 +1146,8 @@ let test_generated_library_interface_depends_on_child_module_interfaces = fun _c
   | Ok result -> result
   | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
 
-let test_generated_library_interface_with_multiple_children_depends_on_child_module_interfaces = fun _ctx ->
+let test_generated_library_interface_with_multiple_children_depends_on_child_module_interfaces = fun
+  _ctx ->
   match Fs.with_tempdir
     ~prefix:"planner_generated_library_interface_multiple_children"
     (fun tmpdir ->

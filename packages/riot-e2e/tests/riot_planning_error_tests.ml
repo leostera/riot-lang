@@ -33,23 +33,31 @@ let hello = fun () ->
             Fs.write invalid_source source
             |> Result.map_err ~fn:IO.error_message
           in
-          let* build_output = run_riot ctx ~cwd:workspace_root [ "build"; "-p"; workspace_name ] in let* build_output =
+          let* build_output = run_riot ctx ~cwd:workspace_root [ "build"; "-p"; workspace_name ] in
+          let* build_output =
             expect_failure_contains
               ~cmd:"riot build -p module-boundary-e2e"
               ~needle:"Kernel is not available to package module-boundary-e2e"
-              build_output in let* () =
+              build_output
+          in
+          let* () =
             assert_output_contains
               ~cmd:"riot build -p module-boundary-e2e"
               build_output
-              "\027[1;31mError\027[0m: Kernel is not available to package module-boundary-e2e" in let* () =
+              "\027[1;31mError\027[0m: Kernel is not available to package module-boundary-e2e"
+          in
+          let* () =
             assert_output_contains
               ~cmd:"riot build -p module-boundary-e2e"
               build_output
-              "Riot only exposes modules from this package and its direct dependencies" in let* () =
+              "Riot only exposes modules from this package and its direct dependencies"
+          in
+          let* () =
             assert_output_contains
               ~cmd:"riot build -p module-boundary-e2e"
               build_output
-              "available direct modules" in
+              "available direct modules"
+          in
           assert_output_contains
             ~cmd:"riot build -p module-boundary-e2e"
             build_output

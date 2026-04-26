@@ -378,7 +378,14 @@ let canonicalize_type_decl_in_env = fun (state: state) env (type_decl: FileSumma
   in
   State.canonicalize_type_decl_with_named_type_head resolve_named_type_head type_decl
 
-let constructor_bindings = fun (state: state) env ~name ~scheme ~provenance ~constructor_id ~inline_record_labels ->
+let constructor_bindings = fun
+  (state: state)
+  env
+  ~name
+  ~scheme
+  ~provenance
+  ~constructor_id
+  ~inline_record_labels ->
   let visible_types = state.visible_types in
   let scheme = canonicalize_scheme_in_env state env scheme in
   let inline_record_labels =
@@ -424,9 +431,10 @@ let exception_bindings = fun (state: state) env (exception_item: ItemTree.except
       (SurfacePath.append_name exception_item.scope_path exception_item.exception_name))
     ~inline_record_labels:None
 
-let extension_constructor_bindings = fun (state: state) env (
-  extension_item: ItemTree.extension_constructor_item
-) ->
+let extension_constructor_bindings = fun
+  (state: state)
+  env
+  (extension_item: ItemTree.extension_constructor_item) ->
   constructor_bindings
     state
     env
@@ -439,9 +447,10 @@ let extension_constructor_bindings = fun (state: state) env (
     ~constructor_id:extension_item.constructor_id
     ~inline_record_labels:extension_item.inline_record_labels
 
-let declared_value_bindings = fun (state: state) env (
-  declared_value_item: ItemTree.declared_value_item
-) ->
+let declared_value_bindings = fun
+  (state: state)
+  env
+  (declared_value_item: ItemTree.declared_value_item) ->
   Env.singleton
     ~make_id:(fun path -> fresh_binding_ident state (binding_name_of_path path))
     ~name:declared_value_item.value_name
@@ -911,7 +920,10 @@ let instantiate_named_type_decl = fun (state: state) (type_decl: FileSummary.typ
     mapping
   )
 
-let instantiate_poly_variant_payload = fun (state: state) mapping (payload_type: TypeRepr.t option) ->
+let instantiate_poly_variant_payload = fun
+  (state: state)
+  mapping
+  (payload_type: TypeRepr.t option) ->
   payload_type
   |> Option.map (fun payload_type -> substitute_type_vars state payload_type mapping)
 
@@ -1268,7 +1280,11 @@ type instantiated_constructor_entry = {
   inline_record_labels: TypeDecl.label list option;
 }
 
-let instantiate_constructor_entry = fun ?(pattern_mode = false) (state: state) env constructor_entry ->
+let instantiate_constructor_entry = fun
+  ?(pattern_mode = false)
+  (state: state)
+  env
+  constructor_entry ->
   let scheme = canonicalize_scheme_in_env state env (Env.Constructor_env.scheme constructor_entry) in
   let (quantified, body) = TypeScheme.to_explicit scheme in
   let mapping = Collections.HashMap.with_capacity (List.length quantified) in
@@ -1446,7 +1462,11 @@ let supported_coverage_constructors_for_type = fun (state: state) ty ->
   | TypeRepr.Var _
   | TypeRepr.Hole _ -> None
 
-let supported_constructor_for_pattern = fun (state: state) expected_ty constructor_name argument_count ->
+let supported_constructor_for_pattern = fun
+  (state: state)
+  expected_ty
+  constructor_name
+  argument_count ->
   Option.and_then
     (supported_coverage_constructors_for_type state expected_ty)
     (fun constructors ->
@@ -2051,9 +2071,12 @@ let package_signature_of_type = fun ty ->
 let instantiate_package_signature = fun (_state: state) (signature: TypeRepr.package_signature) ->
   signature
 
-let check_module_pack_against_signature = fun (state: state) env ~origin module_path (
-  (signature: TypeRepr.package_signature)
-) ->
+let check_module_pack_against_signature = fun
+  (state: state)
+  env
+  ~origin
+  module_path
+  ((signature: TypeRepr.package_signature)) ->
   let signature = instantiate_package_signature state signature in
   match lookup_module_scope state env module_path with
   | Some scope ->
@@ -2089,7 +2112,9 @@ let check_module_pack_against_signature = fun (state: state) env ~origin module_
           name = SurfacePath.to_string module_path;
         })
 
-let local_module_pack_binding_names = fun (state: state) (local_scope: BodyArena.local_module_scope) ->
+let local_module_pack_binding_names = fun
+  (state: state)
+  (local_scope: BodyArena.local_module_scope) ->
   local_scope.binding_groups
   |> List.concat_map
     (fun (group: BodyArena.local_module_binding_group) ->
@@ -2676,9 +2701,12 @@ let analyze_match_coverage = fun (state: state) ~expr_id scrutinee_ty cases ->
   in
   loop [] cases
 
-let rec infer_match_case = fun (state: state) env scrutinee_ty result_ty (
-  case: BodyArena.match_case
-) ->
+let rec infer_match_case = fun
+  (state: state)
+  env
+  scrutinee_ty
+  result_ty
+  (case: BodyArena.match_case) ->
   let bindings = bind_pattern state env case.pattern_id scrutinee_ty in
   let case_env = env_with_pattern_bindings env bindings in
   let () =
@@ -2699,9 +2727,12 @@ let rec infer_match_case = fun (state: state) env scrutinee_ty result_ty (
     result_ty
     case_ty
 
-and infer_match_case_against = fun (state: state) env scrutinee_ty expected_ty (
-  case: BodyArena.match_case
-) ->
+and infer_match_case_against = fun
+  (state: state)
+  env
+  scrutinee_ty
+  expected_ty
+  (case: BodyArena.match_case) ->
   State.with_local_rigid_equations
     state
     (fun () ->
@@ -3772,9 +3803,12 @@ and infer_local_module_env = fun (state: state) env (local_scope: BodyArena.loca
   let introduced_entries = Env.introduced_entries env_with_local_types env_after_bindings in
   Env.bind local_type_env introduced_entries
 
-and check_local_module_pack_against_signature = fun (state: state) env ~origin (
-  local_scope: BodyArena.local_module_scope
-) ((signature: TypeRepr.package_signature)) ->
+and check_local_module_pack_against_signature = fun
+  (state: state)
+  env
+  ~origin
+  (local_scope: BodyArena.local_module_scope)
+  ((signature: TypeRepr.package_signature)) ->
   let signature = instantiate_package_signature state signature in
   let local_binding_names = local_module_pack_binding_names state local_scope in
   let local_type_env = Env.of_type_decls local_scope.type_decls in
@@ -3831,7 +3865,11 @@ and infer_binding_group = fun (state: state) env binding_ids ->
   else
     infer_nonrecursive_group state env bindings
 
-and exported_schemes_for_binding = fun annotation_scheme (binding: BodyArena.binding) entries schemes ->
+and exported_schemes_for_binding = fun
+  annotation_scheme
+  (binding: BodyArena.binding)
+  entries
+  schemes ->
   match (annotation_scheme, binding.name, entries, schemes) with
   | (Some annotation, Some _, [ _ ], [ _ ]) -> [ annotation ]
   | _ -> schemes
@@ -3949,13 +3987,14 @@ and infer_recursive_group = fun (state: state) env bindings ->
           let provisional_env = Env.extend env placeholders in
           let () =
             List.iter
-              (fun (
-                (binding: BodyArena.binding),
-                _annotation_scheme,
-                has_annotation,
-                placeholder_ty,
-                _entry
-              ) ->
+              (fun
+                (
+                  (binding: BodyArena.binding),
+                  _annotation_scheme,
+                  has_annotation,
+                  placeholder_ty,
+                  _entry
+                ) ->
                 if has_annotation then
                   let _ = infer_expr_against state provisional_env binding.value_id placeholder_ty in
                   ()
@@ -3971,13 +4010,14 @@ and infer_recursive_group = fun (state: state) env bindings ->
           let groups =
             placeholder_info
             |> List.map
-              (fun (
-                (binding: BodyArena.binding),
-                _annotation_scheme,
-                _has_annotation,
-                placeholder_ty,
-                entry
-              ) ->
+              (fun
+                (
+                  (binding: BodyArena.binding),
+                  _annotation_scheme,
+                  _has_annotation,
+                  placeholder_ty,
+                  entry
+                ) ->
                 solver_group_for_entries state binding.value_id placeholder_ty [ entry ])
           in
           (placeholder_info, groups))

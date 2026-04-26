@@ -288,7 +288,8 @@ let materialize = fun ?(update = true) ~source_locator ~ref_ () ->
       ~repo_dir:repository_root
       ~remote_url:(remote_url_of_locator locator)
       ~ref_
-      () in
+      ()
+  in
   let package_root =
     match locator.subdir with
     | Some subdir -> Path.(repository_root / subdir)

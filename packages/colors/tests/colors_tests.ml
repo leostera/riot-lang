@@ -51,8 +51,8 @@ let expect_finite = fun ~label value ->
 let expect_rgb_equal = fun ~label ~expected:((er, eg, eb)) ->
   function
   | `rgb (r, g, b) ->
-      let* () = expect_int_equal ~label:(label ^ " red") ~expected:er ~actual:r in let* () =
-        expect_int_equal ~label:(label ^ " green") ~expected:eg ~actual:g in
+      let* () = expect_int_equal ~label:(label ^ " red") ~expected:er ~actual:r in
+      let* () = expect_int_equal ~label:(label ^ " green") ~expected:eg ~actual:g in
       expect_int_equal ~label:(label ^ " blue") ~expected:eb ~actual:b
 
 let expect_rgb_within = fun ~label ~tolerance ~expected:((er, eg, eb)) ->
@@ -79,22 +79,22 @@ let expect_rgb_within = fun ~label ~tolerance ~expected:((er, eg, eb)) ->
 let expect_lrgb_close = fun ~label ~epsilon ~expected:((er, eg, eb)) ->
   function
   | `lrgb (r, g, b) ->
-      let* () = expect_float_close ~label:(label ^ " red") ~epsilon ~expected:er ~actual:r in let* () =
-        expect_float_close ~label:(label ^ " green") ~epsilon ~expected:eg ~actual:g in
+      let* () = expect_float_close ~label:(label ^ " red") ~epsilon ~expected:er ~actual:r in
+      let* () = expect_float_close ~label:(label ^ " green") ~epsilon ~expected:eg ~actual:g in
       expect_float_close ~label:(label ^ " blue") ~epsilon ~expected:eb ~actual:b
 
 let expect_xyz_close = fun ~label ~epsilon ~expected:((ex, ey, ez)) ->
   function
   | `xyz (x, y, z) ->
-      let* () = expect_float_close ~label:(label ^ " x") ~epsilon ~expected:ex ~actual:x in let* () =
-        expect_float_close ~label:(label ^ " y") ~epsilon ~expected:ey ~actual:y in
+      let* () = expect_float_close ~label:(label ^ " x") ~epsilon ~expected:ex ~actual:x in
+      let* () = expect_float_close ~label:(label ^ " y") ~epsilon ~expected:ey ~actual:y in
       expect_float_close ~label:(label ^ " z") ~epsilon ~expected:ez ~actual:z
 
 let expect_luv_close = fun ~label ~epsilon ~expected:((el, eu, ev)) ->
   function
   | `luv (l, u, v) ->
-      let* () = expect_float_close ~label:(label ^ " l") ~epsilon ~expected:el ~actual:l in let* () =
-        expect_float_close ~label:(label ^ " u") ~epsilon ~expected:eu ~actual:u in
+      let* () = expect_float_close ~label:(label ^ " l") ~epsilon ~expected:el ~actual:l in
+      let* () = expect_float_close ~label:(label ^ " u") ~epsilon ~expected:eu ~actual:u in
       expect_float_close ~label:(label ^ " v") ~epsilon ~expected:ev ~actual:v
 
 let expect_uv_close = fun ~label ~epsilon ~expected:((eu, ev)) ->
@@ -106,14 +106,16 @@ let expect_uv_close = fun ~label ~epsilon ~expected:((eu, ev)) ->
 let expect_xyz_finite = fun ~label ->
   function
   | `xyz (x, y, z) ->
-      let* () = expect_finite ~label:(label ^ " x") x in let* () =
-        expect_finite ~label:(label ^ " y") y in expect_finite ~label:(label ^ " z") z
+      let* () = expect_finite ~label:(label ^ " x") x in
+      let* () = expect_finite ~label:(label ^ " y") y in
+      expect_finite ~label:(label ^ " z") z
 
 let expect_luv_finite = fun ~label ->
   function
   | `luv (l, u, v) ->
-      let* () = expect_finite ~label:(label ^ " l") l in let* () =
-        expect_finite ~label:(label ^ " u") u in expect_finite ~label:(label ^ " v") v
+      let* () = expect_finite ~label:(label ^ " l") l in
+      let* () = expect_finite ~label:(label ^ " u") u in
+      expect_finite ~label:(label ^ " v") v
 
 let rgb_tuple_of = function
   | `rgb (red, green, blue) -> (red, green, blue)
@@ -176,7 +178,9 @@ let mixes = [ (-1.0); 0.0; 0.25; 0.5; 0.75; 1.0; 2.0; ]
 let rec for_each = fun items ~fn ->
   match items with
   | [] -> Ok ()
-  | item :: rest -> let* () = fn item in for_each rest ~fn
+  | item :: rest ->
+      let* () = fn item in
+      for_each rest ~fn
 
 let canonical_palette_index_for_rgb = fun rgb ->
   let target = rgb_tuple_of rgb in
@@ -190,30 +194,38 @@ let canonical_palette_index_for_rgb = fun rgb ->
   in
   loop 0
 
-let test_to_string_formats_public_variants = fun _ctx -> let* () =
-  expect_string_equal
-    ~label:"ansi to_string"
-    ~expected:"ANSI(9)"
-    ~actual:(to_string (`ansi 9 :> color)) in let* () =
-  expect_string_equal
-    ~label:"rgb to_string"
-    ~expected:"RGB(255,128,0)"
-    ~actual:(to_string (`rgb (255, 128, 0) :> color)) in let* () =
-  expect_prefix
-    ~label:"linear rgb to_string"
-    ~prefix:"LinearRGB("
-    ~actual:(to_string (`lrgb (1.0, 0.5, 0.25) :> color)) in let* () =
-  expect_prefix
-    ~label:"xyz to_string"
-    ~prefix:"XYZ("
-    ~actual:(to_string (`xyz (0.1, 0.2, 0.3) :> color)) in let* () =
-  expect_prefix
-    ~label:"luv to_string"
-    ~prefix:"LUV("
-    ~actual:(to_string (`luv (0.1, 0.2, 0.3) :> color)) in expect_prefix
-  ~label:"uv to_string"
-  ~prefix:"UV("
-  ~actual:(to_string (`uv (0.1, 0.2) :> color))
+let test_to_string_formats_public_variants = fun _ctx ->
+  let* () =
+    expect_string_equal
+      ~label:"ansi to_string"
+      ~expected:"ANSI(9)"
+      ~actual:(to_string (`ansi 9 :> color))
+  in
+  let* () =
+    expect_string_equal
+      ~label:"rgb to_string"
+      ~expected:"RGB(255,128,0)"
+      ~actual:(to_string (`rgb (255, 128, 0) :> color))
+  in
+  let* () =
+    expect_prefix
+      ~label:"linear rgb to_string"
+      ~prefix:"LinearRGB("
+      ~actual:(to_string (`lrgb (1.0, 0.5, 0.25) :> color))
+  in
+  let* () =
+    expect_prefix
+      ~label:"xyz to_string"
+      ~prefix:"XYZ("
+      ~actual:(to_string (`xyz (0.1, 0.2, 0.3) :> color))
+  in
+  let* () =
+    expect_prefix
+      ~label:"luv to_string"
+      ~prefix:"LUV("
+      ~actual:(to_string (`luv (0.1, 0.2, 0.3) :> color))
+  in
+  expect_prefix ~label:"uv to_string" ~prefix:"UV(" ~actual:(to_string (`uv (0.1, 0.2) :> color))
 
 let test_ansi_known_values_and_clamping = fun _ctx ->
   let known_values = [
@@ -274,7 +286,8 @@ let test_ansi_formula_segments = fun _ctx ->
       in
       check_grayscale (index + 1)
   in
-  let* () = check_cube 16 in check_grayscale 232
+  let* () = check_cube 16 in
+  check_grayscale 232
 
 let test_ansi_palette_channels_stay_in_byte_range = fun _ctx ->
   let rec loop index =
@@ -287,7 +300,9 @@ let test_ansi_palette_channels_stay_in_byte_range = fun _ctx ->
           let* () =
             expect
               (in_range r && in_range g && in_range b)
-              ("ansi index out of range: " ^ Int.to_string index) in loop (index + 1)
+              ("ansi index out of range: " ^ Int.to_string index)
+          in
+          loop (index + 1)
   in
   loop 0
 
@@ -392,31 +407,42 @@ let test_linear_rgb_known_values = fun _ctx ->
       ~label:"linearize 128"
       ~epsilon:1.e-10
       ~expected:0.215_860_500_113_899_26
-      ~actual:(linearize_channel 128) in let* () =
+      ~actual:(linearize_channel 128)
+  in
+  let* () =
     expect_float_close
       ~label:"linearize 1"
       ~epsilon:1.e-12
       ~expected:0.000_303_526_983_548_837_5
-      ~actual:(linearize_channel 1) in let* () =
+      ~actual:(linearize_channel 1)
+  in
+  let* () =
     expect_float_close
       ~label:"linearize 12"
       ~epsilon:1.e-12
       ~expected:0.003_676_507_324_047_436
-      ~actual:(linearize_channel 12) in let* () =
-    expect_int_equal ~label:"delinearize 0" ~expected:0 ~actual:(delinearize_channel 0.0) in let* () =
-    expect_int_equal ~label:"delinearize 1" ~expected:255 ~actual:(delinearize_channel 1.0) in let* () =
+      ~actual:(linearize_channel 12)
+  in
+  let* () = expect_int_equal ~label:"delinearize 0" ~expected:0 ~actual:(delinearize_channel 0.0) in
+  let* () = expect_int_equal ~label:"delinearize 1" ~expected:255 ~actual:(delinearize_channel 1.0) in
+  let* () =
     expect_int_equal
       ~label:"delinearize mid gray"
       ~expected:128
-      ~actual:(delinearize_channel 0.215_860_500_113_899_26) in let* () =
+      ~actual:(delinearize_channel 0.215_860_500_113_899_26)
+  in
+  let* () =
     expect_int_equal
       ~label:"delinearize channel 1"
       ~expected:1
-      ~actual:(delinearize_channel 0.000_303_526_983_548_837_5) in let* () =
+      ~actual:(delinearize_channel 0.000_303_526_983_548_837_5)
+  in
+  let* () =
     expect_int_equal
       ~label:"delinearize negative clamp"
       ~expected:0
-      ~actual:(delinearize_channel (-0.5)) in
+      ~actual:(delinearize_channel (-0.5))
+  in
   expect_int_equal ~label:"delinearize upper clamp" ~expected:255 ~actual:(delinearize_channel 1.5)
 
 let test_linear_rgb_exhaustive_channel_roundtrip = fun _ctx ->
@@ -428,11 +454,15 @@ let test_linear_rgb_exhaustive_channel_roundtrip = fun _ctx ->
       let* () =
         expect
           (linear >= 0.0 && linear <= 1.0)
-          ("linearize out of range for channel " ^ Int.to_string channel) in let* () =
+          ("linearize out of range for channel " ^ Int.to_string channel)
+      in
+      let* () =
         expect_int_equal
           ~label:("channel roundtrip " ^ Int.to_string channel)
           ~expected:channel
-          ~actual:(delinearize_channel linear) in loop (channel + 1)
+          ~actual:(delinearize_channel linear)
+      in
+      loop (channel + 1)
   in
   loop 0
 
@@ -607,12 +637,14 @@ let test_rgb_hex_known_values_and_clamping = fun _ctx ->
     expect_string_equal
       ~label:"to_hex orange"
       ~expected:"#ff8000"
-      ~actual:(RGB.to_hex (`rgb (255, 128, 0))) in
+      ~actual:(RGB.to_hex (`rgb (255, 128, 0)))
+  in
   let* () =
     expect_string_equal
       ~label:"to_hex clamps channels"
       ~expected:"#00ff10"
-      ~actual:(RGB.to_hex (`rgb ((-20), 300, 16))) in
+      ~actual:(RGB.to_hex (`rgb ((-20), 300, 16)))
+  in
   let* () =
     match RGB.of_hex "#ff8000" with
     | Ok rgb -> expect_rgb_equal ~label:"of_hex long lowercase" ~expected:(255, 128, 0) rgb
@@ -677,22 +709,30 @@ let test_metrics_and_distance_helpers = fun _ctx ->
       ~label:"relative luminance black"
       ~epsilon:1.e-12
       ~expected:0.0
-      ~actual:(RGB.relative_luminance (`rgb (0, 0, 0))) in let* () =
+      ~actual:(RGB.relative_luminance (`rgb (0, 0, 0)))
+  in
+  let* () =
     expect_float_close
       ~label:"relative luminance white"
       ~epsilon:1.e-12
       ~expected:1.0
-      ~actual:(RGB.relative_luminance (`rgb (255, 255, 255))) in let* () =
+      ~actual:(RGB.relative_luminance (`rgb (255, 255, 255)))
+  in
+  let* () =
     expect_float_close
       ~label:"relative luminance mid gray"
       ~epsilon:1.e-10
       ~expected:0.215_860_500_113_899_26
-      ~actual:(RGB.relative_luminance (`rgb (128, 128, 128))) in let* () =
+      ~actual:(RGB.relative_luminance (`rgb (128, 128, 128)))
+  in
+  let* () =
     expect_float_close
       ~label:"relative luminance red"
       ~epsilon:1.e-12
       ~expected:0.212_639_005_871_510_36
-      ~actual:(RGB.relative_luminance (`rgb (255, 0, 0))) in let* () =
+      ~actual:(RGB.relative_luminance (`rgb (255, 0, 0)))
+  in
+  let* () =
     expect_float_close
       ~label:"contrast ratio black white"
       ~epsilon:1.e-10
@@ -877,8 +917,9 @@ let test_blend_regressions_and_gradients = fun _ctx ->
       match Array.get_unchecked gradient ~at:index with
       | `rgb (red, green, blue) ->
           let* () =
-            expect (red = green && green = blue) "expected grayscale gradient to stay grayscale" in let* () =
-            expect (red >= previous) "expected grayscale gradient to stay monotone" in
+            expect (red = green && green = blue) "expected grayscale gradient to stay grayscale"
+          in
+          let* () = expect (red >= previous) "expected grayscale gradient to stay monotone" in
           check_gray_gradient (index + 1) red
   in
   check_gray_gradient 0 0

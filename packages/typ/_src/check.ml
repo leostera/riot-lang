@@ -203,9 +203,11 @@ let graph_input_of_source = fun (source: prepared_source) ->
       ~implicit_opens:source.source.implicit_opens;
   }
 
-let scope_view_for_source = fun ~(graph:package_graph) ~state ~(group:graph_group) (
-  source: graph_source
-) ->
+let scope_view_for_source = fun
+  ~(graph:package_graph)
+  ~state
+  ~(group:graph_group)
+  (source: graph_source) ->
   let visible_modules_rev = ref [] in
   let implicit_open_modules_rev = ref [] in
   let prepared = source.input.payload in
@@ -463,7 +465,14 @@ let public_module_typings_of_compiled_modules = fun (graph: package_graph) compi
     graph.groups;
   public_module_typings
 
-let fold_package_sources = fun ?package_name ?package_fingerprint ~config ~ordered_sources ~init ~f () ->
+let fold_package_sources = fun
+  ?package_name
+  ?package_fingerprint
+  ~config
+  ~ordered_sources
+  ~init
+  ~f
+  () ->
   let graph = build_package_graph ~ordered_sources in
   match LocalModuleGraph.ordered_group_ids graph with
   | Error cycle -> Error (cycle_error graph cycle)

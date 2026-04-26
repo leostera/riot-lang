@@ -110,7 +110,11 @@ let event_name = fun event ->
   | Riot_publish.Fix _ -> "fix-event"
   | Riot_publish.Build _ -> "build-event"
 
-let make_deps = fun ~call_log ?(published_version_exists = fun ~registry:_ ~package_name:_ ~version:_ -> Ok false) ?(publish_prepared = fun ~registry:_ ~api_token:_ (prepared:Riot_deps.Publisher.prepared_publish) -> Ok (make_published_release (Riot_model.Package_name.to_string prepared.package.name))) () ->
+let make_deps = fun
+  ~call_log
+  ?(published_version_exists = fun ~registry:_ ~package_name:_ ~version:_ -> Ok false)
+  ?(publish_prepared = fun ~registry:_ ~api_token:_ (prepared:Riot_deps.Publisher.prepared_publish) -> Ok (make_published_release (Riot_model.Package_name.to_string prepared.package.name)))
+  () ->
   Riot_publish.For_test.{
     resolve_registry = (fun () -> Ok (make_registry ()));
     load_api_token =

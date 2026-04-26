@@ -1445,7 +1445,8 @@ let test_trailing_sequence_before_and_views = fun _ctx ->
         | Ast.Expr.Sequence { left = Some _; right = None } -> Ok ()
         | _ -> Error "expected trailing sequence expression body"
       in
-      let* () = assert_trailing_sequence f_binding "f" in assert_trailing_sequence g_binding "g"
+      let* () = assert_trailing_sequence f_binding "f" in
+      assert_trailing_sequence g_binding "g"
   | _ -> Error "expected two recursive bindings"
 
 let test_module_declaration_member_views = fun _ctx ->

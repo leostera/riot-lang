@@ -157,8 +157,9 @@ let expect_object = function
   | Json.Object _ as value -> Ok value
   | _ -> Error "expected object"
 
-let expect_field_as = fun name json decode -> let* value = expect_field name json in
-decode (normalize_json value)
+let expect_field_as = fun name json decode ->
+  let* value = expect_field name json in
+  decode (normalize_json value)
 
 let vec_to_list = fun values ->
   let items = ref [] in
@@ -318,17 +319,19 @@ let manual_string_vec = fun values ->
 
 let rec manual_items_of_json = fun values -> decode_vec values manual_item_of_json
 
-and manual_child_of_json = fun json -> let* json = expect_object (normalize_json json) in let* owner =
-  expect_field_as "owner" json expect_string in let* score =
-  expect_field_as "score" json expect_float in let* flags =
-  expect_field_as
-    "flags"
-    json
-    (fun value -> let* values = expect_array value in manual_bool_vec values) in Ok ({
-  owner;
-  score;
-  flags;
-}: child)
+and manual_child_of_json = fun json ->
+  let* json = expect_object (normalize_json json) in
+  let* owner = expect_field_as "owner" json expect_string in
+  let* score = expect_field_as "score" json expect_float in
+  let* flags =
+    expect_field_as
+      "flags"
+      json
+      (fun value ->
+        let* values = expect_array value in
+        manual_bool_vec values)
+  in
+  Ok ({ owner; score; flags }: child)
 
 and manual_item_of_json = fun json ->
   let* json = expect_object (normalize_json json) in
@@ -339,12 +342,18 @@ and manual_item_of_json = fun json ->
     expect_field_as
       "tags"
       json
-      (fun value -> let* values = expect_array value in manual_string_vec values) in
+      (fun value ->
+        let* values = expect_array value in
+        manual_string_vec values)
+  in
   let* metrics =
     expect_field_as
       "metrics"
       json
-      (fun value -> let* values = expect_array value in manual_int_vec values) in
+      (fun value ->
+        let* values = expect_array value in
+        manual_int_vec values)
+  in
   let* child = expect_field_as "child" json manual_child_of_json in
   let* note =
     expect_field_as
@@ -353,7 +362,9 @@ and manual_item_of_json = fun json ->
       (fun value ->
         match normalize_json value with
         | Json.Null -> Ok None
-        | value -> let* note = expect_string value in Ok (Some note))
+        | value ->
+            let* note = expect_string value in
+            Ok (Some note))
   in
   Ok ({
     id;
@@ -365,17 +376,19 @@ and manual_item_of_json = fun json ->
     note;
   }: item)
 
-let manual_dataset_of_json = fun json -> let* json = expect_object (normalize_json json) in let* version =
-  expect_field_as "version" json expect_int in let* source =
-  expect_field_as "source" json expect_string in let* items =
-  expect_field_as
-    "items"
-    json
-    (fun value -> let* values = expect_array value in manual_items_of_json values) in Ok ({
-  version;
-  source;
-  items;
-}: dataset)
+let manual_dataset_of_json = fun json ->
+  let* json = expect_object (normalize_json json) in
+  let* version = expect_field_as "version" json expect_int in
+  let* source = expect_field_as "source" json expect_string in
+  let* items =
+    expect_field_as
+      "items"
+      json
+      (fun value ->
+        let* values = expect_array value in
+        manual_items_of_json values)
+  in
+  Ok ({ version; source; items }: dataset)
 
 let rec child_to_json = fun (value: child) ->
   Json.Object [

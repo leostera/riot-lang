@@ -259,9 +259,11 @@ let finalize_result = fun graph ~source lane (detailed_result: Package_builder.d
     detailed_result.result.package_key
     (finalized_state ~source detailed_result)
 
-let skipped_result_if_failed_dependencies = fun package_states lane package_key (
-  package_node: Riot_planner.Package_graph.package_node Graph.SimpleGraph.node
-) ->
+let skipped_result_if_failed_dependencies = fun
+  package_states
+  lane
+  package_key
+  (package_node: Riot_planner.Package_graph.package_node Graph.SimpleGraph.node) ->
   let failed_dependencies =
     dependency_keys lane package_key
     |> List.filter_map

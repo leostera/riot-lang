@@ -238,9 +238,9 @@ let validate_publish_metadata = fun ~(package:Riot_model.Package.t) ->
         )
     )
 
-let validate_runtime_dependency = fun ~(package:Riot_model.Package.t) (
-  dep: Riot_model.Package.dependency
-) ->
+let validate_runtime_dependency = fun
+  ~(package:Riot_model.Package.t)
+  (dep: Riot_model.Package.dependency) ->
   let package_name = Riot_model.Package_name.to_string package.name in
   let dependency_name = Riot_model.Package_name.to_string dep.name in
   match dep.source with
@@ -283,7 +283,10 @@ let validate_runtime_dependencies = fun ~(package:Riot_model.Package.t) ->
   in
   loop package.dependencies
 
-let validate_registry_dependencies = fun ~registry ~publishing_workspace_packages ~(package:Riot_model.Package.t) ->
+let validate_registry_dependencies = fun
+  ~registry
+  ~publishing_workspace_packages
+  ~(package:Riot_model.Package.t) ->
   let package_name = Riot_model.Package_name.to_string package.name in
   let rec loop = function
     | [] ->
@@ -465,7 +468,11 @@ let prepare_publish_artifact = fun ~target_dir_root (plan: publish_plan) ->
         artifact_path;
       }
 
-let prepare_publish = fun ~registry ~target_dir_root ~publishing_workspace_packages ~(package:Riot_model.Package.t) ->
+let prepare_publish = fun
+  ~registry
+  ~target_dir_root
+  ~publishing_workspace_packages
+  ~(package:Riot_model.Package.t) ->
   match plan_publish ~registry ~publishing_workspace_packages ~package with
   | Error _ as err -> err
   | Ok plan -> prepare_publish_artifact ~target_dir_root plan
@@ -479,7 +486,12 @@ let publish_prepared = fun ~registry ~api_token (prepared: prepared_publish) ->
       | Error error -> Error (RegistryPublishFailed { locator = prepared.locator; error })
     )
 
-let publish = fun ~registry ~target_dir_root ~publishing_workspace_packages ~(package:Riot_model.Package.t) ~api_token ->
+let publish = fun
+  ~registry
+  ~target_dir_root
+  ~publishing_workspace_packages
+  ~(package:Riot_model.Package.t)
+  ~api_token ->
   match prepare_publish ~registry ~target_dir_root ~publishing_workspace_packages ~package with
   | Error _ as err -> err
   | Ok prepared -> publish_prepared ~registry ~api_token prepared

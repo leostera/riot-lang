@@ -22,23 +22,30 @@ let render_json = fun json -> Json.to_string_pretty json ^ "\n"
 let roundtrip_request:
   type params res. (params, res) Lsp.Method.request ->
   Json.t ->
-  (Json.t, string) result = fun method_ -> fun json -> let* (id, params) =
-  Lsp.request_of_json method_ json in Ok (Lsp.request_to_json ~id method_ params)
+  (Json.t, string) result = fun method_ ->
+  fun json ->
+    let* (id, params) = Lsp.request_of_json method_ json in
+    Ok (Lsp.request_to_json ~id method_ params)
 
 let roundtrip_notification:
   type params. params Lsp.Method.notification ->
   Json.t ->
-  (Json.t, string) result = fun method_ -> fun json -> let* params =
-  Lsp.notification_of_json method_ json in Ok (Lsp.notification_to_json method_ params)
+  (Json.t, string) result = fun method_ ->
+  fun json ->
+    let* params = Lsp.notification_of_json method_ json in
+    Ok (Lsp.notification_to_json method_ params)
 
 let roundtrip_response:
   type params res. (params, res) Lsp.Method.request ->
   Json.t ->
-  (Json.t, string) result = fun method_ -> fun json -> let* (id, result) =
-  Lsp.response_of_json method_ json in Ok (Lsp.response_to_json ~id method_ result)
+  (Json.t, string) result = fun method_ ->
+  fun json ->
+    let* (id, result) = Lsp.response_of_json method_ json in
+    Ok (Lsp.response_to_json ~id method_ result)
 
-let roundtrip_error_response = fun json -> let* (id, error) = Lsp.error_response_of_json json in
-Ok (Lsp.error_response_to_json ~id error)
+let roundtrip_error_response = fun json ->
+  let* (id, error) = Lsp.error_response_of_json json in
+  Ok (Lsp.error_response_to_json ~id error)
 
 let roundtrip_fixture = fun relpath ->
   fun json ->
@@ -78,9 +85,10 @@ let roundtrip_fixture = fun relpath ->
     | "responses/error.json" -> roundtrip_error_response json
     | other -> Error ("unsupported lsp protocol fixture: " ^ other)
 
-let test_fixture = fun ~(ctx:Test.FixtureRunner.ctx) -> let* json =
-  decode_fixture_json ctx.fixture_path in let* actual = roundtrip_fixture ctx.fixture_relpath json in
-Test.Snapshot.assert_text ~ctx:ctx.test ~actual:(render_json actual)
+let test_fixture = fun ~(ctx:Test.FixtureRunner.ctx) ->
+  let* json = decode_fixture_json ctx.fixture_path in
+  let* actual = roundtrip_fixture ctx.fixture_relpath json in
+  Test.Snapshot.assert_text ~ctx:ctx.test ~actual:(render_json actual)
 
 let main ~args =
   let tests =

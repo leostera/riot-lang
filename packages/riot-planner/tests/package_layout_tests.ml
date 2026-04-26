@@ -78,7 +78,11 @@ let validate_layout = fun ~package ~graph ~analyzed ->
     ~module_graph:graph
     ~analyzed_modules:(List.map analyzed ~fn:(fun (node, source) -> analyzed_module node ~source))
 
-let assert_target_can_use_public_root_module = fun ~package_name ~target_name ~target_source_path ~target_source ->
+let assert_target_can_use_public_root_module = fun
+  ~package_name
+  ~target_name
+  ~target_source_path
+  ~target_source ->
   let package =
     make_package
       ~library:{ path = Path.v ("src/" ^ package_name ^ ".ml") }
@@ -97,7 +101,11 @@ let assert_target_can_use_public_root_module = fun ~package_name ~target_name ~t
   | Error err ->
       Error ("expected target to use public root, got: " ^ Riot_planner.Planning_error.to_string err)
 
-let assert_target_cannot_use_internal_library_module_directly = fun ~package_name ~target_name ~target_source_path ~target_source ->
+let assert_target_cannot_use_internal_library_module_directly = fun
+  ~package_name
+  ~target_name
+  ~target_source_path
+  ~target_source ->
   let package =
     make_package
       ~library:{ path = Path.v ("src/" ^ package_name ^ ".ml") }
@@ -133,7 +141,11 @@ let assert_target_cannot_use_internal_library_module_directly = fun ~package_nam
       ^ Riot_planner.Planning_error.to_string err)
   | Ok () -> Error "expected direct access to internal library module to fail"
 
-let assert_target_cannot_use_namespaced_internal_library_module = fun ~package_name ~target_name ~target_source_path ~target_source ->
+let assert_target_cannot_use_namespaced_internal_library_module = fun
+  ~package_name
+  ~target_name
+  ~target_source_path
+  ~target_source ->
   let package =
     make_package
       ~library:{ path = Path.v ("src/" ^ package_name ^ ".ml") }

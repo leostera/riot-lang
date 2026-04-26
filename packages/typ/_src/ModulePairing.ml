@@ -316,9 +316,10 @@ let list_for_all2 = fun predicate left right ->
   in
   loop left right
 
-let package_signature_equal = fun equal_type (left: TypeRepr.package_signature) (
-  right: TypeRepr.package_signature
-) ->
+let package_signature_equal = fun
+  equal_type
+  (left: TypeRepr.package_signature)
+  (right: TypeRepr.package_signature) ->
   List.length left.values = List.length right.values && List.for_all
     (fun (left_value: TypeRepr.package_value) ->
       match List.find_opt
@@ -330,9 +331,10 @@ let package_signature_equal = fun equal_type (left: TypeRepr.package_signature) 
       | None -> false)
     left.values
 
-let package_signature_includes = fun includes_type (actual: TypeRepr.package_signature) (
-  expected: TypeRepr.package_signature
-) ->
+let package_signature_includes = fun
+  includes_type
+  (actual: TypeRepr.package_signature)
+  (expected: TypeRepr.package_signature) ->
   List.for_all
     (fun (expected_value: TypeRepr.package_value) ->
       match List.find_opt
@@ -525,16 +527,18 @@ let inline_record_labels_equal = fun ~visible_types left right ->
   | (Some left, Some right) -> list_for_all2 (label_equal ~visible_types) left right
   | _ -> false
 
-let constructor_equal = fun ~visible_types (left: TypeDecl.constructor) (
-  right: TypeDecl.constructor
-) ->
+let constructor_equal = fun
+  ~visible_types
+  (left: TypeDecl.constructor)
+  (right: TypeDecl.constructor) ->
   String.equal left.name right.name
   && scheme_equal ~visible_types left.scheme right.scheme
   && inline_record_labels_equal ~visible_types left.inline_record_labels right.inline_record_labels
 
-let poly_variant_tag_equal = fun ~visible_types (left: TypeDecl.poly_variant_tag) (
-  right: TypeDecl.poly_variant_tag
-) ->
+let poly_variant_tag_equal = fun
+  ~visible_types
+  (left: TypeDecl.poly_variant_tag)
+  (right: TypeDecl.poly_variant_tag) ->
   String.equal left.name right.name && (
     match (left.payload_type, right.payload_type) with
     | (None, None) -> true
@@ -543,7 +547,10 @@ let poly_variant_tag_equal = fun ~visible_types (left: TypeDecl.poly_variant_tag
     | _ -> false
   )
 
-let manifest_aliases_decl_self = fun ~visible_types (type_decl: FileSummary.type_decl) manifest_type ->
+let manifest_aliases_decl_self = fun
+  ~visible_types
+  (type_decl: FileSummary.type_decl)
+  manifest_type ->
   match TypeRepr.view (VisibleTypes.canonicalize_type visible_types manifest_type) with
   | TypeRepr.Named { head; arguments = [] } ->
       TypeConstructorId.equal head.type_constructor_id type_decl.declaration.type_constructor_id

@@ -90,7 +90,15 @@ module Ocamlc = struct
       flags
 
   (** Build and run an ocamlc command *)
-  let run = fun ?(includes = []) ?(libs = []) ?(output = None) ?(mode = Compile) ?(flags = []) ?(extra_args = []) ?(verbose = false) sources ->
+  let run = fun
+    ?(includes = [])
+    ?(libs = [])
+    ?(output = None)
+    ?(mode = Compile)
+    ?(flags = [])
+    ?(extra_args = [])
+    ?(verbose = false)
+    sources ->
     (* Build command arguments *)
     let args = [ ocamlc_path ] in
     (* Mode-specific flags *)

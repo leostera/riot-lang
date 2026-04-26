@@ -134,7 +134,8 @@ let rec backend: state Ser.backend = {
 
 let to_string = fun encode value ->
   let state = { output = IO.Buffer.create ~size:128; first = true; context = Top_level } in
-  let* () = Ser.run encode backend state value in Ok (IO.Buffer.contents state.output)
+  let* () = Ser.run encode backend state value in
+  Ok (IO.Buffer.contents state.output)
 
 let to_writer = fun encode writer value ->
   let* encoded = to_string encode value in

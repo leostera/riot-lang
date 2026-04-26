@@ -98,4 +98,6 @@ let run = fun ~workspace matches ->
   let mode = output_mode_of_matches matches in
   let request = build_request ~workspace matches in
   let* _summaries =
-    Riot_doc.run ~on_event:(write_doc_event ~workspace_root:workspace.root ~mode) request in Ok ()
+    Riot_doc.run ~on_event:(write_doc_event ~workspace_root:workspace.root ~mode) request
+  in
+  Ok ()

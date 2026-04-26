@@ -211,7 +211,9 @@ let path_resolution_key = fun ~package_root ->
 let source_resolution_key = fun ~source_locator ~ref_ ->
   "source:" ^ source_locator ^ "#" ^ Option.unwrap_or ~default:"main" ref_
 
-let find_workspace_package_by_name = fun ~(workspace_packages:Riot_model.Package_manifest.t list) ~package_name ->
+let find_workspace_package_by_name = fun
+  ~(workspace_packages:Riot_model.Package_manifest.t list)
+  ~package_name ->
   List.find
     workspace_packages
     ~fn:(fun (pkg: Riot_model.Package_manifest.t) ->
@@ -219,7 +221,9 @@ let find_workspace_package_by_name = fun ~(workspace_packages:Riot_model.Package
         pkg.name
         package_name)
 
-let find_workspace_package_by_root = fun ~(workspace_packages:Riot_model.Package_manifest.t list) ~package_root ->
+let find_workspace_package_by_root = fun
+  ~(workspace_packages:Riot_model.Package_manifest.t list)
+  ~package_root ->
   let package_root = Path.normalize package_root in
   List.find
     workspace_packages
@@ -277,7 +281,10 @@ let materialized_root_for_registry_package = fun ~registry ~package_name ~versio
     ~package_name
     ~version
 
-let find_existing_external_package = fun ~registry_name ~existing_lock ~(package_name:Riot_model.Package_name.t) ->
+let find_existing_external_package = fun
+  ~registry_name
+  ~existing_lock
+  ~(package_name:Riot_model.Package_name.t) ->
   match existing_lock with
   | None -> None
   | Some (lockfile: Riot_model.Lockfile.t) ->
@@ -341,9 +348,11 @@ let dependency_counts = fun (packages: Riot_model.Lockfile.package list) ->
       dev + List.length pkg.dev_dependencies
     ))
 
-let rec lock_package_of_local_package = fun ~(ctx:context) ~state ~provenance (
-  pkg: Riot_model.Package_manifest.t
-) ->
+let rec lock_package_of_local_package = fun
+  ~(ctx:context)
+  ~state
+  ~provenance
+  (pkg: Riot_model.Package_manifest.t) ->
   let required_by = Some (required_by_local_package pkg) in
   match resolve_manifest_dependencies
     ~ctx
@@ -400,9 +409,11 @@ let rec lock_package_of_local_package = fun ~(ctx:context) ~state ~provenance (
         )
     )
 
-and resolve_registry_dependency = fun ~(ctx:context) ~state ~required_by (
-  dep: Riot_model.Package.dependency
-) ->
+and resolve_registry_dependency = fun
+  ~(ctx:context)
+  ~state
+  ~required_by
+  (dep: Riot_model.Package.dependency) ->
   let package_name = dep.name in
   let raw_package_name = Riot_model.Package_name.to_string package_name in
   let registry_name = Pkgs_ml.Registry.name ctx.registry in
@@ -691,7 +702,8 @@ and resolve_source_dependency = fun ~(ctx:context) ~state (dep: Riot_model.Packa
             load_source_dependency_package
               ~dependency_name:dependency_name_string
               ~source_locator
-              ~ref_ in
+              ~ref_
+          in
           let* () =
             match (dep.source.version, pkg.publish.version) with
             | (Some requirement, Some version) when Std.Version.matches requirement version -> Ok ()
@@ -742,7 +754,14 @@ and resolve_source_dependency = fun ~(ctx:context) ~state (dep: Riot_model.Packa
         )
     )
 
-and resolve_manifest_dependencies = fun ~(ctx:context) ~state ~required_by ~declared_from acc_packages acc_dependencies deps ->
+and resolve_manifest_dependencies = fun
+  ~(ctx:context)
+  ~state
+  ~required_by
+  ~declared_from
+  acc_packages
+  acc_dependencies
+  deps ->
   match deps with
   | [] -> Ok (List.reverse acc_dependencies, List.reverse acc_packages, state)
   | dep :: rest -> (
@@ -890,9 +909,15 @@ and resolve_manifest_dependencies = fun ~(ctx:context) ~state ~required_by ~decl
         )
     )
 
-let lock_package_of_workspace_package = fun ~(ctx:context) ~state (
-  pkg: Riot_model.Package_manifest.t
-) -> lock_package_of_local_package ~ctx ~state ~provenance:Riot_model.Lockfile.Workspace pkg
+let lock_package_of_workspace_package = fun
+  ~(ctx:context)
+  ~state
+  (pkg: Riot_model.Package_manifest.t) ->
+  lock_package_of_local_package
+    ~ctx
+    ~state
+    ~provenance:Riot_model.Lockfile.Workspace
+    pkg
 
 let rec lock_packages = fun ~(ctx:context) ~state acc_workspace acc_external packages ->
   match packages with
@@ -935,7 +960,9 @@ let lock_root_dependencies = fun ~(ctx:context) ~state ->
         )
     )
 
-let collect_reachable_existing = fun ~(existing_lock:Riot_model.Lockfile.t) ~(root_ids:Riot_model.Lockfile.package_id list) ->
+let collect_reachable_existing = fun
+  ~(existing_lock:Riot_model.Lockfile.t)
+  ~(root_ids:Riot_model.Lockfile.package_id list) ->
   let find_package package_id =
     List.find
       existing_lock.packages
@@ -1134,7 +1161,8 @@ let register_workspace_packages = fun (catalog: catalog) packages ->
     | [] -> Ok ()
     | (pkg: Riot_model.Package_manifest.t) :: rest ->
         let* () =
-          register_local_entry catalog { package = pkg; provenance = Riot_model.Lockfile.Workspace } in
+          register_local_entry catalog { package = pkg; provenance = Riot_model.Lockfile.Workspace }
+        in
         loop rest
   in
   loop packages
@@ -1211,9 +1239,11 @@ let requested_requirement_for_package = fun (catalog: catalog) package_name ->
   | Some requirements -> Some (String.concat ", " requirements)
   | None -> None
 
-let validate_source_requirement = fun ~dependency_name ~source_locator (
-  dep: Riot_model.Package.dependency
-) (pkg: Riot_model.Package_manifest.t) ->
+let validate_source_requirement = fun
+  ~dependency_name
+  ~source_locator
+  (dep: Riot_model.Package.dependency)
+  (pkg: Riot_model.Package_manifest.t) ->
   match (dep.source.version, pkg.publish.version) with
   | (Some requirement, Some version) when Std.Version.matches requirement version -> Ok ()
   | (Some requirement, Some version) ->
@@ -1240,9 +1270,11 @@ let validate_source_requirement = fun ~dependency_name ~source_locator (
       })
   | (None, _) -> Ok ()
 
-let dependency_target_name = fun (catalog: catalog) ~declared_from ~required_by (
-  dep: Riot_model.Package.dependency
-) ->
+let dependency_target_name = fun
+  (catalog: catalog)
+  ~declared_from
+  ~required_by
+  (dep: Riot_model.Package.dependency) ->
   match dep.source with
   | { builtin = true; _ } -> Ok None
   | { workspace = true; _ } -> Ok (Some (Riot_model.Package_name.to_string dep.name))
@@ -1260,7 +1292,8 @@ let dependency_target_name = fun (catalog: catalog) ~declared_from ~required_by 
                   load_path_dependency_package
                     ~declared_from
                     ~dependency_name:(Riot_model.Package_name.to_string dep.name)
-                    path in
+                    path
+                in
                 (
                   match find_workspace_package_by_name
                     ~workspace_packages:catalog.ctx.workspace.packages
@@ -1274,7 +1307,9 @@ let dependency_target_name = fun (catalog: catalog) ~declared_from ~required_by 
                           {
                             package = pkg;
                             provenance = Riot_model.Lockfile.Path path;
-                          } in Ok (Some (Riot_model.Package_name.to_string pkg.name))
+                          }
+                      in
+                      Ok (Some (Riot_model.Package_name.to_string pkg.name))
                 )
           )
       | Some FallbackToSource -> (
@@ -1287,12 +1322,16 @@ let dependency_target_name = fun (catalog: catalog) ~declared_from ~required_by 
             load_source_dependency_package
               ~dependency_name:(Riot_model.Package_name.to_string dep.name)
               ~source_locator
-              ~ref_:dep.source.ref_ in let* () =
+              ~ref_:dep.source.ref_
+          in
+          let* () =
             validate_source_requirement
               ~dependency_name:(Riot_model.Package_name.to_string dep.name)
               ~source_locator
               dep
-              pkg in let* () =
+              pkg
+          in
+          let* () =
             register_local_entry
               catalog
               {
@@ -1301,7 +1340,9 @@ let dependency_target_name = fun (catalog: catalog) ~declared_from ~required_by 
                   locator = source_locator;
                   ref_ = dep.source.ref_;
                 };
-              } in Ok (Some (Riot_model.Package_name.to_string pkg.name))
+              }
+          in
+          Ok (Some (Riot_model.Package_name.to_string pkg.name))
         )
       | Some FallbackToRegistry
       | None -> Ok (Some (Riot_model.Package_name.to_string dep.name))
@@ -1311,12 +1352,16 @@ let dependency_target_name = fun (catalog: catalog) ~declared_from ~required_by 
         load_source_dependency_package
           ~dependency_name:(Riot_model.Package_name.to_string dep.name)
           ~source_locator
-          ~ref_:dep.source.ref_ in let* () =
+          ~ref_:dep.source.ref_
+      in
+      let* () =
         validate_source_requirement
           ~dependency_name:(Riot_model.Package_name.to_string dep.name)
           ~source_locator
           dep
-          pkg in let* () =
+          pkg
+      in
+      let* () =
         register_local_entry
           catalog
           {
@@ -1325,12 +1370,16 @@ let dependency_target_name = fun (catalog: catalog) ~declared_from ~required_by 
               locator = source_locator;
               ref_ = dep.source.ref_;
             };
-          } in Ok (Some (Riot_model.Package_name.to_string pkg.name))
+          }
+      in
+      Ok (Some (Riot_model.Package_name.to_string pkg.name))
   | _ -> Ok (Some (Riot_model.Package_name.to_string dep.name))
 
-let provider_dependency_of_manifest_dependency = fun (catalog: catalog) ~declared_from ~required_by (
-  dep: Riot_model.Package.dependency
-) ->
+let provider_dependency_of_manifest_dependency = fun
+  (catalog: catalog)
+  ~declared_from
+  ~required_by
+  (dep: Riot_model.Package.dependency) ->
   let* target_name_opt = dependency_target_name catalog ~declared_from ~required_by dep in
   match target_name_opt with
   | None -> Ok None
@@ -1378,7 +1427,8 @@ let provider_dependencies_of_manifest = fun (catalog: catalog) ~declared_from ~r
     | [] -> Ok (List.reverse acc)
     | dep :: rest ->
         let* provider_dep_opt =
-          provider_dependency_of_manifest_dependency catalog ~declared_from ~required_by dep in
+          provider_dependency_of_manifest_dependency catalog ~declared_from ~required_by dep
+        in
         (
           match provider_dep_opt with
           | Some provider_dep -> loop (provider_dep :: acc) rest
@@ -1387,7 +1437,10 @@ let provider_dependencies_of_manifest = fun (catalog: catalog) ~declared_from ~r
   in
   loop [] deps
 
-let find_existing_registry_package = fun ~registry_name ~existing_lock ~(package_name:Riot_model.Package_name.t) ->
+let find_existing_registry_package = fun
+  ~registry_name
+  ~existing_lock
+  ~(package_name:Riot_model.Package_name.t) ->
   match existing_lock with
   | None -> None
   | Some (lockfile: Riot_model.Lockfile.t) ->
@@ -1397,7 +1450,11 @@ let find_existing_registry_package = fun ~registry_name ~existing_lock ~(package
           pkg.id.registry = Some registry_name
           && Riot_model.Package_name.equal pkg.id.name package_name)
 
-let find_existing_registry_package_version = fun ~registry_name ~existing_lock ~(package_name:Riot_model.Package_name.t) ~version ->
+let find_existing_registry_package_version = fun
+  ~registry_name
+  ~existing_lock
+  ~(package_name:Riot_model.Package_name.t)
+  ~version ->
   match existing_lock with
   | None -> None
   | Some (lockfile: Riot_model.Lockfile.t) ->
@@ -1568,9 +1625,9 @@ let provider_dependencies_of_local_entry = fun (catalog: catalog) (entry: local_
     (Riot_model.Package_manifest.all_dependencies entry.package)
   |> Result.map ~fn:(fun deps -> Pubgrub.Provider.Available deps)
 
-let provider_dependencies_of_root = fun (catalog: catalog) (
-  workspace_packages: Riot_model.Package_manifest.t list
-) ->
+let provider_dependencies_of_root = fun
+  (catalog: catalog)
+  (workspace_packages: Riot_model.Package_manifest.t list) ->
   let workspace_deps =
     List.map
       workspace_packages
@@ -1584,17 +1641,22 @@ let provider_dependencies_of_root = fun (catalog: catalog) (
       catalog
       ~declared_from:catalog.ctx.workspace.root
       ~required_by:None
-      catalog.ctx.workspace.dependencies in let* build_deps =
+      catalog.ctx.workspace.dependencies
+  in
+  let* build_deps =
     provider_dependencies_of_manifest
       catalog
       ~declared_from:catalog.ctx.workspace.root
       ~required_by:None
-      catalog.ctx.workspace.build_dependencies in let* dev_deps =
+      catalog.ctx.workspace.build_dependencies
+  in
+  let* dev_deps =
     provider_dependencies_of_manifest
       catalog
       ~declared_from:catalog.ctx.workspace.root
       ~required_by:None
-      catalog.ctx.workspace.dev_dependencies in
+      catalog.ctx.workspace.dev_dependencies
+  in
   Ok (Pubgrub.Provider.Available (((workspace_deps @ runtime_deps) @ build_deps) @ dev_deps))
 
 let provider_of_catalog = fun (catalog: catalog) workspace_packages ->
@@ -1630,7 +1692,8 @@ let provider_of_catalog = fun (catalog: catalog) workspace_packages ->
                             match existing_pkg.id.version with
                             | Some version_string ->
                                 let* existing_version =
-                                  parse_registry_version ~package_name:package version_string in
+                                  parse_registry_version ~package_name:package version_string
+                                in
                                 if
                                   Pubgrub.Ranges.contains
                                     ~compare_v:pubgrub_version_compare
@@ -1771,7 +1834,8 @@ let lock_dependencies_of_manifest = fun (catalog: catalog) ~selected_versions ~d
           | None -> loop acc rest
           | Some target_name ->
               let* package =
-                selected_package_id catalog ~selected_versions ~package_name:target_name in
+                selected_package_id catalog ~selected_versions ~package_name:target_name
+              in
               loop (Riot_model.Lockfile.{ name = dep.name; package } :: acc) rest
   in
   loop [] deps
@@ -1782,19 +1846,22 @@ let lock_package_of_local_entry = fun (catalog: catalog) ~selected_versions (ent
       catalog
       ~selected_versions
       ~declared_from:entry.package.path
-      entry.package.dependencies in
+      entry.package.dependencies
+  in
   let* build_dependencies =
     lock_dependencies_of_manifest
       catalog
       ~selected_versions
       ~declared_from:entry.package.path
-      entry.package.build_dependencies in
+      entry.package.build_dependencies
+  in
   let* dev_dependencies =
     lock_dependencies_of_manifest
       catalog
       ~selected_versions
       ~declared_from:entry.package.path
-      entry.package.dev_dependencies in
+      entry.package.dev_dependencies
+  in
   Ok Riot_model.Lockfile.{
     id = package_id_of_local_entry entry;
     root = lock_root_of_local_entry ~workspace_root:catalog.ctx.workspace.root entry;
@@ -1873,19 +1940,22 @@ let lock_registry_package = fun (catalog: catalog) ~selected_versions ~package_n
       catalog
       ~selected_versions
       ~declared_from:manifest.path
-      manifest.dependencies in
+      manifest.dependencies
+  in
   let* build_dependencies =
     lock_dependencies_of_manifest
       catalog
       ~selected_versions
       ~declared_from:manifest.path
-      manifest.build_dependencies in
+      manifest.build_dependencies
+  in
   let* dev_dependencies =
     lock_dependencies_of_manifest
       catalog
       ~selected_versions
       ~declared_from:manifest.path
-      manifest.dev_dependencies in
+      manifest.dev_dependencies
+  in
   Ok Riot_model.Lockfile.{
     id = package_id;
     root = None;
@@ -1932,7 +2002,9 @@ let lock_deps = fun ?(emit = no_emit) ~mode ~registry ~existing_lock ~workspace 
                 {
                   package = pkg;
                   provenance = Riot_model.Lockfile.Workspace;
-                } in lock_workspace_packages (lock_package :: acc) rest
+                }
+            in
+            lock_workspace_packages (lock_package :: acc) rest
       in
       let selected_external_local_names =
         List.filter
@@ -1982,7 +2054,8 @@ let lock_deps = fun ?(emit = no_emit) ~mode ~registry ~existing_lock ~workspace 
             match HashMap.get selected_versions ~key:package_name with
             | Some version ->
                 let* lock_package =
-                  lock_registry_package catalog ~selected_versions ~package_name version in
+                  lock_registry_package catalog ~selected_versions ~package_name version
+                in
                 lock_registry_packages (lock_package :: acc) rest
             | None -> lock_registry_packages acc rest
           )

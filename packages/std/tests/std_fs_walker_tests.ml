@@ -322,7 +322,8 @@ let tests = [
             let* paths = collect_file_paths ~root:packages_root ~sort in
             collect ((label, paths) :: acc) rest
       in
-      let* labeled_sets = collect [] configs in compare_labeled_sets labeled_sets);
+      let* labeled_sets = collect [] configs in
+      compare_labeled_sets labeled_sets);
 ]
 
 let main ~args = Test.Cli.main ~name:"std_fs_walker_tests" ~tests ~args ()

@@ -174,7 +174,13 @@ let load_member_package:
   workspace_deps:Package.dependency list ->
   workspace_dev_deps:Package.dependency list ->
   workspace_build_deps:Package.dependency list ->
-  (Package_manifest.t option * load_error list) = fun t workspace_root member ~workspace_deps ~workspace_dev_deps ~workspace_build_deps ->
+  (Package_manifest.t option * load_error list) = fun
+  t
+  workspace_root
+  member
+  ~workspace_deps
+  ~workspace_dev_deps
+  ~workspace_build_deps ->
   let member_path = Path.(workspace_root / Path.v member) in
   let toml_path = Path.(member_path / riot_toml) in
   let member_name = Path.basename member_path in
@@ -241,7 +247,16 @@ let rec load_external_package:
   workspace_dev_deps:Package.dependency list ->
   workspace_build_deps:Package.dependency list ->
   dependant:string option ->
-  (Package_manifest.t list * load_error list) = fun t workspace_root ~declared_from dep ~seen ~workspace_deps ~workspace_dev_deps ~workspace_build_deps ~dependant ->
+  (Package_manifest.t list * load_error list) = fun
+  t
+  workspace_root
+  ~declared_from
+  dep
+  ~seen
+  ~workspace_deps
+  ~workspace_dev_deps
+  ~workspace_build_deps
+  ~dependant ->
   match dep.source with
   | { workspace = true; _ } -> ([], [])
   | { builtin = true; _ } -> ([], [])
@@ -518,7 +533,9 @@ let build_single_package_workspace:
           )
     )
 
-let scan: t -> Path.t -> ((Workspace_manifest.t * load_error list), scan_error) result = fun t path ->
+let scan: t -> Path.t -> ((Workspace_manifest.t * load_error list), scan_error) result = fun
+  t
+  path ->
   try
     let started_at = Time.Instant.now () in
     let find_roots_started_at = Time.Instant.now () in

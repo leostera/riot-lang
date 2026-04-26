@@ -131,14 +131,17 @@ let rec encode_value = function
       IO.Buffer.add_string buffer value;
       IO.Buffer.add_char buffer '\x00';
       Ok (type_string, IO.Buffer.contents buffer)
-  | Document fields -> let* encoded = encode_document fields in Ok (type_document, encoded)
+  | Document fields ->
+      let* encoded = encode_document fields in
+      Ok (type_document, encoded)
   | Array values ->
       let rec fields_of_values index values acc =
         match values with
         | [] -> List.rev acc
         | value :: rest -> fields_of_values (index + 1) rest ((Int.to_string index, value) :: acc)
       in
-      let* encoded = encode_document (fields_of_values 0 values []) in Ok (type_array, encoded)
+      let* encoded = encode_document (fields_of_values 0 values []) in
+      Ok (type_array, encoded)
 
 and encode_element = fun (key, value) ->
   let* (kind, payload) = encode_value value in
@@ -153,8 +156,11 @@ and encode_document = fun fields ->
     List.fold_left
       fields
       ~init:(Ok [])
-      ~fn:(fun acc field -> let* acc = acc in let* encoded = encode_element field in
-      Ok (encoded :: acc)) in
+      ~fn:(fun acc field ->
+        let* acc = acc in
+        let* encoded = encode_element field in
+        Ok (encoded :: acc))
+  in
   let encoded_fields = List.rev encoded_fields in
   let payload_len =
     List.fold_left encoded_fields ~init:0 ~fn:(fun total field -> total + String.length field)
@@ -184,31 +190,44 @@ let read_byte = fun input ->
   input.pos <- input.pos + 1;
   Ok value
 
-let read_int32_le = fun input -> let* b0 = read_byte input in let* b1 = read_byte input in let* b2 =
-  read_byte input in let* b3 = read_byte input in
-Ok Int32.(logor
-  (of_int b0)
-  (logor (shift_left (of_int b1) 8) (logor (shift_left (of_int b2) 16) (shift_left (of_int b3) 24))))
-
-let read_int64_le = fun input -> let open Int64 in
-let* b0 = read_byte input in let* b1 = read_byte input in let* b2 = read_byte input in let* b3 =
-  read_byte input in let* b4 = read_byte input in let* b5 = read_byte input in let* b6 =
-  read_byte input in let* b7 = read_byte input in
-Ok (logor
-  (of_int b0)
-  (logor
-    (shift_left (of_int b1) 8)
+let read_int32_le = fun input ->
+  let* b0 = read_byte input in
+  let* b1 = read_byte input in
+  let* b2 = read_byte input in
+  let* b3 = read_byte input in
+  Ok Int32.(logor
+    (of_int b0)
     (logor
-      (shift_left (of_int b2) 16)
-      (logor
-        (shift_left (of_int b3) 24)
-        (logor
-          (shift_left (of_int b4) 32)
-          (logor
-            (shift_left (of_int b5) 40)
-            (logor (shift_left (of_int b6) 48) (shift_left (of_int b7) 56))))))))
+      (shift_left (of_int b1) 8)
+      (logor (shift_left (of_int b2) 16) (shift_left (of_int b3) 24))))
 
-let read_double_le = fun input -> let* bits = read_int64_le input in Ok (Int64.float_of_bits bits)
+let read_int64_le = fun input ->
+  let open Int64 in
+  let* b0 = read_byte input in
+  let* b1 = read_byte input in
+  let* b2 = read_byte input in
+  let* b3 = read_byte input in
+  let* b4 = read_byte input in
+  let* b5 = read_byte input in
+  let* b6 = read_byte input in
+  let* b7 = read_byte input in
+  Ok (logor
+    (of_int b0)
+    (logor
+      (shift_left (of_int b1) 8)
+      (logor
+        (shift_left (of_int b2) 16)
+        (logor
+          (shift_left (of_int b3) 24)
+          (logor
+            (shift_left (of_int b4) 32)
+            (logor
+              (shift_left (of_int b5) 40)
+              (logor (shift_left (of_int b6) 48) (shift_left (of_int b7) 56))))))))
+
+let read_double_le = fun input ->
+  let* bits = read_int64_le input in
+  Ok (Int64.float_of_bits bits)
 
 let read_cstring = fun input ->
   let start = input.pos in
@@ -263,7 +282,8 @@ let rec read_value = fun input kind end_pos ->
       read_document_body input end_pos
       |> Result.map ~fn:(fun value -> Document value)
   | 0x04 ->
-      let* fields = read_document_body input end_pos in let* values = array_of_document fields in
+      let* fields = read_document_body input end_pos in
+      let* values = array_of_document fields in
       Ok (Array values)
   | 0x08 ->
       let* value = read_byte input in
@@ -304,7 +324,8 @@ and read_document_body = fun input _parent_end ->
         if Int.equal kind 0 then
           error "serde-bson document ended before its declared length"
         else
-          let* key = read_cstring input in let* value = read_value input kind end_pos in
+          let* key = read_cstring input in
+          let* value = read_value input kind end_pos in
           loop ((key, value) :: acc)
     in
     loop []

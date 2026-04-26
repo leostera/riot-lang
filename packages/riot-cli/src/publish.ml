@@ -171,7 +171,12 @@ let render_skipping = fun ~package ~version ->
 let render_skipping_not_public = fun ~package ~version ->
   "    \027[1;33mSkipping\027[0m " ^ package ^ " " ^ version ^ " (package is not public)"
 
-let write_publish_event = fun ~workspace_root ~seen_registry_updates ~displayed_packages ~progress event ->
+let write_publish_event = fun
+  ~workspace_root
+  ~seen_registry_updates
+  ~displayed_packages
+  ~progress
+  event ->
   match event with
   | Riot_publish.Fmt _ -> ()
   | Riot_publish.Fix (Riot_fix.Event.Start _) -> ()

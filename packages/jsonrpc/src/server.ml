@@ -21,9 +21,11 @@ type ('request, 'response) t = {
 
 let create = fun ~protocol:protocol_mod ~methods:handlers -> { protocol_mod; handlers }
 
-let handle_message = fun (type req res) (server: (req, res) t) (reply: string -> unit) (
-  message: string
-) ->
+let handle_message = fun
+  (type req res)
+  (server: (req, res) t)
+  (reply: string -> unit)
+  (message: string) ->
   let module P = (val server.protocol_mod : Common.ApplicationProtocol with type request = req and type response = res) in
   let cwd =
     match Env.current_dir () with

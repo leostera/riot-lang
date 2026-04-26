@@ -61,8 +61,9 @@ let riot_home_dir = fun () ->
   | Some home -> Ok Path.(home / Path.v ".riot")
   | None -> Error "failed to determine home directory"
 
-let installed_binary_path = fun () -> let* riot_home = riot_home_dir () in
-Ok Path.(riot_home / Path.v "bin" / Path.v "riot")
+let installed_binary_path = fun () ->
+  let* riot_home = riot_home_dir () in
+  Ok Path.(riot_home / Path.v "bin" / Path.v "riot")
 
 let install_temp_path = fun dst ->
   let dir = Path.dirname dst in
@@ -424,7 +425,8 @@ let run = fun matches ->
                     in
                     let* () = extract_archive ~archive_path ~into:extract_dir in
                     let* metadata =
-                      resolved_metadata ~latest_metadata ~extract_dir ~downloaded_binary in
+                      resolved_metadata ~latest_metadata ~extract_dir ~downloaded_binary
+                    in
                     let unchanged =
                       if current_exists then
                         same_file_contents ~left:current_binary ~right:downloaded_binary
@@ -457,7 +459,8 @@ let run = fun matches ->
                           |> Result.map_err ~fn:IO.error_message
                         in
                         let* () =
-                          install_binary_atomically ~src:downloaded_binary ~dst:current_binary in
+                          install_binary_atomically ~src:downloaded_binary ~dst:current_binary
+                        in
                         let* () = Version_info.write_installed metadata in
                         let duration =
                           Time.Instant.duration_since ~earlier:started_at (Time.Instant.now ())

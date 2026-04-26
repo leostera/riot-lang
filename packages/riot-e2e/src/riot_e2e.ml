@@ -29,8 +29,9 @@ let run_binary = fun ?cwd ?(env = []) binary_path args ->
   |> Command.output
   |> Result.map_err ~fn:command_error_message
 
-let run_riot = fun ctx ?cwd ?(env = []) args -> let* riot_binary_path =
-  Test.Context.require_binary ctx "riot" in run_binary ?cwd ~env riot_binary_path args
+let run_riot = fun ctx ?cwd ?(env = []) args ->
+  let* riot_binary_path = Test.Context.require_binary ctx "riot" in
+  run_binary ?cwd ~env riot_binary_path args
 
 let expect_success = fun ~cmd (output: command_output) ->
   if Int.equal output.status 0 then
@@ -101,5 +102,6 @@ let with_initialized_workspace = fun ?(init_args = []) ctx workspace_name fn ->
     ~prefix:"riot_e2e_init_"
     (fun root ->
       let workspace_root = Path.(root / Path.v workspace_name) in
-      let* init_output = run_riot ctx ~cwd:root ("init" :: workspace_name :: init_args) in let* _ =
-        expect_success ~cmd:"riot init" init_output in fn workspace_root)
+      let* init_output = run_riot ctx ~cwd:root ("init" :: workspace_name :: init_args) in
+      let* _ = expect_success ~cmd:"riot init" init_output in
+      fn workspace_root)

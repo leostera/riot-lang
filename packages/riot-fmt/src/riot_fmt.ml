@@ -238,7 +238,15 @@ let explicit_targets = fun matches ->
 
 let no_event = fun (_: event) -> ()
 
-let run_mode = fun ?workspace ?(stdout = default_stdout) ?(stderr = default_stderr) ?(on_event = no_event) ~mode ~output_mode ~explicit_targets () ->
+let run_mode = fun
+  ?workspace
+  ?(stdout = default_stdout)
+  ?(stderr = default_stderr)
+  ?(on_event = no_event)
+  ~mode
+  ~output_mode
+  ~explicit_targets
+  () ->
   let stdout_writer = writer_of_emit stdout in
   let stderr_writer = writer_of_emit stderr in
   let root = resolve_root workspace in

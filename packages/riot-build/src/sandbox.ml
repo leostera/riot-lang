@@ -26,7 +26,12 @@ let absolute_path = fun path ->
     | Ok cwd -> Path.normalize Path.(cwd / path)
     | Error _ -> Path.normalize path
 
-let create = fun ~workspace ?(profile = "debug") ?(target = Riot_model.Riot_dirs.host_target ()) () ~package_name ->
+let create = fun
+  ~workspace
+  ?(profile = "debug")
+  ?(target = Riot_model.Riot_dirs.host_target ())
+  ()
+  ~package_name ->
   let sandbox_dir =
     Path.(Riot_model.Riot_dirs.sandbox_dir_in_workspace ~workspace ~profile ~target
     / sandbox_id ~package_name)
@@ -91,7 +96,16 @@ let cleanup = fun sandbox ->
   let _ = Fs.remove_dir_all sandbox.dir in
   ()
 
-let with_sandbox = fun ~workspace ?(profile = "debug") ?(target = Riot_model.Riot_dirs.host_target ()) ~package ~inputs ~depset ~store ~expected_outputs f ->
+let with_sandbox = fun
+  ~workspace
+  ?(profile = "debug")
+  ?(target = Riot_model.Riot_dirs.host_target ())
+  ~package
+  ~inputs
+  ~depset
+  ~store
+  ~expected_outputs
+  f ->
   let sandbox = create ~workspace ~profile ~target () ~package_name:package.Package.name in
   let _ = expected_outputs in
   prepare ~sandbox ~package ~inputs ~depset ~store;

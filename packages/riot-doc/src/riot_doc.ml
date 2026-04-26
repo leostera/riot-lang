@@ -92,7 +92,12 @@ let output_root = fun ~(workspace:Riot_model.Workspace.t) ~release ->
   let _ = release in
   Path.(workspace.target_dir_root / Path.v "doc")
 
-let package_output_dir = fun ~(workspace:Riot_model.Workspace.t) ~package_name ~version ~release ~output_root_opt ->
+let package_output_dir = fun
+  ~(workspace:Riot_model.Workspace.t)
+  ~package_name
+  ~version
+  ~release
+  ~output_root_opt ->
   let root =
     match output_root_opt with
     | Some override_root -> override_root
@@ -148,7 +153,10 @@ let find_lock_package = fun ~(package:Riot_model.Package.t) (lockfile: Riot_mode
       | [] -> None
       | lock_package :: _ -> Some lock_package
 
-let locked_dependency_versions = fun ~(workspace:Riot_model.Workspace.t) ~(package:Riot_model.Package.t) lockfile_opt ->
+let locked_dependency_versions = fun
+  ~(workspace:Riot_model.Workspace.t)
+  ~(package:Riot_model.Package.t)
+  lockfile_opt ->
   if not (Package.is_workspace_member package) then
     Ok []
   else
@@ -235,9 +243,10 @@ let documentation_dependencies = fun (package: Riot_model.Package.t) ->
       not
         (Package.is_builtin_dependency dependency))
 
-let map_dependencies = fun ~release ~(dependency_map:(Package_name.t * string) list) (
-  package: Riot_model.Package.t
-) ->
+let map_dependencies = fun
+  ~release
+  ~(dependency_map:(Package_name.t * string) list)
+  (package: Riot_model.Package.t) ->
   documentation_dependencies package
   |> List.unique
     ~compare:(fun (left: Riot_model.Package.dependency) (right: Riot_model.Package.dependency) ->
@@ -246,8 +255,10 @@ let map_dependencies = fun ~release ~(dependency_map:(Package_name.t * string) l
         right.name)
   |> List.fold_left
     ~init:(Ok [])
-    ~fn:(fun acc (dependency: Riot_model.Package.dependency) -> let* links = acc in let* link =
-      dependency_link_for ~release dependency_map dependency.name in Ok (link :: links))
+    ~fn:(fun acc (dependency: Riot_model.Package.dependency) ->
+      let* links = acc in
+      let* link = dependency_link_for ~release dependency_map dependency.name in
+      Ok (link :: links))
   |> Result.map ~fn:List.reverse
 
 let dependency_signature = fun dependency_map ->
@@ -287,7 +298,12 @@ let render_root_module_alias = fun () ->
   ^ "</body>\n"
   ^ "</html>\n"
 
-let cache_key = fun ~request ~(package:Riot_model.Package.t) ~package_version ~source_signature ~dependency_signature ->
+let cache_key = fun
+  ~request
+  ~(package:Riot_model.Package.t)
+  ~package_version
+  ~source_signature
+  ~dependency_signature ->
   let state = Crypto.Sha256.create () in
   Crypto.Sha256.write state generator_signature;
   Crypto.Sha256.write state (resolve_profile request.release);
@@ -410,13 +426,15 @@ let write_pages = fun ~output_dir package_doc ->
               Html.render_module package_doc module_doc
           in
           let source_body = Html.render_module_source package_doc module_doc in
-          let* () = write_output ~path body in let* () = write_output ~path:source_path source_body in
+          let* () = write_output ~path body in
+          let* () = write_output ~path:source_path source_body in
           Ok (source_path :: path :: paths))
 
 let write_index = fun ~output_dir package_doc ->
   let path = Path.(output_dir / Path.v "index.html") in
   let body = Html.render_index package_doc in
-  let* () = write_output ~path body in Ok path
+  let* () = write_output ~path body in
+  Ok path
 
 let package_doc_of_sources = fun ~package ~version ~dependencies sources ->
   let lookup = Source.build_lookup sources in
@@ -444,7 +462,13 @@ let package_doc_of_sources = fun ~package ~version ~dependencies sources ->
       in
       loop [] sources
 
-let run_for_package = fun ~on_event ~store ~cache_allowed ~request ~(package:Riot_model.Package.t) ~lockfile_opt ->
+let run_for_package = fun
+  ~on_event
+  ~store
+  ~cache_allowed
+  ~request
+  ~(package:Riot_model.Package.t)
+  ~lockfile_opt ->
   let* version = output_version ~release:request.release package in
   let output_dir =
     package_output_dir
@@ -457,7 +481,8 @@ let run_for_package = fun ~on_event ~store ~cache_allowed ~request ~(package:Rio
   let () = emit ~on_event (PackageGenerationStarted { package = package.name; version; output_dir }) in
   let result =
     let* sources =
-      Source.collect_interfaces ~workspace:request.workspace ~store ~release:request.release package in
+      Source.collect_interfaces ~workspace:request.workspace ~store ~release:request.release package
+    in
     if sources = [] then
       Error ("no interface files found for package " ^ Package_name.to_string package.name)
     else
@@ -478,7 +503,8 @@ let run_for_package = fun ~on_event ~store ~cache_allowed ~request ~(package:Rio
           ~package:(Package_name.to_string package.name)
           ~version
           ~dependencies
-          sources in
+          sources
+      in
       let cache_hit_ref = ref false in
       let* () =
         if cache_allowed && not request.force then
@@ -572,7 +598,8 @@ let run = fun ?on_event (request: request) ->
   packages
   |> List.fold_left
     ~init:(Ok [])
-    ~fn:(fun acc package -> let* summaries = acc in let* summary =
-      run_for_package ~on_event ~store ~cache_allowed ~request ~package ~lockfile_opt in
-    Ok (summary :: summaries))
+    ~fn:(fun acc package ->
+      let* summaries = acc in
+      let* summary = run_for_package ~on_event ~store ~cache_allowed ~request ~package ~lockfile_opt in
+      Ok (summary :: summaries))
   |> Result.map ~fn:List.reverse

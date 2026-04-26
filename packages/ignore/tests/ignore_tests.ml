@@ -323,11 +323,13 @@ let tests = [
           let* () =
             write
               Path.(net_dir / Path.v "udp_server.mli")
-              "type handler = socket:Udp_socket.t -> bytes -> unit\n" in
+              "type handler = socket:Udp_socket.t -> bytes -> unit\n"
+          in
           let* () =
             write
               Path.(net_dir / Path.v "udp_server.ml")
-              "type handler = socket:Udp_socket.t -> bytes -> unit\n" in
+              "type handler = socket:Udp_socket.t -> bytes -> unit\n"
+          in
           let* () = write Path.(native_dir / Path.v "shim.c") "int shim(void) { return 1; }\n" in
           let rec run iteration =
             if iteration = 0 then
@@ -378,7 +380,8 @@ let tests = [
             let* paths = collect_file_paths ~root:packages_root walker in
             collect ((label, paths) :: acc) rest
       in
-      let* labeled_sets = collect [] configs in compare_labeled_sets labeled_sets);
+      let* labeled_sets = collect [] configs in
+      compare_labeled_sets labeled_sets);
 ]
 
 let main ~args = Test.Cli.main ~name:"ignore_tests" ~tests ~args ()

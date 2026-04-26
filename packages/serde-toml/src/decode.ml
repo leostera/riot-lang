@@ -113,7 +113,9 @@ and record_mut_backend:
         step builder tag));
   finish builder
 
-and variant_backend: 'value. state -> 'value De.compiled_variant_cases -> 'value = fun state cases ->
+and variant_backend: 'value. state -> 'value De.compiled_variant_cases -> 'value = fun
+  state
+  cases ->
   let rec find_unit tag index =
     if Int.equal index (Array.length cases) then
       raise (Serde.Decode_error `invalid_tag)
@@ -190,9 +192,10 @@ and backend: state De.backend = {
   variant = variant_backend;
 }
 
-let from_string = fun decode input -> let open Result in
-let* document = Parse.parse_document input in
-De.run decode backend { current = Document.Table document }
+let from_string = fun decode input ->
+  let open Result in
+  let* document = Parse.parse_document input in
+  De.run decode backend { current = Document.Table document }
 
 let from_reader = fun decode reader ->
   let buffer = IO.Buffer.create ~size:256 in

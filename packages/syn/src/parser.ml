@@ -1331,7 +1331,13 @@ let consume_first_class_module_shell = fun p ->
     consume_balanced_until p ~closer:Syntax_kind.RPAREN 0;
   expect_closer p Syntax_kind.RPAREN ~opener:"("
 
-let rec parse_expression = fun p ~signature ~stop_at_item ?(stop_at_semi = false) ?(stop_at_comma = false) min_bp ->
+let rec parse_expression = fun
+  p
+  ~signature
+  ~stop_at_item
+  ?(stop_at_semi = false)
+  ?(stop_at_comma = false)
+  min_bp ->
   let rec loop lhs =
     if expression_boundary p ~stop_at_item ~stop_at_semi ~stop_at_comma ~signature then
       lhs
@@ -1993,7 +1999,13 @@ and parse_let_expr = fun p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma
       complete p marker Syntax_kind.LET_EXPR
     )
 
-and parse_binding_operator_expr = fun p marker ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma ->
+and parse_binding_operator_expr = fun
+  p
+  marker
+  ~signature
+  ~stop_at_item
+  ~stop_at_semi
+  ~stop_at_comma ->
   bump p;
   parse_let_binding p ~signature ~top_level:false;
   let rec parse_parallel_bindings () =

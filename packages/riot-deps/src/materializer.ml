@@ -61,7 +61,11 @@ let materialization_state = fun ~registry ~(pkg:Riot_model.Lockfile.package) ->
                   Needs_download
               )
 
-let ensure_registry_package = fun ?(emit = no_emit) ~registry ~(pkg:Riot_model.Lockfile.package) () ->
+let ensure_registry_package = fun
+  ?(emit = no_emit)
+  ~registry
+  ~(pkg:Riot_model.Lockfile.package)
+  () ->
   let event_package = pkg.id.name in
   let package = Riot_model.Package_name.to_string event_package in
   match pkg.id.version with

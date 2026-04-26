@@ -335,10 +335,19 @@ let promote = fun store hash ~target_dir ->
   List.fold_left
     manifest.files
     ~init:(Ok ())
-    ~fn:(fun acc entry -> let* () = acc in promote_one entry)
+    ~fn:(fun acc entry ->
+      let* () = acc in
+      promote_one entry)
 
 (** Store artifacts from sandbox to content-addressable store *)
-let store_artifacts = fun store ~package ?(ocamlc_warnings = []) ?(exports = []) hash sandbox_dir declared_outputs ->
+let store_artifacts = fun
+  store
+  ~package
+  ?(ocamlc_warnings = [])
+  ?(exports = [])
+  hash
+  sandbox_dir
+  declared_outputs ->
   let hash_dir = get_hash_dir store hash in
   let temp_dir = artifact_temp_dir store hash in
   let* () =
@@ -362,7 +371,8 @@ let store_artifacts = fun store ~package ?(ocamlc_warnings = []) ?(exports = [])
           copy_with_permissions
             ~src
             ~dst
-            ~copy_error:(fun cause -> CopyArtifactFailed { src; dst; cause }) in
+            ~copy_error:(fun cause -> CopyArtifactFailed { src; dst; cause })
+        in
         let* metadata =
           Fs.metadata dst
           |> Result.map_err ~fn:(fun cause -> MetadataReadFailed { path = dst; cause })
@@ -528,4 +538,9 @@ let materialize_package_exports = fun store ~exports ~target_dir ->
         | Ok false
         | Error _ -> Error (ExportSourceMissing { path = src })
   in
-  List.fold_left exports ~init:(Ok ()) ~fn:(fun acc entry -> let* () = acc in copy_one entry)
+  List.fold_left
+    exports
+    ~init:(Ok ())
+    ~fn:(fun acc entry ->
+      let* () = acc in
+      copy_one entry)

@@ -3,7 +3,16 @@ open Gooey
 
 let rect = fun ~x ~y ~width ~height -> Geometry.Rect.make ~x ~y ~width ~height
 
-let text_command = fun ?(z = 0) ?(size = 12) ?(weight = Style.Normal) ?(decoration = Style.NoDecoration) ?(color = `rgb (255, 255, 255)) ~x ~y ~width content ->
+let text_command = fun
+  ?(z = 0)
+  ?(size = 12)
+  ?(weight = Style.Normal)
+  ?(decoration = Style.NoDecoration)
+  ?(color = `rgb (255, 255, 255))
+  ~x
+  ~y
+  ~width
+  content ->
   {
     Render.bounding_box = rect ~x ~y ~width ~height:1.0;
     command_type =

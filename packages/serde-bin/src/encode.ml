@@ -154,11 +154,17 @@ let encode_u32 = fun kind value ->
 
 let variant_uses_u8 = fun cases -> int_le (Array.length cases) 0x100
 
-let rec list_backend: 'value. state -> 'value Serde.Ser.t -> 'value vec -> unit = fun state encode values ->
+let rec list_backend: 'value. state -> 'value Serde.Ser.t -> 'value vec -> unit = fun
+  state
+  encode
+  values ->
   write_uint32_le state (encode_u32 "list" (Vector.len values));
   Vector.for_each values ~fn:(fun value -> encode.run backend state value)
 
-and array_backend: 'value. state -> 'value Serde.Ser.t -> 'value array -> unit = fun state encode values ->
+and array_backend: 'value. state -> 'value Serde.Ser.t -> 'value array -> unit = fun
+  state
+  encode
+  values ->
   let len = Array.length values in
   write_uint32_le state (encode_u32 "array" len);
   for index = 0 to len - 1 do
@@ -168,13 +174,19 @@ and array_backend: 'value. state -> 'value Serde.Ser.t -> 'value array -> unit =
       (Array.get_unchecked values ~at:index)
   done
 
-and record_backend: 'value. state -> 'value Serde.Ser.fields -> 'value -> unit = fun state fields value ->
+and record_backend: 'value. state -> 'value Serde.Ser.fields -> 'value -> unit = fun
+  state
+  fields
+  value ->
   for index = 0 to Array.length fields - 1 do
     match Array.get_unchecked fields ~at:index with
     | Serde.Ser.Field (_name, encode, get) -> encode.run backend state (get value)
   done
 
-and variant_backend: 'value. state -> 'value Serde.Ser.variant_cases -> 'value -> unit = fun state cases value ->
+and variant_backend: 'value. state -> 'value Serde.Ser.variant_cases -> 'value -> unit = fun
+  state
+  cases
+  value ->
   let compact_tag = variant_uses_u8 cases in
   let rec loop index =
     if Int.equal index (Array.length cases) then
@@ -231,11 +243,17 @@ and backend: state Serde.Ser.backend = {
   variant = variant_backend;
 }
 
-let rec size_list_backend: 'value. size_state -> 'value Serde.Ser.t -> 'value vec -> unit = fun state encode values ->
+let rec size_list_backend: 'value. size_state -> 'value Serde.Ser.t -> 'value vec -> unit = fun
+  state
+  encode
+  values ->
   state.bytes_written <- state.bytes_written + 4;
   Vector.for_each values ~fn:(fun value -> encode.run size_backend state value)
 
-and size_array_backend: 'value. size_state -> 'value Serde.Ser.t -> 'value array -> unit = fun state encode values ->
+and size_array_backend: 'value. size_state -> 'value Serde.Ser.t -> 'value array -> unit = fun
+  state
+  encode
+  values ->
   state.bytes_written <- state.bytes_written + 4;
   for index = 0 to Array.length values - 1 do
     encode.run
@@ -244,13 +262,19 @@ and size_array_backend: 'value. size_state -> 'value Serde.Ser.t -> 'value array
       (Array.get_unchecked values ~at:index)
   done
 
-and size_record_backend: 'value. size_state -> 'value Serde.Ser.fields -> 'value -> unit = fun state fields value ->
+and size_record_backend: 'value. size_state -> 'value Serde.Ser.fields -> 'value -> unit = fun
+  state
+  fields
+  value ->
   for index = 0 to Array.length fields - 1 do
     match Array.get_unchecked fields ~at:index with
     | Serde.Ser.Field (_name, encode, get) -> encode.run size_backend state (get value)
   done
 
-and size_variant_backend: 'value. size_state -> 'value Serde.Ser.variant_cases -> 'value -> unit = fun state cases value ->
+and size_variant_backend: 'value. size_state -> 'value Serde.Ser.variant_cases -> 'value -> unit = fun
+  state
+  cases
+  value ->
   let tag_size =
     if variant_uses_u8 cases then
       1

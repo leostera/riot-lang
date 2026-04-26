@@ -19,7 +19,11 @@ let make_package = fun name ->
     ~relative_path:(Path.v ".")
     ()
 
-let make_src_graph_builder = fun ~package_root ~(package:Riot_model.Package.t) ~toolchain ~workspace ->
+let make_src_graph_builder = fun
+  ~package_root
+  ~(package:Riot_model.Package.t)
+  ~toolchain
+  ~workspace ->
   let namespace =
     match package.library with
     | Some _ -> Namespace.empty

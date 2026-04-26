@@ -356,6 +356,6 @@ let do_build = fun context ->
   emit_returning_results context ~result_count:(List.length all_results) ~had_partial_failure;
   Ok all_results
 
-let execute = fun ?(allow_partial_failures = false) ?(record_cache_generation = true) build spec -> let* context =
-  make_context ~allow_partial_failures ~record_cache_generation build spec in
-with_telemetry_bridge context (fun () -> do_build context)
+let execute = fun ?(allow_partial_failures = false) ?(record_cache_generation = true) build spec ->
+  let* context = make_context ~allow_partial_failures ~record_cache_generation build spec in
+  with_telemetry_bridge context (fun () -> do_build context)

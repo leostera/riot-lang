@@ -555,10 +555,13 @@ module Ast_deps = struct
     A.Node.for_each_child_node node ~fn:(fun child -> acc := fn !acc child);
     !acc
 
-  let collect_child_nodes = fun collect env deps node -> fold_child_nodes
-    node
-    (Ok deps)
-    (fun acc child -> let* deps = acc in collect env deps child)
+  let collect_child_nodes = fun collect env deps node ->
+    fold_child_nodes
+      node
+      (Ok deps)
+      (fun acc child ->
+        let* deps = acc in
+        collect env deps child)
 
   let collect_direct_type_payload_paths = fun env deps node ->
     let count = A.Node.child_count node in
@@ -666,12 +669,17 @@ module Ast_deps = struct
     | Syntax_kind.OPAQUE_TYPE ->
         Ok (collect_direct_module_accesses_between env deps node 0 (A.Node.child_count node))
     | Syntax_kind.STRUCTURE_ITEM ->
-        let* (deps, _, _) = collect_structure_item env deps Env.empty node in Ok deps
+        let* (deps, _, _) = collect_structure_item env deps Env.empty node in
+        Ok deps
     | Syntax_kind.SIGNATURE_ITEM ->
-        let* (deps, _, _) = collect_signature_item env deps Env.empty node in Ok deps
+        let* (deps, _, _) = collect_signature_item env deps Env.empty node in
+        Ok deps
     | Syntax_kind.MODULE_DECL ->
-        let* (deps, _, _) = collect_module_decl env deps Env.empty node in Ok deps
-    | Syntax_kind.MODULE_TYPE_DECL -> let* deps = collect_module_type_decl env deps node in Ok deps
+        let* (deps, _, _) = collect_module_decl env deps Env.empty node in
+        Ok deps
+    | Syntax_kind.MODULE_TYPE_DECL ->
+        let* deps = collect_module_type_decl env deps node in
+        Ok deps
     | _ -> collect_child_nodes collect_node env deps node
 
   and collect_local_open env deps node =
@@ -729,7 +737,9 @@ module Ast_deps = struct
           Vector.iter parameters
           |> Iterator.fold
             ~init:(Ok deps)
-            ~fn:(fun parameter acc -> let* deps = acc in collect_node env deps parameter)
+            ~fn:(fun parameter acc ->
+              let* deps = acc in
+              collect_node env deps parameter)
         in
         let* deps =
           match A.LetBinding.type_annotation binding with
@@ -826,7 +836,8 @@ module Ast_deps = struct
       else
         match child_node_at node index with
         | Some child ->
-            let* deps = collect_node env deps child in collect_patterns (index + 1) stop deps
+            let* deps = collect_node env deps child in
+            collect_patterns (index + 1) stop deps
         | None -> collect_patterns (index + 1) stop deps
     in
     let rec bind_patterns index stop env =
@@ -866,16 +877,22 @@ module Ast_deps = struct
     | Syntax_kind.PAREN_MODULE_EXPR -> (
         match first_child_node_matching node ~matches:is_module_expr_kind with
         | Some inner -> module_binding env deps inner
-        | None -> let* deps = collect_node env deps node in Ok (deps, Env.bound)
+        | None ->
+            let* deps = collect_node env deps node in
+            Ok (deps, Env.bound)
       )
     | Syntax_kind.FUNCTOR_MODULE_EXPR
     | Syntax_kind.APPLY_MODULE_EXPR
     | Syntax_kind.OPAQUE_MODULE_EXPR ->
-        let* deps = collect_node env deps node in Ok (deps, Env.bound)
-    | _ -> let* deps = collect_node env deps node in Ok (deps, Env.bound)
+        let* deps = collect_node env deps node in
+        Ok (deps, Env.bound)
+    | _ ->
+        let* deps = collect_node env deps node in
+        Ok (deps, Env.bound)
 
-  and collect_module_expression env deps node = let* (deps, _) = module_binding env deps node in
-  Ok deps
+  and collect_module_expression env deps node =
+    let* (deps, _) = module_binding env deps node in
+    Ok deps
 
   and module_type_binding env deps node =
     let node = unwrap_module_type node in
@@ -900,11 +917,15 @@ module Ast_deps = struct
     | Syntax_kind.FUNCTOR_MODULE_TYPE
     | Syntax_kind.WITH_MODULE_TYPE
     | Syntax_kind.OPAQUE_MODULE_TYPE ->
-        let* deps = collect_node env deps node in Ok (deps, Env.bound)
-    | _ -> let* deps = collect_node env deps node in Ok (deps, Env.bound)
+        let* deps = collect_node env deps node in
+        Ok (deps, Env.bound)
+    | _ ->
+        let* deps = collect_node env deps node in
+        Ok (deps, Env.bound)
 
-  and collect_module_type env deps node = let* (deps, _) = module_type_binding env deps node in
-  Ok deps
+  and collect_module_type env deps node =
+    let* (deps, _) = module_type_binding env deps node in
+    Ok deps
 
   and collect_functor_head env deps member =
     let module Member = A.ModuleDeclaration.Member in
@@ -1014,7 +1035,10 @@ module Ast_deps = struct
         A.ModuleDeclaration.fold_members
           node
           (Ok deps)
-          (fun acc member -> let* deps = acc in collect_module_member_rhs env deps member) in
+          (fun acc member ->
+            let* deps = acc in
+            collect_module_member_rhs env deps member)
+      in
       Ok (deps, env, bindings)
     else
       A.ModuleDeclaration.fold_members
@@ -1093,12 +1117,17 @@ module Ast_deps = struct
     | Some decl when node_kind_is decl Syntax_kind.MODULE_DECL ->
         collect_module_decl env deps bindings decl
     | Some decl when node_kind_is decl Syntax_kind.MODULE_TYPE_DECL ->
-        let* deps = collect_module_type_decl env deps decl in Ok (deps, env, bindings)
+        let* deps = collect_module_type_decl env deps decl in
+        Ok (deps, env, bindings)
     | Some decl when node_kind_is decl Syntax_kind.OPEN_DECL ->
-        let* (deps, env) = collect_open_decl env deps decl in Ok (deps, env, bindings)
+        let* (deps, env) = collect_open_decl env deps decl in
+        Ok (deps, env, bindings)
     | Some decl when node_kind_is decl Syntax_kind.INCLUDE_DECL ->
-        let* (deps, env) = collect_include_structure env deps decl in Ok (deps, env, bindings)
-    | Some decl -> let* deps = collect_node env deps decl in Ok (deps, env, bindings)
+        let* (deps, env) = collect_include_structure env deps decl in
+        Ok (deps, env, bindings)
+    | Some decl ->
+        let* deps = collect_node env deps decl in
+        Ok (deps, env, bindings)
     | None -> Ok (deps, env, bindings)
 
   and collect_signature_item env deps bindings item =
@@ -1106,12 +1135,17 @@ module Ast_deps = struct
     | Some decl when node_kind_is decl Syntax_kind.MODULE_DECL ->
         collect_module_decl env deps bindings decl
     | Some decl when node_kind_is decl Syntax_kind.MODULE_TYPE_DECL ->
-        let* deps = collect_module_type_decl env deps decl in Ok (deps, env, bindings)
+        let* deps = collect_module_type_decl env deps decl in
+        Ok (deps, env, bindings)
     | Some decl when node_kind_is decl Syntax_kind.OPEN_DECL ->
-        let* (deps, env) = collect_open_decl env deps decl in Ok (deps, env, bindings)
+        let* (deps, env) = collect_open_decl env deps decl in
+        Ok (deps, env, bindings)
     | Some decl when node_kind_is decl Syntax_kind.INCLUDE_DECL ->
-        let* (deps, env) = collect_include_signature env deps decl in Ok (deps, env, bindings)
-    | Some decl -> let* deps = collect_node env deps decl in Ok (deps, env, bindings)
+        let* (deps, env) = collect_include_signature env deps decl in
+        Ok (deps, env, bindings)
+    | Some decl ->
+        let* deps = collect_node env deps decl in
+        Ok (deps, env, bindings)
     | None -> Ok (deps, env, bindings)
 
   and collect_structure_binding env deps node =
@@ -1141,8 +1175,9 @@ module Ast_deps = struct
     let deps = add_names deps (Env.collect_free (Env.make_node exports)) in
     Ok (deps, env, exports)
 
-  let finalize_intf = fun env intf -> let* (deps, env, exports) =
-    collect_signature_binding env (DepSet.empty ()) intf in Ok (deps, env, exports)
+  let finalize_intf = fun env intf ->
+    let* (deps, env, exports) = collect_signature_binding env (DepSet.empty ()) intf in
+    Ok (deps, env, exports)
 
   let of_parse_result = fun ~env result ->
     match A.SourceFile.view (A.SourceFile.make result.Parser.tree) with

@@ -179,15 +179,14 @@ let get_stats = fun state ->
     `Waiting waiting;
   ]
 
-let pool_supervisor = fun (
-  Config {
+let pool_supervisor = fun
+  (Config {
     min_connections;
     max_connections;
     idle_timeout;
     max_lifetime;
     _
-  } as config
-) ->
+  } as config) ->
   let state = {
     connections = Cell.create [];
     waiting = Queue.create ();

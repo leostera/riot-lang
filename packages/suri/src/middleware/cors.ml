@@ -20,7 +20,14 @@ let get_response_origin = fun origins origin credentials ->
     origin
 
 (** CORS middleware with simple configuration *)
-let middleware = fun ~origins ?(methods = [Net.Http.Method.Put; Patch; Delete]) ?(headers = []) ?(credentials = false) ?(expose = []) ?max_age () ->
+let middleware = fun
+  ~origins
+  ?(methods = [Net.Http.Method.Put; Patch; Delete])
+  ?(headers = [])
+  ?(credentials = false)
+  ?(expose = [])
+  ?max_age
+  () ->
   (* Validate configuration *)
   let () =
     if List.contains origins ~value:"*" && credentials then

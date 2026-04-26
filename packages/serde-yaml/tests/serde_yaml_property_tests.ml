@@ -441,26 +441,25 @@ let berth_arb = Arbitrary.make ~print:print_berth berth_gen
 
 let sample_gen =
   Generator.map3
-    (fun (((ready, count), small), (big, ratio)) (label, alias, tags) (
-      scores,
-      mode,
-      companion,
-      home
-    ) -> ({
-      ready;
-      count;
-      small;
-      big;
-      ratio;
-      label;
-      alias;
-      mode;
-      companion;
-      marker = ();
-      home;
-      tags;
-      scores;
-    }: sample))
+    (fun
+      (((ready, count), small), (big, ratio))
+      (label, alias, tags)
+      (scores, mode, companion, home) ->
+      ({
+        ready;
+        count;
+        small;
+        big;
+        ratio;
+        label;
+        alias;
+        mode;
+        companion;
+        marker = ();
+        home;
+        tags;
+        scores;
+      }: sample))
     (Generator.pair
       (Generator.pair (Generator.pair Generator.bool Generator.int) Generator.int32)
       (Generator.pair Generator.int64 finite_float_gen))

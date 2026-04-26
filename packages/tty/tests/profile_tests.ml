@@ -17,12 +17,16 @@ let with_env = fun bindings fn ->
   let saved = List.map bindings ~fn:(fun (name, _) -> (name, Env.get Env.String ~var:name)) in
   let rec apply = function
     | [] -> Ok ()
-    | (name, value_opt) :: rest -> let* () = apply_env_value name value_opt in apply rest
+    | (name, value_opt) :: rest ->
+        let* () = apply_env_value name value_opt in
+        apply rest
   in
   let restore () = apply saved in
   let* () = apply bindings in
   match fn () with
-  | Ok value -> let* () = restore () in Ok value
+  | Ok value ->
+      let* () = restore () in
+      Ok value
   | Error error ->
       let _ = restore () in
       Error error

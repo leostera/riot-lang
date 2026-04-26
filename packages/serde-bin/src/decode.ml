@@ -295,7 +295,9 @@ and record_mut_backend:
   done;
   finish builder
 
-and variant_backend: 'value. state -> 'value De.compiled_variant_cases -> 'value = fun state cases ->
+and variant_backend: 'value. state -> 'value De.compiled_variant_cases -> 'value = fun
+  state
+  cases ->
   let index =
     if variant_uses_u8 cases then
       Char.code (read_byte state "variant")

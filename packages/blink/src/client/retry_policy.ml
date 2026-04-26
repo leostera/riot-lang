@@ -9,7 +9,12 @@ type policy = {
   jitter_nanos: int64;
 }
 
-let make = fun ?(max_attempts = 3) ?(base_delay = Time.Duration.from_millis 100) ?(max_delay = Time.Duration.from_secs 2) ?(jitter_nanos = 25_000_000L) () ->
+let make = fun
+  ?(max_attempts = 3)
+  ?(base_delay = Time.Duration.from_millis 100)
+  ?(max_delay = Time.Duration.from_secs 2)
+  ?(jitter_nanos = 25_000_000L)
+  () ->
   {
     max_attempts = Int.max 1 max_attempts;
     base_delay;

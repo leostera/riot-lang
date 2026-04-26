@@ -23,8 +23,9 @@ let validate_parts = fun ~secs:_ ~nanos ->
     (Common.validate_nanos nanos)
     ~fn:(fun () -> InvalidNanoseconds { nanos })
 
-let from_parts = fun ~secs ~nanos -> let* () = validate_parts ~secs ~nanos in
-Result.Ok { secs; nanos }
+let from_parts = fun ~secs ~nanos ->
+  let* () = validate_parts ~secs ~nanos in
+  Result.Ok { secs; nanos }
 
 let to_parts = fun value -> (value.secs, value.nanos)
 
@@ -32,9 +33,11 @@ let secs = fun value -> value.secs
 
 let subsec_nanos = fun value -> value.nanos
 
-let now = fun () -> let* (secs, nanos) =
-  Result.map_err (FFI.now ()) ~fn:(fun code -> System (System_error.from_code code)) in
-from_parts ~secs ~nanos
+let now = fun () ->
+  let* (secs, nanos) =
+    Result.map_err (FFI.now ()) ~fn:(fun code -> System (System_error.from_code code))
+  in
+  from_parts ~secs ~nanos
 
 let compare = fun left right ->
   Common.compare_parts

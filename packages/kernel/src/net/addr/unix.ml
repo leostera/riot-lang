@@ -85,7 +85,8 @@ let resolve_all = fun ~kind ~host ~port ->
   | Some addrs -> Result.Ok addrs
   | None ->
       let* raw_addrs =
-        Result.map_err (FFI.resolve host port kind) ~fn:(resolver_error_of_code ~host) in
+        Result.map_err (FFI.resolve host port kind) ~fn:(resolver_error_of_code ~host)
+      in
       if Array.length raw_addrs = 0 then
         Result.Error (NoAddressesFound { host; port })
       else
@@ -103,10 +104,12 @@ let resolve_all = fun ~kind ~host ~port ->
 
 let resolve_stream = fun ~host ~port -> resolve_all ~kind:resolver_kind_stream ~host ~port
 
-let resolve_first_stream = fun ~host ~port -> let* addrs = resolve_stream ~host ~port in
-Result.Ok (Array.get_unchecked addrs ~at:0)
+let resolve_first_stream = fun ~host ~port ->
+  let* addrs = resolve_stream ~host ~port in
+  Result.Ok (Array.get_unchecked addrs ~at:0)
 
 let resolve_datagram = fun ~host ~port -> resolve_all ~kind:resolver_kind_datagram ~host ~port
 
-let resolve_first_datagram = fun ~host ~port -> let* addrs = resolve_datagram ~host ~port in
-Result.Ok (Array.get_unchecked addrs ~at:0)
+let resolve_first_datagram = fun ~host ~port ->
+  let* addrs = resolve_datagram ~host ~port in
+  Result.Ok (Array.get_unchecked addrs ~at:0)

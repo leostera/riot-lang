@@ -48,7 +48,14 @@ type child_spec = {
   significant: bool;
 }
 
-let child_spec = fun ~id ~start ?(restart = Permanent) ?(shutdown = Timeout (Time.Duration.from_secs 5)) ?(child_type = Worker) ?(significant = false) () ->
+let child_spec = fun
+  ~id
+  ~start
+  ?(restart = Permanent)
+  ?(shutdown = Timeout (Time.Duration.from_secs 5))
+  ?(child_type = Worker)
+  ?(significant = false)
+  () ->
   {
     id;
     start;
@@ -846,7 +853,12 @@ module Dynamic = struct
 
   let start = fun ?intensity ?max_children () -> spawn (init_dynamic intensity max_children)
 
-  let start_child = fun supervisor ~start ?(restart = Permanent) ?(shutdown = Timeout (Time.Duration.from_secs 5)) () ->
+  let start_child = fun
+    supervisor
+    ~start
+    ?(restart = Permanent)
+    ?(shutdown = Timeout (Time.Duration.from_secs 5))
+    () ->
     send
       supervisor
       (

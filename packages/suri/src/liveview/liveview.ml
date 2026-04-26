@@ -144,9 +144,12 @@ module ComponentProcess = struct
         send t.handler_pid (RenderPatch patch);
         loop t
 
-  let start_link = fun handler_pid (type s m a) (
-    (module C : Component with type state = s and type msg = m and type args = a)
-  ) conn (args: a) ->
+  let start_link = fun
+    handler_pid
+    (type s m a)
+    ((module C : Component with type state = s and type msg = m and type args = a))
+    conn
+    (args: a) ->
     spawn_link
       (fun () ->
         Log.info "Component process started";
@@ -499,7 +502,9 @@ let html_template = fun ~element_id ~ws_path ?title ?styles initial_content ->
      ]
    ]}
 *)
-let serve_runtime ?(prefix = "/assets/liveview.js") (): Middleware.Pipeline.middleware = fun ~conn ~next ->
+let serve_runtime ?(prefix = "/assets/liveview.js") (): Middleware.Pipeline.middleware = fun
+  ~conn
+  ~next ->
   let req_path = Middleware.Conn.uri conn in
   if req_path = prefix then
     conn
@@ -513,9 +518,10 @@ let serve_runtime ?(prefix = "/assets/liveview.js") (): Middleware.Pipeline.midd
 (* Pass to next middleware *)
 (** Create a LiveView mount handler *)
 
-let mount = fun (type s m) ((module C : Component with type state = s and type msg = m)) (
-  conn: Middleware.Conn.t
-) ->
+let mount = fun
+  (type s m)
+  ((module C : Component with type state = s and type msg = m))
+  (conn: Middleware.Conn.t) ->
   let module M = MountHandler (C) in
   let opts = Channel.Handler.{ do_upgrade = true } in
   (opts, Channel.Handler.make (module M) conn)

@@ -51,7 +51,10 @@ let make_workspace = fun packages ->
 
 let panic_unexpected = fun label -> panic ("unexpected publish dependency call: " ^ label)
 
-let make_deps = fun ?(workspace_publish_order = fun ~packages -> Ok packages) ?(published_version_exists = fun ~registry:_ ~package_name:_ ~version:_ -> Ok false) () ->
+let make_deps = fun
+  ?(workspace_publish_order = fun ~packages -> Ok packages)
+  ?(published_version_exists = fun ~registry:_ ~package_name:_ ~version:_ -> Ok false)
+  () ->
   Riot_publish.For_test.{
     resolve_registry = (fun () -> Ok (make_registry ()));
     load_api_token = (fun ~registry_name:_ -> Ok "token");

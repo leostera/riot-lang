@@ -336,11 +336,14 @@ module Parser = struct
         if pos + 7 >= String.length s || not (has_char s (pos + 7) '-') then
           None
         else
-          let* day = parse_2digits s (pos + 8) in Some (year, month, day, pos + 10)
+          let* day = parse_2digits s (pos + 8) in
+          Some (year, month, day, pos + 10)
     else
       (* YYYYMMDD *)
-      let* year = parse_4digits s pos in let* month = parse_2digits s (pos + 4) in let* day =
-        parse_2digits s (pos + 6) in Some (year, month, day, pos + 8)
+      let* year = parse_4digits s pos in
+      let* month = parse_2digits s (pos + 4) in
+      let* day = parse_2digits s (pos + 6) in
+      Some (year, month, day, pos + 8)
 
   (* Parse time component: HH:MM:SS or HHMMSS *)
 
@@ -354,11 +357,14 @@ module Parser = struct
         if pos + 5 >= String.length s || not (has_char s (pos + 5) ':') then
           None
         else
-          let* second = parse_2digits s (pos + 6) in Some (hour, minute, second, pos + 8)
+          let* second = parse_2digits s (pos + 6) in
+          Some (hour, minute, second, pos + 8)
     else
       (* HHMMSS *)
-      let* hour = parse_2digits s pos in let* minute = parse_2digits s (pos + 2) in let* second =
-        parse_2digits s (pos + 4) in Some (hour, minute, second, pos + 6)
+      let* hour = parse_2digits s pos in
+      let* minute = parse_2digits s (pos + 2) in
+      let* second = parse_2digits s (pos + 4) in
+      Some (hour, minute, second, pos + 6)
 
   (* Parse microseconds (fractional seconds) *)
 
@@ -412,11 +418,13 @@ module Parser = struct
       let has_colon = pos + 3 < len && has_char s (pos + 3) ':' in
       let tz_result =
         if has_colon then
-          let* h = parse_2digits s (pos + 1) in let* m = parse_2digits s (pos + 4) in
+          let* h = parse_2digits s (pos + 1) in
+          let* m = parse_2digits s (pos + 4) in
           Some (h, m, pos + 6)
         else
           (* ±HHMM *)
-          let* h = parse_2digits s (pos + 1) in let* m = parse_2digits s (pos + 3) in
+          let* h = parse_2digits s (pos + 1) in
+          let* m = parse_2digits s (pos + 3) in
           Some (h, m, pos + 5)
       in
       match tz_result with

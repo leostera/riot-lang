@@ -70,9 +70,10 @@ let alias_target_path = fun ~alias_name ~module_path path ->
   in
   SurfacePath.append_path module_path suffix
 
-let definition_target_of_binding_ref_in_tree = fun ~(source:Source.t) ~semantic_tree (
-  binding_ref: Check_result.binding_ref
-) ->
+let definition_target_of_binding_ref_in_tree = fun
+  ~(source:Source.t)
+  ~semantic_tree
+  (binding_ref: Check_result.binding_ref) ->
   match binding_ref.provenance with
   | Check_result.LoweredPattern pat_id -> (
       match semantic_tree with

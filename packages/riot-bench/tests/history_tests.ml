@@ -35,7 +35,18 @@ let sample_stats = fun nanos ->
     gc = { minor_collections = 1; major_collections = 0; compactions = 0 };
   }
 
-let stats = fun ?(minor_collections = 1) ?(major_collections = 0) ?(compactions = 0) ~min ~max ~mean ~median ~std_dev ~iterations ~total_time () ->
+let stats = fun
+  ?(minor_collections = 1)
+  ?(major_collections = 0)
+  ?(compactions = 0)
+  ~min
+  ~max
+  ~mean
+  ~median
+  ~std_dev
+  ~iterations
+  ~total_time
+  () ->
   {
     Riot_bench.History.min = Time.Duration.from_nanos min;
     max = Time.Duration.from_nanos max;

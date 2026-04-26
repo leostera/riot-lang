@@ -46,9 +46,9 @@ type plan_error =
       errors: Workspace_manager.load_error list;
     }
 
-let manifest_dependency_names_for_scope = fun (scope: Package_graph.build_scope) (
-  pkg: Package_manifest.t
-) ->
+let manifest_dependency_names_for_scope = fun
+  (scope: Package_graph.build_scope)
+  (pkg: Package_manifest.t) ->
   let dependency_name (dep: Package.dependency) = dep.name in
   match scope with
   | Package_graph.Build -> List.map pkg.build_dependencies ~fn:dependency_name
@@ -86,7 +86,10 @@ let target_missing_package_names = fun ~(workspace:Workspace.t) target ->
   |> List.sort ~compare:Package_name.compare
   |> List.unique ~compare:Package_name.compare
 
-let filter_workspace_for_target = fun ~(workspace:Workspace.t) ~target ~(scope:Package_graph.build_scope) ->
+let filter_workspace_for_target = fun
+  ~(workspace:Workspace.t)
+  ~target
+  ~(scope:Package_graph.build_scope) ->
   match target with
   | All -> workspace
   | Package _
@@ -117,7 +120,12 @@ let filter_workspace_for_target = fun ~(workspace:Workspace.t) ~target ~(scope:P
           ~fn:(fun (pkg: Package_manifest.t) -> HashSet.contains seen ~value:pkg.name);
       }
 
-let plan_workspace = fun ~(workspace:Workspace.t) ~target ~(scope:Package_graph.build_scope) ~load_errors ~dev_artifacts ->
+let plan_workspace = fun
+  ~(workspace:Workspace.t)
+  ~target
+  ~(scope:Package_graph.build_scope)
+  ~load_errors
+  ~dev_artifacts ->
   (* Check for package load errors first *)
   if List.length load_errors > 0 then
     Error (PackageLoadFailed { errors = load_errors })

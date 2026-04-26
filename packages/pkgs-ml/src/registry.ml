@@ -353,8 +353,8 @@ let bool_field = fun ~context ~field fields ->
 let published_artifact_location_of_json = fun ~context json ->
   match json with
   | Data.Json.Object fields ->
-      let* key = string_field ~context ~field:"key" fields in let* url =
-        string_field_with_fallback ~context ~field:"url" ~fallback:"cdn_url" fields in
+      let* key = string_field ~context ~field:"key" fields in
+      let* url = string_field_with_fallback ~context ~field:"url" ~fallback:"cdn_url" fields in
       Ok { key; url }
   | _ -> Error (context ^ " must be an object")
 
@@ -385,29 +385,36 @@ let published_release_of_json = fun json ->
   match json with
   | Data.Json.Object fields ->
       let* artifact_sha256 =
-        string_field ~context:"publish response" ~field:"artifact_sha256" fields in
+        string_field ~context:"publish response" ~field:"artifact_sha256" fields
+      in
       let* package_name = string_field ~context:"publish response" ~field:"package_name" fields in
       let* package_version =
-        string_field ~context:"publish response" ~field:"package_version" fields in
+        string_field ~context:"publish response" ~field:"package_version" fields
+      in
       let* manifest_json = object_field ~context:"publish response" ~field:"manifest" fields in
       let* source_archive_json =
-        object_field ~context:"publish response" ~field:"source_archive" fields in
+        object_field ~context:"publish response" ~field:"source_archive" fields
+      in
       let* claim_json = object_field ~context:"publish response" ~field:"claim" fields in
       let* release_json = object_field ~context:"publish response" ~field:"release" fields in
       let* materialization_json =
-        object_field ~context:"publish response" ~field:"materialization" fields in
+        object_field ~context:"publish response" ~field:"materialization" fields
+      in
       let* manifest =
-        published_artifact_location_of_json ~context:"publish response.manifest" manifest_json in
+        published_artifact_location_of_json ~context:"publish response.manifest" manifest_json
+      in
       let* source_archive =
         published_artifact_location_of_json
           ~context:"publish response.source_archive"
-          source_archive_json in
+          source_archive_json
+      in
       let* claim = published_record_of_json ~context:"publish response.claim" claim_json in
       let* release = published_record_of_json ~context:"publish response.release" release_json in
       let* materialization =
         published_materialization_of_json
           ~context:"publish response.materialization"
-          materialization_json in
+          materialization_json
+      in
       Ok {
         artifact_sha256;
         package_name;
@@ -428,7 +435,8 @@ let yanked_release_of_json = fun json ->
       let* yanked = bool_field ~context:"yank response" ~field:"yanked" fields in
       let* yanked_at = optional_string_field ~context:"yank response" ~field:"yanked_at" fields in
       let* yanked_by_github_login =
-        optional_string_field ~context:"yank response" ~field:"yanked_by_github_login" fields in
+        optional_string_field ~context:"yank response" ~field:"yanked_by_github_login" fields
+      in
       Ok {
         package_name;
         package_version;
@@ -474,9 +482,9 @@ let search_url = fun ~registry_name ~query ~limit ->
 let search_result_of_json = fun json ->
   match json with
   | Data.Json.Object fields ->
-      let* package_name = string_field ~context:"search result" ~field:"package_name" fields in let* latest_version =
-        string_field ~context:"search result" ~field:"latest_version" fields in let* description =
-        optional_string_field ~context:"search result" ~field:"description" fields in
+      let* package_name = string_field ~context:"search result" ~field:"package_name" fields in
+      let* latest_version = string_field ~context:"search result" ~field:"latest_version" fields in
+      let* description = optional_string_field ~context:"search result" ~field:"description" fields in
       Ok { package_name; latest_version; description }
   | _ -> Error "search result must be an object"
 
@@ -488,7 +496,8 @@ let search_results_of_json = fun json ->
           let rec loop acc = function
             | [] -> Ok (List.reverse acc)
             | value :: rest ->
-                let* result = search_result_of_json value in loop (result :: acc) rest
+                let* result = search_result_of_json value in
+                loop (result :: acc) rest
           in
           loop [] values
       | Ok _ -> Error "search response.results must be an array"
@@ -653,10 +662,10 @@ let search_packages = fun registry ~query ?(limit = 5) () ->
             || String.starts_with ~prefix:normalized_query normalized_name
             || String.contains normalized_name normalized_query)
         |> List.sort
-          ~compare:(fun (left: Sparse_index.package_document) (right: Sparse_index.package_document) ->
-            String.compare
-              left.name
-              right.name)
+          ~compare:(fun
+            (left: Sparse_index.package_document)
+            (right: Sparse_index.package_document) ->
+            String.compare left.name right.name)
         |> take limit
         |> List.map
           ~fn:(fun (document: Sparse_index.package_document) ->
@@ -1100,8 +1109,9 @@ let materialize_release = fun registry ~package_name ~version ->
       | Ok () -> finalize_extracted_root ()
       | Error _ as err when remaining_retries <= 0 -> err
       | Error _ ->
-          let* () = reset_materialized_root root in let* () = remove_cached_archive archive_path in let* () =
-            fetch_release_archive registry ~package_name ~version ~archive_path in
+          let* () = reset_materialized_root root in
+          let* () = remove_cached_archive archive_path in
+          let* () = fetch_release_archive registry ~package_name ~version ~archive_path in
           attempt (remaining_retries - 1)
     in
     attempt 1

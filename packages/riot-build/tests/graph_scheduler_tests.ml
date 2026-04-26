@@ -19,14 +19,27 @@ let result_labels = fun results ->
       | Ok value -> Int.to_string result.payload ^ ":" ^ value
       | Error err -> Int.to_string result.payload ^ ":error:" ^ err)
 
-let run_graph = fun ?(parallelism = 1) ?(mode = Graph_scheduler.Run_config.Continue_on_failure) ?(on_event = fun () -> ()) ~graph ~execute () ->
+let run_graph = fun
+  ?(parallelism = 1)
+  ?(mode = Graph_scheduler.Run_config.Continue_on_failure)
+  ?(on_event = fun () -> ())
+  ~graph
+  ~execute
+  () ->
   Graph_scheduler.run
     ~config:(Graph_scheduler.Run_config.make ~parallelism ~mode ())
     ~on_event
     ~graph
     ~execute
 
-let run_tasks = fun ?parallelism ?mode ?on_event ?(apply_mutation = fun _ (_:mutation) -> ()) ~tasks ~execute () ->
+let run_tasks = fun
+  ?parallelism
+  ?mode
+  ?on_event
+  ?(apply_mutation = fun _ (_:mutation) -> ())
+  ~tasks
+  ~execute
+  () ->
   let (graph, _) = make_graph ~apply_mutation tasks in
   run_graph ?parallelism ?mode ?on_event ~graph ~execute ()
 

@@ -231,33 +231,43 @@ let get_optional_int = fun fields name ->
       get_int value
       |> Result.map ~fn:Option.some
 
-let required_object = fun fields name -> let* value = get_field_required fields name in
-get_object value
+let required_object = fun fields name ->
+  let* value = get_field_required fields name in
+  get_object value
 
-let required_string = fun fields name -> let* value = get_field_required fields name in
-get_string value
+let required_string = fun fields name ->
+  let* value = get_field_required fields name in
+  get_string value
 
-let required_bool = fun fields name -> let* value = get_field_required fields name in get_bool value
+let required_bool = fun fields name ->
+  let* value = get_field_required fields name in
+  get_bool value
 
-let required_int = fun fields name -> let* value = get_field_required fields name in get_int value
+let required_int = fun fields name ->
+  let* value = get_field_required fields name in
+  get_int value
 
-let required_float = fun fields name -> let* value = get_field_required fields name in
-get_float value
+let required_float = fun fields name ->
+  let* value = get_field_required fields name in
+  get_float value
 
-let required_array = fun fields name -> let* value = get_field_required fields name in
-get_array value
+let required_array = fun fields name ->
+  let* value = get_field_required fields name in
+  get_array value
 
 let rec map_results = fun xs ~fn ->
   match xs with
   | [] -> Ok []
   | value :: rest ->
-      let* mapped = fn value in let* mapped_rest = map_results rest ~fn in
+      let* mapped = fn value in
+      let* mapped_rest = map_results rest ~fn in
       Ok (mapped :: mapped_rest)
 
 let statistics_of_json = fun json ->
   let* fields = get_object json in
-  let duration_field name = let* nanos = required_int fields name in
-  Ok (Time.Duration.from_nanos nanos)
+  let duration_field name =
+    let* nanos = required_int fields name in
+    Ok (Time.Duration.from_nanos nanos)
   in
   let* min = duration_field "min_nanos" in
   let* max = duration_field "max_nanos" in
@@ -289,20 +299,29 @@ let bench_case_result_of_json = fun json ->
   let* result =
     match status with
     | "completed" ->
-        let* value = get_field_required fields "statistics" in let* stats = statistics_of_json value in
+        let* value = get_field_required fields "statistics" in
+        let* stats = statistics_of_json value in
         Ok (Completed stats)
-    | "failed" -> let* message = required_string fields "message" in Ok (Failed message)
+    | "failed" ->
+        let* message = required_string fields "message" in
+        Ok (Failed message)
     | "skipped" -> Ok Skipped
     | other -> Error ("unknown benchmark status " ^ other)
   in
   Ok { index; name; result }
 
-let comparison_case_result_of_json = fun json -> let* fields = get_object json in let* name =
-  required_string fields "name" in let* value = get_field_required fields "statistics" in let* statistics =
-  statistics_of_json value in Ok { name; statistics }
+let comparison_case_result_of_json = fun json ->
+  let* fields = get_object json in
+  let* name = required_string fields "name" in
+  let* value = get_field_required fields "statistics" in
+  let* statistics = statistics_of_json value in
+  Ok { name; statistics }
 
-let speedup_ratio_of_json = fun json -> let* fields = get_object json in let* name =
-  required_string fields "name" in let* ratio = required_float fields "ratio" in Ok (name, ratio)
+let speedup_ratio_of_json = fun json ->
+  let* fields = get_object json in
+  let* name = required_string fields "name" in
+  let* ratio = required_float fields "ratio" in
+  Ok (name, ratio)
 
 let comparison_result_of_json = fun json ->
   let* fields = get_object json in
@@ -376,8 +395,11 @@ let stored_suite_run_of_json = fun json ->
   let* workspace_fields = required_object fields "workspace" in
   let* git_head = get_optional_string workspace_fields "git_head" in
   let* git_dirty = get_optional_bool workspace_fields "git_dirty" in
-  let* argv = let* command_fields = required_object fields "command" in let* argv_json =
-    required_array command_fields "argv" in map_results argv_json ~fn:get_string in
+  let* argv =
+    let* command_fields = required_object fields "command" in
+    let* argv_json = required_array command_fields "argv" in
+    map_results argv_json ~fn:get_string
+  in
   let* suite_run_json = get_field_required fields "suite_run" in
   let* suite_run = suite_run_of_json suite_run_json in
   Ok {
@@ -400,7 +422,8 @@ let read_stored_suite_run = fun path ->
     Result.map_err
       (Data.Json.of_string content)
       ~fn:(fun error ->
-        "invalid json in " ^ Path.to_string path ^ ": " ^ Data.Json.error_to_string error) in
+        "invalid json in " ^ Path.to_string path ^ ": " ^ Data.Json.error_to_string error)
+  in
   stored_suite_run_of_json json
   |> Result.map_err
     ~fn:(fun error -> "invalid benchmark history file " ^ Path.to_string path ^ ": " ^ error)
@@ -433,7 +456,8 @@ let load_recent_suite_runs = fun context ~package_name ~suite_name ~limit ->
     Ok []
   else
     let* paths =
-      list_suite_run_paths ~workspace_root:context.workspace_root ~package_name ~suite_name in
+      list_suite_run_paths ~workspace_root:context.workspace_root ~package_name ~suite_name
+    in
     let rec collect acc remaining = function
       | [] -> Ok (List.rev acc)
       | _ when Int.(remaining <= 0) -> Ok (List.rev acc)

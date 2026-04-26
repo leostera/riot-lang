@@ -22,7 +22,9 @@ let validate_port = fun port ->
 
 let unsafe_make = fun ~ip ~port -> { ip; port }
 
-let make = fun ~ip ~port -> let* () = validate_port port in Result.Ok { ip; port }
+let make = fun ~ip ~port ->
+  let* () = validate_port port in
+  Result.Ok { ip; port }
 
 let from_parts = make
 

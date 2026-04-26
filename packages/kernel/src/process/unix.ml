@@ -183,7 +183,8 @@ let try_wait = fun process ->
       let* status =
         Result.map_err
           (FFI.try_wait process.pid)
-          ~fn:(fun code -> System (System_error.from_code code)) in
+          ~fn:(fun code -> System (System_error.from_code code))
+      in
       match status with
       | None -> (
           match process.status with

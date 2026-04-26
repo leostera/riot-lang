@@ -22,7 +22,15 @@ let default_color = `Plain (Style.color "#00FFA3")
 
 let default_show_percentage = true
 
-let make = fun ?(percent = 0.) ?(full_char = default_full_char) ?(trail_char = default_trail_char) ?(empty_char = default_empty_char) ?(color = default_color) ?(show_percentage = default_show_percentage) ~width () ->
+let make = fun
+  ?(percent = 0.)
+  ?(full_char = default_full_char)
+  ?(trail_char = default_trail_char)
+  ?(empty_char = default_empty_char)
+  ?(color = default_color)
+  ?(show_percentage = default_show_percentage)
+  ~width
+  () ->
   {
     width;
     percent;

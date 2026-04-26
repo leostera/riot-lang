@@ -147,12 +147,12 @@ let reader_advance: Input.reader_state -> unit = fun reader -> reader.Input.pos 
 let reader_advance_by: Input.reader_state -> int -> unit = fun reader count -> reader.Input.pos <- reader.Input.pos
 + count
 
-let reader_append_range: IO.Buffer.t -> Input.reader_state -> int -> int -> unit = fun scratch reader start stop ->
-  Input.reader_append_range
-    scratch
-    reader
-    ~start
-    ~stop
+let reader_append_range: IO.Buffer.t -> Input.reader_state -> int -> int -> unit = fun
+  scratch
+  reader
+  start
+  stop ->
+  Input.reader_append_range scratch reader ~start ~stop
 
 let rec reader_scan_while:
   Input.reader_state ->
@@ -176,7 +176,11 @@ let rec reader_scan_while:
     in
     loop reader.Input.pos
 
-let reader_expect_char: state -> Input.reader_state -> char -> string -> unit = fun state reader expected expected_name ->
+let reader_expect_char: state -> Input.reader_state -> char -> string -> unit = fun
+  state
+  reader
+  expected
+  expected_name ->
   match reader_current_char reader with
   | None -> unexpected_end state expected_name
   | Some actual ->
@@ -217,7 +221,10 @@ let reader_skip_whitespace: Input.reader_state -> unit = fun reader ->
   in
   loop ()
 
-let reader_expect_literal: state -> Input.reader_state -> string -> unit = fun state reader literal ->
+let reader_expect_literal: state -> Input.reader_state -> string -> unit = fun
+  state
+  reader
+  literal ->
   let length = String.length literal in
   let rec loop index =
     if Int.equal index length then
@@ -1678,7 +1685,9 @@ and record_mut_backend:
           done;
           finish builder
 
-and variant_backend: 'value. state -> 'value De.compiled_variant_cases -> 'value = fun state cases ->
+and variant_backend: 'value. state -> 'value De.compiled_variant_cases -> 'value = fun
+  state
+  cases ->
   let find_unit tag =
     let rec loop index =
       if Int.equal index (Array.length cases) then
@@ -1767,7 +1776,8 @@ let finish = fun state value ->
 
 let of_input = fun decode input ->
   let state = { input; scratch = IO.Buffer.create ~size:64 } in
-  let* value = De.run decode backend state in finish state value
+  let* value = De.run decode backend state in
+  finish state value
 
 let of_string = fun decode input -> of_input decode (Input.of_string input)
 

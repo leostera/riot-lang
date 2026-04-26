@@ -200,7 +200,8 @@ let provenance_of_toml = fun value ->
   match kind with
   | "workspace" -> Ok Workspace
   | "path" ->
-      let* path = required_string_field Provenance ~field:"path" fields in Ok (Path (Path.v path))
+      let* path = required_string_field Provenance ~field:"path" fields in
+      Ok (Path (Path.v path))
   | "source" ->
       let* locator = required_string_field Provenance ~field:"locator" fields in
       let ref_ = optional_string_field ~field:"ref" fields in

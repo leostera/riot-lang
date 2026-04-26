@@ -112,7 +112,12 @@ let describe_plan_result = function
   | Riot_planner.Package_planner.MissingDependencies _ -> "MissingDependencies"
   | Riot_planner.Package_planner.FailedDependencies _ -> "FailedDependencies"
 
-let persist_dummy_artifact = fun ~tmpdir ~store ~(package:Riot_model.Package.t) ~scope_name ~hash ->
+let persist_dummy_artifact = fun
+  ~tmpdir
+  ~store
+  ~(package:Riot_model.Package.t)
+  ~scope_name
+  ~hash ->
   let sandbox_dir = Path.(tmpdir / Path.v ("sandbox-" ^ scope_name)) in
   let output = Path.(sandbox_dir / Path.v (scope_name ^ ".stamp")) in
   let _ =

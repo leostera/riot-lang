@@ -4,9 +4,13 @@ open Scheduler_types
 
 module Runtime_atomic = Kernel.Sync.Atomic
 
-let loop = fun ~(has_pending_commands:t -> bool) ~(drain_commands:t -> reactor_command list) ~(handle_command:t -> reactor_command -> unit) ~(process_timers:t -> unit) ~(poll_io:t -> unit) (
-  runtime: t
-) ->
+let loop = fun
+  ~(has_pending_commands:t -> bool)
+  ~(drain_commands:t -> reactor_command list)
+  ~(handle_command:t -> reactor_command -> unit)
+  ~(process_timers:t -> unit)
+  ~(poll_io:t -> unit)
+  (runtime: t) ->
   Thread.DLS.set
     current_context
     (Some { scheduler = runtime; worker_id = None; current_process = None });

@@ -54,10 +54,10 @@ let metadata_json_string = fun (metadata: Riot_cli.Version_info.t) ->
   ]
   |> Data.Json.to_string_pretty)
 
-let copy_executable_file = fun ~src ~dst -> let* () =
-  Result.map_err (Fs.create_dir_all (Path.dirname dst)) ~fn:IO.error_message in let* () =
-  Result.map_err (Fs.copy ~src ~dst) ~fn:IO.error_message in
-Result.map_err (Fs.set_permissions dst Fs.Permissions.executable) ~fn:IO.error_message
+let copy_executable_file = fun ~src ~dst ->
+  let* () = Result.map_err (Fs.create_dir_all (Path.dirname dst)) ~fn:IO.error_message in
+  let* () = Result.map_err (Fs.copy ~src ~dst) ~fn:IO.error_message in
+  Result.map_err (Fs.set_permissions dst Fs.Permissions.executable) ~fn:IO.error_message
 
 let bytes_set_string = fun dst ~offset ~width value ->
   let copy_len = min width (String.length value) in
@@ -193,7 +193,8 @@ let test_upgrade_installs_downloaded_archive = fun ctx ->
       let* next_binary = Result.map_err (Fs.read riot_binary_path) ~fn:IO.error_message in
       let* () = copy_executable_file ~src:old_binary_path ~dst:installed in
       let* () =
-        write_upgrade_archive ~metadata:(Some metadata) ~path:archive_path ~binary:next_binary in
+        write_upgrade_archive ~metadata:(Some metadata) ~path:archive_path ~binary:next_binary
+      in
       let* matches = parse_upgrade [ "upgrade" ] in
       with_env
         ~name:"HOME"

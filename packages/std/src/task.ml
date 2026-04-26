@@ -63,7 +63,8 @@ let rec await_all: type res. res t list -> (res, exn) result list = fun tasks ->
           Array.to_list (Array.map results ~fn:Option.unwrap)
         else
           (
-            let selector: Message.t -> [`select of (res, exn) result * int * res t | `skip] = fun msg ->
+            let selector: Message.t -> [`select of (res, exn) result * int * res t | `skip] = fun
+              msg ->
               match msg with
               | Crash (ref', exn) when is_one_of_our_refs pending ref' -> (
                   match find_task_by_ref pending ref' with

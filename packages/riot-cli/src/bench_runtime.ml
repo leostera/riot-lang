@@ -184,7 +184,11 @@ let realized_bench_packages = fun ?(package_filters = []) (workspace: Workspace.
   |> List.filter ~fn:Package.is_workspace_member
   |> List.filter ~fn:(fun (pkg: Package.t) -> matches_package_filters package_filters pkg.name)
 
-let collect_suite_binaries = fun (workspace: Workspace.t) ?(package_filters = []) ?suite_filter () ->
+let collect_suite_binaries = fun
+  (workspace: Workspace.t)
+  ?(package_filters = [])
+  ?suite_filter
+  () ->
   realized_bench_packages ~package_filters workspace
   |> List.flat_map
     ~fn:(fun (pkg: Package.t) ->
@@ -335,14 +339,19 @@ let remove_list_args = fun args ->
   in
   loop [] args
 
-let duration_of_nanos_json = fun json -> let* nanos = get_int json in
-Ok (Time.Duration.from_nanos nanos)
+let duration_of_nanos_json = fun json ->
+  let* nanos = get_int json in
+  Ok (Time.Duration.from_nanos nanos)
 
-let gc_stats_of_json = fun json -> let* fields = get_object json in let* minor_collections_json =
-  field "minor_collections" fields in let* major_collections_json = field "major_collections" fields in let* compactions_json =
-  field "compactions" fields in let* minor_collections = get_int minor_collections_json in let* major_collections =
-  get_int major_collections_json in let* compactions = get_int compactions_json in
-Ok { minor_collections; major_collections; compactions }
+let gc_stats_of_json = fun json ->
+  let* fields = get_object json in
+  let* minor_collections_json = field "minor_collections" fields in
+  let* major_collections_json = field "major_collections" fields in
+  let* compactions_json = field "compactions" fields in
+  let* minor_collections = get_int minor_collections_json in
+  let* major_collections = get_int major_collections_json in
+  let* compactions = get_int compactions_json in
+  Ok { minor_collections; major_collections; compactions }
 
 let statistics_of_json = fun json ->
   let* fields = get_object json in
@@ -379,21 +388,32 @@ let bench_status_of_json = fun json ->
   let* status = get_string status_json in
   match status with
   | "completed" ->
-      let* statistics_json = field "statistics" fields in let* statistics =
-        statistics_of_json statistics_json in Ok (Completed statistics)
+      let* statistics_json = field "statistics" fields in
+      let* statistics = statistics_of_json statistics_json in
+      Ok (Completed statistics)
   | "failed" ->
-      let* message_json = field "message" fields in let* message = get_string message_json in
+      let* message_json = field "message" fields in
+      let* message = get_string message_json in
       Ok (Failed message)
   | "skipped" -> Ok Skipped
   | other -> Error ("unknown benchmark status " ^ other)
 
-let bench_result_of_json = fun json -> let* fields = get_object json in let* index_json =
-  field "index" fields in let* name_json = field "name" fields in let* index = get_int index_json in let* name =
-  get_string name_json in let* result = bench_status_of_json json in Ok { index; name; result }
+let bench_result_of_json = fun json ->
+  let* fields = get_object json in
+  let* index_json = field "index" fields in
+  let* name_json = field "name" fields in
+  let* index = get_int index_json in
+  let* name = get_string name_json in
+  let* result = bench_status_of_json json in
+  Ok { index; name; result }
 
-let speedup_ratio_of_json = fun json -> let* fields = get_object json in let* name_json =
-  field "name" fields in let* ratio_json = field "ratio" fields in let* name = get_string name_json in let* ratio =
-  get_float ratio_json in Ok (name, ratio)
+let speedup_ratio_of_json = fun json ->
+  let* fields = get_object json in
+  let* name_json = field "name" fields in
+  let* ratio_json = field "ratio" fields in
+  let* name = get_string name_json in
+  let* ratio = get_float ratio_json in
+  Ok (name, ratio)
 
 let listed_bench_item_of_json = fun json ->
   let* fields = get_object json in
@@ -425,7 +445,9 @@ let listed_bench_item_of_json = fun json ->
         let* values = get_array value in
         let rec loop acc = function
           | [] -> Ok (List.reverse acc)
-          | value :: rest -> let* name = get_string value in loop (name :: acc) rest
+          | value :: rest ->
+              let* name = get_string value in
+              loop (name :: acc) rest
         in
         loop [] values
   in
@@ -441,10 +463,13 @@ let listed_bench_item_of_json = fun json ->
     cases;
   }
 
-let comparison_case_result_of_json = fun json -> let* fields = get_object json in let* name_json =
-  field "name" fields in let* statistics_json = field "statistics" fields in let* name =
-  get_string name_json in let* statistics = statistics_of_json statistics_json in
-Ok { name; statistics }
+let comparison_case_result_of_json = fun json ->
+  let* fields = get_object json in
+  let* name_json = field "name" fields in
+  let* statistics_json = field "statistics" fields in
+  let* name = get_string name_json in
+  let* statistics = statistics_of_json statistics_json in
+  Ok { name; statistics }
 
 let comparison_result_of_json = fun json ->
   let* fields = get_object json in
@@ -459,11 +484,14 @@ let comparison_result_of_json = fun json ->
   let rec parse_cases acc = function
     | [] -> Ok (List.reverse acc)
     | item :: rest ->
-        let* parsed = comparison_case_result_of_json item in parse_cases (parsed :: acc) rest
+        let* parsed = comparison_case_result_of_json item in
+        parse_cases (parsed :: acc) rest
   in
   let rec parse_ratios acc = function
     | [] -> Ok (List.reverse acc)
-    | item :: rest -> let* parsed = speedup_ratio_of_json item in parse_ratios (parsed :: acc) rest
+    | item :: rest ->
+        let* parsed = speedup_ratio_of_json item in
+        parse_ratios (parsed :: acc) rest
   in
   let* case_results = parse_cases [] case_results_values in
   let* speedup_ratios = parse_ratios [] speedup_ratio_values in
@@ -505,18 +533,22 @@ let parse_bench_suite_output = fun stdout ->
   let* comparison_values = get_array comparisons_json in
   let rec parse_results acc = function
     | [] -> Ok (List.reverse acc)
-    | item :: rest -> let* parsed = bench_result_of_json item in parse_results (parsed :: acc) rest
+    | item :: rest ->
+        let* parsed = bench_result_of_json item in
+        parse_results (parsed :: acc) rest
   in
   let rec parse_comparisons acc = function
     | [] -> Ok (List.reverse acc)
     | item :: rest ->
-        let* parsed = comparison_result_of_json item in parse_comparisons (parsed :: acc) rest
+        let* parsed = comparison_result_of_json item in
+        parse_comparisons (parsed :: acc) rest
   in
-  let* results = parse_results [] benchmark_values in let* comparisons =
-    parse_comparisons [] comparison_values in let* summary = bench_summary_of_json summary_json in let* started_at_us =
-    optional_int_field "started_at_us" fields in let* completed_at_us =
-    optional_int_field "completed_at_us" fields in let* duration_us =
-    optional_int_field "duration_us" fields in
+  let* results = parse_results [] benchmark_values in
+  let* comparisons = parse_comparisons [] comparison_values in
+  let* summary = bench_summary_of_json summary_json in
+  let* started_at_us = optional_int_field "started_at_us" fields in
+  let* completed_at_us = optional_int_field "completed_at_us" fields in
+  let* duration_us = optional_int_field "duration_us" fields in
   Ok (prefix_stdout, started_at_us, completed_at_us, duration_us, results, comparisons, summary)
 
 let bench_event_to_json = function
@@ -694,7 +726,10 @@ let ensure_executable_binary_path = fun ~kind path ->
         |> Result.map_err
           ~fn:(fun err -> "failed to mark " ^ kind ^ " executable: " ^ IO.error_message err)
 
-let materialized_suite_binary_path = fun ~(workspace:Workspace.t) ~profile ~(suite:suite_binary) ->
+let materialized_suite_binary_path = fun
+  ~(workspace:Workspace.t)
+  ~profile
+  ~(suite:suite_binary) ->
   let out_dir =
     Riot_model.Riot_dirs.out_dir_in_workspace
       ~workspace
@@ -703,9 +738,12 @@ let materialized_suite_binary_path = fun ~(workspace:Workspace.t) ~profile ~(sui
   in
   Path.(out_dir / Path.v (Package_name.to_string suite.package_name) / Path.v suite.suite_name)
 
-let find_suite_binary_path_in_output = fun ~(workspace:Workspace.t) ~profile ~(store:Riot_store.Store.t) ~(suite:suite_binary) (
-  output: Riot_build.Build_result.t
-) ->
+let find_suite_binary_path_in_output = fun
+  ~(workspace:Workspace.t)
+  ~profile
+  ~(store:Riot_store.Store.t)
+  ~(suite:suite_binary)
+  (output: Riot_build.Build_result.t) ->
   let fallback_path = materialized_suite_binary_path ~workspace ~profile ~suite in
   let ensure_materialized_fallback () =
     match Fs.exists fallback_path with
@@ -790,7 +828,9 @@ let parse_listed_benchmarks_output = fun stdout ->
   let* benchmarks = get_array benchmarks_json in
   let rec loop acc = function
     | [] -> Ok (List.reverse acc)
-    | json :: rest -> let* listed = listed_bench_item_of_json json in loop (listed :: acc) rest
+    | json :: rest ->
+        let* listed = listed_bench_item_of_json json in
+        loop (listed :: acc) rest
   in
   loop [] benchmarks
 
@@ -839,9 +879,10 @@ let resolve_suite_binaries = fun ~(workspace:Workspace.t) ~profile ~store ~suite
   in
   loop [] [] suites
 
-let list_benchmarks = fun ?(on_suite = no_listed_suite) ?(on_suite_error = no_list_error) (
-  request: bench_request
-) ->
+let list_benchmarks = fun
+  ?(on_suite = no_listed_suite)
+  ?(on_suite_error = no_list_error)
+  (request: bench_request) ->
   let suites =
     collect_suite_binaries
       request.workspace

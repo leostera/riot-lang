@@ -400,13 +400,17 @@ let rec insert_scope_at_path:
         in
         Name_map.add name binding modules
 
-let bind_in_scope_modules: t -> scope_path:SurfacePath.t -> t -> t = fun env ~scope_path introduced -> {
-  env with
-  modules = insert_scope_at_path
-    env.modules
-    ~module_path:scope_path
-    (module_scope_of_env introduced);
-}
+let bind_in_scope_modules: t -> scope_path:SurfacePath.t -> t -> t = fun
+  env
+  ~scope_path
+  introduced ->
+  {
+    env with
+    modules = insert_scope_at_path
+      env.modules
+      ~module_path:scope_path
+      (module_scope_of_env introduced);
+  }
 
 let split_relative_binding = fun binding ->
   match EntityId.split_last (Binding.path binding) with
@@ -545,7 +549,15 @@ let singleton = fun ~make_id ~name ~scheme ~provenance ->
         ~provenance;
     ]
 
-let singleton_constructor = fun ~make_id ~name ~scheme ~provenance ~owner_path ~owner_type_constructor_id ~constructor_id ~inline_record_labels ->
+let singleton_constructor = fun
+  ~make_id
+  ~name
+  ~scheme
+  ~provenance
+  ~owner_path
+  ~owner_type_constructor_id
+  ~constructor_id
+  ~inline_record_labels ->
   let binding =
     Binding.make
       ~id:(make_id (SurfacePath.of_name name))
@@ -571,7 +583,9 @@ let singleton_constructor = fun ~make_id ~name ~scheme ~provenance ~owner_path ~
 
 let extend = fun env introduced -> bind env (of_bindings introduced)
 
-let rec lookup_module_scope_in: module_table -> SurfacePath.t -> module_scope option = fun modules module_path ->
+let rec lookup_module_scope_in: module_table -> SurfacePath.t -> module_scope option = fun
+  modules
+  module_path ->
   match SurfacePath.uncons module_path with
   | None -> None
   | Some (name, tail) -> (
@@ -740,7 +754,9 @@ and bindings_with_prefix: SurfacePath.t -> module_table -> bindings = fun prefix
 let bindings = fun env ->
   Value_env.bindings env.values @ bindings_with_prefix SurfacePath.empty env.modules
 
-let rec scope_type_decls_with_prefix: SurfacePath.t -> module_scope -> FileSummary.type_decl list = fun prefix scope ->
+let rec scope_type_decls_with_prefix: SurfacePath.t -> module_scope -> FileSummary.type_decl list = fun
+  prefix
+  scope ->
   let local =
     Type_env.type_decls scope.types
     |> List.map
@@ -752,7 +768,9 @@ let rec scope_type_decls_with_prefix: SurfacePath.t -> module_scope -> FileSumma
   let nested = module_type_decls_with_prefix prefix scope.modules in
   local @ nested
 
-and module_type_decls_with_prefix: SurfacePath.t -> module_table -> FileSummary.type_decl list = fun prefix modules ->
+and module_type_decls_with_prefix: SurfacePath.t -> module_table -> FileSummary.type_decl list = fun
+  prefix
+  modules ->
   Name_map.bindings modules
   |> List.concat_map
     (fun (_, binding) ->

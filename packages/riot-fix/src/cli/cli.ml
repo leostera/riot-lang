@@ -67,7 +67,8 @@ let list_diagnostics_output = Catalog.list_diagnostics_output
 
 let run_result = Execution.run_result
 
-let unavailable_build_package = fun ~workspace:_ ~package_name:_ ~profile:_ ?transform_workspace:_ () ->
+let unavailable_build_package = fun
+  ~workspace:_ ~package_name:_ ~profile:_ ?transform_workspace:_ () ->
   Error (Failure "No build_package callback was provided")
 
 let no_event = fun (_: event) -> ()
@@ -162,7 +163,12 @@ let run_args = fun ?cwd ?(on_event = Types.no_event) ?(report_output = true) ~bu
           in
           run_matches ~build_package ~on_event ?output_mode matches)
 
-let run_check_paths = fun ?cwd ?(on_event = Types.no_event) ?(report_output = false) ~build_package paths ->
+let run_check_paths = fun
+  ?cwd
+  ?(on_event = Types.no_event)
+  ?(report_output = false)
+  ~build_package
+  paths ->
   let args = "--check" :: List.map paths ~fn:Path.to_string in
   run_args ?cwd ~on_event ~report_output ~build_package args
 

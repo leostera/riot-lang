@@ -117,10 +117,13 @@ let close = fun socket ->
     (FFI.close socket)
     ~fn:(fun code -> error_of_system (System_error.from_code code))
 
-let local_addr = fun socket -> let* addr =
-  Result.map_err
-    (FFI.local_addr socket)
-    ~fn:(fun code -> error_of_system (System_error.from_code code)) in socket_addr_of_pair addr
+let local_addr = fun socket ->
+  let* addr =
+    Result.map_err
+      (FFI.local_addr socket)
+      ~fn:(fun code -> error_of_system (System_error.from_code code))
+  in
+  socket_addr_of_pair addr
 
 let recv = fun socket ?(pos = 0) ?len buf ->
   let len = Option.unwrap_or len ~default:(Bytes.length buf - pos) in
@@ -131,11 +134,14 @@ let recv = fun socket ?(pos = 0) ?len buf ->
 
 let recv_from = fun socket ?(pos = 0) ?len buf ->
   let len = Option.unwrap_or len ~default:(Bytes.length buf - pos) in
-  let* () = validate_slice buf ~pos ~len in let* (read_count, addr) =
+  let* () = validate_slice buf ~pos ~len in
+  let* (read_count, addr) =
     Result.map_err
       (FFI.recv_from socket buf pos len)
-      ~fn:(fun code -> error_of_system (System_error.from_code code)) in let* addr =
-    socket_addr_of_pair addr in Result.Ok (read_count, addr)
+      ~fn:(fun code -> error_of_system (System_error.from_code code))
+  in
+  let* addr = socket_addr_of_pair addr in
+  Result.Ok (read_count, addr)
 
 let send = fun socket ?(pos = 0) ?len buf ->
   let len = Option.unwrap_or len ~default:(Bytes.length buf - pos) in

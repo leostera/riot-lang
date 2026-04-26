@@ -20,7 +20,15 @@ type t = {
   requested_parallelism: int option;
 }
 
-let make = fun ~workspace ~packages ~targets ~scope ~profile ?(dev_artifacts = {tests = true; examples = true; benches = true}) ?(requested_parallelism = None) () ->
+let make = fun
+  ~workspace
+  ~packages
+  ~targets
+  ~scope
+  ~profile
+  ?(dev_artifacts = {tests = true; examples = true; benches = true})
+  ?(requested_parallelism = None)
+  () ->
   {
     workspace;
     packages;

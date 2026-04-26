@@ -59,8 +59,9 @@ let scaffold_package = fun ~path ~name ~is_library ->
   in
   Ok (Path.to_string path, name)
 
-let new_package = fun ~workspace ~path ~name ~is_library -> let* (created_path, created_name) =
-  scaffold_package ~path ~name ~is_library in let* () =
-  Manifest.add_workspace_member ~workspace ~path in Ok (created_path, created_name)
+let new_package = fun ~workspace ~path ~name ~is_library ->
+  let* (created_path, created_name) = scaffold_package ~path ~name ~is_library in
+  let* () = Manifest.add_workspace_member ~workspace ~path in
+  Ok (created_path, created_name)
 
 let new_standalone_package = fun ~path ~name ~is_library -> scaffold_package ~path ~name ~is_library

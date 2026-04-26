@@ -156,7 +156,9 @@ let update: type state. state t -> fn:(state -> state) -> unit = fun agent ~fn -
   | UpdateReply -> ()
   | _ -> panic "unexpected agent response"
 
-let get_and_update: type state reply. state t -> fn:(state -> reply * state) -> reply = fun agent ~fn ->
+let get_and_update: type state reply. state t -> fn:(state -> reply * state) -> reply = fun
+  agent
+  ~fn ->
   let reply_ref: reply Ref.t = Ref.make () in
   send
     agent.pid

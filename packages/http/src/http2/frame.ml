@@ -96,7 +96,13 @@ let data = fun ~stream_id ?(end_stream = false) ?pad_length data ->
     payload = DataPayload { data; pad_length };
   }
 
-let headers = fun ~stream_id ?(end_stream = false) ?(end_headers = false) ?pad_length ?priority header_block_fragment ->
+let headers = fun
+  ~stream_id
+  ?(end_stream = false)
+  ?(end_headers = false)
+  ?pad_length
+  ?priority
+  header_block_fragment ->
   let has_priority = Option.is_some priority in
   let flags =
     {

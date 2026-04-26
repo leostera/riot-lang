@@ -23,7 +23,15 @@ type t = {
   deadline: Time.Duration.t option;
 }
 
-let make = fun ?(headers = []) ?body ?(endpoint_class = PublicRead) ?(auth_required = false) ?deadline ~method_ ~url () ->
+let make = fun
+  ?(headers = [])
+  ?body
+  ?(endpoint_class = PublicRead)
+  ?(auth_required = false)
+  ?deadline
+  ~method_
+  ~url
+  () ->
   {
     method_;
     url;

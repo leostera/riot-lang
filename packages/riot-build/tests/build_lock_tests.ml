@@ -172,7 +172,8 @@ let test_existing_lanes_lists_sorted_targets = fun _ctx ->
           ~profile:"release"
           ~target:linux_target
           (fun () ->
-            Ok ()) in
+            Ok ())
+      in
       let* () =
         BuildLock.acquire
           ~on_waiting:(fun _ ->
@@ -181,7 +182,8 @@ let test_existing_lanes_lists_sorted_targets = fun _ctx ->
           ~profile:"debug"
           ~target:host_target
           (fun () ->
-            Ok ()) in
+            Ok ())
+      in
       let cache_dir = Path.(target_dir_root workspace / Path.v "cache") in
       let junk_dir = Path.(target_dir_root workspace / Path.v "debug" / Path.v "not-a-target") in
       let _ = Fs.create_dir_all cache_dir in
