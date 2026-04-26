@@ -9,7 +9,7 @@
    - [x] module-level doc comments
    - [x] comments within inline signatures
    - [x] anywhere else that we can fit a comment we should have at least 1 example of it
-   *)
+*)
 
 (* Leading comment for a formatted let binding. *)
 

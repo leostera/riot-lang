@@ -10,7 +10,9 @@ let solve ~width doc =
   let rec push_many indent mode docs rest =
     match List.rev docs with
     | [] -> rest
-    | docs -> docs |> List.fold_left (fun acc doc -> (indent, mode, doc) :: acc) rest
+    | docs ->
+        docs
+        |> List.fold_left (fun acc doc -> (indent, mode, doc) :: acc) rest
   in
   let rec fits remaining = function
     | [] -> true
@@ -24,15 +26,14 @@ let solve ~width doc =
     | (_, Break, Doc.Break _) :: _ -> true
     | (indent, _, Doc.Group doc) :: rest -> fits remaining ((indent, Flat, doc) :: rest)
     | (indent, mode, Doc.Concat docs) :: rest -> fits remaining (push_many indent mode docs rest)
-    | (indent, mode, Doc.Indent (extra, doc)) :: rest -> fits
-      remaining
-      ((indent + extra, mode, doc) :: rest)
+    | (indent, mode, Doc.Indent (extra, doc)) :: rest ->
+        fits remaining ((indent + extra, mode, doc) :: rest)
   in
   let rec solve_many ~column ~indent ~mode = function
     | [] -> (Doc.empty, column)
     | doc :: rest ->
-        let solved_doc, column = solve_doc ~column ~indent ~mode doc in
-        let solved_rest, column = solve_many ~column ~indent ~mode rest in
+        let (solved_doc, column) = solve_doc ~column ~indent ~mode doc in
+        let (solved_rest, column) = solve_many ~column ~indent ~mode rest in
         (Doc.concat [ solved_doc; solved_rest ], column)
   and solve_doc ~column ~indent ~mode = function
     | Doc.Empty ->
@@ -53,7 +54,7 @@ let solve ~width doc =
     | Doc.Concat docs ->
         solve_many ~column ~indent ~mode docs
     | Doc.Indent (extra, doc) ->
-        let solved, column = solve_doc ~column ~indent:(indent + extra) ~mode doc in
+        let (solved, column) = solve_doc ~column ~indent:(indent + extra) ~mode doc in
         (Doc.indent extra solved, column)
     | Doc.Group doc ->
         let mode =
@@ -64,4 +65,5 @@ let solve ~width doc =
         in
         solve_doc ~column ~indent ~mode doc
   in
-  solve_doc ~column:0 ~indent:0 ~mode:Break doc |> fst
+  solve_doc ~column:0 ~indent:0 ~mode:Break doc
+  |> fst

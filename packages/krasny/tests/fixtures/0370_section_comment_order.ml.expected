@@ -2,8 +2,8 @@
 
 (* Generator for frame types *)
 
-let frame_type_gen = Generator.one_of
-  [ Generator.return Http2.Frame.Data; Generator.return Http2.Frame.Headers; ]
+let frame_type_gen =
+  Generator.one_of [ Generator.return Http2.Frame.Data; Generator.return Http2.Frame.Headers; ]
 
 (* Section two *)
 

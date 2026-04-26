@@ -6,5 +6,5 @@ let source_path node =
   (
     match node with
     | Concrete p
-    | Generated { path=p; _ } -> p
+    | Generated { path = p; _ } -> p
   )

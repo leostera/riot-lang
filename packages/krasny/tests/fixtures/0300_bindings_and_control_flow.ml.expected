@@ -61,7 +61,9 @@ let parameterized_local_let_rec =
   let rec push_many indent docs rest =
     match List.rev docs with
     | [] -> rest
-    | docs -> docs |> List.fold_left (fun acc doc -> (indent, doc) :: acc) rest
+    | docs ->
+        docs
+        |> List.fold_left (fun acc doc -> (indent, doc) :: acc) rest
   in
   push_many width doc []
 

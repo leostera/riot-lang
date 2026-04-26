@@ -3897,6 +3897,10 @@ and expr_is_multiline_with_budget = fun budget expr ->
       not (array_expr_should_inline expr)
   | List ->
       not (list_expr_should_inline expr)
+  | Infix { left=Some left; operator=Some operator; right=Some right } when String.equal
+    (infix_operator_text_from_expr expr left operator right)
+    "|>" ->
+      true
   | Infix { left; right; _ } ->
       if expr_is_long_breaking_infix_chain expr then
         true
@@ -3907,6 +3911,9 @@ and expr_is_multiline_with_budget = fun budget expr ->
   | Apply _ ->
       let _, args = collect_apply expr in
       vector_exists_expr_is_multiline_except_with_budget next_budget expr args
+  | LabeledArg { value=Some value; _ }
+  | OptionalArg { value=Some value; _ } ->
+      expr_is_multiline_with_budget next_budget value
   | _ ->
       false
 
@@ -4545,6 +4552,10 @@ and expr_is_inline_with_budget = fun budget expr ->
         false
       else
         expr_is_inline_with_budget next_budget body
+  | Infix { left=Some left; operator=Some operator; right=Some right } when String.equal
+    (infix_operator_text_from_expr expr left operator right)
+    "|>" ->
+      false
   | Infix { left=Some left; right=Some right; _ } ->
       if same_ast_node expr left || same_ast_node expr right then
         false
@@ -4718,6 +4729,8 @@ let expr_is_infix_with_operator_text = fun expr expected ->
     (infix_operator_text_from_expr expr left operator right)
     expected
   | _ -> false
+
+let expr_is_pipeline = fun expr -> expr_is_infix_with_operator_text expr "|>"
 
 type infix_associativity =
   | Infix_left
@@ -5351,7 +5364,7 @@ and render_infix_right_operand = fun state ~operator_text right ->
 
 and render_infix_expr = fun state expr left operator right ->
   let operator_text = infix_operator_text_from_expr expr left operator right in
-  if infix_expr_should_break state expr left operator right then
+  if String.equal operator_text "|>" || infix_expr_should_break state expr left operator right then
     render_multiline_infix_expr state left operator right
   else (
     render_infix_left_operand state ~operator_text left;
@@ -6626,14 +6639,6 @@ and let_binding_apply_body_exceeds_inline_equals_width = fun state body ->
       apply_expr_should_break_from_column state body args ~column:(Int.add state.column 1)
   | _ -> false
 
-and let_binding_body_keeps_first_infix_operand_after_equals = fun state body ->
-  match Ast.Expr.view body with
-  | Infix { left=Some left; operator=Some operator; right=Some right } ->
-      let operator_text = infix_operator_text_from_expr body left operator right in
-      (String.equal operator_text "^" || String.equal operator_text "|>")
-      && infix_expr_should_break state body left operator right
-  | _ -> false
-
 and let_binding_tail_should_render_multiline = fun binding ->
   match (Ast.LetBinding.view binding).pattern with
   | Some pattern -> pattern_should_render_multiline pattern
@@ -6870,6 +6875,9 @@ and render_let_binding_tail_with_body_break = fun state binding force_body_break
   | Some body when expr_has_leading_comment body ->
       emit_line state;
       with_indent state 2 (fun () -> render_let_body_with_leading_comment state body)
+  | Some body when expr_is_pipeline body ->
+      emit_line state;
+      with_indent state 2 (fun () -> render_expr state body)
   | Some body when (
     match Ast.Expr.view body with
     | Assign _ -> true
@@ -6929,10 +6937,6 @@ and render_let_binding_tail_with_body_break = fun state binding force_body_break
   | Some body when expr_is_multiline body ->
       emit_line state;
       with_indent state 2 (fun () -> render_expr state body)
-  | Some body when let_binding_body_exceeds_width state body
-  && let_binding_body_keeps_first_infix_operand_after_equals state body ->
-      emit_space state;
-      render_expr state body
   | Some body when let_binding_body_exceeds_width state body ->
       emit_line state;
       with_indent state 2 (fun () -> render_expr state body)

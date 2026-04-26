@@ -30,13 +30,13 @@ module Int_eq: EQ with type t = int = struct
   let equal left right = left = right
 end
 
-module Make (Item : SHOW): sig
+module Make (Item: SHOW): sig
   val show_all: Item.t list -> string list
 end = struct
   let show_all items = List.map Item.show items
 end
 
-module Make_pair (Left : SHOW) (Right : SHOW) = struct
+module Make_pair (Left: SHOW) (Right: SHOW) = struct
   let show_pair (left, right) = (Left.show left, Right.show right)
 end
 

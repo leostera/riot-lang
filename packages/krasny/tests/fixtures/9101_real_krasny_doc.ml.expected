@@ -108,8 +108,15 @@ let concat docs =
 let join separator docs =
   match docs with
   | [] -> Empty
-  | first :: rest -> concat
-    (first :: (rest |> List.map (fun doc -> [ separator; doc ]) |> List.flatten))
+  | first :: rest ->
+      concat
+        (
+          first :: (
+            rest
+            |> List.map (fun doc -> [ separator; doc ])
+            |> List.flatten
+          )
+        )
 
 let words docs = join space docs
 

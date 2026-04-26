@@ -1,6 +1,4 @@
-type node = {
-  value: int;
-}
+type node = { value: int }
 
 (** Element doc *)
 and element =

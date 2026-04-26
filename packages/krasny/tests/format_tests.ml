@@ -841,7 +841,9 @@ let both =
       let parsed = parse_ml source in
       let actual = capture_write parsed in
       Test.Snapshot.assert_inline_text ~ctx ~actual
-        ~expected:{ocaml|let headers = headers |> fun h -> Net.Http.Header.add h "host" "localhost"
+        ~expected:{ocaml|let headers =
+  headers
+  |> fun h -> Net.Http.Header.add h "host" "localhost"
 |ocaml});
   Test.case "write parenthesizes tuple function bodies"
     (fun ctx ->
@@ -899,7 +901,9 @@ let line=Net.Http.Method.to_string method_^" "^resource^"\r\n"
       let parsed = parse_ml source in
       let actual = capture_write parsed in
       Test.Snapshot.assert_inline_text ~ctx ~actual
-        ~expected:{ocaml|let length = String.length b |> Int.to_string
+        ~expected:{ocaml|let length =
+  String.length b
+  |> Int.to_string
 
 let line = Net.Http.Method.to_string method_ ^ " " ^ resource ^ "\r\n"
 |ocaml});
@@ -2305,11 +2309,22 @@ let consume = function
   Element.row
     [
       Element.container
-        ~style:(Style.empty |> Style.width (Style.Fixed 20.0))
+        ~style:(
+          Style.empty
+          |> Style.width (Style.Fixed 20.0)
+        )
         [ Element.text "Left" ];
-      Element.container ~style:(Style.empty |> Style.width Style.Grow) [ Element.text "Middle" ];
       Element.container
-        ~style:(Style.empty |> Style.width (Style.Fixed 15.0))
+        ~style:(
+          Style.empty
+          |> Style.width Style.Grow
+        )
+        [ Element.text "Middle" ];
+      Element.container
+        ~style:(
+          Style.empty
+          |> Style.width (Style.Fixed 15.0)
+        )
         [ Element.text "Right" ];
     ]
 |ocaml});
@@ -2341,6 +2356,55 @@ let consume = function
         ~ctx
         ~msg:"local binding equals policy should stay stable while heuristics are isolated"
         source);
+  Test.case "format breaks long pipeline rhs after equals"
+    (fun ctx ->
+      let source = {ocaml|let test_unify_same_constructor _ctx=Infer.unify ~expected:int_type ~actual:int_type|>Result.map_err ~fn:Typ.Check.Error.to_string
+let test_unify_constructor_mismatch _ctx=Infer.unify ~expected:int_type ~actual:bool_type|>assert_type_mismatch
+let pipeline=f|>g|>h
+|ocaml}
+      in
+      let actual = parse_ml source |> Krasny.format |> Result.expect ~msg:"long pipeline rhs should break after equals" in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|let test_unify_same_constructor _ctx =
+  Infer.unify ~expected:int_type ~actual:int_type
+  |> Result.map_err ~fn:Typ.Check.Error.to_string
+
+let test_unify_constructor_mismatch _ctx =
+  Infer.unify ~expected:int_type ~actual:bool_type
+  |> assert_type_mismatch
+
+let pipeline =
+  f
+  |> g
+  |> h
+|ocaml});
+  Test.case "format parenthesized pipeline arguments vertically"
+    (fun ctx ->
+      let source = {ocaml|let styled=Element.container ~style:(Style.empty|>Style.width Style.Grow|>Style.height (Style.Fixed 20.0)) [Element.text "Middle"]
+let nested=concat(first::(rest|>List.map ~fn:render|>List.flatten))
+|ocaml}
+      in
+      let actual = parse_ml source |> Krasny.format |> Result.expect ~msg:"parenthesized pipeline arguments should indent vertically" in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|let styled =
+  Element.container
+    ~style:(
+      Style.empty
+      |> Style.width Style.Grow
+      |> Style.height (Style.Fixed 20.0)
+    )
+    [ Element.text "Middle" ]
+
+let nested =
+  concat
+    (
+      first :: (
+        rest
+        |> List.map ~fn:render
+        |> List.flatten
+      )
+    )
+|ocaml});
   Test.case "format local binding infix threshold around inline-after-equals cutoff"
     (fun ctx ->
       let source = {|let totals a b c d e f g h i =

@@ -4,7 +4,7 @@
    - [x] pattern matching and renaming captured fields/variables
    - [x] `~arg:name` patterns
    - [x] `?(arg = foo as name)` patterns
-   *)
+*)
 
 let labeled_arg_simple = configure ~timeout:30
 
@@ -42,7 +42,7 @@ let named_arg_pattern ~timeout:seconds = seconds + 1
 
 let labeled_record_pattern ~point:{ x; y } = x + y
 
-let labeled_record_pattern_renamed ~point:{ x=x_coord; y=y_coord } = x_coord + y_coord
+let labeled_record_pattern_renamed ~point:{ x = x_coord; y = y_coord } = x_coord + y_coord
 
 let configure_defaults ?(timeout = 30) ?(retries = 3) ~handler () = handler timeout retries
 

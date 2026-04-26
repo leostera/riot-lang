@@ -1,4 +1,1 @@
-type t = {
-  a: bool;
-  b: string;
-}
+type t = { a: bool; b: string }

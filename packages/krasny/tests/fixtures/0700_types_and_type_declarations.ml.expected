@@ -15,7 +15,7 @@
    - [x] recursive types (self-recursion and `type-and` definitions)
    - [x] external definitions
 
-  *)
+*)
 
 type id = int
 
@@ -65,10 +65,7 @@ type (
   twentieth: 't;
 }
 
-type point = {
-  x: int;
-  y: int;
-}
+type point = { x: int; y: int }
 
 type record = {
   first_name: string;
@@ -99,10 +96,7 @@ type ('a, 'e) std_result = ('a, 'e) Stdlib.result =
   | Ok of 'a
   | Error of 'e
 
-type point_alias = Base.point = private {
-  x: int;
-  y: int;
-}
+type point_alias = Base.point = private { x: int; y: int }
 
 type color_alias = Tty.Color.t =
   private | RGB of int * int * int
@@ -122,10 +116,7 @@ type 'a tree =
   | Leaf of 'a
   | Node of 'a tree * 'a tree
 
-type chain = {
-  value: int;
-  next: chain option;
-}
+type chain = { value: int; next: chain option }
 
 type ('ok, 'err) result_like =
   | Ok of 'ok
@@ -137,34 +128,18 @@ type message =
 
 type opaque
 
-type mapper = {
-  run: 'a. 'a list -> 'a list;
-}
+type mapper = { run: 'a. 'a list -> 'a list }
 
 type 'a constrained = 'a
   constraint 'a=int
 
-type closed_poly =
-[
-  `A
-  | `B of int
-]
+type closed_poly = [`A | `B of int]
 
-type open_poly = [>
-  `A
-  | `B of string
-]
+type open_poly = [> `A | `B of string]
 
-type limited_poly = [<
-  `A
-  | `B
-  | `C
-]
+type limited_poly = [< `A | `B | `C]
 
-type extended_poly = [
-  closed_poly
-  | `D of string
-]
+type extended_poly = [closed_poly | `D of string]
 
 type printer = string -> width:int -> ?indent:int -> unit -> string
 
@@ -184,10 +159,7 @@ type request_handler =
 
 type 'a decoder = string -> ('a, string) result
 
-type response = {
-  status: (int, string) result;
-  body: string option;
-}
+type response = { status: (int, string) result; body: string option }
 
 type _ expr =
   | Int: int -> int expr

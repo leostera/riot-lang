@@ -3,6 +3,4 @@ type id =
   | Number of int
   | Null
 (** Request payload. *)
-type request = {
-  id: id option;
-}
+type request = { id: id option }

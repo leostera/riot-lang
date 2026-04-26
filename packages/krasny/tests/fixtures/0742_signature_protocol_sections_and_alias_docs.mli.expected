@@ -11,27 +11,18 @@ type json = Data.Json.t
 (** {2 JSON-RPC Base Types} *)
 
 type request_id =
-  String of string
+  | String of string
   | Number of int
+(** JSON-RPC request ID *)
 type error_code = int
 (** JSON-RPC error code *)
-type error = {
-  code: error_code;
-  message: string;
-  data: json option;
-}
+type error = { code: error_code; message: string; data: json option }
 
 (** JSON-RPC error *)
 (** {2 Client/Server Info} *)
 
-type client_info = {
-  name: string;
-  version: string;
-}
-type server_info = {
-  name: string;
-  version: string;
-}
+type client_info = { name: string; version: string }
+type server_info = { name: string; version: string }
 (** {2 Capabilities} *)
 
 type tool_capability = unit

@@ -2,21 +2,23 @@ open Std
 
 let main ~args =
   (* Parse command-line arguments *)
-  let cmd = ArgParser.command "simple_https"
-  |> ArgParser.about "Simple HTTPS client example"
-  |> ArgParser.args
-    [
-      ArgParser.Arg.option "method"
-      |> ArgParser.Arg.long "method"
-      |> ArgParser.Arg.value_name "METHOD"
-      |> ArgParser.Arg.default "GET"
-      |> ArgParser.Arg.help "HTTP method (GET, POST, etc.)";
-      ArgParser.Arg.option "url"
-      |> ArgParser.Arg.long "url"
-      |> ArgParser.Arg.value_name "URL"
-      |> ArgParser.Arg.default "https://leostera.com"
-      |> ArgParser.Arg.help "URL to request";
-    ] in
+  let cmd =
+    ArgParser.command "simple_https"
+    |> ArgParser.about "Simple HTTPS client example"
+    |> ArgParser.args
+      [
+        ArgParser.Arg.option "method"
+        |> ArgParser.Arg.long "method"
+        |> ArgParser.Arg.value_name "METHOD"
+        |> ArgParser.Arg.default "GET"
+        |> ArgParser.Arg.help "HTTP method (GET, POST, etc.)";
+        ArgParser.Arg.option "url"
+        |> ArgParser.Arg.long "url"
+        |> ArgParser.Arg.value_name "URL"
+        |> ArgParser.Arg.default "https://leostera.com"
+        |> ArgParser.Arg.help "URL to request";
+      ]
+  in
   let matches =
     match ArgParser.get_matches cmd args with
     | Ok m -> m
@@ -25,13 +27,21 @@ let main ~args =
         ArgParser.print_help cmd;
         panic "Failed to parse arguments"
   in
-  let method_str = ArgParser.get_one matches "method"
-  |> Option.unwrap_or ~default:"GET"
-  |> String.uppercase_ascii in
-  let url_str = ArgParser.get_one matches "url" |> Option.unwrap_or ~default:"https://leostera.com" in
+  let method_str =
+    ArgParser.get_one matches "method"
+    |> Option.unwrap_or ~default:"GET"
+    |> String.uppercase_ascii
+  in
+  let url_str =
+    ArgParser.get_one matches "url"
+    |> Option.unwrap_or ~default:"https://leostera.com"
+  in
   println ("Starting HTTPS request: " ^ method_str ^ " " ^ url_str);
   (* Parse the URL *)
-  let uri = Net.Uri.of_string url_str |> Result.expect ~msg:"Failed to parse URL" in
+  let uri =
+    Net.Uri.of_string url_str
+    |> Result.expect ~msg:"Failed to parse URL"
+  in
   (* Parse the HTTP method *)
   let method_ =
     match method_str with
@@ -78,10 +88,16 @@ let main ~args =
   (* Create HTTP request *)
   let req = Net.Http.Request.create method_ uri in
   (* Send request *)
-  let () = Blink.request conn req () |> Result.expect ~msg:"Request failed" in
+  let () =
+    Blink.request conn req ()
+    |> Result.expect ~msg:"Request failed"
+  in
   println "Request sent! Awaiting response...";
   (* Get full response *)
-  let (response, body) = Blink.await conn |> Result.expect ~msg:"Failed to receive response" in
+  let (response, body) =
+    Blink.await conn
+    |> Result.expect ~msg:"Failed to receive response"
+  in
   let status = Net.Http.Response.status response in
   println
     ("HTTP Status: "
