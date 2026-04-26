@@ -494,6 +494,8 @@ module Expr : sig
 
   val literal_token: t -> Token.t option
 
+  val list_has_trailing_separator: t -> bool
+
   val for_each_child_expr: t -> fn:(t -> unit) -> unit
 
   val for_each_match_case: t -> fn:(match_case -> unit) -> unit

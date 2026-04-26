@@ -868,6 +868,8 @@ module Expr: sig
 
   val literal_token: t -> token option
 
+  val list_has_trailing_separator: t -> bool
+
   val for_each_child_expr: t -> fn:(t -> unit) -> unit
 
   val for_each_match_case: t -> fn:(match_case -> unit) -> unit
@@ -933,6 +935,26 @@ end = struct
   )
 
   let literal_token = Node.first_token
+
+  let list_has_trailing_separator = fun (expr: expr) ->
+    if not (node_kind_is expr Syntax_kind.LIST_EXPR) then
+      false
+    else
+      (
+        let item_count = ref 0 in
+        let separator_count = ref 0 in
+        for_each_child_node_matching expr ~matches:is_expr_kind ~fn:(
+          fun _ -> item_count := Int.add !item_count 1
+        );
+        Node.for_each_child_token expr ~fn:(
+          fun token ->
+            if Syntax_kind.(Token.kind token = SEMI) then
+              separator_count := Int.add !separator_count 1
+        );
+        let items = !item_count in
+        let separators = !separator_count in
+        Int.(items > 0 && separators >= items)
+      )
 
   let view = fun (expr: expr) ->
     match Node.kind expr with

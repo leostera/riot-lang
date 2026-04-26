@@ -701,6 +701,19 @@ let rec consume_balanced_until = fun p ~closer depth ->
       consume_balanced_until p ~closer depth
     )
 
+let rec consume_angle_balanced_until_gt = fun p depth ->
+  if not (is_eof p || (Int.equal depth 0 && at p Syntax_kind.GT)) then
+    (
+      let depth =
+        match current_kind p with
+        | Syntax_kind.LPAREN | Syntax_kind.LBRACE | Syntax_kind.LBRACKET | Syntax_kind.LBRACKET_BAR | Syntax_kind.BEGIN_KW | Syntax_kind.OBJECT_KW | Syntax_kind.STRUCT_KW | Syntax_kind.SIG_KW | Syntax_kind.LT -> Int.add depth 1
+        | Syntax_kind.RPAREN | Syntax_kind.RBRACE | Syntax_kind.RBRACKET | Syntax_kind.BAR_RBRACKET | Syntax_kind.END_KW | Syntax_kind.GT when Int.(depth > 0) -> Int.sub depth 1
+        | _ -> depth
+      in
+      bump p;
+      consume_angle_balanced_until_gt p depth
+    )
+
 let is_attribute_suffix = fun p -> at p Syntax_kind.LBRACKET && (Syntax_kind.(peek_kind p 1 = AT) || Syntax_kind.(peek_kind p 1 = ATAT))
 
 let is_extension_shell = fun p -> at p Syntax_kind.LBRACKET && Syntax_kind.(peek_kind p 1 = PERCENT)
@@ -2038,6 +2051,10 @@ and parse_opaque_type_atom = fun p ~stop_at_arrow ->
         bump p;
         consume_balanced_until p ~closer:Syntax_kind.RBRACE 0;
         expect p Syntax_kind.RBRACE (invalid_type_expression p)
+    | Syntax_kind.LT ->
+        bump p;
+        consume_angle_balanced_until_gt p 0;
+        expect p Syntax_kind.GT (invalid_type_expression p)
     | Syntax_kind.OBJECT_KW | Syntax_kind.SIG_KW ->
         bump p;
         consume_balanced_until p ~closer:Syntax_kind.END_KW 0;
