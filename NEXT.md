@@ -4,13 +4,15 @@
 
 # Before Announcing
 
-* riot add <support many packages>
+* riot test print test time like ... ok (32µs)
 
-* Perf: everywhere we're using Cell + list we probably should just use Colletions.Vector 
+* riot test should build one test binary per package to maximize throughput
 
-* riot publish --json
+* riot snapshots review sucks: its hella slow, its not very interactive (a+enter? yuk)
 
-* riot-deps make workspace_manager a required param instead of an optinoal one
+* `riot explain <error-id> --json`, explains any error in the stack
+
+* riot fmt formats markdown comments, and formats code blocks
 
 * riot build takes _ages_ to plan big packages like std: is it syn?
 
@@ -20,10 +22,6 @@
 
 * lint: externals should be called unsafe_* 
 
-
-
-
-* riot snapshots review sucks: its hella slow, its not very interactive (a+enter? yuk)
 * keep workign on making docs.riot.ml look great and writing the docs 
 
 * riot run hello_world.ml should just work:
@@ -68,8 +66,6 @@ ubuntu` that can help us run cross-compiled binaries in a container so can confi
 
 * modules referencing themselves (A.ml using A inside) aren't circular dependencies! this allows modules like Suri.Config to call the Std.Config module after an `open`
 
-* enforce examples/binaries have a `val main : ~args:string list -> result` function by autoamtically wrapping/injecting a `let () = Actors.run ~main ~env:Std.Env.args ()` 
-
 * RIOT_LOG=debug should set the log level of Std.Log to debug -- that way we can just put a bunch of Log calls everywhere!
 
 * bug? how do we support creating projects without a .mli file and just generate it at build time for you?
@@ -87,31 +83,6 @@ ubuntu` that can help us run cross-compiled binaries in a container so can confi
 * `riot profile` -- instrument and dump traces for tests and programs? is this worth doing?
 
 * `riot fetch` -- download everything that needs downloading
-
-* `riot toolchain` should not crash outside the workspace ; riot toolchain list
-[Scheduler] Process pid<0> finished with exception: Panic("Failed to scan workspace")
-[Scheduler] Backtrace:
-Raised at Stdlib__Hashtbl.find in file "hashtbl.ml", line 584, characters 13-28
-Called from Kernel__Collections__Hashmap.get in file "/Users/leostera/Developer/github.com/leostera/riot/_build/release/aarch64-apple-", line 30, characters 11-33
-
-; riot toolchain install
-[Scheduler] Process pid<0> finished with exception: Panic("Failed to scan workspace")
-[Scheduler] Backtrace:
-Raised at Stdlib__Hashtbl.find in file "hashtbl.ml", line 584, characters 13-28
-Called from Kernel__Collections__Hashmap.get in file "/Users/leostera/Developer/github.com/leostera/riot/_build/release/aarch64-apple-", line 30, characters 11-33
-
-;
-
-* riot toolchain install has shitty output
-
-```
-Installing OCaml 5.5.0-riot.2 toolchains...
-
-  ✓ aarch64-apple-darwin (host) - already installed
-  ✓ aarch64-unknown-linux-gnu - already installed
-  📥 aarch64-unknown-linux-musl - downloading...
-📥 Downloading OCaml 5.5.0-riot.2 for aarch64-unknown-linux-musl (cross-compilation from aarch64-apple-darwin to aarch64-unknown-linux-musl)...
-```
 
 * minttea test cases that let you specify inputs and assert outputs in _turns_
 
