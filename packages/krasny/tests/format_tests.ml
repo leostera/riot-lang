@@ -456,7 +456,11 @@ type export_entry=Manifest.export_entry={name:string;path:Std.Path.t;action_hash
       let actual = capture_write parsed in
       Test.Snapshot.assert_inline_text ~ctx ~actual
         ~expected:{ocaml|type point = Base.point = private { x: int; y: string }
-type export_entry = Manifest.export_entry = { name: string; path: Std.Path.t; action_hash: string }
+type export_entry = Manifest.export_entry = {
+  name: string;
+  path: Std.Path.t;
+  action_hash: string;
+}
 |ocaml});
   Test.case "write breaks record type aliases when width is exceeded"
     (fun ctx ->
@@ -681,7 +685,9 @@ val triple: (int, string, bool) Graph_scheduler.node_result
 
 type close =
   | Close of int option * string
-type timing = { microseconds: int * int }
+type timing = {
+  microseconds: int * int;
+}
 |ocaml});
   Test.case "write renders operator value declarations"
     (fun ctx ->
@@ -1482,7 +1488,9 @@ external round_float:float->float="caml_round_float" "caml_round"[@@unboxed][@@n
       let parsed = parse_mli source in
       let actual = capture_write parsed in
       Test.Snapshot.assert_inline_text ~ctx ~actual
-        ~expected:{ocaml|type perform = { perform: 'a 'b. ('a step -> 'b t) -> 'a Effect.t -> 'b t } [@@ unboxed]
+        ~expected:{ocaml|type perform = {
+  perform: 'a 'b. ('a step -> 'b t) -> 'a Effect.t -> 'b t;
+} [@@ unboxed]
 
 external round_float: float -> float = "caml_round_float" "caml_round" [@@ unboxed] [@@ noalloc]
 |ocaml});
@@ -1908,7 +1916,7 @@ val id : 'a -> 'a
 |}
         ~actual;
       Ok ());
-  Test.case "format record fields without name-length multiline forcing"
+  Test.case "format record fields break for compound field types, not field-name length"
     (fun ctx ->
       let source = {|type t = {
   this_is_a_pretty_long_record_field_name : int list;
@@ -1921,9 +1929,13 @@ type u = {
       in
       let actual = parse_ml source |> Krasny.format |> Result.expect ~msg:"record fields should not break after ':' just because the field name is long" in
       Test.Snapshot.assert_inline_text ~ctx ~actual
-        ~expected:{|type t = { this_is_a_pretty_long_record_field_name: int list }
+        ~expected:{|type t = {
+  this_is_a_pretty_long_record_field_name: int list;
+}
 
-type u = { mutable this_is_a_pretty_long_record_field_name: int list }
+type u = {
+  mutable this_is_a_pretty_long_record_field_name: int list;
+}
 |});
   Test.case "format record fields preserves field attributes"
     (fun _ctx ->

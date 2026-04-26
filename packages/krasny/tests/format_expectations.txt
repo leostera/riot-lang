@@ -19,6 +19,7 @@
 0360_local_open_record_pattern.ml
 0370_section_comment_order.ml
 0380_long_grouped_bench_list.ml
+0390_multiline_apply_policy.ml
 
 # 04xx functions, match, and patterns
 0400_functions_match_and_patterns.ml
@@ -60,6 +61,7 @@
 
 # 07xx types and signatures
 0700_types_and_type_declarations.ml
+0701_record_type_inline_policy.ml
 0710_first_class_module_types.ml
 0720_signature_external_declaration.mli
 0721_poly_variant_inherit_type_alias.mli
@@ -168,6 +170,7 @@
 0985_inline_record_expression_spacing.ml
 0986_inline_record_update_spacing.ml
 0987_inline_constructor_record_spacing.mli
+0988_record_update_base_parentheses.ml
 
 # 91xx copied real-file regressions
 9101_real_krasny_doc.ml

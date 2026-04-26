@@ -116,7 +116,10 @@ type 'a tree =
   | Leaf of 'a
   | Node of 'a tree * 'a tree
 
-type chain = { value: int; next: chain option }
+type chain = {
+  value: int;
+  next: chain option;
+}
 
 type ('ok, 'err) result_like =
   | Ok of 'ok
@@ -128,7 +131,9 @@ type message =
 
 type opaque
 
-type mapper = { run: 'a. 'a list -> 'a list }
+type mapper = {
+  run: 'a. 'a list -> 'a list;
+}
 
 type 'a constrained = 'a
   constraint 'a=int
@@ -159,7 +164,10 @@ type request_handler =
 
 type 'a decoder = string -> ('a, string) result
 
-type response = { status: (int, string) result; body: string option }
+type response = {
+  status: (int, string) result;
+  body: string option;
+}
 
 type _ expr =
   | Int: int -> int expr

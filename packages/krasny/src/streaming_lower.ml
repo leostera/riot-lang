@@ -45,6 +45,7 @@ type state = {
   mutable suppress_leading_token: int option;
   mutable last_leading_comment_kind: leading_comment_kind option;
   mutable suppress_list_item_leading_comments: bool;
+  mutable force_fun_body_break: bool;
   mutable delimited_expr_depth: int;
 }
 
@@ -842,6 +843,12 @@ let with_suppressed_list_item_leading_comments = fun state fn ->
   state.suppress_list_item_leading_comments <- true;
   fn ();
   state.suppress_list_item_leading_comments <- previous
+
+let with_forced_fun_body_break = fun state fn ->
+  let previous = state.force_fun_body_break in
+  state.force_fun_body_break <- true;
+  fn ();
+  state.force_fun_body_break <- previous
 
 let emit_token_leading_comments_as_lines = fun state token ->
   match state.suppress_leading_token with
@@ -4270,6 +4277,24 @@ and expr_flat_width_with_budget = fun budget expr ->
         Some Int.(1 + token_flat_width label)
     | OptionalArg { label=None; _ } ->
         None
+    | Fun { body=Some body } -> (
+        match expr_flat_width_with_budget next_budget body with
+        | None -> None
+        | Some body_width ->
+            let params = collect_child_patterns expr in
+            let length = Vector.length params in
+            let rec loop index total =
+              if Int.(index >= length) then
+                Some Int.(total + 4 + body_width)
+              else
+                match node_token_flat_width (Vector.get_unchecked params ~at:index) with
+                | None -> None
+                | Some param_width -> loop (Int.add index 1) Int.(total + 1 + param_width)
+            in
+            loop 0 3
+      )
+    | Fun { body=None } ->
+        None
     | Parenthesized { inner=Some inner } when not (same_ast_node expr inner) && expr_is_tuple inner ->
         expr_flat_width_with_budget next_budget inner
     | Parenthesized { inner=Some inner } when not (same_ast_node expr inner) && expr_is_typed inner -> (
@@ -4433,7 +4458,14 @@ and record_expr_flat_width = fun budget expr ->
       match base with
       | Some base -> (
           match expr_flat_width_with_budget budget base with
-          | Some width -> Some Int.(width + 6)
+          | Some width ->
+              let width =
+                if expr_can_render_atom_without_parens base then
+                  width
+                else
+                  Int.add width 2
+              in
+              Some Int.(width + 6)
           | None -> None
         )
       | None -> Some 0
@@ -5474,6 +5506,26 @@ and render_apply_argument = fun state arg ->
   in
   render_split_arg arg
 
+and expr_is_fun_or_parenthesized_fun = fun expr ->
+  match Ast.Expr.view expr with
+  | Fun _ -> true
+  | Parenthesized { inner=Some inner } when not (same_ast_node expr inner) -> expr_is_fun inner
+  | _ -> false
+
+and render_broken_apply_argument = fun state arg ->
+  let force =
+    match Ast.Expr.view arg with
+    | Fun _ -> true
+    | Parenthesized { inner=Some inner } when not (same_ast_node arg inner) -> expr_is_fun inner
+    | LabeledArg { value=Some value; _ }
+    | OptionalArg { value=Some value; _ } -> expr_is_fun_or_parenthesized_fun value
+    | _ -> false
+  in
+  if force then
+    with_forced_fun_body_break state (fun () -> render_apply_argument state arg)
+  else
+    render_apply_argument state arg
+
 and expr_is_constructor_like_callee = fun expr ->
   match Ast.Expr.view expr with
   | Path _ -> (
@@ -5500,9 +5552,44 @@ and expr_is_single_constructor_multiline_apply = fun expr ->
       expr_is_single_constructor_apply expr && vector_exists_expr_is_multiline_except expr args
   | _ -> false
 
+and expr_is_heavy_nested_apply_value = fun expr ->
+  match Ast.Expr.view expr with
+  | Parenthesized { inner=Some inner } when not (same_ast_node expr inner) ->
+      expr_is_heavy_nested_apply_value inner
+  | Apply _ ->
+      let callee, args = collect_apply expr in
+      not (same_ast_node expr callee) && Int.(Vector.length args > 1)
+  | _ ->
+      false
+
+and apply_argument_has_heavy_nested_apply = fun arg ->
+  match Ast.Expr.view arg with
+  | LabeledArg { value=Some value; _ }
+  | OptionalArg { value=Some value; _ } -> expr_is_heavy_nested_apply_value value
+  | Parenthesized { inner=Some inner } when not (same_ast_node arg inner) -> expr_is_heavy_nested_apply_value
+    inner
+  | _ -> false
+
+and apply_args_have_heavy_nested_apply = fun args ->
+  let length = Vector.length args in
+  if Int.(length <= 2) then
+    false
+  else
+    let rec loop index =
+      if Int.(index >= length) then
+        false
+      else if apply_argument_has_heavy_nested_apply (Vector.get_unchecked args ~at:index) then
+        true
+      else
+        loop (Int.add index 1)
+    in
+    loop 0
+
 and apply_expr_should_break_from_column = fun state expr args ~column ->
   if Int.equal (Vector.length args) 0 then
     false
+  else if apply_args_have_heavy_nested_apply args then
+    true
   else
     let width =
       match expr_flat_width expr with
@@ -5556,7 +5643,7 @@ and render_apply_expr = fun state expr ->
             if should_break then
               (
                 emit_line state;
-                with_indent state 2 (fun () -> render_apply_argument state arg);
+                with_indent state 2 (fun () -> render_broken_apply_argument state arg);
                 loop (Int.add index 1) true
               )
             else (
@@ -5632,11 +5719,21 @@ and render_fun_expr = fun state expr body ->
   emit_space state;
   emit_text state "->";
   let body_exceeds_width =
-    match expr_flat_width body with
-    | Some width -> Int.(state.column + 1 + width > state.width)
-    | None -> false
+    match Ast.Expr.view body with
+    | Array
+    | List
+    | Record
+    | RecordUpdate
+    | Tuple -> false
+    | _ -> (
+        match expr_flat_width body with
+        | Some width -> Int.(state.column + 1 + width > state.width)
+        | None -> false
+      )
   in
-  if expr_has_leading_comment body || expr_is_multiline body || body_exceeds_width then
+  if
+    state.force_fun_body_break || expr_has_leading_comment body || expr_is_multiline body || body_exceeds_width
+  then
     (
       emit_line state;
       with_indent state 2 render_body
@@ -6614,12 +6711,19 @@ and let_binding_body_renders_inline = fun body ->
     false
   else
     match Ast.Expr.view body with
-    | Fun { body=Some body } -> not (expr_has_leading_comment body || expr_is_multiline body)
+    | Fun { body=Some body } ->
+        not (expr_has_leading_comment body || expr_is_multiline body)
+    | Apply _ ->
+        let _, args = collect_apply body in
+        not (apply_args_have_heavy_nested_apply args || expr_is_multiline body)
     | Record
-    | RecordUpdate -> record_expr_should_inline body
+    | RecordUpdate ->
+        record_expr_should_inline body
     | Function _
-    | Assign _ -> false
-    | _ -> not (expr_is_multiline body)
+    | Assign _ ->
+        false
+    | _ ->
+        not (expr_is_multiline body)
 
 and let_binding_body_exceeds_width = fun state body ->
   match Ast.Expr.view body with
@@ -6949,6 +7053,12 @@ and render_let_binding_tail_with_body_break = fun state binding force_body_break
   | None ->
       unsupported_node "let binding without body" binding
 
+and render_record_update_base = fun state base ->
+  if expr_can_render_atom_without_parens base then
+    render_expr state base
+  else
+    render_expr_atom state base
+
 and render_record_expr = fun state ~inline expr ->
   let base = Ast.RecordExpr.base expr in
   let fields = collect_record_fields expr in
@@ -6959,7 +7069,7 @@ and render_record_expr = fun state ~inline expr ->
     (
       match base with
       | Some base ->
-          render_expr state base;
+          render_record_update_base state base;
           emit_space state;
           emit_text state "with";
           emit_space state
@@ -6995,7 +7105,7 @@ and render_record_expr = fun state ~inline expr ->
           (
             match base with
             | Some base ->
-                render_expr state base;
+                render_record_update_base state base;
                 emit_space state;
                 emit_text state "with";
                 emit_line state
@@ -7253,11 +7363,37 @@ and record_type_fields_have_leading_comment = fun fields ->
   in
   loop 0
 
+and type_expr_is_light_record_field_annotation = fun annotation ->
+  match Ast.TypeExpr.view annotation with
+  | Path { path } ->
+      let tokens = collect_child_tokens path in
+      Int.equal (Vector.length tokens) 1
+  | Var _
+  | Wildcard ->
+      true
+  | _ ->
+      false
+
+and record_type_fields_are_light_inline = fun fields ->
+  let length = Vector.length fields in
+  let rec loop index =
+    if Int.(index >= length) then
+      true
+    else
+      let field = Vector.get_unchecked fields ~at:index in
+      match Ast.RecordField.type_annotation field with
+      | Some annotation when type_expr_is_light_record_field_annotation annotation -> loop
+        (Int.add index 1)
+      | _ -> false
+  in
+  loop 0
+
 and record_type_should_inline = fun state ~allow_inline record_type fields ->
   if
     (not allow_inline)
     || record_type_has_terminal_trivia record_type
     || record_type_fields_have_leading_comment fields
+    || not (record_type_fields_are_light_inline fields)
   then
     false
   else
@@ -8858,6 +8994,7 @@ let write = fun ~writer ?(width = 100) ?(buffer_size = 4_096) source_file ->
     suppress_leading_token = None;
     last_leading_comment_kind = None;
     suppress_list_item_leading_comments = false;
+    force_fun_body_break = false;
     delimited_expr_depth = 0;
   }
   in

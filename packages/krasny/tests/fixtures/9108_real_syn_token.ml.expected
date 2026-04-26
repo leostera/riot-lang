@@ -80,7 +80,10 @@ type token_kind =
   | EOF
   | Unknown of char
 
-type t = { kind: token_kind; span: Ceibo.Span.t }
+type t = {
+  kind: token_kind;
+  span: Ceibo.Span.t;
+}
 
 let delimiter_of_keyword: keyword -> delimiter option = function
   | Begin -> Some BeginEnd

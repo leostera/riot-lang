@@ -1,6 +1,10 @@
 type ('kind, 'text) token = { kind: 'kind; text: 'text; width: int }
 (** A token with syntax kind, text content, and character width *)
-type ('kind, 'text) node = { kind: 'kind; width: int; children: ('kind, 'text) element array }
+type ('kind, 'text) node = {
+  kind: 'kind;
+  width: int;
+  children: ('kind, 'text) element array;
+}
 
 (** A node with syntax kind, computed width, and child elements *)
 and ('kind, 'text) element =

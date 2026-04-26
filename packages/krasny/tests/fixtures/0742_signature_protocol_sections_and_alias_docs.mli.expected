@@ -16,7 +16,11 @@ type request_id =
 (** JSON-RPC request ID *)
 type error_code = int
 (** JSON-RPC error code *)
-type error = { code: error_code; message: string; data: json option }
+type error = {
+  code: error_code;
+  message: string;
+  data: json option;
+}
 
 (** JSON-RPC error *)
 (** {2 Client/Server Info} *)

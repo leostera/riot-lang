@@ -849,11 +849,13 @@ let count n =
   Test.case "lower2 breaks multiline labeled applications after equals"
     (fun _ctx ->
       assert_format2_ml
-        ~expected:"let () =\n\
-          \  Runtime.run\n\
-          \    ~main:(fun ~args -> Bench.Cli.main ~name:\"Vector Benchmarks\" ~benchmarks ~args)\n\
-          \    ~args:Env.args\n\
-          \    ()\n"
+        ~expected:{ocaml|let () =
+  Runtime.run
+    ~main:(fun ~args ->
+      Bench.Cli.main ~name:"Vector Benchmarks" ~benchmarks ~args)
+    ~args:Env.args
+    ()
+|ocaml}
         "let () = Runtime.run ~main:(fun ~args -> Bench.Cli.main ~name:\"Vector Benchmarks\" ~benchmarks ~args) ~args:Env.args ()\n");
   Test.case "lower2 breaks medium pipelines vertically in arrow bodies"
     (fun _ctx ->
