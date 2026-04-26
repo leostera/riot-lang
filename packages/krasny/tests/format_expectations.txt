@@ -179,6 +179,8 @@
 0992_fun_application_record_argument.ml
 0993_negative_prefix_application_arguments.ml
 0994_tuple_fun_element_parentheses.ml
+0995_parenthesized_tuple_pattern_break.ml
+0996_else_parenthesized_sequence.ml
 
 # 91xx copied real-file regressions
 9101_real_krasny_doc.ml

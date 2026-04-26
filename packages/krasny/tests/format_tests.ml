@@ -988,11 +988,10 @@ let ok = assert_relation `Satisfied (Pubgrub.Partial_solution.relation solution 
         ~expected:{ocaml|let render = fun line_start column ->
   if line_start then
     (line_start, column + 1)
-  else
-    (
-      IO.Buffer.add_char buffer ' ';
-      (false, column + 1)
-    )
+  else (
+    IO.Buffer.add_char buffer ' ';
+    (false, column + 1)
+  )
 |ocaml});
   Test.case "write trims pending spaces before record field docstrings"
     (fun ctx ->

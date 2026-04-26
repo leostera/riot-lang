@@ -3327,6 +3327,11 @@ let pattern_is_tuple = fun pattern ->
   | Tuple -> true
   | _ -> false
 
+let pattern_is_or = fun pattern ->
+  match Ast.Pattern.view pattern with
+  | Or _ -> true
+  | _ -> false
+
 let collect_tuple_pattern_items = fun pattern ->
   let items = Vector.with_capacity ~size:(Ast.Node.child_count pattern) in
   let rec push_items pattern =
@@ -3523,12 +3528,18 @@ let rec render_pattern = fun state pattern ->
       emit_space state;
       render_pattern_atom state argument
   | Apply _ -> unsupported_node "incomplete apply pattern" pattern
-  | Parenthesized { inner = Some inner } when pattern_is_tuple inner -> render_pattern state inner
+  | Parenthesized { inner = Some inner } when pattern_is_tuple inner ->
+      render_tuple_pattern state inner
   | Parenthesized { inner = Some inner } when pattern_is_operator_name inner ->
       emit_text state "(";
       emit_space state;
       render_pattern state inner;
       emit_space state;
+      emit_text state ")"
+  | Parenthesized { inner = Some inner } when pattern_is_or inner
+  && not (parenthesized_pattern_should_break state inner) ->
+      emit_text state "(";
+      render_or_pattern_inline state inner;
       emit_text state ")"
   | Parenthesized { inner = Some inner } when parenthesized_pattern_should_break state inner ->
       emit_text state "(";
@@ -3572,10 +3583,7 @@ let rec render_pattern = fun state pattern ->
       in
       loop 0
   | Or _ -> unsupported_node "incomplete or pattern" pattern
-  | Tuple ->
-      emit_text state "(";
-      render_tuple_pattern_contents state pattern;
-      emit_text state ")"
+  | Tuple -> render_tuple_pattern state pattern
   | List ->
       let items = collect_child_patterns pattern in
       if Int.equal (Vector.length items) 0 then
@@ -3645,6 +3653,55 @@ let rec render_pattern = fun state pattern ->
   | Attribute { inner = None } -> unsupported_node "attribute pattern without inner pattern" pattern
   | Error _
   | Unknown _ -> unsupported_node "unsupported pattern" pattern
+
+and render_or_pattern_inline = fun state pattern ->
+  let items = collect_or_pattern_items pattern in
+  emit_joined_vector
+    state
+    items
+    ~sep:(fun () ->
+      emit_space state;
+      emit_text state "|";
+      emit_space state)
+    ~fn:(render_pattern state)
+
+and render_tuple_pattern = fun state pattern ->
+  if parenthesized_pattern_should_break state pattern then
+    (
+      let items = collect_tuple_pattern_items pattern in
+      let length = Vector.length items in
+      emit_text state "(";
+      emit_line state;
+      with_indent
+        state
+        2
+        (fun () ->
+          let rec loop index =
+            if Int.(index < length) then
+              (
+                let item = Vector.get_unchecked items ~at:index in
+                if pattern_is_tuple item then
+                  render_pattern_atom state item
+                else
+                  render_pattern state item;
+                if Int.(index < Int.sub length 1) then
+                  (
+                    emit_text state ",";
+                    emit_line state
+                  );
+                loop (Int.add index 1)
+              )
+          in
+          loop 0);
+      emit_line state;
+      emit_text state ")"
+    )
+  else
+    (
+      emit_text state "(";
+      render_tuple_pattern_contents state pattern;
+      emit_text state ")"
+    )
 
 and render_tuple_pattern_contents = fun state pattern ->
   let items = collect_tuple_pattern_items pattern in
@@ -5901,15 +5958,36 @@ and render_if_expr = fun ?(else_if_continuation = false) state expr condition th
       render_expr state condition;
       emit_space state
     );
+  let then_sequence_inner =
+    match Ast.Expr.view then_branch with
+    | Parenthesized { inner = Some inner } when not (same_ast_node then_branch inner)
+    && expr_is_sequence inner -> Some inner
+    | _ -> None
+  in
   emit_node_keyword state expr ~kind:Kind.THEN_KW ~fallback:"then";
-  emit_line state;
-  with_indent state 2 (fun () -> render_keyword_body_expr state then_branch);
+  (
+    match then_sequence_inner with
+    | Some inner ->
+        emit_space state;
+        render_parenthesized_sequence_keyword_body state inner
+    | None ->
+        emit_line state;
+        with_indent state 2 (fun () -> render_keyword_body_expr state then_branch)
+  );
   (
     match else_branch with
     | None -> ()
     | Some branch ->
         let else_token = Ast.Node.first_child_token expr ~kind:Kind.ELSE_KW in
-        emit_line state;
+        let else_has_leading_comment =
+          match else_token with
+          | Some token -> Ast.Token.has_leading_comment token
+          | None -> false
+        in
+        if Option.is_some then_sequence_inner && not else_has_leading_comment then
+          emit_space state
+        else
+          emit_line state;
         (
           match else_token with
           | Some token when Ast.Token.has_leading_comment token ->
@@ -5935,8 +6013,8 @@ and render_if_expr = fun ?(else_if_continuation = false) state expr condition th
                 else_branch
           | Parenthesized { inner = Some inner } when not (same_ast_node branch inner)
           && expr_is_sequence inner ->
-              emit_line state;
-              with_indent state 2 (fun () -> render_parenthesized_sequence_keyword_body state inner)
+              emit_space state;
+              render_parenthesized_sequence_keyword_body state inner
           | _ ->
               emit_line state;
               with_indent state 2 (fun () -> render_keyword_body_expr state branch)
