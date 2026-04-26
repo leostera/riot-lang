@@ -873,7 +873,8 @@ let triple = map3 (fun a b c -> (a, b, c)) x y z
       let actual = capture_write parsed in
       Test.Snapshot.assert_inline_text ~ctx ~actual
         ~expected:{ocaml|let make =
-  list_init count
+  list_init
+    count
     (fun index ->
       let weight =
         if heavy && index = 0 then
@@ -1128,7 +1129,8 @@ let () =
         ~expected:{ocaml|let main = fun result ->
   match result with
   | Error e ->
-      Log.error "Request failed: %s"
+      Log.error
+        "Request failed: %s"
         (
           match e with
           | `Connection_failed msg -> format "Connection: %s" msg

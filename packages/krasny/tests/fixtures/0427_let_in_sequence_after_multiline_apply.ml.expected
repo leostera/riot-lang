@@ -2,7 +2,8 @@ let with_lock t f = f ()
 
 let render t =
   let value = 0 in
-  with_lock t
+  with_lock
+    t
     (fun () ->
       ignore 1;
       ignore 2);

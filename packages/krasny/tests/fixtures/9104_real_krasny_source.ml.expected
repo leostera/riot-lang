@@ -98,7 +98,8 @@ let split_trailing_comment_block text =
 
 let source_of_syntax_node (node: Syn.Cst.syntax_node) =
   let buffer = IO.Buffer.create 1_024 in
-  Syn.Ceibo.Red.SyntaxNode.preorder node
+  Syn.Ceibo.Red.SyntaxNode.preorder
+    node
     (
       function
       | Syn.Ceibo.Red.Token token ->
@@ -182,7 +183,8 @@ let fresh_match_parameter_name syntax_node =
 
 let syntax_node_has_comment_like_trivia (node: Syn.Cst.syntax_node) =
   let found = ref false in
-  Syn.Ceibo.Red.SyntaxNode.preorder node
+  Syn.Ceibo.Red.SyntaxNode.preorder
+    node
     (
       function
       | Syn.Ceibo.Red.Token token -> (

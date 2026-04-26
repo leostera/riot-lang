@@ -42,6 +42,7 @@ type state = {
   mutable indent: int;
   mutable pending_spaces: int;
   mutable wrote: bool;
+  mutable line_count: int;
   mutable suppress_leading_token: int option;
   mutable last_leading_comment_kind: leading_comment_kind option;
   mutable suppress_list_item_leading_comments: bool;
@@ -99,6 +100,18 @@ let last_slice_line_width = fun slice ->
     Slice.length slice
   else
     Int.(Slice.length slice - last_newline - 1)
+
+let count_slice_newlines = fun slice ->
+  let length = Slice.length slice in
+  let rec loop index count =
+    if Int.(index >= length) then
+      count
+    else if Char.equal (Slice.get_unchecked slice ~at:index) '\n' then
+      loop (Int.add index 1) (Int.add count 1)
+    else
+      loop (Int.add index 1) count
+  in
+  loop 0 0
 
 let write_indent = fun state ->
   let rec loop remaining =
@@ -174,6 +187,7 @@ let emit_line = fun state ->
   IO.Buffer.add_char state.buffer '\n';
   flush_if_needed state;
   state.wrote <- true;
+  state.line_count <- Int.add state.line_count 1;
   state.line_start <- true;
   state.column <- state.indent
 
@@ -197,6 +211,7 @@ let emit_text = fun state value ->
           IO.Buffer.add_char state.buffer '\n';
           flush_if_needed state;
           state.wrote <- true;
+          state.line_count <- Int.add state.line_count 1;
           state.line_start <- true;
           loop Int.(index + 1) Int.(index + 1) true
         )
@@ -770,6 +785,7 @@ let emit_slice = fun state ~has_newline value ->
         append_subslice_unchecked state.buffer value ~off:0 ~len:length;
         flush_if_needed state;
         state.wrote <- true;
+        state.line_count <- Int.add state.line_count (count_slice_newlines value);
         state.line_start <- Char.equal (Slice.get_unchecked value ~at:Int.(length - 1)) '\n';
         state.column <- last_slice_line_width value
       )
@@ -4436,7 +4452,14 @@ and record_expr_field_flat_width = fun budget field ->
       | None -> None
       | Some value_width -> (
           match node_token_flat_width path with
-          | Some path_width -> Some Int.(path_width + 3 + value_width)
+          | Some path_width ->
+              let value_width =
+                if expr_can_render_atom_without_parens value then
+                  value_width
+                else
+                  Int.add value_width 2
+              in
+              Some Int.(path_width + 3 + value_width)
           | None -> None
         )
     )
@@ -5509,16 +5532,35 @@ and render_apply_argument = fun state arg ->
 and expr_is_fun_or_parenthesized_fun = fun expr ->
   match Ast.Expr.view expr with
   | Fun _ -> true
-  | Parenthesized { inner=Some inner } when not (same_ast_node expr inner) -> expr_is_fun inner
+  | Parenthesized { inner=Some inner } when not (same_ast_node expr inner) -> expr_is_fun_or_parenthesized_fun
+    inner
+  | _ -> false
+
+and fun_body_should_force_break_in_broken_arg = fun body ->
+  if expr_has_leading_comment body || expr_is_multiline body || expr_is_pipeline body then
+    true
+  else
+    match Ast.Expr.view body with
+    | Apply _ ->
+        let _, args = collect_apply body in
+        Int.(Vector.length args > 2) || apply_args_have_heavy_nested_apply args
+    | _ -> false
+
+and fun_expr_should_force_body_break_in_broken_arg = fun expr ->
+  match Ast.Expr.view expr with
+  | Fun { body=Some body } -> fun_body_should_force_break_in_broken_arg body
+  | Fun { body=None } -> true
+  | Parenthesized { inner=Some inner } when not (same_ast_node expr inner) -> fun_expr_should_force_body_break_in_broken_arg
+    inner
   | _ -> false
 
 and render_broken_apply_argument = fun state arg ->
   let force =
     match Ast.Expr.view arg with
-    | Fun _ -> true
-    | Parenthesized { inner=Some inner } when not (same_ast_node arg inner) -> expr_is_fun inner
+    | Fun _
+    | Parenthesized _ -> fun_expr_should_force_body_break_in_broken_arg arg
     | LabeledArg { value=Some value; _ }
-    | OptionalArg { value=Some value; _ } -> expr_is_fun_or_parenthesized_fun value
+    | OptionalArg { value=Some value; _ } -> fun_expr_should_force_body_break_in_broken_arg value
     | _ -> false
   in
   if force then
@@ -5609,7 +5651,11 @@ and render_apply_expr = fun state expr ->
   let single_constructor_payload = Int.equal arg_count 1 && expr_is_constructor_like_callee callee in
   let has_multiline_args = vector_exists_expr_is_multiline_except expr args in
   let break_all_args =
-    if single_constructor_payload || has_multiline_args then
+    if single_constructor_payload then
+      false
+    else if has_multiline_args && Int.(arg_count > 1) then
+      true
+    else if has_multiline_args then
       false
     else
       apply_expr_should_break state expr args
@@ -6803,14 +6849,16 @@ and render_let_expr = fun state expr body ->
     (
       let binding = Vector.get_unchecked bindings ~at:0 in
       let binding_head_multiline = let_binding_tail_should_render_multiline binding in
+      let before_binding_lines = state.line_count in
       render_binding_head 0 binding;
+      let binding_rendered_multiline = Int.(state.line_count > before_binding_lines) in
       match Ast.LetBinding.body binding with
       | Some _ when binding_head_multiline ->
           emit_line state;
           emit_text state "in";
           emit_line state;
           render_in_body_expr state body
-      | Some binding_body when let_binding_body_renders_inline binding_body ->
+      | Some binding_body when (not binding_rendered_multiline) && let_binding_body_renders_inline binding_body ->
           emit_space state;
           emit_text state "in";
           emit_line state;
@@ -7016,28 +7064,8 @@ and render_let_binding_tail_with_body_break = fun state binding force_body_break
   | Some body when (not binding_pattern_is_unit)
   && expr_is_apply body
   && let_binding_body_exceeds_width state body ->
-      let body_would_still_break_after_body_break =
-        let body_column = Int.add state.indent 2 in
-        let body_width =
-          match expr_flat_width body with
-          | Some width -> Some width
-          | None -> node_token_flat_width body
-        in
-        expr_is_multiline body || (
-          match body_width with
-          | Some width -> Int.(body_column + width > state.width)
-          | None -> false
-        )
-      in
-      if Int.(parameter_count > 0) && body_would_still_break_after_body_break then
-        (
-          emit_space state;
-          render_expr state body
-        )
-      else (
-        emit_line state;
-        with_indent state 2 (fun () -> render_expr state body)
-      )
+      emit_line state;
+      with_indent state 2 (fun () -> render_expr state body)
   | Some body when expr_is_multiline body ->
       emit_line state;
       with_indent state 2 (fun () -> render_expr state body)
@@ -7154,14 +7182,14 @@ and render_record_field = fun state ~inline field ->
           emit_line state;
           with_indent state 2
             (fun () ->
-              if expr_is_tuple value then
+              if expr_is_tuple value || expr_is_fun_or_parenthesized_fun value then
                 render_expr_atom state value
               else
                 render_expr state value)
         )
       else (
         emit_space state;
-        if expr_is_tuple value then
+        if expr_is_tuple value || expr_is_fun_or_parenthesized_fun value then
           render_expr_atom state value
         else
           render_expr state value
@@ -7388,11 +7416,29 @@ and record_type_fields_are_light_inline = fun fields ->
   in
   loop 0
 
+and record_type_fields_have_multi_field_mutable = fun fields ->
+  let length = Vector.length fields in
+  if Int.(length <= 1) then
+    false
+  else
+    let rec loop index =
+      if Int.(index >= length) then
+        false
+      else if
+        Option.is_some (Ast.RecordField.mutable_token (Vector.get_unchecked fields ~at:index))
+      then
+        true
+      else
+        loop (Int.add index 1)
+    in
+    loop 0
+
 and record_type_should_inline = fun state ~allow_inline record_type fields ->
   if
     (not allow_inline)
     || record_type_has_terminal_trivia record_type
     || record_type_fields_have_leading_comment fields
+    || record_type_fields_have_multi_field_mutable fields
     || not (record_type_fields_are_light_inline fields)
   then
     false
@@ -8991,6 +9037,7 @@ let write = fun ~writer ?(width = 100) ?(buffer_size = 4_096) source_file ->
     indent = 0;
     pending_spaces = 0;
     wrote = false;
+    line_count = 0;
     suppress_leading_token = None;
     last_leading_comment_kind = None;
     suppress_list_item_leading_comments = false;

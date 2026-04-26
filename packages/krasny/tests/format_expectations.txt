@@ -20,6 +20,7 @@
 0370_section_comment_order.ml
 0380_long_grouped_bench_list.ml
 0390_multiline_apply_policy.ml
+0391_apply_fun_and_let_in_policy.ml
 
 # 04xx functions, match, and patterns
 0400_functions_match_and_patterns.ml
@@ -171,6 +172,7 @@
 0986_inline_record_update_spacing.ml
 0987_inline_constructor_record_spacing.mli
 0988_record_update_base_parentheses.ml
+0989_record_field_function_parentheses.ml
 
 # 91xx copied real-file regressions
 9101_real_krasny_doc.ml

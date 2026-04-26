@@ -10,3 +10,12 @@ type pooled_connection = {
   conn: Connection.t;
   mutable last_used_at: Time.Instant.t;
 }
+
+type state = {
+  client: t;
+  connection: connection;
+  mutable buffer: string;
+  mutable done_: bool;
+}
+
+type single_mutable = { mutable value: int }

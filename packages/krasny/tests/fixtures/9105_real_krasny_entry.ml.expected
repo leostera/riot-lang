@@ -46,7 +46,8 @@ let syntax_hash (result: Syn.Parser.parse_result) =
             IO.Buffer.add_string buffer "T(";
             IO.Buffer.add_string buffer (Syn.SyntaxKind.to_string kind);
             IO.Buffer.add_string buffer ":";
-            IO.Buffer.add_string buffer
+            IO.Buffer.add_string
+              buffer
               (
                 Syn.Ceibo.Green.text element
                 |> Option.expect ~msg:"token text"

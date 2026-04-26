@@ -31,7 +31,8 @@ let () =
             |> Style.width (Style.Fixed 15.0)
           )
           [ Element.text "Right" ];
-      ] in
+      ]
+  in
   (* Layout with 80x24 viewport *)
   let viewport = Viewport.make ~width:80.0 ~height:24.0 in
   let config = Config.make ~viewport ~text_measurer () in

@@ -381,12 +381,20 @@ let tests = [
       assert_format2_ml
         ~expected:"let f body body_len content_length_hdr =\n  if not (String.ends_with ~suffix:\"}\" body) then\n    Error (\"Response body truncated! Length: \"\n    ^ string_of_int body_len\n    ^ \", Content-Length: \"\n    ^ (Option.unwrap_or ~default:\"missing\" content_length_hdr))\n  else\n    Ok ()\n"
         "let f body body_len content_length_hdr = if not (String.ends_with ~suffix:\"}\" body) then Error (\"Response body truncated! Length: \" ^ string_of_int body_len ^ \", Content-Length: \" ^ (Option.unwrap_or ~default:\"missing\" content_length_hdr)) else Ok ()\n");
-  Test.case
-    "lower2 breaks ordinary calls before multiline infix arguments"
+  Test.case "lower2 breaks ordinary calls before multiline infix arguments"
     (fun _ctx ->
       assert_format2_ml
-        ~expected:"let log chunk chunk_count = Log.info\n  (\"Chunk \"\n  ^ string_of_int !chunk_count\n  ^ \" (\"\n  ^ string_of_int (String.length chunk)\n  ^ \" bytes): \"\n  ^ chunk)\n"
-        "let log chunk chunk_count = Log.info (\"Chunk \" ^ string_of_int !chunk_count ^ \" (\" ^ string_of_int (String.length chunk) ^ \" bytes): \" ^ chunk)\n");
+        ~expected:{ocaml|let log chunk chunk_count =
+  Log.info
+    ("Chunk "
+    ^ string_of_int !chunk_count
+    ^ " ("
+    ^ string_of_int (String.length chunk)
+    ^ " bytes): "
+    ^ chunk)
+|ocaml}
+        {ocaml|let log chunk chunk_count = Log.info ("Chunk " ^ string_of_int !chunk_count ^ " (" ^ string_of_int (String.length chunk) ^ " bytes): " ^ chunk)
+|ocaml});
   Test.case
     "lower2 breaks long qualified match pattern application bodies"
     (fun _ctx ->
@@ -489,14 +497,15 @@ let tests = [
   Test.case "lower2 wraps parenthesized infix arguments containing match"
     (fun _ctx ->
       assert_format2_ml
-        ~expected:{ocaml|let log first_event = Log.info
-  (
-    "First event: " ^ (
-      match first_event with
-      | Some _ -> "got one"
-      | None -> "none"
+        ~expected:{ocaml|let log first_event =
+  Log.info
+    (
+      "First event: " ^ (
+        match first_event with
+        | Some _ -> "got one"
+        | None -> "none"
+      )
     )
-  )
 |ocaml}
         {ocaml|let log first_event = Log.info ("First event: " ^ (match first_event with | Some _ -> "got one" | None -> "none"))
 |ocaml});
