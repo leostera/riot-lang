@@ -1,5 +1,4 @@
 open Std
-
 module Array = Collections.Array
 module Vector = Collections.Vector
 module De = Serde.De
@@ -54,9 +53,18 @@ type payload_builder = {
   mutable status: status option;
 }
 
-type fixture_spec = { label: string; tag_count: int; score_count: int; string_repeat: int }
+type fixture_spec = {
+  label: string;
+  tag_count: int;
+  score_count: int;
+  string_repeat: int;
+}
 
-type fixture = { label: string; value: payload; encoded: string }
+type fixture = {
+  label: string;
+  value: payload;
+  encoded: string;
+}
 
 let small_bench_config: Bench.bench_config = { iterations = 100; warmup = 5 }
 
@@ -88,61 +96,50 @@ let tags_of_count = fun count ->
 
 let scores_of_count = fun count -> Array.init ~count ~fn:(fun index -> (index * 97) mod 1_000_000)
 
-let status_decode =
-  De.variant
-    [
-      De.Variant.unit "Active" Active;
-      De.Variant.unit "Draft" Draft;
-      De.Variant.unit "Archived" Archived;
-    ]
+let status_decode = De.variant
+  [
+    De.Variant.unit "Active" Active;
+    De.Variant.unit "Draft" Draft;
+    De.Variant.unit "Archived" Archived;
+  ]
 
-let status_encode =
-  Ser.variant
-    [
-      Ser.Variant.unit
-        "Active"
-        (
-          function
-          | Active -> true
-          | _ -> false
-        );
-      Ser.Variant.unit
-        "Draft"
-        (
-          function
-          | Draft -> true
-          | _ -> false
-        );
-      Ser.Variant.unit
-        "Archived"
-        (
-          function
-          | Archived -> true
-          | _ -> false
-        );
-    ]
+let status_encode = Ser.variant
+  [ Ser.Variant.unit "Active"
+      (
+        function
+        | Active -> true
+        | _ -> false
+      ); Ser.Variant.unit "Draft"
+      (
+        function
+        | Draft -> true
+        | _ -> false
+      ); Ser.Variant.unit "Archived"
+      (
+        function
+        | Archived -> true
+        | _ -> false
+      ); ]
 
-let payload_fields =
-  De.fields
-    [
-      De.field "name" Field_name;
-      De.field "role" Field_role;
-      De.field "crew" Field_crew;
-      De.field "age" Field_age;
-      De.field "active" Field_active;
-      De.field "small" Field_small;
-      De.field "big" Field_big;
-      De.field "ratio" Field_ratio;
-      De.field "tags" Field_tags;
-      De.field "scores" Field_scores;
-      De.field "nickname" Field_nickname;
-      De.field "status" Field_status;
-    ]
+let payload_fields = De.fields
+  [
+    De.field "name" Field_name;
+    De.field "role" Field_role;
+    De.field "crew" Field_crew;
+    De.field "age" Field_age;
+    De.field "active" Field_active;
+    De.field "small" Field_small;
+    De.field "big" Field_big;
+    De.field "ratio" Field_ratio;
+    De.field "tags" Field_tags;
+    De.field "scores" Field_scores;
+    De.field "nickname" Field_nickname;
+    De.field "status" Field_status;
+  ]
 
 let payload_decode =
-  De.record_mut
-    ~fields:payload_fields
-    ~create:(fun (): payload_builder ->
+  De.record_mut ~fields:payload_fields
+    ~create:(fun () : payload_builder ->
       {
         name = None;
         role = None;
@@ -193,47 +190,41 @@ let payload_decode =
             | None -> None
           in
           ({
-            name;
-            role;
-            crew;
-            age;
-            active;
-            small;
-            big;
-            ratio;
-            tags;
-            scores;
-            nickname;
-            status;
-          }: payload)
+              name;
+              role;
+              crew;
+              age;
+              active;
+              small;
+              big;
+              ratio;
+              tags;
+              scores;
+              nickname;
+              status;
+            }: payload)
       | _ -> De.missing_field ())
 
-let payload_encode =
-  Ser.record
-    (
-      Ser.fields
-        [
-          Ser.field "name" Ser.string (fun (value: payload) -> value.name);
-          Ser.field "role" Ser.string (fun (value: payload) -> value.role);
-          Ser.field "crew" Ser.string (fun (value: payload) -> value.crew);
-          Ser.field "age" Ser.int (fun (value: payload) -> value.age);
-          Ser.field "active" Ser.bool (fun (value: payload) -> value.active);
-          Ser.field "small" Ser.int32 (fun (value: payload) -> value.small);
-          Ser.field "big" Ser.int64 (fun (value: payload) -> value.big);
-          Ser.field "ratio" Ser.float (fun (value: payload) -> value.ratio);
-          Ser.field "tags" (Ser.list Ser.string) (fun (value: payload) -> value.tags);
-          Ser.field "scores" (Ser.array Ser.int) (fun (value: payload) -> value.scores);
-          Ser.field "nickname" (Ser.option Ser.string) (fun (value: payload) -> value.nickname);
-          Ser.field "status" status_encode (fun (value: payload) -> value.status);
-        ]
-    )
+let payload_encode = Ser.record
+  (
+    Ser.fields
+      [
+        Ser.field "name" Ser.string (fun (value: payload) -> value.name);
+        Ser.field "role" Ser.string (fun (value: payload) -> value.role);
+        Ser.field "crew" Ser.string (fun (value: payload) -> value.crew);
+        Ser.field "age" Ser.int (fun (value: payload) -> value.age);
+        Ser.field "active" Ser.bool (fun (value: payload) -> value.active);
+        Ser.field "small" Ser.int32 (fun (value: payload) -> value.small);
+        Ser.field "big" Ser.int64 (fun (value: payload) -> value.big);
+        Ser.field "ratio" Ser.float (fun (value: payload) -> value.ratio);
+        Ser.field "tags" (Ser.list Ser.string) (fun (value: payload) -> value.tags);
+        Ser.field "scores" (Ser.array Ser.int) (fun (value: payload) -> value.scores);
+        Ser.field "nickname" (Ser.option Ser.string) (fun (value: payload) -> value.nickname);
+        Ser.field "status" status_encode (fun (value: payload) -> value.status);
+      ]
+  )
 
-let build_fixture = fun ({
-  label;
-  tag_count;
-  score_count;
-  string_repeat
-}: fixture_spec) ->
+let build_fixture = fun ({ label; tag_count; score_count; string_repeat }: fixture_spec) ->
   let value: payload = {
     name = "Monkey D. Luffy";
     role = repeat "captain-of-the-straw-hats-" string_repeat;
@@ -249,24 +240,17 @@ let build_fixture = fun ({
     status = Active;
   }
   in
-  let encoded =
-    Serde_urlencoded.to_string payload_encode value
-    |> Result.expect ~msg:("expected " ^ label ^ " fixture to encode")
-  in
+  let encoded = Serde_urlencoded.to_string payload_encode value
+  |> Result.expect ~msg:("expected " ^ label ^ " fixture to encode") in
   { label; value; encoded }
 
-let small_fixture_spec = {
-  label = "small";
-  tag_count = 64;
-  score_count = 64;
-  string_repeat = 4;
-}
+let small_fixture_spec = { label = "small"; tag_count = 64; score_count = 64; string_repeat = 4 }
 
 let large_fixture_spec = {
   label = "large";
   tag_count = 16_384;
   score_count = 16_384;
-  string_repeat = 256;
+  string_repeat = 256
 }
 
 let io_writer_of_buffer =
@@ -275,23 +259,21 @@ let io_writer_of_buffer =
 
     let write = fun buffer ~from ->
       let written = IO.Buffer.readable_bytes from in
-      IO.Buffer.append_slice buffer (IO.Buffer.readable from)
-      |> Result.expect ~msg:"serde-urlencoded bench writer should append buffer contents";
+      IO.Buffer.append_slice buffer (IO.Buffer.readable from) |> Result.expect ~msg:"serde-urlencoded bench writer should append buffer contents";
       Ok written
 
     let write_vectored = fun buffer ~from ->
       let written = ref 0 in
-      IO.IoVec.for_each
-        from
+      IO.IoVec.for_each from
         ~fn:(fun chunk ->
-          IO.Buffer.append_slice buffer chunk
-          |> Result.expect ~msg:"serde-urlencoded bench writer should append slices";
+          IO.Buffer.append_slice buffer chunk |> Result.expect ~msg:"serde-urlencoded bench writer should append slices";
           written := !written + IO.IoSlice.length chunk);
       Ok !written
 
     let flush = fun _buffer -> Ok ()
   end in
-  fun buffer -> IO.Writer.from_sink (module Write) buffer
+  fun buffer ->
+    IO.Writer.from_sink (module Write) buffer
 
 let bench_encode_in_memory = fun fixture () ->
   ignore (Serde_urlencoded.to_string payload_encode fixture.value)

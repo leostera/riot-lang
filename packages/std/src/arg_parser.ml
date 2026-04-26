@@ -148,8 +148,7 @@ let rec get_matches_internal = fun cmd args ->
   let matches = create_matches cmd.name in
   let validate_required () =
     let missing =
-      List.find
-        cmd.args
+      List.find cmd.args
         ~fn:(fun arg ->
           arg.required && match HashMap.get matches.values ~key:arg.name with
           | None -> true
@@ -227,10 +226,7 @@ let rec get_matches_internal = fun cmd args ->
         let _ = HashMap.insert matches.flags ~key:name ~value:1 in
         parse_args rest
     | Count ->
-        let count =
-          HashMap.get matches.flags ~key:name
-          |> Option.unwrap_or ~default:0
-        in
+        let count = HashMap.get matches.flags ~key:name |> Option.unwrap_or ~default:0 in
         let _ = HashMap.insert matches.flags ~key:name ~value:(count + 1) in
         parse_args rest
     | Set
@@ -238,10 +234,7 @@ let rec get_matches_internal = fun cmd args ->
         match rest with
         | [] -> Error (InvalidValue (name, "missing value"))
         | value :: rest' ->
-            let current =
-              HashMap.get matches.values ~key:name
-              |> Option.unwrap_or ~default:[]
-            in
+            let current = HashMap.get matches.values ~key:name |> Option.unwrap_or ~default:[] in
             let _ = HashMap.insert matches.values ~key:name ~value:(current @ [ value ]) in
             parse_args rest'
       )
@@ -256,8 +249,7 @@ let rec get_matches_internal = fun cmd args ->
         ~fn:(fun positional_arg -> positional_arg.short = None && positional_arg.long = None)
     in
     let unfilled_positionals: unit arg list =
-      List.filter
-        positional_args
+      List.filter positional_args
         ~fn:(fun (positional_arg: unit arg) ->
           let current = HashMap.get matches.values ~key:positional_arg.name in
           match current with
@@ -266,17 +258,18 @@ let rec get_matches_internal = fun cmd args ->
           | Some _ -> positional_arg.multiple)
     in
     match (unfilled_positionals, pos_args) with
-    | ([], []) -> validate_required ()
-    | ([], value :: _) -> Error (UnknownArgument value)
+    | ([], []) ->
+        validate_required ()
+    | ([], value :: _) ->
+        Error (UnknownArgument value)
     | (arg :: _, value :: rest) ->
-        let current =
-          HashMap.get matches.values ~key:arg.name
-          |> Option.unwrap_or ~default:[]
-        in
+        let current = HashMap.get matches.values ~key:arg.name |> Option.unwrap_or ~default:[] in
         let _ = HashMap.insert matches.values ~key:arg.name ~value:(current @ [ value ]) in
         parse_args rest
-    | (arg :: _, []) when arg.required -> Error (MissingRequired arg.name)
-    | (_, []) -> validate_required ()
+    | (arg :: _, []) when arg.required ->
+        Error (MissingRequired arg.name)
+    | (_, []) ->
+        validate_required ()
   in
   parse_args args
 
@@ -294,15 +287,18 @@ and print_help = fun cmd ->
     | None -> println (cmd.name ^ "\n")
   );
   (* Separate positional args from options *)
-  let positionals = List.filter cmd.args ~fn:(fun arg -> arg.short = None && arg.long = None) in
-  let options = List.filter cmd.args ~fn:(fun arg -> arg.short != None || arg.long != None) in
+  let positionals =
+    List.filter cmd.args ~fn:(fun arg -> arg.short = None && arg.long = None)
+  in
+  let options =
+    List.filter cmd.args ~fn:(fun arg -> arg.short != None || arg.long != None)
+  in
   (* Usage section *)
   let usage_buf = Buffer.create ~size:128 in
   Buffer.add_string usage_buf ("Usage: " ^ cmd.name);
   if List.length options > 0 then
     Buffer.add_string usage_buf " [OPTIONS]";
-  List.for_each
-    positionals
+  List.for_each positionals
     ~fn:(fun arg ->
       let name =
         if arg.multiple then
@@ -323,9 +319,7 @@ and print_help = fun cmd ->
     (
       println "\nArguments:";
       let max_arg_width: int =
-        List.fold_left
-          positionals
-          ~init:0
+        List.fold_left positionals ~init:0
           ~fn:(fun (acc: int) (arg: unit arg) ->
             let name =
               if arg.multiple then
@@ -335,8 +329,7 @@ and print_help = fun cmd ->
             in
             max acc (String.length name))
       in
-      List.for_each
-        positionals
+      List.for_each positionals
         ~fn:(fun (arg: unit arg) ->
           let name =
             if arg.multiple then
@@ -364,9 +357,7 @@ and print_help = fun cmd ->
       println "\nOptions:";
       (* Calculate max width for alignment *)
       let max_opt_width =
-        List.fold_left
-          options
-          ~init:0
+        List.fold_left options ~init:0
           ~fn:(fun acc arg ->
             let short_len =
               match arg.short with
@@ -380,8 +371,7 @@ and print_help = fun cmd ->
             in
             max acc (short_len + long_len))
       in
-      List.for_each
-        options
+      List.for_each options
         ~fn:(fun arg ->
           let short_str =
             match arg.short with
@@ -407,12 +397,15 @@ and print_help = fun cmd ->
     (
       println "\nCommands:";
       (* Sort subcommands alphabetically *)
-      let sorted_subs = List.sort cmd.subcommands ~compare:(fun a b -> String.compare a.name b.name) in
+      let sorted_subs =
+        List.sort cmd.subcommands
+          ~compare:(fun a b ->
+            String.compare a.name b.name)
+      in
       let max_name_len =
         List.fold_left sorted_subs ~init:0 ~fn:(fun acc sub -> max acc (String.length sub.name))
       in
-      List.for_each
-        sorted_subs
+      List.for_each sorted_subs
         ~fn:(fun sub ->
           let padding = String.make ~len:(max_name_len - String.length sub.name + 4) ~char:' ' in
           let about_str =
@@ -436,18 +429,13 @@ let get_one = fun matches name ->
   | _ -> None
 
 let get_flag = fun matches name ->
-  (
-    HashMap.get matches.flags ~key:name
-    |> Option.unwrap_or ~default:0
-  ) > 0
+  (HashMap.get matches.flags ~key:name |> Option.unwrap_or ~default:0) > 0
 
 let get_count = fun matches name ->
-  HashMap.get matches.flags ~key:name
-  |> Option.unwrap_or ~default:0
+  HashMap.get matches.flags ~key:name |> Option.unwrap_or ~default:0
 
 let get_many = fun matches name ->
-  HashMap.get matches.values ~key:name
-  |> Option.unwrap_or ~default:[]
+  HashMap.get matches.values ~key:name |> Option.unwrap_or ~default:[]
 
 let get_int = fun matches name ->
   match get_one matches name with
@@ -498,12 +486,15 @@ let usage_string = fun cmd ->
   let buf = Buffer.create ~size:256 in
   Buffer.add_string buf ("Usage: " ^ cmd.name);
   (* Add options if any *)
-  let has_options = List.any cmd.args ~fn:(fun arg -> arg.short != None || arg.long != None) in
+  let has_options =
+    List.any cmd.args ~fn:(fun arg -> arg.short != None || arg.long != None)
+  in
   if has_options then
     Buffer.add_string buf " [OPTIONS]";
-  let positionals = List.filter cmd.args ~fn:(fun arg -> arg.short = None && arg.long = None) in
-  List.for_each
-    positionals
+  let positionals =
+    List.filter cmd.args ~fn:(fun arg -> arg.short = None && arg.long = None)
+  in
+  List.for_each positionals
     ~fn:(fun arg ->
       let name =
         if arg.multiple then

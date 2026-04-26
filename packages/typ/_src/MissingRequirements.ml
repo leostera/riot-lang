@@ -17,7 +17,9 @@ type requirement =
 type t = requirement list
 
 let compare_source_ids = fun left right ->
-  Int.compare (SourceId.to_int left) (SourceId.to_int right)
+  Int.compare
+    (SourceId.to_int left)
+    (SourceId.to_int right)
 
 let normalize_requesters = fun requested_by -> List.sort_uniq compare_source_ids requested_by
 

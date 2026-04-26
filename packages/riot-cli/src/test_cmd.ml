@@ -3,50 +3,25 @@ open Std.Result.Syntax
 open Riot_model
 open Riot_build
 open ArgParser
-
 module Vector = Collections.Vector
 
 let command =
   let open ArgParser in
-  let open ArgParser.Arg in
-  command "test"
-  |> about "Run tests with optional case filtering"
-  |> ArgParser.allow_trailing_args
-  |> args
-    [
-      option "package"
-      |> short 'p'
-      |> long "package"
-      |> multiple
-      |> help "Run tests from a specific package. Repeat to run multiple packages.";
-      option "filter"
-      |> short 'f'
-      |> long "filter"
-      |> help "Filter test suites and cases by substring within the selected packages";
-      flag "list"
-      |> long "list"
-      |> help "List test suites and cases without running them";
-      flag "release"
-      |> long "release"
-      |> help "Use the release build profile";
-      flag "small"
-      |> long "small"
-      |> help "Run only tests marked small";
-      flag "large"
-      |> long "large"
-      |> help "Run only tests marked large";
-      flag "flaky"
-      |> long "flaky"
-      |> help "Run only tests marked flaky";
-      flag "json"
-      |> long "json"
-      |> help "Emit machine-readable JSONL events";
-      flag "verbose"
-      |> short 'v'
-      |> long "verbose"
-      |> help "Enable verbose output for tests"
-      |> count;
-    ]
+    let open ArgParser.Arg in command "test"
+    |> about "Run tests with optional case filtering"
+    |> ArgParser.allow_trailing_args
+    |> args
+      [
+        option "package" |> short 'p' |> long "package" |> multiple |> help "Run tests from a specific package. Repeat to run multiple packages.";
+        option "filter" |> short 'f' |> long "filter" |> help "Filter test suites and cases by substring within the selected packages";
+        flag "list" |> long "list" |> help "List test suites and cases without running them";
+        flag "release" |> long "release" |> help "Use the release build profile";
+        flag "small" |> long "small" |> help "Run only tests marked small";
+        flag "large" |> long "large" |> help "Run only tests marked large";
+        flag "flaky" |> long "flaky" |> help "Run only tests marked flaky";
+        flag "json" |> long "json" |> help "Emit machine-readable JSONL events";
+        flag "verbose" |> short 'v' |> long "verbose" |> help "Enable verbose output for tests" |> count;
+      ]
 
 let trailing_args = fun matches ->
   let args = ArgParser.trailing_args matches in
@@ -62,16 +37,14 @@ let profile_of_matches = fun matches ->
 
 let parse_package_names = fun package_names ->
   let rec loop acc = function
-    | [] ->
-        Ok (List.reverse acc)
+    | [] -> Ok (List.reverse acc)
     | package_name :: rest -> (
         match Riot_model.Package_name.from_string package_name with
         | Ok package_name -> loop (package_name :: acc) rest
-        | Error error ->
-            Error (Failure ("invalid package name '"
-            ^ package_name
-            ^ "': "
-            ^ Riot_model.Package_name.error_message error))
+        | Error error -> Error (Failure ("invalid package name '"
+        ^ package_name
+        ^ "': "
+        ^ Riot_model.Package_name.error_message error))
       )
   in
   loop [] package_names
@@ -84,16 +57,14 @@ let print_command_output = fun (output: Command.output) ->
 
 let print_empty_hint = fun package_filter suite_filter ->
   match (package_filter, suite_filter) with
-  | (Some package_name, Some suite_name) ->
-      println
-        ("No test suite '"
-        ^ suite_name
-        ^ "' found in package '"
-        ^ Riot_model.Package_name.to_string package_name
-        ^ "'")
-  | (Some package_name, None) ->
-      println
-        ("No test suites found in package '" ^ Riot_model.Package_name.to_string package_name ^ "'")
+  | (Some package_name, Some suite_name) -> println
+    ("No test suite '"
+    ^ suite_name
+    ^ "' found in package '"
+    ^ Riot_model.Package_name.to_string package_name
+    ^ "'")
+  | (Some package_name, None) -> println
+    ("No test suites found in package '" ^ Riot_model.Package_name.to_string package_name ^ "'")
   | (None, Some suite_name) -> println ("No test suites named '" ^ suite_name ^ "' found")
   | (None, None) -> println "No test binaries found"
 
@@ -109,7 +80,12 @@ type slow_test = {
   size: Test_runtime.test_case_size;
 }
 
-type failed_test = { suite_label: string; test_name: string; message: string; duration_us: int }
+type failed_test = {
+  suite_label: string;
+  test_name: string;
+  message: string;
+  duration_us: int;
+}
 
 type timing_summary = {
   mutable measured_duration_us: int;
@@ -123,7 +99,7 @@ let empty_timing_summary = fun () ->
     measured_duration_us = 0;
     measured_test_count = 0;
     slowest_tests = [];
-    failed_tests = Vector.with_capacity ~size:8;
+    failed_tests = Vector.with_capacity ~size:8
   }
 
 let take = fun limit values ->
@@ -139,9 +115,9 @@ let format_duration_us = fun duration_us ->
   if duration_us < 1_000 then
     Int.to_string duration_us ^ "us"
   else if duration_us < 1_000_000 then
-    Float.to_string ~precision:2 (Float.from_int duration_us /. 1_000.0) ^ "ms"
+    Float.to_string ~precision:2 (Float.from_int duration_us /. 1000.0) ^ "ms"
   else
-    Float.to_string ~precision:2 (Float.from_int duration_us /. 1_000_000.0) ^ "s"
+    Float.to_string ~precision:2 (Float.from_int duration_us /. 1000000.0) ^ "s"
 
 let metadata_labels = fun size reliability ->
   let size_labels =
@@ -172,9 +148,11 @@ let timeout_message = fun timeout_ms -> "timed out after " ^ Int.to_string timeo
 let sort_summary_tests = fun ~small_only ~large_only tests ->
   let compare =
     if large_only && not small_only then
-      fun (left: slow_test) (right: slow_test) -> Int.compare left.duration_us right.duration_us
+      fun (left: slow_test) (right: slow_test) ->
+        Int.compare left.duration_us right.duration_us
     else
-      fun (left: slow_test) (right: slow_test) -> Int.compare right.duration_us left.duration_us
+      fun (left: slow_test) (right: slow_test) ->
+        Int.compare right.duration_us left.duration_us
   in
   List.sort tests ~compare
 
@@ -197,45 +175,37 @@ let record_suite_timing = fun ~small_only ~large_only (timing: timing_summary) ~
 ) ->
   timing.measured_duration_us <- timing.measured_duration_us + summary.duration_us;
   timing.measured_test_count <- timing.measured_test_count + summary.total;
-  let slow_suite_tests: slow_test list =
-    summary.results
-    |> List.map
-      ~fn:(fun (result: Test_runtime.test_case_result) -> ({
-        suite_label;
-        test_name = result.name;
-        duration_us = result.duration_us;
-        size = result.size;
-      }: slow_test))
-  in
-  let slowest_tests: slow_test list =
-    List.append timing.slowest_tests slow_suite_tests
-    |> filter_summary_tests ~small_only ~large_only
-    |> sort_summary_tests ~small_only ~large_only
-    |> take 5
-  in
+  let slow_suite_tests: slow_test list = summary.results
+  |> List.map
+    ~fn:(fun (result: Test_runtime.test_case_result) ->
+      (
+        {
+          suite_label;
+          test_name = result.name;
+          duration_us = result.duration_us;
+          size = result.size
+        }:
+          slow_test
+      )) in
+  let slowest_tests: slow_test list = List.append timing.slowest_tests slow_suite_tests
+  |> filter_summary_tests ~small_only ~large_only
+  |> sort_summary_tests ~small_only ~large_only
+  |> take 5 in
   timing.slowest_tests <- slowest_tests;
-  summary.results
-  |> List.for_each
+  summary.results |> List.for_each
     ~fn:(fun (result: Test_runtime.test_case_result) ->
       match result.result with
-      | Test_runtime.Failed message ->
-          Vector.push
-            timing.failed_tests
-            ~value:{
-              suite_label;
-              test_name = result.name;
-              message;
-              duration_us = result.duration_us;
-            }
-      | Test_runtime.Timed_out { timeout_ms } ->
-          Vector.push
-            timing.failed_tests
-            ~value:{
-              suite_label;
-              test_name = result.name;
-              message = timeout_message timeout_ms;
-              duration_us = result.duration_us;
-            }
+      | Test_runtime.Failed message -> Vector.push
+        timing.failed_tests
+        ~value:{ suite_label; test_name = result.name; message; duration_us = result.duration_us }
+      | Test_runtime.Timed_out { timeout_ms } -> Vector.push
+        timing.failed_tests
+        ~value:{
+          suite_label;
+          test_name = result.name;
+          message = timeout_message timeout_ms;
+          duration_us = result.duration_us
+        }
       | Test_runtime.Passed
       | Test_runtime.Skipped -> ())
 
@@ -274,11 +244,7 @@ let print_summary = fun ~small_only ~large_only ~label ~total ~passed ~failed ~s
   if not (Vector.is_empty timing.failed_tests) then
     (
       println "  Failed tests:";
-      timing.failed_tests
-      |> Vector.to_array
-      |> Array.to_list
-      |> List.enumerate
-      |> List.for_each
+      timing.failed_tests |> Vector.to_array |> Array.to_list |> List.enumerate |> List.for_each
         ~fn:(fun (idx, (test: failed_test)) ->
           println
             ("    "
@@ -295,16 +261,21 @@ let print_summary = fun ~small_only ~large_only ~label ~total ~passed ~failed ~s
     )
 
 let event_elapsed_us = fun ~command_started_at ->
-  Time.Instant.elapsed command_started_at
-  |> Time.Duration.to_micros
+  Time.Instant.elapsed command_started_at |> Time.Duration.to_micros
 
 let json_int_field = fun name fields ->
-  match List.find fields ~fn:(fun (field_name, _) -> String.equal field_name name) with
+  match
+    List.find fields
+      ~fn:(fun (field_name, _) ->
+        String.equal field_name name)
+  with
   | Some (_, Data.Json.Int value) -> Some value
   | _ -> None
 
 let upsert_int_field = fun name value fields ->
-  let filtered = List.filter fields ~fn:(fun (field_name, _) -> not (String.equal field_name name)) in
+  let filtered =
+    List.filter fields ~fn:(fun (field_name, _) -> not (String.equal field_name name))
+  in
   filtered @ [ (name, Data.Json.Int value); ]
 
 let stamp_json_event = fun ~command_started_at ~duration_us (event: Test_runtime.test_event) (
@@ -326,14 +297,12 @@ let stamp_json_event = fun ~command_started_at ~duration_us (event: Test_runtime
       let fields =
         match event with
         | Test_runtime.RunningSuite _ -> upsert_int_field "started_at_us" elapsed_us fields
-        | Test_runtime.SuiteCompleted _ ->
-            fields
-            |> upsert_int_field "started_at_us" (Int.max 0 (elapsed_us - normalized_duration_us))
-            |> upsert_int_field "completed_at_us" elapsed_us
-        | Test_runtime.Summary _ ->
-            fields
-            |> upsert_int_field "started_at_us" 0
-            |> upsert_int_field "completed_at_us" elapsed_us
+        | Test_runtime.SuiteCompleted _ -> fields
+        |> upsert_int_field "started_at_us" (Int.max 0 (elapsed_us - normalized_duration_us))
+        |> upsert_int_field "completed_at_us" elapsed_us
+        | Test_runtime.Summary _ -> fields
+        |> upsert_int_field "started_at_us" 0
+        |> upsert_int_field "completed_at_us" elapsed_us
         | Test_runtime.NoSuitesFound _ -> upsert_int_field "completed_at_us" elapsed_us fields
         | Test_runtime.Build _ -> fields
         | Test_runtime.TestSuitesCollected _
@@ -353,11 +322,7 @@ let write_json_event = fun ~command_started_at ~duration_us event (json: Data.Js
 
 let summary_duration_us = fun ~command_started_at (event: Test_runtime.test_event) ->
   match event with
-  | Test_runtime.Summary _ ->
-      Some (
-        Time.Instant.elapsed command_started_at
-        |> Time.Duration.to_micros
-      )
+  | Test_runtime.Summary _ -> Some (Time.Instant.elapsed command_started_at |> Time.Duration.to_micros)
   | _ -> None
 
 let write_test_event_json = fun ~command_started_at (event: Test_runtime.test_event) ->
@@ -382,11 +347,9 @@ let source_path_label = fun ~(workspace:Riot_model.Workspace.t) path ->
   | Error _ -> Path.to_string path
 
 let suite_source_labels = fun ~(workspace:Riot_model.Workspace.t) ->
-  Riot_model.Workspace.realize_packages ~intent:Riot_model.Package.Test workspace
-  |> List.flat_map
+  Riot_model.Workspace.realize_packages ~intent:Riot_model.Package.Test workspace |> List.flat_map
     ~fn:(fun (pkg: Riot_model.Package.t) ->
-      pkg.binaries
-      |> List.filter_map
+      pkg.binaries |> List.filter_map
         ~fn:(fun (bin: Riot_model.Package.binary) ->
           if
             String.ends_with ~suffix:"_tests" bin.name || String.ends_with ~suffix:"-tests" bin.name
@@ -394,7 +357,7 @@ let suite_source_labels = fun ~(workspace:Riot_model.Workspace.t) ->
             Some {
               package_name = pkg.name;
               suite_name = bin.name;
-              label = source_path_label ~workspace Path.(pkg.path / bin.path);
+              label = source_path_label ~workspace Path.(pkg.path / bin.path)
             }
           else
             None))
@@ -419,23 +382,25 @@ let listed_suite_source_label = fun ~(workspace:Riot_model.Workspace.t) ~(suite_
 
 let listed_test_selector = fun (suite: Test_runtime.suite_binary) (
   test: Test_runtime.listed_test_case
-) -> Riot_model.Package_name.to_string suite.package_name ^ ":" ^ suite.suite_name ^ ":" ^ test.name
+) ->
+  Riot_model.Package_name.to_string suite.package_name ^ ":" ^ suite.suite_name ^ ":" ^ test.name
 
 let listed_test_json = fun (suite: Test_runtime.suite_binary) (test: Test_runtime.listed_test_case) ->
   let type_fields =
     match test.test_type with
     | Test_runtime.Test -> [ ("type", Data.Json.String "test"); ]
-    | Test_runtime.Property { examples } ->
-        [ ("type", Data.Json.String "property"); ("examples", Data.Json.Int examples); ]
+    | Test_runtime.Property { examples } -> [
+      ("type", Data.Json.String "property");
+      ("examples", Data.Json.Int examples);
+    ]
   in
   let reliability_fields =
     match test.reliability with
     | Test_runtime.Stable -> [ ("reliability", Data.Json.String "stable"); ]
-    | Test_runtime.Flaky { retry_attempts } ->
-        [
-          ("reliability", Data.Json.String "flaky");
-          ("retry_attempts", Data.Json.Int retry_attempts);
-        ]
+    | Test_runtime.Flaky { retry_attempts } -> [
+      ("reliability", Data.Json.String "flaky");
+      ("retry_attempts", Data.Json.Int retry_attempts);
+    ]
   in
   let size =
     match test.size with
@@ -518,13 +483,11 @@ let write_test_list_completed_json = fun ~command_started_at ~suite_count ~test_
     ])
 
 let write_test_list = fun ~(workspace:Riot_model.Workspace.t) ~(suite_labels:suite_source_label_entry list) suites ->
-  List.for_each
-    suites
+  List.for_each suites
     ~fn:(fun (suite: Test_runtime.listed_test_suite) ->
       println "";
       println (listed_suite_source_label ~workspace ~suite_labels suite);
-      suite.tests
-      |> List.for_each
+      suite.tests |> List.for_each
         ~fn:(fun (test: Test_runtime.listed_test_case) ->
           let metadata = metadata_suffix test.size test.reliability in
           let type_prefix =
@@ -539,14 +502,7 @@ let write_test_list = fun ~(workspace:Riot_model.Workspace.t) ~(suite_labels:sui
               ""
           in
           println
-            ("  ["
-            ^ Int.to_string test.index
-            ^ "] "
-            ^ type_prefix
-            ^ " "
-            ^ test.name
-            ^ metadata
-            ^ skip_suffix)))
+            ("  [" ^ Int.to_string test.index ^ "] " ^ type_prefix ^ " " ^ test.name ^ metadata ^ skip_suffix)))
 
 type human_render_state = {
   streamed_suites: string Collections.HashSet.t;
@@ -560,11 +516,7 @@ let suite_stream_key = fun (suite: Test_runtime.suite_binary) ->
 let qualified_test_name = fun (suite: Test_runtime.suite_binary) (
   result: Test_runtime.test_case_result
 ) ->
-  Riot_model.Package_name.to_string suite.package_name
-  ^ "::"
-  ^ suite.suite_name
-  ^ "::"
-  ^ result.name
+  Riot_model.Package_name.to_string suite.package_name ^ "::" ^ suite.suite_name ^ "::" ^ result.name
 
 let print_test_result = fun ~(suite:Test_runtime.suite_binary) (
   result: Test_runtime.test_case_result
@@ -597,23 +549,27 @@ let print_test_result = fun ~(suite:Test_runtime.suite_binary) (
         ^ " ... TIMED OUT "
         ^ timeout_message timeout_ms
         ^ attempts_suffix result.attempts)
-  | Test_runtime.Skipped -> println (prefix ^ " " ^ name ^ metadata ^ " ... skipped")
+  | Test_runtime.Skipped ->
+      println (prefix ^ " " ^ name ^ metadata ^ " ... skipped")
 
 let write_test_event = fun ~(suite_labels:suite_source_label_entry list) ~(timing:timing_summary) ~small_only ~large_only ~(state:human_render_state) ~verbose (
   event: Test_runtime.test_event
 ) ->
   match event with
-  | Test_runtime.Build _ -> ()
+  | Test_runtime.Build _ ->
+      ()
   | Test_runtime.NoSuitesFound { package_name; suite_name } ->
       print_empty_hint package_name suite_name
   | Test_runtime.TestSuitesCollected _
   | Test_runtime.ResolvingSuiteBinary _
   | Test_runtime.SuiteBinaryResolved _
-  | Test_runtime.RunningSuite _ -> ()
+  | Test_runtime.RunningSuite _ ->
+      ()
   | Test_runtime.ExecutingSuiteBinary _
   | Test_runtime.SuiteHeartbeat _
   | Test_runtime.SuiteBinaryFinished _
-  | Test_runtime.ParsingSuiteOutput _ -> ()
+  | Test_runtime.ParsingSuiteOutput _ ->
+      ()
   | Test_runtime.SuiteProgress { suite; event } ->
       Test_runtime.suite_progress_test_case_result event
       |> Result.to_option
@@ -641,8 +597,7 @@ let write_test_event = fun ~(suite_labels:suite_source_label_entry list) ~(timin
           if
             not (Collections.HashSet.contains state.streamed_suites ~value:(suite_stream_key suite))
           then
-            summary.results
-            |> List.for_each ~fn:(print_test_result ~suite)
+            summary.results |> List.for_each ~fn:(print_test_result ~suite)
         );
       if verbose > 0 then
         print_command_output Command.{ stdout; stderr; status = 0 }
@@ -651,17 +606,9 @@ let write_test_event = fun ~(suite_labels:suite_source_label_entry list) ~(timin
     passed;
     failed;
     skipped;
-    failed_tests = _
+    failed_tests=_
   } ->
-      print_summary
-        ~small_only
-        ~large_only
-        ~label:"Test Summary:"
-        ~total
-        ~passed
-        ~failed
-        ~skipped
-        ~timing
+      print_summary ~small_only ~large_only ~label:"Test Summary:" ~total ~passed ~failed ~skipped ~timing
 
 let write_test_error = fun err -> println ("error: " ^ Test_runtime.test_error_message err)
 
@@ -669,18 +616,16 @@ let write_test_error_json = fun ~command_started_at err ->
   let event_json = Data.Json.Object [
     ("type", Data.Json.String "test.error");
     ("message", Data.Json.String (Test_runtime.test_error_message err));
-  ]
-  in
+  ] in
   print
     (
       Data.Json.to_string
         (
           match event_json with
-          | Data.Json.Object fields ->
-              Data.Json.Object (upsert_int_field
-                "completed_at_us"
-                (event_elapsed_us ~command_started_at)
-                fields)
+          | Data.Json.Object fields -> Data.Json.Object (upsert_int_field
+            "completed_at_us"
+            (event_elapsed_us ~command_started_at)
+            fields)
           | other -> other
         )
     );
@@ -738,17 +683,13 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
             Test_selection.All
         in
         let* package_filters = package_filters in
-        let* request =
-          Test_selection.parse_request ~filter ~package_filters ~size_filter ~flaky_only
-          |> Result.map_err ~fn:(fun error -> Failure error)
-        in
-        let extra_args =
-          Test_selection.extra_args
-            ~small_test_timeout:operational_config.test.small_test_timeout
-            ~flaky_max_retries:operational_config.test.flaky_max_retries
-            request
-            trailing
-        in
+        let* request = Test_selection.parse_request ~filter ~package_filters ~size_filter ~flaky_only
+        |> Result.map_err ~fn:(fun error -> Failure error) in
+        let extra_args = Test_selection.extra_args
+          ~small_test_timeout:operational_config.test.small_test_timeout
+          ~flaky_max_retries:operational_config.test.flaky_max_retries
+          request
+          trailing in
         if list_mode then
           let listed_suite_count = ref 0 in
           let listed_test_count = ref 0 in
@@ -768,47 +709,44 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
             failed_suite_count := !failed_suite_count + 1;
             write_test_suite_list_failed_json ~command_started_at suite err
           in
-          match Test_runtime.list_tests
-            ?on_suite:(
-              if output_mode = Build.Json then
-                Some on_suite
-              else
-                None
-            )
-            ?on_suite_error:(
-              if output_mode = Build.Json then
-                Some on_suite_error
-              else
-                None
-            )
-            {
-              workspace;
-              package_filters = request.package_filters;
-              suite_filter = request.suite_filter;
-              profile;
-              extra_args;
-            } with
+          match
+            Test_runtime.list_tests
+              ?on_suite:(
+                if output_mode = Build.Json then
+                  Some on_suite
+                else
+                  None
+              )
+              ?on_suite_error:(
+                if output_mode = Build.Json then
+                  Some on_suite_error
+                else
+                  None
+              )
+              {
+                workspace;
+                package_filters = request.package_filters;
+                suite_filter = request.suite_filter;
+                profile;
+                extra_args;
+              }
+          with
           | Ok suites ->
               let suites =
                 List.filter
                   suites
-                  ~fn:(fun (suite: Test_runtime.listed_test_suite) ->
-                    not (List.is_empty suite.tests))
+                  ~fn:(fun (suite: Test_runtime.listed_test_suite) -> not (List.is_empty suite.tests))
               in
               (
                 match output_mode with
-                | Build.Json ->
-                    write_test_list_completed_json
-                      ~command_started_at
-                      ~suite_count:!listed_suite_count
-                      ~test_count:!listed_test_count
-                      ~failed_suite_count:!failed_suite_count
+                | Build.Json -> write_test_list_completed_json
+                  ~command_started_at
+                  ~suite_count:!listed_suite_count
+                  ~test_count:!listed_test_count
+                  ~failed_suite_count:!failed_suite_count
                 | Build.Human ->
                     if List.is_empty suites then
-                      print_empty_list_hint
-                        request.package_filter
-                        request.suite_filter
-                        request.query
+                      print_empty_list_hint request.package_filter request.suite_filter request.query
                     else
                       write_test_list ~workspace ~suite_labels suites
               );
@@ -825,31 +763,33 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
           let state = empty_human_render_state () in
           let on_event (event: Test_runtime.test_event) =
             match event with
-            | Test_runtime.Build build_event ->
-                Build.write_build_event ~mode:output_mode ~seen_registry_updates build_event
+            | Test_runtime.Build build_event -> Build.write_build_event
+              ~mode:output_mode
+              ~seen_registry_updates
+              build_event
             | _ -> (
                 match output_mode with
                 | Build.Json -> write_test_event_json ~command_started_at event
-                | Build.Human ->
-                    write_test_event
-                      ~suite_labels
-                      ~timing
-                      ~small_only
-                      ~large_only
-                      ~state
-                      ~verbose
-                      event
+                | Build.Human -> write_test_event
+                  ~suite_labels
+                  ~timing
+                  ~small_only
+                  ~large_only
+                  ~state
+                  ~verbose
+                  event
               )
           in
-          match Test_runtime.test
-            ~on_event
-            {
-              workspace;
-              package_filters = request.package_filters;
-              suite_filter = request.suite_filter;
-              profile;
-              extra_args;
-            } with
+          match
+            Test_runtime.test ~on_event
+              {
+                workspace;
+                package_filters = request.package_filters;
+                suite_filter = request.suite_filter;
+                profile;
+                extra_args;
+              }
+          with
           | Ok () -> Ok ()
           | Error err ->
               (

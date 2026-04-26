@@ -109,10 +109,17 @@ let make_registry_document = fun ?(releases = []) ~name ~latest () ->
   }
 
 let make_registry = fun packages ->
-  Pkgs_ml.Registry.in_memory ~cache:(make_registry_cache ()) ~packages ()
+  Pkgs_ml.Registry.in_memory
+    ~cache:(make_registry_cache ())
+    ~packages
+    ()
 
 let make_registry_with_releases = fun ~packages ~releases ->
-  Pkgs_ml.Registry.in_memory ~cache:(make_registry_cache ()) ~packages ~releases ()
+  Pkgs_ml.Registry.in_memory
+    ~cache:(make_registry_cache ())
+    ~packages
+    ~releases
+    ()
 
 let make_release_source = fun ?(files = []) ~package_name ~version manifest_toml:
   Pkgs_ml.Registry.release_source ->
@@ -1007,16 +1014,8 @@ let test_lock_deps_projects_workspace_packages = fun _ctx ->
       && List.length app_lock.build_dependencies = 1
       && (
         (
-          (
-            (
-              (
-                (
-                  List.head app_lock.dependencies
-                  |> Option.expect ~msg:"expected app dependency"
-                )
-              )
-            )
-          )
+          List.head app_lock.dependencies
+          |> Option.expect ~msg:"expected app dependency"
         ).package.name
         |> has_name "std"
       ) then
@@ -1061,16 +1060,8 @@ version = "1.2.3"
               if List.length lockfile.packages = 2
               && (
                 (
-                  (
-                    (
-                      (
-                        (
-                          List.head app_lock.dependencies
-                          |> Option.expect ~msg:"expected app dependency"
-                        )
-                      )
-                    )
-                  )
+                  List.head app_lock.dependencies
+                  |> Option.expect ~msg:"expected app dependency"
                 ).package.name
                 |> has_name "foo"
               )
@@ -1131,16 +1122,8 @@ version = "2.0.0"
               if List.length lockfile.packages = 3
               && (
                 (
-                  (
-                    (
-                      (
-                        (
-                          List.head foo_lock.dependencies
-                          |> Option.expect ~msg:"expected foo dependency"
-                        )
-                      )
-                    )
-                  )
+                  List.head foo_lock.dependencies
+                  |> Option.expect ~msg:"expected foo dependency"
                 ).package.name
                 |> has_name "bar"
               )
@@ -1218,16 +1201,8 @@ version = "0.2.0"
               if
                 List.length lockfile.packages = 2
                 && (
-                  (
-                    (
-                      (
-                        (
-                          List.head app_lock.dependencies
-                          |> Option.expect ~msg:"expected app dependency"
-                        )
-                      )
-                    )
-                  )
+                  List.head app_lock.dependencies
+                  |> Option.expect ~msg:"expected app dependency"
                 ).package
                 = registry_std.id
               then
@@ -1652,16 +1627,8 @@ std = "*"
               if
                 List.length model_lock.dependencies = 1
                 && (
-                  (
-                    (
-                      (
-                        (
-                          List.head model_lock.dependencies
-                          |> Option.expect ~msg:"expected model dependency"
-                        )
-                      )
-                    )
-                  )
+                  List.head model_lock.dependencies
+                  |> Option.expect ~msg:"expected model dependency"
                 ).package
                 = local_std.id
               then
@@ -1906,32 +1873,16 @@ std = { path = "../std" }
               && List.length std_lock.build_dependencies = 1
               && (
                 (
-                  (
-                    (
-                      (
-                        (
-                          List.head std_lock.build_dependencies
-                          |> Option.expect ~msg:"expected std build dependency"
-                        )
-                      )
-                    )
-                  )
+                  List.head std_lock.build_dependencies
+                  |> Option.expect ~msg:"expected std build dependency"
                 ).package.name
                 |> has_name "fixme"
               )
               && List.length fixme_lock.dependencies = 1
               && (
                 (
-                  (
-                    (
-                      (
-                        (
-                          List.head fixme_lock.dependencies
-                          |> Option.expect ~msg:"expected fixme dependency"
-                        )
-                      )
-                    )
-                  )
+                  List.head fixme_lock.dependencies
+                  |> Option.expect ~msg:"expected fixme dependency"
                 ).package.name
                 |> has_name "std"
               ) then
@@ -2051,29 +2002,13 @@ version = "0.2.0"
           if
             List.length lockfile.packages = 2
             && (
-              (
-                (
-                  (
-                    (
-                      List.head app_lock.dependencies
-                      |> Option.expect ~msg:"expected app dependency"
-                    )
-                  )
-                )
-              )
+              List.head app_lock.dependencies
+              |> Option.expect ~msg:"expected app dependency"
             ).package.version
             = Some "0.1.0"
             && ((
-              (
-                (
-                  (
-                    (
-                      List.get lockfile.packages ~at:1
-                      |> Option.expect ~msg:"expected std lock package"
-                    )
-                  )
-                )
-              )
+              List.get lockfile.packages ~at:1
+              |> Option.expect ~msg:"expected std lock package"
             ).id.version
             = Some "0.1.0")
           then
@@ -2127,16 +2062,8 @@ let test_lock_refresh_discards_stale_external_nodes = fun _ctx ->
       if List.length lockfile.packages = 1
       && (
         (
-          (
-            (
-              (
-                (
-                  List.head lockfile.packages
-                  |> Option.expect ~msg:"expected app lock package"
-                )
-              )
-            )
-          )
+          List.head lockfile.packages
+          |> Option.expect ~msg:"expected app lock package"
         ).id.name
         |> has_name "app"
       ) then
@@ -2190,16 +2117,8 @@ let test_lock_refresh_discards_removed_workspace_packages = fun _ctx ->
       if List.length lockfile.packages = 1
       && (
         (
-          (
-            (
-              (
-                (
-                  List.head lockfile.packages
-                  |> Option.expect ~msg:"expected app lock package"
-                )
-              )
-            )
-          )
+          List.head lockfile.packages
+          |> Option.expect ~msg:"expected app lock package"
         ).id.name
         |> has_name "app"
       ) then
@@ -2238,16 +2157,8 @@ let test_unlock_discards_existing_external_nodes = fun _ctx ->
       if List.length lockfile.packages = 1
       && (
         (
-          (
-            (
-              (
-                (
-                  List.head lockfile.packages
-                  |> Option.expect ~msg:"expected app lock package"
-                )
-              )
-            )
-          )
+          List.head lockfile.packages
+          |> Option.expect ~msg:"expected app lock package"
         ).id.name
         |> has_name "app"
       ) then
@@ -2577,16 +2488,8 @@ let test_lockfile_store_roundtrips = fun _ctx ->
               && List.length reloaded.packages = 1
               && (
                 (
-                  (
-                    (
-                      (
-                        (
-                          List.head reloaded.packages
-                          |> Option.expect ~msg:"expected reloaded app package"
-                        )
-                      )
-                    )
-                  )
+                  List.head reloaded.packages
+                  |> Option.expect ~msg:"expected reloaded app package"
                 ).id.name
                 |> has_name "app"
               ) then
@@ -3396,7 +3299,11 @@ let test_ensure_lock_refreshes_missing_lock_and_resolves_workspace = fun _ctx ->
       in
       match collect_event_names
         (fun emit ->
-          ensure_lock ~emit ~registry:(make_registry []) ~workspace_root [ app_pkg; std_pkg ]) with
+          ensure_lock
+            ~emit
+            ~registry:(make_registry [])
+            ~workspace_root
+            [ app_pkg; std_pkg ]) with
       | Error err -> Error ("expected ensure_lock to refresh missing lock: " ^ pm_error_message err)
       | Ok ((lockfile, resolved), event_names) ->
           let lock_path = Riot_model.Riot_dirs.package_lock_path ~workspace_root in
@@ -3456,7 +3363,11 @@ let test_ensure_lock_uses_existing_fresh_lock = fun _ctx ->
       |> Result.expect ~msg:"expected initial lockfile to be written";
       match collect_event_names
         (fun emit ->
-          ensure_lock ~emit ~registry:(make_registry []) ~workspace_root [ app_pkg; std_pkg ]) with
+          ensure_lock
+            ~emit
+            ~registry:(make_registry [])
+            ~workspace_root
+            [ app_pkg; std_pkg ]) with
       | Error err -> Error ("expected ensure_lock to use existing lock: " ^ pm_error_message err)
       | Ok ((lockfile, resolved), event_names) ->
           if
@@ -3965,31 +3876,15 @@ version = "0.3.0"
               && List.length std_lock.dev_dependencies = 1
               && (
                 (
-                  (
-                    (
-                      (
-                        (
-                          List.head std_lock.build_dependencies
-                          |> Option.expect ~msg:"expected repaired build dependency"
-                        )
-                      )
-                    )
-                  )
+                  List.head std_lock.build_dependencies
+                  |> Option.expect ~msg:"expected repaired build dependency"
                 ).name
                 |> has_name "fixme"
               )
               && (
                 (
-                  (
-                    (
-                      (
-                        (
-                          List.head std_lock.dev_dependencies
-                          |> Option.expect ~msg:"expected repaired dev dependency"
-                        )
-                      )
-                    )
-                  )
+                  List.head std_lock.dev_dependencies
+                  |> Option.expect ~msg:"expected repaired dev dependency"
                 ).name
                 |> has_name "propane"
               ) then
@@ -4133,16 +4028,8 @@ let test_projection_resolves_workspace_packages = fun _ctx ->
       && List.length app.runtime_resolved = 1
       && (
         (
-          (
-            (
-              (
-                (
-                  List.head app.runtime_resolved
-                  |> Option.expect ~msg:"expected resolved runtime dependency"
-                )
-              )
-            )
-          )
+          List.head app.runtime_resolved
+          |> Option.expect ~msg:"expected resolved runtime dependency"
         ).resolved_id.name
         |> has_name "std"
       ) then
@@ -4349,31 +4236,15 @@ version = "0.5.0"
               && List.length std_resolved.build_resolved = 1
               && (
                 (
-                  (
-                    (
-                      (
-                        (
-                          List.head std_resolved.runtime_resolved
-                          |> Option.expect ~msg:"expected resolved std runtime dependency"
-                        )
-                      )
-                    )
-                  )
+                  List.head std_resolved.runtime_resolved
+                  |> Option.expect ~msg:"expected resolved std runtime dependency"
                 ).resolved_id.name
                 |> has_name "kernel"
               )
               && (
                 (
-                  (
-                    (
-                      (
-                        (
-                          List.head std_resolved.build_resolved
-                          |> Option.expect ~msg:"expected resolved std build dependency"
-                        )
-                      )
-                    )
-                  )
+                  List.head std_resolved.build_resolved
+                  |> Option.expect ~msg:"expected resolved std build dependency"
                 ).resolved_id.name
                 |> has_name "fixme"
               )
@@ -4504,46 +4375,22 @@ version = "0.3.0"
               && List.length std_lock.dev_dependencies = 1
               && (
                 (
-                  (
-                    (
-                      (
-                        (
-                          List.head std_lock.dependencies
-                          |> Option.expect ~msg:"expected std runtime dependency"
-                        )
-                      )
-                    )
-                  )
+                  List.head std_lock.dependencies
+                  |> Option.expect ~msg:"expected std runtime dependency"
                 ).name
                 |> has_name "kernel"
               )
               && (
                 (
-                  (
-                    (
-                      (
-                        (
-                          List.head std_lock.build_dependencies
-                          |> Option.expect ~msg:"expected std build dependency"
-                        )
-                      )
-                    )
-                  )
+                  List.head std_lock.build_dependencies
+                  |> Option.expect ~msg:"expected std build dependency"
                 ).name
                 |> has_name "fixme"
               )
               && (
                 (
-                  (
-                    (
-                      (
-                        (
-                          List.head std_lock.dev_dependencies
-                          |> Option.expect ~msg:"expected std dev dependency"
-                        )
-                      )
-                    )
-                  )
+                  List.head std_lock.dev_dependencies
+                  |> Option.expect ~msg:"expected std dev dependency"
                 ).name
                 |> has_name "propane"
               ) then

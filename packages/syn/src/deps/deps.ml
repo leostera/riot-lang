@@ -13,7 +13,9 @@ module Env = struct
     let singleton = fun name -> [ name ]
 
     let union = fun left right ->
-      List.unique (List.sort (left @ right) ~compare:String.compare) ~compare:String.compare
+      List.unique
+        (List.sort (left @ right) ~compare:String.compare)
+        ~compare:String.compare
 
     let elements = fun names -> names
   end
@@ -44,7 +46,11 @@ module Env = struct
   let add = fun name node env -> (name, node) :: remove name env
 
   let merge = fun left right ->
-    List.fold_left right ~init:left ~fn:(fun env (name, node) -> add name node env)
+    List.fold_left
+      right
+      ~init:left
+      ~fn:(fun env (name, node) ->
+        add name node env)
 
   let rec rebind = fun free_names ->
     function
@@ -55,7 +61,9 @@ module Env = struct
         )
 
   let rebind_exports = fun free_names exports ->
-    List.map exports ~fn:(fun (name, node) -> (name, rebind free_names node))
+    List.map
+      exports
+      ~fn:(fun (name, node) -> (name, rebind free_names node))
 
   let rec add_path = fun env ~path ~free_names ->
     match path with
@@ -538,7 +546,9 @@ module Ast_deps = struct
     | _ -> node
 
   let first_direct_child_node = fun node kind ->
-    first_child_node_matching node ~matches:(fun child_kind -> Syntax_kind.(child_kind = kind))
+    first_child_node_matching
+      node
+      ~matches:(fun child_kind -> Syntax_kind.(child_kind = kind))
 
   let fold_child_nodes = fun node init fn ->
     let acc = ref init in

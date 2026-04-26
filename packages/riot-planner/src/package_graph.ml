@@ -3,17 +3,17 @@ open Std.Collections
 open Std.Iter
 open Riot_model
 open Riot_store
-
 module G = Graph.SimpleGraph
 
 exception Cycle_detected of string list
 
-type missing_dependency = { package: string; dependency: string }
+type missing_dependency = {
+  package: string;
+  dependency: string;
+}
 
 type create_error =
-  | MissingPackages of {
-      missing: missing_dependency list;
-    }
+  | MissingPackages of { missing: missing_dependency list }
 
 type create_breakdown = {
   build_node_realization_count: int;
@@ -43,16 +43,13 @@ type dev_artifacts = Riot_model.Package.dev_artifacts = {
 type package_scope = build_scope
 
 type package_node =
-  | Unplanned of {
-      package: Package.t;
-      scope: package_scope;
-    }
+  | Unplanned of { package: Package.t; scope: package_scope }
   | Planned of {
       package: Package.t;
       scope: package_scope;
       module_graph: Module_node.t G.t;
       action_graph: Action_graph.t;
-      hash: Std.Crypto.hash;
+      hash: Std.Crypto.hash
     }
   | Cached of {
       package: Package.t;
@@ -60,7 +57,7 @@ type package_node =
       hash: Std.Crypto.hash;
       artifact: Artifact.t;
       depset: Dependency.t list;
-      exports: Riot_store.Store.export_entry list;
+      exports: Riot_store.Store.export_entry list
     }
   | Built of {
       package: Package.t;
@@ -70,19 +67,10 @@ type package_node =
       hash: Std.Crypto.hash;
       artifact: Artifact.t;
       status: build_status;
-      depset: Dependency.t list;
+      depset: Dependency.t list
     }
-  | Failed of {
-      package: Package.t;
-      scope: package_scope;
-      hash: Std.Crypto.hash;
-      error: string;
-    }
-  | Skipped of {
-      package: Package.t;
-      scope: package_scope;
-      reason: string;
-    }
+  | Failed of { package: Package.t; scope: package_scope; hash: Std.Crypto.hash; error: string }
+  | Skipped of { package: Package.t; scope: package_scope; reason: string }
 
 type t = {
   graph: package_node G.t;
@@ -114,9 +102,7 @@ let package_key = fun ~package_name scope ->
       | Dev -> "dev"
     )
 
-let elapsed_us_since = fun started_at ->
-  Time.Instant.elapsed started_at
-  |> Time.Duration.to_micros
+let elapsed_us_since = fun started_at -> Time.Instant.elapsed started_at |> Time.Duration.to_micros
 
 let trace_package_graph = fun message ->
   let _ = message in
@@ -176,7 +162,7 @@ let dependencies_for_scope = fun scope (pkg: Package.t) ->
   | Runtime -> pkg.dependencies
   | Dev -> pkg.dependencies @ pkg.dev_dependencies
 
-let projected_package = fun ?(dev_artifacts = {tests = true; examples = true; benches = true}) scope pkg ->
+let projected_package = fun ?(dev_artifacts = { tests = true; examples = true; benches = true }) scope pkg ->
   match scope with
   | Build -> Package.for_scope Package.Build pkg
   | Runtime -> Package.for_scope Package.Normal pkg
@@ -191,8 +177,7 @@ let realize_projected_package = fun (workspace: Workspace.t) scope (pkg: Package
     | Runtime -> Package.Runtime
     | Dev -> Package.Dev
   in
-  Workspace.realize_package ~intent pkg
-  |> projected_package scope
+  Workspace.realize_package ~intent pkg |> projected_package scope
 
 let empty_breakdown = {
   build_node_realization_count = 0;
@@ -204,9 +189,10 @@ let empty_breakdown = {
   edge_wiring_duration = Time.Duration.zero;
 }
 
-let create_with_breakdown ~scope ?(dev_artifacts = {tests = true; examples = true; benches = true}) (
+let create_with_breakdown ~scope ?(dev_artifacts = { tests = true; examples = true; benches = true }) (
   workspace: Workspace.t
-): ((t * create_breakdown), create_error) result =
+):
+  ((t * create_breakdown), create_error) result =
   let started_at = Time.Instant.now () in
   let graph = G.make () in
   let name_to_node = HashMap.create () in
@@ -214,66 +200,58 @@ let create_with_breakdown ~scope ?(dev_artifacts = {tests = true; examples = tru
   let breakdown = ref empty_breakdown in
   let insert_node package scope =
     let node = G.add_node graph (Unplanned { package; scope }) in
-    let _ =
-      HashMap.insert
-        name_to_node
-        ~key:(package_key ~package_name:(Package_name.to_string package.name) scope)
-        ~value:node
-    in
+    let _ = HashMap.insert
+      name_to_node
+      ~key:(package_key ~package_name:(Package_name.to_string package.name) scope)
+      ~value:node in
     ()
   in
   let realize_and_insert_node scope (pkg: Package_manifest.t) =
     let realization_started_at = Time.Instant.now () in
     let package =
       match scope with
-      | Dev ->
-          Workspace.realize_package ~intent:Package.Dev pkg
-          |> projected_package ~dev_artifacts scope
+      | Dev -> Workspace.realize_package ~intent:Package.Dev pkg
+      |> projected_package ~dev_artifacts scope
       | Build
       | Runtime -> realize_projected_package workspace scope pkg
     in
-    let realization_duration =
-      Time.Instant.duration_since ~earlier:realization_started_at (Time.Instant.now ())
-    in
+    let realization_duration = Time.Instant.duration_since
+      ~earlier:realization_started_at
+      (Time.Instant.now ()) in
     breakdown := (
       match scope with
-      | Build ->
-          {
-            (!breakdown) with
-            build_node_realization_count = (!breakdown).build_node_realization_count + 1;
-            build_node_realization_duration = Time.Duration.add
-              (!breakdown).build_node_realization_duration
-              realization_duration;
-          }
-      | Runtime ->
-          {
-            (!breakdown) with
-            runtime_node_realization_count = (!breakdown).runtime_node_realization_count + 1;
-            runtime_node_realization_duration = Time.Duration.add
-              (!breakdown).runtime_node_realization_duration
-              realization_duration;
-          }
-      | Dev ->
-          {
-            (!breakdown) with
-            dev_node_realization_count = (!breakdown).dev_node_realization_count + 1;
-            dev_node_realization_duration = Time.Duration.add
-              (!breakdown).dev_node_realization_duration
-              realization_duration;
-          }
+      | Build -> {
+        (!breakdown)
+        with build_node_realization_count = (!breakdown).build_node_realization_count + 1;
+        build_node_realization_duration = Time.Duration.add
+          (!breakdown).build_node_realization_duration
+          realization_duration
+      }
+      | Runtime -> {
+        (!breakdown)
+        with runtime_node_realization_count = (!breakdown).runtime_node_realization_count + 1;
+        runtime_node_realization_duration = Time.Duration.add
+          (!breakdown).runtime_node_realization_duration
+          realization_duration
+      }
+      | Dev -> {
+        (!breakdown)
+        with dev_node_realization_count = (!breakdown).dev_node_realization_count + 1;
+        dev_node_realization_duration = Time.Duration.add
+          (!breakdown).dev_node_realization_duration
+          realization_duration
+      }
     );
     insert_node package scope
   in
   (
     match scope with
-    | Build ->
-        List.for_each
-          workspace.packages
-          ~fn:(fun (pkg: Package_manifest.t) -> realize_and_insert_node Build pkg)
+    | Build -> List.for_each
+      workspace.packages
+      ~fn:(fun (pkg: Package_manifest.t) -> realize_and_insert_node Build pkg)
     | Runtime
     | Dev ->
-        List.for_each
-          workspace.packages
+        List.for_each workspace.packages
           ~fn:(fun (pkg: Package_manifest.t) ->
             if needs_build_scope_node pkg then
               realize_and_insert_node Build pkg)
@@ -282,23 +260,20 @@ let create_with_breakdown ~scope ?(dev_artifacts = {tests = true; examples = tru
     match scope with
     | Build -> ()
     | Runtime
-    | Dev ->
-        List.for_each
-          workspace.packages
-          ~fn:(fun (pkg: Package_manifest.t) -> realize_and_insert_node Runtime pkg)
+    | Dev -> List.for_each
+      workspace.packages
+      ~fn:(fun (pkg: Package_manifest.t) -> realize_and_insert_node Runtime pkg)
   );
   (
     match scope with
-    | Dev ->
-        List.for_each
-          workspace.packages
-          ~fn:(fun (pkg: Package_manifest.t) -> realize_and_insert_node Dev pkg)
+    | Dev -> List.for_each
+      workspace.packages
+      ~fn:(fun (pkg: Package_manifest.t) -> realize_and_insert_node Dev pkg)
     | Build
     | Runtime -> ()
   );
   let edge_wiring_started_at = Time.Instant.now () in
-  List.for_each
-    workspace.packages
+  List.for_each workspace.packages
     ~fn:(fun (pkg: Package_manifest.t) ->
       let add_dep_edge ~from_scope dep_name =
         let dep_name_string = Package_name.to_string dep_name in
@@ -313,9 +288,7 @@ let create_with_breakdown ~scope ?(dev_artifacts = {tests = true; examples = tru
               | Runtime -> Runtime
               | Dev -> Runtime
             in
-            match HashMap.get
-              name_to_node
-              ~key:(package_key ~package_name:dep_name_string dep_scope) with
+            match HashMap.get name_to_node ~key:(package_key ~package_name:dep_name_string dep_scope) with
             | Some dep_node -> G.add_edge from_node ~depends_on:dep_node
             | None ->
                 if not (is_well_known_package dep_name) then
@@ -323,7 +296,7 @@ let create_with_breakdown ~scope ?(dev_artifacts = {tests = true; examples = tru
                     missing
                     ~value:{
                       package = Package_name.to_string pkg.name;
-                      dependency = dep_name_string;
+                      dependency = dep_name_string
                     }
           )
       in
@@ -367,34 +340,26 @@ let create_with_breakdown ~scope ?(dev_artifacts = {tests = true; examples = tru
       *)
       (
         match scope with
-        | Build ->
-            List.for_each
-              pkg.build_dependencies
-              ~fn:(fun (dep: Package.dependency) ->
-                add_dep_edge ~from_scope:Build dep.name)
+        | Build -> List.for_each
+          pkg.build_dependencies
+          ~fn:(fun (dep: Package.dependency) -> add_dep_edge ~from_scope:Build dep.name)
         | Runtime
         | Dev -> ()
       );
       List.for_each
         pkg.dependencies
-        ~fn:(fun (dep: Package.dependency) ->
-          add_dep_edge ~from_scope:Runtime dep.name);
+        ~fn:(fun (dep: Package.dependency) -> add_dep_edge ~from_scope:Runtime dep.name);
       match scope with
       | Build
       | Runtime -> ()
-      | Dev ->
-          List.for_each
-            pkg.dev_dependencies
-            ~fn:(fun (dep: Package.dependency) ->
-              add_dep_edge ~from_scope:Dev dep.name));
-  let edge_wiring_duration =
-    Time.Instant.duration_since ~earlier:edge_wiring_started_at (Time.Instant.now ())
-  in
+      | Dev -> List.for_each
+        pkg.dev_dependencies
+        ~fn:(fun (dep: Package.dependency) -> add_dep_edge ~from_scope:Dev dep.name));
+  let edge_wiring_duration = Time.Instant.duration_since
+    ~earlier:edge_wiring_started_at
+    (Time.Instant.now ()) in
   breakdown := { (!breakdown) with edge_wiring_duration };
-  let missing =
-    Vector.iter missing
-    |> Iterator.to_list
-  in
+  let missing = Vector.iter missing |> Iterator.to_list in
   let result =
     if List.length missing > 0 then
       Error (MissingPackages { missing })
@@ -416,9 +381,8 @@ let create_with_breakdown ~scope ?(dev_artifacts = {tests = true; examples = tru
   in
   result
 
-let create ~scope ?dev_artifacts workspace =
-  create_with_breakdown ~scope ?dev_artifacts workspace
-  |> Result.map ~fn:(fun (graph, _breakdown) -> graph)
+let create ~scope ?dev_artifacts workspace = create_with_breakdown ~scope ?dev_artifacts workspace
+|> Result.map ~fn:(fun (graph, _breakdown) -> graph)
 
 let get_node = fun pg package ->
   HashMap.get
@@ -471,34 +435,29 @@ let filter_for_packages = fun pg pkg_names ->
   | _ ->
       let reachable_ids = G.reachable_from pg.graph target_nodes in
       let reachable_set = HashSet.create () in
-      List.for_each
-        target_nodes
+      List.for_each target_nodes
         ~fn:(fun (node: package_node G.node) ->
           let _ = HashSet.insert reachable_set ~value:node.id in
           ());
-      List.for_each
-        reachable_ids
+      List.for_each reachable_ids
         ~fn:(fun id ->
           let _ = HashSet.insert reachable_set ~value:id in
           ());
       let filtered_graph = G.make () in
       let filtered_name_to_node = HashMap.create () in
-      G.iter
-        pg.graph
+      G.iter pg.graph
         ~fn:(fun id node ->
           if HashSet.contains reachable_set ~value:id then
             let new_node = G.add_node filtered_graph node.value in
             let _ = HashMap.insert filtered_name_to_node ~key:(get_key node.value) ~value:new_node in
             ());
-      G.iter
-        pg.graph
+      G.iter pg.graph
         ~fn:(fun id node ->
           if HashSet.contains reachable_set ~value:id then
             match HashMap.get filtered_name_to_node ~key:(get_key node.value) with
             | None -> ()
             | Some new_node ->
-                List.for_each
-                  node.deps
+                List.for_each node.deps
                   ~fn:(fun dep_id ->
                     if HashSet.contains reachable_set ~value:dep_id then
                       match G.get_node pg.graph dep_id with
@@ -512,11 +471,11 @@ let filter_for_packages = fun pg pkg_names ->
 
 let filter_for_package = fun pg pkg_name -> filter_for_packages pg [ pkg_name ]
 
-let get_graph_node = fun pg node_id -> G.get_node pg.graph node_id
+let get_graph_node = fun pg node_id ->
+  G.get_node pg.graph node_id
 
 let get_dependencies_for_node = fun pg (node: package_node G.node) ->
-  List.filter_map
-    node.deps
+  List.filter_map node.deps
     ~fn:(fun dep_id ->
       match G.get_node pg.graph dep_id with
       | Some dep_node -> Some dep_node.value
@@ -532,8 +491,7 @@ let get_dependencies = fun graph (package: Package.t) ->
 
 let get_unplanned_dependencies = fun pg (pkg: Package.t) ->
   let deps = get_dependencies pg pkg in
-  List.filter_map
-    deps
+  List.filter_map deps
     ~fn:(fun dep ->
       if not (is_planned dep) then
         Some (get_package dep)
@@ -547,8 +505,7 @@ let topological_sort = fun pg ->
   | Ok sorted_nodes -> List.map sorted_nodes ~fn:(fun (node: package_node G.node) -> node.value)
   | Error node_ids ->
       let names =
-        List.filter_map
-          node_ids
+        List.filter_map node_ids
           ~fn:(fun id ->
             match G.get_node pg.graph id with
             | Some node -> Some (Package_name.to_string (get_package node.value).name)

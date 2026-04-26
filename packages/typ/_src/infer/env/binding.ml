@@ -70,7 +70,9 @@ let scheme = fun binding -> binding.scheme
 let provenance = fun binding -> binding.provenance
 
 let with_surface_path = fun surface_path binding ->
-  with_path (EntityId.resolved ~binding_id:binding.id ~surface_path) binding
+  with_path
+    (EntityId.resolved ~binding_id:binding.id ~surface_path)
+    binding
 
 let with_scheme = fun scheme binding -> { binding with scheme }
 

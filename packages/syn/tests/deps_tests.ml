@@ -21,7 +21,10 @@ let alias_exports = fun names ->
       Syn.Deps.Env.add_path exports ~path:[ name ] ~free_names:[ name ])
 
 let open_paths = fun paths env ->
-  List.fold_left paths ~init:env ~fn:(fun env path -> Syn.Deps.Env.open_path env ~path)
+  List.fold_left
+    paths
+    ~init:env
+    ~fn:(fun env path -> Syn.Deps.Env.open_path env ~path)
 
 let test_deps_collect_value_declaration_modules_from_implicit_alias_opens = fun _ctx ->
   let env =

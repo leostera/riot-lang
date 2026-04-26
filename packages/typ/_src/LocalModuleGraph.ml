@@ -61,7 +61,9 @@ let dedupe_by_key_preserving_order = fun ~key items ->
         true)
 
 let dedupe_module_ids_preserving_order = fun module_ids ->
-  dedupe_by_key_preserving_order ~key:(fun module_id -> module_id) module_ids
+  dedupe_by_key_preserving_order
+    ~key:(fun module_id -> module_id)
+    module_ids
 
 let visible_module_name_to_string = fun visible_name ->
   match visible_name with
@@ -84,7 +86,9 @@ let required_names_of_parse_result = fun ~current_module_name ~parse_result ~imp
     |> List.map SurfacePath.to_string
     |> List.filter
       (fun module_name ->
-        LocalModules.should_include_implicit_open ~current_module_name ~module_name)
+        LocalModules.should_include_implicit_open
+          ~current_module_name
+          ~module_name)
   in
   dedupe_by_key_preserving_order
     ~key:(fun required_name -> required_name)
@@ -370,7 +374,9 @@ let reachable_group_ids = fun graph ~roots ->
     roots
     |> List.filter_map
       (fun source_id ->
-        Collections.HashMap.get graph.group_id_by_source_id (SourceId.to_int source_id))
+        Collections.HashMap.get
+          graph.group_id_by_source_id
+          (SourceId.to_int source_id))
     |> dedupe_module_ids_preserving_order
   in
   let seen = Collections.HashSet.with_capacity (List.length root_group_ids + 1) in

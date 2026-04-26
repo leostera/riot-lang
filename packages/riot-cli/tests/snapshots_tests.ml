@@ -1,5 +1,4 @@
 open Std
-
 module Test = Std.Test
 
 let with_tempdir_result = fun prefix fn ->
@@ -18,20 +17,14 @@ let write_file = fun path content ->
 
 let pending_paths = fun workspace_root ->
   let fixture_pending =
-    Path.(workspace_root / Path.v "packages/std/tests/fixtures/sample.expected.new")
-  in
-  let fixture_approved =
-    Path.(workspace_root / Path.v "packages/std/tests/fixtures/sample.expected")
-  in
+    Path.(workspace_root / Path.v "packages/std/tests/fixtures/sample.expected.new") in
+  let fixture_approved = Path.(workspace_root / Path.v "packages/std/tests/fixtures/sample.expected") in
   let custom_pending =
-    Path.(workspace_root / Path.v "packages/syn/tests/fixtures/sample.expected_lossless.json.new")
-  in
+    Path.(workspace_root / Path.v "packages/syn/tests/fixtures/sample.expected_lossless.json.new") in
   let custom_approved =
-    Path.(workspace_root / Path.v "packages/syn/tests/fixtures/sample.expected_lossless.json")
-  in
+    Path.(workspace_root / Path.v "packages/syn/tests/fixtures/sample.expected_lossless.json") in
   let workspace_pending =
-    Path.(workspace_root / Path.v ".riot/snapshots/std/suite/case.expected.new")
-  in
+    Path.(workspace_root / Path.v ".riot/snapshots/std/suite/case.expected.new") in
   let workspace_approved = Path.(workspace_root / Path.v ".riot/snapshots/std/suite/case.expected") in
   let build_pending = Path.(workspace_root / Path.v "_build/debug/std/ignored.expected.new") in
   (
@@ -45,15 +38,12 @@ let pending_paths = fun workspace_root ->
   )
 
 let test_discover_pending_snapshots =
-  Test.case
-    "snapshots: discover pending candidates"
+  Test.case "snapshots: discover pending candidates"
     (fun _ctx ->
-      with_tempdir_result
-        "snapshots_discover"
+      with_tempdir_result "snapshots_discover"
         (fun workspace_root ->
-          let (fixture_pending, _, custom_pending, _, workspace_pending, _, build_pending) =
-            pending_paths workspace_root
-          in
+          let (fixture_pending, _, custom_pending, _, workspace_pending, _, build_pending) = pending_paths
+            workspace_root in
           match write_file fixture_pending "fixture pending\n" with
           | Error msg -> Error msg
           | Ok () -> (
@@ -72,17 +62,14 @@ let test_discover_pending_snapshots =
                               let actual =
                                 List.map
                                   snapshots
-                                  ~fn:(fun snapshot ->
-                                    Path.to_string snapshot.Riot_cli.Snapshots.pending)
+                                  ~fn:(fun snapshot -> Path.to_string snapshot.Riot_cli.Snapshots.pending)
                               in
-                              let expected =
-                                [
-                                  Path.to_string workspace_pending;
-                                  Path.to_string fixture_pending;
-                                  Path.to_string custom_pending;
-                                ]
-                                |> List.sort ~compare:String.compare
-                              in
+                              let expected = [
+                                Path.to_string workspace_pending;
+                                Path.to_string fixture_pending;
+                                Path.to_string custom_pending;
+                              ]
+                              |> List.sort ~compare:String.compare in
                               let actual = List.sort actual ~compare:String.compare in
                               Test.assert_equal ~expected ~actual;
                               Ok ()
@@ -92,15 +79,11 @@ let test_discover_pending_snapshots =
             )))
 
 let test_discover_pending_snapshots_filters_by_query =
-  Test.case
-    "snapshots: discover pending candidates filters by query"
+  Test.case "snapshots: discover pending candidates filters by query"
     (fun _ctx ->
-      with_tempdir_result
-        "snapshots_query"
+      with_tempdir_result "snapshots_query"
         (fun workspace_root ->
-          let (fixture_pending, _, custom_pending, _, workspace_pending, _, _) =
-            pending_paths workspace_root
-          in
+          let (fixture_pending, _, custom_pending, _, workspace_pending, _, _) = pending_paths workspace_root in
           match write_file fixture_pending "fixture pending\n" with
           | Error msg -> Error msg
           | Ok () -> (
@@ -114,7 +97,8 @@ let test_discover_pending_snapshots_filters_by_query =
                         ~workspace_root
                         ~query:"lossless"
                         () with
-                      | Error err -> Error (IO.error_message err)
+                      | Error err ->
+                          Error (IO.error_message err)
                       | Ok [ snapshot ] ->
                           Test.assert_equal
                             ~expected:(Path.to_string custom_pending)
@@ -128,11 +112,9 @@ let test_discover_pending_snapshots_filters_by_query =
             )))
 
 let test_approve_pending_snapshots =
-  Test.case
-    "snapshots: approve promotes pending snapshot"
+  Test.case "snapshots: approve promotes pending snapshot"
     (fun _ctx ->
-      with_tempdir_result
-        "snapshots_approve"
+      with_tempdir_result "snapshots_approve"
         (fun workspace_root ->
           let (_, fixture_approved, _, _, _, _, _) = pending_paths workspace_root in
           let pending = Path.add_extension fixture_approved ~ext:"new" in
@@ -146,14 +128,8 @@ let test_approve_pending_snapshots =
                   match Riot_cli.Snapshots.approve_pending_snapshots [ snapshot ] with
                   | Error err -> Error (IO.error_message err)
                   | Ok () ->
-                      let approved_content =
-                        Fs.read fixture_approved
-                        |> Result.expect ~msg:"read approved snapshot"
-                      in
-                      let pending_exists =
-                        Fs.exists pending
-                        |> Result.expect ~msg:"stat pending snapshot"
-                      in
+                      let approved_content = Fs.read fixture_approved |> Result.expect ~msg:"read approved snapshot" in
+                      let pending_exists = Fs.exists pending |> Result.expect ~msg:"stat pending snapshot" in
                       if not (String.equal approved_content "new approved\n") then
                         Error ("unexpected approved snapshot content: " ^ approved_content)
                       else if pending_exists then
@@ -164,11 +140,9 @@ let test_approve_pending_snapshots =
             )))
 
 let test_reject_pending_snapshots =
-  Test.case
-    "snapshots: reject removes pending snapshot"
+  Test.case "snapshots: reject removes pending snapshot"
     (fun _ctx ->
-      with_tempdir_result
-        "snapshots_reject"
+      with_tempdir_result "snapshots_reject"
         (fun workspace_root ->
           let (_, fixture_approved, _, _, _, _, _) = pending_paths workspace_root in
           let pending = Path.add_extension fixture_approved ~ext:"new" in
@@ -182,14 +156,8 @@ let test_reject_pending_snapshots =
                   match Riot_cli.Snapshots.reject_pending_snapshots [ snapshot ] with
                   | Error err -> Error (IO.error_message err)
                   | Ok () ->
-                      let approved_content =
-                        Fs.read fixture_approved
-                        |> Result.expect ~msg:"read approved snapshot"
-                      in
-                      let pending_exists =
-                        Fs.exists pending
-                        |> Result.expect ~msg:"stat pending snapshot"
-                      in
+                      let approved_content = Fs.read fixture_approved |> Result.expect ~msg:"read approved snapshot" in
+                      let pending_exists = Fs.exists pending |> Result.expect ~msg:"stat pending snapshot" in
                       if not (String.equal approved_content "approved content\n") then
                         Error ("approved snapshot unexpectedly changed: " ^ approved_content)
                       else if pending_exists then
@@ -205,8 +173,7 @@ let parse_snapshots = fun args ->
   | Error err -> Error (ArgParser.error_message err)
 
 let test_snapshots_command_parses_subcommands =
-  Test.case
-    "snapshots: command parses approve query"
+  Test.case "snapshots: command parses approve query"
     (fun _ctx ->
       match parse_snapshots [ "snapshots"; "approve"; "fixture" ] with
       | Error err -> Error ("expected snapshots args to parse: " ^ err)
@@ -221,8 +188,7 @@ let test_snapshots_command_parses_subcommands =
         ))
 
 let test_parse_review_decision =
-  Test.case
-    "snapshots: parse review decision aliases"
+  Test.case "snapshots: parse review decision aliases"
     (fun _ctx ->
       let actual = [
         Riot_cli.Snapshots.parse_review_decision "a";
@@ -254,15 +220,12 @@ let test_parse_review_decision =
       Ok ())
 
 let test_review_pending_snapshots_with_decider =
-  Test.case
-    "snapshots: review applies approve reject ignore decisions"
+  Test.case "snapshots: review applies approve reject ignore decisions"
     (fun _ctx ->
-      with_tempdir_result
-        "snapshots_review"
+      with_tempdir_result "snapshots_review"
         (fun workspace_root ->
-          let (fixture_pending, fixture_approved, custom_pending, custom_approved, workspace_pending, workspace_approved, _) =
-            pending_paths workspace_root
-          in
+          let (fixture_pending, fixture_approved, custom_pending, custom_approved, workspace_pending, workspace_approved, _) = pending_paths
+            workspace_root in
           let setup_result =
             match write_file fixture_pending "fixture pending\n" with
             | Error _ as err -> err
@@ -291,30 +254,14 @@ let test_review_pending_snapshots_with_decider =
                     ~decide with
                   | Error err -> Error (IO.error_message err)
                   | Ok summary ->
-                      let fixture_approved_content =
-                        Fs.read fixture_approved
-                        |> Result.expect ~msg:"read approved fixture snapshot"
-                      in
-                      let fixture_pending_exists =
-                        Fs.exists fixture_pending
-                        |> Result.expect ~msg:"stat fixture pending snapshot"
-                      in
-                      let custom_approved_exists =
-                        Fs.exists custom_approved
-                        |> Result.expect ~msg:"stat custom approved snapshot"
-                      in
-                      let custom_pending_exists =
-                        Fs.exists custom_pending
-                        |> Result.expect ~msg:"stat custom pending snapshot"
-                      in
-                      let workspace_approved_exists =
-                        Fs.exists workspace_approved
-                        |> Result.expect ~msg:"stat workspace approved snapshot"
-                      in
-                      let workspace_pending_exists =
-                        Fs.exists workspace_pending
-                        |> Result.expect ~msg:"stat workspace pending snapshot"
-                      in
+                      let fixture_approved_content = Fs.read fixture_approved |> Result.expect ~msg:"read approved fixture snapshot" in
+                      let fixture_pending_exists = Fs.exists fixture_pending |> Result.expect ~msg:"stat fixture pending snapshot" in
+                      let custom_approved_exists = Fs.exists custom_approved |> Result.expect ~msg:"stat custom approved snapshot" in
+                      let custom_pending_exists = Fs.exists custom_pending |> Result.expect ~msg:"stat custom pending snapshot" in
+                      let workspace_approved_exists = Fs.exists workspace_approved
+                      |> Result.expect ~msg:"stat workspace approved snapshot" in
+                      let workspace_pending_exists = Fs.exists workspace_pending
+                      |> Result.expect ~msg:"stat workspace pending snapshot" in
                       if not (String.equal fixture_approved_content "fixture pending\n") then
                         Error ("unexpected approved snapshot content: " ^ fixture_approved_content)
                       else if fixture_pending_exists then
@@ -340,15 +287,11 @@ let test_review_pending_snapshots_with_decider =
             )))
 
 let test_review_pending_snapshots_with_quit =
-  Test.case
-    "snapshots: review quit stops before mutating snapshots"
+  Test.case "snapshots: review quit stops before mutating snapshots"
     (fun _ctx ->
-      with_tempdir_result
-        "snapshots_quit"
+      with_tempdir_result "snapshots_quit"
         (fun workspace_root ->
-          let (fixture_pending, fixture_approved, custom_pending, _, _, _, _) =
-            pending_paths workspace_root
-          in
+          let (fixture_pending, fixture_approved, custom_pending, _, _, _, _) = pending_paths workspace_root in
           let setup_result =
             match write_file fixture_pending "fixture pending\n" with
             | Error _ as err -> err
@@ -367,18 +310,9 @@ let test_review_pending_snapshots_with_quit =
                     ~decide with
                   | Error err -> Error (IO.error_message err)
                   | Ok summary ->
-                      let approved_exists =
-                        Fs.exists fixture_approved
-                        |> Result.expect ~msg:"stat approved snapshot"
-                      in
-                      let fixture_pending_exists =
-                        Fs.exists fixture_pending
-                        |> Result.expect ~msg:"stat fixture pending snapshot"
-                      in
-                      let custom_pending_exists =
-                        Fs.exists custom_pending
-                        |> Result.expect ~msg:"stat custom pending snapshot"
-                      in
+                      let approved_exists = Fs.exists fixture_approved |> Result.expect ~msg:"stat approved snapshot" in
+                      let fixture_pending_exists = Fs.exists fixture_pending |> Result.expect ~msg:"stat fixture pending snapshot" in
+                      let custom_pending_exists = Fs.exists custom_pending |> Result.expect ~msg:"stat custom pending snapshot" in
                       if approved_exists then
                         Error "expected quit not to approve any snapshot"
                       else if not fixture_pending_exists || not custom_pending_exists then

@@ -21,7 +21,9 @@ let fixture_filter = fun path ->
   | _ -> `skip
 
 let stable_fixture_filename = fun (ctx: Test.FixtureRunner.ctx) ->
-  Path.join fixtures_dir ctx.fixture_relpath
+  Path.join
+    fixtures_dir
+    ctx.fixture_relpath
 
 let parse_failure_report = fun ~filename ->
   fun parse_result ->

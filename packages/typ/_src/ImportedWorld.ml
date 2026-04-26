@@ -42,7 +42,9 @@ let implicit_open_modules = fun imported_world ->
 let visible_modules = fun imported_world -> ScopeView.visible_modules imported_world.scope_view
 
 let visible_type_decls_for_module = fun imported_world ~visible_path ~module_id ->
-  PackageEnv.visible_type_decls imported_world.package_env [ (visible_path, module_id); ]
+  PackageEnv.visible_type_decls
+    imported_world.package_env
+    [ (visible_path, module_id); ]
 
 let visible_type_decls = fun imported_world ->
   visible_modules imported_world
@@ -61,7 +63,10 @@ let lookup_value = fun imported_world path ->
     implicit_open_modules imported_world
     |> List.find_map
       (fun ({ module_id; _ }: opened_module) ->
-        PackageEnv.lookup_value imported_world.package_env module_id surface_path)
+        PackageEnv.lookup_value
+          imported_world.package_env
+          module_id
+          surface_path)
   else
     Option.and_then
       (resolve_visible_module_prefix imported_world surface_path)
@@ -75,7 +80,10 @@ let lookup_module_scope = fun imported_world module_path ->
   Option.and_then
     (resolve_visible_module_prefix imported_world module_path)
     (fun ({ module_id; suffix; _ }: resolved_module) ->
-      PackageEnv.lookup_module_scope imported_world.package_env module_id suffix)
+      PackageEnv.lookup_module_scope
+        imported_world.package_env
+        module_id
+        suffix)
 
 let lookup_type_decl = fun imported_world path ->
   if SurfacePath.is_bare path then

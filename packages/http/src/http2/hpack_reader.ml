@@ -17,19 +17,15 @@ type decoder_phase =
       first_byte: int;
       prefix_bits: int;
       accumulated_value: int;
-      multiplier: int;
+      multiplier: int
     }
-  | ReadingLiteralName of {
-      name_length: int;
-      bytes_read: int;
-      buffer: Buffer.t;
-    }
+  | ReadingLiteralName of { name_length: int; bytes_read: int; buffer: Buffer.t }
   | ReadingLiteralValue of {
       name: string;
       value_length: int;
       bytes_read: int;
       buffer: Buffer.t;
-      should_index: bool;
+      should_index: bool
     }
 
 type decoder = {
@@ -50,11 +46,12 @@ type decode_result =
   | Need_more
   | Error of decode_error
 
-let create = fun ?(max_dynamic_table_size = 4_096) () -> {
-  hpack_decoder = Hpack.create_decoder ~max_dynamic_table_size ();
-  phase = WaitingForHeader;
-  accumulated_headers = Cell.create [];
-}
+let create = fun ?(max_dynamic_table_size = 4_096) () ->
+  {
+    hpack_decoder = Hpack.create_decoder ~max_dynamic_table_size ();
+    phase = WaitingForHeader;
+    accumulated_headers = Cell.create []
+  }
 
 let update_max_table_size = fun decoder size ->
   Hpack.update_max_table_size decoder.hpack_decoder size
@@ -71,11 +68,7 @@ let dynamic_table_size = fun decoder ->
 let read_byte = fun reader ->
   let buf = Buffer.create ~size:1 in
   match IO.Reader.read reader ~into:buf with
-  | Ok 1 ->
-      Some (
-        Buffer.get_unchecked buf ~at:0
-        |> Char.to_int
-      )
+  | Ok 1 -> Some (Buffer.get_unchecked buf ~at:0 |> Char.to_int)
   | _ -> None
 
 (** Try to read N bytes from reader *)
@@ -111,8 +104,10 @@ let decode_varint_incremental = fun reader first_byte prefix_bits accumulated mu
 
 let handle_indexed_header = fun decoder reader first_byte decode_next ->
   match decode_varint_incremental reader first_byte 7 0 1 with
-  | Result.Error Need_more_data -> Need_more
-  | Result.Error e -> Error e
+  | Result.Error Need_more_data ->
+      Need_more
+  | Result.Error e ->
+      Error e
   | Result.Ok (index, _, _) ->
       match Hpack.static_table_lookup index with
       | Some header ->
@@ -132,13 +127,15 @@ let handle_literal_incremental = fun decoder reader first_byte decode_next ->
         | None -> Need_more
         | Some len_byte -> (
             match decode_varint_incremental reader len_byte 7 0 1 with
-            | Result.Error Need_more_data -> Need_more
-            | Result.Error e -> Error e
+            | Result.Error Need_more_data ->
+                Need_more
+            | Result.Error e ->
+                Error e
             | Result.Ok (name_length, _, _) ->
                 decoder.phase <- ReadingLiteralName {
                   name_length;
                   bytes_read = 0;
-                  buffer = Buffer.create ~size:name_length;
+                  buffer = Buffer.create ~size:name_length
                 };
                 decode_next ()
           )
@@ -150,8 +147,10 @@ let handle_literal_incremental = fun decoder reader first_byte decode_next ->
             | None -> Need_more
             | Some len_byte -> (
                 match decode_varint_incremental reader len_byte 7 0 1 with
-                | Result.Error Need_more_data -> Need_more
-                | Result.Error e -> Error e
+                | Result.Error Need_more_data ->
+                    Need_more
+                | Result.Error e ->
+                    Error e
                 | Result.Ok (value_length, _, _) ->
                     decoder.phase <- ReadingLiteralValue {
                       name = header.name;
@@ -193,8 +192,10 @@ let decode = fun decoder reader ->
                 | None -> Need_more
                 | Some len_byte -> (
                     match decode_varint_incremental reader len_byte 7 0 1 with
-                    | Result.Error Need_more_data -> Need_more
-                    | Result.Error e -> Error e
+                    | Result.Error Need_more_data ->
+                        Need_more
+                    | Result.Error e ->
+                        Error e
                     | Result.Ok (value_length, _, _) ->
                         decoder.phase <- ReadingLiteralValue {
                           name;
@@ -238,6 +239,7 @@ let decode = fun decoder reader ->
               else
                 decode_next ()
         )
-    | _ -> Error Invalid_decoder_state
+    | _ ->
+        Error Invalid_decoder_state
   in
   decode_next ()

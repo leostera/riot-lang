@@ -153,7 +153,9 @@ module Rng = struct
     |]
 
     let rotl = fun value amount ->
-      Int32.logor (Int32.shift_left value amount) (Int32.shift_right_logical value (32 - amount))
+      Int32.logor
+        (Int32.shift_left value amount)
+        (Int32.shift_right_logical value (32 - amount))
 
     let quarter_round = fun words a b c d ->
       let a_value = Array.get_unchecked words ~at:a in
@@ -535,7 +537,9 @@ module Distribution = struct
       shuffle 0
 
   let choose_n = fun values count rng ->
-    Result.map (choose_n_array (Array.from_list values) count rng) ~fn:array_to_list
+    Result.map
+      (choose_n_array (Array.from_list values) count rng)
+      ~fn:array_to_list
 
   let choose_n_vec = fun values count rng ->
     Result.map

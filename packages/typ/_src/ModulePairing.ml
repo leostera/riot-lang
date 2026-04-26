@@ -62,13 +62,19 @@ let qualified_name = fun scope_path name -> SurfacePath.append_name scope_path n
 let type_decl_key = ModuleSurface.type_decl_key
 
 let qualify_signature_exports = fun module_name type_decls exports ->
-  ModuleSurface.qualify_signature_exports ~module_name ~type_decls exports
+  ModuleSurface.qualify_signature_exports
+    ~module_name
+    ~type_decls
+    exports
 
 let qualify_signature_type_decls = fun module_name type_decls ->
-  ModuleSurface.qualify_type_decls ~module_name type_decls
+  ModuleSurface.qualify_type_decls
+    ~module_name
+    type_decls
 
 let signature_visible_types = fun ~visible_type_decls ~interface_decls ~implementation_decls ->
-  VisibleTypes.of_type_decls ((visible_type_decls @ interface_decls) @ implementation_decls)
+  VisibleTypes.of_type_decls
+    ((visible_type_decls @ interface_decls) @ implementation_decls)
 
 let canonical_scheme_string = fun visible_types scheme ->
   VisibleTypes.canonicalize_scheme visible_types scheme
@@ -284,7 +290,8 @@ let interface_span_for_mismatch = fun ({ source; analysis; _ }: source_input) mi
     )
 
 let implementation_span_for_mismatch = fun ({ source; _ }: source_input) _mismatch ->
-  source_span source
+  source_span
+    source
 
 let interface_diagnostic = fun interface_pair implementation_pair mismatch ->
   Diagnostic.SignatureInclusionError {
@@ -330,7 +337,9 @@ let package_signature_includes = fun includes_type (actual: TypeRepr.package_sig
     (fun (expected_value: TypeRepr.package_value) ->
       match List.find_opt
         (fun (actual_value: TypeRepr.package_value) ->
-          String.equal actual_value.name expected_value.name)
+          String.equal
+            actual_value.name
+            expected_value.name)
         actual.values with
       | Some actual_value ->
           includes_type
@@ -588,7 +597,9 @@ let type_decl_mismatches = fun ~visible_types interface_decls implementation_dec
       match implementation_decls
       |> List.find_opt
         (fun (implementation_decl: FileSummary.type_decl) ->
-          SurfacePath.equal key (type_decl_key implementation_decl)) with
+          SurfacePath.equal
+            key
+            (type_decl_key implementation_decl)) with
       | None -> Some (Diagnostic.MissingTypeDeclaration { name = SurfacePath.to_string key })
       | Some implementation_decl ->
           if type_decl_matches ~visible_types interface_decl implementation_decl then

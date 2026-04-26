@@ -82,7 +82,10 @@ let with_region_finalize = fun (regions: t) ~finalize f ->
       raise exn
 
 let with_region = fun (regions: t) f ->
-  with_region_finalize regions ~finalize:(fun _ result -> result) f
+  with_region_finalize
+    regions
+    ~finalize:(fun _ result -> result)
+    f
 
 let boundary_level = fun (frame: frame) -> frame.boundary_level
 

@@ -43,7 +43,9 @@ let of_traced_exprs = fun ~origin_map traced_exprs ->
 let entries = fun index -> index
 
 let find_at = fun index position ->
-  List.find_opt (fun (entry: entry) -> Position.is_within_span position entry.span) index
+  List.find_opt
+    (fun (entry: entry) -> Position.is_within_span position entry.span)
+    index
 
 let span_to_json = fun (span: Syn.Ceibo.Span.t) ->
   Data.Json.Object [ ("start", Data.Json.Int span.start); ("end", Data.Json.Int span.end_); ]

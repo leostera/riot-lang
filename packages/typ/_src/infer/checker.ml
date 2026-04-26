@@ -56,7 +56,10 @@ let env_of_compiled_scope = fun scope ->
   |> Env.without_summary
 
 let imported_visible_type_decls_for_module = fun (state: state) ~visible_path ~module_id ->
-  ImportedWorld.visible_type_decls_for_module state.imported_world ~visible_path ~module_id
+  ImportedWorld.visible_type_decls_for_module
+    state.imported_world
+    ~visible_path
+    ~module_id
 
 let imported_type_env_for_module = fun (state: state) ~visible_path ~module_id ->
   imported_visible_type_decls_for_module state ~visible_path ~module_id
@@ -103,20 +106,28 @@ let lookup_imported_binding = fun (state: state) path ->
         ~provenance:Binding.Ambient)
 
 let lookup_binding = fun (state: state) env path ->
-  Option.or_else (Env.lookup env path) (fun () -> lookup_imported_binding state path)
+  Option.or_else
+    (Env.lookup env path)
+    (fun () -> lookup_imported_binding state path)
 
 let lookup_imported_type = fun (state: state) name ->
-  ImportedWorld.lookup_type_decl state.imported_world name
+  ImportedWorld.lookup_type_decl
+    state.imported_world
+    name
 
 let lookup_type = fun (state: state) env name ->
-  Option.or_else (Env.lookup_type env name) (fun () -> lookup_imported_type state name)
+  Option.or_else
+    (Env.lookup_type env name)
+    (fun () -> lookup_imported_type state name)
 
 let lookup_imported_constructors = fun (state: state) path ->
   if SurfacePath.is_bare path then
     ImportedWorld.implicit_open_modules state.imported_world
     |> List.concat_map
       (fun ({ ImportedWorld.visible_path; module_id }: ImportedWorld.opened_module) ->
-        Env.lookup_constructors (imported_type_env_for_module state ~visible_path ~module_id) path)
+        Env.lookup_constructors
+          (imported_type_env_for_module state ~visible_path ~module_id)
+          path)
   else
     ImportedWorld.resolve_visible_module_prefix state.imported_world path
     |> Option.map
@@ -239,7 +250,9 @@ let fresh_var = fun (state: state) -> Solver.fresh_var state.solver
 let fresh_rigid_var = State.fresh_rigid_var
 
 let fresh_binding_ident = fun state name ->
-  BindingId.local ~stamp:(State.fresh_binding_local_id state) ~name
+  BindingId.local
+    ~stamp:(State.fresh_binding_local_id state)
+    ~name
 
 let binding_name_of_path = fun path ->
   SurfacePath.last_name path
@@ -296,14 +309,22 @@ let pattern_binding = fun (state: state) pat_id ~name ~scheme ->
     ~provenance:(Binding.LoweredPattern pat_id)
 
 let generalized_pattern_binding = fun (state: state) pat_id ~name ty ->
-  pattern_binding state pat_id ~name ~scheme:(TypeScheme.of_type ty)
+  pattern_binding
+    state
+    pat_id
+    ~name
+    ~scheme:(TypeScheme.of_type ty)
 
 let package_env = fun (state: state) pat_id (signature: TypeRepr.package_signature) ->
   let entries =
     signature.values
     |> List.map
       (fun (value: TypeRepr.package_value) ->
-        pattern_binding state pat_id ~name:value.name ~scheme:value.scheme)
+        pattern_binding
+          state
+          pat_id
+          ~name:value.name
+          ~scheme:value.scheme)
   in
   Env.of_bindings entries
 
@@ -320,7 +341,9 @@ let resolve_named_type_head_in_env = fun (state: state) env name ->
   lookup_type state env name
   |> Option.map
     (fun (type_decl: FileSummary.type_decl) ->
-      TypeRepr.named_head ~type_constructor_id:type_decl.declaration.type_constructor_id ~name)
+      TypeRepr.named_head
+        ~type_constructor_id:type_decl.declaration.type_constructor_id
+        ~name)
   |> fun resolved -> Option.or_else resolved (fun () -> State.resolve_named_type_head state name)
 
 let canonicalize_scheme_in_env = fun (state: state) env scheme ->
@@ -339,7 +362,9 @@ let canonicalize_scheme_heads_in_env = fun (state: state) env scheme ->
     scheme
 
 let resolve_named_type_decl_in_env = fun (state: state) env name ->
-  Option.or_else (lookup_type state env name) (fun () -> State.visible_type_decl state name)
+  Option.or_else
+    (lookup_type state env name)
+    (fun () -> State.visible_type_decl state name)
 
 let canonicalize_type_decl_in_env = fun (state: state) env (type_decl: FileSummary.type_decl) ->
   let current_decl_name =
@@ -427,7 +452,10 @@ let declared_value_bindings = fun (state: state) env (
     })
 
 let canonicalize_generalized_scheme_in_env = fun (state: state) env scheme ->
-  canonicalize_scheme_heads_in_env state env scheme
+  canonicalize_scheme_heads_in_env
+    state
+    env
+    scheme
 
 let instantiate = fun (state: state) scheme -> Solver.instantiate state.solver scheme
 
@@ -728,7 +756,9 @@ let take_matching_argument = fun parameter_label arguments ->
 let visible_type_decl = fun (state: state) name -> State.visible_type_decl state name
 
 let visible_type_decl_by_id = fun (state: state) type_constructor_id ->
-  State.visible_type_decl_by_id state type_constructor_id
+  State.visible_type_decl_by_id
+    state
+    type_constructor_id
 
 type poly_variant_candidate = {
   type_decl: FileSummary.type_decl;
@@ -850,10 +880,14 @@ let instantiate_record_decl = fun (state: state) (record_decl: record_type_decl)
   (owner_ty, field_types)
 
 let record_field_type = fun field_types label_name ->
-  Label_name_map.find_opt (Env.Label_env.lookup_name label_name) field_types
+  Label_name_map.find_opt
+    (Env.Label_env.lookup_name label_name)
+    field_types
 
 let type_decl_path = fun (type_decl: FileSummary.type_decl) ->
-  qualify_name type_decl.scope_path type_decl.declaration.type_name
+  qualify_name
+    type_decl.scope_path
+    type_decl.declaration.type_name
 
 let instantiate_named_type_decl = fun (state: state) (type_decl: FileSummary.type_decl) ->
   let mapping = Collections.HashMap.with_capacity 8 in
@@ -897,7 +931,10 @@ let poly_variant_candidate = fun (state: state) (type_decl: FileSummary.type_dec
             tags
             |> List.fold_left
               (fun acc (tag: TypeDecl.poly_variant_tag) ->
-                Label_name_map.add tag.name tag.payload_type acc)
+                Label_name_map.add
+                  tag.name
+                  tag.payload_type
+                  acc)
               acc
           in
           inherited
@@ -1113,7 +1150,9 @@ let resolve_record_decl = fun env (state: state) ~field_names ~owner_hint ~span 
         lookup_record_decls state env first_field
         |> List.filter
           (fun (record_decl: record_type_decl) ->
-            Env.Label_env.matches_fields record_decl remaining_fields)
+            Env.Label_env.matches_fields
+              record_decl
+              remaining_fields)
     | [] -> Env.record_decls env
   in
   let candidates =
@@ -1133,7 +1172,9 @@ let resolve_record_decl = fun env (state: state) ~field_names ~owner_hint ~span 
     candidates
     |> List.filter
       (fun (record_decl: record_type_decl) ->
-        record_decl_matches_explicit_field_owners record_decl field_names)
+        record_decl_matches_explicit_field_owners
+          record_decl
+          field_names)
   in
   match candidates with
   | [ record_decl ] -> Some record_decl
@@ -1275,7 +1316,10 @@ let field_types_of_labels = fun (state: state) labels ->
   labels
   |> List.fold_left
     (fun acc (label: TypeDecl.label) ->
-      Label_name_map.add (Env.Label_env.lookup_name label.name) label.field_type acc)
+      Label_name_map.add
+        (Env.Label_env.lookup_name label.name)
+        label.field_type
+        acc)
     Label_name_map.empty
 
 let missing_inline_record_fields = fun labels field_names ->
@@ -1666,7 +1710,9 @@ let rec is_nonexpansive_expr = fun (state: state) expr_id ->
             arguments
             |> List.for_all
               (fun (argument: BodyArena.apply_argument) ->
-                is_nonexpansive_expr state argument.value_id)
+                is_nonexpansive_expr
+                  state
+                  argument.value_id)
           in
           if not arguments_nonexpansive then
             false
@@ -1704,7 +1750,9 @@ let rec is_nonexpansive_expr = fun (state: state) expr_id ->
       | BodyArena.ELocalModule { local_scope; body_id; _ } ->
           List.for_all
             (fun (group: BodyArena.local_module_binding_group) ->
-              List.for_all (is_nonexpansive_binding state) group.binding_ids)
+              List.for_all
+                (is_nonexpansive_binding state)
+                group.binding_ids)
             local_scope.binding_groups
           && is_nonexpansive_expr state body_id
       | BodyArena.EIf (condition_id, then_id, else_id) ->
@@ -1761,7 +1809,9 @@ let origin_of_pattern = fun (state: state) pat_id ->
   | None -> None
 
 let origin_of_binding = fun (state: state) (binding: BodyArena.binding) ->
-  SemanticTree.find_origin state.file binding.origin_id
+  SemanticTree.find_origin
+    state.file
+    binding.origin_id
 
 let diagnostic_span = fun origin ->
   match origin with
@@ -1830,7 +1880,9 @@ let merge_exact_poly_variant_tags = fun (state: state) left_tags right_tags ->
             |> List.map snd
             |> List.sort
               (fun (left: TypeRepr.poly_variant_tag) (right: TypeRepr.poly_variant_tag) ->
-                String.compare left.name right.name)
+                String.compare
+                  left.name
+                  right.name)
           )
     )
 
@@ -2160,7 +2212,11 @@ and bind_pattern = fun (state: state) env pat_id expected_ty ->
             let () =
               List.iter2
                 (fun (_, expected_scheme) (_, actual_scheme) ->
-                  try_unify state ~origin (scheme_body expected_scheme) (scheme_body actual_scheme))
+                  try_unify
+                    state
+                    ~origin
+                    (scheme_body expected_scheme)
+                    (scheme_body actual_scheme))
                 current_bindings
                 alternative_entries
             in
@@ -2252,7 +2308,9 @@ and bind_pattern = fun (state: state) env pat_id expected_ty ->
           in
           List.fold_left2
             (fun acc element_id element_ty ->
-              merge_pattern_bindings acc (bind_pattern state env element_id element_ty))
+              merge_pattern_bindings
+                acc
+                (bind_pattern state env element_id element_ty))
             empty_pattern_bindings
             elements
             element_types
@@ -2324,7 +2382,9 @@ and bind_pattern = fun (state: state) env pat_id expected_ty ->
                       not
                         (List.exists
                           (fun requested_name ->
-                            String.equal (Env.Label_env.lookup_name requested_name) label_name)
+                            String.equal
+                              (Env.Label_env.lookup_name requested_name)
+                              label_name)
                           field_names))
               in
               let () =
@@ -2366,7 +2426,9 @@ and bind_pattern = fun (state: state) env pat_id expected_ty ->
           elements
           |> List.fold_left
             (fun acc element_id ->
-              merge_pattern_bindings acc (bind_pattern state env element_id element_ty))
+              merge_pattern_bindings
+                acc
+                (bind_pattern state env element_id element_ty))
             empty_pattern_bindings
       | BodyArena.PAlias { pattern_id; alias } ->
           let bindings = bind_pattern state env pattern_id expected_ty in
@@ -2588,7 +2650,8 @@ let analyze_match_coverage = fun (state: state) ~expr_id scrutinee_ty cases ->
               patterns
               |> List.exists
                 (fun pattern ->
-                  Option.is_some (useful_coverage_pattern state rows pattern scrutinee_ty))
+                  Option.is_some
+                    (useful_coverage_pattern state rows pattern scrutinee_ty))
             in
             let () =
               if not useful_case then
@@ -2726,7 +2789,9 @@ and infer_record_expr = fun (state: state) env expr_id base_id fields ->
                 not
                   (List.exists
                     (fun requested_name ->
-                      String.equal (Env.Label_env.lookup_name requested_name) label_name)
+                      String.equal
+                        (Env.Label_env.lookup_name requested_name)
+                        label_name)
                     field_names))
       in
       let () =
@@ -3693,7 +3758,10 @@ and infer_local_module_env = fun (state: state) env (local_scope: BodyArena.loca
     local_scope.binding_groups
     |> List.fold_left
       (fun current_env (group: BodyArena.local_module_binding_group) ->
-        infer_binding_group state current_env group.binding_ids)
+        infer_binding_group
+          state
+          current_env
+          group.binding_ids)
       env_with_local_types
   in
   let introduced_entries = Env.introduced_entries env_with_local_types env_after_bindings in
@@ -3709,7 +3777,10 @@ and check_local_module_pack_against_signature = fun (state: state) env ~origin (
     local_scope.binding_groups
     |> List.fold_left
       (fun current_env (group: BodyArena.local_module_binding_group) ->
-        infer_binding_group state current_env group.binding_ids)
+        infer_binding_group
+          state
+          current_env
+          group.binding_ids)
       (Env.bind env local_type_env)
   in
   signature.values
@@ -3803,7 +3874,9 @@ and infer_nonrecursive_group = fun (state: state) env bindings ->
         let generalized_entries =
           List.map2
             (fun entry scheme ->
-              Binding.with_scheme (canonicalize_scheme_heads_in_env state env scheme) entry)
+              Binding.with_scheme
+                (canonicalize_scheme_heads_in_env state env scheme)
+                entry)
             entries.entries
             schemes
         in
@@ -3888,7 +3961,11 @@ and infer_recursive_group = fun (state: state) env bindings ->
             placeholder_info
             |> List.map
               (fun ((binding: BodyArena.binding), _annotation_scheme, _has_annotation, placeholder_ty, entry) ->
-                solver_group_for_entries state binding.value_id placeholder_ty [ entry ])
+                solver_group_for_entries
+                  state
+                  binding.value_id
+                  placeholder_ty
+                  [ entry ])
           in
           (placeholder_info, groups))
     in

@@ -41,7 +41,11 @@ let test_code_units_emoji = fun _ctx ->
   | None -> Error "failed to decode emoji rune"
 
 let test_position_of_offset_counts_surrogate_pairs = fun _ctx ->
-  expect_position ~text:"a😀b" ~offset:5 ~line:0 ~character:3
+  expect_position
+    ~text:"a😀b"
+    ~offset:5
+    ~line:0
+    ~character:3
 
 let test_offset_of_position_counts_surrogate_pairs = fun _ctx ->
   expect_offset
@@ -50,7 +54,11 @@ let test_offset_of_position_counts_surrogate_pairs = fun _ctx ->
     ~offset:5
 
 let test_position_of_offset_handles_crlf = fun _ctx ->
-  expect_position ~text:"a\r\n😀\nZ" ~offset:7 ~line:1 ~character:2
+  expect_position
+    ~text:"a\r\n😀\nZ"
+    ~offset:7
+    ~line:1
+    ~character:2
 
 let test_offset_of_position_handles_crlf = fun _ctx ->
   expect_offset

@@ -604,7 +604,11 @@ let add_variance = fun acc var_id variance ->
   | None -> (var_id, variance) :: acc
 
 let merge_variances = fun left right ->
-  List.fold_left (fun acc (var_id, variance) -> add_variance acc var_id variance) left right
+  List.fold_left
+    (fun acc (var_id, variance) ->
+      add_variance acc var_id variance)
+    left
+    right
 
 let collect_variances = fun variance ty ->
   let generation = next_walk_generation () in
@@ -631,7 +635,9 @@ let collect_variances = fun variance ty ->
         | Package signature ->
             List.fold_left
               (fun acc (value: package_value) ->
-                merge_variances acc (loop variance value.scheme.body))
+                merge_variances
+                  acc
+                  (loop variance value.scheme.body))
               []
               signature.values
         | Named { arguments; _ } ->

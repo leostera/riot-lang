@@ -430,7 +430,9 @@ let get_package_sources = fun package_name ->
           match List.find
             workspace.packages
             ~fn:(fun (manifest: Riot_model.Package_manifest.t) ->
-              Riot_model.Package_name.equal manifest.name package_name_t) with
+              Riot_model.Package_name.equal
+                manifest.name
+                package_name_t) with
           | None -> None
           | Some manifest ->
               let package =

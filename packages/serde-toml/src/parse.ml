@@ -10,7 +10,8 @@ exception Parse_failure of string
 let fail = fun message -> raise (Parse_failure message)
 
 let fail_line = fun line_number message ->
-  fail ("line " ^ Int.to_string line_number ^ ": " ^ message)
+  fail
+    ("line " ^ Int.to_string line_number ^ ": " ^ message)
 
 module Builder = struct
   type value =

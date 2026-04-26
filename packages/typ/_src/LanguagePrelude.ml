@@ -10,7 +10,9 @@ let var = TypeRepr.make_var
 let arrow = fun ?(label = TypeRepr.Nolabel) lhs rhs -> TypeRepr.arrow ~label ~lhs ~rhs
 
 let qualified = fun module_name name ->
-  SurfacePath.append_name (SurfacePath.of_name module_name) name
+  SurfacePath.append_name
+    (SurfacePath.of_name module_name)
+    name
 
 let polymorphic_eq =
   let lhs = var 0 in

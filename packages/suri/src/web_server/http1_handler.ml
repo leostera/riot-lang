@@ -267,7 +267,11 @@ let handle_data_waiting_body = fun data conn state http_req expected_length accu
     let req = Request.of_http ~body:complete_body http_req in
     let result =
       handle_request
-        { state with parse_state = WaitingForHeaders; sniffed_data = remaining_data }
+        {
+          state with
+          parse_state = WaitingForHeaders;
+          sniffed_data = remaining_data;
+        }
         conn
         req
     in

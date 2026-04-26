@@ -186,9 +186,13 @@ module GraphemeMutIter = struct
   let clone = fun { source; current_pos } -> { source; current_pos }
 end
 
-let into_grapheme_mut_iter = fun source -> MutIterator.make
-  (module GraphemeMutIter)
-  { source; current_pos = 0 }
+let into_grapheme_mut_iter = fun source ->
+  MutIterator.make
+    (module GraphemeMutIter)
+    {
+      source;
+      current_pos = 0;
+    }
 
 module GraphemeIter = struct
   type state = { source: string; current_pos: int }
@@ -209,9 +213,13 @@ module GraphemeIter = struct
   let size = fun { current_pos; source } -> length source - current_pos
 end
 
-let into_grapheme_iter = fun source -> Iterator.make
-  (module GraphemeIter)
-  { source; current_pos = 0 }
+let into_grapheme_iter = fun source ->
+  Iterator.make
+    (module GraphemeIter)
+    {
+      source;
+      current_pos = 0;
+    }
 
 (* Text segmentation *)
 
@@ -309,7 +317,8 @@ module Read = struct
   }
 
   let panic_buffer_error = fun fn error ->
-    Kernel.SystemError.panic ("Std.String.to_reader." ^ fn ^ ": " ^ Kernel.IO.Error.message error)
+    Kernel.SystemError.panic
+      ("Std.String.to_reader." ^ fn ^ ": " ^ Kernel.IO.Error.message error)
 
   let read = fun state ~into ->
     let remaining = state.source_length - state.offset in

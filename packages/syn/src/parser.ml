@@ -220,19 +220,34 @@ let missing_let_binding_pattern = fun p ->
     (zero_span (previous_end_offset p))
 
 let invalid_pattern_at_previous_end = fun p ->
-  diagnostic_with_current_at p Diagnostic.invalid_pattern (zero_span (previous_end_offset p))
+  diagnostic_with_current_at
+    p
+    Diagnostic.invalid_pattern
+    (zero_span (previous_end_offset p))
 
 let invalid_expression_at_previous_end = fun p ->
-  diagnostic_with_current_at p Diagnostic.invalid_expression (zero_span (previous_end_offset p))
+  diagnostic_with_current_at
+    p
+    Diagnostic.invalid_expression
+    (zero_span (previous_end_offset p))
 
 let missing_let_binding_equals = fun p ->
-  diagnostic_with_current_at p Diagnostic.missing_let_binding_equals (zero_span (current_offset p))
+  diagnostic_with_current_at
+    p
+    Diagnostic.missing_let_binding_equals
+    (zero_span (current_offset p))
 
 let missing_let_binding_equals_at_eof = fun p ->
-  diagnostic_with_eof_at p Diagnostic.missing_let_binding_equals (zero_span (previous_end_offset p))
+  diagnostic_with_eof_at
+    p
+    Diagnostic.missing_let_binding_equals
+    (zero_span (previous_end_offset p))
 
 let missing_let_binding_equals_eof_at_current_offset = fun p ->
-  diagnostic_with_eof_at p Diagnostic.missing_let_binding_equals (zero_span (current_offset p))
+  diagnostic_with_eof_at
+    p
+    Diagnostic.missing_let_binding_equals
+    (zero_span (current_offset p))
 
 let missing_let_binding_equals_at_previous_end = fun p ->
   diagnostic_with_current_at
@@ -249,7 +264,10 @@ let missing_let_binding_expr = fun p ->
 let missing_type_name = fun p -> diagnostic_with_current p Diagnostic.missing_type_name
 
 let missing_type_name_at_current_offset = fun p ->
-  diagnostic_with_current_at p Diagnostic.missing_type_name (zero_span (current_offset p))
+  diagnostic_with_current_at
+    p
+    Diagnostic.missing_type_name
+    (zero_span (current_offset p))
 
 let missing_type_decl_equals = fun p ->
   diagnostic_with_current_at
@@ -264,16 +282,28 @@ let invalid_type_expression_at_previous_end = fun p ->
     (zero_span (previous_end_offset p))
 
 let bracketed_type_parameters = fun p ~type_name ->
-  diagnostic_with_current p (Diagnostic.bracketed_type_parameters ~type_name)
+  diagnostic_with_current
+    p
+    (Diagnostic.bracketed_type_parameters ~type_name)
 
 let malformed_type_variable_at = fun p raw span ->
-  diagnostic_with_raw_found_at p raw Diagnostic.malformed_type_variable span
+  diagnostic_with_raw_found_at
+    p
+    raw
+    Diagnostic.malformed_type_variable
+    span
 
 let unclosed_type_params = fun p ->
-  diagnostic_with_current_at p Diagnostic.unclosed_type_params (zero_span (current_offset p))
+  diagnostic_with_current_at
+    p
+    Diagnostic.unclosed_type_params
+    (zero_span (current_offset p))
 
 let unclosed_type_params_at_previous_end = fun p ->
-  diagnostic_with_current_at p Diagnostic.unclosed_type_params (zero_span (previous_end_offset p))
+  diagnostic_with_current_at
+    p
+    Diagnostic.unclosed_type_params
+    (zero_span (previous_end_offset p))
 
 let invalid_type_parameter_at = fun p raw span ->
   let text = token_text p raw in
@@ -301,7 +331,9 @@ let unclosed_delimiter = fun p ~opener ->
     )
 
 let unexpected_closing_delimiter = fun p ~delimiter ->
-  diagnostic_with_current p (Diagnostic.unexpected_closing_delimiter ~delimiter)
+  diagnostic_with_current
+    p
+    (Diagnostic.unexpected_closing_delimiter ~delimiter)
 
 let missing_binary_operand = fun p ~operator ~side ->
   diagnostic_with_current_at
@@ -316,12 +348,17 @@ let missing_binary_operand_after_operator = fun p ~operator ~side ->
     (zero_span (previous_end_offset p))
 
 let consecutive_binary_operators = fun p ~operators ->
-  diagnostic_with_current p (Diagnostic.consecutive_binary_operators ~operators)
+  diagnostic_with_current
+    p
+    (Diagnostic.consecutive_binary_operators ~operators)
 
 let list_double_semicolon = fun p -> diagnostic_with_current p Diagnostic.list_double_semicolon
 
 let if_missing_then = fun p ->
-  diagnostic_with_current_at p Diagnostic.if_missing_then (zero_span (previous_end_offset p))
+  diagnostic_with_current_at
+    p
+    Diagnostic.if_missing_then
+    (zero_span (previous_end_offset p))
 
 let match_missing_scrutinee = fun p -> diagnostic_with_current p Diagnostic.match_missing_scrutinee
 
@@ -332,10 +369,16 @@ let match_missing_scrutinee_at_previous_end = fun p ->
     (zero_span (previous_end_offset p))
 
 let match_missing_with = fun p ->
-  diagnostic_with_current_at p Diagnostic.match_missing_with (zero_span (previous_end_offset p))
+  diagnostic_with_current_at
+    p
+    Diagnostic.match_missing_with
+    (zero_span (previous_end_offset p))
 
 let match_missing_pattern = fun p ->
-  diagnostic_with_current_at p Diagnostic.match_missing_pattern (zero_span (previous_end_offset p))
+  diagnostic_with_current_at
+    p
+    Diagnostic.match_missing_pattern
+    (zero_span (previous_end_offset p))
 
 let match_guard_missing_expr = fun p ->
   diagnostic_with_current_at
@@ -344,10 +387,14 @@ let match_guard_missing_expr = fun p ->
     (zero_span (previous_end_offset p))
 
 let tuple_pattern_extra_comma = fun p ->
-  diagnostic_with_current p Diagnostic.tuple_pattern_extra_comma
+  diagnostic_with_current
+    p
+    Diagnostic.tuple_pattern_extra_comma
 
 let cons_pattern_missing_head = fun p ->
-  diagnostic_with_current p Diagnostic.cons_pattern_missing_head
+  diagnostic_with_current
+    p
+    Diagnostic.cons_pattern_missing_head
 
 let cons_pattern_missing_tail = fun p ->
   diagnostic_with_current_at
@@ -356,7 +403,10 @@ let cons_pattern_missing_tail = fun p ->
     (zero_span (previous_end_offset p))
 
 let or_pattern_missing = fun p ->
-  diagnostic_with_current_at p Diagnostic.or_pattern_missing (zero_span (previous_end_offset p))
+  diagnostic_with_current_at
+    p
+    Diagnostic.or_pattern_missing
+    (zero_span (previous_end_offset p))
 
 let or_pattern_double = fun p -> diagnostic_with_current p Diagnostic.or_pattern_double
 
@@ -385,13 +435,22 @@ let missing_module_decl_equals = fun p ->
     (zero_span (previous_end_offset p))
 
 let missing_external_colon = fun p ->
-  diagnostic_with_current_at p Diagnostic.missing_external_colon (zero_span (previous_end_offset p))
+  diagnostic_with_current_at
+    p
+    Diagnostic.missing_external_colon
+    (zero_span (previous_end_offset p))
 
 let missing_exception_name = fun p ->
-  diagnostic_with_current_at p Diagnostic.missing_exception_name (zero_span (previous_end_offset p))
+  diagnostic_with_current_at
+    p
+    Diagnostic.missing_exception_name
+    (zero_span (previous_end_offset p))
 
 let missing_module_path = fun p ->
-  diagnostic_with_current_at p Diagnostic.missing_module_path (zero_span (previous_end_offset p))
+  diagnostic_with_current_at
+    p
+    Diagnostic.missing_module_path
+    (zero_span (previous_end_offset p))
 
 let missing_module_type_name = fun p ->
   diagnostic_with_current_at
@@ -406,20 +465,30 @@ let missing_module_type_expr = fun p ->
     (zero_span (previous_end_offset p))
 
 let missing_module_expr = fun p ->
-  diagnostic_with_current_at p Diagnostic.missing_module_expr (zero_span (previous_end_offset p))
+  diagnostic_with_current_at
+    p
+    Diagnostic.missing_module_expr
+    (zero_span (previous_end_offset p))
 
 let missing_with_keyword = fun p ->
-  diagnostic_with_current_at p Diagnostic.missing_with_keyword (zero_span (current_offset p))
+  diagnostic_with_current_at
+    p
+    Diagnostic.missing_with_keyword
+    (zero_span (current_offset p))
 
 let invalid_module_name = fun p -> diagnostic_with_current p Diagnostic.invalid_module_name
 
 let unexpected_signature_item = fun p ->
-  diagnostic_with_current p Diagnostic.unexpected_signature_item
+  diagnostic_with_current
+    p
+    Diagnostic.unexpected_signature_item
 
 let empty_char_literal = fun p -> Diagnostic.empty_char_literal ~span:(current p).Raw_token.span
 
 let unclosed_char_literal = fun p ->
-  Diagnostic.unclosed_char_literal ~text:(token_text p (current p)) ~span:(current p).Raw_token.span
+  Diagnostic.unclosed_char_literal
+    ~text:(token_text p (current p))
+    ~span:(current p).Raw_token.span
 
 let start_node = fun p -> Event.Buffer.start_node p.events
 
@@ -2223,7 +2292,8 @@ and parse_for_expr = fun p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma
   complete p marker Syntax_kind.FOR_EXPR
 
 and parse_pattern = fun ?(stop_type_at_arrow = true) p ->
-  ignore (parse_pattern_bp p ~stop_type_at_arrow 0)
+  ignore
+    (parse_pattern_bp p ~stop_type_at_arrow 0)
 
 and parse_pattern_no_apply = fun p ~stop_type_at_arrow ->
   let rec loop lhs =
@@ -3083,7 +3153,9 @@ and raw_ident_is_capitalized = fun p raw ->
   | _ -> false
 
 and ident_at_is_capitalized = fun p offset ->
-  raw_ident_is_capitalized p (raw_at p (significant_raw_at p (p.pos + offset)))
+  raw_ident_is_capitalized
+    p
+    (raw_at p (significant_raw_at p (p.pos + offset)))
 
 and starts_bare_variant_constructor = fun p ->
   ident_at_is_capitalized p 0 && not Syntax_kind.(peek_kind p 1 = DOT)
@@ -4243,7 +4315,11 @@ and parse_include_decl = fun p ~signature ->
   ignore (complete p marker Syntax_kind.INCLUDE_DECL)
 
 and parse_opaque_decl = fun p ~signature kind diagnostic ->
-  consume_opaque_until_item_boundary p ~signature kind diagnostic
+  consume_opaque_until_item_boundary
+    p
+    ~signature
+    kind
+    diagnostic
 
 and parse_class_type_decl = fun p ~signature ->
   let marker = start_node p in

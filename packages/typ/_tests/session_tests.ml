@@ -44,7 +44,10 @@ let inferred_type_at = fun snapshot source_id offset ->
     | None -> None
 
 let definition_at = fun snapshot source_id offset ->
-  Query.definition_at snapshot source_id (Position.make ~offset)
+  Query.definition_at
+    snapshot
+    source_id
+    (Position.make ~offset)
 
 let source_origin_label = fun origin ->
   match origin with
@@ -52,7 +55,9 @@ let source_origin_label = fun origin ->
   | Source.Label label -> label
 
 let definition_covers_offset = fun (definition: ModuleTypings.definition_site) offset ->
-  Position.is_within_span (Position.make ~offset) definition.span
+  Position.is_within_span
+    (Position.make ~offset)
+    definition.span
 
 let offset_of_substring = fun text needle ->
   let text_length = String.length text in
@@ -404,7 +409,13 @@ let make_source_with_implicit_opens = fun ~implicit_opens ~source_id ~kind ~orig
     ~cst
 
 let make_source = fun ~source_id ~kind ~origin ~revision ~text ->
-  make_source_with_implicit_opens ~implicit_opens:[] ~source_id ~kind ~origin ~revision ~text
+  make_source_with_implicit_opens
+    ~implicit_opens:[]
+    ~source_id
+    ~kind
+    ~origin
+    ~revision
+    ~text
 
 let prepared_source = fun ~filename ~text ->
   let source_id = SourceId.of_int 0 in
@@ -4764,7 +4775,8 @@ let test_fold_package_sources_persists_module_typings_from_authoritative_engine 
                     groups
                     |> List.map
                       (fun (group: Check.finished_group) ->
-                        LocalModules.InternalName.to_string group.module_name)
+                        LocalModules.InternalName.to_string
+                          group.module_name)
                   );
                 Test.assert_equal
                   ~expected:[ "answer" ]
@@ -4849,7 +4861,8 @@ let test_fold_package_sources_resolves_contextual_local_modules = fun _ctx ->
         groups
         |> List.map
           (fun (group: Check.finished_group) ->
-            LocalModules.InternalName.to_string group.module_name)
+            LocalModules.InternalName.to_string
+              group.module_name)
       in
       let expected_order = [ "Kernel_new__Async__Adapter"; "Kernel_new__Async__Source" ] in
       let source_group =
@@ -4959,7 +4972,8 @@ let test_fold_package_sources_resolves_root_local_module_wrappers = fun _ctx ->
         groups
         |> List.map
           (fun (group: Check.finished_group) ->
-            LocalModules.InternalName.to_string group.module_name)
+            LocalModules.InternalName.to_string
+              group.module_name)
       in
       let consumer_group =
         groups
@@ -5171,7 +5185,9 @@ let from_alias_type (value : Alias.record) = project value
         groups
         |> List.find_opt
           (fun (group: Check.finished_group) ->
-            String.equal (LocalModules.InternalName.to_string group.module_name) "Consumer")
+            String.equal
+              (LocalModules.InternalName.to_string group.module_name)
+              "Consumer")
         |> Option.expect ~msg:"expected Consumer group"
         |> fun (group: Check.finished_group) ->
           group.checked_sources

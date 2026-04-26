@@ -65,7 +65,8 @@ let articles_list_handler = fun conn req ->
     List.map
       articles
       ~fn:(fun a ->
-        Data.Json.obj [ ("id", Data.Json.int a.id); ("title", Data.Json.string a.title); ])
+        Data.Json.obj
+          [ ("id", Data.Json.int a.id); ("title", Data.Json.string a.title); ])
   in
   let json = Data.Json.array articles_json in
   conn

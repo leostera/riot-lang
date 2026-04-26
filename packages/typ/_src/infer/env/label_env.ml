@@ -57,14 +57,18 @@ let param_ids = fun (record_decl: record_decl) -> record_decl.param_ids
 let labels = fun (record_decl: record_decl) -> record_decl.labels
 
 let field = fun (record_decl: record_decl) label_name ->
-  Name_map.find_opt (lookup_name label_name) record_decl.label_index
+  Name_map.find_opt
+    (lookup_name label_name)
+    record_decl.label_index
 
 let field_names = fun (record_decl: record_decl) ->
   Name_map.bindings record_decl.label_index
   |> List.map fst
 
 let matches_fields = fun (record_decl: record_decl) field_names ->
-  List.for_all (fun field_name -> Option.is_some (field record_decl field_name)) field_names
+  List.for_all
+    (fun field_name -> Option.is_some (field record_decl field_name))
+    field_names
 
 let is_empty = fun env ->
   Name_map.is_empty env.current && Owner_map.is_empty env.by_owner && match env.layer with

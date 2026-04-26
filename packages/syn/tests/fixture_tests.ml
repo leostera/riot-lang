@@ -53,7 +53,9 @@ let load_modified_fixture_paths = fun () ->
   | Ok _ -> HashSet.create ()
 
 let is_locally_modified_fixture = fun modified_fixture_paths path ->
-  HashSet.contains modified_fixture_paths ~value:path
+  HashSet.contains
+    modified_fixture_paths
+    ~value:path
 
 let has_lossless_snapshot = fun modified_fixture_paths path ->
   match Path.extension path with

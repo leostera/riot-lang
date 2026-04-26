@@ -38,8 +38,7 @@ let shutdown_write = 1
 let shutdown_read_write = 2
 
 module FFI = struct
-  external connect: string -> int -> ((int * int), int) Result.t =
-    "kernel_new_net_tcp_stream_connect"
+  external connect: string -> int -> ((int * int), int) Result.t = "kernel_new_net_tcp_stream_connect"
 
   external close: int -> (unit, int) Result.t = "kernel_new_net_socket_close"
 
@@ -47,11 +46,9 @@ module FFI = struct
 
   external shutdown: int -> int -> (unit, int) Result.t = "kernel_new_net_tcp_stream_shutdown"
 
-  external read: int -> bytes -> int -> int -> (int, int) Result.t =
-    "kernel_new_net_tcp_stream_read"
+  external read: int -> bytes -> int -> int -> (int, int) Result.t = "kernel_new_net_tcp_stream_read"
 
-  external write: int -> bytes -> int -> int -> (int, int) Result.t =
-    "kernel_new_net_tcp_stream_write"
+  external write: int -> bytes -> int -> int -> (int, int) Result.t = "kernel_new_net_tcp_stream_write"
 
   external readv: int -> IO.IoVec.t -> (int, int) Result.t = "kernel_new_net_tcp_stream_readv"
 
@@ -79,23 +76,22 @@ let socket_addr_of_pair = fun (ip, port) ->
 
 let error_to_string = fun value ->
   match value with
-  | InvalidSlice { pos; len; buffer_len } ->
-      String.concat
-        ""
-        [
-          "invalid buffer slice: pos=";
-          Int.to_string pos;
-          ", len=";
-          Int.to_string len;
-          ", buffer_len=";
-          Int.to_string buffer_len;
-        ]
-  | InvalidSocketAddr { ip; port } ->
-      String.concat
-        ""
-        [ "invalid socket address returned by backend: "; ip; ":"; Int.to_string port; ]
-  | InvalidConnectState { state } ->
-      String.concat "" [ "invalid tcp connect state returned by backend: "; Int.to_string state ]
+  | InvalidSlice { pos; len; buffer_len } -> String.concat
+    ""
+    [
+      "invalid buffer slice: pos=";
+      Int.to_string pos;
+      ", len=";
+      Int.to_string len;
+      ", buffer_len=";
+      Int.to_string buffer_len;
+    ]
+  | InvalidSocketAddr { ip; port } -> String.concat
+    ""
+    [ "invalid socket address returned by backend: "; ip; ":"; Int.to_string port; ]
+  | InvalidConnectState { state } -> String.concat
+    ""
+    [ "invalid tcp connect state returned by backend: "; Int.to_string state ]
   | WouldBlock -> "operation would block"
   | ConnectionRefused -> "connection refused"
   | ConnectionReset -> "connection reset by peer"
@@ -130,7 +126,9 @@ type shutdown_state = {
   mutable write_shutdown: bool;
 }
 
-type 'state cell = { mutable value: 'state }
+type 'state cell = {
+  mutable value: 'state;
+}
 
 let shutdown_states = { value = [] }
 
@@ -163,10 +161,8 @@ let rec remove_shutdown_state = fun fd states ->
 let connect = fun addr ->
   let ip = Ip_addr.to_string (Socket_addr.ip addr) in
   let port = Socket_addr.port addr in
-  let* (fd, state) =
-    FFI.connect ip port
-    |> Result.map_err ~fn:(fun code -> error_of_system (System_error.from_code code))
-  in
+  let* (fd, state) = FFI.connect ip port
+  |> Result.map_err ~fn:(fun code -> error_of_system (System_error.from_code code)) in
   if state = connect_result_connected then
     Result.Ok (Connected fd)
   else if state = connect_result_in_progress then
@@ -195,20 +191,25 @@ let finish_connect = fun stream ->
 let rec shutdown = fun stream how ->
   let state = ensure_shutdown_state stream in
   match how with
-  | Write when state.write_shutdown -> Result.Ok ()
-  | Read when state.read_shutdown -> Result.Ok ()
-  | ReadWrite when state.read_shutdown && state.write_shutdown -> Result.Ok ()
-  | ReadWrite when state.read_shutdown -> shutdown stream Write
-  | ReadWrite when state.write_shutdown -> shutdown stream Read
+  | Write when state.write_shutdown ->
+      Result.Ok ()
+  | Read when state.read_shutdown ->
+      Result.Ok ()
+  | ReadWrite when state.read_shutdown && state.write_shutdown ->
+      Result.Ok ()
+  | ReadWrite when state.read_shutdown ->
+      shutdown stream Write
+  | ReadWrite when state.write_shutdown ->
+      shutdown stream Read
   | _ ->
-      let* () =
-        FFI.shutdown stream (shutdown_code how)
-        |> Result.map_err ~fn:(fun code -> error_of_system (System_error.from_code code))
-      in
+      let* () = FFI.shutdown stream (shutdown_code how)
+      |> Result.map_err ~fn:(fun code -> error_of_system (System_error.from_code code)) in
       (
         match how with
-        | Read -> state.read_shutdown <- true
-        | Write -> state.write_shutdown <- true
+        | Read ->
+            state.read_shutdown <- true
+        | Write ->
+            state.write_shutdown <- true
         | ReadWrite ->
             state.read_shutdown <- true;
             state.write_shutdown <- true
@@ -236,17 +237,13 @@ let write_vectored = fun stream iov ->
   |> Result.map_err ~fn:(fun code -> error_of_system (System_error.from_code code))
 
 let local_addr = fun stream ->
-  let* addr =
-    FFI.local_addr stream
-    |> Result.map_err ~fn:(fun code -> error_of_system (System_error.from_code code))
-  in
+  let* addr = FFI.local_addr stream
+  |> Result.map_err ~fn:(fun code -> error_of_system (System_error.from_code code)) in
   socket_addr_of_pair addr
 
 let peer_addr = fun stream ->
-  let* addr =
-    FFI.peer_addr stream
-    |> Result.map_err ~fn:(fun code -> error_of_system (System_error.from_code code))
-  in
+  let* addr = FFI.peer_addr stream
+  |> Result.map_err ~fn:(fun code -> error_of_system (System_error.from_code code)) in
   socket_addr_of_pair addr
 
 let to_source = fun stream ->

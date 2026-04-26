@@ -7,48 +7,27 @@ open Riot_bench
 
 let command =
   let open ArgParser in
-  let open ArgParser.Arg in
-  command "bench"
-  |> about "Run benchmarks with optional case filtering"
-  |> ArgParser.allow_trailing_args
-  |> args
-    [
-      option "package"
-      |> short 'p'
-      |> long "package"
-      |> multiple
-      |> help "Run benchmarks from a specific package. Repeat to run multiple packages.";
-      option "filter"
-      |> short 'f'
-      |> long "filter"
-      |> help "Filter benchmark suites and cases by substring within the selected packages";
-      option "compare"
-      |> long "compare"
-      |> help "Show up to N previous comparable suite runs alongside the current results";
-      option "iterations"
-      |> long "iterations"
-      |> help "Override iteration count for all matched benchmarks";
-      option "warmup"
-      |> long "warmup"
-      |> help "Override warmup count for all matched benchmarks";
-      flag "record"
-      |> long "record"
-      |> help "Persist this benchmark run into .riot/bench for later comparison";
-      flag "list"
-      |> long "list"
-      |> help "List benchmark suites and benchmark cases without running them";
-      flag "release"
-      |> long "release"
-      |> help "Use the release build profile";
-      flag "json"
-      |> long "json"
-      |> help "Emit machine-readable JSONL events";
-      flag "verbose"
-      |> short 'v'
-      |> long "verbose"
-      |> help "Enable verbose output for benchmarks"
-      |> count;
-    ]
+    let open ArgParser.Arg in
+      command "bench"
+      |> about "Run benchmarks with optional case filtering"
+      |> ArgParser.allow_trailing_args
+      |> args
+        [
+          option "package" |> short 'p' |> long "package" |> multiple |> help "Run benchmarks from a specific package. Repeat to run multiple packages.";
+          option "filter" |> short 'f' |> long "filter" |> help "Filter benchmark suites and cases by substring within the selected packages";
+          option "compare" |> long "compare" |> help "Show up to N previous comparable suite runs alongside the current results";
+          option "iterations" |> long "iterations" |> help "Override iteration count for all matched benchmarks";
+          option "warmup" |> long "warmup" |> help "Override warmup count for all matched benchmarks";
+          flag "record" |> long "record" |> help "Persist this benchmark run into .riot/bench for later comparison";
+          flag "list" |> long "list" |> help "List benchmark suites and benchmark cases without running them";
+          flag "release" |> long "release" |> help "Use the release build profile";
+          flag "json" |> long "json" |> help "Emit machine-readable JSONL events";
+          flag "verbose"
+          |> short 'v'
+          |> long "verbose"
+          |> help "Enable verbose output for benchmarks"
+          |> count;
+        ]
 
 type invocation_args = {
   parsed: string list;
@@ -81,13 +60,19 @@ let looks_like_flag = fun value -> String.starts_with ~prefix:"-" value
 let bench_invocation_args = fun argv ->
   let rec loop parsed trailing = function
     | [] -> { parsed = List.reverse parsed; trailing = List.reverse trailing }
-    | "--" :: rest ->
-        { parsed = List.reverse parsed; trailing = List.append (List.reverse trailing) rest }
+    | "--" :: rest -> {
+      parsed = List.reverse parsed;
+      trailing = List.append (List.reverse trailing) rest
+    }
     | arg :: rest when is_known_flag_without_value arg -> loop (arg :: parsed) trailing rest
-    | arg :: value :: rest when is_known_flag_with_value arg ->
-        loop (value :: arg :: parsed) trailing rest
-    | arg :: value :: rest when looks_like_flag arg && not (looks_like_flag value) ->
-        loop parsed (value :: arg :: trailing) rest
+    | arg :: value :: rest when is_known_flag_with_value arg -> loop
+      (value :: arg :: parsed)
+      trailing
+      rest
+    | arg :: value :: rest when looks_like_flag arg && not (looks_like_flag value) -> loop
+      parsed
+      (value :: arg :: trailing)
+      rest
     | arg :: rest -> loop parsed (arg :: trailing) rest
   in
   match argv with
@@ -147,16 +132,14 @@ let bench_override_args = fun matches ->
 
 let parse_package_names = fun package_names ->
   let rec loop acc = function
-    | [] ->
-        Ok (List.reverse acc)
+    | [] -> Ok (List.reverse acc)
     | package_name :: rest -> (
         match Riot_model.Package_name.from_string package_name with
         | Ok package_name -> loop (package_name :: acc) rest
-        | Error error ->
-            Error (Failure ("invalid package name '"
-            ^ package_name
-            ^ "': "
-            ^ Riot_model.Package_name.error_message error))
+        | Error error -> Error (Failure ("invalid package name '"
+        ^ package_name
+        ^ "': "
+        ^ Riot_model.Package_name.error_message error))
       )
   in
   loop [] package_names
@@ -174,8 +157,8 @@ let print_run_label = fun (suite: Bench_runtime.suite_binary) ->
 
 let print_empty_hint = fun package_filter ->
   match package_filter with
-  | Some package_name ->
-      println ("No benchmark suites found in package '" ^ Package_name.to_string package_name ^ "'")
+  | Some package_name -> println
+    ("No benchmark suites found in package '" ^ Package_name.to_string package_name ^ "'")
   | None -> println "No benchmark binaries found"
 
 let print_empty_list_hint = fun package_filter query ->
@@ -186,8 +169,7 @@ let print_empty_list_hint = fun package_filter query ->
 let print_duration = fun duration -> Time.Duration.to_secs_string ~precision:6 duration
 
 let event_elapsed_us = fun ~command_started_at ->
-  Time.Instant.elapsed command_started_at
-  |> Time.Duration.to_micros
+  Time.Instant.elapsed command_started_at |> Time.Duration.to_micros
 
 let listed_suite_source_label = fun ~(workspace:Riot_model.Workspace.t) (
   suite: Bench_runtime.listed_bench_suite
@@ -202,7 +184,8 @@ let listed_suite_source_label = fun ~(workspace:Riot_model.Workspace.t) (
 
 let listed_bench_selector = fun (suite: Bench_runtime.suite_binary) (
   item: Bench_runtime.listed_bench_item
-) -> Package_name.to_string suite.package_name ^ ":" ^ suite.suite_name ^ ":" ^ item.name
+) ->
+  Package_name.to_string suite.package_name ^ ":" ^ suite.suite_name ^ ":" ^ item.name
 
 let listed_bench_item_json = fun (suite: Bench_runtime.suite_binary) (
   item: Bench_runtime.listed_bench_item
@@ -288,13 +271,11 @@ let write_bench_list_completed_json = fun ~command_started_at ~suite_count ~benc
     ])
 
 let write_bench_list = fun ~(workspace:Riot_model.Workspace.t) suites ->
-  List.for_each
-    suites
+  List.for_each suites
     ~fn:(fun (suite: Bench_runtime.listed_bench_suite) ->
       println "";
       println (listed_suite_source_label ~workspace suite);
-      suite.benchmarks
-      |> List.for_each
+      suite.benchmarks |> List.for_each
         ~fn:(fun (item: Bench_runtime.listed_bench_item) ->
           let kind =
             match item.kind with
@@ -312,14 +293,9 @@ let write_bench_list = fun ~(workspace:Riot_model.Workspace.t) suites ->
 let terminal_profile = Tty.Profile.from_env ()
 
 let styled = fun color_hex text ->
-  let color =
-    Tty.Color.make color_hex
-    |> Tty.Profile.convert terminal_profile
-  in
-  Tty.Style.default
-  |> Tty.Style.fg color
-  |> Tty.Style.bold
-  |> fun style -> Tty.Style.styled style text
+  let color = Tty.Color.make color_hex |> Tty.Profile.convert terminal_profile in
+  Tty.Style.default |> Tty.Style.fg color |> Tty.Style.bold |> fun style ->
+    Tty.Style.styled style text
 
 let styled_fastest_case_name = fun name -> styled "#98C379" name
 
@@ -365,8 +341,7 @@ let print_bench_result = fun (result: Bench_runtime.bench_case_result) ->
 let print_comparison = fun (result: Bench_runtime.bench_comparison_result) ->
   println ("Comparison: " ^ result.description);
   println ("  Fastest: " ^ styled_fastest_case_name result.fastest);
-  result.case_results
-  |> List.for_each
+  result.case_results |> List.for_each
     ~fn:(fun (case_result: Bench_runtime.bench_comparison_case_result) ->
       let stats = case_result.statistics in
       println ("  " ^ comparison_case_label ~fastest:result.fastest case_result.name ^ ":");
@@ -379,8 +354,7 @@ let print_comparison = fun (result: Bench_runtime.bench_comparison_result) ->
   if not (result.speedup_ratios = []) then
     (
       println "  Relative speed:";
-      result.speedup_ratios
-      |> List.for_each
+      result.speedup_ratios |> List.for_each
         ~fn:(fun (name, ratio) ->
           if not (String.equal name result.fastest) then
             println (render_relative_speed_line ~fastest:result.fastest (name, ratio)))
@@ -447,31 +421,21 @@ let styled_stability_label = function
   | History.Noisy -> styled "#E5C07B" "noisy"
 
 let delta_percent = fun current previous ->
-  let previous_nanos =
-    Time.Duration.to_nanos previous
-    |> Int64.to_float
-  in
+  let previous_nanos = Time.Duration.to_nanos previous |> Int64.to_float in
   if Float.equal previous_nanos 0.0 then
     None
   else
-    let current_nanos =
-      Time.Duration.to_nanos current
-      |> Int64.to_float
-    in
+    let current_nanos = Time.Duration.to_nanos current |> Int64.to_float in
     Some (((current_nanos -. previous_nanos) /. previous_nanos) *. 100.0)
 
 let noise_margin_percent = fun ~current_cv ~baseline_cv ->
-  let values =
-    [ current_cv; baseline_cv ]
-    |> List.filter_map ~fn:(fun value -> value)
-    |> List.map ~fn:(fun value -> value *. 100.0)
-  in
+  let values = [ current_cv; baseline_cv ]
+  |> List.filter_map ~fn:(fun value -> value)
+  |> List.map ~fn:(fun value -> value *. 100.0) in
   match values with
   | [] -> 0.0
   | values ->
-      List.fold_left
-        values
-        ~init:0.0
+      List.fold_left values ~init:0.0
         ~fn:(fun acc value ->
           if Float.compare value acc = Order.GT then
             value
@@ -580,16 +544,11 @@ let history_table_header = fun ~label_width ~column_width ~current_partial (
     String.pad_left ~width:column_width ' ' "delta";
     String.pad_left ~width:column_width ' ' current_label;
   ])
-  @ (
-    history
-    |> List.enumerate
-    |> List.map
-      ~fn:(fun (index, sample) ->
-        String.pad_left
-          ~width:column_width
-          ' '
-          (history_column_label index sample))
-  )
+  @ (history
+  |> List.enumerate
+  |> List.map
+    ~fn:(fun (index, sample) ->
+      String.pad_left ~width:column_width ' ' (history_column_label index sample)))
   |> String.concat " "
 
 let print_history_table = fun ~current_partial ~baseline ~current_cv ~baseline_cv current (
@@ -600,35 +559,26 @@ let print_history_table = fun ~current_partial ~baseline ~current_cv ~baseline_c
   let header = history_table_header ~label_width ~column_width ~current_partial history in
   let noise_margin_percent = noise_margin_percent ~current_cv ~baseline_cv in
   println header;
-  metric_specs
-  |> List.for_each
+  metric_specs |> List.for_each
     ~fn:(fun (label, project) ->
       let current_value = project current in
       let delta_value = delta_percent current_value (project baseline) in
-      let delta_cell =
-        render_delta_text delta_value
-        |> String.pad_left ~width:column_width ' '
-        |> style_delta_cell delta_value ~noise_margin_percent
-      in
-      let values =
-        ([ String.pad_right ~width:label_width ' ' label ]
-        @ [ delta_cell; String.pad_left ~width:column_width ' ' (print_duration current_value) ])
-        @ (
-          history
-          |> List.map
-            ~fn:(fun (sample: History.history_sample) ->
-              String.pad_left ~width:column_width ' ' (print_duration (project sample.statistics)))
-        )
-        |> String.concat " "
-      in
+      let delta_cell = render_delta_text delta_value
+      |> String.pad_left ~width:column_width ' '
+      |> style_delta_cell delta_value ~noise_margin_percent in
+      let values = ([ String.pad_right ~width:label_width ' ' label ]
+      @ [ delta_cell; String.pad_left ~width:column_width ' ' (print_duration current_value) ])
+      @ (history
+      |> List.map
+        ~fn:(fun (sample: History.history_sample) ->
+          String.pad_left ~width:column_width ' ' (print_duration (project sample.statistics))))
+      |> String.concat " " in
       println values);
   let current_cv_value = Statistics.coefficient_of_variation current in
   let baseline_cv_value = Statistics.coefficient_of_variation baseline in
-  let current_cv =
-    render_cv current_cv_value
-    |> String.pad_left ~width:column_width ' '
-    |> style_cv_text current_cv_value
-  in
+  let current_cv = render_cv current_cv_value
+  |> String.pad_left ~width:column_width ' '
+  |> style_cv_text current_cv_value in
   let cv_delta =
     match (current_cv_value, baseline_cv_value) with
     | (Some current_cv, Some baseline_cv) when not (Float.equal baseline_cv 0.0) ->
@@ -647,18 +597,14 @@ let print_history_table = fun ~current_partial ~baseline ~current_cv ~baseline_c
     |> List.map
       ~fn:(fun (sample: History.history_sample) ->
         let value = Statistics.coefficient_of_variation sample.statistics in
-        render_cv value
-        |> String.pad_left ~width:column_width ' '
-        |> style_cv_text value)
+        render_cv value |> String.pad_left ~width:column_width ' ' |> style_cv_text value)
     |> String.concat " "
   in
   println
-    (
-      ([ String.pad_right ~width:label_width ' ' "cv" ]
-      @ [ String.pad_left ~width:column_width ' ' cv_delta; current_cv ])
-      @ [ cv_history ]
-      |> String.concat " "
-    )
+    (([ String.pad_right ~width:label_width ' ' "cv" ]
+    @ [ String.pad_left ~width:column_width ' ' cv_delta; current_cv ])
+    @ [ cv_history ]
+    |> String.concat " ")
 
 let print_gc_history_table = fun ~current_partial ~(baseline:History.bench_statistics) (
   current: History.bench_statistics
@@ -667,28 +613,21 @@ let print_gc_history_table = fun ~current_partial ~(baseline:History.bench_stati
   let column_width = 12 in
   let header = history_table_header ~label_width ~column_width ~current_partial history in
   println header;
-  gc_metric_specs
-  |> List.for_each
+  gc_metric_specs |> List.for_each
     ~fn:(fun (label, project) ->
       let current_value = project current.gc in
       let baseline_value = project baseline.gc in
       let delta_value = current_value - baseline_value in
-      let delta_cell =
-        render_signed_int delta_value
-        |> String.pad_left ~width:column_width ' '
-        |> style_signed_int_delta delta_value
-      in
-      let values =
-        ([ String.pad_right ~width:label_width ' ' label ]
-        @ [ delta_cell; String.pad_left ~width:column_width ' ' (Int.to_string current_value) ])
-        @ (
-          history
-          |> List.map
-            ~fn:(fun (sample: History.history_sample) ->
-              String.pad_left ~width:column_width ' ' (Int.to_string (project sample.statistics.gc)))
-        )
-        |> String.concat " "
-      in
+      let delta_cell = render_signed_int delta_value
+      |> String.pad_left ~width:column_width ' '
+      |> style_signed_int_delta delta_value in
+      let values = ([ String.pad_right ~width:label_width ' ' label ]
+      @ [ delta_cell; String.pad_left ~width:column_width ' ' (Int.to_string current_value) ])
+      @ (history
+      |> List.map
+        ~fn:(fun (sample: History.history_sample) ->
+          String.pad_left ~width:column_width ' ' (Int.to_string (project sample.statistics.gc))))
+      |> String.concat " " in
       println values)
 
 let print_gc_rate_history_table = fun ~current_partial ~(baseline:History.bench_statistics) (
@@ -698,8 +637,7 @@ let print_gc_rate_history_table = fun ~current_partial ~(baseline:History.bench_
   let column_width = 12 in
   let header = history_table_header ~label_width ~column_width ~current_partial history in
   println header;
-  gc_metric_specs
-  |> List.for_each
+  gc_metric_specs |> List.for_each
     ~fn:(fun (label, project) ->
       let current_value = gc_per_iteration (project current.gc) current.iterations in
       let baseline_value = gc_per_iteration (project baseline.gc) baseline.iterations in
@@ -710,21 +648,18 @@ let print_gc_rate_history_table = fun ~current_partial ~(baseline:History.bench_
       in
       let delta_cell =
         match delta_value with
-        | Some delta_value ->
-            render_signed_float delta_value
-            |> String.pad_left ~width:column_width ' '
-            |> style_signed_float_delta delta_value
+        | Some delta_value -> render_signed_float delta_value
+        |> String.pad_left ~width:column_width ' '
+        |> style_signed_float_delta delta_value
         | None -> String.pad_left ~width:column_width ' ' "n/a"
       in
       let values =
         ([ String.pad_right ~width:label_width ' ' label ]
-        @ [ delta_cell; String.pad_left ~width:column_width ' ' (render_gc_rate current_value) ]) @ (
-          history
-          |> List.map
+        @ [ delta_cell; String.pad_left ~width:column_width ' ' (render_gc_rate current_value) ])
+        @ (
+          history |> List.map
             ~fn:(fun (sample: History.history_sample) ->
-              let value =
-                gc_per_iteration (project sample.statistics.gc) sample.statistics.iterations
-              in
+              let value = gc_per_iteration (project sample.statistics.gc) sample.statistics.iterations in
               String.pad_left ~width:column_width ' ' (render_gc_rate value))
         )
         |> String.concat " "
@@ -733,8 +668,7 @@ let print_gc_rate_history_table = fun ~current_partial ~(baseline:History.bench_
 
 let print_benchmark_history = fun ~current_partial (history: History.benchmark_history) ->
   println "  history:";
-  println
-    ("  baseline: median of previous " ^ Int.to_string (List.length history.history) ^ " runs");
+  println ("  baseline: median of previous " ^ Int.to_string (List.length history.history) ^ " runs");
   println
     ("  noise margin: "
     ^ print_percent
@@ -759,17 +693,12 @@ let print_benchmark_history = fun ~current_partial (history: History.benchmark_h
   print_gc_history_table ~current_partial ~baseline:history.baseline history.current history.history;
   println "";
   println "  gc / iter:";
-  print_gc_rate_history_table
-    ~current_partial
-    ~baseline:history.baseline
-    history.current
-    history.history;
+  print_gc_rate_history_table ~current_partial ~baseline:history.baseline history.current history.history;
   println ""
 
 let print_comparison_case_history = fun ~current_partial (history: History.comparison_case_history) ->
   println ("  history: " ^ history.description ^ " / " ^ history.name);
-  println
-    ("  baseline: median of previous " ^ Int.to_string (List.length history.history) ^ " runs");
+  println ("  baseline: median of previous " ^ Int.to_string (List.length history.history) ^ " runs");
   println
     ("  noise margin: "
     ^ print_percent
@@ -794,11 +723,7 @@ let print_comparison_case_history = fun ~current_partial (history: History.compa
   print_gc_history_table ~current_partial ~baseline:history.baseline history.current history.history;
   println "";
   println "  gc / iter:";
-  print_gc_rate_history_table
-    ~current_partial
-    ~baseline:history.baseline
-    history.current
-    history.history;
+  print_gc_rate_history_table ~current_partial ~baseline:history.baseline history.current history.history;
   println ""
 
 let history_statistics_json = fun (stats: History.bench_statistics) ->
@@ -835,11 +760,14 @@ let benchmark_history_json = fun (history: History.benchmark_history) ->
     ("baseline", history_statistics_json history.baseline);
     ("current_cv", json_of_option history.current_cv ~some:(fun value -> Data.Json.Float value));
     ("baseline_cv", json_of_option history.baseline_cv ~some:(fun value -> Data.Json.Float value));
-    ("stability", Data.Json.String (
-      match history.stability with
-      | History.Stable -> "stable"
-      | History.Noisy -> "noisy"
-    ));
+    (
+      "stability",
+      Data.Json.String (
+        match history.stability with
+        | History.Stable -> "stable"
+        | History.Noisy -> "noisy"
+      )
+    );
     ("history", Data.Json.Array (List.map history.history ~fn:history_sample_json));
   ]
 
@@ -851,11 +779,14 @@ let comparison_case_history_json = fun (history: History.comparison_case_history
     ("baseline", history_statistics_json history.baseline);
     ("current_cv", json_of_option history.current_cv ~some:(fun value -> Data.Json.Float value));
     ("baseline_cv", json_of_option history.baseline_cv ~some:(fun value -> Data.Json.Float value));
-    ("stability", Data.Json.String (
-      match history.stability with
-      | History.Stable -> "stable"
-      | History.Noisy -> "noisy"
-    ));
+    (
+      "stability",
+      Data.Json.String (
+        match history.stability with
+        | History.Stable -> "stable"
+        | History.Noisy -> "noisy"
+      )
+    );
     ("history", Data.Json.Array (List.map history.history ~fn:history_sample_json));
   ]
 
@@ -890,7 +821,7 @@ let create_human_render_state = fun () ->
     active_suite = None;
     suite_header_printed = false;
     active_case = None;
-    active_case_line_open = false;
+    active_case_line_open = false
   }
 
 let ensure_suite_header = fun state suite ->
@@ -915,12 +846,18 @@ let reset_suite_render = fun state ->
   state.suite_header_printed <- false
 
 let json_int_field = fun name fields ->
-  match List.find fields ~fn:(fun (field_name, _) -> String.equal field_name name) with
+  match
+    List.find fields
+      ~fn:(fun (field_name, _) ->
+        String.equal field_name name)
+  with
   | Some (_, Data.Json.Int value) -> Some value
   | _ -> None
 
 let upsert_int_field = fun name value fields ->
-  let filtered = List.filter fields ~fn:(fun (field_name, _) -> not (String.equal field_name name)) in
+  let filtered =
+    List.filter fields ~fn:(fun (field_name, _) -> not (String.equal field_name name))
+  in
   filtered @ [ (name, Data.Json.Int value); ]
 
 let stamp_json_event = fun ~command_started_at ~duration_us (event: Bench_runtime.bench_event) (
@@ -940,14 +877,12 @@ let stamp_json_event = fun ~command_started_at ~duration_us (event: Bench_runtim
         | Bench_runtime.RunningSuite _ -> upsert_int_field "started_at_us" elapsed_us fields
         | Bench_runtime.SuiteHeartbeat _ -> upsert_int_field "emitted_at_us" elapsed_us fields
         | Bench_runtime.SuiteProgress _ -> fields
-        | Bench_runtime.SuiteCompleted _ ->
-            fields
-            |> upsert_int_field "started_at_us" (Int.max 0 (elapsed_us - duration_us))
-            |> upsert_int_field "completed_at_us" elapsed_us
-        | Bench_runtime.Summary _ ->
-            fields
-            |> upsert_int_field "started_at_us" 0
-            |> upsert_int_field "completed_at_us" elapsed_us
+        | Bench_runtime.SuiteCompleted _ -> fields
+        |> upsert_int_field "started_at_us" (Int.max 0 (elapsed_us - duration_us))
+        |> upsert_int_field "completed_at_us" elapsed_us
+        | Bench_runtime.Summary _ -> fields
+        |> upsert_int_field "started_at_us" 0
+        |> upsert_int_field "completed_at_us" elapsed_us
         | Bench_runtime.NoSuitesFound _ -> upsert_int_field "completed_at_us" elapsed_us fields
         | Bench_runtime.Build _ -> fields
       in
@@ -959,18 +894,15 @@ let write_json_event = fun ~command_started_at ~duration_us event (json: Data.Js
 
 let summary_duration_us = fun ~command_started_at (event: Bench_runtime.bench_event) ->
   match event with
-  | Bench_runtime.Summary _ ->
-      Some (
-        Time.Instant.elapsed command_started_at
-        |> Time.Duration.to_micros
-      )
+  | Bench_runtime.Summary _ -> Some (Time.Instant.elapsed command_started_at |> Time.Duration.to_micros)
   | _ -> None
 
 let write_bench_event = fun ?history_comparison ~current_partial state (
   event: Bench_runtime.bench_event
 ) ->
   match event with
-  | Bench_runtime.Build _ -> ()
+  | Bench_runtime.Build _ ->
+      ()
   | Bench_runtime.NoSuitesFound { package_name } ->
       reset_suite_render state;
       print_empty_hint package_name
@@ -984,11 +916,9 @@ let write_bench_event = fun ?history_comparison ~current_partial state (
           print "."
         )
   | Bench_runtime.SuiteProgress { suite; event } ->
-      Bench_runtime.suite_progress_active_case event
-      |> Result.iter
+      Bench_runtime.suite_progress_active_case event |> Result.iter
         ~fn:(fun active_case ->
-          active_case
-          |> Option.for_each
+          active_case |> Option.for_each
             ~fn:(fun (active_case: Bench_runtime.running_bench_case) ->
               ensure_suite_header state suite;
               reset_active_case_line state;
@@ -1007,45 +937,33 @@ let write_bench_event = fun ?history_comparison ~current_partial state (
         not (results = [])
         || not (comparisons = [])
         || not (String.equal stdout "")
-        || not (String.equal stderr "")
-      in
+        || not (String.equal stderr "") in
       reset_active_case_line state;
       if should_print_suite then
         (
           ensure_suite_header state suite;
-          List.for_each
-            results
+          List.for_each results
             ~fn:(fun result ->
               print_bench_result result;
-              history_comparison
-              |> Option.for_each
+              history_comparison |> Option.for_each
                 ~fn:(fun (history: History.suite_history) ->
-                  history.benchmarks
-                  |> List.find
+                  history.benchmarks |> List.find
                     ~fn:(fun (benchmark_history: History.benchmark_history) ->
-                      String.equal benchmark_history.name result.name)
-                  |> Option.for_each ~fn:(print_benchmark_history ~current_partial)));
-          List.for_each
-            comparisons
+                      String.equal benchmark_history.name result.name) |> Option.for_each
+                    ~fn:(print_benchmark_history ~current_partial)));
+          List.for_each comparisons
             ~fn:(fun comparison ->
               print_comparison comparison;
-              history_comparison
-              |> Option.for_each
+              history_comparison |> Option.for_each
                 ~fn:(fun (history: History.suite_history) ->
-                  history.comparisons
-                  |> List.filter
+                  history.comparisons |> List.filter
                     ~fn:(fun (comparison_history: History.comparison_case_history) ->
-                      String.equal comparison_history.description comparison.description)
-                  |> List.for_each ~fn:(print_comparison_case_history ~current_partial)));
+                      String.equal comparison_history.description comparison.description) |> List.for_each
+                    ~fn:(print_comparison_case_history ~current_partial)));
           print_command_output Command.{ stdout; stderr; status = 0 }
         );
       reset_suite_render state
-  | Bench_runtime.Summary {
-    total;
-    completed;
-    skipped;
-    failed
-  } ->
+  | Bench_runtime.Summary { total; completed; skipped; failed } ->
       reset_suite_render state;
       print_summary ~total ~completed ~skipped ~failed
 
@@ -1055,18 +973,16 @@ let write_bench_error_json = fun ~command_started_at err ->
   let event_json = Data.Json.Object [
     ("type", Data.Json.String "bench.error");
     ("message", Data.Json.String (Bench_runtime.bench_error_message err));
-  ]
-  in
+  ] in
   print
     (
       Data.Json.to_string
         (
           match event_json with
-          | Data.Json.Object fields ->
-              Data.Json.Object (upsert_int_field
-                "completed_at_us"
-                (event_elapsed_us ~command_started_at)
-                fields)
+          | Data.Json.Object fields -> Data.Json.Object (upsert_int_field
+            "completed_at_us"
+            (event_elapsed_us ~command_started_at)
+            fields)
           | other -> other
         )
     );
@@ -1088,14 +1004,14 @@ let bench_history_context = fun ~(workspace:Riot_model.Workspace.t) ~profile (
     ~argv
     ()
 
-let bench_history_of_gc = fun (gc: Bench_runtime.bench_gc_stats): History.gc_stats -> {
-  minor_collections = gc.minor_collections;
-  major_collections = gc.major_collections;
-  compactions = gc.compactions;
-}
+let bench_history_of_gc = fun (gc: Bench_runtime.bench_gc_stats) : History.gc_stats ->
+  {
+    minor_collections = gc.minor_collections;
+    major_collections = gc.major_collections;
+    compactions = gc.compactions
+  }
 
-let bench_history_of_statistics = fun (stats: Bench_runtime.bench_statistics):
-  History.bench_statistics ->
+let bench_history_of_statistics = fun (stats: Bench_runtime.bench_statistics) : History.bench_statistics ->
   {
     min = stats.min;
     max = stats.max;
@@ -1107,8 +1023,7 @@ let bench_history_of_statistics = fun (stats: Bench_runtime.bench_statistics):
     gc = bench_history_of_gc stats.gc;
   }
 
-let bench_history_of_result = fun (result: Bench_runtime.bench_case_result):
-  History.bench_case_result ->
+let bench_history_of_result = fun (result: Bench_runtime.bench_case_result) : History.bench_case_result ->
   let result_status: History.bench_case_status =
     match result.result with
     | Bench_runtime.Completed stats -> History.Completed (bench_history_of_statistics stats)
@@ -1117,18 +1032,18 @@ let bench_history_of_result = fun (result: Bench_runtime.bench_case_result):
   in
   { index = result.index; name = result.name; result = result_status }
 
-let bench_history_of_comparison = fun (comparison: Bench_runtime.bench_comparison_result):
-  History.bench_comparison_result ->
+let bench_history_of_comparison = fun (comparison: Bench_runtime.bench_comparison_result) : History.bench_comparison_result ->
   {
     description = comparison.description;
     fastest = comparison.fastest;
     case_results = List.map
       comparison.case_results
-      ~fn:(fun (case_result: Bench_runtime.bench_comparison_case_result) -> {
-        History.name = case_result.name;
-        statistics = bench_history_of_statistics case_result.statistics;
-      });
-    speedup_ratios = comparison.speedup_ratios;
+      ~fn:(fun (case_result: Bench_runtime.bench_comparison_case_result) ->
+        {
+          History.name = case_result.name;
+          statistics = bench_history_of_statistics case_result.statistics
+        });
+    speedup_ratios = comparison.speedup_ratios
   }
 
 let save_bench_history = fun context ~(suite:Bench_runtime.suite_binary) status started_at_us completed_at_us duration_us (
@@ -1141,22 +1056,17 @@ let save_bench_history = fun context ~(suite:Bench_runtime.suite_binary) status 
     started_at_us;
     completed_at_us;
     duration_us;
-    summary =
-      {
-        total = summary.total;
-        completed = summary.completed;
-        skipped = summary.skipped;
-        failed = summary.failed;
-      };
+    summary = {
+      total = summary.total;
+      completed = summary.completed;
+      skipped = summary.skipped;
+      failed = summary.failed
+    };
     benchmarks = List.map results ~fn:bench_history_of_result;
     comparisons = List.map comparisons ~fn:bench_history_of_comparison;
   }
   in
-  History.save_suite_run
-    context
-    ~package_name:suite.package_name
-    ~suite_name:suite.suite_name
-    ~suite_run
+  History.save_suite_run context ~package_name:suite.package_name ~suite_name:suite.suite_name ~suite_run
 
 let bench_history_compare = fun context ~(suite:Bench_runtime.suite_binary) ~limit status started_at_us completed_at_us duration_us (
   results: Bench_runtime.bench_case_result list
@@ -1171,13 +1081,12 @@ let bench_history_compare = fun context ~(suite:Bench_runtime.suite_binary) ~lim
       started_at_us;
       completed_at_us;
       duration_us;
-      summary =
-        {
-          total = summary.total;
-          completed = summary.completed;
-          skipped = summary.skipped;
-          failed = summary.failed;
-        };
+      summary = {
+        total = summary.total;
+        completed = summary.completed;
+        skipped = summary.skipped;
+        failed = summary.failed
+      };
       benchmarks = List.map results ~fn:bench_history_of_result;
       comparisons = List.map comparisons ~fn:bench_history_of_comparison;
     }
@@ -1214,14 +1123,12 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
   let profile = profile_of_matches matches in
   let* package_filters = package_filters in
   let* compare_limit = compare_limit in
-  let* request =
-    Test_selection.parse_request
-      ~filter:pattern
-      ~package_filters
-      ~size_filter:Test_selection.All
-      ~flaky_only:false
-    |> Result.map_err ~fn:(fun error -> Failure error)
-  in
+  let* request = Test_selection.parse_request
+    ~filter:pattern
+    ~package_filters
+    ~size_filter:Test_selection.All
+    ~flaky_only:false
+  |> Result.map_err ~fn:(fun error -> Failure error) in
   let extra_args = Test_selection.extra_args request extra_args in
   let command_started_at = Time.Instant.now () in
   if output_mode = Build.Json then
@@ -1245,26 +1152,28 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
       failed_suite_count := !failed_suite_count + 1;
       write_bench_suite_list_failed_json ~command_started_at suite err
     in
-    match Bench_runtime.list_benchmarks
-      ?on_suite:(
-        if output_mode = Build.Json then
-          Some on_suite
-        else
-          None
-      )
-      ?on_suite_error:(
-        if output_mode = Build.Json then
-          Some on_suite_error
-        else
-          None
-      )
-      {
-        workspace;
-        package_filters = request.package_filters;
-        suite_filter = request.suite_filter;
-        profile;
-        extra_args;
-      } with
+    match
+      Bench_runtime.list_benchmarks
+        ?on_suite:(
+          if output_mode = Build.Json then
+            Some on_suite
+          else
+            None
+        )
+        ?on_suite_error:(
+          if output_mode = Build.Json then
+            Some on_suite_error
+          else
+            None
+        )
+        {
+          workspace;
+          package_filters = request.package_filters;
+          suite_filter = request.suite_filter;
+          profile;
+          extra_args;
+        }
+    with
     | Ok suites ->
         let suites =
           List.filter
@@ -1274,12 +1183,11 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
         in
         (
           match output_mode with
-          | Build.Json ->
-              write_bench_list_completed_json
-                ~command_started_at
-                ~suite_count:!listed_suite_count
-                ~benchmark_count:!listed_benchmark_count
-                ~failed_suite_count:!failed_suite_count
+          | Build.Json -> write_bench_list_completed_json
+            ~command_started_at
+            ~suite_count:!listed_suite_count
+            ~benchmark_count:!listed_benchmark_count
+            ~failed_suite_count:!failed_suite_count
           | Build.Human ->
               if List.is_empty suites then
                 print_empty_list_hint request.package_filter request.query
@@ -1321,24 +1229,25 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
       } ->
           let history_comparison =
             match (compare_limit, history_context) with
-            | (Some compare_limit, Some history_context) ->
-                Some (bench_history_compare
-                  history_context
-                  ~suite
-                  ~limit:compare_limit
-                  status
-                  started_at_us
-                  completed_at_us
-                  duration_us
-                  results
-                  comparisons
-                  summary)
+            | (Some compare_limit, Some history_context) -> Some (bench_history_compare
+              history_context
+              ~suite
+              ~limit:compare_limit
+              status
+              started_at_us
+              completed_at_us
+              duration_us
+              results
+              comparisons
+              summary)
             | _ -> None
           in
           let history_comparison =
             match history_comparison with
-            | None -> None
-            | Some (Ok history) -> history
+            | None ->
+                None
+            | Some (Ok history) ->
+                history
             | Some (Error error) ->
                 bench_history_warning
                   ("failed to compare benchmark history for "
@@ -1391,37 +1300,35 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
                       ~current_partial:history_partial
                       suite
                       history)
-            | Build.Human ->
-                write_bench_event
-                  ?history_comparison
-                  ~current_partial:history_partial
-                  human_render_state
-                  event
+            | Build.Human -> write_bench_event
+              ?history_comparison
+              ~current_partial:history_partial
+              human_render_state
+              event
           )
       | _ -> (
           match output_mode with
-          | Build.Json ->
-              Bench_runtime.bench_event_to_json event
-              |> Option.for_each
-                ~fn:(fun json ->
-                  write_json_event
-                    ~command_started_at
-                    ~duration_us:(summary_duration_us ~command_started_at event)
-                    event
-                    json)
-          | Build.Human ->
-              write_bench_event ~current_partial:history_partial human_render_state event
+          | Build.Json -> Bench_runtime.bench_event_to_json event
+          |> Option.for_each
+            ~fn:(fun json ->
+              write_json_event
+                ~command_started_at
+                ~duration_us:(summary_duration_us ~command_started_at event)
+                event
+                json)
+          | Build.Human -> write_bench_event ~current_partial:history_partial human_render_state event
         )
     in
-    match Bench_runtime.bench
-      ~on_event
-      {
-        workspace;
-        package_filters = request.package_filters;
-        suite_filter = request.suite_filter;
-        profile;
-        extra_args;
-      } with
+    match
+      Bench_runtime.bench ~on_event
+        {
+          workspace;
+          package_filters = request.package_filters;
+          suite_filter = request.suite_filter;
+          profile;
+          extra_args;
+        }
+    with
     | Ok () -> Ok ()
     | Error err ->
         (

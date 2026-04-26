@@ -1,5 +1,4 @@
 open Global
-
 module Buffer = StringBuilder
 module Bytes = Kernel.Bytes
 module IoVec = IO.IoVec
@@ -93,8 +92,11 @@ let read = fun file buffer ~offset ~len ->
   let rec loop () =
     match Kernel.Fs.File.read file buffer ~pos:offset ~len with
     | Ok bytes_read -> Ok bytes_read
-    | Error err when is_would_block err ->
-        Runtime.syscall ~name:"Fs.File.read" ~interest:Kernel.Async.Interest.readable ~source loop
+    | Error err when is_would_block err -> Runtime.syscall
+      ~name:"Fs.File.read"
+      ~interest:Kernel.Async.Interest.readable
+      ~source
+      loop
     | Error err -> Error err
   in
   loop ()
@@ -104,11 +106,13 @@ let read_to_end = fun file ->
   let chunk = Bytes.create ~size:4_096 in
   let rec loop () =
     match read file chunk ~offset:0 ~len:4_096 with
-    | Ok 0 -> Ok (Buffer.contents buf)
+    | Ok 0 ->
+        Ok (Buffer.contents buf)
     | Ok n ->
         Buffer.add_subbytes buf chunk 0 n;
         loop ()
-    | Error err -> Error err
+    | Error err ->
+        Error err
   in
   loop ()
 
@@ -129,7 +133,8 @@ let read_line = fun file ->
   let chunk = Bytes.create ~size:1 in
   let rec loop () =
     match read file chunk ~offset:0 ~len:1 with
-    | Ok 0 -> Ok (Buffer.contents buf)
+    | Ok 0 ->
+        Ok (Buffer.contents buf)
     | Ok 1 ->
         let c = Bytes.get_unchecked chunk ~at:0 in
         Buffer.add_char buf c;
@@ -137,8 +142,10 @@ let read_line = fun file ->
           Ok (Buffer.contents buf)
         else
           loop ()
-    | Ok _ -> Ok (Buffer.contents buf)
-    | Error err -> Error err
+    | Ok _ ->
+        Ok (Buffer.contents buf)
+    | Error err ->
+        Error err
   in
   loop ()
 
@@ -147,8 +154,11 @@ let write = fun file buffer ~offset ~len ->
   let rec loop () =
     match Kernel.Fs.File.write file buffer ~pos:offset ~len with
     | Ok bytes_written -> Ok bytes_written
-    | Error err when is_would_block err ->
-        Runtime.syscall ~name:"Fs.File.write" ~interest:Kernel.Async.Interest.writable ~source loop
+    | Error err when is_would_block err -> Runtime.syscall
+      ~name:"Fs.File.write"
+      ~interest:Kernel.Async.Interest.writable
+      ~source
+      loop
     | Error err -> Error err
   in
   loop ()
@@ -182,9 +192,8 @@ let to_reader = fun file ->
           (
             match IO.Buffer.ensure_free into 4_096 with
             | Ok () -> IO.Buffer.writable into
-            | Error error ->
-                Kernel.SystemError.panic
-                  ("Fs.File.to_reader.ensure_free: " ^ Kernel.IO.Error.message error)
+            | Error error -> Kernel.SystemError.panic
+              ("Fs.File.to_reader.ensure_free: " ^ Kernel.IO.Error.message error)
           )
         else
           IO.Buffer.writable into
@@ -193,9 +202,8 @@ let to_reader = fun file ->
       | Ok count -> (
           match IO.Buffer.commit into count with
           | Ok () -> Ok count
-          | Error error ->
-              Kernel.SystemError.panic
-                ("Fs.File.to_reader.commit: " ^ Kernel.IO.Error.message error)
+          | Error error -> Kernel.SystemError.panic
+            ("Fs.File.to_reader.commit: " ^ Kernel.IO.Error.message error)
         )
       | Error err -> Error (io_error_of_file_error err)
 

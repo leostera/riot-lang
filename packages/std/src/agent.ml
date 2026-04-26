@@ -61,12 +61,7 @@ let rec loop: type state. state Ref.t -> state -> (unit, exn) result = fun state
     | _ -> `skip
   in
   match receive ~selector () with
-  | Get {
-    reply_to;
-    fn;
-    state_ref = sr;
-    reply_ref
-  } -> (
+  | Get { reply_to; fn; state_ref=sr; reply_ref } -> (
       match Ref.type_equal state_ref sr with
       | Some Type.Equal ->
           let result = fn state in
@@ -76,7 +71,7 @@ let rec loop: type state. state Ref.t -> state -> (unit, exn) result = fun state
           (* Message for different agent type, ignore *)
           loop state_ref state
     )
-  | Update { reply_to; fn; state_ref = sr } -> (
+  | Update { reply_to; fn; state_ref=sr } -> (
       match Ref.type_equal state_ref sr with
       | Some Type.Equal ->
           let new_state = fn state in
@@ -84,12 +79,7 @@ let rec loop: type state. state Ref.t -> state -> (unit, exn) result = fun state
           loop state_ref new_state
       | None -> loop state_ref state
     )
-  | GetAndUpdate {
-    reply_to;
-    fn;
-    state_ref = sr;
-    reply_ref
-  } -> (
+  | GetAndUpdate { reply_to; fn; state_ref=sr; reply_ref } -> (
       match Ref.type_equal state_ref sr with
       | Some Type.Equal ->
           let (result, new_state) = fn state in
@@ -97,7 +87,7 @@ let rec loop: type state. state Ref.t -> state -> (unit, exn) result = fun state
           loop state_ref new_state
       | None -> loop state_ref state
     )
-  | Cast { fn; state_ref = sr } -> (
+  | Cast { fn; state_ref=sr } -> (
       match Ref.type_equal state_ref sr with
       | Some Type.Equal ->
           let new_state = fn state in
@@ -110,28 +100,23 @@ let rec loop: type state. state Ref.t -> state -> (unit, exn) result = fun state
 
 let start: type state. fn:(unit -> state) -> state t = fun ~fn ->
   let state_ref: state Ref.t = Ref.make () in
-  let pid = spawn (fun () -> loop state_ref (fn ())) in
+  let pid =
+    spawn (fun () -> loop state_ref (fn ()))
+  in
   { pid; state_ref }
 
 let start_link: type state. fn:(unit -> state) -> state t = fun ~fn ->
   let state_ref: state Ref.t = Ref.make () in
-  let pid = spawn_link (fun () -> loop state_ref (fn ())) in
+  let pid =
+    spawn_link (fun () -> loop state_ref (fn ()))
+  in
   { pid; state_ref }
 
 let get: type state reply. state t -> fn:(state -> reply) -> reply = fun agent ~fn ->
   let reply_ref: reply Ref.t = Ref.make () in
   send
     agent.pid
-    (
-      AgentRequest (
-        Get {
-          reply_to = self ();
-          fn;
-          state_ref = agent.state_ref;
-          reply_ref;
-        }
-      )
-    );
+    (AgentRequest (Get { reply_to = self (); fn; state_ref = agent.state_ref; reply_ref }));
   let selector msg =
     match msg with
     | AgentResponse res -> `select res
@@ -160,16 +145,7 @@ let get_and_update: type state reply. state t -> fn:(state -> reply * state) -> 
   let reply_ref: reply Ref.t = Ref.make () in
   send
     agent.pid
-    (
-      AgentRequest (
-        GetAndUpdate {
-          reply_to = self ();
-          fn;
-          state_ref = agent.state_ref;
-          reply_ref;
-        }
-      )
-    );
+    (AgentRequest (GetAndUpdate { reply_to = self (); fn; state_ref = agent.state_ref; reply_ref }));
   let selector msg =
     match msg with
     | AgentResponse res -> `select res

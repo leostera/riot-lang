@@ -404,7 +404,9 @@ let child_token_kind_at = fun (node: node) index ->
   | None -> None
 
 let first_ident_token = fun (node: node) ->
-  first_child_token_matching node ~matches:(fun kind -> Syntax_kind.(kind = IDENT))
+  first_child_token_matching
+    node
+    ~matches:(fun kind -> Syntax_kind.(kind = IDENT))
 
 let first_ident_or_underscore_token = fun (node: node) ->
   first_child_token_matching
@@ -430,16 +432,26 @@ let last_ident_token = fun (node: node) ->
 let first_expr_child = fun (node: node) -> first_child_node_matching node ~matches:is_expr_kind
 
 let nth_expr_child = fun (node: node) target ->
-  nth_child_node_matching node target ~matches:is_expr_kind
+  nth_child_node_matching
+    node
+    target
+    ~matches:is_expr_kind
 
 let first_pattern_child = fun (node: node) ->
-  first_child_node_matching node ~matches:is_pattern_kind
+  first_child_node_matching
+    node
+    ~matches:is_pattern_kind
 
 let nth_pattern_child = fun (node: node) target ->
-  nth_child_node_matching node target ~matches:is_pattern_kind
+  nth_child_node_matching
+    node
+    target
+    ~matches:is_pattern_kind
 
 let first_type_expr_child = fun (node: node) ->
-  first_child_node_matching node ~matches:is_type_expr_kind
+  first_child_node_matching
+    node
+    ~matches:is_type_expr_kind
 
 let rec first_type_expr_descendant_of_pattern = fun (node: node) ->
   match first_type_expr_child node with
@@ -465,10 +477,14 @@ let rec first_type_expr_descendant_of_pattern = fun (node: node) ->
       !found
 
 let first_match_case_child = fun (node: node) ->
-  first_child_node_matching node ~matches:is_match_case_kind
+  first_child_node_matching
+    node
+    ~matches:is_match_case_kind
 
 let first_let_binding_child = fun (node: node) ->
-  first_child_node_matching node ~matches:is_let_binding_kind
+  first_child_node_matching
+    node
+    ~matches:is_let_binding_kind
 
 let rec for_each_token_in_node = fun (node: node) ~fn ->
   Syntax_tree.for_each_child
@@ -522,10 +538,16 @@ module Token = struct
   let width = fun (token: token) -> Syntax_tree.token_width token.tree (syntax_token token)
 
   let contains_char = fun (token: token) needle ->
-    Syntax_tree.token_contains_char token.tree (syntax_token token) needle
+    Syntax_tree.token_contains_char
+      token.tree
+      (syntax_token token)
+      needle
 
   let text_is = fun (token: token) expected ->
-    Syntax_tree.token_text_is token.tree (syntax_token token) expected
+    Syntax_tree.token_text_is
+      token.tree
+      (syntax_token token)
+      expected
 
   let text_equal = fun (left: token) (right: token) ->
     let left_width = width left in
@@ -563,7 +585,9 @@ module Token = struct
   let slice = fun (token: token) -> Syntax_tree.token_text_slice token.tree (syntax_token token)
 
   let has_newline = fun (token: token) ->
-    Syntax_tree.token_has_newline token.tree (syntax_token token)
+    Syntax_tree.token_has_newline
+      token.tree
+      (syntax_token token)
 
   let text = fun (token: token) -> Syntax_tree.token_text token.tree (syntax_token token)
 
@@ -645,13 +669,19 @@ module Token = struct
     loop syntax_token.Syntax_tree.raw_lo
 
   let has_leading_whitespace = fun token ->
-    has_leading_raw token ~matches:(fun kind -> Syntax_kind.(kind = WHITESPACE))
+    has_leading_raw
+      token
+      ~matches:(fun kind -> Syntax_kind.(kind = WHITESPACE))
 
   let has_leading_comment = fun token ->
-    has_leading_raw token ~matches:(fun kind -> Syntax_kind.(kind = COMMENT || kind = DOCSTRING))
+    has_leading_raw
+      token
+      ~matches:(fun kind -> Syntax_kind.(kind = COMMENT || kind = DOCSTRING))
 
   let has_leading_docstring = fun token ->
-    has_leading_raw token ~matches:(fun kind -> Syntax_kind.(kind = DOCSTRING))
+    has_leading_raw
+      token
+      ~matches:(fun kind -> Syntax_kind.(kind = DOCSTRING))
 
   let full_text = fun (token: token) ->
     let (raw_lo, raw_hi) =
@@ -685,7 +715,10 @@ module Node = struct
   let child_at = fun (node: node) index -> Syntax_tree.child_at node.tree (syntax_node node) index
 
   let for_each_child = fun (node: node) ~fn ->
-    Syntax_tree.for_each_child node.tree (syntax_node node) ~fn
+    Syntax_tree.for_each_child
+      node.tree
+      (syntax_node node)
+      ~fn
 
   let for_each_child_node = fun (node: node) ~fn ->
     for_each_child
@@ -710,15 +743,21 @@ module Node = struct
   let for_each_token = for_each_token_in_node
 
   let first_child_node = fun (node: node) ~kind:expected_kind ->
-    first_child_node_matching node ~matches:(fun kind -> Syntax_kind.(kind = expected_kind))
+    first_child_node_matching
+      node
+      ~matches:(fun kind -> Syntax_kind.(kind = expected_kind))
 
   let first_child_token = fun (node: node) ~kind:expected_kind ->
-    first_child_token_matching node ~matches:(fun kind -> Syntax_kind.(kind = expected_kind))
+    first_child_token_matching
+      node
+      ~matches:(fun kind -> Syntax_kind.(kind = expected_kind))
 
   let first_token = fun (node: node) -> first_child_token_matching node ~matches:(fun _ -> true)
 
   let first_descendant_token = fun (node: node) ->
-    first_descendant_token_matching node ~matches:(fun _ -> true)
+    first_descendant_token_matching
+      node
+      ~matches:(fun _ -> true)
 end
 
 module TypeExpr = struct
@@ -839,7 +878,10 @@ module TypeExpr = struct
     | _ -> Unknown type_expr
 
   let for_each_child_type = fun (type_expr: type_expr) ~fn ->
-    for_each_child_node_matching type_expr ~matches:is_type_expr_kind ~fn
+    for_each_child_node_matching
+      type_expr
+      ~matches:is_type_expr_kind
+      ~fn
 
   let child_token_kind_is_in = fun node index kind ->
     match child_token_kind_at node index with
@@ -986,14 +1028,19 @@ module RecordType = struct
       None
 
   let private_token = fun record_type ->
-    Node.first_child_token record_type ~kind:Syntax_kind.PRIVATE_KW
+    Node.first_child_token
+      record_type
+      ~kind:Syntax_kind.PRIVATE_KW
 
   let opening_token = fun record_type -> Node.first_child_token record_type ~kind:Syntax_kind.LBRACE
 
   let closing_token = fun record_type -> Node.first_child_token record_type ~kind:Syntax_kind.RBRACE
 
   let for_each_field = fun record_type ~fn ->
-    for_each_child_node_matching record_type ~matches:is_record_field_kind ~fn
+    for_each_child_node_matching
+      record_type
+      ~matches:is_record_field_kind
+      ~fn
 end
 
 module VariantConstructor = struct
@@ -1024,7 +1071,9 @@ module VariantConstructor = struct
     | None -> None
 
   let record_payload = fun constructor ->
-    first_child_node_matching constructor ~matches:is_record_type_kind
+    first_child_node_matching
+      constructor
+      ~matches:is_record_type_kind
 end
 
 module VariantType = struct
@@ -1037,10 +1086,15 @@ module VariantType = struct
       None
 
   let private_token = fun variant_type ->
-    Node.first_child_token variant_type ~kind:Syntax_kind.PRIVATE_KW
+    Node.first_child_token
+      variant_type
+      ~kind:Syntax_kind.PRIVATE_KW
 
   let for_each_constructor = fun variant_type ~fn ->
-    for_each_child_node_matching variant_type ~matches:is_variant_constructor_kind ~fn
+    for_each_child_node_matching
+      variant_type
+      ~matches:is_variant_constructor_kind
+      ~fn
 end
 
 module Path = struct
@@ -1359,7 +1413,9 @@ end = struct
           || Syntax_kind.(kind = FALSE_KW)))
 
   let first_direct_token = fun (node: node) ->
-    first_child_token_matching node ~matches:(fun _kind -> true)
+    first_child_token_matching
+      node
+      ~matches:(fun _kind -> true)
 
   let literal_token = Node.first_token
 
@@ -1470,10 +1526,16 @@ end = struct
     | _ -> Unknown expr
 
   let for_each_child_expr = fun (expr: expr) ~fn ->
-    for_each_child_node_matching expr ~matches:is_expr_kind ~fn
+    for_each_child_node_matching
+      expr
+      ~matches:is_expr_kind
+      ~fn
 
   let for_each_match_case = fun (expr: expr) ~fn ->
-    for_each_child_node_matching expr ~matches:is_match_case_kind ~fn
+    for_each_child_node_matching
+      expr
+      ~matches:is_match_case_kind
+      ~fn
 end
 
 module AttributeExpr: sig
@@ -1747,13 +1809,22 @@ end = struct
     loop from
 
   let module_index = fun expr ->
-    token_index expr ~from:0 ~matches:(fun kind -> Syntax_kind.(kind = MODULE_KW))
+    token_index
+      expr
+      ~from:0
+      ~matches:(fun kind -> Syntax_kind.(kind = MODULE_KW))
 
   let equals_index = fun expr ->
-    token_index expr ~from:0 ~matches:(fun kind -> Syntax_kind.(kind = EQ))
+    token_index
+      expr
+      ~from:0
+      ~matches:(fun kind -> Syntax_kind.(kind = EQ))
 
   let in_index = fun expr ->
-    token_index expr ~from:0 ~matches:(fun kind -> Syntax_kind.(kind = IN_KW))
+    token_index
+      expr
+      ~from:0
+      ~matches:(fun kind -> Syntax_kind.(kind = IN_KW))
 
   let name = fun expr ->
     match module_index expr with
@@ -1884,13 +1955,22 @@ end = struct
     loop from
 
   let exception_index = fun expr ->
-    token_index expr ~from:0 ~matches:(fun kind -> Syntax_kind.(kind = EXCEPTION_KW))
+    token_index
+      expr
+      ~from:0
+      ~matches:(fun kind -> Syntax_kind.(kind = EXCEPTION_KW))
 
   let of_index = fun expr ->
-    token_index expr ~from:0 ~matches:(fun kind -> Syntax_kind.(kind = OF_KW))
+    token_index
+      expr
+      ~from:0
+      ~matches:(fun kind -> Syntax_kind.(kind = OF_KW))
 
   let in_index = fun expr ->
-    token_index expr ~from:0 ~matches:(fun kind -> Syntax_kind.(kind = IN_KW))
+    token_index
+      expr
+      ~from:0
+      ~matches:(fun kind -> Syntax_kind.(kind = IN_KW))
 
   let name = fun expr ->
     match exception_index expr with
@@ -2335,7 +2415,10 @@ end = struct
     | _ -> Unknown pattern
 
   let for_each_child_pattern = fun (pattern: pattern) ~fn ->
-    for_each_child_node_matching pattern ~matches:is_pattern_kind ~fn
+    for_each_child_node_matching
+      pattern
+      ~matches:is_pattern_kind
+      ~fn
 end
 
 module AttributePattern: sig
@@ -2466,7 +2549,10 @@ end = struct
     loop from
 
   let module_index = fun pattern ->
-    token_index pattern ~from:0 ~matches:(fun kind -> Syntax_kind.(kind = MODULE_KW))
+    token_index
+      pattern
+      ~from:0
+      ~matches:(fun kind -> Syntax_kind.(kind = MODULE_KW))
 
   let binder = fun pattern ->
     match module_index pattern with
@@ -2761,7 +2847,8 @@ end = struct
     | _ -> Unknown parameter
 
   let has_explicit_pattern_parens = fun parameter ->
-    Option.is_some (Node.first_child_token parameter ~kind:Syntax_kind.LPAREN)
+    Option.is_some
+      (Node.first_child_token parameter ~kind:Syntax_kind.LPAREN)
 end
 
 module MatchCase: sig
@@ -2874,12 +2961,17 @@ module LetDeclaration = struct
       None
 
   let rec_token = fun (decl: let_declaration) ->
-    Node.first_child_token decl ~kind:Syntax_kind.REC_KW
+    Node.first_child_token
+      decl
+      ~kind:Syntax_kind.REC_KW
 
   let first_binding = first_let_binding_child
 
   let for_each_binding = fun (decl: let_declaration) ~fn ->
-    for_each_child_node_matching decl ~matches:is_let_binding_kind ~fn
+    for_each_child_node_matching
+      decl
+      ~matches:is_let_binding_kind
+      ~fn
 end
 
 module TypeDeclaration = struct
@@ -2907,7 +2999,9 @@ module TypeDeclaration = struct
       None
 
   let first_member_node = fun decl ->
-    first_child_node_matching decl ~matches:(fun kind -> Syntax_kind.(kind = TYPE_DECL_MEMBER))
+    first_child_node_matching
+      decl
+      ~matches:(fun kind -> Syntax_kind.(kind = TYPE_DECL_MEMBER))
 
   let member_or_decl = fun decl ->
     match first_member_node decl with
@@ -2917,10 +3011,14 @@ module TypeDeclaration = struct
   let for_each_token = fun decl ~fn -> for_each_token_in_node decl ~fn
 
   let keyword_token = fun decl ->
-    Node.first_child_token (member_or_decl decl) ~kind:Syntax_kind.TYPE_KW
+    Node.first_child_token
+      (member_or_decl decl)
+      ~kind:Syntax_kind.TYPE_KW
 
   let nonrec_token = fun decl ->
-    Node.first_child_token (member_or_decl decl) ~kind:Syntax_kind.NONREC_KW
+    Node.first_child_token
+      (member_or_decl decl)
+      ~kind:Syntax_kind.NONREC_KW
 
   let child_token_at_node = fun node index ->
     match Node.child_at node index with
@@ -3499,7 +3597,9 @@ module ModuleDeclaration = struct
       None
 
   let first_member_node = fun decl ->
-    first_child_node_matching decl ~matches:(fun kind -> Syntax_kind.(kind = MODULE_DECL_MEMBER))
+    first_child_node_matching
+      decl
+      ~matches:(fun kind -> Syntax_kind.(kind = MODULE_DECL_MEMBER))
 
   let member_or_decl = fun decl ->
     match first_member_node decl with
@@ -3872,10 +3972,14 @@ module ModuleTypeDeclaration = struct
       None
 
   let head_node = fun decl ->
-    first_child_node_matching decl ~matches:(fun kind -> Syntax_kind.(kind = MODULE_TYPE_DECL_HEAD))
+    first_child_node_matching
+      decl
+      ~matches:(fun kind -> Syntax_kind.(kind = MODULE_TYPE_DECL_HEAD))
 
   let body_group = fun decl ->
-    first_child_node_matching decl ~matches:(fun kind -> Syntax_kind.(kind = MODULE_TYPE_DECL_BODY))
+    first_child_node_matching
+      decl
+      ~matches:(fun kind -> Syntax_kind.(kind = MODULE_TYPE_DECL_BODY))
 
   let name = fun decl ->
     match head_node decl with
@@ -4051,7 +4155,10 @@ module ModuleTypeConstraint = struct
     | None -> None
 
   let module_body = fun constraint_ ->
-    nth_child_node_matching constraint_ 1 ~matches:is_module_expr_kind
+    nth_child_node_matching
+      constraint_
+      1
+      ~matches:is_module_expr_kind
 
   let view = fun (constraint_: t) ->
     if node_kind_is constraint_ Syntax_kind.WITH_TYPE_CONSTRAINT then
@@ -4183,10 +4290,16 @@ module ValueDeclaration = struct
   let type_annotation = first_type_expr_child
 
   let for_each_name_token = fun decl ~fn ->
-    for_each_declaration_name_token decl ~keyword:Syntax_kind.VAL_KW ~fn
+    for_each_declaration_name_token
+      decl
+      ~keyword:Syntax_kind.VAL_KW
+      ~fn
 
   let for_each_annotation_token = fun decl ~fn ->
-    for_each_token_after_child_token decl ~matches:(fun kind -> Syntax_kind.(kind = COLON)) ~fn
+    for_each_token_after_child_token
+      decl
+      ~matches:(fun kind -> Syntax_kind.(kind = COLON))
+      ~fn
 end
 
 module ExternalDeclaration = struct
@@ -4205,7 +4318,10 @@ module ExternalDeclaration = struct
   let type_annotation = first_type_expr_child
 
   let for_each_name_token = fun decl ~fn ->
-    for_each_declaration_name_token decl ~keyword:Syntax_kind.EXTERNAL_KW ~fn
+    for_each_declaration_name_token
+      decl
+      ~keyword:Syntax_kind.EXTERNAL_KW
+      ~fn
 
   let for_each_primitive_string = fun decl ~fn ->
     Node.for_each_child_token
@@ -4256,7 +4372,9 @@ module ExceptionDeclaration = struct
       None
 
   let head_node = fun decl ->
-    first_child_node_matching decl ~matches:(fun kind -> Syntax_kind.(kind = EXCEPTION_DECL_HEAD))
+    first_child_node_matching
+      decl
+      ~matches:(fun kind -> Syntax_kind.(kind = EXCEPTION_DECL_HEAD))
 
   let keyword_token = fun decl ->
     match head_node decl with
@@ -4368,7 +4486,9 @@ module StructureItem = struct
       None
 
   let declaration = fun (item: structure_item) ->
-    first_child_node_matching item ~matches:(fun kind -> not Syntax_kind.(kind = ERROR))
+    first_child_node_matching
+      item
+      ~matches:(fun kind -> not Syntax_kind.(kind = ERROR))
 
   let view = fun (item: structure_item) ->
     match declaration item with
@@ -4420,7 +4540,9 @@ module SignatureItem = struct
       None
 
   let declaration = fun (item: signature_item) ->
-    first_child_node_matching item ~matches:(fun _ -> true)
+    first_child_node_matching
+      item
+      ~matches:(fun _ -> true)
 
   let view = fun (item: signature_item) ->
     match declaration item with
@@ -4454,7 +4576,10 @@ module Implementation = struct
       None
 
   let for_each_item = fun (impl: implementation) ~fn ->
-    for_each_child_node_matching impl ~matches:(fun kind -> Syntax_kind.(kind = STRUCTURE_ITEM)) ~fn
+    for_each_child_node_matching
+      impl
+      ~matches:(fun kind -> Syntax_kind.(kind = STRUCTURE_ITEM))
+      ~fn
 end
 
 module Interface = struct
@@ -4484,10 +4609,14 @@ module SourceFile = struct
   let make = root
 
   let implementation = fun (source_file: source_file) ->
-    Node.first_child_node source_file ~kind:Syntax_kind.IMPLEMENTATION
+    Node.first_child_node
+      source_file
+      ~kind:Syntax_kind.IMPLEMENTATION
 
   let interface = fun (source_file: source_file) ->
-    Node.first_child_node source_file ~kind:Syntax_kind.INTERFACE
+    Node.first_child_node
+      source_file
+      ~kind:Syntax_kind.INTERFACE
 
   let view = fun (source_file: source_file) ->
     match implementation source_file with

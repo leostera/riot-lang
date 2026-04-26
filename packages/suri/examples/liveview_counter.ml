@@ -257,11 +257,7 @@ let home_page = fun conn _req ->
             LiveView.client_script;
             style page_styles;
           ];
-        body [
-          div ~attrs:[ id "app" ] [
-            LiveView.embed (module Counter) ();
-          ];
-        ];
+        body [ div ~attrs:[ id "app" ] [ LiveView.embed (module Counter) (); ]; ];
       ]
   in
   conn
@@ -269,10 +265,7 @@ let home_page = fun conn _req ->
 
 (* Define routes *)
 
-let routes = Middleware.Router.[
-  get "/" home_page;
-  LiveView.live (module Counter);
-]
+let routes = Middleware.Router.[ get "/" home_page; LiveView.live (module Counter); ]
 
 (* App is just a list of middleware! *)
 

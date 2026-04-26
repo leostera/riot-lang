@@ -22,7 +22,8 @@ type t = {
 let namespace_version = "v4"
 
 let versioned_namespace = fun suffix ->
-  format Format.[ str "typ/"; str namespace_version; str "/"; str suffix; ]
+  format
+    Format.[ str "typ/"; str namespace_version; str "/"; str suffix; ]
 
 let module_typings_namespace = versioned_namespace "module-typings/by-hash"
 
@@ -167,7 +168,11 @@ let save_module_typings = fun store typings ->
           Ok ()
 
 let rec save_package_module_typings = fun store ~package_name typings ->
-  save_package_bundle store ~package_name ~fingerprint:(Crypto.hash_string "") typings
+  save_package_bundle
+    store
+    ~package_name
+    ~fingerprint:(Crypto.hash_string "")
+    typings
 
 and save_package_bundle = fun store ~package_name ~fingerprint typings ->
   let json = Data.Json.Object [

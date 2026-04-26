@@ -73,7 +73,9 @@ let test_for_each_visits_segments_in_insertion_order = fun _ctx ->
   IoVec.for_each
     iov
     ~fn:(fun segment ->
-      Sync.Atomic.set seen (IoVec.IoSlice.to_string segment :: Sync.Atomic.get seen));
+      Sync.Atomic.set
+        seen
+        (IoVec.IoSlice.to_string segment :: Sync.Atomic.get seen));
   let segments = List.reverse (Sync.Atomic.get seen) in
   if segments = [ "ab"; "c"; "def" ] then
     Ok ()

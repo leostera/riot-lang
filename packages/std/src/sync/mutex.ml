@@ -53,7 +53,9 @@ let request_ids = Runtime_atomic.make 0
 let next_request_id = fun () -> Int.succ (Runtime_atomic.fetch_and_add request_ids 1)
 
 let fail = fun reply_to request_id reason ->
-  Runtime.send reply_to (Sync_mutex_failed { request_id; reason })
+  Runtime.send
+    reply_to
+    (Sync_mutex_failed { request_id; reason })
 
 let grant = fun state pid request_id ->
   let monitor = Runtime_actor.monitor pid in

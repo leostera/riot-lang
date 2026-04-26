@@ -61,7 +61,10 @@ let id_index_of_type_decls = fun type_decls ->
   type_decls
   |> List.fold_left
     (fun acc (type_decl: FileSummary.type_decl) ->
-      Id_map.add type_decl.declaration.type_constructor_id type_decl acc)
+      Id_map.add
+        type_decl.declaration.type_constructor_id
+        type_decl
+        acc)
     Id_map.empty
 
 let components_of_type_decls = fun type_decls ->
@@ -70,7 +73,10 @@ let components_of_type_decls = fun type_decls ->
     |> List.rev
     |> List.fold_left
       (fun acc (type_decl: FileSummary.type_decl) ->
-        Name_map.add (decl_name type_decl) type_decl acc)
+        Name_map.add
+          (decl_name type_decl)
+          type_decl
+          acc)
       Name_map.empty
   in
   let by_id = id_index_of_type_decls type_decls in

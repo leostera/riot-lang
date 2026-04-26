@@ -2,21 +2,18 @@ open Std
 open Std.Bench
 open Std.Collections
 open Riot_model
-
 module Package = Package
 module Workspace = Workspace
 module Package_graph = Riot_planner.Package_graph
 module Workspace_planner = Riot_planner.Workspace_planner
 
-let test_toolchain =
-  Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
-  |> Result.expect ~msg:"riot-planner bench toolchain init should succeed"
+let test_toolchain = Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
+|> Result.expect ~msg:"riot-planner bench toolchain init should succeed"
 
 let workspace_dependency = fun name ->
   Package.{
-    name =
-      Package_name.from_string name
-      |> Result.expect ~msg:("expected valid package name: " ^ name);
+    name = Package_name.from_string name
+    |> Result.expect ~msg:("expected valid package name: " ^ name);
     source =
       {
         workspace = true;
@@ -34,21 +31,15 @@ let write_file = fun path contents ->
     | Some parent -> parent
     | None -> Path.v "."
   in
-  let _ =
-    Fs.create_dir_all parent
-    |> Result.expect ~msg:"create bench parent should succeed"
-  in
-  Fs.write contents path
-  |> Result.expect ~msg:"write bench file should succeed"
+  let _ = Fs.create_dir_all parent |> Result.expect ~msg:"create bench parent should succeed" in
+  Fs.write contents path |> Result.expect ~msg:"write bench file should succeed"
 
 let make_workspace = fun ~root ~packages -> Workspace.make_realized ~root ~packages ()
 
 let make_workspace_package = fun ~root ~name ~dependencies ~dev_dependencies ~build_dependencies ->
   Package.make
-    ~name:(
-      Package_name.from_string name
-      |> Result.expect ~msg:("expected valid package name: " ^ name)
-    )
+    ~name:(Package_name.from_string name
+    |> Result.expect ~msg:("expected valid package name: " ^ name))
     ~path:Path.(root / Path.v "packages" / Path.v name)
     ~relative_path:(Path.v ("packages/" ^ name))
     ~dependencies:(List.map dependencies ~fn:workspace_dependency)
@@ -83,69 +74,50 @@ let make_workspace_fixture = fun root ~count ->
       in
       loop
         (index + 1)
-        (make_workspace_package ~root ~name ~dependencies ~dev_dependencies ~build_dependencies
-        :: acc)
+        (make_workspace_package ~root ~name ~dependencies ~dev_dependencies ~build_dependencies :: acc)
   in
   make_workspace ~root ~packages:(loop 0 [])
 
 let make_package_graph_runtime_bench = fun root ~count ->
-  let workspace =
-    make_workspace_fixture Path.(root / Path.v ("runtime-graph-" ^ Int.to_string count)) ~count
-  in
+  let workspace = make_workspace_fixture
+    Path.(root / Path.v ("runtime-graph-" ^ Int.to_string count))
+    ~count in
   fun () ->
-    let _ =
-      Package_graph.create ~scope:Package_graph.Runtime workspace
-      |> Result.expect ~msg:"runtime package graph bench should succeed"
-    in
+    let _ = Package_graph.create ~scope:Package_graph.Runtime workspace |> Result.expect ~msg:"runtime package graph bench should succeed" in
     ()
 
 let make_package_graph_dev_bench = fun root ~count ->
-  let workspace =
-    make_workspace_fixture Path.(root / Path.v ("dev-graph-" ^ Int.to_string count)) ~count
-  in
+  let workspace = make_workspace_fixture Path.(root / Path.v ("dev-graph-" ^ Int.to_string count)) ~count in
   fun () ->
-    let _ =
-      Package_graph.create ~scope:Package_graph.Dev workspace
-      |> Result.expect ~msg:"dev package graph bench should succeed"
-    in
+    let _ = Package_graph.create ~scope:Package_graph.Dev workspace |> Result.expect ~msg:"dev package graph bench should succeed" in
     ()
 
 let make_plan_workspace_all_bench = fun root ~count ->
-  let workspace =
-    make_workspace_fixture Path.(root / Path.v ("plan-all-" ^ Int.to_string count)) ~count
-  in
+  let workspace = make_workspace_fixture Path.(root / Path.v ("plan-all-" ^ Int.to_string count)) ~count in
   fun () ->
-    let _ =
-      Riot_planner.plan_workspace
-        ~workspace
-        ~target:Workspace_planner.All
-        ~scope:Package_graph.Runtime
-        ~load_errors:[]
-        ~dev_artifacts:{ tests = true; examples = true; benches = true }
-      |> Result.expect ~msg:"plan workspace all bench should succeed"
-    in
+    let _ = Riot_planner.plan_workspace
+      ~workspace
+      ~target:Workspace_planner.All
+      ~scope:Package_graph.Runtime
+      ~load_errors:[]
+      ~dev_artifacts:{ tests = true; examples = true; benches = true }
+    |> Result.expect ~msg:"plan workspace all bench should succeed" in
     ()
 
 let make_plan_workspace_target_bench = fun root ~count ->
-  let workspace =
-    make_workspace_fixture Path.(root / Path.v ("plan-target-" ^ Int.to_string count)) ~count
-  in
+  let workspace = make_workspace_fixture
+    Path.(root / Path.v ("plan-target-" ^ Int.to_string count))
+    ~count in
   let target_package = "pkg" ^ Int.to_string (count - 1) in
   fun () ->
-    let _ =
-      Riot_planner.plan_workspace
-        ~workspace
-        ~target:(
-          Workspace_planner.Package (
-            Package_name.from_string target_package
-            |> Result.expect ~msg:("expected valid package name: " ^ target_package)
-          )
-        )
-        ~scope:Package_graph.Runtime
-        ~load_errors:[]
-        ~dev_artifacts:{ tests = true; examples = true; benches = true }
-      |> Result.expect ~msg:"plan workspace target bench should succeed"
-    in
+    let _ = Riot_planner.plan_workspace
+      ~workspace
+      ~target:(Workspace_planner.Package (Package_name.from_string target_package
+      |> Result.expect ~msg:("expected valid package name: " ^ target_package)))
+      ~scope:Package_graph.Runtime
+      ~load_errors:[]
+      ~dev_artifacts:{ tests = true; examples = true; benches = true }
+    |> Result.expect ~msg:"plan workspace target bench should succeed" in
     ()
 
 type package_fixture = {
@@ -175,55 +147,34 @@ let make_package_sources = fun package_name ->
   }
 
 let write_package_fixture_files = fun package_root package_name ->
-  write_file
-    Path.(package_root / Path.v "src" / Path.v (package_name ^ ".ml"))
-    "let parse input = Parser.parse (Lexer.tokenize input)\n";
-  write_file
-    Path.(package_root / Path.v "src" / Path.v "lexer.ml")
-    "let tokenize input = [ Utils.normalize input ]\n";
-  write_file
-    Path.(package_root / Path.v "src" / Path.v "parser.ml")
-    "let parse tokens = Types.Token_stream tokens\n";
-  write_file
-    Path.(package_root / Path.v "src" / Path.v "types.ml")
-    "type t = Token_stream of string list\n";
-  write_file
-    Path.(package_root / Path.v "src" / Path.v "types.mli")
-    "type t = Token_stream of string list\n";
+  write_file Path.(package_root / Path.v "src" / Path.v (package_name ^ ".ml")) "let parse input = Parser.parse (Lexer.tokenize input)\n";
+  write_file Path.(package_root / Path.v "src" / Path.v "lexer.ml") "let tokenize input = [ Utils.normalize input ]\n";
+  write_file Path.(package_root / Path.v "src" / Path.v "parser.ml") "let parse tokens = Types.Token_stream tokens\n";
+  write_file Path.(package_root / Path.v "src" / Path.v "types.ml") "type t = Token_stream of string list\n";
+  write_file Path.(package_root / Path.v "src" / Path.v "types.mli") "type t = Token_stream of string list\n";
   write_file Path.(package_root / Path.v "src" / Path.v "utils.ml") "let normalize input = input\n";
-  write_file
-    Path.(package_root / Path.v "src" / Path.v "utils.mli")
-    "val normalize : string -> string\n"
+  write_file Path.(package_root / Path.v "src" / Path.v "utils.mli") "val normalize : string -> string\n"
 
 let make_package_fixture = fun root label ->
   let workspace_root = Path.(root / Path.v label) in
   let package_name = "planner_pkg" in
   let package_root = Path.(workspace_root / Path.v "packages" / Path.v package_name) in
-  let _ =
-    Fs.create_dir_all Path.(package_root / Path.v "src")
-    |> Result.expect ~msg:"create planner bench src dir should succeed"
-  in
+  let _ = Fs.create_dir_all Path.(package_root / Path.v "src") |> Result.expect ~msg:"create planner bench src dir should succeed" in
   let _ = write_package_fixture_files package_root package_name in
-  let package =
-    Package.make
-      ~name:(
-        Package_name.from_string package_name
-        |> Result.expect ~msg:("expected valid package name: " ^ package_name)
-      )
-      ~path:package_root
-      ~relative_path:(Path.v ("packages/" ^ package_name))
-      ~library:{ path = Path.v ("src/" ^ package_name ^ ".ml") }
-      ~sources:(make_package_sources package_name)
-      ()
-  in
+  let package = Package.make
+    ~name:(Package_name.from_string package_name
+    |> Result.expect ~msg:("expected valid package name: " ^ package_name))
+    ~path:package_root
+    ~relative_path:(Path.v ("packages/" ^ package_name))
+    ~library:{ path = Path.v ("src/" ^ package_name ^ ".ml") }
+    ~sources:(make_package_sources package_name)
+    () in
   let workspace = make_workspace ~root:workspace_root ~packages:[ package ] in
   let store = Riot_store.Store.create ~workspace in
-  let build_ctx =
-    Riot_model.Build_ctx.make
-      ~session_id:(Riot_model.Session_id.make ())
-      ~profile:Riot_model.Profile.debug
-      ()
-  in
+  let build_ctx = Riot_model.Build_ctx.make
+    ~session_id:(Riot_model.Session_id.make ())
+    ~profile:Riot_model.Profile.debug
+    () in
   let package_key = Package_graph.package_key ~package_name Package_graph.Runtime in
   {
     workspace;
@@ -234,21 +185,17 @@ let make_package_fixture = fun root label ->
   }
 
 let run_package_plan = fun fixture ->
-  let package_graph =
-    Package_graph.create ~scope:Package_graph.Runtime fixture.workspace
-    |> Result.expect ~msg:"package planning bench graph creation should succeed"
-  in
-  let _ =
-    Riot_planner.Package_planner.plan_package
-      ~workspace:fixture.workspace
-      ~toolchain:test_toolchain
-      ~store:fixture.store
-      ~package_graph
-      ~package_key:fixture.package_key
-      ~package:fixture.package
-      ~build_ctx:fixture.build_ctx
-    |> Result.expect ~msg:"package planning bench should succeed"
-  in
+  let package_graph = Package_graph.create ~scope:Package_graph.Runtime fixture.workspace
+  |> Result.expect ~msg:"package planning bench graph creation should succeed" in
+  let _ = Riot_planner.Package_planner.plan_package
+    ~workspace:fixture.workspace
+    ~toolchain:test_toolchain
+    ~store:fixture.store
+    ~package_graph
+    ~package_key:fixture.package_key
+    ~package:fixture.package
+    ~build_ctx:fixture.build_ctx
+  |> Result.expect ~msg:"package planning bench should succeed" in
   ()
 
 let make_plan_package_cold_bench = fun root ->
@@ -308,8 +255,7 @@ let benchmark_suite = fun root ->
 let main ~args =
   match Fs.with_tempdir
     ~prefix:"riot_planner_bench"
-    (fun root ->
-      Bench.Cli.main ~name:"riot-planner benchmarks" ~benchmarks:(benchmark_suite root) ~args) with
+    (fun root -> Bench.Cli.main ~name:"riot-planner benchmarks" ~benchmarks:(benchmark_suite root) ~args) with
   | Ok result -> result
   | Error err -> panic ("failed to prepare riot-planner bench fixture: " ^ IO.error_message err)
 

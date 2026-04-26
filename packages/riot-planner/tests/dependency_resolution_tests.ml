@@ -407,7 +407,9 @@ let test_module_graph_uses_explicit_root_library_path = fun _ctx ->
                 List.any
                   impl_nodes
                   ~fn:(fun (mod_, _file) ->
-                    String.equal (Riot_model.Module.namespaced_name mod_) "Pkg__Lib")
+                    String.equal
+                      (Riot_model.Module.namespaced_name mod_)
+                      "Pkg__Lib")
               in
               if has_pkg_root && not has_child_lib then
                 Ok ()
@@ -500,7 +502,9 @@ let test_module_graph_uses_explicit_root_library_path_case_insensitively = fun _
                 List.any
                   impl_nodes
                   ~fn:(fun (mod_, _file) ->
-                    String.equal (Riot_model.Module.namespaced_name mod_) "Krasny__Krasny")
+                    String.equal
+                      (Riot_model.Module.namespaced_name mod_)
+                      "Krasny__Krasny")
               in
               if has_pkg_root && not has_child_krasny then
                 Ok ()
@@ -1329,7 +1333,9 @@ let test_module_graph_keeps_nested_sibling_dependency_across_allowed_source_orde
                       List.any
                         udp_socket_nodes
                         ~fn:(fun udp_socket_node ->
-                          List.any udp_server_mli.deps ~fn:(G.Node_id.eq udp_socket_node.id))
+                          List.any
+                            udp_server_mli.deps
+                            ~fn:(G.Node_id.eq udp_socket_node.id))
                     then
                       run rest
                     else

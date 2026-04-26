@@ -34,7 +34,10 @@ type t = {
   links: link_set;
 }
 
-type error = { kind: string; message: string }
+type error = {
+  kind: string;
+  message: string;
+}
 
 let registry_name = "pkgs.ml"
 
@@ -46,8 +49,9 @@ let rec toml_json = function
   | Data.Toml.String value -> Data.Json.String value
   | Data.Toml.Int value -> Data.Json.Int value
   | Data.Toml.Array values -> Data.Json.Array (List.map values ~fn:toml_json)
-  | Data.Toml.Table fields ->
-      Data.Json.Object (List.map fields ~fn:(fun (key, value) -> (key, toml_json value)))
+  | Data.Toml.Table fields -> Data.Json.Object (List.map
+    fields
+    ~fn:(fun (key, value) -> (key, toml_json value)))
   | Data.Toml.Bool value -> Data.Json.Bool value
 
 let json_string_or_null = function
@@ -71,14 +75,15 @@ let load_manifest = fun path ->
 let registry_of_optional = fun ?registry () ->
   match registry with
   | Some registry -> Ok registry
-  | None ->
-      Pkgs_ml.Registry.create_filesystem ~registry_name ()
-      |> Result.map_err ~fn:Pkgs_ml.Registry_cache.create_error_message
+  | None -> Pkgs_ml.Registry.create_filesystem ~registry_name ()
+  |> Result.map_err ~fn:Pkgs_ml.Registry_cache.create_error_message
 
 let local_workspace_package:
   (Riot_model.Workspace_manifest.t * Riot_model.Workspace_manager.load_error list) option ->
   Riot_model.Package_name.t ->
-  (Riot_model.Workspace_manifest.t * Riot_model.Workspace_manager.load_error list * Riot_model.Package_manifest.t) option = fun local_workspace package_name ->
+  (Riot_model.Workspace_manifest.t *
+  Riot_model.Workspace_manager.load_error list *
+  Riot_model.Package_manifest.t) option = fun local_workspace package_name ->
   match local_workspace with
   | None -> None
   | Some ((workspace: Riot_model.Workspace_manifest.t), load_errors) ->
@@ -119,8 +124,7 @@ let workspace_package_links = fun () ->
   }
 
 let matching_release = fun (document: Pkgs_ml.Sparse_index.package_document) requirement ->
-  document.releases
-  |> List.filter_map
+  document.releases |> List.filter_map
     ~fn:(fun (release: Pkgs_ml.Sparse_index.release) ->
       match Std.Version.parse release.version with
       | Error _ -> None
@@ -128,14 +132,12 @@ let matching_release = fun (document: Pkgs_ml.Sparse_index.package_document) req
           if Std.Version.matches requirement version then
             Some (version, release)
           else
-            None)
-  |> List.sort
+            None) |> List.sort
     ~compare:(fun (left, _) (right, _) ->
       match Std.Version.compare left right with
       | Order.LT -> Order.GT
       | Order.EQ -> Order.EQ
-      | Order.GT -> Order.LT)
-  |> List.head
+      | Order.GT -> Order.LT) |> List.head
 
 let registry_package_info = fun ?registry ~target (parsed: Riot_deps.Registry_package_spec.t) () ->
   match registry_of_optional ?registry () with
@@ -147,33 +149,25 @@ let registry_package_info = fun ?registry ~target (parsed: Riot_deps.Registry_pa
       let cache = Pkgs_ml.Registry.cache registry in
       let registry_root = Pkgs_ml.Registry_cache.registry_dir cache in
       match Pkgs_ml.Registry.read_package_document registry ~package_name with
-      | Error err -> error ~kind:"registry_lookup_failed" ~message:err
+      | Error err ->
+          error ~kind:"registry_lookup_failed" ~message:err
       | Ok None ->
           error
             ~kind:"package_not_found"
-            ~message:("package '"
-            ^ package_name
-            ^ "' was not found in "
-            ^ Pkgs_ml.Registry.name registry)
+            ~message:("package '" ^ package_name ^ "' was not found in " ^ Pkgs_ml.Registry.name registry)
       | Ok (Some document) -> (
           match matching_release document requirement with
-          | None ->
-              error
-                ~kind:"version_not_found"
-                ~message:("no release of '" ^ package_name ^ "' matches " ^ requirement_string)
+          | None -> error
+            ~kind:"version_not_found"
+            ~message:("no release of '" ^ package_name ^ "' matches " ^ requirement_string)
           | Some (_, release) -> (
-              match Pkgs_ml.Registry.materialize_release
-                registry
-                ~package_name
-                ~version:release.version with
+              match Pkgs_ml.Registry.materialize_release registry ~package_name ~version:release.version with
               | Error err -> error ~kind:"materialization_failed" ~message:err
               | Ok _ ->
-                  let root =
-                    Pkgs_ml.Registry_cache.package_src_dir
-                      cache
-                      ~package_name
-                      ~version:release.version
-                  in
+                  let root = Pkgs_ml.Registry_cache.package_src_dir
+                    cache
+                    ~package_name
+                    ~version:release.version in
                   let manifest_path = manifest_path root in
                   let (manifest, manifest_error) = load_manifest manifest_path in
                   Ok {
@@ -238,12 +232,16 @@ let workspace_package_info = fun ~workspace_root ~target ~load_errors (
 let resolve = fun ?registry ~local_workspace ~target () ->
   let explicit_requirement = String.contains target "@" in
   match Riot_deps.Registry_package_spec.from_string target with
-  | Error err ->
-      error ~kind:"invalid_target" ~message:(Riot_deps.Registry_package_spec.error_message err)
+  | Error err -> error
+    ~kind:"invalid_target"
+    ~message:(Riot_deps.Registry_package_spec.error_message err)
   | Ok parsed -> (
       match (explicit_requirement, local_workspace_package local_workspace parsed.name) with
-      | (false, Some (workspace, load_errors, pkg)) ->
-          workspace_package_info ~workspace_root:workspace.root ~target ~load_errors pkg
+      | (false, Some (workspace, load_errors, pkg)) -> workspace_package_info
+        ~workspace_root:workspace.root
+        ~target
+        ~load_errors
+        pkg
       | _ -> registry_package_info ?registry ~target parsed ()
     )
 
@@ -265,28 +263,43 @@ let to_json = fun info ->
     ("resolved_version", json_string_or_null info.resolved_version);
     ("root", Data.Json.String (Path.to_string info.root));
     ("relative_path", json_string_or_null info.relative_path);
-    ("workspace_root", match info.workspace_root with
-    | Some path -> Data.Json.String (Path.to_string path)
-    | None -> Data.Json.Null);
+    (
+      "workspace_root",
+      match info.workspace_root with
+      | Some path -> Data.Json.String (Path.to_string path)
+      | None -> Data.Json.Null
+    );
     ("package_path", json_string_or_null info.package_path);
     ("manifest_path", Data.Json.String (Path.to_string info.manifest_path));
-    ("manifest", match info.manifest with
-    | Some manifest -> toml_json manifest
-    | None -> Data.Json.Null);
+    (
+      "manifest",
+      match info.manifest with
+      | Some manifest -> toml_json manifest
+      | None -> Data.Json.Null
+    );
     ("manifest_error", json_string_or_null info.manifest_error);
-    ("public", match info.is_public with
-    | Some is_public -> Data.Json.Bool is_public
-    | None -> Data.Json.Null);
-    ("registry", match (info.registry_name, info.registry_root) with
-    | (Some registry_name, Some registry_root) ->
-        Data.Json.Object [
-          ("name", Data.Json.String registry_name);
-          ("root", Data.Json.String (Path.to_string registry_root));
-          ("package_path", match info.registry_package_path with
-          | Some path -> Data.Json.String (Path.to_string path)
-          | None -> Data.Json.Null);
-        ]
-    | _ -> Data.Json.Null);
+    (
+      "public",
+      match info.is_public with
+      | Some is_public -> Data.Json.Bool is_public
+      | None -> Data.Json.Null
+    );
+    (
+      "registry",
+      match (info.registry_name, info.registry_root) with
+      | (Some registry_name, Some registry_root) ->
+          Data.Json.Object [
+            ("name", Data.Json.String registry_name);
+            ("root", Data.Json.String (Path.to_string registry_root));
+            (
+              "package_path",
+              match info.registry_package_path with
+              | Some path -> Data.Json.String (Path.to_string path)
+              | None -> Data.Json.Null
+            );
+          ]
+      | _ -> Data.Json.Null
+    );
     ("description", json_string_or_null info.description);
     ("license", json_string_or_null info.license);
     ("load_errors", Data.Json.Array (List.map info.load_errors ~fn:Data.Json.string));

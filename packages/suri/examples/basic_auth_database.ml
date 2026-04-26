@@ -38,7 +38,9 @@ module DB = struct
   let verify_password = fun user password ->
     (* In real app: use bcrypt, argon2, etc. *)
     (* For demo: just check if hash matches "hash_of_" + password *)
-    String.equal user.password_hash (String.concat "" [ "hash_of_"; password ])
+    String.equal
+      user.password_hash
+      (String.concat "" [ "hash_of_"; password ])
 end
 
 (** Custom validation function *)

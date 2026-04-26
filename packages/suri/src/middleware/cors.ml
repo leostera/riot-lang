@@ -8,7 +8,9 @@ let origin_matches = fun pattern origin ->
 
 (** Check if any pattern matches the origin *)
 let is_origin_allowed = fun origins origin ->
-  List.exists (fun pattern -> origin_matches pattern origin) origins
+  List.exists
+    (fun pattern -> origin_matches pattern origin)
+    origins
 
 (** Get the origin value to send in response headers *)
 let get_response_origin = fun origins origin credentials ->

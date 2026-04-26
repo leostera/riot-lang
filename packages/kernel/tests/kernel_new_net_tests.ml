@@ -8,13 +8,16 @@ let ( let* ) value fn = Result.and_then value ~fn
 let string_of_async_error = fun error -> Kernel.Error.to_string (Kernel.Error.from_async error)
 
 let string_of_tcp_listener_error = fun error ->
-  Kernel.Error.to_string (Kernel.Error.from_net_tcp_listener error)
+  Kernel.Error.to_string
+    (Kernel.Error.from_net_tcp_listener error)
 
 let string_of_tcp_stream_error = fun error ->
-  Kernel.Error.to_string (Kernel.Error.from_net_tcp_stream error)
+  Kernel.Error.to_string
+    (Kernel.Error.from_net_tcp_stream error)
 
 let string_of_udp_error = fun error ->
-  Kernel.Error.to_string (Kernel.Error.from_net_udp_socket error)
+  Kernel.Error.to_string
+    (Kernel.Error.from_net_udp_socket error)
 
 let lift_async result =
   match result with
@@ -258,7 +261,10 @@ let with_tcp_pair_at = fun listener_addr fn -> with_poll
 let with_tcp_pair = fun fn -> with_tcp_pair_at (Kernel.Net.SocketAddr.loopback_v4 ~port:0) fn
 
 let wait_udp_readable = fun poll ~token socket ->
-  wait_readable poll ~token (Kernel.Net.UdpSocket.to_source socket)
+  wait_readable
+    poll
+    ~token
+    (Kernel.Net.UdpSocket.to_source socket)
 
 let recv_from_udp = fun poll ~token socket buffer ->
   let rec loop () =

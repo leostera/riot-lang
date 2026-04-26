@@ -130,7 +130,9 @@ let map_components = fun map_entry components -> {
 }
 
 let type_decl_key = fun (type_decl: FileSummary.type_decl) ->
-  SurfacePath.append_name type_decl.scope_path type_decl.declaration.type_name
+  SurfacePath.append_name
+    type_decl.scope_path
+    type_decl.declaration.type_name
 
 let qualify_scheme_with_local_types = fun ~root type_decls scheme ->
   if List.is_empty type_decls then

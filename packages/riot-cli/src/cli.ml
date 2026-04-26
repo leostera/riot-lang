@@ -4,49 +4,42 @@ open Std.Result.Syntax
 (** Build the static CLI. Workspace commands are resolved lazily after parse. *)
 let build_cli = fun () ->
   let open ArgParser in
-  let open ArgParser.Arg in
-  let builtin_commands = [
-    Add.command;
-    Build.command;
-    Remove.command;
-    Clean.command;
-    Completions.command;
-    Fix_cmd.command;
-    Riot_fmt.command;
-    Info_cmd.command;
-    Riot_init.command;
-    Install.command;
-    Login.command;
-    Logout.command;
-    Lsp_cmd.command;
-    New.command;
-    Publish.command;
-    Run.command;
-    Search.command;
-    Snapshots.command;
-    Test_cmd.command;
-    Bench_cmd.command;
-    Toolchain_cmd.command;
-    Upgrade.command;
-    Update_cmd.command;
-    Yank.command;
-    Doc.command;
-    command "version"
-    |> about "Show riot version";
-  ]
-  in
-  command "riot"
-  |> version (Version_info.version_string ())
-  |> about "OCaml build system and package manager"
-  |> args
-    [
-      flag "verbose"
-      |> short 'v'
-      |> long "verbose"
-      |> help "Enable verbose output"
-      |> count;
-    ]
-  |> subcommands builtin_commands
+    let open ArgParser.Arg in
+      let builtin_commands = [
+        Add.command;
+        Build.command;
+        Remove.command;
+        Clean.command;
+        Completions.command;
+        Fix_cmd.command;
+        Riot_fmt.command;
+        Info_cmd.command;
+        Riot_init.command;
+        Install.command;
+        Login.command;
+        Logout.command;
+        Lsp_cmd.command;
+        New.command;
+        Publish.command;
+        Run.command;
+        Search.command;
+        Snapshots.command;
+        Test_cmd.command;
+        Bench_cmd.command;
+        Toolchain_cmd.command;
+        Upgrade.command;
+        Update_cmd.command;
+        Yank.command;
+        Doc.command;
+        command "version" |> about "Show riot version";
+      ]
+      in
+      command "riot"
+      |> version (Version_info.version_string ())
+      |> about "OCaml build system and package manager"
+      |> args
+        [ flag "verbose" |> short 'v' |> long "verbose" |> help "Enable verbose output" |> count; ]
+      |> subcommands builtin_commands
 
 let set_verbosity = fun verbose ->
   let verbose =
@@ -63,8 +56,10 @@ let set_verbosity = fun verbose ->
 
 let path_error_message = function
   | Path.InvalidUtf8 { path } -> "invalid UTF-8 path: " ^ path
-  | Path.SystemInvalidUtf8 { syscall; path } ->
-      "system call '" ^ syscall ^ "' returned invalid UTF-8 path: " ^ path
+  | Path.SystemInvalidUtf8 { syscall; path } -> "system call '"
+  ^ syscall
+  ^ "' returned invalid UTF-8 path: "
+  ^ path
   | Path.SystemError error -> error
 
 type workspace_scan =
@@ -76,9 +71,7 @@ let cli_trace_origin = ref (Time.Instant.now ())
 
 let reset_cli_trace_origin = fun () -> cli_trace_origin := Time.Instant.now ()
 
-let cli_elapsed_us = fun () ->
-  Time.Instant.elapsed !cli_trace_origin
-  |> Time.Duration.to_micros
+let cli_elapsed_us = fun () -> Time.Instant.elapsed !cli_trace_origin |> Time.Duration.to_micros
 
 let trace_cli = fun message ->
   let _ = message in
@@ -120,7 +113,8 @@ let require_clean_workspace = fun workspace_scan_opt ->
   | Loaded (_workspace, load_errors) when List.length load_errors > 0 ->
       report_workspace_load_errors load_errors;
       Error (Failure "Workspace load failed")
-  | Loaded (workspace, _) -> Ok workspace
+  | Loaded (workspace, _) ->
+      Ok workspace
 
 let fail_not_in_workspace = fun () ->
   eprintln "❌ Not in a riot workspace";
@@ -144,10 +138,8 @@ let current_manifest_status = fun () ->
 
 let ensure_workspace = fun (workspace: Riot_model.Workspace_manifest.t) ->
   let workspace_manager = Riot_model.Workspace_manager.create () in
-  let* registry =
-    Pkgs_ml.Registry.create_filesystem ?riot_home:None ~registry_name:"pkgs.ml" ()
-    |> Result.map_err ~fn:(fun err -> Failure (Pkgs_ml.Registry_cache.create_error_message err))
-  in
+  let* registry = Pkgs_ml.Registry.create_filesystem ?riot_home:None ~registry_name:"pkgs.ml" ()
+  |> Result.map_err ~fn:(fun err -> Failure (Pkgs_ml.Registry_cache.create_error_message err)) in
   Riot_deps.ensure_workspace
     ~workspace_manager
     ~mode:Riot_deps.Dep_solver.Refresh
@@ -172,7 +164,7 @@ let try_command = fun ?workspace_scan cmd_name remaining_args ->
   | Loaded (workspace, _load_errors) -> (
       (* Parse package:command format *)
       match String.split cmd_name ~by:":" with
-      | [ package_name; command_name ] -> (
+      | [package_name;command_name] -> (
           match Riot_model.Package_name.from_string package_name with
           | Error _ -> None
           | Ok package_name -> (
@@ -181,8 +173,7 @@ let try_command = fun ?workspace_scan cmd_name remaining_args ->
               match List.find
                 commands
                 ~fn:(fun (cmd: Riot_model.Package_command.t) ->
-                  Riot_model.Package_name.equal cmd.package_name package_name
-                  && cmd.name = command_name) with
+                  Riot_model.Package_name.equal cmd.package_name package_name && cmd.name = command_name) with
               | None -> None
               | Some cmd ->
                   Log.info
@@ -207,9 +198,7 @@ let try_command = fun ?workspace_scan cmd_name remaining_args ->
                             Some (Error err)
                         | Ok () ->
                             (* Execute the command binary *)
-                            match Command_executor.execute
-                              ~command_binary:cmd.command_binary
-                              ~args:remaining_args with
+                            match Command_executor.execute ~command_binary:cmd.command_binary ~args:remaining_args with
                             | Ok () -> Some (Ok ())
                             | Error err ->
                                 Log.error ("Command execution failed: " ^ Exception.to_string err);
@@ -223,9 +212,8 @@ let try_command = fun ?workspace_scan cmd_name remaining_args ->
 
 let ensure_toolchain = fun (workspace: Riot_model.Workspace_manifest.t) ->
   (* Check toolchain before starting server to provide better error messages *)
-  let toolchain_config =
-    Riot_model.Toolchain_config.from_root ~root:workspace.Riot_model.Workspace_manifest.root
-  in
+  let toolchain_config = Riot_model.Toolchain_config.from_root
+    ~root:workspace.Riot_model.Workspace_manifest.root in
   match Riot_toolchain.init ~config:toolchain_config with
   | Ok _ -> Ok ()
   | Error msg ->
@@ -236,7 +224,8 @@ let ensure_toolchain = fun (workspace: Riot_model.Workspace_manifest.t) ->
 
 let initialize_runtime = fun () ->
   (* Load config BEFORE starting logger - handlers need config *)
-  Std.Config.load_string {|
+  Std.Config.load_string
+    {|
 [[log.handler]]
 type = "stdout"
 format = "full"
@@ -263,7 +252,8 @@ let render_init_event = function
       println "";
       println ("Creating workspace '" ^ name ^ "' in '" ^ Path.to_string target_dir ^ "'");
       println ""
-  | Riot_init.ScaffoldCreated { path } -> println ("✓ Created " ^ path)
+  | Riot_init.ScaffoldCreated { path } ->
+      println ("✓ Created " ^ path)
   | Riot_init.WorkspaceInitializationCompleted { next_steps; package_hints } ->
       println "";
       println "✓ Workspace initialized successfully!";
@@ -271,8 +261,7 @@ let render_init_event = function
       println "Next steps:";
       List.for_each next_steps ~fn:(fun step -> println ("  " ^ step));
       println "";
-      List.enumerate package_hints
-      |> List.for_each
+      List.enumerate package_hints |> List.for_each
         ~fn:(fun (idx, (kind, command)) ->
           if idx > 0 then
             println "";
@@ -298,16 +287,14 @@ let run = fun ~args ->
         let workspace_scan = scan_workspace () in
         let () =
           match workspace_scan with
-          | Loaded (workspace, load_errors) ->
-              trace_cli
-                ("scan-workspace-loaded packages="
-                ^ Int.to_string (List.length workspace.packages)
-                ^ " load_errors="
-                ^ Int.to_string (List.length load_errors))
+          | Loaded (workspace, load_errors) -> trace_cli
+            ("scan-workspace-loaded packages="
+            ^ Int.to_string (List.length workspace.packages)
+            ^ " load_errors="
+            ^ Int.to_string (List.length load_errors))
           | NoWorkspace -> trace_cli "scan-workspace-no-workspace"
-          | ScanFailed err ->
-              trace_cli
-                ("scan-workspace-failed reason=" ^ Info_cmd.workspace_scan_error_message err)
+          | ScanFailed err -> trace_cli
+            ("scan-workspace-failed reason=" ^ Info_cmd.workspace_scan_error_message err)
         in
         let _ =
           workspace_scan_cache := Some workspace_scan
@@ -317,7 +304,8 @@ let run = fun ~args ->
   in
   (* Check if first arg is a package command (format: package:command) before ArgParser *)
   match normalized_args with
-  | _ :: "completions" :: "install" :: rest -> Completions.run_install_args rest
+  | _ :: "completions" :: "install" :: rest ->
+      Completions.run_install_args rest
   | _ :: cmd :: rest when String.contains cmd ":" -> (
       (* This looks like a package command, try to execute it directly *)
       match try_command ?workspace_scan:(Some get_workspace_scan) cmd rest with
@@ -377,12 +365,15 @@ let run = fun ~args ->
                     let _ = workspace in
                     (None, Some (workspace_load_error_message load_errors))
                   )
-                | NoWorkspace -> (None, None)
-                | ScanFailed err -> (None, Some (Info_cmd.workspace_scan_error_message err))
+                | NoWorkspace ->
+                    (None, None)
+                | ScanFailed err ->
+                    (None, Some (Info_cmd.workspace_scan_error_message err))
               in
               Run.run_with_workspace_info ~workspace ~workspace_error run_matches
             )
-          | Some ("search", search_matches) -> Search.run search_matches
+          | Some ("search", search_matches) ->
+              Search.run search_matches
           | Some ("snapshots", snapshots_matches) -> (
               match require_clean_workspace (get_workspace_scan ()) with
               | Ok workspace -> (
@@ -425,11 +416,14 @@ let run = fun ~args ->
                   | Error _ as e -> e
                   | Ok workspace -> Add.run ~workspace add_matches
                 )
-              | Loaded (workspace, _) -> Add.run ~workspace add_matches
+              | Loaded (workspace, _) ->
+                  Add.run ~workspace add_matches
               | NoWorkspace -> (
                   match current_manifest_status () with
-                  | Ok (Missing_manifest cwd) -> Add.run_without_workspace ~cwd add_matches
-                  | Ok (Existing_manifest _) -> fail_not_in_workspace ()
+                  | Ok (Missing_manifest cwd) ->
+                      Add.run_without_workspace ~cwd add_matches
+                  | Ok (Existing_manifest _) ->
+                      fail_not_in_workspace ()
                   | Error err ->
                       eprintln ("\027[1;31mError\027[0m: " ^ err);
                       Error (Failure err)
@@ -447,11 +441,14 @@ let run = fun ~args ->
                   | Error _ as e -> e
                   | Ok workspace -> Remove.run ~workspace remove_matches
                 )
-              | Loaded (workspace, _) -> Remove.run ~workspace remove_matches
+              | Loaded (workspace, _) ->
+                  Remove.run ~workspace remove_matches
               | NoWorkspace -> (
                   match current_manifest_status () with
-                  | Ok (Missing_manifest _) -> Remove.run_without_workspace remove_matches
-                  | Ok (Existing_manifest _) -> fail_not_in_workspace ()
+                  | Ok (Missing_manifest _) ->
+                      Remove.run_without_workspace remove_matches
+                  | Ok (Existing_manifest _) ->
+                      fail_not_in_workspace ()
                   | Error err ->
                       eprintln ("\027[1;31mError\027[0m: " ^ err);
                       Error (Failure err)
@@ -467,9 +464,7 @@ let run = fun ~args ->
               let workspace =
                 if List.is_empty explicit_paths then
                   match get_workspace_scan () with
-                  | Loaded (workspace, _load_errors) ->
-                      ensure_workspace workspace
-                      |> Result.to_option
+                  | Loaded (workspace, _load_errors) -> ensure_workspace workspace |> Result.to_option
                   | NoWorkspace
                   | ScanFailed _ -> None
                 else
@@ -497,26 +492,33 @@ let run = fun ~args ->
           | Some ("doc", doc_matches) ->
               let workspace =
                 match get_workspace_scan () with
-                | Loaded (workspace, load_errors) when List.is_empty load_errors ->
-                    ensure_workspace workspace
-                    |> Result.to_option
+                | Loaded (workspace, load_errors) when List.is_empty load_errors -> ensure_workspace
+                  workspace
+                |> Result.to_option
                 | _ -> None
               in
               (
                 match workspace with
-                | Some workspace ->
-                    Doc.run ~workspace doc_matches
-                    |> Result.map_err ~fn:(fun err -> Failure err)
+                | Some workspace -> Doc.run ~workspace doc_matches
+                |> Result.map_err ~fn:(fun err -> Failure err)
                 | None -> fail_not_in_workspace ()
               )
-          | Some ("completions", completions_matches) -> Completions.run completions_matches
-          | Some ("fix", fix_matches) -> Fix_cmd.run fix_matches
-          | Some ("login", login_matches) -> Login.run login_matches
-          | Some ("logout", logout_matches) -> Logout.run logout_matches
-          | Some ("lsp", lsp_matches) -> Lsp_cmd.run lsp_matches
-          | Some ("yank", yank_matches) -> Yank.run yank_matches
-          | Some ("init", init_matches) -> Riot_init.run ~on_event:render_init_event init_matches
-          | Some ("new", new_matches) -> New.run new_matches
+          | Some ("completions", completions_matches) ->
+              Completions.run completions_matches
+          | Some ("fix", fix_matches) ->
+              Fix_cmd.run fix_matches
+          | Some ("login", login_matches) ->
+              Login.run login_matches
+          | Some ("logout", logout_matches) ->
+              Logout.run logout_matches
+          | Some ("lsp", lsp_matches) ->
+              Lsp_cmd.run lsp_matches
+          | Some ("yank", yank_matches) ->
+              Yank.run yank_matches
+          | Some ("init", init_matches) ->
+              Riot_init.run ~on_event:render_init_event init_matches
+          | Some ("new", new_matches) ->
+              New.run new_matches
           | Some ("publish", publish_matches) -> (
               match require_clean_workspace (get_workspace_scan ()) with
               | Ok workspace -> (
@@ -539,8 +541,10 @@ let run = fun ~args ->
                     let _ = workspace in
                     (None, Some (workspace_load_error_message load_errors))
                   )
-                | NoWorkspace -> (None, None)
-                | ScanFailed err -> (None, Some (Info_cmd.workspace_scan_error_message err))
+                | NoWorkspace ->
+                    (None, None)
+                | ScanFailed err ->
+                    (None, Some (Info_cmd.workspace_scan_error_message err))
               in
               Install.run_with_workspace_info ~workspace ~workspace_error install_matches
             )
@@ -551,11 +555,14 @@ let run = fun ~args ->
                   | Error _ as e -> e
                   | Ok workspace -> Update_cmd.run ~workspace update_matches
                 )
-              | Loaded (workspace, _) -> Update_cmd.run ~workspace update_matches
+              | Loaded (workspace, _) ->
+                  Update_cmd.run ~workspace update_matches
               | NoWorkspace -> (
                   match current_manifest_status () with
-                  | Ok (Missing_manifest _) -> Update_cmd.run_without_workspace update_matches
-                  | Ok (Existing_manifest _) -> fail_not_in_workspace ()
+                  | Ok (Missing_manifest _) ->
+                      Update_cmd.run_without_workspace update_matches
+                  | Ok (Existing_manifest _) ->
+                      fail_not_in_workspace ()
                   | Error err ->
                       eprintln ("\027[1;31mError\027[0m: " ^ err);
                       Error (Failure err)
@@ -566,12 +573,15 @@ let run = fun ~args ->
                   | Ok workspace -> Update_cmd.run ~workspace update_matches
                 )
             )
-          | Some ("toolchain", toolchain_matches) -> Toolchain_cmd.run toolchain_matches
-          | Some ("upgrade", upgrade_matches) -> Upgrade.run upgrade_matches
+          | Some ("toolchain", toolchain_matches) ->
+              Toolchain_cmd.run toolchain_matches
+          | Some ("upgrade", upgrade_matches) ->
+              Upgrade.run upgrade_matches
           | Some ("version", _) ->
               println (Version_info.version_string ());
               Ok ()
-          | None -> Ok ()
+          | None ->
+              Ok ()
           | Some (cmd, _matches) -> (
               (* Check if this is a package command *)
               (* Extract remaining args after the command name *)

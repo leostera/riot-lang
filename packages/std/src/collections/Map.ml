@@ -787,7 +787,11 @@ module Make (Order: Std_order.Ordered) = struct
     fun map -> loop [] map
 
   let from_list = fun entries ->
-    List.fold_left entries ~acc:empty ~fn:(fun map (key, value) -> insert map ~key ~value)
+    List.fold_left
+      entries
+      ~acc:empty
+      ~fn:(fun map (key, value) ->
+        insert map ~key ~value)
 
   let all = fun map ~fn -> fold_left map ~init:true ~fn:(fun acc key value -> acc && fn key value)
 

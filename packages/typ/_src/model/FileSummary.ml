@@ -52,7 +52,11 @@ let partial = fun ~source_id ?(type_decls = []) ?exports () ->
 let trusted = fun ~source_id ?(type_decls = []) exports -> complete ~source_id ~type_decls exports
 
 let errored = fun ~source_id ?(type_decls = []) exports ->
-  partial ~source_id ~type_decls ~exports ()
+  partial
+    ~source_id
+    ~type_decls
+    ~exports
+    ()
 
 let missing = fun ~source_id ?(type_decls = []) () -> partial ~source_id ~type_decls ()
 

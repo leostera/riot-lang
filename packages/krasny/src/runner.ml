@@ -41,19 +41,10 @@ type run_result = {
 }
 
 type Message.t +=
-  | ScannerDiscovered of {
-      scanner_ref: unit Ref.t;
-      file: Path.t;
-    }
+  | ScannerDiscovered of { scanner_ref: unit Ref.t; file: Path.t }
   | ScannerComplete of unit Ref.t
-  | DispatchFileChecked of {
-      result_ref: file_result Ref.t;
-      result: file_result;
-    }
-  | StreamFileResult of {
-      run_ref: unit Ref.t;
-      result: file_result;
-    }
+  | DispatchFileChecked of { result_ref: file_result Ref.t; result: file_result }
+  | StreamFileResult of { run_ref: unit Ref.t; result: file_result }
   | StreamCompleted of unit Ref.t
 
 let is_ocaml_source = fun path ->
@@ -66,7 +57,8 @@ let should_skip_directory = fun path ->
   || String.equal basename "_build"
   || String.equal basename "target"
 
-let compare_paths = fun left right -> String.compare (Path.to_string left) (Path.to_string right)
+let compare_paths = fun left right ->
+  String.compare (Path.to_string left) (Path.to_string right)
 
 let walk_action = fun ~should_ignore ~seen (entry: Fs.Walker.FileItem.t) on_file ->
   let path = Fs.Walker.FileItem.path entry in
@@ -87,14 +79,14 @@ let walk_action = fun ~should_ignore ~seen (entry: Fs.Walker.FileItem.t) on_file
             on_file path;
           Fs.Walker.Continue
       | Symlink
-      | Other -> Fs.Walker.Continue
+      | Other ->
+          Fs.Walker.Continue
     )
 
 let make_walker = fun ~roots ~should_ignore ->
   match Fs.Walker.create ~roots () with
   | Ok walker ->
-      Fs.Walker.filter_entry
-        walker
+      Fs.Walker.filter_entry walker
         ~f:(fun (entry: Fs.Walker.FileItem.t) ->
           let path = Fs.Walker.FileItem.path entry in
           not (should_skip_directory path || should_ignore path))
@@ -103,22 +95,21 @@ let make_walker = fun ~roots ~should_ignore ->
 let collect_ocaml_files = fun ?(should_ignore = fun _ -> false) ~roots () ->
   let seen = HashSet.create () in
   let files = ref [] in
-  let iter =
-    make_walker ~roots ~should_ignore
-    |> Fs.Walker.into_iter
-  in
+  let iter = make_walker ~roots ~should_ignore |> Fs.Walker.into_iter in
   let rec loop iter =
     match Iterator.next iter with
-    | (None, _) -> ()
-    | (Some (Error _), iter') -> loop iter'
+    | (None, _) ->
+        ()
+    | (Some (Error _), iter') ->
+        loop iter'
     | (Some (Ok (entry: Fs.Walker.FileItem.t)), iter') ->
-        let _ = walk_action ~should_ignore ~seen entry (fun path -> files := path :: !files) in
+        let _ =
+          walk_action ~should_ignore ~seen entry (fun path -> files := path :: !files)
+        in
         loop iter'
   in
   loop iter;
-  !files
-  |> List.sort ~compare:compare_paths
-  |> List.unique ~compare:compare_paths
+  !files |> List.sort ~compare:compare_paths |> List.unique ~compare:compare_paths
 
 let syntax_hash = fun (result: Syn.Parser.parse_result) ->
   let module Ast = Syn.Ast in
@@ -156,16 +147,20 @@ let syntax_hash = fun (result: Syn.Parser.parse_result) ->
     let token_text = Ast.Token.text token in
     match parent_kind with
     | Some Kind.PAREN_EXPR -> String.equal token_text "(" || String.equal token_text ")"
-    | Some Kind.LIST_EXPR ->
-        String.equal token_text "[" || String.equal token_text "]" || String.equal token_text ";"
-    | Some Kind.LIST_PATTERN ->
-        String.equal token_text "[" || String.equal token_text "]" || String.equal token_text ";"
+    | Some Kind.LIST_EXPR -> String.equal token_text "["
+    || String.equal token_text "]"
+    || String.equal token_text ";"
+    | Some Kind.LIST_PATTERN -> String.equal token_text "["
+    || String.equal token_text "]"
+    || String.equal token_text ";"
     | Some Kind.TUPLE_EXPR -> String.equal token_text "(" || String.equal token_text ")"
     | Some Kind.TUPLE_PATTERN -> String.equal token_text "(" || String.equal token_text ")"
-    | Some Kind.ARRAY_EXPR ->
-        String.equal token_text "[|" || String.equal token_text "|]" || String.equal token_text ";"
-    | Some Kind.ARRAY_PATTERN ->
-        String.equal token_text "[|" || String.equal token_text "|]" || String.equal token_text ";"
+    | Some Kind.ARRAY_EXPR -> String.equal token_text "[|"
+    || String.equal token_text "|]"
+    || String.equal token_text ";"
+    | Some Kind.ARRAY_PATTERN -> String.equal token_text "[|"
+    || String.equal token_text "|]"
+    || String.equal token_text ";"
     | Some Kind.RECORD_EXPR
     | Some Kind.RECORD_UPDATE_EXPR
     | Some Kind.RECORD_PATTERN
@@ -179,8 +174,7 @@ let syntax_hash = fun (result: Syn.Parser.parse_result) ->
   in
   let tuple_node_has_paren_token node =
     let found = ref false in
-    Ast.Node.for_each_child
-      node
+    Ast.Node.for_each_child node
       ~fn:(fun child ->
         match child with
         | Syn.SyntaxTree.Token id ->
@@ -195,8 +189,7 @@ let syntax_hash = fun (result: Syn.Parser.parse_result) ->
   let redundant_paren_child node =
     let meaningful_child = ref None in
     let meaningful_count = ref 0 in
-    Ast.Node.for_each_child
-      node
+    Ast.Node.for_each_child node
       ~fn:(fun child ->
         match child with
         | Syn.SyntaxTree.Token id ->
@@ -223,8 +216,7 @@ let syntax_hash = fun (result: Syn.Parser.parse_result) ->
   let trailing_sequence_child node =
     let meaningful_child = ref None in
     let meaningful_count = ref 0 in
-    Ast.Node.for_each_child
-      node
+    Ast.Node.for_each_child node
       ~fn:(fun child ->
         match child with
         | Syn.SyntaxTree.Token id ->
@@ -254,11 +246,10 @@ let syntax_hash = fun (result: Syn.Parser.parse_result) ->
             let char = String.get_unchecked text ~at:index in
             if at_line_start && (Char.equal char ' ' || Char.equal char '\t') then
               write_text (Int.succ index) true
-            else
-              (
-                IO.Buffer.add_char trivia_buffer char;
-                write_text (Int.succ index) (Char.equal char '\n')
-              )
+            else (
+              IO.Buffer.add_char trivia_buffer char;
+              write_text (Int.succ index) (Char.equal char '\n')
+            )
         in
         write_text 0 true;
         IO.Buffer.add_string trivia_buffer ")"
@@ -280,8 +271,7 @@ let syntax_hash = fun (result: Syn.Parser.parse_result) ->
     IO.Buffer.add_string buffer (Ast.Token.text token);
     IO.Buffer.add_string buffer ")"
   and write_redundant_paren node =
-    Ast.Node.for_each_child
-      node
+    Ast.Node.for_each_child node
       ~fn:(fun child ->
         match child with
         | Syn.SyntaxTree.Token id ->
@@ -289,19 +279,22 @@ let syntax_hash = fun (result: Syn.Parser.parse_result) ->
             let token_text = Ast.Token.text token in
             if String.equal token_text "(" || String.equal token_text ")" then
               write_token_trivia token
-        | Syn.SyntaxTree.Node _ -> write_child ~parent_kind:(Some Kind.PAREN_EXPR) child
-        | Syn.SyntaxTree.Missing _ -> ())
+        | Syn.SyntaxTree.Node _ ->
+            write_child ~parent_kind:(Some Kind.PAREN_EXPR) child
+        | Syn.SyntaxTree.Missing _ ->
+            ())
   and write_trailing_sequence node =
-    Ast.Node.for_each_child
-      node
+    Ast.Node.for_each_child node
       ~fn:(fun child ->
         match child with
         | Syn.SyntaxTree.Token id ->
             let token: Ast.Token.t = { tree = result.tree; id } in
             if String.equal (Ast.Token.text token) ";" then
               write_token_trivia token
-        | Syn.SyntaxTree.Node _ -> write_child ~parent_kind:(Some Kind.SEQUENCE_EXPR) child
-        | Syn.SyntaxTree.Missing _ -> ())
+        | Syn.SyntaxTree.Node _ ->
+            write_child ~parent_kind:(Some Kind.SEQUENCE_EXPR) child
+        | Syn.SyntaxTree.Missing _ ->
+            ())
   and write_child ~parent_kind = function
     | Syn.SyntaxTree.Node id ->
         let node: Ast.Node.t = { tree = result.tree; id } in
@@ -310,8 +303,9 @@ let syntax_hash = fun (result: Syn.Parser.parse_result) ->
           match parent_kind with
           | Some parent_kind when Kind.(parent_kind = node_kind)
           && is_tuple_kind node_kind
-          && not (tuple_node_has_paren_token node) ->
-              Ast.Node.for_each_child node ~fn:(write_child ~parent_kind:(Some node_kind))
+          && not (tuple_node_has_paren_token node) -> Ast.Node.for_each_child
+            node
+            ~fn:(write_child ~parent_kind:(Some node_kind))
           | _ -> write_element (Syn.SyntaxTree.Node id)
         )
     | Syn.SyntaxTree.Token id ->
@@ -337,7 +331,8 @@ let syntax_hash = fun (result: Syn.Parser.parse_result) ->
           | None -> write_node node
         else
           write_node node
-    | Syn.SyntaxTree.Token id -> write_token (({ tree = result.tree; id }: Ast.Token.t))
+    | Syn.SyntaxTree.Token id ->
+        write_token (({ tree = result.tree; id }: Ast.Token.t))
     | Syn.SyntaxTree.Missing missing ->
         IO.Buffer.add_string buffer "M(";
         write_kind missing.kind;
@@ -346,9 +341,7 @@ let syntax_hash = fun (result: Syn.Parser.parse_result) ->
   write_node (Ast.root result.tree);
   IO.Buffer.add_string buffer "|TRIVIA|";
   IO.Buffer.add_string buffer (IO.Buffer.contents trivia_buffer);
-  IO.Buffer.contents buffer
-  |> Crypto.Sha256.hash_string
-  |> Crypto.Digest.hex
+  IO.Buffer.contents buffer |> Crypto.Sha256.hash_string |> Crypto.Digest.hex
 
 let vector_to_list = fun vector ->
   let items = ref [] in
@@ -368,13 +361,12 @@ let finalize = fun file start ~status ~needs_formatting ~error ->
 let format_file = fun ~mode file ->
   let start = Time.Instant.now () in
   match Fs.read file with
-  | Error _ ->
-      finalize
-        file
-        start
-        ~status:Failed
-        ~needs_formatting:false
-        ~error:(Some ("Failed to read " ^ Path.to_string file))
+  | Error _ -> finalize
+    file
+    start
+    ~status:Failed
+    ~needs_formatting:false
+    ~error:(Some ("Failed to read " ^ Path.to_string file))
   | Ok source ->
       let parsed = Format_core.parse_source ~filename:file source in
       match Format_core.stream_format_to_string parsed ~width:100 with
@@ -405,15 +397,13 @@ let format_file = fun ~mode file ->
                       ^ ")"))
               | Format -> (
                   match Fs.write formatted file with
-                  | Ok () ->
-                      finalize file start ~status:Formatted ~needs_formatting:false ~error:None
-                  | Error err ->
-                      finalize
-                        file
-                        start
-                        ~status:Failed
-                        ~needs_formatting:false
-                        ~error:(Some (IO.error_message err))
+                  | Ok () -> finalize file start ~status:Formatted ~needs_formatting:false ~error:None
+                  | Error err -> finalize
+                    file
+                    start
+                    ~status:Failed
+                    ~needs_formatting:false
+                    ~error:(Some (IO.error_message err))
                 )
           in
           result
@@ -429,8 +419,8 @@ let format_file = fun ~mode file ->
               start
               ~status:Failed
               ~needs_formatting:false
-              ~error:(Some (Format_core.format_error_to_string err))) with
-            diagnostics;
+              ~error:(Some (Format_core.format_error_to_string err)))
+            with diagnostics
           }
 
 let check_file = fun file -> format_file ~mode:Check file
@@ -446,25 +436,17 @@ type scanner_state = {
 
 let start_scanner = fun ~owner ~roots ~scanner_ref ~should_ignore ->
   let seen = HashSet.create () in
-  let state = {
-    owner;
-    scanner_ref;
-    should_ignore;
-    seen;
-  }
-  in
+  let state = { owner; scanner_ref; should_ignore; seen } in
   spawn
     (fun () ->
-      let iter =
-        make_walker ~roots ~should_ignore
-        |> Fs.Walker.into_iter
-      in
+      let iter = make_walker ~roots ~should_ignore |> Fs.Walker.into_iter in
       let rec loop iter =
         match Iterator.next iter with
         | (None, _) ->
             send state.owner (ScannerComplete state.scanner_ref);
             Ok ()
-        | (Some (Error _), iter') -> loop iter'
+        | (Some (Error _), iter') ->
+            loop iter'
         | (Some (Ok (entry: Fs.Walker.FileItem.t)), iter') ->
             let _ =
               walk_action
@@ -494,14 +476,8 @@ let dispatch_ready_workers = fun state ->
   let rec loop () =
     match (Queue.front state.idle_workers, Queue.front state.pending_files) with
     | (Some _, Some _) ->
-        let worker =
-          Queue.pop state.idle_workers
-          |> Option.expect ~msg:"idle worker should exist"
-        in
-        let file =
-          Queue.pop state.pending_files
-          |> Option.expect ~msg:"pending file should exist"
-        in
+        let worker = Queue.pop state.idle_workers |> Option.expect ~msg:"idle worker should exist" in
+        let file = Queue.pop state.pending_files |> Option.expect ~msg:"pending file should exist" in
         state.tasks_in_flight <- state.tasks_in_flight + 1;
         WorkerPool.DynamicWorkerPool.send_task state.pool worker file;
         loop ()
@@ -519,8 +495,7 @@ let rec dispatch_loop = fun state ->
       Ok ()
     )
   else
-    let selector:
-      ([
+    let selector: ([
         | `WorkerReady of Path.t WorkerPool.DynamicWorkerPool.worker
         | `ScannerDiscovered of Path.t
         | `ScannerComplete
@@ -585,8 +560,7 @@ let start_dispatcher = fun ~owner ~run_ref ~concurrency ~roots ~should_ignore ~c
   dispatch_loop state
 
 let summarize = fun ~duration files ->
-  List.fold_left
-    files
+  List.fold_left files
     ~init:{
       total_files = 0;
       already_formatted = 0;
@@ -599,40 +573,35 @@ let summarize = fun ~duration files ->
     }
     ~fn:(fun acc result ->
       match result.status with
-      | Failed ->
-          { acc with total_files = acc.total_files + 1; failed_files = acc.failed_files + 1 }
-      | Needs_formatting ->
-          {
-            acc with
-            total_files = acc.total_files + 1;
-            needs_formatting = acc.needs_formatting + 1;
-          }
-      | Would_reformat ->
-          {
-            acc with
-            total_files = acc.total_files + 1;
-            would_reformat = acc.would_reformat + 1;
-          }
-      | Unsafe_to_format ->
-          {
-            acc with
-            total_files = acc.total_files + 1;
-            unsafe_to_format = acc.unsafe_to_format + 1;
-          }
-      | Formatted ->
-          {
-            acc with
-            total_files = acc.total_files + 1;
-            formatted_files = acc.formatted_files + 1;
-          }
-      | Already_formatted ->
-          {
-            acc with
-            total_files = acc.total_files + 1;
-            already_formatted = acc.already_formatted + 1;
-          })
+      | Failed -> { acc with total_files = acc.total_files + 1; failed_files = acc.failed_files + 1 }
+      | Needs_formatting -> {
+        acc
+        with total_files = acc.total_files + 1;
+        needs_formatting = acc.needs_formatting + 1
+      }
+      | Would_reformat -> {
+        acc
+        with total_files = acc.total_files + 1;
+        would_reformat = acc.would_reformat + 1
+      }
+      | Unsafe_to_format -> {
+        acc
+        with total_files = acc.total_files + 1;
+        unsafe_to_format = acc.unsafe_to_format + 1
+      }
+      | Formatted -> {
+        acc
+        with total_files = acc.total_files + 1;
+        formatted_files = acc.formatted_files + 1
+      }
+      | Already_formatted -> {
+        acc
+        with total_files = acc.total_files + 1;
+        already_formatted = acc.already_formatted + 1
+      })
 
-let run_streaming = fun ~mode ?(concurrency = Thread.available_parallelism) ?(should_ignore = fun _ -> false) ~roots ~on_result () ->
+let run_streaming = fun ~mode ?(concurrency = Thread.available_parallelism) ?(should_ignore = fun _ ->
+  false) ~roots ~on_result () ->
   let concurrency = max 1 concurrency in
   let run_ref = Ref.make () in
   let owner = self () in
@@ -647,9 +616,11 @@ let run_streaming = fun ~mode ?(concurrency = Thread.available_parallelism) ?(sh
     spawn (fun () -> start_dispatcher ~owner ~run_ref ~concurrency ~roots ~should_ignore ~check_fn)
   in
   let rec collect results_rev =
-    let selector: ([`FileResult of file_result | `Completed]) selector = function
-      | StreamFileResult { run_ref = msg_ref; result } when Ref.equal run_ref msg_ref ->
-          `select (`FileResult result)
+    let selector: ([
+        `FileResult of file_result
+        | `Completed
+      ]) selector = function
+      | StreamFileResult { run_ref=msg_ref; result } when Ref.equal run_ref msg_ref -> `select (`FileResult result)
       | StreamCompleted msg_ref when Ref.equal run_ref msg_ref -> `select `Completed
       | _ -> `skip
     in
@@ -682,16 +653,10 @@ let run_batch = fun ~mode ?(concurrency = Thread.available_parallelism) ?(should
     | Verify -> verify_file
     | Format -> format_file ~mode:Format
   in
-  let files =
-    files
-    |> List.filter ~fn:(fun path -> not (should_ignore path))
-    |> List.sort ~compare:compare_paths
-  in
-  let results =
-    WorkerPool.SimpleWorkerPool.run ~concurrency ~tasks:files ~fn:check_fn ()
-    |> List.map ~fn:(fun (_, result) -> result)
-    |> List.sort ~compare:(fun left right -> compare_paths left.file right.file)
-  in
+  let files = files |> List.filter ~fn:(fun path -> not (should_ignore path)) |> List.sort ~compare:compare_paths in
+  let results = WorkerPool.SimpleWorkerPool.run ~concurrency ~tasks:files ~fn:check_fn ()
+  |> List.map ~fn:(fun (_, result) -> result)
+  |> List.sort ~compare:(fun left right -> compare_paths left.file right.file) in
   let duration = Time.Instant.elapsed start in
   { files = results; summary = summarize ~duration results }
 

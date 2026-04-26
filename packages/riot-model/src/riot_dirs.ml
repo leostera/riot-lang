@@ -141,41 +141,25 @@ let sandbox_dir = fun ~workspace_root ->
 
 module Tests = struct
   let test_package_lock_path (): (unit, string) result =
-    let actual =
-      package_lock_path ~workspace_root:(Path.v "/tmp/workspace")
-      |> Path.to_string
-    in
+    let actual = package_lock_path ~workspace_root:(Path.v "/tmp/workspace") |> Path.to_string in
     if String.equal actual "/tmp/workspace/riot.lock" then
       Ok ()
     else
       Error ("expected root riot.lock path, got " ^ actual) [@test]
 
   let test_workspace_target_dirs_use_custom_target_dir_root (): (unit, string) result =
-    let workspace =
-      Workspace.make ~root:(Path.v "/tmp/workspace") ~target_dir:"build-out" ~packages:[] ()
-    in
+    let workspace = Workspace.make
+      ~root:(Path.v "/tmp/workspace")
+      ~target_dir:"build-out"
+      ~packages:[]
+      () in
     let target = host_target () in
     let expected_target_dir = "/tmp/workspace/build-out/release/" ^ Target.to_string target in
-    let target_dir =
-      target_dir_in_workspace ~workspace ~profile:"release" ~target
-      |> Path.to_string
-    in
-    let out_dir =
-      out_dir_in_workspace ~workspace ~profile:"release" ~target
-      |> Path.to_string
-    in
-    let sandbox_dir =
-      sandbox_dir_in_workspace ~workspace ~profile:"release" ~target
-      |> Path.to_string
-    in
-    let cache_dir =
-      cache_dir_in_workspace ~workspace ~profile:"release" ~target
-      |> Path.to_string
-    in
-    let lock_path =
-      build_lock_path_in_workspace ~workspace ~profile:"release" ~target
-      |> Path.to_string
-    in
+    let target_dir = target_dir_in_workspace ~workspace ~profile:"release" ~target |> Path.to_string in
+    let out_dir = out_dir_in_workspace ~workspace ~profile:"release" ~target |> Path.to_string in
+    let sandbox_dir = sandbox_dir_in_workspace ~workspace ~profile:"release" ~target |> Path.to_string in
+    let cache_dir = cache_dir_in_workspace ~workspace ~profile:"release" ~target |> Path.to_string in
+    let lock_path = build_lock_path_in_workspace ~workspace ~profile:"release" ~target |> Path.to_string in
     if not (String.equal target_dir expected_target_dir) then
       Error ("expected custom target dir root, got " ^ target_dir)
     else if not (String.equal out_dir (expected_target_dir ^ "/out")) then

@@ -1,5 +1,4 @@
 open Std
-
 module Buffer = IO.Buffer
 module Array = Collections.Array
 
@@ -23,8 +22,7 @@ let random_float = fun rnd bound -> sample (Random.float ~rng:rnd bound)
 
 let random_bool = fun rnd -> sample (Random.bool ~rng:rnd ())
 
-let random_int_range = fun rnd ~low ~high ->
-  sample (Random.int_range ~rng:rnd ~min:low ~max:high ())
+let random_int_range = fun rnd ~low ~high -> sample (Random.int_range ~rng:rnd ~min:low ~max:high ())
 
 let random_int32_range = fun rnd ~low ~high ->
   sample (Random.int32_range ~rng:rnd ~min:low ~max:high ())
@@ -56,29 +54,22 @@ let build_string = fun rnd size char_gen len ->
   let rec loop remaining =
     if remaining <= 0 then
       Buffer.contents buffer
-    else
-      (
-        Buffer.add_char buffer (char_gen.run rnd size);
-        loop (remaining - 1)
-      )
+    else (
+      Buffer.add_char buffer (char_gen.run rnd size);
+      loop (remaining - 1)
+    )
   in
   loop len
 
 (* === CONSTANTS === *)
 
-let return = fun v ->
-  {
-    run = (fun _rnd _size -> v);
-  }
+let return = fun v -> { run = (fun _rnd _size -> v) }
 
 let exactly = return
 
 (* === TRANSFORMATIONS === *)
 
-let map = fun f gen ->
-  {
-    run = (fun rnd size -> f (gen.run rnd size));
-  }
+let map = fun f gen -> { run = (fun rnd size -> f (gen.run rnd size)) }
 
 let map2 = fun f gen1 gen2 ->
   {
@@ -137,9 +128,9 @@ let frequency = fun weighted_gens ->
           let (weight, _) = Array.get_unchecked choices ~at:index in
           if weight <= 0 then
             invalid_arg "Generator.frequency: non-positive weight";
-        let total = total + weight in
-        Array.set_unchecked cumulative ~at:index ~value:total;
-        populate (index + 1) total
+          let total = total + weight in
+          Array.set_unchecked cumulative ~at:index ~value:total;
+          populate (index + 1) total
       in
       let total_weight = populate 0 0 in
       {
@@ -164,42 +155,33 @@ let frequency = fun weighted_gens ->
 
 (* === SIZE CONTROL === *)
 
-let sized = fun f ->
-  {
-    run = (fun rnd size -> (f size).run rnd size);
-  }
+let sized = fun f -> { run = (fun rnd size -> (f size).run rnd size) }
 
 let resize = fun new_size gen ->
   {
-    run = (fun rnd _size -> gen.run rnd new_size);
+    run =
+      (fun rnd _size ->
+        gen.run rnd new_size);
   }
 
 (* === RECURSIVE GENERATORS === *)
 
-let delay = fun f ->
-  {
-    run = (fun rnd size -> (f ()).run rnd size);
-  }
+let delay = fun f -> { run = (fun rnd size -> (f ()).run rnd size) }
 
 let fix = fun f ->
   let rec self n = f self n in
-  fun n ->
-    {
-      run = (fun rnd size -> (self n).run rnd size);
-    }
+  fun n -> { run = (fun rnd size -> (self n).run rnd size) }
 
 (* === PRIMITIVE GENERATORS === *)
 
-let int = {
-  run = (fun rnd _size -> random_int_range rnd ~low:Int.min_int ~high:Int.max_int);
-}
+let int = { run = (fun rnd _size -> random_int_range rnd ~low:Int.min_int ~high:Int.max_int) }
 
 let int32 = {
-  run = (fun rnd _size -> random_int32_range rnd ~low:Int32.min_int ~high:Int32.max_int);
+  run = (fun rnd _size -> random_int32_range rnd ~low:Int32.min_int ~high:Int32.max_int)
 }
 
 let int64 = {
-  run = (fun rnd _size -> random_int64_range rnd ~low:Int64.min_int ~high:Int64.max_int);
+  run = (fun rnd _size -> random_int64_range rnd ~low:Int64.min_int ~high:Int64.max_int)
 }
 
 let int_range = fun low high ->
@@ -258,28 +240,21 @@ let non_zero_int =
 
 (* Floats *)
 
-let float = {
-  run = (fun rnd _size -> random_float_range rnd ~low:(-.1_000_000.0) ~high:1_000_000.0);
-}
+let float = { run = (fun rnd _size -> random_float_range rnd ~low:(-.1000000.0) ~high:1000000.0) }
 
 let float_range = fun low high ->
   if low > high then
     invalid_arg "Generator.float_range: low > high";
-  {
-    run = (fun rnd _size -> random_float_range rnd ~low ~high);
-  }
+  { run = (fun rnd _size -> random_float_range rnd ~low ~high) }
 
-let float_positive = {
-  run = (fun rnd _size -> random_float_range rnd ~low:0.0 ~high:1_000_000.0);
-}
+let float_positive = { run = (fun rnd _size -> random_float_range rnd ~low:0.0 ~high:1000000.0) }
 
-let float_negative = map (fun f -> -.f) float_positive
+let float_negative =
+  map (fun f -> -.f) float_positive
 
 (* Booleans *)
 
-let bool = {
-  run = (fun rnd _size -> random_bool rnd);
-}
+let bool = { run = (fun rnd _size -> random_bool rnd) }
 
 let weighted_bool = fun weight_true weight_false ->
   if weight_true <= 0 || weight_false <= 0 then
@@ -288,9 +263,7 @@ let weighted_bool = fun weight_true weight_false ->
 
 (* Characters *)
 
-let char = {
-  run = (fun rnd _size -> Char.from_int_unchecked (random_int rnd 256));
-}
+let char = { run = (fun rnd _size -> Char.from_int_unchecked (random_int rnd 256)) }
 
 let char_range = fun low high ->
   if Char.code low > Char.code high then
@@ -470,8 +443,7 @@ let deque = fun gen ->
   map
     (fun lst ->
       let d = Collections.Deque.create () in
-      List.for_each lst ~fn:(fun value ->
-        Collections.Deque.push_back d ~value);
+      List.for_each lst ~fn:(fun value -> Collections.Deque.push_back d ~value);
       d)
     (list gen)
 
@@ -479,8 +451,7 @@ let deque_size = fun size_gen gen ->
   map
     (fun lst ->
       let d = Collections.Deque.create () in
-      List.for_each lst ~fn:(fun value ->
-        Collections.Deque.push_back d ~value);
+      List.for_each lst ~fn:(fun value -> Collections.Deque.push_back d ~value);
       d)
     (list_size size_gen gen)
 
@@ -488,8 +459,7 @@ let heap = fun gen ->
   map
     (fun lst ->
       let h = Collections.Heap.create () in
-      List.for_each lst ~fn:(fun value ->
-        Collections.Heap.push h ~value);
+      List.for_each lst ~fn:(fun value -> Collections.Heap.push h ~value);
       h)
     (list gen)
 
@@ -497,43 +467,28 @@ let heap_size = fun size_gen gen ->
   map
     (fun lst ->
       let h = Collections.Heap.create () in
-      List.for_each lst ~fn:(fun value ->
-        Collections.Heap.push h ~value);
+      List.for_each lst ~fn:(fun value -> Collections.Heap.push h ~value);
       h)
     (list_size size_gen gen)
 
 (* === OPTION & RESULT GENERATORS === *)
 
-let option = fun gen ->
-  frequency
-    [
-      (1, return None);
-      (3, map (fun v -> Some v) gen);
-    ]
+let option = fun gen -> frequency [ (1, return None); (3, map (fun v -> Some v) gen); ]
 
 let weighted_option = fun weight_some weight_none gen ->
-  frequency
-    [
-      (weight_none, return None);
-      (weight_some, map (fun v -> Some v) gen);
-    ]
+  frequency [ (weight_none, return None); (weight_some, map (fun v -> Some v) gen); ]
 
 let result = fun ok_gen err_gen ->
-  frequency
-    [
-      (3, map (fun v -> Ok v) ok_gen);
-      (1, map (fun e -> Error e) err_gen);
-    ]
+  frequency [ (3, map (fun v -> Ok v) ok_gen); (1, map (fun e -> Error e) err_gen); ]
 
 let weighted_result = fun weight_ok weight_error ok_gen err_gen ->
   frequency
-    [
-      (weight_ok, map (fun v -> Ok v) ok_gen);
-      (weight_error, map (fun e -> Error e) err_gen);
-    ]
+    [ (weight_ok, map (fun v -> Ok v) ok_gen); (weight_error, map (fun e -> Error e) err_gen); ]
 
 (* === LOW-LEVEL INTERFACE === *)
 
-let generate = fun rnd gen -> gen.run rnd 10
+let generate = fun rnd gen ->
+  gen.run rnd 10
 
-let generate_with_size = fun rnd size gen -> gen.run rnd size
+let generate_with_size = fun rnd size gen ->
+  gen.run rnd size

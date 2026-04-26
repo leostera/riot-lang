@@ -44,7 +44,11 @@ type output_stdio = Stdout.t
 
 type error_stdio = Stderr.t
 
-type stdio_config = { stdin: input_stdio; stdout: output_stdio; stderr: error_stdio }
+type stdio_config = {
+  stdin: input_stdio;
+  stdout: output_stdio;
+  stderr: error_stdio;
+}
 
 type t = {
   pid: int;
@@ -88,8 +92,8 @@ module FFI = struct
     (string * string) array ->
     string option ->
     raw_stdio ->
-    ((int * Fs.File.t option * Fs.File.t option * Fs.File.t option), int) Result.t =
-    "kernel_new_process_spawn"
+    ((int * Fs.File.t option * Fs.File.t option * Fs.File.t option), int) Result.t
+    = "kernel_new_process_spawn"
 
   external try_wait: int -> (((int * int) option), int) Result.t = "kernel_new_process_try_wait"
 
@@ -171,8 +175,8 @@ let spawn = fun ~program ~args ?env ?current_dir ~stdio () ->
         stderr_pipe;
         status = Running;
       })
-    (FFI.spawn program args env current_dir raw_stdio)
-  |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
+    (FFI.spawn program args env current_dir raw_stdio) |> Result.map_err
+    ~fn:(fun code -> System (System_error.from_code code))
 
 let try_wait = fun process ->
   match process.status with
@@ -183,7 +187,8 @@ let try_wait = fun process ->
       let* status =
         Result.map_err
           (FFI.try_wait process.pid)
-          ~fn:(fun code -> System (System_error.from_code code)) in
+          ~fn:(fun code -> System (System_error.from_code code))
+      in
       match status with
       | None -> (
           match process.status with
@@ -216,9 +221,7 @@ let to_source = fun process ->
   Async.Source.make (module Source) process
 
 let kill = fun process ~signal ->
-  Result.map_err
-    (FFI.kill process.pid signal)
-    ~fn:(fun code -> System (System_error.from_code code))
+  Result.map_err (FFI.kill process.pid signal) ~fn:(fun code -> System (System_error.from_code code))
 
 let execv = fun program argv -> Result.map_err (FFI.execv program argv) ~fn:System_error.from_code
 

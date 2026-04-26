@@ -101,7 +101,11 @@ let of_entries = fun ~make_id ~provenance entries ->
   entries
   |> List.map
     (fun (surface_path, scheme) ->
-      Binding.make ~id:(make_id surface_path) ~surface_path ~scheme ~provenance)
+      Binding.make
+        ~id:(make_id surface_path)
+        ~surface_path
+        ~scheme
+        ~provenance)
   |> of_bindings
 
 let singleton = fun ~make_id ~name ~scheme ~provenance ->
@@ -160,7 +164,9 @@ let map = fun map_binding env ->
     { current = Name_map.empty; same = Id_map.empty; layer = Map { map_binding; next = env } }
 
 let qualify_binding = fun root binding ->
-  Binding.with_path (EntityId.qualify ~prefix:root (Binding.path binding)) binding
+  Binding.with_path
+    (EntityId.qualify ~prefix:root (Binding.path binding))
+    binding
 
 let add_open = fun ~root opened env -> {
   current = Name_map.empty;
@@ -426,5 +432,7 @@ let introduced_entries = fun before after ->
 let qualify_entries = fun scope_path entries ->
   map
     (fun binding ->
-      Binding.with_path (EntityId.qualify ~prefix:scope_path (Binding.path binding)) binding)
+      Binding.with_path
+        (EntityId.qualify ~prefix:scope_path (Binding.path binding))
+        binding)
     entries

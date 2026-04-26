@@ -27,8 +27,10 @@ type summary = Package_scheduler.summary = {
 type run_result = summary
 
 let runtime_phase_of_package_scheduler_event = function
-  | Package_scheduler.PlanningStarted { lane_count; package_count } ->
-      Event.PackagePlanningStarted { lane_count; package_count }
+  | Package_scheduler.PlanningStarted { lane_count; package_count } -> Event.PackagePlanningStarted {
+    lane_count;
+    package_count
+  }
   | Package_scheduler.PlanningFinished {
     lane_count;
     package_count;
@@ -51,8 +53,10 @@ let runtime_phase_of_package_scheduler_event = function
         failed_count;
         error_count;
       }
-  | Package_scheduler.ExecutionStarted { lane_count; package_count } ->
-      Event.PackageExecutionStarted { lane_count; package_count }
+  | Package_scheduler.ExecutionStarted { lane_count; package_count } -> Event.PackageExecutionStarted {
+    lane_count;
+    package_count
+  }
   | Package_scheduler.ExecutionFinished {
     lane_count;
     package_count;
@@ -73,26 +77,21 @@ let runtime_phase_of_package_scheduler_event = function
 let plan_package = fun lane package_key -> { lane; package_key }
 
 let initial_plan_packages = fun lane ->
-  Build_lane.package_keys lane
-  |> List.map ~fn:(plan_package lane)
+  Build_lane.package_keys lane |> List.map ~fn:(plan_package lane)
 
 let plan_package_key = fun (plan_package: plan_package) -> plan_package.package_key
 
 let plan_package_target = fun (plan_package: plan_package) -> Build_lane.target plan_package.lane
 
-let prepare_lane = fun context spec ~toolchain target ->
-  Build_lane.prepare context spec ~target ~toolchain
+let prepare_lane = fun context spec ~toolchain target -> Build_lane.prepare context spec ~target ~toolchain
 
 let release_lanes = fun lanes -> List.for_each lanes ~fn:Build_lane.release
 
 let prepare_lanes = fun context spec ~toolchain ->
-  let targets =
-    Riot_model.Target.Set.to_list (Resolved_build.targets spec)
-    |> List.sort ~compare:Riot_model.Target.compare
-  in
+  let targets = Riot_model.Target.Set.to_list (Resolved_build.targets spec)
+  |> List.sort ~compare:Riot_model.Target.compare in
   let rec loop prepared = function
-    | [] ->
-        Ok (List.reverse prepared)
+    | [] -> Ok (List.reverse prepared)
     | target :: rest -> (
         match prepare_lane context spec ~toolchain target with
         | Ok lane -> loop (lane :: prepared) rest
@@ -106,8 +105,7 @@ let prepare_lanes = fun context spec ~toolchain ->
 let run = fun context lanes ->
   try
     let summary =
-      Package_scheduler.run
-        ~parallelism:context.Build_context.parallelism
+      Package_scheduler.run ~parallelism:context.Build_context.parallelism
         ~on_event:(fun event ->
           Build_context.emit_phase context (runtime_phase_of_package_scheduler_event event))
         lanes

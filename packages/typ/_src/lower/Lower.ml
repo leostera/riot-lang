@@ -149,7 +149,9 @@ let resolve_named_type_name = fun (state: state) name ->
           type_constructor_id
           |> Option.map
             (fun type_constructor_id ->
-              TypeRepr.named_head ~type_constructor_id ~name:(qualify_scoped_name scope_path name))
+              TypeRepr.named_head
+                ~type_constructor_id
+                ~name:(qualify_scoped_name scope_path name))
         else
           loop rest
   in
@@ -936,7 +938,10 @@ let append_constructor_type_var_name = fun acc name ->
     acc @ [ (name, List.length acc); ]
 
 let extend_constructor_type_params = fun params names ->
-  List.fold_left append_constructor_type_var_name params names
+  List.fold_left
+    append_constructor_type_var_name
+    params
+    names
 
 let collect_record_type_field_var_names = fun fields ->
   fields
@@ -1050,10 +1055,16 @@ let add_unsupported_item = fun (state: state) ~context syntax_node ->
   ()
 
 let add_unsupported_structure_item = fun (state: state) syntax_node ->
-  add_unsupported_item state ~context:Typ_diagnostic.StructureItem syntax_node
+  add_unsupported_item
+    state
+    ~context:Typ_diagnostic.StructureItem
+    syntax_node
 
 let add_unsupported_signature_item = fun (state: state) syntax_node ->
-  add_unsupported_item state ~context:Typ_diagnostic.SignatureItem syntax_node
+  add_unsupported_item
+    state
+    ~context:Typ_diagnostic.SignatureItem
+    syntax_node
 
 let rec register_type_declaration_names = fun (state: state) (declaration: Cst.TypeDeclaration.t) ->
   let _ =
@@ -1728,7 +1739,9 @@ let rec lower_pattern = fun (state: state) pattern ->
         existentials
         |> Option.map
           (fun ({ Cst.binders; _ }: Cst.constructor_pattern_existentials) ->
-            fresh_local_abstract_type_params_from_binders state binders)
+            fresh_local_abstract_type_params_from_binders
+              state
+              binders)
         |> Option.unwrap_or ~default:[]
       in
       with_local_abstract_type_params

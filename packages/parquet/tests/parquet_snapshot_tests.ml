@@ -1,6 +1,5 @@
 open Std
 open Std.Result.Syntax
-
 module Test = Std.Test
 module Json = Data.Json
 
@@ -92,8 +91,7 @@ let string_of_compression_codec = function
   | Parquet.Lz4 -> "Lz4"
   | Parquet.Zstd -> "Zstd"
   | Parquet.Lz4_raw -> "Lz4_raw"
-  | Parquet.Unknown_compression_codec value ->
-      "Unknown_compression_codec(" ^ Int.to_string value ^ ")"
+  | Parquet.Unknown_compression_codec value -> "Unknown_compression_codec(" ^ Int.to_string value ^ ")"
 
 let string_of_page_type = function
   | Parquet.Data_page -> "Data_page"
@@ -114,17 +112,13 @@ let json_of_schema_element = fun (value: Parquet.schema_element) ->
     ("type_length", json_of_option (fun value -> Json.Int value) value.type_length);
     (
       "repetition_type",
-      json_of_option
-        (fun value -> Json.String (string_of_repetition_type value))
-        value.repetition_type
+      json_of_option (fun value -> Json.String (string_of_repetition_type value)) value.repetition_type
     );
     ("name", Json.String value.name);
     ("num_children", json_of_option (fun value -> Json.Int value) value.num_children);
     (
       "converted_type",
-      json_of_option
-        (fun value -> Json.String (string_of_converted_type value))
-        value.converted_type
+      json_of_option (fun value -> Json.String (string_of_converted_type value)) value.converted_type
     );
     ("scale", json_of_option (fun value -> Json.Int value) value.scale);
     ("precision", json_of_option (fun value -> Json.Int value) value.precision);
@@ -162,9 +156,7 @@ let json_of_column_metadata = fun (value: Parquet.column_metadata) ->
     ("total_compressed_size", json_of_int64 value.total_compressed_size);
     (
       "key_value_metadata",
-      json_of_option
-        (fun value -> Json.Array (List.map value ~fn:json_of_key_value))
-        value.key_value_metadata
+      json_of_option (fun value -> Json.Array (List.map value ~fn:json_of_key_value)) value.key_value_metadata
     );
     ("data_page_offset", json_of_int64 value.data_page_offset);
     ("index_page_offset", json_of_option json_of_int64 value.index_page_offset);
@@ -201,9 +193,7 @@ let json_of_row_group = fun (value: Parquet.row_group) ->
     ("num_rows", json_of_int64 value.num_rows);
     (
       "sorting_columns",
-      json_of_option
-        (fun value -> Json.Array (List.map value ~fn:json_of_sorting_column))
-        value.sorting_columns
+      json_of_option (fun value -> Json.Array (List.map value ~fn:json_of_sorting_column)) value.sorting_columns
     );
     ("file_offset", json_of_option json_of_int64 value.file_offset);
     ("total_compressed_size", json_of_option json_of_int64 value.total_compressed_size);
@@ -221,33 +211,21 @@ let json_of_file_metadata = fun (value: Parquet.file_metadata) ->
     ("row_groups", Json.Array (List.map value.row_groups ~fn:json_of_row_group));
     (
       "key_value_metadata",
-      json_of_option
-        (fun value -> Json.Array (List.map value ~fn:json_of_key_value))
-        value.key_value_metadata
+      json_of_option (fun value -> Json.Array (List.map value ~fn:json_of_key_value)) value.key_value_metadata
     );
     ("created_by", json_of_option (fun value -> Json.String value) value.created_by);
     (
       "column_orders",
-      json_of_option
-        (fun value -> Json.Array (List.map value ~fn:json_of_column_order))
-        value.column_orders
+      json_of_option (fun value -> Json.Array (List.map value ~fn:json_of_column_order)) value.column_orders
     );
   ]
 
 let snapshot_json_of_file = fun (value: Parquet.t) ->
-  let encoded =
-    Parquet.to_string value
-    |> Result.expect ~msg:"snapshot file should encode"
-  in
-  let footer =
-    String.sub encoded ~offset:(String.length encoded - 8) ~len:8
-    |> Parquet.decode_footer_tail
-    |> Result.expect ~msg:"snapshot file footer should decode"
-  in
-  let metadata_bytes =
-    Parquet.encode_metadata value.metadata
-    |> Result.expect ~msg:"snapshot metadata should encode"
-  in
+  let encoded = Parquet.to_string value |> Result.expect ~msg:"snapshot file should encode" in
+  let footer = String.sub encoded ~offset:(String.length encoded - 8) ~len:8
+  |> Parquet.decode_footer_tail
+  |> Result.expect ~msg:"snapshot file footer should decode" in
+  let metadata_bytes = Parquet.encode_metadata value.metadata |> Result.expect ~msg:"snapshot metadata should encode" in
   Json.Object [
     ("file_size", Json.Int (String.length encoded));
     ("body_size", Json.Int (String.length value.body));
@@ -265,8 +243,7 @@ let empty_file: Parquet.t = {
     {
       version = 1;
       schema =
-        [
-          {
+        [ {
             type_ = None;
             type_length = None;
             repetition_type = None;
@@ -276,8 +253,7 @@ let empty_file: Parquet.t = {
             scale = None;
             precision = None;
             field_id = None;
-          };
-          {
+          }; {
             type_ = Some Parquet.Int32;
             type_length = None;
             repetition_type = Some Parquet.Required;
@@ -287,8 +263,7 @@ let empty_file: Parquet.t = {
             scale = None;
             precision = None;
             field_id = Some 7;
-          };
-        ];
+          }; ];
       num_rows = 0L;
       row_groups = [];
       key_value_metadata = Some [ { key = "series"; value = Some "One Piece" } ];
@@ -303,8 +278,7 @@ let nested_file: Parquet.t = {
     {
       version = 2;
       schema =
-        [
-          {
+        [ {
             type_ = None;
             type_length = None;
             repetition_type = None;
@@ -314,8 +288,7 @@ let nested_file: Parquet.t = {
             scale = None;
             precision = None;
             field_id = None;
-          };
-          {
+          }; {
             type_ = Some Parquet.Byte_array;
             type_length = None;
             repetition_type = Some Parquet.Optional;
@@ -325,15 +298,12 @@ let nested_file: Parquet.t = {
             scale = None;
             precision = None;
             field_id = Some 3;
-          };
-        ];
+          }; ];
       num_rows = 42L;
       row_groups =
-        [
-          {
+        [ {
             columns =
-              [
-                {
+              [ {
                   file_path = None;
                   file_offset = 4L;
                   meta_data =
@@ -360,16 +330,14 @@ let nested_file: Parquet.t = {
                   column_index_offset = Some 88L;
                   column_index_length = Some 8;
                   encrypted_column_metadata = None;
-                };
-              ];
+                }; ];
             total_byte_size = 256L;
             num_rows = 42L;
             sorting_columns = Some [ { column_idx = 0; descending = false; nulls_first = true } ];
             file_offset = Some 4L;
             total_compressed_size = Some 128L;
             ordinal = Some 0;
-          };
-        ];
+          }; ];
       key_value_metadata = Some [ { key = "arc"; value = Some "Wano" } ];
       created_by = Some "riot/parquet";
       column_orders = Some [ Parquet.Type_defined_order ];

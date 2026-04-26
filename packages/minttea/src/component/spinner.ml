@@ -5,9 +5,7 @@ open Std
 let line = fun () -> Sprite.make [|"|"; "/"; "-"; "\\"|] ~fps:(Fps.of_int 10)
 
 let dot = fun () ->
-  Sprite.make
-    [|"⣾ "; "⣽ "; "⣻ "; "⢿ "; "⡿ "; "⣟ "; "⣯ "; "⣷ "|]
-    ~fps:(Fps.of_int 10)
+  Sprite.make [|"⣾ "; "⣽ "; "⣻ "; "⢿ "; "⡿ "; "⣟ "; "⣯ "; "⣷ "|] ~fps:(Fps.of_int 10)
 
 let mini_dot = fun () ->
   Sprite.make

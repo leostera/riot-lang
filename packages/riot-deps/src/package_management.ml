@@ -1,13 +1,10 @@
 open Std
 open Std.Result.Syntax
-
 module Deps_error = Error
-
 open Riot_model
 
 let duration_ms_since = fun started ->
-  Time.Instant.duration_since ~earlier:started (Time.Instant.now ())
-  |> Time.Duration.to_millis
+  Time.Instant.duration_since ~earlier:started (Time.Instant.now ()) |> Time.Duration.to_millis
 
 type dependency_scope =
   | Runtime
@@ -25,7 +22,10 @@ type suggested_package = {
   description: string option;
 }
 
-type search_request = { query: string; limit: int }
+type search_request = {
+  query: string;
+  limit: int;
+}
 
 type loaded_workspace = {
   workspace: Workspace.t;
@@ -82,24 +82,20 @@ type registry_materialization_error =
   | RegistryPackageManifestDecodeFailed of Package.manifest_error
 
 type error =
-  | CurrentPackageNotFound of {
-      cwd: Path.t;
-    }
-  | PackageNotFound of {
-      package: Package_name.t;
-    }
+  | CurrentPackageNotFound of { cwd: Path.t }
+  | PackageNotFound of { package: Package_name.t }
   | DependencySpecInvalid of { dependency: string; error: dependency_spec_error }
   | PathDependencyMustBeRelative of { dependency: string }
   | PathDependencyLoadFailed of {
       dependency: string;
       path: Path.t;
-      error: path_dependency_load_error;
+      error: path_dependency_load_error
     }
   | SourceDependencyLoadFailed of {
       dependency: string;
       source_locator: string;
       ref_: string option;
-      error: source_dependency_load_error;
+      error: source_dependency_load_error
     }
   | RegistryInitializationFailed of { registry: string; error: registry_initialization_error }
   | RegistryLookupFailed of { package: string; registry: string; error: registry_lookup_error }
@@ -107,34 +103,21 @@ type error =
       package: string;
       version: string;
       registry: string;
-      error: registry_materialization_error;
+      error: registry_materialization_error
     }
   | RegistrySearchFailed of { query: string; registry: string; error: registry_search_error }
   | RegistryPackageNotFound of {
       package: string;
       registry: string;
-      suggestions: suggested_package list;
+      suggestions: suggested_package list
     }
   | RegistryReleaseYanked of { package: string; version: string; registry: string }
   | RegistryVersionNotFound of { package: string; requirement: string; registry: string }
   | ManifestUpdateFailed of Manifest_edit.error
-  | DependencyNotFoundInSection of {
-      path: Path.t;
-      section: string;
-      dependency: string;
-    }
-  | WorkspaceReloadFailed of {
-      workspace_root: Path.t;
-      error: Workspace_manager.scan_error;
-    }
-  | WorkspaceReloadHadErrors of {
-      workspace_root: Path.t;
-      errors: Workspace_manager.load_error list;
-    }
-  | MaterializedPackageNotFound of {
-      package_root: Path.t;
-      workspace_root: Path.t;
-    }
+  | DependencyNotFoundInSection of { path: Path.t; section: string; dependency: string }
+  | WorkspaceReloadFailed of { workspace_root: Path.t; error: Workspace_manager.scan_error }
+  | WorkspaceReloadHadErrors of { workspace_root: Path.t; errors: Workspace_manager.load_error list }
+  | MaterializedPackageNotFound of { package_root: Path.t; workspace_root: Path.t }
   | LockRefreshFailed of Deps_error.t
 
 type target_manifest = {
@@ -179,8 +162,7 @@ let source_dependency_load_error_message = function
   | SourceDependencyManifestDecodeFailed error -> Package.manifest_error_message error
 
 let registry_initialization_error_message = function
-  | RegistryFilesystemInitializationFailed error ->
-      Pkgs_ml.Registry_cache.create_error_message error
+  | RegistryFilesystemInitializationFailed error -> Pkgs_ml.Registry_cache.create_error_message error
 
 let registry_lookup_error_message = function
   | RegistryPackageDocumentReadFailed error -> error
@@ -208,12 +190,10 @@ let should_emit_source_materialization_started = fun ~source_locator ~update ->
     match Git_dependency.parse_source_locator source_locator with
     | Error _ -> true
     | Ok locator -> (
-        let repo_dir =
-          Riot_model.Riot_dirs.git_registry_repo_dir
-            ~host:locator.host
-            ~owner:locator.owner
-            ~repo:locator.repo
-        in
+        let repo_dir = Riot_model.Riot_dirs.git_registry_repo_dir
+          ~host:locator.host
+          ~owner:locator.owner
+          ~repo:locator.repo in
         match Fs.exists repo_dir with
         | Ok exists -> not exists
         | Error _ -> true
@@ -235,12 +215,7 @@ let error_message = function
       ^ Path.to_string path
       ^ "': "
       ^ path_dependency_load_error_message error
-  | SourceDependencyLoadFailed {
-    dependency;
-    source_locator;
-    ref_;
-    error
-  } ->
+  | SourceDependencyLoadFailed { dependency; source_locator; ref_; error } ->
       let suffix =
         match ref_ with
         | Some ref_ -> "#" ^ ref_
@@ -254,10 +229,7 @@ let error_message = function
       ^ "': "
       ^ source_dependency_load_error_message error
   | RegistryInitializationFailed { registry; error } ->
-      "failed to initialize registry '"
-      ^ registry
-      ^ "': "
-      ^ registry_initialization_error_message error
+      "failed to initialize registry '" ^ registry ^ "': " ^ registry_initialization_error_message error
   | RegistryLookupFailed { package; registry; error } ->
       "failed to look up package '"
       ^ package
@@ -265,12 +237,7 @@ let error_message = function
       ^ registry
       ^ "': "
       ^ registry_lookup_error_message error
-  | RegistryMaterializationFailed {
-    package;
-    version;
-    registry;
-    error
-  } ->
+  | RegistryMaterializationFailed { package; version; registry; error } ->
       "failed to materialize package '"
       ^ package
       ^ "@"
@@ -293,12 +260,10 @@ let error_message = function
         | [] -> base
         | suggestions ->
             let lines =
-              List.map
-                suggestions
+              List.map suggestions
                 ~fn:(fun { package; latest_version; description } ->
                   match description with
-                  | Some description ->
-                      "  - " ^ package ^ "@" ^ latest_version ^ " - " ^ description
+                  | Some description -> "  - " ^ package ^ "@" ^ latest_version ^ " - " ^ description
                   | None -> "  - " ^ package ^ "@" ^ latest_version)
             in
             base ^ "\nDid you mean:\n" ^ String.concat "\n" lines
@@ -313,7 +278,8 @@ let error_message = function
       ^ "' in registry '"
       ^ registry
       ^ "'"
-  | ManifestUpdateFailed error -> Manifest_edit.error_message error
+  | ManifestUpdateFailed error ->
+      Manifest_edit.error_message error
   | DependencyNotFoundInSection { path; section; dependency } ->
       "dependency '"
       ^ dependency
@@ -338,7 +304,8 @@ let error_message = function
       ^ "' does not correspond to a package in workspace '"
       ^ Path.to_string workspace_root
       ^ "'"
-  | LockRefreshFailed error -> Deps_error.message error
+  | LockRefreshFailed error ->
+      Deps_error.message error
 
 let scope_to_section = function
   | Runtime -> Manifest_edit.Runtime
@@ -374,133 +341,116 @@ let load_path_dependency = fun ~(target:target_manifest) ~raw ->
     in
     let package_root = dependency_root ~declared_from dep_path in
     let manifest_path = Path.(package_root / Path.v "riot.toml") in
-    let* source =
-      Fs.read_to_string manifest_path
-      |> Result.map_err
-        ~fn:(fun err ->
-          PathDependencyLoadFailed {
-            dependency = raw;
-            path = package_root;
-            error = PathDependencyManifestReadFailed err;
-          })
-    in
-    let* toml =
-      Data.Toml.parse source
-      |> Result.map_err
-        ~fn:(fun err ->
-          PathDependencyLoadFailed {
-            dependency = raw;
-            path = package_root;
-            error = PathDependencyTomlParseFailed err;
-          })
-    in
-    let* package =
-      Package.from_toml
-        toml
-        ~workspace_deps:[]
-        ~workspace_dev_deps:[]
-        ~workspace_build_deps:[]
-        ~path:package_root
-        ~relative_path:dep_path
-      |> Result.map_err
-        ~fn:(fun err ->
-          PathDependencyLoadFailed {
-            dependency = raw;
-            path = package_root;
-            error = PathDependencyManifestDecodeFailed err;
-          })
-    in
+    let* source = Fs.read_to_string manifest_path
+    |> Result.map_err
+      ~fn:(fun err ->
+        PathDependencyLoadFailed {
+          dependency = raw;
+          path = package_root;
+          error = PathDependencyManifestReadFailed err
+        }) in
+    let* toml = Data.Toml.parse source
+    |> Result.map_err
+      ~fn:(fun err ->
+        PathDependencyLoadFailed {
+          dependency = raw;
+          path = package_root;
+          error = PathDependencyTomlParseFailed err
+        }) in
+    let* package = Package.from_toml
+      toml
+      ~workspace_deps:[]
+      ~workspace_dev_deps:[]
+      ~workspace_build_deps:[]
+      ~path:package_root
+      ~relative_path:dep_path
+    |> Result.map_err
+      ~fn:(fun err ->
+        PathDependencyLoadFailed {
+          dependency = raw;
+          path = package_root;
+          error = PathDependencyManifestDecodeFailed err
+        }) in
     Ok (Path { name = package.name; path = dep_path })
 
 let load_source_dependency = fun ~(emit:event_sink) ~raw ->
-  let* spec =
-    Git_dependency.parse_spec raw
-    |> Result.map_err
-      ~fn:(fun error ->
-        DependencySpecInvalid { dependency = raw; error = SourceDependencySpecError error })
-  in
-  let* () =
-    Git_dependency.parse_source_locator spec.source_locator
-    |> Result.map_err
-      ~fn:(fun error ->
-        DependencySpecInvalid { dependency = raw; error = SourceDependencySpecError error })
-    |> Result.map ~fn:(fun _ -> ())
-  in
-  let emit_materialization_events =
-    should_emit_source_materialization_started ~source_locator:spec.source_locator ~update:true
-  in
+  let* spec = Git_dependency.parse_spec raw
+  |> Result.map_err
+    ~fn:(fun error ->
+      DependencySpecInvalid { dependency = raw; error = SourceDependencySpecError error }) in
+  let* () = Git_dependency.parse_source_locator spec.source_locator
+  |> Result.map_err
+    ~fn:(fun error ->
+      DependencySpecInvalid { dependency = raw; error = SourceDependencySpecError error })
+  |> Result.map ~fn:(fun _ -> ()) in
+  let emit_materialization_events = should_emit_source_materialization_started
+    ~source_locator:spec.source_locator
+    ~update:true in
   if emit_materialization_events then
     emit
       (Riot_model.Event.SourceDependencyMaterializationStarted {
         source_locator = spec.source_locator;
-        ref_ = spec.ref_;
+        ref_ = spec.ref_
       });
-  let* materialized =
-    Git_dependency.materialize ~source_locator:spec.source_locator ~ref_:spec.ref_ ()
-    |> Result.map_err
-      ~fn:(fun error ->
-        SourceDependencyLoadFailed {
-          dependency = raw;
-          source_locator = spec.source_locator;
-          ref_ = spec.ref_;
-          error = SourceDependencyMaterializationFailed error;
-        })
-  in
+  let* materialized = Git_dependency.materialize
+    ~source_locator:spec.source_locator
+    ~ref_:spec.ref_
+    ()
+  |> Result.map_err
+    ~fn:(fun error ->
+      SourceDependencyLoadFailed {
+        dependency = raw;
+        source_locator = spec.source_locator;
+        ref_ = spec.ref_;
+        error = SourceDependencyMaterializationFailed error
+      }) in
   let manifest_path = Path.(materialized.package_root / Path.v "riot.toml") in
-  let* source =
-    Fs.read_to_string manifest_path
-    |> Result.map_err
-      ~fn:(fun err ->
-        SourceDependencyLoadFailed {
-          dependency = raw;
-          source_locator = spec.source_locator;
-          ref_ = spec.ref_;
-          error = SourceDependencyManifestReadFailed err;
-        })
-  in
-  let* toml =
-    Data.Toml.parse source
-    |> Result.map_err
-      ~fn:(fun err ->
-        SourceDependencyLoadFailed {
-          dependency = raw;
-          source_locator = spec.source_locator;
-          ref_ = spec.ref_;
-          error = SourceDependencyTomlParseFailed err;
-        })
-  in
+  let* source = Fs.read_to_string manifest_path
+  |> Result.map_err
+    ~fn:(fun err ->
+      SourceDependencyLoadFailed {
+        dependency = raw;
+        source_locator = spec.source_locator;
+        ref_ = spec.ref_;
+        error = SourceDependencyManifestReadFailed err
+      }) in
+  let* toml = Data.Toml.parse source
+  |> Result.map_err
+    ~fn:(fun err ->
+      SourceDependencyLoadFailed {
+        dependency = raw;
+        source_locator = spec.source_locator;
+        ref_ = spec.ref_;
+        error = SourceDependencyTomlParseFailed err
+      }) in
   let relative_path =
     match Path.strip_prefix materialized.package_root ~prefix:materialized.repository_root with
     | Ok relative_path -> relative_path
     | Error _ -> Path.v "."
   in
-  let* package =
-    Package_manifest.from_toml
-      toml
-      ~workspace_deps:[]
-      ~workspace_dev_deps:[]
-      ~workspace_build_deps:[]
-      ~path:materialized.package_root
-      ~relative_path
-    |> Result.map_err
-      ~fn:(fun error ->
-        SourceDependencyLoadFailed {
-          dependency = raw;
-          source_locator = spec.source_locator;
-          ref_ = spec.ref_;
-          error = SourceDependencyManifestDecodeFailed error;
-        })
-  in
+  let* package = Package_manifest.from_toml
+    toml
+    ~workspace_deps:[]
+    ~workspace_dev_deps:[]
+    ~workspace_build_deps:[]
+    ~path:materialized.package_root
+    ~relative_path
+  |> Result.map_err
+    ~fn:(fun error ->
+      SourceDependencyLoadFailed {
+        dependency = raw;
+        source_locator = spec.source_locator;
+        ref_ = spec.ref_;
+        error = SourceDependencyManifestDecodeFailed error
+      }) in
   if emit_materialization_events then
     emit
-      (
-        Riot_model.Event.SourceDependencyMaterializationFinished {
-          source_locator = spec.source_locator;
-          ref_ = spec.ref_;
-          package = package.name;
-          version = Option.map package.publish.version ~fn:Std.Version.to_string;
-        }
-      );
+      (Riot_model.Event.SourceDependencyMaterializationFinished {
+        source_locator = spec.source_locator;
+        ref_ = spec.ref_;
+        package = package.name;
+        version = Option.map package.publish.version ~fn:Std.Version.to_string
+      });
   Ok (Source { name = package.name; source_locator = spec.source_locator; ref_ = spec.ref_ })
 
 let parse_dependency_spec = fun ~(target:target_manifest) raw ->
@@ -509,8 +459,9 @@ let parse_dependency_spec = fun ~(target:target_manifest) raw ->
   else
     match parse_registry_dependency_spec raw with
     | Ok parsed -> Ok (Registry parsed)
-    | Error _ when String.contains raw "/" || String.starts_with ~prefix:"." raw ->
-        load_path_dependency ~target ~raw
+    | Error _ when String.contains raw "/" || String.starts_with ~prefix:"." raw -> load_path_dependency
+      ~target
+      ~raw
     | Error err -> Error err
 
 let init_registry = fun () ->
@@ -519,19 +470,17 @@ let init_registry = fun () ->
     ~fn:(fun error ->
       RegistryInitializationFailed {
         registry = registry_name;
-        error = RegistryFilesystemInitializationFailed error;
+        error = RegistryFilesystemInitializationFailed error
       })
 
 let ensure_loaded_workspace = fun ~workspace_manager ~registry ~(workspace:Workspace_manifest.t) ~package_name () ->
-  let* workspace =
-    Workspace_resolution.ensure_workspace
-      ~workspace_manager
-      ~mode:Dep_solver.Refresh
-      ~registry
-      ~workspace
-      ()
-    |> Result.map_err ~fn:(fun error -> LockRefreshFailed error)
-  in
+  let* workspace = Workspace_resolution.ensure_workspace
+    ~workspace_manager
+    ~mode:Dep_solver.Refresh
+    ~registry
+    ~workspace
+    ()
+  |> Result.map_err ~fn:(fun error -> LockRefreshFailed error) in
   Ok { workspace; package_name }
 
 let select_materialized_package = fun ~(workspace:Riot_model.Workspace_manifest.t) ?preferred_package_name ~package_root () ->
@@ -540,57 +489,50 @@ let select_materialized_package = fun ~(workspace:Riot_model.Workspace_manifest.
   | None -> (
       match preferred_package_name with
       | Some preferred_package_name -> (
-          match List.find
-            workspace.packages
-            ~fn:(fun (pkg: Riot_model.Package_manifest.t) ->
-              Riot_model.Package_name.equal pkg.name preferred_package_name) with
+          match
+            List.find workspace.packages
+              ~fn:(fun (pkg: Riot_model.Package_manifest.t) ->
+                Riot_model.Package_name.equal pkg.name preferred_package_name)
+          with
           | Some pkg -> Ok pkg.name
           | None ->
               match workspace.packages with
               | [ pkg ] -> Ok pkg.name
               | _ -> (
-                  match List.filter
-                    workspace.packages
-                    ~fn:Riot_model.Package_manifest.is_workspace_member with
+                  match List.filter workspace.packages ~fn:Riot_model.Package_manifest.is_workspace_member with
                   | [ pkg ] -> Ok pkg.name
-                  | _ ->
-                      Error (MaterializedPackageNotFound {
-                        package_root;
-                        workspace_root = workspace.root;
-                      })
+                  | _ -> Error (MaterializedPackageNotFound {
+                    package_root;
+                    workspace_root = workspace.root
+                  })
                 )
         )
       | None ->
           match workspace.packages with
           | [ pkg ] -> Ok pkg.name
           | _ -> (
-              match List.filter
-                workspace.packages
-                ~fn:Riot_model.Package_manifest.is_workspace_member with
+              match List.filter workspace.packages ~fn:Riot_model.Package_manifest.is_workspace_member with
               | [ pkg ] -> Ok pkg.name
-              | _ ->
-                  Error (MaterializedPackageNotFound {
-                    package_root;
-                    workspace_root = workspace.root;
-                  })
+              | _ -> Error (MaterializedPackageNotFound {
+                package_root;
+                workspace_root = workspace.root
+              })
             )
     )
 
 let scan_workspace_from_root = fun ~workspace_manager ~package_root () ->
-  let* (workspace, load_errors) =
-    Riot_model.Workspace_manager.scan workspace_manager package_root
-    |> Result.map_err
-      ~fn:(fun error -> WorkspaceReloadFailed { workspace_root = package_root; error })
-  in
+  let* (workspace, load_errors) = Riot_model.Workspace_manager.scan workspace_manager package_root
+  |> Result.map_err ~fn:(fun error -> WorkspaceReloadFailed { workspace_root = package_root; error }) in
   match load_errors with
   | [] -> Ok workspace
-  | load_errors ->
-      Error (WorkspaceReloadHadErrors { workspace_root = workspace.root; errors = load_errors })
+  | load_errors -> Error (WorkspaceReloadHadErrors {
+    workspace_root = workspace.root;
+    errors = load_errors
+  })
 
 let matching_release_of_document = fun (document: Pkgs_ml.Sparse_index.package_document) requirement ->
   let matches =
-    List.filter_map
-      document.releases
+    List.filter_map document.releases
       ~fn:(fun (release: Pkgs_ml.Sparse_index.release) ->
         match Std.Version.parse release.version with
         | Ok _ when release.yanked -> None
@@ -598,26 +540,22 @@ let matching_release_of_document = fun (document: Pkgs_ml.Sparse_index.package_d
         | Ok _
         | Error _ -> None)
   in
-  match List.sort
-    matches
-    ~compare:(fun (left, _) (right, _) ->
-      match Std.Version.compare left right with
-      | Order.LT -> Order.GT
-      | Order.EQ -> Order.EQ
-      | Order.GT -> Order.LT) with
+  match
+    List.sort matches
+      ~compare:(fun (left, _) (right, _) ->
+        match Std.Version.compare left right with
+        | Order.LT -> Order.GT
+        | Order.EQ -> Order.EQ
+        | Order.GT -> Order.LT)
+  with
   | (_, release) :: _ -> Some release
   | [] -> None
 
 let decode_detached_package = fun ~package_root ->
   let manifest_path = Path.(package_root / Path.v "riot.toml") in
-  let* source =
-    Fs.read_to_string manifest_path
-    |> Result.map_err ~fn:(fun err -> IO.error_message err)
-  in
-  let* toml =
-    Data.Toml.parse source
-    |> Result.map_err ~fn:Data.Toml.error_to_string
-  in
+  let* source = Fs.read_to_string manifest_path
+  |> Result.map_err ~fn:(fun err -> IO.error_message err) in
+  let* toml = Data.Toml.parse source |> Result.map_err ~fn:Data.Toml.error_to_string in
   Riot_model.Package_manifest.from_toml
     toml
     ~workspace_deps:[]
@@ -641,44 +579,42 @@ let dependency_lists_for_workspace = fun scope (workspace: Riot_model.Workspace_
 
 let dependency_names_for_section = fun ~manifest_path ~section ->
   let section_name = Manifest_edit.section_name (scope_to_section section) in
-  let* source =
-    Fs.read_to_string manifest_path
-    |> Result.map_err
-      ~fn:(fun err ->
-        ManifestUpdateFailed (Manifest_edit.ReadFailed { path = manifest_path; error = err }))
-  in
-  let* toml =
-    Data.Toml.parse source
-    |> Result.map_err
-      ~fn:(fun err ->
-        ManifestUpdateFailed (Manifest_edit.TomlParseFailed { path = manifest_path; error = err }))
-  in
+  let* source = Fs.read_to_string manifest_path
+  |> Result.map_err
+    ~fn:(fun err ->
+      ManifestUpdateFailed (Manifest_edit.ReadFailed { path = manifest_path; error = err })) in
+  let* toml = Data.Toml.parse source
+  |> Result.map_err
+    ~fn:(fun err ->
+      ManifestUpdateFailed (Manifest_edit.TomlParseFailed { path = manifest_path; error = err })) in
   match toml with
   | Data.Toml.Table fields -> (
-      match List.find fields ~fn:(fun (name, _) -> String.equal name section_name)
-      |> Option.map ~fn:(fun (_, value) -> value) with
-      | None -> Ok []
+      match
+        List.find fields
+          ~fn:(fun (name, _) ->
+            String.equal name section_name) |> Option.map ~fn:(fun (_, value) -> value)
+      with
+      | None ->
+          Ok []
       | Some (Data.Toml.Table dep_items) ->
           let rec loop acc = function
             | [] -> Ok (List.reverse acc)
             | (name, _) :: rest ->
-                let* name =
-                  Riot_model.Package_name.from_string name
-                  |> Result.map_err
-                    ~fn:(fun error ->
-                      ManifestUpdateFailed (Manifest_edit.InvalidDependencyName {
-                        path = manifest_path;
-                        dependency = name;
-                        error;
-                      }))
-                in
+                let* name = Riot_model.Package_name.from_string name
+                |> Result.map_err
+                  ~fn:(fun error ->
+                    ManifestUpdateFailed (Manifest_edit.InvalidDependencyName {
+                      path = manifest_path;
+                      dependency = name;
+                      error
+                    })) in
                 loop (name :: acc) rest
           in
           loop [] dep_items
       | Some _ ->
           Error (ManifestUpdateFailed (Manifest_edit.DependencySectionMustBeTable {
             path = manifest_path;
-            section = section_name;
+            section = section_name
           }))
     )
   | _ -> Error (ManifestUpdateFailed (Manifest_edit.ManifestMustBeTable { path = manifest_path }))
@@ -706,13 +642,16 @@ let target_manifest = fun ~(workspace:Riot_model.Workspace_manifest.t) ~cwd sele
         path;
         dependencies = filter_dependencies_by_names
           names
-          (dependency_lists_for_workspace scope workspace);
+          (dependency_lists_for_workspace scope workspace)
       }
   | Package package_name -> (
-      match workspace.packages
-      |> List.filter ~fn:Riot_model.Package_manifest.is_workspace_member
-      |> List.find
-        ~fn:(fun (pkg: Riot_model.Package_manifest.t) -> Package_name.equal pkg.name package_name) with
+      match
+        workspace.packages
+        |> List.filter ~fn:Riot_model.Package_manifest.is_workspace_member
+        |> List.find
+          ~fn:(fun (pkg: Riot_model.Package_manifest.t) ->
+            Package_name.equal pkg.name package_name)
+      with
       | Some pkg ->
           let path = Path.(pkg.path / Path.v "riot.toml") in
           let* names = dependency_names_for_section ~manifest_path:path ~section:scope in
@@ -720,7 +659,7 @@ let target_manifest = fun ~(workspace:Riot_model.Workspace_manifest.t) ~cwd sele
             path;
             dependencies = filter_dependencies_by_names
               names
-              (dependency_lists_for_package scope pkg);
+              (dependency_lists_for_package scope pkg)
           }
       | None -> Error (PackageNotFound { package = package_name })
     )
@@ -730,13 +669,12 @@ let target_manifest = fun ~(workspace:Riot_model.Workspace_manifest.t) ~cwd sele
       let* names = dependency_names_for_section ~manifest_path:path ~section:scope in
       Ok {
         path;
-        dependencies = filter_dependencies_by_names names (dependency_lists_for_package scope pkg);
+        dependencies = filter_dependencies_by_names names (dependency_lists_for_package scope pkg)
       }
 
 let dependency_exists = fun ~(package_name:string) document requirement ->
   let rec loop = function
-    | [] ->
-        false
+    | [] -> false
     | release :: rest -> (
         if release.Pkgs_ml.Sparse_index.yanked then
           loop rest
@@ -753,8 +691,7 @@ let dependency_exists = fun ~(package_name:string) document requirement ->
   loop document.Pkgs_ml.Sparse_index.releases
 
 let yanked_release_of_document = fun (document: Pkgs_ml.Sparse_index.package_document) requirement ->
-  List.find
-    document.releases
+  List.find document.releases
     ~fn:(fun (release: Pkgs_ml.Sparse_index.release) ->
       if not release.yanked then
         false
@@ -763,23 +700,23 @@ let yanked_release_of_document = fun (document: Pkgs_ml.Sparse_index.package_doc
         | Ok version -> Std.Version.matches requirement version
         | Error _ -> false)
 
-let suggested_package_of_search_result = fun (result: Pkgs_ml.Registry.search_result) -> {
-  package = result.package_name;
-  latest_version = result.latest_version;
-  description = result.description;
-}
+let suggested_package_of_search_result = fun (result: Pkgs_ml.Registry.search_result) ->
+  {
+    package = result.package_name;
+    latest_version = result.latest_version;
+    description = result.description
+  }
 
 let lookup_package_suggestions = fun ~registry ~package_name ->
   match Pkgs_ml.Registry.search_packages registry ~query:package_name ~limit:5 () with
-  | Ok results ->
-      results
-      |> List.filter
-        ~fn:(fun (result: Pkgs_ml.Registry.search_result) ->
-          not
-            (String.equal
-              (Pkgs_ml.Sparse_index.normalized_name result.package_name)
-              (Pkgs_ml.Sparse_index.normalized_name package_name)))
-      |> List.map ~fn:suggested_package_of_search_result
+  | Ok results -> results
+  |> List.filter
+    ~fn:(fun (result: Pkgs_ml.Registry.search_result) ->
+      not
+        (String.equal
+          (Pkgs_ml.Sparse_index.normalized_name result.package_name)
+          (Pkgs_ml.Sparse_index.normalized_name package_name)))
+  |> List.map ~fn:suggested_package_of_search_result
   | Error _ -> []
 
 let search = fun ?registry ~(request:search_request) () ->
@@ -788,16 +725,18 @@ let search = fun ?registry ~(request:search_request) () ->
     | Some registry -> Ok registry
     | None -> init_registry ()
   in
-  let* results =
-    Pkgs_ml.Registry.search_packages registry ~query:request.query ~limit:request.limit ()
-    |> Result.map_err
-      ~fn:(fun error ->
-        RegistrySearchFailed {
-          query = request.query;
-          registry = Pkgs_ml.Registry.name registry;
-          error = RegistrySearchRequestFailed error;
-        })
-  in
+  let* results = Pkgs_ml.Registry.search_packages
+    registry
+    ~query:request.query
+    ~limit:request.limit
+    ()
+  |> Result.map_err
+    ~fn:(fun error ->
+      RegistrySearchFailed {
+        query = request.query;
+        registry = Pkgs_ml.Registry.name registry;
+        error = RegistrySearchRequestFailed error
+      }) in
   Ok (List.map results ~fn:suggested_package_of_search_result)
 
 let lookup_named_package = fun ~(emit:event_sink) ~registry (parsed: registry_dependency) ->
@@ -808,7 +747,7 @@ let lookup_named_package = fun ~(emit:event_sink) ~registry (parsed: registry_de
   emit
     (Riot_model.Event.PackageMetadataFetchStarted {
       registry = registry_name;
-      package = package_name;
+      package = package_name
     });
   let* document =
     Pkgs_ml.Registry.read_package_document registry ~package_name:package_name_string
@@ -821,13 +760,13 @@ let lookup_named_package = fun ~(emit:event_sink) ~registry (parsed: registry_de
             error = Riot_model.Pm_error.PackageMetadataReadFailed {
               package = package_name_string;
               registry = registry_name;
-              error;
-            };
+              error
+            }
           });
         RegistryLookupFailed {
           package = package_name_string;
           registry = registry_name;
-          error = RegistryPackageDocumentReadFailed error;
+          error = RegistryPackageDocumentReadFailed error
         })
   in
   match document with
@@ -839,110 +778,104 @@ let lookup_named_package = fun ~(emit:event_sink) ~registry (parsed: registry_de
           error = Riot_model.Pm_error.PackageNotFound {
             package = package_name_string;
             registry = registry_name;
-            required_by = None;
-          };
+            required_by = None
+          }
         });
       Error (RegistryPackageNotFound {
         package = package_name_string;
         registry = registry_name;
-        suggestions = lookup_package_suggestions ~registry ~package_name:package_name_string;
+        suggestions = lookup_package_suggestions ~registry ~package_name:package_name_string
       })
   | Some document ->
-      let* document_name =
-        Riot_model.Package_name.from_string document.name
-        |> Result.map_err
-          ~fn:(fun error ->
-            RegistryLookupFailed {
-              package = document.name;
-              registry = registry_name;
-              error = RegistryPackageNameDecodeFailed error;
-            })
-      in
-      emit
-        (
-          Riot_model.Event.PackageMetadataFetchFinished {
+      let* document_name = Riot_model.Package_name.from_string document.name
+      |> Result.map_err
+        ~fn:(fun error ->
+          RegistryLookupFailed {
+            package = document.name;
             registry = registry_name;
-            package = document_name;
-            version = Some document.latest;
-            duration_ms = duration_ms_since started;
-          }
-        );
+            error = RegistryPackageNameDecodeFailed error
+          }) in
+      emit
+        (Riot_model.Event.PackageMetadataFetchFinished {
+          registry = registry_name;
+          package = document_name;
+          version = Some document.latest;
+          duration_ms = duration_ms_since started
+        });
       let requirement = Option.unwrap_or ~default:Std.Version.any parsed.requirement in
       if dependency_exists ~package_name:package_name_string document requirement then
         Ok parsed
       else
         (
           match yanked_release_of_document document requirement with
-          | Some release ->
-              Error (RegistryReleaseYanked {
-                package = package_name_string;
-                version = release.version;
-                registry = registry_name;
-              })
-          | None ->
-              Error (RegistryVersionNotFound {
-                package = package_name_string;
-                requirement = Std.Version.requirement_to_string requirement;
-                registry = registry_name;
-              })
+          | Some release -> Error (RegistryReleaseYanked {
+            package = package_name_string;
+            version = release.version;
+            registry = registry_name
+          })
+          | None -> Error (RegistryVersionNotFound {
+            package = package_name_string;
+            requirement = Std.Version.requirement_to_string requirement;
+            registry = registry_name
+          })
         )
 
 let load_source_workspace_from_spec = fun ?(emit = no_emit) ~workspace_manager ?(update = true) ~spec () ->
   let parsed = spec in
   let source_spec = Git_dependency.to_string spec in
-  let* () =
-    Git_dependency.parse_source_locator parsed.source_locator
-    |> Result.map_err
-      ~fn:(fun error ->
-        DependencySpecInvalid {
-          dependency = source_spec;
-          error = SourceDependencySpecError error;
-        })
-    |> Result.map ~fn:(fun _ -> ())
-  in
-  let emit_materialization_events =
-    should_emit_source_materialization_started ~source_locator:parsed.source_locator ~update
-  in
+  let* () = Git_dependency.parse_source_locator parsed.source_locator
+  |> Result.map_err
+    ~fn:(fun error ->
+      DependencySpecInvalid { dependency = source_spec; error = SourceDependencySpecError error })
+  |> Result.map ~fn:(fun _ -> ()) in
+  let emit_materialization_events = should_emit_source_materialization_started
+    ~source_locator:parsed.source_locator
+    ~update in
   if emit_materialization_events then
     emit
       (Riot_model.Event.SourceDependencyMaterializationStarted {
         source_locator = parsed.source_locator;
-        ref_ = parsed.ref_;
+        ref_ = parsed.ref_
       });
-  let* materialized =
-    Git_dependency.materialize ~update ~source_locator:parsed.source_locator ~ref_:parsed.ref_ ()
-    |> Result.map_err
-      ~fn:(fun error ->
-        SourceDependencyLoadFailed {
-          dependency = source_spec;
-          source_locator = parsed.source_locator;
-          ref_ = parsed.ref_;
-          error = SourceDependencyMaterializationFailed error;
-        })
-  in
+  let* materialized = Git_dependency.materialize
+    ~update
+    ~source_locator:parsed.source_locator
+    ~ref_:parsed.ref_
+    ()
+  |> Result.map_err
+    ~fn:(fun error ->
+      SourceDependencyLoadFailed {
+        dependency = source_spec;
+        source_locator = parsed.source_locator;
+        ref_ = parsed.ref_;
+        error = SourceDependencyMaterializationFailed error
+      }) in
   let* registry = init_registry () in
   let loaded =
     match decode_detached_package ~package_root:materialized.package_root with
-    | Ok package ->
-        ensure_loaded_workspace
-          ~workspace_manager
-          ~registry
-          ~workspace:(Riot_model.Workspace_manifest.make
-            ~root:materialized.package_root
-            ~packages:[ package ]
-            ())
-          ~package_name:package.name
-          ()
+    | Ok package -> ensure_loaded_workspace
+      ~workspace_manager
+      ~registry
+      ~workspace:(Riot_model.Workspace_manifest.make
+        ~root:materialized.package_root
+        ~packages:[ package ]
+        ())
+      ~package_name:package.name
+      ()
     | Error _ ->
-        let* workspace =
-          scan_workspace_from_root ~workspace_manager ~package_root:materialized.package_root () in let* package_name =
-          select_materialized_package ~workspace ~package_root:materialized.package_root () in
+        let* workspace = scan_workspace_from_root
+          ~workspace_manager
+          ~package_root:materialized.package_root
+          () in
+        let* package_name = select_materialized_package
+          ~workspace
+          ~package_root:materialized.package_root
+          () in
         ensure_loaded_workspace ~workspace_manager ~registry ~workspace ~package_name ()
   in
   let* loaded = loaded in
   let selected_package =
-    List.find
-      loaded.workspace.packages
+    List.find loaded.workspace.packages
       ~fn:(fun (pkg: Riot_model.Package_manifest.t) ->
         Riot_model.Package_name.equal pkg.name loaded.package_name)
   in
@@ -956,8 +889,7 @@ let load_source_workspace_from_spec = fun ?(emit = no_emit) ~workspace_manager ?
           version =
             match selected_package with
             | Some pkg -> Option.map pkg.publish.version ~fn:Std.Version.to_string
-            | None ->
-                None;
+            | None -> None;
         }
       );
   emit
@@ -977,12 +909,10 @@ let load_source_workspace_from_spec = fun ?(emit = no_emit) ~workspace_manager ?
   Ok loaded
 
 let load_source_workspace = fun ?(emit = no_emit) ~workspace_manager ?(update = true) ~spec () ->
-  let* parsed =
-    Git_dependency.parse_spec spec
-    |> Result.map_err
-      ~fn:(fun error ->
-        DependencySpecInvalid { dependency = spec; error = SourceDependencySpecError error })
-  in
+  let* parsed = Git_dependency.parse_spec spec
+  |> Result.map_err
+    ~fn:(fun error ->
+      DependencySpecInvalid { dependency = spec; error = SourceDependencySpecError error }) in
   load_source_workspace_from_spec ~workspace_manager ~emit ~update ~spec:parsed ()
 
 let load_registry_workspace_from_spec = fun ?(emit = no_emit) ?registry ~workspace_manager ~spec () ->
@@ -997,54 +927,48 @@ let load_registry_workspace_from_spec = fun ?(emit = no_emit) ?registry ~workspa
   let* parsed = lookup_named_package ~emit ~registry parsed in
   let registry_name = Pkgs_ml.Registry.name registry in
   let requirement = Option.unwrap_or ~default:Std.Version.any parsed.requirement in
-  let* document =
-    Pkgs_ml.Registry.read_package_document registry ~package_name:package_name_string
-    |> Result.map_err
-      ~fn:(fun error ->
-        RegistryLookupFailed {
-          package = package_name_string;
-          registry = registry_name;
-          error = RegistryPackageDocumentReadFailed error;
-        })
-  in
+  let* document = Pkgs_ml.Registry.read_package_document registry ~package_name:package_name_string
+  |> Result.map_err
+    ~fn:(fun error ->
+      RegistryLookupFailed {
+        package = package_name_string;
+        registry = registry_name;
+        error = RegistryPackageDocumentReadFailed error
+      }) in
   let* document =
     match document with
     | Some document -> Ok document
-    | None ->
-        Error (RegistryPackageNotFound {
-          package = package_name_string;
-          registry = registry_name;
-          suggestions = lookup_package_suggestions ~registry ~package_name:package_name_string;
-        })
+    | None -> Error (RegistryPackageNotFound {
+      package = package_name_string;
+      registry = registry_name;
+      suggestions = lookup_package_suggestions ~registry ~package_name:package_name_string
+    })
   in
   let* release =
     match matching_release_of_document document requirement with
     | Some release -> Ok release
     | None -> (
         match yanked_release_of_document document requirement with
-        | Some release ->
-            Error (RegistryReleaseYanked {
-              package = package_name_string;
-              version = release.version;
-              registry = registry_name;
-            })
-        | None ->
-            Error (RegistryVersionNotFound {
-              package = package_name_string;
-              requirement = Std.Version.requirement_to_string requirement;
-              registry = registry_name;
-            })
+        | Some release -> Error (RegistryReleaseYanked {
+          package = package_name_string;
+          version = release.version;
+          registry = registry_name
+        })
+        | None -> Error (RegistryVersionNotFound {
+          package = package_name_string;
+          requirement = Std.Version.requirement_to_string requirement;
+          registry = registry_name
+        })
       )
   in
   let lock_package =
     Riot_model.Lockfile.{
-      id =
-        {
-          registry = Some registry_name;
-          name = package_name;
-          version = Some release.version;
-          sha256 = Some release.artifact_sha256;
-        };
+      id = {
+        registry = Some registry_name;
+        name = package_name;
+        version = Some release.version;
+        sha256 = Some release.artifact_sha256
+      };
       root = None;
       provenance = Registry { registry = registry_name };
       dependencies = [];
@@ -1052,90 +976,79 @@ let load_registry_workspace_from_spec = fun ?(emit = no_emit) ?registry ~workspa
       dev_dependencies = [];
     }
   in
-  let* package_root =
-    Materializer.ensure_registry_package ~emit ~registry ~pkg:lock_package ()
-    |> Result.map_err
-      ~fn:(fun err ->
-        RegistryMaterializationFailed {
-          package = package_name_string;
-          version = release.version;
-          registry = registry_name;
-          error = RegistryPackageMaterializationFailed err;
-        })
-  in
+  let* package_root = Materializer.ensure_registry_package ~emit ~registry ~pkg:lock_package ()
+  |> Result.map_err
+    ~fn:(fun err ->
+      RegistryMaterializationFailed {
+        package = package_name_string;
+        version = release.version;
+        registry = registry_name;
+        error = RegistryPackageMaterializationFailed err
+      }) in
   let manifest_path = Path.(package_root / Path.v "riot.toml") in
-  let* manifest_source =
-    Fs.read_to_string manifest_path
-    |> Result.map_err
-      ~fn:(fun err ->
-        RegistryMaterializationFailed {
-          package = package_name_string;
-          version = release.version;
-          registry = registry_name;
-          error = RegistryPackageManifestReadFailed err;
-        })
-  in
-  let* toml =
-    Data.Toml.parse manifest_source
-    |> Result.map_err
-      ~fn:(fun err ->
-        RegistryMaterializationFailed {
-          package = package_name_string;
-          version = release.version;
-          registry = registry_name;
-          error = RegistryPackageTomlParseFailed err;
-        })
-  in
-  let* package =
-    Riot_model.Package_manifest.from_toml
-      toml
-      ~workspace_deps:[]
-      ~workspace_dev_deps:[]
-      ~workspace_build_deps:[]
-      ~path:package_root
-      ~relative_path:(Path.v ".")
-    |> Result.map_err
-      ~fn:(fun err ->
-        RegistryMaterializationFailed {
-          package = package_name_string;
-          version = release.version;
-          registry = registry_name;
-          error = RegistryPackageManifestDecodeFailed err;
-        })
-  in
-  let* loaded =
-    ensure_loaded_workspace
-      ~workspace_manager
-      ~registry
-      ~workspace:(Riot_model.Workspace_manifest.make ~root:package_root ~packages:[ package ] ())
-      ~package_name:package.name
-      ()
-  in
+  let* manifest_source = Fs.read_to_string manifest_path
+  |> Result.map_err
+    ~fn:(fun err ->
+      RegistryMaterializationFailed {
+        package = package_name_string;
+        version = release.version;
+        registry = registry_name;
+        error = RegistryPackageManifestReadFailed err
+      }) in
+  let* toml = Data.Toml.parse manifest_source
+  |> Result.map_err
+    ~fn:(fun err ->
+      RegistryMaterializationFailed {
+        package = package_name_string;
+        version = release.version;
+        registry = registry_name;
+        error = RegistryPackageTomlParseFailed err
+      }) in
+  let* package = Riot_model.Package_manifest.from_toml
+    toml
+    ~workspace_deps:[]
+    ~workspace_dev_deps:[]
+    ~workspace_build_deps:[]
+    ~path:package_root
+    ~relative_path:(Path.v ".")
+  |> Result.map_err
+    ~fn:(fun err ->
+      RegistryMaterializationFailed {
+        package = package_name_string;
+        version = release.version;
+        registry = registry_name;
+        error = RegistryPackageManifestDecodeFailed err
+      }) in
+  let* loaded = ensure_loaded_workspace
+    ~workspace_manager
+    ~registry
+    ~workspace:(Riot_model.Workspace_manifest.make ~root:package_root ~packages:[ package ] ())
+    ~package_name:package.name
+    () in
   emit
-    (
-      Riot_model.Event.PackageResolvedForBuild {
-        package = loaded.package_name;
-        version = Some release.version;
-        path = Path.to_string package_root;
-        workspace = false;
-      }
-    );
+    (Riot_model.Event.PackageResolvedForBuild {
+      package = loaded.package_name;
+      version = Some release.version;
+      path = Path.to_string package_root;
+      workspace = false
+    });
   Ok loaded
 
-let load_registry_workspace = fun ?(emit = no_emit) ?registry ~workspace_manager ~spec () -> let* parsed =
-  parse_registry_dependency_spec spec in
-load_registry_workspace_from_spec ~workspace_manager ~emit ?registry ~spec:parsed ()
+let load_registry_workspace = fun ?(emit = no_emit) ?registry ~workspace_manager ~spec () ->
+  let* parsed = parse_registry_dependency_spec spec in
+  load_registry_workspace_from_spec ~workspace_manager ~emit ?registry ~spec:parsed ()
 
-let upsert_dependency = fun (dependencies: Riot_model.Package.dependency list) (
-  (dependency: Riot_model.Package.dependency) as replacement
-) ->
+let upsert_dependency = fun (dependencies: Riot_model.Package.dependency list) ((
+  dependency: Riot_model.Package.dependency
+) as replacement) ->
   let rec loop (acc: Riot_model.Package.dependency list) (
     remaining: Riot_model.Package.dependency list
   ) =
     match remaining with
     | [] -> List.reverse (replacement :: acc)
-    | current :: rest when Riot_model.Package_name.equal current.name dependency.name ->
-        List.append (List.reverse acc) (replacement :: rest)
+    | current :: rest when Riot_model.Package_name.equal current.name dependency.name -> List.append
+      (List.reverse acc)
+      (replacement :: rest)
     | current :: rest -> loop (current :: acc) rest
   in
   loop [] dependencies
@@ -1192,10 +1105,8 @@ let dependency_of_parsed = function
 
 let reload_workspace = fun ~workspace_manager ~(workspace_root:Path.t) ->
   Riot_model.Workspace_manager.clear_cache workspace_manager;
-  let* (workspace, load_errors) =
-    Riot_model.Workspace_manager.scan workspace_manager workspace_root
-    |> Result.map_err ~fn:(fun error -> WorkspaceReloadFailed { workspace_root; error })
-  in
+  let* (workspace, load_errors) = Riot_model.Workspace_manager.scan workspace_manager workspace_root
+  |> Result.map_err ~fn:(fun error -> WorkspaceReloadFailed { workspace_root; error }) in
   match load_errors with
   | [] -> Ok workspace
   | load_errors -> Error (WorkspaceReloadHadErrors { workspace_root; errors = load_errors })
@@ -1226,9 +1137,7 @@ let lock_package_key_equal = fun left right ->
   String.equal left.registry right.registry && Package_name.equal left.package right.package
 
 let lock_package_version_map = fun (lockfile: Riot_model.Lockfile.t) ->
-  List.fold_left
-    lockfile.packages
-    ~init:[]
+  List.fold_left lockfile.packages ~init:[]
     ~fn:(fun acc (pkg: Riot_model.Lockfile.package) ->
       match (lock_package_key pkg, pkg.id.version) with
       | (Some key, Some version) -> (key, version) :: acc
@@ -1238,24 +1147,20 @@ let emit_updated_packages = fun ~(emit:event_sink) ~(previous:Riot_model.Lockfil
   current: Riot_model.Lockfile.t
 ) ->
   let previous_versions = lock_package_version_map previous in
-  List.fold_left
-    current.packages
-    ~init:0
+  List.fold_left current.packages ~init:0
     ~fn:(fun updates (pkg: Riot_model.Lockfile.package) ->
       match (lock_package_key pkg, pkg.id.version) with
       | (Some key, Some to_version) -> (
           match List.find
             previous_versions
-            ~fn:(fun (existing_key, _) ->
-              lock_package_key_equal existing_key key)
-          |> Option.map ~fn:(fun (_, version) ->
-            version) with
+            ~fn:(fun (existing_key, _) -> lock_package_key_equal existing_key key)
+          |> Option.map ~fn:(fun (_, version) -> version) with
           | Some from_version when not (String.equal from_version to_version) ->
               emit
                 (Riot_model.Event.PackageVersionUpdated {
                   package = pkg.id.name;
                   from_version;
-                  to_version;
+                  to_version
                 });
               updates + 1
           | _ -> updates
@@ -1279,14 +1184,12 @@ let update_manifest_many = fun ~(emit:event_sink) ~(target:target_manifest) ~sco
         updated_dependencies
         ~fn:(fun dependency ->
           emit
-            (
-              Riot_model.Event.DependencyManifestUpdated {
-                path = Path.to_string target.path;
-                section = Manifest_edit.section_name (scope_to_section scope);
-                operation;
-                dependency;
-              }
-            )))
+            (Riot_model.Event.DependencyManifestUpdated {
+              path = Path.to_string target.path;
+              section = Manifest_edit.section_name (scope_to_section scope);
+              operation;
+              dependency
+            })))
 
 let add = fun ?(on_event = no_emit) ~workspace_manager ~(workspace:Riot_model.Workspace_manifest.t) ~cwd ~(request:add_request) () ->
   let emit = on_event in
@@ -1303,9 +1206,8 @@ let add = fun ?(on_event = no_emit) ~workspace_manager ~(workspace:Riot_model.Wo
         in
         let* parsed =
           match parsed with
-          | Registry parsed ->
-              lookup_named_package ~emit ~registry parsed
-              |> Result.map ~fn:(fun parsed -> Registry parsed)
+          | Registry parsed -> lookup_named_package ~emit ~registry parsed
+          |> Result.map ~fn:(fun parsed -> Registry parsed)
           | Path parsed -> Ok (Path parsed)
           | Source parsed -> Ok (Source parsed)
         in
@@ -1318,17 +1220,22 @@ let add = fun ?(on_event = no_emit) ~workspace_manager ~(workspace:Riot_model.Wo
       ~init:target.dependencies
       ~fn:(fun dependencies parsed -> upsert_dependency dependencies (dependency_of_parsed parsed))
   in
-  let* () =
-    update_manifest_many
-      ~emit
-      ~target
-      ~scope:request.scope
-      ~dependencies
-      ~operation:`Add
-      ~updated_dependencies:(List.map parsed_dependencies ~fn:parsed_dependency_name)
-  in
-  let* workspace = reload_workspace ~workspace_manager ~workspace_root:workspace.root in let* _lockfile =
-    refresh_lock ~workspace_manager ~emit ~mode:Dep_solver.Refresh ~registry ~workspace () in Ok ()
+  let* () = update_manifest_many
+    ~emit
+    ~target
+    ~scope:request.scope
+    ~dependencies
+    ~operation:`Add
+    ~updated_dependencies:(List.map parsed_dependencies ~fn:parsed_dependency_name) in
+  let* workspace = reload_workspace ~workspace_manager ~workspace_root:workspace.root in
+  let* _lockfile = refresh_lock
+    ~workspace_manager
+    ~emit
+    ~mode:Dep_solver.Refresh
+    ~registry
+    ~workspace
+    () in
+  Ok ()
 
 let remove = fun ?(on_event = no_emit) ~workspace_manager ~(workspace:Riot_model.Workspace_manifest.t) ~cwd ~(request:remove_request) () ->
   let emit = on_event in
@@ -1342,33 +1249,39 @@ let remove = fun ?(on_event = no_emit) ~workspace_manager ~(workspace:Riot_model
           Error (DependencyNotFoundInSection {
             path = target.path;
             section = Manifest_edit.section_name (scope_to_section request.scope);
-            dependency = Package_name.to_string dependency;
+            dependency = Package_name.to_string dependency
           })
         else
           remove_all dependencies rest
   in
-  let* dependencies = remove_all target.dependencies request.dependencies in let* () =
-    update_manifest_many
-      ~emit
-      ~target
-      ~scope:request.scope
-      ~dependencies
-      ~operation:`Remove
-      ~updated_dependencies:(List.map request.dependencies ~fn:Package_name.to_string)
-  in
-  let* workspace = reload_workspace ~workspace_manager ~workspace_root:workspace.root in let* _lockfile =
-    refresh_lock ~workspace_manager ~emit ~mode:Dep_solver.Refresh ~registry ~workspace () in Ok ()
+  let* dependencies = remove_all target.dependencies request.dependencies in
+  let* () = update_manifest_many
+    ~emit
+    ~target
+    ~scope:request.scope
+    ~dependencies
+    ~operation:`Remove
+    ~updated_dependencies:(List.map request.dependencies ~fn:Package_name.to_string) in
+  let* workspace = reload_workspace ~workspace_manager ~workspace_root:workspace.root in
+  let* _lockfile = refresh_lock
+    ~workspace_manager
+    ~emit
+    ~mode:Dep_solver.Refresh
+    ~registry
+    ~workspace
+    () in
+  Ok ()
 
 let package_requested_for_update = fun requested (pkg: Riot_model.Lockfile.package) ->
   List.contains requested ~value:pkg.id.name
 
 let existing_lock_for_targeted_update = fun requested (lockfile: Riot_model.Lockfile.t) ->
   Riot_model.Lockfile.{
-    lockfile with
-    dependency_hash = "";
+    lockfile
+    with dependency_hash = "";
     packages = List.filter
       lockfile.packages
-      ~fn:(fun pkg -> not (package_requested_for_update requested pkg));
+      ~fn:(fun pkg -> not (package_requested_for_update requested pkg))
   }
 
 let update = fun ?(on_event = no_emit) ?registry ~workspace_manager ~(workspace:Riot_model.Workspace_manifest.t) ~(request:update_request) () ->
@@ -1391,10 +1304,7 @@ let update = fun ?(on_event = no_emit) ?registry ~workspace_manager ~(workspace:
     | (packages, Some lockfile) -> Some (Some (existing_lock_for_targeted_update packages lockfile))
   in
   let* lockfile =
-    refresh_lock
-      ?existing_lock:targeted_existing_lock
-      ~workspace_manager
-      ~emit
+    refresh_lock ?existing_lock:targeted_existing_lock ~workspace_manager ~emit
       ~mode:(
         if List.is_empty request.packages then
           Dep_solver.Unlock
@@ -1405,8 +1315,7 @@ let update = fun ?(on_event = no_emit) ?registry ~workspace_manager ~(workspace:
       ~workspace:scanned_workspace
       ()
   in
-  Option.for_each
-    previous_lock
+  Option.for_each previous_lock
     ~fn:(fun previous ->
       let updates = emit_updated_packages ~emit ~previous lockfile in
       if Int.equal updates 0 then

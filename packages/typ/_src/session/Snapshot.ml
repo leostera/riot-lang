@@ -149,7 +149,12 @@ let make_with_shared_caches = fun ~revision ~roots ~config ~sources ~shared_cach
   }
 
 let make = fun ~revision ~roots ~config ~sources ->
-  make_with_shared_caches ~revision ~roots ~config ~sources ~shared_caches:(SharedCaches.create ())
+  make_with_shared_caches
+    ~revision
+    ~roots
+    ~config
+    ~sources
+    ~shared_caches:(SharedCaches.create ())
 
 let module_names_of_slots = fun slots ->
   let rec loop order seen = function
@@ -198,7 +203,9 @@ let required_local_module_names = fun (slot: analysis_slot) ->
       |> List.map SurfacePath.to_string
       |> List.filter
         (fun module_name ->
-          LocalModules.should_include_implicit_open ~current_module_name ~module_name)
+          LocalModules.should_include_implicit_open
+            ~current_module_name
+            ~module_name)
     )
   in
   names
@@ -417,7 +424,8 @@ let placeholder_source_analysis_cache_key = fun (snapshot: t) (slot: analysis_sl
     ]
 
 let placeholder_module_result_cache_key = fun (snapshot: t) module_name ->
-  digest_key [ shared_cache_namespace snapshot; "partial-module"; module_name ]
+  digest_key
+    [ shared_cache_namespace snapshot; "partial-module"; module_name ]
 
 (* These caches depend on visible module identities plus canonical local module
    results, not on replayed ambient payloads.
@@ -574,7 +582,8 @@ and imported_world_for_slot = fun (snapshot: t) (slot: analysis_slot) ->
   ImportedWorld.create ~package_env ~scope_view
 
 and visible_type_decls_for_slot = fun (snapshot: t) (slot: analysis_slot) ->
-  ImportedWorld.visible_type_decls (imported_world_for_slot snapshot slot)
+  ImportedWorld.visible_type_decls
+    (imported_world_for_slot snapshot slot)
 
 and module_results_for = fun (snapshot: t) ->
   match snapshot.all_module_results_cache with

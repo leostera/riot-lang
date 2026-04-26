@@ -187,7 +187,9 @@ let sort_poly_variant_tags = fun tags ->
   tags
   |> List.sort
     (fun (left: TypeRepr.poly_variant_tag) (right: TypeRepr.poly_variant_tag) ->
-      String.compare left.name right.name)
+      String.compare
+        left.name
+        right.name)
 
 let overwrite_type = fun target replacement ->
   target.TypeRepr.desc <- TypeRepr.view replacement;
@@ -313,7 +315,9 @@ let unify = fun (solver: t) ~left ~right ->
                 values
                 |> List.sort
                   (fun (left: TypeRepr.package_value) (right: TypeRepr.package_value) ->
-                    String.compare left.name right.name)
+                    String.compare
+                      left.name
+                      right.name)
               in
               let left_values = sort_values left_signature.values in
               let right_values = sort_values right_signature.values in

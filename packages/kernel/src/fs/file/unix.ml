@@ -76,7 +76,10 @@ type open_flag =
   | Append
   | Exclusive
 
-type pipe = { read_end: t; write_end: t }
+type pipe = {
+  read_end: t;
+  write_end: t;
+}
 
 let flag_read_only = 1
 
@@ -172,20 +175,17 @@ module FFI = struct
   external stat:
     string ->
     ((int * int * int64 * int * int * int * int * int * int * int64 * int64 * int64), int) Result.t
-    =
-    "kernel_new_fs_file_stat"
+    = "kernel_new_fs_file_stat"
 
   external lstat:
     string ->
     ((int * int * int64 * int * int * int * int * int * int * int64 * int64 * int64), int) Result.t
-    =
-    "kernel_new_fs_file_lstat"
+    = "kernel_new_fs_file_lstat"
 
   external fstat:
     t ->
     ((int * int * int64 * int * int * int * int * int * int * int64 * int64 * int64), int) Result.t
-    =
-    "kernel_new_fs_file_fstat"
+    = "kernel_new_fs_file_fstat"
 
   external readdir: string -> (string array, int) Result.t = "kernel_new_fs_file_readdir"
 
@@ -224,30 +224,26 @@ let open_write = fun ?(create = true) ?(truncate = true) ?(append = false) ?(per
   open_file path ~flags ~permissions:perm
 
 let close = fun fd ->
-  FFI.close fd
-  |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
+  FFI.close fd |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
 
 let try_lock_exclusive = fun fd ->
-  FFI.try_lock_exclusive fd
-  |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
+  FFI.try_lock_exclusive fd |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
 
 let unlock = fun fd ->
-  FFI.unlock fd
-  |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
+  FFI.unlock fd |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
 
 let error_to_string = fun value ->
   match value with
-  | InvalidSlice { pos; len; buffer_len } ->
-      String.concat
-        ""
-        [
-          "invalid buffer slice: pos=";
-          Int.to_string pos;
-          ", len=";
-          Int.to_string len;
-          ", buffer_len=";
-          Int.to_string buffer_len;
-        ]
+  | InvalidSlice { pos; len; buffer_len } -> String.concat
+    ""
+    [
+      "invalid buffer slice: pos=";
+      Int.to_string pos;
+      ", len=";
+      Int.to_string len;
+      ", buffer_len=";
+      Int.to_string buffer_len;
+    ]
   | System error -> System_error.to_string error
 
 let validate_slice = fun buf ~pos ~len ->
@@ -263,8 +259,7 @@ let read = fun fd ?(pos = 0) ?len buf ->
     | None -> Bytes.length buf - pos
   in
   let* () = validate_slice buf ~pos ~len in
-  FFI.read fd buf pos len
-  |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
+  FFI.read fd buf pos len |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
 
 let write = fun fd ?(pos = 0) ?len buf ->
   let len =
@@ -273,22 +268,17 @@ let write = fun fd ?(pos = 0) ?len buf ->
     | None -> Bytes.length buf - pos
   in
   let* () = validate_slice buf ~pos ~len in
-  FFI.write fd buf pos len
-  |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
+  FFI.write fd buf pos len |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
 
 let read_vectored = fun fd iovecs ->
-  FFI.readv fd iovecs
-  |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
+  FFI.readv fd iovecs |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
 
 let write_vectored = fun fd iovecs ->
-  FFI.writev fd iovecs
-  |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
+  FFI.writev fd iovecs |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
 
 let pipe = fun () ->
-  let* (read_end, write_end) =
-    FFI.pipe ()
-    |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
-  in
+  let* (read_end, write_end) = FFI.pipe ()
+  |> Result.map_err ~fn:(fun code -> System (System_error.from_code code)) in
   Result.Ok { read_end; write_end }
 
 let create_dir = fun path ~perm ->
@@ -391,7 +381,8 @@ let copy = fun ~src ~dst ->
           else
             write_all (pos + written) (remaining - written)
       in
-      let* () = write_all 0 read_count in drain ()
+      let* () = write_all 0 read_count in
+      drain ()
   in
   let result = drain () in
   let close_first = close src_file in
@@ -402,8 +393,7 @@ let copy = fun ~src ~dst ->
       match (close_first, close_second) with
       | (Result.Error error, _) -> Result.Error error
       | (Result.Ok (), Result.Error error) -> Result.Error error
-      | (Result.Ok (), Result.Ok ()) ->
-          set_permissions dst ~perm:(Metadata.permissions src_metadata)
+      | (Result.Ok (), Result.Ok ()) -> set_permissions dst ~perm:(Metadata.permissions src_metadata)
     )
 
 let is_tty = FFI.is_tty

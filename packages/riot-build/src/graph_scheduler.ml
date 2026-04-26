@@ -1,6 +1,5 @@
 open Std
 open Std.Collections
-
 module DynamicWorkerPool = WorkerPool.DynamicWorkerPool
 
 module Node_id = struct
@@ -18,7 +17,10 @@ module Run_config = struct
     | Fail_fast
     | Continue_on_failure
 
-  type t = { parallelism: int; mode: mode }
+  type t = {
+    parallelism: int;
+    mode: mode;
+  }
 
   let make = fun ~parallelism ~mode () -> { parallelism = Int.max 1 parallelism; mode }
 
@@ -41,11 +43,7 @@ module Graph = struct
     mutable next_id: int;
   }
 
-  let create = fun ~apply_mutation () -> {
-    nodes = HashMap.create ();
-    apply_mutation;
-    next_id = 1;
-  }
+  let create = fun ~apply_mutation () -> { nodes = HashMap.create (); apply_mutation; next_id = 1 }
 
   let find_node = fun graph node_id ->
     match HashMap.get graph.nodes ~key:node_id with
@@ -53,13 +51,7 @@ module Graph = struct
     | None -> panic ("graph scheduler: missing node " ^ Int.to_string node_id)
 
   let add_node_with_id = fun graph ~id ~payload ->
-    let node = {
-      id;
-      payload;
-      deps = HashSet.create ();
-      dependents = HashSet.create ();
-    }
-    in
+    let node = { id; payload; deps = HashSet.create (); dependents = HashSet.create () } in
     let _ = HashMap.insert graph.nodes ~key:id ~value:node in
     node
 
@@ -84,8 +76,7 @@ module Graph = struct
     ignore (add_dependency_internal graph ~node ~depends_on)
 
   let payload = fun graph node_id ->
-    HashMap.get graph.nodes ~key:node_id
-    |> Option.map ~fn:(fun node -> node.payload)
+    HashMap.get graph.nodes ~key:node_id |> Option.map ~fn:(fun node -> node.payload)
 
   let dependencies = fun graph node_id ->
     let node = find_node graph node_id in
@@ -93,14 +84,8 @@ module Graph = struct
 end
 
 type ('work, 'mutation, 'event) command =
-  | Add_node of {
-      local_id: Node_id.t;
-      payload: 'work;
-    }
-  | Add_dependency of {
-      node: Node_id.t;
-      depends_on: Node_id.t;
-    }
+  | Add_node of { local_id: Node_id.t; payload: 'work }
+  | Add_dependency of { node: Node_id.t; depends_on: Node_id.t }
   | Record_mutation of 'mutation
   | Emit_event of 'event
 
@@ -138,13 +123,7 @@ type ('work, 'result, 'error) run_result = {
   results: ('work, 'result, 'error) node_result list;
 }
 
-type (
-  'work,
-  'mutation,
-  'event,
-  'result,
-  'error
-) task_result = {
+type ('work, 'mutation, 'event, 'result, 'error) task_result = {
   node: Node_id.t;
   payload: 'work;
   outcome: ('result, 'error) result;
@@ -154,7 +133,12 @@ type (
 type ('work, 'result, 'error) runtime_node = {
   payload: 'work;
   mutable unresolved_dependencies: int;
-  mutable status: [`Pending | `Running | `Completed of ('result, 'error) result];
+  mutable status: 
+    [
+      `Pending
+      | `Running
+      | `Completed of ('result, 'error) result
+    ];
 }
 
 type Message.t +=
@@ -175,13 +159,7 @@ type Message.t +=
       run_ref: (('work, 'result, 'error) run_result) Ref.t;
     } -> Message.t
 
-type (
-  'work,
-  'mutation,
-  'event,
-  'result,
-  'error
-) state = {
+type ('work, 'mutation, 'event, 'result, 'error) state = {
   config: Run_config.t;
   graph: ('work, 'mutation) Graph.t;
   pool: (Node_id.t * 'work) DynamicWorkerPool.t;
@@ -210,8 +188,9 @@ let enqueue_if_ready = fun state node_id ->
   else
     let runtime_node = find_runtime_node state node_id in
     match runtime_node.status with
-    | `Pending when runtime_node.unresolved_dependencies = 0 ->
-        Queue.push state.ready_queue ~value:(node_id, runtime_node.payload)
+    | `Pending when runtime_node.unresolved_dependencies = 0 -> Queue.push
+      state.ready_queue
+      ~value:(node_id, runtime_node.payload)
     | `Pending
     | `Running
     | `Completed _ -> ()
@@ -273,24 +252,18 @@ let resolve_node_ref = fun locals node_id ->
   else
     match HashMap.get locals ~key:node_id with
     | Some resolved -> resolved
-    | None ->
-        panic ("graph scheduler: unresolved local node " ^ Int.to_string (Node_id.to_int node_id))
+    | None -> panic
+      ("graph scheduler: unresolved local node " ^ Int.to_string (Node_id.to_int node_id))
 
 let apply_command = fun state locals touched ->
   function
   | Add_node { local_id; payload } ->
       let node_id = Graph.add_node state.graph ~payload in
       let _ = HashMap.insert locals ~key:local_id ~value:node_id in
-      let _ =
-        HashMap.insert
-          state.runtime_nodes
-          ~key:node_id
-          ~value:{
-            payload;
-            unresolved_dependencies = 0;
-            status = `Pending;
-          }
-      in
+      let _ = HashMap.insert
+        state.runtime_nodes
+        ~key:node_id
+        ~value:{ payload; unresolved_dependencies = 0; status = `Pending } in
       node_id :: touched
   | Add_dependency { node; depends_on } ->
       let node = resolve_node_ref locals node in
@@ -302,18 +275,17 @@ let apply_command = fun state locals touched ->
             match runtime_node.status with
             | `Pending -> ()
             | `Running
-            | `Completed _ ->
-                panic
-                  ("graph scheduler: cannot add dependencies to active node "
-                  ^ Int.to_string (Node_id.to_int node))
+            | `Completed _ -> panic
+              ("graph scheduler: cannot add dependencies to active node "
+              ^ Int.to_string (Node_id.to_int node))
           );
           let dependency = find_runtime_node state depends_on in
           (
             match dependency.status with
             | `Completed _ -> ()
             | `Pending
-            | `Running ->
-                runtime_node.unresolved_dependencies <- runtime_node.unresolved_dependencies + 1
+            | `Running -> runtime_node.unresolved_dependencies <- runtime_node.unresolved_dependencies
+            + 1
           );
           node :: touched
         )
@@ -328,16 +300,11 @@ let apply_command = fun state locals touched ->
 
 let apply_commands = fun state commands ->
   let locals: (Node_id.t, Node_id.t) HashMap.t = HashMap.create () in
-  List.fold_left
-    commands
-    ~init:[]
-    ~fn:(apply_command state locals)
+  List.fold_left commands ~init:[] ~fn:(apply_command state locals)
 
 let mark_dependents_settled = fun state node_id ->
   let node = Graph.find_node state.graph node_id in
-  HashSet.fold_left
-    node.dependents
-    ~init:[]
+  HashSet.fold_left node.dependents ~init:[]
     ~fn:(fun acc dependent_id ->
       let dependent = find_runtime_node state dependent_id in
       if dependent.unresolved_dependencies > 0 then
@@ -345,9 +312,9 @@ let mark_dependents_settled = fun state node_id ->
       dependent_id :: acc)
 
 let completed_results = fun state ->
-  HashMap.to_list state.runtime_nodes
-  |> List.sort ~compare:(fun (left, _) (right, _) -> Node_id.compare left right)
-  |> List.filter_map
+  HashMap.to_list state.runtime_nodes |> List.sort
+    ~compare:(fun (left, _) (right, _) ->
+      Node_id.compare left right) |> List.filter_map
     ~fn:(fun (node_id, runtime_node) ->
       match runtime_node.status with
       | `Completed outcome -> Some { node = node_id; payload = runtime_node.payload; outcome }
@@ -364,8 +331,7 @@ let rec loop:
   if is_complete state then
     { results = completed_results state }
   else
-    let selector:
-      ([
+    let selector: ([
         | `WorkerReady of (Node_id.t * work) DynamicWorkerPool.worker
         | `NodeResult of (work, mutation, event, result, error) task_result
       ]) selector = fun msg ->
@@ -384,7 +350,8 @@ let rec loop:
           | Some Type.Equal -> `select (`NodeResult result)
           | None -> `skip
         )
-      | _ -> `skip
+      | _ ->
+          `skip
     in
     match receive ~selector () with
     | `WorkerReady worker ->
@@ -414,44 +381,32 @@ let run = fun ~config ~on_event ~graph ~execute ->
     let event_ref: 'event Ref.t = Ref.make () in
     let run_ref: (('work, 'result, 'error) run_result) Ref.t = Ref.make () in
     let init_run () =
-      let runtime_nodes: (Node_id.t, ('work, 'result, 'error) runtime_node) HashMap.t =
-        HashMap.create ()
-      in
-      HashMap.for_each
-        graph.Graph.nodes
+      let runtime_nodes: (Node_id.t, ('work, 'result, 'error) runtime_node) HashMap.t = HashMap.create
+        () in
+      HashMap.for_each graph.Graph.nodes
         ~fn:(fun node_id node ->
-          let _ =
-            HashMap.insert
-              runtime_nodes
-              ~key:node_id
-              ~value:{
-                payload = node.payload;
-                unresolved_dependencies = HashSet.length node.deps;
-                status = `Pending;
-              }
-          in
+          let _ = HashMap.insert
+            runtime_nodes
+            ~key:node_id
+            ~value:{
+              payload = node.payload;
+              unresolved_dependencies = HashSet.length node.deps;
+              status = `Pending
+            } in
           ());
       let result_ref = Ref.make () in
       let worker_owner = self () in
       let worker_fn ~owner ~task:((node, payload)) =
         let handle = Handle.create () in
         let outcome = execute ~graph:handle ~node ~payload in
-        let result = {
-          node;
-          payload;
-          outcome;
-          commands = List.reverse handle.commands;
-        }
-        in
+        let result = { node; payload; outcome; commands = List.reverse handle.commands } in
         send owner (GraphNodeResult { result; result_ref })
       in
-      let pool =
-        DynamicWorkerPool.start
-          ~concurrency:(Run_config.parallelism config)
-          ~owner:worker_owner
-          ~worker_fn
-          ()
-      in
+      let pool = DynamicWorkerPool.start
+        ~concurrency:(Run_config.parallelism config)
+        ~owner:worker_owner
+        ~worker_fn
+        () in
       let state = {
         config;
         graph;
@@ -465,8 +420,7 @@ let run = fun ~config ~on_event ~graph ~execute ->
         fail_fast_triggered = false;
       }
       in
-      HashMap.for_each
-        runtime_nodes
+      HashMap.for_each runtime_nodes
         ~fn:(fun node_id runtime_node ->
           if runtime_node.unresolved_dependencies = 0 then
             Queue.push state.ready_queue ~value:(node_id, runtime_node.payload));
@@ -480,19 +434,22 @@ let run = fun ~config ~on_event ~graph ~execute ->
     in
     let _ = spawn init_run in
     let rec await () =
-      let selector:
-        ([`Event of 'event | `Completed of ('work, 'result, 'error) run_result | `Failed of exn]) selector = function
-        | GraphRunEvent { event; event_ref = ref } -> (
+      let selector: ([
+          `Event of 'event
+          | `Completed of ('work, 'result, 'error) run_result
+          | `Failed of exn
+        ]) selector = function
+        | GraphRunEvent { event; event_ref=ref } -> (
             match Ref.cast ref event_ref event with
             | Some event -> `select (`Event event)
             | None -> `skip
           )
-        | GraphRunCompleted { results; run_ref = ref } -> (
+        | GraphRunCompleted { results; run_ref=ref } -> (
             match Ref.cast ref run_ref results with
             | Some results -> `select (`Completed results)
             | None -> `skip
           )
-        | GraphRunFailed { exn; run_ref = ref } -> (
+        | GraphRunFailed { exn; run_ref=ref } -> (
             if Ref.equal run_ref ref then
               `select (`Failed exn)
             else
@@ -505,7 +462,9 @@ let run = fun ~config ~on_event ~graph ~execute ->
       | `Event event ->
           on_event event;
           await ()
-      | `Completed results -> results
-      | `Failed exn -> raise exn
+      | `Completed results ->
+          results
+      | `Failed exn ->
+          raise exn
     in
     await ()

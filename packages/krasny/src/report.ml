@@ -1,10 +1,7 @@
 open Std
 
 type event =
-  | Start of {
-      mode: Runner.run_mode;
-      concurrency: int;
-    }
+  | Start of { mode: Runner.run_mode; concurrency: int }
   | File of Runner.file_result
   | Summary of Runner.summary
 
@@ -15,72 +12,73 @@ let relative_to_root = fun ~root path ->
 
 let file_result_to_json = fun ~root (result: Runner.file_result) ->
   let open Data.Json in
-  let status =
-    match result.status with
-    | Runner.Already_formatted -> "already_formatted"
-    | Runner.Needs_formatting -> "needs_formatting"
-    | Runner.Would_reformat -> "would_reformat"
-    | Runner.Unsafe_to_format -> "unsafe_to_format"
-    | Runner.Formatted -> "formatted"
-    | Runner.Failed -> "failed"
-  in
-  Object [
-    ("file", String (relative_to_root ~root result.file));
-    ("status", String status);
-    ("needs_formatting", Bool result.needs_formatting);
-    ("duration_ms", Int (Time.Duration.to_millis result.duration));
-    ("error", match result.error with
-    | Some error -> String error
-    | None -> Null);
-    ("diagnostics", match result.diagnostics with
-    | Some diagnostics -> Array (List.map diagnostics ~fn:Syn.Diagnostic.to_json)
-    | None -> Null);
+    let status =
+      match result.status with
+      | Runner.Already_formatted -> "already_formatted"
+      | Runner.Needs_formatting -> "needs_formatting"
+      | Runner.Would_reformat -> "would_reformat"
+      | Runner.Unsafe_to_format -> "unsafe_to_format"
+      | Runner.Formatted -> "formatted"
+      | Runner.Failed -> "failed"
+    in
+    Object [
+      ("file", String (relative_to_root ~root result.file));
+      ("status", String status);
+      ("needs_formatting", Bool result.needs_formatting);
+      ("duration_ms", Int (Time.Duration.to_millis result.duration));
+      (
+        "error",
+        match result.error with
+        | Some error -> String error
+        | None -> Null
+      );
+      (
+        "diagnostics",
+        match result.diagnostics with
+        | Some diagnostics -> Array (List.map diagnostics ~fn:Syn.Diagnostic.to_json)
+        | None -> Null
+      );
+    ]
+
+let summary_to_json = fun (summary: Runner.summary) ->
+  let open Data.Json in Object [
+    ("total_files", Int summary.total_files);
+    ("already_formatted", Int summary.already_formatted);
+    ("needs_formatting", Int summary.needs_formatting);
+    ("would_reformat", Int summary.would_reformat);
+    ("unsafe_to_format", Int summary.unsafe_to_format);
+    ("formatted_files", Int summary.formatted_files);
+    ("failed_files", Int summary.failed_files);
+    ("duration_secs", Float (Time.Duration.to_secs_float summary.duration));
   ]
 
-let summary_to_json = fun (summary: Runner.summary) -> let open Data.Json in
-Object [
-  ("total_files", Int summary.total_files);
-  ("already_formatted", Int summary.already_formatted);
-  ("needs_formatting", Int summary.needs_formatting);
-  ("would_reformat", Int summary.would_reformat);
-  ("unsafe_to_format", Int summary.unsafe_to_format);
-  ("formatted_files", Int summary.formatted_files);
-  ("failed_files", Int summary.failed_files);
-  ("duration_secs", Float (Time.Duration.to_secs_float summary.duration));
-]
-
-let timestamp_field = fun () -> (
-  "timestamp",
-  Data.Json.String (
-    DateTime.now_utc ()
-    |> DateTime.to_iso8601
-  )
-)
+let timestamp_field = fun () ->
+  ("timestamp", Data.Json.String (DateTime.now_utc () |> DateTime.to_iso8601))
 
 let event_to_json = fun ~root ->
   function
   | Start { mode; concurrency } ->
-      Data.Json.Object [
-        timestamp_field ();
-        ("type", Data.Json.String "start");
-        ("mode", Data.Json.String (
-          match mode with
-          | Runner.Check -> "check"
-          | Runner.Verify -> "verify"
-          | Runner.Format -> "format"
-        ));
-        ("concurrency", Data.Json.Int concurrency);
-      ]
+      Data.Json.Object [ timestamp_field (); ("type", Data.Json.String "start"); (
+          "mode",
+          Data.Json.String (
+            match mode with
+            | Runner.Check -> "check"
+            | Runner.Verify -> "verify"
+            | Runner.Format -> "format"
+          )
+        ); ("concurrency", Data.Json.Int concurrency); ]
   | File result -> (
       match file_result_to_json ~root result with
-      | Data.Json.Object fields ->
-          Data.Json.Object (timestamp_field () :: ("type", Data.Json.String "file") :: fields)
+      | Data.Json.Object fields -> Data.Json.Object (timestamp_field ()
+      :: ("type", Data.Json.String "file")
+      :: fields)
       | _ -> panic "expected JSON object"
     )
   | Summary summary -> (
       match summary_to_json summary with
-      | Data.Json.Object fields ->
-          Data.Json.Object (timestamp_field () :: ("type", Data.Json.String "summary") :: fields)
+      | Data.Json.Object fields -> Data.Json.Object (timestamp_field ()
+      :: ("type", Data.Json.String "summary")
+      :: fields)
       | _ -> panic "expected JSON object"
     )
 
@@ -109,9 +107,9 @@ let write_text_file_result = fun ~writer ~root (result: Runner.file_result) ->
 let write_text_summary = fun ~writer ~mode (summary: Runner.summary) ->
   let status_char =
     if match mode with
-    | Runner.Check -> summary.needs_formatting = 0 && summary.failed_files = 0
-    | Runner.Verify -> summary.unsafe_to_format = 0 && summary.failed_files = 0
-    | Runner.Format -> summary.failed_files = 0 then
+      | Runner.Check -> summary.needs_formatting = 0 && summary.failed_files = 0
+      | Runner.Verify -> summary.unsafe_to_format = 0 && summary.failed_files = 0
+      | Runner.Format -> summary.failed_files = 0 then
       "\027[1;32m✓\027[0m"
     else
       "\027[1;31m✗\027[0m"

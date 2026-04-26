@@ -12,26 +12,18 @@ let checksum = ref 0
 
 let touch_int = fun value -> checksum := !checksum lxor value
 
-let source_slice = fun source ->
-  IO.IoVec.IoSlice.from_string source
-  |> Result.expect ~msg:"failed to create lower benchmark source slice"
+let source_slice = fun source -> IO.IoVec.IoSlice.from_string source |> Result.expect ~msg:"failed to create lower benchmark source slice"
 
-let make_fixture = fun ~name ~path source ->
-  {
-    name;
-    path;
-    source;
-    slice = source_slice source;
-  }
+let make_fixture = fun ~name ~path source -> { name; path; source; slice = source_slice source }
 
 let load_fixture = fun ~name path ->
-  let source =
-    Fs.read path
-    |> Result.expect ~msg:("failed to read lower benchmark fixture: " ^ Path.to_string path)
-  in
+  let source = Fs.read path
+  |> Result.expect ~msg:("failed to read lower benchmark fixture: " ^ Path.to_string path) in
   make_fixture ~name ~path source
 
-type counting_sink = { mutable bytes: int }
+type counting_sink = {
+  mutable bytes: int;
+}
 
 let counting_writer =
   let module Write = struct
@@ -90,17 +82,11 @@ let source_fixtures = [
   (small_config, make_fixture ~name:"parameterized let" ~path:(Path.v "sample.ml") "let id x = x\n");
   (
     small_config,
-    make_fixture
-      ~name:"match expression"
-      ~path:(Path.v "sample.ml")
-      "let value = match x with | 0 -> 1 | _ -> 2\n"
+    make_fixture ~name:"match expression" ~path:(Path.v "sample.ml") "let value = match x with | 0 -> 1 | _ -> 2\n"
   );
   (
     small_config,
-    make_fixture
-      ~name:"module and module type declarations"
-      ~path:(Path.v "sample.ml")
-      "module Alias = Foo.Bar\nmodule Empty = struct end\nmodule type S = Foo.S\nmodule type Empty = sig end\n"
+    make_fixture ~name:"module and module type declarations" ~path:(Path.v "sample.ml") "module Alias = Foo.Bar\nmodule Empty = struct end\nmodule type S = Foo.S\nmodule type Empty = sig end\n"
   );
   (
     small_config,

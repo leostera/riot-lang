@@ -595,10 +595,12 @@ let init_supervisor = fun strategy intensity children () ->
   loop state
 
 let start_link = fun ~strategy ?intensity ~children () ->
-  spawn (init_supervisor strategy intensity children)
+  spawn
+    (init_supervisor strategy intensity children)
 
 let start = fun ~strategy ?intensity ~children () ->
-  spawn (init_supervisor strategy intensity children)
+  spawn
+    (init_supervisor strategy intensity children)
 
 (** {1 Child Management} *)
 

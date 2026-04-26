@@ -3,7 +3,6 @@ open Std.Data
 open Std.Result.Syntax
 open Typ.Diagnostics
 open Typ.Model
-
 module Vector = Std.Collections.Vector
 
 let lint_rules = Riot_fix.Pipeline.default_rules ()
@@ -40,22 +39,27 @@ let empty = {
   initialized = false;
   shutdown_requested = false;
   documents = [];
-  workspace_manager = Riot_model.Workspace_manager.create ();
+  workspace_manager = Riot_model.Workspace_manager.create ()
 }
 
 let uri_equal = fun left ->
-  fun right -> String.equal (Lsp.Uri.to_string left) (Lsp.Uri.to_string right)
+  fun right ->
+    String.equal (Lsp.Uri.to_string left) (Lsp.Uri.to_string right)
 
-let upsert_document = fun state document -> {
-  state with
-  documents = document
-  :: List.filter state.documents ~fn:(fun existing -> not (uri_equal existing.uri document.uri));
-}
+let upsert_document = fun state document ->
+  {
+    state
+    with documents = document
+    :: List.filter state.documents ~fn:(fun existing -> not (uri_equal existing.uri document.uri))
+  }
 
-let remove_document = fun state uri -> {
-  state with
-  documents = List.filter state.documents ~fn:(fun document -> not (uri_equal document.uri uri));
-}
+let remove_document = fun state uri ->
+  {
+    state
+    with documents = List.filter
+      state.documents
+      ~fn:(fun document -> not (uri_equal document.uri uri))
+  }
 
 let find_document = fun state uri ->
   List.find state.documents ~fn:(fun document -> uri_equal document.uri uri)
@@ -70,7 +74,8 @@ let filename_of_uri = fun uri ->
   | Ok path -> path
   | Error _ -> Path.v "buffer.ml"
 
-let compare_paths = fun left right -> String.compare (Path.to_string left) (Path.to_string right)
+let compare_paths = fun left right ->
+  String.compare (Path.to_string left) (Path.to_string right)
 
 let dedupe_paths = fun paths ->
   let sorted = List.sort paths ~compare:compare_paths in
@@ -79,11 +84,7 @@ let dedupe_paths = fun paths ->
 let document_path_key = fun (document: document) ->
   match document.path with
   | None -> None
-  | Some path ->
-      Some (
-        Path.normalize path
-        |> Path.to_string
-      )
+  | Some path -> Some (Path.normalize path |> Path.to_string)
 
 let document_in_root = fun root ->
   fun (document: document) ->
@@ -101,9 +102,7 @@ let filename_of_document = fun (document: document) ->
   | Some path -> path
   | None -> filename_of_uri document.uri
 
-let source_slice = fun text ->
-  IO.IoVec.IoSlice.from_string text
-  |> Result.expect ~msg:"failed to create LSP parser source slice"
+let source_slice = fun text -> IO.IoVec.IoSlice.from_string text |> Result.expect ~msg:"failed to create LSP parser source slice"
 
 let add_prepared_typ_source = fun session ->
   fun ~kind:_ ->
@@ -122,10 +121,8 @@ let package_scope_for_file = fun state path ->
   | Ok (workspace, _errors) -> (
       match Riot_model.Workspace_manifest.find_package_for_path workspace ~path with
       | None -> None
-      | Some manifest ->
-          Some (Riot_model.Workspace_manifest.realize_package
-            ~intent:Riot_model.Package.Runtime
-            manifest)
+      | Some manifest -> Some (Riot_model.Workspace_manifest.realize_package
+        ~intent:Riot_model.Package.Runtime manifest)
     )
 
 let package_source_files = fun (pkg: Riot_model.Package.t) ->
@@ -134,14 +131,12 @@ let package_source_files = fun (pkg: Riot_model.Package.t) ->
   |> dedupe_paths
 
 let package_typ_summary_source_files = fun (pkg: Riot_model.Package.t) ->
-  pkg.sources.src
-  |> List.map ~fn:(fun relative -> Path.(pkg.path / relative))
-  |> dedupe_paths
+  pkg.sources.src |> List.map ~fn:(fun relative -> Path.(pkg.path / relative)) |> dedupe_paths
 
 let package_library_typ_source_files = fun (pkg: Riot_model.Package.t) ->
   match pkg.library with
   | None -> package_typ_summary_source_files pkg
-  | Some { path = library_path } ->
+  | Some { path=library_path } ->
       let interface_path = Path.(add_extension (remove_extension library_path) ~ext:"mli") in
       let files =
         match Fs.exists interface_path with
@@ -149,8 +144,7 @@ let package_library_typ_source_files = fun (pkg: Riot_model.Package.t) ->
         | Ok false
         | Error _ -> [ library_path ]
       in
-      files
-      |> dedupe_paths
+      files |> dedupe_paths
 
 let typ_target_files = fun state ->
   fun (document: document) ->
@@ -161,35 +155,27 @@ let typ_target_files = fun state ->
         | Some pkg -> (
             let package_root = pkg.path in
             let package_files = package_source_files pkg in
-            let open_documents =
-              state.documents
-              |> List.filter ~fn:(document_in_root package_root)
-              |> List.filter_map ~fn:(fun document -> document.path)
-            in
+            let open_documents = state.documents
+            |> List.filter ~fn:(document_in_root package_root)
+            |> List.filter_map ~fn:(fun document -> document.path) in
             dedupe_paths ((package_files @ open_documents) @ [ path ])
           )
         | None -> [ path ]
       )
 
 let text_for_path = fun state path ->
-  let key =
-    Path.normalize path
-    |> Path.to_string
-  in
-  state.documents
-  |> List.find
+  let key = Path.normalize path |> Path.to_string in
+  state.documents |> List.find
     ~fn:(fun document ->
       match document_path_key document with
       | Some candidate -> String.equal candidate key
-      | None -> false)
-  |> function
-    | Some document ->
-        Some document.text
-    | None -> (
-        match Fs.read path with
-        | Ok text -> Some text
-        | Error _ -> None
-      )
+      | None -> false) |> function
+  | Some document -> Some document.text
+  | None -> (
+      match Fs.read path with
+      | Ok text -> Some text
+      | Error _ -> None
+    )
 
 let typ_config_for_document = fun _state -> fun (_document: document) -> ()
 
@@ -248,10 +234,7 @@ let typ_diagnostic_to_lsp = fun text ->
       match diagnostic with
       | Typ.Diagnostics.Diagnostic.UnsupportedSyntax unsupported -> (
         unsupported.span,
-        "Unsupported syntax: "
-        ^ Syn.SyntaxKind.to_string unsupported.kind
-        ^ " - "
-        ^ unsupported.summary
+        "Unsupported syntax: " ^ Syn.SyntaxKind.to_string unsupported.kind ^ " - " ^ unsupported.summary
       )
       | Typ.Diagnostics.Diagnostic.UnsupportedType unsupported -> (
         unsupported.span,
@@ -272,10 +255,7 @@ let typ_diagnostic_to_lsp = fun text ->
     }
 
 let analyze_document = fun document ->
-  Riot_fix.Source_runner.run
-    ~rules:lint_rules
-    ~filename:(filename_of_document document)
-    document.text
+  Riot_fix.Source_runner.run ~rules:lint_rules ~filename:(filename_of_document document) document.text
 
 let compare_position = fun (left: Lsp.Position.t) ->
   fun (right: Lsp.Position.t) ->
@@ -321,11 +301,12 @@ let lint_diagnostic_requested = fun context range diagnostic ->
 let document_range = fun text ->
   Lsp.Utf16.range_of_offsets text ~start_offset:0 ~end_offset:(String.length text)
 
-let workspace_edit_of_text = fun document text -> {
-  Lsp.Workspace_edit.changes = [
-    (document.uri, [ { Lsp.Text_edit.range = document_range document.text; new_text = text } ]);
-  ];
-}
+let workspace_edit_of_text = fun document text ->
+  {
+    Lsp.Workspace_edit.changes = [
+      (document.uri, [ { Lsp.Text_edit.range = document_range document.text; new_text = text } ]);
+    ]
+  }
 
 let maybe_format_text = fun document text ->
   let parse_result = Syn.parse ~filename:(filename_of_uri document.uri) (source_slice text) in
@@ -341,17 +322,15 @@ let finalized_workspace_edit_of_text = fun document text ->
   workspace_edit_of_text document text
 
 let fixable_lint_diagnostics = fun document result ->
-  result.Riot_fix.Source_runner.diagnostics
-  |> List.filter_map
+  result.Riot_fix.Source_runner.diagnostics |> List.filter_map
     ~fn:(fun diagnostic ->
       match Riot_fix.Diagnostic.fix diagnostic with
       | None -> None
-      | Some fix ->
-          Some {
-            diagnostic;
-            lsp_diagnostic = lint_diagnostic_to_lsp document.text diagnostic;
-            fix;
-          })
+      | Some fix -> Some {
+        diagnostic;
+        lsp_diagnostic = lint_diagnostic_to_lsp document.text diagnostic;
+        fix
+      })
 
 let quickfix_action_of_entry = fun document entry ->
   match Riot_fix.Fix.apply_fix ~source:document.text entry.fix with
@@ -396,17 +375,14 @@ let typ_diagnostics = fun state ->
 let publish_diagnostics = fun state ->
   fun document ->
     let result = analyze_document document in
-    let diagnostics =
-      (List.map result.parse_diagnostics ~fn:(diagnostic_to_lsp document.text)
-      @ List.map result.diagnostics ~fn:(lint_diagnostic_to_lsp document.text))
-      @ typ_diagnostics state document
-    in
+    let diagnostics = (List.map result.parse_diagnostics ~fn:(diagnostic_to_lsp document.text)
+    @ List.map result.diagnostics ~fn:(lint_diagnostic_to_lsp document.text))
+    @ typ_diagnostics state document in
     let params: Lsp.Text_document_methods.Publish_diagnostics.params = {
       uri = document.uri;
       version = Some document.version;
-      diagnostics;
-    }
-    in
+      diagnostics
+    } in
     Lsp.notification_to_json Lsp.Text_document_methods.Publish_diagnostics.notification params
 
 let query_position_of_lsp_position = fun text position ->
@@ -429,19 +405,16 @@ let range_of_tokens = fun text tokens ->
   match tokens with
   | [] -> Lsp.Utf16.range_of_offsets text ~start_offset:0 ~end_offset:0
   | first :: rest ->
-      let last = List.fold_left rest ~init:first ~fn:(fun _ token -> token) in
+      let last =
+        List.fold_left rest ~init:first ~fn:(fun _ token -> token)
+      in
       let (start, _) = Syn.Ast.Token.raw_range first in
       let (_, end_) = Syn.Ast.Token.raw_range last in
       Lsp.Utf16.range_of_offsets text ~start_offset:start ~end_offset:end_
 
-let text_of_name_tokens = fun tokens ->
-  tokens
-  |> List.map ~fn:Syn.Ast.Token.text
-  |> String.concat ""
+let text_of_name_tokens = fun tokens -> tokens |> List.map ~fn:Syn.Ast.Token.text |> String.concat ""
 
-let vector_to_list = fun vector ->
-  Vector.to_array vector
-  |> Array.to_list
+let vector_to_list = fun vector -> Vector.to_array vector |> Array.to_list
 
 let collect_tokens = fun ~size collect ->
   let tokens = Vector.with_capacity ~size in
@@ -450,13 +423,12 @@ let collect_tokens = fun ~size collect ->
 
 let rec binding_name_tokens_of_parameter = fun parameter ->
   match Syn.Ast.Parameter.view parameter with
-  | Syn.Ast.Parameter.Labeled { pattern = Some pattern; _ }
-  | Syn.Ast.Parameter.Optional { pattern = Some pattern; _ }
-  | Syn.Ast.Parameter.OptionalDefault { pattern = Some pattern; _ } ->
-      binding_name_tokens_of_pattern pattern
-  | Syn.Ast.Parameter.Labeled { label = Some label; _ }
-  | Syn.Ast.Parameter.Optional { label = Some label; _ }
-  | Syn.Ast.Parameter.OptionalDefault { label = Some label; _ } -> Some [ label ]
+  | Syn.Ast.Parameter.Labeled { pattern=Some pattern; _ }
+  | Syn.Ast.Parameter.Optional { pattern=Some pattern; _ }
+  | Syn.Ast.Parameter.OptionalDefault { pattern=Some pattern; _ } -> binding_name_tokens_of_pattern pattern
+  | Syn.Ast.Parameter.Labeled { label=Some label; _ }
+  | Syn.Ast.Parameter.Optional { label=Some label; _ }
+  | Syn.Ast.Parameter.OptionalDefault { label=Some label; _ } -> Some [ label ]
   | Syn.Ast.Parameter.Labeled _
   | Syn.Ast.Parameter.Optional _
   | Syn.Ast.Parameter.OptionalDefault _
@@ -469,15 +441,17 @@ and binding_name_tokens_of_pattern = fun pattern ->
       | Some token -> Some [ token ]
       | None -> None
     )
-  | Syn.Ast.Pattern.Alias { alias = Some alias; _ }
-  | Syn.Ast.Pattern.Constraint { pattern = Some alias; _ }
-  | Syn.Ast.Pattern.Lazy { pattern = Some alias }
-  | Syn.Ast.Pattern.Exception { pattern = Some alias }
-  | Syn.Ast.Pattern.Parenthesized { inner = Some alias }
-  | Syn.Ast.Pattern.Attribute { inner = Some alias } -> binding_name_tokens_of_pattern alias
+  | Syn.Ast.Pattern.Alias { alias=Some alias; _ }
+  | Syn.Ast.Pattern.Constraint { pattern=Some alias; _ }
+  | Syn.Ast.Pattern.Lazy { pattern=Some alias }
+  | Syn.Ast.Pattern.Exception { pattern=Some alias }
+  | Syn.Ast.Pattern.Parenthesized { inner=Some alias }
+  | Syn.Ast.Pattern.Attribute { inner=Some alias } ->
+      binding_name_tokens_of_pattern alias
   | Syn.Ast.Pattern.LabeledParam parameter
   | Syn.Ast.Pattern.OptionalParam parameter
-  | Syn.Ast.Pattern.OptionalParamDefault parameter -> binding_name_tokens_of_parameter parameter
+  | Syn.Ast.Pattern.OptionalParamDefault parameter ->
+      binding_name_tokens_of_parameter parameter
   | Syn.Ast.Pattern.Wildcard
   | Syn.Ast.Pattern.Apply _
   | Syn.Ast.Pattern.Literal _
@@ -500,13 +474,14 @@ and binding_name_tokens_of_pattern = fun pattern ->
   | Syn.Ast.Pattern.Lazy _
   | Syn.Ast.Pattern.Exception _
   | Syn.Ast.Pattern.Error _
-  | Syn.Ast.Pattern.Unknown _ -> None
+  | Syn.Ast.Pattern.Unknown _ ->
+      None
 
 let rec value_like_type_is_function = fun type_ ->
   match Syn.Ast.TypeExpr.view type_ with
   | Syn.Ast.TypeExpr.Arrow _ -> true
-  | Syn.Ast.TypeExpr.Parenthesized { inner = Some inner }
-  | Syn.Ast.TypeExpr.Poly { body = Some inner } -> value_like_type_is_function inner
+  | Syn.Ast.TypeExpr.Parenthesized { inner=Some inner }
+  | Syn.Ast.TypeExpr.Poly { body=Some inner } -> value_like_type_is_function inner
   | _ -> false
 
 let symbol_kind_of_type_member = fun member ->
@@ -530,8 +505,7 @@ let document_symbol_of_named_item = fun ~text ~name ~kind ~syntax_node ~selectio
   }
 
 let let_binding_symbol = fun text binding ->
-  match Syn.Ast.LetBinding.pattern binding
-  |> Option.and_then ~fn:binding_name_tokens_of_pattern with
+  match Syn.Ast.LetBinding.pattern binding |> Option.and_then ~fn:binding_name_tokens_of_pattern with
   | None -> []
   | Some name_tokens ->
       let has_parameters = ref false in
@@ -558,41 +532,35 @@ let let_declaration_symbols = fun text declaration ->
     declaration
     ~fn:(fun binding ->
       let_binding_symbol text binding
-      |> List.for_each ~fn:(fun symbol ->
-        Vector.push symbols ~value:symbol));
+      |> List.for_each ~fn:(fun symbol -> Vector.push symbols ~value:symbol));
   vector_to_list symbols
 
 let type_declaration_symbols = fun text declaration ->
-  Syn.Ast.TypeDeclaration.fold_members
-    declaration
-    []
+  Syn.Ast.TypeDeclaration.fold_members declaration []
     (fun acc member ->
       match Syn.Ast.TypeDeclaration.Member.name member with
       | None -> acc
-      | Some name ->
-          document_symbol_of_named_item
-            ~text
-            ~name:(Syn.Ast.Token.text name)
-            ~kind:(symbol_kind_of_type_member member)
-            ~syntax_node:declaration
-            ~selection_range:(range_of_token text name)
-            ()
-          :: acc)
-  |> List.reverse
+      | Some name -> document_symbol_of_named_item
+        ~text
+        ~name:(Syn.Ast.Token.text name)
+        ~kind:(symbol_kind_of_type_member member)
+        ~syntax_node:declaration
+        ~selection_range:(range_of_token text name)
+        ()
+      :: acc) |> List.reverse
 
 let type_extension_symbols = fun text declaration ->
   match Syn.Ast.TypeExtensionDeclaration.name declaration with
   | None -> []
-  | Some name ->
-      [
-        document_symbol_of_named_item
-          ~text
-          ~name:(Syn.Ast.Token.text name)
-          ~kind:Lsp.Symbol_kind.Enum
-          ~syntax_node:declaration
-          ~selection_range:(range_of_token text name)
-          ();
-      ]
+  | Some name -> [
+    document_symbol_of_named_item
+      ~text
+      ~name:(Syn.Ast.Token.text name)
+      ~kind:Lsp.Symbol_kind.Enum
+      ~syntax_node:declaration
+      ~selection_range:(range_of_token text name)
+      ();
+  ]
 
 let rec collect_structure_symbols = fun text collect ->
   let items = Vector.with_capacity ~size:8 in
@@ -606,19 +574,19 @@ and collect_signature_symbols = fun text collect ->
 
 and module_declaration_children = fun text declaration ->
   match Syn.Ast.ModuleDeclaration.body declaration with
-  | Syn.Ast.ModuleDeclaration.Struct ->
-      collect_structure_symbols text (Syn.Ast.ModuleDeclaration.for_each_structure_item declaration)
-  | Syn.Ast.ModuleDeclaration.Sig ->
-      collect_signature_symbols text (Syn.Ast.ModuleDeclaration.for_each_signature_item declaration)
+  | Syn.Ast.ModuleDeclaration.Struct -> collect_structure_symbols
+    text
+    (Syn.Ast.ModuleDeclaration.for_each_structure_item declaration)
+  | Syn.Ast.ModuleDeclaration.Sig -> collect_signature_symbols
+    text
+    (Syn.Ast.ModuleDeclaration.for_each_signature_item declaration)
   | Syn.Ast.ModuleDeclaration.Path
   | Syn.Ast.ModuleDeclaration.EmptyStruct
   | Syn.Ast.ModuleDeclaration.EmptySig
   | Syn.Ast.ModuleDeclaration.Unsupported -> []
 
 and module_declaration_symbols = fun text declaration ->
-  Syn.Ast.ModuleDeclaration.fold_members
-    declaration
-    []
+  Syn.Ast.ModuleDeclaration.fold_members declaration []
     (fun acc member ->
       match Syn.Ast.ModuleDeclaration.Member.name member with
       | None -> acc
@@ -632,8 +600,7 @@ and module_declaration_symbols = fun text declaration ->
             ~selection_range:(range_of_token text name)
             ?children:(symbol_children children)
             ()
-          :: acc)
-  |> List.reverse
+          :: acc) |> List.reverse
 
 and module_type_declaration_symbols = fun text declaration ->
   match Syn.Ast.ModuleTypeDeclaration.name declaration with
@@ -641,10 +608,9 @@ and module_type_declaration_symbols = fun text declaration ->
   | Some name ->
       let children =
         match Syn.Ast.ModuleTypeDeclaration.body declaration with
-        | Syn.Ast.ModuleTypeDeclaration.Sig ->
-            collect_signature_symbols
-              text
-              (Syn.Ast.ModuleTypeDeclaration.for_each_signature_item declaration)
+        | Syn.Ast.ModuleTypeDeclaration.Sig -> collect_signature_symbols
+          text
+          (Syn.Ast.ModuleTypeDeclaration.for_each_signature_item declaration)
         | Syn.Ast.ModuleTypeDeclaration.Abstract
         | Syn.Ast.ModuleTypeDeclaration.Path
         | Syn.Ast.ModuleTypeDeclaration.EmptySig
@@ -665,30 +631,28 @@ and module_type_declaration_symbols = fun text declaration ->
 and class_symbols = fun text declaration ->
   match Syn.Ast.ClassDeclaration.name declaration with
   | None -> []
-  | Some name ->
-      [
-        document_symbol_of_named_item
-          ~text
-          ~name:(Syn.Ast.Token.text name)
-          ~kind:Lsp.Symbol_kind.Class
-          ~syntax_node:declaration
-          ~selection_range:(range_of_token text name)
-          ();
-      ]
+  | Some name -> [
+    document_symbol_of_named_item
+      ~text
+      ~name:(Syn.Ast.Token.text name)
+      ~kind:Lsp.Symbol_kind.Class
+      ~syntax_node:declaration
+      ~selection_range:(range_of_token text name)
+      ();
+  ]
 
 and exception_symbols = fun text declaration ->
   match Syn.Ast.ExceptionDeclaration.name declaration with
   | None -> []
-  | Some name ->
-      [
-        document_symbol_of_named_item
-          ~text
-          ~name:(Syn.Ast.Token.text name)
-          ~kind:Lsp.Symbol_kind.Event
-          ~syntax_node:declaration
-          ~selection_range:(range_of_token text name)
-          ();
-      ]
+  | Some name -> [
+    document_symbol_of_named_item
+      ~text
+      ~name:(Syn.Ast.Token.text name)
+      ~kind:Lsp.Symbol_kind.Event
+      ~syntax_node:declaration
+      ~selection_range:(range_of_token text name)
+      ();
+  ]
 
 and value_like_declaration_symbols = fun text ~syntax_node ~name_tokens ~type_annotation ->
   match name_tokens with
@@ -710,9 +674,7 @@ and value_like_declaration_symbols = fun text ~syntax_node ~name_tokens ~type_an
       ]
 
 and value_declaration_symbols = fun text declaration ->
-  let name_tokens =
-    collect_tokens ~size:2 (Syn.Ast.ValueDeclaration.for_each_name_token declaration)
-  in
+  let name_tokens = collect_tokens ~size:2 (Syn.Ast.ValueDeclaration.for_each_name_token declaration) in
   value_like_declaration_symbols
     text
     ~syntax_node:declaration
@@ -720,9 +682,9 @@ and value_declaration_symbols = fun text declaration ->
     ~type_annotation:(Syn.Ast.ValueDeclaration.type_annotation declaration)
 
 and external_declaration_symbols = fun text declaration ->
-  let name_tokens =
-    collect_tokens ~size:2 (Syn.Ast.ExternalDeclaration.for_each_name_token declaration)
-  in
+  let name_tokens = collect_tokens
+    ~size:2
+    (Syn.Ast.ExternalDeclaration.for_each_name_token declaration) in
   value_like_declaration_symbols
     text
     ~syntax_node:declaration
@@ -730,16 +692,14 @@ and external_declaration_symbols = fun text declaration ->
     ~type_annotation:(Syn.Ast.ExternalDeclaration.type_annotation declaration)
 
 and structure_item_symbols = fun text items ->
-  items
-  |> List.map
+  items |> List.map
     ~fn:(fun item ->
       match Syn.Ast.StructureItem.view item with
       | Syn.Ast.StructureItem.Let declaration -> let_declaration_symbols text declaration
       | Syn.Ast.StructureItem.Type declaration -> type_declaration_symbols text declaration
       | Syn.Ast.StructureItem.TypeExtension declaration -> type_extension_symbols text declaration
       | Syn.Ast.StructureItem.Module declaration -> module_declaration_symbols text declaration
-      | Syn.Ast.StructureItem.ModuleType declaration ->
-          module_type_declaration_symbols text declaration
+      | Syn.Ast.StructureItem.ModuleType declaration -> module_type_declaration_symbols text declaration
       | Syn.Ast.StructureItem.External declaration -> external_declaration_symbols text declaration
       | Syn.Ast.StructureItem.Exception declaration -> exception_symbols text declaration
       | Syn.Ast.StructureItem.Class declaration -> class_symbols text declaration
@@ -749,20 +709,17 @@ and structure_item_symbols = fun text items ->
       | Syn.Ast.StructureItem.Attribute _
       | Syn.Ast.StructureItem.Expr _
       | Syn.Ast.StructureItem.Error _
-      | Syn.Ast.StructureItem.Unknown _ -> [])
-  |> List.concat
+      | Syn.Ast.StructureItem.Unknown _ -> []) |> List.concat
 
 and signature_item_symbols = fun text items ->
-  items
-  |> List.map
+  items |> List.map
     ~fn:(fun item ->
       match Syn.Ast.SignatureItem.view item with
       | Syn.Ast.SignatureItem.Value declaration -> value_declaration_symbols text declaration
       | Syn.Ast.SignatureItem.Type declaration -> type_declaration_symbols text declaration
       | Syn.Ast.SignatureItem.TypeExtension declaration -> type_extension_symbols text declaration
       | Syn.Ast.SignatureItem.Module declaration -> module_declaration_symbols text declaration
-      | Syn.Ast.SignatureItem.ModuleType declaration ->
-          module_type_declaration_symbols text declaration
+      | Syn.Ast.SignatureItem.ModuleType declaration -> module_type_declaration_symbols text declaration
       | Syn.Ast.SignatureItem.External declaration -> external_declaration_symbols text declaration
       | Syn.Ast.SignatureItem.Exception declaration -> exception_symbols text declaration
       | Syn.Ast.SignatureItem.Class declaration -> class_symbols text declaration
@@ -771,8 +728,7 @@ and signature_item_symbols = fun text items ->
       | Syn.Ast.SignatureItem.Extension _
       | Syn.Ast.SignatureItem.Attribute _
       | Syn.Ast.SignatureItem.Error _
-      | Syn.Ast.SignatureItem.Unknown _ -> [])
-  |> List.concat
+      | Syn.Ast.SignatureItem.Unknown _ -> []) |> List.concat
 
 let document_symbols_for_document = fun document ->
   let parsed = Syn.parse ~filename:(filename_of_document document) (source_slice document.text) in
@@ -792,7 +748,8 @@ let document_symbols_for_document = fun document ->
           let items = Vector.with_capacity ~size:16 in
           Syn.Ast.Interface.for_each_item interface ~fn:(fun item -> Vector.push items ~value:item);
           signature_item_symbols document.text (vector_to_list items)
-      | Syn.Ast.SourceFile.Empty -> []
+      | Syn.Ast.SourceFile.Empty ->
+          []
     in
     Some symbols
 
@@ -828,9 +785,8 @@ let clear_diagnostics = fun uri ->
   let params: Lsp.Text_document_methods.Publish_diagnostics.params = {
     uri;
     version = None;
-    diagnostics = [];
-  }
-  in
+    diagnostics = []
+  } in
   Lsp.notification_to_json Lsp.Text_document_methods.Publish_diagnostics.notification params
 
 let splice_text = fun text ->
@@ -851,17 +807,19 @@ let apply_change = fun text ->
     | None -> Ok change.text
     | Some range -> splice_text text range change.text
 
-let apply_changes = fun text -> fun changes -> List.fold_left
-  changes
-  ~init:(Ok text)
-  ~fn:(fun acc change -> let* current = acc in apply_change current change)
+let apply_changes = fun text ->
+  fun changes ->
+    List.fold_left changes ~init:(Ok text)
+      ~fn:(fun acc change ->
+        let* current = acc in
+        apply_change current change)
 
 let capabilities = {
   Lsp.Initialize.Server_capabilities.position_encoding = Some "utf-16";
   text_document_sync = Some (Lsp.Initialize.Server_capabilities.Sync_options {
     open_close = Some true;
     change = Some Lsp.Text_document.Sync_kind.Full;
-    save = None;
+    save = None
   });
   document_formatting_provider = Some true;
   definition_provider = Some true;
@@ -869,14 +827,14 @@ let capabilities = {
   document_symbol_provider = Some true;
   code_action_provider = Some (Lsp.Initialize.Server_capabilities.Provider_options {
     code_action_kinds = Some [ Lsp.Action_kind.Quick_fix; Source_fix_all ];
-    resolve_provider = Some false;
+    resolve_provider = Some false
   });
   experimental = None;
 }
 
 let initialize_result: Lsp.Initialize.result = {
   capabilities;
-  server_info = Some { Lsp.Server_info.name = "riot-lsp"; version = None };
+  server_info = Some { Lsp.Server_info.name = "riot-lsp"; version = None }
 }
 
 let debug_json = fun state ->
@@ -898,21 +856,19 @@ let debug_json = fun state ->
 
 let outcome_to_json = fun outcome ->
   Json.obj
-    [
-      ("outbound", Json.array outcome.outbound);
-      ("exitCode", match outcome.exit_code with
-      | None -> Json.Null
-      | Some code -> Json.int code);
-      ("state", debug_json outcome.state);
-    ]
+    [ ("outbound", Json.array outcome.outbound); (
+        "exitCode",
+        match outcome.exit_code with
+        | None -> Json.Null
+        | Some code -> Json.int code
+      ); ("state", debug_json outcome.state); ]
 
 let handle_initialize = fun state ->
   fun payload ->
     match Lsp.request_of_json Lsp.Initialize.request payload with
-    | Error reason ->
-        ok
-          state
-          [ response_error ~id:Jsonrpc.Null ~code:Lsp.Error_code.invalid_params ~message:reason () ]
+    | Error reason -> ok
+      state
+      [ response_error ~id:Jsonrpc.Null ~code:Lsp.Error_code.invalid_params ~message:reason () ]
     | Ok (id, _params) ->
         if state.initialized then
           ok
@@ -931,10 +887,9 @@ let handle_initialize = fun state ->
 let handle_shutdown = fun state ->
   fun payload ->
     match Lsp.request_of_json Lsp.Shutdown.request payload with
-    | Error reason ->
-        ok
-          state
-          [ response_error ~id:Jsonrpc.Null ~code:Lsp.Error_code.invalid_params ~message:reason () ]
+    | Error reason -> ok
+      state
+      [ response_error ~id:Jsonrpc.Null ~code:Lsp.Error_code.invalid_params ~message:reason () ]
     | Ok (id, ()) ->
         let state = { state with shutdown_requested = true } in
         ok state [ Lsp.response_to_json ~id Lsp.Shutdown.request () ]
@@ -942,30 +897,26 @@ let handle_shutdown = fun state ->
 let handle_formatting = fun state ->
   fun payload ->
     match Lsp.request_of_json Lsp.Text_document_methods.Formatting.request payload with
-    | Error reason ->
-        ok
-          state
-          [ response_error ~id:Jsonrpc.Null ~code:Lsp.Error_code.invalid_params ~message:reason () ]
+    | Error reason -> ok
+      state
+      [ response_error ~id:Jsonrpc.Null ~code:Lsp.Error_code.invalid_params ~message:reason () ]
     | Ok (id, params) -> (
         match find_document state params.text_document.uri with
-        | None ->
-            ok
-              state
-              [
-                response_error
-                  ~id
-                  ~code:Lsp.Error_code.invalid_params
-                  ~message:"formatting requested for a document that is not open"
-                  ();
-              ]
+        | None -> ok
+          state
+          [
+            response_error
+              ~id
+              ~code:Lsp.Error_code.invalid_params
+              ~message:"formatting requested for a document that is not open"
+              ();
+          ]
         | Some document ->
-            let parse_result =
-              Syn.parse ~filename:(filename_of_uri document.uri) (source_slice document.text)
-            in
+            let parse_result = Syn.parse
+              ~filename:(filename_of_uri document.uri)
+              (source_slice document.text) in
             if Vector.length parse_result.diagnostics > 0 then
-              ok
-                state
-                [ Lsp.response_to_json ~id Lsp.Text_document_methods.Formatting.request None ]
+              ok state [ Lsp.response_to_json ~id Lsp.Text_document_methods.Formatting.request None ]
             else
               match Krasny.format parse_result with
               | Ok formatted ->
@@ -974,136 +925,121 @@ let handle_formatting = fun state ->
                       Some []
                     else
                       Some [
-                        {
-                          Lsp.Text_edit.range = document_range document.text;
-                          new_text = formatted;
-                        };
+                        { Lsp.Text_edit.range = document_range document.text; new_text = formatted };
                       ]
                   in
                   ok
                     state
                     [ Lsp.response_to_json ~id Lsp.Text_document_methods.Formatting.request result ]
-              | Error error ->
-                  ok
-                    state
-                    [
-                      response_error
-                        ~id
-                        ~code:Lsp.Error_code.internal_error
-                        ~message:(Krasny.format_error_to_string error)
-                        ();
-                    ]
+              | Error error -> ok
+                state
+                [
+                  response_error
+                    ~id
+                    ~code:Lsp.Error_code.internal_error
+                    ~message:(Krasny.format_error_to_string error)
+                    ();
+                ]
       )
 
 let handle_hover = fun state ->
   fun payload ->
     match Lsp.request_of_json Lsp.Text_document_methods.Hover.request payload with
-    | Error reason ->
-        ok
-          state
-          [ response_error ~id:Jsonrpc.Null ~code:Lsp.Error_code.invalid_params ~message:reason () ]
+    | Error reason -> ok
+      state
+      [ response_error ~id:Jsonrpc.Null ~code:Lsp.Error_code.invalid_params ~message:reason () ]
     | Ok (id, params) -> (
         match find_document state params.text_document.uri with
-        | None ->
-            ok
-              state
-              [
-                response_error
-                  ~id
-                  ~code:Lsp.Error_code.invalid_params
-                  ~message:"hover requested for a document that is not open"
-                  ();
-              ]
-        | Some document ->
-            ok
-              state
-              [
-                Lsp.response_to_json
-                  ~id
-                  Lsp.Text_document_methods.Hover.request
-                  (hover_for_document state document params.position);
-              ]
+        | None -> ok
+          state
+          [
+            response_error
+              ~id
+              ~code:Lsp.Error_code.invalid_params
+              ~message:"hover requested for a document that is not open"
+              ();
+          ]
+        | Some document -> ok
+          state
+          [
+            Lsp.response_to_json
+              ~id
+              Lsp.Text_document_methods.Hover.request
+              (hover_for_document state document params.position);
+          ]
       )
 
 let handle_definition = fun state ->
   fun payload ->
     match Lsp.request_of_json Lsp.Text_document_methods.Definition.request payload with
-    | Error reason ->
-        ok
-          state
-          [ response_error ~id:Jsonrpc.Null ~code:Lsp.Error_code.invalid_params ~message:reason () ]
+    | Error reason -> ok
+      state
+      [ response_error ~id:Jsonrpc.Null ~code:Lsp.Error_code.invalid_params ~message:reason () ]
     | Ok (id, params) -> (
         match find_document state params.text_document.uri with
-        | None ->
-            ok
-              state
-              [
-                response_error
-                  ~id
-                  ~code:Lsp.Error_code.invalid_params
-                  ~message:"definition requested for a document that is not open"
-                  ();
-              ]
-        | Some document ->
-            ok
-              state
-              [
-                Lsp.response_to_json
-                  ~id
-                  Lsp.Text_document_methods.Definition.request
-                  (definition_for_document state document params.position);
-              ]
+        | None -> ok
+          state
+          [
+            response_error
+              ~id
+              ~code:Lsp.Error_code.invalid_params
+              ~message:"definition requested for a document that is not open"
+              ();
+          ]
+        | Some document -> ok
+          state
+          [
+            Lsp.response_to_json
+              ~id
+              Lsp.Text_document_methods.Definition.request
+              (definition_for_document state document params.position);
+          ]
       )
 
 let handle_document_symbol = fun state ->
   fun payload ->
     match Lsp.request_of_json Lsp.Text_document_methods.Document_symbol.request payload with
-    | Error reason ->
-        ok
-          state
-          [ response_error ~id:Jsonrpc.Null ~code:Lsp.Error_code.invalid_params ~message:reason () ]
+    | Error reason -> ok
+      state
+      [ response_error ~id:Jsonrpc.Null ~code:Lsp.Error_code.invalid_params ~message:reason () ]
     | Ok (id, params) -> (
         match find_document state params.text_document.uri with
-        | None ->
-            ok
-              state
-              [
-                response_error
-                  ~id
-                  ~code:Lsp.Error_code.invalid_params
-                  ~message:"document symbols requested for a document that is not open"
-                  ();
-              ]
-        | Some document ->
-            ok
-              state
-              [
-                Lsp.response_to_json
-                  ~id
-                  Lsp.Text_document_methods.Document_symbol.request
-                  (document_symbol_for_document document);
-              ]
+        | None -> ok
+          state
+          [
+            response_error
+              ~id
+              ~code:Lsp.Error_code.invalid_params
+              ~message:"document symbols requested for a document that is not open"
+              ();
+          ]
+        | Some document -> ok
+          state
+          [
+            Lsp.response_to_json
+              ~id
+              Lsp.Text_document_methods.Document_symbol.request
+              (document_symbol_for_document document);
+          ]
       )
 
 let handle_code_action = fun state ->
   fun payload ->
     match Lsp.request_of_json Lsp.Text_document_methods.Code_action.request payload with
-    | Error reason ->
-        ok
-          state
-          [ response_error ~id:Jsonrpc.Null ~code:Lsp.Error_code.invalid_params ~message:reason () ]
+    | Error reason -> ok
+      state
+      [ response_error ~id:Jsonrpc.Null ~code:Lsp.Error_code.invalid_params ~message:reason () ]
     | Ok (id, params) -> (
         match find_document state params.text_document.uri with
-        | None ->
-            ok
-              state
-              [
-                response_error
-                  ~id
-                  ~code:Lsp.Error_code.invalid_params
-                  ~message:"code actions requested for a document that is not open"
-                  ();
-              ]
+        | None -> ok
+          state
+          [
+            response_error
+              ~id
+              ~code:Lsp.Error_code.invalid_params
+              ~message:"code actions requested for a document that is not open"
+              ();
+          ]
         | Some document ->
             let analysis = analyze_document document in
             let fixable = fixable_lint_diagnostics document analysis in
@@ -1111,13 +1047,10 @@ let handle_code_action = fun state ->
             let actions =
               if action_kind_allowed params.context.only Lsp.Action_kind.Quick_fix then
                 actions
-                @ (
-                  fixable
-                  |> List.filter
-                    ~fn:(fun entry ->
-                      lint_diagnostic_requested params.context params.range entry.lsp_diagnostic)
-                  |> List.filter_map ~fn:(quickfix_action_of_entry document)
-                )
+                @ (fixable
+                |> List.filter
+                  ~fn:(fun entry -> lint_diagnostic_requested params.context params.range entry.lsp_diagnostic)
+                |> List.filter_map ~fn:(quickfix_action_of_entry document))
               else
                 actions
             in
@@ -1159,13 +1092,20 @@ let handle_request = fun state ->
           ]
       else
         match request.Jsonrpc.method_ with
-        | "initialize" -> handle_initialize state payload
-        | "shutdown" -> handle_shutdown state payload
-        | "textDocument/definition" -> handle_definition state payload
-        | "textDocument/documentSymbol" -> handle_document_symbol state payload
-        | "textDocument/hover" -> handle_hover state payload
-        | "textDocument/formatting" -> handle_formatting state payload
-        | "textDocument/codeAction" -> handle_code_action state payload
+        | "initialize" ->
+            handle_initialize state payload
+        | "shutdown" ->
+            handle_shutdown state payload
+        | "textDocument/definition" ->
+            handle_definition state payload
+        | "textDocument/documentSymbol" ->
+            handle_document_symbol state payload
+        | "textDocument/hover" ->
+            handle_hover state payload
+        | "textDocument/formatting" ->
+            handle_formatting state payload
+        | "textDocument/codeAction" ->
+            handle_code_action state payload
         | method_ ->
             let id = Option.unwrap_or request.Jsonrpc.id ~default:Jsonrpc.Null in
             ok
@@ -1189,9 +1129,8 @@ let handle_did_open = fun state ->
               uri = params.text_document.uri;
               version = params.text_document.version;
               text = params.text_document.text;
-              path = existing.path;
-            }
-            in
+              path = existing.path
+            } in
             let state = upsert_document state document in
             ok state [ publish_diagnostics state document ]
         | None ->
@@ -1202,8 +1141,7 @@ let handle_did_open = fun state ->
               path =
                 match Lsp.Uri.to_path params.text_document.uri with
                 | Ok path -> Some path
-                | Error _ ->
-                    None;
+                | Error _ -> None;
             }
             in
             let state = upsert_document state document in
@@ -1225,9 +1163,8 @@ let handle_did_change = fun state ->
                   uri = document.uri;
                   version = params.text_document.version;
                   text;
-                  path = document.path;
-                }
-                in
+                  path = document.path
+                } in
                 let state = upsert_document state document in
                 ok state [ publish_diagnostics state document ]
           )
@@ -1256,10 +1193,14 @@ let handle_notification = fun state ->
         | _ -> ok state []
       else
         match request.Jsonrpc.method_ with
-        | "initialized" -> ok state []
-        | "textDocument/didOpen" -> handle_did_open state payload
-        | "textDocument/didChange" -> handle_did_change state payload
-        | "textDocument/didClose" -> handle_did_close state payload
+        | "initialized" ->
+            ok state []
+        | "textDocument/didOpen" ->
+            handle_did_open state payload
+        | "textDocument/didChange" ->
+            handle_did_change state payload
+        | "textDocument/didClose" ->
+            handle_did_close state payload
         | "exit" ->
             let exit_code =
               if state.shutdown_requested then
@@ -1268,33 +1209,28 @@ let handle_notification = fun state ->
                 1
             in
             ok state ~exit_code []
-        | _ -> ok state []
+        | _ ->
+            ok state []
 
 let handle_payload = fun state ->
   fun payload ->
     match Json.of_string payload with
-    | Error error ->
-        ok
-          state
-          [
-            response_error
-              ~id:Jsonrpc.Null
-              ~code:Lsp.Error_code.parse_error
-              ~message:(Json.error_to_string error)
-              ();
-          ]
+    | Error error -> ok
+      state
+      [
+        response_error
+          ~id:Jsonrpc.Null
+          ~code:Lsp.Error_code.parse_error
+          ~message:(Json.error_to_string error)
+          ();
+      ]
     | Ok json -> (
         match Jsonrpc.request_of_json json with
-        | Error reason ->
-            ok
-              state
-              [
-                response_error
-                  ~id:Jsonrpc.Null
-                  ~code:Lsp.Error_code.invalid_request
-                  ~message:reason
-                  ();
-              ]
+        | Error reason -> ok
+          state
+          [
+            response_error ~id:Jsonrpc.Null ~code:Lsp.Error_code.invalid_request ~message:reason ();
+          ]
         | Ok request -> (
             match request.Jsonrpc.id with
             | Some _ -> handle_request state request json

@@ -167,10 +167,13 @@ let hidden_export_names_of_exports = fun exports ->
   |> dedupe_by_key_preserving_order ~key:(fun path -> path)
 
 let dedupe_type_decls_preserving_order = fun type_decls ->
-  dedupe_by_key_preserving_order ~key:ModuleSurface.type_decl_key type_decls
+  dedupe_by_key_preserving_order
+    ~key:ModuleSurface.type_decl_key
+    type_decls
 
 let visible_module_path = fun visible_name ->
-  SurfacePath.of_string (LocalModuleGraph.visible_module_name_to_string visible_name)
+  SurfacePath.of_string
+    (LocalModuleGraph.visible_module_name_to_string visible_name)
 
 let implicit_open_required_names_of_source = fun (source: prepared_source) ->
   source.source.implicit_opens
@@ -382,7 +385,8 @@ let analyze_group = fun ~(graph:package_graph) ~state ~config (group: graph_grou
                 |> Array.to_list
                 |> List.filter
                   (fun required_name ->
-                    not (LoadedModules.contains state.loaded_modules ~required_name))
+                    not
+                      (LoadedModules.contains state.loaded_modules ~required_name))
                 |> List.map
                   (fun missing_module_name ->
                     MissingRequirements.MissingModuleSummary {

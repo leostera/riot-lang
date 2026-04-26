@@ -115,7 +115,9 @@ let trivia_kind_of_token_kind = function
   | _ -> None
 
 let trivia_of_token = fun token ->
-  Option.map (trivia_kind_of_token_kind token.kind) ~fn:(fun kind -> { kind; span = token.span })
+  Option.map
+    (trivia_kind_of_token_kind token.kind)
+    ~fn:(fun kind -> { kind; span = token.span })
 
 let trivia_to_token = fun (trivia: trivia) -> {
   kind = token_kind_of_trivia_kind trivia.kind;

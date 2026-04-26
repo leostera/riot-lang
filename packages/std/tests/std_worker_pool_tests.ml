@@ -157,7 +157,9 @@ let test_dynamic_worker_pool_send_task_executes_payload =
           ~concurrency:1
           ~owner:parent
           ~worker_fn:(fun ~owner ~task ->
-            send owner (Worker_pool_task_received { payload = task; run_ref }))
+            send
+              owner
+              (Worker_pool_task_received { payload = task; run_ref }))
           ()
       in
       match await_ready_worker pool with

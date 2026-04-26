@@ -38,4 +38,5 @@ let init = fun ~coordinator ~owner ~worker_fn ~task_ref () ->
   loop state
 
 let start = fun ~coordinator ~owner ~worker_fn ~task_ref ->
-  spawn (init ~coordinator ~owner ~worker_fn ~task_ref)
+  spawn
+    (init ~coordinator ~owner ~worker_fn ~task_ref)

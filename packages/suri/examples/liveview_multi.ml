@@ -355,10 +355,7 @@ let home_page = fun conn _req ->
                   ];
                 div
                   ~attrs:[ class_ "components-grid" ]
-                  [
-                    LiveView.embed (module Counter) ();
-                    LiveView.embed (module Status) ();
-                  ];
+                  [ LiveView.embed (module Counter) (); LiveView.embed (module Status) (); ];
                 div
                   ~attrs:[ class_ "footer" ]
                   [
@@ -396,11 +393,12 @@ let home_page = fun conn _req ->
 
 (* Define routes *)
 
-let routes = Middleware.Router.[
-  get "/" home_page;
-  LiveView.live (module Counter);
-  LiveView.live (module Status);
-]
+let routes =
+  Middleware.Router.[
+    get "/" home_page;
+    LiveView.live (module Counter);
+    LiveView.live (module Status);
+  ]
 
 (* App is just a list of middleware! *)
 

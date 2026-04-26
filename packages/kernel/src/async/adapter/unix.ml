@@ -16,50 +16,31 @@ type event = {
 }
 
 module FFI = struct
-  external selector_create: unit -> (selector, int) Result.t =
-    "kernel_new_async_unix_selector_create"
+  external selector_create: unit -> (selector, int) Result.t = "kernel_new_async_unix_selector_create"
 
   external selector_close: selector -> (unit, int) Result.t = "kernel_new_async_unix_selector_close"
 
   external selector_wait:
-    max_events:int ->
-    timeout_ns:int64 ->
-    selector ->
-    (event array, int) Result.t =
-    "kernel_new_async_unix_selector_wait"
+    max_events:int -> timeout_ns:int64 -> selector -> (event array, int) Result.t
+    = "kernel_new_async_unix_selector_wait"
 
-  external selector_apply: selector -> event array -> int array -> (unit, int) Result.t =
-    "kernel_new_async_unix_selector_apply"
+  external selector_apply: selector -> event array -> int array -> (unit, int) Result.t = "kernel_new_async_unix_selector_apply"
 
-  external selector_register_process: selector -> int -> Token.t -> (unit, int) Result.t =
-    "kernel_new_async_unix_selector_register_process"
+  external selector_register_process: selector -> int -> Token.t -> (unit, int) Result.t = "kernel_new_async_unix_selector_register_process"
 
-  external selector_reregister_process: selector -> int -> Token.t -> (unit, int) Result.t =
-    "kernel_new_async_unix_selector_reregister_process"
+  external selector_reregister_process: selector -> int -> Token.t -> (unit, int) Result.t = "kernel_new_async_unix_selector_reregister_process"
 
-  external selector_deregister_process: selector -> int -> (unit, int) Result.t =
-    "kernel_new_async_unix_selector_deregister_process"
+  external selector_deregister_process: selector -> int -> (unit, int) Result.t = "kernel_new_async_unix_selector_deregister_process"
 
   external selector_register_timer:
-    selector ->
-    int ->
-    (int * int) ->
-    bool ->
-    Token.t ->
-    (unit, int) Result.t =
-    "kernel_new_async_unix_selector_register_timer"
+    selector -> int -> (int * int) -> bool -> Token.t -> (unit, int) Result.t
+    = "kernel_new_async_unix_selector_register_timer"
 
   external selector_reregister_timer:
-    selector ->
-    int ->
-    (int * int) ->
-    bool ->
-    Token.t ->
-    (unit, int) Result.t =
-    "kernel_new_async_unix_selector_reregister_timer"
+    selector -> int -> (int * int) -> bool -> Token.t -> (unit, int) Result.t
+    = "kernel_new_async_unix_selector_reregister_timer"
 
-  external selector_deregister_timer: selector -> int -> (unit, int) Result.t =
-    "kernel_new_async_unix_selector_deregister_timer"
+  external selector_deregister_timer: selector -> int -> (unit, int) Result.t = "kernel_new_async_unix_selector_deregister_timer"
 
   let create = fun () ->
     Result.map_err (selector_create ()) ~fn:(fun code -> System (System_error.from_code code))
@@ -111,13 +92,7 @@ end
 module Kevent = struct
   type t = event
 
-  let make = fun fd ~filter ~flags ~token ->
-    {
-      fd;
-      filter;
-      flags;
-      token;
-    }
+  let make = fun fd ~filter ~flags ~token -> { fd; filter; flags; token }
 
   let token = fun event -> event.token
 
@@ -164,11 +139,10 @@ module Selector = struct
     let flags = Libc.(ev_clear lor ev_receipt lor ev_add) in
     let changes =
       match (Interest.is_readable interest, Interest.is_writable interest) with
-      | (true, true) ->
-          [
-            Kevent.make fd ~filter:Libc.evfilt_read ~flags ~token;
-            Kevent.make fd ~filter:Libc.evfilt_write ~flags ~token;
-          ]
+      | (true, true) -> [
+        Kevent.make fd ~filter:Libc.evfilt_read ~flags ~token;
+        Kevent.make fd ~filter:Libc.evfilt_write ~flags ~token;
+      ]
       | (true, false) -> [ Kevent.make fd ~filter:Libc.evfilt_read ~flags ~token ]
       | (false, true) -> [ Kevent.make fd ~filter:Libc.evfilt_write ~flags ~token ]
       | (false, false) -> []
@@ -192,8 +166,7 @@ module Selector = struct
     let changes = [|
       Kevent.make fd ~filter:Libc.evfilt_write ~flags:write_flags ~token;
       Kevent.make fd ~filter:Libc.evfilt_read ~flags:read_flags ~token;
-    |]
-    in
+    |] in
     FFI.apply
       selector
       changes
@@ -205,8 +178,7 @@ module Selector = struct
     let changes = [|
       Kevent.make fd ~filter:Libc.evfilt_write ~flags ~token;
       Kevent.make fd ~filter:Libc.evfilt_read ~flags ~token;
-    |]
-    in
+    |] in
     FFI.apply selector changes [|System_error_code.no_such_file_or_directory|]
 
   let register_process = fun selector ~pid ~token -> FFI.register_process selector ~pid ~token

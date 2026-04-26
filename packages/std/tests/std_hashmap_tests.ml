@@ -11,7 +11,9 @@ let box = fun value -> { value }
 let sort_ints = fun values -> List.sort values ~compare:Int.compare
 
 let sort_pairs = fun values ->
-  List.sort values ~compare:(fun (left_key, _) (right_key, _) -> Int.compare left_key right_key)
+  List.sort
+    values
+    ~compare:(fun (left_key, _) (right_key, _) -> Int.compare left_key right_key)
 
 let test_create = fun _ctx ->
   let map = HashMap.create () in

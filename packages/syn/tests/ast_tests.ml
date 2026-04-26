@@ -2540,7 +2540,9 @@ let test_attribute_views = fun _ctx ->
     ~expected:"[@foo]"
     ~actual:(attribute_shell_text
       ~for_each_shell_token:(fun ~fn ->
-        Ast.AttributePattern.for_each_shell_token attribute_pattern ~fn));
+        Ast.AttributePattern.for_each_shell_token
+          attribute_pattern
+          ~fn));
   Ok ()
 
 let test_extension_views = fun _ctx ->
@@ -2593,7 +2595,9 @@ let test_extension_views = fun _ctx ->
     ~expected:"[%pat payload]"
     ~actual:(attribute_shell_text
       ~for_each_shell_token:(fun ~fn ->
-        Ast.ExtensionPattern.for_each_shell_token extension_pattern ~fn));
+        Ast.ExtensionPattern.for_each_shell_token
+          extension_pattern
+          ~fn));
   let extension_item =
     nth_structure_item root 2
     |> require_some ~msg:"expected extension item"

@@ -18,7 +18,7 @@ module Unsafe = struct
 
   external field: value -> int -> value = "%obj_field"
 
-  external tag: value -> int = "caml_obj_tag" [@@ noalloc]
+  external tag: value -> int = "caml_obj_tag" [@@noalloc]
 
   external register_named_value: string -> value -> unit = "caml_register_named_value"
 
@@ -44,9 +44,9 @@ type _ t +=
 
 let _ = Unsafe.register_exception "Effect.Continuation_already_resumed" Continuation_already_resumed
 
-type ('a, 'b) stack [@@ immediate]
+type ('a, 'b) stack [@@immediate]
 
-type last_fiber [@@ immediate]
+type last_fiber [@@immediate]
 
 external resume: ('a, 'b) stack -> ('c -> 'a) -> 'c -> last_fiber -> 'b = "%resume"
 
@@ -57,15 +57,12 @@ external raise_with_backtrace: exn -> Exception.raw_backtrace -> 'a = "%raise_wi
 module Deep = struct
   type nonrec ('a, 'b) continuation = ('a, 'b) continuation
 
-  external take_cont_noexc: ('a, 'b) continuation -> ('a, 'b) stack =
-    "caml_continuation_use_noexc" [@@ noalloc]
+  external take_cont_noexc: ('a, 'b) continuation -> ('a, 'b) stack
+    = "caml_continuation_use_noexc" [@@noalloc]
 
   external alloc_stack:
-    ('a -> 'b) ->
-    (exn -> 'b) ->
-    ('c t -> ('c, 'b) continuation -> last_fiber -> 'b) ->
-    ('a, 'b) stack =
-    "caml_alloc_stack"
+    ('a -> 'b) -> (exn -> 'b) -> ('c t -> ('c, 'b) continuation -> last_fiber -> 'b) -> ('a, 'b) stack
+    = "caml_alloc_stack"
 
   external cont_last_fiber: ('a, 'b) continuation -> last_fiber = "%field1"
 
@@ -108,22 +105,20 @@ module Deep = struct
       | Some fn -> fn continuation
       | None -> reperform eff continuation last_fiber
     in
-    let stack = alloc_stack (fun x -> x) (fun exn -> raise exn) effc in
+    let stack =
+      alloc_stack (fun x -> x) (fun exn -> raise exn) effc
+    in
     runstack stack computation value
 
-  external get_callstack: ('a, 'b) continuation -> int -> Exception.raw_backtrace =
-    "caml_get_continuation_callstack"
+  external get_callstack: ('a, 'b) continuation -> int -> Exception.raw_backtrace = "caml_get_continuation_callstack"
 end
 
 module Shallow = struct
   type ('a, 'b) continuation
 
   external alloc_stack:
-    ('a -> 'b) ->
-    (exn -> 'b) ->
-    ('c t -> ('c, 'b) continuation -> last_fiber -> 'b) ->
-    ('a, 'b) stack =
-    "caml_alloc_stack"
+    ('a -> 'b) -> (exn -> 'b) -> ('c t -> ('c, 'b) continuation -> last_fiber -> 'b) -> ('a, 'b) stack
+    = "caml_alloc_stack"
 
   external cont_last_fiber: ('a, 'b) continuation -> last_fiber = "%field1"
 
@@ -140,7 +135,9 @@ module Shallow = struct
       | M.Initial_setup__ -> raise (Initial continuation)
       | _ -> impossible ()
     in
-    let stack = alloc_stack (fun _ -> impossible ()) (fun _ -> impossible ()) effc in
+    let stack =
+      alloc_stack (fun _ -> impossible ()) (fun _ -> impossible ()) effc
+    in
     match runstack stack run () with
     | exception Initial continuation -> continuation
     | _ -> impossible ()
@@ -156,8 +153,8 @@ module Shallow = struct
     ('b -> 'c) ->
     (exn -> 'c) ->
     ('d t -> ('d, 'b) continuation -> last_fiber -> 'c) ->
-    ('a, 'c) stack =
-    "caml_continuation_use_and_update_handler_noexc" [@@ noalloc]
+    ('a, 'c) stack
+    = "caml_continuation_use_and_update_handler_noexc" [@@noalloc]
 
   external reperform: 'a t -> ('a, 'b) continuation -> last_fiber -> 'c = "%reperform"
 
@@ -180,6 +177,5 @@ module Shallow = struct
   let discontinue_with_backtrace = fun continuation exn backtrace handler ->
     continue_gen continuation (fun err -> raise_with_backtrace err backtrace) exn handler
 
-  external get_callstack: ('a, 'b) continuation -> int -> Exception.raw_backtrace =
-    "caml_get_continuation_callstack"
+  external get_callstack: ('a, 'b) continuation -> int -> Exception.raw_backtrace = "caml_get_continuation_callstack"
 end

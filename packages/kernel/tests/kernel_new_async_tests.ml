@@ -1,5 +1,4 @@
 open Std
-
 module Test = Std.Test
 module Kernel = Kernel
 
@@ -106,7 +105,9 @@ let drain_one_byte = fun file ->
   | Kernel.Result.Error error -> Error (Kernel.Fs.File.error_to_string error)
 
 let has_token = fun token events ->
-  List.any events ~fn:(fun event -> Kernel.Async.Token.equal token (Kernel.Async.Event.token event))
+  List.any events
+    ~fn:(fun event ->
+      Kernel.Async.Token.equal token (Kernel.Async.Event.token event))
 
 let with_processes = fun count fn ->
   let stdio = Kernel.Process.{ stdin = Stdin.Null; stdout = Stdout.Null; stderr = Stderr.Null } in
@@ -130,13 +131,12 @@ let test_poll_reports_pipe_readability = fun _ctx ->
       with_poll
         (fun poll ->
           let token = Kernel.Async.Token.make 41 in
-          let* () =
-            lift_async
-              (Kernel.Async.Poll.register
-                poll
-                token
-                Kernel.Async.Interest.readable
-                (Kernel.Fs.File.to_source read_end)) in
+          let* () = lift_async
+            (Kernel.Async.Poll.register
+              poll
+              token
+              Kernel.Async.Interest.readable
+              (Kernel.Fs.File.to_source read_end)) in
           let payload = Kernel.Bytes.from_string "x" in
           let* written = lift_file (Kernel.Fs.File.write write_end payload) in
           if written != 1 then
@@ -162,8 +162,8 @@ let test_poll_reports_pipe_read_closed = fun _ctx ->
         (fun poll ->
           let token = Kernel.Async.Token.make 411 in
           let source = Kernel.Fs.File.to_source read_end in
-          let* () =
-            lift_async (Kernel.Async.Poll.register poll token Kernel.Async.Interest.readable source) in
+          let* () = lift_async
+            (Kernel.Async.Poll.register poll token Kernel.Async.Interest.readable source) in
           let* () = lift_file (Kernel.Fs.File.close write_end) in
           let* events = lift_async (Kernel.Async.Poll.poll ~timeout:100_000_000L poll) in
           let found =
@@ -185,8 +185,8 @@ let test_deregister_removes_pipe_source = fun _ctx ->
         (fun poll ->
           let token = Kernel.Async.Token.make 42 in
           let source = Kernel.Fs.File.to_source read_end in
-          let* () =
-            lift_async (Kernel.Async.Poll.register poll token Kernel.Async.Interest.readable source) in
+          let* () = lift_async
+            (Kernel.Async.Poll.register poll token Kernel.Async.Interest.readable source) in
           let* () = lift_async (Kernel.Async.Poll.deregister poll source) in
           let payload = Kernel.Bytes.from_string "x" in
           let* written = lift_file (Kernel.Fs.File.write write_end payload) in
@@ -214,12 +214,10 @@ let test_reregister_updates_pipe_token = fun _ctx ->
           let token_a = Kernel.Async.Token.make "first" in
           let token_b = Kernel.Async.Token.make "second" in
           let source = Kernel.Fs.File.to_source write_end in
-          let* () =
-            lift_async
-              (Kernel.Async.Poll.register poll token_a Kernel.Async.Interest.writable source) in
-          let* () =
-            lift_async
-              (Kernel.Async.Poll.reregister poll token_b Kernel.Async.Interest.writable source) in
+          let* () = lift_async
+            (Kernel.Async.Poll.register poll token_a Kernel.Async.Interest.writable source) in
+          let* () = lift_async
+            (Kernel.Async.Poll.reregister poll token_b Kernel.Async.Interest.writable source) in
           let* events = wait_for_event poll in
           let found =
             List.any
@@ -242,11 +240,10 @@ let test_reregister_replaces_interest = fun _ctx ->
         (fun poll ->
           let source = Kernel.Fs.File.to_source write_end in
           let token = Kernel.Async.Token.make "replaced-interest" in
-          let* () =
-            lift_async (Kernel.Async.Poll.register poll token Kernel.Async.Interest.writable source) in
-          let* () =
-            lift_async
-              (Kernel.Async.Poll.reregister poll token Kernel.Async.Interest.readable source) in
+          let* () = lift_async
+            (Kernel.Async.Poll.register poll token Kernel.Async.Interest.writable source) in
+          let* () = lift_async
+            (Kernel.Async.Poll.reregister poll token Kernel.Async.Interest.readable source) in
           let* events = lift_async (Kernel.Async.Poll.poll ~timeout:0L poll) in
           let found =
             List.any
@@ -268,11 +265,10 @@ let test_registering_same_source_twice_updates_token = fun _ctx ->
           let source = Kernel.Fs.File.to_source write_end in
           let first = Kernel.Async.Token.make "duplicate-first" in
           let second = Kernel.Async.Token.make "duplicate-second" in
-          let* () =
-            lift_async (Kernel.Async.Poll.register poll first Kernel.Async.Interest.writable source) in
-          let* () =
-            lift_async
-              (Kernel.Async.Poll.register poll second Kernel.Async.Interest.writable source) in
+          let* () = lift_async
+            (Kernel.Async.Poll.register poll first Kernel.Async.Interest.writable source) in
+          let* () = lift_async
+            (Kernel.Async.Poll.register poll second Kernel.Async.Interest.writable source) in
           let* events = wait_for_event poll in
           let saw_first =
             List.any
@@ -302,8 +298,8 @@ let test_deregister_of_never_registered_source_is_harmless = fun _ctx ->
           let* () = lift_async (Kernel.Async.Poll.deregister poll source) in
           let* () = lift_async (Kernel.Async.Poll.deregister poll source) in
           let token = Kernel.Async.Token.make "never-registered" in
-          let* () =
-            lift_async (Kernel.Async.Poll.register poll token Kernel.Async.Interest.readable source) in
+          let* () = lift_async
+            (Kernel.Async.Poll.register poll token Kernel.Async.Interest.readable source) in
           let* written = lift_file (Kernel.Fs.File.write write_end (Kernel.Bytes.from_string "x")) in
           if written != 1 then
             Error "expected pipe write to make progress after noop deregisters"
@@ -322,27 +318,26 @@ let test_deregister_of_never_registered_source_is_harmless = fun _ctx ->
               Error "expected noop deregisters to preserve later source registration"))
 
 let test_poll_handles_many_pipe_sources = fun _ctx ->
-  with_pipes
-    64
+  with_pipes 64
     (fun pipes ->
       with_poll
         (fun poll ->
           let rec register index = function
             | [] -> Ok ()
             | (read_end, _) :: rest ->
-                let* () =
-                  lift_async
-                    (Kernel.Async.Poll.register
-                      poll
-                      (Kernel.Async.Token.make index)
-                      Kernel.Async.Interest.readable
-                      (Kernel.Fs.File.to_source read_end)) in register (index + 1) rest
+                let* () = lift_async
+                  (Kernel.Async.Poll.register
+                    poll
+                    (Kernel.Async.Token.make index)
+                    Kernel.Async.Interest.readable
+                    (Kernel.Fs.File.to_source read_end)) in
+                register (index + 1) rest
           in
           let rec write_all = function
             | [] -> Ok ()
             | (_, write_end) :: rest ->
-                let* written =
-                  lift_file (Kernel.Fs.File.write write_end (Kernel.Bytes.from_string "x")) in
+                let* written = lift_file
+                  (Kernel.Fs.File.write write_end (Kernel.Bytes.from_string "x")) in
                 if written != 1 then
                   Error "expected pipe write to write one byte"
                 else
@@ -350,8 +345,8 @@ let test_poll_handles_many_pipe_sources = fun _ctx ->
           in
           let* () = register 0 pipes in
           let* () = write_all pipes in
-          let* events =
-            lift_async (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:128 poll) in
+          let* events = lift_async
+            (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:128 poll) in
           let seen = Kernel.Array.make ~count:64 ~value:false in
           let rec mark = function
             | [] -> ()
@@ -360,7 +355,7 @@ let test_poll_handles_many_pipe_sources = fun _ctx ->
                   let token = Kernel.Async.Token.unsafe_value (Kernel.Async.Event.token event) in
                   if token >= 0 && token < 64 then
                     Kernel.Array.set seen ~at:token ~value:true;
-                mark rest
+                  mark rest
           in
           mark events;
           let rec all_seen index =
@@ -388,9 +383,9 @@ let test_poll_rejects_invalid_limits = fun _ctx ->
   with_poll
     (fun poll ->
       match (Kernel.Async.Poll.poll ~timeout:(-1L) poll, Kernel.Async.Poll.poll ~max_events:0 poll) with
-      | (Kernel.Result.Error (Kernel.Async.InvalidTimeoutNs { timeout_ns }), Kernel.Result.Error (
-        Kernel.Async.InvalidMaxEvents { max_events }
-      )) when timeout_ns = (-1L) && max_events = 0 -> Ok ()
+      | (Kernel.Result.Error (Kernel.Async.InvalidTimeoutNs { timeout_ns }), Kernel.Result.Error (Kernel.Async.InvalidMaxEvents {
+        max_events
+      })) when timeout_ns = (-1L) && max_events = 0 -> Ok ()
       | (Kernel.Result.Error error, _) -> Error (Kernel.Async.error_to_string error)
       | (_, Kernel.Result.Error error) -> Error (Kernel.Async.error_to_string error)
       | _ -> Error "expected async poll to reject invalid timeout and max_events")
@@ -398,19 +393,18 @@ let test_poll_rejects_invalid_limits = fun _ctx ->
 let test_poll_handles_many_process_exits = fun _ctx ->
   with_poll
     (fun poll ->
-      with_processes
-        16
+      with_processes 16
         (fun processes ->
           let rec register index = function
             | [] -> Ok ()
             | process :: rest ->
-                let* () =
-                  lift_async
-                    (Kernel.Async.Poll.register
-                      poll
-                      (Kernel.Async.Token.make index)
-                      Kernel.Async.Interest.priority
-                      (Kernel.Process.to_source process)) in register (index + 1) rest
+                let* () = lift_async
+                  (Kernel.Async.Poll.register
+                    poll
+                    (Kernel.Async.Token.make index)
+                    Kernel.Async.Interest.priority
+                    (Kernel.Process.to_source process)) in
+                register (index + 1) rest
           in
           let seen = Kernel.Array.make ~count:16 ~value:false in
           let rec mark_events = function
@@ -420,7 +414,7 @@ let test_poll_handles_many_process_exits = fun _ctx ->
                   let token = Kernel.Async.Token.unsafe_value (Kernel.Async.Event.token event) in
                   if token >= 0 && token < 16 then
                     Kernel.Array.set seen ~at:token ~value:true;
-                mark_events rest
+                  mark_events rest
           in
           let rec mark_exits index = function
             | [] -> Ok ()
@@ -452,14 +446,14 @@ let test_poll_handles_many_process_exits = fun _ctx ->
             if attempts = 0 then
               Error "expected many registered child processes to report exit readiness"
             else
-              let* events =
-                lift_async (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:32 poll) in
+              let* events = lift_async
+                (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:32 poll) in
               mark_events events;
-            let* () = mark_exits 0 processes in
-            if all_seen 0 then
-              Ok ()
-            else
-              poll_until (attempts - 1)
+              let* () = mark_exits 0 processes in
+              if all_seen 0 then
+                Ok ()
+              else
+                poll_until (attempts - 1)
           in
           poll_until 16))
 
@@ -482,13 +476,13 @@ let test_poll_handles_many_timer_sources = fun _ctx ->
       let rec register index = function
         | [] -> Ok ()
         | timer :: rest ->
-            let* () =
-              lift_async
-                (Kernel.Async.Poll.register
-                  poll
-                  (Kernel.Async.Token.make index)
-                  Kernel.Async.Interest.readable
-                  (Kernel.Time.Timer.to_source timer)) in register (index + 1) rest
+            let* () = lift_async
+              (Kernel.Async.Poll.register
+                poll
+                (Kernel.Async.Token.make index)
+                Kernel.Async.Interest.readable
+                (Kernel.Time.Timer.to_source timer)) in
+            register (index + 1) rest
       in
       let seen = Kernel.Array.make ~count:16 ~value:false in
       let rec mark = function
@@ -498,7 +492,7 @@ let test_poll_handles_many_timer_sources = fun _ctx ->
               let token = Kernel.Async.Token.unsafe_value (Kernel.Async.Event.token event) in
               if token >= 0 && token < 16 then
                 Kernel.Array.set seen ~at:token ~value:true;
-            mark rest
+              mark rest
       in
       let rec all_seen index =
         if index = 16 then
@@ -513,13 +507,12 @@ let test_poll_handles_many_timer_sources = fun _ctx ->
         if attempts = 0 then
           Error "expected many timer sources to wake the poller"
         else
-          let* events =
-            lift_async (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:32 poll) in
+          let* events = lift_async (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:32 poll) in
           mark events;
-        if all_seen 0 then
-          Ok ()
-        else
-          poll_until (attempts - 1)
+          if all_seen 0 then
+            Ok ()
+          else
+            poll_until (attempts - 1)
       in
       poll_until 8)
 
@@ -533,13 +526,13 @@ let test_repeated_register_and_deregister_stays_healthy = fun _ctx ->
             if remaining = 0 then
               Ok ()
             else
-              let* () =
-                lift_async
-                  (Kernel.Async.Poll.register
-                    poll
-                    (Kernel.Async.Token.make remaining)
-                    Kernel.Async.Interest.readable
-                    source) in let* () = lift_async (Kernel.Async.Poll.deregister poll source) in
+              let* () = lift_async
+                (Kernel.Async.Poll.register
+                  poll
+                  (Kernel.Async.Token.make remaining)
+                  Kernel.Async.Interest.readable
+                  source) in
+              let* () = lift_async (Kernel.Async.Poll.deregister poll source) in
               loop (remaining - 1)
           in
           loop 256))
@@ -556,16 +549,10 @@ let test_repeated_register_reregister_and_deregister_stays_healthy = fun _ctx ->
             else
               let token = Kernel.Async.Token.make ("cycle", remaining) in
               let replacement = Kernel.Async.Token.make ("replacement", remaining) in
-              let* () =
-                lift_async
-                  (Kernel.Async.Poll.register poll token Kernel.Async.Interest.writable source) in
-              let* () =
-                lift_async
-                  (Kernel.Async.Poll.reregister
-                    poll
-                    replacement
-                    Kernel.Async.Interest.writable
-                    source) in
+              let* () = lift_async
+                (Kernel.Async.Poll.register poll token Kernel.Async.Interest.writable source) in
+              let* () = lift_async
+                (Kernel.Async.Poll.reregister poll replacement Kernel.Async.Interest.writable source) in
               let* events = wait_for_event poll in
               let found =
                 List.any
@@ -588,62 +575,52 @@ let test_poll_handles_mixed_source_types = fun _ctx ->
       with_poll
         (fun poll ->
           let stdio =
-            Kernel.Process.{ stdin = Stdin.Null; stdout = Stdout.Null; stderr = Stderr.Null }
-          in
+            Kernel.Process.{ stdin = Stdin.Null; stdout = Stdout.Null; stderr = Stderr.Null } in
           let* timer = lift_timer (Kernel.Time.Timer.after_ns 5_000_000L) in
-          let* process =
-            lift_process
-              (Kernel.Process.spawn ~program:"/bin/sh" ~args:[|"-c"; "sleep 0.02"|] ~stdio ()) in
+          let* process = lift_process
+            (Kernel.Process.spawn ~program:"/bin/sh" ~args:[|"-c"; "sleep 0.02"|] ~stdio ()) in
           protect
             ~finally:(fun () ->
               let _ = Kernel.Process.close process in
               ())
             (fun () ->
-              let* server =
-                lift_udp (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0)) in
-              protect
-                ~finally:(fun () ->
-                  close_udp server)
+              let* server = lift_udp
+                (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0)) in
+              protect ~finally:(fun () -> close_udp server)
                 (fun () ->
-                  let* client =
-                    lift_udp (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0)) in
-                  protect
-                    ~finally:(fun () ->
-                      close_udp client)
+                  let* client = lift_udp
+                    (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0)) in
+                  protect ~finally:(fun () -> close_udp client)
                     (fun () ->
                       let timer_source = Kernel.Time.Timer.to_source timer in
                       let process_source = Kernel.Process.to_source process in
                       let pipe_source = Kernel.Fs.File.to_source read_end in
                       let udp_source = Kernel.Net.UdpSocket.to_source server in
                       let* server_addr = lift_udp (Kernel.Net.UdpSocket.local_addr server) in
-                      let* () =
-                        lift_async
-                          (Kernel.Async.Poll.register
-                            poll
-                            (Kernel.Async.Token.make "pipe")
-                            Kernel.Async.Interest.readable
-                            pipe_source) in
-                      let* () =
-                        lift_async
-                          (Kernel.Async.Poll.register
-                            poll
-                            (Kernel.Async.Token.make "timer")
-                            Kernel.Async.Interest.readable
-                            timer_source) in
-                      let* () =
-                        lift_async
-                          (Kernel.Async.Poll.register
-                            poll
-                            (Kernel.Async.Token.make "process")
-                            Kernel.Async.Interest.priority
-                            process_source) in
-                      let* () =
-                        lift_async
-                          (Kernel.Async.Poll.register
-                            poll
-                            (Kernel.Async.Token.make "udp")
-                            Kernel.Async.Interest.readable
-                            udp_source) in
+                      let* () = lift_async
+                        (Kernel.Async.Poll.register
+                          poll
+                          (Kernel.Async.Token.make "pipe")
+                          Kernel.Async.Interest.readable
+                          pipe_source) in
+                      let* () = lift_async
+                        (Kernel.Async.Poll.register
+                          poll
+                          (Kernel.Async.Token.make "timer")
+                          Kernel.Async.Interest.readable
+                          timer_source) in
+                      let* () = lift_async
+                        (Kernel.Async.Poll.register
+                          poll
+                          (Kernel.Async.Token.make "process")
+                          Kernel.Async.Interest.priority
+                          process_source) in
+                      let* () = lift_async
+                        (Kernel.Async.Poll.register
+                          poll
+                          (Kernel.Async.Token.make "udp")
+                          Kernel.Async.Interest.readable
+                          udp_source) in
                       protect
                         ~finally:(fun () ->
                           let _ = Kernel.Async.Poll.deregister poll pipe_source in
@@ -652,18 +629,16 @@ let test_poll_handles_mixed_source_types = fun _ctx ->
                           let _ = Kernel.Async.Poll.deregister poll udp_source in
                           ())
                         (fun () ->
-                          let* written =
-                            lift_file
-                              (Kernel.Fs.File.write write_end (Kernel.Bytes.from_string "x")) in
+                          let* written = lift_file
+                            (Kernel.Fs.File.write write_end (Kernel.Bytes.from_string "x")) in
                           if written != 1 then
                             Error "expected mixed-source pipe write to write one byte"
                           else
-                            let* sent =
-                              lift_udp
-                                (Kernel.Net.UdpSocket.send_to
-                                  client
-                                  server_addr
-                                  (Kernel.Bytes.from_string "u")) in
+                            let* sent = lift_udp
+                              (Kernel.Net.UdpSocket.send_to
+                                client
+                                server_addr
+                                (Kernel.Bytes.from_string "u")) in
                             if sent != 1 then
                               Error "expected mixed-source udp send_to to write one byte"
                             else
@@ -674,61 +649,49 @@ let test_poll_handles_mixed_source_types = fun _ctx ->
                               let rec mark = function
                                 | [] -> ()
                                 | event :: rest ->
-                                    let token =
-                                      Kernel.Async.Token.unsafe_value
-                                        (Kernel.Async.Event.token event)
-                                    in
+                                    let token = Kernel.Async.Token.unsafe_value
+                                      (Kernel.Async.Event.token event) in
                                     if token = "pipe" && Kernel.Async.Event.is_readable event then
                                       seen_pipe := true
-                                    else if
-                                      token = "timer" && Kernel.Async.Event.is_readable event
-                                    then
+                                    else if token = "timer" && Kernel.Async.Event.is_readable event then
                                       seen_timer := true
                                     else if
                                       token = "process" && Kernel.Async.Event.is_priority event
                                     then
                                       seen_process := true
-                                    else if
-                                      token = "udp" && Kernel.Async.Event.is_readable event
-                                    then
+                                    else if token = "udp" && Kernel.Async.Event.is_readable event then
                                       seen_udp := true;
                                     mark rest
                               in
-                              let rec all_seen () =
-                                !seen_pipe && !seen_timer && !seen_process && !seen_udp
-                              in
+                              let rec all_seen () = !seen_pipe && !seen_timer && !seen_process && !seen_udp in
                               let rec poll_until attempts =
                                 if all_seen () then
                                   Ok ()
                                 else if attempts = 0 then
                                   Error "expected mixed source poll to surface pipe, timer, udp, and process readiness"
                                 else
-                                  let* events =
-                                    lift_async
-                                      (Kernel.Async.Poll.poll
-                                        ~timeout:100_000_000L
-                                        ~max_events:16
-                                        poll) in mark events;
-                                poll_until (attempts - 1)
+                                  let* events = lift_async
+                                    (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:16 poll) in
+                                  mark events;
+                                  poll_until (attempts - 1)
                               in
                               poll_until 12))))))
 
 let test_poll_tolerates_closed_registered_pipe_sources = fun _ctx ->
-  with_pipes
-    8
+  with_pipes 8
     (fun pipes ->
       with_poll
         (fun poll ->
           let rec register index = function
             | [] -> Ok ()
             | (read_end, _) :: rest ->
-                let* () =
-                  lift_async
-                    (Kernel.Async.Poll.register
-                      poll
-                      (Kernel.Async.Token.make index)
-                      Kernel.Async.Interest.readable
-                      (Kernel.Fs.File.to_source read_end)) in register (index + 1) rest
+                let* () = lift_async
+                  (Kernel.Async.Poll.register
+                    poll
+                    (Kernel.Async.Token.make index)
+                    Kernel.Async.Interest.readable
+                    (Kernel.Fs.File.to_source read_end)) in
+                register (index + 1) rest
           in
           let rec close_even index = function
             | [] -> ()
@@ -736,7 +699,7 @@ let test_poll_tolerates_closed_registered_pipe_sources = fun _ctx ->
                 if index land 1 = 0 then
                   let _ = Kernel.Fs.File.close read_end in
                   ();
-                close_even (index + 1) rest
+                  close_even (index + 1) rest
           in
           let rec write_live index = function
             | [] -> Ok ()
@@ -744,8 +707,8 @@ let test_poll_tolerates_closed_registered_pipe_sources = fun _ctx ->
                 if index land 1 = 0 then
                   write_live (index + 1) rest
                 else
-                  let* written =
-                    lift_file (Kernel.Fs.File.write write_end (Kernel.Bytes.from_string "x")) in
+                  let* written = lift_file
+                    (Kernel.Fs.File.write write_end (Kernel.Bytes.from_string "x")) in
                   if written != 1 then
                     Error "expected pipe write to make progress for live registered sources"
                   else
@@ -759,7 +722,7 @@ let test_poll_tolerates_closed_registered_pipe_sources = fun _ctx ->
                   let token = Kernel.Async.Token.unsafe_value (Kernel.Async.Event.token event) in
                   if token >= 0 && token < 8 then
                     Kernel.Array.set seen ~at:token ~value:true;
-                mark rest
+                  mark rest
           in
           let rec live_seen index =
             if index = 8 then
@@ -778,13 +741,13 @@ let test_poll_tolerates_closed_registered_pipe_sources = fun _ctx ->
             if attempts = 0 then
               Error "expected closed registered pipe sources to not poison remaining readiness"
             else
-              let* events =
-                lift_async (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:32 poll) in
+              let* events = lift_async
+                (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:32 poll) in
               mark events;
-            if live_seen 0 then
-              Ok ()
-            else
-              poll_until (attempts - 1)
+              if live_seen 0 then
+                Ok ()
+              else
+                poll_until (attempts - 1)
           in
           poll_until 8))
 
@@ -833,24 +796,14 @@ let test_poll_max_events_batches_without_dropping_readiness = fun _ctx ->
           let first_source = Kernel.Fs.File.to_source first.read_end in
           let second_source = Kernel.Fs.File.to_source second.read_end in
           let payload = Kernel.Bytes.from_string "x" in
-          let* () =
-            lift_async
-              (Kernel.Async.Poll.register
-                poll
-                first_token
-                Kernel.Async.Interest.readable
-                first_source) in
-          let* () =
-            lift_async
-              (Kernel.Async.Poll.register
-                poll
-                second_token
-                Kernel.Async.Interest.readable
-                second_source) in
+          let* () = lift_async
+            (Kernel.Async.Poll.register poll first_token Kernel.Async.Interest.readable first_source) in
+          let* () = lift_async
+            (Kernel.Async.Poll.register poll second_token Kernel.Async.Interest.readable second_source) in
           let* _ = lift_file (Kernel.Fs.File.write first.write_end payload) in
           let* _ = lift_file (Kernel.Fs.File.write second.write_end payload) in
-          let* first_batch =
-            lift_async (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:1 poll) in
+          let* first_batch = lift_async
+            (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:1 poll) in
           let first_seen =
             if has_token first_token first_batch then
               Some (first.read_end, first_token, second_token)
@@ -863,8 +816,8 @@ let test_poll_max_events_batches_without_dropping_readiness = fun _ctx ->
           | None -> Error "expected the first max_events=1 poll to report one ready source"
           | Some (ready_file, ready_token, other_token) ->
               let* () = drain_one_byte ready_file in
-              let* second_batch =
-                lift_async (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:1 poll) in
+              let* second_batch = lift_async
+                (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:1 poll) in
               if
                 has_token ready_token first_batch
                 && not (has_token other_token first_batch)
@@ -882,10 +835,10 @@ let test_duplicate_register_same_token_does_not_duplicate_event = fun _ctx ->
           let token = Kernel.Async.Token.make 11 in
           let source = Kernel.Fs.File.to_source read_end in
           let payload = Kernel.Bytes.from_string "x" in
-          let* () =
-            lift_async (Kernel.Async.Poll.register poll token Kernel.Async.Interest.readable source) in
-          let* () =
-            lift_async (Kernel.Async.Poll.register poll token Kernel.Async.Interest.readable source) in
+          let* () = lift_async
+            (Kernel.Async.Poll.register poll token Kernel.Async.Interest.readable source) in
+          let* () = lift_async
+            (Kernel.Async.Poll.register poll token Kernel.Async.Interest.readable source) in
           let* _ = lift_file (Kernel.Fs.File.write write_end payload) in
           let* events = lift_async (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:8 poll) in
           let matches =
@@ -907,8 +860,8 @@ let test_pipe_writer_reports_write_closed_after_reader_closes = fun _ctx ->
         (fun poll ->
           let token = Kernel.Async.Token.make 12 in
           let source = Kernel.Fs.File.to_source write_end in
-          let* () =
-            lift_async (Kernel.Async.Poll.register poll token Kernel.Async.Interest.writable source) in
+          let* () = lift_async
+            (Kernel.Async.Poll.register poll token Kernel.Async.Interest.writable source) in
           let* () = lift_file (Kernel.Fs.File.close read_end) in
           let* events = lift_async (Kernel.Async.Poll.poll ~timeout:100_000_000L poll) in
           if
@@ -930,8 +883,8 @@ let test_normal_readiness_events_are_not_error_events = fun _ctx ->
           let token = Kernel.Async.Token.make 13 in
           let source = Kernel.Fs.File.to_source read_end in
           let payload = Kernel.Bytes.from_string "x" in
-          let* () =
-            lift_async (Kernel.Async.Poll.register poll token Kernel.Async.Interest.readable source) in
+          let* () = lift_async
+            (Kernel.Async.Poll.register poll token Kernel.Async.Interest.readable source) in
           let* _ = lift_file (Kernel.Fs.File.write write_end payload) in
           let* events = lift_async (Kernel.Async.Poll.poll ~timeout:100_000_000L poll) in
           if
@@ -975,12 +928,8 @@ let tests = [
   Test.case "Async deregister removes pipe source" test_deregister_removes_pipe_source;
   Test.case "Async reregister updates pipe token" test_reregister_updates_pipe_token;
   Test.case "Async reregister replaces writable interest" test_reregister_replaces_interest;
-  Test.case
-    "Async duplicate register updates the source token"
-    test_registering_same_source_twice_updates_token;
-  Test.case
-    "Async deregister of a never-registered source is harmless"
-    test_deregister_of_never_registered_source_is_harmless;
+  Test.case "Async duplicate register updates the source token" test_registering_same_source_twice_updates_token;
+  Test.case "Async deregister of a never-registered source is harmless" test_deregister_of_never_registered_source_is_harmless;
   Test.case "Async poll handles many pipe sources" test_poll_handles_many_pipe_sources;
   Test.case "Async token roundtrips structured values" test_token_roundtrips_structured_values;
   Test.case "Async poll rejects invalid limits" test_poll_rejects_invalid_limits;
@@ -988,38 +937,17 @@ let tests = [
   Test.case "Async.Interest remove-all returns None" test_interest_remove_all_bits_returns_none;
   Test.case "Async.Token.id is stable" test_token_id_is_stable;
   Test.case "A fresh Poll.poll timeout=0 is quiet" test_fresh_poll_timeout_zero_is_quiet;
-  Test.case
-    "Poll max_events=1 batches readiness across polls"
-    test_poll_max_events_batches_without_dropping_readiness;
-  Test.case
-    "Duplicate register with the same token does not duplicate one readiness event"
-    test_duplicate_register_same_token_does_not_duplicate_event;
-  Test.case
-    "A pipe writer reports write_closed after the reader closes"
-    test_pipe_writer_reports_write_closed_after_reader_closes;
-  Test.case
-    "Normal readiness events are not error events"
-    test_normal_readiness_events_are_not_error_events;
-  Test.case
-    "A closed poller rejects later operations consistently"
-    test_closed_poller_rejects_later_operations;
-  Test.case
-    "Async poll handles mixed pipe, timer, udp, and process sources"
-    test_poll_handles_mixed_source_types;
-  Test.case
-    "Async poll tolerates closed registered pipe sources"
-    test_poll_tolerates_closed_registered_pipe_sources;
+  Test.case "Poll max_events=1 batches readiness across polls" test_poll_max_events_batches_without_dropping_readiness;
+  Test.case "Duplicate register with the same token does not duplicate one readiness event" test_duplicate_register_same_token_does_not_duplicate_event;
+  Test.case "A pipe writer reports write_closed after the reader closes" test_pipe_writer_reports_write_closed_after_reader_closes;
+  Test.case "Normal readiness events are not error events" test_normal_readiness_events_are_not_error_events;
+  Test.case "A closed poller rejects later operations consistently" test_closed_poller_rejects_later_operations;
+  Test.case "Async poll handles mixed pipe, timer, udp, and process sources" test_poll_handles_mixed_source_types;
+  Test.case "Async poll tolerates closed registered pipe sources" test_poll_tolerates_closed_registered_pipe_sources;
   Test.case "Async poll handles many timer sources" test_poll_handles_many_timer_sources;
-  Test.case
-    ~size:Test.Large
-    "Async poll handles many process exits"
-    test_poll_handles_many_process_exits;
-  Test.case
-    "Async repeated register and deregister stays healthy"
-    test_repeated_register_and_deregister_stays_healthy;
-  Test.case
-    "Async repeated register, reregister, and deregister stays healthy"
-    test_repeated_register_reregister_and_deregister_stays_healthy;
+  Test.case ~size:Test.Large "Async poll handles many process exits" test_poll_handles_many_process_exits;
+  Test.case "Async repeated register and deregister stays healthy" test_repeated_register_and_deregister_stays_healthy;
+  Test.case "Async repeated register, reregister, and deregister stays healthy" test_repeated_register_reregister_and_deregister_stays_healthy;
 ]
 
 let main ~args = Test.Cli.main ~execution_mode:Linear ~name:"kernel_new_async_tests" ~tests ~args ()

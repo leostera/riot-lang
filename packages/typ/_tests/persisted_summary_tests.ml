@@ -86,12 +86,16 @@ let assert_roundtrip = fun ~ctx source ->
       end
 
 let test_trusted_summary_roundtrip = fun ctx ->
-  assert_roundtrip ~ctx "let id x = x\nlet const x _ = x\n"
+  assert_roundtrip
+    ~ctx
+    "let id x = x\nlet const x _ = x\n"
 
 let test_errored_summary_roundtrip = fun ctx -> assert_roundtrip ~ctx "let broken = missing\n"
 
 let test_type_decl_summary_roundtrip = fun ctx ->
-  assert_roundtrip ~ctx "type point = { x: int; y: int }\nlet origin = { x = 0; y = 0 }\n"
+  assert_roundtrip
+    ~ctx
+    "type point = { x: int; y: int }\nlet origin = { x = 0; y = 0 }\n"
 
 let test_recursive_type_decl_summary_roundtrip = fun ctx ->
   assert_roundtrip

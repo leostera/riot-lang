@@ -31,7 +31,6 @@ type compiler_warning =
   | All
 
 (** All warnings *)
-
 (** Compiler flags *)
 type compiler_flag =
   | NoAliasDeps
@@ -47,7 +46,6 @@ type compiler_flag =
   | Warning of compiler_warning list
 
 (** -w: Configure warning flags *)
-
 (** Compilation mode *)
 type mode =
   | Compile
@@ -76,11 +74,16 @@ module Ocamlc = struct
     List.fold_left
       (fun acc flag ->
         match flag with
-        | Open m -> acc @ [ "-open"; m ]
-        | NoAliasDeps -> acc @ [ "-no-alias-deps" ]
-        | NoStdlib -> acc @ [ "-nostdlib" ]
-        | NoPervasives -> acc @ [ "-nopervasives" ]
-        | Impl file -> acc @ [ "-impl"; file ]
+        | Open m ->
+            acc @ [ "-open"; m ]
+        | NoAliasDeps ->
+            acc @ [ "-no-alias-deps" ]
+        | NoStdlib ->
+            acc @ [ "-nostdlib" ]
+        | NoPervasives ->
+            acc @ [ "-nopervasives" ]
+        | Impl file ->
+            acc @ [ "-impl"; file ]
         | Warning warnings ->
             (* Convert warnings to -w flag format *)
             let warning_codes = List.map warning_to_code warnings in
@@ -105,7 +108,9 @@ module Ocamlc = struct
     (* Add flags *)
     let args = args @ flags_to_string flags in
     (* Add include directories *)
-    let args = List.fold_left (fun acc dir -> acc @ [ "-I"; dir ]) args includes in
+    let args =
+      List.fold_left (fun acc dir -> acc @ [ "-I"; dir ]) args includes
+    in
     (* Output flag *)
     let args =
       match output with
@@ -154,13 +159,13 @@ module Ocamlc = struct
           )
           flags
       in
-      let cmd_parts =
-        ((([ ocamlc_path; "-c" ] @ flag_args)
-        @ List.concat_map (fun dir -> [ "-I"; dir ]) final_includes)
-        @ [ "-o"; output ]) @ if has_impl_flag then
-          []
-        else
-          [ source ]
+      let cmd_parts = ((([ ocamlc_path; "-c" ] @ flag_args)
+      @ List.concat_map (fun dir -> [ "-I"; dir ]) final_includes)
+      @ [ "-o"; output ])
+      @ if has_impl_flag then
+        []
+      else
+        [ source ]
       in
       if cwd = "" then
         Io.run_command_with_output cmd_parts
@@ -205,13 +210,13 @@ module Ocamlc = struct
           )
           flags
       in
-      let cmd_parts =
-        ((([ ocamlc_path; "-c" ] @ flag_args)
-        @ List.concat_map (fun dir -> [ "-I"; dir ]) final_includes)
-        @ [ "-o"; output ]) @ if has_impl_flag then
-          []
-        else
-          [ source ]
+      let cmd_parts = ((([ ocamlc_path; "-c" ] @ flag_args)
+      @ List.concat_map (fun dir -> [ "-I"; dir ]) final_includes)
+      @ [ "-o"; output ])
+      @ if has_impl_flag then
+        []
+      else
+        [ source ]
       in
       if cwd = "" then
         Io.run_command_with_output cmd_parts
@@ -227,11 +232,9 @@ module Ocamlc = struct
     (* Include current directory for .cmi files *)
     let includes_with_dot = "." :: includes in
     (* Build command using new Command API *)
-    let cmd =
-      (([ ocamlc_path; "-i" ] @ flags_to_string flags)
-      @ List.concat_map (fun dir -> [ "-I"; dir ]) includes_with_dot)
-      @ [ source ]
-    in
+    let cmd = (([ ocamlc_path; "-i" ] @ flags_to_string flags)
+    @ List.concat_map (fun dir -> [ "-I"; dir ]) includes_with_dot)
+    @ [ source ] in
     (* Execute and capture only stdout (stderr has warnings) *)
     match Io.run_command_with_output cmd with
     | Ok stdout ->
@@ -242,10 +245,9 @@ module Ocamlc = struct
 
   (** Compile a C file *)
   let compile_c = fun ?(cwd = "") ?(cc_flags = []) ~includes ~output source ->
-    let cmd_parts =
-      (([ ocamlc_path; "-c" ] @ List.concat_map (fun dir -> [ "-I"; dir ]) includes) @ cc_flags)
-      @ [ "-o"; output; source ]
-    in
+    let cmd_parts = (([ ocamlc_path; "-c" ] @ List.concat_map (fun dir -> [ "-I"; dir ]) includes)
+    @ cc_flags)
+    @ [ "-o"; output; source ] in
     if cwd = "" then
       Io.run_command_with_output cmd_parts
     else
@@ -273,13 +275,7 @@ module Ocamlc = struct
   let create_custom_executable = fun ~includes ~output ~libs objects ->
     (* Include current directory *)
     let includes_with_dot = "." :: includes in
-    run
-      ~includes:includes_with_dot
-      ~libs
-      ~output:(Some output)
-      ~mode:CustomExe
-      ~flags:[ NoStdlib ]
-      objects
+    run ~includes:includes_with_dot ~libs ~output:(Some output) ~mode:CustomExe ~flags:[ NoStdlib ] objects
 end
 
 module Ocamldep = struct
@@ -291,13 +287,12 @@ module Ocamldep = struct
   let parse_deps = fun line ->
     (* Format: "file.ml: Module1 Module2 Module3" *)
     match String.split_on_char ':' line with
-    | [ _file; deps_str ] ->
+    | [_file;deps_str] ->
         let deps = String.trim deps_str in
         if deps = "" then
           []
         else
-          String.split_on_char ' ' deps
-          |> List.map String.trim
+          String.split_on_char ' ' deps |> List.map String.trim
     | _ -> []
 
   (** Run ocamldep to get module dependencies for a file *)
@@ -305,9 +300,13 @@ module Ocamldep = struct
     (* Build command arguments *)
     let args = [ ocamldep_path; "-modules" ] in
     (* Add include directories *)
-    let args = List.fold_left (fun acc dir -> acc @ [ "-I"; dir ]) args includes in
+    let args =
+      List.fold_left (fun acc dir -> acc @ [ "-I"; dir ]) args includes
+    in
     (* Add open modules *)
-    let args = List.fold_left (fun acc m -> acc @ [ "-open"; m ]) args open_modules in
+    let args =
+      List.fold_left (fun acc m -> acc @ [ "-open"; m ]) args open_modules
+    in
     (* Add source file *)
     let cmd = args @ [ source ] in
     match Io.run_command_with_output cmd with
@@ -328,7 +327,9 @@ module Ocamldep = struct
       (* Build command arguments *)
       let args = [ ocamldep_path; "-sort" ] in
       (* Add include directories *)
-      let args = List.fold_left (fun acc dir -> acc @ [ "-I"; dir ]) args includes in
+      let args =
+        List.fold_left (fun acc dir -> acc @ [ "-I"; dir ]) args includes
+      in
       (* Add files *)
       let cmd = args @ files in
       match Io.run_command_with_output cmd with
@@ -338,8 +339,7 @@ module Ocamldep = struct
           match lines with
           | sorted_str :: _ when sorted_str <> "" ->
               (* ocamldep returns full paths, convert back to basenames *)
-              String.split_on_char ' ' sorted_str
-              |> List.filter_map
+              String.split_on_char ' ' sorted_str |> List.filter_map
                 (fun s ->
                   if s = "" then
                     None

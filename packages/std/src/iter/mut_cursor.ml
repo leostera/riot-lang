@@ -1,5 +1,4 @@
 open Kernel
-
 module IoSlice = Kernel.IO.IoVec.IoSlice
 
 type t = {
@@ -13,8 +12,8 @@ let panic = Kernel.SystemError.panic
 let unwrap_slice = fun context ->
   function
   | Kernel.Result.Ok value -> value
-  | Kernel.Result.Error error ->
-      panic (Kernel.String.concat "" [ context; ": "; Kernel.IO.Error.message error ])
+  | Kernel.Result.Error error -> panic
+    (Kernel.String.concat "" [ context; ": "; Kernel.IO.Error.message error ])
 
 let from_slice = fun source -> { source; pos = 0; length = IoSlice.length source }
 
@@ -67,9 +66,7 @@ let take_while = fun cursor predicate ->
   loop ();
   IoSlice.sub_unchecked cursor.source ~off:start ~len:(cursor.pos - start)
 
-let take_while_string = fun cursor predicate ->
-  take_while cursor predicate
-  |> IoSlice.to_string
+let take_while_string = fun cursor predicate -> take_while cursor predicate |> IoSlice.to_string
 
 let skip_while = fun cursor predicate ->
   let rec loop () =
@@ -88,11 +85,10 @@ let take_until = fun cursor predicate ->
       None
     else if predicate (IoSlice.get_unchecked cursor.source ~at:cursor.pos) then
       Some cursor.pos
-    else
-      (
-        cursor.pos <- cursor.pos + 1;
-        loop ()
-      )
+    else (
+      cursor.pos <- cursor.pos + 1;
+      loop ()
+    )
   in
   match loop () with
   | None ->
@@ -112,11 +108,10 @@ let take_until_char = fun cursor needle ->
       None
     else if IoSlice.get_unchecked cursor.source ~at:cursor.pos = needle then
       Some cursor.pos
-    else
-      (
-        cursor.pos <- cursor.pos + 1;
-        loop ()
-      )
+    else (
+      cursor.pos <- cursor.pos + 1;
+      loop ()
+    )
   in
   match loop () with
   | None ->

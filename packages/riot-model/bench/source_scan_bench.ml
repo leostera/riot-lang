@@ -1,6 +1,5 @@
 open Std
 open Std.Bench
-
 module Package_manifest = Riot_model.Package_manifest
 
 let bench_config: Bench.bench_config = { iterations = 20; warmup = 5 }
@@ -14,13 +13,11 @@ type fixture = {
 let sink = ref 0
 
 let consume_sources = fun (sources: Riot_model.Package.sources) ->
-  let total =
-    List.length sources.src
-    + List.length sources.native
-    + List.length sources.tests
-    + List.length sources.examples
-    + List.length sources.bench
-  in
+  let total = List.length sources.src
+  + List.length sources.native
+  + List.length sources.tests
+  + List.length sources.examples
+  + List.length sources.bench in
   sink := !sink + total;
   if total <= 0 then
     panic "expected source scan benchmark to discover at least one source file"
@@ -28,24 +25,16 @@ let consume_sources = fun (sources: Riot_model.Package.sources) ->
 let load_manifest = fun ~workspace_root ~relative_path ->
   let package_path = Path.(workspace_root / relative_path) in
   let manifest_path = Path.(package_path / Path.v "riot.toml") in
-  let manifest_source =
-    Fs.read manifest_path
-    |> Result.expect ~msg:"expected benchmark manifest to load"
-  in
-  let manifest_toml =
-    Data.Toml.parse manifest_source
-    |> Result.expect ~msg:"expected benchmark manifest to parse"
-  in
-  let manifest =
-    Package_manifest.from_toml
-      manifest_toml
-      ~workspace_deps:[]
-      ~workspace_dev_deps:[]
-      ~workspace_build_deps:[]
-      ~path:package_path
-      ~relative_path
-    |> Result.expect ~msg:"expected benchmark package manifest to decode"
-  in
+  let manifest_source = Fs.read manifest_path |> Result.expect ~msg:"expected benchmark manifest to load" in
+  let manifest_toml = Data.Toml.parse manifest_source |> Result.expect ~msg:"expected benchmark manifest to parse" in
+  let manifest = Package_manifest.from_toml
+    manifest_toml
+    ~workspace_deps:[]
+    ~workspace_dev_deps:[]
+    ~workspace_build_deps:[]
+    ~path:package_path
+    ~relative_path
+  |> Result.expect ~msg:"expected benchmark package manifest to decode" in
   { label = Path.to_string relative_path; package_path; manifest }
 
 let should_skip_source_entry = fun filename ->
@@ -65,8 +54,7 @@ let old_collect_relative_files = fun ~package_path ~root ?(excluded_relpaths = [
     | Error _ -> panic "old-style benchmark walker configuration should be valid"
   in
   let walker =
-    Fs.Walker.filter_entry
-      walker
+    Fs.Walker.filter_entry walker
       ~f:(fun (entry: Fs.Walker.FileItem.t) ->
         let path = Fs.Walker.FileItem.path entry in
         if Int.equal (Fs.Walker.FileItem.depth entry) 0 then
@@ -76,14 +64,12 @@ let old_collect_relative_files = fun ~package_path ~root ?(excluded_relpaths = [
           | Error _ -> false
           | Ok rel_path -> (
               match Fs.Walker.FileItem.kind entry with
-              | Directory ->
-                  not
-                    (should_skip_source_entry rel_path || should_skip_old_test_support_path rel_path)
-              | File ->
-                  not
-                    (should_skip_source_entry rel_path
-                    || should_skip_old_test_support_path rel_path
-                    || List.contains excluded_relpath_strings ~value:(Path.to_string rel_path))
+              | Directory -> not
+                (should_skip_source_entry rel_path || should_skip_old_test_support_path rel_path)
+              | File -> not
+                (should_skip_source_entry rel_path
+                || should_skip_old_test_support_path rel_path
+                || List.contains excluded_relpath_strings ~value:(Path.to_string rel_path))
               | Symlink
               | Other -> false
             ))
@@ -91,8 +77,10 @@ let old_collect_relative_files = fun ~package_path ~root ?(excluded_relpaths = [
   let iter = Fs.Walker.into_iter walker in
   let rec loop acc iter =
     match Iter.Iterator.next iter with
-    | (None, _) -> List.reverse acc
-    | (Some (Error _), iter') -> loop acc iter'
+    | (None, _) ->
+        List.reverse acc
+    | (Some (Error _), iter') ->
+        loop acc iter'
     | (Some (Ok (entry: Fs.Walker.FileItem.t)), iter') -> (
         let path = Fs.Walker.FileItem.path entry in
         match Fs.Walker.FileItem.kind entry with
@@ -129,8 +117,7 @@ let old_scan_sources = fun ~package_path ~roots ->
   }
 
 let bench_old_style_runtime = fun (fixture: fixture) () ->
-  old_scan_sources ~package_path:fixture.package_path ~roots:[ "src"; "native" ]
-  |> consume_sources
+  old_scan_sources ~package_path:fixture.package_path ~roots:[ "src"; "native" ] |> consume_sources
 
 let bench_old_style_all_buckets = fun (fixture: fixture) () ->
   old_scan_sources
@@ -167,21 +154,17 @@ let benchmark_group = fun (fixture: fixture) ->
   ]
 
 let benchmarks = fun () ->
-  let workspace_root =
-    Env.current_dir ()
-    |> Result.expect ~msg:"expected benchmark cwd"
-  in
+  let workspace_root = Env.current_dir () |> Result.expect ~msg:"expected benchmark cwd" in
   let fixtures = [
     load_manifest ~workspace_root ~relative_path:(Path.v "packages/std");
     load_manifest ~workspace_root ~relative_path:(Path.v "packages/kernel");
     load_manifest ~workspace_root ~relative_path:(Path.v "packages/syn");
-  ]
-  in
-  fixtures
-  |> List.map ~fn:benchmark_group
-  |> List.concat
+  ] in
+  fixtures |> List.map ~fn:benchmark_group |> List.concat
 
-let main ~args =
-  Bench.Cli.main ~name:"Riot Model Source Scan Benchmarks" ~benchmarks:(benchmarks ()) ~args
+let main ~args = Bench.Cli.main
+  ~name:"Riot Model Source Scan Benchmarks"
+  ~benchmarks:(benchmarks ())
+  ~args
 
 let () = Runtime.run ~main ~args:Env.args ()

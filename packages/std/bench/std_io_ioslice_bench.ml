@@ -1,5 +1,4 @@
 open Std
-
 module Slice = IO.IoVec.IoSlice
 module Method = Net.Http.Method
 module Version = Net.Http.Version
@@ -69,9 +68,7 @@ let equal_tail = fun value ~at suffix ->
     let rec loop index =
       if index >= suffix_len then
         true
-      else if
-        Slice.get_unchecked value ~at:(at + index) = String.get_unchecked suffix ~at:index
-      then
+      else if Slice.get_unchecked value ~at:(at + index) = String.get_unchecked suffix ~at:index then
         loop (index + 1)
       else
         false
@@ -109,7 +106,8 @@ let optimized_method_from_slice = fun value ->
       | 'O' when equal_tail value ~at:1 "PTIONS" -> Method.Options
       | _ -> Method.Extension (Slice.to_string value)
     )
-  | _ -> Method.Extension (Slice.to_string value)
+  | _ ->
+      Method.Extension (Slice.to_string value)
 
 let current_version_from_slice = fun value ->
   match Slice.length value with
@@ -202,8 +200,8 @@ let optimized_origin_form_uri_from_slice = fun value ->
 let build_slice = fun value ->
   match Slice.from_string value with
   | Ok slice -> slice
-  | Error error ->
-      panic ("std io ioslice bench: failed to build slice: " ^ Kernel.IO.Error.message error)
+  | Error error -> panic
+    ("std io ioslice bench: failed to build slice: " ^ Kernel.IO.Error.message error)
 
 let standard_methods = [|
   "GET";
@@ -317,19 +315,13 @@ let run_scan = fun values needle scan ->
   done;
   sink := !acc
 
-let bench_request_line_scan_current () =
-  run_scan mixed_request_line_slices ' ' current_take_until_char
+let bench_request_line_scan_current () = run_scan mixed_request_line_slices ' ' current_take_until_char
 
-let bench_request_line_scan_optimized () =
-  run_scan mixed_request_line_slices ' ' optimized_take_until_char
+let bench_request_line_scan_optimized () = run_scan mixed_request_line_slices ' ' optimized_take_until_char
 
-let bench_header_line_scan_current () = run_scan
-  mixed_header_line_slices
-  ':'
-  current_take_until_char
+let bench_header_line_scan_current () = run_scan mixed_header_line_slices ':' current_take_until_char
 
-let bench_header_line_scan_optimized () =
-  run_scan mixed_header_line_slices ':' optimized_take_until_char
+let bench_header_line_scan_optimized () = run_scan mixed_header_line_slices ':' optimized_take_until_char
 
 let run_uri_parse = fun parse ->
   let acc = ref 0 in

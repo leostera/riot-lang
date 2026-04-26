@@ -1,5 +1,4 @@
 open Std
-
 module Array = Collections.Array
 module Vector = Collections.Vector
 module Marshal = Stdlib.Marshal
@@ -124,7 +123,8 @@ let io_writer_of_buffer =
 
     let flush = fun _buffer -> Ok ()
   end in
-  fun buffer -> IO.Writer.from_sink (module Write) buffer
+  fun buffer ->
+    IO.Writer.from_sink (module Write) buffer
 
 let human_size = fun bytes ->
   if bytes >= 1_000_000 then
@@ -142,91 +142,73 @@ let unit_encode = Ser.null
 
 let unit_decode = De.const ()
 
-let primitive_fields =
-  De.fields
-    [
-      De.field "ready" Primitive_ready;
-      De.field "count" Primitive_count;
-      De.field "small" Primitive_small;
-      De.field "big" Primitive_big;
-      De.field "ratio" Primitive_ratio;
-      De.field "label" Primitive_label;
-      De.field "alias" Primitive_alias;
-      De.field "mode" Primitive_mode;
-      De.field "unit_value" Primitive_unit_value;
-    ]
+let primitive_fields = De.fields
+  [
+    De.field "ready" Primitive_ready;
+    De.field "count" Primitive_count;
+    De.field "small" Primitive_small;
+    De.field "big" Primitive_big;
+    De.field "ratio" Primitive_ratio;
+    De.field "label" Primitive_label;
+    De.field "alias" Primitive_alias;
+    De.field "mode" Primitive_mode;
+    De.field "unit_value" Primitive_unit_value;
+  ]
 
-let batch_fields =
-  De.fields
-    [
-      De.field "batch_id" Batch_id;
-      De.field "name" Batch_name;
-      De.field "items" Batch_items;
-      De.field "mirrors" Batch_mirrors;
-      De.field "featured" Batch_featured;
-      De.field "status" Batch_status;
-    ]
+let batch_fields = De.fields
+  [
+    De.field "batch_id" Batch_id;
+    De.field "name" Batch_name;
+    De.field "items" Batch_items;
+    De.field "mirrors" Batch_mirrors;
+    De.field "featured" Batch_featured;
+    De.field "status" Batch_status;
+  ]
 
-let dataset_fields =
-  De.fields
-    [
-      De.field "version" Dataset_version;
-      De.field "source" Dataset_source;
-      De.field "batches" Dataset_batches;
-      De.field "mirrors" Dataset_mirrors;
-      De.field "flags" Dataset_flags;
-      De.field "primary" Dataset_primary;
-    ]
+let dataset_fields = De.fields
+  [
+    De.field "version" Dataset_version;
+    De.field "source" Dataset_source;
+    De.field "batches" Dataset_batches;
+    De.field "mirrors" Dataset_mirrors;
+    De.field "flags" Dataset_flags;
+    De.field "primary" Dataset_primary;
+  ]
 
-let mode_decode =
-  De.variant
-    [
-      De.Variant.unit "Idle" Idle;
-      De.Variant.newtype "Named" De.string (fun value -> Named value);
-      De.Variant.newtype "Counted" De.int (fun value -> Counted value);
-      De.Variant.newtype "Sampled" De.float (fun value -> Sampled value);
-    ]
+let mode_decode = De.variant
+  [
+    De.Variant.unit "Idle" Idle;
+    De.Variant.newtype "Named" De.string (fun value -> Named value);
+    De.Variant.newtype "Counted" De.int (fun value -> Counted value);
+    De.Variant.newtype "Sampled" De.float (fun value -> Sampled value);
+  ]
 
-let mode_encode =
-  Ser.variant
-    [
-      Ser.Variant.unit
-        "Idle"
-        (
-          function
-          | Idle -> true
-          | _ -> false
-        );
-      Ser.Variant.newtype
-        "Named"
-        Ser.string
-        (
-          function
-          | Named value -> Some value
-          | _ -> None
-        );
-      Ser.Variant.newtype
-        "Counted"
-        Ser.int
-        (
-          function
-          | Counted value -> Some value
-          | _ -> None
-        );
-      Ser.Variant.newtype
-        "Sampled"
-        Ser.float
-        (
-          function
-          | Sampled value -> Some value
-          | _ -> None
-        );
-    ]
+let mode_encode = Ser.variant
+  [ Ser.Variant.unit "Idle"
+      (
+        function
+        | Idle -> true
+        | _ -> false
+      ); Ser.Variant.newtype "Named" Ser.string
+      (
+        function
+        | Named value -> Some value
+        | _ -> None
+      ); Ser.Variant.newtype "Counted" Ser.int
+      (
+        function
+        | Counted value -> Some value
+        | _ -> None
+      ); Ser.Variant.newtype "Sampled" Ser.float
+      (
+        function
+        | Sampled value -> Some value
+        | _ -> None
+      ); ]
 
 let primitive_decode =
-  De.record_mut
-    ~fields:primitive_fields
-    ~create:(fun (): primitive_builder ->
+  De.record_mut ~fields:primitive_fields
+    ~create:(fun () : primitive_builder ->
       {
         ready = None;
         count = None;
@@ -264,39 +246,35 @@ let primitive_decode =
       ) with
       | (Some ready, Some count, Some small, Some big, Some ratio, Some label, Some alias, Some mode, Some unit_value) ->
           ({
-            ready;
-            count;
-            small;
-            big;
-            ratio;
-            label;
-            alias;
-            mode;
-            unit_value;
-          }: primitive_record)
+              ready;
+              count;
+              small;
+              big;
+              ratio;
+              label;
+              alias;
+              mode;
+              unit_value;
+            }: primitive_record)
       | _ -> De.missing_field ())
 
-let primitive_encode =
-  Ser.record
-    (
-      Ser.fields
-        [
-          Ser.field "ready" Ser.bool (fun (value: primitive_record) -> value.ready);
-          Ser.field "count" Ser.int (fun (value: primitive_record) -> value.count);
-          Ser.field "small" Ser.int32 (fun (value: primitive_record) -> value.small);
-          Ser.field "big" Ser.int64 (fun (value: primitive_record) -> value.big);
-          Ser.field "ratio" Ser.float (fun (value: primitive_record) -> value.ratio);
-          Ser.field "label" Ser.string (fun (value: primitive_record) -> value.label);
-          Ser.field "alias" (Ser.option Ser.string) (fun (value: primitive_record) -> value.alias);
-          Ser.field "mode" mode_encode (fun (value: primitive_record) -> value.mode);
-          Ser.field "unit_value" unit_encode (fun (value: primitive_record) -> value.unit_value);
-        ]
-    )
+let primitive_encode = Ser.record
+  (Ser.fields
+    [
+      Ser.field "ready" Ser.bool (fun (value: primitive_record) -> value.ready);
+      Ser.field "count" Ser.int (fun (value: primitive_record) -> value.count);
+      Ser.field "small" Ser.int32 (fun (value: primitive_record) -> value.small);
+      Ser.field "big" Ser.int64 (fun (value: primitive_record) -> value.big);
+      Ser.field "ratio" Ser.float (fun (value: primitive_record) -> value.ratio);
+      Ser.field "label" Ser.string (fun (value: primitive_record) -> value.label);
+      Ser.field "alias" (Ser.option Ser.string) (fun (value: primitive_record) -> value.alias);
+      Ser.field "mode" mode_encode (fun (value: primitive_record) -> value.mode);
+      Ser.field "unit_value" unit_encode (fun (value: primitive_record) -> value.unit_value);
+    ])
 
 let batch_decode =
-  De.record_mut
-    ~fields:batch_fields
-    ~create:(fun (): batch_builder ->
+  De.record_mut ~fields:batch_fields
+    ~create:(fun () : batch_builder ->
       {
         batch_id = None;
         name = None;
@@ -310,8 +288,7 @@ let batch_decode =
       | Some Batch_id -> builder.batch_id <- Some (De.read reader De.int)
       | Some Batch_name -> builder.name <- Some (De.read reader De.string)
       | Some Batch_items -> builder.items <- Some (De.read reader (De.list primitive_decode))
-      | Some Batch_mirrors ->
-          builder.mirrors <- Some (De.read reader (array_decode primitive_decode))
+      | Some Batch_mirrors -> builder.mirrors <- Some (De.read reader (array_decode primitive_decode))
       | Some Batch_featured -> builder.featured <- Some (De.read reader primitive_decode)
       | Some Batch_status -> builder.status <- Some (De.read reader mode_decode)
       | None -> ignore (De.read reader De.skip_any))
@@ -326,33 +303,29 @@ let batch_decode =
       ) with
       | (Some batch_id, Some name, Some items, Some mirrors, Some featured, Some status) ->
           ({
-            batch_id;
-            name;
-            items;
-            mirrors;
-            featured;
-            status;
-          }: batch)
+              batch_id;
+              name;
+              items;
+              mirrors;
+              featured;
+              status;
+            }: batch)
       | _ -> De.missing_field ())
 
-let batch_encode =
-  Ser.record
-    (
-      Ser.fields
-        [
-          Ser.field "batch_id" Ser.int (fun (value: batch) -> value.batch_id);
-          Ser.field "name" Ser.string (fun (value: batch) -> value.name);
-          Ser.field "items" (Ser.list primitive_encode) (fun (value: batch) -> value.items);
-          Ser.field "mirrors" (array_encode primitive_encode) (fun (value: batch) -> value.mirrors);
-          Ser.field "featured" primitive_encode (fun (value: batch) -> value.featured);
-          Ser.field "status" mode_encode (fun (value: batch) -> value.status);
-        ]
-    )
+let batch_encode = Ser.record
+  (Ser.fields
+    [
+      Ser.field "batch_id" Ser.int (fun (value: batch) -> value.batch_id);
+      Ser.field "name" Ser.string (fun (value: batch) -> value.name);
+      Ser.field "items" (Ser.list primitive_encode) (fun (value: batch) -> value.items);
+      Ser.field "mirrors" (array_encode primitive_encode) (fun (value: batch) -> value.mirrors);
+      Ser.field "featured" primitive_encode (fun (value: batch) -> value.featured);
+      Ser.field "status" mode_encode (fun (value: batch) -> value.status);
+    ])
 
 let dataset_decode =
-  De.record_mut
-    ~fields:dataset_fields
-    ~create:(fun (): dataset_builder ->
+  De.record_mut ~fields:dataset_fields
+    ~create:(fun () : dataset_builder ->
       {
         version = None;
         source = None;
@@ -381,28 +354,25 @@ let dataset_decode =
       ) with
       | (Some version, Some source, Some batches, Some mirrors, Some flags, Some primary) ->
           ({
-            version;
-            source;
-            batches;
-            mirrors;
-            flags;
-            primary;
-          }: dataset)
+              version;
+              source;
+              batches;
+              mirrors;
+              flags;
+              primary;
+            }: dataset)
       | _ -> De.missing_field ())
 
-let dataset_encode =
-  Ser.record
-    (
-      Ser.fields
-        [
-          Ser.field "version" Ser.int (fun (value: dataset) -> value.version);
-          Ser.field "source" Ser.string (fun (value: dataset) -> value.source);
-          Ser.field "batches" (Ser.list batch_encode) (fun (value: dataset) -> value.batches);
-          Ser.field "mirrors" (array_encode batch_encode) (fun (value: dataset) -> value.mirrors);
-          Ser.field "flags" (Ser.list mode_encode) (fun (value: dataset) -> value.flags);
-          Ser.field "primary" mode_encode (fun (value: dataset) -> value.primary);
-        ]
-    )
+let dataset_encode = Ser.record
+  (Ser.fields
+    [
+      Ser.field "version" Ser.int (fun (value: dataset) -> value.version);
+      Ser.field "source" Ser.string (fun (value: dataset) -> value.source);
+      Ser.field "batches" (Ser.list batch_encode) (fun (value: dataset) -> value.batches);
+      Ser.field "mirrors" (array_encode batch_encode) (fun (value: dataset) -> value.mirrors);
+      Ser.field "flags" (Ser.list mode_encode) (fun (value: dataset) -> value.flags);
+      Ser.field "primary" mode_encode (fun (value: dataset) -> value.primary);
+    ])
 
 let build_mode = fun seed ->
   match seed mod 4 with
@@ -414,20 +384,20 @@ let build_mode = fun seed ->
 let build_primitive_record = fun batch_index item_index ->
   let seed = (batch_index * 97) + item_index in
   ({
-    ready = seed land 1 = 0;
-    count = seed;
-    small = Int32.of_int ((batch_index lsl 8) lxor item_index);
-    big = Int64.of_int ((seed * 65_537) + batch_index);
-    ratio = (float seed /. 9.0) +. 0.375;
-    label = "record-" ^ Int.to_string batch_index ^ "-" ^ Int.to_string item_index;
-    alias =
-      if seed mod 3 = 0 then
-        Some ("alias-" ^ Int.to_string seed)
-      else
-        None;
-    mode = build_mode seed;
-    unit_value = ();
-  }: primitive_record)
+      ready = seed land 1 = 0;
+      count = seed;
+      small = Int32.of_int ((batch_index lsl 8) lxor item_index);
+      big = Int64.of_int ((seed * 65_537) + batch_index);
+      ratio = (float seed /. 9.0) +. 0.375;
+      label = "record-" ^ Int.to_string batch_index ^ "-" ^ Int.to_string item_index;
+      alias =
+        if seed mod 3 = 0 then
+          Some ("alias-" ^ Int.to_string seed)
+        else
+          None;
+      mode = build_mode seed;
+      unit_value = ();
+    }: primitive_record)
 
 let build_batch = fun batch_index ->
   let items = Vector.with_capacity ~size:12 in
@@ -440,28 +410,33 @@ let build_batch = fun batch_index ->
       ~fn:(fun mirror_index -> build_primitive_record batch_index (mirror_index + 32))
   in
   ({
-    batch_id = batch_index;
-    name = "batch-" ^ Int.to_string batch_index;
-    items;
-    mirrors;
-    featured = build_primitive_record batch_index 99;
-    status = build_mode (batch_index * 11);
-  }: batch)
+      batch_id = batch_index;
+      name = "batch-" ^ Int.to_string batch_index;
+      items;
+      mirrors;
+      featured = build_primitive_record batch_index 99;
+      status = build_mode (batch_index * 11);
+    }: batch)
 
-type fixture_spec = { label: string; source: string; batch_count: int; mirror_count: int }
+type fixture_spec = {
+  label: string;
+  source: string;
+  batch_count: int;
+  mirror_count: int;
+}
 
 let small_fixture_spec = {
   label = "small";
   source = "serde-bin primitive benchmark";
   batch_count = 128;
-  mirror_count = 24;
+  mirror_count = 24
 }
 
 let large_fixture_spec = {
   label = "large";
   source = "serde-bin large primitive benchmark";
   batch_count = 7_424;
-  mirror_count = 1_392;
+  mirror_count = 1_392
 }
 
 let build_dataset = fun spec ->
@@ -469,19 +444,21 @@ let build_dataset = fun spec ->
   for batch_index = 0 to spec.batch_count - 1 do
     Vector.push batches ~value:(build_batch batch_index)
   done;
-  let mirrors = Array.init ~count:spec.mirror_count ~fn:(fun index -> build_batch (index + 512)) in
+  let mirrors =
+    Array.init ~count:spec.mirror_count ~fn:(fun index -> build_batch (index + 512))
+  in
   let flags = Vector.with_capacity ~size:64 in
   for index = 0 to 63 do
     Vector.push flags ~value:(build_mode (index + 2_000))
   done;
   ({
-    version = 2;
-    source = spec.source;
-    batches;
-    mirrors;
-    flags;
-    primary = Sampled 3.141_592_653_5;
-  }: dataset)
+      version = 2;
+      source = spec.source;
+      batches;
+      mirrors;
+      flags;
+      primary = Sampled 3.141_592_653_5;
+    }: dataset)
 
 type fixture = {
   label: string;
@@ -494,15 +471,9 @@ type fixture = {
 
 let build_fixture = fun spec ->
   let dataset = build_dataset spec in
-  let serde_bytes =
-    Serde_bin.to_string dataset_encode dataset
-    |> Result.expect ~msg:"expected serde-bin fixture encoding to succeed"
-  in
+  let serde_bytes = Serde_bin.to_string dataset_encode dataset |> Result.expect ~msg:"expected serde-bin fixture encoding to succeed" in
   let marshal_bytes = Marshal.to_string dataset [] in
-  let decoded: dataset =
-    Serde_bin.of_string dataset_decode serde_bytes
-    |> Result.expect ~msg:"expected serde-bin fixture decoding to succeed"
-  in
+  let decoded: dataset = Serde_bin.of_string dataset_decode serde_bytes |> Result.expect ~msg:"expected serde-bin fixture decoding to succeed" in
   let _marshal_roundtrip: dataset = Marshal.from_string marshal_bytes 0 in
   ignore decoded;
   let writer_buffer = IO.Buffer.create ~size:(String.length serde_bytes) in

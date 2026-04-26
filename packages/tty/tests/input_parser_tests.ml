@@ -21,7 +21,10 @@ let feed_chunks = fun parser chunks ->
   loop parser chunks []
 
 let byte_chunks = fun value ->
-  List.init ~count:(String.length value) ~fn:(fun index -> String.sub value ~offset:index ~len:1)
+  List.init
+    ~count:(String.length value)
+    ~fn:(fun index ->
+      String.sub value ~offset:index ~len:1)
 
 let event_strings = fun events -> List.map events ~fn:Tty.Input.event_to_string
 

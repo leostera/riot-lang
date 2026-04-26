@@ -8,8 +8,7 @@ let with_capacity = Hashmap.with_capacity
 
 let from_list = fun values ->
   let set = with_capacity ~size:(List.length values) in
-  List.for_each
-    values
+  List.for_each values
     ~fn:(fun value ->
       let _ = Hashmap.insert set ~key:value ~value:() in
       ());
@@ -42,8 +41,7 @@ let to_list = fun set -> Hashmap.keys set
 
 let union = fun left right ->
   let result = from_list (to_list left) in
-  for_each
-    right
+  for_each right
     ~fn:(fun value ->
       let _ = Hashmap.insert result ~key:value ~value:() in
       ());
@@ -51,8 +49,7 @@ let union = fun left right ->
 
 let intersection = fun left right ->
   let result = create () in
-  for_each
-    left
+  for_each left
     ~fn:(fun value ->
       if contains right ~value then
         let _ = Hashmap.insert result ~key:value ~value:() in
@@ -61,8 +58,7 @@ let intersection = fun left right ->
 
 let difference = fun left right ->
   let result = create () in
-  for_each
-    left
+  for_each left
     ~fn:(fun value ->
       if not (contains right ~value) then
         let _ = Hashmap.insert result ~key:value ~value:() in
@@ -71,14 +67,12 @@ let difference = fun left right ->
 
 let symmetric_difference = fun left right ->
   let result = create () in
-  for_each
-    left
+  for_each left
     ~fn:(fun value ->
       if not (contains right ~value) then
         let _ = Hashmap.insert result ~key:value ~value:() in
         ());
-  for_each
-    right
+  for_each right
     ~fn:(fun value ->
       if not (contains left ~value) then
         let _ = Hashmap.insert result ~key:value ~value:() in

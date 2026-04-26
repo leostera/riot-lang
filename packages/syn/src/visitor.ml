@@ -91,7 +91,9 @@ and 'ctx hooks = {
 }
 
 let make_slots: type value. int -> value cached array = fun size ->
-  Array.make ~count:size ~value:Unknown
+  Array.make
+    ~count:size
+    ~value:Unknown
 
 let make_arena = fun ~size ->
   {

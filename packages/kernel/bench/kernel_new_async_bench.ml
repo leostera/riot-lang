@@ -1,5 +1,4 @@
 open Std
-
 module Kernel = Kernel
 
 let panic_file = fun error ->
@@ -97,8 +96,7 @@ let with_udp_pair = fun fn ->
                 ~finally:(fun () ->
                   let _ = Kernel.Net.UdpSocket.close client in
                   ())
-                (fun () ->
-                  fn server client))
+                (fun () -> fn server client))
 
 let bench_register_and_deregister = fun () ->
   with_pipe
@@ -129,57 +127,48 @@ let bench_reregister = fun () ->
       with_poll
         (fun poll ->
           let source = Kernel.Fs.File.to_source pipe.write_end in
-          let _ =
-            Kernel.Async.Poll.register
-              poll
-              (Kernel.Async.Token.make 11)
-              Kernel.Async.Interest.writable
-              source
-          in
-          let _ =
-            Kernel.Async.Poll.reregister
-              poll
-              (Kernel.Async.Token.make 12)
-              Kernel.Async.Interest.writable
-              source
-          in
+          let _ = Kernel.Async.Poll.register
+            poll
+            (Kernel.Async.Token.make 11)
+            Kernel.Async.Interest.writable
+            source in
+          let _ = Kernel.Async.Poll.reregister
+            poll
+            (Kernel.Async.Token.make 12)
+            Kernel.Async.Interest.writable
+            source in
           ()))
 
 let bench_timer_wakeup = fun () ->
   with_poll
     (fun poll ->
       match Kernel.Time.Timer.after_ns 1_000_000L with
-      | Error error ->
-          Kernel.SystemError.panic (Kernel.Error.to_string (Kernel.Error.from_time_timer error))
+      | Error error -> Kernel.SystemError.panic
+        (Kernel.Error.to_string (Kernel.Error.from_time_timer error))
       | Ok timer ->
           let source = Kernel.Time.Timer.to_source timer in
-          let _ =
-            Kernel.Async.Poll.register
-              poll
-              (Kernel.Async.Token.make 13)
-              Kernel.Async.Interest.readable
-              source
-          in
+          let _ = Kernel.Async.Poll.register
+            poll
+            (Kernel.Async.Token.make 13)
+            Kernel.Async.Interest.readable
+            source in
           let _ = Kernel.Async.Poll.poll ~timeout:100_000_000L poll in
           let _ = Kernel.Async.Poll.deregister poll source in
           ())
 
 let bench_many_source_poll = fun () ->
-  with_pipes
-    64
+  with_pipes 64
     (fun pipes ->
       with_poll
         (fun poll ->
           let rec register index = function
             | [] -> ()
             | Kernel.Fs.File.{ read_end; _ } :: rest ->
-                let _ =
-                  Kernel.Async.Poll.register
-                    poll
-                    (Kernel.Async.Token.make index)
-                    Kernel.Async.Interest.readable
-                    (Kernel.Fs.File.to_source read_end)
-                in
+                let _ = Kernel.Async.Poll.register
+                  poll
+                  (Kernel.Async.Token.make index)
+                  Kernel.Async.Interest.readable
+                  (Kernel.Fs.File.to_source read_end) in
                 register (index + 1) rest
           in
           let rec wake = function
@@ -202,13 +191,11 @@ let bench_mixed_source_poll = fun () ->
           | Error error -> panic_time_timer error
           | Ok timer ->
               let stdio =
-                Kernel.Process.{ stdin = Stdin.Null; stdout = Stdout.Null; stderr = Stderr.Null }
-              in
+                Kernel.Process.{ stdin = Stdin.Null; stdout = Stdout.Null; stderr = Stderr.Null } in
               match Kernel.Process.spawn ~program:"/bin/sh" ~args:[|"-c"; "sleep 0.02"|] ~stdio () with
               | Error error -> panic_process error
               | Ok process ->
-                  with_process
-                    process
+                  with_process process
                     (fun process ->
                       with_udp_pair
                         (fun server client ->
@@ -221,34 +208,26 @@ let bench_mixed_source_poll = fun () ->
                             | Ok addr -> addr
                             | Error error -> panic_udp error
                           in
-                          let _ =
-                            Kernel.Async.Poll.register
-                              poll
-                              (Kernel.Async.Token.make "pipe")
-                              Kernel.Async.Interest.readable
-                              pipe_source
-                          in
-                          let _ =
-                            Kernel.Async.Poll.register
-                              poll
-                              (Kernel.Async.Token.make "timer")
-                              Kernel.Async.Interest.readable
-                              timer_source
-                          in
-                          let _ =
-                            Kernel.Async.Poll.register
-                              poll
-                              (Kernel.Async.Token.make "process")
-                              Kernel.Async.Interest.priority
-                              process_source
-                          in
-                          let _ =
-                            Kernel.Async.Poll.register
-                              poll
-                              (Kernel.Async.Token.make "udp")
-                              Kernel.Async.Interest.readable
-                              udp_source
-                          in
+                          let _ = Kernel.Async.Poll.register
+                            poll
+                            (Kernel.Async.Token.make "pipe")
+                            Kernel.Async.Interest.readable
+                            pipe_source in
+                          let _ = Kernel.Async.Poll.register
+                            poll
+                            (Kernel.Async.Token.make "timer")
+                            Kernel.Async.Interest.readable
+                            timer_source in
+                          let _ = Kernel.Async.Poll.register
+                            poll
+                            (Kernel.Async.Token.make "process")
+                            Kernel.Async.Interest.priority
+                            process_source in
+                          let _ = Kernel.Async.Poll.register
+                            poll
+                            (Kernel.Async.Token.make "udp")
+                            Kernel.Async.Interest.readable
+                            udp_source in
                           protect
                             ~finally:(fun () ->
                               let _ = Kernel.Async.Poll.deregister poll pipe_source in
@@ -257,15 +236,13 @@ let bench_mixed_source_poll = fun () ->
                               let _ = Kernel.Async.Poll.deregister poll udp_source in
                               ())
                             (fun () ->
-                              let _ =
-                                Kernel.Fs.File.write pipe.write_end (Kernel.Bytes.from_string "x")
-                              in
-                              let _ =
-                                Kernel.Net.UdpSocket.send_to
-                                  client
-                                  server_addr
-                                  (Kernel.Bytes.from_string "u")
-                              in
+                              let _ = Kernel.Fs.File.write
+                                pipe.write_end
+                                (Kernel.Bytes.from_string "x") in
+                              let _ = Kernel.Net.UdpSocket.send_to
+                                client
+                                server_addr
+                                (Kernel.Bytes.from_string "u") in
                               let seen_pipe = ref false in
                               let seen_timer = ref false in
                               let seen_process = ref false in
@@ -273,23 +250,17 @@ let bench_mixed_source_poll = fun () ->
                               let rec mark = function
                                 | [] -> ()
                                 | event :: rest ->
-                                    let token =
-                                      Kernel.Async.Token.unsafe_value
-                                        (Kernel.Async.Event.token event)
-                                    in
+                                    let token = Kernel.Async.Token.unsafe_value
+                                      (Kernel.Async.Event.token event) in
                                     if token = "pipe" && Kernel.Async.Event.is_readable event then
                                       seen_pipe := true
-                                    else if
-                                      token = "timer" && Kernel.Async.Event.is_readable event
-                                    then
+                                    else if token = "timer" && Kernel.Async.Event.is_readable event then
                                       seen_timer := true
                                     else if
                                       token = "process" && Kernel.Async.Event.is_priority event
                                     then
                                       seen_process := true
-                                    else if
-                                      token = "udp" && Kernel.Async.Event.is_readable event
-                                    then
+                                    else if token = "udp" && Kernel.Async.Event.is_readable event then
                                       seen_udp := true;
                                     mark rest
                               in
@@ -297,41 +268,23 @@ let bench_mixed_source_poll = fun () ->
                                 if !seen_pipe && !seen_timer && !seen_process && !seen_udp then
                                   ()
                                 else if attempts = 0 then
-                                  Kernel.SystemError.panic
-                                    "expected mixed-source poll to surface all readiness kinds"
+                                  Kernel.SystemError.panic "expected mixed-source poll to surface all readiness kinds"
                                 else
-                                  let events =
-                                    lift_async
-                                      (Kernel.Async.Poll.poll
-                                        ~timeout:100_000_000L
-                                        ~max_events:16
-                                        poll)
-                                  in
+                                  let events = lift_async
+                                    (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:16 poll) in
                                   mark events;
-                                poll_until (attempts - 1)
+                                  poll_until (attempts - 1)
                               in
                               poll_until 8)))))
 
 let benchmarks =
   Bench.[
-    with_config
-      ~config:{ iterations = 50; warmup = 10 }
-      "async register+deregister pipe source"
-      bench_register_and_deregister;
+    with_config ~config:{ iterations = 50; warmup = 10 } "async register+deregister pipe source" bench_register_and_deregister;
     with_config ~config:{ iterations = 50; warmup = 10 } "async pipe wakeup" bench_pipe_wakeup;
-    with_config
-      ~config:{ iterations = 50; warmup = 10 }
-      "async reregister pipe source"
-      bench_reregister;
+    with_config ~config:{ iterations = 50; warmup = 10 } "async reregister pipe source" bench_reregister;
     with_config ~config:{ iterations = 50; warmup = 10 } "async timer wakeup" bench_timer_wakeup;
-    with_config
-      ~config:{ iterations = 25; warmup = 5 }
-      "async many-source pipe wakeup"
-      bench_many_source_poll;
-    with_config
-      ~config:{ iterations = 25; warmup = 5 }
-      "async mixed-source wakeup"
-      bench_mixed_source_poll;
+    with_config ~config:{ iterations = 25; warmup = 5 } "async many-source pipe wakeup" bench_many_source_poll;
+    with_config ~config:{ iterations = 25; warmup = 5 } "async mixed-source wakeup" bench_mixed_source_poll;
   ]
 
 let main ~args = Bench.Cli.main ~name:"kernel_new_async_bench" ~benchmarks ~args

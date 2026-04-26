@@ -7,12 +7,8 @@ let write_file = fun path contents ->
     | Some parent -> parent
     | None -> Path.v "."
   in
-  let _ =
-    Fs.create_dir_all parent
-    |> Result.expect ~msg:"create bench parent should succeed"
-  in
-  Fs.write contents path
-  |> Result.expect ~msg:"write bench file should succeed"
+  let _ = Fs.create_dir_all parent |> Result.expect ~msg:"create bench parent should succeed" in
+  Fs.write contents path |> Result.expect ~msg:"write bench file should succeed"
 
 let payload = fun ~size ~seed ->
   String.init
@@ -23,7 +19,8 @@ let make_workspace = fun root ->
   Riot_model.Workspace.{
     name = None;
     root;
-    target_dir_root = Path.(root / Path.v "target");
+    target_dir_root =
+      Path.(root / Path.v "target");
     packages = [];
     dependencies = [];
     dev_dependencies = [];
@@ -46,10 +43,8 @@ let make_bench_save_single_output = fun root ~size ->
     counter := iteration + 1;
     write_file output (payload ~size ~seed:iteration);
     let hash = Crypto.hash_string ("riot-store:save-single:" ^ Int.to_string iteration) in
-    let _ =
-      Riot_store.Store.save store ~package:"pkg" ~hash ~sandbox_dir:sandbox ~outs:[ output ]
-      |> Result.expect ~msg:"save single output bench should succeed"
-    in
+    let _ = Riot_store.Store.save store ~package:"pkg" ~hash ~sandbox_dir:sandbox ~outs:[ output ]
+    |> Result.expect ~msg:"save single output bench should succeed" in
     ()
 
 let make_bench_save_nested_outputs = fun root ~size ->
@@ -60,22 +55,18 @@ let make_bench_save_nested_outputs = fun root ~size ->
     Path.(sandbox / Path.v "lib" / Path.v "pkg.cmxa");
     Path.(sandbox / Path.v "lib" / Path.v "pkg.a");
     Path.(sandbox / Path.v "bin" / Path.v "pkg-tool");
-  ]
-  in
+  ] in
   let counter = ref 0 in
   fun () ->
     let iteration = !counter in
     counter := iteration + 1;
-    List.for_each
-      outputs
+    List.for_each outputs
       ~fn:(fun path ->
         let name = Path.basename path in
         write_file path (payload ~size ~seed:(iteration + String.length name)));
     let hash = Crypto.hash_string ("riot-store:save-nested:" ^ Int.to_string iteration) in
-    let _ =
-      Riot_store.Store.save store ~package:"pkg" ~hash ~sandbox_dir:sandbox ~outs:outputs
-      |> Result.expect ~msg:"save nested outputs bench should succeed"
-    in
+    let _ = Riot_store.Store.save store ~package:"pkg" ~hash ~sandbox_dir:sandbox ~outs:outputs
+    |> Result.expect ~msg:"save nested outputs bench should succeed" in
     ()
 
 let prepare_promote_fixture = fun root ->
@@ -86,16 +77,13 @@ let prepare_promote_fixture = fun root ->
     Path.(sandbox / Path.v "lib" / Path.v "pkg.cmxa");
     Path.(sandbox / Path.v "lib" / Path.v "pkg.a");
     Path.(sandbox / Path.v "bin" / Path.v "pkg-tool");
-  ]
-  in
+  ] in
   List.for_each
     (List.enumerate outputs)
     ~fn:(fun (index, path) -> write_file path (payload ~size:(1_024 + (index * 256)) ~seed:index));
   let hash = Crypto.hash_string "riot-store:promote-fixture" in
-  let _ =
-    Riot_store.Store.save store ~package:"pkg" ~hash ~sandbox_dir:sandbox ~outs:outputs
-    |> Result.expect ~msg:"prepare promote fixture should succeed"
-  in
+  let _ = Riot_store.Store.save store ~package:"pkg" ~hash ~sandbox_dir:sandbox ~outs:outputs
+  |> Result.expect ~msg:"prepare promote fixture should succeed" in
   (store, hash, store_root)
 
 let make_bench_promote_nested_outputs = fun root ->
@@ -105,10 +93,7 @@ let make_bench_promote_nested_outputs = fun root ->
     let iteration = !counter in
     counter := iteration + 1;
     let target_dir = Path.(store_root / Path.v ("promoted-" ^ Int.to_string iteration)) in
-    let _ =
-      Riot_store.Store.promote store hash ~target_dir
-      |> Result.expect ~msg:"promote bench should succeed"
-    in
+    let _ = Riot_store.Store.promote store hash ~target_dir |> Result.expect ~msg:"promote bench should succeed" in
     ()
 
 let prepare_export_fixture = fun root ->
@@ -122,14 +107,17 @@ let prepare_export_fixture = fun root ->
     Riot_store.Store.{
       name = "pkg.cmxa";
       path = Path.v "lib/pkg.cmxa";
-      action_hash = Crypto.Digest.hex hash;
+      action_hash = Crypto.Digest.hex hash
     };
-  ]
-  in
-  let _ =
-    Riot_store.Store.save store ~package:"pkg" ~hash ~exports ~sandbox_dir:sandbox ~outs:[ output ]
-    |> Result.expect ~msg:"prepare export fixture should succeed"
-  in
+  ] in
+  let _ = Riot_store.Store.save
+    store
+    ~package:"pkg"
+    ~hash
+    ~exports
+    ~sandbox_dir:sandbox
+    ~outs:[ output ]
+  |> Result.expect ~msg:"prepare export fixture should succeed" in
   (store, exports, store_root)
 
 let make_bench_materialize_exports = fun root ->
@@ -139,10 +127,8 @@ let make_bench_materialize_exports = fun root ->
     let iteration = !counter in
     counter := iteration + 1;
     let target_dir = Path.(store_root / Path.v ("exports-out-" ^ Int.to_string iteration)) in
-    let _ =
-      Riot_store.Store.materialize_package_exports store ~exports ~target_dir
-      |> Result.expect ~msg:"materialize exports bench should succeed"
-    in
+    let _ = Riot_store.Store.materialize_package_exports store ~exports ~target_dir
+    |> Result.expect ~msg:"materialize exports bench should succeed" in
     ()
 
 let make_bench_save_plan_bundle = fun root ->
@@ -153,17 +139,13 @@ let make_bench_save_plan_bundle = fun root ->
     ("package", Data.Json.String "pkg");
     ("module_graph", Data.Json.Object [ ("nodes", Data.Json.Array []); ]);
     ("action_graph", Data.Json.Object [ ("nodes", Data.Json.Array []); ]);
-  ]
-  in
+  ] in
   let counter = ref 0 in
   fun () ->
     let iteration = !counter in
     counter := iteration + 1;
     let hash = Crypto.hash_string ("riot-store:plan-save:" ^ Int.to_string iteration) in
-    let _ =
-      Riot_store.Store.save_plan_bundle store ~hash ~plan
-      |> Result.expect ~msg:"save plan bundle bench should succeed"
-    in
+    let _ = Riot_store.Store.save_plan_bundle store ~hash ~plan |> Result.expect ~msg:"save plan bundle bench should succeed" in
     ()
 
 let make_bench_load_plan_bundle = fun root ->
@@ -175,12 +157,8 @@ let make_bench_load_plan_bundle = fun root ->
     ("package", Data.Json.String "pkg");
     ("module_graph", Data.Json.Object [ ("nodes", Data.Json.Array []); ]);
     ("action_graph", Data.Json.Object [ ("nodes", Data.Json.Array []); ]);
-  ]
-  in
-  let _ =
-    Riot_store.Store.save_plan_bundle store ~hash ~plan
-    |> Result.expect ~msg:"prepare load plan bundle bench should succeed"
-  in
+  ] in
+  let _ = Riot_store.Store.save_plan_bundle store ~hash ~plan |> Result.expect ~msg:"prepare load plan bundle bench should succeed" in
   fun () ->
     match Riot_store.Store.load_plan_bundle store ~hash with
     | Some _ -> ()
@@ -217,8 +195,7 @@ let benchmark_suite = fun root ->
 let main ~args =
   match Fs.with_tempdir
     ~prefix:"riot_store_bench"
-    (fun root ->
-      Bench.Cli.main ~name:"riot-store benchmarks" ~benchmarks:(benchmark_suite root) ~args) with
+    (fun root -> Bench.Cli.main ~name:"riot-store benchmarks" ~benchmarks:(benchmark_suite root) ~args) with
   | Ok result -> result
   | Error err -> panic ("failed to prepare riot-store bench fixture: " ^ IO.error_message err)
 

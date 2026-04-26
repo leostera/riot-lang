@@ -1,6 +1,5 @@
 open Prelude
 open Types
-
 module IoVec = IoVec
 module IoSlice = IoSlice
 
@@ -85,11 +84,13 @@ let read_to_string = fun reader ~into ->
   let rec loop total =
     Buffer.clear scratch;
     match read reader ~into:scratch with
-    | Ok 0 -> Ok total
+    | Ok 0 ->
+        Ok total
     | Ok count ->
         StringBuilder.add_string into (Buffer.to_string scratch);
         loop (total + count)
-    | Error err -> Error err
+    | Error err ->
+        Error err
   in
   loop 0
 
@@ -104,17 +105,22 @@ let read_exact = fun reader ~into ~len ->
         let writable = limited_writable into remaining in
         let bufs = IoVec.from_slices [|writable|] in
         match read_vectored reader ~into:bufs with
-        | Ok 0 -> Error Error.Unexpected_end_of_file
+        | Ok 0 ->
+            Error Error.Unexpected_end_of_file
         | Ok count ->
             commit_into into count;
             loop (remaining - count)
-        | Error _ as error -> error
+        | Error _ as error ->
+            error
     in
     loop len
 
 let bytes: t -> byte_result Iter.Iterator.t = fun reader ->
   let module ByteIter = struct
-    type state = { reader: t; done_: bool }
+    type state = {
+      reader: t;
+      done_: bool;
+    }
 
     type item = byte_result
 
@@ -127,8 +133,10 @@ let bytes: t -> byte_result Iter.Iterator.t = fun reader ->
         | Ok () ->
             let byte = Buffer.get_unchecked scratch ~at:0 in
             (Some (Ok byte), state)
-        | Error Error.Unexpected_end_of_file -> (None, { state with done_ = true })
-        | Error err -> (Some (Error err), { state with done_ = true })
+        | Error Error.Unexpected_end_of_file ->
+            (None, { state with done_ = true })
+        | Error err ->
+            (Some (Error err), { state with done_ = true })
 
     let size = fun _ -> 0
   end in
@@ -147,8 +155,10 @@ let chain: t -> t -> t = fun left right ->
         | Ok 0 ->
             state.current_left <- false;
             read state ~into
-        | Ok _ as ok -> ok
-        | Error _ as error -> error
+        | Ok _ as ok ->
+            ok
+        | Error _ as error ->
+            error
       else
         reader_read state.right ~into
 
@@ -158,8 +168,10 @@ let chain: t -> t -> t = fun left right ->
         | Ok 0 ->
             state.current_left <- false;
             read_vectored state ~into
-        | Ok _ as ok -> ok
-        | Error _ as error -> error
+        | Ok _ as ok ->
+            ok
+        | Error _ as error ->
+            error
       else
         reader_read_vectored state.right ~into
 
@@ -202,9 +214,8 @@ let take: t -> limit:int -> t = fun reader ~limit ->
                 Ok count
             | Error _ as error -> error
           )
-        | Error error ->
-            Kernel.SystemError.panic
-              ("IO.Reader.take.read_vectored: " ^ Kernel.IO.Error.message error)
+        | Error error -> Kernel.SystemError.panic
+          ("IO.Reader.take.read_vectored: " ^ Kernel.IO.Error.message error)
 
     let is_read_vectored = fun state -> reader_is_read_vectored state.reader
   end in
@@ -228,13 +239,14 @@ module BytesSource = struct
     source: bytes;
   }
 
-  type copy_progress = { mutable copied: int }
+  type copy_progress = {
+    mutable copied: int;
+  }
 
   let copy_into_iovec = fun state ~source into ->
     let available = Bytes.length source - state.offset in
     let progress = { copied = 0 } in
-    IoVec.for_each
-      into
+    IoVec.for_each into
       ~fn:(fun segment ->
         let remaining = available - progress.copied in
         if remaining > 0 then
@@ -245,7 +257,7 @@ module BytesSource = struct
             segment
             ~dst_off:0
             ~len;
-        progress.copied <- progress.copied + len);
+          progress.copied <- progress.copied + len);
     state.offset <- state.offset + progress.copied;
     progress.copied
 
@@ -256,15 +268,10 @@ module BytesSource = struct
     else
       let writable = limited_writable into remaining in
       let count = Int.min remaining (IoSlice.length writable) in
-      IoSlice.blit_from_bytes_unchecked
-        state.source
-        ~src_off:state.offset
-        writable
-        ~dst_off:0
-        ~len:count;
-    commit_into into count;
-    state.offset <- state.offset + count;
-    Ok count
+      IoSlice.blit_from_bytes_unchecked state.source ~src_off:state.offset writable ~dst_off:0 ~len:count;
+      commit_into into count;
+      state.offset <- state.offset + count;
+      Ok count
 
   let read_vectored = fun state ~into -> Ok (copy_into_iovec state ~source:state.source into)
 

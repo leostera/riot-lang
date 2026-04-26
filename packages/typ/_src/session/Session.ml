@@ -54,7 +54,9 @@ let filename_of_source = fun (source: Source.t) ->
       |> Result.unwrap_or ~default:(Path.v "<fragment>")
 
 let source_of_id = fun session source_id ->
-  Collections.HashMap.get session.sources_by_id (SourceId.to_int source_id)
+  Collections.HashMap.get
+    session.sources_by_id
+    (SourceId.to_int source_id)
 
 let source_ids_of_module = fun session module_name ->
   match Collections.HashMap.get session.source_ids_by_module_name module_name with
@@ -76,7 +78,9 @@ let module_name_index_keys = fun (source: Source.t) ->
   |> List.sort_uniq String.compare
 
 let local_source_ids_for_module = fun session module_name ->
-  source_ids_of_module session module_name
+  source_ids_of_module
+    session
+    module_name
 
 let local_source_ids_for_module_in_scope = fun session ~current_module_name module_name ->
   let current_module_name = LocalModules.InternalName.of_string current_module_name in
@@ -162,7 +166,10 @@ let add_source_indexes = fun session (source: Source.t) ->
   module_name_index_keys source
   |> List.fold_left
     (fun session module_name ->
-      register_module_name session ~module_name ~source_id:source.source_id)
+      register_module_name
+        session
+        ~module_name
+        ~source_id:source.source_id)
     session
 
 let update_source_indexes = fun session (source: Source.t) ->
@@ -494,7 +501,9 @@ let local_required_names_of_source = fun session ~deps_env_key ~deps_env (source
     |> List.map SurfacePath.to_string
     |> List.filter
       (fun module_name ->
-        LocalModules.should_include_implicit_open ~current_module_name ~module_name)
+        LocalModules.should_include_implicit_open
+          ~current_module_name
+          ~module_name)
   in
   module_dependencies session ~deps_env_key ~deps_env source @ implicit_open_modules
   |> dedupe_strings_preserving_order

@@ -24,4 +24,5 @@ type source = Model.Source.t
 type checked_source = Analysis.Check_result.t
 
 let check = fun ~config:_ ~source:_ ->
-  Std.panic "Typ.check is not wired to the new Source surface yet; use Typ.Check.check"
+  Std.panic
+    "Typ.check is not wired to the new Source surface yet; use Typ.Check.check"

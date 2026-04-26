@@ -1,5 +1,4 @@
 open Prelude
-
 module IoSlice = Io_slice
 
 type segment = IoSlice.t
@@ -19,8 +18,7 @@ let create = fun ?(count = 1) ~size () ->
     let base = size / count in
     let remainder = size mod count in
     Ok (
-      Array.init
-        ~count
+      Array.init ~count
         ~fn:(fun index ->
           let chunk =
             if index < remainder then
@@ -139,7 +137,7 @@ let to_bytes = fun segments ->
         out
         ~dst_off:cursor
         ~len:(IoSlice.length segment);
-    loop (index + 1) (cursor + IoSlice.length segment)
+      loop (index + 1) (cursor + IoSlice.length segment)
   in
   let _ = loop 0 0 in
   out

@@ -12,7 +12,9 @@ type local_type_decl_index = {
 }
 
 let type_decl_key = fun (type_decl: FileSummary.type_decl) ->
-  SurfacePath.append_name type_decl.scope_path type_decl.declaration.type_name
+  SurfacePath.append_name
+    type_decl.scope_path
+    type_decl.declaration.type_name
 
 let local_type_decl_index = fun type_decls ->
   let by_path = Collections.HashMap.with_capacity (List.length type_decls) in

@@ -1,5 +1,4 @@
 open Kernel.Prelude
-
 module Runtime_pid = Runtime.Pid
 module Waiters = Collections.Queue
 
@@ -15,11 +14,7 @@ type waiter = {
 }
 
 type request =
-  | Wait of {
-      reply_to: Runtime_pid.t;
-      request_id: request_id;
-      mutex: Mutex.t;
-    }
+  | Wait of { reply_to: Runtime_pid.t; request_id: request_id; mutex: Mutex.t }
   | Signal
   | Broadcast
 
@@ -76,10 +71,7 @@ let rec loop = fun waiters ->
       signal_all waiters;
       loop waiters
 
-let create = fun () ->
-  {
-    pid = Runtime.spawn (fun () -> loop (Waiters.create ()));
-  }
+let create = fun () -> { pid = Runtime.spawn (fun () -> loop (Waiters.create ())) }
 
 let wait = fun (t: t) (mutex: Mutex.t) ->
   let request_id = next_request_id () in
@@ -88,15 +80,16 @@ let wait = fun (t: t) (mutex: Mutex.t) ->
     (Sync_condition_request (Wait { reply_to = Runtime.self (); request_id; mutex }));
   let selector msg =
     match msg with
-    | Sync_condition_signaled { request_id = got } when Int.equal got request_id -> `select (Ok ())
-    | Sync_condition_failed { request_id = got; reason } when Int.equal got request_id ->
-        `select (Error reason)
+    | Sync_condition_signaled { request_id=got } when Int.equal got request_id -> `select (Ok ())
+    | Sync_condition_failed { request_id=got; reason } when Int.equal got request_id -> `select (Error reason)
     | _ -> `skip
   in
   match Runtime.receive ~selector () with
   | Ok () -> Mutex.lock mutex
   | Error reason -> raise (Failure reason)
 
-let signal = fun (t: t) -> Runtime.send t.pid (Sync_condition_request Signal)
+let signal = fun (t: t) ->
+  Runtime.send t.pid (Sync_condition_request Signal)
 
-let broadcast = fun (t: t) -> Runtime.send t.pid (Sync_condition_request Broadcast)
+let broadcast = fun (t: t) ->
+  Runtime.send t.pid (Sync_condition_request Broadcast)

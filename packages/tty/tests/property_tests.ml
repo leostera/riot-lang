@@ -22,7 +22,10 @@ let assert_property = fun name property ->
   | Property.Assumption_violated -> Error (name ^ " exhausted assumptions")
 
 let byte_chunks = fun value ->
-  List.init ~count:(String.length value) ~fn:(fun index -> String.sub value ~offset:index ~len:1)
+  List.init
+    ~count:(String.length value)
+    ~fn:(fun index ->
+      String.sub value ~offset:index ~len:1)
 
 let event_strings = fun events -> List.map events ~fn:Tty.Input.event_to_string
 
@@ -141,7 +144,9 @@ let styled_width_matches_plain_width =
   Property.for_all
     short_printable
     (fun value ->
-      Int.equal (Tty.Escape_seq.width (Tty.Style.styled style value)) (String.width value))
+      Int.equal
+        (Tty.Escape_seq.width (Tty.Style.styled style value))
+        (String.width value))
 
 let color_of_rgb_clamps_components =
   Property.for_all

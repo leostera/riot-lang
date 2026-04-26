@@ -223,13 +223,19 @@ let expressions = fun arena -> arena.expressions
 let bindings = fun arena -> arena.bindings
 
 let find_pattern = fun arena pat_id ->
-  Collections.HashMap.get arena.patterns_by_id (PatternArenaId.to_int pat_id)
+  Collections.HashMap.get
+    arena.patterns_by_id
+    (PatternArenaId.to_int pat_id)
 
 let find_expr = fun arena expr_id ->
-  Collections.HashMap.get arena.expressions_by_id (ExprArenaId.to_int expr_id)
+  Collections.HashMap.get
+    arena.expressions_by_id
+    (ExprArenaId.to_int expr_id)
 
 let find_binding = fun arena binding_id ->
-  Collections.HashMap.get arena.bindings_by_id (BindingArenaId.to_int binding_id)
+  Collections.HashMap.get
+    arena.bindings_by_id
+    (BindingArenaId.to_int binding_id)
 
 let render_ids = fun render ids ->
   ids

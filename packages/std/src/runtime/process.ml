@@ -189,13 +189,21 @@ let try_set_runnable_if_waiting = fun t ->
   | _ -> false
 
 let try_mark_awaiting_message = fun t ->
-  Runtime_atomic.compare_and_set t.state Running Waiting_message
+  Runtime_atomic.compare_and_set
+    t.state
+    Running
+    Waiting_message
 
 let try_mark_runnable_from_waiting_message = fun t ->
-  Runtime_atomic.compare_and_set t.state Waiting_message Runnable
+  Runtime_atomic.compare_and_set
+    t.state
+    Waiting_message
+    Runnable
 
 let has_empty_mailbox = fun t ->
-  with_lock t (fun () -> Int.equal t.save_queue_size 0 && Mailbox.is_empty t.mailbox)
+  with_lock
+    t
+    (fun () -> Int.equal t.save_queue_size 0 && Mailbox.is_empty t.mailbox)
 
 let has_messages = fun t -> not (has_empty_mailbox t)
 

@@ -77,10 +77,14 @@ let semantic_id_equal = fun left right ->
   | _ -> false
 
 let find = fun origins origin_id ->
-  Collections.HashMap.get origins.origins_by_id (OriginId.to_int origin_id)
+  Collections.HashMap.get
+    origins.origins_by_id
+    (OriginId.to_int origin_id)
 
 let find_by_semantic_id = fun origins semantic_id ->
-  Collections.HashMap.get origins.origins_by_semantic_id (semantic_id_key semantic_id)
+  Collections.HashMap.get
+    origins.origins_by_semantic_id
+    (semantic_id_key semantic_id)
 
 let find_item = fun origins item_id -> find_by_semantic_id origins (Item item_id)
 

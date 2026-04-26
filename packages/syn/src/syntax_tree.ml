@@ -559,13 +559,18 @@ let token_text_is = fun tree token expected ->
     loop 0
 
 let token_has_newline = fun tree token ->
-  Raw_token.has_newline (raw_at tree.raw_tokens token.body_raw)
+  Raw_token.has_newline
+    (raw_at tree.raw_tokens token.body_raw)
 
 let token_text_slice = fun tree token ->
-  Raw_token.slice ~source:tree.source (raw_at tree.raw_tokens token.body_raw)
+  Raw_token.slice
+    ~source:tree.source
+    (raw_at tree.raw_tokens token.body_raw)
 
 let token_text = fun tree token ->
-  Raw_token.text_slice ~source:tree.source (raw_at tree.raw_tokens token.body_raw)
+  Raw_token.text_slice
+    ~source:tree.source
+    (raw_at tree.raw_tokens token.body_raw)
 
 let node_text = fun tree node -> raw_range_text tree ~raw_lo:node.raw_lo ~raw_hi:node.raw_hi
 

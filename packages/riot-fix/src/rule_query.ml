@@ -1,11 +1,8 @@
 open Std
 open Std.Collections
-
 module Ast = Syn.Ast
 
-let to_list = fun vector ->
-  Vector.to_array vector
-  |> Array.to_list
+let to_list = fun vector -> Vector.to_array vector |> Array.to_list
 
 let structure_items = fun (ctx: Rule.context) ->
   let items = Vector.with_capacity ~size:(Ast.Node.child_count ctx.source_file) in

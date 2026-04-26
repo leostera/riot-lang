@@ -1,5 +1,4 @@
 open Std
-
 module Array = Collections.Array
 module Vector = Collections.Vector
 module De = Serde.De
@@ -15,10 +14,7 @@ type reader_state = {
 }
 
 type input =
-  | String_input of {
-      input: string;
-      mutable pos: int;
-    }
+  | String_input of { input: string; mutable pos: int }
   | Reader_input of reader_state
 
 type state = {
@@ -29,8 +25,8 @@ type state = {
 
 let buffer_capacity = 4_096
 
-let error_at = fun pos message -> raise
-  (Serde.Decode_error (`Msg (message ^ " at byte " ^ Int.to_string pos)))
+let error_at = fun pos message ->
+  raise (Serde.Decode_error (`Msg (message ^ " at byte " ^ Int.to_string pos)))
 
 let position = function
   | String_input state -> state.pos
@@ -43,42 +39,37 @@ let compact = fun state ->
   if state.pos > 0 then
     let unread = state.limit - state.pos in
     if unread > 0 then
-      IO.Bytes.blit_unchecked
-        state.buf
-        ~src_offset:state.pos
-        ~dst:state.buf
-        ~dst_offset:0
-        ~len:unread;
-  state.base <- state.base + state.pos;
-  state.limit <- unread;
-  state.pos <- 0
+      IO.Bytes.blit_unchecked state.buf ~src_offset:state.pos ~dst:state.buf ~dst_offset:0 ~len:unread;
+    state.base <- state.base + state.pos;
+    state.limit <- unread;
+    state.pos <- 0
 
 let refill = fun state ->
   if state.eof then
     false
-  else
-    (
-      compact state;
-      if Int.equal state.limit (IO.Bytes.length state.buf) then
-        false
-      else
-        let free = IO.Bytes.length state.buf - state.limit in
-        let chunk = IO.Buffer.create ~size:free in
-        match IO.Reader.read state.reader ~into:chunk with
-        | Ok 0 ->
-            state.eof <- true;
-            false
-        | Ok read_len ->
-            IO.IoSlice.blit_to_bytes_unchecked
-              (IO.Buffer.readable chunk)
-              ~src_off:0
-              state.buf
-              ~dst_off:state.limit
-              ~len:read_len;
-            state.limit <- state.limit + read_len;
-            true
-        | Error err -> raise (Serde.Decode_error (`Io_error err))
-    )
+  else (
+    compact state;
+    if Int.equal state.limit (IO.Bytes.length state.buf) then
+      false
+    else
+      let free = IO.Bytes.length state.buf - state.limit in
+      let chunk = IO.Buffer.create ~size:free in
+      match IO.Reader.read state.reader ~into:chunk with
+      | Ok 0 ->
+          state.eof <- true;
+          false
+      | Ok read_len ->
+          IO.IoSlice.blit_to_bytes_unchecked
+            (IO.Buffer.readable chunk)
+            ~src_off:0
+            state.buf
+            ~dst_off:state.limit
+            ~len:read_len;
+          state.limit <- state.limit + read_len;
+          true
+      | Error err ->
+          raise (Serde.Decode_error (`Io_error err))
+  )
 
 let peek_byte = function
   | String_input state ->
@@ -110,11 +101,10 @@ let read_exact_into = fun state dst ~off ~len expected ->
   | String_input input ->
       if input.pos + len > String.length input.input then
         unexpected_end state expected
-      else
-        (
-          IO.Bytes.blit_string input.input ~src_offset:input.pos ~dst ~dst_offset:off ~len;
-          input.pos <- input.pos + len
-        )
+      else (
+        IO.Bytes.blit_string input.input ~src_offset:input.pos ~dst ~dst_offset:off ~len;
+        input.pos <- input.pos + len
+      )
   | Reader_input reader ->
       let rec loop dst_off remaining =
         if Int.equal remaining 0 then
@@ -128,14 +118,9 @@ let read_exact_into = fun state dst ~off ~len expected ->
               unexpected_end state expected
           else
             let chunk = min remaining available in
-            IO.Bytes.blit_unchecked
-              reader.buf
-              ~src_offset:reader.pos
-              ~dst
-              ~dst_offset:dst_off
-              ~len:chunk;
-        reader.pos <- reader.pos + chunk;
-        loop (dst_off + chunk) (remaining - chunk)
+            IO.Bytes.blit_unchecked reader.buf ~src_offset:reader.pos ~dst ~dst_offset:dst_off ~len:chunk;
+            reader.pos <- reader.pos + chunk;
+            loop (dst_off + chunk) (remaining - chunk)
       in
       loop off len
 
@@ -201,34 +186,33 @@ let read_string = fun state ->
       else
         let value = String.sub input.input ~offset:input.pos ~len in
         input.pos <- input.pos + len;
-      value
+        value
   | Reader_input reader ->
       let available = reader.limit - reader.pos in
       if len <= available then
         let value = String.sub reader.view ~offset:reader.pos ~len in
         reader.pos <- reader.pos + len;
         value
-      else
-        (
-          IO.Buffer.clear state.scratch;
-          let rec loop remaining =
-            if Int.equal remaining 0 then
-              IO.Buffer.contents state.scratch
-            else
-              let available = reader.limit - reader.pos in
-              if Int.equal available 0 then
-                if refill reader then
-                  loop remaining
-                else
-                  unexpected_end state "string"
+      else (
+        IO.Buffer.clear state.scratch;
+        let rec loop remaining =
+          if Int.equal remaining 0 then
+            IO.Buffer.contents state.scratch
+          else
+            let available = reader.limit - reader.pos in
+            if Int.equal available 0 then
+              if refill reader then
+                loop remaining
               else
-                let chunk = min remaining available in
-                IO.Buffer.add_subbytes state.scratch reader.buf reader.pos chunk;
-            reader.pos <- reader.pos + chunk;
-            loop (remaining - chunk)
-          in
-          loop len
-        )
+                unexpected_end state "string"
+            else
+              let chunk = min remaining available in
+              IO.Buffer.add_subbytes state.scratch reader.buf reader.pos chunk;
+              reader.pos <- reader.pos + chunk;
+              loop (remaining - chunk)
+        in
+        loop len
+      )
 
 let read_int = fun state ->
   match state.input with
@@ -265,7 +249,9 @@ let rec list_backend: 'value. state -> 'value De.t -> 'value vec = fun state dec
 
 and array_backend: 'value. state -> 'value De.t -> 'value array = fun state decode ->
   let len = decode_length state "array" in
-  Array.init ~count:len ~fn:(fun _index -> decode.run backend state)
+  Array.init ~count:len
+    ~fn:(fun _index ->
+      decode.run backend state)
 
 and record_backend:
   'field 'acc 'value. state ->
@@ -321,10 +307,7 @@ and backend: state De.backend = {
   int = read_int;
   int32 = read_int32_le;
   int64 = read_int64_le;
-  float =
-    (fun state ->
-      read_int64_le state
-      |> Int64.float_of_bits);
+  float = (fun state -> read_int64_le state |> Int64.float_of_bits);
   skip_any = (fun _state -> raise (Serde.Decode_error `unimplemented));
   option =
     (fun state decode ->
@@ -342,8 +325,8 @@ and backend: state De.backend = {
 let finish = fun state value ->
   match peek_byte state.input with
   | None -> Ok value
-  | Some _ ->
-      Error (`Msg ("extra input after binary value at byte " ^ Int.to_string (position state.input)))
+  | Some _ -> Error (`Msg ("extra input after binary value at byte "
+  ^ Int.to_string (position state.input)))
 
 let of_input = fun decode input ->
   let state = { input; scratch = IO.Buffer.create ~size:64; bytes = IO.Bytes.create ~size:8 } in
@@ -355,9 +338,8 @@ let decode_prefix = fun decode input ->
   let state = {
     input = String_input { input; pos = 0 };
     scratch = IO.Buffer.create ~size:64;
-    bytes = IO.Bytes.create ~size:8;
-  }
-  in
+    bytes = IO.Bytes.create ~size:8
+  } in
   match De.run decode backend state with
   | Error err -> Error err
   | Ok value -> Ok (value, position state.input)

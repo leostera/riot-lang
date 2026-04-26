@@ -14,4 +14,9 @@ continue to work during the parser cleanup.
 let check_tree = fun _ctx _root -> []
 
 let make = fun () ->
-  Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain ~run:check_tree ()
+  Rule.make
+    ~id:rule_id
+    ~description:rule_description
+    ~explain:rule_explain
+    ~run:check_tree
+    ()

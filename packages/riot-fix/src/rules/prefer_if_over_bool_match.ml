@@ -4,8 +4,7 @@ let rule_id = Rule_id.of_string "prefer-if-over-bool-match"
 
 let rule_description = "Rule disabled while Syn Ast migration is in progress"
 
-let rule_explain =
-  {|
+let rule_explain = {|
 This rule is temporarily disabled while riot-fix migrates from the removed Syn CST
 API to Syn Ast views. The rule id remains loadable so catalogs and provider wiring
 continue to work during the parser cleanup.

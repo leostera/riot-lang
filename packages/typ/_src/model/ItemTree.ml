@@ -122,7 +122,9 @@ let of_list = fun items ->
 let items = fun items -> items.items
 
 let find_item = fun items item_id ->
-  Collections.HashMap.get items.items_by_id (ItemArenaId.to_int item_id)
+  Collections.HashMap.get
+    items.items_by_id
+    (ItemArenaId.to_int item_id)
 
 let item_to_json = fun value ->
   match value with

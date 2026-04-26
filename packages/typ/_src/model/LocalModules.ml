@@ -79,7 +79,10 @@ let intern_ambient_name = fun value -> intern_entry ambient_names value (fun () 
 let ambient_name_to_string = fun value -> (ambient_entry value).raw
 
 let intern_required_name = fun value ->
-  intern_entry required_names value (fun () -> { raw = value })
+  intern_entry
+    required_names
+    value
+    (fun () -> { raw = value })
 
 let required_name_to_string = fun value -> (required_entry value).raw
 

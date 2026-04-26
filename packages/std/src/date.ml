@@ -1,6 +1,10 @@
 open Global
 
-type t = Calendar.date = { year: int; month: int; day: int }
+type t = Calendar.date = {
+  year: int;
+  month: int;
+  day: int;
+}
 
 type error =
   | Invalid_format of string
@@ -49,13 +53,9 @@ let equal = fun left right ->
 
 let from_date_time: DateTime.t -> t = fun dt -> { year = dt.year; month = dt.month; day = dt.day }
 
-let today = fun () ->
-  DateTime.now ()
-  |> from_date_time
+let today = fun () -> DateTime.now () |> from_date_time
 
-let today_utc = fun () ->
-  DateTime.now_utc ()
-  |> from_date_time
+let today_utc = fun () -> DateTime.now_utc () |> from_date_time
 
 let add_days = fun date days ->
   Calendar.gregorian_days_to_date (Calendar.date_to_gregorian_days date + days)
@@ -77,10 +77,8 @@ let days_in_month = fun { year; month; _ } -> Calendar.last_day_of_month ~year ~
 
 let beginning_of_month = fun { year; month; _ } -> { year; month; day = 1 }
 
-let end_of_month = fun ({ year; month; _ } as date) -> {
-  date with
-  day = Calendar.last_day_of_month ~year ~month;
-}
+let end_of_month = fun ({ year; month; _ } as date) ->
+  { date with day = Calendar.last_day_of_month ~year ~month }
 
 let to_gregorian_days = Calendar.date_to_gregorian_days
 
@@ -111,14 +109,14 @@ let parse_2digit = fun label value ->
 
 let from_iso8601 = fun value ->
   match String.split ~by:"-" value with
-  | [ year_str; month_str; day_str ] -> (
+  | [year_str;month_str;day_str] -> (
       match (parse_signed_year year_str, parse_2digit "month" month_str, parse_2digit "day" day_str) with
       | (Ok year, Ok month, Ok day) -> make ~year ~month ~day
       | (Error err, _, _)
       | (_, Error err, _)
       | (_, _, Error err) -> Error err
     )
-  | [ ""; year_str; month_str; day_str ] -> (
+  | ["";year_str;month_str;day_str] -> (
       match (
         parse_signed_year ("-" ^ year_str),
         parse_2digit "month" month_str,
@@ -129,7 +127,8 @@ let from_iso8601 = fun value ->
       | (_, Error err, _)
       | (_, _, Error err) -> Error err
     )
-  | _ -> Error (Invalid_format ("expected YYYY-MM-DD date, got: " ^ value))
+  | _ ->
+      Error (Invalid_format ("expected YYYY-MM-DD date, got: " ^ value))
 
 let to_calendar_date = fun date -> date
 

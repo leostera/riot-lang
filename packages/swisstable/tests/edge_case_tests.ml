@@ -248,7 +248,7 @@ let tests = [
     (fun _ctx ->
       (* Option values *)
       let map1 = Swisstable.create () in
-      let _ = Swisstable.insert map1 "opt_none" ((None: int option)) in
+      let _ = Swisstable.insert map1 "opt_none" (None: int option) in
       let _ = Swisstable.insert map1 "opt_some" (Some 42) in
       Test.assert_equal ~expected:(Some None) ~actual:(Swisstable.get map1 "opt_none");
       Test.assert_equal ~expected:(Some (Some 42)) ~actual:(Swisstable.get map1 "opt_some");

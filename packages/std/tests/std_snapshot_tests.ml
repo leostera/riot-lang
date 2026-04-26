@@ -22,7 +22,9 @@ let make_ctx = fun ?fixture ?(test_name = "snapshot_test") workspace_root ->
   ctx
 
 let make_progress_ctx = fun ?fixture ?test_name workspace_root progress_handler ->
-  Test.Context.with_progress_handler (make_ctx ?fixture ?test_name workspace_root) progress_handler
+  Test.Context.with_progress_handler
+    (make_ctx ?fixture ?test_name workspace_root)
+    progress_handler
 
 let snapshot_path = fun workspace_root test_name ->
   Path.(workspace_root

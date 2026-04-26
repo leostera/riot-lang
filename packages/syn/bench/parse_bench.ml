@@ -88,7 +88,10 @@ let large_config: Bench.bench_config = { iterations = 12; warmup = 2 }
 let corpus_config: Bench.bench_config = { iterations = 3; warmup = 1 }
 
 let fixture_benchmark = fun ~config fixture ->
-  Bench.with_config ~config ("parse: " ^ fixture.name) (fun () -> bench_parse fixture)
+  Bench.with_config
+    ~config
+    ("parse: " ^ fixture.name)
+    (fun () -> bench_parse fixture)
 
 let selected_benchmarks = fun () -> [
   fixture_benchmark

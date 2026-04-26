@@ -435,7 +435,11 @@ let assert_inline_text_with_format = fun ~ctx ~format ~actual ~expected ->
     )
 
 let assert_inline_text = fun ~ctx ~actual ~expected ->
-  assert_inline_text_with_format ~ctx ~format:Test_context.Text ~actual ~expected
+  assert_inline_text_with_format
+    ~ctx
+    ~format:Test_context.Text
+    ~actual
+    ~expected
 
 let assert_inline_json = fun ~ctx ~actual ~expected ->
   let actual =

@@ -87,7 +87,9 @@ let skip_snapshot_assertion = fun () ->
   | _ -> false
 
 let stable_fixture_filename = fun (ctx: Test.FixtureRunner.ctx) ->
-  Path.join fixtures_dir ctx.fixture_relpath
+  Path.join
+    fixtures_dir
+    ctx.fixture_relpath
 
 let parse_failure_report = fun ~filename ->
   fun parse_result ->
@@ -471,7 +473,9 @@ let compare_value_export = fun (left: oracle_value_export) (right: oracle_value_
   | order -> order
 
 let compare_type_alias = fun (left_name, _left_manifest) (right_name, _right_manifest) ->
-  String.compare left_name right_name
+  String.compare
+    left_name
+    right_name
 
 let empty_oracle_signature_parts: oracle_signature_parts = {
   value_exports = [];
@@ -530,10 +534,14 @@ let syntax_text = fun source_text syntax_node ->
   |> String.trim
 
 let core_type_text = fun source_text type_ ->
-  syntax_text source_text (Cst.CoreType.syntax_node type_)
+  syntax_text
+    source_text
+    (Cst.CoreType.syntax_node type_)
 
 let oracle_interface_filename = fun fixture_filename ->
-  append_snapshot_suffix fixture_filename ".oracle.mli"
+  append_snapshot_suffix
+    fixture_filename
+    ".oracle.mli"
 
 let trim_prefix_opt = fun ~prefix text ->
   if String.starts_with ~prefix text then
@@ -972,7 +980,10 @@ let apply_package_constraints = fun constraints scheme ->
   constraints
   |> List.fold_left
     (fun current (type_name, replacement) ->
-      replace_standalone_package_occurrences ~needle:type_name ~replacement current)
+      replace_standalone_package_occurrences
+        ~needle:type_name
+        ~replacement
+        current)
     scheme
 
 let oracle_value_export_type = fun (interface: oracle_interface) export_name ->
@@ -988,7 +999,10 @@ let apply_core_type_constraints = fun constraints scheme ->
   constraints
   |> List.fold_left
     (fun current (needle, replacement) ->
-      replace_standalone_package_occurrences ~needle ~replacement current)
+      replace_standalone_package_occurrences
+        ~needle
+        ~replacement
+        current)
     scheme
 
 let rec normalize_core_type_with_constraints = fun (interface: oracle_interface) constraints core_type ->
@@ -1186,7 +1200,10 @@ let normalize_named_package_types = fun (interface: oracle_interface) scheme ->
           propagated_constraints
           |> List.fold_left
             (fun current (needle, replacement) ->
-              replace_standalone_package_occurrences ~needle ~replacement current)
+              replace_standalone_package_occurrences
+                ~needle
+                ~replacement
+                current)
             segment
         in
         (
@@ -1538,7 +1555,10 @@ let expand_type_aliases = fun type_aliases scheme ->
         type_aliases
         |> List.fold_left
           (fun current_scheme (type_name, manifest) ->
-            replace_standalone_occurrences ~needle:type_name ~replacement:manifest current_scheme)
+            replace_standalone_occurrences
+              ~needle:type_name
+              ~replacement:manifest
+              current_scheme)
           current
       in
       if String.equal next current then
@@ -1574,7 +1594,8 @@ let normalized_oracle_exports_for_comparison = fun (interface: oracle_interface)
 let json_string = fun json -> Data.Json.to_string_pretty json
 
 let fail_json = fun ~label json ->
-  panic (format Format.[ str label; str "\n"; str (json_string json) ])
+  panic
+    (format Format.[ str label; str "\n"; str (json_string json) ])
 
 let assert_json_equal = fun ~label ~expected ~actual ->
   if not (expected = actual) then
@@ -1662,7 +1683,9 @@ let report_json = fun (report: Check_result.t) (interface: oracle_interface) typ
   ]
 
 let has_error_diagnostics = fun diagnostics ->
-  List.exists (fun diagnostic -> Diagnostic.severity diagnostic = Diagnostic.Error) diagnostics
+  List.exists
+    (fun diagnostic -> Diagnostic.severity diagnostic = Diagnostic.Error)
+    diagnostics
 
 let assert_no_error_diagnostics = fun (report: Check_result.t) ->
   if

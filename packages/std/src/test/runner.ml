@@ -523,7 +523,9 @@ let run_tests_parallel = fun ~(config:config) tests_to_run ->
     List.sort
       state.results_rev
       ~compare:(fun (left: Test_result.t) (right: Test_result.t) ->
-        Int.compare left.index right.index)
+        Int.compare
+          left.index
+          right.index)
   in
   let summary = Test_result.make_summary results in
   R.finalize summary;

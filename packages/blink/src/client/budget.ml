@@ -15,12 +15,7 @@ type t = {
 let policy = fun ~capacity ~window -> { capacity = Int.max 0 capacity; window }
 
 let create = fun ~capacity ~window now ->
-  {
-    capacity = Int.max 0 capacity;
-    window;
-    remaining = Int.max 0 capacity;
-    window_started_at = now;
-  }
+  { capacity = Int.max 0 capacity; window; remaining = Int.max 0 capacity; window_started_at = now }
 
 let create_with_policy = fun (budget_policy: policy) now ->
   create ~capacity:budget_policy.capacity ~window:budget_policy.window now
@@ -41,8 +36,7 @@ let allow = fun ~now value ->
   reset_if_needed ~now value;
   if value.remaining <= 0 then
     false
-  else
-    (
-      value.remaining <- value.remaining - 1;
-      true
-    )
+  else (
+    value.remaining <- value.remaining - 1;
+    true
+  )

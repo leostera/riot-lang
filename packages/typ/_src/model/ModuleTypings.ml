@@ -25,7 +25,9 @@ type t = {
 }
 
 let type_decl_key = fun (type_decl: FileSummary.type_decl) ->
-  SurfacePath.append_name type_decl.scope_path type_decl.declaration.type_name
+  SurfacePath.append_name
+    type_decl.scope_path
+    type_decl.declaration.type_name
 
 let map_preserving = fun loop xs ->
   let rec walk changed acc = function
@@ -61,7 +63,9 @@ let resolve_named_type_head_for_persistence = fun by_path name ->
   Collections.HashMap.get by_path name
   |> Option.map
     (fun (type_decl: FileSummary.type_decl) ->
-      TypeRepr.named_head ~type_constructor_id:type_decl.declaration.type_constructor_id ~name)
+      TypeRepr.named_head
+        ~type_constructor_id:type_decl.declaration.type_constructor_id
+        ~name)
   |> fun resolved ->
     Option.or_else
       resolved
@@ -310,13 +314,29 @@ let partial = fun ~module_name ~source_hash ?(type_decls = []) ?(value_definitio
   }
 
 let trusted = fun ~module_name ~source_hash ?(type_decls = []) ?(value_definitions = []) exports ->
-  complete ~module_name ~source_hash ~type_decls ~value_definitions exports
+  complete
+    ~module_name
+    ~source_hash
+    ~type_decls
+    ~value_definitions
+    exports
 
 let errored = fun ~module_name ~source_hash ?(type_decls = []) ?(value_definitions = []) exports ->
-  partial ~module_name ~source_hash ~type_decls ~value_definitions ~exports ()
+  partial
+    ~module_name
+    ~source_hash
+    ~type_decls
+    ~value_definitions
+    ~exports
+    ()
 
 let missing = fun ~module_name ~source_hash ?(type_decls = []) ?(value_definitions = []) () ->
-  partial ~module_name ~source_hash ~type_decls ~value_definitions ()
+  partial
+    ~module_name
+    ~source_hash
+    ~type_decls
+    ~value_definitions
+    ()
 
 let of_file_summary = fun ~module_name ~source_hash ?(value_definitions = []) (
   summary: FileSummary.t

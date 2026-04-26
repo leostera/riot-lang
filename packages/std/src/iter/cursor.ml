@@ -13,8 +13,8 @@ type t = {
 let unwrap_slice = fun context ->
   function
   | Kernel.Result.Ok value -> value
-  | Kernel.Result.Error error ->
-      panic (Kernel.String.concat "" [ context; ": "; Kernel.IO.Error.message error ])
+  | Kernel.Result.Error error -> panic
+    (Kernel.String.concat "" [ context; ": "; Kernel.IO.Error.message error ])
 
 let from_slice = fun source -> { source; pos = 0; length = IoSlice.length source }
 
@@ -92,11 +92,10 @@ let take_until = fun cursor predicate ->
   in
   match loop start with
   | None -> None
-  | Some stop ->
-      Some (
-        IoSlice.sub_unchecked cursor.source ~off:start ~len:(stop - start),
-        { cursor with pos = stop }
-      )
+  | Some stop -> Some (
+    IoSlice.sub_unchecked cursor.source ~off:start ~len:(stop - start),
+    { cursor with pos = stop }
+  )
 
 let take_until_string = fun cursor predicate ->
   match take_until cursor predicate with
@@ -115,11 +114,10 @@ let take_until_char = fun cursor needle ->
   in
   match loop start with
   | None -> None
-  | Some stop ->
-      Some (
-        IoSlice.sub_unchecked cursor.source ~off:start ~len:(stop - start),
-        { cursor with pos = stop }
-      )
+  | Some stop -> Some (
+    IoSlice.sub_unchecked cursor.source ~off:start ~len:(stop - start),
+    { cursor with pos = stop }
+  )
 
 let take_until_char_string = fun cursor needle ->
   match take_until_char cursor needle with

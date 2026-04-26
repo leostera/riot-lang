@@ -13,11 +13,9 @@ type state = {
   seen: string HashSet.t;
 }
 
-let create_many = fun ~roots ?(exclude_patterns = ["."; "_build"; "target"]) ?(should_ignore = fun _ -> false) () -> {
-  roots;
-  exclude_patterns;
-  should_ignore;
-}
+let create_many = fun ~roots ?(exclude_patterns = [ "."; "_build"; "target" ]) ?(should_ignore = fun _ ->
+  false) () ->
+  { roots; exclude_patterns; should_ignore }
 
 let create = fun ~root ?exclude_patterns ?should_ignore () ->
   create_many ~roots:[ root ] ?exclude_patterns ?should_ignore ()
@@ -67,7 +65,8 @@ let handle_entry = fun state (entry: Std.Fs.Walker.FileItem.t) on_file ->
             on_file path;
           Std.Fs.Walker.Continue
       | Symlink
-      | Other -> Std.Fs.Walker.Continue
+      | Other ->
+          Std.Fs.Walker.Continue
     )
 
 let scan = fun scanner ->
@@ -76,9 +75,7 @@ let scan = fun scanner ->
   let _ =
     Std.Fs.Walker.walk
       ~roots:scanner.roots
-      ~f:(fun entry ->
-        handle_entry state entry (fun path ->
-          files := path :: !files))
+      ~f:(fun entry -> handle_entry state entry (fun path -> files := path :: !files))
       ()
   in
   List.reverse !files
@@ -91,8 +88,7 @@ let start = fun ~owner scanner ->
         Std.Fs.Walker.walk
           ~roots:scanner.roots
           ~f:(fun entry ->
-            handle_entry state entry (fun path ->
-              send owner (Messages.ScannerDiscovered path)))
+            handle_entry state entry (fun path -> send owner (Messages.ScannerDiscovered path)))
           ()
       in
       send owner Messages.ScannerComplete;

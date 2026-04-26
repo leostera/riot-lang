@@ -79,7 +79,7 @@ let mut_iter: type item. item array -> item Iter.MutIterator.t = fun arr ->
       else
         let value = get_unchecked state.arr ~at:state.idx in
         state.idx <- state.idx + 1;
-      Some value
+        Some value
 
     let size = fun state -> length state.arr - state.idx
 

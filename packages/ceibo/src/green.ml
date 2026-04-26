@@ -1,7 +1,11 @@
 open Std
 open Std.Collections
 
-type ('kind, 'text) trivia = { kind: 'kind; text: 'text; width: int }
+type ('kind, 'text) trivia = {
+  kind: 'kind;
+  text: 'text;
+  width: int;
+}
 
 type ('kind, 'text) token = {
   kind: 'kind;
@@ -35,13 +39,7 @@ let token_full_width = fun (token: ('kind, 'text) token) ->
     ~init:0
     ~fn:(fun acc (trivia: ('kind, 'text) trivia) -> acc + trivia.width)
 
-let make_token = fun ~leading_trivia ~kind ~text ~width ->
-  {
-    kind;
-    text;
-    width;
-    leading_trivia;
-  }
+let make_token = fun ~leading_trivia ~kind ~text ~width -> { kind; text; width; leading_trivia }
 
 let rec element_width = fun element ->
   match element with
@@ -83,8 +81,7 @@ let replace_child = fun node ~index ~child ->
   in
   make_node ~kind:node.kind ~children:(loop 0 node.children)
 
-let append_child = fun node ~child ->
-  make_node ~kind:node.kind ~children:(node.children @ [ child ])
+let append_child = fun node ~child -> make_node ~kind:node.kind ~children:(node.children @ [ child ])
 
 let child_count = fun node -> List.length node.children
 
@@ -112,27 +109,20 @@ let trivia_to_json = fun ~kind_to_json ~text_to_json (trivia: ('kind, 'text) tri
 
 let rec to_json = fun ~kind_to_json ~text_to_json elem ->
   match elem with
-  | Token tok ->
-      Data.Json.Object [
-        ("type", Data.Json.String "token");
-        ("kind", kind_to_json tok.kind);
-        ("text", text_to_json tok.text);
-        ("width", Data.Json.Int tok.width);
-        ("full_width", Data.Json.Int (token_full_width tok));
-        (
-          "leading_trivia",
-          Data.Json.Array (List.map
-            tok.leading_trivia
-            ~fn:(trivia_to_json ~kind_to_json ~text_to_json))
-        );
-      ]
-  | Node node ->
-      Data.Json.Object [
-        ("type", Data.Json.String "node");
-        ("kind", kind_to_json node.kind);
-        ("width", Data.Json.Int node.width);
-        (
-          "children",
-          Data.Json.Array (List.map node.children ~fn:(to_json ~kind_to_json ~text_to_json))
-        );
-      ]
+  | Token tok -> Data.Json.Object [
+    ("type", Data.Json.String "token");
+    ("kind", kind_to_json tok.kind);
+    ("text", text_to_json tok.text);
+    ("width", Data.Json.Int tok.width);
+    ("full_width", Data.Json.Int (token_full_width tok));
+    (
+      "leading_trivia",
+      Data.Json.Array (List.map tok.leading_trivia ~fn:(trivia_to_json ~kind_to_json ~text_to_json))
+    );
+  ]
+  | Node node -> Data.Json.Object [
+    ("type", Data.Json.String "node");
+    ("kind", kind_to_json node.kind);
+    ("width", Data.Json.Int node.width);
+    ("children", Data.Json.Array (List.map node.children ~fn:(to_json ~kind_to_json ~text_to_json)));
+  ]

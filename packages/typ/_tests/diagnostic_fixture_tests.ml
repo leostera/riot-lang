@@ -44,7 +44,9 @@ let diagnostics_to_json = fun (report: Check_result.t) ->
   ]
 
 let stable_fixture_filename = fun (ctx: Test.FixtureRunner.ctx) ->
-  Path.join diagnostics_dir ctx.fixture_relpath
+  Path.join
+    diagnostics_dir
+    ctx.fixture_relpath
 
 let parse_failure_report = fun ~filename ->
   fun parse_result ->

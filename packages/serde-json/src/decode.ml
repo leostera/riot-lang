@@ -1,10 +1,7 @@
 open Std
-
 module Array = Collections.Array
 module Vector = Collections.Vector
-
 open Std.Result.Syntax
-
 module De = Serde.De
 module Input = Buffered_input
 
@@ -13,8 +10,8 @@ type state = {
   scratch: IO.Buffer.t;
 }
 
-let error_at = fun pos message -> raise
-  (Serde.Decode_error (`Msg (message ^ " at position " ^ Int.to_string pos)))
+let error_at = fun pos message ->
+  raise (Serde.Decode_error (`Msg (message ^ " at position " ^ Int.to_string pos)))
 
 let unexpected_end = fun state expected ->
   error_at (Input.position state.input) ("unexpected end of input while parsing " ^ expected)
@@ -30,13 +27,7 @@ let is_digit = function
 
 let is_value_delimiter = function
   | None
-  | Some (' '
-  | '\t'
-  | '\n'
-  | '\r'
-  | ','
-  | ']'
-  | '}') -> true
+  | Some (' ' | '\t' | '\n' | '\r' | ',' | ']' | '}') -> true
   | _ -> false
 
 let expect_char = fun state expected expected_name ->
@@ -69,8 +60,8 @@ let expect_literal = fun state literal ->
     else
       match Input.peek_char state.input ~offset:index with
       | None -> unexpected_end state literal
-      | Some actual when Char.equal actual (String.get_unchecked literal ~at:index) ->
-          loop (index + 1)
+      | Some actual when Char.equal actual (String.get_unchecked literal ~at:index) -> loop
+        (index + 1)
       | Some _ -> error_at start ("expected '" ^ literal ^ "'")
   in
   loop 0
@@ -111,12 +102,12 @@ let rec read_unicode_scalar = fun state ->
         else
           0x1_0000 + (((code - 0xd800) lsl 10) lor (low - 0xdc00))
     | (None, _)
-    | (_, None) -> unexpected_end state "unicode surrogate pair"
-    | _ -> error_at (Input.position state.input) "expected low surrogate after high surrogate"
+    | (_, None) ->
+        unexpected_end state "unicode surrogate pair"
+    | _ ->
+        error_at (Input.position state.input) "expected low surrogate after high surrogate"
   else if code >= 0xdc00 && code <= 0xdfff then
-    error_at
-      (Input.position state.input)
-      "unexpected low surrogate without preceding high surrogate"
+    error_at (Input.position state.input) "unexpected low surrogate without preceding high surrogate"
   else
     code
 
@@ -128,8 +119,7 @@ let append_unicode_escape = fun state ->
 
 let skip_unicode_escape = fun state -> ignore (read_unicode_scalar state)
 
-let string_fast_continue = fun c ->
-  not (Char.equal c '"' || Char.equal c '\\' || Char.code c < 0x20)
+let string_fast_continue = fun c -> not (Char.equal c '"' || Char.equal c '\\' || Char.code c < 0x20)
 
 let append_current_range = fun state start stop ->
   Input.copy_range_to_buffer state.scratch state.input ~start ~stop
@@ -142,19 +132,20 @@ let reader_current_char: Input.reader_state -> char option = fun reader ->
   else
     None
 
-let reader_advance: Input.reader_state -> unit = fun reader -> reader.Input.pos <- reader.Input.pos
-+ 1
+let reader_advance: Input.reader_state -> unit = fun reader ->
+  reader.Input.pos <- reader.Input.pos + 1
 
-let reader_advance_by: Input.reader_state -> int -> unit = fun reader count -> reader.Input.pos <- reader.Input.pos
-+ count
+let reader_advance_by: Input.reader_state -> int -> unit = fun reader count ->
+  reader.Input.pos <- reader.Input.pos + count
 
 let reader_append_range: IO.Buffer.t -> Input.reader_state -> int -> int -> unit = fun scratch reader start stop ->
   Input.reader_append_range scratch reader ~start ~stop
 
-let rec reader_scan_while:
-  Input.reader_state ->
-  continue:(char -> bool) ->
-  [`Stop of int * char | `Boundary of int | `Eof] = fun reader ~continue ->
+let rec reader_scan_while: Input.reader_state -> continue:(char -> bool) -> [
+    `Stop of int * char
+    | `Boundary of int
+    | `Eof
+  ] = fun reader ~continue ->
   if Int.(reader.Input.pos >= IO.Buffer.readable_bytes reader.Input.buffer) then
     if Input.refill reader then
       reader_scan_while reader ~continue
@@ -207,10 +198,10 @@ let reader_skip_whitespace: Input.reader_state -> unit = fun reader ->
           | _ -> pos
       in
       reader.Input.pos <- skip reader.Input.pos;
-    if
-      Int.(reader.Input.pos >= IO.Buffer.readable_bytes reader.Input.buffer) && Input.refill reader
-    then
-      loop ()
+      if
+        Int.(reader.Input.pos >= IO.Buffer.readable_bytes reader.Input.buffer) && Input.refill reader
+      then
+        loop ()
   in
   loop ()
 
@@ -224,11 +215,13 @@ let reader_expect_literal: state -> Input.reader_state -> string -> unit = fun s
       | None -> ()
     else
       match reader_current_char reader with
-      | None -> unexpected_end state literal
+      | None ->
+          unexpected_end state literal
       | Some actual when Char.equal actual (String.get_unchecked literal ~at:index) ->
           reader_advance reader;
           loop (index + 1)
-      | Some _ -> error_at (Input.position state.input) ("expected '" ^ literal ^ "'")
+      | Some _ ->
+          error_at (Input.position state.input) ("expected '" ^ literal ^ "'")
   in
   loop 0
 
@@ -257,10 +250,12 @@ let parse_string_reader = fun state reader ->
         reader_append_range state.scratch reader start stop;
         reader.Input.pos <- stop;
         slow ()
-    | `Eof -> unexpected_end state "string"
+    | `Eof ->
+        unexpected_end state "string"
   and slow () =
     match reader_current_char reader with
-    | None -> unexpected_end state "string"
+    | None ->
+        unexpected_end state "string"
     | Some '"' ->
         reader_advance reader;
         IO.Buffer.contents state.scratch
@@ -268,7 +263,8 @@ let parse_string_reader = fun state reader ->
         reader_advance reader;
         (
           match reader_current_char reader with
-          | None -> unexpected_end state "string escape"
+          | None ->
+              unexpected_end state "string escape"
           | Some '"' ->
               IO.Buffer.add_char state.scratch '"';
               reader_advance reader;
@@ -304,7 +300,8 @@ let parse_string_reader = fun state reader ->
           | Some 'u' ->
               append_unicode_escape state;
               slow ()
-          | Some actual -> unexpected_character state actual "valid string escape"
+          | Some actual ->
+              unexpected_character state actual "valid string escape"
         )
     | Some actual when Char.code actual < 0x20 ->
         error_at
@@ -330,7 +327,8 @@ let parse_string_reader = fun state reader ->
             reader_append_range state.scratch reader start stop;
             reader.Input.pos <- stop;
             slow ()
-        | `Eof -> unexpected_end state "string"
+        | `Eof ->
+            unexpected_end state "string"
   in
   fast start
 
@@ -359,10 +357,12 @@ let parse_string_generic = fun state ->
         append_current_range state start stop;
         Input.set_position state.input stop;
         slow ()
-    | `Eof _ -> unexpected_end state "string"
+    | `Eof _ ->
+        unexpected_end state "string"
   and slow () =
     match Input.current_char state.input with
-    | None -> unexpected_end state "string"
+    | None ->
+        unexpected_end state "string"
     | Some '"' ->
         Input.advance state.input;
         IO.Buffer.contents state.scratch
@@ -370,7 +370,8 @@ let parse_string_generic = fun state ->
         Input.advance state.input;
         (
           match Input.current_char state.input with
-          | None -> unexpected_end state "string escape"
+          | None ->
+              unexpected_end state "string escape"
           | Some '"' ->
               IO.Buffer.add_char state.scratch '"';
               Input.advance state.input;
@@ -406,7 +407,8 @@ let parse_string_generic = fun state ->
           | Some 'u' ->
               append_unicode_escape state;
               slow ()
-          | Some actual -> unexpected_character state actual "valid string escape"
+          | Some actual ->
+              unexpected_character state actual "valid string escape"
         )
     | Some actual when Char.code actual < 0x20 ->
         error_at
@@ -432,7 +434,8 @@ let parse_string_generic = fun state ->
             append_current_range state start stop;
             Input.set_position state.input stop;
             slow ()
-        | `Eof _ -> unexpected_end state "string"
+        | `Eof _ ->
+            unexpected_end state "string"
   in
   fast start
 
@@ -453,21 +456,16 @@ let skip_string_reader = fun state reader ->
         reader_advance reader;
         (
           match reader_current_char reader with
-          | None -> unexpected_end state "string escape"
-          | Some ('"'
-          | '\\'
-          | '/'
-          | 'b'
-          | 'f'
-          | 'n'
-          | 'r'
-          | 't') ->
+          | None ->
+              unexpected_end state "string escape"
+          | Some ('"' | '\\' | '/' | 'b' | 'f' | 'n' | 'r' | 't') ->
               reader_advance reader;
               loop ()
           | Some 'u' ->
               skip_unicode_escape state;
               loop ()
-          | Some actual -> unexpected_character state actual "valid string escape"
+          | Some actual ->
+              unexpected_character state actual "valid string escape"
         )
     | `Stop (_, actual) ->
         error_at
@@ -476,7 +474,8 @@ let skip_string_reader = fun state reader ->
     | `Boundary stop ->
         reader.Input.pos <- stop;
         loop ()
-    | `Eof -> unexpected_end state "string"
+    | `Eof ->
+        unexpected_end state "string"
   in
   loop ()
 
@@ -492,21 +491,16 @@ let skip_string_generic = fun state ->
         Input.advance state.input;
         (
           match Input.current_char state.input with
-          | None -> unexpected_end state "string escape"
-          | Some ('"'
-          | '\\'
-          | '/'
-          | 'b'
-          | 'f'
-          | 'n'
-          | 'r'
-          | 't') ->
+          | None ->
+              unexpected_end state "string escape"
+          | Some ('"' | '\\' | '/' | 'b' | 'f' | 'n' | 'r' | 't') ->
               Input.advance state.input;
               loop ()
           | Some 'u' ->
               skip_unicode_escape state;
               loop ()
-          | Some actual -> unexpected_character state actual "valid string escape"
+          | Some actual ->
+              unexpected_character state actual "valid string escape"
         )
     | `Stop (_, actual) ->
         error_at
@@ -515,7 +509,8 @@ let skip_string_generic = fun state ->
     | `Boundary stop ->
         Input.set_position state.input stop;
         loop ()
-    | `Eof _ -> unexpected_end state "string"
+    | `Eof _ ->
+        unexpected_end state "string"
   in
   loop ()
 
@@ -549,10 +544,12 @@ let read_field_tag_reader = fun state reader fields ->
         reader_append_range state.scratch reader start stop;
         reader.Input.pos <- stop;
         slow ()
-    | `Eof -> unexpected_end state "object key"
+    | `Eof ->
+        unexpected_end state "object key"
   and slow () =
     match reader_current_char reader with
-    | None -> unexpected_end state "object key"
+    | None ->
+        unexpected_end state "object key"
     | Some '"' ->
         reader_advance reader;
         De.Fields.match_buffer fields state.scratch
@@ -560,7 +557,8 @@ let read_field_tag_reader = fun state reader fields ->
         reader_advance reader;
         (
           match reader_current_char reader with
-          | None -> unexpected_end state "object key escape"
+          | None ->
+              unexpected_end state "object key escape"
           | Some '"' ->
               IO.Buffer.add_char state.scratch '"';
               reader_advance reader;
@@ -596,7 +594,8 @@ let read_field_tag_reader = fun state reader fields ->
           | Some 'u' ->
               append_unicode_escape state;
               slow ()
-          | Some actual -> unexpected_character state actual "valid object key escape"
+          | Some actual ->
+              unexpected_character state actual "valid object key escape"
         )
     | Some actual when Char.code actual < 0x20 ->
         error_at
@@ -622,7 +621,8 @@ let read_field_tag_reader = fun state reader fields ->
             reader_append_range state.scratch reader start stop;
             reader.Input.pos <- stop;
             slow ()
-        | `Eof -> unexpected_end state "object key"
+        | `Eof ->
+            unexpected_end state "object key"
   in
   fast start
 
@@ -651,10 +651,12 @@ let read_field_tag_generic = fun state fields ->
         append_current_range state start stop;
         Input.set_position state.input stop;
         slow ()
-    | `Eof _ -> unexpected_end state "object key"
+    | `Eof _ ->
+        unexpected_end state "object key"
   and slow () =
     match Input.current_char state.input with
-    | None -> unexpected_end state "object key"
+    | None ->
+        unexpected_end state "object key"
     | Some '"' ->
         Input.advance state.input;
         De.Fields.match_buffer fields state.scratch
@@ -662,7 +664,8 @@ let read_field_tag_generic = fun state fields ->
         Input.advance state.input;
         (
           match Input.current_char state.input with
-          | None -> unexpected_end state "object key escape"
+          | None ->
+              unexpected_end state "object key escape"
           | Some '"' ->
               IO.Buffer.add_char state.scratch '"';
               Input.advance state.input;
@@ -698,7 +701,8 @@ let read_field_tag_generic = fun state fields ->
           | Some 'u' ->
               append_unicode_escape state;
               slow ()
-          | Some actual -> unexpected_character state actual "valid object key escape"
+          | Some actual ->
+              unexpected_character state actual "valid object key escape"
         )
     | Some actual when Char.code actual < 0x20 ->
         error_at
@@ -724,7 +728,8 @@ let read_field_tag_generic = fun state fields ->
             append_current_range state start stop;
             Input.set_position state.input stop;
             slow ()
-        | `Eof _ -> unexpected_end state "object key"
+        | `Eof _ ->
+            unexpected_end state "object key"
   in
   fast start
 
@@ -745,8 +750,10 @@ let parse_bool = fun state ->
         | Some 'f' ->
             reader_expect_literal state reader "false";
             false
-        | Some actual -> unexpected_character state actual "bool"
-        | None -> unexpected_end state "bool"
+        | Some actual ->
+            unexpected_character state actual "bool"
+        | None ->
+            unexpected_end state "bool"
       )
   | Input.String_input _ ->
       Input.skip_whitespace state.input;
@@ -758,8 +765,10 @@ let parse_bool = fun state ->
         | Some 'f' ->
             expect_literal state "false";
             false
-        | Some actual -> unexpected_character state actual "bool"
-        | None -> unexpected_end state "bool"
+        | Some actual ->
+            unexpected_character state actual "bool"
+        | None ->
+            unexpected_end state "bool"
       )
 
 let parse_null = fun state ->
@@ -781,7 +790,10 @@ let parse_null = fun state ->
         | None -> unexpected_end state "null"
       )
 
-type scanned_number = { text: string; is_float: bool }
+type scanned_number = {
+  text: string;
+  is_float: bool;
+}
 
 exception Use_slow_number_path
 
@@ -811,16 +823,17 @@ let parse_number_text_reader_slow = fun state reader ->
         append_char '0';
         (
           match reader_current_char reader with
-          | Some digit when is_digit digit ->
-              error_at (Input.position state.input) "leading zeros are not allowed in JSON numbers"
+          | Some digit when is_digit digit -> error_at (Input.position state.input) "leading zeros are not allowed in JSON numbers"
           | _ -> ()
         )
-    | Some ('1' .. '9') -> reader_append_digits state reader
+    | Some ('1' .. '9') ->
+        reader_append_digits state reader
     | Some actual ->
         error_at
           (Input.position state.input)
           ("unexpected '" ^ String.make ~len:1 ~char:actual ^ "' while parsing number")
-    | None -> unexpected_end state "number"
+    | None ->
+        unexpected_end state "number"
   );
   let is_float = ref false in
   (
@@ -831,33 +844,29 @@ let parse_number_text_reader_slow = fun state reader ->
         (
           match reader_current_char reader with
           | Some digit when is_digit digit -> reader_append_digits state reader
-          | Some actual ->
-              error_at
-                (Input.position state.input)
-                ("unexpected '" ^ String.make ~len:1 ~char:actual ^ "' after decimal point")
+          | Some actual -> error_at
+            (Input.position state.input)
+            ("unexpected '" ^ String.make ~len:1 ~char:actual ^ "' after decimal point")
           | None -> unexpected_end state "digit after decimal point"
         )
     | _ -> ()
   );
   (
     match reader_current_char reader with
-    | Some ('e'
-    | 'E' as exponent) ->
+    | Some ('e' | 'E' as exponent) ->
         is_float := true;
         append_char exponent;
         (
           match reader_current_char reader with
-          | Some ('+'
-          | '-' as sign) -> append_char sign
+          | Some ('+' | '-' as sign) -> append_char sign
           | _ -> ()
         );
         (
           match reader_current_char reader with
           | Some digit when is_digit digit -> reader_append_digits state reader
-          | Some actual ->
-              error_at
-                (Input.position state.input)
-                ("unexpected '" ^ String.make ~len:1 ~char:actual ^ "' after exponent")
+          | Some actual -> error_at
+            (Input.position state.input)
+            ("unexpected '" ^ String.make ~len:1 ~char:actual ^ "' after exponent")
           | None -> unexpected_end state "digit after exponent"
         )
     | _ -> ()
@@ -910,10 +919,7 @@ let parse_number_text_reader = fun state reader ->
             raise Use_slow_number_path;
           (
             match current () with
-            | Some digit when is_digit digit ->
-                error_at
-                  (Input.position state.input)
-                  "leading zeros are not allowed in JSON numbers"
+            | Some digit when is_digit digit -> error_at (Input.position state.input) "leading zeros are not allowed in JSON numbers"
             | _ -> ()
           )
       | Some ('1' .. '9') ->
@@ -925,7 +931,8 @@ let parse_number_text_reader = fun state reader ->
           error_at
             (Input.position state.input)
             ("unexpected '" ^ String.make ~len:1 ~char:actual ^ "' while parsing number")
-      | None -> unexpected_end state "number"
+      | None ->
+          unexpected_end state "number"
     );
     let is_float = ref false in
     (
@@ -946,22 +953,21 @@ let parse_number_text_reader = fun state reader ->
                 error_at
                   (Input.position state.input)
                   ("unexpected '" ^ String.make ~len:1 ~char:actual ^ "' after decimal point")
-            | None -> unexpected_end state "digit after decimal point"
+            | None ->
+                unexpected_end state "digit after decimal point"
           )
       | _ -> ()
     );
     (
       match current () with
-      | Some ('e'
-      | 'E') ->
+      | Some ('e' | 'E') ->
           is_float := true;
           advance ();
           if need_more () then
             raise Use_slow_number_path;
           (
             match current () with
-            | Some ('+'
-            | '-') ->
+            | Some ('+' | '-') ->
                 advance ();
                 if need_more () then
                   raise Use_slow_number_path
@@ -978,7 +984,8 @@ let parse_number_text_reader = fun state reader ->
                 error_at
                   (Input.position state.input)
                   ("unexpected '" ^ String.make ~len:1 ~char:actual ^ "' after exponent")
-            | None -> unexpected_end state "digit after exponent"
+            | None ->
+                unexpected_end state "digit after exponent"
           )
       | _ -> ()
     );
@@ -988,7 +995,7 @@ let parse_number_text_reader = fun state reader ->
           reader.Input.pos <- !pos;
           {
             text = Input.reader_substring reader ~off:!start ~len:(!pos - !start);
-            is_float = !is_float;
+            is_float = !is_float
           }
         )
       else
@@ -999,14 +1006,15 @@ let parse_number_text_reader = fun state reader ->
           reader.Input.pos <- !pos;
           {
             text = Input.reader_substring reader ~off:!start ~len:(!pos - !start);
-            is_float = !is_float;
+            is_float = !is_float
           }
-      | Some actual -> unexpected_character state actual "number delimiter"
+      | Some actual ->
+          unexpected_character state actual "number delimiter"
       | None ->
           reader.Input.pos <- !pos;
           {
             text = Input.reader_substring reader ~off:!start ~len:(!pos - !start);
-            is_float = !is_float;
+            is_float = !is_float
           }
   with
   | Use_slow_number_path ->
@@ -1050,8 +1058,7 @@ let parse_number_text_generic = fun state ->
         advance ();
         (
           match current () with
-          | Some digit when is_digit digit ->
-              error_at (Input.position state.input) "leading zeros are not allowed in JSON numbers"
+          | Some digit when is_digit digit -> error_at (Input.position state.input) "leading zeros are not allowed in JSON numbers"
           | _ -> ()
         )
     | Some ('1' .. '9') ->
@@ -1061,7 +1068,8 @@ let parse_number_text_generic = fun state ->
         error_at
           (Input.position state.input)
           ("unexpected '" ^ String.make ~len:1 ~char:actual ^ "' while parsing number")
-    | None -> unexpected_end state "number"
+    | None ->
+        unexpected_end state "number"
   );
   let is_float = ref false in
   (
@@ -1078,20 +1086,19 @@ let parse_number_text_generic = fun state ->
               error_at
                 (Input.position state.input)
                 ("unexpected '" ^ String.make ~len:1 ~char:actual ^ "' after decimal point")
-          | None -> unexpected_end state "digit after decimal point"
+          | None ->
+              unexpected_end state "digit after decimal point"
         )
     | _ -> ()
   );
   (
     match current () with
-    | Some ('e'
-    | 'E' as _exponent) ->
+    | Some ('e' | 'E' as _exponent) ->
         is_float := true;
         advance ();
         (
           match current () with
-          | Some ('+'
-          | '-' as _sign) -> advance ()
+          | Some ('+' | '-' as _sign) -> advance ()
           | _ -> ()
         );
         (
@@ -1103,7 +1110,8 @@ let parse_number_text_generic = fun state ->
               error_at
                 (Input.position state.input)
                 ("unexpected '" ^ String.make ~len:1 ~char:actual ^ "' after exponent")
-          | None -> unexpected_end state "digit after exponent"
+          | None ->
+              unexpected_end state "digit after exponent"
         )
     | _ -> ()
   );
@@ -1181,11 +1189,8 @@ let parse_int_generic = fun state ->
         advance ();
         (
           match current () with
-          | Some digit when is_digit digit ->
-              error_at (Input.position state.input) "leading zeros are not allowed in JSON numbers"
-          | Some ('.'
-          | 'e'
-          | 'E') -> invalid_field_type ()
+          | Some digit when is_digit digit -> error_at (Input.position state.input) "leading zeros are not allowed in JSON numbers"
+          | Some ('.' | 'e' | 'E') -> invalid_field_type ()
           | _ -> ()
         )
     | Some ('1' .. '9' as digit) ->
@@ -1193,16 +1198,15 @@ let parse_int_generic = fun state ->
         advance_digits ();
         (
           match current () with
-          | Some ('.'
-          | 'e'
-          | 'E') -> invalid_field_type ()
+          | Some ('.' | 'e' | 'E') -> invalid_field_type ()
           | _ -> ()
         )
     | Some actual ->
         error_at
           (Input.position state.input)
           ("unexpected '" ^ String.make ~len:1 ~char:actual ^ "' while parsing number")
-    | None -> unexpected_end state "number"
+    | None ->
+        unexpected_end state "number"
   );
   if not (is_value_delimiter (current ())) then
     (
@@ -1285,13 +1289,8 @@ let parse_int_reader = fun state reader ->
             raise Use_slow_number_path;
           (
             match current () with
-            | Some digit when is_digit digit ->
-                error_at
-                  (Input.position state.input)
-                  "leading zeros are not allowed in JSON numbers"
-            | Some ('.'
-            | 'e'
-            | 'E') -> invalid_field_type ()
+            | Some digit when is_digit digit -> error_at (Input.position state.input) "leading zeros are not allowed in JSON numbers"
+            | Some ('.' | 'e' | 'E') -> invalid_field_type ()
             | _ -> ()
           )
       | Some ('1' .. '9' as digit) ->
@@ -1301,16 +1300,15 @@ let parse_int_reader = fun state reader ->
             raise Use_slow_number_path;
           (
             match current () with
-            | Some ('.'
-            | 'e'
-            | 'E') -> invalid_field_type ()
+            | Some ('.' | 'e' | 'E') -> invalid_field_type ()
             | _ -> ()
           )
       | Some actual ->
           error_at
             (Input.position state.input)
             ("unexpected '" ^ String.make ~len:1 ~char:actual ^ "' while parsing number")
-      | None -> unexpected_end state "number"
+      | None ->
+          unexpected_end state "number"
     );
     if not (is_value_delimiter (current ())) then
       (
@@ -1416,14 +1414,20 @@ let rec skip_value_reader = fun state reader ->
             in
             loop true
       )
-  | Some '"' -> skip_string_reader state reader
-  | Some ('-'
-  | '0' .. '9') -> ignore (parse_float state)
-  | Some 't' -> reader_expect_literal state reader "true"
-  | Some 'f' -> reader_expect_literal state reader "false"
-  | Some 'n' -> reader_expect_literal state reader "null"
-  | Some actual -> unexpected_character state actual "JSON value"
-  | None -> unexpected_end state "JSON value"
+  | Some '"' ->
+      skip_string_reader state reader
+  | Some ('-' | '0' .. '9') ->
+      ignore (parse_float state)
+  | Some 't' ->
+      reader_expect_literal state reader "true"
+  | Some 'f' ->
+      reader_expect_literal state reader "false"
+  | Some 'n' ->
+      reader_expect_literal state reader "null"
+  | Some actual ->
+      unexpected_character state actual "JSON value"
+  | None ->
+      unexpected_end state "JSON value"
 
 let rec skip_value = fun state ->
   match state.input with
@@ -1475,14 +1479,20 @@ let rec skip_value = fun state ->
                 in
                 loop true
           )
-      | Some '"' -> skip_string state
-      | Some ('-'
-      | '0' .. '9') -> ignore (parse_float state)
-      | Some 't' -> expect_literal state "true"
-      | Some 'f' -> expect_literal state "false"
-      | Some 'n' -> expect_literal state "null"
-      | Some actual -> unexpected_character state actual "JSON value"
-      | None -> unexpected_end state "JSON value"
+      | Some '"' ->
+          skip_string state
+      | Some ('-' | '0' .. '9') ->
+          ignore (parse_float state)
+      | Some 't' ->
+          expect_literal state "true"
+      | Some 'f' ->
+          expect_literal state "false"
+      | Some 'n' ->
+          expect_literal state "null"
+      | Some actual ->
+          unexpected_character state actual "JSON value"
+      | None ->
+          unexpected_end state "JSON value"
 
 let rec option_backend: 'value. state -> 'value De.t -> 'value option = fun state decode ->
   match state.input with
@@ -1524,12 +1534,15 @@ and list_backend: 'value. state -> 'value De.t -> 'value vec = fun state decode 
               Vector.push acc ~value;
               reader_skip_whitespace reader;
               match reader_current_char reader with
-              | Some ',' -> reader_advance reader
+              | Some ',' ->
+                  reader_advance reader
               | Some ']' ->
                   reader_advance reader;
                   finished := true
-              | Some actual -> unexpected_character state actual "array delimiter"
-              | None -> unexpected_end state "array"
+              | Some actual ->
+                  unexpected_character state actual "array delimiter"
+              | None ->
+                  unexpected_end state "array"
             done;
             acc
       )
@@ -1548,12 +1561,15 @@ and list_backend: 'value. state -> 'value De.t -> 'value vec = fun state decode 
             Vector.push acc ~value;
             Input.skip_whitespace state.input;
             match Input.current_char state.input with
-            | Some ',' -> Input.advance state.input
+            | Some ',' ->
+                Input.advance state.input
             | Some ']' ->
                 Input.advance state.input;
                 finished := true
-            | Some actual -> unexpected_character state actual "array delimiter"
-            | None -> unexpected_end state "array"
+            | Some actual ->
+                unexpected_character state actual "array delimiter"
+            | None ->
+                unexpected_end state "array"
           done;
           acc
 
@@ -1585,11 +1601,10 @@ and record_backend:
             while not !finished do
               if !first then
                 first := false
-              else
-                (
-                  reader_skip_whitespace reader;
-                  reader_expect_char state reader ',' "object delimiter"
-                );
+              else (
+                reader_skip_whitespace reader;
+                reader_expect_char state reader ',' "object delimiter"
+              );
               let field = read_field_tag_reader state reader fields in
               reader_skip_whitespace reader;
               reader_expect_char state reader ':' "':' after object key";
@@ -1599,8 +1614,10 @@ and record_backend:
               | Some '}' ->
                   reader_advance reader;
                   finished := true
-              | Some _ -> ()
-              | None -> unexpected_end state "object"
+              | Some _ ->
+                  ()
+              | None ->
+                  unexpected_end state "object"
             done;
             finish !acc
       )
@@ -1618,11 +1635,10 @@ and record_backend:
           while not !finished do
             if !first then
               first := false
-            else
-              (
-                Input.skip_whitespace state.input;
-                expect_char state ',' "object delimiter"
-              );
+            else (
+              Input.skip_whitespace state.input;
+              expect_char state ',' "object delimiter"
+            );
             let field = read_field_tag state fields in
             skip_then_expect_char state ':' "':' after object key";
             acc := step !acc field;
@@ -1631,8 +1647,10 @@ and record_backend:
             | Some '}' ->
                 Input.advance state.input;
                 finished := true
-            | Some _ -> ()
-            | None -> unexpected_end state "object"
+            | Some _ ->
+                ()
+            | None ->
+                unexpected_end state "object"
           done;
           finish !acc
 
@@ -1660,11 +1678,10 @@ and record_mut_backend:
             while not !finished do
               if !first then
                 first := false
-              else
-                (
-                  reader_skip_whitespace reader;
-                  reader_expect_char state reader ',' "object delimiter"
-                );
+              else (
+                reader_skip_whitespace reader;
+                reader_expect_char state reader ',' "object delimiter"
+              );
               let field = read_field_tag_reader state reader fields in
               reader_skip_whitespace reader;
               reader_expect_char state reader ':' "':' after object key";
@@ -1674,8 +1691,10 @@ and record_mut_backend:
               | Some '}' ->
                   reader_advance reader;
                   finished := true
-              | Some _ -> ()
-              | None -> unexpected_end state "object"
+              | Some _ ->
+                  ()
+              | None ->
+                  unexpected_end state "object"
             done;
             finish builder
       )
@@ -1693,11 +1712,10 @@ and record_mut_backend:
           while not !finished do
             if !first then
               first := false
-            else
-              (
-                Input.skip_whitespace state.input;
-                expect_char state ',' "object delimiter"
-              );
+            else (
+              Input.skip_whitespace state.input;
+              expect_char state ',' "object delimiter"
+            );
             let field = read_field_tag state fields in
             skip_then_expect_char state ':' "':' after object key";
             step builder field;
@@ -1706,8 +1724,10 @@ and record_mut_backend:
             | Some '}' ->
                 Input.advance state.input;
                 finished := true
-            | Some _ -> ()
-            | None -> unexpected_end state "object"
+            | Some _ ->
+                ()
+            | None ->
+                unexpected_end state "object"
           done;
           finish builder
 
@@ -1734,7 +1754,8 @@ and variant_backend: 'value. state -> 'value De.compiled_variant_cases -> 'value
             value
         | De.Newtype (expected, decode, wrap) when String.equal expected tag ->
             wrap (decode.run backend state)
-        | _ -> loop (index + 1)
+        | _ ->
+            loop (index + 1)
     in
     loop 0
   in
@@ -1755,8 +1776,10 @@ and variant_backend: 'value. state -> 'value De.compiled_variant_cases -> 'value
             reader_skip_whitespace reader;
             reader_expect_char state reader '}' "closing '}' for variant";
             value
-        | Some actual -> unexpected_character state actual "variant"
-        | None -> unexpected_end state "variant"
+        | Some actual ->
+            unexpected_character state actual "variant"
+        | None ->
+            unexpected_end state "variant"
       )
   | Input.String_input _ ->
       Input.skip_whitespace state.input;
@@ -1771,8 +1794,10 @@ and variant_backend: 'value. state -> 'value De.compiled_variant_cases -> 'value
           let value = find_object tag in
           skip_then_expect_char state '}' "closing '}' for variant";
           value
-      | Some actual -> unexpected_character state actual "variant"
-      | None -> unexpected_end state "variant"
+      | Some actual ->
+          unexpected_character state actual "variant"
+      | None ->
+          unexpected_end state "variant"
 
 and backend: state De.backend = {
   bool = parse_bool;
@@ -1794,13 +1819,13 @@ let finish = fun state value ->
   Input.skip_whitespace state.input;
   match Input.current_char state.input with
   | None -> Ok value
-  | Some _ ->
-      Error (`Msg ("extra input after JSON value at position "
-      ^ Int.to_string (Input.position state.input)))
+  | Some _ -> Error (`Msg ("extra input after JSON value at position "
+  ^ Int.to_string (Input.position state.input)))
 
 let of_input = fun decode input ->
   let state = { input; scratch = IO.Buffer.create ~size:64 } in
-  let* value = De.run decode backend state in finish state value
+  let* value = De.run decode backend state in
+  finish state value
 
 let of_string = fun decode input -> of_input decode (Input.of_string input)
 

@@ -46,10 +46,16 @@ let add_entry = fun env module_id entry ->
       ()
 
 let add_loaded = fun env ~required_name artifact ->
-  add_entry env (ModuleId.Loaded required_name) (entry_of_artifact artifact)
+  add_entry
+    env
+    (ModuleId.Loaded required_name)
+    (entry_of_artifact artifact)
 
 let add_local = fun env ~internal_name artifact ->
-  add_entry env (ModuleId.Local internal_name) (entry_of_artifact artifact)
+  add_entry
+    env
+    (ModuleId.Local internal_name)
+    (entry_of_artifact artifact)
 
 let of_loaded_modules = fun loaded_modules ->
   let env = empty () in
@@ -113,7 +119,10 @@ let lookup_owned_constructor = fun env module_id path owner_type_constructor_id 
   Option.and_then
     (find_entry env module_id)
     (fun entry ->
-      CompiledScope.lookup_owned_constructor entry.compiled_scope path owner_type_constructor_id)
+      CompiledScope.lookup_owned_constructor
+        entry.compiled_scope
+        path
+        owner_type_constructor_id)
 
 let lookup_record_decls = fun env module_id label_name ->
   Option.and_then
@@ -125,7 +134,9 @@ let lookup_record_decl_by_owner = fun env module_id owner_type_constructor_id ->
   Option.and_then
     (find_entry env module_id)
     (fun entry ->
-      CompiledScope.lookup_record_decl_by_owner entry.compiled_scope owner_type_constructor_id)
+      CompiledScope.lookup_record_decl_by_owner
+        entry.compiled_scope
+        owner_type_constructor_id)
 
 let visible_type_decls = fun env visible_modules ->
   visible_modules

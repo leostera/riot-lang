@@ -47,7 +47,8 @@ let v4_from_bytes = fun bytes ->
     raise (Invalid_argument "UUID.v4_from_bytes: invalid bytes")
 
 let v7_from_parts = fun ~time_ms:_ ~rand_a:_ ~rand_b:_ ->
-  raise (Invalid_argument "UUID.v7_from_parts not yet implemented")
+  raise
+    (Invalid_argument "UUID.v7_from_parts not yet implemented")
 
 (** {1 Constants} *)
 

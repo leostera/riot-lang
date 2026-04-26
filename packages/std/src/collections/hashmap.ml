@@ -120,8 +120,11 @@ let fold_left = fun map ~init ~fn ->
     map.buckets
     ~acc:init
     ~fn:(fun acc bucket ->
-      List.fold_left bucket ~acc:acc ~fn:(fun acc (key, value) ->
-        fn acc key value))
+      List.fold_left
+        bucket
+        ~acc:acc
+        ~fn:(fun acc (key, value) ->
+          fn acc key value))
 
 let keys = fun map -> fold_left map ~init:[] ~fn:(fun acc key _value -> key :: acc)
 

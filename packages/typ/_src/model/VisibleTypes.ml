@@ -9,7 +9,9 @@ type t = {
 let qualify_name = fun scope_path name -> SurfacePath.append_name scope_path name
 
 let type_decl_key = fun (type_decl: FileSummary.type_decl) ->
-  qualify_name type_decl.scope_path type_decl.declaration.type_name
+  qualify_name
+    type_decl.scope_path
+    type_decl.declaration.type_name
 
 let bind_type_decls = fun type_decls introduced ->
   List.fold_left
@@ -233,7 +235,9 @@ let resolve_named_type_head_in_index = fun by_path name ->
   Collections.HashMap.get by_path name
   |> Option.map
     (fun (type_decl: FileSummary.type_decl) ->
-      TypeRepr.named_head ~type_constructor_id:type_decl.declaration.type_constructor_id ~name)
+      TypeRepr.named_head
+        ~type_constructor_id:type_decl.declaration.type_constructor_id
+        ~name)
   |> fun resolved -> Option.or_else resolved (fun () -> BuiltinTypeConstructors.head_of_path name)
 
 let resolve_named_type_decl_in_index = fun by_id by_path (head: TypeRepr.named_type_head) ->
@@ -251,7 +255,9 @@ let nonrec_resolvers = fun by_id by_path (current: FileSummary.type_decl) ->
     |> Option.filter not_current
     |> Option.map
       (fun (type_decl: FileSummary.type_decl) ->
-        TypeRepr.named_head ~type_constructor_id:type_decl.declaration.type_constructor_id ~name)
+        TypeRepr.named_head
+          ~type_constructor_id:type_decl.declaration.type_constructor_id
+          ~name)
     |> fun resolved -> Option.or_else resolved (fun () -> BuiltinTypeConstructors.head_of_path name)
   in
   let resolve_named_type_decl (head: TypeRepr.named_type_head) =
@@ -556,7 +562,10 @@ let resolve_type_with = fun ~make ~resolve_named_type_decl ~resolve_named_type_h
   loop
 
 let find_type_expansion = fun visible_types head ->
-  resolve_named_type_decl_in_index visible_types.by_id visible_types.by_path head
+  resolve_named_type_decl_in_index
+    visible_types.by_id
+    visible_types.by_path
+    head
 
 let resolve_type = fun visible_types ->
   resolve_type_with
@@ -770,7 +779,11 @@ let annotate_type_decl_variances = fun ?cached_by_id type_decls ->
     | TypeRepr.Package signature ->
         List.iter
           (fun (value: TypeRepr.package_value) ->
-            collect_type_variances_into visiting variance acc (TypeScheme.body value.scheme))
+            collect_type_variances_into
+              visiting
+              variance
+              acc
+              (TypeScheme.body value.scheme))
           signature.values
     | TypeRepr.Var var -> (
         match var.link with
@@ -933,10 +946,14 @@ let by_id = fun visible_types -> visible_types.by_id
 let lookup = fun visible_types name -> Collections.HashMap.get visible_types.by_path name
 
 let lookup_by_id = fun visible_types type_constructor_id ->
-  Collections.HashMap.get visible_types.by_id type_constructor_id
+  Collections.HashMap.get
+    visible_types.by_id
+    type_constructor_id
 
 let resolve_named_type_head = fun visible_types name ->
-  resolve_named_type_head_in_index visible_types.by_path name
+  resolve_named_type_head_in_index
+    visible_types.by_path
+    name
 
 let poly_variant_bound_matches_manifest = fun left right ->
   match (left, right) with
@@ -1129,7 +1146,9 @@ let canonicalize_type = fun visible_types ->
   loop
 
 let canonicalize_scheme = fun visible_types scheme ->
-  canonicalize_scheme_with (canonicalize_type visible_types) scheme
+  canonicalize_scheme_with
+    (canonicalize_type visible_types)
+    scheme
 
 let canonicalize_inline_record_labels = fun visible_types labels ->
   labels

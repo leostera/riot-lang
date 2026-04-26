@@ -74,7 +74,9 @@ let to_millis = fun t -> (t.secs * 1_000) + (t.nanos / 1_000_000)
 let to_micros = fun t -> (t.secs * 1_000_000) + (t.nanos / 1_000)
 
 let to_nanos = fun t ->
-  Int64.add (Int64.mul (Int64.from_int t.secs) 1_000_000_000L) (Int64.from_int t.nanos)
+  Int64.add
+    (Int64.mul (Int64.from_int t.secs) 1_000_000_000L)
+    (Int64.from_int t.nanos)
 
 (* Subsecond components *)
 

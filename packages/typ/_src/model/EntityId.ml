@@ -21,7 +21,9 @@ let of_string = fun text -> of_surface_path (SurfacePath.of_string text)
 let resolved = fun ~binding_id ~surface_path -> Resolved { binding_id; surface_path }
 
 let of_binding_id = fun binding_id ->
-  resolved ~binding_id ~surface_path:(SurfacePath.of_name (BindingId.name binding_id))
+  resolved
+    ~binding_id
+    ~surface_path:(SurfacePath.of_name (BindingId.name binding_id))
 
 let binding_id = function
   | Resolved { binding_id; _ } -> Some binding_id
@@ -81,10 +83,13 @@ let with_surface_path = fun new_surface_path entity ->
   | Apply _ -> Unresolved new_surface_path
 
 let append_name = fun entity name ->
-  of_surface_path (SurfacePath.append_name (surface_path entity) name)
+  of_surface_path
+    (SurfacePath.append_name (surface_path entity) name)
 
 let prepend_name = fun name entity ->
-  with_surface_path (SurfacePath.prepend_name name (surface_path entity)) entity
+  with_surface_path
+    (SurfacePath.prepend_name name (surface_path entity))
+    entity
 
 let append_path = fun left right ->
   let right_segments =
@@ -96,7 +101,9 @@ let append_path = fun left right ->
   |> List.fold_left append_name left
 
 let qualify = fun ~prefix entity ->
-  with_surface_path (SurfacePath.append_path prefix (surface_path entity)) entity
+  with_surface_path
+    (SurfacePath.append_path prefix (surface_path entity))
+    entity
 
 let last_name = fun entity ->
   surface_path entity

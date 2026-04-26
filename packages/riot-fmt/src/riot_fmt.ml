@@ -7,28 +7,15 @@ type event = Krasny.Report.event
 let event_to_json = fun ~root event -> Krasny.Report.event_to_json ~root event
 
 let command =
-  let open ArgParser.Arg in
-  command "fmt"
+  let open ArgParser.Arg in command "fmt"
   |> about "Format OCaml with krasny"
   |> args
     [
-      flag "check"
-      |> long "check"
-      |> help "Check if files need formatting";
-      flag "verify"
-      |> long "verify"
-      |> help "Verify formatting would preserve syntax hashes";
-      flag "json"
-      |> long "json"
-      |> help "Emit machine-readable JSONL events";
-      option "explain"
-      |> long "explain"
-      |> help "Explain a syn parse error code (e.g. E0001)";
-      positional "path"
-      |> required false
-      |> multiple
-      |> help
-        "OCaml file or directory to format/check/verify (default: workspace packages or current directory)";
+      flag "check" |> long "check" |> help "Check if files need formatting";
+      flag "verify" |> long "verify" |> help "Verify formatting would preserve syntax hashes";
+      flag "json" |> long "json" |> help "Emit machine-readable JSONL events";
+      option "explain" |> long "explain" |> help "Explain a syn parse error code (e.g. E0001)";
+      positional "path" |> required false |> multiple |> help "OCaml file or directory to format/check/verify (default: workspace packages or current directory)";
     ]
 
 let default_stdout = fun buf ->
@@ -54,8 +41,7 @@ let writer_of_emit = fun emit ->
 
     let write_vectored = fun emit ~from ->
       let total = ref 0 in
-      IO.IoVec.for_each
-        from
+      IO.IoVec.for_each from
         ~fn:(fun segment ->
           let contents = IO.IoSlice.to_string segment in
           total := !total + String.length contents;
@@ -84,9 +70,7 @@ type fmt_scope = {
 
 let resolve_root = function
   | Some workspace -> workspace.Workspace.root
-  | None ->
-      Env.current_dir ()
-      |> Result.expect ~msg:"Failed to get current directory"
+  | None -> Env.current_dir () |> Result.expect ~msg:"Failed to get current directory"
 
 let resolve_search_roots = fun workspace ->
   match workspace with
@@ -108,13 +92,12 @@ let load_fmt_scope = function
       Some {
         workspace_root = workspace.Workspace.root;
         workspace_config = Fmt_config.load workspace_toml;
-        packages;
+        packages
       }
   | None ->
       let cwd = resolve_root None in
       let toml_path = Path.(cwd / Path.v "riot.toml") in
-      if Fs.exists toml_path
-      |> Result.unwrap_or ~default:false then
+      if Fs.exists toml_path |> Result.unwrap_or ~default:false then
         Some { workspace_root = cwd; workspace_config = Fmt_config.load toml_path; packages = [] }
       else
         None
@@ -126,23 +109,22 @@ let relative_or_absolute = fun ~root path ->
   | Ok rel -> Path.to_string rel
   | Error _ -> Path.to_string path
 
-let compare_paths = fun left right -> String.compare (Path.to_string left) (Path.to_string right)
+let compare_paths = fun left right ->
+  String.compare (Path.to_string left) (Path.to_string right)
 
 let matches_ignore_pattern = fun ~root pattern path ->
   String.contains (relative_or_absolute ~root path) pattern
 
 let find_package_scope = fun scope file ->
-  scope.packages
-  |> List.filter_map
+  scope.packages |> List.filter_map
     ~fn:(fun package_scope ->
       match Path.strip_prefix file ~prefix:package_scope.package_root with
       | Ok _ -> Some (String.length (Path.to_string package_scope.package_root), package_scope)
-      | Error _ -> None)
-  |> List.sort ~compare:(fun (left_len, _) (right_len, _) -> Int.compare right_len left_len)
-  |> List.map ~fn:(fun (_, package_scope) -> package_scope)
-  |> function
-    | package_scope :: _ -> Some package_scope
-    | [] -> None
+      | Error _ -> None) |> List.sort
+    ~compare:(fun (left_len, _) (right_len, _) ->
+      Int.compare right_len left_len) |> List.map ~fn:(fun (_, package_scope) -> package_scope) |> function
+  | package_scope :: _ -> Some package_scope
+  | [] -> None
 
 let should_ignore_file = fun scope file ->
   match scope with
@@ -155,17 +137,14 @@ let should_ignore_file = fun scope file ->
         true
       else
         match find_package_scope scope file with
-        | Some package_scope ->
-            matches package_scope.config.ignore_patterns ~root:package_scope.package_root
+        | Some package_scope -> matches package_scope.config.ignore_patterns ~root:package_scope.package_root
         | None -> false
 
 let write_text_file = fun ~writer ~root file_result ->
-  Krasny.Report.write_text_file_result ~writer ~root file_result
-  |> Result.expect ~msg:"failed to write fmt result"
+  Krasny.Report.write_text_file_result ~writer ~root file_result |> Result.expect ~msg:"failed to write fmt result"
 
 let write_json_event = fun ~writer ~root event ->
-  Krasny.Report.write_json_event ~writer ~root event
-  |> Result.expect ~msg:"failed to write fmt JSON event"
+  Krasny.Report.write_json_event ~writer ~root event |> Result.expect ~msg:"failed to write fmt JSON event"
 
 let write_json_start = fun ~writer ~root ~mode ~concurrency ->
   write_json_event ~writer ~root (Krasny.Report.Start { mode; concurrency })
@@ -177,14 +156,10 @@ let write_json_summary = fun ~writer ~root (summary: Krasny.Runner.summary) ->
   write_json_event ~writer ~root (Krasny.Report.Summary summary)
 
 let write_text_summary = fun ~writer ~mode (summary: Krasny.Runner.summary) ->
-  Krasny.Report.write_text_summary ~writer ~mode summary
-  |> Result.expect ~msg:"failed to write fmt summary"
+  Krasny.Report.write_text_summary ~writer ~mode summary |> Result.expect ~msg:"failed to write fmt summary"
 
 let format_failed_file = fun (file_result: Krasny.Runner.file_result) ->
-  let error_text =
-    file_result.error
-    |> Option.unwrap_or ~default:"Formatting failed"
-  in
+  let error_text = file_result.error |> Option.unwrap_or ~default:"Formatting failed" in
   match Fs.read file_result.file with
   | Error _ -> Path.to_string file_result.file ^ ": " ^ error_text ^ "\n"
   | Ok source ->
@@ -194,10 +169,7 @@ let format_failed_file = fun (file_result: Krasny.Runner.file_result) ->
         | Error err -> panic ("failed to create parser source slice: " ^ IO.IoVec.error_message err)
       in
       let parsed = Syn.parse ~filename:file_result.file slice in
-      let diagnostics =
-        Std.Collections.Vector.to_array parsed.diagnostics
-        |> Array.to_list
-      in
+      let diagnostics = Std.Collections.Vector.to_array parsed.diagnostics |> Array.to_list in
       if List.is_empty diagnostics then
         Path.to_string file_result.file ^ ": " ^ error_text ^ "\n"
       else
@@ -205,8 +177,7 @@ let format_failed_file = fun (file_result: Krasny.Runner.file_result) ->
 
 let write_failed_file = fun ~writer file_result ->
   let buffer = IO.Buffer.from_string (format_failed_file file_result) in
-  IO.write_all writer ~from:buffer
-  |> Result.expect ~msg:"failed to write fmt diagnostics"
+  IO.write_all writer ~from:buffer |> Result.expect ~msg:"failed to write fmt diagnostics"
 
 let write_silent_failures = fun ~writer (result: Krasny.Runner.run_result) ->
   result.files
@@ -244,7 +215,8 @@ let run_mode = fun ?workspace ?(stdout = default_stdout) ?(stderr = default_stde
   let on_result file_result =
     on_event (Krasny.Report.File file_result);
     match output_mode with
-    | Json -> write_json_file ~writer:stdout_writer ~root file_result
+    | Json ->
+        write_json_file ~writer:stdout_writer ~root file_result
     | Text -> (
         match file_result.status with
         | Krasny.Runner.Failed -> write_failed_file ~writer:stdout_writer file_result
@@ -253,60 +225,54 @@ let run_mode = fun ?workspace ?(stdout = default_stdout) ?(stderr = default_stde
     | QuietCheck -> (
         match (mode, file_result.status) with
         | (Krasny.Runner.Check, Krasny.Runner.Already_formatted) -> ()
-        | (Krasny.Runner.Check, Krasny.Runner.Failed) ->
-            write_failed_file ~writer:stdout_writer file_result
+        | (Krasny.Runner.Check, Krasny.Runner.Failed) -> write_failed_file ~writer:stdout_writer file_result
         | (Krasny.Runner.Check, _) -> write_text_file ~writer:stdout_writer ~root file_result
         | _ -> ()
       )
-    | Silent -> ()
+    | Silent ->
+        ()
   in
   let result: Krasny.Runner.run_result =
     if List.is_empty explicit_targets then
       match mode with
-      | Krasny.Runner.Check ->
-          Krasny.Runner.run_checks_streaming
-            ~concurrency
-            ~should_ignore:(should_ignore_file fmt_scope)
-            ~roots:(resolve_search_roots workspace)
-            ~on_result
-            ()
-      | Krasny.Runner.Verify ->
-          Krasny.Runner.run_verify_streaming
-            ~concurrency
-            ~should_ignore:(should_ignore_file fmt_scope)
-            ~roots:(resolve_search_roots workspace)
-            ~on_result
-            ()
-      | Krasny.Runner.Format ->
-          Krasny.Runner.run_format_streaming
-            ~concurrency
-            ~should_ignore:(should_ignore_file fmt_scope)
-            ~roots:(resolve_search_roots workspace)
-            ~on_result
-            ()
+      | Krasny.Runner.Check -> Krasny.Runner.run_checks_streaming
+        ~concurrency
+        ~should_ignore:(should_ignore_file fmt_scope)
+        ~roots:(resolve_search_roots workspace)
+        ~on_result
+        ()
+      | Krasny.Runner.Verify -> Krasny.Runner.run_verify_streaming
+        ~concurrency
+        ~should_ignore:(should_ignore_file fmt_scope)
+        ~roots:(resolve_search_roots workspace)
+        ~on_result
+        ()
+      | Krasny.Runner.Format -> Krasny.Runner.run_format_streaming
+        ~concurrency
+        ~should_ignore:(should_ignore_file fmt_scope)
+        ~roots:(resolve_search_roots workspace)
+        ~on_result
+        ()
     else
       match mode with
-      | Krasny.Runner.Check ->
-          Krasny.Runner.run_checks_streaming
-            ~concurrency
-            ~should_ignore:(should_ignore_file fmt_scope)
-            ~roots:explicit_targets
-            ~on_result
-            ()
-      | Krasny.Runner.Verify ->
-          Krasny.Runner.run_verify_streaming
-            ~concurrency
-            ~should_ignore:(should_ignore_file fmt_scope)
-            ~roots:explicit_targets
-            ~on_result
-            ()
-      | Krasny.Runner.Format ->
-          Krasny.Runner.run_format_streaming
-            ~concurrency
-            ~should_ignore:(should_ignore_file fmt_scope)
-            ~roots:explicit_targets
-            ~on_result
-            ()
+      | Krasny.Runner.Check -> Krasny.Runner.run_checks_streaming
+        ~concurrency
+        ~should_ignore:(should_ignore_file fmt_scope)
+        ~roots:explicit_targets
+        ~on_result
+        ()
+      | Krasny.Runner.Verify -> Krasny.Runner.run_verify_streaming
+        ~concurrency
+        ~should_ignore:(should_ignore_file fmt_scope)
+        ~roots:explicit_targets
+        ~on_result
+        ()
+      | Krasny.Runner.Format -> Krasny.Runner.run_format_streaming
+        ~concurrency
+        ~should_ignore:(should_ignore_file fmt_scope)
+        ~roots:explicit_targets
+        ~on_result
+        ()
   in
   on_event (Krasny.Report.Summary result.summary);
   (
@@ -341,11 +307,7 @@ let run_check_paths = fun ?workspace ?(on_event = no_event) paths ->
     ~on_event
     ~mode:Krasny.Runner.Check
     ~output_mode:Silent
-    ~explicit_targets:(
-      paths
-      |> List.sort ~compare:compare_paths
-      |> List.unique ~compare:compare_paths
-    )
+    ~explicit_targets:(paths |> List.sort ~compare:compare_paths |> List.unique ~compare:compare_paths)
     ()
 
 let run_explain = fun ?(stdout = default_stdout) ?(stderr = default_stderr) error_code ->
@@ -369,7 +331,8 @@ let run = fun ?workspace ?stdout ?stderr fmt_matches ->
   | (_, _, Some _) when check || verify || get_flag fmt_matches "json" || has_paths ->
       eprintln "riot fmt --explain cannot be combined with formatting flags or paths";
       Error (Failure "riot fmt --explain cannot be combined with formatting flags or paths")
-  | (_, _, Some error_code) -> run_explain ?stdout ?stderr error_code
+  | (_, _, Some error_code) ->
+      run_explain ?stdout ?stderr error_code
   | _ ->
       let mode =
         if check then

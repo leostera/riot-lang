@@ -1,5 +1,4 @@
 open Std
-
 module Waiters = Collections.Queue
 
 type t = {
@@ -14,14 +13,8 @@ type owner = {
 }
 
 type request =
-  | Acquire of {
-      reply_to: Pid.t;
-      request_id: request_id;
-    }
-  | Release of {
-      reply_to: Pid.t;
-      request_id: request_id;
-    }
+  | Acquire of { reply_to: Pid.t; request_id: request_id }
+  | Release of { reply_to: Pid.t; request_id: request_id }
 
 type Message.t +=
   | Riot_build_actor_mutex_request of request
@@ -59,8 +52,10 @@ module Server = struct
         state.owner <- None;
         send reply_to (Riot_build_actor_mutex_released { request_id });
         grant_next state
-    | Some _ -> fail reply_to request_id "actor mutex unlock by non-owner"
-    | None -> fail reply_to request_id "actor mutex unlock while unlocked"
+    | Some _ ->
+        fail reply_to request_id "actor mutex unlock by non-owner"
+    | None ->
+        fail reply_to request_id "actor mutex unlock while unlocked"
 
   let release_owner_on_exit = fun state monitor_ref pid ->
     match state.owner with
@@ -94,17 +89,14 @@ module Server = struct
   let start = fun () -> spawn (fun () -> loop { owner = None; waiters = Waiters.create () })
 end
 
-let create = fun (): t -> { pid = Server.start () }
+let create = fun () : t -> { pid = Server.start () }
 
 let await = fun request_id expected ->
   let selector msg =
     match msg with
-    | Riot_build_actor_mutex_acquired { request_id = got } when expected = `acquired
-    && Int.equal got request_id -> `select (Ok ())
-    | Riot_build_actor_mutex_released { request_id = got } when expected = `released
-    && Int.equal got request_id -> `select (Ok ())
-    | Riot_build_actor_mutex_failed { request_id = got; reason } when Int.equal got request_id ->
-        `select (Error reason)
+    | Riot_build_actor_mutex_acquired { request_id=got } when expected = `acquired && Int.equal got request_id -> `select (Ok ())
+    | Riot_build_actor_mutex_released { request_id=got } when expected = `released && Int.equal got request_id -> `select (Ok ())
+    | Riot_build_actor_mutex_failed { request_id=got; reason } when Int.equal got request_id -> `select (Error reason)
     | _ -> `skip
   in
   receive ~selector ()

@@ -22,7 +22,9 @@ type t = {
 let qualify_name = SurfacePath.append_name
 
 let type_decl_key = fun (type_decl: FileSummary.type_decl) ->
-  qualify_name type_decl.scope_path type_decl.declaration.type_name
+  qualify_name
+    type_decl.scope_path
+    type_decl.declaration.type_name
 
 let bind_type_decls = fun type_decls introduced ->
   List.fold_left
@@ -69,7 +71,9 @@ let resolve_named_type_head_in_index = fun by_path name ->
   Collections.HashMap.get by_path name
   |> Option.map
     (fun (type_decl: FileSummary.type_decl) ->
-      TypeRepr.named_head ~type_constructor_id:type_decl.declaration.type_constructor_id ~name)
+      TypeRepr.named_head
+        ~type_constructor_id:type_decl.declaration.type_constructor_id
+        ~name)
   |> fun resolved -> Option.or_else resolved (fun () -> BuiltinTypeConstructors.head_of_path name)
 
 let resolve_named_type_decl_in_index = Collections.HashMap.get
@@ -88,7 +92,9 @@ let nonrec_resolvers = fun by_path (type_decl: FileSummary.type_decl) ->
     |> Option.filter not_current
     |> Option.map
       (fun (candidate: FileSummary.type_decl) ->
-        TypeRepr.named_head ~type_constructor_id:candidate.declaration.type_constructor_id ~name)
+        TypeRepr.named_head
+          ~type_constructor_id:candidate.declaration.type_constructor_id
+          ~name)
     |> fun resolved -> Option.or_else resolved (fun () -> BuiltinTypeConstructors.head_of_path name)
   in
   let resolve_named_type_decl name =
@@ -595,7 +601,11 @@ let annotate_type_decl_variances = fun ?cached_by_id type_decls ->
     | TypeRepr.Package signature ->
         List.iter
           (fun (value: TypeRepr.package_value) ->
-            collect_type_variances_into visiting variance acc (TypeScheme.body value.scheme))
+            collect_type_variances_into
+              visiting
+              variance
+              acc
+              (TypeScheme.body value.scheme))
           signature.values
     | TypeRepr.Var var -> (
         match var.link with
@@ -710,7 +720,10 @@ let annotate_type_decl_variances = fun ?cached_by_id type_decls ->
 let type_decls_for_include = VisibleTypes.type_decls_for_include
 
 let type_decls_for_module_alias = fun visible_types ~alias_name ~module_path ->
-  VisibleTypes.type_decls_for_module_alias visible_types ~alias_name ~module_path
+  VisibleTypes.type_decls_for_module_alias
+    visible_types
+    ~alias_name
+    ~module_path
 
 let make ~imported_world ~config file =
   let base_visible_types =
@@ -768,12 +781,16 @@ let with_local_rigid_equations = fun (state: t) f ->
       raise exn
 
 let resolve_named_type_head = fun (state: t) name ->
-  VisibleTypes.resolve_named_type_head state.visible_types name
+  VisibleTypes.resolve_named_type_head
+    state.visible_types
+    name
 
 let canonicalize_type = fun (state: t) -> VisibleTypes.resolve_type state.visible_types
 
 let canonicalize_scheme = fun (state: t) scheme ->
-  canonicalize_scheme_with (canonicalize_type state) scheme
+  canonicalize_scheme_with
+    (canonicalize_type state)
+    scheme
 
 let canonicalize_scheme_with_name_resolution = fun ~resolve_named_type_decl ~resolve_named_type_head scheme ->
   canonicalize_scheme_with
@@ -781,7 +798,11 @@ let canonicalize_scheme_with_name_resolution = fun ~resolve_named_type_decl ~res
     scheme
 
 let canonicalize_type_with_name_resolution = fun ~resolve_named_type_decl ~resolve_named_type_head ty ->
-  resolve_type_with ~make:TypeRepr.of_desc ~resolve_named_type_decl ~resolve_named_type_head ty
+  resolve_type_with
+    ~make:TypeRepr.of_desc
+    ~resolve_named_type_decl
+    ~resolve_named_type_head
+    ty
 
 let canonicalize_type_decl_with_name_resolution = fun ~resolve_named_type_decl ~resolve_named_type_head (
   type_decl: FileSummary.type_decl
@@ -857,7 +878,9 @@ let visible_type_decls = fun (state: t) -> VisibleTypes.type_decls state.visible
 let visible_type_decl = fun (state: t) name -> VisibleTypes.lookup state.visible_types name
 
 let visible_type_decl_by_id = fun (state: t) type_constructor_id ->
-  VisibleTypes.lookup_by_id state.visible_types type_constructor_id
+  VisibleTypes.lookup_by_id
+    state.visible_types
+    type_constructor_id
 
 let fresh_binding_local_id = fun (state: t) ->
   let local_id = state.next_binding_local_id in

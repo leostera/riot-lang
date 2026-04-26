@@ -282,10 +282,14 @@ let compare_fix_provider = fun (left: Fix_provider.t) (right: Fix_provider.t) ->
     compare_path left.source_path right.source_path
 
 let compare_profile_override = fun (left_name, _) (right_name, _) ->
-  String.compare left_name right_name
+  String.compare
+    left_name
+    right_name
 
 let compare_target_override = fun (left_name, _) (right_name, _) ->
-  String.compare left_name right_name
+  String.compare
+    left_name
+    right_name
 
 let compare_foreign_dependency = fun (left: foreign_dependency) (right: foreign_dependency) ->
   let by_name = String.compare left.name right.name in
@@ -759,7 +763,9 @@ let validate_requirement = fun ~dependency_name requirement ->
   | Error error -> Error (InvalidDependencyRequirement { dependency_name; requirement; error })
 
 let requirement_is_any = fun requirement ->
-  String.equal (Version.requirement_to_string requirement) "*"
+  String.equal
+    (Version.requirement_to_string requirement)
+    "*"
 
 let normalize_source_locator = fun raw ->
   let raw = String.trim raw in

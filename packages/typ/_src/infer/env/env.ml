@@ -76,7 +76,9 @@ let empty = {
 let empty_summary = Summary2.empty
 
 let type_decl_key = fun (type_decl: FileSummary.type_decl) ->
-  SurfacePath.append_name type_decl.scope_path type_decl.declaration.type_name
+  SurfacePath.append_name
+    type_decl.scope_path
+    type_decl.declaration.type_name
 
 let qualify_scheme_with_scope = fun ~root (scope: module_scope) scheme ->
   let local_type_decls = Type_env.type_decls scope.types in
@@ -239,7 +241,10 @@ let summary_snapshot = fun (env: t) -> env.summary
 let summary_bind = fun summary (env: t) -> Summary2.bind summary env.summary
 
 let summary_bind_in_scope = fun summary ~scope_path (env: t) ->
-  Summary2.bind_in_scope summary ~scope_path env.summary
+  Summary2.bind_in_scope
+    summary
+    ~scope_path
+    env.summary
 
 let summary_open = Summary2.open_
 
@@ -476,7 +481,10 @@ let of_bindings = fun bindings ->
       bind_in_scope_modules
         env
         ~scope_path
-        { empty with values = Value_env.of_bindings [ binding ] })
+        {
+          empty with
+          values = Value_env.of_bindings [ binding ];
+        })
     {
       empty with
       summary = Summary2.snapshot
@@ -512,7 +520,10 @@ let of_type_decls = fun type_decls ->
           }
         in
         bind_in_scope_modules env ~scope_path:type_decl.scope_path introduced)
-    { empty with summary = Summary2.snapshot ~bindings:[] ~type_decls }
+    {
+      empty with
+      summary = Summary2.snapshot ~bindings:[] ~type_decls;
+    }
 
 let of_entries = fun ~make_id ~provenance entries ->
   entries
@@ -703,7 +714,9 @@ let lookup_record_decls = fun env label_name ->
   |> dedupe_record_decls
 
 let lookup_record_decl_by_owner = fun env owner_type_constructor_id ->
-  Label_env.lookup_owned env.labels owner_type_constructor_id
+  Label_env.lookup_owned
+    env.labels
+    owner_type_constructor_id
 
 let rec scope_bindings_with_prefix: SurfacePath.t -> module_scope -> bindings = fun prefix scope ->
   let values =
@@ -885,7 +898,9 @@ let singleton_module_scope = fun ~name scope -> {
 }
 
 let singleton_module = fun ~name module_env ->
-  singleton_module_scope ~name (module_scope_of_env module_env)
+  singleton_module_scope
+    ~name
+    (module_scope_of_env module_env)
 
 let entries_of_module_scope_for_include = fun ~module_path (scope: module_scope) ->
   {

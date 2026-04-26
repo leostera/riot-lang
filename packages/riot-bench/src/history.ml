@@ -16,11 +16,8 @@ let load_recent_suite_runs = Storage.load_recent_suite_runs
 
 let save_suite_run = Storage.save_suite_run
 
-let history_sample = fun (stored: stored_suite_run) statistics -> {
-  run_id = stored.run_id;
-  partial = stored.partial;
-  statistics;
-}
+let history_sample = fun (stored: stored_suite_run) statistics ->
+  { run_id = stored.run_id; partial = stored.partial; statistics }
 
 let benchmark_history = fun previous_runs (current_result: bench_case_result) ->
   match current_result.result with
@@ -28,19 +25,17 @@ let benchmark_history = fun previous_runs (current_result: bench_case_result) ->
   | Skipped -> None
   | Completed current ->
       let history =
-        List.filter_map
-          previous_runs
+        List.filter_map previous_runs
           ~fn:(fun (stored: stored_suite_run) ->
             let previous_result =
-              List.find
-                stored.suite_run.benchmarks
+              List.find stored.suite_run.benchmarks
                 ~fn:(fun (previous_result: bench_case_result) ->
                   String.equal previous_result.name current_result.name)
             in
             match previous_result with
-            | Some { result = Completed stats; _ } -> Some (history_sample stored stats)
-            | Some { result = Failed _; _ }
-            | Some { result = Skipped; _ }
+            | Some { result=Completed stats; _ } -> Some (history_sample stored stats)
+            | Some { result=Failed _; _ }
+            | Some { result=Skipped; _ }
             | None -> None)
       in
       if List.is_empty history then
@@ -64,12 +59,10 @@ let comparison_case_history = fun previous_runs description (
   current_case: bench_comparison_case_result
 ) ->
   let history =
-    List.filter_map
-      previous_runs
+    List.filter_map previous_runs
       ~fn:(fun (stored: stored_suite_run) ->
         let comparison =
-          List.find
-            stored.suite_run.comparisons
+          List.find stored.suite_run.comparisons
             ~fn:(fun (comparison: bench_comparison_result) ->
               String.equal comparison.description description)
         in
@@ -77,8 +70,7 @@ let comparison_case_history = fun previous_runs description (
         | None -> None
         | Some comparison ->
             let previous_case =
-              List.find
-                comparison.case_results
+              List.find comparison.case_results
                 ~fn:(fun (previous_case: bench_comparison_case_result) ->
                   String.equal previous_case.name current_case.name)
             in
@@ -112,7 +104,6 @@ let compare_suite_run = fun context ~package_name ~suite_name ~(current:suite_ru
       ~fn:(fun comparison ->
         List.filter_map
           comparison.case_results
-          ~fn:(fun current_case ->
-            comparison_case_history previous_runs comparison.description current_case))
+          ~fn:(fun current_case -> comparison_case_history previous_runs comparison.description current_case))
   in
   Ok { benchmarks; comparisons }

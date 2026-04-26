@@ -17,7 +17,11 @@ let explicit_root_library_path_fix_planner_artifacts_version = "planner-artifact
 let nested_sibling_dependency_fix_planner_artifacts_version = "planner-artifacts:v13"
 
 let make_test_workspace = fun tmpdir packages ->
-  Riot_model.Workspace.make_realized ~root:tmpdir ~packages ~target_dir:"target" ()
+  Riot_model.Workspace.make_realized
+    ~root:tmpdir
+    ~packages
+    ~target_dir:"target"
+    ()
 
 let make_package = fun tmpdir name ->
   let pkg_dir = Path.(tmpdir / Path.v name) in
@@ -359,7 +363,12 @@ let plan_dev_package_actions_with_library = fun ~library ~tmpdir ~package_name ~
         ^ describe_plan_result result)
 
 let plan_dev_package_actions = fun ~tmpdir ~package_name ~files ~binaries ->
-  plan_dev_package_actions_with_library ~library:None ~tmpdir ~package_name ~files ~binaries
+  plan_dev_package_actions_with_library
+    ~library:None
+    ~tmpdir
+    ~package_name
+    ~files
+    ~binaries
 
 let plan_runtime_package_actions = fun ~tmpdir ~package_name ~files ~binaries ->
   let package = make_package_with_files ~library:None ~tmpdir ~package_name ~files ~binaries in
@@ -413,7 +422,9 @@ let find_module_node_by_label = fun graph label ->
       List.find
         nodes
         ~fn:(fun (node: Riot_planner.Module_node.t G.node) ->
-          String.equal (module_node_label node) label)
+          String.equal
+            (module_node_label node)
+            label)
   | Error _ -> None
 
 let find_library_node = fun graph ->
@@ -809,7 +820,9 @@ let test_dev_scope_no_library_tests_include_package_named_helpers = fun _ctx ->
                 List.any
                   libraries
                   ~fn:(fun library ->
-                    String.ends_with ~suffix:"Hello_world.cmxa" (Path.to_string library))
+                    String.ends_with
+                      ~suffix:"Hello_world.cmxa"
+                      (Path.to_string library))
               then
                 Error ("did not expect no-library test executable to link missing package archive; libraries: "
                 ^ path_list_to_string libraries)
@@ -841,7 +854,9 @@ let test_dev_scope_tests_can_import_own_runtime_library_root = fun _ctx ->
                 List.any
                   libraries
                   ~fn:(fun library ->
-                    String.ends_with ~suffix:"Self_lib.cmxa" (Path.to_string library))
+                    String.ends_with
+                      ~suffix:"Self_lib.cmxa"
+                      (Path.to_string library))
               then
                 Ok ()
               else

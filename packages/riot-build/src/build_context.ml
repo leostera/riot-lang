@@ -5,23 +5,13 @@ type error =
   | InvalidRequestedParallelism of int
 
 type public_event =
-  | BuildingTarget of {
-      target: Riot_model.Target.t;
-      host: bool;
-    }
+  | BuildingTarget of { target: Riot_model.Target.t; host: bool }
   | CacheGc of Riot_store.Cache_gc.event
   | Phase of Event.runtime_phase
 
 type Std.Telemetry.event +=
-  | Public_build_event of {
-      session_id: Riot_model.Session_id.t;
-      event: public_event;
-    }
-  | Flush_build_events of {
-      session_id: Riot_model.Session_id.t;
-      reply_to: Pid.t;
-      request_id: int;
-    }
+  | Public_build_event of { session_id: Riot_model.Session_id.t; event: public_event }
+  | Flush_build_events of { session_id: Riot_model.Session_id.t; reply_to: Pid.t; request_id: int }
 
 type Message.t +=
   | Build_events_flushed of { request_id: int }
@@ -63,13 +53,12 @@ let forward_telemetry_event = fun context (event: Std.Telemetry.event) ->
       | CacheGc event -> context.on_event (Event.CacheGc event)
       | Phase phase -> context.on_event (Event.Phase phase)
     )
-  | Flush_build_events { session_id; reply_to; request_id } when same_session
-    session_id
-    context.session_id -> send reply_to (Build_events_flushed { request_id })
+  | Flush_build_events { session_id; reply_to; request_id } when same_session session_id context.session_id ->
+      send reply_to (Build_events_flushed { request_id })
   | _ -> (
       match Telemetry_events.event_session_id event with
-      | Some session_id when same_session session_id context.session_id ->
-          context.on_event (Event.Telemetry event)
+      | Some session_id when same_session session_id context.session_id -> context.on_event
+        (Event.Telemetry event)
       | Some _
       | None -> ()
     )
@@ -80,7 +69,7 @@ let flush_events = fun context ->
     (Flush_build_events { session_id = context.session_id; reply_to = self (); request_id });
   let selector message =
     match message with
-    | Build_events_flushed { request_id = got } when Int.equal got request_id -> `select ()
+    | Build_events_flushed { request_id=got } when Int.equal got request_id -> `select ()
     | _ -> `skip
   in
   receive ~selector ()
@@ -99,8 +88,7 @@ let make = fun ?(on_event = no_event) request ->
     workspace;
     profile = Request.Internal.profile request;
     host = Riot_model.Target.current;
-    toolchain_config = Riot_model.Toolchain_config.from_root
-      ~root:workspace.Riot_model.Workspace.root;
+    toolchain_config = Riot_model.Toolchain_config.from_root ~root:workspace.Riot_model.Workspace.root;
     parallelism = Int.max 1 parallelism;
     on_event;
   }

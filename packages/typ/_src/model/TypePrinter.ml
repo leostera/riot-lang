@@ -86,7 +86,9 @@ let rec visit_children = fun state ty ->
   | TypeRepr.Package signature ->
       List.iter
         (fun (value: TypeRepr.package_value) ->
-          discover_recursive_aliases state (TypeScheme.body value.scheme))
+          discover_recursive_aliases
+            state
+            (TypeScheme.body value.scheme))
         signature.values
   | TypeRepr.PolyVariant { tags; inherited; _ } ->
       List.iter

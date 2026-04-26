@@ -281,7 +281,9 @@ let self = fun () ->
 let worker_count = fun t -> Array.length t.workers
 
 let worker_by_id = fun t worker_id ->
-  Array.get_unchecked t.workers ~at:(Runtime_scheduler_id.to_int worker_id)
+  Array.get_unchecked
+    t.workers
+    ~at:(Runtime_scheduler_id.to_int worker_id)
 
 let is_valid_worker_id = fun t worker_id ->
   let idx = Runtime_scheduler_id.to_int worker_id in
@@ -431,7 +433,10 @@ let wake_process_from_message = fun t slot ->
     )
 
 let get_process_slot = fun t pid ->
-  with_process_shard t.processes pid (fun shard -> HashMap.get shard.processes ~key:pid)
+  with_process_shard
+    t.processes
+    pid
+    (fun shard -> HashMap.get shard.processes ~key:pid)
 
 let get_process = fun t pid ->
   match get_process_slot t pid with
@@ -470,7 +475,9 @@ let maybe_shutdown_if_empty = fun t ->
     request_shutdown t ~status:(Atomic.get t.status)
 
 let push_reactor_command = fun t cmd ->
-  with_reactor_commands t (fun () -> Queue.push t.reactor_commands ~value:cmd)
+  with_reactor_commands
+    t
+    (fun () -> Queue.push t.reactor_commands ~value:cmd)
 
 let drain_reactor_commands = fun t ->
   with_reactor_commands
@@ -484,7 +491,9 @@ let drain_reactor_commands = fun t ->
       drain [])
 
 let has_pending_reactor_commands = fun t ->
-  with_reactor_commands t (fun () -> not (Queue.is_empty t.reactor_commands))
+  with_reactor_commands
+    t
+    (fun () -> not (Queue.is_empty t.reactor_commands))
 
 let add_timer = fun t ~now ~duration_nanos ~mode ~action ->
   if Atomic.get t.stop then
@@ -558,7 +567,11 @@ let spawn_on_worker_with_placement = fun t ~worker_id ~placement fn ->
   pid
 
 let spawn_on_worker = fun t ~worker_id fn ->
-  spawn_on_worker_with_placement t ~worker_id ~placement:Normal fn
+  spawn_on_worker_with_placement
+    t
+    ~worker_id
+    ~placement:Normal
+    fn
 
 let spawn = fun t fn ->
   let worker_id = pick_spawn_worker t in

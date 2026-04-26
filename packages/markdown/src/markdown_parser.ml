@@ -2,7 +2,6 @@ open Std
 open Std.Collections
 open Markdown_syntax_kind
 open Markdown_diagnostic
-
 module Syntax_kind = Markdown_syntax_kind
 
 type inline_node =
@@ -13,16 +12,8 @@ type inline_node =
   | Code_span of string
   | Hard_break
   | Raw_html of string
-  | Link of {
-      label: inline_node list;
-      destination: string;
-      title: string option;
-    }
-  | Image of {
-      alt: inline_node list;
-      destination: string;
-      title: string option;
-    }
+  | Link of { label: inline_node list; destination: string; title: string option }
+  | Image of { alt: inline_node list; destination: string; title: string option }
 
 type table_alignment =
   | Default
@@ -36,55 +27,23 @@ type table_row = {
 }
 
 type block_node =
-  | Heading of {
-      level: int;
-      inlines: inline_node list;
-      span: Ceibo.Span.t;
-    }
-  | Paragraph of {
-      inlines: inline_node list;
-      span: Ceibo.Span.t;
-    }
-  | Block_quote of {
-      blocks: block_node list;
-      span: Ceibo.Span.t;
-    }
+  | Heading of { level: int; inlines: inline_node list; span: Ceibo.Span.t }
+  | Paragraph of { inlines: inline_node list; span: Ceibo.Span.t }
+  | Block_quote of { blocks: block_node list; span: Ceibo.Span.t }
   | List of {
       ordered: bool;
       start: int;
       tight: bool;
       items: block_node list list;
-      span: Ceibo.Span.t;
+      span: Ceibo.Span.t
     }
-  | Task_list_item of {
-      checked: bool;
-      blocks: block_node list;
-      span: Ceibo.Span.t;
-    }
-  | List_item of {
-      blocks: block_node list;
-      span: Ceibo.Span.t;
-    }
-  | Code_block of {
-      info: string;
-      code: string;
-      span: Ceibo.Span.t;
-      fenced: bool;
-    }
+  | Task_list_item of { checked: bool; blocks: block_node list; span: Ceibo.Span.t }
+  | List_item of { blocks: block_node list; span: Ceibo.Span.t }
+  | Code_block of { info: string; code: string; span: Ceibo.Span.t; fenced: bool }
   | Horizontal_rule of Ceibo.Span.t
-  | Raw_html of {
-      html: string;
-      span: Ceibo.Span.t;
-    }
-  | Table of {
-      header: table_row;
-      rows: table_row list;
-      span: Ceibo.Span.t;
-    }
-  | Error_block of {
-      message: string;
-      span: Ceibo.Span.t;
-    }
+  | Raw_html of { html: string; span: Ceibo.Span.t }
+  | Table of { header: table_row; rows: table_row list; span: Ceibo.Span.t }
+  | Error_block of { message: string; span: Ceibo.Span.t }
 
 type parsed = {
   source: string;
@@ -97,7 +56,10 @@ type flavor =
   | Markdown
   | Gfm
 
-type line = { text: string; start: int }
+type line = {
+  text: string;
+  start: int;
+}
 
 type list_marker = {
   indent: int;
@@ -186,7 +148,8 @@ let count_indent = fun text max_indent ->
             index
           else
             loop (index + 1) next
-      | _ -> index
+      | _ ->
+          index
   in
   loop 0 0
 
@@ -248,11 +211,13 @@ let consume_list_padding = fun text offset column ->
       (index, current_column, true)
     else
       match char_at text index with
-      | ' ' -> loop (index + 1) (current_column + 1)
+      | ' ' ->
+          loop (index + 1) (current_column + 1)
       | '\t' ->
           let next_column = next_tab_stop current_column in
           loop (index + 1) next_column
-      | _ -> (index, current_column, false)
+      | _ ->
+          (index, current_column, false)
   in
   let (padding_end, padding_column, at_end) = loop offset column in
   let padding_width = padding_column - column in
@@ -393,10 +358,14 @@ let parse_reference_destination_piece = fun text start ->
                 None
             else
               loop (index + 1) (depth - 1) true
-        | '(' -> loop (index + 1) (depth + 1) true
-        | '<' -> None
-        | '\\' when index + 1 < len -> loop (index + 2) depth true
-        | _ -> loop (index + 1) depth true
+        | '(' ->
+            loop (index + 1) (depth + 1) true
+        | '<' ->
+            None
+        | '\\' when index + 1 < len ->
+            loop (index + 2) depth true
+        | _ ->
+            loop (index + 1) depth true
     in
     loop start 0 false
 
@@ -531,10 +500,7 @@ let parse_reference_definition_paragraph = fun lines start ->
         let current = array_at lines index in
         let text = normalize_reference_line current.text in
         let rev_texts = text :: acc in
-        let candidate =
-          List.reverse rev_texts
-          |> String.concat "\n"
-        in
+        let candidate = List.reverse rev_texts |> String.concat "\n" in
         let best =
           match parse_reference_definition_prefix_end candidate with
           | Some end_index ->
@@ -546,8 +512,11 @@ let parse_reference_definition_paragraph = fun lines start ->
         gather (index + 1) rev_texts best
     in
     match gather start [] None with
-    | Some (text, next) ->
-        Some (node Syntax_kind.Paragraph [ token Syntax_kind.Text text ], next, [])
+    | Some (text, next) -> Some (
+      node Syntax_kind.Paragraph [ token Syntax_kind.Text text ],
+      next,
+      []
+    )
     | None -> None
 
 let find_substring = fun text start pattern ->
@@ -626,12 +595,10 @@ let make_control_diagnostics = fun source ->
       let char = char_at source index in
       if Char.code char < 32 && char_not char '\t' && char_not char '\n' && char_not char '\r' then
         let found = { kind = "control"; text = repeat_char 1 char } in
-        let diag =
-          unexpected_control_character
-            ~found
-            ~code:(Char.code char)
-            ~span:(make_span ~start:index ~len:1)
-        in
+        let diag = unexpected_control_character
+          ~found
+          ~code:(Char.code char)
+          ~span:(make_span ~start:index ~len:1) in
         loop (index + 1) (diag :: diags)
       else
         loop (index + 1) diags
@@ -657,10 +624,7 @@ let parse_heading = fun text ->
   else if char_not (char_at text after_hash) ' ' && char_not (char_at text after_hash) '\t' then
     None
   else
-    let raw =
-      substring text (after_hash + 1) (len - after_hash - 1)
-      |> trim_right
-    in
+    let raw = substring text (after_hash + 1) (len - after_hash - 1) |> trim_right in
     let raw_len = String.length raw in
     if raw_len = 0 then
       Some (level, "")
@@ -680,9 +644,7 @@ let parse_heading = fun text ->
         else if before_hashes < 0 then
           ""
         else if is_space (char_at raw before_hashes) then
-          substring raw 0 before_hashes
-          |> trim_right
-          |> trim
+          substring raw 0 before_hashes |> trim_right |> trim
         else
           trim raw
       in
@@ -694,10 +656,7 @@ let parse_thematic_break = fun text ->
   if indent > 3 then
     None
   else
-    let line =
-      remove_prefix text indent_offset
-      |> trim_right
-    in
+    let line = remove_prefix text indent_offset |> trim_right in
     let len = String.length line in
     if len < 3 then
       None
@@ -725,10 +684,7 @@ let parse_setext_underline = fun text ->
   if indent > 3 then
     None
   else
-    let line =
-      remove_prefix text indent_offset
-      |> trim_right
-    in
+    let line = remove_prefix text indent_offset |> trim_right in
     let len = String.length line in
     if len = 0 then
       None
@@ -831,10 +787,7 @@ let parse_fenced_code_block = fun lines start ->
         let rec collect_code_lines index acc =
           if index >= Array.length lines then
             (None, List.reverse acc)
-          else if parse_fence_close
-            marker_len
-            marker
-            (array_at lines index) then
+          else if parse_fence_close marker_len marker (array_at lines index) then
             (Some index, List.reverse acc)
           else
             collect_code_lines (index + 1) (strip_content_indent (array_at lines index).text :: acc)
@@ -851,13 +804,12 @@ let parse_fenced_code_block = fun lines start ->
               let span = make_span ~start:first.start ~len:(line_end first - first.start) in
               let found = { kind = "fence"; text = marker_text } in
               let diag = unclosed_fenced_code_block ~found ~opener:marker_text ~span in
-              let children =
-                (
-                  if info = "" then
-                    []
-                  else
-                    [ token Syntax_kind.Info_string info ]
-                ) @ [ token Syntax_kind.Text content ]
+              let children = (
+                if info = "" then
+                  []
+                else
+                  [ token Syntax_kind.Info_string info ]
+              ) @ [ token Syntax_kind.Text content ]
               in
               Some (node Syntax_kind.Fenced_code_block children, Array.length lines, [ diag ])
           | (Some close_index, code_lines) ->
@@ -867,13 +819,12 @@ let parse_fenced_code_block = fun lines start ->
                 else
                   String.concat "\n" code_lines ^ "\n"
               in
-              let children =
-                (
-                  if info = "" then
-                    []
-                  else
-                    [ token Syntax_kind.Info_string info ]
-                ) @ [ token Syntax_kind.Text content ]
+              let children = (
+                if info = "" then
+                  []
+                else
+                  [ token Syntax_kind.Info_string info ]
+              ) @ [ token Syntax_kind.Text content ]
               in
               Some (node Syntax_kind.Fenced_code_block children, close_index + 1, [])
         )
@@ -927,10 +878,7 @@ let parse_indented_code_block = fun lines start ->
             else
               head :: tail
       in
-      let code_lines =
-        code_lines
-        |> drop_trailing_blank
-      in
+      let code_lines = code_lines |> drop_trailing_blank in
       let content =
         if code_lines = [] then
           ""
@@ -984,9 +932,10 @@ let parse_list_marker = fun text ->
             start_number = 1;
           }
         else if is_space (char_at text (indent_offset + 1)) then
-          let (marker_after, marker_after_columns) =
-            consume_list_padding text (indent_offset + 1) (indent + 1)
-          in
+          let (marker_after, marker_after_columns) = consume_list_padding
+            text
+            (indent_offset + 1)
+            (indent + 1) in
           Some {
             indent;
             indent_offset;
@@ -1012,8 +961,7 @@ let parse_list_marker = fun text ->
           None
         else if (char_at text digits_end) = '.' || (char_at text digits_end) = ')' then
           (
-            match substring text indent_offset digit_len
-            |> Int.parse with
+            match substring text indent_offset digit_len |> Int.parse with
             | None -> None
             | Some start_number ->
                 let (marker_after, marker_after_columns) =
@@ -1050,9 +998,7 @@ let list_interrupts_paragraph = fun text ->
         let padding = marker.marker_after_columns - marker_column in
         match strip_columns_from text marker_end marker_column padding with
         | Some (_, content) -> trim content
-        | None ->
-            remove_prefix text marker.marker_after
-            |> trim
+        | None -> remove_prefix text marker.marker_after |> trim
       in
       String.length content > 0 && ((not marker.ordered) || marker.start_number = 1)
   | None -> false
@@ -1289,8 +1235,7 @@ let scan_html_tag_name = fun text start ->
     if finish <= start then
       None
     else
-      Some (substring text start (finish - start)
-      |> String.lowercase_ascii, finish)
+      Some (substring text start (finish - start) |> String.lowercase_ascii, finish)
 
 let scan_html_attribute_name = fun text start ->
   let len = String.length text in
@@ -1360,7 +1305,8 @@ let scan_html_open_tag_end = fun text ->
             None
           else
             match char_at text index with
-            | '>' -> Some (tag, index + 1)
+            | '>' ->
+                Some (tag, index + 1)
             | '/' ->
                 if index + 1 < len && (char_at text (index + 1)) = '>' then
                   Some (tag, index + 2)
@@ -1374,7 +1320,8 @@ let scan_html_open_tag_end = fun text ->
                 else
                   (
                     match char_at text after_space with
-                    | '>' -> Some (tag, after_space + 1)
+                    | '>' ->
+                        Some (tag, after_space + 1)
                     | '/' ->
                         if after_space + 1 < len && (char_at text (after_space + 1)) = '>' then
                           Some (tag, after_space + 2)
@@ -1399,7 +1346,8 @@ let scan_html_open_tag_end = fun text ->
                             )
                       )
                   )
-            | _ -> None
+            | _ ->
+                None
         in
         loop after_name
 
@@ -1438,8 +1386,7 @@ let type_6_html_block = fun trimmed ->
         1
     in
     match scan_html_tag_name trimmed start with
-    | Some (tag, finish) when List.contains html_block_tags ~value:tag
-    && html_tag_boundary trimmed finish -> Some Html_block_6
+    | Some (tag, finish) when List.contains html_block_tags ~value:tag && html_tag_boundary trimmed finish -> Some Html_block_6
     | _ -> None
 
 let type_7_html_block = fun trimmed ->
@@ -1538,8 +1485,7 @@ let rec parse_block_quote = fun flavor lines start ->
           || list_interrupts_paragraph text
           || is_some (parse_block_quote_prefix text)
           || is_some (parse_thematic_break text)
-          || html_block_interrupts text
-        in
+          || html_block_interrupts text in
         let rec opens_paragraph text =
           match parse_block_quote_prefix text with
           | Some (_, nested) -> opens_paragraph nested
@@ -1604,12 +1550,10 @@ let rec parse_block_quote = fun flavor lines start ->
           else
             opens_paragraph content
         in
-        let (quote_lines, next) =
-          collect
-            (start + 1)
-            [ { text = content; start = first.start + content_start } ]
-            paragraph_open
-        in
+        let (quote_lines, next) = collect
+          (start + 1)
+          [ { text = content; start = first.start + content_start } ]
+          paragraph_open in
         let nested_lines = Array.from_list quote_lines in
         let (blocks, diagnostics) = parse_blocks ~flavor nested_lines 0 in
         Some (node Syntax_kind.Block_quote blocks, next, diagnostics)
@@ -1658,8 +1602,9 @@ and parse_table = fun flavor lines start ->
               else
                 match parse_table_row flavor (array_at lines index).text with
                 | None -> (List.reverse acc, index)
-                | Some row ->
-                    collect_rows (index + 1) (node Syntax_kind.Table_row (normalize_row row) :: acc)
+                | Some row -> collect_rows
+                  (index + 1)
+                  (node Syntax_kind.Table_row (normalize_row row) :: acc)
             in
             let (rows, next) = collect_rows (start + 2) [] in
             Some (
@@ -1690,8 +1635,7 @@ and parse_list = fun flavor lines start ->
           || is_some (parse_block_quote_prefix text)
           || is_some (parse_thematic_break text)
           || is_some (parse_setext_underline text)
-          || html_block_interrupts text
-        in
+          || html_block_interrupts text in
         let rec opens_paragraph text =
           match parse_block_quote_prefix text with
           | Some (_, nested) -> opens_paragraph nested
@@ -1722,8 +1666,7 @@ and parse_list = fun flavor lines start ->
         let list_item_marker marker =
           marker.ordered = first.ordered
           && Char.equal marker.marker_char first.marker_char
-          && marker.indent <= first.indent + 3
-        in
+          && marker.indent <= first.indent + 3 in
         let item_head_text text marker =
           let marker_end = marker.indent_offset + marker.marker_len in
           let marker_column = marker.indent + marker.marker_len in
@@ -1741,9 +1684,8 @@ and parse_list = fun flavor lines start ->
             match parse_list_marker (array_at lines index).text with
             | Some marker when sibling_marker marker
             && Option.is_none (parse_thematic_break (array_at lines index).text) -> true
-            | _ ->
-                has_content
-                && Option.is_some (drop_indent_columns (array_at lines index).text continuation_min)
+            | _ -> has_content
+            && Option.is_some (drop_indent_columns (array_at lines index).text continuation_min)
         in
         let rec collect_item_body continuation_min sibling_marker index acc had_blank paragraph_open has_content =
           if index >= Array.length lines then
@@ -1769,16 +1711,14 @@ and parse_list = fun flavor lines start ->
               | _ -> (
                   match drop_indent_columns text continuation_min with
                   | Some _ when not has_content && had_blank -> (index, List.reverse acc, had_blank)
-                  | Some (content_offset, content) ->
-                      collect_item_body
-                        continuation_min
-                        sibling_marker
-                        (index + 1)
-                        ({ text = content; start = (array_at lines index).start + content_offset }
-                        :: acc)
-                        had_blank
-                        ((not (String.equal content "")) && opens_paragraph content)
-                        (has_content || not (String.equal content ""))
+                  | Some (content_offset, content) -> collect_item_body
+                    continuation_min
+                    sibling_marker
+                    (index + 1)
+                    ({ text = content; start = (array_at lines index).start + content_offset } :: acc)
+                    had_blank
+                    ((not (String.equal content "")) && opens_paragraph content)
+                    (has_content || not (String.equal content ""))
                   | None ->
                       if paragraph_open && not had_blank && not (paragraph_interrupts text) then
                         collect_item_body
@@ -1796,8 +1736,7 @@ and parse_list = fun flavor lines start ->
         let diagnostics = Vector.with_capacity ~size:4 in
         let rec collect_items index acc loose =
           if index >= Array.length lines then
-            (List.reverse acc, index, Vector.to_array diagnostics
-            |> Array.to_list, loose)
+            (List.reverse acc, index, Vector.to_array diagnostics |> Array.to_list, loose)
           else
             match parse_list_marker (array_at lines index).text with
             | Some marker when list_item_marker marker
@@ -1817,20 +1756,18 @@ and parse_list = fun flavor lines start ->
                 in
                 let continuation_min = marker.marker_after_columns in
                 let sibling_marker next_marker =
-                  list_item_marker next_marker && next_marker.indent < continuation_min
-                in
-                let (next_index, body_lines, body_has_blank) =
-                  collect_item_body
-                    continuation_min
-                    sibling_marker
-                    (index + 1)
-                    [ { text = body_text; start = head_start } ]
-                    false
-                    ((not (String.equal body_text "")) && opens_paragraph body_text)
-                    (not (String.equal body_text ""))
-                in
+                  list_item_marker next_marker && next_marker.indent < continuation_min in
+                let (next_index, body_lines, body_has_blank) = collect_item_body
+                  continuation_min
+                  sibling_marker
+                  (index + 1)
+                  [ { text = body_text; start = head_start } ]
+                  false
+                  ((not (String.equal body_text "")) && opens_paragraph body_text)
+                  (not (String.equal body_text "")) in
                 let trailing_blank =
-                  body_has_blank && match List.reverse body_lines with
+                  body_has_blank
+                  && match List.reverse body_lines with
                   | [] -> false
                   | line :: _ -> String.equal line.text ""
                 in
@@ -1840,7 +1777,8 @@ and parse_list = fun flavor lines start ->
                     columns_of_prefix text offset
                   in
                   let rec loop = function
-                    | [] -> false
+                    | [] ->
+                        false
                     | { text; _ } :: tail when String.equal text "" ->
                         let rec next_nonblank = function
                           | [] -> false
@@ -1851,7 +1789,8 @@ and parse_list = fun flavor lines start ->
                           true
                         else
                           loop tail
-                    | _ :: tail -> loop tail
+                    | _ :: tail ->
+                        loop tail
                   in
                   loop body_lines
                 in
@@ -1872,11 +1811,11 @@ and parse_list = fun flavor lines start ->
                   | _ -> false
                 in
                 let item_loose =
-                  trailing_blank || (
+                  trailing_blank
+                  || (
                     body_has_blank && match body_blocks with
                     | [ only ] when is_list_block only || is_code_block only -> false
-                    | [ first_block; second_block ] when Ceibo.Green.kind first_block
-                    = Syntax_kind.Paragraph
+                    | [first_block;second_block] when Ceibo.Green.kind first_block = Syntax_kind.Paragraph
                     && is_list_block second_block -> blank_before_direct_child_list
                     | _ -> true
                   )
@@ -1892,8 +1831,7 @@ and parse_list = fun flavor lines start ->
                 |> List.for_each ~fn:(fun diagnostic -> Vector.push diagnostics ~value:diagnostic);
                 collect_items next_index (item :: acc) (loose || item_loose)
               )
-            | _ -> (List.reverse acc, index, Vector.to_array diagnostics
-            |> Array.to_list, loose)
+            | _ -> (List.reverse acc, index, Vector.to_array diagnostics |> Array.to_list, loose)
         in
         let (items, next, diagnostics, loose) = collect_items start [] false in
         if items = [] then
@@ -2027,17 +1965,16 @@ and parse_paragraph = fun flavor lines start ->
                     else
                       collect (index + 1) (normalize_paragraph_line line :: acc)
             in
-            let (next, setext, texts) =
-              collect (start + 1) [ normalize_paragraph_line (array_at lines start).text ]
-            in
+            let (next, setext, texts) = collect
+              (start + 1)
+              [ normalize_paragraph_line (array_at lines start).text ] in
             let text = String.concat "\n" texts in
             let setext_text =
               texts
               |> List.map
                 ~fn:(fun line ->
                   let indent = count_indent line 3 in
-                  remove_prefix line indent
-                  |> trim_right)
+                  remove_prefix line indent |> trim_right)
               |> String.concat "\n"
             in
             (
@@ -2096,13 +2033,11 @@ and parse_blocks = fun ~flavor lines start ->
     | None -> parse_blocks ~flavor lines (start + 1)
 
 let lines_of_tokens = fun tokens ->
-  tokens
-  |> List.filter_map
+  tokens |> List.filter_map
     ~fn:(fun token ->
       match token.Markdown_token.kind with
       | Markdown_token.Line_text -> Some { text = token.text; start = token.span.start }
-      | _ -> None)
-  |> Array.from_list
+      | _ -> None) |> Array.from_list
 
 let parse = fun ?(flavor = Markdown) source ->
   let source = Markdown_lexer.normalize_newlines source in
@@ -2113,12 +2048,7 @@ let parse = fun ?(flavor = Markdown) source ->
     let (blocks, diagnostics) = parse_blocks ~flavor lines 0 in
     let diagnostics = List.append control_diagnostics diagnostics in
     let tree = Ceibo.Green.make_node ~kind:Syntax_kind.Document ~children:blocks in
-    {
-      source;
-      tokens;
-      tree;
-      diagnostics;
-    }
+    { source; tokens; tree; diagnostics }
   with
   | exn ->
       let message = Exception.to_string exn in
@@ -2131,5 +2061,5 @@ let parse = fun ?(flavor = Markdown) source ->
         tree = Ceibo.Green.make_node
           ~kind:Syntax_kind.Document
           ~children:[ node Syntax_kind.Error [ token Syntax_kind.Text message ] ];
-        diagnostics = List.append control_diagnostics [ diagnostic ];
+        diagnostics = List.append control_diagnostics [ diagnostic ]
       }

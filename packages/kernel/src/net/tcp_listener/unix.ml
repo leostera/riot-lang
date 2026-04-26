@@ -14,11 +14,9 @@ type error =
   | System of System_error.t
 
 module FFI = struct
-  external bind: string -> int -> bool -> bool -> int -> (t, int) Result.t =
-    "kernel_new_net_tcp_listener_bind"
+  external bind: string -> int -> bool -> bool -> int -> (t, int) Result.t = "kernel_new_net_tcp_listener_bind"
 
-  external accept: t -> ((Tcp_stream.t * (string * int)), int) Result.t =
-    "kernel_new_net_tcp_listener_accept"
+  external accept: t -> ((Tcp_stream.t * (string * int)), int) Result.t = "kernel_new_net_tcp_listener_accept"
 
   external close: t -> (unit, int) Result.t = "kernel_new_net_socket_close"
 
@@ -36,12 +34,12 @@ let socket_addr_of_pair = fun (ip, port) ->
 
 let error_to_string = fun value ->
   match value with
-  | InvalidBacklog { backlog } ->
-      String.concat "" [ "invalid listener backlog: "; Int.to_string backlog ]
-  | InvalidSocketAddr { ip; port } ->
-      String.concat
-        ""
-        [ "invalid socket address returned by backend: "; ip; ":"; Int.to_string port; ]
+  | InvalidBacklog { backlog } -> String.concat
+    ""
+    [ "invalid listener backlog: "; Int.to_string backlog ]
+  | InvalidSocketAddr { ip; port } -> String.concat
+    ""
+    [ "invalid socket address returned by backend: "; ip; ":"; Int.to_string port; ]
   | WouldBlock -> "operation would block"
   | AddressInUse -> "address already in use"
   | AddressNotAvailable -> "address not available"
@@ -66,21 +64,18 @@ let bind = fun ?(reuse_addr = true) ?(reuse_port = false) ?(backlog = 128) addr 
     |> Result.map_err ~fn:(fun code -> error_of_system (System_error.from_code code))
 
 let accept = fun listener ->
-  let* (stream, addr) =
-    FFI.accept listener
-    |> Result.map_err ~fn:(fun code -> error_of_system (System_error.from_code code))
-  in
-  let* addr = socket_addr_of_pair addr in Result.Ok (stream, addr)
+  let* (stream, addr) = FFI.accept listener
+  |> Result.map_err ~fn:(fun code -> error_of_system (System_error.from_code code)) in
+  let* addr = socket_addr_of_pair addr in
+  Result.Ok (stream, addr)
 
 let close = fun listener ->
   FFI.close listener
   |> Result.map_err ~fn:(fun code -> error_of_system (System_error.from_code code))
 
 let local_addr = fun listener ->
-  let* addr =
-    FFI.local_addr listener
-    |> Result.map_err ~fn:(fun code -> error_of_system (System_error.from_code code))
-  in
+  let* addr = FFI.local_addr listener
+  |> Result.map_err ~fn:(fun code -> error_of_system (System_error.from_code code)) in
   socket_addr_of_pair addr
 
 let to_source = fun fd ->

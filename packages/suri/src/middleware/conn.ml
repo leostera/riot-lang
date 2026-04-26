@@ -170,7 +170,11 @@ let upgrade_websocket = fun opts handler t -> {
 let get_upgrade = fun t -> t.upgrade
 
 let to_response = fun t ->
-  Web_server.Response.make t.resp_status ~headers:t.resp_headers ~body:t.resp_body ()
+  Web_server.Response.make
+    t.resp_status
+    ~headers:t.resp_headers
+    ~body:t.resp_body
+    ()
 
 let assign = fun key value t ->
   let _ = HashMap.insert t.assigns ~key ~value in

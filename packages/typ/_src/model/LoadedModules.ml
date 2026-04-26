@@ -62,15 +62,22 @@ let len = fun loaded_modules -> loaded_modules.count
 let is_empty = fun loaded_modules -> Int.equal loaded_modules.count 0
 
 let get = fun loaded_modules ~required_name ->
-  Collections.HashMap.get loaded_modules.by_required_name required_name
+  Collections.HashMap.get
+    loaded_modules.by_required_name
+    required_name
 
 let contains = fun loaded_modules ~required_name ->
-  Collections.HashMap.contains_key loaded_modules.by_required_name required_name
+  Collections.HashMap.contains_key
+    loaded_modules.by_required_name
+    required_name
 
 let iter = fun f loaded_modules -> Collections.HashMap.iter f loaded_modules.by_required_name
 
 let fold = fun f loaded_modules init ->
-  Collections.HashMap.fold f loaded_modules.by_required_name init
+  Collections.HashMap.fold
+    f
+    loaded_modules.by_required_name
+    init
 
 let merge = fun ~preferred ~fallback ~combine ->
   let by_required_name = Collections.HashMap.with_capacity (preferred.count + fallback.count) in
