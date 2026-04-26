@@ -177,6 +177,8 @@
 0990_prefix_deref_context_parentheses.ml
 0991_parenthesized_pipeline_idempotency.ml
 0992_fun_application_record_argument.ml
+0993_negative_prefix_application_arguments.ml
+0994_tuple_fun_element_parentheses.ml
 
 # 91xx copied real-file regressions
 9101_real_krasny_doc.ml

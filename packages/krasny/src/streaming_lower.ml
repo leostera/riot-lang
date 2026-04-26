@@ -4940,6 +4940,22 @@ let expr_is_single_line_literal = fun expr ->
 let prefix_operator_is_negative = fun operator ->
   token_text_is operator "-" || token_text_is operator "-."
 
+let rec expr_is_nonliteral_negative_prefix = fun expr ->
+  match Ast.Expr.view expr with
+  | Parenthesized { inner=Some inner } when not (same_ast_node expr inner) ->
+      expr_is_nonliteral_negative_prefix inner
+  | Prefix { operator=Some operator; operand=Some operand } ->
+      let operator_tokens = collect_prefix_operator_tokens expr in
+      let last_operator =
+        if Int.equal (Vector.length operator_tokens) 0 then
+          operator
+        else
+          Vector.get_unchecked operator_tokens ~at:(Int.sub (Vector.length operator_tokens) 1)
+      in
+      prefix_operator_is_negative last_operator && not (expr_is_literal operand)
+  | _ ->
+      false
+
 let render_prefix_operator_tokens = fun state operator_tokens fallback_operator ->
   if Int.equal (Vector.length operator_tokens) 0 then
     (
@@ -5241,18 +5257,38 @@ and render_method_call_expr = fun state expr target method_ ->
   emit_token state method_
 
 and tuple_expr_should_break = fun state expr ->
-  match expr_flat_width expr with
-  | Some width -> Int.(state.column + width > state.width)
-  | None -> false
+  if tuple_expr_has_nonfinal_fun_item expr then
+    true
+  else
+    match expr_flat_width expr with
+    | Some width -> Int.(state.column + width > state.width)
+    | None -> false
+
+and tuple_expr_has_nonfinal_fun_item = fun expr ->
+  let items = collect_tuple_expr_items expr in
+  let length = Vector.length items in
+  let rec loop index =
+    if Int.(index >= Int.sub length 1) then
+      false
+    else if expr_is_fun_or_parenthesized_fun (Vector.get_unchecked items ~at:index) then
+      true
+    else
+      loop (Int.add index 1)
+  in
+  loop 0
+
+and render_tuple_expr_item = fun state ~length ~index item ->
+  if
+    expr_is_tuple item || (Int.(index < Int.sub length 1) && expr_is_fun_or_parenthesized_fun item)
+  then
+    render_expr_atom state item
+  else
+    render_expr state item
 
 and render_tuple_expr = fun state expr ->
   let items = collect_tuple_expr_items expr in
-  let render_item item =
-    if expr_is_tuple item then
-      render_expr_atom state item
-    else
-      render_expr state item
-  in
+  let length = Vector.length items in
+  let render_item index item = render_tuple_expr_item state ~length ~index item in
   let render_inline () =
     emit_text state "(";
     render_tuple_expr_contents state items ~render_item;
@@ -5268,7 +5304,7 @@ and render_tuple_expr = fun state expr ->
           let rec loop index =
             if Int.(index < length) then
               (
-                render_item (Vector.get_unchecked items ~at:index);
+                render_item index (Vector.get_unchecked items ~at:index);
                 if Int.(index < Int.sub length 1) then
                   (
                     emit_text state ",";
@@ -5285,11 +5321,20 @@ and render_tuple_expr = fun state expr ->
     render_inline ()
 
 and render_tuple_expr_contents = fun state items ~render_item ->
-  emit_joined_vector state items
-    ~sep:(fun () ->
-      emit_text state ",";
-      emit_space state)
-    ~fn:render_item
+  let length = Vector.length items in
+  let rec loop index =
+    if Int.(index < length) then
+      (
+        render_item index (Vector.get_unchecked items ~at:index);
+        if Int.(index < Int.sub length 1) then
+          (
+            emit_text state ",";
+            emit_space state
+          );
+        loop (Int.add index 1)
+      )
+  in
+  loop 0
 
 and render_expr_atom = fun state expr ->
   match Ast.Expr.view expr with
@@ -5621,7 +5666,10 @@ and render_apply_argument = fun state arg ->
         | _ -> render_expr_atom state arg
       )
     | _ ->
-        render_expr_atom state arg
+        if expr_is_nonliteral_negative_prefix arg then
+          render_parenthesized_expr state arg
+        else
+          render_expr_atom state arg
   in
   render_split_arg arg
 
@@ -6242,12 +6290,8 @@ and render_local_open_expr = fun state expr ->
           if expr_is_tuple body then
             (
               let items = collect_tuple_expr_items body in
-              let render_item item =
-                if expr_is_tuple item then
-                  render_expr_atom state item
-                else
-                  render_expr state item
-              in
+              let length = Vector.length items in
+              let render_item index item = render_tuple_expr_item state ~length ~index item in
               render_tuple_expr_contents state items ~render_item
             )
           else
