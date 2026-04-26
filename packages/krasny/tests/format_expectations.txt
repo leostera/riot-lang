@@ -181,6 +181,8 @@
 0994_tuple_fun_element_parentheses.ml
 0995_parenthesized_tuple_pattern_break.ml
 0996_else_parenthesized_sequence.ml
+0997_long_fun_parameters.ml
+0998_binding_operator_multiline_in.ml
 
 # 91xx copied real-file regressions
 9101_real_krasny_doc.ml
