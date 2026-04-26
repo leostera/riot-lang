@@ -115,11 +115,10 @@ let normalize_size = fun raw ->
       ~fn:(fun index c ->
         if Char.equal c ' ' || Char.equal c '\t' then
           index
-        else
-          (
-            IO.Bytes.set_unchecked compact ~at:index ~char:c;
-            index + 1
-          ))
+        else (
+          IO.Bytes.set_unchecked compact ~at:index ~char:c;
+          index + 1
+        ))
       ~init:0
       raw
   in
@@ -216,11 +215,10 @@ let normalize_duration = fun raw ->
       ~fn:(fun index c ->
         if Char.equal c ' ' || Char.equal c '\t' then
           index
-        else
-          (
-            IO.Bytes.set_unchecked compact ~at:index ~char:c;
-            index + 1
-          ))
+        else (
+          IO.Bytes.set_unchecked compact ~at:index ~char:c;
+          index + 1
+        ))
       ~init:0
       raw
   in

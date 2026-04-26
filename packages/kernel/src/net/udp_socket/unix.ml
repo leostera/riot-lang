@@ -20,7 +20,8 @@ type error =
   | System of System_error.t
 
 module FFI = struct
-  external bind: string -> int -> bool -> bool -> (t, int) Result.t = "kernel_new_net_udp_socket_bind"
+  external bind: string -> int -> bool -> bool -> (t, int) Result.t =
+    "kernel_new_net_udp_socket_bind"
 
   external connect: t -> string -> int -> (unit, int) Result.t = "kernel_new_net_udp_socket_connect"
 
@@ -30,11 +31,13 @@ module FFI = struct
 
   external recv: t -> bytes -> int -> int -> (int, int) Result.t = "kernel_new_net_udp_socket_recv"
 
-  external recv_from: t -> bytes -> int -> int -> ((int * (string * int)), int) Result.t = "kernel_new_net_udp_socket_recv_from"
+  external recv_from: t -> bytes -> int -> int -> ((int * (string * int)), int) Result.t =
+    "kernel_new_net_udp_socket_recv_from"
 
   external send: t -> bytes -> int -> int -> (int, int) Result.t = "kernel_new_net_udp_socket_send"
 
-  external send_to: t -> string -> int -> bytes -> (int * int) -> (int, int) Result.t = "kernel_new_net_udp_socket_send_to"
+  external send_to: t -> string -> int -> bytes -> (int * int) -> (int, int) Result.t =
+    "kernel_new_net_udp_socket_send_to"
 end
 
 let validate_slice = fun buf ~pos ~len ->
@@ -54,19 +57,21 @@ let socket_addr_of_pair = fun (ip, port) ->
 
 let error_to_string = fun value ->
   match value with
-  | InvalidSlice { pos; len; buffer_len } -> String.concat
-    ""
-    [
-      "invalid buffer slice: pos=";
-      Int.to_string pos;
-      ", len=";
-      Int.to_string len;
-      ", buffer_len=";
-      Int.to_string buffer_len;
-    ]
-  | InvalidSocketAddr { ip; port } -> String.concat
-    ""
-    [ "invalid socket address returned by backend: "; ip; ":"; Int.to_string port; ]
+  | InvalidSlice { pos; len; buffer_len } ->
+      String.concat
+        ""
+        [
+          "invalid buffer slice: pos=";
+          Int.to_string pos;
+          ", len=";
+          Int.to_string len;
+          ", buffer_len=";
+          Int.to_string buffer_len;
+        ]
+  | InvalidSocketAddr { ip; port } ->
+      String.concat
+        ""
+        [ "invalid socket address returned by backend: "; ip; ":"; Int.to_string port; ]
   | WouldBlock -> "operation would block"
   | TimedOut -> "timed out"
   | ConnectionRefused -> "connection refused"
@@ -108,15 +113,14 @@ let connect = fun socket addr ->
     ~fn:(fun code -> error_of_system (System_error.from_code code))
 
 let close = fun socket ->
-  Result.map_err (FFI.close socket) ~fn:(fun code -> error_of_system (System_error.from_code code))
+  Result.map_err
+    (FFI.close socket)
+    ~fn:(fun code -> error_of_system (System_error.from_code code))
 
-let local_addr = fun socket ->
-  let* addr =
-    Result.map_err
-      (FFI.local_addr socket)
-      ~fn:(fun code -> error_of_system (System_error.from_code code))
-  in
-  socket_addr_of_pair addr
+let local_addr = fun socket -> let* addr =
+  Result.map_err
+    (FFI.local_addr socket)
+    ~fn:(fun code -> error_of_system (System_error.from_code code)) in socket_addr_of_pair addr
 
 let recv = fun socket ?(pos = 0) ?len buf ->
   let len = Option.unwrap_or len ~default:(Bytes.length buf - pos) in
@@ -127,14 +131,11 @@ let recv = fun socket ?(pos = 0) ?len buf ->
 
 let recv_from = fun socket ?(pos = 0) ?len buf ->
   let len = Option.unwrap_or len ~default:(Bytes.length buf - pos) in
-  let* () = validate_slice buf ~pos ~len in
-  let* (read_count, addr) =
+  let* () = validate_slice buf ~pos ~len in let* (read_count, addr) =
     Result.map_err
       (FFI.recv_from socket buf pos len)
-      ~fn:(fun code -> error_of_system (System_error.from_code code))
-  in
-  let* addr = socket_addr_of_pair addr in
-  Result.Ok (read_count, addr)
+      ~fn:(fun code -> error_of_system (System_error.from_code code)) in let* addr =
+    socket_addr_of_pair addr in Result.Ok (read_count, addr)
 
 let send = fun socket ?(pos = 0) ?len buf ->
   let len = Option.unwrap_or len ~default:(Bytes.length buf - pos) in
@@ -157,10 +158,18 @@ let to_source = fun fd ->
     type nonrec t = t
 
     let register = fun fd selector token interest ->
-      Async.Adapter.Selector.register selector ~fd ~token ~interest
+      Async.Adapter.Selector.register
+        selector
+        ~fd
+        ~token
+        ~interest
 
     let reregister = fun fd selector token interest ->
-      Async.Adapter.Selector.reregister selector ~fd ~token ~interest
+      Async.Adapter.Selector.reregister
+        selector
+        ~fd
+        ~token
+        ~interest
 
     let deregister = fun fd selector -> Async.Adapter.Selector.deregister selector ~fd
   end in

@@ -76,17 +76,14 @@ let raw_end = fun raw_tokens raw_index ->
     (raw_at raw_tokens raw_index).Raw_token.span.Ceibo.Span.end_
 
 let include_range = fun frame ~lo ~hi ->
-  if frame.has_range then
-    (
-      frame.frame_raw_lo <- Int.min frame.frame_raw_lo lo;
-      frame.frame_raw_hi <- Int.max frame.frame_raw_hi hi
-    )
-  else
-    (
-      frame.has_range <- true;
-      frame.frame_raw_lo <- lo;
-      frame.frame_raw_hi <- hi
-    )
+  if frame.has_range then (
+    frame.frame_raw_lo <- Int.min frame.frame_raw_lo lo;
+    frame.frame_raw_hi <- Int.max frame.frame_raw_hi hi
+  ) else (
+    frame.has_range <- true;
+    frame.frame_raw_lo <- lo;
+    frame.frame_raw_hi <- hi
+  )
 
 let include_child_range = fun ~(nodes:node Vector.t) ~(tokens:token_leaf Vector.t) frame child ->
   match child with
@@ -195,13 +192,12 @@ module Builder = struct
 
   let copy_pending_children = fun builder first_child limit ->
     let rec loop index =
-      if Int.(index < limit) then
-        (
-          Vector.push
-            builder.child_store
-            ~value:(Vector.get_unchecked builder.pending_children ~at:index);
-          loop Int.(index + 1)
-        )
+      if Int.(index < limit) then (
+        Vector.push
+          builder.child_store
+          ~value:(Vector.get_unchecked builder.pending_children ~at:index);
+        loop Int.(index + 1)
+      )
     in
     loop first_child
 
@@ -267,13 +263,12 @@ module Builder = struct
       let last_child = Vector.get_unchecked builder.pending_children ~at:last_index in
       if not (same_child last_child completed.child) then
         panic "Syntax_tree.Builder.precede expected the completed child to be last"
-      else
-        (
-          truncate_vector builder.pending_children ~len:last_index;
-          let marker = start_node builder in
-          push_child builder completed.child;
-          marker
-        )
+      else (
+        truncate_vector builder.pending_children ~len:last_index;
+        let marker = start_node builder in
+        push_child builder completed.child;
+        marker
+      )
 
   let token = fun builder ~raw_index ->
     builder.event_count <- Int.(builder.event_count + 1);
@@ -389,11 +384,10 @@ let build = fun ~source ~token_stream ~events ->
   in
   let copy_pending_children first_child limit =
     let rec loop index =
-      if Int.(index < limit) then
-        (
-          Vector.push children_store ~value:(Vector.get_unchecked pending_children ~at:index);
-          loop Int.(index + 1)
-        )
+      if Int.(index < limit) then (
+        Vector.push children_store ~value:(Vector.get_unchecked pending_children ~at:index);
+        loop Int.(index + 1)
+      )
     in
     loop first_child
   in
@@ -455,19 +449,18 @@ let build = fun ~source ~token_stream ~events ->
     push_child (Token token_id)
   in
   let rec loop_events index =
-    if Int.(index < event_count) then
+    if Int.(index < event_count) then (
       (
-        (
-          match Event.Buffer.get_unchecked events ~at:index with
-          | Event.StartNode (Some kind) -> push_node kind
-          | Event.StartNode None -> push_node Syntax_kind.ERROR
-          | Event.FinishNode -> pop_node ()
-          | Event.Token raw_index -> push_token raw_index
-          | Event.Missing (kind, offset) -> push_child (Missing { kind; offset })
-          | Event.Error _ -> ()
-        );
-        loop_events Int.(index + 1)
-      )
+        match Event.Buffer.get_unchecked events ~at:index with
+        | Event.StartNode (Some kind) -> push_node kind
+        | Event.StartNode None -> push_node Syntax_kind.ERROR
+        | Event.FinishNode -> pop_node ()
+        | Event.Token raw_index -> push_token raw_index
+        | Event.Missing (kind, offset) -> push_child (Missing { kind; offset })
+        | Event.Error _ -> ()
+      );
+      loop_events Int.(index + 1)
+    )
   in
   loop_events 0;
   let root =
@@ -513,11 +506,10 @@ let child_at = fun (tree: t) (node: node) index ->
 
 let for_each_child = fun (tree: t) (node: node) ~fn ->
   let rec loop index =
-    if index < node.child_count then
-      (
-        fn (Vector.get_unchecked tree.children ~at:(node.first_child + index));
-        loop (index + 1)
-      )
+    if index < node.child_count then (
+      fn (Vector.get_unchecked tree.children ~at:(node.first_child + index));
+      loop (index + 1)
+    )
   in
   loop 0
 

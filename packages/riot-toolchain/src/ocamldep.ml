@@ -68,22 +68,18 @@ let deps = fun t ~cwd ~file ~package_namespace ->
         Log.trace ("[OCAMLDEP] Error for " ^ file_str);
         ""
   in
-  if deps_str = "" then
-    (
-      Log.trace ("[OCAMLDEP] No deps for " ^ file_str);
-      []
-    )
-  else
+  if deps_str = "" then (
+    Log.trace ("[OCAMLDEP] No deps for " ^ file_str);
+    []
+  ) else
     (* Output format: "file.ml: Module1 Module2 Module3" *)
     match String.split ~by:":" deps_str with
     | [ _; deps_part ] ->
         let deps = String.trim deps_part in
-        if deps = "" then
-          (
-            Log.trace ("[OCAMLDEP] Empty deps part for " ^ file_str);
-            []
-          )
-        else
+        if deps = "" then (
+          Log.trace ("[OCAMLDEP] Empty deps part for " ^ file_str);
+          []
+        ) else
           let result =
             String.split ~by:" " deps
             |> List.map ~fn:String.trim

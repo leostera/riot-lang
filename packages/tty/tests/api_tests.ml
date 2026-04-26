@@ -55,22 +55,20 @@ let test_mode_switching = fun _ctx ->
       (* Start in line-buffered mode *)
       if Tty.mode tty != Tty.LineBuffered then
         Error "Expected LineBuffered mode initially"
-      else
-        (
-          (* Switch to raw *)
-          Tty.set_raw tty;
-          if Tty.mode tty != Tty.Immediate then
-            Error "Expected Immediate mode after set_raw"
+      else (
+        (* Switch to raw *)
+        Tty.set_raw tty;
+        if Tty.mode tty != Tty.Immediate then
+          Error "Expected Immediate mode after set_raw"
+        else (
+          (* Switch back to line-buffered *)
+          Tty.set_line_buffered tty;
+          if Tty.mode tty != Tty.LineBuffered then
+            Error "Expected LineBuffered mode after set_line_buffered"
           else
-            (
-              (* Switch back to line-buffered *)
-              Tty.set_line_buffered tty;
-              if Tty.mode tty != Tty.LineBuffered then
-                Error "Expected LineBuffered mode after set_line_buffered"
-              else
-                Ok ()
-            )
+            Ok ()
         )
+      )
 
 let test_set_raw_is_idempotent = fun _ctx ->
   match Tty.make () with
@@ -101,14 +99,13 @@ let test_suspend_resume = fun _ctx ->
       Tty.suspend tty;
       if Tty.mode tty != Tty.LineBuffered then
         Error "Expected suspend to move an immediate tty into line-buffered mode"
-      else
-        (
-          Tty.resume tty;
-          if Tty.mode tty = Tty.Immediate then
-            Ok ()
-          else
-            Error "Expected resume to restore immediate mode after suspend"
-        )
+      else (
+        Tty.resume tty;
+        if Tty.mode tty = Tty.Immediate then
+          Ok ()
+        else
+          Error "Expected resume to restore immediate mode after suspend"
+      )
 
 let test_restore_is_idempotent = fun _ctx ->
   match Tty.make () with

@@ -1,5 +1,6 @@
 open Std
 open Std.Collections
+
 module Slice = IO.IoVec.IoSlice
 
 type mode =
@@ -115,54 +116,46 @@ let last_slice_line_width = fun slice ->
 
 let write_indent = fun writer ->
   let rec loop remaining =
-    if remaining > 0 then
-      (
-        IO.Buffer.add_char writer.buffer ' ';
-        loop (remaining - 1)
-      )
+    if remaining > 0 then (
+      IO.Buffer.add_char writer.buffer ' ';
+      loop (remaining - 1)
+    )
   in
   loop writer.indent
 
 let write_pending_spaces = fun writer ->
   let count = writer.pending_spaces in
-  if count > 0 then
-    (
-      for _ = 1 to count do
-        IO.Buffer.add_char writer.buffer ' '
-      done;
-      writer.pending_spaces <- 0;
-      flush_if_needed writer
-    )
+  if count > 0 then (
+    for _ = 1 to count do
+      IO.Buffer.add_char writer.buffer ' '
+    done;
+    writer.pending_spaces <- 0;
+    flush_if_needed writer
+  )
 
 let write_string_segment = fun writer value ~off ~len ->
-  if len > 0 then
-    (
-      if writer.line_start then
-        (
-          writer.pending_spaces <- 0;
-          write_indent writer
-        )
-      else
-        write_pending_spaces writer;
-      IO.Buffer.add_substring writer.buffer value off len;
-      flush_if_needed writer;
-      writer.line_start <- false
-    )
+  if len > 0 then (
+    if writer.line_start then (
+      writer.pending_spaces <- 0;
+      write_indent writer
+    ) else
+      write_pending_spaces writer;
+    IO.Buffer.add_substring writer.buffer value off len;
+    flush_if_needed writer;
+    writer.line_start <- false
+  )
 
 let write_slice_segment = fun writer value ~off ~len ->
-  if len > 0 then
-    (
-      if writer.line_start then
-        (
-          writer.pending_spaces <- 0;
-          write_indent writer
-        )
-      else
-        write_pending_spaces writer;
-      append_subslice_unchecked writer.buffer value ~off ~len;
-      flush_if_needed writer;
-      writer.line_start <- false
-    )
+  if len > 0 then (
+    if writer.line_start then (
+      writer.pending_spaces <- 0;
+      write_indent writer
+    ) else
+      write_pending_spaces writer;
+    append_subslice_unchecked writer.buffer value ~off ~len;
+    flush_if_needed writer;
+    writer.line_start <- false
+  )
 
 let emit_line = fun writer ->
   writer.pending_spaces <- 0;
@@ -174,23 +167,19 @@ let emit_line = fun writer ->
 let emit_text = fun writer value ->
   let length = String.length value in
   let rec loop segment_start index saw_newline =
-    if Int.(index >= length) then
-      (
-        write_string_segment writer value ~off:segment_start ~len:Int.(length - segment_start);
-        writer.column <- if saw_newline then
-          Int.sub length segment_start
-        else
-          writer.column + length
-      )
-    else if Char.equal (String.get_unchecked value ~at:index) '\n' then
-      (
-        write_string_segment writer value ~off:segment_start ~len:Int.(index - segment_start);
-        writer.pending_spaces <- 0;
-        IO.Buffer.add_char writer.buffer '\n';
-        writer.line_start <- true;
-        loop Int.(index + 1) Int.(index + 1) true
-      )
-    else
+    if Int.(index >= length) then (
+      write_string_segment writer value ~off:segment_start ~len:Int.(length - segment_start);
+      writer.column <- if saw_newline then
+        Int.sub length segment_start
+      else
+        writer.column + length
+    ) else if Char.equal (String.get_unchecked value ~at:index) '\n' then (
+      write_string_segment writer value ~off:segment_start ~len:Int.(index - segment_start);
+      writer.pending_spaces <- 0;
+      IO.Buffer.add_char writer.buffer '\n';
+      writer.line_start <- true;
+      loop Int.(index + 1) Int.(index + 1) true
+    ) else
       loop segment_start Int.(index + 1) saw_newline
   in
   loop 0 0 false
@@ -229,13 +218,11 @@ let emit_raw_text = fun writer value ->
   if Int.(length > 0) then
     (
       let starts_with_break = raw_breaks_before_text value in
-      if writer.line_start then
-        (
-          writer.pending_spaces <- 0;
-          if not starts_with_break then
-            write_indent writer
-        )
-      else if starts_with_break then
+      if writer.line_start then (
+        writer.pending_spaces <- 0;
+        if not starts_with_break then
+          write_indent writer
+      ) else if starts_with_break then
         writer.pending_spaces <- 0
       else
         write_pending_spaces writer;
@@ -273,20 +260,16 @@ let emit_raw_text = fun writer value ->
 let emit_slice = fun writer ~has_newline value ->
   let length = Slice.length value in
   if Int.(length > 0) then
-    if has_newline then
-      (
-        if writer.line_start then
-          (
-            writer.pending_spaces <- 0;
-            write_indent writer
-          )
-        else
-          write_pending_spaces writer;
-        append_subslice_unchecked writer.buffer value ~off:0 ~len:length;
-        writer.line_start <- Char.equal (Slice.get_unchecked value ~at:Int.(length - 1)) '\n';
-        writer.column <- last_slice_line_width value
-      )
-    else (
+    if has_newline then (
+      if writer.line_start then (
+        writer.pending_spaces <- 0;
+        write_indent writer
+      ) else
+        write_pending_spaces writer;
+      append_subslice_unchecked writer.buffer value ~off:0 ~len:length;
+      writer.line_start <- Char.equal (Slice.get_unchecked value ~at:Int.(length - 1)) '\n';
+      writer.column <- last_slice_line_width value
+    ) else (
       write_slice_segment writer value ~off:0 ~len:length;
       writer.column <- writer.column + length
     )
@@ -308,11 +291,10 @@ let flat_measure_of_slice = fun ~has_newline value ->
   else
     Some { Doc.flat_width = Slice.length value; stops_at_line = false }
 
-let add_flat_measure = fun left right ->
-  {
-    Doc.flat_width = Int.add left.Doc.flat_width right.Doc.flat_width;
-    stops_at_line = right.Doc.stops_at_line
-  }
+let add_flat_measure = fun left right -> {
+  Doc.flat_width = Int.add left.Doc.flat_width right.Doc.flat_width;
+  stops_at_line = right.Doc.stops_at_line;
+}
 
 let flat_measure = function
   | Empty -> Some { Doc.flat_width = 0; stops_at_line = false }
@@ -346,7 +328,13 @@ let is_multiline_vector = fun docs ->
   in
   loop 0
 
-let node = fun ~flat_measure ~multiline ~shape ~emit -> Node { flat_measure; multiline; shape; emit }
+let node = fun ~flat_measure ~multiline ~shape ~emit ->
+  Node {
+    flat_measure;
+    multiline;
+    shape;
+    emit;
+  }
 
 let text = fun value ->
   if Int.(String.length value = 0) then
@@ -376,10 +364,14 @@ let slice = fun ~has_newline value ->
       ~flat_measure:(flat_measure_of_slice ~has_newline value)
       ~multiline:has_newline
       ~shape:(Slice_shape { value; has_newline })
-      ~emit:(fun writer -> emit_slice writer ~has_newline value)
+      ~emit:(fun writer ->
+        emit_slice writer ~has_newline value)
 
 let space =
-  node ~flat_measure:(Some { Doc.flat_width = 1; stops_at_line = false }) ~multiline:false ~shape:(Space_shape 1)
+  node
+    ~flat_measure:(Some { Doc.flat_width = 1; stops_at_line = false })
+    ~multiline:false
+    ~shape:(Space_shape 1)
     ~emit:(fun writer ->
       if writer.line_start then
         writer.column <- writer.column + 1
@@ -394,7 +386,10 @@ let spaces = fun count ->
   else if Int.(count = 1) then
     space
   else
-    node ~flat_measure:(Some { Doc.flat_width = count; stops_at_line = false }) ~multiline:false ~shape:(Space_shape count)
+    node
+      ~flat_measure:(Some { Doc.flat_width = count; stops_at_line = false })
+      ~multiline:false
+      ~shape:(Space_shape count)
       ~emit:(fun writer ->
         if writer.line_start then
           writer.column <- writer.column + count
@@ -403,14 +398,18 @@ let spaces = fun count ->
           writer.column <- writer.column + count
         ))
 
-let line = node
-  ~flat_measure:(Some { Doc.flat_width = 0; stops_at_line = true })
-  ~multiline:true
-  ~shape:Line_shape
-  ~emit:emit_line
+let line =
+  node
+    ~flat_measure:(Some { Doc.flat_width = 0; stops_at_line = true })
+    ~multiline:true
+    ~shape:Line_shape
+    ~emit:emit_line
 
 let break = fun ?(flat = " ") () ->
-  node ~flat_measure:(Some { Doc.flat_width = String.length flat; stops_at_line = false }) ~multiline:false ~shape:(Break_shape flat)
+  node
+    ~flat_measure:(Some { Doc.flat_width = String.length flat; stops_at_line = false })
+    ~multiline:false
+    ~shape:(Break_shape flat)
     ~emit:(fun writer ->
       match writer.mode with
       | Flat -> emit_text writer flat
@@ -423,15 +422,17 @@ let doc_vector = fun docs ->
   | 0 -> Empty
   | 1 -> Vector.get_unchecked docs ~at:0
   | _ ->
-      node ~flat_measure:(flat_measure_vector docs) ~multiline:(is_multiline_vector docs) ~shape:(Concat_shape docs)
+      node
+        ~flat_measure:(flat_measure_vector docs)
+        ~multiline:(is_multiline_vector docs)
+        ~shape:(Concat_shape docs)
         ~emit:(fun writer ->
           let length = Vector.length docs in
           let rec loop index =
-            if Int.(index < length) then
-              (
-                emit_doc writer (Vector.get_unchecked docs ~at:index);
-                loop (Int.add index 1)
-              )
+            if Int.(index < length) then (
+              emit_doc writer (Vector.get_unchecked docs ~at:index);
+              loop (Int.add index 1)
+            )
           in
           loop 0)
 
@@ -453,18 +454,14 @@ let concat_with = fun ~iter ->
       else
         let last_index = Int.sub current_length 1 in
         match Vector.get_unchecked output ~at:last_index with
-        | Node { shape=Space_shape current; _ } -> Vector.set_unchecked
-          output
-          ~at:last_index
-          ~value:(spaces (Int.add current count))
+        | Node { shape = Space_shape current; _ } ->
+            Vector.set_unchecked output ~at:last_index ~value:(spaces (Int.add current count))
         | _ -> push (spaces count)
   in
   let rec append_doc = function
-    | Empty ->
-        ()
-    | Node { shape=Space_shape count; _ } ->
-        add_spaces count
-    | Node { shape=Break_shape flat; _ } as doc ->
+    | Empty -> ()
+    | Node { shape = Space_shape count; _ } -> add_spaces count
+    | Node { shape = Break_shape flat; _ } as doc ->
         let current_length = Vector.length output in
         if Int.equal current_length 0 then
           push doc
@@ -472,21 +469,18 @@ let concat_with = fun ~iter ->
           let last_index = Int.sub current_length 1 in
           (
             match Vector.get_unchecked output ~at:last_index with
-            | Node { shape=Break_shape current; _ } when String.equal current flat -> ()
+            | Node { shape = Break_shape current; _ } when String.equal current flat -> ()
             | _ -> push doc
           )
-    | Node { shape=Concat_shape docs; _ } ->
-        append_vector docs
-    | doc ->
-        push doc
+    | Node { shape = Concat_shape docs; _ } -> append_vector docs
+    | doc -> push doc
   and append_vector docs =
     let length = Vector.length docs in
     let rec loop index =
-      if Int.(index < length) then
-        (
-          append_doc (Vector.get_unchecked docs ~at:index);
-          loop (Int.add index 1)
-        )
+      if Int.(index < length) then (
+        append_doc (Vector.get_unchecked docs ~at:index);
+        loop (Int.add index 1)
+      )
     in
     loop 0
   in
@@ -496,7 +490,8 @@ let concat_with = fun ~iter ->
 let concat = fun docs -> concat_with ~iter:(fun append_doc -> List.for_each docs ~fn:append_doc)
 
 let concat_vector = fun docs ->
-  concat_with ~iter:(fun append_doc -> Vector.for_each docs ~fn:append_doc)
+  concat_with
+    ~iter:(fun append_doc -> Vector.for_each docs ~fn:append_doc)
 
 let join = fun separator docs ->
   match docs with
@@ -523,22 +518,19 @@ let join_vector = fun separator docs ->
       concat_with
         ~iter:(fun append_doc ->
           let rec loop index =
-            if Int.(index < length) then
-              (
-                if Int.(index > 0) then
-                  append_doc separator;
-                append_doc (Vector.get_unchecked docs ~at:index);
-                loop (Int.add index 1)
-              )
+            if Int.(index < length) then (
+              if Int.(index > 0) then
+                append_doc separator;
+              append_doc (Vector.get_unchecked docs ~at:index);
+              loop (Int.add index 1)
+            )
           in
           loop 0)
 
 let fast_join = fun separator docs ->
   match docs with
-  | [] ->
-      Empty
-  | [ doc ] ->
-      doc
+  | [] -> Empty
+  | [ doc ] -> doc
   | docs ->
       let output = Vector.with_capacity ~size:(Int.sub (Int.mul (List.length docs) 2) 1) in
       let rec loop first = function
@@ -570,51 +562,50 @@ let rec fits = fun ~width remaining ->
   | [] -> true
   | _ when remaining < 0 -> false
   | (_, _, Empty) :: rest -> fits ~width remaining rest
-  | (_, _, Node { shape=Text_shape value; _ }) :: rest ->
+  | (_, _, Node { shape = Text_shape value; _ }) :: rest ->
       if String.contains value "\n" then
         fits ~width (width - last_line_width value) rest
       else
         fits ~width (remaining - String.length value) rest
-  | (_, _, Node { shape=Raw_text_shape value; _ }) :: rest ->
+  | (_, _, Node { shape = Raw_text_shape value; _ }) :: rest ->
       if String.contains value "\n" then
         fits ~width (width - last_line_width value) rest
       else
         fits ~width (remaining - String.length value) rest
-  | (_, _, Node { shape=Slice_shape slice; _ }) :: rest ->
+  | (_, _, Node { shape = Slice_shape slice; _ }) :: rest ->
       if slice.has_newline then
         fits ~width (width - last_slice_line_width slice.value) rest
       else
         fits ~width (remaining - Slice.length slice.value) rest
-  | (_, _, Node { shape=Space_shape count; _ }) :: rest -> fits ~width (remaining - count) rest
-  | (_, _, Node { shape=Line_shape; _ }) :: _ -> true
-  | (_, Flat, Node { shape=Break_shape flat; _ }) :: rest -> fits
-    ~width
-    (remaining - String.length flat)
-    rest
-  | (_, Break, Node { shape=Break_shape _; _ }) :: _ -> true
-  | (indent, _, Node { shape=Group_shape doc; _ }) :: rest -> fits
-    ~width
-    remaining
-    ((indent, Flat, doc) :: rest)
-  | (indent, mode, Node { shape=Concat_shape docs; _ }) :: rest -> fits
-    ~width
-    remaining
-    (push_many indent mode docs rest)
-  | (indent, mode, Node { shape=Indent_shape (extra, doc); _ }) :: rest -> fits
-    ~width
-    remaining
-    ((indent + extra, mode, doc) :: rest)
-  | (_, _, Node { shape=Atom; _ }) :: rest -> fits ~width remaining rest
+  | (_, _, Node { shape = Space_shape count; _ }) :: rest -> fits ~width (remaining - count) rest
+  | (_, _, Node { shape = Line_shape; _ }) :: _ -> true
+  | (_, Flat, Node { shape = Break_shape flat; _ }) :: rest ->
+      fits ~width (remaining - String.length flat) rest
+  | (_, Break, Node { shape = Break_shape _; _ }) :: _ -> true
+  | (indent, _, Node { shape = Group_shape doc; _ }) :: rest ->
+      fits ~width remaining ((indent, Flat, doc) :: rest)
+  | (indent, mode, Node { shape = Concat_shape docs; _ }) :: rest ->
+      fits
+        ~width
+        remaining
+        (push_many indent mode docs rest)
+  | (indent, mode, Node { shape = Indent_shape (extra, doc); _ }) :: rest ->
+      fits ~width remaining ((indent + extra, mode, doc) :: rest)
+  | (_, _, Node { shape = Atom; _ }) :: rest -> fits ~width remaining rest
 
 let group_mode = fun writer doc flat_measure ->
   match flat_measure with
   | Some measure when Int.(measure.Doc.flat_width <= writer.width - writer.column) -> Flat
-  | _ when fits ~width:writer.width (writer.width - writer.column) [ (writer.indent, Flat, doc); ] -> Flat
+  | _ when fits ~width:writer.width (writer.width - writer.column) [ (writer.indent, Flat, doc); ] ->
+      Flat
   | _ -> Break
 
 let group = fun doc ->
   let flat_measure = flat_measure doc in
-  node ~flat_measure ~multiline:(is_multiline doc) ~shape:(Group_shape doc)
+  node
+    ~flat_measure
+    ~multiline:(is_multiline doc)
+    ~shape:(Group_shape doc)
     ~emit:(fun writer ->
       let previous_mode = writer.mode in
       writer.mode <- group_mode writer doc flat_measure;
@@ -625,10 +616,10 @@ let indent = fun spaces doc ->
   if Int.(spaces <= 0) then
     doc
   else
-    node ~flat_measure:(flat_measure doc) ~multiline:(is_multiline doc) ~shape:(Indent_shape (
-      spaces,
-      doc
-    ))
+    node
+      ~flat_measure:(flat_measure doc)
+      ~multiline:(is_multiline doc)
+      ~shape:(Indent_shape (spaces, doc))
       ~emit:(fun writer ->
         let previous_indent = writer.indent in
         let previous_column = writer.column in

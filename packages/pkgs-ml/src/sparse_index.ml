@@ -3,9 +3,8 @@ open Std
 let ( let* ) result fn = Result.and_then result ~fn
 
 let field_value = fun fields ~field ->
-  List.find fields
-    ~fn:(fun (name, _) ->
-      String.equal name field) |> Option.map ~fn:(fun (_, value) -> value)
+  List.find fields ~fn:(fun (name, _) -> String.equal name field)
+  |> Option.map ~fn:(fun (_, value) -> value)
 
 type config = {
   schema_version: int;
@@ -76,10 +75,8 @@ let optional_string_field = fun ~field fields ->
 
 let string_field_with_fallback = fun ~context ~field ~fallback fields ->
   match field_value fields ~field with
-  | Some (Data.Json.String value) ->
-      Ok value
-  | Some _ ->
-      Error (context ^ "." ^ field ^ " must be a string")
+  | Some (Data.Json.String value) -> Ok value
+  | Some _ -> Error (context ^ "." ^ field ^ " must be a string")
   | None -> (
       match field_value fields ~field:fallback with
       | Some (Data.Json.String value) -> Ok value
@@ -90,8 +87,7 @@ let string_field_with_fallback = fun ~context ~field ~fallback fields ->
 let optional_string_list_field = fun ~field fields ->
   match field_value fields ~field with
   | None
-  | Some Data.Json.Null ->
-      Ok []
+  | Some Data.Json.Null -> Ok []
   | Some (Data.Json.Array items) ->
       let rec loop acc = function
         | [] -> Ok (List.reverse acc)
@@ -99,8 +95,7 @@ let optional_string_list_field = fun ~field fields ->
         | _ :: _ -> Error ("field '" ^ field ^ "' must be an array of strings")
       in
       loop [] items
-  | Some _ ->
-      Error ("field '" ^ field ^ "' must be an array of strings")
+  | Some _ -> Error ("field '" ^ field ^ "' must be an array of strings")
 
 let dependency_of_json = fun json ->
   match json with
@@ -115,7 +110,8 @@ let dependencies_of_json = fun json ->
   match json with
   | Data.Json.Array items ->
       let rec loop acc = function
-        | [] -> Ok (List.reverse acc)
+        | [] ->
+            Ok (List.reverse acc)
         | item :: rest -> (
             match dependency_of_json item with
             | Ok dependency -> loop (dependency :: acc) rest
@@ -138,11 +134,12 @@ let release_of_json = fun json ->
       let* canonical_locator = string_field ~context:"release" ~field:"canonical_locator" fields in
       let* repo_url = string_field ~context:"release" ~field:"repo_url" fields in
       let* subdir = string_field ~context:"release" ~field:"subdir" fields in
-      let* artifact_sha256 = string_field_with_fallback
-        ~context:"release"
-        ~field:"artifact_sha256"
-        ~fallback:"sha"
-        fields in
+      let* artifact_sha256 =
+        string_field_with_fallback
+          ~context:"release"
+          ~field:"artifact_sha256"
+          ~fallback:"sha"
+          fields in
       let* description = optional_string_field ~field:"description" fields in
       let* license = optional_string_field ~field:"license" fields in
       let* homepage = optional_string_field ~field:"homepage" fields in
@@ -189,7 +186,8 @@ let releases_of_json = fun json ->
   match json with
   | Data.Json.Array items ->
       let rec loop acc = function
-        | [] -> Ok (List.reverse acc)
+        | [] ->
+            Ok (List.reverse acc)
         | item :: rest -> (
             match release_of_json item with
             | Ok release -> loop (release :: acc) rest
@@ -204,7 +202,8 @@ let config_of_json = fun json ->
   | Data.Json.Object fields ->
       let* schema_version = int_field ~context:"config" ~field:"schema_version" fields in
       let* kind = string_field ~context:"config" ~field:"kind" fields in
-      let* package_path_strategy = string_field ~context:"config" ~field:"package_path_strategy" fields in
+      let* package_path_strategy =
+        string_field ~context:"config" ~field:"package_path_strategy" fields in
       let* index_base_url = string_field ~context:"config" ~field:"index_base_url" fields in
       let* artifact_base_url = string_field ~context:"config" ~field:"artifact_base_url" fields in
       Ok {
@@ -219,7 +218,8 @@ let config_of_json = fun json ->
 let config_of_string = fun source ->
   match Data.Json.of_string source with
   | Ok json -> config_of_json json
-  | Error err -> Error ("failed to parse sparse index config JSON: " ^ Data.Json.error_to_string err)
+  | Error err ->
+      Error ("failed to parse sparse index config JSON: " ^ Data.Json.error_to_string err)
 
 let package_document_of_json = fun json ->
   match json with
@@ -253,7 +253,8 @@ let package_prefix = fun package_name ->
   | 1 -> Path.v "1"
   | 2 -> Path.v "2"
   | 3 -> Path.(Path.v "3" / Path.v (String.sub name ~offset:0 ~len:1))
-  | _ -> Path.(Path.v (String.sub name ~offset:0 ~len:2) / Path.v (String.sub name ~offset:2 ~len:2))
+  | _ ->
+      Path.(Path.v (String.sub name ~offset:0 ~len:2) / Path.v (String.sub name ~offset:2 ~len:2))
 
 let package_relpath = fun package_name ->
   let name = normalized_name package_name in
@@ -275,17 +276,19 @@ let package_document_url = fun config ~package_name ->
   let base_url = ensure_dir_url config.index_base_url in
   match Net.Uri.of_string base_url with
   | Error _ -> Error ("failed to parse sparse index base url '" ^ base_url ^ "'")
-  | Ok base -> Net.Uri.join base (Path.to_string (package_relpath package_name))
-  |> Result.map_err
-    ~fn:(fun _ -> "failed to build sparse index package url for '" ^ package_name ^ "'")
+  | Ok base ->
+      Net.Uri.join base (Path.to_string (package_relpath package_name))
+      |> Result.map_err
+        ~fn:(fun _ -> "failed to build sparse index package url for '" ^ package_name ^ "'")
 
 let release_source_url = fun config (release: release) ->
   let base_url = ensure_dir_url config.artifact_base_url in
   match Net.Uri.of_string base_url with
   | Error _ -> Error ("failed to parse sparse index artifact base url '" ^ base_url ^ "'")
-  | Ok base -> Net.Uri.join base release.source_key
-  |> Result.map_err
-    ~fn:(fun _ -> "failed to build sparse index archive url for '" ^ release.source_key ^ "'")
+  | Ok base ->
+      Net.Uri.join base release.source_key
+      |> Result.map_err
+        ~fn:(fun _ -> "failed to build sparse index archive url for '" ^ release.source_key ^ "'")
 
 let package_cache_path = fun cache ~package_name ->
   Path.(Registry_cache.index_dir cache / package_relpath package_name)
@@ -295,29 +298,35 @@ let config_cache_path = fun cache -> Path.(Registry_cache.index_dir cache / Path
 let read_cached_json = fun ~path ~decode ->
   match Fs.exists path with
   | Error err ->
-      Error ("failed to check sparse index file '" ^ Path.to_string path ^ "': " ^ IO.error_message err)
-  | Ok false ->
-      Ok None
-  | Ok true -> (
-      match Fs.read path with
-      | Error err -> Error ("failed to read sparse index file '"
+      Error ("failed to check sparse index file '"
       ^ Path.to_string path
       ^ "': "
       ^ IO.error_message err)
+  | Ok false -> Ok None
+  | Ok true -> (
+      match Fs.read path with
+      | Error err ->
+          Error ("failed to read sparse index file '"
+          ^ Path.to_string path
+          ^ "': "
+          ^ IO.error_message err)
       | Ok source -> (
           match decode source with
           | Ok document -> Ok (Some document)
-          | Error err -> Error ("failed to decode sparse index file '"
-          ^ Path.to_string path
-          ^ "': "
-          ^ err)
+          | Error err ->
+              Error ("failed to decode sparse index file '" ^ Path.to_string path ^ "': " ^ err)
         )
     )
 
-let read_cached_config = fun cache -> read_cached_json ~path:(config_cache_path cache) ~decode:config_of_string
+let read_cached_config = fun cache ->
+  read_cached_json
+    ~path:(config_cache_path cache)
+    ~decode:config_of_string
 
 let read_cached_package_document = fun cache ~package_name ->
-  read_cached_json ~path:(package_cache_path cache ~package_name) ~decode:package_document_of_string
+  read_cached_json
+    ~path:(package_cache_path cache ~package_name)
+    ~decode:package_document_of_string
 
 let write_cached_json = fun ~path ~source ->
   let ensure_parent =
@@ -326,27 +335,37 @@ let write_cached_json = fun ~path ~source ->
     | None -> Ok ()
   in
   match ensure_parent with
-  | Error err -> Error ("failed to create sparse index parent directory for '"
-  ^ Path.to_string path
-  ^ "': "
-  ^ IO.error_message err)
-  | Ok () -> (
-      match Fs.write source path with
-      | Ok () -> Ok ()
-      | Error err -> Error ("failed to write sparse index file '"
+  | Error err ->
+      Error ("failed to create sparse index parent directory for '"
       ^ Path.to_string path
       ^ "': "
       ^ IO.error_message err)
+  | Ok () -> (
+      match Fs.write source path with
+      | Ok () -> Ok ()
+      | Error err ->
+          Error ("failed to write sparse index file '"
+          ^ Path.to_string path
+          ^ "': "
+          ^ IO.error_message err)
     )
 
-let write_cached_config = fun cache ~source -> write_cached_json ~path:(config_cache_path cache) ~source
+let write_cached_config = fun cache ~source ->
+  write_cached_json
+    ~path:(config_cache_path cache)
+    ~source
 
 let write_cached_package_document = fun cache ~package_name ~source ->
-  write_cached_json ~path:(package_cache_path cache ~package_name) ~source
+  write_cached_json
+    ~path:(package_cache_path cache ~package_name)
+    ~source
 
 module Tests = struct
   let expect_relpath = fun ~package_name ~expected ->
-    let actual = package_relpath package_name |> Path.to_string in
+    let actual =
+      package_relpath package_name
+      |> Path.to_string
+    in
     if String.equal actual expected then
       Ok ()
     else
@@ -356,9 +375,7 @@ module Tests = struct
 
   let test_two_character_name () = expect_relpath ~package_name:"ab" ~expected:"2/ab.json" [@test]
 
-  let test_three_character_name () = expect_relpath
-    ~package_name:"abc"
-    ~expected:"3/a/abc.json" [@test]
+  let test_three_character_name () = expect_relpath ~package_name:"abc" ~expected:"3/a/abc.json" [@test]
 
   let test_longer_name () = expect_relpath ~package_name:"cargo" ~expected:"ca/rg/cargo.json" [@test]
 
@@ -367,7 +384,8 @@ module Tests = struct
     ~expected:"ab/cd/abcd.json" [@test]
 
   let test_config_of_json () =
-    let source = {|{
+    let source =
+      {|{
   "schema_version": 1,
   "kind": "sparse",
   "package_path_strategy": "cargo-lowercase-v1",
@@ -390,7 +408,8 @@ module Tests = struct
     | Error err -> Error err [@test]
 
   let test_package_document_of_json () =
-    let source = {|{
+    let source =
+      {|{
   "schema_version": 1,
   "name": "kernel",
   "latest": "0.0.1",
@@ -424,19 +443,18 @@ module Tests = struct
     | Ok document -> (
         match document.releases with
         | [ release ] ->
-            if
-              document.schema_version = 1
-              && String.equal document.name "kernel"
-              && String.equal document.latest "0.0.1"
-              && String.equal release.version "0.0.1"
-              && String.equal release.manifest_key "packages/kernel/0.0.1/2aef0372bf5b6687db05bda80cde55f960cbfd9d.manifest.json"
-              && List.length release.dependencies = 1
-              && (
-                match List.get release.dependencies ~at:0 with
-                | Some dependency -> String.equal dependency.name "std"
-                | None -> false
-              )
-            then
+            if document.schema_version = 1
+            && String.equal document.name "kernel"
+            && String.equal document.latest "0.0.1"
+            && String.equal release.version "0.0.1"
+            && String.equal
+              release.manifest_key
+              "packages/kernel/0.0.1/2aef0372bf5b6687db05bda80cde55f960cbfd9d.manifest.json"
+            && List.length release.dependencies = 1 && (
+              match List.get release.dependencies ~at:0 with
+              | Some dependency -> String.equal dependency.name "std"
+              | None -> false
+            ) then
               Ok ()
             else
               Error "unexpected sparse index package document contents"

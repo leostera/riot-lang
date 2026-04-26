@@ -570,11 +570,10 @@ let bench_reader_parse_string = fun ~chunk_size ~label ~parse payload () ->
       | Http1.Common.Done { value; remaining } -> consume_result value remaining
       | Http1.Common.Need_more -> panic (label ^ ": expected complete payload")
       | Http1.Common.Error error -> panic (label ^ ": parse error: " ^ error)
-    else
-      (
-        StringBuilder.add_string buffer (IO.Buffer.to_string scratch);
-        loop ()
-      )
+    else (
+      StringBuilder.add_string buffer (IO.Buffer.to_string scratch);
+      loop ()
+    )
   in
   loop ()
 

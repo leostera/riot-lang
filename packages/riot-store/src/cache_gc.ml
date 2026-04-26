@@ -34,9 +34,16 @@ type event =
   | GcSkipped of { trigger: trigger; summary: summary }
   | GcCompleted of { trigger: trigger; summary: summary }
   | GcFailed of { trigger: trigger; error: string }
-  | ForceCleanStarted of { build_root: Path.t }
-  | ForceCleanCompleted of { build_root: Path.t }
-  | ForceCleanFailed of { build_root: Path.t; error: string }
+  | ForceCleanStarted of {
+      build_root: Path.t;
+    }
+  | ForceCleanCompleted of {
+      build_root: Path.t;
+    }
+  | ForceCleanFailed of {
+      build_root: Path.t;
+      error: string;
+    }
 
 type cache_entry = {
   hash: string;
@@ -109,7 +116,9 @@ let size_to_string = fun size_bytes ->
 
 let summary_message = fun summary ->
   if not summary.ran_gc then
-    "tracked cache is already within policy (" ^ size_to_string summary.size_after_bytes ^ "); build root kept"
+    "tracked cache is already within policy ("
+    ^ size_to_string summary.size_after_bytes
+    ^ "); build root kept"
   else
     "removed "
     ^ Int.to_string summary.deleted_entries
@@ -142,44 +151,49 @@ let event_message = function
   | GcFailed { error; _ } -> error
   | ForceCleanStarted { build_root } -> "removing build root " ^ Path.to_string build_root
   | ForceCleanCompleted { build_root } -> "removed build root " ^ Path.to_string build_root
-  | ForceCleanFailed { build_root; error } -> "failed to remove build root "
-  ^ Path.to_string build_root
-  ^ ": "
-  ^ error
+  | ForceCleanFailed { build_root; error } ->
+      "failed to remove build root " ^ Path.to_string build_root ^ ": " ^ error
 
 let event_to_json = function
-  | GcStarted { trigger } -> Data.Json.Object [
-    ("type", Data.Json.String "CacheGcStarted");
-    ("trigger", Data.Json.String (trigger_to_string trigger));
-  ]
-  | GcSkipped { trigger; summary } -> Data.Json.Object [
-    ("type", Data.Json.String "CacheGcSkipped");
-    ("trigger", Data.Json.String (trigger_to_string trigger));
-    ("summary", summary_to_json summary);
-  ]
-  | GcCompleted { trigger; summary } -> Data.Json.Object [
-    ("type", Data.Json.String "CacheGcCompleted");
-    ("trigger", Data.Json.String (trigger_to_string trigger));
-    ("summary", summary_to_json summary);
-  ]
-  | GcFailed { trigger; error } -> Data.Json.Object [
-    ("type", Data.Json.String "CacheGcFailed");
-    ("trigger", Data.Json.String (trigger_to_string trigger));
-    ("error", Data.Json.String error);
-  ]
-  | ForceCleanStarted { build_root } -> Data.Json.Object [
-    ("type", Data.Json.String "ForceCleanStarted");
-    ("build_root", Data.Json.String (Path.to_string build_root));
-  ]
-  | ForceCleanCompleted { build_root } -> Data.Json.Object [
-    ("type", Data.Json.String "ForceCleanCompleted");
-    ("build_root", Data.Json.String (Path.to_string build_root));
-  ]
-  | ForceCleanFailed { build_root; error } -> Data.Json.Object [
-    ("type", Data.Json.String "ForceCleanFailed");
-    ("build_root", Data.Json.String (Path.to_string build_root));
-    ("error", Data.Json.String error);
-  ]
+  | GcStarted { trigger } ->
+      Data.Json.Object [
+        ("type", Data.Json.String "CacheGcStarted");
+        ("trigger", Data.Json.String (trigger_to_string trigger));
+      ]
+  | GcSkipped { trigger; summary } ->
+      Data.Json.Object [
+        ("type", Data.Json.String "CacheGcSkipped");
+        ("trigger", Data.Json.String (trigger_to_string trigger));
+        ("summary", summary_to_json summary);
+      ]
+  | GcCompleted { trigger; summary } ->
+      Data.Json.Object [
+        ("type", Data.Json.String "CacheGcCompleted");
+        ("trigger", Data.Json.String (trigger_to_string trigger));
+        ("summary", summary_to_json summary);
+      ]
+  | GcFailed { trigger; error } ->
+      Data.Json.Object [
+        ("type", Data.Json.String "CacheGcFailed");
+        ("trigger", Data.Json.String (trigger_to_string trigger));
+        ("error", Data.Json.String error);
+      ]
+  | ForceCleanStarted { build_root } ->
+      Data.Json.Object [
+        ("type", Data.Json.String "ForceCleanStarted");
+        ("build_root", Data.Json.String (Path.to_string build_root));
+      ]
+  | ForceCleanCompleted { build_root } ->
+      Data.Json.Object [
+        ("type", Data.Json.String "ForceCleanCompleted");
+        ("build_root", Data.Json.String (Path.to_string build_root));
+      ]
+  | ForceCleanFailed { build_root; error } ->
+      Data.Json.Object [
+        ("type", Data.Json.String "ForceCleanFailed");
+        ("build_root", Data.Json.String (Path.to_string build_root));
+        ("error", Data.Json.String error);
+      ]
 
 let sort_uniq_strings = fun values ->
   let rec dedupe acc = function
@@ -191,18 +205,25 @@ let sort_uniq_strings = fun values ->
         else
           dedupe (left :: acc) rest
   in
-  values |> List.sort ~compare:String.compare |> dedupe []
+  values
+  |> List.sort ~compare:String.compare
+  |> dedupe []
 
-let normalize_lane = fun (lane: generation_lane) ->
-  { lane with hashes = sort_uniq_strings lane.hashes }
+let normalize_lane = fun (lane: generation_lane) -> {
+  lane with
+  hashes = sort_uniq_strings lane.hashes;
+}
 
 let normalize_lanes: generation_lane list -> generation_lane list = fun lanes ->
-  lanes |> List.map ~fn:normalize_lane |> List.sort
+  lanes
+  |> List.map ~fn:normalize_lane
+  |> List.sort
     ~compare:(fun (left: generation_lane) (right: generation_lane) ->
       match String.compare left.profile right.profile with
-      | Order.EQ -> String.compare
-        (Riot_model.Target.to_string left.target)
-        (Riot_model.Target.to_string right.target)
+      | Order.EQ ->
+          String.compare
+            (Riot_model.Target.to_string left.target)
+            (Riot_model.Target.to_string right.target)
       | order -> order)
 
 let lane_to_json = fun (lane: generation_lane) ->
@@ -230,11 +251,11 @@ let cache_state_to_json = fun (state: cache_state) ->
     [
       ("schema_version", Data.Json.Int 2);
       ("tracked_size_bytes", Data.Json.String (Int64.to_string state.tracked_size_bytes));
-    ]
-    @ match state.generation_hashes with
-    | Some generation_hashes -> [
-      ("generation_hashes", Data.Json.Array (List.map generation_hashes ~fn:Data.Json.string));
-    ]
+    ] @ match state.generation_hashes with
+    | Some generation_hashes ->
+        [
+          ("generation_hashes", Data.Json.Array (List.map generation_hashes ~fn:Data.Json.string));
+        ]
     | None ->
         [] @ match state.receipt_count with
         | Some receipt_count -> [ ("receipt_count", Data.Json.Int receipt_count); ]
@@ -255,8 +276,9 @@ let generation_lane_of_json = fun json ->
     match Data.Json.get_field "target" json with
     | Some value -> (
         match Data.Json.get_string value with
-        | Some target -> Riot_model.Target.from_string target
-        |> Result.map_err ~fn:Riot_model.Target.error_message
+        | Some target ->
+            Riot_model.Target.from_string target
+            |> Result.map_err ~fn:Riot_model.Target.error_message
         | None -> Error "generation lane is missing string field 'target'"
       )
     | None -> Error "generation lane is missing string field 'target'"
@@ -265,7 +287,8 @@ let generation_lane_of_json = fun json ->
     match Data.Json.get_field "hashes" json with
     | Some (Data.Json.Array hashes) ->
         let rec loop acc = function
-          | [] -> Ok (List.reverse acc)
+          | [] ->
+              Ok (List.reverse acc)
           | value :: rest -> (
               match Data.Json.get_string value with
               | Some hash -> loop (hash :: acc) rest
@@ -282,7 +305,8 @@ let receipt_of_json = fun json ->
     match Data.Json.get_field "lanes" json with
     | Some (Data.Json.Array lanes) ->
         let rec loop acc = function
-          | [] -> Ok (List.reverse acc)
+          | [] ->
+              Ok (List.reverse acc)
           | lane :: rest -> (
               match generation_lane_of_json lane with
               | Ok lane -> loop (lane :: acc) rest
@@ -314,7 +338,8 @@ let cache_state_of_json = fun json ->
                 match Data.Json.get_field "generation_hashes" json with
                 | Some (Data.Json.Array hashes) ->
                     let rec loop acc = function
-                      | [] -> Some (List.reverse acc)
+                      | [] ->
+                          Some (List.reverse acc)
                       | value :: rest -> (
                           match Data.Json.get_string value with
                           | Some hash -> loop (hash :: acc) rest
@@ -336,10 +361,14 @@ let cache_state_of_json = fun json ->
     )
   | None -> Error "cache state is missing string field 'tracked_size_bytes'"
 
-let path_exists = fun path -> Fs.exists path |> Result.unwrap_or ~default:false
+let path_exists = fun path ->
+  Fs.exists path
+  |> Result.unwrap_or ~default:false
 
 let path_is_directory = fun path ->
-  Fs.metadata path |> Result.map ~fn:Fs.Metadata.is_dir |> Result.unwrap_or ~default:false
+  Fs.metadata path
+  |> Result.map ~fn:Fs.Metadata.is_dir
+  |> Result.unwrap_or ~default:false
 
 let list_children = fun dir ->
   if not (path_exists dir) then
@@ -347,9 +376,13 @@ let list_children = fun dir ->
   else
     match Fs.read_dir dir with
     | Error _ -> []
-    | Ok reader -> Std.Iter.MutIterator.to_list reader |> List.map ~fn:(Path.join dir)
+    | Ok reader ->
+        Std.Iter.MutIterator.to_list reader
+        |> List.map ~fn:(Path.join dir)
 
-let list_subdirectories = fun dir -> list_children dir |> List.filter ~fn:path_is_directory
+let list_subdirectories = fun dir ->
+  list_children dir
+  |> List.filter ~fn:path_is_directory
 
 let is_json_file = fun path ->
   String.ends_with ~suffix:".json" (Path.basename path) && not (path_is_directory path)
@@ -373,9 +406,10 @@ let is_hash_dir_name = fun name ->
   len = 64 && loop 0
 
 let receipt_paths_desc = fun ~(workspace:Workspace.t) ->
-  list_children (generations_root ~workspace) |> List.filter ~fn:is_json_file |> List.sort
-    ~compare:(fun left right ->
-      String.compare (Path.basename right) (Path.basename left))
+  list_children (generations_root ~workspace)
+  |> List.filter ~fn:is_json_file
+  |> List.sort
+    ~compare:(fun left right -> String.compare (Path.basename right) (Path.basename left))
 
 let count_receipts = fun ~(workspace:Workspace.t) -> List.length (receipt_paths_desc ~workspace)
 
@@ -399,13 +433,16 @@ let read_state = fun ~(workspace:Workspace.t) ->
   if not (path_exists path) then
     Ok None
   else
-    let* content = Fs.read_to_string path
-    |> Result.map_err ~fn:(fun err -> "failed to read cache state: " ^ IO.error_message err) in
-    let* json = Data.Json.of_string content
-    |> Result.map_err
-      ~fn:(fun err -> "failed to parse cache state JSON: " ^ Data.Json.error_to_string err) in
-    let* state = cache_state_of_json json in
-    Ok (Some state)
+    let* content =
+      Fs.read_to_string path
+      |> Result.map_err ~fn:(fun err -> "failed to read cache state: " ^ IO.error_message err)
+    in
+    let* json =
+      Data.Json.of_string content
+      |> Result.map_err
+        ~fn:(fun err -> "failed to parse cache state JSON: " ^ Data.Json.error_to_string err)
+    in
+    let* state = cache_state_of_json json in Ok (Some state)
 
 let write_receipt = fun ~(workspace:Workspace.t) receipt ->
   let* () = ensure_generations_root ~workspace in
@@ -414,8 +451,11 @@ let write_receipt = fun ~(workspace:Workspace.t) receipt ->
     Ok ()
   else
     let temp_path = temp_receipt_path ~workspace receipt.hash in
-    let* () = Fs.write (Data.Json.to_string_pretty (receipt_to_json receipt)) temp_path
-    |> Result.map_err ~fn:(fun err -> "failed to write generation receipt: " ^ IO.error_message err) in
+    let* () =
+      Fs.write (Data.Json.to_string_pretty (receipt_to_json receipt)) temp_path
+      |> Result.map_err
+        ~fn:(fun err -> "failed to write generation receipt: " ^ IO.error_message err)
+    in
     match Fs.rename ~src:temp_path ~dst:final_path with
     | Ok () -> Ok ()
     | Error err ->
@@ -423,23 +463,29 @@ let write_receipt = fun ~(workspace:Workspace.t) receipt ->
         Error ("failed to commit generation receipt: " ^ IO.error_message err)
 
 let read_receipt_file = fun path ->
-  let* content = Fs.read_to_string path
-  |> Result.map_err ~fn:(fun err -> "failed to read generation receipt: " ^ IO.error_message err) in
-  let* json = Data.Json.of_string content
-  |> Result.map_err
-    ~fn:(fun err -> "failed to parse generation receipt JSON: " ^ Data.Json.error_to_string err) in
-  let* receipt = receipt_of_json json in
-  Ok { path; receipt }
+  let* content =
+    Fs.read_to_string path
+    |> Result.map_err ~fn:(fun err -> "failed to read generation receipt: " ^ IO.error_message err)
+  in
+  let* json =
+    Data.Json.of_string content
+    |> Result.map_err
+      ~fn:(fun err -> "failed to parse generation receipt JSON: " ^ Data.Json.error_to_string err)
+  in
+  let* receipt = receipt_of_json json in Ok { path; receipt }
 
 let load_latest_receipt = fun ~(workspace:Workspace.t) ->
   match receipt_paths_desc ~workspace with
   | [] -> Ok None
-  | path :: _ -> read_receipt_file path |> Result.map ~fn:Option.some
+  | path :: _ ->
+      read_receipt_file path
+      |> Result.map ~fn:Option.some
 
 let load_receipts = fun ~(workspace:Workspace.t) ->
   let paths = receipt_paths_desc ~workspace in
   let rec loop acc = function
-    | [] -> Ok (List.reverse acc)
+    | [] ->
+        Ok (List.reverse acc)
     | path :: rest -> (
         match read_receipt_file path with
         | Ok receipt -> loop (receipt :: acc) rest
@@ -448,15 +494,17 @@ let load_receipts = fun ~(workspace:Workspace.t) ->
   in
   loop [] paths
 
-let write_canonical_receipts = fun ~(workspace:Workspace.t) receipts ->
-  List.fold_left receipts ~init:(Ok ())
-    ~fn:(fun acc_result (receipt_file: receipt_file) ->
-      let* () = acc_result in
-      write_receipt ~workspace receipt_file.receipt)
+let write_canonical_receipts = fun ~(workspace:Workspace.t) receipts -> List.fold_left
+  receipts
+  ~init:(Ok ())
+  ~fn:(fun acc_result (receipt_file: receipt_file) -> let* () = acc_result in
+  write_receipt ~workspace receipt_file.receipt)
 
 let generation_hashes_of_receipts = fun receipts ->
   let seen = HashSet.create () in
-  List.fold_left receipts ~init:[]
+  List.fold_left
+    receipts
+    ~init:[]
     ~fn:(fun acc (receipt_file: receipt_file) ->
       if HashSet.contains seen ~value:receipt_file.receipt.hash then
         acc
@@ -464,63 +512,72 @@ let generation_hashes_of_receipts = fun receipts ->
         (
           let _ = HashSet.insert seen ~value:receipt_file.receipt.hash in
           receipt_file.receipt.hash :: acc
-        )) |> List.reverse
+        ))
+  |> List.reverse
 
-let rebuild_generation_hashes = fun ~(workspace:Workspace.t) ->
-  let* receipts = load_receipts ~workspace in
-  let* () = write_canonical_receipts ~workspace receipts in
-  Ok (generation_hashes_of_receipts receipts)
+let rebuild_generation_hashes = fun ~(workspace:Workspace.t) -> let* receipts =
+  load_receipts ~workspace in let* () = write_canonical_receipts ~workspace receipts in
+Ok (generation_hashes_of_receipts receipts)
 
 let path_size_bytes = fun root ->
   if not (path_exists root) then
     Ok 0L
   else
     let total = ref 0L in
-    Fs.Walker.walk ~sort:false ~roots:[ root ]
+    Fs.Walker.walk
+      ~sort:false
+      ~roots:[ root ]
       ~f:(fun item ->
         match Fs.Walker.FileItem.kind item with
         | Fs.Walker.File ->
             let path = Fs.Walker.FileItem.path item in
-            let len = Fs.metadata path
-            |> Result.map ~fn:Fs.Metadata.len
-            |> Result.unwrap_or ~default:0 in
+            let len =
+              Fs.metadata path
+              |> Result.map ~fn:Fs.Metadata.len
+              |> Result.unwrap_or ~default:0
+            in
             total := Int64.add !total (Int64.from_int len);
             Fs.Walker.Continue
         | Fs.Walker.Directory
         | Fs.Walker.Symlink
         | Fs.Walker.Other -> Fs.Walker.Continue)
-      () |> Result.map_err ~fn:IO.error_message |> Result.map ~fn:(fun () -> !total)
+      ()
+    |> Result.map_err ~fn:IO.error_message
+    |> Result.map ~fn:(fun () -> !total)
 
 let collect_cache_entries = fun ~(workspace:Workspace.t) ->
-  let profile_dirs = list_subdirectories workspace.target_dir_root
-  |> List.filter ~fn:(fun dir -> not (String.equal (Path.basename dir) "cache")) in
+  let profile_dirs =
+    list_subdirectories workspace.target_dir_root
+    |> List.filter ~fn:(fun dir -> not (String.equal (Path.basename dir) "cache"))
+  in
   let rec collect_profiles acc = function
     | [] -> Ok (List.reverse acc)
     | profile_dir :: rest ->
         let target_dirs = list_subdirectories profile_dir in
-        let* acc = collect_targets acc target_dirs in
-        collect_profiles acc rest
+        let* acc = collect_targets acc target_dirs in collect_profiles acc rest
   and collect_targets acc = function
     | [] -> Ok acc
     | target_dir :: rest ->
         let cache_dir = Path.(target_dir / Path.v "cache") in
-        let hash_dirs = list_subdirectories cache_dir
-        |> List.filter ~fn:(fun dir -> is_hash_dir_name (Path.basename dir)) in
-        let* acc =
-          List.fold_left hash_dirs ~init:(Ok acc)
-            ~fn:(fun acc_result dir ->
-              let* acc = acc_result in
-              let* size_bytes = path_size_bytes dir in
-              Ok ({ hash = Path.basename dir; dir; size_bytes } :: acc))
+        let hash_dirs =
+          list_subdirectories cache_dir
+          |> List.filter ~fn:(fun dir -> is_hash_dir_name (Path.basename dir))
         in
+        let* acc =
+          List.fold_left
+            hash_dirs
+            ~init:(Ok acc)
+            ~fn:(fun acc_result dir -> let* acc = acc_result in let* size_bytes =
+              path_size_bytes dir in Ok ({ hash = Path.basename dir; dir; size_bytes } :: acc)) in
         collect_targets acc rest
   in
   collect_profiles [] profile_dirs
 
 let total_size = fun entries ->
-  List.fold_left entries ~init:0L
-    ~fn:(fun acc (entry: cache_entry) ->
-      Int64.add acc entry.size_bytes)
+  List.fold_left
+    entries
+    ~init:0L
+    ~fn:(fun acc (entry: cache_entry) -> Int64.add acc entry.size_bytes)
 
 let load_or_rebuild_tracked_size = fun ~(workspace:Workspace.t) ->
   match read_state ~workspace with
@@ -529,32 +586,29 @@ let load_or_rebuild_tracked_size = fun ~(workspace:Workspace.t) ->
         match state.generation_hashes with
         | Some generation_hashes -> Ok generation_hashes
         | None ->
-            let* generation_hashes = rebuild_generation_hashes ~workspace in
-            let* () = write_state
-              ~workspace
-              {
-                tracked_size_bytes = state.tracked_size_bytes;
-                generation_hashes = Some generation_hashes;
-                receipt_count = Some (List.length generation_hashes)
-              } in
-            Ok generation_hashes
+            let* generation_hashes = rebuild_generation_hashes ~workspace in let* () =
+              write_state
+                ~workspace
+                {
+                  tracked_size_bytes = state.tracked_size_bytes;
+                  generation_hashes = Some generation_hashes;
+                  receipt_count = Some (List.length generation_hashes);
+                } in Ok generation_hashes
       in
-      Ok (
-        { tracked_size_bytes = state.tracked_size_bytes; generation_hashes; rebuilt = false }: tracked_size_snapshot
-      )
+      Ok ({ tracked_size_bytes = state.tracked_size_bytes; generation_hashes; rebuilt = false }:
+        tracked_size_snapshot)
   | Ok None
   | Error _ ->
       let* entries = collect_cache_entries ~workspace in
       let tracked_size_bytes = total_size entries in
-      let* generation_hashes = rebuild_generation_hashes ~workspace in
-      let* () = write_state
-        ~workspace
-        {
-          tracked_size_bytes;
-          generation_hashes = Some generation_hashes;
-          receipt_count = Some (List.length generation_hashes)
-        } in
-      Ok ({ tracked_size_bytes; generation_hashes; rebuilt = true }: tracked_size_snapshot)
+      let* generation_hashes = rebuild_generation_hashes ~workspace in let* () =
+        write_state
+          ~workspace
+          {
+            tracked_size_bytes;
+            generation_hashes = Some generation_hashes;
+            receipt_count = Some (List.length generation_hashes);
+          } in Ok ({ tracked_size_bytes; generation_hashes; rebuilt = true }: tracked_size_snapshot)
 
 let take = fun n list ->
   let rec loop acc remaining count =
@@ -568,7 +622,8 @@ let take = fun n list ->
   loop [] list n
 
 let drop_last = function
-  | [] -> []
+  | [] ->
+      []
   | list -> (
       match List.reverse list with
       | [] -> []
@@ -577,11 +632,14 @@ let drop_last = function
 
 let live_hashes = fun receipts ->
   let set = HashSet.create () in
-  List.for_each receipts
+  List.for_each
+    receipts
     ~fn:(fun (receipt_file: receipt_file) ->
-      List.for_each receipt_file.receipt.lanes
+      List.for_each
+        receipt_file.receipt.lanes
         ~fn:(fun (lane: generation_lane) ->
-          List.for_each lane.hashes
+          List.for_each
+            lane.hashes
             ~fn:(fun hash ->
               let _ = HashSet.insert set ~value:hash in
               ())));
@@ -618,7 +676,8 @@ let delete_path = fun path ~kind ->
 
 let load_receipts_for_hashes = fun ~(workspace:Workspace.t) hashes ->
   let rec loop acc = function
-    | [] -> Ok (List.reverse acc)
+    | [] ->
+        Ok (List.reverse acc)
     | hash :: rest -> (
         match read_receipt_file (receipt_path ~workspace hash) with
         | Ok receipt -> loop (receipt :: acc) rest
@@ -628,16 +687,17 @@ let load_receipts_for_hashes = fun ~(workspace:Workspace.t) hashes ->
   loop [] hashes
 
 let run_gc = fun ~(workspace:Workspace.t) ~policy ~generation_hashes ->
-  let candidate_hashes = take policy.Riot_model.Workspace_operational_config.keep_generations generation_hashes in
+  let candidate_hashes =
+    take policy.Riot_model.Workspace_operational_config.keep_generations generation_hashes
+  in
   let* receipts = load_receipts_for_hashes ~workspace candidate_hashes in
   let* entries = collect_cache_entries ~workspace in
   let size_before_bytes = total_size entries in
   let (kept_receipts, live, size_after_bytes) = evaluate_retention ~policy receipts entries in
-  let kept_hashes =
-    List.map kept_receipts ~fn:(fun (receipt: receipt_file) -> receipt.receipt.hash)
-  in
+  let kept_hashes = List.map kept_receipts ~fn:(fun (receipt: receipt_file) -> receipt.receipt.hash) in
   let kept_paths = HashSet.create () in
-  List.for_each kept_hashes
+  List.for_each
+    kept_hashes
     ~fn:(fun hash ->
       let _ = HashSet.insert kept_paths ~value:(Path.to_string (receipt_path ~workspace hash)) in
       ());
@@ -652,24 +712,23 @@ let run_gc = fun ~(workspace:Workspace.t) ~policy ~generation_hashes ->
       ~fn:(fun path -> not (HashSet.contains kept_paths ~value:(Path.to_string path)))
   in
   let* () =
-    List.fold_left deleted_entries ~init:(Ok ())
-      ~fn:(fun acc (entry: cache_entry) ->
-        let* () = acc in
-        delete_path entry.dir ~kind:"directory")
-  in
+    List.fold_left
+      deleted_entries
+      ~init:(Ok ())
+      ~fn:(fun acc (entry: cache_entry) -> let* () = acc in delete_path entry.dir ~kind:"directory") in
   let* () =
-    List.fold_left deleted_receipts ~init:(Ok ())
-      ~fn:(fun acc receipt_path ->
-        let* () = acc in
-        delete_path receipt_path ~kind:"file")
-  in
-  let* () = write_state
-    ~workspace
-    {
-      tracked_size_bytes = size_after_bytes;
-      generation_hashes = Some kept_hashes;
-      receipt_count = Some (List.length kept_hashes)
-    } in
+    List.fold_left
+      deleted_receipts
+      ~init:(Ok ())
+      ~fn:(fun acc receipt_path -> let* () = acc in delete_path receipt_path ~kind:"file") in
+  let* () =
+    write_state
+      ~workspace
+      {
+        tracked_size_bytes = size_after_bytes;
+        generation_hashes = Some kept_hashes;
+        receipt_count = Some (List.length kept_hashes);
+      } in
   Ok {
     ran_gc = true;
     kept_generations = List.length kept_hashes;
@@ -734,25 +793,25 @@ let clean = fun ~(workspace:Workspace.t) -> clean_with_events ~workspace ~on_eve
 let force_clean_with_events = fun ~(workspace:Workspace.t) ~on_event ->
   let build_root = workspace.target_dir_root in
   on_event (ForceCleanStarted { build_root });
-  if not (path_exists build_root) then
-    (
-      on_event (ForceCleanCompleted { build_root });
-      Ok ()
-    )
-  else
+  if not (path_exists build_root) then (
+    on_event (ForceCleanCompleted { build_root });
+    Ok ()
+  ) else
     match Fs.remove_dir_all build_root with
     | Ok () ->
         on_event (ForceCleanCompleted { build_root });
         Ok ()
     | Error err ->
-        let error = "failed to remove build root "
-        ^ Path.to_string build_root
-        ^ ": "
-        ^ IO.error_message err in
+        let error =
+          "failed to remove build root " ^ Path.to_string build_root ^ ": " ^ IO.error_message err
+        in
         on_event (ForceCleanFailed { build_root; error });
         Error error
 
-let force_clean = fun ~(workspace:Workspace.t) -> force_clean_with_events ~workspace ~on_event:no_event
+let force_clean = fun ~(workspace:Workspace.t) ->
+  force_clean_with_events
+    ~workspace
+    ~on_event:no_event
 
 let new_entry_dir = fun ~(workspace:Workspace.t) (entry: new_cache_entry) ->
   Path.(workspace.target_dir_root
@@ -763,7 +822,9 @@ let new_entry_dir = fun ~(workspace:Workspace.t) (entry: new_cache_entry) ->
 
 let added_size_for_new_entries = fun ~(workspace:Workspace.t) new_entries ->
   let seen = HashSet.create () in
-  List.fold_left new_entries ~init:(Ok 0L)
+  List.fold_left
+    new_entries
+    ~init:(Ok 0L)
     ~fn:(fun acc_result (entry: new_cache_entry) ->
       let* acc = acc_result in
       let dir = new_entry_dir ~workspace entry in
@@ -772,8 +833,7 @@ let added_size_for_new_entries = fun ~(workspace:Workspace.t) new_entries ->
         Ok acc
       else
         let _ = HashSet.insert seen ~value:key in
-        let* size_bytes = path_size_bytes dir in
-        Ok (Int64.add acc size_bytes))
+        let* size_bytes = path_size_bytes dir in Ok (Int64.add acc size_bytes))
 
 let record_successful_build_with_events = fun ~(workspace:Workspace.t) ~on_event ~lanes ~new_entries ->
   let lanes = normalize_lanes lanes in
@@ -809,7 +869,7 @@ let record_successful_build_with_events = fun ~(workspace:Workspace.t) ~on_event
             {
               tracked_size_bytes;
               generation_hashes = Some current_hashes;
-              receipt_count = Some (List.length current_hashes)
+              receipt_count = Some (List.length current_hashes);
             }
       in
       Ok {
@@ -821,15 +881,17 @@ let record_successful_build_with_events = fun ~(workspace:Workspace.t) ~on_event
         size_after_bytes = tracked_size_bytes;
       }
   | _ ->
-      let next_hashes = generation_hash
-      :: List.filter current_hashes ~fn:(fun hash -> not (String.equal hash generation_hash)) in
+      let next_hashes =
+        generation_hash
+        :: List.filter current_hashes ~fn:(fun hash -> not (String.equal hash generation_hash))
+      in
       let* () =
         match write_state
           ~workspace
           {
             tracked_size_bytes;
             generation_hashes = Some next_hashes;
-            receipt_count = Some (List.length next_hashes)
+            receipt_count = Some (List.length next_hashes);
           } with
         | Ok () -> Ok ()
         | Error error -> report_error error
@@ -849,4 +911,8 @@ let record_successful_build_with_events = fun ~(workspace:Workspace.t) ~on_event
       }
 
 let record_successful_build = fun ~(workspace:Workspace.t) ~lanes ~new_entries ->
-  record_successful_build_with_events ~workspace ~on_event:no_event ~lanes ~new_entries
+  record_successful_build_with_events
+    ~workspace
+    ~on_event:no_event
+    ~lanes
+    ~new_entries

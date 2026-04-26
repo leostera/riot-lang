@@ -197,21 +197,19 @@ let to_string = fun doc ->
     | Space ->
         if line_start then
           line_start
-        else
-          (
-            IO.Buffer.add_char buffer ' ';
-            false
-          )
+        else (
+          IO.Buffer.add_char buffer ' ';
+          false
+        )
     | Spaces count ->
         if line_start then
           line_start
-        else
-          (
-            for _ = 1 to count do
-              IO.Buffer.add_char buffer ' '
-            done;
-            false
-          )
+        else (
+          for _ = 1 to count do
+            IO.Buffer.add_char buffer ' '
+          done;
+          false
+        )
     | Line ->
         IO.Buffer.add_char buffer '\n';
         true

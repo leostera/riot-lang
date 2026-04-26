@@ -34,12 +34,10 @@ module RowIterator = struct
       None
     else
       let (Cursor cursor) = state.cursor in
-      if cursor.exhausted then
-        (
-          state.exhausted <- true;
-          None
-        )
-      else
+      if cursor.exhausted then (
+        state.exhausted <- true;
+        None
+      ) else
         let module D = (val cursor.driver) in
         match D.fetch_row cursor.result_set with
         | Some row ->
@@ -62,7 +60,12 @@ module RowIterator = struct
 end
 
 let to_mut_iter = fun cursor ->
-  MutIterator.make (module RowIterator) { RowIterator.cursor; exhausted = false }
+  MutIterator.make
+    (module RowIterator)
+    {
+      RowIterator.cursor;
+      exhausted = false;
+    }
 
 let fetch_one = fun cursor ->
   let iter = to_mut_iter cursor in
@@ -80,7 +83,10 @@ let fetch_many = fun cursor n ->
   in
   take [] n
 
-let fetch_all = fun cursor -> cursor |> to_mut_iter |> MutIterator.to_list
+let fetch_all = fun cursor ->
+  cursor
+  |> to_mut_iter
+  |> MutIterator.to_list
 
 let id = fun (Cursor cursor) -> cursor.id
 

@@ -248,21 +248,20 @@ let scope_view_for_source = fun ~(graph:package_graph) ~state ~(group:graph_grou
       in
       if Array.length local_ids = 0 then
         add_loaded_required_name required_name
-      else
-        (
-          local_ids
-          |> Array.iter (add_local_group ~required_name);
-          if required_name_is_implicit_open required_name then
-            implicit_open_modules_rev := List.rev_append
-              (
-                local_ids
-                |> Array.to_list
-                |> List.map
-                  (fun module_id ->
-                    (SurfacePath.of_string (LocalModules.RequiredName.to_string required_name), PackageEnv.ModuleId.Local graph.groups.(module_id).internal_name))
-              )
-              !implicit_open_modules_rev
-        );
+      else (
+        local_ids
+        |> Array.iter (add_local_group ~required_name);
+        if required_name_is_implicit_open required_name then
+          implicit_open_modules_rev := List.rev_append
+            (
+              local_ids
+              |> Array.to_list
+              |> List.map
+                (fun module_id ->
+                  (SurfacePath.of_string (LocalModules.RequiredName.to_string required_name), PackageEnv.ModuleId.Local graph.groups.(module_id).internal_name))
+            )
+            !implicit_open_modules_rev
+      );
       if required_name_is_implicit_open required_name && Array.length local_ids = 0 then
         add_implicit_open_module required_name (PackageEnv.ModuleId.Loaded required_name));
   ScopeView.create

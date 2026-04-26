@@ -497,47 +497,42 @@ let complete = fun p marker kind -> Event.Buffer.complete p.events marker kind
 let precede = fun p completed -> Event.Buffer.precede p.events completed
 
 let bump = fun p ->
-  if p.pos < significant_count p then
-    (
-      Event.Buffer.token p.events ~raw_index:(current_raw_index p);
-      p.pos <- p.pos + 1
-    )
+  if p.pos < significant_count p then (
+    Event.Buffer.token p.events ~raw_index:(current_raw_index p);
+    p.pos <- p.pos + 1
+  )
 
 let bump_if = fun p kind ->
-  if at p kind then
-    (
-      bump p;
-      true
-    )
-  else
+  if at p kind then (
+    bump p;
+    true
+  ) else
     false
 
 let expect = fun p kind diagnostic ->
   if at p kind then
     bump p
-  else
-    (
-      Event.Buffer.missing p.events ~kind ~offset:(current_offset p);
-      Event.Buffer.error p.events diagnostic
-    )
+  else (
+    Event.Buffer.missing p.events ~kind ~offset:(current_offset p);
+    Event.Buffer.error p.events diagnostic
+  )
 
 let expect_closer = fun p kind ~opener ->
   if Syntax_kind.(kind = END_KW) && at_end_keyword p || at p kind then
     bump p
-  else
-    (
-      Event.Buffer.missing p.events ~kind ~offset:(current_offset p);
-      let diagnostic = unclosed_delimiter p ~opener in
-      if is_eof p then
-        let offset = diagnostic.Diagnostic.span.Ceibo.Span.start in
-        match p.last_eof_unclosed_delimiter_offset with
-        | Some previous when previous = offset -> ()
-        | _ ->
-            p.last_eof_unclosed_delimiter_offset <- Some offset;
-            Event.Buffer.error p.events diagnostic
-      else
-        Event.Buffer.error p.events diagnostic
-    )
+  else (
+    Event.Buffer.missing p.events ~kind ~offset:(current_offset p);
+    let diagnostic = unclosed_delimiter p ~opener in
+    if is_eof p then
+      let offset = diagnostic.Diagnostic.span.Ceibo.Span.start in
+      match p.last_eof_unclosed_delimiter_offset with
+      | Some previous when previous = offset -> ()
+      | _ ->
+          p.last_eof_unclosed_delimiter_offset <- Some offset;
+          Event.Buffer.error p.events diagnostic
+    else
+      Event.Buffer.error p.events diagnostic
+  )
 
 let recover_current_as_error = fun p diagnostic ->
   let marker = start_node p in
@@ -1119,12 +1114,11 @@ let pattern_binding_power = function
   | _ -> None
 
 let rec consume_path_segments = fun p ->
-  if at p Syntax_kind.DOT && Syntax_kind.(peek_kind p 1 = IDENT) then
-    (
-      bump p;
-      bump p;
-      consume_path_segments p
-    )
+  if at p Syntax_kind.DOT && Syntax_kind.(peek_kind p 1 = IDENT) then (
+    bump p;
+    bump p;
+    consume_path_segments p
+  )
 
 let rec consume_balanced_until = fun p ~closer depth ->
   let at_closer = Syntax_kind.(closer = END_KW) && at_end_keyword p || at p closer in
@@ -1188,18 +1182,16 @@ let is_attribute_shell = fun p ->
   && (Syntax_kind.(peek_kind p 1 = AT) || Syntax_kind.(peek_kind p 1 = ATAT))
 
 let rec consume_attribute_sigils = fun p ->
-  if at p Syntax_kind.AT || at p Syntax_kind.ATAT then
-    (
-      bump p;
-      consume_attribute_sigils p
-    )
+  if at p Syntax_kind.AT || at p Syntax_kind.ATAT then (
+    bump p;
+    consume_attribute_sigils p
+  )
 
 let rec consume_extension_sigils = fun p ->
-  if at p Syntax_kind.PERCENT then
-    (
-      bump p;
-      consume_extension_sigils p
-    )
+  if at p Syntax_kind.PERCENT then (
+    bump p;
+    consume_extension_sigils p
+  )
 
 let consume_attribute_suffix = fun p ->
   bump p;
@@ -1208,18 +1200,16 @@ let consume_attribute_suffix = fun p ->
   expect p Syntax_kind.RBRACKET (invalid_expression p)
 
 let rec consume_same_line_attribute_suffixes = fun p ->
-  if is_attribute_suffix p && not (leading_trivia_contains_newline p) then
-    (
-      consume_attribute_suffix p;
-      consume_same_line_attribute_suffixes p
-    )
+  if is_attribute_suffix p && not (leading_trivia_contains_newline p) then (
+    consume_attribute_suffix p;
+    consume_same_line_attribute_suffixes p
+  )
 
 let rec consume_until = fun p closer ->
-  if not (is_eof p || at p closer) then
-    (
-      bump p;
-      consume_until p closer
-    )
+  if not (is_eof p || at p closer) then (
+    bump p;
+    consume_until p closer
+  )
 
 let consume_extension_payload = fun p ->
   if at p Syntax_kind.LBRACE && Syntax_kind.(peek_kind p 1 = DOT) then
@@ -1228,82 +1218,74 @@ let consume_extension_payload = fun p ->
     consume_balanced_until p ~closer:Syntax_kind.RBRACKET 0
 
 let consume_shortcut_extension_modifier = fun p ->
-  if at p Syntax_kind.PERCENT then
-    (
+  if at p Syntax_kind.PERCENT then (
+    bump p;
+    if at p Syntax_kind.IDENT then
       bump p;
-      if at p Syntax_kind.IDENT then
+    let rec loop () =
+      if at p Syntax_kind.DOT && Syntax_kind.(peek_kind p 1 = IDENT) then (
         bump p;
-      let rec loop () =
-        if at p Syntax_kind.DOT && Syntax_kind.(peek_kind p 1 = IDENT) then
-          (
-            bump p;
-            bump p;
-            loop ()
-          )
-      in
-      loop ()
-    )
+        bump p;
+        loop ()
+      )
+    in
+    loop ()
+  )
 
 let rec consume_declaration_attributes = fun p ->
-  if is_attribute_shell p then
-    (
-      bump p;
-      consume_attribute_sigils p;
-      consume_balanced_until p ~closer:Syntax_kind.RBRACKET 0;
-      expect p Syntax_kind.RBRACKET (invalid_expression p);
-      consume_declaration_attributes p
-    )
+  if is_attribute_shell p then (
+    bump p;
+    consume_attribute_sigils p;
+    consume_balanced_until p ~closer:Syntax_kind.RBRACKET 0;
+    expect p Syntax_kind.RBRACKET (invalid_expression p);
+    consume_declaration_attributes p
+  )
 
 let rec consume_symbolic_operator = fun p ->
-  if symbolic_operator_part (current_kind p) then
-    (
-      bump p;
-      consume_symbolic_operator p
-    )
+  if symbolic_operator_part (current_kind p) then (
+    bump p;
+    consume_symbolic_operator p
+  )
 
 let consume_parenthesized_operator_name = fun p ~signature ->
-  if at p Syntax_kind.LPAREN && operator_name_start_at p 1 then
-    (
-      bump p;
-      let next_depth depth =
-        match current_kind p with
-        | Syntax_kind.LPAREN
-        | Syntax_kind.LBRACE
-        | Syntax_kind.LBRACKET
-        | Syntax_kind.LBRACKET_BAR -> depth + 1
-        | Syntax_kind.RPAREN
-        | Syntax_kind.RBRACE
-        | Syntax_kind.RBRACKET
-        | Syntax_kind.BAR_RBRACKET when depth > 0 -> depth - 1
-        | _ -> depth
-      in
-      let rec loop depth =
-        if
-          not
-            (is_eof p
-            || (depth = 0
-            && (at p Syntax_kind.RPAREN || at p Syntax_kind.COLON || at_item_boundary p ~signature)))
-        then
-          (
-            let depth = next_depth depth in
-            bump p;
-            loop depth
-          )
-      in
-      loop 0;
-      expect_closer p Syntax_kind.RPAREN ~opener:"(";
-      true
-    )
-  else
+  if at p Syntax_kind.LPAREN && operator_name_start_at p 1 then (
+    bump p;
+    let next_depth depth =
+      match current_kind p with
+      | Syntax_kind.LPAREN
+      | Syntax_kind.LBRACE
+      | Syntax_kind.LBRACKET
+      | Syntax_kind.LBRACKET_BAR -> depth + 1
+      | Syntax_kind.RPAREN
+      | Syntax_kind.RBRACE
+      | Syntax_kind.RBRACKET
+      | Syntax_kind.BAR_RBRACKET when depth > 0 -> depth - 1
+      | _ -> depth
+    in
+    let rec loop depth =
+      if
+        not
+          (is_eof p
+          || (depth = 0
+          && (at p Syntax_kind.RPAREN || at p Syntax_kind.COLON || at_item_boundary p ~signature)))
+      then
+        (
+          let depth = next_depth depth in
+          bump p;
+          loop depth
+        )
+    in
+    loop 0;
+    expect_closer p Syntax_kind.RPAREN ~opener:"(";
+    true
+  ) else
     false
 
 let consume_value_name = fun p ~signature ->
-  if at p Syntax_kind.IDENT then
-    (
-      bump p;
-      true
-    )
-  else
+  if at p Syntax_kind.IDENT then (
+    bump p;
+    true
+  ) else
     consume_parenthesized_operator_name p ~signature
 
 let consume_first_class_module_shell = fun p ->
@@ -1330,30 +1312,22 @@ let consume_first_class_module_shell = fun p ->
       else
         Event.Buffer.error p.events (missing_type_name_at_current_offset p)
     );
-    if at p Syntax_kind.EQ then
-      (
-        bump p;
-        consume_balanced_until p ~closer:Syntax_kind.RPAREN 0
-      )
-    else
-      Event.Buffer.error p.events (missing_type_decl_equals p)
-  in
-  if at p Syntax_kind.COLON then
-    (
+    if at p Syntax_kind.EQ then (
       bump p;
       consume_balanced_until p ~closer:Syntax_kind.RPAREN 0
-    )
-  else if at p Syntax_kind.TYPE_KW then
-    (
-      Event.Buffer.error p.events (missing_with_keyword p);
-      parse_type_constraint ()
-    )
-  else if at p Syntax_kind.WITH_KW then
-    (
-      bump p;
-      parse_type_constraint ()
-    )
-  else
+    ) else
+      Event.Buffer.error p.events (missing_type_decl_equals p)
+  in
+  if at p Syntax_kind.COLON then (
+    bump p;
+    consume_balanced_until p ~closer:Syntax_kind.RPAREN 0
+  ) else if at p Syntax_kind.TYPE_KW then (
+    Event.Buffer.error p.events (missing_with_keyword p);
+    parse_type_constraint ()
+  ) else if at p Syntax_kind.WITH_KW then (
+    bump p;
+    parse_type_constraint ()
+  ) else
     consume_balanced_until p ~closer:Syntax_kind.RPAREN 0;
   expect_closer p Syntax_kind.RPAREN ~opener:"("
 
@@ -1446,14 +1420,12 @@ let rec parse_expression = fun p ~signature ~stop_at_item ?(stop_at_semi = false
         let marker = precede p lhs in
         let operator = operator_text (current_kind p) in
         bump p;
-        if expression_boundary p ~stop_at_item ~stop_at_semi ~stop_at_comma ~signature then
-          (
-            Event.Buffer.missing p.events ~kind:Syntax_kind.IDENT ~offset:(current_offset p);
-            Event.Buffer.error
-              p.events
-              (missing_binary_operand_after_operator p ~operator ~side:"right")
-          )
-        else
+        if expression_boundary p ~stop_at_item ~stop_at_semi ~stop_at_comma ~signature then (
+          Event.Buffer.missing p.events ~kind:Syntax_kind.IDENT ~offset:(current_offset p);
+          Event.Buffer.error
+            p.events
+            (missing_binary_operand_after_operator p ~operator ~side:"right")
+        ) else
           ignore (parse_expression p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma 6);
         loop (complete p marker Syntax_kind.ASSIGN_EXPR)
       )
@@ -1470,14 +1442,12 @@ let rec parse_expression = fun p ~signature ~stop_at_item ?(stop_at_semi = false
           let marker = precede p lhs in
           let operator = token_text p (current p) in
           bump p;
-          if expression_boundary p ~stop_at_item ~stop_at_semi ~stop_at_comma ~signature then
-            (
-              Event.Buffer.missing p.events ~kind:Syntax_kind.IDENT ~offset:(current_offset p);
-              Event.Buffer.error
-                p.events
-                (missing_binary_operand_after_operator p ~operator ~side:"right")
-            )
-          else if
+          if expression_boundary p ~stop_at_item ~stop_at_semi ~stop_at_comma ~signature then (
+            Event.Buffer.missing p.events ~kind:Syntax_kind.IDENT ~offset:(current_offset p);
+            Event.Buffer.error
+              p.events
+              (missing_binary_operand_after_operator p ~operator ~side:"right")
+          ) else if
             Option.is_some (current_infix_binding_power p) && not (prefix_operator (current_kind p))
           then
             Event.Buffer.error
@@ -1750,18 +1720,17 @@ and parse_label_arg_expr = fun p ~signature ~stop_at_item ~stop_at_semi ~stop_at
   let marker = start_node p in
   bump p;
   expect p Syntax_kind.IDENT (invalid_expression p);
-  if at p Syntax_kind.COLON then
-    (
-      bump p;
-      ignore
-        (parse_expression
-          p
-          ~signature
-          ~stop_at_item
-          ~stop_at_semi
-          ~stop_at_comma
-          (application_binding_power + 1))
-    );
+  if at p Syntax_kind.COLON then (
+    bump p;
+    ignore
+      (parse_expression
+        p
+        ~signature
+        ~stop_at_item
+        ~stop_at_semi
+        ~stop_at_comma
+        (application_binding_power + 1))
+  );
   complete p marker kind
 
 and parse_parenthesized_expr = fun p ~signature ~stop_at_item ->
@@ -1769,81 +1738,69 @@ and parse_parenthesized_expr = fun p ~signature ~stop_at_item ->
   let opener = current_kind p in
   bump p;
   let at_closer () = at p Syntax_kind.RPAREN || at p Syntax_kind.END_KW || is_eof p in
-  if Syntax_kind.(opener = LPAREN) && at p Syntax_kind.MODULE_KW then
+  if Syntax_kind.(opener = LPAREN) && at p Syntax_kind.MODULE_KW then (
+    consume_first_class_module_shell p;
+    complete p marker Syntax_kind.FIRST_CLASS_MODULE_EXPR
+  ) else if Syntax_kind.(opener = LPAREN) && parenthesized_operator_start p then (
+    consume_balanced_until p ~closer:Syntax_kind.RPAREN 0;
+    expect_closer p Syntax_kind.RPAREN ~opener:"(";
+    complete p marker Syntax_kind.PATH_EXPR
+  ) else (
+    if not (at_closer ()) then
+      ignore (parse_expression p ~signature ~stop_at_item:false ~stop_at_comma:true 0);
+    let rec parse_comma_tail saw_comma =
+      if at p Syntax_kind.COMMA then (
+        bump p;
+        if not (at_closer ()) then
+          ignore (parse_expression p ~signature ~stop_at_item:false ~stop_at_comma:true 0);
+        parse_comma_tail true
+      ) else
+        saw_comma
+    in
+    let saw_comma = parse_comma_tail false in
     (
-      consume_first_class_module_shell p;
-      complete p marker Syntax_kind.FIRST_CLASS_MODULE_EXPR
-    )
-  else if Syntax_kind.(opener = LPAREN) && parenthesized_operator_start p then
-    (
-      consume_balanced_until p ~closer:Syntax_kind.RPAREN 0;
-      expect_closer p Syntax_kind.RPAREN ~opener:"(";
-      complete p marker Syntax_kind.PATH_EXPR
-    )
-  else
-    (
-      if not (at_closer ()) then
-        ignore (parse_expression p ~signature ~stop_at_item:false ~stop_at_comma:true 0);
-      let rec parse_comma_tail saw_comma =
-        if at p Syntax_kind.COMMA then
-          (
-            bump p;
-            if not (at_closer ()) then
-              ignore (parse_expression p ~signature ~stop_at_item:false ~stop_at_comma:true 0);
-            parse_comma_tail true
-          )
-        else
-          saw_comma
-      in
-      let saw_comma = parse_comma_tail false in
+      match opener with
+      | Syntax_kind.BEGIN_KW -> expect_closer p Syntax_kind.END_KW ~opener:"begin"
+      | _ -> expect_closer p Syntax_kind.RPAREN ~opener:"("
+    );
+    complete
+      p
+      marker
       (
-        match opener with
-        | Syntax_kind.BEGIN_KW -> expect_closer p Syntax_kind.END_KW ~opener:"begin"
-        | _ -> expect_closer p Syntax_kind.RPAREN ~opener:"("
-      );
-      complete
-        p
-        marker
-        (
-          if saw_comma then
-            Syntax_kind.TUPLE_EXPR
-          else
-            Syntax_kind.PAREN_EXPR
-        )
-    )
+        if saw_comma then
+          Syntax_kind.TUPLE_EXPR
+        else
+          Syntax_kind.PAREN_EXPR
+      )
+  )
 
 and parse_list_expr = fun p ~signature ->
   let marker = start_node p in
   bump p;
   let rec parse_elements () =
-    if not (at p Syntax_kind.RBRACKET || is_eof p) then
-      (
+    if not (at p Syntax_kind.RBRACKET || is_eof p) then (
+      if at p Syntax_kind.SEMI then (
+        if Syntax_kind.(peek_kind p 1 = SEMI) then
+          Event.Buffer.error p.events (list_double_semicolon p);
+        bump p;
         if at p Syntax_kind.SEMI then
-          (
-            if Syntax_kind.(peek_kind p 1 = SEMI) then
-              Event.Buffer.error p.events (list_double_semicolon p);
+          bump p
+      ) else
+        (
+          let before = p.pos in
+          ignore (parse_expression p ~signature ~stop_at_item:false ~stop_at_semi:true 0);
+          ensure_progress p before (invalid_expression p);
+          if at p Syntax_kind.SEMI then (
             bump p;
-            if at p Syntax_kind.SEMI then
+            if at p Syntax_kind.SEMI then (
+              if not Syntax_kind.(peek_kind p 1 = RBRACKET) then
+                Event.Buffer.error p.events (list_double_semicolon p);
               bump p
+            )
           )
-        else
-          (
-            let before = p.pos in
-            ignore (parse_expression p ~signature ~stop_at_item:false ~stop_at_semi:true 0);
-            ensure_progress p before (invalid_expression p);
-            if at p Syntax_kind.SEMI then
-              (
-                bump p;
-                if at p Syntax_kind.SEMI then
-                  (
-                    if not Syntax_kind.(peek_kind p 1 = RBRACKET) then
-                      Event.Buffer.error p.events (list_double_semicolon p);
-                    bump p
-                  )
-              )
-          );
-        parse_elements ()
-      )
+        );
+      parse_elements ()
+    )
   in
   parse_elements ();
   expect_closer p Syntax_kind.RBRACKET ~opener:"[";
@@ -1918,43 +1875,36 @@ and parse_record_expr = fun p ~signature ->
       ignore (parse_path_expr p)
     else
       ignore (parse_expression p ~signature ~stop_at_item:false ~stop_at_semi:true 0);
-    if at p Syntax_kind.EQ then
-      (
-        bump p;
-        ignore (parse_expression p ~signature ~stop_at_item:false ~stop_at_semi:true 0)
-      );
+    if at p Syntax_kind.EQ then (
+      bump p;
+      ignore (parse_expression p ~signature ~stop_at_item:false ~stop_at_semi:true 0)
+    );
     ensure_progress p before (invalid_expression p);
     ignore (bump_if p Syntax_kind.SEMI);
     complete p field_marker Syntax_kind.RECORD_EXPR_FIELD
   in
   bump p;
   let rec parse_fields () =
-    if not (at p Syntax_kind.RBRACE || is_eof p) then
-      (
-        ignore (parse_record_field ());
-        parse_fields ()
-      )
+    if not (at p Syntax_kind.RBRACE || is_eof p) then (
+      ignore (parse_record_field ());
+      parse_fields ()
+    )
   in
   let kind =
     if at p Syntax_kind.RBRACE || is_eof p then
       Syntax_kind.RECORD_EXPR
-    else if looks_like_record_field_head 0 false then
-      (
-        parse_fields ();
-        Syntax_kind.RECORD_EXPR
-      )
-    else if update_head_ahead 0 0 then
-      (
-        ignore (parse_expression p ~signature ~stop_at_item:false ~stop_at_semi:true 0);
-        expect p Syntax_kind.WITH_KW (invalid_expression p);
-        parse_fields ();
-        Syntax_kind.RECORD_UPDATE_EXPR
-      )
-    else
-      (
-        parse_fields ();
-        Syntax_kind.RECORD_EXPR
-      )
+    else if looks_like_record_field_head 0 false then (
+      parse_fields ();
+      Syntax_kind.RECORD_EXPR
+    ) else if update_head_ahead 0 0 then (
+      ignore (parse_expression p ~signature ~stop_at_item:false ~stop_at_semi:true 0);
+      expect p Syntax_kind.WITH_KW (invalid_expression p);
+      parse_fields ();
+      Syntax_kind.RECORD_UPDATE_EXPR
+    ) else (
+      parse_fields ();
+      Syntax_kind.RECORD_EXPR
+    )
   in
   expect p Syntax_kind.RBRACE (invalid_expression p);
   complete p marker kind
@@ -1964,16 +1914,14 @@ and parse_let_expr = fun p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma
   bump p;
   if binding_operator_suffix (current_kind p) then
     parse_binding_operator_expr p marker ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma
-  else if at p Syntax_kind.OPEN_KW then
-    (
-      bump p;
-      ignore (bump_if p Syntax_kind.BANG);
-      ignore (parse_path_expr p);
-      expect p Syntax_kind.IN_KW (invalid_expression p);
-      ignore (parse_expression p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma 0);
-      complete p marker Syntax_kind.LOCAL_OPEN_EXPR
-    )
-  else if at p Syntax_kind.MODULE_KW then
+  else if at p Syntax_kind.OPEN_KW then (
+    bump p;
+    ignore (bump_if p Syntax_kind.BANG);
+    ignore (parse_path_expr p);
+    expect p Syntax_kind.IN_KW (invalid_expression p);
+    ignore (parse_expression p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma 0);
+    complete p marker Syntax_kind.LOCAL_OPEN_EXPR
+  ) else if at p Syntax_kind.MODULE_KW then
     (
       let recover_missing_in () =
         Event.Buffer.missing p.events ~kind:Syntax_kind.IN_KW ~offset:(current_offset p);
@@ -1999,24 +1947,20 @@ and parse_let_expr = fun p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma
         Event.Buffer.error p.events (missing_module_expr p)
       else
         ignore (parse_module_expr p ~signature);
-      if at p Syntax_kind.IN_KW then
-        (
-          bump p;
-          ignore (parse_expression p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma 0)
-        )
-      else
+      if at p Syntax_kind.IN_KW then (
+        bump p;
+        ignore (parse_expression p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma 0)
+      ) else
         recover_missing_in ();
       complete p marker Syntax_kind.LET_MODULE_EXPR
     )
-  else if at p Syntax_kind.EXCEPTION_KW then
-    (
-      bump p;
-      consume_balanced_until p ~closer:Syntax_kind.IN_KW 0;
-      expect p Syntax_kind.IN_KW (invalid_expression p);
-      ignore (parse_expression p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma 0);
-      complete p marker Syntax_kind.LET_EXCEPTION_EXPR
-    )
-  else
+  else if at p Syntax_kind.EXCEPTION_KW then (
+    bump p;
+    consume_balanced_until p ~closer:Syntax_kind.IN_KW 0;
+    expect p Syntax_kind.IN_KW (invalid_expression p);
+    ignore (parse_expression p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma 0);
+    complete p marker Syntax_kind.LET_EXCEPTION_EXPR
+  ) else
     (
       let recover_missing_in () =
         Event.Buffer.missing p.events ~kind:Syntax_kind.IN_KW ~offset:(current_offset p);
@@ -2034,20 +1978,17 @@ and parse_let_expr = fun p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma
       ignore (bump_if p Syntax_kind.REC_KW);
       parse_let_binding p ~signature ~top_level:false;
       let rec parse_and_bindings () =
-        if at p Syntax_kind.AND_KW then
-          (
-            bump p;
-            parse_let_binding p ~signature ~top_level:false;
-            parse_and_bindings ()
-          )
+        if at p Syntax_kind.AND_KW then (
+          bump p;
+          parse_let_binding p ~signature ~top_level:false;
+          parse_and_bindings ()
+        )
       in
       parse_and_bindings ();
-      if at p Syntax_kind.IN_KW then
-        (
-          bump p;
-          ignore (parse_expression p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma 0)
-        )
-      else
+      if at p Syntax_kind.IN_KW then (
+        bump p;
+        ignore (parse_expression p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma 0)
+      ) else
         recover_missing_in ();
       complete p marker Syntax_kind.LET_EXPR
     )
@@ -2056,13 +1997,12 @@ and parse_binding_operator_expr = fun p marker ~signature ~stop_at_item ~stop_at
   bump p;
   parse_let_binding p ~signature ~top_level:false;
   let rec parse_parallel_bindings () =
-    if at p Syntax_kind.AND_KW && binding_operator_suffix (peek_kind p 1) then
-      (
-        bump p;
-        bump p;
-        parse_let_binding p ~signature ~top_level:false;
-        parse_parallel_bindings ()
-      )
+    if at p Syntax_kind.AND_KW && binding_operator_suffix (peek_kind p 1) then (
+      bump p;
+      bump p;
+      parse_let_binding p ~signature ~top_level:false;
+      parse_parallel_bindings ()
+    )
   in
   parse_parallel_bindings ();
   expect p Syntax_kind.IN_KW (invalid_expression p);
@@ -2073,14 +2013,12 @@ and parse_dot_bang_expr = fun p lhs ~signature ~stop_at_item ~stop_at_semi ~stop
   let marker = precede p lhs in
   bump p;
   bump p;
-  if at p Syntax_kind.LPAREN then
-    (
-      bump p;
-      if not (at p Syntax_kind.RPAREN || is_eof p) then
-        ignore (parse_expression p ~signature ~stop_at_item:false 0);
-      expect p Syntax_kind.RPAREN (invalid_expression p)
-    )
-  else if can_start_atom (current_kind p) then
+  if at p Syntax_kind.LPAREN then (
+    bump p;
+    if not (at p Syntax_kind.RPAREN || is_eof p) then
+      ignore (parse_expression p ~signature ~stop_at_item:false 0);
+    expect p Syntax_kind.RPAREN (invalid_expression p)
+  ) else if can_start_atom (current_kind p) then
     ignore (parse_prefix_or_atom p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma)
   else
     Event.Buffer.error p.events (invalid_expression p);
@@ -2102,13 +2040,11 @@ and parse_label_pattern = fun p ~stop_type_at_arrow kind ->
     if not (at p Syntax_kind.RPAREN || is_eof p) then
       parse_pattern ~stop_type_at_arrow:false p;
     let has_default =
-      if at p Syntax_kind.EQ then
-        (
-          bump p;
-          ignore (parse_expression p ~signature:false ~stop_at_item:false ~stop_at_semi:true 0);
-          true
-        )
-      else
+      if at p Syntax_kind.EQ then (
+        bump p;
+        ignore (parse_expression p ~signature:false ~stop_at_item:false ~stop_at_semi:true 0);
+        true
+      ) else
         false
     in
     expect p Syntax_kind.RPAREN (invalid_pattern p);
@@ -2117,23 +2053,19 @@ and parse_label_pattern = fun p ~stop_type_at_arrow kind ->
   bump p;
   if at p Syntax_kind.LPAREN then
     parse_parenthesized_binding ()
-  else
-    (
-      expect p Syntax_kind.IDENT (invalid_pattern p);
-      if at p Syntax_kind.COLON then
-        (
-          bump p;
-          if at p Syntax_kind.LPAREN then
-            parse_parenthesized_binding ()
-          else
-            (
-              parse_pattern ~stop_type_at_arrow p;
-              complete_labeled_pattern false
-            )
-        )
-      else
+  else (
+    expect p Syntax_kind.IDENT (invalid_pattern p);
+    if at p Syntax_kind.COLON then (
+      bump p;
+      if at p Syntax_kind.LPAREN then
+        parse_parenthesized_binding ()
+      else (
+        parse_pattern ~stop_type_at_arrow p;
         complete_labeled_pattern false
-    )
+      )
+    ) else
+      complete_labeled_pattern false
+  )
 
 and parse_if_expr = fun p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma ->
   let rec parse_then_branch () =
@@ -2146,36 +2078,30 @@ and parse_if_expr = fun p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma 
       let checkpoint = checkpoint p in
       let marker = precede p lhs in
       bump p;
-    if trailing_sequence_boundary p then
-      (
-        restore p checkpoint;
-        lhs
-      )
-    else
+    if trailing_sequence_boundary p then (
+      restore p checkpoint;
+      lhs
+    ) else
       let _rhs = parse_then_branch () in
       if at p Syntax_kind.ELSE_KW then
         complete p marker Syntax_kind.SEQUENCE_EXPR
-      else
-        (
-          restore p checkpoint;
-          lhs
-        )
+      else (
+        restore p checkpoint;
+        lhs
+      )
   in
   let marker = start_node p in
   bump p;
   ignore (parse_expression p ~signature ~stop_at_item:false 0);
-  if at p Syntax_kind.THEN_KW then
-    (
-      bump p;
-      ignore (parse_then_branch ())
-    )
-  else
+  if at p Syntax_kind.THEN_KW then (
+    bump p;
+    ignore (parse_then_branch ())
+  ) else
     Event.Buffer.error p.events (if_missing_then p);
-  if at p Syntax_kind.ELSE_KW then
-    (
-      bump p;
-      ignore (parse_expression p ~signature ~stop_at_item ~stop_at_semi:true ~stop_at_comma 0)
-    );
+  if at p Syntax_kind.ELSE_KW then (
+    bump p;
+    ignore (parse_expression p ~signature ~stop_at_item ~stop_at_semi:true ~stop_at_comma 0)
+  );
   complete p marker Syntax_kind.IF_EXPR
 
 and parse_match_expr = fun p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma ->
@@ -2208,14 +2134,13 @@ and parse_match_cases = fun p ~signature ~stop_at_item ~stop_at_semi ~stop_at_co
       Event.Buffer.error p.events (match_missing_pattern p)
     else
       parse_pattern p;
-    if at p Syntax_kind.WHEN_KW then
-      (
-        bump p;
-        if at p Syntax_kind.ARROW then
-          Event.Buffer.error p.events (match_guard_missing_expr p)
-        else
-          ignore (parse_expression p ~signature ~stop_at_item:false 0)
-      );
+    if at p Syntax_kind.WHEN_KW then (
+      bump p;
+      if at p Syntax_kind.ARROW then
+        Event.Buffer.error p.events (match_guard_missing_expr p)
+      else
+        ignore (parse_expression p ~signature ~stop_at_item:false 0)
+    );
     expect p Syntax_kind.ARROW (invalid_expression p);
     ignore (parse_expression p ~signature ~stop_at_item ~stop_at_semi:false ~stop_at_comma 0);
     ignore (complete p marker Syntax_kind.MATCH_CASE)
@@ -2224,11 +2149,10 @@ and parse_match_cases = fun p ~signature ~stop_at_item ~stop_at_semi ~stop_at_co
     if
       at p Syntax_kind.PIPE
       || (first && (at p Syntax_kind.ARROW || can_start_pattern_atom (current_kind p)))
-    then
-      (
-        parse_case ();
-        loop false
-      )
+    then (
+      parse_case ();
+      loop false
+    )
   in
   loop true
 
@@ -2236,18 +2160,16 @@ and parse_fun_expr = fun p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma
   let marker = start_node p in
   bump p;
   let rec parse_params () =
-    if not (at p Syntax_kind.ARROW || at p Syntax_kind.COLON || is_eof p) then
-      (
-        parse_pattern ~stop_type_at_arrow:true p;
-        parse_params ()
-      )
+    if not (at p Syntax_kind.ARROW || at p Syntax_kind.COLON || is_eof p) then (
+      parse_pattern ~stop_type_at_arrow:true p;
+      parse_params ()
+    )
   in
   parse_params ();
-  if at p Syntax_kind.COLON then
-    (
-      bump p;
-      ignore (parse_type_expr p ~allow_leading_poly_type_after_newline:true ~stop_at_arrow:true)
-    );
+  if at p Syntax_kind.COLON then (
+    bump p;
+    ignore (parse_type_expr p ~allow_leading_poly_type_after_newline:true ~stop_at_arrow:true)
+  );
   expect p Syntax_kind.ARROW (invalid_expression p);
   ignore (parse_expression p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma 0);
   complete p marker Syntax_kind.FUN_EXPR
@@ -2479,12 +2401,10 @@ and parse_pattern_atom = fun p ~stop_type_at_arrow ->
 
 and parse_single_token_pattern = fun p kind ->
   let marker = start_node p in
-  if is_eof p then
-    (
-      Event.Buffer.missing p.events ~kind:Syntax_kind.IDENT ~offset:(current_offset p);
-      Event.Buffer.error p.events (invalid_pattern p)
-    )
-  else
+  if is_eof p then (
+    Event.Buffer.missing p.events ~kind:Syntax_kind.IDENT ~offset:(current_offset p);
+    Event.Buffer.error p.events (invalid_pattern p)
+  ) else
     bump p;
   complete p marker kind
 
@@ -2507,106 +2427,92 @@ and parse_path_pattern = fun p ->
     || Syntax_kind.(peek_kind p 1 = LBRACE)
     || Syntax_kind.(peek_kind p 1 = LBRACKET)
     || Syntax_kind.(peek_kind p 1 = LBRACKET_BAR))
-  then
+  then (
+    bump p;
     (
-      bump p;
-      (
-        match current_kind p with
-        | Syntax_kind.LPAREN ->
-            bump p;
-            if not (at p Syntax_kind.RPAREN || is_eof p) then
-              parse_pattern ~stop_type_at_arrow:false p;
-            expect p Syntax_kind.RPAREN (invalid_pattern p)
-        | Syntax_kind.LBRACE -> ignore (parse_record_pattern p)
-        | Syntax_kind.LBRACKET ->
-            if is_extension_shell p then
-              ignore (parse_extension_pattern p)
-            else
-              ignore (parse_list_pattern p)
-        | Syntax_kind.LBRACKET_BAR -> ignore (parse_array_pattern p)
-        | _ -> Event.Buffer.error p.events (invalid_pattern p)
-      );
-      complete p marker Syntax_kind.LOCAL_OPEN_PATTERN
-    )
-  else
+      match current_kind p with
+      | Syntax_kind.LPAREN ->
+          bump p;
+          if not (at p Syntax_kind.RPAREN || is_eof p) then
+            parse_pattern ~stop_type_at_arrow:false p;
+          expect p Syntax_kind.RPAREN (invalid_pattern p)
+      | Syntax_kind.LBRACE -> ignore (parse_record_pattern p)
+      | Syntax_kind.LBRACKET ->
+          if is_extension_shell p then
+            ignore (parse_extension_pattern p)
+          else
+            ignore (parse_list_pattern p)
+      | Syntax_kind.LBRACKET_BAR -> ignore (parse_array_pattern p)
+      | _ -> Event.Buffer.error p.events (invalid_pattern p)
+    );
+    complete p marker Syntax_kind.LOCAL_OPEN_PATTERN
+  ) else
     complete p marker Syntax_kind.PATH_PATTERN
 
 and parse_parenthesized_pattern = fun p ->
   let marker = start_node p in
   bump p;
   let at_closer () = at p Syntax_kind.RPAREN || is_eof p in
-  if at p Syntax_kind.TYPE_KW then
-    (
-      bump p;
-      let rec consume_type_names () =
-        if at p Syntax_kind.IDENT then
-          (
-            bump p;
-            consume_type_names ()
-          )
-      in
-      consume_type_names ();
-      expect_closer p Syntax_kind.RPAREN ~opener:"(";
-      complete p marker Syntax_kind.LOCALLY_ABSTRACT_TYPE_PATTERN
-    )
-  else if at p Syntax_kind.MODULE_KW then
-    (
-      bump p;
-      if at p Syntax_kind.IDENT || at p Syntax_kind.UNDERSCORE then
-        bump p
-      else
-        expect p Syntax_kind.IDENT (invalid_pattern p);
-      consume_balanced_until p ~closer:Syntax_kind.RPAREN 0;
-      expect_closer p Syntax_kind.RPAREN ~opener:"(";
-      complete p marker Syntax_kind.FIRST_CLASS_MODULE_PATTERN
-    )
-  else if
+  if at p Syntax_kind.TYPE_KW then (
+    bump p;
+    let rec consume_type_names () =
+      if at p Syntax_kind.IDENT then (
+        bump p;
+        consume_type_names ()
+      )
+    in
+    consume_type_names ();
+    expect_closer p Syntax_kind.RPAREN ~opener:"(";
+    complete p marker Syntax_kind.LOCALLY_ABSTRACT_TYPE_PATTERN
+  ) else if at p Syntax_kind.MODULE_KW then (
+    bump p;
+    if at p Syntax_kind.IDENT || at p Syntax_kind.UNDERSCORE then
+      bump p
+    else
+      expect p Syntax_kind.IDENT (invalid_pattern p);
+    consume_balanced_until p ~closer:Syntax_kind.RPAREN 0;
+    expect_closer p Syntax_kind.RPAREN ~opener:"(";
+    complete p marker Syntax_kind.FIRST_CLASS_MODULE_PATTERN
+  ) else if
     binding_operator_keyword (current_kind p)
     && binding_operator_suffix (peek_kind p 1)
     && Syntax_kind.(peek_kind p 2 = RPAREN)
-  then
-    (
-      bump p;
-      bump p;
-      expect_closer p Syntax_kind.RPAREN ~opener:"(";
-      complete p marker Syntax_kind.PATH_PATTERN
-    )
-  else
-    (
-      if not (at_closer ()) then
-        if at p Syntax_kind.COMMA then
-          Event.Buffer.error p.events (tuple_pattern_extra_comma p)
-        else if parenthesized_operator_start p then
-          consume_balanced_until p ~closer:Syntax_kind.RPAREN 0
-        else if
-          operator_pattern_token (current_kind p) && Syntax_kind.(peek_kind p 1 = RPAREN)
-        then
-          ignore (parse_single_token_pattern p Syntax_kind.PATH_PATTERN)
-        else
+  then (
+    bump p;
+    bump p;
+    expect_closer p Syntax_kind.RPAREN ~opener:"(";
+    complete p marker Syntax_kind.PATH_PATTERN
+  ) else (
+    if not (at_closer ()) then
+      if at p Syntax_kind.COMMA then
+        Event.Buffer.error p.events (tuple_pattern_extra_comma p)
+      else if parenthesized_operator_start p then
+        consume_balanced_until p ~closer:Syntax_kind.RPAREN 0
+      else if operator_pattern_token (current_kind p) && Syntax_kind.(peek_kind p 1 = RPAREN) then
+        ignore (parse_single_token_pattern p Syntax_kind.PATH_PATTERN)
+      else
+        parse_pattern ~stop_type_at_arrow:false p;
+    let rec parse_comma_tail saw_comma =
+      if at p Syntax_kind.COMMA then (
+        bump p;
+        if not (at_closer ()) then
           parse_pattern ~stop_type_at_arrow:false p;
-      let rec parse_comma_tail saw_comma =
-        if at p Syntax_kind.COMMA then
-          (
-            bump p;
-            if not (at_closer ()) then
-              parse_pattern ~stop_type_at_arrow:false p;
-            parse_comma_tail true
-          )
+        parse_comma_tail true
+      ) else
+        saw_comma
+    in
+    let saw_comma = parse_comma_tail false in
+    expect_closer p Syntax_kind.RPAREN ~opener:"(";
+    complete
+      p
+      marker
+      (
+        if saw_comma then
+          Syntax_kind.TUPLE_PATTERN
         else
-          saw_comma
-      in
-      let saw_comma = parse_comma_tail false in
-      expect_closer p Syntax_kind.RPAREN ~opener:"(";
-      complete
-        p
-        marker
-        (
-          if saw_comma then
-            Syntax_kind.TUPLE_PATTERN
-          else
-            Syntax_kind.PAREN_PATTERN
-        )
-    )
+          Syntax_kind.PAREN_PATTERN
+      )
+  )
 
 and parse_extension_pattern = fun p ->
   let marker = start_node p in
@@ -2659,15 +2565,13 @@ and parse_record_pattern = fun p ->
         let before = p.pos in
         if at p Syntax_kind.UNDERSCORE then
           ignore (parse_single_token_pattern p Syntax_kind.WILDCARD_PATTERN)
-        else
-          (
-            ignore (parse_path_pattern p);
-            if at p Syntax_kind.EQ then
-              (
-                bump p;
-                parse_pattern ~stop_type_at_arrow:false p
-              )
-          );
+        else (
+          ignore (parse_path_pattern p);
+          if at p Syntax_kind.EQ then (
+            bump p;
+            parse_pattern ~stop_type_at_arrow:false p
+          )
+        );
         ensure_progress p before (invalid_pattern p);
         ignore (bump_if p Syntax_kind.SEMI);
         parse_fields ()
@@ -2747,12 +2651,10 @@ and parse_opaque_type_atom = fun p ~stop_at_arrow ->
     | Syntax_kind.LBRACKET ->
         let extension_shell = is_extension_shell p in
         bump p;
-        if extension_shell then
-          (
-            consume_extension_sigils p;
-            consume_extension_payload p
-          )
-        else
+        if extension_shell then (
+          consume_extension_sigils p;
+          consume_extension_payload p
+        ) else
           consume_balanced_until p ~closer:Syntax_kind.RBRACKET 0;
         expect p Syntax_kind.RBRACKET (invalid_type_expression p)
     | Syntax_kind.LBRACKET_BAR ->
@@ -2789,26 +2691,24 @@ and parse_parenthesized_type = fun p ~stop_at_arrow ->
     if not (at p Syntax_kind.RPAREN || is_eof p) then
       ignore (parse_type_bp p ~stop_at_arrow:false 0)
   );
-  if at p Syntax_kind.AS_KW then
-    (
-      has_alias := true;
-      bump p;
-      if type_expr_boundary p ~stop_at_arrow:false then
-        Event.Buffer.missing p.events ~kind:Syntax_kind.IDENT ~offset:(current_offset p)
-      else
-        ignore (parse_type_atom p ~stop_at_arrow:false)
-    );
+  if at p Syntax_kind.AS_KW then (
+    has_alias := true;
+    bump p;
+    if type_expr_boundary p ~stop_at_arrow:false then
+      Event.Buffer.missing p.events ~kind:Syntax_kind.IDENT ~offset:(current_offset p)
+    else
+      ignore (parse_type_atom p ~stop_at_arrow:false)
+  );
   let rec parse_comma_items () =
-    if at p Syntax_kind.COMMA then
-      (
-        has_comma := true;
-        bump p;
-        if not (at p Syntax_kind.RPAREN || is_eof p) then
-          ignore (parse_type_bp p ~stop_at_arrow:false 0)
-        else
-          Event.Buffer.missing p.events ~kind:Syntax_kind.IDENT ~offset:(current_offset p);
-        parse_comma_items ()
-      )
+    if at p Syntax_kind.COMMA then (
+      has_comma := true;
+      bump p;
+      if not (at p Syntax_kind.RPAREN || is_eof p) then
+        ignore (parse_type_bp p ~stop_at_arrow:false 0)
+      else
+        Event.Buffer.missing p.events ~kind:Syntax_kind.IDENT ~offset:(current_offset p);
+      parse_comma_items ()
+    )
   in
   parse_comma_items ();
   expect p Syntax_kind.RPAREN (invalid_type_expression p);
@@ -2836,22 +2736,18 @@ and starts_quoted_poly_type = fun p ->
 and parse_poly_type = fun p ~stop_at_arrow ->
   let marker = start_node p in
   let rec consume_keyword_type_names consumed =
-    if at p Syntax_kind.IDENT then
-      (
-        bump p;
-        consume_keyword_type_names true
-      )
-    else
+    if at p Syntax_kind.IDENT then (
+      bump p;
+      consume_keyword_type_names true
+    ) else
       consumed
   in
   let rec consume_quoted_type_names consumed =
-    if at p Syntax_kind.QUOTE && Syntax_kind.(peek_kind p 1 = IDENT) then
-      (
-        bump p;
-        bump p;
-        consume_quoted_type_names true
-      )
-    else
+    if at p Syntax_kind.QUOTE && Syntax_kind.(peek_kind p 1 = IDENT) then (
+      bump p;
+      bump p;
+      consume_quoted_type_names true
+    ) else
       consumed
   in
   let consumed_name =
@@ -2918,23 +2814,19 @@ and parse_type_atom = fun p ~stop_at_arrow ->
 
 and parse_type_bp = fun p ~stop_at_arrow min_bp ->
   let rec loop lhs =
-    if is_attribute_suffix p then
-      (
-        consume_attribute_suffix p;
-        loop lhs
-      )
-    else if type_expr_boundary p ~stop_at_arrow then
+    if is_attribute_suffix p then (
+      consume_attribute_suffix p;
+      loop lhs
+    ) else if type_expr_boundary p ~stop_at_arrow then
       lhs
     else if (not stop_at_arrow) && at p Syntax_kind.ARROW && min_bp <= 5 then
       (
         let marker = precede p lhs in
         bump p;
-        if type_expr_boundary p ~stop_at_arrow then
-          (
-            Event.Buffer.missing p.events ~kind:Syntax_kind.IDENT ~offset:(current_offset p);
-            Event.Buffer.error p.events (invalid_type_expression_at_previous_end p)
-          )
-        else
+        if type_expr_boundary p ~stop_at_arrow then (
+          Event.Buffer.missing p.events ~kind:Syntax_kind.IDENT ~offset:(current_offset p);
+          Event.Buffer.error p.events (invalid_type_expression_at_previous_end p)
+        ) else
           ignore (parse_type_bp p ~stop_at_arrow 5);
         loop (complete p marker Syntax_kind.ARROW_TYPE)
       )
@@ -2942,12 +2834,10 @@ and parse_type_bp = fun p ~stop_at_arrow min_bp ->
       (
         let marker = precede p lhs in
         bump p;
-        if type_expr_boundary p ~stop_at_arrow then
-          (
-            Event.Buffer.missing p.events ~kind:Syntax_kind.IDENT ~offset:(current_offset p);
-            Event.Buffer.error p.events (invalid_type_expression_at_previous_end p)
-          )
-        else
+        if type_expr_boundary p ~stop_at_arrow then (
+          Event.Buffer.missing p.events ~kind:Syntax_kind.IDENT ~offset:(current_offset p);
+          Event.Buffer.error p.events (invalid_type_expression_at_previous_end p)
+        ) else
           ignore (parse_type_bp p ~stop_at_arrow 11);
         loop (complete p marker Syntax_kind.TUPLE_TYPE)
       )
@@ -2967,35 +2857,29 @@ and parse_type_expr = fun p ~allow_leading_poly_type_after_newline ~stop_at_arro
   if
     type_expr_boundary p ~stop_at_arrow
     && not (allow_leading_poly_type_after_newline && at p Syntax_kind.TYPE_KW)
-  then
-    (
-      Event.Buffer.missing p.events ~kind:Syntax_kind.IDENT ~offset:(current_offset p);
-      Event.Buffer.error p.events (invalid_type_expression p)
-    )
-  else
-    (
-      ignore (parse_type_bp p ~stop_at_arrow 0);
-      let rec recover_trailing () =
-        if not (is_eof p || type_expr_boundary p ~stop_at_arrow) then
-          (
-            ignore (parse_opaque_type_atom p ~stop_at_arrow);
-            recover_trailing ()
-          )
-      in
-      recover_trailing ()
-    );
+  then (
+    Event.Buffer.missing p.events ~kind:Syntax_kind.IDENT ~offset:(current_offset p);
+    Event.Buffer.error p.events (invalid_type_expression p)
+  ) else (
+    ignore (parse_type_bp p ~stop_at_arrow 0);
+    let rec recover_trailing () =
+      if not (is_eof p || type_expr_boundary p ~stop_at_arrow) then (
+        ignore (parse_opaque_type_atom p ~stop_at_arrow);
+        recover_trailing ()
+      )
+    in
+    recover_trailing ()
+  );
   ignore (complete p marker Syntax_kind.TYPE_EXPR)
 
 and parse_let_binding = fun p ~signature ~top_level ->
   let marker = start_node p in
   let diagnostics_before = Vector.length (Event.Buffer.diagnostics p.events) in
   let missing_pattern = at p Syntax_kind.EQ in
-  if missing_pattern then
-    (
-      Event.Buffer.missing p.events ~kind:Syntax_kind.IDENT ~offset:(current_offset p);
-      Event.Buffer.error p.events (invalid_pattern_at_previous_end p)
-    )
-  else
+  if missing_pattern then (
+    Event.Buffer.missing p.events ~kind:Syntax_kind.IDENT ~offset:(current_offset p);
+    Event.Buffer.error p.events (invalid_pattern_at_previous_end p)
+  ) else
     ignore (parse_pattern_no_apply p ~stop_type_at_arrow:false);
   let rec parse_params () =
     if
@@ -3005,76 +2889,65 @@ and parse_let_binding = fun p ~signature ~top_level ->
         || (top_level && at_item_boundary p ~signature)
         || not (has_eq_before_item_boundary p ~signature))
     then
-      if at p Syntax_kind.COLON then
-        (
-          bump p;
-          parse_type_expr p ~allow_leading_poly_type_after_newline:true ~stop_at_arrow:false
-        )
-      else
-        (
-          parse_pattern ~stop_type_at_arrow:false p;
-          parse_params ()
-        )
+      if at p Syntax_kind.COLON then (
+        bump p;
+        parse_type_expr p ~allow_leading_poly_type_after_newline:true ~stop_at_arrow:false
+      ) else (
+        parse_pattern ~stop_type_at_arrow:false p;
+        parse_params ()
+      )
   in
   parse_params ();
-  if at p Syntax_kind.EQ then
-    (
-      bump p;
-      if missing_binding_expr_boundary p ~signature ~top_level then
-        (
-          Event.Buffer.missing p.events ~kind:Syntax_kind.IDENT ~offset:(current_offset p);
-          if not missing_pattern then
-            (
-              Event.Buffer.error p.events (missing_let_binding_expr p);
-              if
-                is_eof p && diagnostics_before > 0 && current_offset p > previous_end_offset p
-              then
-                Event.Buffer.error p.events (invalid_expression_at_previous_end p)
-            )
-        )
-      else if (not top_level) && closing_punctuation (current_kind p) then
-        (
-          let error_marker = start_node p in
-          let raw = current p in
-          bump p;
-          Event.Buffer.error
-            p.events
-            (diagnostic_with_raw_found_at
-              p
-              raw
-              Diagnostic.invalid_expression
-              (zero_span (current_offset p)));
-          ignore (complete p error_marker Syntax_kind.ERROR)
-        )
-      else
-        ignore (parse_expression p ~signature ~stop_at_item:top_level 0)
-    )
-  else
-    (
-      Event.Buffer.missing p.events ~kind:Syntax_kind.EQ ~offset:(current_offset p);
-      Event.Buffer.error
-        p.events
-        (
-          if
-            (not (at_item_boundary p ~signature)) && not (has_eq_before_item_boundary p ~signature)
-          then
-            missing_let_binding_equals_eof_at_current_offset p
-          else if at_item_boundary p ~signature then
-            missing_let_binding_equals_at_previous_end p
-          else
-            missing_let_binding_equals p
-        );
-      if
-        not
-          (expression_boundary
+  if at p Syntax_kind.EQ then (
+    bump p;
+    if missing_binding_expr_boundary p ~signature ~top_level then (
+      Event.Buffer.missing p.events ~kind:Syntax_kind.IDENT ~offset:(current_offset p);
+      if not missing_pattern then (
+        Event.Buffer.error p.events (missing_let_binding_expr p);
+        if is_eof p && diagnostics_before > 0 && current_offset p > previous_end_offset p then
+          Event.Buffer.error p.events (invalid_expression_at_previous_end p)
+      )
+    ) else if (not top_level) && closing_punctuation (current_kind p) then
+      (
+        let error_marker = start_node p in
+        let raw = current p in
+        bump p;
+        Event.Buffer.error
+          p.events
+          (diagnostic_with_raw_found_at
             p
-            ~stop_at_item:top_level
-            ~stop_at_semi:false
-            ~stop_at_comma:false
-            ~signature)
-      then
-        ignore (parse_expression p ~signature ~stop_at_item:top_level 0)
-    );
+            raw
+            Diagnostic.invalid_expression
+            (zero_span (current_offset p)));
+        ignore (complete p error_marker Syntax_kind.ERROR)
+      )
+    else
+      ignore (parse_expression p ~signature ~stop_at_item:top_level 0)
+  ) else (
+    Event.Buffer.missing p.events ~kind:Syntax_kind.EQ ~offset:(current_offset p);
+    Event.Buffer.error
+      p.events
+      (
+        if
+          (not (at_item_boundary p ~signature)) && not (has_eq_before_item_boundary p ~signature)
+        then
+          missing_let_binding_equals_eof_at_current_offset p
+        else if at_item_boundary p ~signature then
+          missing_let_binding_equals_at_previous_end p
+        else
+          missing_let_binding_equals p
+      );
+    if
+      not
+        (expression_boundary
+          p
+          ~stop_at_item:top_level
+          ~stop_at_semi:false
+          ~stop_at_comma:false
+          ~signature)
+    then
+      ignore (parse_expression p ~signature ~stop_at_item:top_level 0)
+  );
   ignore (complete p marker Syntax_kind.LET_BINDING)
 
 and consume_until_item_boundary = fun p ~signature ->
@@ -3119,22 +2992,19 @@ and parse_let_decl = fun p ~signature ->
   ignore (bump_if p Syntax_kind.REC_KW);
   parse_let_binding p ~signature ~top_level:true;
   let rec parse_and_bindings () =
-    if at p Syntax_kind.AND_KW then
-      (
-        bump p;
-        parse_let_binding p ~signature ~top_level:true;
-        parse_and_bindings ()
-      )
+    if at p Syntax_kind.AND_KW then (
+      bump p;
+      parse_let_binding p ~signature ~top_level:true;
+      parse_and_bindings ()
+    )
   in
   parse_and_bindings ();
   let kind =
-    if (not signature) && at p Syntax_kind.IN_KW then
-      (
-        bump p;
-        ignore (parse_expression p ~signature ~stop_at_item:true 0);
-        Syntax_kind.LET_EXPR
-      )
-    else
+    if (not signature) && at p Syntax_kind.IN_KW then (
+      bump p;
+      ignore (parse_expression p ~signature ~stop_at_item:true 0);
+      Syntax_kind.LET_EXPR
+    ) else
       Syntax_kind.LET_DECL
   in
   ignore (complete p marker kind)
@@ -3181,12 +3051,11 @@ and parse_record_type_field = fun p ->
       let text = token_text p (current p) in
       bump p;
       Some text
-    else
-      (
-        if p.pos > start_pos then
-          Event.Buffer.error p.events (mutable_field_missing_name p);
-        None
-      )
+    else (
+      if p.pos > start_pos then
+        Event.Buffer.error p.events (mutable_field_missing_name p);
+      None
+    )
   in
   let missing_colon =
     match field_name with
@@ -3218,11 +3087,10 @@ and parse_record_type = fun p ->
   ignore (bump_if p Syntax_kind.PRIVATE_KW);
   expect p Syntax_kind.LBRACE (invalid_type_expression p);
   let rec parse_fields () =
-    if not (is_eof p || at p Syntax_kind.RBRACE) then
-      (
-        ignore (parse_record_type_field p);
-        parse_fields ()
-      )
+    if not (is_eof p || at p Syntax_kind.RBRACE) then (
+      ignore (parse_record_type_field p);
+      parse_fields ()
+    )
   in
   parse_fields ();
   expect_closer p Syntax_kind.RBRACE ~opener:"{";
@@ -3231,16 +3099,13 @@ and parse_record_type = fun p ->
 and parse_variant_constructor = fun p ~signature ->
   let marker = start_node p in
   ignore (bump_if p Syntax_kind.PIPE);
-  if at p Syntax_kind.IDENT then
-    (
-      bump p;
-      consume_path_segments p
-    )
-  else
-    (
-      Event.Buffer.missing p.events ~kind:Syntax_kind.IDENT ~offset:(current_offset p);
-      Event.Buffer.error p.events (missing_type_name_at_current_offset p)
-    );
+  if at p Syntax_kind.IDENT then (
+    bump p;
+    consume_path_segments p
+  ) else (
+    Event.Buffer.missing p.events ~kind:Syntax_kind.IDENT ~offset:(current_offset p);
+    Event.Buffer.error p.events (missing_type_name_at_current_offset p)
+  );
   (
     match current_kind p with
     | Syntax_kind.OF_KW ->
@@ -3256,23 +3121,17 @@ and parse_variant_constructor = fun p ~signature ->
         bump p;
         if at_type_decl_member_boundary p ~signature || at p Syntax_kind.PIPE then
           Event.Buffer.missing p.events ~kind:Syntax_kind.IDENT ~offset:(current_offset p)
-        else if at p Syntax_kind.LBRACE then
-          (
-            ignore (parse_record_type p);
-            if at p Syntax_kind.ARROW then
-              (
-                bump p;
-                if at_type_decl_member_boundary p ~signature || at p Syntax_kind.PIPE then
-                  Event.Buffer.missing p.events ~kind:Syntax_kind.IDENT ~offset:(current_offset p)
-                else
-                  ignore
-                    (parse_type_expr
-                      p
-                      ~allow_leading_poly_type_after_newline:false
-                      ~stop_at_arrow:false)
-              )
+        else if at p Syntax_kind.LBRACE then (
+          ignore (parse_record_type p);
+          if at p Syntax_kind.ARROW then (
+            bump p;
+            if at_type_decl_member_boundary p ~signature || at p Syntax_kind.PIPE then
+              Event.Buffer.missing p.events ~kind:Syntax_kind.IDENT ~offset:(current_offset p)
+            else
+              ignore
+                (parse_type_expr p ~allow_leading_poly_type_after_newline:false ~stop_at_arrow:false)
           )
-        else
+        ) else
           ignore
             (parse_type_expr p ~allow_leading_poly_type_after_newline:false ~stop_at_arrow:false)
     | _ -> ()
@@ -3285,12 +3144,10 @@ and parse_variant_type = fun p ~signature ->
   let rec parse_constructors consumed =
     if at_type_decl_member_boundary p ~signature then
       consumed
-    else if at p Syntax_kind.PIPE || starts_bare_variant_constructor p then
-      (
-        ignore (parse_variant_constructor p ~signature);
-        parse_constructors true
-      )
-    else
+    else if at p Syntax_kind.PIPE || starts_bare_variant_constructor p then (
+      ignore (parse_variant_constructor p ~signature);
+      parse_constructors true
+    ) else
       consumed
   in
   ignore (parse_constructors false);
@@ -3376,23 +3233,20 @@ and parse_type_decl_body = fun p ~signature ->
     ignore (parse_variant_type p ~signature)
   else if type_decl_body_needs_opaque_parse p ~signature then
     consume_type_body p ~signature
-  else
-    (
-      parse_type_expr p ~allow_leading_poly_type_after_newline:false ~stop_at_arrow:false;
-      if at p Syntax_kind.EQ then
-        (
-          bump p;
-          parse_type_decl_representation p ~signature
-        )
-      else if
-        not
-          (is_eof p
-          || at_item_boundary p ~signature
-          || at p Syntax_kind.AND_KW
-          || at p Syntax_kind.CONSTRAINT_KW)
-      then
-        consume_until_item_boundary p ~signature
-    )
+  else (
+    parse_type_expr p ~allow_leading_poly_type_after_newline:false ~stop_at_arrow:false;
+    if at p Syntax_kind.EQ then (
+      bump p;
+      parse_type_decl_representation p ~signature
+    ) else if
+      not
+        (is_eof p
+        || at_item_boundary p ~signature
+        || at p Syntax_kind.AND_KW
+        || at p Syntax_kind.CONSTRAINT_KW)
+    then
+      consume_until_item_boundary p ~signature
+  )
 
 and starts_type_extension_body = fun p -> at p Syntax_kind.PIPE || starts_bare_variant_constructor p
 
@@ -3468,11 +3322,10 @@ and recover_bad_comment_type_var = fun p raw ->
   if raw_char_is p raw ~offset:1 '(' then
     (
       let rec consume_until_rparen () =
-        if not (is_eof p || at p Syntax_kind.RPAREN) then
-          (
-            bump p;
-            consume_until_rparen ()
-          )
+        if not (is_eof p || at p Syntax_kind.RPAREN) then (
+          bump p;
+          consume_until_rparen ()
+        )
       in
       consume_until_rparen ();
       ignore (bump_if p Syntax_kind.RPAREN)
@@ -3601,12 +3454,11 @@ and parse_type_decl_head = fun p ~signature ->
       consume_path_segments p;
       Some text
     )
-  else
-    (
-      if not (is_eof p || at_item_boundary p ~signature) then
-        Event.Buffer.error p.events (missing_type_name p);
-      None
-    )
+  else (
+    if not (is_eof p || at_item_boundary p ~signature) then
+      Event.Buffer.error p.events (missing_type_name p);
+    None
+  )
 
 and parse_type_extension_decl = fun p ~signature ->
   let marker = start_node p in
@@ -3615,24 +3467,19 @@ and parse_type_extension_decl = fun p ~signature ->
   ignore (parse_type_decl_head p ~signature);
   ignore (complete p head Syntax_kind.TYPE_EXTENSION_DECL_HEAD);
   let body = start_node p in
-  if at p Syntax_kind.PLUS && Syntax_kind.(peek_kind p 1 = EQ) then
-    (
-      bump p;
-      bump p;
-      if is_eof p || at_item_boundary p ~signature then
-        (
-          Event.Buffer.missing p.events ~kind:Syntax_kind.IDENT ~offset:(current_offset p);
-          Event.Buffer.error p.events (invalid_type_expression_at_previous_end p)
-        )
-      else if starts_type_extension_body p then
-        ignore (parse_variant_type p ~signature)
-      else
-        (
-          Event.Buffer.error p.events (invalid_type_expression p);
-          consume_until_item_boundary p ~signature
-        )
+  if at p Syntax_kind.PLUS && Syntax_kind.(peek_kind p 1 = EQ) then (
+    bump p;
+    bump p;
+    if is_eof p || at_item_boundary p ~signature then (
+      Event.Buffer.missing p.events ~kind:Syntax_kind.IDENT ~offset:(current_offset p);
+      Event.Buffer.error p.events (invalid_type_expression_at_previous_end p)
+    ) else if starts_type_extension_body p then
+      ignore (parse_variant_type p ~signature)
+    else (
+      Event.Buffer.error p.events (invalid_type_expression p);
+      consume_until_item_boundary p ~signature
     )
-  else
+  ) else
     Event.Buffer.error p.events (missing_type_decl_equals p);
   ignore (complete p body Syntax_kind.TYPE_EXTENSION_DECL_BODY);
   if not (is_eof p || at_item_boundary p ~signature) then
@@ -3689,12 +3536,10 @@ and parse_type_decl_member = fun p ~signature ~first ->
     | Syntax_kind.COLONEQ -> consume_until_type_decl_member_boundary p ~signature 0
     | Syntax_kind.EQ ->
         bump p;
-        if is_eof p || at_item_boundary p ~signature then
-          (
-            Event.Buffer.missing p.events ~kind:Syntax_kind.IDENT ~offset:(current_offset p);
-            Event.Buffer.error p.events (invalid_type_expression_at_previous_end p)
-          )
-        else
+        if is_eof p || at_item_boundary p ~signature then (
+          Event.Buffer.missing p.events ~kind:Syntax_kind.IDENT ~offset:(current_offset p);
+          Event.Buffer.error p.events (invalid_type_expression_at_previous_end p)
+        ) else
           parse_type_decl_body p ~signature;
         consume_type_decl_constraints p ~signature
     | Syntax_kind.EOF -> ()
@@ -3712,11 +3557,10 @@ and parse_type_decl = fun p ~signature ->
   let marker = start_node p in
   ignore (parse_type_decl_member p ~signature ~first:true);
   let rec parse_tail_members () =
-    if at p Syntax_kind.AND_KW then
-      (
-        ignore (parse_type_decl_member p ~signature ~first:false);
-        parse_tail_members ()
-      )
+    if at p Syntax_kind.AND_KW then (
+      ignore (parse_type_decl_member p ~signature ~first:false);
+      parse_tail_members ()
+    )
   in
   parse_tail_members ();
   ignore (complete p marker Syntax_kind.TYPE_DECL)
@@ -3737,12 +3581,11 @@ and module_type_boundary = fun p ~signature ->
   || at_item_boundary p ~signature
 
 and parse_nested_phrase_separators = fun p ->
-  if at p Syntax_kind.SEMI && Syntax_kind.(peek_kind p 1 = SEMI) then
-    (
-      bump p;
-      bump p;
-      parse_nested_phrase_separators p
-    )
+  if at p Syntax_kind.SEMI && Syntax_kind.(peek_kind p 1 = SEMI) then (
+    bump p;
+    bump p;
+    parse_nested_phrase_separators p
+  )
 
 and module_decl_head_boundary = fun p ~signature depth ->
   Int.equal depth 0
@@ -3850,11 +3693,10 @@ and parse_struct_module_expr = fun p ->
   expect p Syntax_kind.STRUCT_KW (invalid_expression p);
   let rec loop () =
     parse_nested_phrase_separators p;
-    if not (is_eof p || at_end_keyword p) then
-      (
-        parse_structure_item p;
-        loop ()
-      )
+    if not (is_eof p || at_end_keyword p) then (
+      parse_structure_item p;
+      loop ()
+    )
   in
   loop ();
   expect_closer p Syntax_kind.END_KW ~opener:"struct";
@@ -3865,14 +3707,13 @@ and parse_signature_module_type = fun p ->
   expect p Syntax_kind.SIG_KW (invalid_type_expression p);
   let rec loop () =
     parse_nested_phrase_separators p;
-    if not (is_eof p || at_end_keyword p) then
-      (
-        if starts_signature_item_at p then
-          parse_signature_item p
-        else
-          recover_current_as_error p (unexpected_signature_item p);
-        loop ()
-      )
+    if not (is_eof p || at_end_keyword p) then (
+      if starts_signature_item_at p then
+        parse_signature_item p
+      else
+        recover_current_as_error p (unexpected_signature_item p);
+      loop ()
+    )
   in
   loop ();
   expect_closer p Syntax_kind.END_KW ~opener:"sig";
@@ -3880,37 +3721,30 @@ and parse_signature_module_type = fun p ->
 
 and parse_module_path_node = fun p kind diagnostic ->
   let marker = start_node p in
-  if at p Syntax_kind.IDENT then
-    (
-      bump p;
-      consume_path_segments p
-    )
-  else
-    (
-      Event.Buffer.missing p.events ~kind:Syntax_kind.IDENT ~offset:(current_offset p);
-      Event.Buffer.error p.events diagnostic
-    );
+  if at p Syntax_kind.IDENT then (
+    bump p;
+    consume_path_segments p
+  ) else (
+    Event.Buffer.missing p.events ~kind:Syntax_kind.IDENT ~offset:(current_offset p);
+    Event.Buffer.error p.events diagnostic
+  );
   complete p marker kind
 
 and parse_opaque_module_expr = fun p ~signature ->
   let marker = start_node p in
-  if module_expr_boundary p ~signature then
-    (
-      Event.Buffer.missing p.events ~kind:Syntax_kind.IDENT ~offset:(current_offset p);
-      Event.Buffer.error p.events (missing_module_expr p)
-    )
-  else
+  if module_expr_boundary p ~signature then (
+    Event.Buffer.missing p.events ~kind:Syntax_kind.IDENT ~offset:(current_offset p);
+    Event.Buffer.error p.events (missing_module_expr p)
+  ) else
     consume_until_module_expr_boundary p ~signature;
   complete p marker Syntax_kind.OPAQUE_MODULE_EXPR
 
 and parse_opaque_module_type = fun p ~signature ->
   let marker = start_node p in
-  if module_type_boundary p ~signature then
-    (
-      Event.Buffer.missing p.events ~kind:Syntax_kind.IDENT ~offset:(current_offset p);
-      Event.Buffer.error p.events (missing_module_type_expr p)
-    )
-  else
+  if module_type_boundary p ~signature then (
+    Event.Buffer.missing p.events ~kind:Syntax_kind.IDENT ~offset:(current_offset p);
+    Event.Buffer.error p.events (missing_module_type_expr p)
+  ) else
     consume_until_module_type_boundary p ~signature;
   complete p marker Syntax_kind.OPAQUE_MODULE_TYPE
 
@@ -3922,14 +3756,12 @@ and parse_parenthesized_module_expr = fun p ~signature ->
   else if not (at p Syntax_kind.RPAREN || is_eof p) then
     ignore (parse_module_expr p ~signature);
   let has_constraint =
-    if at p Syntax_kind.COLON then
-      (
-        bump p;
-        if not (at p Syntax_kind.RPAREN || is_eof p) then
-          ignore (parse_module_type_expr p ~signature);
-        true
-      )
-    else
+    if at p Syntax_kind.COLON then (
+      bump p;
+      if not (at p Syntax_kind.RPAREN || is_eof p) then
+        ignore (parse_module_type_expr p ~signature);
+      true
+    ) else
       false
   in
   expect_closer p Syntax_kind.RPAREN ~opener:"(";
@@ -4032,12 +3864,10 @@ and parse_module_type_atom = fun p ~signature ->
 and consume_module_type_with_constraint = fun p ~signature ->
   let parse_type_path () =
     let marker = start_node p in
-    if at p Syntax_kind.IDENT then
-      (
-        bump p;
-        consume_path_segments p
-      )
-    else
+    if at p Syntax_kind.IDENT then (
+      bump p;
+      consume_path_segments p
+    ) else
       Event.Buffer.error p.events (missing_type_name p);
     complete p marker Syntax_kind.PATH_TYPE
   in
@@ -4045,20 +3875,16 @@ and consume_module_type_with_constraint = fun p ~signature ->
     let marker = start_node p in
     expect p Syntax_kind.TYPE_KW (invalid_type_expression p);
     ignore (parse_type_path ());
-    if at p Syntax_kind.EQ || at p Syntax_kind.COLONEQ then
-      (
-        bump p;
-        if not (type_expr_boundary p ~stop_at_arrow:false) then
-          parse_type_expr p ~allow_leading_poly_type_after_newline:false ~stop_at_arrow:false
-      )
-    else if at p Syntax_kind.PLUS && Syntax_kind.(peek_kind p 1 = EQ) then
-      (
-        bump p;
-        bump p;
-        if not (type_expr_boundary p ~stop_at_arrow:false) then
-          parse_type_expr p ~allow_leading_poly_type_after_newline:false ~stop_at_arrow:false
-      )
-    else
+    if at p Syntax_kind.EQ || at p Syntax_kind.COLONEQ then (
+      bump p;
+      if not (type_expr_boundary p ~stop_at_arrow:false) then
+        parse_type_expr p ~allow_leading_poly_type_after_newline:false ~stop_at_arrow:false
+    ) else if at p Syntax_kind.PLUS && Syntax_kind.(peek_kind p 1 = EQ) then (
+      bump p;
+      bump p;
+      if not (type_expr_boundary p ~stop_at_arrow:false) then
+        parse_type_expr p ~allow_leading_poly_type_after_newline:false ~stop_at_arrow:false
+    ) else
       Event.Buffer.error p.events (missing_type_decl_equals p);
     complete p marker Syntax_kind.WITH_TYPE_CONSTRAINT
   in
@@ -4066,13 +3892,11 @@ and consume_module_type_with_constraint = fun p ~signature ->
     let marker = start_node p in
     expect p Syntax_kind.MODULE_KW (invalid_expression p);
     ignore (parse_module_path_node p Syntax_kind.PATH_MODULE_EXPR (missing_module_expr p));
-    if at p Syntax_kind.EQ then
-      (
-        bump p;
-        if not (module_expr_boundary p ~signature) then
-          ignore (parse_module_expr p ~signature)
-      )
-    else
+    if at p Syntax_kind.EQ then (
+      bump p;
+      if not (module_expr_boundary p ~signature) then
+        ignore (parse_module_expr p ~signature)
+    ) else
       Event.Buffer.error p.events (missing_module_decl_equals p);
     complete p marker Syntax_kind.WITH_MODULE_CONSTRAINT
   in
@@ -4086,11 +3910,10 @@ and consume_module_type_with_constraint = fun p ~signature ->
     if
       at p Syntax_kind.AND_KW
       && (Syntax_kind.(peek_kind p 1 = TYPE_KW) || Syntax_kind.(peek_kind p 1 = MODULE_KW))
-    then
-      (
-        bump p;
-        parse_constraint ()
-      )
+    then (
+      bump p;
+      parse_constraint ()
+    )
   in
   parse_constraint ()
 
@@ -4143,18 +3966,15 @@ and parse_module_type_decl = fun p ~signature ->
 
 and parse_module_decl_member = fun p ~signature ~first ->
   let marker = start_node p in
-  if first then
-    (
-      expect p Syntax_kind.MODULE_KW (invalid_expression p);
-      consume_shortcut_extension_modifier p;
-      ignore (bump_if p Syntax_kind.REC_KW);
-      consume_declaration_attributes p
-    )
-  else
-    (
-      expect p Syntax_kind.AND_KW (invalid_expression p);
-      consume_declaration_attributes p
-    );
+  if first then (
+    expect p Syntax_kind.MODULE_KW (invalid_expression p);
+    consume_shortcut_extension_modifier p;
+    ignore (bump_if p Syntax_kind.REC_KW);
+    consume_declaration_attributes p
+  ) else (
+    expect p Syntax_kind.AND_KW (invalid_expression p);
+    consume_declaration_attributes p
+  );
   (
     if at p Syntax_kind.IDENT || at p Syntax_kind.UNDERSCORE then
       bump p
@@ -4162,29 +3982,24 @@ and parse_module_decl_member = fun p ~signature ~first ->
       Event.Buffer.error p.events (invalid_module_name p)
   );
   consume_module_decl_head_tail p ~signature;
-  if at p Syntax_kind.COLON then
-    (
-      bump p;
-      if is_eof p || at p Syntax_kind.EQ || at_item_boundary p ~signature then
-        Event.Buffer.error p.events (missing_module_type_expr p)
-      else
-        ignore (parse_module_type_expr p ~signature)
-    );
-  if at p Syntax_kind.EQ then
-    (
-      bump p;
-      if is_eof p || at_item_boundary p ~signature then
-        Event.Buffer.error p.events (missing_module_expr p)
-      else
-        ignore (parse_module_expr p ~signature)
-    )
-  else if at p Syntax_kind.STRUCT_KW || at p Syntax_kind.IDENT then
-    (
-      Event.Buffer.missing p.events ~kind:Syntax_kind.EQ ~offset:(current_offset p);
-      Event.Buffer.error p.events (missing_module_decl_equals p);
+  if at p Syntax_kind.COLON then (
+    bump p;
+    if is_eof p || at p Syntax_kind.EQ || at_item_boundary p ~signature then
+      Event.Buffer.error p.events (missing_module_type_expr p)
+    else
+      ignore (parse_module_type_expr p ~signature)
+  );
+  if at p Syntax_kind.EQ then (
+    bump p;
+    if is_eof p || at_item_boundary p ~signature then
+      Event.Buffer.error p.events (missing_module_expr p)
+    else
       ignore (parse_module_expr p ~signature)
-    )
-  else if not (is_eof p || at p Syntax_kind.AND_KW || at_item_boundary p ~signature) then
+  ) else if at p Syntax_kind.STRUCT_KW || at p Syntax_kind.IDENT then (
+    Event.Buffer.missing p.events ~kind:Syntax_kind.EQ ~offset:(current_offset p);
+    Event.Buffer.error p.events (missing_module_decl_equals p);
+    ignore (parse_module_expr p ~signature)
+  ) else if not (is_eof p || at p Syntax_kind.AND_KW || at_item_boundary p ~signature) then
     consume_until_module_expr_boundary p ~signature;
   ignore (complete p marker Syntax_kind.MODULE_DECL_MEMBER)
 
@@ -4192,11 +4007,10 @@ and parse_module_decl = fun p ~signature ->
   let marker = start_node p in
   ignore (parse_module_decl_member p ~signature ~first:true);
   let rec parse_tail_members () =
-    if at p Syntax_kind.AND_KW then
-      (
-        ignore (parse_module_decl_member p ~signature ~first:false);
-        parse_tail_members ()
-      )
+    if at p Syntax_kind.AND_KW then (
+      ignore (parse_module_decl_member p ~signature ~first:false);
+      parse_tail_members ()
+    )
   in
   parse_tail_members ();
   ignore (complete p marker Syntax_kind.MODULE_DECL)
@@ -4207,16 +4021,13 @@ and parse_external_decl = fun p ~signature ->
   consume_shortcut_extension_modifier p;
   consume_declaration_attributes p;
   ignore (consume_value_name p ~signature);
-  if at p Syntax_kind.COLON then
-    (
-      bump p;
-      parse_type_expr p ~allow_leading_poly_type_after_newline:true ~stop_at_arrow:false
-    )
-  else
-    (
-      Event.Buffer.missing p.events ~kind:Syntax_kind.COLON ~offset:(current_offset p);
-      Event.Buffer.error p.events (missing_external_colon p)
-    );
+  if at p Syntax_kind.COLON then (
+    bump p;
+    parse_type_expr p ~allow_leading_poly_type_after_newline:true ~stop_at_arrow:false
+  ) else (
+    Event.Buffer.missing p.events ~kind:Syntax_kind.COLON ~offset:(current_offset p);
+    Event.Buffer.error p.events (missing_external_colon p)
+  );
   if not (is_eof p || at_item_boundary p ~signature) then
     consume_until_item_boundary p ~signature;
   ignore (complete p marker Syntax_kind.EXTERNAL_DECL)
@@ -4226,16 +4037,13 @@ and parse_val_decl = fun p ~signature ->
   expect p Syntax_kind.VAL_KW (invalid_type_expression p);
   if not (consume_value_name p ~signature) then
     Event.Buffer.error p.events (missing_type_name p);
-  if at p Syntax_kind.COLON then
-    (
-      bump p;
-      parse_type_expr p ~allow_leading_poly_type_after_newline:true ~stop_at_arrow:false
-    )
-  else
-    (
-      Event.Buffer.missing p.events ~kind:Syntax_kind.COLON ~offset:(current_offset p);
-      Event.Buffer.error p.events (invalid_type_expression p)
-    );
+  if at p Syntax_kind.COLON then (
+    bump p;
+    parse_type_expr p ~allow_leading_poly_type_after_newline:true ~stop_at_arrow:false
+  ) else (
+    Event.Buffer.missing p.events ~kind:Syntax_kind.COLON ~offset:(current_offset p);
+    Event.Buffer.error p.events (invalid_type_expression p)
+  );
   if not (is_eof p || at_item_boundary p ~signature) then
     consume_until_item_boundary p ~signature;
   ignore (complete p marker Syntax_kind.VAL_DECL)
@@ -4245,22 +4053,19 @@ and parse_exception_alias = fun p ->
   expect p Syntax_kind.EQ (invalid_expression p);
   if at p Syntax_kind.IDENT then
     ignore (parse_path_expr p)
-  else
-    (
-      Event.Buffer.missing p.events ~kind:Syntax_kind.IDENT ~offset:(current_offset p);
-      Event.Buffer.error p.events (missing_module_path p)
-    );
+  else (
+    Event.Buffer.missing p.events ~kind:Syntax_kind.IDENT ~offset:(current_offset p);
+    Event.Buffer.error p.events (missing_module_path p)
+  );
   complete p marker Syntax_kind.EXCEPTION_ALIAS
 
 and parse_exception_payload = fun p ~signature ->
   let marker = start_node p in
   expect p Syntax_kind.OF_KW (invalid_type_expression p);
-  if is_eof p || at_item_boundary p ~signature then
-    (
-      Event.Buffer.missing p.events ~kind:Syntax_kind.IDENT ~offset:(current_offset p);
-      Event.Buffer.error p.events (invalid_type_expression_at_previous_end p)
-    )
-  else if at p Syntax_kind.LBRACE then
+  if is_eof p || at_item_boundary p ~signature then (
+    Event.Buffer.missing p.events ~kind:Syntax_kind.IDENT ~offset:(current_offset p);
+    Event.Buffer.error p.events (invalid_type_expression_at_previous_end p)
+  ) else if at p Syntax_kind.LBRACE then
     ignore (parse_record_type p)
   else
     ignore (parse_type_expr p ~allow_leading_poly_type_after_newline:false ~stop_at_arrow:false);
@@ -4331,21 +4136,17 @@ and parse_class_type_decl = fun p ~signature ->
     bump p
   else
     Event.Buffer.error p.events (missing_type_name p);
-  if at p Syntax_kind.EQ then
-    (
+  if at p Syntax_kind.EQ then (
+    bump p;
+    if at p Syntax_kind.OBJECT_KW then (
       bump p;
-      if at p Syntax_kind.OBJECT_KW then
-        (
-          bump p;
-          consume_balanced_until p ~closer:Syntax_kind.END_KW 0;
-          expect p Syntax_kind.END_KW (invalid_type_expression p)
-        )
-      else if is_eof p || at_item_boundary p ~signature then
-        Event.Buffer.error p.events (invalid_type_expression p)
-      else
-        consume_until_item_boundary p ~signature
-    )
-  else if not (is_eof p || at_item_boundary p ~signature) then
+      consume_balanced_until p ~closer:Syntax_kind.END_KW 0;
+      expect p Syntax_kind.END_KW (invalid_type_expression p)
+    ) else if is_eof p || at_item_boundary p ~signature then
+      Event.Buffer.error p.events (invalid_type_expression p)
+    else
+      consume_until_item_boundary p ~signature
+  ) else if not (is_eof p || at_item_boundary p ~signature) then
     consume_until_item_boundary p ~signature;
   ignore (complete p marker Syntax_kind.CLASS_DECL)
 
@@ -4434,12 +4235,11 @@ and parse_signature_item = fun p ->
   ignore (complete p marker Syntax_kind.SIGNATURE_ITEM)
 
 and consume_phrase_separators = fun p ->
-  if at p Syntax_kind.SEMI && Syntax_kind.(peek_kind p 1 = SEMI) then
-    (
-      bump p;
-      bump p;
-      consume_phrase_separators p
-    )
+  if at p Syntax_kind.SEMI && Syntax_kind.(peek_kind p 1 = SEMI) then (
+    bump p;
+    bump p;
+    consume_phrase_separators p
+  )
 
 and parse_file = fun kind source ->
   let p = create source in
@@ -4447,19 +4247,17 @@ and parse_file = fun kind source ->
   let body = start_node p in
   let rec parse_structure_items () =
     consume_phrase_separators p;
-    if not (is_eof p) then
-      (
-        parse_structure_item p;
-        parse_structure_items ()
-      )
+    if not (is_eof p) then (
+      parse_structure_item p;
+      parse_structure_items ()
+    )
   in
   let rec parse_signature_items () =
     consume_phrase_separators p;
-    if not (is_eof p) then
-      (
-        parse_signature_item p;
-        parse_signature_items ()
-      )
+    if not (is_eof p) then (
+      parse_signature_item p;
+      parse_signature_items ()
+    )
   in
   (
     match kind with

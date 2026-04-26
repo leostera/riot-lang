@@ -1,5 +1,6 @@
 open Std
 open Yaml_value
+
 module Array = Collections.Array
 
 exception Parse_failure of string
@@ -7,13 +8,10 @@ exception Parse_failure of string
 let fail = fun message -> raise (Parse_failure message)
 
 let fail_line = fun line_number message ->
-  fail ("line " ^ Int.to_string line_number ^ ": " ^ message)
+  fail
+    ("line " ^ Int.to_string line_number ^ ": " ^ message)
 
-type line = {
-  number: int;
-  indent: int;
-  text: string;
-}
+type line = { number: int; indent: int; text: string }
 
 let is_ws = function
   | ' '
@@ -50,37 +48,29 @@ let strip_comment = fun line ->
       IO.Buffer.contents buffer
     else
       let current = String.unsafe_get line index in
-      if !in_double then
-        (
-          IO.Buffer.add_char buffer current;
-          if !escaped then
-            escaped := false
-          else if Char.equal current '\\' then
-            escaped := true
-          else if Char.equal current '"' then
-            in_double := false;
-          loop (index + 1)
-        )
-      else if !in_single then
-        (
-          IO.Buffer.add_char buffer current;
-          if Char.equal current '\'' then
-            in_single := false;
-          loop (index + 1)
-        )
-      else if Char.equal current '"' then
-        (
-          in_double := true;
-          IO.Buffer.add_char buffer current;
-          loop (index + 1)
-        )
-      else if Char.equal current '\'' then
-        (
-          in_single := true;
-          IO.Buffer.add_char buffer current;
-          loop (index + 1)
-        )
-      else if Char.equal current '#' then
+      if !in_double then (
+        IO.Buffer.add_char buffer current;
+        if !escaped then
+          escaped := false
+        else if Char.equal current '\\' then
+          escaped := true
+        else if Char.equal current '"' then
+          in_double := false;
+        loop (index + 1)
+      ) else if !in_single then (
+        IO.Buffer.add_char buffer current;
+        if Char.equal current '\'' then
+          in_single := false;
+        loop (index + 1)
+      ) else if Char.equal current '"' then (
+        in_double := true;
+        IO.Buffer.add_char buffer current;
+        loop (index + 1)
+      ) else if Char.equal current '\'' then (
+        in_single := true;
+        IO.Buffer.add_char buffer current;
+        loop (index + 1)
+      ) else if Char.equal current '#' then
         IO.Buffer.contents buffer
       else (
         IO.Buffer.add_char buffer current;
@@ -105,10 +95,17 @@ let count_indent = fun line_number text ->
 let preprocess = fun input ->
   let raw_lines = String.split_on_char '\n' input in
   let lines = ref [] in
-  raw_lines |> List.enumerate |> List.for_each
+  raw_lines
+  |> List.enumerate
+  |> List.for_each
     ~fn:(fun (index, raw_line) ->
       let number = index + 1 in
-      let line = raw_line |> strip_trailing_cr |> strip_comment |> trim_right in
+      let line =
+        raw_line
+        |> strip_trailing_cr
+        |> strip_comment
+        |> trim_right
+      in
       if not (String.equal (String.trim line) "") then
         let indent = count_indent number line in
         let text = String.sub line ~offset:indent ~len:(String.length line - indent) in
@@ -116,15 +113,16 @@ let preprocess = fun input ->
   let lines = List.rev !lines in
   let lines =
     match lines with
-    | { text="---"; _ } :: rest -> rest
+    | { text = "---"; _ } :: rest -> rest
     | _ -> lines
   in
   let lines =
     match List.rev lines with
-    | { text="..."; _ } :: rest -> List.rev rest
+    | { text = "..."; _ } :: rest -> List.rev rest
     | _ -> lines
   in
-  List.for_each lines
+  List.for_each
+    lines
     ~fn:(fun line ->
       if String.equal line.text "---" || String.equal line.text "..." then
         fail_line line.number "multiple YAML documents are not supported");
@@ -165,10 +163,12 @@ let parse_escape = fun text line_number index ->
             | 'A' .. 'F' as c -> 10 + Char.code c - Char.code 'A'
             | _ -> fail_line line_number "expected hex digit in unicode escape"
           in
-          let code = (hex_value (String.unsafe_get text (index + 1)) lsl 12)
-          lor (hex_value (String.unsafe_get text (index + 2)) lsl 8)
-          lor (hex_value (String.unsafe_get text (index + 3)) lsl 4)
-          lor hex_value (String.unsafe_get text (index + 4)) in
+          let code =
+            (hex_value (String.unsafe_get text (index + 1)) lsl 12)
+            lor (hex_value (String.unsafe_get text (index + 2)) lsl 8)
+            lor (hex_value (String.unsafe_get text (index + 3)) lsl 4)
+            lor hex_value (String.unsafe_get text (index + 4))
+          in
           let rune =
             match Unicode.Rune.from_int code with
             | Some rune -> rune
@@ -188,8 +188,7 @@ let parse_double_quoted = fun text line_number start ->
         fail_line line_number "unterminated double-quoted string"
       else
         match String.unsafe_get text index with
-        | '"' ->
-            (IO.Buffer.contents buffer, index + 1)
+        | '"' -> (IO.Buffer.contents buffer, index + 1)
         | '\\' ->
             let (escaped, next) = parse_escape text line_number (index + 1) in
             IO.Buffer.add_char buffer escaped;
@@ -210,12 +209,10 @@ let parse_single_quoted = fun text line_number start ->
       if index >= length then
         fail_line line_number "unterminated single-quoted string"
       else if Char.equal (String.unsafe_get text index) '\'' then
-        if index + 1 < length && Char.equal (String.unsafe_get text (index + 1)) '\'' then
-          (
-            IO.Buffer.add_char buffer '\'';
-            loop (index + 2)
-          )
-        else
+        if index + 1 < length && Char.equal (String.unsafe_get text (index + 1)) '\'' then (
+          IO.Buffer.add_char buffer '\'';
+          loop (index + 2)
+        ) else
           (IO.Buffer.contents buffer, index + 1)
       else (
         IO.Buffer.add_char buffer (String.unsafe_get text index);
@@ -255,7 +252,8 @@ let find_mapping_separator = fun text line_number ->
         if next >= length then
           Some index
         else if
-          Char.equal (String.unsafe_get text next) ' ' || Char.equal (String.unsafe_get text next) '\t'
+          Char.equal (String.unsafe_get text next) ' '
+          || Char.equal (String.unsafe_get text next) '\t'
         then
           Some index
         else
@@ -290,8 +288,10 @@ let split_mapping_head = fun line ->
   | None -> None
   | Some index ->
       let key = parse_key (String.sub line.text ~offset:0 ~len:index) line.number in
-      let rest = String.sub line.text ~offset:(index + 1) ~len:(String.length line.text - index - 1)
-      |> String.trim in
+      let rest =
+        String.sub line.text ~offset:(index + 1) ~len:(String.length line.text - index - 1)
+        |> String.trim
+      in
       Some (key, rest)
 
 let parse_float = fun line_number value ->
@@ -375,7 +375,8 @@ and parse_tagged = fun lines line index head parent_indent ->
     if Int.equal tag_end length then
       ""
     else
-      String.sub head ~offset:tag_end ~len:(length - tag_end) |> String.trim
+      String.sub head ~offset:tag_end ~len:(length - tag_end)
+      |> String.trim
   in
   if String.equal rest "" then
     let (payload, next) = parse_nested_or_null lines index parent_indent in

@@ -70,28 +70,33 @@ let item_kind_label = function
 
 let module_display_name = fun (module_doc: module_doc) -> module_doc.name
 
-let module_full_name = fun (module_doc: module_doc) ->
-  String.concat "." module_doc.path
+let module_full_name = fun (module_doc: module_doc) -> String.concat "." module_doc.path
 
 let rec flatten_modules = fun (modules: module_doc list) ->
   modules
   |> List.fold_left
     ~init:[]
-    ~fn:(fun acc (module_doc: module_doc) -> (acc @ [ module_doc ]) @ flatten_modules module_doc.modules)
+    ~fn:(fun acc (module_doc: module_doc) ->
+      (acc @ [ module_doc ]) @ flatten_modules module_doc.modules)
 
 let rec flatten_items = fun (modules: module_doc list) ->
-  modules |> List.fold_left ~init:[]
+  modules
+  |> List.fold_left
+    ~init:[]
     ~fn:(fun acc (module_doc: module_doc) ->
-      let own_items = module_doc.items |> List.map ~fn:(fun item -> (module_doc, item)) in
+      let own_items =
+        module_doc.items
+        |> List.map ~fn:(fun item ->
+          (module_doc, item))
+      in
       (acc @ own_items) @ flatten_items module_doc.modules)
 
 let items_of_kind = fun kind items -> List.filter items ~fn:(fun item -> item.kind = kind)
 
 let rec drop_common_prefix = fun left right ->
   match (left, right) with
-  | (left_head :: left_tail, right_head :: right_tail) when left_head = right_head -> drop_common_prefix
-    left_tail
-    right_tail
+  | (left_head :: left_tail, right_head :: right_tail) when left_head = right_head ->
+      drop_common_prefix left_tail right_tail
   | _ -> (left, right)
 
 let rec repeat = fun value count ->
@@ -113,7 +118,9 @@ let relative_href = fun ~from_segments ~to_segments ->
 let module_href = fun module_doc -> relative_href ~from_segments:[] ~to_segments:module_doc.path
 
 let relative_module_href = fun ~from_module ~to_module ->
-  relative_href ~from_segments:from_module.path ~to_segments:to_module.path
+  relative_href
+    ~from_segments:from_module.path
+    ~to_segments:to_module.path
 
 let item_kind_file_prefix = function
   | Module_item -> "module"
@@ -129,7 +136,8 @@ let is_safe_file_char = function
   | _ -> false
 
 let sanitize_file_component = fun text ->
-  String.map text
+  String.map
+    text
     ~fn:(fun ch ->
       if is_safe_file_char ch then
         ch
@@ -140,23 +148,31 @@ let item_file_name = fun item ->
   item_kind_file_prefix item.kind ^ "." ^ sanitize_file_component item.name ^ ".html"
 
 let item_href = fun ~module_doc item ->
-  String.concat "/" (module_doc.path @ [ item_file_name item ])
+  String.concat
+    "/"
+    (module_doc.path @ [ item_file_name item ])
 
 let relative_item_href = fun ~from_module item -> item_file_name item
 
 let module_output_path = fun ~output_dir module_doc ->
-  let module_dir = module_doc.path
-  |> List.fold_left ~init:output_dir ~fn:(fun acc segment -> Path.(acc / Path.v segment)) in
+  let module_dir =
+    module_doc.path
+    |> List.fold_left ~init:output_dir ~fn:(fun acc segment -> Path.(acc / Path.v segment))
+  in
   Path.(module_dir / Path.v "index.html")
 
 let module_source_output_path = fun ~output_dir module_doc ->
-  let module_dir = module_doc.path
-  |> List.fold_left ~init:output_dir ~fn:(fun acc segment -> Path.(acc / Path.v segment)) in
+  let module_dir =
+    module_doc.path
+    |> List.fold_left ~init:output_dir ~fn:(fun acc segment -> Path.(acc / Path.v segment))
+  in
   Path.(module_dir / Path.v "source.html")
 
 let item_output_path = fun ~output_dir ~module_doc item ->
-  let module_dir = module_doc.path
-  |> List.fold_left ~init:output_dir ~fn:(fun acc segment -> Path.(acc / Path.v segment)) in
+  let module_dir =
+    module_doc.path
+    |> List.fold_left ~init:output_dir ~fn:(fun acc segment -> Path.(acc / Path.v segment))
+  in
   Path.(module_dir / Path.v (item_file_name item))
 
 let module_summary = fun (module_doc: module_doc) ->
@@ -165,7 +181,8 @@ let module_summary = fun (module_doc: module_doc) ->
     (item_kind_title Type_item, List.length (items_of_kind Type_item module_doc.items));
     (item_kind_title Function_item, List.length (items_of_kind Function_item module_doc.items));
     (item_kind_title Macro_item, List.length (items_of_kind Macro_item module_doc.items));
-  ] in
+  ]
+  in
   counts
   |> List.filter ~fn:(fun (_, count) -> count > 0)
   |> List.map ~fn:(fun (label, count) -> Int.to_string count ^ " " ^ String.lowercase_ascii label)

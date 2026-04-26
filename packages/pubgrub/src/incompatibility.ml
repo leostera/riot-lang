@@ -98,9 +98,10 @@ let as_dependency = fun incompat ->
 
 let merge_dependents = fun incompat1 incompat2 ->
   match (incompat1, incompat2) with
-  | (External { terms = terms1; cause = FromDependency (p1, v1, dep1, r1) }, External { terms = terms2; cause = FromDependency (p2, v2, dep2, r2) }) when p1
-  = p2
-  && dep1 = dep2 ->
+  | (
+    External { terms = terms1; cause = FromDependency (p1, v1, dep1, r1) },
+    External { terms = terms2; cause = FromDependency (p2, v2, dep2, r2) }
+  ) when p1 = p2 && dep1 = dep2 ->
       if ranges_equal ~compare_v:version_compare r1 r2 then
         let merged_range =
           Ranges.union ~compare_v:version_compare (Ranges.singleton v1) (Ranges.singleton v2)

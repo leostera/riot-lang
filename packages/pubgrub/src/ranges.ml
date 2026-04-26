@@ -31,14 +31,10 @@ let segments = fun ranges -> ranges
 
 let compare_bound = fun ~compare_v b1 b2 ->
   match (b1, b2) with
-  | (Unbounded, Unbounded) ->
-      Order.EQ
-  | (Unbounded, _) ->
-      Order.LT
-  | (_, Unbounded) ->
-      Order.GT
-  | (Included v1, Included v2) ->
-      compare_v v1 v2
+  | (Unbounded, Unbounded) -> Order.EQ
+  | (Unbounded, _) -> Order.LT
+  | (_, Unbounded) -> Order.GT
+  | (Included v1, Included v2) -> compare_v v1 v2
   | (Included v1, Excluded v2) -> (
       match compare_v v1 v2 with
       | Order.EQ -> Order.LT
@@ -49,21 +45,16 @@ let compare_bound = fun ~compare_v b1 b2 ->
       | Order.EQ -> Order.GT
       | n -> n
     )
-  | (Excluded v1, Excluded v2) ->
-      compare_v v1 v2
+  | (Excluded v1, Excluded v2) -> compare_v v1 v2
 
 let compare_bound_start = compare_bound
 
 let compare_bound_end = fun ~compare_v b1 b2 ->
   match (b1, b2) with
-  | (Unbounded, Unbounded) ->
-      Order.EQ
-  | (Unbounded, _) ->
-      Order.GT
-  | (_, Unbounded) ->
-      Order.LT
-  | (Included v1, Included v2) ->
-      compare_v v1 v2
+  | (Unbounded, Unbounded) -> Order.EQ
+  | (Unbounded, _) -> Order.GT
+  | (_, Unbounded) -> Order.LT
+  | (Included v1, Included v2) -> compare_v v1 v2
   | (Included v1, Excluded v2) -> (
       match compare_v v1 v2 with
       | Order.EQ -> Order.GT
@@ -74,8 +65,7 @@ let compare_bound_end = fun ~compare_v b1 b2 ->
       | Order.EQ -> Order.LT
       | n -> n
     )
-  | (Excluded v1, Excluded v2) ->
-      compare_v v1 v2
+  | (Excluded v1, Excluded v2) -> compare_v v1 v2
 
 let max_by = fun cmp a b ->
   match cmp a b with
@@ -105,10 +95,8 @@ let valid_segment = fun ~compare_v ((start, end_)) ->
       | Order.EQ
       | Order.GT -> false
     )
-  | (Unbounded, _) ->
-      true
-  | (_, Unbounded) ->
-      true
+  | (Unbounded, _) -> true
+  | (_, Unbounded) -> true
 
 let add_segment_if_valid = fun ~compare_v acc segment ->
   if valid_segment ~compare_v segment then
@@ -125,10 +113,8 @@ let end_before_start = fun ~compare_v end_ start ->
   | (Excluded left, Included right)
   | (Excluded left, Excluded right) -> (
       match compare_v left right with
-      | Order.LT ->
-          true
-      | Order.GT ->
-          false
+      | Order.LT -> true
+      | Order.GT -> false
       | Order.EQ ->
           match (end_, start) with
           | (Excluded _, Excluded _) -> true
@@ -137,14 +123,16 @@ let end_before_start = fun ~compare_v end_ start ->
 
 let normalize = fun ~compare_v ranges ->
   let sorted =
-    List.sort (List.filter ranges ~fn:(valid_segment ~compare_v))
+    List.sort
+      (List.filter ranges ~fn:(valid_segment ~compare_v))
       ~compare:(fun (left_start, left_end) (right_start, right_end) ->
         match compare_bound_start ~compare_v left_start right_start with
         | Order.EQ -> compare_bound_end ~compare_v left_end right_end
         | n -> n)
   in
   let rec merge acc = function
-    | [] -> List.reverse acc
+    | [] ->
+        List.reverse acc
     | segment :: rest -> (
         match acc with
         | [] -> merge [ segment ] rest
@@ -191,8 +179,7 @@ let complement = fun ~compare_v ranges ->
 let within_bounds = fun ~compare_v version ((start, end_)) ->
   let after_start =
     match start with
-    | Unbounded ->
-        true
+    | Unbounded -> true
     | Included v -> (
         match compare_v version v with
         | Order.LT -> false
@@ -208,8 +195,7 @@ let within_bounds = fun ~compare_v version ((start, end_)) ->
   in
   let before_end =
     match end_ with
-    | Unbounded ->
-        true
+    | Unbounded -> true
     | Included v -> (
         match compare_v version v with
         | Order.LT
@@ -226,7 +212,9 @@ let within_bounds = fun ~compare_v version ((start, end_)) ->
   after_start && before_end
 
 let contains = fun ~compare_v ranges version ->
-  List.any ranges ~fn:(within_bounds ~compare_v version)
+  List.any
+    ranges
+    ~fn:(within_bounds ~compare_v version)
 
 let rec intersection = fun ~compare_v r1 r2 ->
   let r1 = normalize ~compare_v r1 in
@@ -262,12 +250,9 @@ let subset_of = fun ~compare_v r1 r2 ->
 let compare = fun ~compare_v left right ->
   let rec compare_segments left right =
     match (left, right) with
-    | ([], []) ->
-        Order.EQ
-    | ([], _) ->
-        Order.LT
-    | (_, []) ->
-        Order.GT
+    | ([], []) -> Order.EQ
+    | ([], _) -> Order.LT
+    | (_, []) -> Order.GT
     | ((left_start, left_end) :: left_rest, (right_start, right_end) :: right_rest) -> (
         match compare_bound_start ~compare_v left_start right_start with
         | Order.EQ -> (

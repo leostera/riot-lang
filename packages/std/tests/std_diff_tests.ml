@@ -132,8 +132,10 @@ let test_changes_filter =
     in
     let changed = Diff.changes changes in
     match changed with
-    | [ { path = [ Diff.Key "b" ]; kind = Diff.Changed (2, 3) }; { path = [ Diff.Key "d" ]; kind = Diff.Changed (5, 6) } ] ->
-        Ok ()
+    | [ { path = [ Diff.Key "b" ]; kind = Diff.Changed (2, 3) }; { path = [ Diff.Key "d" ]; kind = Diff.Changed (
+      5,
+      6
+    ) } ] -> Ok ()
     | _ -> Error ("Expected 2 specific changes, got " ^ Int.to_string (List.length changed))
 
 let test_at_path_exact_match =

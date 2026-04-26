@@ -15,25 +15,20 @@ let protect = fun ~finally f ->
       finally ();
       raise error
 
-type fetch_response = {
-  status_code: int;
-  body: string;
-}
+type fetch_response = { status_code: int; body: string }
 
 type fetch = {
   get: Net.Uri.t -> (fetch_response, string) result;
-  post: Net.Uri.t -> headers:(string * string) list -> body:string -> (fetch_response, string) result;
+  post:
+    Net.Uri.t ->
+    headers:(string * string) list ->
+    body:string ->
+    (fetch_response, string) result;
 }
 
-type published_artifact_location = {
-  key: string;
-  url: string;
-}
+type published_artifact_location = { key: string; url: string }
 
-type published_record = {
-  key: string;
-  created: bool;
-}
+type published_record = { key: string; created: bool }
 
 type search_result = {
   package_name: string;
@@ -41,10 +36,7 @@ type search_result = {
   description: string option;
 }
 
-type published_materialization = {
-  manifest: bool;
-  source: bool;
-}
+type published_materialization = { manifest: bool; source: bool }
 
 type published_release = {
   artifact_sha256: string;
@@ -77,18 +69,14 @@ type release_source = {
   files: release_file list;
 }
 
-type materialize_result =
-[
-  `Materialized
-  | `Already_present
-]
+type materialize_result = [`Materialized | `Already_present]
 
 type source =
   | Filesystem
   | In_memory of {
       config: Sparse_index.config option;
       packages: (string * Sparse_index.package_document) list;
-      releases: ((string * string) * release_source) list
+      releases: ((string * string) * release_source) list;
     }
 
 type t = {
@@ -110,10 +98,10 @@ let blink_error_message = function
   | Blink.Error.TlsError Net.TlsStream.Closed -> "tls connection closed"
   | Blink.Error.TlsError (Net.TlsStream.Handshake_failed msg) -> "tls handshake failed: " ^ msg
   | Blink.Error.TlsError (Net.TlsStream.System_error io_err) -> IO.error_message io_err
-  | Blink.Error.TlsError (Net.TlsStream.Network_read_failed tcp_err) -> "tls read failed: "
-  ^ io_error_message tcp_err
-  | Blink.Error.TlsError (Net.TlsStream.Network_write_failed tcp_err) -> "tls write failed: "
-  ^ io_error_message tcp_err
+  | Blink.Error.TlsError (Net.TlsStream.Network_read_failed tcp_err) ->
+      "tls read failed: " ^ io_error_message tcp_err
+  | Blink.Error.TlsError (Net.TlsStream.Network_write_failed tcp_err) ->
+      "tls write failed: " ^ io_error_message tcp_err
   | Blink.Error.TlsError Net.TlsStream.Tls_not_available -> "tls not available"
   | Blink.Error.TlsError Net.TlsStream.Unsupported_vectored_operation -> "unsupported vectored tls operation"
   | Blink.Error.ParseError msg -> "parse error: " ^ msg
@@ -140,13 +128,15 @@ let normalize_riot_agent = function
 
 let set_riot_agent = fun value -> configured_riot_agent := normalize_riot_agent value
 
-let riot_agent_override = fun () -> Env.get Env.String ~var:"RIOT_AGENT_HEADER" |> normalize_riot_agent
+let riot_agent_override = fun () ->
+  Env.get Env.String ~var:"RIOT_AGENT_HEADER"
+  |> normalize_riot_agent
 
 let default_http_headers = fun headers ->
   let has_riot_agent =
-    List.any headers
-      ~fn:(fun (name, _value) ->
-        String.equal (String.lowercase_ascii name) "x-riot-agent")
+    List.any
+      headers
+      ~fn:(fun (name, _value) -> String.equal (String.lowercase_ascii name) "x-riot-agent")
   in
   if has_riot_agent then
     headers
@@ -175,7 +165,9 @@ let default_fetch =
       | Error err -> Error (blink_error_message err)
       | Ok conn ->
           let request =
-            List.fold_left headers ~init:(Net.Http.Request.create method_ uri)
+            List.fold_left
+              headers
+              ~init:(Net.Http.Request.create method_ uri)
               ~fn:(fun request (name, value) ->
                 Net.Http.Request.add_header request name value)
           in
@@ -197,10 +189,11 @@ let default_fetch =
               | Ok () -> (
                   match Blink.await conn with
                   | Error err -> Error (blink_error_message err)
-                  | Ok (response, body) -> Ok {
-                    status_code = Net.Http.Status.to_int (Net.Http.Response.status response);
-                    body
-                  }
+                  | Ok (response, body) ->
+                      Ok {
+                        status_code = Net.Http.Status.to_int (Net.Http.Response.status response);
+                        body;
+                      }
                 )
             with
             | exn -> Error (exn_message exn)
@@ -210,8 +203,10 @@ let default_fetch =
     | exn -> Error (exn_message exn)
   in
   make_fetch
-    ~get:(fun uri -> run Net.Http.Method.Get uri ~headers:[] ())
-    ~post:(fun uri ~headers ~body -> run Net.Http.Method.Post uri ~headers ~body ())
+    ~get:(fun uri ->
+      run Net.Http.Method.Get uri ~headers:[] ())
+    ~post:(fun uri ~headers ~body ->
+      run Net.Http.Method.Post uri ~headers ~body ())
     ()
 
 let create_filesystem = fun ?(fetch = default_fetch) ~registry_name ?riot_home () ->
@@ -231,14 +226,18 @@ let in_memory = fun ?config ~cache ?(releases = []) ~packages () ->
   let packages =
     List.map
       packages
-      ~fn:(fun (document: Sparse_index.package_document) ->
-        (Sparse_index.normalized_name document.name, document))
+      ~fn:(fun (document: Sparse_index.package_document) -> (
+        Sparse_index.normalized_name document.name,
+        document
+      ))
   in
   let releases =
     List.map
       releases
-      ~fn:(fun (release: release_source) ->
-        (release_key ~package_name:release.package_name ~version:release.version, release))
+      ~fn:(fun (release: release_source) -> (
+        release_key ~package_name:release.package_name ~version:release.version,
+        release
+      ))
   in
   { cache; fetch = default_fetch; source = In_memory { config; packages; releases } }
 
@@ -254,45 +253,47 @@ let protect_fetch = fun ~uri f ->
 
 let fetch_required = fun registry uri ->
   match protect_fetch ~uri (fun () -> registry.fetch.get uri) with
-  | Ok { status_code=200; body } -> Ok body
-  | Ok { status_code; _ } -> Error ("request to '"
-  ^ Net.Uri.to_string uri
-  ^ "' failed with "
-  ^ http_status_message status_code)
+  | Ok { status_code = 200; body } -> Ok body
+  | Ok { status_code; _ } ->
+      Error ("request to '"
+      ^ Net.Uri.to_string uri
+      ^ "' failed with "
+      ^ http_status_message status_code)
   | Error err -> Error ("request to '" ^ Net.Uri.to_string uri ^ "' failed: " ^ err)
 
 let fetch_optional = fun registry uri ->
   match protect_fetch ~uri (fun () -> registry.fetch.get uri) with
-  | Ok { status_code=200; body } -> Ok (Some body)
-  | Ok { status_code=404; body=_ } -> Ok None
-  | Ok { status_code; _ } -> Error ("request to '"
-  ^ Net.Uri.to_string uri
-  ^ "' failed with "
-  ^ http_status_message status_code)
+  | Ok { status_code = 200; body } -> Ok (Some body)
+  | Ok { status_code = 404; body = _ } -> Ok None
+  | Ok { status_code; _ } ->
+      Error ("request to '"
+      ^ Net.Uri.to_string uri
+      ^ "' failed with "
+      ^ http_status_message status_code)
   | Error err -> Error ("request to '" ^ Net.Uri.to_string uri ^ "' failed: " ^ err)
 
 let post_required = fun registry uri ~headers ~body ->
   match protect_fetch ~uri (fun () -> registry.fetch.post uri ~headers ~body) with
-  | Ok { status_code=200; body } ->
-      Ok body
+  | Ok { status_code = 200; body } -> Ok body
   | Ok { status_code; body } -> (
       match Data.Json.of_string body with
       | Ok (Data.Json.Object fields) -> (
           match assoc_value fields ~key:"message" with
           | Some (Data.Json.String message) -> Error message
-          | _ -> Error ("request to '"
+          | _ ->
+              Error ("request to '"
+              ^ Net.Uri.to_string uri
+              ^ "' failed with "
+              ^ http_status_message status_code)
+        )
+      | Ok _
+      | Error _ ->
+          Error ("request to '"
           ^ Net.Uri.to_string uri
           ^ "' failed with "
           ^ http_status_message status_code)
-        )
-      | Ok _
-      | Error _ -> Error ("request to '"
-      ^ Net.Uri.to_string uri
-      ^ "' failed with "
-      ^ http_status_message status_code)
     )
-  | Error err ->
-      Error err
+  | Error err -> Error err
 
 let sparse_index_cache_ttl_secs = 300.0
 
@@ -300,7 +301,10 @@ let cache_path_is_fresh = fun path ->
   match Fs.metadata path with
   | Error _ -> Ok false
   | Ok metadata ->
-      let now = Time.SystemTime.now () |> Time.SystemTime.secs_float in
+      let now =
+        Time.SystemTime.now ()
+        |> Time.SystemTime.secs_float
+      in
       Ok ((now -. Fs.Metadata.modified metadata) <= sparse_index_cache_ttl_secs)
 
 let rec take = fun n items ->
@@ -331,10 +335,8 @@ let optional_string_field = fun ~context ~field fields ->
 
 let string_field_with_fallback = fun ~context ~field ~fallback fields ->
   match assoc_value fields ~key:field with
-  | Some (Data.Json.String value) ->
-      Ok value
-  | Some _ ->
-      Error (context ^ "." ^ field ^ " must be a string")
+  | Some (Data.Json.String value) -> Ok value
+  | Some _ -> Error (context ^ "." ^ field ^ " must be a string")
   | None -> (
       match assoc_value fields ~key:fallback with
       | Some (Data.Json.String value) -> Ok value
@@ -351,8 +353,8 @@ let bool_field = fun ~context ~field fields ->
 let published_artifact_location_of_json = fun ~context json ->
   match json with
   | Data.Json.Object fields ->
-      let* key = string_field ~context ~field:"key" fields in
-      let* url = string_field_with_fallback ~context ~field:"url" ~fallback:"cdn_url" fields in
+      let* key = string_field ~context ~field:"key" fields in let* url =
+        string_field_with_fallback ~context ~field:"url" ~fallback:"cdn_url" fields in
       Ok { key; url }
   | _ -> Error (context ^ " must be an object")
 
@@ -382,23 +384,30 @@ let published_materialization_of_json = fun ~context json ->
 let published_release_of_json = fun json ->
   match json with
   | Data.Json.Object fields ->
-      let* artifact_sha256 = string_field ~context:"publish response" ~field:"artifact_sha256" fields in
+      let* artifact_sha256 =
+        string_field ~context:"publish response" ~field:"artifact_sha256" fields in
       let* package_name = string_field ~context:"publish response" ~field:"package_name" fields in
-      let* package_version = string_field ~context:"publish response" ~field:"package_version" fields in
+      let* package_version =
+        string_field ~context:"publish response" ~field:"package_version" fields in
       let* manifest_json = object_field ~context:"publish response" ~field:"manifest" fields in
-      let* source_archive_json = object_field ~context:"publish response" ~field:"source_archive" fields in
+      let* source_archive_json =
+        object_field ~context:"publish response" ~field:"source_archive" fields in
       let* claim_json = object_field ~context:"publish response" ~field:"claim" fields in
       let* release_json = object_field ~context:"publish response" ~field:"release" fields in
-      let* materialization_json = object_field ~context:"publish response" ~field:"materialization" fields in
-      let* manifest = published_artifact_location_of_json ~context:"publish response.manifest" manifest_json in
-      let* source_archive = published_artifact_location_of_json
-        ~context:"publish response.source_archive"
-        source_archive_json in
+      let* materialization_json =
+        object_field ~context:"publish response" ~field:"materialization" fields in
+      let* manifest =
+        published_artifact_location_of_json ~context:"publish response.manifest" manifest_json in
+      let* source_archive =
+        published_artifact_location_of_json
+          ~context:"publish response.source_archive"
+          source_archive_json in
       let* claim = published_record_of_json ~context:"publish response.claim" claim_json in
       let* release = published_record_of_json ~context:"publish response.release" release_json in
-      let* materialization = published_materialization_of_json
-        ~context:"publish response.materialization"
-        materialization_json in
+      let* materialization =
+        published_materialization_of_json
+          ~context:"publish response.materialization"
+          materialization_json in
       Ok {
         artifact_sha256;
         package_name;
@@ -418,10 +427,8 @@ let yanked_release_of_json = fun json ->
       let* package_version = string_field ~context:"yank response" ~field:"package_version" fields in
       let* yanked = bool_field ~context:"yank response" ~field:"yanked" fields in
       let* yanked_at = optional_string_field ~context:"yank response" ~field:"yanked_at" fields in
-      let* yanked_by_github_login = optional_string_field
-        ~context:"yank response"
-        ~field:"yanked_by_github_login"
-        fields in
+      let* yanked_by_github_login =
+        optional_string_field ~context:"yank response" ~field:"yanked_by_github_login" fields in
       Ok {
         package_name;
         package_version;
@@ -438,24 +445,28 @@ let publish_artifact_url = fun ~registry_name ->
   | Error _ -> Error ("failed to build publish url '" ^ url ^ "'")
 
 let yank_release_url = fun ~registry_name ~package_name ~version ->
-  let url = "https://api."
-  ^ registry_name
-  ^ "/v1/me/packages/"
-  ^ package_name
-  ^ "/versions/"
-  ^ version
-  ^ "/yank" in
+  let url =
+    "https://api."
+    ^ registry_name
+    ^ "/v1/me/packages/"
+    ^ package_name
+    ^ "/versions/"
+    ^ version
+    ^ "/yank"
+  in
   match Net.Uri.of_string url with
   | Ok uri -> Ok uri
   | Error _ -> Error ("failed to build yank url '" ^ url ^ "'")
 
 let search_url = fun ~registry_name ~query ~limit ->
-  let url = "https://api."
-  ^ registry_name
-  ^ "/v1/search?q="
-  ^ Net.Uri.form_encode query
-  ^ "&limit="
-  ^ Int.to_string limit in
+  let url =
+    "https://api."
+    ^ registry_name
+    ^ "/v1/search?q="
+    ^ Net.Uri.form_encode query
+    ^ "&limit="
+    ^ Int.to_string limit
+  in
   match Net.Uri.of_string url with
   | Ok uri -> Ok uri
   | Error _ -> Error ("failed to build search url '" ^ url ^ "'")
@@ -463,9 +474,9 @@ let search_url = fun ~registry_name ~query ~limit ->
 let search_result_of_json = fun json ->
   match json with
   | Data.Json.Object fields ->
-      let* package_name = string_field ~context:"search result" ~field:"package_name" fields in
-      let* latest_version = string_field ~context:"search result" ~field:"latest_version" fields in
-      let* description = optional_string_field ~context:"search result" ~field:"description" fields in
+      let* package_name = string_field ~context:"search result" ~field:"package_name" fields in let* latest_version =
+        string_field ~context:"search result" ~field:"latest_version" fields in let* description =
+        optional_string_field ~context:"search result" ~field:"description" fields in
       Ok { package_name; latest_version; description }
   | _ -> Error "search result must be an object"
 
@@ -477,14 +488,11 @@ let search_results_of_json = fun json ->
           let rec loop acc = function
             | [] -> Ok (List.reverse acc)
             | value :: rest ->
-                let* result = search_result_of_json value in
-                loop (result :: acc) rest
+                let* result = search_result_of_json value in loop (result :: acc) rest
           in
           loop [] values
-      | Ok _ ->
-          Error "search response.results must be an array"
-      | Error _ as err ->
-          err
+      | Ok _ -> Error "search response.results must be an array"
+      | Error _ as err -> err
     )
   | _ -> Error "search response must be an object"
 
@@ -492,8 +500,7 @@ let read_config = fun registry ->
   match registry.source with
   | Filesystem -> (
       match Sparse_index.read_cached_config registry.cache with
-      | Error _ as err ->
-          err
+      | Error _ as err -> err
       | Ok (Some _ as cached) -> (
           match cache_path_is_fresh (Sparse_index.config_cache_path registry.cache) with
           | Ok true -> Ok cached
@@ -506,10 +513,11 @@ let read_config = fun registry ->
                   | Error _ as err -> err
                   | Ok source -> (
                       match Sparse_index.config_of_string source with
-                      | Error err -> Error ("failed to decode sparse index config from '"
-                      ^ Net.Uri.to_string uri
-                      ^ "': "
-                      ^ err)
+                      | Error err ->
+                          Error ("failed to decode sparse index config from '"
+                          ^ Net.Uri.to_string uri
+                          ^ "': "
+                          ^ err)
                       | Ok config -> (
                           match Sparse_index.write_cached_config registry.cache ~source with
                           | Error _ as err -> err
@@ -527,10 +535,11 @@ let read_config = fun registry ->
               | Error _ as err -> err
               | Ok source -> (
                   match Sparse_index.config_of_string source with
-                  | Error err -> Error ("failed to decode sparse index config from '"
-                  ^ Net.Uri.to_string uri
-                  ^ "': "
-                  ^ err)
+                  | Error err ->
+                      Error ("failed to decode sparse index config from '"
+                      ^ Net.Uri.to_string uri
+                      ^ "': "
+                      ^ err)
                   | Ok config -> (
                       match Sparse_index.write_cached_config registry.cache ~source with
                       | Error _ as err -> err
@@ -540,7 +549,7 @@ let read_config = fun registry ->
             )
         )
     )
-  | In_memory { config; packages=_; releases=_ } -> Ok config
+  | In_memory { config; packages = _; releases = _ } -> Ok config
 
 let read_package_document = fun registry ~package_name ->
   let fetch_package_document config =
@@ -548,18 +557,20 @@ let read_package_document = fun registry ~package_name ->
     | Error _ as err -> err
     | Ok uri -> (
         match fetch_optional registry uri with
-        | Error _ as err ->
-            err
-        | Ok None ->
-            Ok None
+        | Error _ as err -> err
+        | Ok None -> Ok None
         | Ok (Some source) -> (
             match Sparse_index.package_document_of_string source with
-            | Error err -> Error ("failed to decode sparse index package document from '"
-            ^ Net.Uri.to_string uri
-            ^ "': "
-            ^ err)
+            | Error err ->
+                Error ("failed to decode sparse index package document from '"
+                ^ Net.Uri.to_string uri
+                ^ "': "
+                ^ err)
             | Ok document -> (
-                match Sparse_index.write_cached_package_document registry.cache ~package_name ~source with
+                match Sparse_index.write_cached_package_document
+                  registry.cache
+                  ~package_name
+                  ~source with
                 | Error _ as err -> err
                 | Ok () -> Ok (Some document)
               )
@@ -572,7 +583,8 @@ let read_package_document = fun registry ~package_name ->
       | Error _ -> (
           match read_config registry with
           | Error _ as err -> err
-          | Ok None -> Error ("filesystem registry '" ^ name registry ^ "' is missing sparse index config")
+          | Ok None ->
+              Error ("filesystem registry '" ^ name registry ^ "' is missing sparse index config")
           | Ok (Some config) -> fetch_package_document config
         )
       | Ok (Some _ as cached) -> (
@@ -582,20 +594,23 @@ let read_package_document = fun registry ~package_name ->
           | Error _ -> (
               match read_config registry with
               | Error _ as err -> err
-              | Ok None -> Error ("filesystem registry '" ^ name registry ^ "' is missing sparse index config")
+              | Ok None ->
+                  Error ("filesystem registry '"
+                  ^ name registry
+                  ^ "' is missing sparse index config")
               | Ok (Some config) -> fetch_package_document config
             )
         )
       | Ok None -> (
           match read_config registry with
           | Error _ as err -> err
-          | Ok None -> Error ("filesystem registry '" ^ name registry ^ "' is missing sparse index config")
+          | Ok None ->
+              Error ("filesystem registry '" ^ name registry ^ "' is missing sparse index config")
           | Ok (Some config) -> fetch_package_document config
         )
     )
-  | In_memory { packages; config=_; releases=_ } -> Ok (assoc_value
-    packages
-    ~key:(Sparse_index.normalized_name package_name))
+  | In_memory { packages; config = _; releases = _ } ->
+      Ok (assoc_value packages ~key:(Sparse_index.normalized_name package_name))
 
 let search_packages = fun registry ~query ?(limit = 5) () ->
   if String.equal (String.trim query) "" then
@@ -610,31 +625,40 @@ let search_packages = fun registry ~query ?(limit = 5) () ->
             | Error _ as err -> err
             | Ok source -> (
                 match Data.Json.of_string source with
-                | Error err -> Error ("failed to decode search response from '"
-                ^ Net.Uri.to_string uri
-                ^ "': "
-                ^ (Data.Json.error_to_string err))
+                | Error err ->
+                    Error ("failed to decode search response from '"
+                    ^ Net.Uri.to_string uri
+                    ^ "': "
+                    ^ (Data.Json.error_to_string err))
                 | Ok json -> (
                     match search_results_of_json json with
                     | Ok results -> Ok results
-                    | Error err -> Error ("failed to decode search response from '"
-                    ^ Net.Uri.to_string uri
-                    ^ "': "
-                    ^ err)
+                    | Error err ->
+                        Error ("failed to decode search response from '"
+                        ^ Net.Uri.to_string uri
+                        ^ "': "
+                        ^ err)
                   )
               )
           )
       )
-    | In_memory { packages; config=_; releases=_ } ->
+    | In_memory { packages; config = _; releases = _ } ->
         let normalized_query = Sparse_index.normalized_name query in
-        packages |> List.map ~fn:(fun (_, document) -> document) |> List.filter
+        packages
+        |> List.map ~fn:(fun (_, document) -> document)
+        |> List.filter
           ~fn:(fun (document: Sparse_index.package_document) ->
             let normalized_name = Sparse_index.normalized_name document.name in
             String.equal normalized_name normalized_query
             || String.starts_with ~prefix:normalized_query normalized_name
-            || String.contains normalized_name normalized_query) |> List.sort
+            || String.contains normalized_name normalized_query)
+        |> List.sort
           ~compare:(fun (left: Sparse_index.package_document) (right: Sparse_index.package_document) ->
-            String.compare left.name right.name) |> take limit |> List.map
+            String.compare
+              left.name
+              right.name)
+        |> take limit
+        |> List.map
           ~fn:(fun (document: Sparse_index.package_document) ->
             {
               package_name = document.name;
@@ -642,15 +666,16 @@ let search_packages = fun registry ~query ?(limit = 5) () ->
               description =
                 match document.releases with
                 | release :: _ -> release.description
-                | [] -> None;
-            }) |> fun results -> Ok results
+                | [] ->
+                    None;
+            })
+        |> fun results -> Ok results
 
 let refresh_package_document = fun registry ~package_name ->
   match registry.source with
   | Filesystem -> (
       match read_config registry with
-      | Error _ as err ->
-          err
+      | Error _ as err -> err
       | Ok None ->
           Error ("filesystem registry '" ^ name registry ^ "' is missing sparse index config")
       | Ok (Some config) ->
@@ -658,16 +683,15 @@ let refresh_package_document = fun registry ~package_name ->
           | Error _ as err -> err
           | Ok uri -> (
               match fetch_optional registry uri with
-              | Error _ as err ->
-                  err
-              | Ok None ->
-                  Ok None
+              | Error _ as err -> err
+              | Ok None -> Ok None
               | Ok (Some source) -> (
                   match Sparse_index.package_document_of_string source with
-                  | Error err -> Error ("failed to decode sparse index package document from '"
-                  ^ Net.Uri.to_string uri
-                  ^ "': "
-                  ^ err)
+                  | Error err ->
+                      Error ("failed to decode sparse index package document from '"
+                      ^ Net.Uri.to_string uri
+                      ^ "': "
+                      ^ err)
                   | Ok document -> (
                       match Sparse_index.write_cached_package_document
                         registry.cache
@@ -679,23 +703,24 @@ let refresh_package_document = fun registry ~package_name ->
                 )
             )
     )
-  | In_memory { packages; config=_; releases=_ } -> Ok (assoc_value
-    packages
-    ~key:(Sparse_index.normalized_name package_name))
+  | In_memory { packages; config = _; releases = _ } ->
+      Ok (assoc_value packages ~key:(Sparse_index.normalized_name package_name))
 
 let write_release_files = fun ~root (release: release_source) ->
   let manifest_path = Path.(root / Path.v "riot.toml") in
   match Fs.create_dir_all root with
-  | Error err -> Error ("failed to create package source directory '"
-  ^ Path.to_string root
-  ^ "': "
-  ^ IO.error_message err)
-  | Ok () -> (
-      match Fs.write release.manifest_toml manifest_path with
-      | Error err -> Error ("failed to write package manifest '"
-      ^ Path.to_string manifest_path
+  | Error err ->
+      Error ("failed to create package source directory '"
+      ^ Path.to_string root
       ^ "': "
       ^ IO.error_message err)
+  | Ok () -> (
+      match Fs.write release.manifest_toml manifest_path with
+      | Error err ->
+          Error ("failed to write package manifest '"
+          ^ Path.to_string manifest_path
+          ^ "': "
+          ^ IO.error_message err)
       | Ok () ->
           let rec loop = function
             | [] -> Ok ()
@@ -707,16 +732,18 @@ let write_release_files = fun ~root (release: release_source) ->
                   | None -> Ok ()
                 in
                 match ensure_parent with
-                | Error err -> Error ("failed to create package source parent '"
-                ^ Path.to_string file_path
-                ^ "': "
-                ^ IO.error_message err)
-                | Ok () -> (
-                    match Fs.write file.contents file_path with
-                    | Error err -> Error ("failed to write package source file '"
+                | Error err ->
+                    Error ("failed to create package source parent '"
                     ^ Path.to_string file_path
                     ^ "': "
                     ^ IO.error_message err)
+                | Ok () -> (
+                    match Fs.write file.contents file_path with
+                    | Error err ->
+                        Error ("failed to write package source file '"
+                        ^ Path.to_string file_path
+                        ^ "': "
+                        ^ IO.error_message err)
                     | Ok () -> loop rest
                   )
           in
@@ -744,10 +771,11 @@ let gzip_tar_extract_error_message = function
 
 let cached_archive_is_gzip = fun archive_path ->
   match Fs.File.open_read archive_path with
-  | Error err -> Error ("failed to open cached package archive '"
-  ^ Path.to_string archive_path
-  ^ "': "
-  ^ Fs.File.error_to_string err)
+  | Error err ->
+      Error ("failed to open cached package archive '"
+      ^ Path.to_string archive_path
+      ^ "': "
+      ^ Fs.File.error_to_string err)
   | Ok file ->
       protect
         ~finally:(fun () ->
@@ -757,24 +785,30 @@ let cached_archive_is_gzip = fun archive_path ->
           let magic = IO.Bytes.create ~size:2 in
           IO.Bytes.fill magic ~offset:0 ~len:2 ~char:'\000';
           match Fs.File.read file magic ~offset:0 ~len:2 with
-          | Error err -> Error ("failed to read cached package archive '"
-          ^ Path.to_string archive_path
-          ^ "': "
-          ^ Fs.File.error_to_string err)
-          | Ok bytes_read -> Ok (bytes_read = 2
-          && Char.equal (IO.Bytes.get_unchecked magic ~at:0) '\x1f'
-          && Char.equal (IO.Bytes.get_unchecked magic ~at:1) '\x8b'))
+          | Error err ->
+              Error ("failed to read cached package archive '"
+              ^ Path.to_string archive_path
+              ^ "': "
+              ^ Fs.File.error_to_string err)
+          | Ok bytes_read ->
+              Ok (bytes_read = 2
+              && Char.equal (IO.Bytes.get_unchecked magic ~at:0) '\x1f'
+              && Char.equal (IO.Bytes.get_unchecked magic ~at:1) '\x8b'))
 
 let extract_cached_archive = fun ~archive_path ~root ->
   match Fs.create_dir_all root with
-  | Error err -> Error ("failed to create package source directory '"
-  ^ Path.to_string root
-  ^ "': "
-  ^ IO.error_message err)
+  | Error err ->
+      Error ("failed to create package source directory '"
+      ^ Path.to_string root
+      ^ "': "
+      ^ IO.error_message err)
   | Ok () -> (
       let fail detail =
         let _ = Fs.remove_dir_all root in
-        Error ("failed to extract cached package archive '" ^ Path.to_string archive_path ^ "': " ^ detail)
+        Error ("failed to extract cached package archive '"
+        ^ Path.to_string archive_path
+        ^ "': "
+        ^ detail)
       in
       match cached_archive_is_gzip archive_path with
       | Error _ as err ->
@@ -789,7 +823,10 @@ let extract_cached_archive = fun ~archive_path ~root ->
                   let _ = Fs.File.close file in
                   ())
                 (fun () ->
-                  let reader = Fs.File.to_reader file |> Compress.Gzip.to_reader in
+                  let reader =
+                    Fs.File.to_reader file
+                    |> Compress.Gzip.to_reader
+                  in
                   match Archive.Tar.extract reader ~into:root with
                   | Ok () -> Ok ()
                   | Error err -> fail (gzip_tar_extract_error_message err))
@@ -803,10 +840,8 @@ let extract_cached_archive = fun ~archive_path ~root ->
 
 let read_dir_entries = fun dir ->
   match Fs.read_dir dir with
-  | Error err -> Error ("failed to read directory '"
-  ^ Path.to_string dir
-  ^ "': "
-  ^ IO.error_message err)
+  | Error err ->
+      Error ("failed to read directory '" ^ Path.to_string dir ^ "': " ^ IO.error_message err)
   | Ok iter -> Ok (Iter.MutIterator.to_list iter)
 
 let move_directory_contents = fun ~src ~dst ->
@@ -816,15 +851,17 @@ let move_directory_contents = fun ~src ~dst ->
     | entry :: rest ->
         let from_path = Path.(src / entry) in
         let to_path = Path.(dst / entry) in
-        let* () = Fs.rename ~src:from_path ~dst:to_path
-        |> Result.map_err
-          ~fn:(fun err ->
-            "failed to move extracted entry '"
-            ^ Path.to_string from_path
-            ^ "' into '"
-            ^ Path.to_string dst
-            ^ "': "
-            ^ IO.error_message err) in
+        let* () =
+          Fs.rename ~src:from_path ~dst:to_path
+          |> Result.map_err
+            ~fn:(fun err ->
+              "failed to move extracted entry '"
+              ^ Path.to_string from_path
+              ^ "' into '"
+              ^ Path.to_string dst
+              ^ "': "
+              ^ IO.error_message err)
+        in
         loop rest
   in
   loop entries
@@ -842,12 +879,12 @@ let normalize_legacy_package_root = fun ~root ~(release:Sparse_index.release) ->
       ^ Path.to_string manifest_path
       ^ "': "
       ^ IO.error_message err)
-  | Ok true ->
-      Ok ()
+  | Ok true -> Ok ()
   | Ok false ->
       let* entries = read_dir_entries root in
       let top_level_dirs =
-        List.filter_map entries
+        List.filter_map
+          entries
           ~fn:(fun entry ->
             let full_path = Path.(root / entry) in
             match path_is_directory full_path with
@@ -865,14 +902,16 @@ let normalize_legacy_package_root = fun ~root ~(release:Sparse_index.release) ->
       in
       let candidate_root =
         match top_level_dirs with
-        | [ top_level_dir ] when String.equal release.subdir "." || String.equal release.subdir "" -> Some top_level_dir
+        | [ top_level_dir ] when String.equal release.subdir "." || String.equal release.subdir "" ->
+            Some top_level_dir
         | [ top_level_dir ] -> Some Path.(top_level_dir / Path.v release.subdir)
         | _ -> None
       in
       match candidate_root with
-      | None -> Error ("materialized archive did not contain riot.toml at package root '"
-      ^ Path.to_string root
-      ^ "'")
+      | None ->
+          Error ("materialized archive did not contain riot.toml at package root '"
+          ^ Path.to_string root
+          ^ "'")
       | Some candidate_root ->
           let candidate_manifest = Path.(candidate_root / Path.v "riot.toml") in
           match Fs.exists candidate_manifest with
@@ -892,64 +931,72 @@ let normalize_legacy_package_root = fun ~root ~(release:Sparse_index.release) ->
                 | [] -> root
               in
               let* () = move_directory_contents ~src:candidate_root ~dst:root in
-              let* () = Fs.remove_dir_all top_level_dir
-              |> Result.map_err
-                ~fn:(fun err ->
-                  "failed to clean extracted archive root '"
-                  ^ Path.to_string top_level_dir
-                  ^ "': "
-                  ^ IO.error_message err) in
+              let* () =
+                Fs.remove_dir_all top_level_dir
+                |> Result.map_err
+                  ~fn:(fun err ->
+                    "failed to clean extracted archive root '"
+                    ^ Path.to_string top_level_dir
+                    ^ "': "
+                    ^ IO.error_message err)
+              in
               match Fs.exists manifest_path with
               | Ok true -> Ok ()
-              | Ok false -> Error ("normalized archive for '"
-              ^ release.canonical_locator
-              ^ "' is still missing riot.toml at '"
-              ^ Path.to_string manifest_path
-              ^ "'")
-              | Error err -> Error ("failed to check normalized manifest '"
-              ^ Path.to_string manifest_path
-              ^ "': "
-              ^ IO.error_message err)
+              | Ok false ->
+                  Error ("normalized archive for '"
+                  ^ release.canonical_locator
+                  ^ "' is still missing riot.toml at '"
+                  ^ Path.to_string manifest_path
+                  ^ "'")
+              | Error err ->
+                  Error ("failed to check normalized manifest '"
+                  ^ Path.to_string manifest_path
+                  ^ "': "
+                  ^ IO.error_message err)
 
 let reset_materialized_root = fun root ->
   match Fs.exists root with
-  | Error err -> Error ("failed to check package source directory '"
-  ^ Path.to_string root
-  ^ "': "
-  ^ IO.error_message err)
+  | Error err ->
+      Error ("failed to check package source directory '"
+      ^ Path.to_string root
+      ^ "': "
+      ^ IO.error_message err)
   | Ok false -> Ok ()
-  | Ok true -> Fs.remove_dir_all root
-  |> Result.map_err
-    ~fn:(fun err ->
-      "failed to clean package source directory '" ^ Path.to_string root ^ "': " ^ IO.error_message err)
+  | Ok true ->
+      Fs.remove_dir_all root
+      |> Result.map_err
+        ~fn:(fun err ->
+          "failed to clean package source directory '"
+          ^ Path.to_string root
+          ^ "': "
+          ^ IO.error_message err)
 
 let find_release = fun registry ~package_name ~version ->
   match read_package_document registry ~package_name with
-  | Error _ as err ->
-      err
+  | Error _ as err -> err
   | Ok None ->
       Error ("package '" ^ package_name ^ "' was not found in registry '" ^ name registry ^ "'")
   | Ok (Some document) -> (
-      match
-        List.find document.releases
-          ~fn:(fun (release: Sparse_index.release) ->
-            String.equal release.version version)
-      with
-      | Some release when release.yanked -> Error ("package '"
-      ^ package_name
-      ^ "@"
-      ^ version
-      ^ "' was yanked from registry '"
-      ^ name registry
-      ^ "'")
+      match List.find
+        document.releases
+        ~fn:(fun (release: Sparse_index.release) -> String.equal release.version version) with
+      | Some release when release.yanked ->
+          Error ("package '"
+          ^ package_name
+          ^ "@"
+          ^ version
+          ^ "' was yanked from registry '"
+          ^ name registry
+          ^ "'")
       | Some release -> Ok release
-      | None -> Error ("package '"
-      ^ package_name
-      ^ "' does not have release '"
-      ^ version
-      ^ "' in registry '"
-      ^ name registry
-      ^ "'")
+      | None ->
+          Error ("package '"
+          ^ package_name
+          ^ "' does not have release '"
+          ^ version
+          ^ "' in registry '"
+          ^ name registry
+          ^ "'")
     )
 
 let write_cached_archive = fun ~archive_path ~contents ->
@@ -960,48 +1007,52 @@ let write_cached_archive = fun ~archive_path ~contents ->
   in
   let temp_path = Path.(archive_parent / Path.v (Path.basename archive_path ^ ".tmp")) in
   match Fs.create_dir_all archive_parent with
-  | Error err -> Error ("failed to create package archive directory '"
-  ^ Path.to_string archive_parent
-  ^ "': "
-  ^ IO.error_message err)
-  | Ok () -> (
-      match Fs.write contents temp_path with
-      | Error err -> Error ("failed to write cached package archive '"
-      ^ Path.to_string archive_path
+  | Error err ->
+      Error ("failed to create package archive directory '"
+      ^ Path.to_string archive_parent
       ^ "': "
       ^ IO.error_message err)
-      | Ok () -> (
-          match Fs.rename ~src:temp_path ~dst:archive_path with
-          | Ok () -> Ok ()
-          | Error err -> Error ("failed to finalize cached package archive '"
+  | Ok () -> (
+      match Fs.write contents temp_path with
+      | Error err ->
+          Error ("failed to write cached package archive '"
           ^ Path.to_string archive_path
           ^ "': "
           ^ IO.error_message err)
+      | Ok () -> (
+          match Fs.rename ~src:temp_path ~dst:archive_path with
+          | Ok () -> Ok ()
+          | Error err ->
+              Error ("failed to finalize cached package archive '"
+              ^ Path.to_string archive_path
+              ^ "': "
+              ^ IO.error_message err)
         )
     )
 
 let remove_cached_archive = fun archive_path ->
   match Fs.exists archive_path with
-  | Error err -> Error ("failed to check cached package archive '"
-  ^ Path.to_string archive_path
-  ^ "': "
-  ^ IO.error_message err)
-  | Ok false -> Ok ()
-  | Ok true -> Fs.remove_file archive_path
-  |> Result.map_err
-    ~fn:(fun err ->
-      "failed to remove cached package archive '"
+  | Error err ->
+      Error ("failed to check cached package archive '"
       ^ Path.to_string archive_path
       ^ "': "
       ^ IO.error_message err)
+  | Ok false -> Ok ()
+  | Ok true ->
+      Fs.remove_file archive_path
+      |> Result.map_err
+        ~fn:(fun err ->
+          "failed to remove cached package archive '"
+          ^ Path.to_string archive_path
+          ^ "': "
+          ^ IO.error_message err)
 
 let fetch_release_archive = fun registry ~package_name ~version ~archive_path ->
   match find_release registry ~package_name ~version with
   | Error _ as err -> err
   | Ok release -> (
       match read_config registry with
-      | Error _ as err ->
-          err
+      | Error _ as err -> err
       | Ok None ->
           Error ("filesystem registry '" ^ name registry ^ "' is missing sparse index config")
       | Ok (Some config) -> (
@@ -1026,18 +1077,19 @@ let materialize_release = fun registry ~package_name ~version ->
         ^ Path.to_string manifest_path
         ^ "': "
         ^ IO.error_message err)
-    | Ok true ->
-        Ok `Materialized
+    | Ok true -> Ok `Materialized
     | Ok false ->
         let* release = find_release registry ~package_name ~version in
-        normalize_legacy_package_root ~root ~release |> Result.map ~fn:(fun () -> `Materialized)
+        normalize_legacy_package_root ~root ~release
+        |> Result.map ~fn:(fun () -> `Materialized)
   in
   let ensure_cached_archive () =
     match Fs.exists archive_path with
-    | Error err -> Error ("failed to check cached package archive '"
-    ^ Path.to_string archive_path
-    ^ "': "
-    ^ IO.error_message err)
+    | Error err ->
+        Error ("failed to check cached package archive '"
+        ^ Path.to_string archive_path
+        ^ "': "
+        ^ IO.error_message err)
     | Ok true -> Ok ()
     | Ok false -> fetch_release_archive registry ~package_name ~version ~archive_path
   in
@@ -1045,14 +1097,11 @@ let materialize_release = fun registry ~package_name ~version ->
     let rec attempt remaining_retries =
       let* () = ensure_cached_archive () in
       match extract_cached_archive ~archive_path ~root with
-      | Ok () ->
-          finalize_extracted_root ()
-      | Error _ as err when remaining_retries <= 0 ->
-          err
+      | Ok () -> finalize_extracted_root ()
+      | Error _ as err when remaining_retries <= 0 -> err
       | Error _ ->
-          let* () = reset_materialized_root root in
-          let* () = remove_cached_archive archive_path in
-          let* () = fetch_release_archive registry ~package_name ~version ~archive_path in
+          let* () = reset_materialized_root root in let* () = remove_cached_archive archive_path in let* () =
+            fetch_release_archive registry ~package_name ~version ~archive_path in
           attempt (remaining_retries - 1)
     in
     attempt 1
@@ -1063,8 +1112,7 @@ let materialize_release = fun registry ~package_name ~version ->
       ^ Path.to_string manifest_path
       ^ "': "
       ^ IO.error_message err)
-  | Ok true ->
-      Ok `Already_present
+  | Ok true -> Ok `Already_present
   | Ok false -> (
       match registry.source with
       | Filesystem -> (
@@ -1072,13 +1120,14 @@ let materialize_release = fun registry ~package_name ~version ->
           | Error _ as err -> err
           | Ok () -> extract_with_single_retry ()
         )
-      | In_memory { releases; config=_; packages=_ } -> (
+      | In_memory { releases; config = _; packages = _ } -> (
           match assoc_value releases ~key:(release_key ~package_name ~version) with
-          | None -> Error ("in-memory registry is missing source contents for '"
-          ^ package_name
-          ^ "@"
-          ^ version
-          ^ "'")
+          | None ->
+              Error ("in-memory registry is missing source contents for '"
+              ^ package_name
+              ^ "@"
+              ^ version
+              ^ "'")
           | Some release ->
               match write_release_files ~root release with
               | Ok () -> Ok `Materialized
@@ -1095,7 +1144,8 @@ let publish_response = fun registry uri ~api_token ~artifact ->
   | Error _ as err -> err
   | Ok body -> (
       match Data.Json.of_string body with
-      | Error err -> Error ("failed to parse publish response JSON: " ^ Data.Json.error_to_string err)
+      | Error err ->
+          Error ("failed to parse publish response JSON: " ^ Data.Json.error_to_string err)
       | Ok json -> published_release_of_json json
     )
 
@@ -1119,4 +1169,7 @@ let yank_release = fun registry ~api_token ~package_name ~version ->
   | Ok uri -> yank_response registry uri ~api_token
 
 let publish_from_locator = fun registry ~locator:_ ~selector:_ ~api_token ~artifact ->
-  publish_artifact registry ~api_token ~artifact
+  publish_artifact
+    registry
+    ~api_token
+    ~artifact

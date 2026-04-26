@@ -171,11 +171,10 @@ let solve = fun ~width doc ->
 let to_string = fun ~width ?(size_hint = 1_024) ?(final_newline = false) doc ->
   let buffer = IO.Buffer.create ~size:(Int.max 0 size_hint) in
   let rec write_indent indent =
-    if indent > 0 then
-      (
-        IO.Buffer.add_char buffer ' ';
-        write_indent (indent - 1)
-      )
+    if indent > 0 then (
+      IO.Buffer.add_char buffer ' ';
+      write_indent (indent - 1)
+    )
   in
   let write_string_segment ~line_start ~indent value ~off ~len =
     if line_start && len > 0 then
@@ -226,21 +225,19 @@ let to_string = fun ~width ?(size_hint = 1_024) ?(final_newline = false) doc ->
     | Doc.Space ->
         if line_start then
           (line_start, column + 1)
-        else
-          (
-            IO.Buffer.add_char buffer ' ';
-            (false, column + 1)
-          )
+        else (
+          IO.Buffer.add_char buffer ' ';
+          (false, column + 1)
+        )
     | Doc.Spaces count ->
         if line_start then
           (line_start, column + count)
-        else
-          (
-            for _ = 1 to count do
-              IO.Buffer.add_char buffer ' '
-            done;
-            (false, column + count)
-          )
+        else (
+          for _ = 1 to count do
+            IO.Buffer.add_char buffer ' '
+          done;
+          (false, column + count)
+        )
     | Doc.Line ->
         write_line indent
     | Doc.Break flat -> (
@@ -302,20 +299,19 @@ let to_string = fun ~width ?(size_hint = 1_024) ?(final_newline = false) doc ->
     let length = String.length value in
     if length = 0 then
       (line_start, column)
-    else
-      (
-        if line_start then
-          write_indent indent;
-        IO.Buffer.add_string buffer value;
-        let line_start = Char.equal (String.get_unchecked value ~at:Int.(length - 1)) '\n' in
-        let column =
-          if String.contains value "\n" then
-            last_line_width value
-          else
-            column + length
-        in
-        (line_start, column)
-      )
+    else (
+      if line_start then
+        write_indent indent;
+      IO.Buffer.add_string buffer value;
+      let line_start = Char.equal (String.get_unchecked value ~at:Int.(length - 1)) '\n' in
+      let column =
+        if String.contains value "\n" then
+          last_line_width value
+        else
+          column + length
+      in
+      (line_start, column)
+    )
   and render_slice ~line_start ~column ~indent (slice: Doc.slice) =
     if not slice.Doc.has_newline then
       let line_start =
@@ -331,16 +327,13 @@ let to_string = fun ~width ?(size_hint = 1_024) ?(final_newline = false) doc ->
       let length = Slice.length slice.Doc.value in
       if length = 0 then
         (line_start, column)
-      else
-        (
-          if line_start then
-            write_indent indent;
-          append_subslice_unchecked buffer slice.Doc.value ~off:0 ~len:length;
-          let line_start =
-            Char.equal (Slice.get_unchecked slice.Doc.value ~at:Int.(length - 1)) '\n'
-          in
-          (line_start, last_slice_line_width slice)
-        )
+      else (
+        if line_start then
+          write_indent indent;
+        append_subslice_unchecked buffer slice.Doc.value ~off:0 ~len:length;
+        let line_start = Char.equal (Slice.get_unchecked slice.Doc.value ~at:Int.(length - 1)) '\n' in
+        (line_start, last_slice_line_width slice)
+      )
   in
   let (line_start, _) = render_doc ~line_start:true ~column:0 ~indent:0 ~mode:Break doc in
   if final_newline && IO.Buffer.length buffer > 0 && not line_start then

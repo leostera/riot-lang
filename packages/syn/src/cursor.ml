@@ -34,11 +34,10 @@ let advance = fun t ->
 
 let skip_while = fun t f ->
   let rec loop () =
-    if (not (is_eof t)) && Option.map (peek t) ~fn:f = Some true then
-      (
-        advance t;
-        loop ()
-      )
+    if (not (is_eof t)) && Option.map (peek t) ~fn:f = Some true then (
+      advance t;
+      loop ()
+    )
   in
   loop ()
 

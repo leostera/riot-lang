@@ -31,16 +31,15 @@ let print_text_result = fun mode result ->
           ^ " (applied "
           ^ Int.to_string (List.length result.applied_fixes)
           ^ " safe fixes)");
-      if not (List.is_empty result.parse_diagnostics) then
-        (
-          println
-            ("\027[1;31m✗\027[0m "
-            ^ rel
-            ^ " ("
-            ^ Int.to_string (List.length result.parse_diagnostics)
-            ^ " parse issues)");
-          print_parse_diagnostics result
-        );
+      if not (List.is_empty result.parse_diagnostics) then (
+        println
+          ("\027[1;31m✗\027[0m "
+          ^ rel
+          ^ " ("
+          ^ Int.to_string (List.length result.parse_diagnostics)
+          ^ " parse issues)");
+        print_parse_diagnostics result
+      );
       if not (List.is_empty result.diagnostics) then
         (
           let prefix =

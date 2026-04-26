@@ -11,10 +11,7 @@ module Vector = Collections.Vector
 module Cell = Sync.Cell
 
 (** HPACK: Header Compression for HTTP/2 (RFC 7541) *)
-type header = {
-  name: string;
-  value: string;
-}
+type header = { name: string; value: string }
 
 type encoding_type =
   | Indexed
@@ -146,8 +143,11 @@ module DynamicTable = struct
     max_size: int Cell.t;
   }
 
-  let create = fun max_size ->
-    { entries = Cell.create []; current_size = Cell.create 0; max_size = Cell.create max_size }
+  let create = fun max_size -> {
+    entries = Cell.create [];
+    current_size = Cell.create 0;
+    max_size = Cell.create max_size;
+  }
 
   let size = fun t -> Cell.get t.current_size
 
@@ -173,12 +173,10 @@ module DynamicTable = struct
   let add = fun t header ->
     let entry_size = header_size header in
     (* RFC 7541 Section 4.4: If entry is larger than max size, empty the table *)
-    if entry_size > Cell.get t.max_size then
-      (
-        Cell.set t.entries [];
-        Cell.set t.current_size 0
-      )
-    else (
+    if entry_size > Cell.get t.max_size then (
+      Cell.set t.entries [];
+      Cell.set t.current_size 0
+    ) else (
       evict_to_fit t entry_size;
       let new_entries = header :: Cell.get t.entries in
       Cell.set t.entries new_entries;
@@ -245,14 +243,14 @@ module Integer = struct
       (* Doesn't fit, use continuation bytes *)
       let buf = Buffer.create ~size:8 in
       Buffer.add_char buf (Char.from_int_unchecked max_prefix);
-      let remaining = Cell.create (value - max_prefix) in
-      while Cell.get remaining >= 128 do
-        let byte = (Cell.get remaining land 0x7f) lor 0x80 in
-        Buffer.add_char buf (Char.from_int_unchecked byte);
-        Cell.set remaining (Cell.get remaining lsr 7)
-      done;
-      Buffer.add_char buf (Char.from_int_unchecked (Cell.get remaining));
-      Bytes.from_string (Buffer.contents buf)
+    let remaining = Cell.create (value - max_prefix) in
+    while Cell.get remaining >= 128 do
+      let byte = (Cell.get remaining land 0x7f) lor 0x80 in
+      Buffer.add_char buf (Char.from_int_unchecked byte);
+      Cell.set remaining (Cell.get remaining lsr 7)
+    done;
+    Buffer.add_char buf (Char.from_int_unchecked (Cell.get remaining));
+    Bytes.from_string (Buffer.contents buf)
 
   let decode = fun prefix_bits first_byte data offset ->
     let prefix_mask = (1 lsl prefix_bits) - 1 in
@@ -265,7 +263,10 @@ module Integer = struct
         if pos >= Bytes.length data then
           Error "Incomplete integer encoding"
         else
-          let byte = Bytes.get_unchecked data ~at:pos |> Char.to_int in
+          let byte =
+            Bytes.get_unchecked data ~at:pos
+            |> Char.to_int
+          in
           let value = byte land 0x7f in
           let acc = acc + (value * multiplier) in
           if byte land 0x80 = 0 then
@@ -332,17 +333,20 @@ type encoder = {
   sensitive_headers: string list Cell.t;
 }
 
-let create_encoder = fun ?(max_dynamic_table_size = 4_096) () ->
-  {
-    dynamic_table = DynamicTable.create max_dynamic_table_size;
-    sensitive_headers = Cell.create [ "authorization"; "cookie"; "set-cookie" ]
-  }
+let create_encoder = fun ?(max_dynamic_table_size = 4_096) () -> {
+  dynamic_table = DynamicTable.create max_dynamic_table_size;
+  sensitive_headers = Cell.create [ "authorization"; "cookie"; "set-cookie" ];
+}
 
 let update_max_table_size = fun encoder new_size ->
-  DynamicTable.update_max_size encoder.dynamic_table new_size
+  DynamicTable.update_max_size
+    encoder.dynamic_table
+    new_size
 
 let is_sensitive_header = fun name ->
-  List.contains [ "authorization"; "cookie"; "set-cookie"; "proxy-authorization"; ] ~value:name
+  List.contains
+    [ "authorization"; "cookie"; "set-cookie"; "proxy-authorization"; ]
+    ~value:name
 
 let encode_indexed_header = fun index ->
   (* Indexed Header Field: 1xxxxxxx *)
@@ -456,17 +460,18 @@ let encode_header = fun encoder header ~encoding_type ->
           let result = encode_literal_with_indexing ~name_index ~value in
           DynamicTable.add encoder.dynamic_table header;
           result
-      | LiteralWithoutIndexing ->
-          encode_literal_without_indexing ~name_index ~value
-      | LiteralNeverIndexed ->
-          encode_literal_never_indexed ~name_index ~value
+      | LiteralWithoutIndexing -> encode_literal_without_indexing ~name_index ~value
+      | LiteralNeverIndexed -> encode_literal_never_indexed ~name_index ~value
 
 let encode = fun encoder ?(sensitive_headers = []) () ~headers ->
   let buf = Buffer.create ~size:256 in
-  List.for_each headers
+  List.for_each
+    headers
     ~fn:(fun header ->
       let encoding_type =
-        if is_sensitive_header header.name || List.contains sensitive_headers ~value:header.name then
+        if
+          is_sensitive_header header.name || List.contains sensitive_headers ~value:header.name
+        then
           LiteralNeverIndexed
         else
           LiteralWithIndexing
@@ -481,11 +486,14 @@ type decoder = {
   dynamic_table: DynamicTable.t;
 }
 
-let create_decoder = fun ?(max_dynamic_table_size = 4_096) () ->
-  { dynamic_table = DynamicTable.create max_dynamic_table_size }
+let create_decoder = fun ?(max_dynamic_table_size = 4_096) () -> {
+  dynamic_table = DynamicTable.create max_dynamic_table_size;
+}
 
 let update_max_table_size = fun decoder new_size ->
-  DynamicTable.update_max_size decoder.dynamic_table new_size
+  DynamicTable.update_max_size
+    decoder.dynamic_table
+    new_size
 
 let lookup_header = fun decoder index ->
   if index <= static_table_size then
@@ -511,16 +519,14 @@ let decode_header_block = fun decoder data offset ->
       match Integer.decode 6 first_byte data (offset + 1) with
       | Error e -> Error e
       | Ok (name_index, pos1) -> (
-          match
-            (
-              if name_index = 0 then
-                String_.decode data pos1
-              else
-                match lookup_header decoder name_index with
-                | None -> Error ("Invalid name index: " ^ Int.to_string name_index)
-                | Some h -> Ok (h.name, pos1)
-            )
-          with
+          match (
+            if name_index = 0 then
+              String_.decode data pos1
+            else
+              match lookup_header decoder name_index with
+              | None -> Error ("Invalid name index: " ^ Int.to_string name_index)
+              | Some h -> Ok (h.name, pos1)
+          ) with
           | Error e -> Error e
           | Ok (name, pos2) ->
               match String_.decode data pos2 with
@@ -539,16 +545,14 @@ let decode_header_block = fun decoder data offset ->
       match Integer.decode 4 first_byte data (offset + 1) with
       | Error e -> Error e
       | Ok (name_index, pos1) -> (
-          match
-            (
-              if name_index = 0 then
-                String_.decode data pos1
-              else
-                match lookup_header decoder name_index with
-                | None -> Error ("Invalid name index: " ^ Int.to_string name_index)
-                | Some h -> Ok (h.name, pos1)
-            )
-          with
+          match (
+            if name_index = 0 then
+              String_.decode data pos1
+            else
+              match lookup_header decoder name_index with
+              | None -> Error ("Invalid name index: " ^ Int.to_string name_index)
+              | Some h -> Ok (h.name, pos1)
+          ) with
           | Error e -> Error e
           | Ok (name, pos2) ->
               match String_.decode data pos2 with
@@ -560,16 +564,14 @@ let decode_header_block = fun decoder data offset ->
       match Integer.decode 4 first_byte data (offset + 1) with
       | Error e -> Error e
       | Ok (name_index, pos1) -> (
-          match
-            (
-              if name_index = 0 then
-                String_.decode data pos1
-              else
-                match lookup_header decoder name_index with
-                | None -> Error ("Invalid name index: " ^ Int.to_string name_index)
-                | Some h -> Ok (h.name, pos1)
-            )
-          with
+          match (
+            if name_index = 0 then
+              String_.decode data pos1
+            else
+              match lookup_header decoder name_index with
+              | None -> Error ("Invalid name index: " ^ Int.to_string name_index)
+              | Some h -> Ok (h.name, pos1)
+          ) with
           | Error e -> Error e
           | Ok (name, pos2) ->
               match String_.decode data pos2 with
@@ -581,12 +583,16 @@ let decode = fun decoder data ->
   let headers = Vector.with_capacity ~size:8 in
   let rec decode_all offset =
     if offset >= Bytes.length data then
-      Ok (Vector.to_array headers |> Array.to_list)
+      Ok (
+        Vector.to_array headers
+        |> Array.to_list
+      )
     else
       match decode_header_block decoder data offset with
       | Error e -> Error e
       | Ok (decoded, new_offset) ->
-          decoded |> List.for_each ~fn:(fun header -> Vector.push headers ~value:header);
+          decoded
+          |> List.for_each ~fn:(fun header -> Vector.push headers ~value:header);
           decode_all new_offset
   in
   decode_all 0

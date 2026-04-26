@@ -179,13 +179,12 @@ let view = fun tbl ->
   let module B = Buffer in
   let buf = B.create ~size:256 in
   (* Render header *)
-  if tbl.show_header && List.length tbl.columns > 0 then
-    begin
-      B.add_string buf (render_header tbl.columns);
-      B.add_char buf '\n';
-      B.add_string buf (render_separator tbl.columns);
-      B.add_char buf '\n'
-    end;
+  if tbl.show_header && List.length tbl.columns > 0 then (
+    B.add_string buf (render_header tbl.columns);
+    B.add_char buf '\n';
+    B.add_string buf (render_separator tbl.columns);
+    B.add_char buf '\n'
+  );
   let total_rows = List.length tbl.rows in
   if total_rows = 0 then
     B.add_string buf "No data"

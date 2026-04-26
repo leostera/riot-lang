@@ -470,25 +470,24 @@ let close = fun conn ->
 let process_settings_frame = fun conn settings_list flags ->
   if flags.Frame.ack then
     Ok [ SettingsAckReceived ]
-  else
-    (
-      List.for_each
-        settings_list
-        ~fn:(
-          function
-          | Frame.HeaderTableSize size ->
-              Cell.set conn.remote_settings.header_table_size size;
-              Hpack.update_max_table_size conn.hpack_decoder size
-          | Frame.EnablePush enabled -> Cell.set conn.remote_settings.enable_push enabled
-          | Frame.MaxConcurrentStreams max ->
-              Cell.set conn.remote_settings.max_concurrent_streams (Some max)
-          | Frame.InitialWindowSize size -> Cell.set conn.remote_settings.initial_window_size size
-          | Frame.MaxFrameSize size -> Cell.set conn.remote_settings.max_frame_size size
-          | Frame.MaxHeaderListSize size ->
-              Cell.set conn.remote_settings.max_header_list_size (Some size)
-        );
-      Ok [ SettingsReceived settings_list ]
-    )
+  else (
+    List.for_each
+      settings_list
+      ~fn:(
+        function
+        | Frame.HeaderTableSize size ->
+            Cell.set conn.remote_settings.header_table_size size;
+            Hpack.update_max_table_size conn.hpack_decoder size
+        | Frame.EnablePush enabled -> Cell.set conn.remote_settings.enable_push enabled
+        | Frame.MaxConcurrentStreams max ->
+            Cell.set conn.remote_settings.max_concurrent_streams (Some max)
+        | Frame.InitialWindowSize size -> Cell.set conn.remote_settings.initial_window_size size
+        | Frame.MaxFrameSize size -> Cell.set conn.remote_settings.max_frame_size size
+        | Frame.MaxHeaderListSize size ->
+            Cell.set conn.remote_settings.max_header_list_size (Some size)
+      );
+    Ok [ SettingsReceived settings_list ]
+  )
 
 let process_headers_frame = fun conn stream_id payload flags ->
   match payload with

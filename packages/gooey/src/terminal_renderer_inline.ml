@@ -268,25 +268,23 @@ let render_to_string = fun commands ->
                         cursor := next_col
                       else if next_col > visible_col_end || next_col > col_end then
                         ()
-                      else if !cursor >= visible_col_start then
-                        begin
-                          if !cursor < !max_col then
-                            write_text_cell
-                              (get_cell grid ~row ~col:!cursor)
-                              tty_color
-                              weight
-                              decoration
-                              grapheme_string
-                              grapheme_width;
-                          if grapheme_width > 1 then
-                            for offset = 1 to grapheme_width - 1 do
-                              let col = !cursor + offset in
-                              if col < !max_col then
-                                write_continuation_cell (get_cell grid ~row ~col)
-                            done;
-                          cursor := next_col
-                        end
-                      else
+                      else if !cursor >= visible_col_start then (
+                        if !cursor < !max_col then
+                          write_text_cell
+                            (get_cell grid ~row ~col:!cursor)
+                            tty_color
+                            weight
+                            decoration
+                            grapheme_string
+                            grapheme_width;
+                        if grapheme_width > 1 then
+                          for offset = 1 to grapheme_width - 1 do
+                            let col = !cursor + offset in
+                            if col < !max_col then
+                              write_continuation_cell (get_cell grid ~row ~col)
+                          done;
+                        cursor := next_col
+                      ) else
                         cursor := next_col))
         | Render.Custom { data } ->
             let lines = String.split_on_char '\n' data in

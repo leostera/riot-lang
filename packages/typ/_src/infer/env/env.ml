@@ -328,12 +328,11 @@ let dedupe_record_decls = fun record_decls ->
       let owner_id = Label_env.owner_type_constructor_id record_decl in
       if Collections.HashSet.contains seen owner_id then
         false
-      else
-        (
-          Collections.HashSet.insert seen owner_id
-          |> ignore;
-          true
-        ))
+      else (
+        Collections.HashSet.insert seen owner_id
+        |> ignore;
+        true
+      ))
 
 let merge_visible_module_tables: module_table -> module_table -> module_table = fun dominant rest ->
   Name_map.fold
@@ -787,12 +786,11 @@ let visible_bindings = fun env ->
       let path = Binding.surface_path binding in
       if Collections.HashSet.contains seen path then
         false
-      else
-        (
-          Collections.HashSet.insert seen path
-          |> ignore;
-          true
-        ))
+      else (
+        Collections.HashSet.insert seen path
+        |> ignore;
+        true
+      ))
 
 let visible_binding_map = fun env ->
   visible_bindings env

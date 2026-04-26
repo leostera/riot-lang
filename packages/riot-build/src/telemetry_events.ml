@@ -323,13 +323,17 @@ let planning_breakdown_of_json = function
         Data.Json.get_field "plan_bundle_cache_hit" (Data.Json.Object fields),
         Data.Json.get_field "module_plan_duration_ms" (Data.Json.Object fields)
       ) with
-      | (Some (Data.Json.Int dependency_count), Some (Data.Json.Int dependency_check_duration_ms), Some (
-        Data.Json.Int input_hash_duration_ms
-      ), Some (Data.Json.Int artifact_lookup_duration_ms), Some (Data.Json.Bool artifact_cache_hit), Some (
-        Data.Json.Int plan_bundle_lookup_duration_ms
-      ), Some (Data.Json.Int plan_bundle_decode_duration_ms), Some (
-        Data.Json.Bool plan_bundle_cache_hit
-      ), Some (Data.Json.Int module_plan_duration_ms)) ->
+      | (
+        Some (Data.Json.Int dependency_count),
+        Some (Data.Json.Int dependency_check_duration_ms),
+        Some (Data.Json.Int input_hash_duration_ms),
+        Some (Data.Json.Int artifact_lookup_duration_ms),
+        Some (Data.Json.Bool artifact_cache_hit),
+        Some (Data.Json.Int plan_bundle_lookup_duration_ms),
+        Some (Data.Json.Int plan_bundle_decode_duration_ms),
+        Some (Data.Json.Bool plan_bundle_cache_hit),
+        Some (Data.Json.Int module_plan_duration_ms)
+      ) ->
           Ok {
             dependency_count;
             dependency_check_duration = Time.Duration.from_millis dependency_check_duration_ms;
@@ -379,13 +383,15 @@ let workspace_graph_breakdown_of_json = function
         Data.Json.get_field "dev_node_realization_duration_ms" (Data.Json.Object fields),
         Data.Json.get_field "edge_wiring_duration_ms" (Data.Json.Object fields)
       ) with
-      | (Some (Data.Json.Int build_node_realization_count), Some (
-        Data.Json.Int build_node_realization_duration_ms
-      ), Some (Data.Json.Int runtime_node_realization_count), Some (
-        Data.Json.Int runtime_node_realization_duration_ms
-      ), Some (Data.Json.Int dev_node_realization_count), Some (
-        Data.Json.Int dev_node_realization_duration_ms
-      ), Some (Data.Json.Int edge_wiring_duration_ms)) ->
+      | (
+        Some (Data.Json.Int build_node_realization_count),
+        Some (Data.Json.Int build_node_realization_duration_ms),
+        Some (Data.Json.Int runtime_node_realization_count),
+        Some (Data.Json.Int runtime_node_realization_duration_ms),
+        Some (Data.Json.Int dev_node_realization_count),
+        Some (Data.Json.Int dev_node_realization_duration_ms),
+        Some (Data.Json.Int edge_wiring_duration_ms)
+      ) ->
           Ok {
             build_node_realization_count;
             build_node_realization_duration = Time.Duration.from_millis
@@ -852,9 +858,12 @@ let from_json: Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json -
             get_field fields ~name:"planned_package_count",
             get_field fields ~name:"duration_ms"
           ) with
-          | (Some (Data.Json.String target_str), Some (Data.Json.Int workspace_package_count), Some (
-            Data.Json.Int planned_package_count
-          ), Some (Data.Json.Int duration_ms)) -> (
+          | (
+            Some (Data.Json.String target_str),
+            Some (Data.Json.Int workspace_package_count),
+            Some (Data.Json.Int planned_package_count),
+            Some (Data.Json.Int duration_ms)
+          ) -> (
               match target_of_json (Data.Json.String target_str) with
               | Ok target ->
                   Ok (
@@ -876,9 +885,11 @@ let from_json: Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json -
             get_field fields ~name:"filtered_workspace_package_count",
             get_field fields ~name:"duration_ms"
           ) with
-          | (Some (Data.Json.String target_str), Some (
-            Data.Json.Int filtered_workspace_package_count
-          ), Some (Data.Json.Int duration_ms)) -> (
+          | (
+            Some (Data.Json.String target_str),
+            Some (Data.Json.Int filtered_workspace_package_count),
+            Some (Data.Json.Int duration_ms)
+          ) -> (
               match target_of_json (Data.Json.String target_str) with
               | Ok target ->
                   Ok (
@@ -900,9 +911,12 @@ let from_json: Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json -
             get_field fields ~name:"breakdown",
             get_field fields ~name:"duration_ms"
           ) with
-          | (Some (Data.Json.String target_str), Some (Data.Json.Int node_count), Some breakdown_json, Some (
-            Data.Json.Int duration_ms
-          )) -> (
+          | (
+            Some (Data.Json.String target_str),
+            Some (Data.Json.Int node_count),
+            Some breakdown_json,
+            Some (Data.Json.Int duration_ms)
+          ) -> (
               match (
                 target_of_json (Data.Json.String target_str),
                 workspace_graph_breakdown_of_json breakdown_json
@@ -928,9 +942,11 @@ let from_json: Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json -
             get_field fields ~name:"node_count",
             get_field fields ~name:"duration_ms"
           ) with
-          | (Some (Data.Json.String target_str), Some (Data.Json.Int node_count), Some (
-            Data.Json.Int duration_ms
-          )) -> (
+          | (
+            Some (Data.Json.String target_str),
+            Some (Data.Json.Int node_count),
+            Some (Data.Json.Int duration_ms)
+          ) -> (
               match target_of_json (Data.Json.String target_str) with
               | Ok target ->
                   Ok (
@@ -951,9 +967,11 @@ let from_json: Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json -
             get_field fields ~name:"sorted_package_count",
             get_field fields ~name:"duration_ms"
           ) with
-          | (Some (Data.Json.String target_str), Some (Data.Json.Int sorted_package_count), Some (
-            Data.Json.Int duration_ms
-          )) -> (
+          | (
+            Some (Data.Json.String target_str),
+            Some (Data.Json.Int sorted_package_count),
+            Some (Data.Json.Int duration_ms)
+          ) -> (
               match target_of_json (Data.Json.String target_str) with
               | Ok target ->
                   Ok (
@@ -990,9 +1008,13 @@ let from_json: Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json -
             get_field fields ~name:"missing_count",
             get_field fields ~name:"failed_count"
           ) with
-          | (Some (Data.Json.String target_str), Some (Data.Json.Int duration_ms), Some (
-            Data.Json.Int planned_count
-          ), Some (Data.Json.Int missing_count), Some (Data.Json.Int failed_count)) -> (
+          | (
+            Some (Data.Json.String target_str),
+            Some (Data.Json.Int duration_ms),
+            Some (Data.Json.Int planned_count),
+            Some (Data.Json.Int missing_count),
+            Some (Data.Json.Int failed_count)
+          ) -> (
               match target_of_json (Data.Json.String target_str) with
               | Ok target ->
                   Ok (
@@ -1016,9 +1038,12 @@ let from_json: Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json -
             get_field fields ~name:"status",
             get_field fields ~name:"duration_ms"
           ) with
-          | (Some package_json, Some (Data.Json.String target_str), Some status_json, Some (
-            Data.Json.Int duration_ms
-          )) -> (
+          | (
+            Some package_json,
+            Some (Data.Json.String target_str),
+            Some status_json,
+            Some (Data.Json.Int duration_ms)
+          ) -> (
               match Package.from_json package_json with
               | Ok package -> (
                   match (
@@ -1113,9 +1138,13 @@ let from_json: Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json -
             get_field fields ~name:"source",
             get_field fields ~name:"messages"
           ) with
-          | (Some (Data.Json.String session_id_str), Some package_json, Some target_json, Some source_json, Some (
-            Data.Json.Array messages_json
-          )) -> (
+          | (
+            Some (Data.Json.String session_id_str),
+            Some package_json,
+            Some target_json,
+            Some source_json,
+            Some (Data.Json.Array messages_json)
+          ) -> (
               match Package.from_json package_json with
               | Ok package -> (
                   match (
@@ -1160,9 +1189,12 @@ let from_json: Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json -
             get_field fields ~name:"status",
             get_field fields ~name:"duration_ms"
           ) with
-          | (Some package_json, Some target_json, Some (Data.Json.String status_str), Some (
-            Data.Json.Int duration_ms
-          )) -> (
+          | (
+            Some package_json,
+            Some target_json,
+            Some (Data.Json.String status_str),
+            Some (Data.Json.Int duration_ms)
+          ) -> (
               match Package.from_json package_json with
               | Ok package -> (
                   match (target_of_json target_json, build_target_from_fields fields) with
@@ -1275,11 +1307,12 @@ let from_json: Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json -
                                       get_field planning_fields ~name:"requested_module",
                                       get_field planning_fields ~name:"allowed_modules"
                                     ) with
-                                    | (Some (Data.Json.String package_name), Some (
-                                      Data.Json.String source
-                                    ), Some (Data.Json.String requested_module), Some (
-                                      Data.Json.Array allowed_modules
-                                    )) ->
+                                    | (
+                                      Some (Data.Json.String package_name),
+                                      Some (Data.Json.String source),
+                                      Some (Data.Json.String requested_module),
+                                      Some (Data.Json.Array allowed_modules)
+                                    ) ->
                                         let allowed_modules =
                                           List.filter_map
                                             allowed_modules
@@ -1315,11 +1348,13 @@ let from_json: Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json -
                                       get_field planning_fields ~name:"internal_module",
                                       get_field planning_fields ~name:"public_module"
                                     ) with
-                                    | (Some (Data.Json.String target_name), Some (
-                                      Data.Json.String source
-                                    ), Some (Data.Json.String requested_module), Some (
-                                      Data.Json.String internal_module
-                                    ), Some (Data.Json.String public_module)) ->
+                                    | (
+                                      Some (Data.Json.String target_name),
+                                      Some (Data.Json.String source),
+                                      Some (Data.Json.String requested_module),
+                                      Some (Data.Json.String internal_module),
+                                      Some (Data.Json.String public_module)
+                                    ) ->
                                         Ok (
                                           PlanningFailed (
                                             Planning_error.TargetDependsOnInternalLibraryModule {
@@ -1346,11 +1381,13 @@ let from_json: Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json -
                                       get_field planning_fields ~name:"internal_module",
                                       get_field planning_fields ~name:"public_module"
                                     ) with
-                                    | (Some (Data.Json.String target_name), Some (
-                                      Data.Json.String source
-                                    ), Some (Data.Json.String requested_module), Some (
-                                      Data.Json.String internal_module
-                                    ), Some (Data.Json.String public_module)) ->
+                                    | (
+                                      Some (Data.Json.String target_name),
+                                      Some (Data.Json.String source),
+                                      Some (Data.Json.String requested_module),
+                                      Some (Data.Json.String internal_module),
+                                      Some (Data.Json.String public_module)
+                                    ) ->
                                         Ok (
                                           PlanningFailed (
                                             Planning_error.TargetDependsOnNamespacedInternalLibraryModule {
@@ -1376,13 +1413,14 @@ let from_json: Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json -
                                       get_field planning_fields ~name:"other_target_module",
                                       get_field planning_fields ~name:"public_module"
                                     ) with
-                                    | (Some (Data.Json.String target_name), Some (
-                                      Data.Json.String source
-                                    ), Some (Data.Json.String requested_module), Some (
-                                      Data.Json.String other_target_name
-                                    ), Some (Data.Json.String other_target_module), Some (
-                                      Data.Json.String public_module
-                                    )) ->
+                                    | (
+                                      Some (Data.Json.String target_name),
+                                      Some (Data.Json.String source),
+                                      Some (Data.Json.String requested_module),
+                                      Some (Data.Json.String other_target_name),
+                                      Some (Data.Json.String other_target_module),
+                                      Some (Data.Json.String public_module)
+                                    ) ->
                                         Ok (
                                           PlanningFailed (
                                             Planning_error.TargetDependsOnOtherTargetRoot {
@@ -1444,9 +1482,13 @@ let from_json: Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json -
                                       get_field planning_fields ~name:"file",
                                       get_field planning_fields ~name:"error"
                                     ) with
-                                    | (package_name_json, Some (Data.Json.String target_name), Some (
-                                      Data.Json.String source
-                                    ), file_json, Some error_json) -> (
+                                    | (
+                                      package_name_json,
+                                      Some (Data.Json.String target_name),
+                                      Some (Data.Json.String source),
+                                      file_json,
+                                      Some error_json
+                                    ) -> (
                                         match executable_main_error_of_json error_json with
                                         | Some error ->
                                             let package_name =
@@ -1613,9 +1655,13 @@ let from_json: Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json -
             get_field fields ~name:"built_count",
             get_field fields ~name:"failed_count"
           ) with
-          | (Some (Data.Json.String target_str), Some (Data.Json.Int total_duration_ms), Some (
-            Data.Json.Int cached_count
-          ), Some (Data.Json.Int built_count), Some (Data.Json.Int failed_count)) -> (
+          | (
+            Some (Data.Json.String target_str),
+            Some (Data.Json.Int total_duration_ms),
+            Some (Data.Json.Int cached_count),
+            Some (Data.Json.Int built_count),
+            Some (Data.Json.Int failed_count)
+          ) -> (
               match target_of_json (Data.Json.String target_str) with
               | Ok target ->
                   let total_duration = Time.Duration.from_millis total_duration_ms in

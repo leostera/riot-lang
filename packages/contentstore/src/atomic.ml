@@ -172,12 +172,10 @@ let commit_dir_if_absent = fun ~source_dir ~staging ~dst ->
       ~fn:(fun detail ->
         io_error ~op:"exists" ~path:dst ~related_path:source_dir detail)
   in
-  if already_exists then
-    (
-      cleanup_dir source_dir;
-      Ok ()
-    )
-  else
+  if already_exists then (
+    cleanup_dir source_dir;
+    Ok ()
+  ) else
     match Fs.rename ~src:source_dir ~dst with
     | Ok () -> Ok ()
     | Error _ -> (

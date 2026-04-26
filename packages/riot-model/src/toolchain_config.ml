@@ -19,11 +19,13 @@ let default_ocaml_version = "5.5.0-riot.4"
 let default = {
   version = default_ocaml_version;
   source = Version default_ocaml_version;
-  targets = []
+  targets = [];
 }
 
 let sort_compare_target = fun left right ->
-  String.compare (System.TargetTriple.to_string left) (System.TargetTriple.to_string right)
+  String.compare
+    (System.TargetTriple.to_string left)
+    (System.TargetTriple.to_string right)
 
 let normalize_targets = fun targets ->
   let rec dedupe acc = function
@@ -35,7 +37,9 @@ let normalize_targets = fun targets ->
         else
           dedupe (left :: acc) rest
   in
-  targets |> List.sort ~compare:sort_compare_target |> dedupe []
+  targets
+  |> List.sort ~compare:sort_compare_target
+  |> dedupe []
 
 let from_root = fun ~root ->
   let toolchain_file = Path.(root / Path.v "ocaml-toolchain.toml") in
@@ -46,8 +50,7 @@ let from_root = fun ~root ->
       | Error _ -> default
       | Ok content -> (
           match Data.Toml.parse content with
-          | Error _ ->
-              default
+          | Error _ -> default
           | Ok (Data.Toml.Table items) -> (
               match Fields.get "toolchain" items with
               | Some (Data.Toml.Table toolchain_items) -> (
@@ -56,7 +59,8 @@ let from_root = fun ~root ->
                     (
                       match Fields.get "targets" toolchain_items with
                       | Some (Data.Toml.Array arr) ->
-                          List.filter_map arr
+                          List.filter_map
+                            arr
                             ~fn:(
                               function
                               | Data.Toml.String s -> (
@@ -64,15 +68,15 @@ let from_root = fun ~root ->
                                   | Ok target -> Some target
                                   | Error _ -> None
                                 )
-                              | _ -> None
+                              | _ ->
+                                  None
                             )
                       | _ -> []
                     )
                     |> normalize_targets
                   in
                   match Fields.get "version" toolchain_items with
-                  | Some (Data.Toml.String v) ->
-                      { version = v; source = Version v; targets }
+                  | Some (Data.Toml.String v) -> { version = v; source = Version v; targets }
                   | Some (Data.Toml.Table version_items) -> (
                       match Fields.get "path" version_items with
                       | Some (Data.Toml.String path_str) -> (
@@ -94,7 +98,9 @@ let from_root = fun ~root ->
                                     | [] -> url_str
                                   in
                                   if String.contains last "." then
-                                    Path.v last |> Path.remove_extension |> Path.to_string
+                                    Path.v last
+                                    |> Path.remove_extension
+                                    |> Path.to_string
                                   else
                                     last
                                 else
@@ -107,12 +113,10 @@ let from_root = fun ~root ->
                           | _ -> default
                         )
                     )
-                  | _ ->
-                      default
+                  | _ -> default
                 )
               | _ -> default
             )
-          | _ ->
-              default
+          | _ -> default
         )
     )

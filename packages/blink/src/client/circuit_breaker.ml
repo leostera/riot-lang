@@ -59,12 +59,10 @@ let allow_request = fun ~now value ->
           true
       | Some opened_at ->
           let elapsed = Time.Instant.saturating_duration_since ~earlier:opened_at now in
-          if Time.Duration.compare elapsed value.reset_after != Order.LT then
-            (
-              value.state <- HalfOpen;
-              true
-            )
-          else
+          if Time.Duration.compare elapsed value.reset_after != Order.LT then (
+            value.state <- HalfOpen;
+            true
+          ) else
             false
     )
 

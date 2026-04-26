@@ -160,21 +160,19 @@ let glob_match = fun pattern text ->
   Array.set !previous ~at:0 ~value:true;
   for pattern_idx = 1 to pattern_len do
     let current = Array.make ~count:(text_len + 1) ~value:false in
-    if String.get_unchecked pattern ~at:(pattern_idx - 1) = '*' then
-      (
+    if String.get_unchecked pattern ~at:(pattern_idx - 1) = '*' then (
+      Array.set
+        current
+        ~at:0
+        ~value:(Array.get_unchecked !previous ~at:0);
+      for text_idx = 1 to text_len do
         Array.set
           current
-          ~at:0
-          ~value:(Array.get_unchecked !previous ~at:0);
-        for text_idx = 1 to text_len do
-          Array.set
-            current
-            ~at:text_idx
-            ~value:(Array.get_unchecked !previous ~at:text_idx
-            || Array.get_unchecked current ~at:(text_idx - 1))
-        done
-      )
-    else
+          ~at:text_idx
+          ~value:(Array.get_unchecked !previous ~at:text_idx
+          || Array.get_unchecked current ~at:(text_idx - 1))
+      done
+    ) else
       (
         for text_idx = 1 to text_len do
           Array.set

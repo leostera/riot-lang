@@ -42,13 +42,12 @@ let open_dir = fun path ->
 let close = fun dir ->
   if dir.closed then
     Ok ()
-  else
-    (
-      dir.closed <- true;
-      match Kernel.Fs.ReadDir.close dir.handle with
-      | Ok () -> Ok ()
-      | Error error -> Error (of_read_dir_error error)
-    )
+  else (
+    dir.closed <- true;
+    match Kernel.Fs.ReadDir.close dir.handle with
+    | Ok () -> Ok ()
+    | Error error -> Error (of_read_dir_error error)
+  )
 
 let next = fun dir ->
   if dir.closed then

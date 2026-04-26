@@ -129,13 +129,11 @@ let tick = fun t ~now ->
           if Timer.is_cancelled timer then
             let _ = HashMap.remove t.timers_by_id ~key:timer.Timer.id in
             ()
-          else if Timer.should_fire timer ~now then
-            (
-              expired := timer :: !expired;
-              let _ = HashMap.remove t.timers_by_id ~key:timer.Timer.id in
-              ()
-            )
-          else
+          else if Timer.should_fire timer ~now then (
+            expired := timer :: !expired;
+            let _ = HashMap.remove t.timers_by_id ~key:timer.Timer.id in
+            ()
+          ) else
             (* Timer not yet expired - re-insert *)
             match calculate_slot t timer.Timer.expires_at with
             | Some slot -> set_slot t ~at:slot ~value:(timer :: get_slot t ~at:slot)
@@ -149,13 +147,11 @@ let tick = fun t ~now ->
       if Timer.is_cancelled timer then
         let _ = HashMap.remove t.timers_by_id ~key:timer.Timer.id in
         ()
-      else if Timer.should_fire timer ~now then
-        (
-          expired := timer :: !expired;
-          let _ = HashMap.remove t.timers_by_id ~key:timer.Timer.id in
-          ()
-        )
-      else
+      else if Timer.should_fire timer ~now then (
+        expired := timer :: !expired;
+        let _ = HashMap.remove t.timers_by_id ~key:timer.Timer.id in
+        ()
+      ) else
         match calculate_slot t timer.Timer.expires_at with
         | Some slot -> set_slot t ~at:slot ~value:(timer :: get_slot t ~at:slot)
         | None -> still_overflow := timer :: !still_overflow);

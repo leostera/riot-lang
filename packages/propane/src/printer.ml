@@ -29,11 +29,10 @@ let escape_string = fun value ->
   let rec loop index =
     if index >= String.length value then
       Buffer.contents buffer
-    else
-      (
-        Buffer.add_string buffer (escape_char_fragment (String.get_unchecked value ~at:index));
-        loop (index + 1)
-      )
+    else (
+      Buffer.add_string buffer (escape_char_fragment (String.get_unchecked value ~at:index));
+      loop (index + 1)
+    )
   in
   loop 0
 

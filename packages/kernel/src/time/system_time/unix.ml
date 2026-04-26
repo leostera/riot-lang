@@ -6,10 +6,7 @@ type error =
   | InvalidNanoseconds of { nanos: int }
   | System of System_error.t
 
-type t = {
-  secs: int;
-  nanos: int;
-}
+type t = { secs: int; nanos: int }
 
 let epoch = { secs = 0; nanos = 0 }
 
@@ -19,17 +16,17 @@ end
 
 let error_to_string error =
   match error with
-  | InvalidNanoseconds { nanos } -> String.concat
-    ""
-    [ "invalid nanoseconds component: "; Int.to_string nanos ]
+  | InvalidNanoseconds { nanos } ->
+      String.concat "" [ "invalid nanoseconds component: "; Int.to_string nanos ]
   | System system_error -> System_error.to_string system_error
 
 let validate_parts = fun ~secs:_ ~nanos ->
-  Result.map_err (Common.validate_nanos nanos) ~fn:(fun () -> InvalidNanoseconds { nanos })
+  Result.map_err
+    (Common.validate_nanos nanos)
+    ~fn:(fun () -> InvalidNanoseconds { nanos })
 
-let from_parts = fun ~secs ~nanos ->
-  let* () = validate_parts ~secs ~nanos in
-  Result.Ok { secs; nanos }
+let from_parts = fun ~secs ~nanos -> let* () = validate_parts ~secs ~nanos in
+Result.Ok { secs; nanos }
 
 let to_parts = fun value -> (value.secs, value.nanos)
 
@@ -37,11 +34,9 @@ let secs = fun value -> value.secs
 
 let subsec_nanos = fun value -> value.nanos
 
-let now = fun () ->
-  let* (secs, nanos) =
-    Result.map_err (FFI.now ()) ~fn:(fun code -> System (System_error.from_code code))
-  in
-  from_parts ~secs ~nanos
+let now = fun () -> let* (secs, nanos) =
+  Result.map_err (FFI.now ()) ~fn:(fun code -> System (System_error.from_code code)) in
+from_parts ~secs ~nanos
 
 let compare = fun left right ->
   Common.compare_parts

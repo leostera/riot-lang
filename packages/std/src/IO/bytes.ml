@@ -18,10 +18,20 @@ let set = fun value ~at ~char -> Kernel.Bytes.set value ~at ~char
 let set_unchecked = fun value ~at ~char -> Kernel.Bytes.set_unchecked value ~at ~char
 
 let blit = fun src ~src_offset ~dst ~dst_offset ~len ->
-  Kernel.Bytes.blit src ~src_offset ~dst ~dst_offset ~len
+  Kernel.Bytes.blit
+    src
+    ~src_offset
+    ~dst
+    ~dst_offset
+    ~len
 
 let blit_unchecked = fun src ~src_offset ~dst ~dst_offset ~len ->
-  Kernel.Bytes.blit_unchecked src ~src_offset ~dst ~dst_offset ~len
+  Kernel.Bytes.blit_unchecked
+    src
+    ~src_offset
+    ~dst
+    ~dst_offset
+    ~len
 
 let blit_string = fun src ~src_offset ~dst ~dst_offset ~len ->
   let slice = Kernel.String.sub src ~offset:src_offset ~len in

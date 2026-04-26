@@ -19,7 +19,12 @@ let set_unchecked = fun values ~at ~value -> Kernel.Array.set_unchecked values ~
 let clone = Kernel.Array.clone
 
 let blit = fun values ~src_offset ~dst ~dst_offset ~len ->
-  Kernel.Array.blit values ~src_offset ~dst ~dst_offset ~len
+  Kernel.Array.blit
+    values
+    ~src_offset
+    ~dst
+    ~dst_offset
+    ~len
 
 let sub = fun values ~offset ~len -> Kernel.Array.sub values ~offset ~len
 
@@ -79,7 +84,7 @@ let mut_iter: type item. item array -> item Iter.MutIterator.t = fun arr ->
       else
         let value = get_unchecked state.arr ~at:state.idx in
         state.idx <- state.idx + 1;
-        Some value
+      Some value
 
     let size = fun state -> length state.arr - state.idx
 

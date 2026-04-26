@@ -89,17 +89,16 @@ let add_subbytes = fun buffer source offset slice_length ->
           | Kernel.Order.EQ ->
               if Kernel.Int.equal slice_length 0 then
                 ()
-              else
-                (
-                  ensure_capacity buffer slice_length;
-                  Kernel.Bytes.blit_unchecked
-                    source
-                    ~src_offset:offset
-                    ~dst:buffer.bytes
-                    ~dst_offset:buffer.length
-                    ~len:slice_length;
-                  buffer.length <- Kernel.Int.add buffer.length slice_length
-                )
+              else (
+                ensure_capacity buffer slice_length;
+                Kernel.Bytes.blit_unchecked
+                  source
+                  ~src_offset:offset
+                  ~dst:buffer.bytes
+                  ~dst_offset:buffer.length
+                  ~len:slice_length;
+                buffer.length <- Kernel.Int.add buffer.length slice_length
+              )
         )
     )
 

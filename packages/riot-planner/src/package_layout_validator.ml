@@ -68,8 +68,8 @@ let binary_source_nodes = fun ~source_path nodes ->
     nodes
     ~fn:(fun (node: Module_node.t G.node) ->
       match (node.value.kind, node.value.file) with
-      | ((Module_node.ML _
-      | Module_node.MLI _), Module_node.Concrete path) -> Path.equal path source_path
+      | ((Module_node.ML _ | Module_node.MLI _), Module_node.Concrete path) ->
+          Path.equal path source_path
       | _ -> false)
 
 let target_root_nodes = fun package nodes ->
@@ -181,8 +181,7 @@ let validate_target_source = fun ~target_name ~(source_node:Module_node.t G.node
         match G.get_node module_graph node_id with
         | Some (node: Module_node.t G.node) -> (
             match (node.value.kind, node.value.file) with
-            | ((Module_node.ML _
-            | Module_node.MLI _), Module_node.Concrete _) ->
+            | ((Module_node.ML _ | Module_node.MLI _), Module_node.Concrete _) ->
                 if
                   G.Node_id.eq node.id source_node.id
                   || not (HashSet.contains library_reachable_set ~value:node.id)
@@ -244,8 +243,7 @@ let validate_target_source = fun ~target_name ~(source_node:Module_node.t G.node
                         match G.get_node module_graph dep_id with
                         | Some (dep_node: Module_node.t G.node) -> (
                             match (dep_node.value.kind, dep_node.value.file) with
-                            | ((Module_node.ML _
-                            | Module_node.MLI _), Module_node.Concrete _) -> true
+                            | ((Module_node.ML _ | Module_node.MLI _), Module_node.Concrete _) -> true
                             | _ -> false
                           )
                         | None -> false) with

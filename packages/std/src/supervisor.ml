@@ -200,22 +200,20 @@ let restart_one_for_one = fun state child_id reason ->
       children
       ~fn:(fun (child: child_state) ->
         let spec: child_spec = child.spec in
-        if spec.id = child_id && should_restart spec reason then
+        if spec.id = child_id && should_restart spec reason then (
+          (* Terminate old process if still alive *)
           (
-            (* Terminate old process if still alive *)
-            (
-              match child.monitor with
-              | Some mon -> Actor.demonitor mon
-              | None -> ()
-            );
-            (* Start new process *)
-            match start_child child.spec with
-            | Some (pid, monitor) ->
-                add_restart state child_id;
-                { child with pid = Some pid; monitor = Some monitor }
-            | None -> { child with pid = None; monitor = None }
-          )
-        else
+            match child.monitor with
+            | Some mon -> Actor.demonitor mon
+            | None -> ()
+          );
+          (* Start new process *)
+          match start_child child.spec with
+          | Some (pid, monitor) ->
+              add_restart state child_id;
+              { child with pid = Some pid; monitor = Some monitor }
+          | None -> { child with pid = None; monitor = None }
+        ) else
           child)
   in
   Cell.set state.children updated
@@ -298,22 +296,21 @@ let handle_child_exit = fun state child_id reason ->
   in
   if is_significant then
     Error (Failure ("Significant child " ^ child_id ^ " terminated"))
-  else
+  else (
+    (* Apply restart strategy *)
     (
-      (* Apply restart strategy *)
-      (
-        match state.strategy with
-        | OneForOne -> restart_one_for_one state child_id reason
-        | OneForAll -> restart_one_for_all state child_id reason
-        | RestForOne -> restart_rest_for_one state child_id reason
-        | SimpleOneForOne -> restart_one_for_one state child_id reason
-      );
-      (* Check restart intensity *)
-      if check_intensity state then
-        Ok ()
-      else
-        Error (Failure "Max restart intensity reached")
-    )
+      match state.strategy with
+      | OneForOne -> restart_one_for_one state child_id reason
+      | OneForAll -> restart_one_for_all state child_id reason
+      | RestForOne -> restart_rest_for_one state child_id reason
+      | SimpleOneForOne -> restart_one_for_one state child_id reason
+    );
+    (* Check restart intensity *)
+    if check_intensity state then
+      Ok ()
+    else
+      Error (Failure "Max restart intensity reached")
+  )
 
 (** {1 Message Handlers} *)
 
@@ -379,16 +376,14 @@ let handle_count_children = fun state reply_to ->
   Ok ()
 
 let handle_delete_child = fun state reply_to id ->
-  if state.strategy = SimpleOneForOne then
-    (
-      send
-        reply_to
-        (Supervisor_delete_child_reply {
-          result = Error "Cannot delete child from SimpleOneForOne supervisor";
-        });
-      Ok ()
-    )
-  else
+  if state.strategy = SimpleOneForOne then (
+    send
+      reply_to
+      (Supervisor_delete_child_reply {
+        result = Error "Cannot delete child from SimpleOneForOne supervisor";
+      });
+    Ok ()
+  ) else
     (
       let children = Cell.get state.children in
       let child_opt = List.find children ~fn:(fun c -> c.spec.id = id) in
@@ -411,16 +406,14 @@ let handle_delete_child = fun state reply_to id ->
     )
 
 let handle_restart_child = fun state reply_to id ->
-  if state.strategy = SimpleOneForOne then
-    (
-      send
-        reply_to
-        (Supervisor_restart_child_reply {
-          result = Error "Cannot restart child in SimpleOneForOne supervisor";
-        });
-      Ok ()
-    )
-  else
+  if state.strategy = SimpleOneForOne then (
+    send
+      reply_to
+      (Supervisor_restart_child_reply {
+        result = Error "Cannot restart child in SimpleOneForOne supervisor";
+      });
+    Ok ()
+  ) else
     (
       let children = Cell.get state.children in
       let child_opt = List.find children ~fn:(fun c -> c.spec.id = id) in
@@ -461,16 +454,14 @@ let handle_restart_child = fun state reply_to id ->
     )
 
 let handle_terminate_child = fun state reply_to id ->
-  if state.strategy = SimpleOneForOne then
-    (
-      send
-        reply_to
-        (Supervisor_terminate_child_reply {
-          result = Error "Cannot terminate child in SimpleOneForOne supervisor";
-        });
-      Ok ()
-    )
-  else
+  if state.strategy = SimpleOneForOne then (
+    send
+      reply_to
+      (Supervisor_terminate_child_reply {
+        result = Error "Cannot terminate child in SimpleOneForOne supervisor";
+      });
+    Ok ()
+  ) else
     (
       let children = Cell.get state.children in
       let child_opt = List.find children ~fn:(fun c -> c.spec.id = id) in

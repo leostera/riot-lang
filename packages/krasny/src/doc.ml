@@ -285,11 +285,10 @@ let concat_with = fun ~flattened_size ~iter ->
     let rec loop index =
       if Int.(index >= docs_length) then
         ()
-      else
-        (
-          append_doc (Vector.get_unchecked docs ~at:index);
-          loop (Int.add index 1)
-        )
+      else (
+        append_doc (Vector.get_unchecked docs ~at:index);
+        loop (Int.add index 1)
+      )
     in
     loop 0
   in
@@ -335,13 +334,12 @@ let join_vector = fun separator docs ->
           let rec loop index =
             if Int.(index >= length) then
               ()
-            else
-              (
-                if Int.(index > 0) then
-                  append_doc separator;
-                append_doc (Vector.get_unchecked docs ~at:index);
-                loop (Int.add index 1)
-              )
+            else (
+              if Int.(index > 0) then
+                append_doc separator;
+              append_doc (Vector.get_unchecked docs ~at:index);
+              loop (Int.add index 1)
+            )
           in
           loop 0)
 

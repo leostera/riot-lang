@@ -11,11 +11,10 @@ let append_subslice_unchecked = fun buffer slice ~off ~len ->
 let to_string = fun ?(size_hint = 1_024) ?(final_newline = false) doc ->
   let buffer = IO.Buffer.create ~size:(Int.max 0 size_hint) in
   let rec write_indent indent =
-    if indent > 0 then
-      (
-        IO.Buffer.add_char buffer ' ';
-        write_indent (indent - 1)
-      )
+    if indent > 0 then (
+      IO.Buffer.add_char buffer ' ';
+      write_indent (indent - 1)
+    )
   in
   let write_string_segment ~line_start ~indent value ~off ~len =
     if line_start && len > 0 then
@@ -38,21 +37,19 @@ let to_string = fun ?(size_hint = 1_024) ?(final_newline = false) doc ->
     | Doc.Space ->
         if line_start then
           line_start
-        else
-          (
-            IO.Buffer.add_char buffer ' ';
-            false
-          )
+        else (
+          IO.Buffer.add_char buffer ' ';
+          false
+        )
     | Doc.Spaces count ->
         if line_start then
           line_start
-        else
-          (
-            for _ = 1 to count do
-              IO.Buffer.add_char buffer ' '
-            done;
-            false
-          )
+        else (
+          for _ = 1 to count do
+            IO.Buffer.add_char buffer ' '
+          done;
+          false
+        )
     | Doc.Line ->
         IO.Buffer.add_char buffer '\n';
         true
@@ -101,13 +98,12 @@ let to_string = fun ?(size_hint = 1_024) ?(final_newline = false) doc ->
     let length = String.length value in
     if length = 0 then
       line_start
-    else
-      (
-        if line_start then
-          write_indent indent;
-        IO.Buffer.add_string buffer value;
-        Char.equal (String.get_unchecked value ~at:Int.(length - 1)) '\n'
-      )
+    else (
+      if line_start then
+        write_indent indent;
+      IO.Buffer.add_string buffer value;
+      Char.equal (String.get_unchecked value ~at:Int.(length - 1)) '\n'
+    )
   and write_slice ~line_start ~indent ({ Doc.value; has_newline }: Doc.slice) =
     if not has_newline then
       write_slice_segment ~line_start ~indent value ~off:0 ~len:(Slice.length value)
@@ -115,13 +111,12 @@ let to_string = fun ?(size_hint = 1_024) ?(final_newline = false) doc ->
       let length = Slice.length value in
       if length = 0 then
         line_start
-      else
-        (
-          if line_start then
-            write_indent indent;
-          append_subslice_unchecked buffer value ~off:0 ~len:length;
-          Char.equal (Slice.get_unchecked value ~at:Int.(length - 1)) '\n'
-        )
+      else (
+        if line_start then
+          write_indent indent;
+        append_subslice_unchecked buffer value ~off:0 ~len:length;
+        Char.equal (Slice.get_unchecked value ~at:Int.(length - 1)) '\n'
+      )
   in
   let line_start = write ~line_start:true ~indent:0 doc in
   if final_newline && IO.Buffer.length buffer > 0 && not line_start then

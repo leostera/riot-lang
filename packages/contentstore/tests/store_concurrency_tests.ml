@@ -233,11 +233,10 @@ let test_readers_see_old_or_new_named_values_during_overwrite = fun _ctx ->
                 | Ok value when String.equal value left || String.equal value right ->
                     if !done_writing then
                       Ok ()
-                    else
-                      (
-                        yield ();
-                        loop (remaining - 1)
-                      )
+                    else (
+                      yield ();
+                      loop (remaining - 1)
+                    )
                 | Ok value ->
                     Error ("reader observed a partial named value during overwrite: "
                     ^ String.escaped value)

@@ -189,14 +189,11 @@ let parse_byte = fun p byte ->
       p.intermediate <- String.make ~len:1 ~char:c;
       p.state <- CsiParam;
       None
-  | (CsiEntry, ('0' .. '9'
-  | ';'
-  | ':')) ->
+  | (CsiEntry, ('0' .. '9' | ';' | ':')) ->
       parse_param p c;
       p.state <- CsiParam;
       None
-  | (CsiEntry, (' ' .. '/'
-  | '<' .. '?')) ->
+  | (CsiEntry, (' ' .. '/' | '<' .. '?')) ->
       p.intermediate <- String.make ~len:1 ~char:c;
       p.state <- CsiIntermediate;
       None
@@ -208,13 +205,10 @@ let parse_byte = fun p byte ->
   | (CsiEntry, _) ->
       reset p;
       None
-  | (CsiParam, ('0' .. '9'
-  | ';'
-  | ':')) ->
+  | (CsiParam, ('0' .. '9' | ';' | ':')) ->
       parse_param p c;
       None
-  | (CsiParam, (' ' .. '/'
-  | '<' .. '?')) ->
+  | (CsiParam, (' ' .. '/' | '<' .. '?')) ->
       p.intermediate <- p.intermediate ^ String.make ~len:1 ~char:c;
       p.state <- CsiIntermediate;
       None
@@ -226,8 +220,7 @@ let parse_byte = fun p byte ->
   | (CsiParam, _) ->
       reset p;
       None
-  | (CsiIntermediate, (' ' .. '/'
-  | '<' .. '?')) ->
+  | (CsiIntermediate, (' ' .. '/' | '<' .. '?')) ->
       p.intermediate <- p.intermediate ^ String.make ~len:1 ~char:c;
       None
   | (CsiIntermediate, ('@' .. '~')) ->

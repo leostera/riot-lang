@@ -9,9 +9,11 @@ module Fixture_no_stdlib = struct
 
   let package_rule_id = Api.Rule_id.of_string (package_name ^ ":no-stdlib")
 
-  let rule_description = "Detect direct Stdlib, Unix, Sys, and Pervasives usage from the Std package boundary"
+  let rule_description =
+    "Detect direct Stdlib, Unix, Sys, and Pervasives usage from the Std package boundary"
 
-  let unix_body = {|
+  let unix_body =
+    {|
 Direct calls into Unix bypass Riot's scheduling and portability boundaries.
 
 In Riot, a blocking Unix call is not just a local implementation detail. It can
@@ -23,7 +25,8 @@ them, like `kernel`. Everywhere else, prefer the Riot-owned abstraction that
 already exists, or add one deliberately if the boundary is genuinely missing.
 |}
 
-  let sys_body = {|
+  let sys_body =
+    {|
 Direct Sys usage reaches into process-global runtime state instead of going through Riot-owned boundaries.
 
 `Sys` exposes host and runtime details directly from OCaml. Once those calls
@@ -36,7 +39,8 @@ explicitly responsible for that boundary instead of reaching for `Sys`
 everywhere.
 |}
 
-  let stdlib_body = {|
+  let stdlib_body =
+    {|
 Code outside the runtime boundary should go through Riot's Std layer instead of referencing Stdlib directly.
 
 Riot is trying to offer one coherent standard surface, not a mixture of
@@ -48,7 +52,8 @@ When `Std` already owns an API, use it. When it does not, that is usually a
 signal to extend `Std` deliberately instead of bypassing it forever.
 |}
 
-  let pervasives_body = {|
+  let pervasives_body =
+    {|
 Pervasives is the historical pre-Stdlib module and should not appear in modern Riot code.
 
 `Pervasives` is legacy OCaml surface area. Riot code should point at the
@@ -74,8 +79,10 @@ Replace direct `Pervasives` references with `Std`.
 
   let make_message = fun text ->
     match replacement_for text with
-    | Some replacement -> "Direct usage of " ^ text ^ " is discouraged. Use " ^ replacement ^ " instead."
-    | None -> "Direct usage of " ^ text ^ " is discouraged. Use package-owned Riot abstractions instead."
+    | Some replacement ->
+        "Direct usage of " ^ text ^ " is discouraged. Use " ^ replacement ^ " instead."
+    | None ->
+        "Direct usage of " ^ text ^ " is discouraged. Use package-owned Riot abstractions instead."
 
   let make_suggestion = fun text ->
     match replacement_for text with
@@ -90,7 +97,10 @@ Replace direct `Pervasives` references with `Std`.
   let make_diagnostic = fun token ->
     let text = Syn.Ast.Token.text token in
     let suggestion = make_suggestion text in
-    let fix = replacement_for text |> Option.map ~fn:(make_fix token) in
+    let fix =
+      replacement_for text
+      |> Option.map ~fn:(make_fix token)
+    in
     let kind = Api.Diagnostic.Known { rule_id = package_rule_id; message = make_message text } in
     let (start, end_) = Syn.Ast.Token.raw_range token in
     Api.Diagnostic.make
@@ -103,14 +113,17 @@ Replace direct `Pervasives` references with `Std`.
 
   let dedupe_diagnostics = fun diagnostics ->
     let seen = HashMap.create () in
-    List.filter diagnostics
+    List.filter
+      diagnostics
       ~fn:(fun diag ->
         let span = Api.Diagnostic.span diag in
-        let key = Api.Rule_id.to_string (Api.Diagnostic.rule_id diag)
-        ^ ":"
-        ^ Int.to_string span.start
-        ^ ":"
-        ^ Int.to_string span.end_ in
+        let key =
+          Api.Rule_id.to_string (Api.Diagnostic.rule_id diag)
+          ^ ":"
+          ^ Int.to_string span.start
+          ^ ":"
+          ^ Int.to_string span.end_
+        in
         match HashMap.get seen ~key with
         | Some _ -> false
         | None ->
@@ -151,20 +164,32 @@ let fixture_filter = fun path ->
   match Path.extension path with
   | Some ".ml" ->
       let name = Path.basename path in
-      if
-        String.length name >= 4
-        && (String.get name ~at:0 |> Option.is_some_and ~fn:is_digit)
-        && (String.get name ~at:1 |> Option.is_some_and ~fn:is_digit)
-        && (String.get name ~at:2 |> Option.is_some_and ~fn:is_digit)
-        && (String.get name ~at:3 |> Option.is_some_and ~fn:is_digit)
-      then
+      if String.length name >= 4
+      && (
+        String.get name ~at:0
+        |> Option.is_some_and ~fn:is_digit
+      )
+      && (
+        String.get name ~at:1
+        |> Option.is_some_and ~fn:is_digit
+      )
+      && (
+        String.get name ~at:2
+        |> Option.is_some_and ~fn:is_digit
+      )
+      && (
+        String.get name ~at:3
+        |> Option.is_some_and ~fn:is_digit
+      ) then
         `keep
       else
         `skip
   | _ -> `skip
 
 let append_snapshot_suffix = fun path suffix ->
-  Path.to_string path ^ suffix |> Path.from_string |> Result.expect ~msg:"snapshot path should stay valid UTF-8"
+  Path.to_string path ^ suffix
+  |> Path.from_string
+  |> Result.expect ~msg:"snapshot path should stay valid UTF-8"
 
 let approved_snapshot_path = fun path -> append_snapshot_suffix path ".expected"
 
@@ -175,31 +200,28 @@ let relativize_path = fun ~workspace_root path ->
 
 let file_result_to_json = fun ~workspace_root result ->
   let open Json in
-    Object [
-      (
-        "file",
-        String (Path.to_string (relativize_path ~workspace_root Riot_fix.Runner.(result.file)))
-      );
-      ("changed", Bool Riot_fix.Runner.(result.changed));
-      (
-        "error",
-        match Riot_fix.Runner.(result.error) with
-        | Some err -> String err
-        | None -> Null
-      );
-      (
-        "applied_fixes",
-        Array (List.map Riot_fix.Runner.(result.applied_fixes) ~fn:Riot_fix.Fix.to_json)
-      );
-      (
-        "parse_diagnostics",
-        Array (List.map Riot_fix.Runner.(result.parse_diagnostics) ~fn:Syn.Diagnostic.to_json)
-      );
-      (
-        "diagnostics",
-        Array (List.map Riot_fix.Runner.(result.diagnostics) ~fn:Riot_fix.Diagnostic.to_json)
-      );
-    ]
+  Object [
+    (
+      "file",
+      String (Path.to_string (relativize_path ~workspace_root Riot_fix.Runner.(result.file)))
+    );
+    ("changed", Bool Riot_fix.Runner.(result.changed));
+    ("error", match Riot_fix.Runner.(result.error) with
+    | Some err -> String err
+    | None -> Null);
+    (
+      "applied_fixes",
+      Array (List.map Riot_fix.Runner.(result.applied_fixes) ~fn:Riot_fix.Fix.to_json)
+    );
+    (
+      "parse_diagnostics",
+      Array (List.map Riot_fix.Runner.(result.parse_diagnostics) ~fn:Syn.Diagnostic.to_json)
+    );
+    (
+      "diagnostics",
+      Array (List.map Riot_fix.Runner.(result.diagnostics) ~fn:Riot_fix.Diagnostic.to_json)
+    );
+  ]
 
 let run_result_to_json = fun ~workspace_root result ->
   Json.Object [
@@ -211,9 +233,14 @@ let run_result_to_json = fun ~workspace_root result ->
   ]
 
 let test_fixture = fun ~(ctx:Test.FixtureRunner.ctx) ->
-  let workspace_root = ctx.test.Test.workspace_root |> Option.expect ~msg:"fixture snapshots require a workspace root" in
-  let () = Riot_fix.Provider_registry.register_providers
-    [ (module Fixture_std_provider : Riot_fix.Provider.S); ] in
+  let workspace_root =
+    ctx.test.Test.workspace_root
+    |> Option.expect ~msg:"fixture snapshots require a workspace root"
+  in
+  let () =
+    Riot_fix.Provider_registry.register_providers
+      [ (module Fixture_std_provider : Riot_fix.Provider.S); ]
+  in
   let result = Riot_fix.Runner.run_files ~mode:Check [ ctx.fixture_path ] in
   let actual_json = run_result_to_json ~workspace_root result in
   Test.Snapshot.assert_with

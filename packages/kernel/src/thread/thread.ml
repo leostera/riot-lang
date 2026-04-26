@@ -49,7 +49,7 @@ module Raw = struct
 
   external spawn: (unit -> 'value) -> 'value term_sync -> id = "caml_domain_spawn"
 
-  external get_recommended_domain_count: unit -> int = "caml_recommended_domain_count" [@@noalloc]
+  external get_recommended_domain_count: unit -> int = "caml_recommended_domain_count" [@@ noalloc]
 end
 
 let available_parallelism =
@@ -85,10 +85,10 @@ module DLS = struct
 
   external get_dls_state: unit -> dls_state = "%dls_get"
 
-  external set_dls_state: dls_state -> unit = "caml_domain_dls_set" [@@noalloc]
+  external set_dls_state: dls_state -> unit = "caml_domain_dls_set" [@@ noalloc]
 
-  external compare_and_set_dls_state: dls_state -> dls_state -> bool
-    = "caml_domain_dls_compare_and_set" [@@noalloc]
+  external compare_and_set_dls_state: dls_state -> dls_state -> bool =
+    "caml_domain_dls_compare_and_set" [@@ noalloc]
 
   let create_dls = fun () ->
     let state = Array.make ~count:8 ~value:Obj_opt.none in
@@ -103,7 +103,7 @@ module DLS = struct
 
   let key_counter = Sync.Atomic.make 0
 
-  let parent_keys = Sync.Atomic.make (([]: key_initializer list))
+  let parent_keys = Sync.Atomic.make ([]: key_initializer list)
 
   let rec add_parent_key = fun key ->
     let keys = Sync.Atomic.get parent_keys in
@@ -134,10 +134,10 @@ module DLS = struct
       in
       let grown = Array.make ~count:(next_size size) ~value:Obj_opt.none in
       Array.blit state ~src_offset:0 ~dst:grown ~dst_offset:0 ~len:size;
-      if compare_and_set_dls_state state grown then
-        grown
-      else
-        maybe_grow index
+    if compare_and_set_dls_state state grown then
+      grown
+    else
+      maybe_grow index
 
   let set = fun ((index, _init): 'value key) value ->
     let state = maybe_grow index in
@@ -145,12 +145,10 @@ module DLS = struct
 
   let array_compare_and_set = fun values index current next ->
     let seen = Array.get_unchecked values ~at:index in
-    if Ptr.equal seen current then
-      (
-        Array.set_unchecked values ~at:index ~value:next;
-        true
-      )
-    else
+    if Ptr.equal seen current then (
+      Array.set_unchecked values ~at:index ~value:next;
+      true
+    ) else
       false
 
   let get = fun ((index, init): 'value key) ->
@@ -175,10 +173,14 @@ module DLS = struct
     | KV: 'value key * 'value -> key_value
 
   let get_initial_keys = fun () ->
-    List.map (Sync.Atomic.get parent_keys) ~fn:(fun (KI (key, split)) -> KV (key, split (get key)))
+    List.map
+      (Sync.Atomic.get parent_keys)
+      ~fn:(fun (KI (key, split)) -> KV (key, split (get key)))
 
   let set_initial_keys = fun values ->
-    List.for_each values ~fn:(fun (KV (key, value)) -> set key value)
+    List.for_each
+      values
+      ~fn:(fun (KV (key, value)) -> set key value)
 end
 
 external raise_with_backtrace: exn -> Exception.raw_backtrace -> 'value = "%raise_with_backtrace"
@@ -188,7 +190,8 @@ external sleep_ns: int64 -> unit = "kernel_new_thread_sleep_ns"
 let spawn = fun fn ->
   let initial_keys = DLS.get_initial_keys () in
   let term_sync =
-    Raw.{ state = Running; mut = Sync.Mutex.create (); cond = Sync.Condition.create () } in
+    Raw.{ state = Running; mut = Sync.Mutex.create (); cond = Sync.Condition.create () }
+  in
   let body () =
     DLS.create_dls ();
     DLS.set_initial_keys initial_keys;

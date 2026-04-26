@@ -346,14 +346,10 @@ let of_string = fun str ->
     let is_float = cell false in
     let rec consume () =
       match peek () with
-      | Some ('0' .. '9'
-      | '-'
-      | '+') ->
+      | Some ('0' .. '9' | '-' | '+') ->
           advance ();
           consume ()
-      | Some ('.'
-      | 'e'
-      | 'E') ->
+      | Some ('.' | 'e' | 'E') ->
           is_float := true;
           advance ();
           consume ()
@@ -382,12 +378,10 @@ let of_string = fun str ->
         let start_pos = !pos in
         if !pos + 4 <= len then
           let substring = String.sub str ~offset:!pos ~len:4 in
-          if substring = "null" then
-            (
-              pos := !pos + 4;
-              Null
-            )
-          else
+          if substring = "null" then (
+            pos := !pos + 4;
+            Null
+          ) else
             raise_error
               (Invalid_literal { expected = "null"; position = start_pos; found = substring })
         else
@@ -400,12 +394,10 @@ let of_string = fun str ->
           raise_error (Invalid_literal { expected = "null"; position = start_pos; found })
     | Some 't' ->
         let start_pos = !pos in
-        if !pos + 4 <= len && String.sub str ~offset:!pos ~len:4 = "true" then
-          (
-            pos := !pos + 4;
-            Bool true
-          )
-        else
+        if !pos + 4 <= len && String.sub str ~offset:!pos ~len:4 = "true" then (
+          pos := !pos + 4;
+          Bool true
+        ) else
           let found =
             if !pos + 4 <= len then
               String.sub str ~offset:!pos ~len:4
@@ -417,12 +409,10 @@ let of_string = fun str ->
           raise_error (Invalid_literal { expected = "true"; position = start_pos; found })
     | Some 'f' ->
         let start_pos = !pos in
-        if !pos + 5 <= len && String.sub str ~offset:!pos ~len:5 = "false" then
-          (
-            pos := !pos + 5;
-            Bool false
-          )
-        else
+        if !pos + 5 <= len && String.sub str ~offset:!pos ~len:5 = "false" then (
+          pos := !pos + 5;
+          Bool false
+        ) else
           let found =
             if !pos + 5 <= len then
               String.sub str ~offset:!pos ~len:5
@@ -436,12 +426,10 @@ let of_string = fun str ->
     | Some '[' ->
         advance ();
         skip_whitespace ();
-        if peek () = Some ']' then
-          (
-            advance ();
-            Array []
-          )
-        else
+        if peek () = Some ']' then (
+          advance ();
+          Array []
+        ) else
           let rec parse_items acc =
             let item = parse_value () in
             skip_whitespace ();
@@ -463,12 +451,10 @@ let of_string = fun str ->
     | Some '{' ->
         advance ();
         skip_whitespace ();
-        if peek () = Some '}' then
-          (
-            advance ();
-            Object []
-          )
-        else
+        if peek () = Some '}' then (
+          advance ();
+          Object []
+        ) else
           let rec parse_fields acc =
             skip_whitespace ();
             (
@@ -502,8 +488,7 @@ let of_string = fun str ->
                   (Expected_comma_or_bracket { kind = "object"; position = !pos; found = None })
           in
           parse_fields []
-    | Some ('-'
-    | '0' .. '9') -> parse_number ()
+    | Some ('-' | '0' .. '9') -> parse_number ()
     | Some c ->
         raise_error (Unexpected_character { position = !pos; character = c; expected = "value" })
   in

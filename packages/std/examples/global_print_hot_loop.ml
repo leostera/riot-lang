@@ -17,23 +17,19 @@ type message_kind =
   | Small
   | Medium
 
-type config = {
-  iterations: int;
-  warmup: int;
-  mode: mode;
-  message_kind: message_kind;
-}
+type config = { iterations: int; warmup: int; mode: mode; message_kind: message_kind }
 
 let default_config = {
   iterations = 1_000_000;
   warmup = 10_000;
   mode = StdPrintln;
-  message_kind = Small
+  message_kind = Small;
 }
 
 let small_message = "test case passed"
 
-let medium_message = "this is a medium-sized human test output line with metadata [large flaky/2] and a long suffix"
+let medium_message =
+  "this is a medium-sized human test output line with metadata [large flaky/2] and a long suffix"
 
 let mode_of_string = function
   | "noop" -> Noop
@@ -74,16 +70,16 @@ let message_for_kind = function
 let parse_args = fun args ->
   let rec loop config = function
     | [] -> Ok config
-    | "--iterations" :: value :: rest -> loop { config with iterations = Int.of_string value } rest
+    | "--iterations" :: value :: rest ->
+        loop { config with iterations = Int.of_string value } rest
     | "--warmup" :: value :: rest -> loop { config with warmup = Int.of_string value } rest
     | "--mode" :: value :: rest -> loop { config with mode = mode_of_string value } rest
-    | "--message" :: value :: rest -> loop
-      { config with message_kind = message_kind_of_string value }
-      rest
+    | "--message" :: value :: rest ->
+        loop { config with message_kind = message_kind_of_string value } rest
     | "--help" :: _
     | "-h" :: _ -> Error ()
-    | flag :: [] when String.starts_with ~prefix:"--" flag -> panic
-      ("missing value for argument: " ^ flag)
+    | flag :: [] when String.starts_with ~prefix:"--" flag ->
+        panic ("missing value for argument: " ^ flag)
     | value :: _ when String.starts_with ~prefix:"--" value -> panic ("unknown argument: " ^ value)
     | value :: _ -> panic ("unexpected positional argument: " ^ value)
   in
@@ -102,11 +98,13 @@ let write_stdout_bytes = fun bytes ~len ->
   in
   loop 0 len
 
-external stdout_write_ffi: int -> bytes -> int -> int -> (int, int) Result.t = "kernel_new_fs_file_write"
+external stdout_write_ffi: int -> bytes -> int -> int -> (int, int) Result.t =
+  "kernel_new_fs_file_write"
 
 external stdout_write_raw_int: int -> bytes -> int -> int -> int = "kernel_new_fs_file_write_raw"
 
-external stdout_write_all_raw_int: int -> bytes -> int -> int -> int = "kernel_new_fs_file_write_all_raw"
+external stdout_write_all_raw_int: int -> bytes -> int -> int -> int =
+  "kernel_new_fs_file_write_all_raw"
 
 let write_stdout_bytes_ffi = fun bytes ~len ->
   let rec loop pos remaining =
@@ -117,7 +115,8 @@ let write_stdout_bytes_ffi = fun bytes ~len ->
             panic "stdout ffi write returned 0 bytes"
           else
             loop (pos + written) (remaining - written)
-      | Result.Error code -> panic (Kernel.SystemError.to_string (Kernel.SystemError.from_code code))
+      | Result.Error code ->
+          panic (Kernel.SystemError.to_string (Kernel.SystemError.from_code code))
   in
   loop 0 len
 
@@ -145,14 +144,14 @@ let write_stdout_bytes_raw_native = fun bytes ~len ->
 
 let configure_log = fun format_name ->
   Config.load_string
-    (
-      format
-        Std.Format.[str "[[log.handler]]\n";
+    (format
+      Std.Format.[
+        str "[[log.handler]]\n";
         str "type = \"stdout\"\n";
         str "format = \"";
         str format_name;
-        str "\"\n";]
-    );
+        str "\"\n";
+      ]);
   Log.set_level Log.Info;
   ignore (Log.start_link ())
 
@@ -186,7 +185,8 @@ let main ~args =
   in
   match parse_args args with
   | Error () ->
-      eprintln "usage: global_print_hot_loop [--iterations N] [--warmup N] [--mode noop|std-print|std-println|log-compact|log-full|raw-write|ffi-write|rawint-write|raw-native-write] [--message small|medium]";
+      eprintln
+        "usage: global_print_hot_loop [--iterations N] [--warmup N] [--mode noop|std-print|std-println|log-compact|log-full|raw-write|ffi-write|rawint-write|raw-native-write] [--message small|medium]";
       Ok ()
   | Ok config ->
       (
@@ -198,11 +198,10 @@ let main ~args =
       let message = message_for_kind config.message_kind in
       let message_bytes = bytes_unsafe_of_string message in
       let message_len = String.length message in
-      if config.warmup > 0 then
-        (
-          run_loop config.mode message message_bytes message_len config.warmup;
-          flush_mode config.mode
-        );
+      if config.warmup > 0 then (
+        run_loop config.mode message message_bytes message_len config.warmup;
+        flush_mode config.mode
+      );
       let started = Time.Instant.now () in
       run_loop config.mode message message_bytes message_len config.iterations;
       flush_mode config.mode;
@@ -215,9 +214,9 @@ let main ~args =
           0L
       in
       eprintln
-        (
-          format
-            Std.Format.[str "{";
+        (format
+          Std.Format.[
+            str "{";
             str "\"mode\":\"";
             str (mode_to_string config.mode);
             str "\",";
@@ -235,8 +234,8 @@ let main ~args =
             str ",";
             str "\"per_iteration_nanos\":";
             str (Int64.to_string per_iteration_nanos);
-            str "}";]
-        );
+            str "}";
+          ]);
       Ok ()
 
 let () = Runtime.run ~main ~args:Env.args ()

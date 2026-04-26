@@ -65,9 +65,7 @@ let parse = fun content ->
   (* Skip whitespace (spaces, tabs) but NOT newlines *)
   let rec skip_ws () =
     match peek () with
-    | Some (' '
-    | '\t'
-    | '\r') ->
+    | Some (' ' | '\t' | '\r') ->
         advance ();
         skip_ws ()
     | _ -> ()
@@ -308,11 +306,10 @@ let parse = fun content ->
     advance ();
     skip_ws ();
     let is_array = current_char () = '[' in
-    if is_array then
-      (
-        advance ();
-        skip_ws ()
-      );
+    if is_array then (
+      advance ();
+      skip_ws ()
+    );
     let start = !pos in
     while (not (at_end ())) && current_char () != ']' do
       advance ()
@@ -328,18 +325,17 @@ let parse = fun content ->
     advance ();
     (* skip first ] *)
     (* If array of tables, expect another ] *)
-    if is_array then
-      (
-        skip_ws ();
-        if current_char () != ']' then
-          raise
-            (Parse_exception (Parse_error {
-              position = !pos;
-              context = "array section";
-              reason = "expected ]]";
-            }));
-        advance ()
-      );
+    if is_array then (
+      skip_ws ();
+      if current_char () != ']' then
+        raise
+          (Parse_exception (Parse_error {
+            position = !pos;
+            context = "array section";
+            reason = "expected ]]";
+          }));
+      advance ()
+    );
     skip_to_eol ();
     (name, is_array)
   in
@@ -399,19 +395,16 @@ let parse = fun content ->
             parse_loop ()
         | _ ->
             let key = parse_key () in
-            if at_end () || current_char () != '=' then
-              (
-                skip_to_eol ();
-                parse_loop ()
-              )
-            else
-              (
-                advance ();
-                let value = parse_value () in
-                current_items := (key, value) :: (assoc_remove key !current_items);
-                skip_to_eol ();
-                parse_loop ()
-              )
+            if at_end () || current_char () != '=' then (
+              skip_to_eol ();
+              parse_loop ()
+            ) else (
+              advance ();
+              let value = parse_value () in
+              current_items := (key, value) :: (assoc_remove key !current_items);
+              skip_to_eol ();
+              parse_loop ()
+            )
     in
     parse_loop ();
     save_current_section ();

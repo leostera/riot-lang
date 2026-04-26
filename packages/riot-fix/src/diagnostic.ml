@@ -1,5 +1,6 @@
 open Std
 open Std.Collections
+
 module Array = Std.Collections.Array
 
 type severity = Fixme.Diagnostic.severity =
@@ -9,8 +10,14 @@ type severity = Fixme.Diagnostic.severity =
   | Hint
 
 type kind = Fixme.Diagnostic.kind =
-  | Known of { rule_id: Rule_id.t; message: string }
-  | Generic of { rule_id: Rule_id.t; message: string }
+  | Known of {
+      rule_id: Rule_id.t;
+      message: string;
+    }
+  | Generic of {
+      rule_id: Rule_id.t;
+      message: string;
+    }
 
 type t = Fixme.Diagnostic.t
 
@@ -89,7 +96,8 @@ let to_colored_string = fun diag ->
     "  at " ^ span_str;
     "";
     message diag;
-  ] in
+  ]
+  in
   let lines =
     match (suggestion diag, fix diag) with
     | (Some sugg, _) -> lines @ [ ""; "  \027[1;90m→\027[0m " ^ sugg ]
@@ -99,7 +107,10 @@ let to_colored_string = fun diag ->
   String.concat "\n" lines
 
 let make_source_layout = fun source ->
-  let lines = String.split source ~by:"\n" |> Array.from_list in
+  let lines =
+    String.split source ~by:"\n"
+    |> Array.from_list
+  in
   let line_starts = Array.make ~count:(Array.length lines) ~value:0 in
   let offset = ref 0 in
   for index = 0 to Array.length lines - 1 do
@@ -166,29 +177,34 @@ let extract_code_snippet_from_layout = fun layout (span: Syn.Ceibo.Span.t) ->
           else
             remaining
       in
-      let pointer_line = String.make ~len:start_col ~char:' '
-      ^ "\027[1;33m"
-      ^ String.make ~len:marker_width ~char:'^'
-      ^ "\027[0m" in
+      let pointer_line =
+        String.make ~len:start_col ~char:' '
+        ^ "\027[1;33m"
+        ^ String.make ~len:marker_width ~char:'^'
+        ^ "\027[0m"
+      in
       Some (code_line, pointer_line, start_idx + 1)
 
 let extract_code_snippet = fun source span ->
-  extract_code_snippet_from_layout (make_source_layout source) span
+  extract_code_snippet_from_layout
+    (make_source_layout source)
+    span
 
 let to_formatted_output = fun ~file ~source diag ->
   let header = Path.to_string file ^ ":" in
   let basic_info = [ header_label (severity diag) (rule_id diag); ""; message diag ] in
   let lines_with_snippet =
     match extract_code_snippet source (span diag) with
-    | Some (code_line, pointer_line, line_num) -> basic_info
-    @ [
-      "";
-      "  \027[1;90m" ^ Int.to_string line_num ^ " |\027[0m " ^ code_line;
-      "  \027[1;90m"
-      ^ String.make ~len:(String.length (Int.to_string line_num)) ~char:' '
-      ^ " |\027[0m "
-      ^ pointer_line;
-    ]
+    | Some (code_line, pointer_line, line_num) ->
+        basic_info
+        @ [
+          "";
+          "  \027[1;90m" ^ Int.to_string line_num ^ " |\027[0m " ^ code_line;
+          "  \027[1;90m"
+          ^ String.make ~len:(String.length (Int.to_string line_num)) ~char:' '
+          ^ " |\027[0m "
+          ^ pointer_line;
+        ]
     | None -> basic_info @ [ "  at " ^ Syn.Ceibo.Span.to_string (span diag) ]
   in
   let lines_with_suggestion =
@@ -197,34 +213,26 @@ let to_formatted_output = fun ~file ~source diag ->
     | (None, Some fix) -> lines_with_snippet @ [ ""; "  \027[1;90m→\027[0m " ^ Fix.title fix ]
     | (None, None) -> lines_with_snippet
   in
-  let lines_with_explain = lines_with_suggestion
-  @ [ ""; explain_hint (severity diag) (rule_id diag) ] in
+  let lines_with_explain =
+    lines_with_suggestion @ [ ""; explain_hint (severity diag) (rule_id diag) ]
+  in
   header ^ "\n" ^ String.concat "\n" lines_with_explain ^ "\n\n"
 
 let to_json = fun diag ->
   let open Data.Json in
-    Object [
-      ("severity", String (severity_to_string (severity diag)));
-      ("message", String (message diag));
-      (
-        "span",
-        let span = span diag in
-        Object [ ("start", Int span.start); ("end", Int span.end_); ]
-      );
-      ("rule_id", String (Rule_id.to_string (rule_id diag)));
-      (
-        "suggestion",
-        match suggestion diag with
-        | Some s -> String s
-        | None -> Null
-      );
-      (
-        "fix",
-        match fix diag with
-        | Some fix -> Fix.to_json fix
-        | None -> Null
-      );
-    ]
+  Object [
+    ("severity", String (severity_to_string (severity diag)));
+    ("message", String (message diag));
+    ("span", let span = span diag in
+    Object [ ("start", Int span.start); ("end", Int span.end_); ]);
+    ("rule_id", String (Rule_id.to_string (rule_id diag)));
+    ("suggestion", match suggestion diag with
+    | Some s -> String s
+    | None -> Null);
+    ("fix", match fix diag with
+    | Some fix -> Fix.to_json fix
+    | None -> Null);
+  ]
 
 (* Grouped diagnostics *)
 
@@ -240,9 +248,13 @@ type grouped = {
 let group_diagnostics: t list -> grouped list = fun diags ->
   let module DiagMap = Collections.HashMap in
   let map = DiagMap.create () in
-  List.for_each diags
+  List.for_each
+    diags
     ~fn:(fun (diag: t) ->
-      let fix_title = fix diag |> Option.map ~fn:Fix.title in
+      let fix_title =
+        fix diag
+        |> Option.map ~fn:Fix.title
+      in
       let key = (severity diag, message diag, rule_id diag, suggestion diag, fix_title) in
       match DiagMap.get map ~key:key with
       | Some existing_spans ->
@@ -251,7 +263,8 @@ let group_diagnostics: t list -> grouped list = fun diags ->
       | None ->
           let _ = DiagMap.insert map ~key:key ~value:[ (fix diag, span diag); ] in
           ());
-  DiagMap.iter map |> Iter.Iterator.map
+  DiagMap.iter map
+  |> Iter.Iterator.map
     ~fn:(fun (((severity, message, rule_id, suggestion, _fix_title), spans)) ->
       let spans = List.reverse spans in
       let fix =
@@ -259,40 +272,47 @@ let group_diagnostics: t list -> grouped list = fun diags ->
         | [] -> None
         | (fix, _) :: _ -> fix
       in
-      let spans =
-        List.map spans ~fn:(fun (_, span) -> span)
+      let spans = List.map spans ~fn:(fun (_, span) ->
+        span)
       in
       ({
-          severity;
-          message;
-          spans;
-          rule_id;
-          suggestion;
-          fix;
-        }: grouped)) |> Iter.Iterator.to_list
+        severity;
+        message;
+        spans;
+        rule_id;
+        suggestion;
+        fix;
+      }: grouped))
+  |> Iter.Iterator.to_list
 
 let grouped_to_formatted_output = fun ~file ~source grouped ->
   let layout = make_source_layout source in
   let header = Path.to_string file ^ ":" in
   let basic_info = [ colored_header_label grouped.severity grouped.rule_id; ""; grouped.message ] in
   let spans =
-    List.sort grouped.spans
+    List.sort
+      grouped.spans
       ~compare:(fun (left: Syn.Ceibo.Span.t) (right: Syn.Ceibo.Span.t) ->
-        Int.compare left.start right.start)
+        Int.compare
+          left.start
+          right.start)
   in
   let lines_with_snippets =
-    List.fold_left spans ~init:basic_info
+    List.fold_left
+      spans
+      ~init:basic_info
       ~fn:(fun acc span ->
         match extract_code_snippet_from_layout layout span with
-        | Some (code_line, pointer_line, line_num) -> acc
-        @ [
-          "";
-          "  \027[1;90m" ^ Int.to_string line_num ^ " |\027[0m " ^ code_line;
-          "  \027[1;90m"
-          ^ String.make ~len:(String.length (Int.to_string line_num)) ~char:' '
-          ^ " |\027[0m "
-          ^ pointer_line;
-        ]
+        | Some (code_line, pointer_line, line_num) ->
+            acc
+            @ [
+              "";
+              "  \027[1;90m" ^ Int.to_string line_num ^ " |\027[0m " ^ code_line;
+              "  \027[1;90m"
+              ^ String.make ~len:(String.length (Int.to_string line_num)) ~char:' '
+              ^ " |\027[0m "
+              ^ pointer_line;
+            ]
         | None -> acc @ [ "  at " ^ Syn.Ceibo.Span.to_string span ])
   in
   let lines_with_suggestion =
@@ -301,31 +321,38 @@ let grouped_to_formatted_output = fun ~file ~source grouped ->
     | (None, Some fix) -> lines_with_snippets @ [ ""; "  \027[1;90m→\027[0m " ^ Fix.title fix ]
     | (None, None) -> lines_with_snippets
   in
-  let lines_with_explain = lines_with_suggestion
-  @ [ ""; explain_hint grouped.severity grouped.rule_id ] in
+  let lines_with_explain =
+    lines_with_suggestion @ [ ""; explain_hint grouped.severity grouped.rule_id ]
+  in
   header ^ "\n" ^ String.concat "\n" lines_with_explain ^ "\n"
 
 let grouped_to_formatted_output_with_layout = fun ~file ~layout grouped ->
   let header = Path.to_string file ^ ":" in
   let basic_info = [ colored_header_label grouped.severity grouped.rule_id; ""; grouped.message ] in
   let spans =
-    List.sort grouped.spans
+    List.sort
+      grouped.spans
       ~compare:(fun (left: Syn.Ceibo.Span.t) (right: Syn.Ceibo.Span.t) ->
-        Int.compare left.start right.start)
+        Int.compare
+          left.start
+          right.start)
   in
   let lines_with_snippets =
-    List.fold_left spans ~init:basic_info
+    List.fold_left
+      spans
+      ~init:basic_info
       ~fn:(fun acc span ->
         match extract_code_snippet_from_layout layout span with
-        | Some (code_line, pointer_line, line_num) -> acc
-        @ [
-          "";
-          "  \027[1;90m" ^ Int.to_string line_num ^ " |\027[0m " ^ code_line;
-          "  \027[1;90m"
-          ^ String.make ~len:(String.length (Int.to_string line_num)) ~char:' '
-          ^ " |\027[0m "
-          ^ pointer_line;
-        ]
+        | Some (code_line, pointer_line, line_num) ->
+            acc
+            @ [
+              "";
+              "  \027[1;90m" ^ Int.to_string line_num ^ " |\027[0m " ^ code_line;
+              "  \027[1;90m"
+              ^ String.make ~len:(String.length (Int.to_string line_num)) ~char:' '
+              ^ " |\027[0m "
+              ^ pointer_line;
+            ]
         | None -> acc @ [ "  at " ^ Syn.Ceibo.Span.to_string span ])
   in
   let lines_with_suggestion =
@@ -334,10 +361,13 @@ let grouped_to_formatted_output_with_layout = fun ~file ~layout grouped ->
     | (None, Some fix) -> lines_with_snippets @ [ ""; "  \027[1;90m→\027[0m " ^ Fix.title fix ]
     | (None, None) -> lines_with_snippets
   in
-  let lines_with_explain = lines_with_suggestion
-  @ [ ""; explain_hint grouped.severity grouped.rule_id ] in
+  let lines_with_explain =
+    lines_with_suggestion @ [ ""; explain_hint grouped.severity grouped.rule_id ]
+  in
   header ^ "\n" ^ String.concat "\n" lines_with_explain ^ "\n"
 
 let grouped_list_to_formatted_output = fun ~file ~source grouped ->
   let layout = make_source_layout source in
-  grouped |> List.map ~fn:(grouped_to_formatted_output_with_layout ~file ~layout) |> String.concat ""
+  grouped
+  |> List.map ~fn:(grouped_to_formatted_output_with_layout ~file ~layout)
+  |> String.concat ""

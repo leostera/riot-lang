@@ -127,16 +127,13 @@ else
 
 let use_reduction = fun t ->
   let remaining = t.reductions_remaining - 1 in
-  if remaining > 0 then
-    (
-      t.reductions_remaining <- remaining;
-      Continue
-    )
-  else
-    (
-      t.reductions_remaining <- default_reduction_budget;
-      Yield
-    )
+  if remaining > 0 then (
+    t.reductions_remaining <- remaining;
+    Continue
+  ) else (
+    t.reductions_remaining <- default_reduction_budget;
+    Yield
+  )
 
 let with_lock = fun t f ->
   Runtime_mutex.lock t.lock;

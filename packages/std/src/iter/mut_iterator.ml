@@ -215,11 +215,10 @@ let take: type a. a t -> int -> a t = fun iter count ->
     let next = fun state ->
       if state.remaining <= 0 then
         None
-      else
-        (
-          state.remaining <- state.remaining - 1;
-          iter_next state.iter
-        )
+      else (
+        state.remaining <- state.remaining - 1;
+        iter_next state.iter
+      )
 
     let size = fun state -> Int.min state.remaining (size state.iter)
 

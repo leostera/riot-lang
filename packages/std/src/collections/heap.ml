@@ -86,11 +86,10 @@ let rec sift_down = fun heap i ->
       | Order.GT -> ()
     );
   let smallest_val = smallest.value in
-  if smallest_val != i then
-    (
-      swap heap i smallest_val;
-      sift_down heap smallest_val
-    )
+  if smallest_val != i then (
+    swap heap i smallest_val;
+    sift_down heap smallest_val
+  )
 
 let push = fun heap ~value ->
   if heap.size = 0 then
@@ -119,14 +118,13 @@ let pop = fun heap ->
   else
     let result = Array.get_unchecked heap.data ~at:0 in
     heap.size <- heap.size - 1;
-  if heap.size > 0 then
-    (
-      Array.set_unchecked
-        heap.data
-        ~at:0
-        ~value:(Array.get_unchecked heap.data ~at:heap.size);
-      sift_down heap 0
-    );
+  if heap.size > 0 then (
+    Array.set_unchecked
+      heap.data
+      ~at:0
+      ~value:(Array.get_unchecked heap.data ~at:heap.size);
+    sift_down heap 0
+  );
   Some result
 
 let pop_unchecked = fun heap ->

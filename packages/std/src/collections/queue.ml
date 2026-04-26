@@ -67,16 +67,14 @@ let pop = fun t ->
               let _ = Atomic.compare_and_set t.tail tail next_node in
               loop ()
             )
-          else if Atomic.compare_and_set t.head head next_node then
-            (
-              Atomic.decr t.size;
-              match next_node.value with
-              | None -> loop ()
-              | Some value ->
-                  next_node.value <- None;
-                  Some value
-            )
-          else
+          else if Atomic.compare_and_set t.head head next_node then (
+            Atomic.decr t.size;
+            match next_node.value with
+            | None -> loop ()
+            | Some value ->
+                next_node.value <- None;
+                Some value
+          ) else
             loop ()
     else
       loop ()

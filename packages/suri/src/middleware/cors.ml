@@ -35,23 +35,22 @@ let middleware = fun ~origins ?(methods = [Net.Http.Method.Put; Patch; Delete]) 
         next conn
     | Some req_origin ->
         (* Check if origin is allowed *)
-        if not (is_origin_allowed origins req_origin) then
-          begin
-            Log.debug
-              (String.concat
-                ""
-                [
-                  "[CORS] Rejected origin: ";
-                  req_origin;
-                  " for ";
-                  Net.Http.Method.to_string (Conn.method_ conn);
-                  " ";
-                  Conn.path conn;
-                ]);
-            conn
-            |> Conn.respond ~status:Net.Http.Status.Forbidden ~body:"Origin not allowed"
-            |> Conn.halt
-          end
+        if not (is_origin_allowed origins req_origin) then (
+          Log.debug
+            (String.concat
+              ""
+              [
+                "[CORS] Rejected origin: ";
+                req_origin;
+                " for ";
+                Net.Http.Method.to_string (Conn.method_ conn);
+                " ";
+                Conn.path conn;
+              ]);
+          conn
+          |> Conn.respond ~status:Net.Http.Status.Forbidden ~body:"Origin not allowed"
+          |> Conn.halt
+        )
           (* Check if this is a preflight request *)
         else if Conn.method_ conn = Net.Http.Method.Options
         && (

@@ -3,7 +3,11 @@ open Std.Collections
 open Std.Sync
 
 type error =
-  | Exhausted of { waiting: int; max_connections: int; timeout: Time.Duration.t }
+  | Exhausted of {
+      waiting: int;
+      max_connections: int;
+      timeout: Time.Duration.t;
+    }
   | ConnectionError of Connection.error
   | Timeout of Time.Duration.t
 
@@ -40,12 +44,7 @@ type Message.t +=
 type pool_response =
   | ConnectionAcquired of Connection.t
   | AcquireError of error
-  | Stats of ([
-    `Total of int
-    | `Available of int
-    | `InUse of int
-    | `Waiting of int
-  ]) list
+  | Stats of ([`Total of int | `Available of int | `InUse of int | `Waiting of int]) list
 
 type Message.t +=
   | PoolResponse of pool_response
@@ -61,10 +60,12 @@ type pool_state = {
 }
 
 let spawn_connection = fun (Config { driver; driver_config; _ }) ->
-  Connection.create (Connection.Config { driver; config = driver_config })
+  Connection.create
+    (Connection.Config { driver; config = driver_config })
 
 let find_available = fun connections ->
-  List.find (Cell.get connections)
+  List.find
+    (Cell.get connections)
     ~fn:(
       function
       | Available _ -> true
@@ -72,24 +73,25 @@ let find_available = fun connections ->
     )
 
 let mark_in_use = fun connections conn requester ->
-  Cell.set connections
+  Cell.set
+    connections
     (
-      List.map (Cell.get connections)
+      List.map
+        (Cell.get connections)
         ~fn:(
           function
-          | Available c when Connection.id c = Connection.id conn -> InUse (
-            c,
-            requester,
-            Time.Instant.now ()
-          )
+          | Available c when Connection.id c = Connection.id conn ->
+              InUse (c, requester, Time.Instant.now ())
           | other -> other
         )
     )
 
 let mark_available = fun connections conn ->
-  Cell.set connections
+  Cell.set
+    connections
     (
-      List.map (Cell.get connections)
+      List.map
+        (Cell.get connections)
         ~fn:(
           function
           | InUse (c, _, _) when Connection.id c = Connection.id conn -> Available c
@@ -126,25 +128,22 @@ let handle_release = fun state conn ->
 let check_connections = fun state ->
   let now = Time.Instant.now () in
   let updated =
-    List.filter_map (Cell.get state.connections)
+    List.filter_map
+      (Cell.get state.connections)
       ~fn:(
         function
         | Available conn ->
             let age = Time.Instant.duration_since ~earlier:(Connection.created_at conn) now in
             let idle = Time.Instant.duration_since ~earlier:(Connection.last_used conn) now in
-            if Time.Duration.compare idle state.idle_timeout = Order.GT then
-              (
+            if Time.Duration.compare idle state.idle_timeout = Order.GT then (
+              Connection.close conn;
+              None
+            ) else if Option.is_some state.max_lifetime then
+              let max_life = Option.unwrap state.max_lifetime in
+              if Time.Duration.compare age max_life = Order.GT then (
                 Connection.close conn;
                 None
-              )
-            else if Option.is_some state.max_lifetime then
-              let max_life = Option.unwrap state.max_lifetime in
-              if Time.Duration.compare age max_life = Order.GT then
-                (
-                  Connection.close conn;
-                  None
-                )
-              else
+              ) else
                 Some (Available conn)
             else
               Some (Available conn)
@@ -163,7 +162,9 @@ let check_connections = fun state ->
 let get_stats = fun state ->
   let total = List.length (Cell.get state.connections) in
   let available =
-    List.fold_left (Cell.get state.connections) ~init:0
+    List.fold_left
+      (Cell.get state.connections)
+      ~init:0
       ~fn:(fun acc ->
         function
         | Available _ -> acc + 1
@@ -171,16 +172,22 @@ let get_stats = fun state ->
   in
   let in_use = total - available in
   let waiting = Queue.length state.waiting in
-  [ `Total total; `Available available; `InUse in_use; `Waiting waiting; ]
+  [
+    `Total total;
+    `Available available;
+    `InUse in_use;
+    `Waiting waiting;
+  ]
 
-let pool_supervisor = fun
-  (Config {
+let pool_supervisor = fun (
+  Config {
     min_connections;
     max_connections;
     idle_timeout;
     max_lifetime;
     _
-  } as config) ->
+  } as config
+) ->
   let state = {
     connections = Cell.create [];
     waiting = Queue.create ();
@@ -219,7 +226,8 @@ let pool_supervisor = fun
         send reply_to (PoolResponse (Stats stats));
         loop ()
     | Shutdown ->
-        List.for_each (Cell.get state.connections)
+        List.for_each
+          (Cell.get state.connections)
           ~fn:(
             function
             | Available conn
@@ -231,11 +239,13 @@ let pool_supervisor = fun
 
 let create = fun (Config { min_connections; max_connections; _ } as config) ->
   if min_connections < 0 || max_connections < min_connections then
-    Error (Connection.DriverError {
-      error = "Invalid pool configuration";
-      to_string = (fun s -> s);
-      to_json = (fun s -> Data.Json.string s)
-    })
+    Error (
+      Connection.DriverError {
+        error = "Invalid pool configuration";
+        to_string = (fun s -> s);
+        to_json = (fun s -> Data.Json.string s);
+      }
+    )
   else
     (* Try to create at least one connection to validate driver config *)
     match spawn_connection config with

@@ -57,22 +57,20 @@ let test_actor_spawn_returns_live_pid = fun _ctx ->
     ) with
   | Error _ as err -> err
   | Ok ready_pid ->
-      if Pid.equal ready_pid child then
-        (
-          send child Actor_stop;
-          ignore
-            (
-              await
-                ~what:"spawned actor down"
-                (
-                  function
-                  | Runtime.Actor.DOWN { pid; _ } when Pid.equal pid child -> `select ()
-                  | _ -> `skip
-                )
-            );
-          Ok ()
-        )
-      else
+      if Pid.equal ready_pid child then (
+        send child Actor_stop;
+        ignore
+          (
+            await
+              ~what:"spawned actor down"
+              (
+                function
+                | Runtime.Actor.DOWN { pid; _ } when Pid.equal pid child -> `select ()
+                | _ -> `skip
+              )
+          );
+        Ok ()
+      ) else
         Error "expected spawn to return the same pid reported by the child"
 
 let is_failure = fun exn ~message ->

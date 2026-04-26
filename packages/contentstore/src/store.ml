@@ -14,9 +14,19 @@ type io_detail = Store_error.io_detail =
   | File of Fs.File.error
 
 type error = Store_error.t =
-  | Missing of { path: Path.t }
-  | Invalid_source_path of { path: Path.t; reason: source_path_error }
-  | Io of { op: string; path: Path.t; related_path: Path.t option; detail: io_detail }
+  | Missing of {
+      path: Path.t;
+    }
+  | Invalid_source_path of {
+      path: Path.t;
+      reason: source_path_error;
+    }
+  | Io of {
+      op: string;
+      path: Path.t;
+      related_path: Path.t option;
+      detail: io_detail;
+    }
 
 type t = {
   root: Path.t;
@@ -36,7 +46,9 @@ let namespace = fun store -> store.ns
 
 let policy = fun store -> store.policy
 
-let empty_hash_hex = Crypto.Sha256.hash_string "" |> Crypto.Digest.hex
+let empty_hash_hex =
+  Crypto.Sha256.hash_string ""
+  |> Crypto.Digest.hex
 
 let checked_hash_hex = fun fn hash ->
   let hex = Crypto.Digest.hex hash in
@@ -49,24 +61,42 @@ let hash_dir_of = fun store hash ->
   let _ = checked_hash_hex "hash_dir_of" hash in
   Layout.tree_dir store.root hash
 
-let exists = fun store hash -> Fs.exists (hash_dir_of store hash) |> Result.unwrap_or ~default:false
+let exists = fun store hash ->
+  Fs.exists (hash_dir_of store hash)
+  |> Result.unwrap_or ~default:false
 
 let open_path = fun path ->
-  let* path_exists = Fs.exists path
-  |> Result.map_err
-    ~fn:(fun detail -> Io { op = "exists"; path; related_path = None; detail = Fs detail }) in
+  let* path_exists =
+    Fs.exists path
+    |> Result.map_err
+      ~fn:(fun detail ->
+        Io {
+          op = "exists";
+          path;
+          related_path = None;
+          detail = Fs detail;
+        })
+  in
   if not path_exists then
     Error (Missing { path })
   else
     Fs.File.open_read path
     |> Result.map_err
-      ~fn:(fun detail -> Io { op = "open_read"; path; related_path = None; detail = File detail })
+      ~fn:(fun detail ->
+        Io {
+          op = "open_read";
+          path;
+          related_path = None;
+          detail = File detail;
+        })
 
 let temp_path = fun store ~scope ~seed -> Layout.temp_path store.root ~scope ~seed
 
 let seed_of_hash = fun hash -> checked_hash_hex "seed_of_hash" hash
 
-let seed_of_key = fun key -> Crypto.hash_string key |> Crypto.Digest.hex
+let seed_of_key = fun key ->
+  Crypto.hash_string key
+  |> Crypto.Digest.hex
 
 let save_object = fun store ~hash ~content ->
   let _ = checked_hash_hex "save_object" hash in
@@ -95,7 +125,8 @@ let save_named_file = fun store ~key ~source ->
   Atomic.replace_with_file ~source ~temp ~dst:destination
 
 let open_named_object = fun store ~key ->
-  open_path (Layout.named_object_path store.root ~ns:store.ns ~key)
+  open_path
+    (Layout.named_object_path store.root ~ns:store.ns ~key)
 
 let commit_dir = fun store ~hash ~source_dir ->
   let destination = hash_dir_of store hash in

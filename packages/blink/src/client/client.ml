@@ -1,4 +1,5 @@
 open Std
+
 module Request = Super.Request
 module Response = Super.Response
 module Budget = Super.Budget
@@ -49,7 +50,8 @@ let blink_error_to_string = fun value ->
   | Error.NetError (Net.System_error error) -> "network system error: " ^ IO.error_message error
   | Error.TlsError Net.TlsStream.Closed -> "tls closed"
   | Error.TlsError (Net.TlsStream.Handshake_failed message) -> "tls handshake failed: " ^ message
-  | Error.TlsError (Net.TlsStream.System_error error) -> "tls system error: " ^ IO.error_message error
+  | Error.TlsError (Net.TlsStream.System_error error) ->
+      "tls system error: " ^ IO.error_message error
   | Error.TlsError (Net.TlsStream.Network_read_failed _) -> "tls network read failed"
   | Error.TlsError (Net.TlsStream.Network_write_failed _) -> "tls network write failed"
   | Error.TlsError Net.TlsStream.Tls_not_available -> "tls not available"
@@ -70,7 +72,9 @@ let method_to_net = fun value ->
   | Request.Delete -> Net.Http.Method.Delete
 
 let apply_headers = fun request headers ->
-  List.fold_left headers ~init:request
+  List.fold_left
+    headers
+    ~init:request
     ~fn:(fun request (name, value) ->
       Net.Http.Request.with_header request name value)
 
@@ -82,24 +86,22 @@ let expired = fun ~now ttl pooled ->
 
 let prune_pool = fun client ->
   match client.config.connection_policy with
-  | Config.Pool { idle_ttl=Some ttl; _ } ->
+  | Config.Pool { idle_ttl = Some ttl; _ } ->
       let now = client.config.now () in
       let rec loop kept values =
         match values with
         | [] -> List.reverse kept
         | pooled :: rest ->
-            if expired ~now ttl pooled then
-              (
-                Connection.close pooled.conn;
-                loop kept rest
-              )
-            else
+            if expired ~now ttl pooled then (
+              Connection.close pooled.conn;
+              loop kept rest
+            ) else
               loop (pooled :: kept) rest
       in
       client.idle <- loop [] client.idle
   | Config.CloseAfterRequest
   | Config.ReuseConnection
-  | Config.Pool { idle_ttl=None; _ } -> ()
+  | Config.Pool { idle_ttl = None; _ } -> ()
 
 let take_idle = fun key (idle: pooled_connection list) ->
   let rec loop (kept: pooled_connection list) (values: pooled_connection list) =
@@ -136,18 +138,18 @@ let remove_keyed_connections = fun key (idle: pooled_connection list) ->
     match values with
     | [] -> List.reverse kept
     | pooled :: rest ->
-        if String.equal pooled.key key then
-          (
-            Connection.close pooled.conn;
-            loop kept rest
-          )
-        else
+        if String.equal pooled.key key then (
+          Connection.close pooled.conn;
+          loop kept rest
+        ) else
           loop (pooled :: kept) rest
   in
   loop [] idle
 
 let count_idle_for_key = fun key (idle: pooled_connection list) ->
-  List.fold_left idle ~init:0
+  List.fold_left
+    idle
+    ~init:0
     ~fn:(fun count pooled ->
       if String.equal pooled.key key then
         count + 1
@@ -160,8 +162,7 @@ let release_connection = fun client key conn ~reusable ->
   else
     let last_used_at = client.config.now () in
     match client.config.connection_policy with
-    | Config.CloseAfterRequest ->
-        Connection.close conn
+    | Config.CloseAfterRequest -> Connection.close conn
     | Config.ReuseConnection ->
         client.idle <- { key; conn; last_used_at } :: remove_keyed_connections key client.idle
     | Config.Pool pool ->
@@ -184,16 +185,12 @@ let send_on_connection = fun conn uri (request: Request.t) ->
   let net_request = Net.Http.Request.create (method_to_net request.method_) uri in
   let net_request = apply_headers net_request request.headers in
   match Connection.request conn net_request ?body:request.body () with
-  | Error error -> {
-    result = Error ("request failed: " ^ blink_error_to_string error);
-    reusable = false
-  }
+  | Error error ->
+      { result = Error ("request failed: " ^ blink_error_to_string error); reusable = false }
   | Ok () -> (
       match Connection.await conn with
-      | Error error -> {
-        result = Error ("response failed: " ^ blink_error_to_string error);
-        reusable = false
-      }
+      | Error error ->
+          { result = Error ("response failed: " ^ blink_error_to_string error); reusable = false }
       | Ok (response, body) -> { result = Ok (response_of_net response body); reusable = true }
     )
 
@@ -221,7 +218,7 @@ let make = fun ?(config = Config.make ()) () ->
     config;
     budget = Budget.create_with_policy config.budget_policy started;
     breaker = CircuitBreaker.create ~policy:config.circuit_breaker_policy ();
-    idle = []
+    idle = [];
   }
 
 let budget_remaining = fun client -> Budget.remaining client.budget
@@ -257,14 +254,16 @@ let execute = fun client (request: Request.t) ->
   let breaker = client.breaker in
   if not (Budget.allow ~now:started_at budget) then
     let telemetry =
-      let attempt = Telemetry.attempt
-        ~attempt:0
-        ~started_at
-        ~completed_at:started_at
-        ~lifecycle:Telemetry.Blocked
-        ~error_class:Response.RateLimitedByBudget
-        ~error_message:"request budget exhausted"
-        () in
+      let attempt =
+        Telemetry.attempt
+          ~attempt:0
+          ~started_at
+          ~completed_at:started_at
+          ~lifecycle:Telemetry.Blocked
+          ~error_class:Response.RateLimitedByBudget
+          ~error_message:"request budget exhausted"
+          ()
+      in
       make_telemetry
         client
         request
@@ -278,14 +277,16 @@ let execute = fun client (request: Request.t) ->
     fail client Response.RateLimitedByBudget "request budget exhausted" telemetry
   else if not (CircuitBreaker.allow_request ~now:started_at breaker) then
     let telemetry =
-      let attempt = Telemetry.attempt
-        ~attempt:0
-        ~started_at
-        ~completed_at:started_at
-        ~lifecycle:Telemetry.Blocked
-        ~error_class:Response.CircuitOpen
-        ~error_message:"circuit breaker open"
-        () in
+      let attempt =
+        Telemetry.attempt
+          ~attempt:0
+          ~started_at
+          ~completed_at:started_at
+          ~lifecycle:Telemetry.Blocked
+          ~error_class:Response.CircuitOpen
+          ~error_message:"circuit breaker open"
+          ()
+      in
       make_telemetry
         client
         request
@@ -303,17 +304,19 @@ let execute = fun client (request: Request.t) ->
       match transport client request with
       | Ok response ->
           let completed_at = client.config.now () in
-          if Response.is_success response then
-            (
-              CircuitBreaker.record_success breaker;
-              let attempt_record = Telemetry.attempt
+          if Response.is_success response then (
+            CircuitBreaker.record_success breaker;
+            let attempt_record =
+              Telemetry.attempt
                 ~attempt
                 ~started_at:attempt_started_at
                 ~completed_at
                 ~lifecycle:Telemetry.Completed
                 ~status:response.status
-                () in
-              let telemetry = make_telemetry
+                ()
+            in
+            let telemetry =
+              make_telemetry
                 client
                 request
                 ~started_at
@@ -321,21 +324,23 @@ let execute = fun client (request: Request.t) ->
                 ~final_status:response.status
                 ~budget
                 ~breaker
-                () in
-              succeed client response telemetry
-            )
-          else if
+                ()
+            in
+            succeed client response telemetry
+          ) else if
             RetryPolicy.should_retry_status client.config.retry_policy ~attempt response.status
           then
             let backoff = RetryPolicy.delay_for_attempt client.config.retry_policy ~attempt in
-            let attempt_record = Telemetry.attempt
-              ~attempt
-              ~started_at:attempt_started_at
-              ~completed_at
-              ~lifecycle:Telemetry.Retrying
-              ~status:response.status
-              ~planned_backoff:backoff
-              () in
+            let attempt_record =
+              Telemetry.attempt
+                ~attempt
+                ~started_at:attempt_started_at
+                ~completed_at
+                ~lifecycle:Telemetry.Retrying
+                ~status:response.status
+                ~planned_backoff:backoff
+                ()
+            in
             client.config.sleep backoff;
             loop (attempt + 1) (attempt_record :: attempts)
           else (
@@ -345,25 +350,29 @@ let execute = fun client (request: Request.t) ->
               | Response.RateLimited -> Response.RateLimitedByBudget
               | _ -> Response.ServerRejected
             in
-            let attempt_record = Telemetry.attempt
-              ~attempt
-              ~started_at:attempt_started_at
-              ~completed_at
-              ~lifecycle:Telemetry.Failed
-              ~status:response.status
-              ~error_class:class_
-              ~error_message:("HTTP status " ^ Int.to_string response.status)
-              () in
-            let telemetry = make_telemetry
-              client
-              request
-              ~started_at
-              ~attempts:(attempt_record :: attempts)
-              ~final_status:response.status
-              ~final_error_class:class_
-              ~budget
-              ~breaker
-              () in
+            let attempt_record =
+              Telemetry.attempt
+                ~attempt
+                ~started_at:attempt_started_at
+                ~completed_at
+                ~lifecycle:Telemetry.Failed
+                ~status:response.status
+                ~error_class:class_
+                ~error_message:("HTTP status " ^ Int.to_string response.status)
+                ()
+            in
+            let telemetry =
+              make_telemetry
+                client
+                request
+                ~started_at
+                ~attempts:(attempt_record :: attempts)
+                ~final_status:response.status
+                ~final_error_class:class_
+                ~budget
+                ~breaker
+                ()
+            in
             fail client class_ ("HTTP status " ^ Int.to_string response.status) telemetry
           )
       | Error message ->
@@ -371,42 +380,49 @@ let execute = fun client (request: Request.t) ->
           let class_ = Response.error_class_of_transport_error message in
           if RetryPolicy.should_retry_error client.config.retry_policy ~attempt class_ then
             let backoff = RetryPolicy.delay_for_attempt client.config.retry_policy ~attempt in
-            let attempt_record = Telemetry.attempt
-              ~attempt
-              ~started_at:attempt_started_at
-              ~completed_at
-              ~lifecycle:Telemetry.Retrying
-              ~error_class:class_
-              ~error_message:message
-              ~planned_backoff:backoff
-              () in
+            let attempt_record =
+              Telemetry.attempt
+                ~attempt
+                ~started_at:attempt_started_at
+                ~completed_at
+                ~lifecycle:Telemetry.Retrying
+                ~error_class:class_
+                ~error_message:message
+                ~planned_backoff:backoff
+                ()
+            in
             client.config.sleep backoff;
             loop (attempt + 1) (attempt_record :: attempts)
           else (
             CircuitBreaker.record_failure ~now:completed_at breaker;
-            let attempt_record = Telemetry.attempt
-              ~attempt
-              ~started_at:attempt_started_at
-              ~completed_at
-              ~lifecycle:Telemetry.Failed
-              ~error_class:class_
-              ~error_message:message
-              () in
-            let telemetry = make_telemetry
-              client
-              request
-              ~started_at
-              ~attempts:(attempt_record :: attempts)
-              ~final_error_class:class_
-              ~budget
-              ~breaker
-              () in
+            let attempt_record =
+              Telemetry.attempt
+                ~attempt
+                ~started_at:attempt_started_at
+                ~completed_at
+                ~lifecycle:Telemetry.Failed
+                ~error_class:class_
+                ~error_message:message
+                ()
+            in
+            let telemetry =
+              make_telemetry
+                client
+                request
+                ~started_at
+                ~attempts:(attempt_record :: attempts)
+                ~final_error_class:class_
+                ~budget
+                ~breaker
+                ()
+            in
             fail client class_ message telemetry
           )
     in
     loop 1 []
 
-let error_to_string = fun error -> Response.error_class_to_string error.class_ ^ ": " ^ error.message
+let error_to_string = fun error ->
+  Response.error_class_to_string error.class_ ^ ": " ^ error.message
 
 let error_class_of_blink_error = fun ~default value ->
   match value with
@@ -436,12 +452,12 @@ let with_blink_policy = fun client ~failure_class ~retry operation ->
       | Error error ->
           let completed_at = client.config.now () in
           let class_ = error_class_of_blink_error ~default:failure_class error in
-          if retry && RetryPolicy.should_retry_error client.config.retry_policy ~attempt class_ then
-            (
-              client.config.sleep (RetryPolicy.delay_for_attempt client.config.retry_policy ~attempt);
-              loop (attempt + 1)
-            )
-          else (
+          if
+            retry && RetryPolicy.should_retry_error client.config.retry_policy ~attempt class_
+          then (
+            client.config.sleep (RetryPolicy.delay_for_attempt client.config.retry_policy ~attempt);
+            loop (attempt + 1)
+          ) else (
             CircuitBreaker.record_failure ~now:completed_at breaker;
             Error error
           )
@@ -454,22 +470,32 @@ let connect = fun client uri ->
     client
     ~failure_class:Response.ConnectFailed
     ~retry:true
-    (fun () -> take_connection client key uri)
-  |> Result.map ~fn:(fun conn -> { key; conn; reusable = true; closed = false })
+    (fun () ->
+      take_connection client key uri)
+  |> Result.map
+    ~fn:(fun conn ->
+      {
+        key;
+        conn;
+        reusable = true;
+        closed = false;
+      })
 
 let retire_connection = fun (connection: connection) ->
   connection.reusable <- false;
-  if not connection.closed then
-    (
-      Connection.close connection.conn;
-      connection.closed <- true
-    )
+  if not connection.closed then (
+    Connection.close connection.conn;
+    connection.closed <- true
+  )
 
 let with_connection = fun client (connection: connection) ~failure_class operation ->
   if connection.closed then
     Error Error.Closed
   else
-    with_blink_policy client ~failure_class ~retry:false
+    with_blink_policy
+      client
+      ~failure_class
+      ~retry:false
       (fun () ->
         match operation connection.conn with
         | Ok value -> Ok value
@@ -481,29 +507,36 @@ let request = fun client connection net_request ?body () ->
   with_connection
     client
     connection
-    ~failure_class:Response.RequestFailed (fun conn -> Connection.request conn net_request ?body ())
+    ~failure_class:Response.RequestFailed
+    (fun conn ->
+      Connection.request conn net_request ?body ())
 
 let stream = fun client connection ->
-  with_connection client connection ~failure_class:Response.ResponseFailed Connection.stream
+  with_connection
+    client
+    connection
+    ~failure_class:Response.ResponseFailed
+    Connection.stream
 
 let messages = fun ?on_message client connection ->
   with_connection
     client
     connection
-    ~failure_class:Response.ResponseFailed (fun conn -> Connection.messages ?on_message conn)
+    ~failure_class:Response.ResponseFailed
+    (fun conn -> Connection.messages ?on_message conn)
 
 let await = fun ?on_message client connection ->
   with_connection
     client
     connection
-    ~failure_class:Response.ResponseFailed (fun conn -> Connection.await ?on_message conn)
+    ~failure_class:Response.ResponseFailed
+    (fun conn -> Connection.await ?on_message conn)
 
 let close = fun client connection ->
-  if not connection.closed then
-    (
-      connection.closed <- true;
-      release_connection client connection.key connection.conn ~reusable:connection.reusable
-    )
+  if not connection.closed then (
+    connection.closed <- true;
+    release_connection client connection.key connection.conn ~reusable:connection.reusable
+  )
 
 module SSE = struct
   type event = Sse.event = {
@@ -543,7 +576,8 @@ module SSE = struct
                 state.done_ <- true;
                 None
             | Ok messages ->
-                List.for_each messages
+                List.for_each
+                  messages
                   ~fn:(
                     function
                     | Connection.Data chunk -> state.buffer <- state.buffer ^ chunk
@@ -564,14 +598,19 @@ module SSE = struct
         client = state.client;
         connection = state.connection;
         buffer = state.buffer;
-        done_ = state.done_
+        done_ = state.done_;
       }
   end
 
   let await = fun client connection ->
     Iter.MutIterator.make
       (module Iterator)
-      { Iterator.client = client; connection; buffer = ""; done_ = false }
+      {
+        Iterator.client = client;
+        connection;
+        buffer = "";
+        done_ = false;
+      }
 end
 
 module WebSocket = struct
@@ -596,35 +635,42 @@ module WebSocket = struct
       (fun () -> Websocket.connect uri)
 
   let send_text = fun client conn text ->
-    with_blink_policy client ~failure_class:Response.RequestFailed ~retry:false
-      (fun () ->
-        Websocket.send_text conn text)
+    with_blink_policy
+      client
+      ~failure_class:Response.RequestFailed
+      ~retry:false
+      (fun () -> Websocket.send_text conn text)
 
   let send_binary = fun client conn data ->
-    with_blink_policy client ~failure_class:Response.RequestFailed ~retry:false
-      (fun () ->
-        Websocket.send_binary conn data)
+    with_blink_policy
+      client
+      ~failure_class:Response.RequestFailed
+      ~retry:false
+      (fun () -> Websocket.send_binary conn data)
 
   let send_ping = fun client conn ?payload () ->
     with_blink_policy
       client
       ~failure_class:Response.RequestFailed
       ~retry:false
-      (fun () -> Websocket.send_ping conn ?payload ())
+      (fun () ->
+        Websocket.send_ping conn ?payload ())
 
   let send_pong = fun client conn ?payload () ->
     with_blink_policy
       client
       ~failure_class:Response.RequestFailed
       ~retry:false
-      (fun () -> Websocket.send_pong conn ?payload ())
+      (fun () ->
+        Websocket.send_pong conn ?payload ())
 
   let send_close = fun client conn ?code ?reason () ->
     with_blink_policy
       client
       ~failure_class:Response.RequestFailed
       ~retry:false
-      (fun () -> Websocket.send_close conn ?code ?reason ())
+      (fun () ->
+        Websocket.send_close conn ?code ?reason ())
 
   let receive = fun client conn ->
     with_blink_policy

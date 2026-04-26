@@ -38,11 +38,10 @@ let render_to_string = fun commands ->
           let col_end = Utils.rect_col_end command.bounding_box in
           for row = row_start to row_end - 1 do
             for col = col_start to col_end - 1 do
-              if Utils.is_inside_scissor ~col ~row !scissor_box then
-                begin
-                  Buffer.add_string buf (Tty.Escape_seq.cursor_position_seq (row + 1) (col + 1));
-                  Buffer.add_string buf colored_space
-                end
+              if Utils.is_inside_scissor ~col ~row !scissor_box then (
+                Buffer.add_string buf (Tty.Escape_seq.cursor_position_seq (row + 1) (col + 1));
+                Buffer.add_string buf colored_space
+              )
             done
           done
       | Render.Border { width; color; _ } ->
@@ -87,16 +86,14 @@ let render_to_string = fun commands ->
                 end
             done;
           for row = row_start + 1 to row_end - 2 do
-            if width.left > 0 && Utils.is_inside_scissor ~col:col_start ~row !scissor_box then
-              begin
-                Buffer.add_string buf (Tty.Escape_seq.cursor_position_seq (row + 1) (col_start + 1));
-                Buffer.add_string buf (Ansi_formatter.format_string fmt "│")
-              end;
-            if width.right > 0 && Utils.is_inside_scissor ~col:(col_end - 1) ~row !scissor_box then
-              begin
-                Buffer.add_string buf (Tty.Escape_seq.cursor_position_seq (row + 1) col_end);
-                Buffer.add_string buf (Ansi_formatter.format_string fmt "│")
-              end
+            if width.left > 0 && Utils.is_inside_scissor ~col:col_start ~row !scissor_box then (
+              Buffer.add_string buf (Tty.Escape_seq.cursor_position_seq (row + 1) (col_start + 1));
+              Buffer.add_string buf (Ansi_formatter.format_string fmt "│")
+            );
+            if width.right > 0 && Utils.is_inside_scissor ~col:(col_end - 1) ~row !scissor_box then (
+              Buffer.add_string buf (Tty.Escape_seq.cursor_position_seq (row + 1) col_end);
+              Buffer.add_string buf (Ansi_formatter.format_string fmt "│")
+            )
           done
       | Render.Text {
         content;
@@ -125,17 +122,16 @@ let render_to_string = fun commands ->
                       ~skip:(visible_col_start - col_start)
                       ~take:(visible_col_end - visible_col_start)
                   in
-                  if clipped != "" then
-                    begin
-                      Buffer.add_string
-                        buf
-                        (Tty.Escape_seq.cursor_position_seq (row + 1) (visible_col_start + 1));
-                      Buffer.add_string
-                        buf
-                        (Ansi_formatter.format_string
-                          (Utils.text_formats ~color ~weight ~decoration)
-                          clipped)
-                    end)
+                  if clipped != "" then (
+                    Buffer.add_string
+                      buf
+                      (Tty.Escape_seq.cursor_position_seq (row + 1) (visible_col_start + 1));
+                    Buffer.add_string
+                      buf
+                      (Ansi_formatter.format_string
+                        (Utils.text_formats ~color ~weight ~decoration)
+                        clipped)
+                  ))
       | Render.Custom { data } ->
           let lines = String.split_on_char '\n' data in
           lines
@@ -157,13 +153,12 @@ let render_to_string = fun commands ->
                       ~skip:(visible_col_start - col_start)
                       ~take:(visible_col_end - visible_col_start)
                   in
-                  if clipped != "" then
-                    begin
-                      Buffer.add_string
-                        buf
-                        (Tty.Escape_seq.cursor_position_seq (row + 1) (visible_col_start + 1));
-                      Buffer.add_string buf clipped
-                    end));
+                  if clipped != "" then (
+                    Buffer.add_string
+                      buf
+                      (Tty.Escape_seq.cursor_position_seq (row + 1) (visible_col_start + 1));
+                    Buffer.add_string buf clipped
+                  )));
   Buffer.contents buf
 
 let render = fun commands -> print (render_to_string commands)

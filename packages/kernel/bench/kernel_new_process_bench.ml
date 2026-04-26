@@ -108,12 +108,10 @@ let read_once = fun poll ~token file ->
         let _ = Kernel.Bytes.sub_string buffer ~offset:0 ~len:count in
         ()
     | Kernel.Result.Error error ->
-        if is_would_block error then
-          (
-            wait_readable poll ~token (Kernel.Fs.File.to_source file);
-            loop ()
-          )
-        else
+        if is_would_block error then (
+          wait_readable poll ~token (Kernel.Fs.File.to_source file);
+          loop ()
+        ) else
           Kernel.SystemError.panic (Kernel.Error.to_string (Kernel.Error.from_fs_file error))
   in
   loop ()
@@ -125,12 +123,10 @@ let drain_all = fun poll ~token file ->
     | Kernel.Result.Ok 0 -> ()
     | Kernel.Result.Ok _ -> loop ()
     | Kernel.Result.Error error ->
-        if is_would_block error then
-          (
-            wait_readable poll ~token (Kernel.Fs.File.to_source file);
-            loop ()
-          )
-        else
+        if is_would_block error then (
+          wait_readable poll ~token (Kernel.Fs.File.to_source file);
+          loop ()
+        ) else
           Kernel.SystemError.panic (Kernel.Error.to_string (Kernel.Error.from_fs_file error))
   in
   loop ()

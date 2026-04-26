@@ -5,11 +5,10 @@ let fill_vector = fun vector ~count ~start ->
   let rec loop index =
     if index >= count then
       ()
-    else
-      (
-        Vector.push vector ~value:(start + index);
-        loop (index + 1)
-      )
+    else (
+      Vector.push vector ~value:(start + index);
+      loop (index + 1)
+    )
   in
   loop 0
 

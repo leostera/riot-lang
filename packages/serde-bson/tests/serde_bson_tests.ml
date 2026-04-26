@@ -216,7 +216,20 @@ let manifest_decode =
         builder.tags,
         builder.scores
       ) with
-      | (Some ship, Some emergency, Some crew_count, Some small, Some bounty, Some heading, Some nickname, Some mode, Some marker, Some home, Some tags, Some scores) ->
+      | (
+        Some ship,
+        Some emergency,
+        Some crew_count,
+        Some small,
+        Some bounty,
+        Some heading,
+        Some nickname,
+        Some mode,
+        Some marker,
+        Some home,
+        Some tags,
+        Some scores
+      ) ->
           ({
             ship;
             emergency;

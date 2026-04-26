@@ -1,5 +1,6 @@
 open Global
 open Collections
+
 module Spec = Spec
 module Loader = Loader
 module Validator = Validator
@@ -8,7 +9,10 @@ module Server = Server
 
 type error =
   | NotFound of { app: string }
-  | ValidationError of { app: string; errors: string list }
+  | ValidationError of {
+      app: string;
+      errors: string list;
+    }
   | ParseError of { path: string; message: string }
   | FileNotFound of { path: string }
 
@@ -20,19 +24,19 @@ let error_to_string = function
       format Format.[ str "Validation errors for app '"; str app; str "': "; str errs; ]
   | ParseError { path; message } ->
       format Format.[ str "Parse error in "; str path; str ": "; str message; ]
-  | FileNotFound { path } ->
-      format Format.[ str "Config file not found: "; str path ]
+  | FileNotFound { path } -> format Format.[ str "Config file not found: "; str path ]
 
 let panic_wrong_type = fun ~key ~expected ->
-  panic (format Format.[ str "Config key '"; str key; str "' is not a "; str expected; ])
+  panic
+    (format Format.[ str "Config key '"; str key; str "' is not a "; str expected; ])
 
 let panic_key_not_found = fun key ->
-  panic (format Format.[ str "Config key '"; str key; str "' not found" ])
+  panic
+    (format Format.[ str "Config key '"; str key; str "' not found" ])
 
 let find_map_field = fun key kvs ->
-  List.find kvs
-    ~fn:(fun (entry_key, _value) ->
-      String.equal entry_key key) |> Option.map ~fn:(fun (_entry_key, value) -> value)
+  List.find kvs ~fn:(fun (entry_key, _value) -> String.equal entry_key key)
+  |> Option.map ~fn:(fun (_entry_key, value) -> value)
 
 module type ConfigSpec = sig
   val spec: Spec.t

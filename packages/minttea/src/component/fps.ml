@@ -17,11 +17,9 @@ let of_int = fun i -> make (1.0 /. float_of_int i)
 let of_float = fun f -> make (1.0 /. f)
 
 let tick = fun ?(now = Time.Instant.now ()) t ->
-  if Time.Instant.compare now t.next_frame != Order.LT then
-    (
-      (* Add frame_rate to next_frame, not to now, to maintain consistent intervals *)
-      t.next_frame <- add_duration t.next_frame t.frame_rate;
-      `frame
-    )
-  else
+  if Time.Instant.compare now t.next_frame != Order.LT then (
+    (* Add frame_rate to next_frame, not to now, to maintain consistent intervals *)
+    t.next_frame <- add_duration t.next_frame t.frame_rate;
+    `frame
+  ) else
     `skip

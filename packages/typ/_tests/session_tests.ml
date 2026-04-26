@@ -4587,12 +4587,11 @@ let test_snapshot_uses_loaded_module_typings = fun _ctx ->
   Test.assert_equal ~expected:[ "Blend_demo" ] ~actual:summary_modules;
   if demo_has_unbound_name then
     Error (String.concat "\n" (diagnostic_strings snapshot demo_source_id))
-  else
-    (
-      Test.assert_equal ~expected:(Some "int -> int -> int") ~actual:midpoint_type;
-      Test.assert_equal ~expected:(Some "string -> string") ~actual:label_type;
-      Ok ()
-    )
+  else (
+    Test.assert_equal ~expected:(Some "int -> int -> int") ~actual:midpoint_type;
+    Test.assert_equal ~expected:(Some "string -> string") ~actual:label_type;
+    Ok ()
+  )
 
 let test_prepare_snapshot_hydrates_module_typings_from_store = fun _ctx ->
   with_typ_store
@@ -5753,11 +5752,10 @@ let test_prepare_snapshot_only_pairs_required_local_modules = fun _ctx ->
       if List.mem "Unused" paired_modules then
         Error (format
           Format.[ str "unexpected unrelated module pairing: "; str (typ_events_json !events) ])
-      else
-        (
-          Test.assert_equal ~expected:[ "App"; "Dep" ] ~actual:paired_modules;
-          Ok ()
-        )
+      else (
+        Test.assert_equal ~expected:[ "App"; "Dep" ] ~actual:paired_modules;
+        Ok ()
+      )
 
 let test_prepare_snapshot_reuses_shared_transitive_local_modules = fun _ctx ->
   let events = ref [] in
@@ -5874,12 +5872,11 @@ let test_prepare_snapshot_reuses_shared_transitive_local_modules = fun _ctx ->
             str ": ";
             str (typ_events_json !events);
           ])
-      else
-        (
-          Test.assert_equal ~expected:1 ~actual:(count_for snapshot_analysis_counts "App");
-          Test.assert_equal ~expected:1 ~actual:(count_for module_pairing_counts "App");
-          Ok ()
-        )
+      else (
+        Test.assert_equal ~expected:1 ~actual:(count_for snapshot_analysis_counts "App");
+        Test.assert_equal ~expected:1 ~actual:(count_for module_pairing_counts "App");
+        Ok ()
+      )
 
 let test_prepare_snapshot_reuses_paired_local_modules_across_rooted_snapshots = fun _ctx ->
   let events = ref [] in
@@ -6042,24 +6039,23 @@ let test_prepare_snapshot_reuses_paired_local_modules_across_rooted_snapshots = 
                 str "]: ";
                 str (typ_events_json !events);
               ])
-          else
-            (
-              Test.assert_equal
-                ~expected:1
-                ~actual:(count_for_source snapshot_analysis_counts file_intf_source_id);
-              Test.assert_equal
-                ~expected:1
-                ~actual:(count_for_source snapshot_analysis_counts file_impl_source_id);
-              Test.assert_equal
-                ~expected:1
-                ~actual:(count_for_source snapshot_analysis_counts fs_intf_source_id);
-              Test.assert_equal
-                ~expected:1
-                ~actual:(count_for_source snapshot_analysis_counts fs_impl_source_id);
-              Test.assert_equal ~expected:1 ~actual:(count_for_module module_pairing_counts "File");
-              Test.assert_equal ~expected:1 ~actual:(count_for_module module_pairing_counts "Fs");
-              Ok ()
-            )
+          else (
+            Test.assert_equal
+              ~expected:1
+              ~actual:(count_for_source snapshot_analysis_counts file_intf_source_id);
+            Test.assert_equal
+              ~expected:1
+              ~actual:(count_for_source snapshot_analysis_counts file_impl_source_id);
+            Test.assert_equal
+              ~expected:1
+              ~actual:(count_for_source snapshot_analysis_counts fs_intf_source_id);
+            Test.assert_equal
+              ~expected:1
+              ~actual:(count_for_source snapshot_analysis_counts fs_impl_source_id);
+            Test.assert_equal ~expected:1 ~actual:(count_for_module module_pairing_counts "File");
+            Test.assert_equal ~expected:1 ~actual:(count_for_module module_pairing_counts "Fs");
+            Ok ()
+          )
     )
 
 let test_prepare_snapshot_reuses_shared_implicit_open_alias_modules = fun _ctx ->
@@ -6206,12 +6202,11 @@ let test_prepare_snapshot_reuses_shared_implicit_open_alias_modules = fun _ctx -
             str ": ";
             str (typ_events_json !events);
           ])
-      else
-        (
-          Test.assert_equal ~expected:1 ~actual:alias_analysis_count;
-          Test.assert_equal ~expected:1 ~actual:alias_pairing_count;
-          Ok ()
-        )
+      else (
+        Test.assert_equal ~expected:1 ~actual:alias_analysis_count;
+        Test.assert_equal ~expected:1 ~actual:alias_pairing_count;
+        Ok ()
+      )
 
 let test_prepare_snapshot_imports_bare_local_module_exports_into_rooted_analysis = fun _ctx ->
   let session = Session.empty ~config:Config.default in

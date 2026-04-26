@@ -73,14 +73,13 @@ let push_front = fun deque ~value ->
 let pop_back = fun deque ->
   if deque.size = 0 then
     None
-  else
-    (
-      deque.back <- (deque.back - 1 + Array.length deque.data) mod Array.length deque.data;
-      let value = get_slot deque deque.back in
-      set_slot deque deque.back None;
-      deque.size <- deque.size - 1;
-      value
-    )
+  else (
+    deque.back <- (deque.back - 1 + Array.length deque.data) mod Array.length deque.data;
+    let value = get_slot deque deque.back in
+    set_slot deque deque.back None;
+    deque.size <- deque.size - 1;
+    value
+  )
 
 let pop_front = fun deque ->
   if deque.size = 0 then
@@ -119,34 +118,31 @@ let insert = fun deque ~at ~value ->
     push_front deque ~value
   else if at = deque.size then
     push_back deque ~value
-  else if at <= deque.size / 2 then
-    (
-      push_front deque ~value;
-      for i = 0 to at - 1 do
-        let curr_idx = (deque.front + i) mod Array.length deque.data in
-        let next_idx = (deque.front + i + 1) mod Array.length deque.data in
-        set_slot
-          deque
-          curr_idx
-          (get_slot deque next_idx)
-      done;
-      let target_idx = (deque.front + at) mod Array.length deque.data in
-      set_slot deque target_idx (Some value)
-    )
-  else
-    (
-      push_back deque ~value;
-      for i = deque.size - 2 downto at do
-        let curr_idx = (deque.front + i) mod Array.length deque.data in
-        let next_idx = (deque.front + i + 1) mod Array.length deque.data in
-        set_slot
-          deque
-          next_idx
-          (get_slot deque curr_idx)
-      done;
-      let target_idx = (deque.front + at) mod Array.length deque.data in
-      set_slot deque target_idx (Some value)
-    )
+  else if at <= deque.size / 2 then (
+    push_front deque ~value;
+    for i = 0 to at - 1 do
+      let curr_idx = (deque.front + i) mod Array.length deque.data in
+      let next_idx = (deque.front + i + 1) mod Array.length deque.data in
+      set_slot
+        deque
+        curr_idx
+        (get_slot deque next_idx)
+    done;
+    let target_idx = (deque.front + at) mod Array.length deque.data in
+    set_slot deque target_idx (Some value)
+  ) else (
+    push_back deque ~value;
+    for i = deque.size - 2 downto at do
+      let curr_idx = (deque.front + i) mod Array.length deque.data in
+      let next_idx = (deque.front + i + 1) mod Array.length deque.data in
+      set_slot
+        deque
+        next_idx
+        (get_slot deque curr_idx)
+    done;
+    let target_idx = (deque.front + at) mod Array.length deque.data in
+    set_slot deque target_idx (Some value)
+  )
 
 let remove = fun deque ~at ->
   if at < 0 || at >= deque.size then
@@ -154,32 +150,29 @@ let remove = fun deque ~at ->
   else
     let actual_index = (deque.front + at) mod Array.length deque.data in
     let value = get_slot deque actual_index in
-    if at <= deque.size / 2 then
-      (
-        for i = at downto 1 do
-          let curr_idx = (deque.front + i) mod Array.length deque.data in
-          let prev_idx = (deque.front + i - 1) mod Array.length deque.data in
-          set_slot
-            deque
-            curr_idx
-            (get_slot deque prev_idx)
-        done;
-        set_slot deque deque.front None;
-        deque.front <- (deque.front + 1) mod Array.length deque.data
-      )
-    else
-      (
-        for i = at to deque.size - 2 do
-          let curr_idx = (deque.front + i) mod Array.length deque.data in
-          let next_idx = (deque.front + i + 1) mod Array.length deque.data in
-          set_slot
-            deque
-            curr_idx
-            (get_slot deque next_idx)
-        done;
-        deque.back <- (deque.back - 1 + Array.length deque.data) mod Array.length deque.data;
-        set_slot deque deque.back None
-      );
+    if at <= deque.size / 2 then (
+      for i = at downto 1 do
+        let curr_idx = (deque.front + i) mod Array.length deque.data in
+        let prev_idx = (deque.front + i - 1) mod Array.length deque.data in
+        set_slot
+          deque
+          curr_idx
+          (get_slot deque prev_idx)
+      done;
+      set_slot deque deque.front None;
+      deque.front <- (deque.front + 1) mod Array.length deque.data
+    ) else (
+      for i = at to deque.size - 2 do
+        let curr_idx = (deque.front + i) mod Array.length deque.data in
+        let next_idx = (deque.front + i + 1) mod Array.length deque.data in
+        set_slot
+          deque
+          curr_idx
+          (get_slot deque next_idx)
+      done;
+      deque.back <- (deque.back - 1 + Array.length deque.data) mod Array.length deque.data;
+      set_slot deque deque.back None
+    );
   deque.size <- deque.size - 1;
   value
 

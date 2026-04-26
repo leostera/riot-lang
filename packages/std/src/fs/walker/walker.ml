@@ -397,12 +397,10 @@ let handle_entry = fun state (dent: entry) ->
       match push state dent with
       | Error err -> Some (Error err)
       | Ok () ->
-          if is_normal_dir && state.opts.contents_first then
-            (
-              Vector.push state.deferred_dirs ~value:dent;
-              None
-            )
-          else if skippable state.opts dent.depth then
+          if is_normal_dir && state.opts.contents_first then (
+            Vector.push state.deferred_dirs ~value:dent;
+            None
+          ) else if skippable state.opts dent.depth then
             None
           else
             Some (Ok dent)
@@ -439,12 +437,10 @@ let rec next_item = fun state ->
               | Some item -> Some item
               | None -> next_item state
             end
-      else if Vector.length state.stack_list > state.opts.max_depth then
-        (
-          pop state;
-          next_item state
-        )
-      else
+      else if Vector.length state.stack_list > state.opts.max_depth then (
+        pop state;
+        next_item state
+      ) else
         let current_idx = Vector.length state.stack_list - 1 in
         match Vector.get state.stack_list ~at:current_idx with
         | None -> None

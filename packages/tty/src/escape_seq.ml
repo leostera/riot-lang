@@ -204,11 +204,10 @@ let strip = fun str ->
         | _ -> scan (i + 1)
       else
         scan (i + 1)
-    else
-      (
-        Buffer.add_char buf (String.get_unchecked str ~at:i);
-        scan (i + 1)
-      )
+    else (
+      Buffer.add_char buf (String.get_unchecked str ~at:i);
+      scan (i + 1)
+    )
   in
   scan 0
 

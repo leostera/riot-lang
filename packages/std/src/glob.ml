@@ -81,37 +81,32 @@ let parse_char_class = fun input ~offset ->
   let rec loop pending =
     if !index >= len then
       make_parse_error input ~offset "Unterminated character class"
-    else if Char.equal (String.get_unchecked input ~at:!index) ']' then
-      (
-        index := !index + 1;
-        let items =
-          match pending with
-          | Some ch -> Regex.Single ch :: !items
-          | None -> !items
-        in
-        Ok (Char_class { negated; items = List.reverse items }, !index)
-      )
-    else
+    else if Char.equal (String.get_unchecked input ~at:!index) ']' then (
+      index := !index + 1;
+      let items =
+        match pending with
+        | Some ch -> Regex.Single ch :: !items
+        | None -> !items
+      in
+      Ok (Char_class { negated; items = List.reverse items }, !index)
+    ) else
       match read_char () with
       | None -> make_parse_error input ~offset "Unterminated character class"
       | Some ch -> (
           match pending with
           | Some left when !index < len && Char.equal (String.get_unchecked input ~at:!index) '-' -> (
-              if !index + 1 >= len then
-                (
-                  push (Regex.Single left);
-                  push (Regex.Single '-');
-                  loop None
-                )
-              else
-                (
-                  index := !index + 1;
-                  match read_char () with
-                  | None -> make_parse_error input ~offset "Unterminated character class"
-                  | Some right ->
-                      push (Regex.Range (left, right));
-                      loop None
-                )
+              if !index + 1 >= len then (
+                push (Regex.Single left);
+                push (Regex.Single '-');
+                loop None
+              ) else (
+                index := !index + 1;
+                match read_char () with
+                | None -> make_parse_error input ~offset "Unterminated character class"
+                | Some right ->
+                    push (Regex.Range (left, right));
+                    loop None
+              )
             )
           | Some left ->
               push (Regex.Single left);

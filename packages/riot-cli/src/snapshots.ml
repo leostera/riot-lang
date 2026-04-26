@@ -6,53 +6,48 @@ type pending_snapshot = {
   pending: Path.t;
 }
 
-type review_decision =
-[
-  `Approve
-  | `Reject
-  | `Ignore
-  | `Quit
-]
+type review_decision = [`Approve | `Reject | `Ignore | `Quit]
 
-type review_summary = {
-  approved_count: int;
-  rejected_count: int;
-  ignored_count: int;
-  quit: bool;
-}
+type review_summary = { approved_count: int; rejected_count: int; ignored_count: int; quit: bool }
 
 let empty_review_summary = {
   approved_count = 0;
   rejected_count = 0;
   ignored_count = 0;
-  quit = false
+  quit = false;
 }
 
 let ( let* ) value fn = Result.and_then value ~fn
 
 let command =
   let open ArgParser in
-    let open ArgParser.Arg in
-      let make_subcommand name about_text = command name
-      |> about about_text
-      |> args
-        [
-          positional "query" |> required false |> help "Optional path substring used to filter pending snapshots";
-        ] in
-      command "snapshots"
-      |> about "Review and manage pending snapshot candidates"
-      |> subcommands
-        [
-          make_subcommand "review" "Interactively review pending snapshot diffs";
-          make_subcommand "approve" "Promote pending snapshots to approved files";
-          make_subcommand "reject" "Delete pending snapshot candidates";
-        ]
+  let open ArgParser.Arg in
+  let make_subcommand name about_text =
+    command name
+    |> about about_text
+    |> args
+      [
+        positional "query"
+        |> required false
+        |> help "Optional path substring used to filter pending snapshots";
+      ]
+  in
+  command "snapshots"
+  |> about "Review and manage pending snapshot candidates"
+  |> subcommands
+    [
+      make_subcommand "review" "Interactively review pending snapshot diffs";
+      make_subcommand "approve" "Promote pending snapshots to approved files";
+      make_subcommand "reject" "Delete pending snapshot candidates";
+    ]
 
 let ensure_trailing_new_removed = fun path ->
   let rendered = Path.to_string path in
   if String.ends_with ~suffix:".new" rendered then
     let len = String.length rendered - 4 in
-    String.sub rendered ~offset:0 ~len |> Path.from_string |> Result.expect ~msg:"pending snapshot path should stay valid UTF-8"
+    String.sub rendered ~offset:0 ~len
+    |> Path.from_string
+    |> Result.expect ~msg:"pending snapshot path should stay valid UTF-8"
   else
     path
 
@@ -74,14 +69,16 @@ let display_path = fun ~workspace_root path ->
 let matches_query = fun ?query snapshot ->
   match query with
   | None -> true
-  | Some query -> String.contains (Path.to_string snapshot.pending) query
-  || String.contains (Path.to_string snapshot.approved) query
+  | Some query ->
+      String.contains (Path.to_string snapshot.pending) query
+      || String.contains (Path.to_string snapshot.approved) query
 
 let discover_pending_snapshots = fun ~workspace_root ?query () ->
   let walker =
     match Fs.Walker.create ~roots:[ workspace_root ] ~sort:true () with
     | Ok walker ->
-        Fs.Walker.filter_entry walker
+        Fs.Walker.filter_entry
+          walker
           ~f:(fun (entry: Fs.Walker.FileItem.t) ->
             let path = Fs.Walker.FileItem.path entry in
             match Fs.Walker.FileItem.kind entry with
@@ -94,10 +91,8 @@ let discover_pending_snapshots = fun ~workspace_root ?query () ->
   let iter = Fs.Walker.into_iter walker in
   let rec collect acc iter =
     match Iter.Iterator.next iter with
-    | (None, _) ->
-        Ok (List.reverse acc)
-    | (Some (Error (err: Fs.Walker.error)), _) ->
-        Error err.cause
+    | (None, _) -> Ok (List.reverse acc)
+    | (Some (Error (err: Fs.Walker.error)), _) -> Error err.cause
     | (Some (Ok (entry: Fs.Walker.FileItem.t)), iter') -> (
         let path = Fs.Walker.FileItem.path entry in
         match Fs.Walker.FileItem.kind entry with
@@ -113,9 +108,13 @@ let discover_pending_snapshots = fun ~workspace_root ?query () ->
   | Error err -> Error err
   | Ok snapshots ->
       Ok (
-        snapshots |> List.filter ~fn:(matches_query ?query) |> List.sort
+        snapshots
+        |> List.filter ~fn:(matches_query ?query)
+        |> List.sort
           ~compare:(fun left right ->
-            String.compare (Path.to_string left.pending) (Path.to_string right.pending))
+            String.compare
+              (Path.to_string left.pending)
+              (Path.to_string right.pending))
       )
 
 let ensure_parent_dir = fun path ->
@@ -138,7 +137,8 @@ let approve_pending_snapshot = fun snapshot ->
 
 let approve_pending_snapshots = fun snapshots ->
   let rec loop = function
-    | [] -> Ok ()
+    | [] ->
+        Ok ()
     | snapshot :: rest -> (
         match approve_pending_snapshot snapshot with
         | Ok () -> loop rest
@@ -149,7 +149,8 @@ let approve_pending_snapshots = fun snapshots ->
 
 let reject_pending_snapshots = fun snapshots ->
   let rec loop = function
-    | [] -> Ok ()
+    | [] ->
+        Ok ()
     | snapshot :: rest -> (
         match Fs.remove_file snapshot.pending with
         | Ok () -> loop rest
@@ -159,7 +160,9 @@ let reject_pending_snapshots = fun snapshots ->
   loop snapshots
 
 let parse_review_decision = fun input ->
-  match input |> String.trim |> String.lowercase_ascii with
+  match input
+  |> String.trim
+  |> String.lowercase_ascii with
   | "a"
   | "approve" -> Some `Approve
   | "r"
@@ -181,8 +184,7 @@ let review_pending_snapshot = fun ~workspace_root snapshot ->
   println ("Approved: " ^ display_path ~workspace_root snapshot.approved);
   println ("Pending:  " ^ display_path ~workspace_root snapshot.pending);
   match Fs.exists snapshot.approved with
-  | Error err ->
-      Error err
+  | Error err -> Error err
   | Ok false -> (
       match Fs.read snapshot.pending with
       | Error err -> Error err
@@ -193,29 +195,29 @@ let review_pending_snapshot = fun ~workspace_root snapshot ->
           Ok ()
     )
   | Ok true -> (
-      let diff_cmd = Command.make
-        "git"
-        ~cwd:(Path.to_string workspace_root)
-        ~args:[
-          "diff";
-          "--no-index";
-          "--color=always";
-          "--";
-          Path.to_string snapshot.approved;
-          Path.to_string snapshot.pending;
-        ] in
+      let diff_cmd =
+        Command.make
+          "git"
+          ~cwd:(Path.to_string workspace_root)
+          ~args:[
+            "diff";
+            "--no-index";
+            "--color=always";
+            "--";
+            Path.to_string snapshot.approved;
+            Path.to_string snapshot.pending;
+          ]
+      in
       match Command.output diff_cmd with
       | Error (Command.SystemError msg) -> Error (IO.Unknown_error msg)
       | Ok { stdout; stderr; status } ->
-          if status = 0 || status = 1 then
-            (
-              if not (String.equal stdout "") then
-                print_blob stdout;
-              if not (String.equal stderr "") then
-                eprintln stderr;
-              Ok ()
-            )
-          else
+          if status = 0 || status = 1 then (
+            if not (String.equal stdout "") then
+              print_blob stdout;
+            if not (String.equal stderr "") then
+              eprintln stderr;
+            Ok ()
+          ) else
             Error (IO.Unknown_error ("git diff failed for "
             ^ Path.to_string snapshot.pending
             ^ " with status "
@@ -224,7 +226,8 @@ let review_pending_snapshot = fun ~workspace_root snapshot ->
 
 let review_pending_snapshots = fun ~workspace_root snapshots ->
   let rec loop = function
-    | [] -> Ok ()
+    | [] ->
+        Ok ()
     | snapshot :: rest -> (
         match review_pending_snapshot ~workspace_root snapshot with
         | Ok () -> loop rest
@@ -236,16 +239,20 @@ let review_pending_snapshots = fun ~workspace_root snapshots ->
 let print_no_pending = fun () -> println "No pending snapshots."
 
 let print_review_summary = fun count ->
-  println ("Found " ^ Int.to_string count ^ " pending snapshot(s).")
+  println
+    ("Found " ^ Int.to_string count ^ " pending snapshot(s).")
 
 let print_approved = fun ~workspace_root snapshot ->
-  println ("Approved " ^ display_path ~workspace_root snapshot.approved)
+  println
+    ("Approved " ^ display_path ~workspace_root snapshot.approved)
 
 let print_rejected = fun ~workspace_root snapshot ->
-  println ("Rejected " ^ display_path ~workspace_root snapshot.pending)
+  println
+    ("Rejected " ^ display_path ~workspace_root snapshot.pending)
 
 let print_ignored = fun ~workspace_root snapshot ->
-  println ("Ignored " ^ display_path ~workspace_root snapshot.pending)
+  println
+    ("Ignored " ^ display_path ~workspace_root snapshot.pending)
 
 let print_review_help = fun () -> println "Actions: [a]pprove, [r]eject, [i]gnore, [q]uit"
 
@@ -299,8 +306,7 @@ let review_pending_snapshots_with_decider = fun ~workspace_root snapshots ~decid
           | `Ignore ->
               print_ignored ~workspace_root snapshot;
               loop { summary with ignored_count = summary.ignored_count + 1 } rest
-          | `Quit ->
-              Ok { summary with quit = true }
+          | `Quit -> Ok { summary with quit = true }
         )
   in
   loop empty_review_summary snapshots
@@ -310,8 +316,7 @@ let review_pending_snapshots_interactively = fun ~workspace_root snapshots ->
   | Error Tty.NoTtyConnected ->
       review_pending_snapshots ~workspace_root snapshots
       |> Result.map ~fn:(fun () -> empty_review_summary)
-  | Error (Tty.SystemError err) ->
-      Error err
+  | Error (Tty.SystemError err) -> Error err
   | Ok tty ->
       print_review_help ();
       let result =
@@ -325,8 +330,7 @@ let review_pending_snapshots_interactively = fun ~workspace_root snapshots ->
 
 let run_action = fun ~workspace_root ?query action ->
   match discover_pending_snapshots ~workspace_root ?query () with
-  | Error err ->
-      Error (Failure (IO.error_message err))
+  | Error err -> Error (Failure (IO.error_message err))
   | Ok [] ->
       print_no_pending ();
       Ok ()
@@ -359,17 +363,20 @@ let run_action = fun ~workspace_root ?query action ->
 
 let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
   let open ArgParser in
-    match get_subcommand matches with
-    | Some ("review", sub_matches) -> run_action
-      ~workspace_root:workspace.root
-      ?query:(get_one sub_matches "query")
-      `Review
-    | Some ("approve", sub_matches) -> run_action
-      ~workspace_root:workspace.root
-      ?query:(get_one sub_matches "query")
-      `Approve
-    | Some ("reject", sub_matches) -> run_action
-      ~workspace_root:workspace.root
-      ?query:(get_one sub_matches "query")
-      `Reject
-    | _ -> Error (Failure "Unknown snapshots subcommand")
+  match get_subcommand matches with
+  | Some ("review", sub_matches) ->
+      run_action
+        ~workspace_root:workspace.root
+        ?query:(get_one sub_matches "query")
+        `Review
+  | Some ("approve", sub_matches) ->
+      run_action
+        ~workspace_root:workspace.root
+        ?query:(get_one sub_matches "query")
+        `Approve
+  | Some ("reject", sub_matches) ->
+      run_action
+        ~workspace_root:workspace.root
+        ?query:(get_one sub_matches "query")
+        `Reject
+  | _ -> Error (Failure "Unknown snapshots subcommand")

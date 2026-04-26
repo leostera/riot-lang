@@ -156,13 +156,11 @@ let stream = fun (Conn conn as c) ->
       let data = Buffer.contents conn.buffer in
       let available = String.length data in
       let remaining = length - received in
-      if remaining <= 0 then
-        (
-          (* Body complete but buffer empty *)
-          conn.state <- Complete;
-          Ok [ Done ]
-        )
-      else if available >= remaining then
+      if remaining <= 0 then (
+        (* Body complete but buffer empty *)
+        conn.state <- Complete;
+        Ok [ Done ]
+      ) else if available >= remaining then
         (
           (* We have enough data in buffer to complete the body *)
           let body_data = String.sub data ~offset:0 ~len:remaining in
@@ -172,14 +170,12 @@ let stream = fun (Conn conn as c) ->
           conn.state <- Complete;
           Ok [ Data body_data; Done ]
         )
-      else if available > 0 then
-        (
-          (* Partial data available, consume it and continue *)
-          Buffer.clear conn.buffer;
-          conn.state <- ReadingFixedBody { length; received = received + available };
-          Ok [ Data data ]
-        )
-      else
+      else if available > 0 then (
+        (* Partial data available, consume it and continue *)
+        Buffer.clear conn.buffer;
+        conn.state <- ReadingFixedBody { length; received = received + available };
+        Ok [ Data data ]
+      ) else
         match read_more c with
         | Ok () -> Ok []
         | Error e -> Error e
@@ -191,12 +187,10 @@ let stream = fun (Conn conn as c) ->
         | Http.Http1.Common.Done { value = { data = chunk_data; remaining }; _ } ->
             Buffer.clear conn.buffer;
             Buffer.add_string conn.buffer remaining;
-            if chunk_data = "" then
-              (
-                conn.state <- Complete;
-                Ok (List.reverse (Done :: acc))
-              )
-            else
+            if chunk_data = "" then (
+              conn.state <- Complete;
+              Ok (List.reverse (Done :: acc))
+            ) else
               (* Return the chunk immediately for streaming support *)
               Ok (List.reverse (Data chunk_data :: acc))
         | Http.Http1.Common.Need_more -> (

@@ -121,16 +121,13 @@ let unescape_backslashes = fun text ->
   let rec loop index =
     if index >= String.length text then
       IO.Buffer.contents buffer
-    else if (char_at text index) = '\\' && index + 1 < String.length text then
-      (
-        IO.Buffer.add_char buffer (char_at text (index + 1));
-        loop (index + 2)
-      )
-    else
-      (
-        IO.Buffer.add_char buffer (char_at text index);
-        loop (index + 1)
-      )
+    else if (char_at text index) = '\\' && index + 1 < String.length text then (
+      IO.Buffer.add_char buffer (char_at text (index + 1));
+      loop (index + 2)
+    ) else (
+      IO.Buffer.add_char buffer (char_at text index);
+      loop (index + 1)
+    )
   in
   loop 0
 
@@ -428,21 +425,17 @@ let normalize_destination_backslashes = fun text ->
     if index >= String.length text then
       IO.Buffer.contents buffer
     else if (char_at text index) = '\\' && index + 1 < String.length text then
-      if is_escapable (char_at text (index + 1)) then
-        (
-          IO.Buffer.add_char buffer (char_at text (index + 1));
-          loop (index + 2)
-        )
-      else
-        (
-          IO.Buffer.add_char buffer '\\';
-          loop (index + 1)
-        )
-    else
-      (
-        IO.Buffer.add_char buffer (char_at text index);
+      if is_escapable (char_at text (index + 1)) then (
+        IO.Buffer.add_char buffer (char_at text (index + 1));
+        loop (index + 2)
+      ) else (
+        IO.Buffer.add_char buffer '\\';
         loop (index + 1)
       )
+    else (
+      IO.Buffer.add_char buffer (char_at text index);
+      loop (index + 1)
+    )
   in
   loop 0
 
@@ -500,21 +493,17 @@ let parse_link_destination_piece = fun text start ->
       else if (char_at text index) = '\n' || (char_at text index) = '<' then
         None
       else if (char_at text index) = '\\' && index + 1 < len then
-        if is_escapable (char_at text (index + 1)) then
-          (
-            IO.Buffer.add_char buffer (char_at text (index + 1));
-            loop (index + 2)
-          )
-        else
-          (
-            IO.Buffer.add_char buffer '\\';
-            loop (index + 1)
-          )
-      else
-        (
-          IO.Buffer.add_char buffer (char_at text index);
+        if is_escapable (char_at text (index + 1)) then (
+          IO.Buffer.add_char buffer (char_at text (index + 1));
+          loop (index + 2)
+        ) else (
+          IO.Buffer.add_char buffer '\\';
           loop (index + 1)
         )
+      else (
+        IO.Buffer.add_char buffer (char_at text index);
+        loop (index + 1)
+      )
     in
     loop (start + 1)
   else
@@ -540,26 +529,22 @@ let parse_link_destination_piece = fun text start ->
                 Some (IO.Buffer.contents buffer, index)
               else
                 None
-            else
-              (
-                IO.Buffer.add_char buffer ')';
-                loop (index + 1) (depth - 1) true
-              )
+            else (
+              IO.Buffer.add_char buffer ')';
+              loop (index + 1) (depth - 1) true
+            )
         | '(' ->
             IO.Buffer.add_char buffer '(';
             loop (index + 1) (depth + 1) true
         | '<' -> None
         | '\\' when index + 1 < len ->
-            if is_escapable (char_at text (index + 1)) then
-              (
-                IO.Buffer.add_char buffer (char_at text (index + 1));
-                loop (index + 2) depth true
-              )
-            else
-              (
-                IO.Buffer.add_char buffer '\\';
-                loop (index + 1) depth true
-              )
+            if is_escapable (char_at text (index + 1)) then (
+              IO.Buffer.add_char buffer (char_at text (index + 1));
+              loop (index + 2) depth true
+            ) else (
+              IO.Buffer.add_char buffer '\\';
+              loop (index + 1) depth true
+            )
         | char ->
             IO.Buffer.add_char buffer char;
             loop (index + 1) depth true
@@ -588,21 +573,17 @@ let parse_link_title_piece = fun text start ->
       else if (char_at text index) = '\\' && index + 1 < len then
         if
           is_escapable (char_at text (index + 1)) || Char.equal (char_at text (index + 1)) closer
-        then
-          (
-            IO.Buffer.add_char buffer (char_at text (index + 1));
-            loop (index + 2)
-          )
-        else
-          (
-            IO.Buffer.add_char buffer '\\';
-            loop (index + 1)
-          )
-      else
-        (
-          IO.Buffer.add_char buffer (char_at text index);
+        then (
+          IO.Buffer.add_char buffer (char_at text (index + 1));
+          loop (index + 2)
+        ) else (
+          IO.Buffer.add_char buffer '\\';
           loop (index + 1)
         )
+      else (
+        IO.Buffer.add_char buffer (char_at text index);
+        loop (index + 1)
+      )
     in
     loop (start + 1)
 
@@ -659,16 +640,13 @@ let casefold_utf8 = fun text ->
       match Unicode.Utf8.decode_rune text index with
       | Some (rune, next) ->
           let code = Unicode.Rune.to_int rune in
-          if code = 0x00df || code = 0x1e9e then
-            (
-              IO.Buffer.add_string buffer "ss";
-              loop next
-            )
-          else
-            (
-              IO.Buffer.add_string buffer (Unicode.Utf8.encode_rune (Unicode.Rune.to_lower rune));
-              loop next
-            )
+          if code = 0x00df || code = 0x1e9e then (
+            IO.Buffer.add_string buffer "ss";
+            loop next
+          ) else (
+            IO.Buffer.add_string buffer (Unicode.Utf8.encode_rune (Unicode.Rune.to_lower rune));
+            loop next
+          )
       | None ->
           IO.Buffer.add_char buffer (char_at text index);
           loop (index + 1)
@@ -690,16 +668,14 @@ let normalize_reference_label = fun label ->
       if char = ' ' || char = '\t' || char = '\n' then
         if previous_space then
           loop (index + 1) true
-        else
-          (
-            IO.Buffer.add_char buffer ' ';
-            loop (index + 1) true
-          )
-      else
-        (
-          IO.Buffer.add_char buffer char;
-          loop (index + 1) false
+        else (
+          IO.Buffer.add_char buffer ' ';
+          loop (index + 1) true
         )
+      else (
+        IO.Buffer.add_char buffer char;
+        loop (index + 1) false
+      )
   in
   loop 0 false
   |> trim

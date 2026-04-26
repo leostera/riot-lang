@@ -1,6 +1,7 @@
 open Std
 open Std.Data
 open Std.Result.Syntax
+
 module Framing = Framing
 module Session = Session
 
@@ -28,16 +29,21 @@ module File_log = struct
     let* () =
       match Path.parent path with
       | None -> Ok ()
-      | Some parent -> Fs.create_dir_all parent |> Result.map_err ~fn:IO.error_message
+      | Some parent ->
+          Fs.create_dir_all parent
+          |> Result.map_err ~fn:IO.error_message
     in
-    let* sink = Fs.File.open_append path |> Result.map_err ~fn:Fs.File.error_to_string in
+    let* sink =
+      Fs.File.open_append path
+      |> Result.map_err ~fn:Fs.File.error_to_string
+    in
     Ok { path; sink }
 
   let write = fun t ~level message ->
     let line = DateTime.to_iso8601 (DateTime.now_utc ()) ^ " | " ^ level ^ " | " ^ message ^ "\n" in
-    ignore (((Fs.File.write_all t.sink line): (unit, _) result))
+    ignore ((Fs.File.write_all t.sink line): (unit, _) result)
 
-  let close = fun t -> ignore (((Fs.File.close t.sink): (unit, _) result))
+  let close = fun t -> ignore ((Fs.File.close t.sink): (unit, _) result)
 end
 
 let log = fun logger ~level message ->
@@ -66,17 +72,23 @@ let payload_summary = fun payload ->
     )
 
 let write_outbound = fun output messages ->
-  List.fold_left messages ~init:(Ok ())
+  List.fold_left
+    messages
+    ~init:(Ok ())
     ~fn:(fun acc json ->
       let* () = acc in
       Framing.write output (Std.Data.Json.to_string json)
-      |> Result.map_err ~fn:(fun message -> Failure message))
+      |> Result.map_err ~fn:(fun message ->
+        Failure message))
 
 let rec loop = fun logger ->
   fun input ->
     fun output ->
       fun state ->
-        let* payload_opt = Framing.read input |> Result.map_err ~fn:(fun message -> Failure message) in
+        let* payload_opt =
+          Framing.read input
+          |> Result.map_err ~fn:(fun message -> Failure message)
+        in
         match payload_opt with
         | None -> Ok ()
         | Some payload ->
@@ -90,10 +102,8 @@ let rec loop = fun logger ->
             (
               match outcome.exit_code with
               | None -> ()
-              | Some code -> log
-                logger
-                ~level:"INFO"
-                ("lsp session exiting with code " ^ Int.to_string code)
+              | Some code ->
+                  log logger ~level:"INFO" ("lsp session exiting with code " ^ Int.to_string code)
             );
             let* () = write_outbound output outcome.outbound in
             match outcome.exit_code with

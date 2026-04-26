@@ -607,13 +607,11 @@ let live = fun (type s m) ((module C : Component with type state = s and type ms
       conn_header = "upgrade" || String.contains conn_header "upgrade" -> true
       | _ -> false
     in
-    if is_websocket_upgrade then
-      begin
-        Log.info ("LiveView: Mounting component at " ^ ws_path);
-        let (opts, handler) = mount (module C) conn in
-        Middleware.Conn.upgrade_websocket opts handler conn
-      end
-    else
+    if is_websocket_upgrade then (
+      Log.info ("LiveView: Mounting component at " ^ ws_path);
+      let (opts, handler) = mount (module C) conn in
+      Middleware.Conn.upgrade_websocket opts handler conn
+    ) else
       begin
         (* Not a WebSocket upgrade - return error *)
         conn

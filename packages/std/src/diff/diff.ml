@@ -47,4 +47,7 @@ let changes = fun changes ->
       | _ -> false)
     changes
 
-let at_path = fun target_path changes -> List.filter ~fn:(fun { path; _ } -> path = target_path) changes
+let at_path = fun target_path changes ->
+  List.filter
+    ~fn:(fun { path; _ } -> path = target_path)
+    changes

@@ -47,19 +47,15 @@ let test_udp_socket_send_to_and_recv_from = fun _ctx ->
                       |> Bytes.to_string
                     )
                     "ping"
-                ) then
-                (
-                  Net.UdpSocket.close client;
-                  Net.UdpSocket.close server;
-                  Error "server received the wrong datagram payload"
-                )
-              else if not (Int.equal (Net.Addr.port from) (Net.Addr.port client_addr)) then
-                (
-                  Net.UdpSocket.close client;
-                  Net.UdpSocket.close server;
-                  Error "server recv_from should report the sender port"
-                )
-              else
+                ) then (
+                Net.UdpSocket.close client;
+                Net.UdpSocket.close server;
+                Error "server received the wrong datagram payload"
+              ) else if not (Int.equal (Net.Addr.port from) (Net.Addr.port client_addr)) then (
+                Net.UdpSocket.close client;
+                Net.UdpSocket.close server;
+                Error "server recv_from should report the sender port"
+              ) else
                 match Net.UdpSocket.send_to server from pong () with
                 | Error err ->
                     Net.UdpSocket.close client;
@@ -139,13 +135,11 @@ let test_udp_socket_connect_supports_send_and_recv = fun _ctx ->
                           |> Bytes.to_string
                         )
                         "hello"
-                    ) then
-                    (
-                      Net.UdpSocket.close client;
-                      Net.UdpSocket.close server;
-                      Error "connected recv returned the wrong payload"
-                    )
-                  else
+                    ) then (
+                    Net.UdpSocket.close client;
+                    Net.UdpSocket.close server;
+                    Error "connected recv returned the wrong payload"
+                  ) else
                     match Net.UdpSocket.send server (Bytes.from_string "world") () with
                     | Error err ->
                         Net.UdpSocket.close client;

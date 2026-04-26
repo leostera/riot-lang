@@ -97,11 +97,10 @@ let rec loop = fun state ->
     | `FileResult r -> handle_file_result state r
 
 and handle_scanner_discovered = fun state file ->
-  if not state.stop_requested then
-    (
-      Queue.push state.file_queue ~value:file;
-      dispatch_ready_workers state
-    );
+  if not state.stop_requested then (
+    Queue.push state.file_queue ~value:file;
+    dispatch_ready_workers state
+  );
   loop state
 
 and handle_scanner_complete = fun state ->
@@ -113,15 +112,13 @@ and handle_scanner_complete = fun state ->
     loop state
 
 and handle_worker_ready = fun state worker ->
-  if state.stop_requested then
-    (
-      stop_worker state worker;
-      if is_complete state then
-        handle_complete state
-      else
-        loop state
-    )
-  else
+  if state.stop_requested then (
+    stop_worker state worker;
+    if is_complete state then
+      handle_complete state
+    else
+      loop state
+  ) else
     match Queue.pop state.file_queue with
     | Some file_path ->
         send state.owner (Messages.FileStarted file_path);
@@ -129,19 +126,16 @@ and handle_worker_ready = fun state worker ->
         let _ = HashMap.insert state.busy_workers ~key:worker ~value:file_path in
         loop state
     | None ->
-        if state.discovery_complete then
-          (
-            stop_worker state worker;
-            if is_complete state then
-              handle_complete state
-            else
-              loop state
-          )
-        else
-          (
-            Queue.push state.idle_workers ~value:worker;
+        if state.discovery_complete then (
+          stop_worker state worker;
+          if is_complete state then
+            handle_complete state
+          else
             loop state
-          )
+        ) else (
+          Queue.push state.idle_workers ~value:worker;
+          loop state
+        )
 
 and handle_file_result = fun state r ->
   let _ = HashMap.remove state.busy_workers ~key:r.worker in

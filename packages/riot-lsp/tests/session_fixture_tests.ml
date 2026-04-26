@@ -34,12 +34,10 @@ let replace_all = fun text ->
         let rec loop offset =
           if offset >= String.length text then
             ()
-          else if starts_with_pattern offset then
-            (
-              IO.Buffer.add_string buffer with_;
-              loop (offset + pattern_len)
-            )
-          else
+          else if starts_with_pattern offset then (
+            IO.Buffer.add_string buffer with_;
+            loop (offset + pattern_len)
+          ) else
             (
               let char =
                 match String.get text ~at:offset with

@@ -72,13 +72,12 @@ let test_graph_scheduler_queues_generated_work_without_waiting_for_wave = fun _c
   in
   if not !generated_started_before_slow_finished then
     Error "expected generated work to start before slow sibling finished"
-  else
-    (
-      Test.assert_equal
-        ~expected:[ "1:root"; "2:slow"; "3:generated" ]
-        ~actual:(result_labels results);
-      Ok ()
-    )
+  else (
+    Test.assert_equal
+      ~expected:[ "1:root"; "2:slow"; "3:generated" ]
+      ~actual:(result_labels results);
+    Ok ()
+  )
 
 let test_graph_scheduler_records_errors_and_continues_ready_work = fun _ctx ->
   let results =
@@ -172,11 +171,10 @@ let test_graph_scheduler_fail_fast_stops_new_generated_work = fun _ctx ->
   in
   if !generated_ran then
     Error "expected fail-fast mode to block newly generated work after a failure"
-  else
-    (
-      Test.assert_equal ~expected:[ "1:error:boom"; "2:slow" ] ~actual:(result_labels results);
-      Ok ()
-    )
+  else (
+    Test.assert_equal ~expected:[ "1:error:boom"; "2:slow" ] ~actual:(result_labels results);
+    Ok ()
+  )
 
 let test_graph_scheduler_emits_events_in_completion_order = fun _ctx ->
   let events = ref [] in

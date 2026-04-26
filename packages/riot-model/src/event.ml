@@ -2,6 +2,7 @@ open Std
 open Std.Data
 open Std.Collections
 open Std.Result.Syntax
+
 module Pm_error = Pm_error
 
 (** Event system for riot - pure data types for events *)
@@ -21,11 +22,13 @@ let strip_ansi_codes = fun str ->
   in
   let rec strip read_index write_index =
     if read_index >= len then
-      IO.Bytes.sub_unchecked out ~offset:0 ~len:write_index |> IO.Bytes.to_string
+      IO.Bytes.sub_unchecked out ~offset:0 ~len:write_index
+      |> IO.Bytes.to_string
     else
       match String.get str ~at:read_index with
       | None ->
-          IO.Bytes.sub_unchecked out ~offset:0 ~len:write_index |> IO.Bytes.to_string
+          IO.Bytes.sub_unchecked out ~offset:0 ~len:write_index
+          |> IO.Bytes.to_string
       | Some '\027' -> (
           match String.get str ~at:(read_index + 1) with
           | Some '[' -> strip (skip_until_m (read_index + 2)) write_index
@@ -91,46 +94,106 @@ type kind =
       duration_ms: int;
       results: build_result list;
       succeeded: Package_name.t list;
-      failed: Package_name.t list
+      failed: Package_name.t list;
     }
   | BuildGraphCreated of { nodes: int; duration_ms: int }
   | BuildGraphCreating
-  | BuildStarted of { packages: Package_name.t list; total_modules: int; workers: int }
-  | CacheHit of { package: Package_name.t; hash: string }
-  | CacheMiss of { package: Package_name.t; hash: string }
-  | CacheStored of { package: Package_name.t; hash: string; artifacts: string list }
-  | CompileError of { package: Package_name.t; error: build_error }
-  | CompilingImplementation of { package: Package_name.t; file: string }
-  | CompilingInterface of { package: Package_name.t; file: string }
-  | ComputingHash of { package: Package_name.t }
+  | BuildStarted of {
+      packages: Package_name.t list;
+      total_modules: int;
+      workers: int;
+    }
+  | CacheHit of {
+      package: Package_name.t;
+      hash: string;
+    }
+  | CacheMiss of {
+      package: Package_name.t;
+      hash: string;
+    }
+  | CacheStored of {
+      package: Package_name.t;
+      hash: string;
+      artifacts: string list;
+    }
+  | CompileError of {
+      package: Package_name.t;
+      error: build_error;
+    }
+  | CompilingImplementation of {
+      package: Package_name.t;
+      file: string;
+    }
+  | CompilingInterface of {
+      package: Package_name.t;
+      file: string;
+    }
+  | ComputingHash of {
+      package: Package_name.t;
+    }
   | CopyingFile of { source: string; dest: string }
   | CreatingDirectory of { path: string }
-  | CycleDetected of { packages: Package_name.t list }
-  | DependencyMissing of { package: Package_name.t; missing: Package_name.t list }
-  | DependencySatisfied of { package: Package_name.t }
-  | HashComputed of { package: Package_name.t; hash: string }
-  | LinkingExecutable of { package: Package_name.t; output: string }
-  | LinkingLibrary of { package: Package_name.t; output: string }
-  | McpToolCall of { tool: string; args: Json.t }
+  | CycleDetected of {
+      packages: Package_name.t list;
+    }
+  | DependencyMissing of {
+      package: Package_name.t;
+      missing: Package_name.t list;
+    }
+  | DependencySatisfied of {
+      package: Package_name.t;
+    }
+  | HashComputed of {
+      package: Package_name.t;
+      hash: string;
+    }
+  | LinkingExecutable of {
+      package: Package_name.t;
+      output: string;
+    }
+  | LinkingLibrary of {
+      package: Package_name.t;
+      output: string;
+    }
+  | McpToolCall of {
+      tool: string;
+      args: Json.t;
+    }
   | PackageComplete of build_result
-  | PackageSkipped of { package: Package_name.t; reason: skip_reason }
-  | PackageStarted of { package: Package_name.t }
-  | QueuePackage of { package: Package_name.t; queue_type: 
-        [
-          `Ready
-          | `Waiting
-        ] }
+  | PackageSkipped of {
+      package: Package_name.t;
+      reason: skip_reason;
+    }
+  | PackageStarted of {
+      package: Package_name.t;
+    }
+  | QueuePackage of {
+      package: Package_name.t;
+      queue_type: [`Ready | `Waiting];
+    }
   | QueueStats of { ready: int; waiting: int; busy: int }
-  | RpcRequestReceived of { request_type: string; args: Json.t }
-  | RpcResponseSent of { result: (unit, string) result }
+  | RpcRequestReceived of {
+      request_type: string;
+      args: Json.t;
+    }
+  | RpcResponseSent of {
+      result: (unit, string) result;
+    }
   | ServerRestarted of { packages: int; toolchain: string }
   | ServerScanning of { root: string }
   | ServerShutdown
   | ServerStarted of { pid: string }
-  | WorkerAssigned of { worker_id: Worker_id.t; package: Package_name.t }
-  | WorkerIdle of { worker_id: Worker_id.t }
+  | WorkerAssigned of {
+      worker_id: Worker_id.t;
+      package: Package_name.t;
+    }
+  | WorkerIdle of {
+      worker_id: Worker_id.t;
+    }
   | WorkerPoolStarted of { workers: int }
-  | WorkerStarted of { worker_id: Worker_id.t }
+  | WorkerStarted of {
+      worker_id: Worker_id.t;
+    }
   | StoreCreating
   | StoreCreated of { duration_ms: int }
   | WorkerPoolCreating of { workers: int }
@@ -140,98 +203,154 @@ type kind =
   | WorkspaceScanned of { packages: int; duration_ms: int }
   | LockfileReadStarted of { path: string }
   | LockfileReadFinished of { path: string; duration_ms: int }
-  | LockfileReadFailed of { path: string; error: Pm_error.t }
+  | LockfileReadFailed of {
+      path: string;
+      error: Pm_error.t;
+    }
   | LockfileWriteStarted of { path: string }
   | LockfileWriteFinished of { path: string; duration_ms: int }
-  | LockfileWriteFailed of { path: string; error: Pm_error.t }
-  | DependencyResolutionStarted of { packages: Package_name.t list; mode: 
-        [
-          `Refresh
-          | `Unlock
-        ] }
+  | LockfileWriteFailed of {
+      path: string;
+      error: Pm_error.t;
+    }
+  | DependencyResolutionStarted of {
+      packages: Package_name.t list;
+      mode: [`Refresh | `Unlock];
+    }
   | DependencyResolutionUsingExistingLock of { path: string }
   | DependencyResolutionRefreshingLock of { path: string }
-  | DependencyResolutionUnlocking of { path: string option }
-  | DependencyResolutionFinished of { duration_ms: int; resolved_packages: int; resolved_edges: int }
-  | DependencyResolutionFailed of { error: Pm_error.t }
+  | DependencyResolutionUnlocking of {
+      path: string option;
+    }
+  | DependencyResolutionFinished of {
+      duration_ms: int;
+      resolved_packages: int;
+      resolved_edges: int;
+    }
+  | DependencyResolutionFailed of {
+      error: Pm_error.t;
+    }
   | RegistryIndexUpdating of { registry: string }
-  | DependencyUniverseBuilding of { packages: Package_name.t list }
+  | DependencyUniverseBuilding of {
+      packages: Package_name.t list;
+    }
   | DependencyUniverseBuilt of {
       runtime_packages: int;
       build_packages: int;
       dev_packages: int;
-      duration_ms: int
+      duration_ms: int;
     }
-  | PackageMetadataFetchStarted of { registry: string; package: Package_name.t }
+  | PackageMetadataFetchStarted of {
+      registry: string;
+      package: Package_name.t;
+    }
   | PackageMetadataFetchFinished of {
       registry: string;
       package: Package_name.t;
       version: string option;
-      duration_ms: int
+      duration_ms: int;
     }
-  | PackageMetadataFetchFailed of { registry: string; package: Package_name.t; error: Pm_error.t }
-  | SourceDependencyMaterializationStarted of { source_locator: string; ref_: string option }
+  | PackageMetadataFetchFailed of {
+      registry: string;
+      package: Package_name.t;
+      error: Pm_error.t;
+    }
+  | SourceDependencyMaterializationStarted of {
+      source_locator: string;
+      ref_: string option;
+    }
   | SourceDependencyMaterializationFinished of {
       source_locator: string;
       ref_: string option;
       package: Package_name.t;
-      version: string option
+      version: string option;
     }
-  | DependencyManifestUpdated of { path: string; section: string; operation: 
-        [
-          | `Add
-          | `Remove
-        ]; dependency: string }
-  | PackageVersionLocked of { package: Package_name.t; version: string }
+  | DependencyManifestUpdated of {
+      path: string;
+      section: string;
+      operation: [ | `Add | `Remove];
+      dependency: string;
+    }
+  | PackageVersionLocked of {
+      package: Package_name.t;
+      version: string;
+    }
   | PackageVersionsUnchanged of { packages: int }
-  | PackageVersionUpdated of { package: Package_name.t; from_version: string; to_version: string }
-  | PackageManifestFetchStarted of { package: Package_name.t; version: string }
-  | PackageManifestFetchFinished of { package: Package_name.t; version: string; duration_ms: int }
+  | PackageVersionUpdated of {
+      package: Package_name.t;
+      from_version: string;
+      to_version: string;
+    }
+  | PackageManifestFetchStarted of {
+      package: Package_name.t;
+      version: string;
+    }
+  | PackageManifestFetchFinished of {
+      package: Package_name.t;
+      version: string;
+      duration_ms: int;
+    }
   | PackageManifestFetchFailed of {
       package: Package_name.t;
       version: string option;
-      error: Pm_error.t
+      error: Pm_error.t;
     }
-  | PackageDownloadStarted of { package: Package_name.t; version: string; path: string }
+  | PackageDownloadStarted of {
+      package: Package_name.t;
+      version: string;
+      path: string;
+    }
   | PackageDownloadFinished of {
       package: Package_name.t;
       version: string;
       path: string;
-      duration_ms: int
+      duration_ms: int;
     }
   | PackageDownloadFailed of {
       package: Package_name.t;
       version: string;
       path: string;
-      error: Pm_error.t
+      error: Pm_error.t;
     }
   | PackageDownloadSkipped of {
       package: Package_name.t;
       version: string;
       path: string;
-      reason: string
+      reason: string;
     }
-  | PackageCacheHit of { package: Package_name.t; version: string; path: string }
-  | PackageMaterializationStarted of { package: Package_name.t; version: string; path: string }
+  | PackageCacheHit of {
+      package: Package_name.t;
+      version: string;
+      path: string;
+    }
+  | PackageMaterializationStarted of {
+      package: Package_name.t;
+      version: string;
+      path: string;
+    }
   | PackageMaterializationFinished of {
       package: Package_name.t;
       version: string;
       path: string;
-      duration_ms: int
+      duration_ms: int;
     }
   | PackageMaterializationFailed of {
       package: Package_name.t;
       version: string;
       path: string;
-      error: Pm_error.t
+      error: Pm_error.t;
     }
   | PackageResolvedForBuild of {
       package: Package_name.t;
       version: string option;
       path: string;
-      workspace: bool
+      workspace: bool;
     }
-  | PackageDownloadQueued of { package: Package_name.t; version: string; path: string }
+  | PackageDownloadQueued of {
+      package: Package_name.t;
+      version: string;
+      path: string;
+    }
   | WritingFile of { path: string }
 
 type t = {
@@ -242,7 +361,13 @@ type t = {
 }
 
 (** Create a new event with current timestamp *)
-let create = fun ~session_id ~level kind -> { timestamp = DateTime.now (); session_id; level; kind }
+let create = fun ~session_id ~level kind ->
+  {
+    timestamp = DateTime.now ();
+    session_id;
+    level;
+    kind;
+  }
 
 (** Format timestamp for display *)
 
@@ -351,8 +476,8 @@ let display = function
   | PackageSkipped { package; reason } ->
       let reason_str =
         match reason with
-        | DependenciesFailed deps -> "dependencies failed: "
-        ^ String.concat ", " (List.map deps ~fn:Package_name.to_string)
+        | DependenciesFailed deps ->
+            "dependencies failed: " ^ String.concat ", " (List.map deps ~fn:Package_name.to_string)
       in
       "⊘ Skipped " ^ Package_name.to_string package ^ " (" ^ reason_str ^ ")"
   | CompileError { package; error } ->
@@ -384,7 +509,11 @@ let display = function
   | CacheMiss { package; _ } ->
       "Cache miss for " ^ Package_name.to_string package
   | CacheStored { package; artifacts; _ } ->
-      "Cached " ^ Package_name.to_string package ^ " (" ^ Int.to_string (List.length artifacts) ^ " artifacts)"
+      "Cached "
+      ^ Package_name.to_string package
+      ^ " ("
+      ^ Int.to_string (List.length artifacts)
+      ^ " artifacts)"
   | WorkerPoolStarted { workers } ->
       "Started worker pool with " ^ Int.to_string workers ^ " workers"
   | WorkerStarted { worker_id } ->
@@ -427,7 +556,11 @@ let display = function
         | `Refresh -> "refresh"
         | `Unlock -> "unlock"
       in
-      "Resolving dependencies (" ^ mode ^ ") for " ^ Int.to_string (List.length packages) ^ " packages"
+      "Resolving dependencies ("
+      ^ mode
+      ^ ") for "
+      ^ Int.to_string (List.length packages)
+      ^ " packages"
   | DependencyResolutionUsingExistingLock { path } ->
       "Using existing lockfile " ^ path
   | DependencyResolutionRefreshingLock { path } ->
@@ -451,7 +584,12 @@ let display = function
       "Updating " ^ registry ^ " index"
   | DependencyUniverseBuilding { packages } ->
       "Building dependency universe for " ^ Int.to_string (List.length packages) ^ " packages"
-  | DependencyUniverseBuilt { runtime_packages; build_packages; dev_packages; duration_ms } ->
+  | DependencyUniverseBuilt {
+    runtime_packages;
+    build_packages;
+    dev_packages;
+    duration_ms
+  } ->
       "Built dependency universe in "
       ^ Int.to_string duration_ms
       ^ "ms (runtime="
@@ -463,24 +601,31 @@ let display = function
       ^ ")"
   | PackageMetadataFetchStarted { registry; package } ->
       "Fetching package metadata for " ^ Package_name.to_string package ^ " from " ^ registry
-  | PackageMetadataFetchFinished { registry; package; version; duration_ms } -> (
+  | PackageMetadataFetchFinished {
+    registry;
+    package;
+    version;
+    duration_ms
+  } -> (
       match version with
-      | Some version -> "Fetched package metadata for "
-      ^ Package_name.to_string package
-      ^ "@"
-      ^ version
-      ^ " from "
-      ^ registry
-      ^ " in "
-      ^ Int.to_string duration_ms
-      ^ "ms"
-      | None -> "Fetched package metadata for "
-      ^ Package_name.to_string package
-      ^ " from "
-      ^ registry
-      ^ " in "
-      ^ Int.to_string duration_ms
-      ^ "ms"
+      | Some version ->
+          "Fetched package metadata for "
+          ^ Package_name.to_string package
+          ^ "@"
+          ^ version
+          ^ " from "
+          ^ registry
+          ^ " in "
+          ^ Int.to_string duration_ms
+          ^ "ms"
+      | None ->
+          "Fetched package metadata for "
+          ^ Package_name.to_string package
+          ^ " from "
+          ^ registry
+          ^ " in "
+          ^ Int.to_string duration_ms
+          ^ "ms"
     )
   | PackageMetadataFetchFailed { registry; package; error } ->
       "Failed to fetch package metadata for "
@@ -494,12 +639,23 @@ let display = function
       | Some ref_ -> "Materializing source dependency " ^ source_locator ^ "#" ^ ref_
       | None -> "Materializing source dependency " ^ source_locator
     )
-  | SourceDependencyMaterializationFinished { source_locator=_; ref_=_; package; version } -> (
+  | SourceDependencyMaterializationFinished {
+    source_locator = _;
+    ref_ = _;
+    package;
+    version
+  } -> (
       match version with
-      | Some version -> "Discovered source dependency " ^ Package_name.to_string package ^ "@" ^ version
+      | Some version ->
+          "Discovered source dependency " ^ Package_name.to_string package ^ "@" ^ version
       | None -> "Discovered source dependency " ^ Package_name.to_string package
     )
-  | DependencyManifestUpdated { path; section; operation; dependency } ->
+  | DependencyManifestUpdated {
+    path;
+    section;
+    operation;
+    dependency
+  } ->
       let verb =
         match operation with
         | `Add -> "Added"
@@ -509,7 +665,9 @@ let display = function
   | PackageVersionLocked { package; version } ->
       "Locked " ^ Package_name.to_string package ^ " (" ^ version ^ ")"
   | PackageVersionsUnchanged { packages } ->
-      "Dependencies are already up to date (" ^ Int.to_string packages ^ " locked packages unchanged)"
+      "Dependencies are already up to date ("
+      ^ Int.to_string packages
+      ^ " locked packages unchanged)"
   | PackageVersionUpdated { package; from_version; to_version } ->
       "Updated " ^ Package_name.to_string package ^ " (" ^ from_version ^ " -> " ^ to_version ^ ")"
   | PackageManifestFetchStarted { package; version } ->
@@ -524,20 +682,27 @@ let display = function
       ^ "ms"
   | PackageManifestFetchFailed { package; version; error } -> (
       match version with
-      | Some version -> "Failed to fetch manifest for "
-      ^ Package_name.to_string package
-      ^ "@"
-      ^ version
-      ^ ": "
-      ^ Pm_error.message error
-      | None -> "Failed to fetch manifest for "
-      ^ Package_name.to_string package
-      ^ ": "
-      ^ Pm_error.message error
+      | Some version ->
+          "Failed to fetch manifest for "
+          ^ Package_name.to_string package
+          ^ "@"
+          ^ version
+          ^ ": "
+          ^ Pm_error.message error
+      | None ->
+          "Failed to fetch manifest for "
+          ^ Package_name.to_string package
+          ^ ": "
+          ^ Pm_error.message error
     )
   | PackageDownloadStarted { package; version; _ } ->
       "Downloading " ^ Package_name.to_string package ^ "@" ^ version
-  | PackageDownloadFinished { package; version; path; duration_ms } ->
+  | PackageDownloadFinished {
+    package;
+    version;
+    path;
+    duration_ms
+  } ->
       "Downloaded "
       ^ Package_name.to_string package
       ^ "@"
@@ -560,7 +725,12 @@ let display = function
       "Package cache hit for " ^ Package_name.to_string package ^ "@" ^ version ^ " at " ^ path
   | PackageMaterializationStarted { package; version; _ } ->
       "Materializing " ^ Package_name.to_string package ^ "@" ^ version
-  | PackageMaterializationFinished { package; version; path; duration_ms } ->
+  | PackageMaterializationFinished {
+    package;
+    version;
+    path;
+    duration_ms
+  } ->
       "Materialized "
       ^ Package_name.to_string package
       ^ "@"
@@ -577,7 +747,12 @@ let display = function
       ^ version
       ^ ": "
       ^ Pm_error.message error
-  | PackageResolvedForBuild { package; version; path; workspace } -> (
+  | PackageResolvedForBuild {
+    package;
+    version;
+    path;
+    workspace
+  } -> (
       match version with
       | Some version ->
           "Resolved " ^ Package_name.to_string package ^ "@" ^ version ^ " for build at " ^ path ^ (
@@ -599,7 +774,11 @@ let display = function
   | BuildGraphCreating ->
       "Creating build graph..."
   | BuildGraphCreated { nodes; duration_ms } ->
-      "Created build graph: " ^ Int.to_string nodes ^ " nodes in " ^ Int.to_string duration_ms ^ "ms"
+      "Created build graph: "
+      ^ Int.to_string nodes
+      ^ " nodes in "
+      ^ Int.to_string duration_ms
+      ^ "ms"
   | ServerShutdown ->
       "Server shutting down"
   | QueuePackage { package; queue_type } ->
@@ -687,16 +866,16 @@ let package_name_json = fun package -> Json.String (Package_name.to_string packa
 let package_names_json = fun packages -> Json.Array (List.map packages ~fn:package_name_json)
 
 let package_name_of_json = function
-  | Json.String package -> Package_name.from_string package |> Result.map_err ~fn:Package_name.error_message
+  | Json.String package ->
+      Package_name.from_string package
+      |> Result.map_err ~fn:Package_name.error_message
   | _ -> Error "invalid package name"
 
 let package_names_of_json = function
   | Json.Array packages ->
       let rec loop acc = function
         | [] -> Ok (List.reverse acc)
-        | json :: rest ->
-            let* package = package_name_of_json json in
-            loop (package :: acc) rest
+        | json :: rest -> let* package = package_name_of_json json in loop (package :: acc) rest
       in
       loop [] packages
   | _ -> Error "invalid package names"
@@ -730,7 +909,12 @@ let manifest_operation_of_json = function
 
 (** Convert kind to JSON *)
 let kind_to_json = function
-  | BuildComplete { duration_ms; results; succeeded; failed } ->
+  | BuildComplete {
+    duration_ms;
+    results;
+    succeeded;
+    failed
+  } ->
       Json.Object [
         ("duration_ms", Json.Int duration_ms);
         ("succeeded", package_names_json succeeded);
@@ -738,8 +922,7 @@ let kind_to_json = function
       ]
   | BuildGraphCreated { nodes; duration_ms } ->
       Json.Object [ ("nodes", Json.Int nodes); ("duration_ms", Json.Int duration_ms); ]
-  | BuildGraphCreating ->
-      Json.Object []
+  | BuildGraphCreating -> Json.Object []
   | BuildStarted { packages; total_modules; workers } ->
       Json.Object [
         ("packages", package_names_json packages);
@@ -750,8 +933,7 @@ let kind_to_json = function
       Json.Object [ ("package", package_name_json package); ("hash", Json.String hash); ]
   | CacheMiss { package; hash } ->
       Json.Object [ ("package", package_name_json package); ("hash", Json.String hash); ]
-  | PackageStarted { package } ->
-      Json.Object [ ("package", package_name_json package); ]
+  | PackageStarted { package } -> Json.Object [ ("package", package_name_json package); ]
   | PackageComplete {
     package;
     success;
@@ -772,10 +954,11 @@ let kind_to_json = function
   | PackageSkipped { package; reason } ->
       let reason_json =
         match reason with
-        | DependenciesFailed deps -> Json.Object [
-          ("type", Json.String "dependencies_failed");
-          ("dependencies", package_names_json deps);
-        ]
+        | DependenciesFailed deps ->
+            Json.Object [
+              ("type", Json.String "dependencies_failed");
+              ("dependencies", package_names_json deps);
+            ]
       in
       Json.Object [ ("package", package_name_json package); ("reason", reason_json); ]
   | CompileError { package; error } ->
@@ -808,46 +991,38 @@ let kind_to_json = function
       Json.Object [ ("package", package_name_json package); ("file", Json.String file); ]
   | CompilingInterface { package; file } ->
       Json.Object [ ("package", package_name_json package); ("file", Json.String file); ]
-  | ComputingHash { package } ->
-      Json.Object [ ("package", package_name_json package); ]
+  | ComputingHash { package } -> Json.Object [ ("package", package_name_json package); ]
   | CopyingFile { source; dest } ->
       Json.Object [ ("source", Json.String source); ("dest", Json.String dest); ]
-  | CreatingDirectory { path } ->
-      Json.Object [ ("path", Json.String path); ]
-  | CycleDetected { packages } ->
-      Json.Object [ ("packages", package_names_json packages); ]
+  | CreatingDirectory { path } -> Json.Object [ ("path", Json.String path); ]
+  | CycleDetected { packages } -> Json.Object [ ("packages", package_names_json packages); ]
   | DependencyMissing { package; missing } ->
       Json.Object [
         ("package", package_name_json package);
         ("missing", package_names_json missing);
       ]
-  | DependencySatisfied { package } ->
-      Json.Object [ ("package", package_name_json package); ]
+  | DependencySatisfied { package } -> Json.Object [ ("package", package_name_json package); ]
   | HashComputed { package; hash } ->
       Json.Object [ ("package", package_name_json package); ("hash", Json.String hash); ]
-  | StoreCreating ->
-      Json.Object []
-  | StoreCreated { duration_ms } ->
-      Json.Object [ ("duration_ms", Json.Int duration_ms); ]
-  | WorkerPoolCreating { workers } ->
-      Json.Object [ ("workers", Json.Int workers); ]
+  | StoreCreating -> Json.Object []
+  | StoreCreated { duration_ms } -> Json.Object [ ("duration_ms", Json.Int duration_ms); ]
+  | WorkerPoolCreating { workers } -> Json.Object [ ("workers", Json.Int workers); ]
   | WorkerPoolCreated { workers; duration_ms } ->
       Json.Object [ ("workers", Json.Int workers); ("duration_ms", Json.Int duration_ms); ]
   | LinkingExecutable { package; output } ->
       Json.Object [ ("package", package_name_json package); ("output", Json.String output); ]
   | LinkingLibrary { package; output } ->
       Json.Object [ ("package", package_name_json package); ("output", Json.String output); ]
-  | McpToolCall { tool; args } ->
-      Json.Object [ ("tool", Json.String tool); ("args", args); ]
+  | McpToolCall { tool; args } -> Json.Object [ ("tool", Json.String tool); ("args", args); ]
   | QueuePackage { package; queue_type } ->
-      Json.Object [ ("package", package_name_json package); (
-          "queue_type",
-          Json.String (
-            match queue_type with
-            | `Ready -> "ready"
-            | `Waiting -> "waiting"
-          )
-        ); ]
+      Json.Object [
+        ("package", package_name_json package);
+        ("queue_type", Json.String (
+          match queue_type with
+          | `Ready -> "ready"
+          | `Waiting -> "waiting"
+        ));
+      ]
   | QueueStats { ready; waiting; busy } ->
       Json.Object [
         ("ready", Json.Int ready);
@@ -857,27 +1032,21 @@ let kind_to_json = function
   | RpcRequestReceived { request_type; args } ->
       Json.Object [ ("request_type", Json.String request_type); ("args", args); ]
   | RpcResponseSent { result } ->
-      Json.Object [ (
-          "success",
-          Json.Bool (
-            match result with
-            | Ok _ -> true
-            | Error _ -> false
-          )
-        ); (
-          "error",
+      Json.Object [
+        ("success", Json.Bool (
           match result with
-          | Ok _ -> Json.Null
-          | Error e -> Json.String e
-        ); ]
+          | Ok _ -> true
+          | Error _ -> false
+        ));
+        ("error", match result with
+        | Ok _ -> Json.Null
+        | Error e -> Json.String e);
+      ]
   | ServerRestarted { packages; toolchain } ->
       Json.Object [ ("packages", Json.Int packages); ("toolchain", Json.String toolchain); ]
-  | ServerScanning { root } ->
-      Json.Object [ ("root", Json.String root); ]
-  | ServerShutdown ->
-      Json.Object []
-  | ServerStarted { pid } ->
-      Json.Object [ ("pid", Json.String pid); ]
+  | ServerScanning { root } -> Json.Object [ ("root", Json.String root); ]
+  | ServerShutdown -> Json.Object []
+  | ServerStarted { pid } -> Json.Object [ ("pid", Json.String pid); ]
   | WorkerAssigned { worker_id; package } ->
       Json.Object [
         ("worker_id", Json.String (Worker_id.to_string worker_id));
@@ -885,24 +1054,19 @@ let kind_to_json = function
       ]
   | WorkerIdle { worker_id } ->
       Json.Object [ ("worker_id", Json.String (Worker_id.to_string worker_id)); ]
-  | WorkerPoolStarted { workers } ->
-      Json.Object [ ("workers", Json.Int workers); ]
+  | WorkerPoolStarted { workers } -> Json.Object [ ("workers", Json.Int workers); ]
   | WorkerStarted { worker_id } ->
       Json.Object [ ("worker_id", Json.String (Worker_id.to_string worker_id)); ]
-  | WorkspaceEmpty ->
-      Json.Object []
-  | WorkspaceScanning ->
-      Json.Object []
+  | WorkspaceEmpty -> Json.Object []
+  | WorkspaceScanning -> Json.Object []
   | WorkspaceScanned { packages; duration_ms } ->
       Json.Object [ ("packages", Json.Int packages); ("duration_ms", Json.Int duration_ms); ]
-  | LockfileReadStarted { path } ->
-      Json.Object [ ("path", Json.String path); ]
+  | LockfileReadStarted { path } -> Json.Object [ ("path", Json.String path); ]
   | LockfileReadFinished { path; duration_ms } ->
       Json.Object [ ("path", Json.String path); ("duration_ms", Json.Int duration_ms); ]
   | LockfileReadFailed { path; error } ->
       Json.Object [ ("path", Json.String path); ("error", Pm_error.to_json error); ]
-  | LockfileWriteStarted { path } ->
-      Json.Object [ ("path", Json.String path); ]
+  | LockfileWriteStarted { path } -> Json.Object [ ("path", Json.String path); ]
   | LockfileWriteFinished { path; duration_ms } ->
       Json.Object [ ("path", Json.String path); ("duration_ms", Json.Int duration_ms); ]
   | LockfileWriteFailed { path; error } ->
@@ -912,25 +1076,25 @@ let kind_to_json = function
         ("packages", package_names_json packages);
         ("mode", json_of_resolution_mode mode);
       ]
-  | DependencyResolutionUsingExistingLock { path } ->
-      Json.Object [ ("path", Json.String path); ]
-  | DependencyResolutionRefreshingLock { path } ->
-      Json.Object [ ("path", Json.String path); ]
-  | DependencyResolutionUnlocking { path } ->
-      Json.Object [ ("path", json_of_string_option path); ]
+  | DependencyResolutionUsingExistingLock { path } -> Json.Object [ ("path", Json.String path); ]
+  | DependencyResolutionRefreshingLock { path } -> Json.Object [ ("path", Json.String path); ]
+  | DependencyResolutionUnlocking { path } -> Json.Object [ ("path", json_of_string_option path); ]
   | DependencyResolutionFinished { duration_ms; resolved_packages; resolved_edges } ->
       Json.Object [
         ("duration_ms", Json.Int duration_ms);
         ("resolved_packages", Json.Int resolved_packages);
         ("resolved_edges", Json.Int resolved_edges);
       ]
-  | DependencyResolutionFailed { error } ->
-      Json.Object [ ("error", Pm_error.to_json error); ]
-  | RegistryIndexUpdating { registry } ->
-      Json.Object [ ("registry", Json.String registry); ]
+  | DependencyResolutionFailed { error } -> Json.Object [ ("error", Pm_error.to_json error); ]
+  | RegistryIndexUpdating { registry } -> Json.Object [ ("registry", Json.String registry); ]
   | DependencyUniverseBuilding { packages } ->
       Json.Object [ ("packages", package_names_json packages); ]
-  | DependencyUniverseBuilt { runtime_packages; build_packages; dev_packages; duration_ms } ->
+  | DependencyUniverseBuilt {
+    runtime_packages;
+    build_packages;
+    dev_packages;
+    duration_ms
+  } ->
       Json.Object [
         ("runtime_packages", Json.Int runtime_packages);
         ("build_packages", Json.Int build_packages);
@@ -939,7 +1103,12 @@ let kind_to_json = function
       ]
   | PackageMetadataFetchStarted { registry; package } ->
       Json.Object [ ("registry", Json.String registry); ("package", package_name_json package); ]
-  | PackageMetadataFetchFinished { registry; package; version; duration_ms } ->
+  | PackageMetadataFetchFinished {
+    registry;
+    package;
+    version;
+    duration_ms
+  } ->
       Json.Object [
         ("registry", Json.String registry);
         ("package", package_name_json package);
@@ -957,14 +1126,24 @@ let kind_to_json = function
         ("source_locator", Json.String source_locator);
         ("ref", json_of_string_option ref_);
       ]
-  | SourceDependencyMaterializationFinished { source_locator; ref_; package; version } ->
+  | SourceDependencyMaterializationFinished {
+    source_locator;
+    ref_;
+    package;
+    version
+  } ->
       Json.Object [
         ("source_locator", Json.String source_locator);
         ("ref", json_of_string_option ref_);
         ("package", package_name_json package);
         ("version", json_of_string_option version);
       ]
-  | DependencyManifestUpdated { path; section; operation; dependency } ->
+  | DependencyManifestUpdated {
+    path;
+    section;
+    operation;
+    dependency
+  } ->
       Json.Object [
         ("path", Json.String path);
         ("section", Json.String section);
@@ -973,8 +1152,7 @@ let kind_to_json = function
       ]
   | PackageVersionLocked { package; version } ->
       Json.Object [ ("package", package_name_json package); ("version", Json.String version); ]
-  | PackageVersionsUnchanged { packages } ->
-      Json.Object [ ("packages", Json.Int packages); ]
+  | PackageVersionsUnchanged { packages } -> Json.Object [ ("packages", Json.Int packages); ]
   | PackageVersionUpdated { package; from_version; to_version } ->
       Json.Object [
         ("package", package_name_json package);
@@ -1001,21 +1179,36 @@ let kind_to_json = function
         ("version", Json.String version);
         ("path", Json.String path);
       ]
-  | PackageDownloadFinished { package; version; path; duration_ms } ->
+  | PackageDownloadFinished {
+    package;
+    version;
+    path;
+    duration_ms
+  } ->
       Json.Object [
         ("package", package_name_json package);
         ("version", Json.String version);
         ("path", Json.String path);
         ("duration_ms", Json.Int duration_ms);
       ]
-  | PackageDownloadFailed { package; version; path; error } ->
+  | PackageDownloadFailed {
+    package;
+    version;
+    path;
+    error
+  } ->
       Json.Object [
         ("package", package_name_json package);
         ("version", Json.String version);
         ("path", Json.String path);
         ("error", Pm_error.to_json error);
       ]
-  | PackageDownloadSkipped { package; version; path; reason } ->
+  | PackageDownloadSkipped {
+    package;
+    version;
+    path;
+    reason
+  } ->
       Json.Object [
         ("package", package_name_json package);
         ("version", Json.String version);
@@ -1034,21 +1227,36 @@ let kind_to_json = function
         ("version", Json.String version);
         ("path", Json.String path);
       ]
-  | PackageMaterializationFinished { package; version; path; duration_ms } ->
+  | PackageMaterializationFinished {
+    package;
+    version;
+    path;
+    duration_ms
+  } ->
       Json.Object [
         ("package", package_name_json package);
         ("version", Json.String version);
         ("path", Json.String path);
         ("duration_ms", Json.Int duration_ms);
       ]
-  | PackageMaterializationFailed { package; version; path; error } ->
+  | PackageMaterializationFailed {
+    package;
+    version;
+    path;
+    error
+  } ->
       Json.Object [
         ("package", package_name_json package);
         ("version", Json.String version);
         ("path", Json.String path);
         ("error", Pm_error.to_json error);
       ]
-  | PackageResolvedForBuild { package; version; path; workspace } ->
+  | PackageResolvedForBuild {
+    package;
+    version;
+    path;
+    workspace
+  } ->
       Json.Object [
         ("package", package_name_json package);
         ("version", json_of_string_option version);
@@ -1061,8 +1269,7 @@ let kind_to_json = function
         ("version", Json.String version);
         ("path", Json.String path);
       ]
-  | WritingFile { path } ->
-      Json.Object [ ("path", Json.String path); ]
+  | WritingFile { path } -> Json.Object [ ("path", Json.String path); ]
 
 (** Convert event to JSON *)
 let to_json = fun event ->
@@ -1071,11 +1278,9 @@ let to_json = fun event ->
   let clean_event =
     match event.kind with
     | CompileError { package; error } ->
-        let clean_error = {
-          error
-          with raw = strip_ansi_codes error.raw;
-          hint = strip_ansi_codes error.hint
-        } in
+        let clean_error =
+          { error with raw = strip_ansi_codes error.raw; hint = strip_ansi_codes error.hint }
+        in
         { event with kind = CompileError { package; error = clean_error } }
     | _ -> event
   in
@@ -1094,7 +1299,10 @@ let kind_from_json = fun json ->
   | Json.Object fields -> (
       match Fields.get "event" fields with
       | Some (Json.String event_name) -> (
-          let data = Fields.get "data" fields |> Option.unwrap_or ~default:(Json.Object []) in
+          let data =
+            Fields.get "data" fields
+            |> Option.unwrap_or ~default:(Json.Object [])
+          in
           match event_name with
           | "riot.build.completed" -> (
               match data with
@@ -1114,7 +1322,14 @@ let kind_from_json = fun json ->
                     | Some json -> package_names_of_json json
                     | None -> Ok []
                   in
-                  Ok (BuildComplete { duration_ms; results = []; succeeded; failed })
+                  Ok (
+                    BuildComplete {
+                      duration_ms;
+                      results = [];
+                      succeeded;
+                      failed;
+                    }
+                  )
               | _ -> Error "Invalid BuildComplete data"
             )
           | "riot.build.started" -> (
@@ -1335,7 +1550,7 @@ let kind_from_json = fun json ->
                   in
                   let span =
                     match Fields.get "span" data_fields with
-                    | Some (Json.Array [Json.Int start;Json.Int end_]) -> (start, end_)
+                    | Some (Json.Array [ Json.Int start; Json.Int end_ ]) -> (start, end_)
                     | _ -> (0, 0)
                   in
                   let message =
@@ -1364,15 +1579,15 @@ let kind_from_json = fun json ->
                       SyntaxError
                     else if String.starts_with ~prefix:"Unbound value " message then
                       UnboundValue {
-                        name = String.sub message ~offset:14 ~len:(String.length message - 14)
+                        name = String.sub message ~offset:14 ~len:(String.length message - 14);
                       }
                     else if String.starts_with ~prefix:"Unbound module " message then
                       UnboundModule {
-                        name = String.sub message ~offset:15 ~len:(String.length message - 15)
+                        name = String.sub message ~offset:15 ~len:(String.length message - 15);
                       }
                     else if String.starts_with ~prefix:"Cannot find file " message then
                       FileNotFound {
-                        filename = String.sub message ~offset:17 ~len:(String.length message - 17)
+                        filename = String.sub message ~offset:17 ~len:(String.length message - 17);
                       }
                     else
                       OtherError { message }
@@ -1452,8 +1667,7 @@ let kind_from_json = fun json ->
                   Ok (LinkingExecutable { package; output })
               | _ -> Error "Invalid LinkingExecutable data"
             )
-          | "riot.workspace.scanning" ->
-              Ok WorkspaceScanning
+          | "riot.workspace.scanning" -> Ok WorkspaceScanning
           | "riot.workspace.scanned" -> (
               match data with
               | Json.Object data_fields ->
@@ -1470,8 +1684,7 @@ let kind_from_json = fun json ->
                   Ok (WorkspaceScanned { packages; duration_ms })
               | _ -> Error "Invalid WorkspaceScanned data"
             )
-          | "riot.build_graph.creating" ->
-              Ok BuildGraphCreating
+          | "riot.build_graph.creating" -> Ok BuildGraphCreating
           | "riot.build_graph.created" -> (
               match data with
               | Json.Object data_fields ->
@@ -1488,8 +1701,7 @@ let kind_from_json = fun json ->
                   Ok (BuildGraphCreated { nodes; duration_ms })
               | _ -> Error "Invalid BuildGraphCreated data"
             )
-          | "riot.store.creating" ->
-              Ok StoreCreating
+          | "riot.store.creating" -> Ok StoreCreating
           | "riot.store.created" -> (
               match data with
               | Json.Object data_fields ->
@@ -1541,10 +1753,8 @@ let kind_from_json = fun json ->
               match data with
               | Json.Object data_fields -> (
                   match (Fields.get "path" data_fields, Fields.get "duration_ms" data_fields) with
-                  | (Some (Json.String path), Some (Json.Int duration_ms)) -> Ok (LockfileReadFinished {
-                    path;
-                    duration_ms
-                  })
+                  | (Some (Json.String path), Some (Json.Int duration_ms)) ->
+                      Ok (LockfileReadFinished { path; duration_ms })
                   | _ -> Error "Invalid LockfileReadFinished data"
                 )
               | _ -> Error "Invalid LockfileReadFinished data"
@@ -1575,10 +1785,8 @@ let kind_from_json = fun json ->
               match data with
               | Json.Object data_fields -> (
                   match (Fields.get "path" data_fields, Fields.get "duration_ms" data_fields) with
-                  | (Some (Json.String path), Some (Json.Int duration_ms)) -> Ok (LockfileWriteFinished {
-                    path;
-                    duration_ms
-                  })
+                  | (Some (Json.String path), Some (Json.Int duration_ms)) ->
+                      Ok (LockfileWriteFinished { path; duration_ms })
                   | _ -> Error "Invalid LockfileWriteFinished data"
                 )
               | _ -> Error "Invalid LockfileWriteFinished data"
@@ -1653,11 +1861,16 @@ let kind_from_json = fun json ->
                     Fields.get "resolved_packages" data_fields,
                     Fields.get "resolved_edges" data_fields
                   ) with
-                  | (Some (Json.Int duration_ms), Some (Json.Int resolved_packages), Some (Json.Int resolved_edges)) -> Ok (DependencyResolutionFinished {
-                    duration_ms;
-                    resolved_packages;
-                    resolved_edges
-                  })
+                  | (
+                    Some (Json.Int duration_ms),
+                    Some (Json.Int resolved_packages),
+                    Some (Json.Int resolved_edges)
+                  ) ->
+                      Ok (DependencyResolutionFinished {
+                        duration_ms;
+                        resolved_packages;
+                        resolved_edges;
+                      })
                   | _ -> Error "Invalid DependencyResolutionFinished data"
                 )
               | _ -> Error "Invalid DependencyResolutionFinished data"
@@ -1704,12 +1917,20 @@ let kind_from_json = fun json ->
                     Fields.get "dev_packages" data_fields,
                     Fields.get "duration_ms" data_fields
                   ) with
-                  | (Some (Json.Int runtime_packages), Some (Json.Int build_packages), Some (Json.Int dev_packages), Some (Json.Int duration_ms)) -> Ok (DependencyUniverseBuilt {
-                    runtime_packages;
-                    build_packages;
-                    dev_packages;
-                    duration_ms
-                  })
+                  | (
+                    Some (Json.Int runtime_packages),
+                    Some (Json.Int build_packages),
+                    Some (Json.Int dev_packages),
+                    Some (Json.Int duration_ms)
+                  ) ->
+                      Ok (
+                        DependencyUniverseBuilt {
+                          runtime_packages;
+                          build_packages;
+                          dev_packages;
+                          duration_ms;
+                        }
+                      )
                   | _ -> Error "Invalid DependencyUniverseBuilt data"
                 )
               | _ -> Error "Invalid DependencyUniverseBuilt data"
@@ -1740,7 +1961,14 @@ let kind_from_json = fun json ->
                         | None -> None
                       in
                       let* package = package_name_of_json package_json in
-                      Ok (PackageMetadataFetchFinished { registry; package; version; duration_ms })
+                      Ok (
+                        PackageMetadataFetchFinished {
+                          registry;
+                          package;
+                          version;
+                          duration_ms;
+                        }
+                      )
                   | _ -> Error "Invalid PackageMetadataFetchFinished data"
                 )
               | _ -> Error "Invalid PackageMetadataFetchFinished data"
@@ -1794,12 +2022,14 @@ let kind_from_json = fun json ->
                         | None -> None
                       in
                       let* package = package_name_of_json package_json in
-                      Ok (SourceDependencyMaterializationFinished {
-                        source_locator;
-                        ref_;
-                        package;
-                        version
-                      })
+                      Ok (
+                        SourceDependencyMaterializationFinished {
+                          source_locator;
+                          ref_;
+                          package;
+                          version;
+                        }
+                      )
                   | _ -> Error "Invalid SourceDependencyMaterializationFinished data"
                 )
               | _ -> Error "Invalid SourceDependencyMaterializationFinished data"
@@ -1813,14 +2043,22 @@ let kind_from_json = fun json ->
                     Fields.get "operation" data_fields,
                     Fields.get "dependency" data_fields
                   ) with
-                  | (Some (Json.String path), Some (Json.String section), Some operation_json, Some (Json.String dependency)) -> (
+                  | (
+                    Some (Json.String path),
+                    Some (Json.String section),
+                    Some operation_json,
+                    Some (Json.String dependency)
+                  ) -> (
                       match manifest_operation_of_json operation_json with
-                      | Some operation -> Ok (DependencyManifestUpdated {
-                        path;
-                        section;
-                        operation;
-                        dependency
-                      })
+                      | Some operation ->
+                          Ok (
+                            DependencyManifestUpdated {
+                              path;
+                              section;
+                              operation;
+                              dependency;
+                            }
+                          )
                       | None -> Error "Invalid DependencyManifestUpdated data"
                     )
                   | _ -> Error "Invalid DependencyManifestUpdated data"
@@ -1855,7 +2093,11 @@ let kind_from_json = fun json ->
                     Fields.get "from_version" data_fields,
                     Fields.get "to_version" data_fields
                   ) with
-                  | (Some package_json, Some (Json.String from_version), Some (Json.String to_version)) ->
+                  | (
+                    Some package_json,
+                    Some (Json.String from_version),
+                    Some (Json.String to_version)
+                  ) ->
                       let* package = package_name_of_json package_json in
                       Ok (PackageVersionUpdated { package; from_version; to_version })
                   | _ -> Error "Invalid PackageVersionUpdated data"
@@ -1931,9 +2173,21 @@ let kind_from_json = fun json ->
                     Fields.get "path" data_fields,
                     Fields.get "duration_ms" data_fields
                   ) with
-                  | (Some package_json, Some (Json.String version), Some (Json.String path), Some (Json.Int duration_ms)) ->
+                  | (
+                    Some package_json,
+                    Some (Json.String version),
+                    Some (Json.String path),
+                    Some (Json.Int duration_ms)
+                  ) ->
                       let* package = package_name_of_json package_json in
-                      Ok (PackageDownloadFinished { package; version; path; duration_ms })
+                      Ok (
+                        PackageDownloadFinished {
+                          package;
+                          version;
+                          path;
+                          duration_ms;
+                        }
+                      )
                   | _ -> Error "Invalid PackageDownloadFinished data"
                 )
               | _ -> Error "Invalid PackageDownloadFinished data"
@@ -1947,10 +2201,23 @@ let kind_from_json = fun json ->
                     Fields.get "path" data_fields,
                     Fields.get "error" data_fields
                   ) with
-                  | (Some package_json, Some (Json.String version), Some (Json.String path), Some error_json) -> (
+                  | (
+                    Some package_json,
+                    Some (Json.String version),
+                    Some (Json.String path),
+                    Some error_json
+                  ) -> (
                       let* package = package_name_of_json package_json in
                       match Pm_error.of_json error_json with
-                      | Ok error -> Ok (PackageDownloadFailed { package; version; path; error })
+                      | Ok error ->
+                          Ok (
+                            PackageDownloadFailed {
+                              package;
+                              version;
+                              path;
+                              error;
+                            }
+                          )
                       | Error err -> Error ("Invalid PackageDownloadFailed data: " ^ err)
                     )
                   | _ -> Error "Invalid PackageDownloadFailed data"
@@ -1966,9 +2233,21 @@ let kind_from_json = fun json ->
                     Fields.get "path" data_fields,
                     Fields.get "reason" data_fields
                   ) with
-                  | (Some package_json, Some (Json.String version), Some (Json.String path), Some (Json.String reason)) ->
+                  | (
+                    Some package_json,
+                    Some (Json.String version),
+                    Some (Json.String path),
+                    Some (Json.String reason)
+                  ) ->
                       let* package = package_name_of_json package_json in
-                      Ok (PackageDownloadSkipped { package; version; path; reason })
+                      Ok (
+                        PackageDownloadSkipped {
+                          package;
+                          version;
+                          path;
+                          reason;
+                        }
+                      )
                   | _ -> Error "Invalid PackageDownloadSkipped data"
                 )
               | _ -> Error "Invalid PackageDownloadSkipped data"
@@ -2012,9 +2291,21 @@ let kind_from_json = fun json ->
                     Fields.get "path" data_fields,
                     Fields.get "duration_ms" data_fields
                   ) with
-                  | (Some package_json, Some (Json.String version), Some (Json.String path), Some (Json.Int duration_ms)) ->
+                  | (
+                    Some package_json,
+                    Some (Json.String version),
+                    Some (Json.String path),
+                    Some (Json.Int duration_ms)
+                  ) ->
                       let* package = package_name_of_json package_json in
-                      Ok (PackageMaterializationFinished { package; version; path; duration_ms })
+                      Ok (
+                        PackageMaterializationFinished {
+                          package;
+                          version;
+                          path;
+                          duration_ms;
+                        }
+                      )
                   | _ -> Error "Invalid PackageMaterializationFinished data"
                 )
               | _ -> Error "Invalid PackageMaterializationFinished data"
@@ -2028,15 +2319,23 @@ let kind_from_json = fun json ->
                     Fields.get "path" data_fields,
                     Fields.get "error" data_fields
                   ) with
-                  | (Some package_json, Some (Json.String version), Some (Json.String path), Some error_json) -> (
+                  | (
+                    Some package_json,
+                    Some (Json.String version),
+                    Some (Json.String path),
+                    Some error_json
+                  ) -> (
                       let* package = package_name_of_json package_json in
                       match Pm_error.of_json error_json with
-                      | Ok error -> Ok (PackageMaterializationFailed {
-                        package;
-                        version;
-                        path;
-                        error
-                      })
+                      | Ok error ->
+                          Ok (
+                            PackageMaterializationFailed {
+                              package;
+                              version;
+                              path;
+                              error;
+                            }
+                          )
                       | Error err -> Error ("Invalid PackageMaterializationFailed data: " ^ err)
                     )
                   | _ -> Error "Invalid PackageMaterializationFailed data"
@@ -2058,7 +2357,14 @@ let kind_from_json = fun json ->
                         | None -> None
                       in
                       let* package = package_name_of_json package_json in
-                      Ok (PackageResolvedForBuild { package; version; path; workspace })
+                      Ok (
+                        PackageResolvedForBuild {
+                          package;
+                          version;
+                          path;
+                          workspace;
+                        }
+                      )
                   | _ -> Error "Invalid PackageResolvedForBuild data"
                 )
               | _ -> Error "Invalid PackageResolvedForBuild data"
@@ -2078,8 +2384,7 @@ let kind_from_json = fun json ->
                 )
               | _ -> Error "Invalid PackageDownloadQueued data"
             )
-          | _ ->
-              Error ("Unknown event type: " ^ event_name)
+          | _ -> Error ("Unknown event type: " ^ event_name)
         )
       | _ -> Error "Missing event field"
     )
@@ -2111,21 +2416,32 @@ let from_json = fun json ->
         | _ -> Info
       in
       match kind_from_json json with
-      | Ok kind -> Ok { timestamp; session_id; level; kind }
+      | Ok kind ->
+          Ok {
+            timestamp;
+            session_id;
+            level;
+            kind;
+          }
       | Error e -> Error e
     )
   | _ -> Error "Invalid JSON format for Event"
 
 module Tests = struct
   let package_name = fun name ->
-    Result.expect (Package_name.from_string name) ~msg:("package name " ^ name)
+    Result.expect
+      (Package_name.from_string name)
+      ~msg:("package name " ^ name)
 
   let test_lockfile_event_json_roundtrip (): (unit, string) result =
-    let event = create
-      ~session_id:(Session_id.of_string "test-session")
-      ~level:Info (LockfileReadFinished { path = "/tmp/workspace/riot.lock"; duration_ms = 12 }) in
+    let event =
+      create
+        ~session_id:(Session_id.of_string "test-session")
+        ~level:Info
+        (LockfileReadFinished { path = "/tmp/workspace/riot.lock"; duration_ms = 12 })
+    in
     match from_json (to_json event) with
-    | Ok { kind=LockfileReadFinished { path; duration_ms }; _ } ->
+    | Ok { kind = LockfileReadFinished { path; duration_ms }; _ } ->
         if String.equal path "/tmp/workspace/riot.lock" && duration_ms = 12 then
           Ok ()
         else
@@ -2134,14 +2450,19 @@ module Tests = struct
     | Error err -> Error err [@test]
 
   let test_resolution_event_json_roundtrip (): (unit, string) result =
-    let event = create
-      ~session_id:(Session_id.of_string "test-session")
-      ~level:Info (DependencyResolutionStarted {
-        packages = [ package_name "app"; package_name "std" ];
-        mode = `Unlock
-      }) in
+    let event =
+      create
+        ~session_id:(Session_id.of_string "test-session")
+        ~level:Info
+        (
+          DependencyResolutionStarted {
+            packages = [ package_name "app"; package_name "std" ];
+            mode = `Unlock;
+          }
+        )
+    in
     match from_json (to_json event) with
-    | Ok { kind=DependencyResolutionStarted { packages; mode=`Unlock }; _ } ->
+    | Ok { kind = DependencyResolutionStarted { packages; mode = `Unlock }; _ } ->
         if packages = [ package_name "app"; package_name "std" ] then
           Ok ()
         else
@@ -2150,16 +2471,26 @@ module Tests = struct
     | Error err -> Error err [@test]
 
   let test_package_resolved_event_json_roundtrip (): (unit, string) result =
-    let event = create
-      ~session_id:(Session_id.of_string "test-session")
-      ~level:Info (PackageResolvedForBuild {
-        package = package_name "std";
-        version = Some "0.1.0";
-        path = "/Users/example/.riot/registry/pkgs.ml/src/std/0.1.0";
-        workspace = false
-      }) in
+    let event =
+      create
+        ~session_id:(Session_id.of_string "test-session")
+        ~level:Info
+        (
+          PackageResolvedForBuild {
+            package = package_name "std";
+            version = Some "0.1.0";
+            path = "/Users/example/.riot/registry/pkgs.ml/src/std/0.1.0";
+            workspace = false;
+          }
+        )
+    in
     match from_json (to_json event) with
-    | Ok { kind=PackageResolvedForBuild { package; version; path; workspace }; _ } ->
+    | Ok { kind = PackageResolvedForBuild {
+      package;
+      version;
+      path;
+      workspace
+    }; _ } ->
         if
           Package_name.equal package (package_name "std")
           && version = Some "0.1.0"
@@ -2173,16 +2504,26 @@ module Tests = struct
     | Error err -> Error err [@test]
 
   let test_manifest_update_event_json_roundtrip (): (unit, string) result =
-    let event = create
-      ~session_id:(Session_id.of_string "test-session")
-      ~level:Info (DependencyManifestUpdated {
-        path = "/tmp/workspace/riot.toml";
-        section = "dependencies";
-        operation = `Add;
-        dependency = "std"
-      }) in
+    let event =
+      create
+        ~session_id:(Session_id.of_string "test-session")
+        ~level:Info
+        (
+          DependencyManifestUpdated {
+            path = "/tmp/workspace/riot.toml";
+            section = "dependencies";
+            operation = `Add;
+            dependency = "std";
+          }
+        )
+    in
     match from_json (to_json event) with
-    | Ok { kind=DependencyManifestUpdated { path; section; operation=`Add; dependency }; _ } ->
+    | Ok { kind = DependencyManifestUpdated {
+      path;
+      section;
+      operation = `Add;
+      dependency
+    }; _ } ->
         if
           String.equal path "/tmp/workspace/riot.toml"
           && String.equal section "dependencies"
@@ -2195,11 +2536,14 @@ module Tests = struct
     | Error err -> Error err [@test]
 
   let test_package_locked_event_json_roundtrip (): (unit, string) result =
-    let event = create
-      ~session_id:(Session_id.of_string "test-session")
-      ~level:Info (PackageVersionLocked { package = package_name "std"; version = "0.2.0" }) in
+    let event =
+      create
+        ~session_id:(Session_id.of_string "test-session")
+        ~level:Info
+        (PackageVersionLocked { package = package_name "std"; version = "0.2.0" })
+    in
     match from_json (to_json event) with
-    | Ok { kind=PackageVersionLocked { package; version }; _ } ->
+    | Ok { kind = PackageVersionLocked { package; version }; _ } ->
         if Package_name.equal package (package_name "std") && String.equal version "0.2.0" then
           Ok ()
         else
@@ -2208,11 +2552,14 @@ module Tests = struct
     | Error err -> Error err [@test]
 
   let test_package_versions_unchanged_event_json_roundtrip (): (unit, string) result =
-    let event = create
-      ~session_id:(Session_id.of_string "test-session")
-      ~level:Info (PackageVersionsUnchanged { packages = 3 }) in
+    let event =
+      create
+        ~session_id:(Session_id.of_string "test-session")
+        ~level:Info
+        (PackageVersionsUnchanged { packages = 3 })
+    in
     match from_json (to_json event) with
-    | Ok { kind=PackageVersionsUnchanged { packages }; _ } ->
+    | Ok { kind = PackageVersionsUnchanged { packages }; _ } ->
         if Int.equal packages 3 then
           Ok ()
         else

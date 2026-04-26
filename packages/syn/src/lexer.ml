@@ -245,11 +245,10 @@ let rec lex_block_comment = fun cursor depth content_start token_start ->
   | Some '{' ->
       if try_skip_quoted_string cursor then
         lex_block_comment cursor depth content_start token_start
-      else
-        (
-          Cursor.advance cursor;
-          lex_block_comment cursor depth content_start token_start
-        )
+      else (
+        Cursor.advance cursor;
+        lex_block_comment cursor depth content_start token_start
+      )
   | Some _ ->
       Cursor.advance cursor;
       lex_block_comment cursor depth content_start token_start
@@ -318,11 +317,10 @@ let lex_comment = fun cursor token_start ->
     | Some '{' ->
         if try_skip_quoted_string cursor then
           lex_content depth
-        else
-          (
-            Cursor.advance cursor;
-            lex_content depth
-          )
+        else (
+          Cursor.advance cursor;
+          lex_content depth
+        )
     | Some _ ->
         Cursor.advance cursor;
         lex_content depth
@@ -400,11 +398,9 @@ let lex_number = fun cursor token_start ->
   in
   let exponent_follows () =
     match Cursor.peek cursor with
-    | Some ('e'
-    | 'E') -> (
+    | Some ('e' | 'E') -> (
         match Cursor.peek_n cursor 1 with
-        | Some ('+'
-        | '-') -> (
+        | Some ('+' | '-') -> (
             match Cursor.peek_n cursor 2 with
             | Some c when is_digit c -> true
             | _ -> false
@@ -420,8 +416,7 @@ let lex_number = fun cursor token_start ->
       let _ = Cursor.advance cursor in
       let _ =
         match Cursor.peek cursor with
-        | Some ('+'
-        | '-') -> Cursor.advance cursor
+        | Some ('+' | '-') -> Cursor.advance cursor
         | _ -> ()
       in
       let _ = Cursor.take_while cursor is_digit_or_underscore in
@@ -435,8 +430,7 @@ let lex_number = fun cursor token_start ->
   (* Check if this is a hex/octal/binary literal: 0x, 0o, 0b *)
   (* At this point, cursor is AT the first digit (not consumed yet) *)
   match (Cursor.peek cursor, Cursor.peek_n cursor 1) with
-  | (Some '0', Some ('x'
-  | 'X')) ->
+  | (Some '0', Some ('x' | 'X')) ->
       Cursor.advance cursor;
       (* consume '0' *)
       Cursor.advance cursor;
@@ -451,8 +445,7 @@ let lex_number = fun cursor token_start ->
         | None -> Token.Literal (Int 0)
       in
       make_token ~kind ~span:(Ceibo.Span.make ~start:token_start ~end_:(Cursor.position cursor))
-  | (Some '0', Some ('o'
-  | 'O')) ->
+  | (Some '0', Some ('o' | 'O')) ->
       Cursor.advance cursor;
       (* consume '0' *)
       Cursor.advance cursor;
@@ -467,8 +460,7 @@ let lex_number = fun cursor token_start ->
         | None -> Token.Literal (Int 0)
       in
       make_token ~kind ~span:(Ceibo.Span.make ~start:token_start ~end_:(Cursor.position cursor))
-  | (Some '0', Some ('b'
-  | 'B')) ->
+  | (Some '0', Some ('b' | 'B')) ->
       Cursor.advance cursor;
       (* consume '0' *)
       Cursor.advance cursor;
@@ -489,8 +481,7 @@ let lex_number = fun cursor token_start ->
       let num_str = remove_underscores num_str_raw in
       let kind =
         match Cursor.peek cursor with
-        | Some ('e'
-        | 'E') when exponent_follows () -> (
+        | Some ('e' | 'E') when exponent_follows () -> (
             let exponent = Option.unwrap_or (consume_float_exponent ()) ~default:"" in
             let _ = consume_numeric_suffix () in
             let float_str = num_str ^ exponent in

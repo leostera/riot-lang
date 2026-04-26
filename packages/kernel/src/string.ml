@@ -58,8 +58,7 @@ let concat = fun separator values ->
     | value :: rest -> total_length (acc + length value + length separator) rest
   in
   let rec fill out offset = function
-    | [] ->
-        out
+    | [] -> out
     | [ value ] ->
         let value_length = length value in
         Caml_runtime.string_blit value 0 out offset value_length;
@@ -72,10 +71,8 @@ let concat = fun separator values ->
         fill out (offset + value_length + separator_length) rest
   in
   match values with
-  | [] ->
-      empty
-  | [ value ] ->
-      value
+  | [] -> empty
+  | [ value ] -> value
   | values ->
       let out = Caml_runtime.bytes_create (total_length 0 values) in
       Caml_runtime.bytes_unsafe_to_string (fill out 0 values)
@@ -253,7 +250,9 @@ let uppercase_ascii_char = fun value ->
     value
 
 let lowercase_ascii = fun value ->
-  init ~len:(length value) ~fn:(fun index -> lowercase_ascii_char (unsafe_get value index))
+  init
+    ~len:(length value)
+    ~fn:(fun index -> lowercase_ascii_char (unsafe_get value index))
 
 let capitalize_ascii = fun value ->
   if is_empty value then
@@ -267,7 +266,8 @@ let capitalize_ascii = fun value ->
       else
         first
     in
-    init ~len:(length value)
+    init
+      ~len:(length value)
       ~fn:(fun index ->
         if index = 0 then
           first
@@ -275,7 +275,9 @@ let capitalize_ascii = fun value ->
           unsafe_get value index)
 
 let uppercase_ascii = fun value ->
-  init ~len:(length value) ~fn:(fun index -> uppercase_ascii_char (unsafe_get value index))
+  init
+    ~len:(length value)
+    ~fn:(fun index -> uppercase_ascii_char (unsafe_get value index))
 
 let map = fun ~fn value -> init ~len:(length value) ~fn:(fun index -> fn (unsafe_get value index))
 
@@ -364,20 +366,13 @@ let escaped =
         let char = unsafe_get value index in
         let next_offset =
           match char with
-          | '"' ->
-              push_escape offset '"'
-          | '\\' ->
-              push_escape offset '\\'
-          | '\n' ->
-              push_escape offset 'n'
-          | '\t' ->
-              push_escape offset 't'
-          | '\r' ->
-              push_escape offset 'r'
-          | '\008' ->
-              push_escape offset 'b'
-          | '\012' ->
-              push_escape offset 'f'
+          | '"' -> push_escape offset '"'
+          | '\\' -> push_escape offset '\\'
+          | '\n' -> push_escape offset 'n'
+          | '\t' -> push_escape offset 't'
+          | '\r' -> push_escape offset 'r'
+          | '\008' -> push_escape offset 'b'
+          | '\012' -> push_escape offset 'f'
           | _ ->
               let code = Char.to_int char in
               if code < 32 || code > 126 then
@@ -399,21 +394,25 @@ let get_utf_8_rune =
   let not_in_x80_to_x8F value = value lsr 4 != 0x8 in
   let utf_8_rune_2 b0 b1 = ((b0 land 0x1f) lsl 6) lor (b1 land 0x3f) in
   let utf_8_rune_3 b0 b1 b2 = ((b0 land 0x0f) lsl 12) lor ((b1 land 0x3f) lsl 6) lor (b2 land 0x3f) in
-  let utf_8_rune_4 b0 b1 b2 b3 = ((b0 land 0x07) lsl 18)
-  lor ((b1 land 0x3f) lsl 12)
-  lor ((b2 land 0x3f) lsl 6)
-  lor (b3 land 0x3f) in
+  let utf_8_rune_4 b0 b1 b2 b3 =
+    ((b0 land 0x07) lsl 18) lor ((b1 land 0x3f) lsl 12) lor ((b2 land 0x3f) lsl 6) lor (b3 land 0x3f)
+  in
   fun source ~at:index ->
     if index < 0 || index >= length source then
       None
     else
-      let b0 = unsafe_get source index |> Char.to_int in
+      let b0 =
+        unsafe_get source index
+        |> Char.to_int
+      in
       let max_index = length source - 1 in
-      let get_byte byte_index = unsafe_get source byte_index |> Char.to_int in
+      let get_byte byte_index =
+        unsafe_get source byte_index
+        |> Char.to_int
+      in
       Some (
         match Char.from_int_unchecked b0 with
-        | '\x00' .. '\x7F' ->
-            Unicode.Rune.utf_decode 1 (Unicode.Rune.from_int_unchecked b0)
+        | '\x00' .. '\x7F' -> Unicode.Rune.utf_decode 1 (Unicode.Rune.from_int_unchecked b0)
         | '\xC2' .. '\xDF' ->
             let index = index + 1 in
             if index > max_index then
@@ -569,8 +568,7 @@ let get_utf_8_rune =
                         Unicode.Rune.utf_decode
                           4
                           (Unicode.Rune.from_int_unchecked (utf_8_rune_4 b0 b1 b2 b3))
-        | _ ->
-            Unicode.Rune.utf_decode_invalid 1
+        | _ -> Unicode.Rune.utf_decode_invalid 1
       )
 
 let from_bytes = Caml_runtime.bytes_to_string

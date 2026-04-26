@@ -17,11 +17,10 @@ let make_overlap_probe = fun counter name ->
           Ok ()
         else if Time.Duration.to_millis (Time.Instant.elapsed started) >= 250 then
           Error "expected tests to overlap under concurrency"
-        else
-          (
-            sleep (Time.Duration.from_millis 5);
-            wait_for_peer ()
-          )
+        else (
+          sleep (Time.Duration.from_millis 5);
+          wait_for_peer ()
+        )
       in
       wait_for_peer ())
 
@@ -34,12 +33,10 @@ let make_linear_probe = fun counter name ->
     (fun _ctx ->
       let previous = Sync.Atomic.fetch_and_add counter 1 in
       let result =
-        if previous = 0 then
-          (
-            sleep (Time.Duration.from_millis 20);
-            Ok ()
-          )
-        else
+        if previous = 0 then (
+          sleep (Time.Duration.from_millis 20);
+          Ok ()
+        ) else
           Error "expected linear suite to run one test at a time"
       in
       let _ = Sync.Atomic.fetch_and_add counter (-1) in

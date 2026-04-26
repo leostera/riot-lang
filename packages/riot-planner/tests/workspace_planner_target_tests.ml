@@ -1,12 +1,14 @@
 open Std
 open Riot_model
+
 module Test = Std.Test
 module Workspace_planner = Riot_planner.Workspace_planner
 module Package = Package
 module Workspace = Workspace
 
 let package_name = fun value ->
-  Package_name.from_string value |> Result.expect ~msg:("expected valid package name: " ^ value)
+  Package_name.from_string value
+  |> Result.expect ~msg:("expected valid package name: " ^ value)
 
 let dependency = fun name ->
   Package.{
@@ -34,7 +36,10 @@ let make_package = fun ?(dependencies = []) ?(dev_dependencies = []) ?(build_dep
     ()
 
 let make_workspace = fun packages ->
-  Workspace.make_realized ~root:(Path.v "/tmp/workspace_planner_target_tests") ~packages ()
+  Workspace.make_realized
+    ~root:(Path.v "/tmp/workspace_planner_target_tests")
+    ~packages
+    ()
 
 let plan_workspace = fun workspace target scope ->
   Workspace_planner.plan_workspace
@@ -45,7 +50,8 @@ let plan_workspace = fun workspace target scope ->
     ~dev_artifacts:{ tests = true; examples = true; benches = true }
 
 let package_names = fun plan ->
-  Workspace_planner.packages_in_plan plan |> List.map ~fn:(fun (pkg: Package.t) -> pkg.name)
+  Workspace_planner.packages_in_plan plan
+  |> List.map ~fn:(fun (pkg: Package.t) -> pkg.name)
 
 let package_keys = fun plan ->
   Riot_planner.Package_graph.topological_sort plan.Workspace_planner.package_graph
@@ -53,26 +59,30 @@ let package_keys = fun plan ->
   |> List.map ~fn:Riot_model.Package.key_to_string
 
 let plan_all_runtime_returns_workspace_like_order = fun _ctx ->
-  let workspace = make_workspace
-    [
-      make_package "std";
-      make_package ~dependencies:[ "std" ] "kernel";
-      make_package ~dependencies:[ "std"; "kernel" ] "actors";
-      make_package ~dependencies:[ "std"; "actors" ] "riot-model";
-      make_package ~dependencies:[ "std"; "riot-model" ] "riot-planner";
-      make_package ~dependencies:[ "std"; "riot-model"; "riot-planner" ] "riot-store";
-      make_package ~dependencies:[ "std"; "riot-model"; "riot-planner"; "riot-store"; ] "riot-build";
-    ] in
+  let workspace =
+    make_workspace
+      [
+        make_package "std";
+        make_package ~dependencies:[ "std" ] "kernel";
+        make_package ~dependencies:[ "std"; "kernel" ] "actors";
+        make_package ~dependencies:[ "std"; "actors" ] "riot-model";
+        make_package ~dependencies:[ "std"; "riot-model" ] "riot-planner";
+        make_package ~dependencies:[ "std"; "riot-model"; "riot-planner" ] "riot-store";
+        make_package
+          ~dependencies:[ "std"; "riot-model"; "riot-planner"; "riot-store"; ]
+          "riot-build";
+      ]
+  in
   match plan_workspace workspace All Runtime with
   | Error _ -> Error "expected successful workspace plan"
   | Ok plan ->
       let names = package_names plan in
       let position name =
         let name = package_name name in
-        List.enumerate names |> List.find
-          ~fn:(fun (_, current) ->
-            Package_name.equal name current) |> Option.map ~fn:(fun (index, _) -> index) |> Option.expect
-          ~msg:("missing package in plan: " ^ Package_name.to_string name)
+        List.enumerate names
+        |> List.find ~fn:(fun (_, current) -> Package_name.equal name current)
+        |> Option.map ~fn:(fun (index, _) -> index)
+        |> Option.expect ~msg:("missing package in plan: " ^ Package_name.to_string name)
       in
       Test.assert_true (position "std" < position "kernel");
       Test.assert_true (position "kernel" < position "actors");
@@ -83,38 +93,48 @@ let plan_all_runtime_returns_workspace_like_order = fun _ctx ->
       Ok ()
 
 let plan_single_package_includes_only_transitive_closure = fun _ctx ->
-  let workspace = make_workspace
-    [
-      make_package "std";
-      make_package ~dependencies:[ "std" ] "kernel";
-      make_package ~dependencies:[ "kernel" ] "a";
-      make_package ~dependencies:[ "a" ] "app";
-      make_package ~dependencies:[ "std" ] "unrelated";
-    ] in
+  let workspace =
+    make_workspace
+      [
+        make_package "std";
+        make_package ~dependencies:[ "std" ] "kernel";
+        make_package ~dependencies:[ "kernel" ] "a";
+        make_package ~dependencies:[ "a" ] "app";
+        make_package ~dependencies:[ "std" ] "unrelated";
+      ]
+  in
   match plan_workspace workspace (Package (package_name "app")) Runtime with
   | Error _ -> Error "expected successful package-target plan"
   | Ok plan ->
-      let names = package_names plan |> List.unique ~compare:Package_name.compare in
+      let names =
+        package_names plan
+        |> List.unique ~compare:Package_name.compare
+      in
       Test.assert_equal
         ~expected:(List.map [ "a"; "app"; "kernel"; "std"; ] ~fn:package_name)
         ~actual:names;
       Ok ()
 
 let plan_multiple_packages_includes_union_of_dependencies = fun _ctx ->
-  let workspace = make_workspace
-    [
-      make_package "std";
-      make_package ~dependencies:[ "std" ] "kernel";
-      make_package ~dependencies:[ "kernel" ] "a";
-      make_package ~dependencies:[ "std" ] "b";
-      make_package ~dependencies:[ "a" ] "app";
-      make_package ~dependencies:[ "b" ] "tool";
-      make_package ~dependencies:[ "std" ] "unrelated";
-    ] in
+  let workspace =
+    make_workspace
+      [
+        make_package "std";
+        make_package ~dependencies:[ "std" ] "kernel";
+        make_package ~dependencies:[ "kernel" ] "a";
+        make_package ~dependencies:[ "std" ] "b";
+        make_package ~dependencies:[ "a" ] "app";
+        make_package ~dependencies:[ "b" ] "tool";
+        make_package ~dependencies:[ "std" ] "unrelated";
+      ]
+  in
   match plan_workspace workspace (Packages (List.map [ "app"; "tool" ] ~fn:package_name)) Runtime with
   | Error _ -> Error "expected successful multi-package plan"
   | Ok plan ->
-      let names = package_names plan |> List.unique ~compare:Package_name.compare in
+      let names =
+        package_names plan
+        |> List.unique ~compare:Package_name.compare
+      in
       Test.assert_equal
         ~expected:(List.map [ "a"; "app"; "b"; "kernel"; "std"; "tool"; ] ~fn:package_name)
         ~actual:names;
@@ -123,16 +143,14 @@ let plan_multiple_packages_includes_union_of_dependencies = fun _ctx ->
 let plan_unknown_package_reports_available_packages = fun _ctx ->
   let workspace = make_workspace [ make_package "std"; make_package ~dependencies:[ "std" ] "app" ] in
   match plan_workspace workspace (Package (package_name "missing")) Runtime with
-  | Ok _ ->
-      Error "expected PackageNotFound"
+  | Ok _ -> Error "expected PackageNotFound"
   | Error (PackageNotFound { name; available }) ->
       Test.assert_equal ~expected:(package_name "missing") ~actual:name;
       Test.assert_equal
         ~expected:(List.map [ "app"; "std" ] ~fn:package_name)
         ~actual:(List.sort available ~compare:Package_name.compare);
       Ok ()
-  | Error _ ->
-      Error "expected PackageNotFound"
+  | Error _ -> Error "expected PackageNotFound"
 
 let plan_multiple_unknown_packages_reports_all_missing_names = fun _ctx ->
   let workspace = make_workspace [ make_package "std"; make_package ~dependencies:[ "std" ] "app" ] in
@@ -140,22 +158,21 @@ let plan_multiple_unknown_packages_reports_all_missing_names = fun _ctx ->
     workspace
     (Packages (List.map [ "missing-a"; "app"; "missing-b" ] ~fn:package_name))
     Runtime with
-  | Ok _ ->
-      Error "expected PackagesNotFound"
+  | Ok _ -> Error "expected PackagesNotFound"
   | Error (PackagesNotFound { names; available }) ->
-      Test.assert_equal ~expected:(List.map [ "missing-a"; "missing-b" ] ~fn:package_name) ~actual:names;
+      Test.assert_equal
+        ~expected:(List.map [ "missing-a"; "missing-b" ] ~fn:package_name)
+        ~actual:names;
       Test.assert_equal
         ~expected:(List.map [ "app"; "std" ] ~fn:package_name)
         ~actual:(List.sort available ~compare:Package_name.compare);
       Ok ()
-  | Error _ ->
-      Error "expected PackagesNotFound"
+  | Error _ -> Error "expected PackagesNotFound"
 
 let plan_reports_missing_dependencies_before_sorting = fun _ctx ->
   let workspace = make_workspace [ make_package ~dependencies:[ "missing-lib" ] "app" ] in
   match plan_workspace workspace All Runtime with
-  | Ok _ ->
-      Error "expected MissingDependencies"
+  | Ok _ -> Error "expected MissingDependencies"
   | Error (MissingDependencies { missing }) ->
       let entries =
         List.map
@@ -165,23 +182,23 @@ let plan_reports_missing_dependencies_before_sorting = fun _ctx ->
       in
       Test.assert_equal ~expected:[ "app->missing-lib" ] ~actual:entries;
       Ok ()
-  | Error _ ->
-      Error "expected MissingDependencies"
+  | Error _ -> Error "expected MissingDependencies"
 
 let plan_runtime_target_does_not_pull_build_dependency_runtime_cycle = fun _ctx ->
-  let workspace = make_workspace
-    [
-      make_package ~dependencies:[ "core" ] "app";
-      make_package ~build_dependencies:[ "builder" ] "core";
-      make_package ~dependencies:[ "syntax" ] "builder";
-      make_package ~dependencies:[ "core" ] "syntax";
-    ] in
+  let workspace =
+    make_workspace
+      [
+        make_package ~dependencies:[ "core" ] "app";
+        make_package ~build_dependencies:[ "builder" ] "core";
+        make_package ~dependencies:[ "syntax" ] "builder";
+        make_package ~dependencies:[ "core" ] "syntax";
+      ]
+  in
   match plan_workspace workspace (Package (package_name "app")) Runtime with
   | Error (CycleDetected { cycle }) ->
       Error ("expected runtime target planning to avoid build-dependency cycle, got cycle: "
       ^ String.concat " -> " cycle)
-  | Error _ ->
-      Error "expected successful package-target plan"
+  | Error _ -> Error "expected successful package-target plan"
   | Ok plan ->
       Test.assert_equal
         ~expected:[ "core:build"; "core:runtime"; "app:runtime" ]
@@ -189,48 +206,71 @@ let plan_runtime_target_does_not_pull_build_dependency_runtime_cycle = fun _ctx 
       Ok ()
 
 let plan_targeted_runtime_ignores_unrelated_missing_dependencies = fun _ctx ->
-  let workspace = make_workspace
-    [
-      make_package "std";
-      make_package ~dependencies:[ "std" ] "app";
-      make_package ~dependencies:[ "missing-lib" ] "unrelated";
-    ] in
+  let workspace =
+    make_workspace
+      [
+        make_package "std";
+        make_package ~dependencies:[ "std" ] "app";
+        make_package ~dependencies:[ "missing-lib" ] "unrelated";
+      ]
+  in
   match plan_workspace workspace (Package (package_name "app")) Runtime with
   | Error err ->
       Error (
         "expected targeted runtime plan to ignore unrelated missing dependencies, got " ^ (
           match err with
           | PackageNotFound { name; _ } -> "PackageNotFound(" ^ Package_name.to_string name ^ ")"
-          | PackagesNotFound { names; _ } -> "PackagesNotFound("
-          ^ String.concat "," (List.map names ~fn:Package_name.to_string)
-          ^ ")"
+          | PackagesNotFound { names; _ } ->
+              "PackagesNotFound("
+              ^ String.concat "," (List.map names ~fn:Package_name.to_string)
+              ^ ")"
           | CycleDetected { cycle } -> "CycleDetected(" ^ String.concat "->" cycle ^ ")"
-          | MissingDependencies { missing } -> "MissingDependencies("
-          ^ String.concat
-            ","
-            (List.map
-              missing
-              ~fn:(fun (item: Riot_planner.Package_graph.missing_dependency) ->
-                item.package ^ "->" ^ item.dependency))
-          ^ ")"
+          | MissingDependencies { missing } ->
+              "MissingDependencies("
+              ^ String.concat
+                ","
+                (List.map
+                  missing
+                  ~fn:(fun (item: Riot_planner.Package_graph.missing_dependency) ->
+                    item.package ^ "->" ^ item.dependency))
+              ^ ")"
           | PackageLoadFailed _ -> "PackageLoadFailed"
         )
       )
   | Ok plan ->
-      let names = package_names plan |> List.unique ~compare:Package_name.compare in
+      let names =
+        package_names plan
+        |> List.unique ~compare:Package_name.compare
+      in
       Test.assert_equal ~expected:(List.map [ "app"; "std" ] ~fn:package_name) ~actual:names;
       Ok ()
 
 let tests =
   Test.[
-    case "plan all runtime returns workspace-like order" plan_all_runtime_returns_workspace_like_order;
-    case "plan single package includes only transitive closure" plan_single_package_includes_only_transitive_closure;
-    case "plan multiple packages includes union of dependencies" plan_multiple_packages_includes_union_of_dependencies;
-    case "plan unknown package reports available packages" plan_unknown_package_reports_available_packages;
-    case "plan multiple unknown packages report all missing names" plan_multiple_unknown_packages_reports_all_missing_names;
-    case "plan reports missing dependencies before sorting" plan_reports_missing_dependencies_before_sorting;
-    case "runtime target does not pull build-dependency runtime cycle" plan_runtime_target_does_not_pull_build_dependency_runtime_cycle;
-    case "targeted runtime ignores unrelated missing dependencies" plan_targeted_runtime_ignores_unrelated_missing_dependencies;
+    case
+      "plan all runtime returns workspace-like order"
+      plan_all_runtime_returns_workspace_like_order;
+    case
+      "plan single package includes only transitive closure"
+      plan_single_package_includes_only_transitive_closure;
+    case
+      "plan multiple packages includes union of dependencies"
+      plan_multiple_packages_includes_union_of_dependencies;
+    case
+      "plan unknown package reports available packages"
+      plan_unknown_package_reports_available_packages;
+    case
+      "plan multiple unknown packages report all missing names"
+      plan_multiple_unknown_packages_reports_all_missing_names;
+    case
+      "plan reports missing dependencies before sorting"
+      plan_reports_missing_dependencies_before_sorting;
+    case
+      "runtime target does not pull build-dependency runtime cycle"
+      plan_runtime_target_does_not_pull_build_dependency_runtime_cycle;
+    case
+      "targeted runtime ignores unrelated missing dependencies"
+      plan_targeted_runtime_ignores_unrelated_missing_dependencies;
   ]
 
 let name = "riot-planner:workspace-planner-targets"

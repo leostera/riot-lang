@@ -107,21 +107,17 @@ let decode_bytes = fun str ->
       )
     else
       let c = String.get_unchecked str ~at:!cursor in
-      if c = 'z' then
-        (
-          Buffer.add_char result '\x00';
-          Buffer.add_char result '\x00';
-          Buffer.add_char result '\x00';
-          Buffer.add_char result '\x00';
-          Cell.incr cursor;
-          decode_group ()
-        )
-      else if c = ' ' || c = '\n' || c = '\r' || c = '\t' then
-        (
-          Cell.incr cursor;
-          decode_group ()
-        )
-      else
+      if c = 'z' then (
+        Buffer.add_char result '\x00';
+        Buffer.add_char result '\x00';
+        Buffer.add_char result '\x00';
+        Buffer.add_char result '\x00';
+        Cell.incr cursor;
+        decode_group ()
+      ) else if c = ' ' || c = '\n' || c = '\r' || c = '\t' then (
+        Cell.incr cursor;
+        decode_group ()
+      ) else
         let chars = cell [] in
         let count = cell 0 in
         while !cursor < len && !count < 5 do

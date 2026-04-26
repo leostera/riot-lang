@@ -1946,11 +1946,10 @@ let add_local_rigid_equation = fun (state: state) rigid_id replacement ->
       variable_id = rigid_id;
       in_type = TypePrinter.type_to_string replacement;
     })
-  else
-    (
-      State.add_rigid_equation state rigid_id replacement;
-      Ok ()
-    )
+  else (
+    State.add_rigid_equation state rigid_id replacement;
+    Ok ()
+  )
 
 let unify_gadt = fun (state: state) ~origin left right ->
   let rec loop = function
@@ -1981,7 +1980,10 @@ let unify_gadt = fun (state: state) ~origin left right ->
               loop ((left_element, right_element) :: rest)
           | (TypeRepr.Result (left_ok, left_error), TypeRepr.Result (right_ok, right_error)) ->
               loop ((left_ok, right_ok) :: (left_error, right_error) :: rest)
-          | (TypeRepr.Named { head = left_head; arguments = left_arguments }, TypeRepr.Named { head = right_head; arguments = right_arguments }) ->
+          | (
+            TypeRepr.Named { head = left_head; arguments = left_arguments },
+            TypeRepr.Named { head = right_head; arguments = right_arguments }
+          ) ->
               if
                 not
                   (TypeConstructorId.equal
@@ -2007,7 +2009,10 @@ let unify_gadt = fun (state: state) ~origin left right ->
                 )
               else
                 loop (List.rev_append (List.combine left_members right_members) rest)
-          | (TypeRepr.Arrow { label = left_label; lhs = left_lhs; rhs = left_rhs }, TypeRepr.Arrow { label = right_label; lhs = right_lhs; rhs = right_rhs }) ->
+          | (
+            TypeRepr.Arrow { label = left_label; lhs = left_lhs; rhs = left_rhs },
+            TypeRepr.Arrow { label = right_label; lhs = right_lhs; rhs = right_rhs }
+          ) ->
               if not (labels_match left_label right_label) then
                 Error (Diagnostic.ExpectedActual {
                   expected = TypePrinter.type_to_string right;
@@ -3944,7 +3949,13 @@ and infer_recursive_group = fun (state: state) env bindings ->
           let provisional_env = Env.extend env placeholders in
           let () =
             List.iter
-              (fun ((binding: BodyArena.binding), _annotation_scheme, has_annotation, placeholder_ty, _entry) ->
+              (fun (
+                (binding: BodyArena.binding),
+                _annotation_scheme,
+                has_annotation,
+                placeholder_ty,
+                _entry
+              ) ->
                 if has_annotation then
                   let _ = infer_expr_against state provisional_env binding.value_id placeholder_ty in
                   ()
@@ -3960,19 +3971,24 @@ and infer_recursive_group = fun (state: state) env bindings ->
           let groups =
             placeholder_info
             |> List.map
-              (fun ((binding: BodyArena.binding), _annotation_scheme, _has_annotation, placeholder_ty, entry) ->
-                solver_group_for_entries
-                  state
-                  binding.value_id
-                  placeholder_ty
-                  [ entry ])
+              (fun (
+                (binding: BodyArena.binding),
+                _annotation_scheme,
+                _has_annotation,
+                placeholder_ty,
+                entry
+              ) ->
+                solver_group_for_entries state binding.value_id placeholder_ty [ entry ])
           in
           (placeholder_info, groups))
     in
     let generalized =
       let rec loop acc placeholder_info generalized_groups =
         match (placeholder_info, generalized_groups) with
-        | ((binding, annotation_scheme, _has_annotation, _placeholder_ty, entry) :: rest_bindings, schemes :: rest_groups) ->
+        | (
+          (binding, annotation_scheme, _has_annotation, _placeholder_ty, entry) :: rest_bindings,
+          schemes :: rest_groups
+        ) ->
             let schemes = exported_schemes_for_binding annotation_scheme binding [ entry ] schemes in
             let entry =
               match schemes with

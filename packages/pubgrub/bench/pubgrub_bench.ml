@@ -37,15 +37,14 @@ let build_chain_provider = fun depth ->
         ("pkg-" ^ Int.to_string idx)
         (v 1 0 0)
         []
-    else
-      (
-        add_package
-          offline
-          ("pkg-" ^ Int.to_string idx)
-          (v 1 0 0)
-          [ ("pkg-" ^ Int.to_string (idx + 1), full); ];
-        loop (idx + 1)
-      )
+    else (
+      add_package
+        offline
+        ("pkg-" ^ Int.to_string idx)
+        (v 1 0 0)
+        [ ("pkg-" ^ Int.to_string (idx + 1), full); ];
+      loop (idx + 1)
+    )
   in
   loop 0;
   to_provider offline

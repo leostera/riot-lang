@@ -194,40 +194,38 @@ let test_sse_parsing = fun _ctx ->
           (* Verify we got some events *)
           if event_count = 0 then
             Error "No SSE events received"
-          else
-            (
-              (* Log each event *)
-              events
-              |> List.fold_left
-                ~init:0
-                ~fn:(fun i event ->
-                  Log.info
-                    ("SSE Event "
-                    ^ string_of_int (i + 1)
-                    ^ ": "
-                    ^ Blink.SSE.(String.sub
-                      event.data
-                      ~offset:0
-                      ~len:(min 80 (String.length event.data))));
-                  i + 1)
-              |> ignore;
-              (* Verify each event has JSON data *)
-              let all_valid_json =
-                List.for_all
-                  (fun event ->
-                    match Blink.SSE.(Data.Json.of_string event.data) with
-                    | Ok _ -> true
-                    | Error _ -> false)
-                  events
-              in
-              if not all_valid_json then
-                Error "Some SSE events contained invalid JSON"
-              else
-                (
-                  Log.info ("✓ Parsed " ^ string_of_int event_count ^ " SSE events successfully");
-                  Ok ()
-                )
+          else (
+            (* Log each event *)
+            events
+            |> List.fold_left
+              ~init:0
+              ~fn:(fun i event ->
+                Log.info
+                  ("SSE Event "
+                  ^ string_of_int (i + 1)
+                  ^ ": "
+                  ^ Blink.SSE.(String.sub
+                    event.data
+                    ~offset:0
+                    ~len:(min 80 (String.length event.data))));
+                i + 1)
+            |> ignore;
+            (* Verify each event has JSON data *)
+            let all_valid_json =
+              List.for_all
+                (fun event ->
+                  match Blink.SSE.(Data.Json.of_string event.data) with
+                  | Ok _ -> true
+                  | Error _ -> false)
+                events
+            in
+            if not all_valid_json then
+              Error "Some SSE events contained invalid JSON"
+            else (
+              Log.info ("✓ Parsed " ^ string_of_int event_count ^ " SSE events successfully");
+              Ok ()
             )
+          )
 
 let tests = [
   case "large JSON response without truncation" test_large_json_response;

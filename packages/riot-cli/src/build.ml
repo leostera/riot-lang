@@ -3,6 +3,7 @@ open Std.Collections
 open Std.Result.Syntax
 open Riot_model
 open Riot_build
+
 module Build_telemetry = Riot_build.Internal.Telemetry_events
 
 type build_scope = Riot_build.Request.scope =
@@ -64,16 +65,20 @@ let build_request_label = fun (request: request) ->
   let packages =
     match request.packages with
     | [] -> "all"
-    | packages -> packages |> List.map ~fn:Riot_model.Package_name.to_string |> String.concat ","
+    | packages ->
+        packages
+        |> List.map ~fn:Riot_model.Package_name.to_string
+        |> String.concat ","
   in
   let targets =
     match request.targets with
     | Riot_model.Target.Host -> "host"
     | Riot_model.Target.All -> "all"
     | Riot_model.Target.Pattern pattern -> pattern
-    | Riot_model.Target.Exact targets -> Riot_model.Target.Set.to_list targets
-    |> List.map ~fn:Riot_model.Target.to_string
-    |> String.concat ","
+    | Riot_model.Target.Exact targets ->
+        Riot_model.Target.Set.to_list targets
+        |> List.map ~fn:Riot_model.Target.to_string
+        |> String.concat ","
   in
   "Build(" ^ packages ^ "; targets=" ^ targets ^ "; profile=" ^ request.profile.name ^ ")"
 
@@ -83,7 +88,9 @@ let reset_json_clock = fun ~started_at -> json_clock_origin := Some started_at
 
 let event_elapsed_us = fun () ->
   match !json_clock_origin with
-  | Some origin -> Time.Instant.elapsed origin |> Time.Duration.to_micros
+  | Some origin ->
+      Time.Instant.elapsed origin
+      |> Time.Duration.to_micros
   | None ->
       let origin = Time.Instant.now () in
       json_clock_origin := Some origin;
@@ -93,12 +100,9 @@ let stamp_json_event = fun (json: Data.Json.t) ->
   match json with
   | Data.Json.Object fields ->
       let fields =
-        if Option.is_some
-            (
-              List.find fields
-                ~fn:(fun (name, _) ->
-                  String.equal name "emitted_at_us")
-            ) then
+        if
+          Option.is_some (List.find fields ~fn:(fun (name, _) -> String.equal name "emitted_at_us"))
+        then
           fields
         else
           fields @ [ ("emitted_at_us", Data.Json.Int (event_elapsed_us ())); ]
@@ -107,7 +111,8 @@ let stamp_json_event = fun (json: Data.Json.t) ->
   | other -> other
 
 let write_json_event = fun (json: Data.Json.t) ->
-  println (Data.Json.to_string (stamp_json_event json))
+  println
+    (Data.Json.to_string (stamp_json_event json))
 
 let write_build_event_json = fun event ->
   match Riot_build.Event.to_json event with
@@ -162,7 +167,8 @@ let labeled_multiline_lines = fun ~label value ->
   match String.split value ~by:"\n" with
   | [] -> [ label ^ ":" ]
   | first :: rest ->
-      (label ^ ": " ^ first) :: List.map rest
+      (label ^ ": " ^ first) :: List.map
+        rest
         ~fn:(fun line ->
           if String.equal line "" then
             ""
@@ -226,7 +232,9 @@ let planning_error_lines = function
       in
       [
         error_line (requested_module ^ " is not available to package " ^ package_name);
-        "The source file imports " ^ requested_module ^ ", but Riot only exposes modules from this package and its direct dependencies.";
+        "The source file imports "
+        ^ requested_module
+        ^ ", but Riot only exposes modules from this package and its direct dependencies.";
         "package: " ^ package_name;
         "source: " ^ Path.to_string source;
         "requested module: " ^ requested_module;
@@ -244,7 +252,9 @@ let planning_error_lines = function
   } ->
       [
         error_line ("target " ^ target_name ^ " imports private module " ^ requested_module);
-        "The target source reaches " ^ internal_module ^ ", which is internal to this package library.";
+        "The target source reaches "
+        ^ internal_module
+        ^ ", which is internal to this package library.";
         "target: " ^ target_name;
         "source: " ^ Path.to_string source;
         "requested module: " ^ requested_module;
@@ -261,14 +271,18 @@ let planning_error_lines = function
     internal_module;
     public_module
   } ->
-      let public_leaf = internal_module
-      |> String.split ~by:"__"
-      |> List.reverse
-      |> List.head
-      |> Option.unwrap_or ~default:requested_module in
+      let public_leaf =
+        internal_module
+        |> String.split ~by:"__"
+        |> List.reverse
+        |> List.head
+        |> Option.unwrap_or ~default:requested_module
+      in
       [
         error_line ("target " ^ target_name ^ " imports private module " ^ requested_module);
-        "The target source reaches " ^ internal_module ^ ", which is a namespaced implementation detail of this package library.";
+        "The target source reaches "
+        ^ internal_module
+        ^ ", which is a namespaced implementation detail of this package library.";
         "target: " ^ target_name;
         "source: " ^ Path.to_string source;
         "requested module: " ^ requested_module;
@@ -309,16 +323,17 @@ let planning_error_lines = function
       let file = display_planner_file file in
       let (headline, reason_lines) =
         match error with
-        | Riot_planner.Planning_error.MissingMain ->
-            ("`" ^ target_name ^ "` has no executable entry point", [ "But we could not find one." ])
-        | Riot_planner.Planning_error.MultipleMainDefinitions { count } ->
-            (
-              "`" ^ target_name ^ "` has more than one executable entry point",
-              [
-                "But we found " ^ Int.to_string count ^ " top-level `main` definitions.";
-                "Executable targets must define exactly one.";
-              ]
-            )
+        | Riot_planner.Planning_error.MissingMain -> (
+          "`" ^ target_name ^ "` has no executable entry point",
+          [ "But we could not find one." ]
+        )
+        | Riot_planner.Planning_error.MultipleMainDefinitions { count } -> (
+          "`" ^ target_name ^ "` has more than one executable entry point",
+          [
+            "But we found " ^ Int.to_string count ^ " top-level `main` definitions.";
+            "Executable targets must define exactly one.";
+          ]
+        )
         | Riot_planner.Planning_error.InvalidMainParameters { parameters } ->
             let parameters =
               match parameters with
@@ -349,7 +364,8 @@ let planning_error_lines = function
         "      ...";
         "      Ok ()";
         "";
-      ] @ reason_lines
+      ]
+      @ reason_lines
   | Riot_planner.Planning_error.Exception { exn } ->
       [
         error_line "unexpected planner exception";
@@ -358,97 +374,95 @@ let planning_error_lines = function
       @ labeled_multiline_lines ~label:"reason" (Exception.to_string exn)
 
 let workspace_load_error_line = function
-  | Riot_model.Workspace_manager.PackageNotFound { package; path; dependant=None } -> "missing package: "
-  ^ package
-  ^ " ("
-  ^ path
-  ^ ")"
-  | Riot_model.Workspace_manager.PackageNotFound { package; path; dependant=Some dependant } -> "missing package: "
-  ^ package
-  ^ " (required by "
-  ^ dependant
-  ^ ", "
-  ^ path
-  ^ ")"
-  | Riot_model.Workspace_manager.PackageTomlReadFailed { package; path } -> "failed to read package toml: "
-  ^ package
-  ^ " ("
-  ^ path
-  ^ ")"
-  | Riot_model.Workspace_manager.PackageTomlParseFailed { package; path } -> "failed to parse package toml: "
-  ^ package
-  ^ " ("
-  ^ path
-  ^ ")"
-  | Riot_model.Workspace_manager.PackageFromTomlFailed { package; path; error } -> "failed to load package manifest: "
-  ^ package
-  ^ " ("
-  ^ path
-  ^ "): "
-  ^ Riot_model.Package_manifest.error_message error
+  | Riot_model.Workspace_manager.PackageNotFound { package; path; dependant = None } ->
+      "missing package: " ^ package ^ " (" ^ path ^ ")"
+  | Riot_model.Workspace_manager.PackageNotFound { package; path; dependant = Some dependant } ->
+      "missing package: " ^ package ^ " (required by " ^ dependant ^ ", " ^ path ^ ")"
+  | Riot_model.Workspace_manager.PackageTomlReadFailed { package; path } ->
+      "failed to read package toml: " ^ package ^ " (" ^ path ^ ")"
+  | Riot_model.Workspace_manager.PackageTomlParseFailed { package; path } ->
+      "failed to parse package toml: " ^ package ^ " (" ^ path ^ ")"
+  | Riot_model.Workspace_manager.PackageFromTomlFailed { package; path; error } ->
+      "failed to load package manifest: "
+      ^ package
+      ^ " ("
+      ^ path
+      ^ "): "
+      ^ Riot_model.Package_manifest.error_message error
 
 let workspace_planning_error_lines = function
-  | Riot_planner.Workspace_planner.PackageNotFound { name; available } -> [
-    error_line ("package " ^ Riot_model.Package_name.to_string name ^ " was not found");
-    "Riot could not find a workspace package matching the requested name.";
-    "package: " ^ Riot_model.Package_name.to_string name;
-    "available packages: "
-    ^ String.concat ", " (List.map available ~fn:Riot_model.Package_name.to_string);
-  ]
-  | Riot_planner.Workspace_planner.PackagesNotFound { names; available } -> [
-    error_line "some requested packages were not found";
-    "Riot could not find workspace packages matching every requested name.";
-    "packages: " ^ String.concat ", " (List.map names ~fn:Riot_model.Package_name.to_string);
-    "available packages: "
-    ^ String.concat ", " (List.map available ~fn:Riot_model.Package_name.to_string);
-  ]
-  | Riot_planner.Workspace_planner.CycleDetected { cycle } -> [
-    error_line "package cycle detected";
-    "Riot found a cycle between packages, so it cannot plan them in dependency order.";
-    "cycle: " ^ String.concat " -> " cycle;
-  ]
-  | Riot_planner.Workspace_planner.MissingDependencies { missing } -> ([
-    error_line "missing package dependencies";
-    "Riot found package dependency edges that do not point at a loaded workspace or resolved package.";
-  ]
-  @ List.map
-    missing
-    ~fn:(fun (dep: Riot_planner.Package_graph.missing_dependency) ->
-      "missing: " ^ dep.package ^ " -> " ^ dep.dependency))
-  @ [
-    "examples:";
-    "  - add the missing package to the workspace";
-    "  - add a registry, path, or workspace dependency entry for the missing package";
-  ]
-  | Riot_planner.Workspace_planner.PackageLoadFailed { errors } -> [
-    error_line "failed to load workspace packages";
-    "Riot could not load every package manifest needed for planning.";
-  ]
-  @ List.map errors ~fn:workspace_load_error_line
+  | Riot_planner.Workspace_planner.PackageNotFound { name; available } ->
+      [
+        error_line ("package " ^ Riot_model.Package_name.to_string name ^ " was not found");
+        "Riot could not find a workspace package matching the requested name.";
+        "package: " ^ Riot_model.Package_name.to_string name;
+        "available packages: "
+        ^ String.concat ", " (List.map available ~fn:Riot_model.Package_name.to_string);
+      ]
+  | Riot_planner.Workspace_planner.PackagesNotFound { names; available } ->
+      [
+        error_line "some requested packages were not found";
+        "Riot could not find workspace packages matching every requested name.";
+        "packages: " ^ String.concat ", " (List.map names ~fn:Riot_model.Package_name.to_string);
+        "available packages: "
+        ^ String.concat ", " (List.map available ~fn:Riot_model.Package_name.to_string);
+      ]
+  | Riot_planner.Workspace_planner.CycleDetected { cycle } ->
+      [
+        error_line "package cycle detected";
+        "Riot found a cycle between packages, so it cannot plan them in dependency order.";
+        "cycle: " ^ String.concat " -> " cycle;
+      ]
+  | Riot_planner.Workspace_planner.MissingDependencies { missing } ->
+      ([
+        error_line "missing package dependencies";
+        "Riot found package dependency edges that do not point at a loaded workspace or resolved package.";
+      ]
+      @ List.map
+        missing
+        ~fn:(fun (dep: Riot_planner.Package_graph.missing_dependency) ->
+          "missing: " ^ dep.package ^ " -> " ^ dep.dependency))
+      @ [
+        "examples:";
+        "  - add the missing package to the workspace";
+        "  - add a registry, path, or workspace dependency entry for the missing package";
+      ]
+  | Riot_planner.Workspace_planner.PackageLoadFailed { errors } ->
+      [
+        error_line "failed to load workspace packages";
+        "Riot could not load every package manifest needed for planning.";
+      ]
+      @ List.map errors ~fn:workspace_load_error_line
 
 let out_prefixed_payload = fun ~prefix payload ->
   match String.split payload ~by:"\n" with
   | [] -> ()
   | first_line :: rest ->
       out (prefix ^ first_line);
-      rest |> List.for_each ~fn:out
+      rest
+      |> List.for_each ~fn:out
 
 let telemetry_package_error_message = function
-  | Build_telemetry.PlanningFailed planning_error -> Riot_planner.Planning_error.to_string planning_error
+  | Build_telemetry.PlanningFailed planning_error ->
+      Riot_planner.Planning_error.to_string planning_error
   | Build_telemetry.ExecutionFailed { message }
   | Build_telemetry.ActionExecutionFailed { message } -> message
-  | Build_telemetry.ActionOutputsNotCreated { missing } -> "missing outputs: "
-  ^ String.concat ", " (List.map missing ~fn:Path.to_string)
-  | Build_telemetry.ActionDependenciesFailed { failed } -> "failed dependencies: "
-  ^ String.concat ", " (List.map failed ~fn:Graph.SimpleGraph.Node_id.to_string)
+  | Build_telemetry.ActionOutputsNotCreated { missing } ->
+      "missing outputs: " ^ String.concat ", " (List.map missing ~fn:Path.to_string)
+  | Build_telemetry.ActionDependenciesFailed { failed } ->
+      "failed dependencies: "
+      ^ String.concat ", " (List.map failed ~fn:Graph.SimpleGraph.Node_id.to_string)
 
 let show_target_in_package_labels = function
-  | Some { target_count=Some target_count } -> target_count > 1
-  | Some { target_count=None }
+  | Some { target_count = Some target_count } -> target_count > 1
+  | Some { target_count = None }
   | None -> false
 
 let display_build_package_name = fun ?render_state ~build_target package ->
-  display_package_name ~build_target ~show_target:(show_target_in_package_labels render_state) package
+  display_package_name
+    ~build_target
+    ~show_target:(show_target_in_package_labels render_state)
+    package
 
 let write_build_telemetry_event = fun ?render_state ~mode event ->
   match mode with
@@ -459,11 +473,11 @@ let write_build_telemetry_event = fun ?render_state ~mode event ->
           out
             ("    \027[1;32mBuilding\027[0m "
             ^ display_build_package_name ?render_state ~build_target package)
-      | Build_telemetry.BuildCompleted { package; build_target; status=`Fresh; _ } ->
+      | Build_telemetry.BuildCompleted { package; build_target; status = `Fresh; _ } ->
           out
             ("       \027[1;32mBuilt\027[0m "
             ^ display_build_package_name ?render_state ~build_target package)
-      | Build_telemetry.BuildCompleted { package; build_target; status=`Cached; _ } ->
+      | Build_telemetry.BuildCompleted { package; build_target; status = `Cached; _ } ->
           out
             ("      \027[1;34mCached\027[0m "
             ^ display_build_package_name ?render_state ~build_target package)
@@ -473,7 +487,7 @@ let write_build_telemetry_event = fun ?render_state ~mode event ->
             ^ display_build_package_name ?render_state ~build_target package
             ^ ": "
             ^ reason)
-      | Build_telemetry.BuildFailed { package; build_target; error=PlanningFailed planning_error; _ } ->
+      | Build_telemetry.BuildFailed { package; build_target; error = PlanningFailed planning_error; _ } ->
           out
             ("      \027[1;31mFailed\027[0m "
             ^ display_build_package_name ?render_state ~build_target package);
@@ -512,16 +526,15 @@ let write_build_telemetry_event = fun ?render_state ~mode event ->
       | Build_telemetry.CacheHit _
       | Build_telemetry.CacheMiss _
       | Build_telemetry.WorkspaceStarted _
-      | Build_telemetry.WorkspaceCompleted _ ->
-          ()
-      | _ ->
-          ()
+      | Build_telemetry.WorkspaceCompleted _ -> ()
+      | _ -> ()
     )
 
 let write_build_phase_event = fun ?render_state ~mode phase ->
   (
     match (render_state, phase) with
-    | (Some state, Riot_build.Event.TargetsResolved { target_count }) -> state.target_count <- Some target_count
+    | (Some state, Riot_build.Event.TargetsResolved { target_count }) ->
+        state.target_count <- Some target_count
     | _ -> ()
   );
   match mode with
@@ -534,12 +547,9 @@ let write_build_phase_event = fun ?render_state ~mode phase ->
           out ("    Ensured toolchains for " ^ Int.to_string target_count ^ " target(s)")
       | Riot_build.Event.ToolchainsValidated { target_count } ->
           out ("    Validated toolchains for " ^ Int.to_string target_count ^ " target(s)")
-      | Riot_build.Event.RuntimeStarting ->
-          out "    Starting build runtime"
-      | Riot_build.Event.RuntimeStarted ->
-          out "    Build runtime ready"
-      | Riot_build.Event.BuildLockWaiting _ ->
-          out "    Build lock is taken, waiting..."
+      | Riot_build.Event.RuntimeStarting -> out "    Starting build runtime"
+      | Riot_build.Event.RuntimeStarted -> out "    Build runtime ready"
+      | Riot_build.Event.BuildLockWaiting _ -> out "    Build lock is taken, waiting..."
       | Riot_build.Event.PackagePlanningStarted { package_count; _ } ->
           out ("    Planning " ^ Int.to_string package_count ^ " package(s)")
       | Riot_build.Event.PackagePlanningFinished {
@@ -550,14 +560,16 @@ let write_build_phase_event = fun ?render_state ~mode phase ->
         error_count;
         _
       } ->
-          let parts = [
-            Some (Int.to_string execution_required_count ^ " to build");
-            Some (Int.to_string cached_count ^ " cached");
-            Some (Int.to_string skipped_count ^ " skipped");
-            Some (Int.to_string failed_count ^ " failed");
-            Some (Int.to_string error_count ^ " errored");
-          ]
-          |> List.filter_map ~fn:(fun value -> value) in
+          let parts =
+            [
+              Some (Int.to_string execution_required_count ^ " to build");
+              Some (Int.to_string cached_count ^ " cached");
+              Some (Int.to_string skipped_count ^ " skipped");
+              Some (Int.to_string failed_count ^ " failed");
+              Some (Int.to_string error_count ^ " errored");
+            ]
+            |> List.filter_map ~fn:(fun value -> value)
+          in
           out ("    Planned packages (" ^ String.concat ", " parts ^ ")")
       | Riot_build.Event.PackageExecutionStarted { package_count; _ } ->
           out ("    Executing " ^ Int.to_string package_count ^ " package(s)")
@@ -574,8 +586,7 @@ let write_build_phase_event = fun ?render_state ~mode phase ->
       | Riot_build.Event.TargetBuildFinished _
       | Riot_build.Event.CacheGenerationRecordingStarted _
       | Riot_build.Event.CacheGenerationRecorded _
-      | Riot_build.Event.ReturningResults _ ->
-          ()
+      | Riot_build.Event.ReturningResults _ -> ()
     )
 
 let command_error_event_to_json = fun kind details ->
@@ -591,10 +602,12 @@ let format_pm_event = fun ~seen_registry_updates kind ->
           let _ = HashSet.insert seen_registry_updates ~value:registry in
           Some ("    \027[1;32mUpdating\027[0m " ^ registry ^ " index")
         )
-  | Riot_model.Event.PackageResolvedForBuild _ ->
-      None
+  | Riot_model.Event.PackageResolvedForBuild _ -> None
   | Riot_model.Event.PackageDownloadStarted { package; version; _ } ->
-      Some ("    \027[1;32mFetching\027[0m " ^ Riot_model.Package_name.to_string package ^ " " ^ version)
+      Some ("    \027[1;32mFetching\027[0m "
+      ^ Riot_model.Package_name.to_string package
+      ^ " "
+      ^ version)
   | Riot_model.Event.PackageDownloadQueued { package; version; _ } ->
       Some ("      \027[1;33mQueued\027[0m "
       ^ Riot_model.Package_name.to_string package
@@ -625,8 +638,7 @@ let format_pm_event = fun ~seen_registry_updates kind ->
   | Riot_model.Event.PackageDownloadSkipped _
   | Riot_model.Event.PackageMaterializationStarted _
   | Riot_model.Event.PackageMaterializationFinished _
-  | Riot_model.Event.PackageMaterializationFailed _ ->
-      None
+  | Riot_model.Event.PackageMaterializationFailed _ -> None
   | Riot_model.Event.SourceDependencyMaterializationStarted { source_locator; ref_ } ->
       Some (
         "  \027[1;34mInstalling\027[0m " ^ (
@@ -635,7 +647,12 @@ let format_pm_event = fun ~seen_registry_updates kind ->
           | None -> source_locator
         )
       )
-  | Riot_model.Event.DependencyManifestUpdated { path; section; operation; dependency } ->
+  | Riot_model.Event.DependencyManifestUpdated {
+    path;
+    section;
+    operation;
+    dependency
+  } ->
       let verb =
         match operation with
         | `Add -> "Added"
@@ -648,8 +665,7 @@ let format_pm_event = fun ~seen_registry_updates kind ->
       ^ " ("
       ^ version
       ^ ")")
-  | Riot_model.Event.PackageVersionsUnchanged _ ->
-      Some "    Dependencies are already up to date"
+  | Riot_model.Event.PackageVersionsUnchanged _ -> Some "    Dependencies are already up to date"
   | Riot_model.Event.PackageVersionUpdated { package; from_version; to_version } ->
       Some ("    \027[1;32mUpdated\027[0m "
       ^ Riot_model.Package_name.to_string package
@@ -658,8 +674,7 @@ let format_pm_event = fun ~seen_registry_updates kind ->
       ^ " -> "
       ^ to_version
       ^ ")")
-  | kind ->
-      Some (Riot_model.Event.display kind)
+  | kind -> Some (Riot_model.Event.display kind)
 
 let write_pm_event = fun ~mode ~seen_registry_updates event ->
   match mode with
@@ -678,36 +693,42 @@ let write_command_error = fun ~mode kind details human_message ->
 let build_failure_detail_lines = fun (failure: Riot_build.Build_result.failure) ->
   let package_name = Riot_model.Package_name.to_string failure.package_name in
   match failure.reason with
-  | Riot_build.Build_result.PackagePlanningFailed planning_error -> planning_error_lines planning_error
+  | Riot_build.Build_result.PackagePlanningFailed planning_error ->
+      planning_error_lines planning_error
   | _ -> [ error_line (package_name ^ " failed"); failure.message ]
 
 let write_failure_blocks = fun failures ->
   let rec loop = function
-    | [] ->
-        ()
+    | [] -> ()
     | [ failure ] ->
         out "";
-        build_failure_detail_lines failure |> List.for_each ~fn:out;
+        build_failure_detail_lines failure
+        |> List.for_each ~fn:out;
         out ""
     | failure :: rest ->
         out "";
-        build_failure_detail_lines failure |> List.for_each ~fn:out;
+        build_failure_detail_lines failure
+        |> List.for_each ~fn:out;
         loop rest
   in
   loop failures
 
 let write_build_failed_error = fun ~mode errors ->
   match mode with
-  | Json -> write_json_event
-    (command_error_event_to_json
-      "BuildFailed"
-      [ ("errors", Data.Json.Array (List.map errors ~fn:Riot_build.Build_result.failure_to_json)); ])
+  | Json ->
+      write_json_event
+        (command_error_event_to_json
+          "BuildFailed"
+          [
+            (
+              "errors",
+              Data.Json.Array (List.map errors ~fn:Riot_build.Build_result.failure_to_json)
+            );
+          ])
   | Human -> (
       match errors with
-      | [] ->
-          out "\027[1;31mError\027[0m: build failed"
-      | [ failure ] ->
-          write_failure_blocks [ failure ]
+      | [] -> out "\027[1;31mError\027[0m: build failed"
+      | [ failure ] -> write_failure_blocks [ failure ]
       | failures ->
           out "\027[1;31mError\027[0m: build failed";
           write_failure_blocks failures
@@ -715,20 +736,47 @@ let write_build_failed_error = fun ~mode errors ->
 
 let command =
   let open ArgParser in
-    let open ArgParser.Arg in
-      command "build" |> about "Build packages" |> args
-        [
-          option "package" |> short 'p' |> long "package" |> multiple |> help "Build a specific package. Repeat to build multiple packages; omit to build all packages.";
-          option "target" |> short 'x' |> long "target" |> help "Target architecture (exact triple, pattern like 'linux'/'aarch64', or 'all')";
-          flag "all-targets" |> long "all-targets" |> help "Build for all configured targets";
-          flag "tests" |> long "tests" |> help "Also compile test binaries";
-          flag "examples" |> long "examples" |> help "Also compile example binaries";
-          flag "benches" |> long "benches" |> help "Also compile benchmark binaries";
-          flag "all" |> long "all" |> help "Also compile tests, examples, and benchmark binaries";
-          flag "release" |> long "release" |> help "Use the release build profile";
-          option "jobs" |> short 'j' |> long "jobs" |> help "Limit parallel workers";
-          flag "json" |> long "json" |> help "Emit machine-readable JSONL events";
-        ]
+  let open ArgParser.Arg in
+  command "build"
+  |> about "Build packages"
+  |> args
+    [
+      option "package"
+      |> short 'p'
+      |> long "package"
+      |> multiple
+      |> help
+        "Build a specific package. Repeat to build multiple packages; omit to build all packages.";
+      option "target"
+      |> short 'x'
+      |> long "target"
+      |> help "Target architecture (exact triple, pattern like 'linux'/'aarch64', or 'all')";
+      flag "all-targets"
+      |> long "all-targets"
+      |> help "Build for all configured targets";
+      flag "tests"
+      |> long "tests"
+      |> help "Also compile test binaries";
+      flag "examples"
+      |> long "examples"
+      |> help "Also compile example binaries";
+      flag "benches"
+      |> long "benches"
+      |> help "Also compile benchmark binaries";
+      flag "all"
+      |> long "all"
+      |> help "Also compile tests, examples, and benchmark binaries";
+      flag "release"
+      |> long "release"
+      |> help "Use the release build profile";
+      option "jobs"
+      |> short 'j'
+      |> long "jobs"
+      |> help "Limit parallel workers";
+      flag "json"
+      |> long "json"
+      |> help "Emit machine-readable JSONL events";
+    ]
 
 let target_request_of_matches = fun matches ->
   if ArgParser.get_flag matches "all-targets" then
@@ -751,7 +799,7 @@ let dev_artifacts_of_matches = fun matches ->
     {
       tests = ArgParser.get_flag matches "tests";
       examples = ArgParser.get_flag matches "examples";
-      benches = ArgParser.get_flag matches "benches"
+      benches = ArgParser.get_flag matches "benches";
     }
 
 let scope_of_dev_artifacts = fun (dev_artifacts: dev_artifacts) ->
@@ -777,23 +825,21 @@ let requested_parallelism_of_matches = fun matches ->
 
 let parse_package_names = fun package_names ->
   let rec loop acc = function
-    | [] -> Ok (List.reverse acc)
+    | [] ->
+        Ok (List.reverse acc)
     | package_name :: rest -> (
         match Riot_model.Package_name.from_string package_name with
         | Ok package_name -> loop (package_name :: acc) rest
-        | Error error -> Error (Failure ("invalid package name '"
-        ^ package_name
-        ^ "': "
-        ^ Riot_model.Package_name.error_message error))
+        | Error error ->
+            Error (Failure ("invalid package name '"
+            ^ package_name
+            ^ "': "
+            ^ Riot_model.Package_name.error_message error))
       )
   in
   loop [] package_names
 
-let make_request = fun ~workspace ?(scope = Runtime) ?(dev_artifacts = {
-  tests = true;
-  examples = true;
-  benches = true
-}) ?(profile = Riot_model.Profile.debug) ?(mode = Human) ?(show_finished_summary = true) ?(requested_parallelism = None) ~packages ~targets () ->
+let make_request = fun ~workspace ?(scope = Runtime) ?(dev_artifacts = {tests = true; examples = true; benches = true}) ?(profile = Riot_model.Profile.debug) ?(mode = Human) ?(show_finished_summary = true) ?(requested_parallelism = None) ~packages ~targets () ->
   {
     workspace;
     packages;
@@ -871,32 +917,39 @@ let write_cache_gc_event = fun ~mode event ->
   | Json -> write_json_event (Riot_store.Cache_gc.event_to_json event)
   | Human -> (
       match event with
-      | Riot_store.Cache_gc.GcStarted { trigger=Manual } -> out "    Running tracked cache GC (build root kept; use --force to remove it)"
-      | Riot_store.Cache_gc.GcStarted { trigger=Post_build } -> ()
-      | Riot_store.Cache_gc.GcSkipped { trigger=Post_build; _ } -> ()
-      | Riot_store.Cache_gc.GcSkipped { summary; _ } -> out
-        ("    Cache GC skipped: tracked cache is already within policy ("
-        ^ size_to_string summary.size_after_bytes
-        ^ "). Build root kept; use --force to remove it.")
-      | Riot_store.Cache_gc.GcCompleted { summary; _ } -> out
-        ("    \027[1;32mCleaned\027[0m tracked cache: " ^ format_cache_gc_cleanup summary ^ ". Build root kept.")
-      | Riot_store.Cache_gc.GcFailed { error; _ } -> out
-        ("\027[1;31mError\027[0m: cache GC failed: " ^ error)
-      | Riot_store.Cache_gc.ForceCleanStarted { build_root } -> out
-        ("    Removing build root " ^ Path.to_string build_root)
-      | Riot_store.Cache_gc.ForceCleanCompleted { build_root } -> out
-        ("    \027[1;32mRemoved\027[0m build root " ^ Path.to_string build_root)
-      | Riot_store.Cache_gc.ForceCleanFailed { build_root; error } -> out
-        ("\027[1;31mError\027[0m: failed to remove build root "
-        ^ Path.to_string build_root
-        ^ ": "
-        ^ error)
+      | Riot_store.Cache_gc.GcStarted { trigger = Manual } ->
+          out "    Running tracked cache GC (build root kept; use --force to remove it)"
+      | Riot_store.Cache_gc.GcStarted { trigger = Post_build } -> ()
+      | Riot_store.Cache_gc.GcSkipped { trigger = Post_build; _ } -> ()
+      | Riot_store.Cache_gc.GcSkipped { summary; _ } ->
+          out
+            ("    Cache GC skipped: tracked cache is already within policy ("
+            ^ size_to_string summary.size_after_bytes
+            ^ "). Build root kept; use --force to remove it.")
+      | Riot_store.Cache_gc.GcCompleted { summary; _ } ->
+          out
+            ("    \027[1;32mCleaned\027[0m tracked cache: "
+            ^ format_cache_gc_cleanup summary
+            ^ ". Build root kept.")
+      | Riot_store.Cache_gc.GcFailed { error; _ } ->
+          out ("\027[1;31mError\027[0m: cache GC failed: " ^ error)
+      | Riot_store.Cache_gc.ForceCleanStarted { build_root } ->
+          out ("    Removing build root " ^ Path.to_string build_root)
+      | Riot_store.Cache_gc.ForceCleanCompleted { build_root } ->
+          out ("    \027[1;32mRemoved\027[0m build root " ^ Path.to_string build_root)
+      | Riot_store.Cache_gc.ForceCleanFailed { build_root; error } ->
+          out
+            ("\027[1;31mError\027[0m: failed to remove build root "
+            ^ Path.to_string build_root
+            ^ ": "
+            ^ error)
     )
 
 let write_build_event = fun ?render_state ~mode ~seen_registry_updates event ->
   match event with
   | Riot_build.Event.Pm event -> write_pm_event ~mode ~seen_registry_updates event
-  | Riot_build.Event.BuildingTarget { target; host } -> write_building_target_event ~mode ~target ~host
+  | Riot_build.Event.BuildingTarget { target; host } ->
+      write_building_target_event ~mode ~target ~host
   | Riot_build.Event.CacheGc event -> write_cache_gc_event ~mode event
   | Riot_build.Event.Telemetry event -> write_build_telemetry_event ?render_state ~mode event
   | Riot_build.Event.Phase phase -> write_build_phase_event ?render_state ~mode phase
@@ -984,79 +1037,89 @@ let write_build_error = fun ~mode err ->
           ("reason", Data.Json.String (Riot_build.toolchain_initialization_error_message error));
         ]
         (Riot_build.error_message err)
-  | Riot_build.BuildFailed { errors } ->
-      write_build_failed_error ~mode errors
+  | Riot_build.BuildFailed { errors } -> write_build_failed_error ~mode errors
   | Riot_build.PlanningFailed planning_error ->
       if mode = Json then
         write_json_event
           (
-            command_error_event_to_json "PlanningFailed"
-              [ (
-                  "error",
-                  Riot_planner.Workspace_planner.(match planning_error with
-                  | PackageNotFound { name; available } -> Data.Json.obj
-                    [
-                      ("type", Data.Json.string "package_not_found");
-                      ("name", Data.Json.string (Riot_model.Package_name.to_string name));
-                      (
-                        "available",
-                        Data.Json.array
-                          (List.map
-                            available
-                            ~fn:(fun pkg -> Data.Json.string (Riot_model.Package_name.to_string pkg)))
-                      );
-                    ]
-                  | PackagesNotFound { names; available } -> Data.Json.obj
-                    [
-                      ("type", Data.Json.string "packages_not_found");
-                      (
-                        "names",
-                        Data.Json.array
-                          (List.map
-                            names
-                            ~fn:(fun pkg -> Data.Json.string (Riot_model.Package_name.to_string pkg)))
-                      );
-                      (
-                        "available",
-                        Data.Json.array
-                          (List.map
-                            available
-                            ~fn:(fun pkg -> Data.Json.string (Riot_model.Package_name.to_string pkg)))
-                      );
-                    ]
-                  | CycleDetected { cycle } -> Data.Json.obj
-                    [
-                      ("type", Data.Json.string "cycle_detected");
-                      ("cycle", Data.Json.array (List.map cycle ~fn:Data.Json.string));
-                    ]
-                  | MissingDependencies { missing } -> Data.Json.obj
-                    [
-                      ("type", Data.Json.string "missing_dependencies");
-                      (
-                        "missing",
-                        Data.Json.array
-                          (List.map
-                            missing
-                            ~fn:(fun dep ->
-                              Data.Json.obj
-                                [
-                                  ("package", Data.Json.string dep.package);
-                                  ("dependency", Data.Json.string dep.dependency);
-                                ]))
-                      );
-                    ]
-                  | PackageLoadFailed { errors } -> Data.Json.obj
-                    [
-                      ("type", Data.Json.string "package_load_failed");
-                      (
-                        "errors",
-                        Data.Json.array
-                          (List.map
-                            errors
-                            ~fn:(fun error -> Data.Json.string (workspace_load_error_line error)))
-                      );
-                    ])
-                ); ]
+            command_error_event_to_json
+              "PlanningFailed"
+              [
+                ("error", Riot_planner.Workspace_planner.(match planning_error with
+                | PackageNotFound { name; available } ->
+                    Data.Json.obj
+                      [
+                        ("type", Data.Json.string "package_not_found");
+                        ("name", Data.Json.string (Riot_model.Package_name.to_string name));
+                        (
+                          "available",
+                          Data.Json.array
+                            (List.map
+                              available
+                              ~fn:(fun pkg ->
+                                Data.Json.string
+                                  (Riot_model.Package_name.to_string pkg)))
+                        );
+                      ]
+                | PackagesNotFound { names; available } ->
+                    Data.Json.obj
+                      [
+                        ("type", Data.Json.string "packages_not_found");
+                        (
+                          "names",
+                          Data.Json.array
+                            (List.map
+                              names
+                              ~fn:(fun pkg ->
+                                Data.Json.string
+                                  (Riot_model.Package_name.to_string pkg)))
+                        );
+                        (
+                          "available",
+                          Data.Json.array
+                            (List.map
+                              available
+                              ~fn:(fun pkg ->
+                                Data.Json.string
+                                  (Riot_model.Package_name.to_string pkg)))
+                        );
+                      ]
+                | CycleDetected { cycle } ->
+                    Data.Json.obj
+                      [
+                        ("type", Data.Json.string "cycle_detected");
+                        ("cycle", Data.Json.array (List.map cycle ~fn:Data.Json.string));
+                      ]
+                | MissingDependencies { missing } ->
+                    Data.Json.obj
+                      [
+                        ("type", Data.Json.string "missing_dependencies");
+                        (
+                          "missing",
+                          Data.Json.array
+                            (List.map
+                              missing
+                              ~fn:(fun dep ->
+                                Data.Json.obj
+                                  [
+                                    ("package", Data.Json.string dep.package);
+                                    ("dependency", Data.Json.string dep.dependency);
+                                  ]))
+                        );
+                      ]
+                | PackageLoadFailed { errors } ->
+                    Data.Json.obj
+                      [
+                        ("type", Data.Json.string "package_load_failed");
+                        (
+                          "errors",
+                          Data.Json.array
+                            (List.map
+                              errors
+                              ~fn:(fun error -> Data.Json.string (workspace_load_error_line error)))
+                        );
+                      ]));
+              ]
           )
       else (
         out "\027[1;31mError\027[0m: planning failed";
@@ -1085,7 +1148,8 @@ let write_build_error = fun ~mode err ->
       write_command_error ~mode "UnexpectedError" [ ("reason", Data.Json.String reason); ] reason
 
 let record_output_progress = fun progress output ->
-  Riot_build.Build_result.packages output |> List.for_each
+  Riot_build.Build_result.packages output
+  |> List.for_each
     ~fn:(fun package_output ->
       match Riot_build.Build_result.package_status package_output with
       | Riot_build.Build_result.Built _ -> progress.built_count <- progress.built_count + 1
@@ -1106,14 +1170,22 @@ let run_request = fun (request: request) ->
   let seen_registry_updates = HashSet.create () in
   let start_time = Time.Instant.now () in
   reset_json_clock ~started_at:start_time;
-  let progress = { built_count = 0; cached_count = 0; failed_count = 0; skipped_count = 0 } in
+  let progress = {
+    built_count = 0;
+    cached_count = 0;
+    failed_count = 0;
+    skipped_count = 0;
+  }
+  in
   let render_state = create_render_state () in
   let attempted_build = ref false in
   let pm_session_id = Riot_model.Session_id.make () in
-  let emit_pm_kind kind = write_pm_event
-    ~mode:request.output_mode
-    ~seen_registry_updates
-    (Riot_model.Event.create ~session_id:pm_session_id ~level:Riot_model.Event.Info kind) in
+  let emit_pm_kind kind =
+    write_pm_event
+      ~mode:request.output_mode
+      ~seen_registry_updates
+      (Riot_model.Event.create ~session_id:pm_session_id ~level:Riot_model.Event.Info kind)
+  in
   let on_build_event event =
     match event with
     | Riot_build.Event.Pm kind -> emit_pm_kind kind.kind
@@ -1201,33 +1273,38 @@ type loaded_workspace = {
 
 let load_workspace_strict = fun cwd ->
   let workspace_manager = Workspace_manager.create () in
-  let* registry = Pkgs_ml.Registry.create_filesystem ?riot_home:None ~registry_name:"pkgs.ml" ()
-  |> Result.map_err ~fn:(fun err -> Failure (Pkgs_ml.Registry_cache.create_error_message err)) in
+  let* registry =
+    Pkgs_ml.Registry.create_filesystem ?riot_home:None ~registry_name:"pkgs.ml" ()
+    |> Result.map_err ~fn:(fun err -> Failure (Pkgs_ml.Registry_cache.create_error_message err))
+  in
   match Workspace_manager.scan workspace_manager cwd with
-  | Error err ->
-      Error (Failure (Workspace_manager.scan_error_message err))
+  | Error err -> Error (Failure (Workspace_manager.scan_error_message err))
   | Ok (_workspace, load_errors) when List.length load_errors > 0 ->
       print_workspace_load_errors load_errors;
       Error (Failure "Workspace load failed")
   | Ok (workspace, _) ->
-      let* workspace = Riot_deps.ensure_workspace
-        ~workspace_manager
-        ~mode:Riot_deps.Dep_solver.Refresh
-        ~registry
-        ~workspace
-        ()
-      |> Result.map_err ~fn:(fun err -> Failure (Riot_model.Pm_error.message err)) in
+      let* workspace =
+        Riot_deps.ensure_workspace
+          ~workspace_manager
+          ~mode:Riot_deps.Dep_solver.Refresh
+          ~registry
+          ~workspace
+          ()
+        |> Result.map_err ~fn:(fun err -> Failure (Riot_model.Pm_error.message err))
+      in
       Ok { workspace }
 
-let build_command = fun ~workspace ?(scope = Runtime) ?(dev_artifacts = {
-  tests = true;
-  examples = true;
-  benches = true
-}) ?(profile = "debug") ?(mode = Human) ?(show_finished_summary = true) ?(requested_parallelism = None) package_opt target_arch ->
-  let packages = package_opt |> Option.to_list in
+let build_command = fun ~workspace ?(scope = Runtime) ?(dev_artifacts = {tests = true; examples = true; benches = true}) ?(profile = "debug") ?(mode = Human) ?(show_finished_summary = true) ?(requested_parallelism = None) package_opt target_arch ->
+  let packages =
+    package_opt
+    |> Option.to_list
+  in
   run_request
     (
-      make_request ~workspace ~scope ~dev_artifacts
+      make_request
+        ~workspace
+        ~scope
+        ~dev_artifacts
         ~profile:(
           match profile with
           | "release" -> Riot_model.Profile.release
@@ -1245,17 +1322,20 @@ let build_command = fun ~workspace ?(scope = Runtime) ?(dev_artifacts = {
         ()
     )
 
-let build_packages_command = fun ~workspace ?(scope = Runtime) ?(dev_artifacts = {
-  tests = true;
-  examples = true;
-  benches = true
-}) ?(mode = Human) ?(show_finished_summary = true) ?(requested_parallelism = None) package_names target_arch ->
+let build_packages_command = fun ~workspace ?(scope = Runtime) ?(dev_artifacts = {tests = true; examples = true; benches = true}) ?(mode = Human) ?(show_finished_summary = true) ?(requested_parallelism = None) package_names target_arch ->
   match parse_package_names package_names with
   | Error _ as err -> err
   | Ok packages ->
       run_request
         (
-          make_request ~workspace ~scope ~dev_artifacts ~mode ~show_finished_summary ~requested_parallelism ~packages
+          make_request
+            ~workspace
+            ~scope
+            ~dev_artifacts
+            ~mode
+            ~show_finished_summary
+            ~requested_parallelism
+            ~packages
             ~targets:(
               match target_arch with
               | Some target -> Riot_model.Target.parse target

@@ -1,10 +1,8 @@
 open Std
+
 module Error = Markdown_error
 
-type found_token = {
-  kind: string;
-  text: string;
-}
+type found_token = { kind: string; text: string }
 
 type kind =
   | Invalid_markdown of { found: found_token }
@@ -23,15 +21,24 @@ let make = fun ~kind ~span -> { kind; span }
 let invalid_markdown = fun ~found ~span -> make ~kind:(Invalid_markdown { found }) ~span
 
 let unsupported_feature = fun ~found ~feature ~span ->
-  make ~kind:(Unsupported_feature { found; feature }) ~span
+  make
+    ~kind:(Unsupported_feature { found; feature })
+    ~span
 
 let unclosed_fenced_code_block = fun ~found ~opener ~span ->
-  make ~kind:(Unclosed_fenced_code_block { found; opener }) ~span
+  make
+    ~kind:(Unclosed_fenced_code_block { found; opener })
+    ~span
 
 let unexpected_control_character = fun ~found ~code ~span ->
-  make ~kind:(Unexpected_control_character { found; code }) ~span
+  make
+    ~kind:(Unexpected_control_character { found; code })
+    ~span
 
-let parser_internal = fun ~found ~message ~span -> make ~kind:(Parser_internal { message; found }) ~span
+let parser_internal = fun ~found ~message ~span ->
+  make
+    ~kind:(Parser_internal { message; found })
+    ~span
 
 let found_token = fun diag ->
   match diag.kind with
@@ -53,7 +60,8 @@ let fix_message = fun diag ->
   match diag.kind with
   | Invalid_markdown _ -> Some "Check markdown syntax near the reported offset."
   | Unsupported_feature { feature; _ } -> Some ("Unsupported feature: " ^ feature)
-  | Unclosed_fenced_code_block { opener; _ } -> Some ("Close the " ^ opener ^ " fence with a matching close marker.")
+  | Unclosed_fenced_code_block { opener; _ } ->
+      Some ("Close the " ^ opener ^ " fence with a matching close marker.")
   | Unexpected_control_character _ -> Some "Remove the control character from the source."
   | Parser_internal _ -> Some "Please open an issue and include the input text."
 
@@ -61,26 +69,20 @@ let hint_message = fun diag ->
   match diag.kind with
   | Parser_internal { message; _ } -> message
   | Unsupported_feature { feature; _ } -> "CommonMark extension currently unsupported: " ^ feature
-  | Unclosed_fenced_code_block { opener; _ } -> "Code fences opened by " ^ opener ^ " must be closed with the same fence."
+  | Unclosed_fenced_code_block { opener; _ } ->
+      "Code fences opened by " ^ opener ^ " must be closed with the same fence."
   | Unexpected_control_character _ -> "Use spaces, newlines, or escaped text instead."
   | Invalid_markdown _ -> "Adjust the input text and retry."
 
 let main_message = fun diag ->
   match diag.kind with
   | Invalid_markdown { found } -> "Invalid markdown: " ^ found.text
-  | Unsupported_feature { found; feature } -> "Unsupported markdown feature `"
-  ^ feature
-  ^ "` at "
-  ^ found.text
-  | Unclosed_fenced_code_block { found; opener } -> "Unclosed fenced code block started with "
-  ^ opener
-  ^ " at "
-  ^ found.text
-  | Unexpected_control_character { found; code } -> "Unexpected control character U+"
-  ^ Int.to_string code
-  ^ " ("
-  ^ found.text
-  ^ ")"
+  | Unsupported_feature { found; feature } ->
+      "Unsupported markdown feature `" ^ feature ^ "` at " ^ found.text
+  | Unclosed_fenced_code_block { found; opener } ->
+      "Unclosed fenced code block started with " ^ opener ^ " at " ^ found.text
+  | Unexpected_control_character { found; code } ->
+      "Unexpected control character U+" ^ Int.to_string code ^ " (" ^ found.text ^ ")"
   | Parser_internal { message; _ } -> "Parser internal error: " ^ message
 
 let to_string = fun diag ->
@@ -135,60 +137,65 @@ let to_json = fun diag ->
   let found = found_token diag in
   let kind_payload =
     match diag.kind with
-    | Invalid_markdown _ -> Data.Json.obj
-      [
-        ("id", Data.Json.string (error_id diag));
-        ("name", Data.Json.string "Invalid_markdown");
-        (
-          "found",
-          Data.Json.obj
-            [ ("kind", Data.Json.string found.kind); ("text", Data.Json.string found.text); ]
-        );
-      ]
-    | Unsupported_feature { feature; _ } -> Data.Json.obj
-      [
-        ("id", Data.Json.string (error_id diag));
-        ("name", Data.Json.string "Unsupported_feature");
-        ("feature", Data.Json.string feature);
-        (
-          "found",
-          Data.Json.obj
-            [ ("kind", Data.Json.string found.kind); ("text", Data.Json.string found.text); ]
-        );
-      ]
-    | Unclosed_fenced_code_block { opener; _ } -> Data.Json.obj
-      [
-        ("id", Data.Json.string (error_id diag));
-        ("name", Data.Json.string "Unclosed_fenced_code_block");
-        ("opener", Data.Json.string opener);
-        (
-          "found",
-          Data.Json.obj
-            [ ("kind", Data.Json.string found.kind); ("text", Data.Json.string found.text); ]
-        );
-      ]
-    | Unexpected_control_character { code; _ } -> Data.Json.obj
-      [
-        ("id", Data.Json.string (error_id diag));
-        ("name", Data.Json.string "Unexpected_control_character");
-        ("code", Data.Json.int code);
-        (
-          "found",
-          Data.Json.obj
-            [ ("kind", Data.Json.string found.kind); ("text", Data.Json.string found.text); ]
-        );
-      ]
-    | Parser_internal { message; _ } -> Data.Json.obj
-      [
-        ("id", Data.Json.string (error_id diag));
-        ("name", Data.Json.string "Parser_internal");
-        ("message", Data.Json.string message);
-        (
-          "found",
-          Data.Json.obj
-            [ ("kind", Data.Json.string found.kind); ("text", Data.Json.string found.text); ]
-        );
-      ]
+    | Invalid_markdown _ ->
+        Data.Json.obj
+          [
+            ("id", Data.Json.string (error_id diag));
+            ("name", Data.Json.string "Invalid_markdown");
+            (
+              "found",
+              Data.Json.obj
+                [ ("kind", Data.Json.string found.kind); ("text", Data.Json.string found.text); ]
+            );
+          ]
+    | Unsupported_feature { feature; _ } ->
+        Data.Json.obj
+          [
+            ("id", Data.Json.string (error_id diag));
+            ("name", Data.Json.string "Unsupported_feature");
+            ("feature", Data.Json.string feature);
+            (
+              "found",
+              Data.Json.obj
+                [ ("kind", Data.Json.string found.kind); ("text", Data.Json.string found.text); ]
+            );
+          ]
+    | Unclosed_fenced_code_block { opener; _ } ->
+        Data.Json.obj
+          [
+            ("id", Data.Json.string (error_id diag));
+            ("name", Data.Json.string "Unclosed_fenced_code_block");
+            ("opener", Data.Json.string opener);
+            (
+              "found",
+              Data.Json.obj
+                [ ("kind", Data.Json.string found.kind); ("text", Data.Json.string found.text); ]
+            );
+          ]
+    | Unexpected_control_character { code; _ } ->
+        Data.Json.obj
+          [
+            ("id", Data.Json.string (error_id diag));
+            ("name", Data.Json.string "Unexpected_control_character");
+            ("code", Data.Json.int code);
+            (
+              "found",
+              Data.Json.obj
+                [ ("kind", Data.Json.string found.kind); ("text", Data.Json.string found.text); ]
+            );
+          ]
+    | Parser_internal { message; _ } ->
+        Data.Json.obj
+          [
+            ("id", Data.Json.string (error_id diag));
+            ("name", Data.Json.string "Parser_internal");
+            ("message", Data.Json.string message);
+            (
+              "found",
+              Data.Json.obj
+                [ ("kind", Data.Json.string found.kind); ("text", Data.Json.string found.text); ]
+            );
+          ]
   in
   Data.Json.obj
     [
@@ -256,8 +263,7 @@ let from_json = fun json ->
           in
           let span = Ceibo.Span.make ~start ~end_ in
           match id with
-          | Some "markdown_invalid_markdown" ->
-              Ok { kind = Invalid_markdown { found }; span }
+          | Some "markdown_invalid_markdown" -> Ok { kind = Invalid_markdown { found }; span }
           | Some "markdown_unsupported_feature" -> (
               let feature =
                 match get_field kind_fields "feature" with
@@ -290,10 +296,8 @@ let from_json = fun json ->
               in
               Ok { kind = Parser_internal { found; message }; span }
             )
-          | Some unknown ->
-              Error ("unknown diagnostic id: " ^ unknown)
-          | None ->
-              Error "expected diagnostic id"
+          | Some unknown -> Error ("unknown diagnostic id: " ^ unknown)
+          | None -> Error "expected diagnostic id"
         )
       | _ -> Error "invalid diagnostic json shape"
     )

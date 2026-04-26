@@ -88,22 +88,20 @@ let handle_data = fun data conn state ->
           })
       | Some false ->
           (* Looks like HTTP/1.1 *)
-          if is_http1 buffer_data then
-            begin
-              Cell.set state.detected true;
-              let http1_state =
-                Http1_handler.make_handler
-                  ~config:state.config
-                  ~handler:state.handler
-                  ~sniffed_data:buffer_data
-                  ()
-              in
-              Socket_pool.Handler.Switch (Socket_pool.Handler.H {
-                handler = http1_handler;
-                state = http1_state;
-              })
-            end
-          else
+          if is_http1 buffer_data then (
+            Cell.set state.detected true;
+            let http1_state =
+              Http1_handler.make_handler
+                ~config:state.config
+                ~handler:state.handler
+                ~sniffed_data:buffer_data
+                ()
+            in
+            Socket_pool.Handler.Switch (Socket_pool.Handler.H {
+              handler = http1_handler;
+              state = http1_state;
+            })
+          ) else
             Socket_pool.Handler.Error (state, `Detection_error "Unknown protocol")
       | None ->
           (* Need more data - wait for more bytes *)

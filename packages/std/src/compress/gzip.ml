@@ -72,12 +72,10 @@ let buffered_output = fun (t: reader) -> t.output_len - t.output_pos
 let compact_input = fun (t: reader) ->
   if t.input_pos = 0 then
     ()
-  else if t.input_pos >= t.input_len then
-    (
-      t.input_pos <- 0;
-      t.input_len <- 0
-    )
-  else
+  else if t.input_pos >= t.input_len then (
+    t.input_pos <- 0;
+    t.input_len <- 0
+  ) else
     let remaining = buffered_input t in
     (
       Bytes.blit_unchecked t.input ~src_offset:t.input_pos ~dst:t.input ~dst_offset:0 ~len:remaining;
@@ -125,11 +123,10 @@ let read_into = fun (t: reader) dst ->
     let to_copy = min available (Bytes.length dst) in
     Bytes.blit_unchecked t.output ~src_offset:t.output_pos ~dst ~dst_offset:0 ~len:to_copy;
     t.output_pos <- t.output_pos + to_copy;
-    if t.output_pos >= t.output_len then
-      (
-        t.output_pos <- 0;
-        t.output_len <- 0
-      );
+    if t.output_pos >= t.output_len then (
+      t.output_pos <- 0;
+      t.output_len <- 0
+    );
     Ok to_copy
   in
   let rec loop () =
@@ -163,11 +160,10 @@ let read_into = fun (t: reader) dst ->
           | Error err -> Error (Gzip_error (error_of_engine err))
           | Ok step ->
               t.input_pos <- t.input_pos + step.consumed;
-              if step.produced > 0 then
-                (
-                  t.output_pos <- 0;
-                  t.output_len <- step.produced
-                );
+              if step.produced > 0 then (
+                t.output_pos <- 0;
+                t.output_len <- step.produced
+              );
               if step.status = Engine.Finished then
                 t.finished <- true;
               if step.produced > 0 then

@@ -614,7 +614,10 @@ let test_type_tuple_separator_views = fun _ctx ->
                 match Ast.TypeExpr.view argument with
                 | Ast.TypeExpr.Tuple { separator = Ast.TypeExpr.Comma; left = Some left; right = Some right } -> (
                     match (Ast.TypeExpr.view left, Ast.TypeExpr.view right) with
-                    | (Ast.TypeExpr.Var { name = Some left_name }, Ast.TypeExpr.Var { name = Some right_name }) ->
+                    | (
+                      Ast.TypeExpr.Var { name = Some left_name },
+                      Ast.TypeExpr.Var { name = Some right_name }
+                    ) ->
                         Test.assert_equal ~expected:"a" ~actual:(Ast.Token.text left_name);
                         Test.assert_equal ~expected:"e" ~actual:(Ast.Token.text right_name);
                         Ok ()
@@ -2470,12 +2473,10 @@ let attribute_shell_text = fun ~for_each_shell_token ->
   let first = ref true in
   for_each_shell_token
     ~fn:(fun token ->
-      if !first then
-        (
-          first := false;
-          text := !text ^ Ast.Token.text token
-        )
-      else
+      if !first then (
+        first := false;
+        text := !text ^ Ast.Token.text token
+      ) else
         text := !text ^ Ast.Token.full_text token);
   !text
 

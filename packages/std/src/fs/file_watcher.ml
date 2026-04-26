@@ -1,6 +1,7 @@
 open Global
 open Process
 open Sync
+
 module List = Collections.List
 
 type t = Pid.t
@@ -15,28 +16,38 @@ type state = {
 }
 
 let should_ignore = fun ~ignore_prefixes path ->
-  List.any ignore_prefixes
+  List.any
+    ignore_prefixes
     ~fn:(fun prefix ->
       match Path.strip_prefix path ~prefix with
       | Ok _ -> true
       | Error _ -> false)
 
 let rec loop = fun state ->
-  let events = Events.poll state.watcher |> Result.expect ~msg:"Could not read events" in
+  let events =
+    Events.poll state.watcher
+    |> Result.expect ~msg:"Could not read events"
+  in
   let filtered_events =
     List.filter
       events
       ~fn:(fun (event: Event.t) ->
-        not (should_ignore ~ignore_prefixes:state.ignore_prefixes event.Event.path))
+        not
+          (should_ignore ~ignore_prefixes:state.ignore_prefixes event.Event.path))
   in
   if List.length filtered_events > 0 then
     send state.subscriber (FileEvents filtered_events);
   loop state
 
 let init = fun ~latency ~root:path ~ignore_prefixes ~subscriber ->
-  let watcher = Events.create () |> Result.expect ~msg:"Failed to create file watcher" in
-  let _watch_id = Events.watch watcher ~path ~latency
-  |> Result.expect ~msg:("Failed to watch: " ^ (Path.to_string path)) in
+  let watcher =
+    Events.create ()
+    |> Result.expect ~msg:"Failed to create file watcher"
+  in
+  let _watch_id =
+    Events.watch watcher ~path ~latency
+    |> Result.expect ~msg:("Failed to watch: " ^ (Path.to_string path))
+  in
   loop { subscriber; watcher; ignore_prefixes }
 
 let start_link = fun ?(latency = (Time.Duration.from_millis 1)) ?(ignore_prefixes = []) ~root () ->

@@ -39,11 +39,10 @@ let add_to_pool = fun (regions: t) ~level node ->
     | Some frame ->
         if TypeRepr.pool_level node = Some frame.level then
           ()
-        else
-          (
-            TypeRepr.set_pool_level node (Some frame.level);
-            frame.nodes <- node :: frame.nodes
-          )
+        else (
+          TypeRepr.set_pool_level node (Some frame.level);
+          frame.nodes <- node :: frame.nodes
+        )
     | None -> TypeRepr.set_pool_level node None
   );
   node

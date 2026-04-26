@@ -191,11 +191,10 @@ module Monotonic = struct
         Cell.set state.last_timestamp_ms (extract_timestamp_ms new_uuid);
         new_uuid
       end
-    else
-      (
-        Cell.set state.last_timestamp_ms time_ms;
-        uuid
-      )
+    else (
+      Cell.set state.last_timestamp_ms time_ms;
+      uuid
+    )
 end
 
 (**

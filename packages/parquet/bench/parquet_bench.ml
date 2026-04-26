@@ -12,28 +12,25 @@ let io_writer_of_buffer =
 
     let write = fun buffer ~from ->
       let written = IO.Buffer.readable_bytes from in
-      IO.Buffer.append_slice buffer (IO.Buffer.readable from) |> Result.expect ~msg:"parquet bench writer should append buffer contents";
+      IO.Buffer.append_slice buffer (IO.Buffer.readable from)
+      |> Result.expect ~msg:"parquet bench writer should append buffer contents";
       Ok written
 
     let write_vectored = fun buffer ~from ->
       let written = ref 0 in
-      IO.IoVec.for_each from
+      IO.IoVec.for_each
+        from
         ~fn:(fun chunk ->
-          IO.Buffer.append_slice buffer chunk |> Result.expect ~msg:"parquet bench writer should append slices";
+          IO.Buffer.append_slice buffer chunk
+          |> Result.expect ~msg:"parquet bench writer should append slices";
           written := !written + IO.IoSlice.length chunk);
       Ok !written
 
     let flush = fun _buffer -> Ok ()
   end in
-  fun buffer ->
-    IO.Writer.from_sink (module Write) buffer
+  fun buffer -> IO.Writer.from_sink (module Write) buffer
 
-type fixture_spec = {
-  label: string;
-  row_group_count: int;
-  column_count: int;
-  body_size: int;
-}
+type fixture_spec = { label: string; row_group_count: int; column_count: int; body_size: int }
 
 type fixture = {
   label: string;
@@ -66,31 +63,31 @@ let schema_for_columns = fun column_count ->
   }
   in
   let leaves =
-    List.init ~count:column_count
-      ~fn:(fun index ->
-        ({
-            type_ =
-              Some (
-                if Int.rem index 2 = 0 then
-                  Parquet.Int32
-                else
-                  Parquet.Byte_array
-              );
-            type_length = None;
-            repetition_type = Some Parquet.Optional;
-            name = column_name index;
-            num_children = None;
-            converted_type =
-              Some (
-                if Int.rem index 2 = 0 then
-                  Parquet.Int_32
-                else
-                  Parquet.Utf8
-              );
-            scale = None;
-            precision = None;
-            field_id = Some (index + 1);
-          }: Parquet.schema_element))
+    List.init
+      ~count:column_count
+      ~fn:(fun index -> ({
+        type_ =
+          Some (
+            if Int.rem index 2 = 0 then
+              Parquet.Int32
+            else
+              Parquet.Byte_array
+          );
+        type_length = None;
+        repetition_type = Some Parquet.Optional;
+        name = column_name index;
+        num_children = None;
+        converted_type =
+          Some (
+            if Int.rem index 2 = 0 then
+              Parquet.Int_32
+            else
+              Parquet.Utf8
+          );
+        scale = None;
+        precision = None;
+        field_id = Some (index + 1);
+      }: Parquet.schema_element))
   in
   root :: leaves
 
@@ -98,58 +95,54 @@ let column_metadata = fun index row_group_index ->
   let name = column_name index in
   let offset = Int64.of_int ((row_group_index * 10_000) + (index * 128)) in
   ({
-      type_ =
-        if Int.rem index 2 = 0 then
-          Parquet.Int32
-        else
-          Parquet.Byte_array;
-      encodings = [ Parquet.Plain; Parquet.Rle_dictionary ];
-      path_in_schema = [ name ];
-      codec =
-        if Int.rem index 2 = 0 then
-          Parquet.Uncompressed
-        else
-          Parquet.Snappy;
-      num_values = 1_024L;
-      total_uncompressed_size = 4_096L;
-      total_compressed_size = 2_048L;
-      key_value_metadata = Some [ { key = "column"; value = Some name } ];
-      data_page_offset = offset;
-      index_page_offset = Some Int64.(add offset 32L);
-      dictionary_page_offset = Some Int64.(add offset 16L);
-      encoding_stats = Some [
-        { page_type = Parquet.Data_page; encoding = Parquet.Plain; count = 1 }
-      ];
-      bloom_filter_offset = Some Int64.(add offset 64L);
-      bloom_filter_length = Some 16;
-    }: Parquet.column_metadata)
+    type_ =
+      if Int.rem index 2 = 0 then
+        Parquet.Int32
+      else
+        Parquet.Byte_array;
+    encodings = [ Parquet.Plain; Parquet.Rle_dictionary ];
+    path_in_schema = [ name ];
+    codec =
+      if Int.rem index 2 = 0 then
+        Parquet.Uncompressed
+      else
+        Parquet.Snappy;
+    num_values = 1_024L;
+    total_uncompressed_size = 4_096L;
+    total_compressed_size = 2_048L;
+    key_value_metadata = Some [ { key = "column"; value = Some name } ];
+    data_page_offset = offset;
+    index_page_offset = Some Int64.(add offset 32L);
+    dictionary_page_offset = Some Int64.(add offset 16L);
+    encoding_stats = Some [ { page_type = Parquet.Data_page; encoding = Parquet.Plain; count = 1 } ];
+    bloom_filter_offset = Some Int64.(add offset 64L);
+    bloom_filter_length = Some 16;
+  }: Parquet.column_metadata)
 
 let column_chunk = fun index row_group_index ->
   let metadata = column_metadata index row_group_index in
   ({
-      file_path = None;
-      file_offset = metadata.data_page_offset;
-      meta_data = Some metadata;
-      offset_index_offset = Some Int64.(add metadata.data_page_offset 80L);
-      offset_index_length = Some 8;
-      column_index_offset = Some Int64.(add metadata.data_page_offset 88L);
-      column_index_length = Some 8;
-      encrypted_column_metadata = None;
-    }: Parquet.column_chunk)
+    file_path = None;
+    file_offset = metadata.data_page_offset;
+    meta_data = Some metadata;
+    offset_index_offset = Some Int64.(add metadata.data_page_offset 80L);
+    offset_index_length = Some 8;
+    column_index_offset = Some Int64.(add metadata.data_page_offset 88L);
+    column_index_length = Some 8;
+    encrypted_column_metadata = None;
+  }: Parquet.column_chunk)
 
 let row_group = fun column_count row_group_index ->
-  let columns =
-    List.init ~count:column_count ~fn:(fun index -> column_chunk index row_group_index)
-  in
+  let columns = List.init ~count:column_count ~fn:(fun index -> column_chunk index row_group_index) in
   ({
-      columns;
-      total_byte_size = Int64.of_int (column_count * 4_096);
-      num_rows = 1_024L;
-      sorting_columns = Some [ { column_idx = 0; descending = false; nulls_first = true } ];
-      file_offset = Some (Int64.of_int (row_group_index * 10_000));
-      total_compressed_size = Some (Int64.of_int (column_count * 2_048));
-      ordinal = Some row_group_index;
-    }: Parquet.row_group)
+    columns;
+    total_byte_size = Int64.of_int (column_count * 4_096);
+    num_rows = 1_024L;
+    sorting_columns = Some [ { column_idx = 0; descending = false; nulls_first = true } ];
+    file_offset = Some (Int64.of_int (row_group_index * 10_000));
+    total_compressed_size = Some (Int64.of_int (column_count * 2_048));
+    ordinal = Some row_group_index;
+  }: Parquet.row_group)
 
 let build_fixture = fun (spec: fixture_spec) ->
   let metadata: Parquet.file_metadata = {
@@ -166,25 +159,48 @@ let build_fixture = fun (spec: fixture_spec) ->
   }
   in
   let value: Parquet.t = { body = String.make ~len:spec.body_size ~char:'x'; metadata } in
-  let metadata_bytes = Parquet.encode_metadata metadata |> Result.expect ~msg:"bench fixture metadata should encode" in
-  let encoded = Parquet.to_string value |> Result.expect ~msg:"bench fixture file should encode" in
-  let decoded = Parquet.from_string encoded |> Result.expect ~msg:"bench fixture file should decode" in
+  let metadata_bytes =
+    Parquet.encode_metadata metadata
+    |> Result.expect ~msg:"bench fixture metadata should encode"
+  in
+  let encoded =
+    Parquet.to_string value
+    |> Result.expect ~msg:"bench fixture file should encode"
+  in
+  let decoded =
+    Parquet.from_string encoded
+    |> Result.expect ~msg:"bench fixture file should decode"
+  in
   if not (decoded = value) then
     panic ("parquet_bench: fixture roundtrip failed for " ^ spec.label);
-  { label = spec.label; value; metadata_bytes; encoded }
+  {
+    label = spec.label;
+    value;
+    metadata_bytes;
+    encoded;
+  }
 
-let small_fixture_spec = { label = "small"; row_group_count = 2; column_count = 4; body_size = 256 }
+let small_fixture_spec = {
+  label = "small";
+  row_group_count = 2;
+  column_count = 4;
+  body_size = 256;
+}
 
 let large_fixture_spec = {
   label = "large";
   row_group_count = 32;
   column_count = 8;
-  body_size = 1_000_000
+  body_size = 1_000_000;
 }
 
-let bench_encode_metadata = fun fixture () -> ignore (Parquet.encode_metadata fixture.value.metadata)
+let bench_encode_metadata = fun fixture () ->
+  ignore
+    (Parquet.encode_metadata fixture.value.metadata)
 
-let bench_decode_metadata = fun fixture () -> ignore (Parquet.decode_metadata fixture.metadata_bytes)
+let bench_decode_metadata = fun fixture () ->
+  ignore
+    (Parquet.decode_metadata fixture.metadata_bytes)
 
 let bench_encode_file = fun fixture () -> ignore (Parquet.to_string fixture.value)
 
@@ -195,7 +211,8 @@ let bench_encode_writer = fun fixture () ->
 let bench_decode_file = fun fixture () -> ignore (Parquet.from_string fixture.encoded)
 
 let bench_decode_reader = fun fixture () ->
-  ignore (Parquet.from_reader (String.to_reader ~chunk_size:io_chunk_size fixture.encoded))
+  ignore
+    (Parquet.from_reader (String.to_reader ~chunk_size:io_chunk_size fixture.encoded))
 
 let benchmark_suite = fun fixture ->
   let config =

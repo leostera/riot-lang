@@ -5,11 +5,10 @@ let rec wait_until ~attempts ~delay ~fn =
     true
   else if attempts <= 0 then
     false
-  else
-    (
-      sleep delay;
-      wait_until ~attempts:(attempts - 1) ~delay ~fn
-    )
+  else (
+    sleep delay;
+    wait_until ~attempts:(attempts - 1) ~delay ~fn
+  )
 
 let test_agent_start_and_get = fun _ctx ->
   let agent = Agent.start ~fn:(fun () -> 41) in

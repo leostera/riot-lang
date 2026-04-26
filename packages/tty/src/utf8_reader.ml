@@ -65,26 +65,24 @@ let read = fun reader ~read ->
             IO.Bytes.sub_unchecked reader.data ~offset:0 ~len:1
             |> IO.Bytes.to_string
           )
-        else
-          (
-            reader.pos <- 1;
-            reader.len <- len;
-            match read_more reader ~read with
-            | `Retry when Int.equal reader.pos reader.len ->
-                if is_valid_buffer reader then
-                  let value =
-                    IO.Bytes.sub_unchecked reader.data ~offset:0 ~len:reader.len
-                    |> IO.Bytes.to_string
-                  in
-                  clear reader;
-                  `Read value
-                else
-                  (
-                    clear reader;
-                    `Malformed "Invalid UTF-8 sequence"
-                  )
-            | result -> result
-          )
+        else (
+          reader.pos <- 1;
+          reader.len <- len;
+          match read_more reader ~read with
+          | `Retry when Int.equal reader.pos reader.len ->
+              if is_valid_buffer reader then
+                let value =
+                  IO.Bytes.sub_unchecked reader.data ~offset:0 ~len:reader.len
+                  |> IO.Bytes.to_string
+                in
+                clear reader;
+                `Read value
+              else (
+                clear reader;
+                `Malformed "Invalid UTF-8 sequence"
+              )
+          | result -> result
+        )
     | `Ok _ -> `Malformed "Unexpected read length"
     | `Would_block -> `Retry
     | `Error -> `End
@@ -98,9 +96,8 @@ let read = fun reader ~read ->
           in
           clear reader;
           `Read value
-        else
-          (
-            clear reader;
-            `Malformed "Invalid UTF-8 sequence"
-          )
+        else (
+          clear reader;
+          `Malformed "Invalid UTF-8 sequence"
+        )
     | result -> result

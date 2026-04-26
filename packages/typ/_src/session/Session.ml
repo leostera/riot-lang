@@ -862,27 +862,26 @@ let prepare_snapshot = fun session ~roots ->
           revision = session.next_revision;
         });
     Ok snapshot
-  else
-    (
-      TypConfig.emit_event
-        session.config
-        (fun () ->
-          Event.PrepareSnapshotFailed {
-            roots;
-            missing_root_source_ids;
-            missing_modules =
-              MissingRequirements.requirements missing_requirements
-              |> List.concat_map
-                (
-                  function
-                  | MissingRequirements.MissingModuleSummary { module_name; _ } -> [ module_name ]
-                  | MissingRequirements.LocalModuleCycle _ -> []
-                  | MissingRequirements.MissingRootSource _ -> []
-                )
-              |> List.sort_uniq String.compare;
-          });
-      Error missing_requirements
-    )
+  else (
+    TypConfig.emit_event
+      session.config
+      (fun () ->
+        Event.PrepareSnapshotFailed {
+          roots;
+          missing_root_source_ids;
+          missing_modules =
+            MissingRequirements.requirements missing_requirements
+            |> List.concat_map
+              (
+                function
+                | MissingRequirements.MissingModuleSummary { module_name; _ } -> [ module_name ]
+                | MissingRequirements.LocalModuleCycle _ -> []
+                | MissingRequirements.MissingRootSource _ -> []
+              )
+            |> List.sort_uniq String.compare;
+        });
+    Error missing_requirements
+  )
 
 let snapshot = fun session ->
   let roots =

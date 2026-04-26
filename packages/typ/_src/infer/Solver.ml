@@ -73,12 +73,11 @@ let lower_expansive_var = fun (solver: t) (frame: frame) ~variance_of_named ty -
               | TypeDecl.Covariant -> ()
               | TypeDecl.Contravariant
               | TypeDecl.Invariant ->
-                  if TypeRepr.level ty > boundary_level then
-                    (
-                      TypeRepr.set_level ty boundary_level;
-                      Region.add_to_pool solver.regions ~level:boundary_level ty
-                      |> ignore
-                    )
+                  if TypeRepr.level ty > boundary_level then (
+                    TypeRepr.set_level ty boundary_level;
+                    Region.add_to_pool solver.regions ~level:boundary_level ty
+                    |> ignore
+                  )
             );
         let rest =
           match TypeRepr.view ty with
@@ -203,7 +202,10 @@ let merge_poly_variant_tags = fun left_tags right_tags ->
         loop (left_tag :: merged) payload_pairs rest_left []
     | ([], (right_tag: TypeRepr.poly_variant_tag) :: rest_right) ->
         loop (right_tag :: merged) payload_pairs [] rest_right
-    | ((left_tag: TypeRepr.poly_variant_tag) :: rest_left, (right_tag: TypeRepr.poly_variant_tag) :: rest_right) -> (
+    | (
+      (left_tag: TypeRepr.poly_variant_tag) :: rest_left,
+      (right_tag: TypeRepr.poly_variant_tag) :: rest_right
+    ) -> (
         match String.compare left_tag.name right_tag.name with
         | 0 -> (
             match (left_tag.payload_type, right_tag.payload_type) with
@@ -229,7 +231,10 @@ let exact_tags_contain_upper_tags = fun exact_tags upper_tags ->
     match (exact_tags, upper_tags) with
     | (_, []) -> Some (List.rev payload_pairs)
     | ([], _ :: _) -> None
-    | ((exact_tag: TypeRepr.poly_variant_tag) :: rest_exact, (upper_tag: TypeRepr.poly_variant_tag) :: rest_upper) -> (
+    | (
+      (exact_tag: TypeRepr.poly_variant_tag) :: rest_exact,
+      (upper_tag: TypeRepr.poly_variant_tag) :: rest_upper
+    ) -> (
         match String.compare exact_tag.name upper_tag.name with
         | 0 -> (
             match (exact_tag.payload_type, upper_tag.payload_type) with
@@ -281,12 +286,11 @@ let unify = fun (solver: t) ~left ~right ->
     in
     if Collections.HashSet.contains seen_pairs key then
       true
-    else
-      (
-        Collections.HashSet.insert seen_pairs key
-        |> ignore;
-        false
-      )
+    else (
+      Collections.HashSet.insert seen_pairs key
+      |> ignore;
+      false
+    )
   in
   let rec loop = function
     | [] -> Ok ()
@@ -324,9 +328,10 @@ let unify = fun (solver: t) ~left ~right ->
               let rec add_value_pairs acc left_values right_values =
                 match (left_values, right_values) with
                 | ([], []) -> Some acc
-                | ((left_value: TypeRepr.package_value) :: left_rest, (
-                  right_value: TypeRepr.package_value
-                ) :: right_rest) when String.equal left_value.name right_value.name ->
+                | (
+                  (left_value: TypeRepr.package_value) :: left_rest,
+                  (right_value: TypeRepr.package_value) :: right_rest
+                ) when String.equal left_value.name right_value.name ->
                     add_value_pairs
                       ((TypeScheme.body left_value.scheme, TypeScheme.body right_value.scheme)
                       :: acc)
@@ -341,14 +346,20 @@ let unify = fun (solver: t) ~left ~right ->
               )
           | (TypeRepr.Hole _, _)
           | (_, TypeRepr.Hole _) -> loop rest
-          | (TypeRepr.Named { head = left_head; arguments = left_arguments; _ }, TypeRepr.Named { head = right_head; arguments = right_arguments; _ }) ->
+          | (
+            TypeRepr.Named { head = left_head; arguments = left_arguments; _ },
+            TypeRepr.Named { head = right_head; arguments = right_arguments; _ }
+          ) ->
               if not (same_named_head left_head right_head) then
                 Error (mismatch left right)
               else if List.length left_arguments != List.length right_arguments then
                 Error (mismatch left right)
               else
                 loop (List.rev_append (List.combine left_arguments right_arguments) rest)
-          | (TypeRepr.PolyVariant { bound = left_bound; tags = left_tags; inherited = left_inherited }, TypeRepr.PolyVariant { bound = right_bound; tags = right_tags; inherited = right_inherited }) -> (
+          | (
+            TypeRepr.PolyVariant { bound = left_bound; tags = left_tags; inherited = left_inherited },
+            TypeRepr.PolyVariant { bound = right_bound; tags = right_tags; inherited = right_inherited }
+          ) -> (
               match (left_bound, right_bound) with
               | (TypeRepr.UpperBound, TypeRepr.UpperBound) when left_inherited = []
               && right_inherited = [] -> (
@@ -431,7 +442,10 @@ let unify = fun (solver: t) ~left ~right ->
                 )
               else
                 loop (List.rev_append (List.combine left_members right_members) rest)
-          | (TypeRepr.Arrow { label = left_label; lhs = left_arg; rhs = left_res }, TypeRepr.Arrow { label = right_label; lhs = right_arg; rhs = right_res }) ->
+          | (
+            TypeRepr.Arrow { label = left_label; lhs = left_arg; rhs = left_res },
+            TypeRepr.Arrow { label = right_label; lhs = right_arg; rhs = right_res }
+          ) ->
               if not (labels_match left_label right_label) then
                 Error (mismatch left right)
               else
@@ -481,11 +495,10 @@ let unify = fun (solver: t) ~left ~right ->
                   variable_id = var.id;
                   in_type = TypePrinter.type_to_string other_ty;
                 })
-              else
-                (
-                  var.link <- Some other_ty;
-                  loop rest
-                )
+              else (
+                var.link <- Some other_ty;
+                loop rest
+              )
           | _ -> Error (mismatch left right)
   in
   loop [ (left, right); ]

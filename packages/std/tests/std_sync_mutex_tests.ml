@@ -99,26 +99,24 @@ let test_mutex_try_lock_reports_held_and_free_states =
       | Ok () ->
           if Sync.Mutex.try_lock lock then
             Error "expected try_lock to report the held mutex as unavailable"
-          else
-            (
-              send holder Mutex_holder_release;
-              match await
-                ~what:"mutex holder release"
-                (
-                  function
-                  | Mutex_holder_released -> `select ()
-                  | _ -> `skip
-                ) with
-              | Error _ as err -> err
-              | Ok () ->
-                  if not (Sync.Mutex.try_lock lock) then
-                    Error "expected try_lock to succeed after the mutex was released"
-                  else
-                    (
-                      Sync.Mutex.unlock lock;
-                      Ok ()
-                    )
-            ))
+          else (
+            send holder Mutex_holder_release;
+            match await
+              ~what:"mutex holder release"
+              (
+                function
+                | Mutex_holder_released -> `select ()
+                | _ -> `skip
+              ) with
+            | Error _ as err -> err
+            | Ok () ->
+                if not (Sync.Mutex.try_lock lock) then
+                  Error "expected try_lock to succeed after the mutex was released"
+                else (
+                  Sync.Mutex.unlock lock;
+                  Ok ()
+                )
+          ))
 
 let test_mutex_unlock_requires_ownership =
   Test.case
@@ -239,11 +237,10 @@ let test_mutex_owner_exit_releases_lock =
             | Ok () ->
                 if not (Sync.Mutex.try_lock lock) then
                   Error "expected owner exit to release the mutex"
-                else
-                  (
-                    Sync.Mutex.unlock lock;
-                    Ok ()
-                  )
+                else (
+                  Sync.Mutex.unlock lock;
+                  Ok ()
+                )
           ))
 
 let name = "Sync.Mutex"

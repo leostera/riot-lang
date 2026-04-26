@@ -3,13 +3,15 @@ open Std
 type progress_phase =
   | Parsed of { parse_diagnostics: int }
   | AstReady
-  | RuleStarted of { rule_id: Rule_id.t }
-  | RuleFinished of { rule_id: Rule_id.t; diagnostics: int }
+  | RuleStarted of {
+      rule_id: Rule_id.t;
+    }
+  | RuleFinished of {
+      rule_id: Rule_id.t;
+      diagnostics: int;
+    }
 
-type progress_event = {
-  timestamp_ms: int;
-  phase: progress_phase;
-}
+type progress_event = { timestamp_ms: int; phase: progress_phase }
 
 type result = {
   tree: Rule.syntax_tree;
@@ -18,14 +20,19 @@ type result = {
 }
 
 let timestamp_ms = fun () ->
-  Time.SystemTime.now () |> Time.SystemTime.nanos |> Int64.div 1_000_000L |> Int64.to_int
+  Time.SystemTime.now ()
+  |> Time.SystemTime.nanos
+  |> Int64.div 1_000_000L
+  |> Int64.to_int
 
 let emit_progress = fun on_progress phase ->
   match on_progress with
   | Some on_progress -> on_progress { timestamp_ms = timestamp_ms (); phase }
   | None -> ()
 
-let trace_enabled = Env.get Env.Bool ~var:"RIOT_FIX_TRACE" |> Option.unwrap_or ~default:false
+let trace_enabled =
+  Env.get Env.Bool ~var:"RIOT_FIX_TRACE"
+  |> Option.unwrap_or ~default:false
 
 let trace = fun ?filename message ->
   if trace_enabled then
@@ -59,50 +66,62 @@ let lint_diagnostics = fun ~rules ?filename ?on_progress ~source (
     let source_file = Syn.Ast.SourceFile.make parse_result.tree in
     let root = Syn.Ast.root parse_result.tree in
     emit_progress on_progress AstReady;
-    trace ?filename "ast ready";
-    let source_text = source in
-    let file_path =
-      match filename with
-      | Some filename -> Path.to_string filename
-      | None -> "<stdin>"
-    in
-    let ctx = Rule.{ file_path; source = source_text; source_file } in
-    rules |> List.map
-      ~fn:(fun rule ->
-        let rule_id = Rule.id rule in
-        emit_progress on_progress (RuleStarted { rule_id });
-        trace ?filename ("rule start " ^ Rule_id.to_string rule_id);
-        let diagnostics = Rule.run rule ctx root in
-        emit_progress on_progress (RuleFinished { rule_id; diagnostics = List.length diagnostics });
-        trace
-          ?filename
-          ("rule finish "
-          ^ Rule_id.to_string rule_id
-          ^ " ("
-          ^ Int.to_string (List.length diagnostics)
-          ^ " diagnostics)");
-        diagnostics) |> List.concat
+  trace ?filename "ast ready";
+  let source_text = source in
+  let file_path =
+    match filename with
+    | Some filename -> Path.to_string filename
+    | None -> "<stdin>"
+  in
+  let ctx = Rule.{ file_path; source = source_text; source_file } in
+  rules
+  |> List.map
+    ~fn:(fun rule ->
+      let rule_id = Rule.id rule in
+      emit_progress on_progress (RuleStarted { rule_id });
+      trace ?filename ("rule start " ^ Rule_id.to_string rule_id);
+      let diagnostics = Rule.run rule ctx root in
+      emit_progress on_progress (RuleFinished { rule_id; diagnostics = List.length diagnostics });
+      trace
+        ?filename
+        ("rule finish "
+        ^ Rule_id.to_string rule_id
+        ^ " ("
+        ^ Int.to_string (List.length diagnostics)
+        ^ " diagnostics)");
+      diagnostics)
+  |> List.concat
 
 let run = fun ~rules ?filename ?on_progress source ->
   let parse_result = parse ?filename source in
   {
     tree = parse_result.tree;
     diagnostics = lint_diagnostics ~rules ?filename ?on_progress ~source parse_result;
-    parse_diagnostics = Std.Collections.Vector.to_array parse_result.diagnostics |> Array.to_list
+    parse_diagnostics =
+      Std.Collections.Vector.to_array parse_result.diagnostics
+      |> Array.to_list;
   }
 
 let run_rule = fun ~rule ?filename ?on_progress source ->
-  run ~rules:[ rule ] ?filename ?on_progress source
+  run
+    ~rules:[ rule ]
+    ?filename
+    ?on_progress
+    source
 
 let has_parse_errors = fun result -> not (List.is_empty result.parse_diagnostics)
 
 let has_errors = fun result ->
-  List.any result.diagnostics ~fn:(fun diag -> Diagnostic.severity diag = Diagnostic.Error)
+  List.any
+    result.diagnostics
+    ~fn:(fun diag -> Diagnostic.severity diag = Diagnostic.Error)
 
 let safe_fixes = fun result -> List.filter_map result.diagnostics ~fn:Diagnostic.fix
 
 let can_apply_safe_fixes = fun result ->
-  not (has_parse_errors result) && not (has_errors result) && not (List.is_empty (safe_fixes result))
+  not (has_parse_errors result)
+  && not (has_errors result)
+  && not (List.is_empty (safe_fixes result))
 
 let apply_safe_fixes = fun ~source result ->
   let fixes = safe_fixes result in

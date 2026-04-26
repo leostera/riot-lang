@@ -114,11 +114,10 @@ let rec add_inline_value = fun buffer value ->
   | Tagged (tag, payload) ->
       IO.Buffer.add_char buffer '!';
       IO.Buffer.add_string buffer tag;
-      if is_scalar payload then
-        (
-          IO.Buffer.add_char buffer ' ';
-          add_inline_value buffer payload
-        )
+      if is_scalar payload then (
+        IO.Buffer.add_char buffer ' ';
+        add_inline_value buffer payload
+      )
   | Seq _
   | Map _ -> panic "Render.add_inline_value: expected inline-capable YAML value"
 
@@ -135,38 +134,32 @@ let rec render_value = fun buffer indent value ->
       add_inline_value buffer value;
       IO.Buffer.add_char buffer '\n'
   | Tagged (tag, payload) ->
-      if is_scalar payload then
-        (
-          add_indent buffer indent;
-          add_inline_value buffer value;
-          IO.Buffer.add_char buffer '\n'
-        )
-      else
-        (
-          add_indent buffer indent;
-          IO.Buffer.add_char buffer '!';
-          IO.Buffer.add_string buffer tag;
-          IO.Buffer.add_char buffer '\n';
-          render_value buffer (indent + 2) payload
-        )
+      if is_scalar payload then (
+        add_indent buffer indent;
+        add_inline_value buffer value;
+        IO.Buffer.add_char buffer '\n'
+      ) else (
+        add_indent buffer indent;
+        IO.Buffer.add_char buffer '!';
+        IO.Buffer.add_string buffer tag;
+        IO.Buffer.add_char buffer '\n';
+        render_value buffer (indent + 2) payload
+      )
   | Seq items ->
       List.for_each
         items
         ~fn:(fun item ->
-          if is_inline_value item then
-            (
-              add_indent buffer indent;
-              IO.Buffer.add_string buffer "- ";
-              add_inline_value buffer item;
-              IO.Buffer.add_char buffer '\n'
-            )
-          else
-            (
-              add_indent buffer indent;
-              IO.Buffer.add_char buffer '-';
-              IO.Buffer.add_char buffer '\n';
-              render_value buffer (indent + 2) item
-            ))
+          if is_inline_value item then (
+            add_indent buffer indent;
+            IO.Buffer.add_string buffer "- ";
+            add_inline_value buffer item;
+            IO.Buffer.add_char buffer '\n'
+          ) else (
+            add_indent buffer indent;
+            IO.Buffer.add_char buffer '-';
+            IO.Buffer.add_char buffer '\n';
+            render_value buffer (indent + 2) item
+          ))
   | Map fields ->
       List.for_each
         fields
@@ -174,17 +167,14 @@ let rec render_value = fun buffer indent value ->
           add_indent buffer indent;
           add_quoted_string buffer key;
           IO.Buffer.add_char buffer ':';
-          if is_inline_value value then
-            (
-              IO.Buffer.add_char buffer ' ';
-              add_inline_value buffer value;
-              IO.Buffer.add_char buffer '\n'
-            )
-          else
-            (
-              IO.Buffer.add_char buffer '\n';
-              render_value buffer (indent + 2) value
-            ))
+          if is_inline_value value then (
+            IO.Buffer.add_char buffer ' ';
+            add_inline_value buffer value;
+            IO.Buffer.add_char buffer '\n'
+          ) else (
+            IO.Buffer.add_char buffer '\n';
+            render_value buffer (indent + 2) value
+          ))
 
 let to_string = fun value ->
   let buffer = IO.Buffer.create ~size:256 in

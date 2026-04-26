@@ -126,11 +126,10 @@ let rec start = fun () ->
       let current = { pid = Server.start () } in
       if Atomic.compare_and_set pid None (Some current) then
         current.pid
-      else
-        (
-          await_stopped current.pid;
-          start ()
-        )
+      else (
+        await_stopped current.pid;
+        start ()
+      )
 
 let emit = fun event ->
   match Atomic.get pid with

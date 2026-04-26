@@ -196,12 +196,10 @@ let to_string = fun ?(config = default_config) ?headers data ->
         Buffer.add_char buffer config.quote;
         String.for_each
           ~fn:(fun c ->
-            if c = config.quote then
-              (
-                Buffer.add_char buffer config.escape;
-                Buffer.add_char buffer config.quote
-              )
-            else
+            if c = config.quote then (
+              Buffer.add_char buffer config.escape;
+              Buffer.add_char buffer config.quote
+            ) else
               Buffer.add_char buffer c)
           field;
         Buffer.add_char buffer config.quote;

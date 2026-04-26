@@ -109,117 +109,116 @@ let substitute_type_vars_with = fun ~make ty mapping ->
     let ty = TypeRepr.prune ty in
     if Int.equal ty.TypeRepr.walk_mark generation then
       ty
-    else
-      (
-        ty.TypeRepr.walk_mark <- generation;
-        match TypeRepr.view ty with
-        | TypeRepr.Int
-        | TypeRepr.Float
-        | TypeRepr.Bool
-        | TypeRepr.String
-        | TypeRepr.Char
-        | TypeRepr.Unit
-        | TypeRepr.Hole _ -> ty
-        | TypeRepr.Option element ->
-            let substituted_element = loop element in
-            if Std.Ptr.equal element substituted_element then
-              ty
-            else
-              make (TypeRepr.Option substituted_element)
-        | TypeRepr.Result (ok_ty, error_ty) ->
-            let substituted_ok_ty = loop ok_ty in
-            let substituted_error_ty = loop error_ty in
-            if
-              Std.Ptr.equal ok_ty substituted_ok_ty && Std.Ptr.equal error_ty substituted_error_ty
-            then
-              ty
-            else
-              make (TypeRepr.Result (substituted_ok_ty, substituted_error_ty))
-        | TypeRepr.Array element ->
-            let substituted_element = loop element in
-            if Std.Ptr.equal element substituted_element then
-              ty
-            else
-              make (TypeRepr.Array substituted_element)
-        | TypeRepr.List element ->
-            let substituted_element = loop element in
-            if Std.Ptr.equal element substituted_element then
-              ty
-            else
-              make (TypeRepr.List substituted_element)
-        | TypeRepr.Seq element ->
-            let substituted_element = loop element in
-            if Std.Ptr.equal element substituted_element then
-              ty
-            else
-              make (TypeRepr.Seq substituted_element)
-        | TypeRepr.Named { head; arguments } ->
-            let substituted_arguments = map_preserving loop arguments in
-            if Std.Ptr.equal arguments substituted_arguments then
-              ty
-            else
-              make (TypeRepr.Named { head; arguments = substituted_arguments })
-        | TypeRepr.PolyVariant { bound; tags; inherited } ->
-            let substituted_tags =
-              map_preserving
-                (fun (tag: TypeRepr.poly_variant_tag) ->
-                  match tag.payload_type with
-                  | Some payload_type ->
-                      let substituted_payload_type = loop payload_type in
-                      if Std.Ptr.equal payload_type substituted_payload_type then
-                        tag
-                      else
-                        { tag with payload_type = Some substituted_payload_type }
-                  | None -> tag)
-                tags
-            in
-            let substituted_inherited = map_preserving loop inherited in
-            if
-              Std.Ptr.equal tags substituted_tags && Std.Ptr.equal inherited substituted_inherited
-            then
-              ty
-            else
-              make
-                (TypeRepr.PolyVariant {
-                  bound;
-                  tags = substituted_tags;
-                  inherited = substituted_inherited;
-                })
-        | TypeRepr.Tuple members ->
-            let substituted_members = map_preserving loop members in
-            if Std.Ptr.equal members substituted_members then
-              ty
-            else
-              make (TypeRepr.Tuple substituted_members)
-        | TypeRepr.Arrow { label; lhs; rhs } ->
-            let substituted_lhs = loop lhs in
-            let substituted_rhs = loop rhs in
-            if Std.Ptr.equal lhs substituted_lhs && Std.Ptr.equal rhs substituted_rhs then
-              ty
-            else
-              make (TypeRepr.Arrow { label; lhs = substituted_lhs; rhs = substituted_rhs })
-        | TypeRepr.Package signature ->
-            let substituted_values =
-              map_preserving
-                (fun (value: TypeRepr.package_value) ->
-                  let substituted_scheme = TypeScheme.map_type_preserving loop value.scheme in
-                  if Std.Ptr.equal value.scheme substituted_scheme then
-                    value
-                  else
-                    { value with scheme = substituted_scheme })
-                signature.values
-            in
-            if Std.Ptr.equal signature.values substituted_values then
-              ty
-            else
-              TypeRepr.package ~values:substituted_values
-        | TypeRepr.Var { id; link = None; _ } -> (
-            match Collections.HashMap.get mapping id with
-            | Some replacement -> replacement
-            | None -> ty
-          )
-        | TypeRepr.Var { link = Some linked; _ } -> loop linked
-      )
+    else (
+      ty.TypeRepr.walk_mark <- generation;
+      match TypeRepr.view ty with
+      | TypeRepr.Int
+      | TypeRepr.Float
+      | TypeRepr.Bool
+      | TypeRepr.String
+      | TypeRepr.Char
+      | TypeRepr.Unit
+      | TypeRepr.Hole _ -> ty
+      | TypeRepr.Option element ->
+          let substituted_element = loop element in
+          if Std.Ptr.equal element substituted_element then
+            ty
+          else
+            make (TypeRepr.Option substituted_element)
+      | TypeRepr.Result (ok_ty, error_ty) ->
+          let substituted_ok_ty = loop ok_ty in
+          let substituted_error_ty = loop error_ty in
+          if
+            Std.Ptr.equal ok_ty substituted_ok_ty && Std.Ptr.equal error_ty substituted_error_ty
+          then
+            ty
+          else
+            make (TypeRepr.Result (substituted_ok_ty, substituted_error_ty))
+      | TypeRepr.Array element ->
+          let substituted_element = loop element in
+          if Std.Ptr.equal element substituted_element then
+            ty
+          else
+            make (TypeRepr.Array substituted_element)
+      | TypeRepr.List element ->
+          let substituted_element = loop element in
+          if Std.Ptr.equal element substituted_element then
+            ty
+          else
+            make (TypeRepr.List substituted_element)
+      | TypeRepr.Seq element ->
+          let substituted_element = loop element in
+          if Std.Ptr.equal element substituted_element then
+            ty
+          else
+            make (TypeRepr.Seq substituted_element)
+      | TypeRepr.Named { head; arguments } ->
+          let substituted_arguments = map_preserving loop arguments in
+          if Std.Ptr.equal arguments substituted_arguments then
+            ty
+          else
+            make (TypeRepr.Named { head; arguments = substituted_arguments })
+      | TypeRepr.PolyVariant { bound; tags; inherited } ->
+          let substituted_tags =
+            map_preserving
+              (fun (tag: TypeRepr.poly_variant_tag) ->
+                match tag.payload_type with
+                | Some payload_type ->
+                    let substituted_payload_type = loop payload_type in
+                    if Std.Ptr.equal payload_type substituted_payload_type then
+                      tag
+                    else
+                      { tag with payload_type = Some substituted_payload_type }
+                | None -> tag)
+              tags
+          in
+          let substituted_inherited = map_preserving loop inherited in
+          if
+            Std.Ptr.equal tags substituted_tags && Std.Ptr.equal inherited substituted_inherited
+          then
+            ty
+          else
+            make
+              (TypeRepr.PolyVariant {
+                bound;
+                tags = substituted_tags;
+                inherited = substituted_inherited;
+              })
+      | TypeRepr.Tuple members ->
+          let substituted_members = map_preserving loop members in
+          if Std.Ptr.equal members substituted_members then
+            ty
+          else
+            make (TypeRepr.Tuple substituted_members)
+      | TypeRepr.Arrow { label; lhs; rhs } ->
+          let substituted_lhs = loop lhs in
+          let substituted_rhs = loop rhs in
+          if Std.Ptr.equal lhs substituted_lhs && Std.Ptr.equal rhs substituted_rhs then
+            ty
+          else
+            make (TypeRepr.Arrow { label; lhs = substituted_lhs; rhs = substituted_rhs })
+      | TypeRepr.Package signature ->
+          let substituted_values =
+            map_preserving
+              (fun (value: TypeRepr.package_value) ->
+                let substituted_scheme = TypeScheme.map_type_preserving loop value.scheme in
+                if Std.Ptr.equal value.scheme substituted_scheme then
+                  value
+                else
+                  { value with scheme = substituted_scheme })
+              signature.values
+          in
+          if Std.Ptr.equal signature.values substituted_values then
+            ty
+          else
+            TypeRepr.package ~values:substituted_values
+      | TypeRepr.Var { id; link = None; _ } -> (
+          match Collections.HashMap.get mapping id with
+          | Some replacement -> replacement
+          | None -> ty
+        )
+      | TypeRepr.Var { link = Some linked; _ } -> loop linked
+    )
   in
   loop ty
 
@@ -266,149 +265,144 @@ let resolve_type_with ~make ~resolve_named_type_decl ~resolve_named_type_head ty
     let ty = TypeRepr.prune ty in
     if Int.equal ty.TypeRepr.walk_mark generation then
       ty
-    else
-      (
-        ty.TypeRepr.walk_mark <- generation;
-        match TypeRepr.view ty with
-        | TypeRepr.Int
-        | TypeRepr.Float
-        | TypeRepr.Bool
-        | TypeRepr.String
-        | TypeRepr.Char
-        | TypeRepr.Unit
-        | TypeRepr.Hole _
-        | TypeRepr.Var _ -> ty
-        | TypeRepr.Option element ->
-            let canonical_element = loop element in
-            if Std.Ptr.equal element canonical_element then
-              ty
-            else
-              make (TypeRepr.Option canonical_element)
-        | TypeRepr.Result (ok_ty, error_ty) ->
-            let canonical_ok_ty = loop ok_ty in
-            let canonical_error_ty = loop error_ty in
-            if
-              Std.Ptr.equal ok_ty canonical_ok_ty && Std.Ptr.equal error_ty canonical_error_ty
-            then
-              ty
-            else
-              make (TypeRepr.Result (canonical_ok_ty, canonical_error_ty))
-        | TypeRepr.Array element ->
-            let canonical_element = loop element in
-            if Std.Ptr.equal element canonical_element then
-              ty
-            else
-              make (TypeRepr.Array canonical_element)
-        | TypeRepr.List element ->
-            let canonical_element = loop element in
-            if Std.Ptr.equal element canonical_element then
-              ty
-            else
-              make (TypeRepr.List canonical_element)
-        | TypeRepr.Seq element ->
-            let canonical_element = loop element in
-            if Std.Ptr.equal element canonical_element then
-              ty
-            else
-              make (TypeRepr.Seq canonical_element)
-        | TypeRepr.Named { head; arguments } ->
-            let canonical_arguments = map_preserving loop arguments in
-            let resolved_head =
-              match resolve_named_type_head head.name with
-              | Some resolved_head -> resolved_head
-              | None -> head
-            in
-            (
-              match resolve_named_type_decl head.name with
-              | Some type_decl -> (
-                  match instantiate_alias_manifest ~make type_decl canonical_arguments with
-                  | Some manifest -> loop manifest
-                  | None -> (
-                      match builtin_type_of_decl type_decl resolved_head canonical_arguments with
-                      | Some builtin -> builtin
-                      | None ->
-                          if
-                            Std.Ptr.equal arguments canonical_arguments
-                            && same_named_type_head head resolved_head
-                          then
-                            ty
-                          else
-                            make
-                              (TypeRepr.Named {
-                                head = resolved_head;
-                                arguments = canonical_arguments;
-                              })
-                    )
-                )
-              | None -> (
-                  match builtin_type_of_head resolved_head canonical_arguments with
-                  | Some builtin -> builtin
-                  | None ->
-                      if
-                        Std.Ptr.equal arguments canonical_arguments
-                        && same_named_type_head head resolved_head
-                      then
-                        ty
-                      else
-                        make
-                          (TypeRepr.Named { head = resolved_head; arguments = canonical_arguments })
-                )
-            )
-        | TypeRepr.PolyVariant { bound; tags; inherited } ->
-            let canonical_tags =
-              map_preserving
-                (fun (tag: TypeRepr.poly_variant_tag) ->
-                  match tag.payload_type with
-                  | Some payload_type ->
-                      let canonical_payload_type = loop payload_type in
-                      if Std.Ptr.equal payload_type canonical_payload_type then
-                        tag
-                      else
-                        { tag with payload_type = Some canonical_payload_type }
-                  | None -> tag)
-                tags
-            in
-            let canonical_inherited = map_preserving loop inherited in
-            if
-              Std.Ptr.equal tags canonical_tags && Std.Ptr.equal inherited canonical_inherited
-            then
-              ty
-            else
-              make
-                (TypeRepr.PolyVariant {
-                  bound;
-                  tags = canonical_tags;
-                  inherited = canonical_inherited;
-                })
-        | TypeRepr.Tuple members ->
-            let canonical_members = map_preserving loop members in
-            if Std.Ptr.equal members canonical_members then
-              ty
-            else
-              make (TypeRepr.Tuple canonical_members)
-        | TypeRepr.Arrow { label; lhs; rhs } ->
-            let canonical_lhs = loop lhs in
-            let canonical_rhs = loop rhs in
-            if Std.Ptr.equal lhs canonical_lhs && Std.Ptr.equal rhs canonical_rhs then
-              ty
-            else
-              make (TypeRepr.Arrow { label; lhs = canonical_lhs; rhs = canonical_rhs })
-        | TypeRepr.Package signature ->
-            let canonical_values =
-              map_preserving
-                (fun (value: TypeRepr.package_value) ->
-                  let canonical_scheme = TypeScheme.map_type_preserving loop value.scheme in
-                  if Std.Ptr.equal value.scheme canonical_scheme then
-                    value
-                  else
-                    { value with scheme = canonical_scheme })
-                signature.values
-            in
-            if Std.Ptr.equal signature.values canonical_values then
-              ty
-            else
-              make (TypeRepr.Package { values = canonical_values })
-      )
+    else (
+      ty.TypeRepr.walk_mark <- generation;
+      match TypeRepr.view ty with
+      | TypeRepr.Int
+      | TypeRepr.Float
+      | TypeRepr.Bool
+      | TypeRepr.String
+      | TypeRepr.Char
+      | TypeRepr.Unit
+      | TypeRepr.Hole _
+      | TypeRepr.Var _ -> ty
+      | TypeRepr.Option element ->
+          let canonical_element = loop element in
+          if Std.Ptr.equal element canonical_element then
+            ty
+          else
+            make (TypeRepr.Option canonical_element)
+      | TypeRepr.Result (ok_ty, error_ty) ->
+          let canonical_ok_ty = loop ok_ty in
+          let canonical_error_ty = loop error_ty in
+          if Std.Ptr.equal ok_ty canonical_ok_ty && Std.Ptr.equal error_ty canonical_error_ty then
+            ty
+          else
+            make (TypeRepr.Result (canonical_ok_ty, canonical_error_ty))
+      | TypeRepr.Array element ->
+          let canonical_element = loop element in
+          if Std.Ptr.equal element canonical_element then
+            ty
+          else
+            make (TypeRepr.Array canonical_element)
+      | TypeRepr.List element ->
+          let canonical_element = loop element in
+          if Std.Ptr.equal element canonical_element then
+            ty
+          else
+            make (TypeRepr.List canonical_element)
+      | TypeRepr.Seq element ->
+          let canonical_element = loop element in
+          if Std.Ptr.equal element canonical_element then
+            ty
+          else
+            make (TypeRepr.Seq canonical_element)
+      | TypeRepr.Named { head; arguments } ->
+          let canonical_arguments = map_preserving loop arguments in
+          let resolved_head =
+            match resolve_named_type_head head.name with
+            | Some resolved_head -> resolved_head
+            | None -> head
+          in
+          (
+            match resolve_named_type_decl head.name with
+            | Some type_decl -> (
+                match instantiate_alias_manifest ~make type_decl canonical_arguments with
+                | Some manifest -> loop manifest
+                | None -> (
+                    match builtin_type_of_decl type_decl resolved_head canonical_arguments with
+                    | Some builtin -> builtin
+                    | None ->
+                        if
+                          Std.Ptr.equal arguments canonical_arguments
+                          && same_named_type_head head resolved_head
+                        then
+                          ty
+                        else
+                          make
+                            (TypeRepr.Named {
+                              head = resolved_head;
+                              arguments = canonical_arguments;
+                            })
+                  )
+              )
+            | None -> (
+                match builtin_type_of_head resolved_head canonical_arguments with
+                | Some builtin -> builtin
+                | None ->
+                    if
+                      Std.Ptr.equal arguments canonical_arguments
+                      && same_named_type_head head resolved_head
+                    then
+                      ty
+                    else
+                      make
+                        (TypeRepr.Named { head = resolved_head; arguments = canonical_arguments })
+              )
+          )
+      | TypeRepr.PolyVariant { bound; tags; inherited } ->
+          let canonical_tags =
+            map_preserving
+              (fun (tag: TypeRepr.poly_variant_tag) ->
+                match tag.payload_type with
+                | Some payload_type ->
+                    let canonical_payload_type = loop payload_type in
+                    if Std.Ptr.equal payload_type canonical_payload_type then
+                      tag
+                    else
+                      { tag with payload_type = Some canonical_payload_type }
+                | None -> tag)
+              tags
+          in
+          let canonical_inherited = map_preserving loop inherited in
+          if Std.Ptr.equal tags canonical_tags && Std.Ptr.equal inherited canonical_inherited then
+            ty
+          else
+            make
+              (TypeRepr.PolyVariant {
+                bound;
+                tags = canonical_tags;
+                inherited = canonical_inherited;
+              })
+      | TypeRepr.Tuple members ->
+          let canonical_members = map_preserving loop members in
+          if Std.Ptr.equal members canonical_members then
+            ty
+          else
+            make (TypeRepr.Tuple canonical_members)
+      | TypeRepr.Arrow { label; lhs; rhs } ->
+          let canonical_lhs = loop lhs in
+          let canonical_rhs = loop rhs in
+          if Std.Ptr.equal lhs canonical_lhs && Std.Ptr.equal rhs canonical_rhs then
+            ty
+          else
+            make (TypeRepr.Arrow { label; lhs = canonical_lhs; rhs = canonical_rhs })
+      | TypeRepr.Package signature ->
+          let canonical_values =
+            map_preserving
+              (fun (value: TypeRepr.package_value) ->
+                let canonical_scheme = TypeScheme.map_type_preserving loop value.scheme in
+                if Std.Ptr.equal value.scheme canonical_scheme then
+                  value
+                else
+                  { value with scheme = canonical_scheme })
+              signature.values
+          in
+          if Std.Ptr.equal signature.values canonical_values then
+            ty
+          else
+            make (TypeRepr.Package { values = canonical_values })
+    )
   in
   loop ty
 

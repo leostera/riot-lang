@@ -18,13 +18,29 @@ let all = fun ~compare -> make ~lower:Unbounded ~upper:Unbounded ~compare
 
 let singleton = fun ~compare value -> make ~lower:(Included value) ~upper:(Included value) ~compare
 
-let closed = fun ~compare lower upper -> make ~lower:(Included lower) ~upper:(Included upper) ~compare
+let closed = fun ~compare lower upper ->
+  make
+    ~lower:(Included lower)
+    ~upper:(Included upper)
+    ~compare
 
-let open_ = fun ~compare lower upper -> make ~lower:(Excluded lower) ~upper:(Excluded upper) ~compare
+let open_ = fun ~compare lower upper ->
+  make
+    ~lower:(Excluded lower)
+    ~upper:(Excluded upper)
+    ~compare
 
-let closed_open = fun ~compare lower upper -> make ~lower:(Included lower) ~upper:(Excluded upper) ~compare
+let closed_open = fun ~compare lower upper ->
+  make
+    ~lower:(Included lower)
+    ~upper:(Excluded upper)
+    ~compare
 
-let open_closed = fun ~compare lower upper -> make ~lower:(Excluded lower) ~upper:(Included upper) ~compare
+let open_closed = fun ~compare lower upper ->
+  make
+    ~lower:(Excluded lower)
+    ~upper:(Included upper)
+    ~compare
 
 let at_least = fun ~compare lower -> make ~lower:(Included lower) ~upper:Unbounded ~compare
 
@@ -42,15 +58,11 @@ let compare_values = fun t -> t.compare
 
 let compare_lower_bounds = fun t left right ->
   match (left, right) with
-  | (Unbounded, Unbounded) ->
-      Order.EQ
-  | (Unbounded, _) ->
-      Order.LT
-  | (_, Unbounded) ->
-      Order.GT
+  | (Unbounded, Unbounded) -> Order.EQ
+  | (Unbounded, _) -> Order.LT
+  | (_, Unbounded) -> Order.GT
   | (Included left, Included right)
-  | (Excluded left, Excluded right) ->
-      t.compare left right
+  | (Excluded left, Excluded right) -> t.compare left right
   | (Included left, Excluded right) ->
       let order = t.compare left right in
       if order = Order.EQ then
@@ -66,15 +78,11 @@ let compare_lower_bounds = fun t left right ->
 
 let compare_upper_bounds = fun t left right ->
   match (left, right) with
-  | (Unbounded, Unbounded) ->
-      Order.EQ
-  | (Unbounded, _) ->
-      Order.GT
-  | (_, Unbounded) ->
-      Order.LT
+  | (Unbounded, Unbounded) -> Order.EQ
+  | (Unbounded, _) -> Order.GT
+  | (_, Unbounded) -> Order.LT
   | (Included left, Included right)
-  | (Excluded left, Excluded right) ->
-      t.compare left right
+  | (Excluded left, Excluded right) -> t.compare left right
   | (Included left, Excluded right) ->
       let order = t.compare left right in
       if order = Order.EQ then
@@ -130,10 +138,8 @@ let contains = fun t value ->
 let is_empty = fun t ->
   match (t.lower, t.upper) with
   | (Unbounded, _)
-  | (_, Unbounded) ->
-      false
-  | (Included lower, Included upper) ->
-      t.compare lower upper = Order.GT
+  | (_, Unbounded) -> false
+  | (Included lower, Included upper) -> t.compare lower upper = Order.GT
   | (Included lower, Excluded upper)
   | (Excluded lower, Included upper)
   | (Excluded lower, Excluded upper) ->
@@ -153,8 +159,9 @@ let intersect = fun left right ->
   let range = {
     lower = max_lower_bound left left.lower right.lower;
     upper = min_upper_bound left left.upper right.upper;
-    compare = left.compare
-  } in
+    compare = left.compare;
+  }
+  in
   if is_empty range then
     None
   else
@@ -174,7 +181,7 @@ let hull = fun left right ->
     {
       lower = min_lower_bound left left.lower right.lower;
       upper = max_upper_bound left left.upper right.upper;
-      compare = left.compare
+      compare = left.compare;
     }
 
 let to_string = fun render t ->

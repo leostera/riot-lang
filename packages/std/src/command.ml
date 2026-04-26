@@ -224,11 +224,10 @@ let append_stdout_chunk = fun ~on_stdout_line ~stdout_buffer ~line_buffer buffer
       for i = 0 to bytes_read - 1 do
         let ch = Kernel.Bytes.get_unchecked buffer ~at:i in
         StringBuilder.add_char line_buffer ch;
-        if ch = '\n' then
-          (
-            on_stdout_line (StringBuilder.contents line_buffer);
-            StringBuilder.clear line_buffer
-          )
+        if ch = '\n' then (
+          on_stdout_line (StringBuilder.contents line_buffer);
+          StringBuilder.clear line_buffer
+        )
       done)
 
 let flush_stdout_line = fun ~on_stdout_line ~line_buffer ->
@@ -236,11 +235,10 @@ let flush_stdout_line = fun ~on_stdout_line ~line_buffer ->
     on_stdout_line
     ~fn:(fun on_stdout_line ->
       let line = StringBuilder.contents line_buffer in
-      if not (String.equal line "") then
-        (
-          on_stdout_line line;
-          StringBuilder.clear line_buffer
-        ))
+      if not (String.equal line "") then (
+        on_stdout_line line;
+        StringBuilder.clear line_buffer
+      ))
 
 let output_with_pipes = fun ~on_stdout_line ~on_idle ~idle_interval t proc stdout_fd stderr_fd ->
   let stdout_buffer = StringBuilder.create ~size:4_096 in
@@ -321,11 +319,10 @@ let output_with_pipes = fun ~on_stdout_line ~on_idle ~idle_interval t proc stdou
           let elapsed = Time.Instant.elapsed started in
           let elapsed_us = Time.Duration.to_micros elapsed in
           let idle_interval_us = Time.Duration.to_micros idle_interval in
-          if elapsed_us - !last_idle_us >= idle_interval_us then
-            (
-              last_idle_us := elapsed_us;
-              on_idle elapsed
-            ))
+          if elapsed_us - !last_idle_us >= idle_interval_us then (
+            last_idle_us := elapsed_us;
+            on_idle elapsed
+          ))
   in
   let rec loop () =
     match drain false with
@@ -348,27 +345,24 @@ let output_with_pipes = fun ~on_stdout_line ~on_idle ~idle_interval t proc stdou
             if
               process_done
               && (readers_closed || !drain_retries >= pipe_drain_retries_after_process_exit)
-            then
-              (
-                flush_stdout_line ~on_stdout_line ~line_buffer:stdout_line_buffer;
-                let _ = Kernel.Process.close proc in
-                let exit_status = Option.unwrap !process_status in
-                let result = {
-                  status = kernel_status_code exit_status;
-                  stdout = StringBuilder.contents stdout_buffer;
-                  stderr = StringBuilder.contents stderr_buffer;
-                }
-                in
-                t.state <- Exited result;
-                Ok result
-              )
-            else
-              (
-                maybe_idle data_read;
-                if not data_read then
-                  blocking_sleep pipe_read_retry_interval;
-                loop ()
-              )
+            then (
+              flush_stdout_line ~on_stdout_line ~line_buffer:stdout_line_buffer;
+              let _ = Kernel.Process.close proc in
+              let exit_status = Option.unwrap !process_status in
+              let result = {
+                status = kernel_status_code exit_status;
+                stdout = StringBuilder.contents stdout_buffer;
+                stderr = StringBuilder.contents stderr_buffer;
+              }
+              in
+              t.state <- Exited result;
+              Ok result
+            ) else (
+              maybe_idle data_read;
+              if not data_read then
+                blocking_sleep pipe_read_retry_interval;
+              loop ()
+            )
       )
   in
   loop ()

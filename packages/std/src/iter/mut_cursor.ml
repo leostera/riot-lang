@@ -1,4 +1,5 @@
 open Kernel
+
 module IoSlice = Kernel.IO.IoVec.IoSlice
 
 type t = {
@@ -12,13 +13,14 @@ let panic = Kernel.SystemError.panic
 let unwrap_slice = fun context ->
   function
   | Kernel.Result.Ok value -> value
-  | Kernel.Result.Error error -> panic
-    (Kernel.String.concat "" [ context; ": "; Kernel.IO.Error.message error ])
+  | Kernel.Result.Error error ->
+      panic (Kernel.String.concat "" [ context; ": "; Kernel.IO.Error.message error ])
 
 let from_slice = fun source -> { source; pos = 0; length = IoSlice.length source }
 
 let from_string = fun source ->
-  from_slice (unwrap_slice "Iter.MutCursor.from_string" (IoSlice.from_string source))
+  from_slice
+    (unwrap_slice "Iter.MutCursor.from_string" (IoSlice.from_string source))
 
 let create = from_string
 
@@ -66,7 +68,9 @@ let take_while = fun cursor predicate ->
   loop ();
   IoSlice.sub_unchecked cursor.source ~off:start ~len:(cursor.pos - start)
 
-let take_while_string = fun cursor predicate -> take_while cursor predicate |> IoSlice.to_string
+let take_while_string = fun cursor predicate ->
+  take_while cursor predicate
+  |> IoSlice.to_string
 
 let skip_while = fun cursor predicate ->
   let rec loop () =

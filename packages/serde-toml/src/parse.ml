@@ -234,30 +234,25 @@ let strip_comment = fun line ->
         IO.Buffer.contents buffer
       else
         let current = String.unsafe_get line index in
-        if !in_string then
-          (
-            IO.Buffer.add_char buffer current;
-            if !escaped then
-              escaped := false
-            else if Char.equal current '\\' then
-              escaped := true
-            else if Char.equal current '"' then
-              in_string := false;
-            loop (index + 1)
-          )
-        else if Char.equal current '"' then
-          (
-            in_string := true;
-            IO.Buffer.add_char buffer current;
-            loop (index + 1)
-          )
-        else if Char.equal current '#' then
+        if !in_string then (
+          IO.Buffer.add_char buffer current;
+          if !escaped then
+            escaped := false
+          else if Char.equal current '\\' then
+            escaped := true
+          else if Char.equal current '"' then
+            in_string := false;
+          loop (index + 1)
+        ) else if Char.equal current '"' then (
+          in_string := true;
+          IO.Buffer.add_char buffer current;
+          loop (index + 1)
+        ) else if Char.equal current '#' then
           IO.Buffer.contents buffer
-        else
-          (
-            IO.Buffer.add_char buffer current;
-            loop (index + 1)
-          )
+        else (
+          IO.Buffer.add_char buffer current;
+          loop (index + 1)
+        )
     in
     loop 0
 
@@ -297,22 +292,18 @@ let comment_cutoff = fun text ~start ~stop ->
       stop
     else
       let current = String.unsafe_get text index in
-      if !in_string then
-        (
-          if !escaped then
-            escaped := false
-          else if Char.equal current '\\' then
-            escaped := true
-          else if Char.equal current '"' then
-            in_string := false;
-          loop (index + 1)
-        )
-      else if Char.equal current '"' then
-        (
-          in_string := true;
-          loop (index + 1)
-        )
-      else if Char.equal current '#' then
+      if !in_string then (
+        if !escaped then
+          escaped := false
+        else if Char.equal current '\\' then
+          escaped := true
+        else if Char.equal current '"' then
+          in_string := false;
+        loop (index + 1)
+      ) else if Char.equal current '"' then (
+        in_string := true;
+        loop (index + 1)
+      ) else if Char.equal current '#' then
         index
       else
         loop (index + 1)
@@ -465,34 +456,26 @@ let split_key_path = fun text ->
     start := stop + 1
   in
   let rec loop index =
-    if index >= len then
-      (
-        parts := String.sub text ~offset:!start ~len:(len - !start) :: !parts;
-        List.rev !parts
-      )
-    else
+    if index >= len then (
+      parts := String.sub text ~offset:!start ~len:(len - !start) :: !parts;
+      List.rev !parts
+    ) else
       let current = String.unsafe_get text index in
-      if !in_string then
-        (
-          if !escaped then
-            escaped := false
-          else if Char.equal current '\\' then
-            escaped := true
-          else if Char.equal current '"' then
-            in_string := false;
-          loop (index + 1)
-        )
-      else if Char.equal current '"' then
-        (
-          in_string := true;
-          loop (index + 1)
-        )
-      else if Char.equal current '.' then
-        (
-          push index;
-          loop (index + 1)
-        )
-      else
+      if !in_string then (
+        if !escaped then
+          escaped := false
+        else if Char.equal current '\\' then
+          escaped := true
+        else if Char.equal current '"' then
+          in_string := false;
+        loop (index + 1)
+      ) else if Char.equal current '"' then (
+        in_string := true;
+        loop (index + 1)
+      ) else if Char.equal current '.' then (
+        push index;
+        loop (index + 1)
+      ) else
         loop (index + 1)
   in
   loop 0
@@ -514,17 +497,15 @@ let find_assignment_from = fun text ~start ~stop ->
       None
     else
       let current = String.unsafe_get text index in
-      if !in_string then
-        (
-          if !escaped then
-            escaped := false
-          else if Char.equal current '\\' then
-            escaped := true
-          else if Char.equal current '"' then
-            in_string := false;
-          loop (index + 1)
-        )
-      else
+      if !in_string then (
+        if !escaped then
+          escaped := false
+        else if Char.equal current '\\' then
+          escaped := true
+        else if Char.equal current '"' then
+          in_string := false;
+        loop (index + 1)
+      ) else
         (
           match current with
           | '"' ->
@@ -721,9 +702,7 @@ let parse_value_text = fun input ->
     let rec scan () =
       match peek () with
       | None -> ()
-      | Some (','
-      | ']'
-      | '}') -> ()
+      | Some (',' | ']' | '}') -> ()
       | Some current when is_ws current -> ()
       | Some _ ->
           advance ();
@@ -823,69 +802,65 @@ let parse_document = fun content ->
             stop - start >= 4
             && Char.equal (String.unsafe_get content start) '['
             && Char.equal (String.unsafe_get content (start + 1)) '['
-          then
+          then (
+            if
+              not
+                (Char.equal (String.unsafe_get content (stop - 2)) ']'
+                && Char.equal (String.unsafe_get content (stop - 1)) ']')
+            then
+              fail_line line_number "unterminated array-of-tables header";
+            let inner = trim_sub content ~start:(start + 2) ~stop:(stop - 2) in
+            let path = parse_cached_key_path inner in
             (
-              if
-                not
-                  (Char.equal (String.unsafe_get content (stop - 2)) ']'
-                  && Char.equal (String.unsafe_get content (stop - 1)) ']')
-              then
-                fail_line line_number "unterminated array-of-tables header";
-              let inner = trim_sub content ~start:(start + 2) ~stop:(stop - 2) in
-              let path = parse_cached_key_path inner in
-              (
-                match !context with
-                | Array_item_context ctx -> (
-                    let array_path = ctx.array_path in
-                    let item = ctx.item in
-                    let current = ctx.current in
-                    match strip_prefix ~prefix:array_path path with
-                    | Some relative when not (List.is_empty relative) && Ptr.equal current item ->
-                        let nested = append_array_table item relative in
-                        context := Array_item_context {
-                          array_path = path;
-                          item = nested;
-                          current = nested;
-                        }
-                    | _ ->
-                        let nested = append_array_table root path in
-                        context := Array_item_context {
-                          array_path = path;
-                          item = nested;
-                          current = nested;
-                        }
-                  )
-                | Table_context _ ->
-                    let nested = append_array_table root path in
-                    context := Array_item_context {
-                      array_path = path;
-                      item = nested;
-                      current = nested;
-                    }
-              )
+              match !context with
+              | Array_item_context ctx -> (
+                  let array_path = ctx.array_path in
+                  let item = ctx.item in
+                  let current = ctx.current in
+                  match strip_prefix ~prefix:array_path path with
+                  | Some relative when not (List.is_empty relative) && Ptr.equal current item ->
+                      let nested = append_array_table item relative in
+                      context := Array_item_context {
+                        array_path = path;
+                        item = nested;
+                        current = nested;
+                      }
+                  | _ ->
+                      let nested = append_array_table root path in
+                      context := Array_item_context {
+                        array_path = path;
+                        item = nested;
+                        current = nested;
+                      }
+                )
+              | Table_context _ ->
+                  let nested = append_array_table root path in
+                  context := Array_item_context {
+                    array_path = path;
+                    item = nested;
+                    current = nested;
+                  }
             )
-          else if Char.equal (String.unsafe_get content start) '[' then
-            (
-              if not (Char.equal (String.unsafe_get content (stop - 1)) ']') then
-                fail_line line_number "unterminated table header";
-              let inner = trim_sub content ~start:(start + 1) ~stop:(stop - 1) in
-              let path = parse_cached_key_path inner in
-              let next_context =
-                match !context with
-                | Array_item_context ctx -> (
-                    let array_path = ctx.array_path in
-                    let item = ctx.item in
-                    match strip_prefix ~prefix:array_path path with
-                    | Some relative when not (List.is_empty relative) ->
-                        let current = ensure_table_path item relative in
-                        Array_item_context { array_path; item; current }
-                    | _ -> Table_context (ensure_table_path root path)
-                  )
-                | Table_context _ -> Table_context (ensure_table_path root path)
-              in
-              context := next_context
-            )
-          else
+          ) else if Char.equal (String.unsafe_get content start) '[' then (
+            if not (Char.equal (String.unsafe_get content (stop - 1)) ']') then
+              fail_line line_number "unterminated table header";
+            let inner = trim_sub content ~start:(start + 1) ~stop:(stop - 1) in
+            let path = parse_cached_key_path inner in
+            let next_context =
+              match !context with
+              | Array_item_context ctx -> (
+                  let array_path = ctx.array_path in
+                  let item = ctx.item in
+                  match strip_prefix ~prefix:array_path path with
+                  | Some relative when not (List.is_empty relative) ->
+                      let current = ensure_table_path item relative in
+                      Array_item_context { array_path; item; current }
+                  | _ -> Table_context (ensure_table_path root path)
+                )
+              | Table_context _ -> Table_context (ensure_table_path root path)
+            in
+            context := next_context
+          ) else
             match find_assignment_from content ~start ~stop with
             | None -> fail_line line_number "expected key/value assignment"
             | Some eq_index ->

@@ -53,11 +53,10 @@ let push = fun vector ~value ->
 let pop = fun vector ->
   if Int.equal vector.length 0 then
     None
-  else
-    (
-      vector.length <- Int.sub vector.length 1;
-      Some (Array.get_unchecked vector.data ~at:vector.length)
-    )
+  else (
+    vector.length <- Int.sub vector.length 1;
+    Some (Array.get_unchecked vector.data ~at:vector.length)
+  )
 
 let get = fun vector ~at ->
   if at < 0 || at >= vector.length then
@@ -70,29 +69,27 @@ let get_unchecked = fun vector ~at -> Array.get_unchecked vector.data ~at
 let set = fun vector ~at ~value ->
   if at < 0 || at >= vector.length then
     Error (OutOfBoundsSet { length = vector.length; at })
-  else
-    (
-      Array.set_unchecked vector.data ~at ~value;
-      Ok ()
-    )
+  else (
+    Array.set_unchecked vector.data ~at ~value;
+    Ok ()
+  )
 
 let set_unchecked = fun vector ~at ~value -> Array.set_unchecked vector.data ~at ~value
 
 let insert = fun vector ~at ~value ->
   if at < 0 || at > vector.length then
     Kernel.SystemError.panic "Vector.insert received an out-of-bounds index"
-  else
-    (
-      ensure_capacity vector (Int.add vector.length 1);
-      Array.blit
-        vector.data
-        ~src_offset:at
-        ~dst:vector.data
-        ~dst_offset:(Int.add at 1)
-        ~len:(Int.sub vector.length at);
-      Array.set_unchecked vector.data ~at ~value;
-      vector.length <- Int.add vector.length 1
-    )
+  else (
+    ensure_capacity vector (Int.add vector.length 1);
+    Array.blit
+      vector.data
+      ~src_offset:at
+      ~dst:vector.data
+      ~dst_offset:(Int.add at 1)
+      ~len:(Int.sub vector.length at);
+    Array.set_unchecked vector.data ~at ~value;
+    vector.length <- Int.add vector.length 1
+  )
 
 let remove = fun vector ~at ->
   if at < 0 || at >= vector.length then
@@ -116,22 +113,20 @@ let for_each = fun vector ~fn ->
   let rec loop index =
     if index >= vector.length then
       ()
-    else
-      (
-        fn (Array.get_unchecked vector.data ~at:index);
-        loop (Int.add index 1)
-      )
+    else (
+      fn (Array.get_unchecked vector.data ~at:index);
+      loop (Int.add index 1)
+    )
   in
   loop 0
 
 let append = fun left right ->
-  if right.length > 0 then
-    (
-      reserve left ~size:right.length;
-      Array.blit right.data ~src_offset:0 ~dst:left.data ~dst_offset:left.length ~len:right.length;
-      left.length <- Int.add left.length right.length;
-      right.length <- 0
-    )
+  if right.length > 0 then (
+    reserve left ~size:right.length;
+    Array.blit right.data ~src_offset:0 ~dst:left.data ~dst_offset:left.length ~len:right.length;
+    left.length <- Int.add left.length right.length;
+    right.length <- 0
+  )
 
 let concat = fun left right ->
   let left_length = length left in

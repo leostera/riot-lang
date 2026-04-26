@@ -262,12 +262,11 @@ let unique = fun env ->
     | binding :: rest ->
         if Collections.HashSet.contains seen (Binding.surface_path binding) then
           loop acc rest
-        else
-          (
-            Collections.HashSet.insert seen (Binding.surface_path binding)
-            |> ignore;
-            loop (binding :: acc) rest
-          )
+        else (
+          Collections.HashSet.insert seen (Binding.surface_path binding)
+          |> ignore;
+          loop (binding :: acc) rest
+        )
   in
   loop [] (bindings env)
   |> of_bindings
@@ -296,12 +295,11 @@ let visible_entries = fun env ->
     | binding :: rest ->
         if Collections.HashSet.contains seen (Binding.surface_path binding) then
           loop acc rest
-        else
-          (
-            Collections.HashSet.insert seen (Binding.surface_path binding)
-            |> ignore;
-            loop (binding :: acc) rest
-          )
+        else (
+          Collections.HashSet.insert seen (Binding.surface_path binding)
+          |> ignore;
+          loop (binding :: acc) rest
+        )
   in
   loop [] (bindings env)
   |> of_bindings

@@ -9,15 +9,13 @@ type reader_state = {
 }
 
 type t =
-  | String_input of { input: string; mutable pos: int }
+  | String_input of {
+      input: string;
+      mutable pos: int;
+    }
   | Reader_input of reader_state
 
-type scan_result =
-[
-  `Stop of int * char
-  | `Boundary of int
-  | `Eof of int
-]
+type scan_result = [`Stop of int * char | `Boundary of int | `Eof of int]
 
 let default_capacity = 131_072
 
@@ -39,12 +37,11 @@ let position = function
 let local_index = fun state absolute -> absolute - state.base
 
 let compact = fun state ->
-  if Int.(state.pos > 0) then
-    (
-      ignore (IO.Buffer.consume state.buffer ~len:state.pos);
-      state.base <- state.base + state.pos;
-      state.pos <- 0
-    )
+  if Int.(state.pos > 0) then (
+    ignore (IO.Buffer.consume state.buffer ~len:state.pos);
+    state.base <- state.base + state.pos;
+    state.pos <- 0
+  )
 
 let reader_length = fun state -> IO.Buffer.readable_bytes state.buffer
 
@@ -54,15 +51,22 @@ let reader_slice = fun state -> IO.Buffer.readable state.buffer
 
 let reader_subslice = fun state ~off ~len -> IO.IoSlice.sub_unchecked (reader_slice state) ~off ~len
 
-let reader_substring = fun state ~off ~len -> reader_subslice state ~off ~len |> IO.IoSlice.to_string
+let reader_substring = fun state ~off ~len ->
+  reader_subslice state ~off ~len
+  |> IO.IoSlice.to_string
 
 let reader_append_range = fun dst state ~start ~stop ->
   let len = stop - start in
   if Int.(len > 0) then
-    IO.Buffer.append_subslice dst (reader_slice state) ~off:start ~len |> Result.expect ~msg:"serde-json buffered input should append borrowed slices"
+    IO.Buffer.append_subslice dst (reader_slice state) ~off:start ~len
+    |> Result.expect ~msg:"serde-json buffered input should append borrowed slices"
 
 let reader_match_field_range = fun fields state ~offset ~length ->
-  Serde.De.Fields.match_buffer_range fields state.buffer ~offset ~length
+  Serde.De.Fields.match_buffer_range
+    fields
+    state.buffer
+    ~offset
+    ~length
 
 let refill = fun state ->
   if state.eof then
@@ -73,10 +77,8 @@ let refill = fun state ->
     | Ok 0 ->
         state.eof <- true;
         false
-    | Ok _ ->
-        true
-    | Error err ->
-        raise (Serde.Decode_error (`Io_error err))
+    | Ok _ -> true
+    | Error err -> raise (Serde.Decode_error (`Io_error err))
   )
 
 let ensure = fun input needed ->
@@ -135,17 +137,23 @@ let copy_range_to_buffer = fun buffer input ~start ~stop ->
   if Int.(length > 0) then
     match input with
     | String_input state -> IO.Buffer.add_substring buffer state.input start length
-    | Reader_input state -> reader_append_range
-      buffer
-      state
-      ~start:(local_index state start)
-      ~stop:(local_index state stop)
+    | Reader_input state ->
+        reader_append_range
+          buffer
+          state
+          ~start:(local_index state start)
+          ~stop:(local_index state stop)
 
 let match_field_range = fun fields input ~start ~stop ->
   let length = stop - start in
   match input with
   | String_input state -> Serde.De.Fields.match_slice fields state.input ~offset:start ~length
-  | Reader_input state -> reader_match_field_range fields state ~offset:(local_index state start) ~length
+  | Reader_input state ->
+      reader_match_field_range
+        fields
+        state
+        ~offset:(local_index state start)
+        ~length
 
 let skip_whitespace = function
   | String_input state ->

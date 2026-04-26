@@ -91,11 +91,10 @@ let repeat = fun count f ->
   let rec loop remaining =
     if remaining <= 0 then
       ()
-    else
-      (
-        f ();
-        loop (remaining - 1)
-      )
+    else (
+      f ();
+      loop (remaining - 1)
+    )
   in
   loop count
 

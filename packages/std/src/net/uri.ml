@@ -619,12 +619,10 @@ let percent_encode = fun str ->
       Buffer.contents buf
     else
       let c = String.get_unchecked str ~at:i in
-      if is_unreserved c then
-        (
-          Buffer.add_char buf c;
-          encode (i + 1)
-        )
-      else
+      if is_unreserved c then (
+        Buffer.add_char buf c;
+        encode (i + 1)
+      ) else
         (* Encode as %XX *)
         let code = Char.to_int c in
         Buffer.add_char buf '%';
@@ -643,18 +641,14 @@ let form_encode = fun str ->
       Buffer.contents buf
     else
       let c = String.get_unchecked str ~at:i in
-      if is_unreserved c then
-        (
-          Buffer.add_char buf c;
-          encode (i + 1)
-        )
-      else if c = ' ' then
-        (
-          (* Space encoded as + in forms *)
-          Buffer.add_char buf '+';
-          encode (i + 1)
-        )
-      else
+      if is_unreserved c then (
+        Buffer.add_char buf c;
+        encode (i + 1)
+      ) else if c = ' ' then (
+        (* Space encoded as + in forms *)
+        Buffer.add_char buf '+';
+        encode (i + 1)
+      ) else
         (* Everything else as %XX *)
         let code = Char.code c in
         Buffer.add_char buf '%';

@@ -143,11 +143,10 @@ let test_initial_plan_packages_follow_topological_order = fun _ctx ->
               in
               if not all_targets_match then
                 Error "expected initial planned package work to stay on the host target"
-              else
-                (
-                  Test.assert_equal ~expected:expected_keys ~actual:planned_keys;
-                  Ok ()
-                )
+              else (
+                Test.assert_equal ~expected:expected_keys ~actual:planned_keys;
+                Ok ()
+              )
           | items ->
               Error ("expected one initial host lane, got " ^ Int.to_string (List.length items)))) with
   | Ok result -> result

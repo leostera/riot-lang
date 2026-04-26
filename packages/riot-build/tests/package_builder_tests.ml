@@ -310,13 +310,22 @@ let test_dependency_source_change_rebuilds_dependent_package = fun _ctx ->
       let second_dep = build_package ~package_graph:second_graph dep in
       let second_app = build_package ~package_graph:second_graph app in
       match (first_dep.status, first_app.status, second_dep.status, second_app.status) with
-      | (Package_builder.Built _, Package_builder.Built first_app_artifact, Package_builder.Built _, Package_builder.Built second_app_artifact) ->
+      | (
+        Package_builder.Built _,
+        Package_builder.Built first_app_artifact,
+        Package_builder.Built _,
+        Package_builder.Built second_app_artifact
+      ) ->
           if Crypto.Hash.equal first_app_artifact.hash second_app_artifact.hash then
             Error "expected dependent package artifact hash to change after dependency source edit"
           else
             Ok ()
-      | (Package_builder.Built _, Package_builder.Built _, Package_builder.Built _, Package_builder.Cached _) ->
-          Error "expected dependent package rebuild after dependency source edit"
+      | (
+        Package_builder.Built _,
+        Package_builder.Built _,
+        Package_builder.Built _,
+        Package_builder.Cached _
+      ) -> Error "expected dependent package rebuild after dependency source edit"
       | (_, _, _, Package_builder.Failed err) ->
           Error ("dependent rebuild failed: " ^ Package_builder.package_error_to_string err)
       | (_, Package_builder.Failed err, _, _) ->

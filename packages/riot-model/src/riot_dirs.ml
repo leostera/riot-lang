@@ -83,7 +83,9 @@ let workspace_build_dir_name = fun ~workspace_root ->
     )
 
 let build_dir_root = fun ~workspace_root ->
-  resolve_build_dir_root ~workspace_root (workspace_build_dir_name ~workspace_root)
+  resolve_build_dir_root
+    ~workspace_root
+    (workspace_build_dir_name ~workspace_root)
 
 (** Get current host triple *)
 let host_target = fun () -> Target.current
@@ -131,35 +133,60 @@ let build_lock_path_in_workspace = fun ~(workspace:Workspace.t) ~profile ~target
 let debug_dir = fun ~workspace_root -> profile_dir ~workspace_root ~profile:"debug"
 
 let cache_dir = fun ~workspace_root ->
-  cache_dir_with_target ~workspace_root ~profile:"debug" ~target:(host_target ())
+  cache_dir_with_target
+    ~workspace_root
+    ~profile:"debug"
+    ~target:(host_target ())
 
 let out_dir = fun ~workspace_root ->
-  out_dir_with_target ~workspace_root ~profile:"debug" ~target:(host_target ())
+  out_dir_with_target
+    ~workspace_root
+    ~profile:"debug"
+    ~target:(host_target ())
 
 let sandbox_dir = fun ~workspace_root ->
-  sandbox_dir_with_target ~workspace_root ~profile:"debug" ~target:(host_target ())
+  sandbox_dir_with_target
+    ~workspace_root
+    ~profile:"debug"
+    ~target:(host_target ())
 
 module Tests = struct
   let test_package_lock_path (): (unit, string) result =
-    let actual = package_lock_path ~workspace_root:(Path.v "/tmp/workspace") |> Path.to_string in
+    let actual =
+      package_lock_path ~workspace_root:(Path.v "/tmp/workspace")
+      |> Path.to_string
+    in
     if String.equal actual "/tmp/workspace/riot.lock" then
       Ok ()
     else
       Error ("expected root riot.lock path, got " ^ actual) [@test]
 
   let test_workspace_target_dirs_use_custom_target_dir_root (): (unit, string) result =
-    let workspace = Workspace.make
-      ~root:(Path.v "/tmp/workspace")
-      ~target_dir:"build-out"
-      ~packages:[]
-      () in
+    let workspace =
+      Workspace.make ~root:(Path.v "/tmp/workspace") ~target_dir:"build-out" ~packages:[] ()
+    in
     let target = host_target () in
     let expected_target_dir = "/tmp/workspace/build-out/release/" ^ Target.to_string target in
-    let target_dir = target_dir_in_workspace ~workspace ~profile:"release" ~target |> Path.to_string in
-    let out_dir = out_dir_in_workspace ~workspace ~profile:"release" ~target |> Path.to_string in
-    let sandbox_dir = sandbox_dir_in_workspace ~workspace ~profile:"release" ~target |> Path.to_string in
-    let cache_dir = cache_dir_in_workspace ~workspace ~profile:"release" ~target |> Path.to_string in
-    let lock_path = build_lock_path_in_workspace ~workspace ~profile:"release" ~target |> Path.to_string in
+    let target_dir =
+      target_dir_in_workspace ~workspace ~profile:"release" ~target
+      |> Path.to_string
+    in
+    let out_dir =
+      out_dir_in_workspace ~workspace ~profile:"release" ~target
+      |> Path.to_string
+    in
+    let sandbox_dir =
+      sandbox_dir_in_workspace ~workspace ~profile:"release" ~target
+      |> Path.to_string
+    in
+    let cache_dir =
+      cache_dir_in_workspace ~workspace ~profile:"release" ~target
+      |> Path.to_string
+    in
+    let lock_path =
+      build_lock_path_in_workspace ~workspace ~profile:"release" ~target
+      |> Path.to_string
+    in
     if not (String.equal target_dir expected_target_dir) then
       Error ("expected custom target dir root, got " ^ target_dir)
     else if not (String.equal out_dir (expected_target_dir ^ "/out")) then

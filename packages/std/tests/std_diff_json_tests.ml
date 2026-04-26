@@ -242,8 +242,10 @@ let test_diff_nested_objects =
     in
     let diff = Json.diff o1 o2 in
     match diff with
-    | [ { path = [ Key "user"; Key "address"; Key "city" ]; kind = Changed (Json.String "NYC", Json.String "SF") } ] ->
-        Ok ()
+    | [ { path = [ Key "user"; Key "address"; Key "city" ]; kind = Changed (
+      Json.String "NYC",
+      Json.String "SF"
+    ) } ] -> Ok ()
     | _ ->
         Error ("Expected nested change at user.address.city, got "
         ^ Int.to_string (List.length diff)

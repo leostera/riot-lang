@@ -308,11 +308,10 @@ let test_package_scheduler_succeeds_for_dependency_chain = fun _ctx ->
           Error "expected dependency chain packages to complete successfully"
         else if summary.had_failure then
           Error "expected successful package scheduler run to avoid failure summary"
-        else
-          (
-            Test.assert_equal ~expected:expected_keys ~actual:result_keys;
-            Ok ()
-          )) with
+        else (
+          Test.assert_equal ~expected:expected_keys ~actual:result_keys;
+          Ok ()
+        )) with
   | Ok result -> result
   | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
 
@@ -388,7 +387,16 @@ let test_package_scheduler_phase_events_have_consistent_counts = fun _ctx ->
         let planning_ok =
           planning_counts
           |> List.all
-            ~fn:(fun (package_count, deferred_count, execution_required_count, finalized_count, cached_count, skipped_count, failed_count, error_count) ->
+            ~fn:(fun (
+              package_count,
+              deferred_count,
+              execution_required_count,
+              finalized_count,
+              cached_count,
+              skipped_count,
+              failed_count,
+              error_count
+            ) ->
               package_count = execution_required_count + finalized_count + error_count
               && deferred_count <= package_count
               && cached_count <= finalized_count
@@ -534,15 +542,14 @@ let test_package_scheduler_rerun_uses_cached_dependency_frontiers = fun _ctx ->
           Error "expected cached rerun to finalize every package from cache"
         else if execution_rounds != [] then
           Error "expected cached rerun to skip package execution rounds"
-        else
-          (
-            Test.assert_equal
-              ~expected:[
-                (2, 1, 0, 2, 2, 0, 0, 0);
-              ]
-              ~actual:planning;
-            Ok ()
-          )) with
+        else (
+          Test.assert_equal
+            ~expected:[
+              (2, 1, 0, 2, 2, 0, 0, 0);
+            ]
+            ~actual:planning;
+          Ok ()
+        )) with
   | Ok result -> result
   | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
 
@@ -694,15 +701,14 @@ let test_package_scheduler_reports_stalled_pending_work = fun _ctx ->
                 Error "expected stalled package scheduler completion to report partial failure with zero results"
               else if execution_rounds != [] then
                 Error "expected stalled package scheduler run to avoid execution rounds"
-              else
-                (
-                  Test.assert_equal
-                    ~expected:[
-                      (2, 2, 0, 0, 0, 0, 0, 0);
-                    ]
-                    ~actual:planning_counts;
-                  Ok ()
-                )
+              else (
+                Test.assert_equal
+                  ~expected:[
+                    (2, 2, 0, 0, 0, 0, 0, 0);
+                  ]
+                  ~actual:planning_counts;
+                Ok ()
+              )
           | _ -> Error "expected single-lane scheduler test setup")) with
   | Ok result -> result
   | Error err -> Error ("tempdir failed: " ^ IO.error_message err)

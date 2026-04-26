@@ -39,7 +39,11 @@ let empty_result = fun file error ->
   }
 
 let run_pipeline = fun ?on_progress pipeline file source ->
-  Pipeline.run pipeline ~filename:file ?on_progress source
+  Pipeline.run
+    pipeline
+    ~filename:file
+    ?on_progress
+    source
 
 let resolve_pipeline = fun ?pipeline ?pipeline_for_file file ->
   match pipeline_for_file with
@@ -98,7 +102,8 @@ let run_file = fun ?pipeline ?pipeline_for_file ?on_progress ~mode file ->
     )
 
 let summarize = fun files ->
-  List.fold_left files
+  List.fold_left
+    files
     ~init:{
       total_files = 0;
       changed_files = 0;
@@ -127,36 +132,35 @@ let summarize = fun files ->
 
 let run_files = fun ?pipeline ?pipeline_for_file ~mode files ->
   let files =
-    List.sort files
-      ~compare:(fun a b ->
-        String.compare (Path.to_string a) (Path.to_string b))
+    List.sort files ~compare:(fun a b -> String.compare (Path.to_string a) (Path.to_string b))
   in
   let results = List.map files ~fn:(run_file ?pipeline ?pipeline_for_file ~mode) in
   { files = results; summary = summarize results }
 
-let summary_to_json = fun summary ->
-  let open Data.Json in Object [
-    ("total_files", Int summary.total_files);
-    ("changed_files", Int summary.changed_files);
-    ("remaining_diagnostics", Int summary.remaining_diagnostics);
-    ("applied_fixes", Int summary.applied_fixes);
-    ("failed_files", Int summary.failed_files);
-  ]
+let summary_to_json = fun summary -> let open Data.Json in
+Object [
+  ("total_files", Int summary.total_files);
+  ("changed_files", Int summary.changed_files);
+  ("remaining_diagnostics", Int summary.remaining_diagnostics);
+  ("applied_fixes", Int summary.applied_fixes);
+  ("failed_files", Int summary.failed_files);
+]
 
 let file_result_to_json = fun result ->
   let open Data.Json in
-    Object [ ("file", String (Path.to_string result.file)); ("changed", Bool result.changed); (
-        "error",
-        match result.error with
-        | Some err -> String err
-        | None -> Null
-      ); ("applied_fixes", Array (List.map result.applied_fixes ~fn:Fix.to_json)); (
-        "parse_diagnostics",
-        Array (List.map result.parse_diagnostics ~fn:Syn.Diagnostic.to_json)
-      ); ("diagnostics", Array (List.map result.diagnostics ~fn:Diagnostic.to_json)); ]
-
-let run_result_to_json = fun result ->
-  let open Data.Json in Object [
-    ("summary", summary_to_json result.summary);
-    ("files", Array (List.map result.files ~fn:file_result_to_json));
+  Object [
+    ("file", String (Path.to_string result.file));
+    ("changed", Bool result.changed);
+    ("error", match result.error with
+    | Some err -> String err
+    | None -> Null);
+    ("applied_fixes", Array (List.map result.applied_fixes ~fn:Fix.to_json));
+    ("parse_diagnostics", Array (List.map result.parse_diagnostics ~fn:Syn.Diagnostic.to_json));
+    ("diagnostics", Array (List.map result.diagnostics ~fn:Diagnostic.to_json));
   ]
+
+let run_result_to_json = fun result -> let open Data.Json in
+Object [
+  ("summary", summary_to_json result.summary);
+  ("files", Array (List.map result.files ~fn:file_result_to_json));
+]

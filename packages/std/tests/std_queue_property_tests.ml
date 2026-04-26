@@ -397,16 +397,13 @@ let concurrent_producers_and_consumers_preserve_every_value =
                         yield ();
                       consume (value :: acc)
                   | None ->
-                      if Int.equal (Sync.Atomic.get done_producers) producer_count then
-                        (
-                          send parent (Queue_property_consumer_values (List.reverse acc));
-                          Ok ()
-                        )
-                      else
-                        (
-                          yield ();
-                          consume acc
-                        )
+                      if Int.equal (Sync.Atomic.get done_producers) producer_count then (
+                        send parent (Queue_property_consumer_values (List.reverse acc));
+                        Ok ()
+                      ) else (
+                        yield ();
+                        consume acc
+                      )
                 in
                 consume [])
           in

@@ -43,11 +43,10 @@ let next = fun t ->
       Runtime_mutex.unlock t.producer_lock;
       if List.is_empty drained then
         None
-      else
-        (
-          t.outbox <- List.reverse drained;
-          pop_outbox t
-        )
+      else (
+        t.outbox <- List.reverse drained;
+        pop_outbox t
+      )
 
 let size = fun t -> Runtime_atomic.get t.size
 

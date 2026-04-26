@@ -303,7 +303,22 @@ let manifest_decode =
         builder.stops,
         builder.mirrors
       ) with
-      | (Some ship, Some emergency, Some crew_count, Some small, Some bounty, Some heading, Some rank, Some companion, Some marker, Some home, Some tags, Some scores, Some stops, Some mirrors) ->
+      | (
+        Some ship,
+        Some emergency,
+        Some crew_count,
+        Some small,
+        Some bounty,
+        Some heading,
+        Some rank,
+        Some companion,
+        Some marker,
+        Some home,
+        Some tags,
+        Some scores,
+        Some stops,
+        Some mirrors
+      ) ->
           let nickname =
             match builder.nickname with
             | Some nickname -> nickname

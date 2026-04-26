@@ -3,23 +3,15 @@ open Prelude
 type error =
   | InvalidTimeoutNs of { timeout_ns: int64 }
 
-type t = {
-  id: int;
-  timeout_ns: int64;
-  timeout_secs: int;
-  timeout_nanos: int;
-  repeat: bool;
-}
+type t = { id: int; timeout_ns: int64; timeout_secs: int; timeout_nanos: int; repeat: bool }
 
-type next_id = {
-  mutable value: int;
-}
+type next_id = { mutable value: int }
 
 let next_id = { value = 0 }
 
 let error_to_string error =
   match error with
-  | InvalidTimeoutNs { timeout_ns=_ } -> "invalid timer timeout"
+  | InvalidTimeoutNs { timeout_ns = _ } -> "invalid timer timeout"
 
 let fresh_id = fun () ->
   next_id.value <- next_id.value + 1;
@@ -69,6 +61,8 @@ let to_source = fun timer ->
         ~repeat:timer.repeat
 
     let deregister = fun timer selector ->
-      Async.Adapter.Selector.deregister_timer selector ~timer_id:timer.id
+      Async.Adapter.Selector.deregister_timer
+        selector
+        ~timer_id:timer.id
   end in
   Async.Source.make (module Source) timer

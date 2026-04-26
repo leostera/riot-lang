@@ -1,4 +1,5 @@
 open Std
+
 module Types = Types
 module Request = Request
 module Catalog = Catalog
@@ -10,27 +11,55 @@ type run_outcome = Types.run_outcome = {
 }
 
 type event = Types.event =
-  | Start of { mode: Runner.mode; concurrency: int }
-  | FileStarted of { file: Path.t }
-  | FileProgress of { file: Path.t; progress: Fixme.Source_runner.progress_event }
+  | Start of {
+      mode: Runner.mode;
+      concurrency: int;
+    }
+  | FileStarted of {
+      file: Path.t;
+    }
+  | FileProgress of {
+      file: Path.t;
+      progress: Fixme.Source_runner.progress_event;
+    }
   | FileResult of Runner.file_result
-  | Summary of { summary: Runner.summary; limit_reached: bool }
+  | Summary of {
+      summary: Runner.summary;
+      limit_reached: bool;
+    }
 
 let command =
   let open ArgParser in
-    let open ArgParser.Arg in command "fix"
-    |> about "Lint OCaml code and optionally apply safe fixes"
-    |> args
-      [
-        flag "list-rules" |> long "list-rules" |> help "List all available rules in the current riot-fix runtime";
-        flag "list-diagnostics" |> long "list-diagnostics" |> help "List all available diagnostics in the current riot-fix runtime";
-        flag "apply" |> long "apply" |> help "Apply safe fixes to files";
-        flag "check" |> long "check" |> help "Check for issues without modifying files (default; kept for compatibility)";
-        option "limit" |> long "limit" |> help "Stop after surfacing at most N diagnostics";
-        option "explain" |> long "explain" |> help "Explain a rule id (e.g. riot:snake-case-type-names or std:no-stdlib)";
-        flag "json" |> long "json" |> help "Emit machine-readable JSON output";
-        positional "path" |> required false |> help "OCaml file or directory to scan (default: workspace packages or current directory)";
-      ]
+  let open ArgParser.Arg in
+  command "fix"
+  |> about "Lint OCaml code and optionally apply safe fixes"
+  |> args
+    [
+      flag "list-rules"
+      |> long "list-rules"
+      |> help "List all available rules in the current riot-fix runtime";
+      flag "list-diagnostics"
+      |> long "list-diagnostics"
+      |> help "List all available diagnostics in the current riot-fix runtime";
+      flag "apply"
+      |> long "apply"
+      |> help "Apply safe fixes to files";
+      flag "check"
+      |> long "check"
+      |> help "Check for issues without modifying files (default; kept for compatibility)";
+      option "limit"
+      |> long "limit"
+      |> help "Stop after surfacing at most N diagnostics";
+      option "explain"
+      |> long "explain"
+      |> help "Explain a rule id (e.g. riot:snake-case-type-names or std:no-stdlib)";
+      flag "json"
+      |> long "json"
+      |> help "Emit machine-readable JSON output";
+      positional "path"
+      |> required false
+      |> help "OCaml file or directory to scan (default: workspace packages or current directory)";
+    ]
 
 let list_rules_output = Catalog.list_rules_output
 
@@ -63,16 +92,17 @@ let run_request_direct = fun ~on_event ~output_mode (request: Request.t) ->
     mode;
     limit;
     target;
-    output_mode=_;
-    use_generated_runner=_
-  } -> Execution.run_with_coordinator
-    ~on_event
-    ~output_mode
-    ~mode
-    ~scope:request.scope
-    ~limit
-    ~roots:[ target ]
-    ()
+    output_mode = _;
+    use_generated_runner = _
+  } ->
+      Execution.run_with_coordinator
+        ~on_event
+        ~output_mode
+        ~mode
+        ~scope:request.scope
+        ~limit
+        ~roots:[ target ]
+        ()
 
 let run_matches = fun ~build_package ?(on_event = Types.no_event) ?output_mode matches ->
   match Request.of_matches matches with
@@ -80,18 +110,15 @@ let run_matches = fun ~build_package ?(on_event = Types.no_event) ?output_mode m
   | Ok request ->
       let output_mode = resolved_output_mode ?output_mode request in
       match request.action with
-      | Request.ListRules { format } ->
-          Catalog.list_rules format
-      | Request.ListDiagnostics { format } ->
-          Catalog.list_diagnostics format
-      | Request.ExplainRule { rule_id } ->
-          Catalog.explain_rule rule_id
+      | Request.ListRules { format } -> Catalog.list_rules format
+      | Request.ListDiagnostics { format } -> Catalog.list_diagnostics format
+      | Request.ExplainRule { rule_id } -> Catalog.explain_rule rule_id
       | Request.Run {
         mode;
         limit;
         target;
         use_generated_runner;
-        output_mode=_
+        output_mode = _
       } -> (
           match (request.scope, use_generated_runner) with
           | (Some scope, true) ->
@@ -112,10 +139,14 @@ let run_matches = fun ~build_package ?(on_event = Types.no_event) ?output_mode m
           | _ -> run_request_direct ~on_event ~output_mode request
         )
 
-let run = fun ?(build_package = unavailable_build_package) matches -> run_matches ~build_package matches
+let run = fun ?(build_package = unavailable_build_package) matches ->
+  run_matches
+    ~build_package
+    matches
 
 let run_args = fun ?cwd ?(on_event = Types.no_event) ?(report_output = true) ~build_package args ->
-  Common.with_cwd ?cwd
+  Common.with_cwd
+    ?cwd
     (fun () ->
       match ArgParser.get_matches command ("fix" :: args) with
       | Error err ->

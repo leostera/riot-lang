@@ -84,7 +84,8 @@ module FFI = struct
 
   external create: unit -> (watcher, int) Result.t = "kernel_new_fs_events_create"
 
-  external watch: watcher -> string -> float -> (watch_id, int) Result.t = "kernel_new_fs_events_watch"
+  external watch: watcher -> string -> float -> (watch_id, int) Result.t =
+    "kernel_new_fs_events_watch"
 
   external unwatch: watcher -> watch_id -> (unit, int) Result.t = "kernel_new_fs_events_unwatch"
 
@@ -107,17 +108,27 @@ let from_system_error = fun error ->
 let from_code_error = fun code -> from_system_error (System_error.from_code code)
 
 let create = fun () ->
-  FFI.create () |> Result.map ~fn:(fun watcher -> { watcher }) |> Result.map_err ~fn:from_code_error
+  FFI.create ()
+  |> Result.map ~fn:(fun watcher -> { watcher })
+  |> Result.map_err ~fn:from_code_error
 
 let watch = fun t ~path ~latency ->
-  FFI.watch t.watcher (Path.to_string path) latency |> Result.map_err ~fn:from_code_error
+  FFI.watch t.watcher (Path.to_string path) latency
+  |> Result.map_err ~fn:from_code_error
 
-let unwatch = fun t watch_id -> FFI.unwatch t.watcher watch_id |> Result.map_err ~fn:from_code_error
+let unwatch = fun t watch_id ->
+  FFI.unwatch t.watcher watch_id
+  |> Result.map_err ~fn:from_code_error
 
-let event_from_raw = fun (path, flags, event_id) -> { path = Path.from_string path; flags; event_id }
+let event_from_raw = fun (path, flags, event_id) -> {
+  path = Path.from_string path;
+  flags;
+  event_id;
+}
 
 let poll = fun t ->
-  FFI.poll t.watcher |> Result.map
+  FFI.poll t.watcher
+  |> Result.map
     ~fn:(fun raw_events ->
       let rec loop index acc =
         if index < 0 then
@@ -125,21 +136,34 @@ let poll = fun t ->
         else
           loop (index - 1) (event_from_raw (Array.get_unchecked raw_events ~at:index) :: acc)
       in
-      loop (Array.length raw_events - 1) []) |> Result.map_err ~fn:from_code_error
+      loop (Array.length raw_events - 1) [])
+  |> Result.map_err ~fn:from_code_error
 
-let stop = fun t -> FFI.stop t.watcher |> Result.map_err ~fn:from_code_error
+let stop = fun t ->
+  FFI.stop t.watcher
+  |> Result.map_err ~fn:from_code_error
 
 let to_source = fun t ->
   let module Source = struct
     type nonrec t = t
 
     let register = fun state selector token interest ->
-      Async.Adapter.Selector.register selector ~fd:(FFI.read_fd state.watcher) ~token ~interest
+      Async.Adapter.Selector.register
+        selector
+        ~fd:(FFI.read_fd state.watcher)
+        ~token
+        ~interest
 
     let reregister = fun state selector token interest ->
-      Async.Adapter.Selector.reregister selector ~fd:(FFI.read_fd state.watcher) ~token ~interest
+      Async.Adapter.Selector.reregister
+        selector
+        ~fd:(FFI.read_fd state.watcher)
+        ~token
+        ~interest
 
     let deregister = fun state selector ->
-      Async.Adapter.Selector.deregister selector ~fd:(FFI.read_fd state.watcher)
+      Async.Adapter.Selector.deregister
+        selector
+        ~fd:(FFI.read_fd state.watcher)
   end in
   Async.Source.make (module Source) t

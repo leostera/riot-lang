@@ -1,13 +1,12 @@
 open Prelude
 open Types
+
 module IoVec = IoVec
 module IoSlice = IoSlice
 
 type 'value result = ('value, Error.t) Result.t
 
-type copy_progress = {
-  mutable copied: int;
-}
+type copy_progress = { mutable copied: int }
 
 type t = {
   mutable reader: Reader.t;
@@ -25,7 +24,8 @@ let normalize_size = fun size ->
     size
 
 let panic_buffer_error = fun fn error ->
-  Kernel.SystemError.panic ("IO.BufReader." ^ fn ^ ": " ^ Kernel.IO.Error.message error)
+  Kernel.SystemError.panic
+    ("IO.BufReader." ^ fn ^ ": " ^ Kernel.IO.Error.message error)
 
 let compact = fun state -> Buffer.compact state.buffer
 
@@ -44,10 +44,8 @@ let fill_once = fun state ->
     | Ok 0 ->
         state.eof <- true;
         Ok 0
-    | Ok count ->
-        Ok count
-    | Error _ as error ->
-        error
+    | Ok count -> Ok count
+    | Error _ as error -> error
   )
 
 let fill = fun state ->
@@ -87,7 +85,12 @@ let ensure_available = fun state needed ->
 
 let from_reader = fun ?(size = default_size) reader ->
   let size = normalize_size size in
-  { reader; buffer = Buffer.create ~size; size; eof = false }
+  {
+    reader;
+    buffer = Buffer.create ~size;
+    size;
+    eof = false;
+  }
 
 let size = fun value -> value.size
 
@@ -247,12 +250,12 @@ let to_reader: t -> Reader.t = fun value ->
     let read_vectored = fun source ~into ->
       let tmp = Buffer.create ~size:(IoVec.length into) in
       match read source ~into:tmp with
-      | Error Error.End_of_file ->
-          Ok 0
+      | Error Error.End_of_file -> Ok 0
       | Ok count ->
           let readable = Buffer.readable tmp in
           let progress = { copied = 0 } in
-          IoVec.for_each into
+          IoVec.for_each
+            into
             ~fn:(fun segment ->
               let remaining = count - progress.copied in
               if remaining > 0 then
@@ -263,10 +266,9 @@ let to_reader: t -> Reader.t = fun value ->
                   ~dst:segment
                   ~dst_off:0
                   ~len;
-                progress.copied <- progress.copied + len);
+              progress.copied <- progress.copied + len);
           Ok count
-      | Error _ as error ->
-          error
+      | Error _ as error -> error
 
     let is_read_vectored = fun _ -> false
   end in

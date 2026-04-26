@@ -70,10 +70,7 @@ module Parser = struct
   let skip_whitespace = fun state ->
     let rec loop () =
       match peek state with
-      | Some (' '
-      | '\t'
-      | '\n'
-      | '\r') ->
+      | Some (' ' | '\t' | '\n' | '\r') ->
           advance state;
           loop ()
       | _ -> ()
@@ -131,12 +128,7 @@ module Parser = struct
     let buffer = Buffer.create ~size:16 in
     let rec loop () =
       match peek state with
-      | Some (' '
-      | '\t'
-      | '\n'
-      | '\r'
-      | '('
-      | ')')
+      | Some (' ' | '\t' | '\n' | '\r' | '(' | ')')
       | None ->
           let atom = Buffer.contents buffer in
           if atom = "" then
@@ -328,8 +320,7 @@ module Csexp = struct
         | Some ')' ->
             advance ();
             List (List.reverse acc)
-        | Some ('0' .. '9'
-        | '(') ->
+        | Some ('0' .. '9' | '(') ->
             (* Parse an atom or nested list *)
             let elem = parse_sexp () in
             loop (elem :: acc)

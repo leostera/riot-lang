@@ -39,13 +39,19 @@ let delete_node = fun target -> delete ~target:(Node target)
 let replace = fun ~target ~replacement -> Replace { target; replacement }
 
 let replace_node = fun ~target ~replacement ->
-  replace ~target:(Node target) ~replacement:(source_of_node replacement)
+  replace
+    ~target:(Node target)
+    ~replacement:(source_of_node replacement)
 
 let replace_node_with_text = fun ~target ~text:value ->
-  replace ~target:(Node target) ~replacement:(text value)
+  replace
+    ~target:(Node target)
+    ~replacement:(text value)
 
 let replace_token_with_text = fun ~target ~text:value ->
-  replace ~target:(Token target) ~replacement:(text value)
+  replace
+    ~target:(Token target)
+    ~replacement:(text value)
 
 let insert_before = fun ~anchor ~content -> InsertBefore { anchor; content }
 
@@ -80,8 +86,7 @@ let replacement_text = fun ~source ->
   | SourceOfToken token ->
       let (start, end_) = Syn.Ast.Token.raw_range token in
       source_slice ~source (Syn.Ceibo.Span.make ~start ~end_)
-  | Text text ->
-      text
+  | Text text -> text
 
 let make_insert_at = fun pos ~new_text ->
   let span = Syn.Ceibo.Span.make ~start:pos ~end_:pos in
@@ -89,8 +94,7 @@ let make_insert_at = fun pos ~new_text ->
 
 let lower_operation = fun ~source ->
   function
-  | Delete { target } ->
-      Ok [ { span = target_span target; new_text = "" } ]
+  | Delete { target } -> Ok [ { span = target_span target; new_text = "" } ]
   | Replace { target; replacement } ->
       Ok [ { span = target_span target; new_text = replacement_text ~source replacement } ]
   | InsertBefore { anchor; content } ->
@@ -147,13 +151,15 @@ let validate_edits = fun ~source edits ->
   let edits = dedupe_text_edits edits in
   let rec loop = fun previous ->
     function
-    | [] -> Ok edits
+    | [] ->
+        Ok edits
     | edit :: rest -> (
         match validate_text_edit ~source edit with
         | Error _ as err -> err
         | Ok () -> (
             match previous with
-            | Some prev when Syn.Ceibo.Span.overlaps prev.span edit.span -> Error "Fix operations overlap and cannot be applied safely"
+            | Some prev when Syn.Ceibo.Span.overlaps prev.span edit.span ->
+                Error "Fix operations overlap and cannot be applied safely"
             | _ -> loop (Some edit) rest
           )
       )
@@ -175,9 +181,7 @@ let apply_operation = fun ~source operation ->
       | Error _ as err -> err
       | Ok edits ->
           let edits_desc =
-            List.sort edits
-              ~compare:(fun a b ->
-                Int.compare b.span.start a.span.start)
+            List.sort edits ~compare:(fun a b -> Int.compare b.span.start a.span.start)
           in
           Ok (List.fold_left
             edits_desc
@@ -186,29 +190,30 @@ let apply_operation = fun ~source operation ->
     )
 
 let lower_fix = fun ~source fix ->
-  match List.map fix.operations ~fn:(lower_operation ~source) |> Result.all with
+  match List.map fix.operations ~fn:(lower_operation ~source)
+  |> Result.all with
   | Error _ as err -> err
   | Ok edits -> validate_edits ~source (List.concat edits)
 
 let lower_fixes = fun ~source fixes ->
-  let lowered = fixes
-  |> List.map ~fn:(fun fix -> List.map fix.operations ~fn:(lower_operation ~source))
-  |> List.concat in
+  let lowered =
+    fixes
+    |> List.map ~fn:(fun fix -> List.map fix.operations ~fn:(lower_operation ~source))
+    |> List.concat
+  in
   match Result.all lowered with
   | Error _ as err -> err
   | Ok edits -> validate_edits ~source (List.concat edits)
 
-let validate_fix = fun ~source fix -> lower_fix ~source fix |> Result.map ~fn:(fun _ -> ())
+let validate_fix = fun ~source fix ->
+  lower_fix ~source fix
+  |> Result.map ~fn:(fun _ -> ())
 
 let apply_fix = fun ~source fix ->
   match lower_fix ~source fix with
   | Error _ as err -> err
   | Ok edits ->
-      let edits_desc =
-        List.sort edits
-          ~compare:(fun a b ->
-            Int.compare b.span.start a.span.start)
-      in
+      let edits_desc = List.sort edits ~compare:(fun a b -> Int.compare b.span.start a.span.start) in
       Ok (List.fold_left
         edits_desc
         ~init:source
@@ -218,11 +223,7 @@ let apply_fixes = fun ~source fixes ->
   match lower_fixes ~source fixes with
   | Error _ as err -> err
   | Ok edits ->
-      let edits_desc =
-        List.sort edits
-          ~compare:(fun a b ->
-            Int.compare b.span.start a.span.start)
-      in
+      let edits_desc = List.sort edits ~compare:(fun a b -> Int.compare b.span.start a.span.start) in
       Ok (List.fold_left
         edits_desc
         ~init:source

@@ -191,14 +191,10 @@ let from_slice = fun source ->
     let is_float = cell false in
     let rec consume () =
       match peek () with
-      | Some ('0' .. '9'
-      | '-'
-      | '+') ->
+      | Some ('0' .. '9' | '-' | '+') ->
           advance ();
           consume ()
-      | Some ('.'
-      | 'e'
-      | 'E') ->
+      | Some ('.' | 'e' | 'E') ->
           is_float := true;
           advance ();
           consume ()
@@ -221,12 +217,10 @@ let from_slice = fun source ->
     | None -> raise_error (Unexpected_end_of_input { expected = "value" })
     | Some 'n' ->
         let start_pos = !pos in
-        if has_prefix_at !pos "null" then
-          (
-            pos := !pos + 4;
-            Null
-          )
-        else
+        if has_prefix_at !pos "null" then (
+          pos := !pos + 4;
+          Null
+        ) else
           let found =
             if !pos + 4 <= len then
               text_range ~off:!pos ~len:4
@@ -238,12 +232,10 @@ let from_slice = fun source ->
           raise_error (Invalid_literal { expected = "null"; position = start_pos; found })
     | Some 't' ->
         let start_pos = !pos in
-        if has_prefix_at !pos "true" then
-          (
-            pos := !pos + 4;
-            Bool true
-          )
-        else
+        if has_prefix_at !pos "true" then (
+          pos := !pos + 4;
+          Bool true
+        ) else
           let found =
             if !pos + 4 <= len then
               text_range ~off:!pos ~len:4
@@ -255,12 +247,10 @@ let from_slice = fun source ->
           raise_error (Invalid_literal { expected = "true"; position = start_pos; found })
     | Some 'f' ->
         let start_pos = !pos in
-        if has_prefix_at !pos "false" then
-          (
-            pos := !pos + 5;
-            Bool false
-          )
-        else
+        if has_prefix_at !pos "false" then (
+          pos := !pos + 5;
+          Bool false
+        ) else
           let found =
             if !pos + 5 <= len then
               text_range ~off:!pos ~len:5
@@ -274,12 +264,10 @@ let from_slice = fun source ->
     | Some '[' ->
         advance ();
         skip_whitespace ();
-        if peek () = Some ']' then
-          (
-            advance ();
-            Array []
-          )
-        else
+        if peek () = Some ']' then (
+          advance ();
+          Array []
+        ) else
           let rec parse_items acc =
             let item = parse_value () in
             skip_whitespace ();
@@ -301,12 +289,10 @@ let from_slice = fun source ->
     | Some '{' ->
         advance ();
         skip_whitespace ();
-        if peek () = Some '}' then
-          (
-            advance ();
-            Object []
-          )
-        else
+        if peek () = Some '}' then (
+          advance ();
+          Object []
+        ) else
           let rec parse_fields acc =
             skip_whitespace ();
             (
@@ -340,8 +326,7 @@ let from_slice = fun source ->
                   (Expected_comma_or_bracket { kind = "object"; position = !pos; found = None })
           in
           parse_fields []
-    | Some ('-'
-    | '0' .. '9') -> parse_number ()
+    | Some ('-' | '0' .. '9') -> parse_number ()
     | Some c ->
         raise_error (Unexpected_character { position = !pos; character = c; expected = "value" })
   in

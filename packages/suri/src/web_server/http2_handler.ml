@@ -212,12 +212,10 @@ let process_frame = fun conn state frame ->
                 |> List.append (Cell.get stream.headers)
               );
             (* Mark if stream ended *)
-            if end_stream then
-              begin
-                Cell.set stream.end_stream true;
-                handle_stream conn state stream_id stream
-              end
-            else
+            if end_stream then (
+              Cell.set stream.end_stream true;
+              handle_stream conn state stream_id stream
+            ) else
               Ok ()
         | Error _ -> Error (`Protocol_error "HPACK decode error")
       )
@@ -232,12 +230,10 @@ let process_frame = fun conn state frame ->
             (* Add data *)
             Cell.set stream.data_chunks (data :: Cell.get stream.data_chunks);
             (* Mark if stream ended *)
-            if end_stream then
-              begin
-                Cell.set stream.end_stream true;
-                handle_stream conn state stream_id stream
-              end
-            else
+            if end_stream then (
+              Cell.set stream.end_stream true;
+              handle_stream conn state stream_id stream
+            ) else
               Ok ()
       )
   | (Http.Http2.Frame.Ping, Http.Http2.Frame.PingPayload opaque_data) ->
@@ -264,21 +260,19 @@ let handle_data = fun data conn state ->
     begin
       if String.length buffer_data >= 24 then
         begin
-          if verify_preface buffer_data then
-            begin
-              Cell.set state.preface_verified true;
-              (* Remove preface from buffer *)
-              Cell.set
-                state.buffer
-                (String.sub buffer_data ~offset:24 ~len:(String.length buffer_data - 24));
-              (* Send SETTINGS *)
-              match send_settings conn with
-              | Error e -> Socket_pool.Handler.Error (state, e)
-              | Ok () ->
-                  Cell.set state.settings_sent true;
-                  Socket_pool.Handler.Continue state
-            end
-          else
+          if verify_preface buffer_data then (
+            Cell.set state.preface_verified true;
+            (* Remove preface from buffer *)
+            Cell.set
+              state.buffer
+              (String.sub buffer_data ~offset:24 ~len:(String.length buffer_data - 24));
+            (* Send SETTINGS *)
+            match send_settings conn with
+            | Error e -> Socket_pool.Handler.Error (state, e)
+            | Ok () ->
+                Cell.set state.settings_sent true;
+                Socket_pool.Handler.Continue state
+          ) else
             Socket_pool.Handler.Error (state, `Protocol_error "Invalid HTTP/2 preface")
         end
       else

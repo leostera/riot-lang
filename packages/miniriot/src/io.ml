@@ -14,12 +14,11 @@ let write_file = fun path content ->
 
 let mkdir_p = fun dir ->
   let rec create_dirs path =
-    if not (Sys.file_exists path) then
-      (
-        create_dirs (Filename.dirname path);
-        try Unix.mkdir path 0o755 with
-        | Unix.Unix_error (Unix.EEXIST, _, _) -> ()
-      )
+    if not (Sys.file_exists path) then (
+      create_dirs (Filename.dirname path);
+      try Unix.mkdir path 0o755 with
+      | Unix.Unix_error (Unix.EEXIST, _, _) -> ()
+    )
   in
   create_dirs dir
 

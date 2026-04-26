@@ -1,4 +1,5 @@
 open Std
+
 module Error = Error
 module Dep_solver = Dep_solver
 module Lockfile_store = Lockfile_store
@@ -16,7 +17,13 @@ module Package_management = Package_management
 type event_sink = Workspace_resolution.event_sink
 
 let ensure_lock = fun ?emit ~workspace_manager ~mode ~registry ~workspace () ->
-  Workspace_resolution.ensure_lock ?emit ~workspace_manager ~mode ~registry ~workspace ()
+  Workspace_resolution.ensure_lock
+    ?emit
+    ~workspace_manager
+    ~mode
+    ~registry
+    ~workspace
+    ()
 
 let ensure_workspace = Workspace_resolution.ensure_workspace
 
@@ -36,10 +43,7 @@ type suggested_package = Package_management.suggested_package = {
   description: string option;
 }
 
-type search_request = Package_management.search_request = {
-  query: string;
-  limit: int;
-}
+type search_request = Package_management.search_request = { query: string; limit: int }
 
 type loaded_workspace = Package_management.loaded_workspace = {
   workspace: Riot_model.Workspace.t;
@@ -94,20 +98,24 @@ type registry_materialization_error = Package_management.registry_materializatio
   | RegistryPackageManifestDecodeFailed of Riot_model.Package.manifest_error
 
 type package_error = Package_management.error =
-  | CurrentPackageNotFound of { cwd: Path.t }
-  | PackageNotFound of { package: Riot_model.Package_name.t }
+  | CurrentPackageNotFound of {
+      cwd: Path.t;
+    }
+  | PackageNotFound of {
+      package: Riot_model.Package_name.t;
+    }
   | DependencySpecInvalid of { dependency: string; error: dependency_spec_error }
   | PathDependencyMustBeRelative of { dependency: string }
   | PathDependencyLoadFailed of {
       dependency: string;
       path: Path.t;
-      error: path_dependency_load_error
+      error: path_dependency_load_error;
     }
   | SourceDependencyLoadFailed of {
       dependency: string;
       source_locator: string;
       ref_: string option;
-      error: source_dependency_load_error
+      error: source_dependency_load_error;
     }
   | RegistryInitializationFailed of { registry: string; error: registry_initialization_error }
   | RegistryLookupFailed of { package: string; registry: string; error: registry_lookup_error }
@@ -115,27 +123,34 @@ type package_error = Package_management.error =
       package: string;
       version: string;
       registry: string;
-      error: registry_materialization_error
+      error: registry_materialization_error;
     }
   | RegistrySearchFailed of { query: string; registry: string; error: registry_search_error }
   | RegistryPackageNotFound of {
       package: string;
       registry: string;
-      suggestions: suggested_package list
+      suggestions: suggested_package list;
     }
   | RegistryReleaseYanked of { package: string; version: string; registry: string }
   | RegistryVersionNotFound of { package: string; requirement: string; registry: string }
   | ManifestUpdateFailed of Manifest_edit.error
-  | DependencyNotFoundInSection of { path: Path.t; section: string; dependency: string }
+  | DependencyNotFoundInSection of {
+      path: Path.t;
+      section: string;
+      dependency: string;
+    }
   | WorkspaceReloadFailed of {
       workspace_root: Path.t;
-      error: Riot_model.Workspace_manager.scan_error
+      error: Riot_model.Workspace_manager.scan_error;
     }
   | WorkspaceReloadHadErrors of {
       workspace_root: Path.t;
-      errors: Riot_model.Workspace_manager.load_error list
+      errors: Riot_model.Workspace_manager.load_error list;
     }
-  | MaterializedPackageNotFound of { package_root: Path.t; workspace_root: Path.t }
+  | MaterializedPackageNotFound of {
+      package_root: Path.t;
+      workspace_root: Path.t;
+    }
   | LockRefreshFailed of Error.t
 
 let package_error_message = Package_management.error_message

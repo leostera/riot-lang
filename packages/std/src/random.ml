@@ -216,26 +216,25 @@ module Rng = struct
       let rec loop out_offset remaining =
         if remaining <= 0 then
           ()
-        else
-          (
-            if state.offset >= 64 then
-              refill state;
-            let available = 64 - state.offset in
-            let count =
-              if remaining < available then
-                remaining
-              else
-                available
-            in
-            Bytes.blit_unchecked
-              state.buffer
-              ~src_offset:state.offset
-              ~dst:out
-              ~dst_offset:out_offset
-              ~len:count;
-            state.offset <- state.offset + count;
-            loop (out_offset + count) (remaining - count)
-          )
+        else (
+          if state.offset >= 64 then
+            refill state;
+          let available = 64 - state.offset in
+          let count =
+            if remaining < available then
+              remaining
+            else
+              available
+          in
+          Bytes.blit_unchecked
+            state.buffer
+            ~src_offset:state.offset
+            ~dst:out
+            ~dst_offset:out_offset
+            ~len:count;
+          state.offset <- state.offset + count;
+          loop (out_offset + count) (remaining - count)
+        )
       in
       loop 0 (Bytes.length out)
 

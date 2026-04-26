@@ -264,16 +264,15 @@ let to_reader: type src. src t -> IO.Reader.t = fun tls_stream ->
                     else
                       remaining
                   in
-                  if chunk > 0 then
-                    (
-                      IO.IoSlice.blit_from_bytes_unchecked
-                        scratch
-                        ~src_off:!copied
-                        segment
-                        ~dst_off:0
-                        ~len:chunk;
-                      copied := !copied + chunk
-                    ));
+                  if chunk > 0 then (
+                    IO.IoSlice.blit_from_bytes_unchecked
+                      scratch
+                      ~src_off:!copied
+                      segment
+                      ~dst_off:0
+                      ~len:chunk;
+                    copied := !copied + chunk
+                  ));
             Ok count
         | Error err -> Error (io_error_of_tls_error err)
 

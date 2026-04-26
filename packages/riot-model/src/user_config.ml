@@ -20,15 +20,30 @@ type config_error =
   | RegistryMustBeTable
 
 type registry_error =
-  | InvalidDefaultUri of { field: registry_field; error: Net.Uri.error }
-  | InvalidUri of { field: registry_field; error: Net.Uri.error }
+  | InvalidDefaultUri of {
+      field: registry_field;
+      error: Net.Uri.error;
+    }
+  | InvalidUri of {
+      field: registry_field;
+      error: Net.Uri.error;
+    }
   | FieldMustBeString of registry_field
   | RegistryEntryMustBeTable
 
 type error =
-  | ReadFailed of { path: Path.t; error: IO.error }
-  | ParseFailed of { path: Path.t; error: Toml.error }
-  | WriteFailed of { path: Path.t; error: IO.error }
+  | ReadFailed of {
+      path: Path.t;
+      error: IO.error;
+    }
+  | ParseFailed of {
+      path: Path.t;
+      error: Toml.error;
+    }
+  | WriteFailed of {
+      path: Path.t;
+      error: IO.error;
+    }
   | InvalidConfig of config_error
   | InvalidRegistryConfig of { registry_name: string; error: registry_error }
 
@@ -37,16 +52,21 @@ let ( let* ) result fn = Result.and_then result ~fn
 let empty = { registries = [] }
 
 let default = {
-  registries = [
-    (
-      "pkgs.ml",
-      {
-        api_url = Net.Uri.of_string "https://api.pkgs.ml" |> Result.unwrap;
-        cdn_url = Net.Uri.of_string "https://cdn.pkgs.ml" |> Result.unwrap;
-        api_token = None
-      }
-    );
-  ]
+  registries =
+    [
+      (
+        "pkgs.ml",
+        {
+          api_url =
+            Net.Uri.of_string "https://api.pkgs.ml"
+            |> Result.unwrap;
+          cdn_url =
+            Net.Uri.of_string "https://cdn.pkgs.ml"
+            |> Result.unwrap;
+          api_token = None;
+        }
+      );
+    ];
 }
 
 let registry_field_name = function
@@ -67,52 +87,44 @@ let uri_error_message = function
   | Net.Uri.TooLong -> "uri too long"
 
 let registry_error_message = function
-  | InvalidDefaultUri { field; error } -> "invalid default "
-  ^ registry_field_name field
-  ^ ": "
-  ^ uri_error_message error
-  | InvalidUri { field; error } -> "field '"
-  ^ registry_field_name field
-  ^ "' must be a valid URI: "
-  ^ uri_error_message error
+  | InvalidDefaultUri { field; error } ->
+      "invalid default " ^ registry_field_name field ^ ": " ^ uri_error_message error
+  | InvalidUri { field; error } ->
+      "field '" ^ registry_field_name field ^ "' must be a valid URI: " ^ uri_error_message error
   | FieldMustBeString field -> "field '" ^ registry_field_name field ^ "' must be a string"
   | RegistryEntryMustBeTable -> "registry entry must be a table"
 
 let message = function
-  | ReadFailed { path; error } -> "failed to read config '"
-  ^ Path.to_string path
-  ^ "': "
-  ^ IO.error_message error
-  | ParseFailed { path; error } -> "failed to parse config '"
-  ^ Path.to_string path
-  ^ "': "
-  ^ Toml.error_to_string error
-  | WriteFailed { path; error } -> "failed to write config '"
-  ^ Path.to_string path
-  ^ "': "
-  ^ IO.error_message error
+  | ReadFailed { path; error } ->
+      "failed to read config '" ^ Path.to_string path ^ "': " ^ IO.error_message error
+  | ParseFailed { path; error } ->
+      "failed to parse config '" ^ Path.to_string path ^ "': " ^ Toml.error_to_string error
+  | WriteFailed { path; error } ->
+      "failed to write config '" ^ Path.to_string path ^ "': " ^ IO.error_message error
   | InvalidConfig error -> "invalid config: " ^ config_error_message error
-  | InvalidRegistryConfig { registry_name; error } -> "invalid registry config for '"
-  ^ registry_name
-  ^ "': "
-  ^ registry_error_message error
+  | InvalidRegistryConfig { registry_name; error } ->
+      "invalid registry config for '" ^ registry_name ^ "': " ^ registry_error_message error
 
 let default_api_url = fun ~registry_name ->
   Net.Uri.of_string ("https://api." ^ registry_name)
   |> Result.map_err
     ~fn:(fun error ->
-      InvalidRegistryConfig { registry_name; error = InvalidDefaultUri { field = Api_url; error } })
+      InvalidRegistryConfig {
+        registry_name;
+        error = InvalidDefaultUri { field = Api_url; error };
+      })
 
 let default_cdn_url = fun ~registry_name ->
   Net.Uri.of_string ("https://cdn." ^ registry_name)
   |> Result.map_err
     ~fn:(fun error ->
-      InvalidRegistryConfig { registry_name; error = InvalidDefaultUri { field = Cdn_url; error } })
+      InvalidRegistryConfig {
+        registry_name;
+        error = InvalidDefaultUri { field = Cdn_url; error };
+      })
 
-let default_registry = fun ~registry_name ->
-  let* api_url = default_api_url ~registry_name in
-  let* cdn_url = default_cdn_url ~registry_name in
-  Ok { api_url; cdn_url; api_token = None }
+let default_registry = fun ~registry_name -> let* api_url = default_api_url ~registry_name in let* cdn_url =
+  default_cdn_url ~registry_name in Ok { api_url; cdn_url; api_token = None }
 
 let registry_of_toml = fun ~registry_name value ->
   match value with
@@ -121,29 +133,37 @@ let registry_of_toml = fun ~registry_name value ->
       let* api_url =
         match Fields.get "api_url" fields with
         | None -> Ok defaults.api_url
-        | Some (Toml.String url) -> Net.Uri.of_string url
-        |> Result.map_err
-          ~fn:(fun error ->
-            InvalidRegistryConfig { registry_name; error = InvalidUri { field = Api_url; error } })
-        | Some _ -> Error (InvalidRegistryConfig { registry_name; error = FieldMustBeString Api_url })
+        | Some (Toml.String url) ->
+            Net.Uri.of_string url
+            |> Result.map_err
+              ~fn:(fun error ->
+                InvalidRegistryConfig {
+                  registry_name;
+                  error = InvalidUri { field = Api_url; error };
+                })
+        | Some _ ->
+            Error (InvalidRegistryConfig { registry_name; error = FieldMustBeString Api_url })
       in
       let* cdn_url =
         match Fields.get "cdn_url" fields with
         | None -> Ok defaults.cdn_url
-        | Some (Toml.String url) -> Net.Uri.of_string url
-        |> Result.map_err
-          ~fn:(fun error ->
-            InvalidRegistryConfig { registry_name; error = InvalidUri { field = Cdn_url; error } })
-        | Some _ -> Error (InvalidRegistryConfig { registry_name; error = FieldMustBeString Cdn_url })
+        | Some (Toml.String url) ->
+            Net.Uri.of_string url
+            |> Result.map_err
+              ~fn:(fun error ->
+                InvalidRegistryConfig {
+                  registry_name;
+                  error = InvalidUri { field = Cdn_url; error };
+                })
+        | Some _ ->
+            Error (InvalidRegistryConfig { registry_name; error = FieldMustBeString Cdn_url })
       in
       let api_token =
         match Fields.get "api_token" fields with
         | None -> Ok None
         | Some (Toml.String token) -> Ok (Some token)
-        | Some _ -> Error (InvalidRegistryConfig {
-          registry_name;
-          error = FieldMustBeString Api_token
-        })
+        | Some _ ->
+            Error (InvalidRegistryConfig { registry_name; error = FieldMustBeString Api_token })
       in
       Result.map api_token ~fn:(fun api_token -> { api_url; cdn_url; api_token })
   | _ -> Error (InvalidRegistryConfig { registry_name; error = RegistryEntryMustBeTable })
@@ -161,19 +181,21 @@ let normalize_registry_name = fun name ->
 
 let rec collect_registries = fun ~path acc fields ->
   let has_registry_fields =
-    List.any fields
-      ~fn:(fun (name, _value) ->
-        String.equal name "api_token")
+    List.any fields ~fn:(fun (name, _value) -> String.equal name "api_token")
   in
   let has_nested_tables =
-    List.any fields
+    List.any
+      fields
       ~fn:(fun (_name, value) ->
         match value with
         | Toml.Table _ -> true
         | _ -> false)
   in
   if List.length path > 0 && (has_registry_fields || not has_nested_tables) then
-    let registry_name = String.concat "." (List.reverse path) |> normalize_registry_name in
+    let registry_name =
+      String.concat "." (List.reverse path)
+      |> normalize_registry_name
+    in
     match registry_of_toml ~registry_name (Toml.Table fields) with
     | Ok registry -> Ok ((registry_name, registry) :: acc)
     | Error _ as err -> err
@@ -196,8 +218,9 @@ let of_toml = fun value ->
   | Toml.Table fields -> (
       match Fields.get "registry" fields with
       | None -> Ok empty
-      | Some (Toml.Table registry_fields) -> collect_registries ~path:[] [] registry_fields
-      |> Result.map ~fn:(fun registries -> { registries = List.reverse registries })
+      | Some (Toml.Table registry_fields) ->
+          collect_registries ~path:[] [] registry_fields
+          |> Result.map ~fn:(fun registries -> { registries = List.reverse registries })
       | Some _ -> Error (InvalidConfig RegistryMustBeTable)
     )
   | _ -> Ok empty
@@ -224,14 +247,16 @@ let to_string = fun config ->
     let fields = [
       "api_url = " ^ render_string (Net.Uri.to_string registry.api_url);
       "cdn_url = " ^ render_string (Net.Uri.to_string registry.cdn_url);
-    ] in
+    ]
+    in
     match registry.api_token with
-    | Some token -> String.concat
-      "\n"
-      ((header :: fields) @ [ "api_token = " ^ render_string token; ])
+    | Some token ->
+        String.concat "\n" ((header :: fields) @ [ "api_token = " ^ render_string token; ])
     | None -> String.concat "\n" (header :: fields)
   in
-  config.registries |> List.map ~fn:render_registry |> String.concat "\n\n"
+  config.registries
+  |> List.map ~fn:render_registry
+  |> String.concat "\n\n"
 
 let save = fun config path ->
   Fs.write (to_string config) path
@@ -252,11 +277,7 @@ let upsert_registry = fun config ~registry_name ~update ->
   { registries = loop [] config.registries }
 
 let api_token = fun config ~registry_name ->
-  match
-    List.find config.registries
-      ~fn:(fun (name, _registry) ->
-        String.equal name registry_name)
-  with
+  match List.find config.registries ~fn:(fun (name, _registry) -> String.equal name registry_name) with
   | None -> None
   | Some (_name, registry) -> registry.api_token
 
@@ -267,4 +288,7 @@ let set_api_token = fun config ~registry_name token ->
     ~update:(fun registry -> { registry with api_token = Some token })
 
 let clear_api_token = fun config ~registry_name ->
-  upsert_registry config ~registry_name ~update:(fun registry -> { registry with api_token = None })
+  upsert_registry
+    config
+    ~registry_name
+    ~update:(fun registry -> { registry with api_token = None })

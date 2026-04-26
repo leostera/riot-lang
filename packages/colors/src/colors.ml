@@ -1,44 +1,19 @@
 open Std
 open Std.Collections
 
-type ansi =
-[
-  `ansi of int
-]
+type ansi = [`ansi of int]
 
-type rgb =
-[
-  `rgb of int * int * int
-]
+type rgb = [`rgb of int * int * int]
 
-type lrgb =
-[
-  `lrgb of float * float * float
-]
+type lrgb = [`lrgb of float * float * float]
 
-type xyz =
-[
-  `xyz of float * float * float
-]
+type xyz = [`xyz of float * float * float]
 
-type luv =
-[
-  `luv of float * float * float
-]
+type luv = [`luv of float * float * float]
 
-type uv =
-[
-  `uv of float * float
-]
+type uv = [`uv of float * float]
 
-type color = [
-  ansi
-  | rgb
-  | lrgb
-  | xyz
-  | luv
-  | uv
-]
+type color = [ansi | rgb | lrgb | xyz | luv | uv]
 
 module Internal = struct
   (* Byte-domain sRGB helpers. *)
@@ -50,17 +25,23 @@ module Internal = struct
 
     let max_channel_f = 255.0
 
-    let clamp_channel = fun value ->
-      Int.min max_channel (Int.max min_channel value)
+    let clamp_channel = fun value -> Int.min max_channel (Int.max min_channel value)
 
-    let clamp = fun (`rgb (red, green, blue)) ->
-      (clamp_channel red, clamp_channel green, clamp_channel blue)
+    let clamp = fun (`rgb (red, green, blue)) -> (
+      clamp_channel red,
+      clamp_channel green,
+      clamp_channel blue
+    )
 
     let normalize = fun rgb ->
       let (red, green, blue) = clamp rgb in
       `rgb (red, green, blue)
 
-    let distance_squared = fun (left_red, left_green, left_blue) (right_red, right_green, right_blue) ->
+    let distance_squared = fun (left_red, left_green, left_blue) (
+      right_red,
+      right_green,
+      right_blue
+    ) ->
       let diff_red = left_red - right_red in
       let diff_green = left_green - right_green in
       let diff_blue = left_blue - right_blue in
@@ -94,48 +75,91 @@ module Internal = struct
         `uv (4.0 *. x /. denom, 9.0 *. y /. denom)
 
     let linear_rgb_to_xyz = fun (`lrgb (red, green, blue)) ->
-      let x = (0.412_390_799_265_959_48 *. red)
-      +. (0.357_584_339_383_877_96 *. green)
-      +. (0.180_480_788_401_834_29 *. blue) in
-      let y = (0.212_639_005_871_510_36 *. red)
-      +. (0.715_168_678_767_755_93 *. green)
-      +. (0.072_192_315_360_733_715 *. blue) in
-      let z = (0.019_330_818_715_591_851 *. red)
-      +. (0.119_194_779_794_625_99 *. green)
-      +. (0.950_532_152_249_660_58 *. blue) in
+      let x =
+        (0.412_390_799_265_959_48 *. red)
+        +. (0.357_584_339_383_877_96 *. green)
+        +. (0.180_480_788_401_834_29 *. blue)
+      in
+      let y =
+        (0.212_639_005_871_510_36 *. red)
+        +. (0.715_168_678_767_755_93 *. green)
+        +. (0.072_192_315_360_733_715 *. blue)
+      in
+      let z =
+        (0.019_330_818_715_591_851 *. red)
+        +. (0.119_194_779_794_625_99 *. green)
+        +. (0.950_532_152_249_660_58 *. blue)
+      in
       `xyz (x, y, z)
 
     let xyz_to_linear_rgb = fun (`xyz (x, y, z)) ->
-      let red = (3.240_969_941_904_521_4 *. x)
-      -. (1.537_383_177_570_093_5 *. y)
-      -. (0.498_610_760_293_003_28 *. z) in
-      let green = ((-0.969_243_636_280_879_83) *. x)
-      +. (1.875_967_501_507_720_7 *. y)
-      +. (0.041_555_057_407_175_613 *. z) in
-      let blue = (0.055_630_079_696_993_609 *. x) -. (0.203_976_958_888_976_57 *. y)
-      +. (1.056_971_514_242_878_6 *. z) in
+      let red =
+        (3.240_969_941_904_521_4 *. x)
+        -. (1.537_383_177_570_093_5 *. y)
+        -. (0.498_610_760_293_003_28 *. z)
+      in
+      let green =
+        ((-0.969_243_636_280_879_83) *. x)
+        +. (1.875_967_501_507_720_7 *. y)
+        +. (0.041_555_057_407_175_613 *. z)
+      in
+      let blue =
+        (0.055_630_079_696_993_609 *. x) -. (0.203_976_958_888_976_57 *. y)
+        +. (1.056_971_514_242_878_6 *. z)
+      in
       `lrgb (red, green, blue)
   end
 
   (* Named white references and validation for custom references. *)
 
   module White_points = struct
-    type named_reference = {
-      xyz: xyz;
-      uv: uv;
-    }
+    type named_reference = { xyz: xyz; uv: uv }
 
-    let make = fun ~x ~y ~z ~u ~v -> { xyz = `xyz (x, y, z); uv = `uv (u, v) }
+    let make = fun ~x ~y ~z ~u ~v ->
+      {
+        xyz = `xyz (x, y, z);
+        uv = `uv (u, v);
+      }
 
-    let d50 = make ~x:0.964_22 ~y:1.000_00 ~z:0.825_21 ~u:0.209_160_052_820_386_27 ~v:0.488_073_384_544_885_14
+    let d50 =
+      make
+        ~x:0.964_22
+        ~y:1.000_00
+        ~z:0.825_21
+        ~u:0.209_160_052_820_386_27
+        ~v:0.488_073_384_544_885_14
 
-    let d55 = make ~x:0.956_82 ~y:1.000_00 ~z:0.921_49 ~u:0.204_434_630_305_924_43 ~v:0.480_736_103_121_099_05
+    let d55 =
+      make
+        ~x:0.956_82
+        ~y:1.000_00
+        ~z:0.921_49
+        ~u:0.204_434_630_305_924_43
+        ~v:0.480_736_103_121_099_05
 
-    let d65 = make ~x:0.950_47 ~y:1.000_00 ~z:1.088_83 ~u:0.197_839_824_821_407_77 ~v:0.468_336_302_932_409_7
+    let d65 =
+      make
+        ~x:0.950_47
+        ~y:1.000_00
+        ~z:1.088_83
+        ~u:0.197_839_824_821_407_77
+        ~v:0.468_336_302_932_409_7
 
-    let d75 = make ~x:0.949_72 ~y:1.000_00 ~z:1.226_38 ~u:0.193_535_437_106_383_16 ~v:0.458_508_543_033_064_6
+    let d75 =
+      make
+        ~x:0.949_72
+        ~y:1.000_00
+        ~z:1.226_38
+        ~u:0.193_535_437_106_383_16
+        ~v:0.458_508_543_033_064_6
 
-    let equal_energy = make ~x:1.000_00 ~y:1.000_00 ~z:1.000_00 ~u:0.210_526_315_789_473_67 ~v:0.473_684_210_526_315_76
+    let equal_energy =
+      make
+        ~x:1.000_00
+        ~y:1.000_00
+        ~z:1.000_00
+        ~u:0.210_526_315_789_473_67
+        ~v:0.473_684_210_526_315_76
 
     let known = [ d50; d55; d65; d75; equal_energy; ]
 
@@ -195,15 +219,18 @@ module Internal = struct
         else
           (gamma_scale *. Float.pow clamped (1.0 /. 2.4)) -. gamma_offset
       in
-      encoded *. Byte_rgb.max_channel_f |> Float.round |> Float.to_int |> Byte_rgb.clamp_channel
+      encoded *. Byte_rgb.max_channel_f
+      |> Float.round
+      |> Float.to_int
+      |> Byte_rgb.clamp_channel
   end
 
   (* Normalized CIE LUV lightness helpers. *)
 
   module LUV_space = struct
-    let epsilon = 216.0 /. 24389.0
+    let epsilon = 216.0 /. 24_389.0
 
-    let kappa = 24389.0 /. 27.0
+    let kappa = 24_389.0 /. 27.0
 
     let normalized_lightness_of_y_ratio = fun y_ratio ->
       if y_ratio <= epsilon then
@@ -285,7 +312,8 @@ module Internal = struct
       else if steps = 1 then
         [|start|]
       else
-        Array.init ~count:steps
+        Array.init
+          ~count:steps
           ~fn:(fun index ->
             if index = 0 then
               start
@@ -302,34 +330,26 @@ module Internal = struct
     let color = fun value ->
       match value with
       | `ansi index -> "ANSI(" ^ Int.to_string index ^ ")"
-      | `rgb (red, green, blue) -> "RGB("
-      ^ Int.to_string red
-      ^ ","
-      ^ Int.to_string green
-      ^ ","
-      ^ Int.to_string blue
-      ^ ")"
-      | `lrgb (red, green, blue) -> "LinearRGB("
-      ^ Float.to_string red
-      ^ ","
-      ^ Float.to_string green
-      ^ ","
-      ^ Float.to_string blue
-      ^ ")"
-      | `xyz (x, y, z) -> "XYZ("
-      ^ Float.to_string x
-      ^ ","
-      ^ Float.to_string y
-      ^ ","
-      ^ Float.to_string z
-      ^ ")"
-      | `luv (lightness, u, v) -> "LUV("
-      ^ Float.to_string lightness
-      ^ ","
-      ^ Float.to_string u
-      ^ ","
-      ^ Float.to_string v
-      ^ ")"
+      | `rgb (red, green, blue) ->
+          "RGB(" ^ Int.to_string red ^ "," ^ Int.to_string green ^ "," ^ Int.to_string blue ^ ")"
+      | `lrgb (red, green, blue) ->
+          "LinearRGB("
+          ^ Float.to_string red
+          ^ ","
+          ^ Float.to_string green
+          ^ ","
+          ^ Float.to_string blue
+          ^ ")"
+      | `xyz (x, y, z) ->
+          "XYZ(" ^ Float.to_string x ^ "," ^ Float.to_string y ^ "," ^ Float.to_string z ^ ")"
+      | `luv (lightness, u, v) ->
+          "LUV("
+          ^ Float.to_string lightness
+          ^ ","
+          ^ Float.to_string u
+          ^ ","
+          ^ Float.to_string v
+          ^ ")"
       | `uv (u, v) -> "UV(" ^ Float.to_string u ^ "," ^ Float.to_string v ^ ")"
   end
 end
@@ -357,7 +377,10 @@ module ANSI = struct
           scan (index + 1) best_index best_distance
     in
     let (`rgb (red, green, blue)) = Array.get_unchecked Ansi_table.to_rgb ~at:0 in
-    scan 1 0 (Internal.Byte_rgb.distance_squared source (red, green, blue))
+    scan
+      1
+      0
+      (Internal.Byte_rgb.distance_squared source (red, green, blue))
 end
 
 module White_reference = struct
@@ -373,19 +396,17 @@ module White_reference = struct
 end
 
 module Linear_RGB = struct
-  let linearize = fun (`rgb (red, green, blue)) ->
-    `lrgb (
-      Internal.Transfer_curve.decode_channel red,
-      Internal.Transfer_curve.decode_channel green,
-      Internal.Transfer_curve.decode_channel blue
-    )
+  let linearize = fun (`rgb (red, green, blue)) -> `lrgb (
+    Internal.Transfer_curve.decode_channel red,
+    Internal.Transfer_curve.decode_channel green,
+    Internal.Transfer_curve.decode_channel blue
+  )
 
-  let delinearize = fun (`lrgb (red, green, blue)) ->
-    `rgb (
-      Internal.Transfer_curve.encode_channel red,
-      Internal.Transfer_curve.encode_channel green,
-      Internal.Transfer_curve.encode_channel blue
-    )
+  let delinearize = fun (`lrgb (red, green, blue)) -> `rgb (
+    Internal.Transfer_curve.encode_channel red,
+    Internal.Transfer_curve.encode_channel green,
+    Internal.Transfer_curve.encode_channel blue
+  )
 
   let to_xyz = Internal.XYZ_space.linear_rgb_to_xyz
 end
@@ -393,10 +414,11 @@ end
 module XYZ = struct
   let to_linear_rgb = Internal.XYZ_space.xyz_to_linear_rgb
 
-  let to_rgb = fun xyz -> to_linear_rgb xyz |> Linear_RGB.delinearize
+  let to_rgb = fun xyz ->
+    to_linear_rgb xyz
+    |> Linear_RGB.delinearize
 
-  let to_uv = fun (`xyz (x, y, z)) ->
-    Internal.XYZ_space.chromaticity x y z
+  let to_uv = fun (`xyz (x, y, z)) -> Internal.XYZ_space.chromaticity x y z
 
   let to_luv_with_ref = fun (`xyz (_, y, _) as xyz) ~wref ->
     let (`xyz (_, white_y, _) as reference) = Internal.White_points.validate wref in
@@ -411,7 +433,9 @@ module XYZ = struct
 end
 
 module LUV = struct
-  let distance = fun (`luv (left_lightness, left_u, left_v)) (`luv (right_lightness, right_u, right_v)) ->
+  let distance = fun (`luv (left_lightness, left_u, left_v)) (
+    `luv (right_lightness, right_u, right_v)
+  ) ->
     let diff_lightness = right_lightness -. left_lightness in
     let diff_u = right_u -. left_u in
     let diff_v = right_v -. left_v in
@@ -432,9 +456,13 @@ module LUV = struct
 
   let to_xyz = fun luv -> to_xyz_with_ref luv ~wref:White_reference.d65
 
-  let to_rgb = fun luv -> to_xyz luv |> XYZ.to_rgb
+  let to_rgb = fun luv ->
+    to_xyz luv
+    |> XYZ.to_rgb
 
-  let blend_unclamped = fun (`luv (left_lightness, left_u, left_v) as left) (`luv (right_lightness, right_u, right_v) as right) ~mix ->
+  let blend_unclamped = fun (`luv (left_lightness, left_u, left_v) as left) (
+    `luv (right_lightness, right_u, right_v) as right
+  ) ~mix ->
     if Float.equal mix 0.0 then
       left
     else if Float.equal mix 1.0 then
@@ -447,21 +475,31 @@ module LUV = struct
       )
 
   let blend = fun left right ~mix ->
-    blend_unclamped left right ~mix:(Internal.Interpolation.clamp_mix mix)
+    blend_unclamped
+      left
+      right
+      ~mix:(Internal.Interpolation.clamp_mix mix)
 
   let gradient = fun start finish ~steps ->
-    Internal.Interpolation.inclusive_gradient ~steps ~start ~finish ~blend_unclamped
+    Internal.Interpolation.inclusive_gradient
+      ~steps
+      ~start
+      ~finish
+      ~blend_unclamped
 end
 
 module RGB = struct
   let to_linear_rgb = Linear_RGB.linearize
 
-  let to_xyz = fun rgb -> to_linear_rgb rgb |> Linear_RGB.to_xyz
+  let to_xyz = fun rgb ->
+    to_linear_rgb rgb
+    |> Linear_RGB.to_xyz
 
-  let to_luv = fun rgb -> to_xyz rgb |> XYZ.to_luv
+  let to_luv = fun rgb ->
+    to_xyz rgb
+    |> XYZ.to_luv
 
-  let distance_luv = fun left right ->
-    LUV.distance (to_luv left) (to_luv right)
+  let distance_luv = fun left right -> LUV.distance (to_luv left) (to_luv right)
 
   let relative_luminance = fun rgb ->
     match to_xyz rgb with
@@ -491,10 +529,14 @@ module RGB = struct
     else
       let left_luv = to_luv left in
       let right_luv = to_luv right in
-      LUV.blend_unclamped left_luv right_luv ~mix |> LUV.to_rgb
+      LUV.blend_unclamped left_luv right_luv ~mix
+      |> LUV.to_rgb
 
   let blend = fun left right ~mix ->
-    blend_unclamped left right ~mix:(Internal.Interpolation.clamp_mix mix)
+    blend_unclamped
+      left
+      right
+      ~mix:(Internal.Interpolation.clamp_mix mix)
 
   let gradient = fun start finish ~steps ->
     let start = Internal.Byte_rgb.normalize start in

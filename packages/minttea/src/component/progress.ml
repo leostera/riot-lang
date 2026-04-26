@@ -63,11 +63,10 @@ let set_progress = fun t ~progress ->
 let increment = fun t ~delta:amount ->
   if t.percent +. amount < 1.0 then
     t.percent <- t.percent +. amount
-  else
-    (
-      t.percent <- 1.0;
-      t.finished <- true
-    );
+  else (
+    t.percent <- 1.0;
+    t.finished <- true
+  );
   t
 
 let view = fun t ->

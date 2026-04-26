@@ -55,36 +55,29 @@ let add_header = fun buffer major value ->
     | Order.LT
     | Order.EQ -> true
     | Order.GT -> false
-  ) then
-    (
-      add_byte buffer ((major lsl 5) lor 24);
-      add_byte buffer (Int64.to_int value)
-    )
-  else if (
+  ) then (
+    add_byte buffer ((major lsl 5) lor 24);
+    add_byte buffer (Int64.to_int value)
+  ) else if (
     match Int64.compare value 0xffffL with
     | Order.LT
     | Order.EQ -> true
     | Order.GT -> false
-  ) then
-    (
-      add_byte buffer ((major lsl 5) lor 25);
-      add_uint16_be buffer (Int64.to_int value)
-    )
-  else if (
+  ) then (
+    add_byte buffer ((major lsl 5) lor 25);
+    add_uint16_be buffer (Int64.to_int value)
+  ) else if (
     match Int64.compare value 0xffff_ffffL with
     | Order.LT
     | Order.EQ -> true
     | Order.GT -> false
-  ) then
-    (
-      add_byte buffer ((major lsl 5) lor 26);
-      add_uint32_be buffer (Int64.to_int32 value)
-    )
-  else
-    (
-      add_byte buffer ((major lsl 5) lor 27);
-      add_uint64_be buffer value
-    )
+  ) then (
+    add_byte buffer ((major lsl 5) lor 26);
+    add_uint32_be buffer (Int64.to_int32 value)
+  ) else (
+    add_byte buffer ((major lsl 5) lor 27);
+    add_uint64_be buffer value
+  )
 
 let add_float64 = fun buffer value ->
   add_byte buffer 0xfb;

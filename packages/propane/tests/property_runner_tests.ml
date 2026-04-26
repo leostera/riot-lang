@@ -119,7 +119,10 @@ let test_check_is_reproducible_for_a_fixed_seed = fun _ctx ->
   let prop = Property.for_all arb (fun _ -> false) in
   let config = { Property.default_config with test_count = 1; seed = Some 123 } in
   match (Property.check ~config prop, Property.check ~config prop) with
-  | (Property.Failure { counter_example = left_counter_example; shrink_steps = left_shrink_steps }, Property.Failure { counter_example = right_counter_example; shrink_steps = right_shrink_steps }) ->
+  | (
+    Property.Failure { counter_example = left_counter_example; shrink_steps = left_shrink_steps },
+    Property.Failure { counter_example = right_counter_example; shrink_steps = right_shrink_steps }
+  ) ->
       if
         left_counter_example = right_counter_example && left_shrink_steps = right_shrink_steps
       then

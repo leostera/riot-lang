@@ -963,12 +963,10 @@ let bench = fun ?(on_event = no_event) (request: bench_request) ->
       ?suite_filter:request.suite_filter
       ()
   in
-  if suites = [] then
-    (
-      on_event (NoSuitesFound { package_name = selected_package_name request.package_filters });
-      Ok ()
-    )
-  else
+  if suites = [] then (
+    on_event (NoSuitesFound { package_name = selected_package_name request.package_filters });
+    Ok ()
+  ) else
     match build_output
       ~workspace:request.workspace
       ~packages:(requested_packages suites)
@@ -1019,7 +1017,15 @@ let bench = fun ?(on_event = no_event) (request: bench_request) ->
                             ^ "': "
                             ^ reason;
                           })
-                      | Ok (stdout, started_at_us, completed_at_us, duration_us, results, comparisons, summary) ->
+                      | Ok (
+                        stdout,
+                        started_at_us,
+                        completed_at_us,
+                        duration_us,
+                        results,
+                        comparisons,
+                        summary
+                      ) ->
                           total := !total + summary.total;
                           completed := !completed + summary.completed;
                           skipped := !skipped + summary.skipped;

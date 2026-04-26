@@ -176,12 +176,11 @@ let current_record_decls = fun current ->
       let owner_id = record_decl.owner_type_constructor_id in
       if Collections.HashSet.contains dedupe owner_id then
         false
-      else
-        (
-          Collections.HashSet.insert dedupe owner_id
-          |> ignore;
-          true
-        ))
+      else (
+        Collections.HashSet.insert dedupe owner_id
+        |> ignore;
+        true
+      ))
 
 let rec visible_components = fun env ->
   let current = current_visible_components env in
@@ -306,12 +305,11 @@ let visible_record_decls = fun env ->
     let owner_id = record_decl.owner_type_constructor_id in
     if Collections.HashSet.contains seen owner_id then
       acc
-    else
-      (
-        Collections.HashSet.insert seen owner_id
-        |> ignore;
-        record_decl :: acc
-      )
+    else (
+      Collections.HashSet.insert seen owner_id
+      |> ignore;
+      record_decl :: acc
+    )
   in
   let rec gather acc env =
     let acc =

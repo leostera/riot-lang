@@ -1,6 +1,8 @@
 open Std
+
 module Array = Collections.Array
 module Vector = Collections.Vector
+
 open Std.Result.Syntax
 
 type encode_target =
@@ -46,11 +48,9 @@ let write_string = fun state value ->
   IO.Buffer.add_string state.output value;
   maybe_flush_output state
 
-let scratch_write_char = fun state value ->
-  IO.Buffer.add_char state.scratch value
+let scratch_write_char = fun state value -> IO.Buffer.add_char state.scratch value
 
-let scratch_write_string = fun state value ->
-  IO.Buffer.add_string state.scratch value
+let scratch_write_string = fun state value -> IO.Buffer.add_string state.scratch value
 
 let hex_digit = fun value ->
   match value with
@@ -98,7 +98,10 @@ let append_escaped_string = fun write_str write_chr value ->
   write_chr '"'
 
 let write_escaped_string = fun state value ->
-  append_escaped_string (write_string state) (write_char state) value
+  append_escaped_string
+    (write_string state)
+    (write_char state)
+    value
 
 let write_cached_escaped_literal = fun state value ->
   let rec lookup = function
@@ -108,10 +111,8 @@ let write_cached_escaped_literal = fun state value ->
         let escaped = IO.Buffer.contents state.scratch in
         state.escaped_literals <- (value, escaped) :: state.escaped_literals;
         write_string state escaped
-    | (key, escaped) :: _ when String.equal key value ->
-        write_string state escaped
-    | _ :: rest ->
-        lookup rest
+    | (key, escaped) :: _ when String.equal key value -> write_string state escaped
+    | _ :: rest -> lookup rest
   in
   lookup state.escaped_literals
 
@@ -138,7 +139,8 @@ let float_to_json = fun value ->
 let rec list_backend: 'value. state -> 'value Serde.Ser.t -> 'value vec -> unit = fun state encode values ->
   write_char state '[';
   let first = ref true in
-  Vector.for_each values
+  Vector.for_each
+    values
     ~fn:(fun value ->
       if !first then
         first := false
@@ -152,7 +154,10 @@ and array_backend: 'value. state -> 'value Serde.Ser.t -> 'value array -> unit =
   for index = 0 to Array.length values - 1 do
     if not (Int.equal index 0) then
       write_char state ',';
-    encode.run backend state (Array.get_unchecked values ~at:index)
+    encode.run
+      backend
+      state
+      (Array.get_unchecked values ~at:index)
   done;
   write_char state ']'
 
@@ -222,18 +227,19 @@ let to_string = fun encode value ->
     target = Buffer_target;
     output = IO.Buffer.create ~size:256;
     scratch = IO.Buffer.create ~size:64;
-    escaped_literals = []
-  } in
-  let* () = Serde.Ser.run encode backend state value in
-  Ok (IO.Buffer.contents state.output)
+    escaped_literals = [];
+  }
+  in
+  let* () = Serde.Ser.run encode backend state value in Ok (IO.Buffer.contents state.output)
 
 let to_writer = fun encode writer value ->
   let state = {
     target = Writer_target writer;
     output = IO.Buffer.create ~size:4_096;
     scratch = IO.Buffer.create ~size:64;
-    escaped_literals = []
-  } in
+    escaped_literals = [];
+  }
+  in
   match Serde.Ser.run encode backend state value with
   | Error err -> Error err
   | Ok () -> (

@@ -12,11 +12,10 @@ let init = fun ~count ~fn ->
     let rec fill index =
       if index >= count then
         out
-      else
-        (
-          Caml_runtime.array_set out index (fn index);
-          fill (index + 1)
-        )
+      else (
+        Caml_runtime.array_set out index (fn index);
+        fill (index + 1)
+      )
     in
     let _ = fill 1 in
     out
@@ -53,28 +52,26 @@ let blit = fun source ~src_offset ~dst ~dst_offset ~len ->
     let rec loop index =
       if index < 0 then
         ()
-      else
-        (
-          set_unchecked
-            dst
-            ~at:(dst_offset + index)
-            ~value:(get_unchecked source ~at:(src_offset + index));
-          loop (index - 1)
-        )
+      else (
+        set_unchecked
+          dst
+          ~at:(dst_offset + index)
+          ~value:(get_unchecked source ~at:(src_offset + index));
+        loop (index - 1)
+      )
     in
     loop (len - 1)
   else
     let rec loop index =
       if index >= len then
         ()
-      else
-        (
-          set_unchecked
-            dst
-            ~at:(dst_offset + index)
-            ~value:(get_unchecked source ~at:(src_offset + index));
-          loop (index + 1)
-        )
+      else (
+        set_unchecked
+          dst
+          ~at:(dst_offset + index)
+          ~value:(get_unchecked source ~at:(src_offset + index));
+        loop (index + 1)
+      )
     in
     loop 0
 
@@ -88,11 +85,10 @@ let for_each = fun array ~fn ->
   let rec loop index =
     if index >= length array then
       ()
-    else
-      (
-        fn (get_unchecked array ~at:index);
-        loop (index + 1)
-      )
+    else (
+      fn (get_unchecked array ~at:index);
+      loop (index + 1)
+    )
   in
   loop 0
 
@@ -105,11 +101,10 @@ let map = fun array ~fn ->
     let rec fill index =
       if index >= count then
         out
-      else
-        (
-          set_unchecked out ~at:index ~value:(fn (get_unchecked array ~at:index));
-          fill (index + 1)
-        )
+      else (
+        set_unchecked out ~at:index ~value:(fn (get_unchecked array ~at:index));
+        fill (index + 1)
+      )
     in
     let _ = fill 1 in
     out

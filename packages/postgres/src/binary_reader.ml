@@ -106,11 +106,10 @@ let read_string = fun reader ->
       reader.offset <- reader.offset + 1;
     if c = '\x00' then
       Some (Buffer.contents buf)
-    else
-      (
-        Buffer.add_char buf c;
-        loop ()
-      )
+    else (
+      Buffer.add_char buf c;
+      loop ()
+    )
   in
   loop ()
 

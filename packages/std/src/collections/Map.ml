@@ -309,19 +309,22 @@ module Make (Order: Std_order.Ordered) = struct
     match (left, right) with
     | (Empty, _) -> add_minimum ~key ~value right
     | (_, Empty) -> add_maximum left ~key ~value
-    | (Node {
-      left = left_left;
-      key = left_key;
-      value = left_value;
-      right = left_right;
-      height = left_height
-    }, Node {
-      left = right_left;
-      key = right_key;
-      value = right_value;
-      right = right_right;
-      height = right_height
-    }) ->
+    | (
+      Node {
+        left = left_left;
+        key = left_key;
+        value = left_value;
+        right = left_right;
+        height = left_height
+      },
+      Node {
+        left = right_left;
+        key = right_key;
+        value = right_value;
+        right = right_right;
+        height = right_height
+      }
+    ) ->
         if left_height > right_height + 2 then
           balance
             left_left
@@ -488,19 +491,22 @@ module Make (Order: Std_order.Ordered) = struct
     match (left, right) with
     | (Empty, map)
     | (map, Empty) -> map
-    | (Node {
-      left = left_left;
-      key = left_key;
-      value = left_value;
-      right = left_right;
-      height = left_height
-    }, Node {
-      left = right_left;
-      key = right_key;
-      value = right_value;
-      right = right_right;
-      height = right_height
-    }) ->
+    | (
+      Node {
+        left = left_left;
+        key = left_key;
+        value = left_value;
+        right = left_right;
+        height = left_height
+      },
+      Node {
+        left = right_left;
+        key = right_key;
+        value = right_value;
+        right = right_right;
+        height = right_height
+      }
+    ) ->
         if left_height >= right_height then
           let (split_left, split_value, split_right) = split right ~key:left_key in
           let merged_left = union ~left:left_left ~right:split_left ~fn in
@@ -734,7 +740,10 @@ module Make (Order: Std_order.Ordered) = struct
       | (End, End) -> Kernel.Order.EQ
       | (End, _) -> Kernel.Order.LT
       | (_, End) -> Kernel.Order.GT
-      | (More (left_key, left_value, left_right, left_rest), More (right_key, right_value, right_right, right_rest)) -> (
+      | (
+        More (left_key, left_value, left_right, left_rest),
+        More (right_key, right_value, right_right, right_rest)
+      ) -> (
           match Order.compare left_key right_key with
           | Kernel.Order.EQ -> (
               match fn left_value right_value with
@@ -755,7 +764,10 @@ module Make (Order: Std_order.Ordered) = struct
       | (End, End) -> true
       | (End, _)
       | (_, End) -> false
-      | (More (left_key, left_value, left_right, left_rest), More (right_key, right_value, right_right, right_rest)) -> (
+      | (
+        More (left_key, left_value, left_right, left_rest),
+        More (right_key, right_value, right_right, right_rest)
+      ) -> (
           match Order.compare left_key right_key with
           | Kernel.Order.EQ ->
               fn left_value right_value

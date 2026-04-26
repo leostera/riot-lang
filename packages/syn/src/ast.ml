@@ -961,19 +961,18 @@ module TypeExpr = struct
     | None -> ()
     | Some first_suffix_index ->
         let rec loop index =
-          if Int.(index < Node.child_count type_expr) then
+          if Int.(index < Node.child_count type_expr) then (
             (
-              (
-                match Node.child_at type_expr index with
-                | Some (Syntax_tree.Token id) -> fn (wrap_token type_expr.tree id)
-                | Some (Syntax_tree.Node id) ->
-                    let node = wrap_node type_expr.tree id in
-                    Node.for_each_token node ~fn
-                | Some (Syntax_tree.Missing _)
-                | None -> ()
-              );
-              loop (Int.add index 1)
-            )
+              match Node.child_at type_expr index with
+              | Some (Syntax_tree.Token id) -> fn (wrap_token type_expr.tree id)
+              | Some (Syntax_tree.Node id) ->
+                  let node = wrap_node type_expr.tree id in
+                  Node.for_each_token node ~fn
+              | Some (Syntax_tree.Missing _)
+              | None -> ()
+            );
+            loop (Int.add index 1)
+          )
         in
         loop first_suffix_index
 
@@ -2212,12 +2211,10 @@ end = struct
               loop Int.(index + 1) keyword operator
         | Some (Syntax_tree.Node id) ->
             let child = wrap_node expr.tree id in
-            if node_matches child is_let_binding_kind then
-              (
-                fn { keyword; operator; binding = child };
-                loop Int.(index + 1) None None
-              )
-            else
+            if node_matches child is_let_binding_kind then (
+              fn { keyword; operator; binding = child };
+              loop Int.(index + 1) None None
+            ) else
               loop Int.(index + 1) keyword operator
         | Some (Syntax_tree.Missing _)
         | None -> loop Int.(index + 1) keyword operator
@@ -3207,15 +3204,14 @@ module TypeDeclaration = struct
 
     let for_each_child = fun member ~fn ->
       let rec loop index =
-        if index < Node.child_count member.node then
+        if index < Node.child_count member.node then (
           (
-            (
-              match Node.child_at member.node index with
-              | Some child -> fn child
-              | None -> ()
-            );
-            loop (index + 1)
-          )
+            match Node.child_at member.node index with
+            | Some child -> fn child
+            | None -> ()
+          );
+          loop (index + 1)
+        )
       in
       loop 0
 
@@ -3331,17 +3327,16 @@ module TypeDeclaration = struct
         function
         | Syntax_tree.Node id ->
             let node = wrap_node decl.tree id in
-            if node_kind_is node Syntax_kind.TYPE_DECL_MEMBER then
-              (
-                saw_member := true;
-                fn
-                  {
-                    declaration = decl;
-                    node;
-                    start_index = !index;
-                    stop_index = !index + 1;
-                  }
-              );
+            if node_kind_is node Syntax_kind.TYPE_DECL_MEMBER then (
+              saw_member := true;
+              fn
+                {
+                  declaration = decl;
+                  node;
+                  start_index = !index;
+                  stop_index = !index + 1;
+                }
+            );
             index := !index + 1
         | Syntax_tree.Token _
         | Syntax_tree.Missing _ -> index := !index + 1
@@ -3654,15 +3649,14 @@ module ModuleDeclaration = struct
 
     let for_each_child = fun member ~fn ->
       let rec loop index =
-        if index < Node.child_count member.node then
+        if index < Node.child_count member.node then (
           (
-            (
-              match Node.child_at member.node index with
-              | Some child -> fn child
-              | None -> ()
-            );
-            loop (index + 1)
-          )
+            match Node.child_at member.node index with
+            | Some child -> fn child
+            | None -> ()
+          );
+          loop (index + 1)
+        )
       in
       loop 0
 
@@ -3748,17 +3742,16 @@ module ModuleDeclaration = struct
         function
         | Syntax_tree.Node id ->
             let node = wrap_node decl.tree id in
-            if node_kind_is node Syntax_kind.MODULE_DECL_MEMBER then
-              (
-                saw_member := true;
-                fn
-                  {
-                    declaration = decl;
-                    node;
-                    start_index = !index;
-                    stop_index = !index + 1;
-                  }
-              );
+            if node_kind_is node Syntax_kind.MODULE_DECL_MEMBER then (
+              saw_member := true;
+              fn
+                {
+                  declaration = decl;
+                  node;
+                  start_index = !index;
+                  stop_index = !index + 1;
+                }
+            );
             index := !index + 1
         | Syntax_tree.Token _
         | Syntax_tree.Missing _ -> index := !index + 1
@@ -4340,11 +4333,10 @@ module ExternalDeclaration = struct
           fn token
         else if token_kind_is token Syntax_kind.STRING then
           seen_primitive := true
-        else if !seen_primitive then
-          (
-            after_primitives := true;
-            fn token
-          ))
+        else if !seen_primitive then (
+          after_primitives := true;
+          fn token
+        ))
 end
 
 module ExceptionDeclaration = struct

@@ -149,10 +149,8 @@ let should_break_word = fun ~prev_prop ~curr_prop ~next_prop ->
   | (Number, Underscore, Some Number) -> false
   | (Number, Underscore, Some Letter) -> false
   | (Letter, Underscore, Some Number) -> false
-  | (Underscore, (Letter
-  | Number), _) -> false
-  | ((Letter
-  | Number), Apostrophe, _) -> true
+  | (Underscore, (Letter | Number), _) -> false
+  | ((Letter | Number), Apostrophe, _) -> true
   | (_, _, _) -> true
 
 (**

@@ -359,14 +359,13 @@ let enqueue_on_worker = fun t worker_id slot ->
         Runtime_condition.signal worker.cond;
         Runtime_mutex.unlock worker.lock
       )
-    else if Runtime_process.is_runnable (slot_process slot) then
-      (
-        increment t.counters.duplicate_enqueue_races;
-        trace
-          (Kernel.String.concat
-            ""
-            [ "duplicate enqueue prevented pid="; Runtime_pid.to_string (slot_pid slot) ])
-      )
+    else if Runtime_process.is_runnable (slot_process slot) then (
+      increment t.counters.duplicate_enqueue_races;
+      trace
+        (Kernel.String.concat
+          ""
+          [ "duplicate enqueue prevented pid="; Runtime_pid.to_string (slot_pid slot) ])
+    )
 
 let enqueue_on_blocking_lane = fun t slot ->
   if try_mark_slot_queued slot then
@@ -376,14 +375,13 @@ let enqueue_on_blocking_lane = fun t slot ->
         Runtime_mutex.lock lane.lock;
         Runtime_condition.signal lane.cond;
         Runtime_mutex.unlock lane.lock
-  else if Runtime_process.is_runnable (slot_process slot) then
-    (
-      increment t.counters.duplicate_enqueue_races;
-      trace
-        (Kernel.String.concat
-          ""
-          [ "duplicate enqueue prevented pid="; Runtime_pid.to_string (slot_pid slot) ])
-    )
+  else if Runtime_process.is_runnable (slot_process slot) then (
+    increment t.counters.duplicate_enqueue_races;
+    trace
+      (Kernel.String.concat
+        ""
+        [ "duplicate enqueue prevented pid="; Runtime_pid.to_string (slot_pid slot) ])
+  )
 
 let enqueue_owned_process = fun t slot ->
   match slot_placement slot with
@@ -419,18 +417,15 @@ let wake_process_from_message = fun t slot ->
     | Some worker_id -> not (Runtime_scheduler_id.equal worker_id owner)
     | None -> true
   in
-  if Runtime_process.try_mark_runnable_from_waiting_message proc then
-    (
-      if remote_wakeup then
-        increment t.counters.remote_wakeups;
-      enqueue_owned_process t slot
-    )
-  else if Runtime_process.is_runnable proc then
-    (
-      if remote_wakeup then
-        increment t.counters.remote_wakeups;
-      enqueue_owned_process t slot
-    )
+  if Runtime_process.try_mark_runnable_from_waiting_message proc then (
+    if remote_wakeup then
+      increment t.counters.remote_wakeups;
+    enqueue_owned_process t slot
+  ) else if Runtime_process.is_runnable proc then (
+    if remote_wakeup then
+      increment t.counters.remote_wakeups;
+    enqueue_owned_process t slot
+  )
 
 let get_process_slot = fun t pid ->
   with_process_shard
@@ -756,13 +751,11 @@ let handle_syscall = fun k t proc name interest source timeout ->
     match Runtime_process.syscall_timeout proc with
     | None -> `none
     | Some timer_id ->
-        if Runtime_process.take_syscall_timeout_fired proc then
-          (
-            Runtime_process.clear_syscall_timeout proc;
-            cancel_timer t timer_id;
-            `fired
-          )
-        else
+        if Runtime_process.take_syscall_timeout_fired proc then (
+          Runtime_process.clear_syscall_timeout proc;
+          cancel_timer t timer_id;
+          `fired
+        ) else
           `armed
   in
   match Runtime_process.get_ready_token proc with
@@ -853,14 +846,12 @@ let handle_exit_proc = fun t proc reason ->
           | Some linked_slot ->
               let linked_proc = slot_process linked_slot in
               Runtime_process.unlink linked_proc pid;
-              if Runtime_process.get_trap_exit linked_proc then
-                (
-                  Runtime_process.send_message
-                    linked_proc
-                    (Runtime_process.Messages.EXIT { from = pid; reason });
-                  wake_process t linked_slot
-                )
-              else
+              if Runtime_process.get_trap_exit linked_proc then (
+                Runtime_process.send_message
+                  linked_proc
+                  (Runtime_process.Messages.EXIT { from = pid; reason });
+                wake_process t linked_slot
+              ) else
                 match reason with
                 | Ok () -> ()
                 | Error exn ->
@@ -938,11 +929,10 @@ let handle_run_proc = fun t ctx slot ->
         if pending && Runtime_process.is_alive proc then
           enqueue_owned_process t slot
     | _ ->
-        if Runtime_process.is_alive proc then
-          (
-            Runtime_process.mark_as_runnable proc;
-            enqueue_owned_process t slot
-          )
+        if Runtime_process.is_alive proc then (
+          Runtime_process.mark_as_runnable proc;
+          enqueue_owned_process t slot
+        )
   with
   | exn ->
       ctx.current_process <- None;
@@ -964,12 +954,10 @@ let step_process = fun t ctx slot ->
       | None -> (
           match Runtime_process.state proc with
           | Uninitialized ->
-              if try_mark_slot_executing slot then
-                (
-                  Runtime_process.init proc;
-                  handle_run_proc t ctx slot
-                )
-              else
+              if try_mark_slot_executing slot then (
+                Runtime_process.init proc;
+                handle_run_proc t ctx slot
+              ) else
                 mark_slot_pending slot
           | Waiting_message ->
               if
@@ -1075,13 +1063,12 @@ let steal_batch = fun (victim: worker) ->
   batch
 
 let push_batch = fun (worker: worker) batch ->
-  if not (List.is_empty batch) then
-    (
-      Runtime_mutex.lock worker.lock;
-      List.for_each batch ~fn:(fun slot -> Queue.push worker.queue ~value:slot);
-      Runtime_condition.signal worker.cond;
-      Runtime_mutex.unlock worker.lock
-    )
+  if not (List.is_empty batch) then (
+    Runtime_mutex.lock worker.lock;
+    List.for_each batch ~fn:(fun slot -> Queue.push worker.queue ~value:slot);
+    Runtime_condition.signal worker.cond;
+    Runtime_mutex.unlock worker.lock
+  )
 
 let attempt_steal = fun t (worker: worker) ->
   let total = worker_count t in
@@ -1098,15 +1085,14 @@ let attempt_steal = fun t (worker: worker) ->
         let batch = steal_batch victim in
         if List.is_empty batch then
           scan start_offset (seen + 1)
-        else
-          (
-            (* Ownership transfer happens before enqueuing locally so future
-               remote wakeups route to the stealing worker.
-            *)
-            List.for_each batch ~fn:(fun slot -> set_slot_owner_worker slot worker.id);
-            push_batch worker batch;
-            true
-          )
+        else (
+          (* Ownership transfer happens before enqueuing locally so future
+             remote wakeups route to the stealing worker.
+          *)
+          List.for_each batch ~fn:(fun slot -> set_slot_owner_worker slot worker.id);
+          push_batch worker batch;
+          true
+        )
   in
   if total <= 1 then
     false
@@ -1161,22 +1147,21 @@ let process_timers = fun t ->
           | Runtime_timer.Wake_process proc ->
               if Runtime_process.has_receive_timeout_id proc timer_id then
                 Runtime_process.mark_receive_timeout_fired proc;
-              if Runtime_process.has_syscall_timeout_id proc timer_id then
-                (
-                  Runtime_process.mark_syscall_timeout_fired proc;
-                  match Runtime_process.state proc with
-                  | Waiting_io { source; _ } ->
-                      (* Syscall timeout resumes the waiting process with
-                         [Syscall_timeout]. The wait registration must be removed
-                         first so a subsequent syscall can reregister cleanly.
-                      *)
-                      deregister_io_in_reactor
-                        t
-                        source
-                        ~context:("for timed out process "
-                        ^ Runtime_pid.to_string (Runtime_process.pid proc))
-                  | _ -> ()
-                );
+              if Runtime_process.has_syscall_timeout_id proc timer_id then (
+                Runtime_process.mark_syscall_timeout_fired proc;
+                match Runtime_process.state proc with
+                | Waiting_io { source; _ } ->
+                    (* Syscall timeout resumes the waiting process with
+                       [Syscall_timeout]. The wait registration must be removed
+                       first so a subsequent syscall can reregister cleanly.
+                    *)
+                    deregister_io_in_reactor
+                      t
+                      source
+                      ~context:("for timed out process "
+                      ^ Runtime_pid.to_string (Runtime_process.pid proc))
+                | _ -> ()
+              );
               if Runtime_process.is_alive proc then
                 (
                   match get_process_slot t (Runtime_process.pid proc) with
@@ -1245,11 +1230,10 @@ let poll_io = fun t ->
                 t
                 source
                 ~context:("for process " ^ Runtime_pid.to_string (Runtime_process.pid proc));
-              if Runtime_process.is_alive proc then
-                (
-                  Runtime_process.add_ready_token proc token source;
-                  wake_process t slot
-                )
+              if Runtime_process.is_alive proc then (
+                Runtime_process.add_ready_token proc token source;
+                wake_process t slot
+              )
           | _ -> ()
         ))
 

@@ -39,14 +39,13 @@ let load_for_env = fun env ->
   load_file path
 
 let find_field = fun fields name ->
-  List.find fields
-    ~fn:(fun (field_name, _value) ->
-      String.equal field_name name)
+  List.find
+    fields
+    ~fn:(fun (field_name, _value) -> String.equal field_name name)
 
 let rec extract_app_section = fun app_name toml ->
   match String.split ~by:"." app_name with
-  | [] ->
-      Error "Empty app name"
+  | [] -> Error "Empty app name"
   | [ single ] -> (
       match Data.Toml.get_table toml with
       | None -> Error "Root is not a table"

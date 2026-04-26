@@ -194,12 +194,10 @@ let best_matching_local_module_ids = fun graph (group: 'a group) ~required_modul
         | None -> ()
         | Some depth ->
             let current_best = Option.unwrap_or ~default:depth !best_depth in
-            if Option.is_none !best_depth || depth > current_best then
-              (
-                best_depth := Some depth;
-                matches_rev := [ candidate_group.id ]
-              )
-            else if Int.equal depth current_best then
+            if Option.is_none !best_depth || depth > current_best then (
+              best_depth := Some depth;
+              matches_rev := [ candidate_group.id ]
+            ) else if Int.equal depth current_best then
               matches_rev := candidate_group.id :: !matches_rev);
   List.rev !matches_rev
   |> Array.of_list

@@ -1,5 +1,6 @@
 open Std
 open Std.Result.Syntax
+
 module Array = Collections.Array
 module Vector = Collections.Vector
 module De = Serde.De
@@ -30,16 +31,16 @@ let int_of_int64 = fun value ->
 
 let int32_of_int64 = fun value ->
   if (
-      match Int64.compare value (Int64.of_int32 Int32.min_int) with
-      | Order.LT -> true
-      | Order.EQ
-      | Order.GT -> false
-    ) || (
-      match Int64.compare value (Int64.of_int32 Int32.max_int) with
-      | Order.GT -> true
-      | Order.LT
-      | Order.EQ -> false
-    ) then
+    match Int64.compare value (Int64.of_int32 Int32.min_int) with
+    | Order.LT -> true
+    | Order.EQ
+    | Order.GT -> false
+  ) || (
+    match Int64.compare value (Int64.of_int32 Int32.max_int) with
+    | Order.GT -> true
+    | Order.LT
+    | Order.EQ -> false
+  ) then
     error "decoded YAML integer does not fit in int32"
   else
     Int64.to_int32 value
@@ -63,32 +64,26 @@ let map_singleton = function
 let rec option_backend: 'value. state -> 'value De.t -> 'value option = fun state decode ->
   match state.current with
   | Yaml_value.Null -> None
-  | value ->
-      Some (
-        with_current state value
-          (fun () ->
-            decode.run backend state)
-      )
+  | value -> Some (with_current state value (fun () -> decode.run backend state))
 
 and list_backend: 'value. state -> 'value De.t -> 'value vec = fun state decode ->
   let values = expect_seq state.current in
   let result = Vector.with_capacity ~size:(List.length values) in
-  List.for_each values
+  List.for_each
+    values
     ~fn:(fun value ->
-      Vector.push result
-        ~value:(with_current state value
-          (fun () ->
-            decode.run backend state)));
+      Vector.push
+        result
+        ~value:(with_current state value (fun () -> decode.run backend state)));
   result
 
 and array_backend: 'value. state -> 'value De.t -> 'value array = fun state decode ->
   let values = expect_seq state.current in
   let items = ref [] in
-  List.for_each values
-    ~fn:(fun value ->
-      items := with_current state value
-        (fun () ->
-          decode.run backend state) :: !items);
+  List.for_each
+    values
+    ~fn:(fun value -> items := with_current state value (fun () -> decode.run backend state)
+    :: !items);
   Array.of_list (List.rev !items)
 
 and record_backend:
@@ -99,10 +94,12 @@ and record_backend:
   finish:('acc -> 'value) ->
   'value = fun state ~fields ~init ~step ~finish ->
   let acc = ref init in
-  List.for_each (expect_map state.current)
+  List.for_each
+    (expect_map state.current)
     ~fn:(fun (key, field_value) ->
       let tag = De.Fields.match_slice fields key ~offset:0 ~length:(String.length key) in
-      acc := with_current state field_value (fun () -> step !acc tag));
+      acc := with_current state field_value (fun () ->
+        step !acc tag));
   finish !acc
 
 and record_mut_backend:
@@ -113,10 +110,12 @@ and record_mut_backend:
   finish:('builder -> 'value) ->
   'value = fun state ~fields ~create ~step ~finish ->
   let builder = create () in
-  List.for_each (expect_map state.current)
+  List.for_each
+    (expect_map state.current)
     ~fn:(fun (key, field_value) ->
       let tag = De.Fields.match_slice fields key ~offset:0 ~length:(String.length key) in
-      with_current state field_value (fun () -> step builder tag));
+      with_current state field_value (fun () ->
+        step builder tag));
   finish builder
 
 and variant_backend: 'value. state -> 'value De.compiled_variant_cases -> 'value = fun state cases ->
@@ -154,8 +153,7 @@ and variant_backend: 'value. state -> 'value De.compiled_variant_cases -> 'value
             find_newtype tag payload (index + 1)
   in
   match state.current with
-  | Yaml_value.String tag ->
-      find_unit tag None 0
+  | Yaml_value.String tag -> find_unit tag None 0
   | Yaml_value.Tagged (tag, payload) -> (
       match payload with
       | Yaml_value.Null -> (
@@ -169,8 +167,7 @@ and variant_backend: 'value. state -> 'value De.compiled_variant_cases -> 'value
       | Some (tag, payload) -> find_newtype tag payload 0
       | None -> invalid_field_type "variant"
     )
-  | _ ->
-      invalid_field_type "variant"
+  | _ -> invalid_field_type "variant"
 
 and backend: state De.backend = {
   bool =
@@ -183,8 +180,14 @@ and backend: state De.backend = {
       match state.current with
       | Yaml_value.String value -> value
       | _ -> invalid_field_type "string");
-  int = (fun state -> expect_int64 state.current |> int_of_int64);
-  int32 = (fun state -> expect_int64 state.current |> int32_of_int64);
+  int =
+    (fun state ->
+      expect_int64 state.current
+      |> int_of_int64);
+  int32 =
+    (fun state ->
+      expect_int64 state.current
+      |> int32_of_int64);
   int64 = (fun state -> expect_int64 state.current);
   float =
     (fun state ->
@@ -201,9 +204,8 @@ and backend: state De.backend = {
   variant = variant_backend;
 }
 
-let from_string = fun decode input ->
-  let* document = Parse.parse_document input in
-  De.run decode backend { current = document }
+let from_string = fun decode input -> let* document = Parse.parse_document input in
+De.run decode backend { current = document }
 
 let from_reader = fun decode reader ->
   let buffer = IO.Buffer.create ~size:256 in

@@ -100,12 +100,11 @@ let add_cstring = fun buffer value ->
     value;
   if !has_nul then
     Error (`Msg "serde-bson field names cannot contain NUL bytes")
-  else
-    (
-      IO.Buffer.add_string buffer value;
-      IO.Buffer.add_char buffer '\x00';
-      Ok ()
-    )
+  else (
+    IO.Buffer.add_string buffer value;
+    IO.Buffer.add_char buffer '\x00';
+    Ok ()
+  )
 
 let rec encode_value = function
   | Null -> Ok (type_null, "")

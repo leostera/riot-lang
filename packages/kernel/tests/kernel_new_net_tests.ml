@@ -313,9 +313,11 @@ let test_ip_addr_validates_ipv4_and_ipv6 = fun _ctx ->
     Kernel.Net.IpAddr.from_string "::1",
     Kernel.Net.IpAddr.from_string "nope"
   ) with
-  | (Kernel.Result.Ok ipv4, Kernel.Result.Ok ipv6, Kernel.Result.Error (
-    Kernel.Net.IpAddr.InvalidText _
-  )) ->
+  | (
+    Kernel.Result.Ok ipv4,
+    Kernel.Result.Ok ipv6,
+    Kernel.Result.Error (Kernel.Net.IpAddr.InvalidText _)
+  ) ->
       if
         Kernel.String.equal (Kernel.Net.IpAddr.to_string ipv4) "127.0.0.1"
         && Kernel.String.equal (Kernel.Net.IpAddr.to_string ipv6) "::1"
@@ -1587,9 +1589,10 @@ let test_udp_send_and_recv_after_close_report_bad_file_descriptor = fun _ctx ->
             Kernel.Net.UdpSocket.send server (Kernel.Bytes.from_string "x"),
             Kernel.Net.UdpSocket.recv server buffer
           ) with
-          | (Kernel.Result.Error (Kernel.Net.UdpSocket.System Kernel.SystemError.BadFileDescriptor), Kernel.Result.Error (
-            Kernel.Net.UdpSocket.System Kernel.SystemError.BadFileDescriptor
-          )) -> Ok ()
+          | (
+            Kernel.Result.Error (Kernel.Net.UdpSocket.System Kernel.SystemError.BadFileDescriptor),
+            Kernel.Result.Error (Kernel.Net.UdpSocket.System Kernel.SystemError.BadFileDescriptor)
+          ) -> Ok ()
           | (Kernel.Result.Error send_error, Kernel.Result.Error recv_error) ->
               Error (Kernel.String.concat
                 " | "
@@ -1746,9 +1749,10 @@ let test_local_and_peer_addr_after_close_report_bad_file_descriptor = fun _ctx -
     (fun ~poll:_ ~listener:_ ~listener_addr:_ ~client ~server:_ ~peer:_ ->
       let* () = lift_tcp_stream (Kernel.Net.TcpStream.close client) in
       match (Kernel.Net.TcpStream.local_addr client, Kernel.Net.TcpStream.peer_addr client) with
-      | (Kernel.Result.Error (Kernel.Net.TcpStream.System Kernel.SystemError.BadFileDescriptor), Kernel.Result.Error (
-        Kernel.Net.TcpStream.System Kernel.SystemError.BadFileDescriptor
-      )) -> Ok ()
+      | (
+        Kernel.Result.Error (Kernel.Net.TcpStream.System Kernel.SystemError.BadFileDescriptor),
+        Kernel.Result.Error (Kernel.Net.TcpStream.System Kernel.SystemError.BadFileDescriptor)
+      ) -> Ok ()
       | (Kernel.Result.Error local_error, Kernel.Result.Error peer_error) ->
           Error (Kernel.String.concat
             " | "
@@ -1789,9 +1793,10 @@ let test_udp_send_and_recv_reject_invalid_slices = fun _ctx ->
         Kernel.Net.UdpSocket.send client ~pos:2 ~len:3 (Kernel.Bytes.create ~size:4),
         Kernel.Net.UdpSocket.recv server ~pos:(-1) (Kernel.Bytes.create ~size:4)
       ) with
-      | (Kernel.Result.Error (Kernel.Net.UdpSocket.InvalidSlice { pos = 2; len = 3; buffer_len = 4 }), Kernel.Result.Error (
-        Kernel.Net.UdpSocket.InvalidSlice { pos = (-1); _ }
-      )) -> Ok ()
+      | (
+        Kernel.Result.Error (Kernel.Net.UdpSocket.InvalidSlice { pos = 2; len = 3; buffer_len = 4 }),
+        Kernel.Result.Error (Kernel.Net.UdpSocket.InvalidSlice { pos = (-1); _ })
+      ) -> Ok ()
       | (Kernel.Result.Error send_error, Kernel.Result.Error recv_error) ->
           Error (Kernel.String.concat
             " | "

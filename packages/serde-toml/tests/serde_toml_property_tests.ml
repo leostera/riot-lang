@@ -1,6 +1,7 @@
 open Std
 open Propane
 open Std.Result.Syntax
+
 module Test = Std.Test
 module Array = Collections.Array
 module Vector = Collections.Vector
@@ -19,21 +20,23 @@ let io_writer_of_buffer =
 
     let write = fun buffer ~from ->
       let written = IO.Buffer.readable_bytes from in
-      IO.Buffer.append_slice buffer (IO.Buffer.readable from) |> Result.expect ~msg:"serde-toml property writer should append buffer contents";
+      IO.Buffer.append_slice buffer (IO.Buffer.readable from)
+      |> Result.expect ~msg:"serde-toml property writer should append buffer contents";
       Ok written
 
     let write_vectored = fun buffer ~from ->
       let written = ref 0 in
-      IO.IoVec.for_each from
+      IO.IoVec.for_each
+        from
         ~fn:(fun chunk ->
-          IO.Buffer.append_slice buffer chunk |> Result.expect ~msg:"serde-toml property writer should append slices";
+          IO.Buffer.append_slice buffer chunk
+          |> Result.expect ~msg:"serde-toml property writer should append slices";
           written := !written + IO.IoSlice.length chunk);
       Ok !written
 
     let flush = fun _buffer -> Ok ()
   end in
-  fun buffer ->
-    IO.Writer.from_sink (module Write) buffer
+  fun buffer -> IO.Writer.from_sink (module Write) buffer
 
 type status =
   | Active
@@ -44,15 +47,9 @@ type pet =
   | NewsCoo
   | Reindeer of string
 
-type pose = {
-  island: string;
-  bearing: float;
-}
+type pose = { island: string; bearing: float }
 
-type stop = {
-  island: string;
-  supplies: int;
-}
+type stop = { island: string; supplies: int }
 
 type sample = {
   title: string;
@@ -129,72 +126,91 @@ let pose_fields = De.fields [ De.field "island" Pose_island; De.field "bearing" 
 
 let stop_fields = De.fields [ De.field "island" Stop_island; De.field "supplies" Stop_supplies ]
 
-let sample_fields = De.fields
-  [
-    De.field "title" Field_title;
-    De.field "active" Field_active;
-    De.field "count" Field_count;
-    De.field "small" Field_small;
-    De.field "big" Field_big;
-    De.field "ratio" Field_ratio;
-    De.field "nickname" Field_nickname;
-    De.field "status" Field_status;
-    De.field "pet" Field_pet;
-    De.field "marker" Field_marker;
-    De.field "pose" Field_pose;
-    De.field "tags" Field_tags;
-    De.field "scores" Field_scores;
-    De.field "stops" Field_stops;
-    De.field "mirrors" Field_mirrors;
-  ]
+let sample_fields =
+  De.fields
+    [
+      De.field "title" Field_title;
+      De.field "active" Field_active;
+      De.field "count" Field_count;
+      De.field "small" Field_small;
+      De.field "big" Field_big;
+      De.field "ratio" Field_ratio;
+      De.field "nickname" Field_nickname;
+      De.field "status" Field_status;
+      De.field "pet" Field_pet;
+      De.field "marker" Field_marker;
+      De.field "pose" Field_pose;
+      De.field "tags" Field_tags;
+      De.field "scores" Field_scores;
+      De.field "stops" Field_stops;
+      De.field "mirrors" Field_mirrors;
+    ]
 
-let status_decode = De.variant
-  [
-    De.Variant.unit "Active" Active;
-    De.Variant.unit "Draft" Draft;
-    De.Variant.unit "Archived" Archived;
-  ]
+let status_decode =
+  De.variant
+    [
+      De.Variant.unit "Active" Active;
+      De.Variant.unit "Draft" Draft;
+      De.Variant.unit "Archived" Archived;
+    ]
 
-let status_encode = Ser.variant
-  [ Ser.Variant.unit "Active"
-      (
-        function
-        | Active -> true
-        | _ -> false
-      ); Ser.Variant.unit "Draft"
-      (
-        function
-        | Draft -> true
-        | _ -> false
-      ); Ser.Variant.unit "Archived"
-      (
-        function
-        | Archived -> true
-        | _ -> false
-      ); ]
+let status_encode =
+  Ser.variant
+    [
+      Ser.Variant.unit
+        "Active"
+        (
+          function
+          | Active -> true
+          | _ -> false
+        );
+      Ser.Variant.unit
+        "Draft"
+        (
+          function
+          | Draft -> true
+          | _ -> false
+        );
+      Ser.Variant.unit
+        "Archived"
+        (
+          function
+          | Archived -> true
+          | _ -> false
+        );
+    ]
 
-let pet_decode = De.variant
-  [
-    De.Variant.unit "NewsCoo" NewsCoo;
-    De.Variant.newtype "Reindeer" De.string (fun value -> Reindeer value);
-  ]
+let pet_decode =
+  De.variant
+    [
+      De.Variant.unit "NewsCoo" NewsCoo;
+      De.Variant.newtype "Reindeer" De.string (fun value -> Reindeer value);
+    ]
 
-let pet_encode = Ser.variant
-  [ Ser.Variant.unit "NewsCoo"
-      (
-        function
-        | NewsCoo -> true
-        | _ -> false
-      ); Ser.Variant.newtype "Reindeer" Ser.string
-      (
-        function
-        | Reindeer value -> Some value
-        | _ -> None
-      ); ]
+let pet_encode =
+  Ser.variant
+    [
+      Ser.Variant.unit
+        "NewsCoo"
+        (
+          function
+          | NewsCoo -> true
+          | _ -> false
+        );
+      Ser.Variant.newtype
+        "Reindeer"
+        Ser.string
+        (
+          function
+          | Reindeer value -> Some value
+          | _ -> None
+        );
+    ]
 
 let pose_decode =
-  De.record_mut ~fields:pose_fields ~create:(fun () : pose_builder ->
-    { island = None; bearing = None })
+  De.record_mut
+    ~fields:pose_fields
+    ~create:(fun (): pose_builder -> { island = None; bearing = None })
     ~step:(fun reader builder field ->
       match field with
       | Some Pose_island -> builder.island <- Some (De.read reader De.string)
@@ -205,16 +221,20 @@ let pose_decode =
       | (Some island, Some bearing) -> ({ island; bearing }: pose)
       | _ -> De.missing_field ())
 
-let pose_encode = Ser.record
-  (Ser.fields
-    [
-      Ser.field "island" Ser.string (fun (value: pose) -> value.island);
-      Ser.field "bearing" Ser.float (fun (value: pose) -> value.bearing);
-    ])
+let pose_encode =
+  Ser.record
+    (
+      Ser.fields
+        [
+          Ser.field "island" Ser.string (fun (value: pose) -> value.island);
+          Ser.field "bearing" Ser.float (fun (value: pose) -> value.bearing);
+        ]
+    )
 
 let stop_decode =
-  De.record_mut ~fields:stop_fields ~create:(fun () : stop_builder ->
-    { island = None; supplies = None })
+  De.record_mut
+    ~fields:stop_fields
+    ~create:(fun (): stop_builder -> { island = None; supplies = None })
     ~step:(fun reader builder field ->
       match field with
       | Some Stop_island -> builder.island <- Some (De.read reader De.string)
@@ -225,16 +245,20 @@ let stop_decode =
       | (Some island, Some supplies) -> ({ island; supplies }: stop)
       | _ -> De.missing_field ())
 
-let stop_encode = Ser.record
-  (Ser.fields
-    [
-      Ser.field "island" Ser.string (fun (value: stop) -> value.island);
-      Ser.field "supplies" Ser.int (fun (value: stop) -> value.supplies);
-    ])
+let stop_encode =
+  Ser.record
+    (
+      Ser.fields
+        [
+          Ser.field "island" Ser.string (fun (value: stop) -> value.island);
+          Ser.field "supplies" Ser.int (fun (value: stop) -> value.supplies);
+        ]
+    )
 
 let sample_decode =
-  De.record_mut ~fields:sample_fields
-    ~create:(fun () : sample_builder ->
+  De.record_mut
+    ~fields:sample_fields
+    ~create:(fun (): sample_builder ->
       {
         title = None;
         active = None;
@@ -287,56 +311,74 @@ let sample_decode =
         builder.stops,
         builder.mirrors
       ) with
-      | (Some title, Some active, Some count, Some small, Some big, Some ratio, Some status, Some pet, Some marker, Some pose, Some tags, Some scores, Some stops, Some mirrors) ->
+      | (
+        Some title,
+        Some active,
+        Some count,
+        Some small,
+        Some big,
+        Some ratio,
+        Some status,
+        Some pet,
+        Some marker,
+        Some pose,
+        Some tags,
+        Some scores,
+        Some stops,
+        Some mirrors
+      ) ->
           let nickname =
             match builder.nickname with
             | Some nickname -> nickname
             | None -> None
           in
           ({
-              title;
-              active;
-              count;
-              small;
-              big;
-              ratio;
-              nickname;
-              status;
-              pet;
-              marker;
-              pose;
-              tags;
-              scores;
-              stops;
-              mirrors;
-            }: sample)
+            title;
+            active;
+            count;
+            small;
+            big;
+            ratio;
+            nickname;
+            status;
+            pet;
+            marker;
+            pose;
+            tags;
+            scores;
+            stops;
+            mirrors;
+          }: sample)
       | _ -> De.missing_field ())
 
-let sample_encode = Ser.record
-  (
-    Ser.fields
-      [
-        Ser.field "title" Ser.string (fun (value: sample) -> value.title);
-        Ser.field "active" Ser.bool (fun (value: sample) -> value.active);
-        Ser.field "count" Ser.int (fun (value: sample) -> value.count);
-        Ser.field "small" Ser.int32 (fun (value: sample) -> value.small);
-        Ser.field "big" Ser.int64 (fun (value: sample) -> value.big);
-        Ser.field "ratio" Ser.float (fun (value: sample) -> value.ratio);
-        Ser.field "nickname" (Ser.option Ser.string) (fun (value: sample) -> value.nickname);
-        Ser.field "status" status_encode (fun (value: sample) -> value.status);
-        Ser.field "pet" pet_encode (fun (value: sample) -> value.pet);
-        Ser.field "marker" Ser.null (fun (value: sample) -> value.marker);
-        Ser.field "pose" pose_encode (fun (value: sample) -> value.pose);
-        Ser.field "tags" (Ser.list Ser.string) (fun (value: sample) -> value.tags);
-        Ser.field "scores" (Ser.array Ser.int) (fun (value: sample) -> value.scores);
-        Ser.field "stops" (Ser.list stop_encode) (fun (value: sample) -> value.stops);
-        Ser.field "mirrors" (Ser.array stop_encode) (fun (value: sample) -> value.mirrors);
-      ]
-  )
+let sample_encode =
+  Ser.record
+    (
+      Ser.fields
+        [
+          Ser.field "title" Ser.string (fun (value: sample) -> value.title);
+          Ser.field "active" Ser.bool (fun (value: sample) -> value.active);
+          Ser.field "count" Ser.int (fun (value: sample) -> value.count);
+          Ser.field "small" Ser.int32 (fun (value: sample) -> value.small);
+          Ser.field "big" Ser.int64 (fun (value: sample) -> value.big);
+          Ser.field "ratio" Ser.float (fun (value: sample) -> value.ratio);
+          Ser.field "nickname" (Ser.option Ser.string) (fun (value: sample) -> value.nickname);
+          Ser.field "status" status_encode (fun (value: sample) -> value.status);
+          Ser.field "pet" pet_encode (fun (value: sample) -> value.pet);
+          Ser.field "marker" Ser.null (fun (value: sample) -> value.marker);
+          Ser.field "pose" pose_encode (fun (value: sample) -> value.pose);
+          Ser.field "tags" (Ser.list Ser.string) (fun (value: sample) -> value.tags);
+          Ser.field "scores" (Ser.array Ser.int) (fun (value: sample) -> value.scores);
+          Ser.field "stops" (Ser.list stop_encode) (fun (value: sample) -> value.stops);
+          Ser.field "mirrors" (Ser.array stop_encode) (fun (value: sample) -> value.mirrors);
+        ]
+    )
 
 let single_field_decode = fun field_name decode ->
   let fields = De.fields [ De.field field_name () ] in
-  De.record_mut ~fields ~create:(fun () -> ref None)
+  De.record_mut
+    ~fields
+    ~create:(fun () -> ref None)
     ~step:(fun reader value field ->
       match field with
       | Some () -> value := Some (De.read reader decode)
@@ -347,11 +389,19 @@ let single_field_decode = fun field_name decode ->
       | None -> De.missing_field ())
 
 let single_field_encode = fun field_name encode ->
-  Ser.record (Ser.fields [ Ser.field field_name encode (fun value -> value); ])
+  Ser.record
+    (
+      Ser.fields
+        [
+          Ser.field field_name encode (fun value -> value);
+        ]
+    )
 
 let optional_field_decode = fun field_name decode ->
   let fields = De.fields [ De.field field_name () ] in
-  De.record_mut ~fields ~create:(fun () -> ref None)
+  De.record_mut
+    ~fields
+    ~create:(fun () -> ref None)
     ~step:(fun reader value field ->
       match field with
       | Some () -> value := Some (De.read reader decode)
@@ -379,7 +429,9 @@ let equal_vec = fun equal left right ->
   let left = vec_to_list left in
   let right = vec_to_list right in
   match List.compare_lengths ~left ~right with
-  | 0 -> List.zip left right |> List.all ~fn:(fun (left, right) -> equal left right)
+  | 0 ->
+      List.zip left right
+      |> List.all ~fn:(fun (left, right) -> equal left right)
   | _ -> false
 
 let equal_pose = fun (left: pose) (right: pose) ->
@@ -444,7 +496,8 @@ let print_stop = fun (value: stop) ->
     ]
 
 let print_sample = fun (value: sample) ->
-  String.concat ""
+  String.concat
+    ""
     [
       "{ title = ";
       Printer.string value.title;
@@ -483,16 +536,18 @@ let finite_float_gen = Generator.float_range (-.finite_float_limit) finite_float
 
 let finite_float_arb = Arbitrary.make ~shrink:Shrinker.float ~print:Printer.float finite_float_gen
 
-let status_gen = Generator.frequency
-  [ (1, Generator.return Active); (1, Generator.return Draft); (1, Generator.return Archived); ]
+let status_gen =
+  Generator.frequency
+    [ (1, Generator.return Active); (1, Generator.return Draft); (1, Generator.return Archived); ]
 
 let status_arb = Arbitrary.make ~print:print_status status_gen
 
-let pet_gen = Generator.frequency
-  [
-    (1, Generator.return NewsCoo);
-    (3, Generator.map (fun value -> Reindeer value) Generator.string);
-  ]
+let pet_gen =
+  Generator.frequency
+    [
+      (1, Generator.return NewsCoo);
+      (3, Generator.map (fun value -> Reindeer value) Generator.string);
+    ]
 
 let pet_arb = Arbitrary.make ~print:print_pet pet_gen
 
@@ -524,24 +579,26 @@ let stop_array_gen = Generator.array_size (Generator.int_range 0 4) stop_gen
 
 let sample_gen =
   Generator.map3
-    (fun (((title, active), count), (small, big, ratio)) (nickname, (status, (pet, pose))) (tags, (scores, (stops, mirrors))) ->
-      ({
-          title;
-          active;
-          count;
-          small;
-          big;
-          ratio;
-          nickname;
-          status;
-          pet;
-          marker = ();
-          pose;
-          tags;
-          scores;
-          stops;
-          mirrors;
-        }: sample))
+    (fun (((title, active), count), (small, big, ratio)) (nickname, (status, (pet, pose))) (
+      tags,
+      (scores, (stops, mirrors))
+    ) -> ({
+      title;
+      active;
+      count;
+      small;
+      big;
+      ratio;
+      nickname;
+      status;
+      pet;
+      marker = ();
+      pose;
+      tags;
+      scores;
+      stops;
+      mirrors;
+    }: sample))
     (Generator.pair
       (Generator.pair (Generator.pair Generator.string Generator.bool) Generator.int)
       (Generator.triple Generator.int32 Generator.int64 finite_float_gen))
@@ -557,21 +614,27 @@ let sample_arb = Arbitrary.make ~print:print_sample sample_gen
 let run_property = fun ?(examples = primitive_examples) name arb predicate ->
   let config = { Property.default_config with test_count = examples } in
   let prop = Property.for_all arb predicate in
-  Test.property ~size:Test.Large name ~examples
+  Test.property
+    ~size:Test.Large
+    name
+    ~examples
     (fun _ctx ->
       match Property.check ~config ~on_progress:(Test.Context.emit_progress _ctx) prop with
       | Property.Success -> Ok ()
-      | Property.Failure { counter_example; shrink_steps } -> Error (String.concat
-        "\n"
-        [
-          "Property failed";
-          "Counter-example (after " ^ Int.to_string shrink_steps ^ " shrink steps):";
-          counter_example;
-        ])
-      | Property.Error { exception_; backtrace } -> Error (String.concat
-        "\n"
-        [ "Exception raised:"; Exception.to_string exception_; backtrace ])
-      | Property.Assumption_violated -> Error "Too many test cases violated assumptions (>10x test count)")
+      | Property.Failure { counter_example; shrink_steps } ->
+          Error (String.concat
+            "\n"
+            [
+              "Property failed";
+              "Counter-example (after " ^ Int.to_string shrink_steps ^ " shrink steps):";
+              counter_example;
+            ])
+      | Property.Error { exception_; backtrace } ->
+          Error (String.concat
+            "\n"
+            [ "Exception raised:"; Exception.to_string exception_; backtrace ])
+      | Property.Assumption_violated ->
+          Error "Too many test cases violated assumptions (>10x test count)")
 
 let roundtrip_in_memory = fun encode decode equal value ->
   match Serde_toml.to_string encode value with
@@ -598,129 +661,146 @@ let unit_roundtrip_prop =
   run_property
     "serde-toml property empty record roundtrips"
     Arbitrary.bool
-    (fun _ -> roundtrip_in_memory empty_encode empty_decode (fun () () -> true) ())
+    (fun _ ->
+      roundtrip_in_memory empty_encode empty_decode (fun () () ->
+        true) ())
 
-let bool_roundtrip_prop = run_property
-  "serde-toml property bool field roundtrips"
-  Arbitrary.bool
-  (roundtrip_in_memory
-    (single_field_encode "value" Ser.bool)
-    (single_field_decode "value" De.bool)
-    Bool.equal)
+let bool_roundtrip_prop =
+  run_property
+    "serde-toml property bool field roundtrips"
+    Arbitrary.bool
+    (roundtrip_in_memory
+      (single_field_encode "value" Ser.bool)
+      (single_field_decode "value" De.bool)
+      Bool.equal)
 
-let int_roundtrip_prop = run_property
-  "serde-toml property int field roundtrips"
-  Arbitrary.int
-  (roundtrip_in_memory
-    (single_field_encode "value" Ser.int)
-    (single_field_decode "value" De.int)
-    Int.equal)
+let int_roundtrip_prop =
+  run_property
+    "serde-toml property int field roundtrips"
+    Arbitrary.int
+    (roundtrip_in_memory
+      (single_field_encode "value" Ser.int)
+      (single_field_decode "value" De.int)
+      Int.equal)
 
-let int32_roundtrip_prop = run_property
-  "serde-toml property int32 field roundtrips"
-  Arbitrary.int32
-  (roundtrip_in_memory
-    (single_field_encode "value" Ser.int32)
-    (single_field_decode "value" De.int32)
-    Int32.equal)
+let int32_roundtrip_prop =
+  run_property
+    "serde-toml property int32 field roundtrips"
+    Arbitrary.int32
+    (roundtrip_in_memory
+      (single_field_encode "value" Ser.int32)
+      (single_field_decode "value" De.int32)
+      Int32.equal)
 
-let int64_roundtrip_prop = run_property
-  "serde-toml property int64 field roundtrips"
-  Arbitrary.int64
-  (roundtrip_in_memory
-    (single_field_encode "value" Ser.int64)
-    (single_field_decode "value" De.int64)
-    Int64.equal)
+let int64_roundtrip_prop =
+  run_property
+    "serde-toml property int64 field roundtrips"
+    Arbitrary.int64
+    (roundtrip_in_memory
+      (single_field_encode "value" Ser.int64)
+      (single_field_decode "value" De.int64)
+      Int64.equal)
 
-let float_roundtrip_prop = run_property
-  "serde-toml property float field roundtrips"
-  finite_float_arb
-  (roundtrip_in_memory
-    (single_field_encode "value" Ser.float)
-    (single_field_decode "value" De.float)
-    Float.equal)
+let float_roundtrip_prop =
+  run_property
+    "serde-toml property float field roundtrips"
+    finite_float_arb
+    (roundtrip_in_memory
+      (single_field_encode "value" Ser.float)
+      (single_field_decode "value" De.float)
+      Float.equal)
 
-let string_roundtrip_prop = run_property
-  "serde-toml property string field roundtrips"
-  Arbitrary.string
-  (roundtrip_in_memory
-    (single_field_encode "value" Ser.string)
-    (single_field_decode "value" De.string)
-    String.equal)
+let string_roundtrip_prop =
+  run_property
+    "serde-toml property string field roundtrips"
+    Arbitrary.string
+    (roundtrip_in_memory
+      (single_field_encode "value" Ser.string)
+      (single_field_decode "value" De.string)
+      String.equal)
 
-let option_string_roundtrip_prop = run_property
-  "serde-toml property option string field roundtrips"
-  Arbitrary.(option string)
-  (roundtrip_in_memory
-    (single_field_encode "value" (Ser.option Ser.string))
-    (optional_field_decode "value" (De.option De.string))
-    ( = ))
+let option_string_roundtrip_prop =
+  run_property
+    "serde-toml property option string field roundtrips"
+    Arbitrary.(option string)
+    (roundtrip_in_memory
+      (single_field_encode "value" (Ser.option Ser.string))
+      (optional_field_decode "value" (De.option De.string))
+      ( = ))
 
-let string_list_roundtrip_prop = run_property
-  ~examples:composite_examples
-  "serde-toml property string list field roundtrips"
-  string_vec_arb
-  (roundtrip_in_memory
-    (single_field_encode "value" (Ser.list Ser.string))
-    (single_field_decode "value" (De.list De.string))
-    (equal_vec String.equal))
+let string_list_roundtrip_prop =
+  run_property
+    ~examples:composite_examples
+    "serde-toml property string list field roundtrips"
+    string_vec_arb
+    (roundtrip_in_memory
+      (single_field_encode "value" (Ser.list Ser.string))
+      (single_field_decode "value" (De.list De.string))
+      (equal_vec String.equal))
 
-let int_array_roundtrip_prop = run_property
-  ~examples:composite_examples
-  "serde-toml property int array field roundtrips"
-  int_array_arb
-  (roundtrip_in_memory
-    (single_field_encode "value" (Ser.array Ser.int))
-    (single_field_decode "value" (De.array De.int))
-    ( = ))
+let int_array_roundtrip_prop =
+  run_property
+    ~examples:composite_examples
+    "serde-toml property int array field roundtrips"
+    int_array_arb
+    (roundtrip_in_memory
+      (single_field_encode "value" (Ser.array Ser.int))
+      (single_field_decode "value" (De.array De.int))
+      ( = ))
 
-let status_roundtrip_prop = run_property
-  ~examples:composite_examples
-  "serde-toml property unit enum field roundtrips"
-  status_arb
-  (roundtrip_in_memory
-    (single_field_encode "value" status_encode)
-    (single_field_decode "value" status_decode)
-    equal_status)
+let status_roundtrip_prop =
+  run_property
+    ~examples:composite_examples
+    "serde-toml property unit enum field roundtrips"
+    status_arb
+    (roundtrip_in_memory
+      (single_field_encode "value" status_encode)
+      (single_field_decode "value" status_decode)
+      equal_status)
 
-let pet_roundtrip_prop = run_property
-  ~examples:composite_examples
-  "serde-toml property newtype enum field roundtrips"
-  pet_arb
-  (roundtrip_in_memory
-    (single_field_encode "value" pet_encode)
-    (single_field_decode "value" pet_decode)
-    equal_pet)
+let pet_roundtrip_prop =
+  run_property
+    ~examples:composite_examples
+    "serde-toml property newtype enum field roundtrips"
+    pet_arb
+    (roundtrip_in_memory
+      (single_field_encode "value" pet_encode)
+      (single_field_decode "value" pet_decode)
+      equal_pet)
 
-let pose_roundtrip_prop = run_property
-  ~examples:composite_examples
-  "serde-toml property nested record field roundtrips"
-  pose_arb
-  (roundtrip_in_memory
-    (single_field_encode "value" pose_encode)
-    (single_field_decode "value" pose_decode)
-    equal_pose)
+let pose_roundtrip_prop =
+  run_property
+    ~examples:composite_examples
+    "serde-toml property nested record field roundtrips"
+    pose_arb
+    (roundtrip_in_memory
+      (single_field_encode "value" pose_encode)
+      (single_field_decode "value" pose_decode)
+      equal_pose)
 
-let stop_array_roundtrip_prop = run_property
-  ~examples:composite_examples
-  "serde-toml property record array field roundtrips"
-  (Arbitrary.make ~print:(Printer.array print_stop) stop_array_gen)
-  (roundtrip_in_memory
-    (single_field_encode "value" (Ser.array stop_encode))
-    (single_field_decode "value" (De.array stop_decode))
-    ( = ))
+let stop_array_roundtrip_prop =
+  run_property
+    ~examples:composite_examples
+    "serde-toml property record array field roundtrips"
+    (Arbitrary.make ~print:(Printer.array print_stop) stop_array_gen)
+    (roundtrip_in_memory
+      (single_field_encode "value" (Ser.array stop_encode))
+      (single_field_decode "value" (De.array stop_decode))
+      ( = ))
 
-let sample_roundtrip_prop = run_property
-  ~examples:composite_examples
-  "serde-toml property sample roundtrips"
-  sample_arb
-  (roundtrip_in_memory sample_encode sample_decode equal_sample)
+let sample_roundtrip_prop =
+  run_property
+    ~examples:composite_examples
+    "serde-toml property sample roundtrips"
+    sample_arb
+    (roundtrip_in_memory sample_encode sample_decode equal_sample)
 
-let sample_io_roundtrip_prop = run_property
-  ~examples:composite_examples
-  "serde-toml property sample roundtrips over io"
-  sample_arb
-  (roundtrip_io sample_encode sample_decode equal_sample)
+let sample_io_roundtrip_prop =
+  run_property
+    ~examples:composite_examples
+    "serde-toml property sample roundtrips over io"
+    sample_arb
+    (roundtrip_io sample_encode sample_decode equal_sample)
 
 let tests = [
   unit_roundtrip_prop;

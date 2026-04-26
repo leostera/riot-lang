@@ -248,50 +248,41 @@ let relation = fun solution incompat ->
           let in_range = Ranges.contains ~compare_v:version_compare ranges ver in
           if (is_positive && in_range) || ((not is_positive) && not in_range) then
             incr satisfied_count
-          else
-            (
-              incr contradicted_count;
-              contradicted_pkg := Some pkg
-            )
+          else (
+            incr contradicted_count;
+            contradicted_pkg := Some pkg
+          )
       | `Constrained constrained_ranges ->
           if is_positive then
             if Ranges.subset_of ~compare_v:version_compare constrained_ranges ranges then
               incr satisfied_count
-            else if Ranges.is_disjoint ~compare_v:version_compare constrained_ranges ranges then
-              (
-                incr contradicted_count;
-                contradicted_pkg := Some pkg
-              )
-            else
-              (
-                incr undecided_count;
-                undecided_pkg := Some pkg
-              )
+            else if Ranges.is_disjoint ~compare_v:version_compare constrained_ranges ranges then (
+              incr contradicted_count;
+              contradicted_pkg := Some pkg
+            ) else (
+              incr undecided_count;
+              undecided_pkg := Some pkg
+            )
           else if
             Ranges.is_empty
               (Ranges.intersection ~compare_v:version_compare constrained_ranges ranges)
           then
             incr satisfied_count
-          else if Ranges.subset_of ~compare_v:version_compare constrained_ranges ranges then
-            (
-              incr contradicted_count;
-              contradicted_pkg := Some pkg
-            )
-          else
-            (
-              incr undecided_count;
-              undecided_pkg := Some pkg
-            ));
+          else if Ranges.subset_of ~compare_v:version_compare constrained_ranges ranges then (
+            incr contradicted_count;
+            contradicted_pkg := Some pkg
+          ) else (
+            incr undecided_count;
+            undecided_pkg := Some pkg
+          ));
   let total = List.length terms in
-  if !satisfied_count = total then
-    (
-      Log.debug
-        ("Incompatibility SATISFIED (all "
-        ^ Int.to_string total
-        ^ " terms' constraints met → conflict!)");
-      `Satisfied
-    )
-  else if !satisfied_count = total - 1 && !undecided_count = 1 then
+  if !satisfied_count = total then (
+    Log.debug
+      ("Incompatibility SATISFIED (all "
+      ^ Int.to_string total
+      ^ " terms' constraints met → conflict!)");
+    `Satisfied
+  ) else if !satisfied_count = total - 1 && !undecided_count = 1 then
     match !undecided_pkg with
     | Some pkg ->
         Log.debug ("Incompatibility ALMOST SATISFIED (one undecided: " ^ pkg ^ ")");
@@ -310,18 +301,17 @@ let relation = fun solution incompat ->
           ^ ")");
         `Contradicted pkg
     | None -> `Unknown
-  else
-    (
-      Log.debug
-        ("Incompatibility INCONCLUSIVE ("
-        ^ Int.to_string !satisfied_count
-        ^ " satisfied, "
-        ^ Int.to_string !undecided_count
-        ^ " undecided, "
-        ^ Int.to_string !contradicted_count
-        ^ " contradicted)");
-      `Unknown
-    )
+  else (
+    Log.debug
+      ("Incompatibility INCONCLUSIVE ("
+      ^ Int.to_string !satisfied_count
+      ^ " satisfied, "
+      ^ Int.to_string !undecided_count
+      ^ " undecided, "
+      ^ Int.to_string !contradicted_count
+      ^ " contradicted)");
+    `Unknown
+  )
 
 type satisfier_info = {
   cause: Incompatibility.t option;

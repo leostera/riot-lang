@@ -34,12 +34,10 @@ let swap = fun left right ->
   right.value <- temp
 
 let compare_and_swap = fun cell expected new_value ->
-  if cell.value = expected then
-    (
-      cell.value <- new_value;
-      true
-    )
-  else
+  if cell.value = expected then (
+    cell.value <- new_value;
+    true
+  ) else
     false
 
 let equal = fun left right -> left.value = right.value

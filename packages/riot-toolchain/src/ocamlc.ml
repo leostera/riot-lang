@@ -539,15 +539,14 @@ let build_invocation = fun t ~cwd ?cc ?(includes = []) ?(libs = []) ?(cclibs = [
     |> List.filter ~fn:(fun s -> not (String.equal s ""))
     |> String.concat " "
   in
-  if mode = SharedLibrary then
-    begin
-      Log.info
-        ("[OCAMLC] Building shared library with includes: "
-        ^ String.concat ", " (List.map includes ~fn:Path.to_string));
-      Log.info ("[OCAMLC] cclibs: " ^ String.concat ", " (List.map cclibs ~fn:Path.to_string));
-      Log.info ("[OCAMLC] objects/sources: " ^ sources_str);
-      Log.info ("[OCAMLC] Full command: " ^ command_string)
-    end;
+  if mode = SharedLibrary then (
+    Log.info
+      ("[OCAMLC] Building shared library with includes: "
+      ^ String.concat ", " (List.map includes ~fn:Path.to_string));
+    Log.info ("[OCAMLC] cclibs: " ^ String.concat ", " (List.map cclibs ~fn:Path.to_string));
+    Log.info ("[OCAMLC] objects/sources: " ^ sources_str);
+    Log.info ("[OCAMLC] Full command: " ^ command_string)
+  );
   make_invocation ~cwd command_string
 
 let compile_interface = fun t ~cwd ~includes ~flags ~output source ->

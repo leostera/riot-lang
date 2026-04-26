@@ -677,12 +677,10 @@ and handle_ocaml_module = fun ~t ~ctx file ->
         bin_basename = file_basename)
       (Package.binaries t.package)
   in
-  if is_binary then
-    (
-      Printf.printf "[DEBUG] Skipping binary module: %s\n" file.path;
-      ()
-    )
-  else
+  if is_binary then (
+    Printf.printf "[DEBUG] Skipping binary module: %s\n" file.path;
+    ()
+  ) else
     let node =
       Ocaml_module.make_node mod_ aliases
       |> Graph.add_node t.graph
@@ -1099,18 +1097,17 @@ let handle_dep = fun t (node: dep Graph.node) ->
   | MLI mod_ ->
       (* Debug file_watcher opens *)
       let is_file_watcher = String.contains (Module.path mod_) 'w' in
-      if is_file_watcher then
-        begin
-          Printf.printf "[DEBUG] Processing file_watcher, opens: [";
-          List.iter
-            (fun (n: dep Graph.node) ->
-              match n.value.kind with
-              | ML m
-              | MLI m -> Printf.printf "%s, " (Module.namespaced_name m)
-              | _ -> Printf.printf "?, ")
-            dep.open_modules;
-          Printf.printf "]\n"
-        end;
+      if is_file_watcher then (
+        Printf.printf "[DEBUG] Processing file_watcher, opens: [";
+        List.iter
+          (fun (n: dep Graph.node) ->
+            match n.value.kind with
+            | ML m
+            | MLI m -> Printf.printf "%s, " (Module.namespaced_name m)
+            | _ -> Printf.printf "?, ")
+          dep.open_modules;
+        Printf.printf "]\n"
+      );
       let deps =
         match dep.file with
         | Generated _ -> []
@@ -1284,38 +1281,37 @@ let get_dependencies = fun t ->
 let scan_native_dir = fun t ->
   (* Also scan native/ directory for C/H files if it exists *)
   let native_dir = Filename.concat t.root Const.native_dir in
-  if Sys.file_exists native_dir && Sys.is_directory native_dir then
-    (
-      printf "  Scanning native/ directory for C/H files\n";
-      let files = Sys.readdir native_dir in
-      Array.iter
-        (fun filename ->
-          let filepath = Filename.concat native_dir filename in
-          if Sys.is_directory filepath then
-            ()
-          else
-            let ext = Filename.extension filename in
-            if ext = Const.c_ext then
-              (
-                (* Path relative to package root: packages/kernel/native/file.c *)
-                let relative_path = t.root ^ "/" ^ Const.native_dir ^ "/" ^ filename in
-                printf "    Found C file: %s\n" relative_path;
-                (* Add as a standalone node - it will be picked up during iteration *)
-                let node = { file = Concrete relative_path; open_modules = []; kind = C } in
-                let _c_node = Graph.add_node t.graph node in
-                ()
-              )
-            else if ext = Const.h_ext then
-              (
-                (* Path relative to package root: packages/kernel/native/file.h *)
-                let relative_path = t.root ^ "/" ^ Const.native_dir ^ "/" ^ filename in
-                printf "    Found H file: %s\n" relative_path;
-                let node = { file = Concrete relative_path; open_modules = []; kind = H } in
-                let _h_node = Graph.add_node t.graph node in
-                ()
-              ))
-        files
-    )
+  if Sys.file_exists native_dir && Sys.is_directory native_dir then (
+    printf "  Scanning native/ directory for C/H files\n";
+    let files = Sys.readdir native_dir in
+    Array.iter
+      (fun filename ->
+        let filepath = Filename.concat native_dir filename in
+        if Sys.is_directory filepath then
+          ()
+        else
+          let ext = Filename.extension filename in
+          if ext = Const.c_ext then
+            (
+              (* Path relative to package root: packages/kernel/native/file.c *)
+              let relative_path = t.root ^ "/" ^ Const.native_dir ^ "/" ^ filename in
+              printf "    Found C file: %s\n" relative_path;
+              (* Add as a standalone node - it will be picked up during iteration *)
+              let node = { file = Concrete relative_path; open_modules = []; kind = C } in
+              let _c_node = Graph.add_node t.graph node in
+              ()
+            )
+          else if ext = Const.h_ext then
+            (
+              (* Path relative to package root: packages/kernel/native/file.h *)
+              let relative_path = t.root ^ "/" ^ Const.native_dir ^ "/" ^ filename in
+              printf "    Found H file: %s\n" relative_path;
+              let node = { file = Concrete relative_path; open_modules = []; kind = H } in
+              let _h_node = Graph.add_node t.graph node in
+              ()
+            ))
+      files
+  )
 
 let scan = fun ~root ~package ~build_results ->
   printf "Scanning package %S from %s\n" package.Package.name root;

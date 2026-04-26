@@ -188,23 +188,12 @@ let get_break_property = fun c ->
 let should_break = fun ~prev_prop ~curr_prop ~has_zwj ->
   match (prev_prop, curr_prop) with
   | (CR, LF) -> false
-  | ((Control
-  | CR
-  | LF), _) -> true
-  | (_, (Control
-  | CR
-  | LF)) -> true
-  | (L, (L
-  | V
-  | LV
-  | LVT)) -> false
-  | ((LV
-  | V), (V
-  | T)) -> false
-  | ((LVT
-  | T), T) -> false
-  | (_, (Extend
-  | ZWJ)) -> false
+  | ((Control | CR | LF), _) -> true
+  | (_, (Control | CR | LF)) -> true
+  | (L, (L | V | LV | LVT)) -> false
+  | ((LV | V), (V | T)) -> false
+  | ((LVT | T), T) -> false
+  | (_, (Extend | ZWJ)) -> false
   | (_, Spacing_Mark) -> false
   | (Prepend, _) -> false
   | (Extended_Pictographic, Extended_Pictographic) when has_zwj -> false

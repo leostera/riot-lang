@@ -69,11 +69,10 @@ let load_valid_fixture_corpus = fun () ->
 
 let bench_parse_corpus = fun fixtures ->
   let rec loop index =
-    if index < Vector.length fixtures then
-      (
-        bench_parse (Vector.get_unchecked fixtures ~at:index);
-        loop (index + 1)
-      )
+    if index < Vector.length fixtures then (
+      bench_parse (Vector.get_unchecked fixtures ~at:index);
+      loop (index + 1)
+    )
   in
   loop 0
 

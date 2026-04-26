@@ -69,23 +69,18 @@ let handle_message = fun (type req res) (server: (req, res) t) (reply: string ->
               | Ok typed_request ->
                   (* Execute handler with typed request *)
                   Log.trace "[JSONRPC SERVER] Calling handler";
-                  if Common.is_notification request then
-                    (
-                      (* Notification - no response expected *)
-                      handler.fn (fun _ -> ()) typed_request;
-                      let cwd_after =
-                        match Env.current_dir () with
-                        | Ok path -> Path.to_string path
-                        | Error _ -> "<unknown>"
-                      in
-                      if cwd != cwd_after then
-                        Log.trace
-                          ("[JSONRPC SERVER] CWD changed during handler! "
-                          ^ cwd
-                          ^ " -> "
-                          ^ cwd_after)
-                    )
-                  else
+                  if Common.is_notification request then (
+                    (* Notification - no response expected *)
+                    handler.fn (fun _ -> ()) typed_request;
+                    let cwd_after =
+                      match Env.current_dir () with
+                      | Ok path -> Path.to_string path
+                      | Error _ -> "<unknown>"
+                    in
+                    if cwd != cwd_after then
+                      Log.trace
+                        ("[JSONRPC SERVER] CWD changed during handler! " ^ cwd ^ " -> " ^ cwd_after)
+                  ) else
                     (* Regular request - response expected *)
                     let typed_reply res =
                       let response_json = P.response_to_json res in

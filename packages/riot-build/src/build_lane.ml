@@ -47,19 +47,20 @@ let make_build_ctx = fun ~host ~target ~toolchain ~session_id ~profile ~parallel
     Riot_model.Build_ctx.make ~session_id ~profile ~parallelism ()
   else
     let toolchain_root = Riot_toolchain.path toolchain in
-    let cross_toolchain = Riot_toolchain.CrossCompilingToolchain.detect
-      ~toolchain_root
-      ()
-      ~target_triplet:target in
+    let cross_toolchain =
+      Riot_toolchain.CrossCompilingToolchain.detect ~toolchain_root () ~target_triplet:target
+    in
     Riot_model.Build_ctx.make
       ~session_id
       ~profile
-      ~compilation_mode:(Riot_model.Build_ctx.Cross {
-        target;
-        sysroot = cross_toolchain.sysroot;
-        bin_dir = cross_toolchain.bin_dir;
-        bin_prefix = cross_toolchain.bin_prefix
-      })
+      ~compilation_mode:(
+        Riot_model.Build_ctx.Cross {
+          target;
+          sysroot = cross_toolchain.sysroot;
+          bin_dir = cross_toolchain.bin_dir;
+          bin_prefix = cross_toolchain.bin_prefix;
+        }
+      )
       ~parallelism
       ()
 
@@ -92,13 +93,8 @@ let workspace_plan_error_to_string = function
         | Riot_model.Workspace_manager.PackageNotFound { package; path; dependant } -> (
             match dependant with
             | None -> "missing package: " ^ package ^ " (" ^ path ^ ")"
-            | Some parent -> "missing package: "
-            ^ package
-            ^ " (required by "
-            ^ parent
-            ^ ", "
-            ^ path
-            ^ ")"
+            | Some parent ->
+                "missing package: " ^ package ^ " (required by " ^ parent ^ ", " ^ path ^ ")"
           )
         | Riot_model.Workspace_manager.PackageTomlReadFailed { package; path } ->
             "failed to read package toml: " ^ package ^ " (" ^ path ^ ")"
@@ -148,10 +144,13 @@ let prepare:
   let* lock =
     Build_lock.wait
       ~on_waiting:(fun lock_path ->
-        Build_context.emit_phase context (Event.BuildLockWaiting { lock_path }))
+        Build_context.emit_phase
+          context
+          (Event.BuildLockWaiting { lock_path }))
       ~target_dir_root:workspace.target_dir_root
       ~profile:profile.name
-      ~target |> Result.map_err ~fn:(fun exn -> Failure (Exception.to_string exn))
+      ~target
+    |> Result.map_err ~fn:(fun exn -> Failure (Exception.to_string exn))
   in
   let lane =
     try
@@ -168,13 +167,15 @@ let prepare:
               ^ reason))
       in
       let* plan = make_lane_plan planner_target workspace planner_scope ~dev_artifacts in
-      let build_ctx = make_build_ctx
-        ~host
-        ~target
-        ~toolchain:lane_toolchain
-        ~session_id
-        ~profile
-        ~parallelism:context.parallelism in
+      let build_ctx =
+        make_build_ctx
+          ~host
+          ~target
+          ~toolchain:lane_toolchain
+          ~session_id
+          ~profile
+          ~parallelism:context.parallelism
+      in
       let store = Riot_store.Store.create_for_lane ~workspace ~profile:profile.name ~target in
       Ok {
         target;
@@ -224,6 +225,8 @@ let package_plan = fun (lane: 'a t) -> lane.package_plan
 let package_graph = fun (lane: 'a t) -> lane.package_graph
 
 let package_keys = fun (lane: 'a t) ->
-  List.map lane.package_plan.nodes ~fn:Riot_planner.Package_graph.get_key
+  List.map
+    lane.package_plan.nodes
+    ~fn:Riot_planner.Package_graph.get_key
 
 let release: locked t -> unit = fun lane -> Build_lock.release lane.lock

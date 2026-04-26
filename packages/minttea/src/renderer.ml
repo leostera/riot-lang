@@ -84,16 +84,15 @@ let restore_screen = fun t ->
   let output = Buffer.create ~size:64 in
   if t.cursor_visibility = `hidden then
     Buffer.add_string output Tty.Escape_seq.show_cursor_seq;
-  if t.mouse_enabled then
-    (
-      (* Disable mouse SGR mode *)
-      Buffer.add_string output Tty.Escape_seq.disable_mouse_extended_mode_seq;
-      (* Disable mouse tracking *)
-      match t.mouse_mode with
-      | Some Cell_motion -> Buffer.add_string output Tty.Escape_seq.disable_mouse_cell_motion_seq
-      | Some All_motion -> Buffer.add_string output Tty.Escape_seq.disable_mouse_all_motion_seq
-      | None -> ()
-    );
+  if t.mouse_enabled then (
+    (* Disable mouse SGR mode *)
+    Buffer.add_string output Tty.Escape_seq.disable_mouse_extended_mode_seq;
+    (* Disable mouse tracking *)
+    match t.mouse_mode with
+    | Some Cell_motion -> Buffer.add_string output Tty.Escape_seq.disable_mouse_cell_motion_seq
+    | Some All_motion -> Buffer.add_string output Tty.Escape_seq.disable_mouse_all_motion_seq
+    | None -> ()
+  );
   if t.bracketed_paste_enabled then
     Buffer.add_string output Tty.Escape_seq.disable_bracketed_paste_seq;
   if t.focus_tracking_enabled then
@@ -138,28 +137,26 @@ let print_frame = fun state frame ->
   (* TEMPORARILY DISABLED: Some terminals don't support this *)
   (* Buffer.add_string output "\x1b[?2026h"; *)
   (* Handle alt screen setup if needed *)
-  if state.needs_altscreen_setup then
-    (
-      Buffer.add_string output Tty.Escape_seq.alt_screen_seq;
-      Buffer.add_string output (Tty.Escape_seq.erase_display_seq 2);
-      (* 2 = clear entire display *)
-      state.needs_altscreen_setup <- false
-    );
+  if state.needs_altscreen_setup then (
+    Buffer.add_string output Tty.Escape_seq.alt_screen_seq;
+    Buffer.add_string output (Tty.Escape_seq.erase_display_seq 2);
+    (* 2 = clear entire display *)
+    state.needs_altscreen_setup <- false
+  );
   if state.is_altscreen_active then
     (
       (* Alt screen: always position at top-left *)
       Buffer.add_string output (Tty.Escape_seq.cursor_position_seq 1 1)
     )
-  else
-    (
-      (* Inline mode: move cursor up to start of previous render if we had lines *)
-      if state.lines_rendered > 1 then
-        (
-          (* Move up to first line of previous render *)
-          Buffer.add_string output (Tty.Escape_seq.cursor_up_seq (state.lines_rendered - 1))
-        );
-      Buffer.add_string output "\r"
-    );
+  else (
+    (* Inline mode: move cursor up to start of previous render if we had lines *)
+    if state.lines_rendered > 1 then
+      (
+        (* Move up to first line of previous render *)
+        Buffer.add_string output (Tty.Escape_seq.cursor_up_seq (state.lines_rendered - 1))
+      );
+    Buffer.add_string output "\r"
+  );
   (* Add the frame content (which includes EraseLineRight from ansi_emitter) *)
   Buffer.add_string output frame;
   (* Count lines in frame for tracking - count newlines directly for performance *)
@@ -240,25 +237,24 @@ and handle_shutdown = fun state ->
       if
         state.render_mode = Conf.Clear && (not state.is_altscreen_active) && state.lines_rendered
         > 0
-      then
-        (
-          (* Use the same clearing logic as flush() *)
-          (* Move cursor up to the first line *)
-          for _i = 1 to state.lines_rendered - 1 do
-            write_output state (Tty.Escape_seq.cursor_up_seq 1)
-          done;
-          (* Clear each line and move down *)
-          for i = 1 to state.lines_rendered do
-            write_output state Tty.Escape_seq.erase_entire_line_seq;
-            if i < state.lines_rendered then
-              write_output state (Tty.Escape_seq.cursor_down_seq 1)
-          done;
-          (* Move cursor back up to where we started (before any content was rendered) *)
-          for _i = 1 to state.lines_rendered - 1 do
-            write_output state (Tty.Escape_seq.cursor_up_seq 1)
-          done;
-          write_output state "\r"
-        )
+      then (
+        (* Use the same clearing logic as flush() *)
+        (* Move cursor up to the first line *)
+        for _i = 1 to state.lines_rendered - 1 do
+          write_output state (Tty.Escape_seq.cursor_up_seq 1)
+        done;
+        (* Clear each line and move down *)
+        for i = 1 to state.lines_rendered do
+          write_output state Tty.Escape_seq.erase_entire_line_seq;
+          if i < state.lines_rendered then
+            write_output state (Tty.Escape_seq.cursor_down_seq 1)
+        done;
+        (* Move cursor back up to where we started (before any content was rendered) *)
+        for _i = 1 to state.lines_rendered - 1 do
+          write_output state (Tty.Escape_seq.cursor_up_seq 1)
+        done;
+        write_output state "\r"
+      )
     with
     | Sys_blocked_io -> ()
   );
@@ -283,86 +279,77 @@ and handle_render_element = fun t element ->
 and handle_enter_alt_screen = fun t ->
   if t.is_altscreen_active then
     ()
-  else
-    (
-      Log.debug "[RENDERER] Entering alt screen mode";
-      t.is_altscreen_active <- true;
-      t.needs_altscreen_setup <- true
-    )
+  else (
+    Log.debug "[RENDERER] Entering alt screen mode";
+    t.is_altscreen_active <- true;
+    t.needs_altscreen_setup <- true
+  )
 
 and handle_exit_alt_screen = fun t ->
   if not t.is_altscreen_active then
     ()
-  else
-    (
-      t.is_altscreen_active <- false;
-      write_output t Tty.Escape_seq.exit_alt_screen_seq
-    )
+  else (
+    t.is_altscreen_active <- false;
+    write_output t Tty.Escape_seq.exit_alt_screen_seq
+  )
 
 and handle_set_cursor_visibility = fun cursor t ->
   if t.cursor_visibility = cursor then
     ()
-  else
+  else (
     (
-      (
-        match cursor with
-        | `hidden -> write_output t Tty.Escape_seq.hide_cursor_seq
-        | `visible -> write_output t Tty.Escape_seq.show_cursor_seq
-      );
-      t.cursor_visibility <- cursor
-    )
+      match cursor with
+      | `hidden -> write_output t Tty.Escape_seq.hide_cursor_seq
+      | `visible -> write_output t Tty.Escape_seq.show_cursor_seq
+    );
+    t.cursor_visibility <- cursor
+  )
 
 and handle_enable_mouse = fun t mode ->
-  if not t.mouse_enabled then
+  if not t.mouse_enabled then (
     (
-      (
-        match mode with
-        | Cell_motion -> write_output t Tty.Escape_seq.enable_mouse_cell_motion_seq
-        | All_motion -> write_output t Tty.Escape_seq.enable_mouse_all_motion_seq
-      );
-      write_output t Tty.Escape_seq.enable_mouse_extended_mode_seq;
-      (* SGR mode *)
-      t.mouse_enabled <- true;
-      t.mouse_mode <- Some mode
-    )
+      match mode with
+      | Cell_motion -> write_output t Tty.Escape_seq.enable_mouse_cell_motion_seq
+      | All_motion -> write_output t Tty.Escape_seq.enable_mouse_all_motion_seq
+    );
+    write_output t Tty.Escape_seq.enable_mouse_extended_mode_seq;
+    (* SGR mode *)
+    t.mouse_enabled <- true;
+    t.mouse_mode <- Some mode
+  )
 
 and handle_disable_mouse = fun t ->
-  if t.mouse_enabled then
-    (
-      write_output t Tty.Escape_seq.disable_mouse_all_motion_seq;
-      write_output t Tty.Escape_seq.disable_mouse_cell_motion_seq;
-      write_output t Tty.Escape_seq.disable_mouse_extended_mode_seq;
-      t.mouse_enabled <- false;
-      t.mouse_mode <- None
-    )
+  if t.mouse_enabled then (
+    write_output t Tty.Escape_seq.disable_mouse_all_motion_seq;
+    write_output t Tty.Escape_seq.disable_mouse_cell_motion_seq;
+    write_output t Tty.Escape_seq.disable_mouse_extended_mode_seq;
+    t.mouse_enabled <- false;
+    t.mouse_mode <- None
+  )
 
 and handle_enable_bracketed_paste = fun t ->
-  if not t.bracketed_paste_enabled then
-    (
-      write_output t Tty.Escape_seq.enable_bracketed_paste_seq;
-      t.bracketed_paste_enabled <- true
-    )
+  if not t.bracketed_paste_enabled then (
+    write_output t Tty.Escape_seq.enable_bracketed_paste_seq;
+    t.bracketed_paste_enabled <- true
+  )
 
 and handle_disable_bracketed_paste = fun t ->
-  if t.bracketed_paste_enabled then
-    (
-      write_output t Tty.Escape_seq.disable_bracketed_paste_seq;
-      t.bracketed_paste_enabled <- false
-    )
+  if t.bracketed_paste_enabled then (
+    write_output t Tty.Escape_seq.disable_bracketed_paste_seq;
+    t.bracketed_paste_enabled <- false
+  )
 
 and handle_enable_focus_tracking = fun t ->
-  if not t.focus_tracking_enabled then
-    (
-      write_output t Tty.Escape_seq.enable_focus_events_seq;
-      t.focus_tracking_enabled <- true
-    )
+  if not t.focus_tracking_enabled then (
+    write_output t Tty.Escape_seq.enable_focus_events_seq;
+    t.focus_tracking_enabled <- true
+  )
 
 and handle_disable_focus_tracking = fun t ->
-  if t.focus_tracking_enabled then
-    (
-      write_output t Tty.Escape_seq.disable_focus_events_seq;
-      t.focus_tracking_enabled <- false
-    )
+  if t.focus_tracking_enabled then (
+    write_output t Tty.Escape_seq.disable_focus_events_seq;
+    t.focus_tracking_enabled <- false
+  )
 
 and handle_set_window_title = fun state title ->
   (* OSC 2 ; title BEL *)

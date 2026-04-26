@@ -367,10 +367,16 @@ let rigid_type_equal =
         equal_type left_element right_element
     | (TypeRepr.Result (left_ok, left_error), TypeRepr.Result (right_ok, right_error)) ->
         equal_type left_ok right_ok && equal_type left_error right_error
-    | (TypeRepr.Named { head = left_head; arguments = left_arguments }, TypeRepr.Named { head = right_head; arguments = right_arguments }) ->
+    | (
+      TypeRepr.Named { head = left_head; arguments = left_arguments },
+      TypeRepr.Named { head = right_head; arguments = right_arguments }
+    ) ->
         TypeConstructorId.equal left_head.type_constructor_id right_head.type_constructor_id
         && list_for_all2 equal_type left_arguments right_arguments
-    | (TypeRepr.PolyVariant { bound = left_bound; tags = left_tags; inherited = left_inherited }, TypeRepr.PolyVariant { bound = right_bound; tags = right_tags; inherited = right_inherited }) ->
+    | (
+      TypeRepr.PolyVariant { bound = left_bound; tags = left_tags; inherited = left_inherited },
+      TypeRepr.PolyVariant { bound = right_bound; tags = right_tags; inherited = right_inherited }
+    ) ->
         left_bound = right_bound
         && list_for_all2 equal_poly_variant_tag left_tags right_tags
         && list_for_all2 equal_type left_inherited right_inherited
@@ -378,8 +384,10 @@ let rigid_type_equal =
         list_for_all2 equal_type left_members right_members
     | (TypeRepr.Package left_signature, TypeRepr.Package right_signature) ->
         package_signature_equal equal_type left_signature right_signature
-    | (TypeRepr.Arrow { label = left_label; lhs = left_lhs; rhs = left_rhs }, TypeRepr.Arrow { label = right_label; lhs = right_lhs; rhs = right_rhs }) ->
-        left_label = right_label && equal_type left_lhs right_lhs && equal_type left_rhs right_rhs
+    | (
+      TypeRepr.Arrow { label = left_label; lhs = left_lhs; rhs = left_rhs },
+      TypeRepr.Arrow { label = right_label; lhs = right_lhs; rhs = right_rhs }
+    ) -> left_label = right_label && equal_type left_lhs right_lhs && equal_type left_rhs right_rhs
     | (TypeRepr.Var { id = left_id; link = None; _ }, TypeRepr.Var { id = right_id; link = None; _ }) ->
         Int.equal left_id right_id
     | (TypeRepr.Var { link = Some left_link; _ }, _) -> equal_type left_link right
@@ -431,12 +439,18 @@ let scheme_includes = fun ~visible_types actual_scheme expected_scheme ->
             includes_type actual_element expected_element
         | (TypeRepr.Result (actual_ok, actual_error), TypeRepr.Result (expected_ok, expected_error)) ->
             includes_type actual_ok expected_ok && includes_type actual_error expected_error
-        | (TypeRepr.Named { head = actual_head; arguments = actual_arguments }, TypeRepr.Named { head = expected_head; arguments = expected_arguments }) ->
+        | (
+          TypeRepr.Named { head = actual_head; arguments = actual_arguments },
+          TypeRepr.Named { head = expected_head; arguments = expected_arguments }
+        ) ->
             TypeConstructorId.equal
               actual_head.type_constructor_id
               expected_head.type_constructor_id
             && list_for_all2 includes_type actual_arguments expected_arguments
-        | (TypeRepr.PolyVariant { bound = actual_bound; tags = actual_tags; inherited = actual_inherited }, TypeRepr.PolyVariant { bound = expected_bound; tags = expected_tags; inherited = expected_inherited }) ->
+        | (
+          TypeRepr.PolyVariant { bound = actual_bound; tags = actual_tags; inherited = actual_inherited },
+          TypeRepr.PolyVariant { bound = expected_bound; tags = expected_tags; inherited = expected_inherited }
+        ) ->
             actual_bound = expected_bound
             && list_for_all2 includes_poly_variant_tag actual_tags expected_tags
             && list_for_all2 includes_type actual_inherited expected_inherited
@@ -444,12 +458,17 @@ let scheme_includes = fun ~visible_types actual_scheme expected_scheme ->
             package_signature_includes includes_type actual_signature expected_signature
         | (TypeRepr.Tuple actual_members, TypeRepr.Tuple expected_members) ->
             list_for_all2 includes_type actual_members expected_members
-        | (TypeRepr.Arrow { label = actual_label; lhs = actual_lhs; rhs = actual_rhs }, TypeRepr.Arrow { label = expected_label; lhs = expected_lhs; rhs = expected_rhs }) ->
+        | (
+          TypeRepr.Arrow { label = actual_label; lhs = actual_lhs; rhs = actual_rhs },
+          TypeRepr.Arrow { label = expected_label; lhs = expected_lhs; rhs = expected_rhs }
+        ) ->
             actual_label = expected_label
             && includes_type actual_lhs expected_lhs
             && includes_type actual_rhs expected_rhs
-        | (TypeRepr.Var { id = actual_id; link = None; _ }, TypeRepr.Var { id = expected_id; link = None; _ }) ->
-            Int.equal actual_id expected_id
+        | (
+          TypeRepr.Var { id = actual_id; link = None; _ },
+          TypeRepr.Var { id = expected_id; link = None; _ }
+        ) -> Int.equal actual_id expected_id
         | (_, TypeRepr.Var { link = Some expected_link; _ }) -> includes_type actual expected_link
         | _ -> false
   and includes_poly_variant_tag actual expected =
@@ -547,9 +566,12 @@ let manifest_equal = fun ~visible_types left_decl right_decl ->
   | (None, None) -> true
   | (Some (TypeDecl.Alias left_type), Some (TypeDecl.Alias right_type)) ->
       canonical_type_equal ~visible_types left_type right_type
-  | (Some (TypeDecl.PolyVariant { bound = left_bound; tags = left_tags; inherited = left_inherited }), Some (
-    TypeDecl.PolyVariant { bound = right_bound; tags = right_tags; inherited = right_inherited }
-  )) ->
+  | (
+    Some (TypeDecl.PolyVariant { bound = left_bound; tags = left_tags; inherited = left_inherited }),
+    Some (
+      TypeDecl.PolyVariant { bound = right_bound; tags = right_tags; inherited = right_inherited }
+    )
+  ) ->
       left_bound = right_bound
       && list_for_all2 (poly_variant_tag_equal ~visible_types) left_tags right_tags
       && list_for_all2 (canonical_type_equal ~visible_types) left_inherited right_inherited
