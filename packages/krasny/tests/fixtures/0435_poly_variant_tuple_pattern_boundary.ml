@@ -1,0 +1,1 @@
+let equal_constraint = fun left right -> match left, right with | `Undecided, `Undecided -> true | `Decided left, `Decided right -> version_compare left right = Order.EQ | `Constrained left, `Constrained right -> equal_ranges left right | _ -> false

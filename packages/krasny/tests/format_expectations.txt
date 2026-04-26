@@ -49,6 +49,7 @@
 0432_nested_poly_variant_payload.ml
 0433_apply_parenthesized_poly_variant_payload.ml
 0434_poly_variant_local_open_pattern_payload.ml
+0435_poly_variant_tuple_pattern_boundary.ml
 
 # 05xx labeled and optional arguments
 0500_labeled_and_optional_arguments.ml
