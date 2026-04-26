@@ -2336,6 +2336,18 @@ let consume = function
 |}
       in
       assert_formatted_ml_snapshot ~ctx ~msg:"let-open expressions should format structurally" source);
+  Test.case "format aligns multiline let-open bodies with the let-open expression"
+    (fun ctx ->
+      let source = {ocaml|let foo()=let open WellKnownTypes in match x with|true->true
+|ocaml}
+      in
+      let actual = parse_ml source |> Krasny.format |> Result.expect ~msg:"multiline let-open bodies should align" in
+      Test.Snapshot.assert_inline_text ~ctx ~actual
+        ~expected:{ocaml|let foo () =
+  let open WellKnownTypes in
+  match x with
+  | true -> true
+|ocaml});
   Test.case "format open bang from explicit bang tokens in ml and mli"
     (fun _ctx ->
       let source = "open! Inline\n" in

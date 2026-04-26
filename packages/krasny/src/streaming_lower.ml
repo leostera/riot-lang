@@ -6022,7 +6022,7 @@ and render_local_open_expr = fun state expr ->
         )
       else (
         emit_line state;
-        with_indent state 2 (fun () -> render_expr state body)
+        render_expr state body
       )
   | LetOpen _ ->
       unsupported_node "incomplete let-open expression" expr
