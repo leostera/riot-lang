@@ -117,8 +117,8 @@ let make_handler = fun x ->
   | None -> fun y -> y
 
 let describe mode value =
-  match mode, value with
-  | `Int, Some number -> Int.to_string number
-  | `Int, None -> "none"
-  | `Bool, Some _ -> "bool"
-  | `Bool, None -> "missing"
+  match (mode, value) with
+  | (`Int, Some number) -> Int.to_string number
+  | (`Int, None) -> "none"
+  | (`Bool, Some _) -> "bool"
+  | (`Bool, None) -> "missing"
