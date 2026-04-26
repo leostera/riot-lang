@@ -1,5 +1,39 @@
 # Changelog
 
+## 0.0.25 - 2026-04-27
+
+### riot
+- `riot publish` now supports `--json`, making publish flows easier to script and inspect in automation.
+- `riot add` and `riot rm` now accept multiple package names in one command, so dependency edits can be batched without repeated solver runs.
+- `riot update` now accepts one or more package names, allowing targeted dependency updates instead of always refreshing the whole dependency set.
+- Riot commands run outside a workspace now print guidance that explains the missing workspace context and points users toward initialization, instead of silently doing nothing or failing without direction.
+- CLI behavior is covered by additional `riot-e2e` tests for generated workspaces, package commands, publish flags, and command parsing.
+- Generated Riot contributor skill files were refreshed with current CLI flags, module-system notes, testing guidance, and benchmark references.
+
+### planner-build
+- The planner now rejects direct use of modules from transitive dependencies. Package code may depend on its own modules and direct dependency roots, which keeps package manifests honest and avoids hidden dependency edges.
+- Executable, example, bench, and test entry files now need a top-level `let main ~args = ...` entry point, giving binaries one consistent runtime shape before code generation grows macro support.
+- Planning and build error rendering was tightened so innermost diagnostics can explain missing entry points and module-graph violations without extra wrapper noise.
+- Workspace package labels now show artifact kind and target context for tests, examples, benches, and multi-architecture builds.
+
+### syn-krasny
+- `syn` completed the streaming parser migration, including the replacement CST builder, typed syntax views, broader diagnostic recovery, and parser-backed dependency analysis.
+- `krasny` now routes formatting through the typed syntax views and streaming lowerer, improving formatter stability across modules, signatures, local opens, type declarations, attributes, and comments.
+- Formatter policy was tightened for pipelines, tuples, function parameters, binding operators, branch layouts, docstrings, phrase separators, and parenthesized expressions.
+- Snapshot and fixture coverage was expanded across real files and focused parser/formatter regressions, giving future formatter work a broader safety net.
+
+### std
+- Added `Std.Order.is_lt`, `is_lte`, `is_eq`, `is_gte`, and `is_gt`, so callers can work directly with `Order.t` compare results without converting through integers.
+- Replaced remaining deprecated list helper usage in downstream packages after the standard collection cleanup.
+
+### blink
+- Added a managed HTTP client layer with request/response types, retry policy, connection and rate budgets, circuit breaker state, and telemetry hooks.
+- Added managed HTTP, SSE, and WebSocket examples, plus property and unit tests for retry, budget, circuit breaker, request rendering, and SSE parsing behavior.
+
+### postgres
+- Added PostgreSQL password authentication support, including cleartext, MD5, and SCRAM-SHA-256 handshake handling.
+- Extended protocol parsing and writing for SASL authentication messages while preserving structured PostgreSQL error rendering.
+
 ## 0.0.24 - 2026-04-24
 
 ### riot
