@@ -64,7 +64,9 @@ open Std
      ]
    ]}
 *)
+
 (** {1 Middleware} *)
+
 (**
    Request timing middleware.
 

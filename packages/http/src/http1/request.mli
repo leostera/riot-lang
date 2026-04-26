@@ -13,9 +13,24 @@ open Common
    Returns [Done request] on success, [Need_more] if more data needed, or
    [Error msg] if parsing fails.
 *)
-val parse_slice: ?max_request_line:int -> ?max_headers:int -> ?max_header_length:int -> IO.IoVec.IoSlice.t -> Std.Net.Http.Request.t parse_result
+val parse_slice:
+  ?max_request_line:int ->
+  ?max_headers:int ->
+  ?max_header_length:int ->
+  IO.IoVec.IoSlice.t ->
+  Std.Net.Http.Request.t parse_result
 
-val parse: ?max_request_line:int -> ?max_headers:int -> ?max_header_length:int -> string -> Std.Net.Http.Request.t parse_result
+val parse:
+  ?max_request_line:int ->
+  ?max_headers:int ->
+  ?max_header_length:int ->
+  string ->
+  Std.Net.Http.Request.t parse_result
 
 (** Parses HTTP headers. Internal function exposed for testing. *)
-val parse_headers: ?max_count:int -> ?max_length:int -> ?acc:(string * string) list -> Cursor.t -> ((string * string) list * string) Common.parse_result
+val parse_headers:
+  ?max_count:int ->
+  ?max_length:int ->
+  ?acc:(string * string) list ->
+  Cursor.t ->
+  ((string * string) list * string) Common.parse_result

@@ -12,7 +12,8 @@ let make (): t =
     let next = Int64.add current 1L in
     if Runtime_atomic.compare_and_set next_id current next then
       next
-    else try_increment ()
+    else
+      try_increment ()
   in
   try_increment ()
 

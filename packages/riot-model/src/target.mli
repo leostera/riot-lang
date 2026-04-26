@@ -2,7 +2,6 @@ open Std
 
 type error = System.TargetTriple.error =
   | InvalidTripletFormat of { value: string }
-
 type t = System.TargetTriple.t = {
   architecture: string;
   vendor: string;
@@ -10,11 +9,9 @@ type t = System.TargetTriple.t = {
   abi: string option;
 }
 
-module Set : sig
+module Set: sig
   type elt = t
-
   type t
-
   val empty: unit -> t
 
   val singleton: elt -> t
@@ -37,9 +34,10 @@ type request =
   | All
   | Pattern of string
   | Exact of Set.t
-
-type resolve_error = { pattern: string; available_targets: t list }
-
+type resolve_error = {
+  pattern: string;
+  available_targets: t list;
+}
 val current: t
 
 val error_message: error -> string

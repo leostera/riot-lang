@@ -1,8 +1,6 @@
-module IoSlice : sig
+module IoSlice: sig
   type t
-
   type error = Error.t
-
   val empty: t
 
   val create: size:int -> (t, error) Result.t
@@ -37,7 +35,13 @@ module IoSlice : sig
 
   val blit_from_bytes_unchecked: bytes -> src_off:int -> t -> dst_off:int -> len:int -> unit
 
-  val blit_from_string: string -> src_off:int -> t -> dst_off:int -> len:int -> (unit, error) Result.t
+  val blit_from_string:
+    string ->
+    src_off:int ->
+    t ->
+    dst_off:int ->
+    len:int ->
+    (unit, error) Result.t
 
   val blit_from_string_unchecked: string -> src_off:int -> t -> dst_off:int -> len:int -> unit
 
@@ -64,11 +68,8 @@ end
 
 (** Scatter/gather byte slices for narrow kernel I/O paths. *)
 type segment = IoSlice.t
-
 type t
-
 type error = Error.t
-
 val empty: t
 
 val create: ?count:int -> size:int -> unit -> (t, error) Result.t

@@ -6,7 +6,6 @@ type generated_provider = {
   copied_source_path: Path.t;
   support_module_sources: (string * Path.t) list;
 }
-
 type plan = {
   provider_hash: string;
   generated_dir: Path.t;
@@ -21,13 +20,19 @@ type plan = {
   package: Riot_model.Package.t;
   providers: generated_provider list;
 }
-
 val plan: workspace_root:Path.t -> target_dir_root:Path.t -> Riot_model.Fix_provider.t list -> plan
 
 val registry_source: Riot_model.Fix_provider.t list -> string
 
-val package_dependencies: workspace_root:Path.t -> generated_provider list -> Riot_model.Package.dependency list
+val package_dependencies:
+  workspace_root:Path.t ->
+  generated_provider list ->
+  Riot_model.Package.dependency list
 
 val attach_to_workspace: Riot_model.Workspace.t -> plan -> Riot_model.Workspace.t
 
-val materialize: workspace_root:Path.t -> target_dir_root:Path.t -> Riot_model.Fix_provider.t list -> plan
+val materialize:
+  workspace_root:Path.t ->
+  target_dir_root:Path.t ->
+  Riot_model.Fix_provider.t list ->
+  plan

@@ -20,10 +20,8 @@ type property_result =
   | Failure of { counter_example: string; shrink_steps: int }
   | Error of { exception_: exn; backtrace: string }
   | Assumption_violated
-
 (** Result of running a property. *)
 type test_property
-
 (** Opaque property value used by the lower-level execution API. *)
 type config = {
   (** Number of random inputs to try before reporting success. *)
@@ -39,6 +37,7 @@ type config = {
 }
 
 (** Runtime configuration for property checking. *)
+
 (**
    Default property-checking configuration.
 
@@ -119,7 +118,11 @@ val fail: string -> 'value
    - [Failure _] when a counter-example is found.
    - [Error _] when the property function raises.
 *)
-val check: ?config:config -> ?on_progress:(Test.Context.progress -> unit) -> test_property -> property_result
+val check:
+  ?config:config ->
+  ?on_progress:(Test.Context.progress -> unit) ->
+  test_property ->
+  property_result
 
 (**
    Return the display name of a property.

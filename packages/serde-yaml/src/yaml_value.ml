@@ -9,7 +9,13 @@ type t =
   | Tagged of string * t
 
 let rec is_scalar = function
-  | Null | Bool _ | Int _ | Float _ | String _ -> true
-  | Seq [] | Map [] -> true
+  | Null
+  | Bool _
+  | Int _
+  | Float _
+  | String _ -> true
+  | Seq []
+  | Map [] -> true
   | Tagged (_, value) -> is_scalar value
-  | Seq _ | Map _ -> false
+  | Seq _
+  | Map _ -> false

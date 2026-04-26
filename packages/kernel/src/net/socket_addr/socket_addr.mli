@@ -1,8 +1,6 @@
 type t
-
 type error =
   | InvalidPort of { port: int }
-
 val error_to_string: error -> string
 
 val make: ip:Ip_addr.t -> port:int -> (t, error) Result.t

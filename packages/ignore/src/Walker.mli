@@ -2,9 +2,17 @@ open Std
 
 (** Error surfaced by ignore-aware traversal. *)
 type error =
-  | File_system of { path: Path.t option; cause: Fs.error }
-  | Invalid_glob of { path: Path.t; line: int; input: string; message: string; offset: int option }
-
+  | File_system of {
+      path: Path.t option;
+      cause: Fs.error;
+    }
+  | Invalid_glob of {
+      path: Path.t;
+      line: int;
+      input: string;
+      message: string;
+      offset: int option;
+    }
 (**
    Ignore-aware walk plan.
 
@@ -30,7 +38,19 @@ type t
    Use [`overrides`] to force-include or force-exclude paths independently of
    on-disk ignore files.
 *)
-val create: roots:Path.t list -> ?concurrency:int -> ?sort:bool -> ?follow_symlinks:bool -> ?hidden:bool -> ?parents:bool -> ?ignore:bool -> ?git_ignore:bool -> ?custom_ignore_filenames:string list -> ?overrides:string list -> unit -> (t, Glob.glob_error) Result.t
+val create:
+  roots:Path.t list ->
+  ?concurrency:int ->
+  ?sort:bool ->
+  ?follow_symlinks:bool ->
+  ?hidden:bool ->
+  ?parents:bool ->
+  ?ignore:bool ->
+  ?git_ignore:bool ->
+  ?custom_ignore_filenames:string list ->
+  ?overrides:string list ->
+  unit ->
+  (t, Glob.glob_error) Result.t
 
 (**
    Traverse the plan with pre-descent pruning.

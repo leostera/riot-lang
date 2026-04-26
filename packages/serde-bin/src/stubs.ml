@@ -1,10 +1,10 @@
-external write_uint32_le: bytes -> int -> int -> unit = "serde_bin_write_u32_le" [@@noalloc]
+external write_uint32_le: bytes -> int -> int -> unit = "serde_bin_write_u32_le" [@@ noalloc]
 
-external write_int_le: bytes -> int -> int -> unit = "serde_bin_write_int_le" [@@noalloc]
+external write_int_le: bytes -> int -> int -> unit = "serde_bin_write_int_le" [@@ noalloc]
 
-external write_int32_le: bytes -> int -> int32 -> unit = "serde_bin_write_i32_le" [@@noalloc]
+external write_int32_le: bytes -> int -> int32 -> unit = "serde_bin_write_i32_le" [@@ noalloc]
 
-external write_int64_le: bytes -> int -> int64 -> unit = "serde_bin_write_i64_le" [@@noalloc]
+external write_int64_le: bytes -> int -> int64 -> unit = "serde_bin_write_i64_le" [@@ noalloc]
 
 external read_uint32_le_from_string: string -> int -> int = "serde_bin_read_u32_le_string"
 

@@ -38,9 +38,12 @@ open Std
    - No user management or access control
    - Doesn't support full SQL standard isolation levels
 *)
+
 (* Configuration for SQLite connections *)
-module Config : sig
+
+module Config: sig
   (* SQLite connection configuration *)
+
   type t = {
     path: Path.t;
     (* Path to the database file. Use ":memory:" for in-memory databases. *)
@@ -75,6 +78,7 @@ module Config : sig
      - cache_size = default (-2000)
      - synchronous = `Normal`
   *)
+
   val default: Path.t -> t
 
   (* `in_memory ()` creates a configuration for an in-memory database.
@@ -88,6 +92,7 @@ module Config : sig
      - synchronous = `Off`
      - No busy timeout (single connection)
   *)
+
   (* `in_memory ()` creates a configuration for an in-memory database.
 
      In-memory databases are:
@@ -99,8 +104,10 @@ module Config : sig
      - synchronous = `Off`
      - No busy timeout (single connection)
   *)
+
   val in_memory: unit -> t
 end
 
 (* SQLite driver implementation for SQLx *)
+
 module Driver: Sqlx_driver.Driver.Intf with type config = Config.t

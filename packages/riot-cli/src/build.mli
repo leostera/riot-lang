@@ -9,17 +9,14 @@ open Std
 type build_scope = Riot_build.Request.scope =
   | Runtime
   | Dev
-
 type dev_artifacts = Riot_build.Request.dev_artifacts = {
   tests: bool;
   examples: bool;
   benches: bool;
 }
-
 type output_mode =
   | Human
   | Json
-
 type build_progress = {
   (** Number of packages built in this render pass. *)
   mutable built_count: int;
@@ -30,9 +27,7 @@ type build_progress = {
   (** Number of skipped packages reported so far. *)
   mutable skipped_count: int;
 }
-
 type render_state
-
 val create_render_state: unit -> render_state
 
 (** Command definition for [riot build]. *)
@@ -43,7 +38,10 @@ val command: Std.ArgParser.command
 
    Returns [None] when the event should stay silent in human mode.
 *)
-val format_pm_event: seen_registry_updates:string Std.Collections.HashSet.t -> Riot_model.Event.kind -> string option
+val format_pm_event:
+  seen_registry_updates:string Std.Collections.HashSet.t ->
+  Riot_model.Event.kind ->
+  string option
 
 (** Reset the monotonic clock used for emitted JSON build events. *)
 val reset_json_clock: started_at:Std.Time.Instant.t -> unit
@@ -58,7 +56,11 @@ val write_build_event_json: Riot_build.Event.t -> unit
    include the resolved version when present. Dev artifact and target details
    are appended when requested by the caller.
 *)
-val display_package_name: ?build_target:Riot_model.Target.t -> ?show_target:bool -> Riot_model.Package.t -> string
+val display_package_name:
+  ?build_target:Riot_model.Target.t ->
+  ?show_target:bool ->
+  Riot_model.Package.t ->
+  string
 
 (** Render a structured planner error into human-readable detail lines. *)
 val planning_error_lines: Riot_planner.Planning_error.t -> string list
@@ -70,13 +72,26 @@ val workspace_planning_error_lines: Riot_planner.Workspace_planner.plan_error ->
 val build_failure_detail_lines: Riot_build.Build_result.failure -> string list
 
 (** Render a build event in the selected output mode. *)
-val write_build_event: ?render_state:render_state -> mode:output_mode -> seen_registry_updates:string Std.Collections.HashSet.t -> Riot_build.Event.t -> unit
+val write_build_event:
+  ?render_state:render_state ->
+  mode:output_mode ->
+  seen_registry_updates:string Std.Collections.HashSet.t ->
+  Riot_build.Event.t ->
+  unit
 
 (** Render a build phase event in the selected output mode. *)
-val write_build_phase_event: ?render_state:render_state -> mode:output_mode -> Riot_build.Event.runtime_phase -> unit
+val write_build_phase_event:
+  ?render_state:render_state ->
+  mode:output_mode ->
+  Riot_build.Event.runtime_phase ->
+  unit
 
 (** Render a package-manager event in the selected output mode. *)
-val write_pm_event: mode:output_mode -> seen_registry_updates:string Std.Collections.HashSet.t -> Riot_model.Event.t -> unit
+val write_pm_event:
+  mode:output_mode ->
+  seen_registry_updates:string Std.Collections.HashSet.t ->
+  Riot_model.Event.t ->
+  unit
 
 (** Render a "building target" status event. *)
 val write_building_target_event: mode:output_mode -> target:Riot_model.Target.t -> host:bool -> unit
@@ -93,4 +108,14 @@ val run: workspace:Riot_model.Workspace.t -> Std.ArgParser.matches -> (unit, exn
    Use this entry point when another CLI command wants the same build surface
    with explicit control over scope, profile, output mode, or package/target selection.
 *)
-val build_command: workspace:Riot_model.Workspace.t -> ?scope:build_scope -> ?dev_artifacts:dev_artifacts -> ?profile:string -> ?mode:output_mode -> ?show_finished_summary:bool -> ?requested_parallelism:int option -> Riot_model.Package_name.t option -> string option -> (unit, exn) result
+val build_command:
+  workspace:Riot_model.Workspace.t ->
+  ?scope:build_scope ->
+  ?dev_artifacts:dev_artifacts ->
+  ?profile:string ->
+  ?mode:output_mode ->
+  ?show_finished_summary:bool ->
+  ?requested_parallelism:int option ->
+  Riot_model.Package_name.t option ->
+  string option ->
+  (unit, exn) result

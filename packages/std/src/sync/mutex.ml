@@ -1,24 +1,39 @@
 open Kernel
 
 module Runtime_atomic = Kernel.Atomic
-
 module Runtime_actor = Runtime.Actor
-
 module Runtime_pid = Runtime.Pid
-
 module Waiters = Collections.Queue
 
-type t = { pid: Runtime_pid.t }
+type t = {
+  pid: Runtime_pid.t;
+}
 
 type request_id = int
 
-type owner = { pid: Runtime_pid.t; monitor: Runtime_actor.Monitor.t }
+type owner = {
+  pid: Runtime_pid.t;
+  monitor: Runtime_actor.Monitor.t;
+}
 
 type request =
-  | Acquire of { reply_to: Runtime_pid.t; request_id: request_id }
-  | Try_acquire of { reply_to: Runtime_pid.t; request_id: request_id }
-  | Release of { reply_to: Runtime_pid.t; request_id: request_id }
-  | Suspend of { owner: Runtime_pid.t; reply_to: Runtime_pid.t; request_id: request_id }
+  | Acquire of {
+      reply_to: Runtime_pid.t;
+      request_id: request_id;
+    }
+  | Try_acquire of {
+      reply_to: Runtime_pid.t;
+      request_id: request_id;
+    }
+  | Release of {
+      reply_to: Runtime_pid.t;
+      request_id: request_id;
+    }
+  | Suspend of {
+      owner: Runtime_pid.t;
+      reply_to: Runtime_pid.t;
+      request_id: request_id;
+    }
 
 type Runtime.Message.t +=
   | Sync_mutex_request of request
@@ -28,13 +43,17 @@ type Runtime.Message.t +=
   | Sync_mutex_suspended of { request_id: request_id }
   | Sync_mutex_failed of { request_id: request_id; reason: string }
 
-type state = { mutable owner: owner option; waiters: (Runtime_pid.t * request_id) Waiters.t }
+type state = {
+  mutable owner: owner option;
+  waiters: (Runtime_pid.t * request_id) Waiters.t;
+}
 
 let request_ids = Runtime_atomic.make 0
 
 let next_request_id = fun () -> Int.succ (Runtime_atomic.fetch_and_add request_ids 1)
 
-let fail = fun reply_to request_id reason -> Runtime.send reply_to (Sync_mutex_failed { request_id; reason })
+let fail = fun reply_to request_id reason ->
+  Runtime.send reply_to (Sync_mutex_failed { request_id; reason })
 
 let grant = fun state pid request_id ->
   let monitor = Runtime_actor.monitor pid in
@@ -115,20 +134,22 @@ let rec loop = fun state ->
 
 let create = fun () ->
   {
-    pid = Runtime.spawn
-      (
-        fun () -> loop { owner = None; waiters = Waiters.create () }
-      )
+    pid = Runtime.spawn (fun () -> loop { owner = None; waiters = Waiters.create () });
   }
 
 let await_result = fun request_id expected ->
   let selector msg =
     match msg with
-    | Sync_mutex_acquired { request_id = got } when expected = `acquired && Int.equal got request_id -> `select (Ok true)
-    | Sync_mutex_suspended { request_id = got } when expected = `suspended && Int.equal got request_id -> `select (Ok true)
-    | Sync_mutex_released { request_id = got } when expected = `released && Int.equal got request_id -> `select (Ok true)
-    | Sync_mutex_try_result { request_id = got; acquired } when expected = `try_lock && Int.equal got request_id -> `select (Ok acquired)
-    | Sync_mutex_failed { request_id = got; reason } when Int.equal got request_id -> `select (Error reason)
+    | Sync_mutex_acquired { request_id = got } when expected = `acquired && Int.equal got request_id ->
+        `select (Ok true)
+    | Sync_mutex_suspended { request_id = got } when expected = `suspended
+    && Int.equal got request_id -> `select (Ok true)
+    | Sync_mutex_released { request_id = got } when expected = `released && Int.equal got request_id ->
+        `select (Ok true)
+    | Sync_mutex_try_result { request_id = got; acquired } when expected = `try_lock
+    && Int.equal got request_id -> `select (Ok acquired)
+    | Sync_mutex_failed { request_id = got; reason } when Int.equal got request_id ->
+        `select (Error reason)
     | _ -> `skip
   in
   Runtime.receive ~selector ()
@@ -142,7 +163,9 @@ let lock = fun (t: t) ->
 
 let suspend = fun (t: t) ~owner ->
   let request_id = next_request_id () in
-  Runtime.send t.pid (Sync_mutex_request (Suspend { owner; reply_to = Runtime.self (); request_id }));
+  Runtime.send
+    t.pid
+    (Sync_mutex_request (Suspend { owner; reply_to = Runtime.self (); request_id }));
   match await_result request_id `suspended with
   | Ok _ -> Ok ()
   | Error reason -> Error reason

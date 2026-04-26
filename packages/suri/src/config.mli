@@ -40,7 +40,6 @@ type t = {
      Must be at least 32 characters for security.
   *)
 }
-
 val default: t
 
 (**
@@ -50,4 +49,6 @@ val default: t
 val spec: Std.Config.Spec.t
 
 (** Configuration spec for Std.Config - automatically registered on module load *)
-val get: Std.Config.Spec.value -> (t, Std.Config.error) result(** Extract typed config from validated spec values *)
+val get: Std.Config.Spec.value -> (t, Std.Config.error) result
+
+(** Extract typed config from validated spec values *)

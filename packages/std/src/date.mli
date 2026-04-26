@@ -24,14 +24,13 @@
    - {!Std.DateTime} for timezone-aware calendar datetimes
    - {!Std.Time.SystemTime} for wall-clock timestamps
 *)
+
 open Global
 
 type t = Calendar.date = { year: int; month: int; day: int }
-
 type error =
   | Invalid_format of string
   | Invalid_date of string
-
 val make: year:int -> month:int -> day:int -> (t, error) result
 
 val is_valid: t -> bool

@@ -2,9 +2,7 @@ open Std
 open Model
 
 type record_decl
-
 type t
-
 val empty: t
 
 val of_type_decls: FileSummary.type_decl list -> t

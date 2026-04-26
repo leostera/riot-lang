@@ -62,7 +62,9 @@ open Std
      ]
    ]}
 *)
+
 (** {1 Middleware} *)
+
 (**
    HEAD request handler middleware.
 

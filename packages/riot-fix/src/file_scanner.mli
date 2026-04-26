@@ -2,6 +2,7 @@
 open Std
 
 (** A file scanner configured with a root directory and exclusion patterns *)
+
 (**
    Create a new file scanner.
 
@@ -9,8 +10,12 @@ open Std
    @param exclude_patterns Directory names to exclude (default: ["."; "_build"; "target"])
 *)
 type t
-
-val create: root:Path.t -> ?exclude_patterns:string list -> ?should_ignore:(Path.t -> bool) -> unit -> t
+val create:
+  root:Path.t ->
+  ?exclude_patterns:string list ->
+  ?should_ignore:(Path.t -> bool) ->
+  unit ->
+  t
 
 (**
    Create a scanner over multiple roots.
@@ -18,7 +23,12 @@ val create: root:Path.t -> ?exclude_patterns:string list -> ?should_ignore:(Path
    [should_ignore] is applied to both files and directories during discovery,
    so ignored subtrees are pruned eagerly.
 *)
-val create_many: roots:Path.t list -> ?exclude_patterns:string list -> ?should_ignore:(Path.t -> bool) -> unit -> t
+val create_many:
+  roots:Path.t list ->
+  ?exclude_patterns:string list ->
+  ?should_ignore:(Path.t -> bool) ->
+  unit ->
+  t
 
 (**
    Scan the configured directory tree and return all .ml and .mli files.

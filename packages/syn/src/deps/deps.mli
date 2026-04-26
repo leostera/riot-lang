@@ -9,9 +9,8 @@ open Std.Data
    resolve implicit opens and generated alias modules. It is syntax-only:
    unresolved or ambiguous names are reported as conservative module roots.
 *)
-module Env : sig
+module Env: sig
   type t
-
   val empty: t
 
   (** Add an exported path and the free module names needed to reference it. *)
@@ -28,7 +27,6 @@ module Env : sig
 end
 
 type t
-
 type parse_error =
   | Parse_diagnostics of Diagnostic.t list
 

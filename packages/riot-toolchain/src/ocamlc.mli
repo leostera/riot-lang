@@ -8,16 +8,14 @@ open Std
 open Riot_model
 
 type t
-
 type invocation
 
-module Diagnostic : sig
+module Diagnostic: sig
   type severity =
     | Warning
     | Error
     | Note
     | Unknown
-
   type location = {
     path: string;
     line: int option;
@@ -25,9 +23,7 @@ module Diagnostic : sig
     end_char: int option;
     column: int option;
   }
-
   type t
-
   val parse: string -> t list
 
   val render: t -> string
@@ -59,6 +55,7 @@ type compiler_warning = Ocaml_compiler.warning =
   | All
 
 (** All warnings *)
+
 (** Compiler flags *)
 type compiler_flag = Ocaml_compiler.flag =
   | NoAliasDeps
@@ -81,10 +78,14 @@ val flags_to_string: compiler_flag list -> string list
 val flags_of_string: string list -> compiler_flag list
 
 (** Compilation result *)
-type success = { message: string; diagnostics: Diagnostic.t list }
-
-type failure = { message: string; diagnostics: Diagnostic.t list }
-
+type success = {
+  message: string;
+  diagnostics: Diagnostic.t list;
+}
+type failure = {
+  message: string;
+  diagnostics: Diagnostic.t list;
+}
 type result =
   | Success of success
   (** Successful compilation with output *)
@@ -92,35 +93,83 @@ type result =
 
 (** Compilation failed with error message *)
 (** {1 Compilation} *)
+
 (** {1 Specialized Compilation Functions} *)
-val compile_interface: t -> cwd:Std.Path.t -> includes:Path.t list -> flags:compiler_flag list -> output:Path.t -> Path.t -> invocation
+
+val compile_interface:
+  t ->
+  cwd:Std.Path.t ->
+  includes:Path.t list ->
+  flags:compiler_flag list ->
+  output:Path.t ->
+  Path.t ->
+  invocation
 
 (**
    Compile an interface file (.mli -> .cmi). The current directory is
    automatically included.
 *)
-val compile_impl: t -> cwd:Std.Path.t -> includes:Path.t list -> flags:compiler_flag list -> output:Path.t -> Path.t -> invocation
+val compile_impl:
+  t ->
+  cwd:Std.Path.t ->
+  includes:Path.t list ->
+  flags:compiler_flag list ->
+  output:Path.t ->
+  Path.t ->
+  invocation
 
 (**
    Compile an implementation file (.ml -> .cmo). The current directory is
    automatically included.
 *)
-val generate_interface: t -> cwd:Std.Path.t -> includes:Path.t list -> flags:compiler_flag list -> output:Path.t -> Path.t -> invocation
+val generate_interface:
+  t ->
+  cwd:Std.Path.t ->
+  includes:Path.t list ->
+  flags:compiler_flag list ->
+  output:Path.t ->
+  Path.t ->
+  invocation
 
 (**
    Generate interface file (.ml -> .mli) using ocamlc -i. Infers the module
    interface from an implementation file and writes it to output.
 *)
-val compile_c: t -> cwd:Std.Path.t -> includes:Path.t list -> ?cc:Path.t -> ?ccflags:string list -> output:Path.t -> Path.t -> invocation
+val compile_c:
+  t ->
+  cwd:Std.Path.t ->
+  includes:Path.t list ->
+  ?cc:Path.t ->
+  ?ccflags:string list ->
+  output:Path.t ->
+  Path.t ->
+  invocation
 
 (**
    Compile a C file. The optional ccflags parameter specifies additional
    C compiler flags like -I for include directories.
 *)
-val create_library: t -> cwd:Std.Path.t -> includes:Path.t list -> output:Path.t -> Path.t list -> invocation
+val create_library:
+  t ->
+  cwd:Std.Path.t ->
+  includes:Path.t list ->
+  output:Path.t ->
+  Path.t list ->
+  invocation
 
 (** Create a library (.cma) from object files *)
-val create_executable: t -> cwd:Std.Path.t -> includes:Path.t list -> output:Path.t -> libs:Path.t list -> ?cc:Path.t -> ?cclibs:Path.t list -> ?ccopt_flags:string list -> ?cclib_flags:string list -> Path.t list -> invocation
+val create_executable:
+  t ->
+  cwd:Std.Path.t ->
+  includes:Path.t list ->
+  output:Path.t ->
+  libs:Path.t list ->
+  ?cc:Path.t ->
+  ?cclibs:Path.t list ->
+  ?ccopt_flags:string list ->
+  ?cclib_flags:string list ->
+  Path.t list ->
+  invocation
 
 (**
    Create an executable from object files and libraries. The current directory
@@ -130,13 +179,32 @@ val create_executable: t -> cwd:Std.Path.t -> includes:Path.t list -> output:Pat
    The optional cclib_flags parameter specifies C linker-only flags passed with
    -cclib (like -L/path, -lssl).
 *)
-val create_shared_library: t -> cwd:Std.Path.t -> includes:Path.t list -> output:Path.t -> libs:Path.t list -> ?cc:Path.t -> ?cclibs:Path.t list -> ?ccopt_flags:string list -> ?cclib_flags:string list -> Path.t list -> invocation
+val create_shared_library:
+  t ->
+  cwd:Std.Path.t ->
+  includes:Path.t list ->
+  output:Path.t ->
+  libs:Path.t list ->
+  ?cc:Path.t ->
+  ?cclibs:Path.t list ->
+  ?ccopt_flags:string list ->
+  ?cclib_flags:string list ->
+  Path.t list ->
+  invocation
 
 (**
    Create a shared library (.cmxs) from object files and libraries using -shared.
    Parameters are the same as create_executable but produces a plugin loadable with Dynlink.
 *)
-val create_custom_executable: t -> cwd:Std.Path.t -> includes:Path.t list -> output:Path.t -> libs:Path.t list -> ?cc:Path.t -> Path.t list -> invocation
+val create_custom_executable:
+  t ->
+  cwd:Std.Path.t ->
+  includes:Path.t list ->
+  output:Path.t ->
+  libs:Path.t list ->
+  ?cc:Path.t ->
+  Path.t list ->
+  invocation
 
 (**
    Create a custom executable with C stubs. The current directory is
@@ -152,10 +220,13 @@ val run: invocation -> result
 
 (** Execute a prepared compiler invocation. *)
 (** {1 Result Helpers} *)
+
 val is_success: result -> bool
 
 (** Check if compilation succeeded *)
 val get_output: result -> string
 
 (** Get output message from result *)
-val get_ocamlc_warnings: result -> string list(** Get warning payloads emitted during successful compilation *)
+val get_ocamlc_warnings: result -> string list
+
+(** Get warning payloads emitted during successful compilation *)

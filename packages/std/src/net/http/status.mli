@@ -40,6 +40,7 @@
    - **4xx Client Error**: Request contains bad syntax or cannot be fulfilled
    - **5xx Server Error**: Server failed to fulfill valid request
 *)
+
 open Global
 
 type t =

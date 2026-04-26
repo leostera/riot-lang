@@ -29,4 +29,6 @@ let detect = fun () ->
   | other -> Unknown other
 
 (** Get current platform as string *)
-let current_string = fun () -> detect () |> to_string
+let current_string = fun () ->
+  detect ()
+  |> to_string

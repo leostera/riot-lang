@@ -1,9 +1,10 @@
 open Common
 
-type t = { selector: Adapter.Selector.t }
+type t = {
+  selector: Adapter.Selector.t;
+}
 
-let make = fun () ->
-  let* selector = Adapter.Selector.make () in Result.Ok { selector }
+let make = fun () -> let* selector = Adapter.Selector.make () in Result.Ok { selector }
 
 let close = fun t -> Adapter.Selector.close t.selector
 

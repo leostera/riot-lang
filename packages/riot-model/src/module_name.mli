@@ -2,9 +2,9 @@
 open Std
 
 (** Abstract type representing a module name *)
+
 (** Create a module name with explicit components *)
 type t
-
 val make: filename:Path.t -> namespace:Namespace.t -> name:string -> t
 
 (** Create from a filename, optionally with namespace *)

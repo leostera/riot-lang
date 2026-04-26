@@ -16,13 +16,13 @@ module Rect = struct
       x;
       y;
       width;
-      height
+      height;
     }
 
   let zero = {
     x = 0.0;
     y = 0.0;
     width = 0.0;
-    height = 0.0
+    height = 0.0;
   }
 end

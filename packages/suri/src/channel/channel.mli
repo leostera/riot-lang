@@ -53,12 +53,13 @@
    - **Close** - Graceful shutdown
    - **Continuation** - Fragmented message continuation
 *)
+
 open Std
 
 type topic = string
 
 (** Topic identifier for pub/sub channels *)
-module Handler : sig
+module Handler: sig
   (**
      WebSocket handler interface.
 
@@ -71,13 +72,17 @@ module Handler : sig
      This design enables building stateful, message-driven WebSocket applications.
   *)
   type upgrade_opts = { do_upgrade: bool }
-
   (** Options for WebSocket protocol upgrade *)
-  type ('state, 'error) handle_result = [`push of Http.Ws.Frame.t list * 'state (** Send frames to client and update state *)
-  | `ok of 'state (** Continue with updated state *)
-  | `error of 'state * 'error]
+  type ('state, 'error) handle_result = [
+    | `push of Http.Ws.Frame.t list * 'state
+    (** Send frames to client and update state *)
+    | `ok of 'state
+    (** Continue with updated state *)
+    | `error of 'state * 'error
+  ]
 
   (** Handle error with state *)
+
   (** Result of handling a frame or message *)
   module type Intf = sig
     (**
@@ -110,7 +115,6 @@ module Handler : sig
        ```
     *)
     type state
-
     (** Handler state - maintains connection state across frames *)
     type args
 
@@ -123,7 +127,11 @@ module Handler : sig
        Called once when the WebSocket connection is established.
        Return `ok with initial state or `error if initialization fails.
     *)
-    val handle_frame: Http.Ws.Frame.t -> Net.TcpStream.t -> state -> (state, [> `Unknown_opcode of int]) handle_result
+    val handle_frame:
+      Http.Ws.Frame.t ->
+      Net.TcpStream.t ->
+      state ->
+      (state, [> `Unknown_opcode of int]) handle_result
 
     (**
        Handle incoming WebSocket frame from client.
@@ -157,16 +165,35 @@ module Handler : sig
      let handler = Handler.make (module EchoHandler) ()
      ```
   *)
-  val init: t -> Net.TcpStream.t -> [> `continue of Net.TcpStream.t * t | `error of Net.TcpStream.t * [> `Unknown_opcode of int]]
+  val init:
+    t ->
+    Net.TcpStream.t ->
+    [> `continue of Net.TcpStream.t * t | `error of Net.TcpStream.t * [> `Unknown_opcode of int]]
 
   (** Initialize the handler with a TCP stream *)
-  val handle_frame: t -> Http.Ws.Frame.t -> Net.TcpStream.t -> [> `continue of Net.TcpStream.t * t | `error of Net.TcpStream.t * [> `Unknown_opcode of int] | `push of Http.Ws.Frame.t list * t]
+  val handle_frame:
+    t ->
+    Http.Ws.Frame.t ->
+    Net.TcpStream.t ->
+    [>
+      | `continue of Net.TcpStream.t * t
+      | `error of Net.TcpStream.t * [> `Unknown_opcode of int]
+      | `push of Http.Ws.Frame.t list * t
+    ]
 
   (** Handle an incoming frame *)
-  val handle_message: t -> Message.t -> 'a -> [> `continue of 'a * t | `error of 'a * [> `Unknown_opcode of int] | `push of Http.Ws.Frame.t list * t]
+  val handle_message:
+    t ->
+    Message.t ->
+    'a ->
+    [>
+      | `continue of 'a * t
+      | `error of 'a * [> `Unknown_opcode of int]
+      | `push of Http.Ws.Frame.t list * t
+    ]
 
   (** Handle a message from another process *)
-  module Default : sig
+  module Default: sig
     (**
        Default handler implementations.
 

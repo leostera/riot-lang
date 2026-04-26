@@ -1,6 +1,9 @@
 open Prelude
 
-type compile_error = { message: string; offset: int option }
+type compile_error = {
+  message: string;
+  offset: int option;
+}
 
 type match_ = { start: int; stop: int }
 

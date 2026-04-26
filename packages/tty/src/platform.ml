@@ -29,7 +29,8 @@ external get_size_raw: fd -> ((int * int), int) result = "tty_get_size"
 
 external get_attributes_raw: fd -> (termios, int) result = "tty_get_attributes"
 
-external set_attributes_raw: fd -> when_to_apply -> termios -> (unit, int) result = "tty_set_attributes"
+external set_attributes_raw: fd -> when_to_apply -> termios -> (unit, int) result =
+  "tty_set_attributes"
 
 external make_raw_mode: termios -> termios = "tty_make_raw_mode"
 
@@ -54,7 +55,8 @@ let get_size = fun fd -> map_error (get_size_raw fd)
 
 let get_attributes = fun fd -> map_error (get_attributes_raw fd)
 
-let set_attributes = fun fd when_to_apply termios -> map_error (set_attributes_raw fd when_to_apply termios)
+let set_attributes = fun fd when_to_apply termios ->
+  map_error (set_attributes_raw fd when_to_apply termios)
 
 let read = fun fd bytes ~offset ~len -> map_error (read_raw fd bytes offset len)
 

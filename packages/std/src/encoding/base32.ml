@@ -17,43 +17,53 @@ let encode_bytes = fun bytes ->
       let b1 =
         if remaining > 1 then
           Char.code (Bytes.get_unchecked bytes ~at:(i + 1))
-        else 0
+        else
+          0
       in
       let b2 =
         if remaining > 2 then
           Char.code (Bytes.get_unchecked bytes ~at:(i + 2))
-        else 0
+        else
+          0
       in
       let b3 =
         if remaining > 3 then
           Char.code (Bytes.get_unchecked bytes ~at:(i + 3))
-        else 0
+        else
+          0
       in
       let b4 =
         if remaining > 4 then
           Char.code (Bytes.get_unchecked bytes ~at:(i + 4))
-        else 0
+        else
+          0
       in
       Buffer.add_char result (String.get_unchecked table ~at:(b0 lsr 3));
     Buffer.add_char result (String.get_unchecked table ~at:(((b0 land 0x07) lsl 2) lor (b1 lsr 6)));
     if remaining > 1 then
       Buffer.add_char result (String.get_unchecked table ~at:((b1 lsr 1) land 0x1f))
-    else Buffer.add_char result '=';
+    else
+      Buffer.add_char result '=';
     if remaining > 1 then
       Buffer.add_char result (String.get_unchecked table ~at:(((b1 land 0x01) lsl 4) lor (b2 lsr 4)))
-    else Buffer.add_char result '=';
+    else
+      Buffer.add_char result '=';
     if remaining > 2 then
       Buffer.add_char result (String.get_unchecked table ~at:(((b2 land 0x0f) lsl 1) lor (b3 lsr 7)))
-    else Buffer.add_char result '=';
+    else
+      Buffer.add_char result '=';
     if remaining > 3 then
       Buffer.add_char result (String.get_unchecked table ~at:((b3 lsr 2) land 0x1f))
-    else Buffer.add_char result '=';
+    else
+      Buffer.add_char result '=';
     if remaining > 3 then
       Buffer.add_char result (String.get_unchecked table ~at:(((b3 land 0x03) lsl 3) lor (b4 lsr 5)))
-    else Buffer.add_char result '=';
+    else
+      Buffer.add_char result '=';
     if remaining > 4 then
       Buffer.add_char result (String.get_unchecked table ~at:(b4 land 0x1f))
-    else Buffer.add_char result '=';
+    else
+      Buffer.add_char result '=';
     encode_block (i + 5)
   in
   encode_block 0;
@@ -70,7 +80,8 @@ let decode_char = fun c ->
   | _ -> None
 
 let set_result = fun result ->
-  let _ = Result.unwrap result in ()
+  let _ = Result.unwrap result in
+  ()
 
 let decode_bytes: string -> (bytes, [`Invalid_base32]) Global.result = fun str ->
   let len = String.length str in
@@ -88,8 +99,17 @@ let decode_bytes: string -> (bytes, [`Invalid_base32]) Global.result = fun str -
           | Error _ -> Error `Invalid_base32
         )
       else
-        match decode_char (String.get_unchecked str ~at:i), decode_char (String.get_unchecked str ~at:(i + 1)), decode_char (String.get_unchecked str ~at:(i + 2)), decode_char (String.get_unchecked str ~at:(i + 3)), decode_char (String.get_unchecked str ~at:(i + 4)), decode_char (String.get_unchecked str ~at:(i + 5)), decode_char (String.get_unchecked str ~at:(i + 6)), decode_char (String.get_unchecked str ~at:(i + 7)) with
-        | Some c0, Some c1, Some c2, Some c3, Some c4, Some c5, Some c6, Some c7 ->
+        match (
+          decode_char (String.get_unchecked str ~at:i),
+          decode_char (String.get_unchecked str ~at:(i + 1)),
+          decode_char (String.get_unchecked str ~at:(i + 2)),
+          decode_char (String.get_unchecked str ~at:(i + 3)),
+          decode_char (String.get_unchecked str ~at:(i + 4)),
+          decode_char (String.get_unchecked str ~at:(i + 5)),
+          decode_char (String.get_unchecked str ~at:(i + 6)),
+          decode_char (String.get_unchecked str ~at:(i + 7))
+        ) with
+        | (Some c0, Some c1, Some c2, Some c3, Some c4, Some c5, Some c6, Some c7) ->
             let b0 = (c0 lsl 3) lor (c1 lsr 2) in
             set_result (Bytes.set result ~at:!output_pos ~char:(Char.from_int_unchecked b0));
             Cell.incr output_pos;

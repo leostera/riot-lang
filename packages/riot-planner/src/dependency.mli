@@ -10,8 +10,12 @@ open Std.Collections
 open Riot_model
 
 (** Return the expected path to the dependency's `.cmxa` archive in the store. *)
-type t = { package: Package.t; artifact_dir: Path.t; depset: t list; hash: Crypto.hash }
-
+type t = {
+  package: Package.t;
+  artifact_dir: Path.t;
+  depset: t list;
+  hash: Crypto.hash;
+}
 val library_cmxa: t -> Path.t
 
 (**

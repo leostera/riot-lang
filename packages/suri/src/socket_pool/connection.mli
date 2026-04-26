@@ -6,15 +6,23 @@ open Std
    Represents a single active connection to a client with operations for
    sending, receiving, and querying connection metadata.
 *)
+
 (** An active TCP connection with GADT constructor for protocol negotiation *)
+
 (**
    [make ~accepted_at ~stream ~buffer_size ~peer ()] creates a new connection.
 
    [protocol] is the negotiated protocol (e.g., "h2" for HTTP/2)
 *)
 type t
-
-val make: ?protocol:string option -> accepted_at:Std.Time.Instant.t -> stream:Std.Net.TcpStream.t -> buffer_size:int -> peer:Std.Net.Addr.stream_addr -> unit -> t
+val make:
+  ?protocol:string option ->
+  accepted_at:Std.Time.Instant.t ->
+  stream:Std.Net.TcpStream.t ->
+  buffer_size:int ->
+  peer:Std.Net.Addr.stream_addr ->
+  unit ->
+  t
 
 (** [negotiated_protocol conn] returns the negotiated protocol if any *)
 val negotiated_protocol: t -> string option
@@ -36,7 +44,12 @@ val send: t -> string -> (unit, [> | `Closed]) result
    Returns [Ok data] with received data, or [Error `Closed] if closed.
    Raises [Syscall_timeout] if timeout is specified and expires.
 *)
-val receive: ?limit:int -> ?read_size:int -> ?timeout:Std.Time.Duration.t -> t -> (string, [> | `Closed]) result
+val receive:
+  ?limit:int ->
+  ?read_size:int ->
+  ?timeout:Std.Time.Duration.t ->
+  t ->
+  (string, [> | `Closed]) result
 
 (** [peer conn] returns the remote peer's address *)
 val peer: t -> Std.Net.Addr.stream_addr

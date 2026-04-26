@@ -23,66 +23,74 @@ type generation = {
 }
 
 type event =
-  | PackageGenerationStarted of { package: Package_name.t; version: string; output_dir: Path.t }
+  | PackageGenerationStarted of {
+      package: Package_name.t;
+      version: string;
+      output_dir: Path.t;
+    }
   | PackageGenerationFailed of {
-    package: Package_name.t;
-    version: string;
-    output_dir: Path.t;
-    error: string;
-  }
+      package: Package_name.t;
+      version: string;
+      output_dir: Path.t;
+      error: string;
+    }
   | PackageGenerationCompleted of generation
 
 let generation_to_json = fun (summary: generation) ->
   Data.Json.Object [
-    "package", Data.Json.String (Package_name.to_string summary.package);
-    "version", Data.Json.String summary.version;
-    "output_dir", Data.Json.String (Path.to_string summary.output_dir);
-    "cache_hit", Data.Json.Bool summary.cache_hit;
-    "cache_key", Data.Json.String summary.cache_key;
+    ("package", Data.Json.String (Package_name.to_string summary.package));
+    ("version", Data.Json.String summary.version);
+    ("output_dir", Data.Json.String (Path.to_string summary.output_dir));
+    ("cache_hit", Data.Json.Bool summary.cache_hit);
+    ("cache_key", Data.Json.String summary.cache_key);
   ]
 
 let event_to_json = function
   | PackageGenerationStarted { package; version; output_dir } ->
-      Some (
-        Data.Json.Object [
-          "type", Data.Json.String "doc.package_generation_started";
-          "package", Data.Json.String (Package_name.to_string package);
-          "version", Data.Json.String version;
-          "output_dir", Data.Json.String (Path.to_string output_dir);
-        ]
-      )
-  | PackageGenerationFailed { package; version; output_dir; error } ->
-      Some (
-        Data.Json.Object [
-          "type", Data.Json.String "doc.package_generation_failed";
-          "package", Data.Json.String (Package_name.to_string package);
-          "version", Data.Json.String version;
-          "output_dir", Data.Json.String (Path.to_string output_dir);
-          "error", Data.Json.String error;
-        ]
-      )
+      Some (Data.Json.Object [
+        ("type", Data.Json.String "doc.package_generation_started");
+        ("package", Data.Json.String (Package_name.to_string package));
+        ("version", Data.Json.String version);
+        ("output_dir", Data.Json.String (Path.to_string output_dir));
+      ])
+  | PackageGenerationFailed {
+    package;
+    version;
+    output_dir;
+    error
+  } ->
+      Some (Data.Json.Object [
+        ("type", Data.Json.String "doc.package_generation_failed");
+        ("package", Data.Json.String (Package_name.to_string package));
+        ("version", Data.Json.String version);
+        ("output_dir", Data.Json.String (Path.to_string output_dir));
+        ("error", Data.Json.String error);
+      ])
   | PackageGenerationCompleted summary ->
-      Some (
-        Data.Json.Object [
-          "type", Data.Json.String "doc.package_generation_completed";
-          "summary", generation_to_json summary;
-        ]
-      )
+      Some (Data.Json.Object [
+        ("type", Data.Json.String "doc.package_generation_completed");
+        ("summary", generation_to_json summary);
+      ])
 
 let resolve_profile = fun release ->
   if release then
     "release"
-  else "debug"
+  else
+    "debug"
 
 let output_version = fun ~release (package: Riot_model.Package.t) ->
   if release then
     match package.publish.version with
     | Some version -> Ok (Version.to_string version)
-    | None -> Error ("--release requires [package.publish.version] in " ^ Package_name.to_string package.name)
-  else Ok "dev"
+    | None ->
+        Error ("--release requires [package.publish.version] in "
+        ^ Package_name.to_string package.name)
+  else
+    Ok "dev"
 
 let output_root = fun ~(workspace:Riot_model.Workspace.t) ~release ->
-  let _ = release in Path.(workspace.target_dir_root / Path.v "doc")
+  let _ = release in
+  Path.(workspace.target_dir_root / Path.v "doc")
 
 let package_output_dir = fun ~(workspace:Riot_model.Workspace.t) ~package_name ~version ~release ~output_root_opt ->
   let root =
@@ -98,31 +106,40 @@ let read_lockfile = fun workspace_root ->
   | Ok (Some lockfile) -> Ok (Some lockfile)
   | Error _ -> Ok None
 
-let workspace_release_versions = fun (workspace: Riot_model.Workspace.t) -> workspace.packages |> List.filter_map ~fn:(
-  fun (pkg: Riot_model.Package_manifest.t) ->
-    match pkg.publish.version with
-    | Some version -> Some (pkg.name, Version.to_string version)
-    | None -> None
-)
+let workspace_release_versions = fun (workspace: Riot_model.Workspace.t) ->
+  workspace.packages
+  |> List.filter_map
+    ~fn:(fun (pkg: Riot_model.Package_manifest.t) ->
+      match pkg.publish.version with
+      | Some version -> Some (pkg.name, Version.to_string version)
+      | None -> None)
 
 let find_lock_package = fun ~(package:Riot_model.Package.t) (lockfile: Riot_model.Lockfile.t) ->
-  let release_version = package.publish.version |> Option.map ~fn:Version.to_string in
-  let matching_name = lockfile.packages |> List.filter ~fn:(
-    fun (lock_package: Riot_model.Lockfile.package) -> Package_name.equal lock_package.id.name package.name
-  ) in
+  let release_version =
+    package.publish.version
+    |> Option.map ~fn:Version.to_string
+  in
+  let matching_name =
+    lockfile.packages
+    |> List.filter
+      ~fn:(fun (lock_package: Riot_model.Lockfile.package) ->
+        Package_name.equal lock_package.id.name package.name)
+  in
   match release_version with
   | Some version ->
-      let exact_match = List.find matching_name ~fn:(
-        fun (lock_package: Riot_model.Lockfile.package) ->
-          match lock_package.id.version with
-          | Some lock_version -> String.equal lock_version version
-          | None -> false
-      ) in
+      let exact_match =
+        List.find
+          matching_name
+          ~fn:(fun (lock_package: Riot_model.Lockfile.package) ->
+            match lock_package.id.version with
+            | Some lock_version -> String.equal lock_version version
+            | None -> false)
+      in
       (
-        match exact_match, matching_name with
-        | Some lock_package, _ -> Some lock_package
-        | None, [ lock_package ] -> Some lock_package
-        | None, _ -> None
+        match (exact_match, matching_name) with
+        | (Some lock_package, _) -> Some lock_package
+        | (None, [ lock_package ]) -> Some lock_package
+        | (None, _) -> None
       )
   | None ->
       match matching_name with
@@ -135,82 +152,132 @@ let locked_dependency_versions = fun ~(workspace:Riot_model.Workspace.t) ~(packa
   else
     let workspace_versions = workspace_release_versions workspace in
     match lockfile_opt with
-    | None -> Error ("--release requires a lockfile to resolve documentation dependency versions for " ^ Package_name.to_string package.name)
+    | None ->
+        Error ("--release requires a lockfile to resolve documentation dependency versions for "
+        ^ Package_name.to_string package.name)
     | Some lockfile -> (
-      match find_lock_package ~package lockfile with
-      | None -> Error ("--release could not find a lockfile entry for package " ^ Package_name.to_string package.name)
-      | Some lock_package ->
-          let resolved = lock_package.dependencies |> List.filter_map ~fn:(
-            fun (dependency: Riot_model.Lockfile.dependency) ->
-              match dependency.package.version with
-              | Some version -> Some (dependency.name, version)
-              | None -> List.find workspace_versions ~fn:(
-                fun (name, _) -> Package_name.equal name dependency.name
-              ) |> Option.map ~fn:(
-                fun (_, version) -> (dependency.name, version)
-              )
-          ) in
-          let resolved = resolved |> List.unique ~compare:(
-            fun (left_name, _) (right_name, _) -> Package_name.compare left_name right_name
-          ) in
-          let missing = package.dependencies |> List.filter ~fn:(
-            fun (dependency: Riot_model.Package.dependency) -> not (Package.is_builtin_dependency dependency)
-          ) |> List.filter_map ~fn:(
-            fun (dependency: Riot_model.Package.dependency) ->
-              match List.find resolved ~fn:(
-                fun (name, _) -> Package_name.equal name dependency.name
-              ) with
-              | Some _ -> None
-              | None -> Some dependency.name
-          ) in
-          match missing with
-          | [] -> Ok resolved
-          | names -> Error ("--release could not resolve locked versions for dependencies of " ^ Package_name.to_string package.name ^ ": " ^ String.concat ", " (List.map names ~fn:Package_name.to_string))
-    )
+        match find_lock_package ~package lockfile with
+        | None ->
+            Error ("--release could not find a lockfile entry for package "
+            ^ Package_name.to_string package.name)
+        | Some lock_package ->
+            let resolved =
+              lock_package.dependencies
+              |> List.filter_map
+                ~fn:(fun (dependency: Riot_model.Lockfile.dependency) ->
+                  match dependency.package.version with
+                  | Some version -> Some (dependency.name, version)
+                  | None ->
+                      List.find
+                        workspace_versions
+                        ~fn:(fun (name, _) ->
+                          Package_name.equal name dependency.name)
+                      |> Option.map ~fn:(fun (_, version) ->
+                        (dependency.name, version)))
+            in
+            let resolved =
+              resolved
+              |> List.unique
+                ~compare:(fun (left_name, _) (right_name, _) ->
+                  Package_name.compare left_name right_name)
+            in
+            let missing =
+              package.dependencies
+              |> List.filter
+                ~fn:(fun (dependency: Riot_model.Package.dependency) ->
+                  not (Package.is_builtin_dependency dependency))
+              |> List.filter_map
+                ~fn:(fun (dependency: Riot_model.Package.dependency) ->
+                  match List.find
+                    resolved
+                    ~fn:(fun (name, _) ->
+                      Package_name.equal name dependency.name) with
+                  | Some _ -> None
+                  | None -> Some dependency.name)
+            in
+            match missing with
+            | [] -> Ok resolved
+            | names ->
+                Error ("--release could not resolve locked versions for dependencies of "
+                ^ Package_name.to_string package.name
+                ^ ": "
+                ^ String.concat ", " (List.map names ~fn:Package_name.to_string))
+      )
 
 let dependency_link_for = fun ~release dependency_map dependency ->
   if release then
-    match List.find dependency_map ~fn:(
-      fun (name, _) -> Package_name.equal name dependency
-    ) with
-    | Some (_, version) -> Ok { Doctree.name = Package_name.to_string dependency; version = Some version; url = "../../" ^ Package_name.to_string dependency ^ "/" ^ version ^ "/index.html" }
-    | None -> Error ("--release could not resolve a versioned documentation link for dependency " ^ Package_name.to_string dependency)
-  else Ok { Doctree.name = Package_name.to_string dependency; version = None; url = "../../" ^ Package_name.to_string dependency ^ "/dev/index.html" }
+    match List.find dependency_map ~fn:(fun (name, _) -> Package_name.equal name dependency) with
+    | Some (_, version) ->
+        Ok {
+          Doctree.name = Package_name.to_string dependency;
+          version = Some version;
+          url = "../../" ^ Package_name.to_string dependency ^ "/" ^ version ^ "/index.html";
+        }
+    | None ->
+        Error ("--release could not resolve a versioned documentation link for dependency "
+        ^ Package_name.to_string dependency)
+  else
+    Ok {
+      Doctree.name = Package_name.to_string dependency;
+      version = None;
+      url = "../../" ^ Package_name.to_string dependency ^ "/dev/index.html";
+    }
 
-let documentation_dependencies = fun (package: Riot_model.Package.t) -> package.dependencies |> List.filter ~fn:(
-  fun (dependency: Riot_model.Package.dependency) -> not (Package.is_builtin_dependency dependency)
-)
+let documentation_dependencies = fun (package: Riot_model.Package.t) ->
+  package.dependencies
+  |> List.filter
+    ~fn:(fun (dependency: Riot_model.Package.dependency) ->
+      not (Package.is_builtin_dependency dependency))
 
-let map_dependencies = fun ~release ~(dependency_map:(Package_name.t * string) list) (package: Riot_model.Package.t) -> documentation_dependencies package |> List.unique ~compare:(
-  fun (left: Riot_model.Package.dependency) (right: Riot_model.Package.dependency) -> Package_name.compare left.name right.name
-) |> List.fold_left ~init:(Ok []) ~fn:(
-  fun acc (dependency: Riot_model.Package.dependency) ->
-    let* links = acc
-    in
-    let* link = dependency_link_for ~release dependency_map dependency.name in Ok (link :: links)
-) |> Result.map ~fn:List.reverse
+let map_dependencies = fun ~release ~(dependency_map:(Package_name.t * string) list) (
+  package: Riot_model.Package.t
+) ->
+  documentation_dependencies package
+  |> List.unique
+    ~compare:(fun (left: Riot_model.Package.dependency) (right: Riot_model.Package.dependency) ->
+      Package_name.compare left.name right.name)
+  |> List.fold_left
+    ~init:(Ok [])
+    ~fn:(fun acc (dependency: Riot_model.Package.dependency) -> let* links = acc in let* link =
+      dependency_link_for ~release dependency_map dependency.name in Ok (link :: links))
+  |> Result.map ~fn:List.reverse
 
 let dependency_signature = fun dependency_map ->
   let state = Crypto.Sha256.create () in
-  List.sort dependency_map ~compare:(
-    fun (left_name, _) (right_name, _) -> Package_name.compare left_name right_name
-  ) |> List.for_each ~fn:(
-    fun (name, version) ->
+  List.sort
+    dependency_map
+    ~compare:(fun (left_name, _) (right_name, _) -> Package_name.compare left_name right_name)
+  |> List.for_each
+    ~fn:(fun (name, version) ->
       Crypto.Sha256.write state (Package_name.to_string name);
-      Crypto.Sha256.write state version
-  );
+      Crypto.Sha256.write state version);
   Crypto.Digest.hex (Crypto.Sha256.finish state)
 
-let package_module_name = fun package_name -> package_name |> String.map ~fn:(
-  fun ch ->
-    match ch with
-    | '-' -> '_'
-    | _ -> ch
-) |> String.capitalize_ascii
+let package_module_name = fun package_name ->
+  package_name
+  |> String.map
+    ~fn:(fun ch ->
+      match ch with
+      | '-' -> '_'
+      | _ -> ch)
+  |> String.capitalize_ascii
 
-let is_root_module_for_package = fun package_name (module_doc: Doctree.module_doc) -> List.length module_doc.path = 1 && String.equal module_doc.name (package_module_name package_name)
+let is_root_module_for_package = fun package_name (module_doc: Doctree.module_doc) ->
+  List.length module_doc.path = 1 && String.equal module_doc.name (package_module_name package_name)
 
-let render_root_module_alias = fun () -> "<!doctype html>\n" ^ "<html>\n" ^ "<head>\n" ^ "  <meta charset=\"utf-8\" />\n" ^ "  <meta http-equiv=\"refresh\" content=\"0; url=../index.html\" />\n" ^ "  <title>Redirecting...</title>\n" ^ "</head>\n" ^ "<body>\n" ^ "  <script>location.replace('../index.html' + location.hash);</script>\n" ^ "  <p><a href=\"../index.html\">Open package docs</a></p>\n" ^ "</body>\n" ^ "</html>\n"
+let render_root_module_alias = fun () ->
+  "<!doctype html>\n"
+  ^ "<html>\n"
+  ^ "<head>\n"
+  ^ "  <meta charset=\"utf-8\" />\n"
+  ^ "  <meta http-equiv=\"refresh\" content=\"0; url=../index.html\" />\n"
+  ^ "  <title>Redirecting...</title>\n"
+  ^ "</head>\n"
+  ^ "<body>\n"
+  ^ "  <script>location.replace('../index.html' + location.hash);</script>\n"
+  ^ "  <p><a href=\"../index.html\">Open package docs</a></p>\n"
+  ^ "</body>\n"
+  ^ "</html>\n"
 
 let cache_key = fun ~request ~(package:Riot_model.Package.t) ~package_version ~source_signature ~dependency_signature ->
   let state = Crypto.Sha256.create () in
@@ -227,79 +294,116 @@ let cache_key = fun ~request ~(package:Riot_model.Package.t) ~package_version ~s
 let write_output = fun ~path content ->
   let* () =
     match Path.parent path with
-    | Some parent -> Fs.create_dir_all parent |> Result.map_err ~fn:IO.error_message
+    | Some parent ->
+        Fs.create_dir_all parent
+        |> Result.map_err ~fn:IO.error_message
     | None -> Ok ()
   in
-  Fs.write content path |> Result.map_err ~fn:IO.error_message
+  Fs.write content path
+  |> Result.map_err ~fn:IO.error_message
 
 let sanitize_output_path = fun path ->
   match Fs.exists path with
   | Ok true -> (
-    match Fs.is_dir path with
-    | Ok true -> Fs.remove_dir_all path |> Result.map_err ~fn:(
-      fun err -> "failed to clear output dir " ^ Path.to_string path ^ ": " ^ IO.error_message err
+      match Fs.is_dir path with
+      | Ok true ->
+          Fs.remove_dir_all path
+          |> Result.map_err
+            ~fn:(fun err ->
+              "failed to clear output dir " ^ Path.to_string path ^ ": " ^ IO.error_message err)
+      | Ok false ->
+          Fs.remove_file path
+          |> Result.map_err
+            ~fn:(fun err ->
+              "failed to remove output path " ^ Path.to_string path ^ ": " ^ IO.error_message err)
+      | Error err ->
+          Error ("failed to inspect output path "
+          ^ Path.to_string path
+          ^ ": "
+          ^ IO.error_message err)
     )
-    | Ok false -> Fs.remove_file path |> Result.map_err ~fn:(
-      fun err -> "failed to remove output path " ^ Path.to_string path ^ ": " ^ IO.error_message err
-    )
-    | Error err -> Error ("failed to inspect output path " ^ Path.to_string path ^ ": " ^ IO.error_message err)
-  )
   | Ok false -> Ok ()
-  | Error err -> Error ("failed to check output path " ^ Path.to_string path ^ ": " ^ IO.error_message err)
+  | Error err ->
+      Error ("failed to check output path " ^ Path.to_string path ^ ": " ^ IO.error_message err)
 
 let emit = fun ~on_event event -> on_event event
 
 let selected_packages = fun (request: request) ->
-  let workspace_members = Riot_model.Workspace.realize_packages ~intent:Riot_model.Package.Doc request.workspace |> List.filter ~fn:(
-    fun (pkg: Riot_model.Package.t) -> Package.is_workspace_member pkg
-  ) in
-  match request.package_name, request.all with
-  | Some name, _ -> (
-    match Package_name.from_string name with
-    | Error _ -> Error ("package not found: " ^ name ^ ". available packages: " ^ (workspace_members |> List.map ~fn:(
-      fun (pkg: Riot_model.Package.t) -> Package_name.to_string pkg.name
-    ) |> String.concat ", "))
-    | Ok package_name -> (
-      match List.find workspace_members ~fn:(
-        fun (pkg: Riot_model.Package.t) -> Package_name.equal pkg.name package_name && Package.is_workspace_member pkg
-      ) with
-      | Some pkg -> Ok [ pkg ]
-      | None -> Error ("package not found: " ^ name ^ ". available packages: " ^ (workspace_members |> List.map ~fn:(
-        fun (pkg: Riot_model.Package.t) -> Package_name.to_string pkg.name
-      ) |> String.concat ", "))
+  let workspace_members =
+    Riot_model.Workspace.realize_packages ~intent:Riot_model.Package.Doc request.workspace
+    |> List.filter ~fn:(fun (pkg: Riot_model.Package.t) -> Package.is_workspace_member pkg)
+  in
+  match (request.package_name, request.all) with
+  | (Some name, _) -> (
+      match Package_name.from_string name with
+      | Error _ ->
+          Error (
+            "package not found: "
+            ^ name
+            ^ ". available packages: "
+            ^ (
+              workspace_members
+              |> List.map ~fn:(fun (pkg: Riot_model.Package.t) -> Package_name.to_string pkg.name)
+              |> String.concat ", "
+            )
+          )
+      | Ok package_name -> (
+          match List.find
+            workspace_members
+            ~fn:(fun (pkg: Riot_model.Package.t) ->
+              Package_name.equal pkg.name package_name && Package.is_workspace_member pkg) with
+          | Some pkg -> Ok [ pkg ]
+          | None ->
+              Error (
+                "package not found: "
+                ^ name
+                ^ ". available packages: "
+                ^ (
+                  workspace_members
+                  |> List.map
+                    ~fn:(fun (pkg: Riot_model.Package.t) -> Package_name.to_string pkg.name)
+                  |> String.concat ", "
+                )
+              )
+        )
     )
-  )
-  | None, true -> Ok workspace_members
-  | None, false ->
+  | (None, true) -> Ok workspace_members
+  | (None, false) ->
       if workspace_members = [] then
         Error "no workspace packages found"
-      else Ok workspace_members
+      else
+        Ok workspace_members
 
-let write_assets = fun output_dir -> Html.assets |> List.fold_left ~init:(Ok ()) ~fn:(
-  fun acc (relative_path, content) ->
-    match acc with
-    | Error _ as err -> err
-    | Ok () ->
-        let path = Path.(output_dir / Path.v relative_path) in write_output ~path content
-)
+let write_assets = fun output_dir ->
+  Html.assets
+  |> List.fold_left
+    ~init:(Ok ())
+    ~fn:(fun acc (relative_path, content) ->
+      match acc with
+      | Error _ as err -> err
+      | Ok () ->
+          let path = Path.(output_dir / Path.v relative_path) in
+          write_output ~path content)
 
-let write_pages = fun ~output_dir package_doc -> Doctree.flatten_modules package_doc.Doctree.modules |> List.fold_left ~init:(Ok []) ~fn:(
-  fun acc module_doc ->
-    match acc with
-    | Error _ as err -> err
-    | Ok paths ->
-        let path = Doctree.module_output_path ~output_dir module_doc in
-        let source_path = Doctree.module_source_output_path ~output_dir module_doc in
-        let body =
-          if is_root_module_for_package package_doc.package module_doc then
-            render_root_module_alias ()
-          else Html.render_module package_doc module_doc
-        in
-        let source_body = Html.render_module_source package_doc module_doc in
-        let* () = write_output ~path body
-        in
-        let* () = write_output ~path:source_path source_body in Ok (source_path :: path :: paths)
-)
+let write_pages = fun ~output_dir package_doc ->
+  Doctree.flatten_modules package_doc.Doctree.modules
+  |> List.fold_left
+    ~init:(Ok [])
+    ~fn:(fun acc module_doc ->
+      match acc with
+      | Error _ as err -> err
+      | Ok paths ->
+          let path = Doctree.module_output_path ~output_dir module_doc in
+          let source_path = Doctree.module_source_output_path ~output_dir module_doc in
+          let body =
+            if is_root_module_for_package package_doc.package module_doc then
+              render_root_module_alias ()
+            else
+              Html.render_module package_doc module_doc
+          in
+          let source_body = Html.render_module_source package_doc module_doc in
+          let* () = write_output ~path body in let* () = write_output ~path:source_path source_body in
+          Ok (source_path :: path :: paths))
 
 let write_index = fun ~output_dir package_doc ->
   let path = Path.(output_dir / Path.v "index.html") in
@@ -310,13 +414,12 @@ let package_doc_of_sources = fun ~package ~version ~dependencies sources ->
   let lookup = Source.build_lookup sources in
   match Source.find_root_interface ~package_name:package sources with
   | Some root_source ->
-      let* module_doc = Transform.of_interface_source ~lookup root_source
-      in
+      let* module_doc = Transform.of_interface_source ~lookup root_source in
       Ok {
         Doctree.package = package;
         version;
         modules = [ module_doc ];
-        dependencies
+        dependencies;
       }
   | None ->
       let rec loop acc = function
@@ -325,49 +428,65 @@ let package_doc_of_sources = fun ~package ~version ~dependencies sources ->
               Doctree.package = package;
               version;
               modules = List.reverse acc;
-              dependencies
+              dependencies;
             }
         | source :: rest ->
-            let* module_doc = Transform.of_interface_source ~lookup source in loop (module_doc :: acc) rest
+            let* module_doc = Transform.of_interface_source ~lookup source in
+            loop (module_doc :: acc) rest
       in
       loop [] sources
 
 let run_for_package = fun ~on_event ~store ~cache_allowed ~request ~(package:Riot_model.Package.t) ~lockfile_opt ->
-  let* version = output_version ~release:request.release package
+  let* version = output_version ~release:request.release package in
+  let output_dir =
+    package_output_dir
+      ~workspace:request.workspace
+      ~package_name:(Package_name.to_string package.name)
+      ~version
+      ~release:request.release
+      ~output_root_opt:request.output_root
   in
-  let output_dir = package_output_dir ~workspace:request.workspace ~package_name:(Package_name.to_string package.name) ~version ~release:request.release ~output_root_opt:request.output_root in
   let () = emit ~on_event (PackageGenerationStarted { package = package.name; version; output_dir }) in
   let result =
-    let* sources = Source.collect_interfaces ~workspace:request.workspace ~store ~release:request.release package
-    in
+    let* sources =
+      Source.collect_interfaces ~workspace:request.workspace ~store ~release:request.release package in
     if sources = [] then
       Error ("no interface files found for package " ^ Package_name.to_string package.name)
     else
       let* dependency_map =
         if request.release then
           locked_dependency_versions ~workspace:request.workspace ~package lockfile_opt
-        else Ok []
+        else
+          Ok []
       in
       let source_signature = Source.source_signature sources in
       let dependency_signature = dependency_signature dependency_map in
-      let cache_key = cache_key ~request ~package ~package_version:version ~source_signature ~dependency_signature in
-      let* dependencies = map_dependencies ~release:request.release ~dependency_map package
+      let cache_key =
+        cache_key ~request ~package ~package_version:version ~source_signature ~dependency_signature
       in
-      let* package_doc = package_doc_of_sources ~package:(Package_name.to_string package.name) ~version ~dependencies sources
-      in
+      let* dependencies = map_dependencies ~release:request.release ~dependency_map package in
+      let* package_doc =
+        package_doc_of_sources
+          ~package:(Package_name.to_string package.name)
+          ~version
+          ~dependencies
+          sources in
       let cache_hit_ref = ref false in
       let* () =
         if cache_allowed && not request.force then
           match Riot_store.Store.get store (Crypto.hash_string cache_key) with
           | Some _ ->
-              let* () = Riot_store.Store.promote store (Crypto.hash_string cache_key) ~target_dir:output_dir |> Result.map_err ~fn:(
-                fun err -> "failed to promote cache hit: " ^ Riot_store.Store.error_message err
-              )
+              let* () =
+                Riot_store.Store.promote store (Crypto.hash_string cache_key) ~target_dir:output_dir
+                |> Result.map_err
+                  ~fn:(fun err ->
+                    "failed to promote cache hit: " ^ Riot_store.Store.error_message err)
               in
               cache_hit_ref := true;
               Ok ()
           | None -> Ok ()
-        else Ok ()
+        else
+          Ok ()
       in
       if !cache_hit_ref then
         let summary = {
@@ -375,66 +494,77 @@ let run_for_package = fun ~on_event ~store ~cache_allowed ~request ~(package:Rio
           version;
           output_dir;
           cache_hit = true;
-          cache_key
+          cache_key;
         }
         in
-        let () = emit ~on_event (PackageGenerationCompleted summary) in Ok summary
+        let () = emit ~on_event (PackageGenerationCompleted summary) in
+        Ok summary
       else
-        let* () = sanitize_output_path output_dir
-        in
-        let* index_path = write_index ~output_dir package_doc
-        in
-        let* page_paths = write_pages ~output_dir package_doc
-        in
-        let* () = write_assets output_dir
-        in
+        let* () = sanitize_output_path output_dir in
+        let* index_path = write_index ~output_dir package_doc in
+        let* page_paths = write_pages ~output_dir package_doc in
+        let* () = write_assets output_dir in
         let* () =
           if cache_allowed then
-            let outs = ([ index_path ] @ page_paths) @ [ Path.(output_dir / Path.v "assets" / Path.v "doc.css") ] in Riot_store.Store.save ~package:(Package_name.to_string package.name) ~hash:(Crypto.hash_string cache_key) store ~sandbox_dir:output_dir ~outs |> Result.map_err ~fn:(
-              fun err -> "failed to save cached docs: " ^ Riot_store.Store.error_message err
-            ) |> Result.map ~fn:(
-              fun _ -> ()
-            )
-          else Ok ()
+            let outs =
+              ([ index_path ] @ page_paths)
+              @ [ Path.(output_dir / Path.v "assets" / Path.v "doc.css") ]
+            in
+            Riot_store.Store.save
+              ~package:(Package_name.to_string package.name)
+              ~hash:(Crypto.hash_string cache_key)
+              store
+              ~sandbox_dir:output_dir
+              ~outs
+            |> Result.map_err
+              ~fn:(fun err -> "failed to save cached docs: " ^ Riot_store.Store.error_message err)
+            |> Result.map ~fn:(fun _ -> ())
+          else
+            Ok ()
         in
         let summary = {
           package = package.name;
           version;
           output_dir;
           cache_hit = false;
-          cache_key
+          cache_key;
         }
         in
-        let () = emit ~on_event (PackageGenerationCompleted summary) in Ok summary
+        let () = emit ~on_event (PackageGenerationCompleted summary) in
+        Ok summary
   in
   match result with
   | Ok _ as ok -> ok
   | Error error ->
       let () =
-        emit ~on_event
+        emit
+          ~on_event
           (
             PackageGenerationFailed {
               package = package.name;
               version;
               output_dir;
-              error
+              error;
             }
           )
       in
       Error error
 
 let run = fun ?on_event (request: request) ->
-  let on_event = Option.unwrap_or ~default:(
-    fun _ -> ()
-  ) on_event in
-  let* lockfile_opt = read_lockfile request.workspace.root
+  let on_event = Option.unwrap_or ~default:(fun _ -> ()) on_event in
+  let* lockfile_opt = read_lockfile request.workspace.root in
+  let* packages = selected_packages request in
+  let store =
+    Riot_store.Store.create_for_lane
+      ~workspace:request.workspace
+      ~profile:(resolve_profile request.release)
+      ~target:(Riot_dirs.host_target ())
   in
-  let* packages = selected_packages request
-  in
-  let store = Riot_store.Store.create_for_lane ~workspace:request.workspace ~profile:(resolve_profile request.release) ~target:(Riot_dirs.host_target ()) in
-  let cache_allowed = not request.no_cache in packages |> List.fold_left ~init:(Ok []) ~fn:(
-    fun acc package ->
-      let* summaries = acc
-      in
-      let* summary = run_for_package ~on_event ~store ~cache_allowed ~request ~package ~lockfile_opt in Ok (summary :: summaries)
-  ) |> Result.map ~fn:List.reverse
+  let cache_allowed = not request.no_cache in
+  packages
+  |> List.fold_left
+    ~init:(Ok [])
+    ~fn:(fun acc package -> let* summaries = acc in let* summary =
+      run_for_package ~on_event ~store ~cache_allowed ~request ~package ~lockfile_opt in
+    Ok (summary :: summaries))
+  |> Result.map ~fn:List.reverse

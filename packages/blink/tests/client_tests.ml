@@ -1,11 +1,13 @@
 open Std
+
 module H = Blink.Client
 
-let request () = H.Request.make
-  ~method_:H.Request.Get
-  ~url:"https://example.test/data"
-  ~deadline:(Time.Duration.from_secs 5)
-  ()
+let request () =
+  H.Request.make
+    ~method_:H.Request.Get
+    ~url:"https://example.test/data"
+    ~deadline:(Time.Duration.from_secs 5)
+    ()
 
 let test_status_classification = fun _ctx ->
   Test.assert_equal ~expected:H.Response.Success ~actual:(H.Response.status_class 204);
@@ -22,7 +24,12 @@ let test_retries_retryable_statuses = fun _ctx ->
     else
       Ok (H.Response.make ~status:200 ~body:"ok" ())
   in
-  let config = H.Config.make ~retry_policy:(H.RetryPolicy.make ~max_attempts:3 ()) ~transport () in
+  let config =
+    H.Config.make
+      ~retry_policy:(H.RetryPolicy.make ~max_attempts:3 ())
+      ~transport
+      ()
+  in
   let client = H.make ~config () in
   match H.execute client (request ()) with
   | Error error -> Error (H.error_to_string error)
@@ -49,7 +56,8 @@ let test_rate_budget_blocks = fun _ctx ->
       | Ok _ -> consume (remaining - 1)
       | Error error -> Error (H.error_to_string error)
   in
-  consume 10 |> Result.and_then
+  consume 10
+  |> Result.and_then
     ~fn:(fun () ->
       match H.execute client (request ()) with
       | Ok _ -> Error "expected geoblock budget exhaustion"
@@ -76,7 +84,8 @@ let test_circuit_breaker_blocks_after_failures = fun _ctx ->
       | Ok _ -> Error "expected transport failure"
       | Error _ -> fail_n (remaining - 1)
   in
-  fail_n 3 |> Result.and_then
+  fail_n 3
+  |> Result.and_then
     ~fn:(fun () ->
       match H.execute client req with
       | Ok _ -> Error "expected open circuit"
@@ -102,7 +111,9 @@ let test_connection_policy_telemetry = fun _ctx ->
       (
         match !observed with
         | Some callback_telemetry ->
-            Test.assert_equal ~expected:telemetry.connection_policy ~actual:callback_telemetry.connection_policy;
+            Test.assert_equal
+              ~expected:telemetry.connection_policy
+              ~actual:callback_telemetry.connection_policy;
             Ok ()
         | None -> Error "expected telemetry callback"
       )
@@ -121,11 +132,15 @@ let test_failure_telemetry_callback = fun _ctx ->
   | Ok _ -> Error "expected managed request failure"
   | Error error -> (
       Test.assert_equal ~expected:H.Response.ConnectFailed ~actual:error.class_;
-      Test.assert_equal ~expected:(Some H.Response.ConnectFailed) ~actual:error.telemetry.final_error_class;
+      Test.assert_equal
+        ~expected:(Some H.Response.ConnectFailed)
+        ~actual:error.telemetry.final_error_class;
       Test.assert_equal ~expected:1 ~actual:(List.length error.telemetry.attempts);
       match !observed with
       | Some telemetry ->
-          Test.assert_equal ~expected:error.telemetry.final_error_class ~actual:telemetry.final_error_class;
+          Test.assert_equal
+            ~expected:error.telemetry.final_error_class
+            ~actual:telemetry.final_error_class;
           Ok ()
       | None -> Error "expected failure telemetry callback"
     )
@@ -163,7 +178,10 @@ let budgetless_client = fun () ->
   H.make ~config:(H.Config.make ~budget_policy ()) ()
 
 let test_connect_budget_blocks = fun _ctx ->
-  let uri = Net.Uri.of_string "https://example.test" |> Result.expect ~msg:"invalid test uri" in
+  let uri =
+    Net.Uri.of_string "https://example.test"
+    |> Result.expect ~msg:"invalid test uri"
+  in
   let client = budgetless_client () in
   match H.connect client uri with
   | Ok conn ->
@@ -172,11 +190,13 @@ let test_connect_budget_blocks = fun _ctx ->
   | Error (Blink.Error.ProtocolError message) ->
       Test.assert_true (String.contains message "budget");
       Ok ()
-  | Error _ ->
-      Error "expected budget protocol error"
+  | Error _ -> Error "expected budget protocol error"
 
 let test_websocket_connect_budget_blocks = fun _ctx ->
-  let uri = Net.Uri.of_string "wss://example.test/ws" |> Result.expect ~msg:"invalid test uri" in
+  let uri =
+    Net.Uri.of_string "wss://example.test/ws"
+    |> Result.expect ~msg:"invalid test uri"
+  in
   let client = budgetless_client () in
   match H.WebSocket.connect client uri with
   | Ok conn ->
@@ -185,8 +205,7 @@ let test_websocket_connect_budget_blocks = fun _ctx ->
   | Error (Blink.Error.ProtocolError message) ->
       Test.assert_true (String.contains message "budget");
       Ok ()
-  | Error _ ->
-      Error "expected budget protocol error"
+  | Error _ -> Error "expected budget protocol error"
 
 let tests =
   Test.[
@@ -202,8 +221,6 @@ let tests =
     case "websocket connect budget blocks" test_websocket_connect_budget_blocks;
   ]
 
-let () =
-  Runtime.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"blink_client_tests" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main ~name:"blink_client_tests" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

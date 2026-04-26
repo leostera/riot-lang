@@ -2,58 +2,44 @@ open Global
 open Collections
 
 module Spec = Spec
-
 module Loader = Loader
-
 module Validator = Validator
-
 module Provider = Provider
-
 module Server = Server
 
 type error =
   | NotFound of { app: string }
-  | ValidationError of { app: string; errors: string list }
+  | ValidationError of {
+      app: string;
+      errors: string list;
+    }
   | ParseError of { path: string; message: string }
   | FileNotFound of { path: string }
 
 let error_to_string = function
-  | NotFound { app } -> format Format.[ str "Config section ["; str app; str "] not found in config file" ]
+  | NotFound { app } ->
+      format Format.[ str "Config section ["; str app; str "] not found in config file" ]
   | ValidationError { app; errors } ->
-      let errs = String.concat ", " errors in format Format.[
-        str "Validation errors for app '";
-        str app;
-        str "': ";
-        str errs;
-      ]
-  | ParseError { path; message } -> format Format.[
-    str "Parse error in ";
-    str path;
-    str ": ";
-    str message;
-  ]
+      let errs = String.concat ", " errors in
+      format Format.[ str "Validation errors for app '"; str app; str "': "; str errs; ]
+  | ParseError { path; message } ->
+      format Format.[ str "Parse error in "; str path; str ": "; str message; ]
   | FileNotFound { path } -> format Format.[ str "Config file not found: "; str path ]
 
-let panic_wrong_type = fun ~key ~expected -> panic (format Format.[
-  str "Config key '";
-  str key;
-  str "' is not a ";
-  str expected;
-])
+let panic_wrong_type = fun ~key ~expected ->
+  panic (format Format.[ str "Config key '"; str key; str "' is not a "; str expected; ])
 
-let panic_key_not_found = fun key -> panic (format Format.[ str "Config key '"; str key; str "' not found" ])
+let panic_key_not_found = fun key ->
+  panic (format Format.[ str "Config key '"; str key; str "' not found" ])
 
-let find_map_field = fun key kvs -> List.find kvs ~fn:(
-  fun (entry_key, _value) -> String.equal entry_key key
-) |> Option.map ~fn:(
-  fun (_entry_key, value) -> value
-)
+let find_map_field = fun key kvs ->
+  List.find kvs ~fn:(fun (entry_key, _value) -> String.equal entry_key key)
+  |> Option.map ~fn:(fun (_entry_key, value) -> value)
 
 module type ConfigSpec = sig
   val spec: Spec.t
 
   type t
-
   val get: Spec.value -> (t, error) result
 end
 
@@ -76,7 +62,7 @@ let load_string = fun str -> load ~provider:(Provider.static str) ()
 
 let load_file = fun path -> load ~provider:(Provider.file path) ()
 
-let get (type a) ((module M: ConfigSpec with type t = a)): (a, error) result =
+let get (type a) ((module M : ConfigSpec with type t = a)): (a, error) result =
   let app_name = Spec.app_name M.spec in
   let server = ensure_loaded () in
   match Server.get server ~app:app_name with
@@ -93,148 +79,154 @@ let patch = fun ~app updates ->
   let server = ensure_loaded () in
   match Server.patch server ~app ~updates with
   | Error err -> Error (Server.error_to_string err)
-  | Ok _new_server -> (* Patch mutates the HashMap in place, so server is already updated *)
-  Ok ()
+  | Ok _new_server ->
+      (* Patch mutates the HashMap in place, so server is already updated *)
+      Ok ()
 
 (* Value extraction helpers - panic on type mismatch or missing keys *)
+
 let get_string = fun (value: Spec.value) key ->
   match value with
   | Spec.Map kvs -> (
-    match find_map_field key kvs with
-    | Some (Spec.String s) -> s
-    | Some _ -> panic_wrong_type ~key ~expected:"string"
-    | None -> panic_key_not_found key
-  )
+      match find_map_field key kvs with
+      | Some (Spec.String s) -> s
+      | Some _ -> panic_wrong_type ~key ~expected:"string"
+      | None -> panic_key_not_found key
+    )
   | _ -> panic "Expected Map value"
 
 let get_char = fun (value: Spec.value) key ->
   match value with
   | Spec.Map kvs -> (
-    match find_map_field key kvs with
-    | Some (Spec.Char c) -> c
-    | Some _ -> panic_wrong_type ~key ~expected:"char"
-    | None -> panic_key_not_found key
-  )
+      match find_map_field key kvs with
+      | Some (Spec.Char c) -> c
+      | Some _ -> panic_wrong_type ~key ~expected:"char"
+      | None -> panic_key_not_found key
+    )
   | _ -> panic "Expected Map value"
 
 let get_int = fun (value: Spec.value) key ->
   match value with
   | Spec.Map kvs -> (
-    match find_map_field key kvs with
-    | Some (Spec.Int i) -> i
-    | Some _ -> panic_wrong_type ~key ~expected:"int"
-    | None -> panic_key_not_found key
-  )
+      match find_map_field key kvs with
+      | Some (Spec.Int i) -> i
+      | Some _ -> panic_wrong_type ~key ~expected:"int"
+      | None -> panic_key_not_found key
+    )
   | _ -> panic "Expected Map value"
 
 let get_int32 = fun (value: Spec.value) key ->
   match value with
   | Spec.Map kvs -> (
-    match find_map_field key kvs with
-    | Some (Spec.Int32 i) -> i
-    | Some _ -> panic_wrong_type ~key ~expected:"int32"
-    | None -> panic_key_not_found key
-  )
+      match find_map_field key kvs with
+      | Some (Spec.Int32 i) -> i
+      | Some _ -> panic_wrong_type ~key ~expected:"int32"
+      | None -> panic_key_not_found key
+    )
   | _ -> panic "Expected Map value"
 
 let get_int64 = fun (value: Spec.value) key ->
   match value with
   | Spec.Map kvs -> (
-    match find_map_field key kvs with
-    | Some (Spec.Int64 i) -> i
-    | Some _ -> panic_wrong_type ~key ~expected:"int64"
-    | None -> panic_key_not_found key
-  )
+      match find_map_field key kvs with
+      | Some (Spec.Int64 i) -> i
+      | Some _ -> panic_wrong_type ~key ~expected:"int64"
+      | None -> panic_key_not_found key
+    )
   | _ -> panic "Expected Map value"
 
 let get_bool = fun (value: Spec.value) key ->
   match value with
   | Spec.Map kvs -> (
-    match find_map_field key kvs with
-    | Some (Spec.Bool b) -> b
-    | Some _ -> panic_wrong_type ~key ~expected:"bool"
-    | None -> panic_key_not_found key
-  )
+      match find_map_field key kvs with
+      | Some (Spec.Bool b) -> b
+      | Some _ -> panic_wrong_type ~key ~expected:"bool"
+      | None -> panic_key_not_found key
+    )
   | _ -> panic "Expected Map value"
 
 let get_float = fun (value: Spec.value) key ->
   match value with
   | Spec.Map kvs -> (
-    match find_map_field key kvs with
-    | Some (Spec.Float f) -> f
-    | Some _ -> panic_wrong_type ~key ~expected:"float"
-    | None -> panic_key_not_found key
-  )
+      match find_map_field key kvs with
+      | Some (Spec.Float f) -> f
+      | Some _ -> panic_wrong_type ~key ~expected:"float"
+      | None -> panic_key_not_found key
+    )
   | _ -> panic "Expected Map value"
 
 let get_uri = fun (value: Spec.value) key ->
   match value with
   | Spec.Map kvs -> (
-    match find_map_field key kvs with
-    | Some (Spec.Uri uri) -> uri
-    | Some _ -> panic_wrong_type ~key ~expected:"URI"
-    | None -> panic_key_not_found key
-  )
+      match find_map_field key kvs with
+      | Some (Spec.Uri uri) -> uri
+      | Some _ -> panic_wrong_type ~key ~expected:"URI"
+      | None -> panic_key_not_found key
+    )
   | _ -> panic "Expected Map value"
 
 let get_datetime = fun (value: Spec.value) key ->
   match value with
   | Spec.Map kvs -> (
-    match find_map_field key kvs with
-    | Some (Spec.DateTime dt) -> dt
-    | Some _ -> panic_wrong_type ~key ~expected:"datetime"
-    | None -> panic_key_not_found key
-  )
+      match find_map_field key kvs with
+      | Some (Spec.DateTime dt) -> dt
+      | Some _ -> panic_wrong_type ~key ~expected:"datetime"
+      | None -> panic_key_not_found key
+    )
   | _ -> panic "Expected Map value"
 
 let get_path = fun (value: Spec.value) key ->
   match value with
   | Spec.Map kvs -> (
-    match find_map_field key kvs with
-    | Some (Spec.Path p) -> p
-    | Some _ -> panic_wrong_type ~key ~expected:"path"
-    | None -> panic_key_not_found key
-  )
+      match find_map_field key kvs with
+      | Some (Spec.Path p) -> p
+      | Some _ -> panic_wrong_type ~key ~expected:"path"
+      | None -> panic_key_not_found key
+    )
   | _ -> panic "Expected Map value"
 
 let get_uuid = fun (value: Spec.value) key ->
   match value with
   | Spec.Map kvs -> (
-    match find_map_field key kvs with
-    | Some (Spec.Uuid uuid) -> uuid
-    | Some _ -> panic_wrong_type ~key ~expected:"UUID"
-    | None -> panic_key_not_found key
-  )
+      match find_map_field key kvs with
+      | Some (Spec.Uuid uuid) -> uuid
+      | Some _ -> panic_wrong_type ~key ~expected:"UUID"
+      | None -> panic_key_not_found key
+    )
   | _ -> panic "Expected Map value"
 
 let get_list = fun (value: Spec.value) key ->
   match value with
   | Spec.Map kvs -> (
-    match find_map_field key kvs with
-    | Some (Spec.List items) -> items
-    | Some _ -> panic_wrong_type ~key ~expected:"list"
-    | None -> panic_key_not_found key
-  )
+      match find_map_field key kvs with
+      | Some (Spec.List items) -> items
+      | Some _ -> panic_wrong_type ~key ~expected:"list"
+      | None -> panic_key_not_found key
+    )
   | _ -> panic "Expected Map value"
 
 let get_discriminated_union = fun (value: Spec.value) key ->
   match value with
   | Spec.Map kvs -> (
-    match find_map_field key kvs with
-    | Some (Spec.DiscriminatedUnion { discriminant; variant; fields }) -> (discriminant, variant, fields)
-    | Some _ -> panic_wrong_type ~key ~expected:"discriminated union"
-    | None -> panic_key_not_found key
-  )
+      match find_map_field key kvs with
+      | Some (Spec.DiscriminatedUnion { discriminant; variant; fields }) -> (
+        discriminant,
+        variant,
+        fields
+      )
+      | Some _ -> panic_wrong_type ~key ~expected:"discriminated union"
+      | None -> panic_key_not_found key
+    )
   | _ -> panic "Expected Map value"
 
 let get_map = fun (value: Spec.value) key ->
   match value with
   | Spec.Map kvs -> (
-    match find_map_field key kvs with
-    | Some (Spec.Map _ as m) -> m
-    | Some _ -> panic_wrong_type ~key ~expected:"map"
-    | None -> panic_key_not_found key
-  )
+      match find_map_field key kvs with
+      | Some (Spec.Map _ as m) -> m
+      | Some _ -> panic_wrong_type ~key ~expected:"map"
+      | None -> panic_key_not_found key
+    )
   | _ -> panic "Expected Map value"
 
 let as_string = fun (value: Spec.value) ->
@@ -299,7 +291,7 @@ let as_list = fun (value: Spec.value) ->
 
 let as_discriminated_union = fun (value: Spec.value) ->
   match value with
-  | Spec.DiscriminatedUnion { discriminant; variant; fields } -> discriminant, variant, fields
+  | Spec.DiscriminatedUnion { discriminant; variant; fields } -> (discriminant, variant, fields)
   | _ -> panic "Expected DiscriminatedUnion value"
 
 let as_map = fun (value: Spec.value) ->

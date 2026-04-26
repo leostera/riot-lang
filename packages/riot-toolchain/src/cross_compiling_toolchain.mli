@@ -43,7 +43,11 @@ val bin_dir_of_compiler: Path.t -> Path.t option
    If no compiler is found, returns a minimal config with [`bin_prefix`] set
    but the other fields left as [`None`].
 *)
-val detect: ?toolchain_root:Path.t -> unit -> target_triplet:System.TargetTriple.t -> detection_result
+val detect:
+  ?toolchain_root:Path.t ->
+  unit ->
+  target_triplet:System.TargetTriple.t ->
+  detection_result
 
 (**
    Get full path to a cross-compilation binary

@@ -34,10 +34,13 @@ let get_host_triple = fun () -> "unknown-unknown-unknown"
 let ocaml_version = "5.5.0-riot.4"
 
 (** Get the toolchain directory for a given version and target *)
-let get_toolchain_dir = fun ?(version = ocaml_version) ?(target = get_host_triple ()) () -> Filename.concat home_dir (Filename.concat ".riot/toolchains" (Filename.concat version target))
+let get_toolchain_dir = fun ?(version = ocaml_version) ?(target = get_host_triple ()) () ->
+  Filename.concat home_dir (Filename.concat ".riot/toolchains" (Filename.concat version target))
 
 (** Get the bin directory for a given toolchain *)
-let get_toolchain_bin_dir = fun ?(version = ocaml_version) ?(target = get_host_triple ()) () -> Filename.concat (get_toolchain_dir ~version ~target ()) "bin"
+let get_toolchain_bin_dir = fun ?(version = ocaml_version) ?(target = get_host_triple ()) () ->
+  Filename.concat (get_toolchain_dir ~version ~target ()) "bin"
 
 (** Get the lib directory for a given toolchain *)
-let get_toolchain_lib_dir = fun ?(version = ocaml_version) ?(target = get_host_triple ()) () -> Filename.concat (get_toolchain_dir ~version ~target ()) "lib/ocaml"
+let get_toolchain_lib_dir = fun ?(version = ocaml_version) ?(target = get_host_triple ()) () ->
+  Filename.concat (get_toolchain_dir ~version ~target ()) "lib/ocaml"

@@ -2,7 +2,11 @@ open Global
 
 let assert_equal = fun ~expected ~actual ->
   if expected != actual then
-    panic ("Expected " ^ (Exception.to_string (Failure "expected")) ^ " but got " ^ (Exception.to_string (Failure "actual")))
+    panic
+      ("Expected "
+      ^ (Exception.to_string (Failure "expected"))
+      ^ " but got "
+      ^ (Exception.to_string (Failure "actual")))
 
 let assert_ok = function
   | Ok _ -> ()

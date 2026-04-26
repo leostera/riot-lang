@@ -25,6 +25,7 @@
      Conn.to_response conn
    ```
 *)
+
 (**
    A middleware function that can wrap the next handler.
 
@@ -44,10 +45,9 @@
        conn'
    ]}
 *)
+
 (** A pipeline is a list of middleware *)
 type middleware = conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t
-
 (** Run a pipeline on a connection, stopping if halted *)
 type t = middleware list
-
 val run: Conn.t -> t -> Conn.t

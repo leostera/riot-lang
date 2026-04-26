@@ -38,7 +38,8 @@ let shutdown_write = 1
 let shutdown_read_write = 2
 
 module FFI = struct
-  external connect: string -> int -> ((int * int), int) Result.t = "kernel_new_net_tcp_stream_connect"
+  external connect: string -> int -> ((int * int), int) Result.t =
+    "kernel_new_net_tcp_stream_connect"
 
   external close: int -> (unit, int) Result.t = "kernel_new_net_socket_close"
 
@@ -46,9 +47,11 @@ module FFI = struct
 
   external shutdown: int -> int -> (unit, int) Result.t = "kernel_new_net_tcp_stream_shutdown"
 
-  external read: int -> bytes -> int -> int -> (int, int) Result.t = "kernel_new_net_tcp_stream_read"
+  external read: int -> bytes -> int -> int -> (int, int) Result.t =
+    "kernel_new_net_tcp_stream_read"
 
-  external write: int -> bytes -> int -> int -> (int, int) Result.t = "kernel_new_net_tcp_stream_write"
+  external write: int -> bytes -> int -> int -> (int, int) Result.t =
+    "kernel_new_net_tcp_stream_write"
 
   external readv: int -> IO.IoVec.t -> (int, int) Result.t = "kernel_new_net_tcp_stream_readv"
 
@@ -62,21 +65,23 @@ end
 let validate_slice = fun buf ~pos ~len ->
   if pos < 0 || len < 0 || pos + len > Bytes.length buf then
     Result.Error (InvalidSlice { pos; len; buffer_len = Bytes.length buf })
-  else Result.Ok ()
+  else
+    Result.Ok ()
 
 let socket_addr_of_pair = fun (ip, port) ->
   match Ip_addr.from_string ip with
   | Result.Error _ -> Result.Error (InvalidSocketAddr { ip; port })
   | Result.Ok ip -> (
-    match Socket_addr.from_parts ~ip ~port with
-    | Result.Ok addr -> Result.Ok addr
-    | Result.Error _ -> Result.Error (InvalidSocketAddr { ip = Ip_addr.to_string ip; port })
-  )
+      match Socket_addr.from_parts ~ip ~port with
+      | Result.Ok addr -> Result.Ok addr
+      | Result.Error _ -> Result.Error (InvalidSocketAddr { ip = Ip_addr.to_string ip; port })
+    )
 
 let error_to_string = fun value ->
   match value with
   | InvalidSlice { pos; len; buffer_len } ->
-      String.concat ""
+      String.concat
+        ""
         [
           "invalid buffer slice: pos=";
           Int.to_string pos;
@@ -86,14 +91,11 @@ let error_to_string = fun value ->
           Int.to_string buffer_len;
         ]
   | InvalidSocketAddr { ip; port } ->
-      String.concat ""
-        [
-          "invalid socket address returned by backend: ";
-          ip;
-          ":";
-          Int.to_string port;
-        ]
-  | InvalidConnectState { state } -> String.concat "" [ "invalid tcp connect state returned by backend: "; Int.to_string state ]
+      String.concat
+        ""
+        [ "invalid socket address returned by backend: "; ip; ":"; Int.to_string port; ]
+  | InvalidConnectState { state } ->
+      String.concat "" [ "invalid tcp connect state returned by backend: "; Int.to_string state ]
   | WouldBlock -> "operation would block"
   | ConnectionRefused -> "connection refused"
   | ConnectionReset -> "connection reset by peer"
@@ -122,7 +124,11 @@ let shutdown_code = fun value ->
   | Write -> shutdown_write
   | ReadWrite -> shutdown_read_write
 
-type shutdown_state = { fd: int; mutable read_shutdown: bool; mutable write_shutdown: bool }
+type shutdown_state = {
+  fd: int;
+  mutable read_shutdown: bool;
+  mutable write_shutdown: bool;
+}
 
 type 'state cell = { mutable value: 'state }
 
@@ -134,7 +140,8 @@ let rec find_shutdown_state = fun fd states ->
   | state :: rest ->
       if state.fd = fd then
         Some state
-      else find_shutdown_state fd rest
+      else
+        find_shutdown_state fd rest
 
 let ensure_shutdown_state = fun fd ->
   match find_shutdown_state fd shutdown_states.value with
@@ -150,21 +157,22 @@ let rec remove_shutdown_state = fun fd states ->
   | state :: rest ->
       if state.fd = fd then
         rest
-      else state :: remove_shutdown_state fd rest
+      else
+        state :: remove_shutdown_state fd rest
 
 let connect = fun addr ->
   let ip = Ip_addr.to_string (Socket_addr.ip addr) in
   let port = Socket_addr.port addr in
-  let* (fd, state) = FFI.connect ip port |> Result.map_err ~fn:(
-    fun code -> error_of_system (System_error.from_code code)
-  )
+  let* (fd, state) =
+    FFI.connect ip port
+    |> Result.map_err ~fn:(fun code -> error_of_system (System_error.from_code code))
   in
   if state = connect_result_connected then
     Result.Ok (Connected fd)
+  else if state = connect_result_in_progress then
+    Result.Ok (InProgress fd)
   else
-    if state = connect_result_in_progress then
-      Result.Ok (InProgress fd)
-    else Result.Error (InvalidConnectState { state })
+    Result.Error (InvalidConnectState { state })
 
 let close = fun stream ->
   match FFI.close stream with
@@ -172,17 +180,17 @@ let close = fun stream ->
       shutdown_states.value <- remove_shutdown_state stream shutdown_states.value;
       Result.Ok ()
   | Result.Error code -> (
-    let error = error_of_system (System_error.from_code code) in
-    match error with
-    | System System_error.BadFileDescriptor ->
-        shutdown_states.value <- remove_shutdown_state stream shutdown_states.value;
-        Result.Error error
-    | _ -> Result.Error error
-  )
+      let error = error_of_system (System_error.from_code code) in
+      match error with
+      | System System_error.BadFileDescriptor ->
+          shutdown_states.value <- remove_shutdown_state stream shutdown_states.value;
+          Result.Error error
+      | _ -> Result.Error error
+    )
 
-let finish_connect = fun stream -> FFI.finish_connect stream |> Result.map_err ~fn:(
-  fun code -> error_of_system (System_error.from_code code)
-)
+let finish_connect = fun stream ->
+  FFI.finish_connect stream
+  |> Result.map_err ~fn:(fun code -> error_of_system (System_error.from_code code))
 
 let rec shutdown = fun stream how ->
   let state = ensure_shutdown_state stream in
@@ -193,9 +201,9 @@ let rec shutdown = fun stream how ->
   | ReadWrite when state.read_shutdown -> shutdown stream Write
   | ReadWrite when state.write_shutdown -> shutdown stream Read
   | _ ->
-      let* () = FFI.shutdown stream (shutdown_code how) |> Result.map_err ~fn:(
-        fun code -> error_of_system (System_error.from_code code)
-      )
+      let* () =
+        FFI.shutdown stream (shutdown_code how)
+        |> Result.map_err ~fn:(fun code -> error_of_system (System_error.from_code code))
       in
       (
         match how with
@@ -209,41 +217,47 @@ let rec shutdown = fun stream how ->
 
 let read = fun stream ?(pos = 0) ?len buf ->
   let len = Option.unwrap_or len ~default:(Bytes.length buf - pos) in
-  let* () = validate_slice buf ~pos ~len in FFI.read stream buf pos len |> Result.map_err ~fn:(
-    fun code -> error_of_system (System_error.from_code code)
-  )
+  let* () = validate_slice buf ~pos ~len in
+  FFI.read stream buf pos len
+  |> Result.map_err ~fn:(fun code -> error_of_system (System_error.from_code code))
 
 let write = fun stream ?(pos = 0) ?len buf ->
   let len = Option.unwrap_or len ~default:(Bytes.length buf - pos) in
-  let* () = validate_slice buf ~pos ~len in FFI.write stream buf pos len |> Result.map_err ~fn:(
-    fun code -> error_of_system (System_error.from_code code)
-  )
+  let* () = validate_slice buf ~pos ~len in
+  FFI.write stream buf pos len
+  |> Result.map_err ~fn:(fun code -> error_of_system (System_error.from_code code))
 
-let read_vectored = fun stream iov -> FFI.readv stream iov |> Result.map_err ~fn:(
-  fun code -> error_of_system (System_error.from_code code)
-)
+let read_vectored = fun stream iov ->
+  FFI.readv stream iov
+  |> Result.map_err ~fn:(fun code -> error_of_system (System_error.from_code code))
 
-let write_vectored = fun stream iov -> FFI.writev stream iov |> Result.map_err ~fn:(
-  fun code -> error_of_system (System_error.from_code code)
-)
+let write_vectored = fun stream iov ->
+  FFI.writev stream iov
+  |> Result.map_err ~fn:(fun code -> error_of_system (System_error.from_code code))
 
 let local_addr = fun stream ->
-  let* addr = FFI.local_addr stream |> Result.map_err ~fn:(
-    fun code -> error_of_system (System_error.from_code code)
-  ) in socket_addr_of_pair addr
+  let* addr =
+    FFI.local_addr stream
+    |> Result.map_err ~fn:(fun code -> error_of_system (System_error.from_code code))
+  in
+  socket_addr_of_pair addr
 
 let peer_addr = fun stream ->
-  let* addr = FFI.peer_addr stream |> Result.map_err ~fn:(
-    fun code -> error_of_system (System_error.from_code code)
-  ) in socket_addr_of_pair addr
+  let* addr =
+    FFI.peer_addr stream
+    |> Result.map_err ~fn:(fun code -> error_of_system (System_error.from_code code))
+  in
+  socket_addr_of_pair addr
 
 let to_source = fun stream ->
   let module Source = struct
     type nonrec t = t
 
-    let register = fun stream selector token interest -> Async.Adapter.Selector.register selector ~fd:stream ~token ~interest
+    let register = fun stream selector token interest ->
+      Async.Adapter.Selector.register selector ~fd:stream ~token ~interest
 
-    let reregister = fun stream selector token interest -> Async.Adapter.Selector.reregister selector ~fd:stream ~token ~interest
+    let reregister = fun stream selector token interest ->
+      Async.Adapter.Selector.reregister selector ~fd:stream ~token ~interest
 
     let deregister = fun stream selector -> Async.Adapter.Selector.deregister selector ~fd:stream
   end in

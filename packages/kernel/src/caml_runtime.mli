@@ -46,7 +46,7 @@ external shift_right_logical_int: int -> int -> int = "%lsrint"
 
 external shift_right_int: int -> int -> int = "%asrint"
 
-external round_float: float -> float = "caml_round_float" "caml_round" [@@unboxed] [@@noalloc]
+external round_float: float -> float = "caml_round_float" "caml_round" [@@ unboxed] [@@ noalloc]
 
 external float_of_int: int -> float = "%floatofint"
 
@@ -62,15 +62,15 @@ external mul_float: float -> float -> float = "%mulfloat"
 
 external div_float: float -> float -> float = "%divfloat"
 
-external pow_float: float -> float -> float = "caml_power_float" "pow" [@@unboxed] [@@noalloc]
+external pow_float: float -> float -> float = "caml_power_float" "pow" [@@ unboxed] [@@ noalloc]
 
-external rem_float: float -> float -> float = "caml_fmod_float" "fmod" [@@unboxed] [@@noalloc]
+external rem_float: float -> float -> float = "caml_fmod_float" "fmod" [@@ unboxed] [@@ noalloc]
 
-external sqrt_float: float -> float = "caml_sqrt_float" "sqrt" [@@unboxed] [@@noalloc]
+external sqrt_float: float -> float = "caml_sqrt_float" "sqrt" [@@ unboxed] [@@ noalloc]
 
-external ceil_float: float -> float = "caml_ceil_float" "ceil" [@@unboxed] [@@noalloc]
+external ceil_float: float -> float = "caml_ceil_float" "ceil" [@@ unboxed] [@@ noalloc]
 
-external floor_float: float -> float = "caml_floor_float" "floor" [@@unboxed] [@@noalloc]
+external floor_float: float -> float = "caml_floor_float" "floor" [@@ unboxed] [@@ noalloc]
 
 external format_int: string -> int -> string = "caml_format_int"
 
@@ -90,7 +90,7 @@ external char_of_int: int -> char = "%identity"
 
 external argv: string array = "%sys_argv"
 
-external recommended_domain_count: unit -> int = "caml_recommended_domain_count" [@@noalloc]
+external recommended_domain_count: unit -> int = "caml_recommended_domain_count" [@@ noalloc]
 
 type gc_stat = {
   minor_words: float;
@@ -132,11 +132,11 @@ external bytes_set: bytes -> int -> char -> unit = "%bytes_safe_set"
 
 external bytes_create: int -> bytes = "caml_create_bytes"
 
-external bytes_fill: bytes -> int -> int -> char -> unit = "caml_fill_bytes" [@@noalloc]
+external bytes_fill: bytes -> int -> int -> char -> unit = "caml_fill_bytes" [@@ noalloc]
 
-external bytes_blit: bytes -> int -> bytes -> int -> int -> unit = "caml_blit_bytes" [@@noalloc]
+external bytes_blit: bytes -> int -> bytes -> int -> int -> unit = "caml_blit_bytes" [@@ noalloc]
 
-external string_blit: string -> int -> bytes -> int -> int -> unit = "caml_blit_string" [@@noalloc]
+external string_blit: string -> int -> bytes -> int -> int -> unit = "caml_blit_string" [@@ noalloc]
 
 (**
    Internal zero-copy bridge from owned mutable bytes into an immutable string view. Callers must
@@ -184,9 +184,9 @@ external int64_div: int64 -> int64 -> int64 = "%int64_div"
 
 external int64_rem: int64 -> int64 -> int64 = "%int64_mod"
 
-external int64_of_float: float -> int64 = "caml_int64_of_float" "caml_int64_of_float_unboxed" [@@unboxed] [@@noalloc]
+external int64_of_float: float -> int64 = "caml_int64_of_float" "caml_int64_of_float_unboxed" [@@ unboxed] [@@ noalloc]
 
-external int64_to_float: int64 -> float = "caml_int64_to_float" "caml_int64_to_float_unboxed" [@@unboxed] [@@noalloc]
+external int64_to_float: int64 -> float = "caml_int64_to_float" "caml_int64_to_float_unboxed" [@@ unboxed] [@@ noalloc]
 
 external int64_of_int32: int32 -> int64 = "%int64_of_int32"
 
@@ -216,9 +216,9 @@ external shift_right_int32: int32 -> int -> int32 = "%int32_asr"
 
 external shift_right_logical_int32: int32 -> int -> int32 = "%int32_lsr"
 
-external int32_of_float: float -> int32 = "caml_int32_of_float" "caml_int32_of_float_unboxed" [@@unboxed] [@@noalloc]
+external int32_of_float: float -> int32 = "caml_int32_of_float" "caml_int32_of_float_unboxed" [@@ unboxed] [@@ noalloc]
 
-external int32_to_float: int32 -> float = "caml_int32_to_float" "caml_int32_to_float_unboxed" [@@unboxed] [@@noalloc]
+external int32_to_float: int32 -> float = "caml_int32_to_float" "caml_int32_to_float_unboxed" [@@ unboxed] [@@ noalloc]
 
 external array_length: 'value array -> int = "%array_length"
 

@@ -73,11 +73,8 @@ type error = Error.t =
   | Buffer_full
   | Invalid_data
   | Unknown_error of string
-
 type nonrec 'value result = ('value, error) Result.t
-
 type nonrec 'value io_result = 'value result
-
 type file_kind =
   | Regular
   | Directory
@@ -86,7 +83,6 @@ type file_kind =
   | Character
   | Fifo
   | Socket
-
 val of_system_error: Kernel.SystemError.t -> error
 
 val of_system_error_code: int -> error
@@ -97,15 +93,15 @@ val error_message: error -> string
 
 module Error = Error
 
-module Buffer : module type of Buffer
+module Buffer: module type of Buffer
 
-module Bytes : module type of Bytes
+module Bytes: module type of Bytes
 
-module IoSlice : module type of IoSlice
+module IoSlice: module type of IoSlice
 
-module IoVec : module type of IoVec
+module IoVec: module type of IoVec
 
-module IoBuffer : module type of Kernel.IO.Buffer
+module IoBuffer: module type of Kernel.IO.Buffer
 
 module Reader = Reader
 
@@ -113,11 +109,9 @@ module BufReader = Buf_reader
 
 module Writer = Writer
 
-module Stdin : sig
+module Stdin: sig
   type t
-
   type nonrec error = error
-
   val open_: ?chunk_size:int -> unit -> t
 
   val read: t -> into:Buffer.t -> int result
@@ -127,9 +121,8 @@ module Stdin : sig
   val to_reader: t -> Reader.t
 end
 
-module Stdout : sig
+module Stdout: sig
   type nonrec error = error
-
   val write: from:Buffer.t -> int result
 
   val write_vectored: from:IoVec.t -> int result
@@ -137,9 +130,8 @@ module Stdout : sig
   val flush: unit -> unit result
 end
 
-module Stderr : sig
+module Stderr: sig
   type nonrec error = error
-
   val write: from:Buffer.t -> int result
 
   val write_vectored: from:IoVec.t -> int result

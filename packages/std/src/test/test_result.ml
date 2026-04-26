@@ -4,7 +4,9 @@ open Collections
 type single_result =
   | Passed
   | Failed of string
-  | Timed_out of { timeout: Time.Duration.t }
+  | Timed_out of {
+      timeout: Time.Duration.t;
+    }
   | Skipped
 
 type t = {
@@ -29,26 +31,35 @@ type summary = {
 
 let make_summary = fun results ->
   let total = List.length results in
-  let passed = List.filter results ~fn:(
-    fun r -> r.result = Passed
-  ) |> List.length in
-  let failed = List.filter results ~fn:(
-    fun r ->
-      match r.result with
-      | Failed _ | Timed_out _ -> true
-      | _ -> false
-  ) |> List.length in
-  let skipped = List.filter results ~fn:(
-    fun r -> r.result = Skipped
-  ) |> List.length in
-  let duration = List.fold_left results ~init:Time.Duration.zero ~fn:(
-    fun acc (result: t) -> Time.Duration.add acc result.duration
-  ) in
+  let passed =
+    List.filter results ~fn:(fun r -> r.result = Passed)
+    |> List.length
+  in
+  let failed =
+    List.filter
+      results
+      ~fn:(fun r ->
+        match r.result with
+        | Failed _
+        | Timed_out _ -> true
+        | _ -> false)
+    |> List.length
+  in
+  let skipped =
+    List.filter results ~fn:(fun r -> r.result = Skipped)
+    |> List.length
+  in
+  let duration =
+    List.fold_left
+      results
+      ~init:Time.Duration.zero
+      ~fn:(fun acc (result: t) -> Time.Duration.add acc result.duration)
+  in
   {
     total;
     passed;
     failed;
     skipped;
     results;
-    duration
+    duration;
   }

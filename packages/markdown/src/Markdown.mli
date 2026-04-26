@@ -1,7 +1,7 @@
 open Std
 
 (** Stable error identifiers used by the markdown diagnostic system. *)
-module Error : sig
+module Error: sig
   type id = string
 
   (** Format an error identifier as a string. *)
@@ -18,7 +18,7 @@ module Error : sig
 end
 
 (** Syntax kinds used by the green tree produced by the markdown parser. *)
-module Syntax_kind : sig
+module Syntax_kind: sig
   type t =
     | Document
     | Heading_1
@@ -51,23 +51,22 @@ module Syntax_kind : sig
     | Raw_html
     | Text
     | Error
-
-  (** Render a syntax kind as a human-readable label. *)
   val to_string: t -> string
 end
 
 (** Markdown parse diagnostic types and helpers. *)
-module Diagnostic : sig
+module Diagnostic: sig
   type found_token = { kind: string; text: string }
-
   type kind =
     | Invalid_markdown of { found: found_token }
     | Unsupported_feature of { found: found_token; feature: string }
     | Unclosed_fenced_code_block of { found: found_token; opener: string }
     | Unexpected_control_character of { found: found_token; code: int }
     | Parser_internal of { message: string; found: found_token }
-
-  type t = { kind: kind; span: Ceibo.Span.t }
+  type t = {
+    kind: kind;
+    span: Ceibo.Span.t;
+  }
 
   (** Create a diagnostic directly. *)
   val make: kind:kind -> span:Ceibo.Span.t -> t
@@ -116,7 +115,7 @@ module Diagnostic : sig
 end
 
 (** Render diagnostics in a source-oriented format. *)
-module Diagnostic_reporter : sig
+module Diagnostic_reporter: sig
   (** Print formatted diagnostics to standard output. *)
   val print: file:string -> source:string -> Diagnostic.t list -> unit
 
@@ -125,8 +124,12 @@ module Diagnostic_reporter : sig
 end
 
 (** One CommonMark spec fixture. *)
-type fixture = { markdown: string; html: string; example: int option; section: string option }
-
+type fixture = {
+  markdown: string;
+  html: string;
+  example: int option;
+  section: string option;
+}
 (** High-level parse result returned by [parse] and [parse_gfm]. *)
 type parse_result = {
   (** Root green syntax tree. *)

@@ -12,7 +12,7 @@ let create = fun method_ uri ->
     uri;
     version = Version.Http11;
     headers = Header.empty;
-    body = None
+    body = None;
   }
 
 let method_ = fun request -> request.method_
@@ -43,11 +43,20 @@ let with_body_slice = fun request body -> with_body_data request (Body.from_slic
 
 let without_body = fun request -> { request with body = None }
 
-let with_header = fun request name value -> { request with headers = Header.set request.headers name value }
+let with_header = fun request name value -> {
+  request with
+  headers = Header.set request.headers name value;
+}
 
-let add_header = fun request name value -> { request with headers = Header.add request.headers name value }
+let add_header = fun request name value -> {
+  request with
+  headers = Header.add request.headers name value;
+}
 
-let remove_header = fun request name -> { request with headers = Header.remove request.headers name }
+let remove_header = fun request name -> {
+  request with
+  headers = Header.remove request.headers name;
+}
 
 let get_header = fun request name -> Header.get request.headers name
 
@@ -70,7 +79,7 @@ module Builder = struct
       uri;
       version = Version.Http11;
       headers = Header.empty;
-      body = None
+      body = None;
     }
 
   let method_ = fun builder method_ -> { builder with method_ }
@@ -87,14 +96,17 @@ module Builder = struct
 
   let body_slice = fun builder body -> body_data builder (Body.from_slice body)
 
-  let header = fun builder name value -> { builder with headers = Header.set builder.headers name value }
+  let header = fun builder name value -> {
+    builder with
+    headers = Header.set builder.headers name value;
+  }
 
   let build builder: request = {
     method_ = builder.method_;
     uri = builder.uri;
     version = builder.version;
     headers = builder.headers;
-    body = builder.body
+    body = builder.body;
   }
 end
 
@@ -107,10 +119,13 @@ let delete = fun uri -> create Method.Delete uri
 let options = fun uri -> create Method.Options uri
 
 let post = fun uri body ->
-  let request = create Method.Post uri in with_body request body
+  let request = create Method.Post uri in
+  with_body request body
 
 let put = fun uri body ->
-  let request = create Method.Put uri in with_body request body
+  let request = create Method.Put uri in
+  with_body request body
 
 let patch = fun uri body ->
-  let request = create Method.Patch uri in with_body request body
+  let request = create Method.Patch uri in
+  with_body request body

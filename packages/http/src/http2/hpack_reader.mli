@@ -9,6 +9,7 @@ open Std
    - Decodes headers incrementally as data arrives
    - Compatible with HTTP/2 frame boundaries
 *)
+
 (** Decoder state *)
 type decoder
 
@@ -28,6 +29,7 @@ type decode_error =
   | Need_more_data
 
 (** Not enough data available to complete decoding *)
+
 (** Decode result *)
 type decode_result =
   | Headers of Hpack.header list
@@ -37,6 +39,7 @@ type decode_result =
   | Error of decode_error
 
 (** Decode error *)
+
 (**
    Decode headers from reader.
 

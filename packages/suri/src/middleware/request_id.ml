@@ -10,10 +10,13 @@ let request_id = fun ~conn ~next ->
     | Some id -> id
     | None ->
         (* Generate a new UUID v7 *)
-        let uuid = UUID.v7 () in UUID.to_string uuid
+        let uuid = UUID.v7 () in
+        UUID.to_string uuid
   in
   (* Add x-request-id to the request for downstream handlers *)
   let conn = Conn.with_header x_request_id request_id conn in
   (* Call next middleware/handler *)
-  let conn' = next conn in (* Ensure x-request-id is in the response headers too *)
-  conn' |> Conn.with_header x_request_id request_id
+  let conn' = next conn in
+  (* Ensure x-request-id is in the response headers too *)
+  conn'
+  |> Conn.with_header x_request_id request_id

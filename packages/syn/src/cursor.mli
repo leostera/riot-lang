@@ -8,7 +8,6 @@ open Std
    slice-returning functions point back into the slice passed to `create`.
 *)
 type t
-
 val create: IO.IoVec.IoSlice.t -> t
 
 val source: t -> IO.IoVec.IoSlice.t

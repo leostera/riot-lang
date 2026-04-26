@@ -8,7 +8,6 @@ type timer_resolution =
   | Microsecond
   (** Nanosecond-resolution timers with the highest precision. *)
   | Nanosecond
-
 (** Runtime configuration values. *)
 type t = { timer_resolution: timer_resolution; scheduler_count: int }
 

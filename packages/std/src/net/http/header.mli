@@ -46,18 +46,16 @@
    media_type = "application/json" *) (* params = [("charset", "utf-8")] *) |
    Error `InvalidContentType -> () ```
 *)
+
 open Kernel
 open Global
 
 (** Header name (case-insensitive) *)
 type name = string
-
 (** Header value *)
 type value = string
-
 (** Collection of HTTP headers *)
 type t
-
 (** {1 Construction} *)
 (**
    Creates an empty header collection.
@@ -89,6 +87,7 @@ val of_list: (name * value) list -> t
 val to_list: t -> (name * value) list
 
 (** {1 Modification} *)
+
 (**
    Adds a header, allowing multiple values for the same name.
 
@@ -127,6 +126,7 @@ val set: t -> name -> value -> t
 val remove: t -> name -> t
 
 (** {1 Access} *)
+
 (**
    Returns the first value for the given header name.
 
@@ -163,6 +163,7 @@ val get_all: t -> name -> value list
 val has: t -> name -> bool
 
 (** {1 Iteration} *)
+
 (**
    Applies function to each header name-value pair.
 
@@ -183,6 +184,7 @@ val iter: (name -> value -> unit) -> t -> unit
 val fold: (name -> value -> 'a -> 'a) -> t -> 'a -> 'a
 
 (** {1 Properties} *)
+
 (**
    Returns the number of header entries (including duplicates).
 
@@ -205,7 +207,8 @@ val length: t -> int
 val is_empty: t -> bool
 
 (** {1 Common Header Names} *)
-module Name : sig
+
+module Name: sig
   (**
      Standard HTTP header name constants. Using these ensures correct spelling
      and consistency.
@@ -296,7 +299,8 @@ module Name : sig
 end
 
 (** {1 Header Value Parsing} *)
-module Value : sig
+
+module Value: sig
   (**
      Utilities for parsing structured header values following HTTP
      specifications.

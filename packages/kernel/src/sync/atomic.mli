@@ -1,6 +1,5 @@
 (** Atomic references. *)
 type !'value t
-
 val make: 'value -> 'value t
 
 val make_contended: 'value -> 'value t
@@ -19,7 +18,7 @@ val incr: int t -> unit
 
 val decr: int t -> unit
 
-module Loc : sig
+module Loc: sig
   type 'value t = 'value atomic_loc
 
   external get: 'value t -> 'value = "%atomic_load_loc"

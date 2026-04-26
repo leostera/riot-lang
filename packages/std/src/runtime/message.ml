@@ -14,6 +14,7 @@ let envelope = fun msg ->
     let next = current + 1 in
     if Runtime_atomic.compare_and_set uid_counter current next then
       next
-    else next_id ()
+    else
+      next_id ()
   in
   { msg; uid = next_id () }

@@ -1,5 +1,10 @@
 open Std
 
-let materialize = fun (config: Context.t) -> Writer.write_file config ~relative_path:".gitignore" ~content:{|# Riot build artifacts
+let materialize = fun (config: Context.t) ->
+  Writer.write_file
+    config
+    ~relative_path:".gitignore"
+    ~content:{|# Riot build artifacts
 _build
-|} ~executable:false
+|}
+    ~executable:false

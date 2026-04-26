@@ -4,9 +4,17 @@ open Std.Data
 
 module Slice = IO.IoVec.IoSlice
 
-type token_leaf = { kind: Syntax_kind.t; raw_lo: int; raw_hi: int; body_raw: int }
+type token_leaf = {
+  kind: Syntax_kind.t;
+  raw_lo: int;
+  raw_hi: int;
+  body_raw: int;
+}
 
-type missing = { kind: Syntax_kind.t; offset: int }
+type missing = {
+  kind: Syntax_kind.t;
+  offset: int;
+}
 
 type child =
   | Node of int
@@ -50,22 +58,22 @@ let truncate_vector = fun vector ~len ->
   let length = Vector.length vector in
   if Int.(len < 0) || Int.(len > length) then
     panic "Syntax_tree.truncate_vector received an out-of-bounds length"
-  else
-    if Int.equal len 0 then
-      Vector.clear vector
-    else
-      if Int.(len < length) then
-        ignore (Vector.split_off vector ~at:len)
+  else if Int.equal len 0 then
+    Vector.clear vector
+  else if Int.(len < length) then
+    ignore (Vector.split_off vector ~at:len)
 
 let raw_start = fun raw_tokens raw_index ->
   if Int.(raw_index < 0) || Int.(raw_index >= Vector.length raw_tokens) then
     0
-  else (raw_at raw_tokens raw_index).Raw_token.span.Ceibo.Span.start
+  else
+    (raw_at raw_tokens raw_index).Raw_token.span.Ceibo.Span.start
 
 let raw_end = fun raw_tokens raw_index ->
   if Int.(raw_index < 0) || Int.(raw_index >= Vector.length raw_tokens) then
     0
-  else (raw_at raw_tokens raw_index).Raw_token.span.Ceibo.Span.end_
+  else
+    (raw_at raw_tokens raw_index).Raw_token.span.Ceibo.Span.end_
 
 let include_range = fun frame ~lo ~hi ->
   if frame.has_range then
@@ -83,20 +91,25 @@ let include_range = fun frame ~lo ~hi ->
 let include_child_range = fun ~(nodes:node Vector.t) ~(tokens:token_leaf Vector.t) frame child ->
   match child with
   | Token token_id ->
-      let token = Vector.get_unchecked tokens ~at:token_id in (* Token leaves own the raw trivia range before their significant body
+      let token = Vector.get_unchecked tokens ~at:token_id in
+      (* Token leaves own the raw trivia range before their significant body
          token, so node spans stay lossless without trivia child edges.
       *)
       include_range frame ~lo:token.raw_lo ~hi:token.raw_hi
   | Node node_id ->
-      let node = Vector.get_unchecked nodes ~at:node_id in include_range frame ~lo:node.raw_lo ~hi:node.raw_hi
+      let node = Vector.get_unchecked nodes ~at:node_id in
+      include_range frame ~lo:node.raw_lo ~hi:node.raw_hi
   | Missing _ -> ()
 
 let include_child_token_width = fun ~(raw_tokens:Raw_token.t Vector.t) ~(nodes:node Vector.t) ~(tokens:token_leaf Vector.t) frame child ->
   match child with
   | Token token_id ->
-      let token = Vector.get_unchecked tokens ~at:token_id in frame.frame_token_width <- Int.(frame.frame_token_width + Raw_token.width (raw_at raw_tokens token.body_raw))
+      let token = Vector.get_unchecked tokens ~at:token_id in
+      frame.frame_token_width <- Int.(frame.frame_token_width
+      + Raw_token.width (raw_at raw_tokens token.body_raw))
   | Node node_id ->
-      let node = Vector.get_unchecked nodes ~at:node_id in frame.frame_token_width <- Int.(frame.frame_token_width + node.token_width)
+      let node = Vector.get_unchecked nodes ~at:node_id in
+      frame.frame_token_width <- Int.(frame.frame_token_width + node.token_width)
   | Missing _ -> ()
 
 module Builder = struct
@@ -114,7 +127,10 @@ module Builder = struct
 
   type marker = { depth: int }
 
-  type completed = { child: child; kind: Syntax_kind.t }
+  type completed = {
+    child: child;
+    kind: Syntax_kind.t;
+  }
 
   type t = {
     source: Slice.t;
@@ -146,34 +162,44 @@ module Builder = struct
       diagnostics = Vector.with_capacity ~size:diagnostic_capacity;
       root_id = None;
       next_raw_lo = 0;
-      event_count = 0
+      event_count = 0;
     }
 
   let push_child = fun builder child ->
     let depth = Vector.length builder.frame_stack in
     if Int.(depth > 0) then
-      let frame = Vector.get_unchecked builder.frame_stack ~at:Int.(depth - 1) in Vector.push builder.pending_children ~value:child;
+      let frame = Vector.get_unchecked builder.frame_stack ~at:Int.(depth - 1) in
+      Vector.push builder.pending_children ~value:child;
     include_child_range ~nodes:builder.node_store ~tokens:builder.token_leaves frame child;
-    include_child_token_width ~raw_tokens:builder.raw_tokens ~nodes:builder.node_store ~tokens:builder.token_leaves frame child
+    include_child_token_width
+      ~raw_tokens:builder.raw_tokens
+      ~nodes:builder.node_store
+      ~tokens:builder.token_leaves
+      frame
+      child
 
   let start_node = fun builder ->
     let depth = Vector.length builder.frame_stack in
     builder.event_count <- Int.(builder.event_count + 1);
-    Vector.push builder.frame_stack ~value:{
-      kind = Syntax_kind.ERROR;
-      first_pending_child = Vector.length builder.pending_children;
-      has_range = false;
-      frame_raw_lo = 0;
-      frame_raw_hi = 0;
-      frame_token_width = 0
-    };
+    Vector.push
+      builder.frame_stack
+      ~value:{
+        kind = Syntax_kind.ERROR;
+        first_pending_child = Vector.length builder.pending_children;
+        has_range = false;
+        frame_raw_lo = 0;
+        frame_raw_hi = 0;
+        frame_token_width = 0;
+      };
     { depth }
 
   let copy_pending_children = fun builder first_child limit ->
     let rec loop index =
       if Int.(index < limit) then
         (
-          Vector.push builder.child_store ~value:(Vector.get_unchecked builder.pending_children ~at:index);
+          Vector.push
+            builder.child_store
+            ~value:(Vector.get_unchecked builder.pending_children ~at:index);
           loop Int.(index + 1)
         )
     in
@@ -185,21 +211,25 @@ module Builder = struct
     if Int.(depth <= 0) then
       panic "Syntax_tree.Builder.complete called with no open node"
     else
-      let frame = Vector.get_unchecked builder.frame_stack ~at:Int.(depth - 1) in truncate_vector builder.frame_stack ~len:Int.(depth - 1);
+      let frame = Vector.get_unchecked builder.frame_stack ~at:Int.(depth - 1) in
+      truncate_vector builder.frame_stack ~len:Int.(depth - 1);
     let pending_limit = Vector.length builder.pending_children in
     let first_child = Vector.length builder.child_store in
     copy_pending_children builder frame.first_pending_child pending_limit;
     let child_count = Int.(pending_limit - frame.first_pending_child) in
     truncate_vector builder.pending_children ~len:frame.first_pending_child;
-    let raw_lo, raw_hi, full_width =
+    let (raw_lo, raw_hi, full_width) =
       if frame.has_range then
         let width =
           if Int.(frame.frame_raw_hi <= frame.frame_raw_lo) then
             0
-          else Int.(raw_end builder.raw_tokens (frame.frame_raw_hi - 1) - raw_start builder.raw_tokens frame.frame_raw_lo)
+          else
+            Int.(raw_end builder.raw_tokens (frame.frame_raw_hi - 1)
+            - raw_start builder.raw_tokens frame.frame_raw_lo)
         in
         (frame.frame_raw_lo, frame.frame_raw_hi, width)
-      else (0, 0, 0)
+      else
+        (0, 0, 0)
     in
     let node = {
       kind;
@@ -208,7 +238,7 @@ module Builder = struct
       raw_lo;
       raw_hi;
       full_width;
-      token_width = frame.frame_token_width
+      token_width = frame.frame_token_width;
     }
     in
     let node_id = Vector.length builder.node_store in
@@ -216,13 +246,16 @@ module Builder = struct
     let child = Node node_id in
     if Int.(Vector.length builder.frame_stack > 0) then
       push_child builder child
-    else builder.root_id <- Some node_id;
+    else
+      builder.root_id <- Some node_id;
     { child; kind }
 
   let same_child = fun left right ->
-    match left, right with
-    | (Node left, Node right) | (Token left, Token right) -> Int.(left = right)
-    | Missing left, Missing right -> Syntax_kind.is left.kind right.kind && Int.(left.offset = right.offset)
+    match (left, right) with
+    | (Node left, Node right)
+    | (Token left, Token right) -> Int.(left = right)
+    | (Missing left, Missing right) ->
+        Syntax_kind.is left.kind right.kind && Int.(left.offset = right.offset)
     | _ -> false
 
   let precede = fun builder completed ->
@@ -251,7 +284,7 @@ module Builder = struct
         kind = raw.Raw_token.kind;
         raw_lo = builder.next_raw_lo;
         raw_hi = Int.(raw_index + 1);
-        body_raw = raw_index
+        body_raw = raw_index;
       }
       in
       builder.next_raw_lo <- Int.(raw_index + 1);
@@ -278,7 +311,7 @@ module Builder = struct
       diagnostics_len = Vector.length builder.diagnostics;
       root_id = builder.root_id;
       next_raw_lo = builder.next_raw_lo;
-      event_count = builder.event_count
+      event_count = builder.event_count;
     }
 
   let restore = fun builder checkpoint ->
@@ -306,7 +339,7 @@ module Builder = struct
             raw_lo = 0;
             raw_hi = 0;
             full_width = 0;
-            token_width = 0
+            token_width = 0;
           }
           in
           Vector.push builder.node_store ~value:node;
@@ -319,7 +352,7 @@ module Builder = struct
       tokens = builder.token_leaves;
       nodes = builder.node_store;
       children = builder.child_store;
-      root
+      root;
     }
 end
 
@@ -337,18 +370,23 @@ let build = fun ~source ~token_stream ~events ->
   let push_child child =
     let depth = Vector.length frame_stack in
     if Int.(depth > 0) then
-      let frame = Vector.get_unchecked frame_stack ~at:Int.(depth - 1) in Vector.push pending_children ~value:child;
+      let frame = Vector.get_unchecked frame_stack ~at:Int.(depth - 1) in
+      Vector.push pending_children ~value:child;
     include_child_range ~nodes ~tokens frame child;
     include_child_token_width ~raw_tokens ~nodes ~tokens frame child
   in
-  let push_node kind = Vector.push frame_stack ~value:{
-    kind;
-    first_pending_child = Vector.length pending_children;
-    has_range = false;
-    frame_raw_lo = 0;
-    frame_raw_hi = 0;
-    frame_token_width = 0
-  } in
+  let push_node kind =
+    Vector.push
+      frame_stack
+      ~value:{
+        kind;
+        first_pending_child = Vector.length pending_children;
+        has_range = false;
+        frame_raw_lo = 0;
+        frame_raw_hi = 0;
+        frame_token_width = 0;
+      }
+  in
   let copy_pending_children first_child limit =
     let rec loop index =
       if Int.(index < limit) then
@@ -370,15 +408,18 @@ let build = fun ~source ~token_stream ~events ->
         copy_pending_children frame.first_pending_child pending_limit;
         let child_count = Int.(pending_limit - frame.first_pending_child) in
         truncate_vector pending_children ~len:frame.first_pending_child;
-        let raw_lo, raw_hi, full_width =
+        let (raw_lo, raw_hi, full_width) =
           if frame.has_range then
             let width =
               if Int.(frame.frame_raw_hi <= frame.frame_raw_lo) then
                 0
-              else Int.(raw_end raw_tokens (frame.frame_raw_hi - 1) - raw_start raw_tokens frame.frame_raw_lo)
+              else
+                Int.(raw_end raw_tokens (frame.frame_raw_hi - 1)
+                - raw_start raw_tokens frame.frame_raw_lo)
             in
             (frame.frame_raw_lo, frame.frame_raw_hi, width)
-          else (0, 0, 0)
+          else
+            (0, 0, 0)
         in
         let node = {
           kind = frame.kind;
@@ -387,14 +428,15 @@ let build = fun ~source ~token_stream ~events ->
           raw_lo;
           raw_hi;
           full_width;
-          token_width = frame.frame_token_width
+          token_width = frame.frame_token_width;
         }
         in
         let node_id = Vector.length nodes in
         Vector.push nodes ~value:node;
         if Int.(Vector.length frame_stack > 0) then
           push_child (Node node_id)
-        else root := Some node_id
+        else
+          root := Some node_id
       )
   in
   let push_token raw_index =
@@ -405,7 +447,7 @@ let build = fun ~source ~token_stream ~events ->
         kind = raw.Raw_token.kind;
         raw_lo = !next_raw_lo;
         raw_hi = Int.(raw_index + 1);
-        body_raw = raw_index
+        body_raw = raw_index;
       }
       in
       next_raw_lo := Int.(raw_index + 1);
@@ -439,7 +481,7 @@ let build = fun ~source ~token_stream ~events ->
           raw_lo = 0;
           raw_hi = 0;
           full_width = 0;
-          token_width = 0
+          token_width = 0;
         }
         in
         Vector.push nodes ~value:node;
@@ -452,7 +494,7 @@ let build = fun ~source ~token_stream ~events ->
     tokens;
     nodes;
     children = children_store;
-    root
+    root;
   }
 
 let root = fun (tree: t) -> Vector.get_unchecked tree.nodes ~at:tree.root
@@ -466,7 +508,8 @@ let child = fun (tree: t) child_id -> Vector.get_unchecked tree.children ~at:chi
 let child_at = fun (tree: t) (node: node) index ->
   if index < 0 || index >= node.child_count then
     None
-  else Some (Vector.get_unchecked tree.children ~at:(node.first_child + index))
+  else
+    Some (Vector.get_unchecked tree.children ~at:(node.first_child + index))
 
 let for_each_child = fun (tree: t) (node: node) ~fn ->
   let rec loop index =
@@ -483,13 +526,19 @@ let raw_range_text = fun tree ~raw_lo ~raw_hi ->
     ""
   else
     let start = raw_start tree.raw_tokens raw_lo in
-    let end_ = raw_end tree.raw_tokens (raw_hi - 1) in Slice.sub_unchecked tree.source ~off:start ~len:(end_ - start) |> Slice.to_string
+    let end_ = raw_end tree.raw_tokens (raw_hi - 1) in
+    Slice.sub_unchecked tree.source ~off:start ~len:(end_ - start)
+    |> Slice.to_string
 
 let token_width = fun tree token -> Raw_token.width (raw_at tree.raw_tokens token.body_raw)
 
 let node_token_width = fun _tree node -> node.token_width
 
-let token_contains_char = fun tree token needle -> Raw_token.contains_char ~source:tree.source (raw_at tree.raw_tokens token.body_raw) needle
+let token_contains_char = fun tree token needle ->
+  Raw_token.contains_char
+    ~source:tree.source
+    (raw_at tree.raw_tokens token.body_raw)
+    needle
 
 let token_text_is = fun tree token expected ->
   let slice = Raw_token.slice ~source:tree.source (raw_at tree.raw_tokens token.body_raw) in
@@ -500,33 +549,35 @@ let token_text_is = fun tree token expected ->
     let rec loop index =
       if Int.(index >= len) then
         true
+      else if
+        Char.equal (Slice.get_unchecked slice ~at:index) (String.get_unchecked expected ~at:index)
+      then
+        loop Int.(index + 1)
       else
-        if Char.equal (Slice.get_unchecked slice ~at:index) (String.get_unchecked expected ~at:index) then
-          loop Int.(index + 1)
-        else false
+        false
     in
     loop 0
 
-let token_has_newline = fun tree token -> Raw_token.has_newline (raw_at tree.raw_tokens token.body_raw)
+let token_has_newline = fun tree token ->
+  Raw_token.has_newline (raw_at tree.raw_tokens token.body_raw)
 
-let token_text_slice = fun tree token -> Raw_token.slice ~source:tree.source (raw_at tree.raw_tokens token.body_raw)
+let token_text_slice = fun tree token ->
+  Raw_token.slice ~source:tree.source (raw_at tree.raw_tokens token.body_raw)
 
-let token_text = fun tree token -> Raw_token.text_slice ~source:tree.source (raw_at tree.raw_tokens token.body_raw)
+let token_text = fun tree token ->
+  Raw_token.text_slice ~source:tree.source (raw_at tree.raw_tokens token.body_raw)
 
 let node_text = fun tree node -> raw_range_text tree ~raw_lo:node.raw_lo ~raw_hi:node.raw_hi
 
 let span_json = fun span ->
-  Json.Object [
-    "start", Json.Int span.Ceibo.Span.start;
-    "end", Json.Int span.Ceibo.Span.end_;
-  ]
+  Json.Object [ ("start", Json.Int span.Ceibo.Span.start); ("end", Json.Int span.Ceibo.Span.end_); ]
 
 let raw_token_json = fun tree index token ->
   Json.Object [
-    "index", Json.Int index;
-    "kind", Json.String (Syntax_kind.to_string token.Raw_token.kind);
-    "span", span_json token.Raw_token.span;
-    "text", Json.String (Raw_token.text_slice ~source:tree.source token);
+    ("index", Json.Int index);
+    ("kind", Json.String (Syntax_kind.to_string token.Raw_token.kind));
+    ("span", span_json token.Raw_token.span);
+    ("text", Json.String (Raw_token.text_slice ~source:tree.source token));
   ]
 
 let rec child_json = fun tree child ->
@@ -534,39 +585,47 @@ let rec child_json = fun tree child ->
   | Token token_id ->
       let token = token tree token_id in
       Json.Object [
-        "kind", Json.String (Syntax_kind.to_string token.kind);
-        "raw_lo", Json.Int token.raw_lo;
-        "raw_hi", Json.Int token.raw_hi;
-        "text", Json.String (token_text tree token);
+        ("kind", Json.String (Syntax_kind.to_string token.kind));
+        ("raw_lo", Json.Int token.raw_lo);
+        ("raw_hi", Json.Int token.raw_hi);
+        ("text", Json.String (token_text tree token));
       ]
   | Missing missing ->
       Json.Object [
-        "kind", Json.String "MISSING";
-        "expected", Json.String (Syntax_kind.to_string missing.kind);
-        "offset", Json.Int missing.offset;
+        ("kind", Json.String "MISSING");
+        ("expected", Json.String (Syntax_kind.to_string missing.kind));
+        ("offset", Json.Int missing.offset);
       ]
   | Node node_id -> node_json tree node_id
+
 and node_json = fun tree node_id ->
   let node = node tree node_id in
   let children_json = ref [] in
-  for_each_child tree node ~fn:(
-    fun child -> children_json := child_json tree child :: !children_json
-  );
+  for_each_child
+    tree
+    node
+    ~fn:(fun child -> children_json := child_json tree child :: !children_json);
   Json.Object [
-    "kind", Json.String (Syntax_kind.to_string node.kind);
-    "raw_lo", Json.Int node.raw_lo;
-    "raw_hi", Json.Int node.raw_hi;
-    "full_width", Json.Int node.full_width;
-    "children", Json.Array (List.reverse !children_json);
+    ("kind", Json.String (Syntax_kind.to_string node.kind));
+    ("raw_lo", Json.Int node.raw_lo);
+    ("raw_hi", Json.Int node.raw_hi);
+    ("full_width", Json.Int node.full_width);
+    ("children", Json.Array (List.reverse !children_json));
   ]
 
 let to_json = fun tree ->
   let rec collect_raw_tokens index acc =
     if index < 0 then
       acc
-    else collect_raw_tokens (index - 1) (raw_token_json tree index (raw_at tree.raw_tokens index) :: acc)
+    else
+      collect_raw_tokens
+        (index - 1)
+        (raw_token_json
+          tree
+          index
+          (raw_at tree.raw_tokens index) :: acc)
   in
   Json.Object [
-    "raw_tokens", Json.Array (collect_raw_tokens (Vector.length tree.raw_tokens - 1) []);
-    "tree", node_json tree tree.root;
+    ("raw_tokens", Json.Array (collect_raw_tokens (Vector.length tree.raw_tokens - 1) []));
+    ("tree", node_json tree tree.root);
   ]

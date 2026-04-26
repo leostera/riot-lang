@@ -13,8 +13,8 @@ open Std
    ```ocaml let handler conn = conn |> Conn.with_status Ok |> Conn.with_body
    "Hello, World!" |> Conn.send ```
 *)
-type peer = { ip: string; port: int }
 
+type peer = { ip: string; port: int }
 (** Peer connection information *)
 type t
 
@@ -23,6 +23,7 @@ val make: Socket_pool.Connection.t -> Web_server.Request.t -> t
 
 (** Create a new connection from a socket connection and parsed request *)
 (** ## Request Access *)
+
 val request: t -> Web_server.Request.t
 
 (**
@@ -78,6 +79,7 @@ val resp_headers: t -> (string * string) list
    Useful for reading headers set by upstream middleware.
 *)
 (** ## Response Building *)
+
 val with_status: Net.Http.Status.t -> t -> t
 
 (** Set response status *)
@@ -91,6 +93,7 @@ val respond: status:Net.Http.Status.t -> ?body:string -> t -> t
 
 (** Set status and optionally body *)
 (** ## Response Sending *)
+
 val send: t -> t
 
 (** Mark connection as ready to send response *)
@@ -98,7 +101,13 @@ val sent: t -> bool
 
 (** Check if response has been sent *)
 (** ## HTML Rendering *)
-val render_component: ?headers:(string * string) list -> Net.Http.Status.t -> 'msg Component.t -> t -> t
+
+val render_component:
+  ?headers:(string * string) list ->
+  Net.Http.Status.t ->
+  'msg Component.t ->
+  t ->
+  t
 
 (**
    Render an HTML component as response with proper content-type.
@@ -259,6 +268,7 @@ val redirect: ?headers:(string * string) list -> string -> t -> t
    ]}
 *)
 (** ## Control Flow *)
+
 val halt: t -> t
 
 (** Halt middleware pipeline execution *)
@@ -266,6 +276,7 @@ val halted: t -> bool
 
 (** Check if pipeline is halted *)
 (** ## Parameters *)
+
 val set_params: (string * string) list -> t -> t
 
 (** Set path/query parameters (used by router) *)
@@ -283,6 +294,7 @@ val with_peer: peer -> t -> t
 
    {b Note}: This is primarily for internal middleware use.
 *)
+
 (**
    Override the request method.
 
@@ -300,6 +312,7 @@ val socket_conn: t -> Socket_pool.Connection.t
 
 (** Get the underlying socket connection *)
 (** ## WebSocket Upgrade *)
+
 val upgrade_websocket: Channel.Handler.upgrade_opts -> Channel.Handler.t -> t -> t
 
 (**
@@ -312,8 +325,10 @@ val upgrade_websocket: Channel.Handler.upgrade_opts -> Channel.Handler.t -> t ->
        Conn.upgrade_websocket opts handler conn
    ]}
 *)
-type upgrade_info = private { opts: Channel.Handler.upgrade_opts; handler: Channel.Handler.t }
-
+type upgrade_info = private {
+  opts: Channel.Handler.upgrade_opts;
+  handler: Channel.Handler.t;
+}
 val get_upgrade: t -> upgrade_info option
 
 (**
@@ -321,10 +336,12 @@ val get_upgrade: t -> upgrade_info option
    Used internally by the framework.
 *)
 (** ## Response Extraction *)
+
 val to_response: t -> Web_server.Response.t
 
 (** Convert connection to HTTP response *)
 (** ## Private Data Storage *)
+
 type assign_value = ..
 
 (**
@@ -337,4 +354,6 @@ val assign: string -> assign_value -> t -> unit
    Store arbitrary data in the connection.
    Used by middleware to pass data down the pipeline.
 *)
-val get_assign: string -> t -> assign_value option(** Retrieve data stored by [assign]. *)
+val get_assign: string -> t -> assign_value option
+
+(** Retrieve data stored by [assign]. *)

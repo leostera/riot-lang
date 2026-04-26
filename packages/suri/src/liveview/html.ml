@@ -20,21 +20,28 @@ let optional_attr = fun maybe fn ->
   | Option.None -> []
 
 type 'msg t =
-  | El of { tag: string; attrs: 'msg attr list; children: 'msg t list }
+  | El of {
+      tag: string;
+      attrs: 'msg attr list;
+      children: 'msg t list;
+    }
   | Text of string
   | Splat of 'msg t list
 
 let list = fun els -> Splat els
 
-let button = fun ~on_click ?(children = []) () -> El { tag = "button"; attrs = [ on_click ]; children }
+let button = fun ~on_click ?(children = []) () ->
+  El { tag = "button"; attrs = [ on_click ]; children }
 
 let html = fun ?(children = []) () -> El { tag = "html"; attrs = []; children }
 
 let body = fun ?(children = []) () -> El { tag = "body"; attrs = []; children }
 
-let div = fun ?(attrs = []) ?id ?(children = []) () -> El { tag = "div"; attrs = optional_attr id attr_id @ List.map ~fn:(
-  fun ((k, v)) -> `attr (k, v)
-) attrs; children }
+let div = fun ?(attrs = []) ?id ?(children = []) () -> El {
+  tag = "div";
+  attrs = optional_attr id attr_id @ List.map ~fn:(fun ((k, v)) -> `attr (k, v)) attrs;
+  children;
+}
 
 let h1 = fun ?(children = []) () -> El { tag = "h1"; attrs = []; children }
 
@@ -52,7 +59,12 @@ let span = fun ?(children = []) () -> El { tag = "span"; attrs = []; children }
 
 let p = fun ?(children = []) () -> El { tag = "p"; attrs = []; children }
 
-let script = fun ?src ?id ?type_ ?(children = []) () -> El { tag = "script"; attrs = (optional_attr id attr_id @ optional_attr type_ attr_type) @ optional_attr src attr_src; children }
+let script = fun ?src ?id ?type_ ?(children = []) () ->
+  El {
+    tag = "script";
+    attrs = (optional_attr id attr_id @ optional_attr type_ attr_type) @ optional_attr src attr_src;
+    children;
+  }
 
 let string = fun (str: string) -> Text str
 
@@ -62,19 +74,37 @@ let rec to_string = fun (t: 'msg t) ->
   match t with
   | Text str -> str
   | Splat els -> String.concat "\n" (List.map ~fn:to_string els)
-  | El { tag; children; attrs } -> "<" ^ tag ^ " " ^ attrs_to_string attrs ^ ">" ^ (List.map ~fn:to_string children |> String.concat "\n") ^ "</" ^ tag ^ ">"
-and attrs_to_string = fun attrs -> List.map ~fn:(
-  function
-  | `attr (k, v) -> k ^ "=" ^ "\"" ^ v ^ "\""
-  | _ -> ""
-) attrs |> String.concat " "
+  | El { tag; children; attrs } ->
+      "<"
+      ^ tag
+      ^ " "
+      ^ attrs_to_string attrs
+      ^ ">"
+      ^ (
+        List.map ~fn:to_string children
+        |> String.concat "\n"
+      )
+      ^ "</"
+      ^ tag
+      ^ ">"
 
-let event_handlers = fun attrs -> List.filter_map ~fn:(
-  fun attr ->
-    match attr with
-    | `event (name, fn) -> Some (name, fn)
-    | _ -> None
-) attrs
+and attrs_to_string = fun attrs ->
+  List.map
+    ~fn:(
+      function
+      | `attr (k, v) -> k ^ "=" ^ "\"" ^ v ^ "\""
+      | _ -> ""
+    )
+    attrs
+  |> String.concat " "
+
+let event_handlers = fun attrs ->
+  List.filter_map
+    ~fn:(fun attr ->
+      match attr with
+      | `event (name, fn) -> Some (name, fn)
+      | _ -> None)
+    attrs
 
 let rec map_action = fun fn t ->
   match t with
@@ -82,9 +112,13 @@ let rec map_action = fun fn t ->
   | Splat els -> Splat (List.map ~fn:(map_action fn) els)
   | El { tag; children; attrs } ->
       let children = List.map ~fn:(map_action fn) children in
-      let attrs = List.map ~fn:(
-        fun attr ->
-          match attr with
-          | `event (name, handler) -> `event (name, fun ev -> fn (handler ev))
-          | `attr (k, v) -> `attr (k, v)
-      ) attrs in El { tag; children; attrs }
+      let attrs =
+        List.map
+          ~fn:(fun attr ->
+            match attr with
+            | `event (name, handler) -> `event (name, fun ev ->
+              fn (handler ev))
+            | `attr (k, v) -> `attr (k, v))
+          attrs
+      in
+      El { tag; children; attrs }

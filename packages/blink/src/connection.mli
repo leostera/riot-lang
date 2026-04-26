@@ -11,7 +11,11 @@ type message =
 
 (** Build a connection from reader and writer handles. *)
 val make:
-  reader:IO.Reader.t -> writer:IO.Writer.t -> of_io_error:(IO.error -> Error.t) -> uri:Net.Uri.t -> t
+  reader:IO.Reader.t ->
+  writer:IO.Writer.t ->
+  of_io_error:(IO.error -> Error.t) ->
+  uri:Net.Uri.t ->
+  t
 
 (** Send an HTTP request on the connection. *)
 val request: t -> Net.Http.Request.t -> ?body:string -> unit -> (unit, Error.t) result

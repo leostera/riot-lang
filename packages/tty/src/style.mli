@@ -61,7 +61,6 @@ type t = {
   overline: bool;
   (** Overlined text *)
 }
-
 val default: t
 
 (**
@@ -172,7 +171,9 @@ val to_escape_seq: t -> string
 
    Note: Usually you want [styled] instead, which handles escapes for you.
 *)
-val styled: t -> string -> string(**
+val styled: t -> string -> string
+
+(**
    Apply style to a string.
 
    Wraps the string in ANSI escape sequences to apply the style, and resets to

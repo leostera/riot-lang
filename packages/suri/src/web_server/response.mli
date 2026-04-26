@@ -78,6 +78,7 @@
 
    {1 API Reference}
 *)
+
 open Std
 
 (**
@@ -85,6 +86,7 @@ open Std
 
    Contains status code, headers, HTTP version, and response body.
 *)
+
 (**
    Create a custom HTTP response.
 
@@ -110,16 +112,25 @@ type t = {
   version: Net.Http.Version.t;
   body: string;
 }
-
-val make: Net.Http.Status.t -> ?headers:(string * string) list -> ?version:Net.Http.Version.t -> ?body:string -> unit -> t
+val make:
+  Net.Http.Status.t ->
+  ?headers:(string * string) list ->
+  ?version:Net.Http.Version.t ->
+  ?body:string ->
+  unit ->
+  t
 
 (**
    Response builder function type.
 
    All convenience functions below follow this signature.
 *)
-type response = ?headers:(string * string) list -> ?version:Net.Http.Version.t -> ?body:string -> unit -> t
-
+type response =
+  ?headers:(string * string) list ->
+  ?version:Net.Http.Version.t ->
+  ?body:string ->
+  unit ->
+  t
 (**
    {1 Success Responses (2xx)}
 
@@ -202,6 +213,7 @@ val im_used: response
 
    Redirects indicating the client should take additional action.
 *)
+
 (** [300 Multiple Choices] - Multiple redirect options available. *)
 val multiple_choices: response
 
@@ -267,6 +279,7 @@ val permanent_redirect: response
 
    Errors caused by invalid client requests.
 *)
+
 (**
    [400 Bad Request] - Invalid request syntax or parameters.
 
@@ -420,6 +433,7 @@ val client_closed_request: response
 
    Errors caused by server failures.
 *)
+
 (**
    [500 Internal Server Error] - Generic server error.
 
@@ -492,6 +506,7 @@ val not_extended: response
 val network_authentication_required: response
 
 (** ## Unofficial Status Codes *)
+
 (** `103 Checkpoint` *)
 val checkpoint: response
 

@@ -92,7 +92,9 @@ open Std
      ]
    ]}
 *)
+
 (** {1 Types} *)
+
 type config = {
   types: string list;
   (**
@@ -117,7 +119,6 @@ type config = {
      Default: returns simple 406/415 with plain text body.
   *)
 }
-
 val default_config: config
 
 (**
@@ -128,6 +129,7 @@ val default_config: config
    - on_reject: None (use built-in 406/415 responses)
 *)
 (** {1 Middleware} *)
+
 val middleware: ?config:config -> string list -> Pipeline.middleware
 
 (**
@@ -204,6 +206,7 @@ val make: config -> Pipeline.middleware
    @param config Full configuration object
 *)
 (** {1 Helper Functions} *)
+
 val matches_pattern: pattern:string -> content_type:string -> bool
 
 (**
@@ -254,7 +257,9 @@ val parse_accept: string -> accept_entry list
      ] *)
    ]}
 *)
-val get_base_content_type: string -> string option(**
+val get_base_content_type: string -> string option
+
+(**
    Extract base content type from Content-Type header.
 
    Strips parameters like charset, boundary, etc.

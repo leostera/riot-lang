@@ -4,7 +4,12 @@ open Tty
 
 type t = Pid.t
 
-type state = { parent: Pid.t; termios: Tty.t; parser: Ansi_parser.parser; window: Tty.size }
+type state = {
+  parent: Pid.t;
+  termios: Tty.t;
+  parser: Ansi_parser.parser;
+  window: Tty.size;
+}
 
 type Message.t +=
   | Input of Event.t
@@ -64,18 +69,20 @@ let rec loop = fun state ->
           Log.trace ("[IO_LOOP] READ INPUT: " ^ input);
           (* Parse input through ANSI parser *)
           let events = Ansi_parser.parse_string state.parser input in
-          List.for_each events ~fn:(
-            fun event -> send state.parent (Input event)
-          );
+          List.for_each events ~fn:(fun event -> send state.parent (Input event));
           (* If no events were generated and it's a simple character *)
           if List.length events = 0 && String.length input = 1 then
             (
-              let c = String.get input ~at:0 |> Option.unwrap in
+              let c =
+                String.get input ~at:0
+                |> Option.unwrap
+              in
               let event =
                 if c = '\027' then
                   Event.KeyDown (Event.Escape, Event.NoModifier)
-                else (* Regular character *)
-                Event.KeyDown (Ansi_parser.parse_char c, Event.NoModifier)
+                else
+                  (* Regular character *)
+                  Event.KeyDown (Ansi_parser.parse_char c, Event.NoModifier)
               in
               send state.parent (Input event)
             );
@@ -94,7 +101,7 @@ let init = fun ~parent ~tty ->
     parent;
     termios = tty;
     parser = Ansi_parser.create ();
-    window = Tty.size tty
+    window = Tty.size tty;
   }
   in
   send state.parent (IoStarted (self ()));
@@ -104,19 +111,15 @@ let init = fun ~parent ~tty ->
 let start = fun ~tty () ->
   Log.trace "[Program] Starting IO loop...";
   let parent = self () in
-  let pid =
-    spawn
-      (
-        fun () -> init ~parent ~tty
-      )
-  in
+  let pid = spawn (fun () -> init ~parent ~tty) in
   Log.trace ("[Program] IO loop spawned as " ^ Pid.to_string pid);
   let selector msg =
     match msg with
     | IoStarted pid' when Pid.equal pid pid' -> `select pid
     | _ -> `skip
   in
-  let timeout = Time.Duration.from_secs 2 in receive ~selector ~timeout ()
+  let timeout = Time.Duration.from_secs 2 in
+  receive ~selector ~timeout ()
 
 let shutdown = fun pid ->
   send pid Shutdown;
@@ -125,4 +128,5 @@ let shutdown = fun pid ->
     | ShutdownComplete -> `select ()
     | _ -> `skip
   in
-  let timeout = Time.Duration.from_secs 2 in receive ~selector ~timeout ()
+  let timeout = Time.Duration.from_secs 2 in
+  receive ~selector ~timeout ()

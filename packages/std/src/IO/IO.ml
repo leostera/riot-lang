@@ -1,29 +1,17 @@
 open Prelude
 
 module Types = Types
-
 module Buffer = Buffer
-
 module Bytes = Bytes
-
 module IoSlice = IoSlice
-
 module IoVec = IoVec
-
 module IoBuffer = Kernel.IO.Buffer
-
 module Reader = Reader
-
 module BufReader = Buf_reader
-
 module Writer = Writer
-
 module Error = Error
-
 module Stdin = Stdin
-
 module Stdout = Stdout
-
 module Stderr = Stderr
 
 type error = Error.t =
@@ -119,7 +107,9 @@ let of_async_error = Error.of_async_error
 
 let error_message = Error.message
 
-let stdin = fun ?chunk_size () -> Stdin.open_ ?chunk_size () |> Stdin.to_reader
+let stdin = fun ?chunk_size () ->
+  Stdin.open_ ?chunk_size ()
+  |> Stdin.to_reader
 
 let stdout = fun () -> Stdout.to_writer ()
 

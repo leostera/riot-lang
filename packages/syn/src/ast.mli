@@ -8,93 +8,68 @@ open Std
    complete. Accessors return `option` where recovery or malformed input can
    leave a child missing.
 *)
-type node = { tree: Syntax_tree.t; id: int }
-
-type token = { tree: Syntax_tree.t; id: int }
-
+type node = {
+  tree: Syntax_tree.t;
+  id: int;
+}
+type token = {
+  tree: Syntax_tree.t;
+  id: int;
+}
 type source_file = node
-
 type implementation = node
-
 type interface = node
-
 type structure_item = node
-
 type signature_item = node
-
 type let_declaration = node
-
 type let_binding = node
-
 type type_declaration = node
-
 type type_extension_declaration = node
-
 type module_declaration = node
-
 type module_type_declaration = node
-
 type module_type_constraint = node
-
 type open_declaration = node
-
 type include_declaration = node
-
 type value_declaration = node
-
 type external_declaration = node
-
 type exception_declaration = node
-
 type class_declaration = node
-
 type extension_item = node
-
 type attribute_item = node
-
 type expr_item = node
-
 type expr = node
-
 type pattern = node
-
 type parameter = node
-
 type match_case = node
-
 type type_expr = node
-
 type record_type = node
-
 type record_field = node
-
 type record_expr_field = node
-
 type variant_type = node
-
 type variant_constructor = node
-
 type path = node
 
 (** Root view for a parsed syntax tree. *)
 val root: Syntax_tree.t -> node
 
-module Token : sig
+module Token: sig
   type t = token
-
   (**
      Delimited comment/docstring trivia split once by the lexer/Ast layer.
 
      `content` excludes the opening and closing delimiters, so formatter and
      documentation tools do not need to rescan raw comment text.
   *)
-  type delimited_trivia = { text: string; opening: string; content: string; closing: string option }
-
+  type delimited_trivia = {
+    text: string;
+    opening: string;
+    content: string;
+    closing: string option;
+  }
   type leading_trivia =
     | Whitespace
     | Comment of delimited_trivia
     | Docstring of delimited_trivia
-
   val kind: t -> Syntax_kind.t
 
   val width: t -> int
@@ -135,9 +110,8 @@ module Token : sig
   val raw_range: t -> int * int
 end
 
-module Node : sig
+module Node: sig
   type t = node
-
   val kind: t -> Syntax_kind.t
 
   val text: t -> string
@@ -173,28 +147,45 @@ module Node : sig
   val first_descendant_token: t -> Token.t option
 end
 
-module TypeExpr : sig
+module TypeExpr: sig
   type t = type_expr
-
   type tuple_separator =
     | Star
     | Comma
     | UnknownSeparator
-
   type view =
     | Path of { path: path }
-    | Var of { name: Token.t option }
+    | Var of {
+        name: Token.t option;
+      }
     | Wildcard
-    | Arrow of { left: t option; right: t option }
-    | Poly of { body: t option }
-    | Labeled of { optional_token: Token.t option; label: Token.t option; annotation: t option }
-    | Tuple of { left: t option; right: t option; separator: tuple_separator }
-    | Apply of { argument: t option; constructor: t option }
-    | Parenthesized of { inner: t option }
+    | Arrow of {
+        left: t option;
+        right: t option;
+      }
+    | Poly of {
+        body: t option;
+      }
+    | Labeled of {
+        optional_token: Token.t option;
+        label: Token.t option;
+        annotation: t option;
+      }
+    | Tuple of {
+        left: t option;
+        right: t option;
+        separator: tuple_separator;
+      }
+    | Apply of {
+        argument: t option;
+        constructor: t option;
+      }
+    | Parenthesized of {
+        inner: t option;
+      }
     | Opaque of Node.t
     | Error of Node.t
     | Unknown of Node.t
-
   val cast: Node.t -> t option
 
   val view: t -> view
@@ -210,9 +201,8 @@ module TypeExpr : sig
   val for_each_attribute_suffix_token: t -> fn:(Token.t -> unit) -> unit
 end
 
-module RecordField : sig
+module RecordField: sig
   type t = record_field
-
   val cast: Node.t -> t option
 
   val mutable_token: t -> Token.t option
@@ -224,9 +214,8 @@ module RecordField : sig
   val type_annotation: t -> type_expr option
 end
 
-module RecordType : sig
+module RecordType: sig
   type t = record_type
-
   val cast: Node.t -> t option
 
   val private_token: t -> Token.t option
@@ -238,9 +227,8 @@ module RecordType : sig
   val for_each_field: t -> fn:(record_field -> unit) -> unit
 end
 
-module VariantConstructor : sig
+module VariantConstructor: sig
   type t = variant_constructor
-
   val cast: Node.t -> t option
 
   val pipe_token: t -> Token.t option
@@ -258,9 +246,8 @@ module VariantConstructor : sig
   val record_payload: t -> record_type option
 end
 
-module VariantType : sig
+module VariantType: sig
   type t = variant_type
-
   val cast: Node.t -> t option
 
   val private_token: t -> Token.t option
@@ -268,38 +255,64 @@ module VariantType : sig
   val for_each_constructor: t -> fn:(variant_constructor -> unit) -> unit
 end
 
-module Pattern : sig
+module Pattern: sig
   type t = pattern
-
   type view =
     | Wildcard
     | Path of { path: path }
-    | Apply of { callee: t option; argument: t option }
-    | Literal of { token: Token.t option }
-    | Parenthesized of { inner: t option }
+    | Apply of {
+        callee: t option;
+        argument: t option;
+      }
+    | Literal of {
+        token: Token.t option;
+      }
+    | Parenthesized of {
+        inner: t option;
+      }
     | Tuple
     | List
     | Array
     | Record
     | PolyVariant
     | Extension
-    | Attribute of { inner: t option }
+    | Attribute of {
+        inner: t option;
+      }
     | LocalOpen
     | LocallyAbstractType
     | FirstClassModule
-    | Interval of { left: t option; right: t option }
-    | Constraint of { pattern: t option; annotation: type_expr option }
-    | Alias of { pattern: t option; alias: t option }
-    | Or of { left: t option; right: t option }
-    | Cons of { head: t option; tail: t option }
-    | Lazy of { pattern: t option }
-    | Exception of { pattern: t option }
+    | Interval of {
+        left: t option;
+        right: t option;
+      }
+    | Constraint of {
+        pattern: t option;
+        annotation: type_expr option;
+      }
+    | Alias of {
+        pattern: t option;
+        alias: t option;
+      }
+    | Or of {
+        left: t option;
+        right: t option;
+      }
+    | Cons of {
+        head: t option;
+        tail: t option;
+      }
+    | Lazy of {
+        pattern: t option;
+      }
+    | Exception of {
+        pattern: t option;
+      }
     | LabeledParam of parameter
     | OptionalParam of parameter
     | OptionalParamDefault of parameter
     | Error of Node.t
     | Unknown of Node.t
-
   val cast: Node.t -> t option
 
   val view: t -> view
@@ -311,9 +324,8 @@ module Pattern : sig
   val for_each_child_pattern: t -> fn:(t -> unit) -> unit
 end
 
-module AttributePattern : sig
+module AttributePattern: sig
   type t = pattern
-
   val cast: pattern -> t option
 
   val inner: t -> pattern option
@@ -321,17 +333,15 @@ module AttributePattern : sig
   val for_each_shell_token: t -> fn:(Token.t -> unit) -> unit
 end
 
-module ExtensionPattern : sig
+module ExtensionPattern: sig
   type t = pattern
-
   val cast: pattern -> t option
 
   val for_each_shell_token: t -> fn:(Token.t -> unit) -> unit
 end
 
-module LocallyAbstractTypePattern : sig
+module LocallyAbstractTypePattern: sig
   type t = pattern
-
   val cast: pattern -> t option
 
   val opening_token: t -> Token.t option
@@ -343,14 +353,12 @@ module LocallyAbstractTypePattern : sig
   val for_each_type_name: t -> fn:(Token.t -> unit) -> unit
 end
 
-module FirstClassModulePattern : sig
+module FirstClassModulePattern: sig
   type t = pattern
-
   type ascription =
     | NoAscription
     | PathAscription
     | UnsupportedAscription
-
   val cast: pattern -> t option
 
   val opening_token: t -> Token.t option
@@ -368,11 +376,13 @@ module FirstClassModulePattern : sig
   val for_each_ascription_path_ident: t -> fn:(Token.t -> unit) -> unit
 end
 
-module RecordPattern : sig
+module RecordPattern: sig
   type t = pattern
-
-  type field = { path: path option; pattern: pattern option; node: pattern }
-
+  type field = {
+    path: path option;
+    pattern: pattern option;
+    node: pattern;
+  }
   val cast: pattern -> t option
 
   val open_wildcard: t -> Token.t option
@@ -380,9 +390,8 @@ module RecordPattern : sig
   val for_each_field: t -> fn:(field -> unit) -> unit
 end
 
-module LocalOpenPattern : sig
+module LocalOpenPattern: sig
   type t = pattern
-
   val cast: pattern -> t option
 
   val dot_token: t -> Token.t option
@@ -396,15 +405,23 @@ module LocalOpenPattern : sig
   val for_each_module_path_ident: t -> fn:(Token.t -> unit) -> unit
 end
 
-module Parameter : sig
+module Parameter: sig
   type t = parameter
-
   type view =
-    | Labeled of { label: Token.t option; pattern: pattern option }
-    | Optional of { label: Token.t option; pattern: pattern option }
-    | OptionalDefault of { label: Token.t option; pattern: pattern option; default: expr option }
+    | Labeled of {
+        label: Token.t option;
+        pattern: pattern option;
+      }
+    | Optional of {
+        label: Token.t option;
+        pattern: pattern option;
+      }
+    | OptionalDefault of {
+        label: Token.t option;
+        pattern: pattern option;
+        default: expr option;
+      }
     | Unknown of Node.t
-
   val cast: Node.t -> t option
 
   val view: t -> view
@@ -412,21 +429,24 @@ module Parameter : sig
   val has_explicit_pattern_parens: t -> bool
 end
 
-module MatchCase : sig
+module MatchCase: sig
   type t = match_case
-
-  type view = { pattern: pattern option; guard: expr option; body: expr option }
-
+  type view = {
+    pattern: pattern option;
+    guard: expr option;
+    body: expr option;
+  }
   val cast: Node.t -> t option
 
   val view: t -> view
 end
 
-module LetBinding : sig
+module LetBinding: sig
   type t = let_binding
-
-  type view = { pattern: pattern option; body: expr option }
-
+  type view = {
+    pattern: pattern option;
+    body: expr option;
+  }
   val cast: Node.t -> t option
 
   val view: t -> view
@@ -440,54 +460,136 @@ module LetBinding : sig
   val type_annotation: t -> type_expr option
 end
 
-module Expr : sig
+module Expr: sig
   type t = expr
-
   type view =
-    | Let of { first_binding: let_binding option; body: t option }
-    | LocalOpen of { body: t option }
-    | LetModule of { body: t option }
-    | LetException of { body: t option }
-    | BindingOperator of { first_binding: let_binding option; body: t option }
+    | Let of {
+        first_binding: let_binding option;
+        body: t option;
+      }
+    | LocalOpen of {
+        body: t option;
+      }
+    | LetModule of {
+        body: t option;
+      }
+    | LetException of {
+        body: t option;
+      }
+    | BindingOperator of {
+        first_binding: let_binding option;
+        body: t option;
+      }
     | FirstClassModule
     | Extension
     | Unreachable
     | Object
     | New
-    | If of { condition: t option; then_branch: t option; else_branch: t option }
-    | Match of { scrutinee: t option; first_case: match_case option }
-    | Fun of { body: t option }
-    | Function of { first_case: match_case option }
-    | Try of { body: t option; first_case: match_case option }
-    | While of { condition: t option; body: t option }
-    | For of { pattern: pattern option; start_: t option; stop: t option; body: t option }
-    | Assert of { argument: t option }
-    | Lazy of { argument: t option }
-    | Attribute of { inner: t option }
-    | Sequence of { left: t option; right: t option }
-    | Apply of { callee: t option; argument: t option }
-    | Infix of { left: t option; operator: Token.t option; right: t option }
-    | Prefix of { operator: Token.t option; operand: t option }
-    | Assign of { target: t option; operator: Token.t option; value: t option }
-    | FieldAccess of { target: t option; field: Token.t option }
-    | MethodCall of { target: t option; method_: Token.t option }
-    | PolyVariant of { payload: t option }
+    | If of {
+        condition: t option;
+        then_branch: t option;
+        else_branch: t option;
+      }
+    | Match of {
+        scrutinee: t option;
+        first_case: match_case option;
+      }
+    | Fun of {
+        body: t option;
+      }
+    | Function of {
+        first_case: match_case option;
+      }
+    | Try of {
+        body: t option;
+        first_case: match_case option;
+      }
+    | While of {
+        condition: t option;
+        body: t option;
+      }
+    | For of {
+        pattern: pattern option;
+        start_: t option;
+        stop: t option;
+        body: t option;
+      }
+    | Assert of {
+        argument: t option;
+      }
+    | Lazy of {
+        argument: t option;
+      }
+    | Attribute of {
+        inner: t option;
+      }
+    | Sequence of {
+        left: t option;
+        right: t option;
+      }
+    | Apply of {
+        callee: t option;
+        argument: t option;
+      }
+    | Infix of {
+        left: t option;
+        operator: Token.t option;
+        right: t option;
+      }
+    | Prefix of {
+        operator: Token.t option;
+        operand: t option;
+      }
+    | Assign of {
+        target: t option;
+        operator: Token.t option;
+        value: t option;
+      }
+    | FieldAccess of {
+        target: t option;
+        field: Token.t option;
+      }
+    | MethodCall of {
+        target: t option;
+        method_: Token.t option;
+      }
+    | PolyVariant of {
+        payload: t option;
+      }
     | Path of { path: path }
-    | Literal of { token: Token.t option }
-    | Parenthesized of { inner: t option }
+    | Literal of {
+        token: Token.t option;
+      }
+    | Parenthesized of {
+        inner: t option;
+      }
     | Tuple
     | List
     | Array
     | Record
     | RecordUpdate
-    | ArrayIndex of { target: t option; index: t option }
-    | StringIndex of { target: t option; index: t option }
-    | Typed of { expr: t option; annotation: type_expr option }
-    | LabeledArg of { label: Token.t option; value: t option }
-    | OptionalArg of { label: Token.t option; value: t option }
+    | ArrayIndex of {
+        target: t option;
+        index: t option;
+      }
+    | StringIndex of {
+        target: t option;
+        index: t option;
+      }
+    | Typed of {
+        expr: t option;
+        annotation: type_expr option;
+      }
+    | LabeledArg of {
+        label: Token.t option;
+        value: t option;
+      }
+    | OptionalArg of {
+        label: Token.t option;
+        value: t option;
+      }
     | Error of Node.t
     | Unknown of Node.t
-
   val cast: Node.t -> t option
 
   val view: t -> view
@@ -501,9 +603,8 @@ module Expr : sig
   val for_each_match_case: t -> fn:(match_case -> unit) -> unit
 end
 
-module AttributeExpr : sig
+module AttributeExpr: sig
   type t = expr
-
   val cast: expr -> t option
 
   val inner: t -> expr option
@@ -511,19 +612,20 @@ module AttributeExpr : sig
   val for_each_shell_token: t -> fn:(Token.t -> unit) -> unit
 end
 
-module ExtensionExpr : sig
+module ExtensionExpr: sig
   type t = expr
-
   val cast: expr -> t option
 
   val for_each_shell_token: t -> fn:(Token.t -> unit) -> unit
 end
 
-module RecordExpr : sig
+module RecordExpr: sig
   type t = expr
-
-  type field = { path: path option; value: expr option; node: record_expr_field }
-
+  type field = {
+    path: path option;
+    value: expr option;
+    node: record_expr_field;
+  }
   val cast: expr -> t option
 
   val base: t -> expr option
@@ -531,39 +633,35 @@ module RecordExpr : sig
   val for_each_field: t -> fn:(field -> unit) -> unit
 end
 
-module LocalOpenExpr : sig
+module LocalOpenExpr: sig
   type t = expr
-
   type view =
     | LetOpen of {
-      let_token: Token.t option;
-      open_token: Token.t option;
-      bang_token: Token.t option;
-      module_path: path option;
-      in_token: Token.t option;
-      body: expr option;
-    }
+        let_token: Token.t option;
+        open_token: Token.t option;
+        bang_token: Token.t option;
+        module_path: path option;
+        in_token: Token.t option;
+        body: expr option;
+      }
     | Delimited of {
-      module_path: path option;
-      dot_token: Token.t option;
-      opening_token: Token.t option;
-      body: expr option;
-      closing_token: Token.t option;
-    }
-
+        module_path: path option;
+        dot_token: Token.t option;
+        opening_token: Token.t option;
+        body: expr option;
+        closing_token: Token.t option;
+      }
   val cast: expr -> t option
 
   val view: t -> view
 end
 
-module LetModuleExpr : sig
+module LetModuleExpr: sig
   type t = expr
-
   type module_body =
     | Path
     | EmptyStruct
     | Unsupported
-
   val cast: expr -> t option
 
   val let_token: t -> Token.t option
@@ -585,9 +683,8 @@ module LetModuleExpr : sig
   val for_each_module_body_path_ident: t -> fn:(Token.t -> unit) -> unit
 end
 
-module LetExceptionExpr : sig
+module LetExceptionExpr: sig
   type t = expr
-
   val cast: expr -> t option
 
   val let_token: t -> Token.t option
@@ -605,26 +702,22 @@ module LetExceptionExpr : sig
   val for_each_payload_token: t -> fn:(Token.t -> unit) -> unit
 end
 
-module UnreachableExpr : sig
+module UnreachableExpr: sig
   type t = expr
-
   val cast: expr -> t option
 
   val dot_token: t -> Token.t option
 end
 
-module FirstClassModuleExpr : sig
+module FirstClassModuleExpr: sig
   type t = expr
-
   type module_path =
     | ModulePath
     | UnsupportedModulePath
-
   type ascription =
     | NoAscription
     | PathAscription
     | UnsupportedAscription
-
   val cast: expr -> t option
 
   val opening_token: t -> Token.t option
@@ -644,11 +737,13 @@ module FirstClassModuleExpr : sig
   val for_each_ascription_path_ident: t -> fn:(Token.t -> unit) -> unit
 end
 
-module BindingOperatorExpr : sig
+module BindingOperatorExpr: sig
   type t = expr
-
-  type clause = { keyword: Token.t option; operator: Token.t option; binding: let_binding }
-
+  type clause = {
+    keyword: Token.t option;
+    operator: Token.t option;
+    binding: let_binding;
+  }
   val cast: expr -> t option
 
   val in_token: t -> Token.t option
@@ -658,9 +753,8 @@ module BindingOperatorExpr : sig
   val for_each_clause: t -> fn:(clause -> unit) -> unit
 end
 
-module Path : sig
+module Path: sig
   type t = path
-
   val cast: Node.t -> t option
 
   val text: t -> string
@@ -672,9 +766,8 @@ module Path : sig
   val for_each_ident: t -> fn:(Token.t -> unit) -> unit
 end
 
-module StructureItem : sig
+module StructureItem: sig
   type t = structure_item
-
   type view =
     | Let of let_declaration
     | Type of type_declaration
@@ -691,7 +784,6 @@ module StructureItem : sig
     | Expr of expr_item
     | Error of Node.t
     | Unknown of Node.t
-
   val cast: Node.t -> t option
 
   val view: t -> view
@@ -699,9 +791,8 @@ module StructureItem : sig
   val declaration: t -> Node.t option
 end
 
-module SignatureItem : sig
+module SignatureItem: sig
   type t = signature_item
-
   type view =
     | Value of value_declaration
     | Type of type_declaration
@@ -717,7 +808,6 @@ module SignatureItem : sig
     | Attribute of attribute_item
     | Error of Node.t
     | Unknown of Node.t
-
   val cast: Node.t -> t option
 
   val view: t -> view
@@ -725,9 +815,8 @@ module SignatureItem : sig
   val declaration: t -> Node.t option
 end
 
-module LetDeclaration : sig
+module LetDeclaration: sig
   type t = let_declaration
-
   val cast: Node.t -> t option
 
   val rec_token: t -> Token.t option
@@ -737,23 +826,24 @@ module LetDeclaration : sig
   val for_each_binding: t -> fn:(let_binding -> unit) -> unit
 end
 
-module TypeDeclaration : sig
+module TypeDeclaration: sig
   type t = type_declaration
-
   type member
-
   type parameter =
     | Named of {
-      name: Token.t;
-      quote: Token.t option;
-      variance: Token.t option;
-      injective: Token.t option;
-    }
-    | Wildcard of { wildcard: Token.t; variance: Token.t option; injective: Token.t option }
+        name: Token.t;
+        quote: Token.t option;
+        variance: Token.t option;
+        injective: Token.t option;
+      }
+    | Wildcard of {
+        wildcard: Token.t;
+        variance: Token.t option;
+        injective: Token.t option;
+      }
 
-  module Member : sig
+  module Member: sig
     type t = member
-
     val declaration: t -> type_declaration
 
     val start_index: t -> int
@@ -810,11 +900,9 @@ module TypeDeclaration : sig
   val fold_members: t -> 'acc -> ('acc -> member -> 'acc) -> 'acc
 end
 
-module TypeExtensionDeclaration : sig
+module TypeExtensionDeclaration: sig
   type t = type_extension_declaration
-
   type parameter = TypeDeclaration.parameter
-
   val cast: Node.t -> t option
 
   val keyword_token: t -> Token.t option
@@ -832,14 +920,12 @@ module TypeExtensionDeclaration : sig
   val variant_type: t -> variant_type option
 end
 
-module ModuleDeclaration : sig
+module ModuleDeclaration: sig
   type t = module_declaration
-
   type member
 
-  module Member : sig
+  module Member: sig
     type t = member
-
     val declaration: t -> module_declaration
 
     val start_index: t -> int
@@ -880,7 +966,6 @@ module ModuleDeclaration : sig
     | EmptySig
     | Sig
     | Unsupported
-
   val cast: Node.t -> t option
 
   val name: t -> Token.t option
@@ -916,9 +1001,8 @@ module ModuleDeclaration : sig
   val for_each_sig_body_token: t -> fn:(Token.t -> unit) -> unit
 end
 
-module ModuleTypeDeclaration : sig
+module ModuleTypeDeclaration: sig
   type t = module_type_declaration
-
   type body =
     | Abstract
     | Path
@@ -926,7 +1010,6 @@ module ModuleTypeDeclaration : sig
     | Sig
     | With
     | Unsupported
-
   val cast: Node.t -> t option
 
   val name: t -> Token.t option
@@ -952,22 +1035,26 @@ module ModuleTypeDeclaration : sig
   val for_each_constraint: t -> fn:(module_type_constraint -> unit) -> unit
 end
 
-module ModuleTypeConstraint : sig
+module ModuleTypeConstraint: sig
   type t = module_type_constraint
-
   type view =
-    | Type of { path: path option; operator: Token.t option; body: type_expr option }
-    | Module of { path: path option; body: Node.t option }
+    | Type of {
+        path: path option;
+        operator: Token.t option;
+        body: type_expr option;
+      }
+    | Module of {
+        path: path option;
+        body: Node.t option;
+      }
     | Unknown of Node.t
-
   val cast: Node.t -> t option
 
   val view: t -> view
 end
 
-module OpenDeclaration : sig
+module OpenDeclaration: sig
   type t = open_declaration
-
   val cast: Node.t -> t option
 
   val path_text: t -> string
@@ -979,9 +1066,8 @@ module OpenDeclaration : sig
   val for_each_path_ident: t -> fn:(Token.t -> unit) -> unit
 end
 
-module IncludeDeclaration : sig
+module IncludeDeclaration: sig
   type t = include_declaration
-
   val cast: Node.t -> t option
 
   val path_text: t -> string
@@ -995,9 +1081,8 @@ module IncludeDeclaration : sig
   val for_each_path_ident: t -> fn:(Token.t -> unit) -> unit
 end
 
-module ValueDeclaration : sig
+module ValueDeclaration: sig
   type t = value_declaration
-
   val cast: Node.t -> t option
 
   val name: t -> Token.t option
@@ -1011,9 +1096,8 @@ module ValueDeclaration : sig
   val for_each_annotation_token: t -> fn:(Token.t -> unit) -> unit
 end
 
-module ExternalDeclaration : sig
+module ExternalDeclaration: sig
   type t = external_declaration
-
   val cast: Node.t -> t option
 
   val name: t -> Token.t option
@@ -1029,18 +1113,21 @@ module ExternalDeclaration : sig
   val for_each_attribute_token: t -> fn:(Token.t -> unit) -> unit
 end
 
-module ExceptionDeclaration : sig
+module ExceptionDeclaration: sig
   type t = exception_declaration
-
   type payload =
     | TypeExpr of type_expr
     | Record of record_type
-
   type view =
     | Bare
-    | Alias of { equals_token: Token.t option; path: path option }
-    | Payload of { of_token: Token.t option; payload: payload option }
-
+    | Alias of {
+        equals_token: Token.t option;
+        path: path option;
+      }
+    | Payload of {
+        of_token: Token.t option;
+        payload: payload option;
+      }
   val cast: Node.t -> t option
 
   val keyword_token: t -> Token.t option
@@ -1050,62 +1137,54 @@ module ExceptionDeclaration : sig
   val view: t -> view
 end
 
-module ClassDeclaration : sig
+module ClassDeclaration: sig
   type t = class_declaration
-
   val cast: Node.t -> t option
 
   val name: t -> Token.t option
 end
 
-module ExtensionItem : sig
+module ExtensionItem: sig
   type t = extension_item
-
   val cast: Node.t -> t option
 
   val for_each_shell_token: t -> fn:(Token.t -> unit) -> unit
 end
 
-module AttributeItem : sig
+module AttributeItem: sig
   type t = attribute_item
-
   val cast: Node.t -> t option
 
   val for_each_shell_token: t -> fn:(Token.t -> unit) -> unit
 end
 
-module ExprItem : sig
+module ExprItem: sig
   type t = expr_item
-
   val cast: Node.t -> t option
 
   val expr: t -> expr option
 end
 
-module Implementation : sig
+module Implementation: sig
   type t = implementation
-
   val cast: Node.t -> t option
 
   val for_each_item: t -> fn:(structure_item -> unit) -> unit
 end
 
-module Interface : sig
+module Interface: sig
   type t = interface
-
   val cast: Node.t -> t option
 
   val for_each_item: t -> fn:(signature_item -> unit) -> unit
 end
 
-module SourceFile : sig
+module SourceFile: sig
   type t = source_file
-
   type view =
     | Implementation of implementation
     | Interface of interface
     | Empty
-
   val make: Syntax_tree.t -> t
 
   val view: t -> view

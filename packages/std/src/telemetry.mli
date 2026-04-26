@@ -23,17 +23,18 @@
          | _ -> ())
    ]}
 *)
+
 (**
    Extensible variant type for telemetry events. Any module can extend this
    with their own events.
 *)
+
 (**
    Start the telemetry server process. Returns the server's PID. Must be called
    before emitting events. Idempotent: returns the existing server PID when the
    server is already running.
 *)
 type event = ..
-
 val start: unit -> Pid.t
 
 (** Emit a telemetry event. All attached handlers will receive it. *)

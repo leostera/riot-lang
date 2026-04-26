@@ -9,7 +9,10 @@ type reader_state = {
 }
 
 type t =
-  | String_input of { input: string; mutable pos: int }
+  | String_input of {
+      input: string;
+      mutable pos: int;
+    }
   | Reader_input of reader_state
 
 type scan_result = [`Stop of int * char | `Boundary of int | `Eof of int]
@@ -24,7 +27,7 @@ let of_reader = fun reader ->
     buffer = IO.Buffer.create ~size:default_capacity;
     base = 0;
     pos = 0;
-    eof = false
+    eof = false;
   }
 
 let position = function
@@ -49,14 +52,18 @@ let reader_slice = fun state -> IO.Buffer.readable state.buffer
 
 let reader_subslice = fun state ~off ~len -> IO.IoSlice.sub_unchecked (reader_slice state) ~off ~len
 
-let reader_substring = fun state ~off ~len -> reader_subslice state ~off ~len |> IO.IoSlice.to_string
+let reader_substring = fun state ~off ~len ->
+  reader_subslice state ~off ~len
+  |> IO.IoSlice.to_string
 
 let reader_append_range = fun dst state ~start ~stop ->
   let len = stop - start in
   if Int.(len > 0) then
-    IO.Buffer.append_subslice dst (reader_slice state) ~off:start ~len |> Result.expect ~msg:"serde-json buffered input should append borrowed slices"
+    IO.Buffer.append_subslice dst (reader_slice state) ~off:start ~len
+    |> Result.expect ~msg:"serde-json buffered input should append borrowed slices"
 
-let reader_match_field_range = fun fields state ~offset ~length -> Serde.De.Fields.match_buffer_range fields state.buffer ~offset ~length
+let reader_match_field_range = fun fields state ~offset ~length ->
+  Serde.De.Fields.match_buffer_range fields state.buffer ~offset ~length
 
 let refill = fun state ->
   if state.eof then
@@ -79,13 +86,12 @@ let ensure = fun input needed ->
       let rec loop () =
         if Int.(state.pos + needed <= reader_length state) then
           true
+        else if state.eof then
+          false
+        else if refill state then
+          loop ()
         else
-          if state.eof then
-            false
-          else
-            if refill state then
-              loop ()
-            else Int.(state.pos + needed <= reader_length state)
+          Int.(state.pos + needed <= reader_length state)
       in
       loop ()
 
@@ -94,7 +100,8 @@ let peek_char = fun input ~offset ->
     match input with
     | String_input state -> Some (String.unsafe_get state.input (state.pos + offset))
     | Reader_input state -> Some (reader_get_unchecked state ~at:(state.pos + offset))
-  else None
+  else
+    None
 
 let current_char = fun input -> peek_char input ~offset:0
 
@@ -120,20 +127,31 @@ let slice_to_string = fun input ~start ~stop ->
   match input with
   | String_input state -> String.sub state.input ~offset:start ~len:(stop - start)
   | Reader_input state ->
-      let local_start = local_index state start in reader_substring state ~off:local_start ~len:(stop - start)
+      let local_start = local_index state start in
+      reader_substring state ~off:local_start ~len:(stop - start)
 
 let copy_range_to_buffer = fun buffer input ~start ~stop ->
   let length = stop - start in
   if Int.(length > 0) then
     match input with
     | String_input state -> IO.Buffer.add_substring buffer state.input start length
-    | Reader_input state -> reader_append_range buffer state ~start:(local_index state start) ~stop:(local_index state stop)
+    | Reader_input state ->
+        reader_append_range
+          buffer
+          state
+          ~start:(local_index state start)
+          ~stop:(local_index state stop)
 
 let match_field_range = fun fields input ~start ~stop ->
   let length = stop - start in
   match input with
   | String_input state -> Serde.De.Fields.match_slice fields state.input ~offset:start ~length
-  | Reader_input state -> reader_match_field_range fields state ~offset:(local_index state start) ~length
+  | Reader_input state ->
+      reader_match_field_range
+        fields
+        state
+        ~offset:(local_index state start)
+        ~length
 
 let skip_whitespace = function
   | String_input state ->
@@ -144,7 +162,10 @@ let skip_whitespace = function
           pos
         else
           match String.unsafe_get input pos with
-          | ' ' | '\t' | '\n' | '\r' -> loop (pos + 1)
+          | ' '
+          | '\t'
+          | '\n'
+          | '\r' -> loop (pos + 1)
           | _ -> pos
       in
       state.pos <- loop state.pos
@@ -155,7 +176,10 @@ let skip_whitespace = function
             pos
           else
             match reader_get_unchecked state ~at:pos with
-            | ' ' | '\t' | '\n' | '\r' -> advance_local (pos + 1)
+            | ' '
+            | '\t'
+            | '\n'
+            | '\r' -> advance_local (pos + 1)
             | _ -> pos
         in
         state.pos <- advance_local state.pos;
@@ -175,7 +199,8 @@ let scan_while = fun input ~continue ->
           let current = String.unsafe_get state.input pos in
           if continue current then
             loop (pos + 1)
-          else `Stop (pos, current)
+          else
+            `Stop (pos, current)
       in
       loop state.pos
   | Reader_input state ->
@@ -183,7 +208,8 @@ let scan_while = fun input ~continue ->
         if Int.(state.pos >= reader_length state) then
           if refill state then
             loop ()
-          else `Eof (state.base + state.pos)
+          else
+            `Eof (state.base + state.pos)
         else
           let rec scan local =
             if Int.(local >= reader_length state) then
@@ -192,7 +218,8 @@ let scan_while = fun input ~continue ->
               let current = reader_get_unchecked state ~at:local in
               if continue current then
                 scan (local + 1)
-              else `Stop (state.base + local, current)
+              else
+                `Stop (state.base + local, current)
           in
           scan state.pos
       in

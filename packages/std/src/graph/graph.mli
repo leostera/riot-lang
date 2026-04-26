@@ -55,10 +55,13 @@
    - Workflow and state machine diagrams
    - Any directed/undirected graph visualization
 *)
+
 module Dot = Dot
 
 (** DOT format generation for Graphviz. *)
 module Mermaid = Mermaid
 
 (** Mermaid diagram format generation. *)
-module SimpleGraph = Simple_graph(** Simple dependency graph with topological sorting. *)
+module SimpleGraph = Simple_graph
+
+(** Simple dependency graph with topological sorting. *)

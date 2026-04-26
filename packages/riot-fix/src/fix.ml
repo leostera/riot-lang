@@ -16,9 +16,15 @@ type operation = Fixme.Fix.operation =
   | InsertAfter of { anchor: target; content: replacement }
   | Swap of { left: target; right: target }
 
-type fix = Fixme.Fix.fix = { title: string; operations: operation list }
+type fix = Fixme.Fix.fix = {
+  title: string;
+  operations: operation list;
+}
 
-type text_edit = Fixme.Fix.text_edit = { span: Syn.Ceibo.Span.t; new_text: string }
+type text_edit = Fixme.Fix.text_edit = {
+  span: Syn.Ceibo.Span.t;
+  new_text: string;
+}
 
 let source_of_node = Fixme.Fix.source_of_node
 
@@ -63,30 +69,38 @@ let apply_fixes = Fixme.Fix.apply_fixes
 let validate_fix = Fixme.Fix.validate_fix
 
 let span_of_node = fun node ->
-  let start, end_ = Syn.Ast.Node.raw_range node in Syn.Ceibo.Span.make ~start ~end_
+  let (start, end_) = Syn.Ast.Node.raw_range node in
+  Syn.Ceibo.Span.make ~start ~end_
 
 let span_of_token = fun token ->
-  let start, end_ = Syn.Ast.Token.raw_range token in Syn.Ceibo.Span.make ~start ~end_
+  let (start, end_) = Syn.Ast.Token.raw_range token in
+  Syn.Ceibo.Span.make ~start ~end_
 
 let target_to_json target =
   match target with
   | Node node ->
       let span = span_of_node node in
       Data.Json.Object [
-        "kind", Data.Json.String "node";
-        "span", Data.Json.Object [
-          "start", Data.Json.Int span.start;
-          "end", Data.Json.Int span.end_;
-        ];
+        ("kind", Data.Json.String "node");
+        (
+          "span",
+          Data.Json.Object [
+            ("start", Data.Json.Int span.start);
+            ("end", Data.Json.Int span.end_);
+          ]
+        );
       ]
   | Token token ->
       let span = span_of_token token in
       Data.Json.Object [
-        "kind", Data.Json.String "token";
-        "span", Data.Json.Object [
-          "start", Data.Json.Int span.start;
-          "end", Data.Json.Int span.end_;
-        ];
+        ("kind", Data.Json.String "token");
+        (
+          "span",
+          Data.Json.Object [
+            ("start", Data.Json.Int span.start);
+            ("end", Data.Json.Int span.end_);
+          ]
+        );
       ]
 
 let replacement_to_json replacement =
@@ -94,61 +108,61 @@ let replacement_to_json replacement =
   | SourceOfNode node ->
       let span = span_of_node node in
       Data.Json.Object [
-        "kind", Data.Json.String "source_of_node";
-        "span", Data.Json.Object [
-          "start", Data.Json.Int span.start;
-          "end", Data.Json.Int span.end_;
-        ];
+        ("kind", Data.Json.String "source_of_node");
+        (
+          "span",
+          Data.Json.Object [
+            ("start", Data.Json.Int span.start);
+            ("end", Data.Json.Int span.end_);
+          ]
+        );
       ]
   | SourceOfToken token ->
       let span = span_of_token token in
       Data.Json.Object [
-        "kind", Data.Json.String "source_of_token";
-        "span", Data.Json.Object [
-          "start", Data.Json.Int span.start;
-          "end", Data.Json.Int span.end_;
-        ];
+        ("kind", Data.Json.String "source_of_token");
+        (
+          "span",
+          Data.Json.Object [
+            ("start", Data.Json.Int span.start);
+            ("end", Data.Json.Int span.end_);
+          ]
+        );
       ]
   | Text value ->
-      Data.Json.Object [
-        "kind", Data.Json.String "text";
-        "text", Data.Json.String value;
-      ]
+      Data.Json.Object [ ("kind", Data.Json.String "text"); ("text", Data.Json.String value); ]
 
 let operation_to_json operation =
   match operation with
   | Delete { target } ->
-      Data.Json.Object [
-        "kind", Data.Json.String "delete";
-        "target", target_to_json target;
-      ]
+      Data.Json.Object [ ("kind", Data.Json.String "delete"); ("target", target_to_json target); ]
   | Replace { target; replacement } ->
       Data.Json.Object [
-        "kind", Data.Json.String "replace";
-        "target", target_to_json target;
-        "replacement", replacement_to_json replacement;
+        ("kind", Data.Json.String "replace");
+        ("target", target_to_json target);
+        ("replacement", replacement_to_json replacement);
       ]
   | InsertBefore { anchor; content } ->
       Data.Json.Object [
-        "kind", Data.Json.String "insert_before";
-        "anchor", target_to_json anchor;
-        "content", replacement_to_json content;
+        ("kind", Data.Json.String "insert_before");
+        ("anchor", target_to_json anchor);
+        ("content", replacement_to_json content);
       ]
   | InsertAfter { anchor; content } ->
       Data.Json.Object [
-        "kind", Data.Json.String "insert_after";
-        "anchor", target_to_json anchor;
-        "content", replacement_to_json content;
+        ("kind", Data.Json.String "insert_after");
+        ("anchor", target_to_json anchor);
+        ("content", replacement_to_json content);
       ]
   | Swap { left; right } ->
       Data.Json.Object [
-        "kind", Data.Json.String "swap";
-        "left", target_to_json left;
-        "right", target_to_json right;
+        ("kind", Data.Json.String "swap");
+        ("left", target_to_json left);
+        ("right", target_to_json right);
       ]
 
 let to_json = fun fix ->
   Data.Json.Object [
-    "title", Data.Json.String fix.title;
-    "operations", Data.Json.Array (List.map fix.operations ~fn:operation_to_json);
+    ("title", Data.Json.String fix.title);
+    ("operations", Data.Json.Array (List.map fix.operations ~fn:operation_to_json));
   ]

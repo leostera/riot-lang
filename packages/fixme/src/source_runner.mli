@@ -4,12 +4,15 @@ open Std
 type progress_phase =
   | Parsed of { parse_diagnostics: int }
   | AstReady
-  | RuleStarted of { rule_id: Rule_id.t }
-  | RuleFinished of { rule_id: Rule_id.t; diagnostics: int }
-
+  | RuleStarted of {
+      rule_id: Rule_id.t;
+    }
+  | RuleFinished of {
+      rule_id: Rule_id.t;
+      diagnostics: int;
+    }
 (** Timestamped progress event emitted by [run] or [run_rule]. *)
 type progress_event = { timestamp_ms: int; phase: progress_phase }
-
 (** Result of running rules against one source file. *)
 type result = {
   (** Syntax tree produced from the parsed source. *)
@@ -26,10 +29,20 @@ type result = {
    Use [`on_progress`] when you want streaming visibility into parse and
    per-rule execution phases.
 *)
-val run: rules:Rule.t list -> ?filename:Path.t -> ?on_progress:(progress_event -> unit) -> string -> result
+val run:
+  rules:Rule.t list ->
+  ?filename:Path.t ->
+  ?on_progress:(progress_event -> unit) ->
+  string ->
+  result
 
 (** Run a single rule against source text. *)
-val run_rule: rule:Rule.t -> ?filename:Path.t -> ?on_progress:(progress_event -> unit) -> string -> result
+val run_rule:
+  rule:Rule.t ->
+  ?filename:Path.t ->
+  ?on_progress:(progress_event -> unit) ->
+  string ->
+  result
 
 (** Return `true` if parsing produced any diagnostics. *)
 val has_parse_errors: result -> bool

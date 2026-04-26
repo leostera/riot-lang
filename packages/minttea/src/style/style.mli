@@ -3,15 +3,28 @@ type color = Tty.Color.t =
   | ANSI of int
   | ANSI256 of int
   | No_color
-
 val color: ?profile:Tty.Profile.t -> string -> color
 
 val gradient: start:color -> finish:color -> steps:int -> color array
 
-module Border : sig
+module Border: sig
   type t
-
-  val make: ?top:string -> ?left:string -> ?bottom:string -> ?right:string -> ?top_left:string -> ?top_right:string -> ?bottom_left:string -> ?bottom_right:string -> ?middle_left:string -> ?middle_right:string -> ?middle:string -> ?middle_top:string -> ?middle_bottom:string -> unit -> t
+  val make:
+    ?top:string ->
+    ?left:string ->
+    ?bottom:string ->
+    ?right:string ->
+    ?top_left:string ->
+    ?top_right:string ->
+    ?bottom_left:string ->
+    ?bottom_right:string ->
+    ?middle_left:string ->
+    ?middle_right:string ->
+    ?middle:string ->
+    ?middle_top:string ->
+    ?middle_bottom:string ->
+    unit ->
+    t
 
   val normal: t
 
@@ -39,6 +52,7 @@ type size =
   | Flex of float
 
 (** Flexible unit, shares remaining space *)
+
 (** Overflow behavior *)
 type overflow =
   | Visible
@@ -48,6 +62,7 @@ type overflow =
   | Scroll
 
 (** Future: scrollable (not implemented yet) *)
+
 (** Constraints for Auto/Flex sizing *)
 type constraints = {
   min_width: int option;
@@ -55,9 +70,7 @@ type constraints = {
   min_height: int option;
   max_height: int option;
 }
-
 type t
-
 val default: t
 
 val equal: t -> t -> bool
@@ -126,6 +139,7 @@ val height_fixed: int -> t -> t
 val height_flex: float -> t -> t
 
 (** Set height to flex with given weight (e.g. 1.0 for equal sharing) *)
+
 (** Constraint API *)
 val min_width: int -> t -> t
 
@@ -133,6 +147,7 @@ val min_width: int -> t -> t
 val min_height: int -> t -> t
 
 (** Set minimum height constraint *)
+
 (** Overflow API *)
 val overflow: overflow -> t -> t
 
@@ -200,6 +215,7 @@ val render: t -> string -> string
    td "Hello World"
    ```
 *)
+
 (** Accessors for layout system *)
 val get_padding_left: t -> int
 

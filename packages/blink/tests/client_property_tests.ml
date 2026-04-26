@@ -1,4 +1,5 @@
 open Std
+
 module H = Blink.Client
 
 let expected_status_class = fun status ->
@@ -43,12 +44,14 @@ let property_retryable_statuses_match_status_class = fun _ctx ->
 
 let property_retry_delay_is_monotonic_until_max = fun _ctx ->
   let max_delay = Time.Duration.from_millis 80 in
-  let policy = H.RetryPolicy.make
-    ~max_attempts:10
-    ~base_delay:(Time.Duration.from_millis 10)
-    ~max_delay
-    ~jitter_nanos:0L
-    () in
+  let policy =
+    H.RetryPolicy.make
+      ~max_attempts:10
+      ~base_delay:(Time.Duration.from_millis 10)
+      ~max_delay
+      ~jitter_nanos:0L
+      ()
+  in
   let previous = ref Time.Duration.zero in
   for attempt = 1 to 10 do
     let delay = H.RetryPolicy.delay_for_attempt policy ~attempt in
@@ -105,8 +108,10 @@ let property_request_descriptions_include_method_and_url = fun _ctx ->
     (H.Request.Put, "PUT");
     (H.Request.Patch, "PATCH");
     (H.Request.Delete, "DELETE");
-  ] in
-  List.for_each methods
+  ]
+  in
+  List.for_each
+    methods
     ~fn:(fun (method_, method_text) ->
       let request = H.Request.make ~method_ ~url () in
       Test.assert_equal ~expected:(method_text ^ " " ^ url) ~actual:(H.Request.describe request));
@@ -115,15 +120,19 @@ let property_request_descriptions_include_method_and_url = fun _ctx ->
 let tests =
   Test.[
     case "property: status classes are range based" property_status_classes_are_range_based;
-    case "property: retryable statuses match status class" property_retryable_statuses_match_status_class;
+    case
+      "property: retryable statuses match status class"
+      property_retryable_statuses_match_status_class;
     case "property: retry delay is monotonic until max" property_retry_delay_is_monotonic_until_max;
     case "property: budget allows capacity per window" property_budget_allows_capacity_per_window;
-    case "property: circuit breaker transitions are threshold based" property_circuit_breaker_transitions_are_threshold_based;
-    case "property: request descriptions include method and url" property_request_descriptions_include_method_and_url;
+    case
+      "property: circuit breaker transitions are threshold based"
+      property_circuit_breaker_transitions_are_threshold_based;
+    case
+      "property: request descriptions include method and url"
+      property_request_descriptions_include_method_and_url;
   ]
 
-let () =
-  Runtime.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"blink_client_property_tests" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main ~name:"blink_client_property_tests" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

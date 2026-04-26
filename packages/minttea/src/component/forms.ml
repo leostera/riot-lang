@@ -4,5 +4,6 @@ let checkbox = fun ?(checked = false) label ->
   "[" ^ (
     if checked then
       "x"
-    else " "
+    else
+      " "
   ) ^ "] " ^ label

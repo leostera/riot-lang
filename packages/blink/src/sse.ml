@@ -49,10 +49,12 @@ let split_event = fun buffer ->
   | None -> None
   | Some (offset, delimiter_len) ->
       let event_text = String.sub buffer ~offset:0 ~len:offset in
-      let remaining = String.sub
-        buffer
-        ~offset:(offset + delimiter_len)
-        ~len:(String.length buffer - offset - delimiter_len) in
+      let remaining =
+        String.sub
+          buffer
+          ~offset:(offset + delimiter_len)
+          ~len:(String.length buffer - offset - delimiter_len)
+      in
       Some (event_text, remaining)
 
 let strip_trailing_cr = fun line ->
@@ -82,17 +84,16 @@ let field_value = fun line colon_at ->
 
 let parse_event = fun buffer ->
   match split_event buffer with
-  | None ->
-      None
-  | Some ("", remaining) ->
-      Some (Skip, remaining)
+  | None -> None
+  | Some ("", remaining) -> Some (Skip, remaining)
   | Some (event_text, remaining) ->
       let lines = String.split ~by:"\n" event_text in
       let data_lines = ref [] in
       let event_type = ref None in
       let id = ref None in
       let saw_event_field = ref false in
-      List.for_each lines
+      List.for_each
+        lines
         ~fn:(fun raw_line ->
           let line = strip_trailing_cr raw_line in
           if String.equal line "" || String.starts_with ~prefix:":" line then
@@ -114,8 +115,7 @@ let parse_event = fun buffer ->
                   | "id" ->
                       saw_event_field := true;
                       id := Some value
-                  | _ ->
-                      ()
+                  | _ -> ()
                 ));
       let data = String.concat "\n" (List.reverse !data_lines) in
       if String.equal data "[DONE]" then
@@ -155,7 +155,8 @@ module SSEIterator = struct
               state.done_ <- true;
               None
           | Ok msgs ->
-              List.for_each msgs
+              List.for_each
+                msgs
                 ~fn:(fun msg ->
                   match msg with
                   | Connection.Data chunk -> state.buffer <- state.buffer ^ chunk

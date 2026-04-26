@@ -1,6 +1,7 @@
 open Std
 
 (* Diagnostic reporting module for pretty-printing parse errors with source context *)
+
 (* Print diagnostics in a human-readable format with source context.
 
    Example output:
@@ -19,6 +20,7 @@ open Std
    - `source` - The source code content
    - `diagnostics` - List of diagnostics to report
 *)
+
 val print: file:string -> source:string -> Diagnostic.t list -> unit
 
 val format: file:string -> source:string -> Diagnostic.t list -> string

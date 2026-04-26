@@ -19,10 +19,8 @@ let receive_any = fun ?timeout () ->
   Effect.perform
     (
       Proc_effect.Receive {
-        selector = (
-          fun msg -> `select msg
-        );
-        timeout
+        selector = (fun msg -> `select msg);
+        timeout;
       }
     )
 
@@ -48,7 +46,7 @@ let syscall = fun ?timeout ~name ~interest ~source cb ->
         name;
         interest;
         source;
-        timeout
+        timeout;
       }
     );
   cb ()

@@ -12,9 +12,9 @@ open Std
    path slice-backed as well.
 *)
 (** # Types *)
+
 (** Lexer state (cursor over a source slice). *)
 type t
-
 (** # Construction *)
 (**
    `create source` creates a new lexer for the given source slice.
@@ -32,6 +32,7 @@ type t
 val create: IO.IoVec.IoSlice.t -> t
 
 (** # Tokenization *)
+
 (**
    `next lexer delim_stack` returns the next token from the source.
 

@@ -1,5 +1,4 @@
 type 'value t
-
 val create: unit -> 'value t
 
 val create_max: unit -> 'value t

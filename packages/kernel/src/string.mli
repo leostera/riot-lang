@@ -1,7 +1,5 @@
 type t = string
-
 type utf_decode = Unicode.Rune.utf_decode
-
 val empty: t
 
 val is_empty: t -> bool

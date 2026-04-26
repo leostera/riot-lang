@@ -4,7 +4,8 @@ let materialize = fun (config: Context.t) ->
   let running_section =
     if config.is_library then
       ""
-    else {|
+    else
+      {|
 ### Running
 
 Run the starter binary:
@@ -20,19 +21,27 @@ riot run |} ^ config.package_name ^ {|
 
 Verify the workspace in Docker:
 ```bash
-docker build -t |} ^ config.workspace_name ^ {| .
+docker build -t |}
+      ^ config.workspace_name
+      ^ {| .
 ```
 |}
-    else {|
+    else
+      {|
 ### Containers
 
 Build the starter application container:
 ```bash
-docker build -t |} ^ config.workspace_name ^ {| .
+docker build -t |}
+      ^ config.workspace_name
+      ^ {| .
 ```
 |}
   in
-  let content = {|# |} ^ config.workspace_name ^ {|
+  let content =
+    {|# |}
+    ^ config.workspace_name
+    ^ {|
 
 A Riot workspace for OCaml development.
 
@@ -44,7 +53,9 @@ Build all packages:
 ```bash
 riot build
 ```
-|} ^ running_section ^ {|
+|}
+    ^ running_section
+    ^ {|
 
 ### Testing
 
@@ -52,7 +63,9 @@ Run tests:
 ```bash
 riot test
 ```
-|} ^ container_section ^ {|
+|}
+    ^ container_section
+    ^ {|
 
 ### Continuous Integration
 
@@ -80,4 +93,6 @@ Then add the new package path to `riot.toml` workspace members.
 - `ocaml-toolchain.toml` - OCaml toolchain version
 - `Dockerfile` - Container build template
 - `.github/workflows/ci.yml` - GitHub Actions starter workflow
-|} in Writer.write_file config ~relative_path:"README.md" ~content ~executable:false
+|}
+  in
+  Writer.write_file config ~relative_path:"README.md" ~content ~executable:false

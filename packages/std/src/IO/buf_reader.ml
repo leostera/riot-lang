@@ -2,23 +2,29 @@ open Prelude
 open Types
 
 module IoVec = IoVec
-
 module IoSlice = IoSlice
 
 type 'value result = ('value, Error.t) Result.t
 
 type copy_progress = { mutable copied: int }
 
-type t = { mutable reader: Reader.t; buffer: Buffer.t; size: int; mutable eof: bool }
+type t = {
+  mutable reader: Reader.t;
+  buffer: Buffer.t;
+  size: int;
+  mutable eof: bool;
+}
 
 let default_size = 4_096
 
 let normalize_size = fun size ->
   if size <= 0 then
     default_size
-  else size
+  else
+    size
 
-let panic_buffer_error = fun fn error -> Kernel.SystemError.panic ("IO.BufReader." ^ fn ^ ": " ^ Kernel.IO.Error.message error)
+let panic_buffer_error = fun fn error ->
+  Kernel.SystemError.panic ("IO.BufReader." ^ fn ^ ": " ^ Kernel.IO.Error.message error)
 
 let compact = fun state -> Buffer.compact state.buffer
 
@@ -59,26 +65,23 @@ let buffered = fun state ->
 let ensure_available = fun state needed ->
   if needed < 0 then
     Error Error.Invalid_argument
+  else if needed = 0 then
+    Ok ()
+  else if needed > state.size then
+    Error Error.Buffer_full
   else
-    if needed = 0 then
-      Ok ()
-    else
-      if needed > state.size then
-        Error Error.Buffer_full
+    let rec loop () =
+      if Buffer.readable_bytes state.buffer >= needed then
+        Ok ()
+      else if state.eof then
+        Error Error.End_of_file
       else
-        let rec loop () =
-          if Buffer.readable_bytes state.buffer >= needed then
-            Ok ()
-          else
-            if state.eof then
-              Error Error.End_of_file
-            else
-              match fill_once state with
-              | Ok 0 -> Error Error.End_of_file
-              | Ok _ -> loop ()
-              | Error _ as error -> error
-        in
-        loop ()
+        match fill_once state with
+        | Ok 0 -> Error Error.End_of_file
+        | Ok _ -> loop ()
+        | Error _ as error -> error
+    in
+    loop ()
 
 let from_reader = fun ?(size = default_size) reader ->
   let size = normalize_size size in
@@ -86,7 +89,7 @@ let from_reader = fun ?(size = default_size) reader ->
     reader;
     buffer = Buffer.create ~size;
     size;
-    eof = false
+    eof = false;
   }
 
 let size = fun value -> value.size
@@ -103,7 +106,8 @@ let peek = fun value ~len ->
       Ok (
         if IoSlice.length readable > len then
           IoSlice.sub_unchecked readable ~off:0 ~len
-        else readable
+        else
+          readable
       )
   | Error _ as error -> error
 
@@ -128,15 +132,16 @@ let rec read = fun value ~into ->
             | Ok () -> Buffer.writable into
             | Error error -> panic_buffer_error "read.ensure_free" error
           )
-        else Buffer.writable into
+        else
+          Buffer.writable into
       in
       let count = Int.min (IoSlice.length readable) (IoSlice.length writable) in
       match Buffer.append_subslice into readable ~off:0 ~len:count with
-      | Ok () -> begin
-        match Buffer.consume value.buffer ~len:count with
-        | Ok () -> Ok count
-        | Error error -> panic_buffer_error "read.consume" error
-      end
+      | Ok () -> (
+          match Buffer.consume value.buffer ~len:count with
+          | Ok () -> Ok count
+          | Error error -> panic_buffer_error "read.consume" error
+        )
       | Error error -> panic_buffer_error "read.append" error
     )
   else
@@ -160,16 +165,14 @@ let utf8_width = fun byte ->
   let code = Char.code byte in
   if code land 0x80 = 0 then
     1
+  else if code land 0xe0 = 0xc0 then
+    2
+  else if code land 0xf0 = 0xe0 then
+    3
+  else if code land 0xf8 = 0xf0 then
+    4
   else
-    if code land 0xe0 = 0xc0 then
-      2
-    else
-      if code land 0xf0 = 0xe0 then
-        3
-      else
-        if code land 0xf8 = 0xf0 then
-          4
-        else 0
+    0
 
 let read_rune = fun value ->
   match peek value ~len:1 with
@@ -185,11 +188,11 @@ let read_rune = fun value ->
             let encoded = IoSlice.to_string slice in
             begin
               match Unicode.Utf8.decode_rune encoded 0 with
-              | Some (rune, len) -> begin
-                match consume value ~len with
-                | Ok _ -> Ok rune
-                | Error _ as error -> error
-              end
+              | Some (rune, len) -> (
+                  match consume value ~len with
+                  | Ok _ -> Ok rune
+                  | Error _ as error -> error
+                )
               | None -> Error Error.Invalid_data
             end
 
@@ -217,14 +220,13 @@ let read_slice = fun value ~until ->
               | Error error -> panic_buffer_error "read_slice.consume_tail" error
             in
             Ok tail
+        else if Buffer.readable_bytes value.buffer >= value.size then
+          Error Error.Buffer_full
         else
-          if Buffer.readable_bytes value.buffer >= value.size then
-            Error Error.Buffer_full
-          else
-            match fill_once value with
-            | Ok 0 -> loop ()
-            | Ok _ -> loop ()
-            | Error _ as error -> error
+          match fill_once value with
+          | Ok 0 -> loop ()
+          | Ok _ -> loop ()
+          | Error _ as error -> error
   in
   loop ()
 
@@ -252,13 +254,19 @@ let to_reader: t -> Reader.t = fun value ->
       | Ok count ->
           let readable = Buffer.readable tmp in
           let progress = { copied = 0 } in
-          IoVec.for_each into ~fn:(
-            fun segment ->
+          IoVec.for_each
+            into
+            ~fn:(fun segment ->
               let remaining = count - progress.copied in
               if remaining > 0 then
-                let len = Int.min remaining (IoSlice.length segment) in IoSlice.blit_unchecked ~src:readable ~src_off:progress.copied ~dst:segment ~dst_off:0 ~len;
-              progress.copied <- progress.copied + len
-          );
+                let len = Int.min remaining (IoSlice.length segment) in
+                IoSlice.blit_unchecked
+                  ~src:readable
+                  ~src_off:progress.copied
+                  ~dst:segment
+                  ~dst_off:0
+                  ~len;
+              progress.copied <- progress.copied + len);
           Ok count
       | Error _ as error -> error
 

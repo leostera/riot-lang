@@ -1,5 +1,4 @@
 type t
-
 val make: float -> t
 
 val of_int: int -> t

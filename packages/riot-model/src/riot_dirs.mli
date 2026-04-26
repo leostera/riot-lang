@@ -23,6 +23,7 @@ val project_dir: Workspace.t -> Path.t
 val ensure_created: unit -> (unit, exn) result
 
 (** Build directory configuration *)
+
 (** Default name of the build directory when [riot.target_dir] is unset *)
 val build_dir_name: string
 
@@ -36,6 +37,7 @@ val build_dir_root: workspace_root:Path.t -> Path.t
 val host_target: unit -> Target.t
 
 (** Target-aware path functions - new API *)
+
 (** Get profile directory (e.g., /path/to/project/_build/debug) *)
 val profile_dir: workspace_root:Path.t -> profile:string -> Path.t
 
@@ -67,12 +69,21 @@ val cache_dir_with_target: workspace_root:Path.t -> profile:string -> target:Tar
 val cache_dir_in_workspace: workspace:Workspace.t -> profile:string -> target:Target.t -> Path.t
 
 (** Get build lock path for a specific profile and target lane *)
-val build_lock_path_with_target: workspace_root:Path.t -> profile:string -> target:Target.t -> Path.t
+val build_lock_path_with_target:
+  workspace_root:Path.t ->
+  profile:string ->
+  target:Target.t ->
+  Path.t
 
 (** Get build lock path for a specific profile and target lane in a workspace. *)
-val build_lock_path_in_workspace: workspace:Workspace.t -> profile:string -> target:Target.t -> Path.t
+val build_lock_path_in_workspace:
+  workspace:Workspace.t ->
+  profile:string ->
+  target:Target.t ->
+  Path.t
 
 (** Backward compatible functions - default to debug profile + host target *)
+
 (** Get the debug build directory (e.g., /path/to/project/_build/debug) *)
 val debug_dir: workspace_root:Path.t -> Path.t
 

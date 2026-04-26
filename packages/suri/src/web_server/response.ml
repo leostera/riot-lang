@@ -12,10 +12,15 @@ let make = fun status ?(headers = []) ?(version = Net.Http.Version.Http11) ?(bod
     status;
     version;
     headers = Net.Http.Header.of_list headers;
-    body
+    body;
   }
 
-type response = ?headers:(string * string) list -> ?version:Net.Http.Version.t -> ?body:string -> unit -> t
+type response =
+  ?headers:(string * string) list ->
+  ?version:Net.Http.Version.t ->
+  ?body:string ->
+  unit ->
+  t
 
 let continue = make Continue
 

@@ -1,14 +1,10 @@
 module Conn = Conn
-
 module Pipeline = Pipeline
-
 module Router = Router
-
 module Logger = Logger
 
 (** Convenience alias for Router.middleware *)
 module Request_id = Request_id
-
 module Debugger = Debugger
 
 let router = Router.middleware
@@ -82,6 +78,7 @@ module Remote_ip = Remote_ip
 
 (* No convenience alias - Remote_ip.middleware requires ~proxies parameter *)
 (** Convenience alias for Etag.middleware with default param *)
+
 module Etag = Etag
 
 let etag = fun ~conn ~next -> Etag.middleware () ~conn ~next

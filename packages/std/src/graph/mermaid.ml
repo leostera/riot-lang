@@ -31,6 +31,7 @@ type node_shape =
   | Trapezoid
 
 (* [\text/] *)
+
 type node = { id: string; label: string; shape: node_shape }
 
 type edge_style =
@@ -38,21 +39,31 @@ type edge_style =
   | Dotted
   | Thick
 
-type edge = { from_node: string; to_node: string; label: string option; style: edge_style }
+type edge = {
+  from_node: string;
+  to_node: string;
+  label: string option;
+  style: edge_style;
+}
 
-type t = { direction: direction; nodes: node list; edges: edge list }
+type t = {
+  direction: direction;
+  nodes: node list;
+  edges: edge list;
+}
 
 let create = fun ?(direction = TD) () -> { direction; nodes = []; edges = [] }
 
 let add_node = fun t ~id ~label ?(shape = Rectangle) () ->
-  let node = { id; label; shape } in { t with nodes = node :: t.nodes }
+  let node = { id; label; shape } in
+  { t with nodes = node :: t.nodes }
 
 let add_edge = fun t ~from_node ~to_node ?label ?(style = Solid) () ->
   let edge = {
     from_node;
     to_node;
     label;
-    style
+    style;
   }
   in
   { t with edges = edge :: t.edges }
@@ -65,18 +76,18 @@ let direction_to_string = function
   | LR -> "LR"
 
 let format_node = fun node ->
-  let open_bracket, close_bracket =
+  let (open_bracket, close_bracket) =
     match node.shape with
-    | Rectangle -> "[", "]"
-    | Round -> "(", ")"
-    | Stadium -> "([", "])"
-    | Subroutine -> "[[", "]]"
-    | Cylindrical -> "[(", ")]"
-    | Circle -> "((", "))"
-    | Diamond -> "{", "}"
-    | Hexagon -> "{{", "}}"
-    | Parallelogram -> "[/", "/]"
-    | Trapezoid -> "[\\", "/]"
+    | Rectangle -> ("[", "]")
+    | Round -> ("(", ")")
+    | Stadium -> ("([", "])")
+    | Subroutine -> ("[[", "]]")
+    | Cylindrical -> ("[(", ")]")
+    | Circle -> ("((", "))")
+    | Diamond -> ("{", "}")
+    | Hexagon -> ("{{", "}}")
+    | Parallelogram -> ("[/", "/]")
+    | Trapezoid -> ("[\\", "/]")
   in
   "  " ^ node.id ^ open_bracket ^ "\"" ^ node.label ^ "\"" ^ close_bracket
 
@@ -96,17 +107,17 @@ let to_string = fun t ->
   (* Add graph direction *)
   StringBuilder.add_string buffer ("graph " ^ direction_to_string t.direction ^ "\n");
   (* Add nodes *)
-  List.for_each (List.reverse t.nodes) ~fn:(
-    fun node ->
+  List.for_each
+    (List.reverse t.nodes)
+    ~fn:(fun node ->
       StringBuilder.add_string buffer (format_node node);
-      StringBuilder.add_string buffer "\n"
-  );
+      StringBuilder.add_string buffer "\n");
   (* Add blank line if we have both nodes and edges *)
   if t.nodes != [] && t.edges != [] then
     StringBuilder.add_string buffer "\n";
-  List.for_each (List.reverse t.edges) ~fn:(
-    fun edge ->
+  List.for_each
+    (List.reverse t.edges)
+    ~fn:(fun edge ->
       StringBuilder.add_string buffer (format_edge edge);
-      StringBuilder.add_string buffer "\n"
-  );
+      StringBuilder.add_string buffer "\n");
   StringBuilder.contents buffer

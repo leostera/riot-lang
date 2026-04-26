@@ -46,10 +46,15 @@
    (* "<div><h1>Hello</h1></div>" *)
    ```
 *)
-type 'msg attr = [`attr of string * string (** Static HTML attribute like id, class, etc. *)
-| `event of string * (string -> 'msg)]
+
+type 'msg attr = [
+  | `attr of string * string
+  (** Static HTML attribute like id, class, etc. *)
+  | `event of string * (string -> 'msg)
+]
 
 (** Event handler that produces a message *)
+
 (** HTML attribute - either a static attribute or an event handler *)
 val attr: string -> string -> 'msg attr
 
@@ -92,13 +97,18 @@ val attr_src: string -> [> `attr of string * string]
    ```
 *)
 type 'msg t =
-  | El of { tag: string; attrs: 'msg attr list; children: 'msg t list }
+  | El of {
+      tag: string;
+      attrs: 'msg attr list;
+      children: 'msg t list;
+    }
   (** HTML element with tag, attributes, and children *)
   | Text of string
   (** Text node *)
   | Splat of 'msg t list
 
 (** List of elements to render inline *)
+
 (** HTML tree - elements, text nodes, or lists of nodes *)
 val list: 'msg t list -> 'msg t
 
@@ -248,7 +258,9 @@ val event_handlers: 'msg attr list -> (string * (string -> 'msg)) list
 
    Used by the LiveView runtime to register event handlers.
 *)
-val map_action: ('msg_a -> 'msg_b) -> 'msg_a t -> 'msg_b t(**
+val map_action: ('msg_a -> 'msg_b) -> 'msg_a t -> 'msg_b t
+
+(**
    Map event handlers to a different message type.
 
    Useful for composing components with different message types:

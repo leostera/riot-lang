@@ -7,7 +7,6 @@ open Common
    input
 *)
 type chunk_result = { data: string; remaining: string }
-
 val parse_slice: IO.IoVec.IoSlice.t -> chunk_result parse_result
 
 val parse: string -> chunk_result parse_result

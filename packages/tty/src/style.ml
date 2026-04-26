@@ -23,7 +23,7 @@ let default = {
   blink = false;
   reverse = false;
   strikethrough = false;
-  overline = false
+  overline = false;
 }
 
 let fg = fun color t -> { t with fg = Some color }
@@ -51,53 +51,63 @@ let to_escape_seq = fun t ->
   let codes =
     if t.bold then
       Escape_seq.bold_seq :: codes
-    else codes
+    else
+      codes
   in
   let codes =
     if t.faint then
       Escape_seq.faint_seq :: codes
-    else codes
+    else
+      codes
   in
   let codes =
     if t.italic then
       Escape_seq.italics_seq :: codes
-    else codes
+    else
+      codes
   in
   let codes =
     if t.underline then
       Escape_seq.underline_seq :: codes
-    else codes
+    else
+      codes
   in
   let codes =
     if t.blink then
       Escape_seq.blink_seq :: codes
-    else codes
+    else
+      codes
   in
   let codes =
     if t.reverse then
       Escape_seq.reverse_seq :: codes
-    else codes
+    else
+      codes
   in
   let codes =
     if t.strikethrough then
       Escape_seq.cross_out_seq :: codes
-    else codes
+    else
+      codes
   in
   let codes =
     if t.overline then
       Escape_seq.overline_seq :: codes
-    else codes
+    else
+      codes
   in
   let codes =
     match t.fg with
     | Some color when not (Color.is_no_color color) ->
-        let seq = Color.to_escape_seq ~mode:`fg color in seq :: codes
+        let seq = Color.to_escape_seq ~mode:`fg color in
+        seq :: codes
     | _ -> codes
   in
   let codes =
     match t.bg with
     | Some color when not (Color.is_no_color color) ->
-        let seq = Color.to_escape_seq ~mode:`bg color in seq :: codes
+        let seq = Color.to_escape_seq ~mode:`bg color in
+        seq :: codes
     | _ -> codes
   in
   String.concat ";" (List.reverse codes)
@@ -109,4 +119,5 @@ let styled = fun t text ->
     let seq = to_escape_seq t in
     if seq = "" then
       text
-    else "\027[" ^ seq ^ "m" ^ text ^ "\027[0m"
+    else
+      "\027[" ^ seq ^ "m" ^ text ^ "\027[0m"

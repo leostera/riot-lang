@@ -52,7 +52,11 @@ type ctx = {
   fixture_relpath: Path.t;
   fixture_name: string;
 }
-
 type filter_result = [`keep | `skip]
-
-val cases: ?filter:(Path.t -> filter_result) -> ?snapshot_path:(Path.t -> Path.t option) -> unit -> dir:Path.t -> run:(ctx -> (unit, string) result) -> Test_case.t list
+val cases:
+  ?filter:(Path.t -> filter_result) ->
+  ?snapshot_path:(Path.t -> Path.t option) ->
+  unit ->
+  dir:Path.t ->
+  run:(ctx -> (unit, string) result) ->
+  Test_case.t list

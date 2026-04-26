@@ -50,40 +50,53 @@ let add_quoted_string = fun buffer value ->
 let float_to_string = fun value ->
   if Float.is_nan value then
     ".nan"
-  else
-    if Float.is_infinite value then
-      if (
-        match Float.compare value 0.0 with
-        | Order.LT -> true
-        | Order.EQ | Order.GT -> false
-      ) then
-        "-.inf"
-      else ".inf"
+  else if Float.is_infinite value then
+    if (
+      match Float.compare value 0.0 with
+      | Order.LT -> true
+      | Order.EQ
+      | Order.GT -> false
+    ) then
+      "-.inf"
     else
-      let text12 = format_float "%.12g" value in
-      if Float.equal value (Float.of_string text12) then
-        if String.ends_with ~suffix:"." text12 then
-          text12 ^ "0"
-        else text12
+      ".inf"
+  else
+    let text12 = format_float "%.12g" value in
+    if Float.equal value (Float.of_string text12) then
+      if String.ends_with ~suffix:"." text12 then
+        text12 ^ "0"
       else
-        let text15 = format_float "%.15g" value in
-        if Float.equal value (Float.of_string text15) then
-          if String.ends_with ~suffix:"." text15 then
-            text15 ^ "0"
-          else text15
+        text12
+    else
+      let text15 = format_float "%.15g" value in
+      if Float.equal value (Float.of_string text15) then
+        if String.ends_with ~suffix:"." text15 then
+          text15 ^ "0"
         else
-          let text18 = format_float "%.18g" value in
-          if String.ends_with ~suffix:"." text18 then
-            text18 ^ "0"
-          else text18
+          text15
+      else
+        let text18 = format_float "%.18g" value in
+        if String.ends_with ~suffix:"." text18 then
+          text18 ^ "0"
+        else
+          text18
 
 let add_indent = fun buffer indent ->
-  for _ = 0 to indent - 1 do IO.Buffer.add_char buffer ' ' done
+  for _ = 0 to indent - 1 do
+    IO.Buffer.add_char buffer ' '
+  done
 
 let is_inline_value = function
-  | Null | Bool _ | Int _ | Float _ | String _ | Seq [] | Map [] -> true
+  | Null
+  | Bool _
+  | Int _
+  | Float _
+  | String _
+  | Seq []
+  | Map [] -> true
   | Tagged (_, payload) -> is_scalar payload
-  | Seq _ | Map _ -> false
+  | Seq _
+  | Map _ -> false
 
 let rec add_inline_value = fun buffer value ->
   match value with
@@ -91,7 +104,8 @@ let rec add_inline_value = fun buffer value ->
   | Bool value ->
       if value then
         IO.Buffer.add_string buffer "true"
-      else IO.Buffer.add_string buffer "false"
+      else
+        IO.Buffer.add_string buffer "false"
   | Int value -> IO.Buffer.add_string buffer (Int64.to_string value)
   | Float value -> IO.Buffer.add_string buffer (float_to_string value)
   | String value -> add_quoted_string buffer value
@@ -105,11 +119,18 @@ let rec add_inline_value = fun buffer value ->
           IO.Buffer.add_char buffer ' ';
           add_inline_value buffer payload
         )
-  | Seq _ | Map _ -> panic "Render.add_inline_value: expected inline-capable YAML value"
+  | Seq _
+  | Map _ -> panic "Render.add_inline_value: expected inline-capable YAML value"
 
 let rec render_value = fun buffer indent value ->
   match value with
-  | Null | Bool _ | Int _ | Float _ | String _ | Seq [] | Map [] ->
+  | Null
+  | Bool _
+  | Int _
+  | Float _
+  | String _
+  | Seq []
+  | Map [] ->
       add_indent buffer indent;
       add_inline_value buffer value;
       IO.Buffer.add_char buffer '\n'
@@ -128,40 +149,42 @@ let rec render_value = fun buffer indent value ->
           IO.Buffer.add_char buffer '\n';
           render_value buffer (indent + 2) payload
         )
-  | Seq items -> List.for_each items ~fn:(
-    fun item ->
-      if is_inline_value item then
-        (
+  | Seq items ->
+      List.for_each
+        items
+        ~fn:(fun item ->
+          if is_inline_value item then
+            (
+              add_indent buffer indent;
+              IO.Buffer.add_string buffer "- ";
+              add_inline_value buffer item;
+              IO.Buffer.add_char buffer '\n'
+            )
+          else
+            (
+              add_indent buffer indent;
+              IO.Buffer.add_char buffer '-';
+              IO.Buffer.add_char buffer '\n';
+              render_value buffer (indent + 2) item
+            ))
+  | Map fields ->
+      List.for_each
+        fields
+        ~fn:(fun (key, value) ->
           add_indent buffer indent;
-          IO.Buffer.add_string buffer "- ";
-          add_inline_value buffer item;
-          IO.Buffer.add_char buffer '\n'
-        )
-      else
-        (
-          add_indent buffer indent;
-          IO.Buffer.add_char buffer '-';
-          IO.Buffer.add_char buffer '\n';
-          render_value buffer (indent + 2) item
-        )
-  )
-  | Map fields -> List.for_each fields ~fn:(
-    fun (key, value) ->
-      add_indent buffer indent;
-      add_quoted_string buffer key;
-      IO.Buffer.add_char buffer ':';
-      if is_inline_value value then
-        (
-          IO.Buffer.add_char buffer ' ';
-          add_inline_value buffer value;
-          IO.Buffer.add_char buffer '\n'
-        )
-      else
-        (
-          IO.Buffer.add_char buffer '\n';
-          render_value buffer (indent + 2) value
-        )
-  )
+          add_quoted_string buffer key;
+          IO.Buffer.add_char buffer ':';
+          if is_inline_value value then
+            (
+              IO.Buffer.add_char buffer ' ';
+              add_inline_value buffer value;
+              IO.Buffer.add_char buffer '\n'
+            )
+          else
+            (
+              IO.Buffer.add_char buffer '\n';
+              render_value buffer (indent + 2) value
+            ))
 
 let to_string = fun value ->
   let buffer = IO.Buffer.create ~size:256 in

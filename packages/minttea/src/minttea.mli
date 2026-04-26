@@ -7,25 +7,27 @@
 open Std
 
 (** Configuration *)
-module Config : sig
+module Config: sig
   type render_mode =
     | Clear
     | Persist
-
   type output_target =
     | Stdout
     | Stderr
-
   type t = { render_mode: render_mode; fps: int; output: output_target }
-
   val make: ?render_mode:render_mode -> ?fps:int -> ?output:output_target -> unit -> t
 end
 
 (** Create a configuration with optional parameters *)
-val config: ?render_mode:Config.render_mode -> ?fps:int -> ?output:Config.output_target -> unit -> Config.t
+val config:
+  ?render_mode:Config.render_mode ->
+  ?fps:int ->
+  ?output:Config.output_target ->
+  unit ->
+  Config.t
 
 (** Terminal events *)
-module Event : sig
+module Event: sig
   type modifier =
     | NoModifier
     | Ctrl
@@ -35,7 +37,6 @@ module Event : sig
     | CtrlShift
     | AltShift
     | CtrlAltShift
-
   type key =
     | Up
     | Down
@@ -54,19 +55,16 @@ module Event : sig
     | PageDown
     | F of int
     | Key of string
-
   type mouse_button =
     | Left
     | Middle
     | Right
     | WheelUp
     | WheelDown
-
   type mouse_event_type =
     | Click
     | Release
     | Motion
-
   type mouse_event = {
     button: mouse_button;
     event_type: mouse_event_type;
@@ -76,9 +74,7 @@ module Event : sig
     alt: bool;
     shift: bool;
   }
-
   type window_size = { width: int; height: int }
-
   type t =
     | KeyDown of key * modifier
     | Mouse of mouse_event
@@ -89,18 +85,16 @@ module Event : sig
     | FocusGained
     | FocusLost
     | Custom of Message.t
-
   val key_to_string: key -> string
 
   val modifier_to_string: modifier -> string
 end
 
 (** Terminal commands *)
-module Command : sig
+module Command: sig
   type mouse_mode =
     | Cell_motion
     | All_motion
-
   type t =
     | Noop
     | Quit
@@ -116,8 +110,10 @@ module Command : sig
     | DisableFocusTracking
     | SetWindowTitle of string
     | Seq of t list
-    | SetTimer of { ref: Timer.id Ref.t; duration: Time.Duration.t }
-
+    | SetTimer of {
+        ref: Timer.id Ref.t;
+        duration: Time.Duration.t;
+      }
   val timer: after:Time.Duration.t -> Timer.id Ref.t * t
 end
 
@@ -128,16 +124,25 @@ module Element = Gooey.Element
 module Style = Gooey.Style
 
 (** Application definition *)
-module App : sig
+module App: sig
   type 'model t
-
-  val make: init:('model -> 'model * Command.t) -> update:(Event.t -> 'model -> 'model * Command.t) -> view:('model -> Gooey.Element.t) -> unit -> 'model t
+  val make:
+    init:('model -> 'model * Command.t) ->
+    update:(Event.t -> 'model -> 'model * Command.t) ->
+    view:('model -> Gooey.Element.t) ->
+    unit ->
+    'model t
 end
 
 module Component = Component
 
 (** Create a new application *)
-val app: init:('model -> 'model * Command.t) -> update:(Event.t -> 'model -> 'model * Command.t) -> view:('model -> Gooey.Element.t) -> unit -> 'model App.t
+val app:
+  init:('model -> 'model * Command.t) ->
+  update:(Event.t -> 'model -> 'model * Command.t) ->
+  view:('model -> Gooey.Element.t) ->
+  unit ->
+  'model App.t
 
 (** Run the application *)
 val run: ?config:Config.t -> 'model -> 'model App.t -> (unit, exn) result

@@ -11,9 +11,9 @@ let some = fun value -> Some value
 let none = None
 
 let equal = fun left right ~fn ->
-  match left, right with
-  | None, None -> true
-  | Some left, Some right -> fn left right
+  match (left, right) with
+  | (None, None) -> true
+  | (Some left, Some right) -> fn left right
   | _ -> false
 
 let is_some = function
@@ -75,9 +75,9 @@ let or_else = fun value ~fn ->
   | None -> fn ()
 
 let xor = fun left right ->
-  match left, right with
-  | Some _, None -> left
-  | None, Some _ -> right
+  match (left, right) with
+  | (Some _, None) -> left
+  | (None, Some _) -> right
   | _ -> None
 
 let unwrap = function
@@ -147,18 +147,18 @@ let flatten = function
   | None -> None
 
 let zip = fun left right ->
-  match left, right with
-  | Some left, Some right -> Some (left, right)
+  match (left, right) with
+  | (Some left, Some right) -> Some (left, right)
   | _ -> None
 
 let zip_with = fun left right ~fn ->
-  match left, right with
-  | Some left, Some right -> Some (fn left right)
+  match (left, right) with
+  | (Some left, Some right) -> Some (fn left right)
   | _ -> None
 
 let unzip = function
-  | Some (left, right) -> Some left, Some right
-  | None -> None, None
+  | Some (left, right) -> (Some left, Some right)
+  | None -> (None, None)
 
 let all = fun values ->
   let rec go = fun acc ->

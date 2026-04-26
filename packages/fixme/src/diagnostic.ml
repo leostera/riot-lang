@@ -7,8 +7,14 @@ type severity =
   | Hint
 
 type kind =
-  | Known of { rule_id: Rule_id.t; message: string }
-  | Generic of { rule_id: Rule_id.t; message: string }
+  | Known of {
+      rule_id: Rule_id.t;
+      message: string;
+    }
+  | Generic of {
+      rule_id: Rule_id.t;
+      message: string;
+    }
 
 type t = {
   severity: severity;
@@ -24,7 +30,7 @@ let make = fun ~severity ~kind ~span ?suggestion ?fix () ->
     kind;
     span;
     suggestion;
-    fix
+    fix;
   }
 
 let kind = fun value ->

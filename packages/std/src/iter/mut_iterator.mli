@@ -4,11 +4,10 @@
    Mutable iterator protocol for efficient sequence processing. Calling
    [next] mutates the internal state.
 *)
+
 module type Intf = sig
   type state
-
   type item
-
   val next: state -> item option
 
   val size: state -> int
@@ -17,9 +16,7 @@ module type Intf = sig
 end
 
 type ('item, 'state) iter = (module Intf with type item = 'item and type state = 'state)
-
 type 'item t
-
 val empty: unit -> 'item t
 
 val singleton: 'item -> 'item t

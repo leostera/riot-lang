@@ -13,6 +13,7 @@ type entry_kind =
   | Other of string
 
 (** Any other tar typeflag not modeled explicitly. *)
+
 (** Metadata for a single tar archive entry. *)
 type entry = {
   (** Archive-relative path for the entry. *)
@@ -26,7 +27,6 @@ type entry = {
   (** Link target for link entries, when present. *)
   link_target: Path.t option;
 }
-
 (** Tar-level failures surfaced by the high-level API. *)
 type error =
   | Engine_error of Tar_engine.error
@@ -49,6 +49,7 @@ type read_error =
   | Entries_error of error
 
 (** The tar archive itself was invalid or unsafe. *)
+
 (** Errors raised while extracting archive contents. *)
 type extract_error =
   | Extract_source_error of IO.error
@@ -58,6 +59,7 @@ type extract_error =
   | Extract_error of error
 
 (** The archive itself was invalid or contained unsafe entries. *)
+
 (**
    List entries from a tar archive.
 

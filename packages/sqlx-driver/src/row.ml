@@ -4,9 +4,7 @@ type t = (string * Value.t) list
 
 let get = fun field row -> Std.Collections.Proplist.get row ~key:field
 
-let fields = fun row -> List.map ~fn:(
-  fun (field, _) -> field
-) row
+let fields = fun row -> List.map ~fn:(fun (field, _) -> field) row
 
 let int = fun field row ->
   match get field row with
@@ -39,14 +37,12 @@ let timestamp = fun field row ->
   | None -> None
 
 let to_string = fun row ->
-  let parts = List.map ~fn:(
-    fun ((field, value)) -> field ^ ": " ^ Value.to_string value
-  ) row in String.concat ", " parts
+  let parts = List.map ~fn:(fun ((field, value)) -> field ^ ": " ^ Value.to_string value) row in
+  String.concat ", " parts
 
 let equal = fun a b ->
-  List.length a = List.length b && (
-    List.zip a b |> List.for_all
-      (
-        fun ((f1, v1), (f2, v2)) -> f1 = f2 && Value.equal v1 v2
-      )
+  List.length a = List.length b
+  && (
+    List.zip a b
+    |> List.for_all (fun ((f1, v1), (f2, v2)) -> f1 = f2 && Value.equal v1 v2)
   )

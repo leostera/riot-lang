@@ -1,5 +1,4 @@
 type t = int
-
 val zero: t
 
 val one: t

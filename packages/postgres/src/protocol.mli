@@ -11,6 +11,7 @@ type message_type =
   | Describe
   | Close
   | Sync
+
 module Sqlstate: sig
   type t =
     (* Class 00 — Successful Completion *)
@@ -269,7 +270,7 @@ end
 
 module Format: sig
   type t =
-    Text
+    | Text
     | Binary
   val of_int: int -> t
 
@@ -290,7 +291,7 @@ module Row: sig
   }
   type description = field list
   type value =
-    Null
+    | Null
     | Value of string
   type data = value list
 end
@@ -316,6 +317,7 @@ type backend_message =
   | NoData
   | ParameterDescription of TypeOid.t list
   | EmptyQueryResponse
+
 module Writer: sig
   val startup_message: user:string -> database:string -> application_name:string option -> string
 

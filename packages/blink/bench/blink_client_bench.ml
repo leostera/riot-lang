@@ -1,4 +1,5 @@
 open Std
+
 module H = Blink.Client
 
 let sink = ref 0
@@ -26,11 +27,13 @@ let bench_status_classification = fun () ->
   done
 
 let bench_retry_delay = fun () ->
-  let policy = H.RetryPolicy.make
-    ~max_attempts:8
-    ~base_delay:(Time.Duration.from_millis 10)
-    ~max_delay:(Time.Duration.from_secs 2)
-    () in
+  let policy =
+    H.RetryPolicy.make
+      ~max_attempts:8
+      ~base_delay:(Time.Duration.from_millis 10)
+      ~max_delay:(Time.Duration.from_secs 2)
+      ()
+  in
   for attempt = 1 to 20_000 do
     keep (Time.Duration.to_millis (H.RetryPolicy.delay_for_attempt policy ~attempt))
   done
@@ -42,11 +45,13 @@ let bench_execute_injected_transport = fun () ->
     Ok ok_response
   in
   let budget_policy = H.Budget.policy ~capacity:20_000 ~window:(Time.Duration.from_secs 60) in
-  let config = H.Config.make
-    ~retry_policy:(H.RetryPolicy.make ~max_attempts:1 ())
-    ~budget_policy
-    ~transport
-    () in
+  let config =
+    H.Config.make
+      ~retry_policy:(H.RetryPolicy.make ~max_attempts:1 ())
+      ~budget_policy
+      ~transport
+      ()
+  in
   let client = H.make ~config () in
   for _i = 1 to 10_000 do
     match H.execute client (request ()) with
@@ -66,11 +71,12 @@ let benchmarks =
     with_config ~config:hot_path "blink.client request construction" bench_request_make;
     with_config ~config:hot_path "blink.client status classification" bench_status_classification;
     with_config ~config:hot_path "blink.client retry delay" bench_retry_delay;
-    with_config ~config:managed_execute "blink.client execute with injected transport" bench_execute_injected_transport;
+    with_config
+      ~config:managed_execute
+      "blink.client execute with injected transport"
+      bench_execute_injected_transport;
   ]
 
-let () =
-  Runtime.run
-    ~main:(fun ~args -> Bench.Cli.main ~name:"blink client benchmarks" ~benchmarks ~args)
-    ~args:Env.args
-    ()
+let main ~args = Bench.Cli.main ~name:"blink client benchmarks" ~benchmarks ~args
+
+let () = Runtime.run ~main ~args:Env.args ()

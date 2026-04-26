@@ -10,22 +10,25 @@ type detection_result = {
 }
 
 (** Derive binary prefix from target triplet *)
-let bin_prefix_of_triplet = fun triplet -> let open System.TargetTriple in
-match triplet.architecture, triplet.os, triplet.vendor with
-| ("aarch64", "linux", _) -> "aarch64-linux-gnu-"
-| ("x86_64", "linux", _) -> "x86_64-linux-gnu-"
-| ("arm", "linux", _) -> "arm-linux-gnueabihf-"
-| ("riscv64", "linux", _) -> "riscv64-linux-gnu-"
-| _ -> ""
+let bin_prefix_of_triplet = fun triplet ->
+  let open System.TargetTriple in
+  match (triplet.architecture, triplet.os, triplet.vendor) with
+  | ("aarch64", "linux", _) -> "aarch64-linux-gnu-"
+  | ("x86_64", "linux", _) -> "x86_64-linux-gnu-"
+  | ("arm", "linux", _) -> "arm-linux-gnueabihf-"
+  | ("riscv64", "linux", _) -> "riscv64-linux-gnu-"
+  | _ -> ""
 
 (* Unknown - will try to detect *)
 (** Find C compiler in PATH *)
+
 let find_c_compiler = fun bin_prefix ->
   let gcc_name = bin_prefix ^ "gcc" in
   let check_cmd = Command.make ~args:[ "-c"; "command -v " ^ gcc_name ] "sh" in
   match Command.output check_cmd with
   | Ok output when output.status = 0 ->
-      let cc_path = String.trim output.stdout in Some (Path.v cc_path)
+      let cc_path = String.trim output.stdout in
+      Some (Path.v cc_path)
   | _ -> None
 
 (** Detect sysroot from C compiler *)
@@ -36,7 +39,8 @@ let detect_sysroot = fun cc_path ->
       let sysroot_str = String.trim output.stdout in
       if sysroot_str = "" || sysroot_str = "/" then
         None
-      else Some (Path.v sysroot_str)
+      else
+        Some (Path.v sysroot_str)
   | _ -> None
 
 (** Get bin directory from compiler path *)
@@ -57,17 +61,28 @@ let first_existing = fun paths ->
     match remaining with
     | [] -> None
     | path :: rest -> (
-      match Fs.exists path with
-      | Ok true -> Some path
-      | _ -> loop rest
-    )
+        match Fs.exists path with
+        | Ok true -> Some path
+        | _ -> loop rest
+      )
   in
   loop paths
 
-let bundled_c_compiler = fun ~toolchain_root ~bin_prefix -> first_existing [ Path.(toolchain_root / v "bin" / v (bin_prefix ^ "gcc")); Path.(toolchain_root / v "gcc" / v "bin" / v (bin_prefix ^ "gcc")) ]
+let bundled_c_compiler = fun ~toolchain_root ~bin_prefix ->
+  first_existing
+    [
+      Path.(toolchain_root / v "bin" / v (bin_prefix ^ "gcc"));
+      Path.(toolchain_root / v "gcc" / v "bin" / v (bin_prefix ^ "gcc"));
+    ]
 
 let bundled_sysroot = fun ~toolchain_root ~target_triplet ->
-  let target = System.TargetTriple.to_string target_triplet in first_existing [ Path.(toolchain_root / v "sysroot"); Path.(toolchain_root / v ("sysroot-" ^ target)); Path.(toolchain_root / v "gcc" / v target / v "sysroot") ]
+  let target = System.TargetTriple.to_string target_triplet in
+  first_existing
+    [
+      Path.(toolchain_root / v "sysroot");
+      Path.(toolchain_root / v ("sysroot-" ^ target));
+      Path.(toolchain_root / v "gcc" / v target / v "sysroot");
+    ]
 
 (** Detect cross-compilation toolchain for target *)
 let detect = fun ?toolchain_root () ~target_triplet ->
@@ -94,29 +109,31 @@ let detect = fun ?toolchain_root () ~target_triplet ->
       Log.warn ("Cross-compiler not found for " ^ System.TargetTriple.to_string target_triplet);
       Log.warn ("Expected: " ^ bin_prefix ^ "gcc in PATH");
       {
-        sysroot = (
-          match explicit_sysroot with
-          | Some path -> Some path
-          | None -> bundled_sr
-        );
+        sysroot =
+          (
+            match explicit_sysroot with
+            | Some path -> Some path
+            | None -> bundled_sr
+          );
         bin_dir = None;
         bin_prefix;
-        c_compiler = None
+        c_compiler = None;
       }
   | Some cc_path ->
       let sysroot =
         match explicit_sysroot with
         | Some path -> Some path
         | None -> (
-          match bundled_sr with
-          | Some path -> Some path
-          | None -> detect_sysroot cc_path
-        )
+            match bundled_sr with
+            | Some path -> Some path
+            | None -> detect_sysroot cc_path
+          )
       in
       let bin_dir = bin_dir_of_compiler cc_path in
       (
         match bundled_cc with
-        | Some path when Path.equal path cc_path -> Log.info ("✓ Using bundled cross-compiler: " ^ Path.to_string path)
+        | Some path when Path.equal path cc_path ->
+            Log.info ("✓ Using bundled cross-compiler: " ^ Path.to_string path)
         | _ -> Log.info ("✓ Using PATH cross-compiler: " ^ Path.to_string cc_path)
       );
       (
@@ -128,10 +145,10 @@ let detect = fun ?toolchain_root () ~target_triplet ->
         sysroot;
         bin_dir;
         bin_prefix;
-        c_compiler = Some cc_path
+        c_compiler = Some cc_path;
       }
 
 (** Get full path to a cross-compilation binary *)
-let binary_path = fun config bin_name -> config.bin_dir |> Option.map ~fn:(
-  fun dir -> Path.(dir / v (config.bin_prefix ^ bin_name))
-)
+let binary_path = fun config bin_name ->
+  config.bin_dir
+  |> Option.map ~fn:(fun dir -> Path.(dir / v (config.bin_prefix ^ bin_name)))

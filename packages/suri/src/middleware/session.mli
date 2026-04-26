@@ -78,9 +78,11 @@
 
    6. Keep session data small (< 4KB cookie limit)
 *)
+
 open Std
 
 (** Abstract session type *)
+
 (**
    Session middleware with encrypted cookie storage.
 
@@ -121,7 +123,14 @@ type t
        | None -> Printf.printf "Anonymous\n"
    ]}
 *)
-val middleware: secret:string -> ?cookie_name:string -> ?max_age:int -> ?secure:bool -> ?same_site:Http.Http1.Cookie.same_site -> unit -> (conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t)
+val middleware:
+  secret:string ->
+  ?cookie_name:string ->
+  ?max_age:int ->
+  ?secure:bool ->
+  ?same_site:Http.Http1.Cookie.same_site ->
+  unit ->
+  (conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t)
 
 val get: Conn.t -> t
 

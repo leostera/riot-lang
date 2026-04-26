@@ -8,7 +8,10 @@ type t = {
   source_path: Path.t;
   rules: string list;
 }
-
-val parse_from_toml: (string * Toml.value) list -> package_name:Package_name.t -> package_path:Path.t -> t list
+val parse_from_toml:
+  (string * Toml.value) list ->
+  package_name:Package_name.t ->
+  package_path:Path.t ->
+  t list
 
 val to_json: t -> Json.t

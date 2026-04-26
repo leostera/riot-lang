@@ -16,6 +16,7 @@ open Iter
    The convenience helpers [`walk`] and [`to_list`] are layered on top of that
    iterator surface.
 *)
+
 (**
    Lightweight classification for yielded entries.
 
@@ -37,7 +38,7 @@ type entry_kind =
    path representation without leaking those details to callers. Use the
    accessors below instead of destructuring entries directly.
 *)
-module FileItem : sig
+module FileItem: sig
   (** One discovered filesystem entry. *)
   type t
 
@@ -83,8 +84,11 @@ end
    - `depth` is the traversal depth associated with that path
    - `cause` is the underlying filesystem error
 *)
-type error = { path: Path.t option; depth: int; cause: Common.error }
-
+type error = {
+  path: Path.t option;
+  depth: int;
+  cause: Common.error;
+}
 (**
    One yielded walker item.
 
@@ -93,11 +97,9 @@ type error = { path: Path.t option; depth: int; cause: Common.error }
    - `Error error` yields a structured error for the current path
 *)
 type file_item = (FileItem.t, error) result
-
 (** Validation errors for walker construction. *)
 type create_error =
   | MinDepthCannotBeMoreThanMaxDepth of { min_depth: int; max_depth: int }
-
 (**
    Control signal returned by [`walk`]'s callback.
 
@@ -109,7 +111,6 @@ type step =
   | Continue
   | Skip_subtree
   | Stop
-
 (** A validated walk configuration. *)
 type t
 
@@ -149,7 +150,17 @@ type t
    Returns `Error (MinDepthCannotBeMoreThanMaxDepth ...)` if the depth range is
    invalid.
 *)
-val create: roots:Path.t list -> ?sort:bool -> ?follow_symlinks:bool -> ?follow_root_links:bool -> ?max_open:int -> ?min_depth:int -> ?max_depth:int -> ?contents_first:bool -> unit -> (t, create_error) Result.t
+val create:
+  roots:Path.t list ->
+  ?sort:bool ->
+  ?follow_symlinks:bool ->
+  ?follow_root_links:bool ->
+  ?max_open:int ->
+  ?min_depth:int ->
+  ?max_depth:int ->
+  ?contents_first:bool ->
+  unit ->
+  (t, create_error) Result.t
 
 (**
    Turn a walker into a lazy iterator.
@@ -191,7 +202,13 @@ val filter_entry: t -> f:(FileItem.t -> bool) -> t
 
    This helper defaults `sort = true` for deterministic callback order.
 *)
-val walk: roots:Path.t list -> ?sort:bool -> ?follow_symlinks:bool -> f:(FileItem.t -> step) -> unit -> (unit, Common.error) Result.t
+val walk:
+  roots:Path.t list ->
+  ?sort:bool ->
+  ?follow_symlinks:bool ->
+  f:(FileItem.t -> step) ->
+  unit ->
+  (unit, Common.error) Result.t
 
 (**
    Collect a traversal into a list.
@@ -206,4 +223,10 @@ val walk: roots:Path.t list -> ?sort:bool -> ?follow_symlinks:bool -> f:(FileIte
 
    This helper defaults `sort = true` for deterministic output.
 *)
-val to_list: roots:Path.t list -> ?sort:bool -> ?follow_symlinks:bool -> ?include_directories:bool -> unit -> (FileItem.t list, Common.error) Result.t
+val to_list:
+  roots:Path.t list ->
+  ?sort:bool ->
+  ?follow_symlinks:bool ->
+  ?include_directories:bool ->
+  unit ->
+  (FileItem.t list, Common.error) Result.t

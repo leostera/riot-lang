@@ -3,7 +3,6 @@ open Model
 
 (** Host-supplied configuration for one [Session]. *)
 type env = (SurfacePath.t * TypeScheme.t) list
-
 type t = {
   (**
      Intrinsic language-level bindings visible in every source.

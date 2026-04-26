@@ -32,13 +32,19 @@ type 'value t = {
 }
 
 (** Complete specification for a value type used in property testing. *)
+
 (**
    Build an arbitrary from its components.
 
    Use [make] when the built-in arbitraries are close, but you need custom
    shrinking, printing, or size measurement for a domain type.
 *)
-val make: ?shrink:'value Shrinker.t -> ?print:'value Printer.t -> ?small:('value -> int) -> 'value Generator.t -> 'value t
+val make:
+  ?shrink:'value Shrinker.t ->
+  ?print:'value Printer.t ->
+  ?small:('value -> int) ->
+  'value Generator.t ->
+  'value t
 
 (** Generate, shrink, and print integers. *)
 val int: int t

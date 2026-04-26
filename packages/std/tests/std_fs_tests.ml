@@ -13,21 +13,26 @@ let with_tempdir = fun prefix fn ->
   | Error err -> Error (IO.error_message err)
 
 let test_fs_write_roundtrips_large_binary_payload = fun _ctx ->
-  with_tempdir "std_fs_write"
-    (
-      fun tempdir ->
-        let path = Path.(tempdir / Path.v "payload.bin") in
-        let payload = String.init ~len:(1_024 * 1_024) ~fn:(
-          fun idx -> Char.from_int_unchecked (idx mod 256)
-        ) in
-        let* () = Fs.write payload path |> Result.map_err ~fn:IO.error_message
-        in
-        let* actual = Fs.read_to_string path |> Result.map_err ~fn:IO.error_message
-        in
-        if String.equal actual payload then
-          Ok ()
-        else Error "expected Fs.write to persist the full payload"
-    )
+  with_tempdir
+    "std_fs_write"
+    (fun tempdir ->
+      let path = Path.(tempdir / Path.v "payload.bin") in
+      let payload =
+        String.init ~len:(1_024 * 1_024) ~fn:(fun idx ->
+          Char.from_int_unchecked (idx mod 256))
+      in
+      let* () =
+        Fs.write payload path
+        |> Result.map_err ~fn:IO.error_message
+      in
+      let* actual =
+        Fs.read_to_string path
+        |> Result.map_err ~fn:IO.error_message
+      in
+      if String.equal actual payload then
+        Ok ()
+      else
+        Error "expected Fs.write to persist the full payload")
 
 let test_with_tempdir_retries_collisions_under_concurrency = fun _ctx ->
   let parent = self () in
@@ -39,19 +44,20 @@ let test_with_tempdir_retries_collisions_under_concurrency = fun _ctx ->
       (
         let _worker =
           spawn
-            (
-              fun () ->
-                let result =
-                  with_tempdir "std_fs_concurrent"
-                    (
-                      fun tempdir ->
-                        let marker = Path.(tempdir / Path.v "marker.txt") in
-                        let* () = Fs.write "ok" marker |> Result.map_err ~fn:IO.error_message in Ok (Path.to_string tempdir)
-                    )
-                in
-                send parent (TempdirResult result);
-                Ok ()
-            )
+            (fun () ->
+              let result =
+                with_tempdir
+                  "std_fs_concurrent"
+                  (fun tempdir ->
+                    let marker = Path.(tempdir / Path.v "marker.txt") in
+                    let* () =
+                      Fs.write "ok" marker
+                      |> Result.map_err ~fn:IO.error_message
+                    in
+                    Ok (Path.to_string tempdir))
+              in
+              send parent (TempdirResult result);
+              Ok ())
         in
         spawn_workers (remaining - 1)
       )
@@ -70,12 +76,18 @@ let test_with_tempdir_retries_collisions_under_concurrency = fun _ctx ->
       | Ok tempdir ->
           if List.exists (String.equal tempdir) seen then
             Error "expected concurrent Fs.with_tempdir calls to use unique directories"
-          else collect (remaining - 1) (tempdir :: seen)
+          else
+            collect (remaining - 1) (tempdir :: seen)
   in
   spawn_workers workers;
   collect workers []
 
-let tests = [ Test.case "Fs.write persists complete payloads" test_fs_write_roundtrips_large_binary_payload; Test.case "Fs.with_tempdir retries collisions under concurrency" test_with_tempdir_retries_collisions_under_concurrency ]
+let tests = [
+  Test.case "Fs.write persists complete payloads" test_fs_write_roundtrips_large_binary_payload;
+  Test.case
+    "Fs.with_tempdir retries collisions under concurrency"
+    test_with_tempdir_retries_collisions_under_concurrency;
+]
 
 let main ~args = Test.Cli.main ~name:"std_fs_tests" ~tests ~args ()
 

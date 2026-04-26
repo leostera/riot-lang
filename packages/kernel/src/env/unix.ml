@@ -11,7 +11,8 @@ let args = Caml_runtime.argv
 let executable_name =
   if Array.length args = 0 then
     None
-  else Array.get args ~at:0
+  else
+    Array.get args ~at:0
 
 module FFI = struct
   external get: string -> string option = "kernel_new_env_get"
@@ -39,35 +40,39 @@ let validate_var_name = fun name ->
   let rec loop index =
     if index >= length then
       Result.Ok ()
+    else if String.get_unchecked name ~at:index = '=' then
+      Result.Error (InvalidVarName { name })
     else
-      if String.get_unchecked name ~at:index = '=' then
-        Result.Error (InvalidVarName { name })
-      else loop (index + 1)
+      loop (index + 1)
   in
   if length = 0 then
     Result.Error (InvalidVarName { name })
-  else loop 0
+  else
+    loop 0
 
 let set = fun ~var ~value ->
   let name = var in
-  let* () = validate_var_name name in FFI.set_var name value |> Result.map_err ~fn:(
-    fun code -> System (System_error.from_code code)
-  )
+  let* () = validate_var_name name in
+  FFI.set_var name value
+  |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
 
 let remove = fun ~var ->
   let name = var in
-  let* () = validate_var_name name in FFI.remove_var name |> Result.map_err ~fn:(
-    fun code -> System (System_error.from_code code)
-  )
+  let* () = validate_var_name name in
+  FFI.remove_var name
+  |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
 
 let vars = FFI.vars
 
-let current_dir = fun () -> FFI.current_dir () |> Result.map ~fn:Path.from_string |> Result.map_err ~fn:(
-  fun code -> System (System_error.from_code code)
-)
+let current_dir = fun () ->
+  FFI.current_dir ()
+  |> Result.map ~fn:Path.from_string
+  |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
 
-let set_current_dir = fun path -> FFI.set_current_dir (Path.to_string path) |> Result.map_err ~fn:(
-  fun code -> System (System_error.from_code code)
-)
+let set_current_dir = fun path ->
+  FFI.set_current_dir (Path.to_string path)
+  |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
 
-let home_dir = fun () -> get ~var:"HOME" |> Option.map ~fn:Path.from_string
+let home_dir = fun () ->
+  get ~var:"HOME"
+  |> Option.map ~fn:Path.from_string

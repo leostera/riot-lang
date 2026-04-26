@@ -7,7 +7,9 @@ let home_handler = fun conn req ->
   (* Get current count from session *)
   let count =
     match Middleware.Session.get_value "count" session with
-    | Option.Some n -> Int.of_string_opt n |> Option.unwrap_or ~default:0
+    | Option.Some n ->
+        Int.of_string_opt n
+        |> Option.unwrap_or ~default:0
     | Option.None -> 0
   in
   (* Increment count *)
@@ -15,7 +17,8 @@ let home_handler = fun conn req ->
   Middleware.Session.put "count" (string_of_int new_count) session;
   (* Build response *)
   let html =
-    String.concat ""
+    String.concat
+      ""
       [
         "<html><head><title>Session Demo</title></head><body>";
         "<h1>Session Counter</h1>";
@@ -26,13 +29,17 @@ let home_handler = fun conn req ->
         "</body></html>";
       ]
   in
-  conn |> Conn.respond ~status:Ok ~body:html |> Conn.with_header "content-type" "text/html" |> Conn.send
+  conn
+  |> Conn.respond ~status:Ok ~body:html
+  |> Conn.with_header "content-type" "text/html"
+  |> Conn.send
 
 let reset_handler = fun conn req ->
   let session = Middleware.Session.get conn in
   Middleware.Session.clear session;
   let html =
-    String.concat ""
+    String.concat
+      ""
       [
         "<html><head><title>Session Demo</title></head><body>";
         "<h1>Counter Reset</h1>";
@@ -41,18 +48,16 @@ let reset_handler = fun conn req ->
         "</body></html>";
       ]
   in
-  conn |> Conn.respond ~status:Ok ~body:html |> Conn.with_header "content-type" "text/html" |> Conn.send
+  conn
+  |> Conn.respond ~status:Ok ~body:html
+  |> Conn.with_header "content-type" "text/html"
+  |> Conn.send
 
 let routes = Middleware.Router.[ get "/" home_handler; get "/reset" reset_handler ]
 
 let main ~args:_ =
   let secret = "dev-secret-not-for-production-use-32bit" in
-  let app = Middleware.[
-    request_id;
-    logger;
-    session ~secret ();
-    router routes;
-  ] in
+  let app = Middleware.[ request_id; logger; session ~secret (); router routes; ] in
   let config = Suri.config ~port:4_000 () in
   match Suri.start_link ~config app with
   | Ok _supervisor ->

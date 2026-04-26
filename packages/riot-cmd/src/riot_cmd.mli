@@ -14,7 +14,7 @@ module type Command = sig
 end
 
 (** Global registry for dynamically loaded commands *)
-module Registry : sig
+module Registry: sig
   val register: (module Command) -> unit
 
   (** Register a command (called by plugin initialization) *)

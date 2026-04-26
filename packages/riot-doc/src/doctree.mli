@@ -5,11 +5,15 @@ type item_kind =
   | Type_item
   | Function_item
   | Macro_item
-
-type item_detail = { name: string; signature: string; docstring: string option }
-
-type item_detail_group = { title: string; details: item_detail list }
-
+type item_detail = {
+  name: string;
+  signature: string;
+  docstring: string option;
+}
+type item_detail_group = {
+  title: string;
+  details: item_detail list;
+}
 type item = {
   kind: item_kind;
   name: string;
@@ -19,7 +23,6 @@ type item = {
   docstring: string option;
   detail_groups: item_detail_group list;
 }
-
 type module_doc = {
   name: string;
   path: string list;
@@ -29,16 +32,17 @@ type module_doc = {
   items: item list;
   modules: module_doc list;
 }
-
-type dependency_link = { name: string; version: string option; url: string }
-
+type dependency_link = {
+  name: string;
+  version: string option;
+  url: string;
+}
 type package_doc = {
   package: string;
   version: string;
   modules: module_doc list;
   dependencies: dependency_link list;
 }
-
 val item_kind_slug: item_kind -> string
 
 val item_kind_title: item_kind -> string

@@ -1,4 +1,5 @@
 open Std
+
 module S = Blink.SSE
 
 let test_single_data_event = fun _ctx ->
@@ -74,8 +75,6 @@ let tests =
     case "incomplete buffer returns none" test_incomplete_buffer_returns_none;
   ]
 
-let () =
-  Runtime.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"blink_sse_tests" ~tests ~args ())
-    ~args:Env.args
-    ()
+let main ~args = Test.Cli.main ~name:"blink_sse_tests" ~tests ~args ()
+
+let () = Runtime.run ~main ~args:Env.args ()

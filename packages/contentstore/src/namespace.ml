@@ -5,7 +5,9 @@ type error =
   | Empty_part
   | Invalid_part of string
 
-type t = { parts: string list }
+type t = {
+  parts: string list;
+}
 
 let error_message = fun error ->
   match error with
@@ -13,7 +15,11 @@ let error_message = fun error ->
   | Empty_part -> "namespace parts must not be empty"
   | Invalid_part part -> "invalid namespace part: " ^ String.escaped part
 
-let is_invalid_part = fun part -> String.equal part "." || String.equal part ".." || String.contains part "/" || String.contains part "\\"
+let is_invalid_part = fun part ->
+  String.equal part "."
+  || String.equal part ".."
+  || String.contains part "/"
+  || String.contains part "\\"
 
 let from_parts = fun parts ->
   if List.is_empty parts then

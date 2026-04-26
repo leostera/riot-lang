@@ -3,10 +3,21 @@ open Suri
 open Suri.Component
 
 (* Simple static page showcasing component system *)
+
 let welcome_page: unit t =
   html
     [
-      head [ title [ text "Welcome to Suri Components" ]; meta ~attrs:[ attr "charset" "UTF-8"; attr "viewport" "width=device-width, initial-scale=1.0" ] (); style {|
+      head
+        [
+          title [ text "Welcome to Suri Components" ];
+          meta
+            ~attrs:[
+              attr "charset" "UTF-8";
+              attr "viewport" "width=device-width, initial-scale=1.0";
+            ]
+            ();
+          style
+            {|
         body { 
           font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
           max-width: 800px; 
@@ -114,13 +125,28 @@ let welcome_page: unit t =
           border-radius: 3px;
           font-family: 'Monaco', 'Courier New', monospace;
         }
-      |} ];
+      |};
+        ];
       body
         [
-          header ~attrs:[ class_ "hero" ] [ h1 [ text "Welcome to Suri Components" ]; p [ text "Build type-safe, composable HTML with the power of OCaml" ] ];
+          header
+            ~attrs:[ class_ "hero" ]
+            [
+              h1 [ text "Welcome to Suri Components" ];
+              p [ text "Build type-safe, composable HTML with the power of OCaml" ];
+            ];
           main
             [
-              section [ h2 [ text "Why Components?" ]; p [ text "Suri Components provide a React-style way of building UIs that work "; text "seamlessly with both static HTML generation and LiveView interactive apps." ] ];
+              section
+                [
+                  h2 [ text "Why Components?" ];
+                  p
+                    [
+                      text "Suri Components provide a React-style way of building UIs that work ";
+                      text
+                        "seamlessly with both static HTML generation and LiveView interactive apps.";
+                    ];
+                ];
               section
                 [
                   h2 [ text "Features" ];
@@ -137,38 +163,73 @@ let welcome_page: unit t =
               section
                 [
                   h2 [ text "Example: Contact Form" ];
-                  p [ text "This form is rendered entirely with components. "; text "Add LiveView handlers to make it interactive!" ];
-                  form ~attrs:[ action "/submit"; method_ "POST" ]
+                  p
+                    [
+                      text "This form is rendered entirely with components. ";
+                      text "Add LiveView handlers to make it interactive!";
+                    ];
+                  form
+                    ~attrs:[ action "/submit"; method_ "POST" ]
                     [
                       fieldset
                         [
                           legend [ text "Contact Information" ];
-                          div ~attrs:[ class_ "form-group" ] [ label ~attrs:[ for_ "name" ] [ text "Name" ]; input ~attrs:[
-                            type_ "text";
-                            id "name";
-                            name "name";
-                            placeholder "Enter your name";
-                            required;
-                          ] () ];
-                          div ~attrs:[ class_ "form-group" ] [ label ~attrs:[ for_ "email" ] [ text "Email" ]; input ~attrs:[
-                            type_ "email";
-                            id "email";
-                            name "email";
-                            placeholder "you@example.com";
-                            required;
-                          ] () ];
-                          div ~attrs:[ class_ "form-group" ] [ label ~attrs:[ for_ "message" ] [ text "Message" ]; textarea ~attrs:[
-                            id "message";
-                            name "message";
-                            placeholder "Your message here...";
-                            attr "rows" "4";
-                            required;
-                          ] [] ];
+                          div
+                            ~attrs:[ class_ "form-group" ]
+                            [
+                              label ~attrs:[ for_ "name" ] [ text "Name" ];
+                              input
+                                ~attrs:[
+                                  type_ "text";
+                                  id "name";
+                                  name "name";
+                                  placeholder "Enter your name";
+                                  required;
+                                ]
+                                ();
+                            ];
+                          div
+                            ~attrs:[ class_ "form-group" ]
+                            [
+                              label ~attrs:[ for_ "email" ] [ text "Email" ];
+                              input
+                                ~attrs:[
+                                  type_ "email";
+                                  id "email";
+                                  name "email";
+                                  placeholder "you@example.com";
+                                  required;
+                                ]
+                                ();
+                            ];
+                          div
+                            ~attrs:[ class_ "form-group" ]
+                            [
+                              label ~attrs:[ for_ "message" ] [ text "Message" ];
+                              textarea
+                                ~attrs:[
+                                  id "message";
+                                  name "message";
+                                  placeholder "Your message here...";
+                                  attr "rows" "4";
+                                  required;
+                                ]
+                                [];
+                            ];
                           button ~attrs:[ type_ "submit"; class_ "btn" ] [ text "Send Message" ];
                         ];
                     ];
                 ];
-              section [ h2 [ text "Code Example" ]; p [ text "This entire page is built with components:" ]; pre [ code [ text {|open Suri.Component
+              section
+                [
+                  h2 [ text "Code Example" ];
+                  p [ text "This entire page is built with components:" ];
+                  pre
+                    [
+                      code
+                        [
+                          text
+                            {|open Suri.Component
 
 let my_page =
   div ~attrs:[class_ "container"] [
@@ -179,7 +240,10 @@ let my_page =
     ]
   ]
 
-let html = to_html my_page|} ] ] ];
+let html = to_html my_page|};
+                        ];
+                    ];
+                ];
             ];
           footer [ p [ text "Built with "; strong [ text "Suri.Component" ]; text " | © 2025" ] ];
         ];

@@ -18,7 +18,6 @@ type t = {
   command_binary: Path.t;
   (* _build/debug/out/minttea/Demo_cmd *)
 }
-
 val is_built: t -> bool
 
 (** Check if the command binary exists *)
@@ -37,4 +36,7 @@ val parse_from_toml: Toml.value list -> package_name:Package_name.t -> package_p
    path = "src/demo_cmd.ml"
 *)
 (* Note: discover_all and find_by_name are in Workspace module to avoid circular dependency *)
-val to_json: t -> Json.t(** Serialize for caching/debugging *)
+
+val to_json: t -> Json.t
+
+(** Serialize for caching/debugging *)

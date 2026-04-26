@@ -49,14 +49,13 @@
    {!MutIterator} | | Lazy sequences | {!Iterator}, {!MutIterator} | | Slice
    parsing | {!Cursor}, {!MutCursor} |
 *)
-module Iterator : module type of Iterator
 
-module MutIterator : sig
+module Iterator: module type of Iterator
+
+module MutIterator: sig
   module type Intf = sig
     type state
-
     type item
-
     val next: state -> item option
 
     val size: state -> int
@@ -65,9 +64,7 @@ module MutIterator : sig
   end
 
   type ('item, 'state) iter = (module Intf with type item = 'item and type state = 'state)
-
   type 'item t
-
   val empty: unit -> 'item t
 
   val singleton: 'item -> 'item t
@@ -117,6 +114,6 @@ module MutIterator : sig
   val for_each: 'a t -> fn:('a -> unit) -> unit
 end
 
-module Cursor : module type of Cursor
+module Cursor: module type of Cursor
 
-module MutCursor : module type of Mut_cursor
+module MutCursor: module type of Mut_cursor

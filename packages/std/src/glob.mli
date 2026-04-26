@@ -1,9 +1,15 @@
 (** Errors returned by {!create}. *)
 type glob_error =
   | Empty
-  | Invalid_glob of { input: string; message: string; offset: int option }
-  | Invalid_regex of { message: string; offset: int option }
-
+  | Invalid_glob of {
+      input: string;
+      message: string;
+      offset: int option;
+    }
+  | Invalid_regex of {
+      message: string;
+      offset: int option;
+    }
 (** A compiled multi-glob matcher. *)
 type t
 

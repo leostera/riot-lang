@@ -7,7 +7,8 @@ let compare = fun left right ->
   | 0 -> Int.compare left.local_id right.local_id
   | other -> other
 
-let equal = fun left right -> String.equal left.owner right.owner && Int.equal left.local_id right.local_id
+let equal = fun left right ->
+  String.equal left.owner right.owner && Int.equal left.local_id right.local_id
 
 let make = fun ~owner ~local_id -> { owner; local_id }
 
@@ -23,18 +24,19 @@ let to_int = fun value -> value.local_id
 
 let to_json = fun value ->
   Data.Json.Object [
-    "owner", Data.Json.String value.owner;
-    "local_id", Data.Json.Int value.local_id;
+    ("owner", Data.Json.String value.owner);
+    ("local_id", Data.Json.Int value.local_id);
   ]
 
 let of_json = function
   | Data.Json.Object fields -> (
-    match List.assoc_opt "owner" fields, List.assoc_opt "local_id" fields with
-    | (Some (Data.Json.String owner), Some (Data.Json.Int local_id)) -> Ok (make ~owner ~local_id)
-    | (Some _, Some _) -> Error "expected type constructor id owner:string and local_id:int"
-    | _ -> Error "missing type constructor id owner/local_id fields"
-  )
-  | Data.Json.Int value -> Ok (of_int value)
+      match (List.assoc_opt "owner" fields, List.assoc_opt "local_id" fields) with
+      | (Some (Data.Json.String owner), Some (Data.Json.Int local_id)) -> Ok (make ~owner ~local_id)
+      | (Some _, Some _) -> Error "expected type constructor id owner:string and local_id:int"
+      | _ -> Error "missing type constructor id owner/local_id fields"
+    )
+  | Data.Json.Int value ->
+      Ok (of_int value)
   | other ->
       Error (
         "expected type constructor id object but got " ^ (
@@ -50,4 +52,5 @@ let of_json = function
         )
       )
 
-let to_string = fun type_constructor_id -> type_constructor_id.owner ^ "#" ^ Int.to_string type_constructor_id.local_id
+let to_string = fun type_constructor_id ->
+  type_constructor_id.owner ^ "#" ^ Int.to_string type_constructor_id.local_id

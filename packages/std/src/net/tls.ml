@@ -12,15 +12,18 @@ external version: unit -> string = "std_tls_version"
 
 external create_client_engine: hostname:string -> engine = "std_tls_create_client_engine"
 
-external create_server_engine: cert_file:string -> key_file:string -> engine = "std_tls_create_server_engine"
+external create_server_engine: cert_file:string -> key_file:string -> engine =
+  "std_tls_create_server_engine"
 
-external pump_encrypted_in: engine -> bytes -> pos:int -> len:int -> int = "std_tls_pump_encrypted_in"
+external pump_encrypted_in: engine -> bytes -> pos:int -> len:int -> int =
+  "std_tls_pump_encrypted_in"
 
 external read_encrypted_out: engine -> bytes -> int = "std_tls_read_encrypted_out"
 
 external read_decrypted_raw: engine -> bytes -> pos:int -> len:int -> int = "std_tls_read_decrypted"
 
-external write_plaintext_raw: engine -> bytes -> pos:int -> len:int -> int = "std_tls_write_plaintext"
+external write_plaintext_raw: engine -> bytes -> pos:int -> len:int -> int =
+  "std_tls_write_plaintext"
 
 type handshake_result =
   | Handshake_done
@@ -55,25 +58,22 @@ let read_decrypted = fun engine buf ~pos ~len ->
   let bytes_read = read_decrypted_raw engine buf ~pos ~len in
   if bytes_read > 0 then
     Read bytes_read
+  else if bytes_read = 0 then
+    Eof
+  else if bytes_read = (-1) then
+    Need_network_read
+  else if bytes_read = (-2) then
+    Need_network_write
   else
-    if bytes_read = 0 then
-      Eof
-    else
-      if bytes_read = (-1) then
-        Need_network_read
-      else
-        if bytes_read = (-2) then
-          Need_network_write
-        else Eof
+    Eof
 
 let write_plaintext = fun engine buf ~pos ~len ->
   let bytes_written = write_plaintext_raw engine buf ~pos ~len in
   if bytes_written > 0 then
     Written bytes_written
+  else if bytes_written = (-1) then
+    Need_network_read
+  else if bytes_written = (-2) then
+    Need_network_write
   else
-    if bytes_written = (-1) then
-      Need_network_read
-    else
-      if bytes_written = (-2) then
-        Need_network_write
-      else Need_network_write
+    Need_network_write

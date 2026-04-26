@@ -1,5 +1,7 @@
 (** Log severity levels *)
+
 (** Log levels from least to most severe *)
+
 (** Convert level to integer for comparison *)
 type t =
   | Trace
@@ -7,7 +9,6 @@ type t =
   | Info
   | Warn
   | Error
-
 val to_int: t -> int
 
 (** Convert level to string representation *)

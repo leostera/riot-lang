@@ -1,31 +1,36 @@
 open Std
 
-type plan_package = { lane: Build_lane.locked Build_lane.t; package_key: Riot_model.Package.key }
-
-type error = Package_scheduler.error = { lane: Build_lane.locked Build_lane.t; reason: string }
-
+type plan_package = {
+  lane: Build_lane.locked Build_lane.t;
+  package_key: Riot_model.Package.key;
+}
+type error = Package_scheduler.error = {
+  lane: Build_lane.locked Build_lane.t;
+  reason: string;
+}
 type completion = Package_scheduler.completion = {
   target: Riot_model.Target.t;
   result_count: int;
   had_partial_failure: bool;
 }
-
 type summary = Package_scheduler.summary = {
   completions: completion list;
   lane_results: Lane_result.t list;
   errors: error list;
   had_failure: bool;
 }
-
 type run_result = summary
-
 val initial_plan_packages: Build_lane.locked Build_lane.t -> plan_package list
 
 val plan_package_key: plan_package -> Riot_model.Package.key
 
 val plan_package_target: plan_package -> Riot_model.Target.t
 
-val prepare_lanes: Build_context.t -> Resolved_build.t -> toolchain:Riot_toolchain.t -> (Build_lane.locked Build_lane.t list, Build_lane.error) result
+val prepare_lanes:
+  Build_context.t ->
+  Resolved_build.t ->
+  toolchain:Riot_toolchain.t ->
+  (Build_lane.locked Build_lane.t list, Build_lane.error) result
 
 val release_lanes: Build_lane.locked Build_lane.t list -> unit
 

@@ -4,7 +4,11 @@ open IO
 
 type handler = socket:Udp_socket.t -> from:Addr.datagram_addr -> bytes -> len:int -> unit
 
-type t = { socket: Udp_socket.t; buffer_size: int; handler: handler }
+type t = {
+  socket: Udp_socket.t;
+  buffer_size: int;
+  handler: handler;
+}
 
 type error =
   | System_error of IO.error
@@ -28,11 +32,9 @@ let serve = fun t ->
         let payload = Bytes.sub_unchecked buffer ~offset:0 ~len:bytes_read in
         let _ =
           Runtime.spawn
-            (
-              fun () ->
-                t.handler ~socket:t.socket ~from payload ~len:bytes_read;
-                Ok ()
-            )
+            (fun () ->
+              t.handler ~socket:t.socket ~from payload ~len:bytes_read;
+              Ok ())
         in
         loop ()
     | Error (Udp_socket.System_error err) -> Error (System_error err)

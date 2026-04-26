@@ -11,9 +11,17 @@ type entry_kind = Kernel.Fs.ReadDir.kind =
   | Socket
   | Unknown
 
-type entry = { path: Path.t; kind: entry_kind }
+type entry = {
+  path: Path.t;
+  kind: entry_kind;
+}
 
-type t = { path: Path.t; path_string: string; handle: Kernel.Fs.ReadDir.t; mutable closed: bool }
+type t = {
+  path: Path.t;
+  path_string: string;
+  handle: Kernel.Fs.ReadDir.t;
+  mutable closed: bool;
+}
 
 type state = t
 
@@ -27,7 +35,7 @@ let open_dir = fun path ->
         path;
         path_string;
         handle;
-        closed = false
+        closed = false;
       }
   | Error error -> Error (of_read_dir_error error)
 
@@ -48,10 +56,12 @@ let next = fun dir ->
   else
     match Kernel.Fs.ReadDir.read_entry dir.handle with
     | Ok None ->
-        let _ = close dir in None
+        let _ = close dir in
+        None
     | Ok (Some entry) -> Some { path = Path.from_string_unchecked entry.path; kind = entry.kind }
     | Error _ ->
-        let _ = close dir in None
+        let _ = close dir in
+        None
 
 let size = fun _ -> 0
 

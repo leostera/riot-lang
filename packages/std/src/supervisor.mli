@@ -50,6 +50,7 @@
    A child marked as `significant:true` will cause the supervisor to
    terminate if that child terminates, regardless of the supervision strategy.
 *)
+
 open Global
 
 type t
@@ -59,6 +60,7 @@ val to_pid: t -> Pid.t
 
 (** Convert supervisor to Pid *)
 (** {1 Supervision Strategies} *)
+
 type strategy =
   | OneForOne
   (** If one child fails, only that child is restarted *)
@@ -76,6 +78,7 @@ type strategy =
    Children are added dynamically.
 *)
 (** {1 Restart Policies} *)
+
 type restart =
   | Permanent
   (** Always restart the child, regardless of exit reason *)
@@ -85,6 +88,7 @@ type restart =
 
 (** Restart only if the child terminates abnormally (with error) *)
 (** {1 Shutdown Behavior} *)
+
 type shutdown =
   | BrutalKill
   (** Terminate immediately with no cleanup *)
@@ -94,6 +98,7 @@ type shutdown =
 
 (** Wait forever for graceful shutdown (use for supervisors) *)
 (** {1 Child Types} *)
+
 type child_type =
   | Worker
   (** A regular worker process *)
@@ -101,6 +106,7 @@ type child_type =
 
 (** A nested supervisor *)
 (** {1 Child Specification} *)
+
 type child_spec = {
   id: string;
   (** Unique identifier for this child *)
@@ -115,8 +121,15 @@ type child_spec = {
   significant: bool;
   (** If true, supervisor terminates when this child terminates *)
 }
-
-val child_spec: id:string -> start:(unit -> Pid.t) -> ?restart:restart -> ?shutdown:shutdown -> ?child_type:child_type -> ?significant:bool -> unit -> child_spec
+val child_spec:
+  id:string ->
+  start:(unit -> Pid.t) ->
+  ?restart:restart ->
+  ?shutdown:shutdown ->
+  ?child_type:child_type ->
+  ?significant:bool ->
+  unit ->
+  child_spec
 
 (**
    Create a child specification with sensible defaults.
@@ -137,7 +150,11 @@ val child_spec: id:string -> start:(unit -> Pid.t) -> ?restart:restart -> ?shutd
    ```
 *)
 (** {1 Intensity (Restart Limits)} *)
-type intensity = { max_restarts: int; window: Time.Duration.t }
+
+type intensity = {
+  max_restarts: int;
+  window: Time.Duration.t;
+}
 
 (**
    Maximum restarts within a time window.
@@ -150,6 +167,7 @@ type intensity = { max_restarts: int; window: Time.Duration.t }
    If this limit is exceeded, the supervisor terminates.
 *)
 (** {1 Starting Supervisors} *)
+
 val start_link: strategy:strategy -> ?intensity:intensity -> children:child_spec list -> unit -> t
 
 (**
@@ -175,6 +193,7 @@ val start: strategy:strategy -> ?intensity:intensity -> children:child_spec list
    The supervisor continues running even if the caller exits.
 *)
 (** {1 Child Management} *)
+
 type child_info = {
   id: string;
   pid: Pid.t option;
@@ -182,7 +201,6 @@ type child_info = {
   child_type: child_type;
   restart: restart;
 }
-
 val which_children: t -> child_info list
 
 (**
@@ -208,7 +226,6 @@ type child_count = {
   workers: int;
   (** Number of worker children *)
 }
-
 type count = child_count
 
 (** Alias for compatibility *)
@@ -279,6 +296,7 @@ val terminate_child: t -> id:string -> (unit, string) Kernel.result
    ```
 *)
 (** {1 Stopping Supervisors} *)
+
 val stop: t -> unit
 
 (**
@@ -288,7 +306,8 @@ val stop: t -> unit
    Each child is stopped according to its shutdown specification.
 *)
 (** {1 Dynamic Supervision} *)
-module Dynamic : sig
+
+module Dynamic: sig
   (**
      Dynamic supervisor for managing many children at runtime.
 
@@ -332,7 +351,13 @@ module Dynamic : sig
   val start: ?intensity:intensity -> ?max_children:int -> unit -> t
 
   (** Start a dynamic supervisor without linking *)
-  val start_child: t -> start:(unit -> Pid.t) -> ?restart:restart -> ?shutdown:shutdown -> unit -> (Pid.t, string) Kernel.result
+  val start_child:
+    t ->
+    start:(unit -> Pid.t) ->
+    ?restart:restart ->
+    ?shutdown:shutdown ->
+    unit ->
+    (Pid.t, string) Kernel.result
 
   (**
      Start a new child process.

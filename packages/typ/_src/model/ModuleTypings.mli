@@ -8,33 +8,72 @@ open Std
    It carries the exported typing facts for one module together with the
    module identity and source hash a host needs for provenance and reuse.
 *)
-type definition_site = { origin: Source.origin; span: Syn.Ceibo.Span.t }
-
+type definition_site = {
+  origin: Source.origin;
+  span: Syn.Ceibo.Span.t;
+}
 type value_definition_target =
   | Site of definition_site
   | Export of SurfacePath.t
-
-type value_definition = { export_name: SurfacePath.t; target: value_definition_target }
-
+type value_definition = {
+  export_name: SurfacePath.t;
+  target: value_definition_target;
+}
 type t
 
 (** Build complete module typings. *)
-val complete: module_name:string -> source_hash:Crypto.hash -> ?type_decls:FileSummary.type_decl list -> ?value_definitions:value_definition list -> FileSummary.exports -> t
+val complete:
+  module_name:string ->
+  source_hash:Crypto.hash ->
+  ?type_decls:FileSummary.type_decl list ->
+  ?value_definitions:value_definition list ->
+  FileSummary.exports ->
+  t
 
 (** Build partial module typings, optionally retaining partial exports. *)
-val partial: module_name:string -> source_hash:Crypto.hash -> ?type_decls:FileSummary.type_decl list -> ?value_definitions:value_definition list -> ?exports:FileSummary.exports -> unit -> t
+val partial:
+  module_name:string ->
+  source_hash:Crypto.hash ->
+  ?type_decls:FileSummary.type_decl list ->
+  ?value_definitions:value_definition list ->
+  ?exports:FileSummary.exports ->
+  unit ->
+  t
 
 (** Build trusted module typings. *)
-val trusted: module_name:string -> source_hash:Crypto.hash -> ?type_decls:FileSummary.type_decl list -> ?value_definitions:value_definition list -> FileSummary.exports -> t
+val trusted:
+  module_name:string ->
+  source_hash:Crypto.hash ->
+  ?type_decls:FileSummary.type_decl list ->
+  ?value_definitions:value_definition list ->
+  FileSummary.exports ->
+  t
 
 (** Build module typings that still carry exports despite diagnostics. *)
-val errored: module_name:string -> source_hash:Crypto.hash -> ?type_decls:FileSummary.type_decl list -> ?value_definitions:value_definition list -> FileSummary.exports -> t
+val errored:
+  module_name:string ->
+  source_hash:Crypto.hash ->
+  ?type_decls:FileSummary.type_decl list ->
+  ?value_definitions:value_definition list ->
+  FileSummary.exports ->
+  t
 
 (** Build module typings with no reusable export payload. *)
-val missing: module_name:string -> source_hash:Crypto.hash -> ?type_decls:FileSummary.type_decl list -> ?value_definitions:value_definition list -> unit -> t
+val missing:
+  module_name:string ->
+  source_hash:Crypto.hash ->
+  ?type_decls:FileSummary.type_decl list ->
+  ?value_definitions:value_definition list ->
+  unit ->
+  t
 
 (** Lift one per-source [FileSummary] into canonical module typings. *)
-val of_file_summary: module_name:string -> source_hash:Crypto.hash -> ?value_definitions:value_definition list -> FileSummary.t -> t
+val of_file_summary:
+  module_name:string ->
+  source_hash:Crypto.hash ->
+  ?value_definitions:value_definition list ->
+  FileSummary.t ->
+  t
 
 (**
    Recover one per-source [FileSummary] from module typings.
@@ -49,7 +88,13 @@ val to_file_summary: source_id:SourceId.t -> t -> FileSummary.t
    come from one real source input, such as bootstrap or merged dependency
    summaries.
 *)
-val synthetic_source_hash: module_name:string -> export_result:FileSummary.export_result -> type_decls:FileSummary.type_decl list -> ?value_definitions:value_definition list -> unit -> Crypto.hash
+val synthetic_source_hash:
+  module_name:string ->
+  export_result:FileSummary.export_result ->
+  type_decls:FileSummary.type_decl list ->
+  ?value_definitions:value_definition list ->
+  unit ->
+  Crypto.hash
 
 (** Recover the module name associated with these typings. *)
 val module_name: t -> string
@@ -81,7 +126,7 @@ val compiled_scope: t -> CompiledScope.t
 (** Find one exported definition target by export name. *)
 val find_value_definition: t -> export_name:SurfacePath.t -> value_definition_target option
 
-module Json : sig
+module Json: sig
   (** Encode module typings as structured JSON. *)
   val to_json: t -> Data.Json.t
 

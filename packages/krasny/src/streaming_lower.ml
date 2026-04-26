@@ -1,12 +1,11 @@
 open Std
 open Std.Collections
+
 module Ast = Syn.Ast
 module Kind = Syn.SyntaxKind
 module Slice = IO.IoVec.IoSlice
 
-type error = {
-  message: string;
-}
+type error = { message: string }
 
 type write_error =
   | Cannot_format of error
@@ -239,12 +238,18 @@ let split_lines = fun text ->
     if Int.(index >= length) then
       Vector.push
         lines
-        ~value:(String.sub text ~offset:segment_start ~len:(Int.sub length segment_start))
+        ~value:(String.sub
+          text
+          ~offset:segment_start
+          ~len:(Int.sub length segment_start))
     else if Char.equal (String.get_unchecked text ~at:index) '\n' then
       (
         Vector.push
           lines
-          ~value:(String.sub text ~offset:segment_start ~len:(Int.sub index segment_start));
+          ~value:(String.sub
+            text
+            ~offset:segment_start
+            ~len:(Int.sub index segment_start));
         loop (Int.add index 1) (Int.add index 1)
       )
     else
@@ -270,7 +275,7 @@ let remove_digit_separators = fun text ->
       if not (Char.equal char '_') then
         IO.Buffer.add_char buffer char
     done;
-    IO.Buffer.contents buffer
+  IO.Buffer.contents buffer
 
 let add_grouped_from_right = fun buffer text ~group ->
   let length = String.length text in
@@ -285,17 +290,17 @@ let add_grouped_from_right = fun buffer text ~group ->
         remainder
     in
     IO.Buffer.add_substring buffer text 0 first_group;
-    let rec loop index =
-      if Int.(index < length) then
-        (
-          IO.Buffer.add_char buffer '_';
-          let remaining = Int.sub length index in
-          let width = Int.min group remaining in
-          IO.Buffer.add_substring buffer text index width;
-          loop (Int.add index width)
-        )
-    in
-    loop first_group
+  let rec loop index =
+    if Int.(index < length) then
+      (
+        IO.Buffer.add_char buffer '_';
+        let remaining = Int.sub length index in
+        let width = Int.min group remaining in
+        IO.Buffer.add_substring buffer text index width;
+        loop (Int.add index width)
+      )
+  in
+  loop first_group
 
 let add_grouped_from_left = fun buffer text ~group ->
   let length = String.length text in
@@ -314,15 +319,17 @@ let add_grouped_from_left = fun buffer text ~group ->
 
 let grouped_from_right = fun text ~group ->
   let text = remove_digit_separators text in
-  let buffer = IO.Buffer.create
-    ~size:(Int.add (String.length text) (Int.div (String.length text) group)) in
+  let buffer =
+    IO.Buffer.create ~size:(Int.add (String.length text) (Int.div (String.length text) group))
+  in
   add_grouped_from_right buffer text ~group;
   IO.Buffer.contents buffer
 
 let grouped_from_left = fun text ~group ->
   let text = remove_digit_separators text in
-  let buffer = IO.Buffer.create
-    ~size:(Int.add (String.length text) (Int.div (String.length text) group)) in
+  let buffer =
+    IO.Buffer.create ~size:(Int.add (String.length text) (Int.div (String.length text) group))
+  in
   add_grouped_from_left buffer text ~group;
   IO.Buffer.contents buffer
 
@@ -331,7 +338,7 @@ let format_int_literal_text = fun text ->
   if Int.equal length 0 then
     text
   else
-    let core_length, suffix =
+    let (core_length, suffix) =
       let last = String.get_unchecked text ~at:(Int.sub length 1) in
       if char_is_int_suffix last then
         (Int.sub length 1, String.make ~len:1 ~char:last)
@@ -342,7 +349,12 @@ let format_int_literal_text = fun text ->
     let core_length = String.length core in
     if Int.(core_length >= 2) then
       let prefix = String.sub core ~offset:0 ~len:2 in
-      let digits = String.sub core ~offset:2 ~len:(Int.sub core_length 2) in
+      let digits =
+        String.sub
+          core
+          ~offset:2
+          ~len:(Int.sub core_length 2)
+      in
       if String.equal prefix "0x" || String.equal prefix "0X" then
         "0x" ^ grouped_from_right (String.lowercase_ascii digits) ~group:4 ^ suffix
       else if String.equal prefix "0b" || String.equal prefix "0B" then
@@ -372,10 +384,12 @@ let format_float_mantissa = fun mantissa ->
   | None -> grouped_from_right mantissa ~group:3
   | Some dot ->
       let left = String.sub mantissa ~offset:0 ~len:dot in
-      let right = String.sub
-        mantissa
-        ~offset:(Int.add dot 1)
-        ~len:(Int.sub (String.length mantissa) (Int.add dot 1)) in
+      let right =
+        String.sub
+          mantissa
+          ~offset:(Int.add dot 1)
+          ~len:(Int.sub (String.length mantissa) (Int.add dot 1))
+      in
       grouped_from_right left ~group:3 ^ "." ^ grouped_from_left right ~group:3
 
 let format_float_exponent = fun exponent ->
@@ -390,17 +404,22 @@ let format_float_exponent = fun exponent ->
       | _ -> first
     in
     String.make ~len:1 ~char:first
-    ^ String.sub exponent ~offset:1 ~len:(Int.sub (String.length exponent) 1)
+    ^ String.sub
+      exponent
+      ~offset:1
+      ~len:(Int.sub (String.length exponent) 1)
 
 let format_float_literal_text = fun text ->
   match first_exponent_index text with
   | None -> format_float_mantissa text
   | Some exponent_index ->
       let mantissa = String.sub text ~offset:0 ~len:exponent_index in
-      let exponent = String.sub
-        text
-        ~offset:exponent_index
-        ~len:(Int.sub (String.length text) exponent_index) in
+      let exponent =
+        String.sub
+          text
+          ~offset:exponent_index
+          ~len:(Int.sub (String.length text) exponent_index)
+      in
       format_float_mantissa mantissa ^ format_float_exponent exponent
 
 let is_blank_line = fun line -> String.is_empty (String.trim line)
@@ -440,7 +459,10 @@ let strip_leading_width = fun line width ->
       index
   in
   let offset = loop 0 width in
-  String.sub line ~offset ~len:(Int.sub length offset)
+  String.sub
+    line
+    ~offset
+    ~len:(Int.sub length offset)
 
 let first_nonblank_line_index = fun lines ->
   let length = Vector.length lines in
@@ -502,7 +524,10 @@ let normalize_inline_docstring = fun (docstring: Ast.Token.delimited_trivia) ->
 let normalize_inline_first_multiline_docstring = fun (docstring: Ast.Token.delimited_trivia) lines ~first_index ~last_index ->
   let closing = delimited_trivia_closing docstring in
   let buffer = IO.Buffer.create ~size:(Int.add (String.length docstring.text) 8) in
-  let first_line = Vector.get_unchecked lines ~at:first_index |> String.trim in
+  let first_line =
+    Vector.get_unchecked lines ~at:first_index
+    |> String.trim
+  in
   IO.Buffer.add_string buffer docstring.opening;
   if not (String.is_empty first_line) then
     (
@@ -514,20 +539,24 @@ let normalize_inline_first_multiline_docstring = fun (docstring: Ast.Token.delim
       IO.Buffer.add_char buffer ' ';
       IO.Buffer.add_string buffer closing
     )
-  else (
-    IO.Buffer.add_char buffer '\n';
-    for index = Int.add first_index 1 to last_index do
-      let line = Vector.get_unchecked lines ~at:index |> trim_trailing_horizontal in
-      IO.Buffer.add_string buffer line;
-      if Int.equal index last_index then
-        (
-          IO.Buffer.add_char buffer ' ';
-          IO.Buffer.add_string buffer closing
-        )
-      else
-        IO.Buffer.add_char buffer '\n'
-    done
-  );
+  else
+    (
+      IO.Buffer.add_char buffer '\n';
+      for index = Int.add first_index 1 to last_index do
+        let line =
+          Vector.get_unchecked lines ~at:index
+          |> trim_trailing_horizontal
+        in
+        IO.Buffer.add_string buffer line;
+        if Int.equal index last_index then
+          (
+            IO.Buffer.add_char buffer ' ';
+            IO.Buffer.add_string buffer closing
+          )
+        else
+          IO.Buffer.add_char buffer '\n'
+      done
+    );
   IO.Buffer.contents buffer
 
 let normalize_multiline_docstring = fun (docstring: Ast.Token.delimited_trivia) ->
@@ -536,14 +565,17 @@ let normalize_multiline_docstring = fun (docstring: Ast.Token.delimited_trivia) 
   if Int.(line_count <= 1) then
     normalize_inline_docstring docstring
   else
-    match first_nonblank_line_index lines, last_nonblank_line_index lines with
+    match (first_nonblank_line_index lines, last_nonblank_line_index lines) with
     | (None, _)
     | (_, None) -> docstring.opening ^ "\n" ^ delimited_trivia_closing docstring
-    | Some first_index, Some last_index ->
+    | (Some first_index, Some last_index) ->
         let first_is_inline = Int.equal first_index 0 in
         let common_indent =
           if first_is_inline && Int.(first_index < last_index) then
-            common_docstring_indent lines ~start:(Int.add first_index 1) ~stop:last_index
+            common_docstring_indent
+              lines
+              ~start:(Int.add first_index 1)
+              ~stop:last_index
           else
             common_docstring_indent lines ~start:first_index ~stop:last_index
         in
@@ -558,11 +590,12 @@ let normalize_multiline_docstring = fun (docstring: Ast.Token.delimited_trivia) 
           in
           if String.is_empty line then
             IO.Buffer.add_char buffer '\n'
-          else (
-            IO.Buffer.add_string buffer "   ";
-            IO.Buffer.add_string buffer line;
-            IO.Buffer.add_char buffer '\n'
-          )
+          else
+            (
+              IO.Buffer.add_string buffer "   ";
+              IO.Buffer.add_string buffer line;
+              IO.Buffer.add_char buffer '\n'
+            )
         in
         IO.Buffer.add_string buffer docstring.opening;
         IO.Buffer.add_char buffer '\n';
@@ -604,9 +637,7 @@ let delimited_trivia_comment_kind = fun (comment: Ast.Token.delimited_trivia) ->
 let comment_is_star_banner = fun (comment: Ast.Token.delimited_trivia) ->
   String.equal comment.opening "(*" && String.equal (delimited_trivia_closing comment) "*)" && (
     let body = String.trim comment.content in
-    Int.(String.length body >= 8) && String.for_all body
-      ~fn:(fun char ->
-        Char.equal char '*')
+    Int.(String.length body >= 8) && String.for_all body ~fn:(fun char -> Char.equal char '*')
   )
 
 let normalize_inline_comment = fun (comment: Ast.Token.delimited_trivia) ->
@@ -625,10 +656,10 @@ let normalize_inline_comment = fun (comment: Ast.Token.delimited_trivia) ->
 let normalize_multiline_comment = fun (comment: Ast.Token.delimited_trivia) ->
   let lines = split_lines comment.content in
   let line_count = Vector.length lines in
-  match first_nonblank_line_index lines, last_nonblank_line_index lines with
+  match (first_nonblank_line_index lines, last_nonblank_line_index lines) with
   | (None, _)
   | (_, None) -> comment.opening ^ "\n" ^ delimited_trivia_closing comment
-  | Some first_index, Some last_index ->
+  | (Some first_index, Some last_index) ->
       let first_is_inline = Int.equal first_index 0 in
       let body_start =
         if first_is_inline then
@@ -660,7 +691,10 @@ let normalize_multiline_comment = fun (comment: Ast.Token.delimited_trivia) ->
       IO.Buffer.add_string buffer comment.opening;
       if first_is_inline then
         (
-          let first_line = Vector.get_unchecked lines ~at:first_index |> String.trim in
+          let first_line =
+            Vector.get_unchecked lines ~at:first_index
+            |> String.trim
+          in
           if not (String.is_empty first_line) then
             (
               IO.Buffer.add_char buffer ' ';
@@ -673,11 +707,12 @@ let normalize_multiline_comment = fun (comment: Ast.Token.delimited_trivia) ->
         let line = trim_trailing_horizontal (strip_leading_width raw_line body_indent) in
         if String.is_empty line then
           IO.Buffer.add_char buffer '\n'
-        else (
-          add_body_prefix ();
-          IO.Buffer.add_string buffer line;
-          IO.Buffer.add_char buffer '\n'
-        )
+        else
+          (
+            add_body_prefix ();
+            IO.Buffer.add_string buffer line;
+            IO.Buffer.add_char buffer '\n'
+          )
       done;
       if has_trailing_blank_content then
         (
@@ -722,11 +757,11 @@ let token_leading_trivia_starts_inline = fun token ->
 let token_single_leading_delimited_trivia = fun token ->
   let result = ref None in
   let multiple = ref false in
-  Ast.Token.for_each_leading_trivia_item token
+  Ast.Token.for_each_leading_trivia_item
+    token
     ~fn:(
       function
-      | Ast.Token.Whitespace ->
-          ()
+      | Ast.Token.Whitespace -> ()
       | Ast.Token.Comment comment -> (
           match !result with
           | Some _ -> multiple := true
@@ -763,8 +798,8 @@ let record_field_trailing_trivia_text = function
 let token_inline_leading_comment_text = fun token ->
   if token_leading_trivia_starts_inline token then
     match token_single_leading_delimited_trivia token with
-    | Some (Leading_comment_trivia comment) -> record_field_trailing_trivia_text
-      (Leading_comment_trivia comment)
+    | Some (Leading_comment_trivia comment) ->
+        record_field_trailing_trivia_text (Leading_comment_trivia comment)
     | Some (Leading_docstring_trivia _)
     | None -> None
   else
@@ -789,18 +824,20 @@ let emit_slice = fun state ~has_newline value ->
         state.line_start <- Char.equal (Slice.get_unchecked value ~at:Int.(length - 1)) '\n';
         state.column <- last_slice_line_width value
       )
-    else (
-      write_slice_segment state value ~off:0 ~len:length;
-      state.column <- state.column + length
-    )
+    else
+      (
+        write_slice_segment state value ~off:0 ~len:length;
+        state.column <- state.column + length
+      )
 
 let emit_space = fun state ->
   if state.line_start then
     state.column <- state.column + 1
-  else (
-    state.pending_spaces <- Int.add state.pending_spaces 1;
-    state.column <- state.column + 1
-  )
+  else
+    (
+      state.pending_spaces <- Int.add state.pending_spaces 1;
+      state.column <- state.column + 1
+    )
 
 let drop_pending_spaces = fun state ->
   let count = state.pending_spaces in
@@ -872,7 +909,8 @@ let emit_token_leading_comments_as_lines = fun state token ->
   | _ ->
       let emitted = ref false in
       let previous_kind = ref None in
-      Ast.Token.for_each_leading_trivia_item token
+      Ast.Token.for_each_leading_trivia_item
+        token
         ~fn:(
           function
           | Ast.Token.Comment comment ->
@@ -880,11 +918,12 @@ let emit_token_leading_comments_as_lines = fun state token ->
               if !emitted then
                 emit_line state;
               (
-                match !previous_kind, kind with
-                | Some Leading_docstring, Leading_docstring -> emit_line state
-                | Some Leading_section_docstring, _ -> emit_line state
+                match (!previous_kind, kind) with
+                | (Some Leading_docstring, Leading_docstring) -> emit_line state
+                | (Some Leading_section_docstring, _) -> emit_line state
                 | (Some Leading_ordinary_comment, _)
-                | (Some Leading_docstring, (Leading_ordinary_comment | Leading_section_docstring))
+                | (Some Leading_docstring, (Leading_ordinary_comment
+                | Leading_section_docstring))
                 | (None, _) -> ()
               );
               emit_text state (normalize_comment comment);
@@ -901,19 +940,19 @@ let emit_token_leading_comments_as_lines = fun state token ->
               if !emitted then
                 emit_line state;
               (
-                match !previous_kind, kind with
-                | Some Leading_docstring, Leading_docstring -> emit_line state
-                | Some Leading_section_docstring, _ -> emit_line state
+                match (!previous_kind, kind) with
+                | (Some Leading_docstring, Leading_docstring) -> emit_line state
+                | (Some Leading_section_docstring, _) -> emit_line state
                 | (Some Leading_ordinary_comment, _)
-                | (Some Leading_docstring, (Leading_ordinary_comment | Leading_section_docstring))
+                | (Some Leading_docstring, (Leading_ordinary_comment
+                | Leading_section_docstring))
                 | (None, _) -> ()
               );
               emit_text state (normalize_docstring docstring);
               state.last_leading_comment_kind <- Some kind;
               previous_kind := Some kind;
               emitted := true
-          | Ast.Token.Whitespace ->
-              ()
+          | Ast.Token.Whitespace -> ()
         );
       if !emitted then
         (
@@ -923,7 +962,8 @@ let emit_token_leading_comments_as_lines = fun state token ->
 
 let token_has_leading_ordinary_comment_needing_separator = fun token ->
   let found = ref false in
-  Ast.Token.for_each_leading_trivia_item token
+  Ast.Token.for_each_leading_trivia_item
+    token
     ~fn:(
       function
       | Ast.Token.Comment comment ->
@@ -938,18 +978,20 @@ let token_has_leading_ordinary_comment_needing_separator = fun token ->
 let emit_top_level_leading_comments_as_lines = fun ?(drop_initial_docstring = false) ?(compact_final_section_docstring = false) state token ->
   let previous_kind = ref None in
   let seen_non_whitespace = ref false in
-  Ast.Token.for_each_leading_trivia_item token
+  Ast.Token.for_each_leading_trivia_item
+    token
     ~fn:(
       function
       | Ast.Token.Comment comment ->
           let kind = delimited_trivia_comment_kind comment in
           seen_non_whitespace := true;
           (
-            match !previous_kind, kind with
-            | Some Leading_docstring, Leading_docstring -> emit_line state
-            | Some Leading_section_docstring, _ -> emit_line state
-            | Some Leading_ordinary_comment, _ -> emit_line state
-            | (Some Leading_docstring, (Leading_ordinary_comment | Leading_section_docstring))
+            match (!previous_kind, kind) with
+            | (Some Leading_docstring, Leading_docstring) -> emit_line state
+            | (Some Leading_section_docstring, _) -> emit_line state
+            | (Some Leading_ordinary_comment, _) -> emit_line state
+            | (Some Leading_docstring, (Leading_ordinary_comment
+            | Leading_section_docstring))
             | (None, _) -> ()
           );
           emit_text state (normalize_comment comment);
@@ -960,54 +1002,51 @@ let emit_top_level_leading_comments_as_lines = fun ?(drop_initial_docstring = fa
           let is_section = docstring_is_section docstring in
           if drop_initial_docstring && not !seen_non_whitespace && not is_section then
             seen_non_whitespace := true
-          else (
+          else
             (
-              match !previous_kind with
-              | None -> (
-                  match state.last_leading_comment_kind with
-                  | Some Leading_docstring when not is_section -> emit_line state
-                  | Some Leading_section_docstring -> emit_line state
-                  | Some Leading_ordinary_comment
-                  | Some Leading_docstring
-                  | None -> ()
-                )
-              | Some Leading_docstring when not is_section ->
-                  emit_line state
-              | Some Leading_section_docstring when is_section ->
-                  emit_line state
-              | Some Leading_section_docstring ->
-                  if not compact_final_section_docstring then
-                    emit_line state
-              | Some Leading_ordinary_comment
-              | Some Leading_docstring ->
-                  ()
-            );
-            seen_non_whitespace := true;
-            emit_text state (normalize_docstring docstring);
-            state.last_leading_comment_kind <- Some (
-              if is_section then
-                Leading_section_docstring
-              else
-                Leading_docstring
-            );
-            emit_line state;
-            previous_kind := Some (
-              if is_section then
-                Leading_section_docstring
-              else
-                Leading_docstring
+              (
+                match !previous_kind with
+                | None -> (
+                    match state.last_leading_comment_kind with
+                    | Some Leading_docstring when not is_section -> emit_line state
+                    | Some Leading_section_docstring -> emit_line state
+                    | Some Leading_ordinary_comment
+                    | Some Leading_docstring
+                    | None -> ()
+                  )
+                | Some Leading_docstring when not is_section -> emit_line state
+                | Some Leading_section_docstring when is_section -> emit_line state
+                | Some Leading_section_docstring ->
+                    if not compact_final_section_docstring then
+                      emit_line state
+                | Some Leading_ordinary_comment
+                | Some Leading_docstring -> ()
+              );
+              seen_non_whitespace := true;
+              emit_text state (normalize_docstring docstring);
+              state.last_leading_comment_kind <- Some (
+                if is_section then
+                  Leading_section_docstring
+                else
+                  Leading_docstring
+              );
+              emit_line state;
+              previous_kind := Some (
+                if is_section then
+                  Leading_section_docstring
+                else
+                  Leading_docstring
+              )
             )
-          )
-      | Ast.Token.Whitespace ->
-          ()
+      | Ast.Token.Whitespace -> ()
     );
   match !previous_kind with
   | Some Leading_section_docstring ->
       if not compact_final_section_docstring then
         emit_line state;
       state.suppress_leading_token <- Some token.Ast.id
-  | Some (Leading_ordinary_comment | Leading_docstring) ->
-      state.suppress_leading_token <- Some token.Ast.id
+  | Some (Leading_ordinary_comment
+  | Leading_docstring) -> state.suppress_leading_token <- Some token.Ast.id
   | None ->
       if !seen_non_whitespace then
         state.suppress_leading_token <- Some token.Ast.id
@@ -1085,9 +1124,8 @@ let emit_top_level_leading = fun ?(drop_initial_docstring = false) ?(compact_fin
 
 let emit_node_leading_comments_as_lines = fun state node ->
   match Ast.Node.first_descendant_token node with
-  | Some token when Ast.Token.has_leading_comment token -> emit_token_leading_comments_as_lines
-    state
-    token
+  | Some token when Ast.Token.has_leading_comment token ->
+      emit_token_leading_comments_as_lines state token
   | Some _
   | None -> ()
 
@@ -1095,7 +1133,8 @@ let with_node_leading_comments_suppressed = fun state node fn ->
   let previous = state.suppress_leading_token in
   (
     match Ast.Node.first_descendant_token node with
-    | Some token when Ast.Token.has_leading_comment token -> state.suppress_leading_token <- Some token.Ast.id
+    | Some token when Ast.Token.has_leading_comment token ->
+        state.suppress_leading_token <- Some token.Ast.id
     | Some _
     | None -> ()
   );
@@ -1138,16 +1177,13 @@ let token_text_starts_uppercase = fun token ->
 
 let node_kind = Ast.Node.kind
 
-let token_kind_is = fun token kind ->
-  Kind.is (Ast.Token.kind token) kind
+let token_kind_is = fun token kind -> Kind.is (Ast.Token.kind token) kind
 
-let node_kind_is = fun node kind ->
-  Kind.is (Ast.Node.kind node) kind
+let node_kind_is = fun node kind -> Kind.is (Ast.Node.kind node) kind
 
 let token_flat_width = fun token -> Slice.length (Ast.Token.slice token)
 
-let same_ast_node = fun (left: Ast.Node.t) (right: Ast.Node.t) ->
-  Int.equal left.Ast.id right.Ast.id
+let same_ast_node = fun (left: Ast.Node.t) (right: Ast.Node.t) -> Int.equal left.Ast.id right.Ast.id
 
 let is_module_expr_kind = function
   | Kind.MODULE_EXPR
@@ -1171,7 +1207,8 @@ let is_module_type_kind = function
 
 let first_child_node_matching = fun node ~matches ->
   let found = ref None in
-  Ast.Node.for_each_child_node node
+  Ast.Node.for_each_child_node
+    node
     ~fn:(fun child ->
       match !found with
       | Some _ -> ()
@@ -1183,7 +1220,8 @@ let first_child_node_matching = fun node ~matches ->
 let first_descendant_node_matching = fun (node: Ast.Node.t) ~matches ->
   let found = ref None in
   let rec visit node =
-    Ast.Node.for_each_child_node node
+    Ast.Node.for_each_child_node
+      node
       ~fn:(fun child ->
         match !found with
         | Some _ -> ()
@@ -1223,20 +1261,26 @@ let collect_node_attribute_suffix_tokens_after_child = fun (node: Ast.Node.t) (c
       let first_suffix_index = Int.add child_index 1 in
       if
         node_child_token_kind_is node first_suffix_index Kind.LBRACKET
-        && (node_child_token_kind_is node (Int.add first_suffix_index 1) Kind.AT
-        || node_child_token_kind_is node (Int.add first_suffix_index 1) Kind.ATAT)
+        && (node_child_token_kind_is
+          node
+          (Int.add first_suffix_index 1)
+          Kind.AT
+        || node_child_token_kind_is
+          node
+          (Int.add first_suffix_index 1)
+          Kind.ATAT)
       then
         let rec loop index =
           if Int.(index < Ast.Node.child_count node) then
             (
               (
                 match Ast.Node.child_at node index with
-                | Some (Syn.SyntaxTree.Token id) -> Vector.push
-                  tokens
-                  ~value:(({ tree = node.Ast.tree; id }: Ast.Token.t))
-                | Some (Syn.SyntaxTree.Node id) -> Ast.Node.for_each_token
-                  (({ tree = node.Ast.tree; id }: Ast.Node.t))
-                  ~fn:(fun token -> Vector.push tokens ~value:token)
+                | Some (Syn.SyntaxTree.Token id) ->
+                    Vector.push tokens ~value:(({ tree = node.Ast.tree; id }: Ast.Token.t))
+                | Some (Syn.SyntaxTree.Node id) ->
+                    Ast.Node.for_each_token
+                      (({ tree = node.Ast.tree; id }: Ast.Node.t))
+                      ~fn:(fun token -> Vector.push tokens ~value:token)
                 | Some (Syn.SyntaxTree.Missing _)
                 | None -> ()
               );
@@ -1266,7 +1310,8 @@ let collect_wrapped_module_body_attribute_suffix_tokens = fun (node: Ast.Node.t)
 
 let node_has_token_kind = fun node kind ->
   let found = ref false in
-  Ast.Node.for_each_token node
+  Ast.Node.for_each_token
+    node
     ~fn:(fun token ->
       if not !found && token_kind_is token kind then
         found := true);
@@ -1274,7 +1319,8 @@ let node_has_token_kind = fun node kind ->
 
 let first_ident_token = fun node ->
   let found = ref None in
-  Ast.Node.for_each_child_token node
+  Ast.Node.for_each_child_token
+    node
     ~fn:(fun token ->
       match !found with
       | Some _ -> ()
@@ -1285,7 +1331,8 @@ let first_ident_token = fun node ->
 
 let last_ident_token = fun node ->
   let found = ref None in
-  Ast.Node.for_each_child_token node
+  Ast.Node.for_each_child_token
+    node
     ~fn:(fun token ->
       if token_kind_is token Kind.IDENT then
         found := Some token);
@@ -1296,23 +1343,25 @@ let token_wants_space_before = fun previous token ->
   let previous_kind = Ast.Token.kind previous in
   Kind.(previous_kind = LBRACKET && current_kind = PIPE)
   || not
-    (Kind.(current_kind = RPAREN)
-    || Kind.(current_kind = RBRACKET)
-    || Kind.(current_kind = RBRACE)
-    || Kind.(current_kind = COLON)
-    || Kind.(current_kind = COMMA)
-    || Kind.(current_kind = SEMI)
-    || Kind.(current_kind = DOT)
-    || Kind.(previous_kind = LPAREN)
-    || Kind.(previous_kind = LBRACKET)
-    || Kind.(previous_kind = LBRACE)
-    || Kind.(previous_kind = DOT)
-    || Kind.(previous_kind = BACKTICK)
-    || Kind.(previous_kind = QUOTE)
-    || Kind.(previous_kind = AT)
-    || Kind.(previous_kind = ATAT)
-    || Kind.(previous_kind = TILDE)
-    || Kind.(previous_kind = QUESTION))
+    (
+      Kind.(current_kind = RPAREN)
+      || Kind.(current_kind = RBRACKET)
+      || Kind.(current_kind = RBRACE)
+      || Kind.(current_kind = COLON)
+      || Kind.(current_kind = COMMA)
+      || Kind.(current_kind = SEMI)
+      || Kind.(current_kind = DOT)
+      || Kind.(previous_kind = LPAREN)
+      || Kind.(previous_kind = LBRACKET)
+      || Kind.(previous_kind = LBRACE)
+      || Kind.(previous_kind = DOT)
+      || Kind.(previous_kind = BACKTICK)
+      || Kind.(previous_kind = QUOTE)
+      || Kind.(previous_kind = AT)
+      || Kind.(previous_kind = ATAT)
+      || Kind.(previous_kind = TILDE)
+      || Kind.(previous_kind = QUESTION)
+    )
 
 let attribute_token_wants_space_before = fun previous token ->
   let current_kind = Ast.Token.kind token in
@@ -1324,7 +1373,8 @@ let attribute_token_wants_space_before = fun previous token ->
 
 let emit_token_stream = fun state node ->
   let previous = ref None in
-  Ast.Node.for_each_token node
+  Ast.Node.for_each_token
+    node
     ~fn:(fun token ->
       (
         match !previous with
@@ -1337,7 +1387,8 @@ let emit_token_stream = fun state node ->
 
 let emit_attribute_token_stream = fun state node ->
   let previous = ref None in
-  Ast.Node.for_each_token node
+  Ast.Node.for_each_token
+    node
     ~fn:(fun token ->
       (
         match !previous with
@@ -1350,7 +1401,8 @@ let emit_attribute_token_stream = fun state node ->
 
 let emit_token_vector_stream = fun state tokens ->
   let previous = ref None in
-  Vector.for_each tokens
+  Vector.for_each
+    tokens
     ~fn:(fun token ->
       (
         match !previous with
@@ -1370,12 +1422,13 @@ let first_class_module_type_token_wants_space_before = fun previous token ->
 
 let emit_first_class_module_type_token_vector_stream = fun state tokens ->
   let previous = ref None in
-  Vector.for_each tokens
+  Vector.for_each
+    tokens
     ~fn:(fun token ->
       (
         match !previous with
-        | Some previous when first_class_module_type_token_wants_space_before previous token -> emit_space
-          state
+        | Some previous when first_class_module_type_token_wants_space_before previous token ->
+            emit_space state
         | Some _
         | None -> ()
       );
@@ -1384,7 +1437,8 @@ let emit_first_class_module_type_token_vector_stream = fun state tokens ->
 
 let emit_attribute_token_vector_stream = fun state tokens ->
   let previous = ref None in
-  Vector.for_each tokens
+  Vector.for_each
+    tokens
     ~fn:(fun token ->
       (
         match !previous with
@@ -1404,7 +1458,8 @@ let core_type_token_wants_space_before = fun previous token ->
 
 let emit_core_type_token_vector_stream = fun state tokens ->
   let previous = ref None in
-  Vector.for_each tokens
+  Vector.for_each
+    tokens
     ~fn:(fun token ->
       (
         match !previous with
@@ -1432,8 +1487,8 @@ let emit_type_constraint_token_vector_stream = fun state tokens ->
         let token = Vector.get_unchecked tokens ~at:index in
         (
           match !previous with
-          | Some previous when token_wants_space_before_type_constraint previous token -> emit_space
-            state
+          | Some previous when token_wants_space_before_type_constraint previous token ->
+              emit_space state
           | Some _
           | None -> ()
         );
@@ -1512,18 +1567,20 @@ let shell_token_wants_space_before = fun previous token ->
   let current_kind = Ast.Token.kind token in
   let previous_kind = Ast.Token.kind previous in
   not
-    (Kind.(current_kind = RBRACKET)
-    || Kind.(current_kind = BAR_RBRACKET)
-    || Kind.(current_kind = DOT)
-    || Kind.(current_kind = COLON)
-    || Kind.(previous_kind = LBRACKET)
-    || Kind.(previous_kind = LBRACKET_BAR)
-    || Kind.(previous_kind = DOT)
-    || Kind.(previous_kind = AT)
-    || Kind.(previous_kind = ATAT)
-    || Kind.(previous_kind = PERCENT)
-    || Kind.(previous_kind = PERCENTGT)
-    || Kind.(previous_kind = LTPERCENT))
+    (
+      Kind.(current_kind = RBRACKET)
+      || Kind.(current_kind = BAR_RBRACKET)
+      || Kind.(current_kind = DOT)
+      || Kind.(current_kind = COLON)
+      || Kind.(previous_kind = LBRACKET)
+      || Kind.(previous_kind = LBRACKET_BAR)
+      || Kind.(previous_kind = DOT)
+      || Kind.(previous_kind = AT)
+      || Kind.(previous_kind = ATAT)
+      || Kind.(previous_kind = PERCENT)
+      || Kind.(previous_kind = PERCENTGT)
+      || Kind.(previous_kind = LTPERCENT)
+    )
 
 let emit_shell_token_stream = fun state for_each_shell_token ->
   let previous = ref None in
@@ -1542,7 +1599,8 @@ let emit_shell_token_stream = fun state for_each_shell_token ->
   | None -> unsupported "attribute or extension without shell tokens"
 
 let emit_shell_token_vector_range_stream = fun state tokens ~start ~stop ->
-  emit_shell_token_stream state
+  emit_shell_token_stream
+    state
     (fun ~fn ->
       let rec loop index =
         if Int.(index < stop) then
@@ -1556,11 +1614,13 @@ let emit_shell_token_vector_range_stream = fun state tokens ~start ~stop ->
 let emit_shell_node_token_stream = fun state node ->
   emit_shell_token_stream state (fun ~fn -> Ast.Node.for_each_token node ~fn)
 
-let unsupported_node = fun label node -> unsupported (label ^ ": " ^ Kind.to_string (node_kind node))
+let unsupported_node = fun label node ->
+  unsupported (label ^ ": " ^ Kind.to_string (node_kind node))
 
 let collect_child_exprs = fun (node: Ast.Node.t) ->
   let exprs = Vector.with_capacity ~size:(Ast.Node.child_count node) in
-  Ast.Node.for_each_child_node node
+  Ast.Node.for_each_child_node
+    node
     ~fn:(fun child ->
       match Ast.Expr.cast child with
       | Some expr -> Vector.push exprs ~value:expr
@@ -1569,7 +1629,8 @@ let collect_child_exprs = fun (node: Ast.Node.t) ->
 
 let collect_child_patterns = fun (node: Ast.Node.t) ->
   let patterns = Vector.with_capacity ~size:(Ast.Node.child_count node) in
-  Ast.Node.for_each_child_node node
+  Ast.Node.for_each_child_node
+    node
     ~fn:(fun child ->
       match Ast.Pattern.cast child with
       | Some pattern -> Vector.push patterns ~value:pattern
@@ -1615,7 +1676,8 @@ let collect_type_member_parameters = fun member ->
 
 let collect_type_member_attribute_items = fun member ->
   let attributes = Vector.with_capacity ~size:(Ast.TypeDeclaration.Member.child_count member) in
-  Ast.TypeDeclaration.Member.for_each_child_node member
+  Ast.TypeDeclaration.Member.for_each_child_node
+    member
     ~fn:(fun child ->
       if node_kind_is child Kind.ATTRIBUTE_ITEM then
         Vector.push attributes ~value:child);
@@ -1686,14 +1748,14 @@ let collect_type_member_attribute_suffix_tokens = fun member ->
                 )
               | Some (Syn.SyntaxTree.Node _) -> (
                   match Ast.TypeDeclaration.Member.child_node_at member index with
-                  | Some node -> Ast.Node.for_each_token
-                    node
-                    ~fn:(fun token -> Vector.push tokens ~value:token)
+                  | Some node ->
+                      Ast.Node.for_each_token
+                        node
+                        ~fn:(fun token -> Vector.push tokens ~value:token)
                   | None -> ()
                 )
               | Some (Syn.SyntaxTree.Missing _)
-              | None ->
-                  ()
+              | None -> ()
             );
             loop (Int.add index 1)
           )
@@ -1703,7 +1765,8 @@ let collect_type_member_attribute_suffix_tokens = fun member ->
 
 let collect_type_declaration_attribute_items = fun decl ->
   let attributes = Vector.with_capacity ~size:(Ast.Node.child_count decl) in
-  Ast.Node.for_each_child_node decl
+  Ast.Node.for_each_child_node
+    decl
     ~fn:(fun child ->
       if node_kind_is child Kind.ATTRIBUTE_ITEM then
         Vector.push attributes ~value:child);
@@ -1728,7 +1791,8 @@ let collect_let_bindings = fun decl ->
 
 let collect_let_bindings_from_expr = fun expr ->
   let bindings = Vector.with_capacity ~size:(Ast.Node.child_count expr) in
-  Ast.Node.for_each_child_node expr
+  Ast.Node.for_each_child_node
+    expr
     ~fn:(fun child ->
       match Ast.LetBinding.cast child with
       | Some binding -> Vector.push bindings ~value:binding
@@ -1742,7 +1806,9 @@ let collect_binding_operator_clauses = fun expr ->
 
 let collect_external_name_tokens = fun decl ->
   let tokens = Vector.with_capacity ~size:(Ast.Node.child_count decl) in
-  Ast.ExternalDeclaration.for_each_name_token decl ~fn:(fun token -> Vector.push tokens ~value:token);
+  Ast.ExternalDeclaration.for_each_name_token
+    decl
+    ~fn:(fun token -> Vector.push tokens ~value:token);
   tokens
 
 let collect_value_name_tokens = fun decl ->
@@ -1777,7 +1843,8 @@ let collect_node_tokens = fun node ->
 let collect_node_tokens_after_direct_token = fun node kind ->
   let tokens = Vector.with_capacity ~size:(Ast.Node.child_count node) in
   let after = ref false in
-  Ast.Node.for_each_child node
+  Ast.Node.for_each_child
+    node
     ~fn:(
       function
       | Syn.SyntaxTree.Token id ->
@@ -1791,8 +1858,7 @@ let collect_node_tokens_after_direct_token = fun node kind ->
             Ast.Node.for_each_token
               (({ tree = node.Ast.tree; id }: Ast.Node.t))
               ~fn:(fun token -> Vector.push tokens ~value:token)
-      | Syn.SyntaxTree.Missing _ ->
-          ()
+      | Syn.SyntaxTree.Missing _ -> ()
     );
   tokens
 
@@ -1813,16 +1879,15 @@ let collect_prefix_operator_tokens = fun node ->
 
 let collect_direct_tokens_between_children = fun node left right ->
   let tokens = Vector.with_capacity ~size:(Ast.Node.child_count node) in
-  match node_child_index node left, node_child_index node right with
-  | Some left_index, Some right_index when Int.(left_index < right_index) ->
+  match (node_child_index node left, node_child_index node right) with
+  | (Some left_index, Some right_index) when Int.(left_index < right_index) ->
       let rec loop index =
         if Int.(index < right_index) then
           (
             (
               match Ast.Node.child_at node index with
-              | Some (Syn.SyntaxTree.Token id) -> Vector.push
-                tokens
-                ~value:(({ tree = node.Ast.tree; id }: Ast.Token.t))
+              | Some (Syn.SyntaxTree.Token id) ->
+                  Vector.push tokens ~value:(({ tree = node.Ast.tree; id }: Ast.Token.t))
               | Some (Syn.SyntaxTree.Node _)
               | Some (Syn.SyntaxTree.Missing _)
               | None -> ()
@@ -1844,9 +1909,8 @@ let collect_direct_tokens_after_child = fun node child ->
           (
             (
               match Ast.Node.child_at node index with
-              | Some (Syn.SyntaxTree.Token id) -> Vector.push
-                tokens
-                ~value:(({ tree = node.Ast.tree; id }: Ast.Token.t))
+              | Some (Syn.SyntaxTree.Token id) ->
+                  Vector.push tokens ~value:(({ tree = node.Ast.tree; id }: Ast.Token.t))
               | Some (Syn.SyntaxTree.Node _)
               | Some (Syn.SyntaxTree.Missing _)
               | None -> ()
@@ -1865,9 +1929,7 @@ let collect_infix_operator_tokens = fun expr left operator right ->
 
 let token_vector_text = fun tokens ->
   let buffer = IO.Buffer.create ~size:(Vector.length tokens) in
-  Vector.for_each tokens
-    ~fn:(fun token ->
-      IO.Buffer.add_string buffer (token_text token));
+  Vector.for_each tokens ~fn:(fun token -> IO.Buffer.add_string buffer (token_text token));
   IO.Buffer.contents buffer
 
 let token_vector_tight_flat_width = fun tokens ->
@@ -1946,10 +2008,12 @@ let infix_operator_tokens = fun expr left operator right ->
   collect_infix_operator_tokens expr left operator right
 
 let infix_operator_text_from_expr = fun expr left operator right ->
-  infix_operator_tokens expr left operator right |> token_vector_text
+  infix_operator_tokens expr left operator right
+  |> token_vector_text
 
 let infix_operator_flat_width_from_expr = fun expr left operator right ->
-  infix_operator_tokens expr left operator right |> token_vector_tight_flat_width
+  infix_operator_tokens expr left operator right
+  |> token_vector_tight_flat_width
 
 let render_infix_operator_tokens = fun state expr left operator right ->
   let tokens = infix_operator_tokens expr left operator right in
@@ -1960,7 +2024,8 @@ let render_infix_operator_tokens = fun state expr left operator right ->
 
 let collect_child_tokens_of_kind = fun node kind ->
   let tokens = Vector.with_capacity ~size:(Ast.Node.child_count node) in
-  Ast.Node.for_each_child_token node
+  Ast.Node.for_each_child_token
+    node
     ~fn:(fun token ->
       if token_kind_is token kind then
         Vector.push tokens ~value:token);
@@ -2058,7 +2123,8 @@ let collect_signature_items_from_module_decl = fun decl ->
 
 let collect_structure_items_from_node = fun node ->
   let items = Vector.with_capacity ~size:(Ast.Node.child_count node) in
-  Ast.Node.for_each_child_node node
+  Ast.Node.for_each_child_node
+    node
     ~fn:(fun child ->
       if node_kind_is child Kind.STRUCTURE_ITEM then
         Vector.push items ~value:child);
@@ -2087,8 +2153,7 @@ let collect_structure_item_entries_from_node = fun node ->
           Vector.push tokens ~value:(({ tree = node.Ast.tree; id }: Ast.Token.t));
           collect_trailing_tokens (Int.add index 1) tokens
       | Some (Syn.SyntaxTree.Missing _)
-      | None ->
-          collect_trailing_tokens (Int.add index 1) tokens
+      | None -> collect_trailing_tokens (Int.add index 1) tokens
   in
   let rec loop index =
     if Int.(index < child_count) then
@@ -2113,7 +2178,8 @@ let collect_structure_item_entries_from_node = fun node ->
 
 let collect_signature_items_from_node = fun node ->
   let items = Vector.with_capacity ~size:(Ast.Node.child_count node) in
-  Ast.Node.for_each_child_node node
+  Ast.Node.for_each_child_node
+    node
     ~fn:(fun child ->
       if node_kind_is child Kind.SIGNATURE_ITEM then
         Vector.push items ~value:child);
@@ -2175,10 +2241,10 @@ let render_object_type_arrow_range = fun state tokens ~start ~stop ->
 let token_range_contains_kind = fun tokens ~start ~stop kind ->
   let found = ref false in
   let index = ref start in
-  while Int.((!index) < stop) && not (!found) do
-    if token_kind_is (Vector.get_unchecked tokens ~at:(!index)) kind then
+  while Int.((!index) < stop) && not !found do
+    if token_kind_is (Vector.get_unchecked tokens ~at:!index) kind then
       found := true;
-    index := Int.add (!index) 1
+    index := Int.add !index 1
   done;
   !found
 
@@ -2216,8 +2282,8 @@ let emit_token_vector_range_object_type_inline = fun state tokens ~start ~stop -
         let token = Vector.get_unchecked tokens ~at:index in
         (
           match !previous with
-          | Some previous when object_type_inline_token_wants_space_before previous token -> emit_space
-            state
+          | Some previous when object_type_inline_token_wants_space_before previous token ->
+              emit_space state
           | Some _
           | None -> ()
         );
@@ -2236,16 +2302,18 @@ let render_object_type_field_type = fun state tokens ~start ~stop ->
   in
   let should_break =
     token_range_contains_kind tokens ~start ~stop Kind.ARROW
-    || Int.(width + 1 > state.width - state.column) in
+    || Int.(width + 1 > state.width - state.column)
+  in
   if should_break then
     (
       emit_line state;
       with_indent state 2 (fun () -> render_object_type_arrow_range state tokens ~start ~stop)
     )
-  else (
-    emit_space state;
-    emit_token_vector_range_stream state tokens ~start ~stop
-  )
+  else
+    (
+      emit_space state;
+      emit_token_vector_range_stream state tokens ~start ~stop
+    )
 
 let render_object_type_field = fun state tokens ~start ~stop ->
   if Int.(start < stop) then
@@ -2261,7 +2329,11 @@ let render_object_type_field = fun state tokens ~start ~stop ->
     | Some colon ->
         emit_token_vector_range_stream state tokens ~start ~stop:colon;
         emit_token state (Vector.get_unchecked tokens ~at:colon);
-        render_object_type_field_type state tokens ~start:(Int.add colon 1) ~stop
+        render_object_type_field_type
+          state
+          tokens
+          ~start:(Int.add colon 1)
+          ~stop
     | None -> emit_token_vector_range_stream state tokens ~start ~stop
 
 let render_object_type_fields = fun state tokens ~start ~stop ->
@@ -2276,7 +2348,10 @@ let render_object_type_fields = fun state tokens ~start ~stop ->
           render_object_type_field state tokens ~start:field_start ~stop:index;
           emit_token state token;
           emit_line state;
-          loop (Int.add index 1) (Int.add index 1) depth
+          loop
+            (Int.add index 1)
+            (Int.add index 1)
+            depth
         )
       else
         let depth =
@@ -2287,16 +2362,29 @@ let render_object_type_fields = fun state tokens ~start ~stop ->
           else
             depth
         in
-        loop field_start (Int.add index 1) depth
+        loop
+          field_start
+          (Int.add index 1)
+          depth
   in
   loop start start 0
 
 let object_type_can_render_inline = fun state tokens ->
   let length = Vector.length tokens in
   Int.(length > 2)
-  && (not (token_range_contains_kind tokens ~start:1 ~stop:(Int.sub length 1) Kind.SEMI))
-  && (not (token_range_contains_kind tokens ~start:1 ~stop:(Int.sub length 1) Kind.ARROW))
-  && match token_vector_range_object_type_inline_width tokens ~start:1 ~stop:(Int.sub length 1) with
+  && (not (token_range_contains_kind
+    tokens
+    ~start:1
+    ~stop:(Int.sub length 1)
+    Kind.SEMI))
+  && (not (token_range_contains_kind
+    tokens
+    ~start:1
+    ~stop:(Int.sub length 1)
+    Kind.ARROW)) && match token_vector_range_object_type_inline_width
+    tokens
+    ~start:1
+    ~stop:(Int.sub length 1) with
   | Some content_width -> Int.(state.column + content_width + 4 <= state.width)
   | None -> false
 
@@ -2304,7 +2392,11 @@ let render_object_type_inline = fun state tokens ->
   let length = Vector.length tokens in
   emit_token state (Vector.get_unchecked tokens ~at:0);
   emit_space state;
-  emit_token_vector_range_object_type_inline state tokens ~start:1 ~stop:(Int.sub length 1);
+  emit_token_vector_range_object_type_inline
+    state
+    tokens
+    ~start:1
+    ~stop:(Int.sub length 1);
   emit_space state;
   emit_token state (Vector.get_unchecked tokens ~at:(Int.sub length 1))
 
@@ -2318,19 +2410,25 @@ let render_object_opaque_type = fun state node ->
       (
         if object_type_can_render_inline state tokens then
           render_object_type_inline state tokens
-        else (
-          emit_token state first;
-          if Int.(length > 2) then
-            (
-              emit_line state;
-              with_indent
-                state
-                2
-                (fun () -> render_object_type_fields state tokens ~start:1 ~stop:(Int.sub length 1));
-              emit_line state
-            );
-          emit_token state last
-        );
+        else
+          (
+            emit_token state first;
+            if Int.(length > 2) then
+              (
+                emit_line state;
+                with_indent
+                  state
+                  2
+                  (fun () ->
+                    render_object_type_fields
+                      state
+                      tokens
+                      ~start:1
+                      ~stop:(Int.sub length 1));
+                emit_line state
+              );
+            emit_token state last
+          );
         true
       )
     else
@@ -2379,9 +2477,16 @@ let class_declaration_is_class_type = fun tokens object_index ->
 
 let render_class_declaration = fun state decl ->
   let tokens = collect_child_tokens decl in
-  match token_vector_find_kind tokens Kind.OBJECT_KW, token_vector_find_last_kind tokens Kind.END_KW with
-  | Some object_index, Some end_index when Int.(object_index < end_index) ->
-      emit_token_vector_range_stream state tokens ~start:0 ~stop:(Int.add object_index 1);
+  match (
+    token_vector_find_kind tokens Kind.OBJECT_KW,
+    token_vector_find_last_kind tokens Kind.END_KW
+  ) with
+  | (Some object_index, Some end_index) when Int.(object_index < end_index) ->
+      emit_token_vector_range_stream
+        state
+        tokens
+        ~start:0
+        ~stop:(Int.add object_index 1);
       emit_line state;
       with_indent
         state
@@ -2400,10 +2505,12 @@ let render_class_declaration = fun state decl ->
 let render_first_class_module_type = fun state node ->
   let tokens = collect_child_tokens node in
   let length = Vector.length tokens in
-  match token_vector_find_kind tokens Kind.LPAREN, token_vector_find_kind tokens Kind.MODULE_KW, token_vector_find_kind
-    tokens
-    Kind.RPAREN with
-  | Some opening_index, Some module_index, Some closing_index when Int.equal
+  match (
+    token_vector_find_kind tokens Kind.LPAREN,
+    token_vector_find_kind tokens Kind.MODULE_KW,
+    token_vector_find_kind tokens Kind.RPAREN
+  ) with
+  | (Some opening_index, Some module_index, Some closing_index) when Int.equal
     module_index
     (Int.add opening_index 1)
   && Int.equal opening_index 0
@@ -2458,14 +2565,19 @@ let render_bracketed_opaque_type_row = fun state tokens ~start ~stop ->
         if Int.(Int.add start 1 < stop) then
           (
             emit_space state;
-            emit_token_vector_range_stream state tokens ~start:(Int.add start 1) ~stop
+            emit_token_vector_range_stream
+              state
+              tokens
+              ~start:(Int.add start 1)
+              ~stop
           )
       )
-    else (
-      emit_text state "|";
-      emit_space state;
-      emit_token_vector_range_stream state tokens ~start ~stop
-    )
+    else
+      (
+        emit_text state "|";
+        emit_space state;
+        emit_token_vector_range_stream state tokens ~start ~stop
+      )
 
 let render_bracketed_opaque_type_rows = fun state tokens ~start ~stop ->
   let rec loop row_start index =
@@ -2477,7 +2589,8 @@ let render_bracketed_opaque_type_rows = fun state tokens ~start ~stop ->
             with_indent
               state
               2
-              (fun () -> render_bracketed_opaque_type_row state tokens ~start:row_start ~stop)
+              (fun () ->
+                render_bracketed_opaque_type_row state tokens ~start:row_start ~stop)
           )
       )
     else if
@@ -2488,7 +2601,8 @@ let render_bracketed_opaque_type_rows = fun state tokens ~start ~stop ->
         with_indent
           state
           2
-          (fun () -> render_bracketed_opaque_type_row state tokens ~start:row_start ~stop:index);
+          (fun () ->
+            render_bracketed_opaque_type_row state tokens ~start:row_start ~stop:index);
         loop index (Int.add index 1)
       )
     else
@@ -2526,20 +2640,21 @@ let render_bracketed_opaque_type = fun state node ->
         in
         if should_inline then
           emit_token_vector_stream state tokens
-        else (
-          emit_token state first;
+        else
           (
-            if inline_open then
-              emit_token state (Vector.get_unchecked tokens ~at:1)
+            emit_token state first;
+            (
+              if inline_open then
+                emit_token state (Vector.get_unchecked tokens ~at:1)
+            );
+            render_bracketed_opaque_type_rows
+              state
+              tokens
+              ~start:content_start
+              ~stop:(Int.sub length 1);
+            emit_line state;
+            emit_token state last
           );
-          render_bracketed_opaque_type_rows
-            state
-            tokens
-            ~start:content_start
-            ~stop:(Int.sub length 1);
-          emit_line state;
-          emit_token state last
-        );
         true
       )
     else
@@ -2595,7 +2710,10 @@ let token_vector_is_parenthesized_operator_name = fun tokens ->
     let first = Vector.get_unchecked tokens ~at:0 in
     let last = Vector.get_unchecked tokens ~at:(Int.sub length 1) in
     if token_kind_is first Kind.LPAREN && token_kind_is last Kind.RPAREN then
-      token_vector_range_is_operator_name tokens ~start:1 ~stop:(Int.sub length 1)
+      token_vector_range_is_operator_name
+        tokens
+        ~start:1
+        ~stop:(Int.sub length 1)
     else
       false
 
@@ -2604,7 +2722,11 @@ let render_parenthesized_operator_tokens = fun state tokens ->
   (
     emit_token state (Vector.get_unchecked tokens ~at:0);
     emit_space state;
-    emit_token_vector_range_compact state tokens ~start:1 ~stop:(Int.sub length 1);
+    emit_token_vector_range_compact
+      state
+      tokens
+      ~start:1
+      ~stop:(Int.sub length 1);
     emit_space state;
     emit_token state (Vector.get_unchecked tokens ~at:(Int.sub length 1))
   )
@@ -2625,7 +2747,8 @@ let render_expr_path = fun state path ->
 
 let path_contains_dot = fun path ->
   let found = ref false in
-  Ast.Node.for_each_token path
+  Ast.Node.for_each_token
+    path
     ~fn:(fun token ->
       if token_kind_is token Kind.DOT then
         found := true);
@@ -2645,21 +2768,23 @@ let render_parenthesized_empty_pattern = fun state pattern ->
 
 let pattern_is_operator_name = fun pattern ->
   match Ast.Pattern.view pattern with
-  | Path { path } -> collect_child_tokens path |> token_vector_is_operator_name
+  | Path { path } ->
+      collect_child_tokens path
+      |> token_vector_is_operator_name
   | _ -> false
 
 let rec pattern_is_unit = fun pattern ->
   match Ast.Pattern.view pattern with
-  | Parenthesized { inner=None } -> true
-  | Constraint { pattern=Some inner; _ }
-  | Attribute { inner=Some inner } -> pattern_is_unit inner
+  | Parenthesized { inner = None } -> true
+  | Constraint { pattern = Some inner; _ }
+  | Attribute { inner = Some inner } -> pattern_is_unit inner
   | _ -> false
 
 let collect_or_pattern_items = fun pattern ->
   let items = Vector.with_capacity ~size:(Ast.Node.child_count pattern) in
   let rec collect pattern =
     match Ast.Pattern.view pattern with
-    | Or { left=Some left; right=Some right } ->
+    | Or { left = Some left; right = Some right } ->
         collect left;
         collect right
     | _ -> Vector.push items ~value:pattern
@@ -2674,56 +2799,45 @@ let rec render_type_expr = fun state type_expr ->
       render_type_expr_attribute_suffix state type_expr
   | None -> (
       match Ast.TypeExpr.view type_expr with
-      | Path { path } ->
-          render_path state path
-      | Var { name=Some name } ->
+      | Path { path } -> render_path state path
+      | Var { name = Some name } ->
           emit_text state "'";
           emit_token state name
-      | Var { name=None } ->
-          unsupported_node "type variable without name" type_expr
-      | Wildcard ->
-          emit_text state "_"
-      | Arrow { left=Some left; right=Some right } ->
+      | Var { name = None } -> unsupported_node "type variable without name" type_expr
+      | Wildcard -> emit_text state "_"
+      | Arrow { left = Some left; right = Some right } ->
           render_type_arrow_left state left;
           emit_space state;
           emit_text state "->";
           emit_space state;
           render_type_expr state right
-      | Arrow _ ->
-          unsupported_node "incomplete arrow type" type_expr
-      | Apply { argument=Some argument; constructor=Some constructor } ->
+      | Arrow _ -> unsupported_node "incomplete arrow type" type_expr
+      | Apply { argument = Some argument; constructor = Some constructor } ->
           render_type_apply_argument state argument;
           emit_space state;
           render_type_expr state constructor
-      | Apply _ ->
-          unsupported_node "incomplete apply type" type_expr
-      | Parenthesized { inner=Some inner } ->
+      | Apply _ -> unsupported_node "incomplete apply type" type_expr
+      | Parenthesized { inner = Some inner } ->
           emit_text state "(";
           render_type_expr state inner;
           emit_text state ")"
-      | Parenthesized { inner=None } ->
-          emit_text state "()"
-      | Tuple { separator; _ } ->
-          render_tuple_type_expr state type_expr separator
-      | Poly { body=Some body } ->
-          render_poly_type_expr state type_expr body
-      | Poly { body=None } ->
-          unsupported_node "poly type without body" type_expr
-      | Labeled { optional_token; label=Some label; annotation=Some annotation } ->
+      | Parenthesized { inner = None } -> emit_text state "()"
+      | Tuple { separator; _ } -> render_tuple_type_expr state type_expr separator
+      | Poly { body = Some body } -> render_poly_type_expr state type_expr body
+      | Poly { body = None } -> unsupported_node "poly type without body" type_expr
+      | Labeled { optional_token; label = Some label; annotation = Some annotation } ->
           emit_optional_token state optional_token;
           emit_token state label;
           emit_text state ":";
           render_type_expr state annotation
-      | Labeled _ ->
-          unsupported_node "incomplete labeled type" type_expr
+      | Labeled _ -> unsupported_node "incomplete labeled type" type_expr
       | Opaque node ->
           if render_alias_opaque_type state node then
             ()
           else if not (render_opaque_type state node) then
             unsupported_node "unsupported type expression" type_expr
       | Error _
-      | Unknown _ ->
-          unsupported_node "unsupported type expression" type_expr
+      | Unknown _ -> unsupported_node "unsupported type expression" type_expr
     )
 
 and render_alias_opaque_type = fun state node ->
@@ -2758,11 +2872,13 @@ and render_type_expr_attribute_suffix = fun state type_expr ->
     ~fn:(fun token -> Vector.push tokens ~value:token);
   let length = Vector.length tokens in
   let token_at_is index kind =
-    Int.(index < length) && token_kind_is (Vector.get_unchecked tokens ~at:index) kind in
+    Int.(index < length) && token_kind_is (Vector.get_unchecked tokens ~at:index) kind
+  in
   let group_is_floating_attribute start =
     token_at_is start Kind.LBRACKET
     && token_at_is (Int.add start 1) Kind.ATAT
-    && token_at_is (Int.add start 2) Kind.AT in
+    && token_at_is (Int.add start 2) Kind.AT
+  in
   let rec group_stop index depth =
     if Int.(index >= length) then
       length
@@ -2829,18 +2945,18 @@ and type_expr_flat_width = fun type_expr ->
             | Some previous when token_wants_space_before previous token -> 1
             | _ -> 0
           in
-          loop (Int.add index 1) (Some token) (Int.add total (Int.add extra_space token_width))
+          loop
+            (Int.add index 1)
+            (Some token)
+            (Int.add total (Int.add extra_space token_width))
       in
       loop 0 None 0
-  | Var { name=Some name } ->
-      Some (Int.add 1 (Slice.length (Ast.Token.slice name)))
-  | Var { name=None } ->
-      None
-  | Wildcard ->
-      Some 1
-  | Arrow { left=Some left; right=Some right } -> (
-      match type_expr_flat_width left, type_expr_flat_width right with
-      | Some left_width, Some right_width ->
+  | Var { name = Some name } -> Some (Int.add 1 (Slice.length (Ast.Token.slice name)))
+  | Var { name = None } -> None
+  | Wildcard -> Some 1
+  | Arrow { left = Some left; right = Some right } -> (
+      match (type_expr_flat_width left, type_expr_flat_width right) with
+      | (Some left_width, Some right_width) ->
           let left_width =
             match Ast.TypeExpr.view left with
             | Arrow _ -> Int.add left_width 2
@@ -2849,11 +2965,10 @@ and type_expr_flat_width = fun type_expr ->
           Some Int.(left_width + 4 + right_width)
       | _ -> None
     )
-  | Arrow _ ->
-      None
-  | Apply { argument=Some argument; constructor=Some constructor } -> (
-      match type_expr_flat_width argument, type_expr_flat_width constructor with
-      | Some argument_width, Some constructor_width ->
+  | Arrow _ -> None
+  | Apply { argument = Some argument; constructor = Some constructor } -> (
+      match (type_expr_flat_width argument, type_expr_flat_width constructor) with
+      | (Some argument_width, Some constructor_width) ->
           let argument_width =
             match Ast.TypeExpr.view argument with
             | Arrow _
@@ -2864,18 +2979,15 @@ and type_expr_flat_width = fun type_expr ->
           Some Int.(argument_width + 1 + constructor_width)
       | _ -> None
     )
-  | Apply _ ->
-      None
-  | Parenthesized { inner=Some inner } -> (
+  | Apply _ -> None
+  | Parenthesized { inner = Some inner } -> (
       match type_expr_flat_width inner with
       | Some inner_width -> Some (Int.add inner_width 2)
       | None -> None
     )
-  | Parenthesized { inner=None } ->
-      Some 2
-  | Tuple _ ->
-      type_tuple_flat_width type_expr
-  | Labeled { optional_token; label=Some label; annotation=Some annotation } -> (
+  | Parenthesized { inner = None } -> Some 2
+  | Tuple _ -> type_tuple_flat_width type_expr
+  | Labeled { optional_token; label = Some label; annotation = Some annotation } -> (
       match type_expr_flat_width annotation with
       | Some annotation_width ->
           let optional_width =
@@ -2886,9 +2998,8 @@ and type_expr_flat_width = fun type_expr ->
           Some Int.(optional_width + Slice.length (Ast.Token.slice label) + 1 + annotation_width)
       | None -> None
     )
-  | Labeled _ ->
-      None
-  | Poly { body=Some body } -> (
+  | Labeled _ -> None
+  | Poly { body = Some body } -> (
       match type_expr_flat_width body with
       | None -> None
       | Some body_width ->
@@ -2911,7 +3022,8 @@ and type_expr_flat_width = fun type_expr ->
               else
                 let name = Vector.get_unchecked names ~at:index in
                 let name_width =
-                  Int.add (token_flat_width name)
+                  Int.add
+                    (token_flat_width name)
                     (
                       if Option.is_some (Ast.TypeExpr.poly_type_keyword_token type_expr) then
                         0
@@ -2929,13 +3041,10 @@ and type_expr_flat_width = fun type_expr ->
             in
             loop 0 0
     )
-  | Poly { body=None } ->
-      None
-  | Opaque node ->
-      node_spaced_flat_width node
+  | Poly { body = None } -> None
+  | Opaque node -> node_spaced_flat_width node
   | Error _
-  | Unknown _ ->
-      None
+  | Unknown _ -> None
 
 and render_poly_type_prefix = fun state type_expr ->
   let names = Vector.with_capacity ~size:(Ast.Node.child_count type_expr) in
@@ -3043,7 +3152,7 @@ and type_expr_is_opaque_gt = fun type_expr ->
 and type_expr_starts_with_gt = fun type_expr ->
   match Ast.TypeExpr.view type_expr with
   | Opaque _ -> type_expr_is_opaque_gt type_expr
-  | Apply { argument=Some argument; _ } -> type_expr_starts_with_gt argument
+  | Apply { argument = Some argument; _ } -> type_expr_starts_with_gt argument
   | _ -> false
 
 and render_type_apply_argument_without_leading_gt = fun state argument ->
@@ -3058,20 +3167,19 @@ and render_type_apply_argument_without_leading_gt = fun state argument ->
 
 and render_type_expr_without_leading_gt = fun state type_expr ->
   match Ast.TypeExpr.view type_expr with
-  | Opaque _ when type_expr_is_opaque_gt type_expr ->
-      ()
-  | Apply { argument=Some argument; constructor=Some constructor } when type_expr_is_opaque_gt argument ->
-      render_type_expr state constructor
-  | Apply { argument=Some argument; constructor=Some constructor } when type_expr_starts_with_gt argument ->
+  | Opaque _ when type_expr_is_opaque_gt type_expr -> ()
+  | Apply { argument = Some argument; constructor = Some constructor } when type_expr_is_opaque_gt
+    argument -> render_type_expr state constructor
+  | Apply { argument = Some argument; constructor = Some constructor } when type_expr_starts_with_gt
+    argument ->
       render_type_apply_argument_without_leading_gt state argument;
       emit_space state;
       render_type_expr state constructor
-  | _ ->
-      render_type_expr state type_expr
+  | _ -> render_type_expr state type_expr
 
 and type_expr_labeled_coercion_parts = fun type_expr ->
   match Ast.TypeExpr.view type_expr with
-  | Labeled { optional_token=None; label=Some label; annotation=Some annotation } when type_expr_starts_with_gt
+  | Labeled { optional_token = None; label = Some label; annotation = Some annotation } when type_expr_starts_with_gt
     annotation -> Some (label, annotation)
   | _ -> None
 
@@ -3097,23 +3205,25 @@ and render_typed_expr_annotation = fun state annotation ->
           emit_space state;
           render_type_expr_without_leading_gt state annotation
         )
-      else (
-        emit_text state ":";
-        render_type_expr_after_tight_colon state ~suffix_width:0 annotation
-      )
+      else
+        (
+          emit_text state ":";
+          render_type_expr_after_tight_colon state ~suffix_width:0 annotation
+        )
 
 and render_type_expr_after_colon = fun state type_expr ->
   if type_expr_starts_with_gt type_expr then
     render_type_expr state type_expr
-  else (
-    emit_space state;
-    render_type_expr state type_expr
-  )
+  else
+    (
+      emit_space state;
+      render_type_expr state type_expr
+    )
 
 and type_expr_is_arrow = fun type_expr ->
   match Ast.TypeExpr.view type_expr with
   | Arrow _ -> true
-  | Poly { body=Some body } -> type_expr_is_arrow body
+  | Poly { body = Some body } -> type_expr_is_arrow body
   | _ -> false
 
 and type_expr_is_closed_backtick_bracketed_opaque = fun type_expr ->
@@ -3141,21 +3251,18 @@ and render_multiline_type_arrow = fun state type_expr ->
       render_type_expr_attribute_suffix state type_expr
   | None -> (
       match Ast.TypeExpr.view type_expr with
-      | Arrow { left=Some left; right=Some right } ->
+      | Arrow { left = Some left; right = Some right } ->
           render_type_arrow_left state left;
           emit_space state;
           emit_text state "->";
           emit_line state;
           render_multiline_type_arrow state right
-      | Arrow _ ->
-          unsupported_node "incomplete arrow type" type_expr
-      | Poly { body=Some body } ->
+      | Arrow _ -> unsupported_node "incomplete arrow type" type_expr
+      | Poly { body = Some body } ->
           render_poly_type_prefix state type_expr;
           render_multiline_type_arrow state body
-      | Poly { body=None } ->
-          unsupported_node "poly type without body" type_expr
-      | _ ->
-          render_type_expr state type_expr
+      | Poly { body = None } -> unsupported_node "poly type without body" type_expr
+      | _ -> render_type_expr state type_expr
     )
 
 and type_expr_should_break_after_colon = fun state ~suffix_width type_expr ->
@@ -3170,7 +3277,9 @@ and render_type_expr_after_tight_colon = fun state ~suffix_width type_expr ->
   if type_expr_should_break_after_colon state ~suffix_width type_expr then
     (
       emit_line state;
-      with_indent state 2
+      with_indent
+        state
+        2
         (fun () ->
           if type_expr_is_arrow type_expr then
             render_multiline_type_arrow state type_expr
@@ -3191,7 +3300,8 @@ let pattern_is_tuple = fun pattern ->
 let collect_tuple_pattern_items = fun pattern ->
   let items = Vector.with_capacity ~size:(Ast.Node.child_count pattern) in
   let rec push_items pattern =
-    Ast.Pattern.for_each_child_pattern pattern
+    Ast.Pattern.for_each_child_pattern
+      pattern
       ~fn:(fun child ->
         match Ast.Pattern.view child with
         | Tuple when not (pattern_tuple_has_parens child) -> push_items child
@@ -3203,7 +3313,8 @@ let collect_tuple_pattern_items = fun pattern ->
 let path_single_ident_token = fun path ->
   let found = ref None in
   let count = ref 0 in
-  Ast.Path.for_each_ident path
+  Ast.Path.for_each_ident
+    path
     ~fn:(fun token ->
       count := Int.add !count 1;
       if Int.equal !count 1 then
@@ -3216,9 +3327,9 @@ let path_single_ident_token = fun path ->
 let rec pattern_binding_ident_token = fun pattern ->
   match Ast.Pattern.view pattern with
   | Path { path } -> path_single_ident_token path
-  | Parenthesized { inner=Some inner }
-  | Constraint { pattern=Some inner; _ }
-  | Attribute { inner=Some inner } -> pattern_binding_ident_token inner
+  | Parenthesized { inner = Some inner }
+  | Constraint { pattern = Some inner; _ }
+  | Attribute { inner = Some inner } -> pattern_binding_ident_token inner
   | _ -> None
 
 let parameter_pattern_matches_label = fun label pattern ->
@@ -3228,7 +3339,8 @@ let parameter_pattern_matches_label = fun label pattern ->
 
 let split_typed_parameter_pattern = fun pattern ->
   match Ast.Pattern.view pattern with
-  | Constraint { pattern=Some pattern; annotation=Some annotation } -> Some (pattern, annotation)
+  | Constraint { pattern = Some pattern; annotation = Some annotation } ->
+      Some (pattern, annotation)
   | _ -> None
 
 let render_first_class_module_pattern_path = fun state pattern for_each_path_ident message ->
@@ -3241,19 +3353,25 @@ let render_first_class_module_pattern_path = fun state pattern for_each_path_ide
 
 let render_first_class_module_pattern_ascription_tokens = fun state pattern colon_token ->
   let tokens = collect_child_tokens pattern in
-  match token_vector_find_kind tokens Kind.COLON, token_vector_find_kind tokens Kind.RPAREN with
-  | Some colon_index, Some closing_index when Int.(Int.add colon_index 1 < closing_index) ->
+  match (token_vector_find_kind tokens Kind.COLON, token_vector_find_kind tokens Kind.RPAREN) with
+  | (Some colon_index, Some closing_index) when Int.(Int.add colon_index 1 < closing_index) ->
       emit_space state;
       emit_token state colon_token;
       emit_space state;
-      emit_token_vector_range_stream state tokens ~start:(Int.add colon_index 1) ~stop:closing_index
+      emit_token_vector_range_stream
+        state
+        tokens
+        ~start:(Int.add colon_index 1)
+        ~stop:closing_index
   | _ -> unsupported_node "unsupported first-class module pattern ascription" pattern
 
 let render_first_class_module_pattern_ascription = fun state pattern ->
-  match Ast.FirstClassModulePattern.colon_token pattern, Ast.FirstClassModulePattern.ascription pattern with
-  | None, Ast.FirstClassModulePattern.NoAscription ->
-      ()
-  | Some colon_token, Ast.FirstClassModulePattern.PathAscription ->
+  match (
+    Ast.FirstClassModulePattern.colon_token pattern,
+    Ast.FirstClassModulePattern.ascription pattern
+  ) with
+  | (None, Ast.FirstClassModulePattern.NoAscription) -> ()
+  | (Some colon_token, Ast.FirstClassModulePattern.PathAscription) ->
       emit_space state;
       emit_token state colon_token;
       emit_space state;
@@ -3262,7 +3380,7 @@ let render_first_class_module_pattern_ascription = fun state pattern ->
         pattern
         (Ast.FirstClassModulePattern.for_each_ascription_path_ident pattern)
         "first-class module pattern without module type path"
-  | Some colon_token, Ast.FirstClassModulePattern.UnsupportedAscription ->
+  | (Some colon_token, Ast.FirstClassModulePattern.UnsupportedAscription) ->
       render_first_class_module_pattern_ascription_tokens state pattern colon_token
   | (Some _, Ast.FirstClassModulePattern.NoAscription)
   | (None, Ast.FirstClassModulePattern.PathAscription)
@@ -3275,10 +3393,13 @@ let render_first_class_module_pattern = fun state pattern ->
     | Some module_pattern -> module_pattern
     | None -> unsupported_node "unsupported first-class module pattern" pattern
   in
-  match Ast.FirstClassModulePattern.opening_token module_pattern, Ast.FirstClassModulePattern.module_token
-    module_pattern, Ast.FirstClassModulePattern.binder module_pattern, Ast.FirstClassModulePattern.closing_token
-    module_pattern with
-  | Some opening_token, Some module_token, Some binder, Some closing_token ->
+  match (
+    Ast.FirstClassModulePattern.opening_token module_pattern,
+    Ast.FirstClassModulePattern.module_token module_pattern,
+    Ast.FirstClassModulePattern.binder module_pattern,
+    Ast.FirstClassModulePattern.closing_token module_pattern
+  ) with
+  | (Some opening_token, Some module_token, Some binder, Some closing_token) ->
       emit_token state opening_token;
       emit_token state module_token;
       emit_space state;
@@ -3294,7 +3415,8 @@ let parameter_pattern_requires_parens = fun pattern ->
 
 let record_pattern_fields_have_leading_comment = fun fields ->
   let found = ref false in
-  Vector.for_each fields
+  Vector.for_each
+    fields
     ~fn:(fun field ->
       if node_has_leading_comment field.Ast.RecordPattern.node then
         found := true);
@@ -3313,7 +3435,8 @@ let parameter_token_wants_space_before = fun previous token ->
 
 let emit_parameter_token_stream = fun state parameter ->
   let previous = ref None in
-  Ast.Node.for_each_token parameter
+  Ast.Node.for_each_token
+    parameter
     ~fn:(fun token ->
       (
         match !previous with
@@ -3326,7 +3449,8 @@ let emit_parameter_token_stream = fun state parameter ->
 
 let parameter_colon_has_leading_space = fun parameter ->
   let found = ref None in
-  Ast.Node.for_each_token parameter
+  Ast.Node.for_each_token
+    parameter
     ~fn:(fun token ->
       match !found with
       | Some _ -> ()
@@ -3340,7 +3464,8 @@ let parameter_colon_has_leading_space = fun parameter ->
 let parenthesized_pattern_should_break = fun state pattern ->
   let previous = ref None in
   let width = ref 0 in
-  Ast.Node.for_each_token pattern
+  Ast.Node.for_each_token
+    pattern
     ~fn:(fun token ->
       let extra_space =
         match !previous with
@@ -3353,61 +3478,53 @@ let parenthesized_pattern_should_break = fun state pattern ->
 
 let rec render_pattern = fun state pattern ->
   match Ast.Pattern.view pattern with
-  | Wildcard ->
-      emit_text state "_"
-  | Path { path } ->
-      render_pattern_path state path
-  | Literal { token=Some token } ->
+  | Wildcard -> emit_text state "_"
+  | Path { path } -> render_pattern_path state path
+  | Literal { token = Some token } ->
       (
         match Ast.Pattern.literal_sign_token pattern with
         | Some sign -> emit_token state sign
         | None -> ()
       );
       emit_literal_token state token
-  | Literal { token=None } ->
-      unsupported_node "literal pattern without token" pattern
-  | Apply { callee=Some callee; argument=Some argument } ->
+  | Literal { token = None } -> unsupported_node "literal pattern without token" pattern
+  | Apply { callee = Some callee; argument = Some argument } ->
       render_pattern state callee;
       emit_space state;
       render_pattern_atom state argument
-  | Apply _ ->
-      unsupported_node "incomplete apply pattern" pattern
-  | Parenthesized { inner=Some inner } when pattern_is_tuple inner ->
-      render_pattern state inner
-  | Parenthesized { inner=Some inner } when pattern_is_operator_name inner ->
+  | Apply _ -> unsupported_node "incomplete apply pattern" pattern
+  | Parenthesized { inner = Some inner } when pattern_is_tuple inner -> render_pattern state inner
+  | Parenthesized { inner = Some inner } when pattern_is_operator_name inner ->
       emit_text state "(";
       emit_space state;
       render_pattern state inner;
       emit_space state;
       emit_text state ")"
-  | Parenthesized { inner=Some inner } when parenthesized_pattern_should_break state inner ->
+  | Parenthesized { inner = Some inner } when parenthesized_pattern_should_break state inner ->
       emit_text state "(";
       emit_line state;
       with_indent state 2 (fun () -> render_pattern state inner);
       emit_line state;
       emit_text state ")"
-  | Parenthesized { inner=Some inner } ->
+  | Parenthesized { inner = Some inner } ->
       emit_text state "(";
       render_pattern state inner;
       emit_text state ")"
-  | Parenthesized { inner=None } ->
-      render_parenthesized_empty_pattern state pattern
-  | Constraint { pattern=Some pattern; annotation=Some annotation } ->
+  | Parenthesized { inner = None } -> render_parenthesized_empty_pattern state pattern
+  | Constraint { pattern = Some pattern; annotation = Some annotation } ->
       render_pattern state pattern;
       drop_pending_spaces state;
       emit_text state ":";
       render_type_expr_after_tight_colon state ~suffix_width:0 annotation
-  | Constraint _ ->
-      unsupported_node "incomplete constraint pattern" pattern
-  | Alias { pattern=Some pattern; alias=Some alias } ->
+  | Constraint _ -> unsupported_node "incomplete constraint pattern" pattern
+  | Alias { pattern = Some pattern; alias = Some alias } ->
       render_pattern state pattern;
       emit_space state;
       emit_text state "as";
       emit_space state;
       render_pattern state alias
-  | Alias _ ->
-      unsupported_node "incomplete alias pattern" pattern
-  | Or { left=Some _; right=Some _ } ->
+  | Alias _ -> unsupported_node "incomplete alias pattern" pattern
+  | Or { left = Some _; right = Some _ } ->
       let items = collect_or_pattern_items pattern in
       let length = Vector.length items in
       let rec loop index =
@@ -3424,8 +3541,7 @@ let rec render_pattern = fun state pattern ->
           )
       in
       loop 0
-  | Or _ ->
-      unsupported_node "incomplete or pattern" pattern
+  | Or _ -> unsupported_node "incomplete or pattern" pattern
   | Tuple ->
       emit_text state "(";
       render_tuple_pattern_contents state pattern;
@@ -3434,38 +3550,40 @@ let rec render_pattern = fun state pattern ->
       let items = collect_child_patterns pattern in
       if Int.equal (Vector.length items) 0 then
         emit_text state "[]"
-      else (
-        emit_text state "[ ";
-        emit_joined_vector state items
-          ~sep:(fun () ->
-            emit_text state ";";
-            emit_space state)
-          ~fn:(render_pattern state);
-        emit_space state;
-        emit_text state "]"
-      )
+      else
+        (
+          emit_text state "[ ";
+          emit_joined_vector
+            state
+            items
+            ~sep:(fun () ->
+              emit_text state ";";
+              emit_space state)
+            ~fn:(render_pattern state);
+          emit_space state;
+          emit_text state "]"
+        )
   | Array ->
       let items = collect_child_patterns pattern in
       emit_text state "[|";
-      emit_joined_vector state items
+      emit_joined_vector
+        state
+        items
         ~sep:(fun () ->
           emit_text state ";";
           emit_space state)
         ~fn:(render_pattern state);
       emit_text state "|]"
-  | Record ->
-      render_record_pattern state pattern
-  | PolyVariant ->
-      render_poly_variant_pattern state pattern
-  | Interval { left=Some left; right=Some right } ->
+  | Record -> render_record_pattern state pattern
+  | PolyVariant -> render_poly_variant_pattern state pattern
+  | Interval { left = Some left; right = Some right } ->
       render_pattern state left;
       emit_space state;
       emit_text state "..";
       emit_space state;
       render_pattern state right
-  | Interval _ ->
-      unsupported_node "incomplete interval pattern" pattern
-  | Cons { head=Some head; tail=Some tail } ->
+  | Interval _ -> unsupported_node "incomplete interval pattern" pattern
+  | Cons { head = Some head; tail = Some tail } ->
       (
         match Ast.Pattern.view head with
         | Apply _ -> render_pattern state head
@@ -3475,43 +3593,34 @@ let rec render_pattern = fun state pattern ->
       emit_text state "::";
       emit_space state;
       render_pattern state tail
-  | Cons _ ->
-      unsupported_node "incomplete cons pattern" pattern
-  | Lazy { pattern=Some pattern } ->
+  | Cons _ -> unsupported_node "incomplete cons pattern" pattern
+  | Lazy { pattern = Some pattern } ->
       emit_text state "lazy";
       emit_space state;
       render_pattern state pattern
-  | Lazy _ ->
-      unsupported_node "lazy pattern without payload" pattern
-  | Exception { pattern=Some pattern } ->
+  | Lazy _ -> unsupported_node "lazy pattern without payload" pattern
+  | Exception { pattern = Some pattern } ->
       emit_text state "exception";
       emit_space state;
       render_pattern state pattern
-  | Exception _ ->
-      unsupported_node "exception pattern without payload" pattern
+  | Exception _ -> unsupported_node "exception pattern without payload" pattern
   | LabeledParam parameter
   | OptionalParam parameter
-  | OptionalParamDefault parameter ->
-      render_parameter state parameter
-  | LocallyAbstractType ->
-      emit_token_stream state pattern
-  | FirstClassModule ->
-      render_first_class_module_pattern state pattern
-  | LocalOpen ->
-      render_local_open_pattern state pattern
-  | Extension ->
-      render_extension_pattern state pattern
-  | Attribute { inner=Some _ } ->
-      render_attribute_pattern state pattern
-  | Attribute { inner=None } ->
-      unsupported_node "attribute pattern without inner pattern" pattern
+  | OptionalParamDefault parameter -> render_parameter state parameter
+  | LocallyAbstractType -> emit_token_stream state pattern
+  | FirstClassModule -> render_first_class_module_pattern state pattern
+  | LocalOpen -> render_local_open_pattern state pattern
+  | Extension -> render_extension_pattern state pattern
+  | Attribute { inner = Some _ } -> render_attribute_pattern state pattern
+  | Attribute { inner = None } -> unsupported_node "attribute pattern without inner pattern" pattern
   | Error _
-  | Unknown _ ->
-      unsupported_node "unsupported pattern" pattern
+  | Unknown _ -> unsupported_node "unsupported pattern" pattern
 
 and render_tuple_pattern_contents = fun state pattern ->
   let items = collect_tuple_pattern_items pattern in
-  emit_joined_vector state items
+  emit_joined_vector
+    state
+    items
     ~sep:(fun () ->
       emit_text state ",";
       emit_space state)
@@ -3523,7 +3632,8 @@ and render_tuple_pattern_contents = fun state pattern ->
 
 and render_parameter_pattern = fun state parameter pattern ->
   let needs_parens =
-    Ast.Parameter.has_explicit_pattern_parens parameter || parameter_pattern_requires_parens pattern in
+    Ast.Parameter.has_explicit_pattern_parens parameter || parameter_pattern_requires_parens pattern
+  in
   if needs_parens then
     (
       emit_text state "(";
@@ -3553,62 +3663,56 @@ and render_named_parameter = fun state ~sigil parameter label pattern ->
 
 and render_parameter = fun state parameter ->
   match Ast.Parameter.view parameter with
-  | Labeled { label=Some label; pattern=None } ->
+  | Labeled { label = Some label; pattern = None } ->
       emit_text state "~";
       emit_token state label
-  | Labeled { label=Some label; pattern=Some pattern } ->
+  | Labeled { label = Some label; pattern = Some pattern } ->
       render_named_parameter state ~sigil:"~" parameter label pattern
-  | Labeled _ ->
-      unsupported_node "labeled parameter without label" parameter
-  | Optional { label=Some label; pattern=None } ->
+  | Labeled _ -> unsupported_node "labeled parameter without label" parameter
+  | Optional { label = Some label; pattern = None } ->
       emit_text state "?";
       emit_token state label
-  | Optional { label=Some label; pattern=Some pattern } ->
+  | Optional { label = Some label; pattern = Some pattern } ->
       render_named_parameter state ~sigil:"?" parameter label pattern
-  | Optional _ ->
-      unsupported_node "optional parameter without label" parameter
-  | OptionalDefault _ ->
-      emit_parameter_token_stream state parameter
-  | Unknown _ ->
-      unsupported_node "unsupported parameter" parameter
+  | Optional _ -> unsupported_node "optional parameter without label" parameter
+  | OptionalDefault _ -> emit_parameter_token_stream state parameter
+  | Unknown _ -> unsupported_node "unsupported parameter" parameter
 
 and loose_parameter_binding_annotation = fun parameter ->
   match Ast.Pattern.view parameter with
   | LabeledParam parameter -> (
       match Ast.Parameter.view parameter with
-      | Labeled { pattern=Some annotation; _ } when (not
+      | Labeled { pattern = Some annotation; _ } when (not
         (Ast.Parameter.has_explicit_pattern_parens parameter))
       && parameter_colon_has_leading_space parameter -> Some annotation
       | _ -> None
     )
   | OptionalParam parameter -> (
       match Ast.Parameter.view parameter with
-      | Optional { pattern=Some annotation; _ } when (not
+      | Optional { pattern = Some annotation; _ } when (not
         (Ast.Parameter.has_explicit_pattern_parens parameter))
       && parameter_colon_has_leading_space parameter -> Some annotation
       | _ -> None
     )
-  | _ ->
-      None
+  | _ -> None
 
 and render_parameter_label_only = fun state parameter ->
   match Ast.Pattern.view parameter with
   | LabeledParam parameter -> (
       match Ast.Parameter.view parameter with
-      | Labeled { label=Some label; _ } ->
+      | Labeled { label = Some label; _ } ->
           emit_text state "~";
           emit_token state label
       | _ -> emit_parameter_token_stream state parameter
     )
   | OptionalParam parameter -> (
       match Ast.Parameter.view parameter with
-      | Optional { label=Some label; _ } ->
+      | Optional { label = Some label; _ } ->
           emit_text state "?";
           emit_token state label
       | _ -> emit_parameter_token_stream state parameter
     )
-  | _ ->
-      render_pattern state parameter
+  | _ -> render_pattern state parameter
 
 and pattern_is_named_parameter = fun pattern ->
   let rec loop pattern =
@@ -3616,9 +3720,9 @@ and pattern_is_named_parameter = fun pattern ->
     | LabeledParam _
     | OptionalParam _
     | OptionalParamDefault _ -> true
-    | Constraint { pattern=Some inner; _ }
-    | Parenthesized { inner=Some inner }
-    | Attribute { inner=Some inner } -> loop inner
+    | Constraint { pattern = Some inner; _ }
+    | Parenthesized { inner = Some inner }
+    | Attribute { inner = Some inner } -> loop inner
     | _ -> false
   in
   loop pattern
@@ -3626,10 +3730,10 @@ and pattern_is_named_parameter = fun pattern ->
 and pattern_ends_with_named_parameter = fun pattern ->
   let rec loop pattern =
     match Ast.Pattern.view pattern with
-    | Apply { argument=Some argument; _ } -> loop argument
-    | Constraint { pattern=Some inner; _ }
-    | Parenthesized { inner=Some inner }
-    | Attribute { inner=Some inner } -> loop inner
+    | Apply { argument = Some argument; _ } -> loop argument
+    | Constraint { pattern = Some inner; _ }
+    | Parenthesized { inner = Some inner }
+    | Attribute { inner = Some inner } -> loop inner
     | LabeledParam _
     | OptionalParam _
     | OptionalParamDefault _ -> true
@@ -3647,9 +3751,12 @@ and render_local_open_pattern = fun state pattern ->
   else
     emit_joined_vector state path_tokens ~sep:(fun () -> emit_text state ".") ~fn:(emit_token state);
   emit_text state ".";
-  match Ast.LocalOpenPattern.opening_token pattern, Ast.LocalOpenPattern.closing_token pattern, Ast.LocalOpenPattern.pattern
-    pattern with
-  | Some opening, Some closing, Some body when token_kind_is opening Kind.LPAREN ->
+  match (
+    Ast.LocalOpenPattern.opening_token pattern,
+    Ast.LocalOpenPattern.closing_token pattern,
+    Ast.LocalOpenPattern.pattern pattern
+  ) with
+  | (Some opening, Some closing, Some body) when token_kind_is opening Kind.LPAREN ->
       emit_token state opening;
       (
         if pattern_is_tuple body then
@@ -3658,10 +3765,8 @@ and render_local_open_pattern = fun state pattern ->
           render_pattern state body
       );
       emit_token state closing
-  | _, _, Some body ->
-      render_pattern state body
-  | _ ->
-      unsupported_node "local-open pattern without body" pattern
+  | (_, _, Some body) -> render_pattern state body
+  | _ -> unsupported_node "local-open pattern without body" pattern
 
 and render_poly_variant_pattern = fun state pattern ->
   if node_has_token_kind pattern Kind.HASH then
@@ -3673,24 +3778,23 @@ and render_poly_variant_pattern = fun state pattern ->
           render_pattern state (Vector.get_unchecked children ~at:0)
       | _ -> unsupported_node "polymorphic variant inherit pattern without path" pattern
     )
-  else (
+  else
     (
-      match first_ident_token pattern with
-      | Some tag ->
-          emit_text state "`";
-          emit_token state tag
-      | None -> unsupported_node "polymorphic variant pattern without tag" pattern
-    );
-    let children = collect_child_patterns pattern in
-    match Vector.length children with
-    | 0 ->
-        ()
-    | 1 ->
-        emit_space state;
-        render_pattern state (Vector.get_unchecked children ~at:0)
-    | _ ->
-        unsupported_node "polymorphic variant pattern with multiple payloads" pattern
-  )
+      (
+        match first_ident_token pattern with
+        | Some tag ->
+            emit_text state "`";
+            emit_token state tag
+        | None -> unsupported_node "polymorphic variant pattern without tag" pattern
+      );
+      let children = collect_child_patterns pattern in
+      match Vector.length children with
+      | 0 -> ()
+      | 1 ->
+          emit_space state;
+          render_pattern state (Vector.get_unchecked children ~at:0)
+      | _ -> unsupported_node "polymorphic variant pattern with multiple payloads" pattern
+    )
 
 and render_record_pattern = fun state pattern ->
   let fields = collect_record_pattern_fields pattern in
@@ -3713,7 +3817,9 @@ and render_record_pattern = fun state pattern ->
   if record_pattern_should_multiline pattern fields then
     (
       emit_line state;
-      with_indent state 2
+      with_indent
+        state
+        2
         (fun () ->
           let rec loop index =
             if Int.(index < length) then
@@ -3739,7 +3845,9 @@ and render_record_pattern = fun state pattern ->
   else if Int.(length > 0) then
     (
       emit_space state;
-      emit_joined_vector state fields
+      emit_joined_vector
+        state
+        fields
         ~sep:(fun () ->
           emit_text state ";";
           emit_space state)
@@ -3769,8 +3877,7 @@ and render_pattern_atom = fun state pattern ->
       with_indent state 2 (fun () -> render_pattern state pattern);
       emit_line state;
       emit_text state ")"
-  | Tuple ->
-      render_pattern state pattern
+  | Tuple -> render_pattern state pattern
   | Apply _
   | Or _
   | Cons _
@@ -3779,14 +3886,14 @@ and render_pattern_atom = fun state pattern ->
       emit_text state "(";
       render_pattern state pattern;
       emit_text state ")"
-  | _ ->
-      render_pattern state pattern
+  | _ -> render_pattern state pattern
 
 and render_extension_pattern = fun state pattern ->
   match Ast.ExtensionPattern.cast pattern with
-  | Some extension -> emit_shell_token_stream
-    state
-    (fun ~fn -> Ast.ExtensionPattern.for_each_shell_token extension ~fn)
+  | Some extension ->
+      emit_shell_token_stream
+        state
+        (fun ~fn -> Ast.ExtensionPattern.for_each_shell_token extension ~fn)
   | None -> unsupported_node "unsupported extension pattern" pattern
 
 and render_attribute_pattern = fun state pattern ->
@@ -3805,10 +3912,11 @@ and render_attribute_pattern = fun state pattern ->
 
 let rec pattern_contains_type_annotation = fun pattern annotation ->
   match Ast.Pattern.view pattern with
-  | Constraint { annotation=Some existing; _ } when same_ast_node existing annotation -> true
+  | Constraint { annotation = Some existing; _ } when same_ast_node existing annotation -> true
   | _ ->
       let found = ref false in
-      Ast.Pattern.for_each_child_pattern pattern
+      Ast.Pattern.for_each_child_pattern
+        pattern
         ~fn:(fun child ->
           if not !found && not (same_ast_node pattern child) then
             found := pattern_contains_type_annotation child annotation);
@@ -3824,10 +3932,9 @@ let rec pattern_should_render_multiline = fun pattern ->
       | Some body -> pattern_should_render_multiline body
       | None -> false
     )
-  | Parenthesized { inner=Some inner }
-  | Constraint { pattern=Some inner; _ }
-  | Attribute { inner=Some inner } ->
-      pattern_should_render_multiline inner
+  | Parenthesized { inner = Some inner }
+  | Constraint { pattern = Some inner; _ }
+  | Attribute { inner = Some inner } -> pattern_should_render_multiline inner
   | Apply { callee; argument } ->
       (
         match callee with
@@ -3838,8 +3945,7 @@ let rec pattern_should_render_multiline = fun pattern ->
         | Some argument -> pattern_should_render_multiline argument
         | None -> false
       )
-  | _ ->
-      false
+  | _ -> false
 
 let expr_first_token_text_is = fun expr expected ->
   match Ast.Node.first_descendant_token expr with
@@ -3854,7 +3960,7 @@ let collect_apply = fun expr ->
     if Int.(budget <= 0) then
       unsupported_node "cyclic apply expression" expr;
     match Ast.Expr.view expr with
-    | Apply { callee=Some callee; argument=Some argument } when not (same_ast_node expr callee)
+    | Apply { callee = Some callee; argument = Some argument } when not (same_ast_node expr callee)
     && not (same_ast_node expr argument) ->
         Vector.push args ~value:argument;
         loop (Int.sub budget 1) callee
@@ -3867,15 +3973,15 @@ let collect_apply = fun expr ->
 
 let expr_classification_budget = 512
 
-let rec expr_is_multiline = fun expr -> expr_is_multiline_with_budget expr_classification_budget expr
+let rec expr_is_multiline = fun expr ->
+  expr_is_multiline_with_budget expr_classification_budget expr
 
 and expr_is_multiline_with_budget = fun budget expr ->
   if Int.(budget <= 0) then
     unsupported_node "cyclic expression while classifying multiline layout" expr;
   let next_budget = Int.sub budget 1 in
   match Ast.Expr.view expr with
-  | Sequence { left=Some left; right=None } when not (same_ast_node expr left) ->
-      true
+  | Sequence { left = Some left; right = None } when not (same_ast_node expr left) -> true
   | If _
   | Let _
   | Match _
@@ -3885,45 +3991,35 @@ and expr_is_multiline_with_budget = fun budget expr ->
   | LetException _
   | Sequence _
   | While _
-  | For _ ->
-      true
-  | BindingOperator _ ->
-      binding_operator_expr_is_multiline_with_budget next_budget expr
+  | For _ -> true
+  | BindingOperator _ -> binding_operator_expr_is_multiline_with_budget next_budget expr
   | LocalOpen _ -> (
       match Ast.LocalOpenExpr.view expr with
-      | LetOpen { body=Some body; _ } when (
+      | LetOpen { body = Some body; _ } when (
         match Ast.Expr.view body with
         | LocalOpen _ -> true
         | _ -> false
       ) -> true
-      | LetOpen { body=Some body; _ } when not (same_ast_node expr body) -> expr_is_multiline_with_budget
-        next_budget
-        body
+      | LetOpen { body = Some body; _ } when not (same_ast_node expr body) ->
+          expr_is_multiline_with_budget next_budget body
       | LetOpen _ -> true
-      | Delimited { body=Some body; _ } when not (same_ast_node expr body) -> expr_is_multiline_with_budget
-        next_budget
-        body
+      | Delimited { body = Some body; _ } when not (same_ast_node expr body) ->
+          expr_is_multiline_with_budget next_budget body
       | Delimited _ -> false
     )
-  | Fun { body=Some body } ->
-      expr_is_multiline_with_budget next_budget body
-  | Fun { body=None } ->
-      true
+  | Fun { body = Some body } -> expr_is_multiline_with_budget next_budget body
+  | Fun { body = None } -> true
   | Record
-  | RecordUpdate ->
-      not (record_expr_should_inline expr)
-  | Parenthesized { inner=Some inner } when expr_first_token_text_is expr "begin" ->
+  | RecordUpdate -> not (record_expr_should_inline expr)
+  | Parenthesized { inner = Some inner } when expr_first_token_text_is expr "begin" ->
       expr_is_multiline_with_budget next_budget inner
-  | Parenthesized { inner=Some inner } when not (same_ast_node expr inner) ->
+  | Parenthesized { inner = Some inner } when not (same_ast_node expr inner) ->
       expr_is_multiline_with_budget next_budget inner
-  | Array ->
-      not (array_expr_should_inline expr)
-  | List ->
-      not (list_expr_should_inline expr)
-  | Infix { left=Some left; operator=Some operator; right=Some right } when String.equal
+  | Array -> not (array_expr_should_inline expr)
+  | List -> not (list_expr_should_inline expr)
+  | Infix { left = Some left; operator = Some operator; right = Some right } when String.equal
     (infix_operator_text_from_expr expr left operator right)
-    "|>" ->
-      true
+    "|>" -> true
   | Infix { left; right; _ } ->
       if expr_is_long_breaking_infix_chain expr then
         true
@@ -3932,17 +4028,16 @@ and expr_is_multiline_with_budget = fun budget expr ->
       else
         option_expr_child_is_multiline_with_budget next_budget expr right
   | Apply _ ->
-      let _, args = collect_apply expr in
+      let (_, args) = collect_apply expr in
       vector_exists_expr_is_multiline_except_with_budget next_budget expr args
-  | LabeledArg { value=Some value; _ }
-  | OptionalArg { value=Some value; _ } ->
-      expr_is_multiline_with_budget next_budget value
-  | _ ->
-      false
+  | LabeledArg { value = Some value; _ }
+  | OptionalArg { value = Some value; _ } -> expr_is_multiline_with_budget next_budget value
+  | _ -> false
 
 and expr_is_parenthesized_multiline = fun expr ->
   match Ast.Expr.view expr with
-  | Parenthesized { inner=Some inner } when not (same_ast_node expr inner) -> expr_is_multiline inner
+  | Parenthesized { inner = Some inner } when not (same_ast_node expr inner) ->
+      expr_is_multiline inner
   | _ -> false
 
 and same_operator_infix_count = fun budget expr operator_text ->
@@ -3950,11 +4045,18 @@ and same_operator_infix_count = fun budget expr operator_text ->
     0
   else
     match Ast.Expr.view expr with
-    | Infix { left=Some left; operator=Some operator; right=Some right } when String.equal
+    | Infix { left = Some left; operator = Some operator; right = Some right } when String.equal
       (infix_operator_text_from_expr expr left operator right)
-      operator_text -> Int.(1
-    + same_operator_infix_count (Int.sub budget 1) left operator_text
-    + same_operator_infix_count (Int.sub budget 1) right operator_text)
+      operator_text ->
+        Int.(1
+        + same_operator_infix_count
+          (Int.sub budget 1)
+          left
+          operator_text
+        + same_operator_infix_count
+          (Int.sub budget 1)
+          right
+          operator_text)
     | _ -> 0
 
 and infix_operator_breaks_long_chain = fun operator_text ->
@@ -3966,7 +4068,7 @@ and infix_operator_breaks_long_chain = fun operator_text ->
 
 and expr_is_long_breaking_infix_chain = fun expr ->
   match Ast.Expr.view expr with
-  | Infix { left=Some left; operator=Some operator; right=Some right } ->
+  | Infix { left = Some left; operator = Some operator; right = Some right } ->
       let operator_text = infix_operator_text_from_expr expr left operator right in
       infix_operator_breaks_long_chain operator_text
       && Int.(same_operator_infix_count expr_classification_budget expr operator_text >= 8)
@@ -3990,11 +4092,10 @@ and expr_has_terminal_trailing_sequence_with_budget = fun budget expr ->
     unsupported_node "cyclic expression while checking terminal sequence" expr;
   let next_budget = Int.sub budget 1 in
   match Ast.Expr.view expr with
-  | Sequence { left=Some left; right=None } when not (same_ast_node expr left) ->
-      true
-  | Infix { right=Some right; _ } when not (same_ast_node expr right) ->
+  | Sequence { left = Some left; right = None } when not (same_ast_node expr left) -> true
+  | Infix { right = Some right; _ } when not (same_ast_node expr right) ->
       expr_has_terminal_trailing_sequence_with_budget next_budget right
-  | Match { first_case=Some _; _ } ->
+  | Match { first_case = Some _; _ } ->
       let cases = collect_match_cases expr in
       let length = Vector.length cases in
       if Int.equal length 0 then
@@ -4002,18 +4103,16 @@ and expr_has_terminal_trailing_sequence_with_budget = fun budget expr ->
       else
         (
           match (Ast.MatchCase.view (Vector.get_unchecked cases ~at:(Int.sub length 1))).body with
-          | Some body when not (same_ast_node expr body) -> expr_has_terminal_trailing_sequence_with_budget
-            next_budget
-            body
+          | Some body when not (same_ast_node expr body) ->
+              expr_has_terminal_trailing_sequence_with_budget next_budget body
           | Some _
           | None -> false
         )
-  | If { else_branch=Some else_branch; _ } when not (same_ast_node expr else_branch) ->
+  | If { else_branch = Some else_branch; _ } when not (same_ast_node expr else_branch) ->
       expr_has_terminal_trailing_sequence_with_budget next_budget else_branch
-  | Let { body=Some body; _ } when not (same_ast_node expr body) ->
+  | Let { body = Some body; _ } when not (same_ast_node expr body) ->
       expr_has_terminal_trailing_sequence_with_budget next_budget body
-  | _ ->
-      false
+  | _ -> false
 
 and expr_is_apply = fun expr ->
   match Ast.Expr.view expr with
@@ -4022,20 +4121,20 @@ and expr_is_apply = fun expr ->
 
 and expr_is_unit = fun expr ->
   match Ast.Expr.view expr with
-  | Parenthesized { inner=None } -> true
+  | Parenthesized { inner = None } -> true
   | _ -> false
 
 and expr_is_prefix = fun expr ->
   match Ast.Expr.view expr with
-  | Parenthesized { inner=Some inner } when not (same_ast_node expr inner) -> expr_is_prefix inner
+  | Parenthesized { inner = Some inner } when not (same_ast_node expr inner) -> expr_is_prefix inner
   | Prefix _ -> true
   | _ -> false
 
 and expr_is_prefix_operator_text = fun expr expected ->
   match Ast.Expr.view expr with
-  | Parenthesized { inner=Some inner } when not (same_ast_node expr inner) ->
+  | Parenthesized { inner = Some inner } when not (same_ast_node expr inner) ->
       expr_is_prefix_operator_text inner expected
-  | Prefix { operator=Some operator; _ } ->
+  | Prefix { operator = Some operator; _ } ->
       let operator_tokens = collect_prefix_operator_tokens expr in
       let operator =
         if Int.equal (Vector.length operator_tokens) 0 then
@@ -4044,14 +4143,13 @@ and expr_is_prefix_operator_text = fun expr expected ->
           Vector.get_unchecked operator_tokens ~at:(Int.sub (Vector.length operator_tokens) 1)
       in
       token_text_is operator expected
-  | _ ->
-      false
+  | _ -> false
 
 and expr_is_prefix_deref = fun expr -> expr_is_prefix_operator_text expr "!"
 
 and expr_is_parenthesized_apply = fun expr ->
   match Ast.Expr.view expr with
-  | Parenthesized { inner=Some inner } when not (same_ast_node expr inner) -> expr_is_apply inner
+  | Parenthesized { inner = Some inner } when not (same_ast_node expr inner) -> expr_is_apply inner
   | _ -> false
 
 and expr_is_fun = fun expr ->
@@ -4066,14 +4164,14 @@ and expr_is_typed = fun expr ->
 
 and local_open_expr_can_render_atom_without_parens = fun expr ->
   match Ast.LocalOpenExpr.view expr with
-  | Delimited { module_path=Some _; _ } -> true
+  | Delimited { module_path = Some _; _ } -> true
   | LetOpen _
   | Delimited _ -> false
 
 and expr_can_render_atom_without_parens = fun expr ->
   match Ast.Expr.view expr with
-  | Parenthesized { inner=Some inner } when not (same_ast_node expr inner) -> expr_can_render_atom_without_parens
-    inner
+  | Parenthesized { inner = Some inner } when not (same_ast_node expr inner) ->
+      expr_can_render_atom_without_parens inner
   | Tuple -> true
   | LocalOpen _ -> local_open_expr_can_render_atom_without_parens expr
   | Path _
@@ -4092,7 +4190,7 @@ and expr_can_render_atom_without_parens = fun expr ->
   | Extension
   | LabeledArg _
   | OptionalArg _
-  | PolyVariant { payload=None } -> true
+  | PolyVariant { payload = None } -> true
   | _ -> false
 
 and expr_can_render_record_update_base_without_parens = fun expr ->
@@ -4116,7 +4214,8 @@ and expr_tuple_has_parens = fun expr ->
 and collect_tuple_expr_items = fun expr ->
   let items = Vector.with_capacity ~size:(Ast.Node.child_count expr) in
   let rec push_items expr =
-    Ast.Expr.for_each_child_expr expr
+    Ast.Expr.for_each_child_expr
+      expr
       ~fn:(fun child ->
         match Ast.Expr.view child with
         | Tuple when not (expr_tuple_has_parens child) -> push_items child
@@ -4161,8 +4260,8 @@ and binding_operator_expr_is_multiline_with_budget = fun budget expr ->
       else
         (
           let clause = Vector.get_unchecked clauses ~at:0 in
-          binding_operator_clause_body_is_multiline_with_budget budget clause
-          || match Ast.BindingOperatorExpr.body view with
+          binding_operator_clause_body_is_multiline_with_budget budget clause || match Ast.BindingOperatorExpr.body
+            view with
           | Some body -> expr_has_leading_comment body || expr_is_multiline_with_budget budget body
           | None -> true
         )
@@ -4202,7 +4301,8 @@ and token_vector_flat_width = fun tokens ->
 and node_token_flat_width = fun node ->
   let previous = ref None in
   let total = ref 0 in
-  Ast.Node.for_each_token node
+  Ast.Node.for_each_token
+    node
     ~fn:(fun token ->
       let extra_space =
         match !previous with
@@ -4221,27 +4321,22 @@ and expr_flat_width_with_budget = fun budget expr ->
   else
     let next_budget = Int.sub budget 1 in
     match Ast.Expr.view expr with
-    | Path { path } ->
-        node_token_flat_width path
-    | Literal { token=Some token } ->
-        Some (token_flat_width token)
-    | Literal { token=None } ->
-        None
-    | FieldAccess { target=Some target; field=Some field } -> (
+    | Path { path } -> node_token_flat_width path
+    | Literal { token = Some token } -> Some (token_flat_width token)
+    | Literal { token = None } -> None
+    | FieldAccess { target = Some target; field = Some field } -> (
         match expr_postfix_target_flat_width next_budget target with
         | Some target_width -> Some Int.(target_width + 1 + token_flat_width field)
         | None -> None
       )
-    | FieldAccess _ ->
-        None
-    | MethodCall { target=Some target; method_=Some method_ } -> (
+    | FieldAccess _ -> None
+    | MethodCall { target = Some target; method_ = Some method_ } -> (
         match expr_postfix_target_flat_width next_budget target with
         | Some target_width -> Some Int.(target_width + 1 + token_flat_width method_)
         | None -> None
       )
-    | MethodCall _ ->
-        None
-    | Prefix { operator=Some operator; operand=Some operand } -> (
+    | MethodCall _ -> None
+    | Prefix { operator = Some operator; operand = Some operand } -> (
         let operator_tokens = collect_prefix_operator_tokens expr in
         let operator_width =
           match token_vector_flat_width operator_tokens with
@@ -4260,20 +4355,22 @@ and expr_flat_width_with_budget = fun budget expr ->
             Some Int.(operator_width + space_width + operand_width)
         | None -> None
       )
-    | Prefix _ ->
-        None
-    | Infix { left=Some left; operator=Some operator; right=Some right } -> (
-        match expr_flat_width_with_budget next_budget left, expr_flat_width_with_budget next_budget right with
-        | Some left_width, Some right_width -> Some Int.(left_width
-        + 2
-        + infix_operator_flat_width_from_expr expr left operator right
-        + right_width)
+    | Prefix _ -> None
+    | Infix { left = Some left; operator = Some operator; right = Some right } -> (
+        match (
+          expr_flat_width_with_budget next_budget left,
+          expr_flat_width_with_budget next_budget right
+        ) with
+        | (Some left_width, Some right_width) ->
+            Some Int.(left_width
+            + 2
+            + infix_operator_flat_width_from_expr expr left operator right
+            + right_width)
         | _ -> None
       )
-    | Infix _ ->
-        None
+    | Infix _ -> None
     | Apply _ ->
-        let callee, args = collect_apply expr in
+        let (callee, args) = collect_apply expr in
         if same_ast_node expr callee then
           None
         else
@@ -4300,7 +4397,7 @@ and expr_flat_width_with_budget = fun budget expr ->
                 in
                 loop 0 callee_width
           )
-    | LabeledArg { label=Some label; value=Some value } -> (
+    | LabeledArg { label = Some label; value = Some value } -> (
         match expr_flat_width_with_budget next_budget value with
         | Some value_width ->
             let value_width =
@@ -4312,11 +4409,9 @@ and expr_flat_width_with_budget = fun budget expr ->
             Some Int.(1 + token_flat_width label + 1 + value_width)
         | None -> None
       )
-    | LabeledArg { label=Some label; value=None } ->
-        Some Int.(1 + token_flat_width label)
-    | LabeledArg { label=None; _ } ->
-        None
-    | OptionalArg { label=Some label; value=Some value } -> (
+    | LabeledArg { label = Some label; value = None } -> Some Int.(1 + token_flat_width label)
+    | LabeledArg { label = None; _ } -> None
+    | OptionalArg { label = Some label; value = Some value } -> (
         match expr_flat_width_with_budget next_budget value with
         | Some value_width ->
             let value_width =
@@ -4328,11 +4423,9 @@ and expr_flat_width_with_budget = fun budget expr ->
             Some Int.(1 + token_flat_width label + 1 + value_width)
         | None -> None
       )
-    | OptionalArg { label=Some label; value=None } ->
-        Some Int.(1 + token_flat_width label)
-    | OptionalArg { label=None; _ } ->
-        None
-    | Fun { body=Some body } -> (
+    | OptionalArg { label = Some label; value = None } -> Some Int.(1 + token_flat_width label)
+    | OptionalArg { label = None; _ } -> None
+    | Fun { body = Some body } -> (
         match expr_flat_width_with_budget next_budget body with
         | None -> None
         | Some body_width ->
@@ -4348,24 +4441,23 @@ and expr_flat_width_with_budget = fun budget expr ->
             in
             loop 0 3
       )
-    | Fun { body=None } ->
-        None
-    | Parenthesized { inner=Some inner } when not (same_ast_node expr inner) && expr_is_tuple inner ->
-        expr_flat_width_with_budget next_budget inner
-    | Parenthesized { inner=Some inner } when not (same_ast_node expr inner) && expr_is_typed inner -> (
+    | Fun { body = None } -> None
+    | Parenthesized { inner = Some inner } when not (same_ast_node expr inner)
+    && expr_is_tuple inner -> expr_flat_width_with_budget next_budget inner
+    | Parenthesized { inner = Some inner } when not (same_ast_node expr inner)
+    && expr_is_typed inner -> (
         match expr_flat_width_with_budget next_budget inner with
         | Some inner_width -> Some (Int.add inner_width 2)
         | None -> None
       )
-    | Parenthesized { inner=Some inner } when not (same_ast_node expr inner) ->
+    | Parenthesized { inner = Some inner } when not (same_ast_node expr inner) ->
         expr_flat_width_with_budget next_budget inner
-    | Parenthesized { inner=Some inner } -> (
+    | Parenthesized { inner = Some inner } -> (
         match expr_flat_width_with_budget next_budget inner with
         | Some inner_width -> Some (Int.add inner_width 2)
         | None -> None
       )
-    | Parenthesized { inner=None } ->
-        Some 2
+    | Parenthesized { inner = None } -> Some 2
     | Tuple ->
         let items = collect_tuple_expr_items expr in
         let length = Vector.length items in
@@ -4385,16 +4477,12 @@ and expr_flat_width_with_budget = fun budget expr ->
                 loop (Int.add index 1) total
         in
         loop 0 0
-    | Array ->
-        array_expr_flat_width next_budget expr
-    | List ->
-        list_expr_flat_width next_budget expr
+    | Array -> array_expr_flat_width next_budget expr
+    | List -> list_expr_flat_width next_budget expr
     | Record
-    | RecordUpdate ->
-        record_expr_flat_width next_budget expr
-    | LocalOpen _ ->
-        local_open_expr_flat_width next_budget expr
-    | Assert { argument=Some argument } -> (
+    | RecordUpdate -> record_expr_flat_width next_budget expr
+    | LocalOpen _ -> local_open_expr_flat_width next_budget expr
+    | Assert { argument = Some argument } -> (
         match expr_flat_width_with_budget next_budget argument with
         | Some argument_width ->
             let argument_width =
@@ -4406,7 +4494,7 @@ and expr_flat_width_with_budget = fun budget expr ->
             Some Int.(7 + argument_width)
         | None -> None
       )
-    | Lazy { argument=Some argument } -> (
+    | Lazy { argument = Some argument } -> (
         match expr_flat_width_with_budget next_budget argument with
         | Some argument_width ->
             let argument_width =
@@ -4418,15 +4506,13 @@ and expr_flat_width_with_budget = fun budget expr ->
             Some Int.(5 + argument_width)
         | None -> None
       )
-    | Unreachable ->
-        Some 1
-    | PolyVariant { payload=None } -> (
+    | Unreachable -> Some 1
+    | PolyVariant { payload = None } -> (
         match first_ident_token expr with
         | Some tag -> Some Int.(1 + token_flat_width tag)
         | None -> None
       )
-    | _ ->
-        None
+    | _ -> None
 
 and array_expr_flat_width = fun budget expr ->
   let items = collect_array_items expr in
@@ -4485,8 +4571,8 @@ and list_expr_flat_width = fun budget expr ->
     loop 0 2
 
 and record_expr_field_flat_width = fun budget field ->
-  match field.Ast.RecordExpr.path, field.Ast.RecordExpr.value with
-  | Some path, Some value -> (
+  match (field.Ast.RecordExpr.path, field.Ast.RecordExpr.value) with
+  | (Some path, Some value) -> (
       match expr_flat_width_with_budget budget value with
       | None -> None
       | Some value_width -> (
@@ -4502,10 +4588,8 @@ and record_expr_field_flat_width = fun budget field ->
           | None -> None
         )
     )
-  | Some path, None ->
-      node_token_flat_width path
-  | None, _ ->
-      None
+  | (Some path, None) -> node_token_flat_width path
+  | (None, _) -> None
 
 and record_expr_flat_width = fun budget expr ->
   let fields = collect_record_fields expr in
@@ -4556,59 +4640,55 @@ and record_expr_flat_width = fun budget expr ->
 
 and local_open_expr_flat_width = fun budget expr ->
   match Ast.LocalOpenExpr.view expr with
-  | LetOpen _ ->
-      None
+  | LetOpen _ -> None
   | Delimited {
-    module_path=Some module_path;
-    dot_token=Some dot_token;
+    module_path = Some module_path;
+    dot_token = Some dot_token;
     opening_token;
-    body=Some body;
+    body = Some body;
     closing_token
   } -> (
-      match node_token_flat_width module_path, expr_flat_width_with_budget budget body with
-      | Some module_width, Some body_width ->
+      match (node_token_flat_width module_path, expr_flat_width_with_budget budget body) with
+      | (Some module_width, Some body_width) ->
           let delimiter_width =
-            match opening_token, closing_token with
-            | Some opening, Some closing when token_kind_is opening Kind.LPAREN -> Int.add
-              (token_flat_width opening)
-              (token_flat_width closing)
+            match (opening_token, closing_token) with
+            | (Some opening, Some closing) when token_kind_is opening Kind.LPAREN ->
+                Int.add (token_flat_width opening) (token_flat_width closing)
             | _ -> 0
           in
           let body_width =
             match opening_token with
-            | Some opening when token_kind_is opening Kind.LPAREN && expr_is_tuple body -> Int.sub
-              body_width
-              2
+            | Some opening when token_kind_is opening Kind.LPAREN && expr_is_tuple body ->
+                Int.sub body_width 2
             | _ -> body_width
           in
           Some Int.(module_width + token_flat_width dot_token + delimiter_width + body_width)
       | _ -> None
     )
   | Delimited {
-    module_path=None;
-    dot_token=Some dot_token;
+    module_path = None;
+    dot_token = Some dot_token;
     opening_token;
-    body=Some body;
+    body = Some body;
     closing_token
   } -> (
       let exprs = collect_child_exprs expr in
       if Int.equal (Vector.length exprs) 2 then
-        match expr_flat_width_with_budget budget (Vector.get_unchecked exprs ~at:0), expr_flat_width_with_budget
-          budget
-          body with
-        | Some target_width, Some body_width ->
+        match (
+          expr_flat_width_with_budget budget (Vector.get_unchecked exprs ~at:0),
+          expr_flat_width_with_budget budget body
+        ) with
+        | (Some target_width, Some body_width) ->
             let delimiter_width =
-              match opening_token, closing_token with
-              | Some opening, Some closing when token_kind_is opening Kind.LPAREN -> Int.add
-                (token_flat_width opening)
-                (token_flat_width closing)
+              match (opening_token, closing_token) with
+              | (Some opening, Some closing) when token_kind_is opening Kind.LPAREN ->
+                  Int.add (token_flat_width opening) (token_flat_width closing)
               | _ -> 0
             in
             let body_width =
               match opening_token with
-              | Some opening when token_kind_is opening Kind.LPAREN && expr_is_tuple body -> Int.sub
-                body_width
-                2
+              | Some opening when token_kind_is opening Kind.LPAREN && expr_is_tuple body ->
+                  Int.sub body_width 2
               | _ -> body_width
             in
             Some Int.(target_width + token_flat_width dot_token + delimiter_width + body_width)
@@ -4616,8 +4696,7 @@ and local_open_expr_flat_width = fun budget expr ->
       else
         None
     )
-  | Delimited _ ->
-      None
+  | Delimited _ -> None
 
 and expr_is_inline = fun expr -> expr_is_inline_with_budget expr_classification_budget expr
 
@@ -4632,25 +4711,22 @@ and expr_is_inline_with_budget = fun budget expr ->
   | MethodCall _
   | Prefix _
   | LabeledArg _
-  | OptionalArg _ ->
-      true
-  | FirstClassModule ->
-      true
-  | Attribute { inner=Some inner } ->
+  | OptionalArg _ -> true
+  | FirstClassModule -> true
+  | Attribute { inner = Some inner } ->
       if same_ast_node expr inner then
         false
       else
         expr_is_inline_with_budget next_budget inner
-  | LocalOpen { body=Some body } ->
+  | LocalOpen { body = Some body } ->
       if same_ast_node expr body then
         false
       else
         expr_is_inline_with_budget next_budget body
-  | Infix { left=Some left; operator=Some operator; right=Some right } when String.equal
+  | Infix { left = Some left; operator = Some operator; right = Some right } when String.equal
     (infix_operator_text_from_expr expr left operator right)
-    "|>" ->
-      false
-  | Infix { left=Some left; right=Some right; _ } ->
+    "|>" -> false
+  | Infix { left = Some left; right = Some right; _ } ->
       if same_ast_node expr left || same_ast_node expr right then
         false
       else if not (expr_is_inline_with_budget next_budget left) then
@@ -4658,7 +4734,7 @@ and expr_is_inline_with_budget = fun budget expr ->
       else
         expr_is_inline_with_budget next_budget right
   | Apply _ ->
-      let callee, args = collect_apply expr in
+      let (callee, args) = collect_apply expr in
       if same_ast_node expr callee then
         false
       else if not (expr_is_inline_with_budget next_budget callee) then
@@ -4678,27 +4754,19 @@ and expr_is_inline_with_budget = fun budget expr ->
               false
         in
         loop 0
-  | Parenthesized { inner=Some inner } ->
+  | Parenthesized { inner = Some inner } ->
       if same_ast_node expr inner then
         false
       else
         expr_is_inline_with_budget next_budget inner
-  | Parenthesized { inner=None } ->
-      true
-  | Array ->
-      array_expr_should_inline expr
-  | List ->
-      list_expr_should_inline expr
-  | Record ->
-      record_expr_should_inline expr
-  | RecordUpdate ->
-      record_expr_should_inline expr
-  | Sequence { left=Some left; right=None } ->
-      false
-  | Typed { expr=Some inner; _ } ->
-      expr_is_inline_with_budget next_budget inner
-  | _ ->
-      false
+  | Parenthesized { inner = None } -> true
+  | Array -> array_expr_should_inline expr
+  | List -> list_expr_should_inline expr
+  | Record -> record_expr_should_inline expr
+  | RecordUpdate -> record_expr_should_inline expr
+  | Sequence { left = Some left; right = None } -> false
+  | Typed { expr = Some inner; _ } -> expr_is_inline_with_budget next_budget inner
+  | _ -> false
 
 and array_expr_should_inline = fun expr ->
   let items = collect_array_items expr in
@@ -4819,9 +4887,8 @@ let expr_can_be_bare_caret_operand = fun expr ->
 
 let expr_is_infix_with_operator_text = fun expr expected ->
   match Ast.Expr.view expr with
-  | Infix { left=Some left; operator=Some operator; right=Some right } -> String.equal
-    (infix_operator_text_from_expr expr left operator right)
-    expected
+  | Infix { left = Some left; operator = Some operator; right = Some right } ->
+      String.equal (infix_operator_text_from_expr expr left operator right) expected
   | _ -> false
 
 let expr_is_pipeline = fun expr -> expr_is_infix_with_operator_text expr "|>"
@@ -4885,11 +4952,8 @@ let infix_operator_associativity = fun operator ->
 
 let expr_infix_operator_text = fun expr ->
   match Ast.Expr.view expr with
-  | Infix { left=Some left; operator=Some operator; right=Some right } -> Some (infix_operator_text_from_expr
-    expr
-    left
-    operator
-    right)
+  | Infix { left = Some left; operator = Some operator; right = Some right } ->
+      Some (infix_operator_text_from_expr expr left operator right)
   | _ -> None
 
 let expr_is_literal = fun expr ->
@@ -4899,7 +4963,7 @@ let expr_is_literal = fun expr ->
 
 let expr_is_single_line_literal = fun expr ->
   match Ast.Expr.view expr with
-  | Literal { token=Some token } -> not (Ast.Token.has_newline token)
+  | Literal { token = Some token } -> not (Ast.Token.has_newline token)
   | Literal _ -> false
   | _ -> false
 
@@ -4912,10 +4976,11 @@ let render_prefix_operator_tokens = fun state operator_tokens fallback_operator 
       emit_token state fallback_operator;
       fallback_operator
     )
-  else (
-    emit_token_vector_stream state operator_tokens;
-    Vector.get_unchecked operator_tokens ~at:(Int.sub (Vector.length operator_tokens) 1)
-  )
+  else
+    (
+      emit_token_vector_stream state operator_tokens;
+      Vector.get_unchecked operator_tokens ~at:(Int.sub (Vector.length operator_tokens) 1)
+    )
 
 let infix_left_operand_can_be_bare = fun ~parent_operator left ->
   match expr_infix_operator_text left with
@@ -4950,35 +5015,28 @@ let infix_right_operand_can_be_bare = fun ~parent_operator right ->
 let rec render_expr = fun state expr ->
   emit_node_leading_trivia state expr;
   match Ast.Expr.view expr with
-  | Path { path } ->
-      render_expr_path state path
-  | Literal { token=Some token } ->
-      emit_literal_token state token
-  | Literal { token=None } ->
-      unsupported_node "literal expression without token" expr
-  | FieldAccess { target=Some target; field=Some field } ->
+  | Path { path } -> render_expr_path state path
+  | Literal { token = Some token } -> emit_literal_token state token
+  | Literal { token = None } -> unsupported_node "literal expression without token" expr
+  | FieldAccess { target = Some target; field = Some field } ->
       render_expr_postfix_target state target;
       emit_text state ".";
       emit_token state field
-  | FieldAccess _ ->
-      unsupported_node "incomplete field access" expr
-  | MethodCall { target=Some target; method_=Some method_ } ->
+  | FieldAccess _ -> unsupported_node "incomplete field access" expr
+  | MethodCall { target = Some target; method_ = Some method_ } ->
       render_method_call_expr state expr target method_
-  | MethodCall _ ->
-      unsupported_node "incomplete method call" expr
-  | Assign { target=Some target; operator=Some operator; value=Some value } ->
+  | MethodCall _ -> unsupported_node "incomplete method call" expr
+  | Assign { target = Some target; operator = Some operator; value = Some value } ->
       render_expr_atom state target;
       emit_space state;
       emit_token state operator;
       emit_space state;
       render_expr state value
-  | Assign _ ->
-      unsupported_node "incomplete assign expression" expr
-  | Infix { left=Some left; operator=Some operator; right=Some right } ->
+  | Assign _ -> unsupported_node "incomplete assign expression" expr
+  | Infix { left = Some left; operator = Some operator; right = Some right } ->
       render_infix_expr state expr left operator right
-  | Infix _ ->
-      unsupported_node "incomplete infix expression" expr
-  | Prefix { operator=Some operator; operand=Some operand } ->
+  | Infix _ -> unsupported_node "incomplete infix expression" expr
+  | Prefix { operator = Some operator; operand = Some operand } ->
       let operator_tokens = collect_prefix_operator_tokens expr in
       let last_operator =
         if Int.equal (Vector.length operator_tokens) 0 then
@@ -4994,93 +5052,69 @@ let rec render_expr = fun state expr ->
       render_prefix_operand state operand;
       if prefix_operator_is_negative last_operator && expr_is_literal operand then
         emit_text state ")"
-  | Prefix _ ->
-      unsupported_node "incomplete prefix expression" expr
-  | Apply _ ->
-      render_apply_expr state expr
-  | LabeledArg { label=Some label; value=Some value } ->
+  | Prefix _ -> unsupported_node "incomplete prefix expression" expr
+  | Apply _ -> render_apply_expr state expr
+  | LabeledArg { label = Some label; value = Some value } ->
       emit_text state "~";
       emit_token state label;
       emit_text state ":";
       render_expr_atom state value
-  | LabeledArg { label=Some label; value=None } ->
+  | LabeledArg { label = Some label; value = None } ->
       emit_text state "~";
       emit_token state label
-  | LabeledArg { label=None; _ } ->
-      unsupported_node "labeled argument without label" expr
-  | OptionalArg { label=Some label; value=Some value } ->
+  | LabeledArg { label = None; _ } -> unsupported_node "labeled argument without label" expr
+  | OptionalArg { label = Some label; value = Some value } ->
       emit_text state "?";
       emit_token state label;
       emit_text state ":";
       render_expr_atom state value
-  | OptionalArg { label=Some label; value=None } ->
+  | OptionalArg { label = Some label; value = None } ->
       emit_text state "?";
       emit_token state label
-  | OptionalArg { label=None; _ } ->
-      unsupported_node "optional argument without label" expr
-  | Parenthesized { inner=Some inner } when expr_first_token_text_is expr "begin" ->
-      let render_inner () =
-        with_delimited_expr state (fun () -> render_expr state inner)
-      in
+  | OptionalArg { label = None; _ } -> unsupported_node "optional argument without label" expr
+  | Parenthesized { inner = Some inner } when expr_first_token_text_is expr "begin" ->
+      let render_inner () = with_delimited_expr state (fun () -> render_expr state inner) in
       emit_text state "begin";
       emit_line state;
       with_indent state 2 render_inner;
       emit_line state;
       emit_text state "end"
-  | Parenthesized { inner=Some inner } when not (same_ast_node expr inner) && expr_is_tuple inner ->
+  | Parenthesized { inner = Some inner } when not (same_ast_node expr inner) && expr_is_tuple inner ->
       render_parenthesized_expr state inner
-  | Parenthesized { inner=Some inner } when not (same_ast_node expr inner) && expr_is_typed inner ->
+  | Parenthesized { inner = Some inner } when not (same_ast_node expr inner) && expr_is_typed inner ->
       render_parenthesized_expr state inner
-  | Parenthesized { inner=Some inner } when not (same_ast_node expr inner)
-  && expr_has_leading_comment inner ->
-      render_parenthesized_expr state inner
-  | Parenthesized { inner=Some inner } when not (same_ast_node expr inner) && expr_is_multiline inner ->
-      render_parenthesized_expr state inner
-  | Parenthesized { inner=Some inner } when not (same_ast_node expr inner) ->
+  | Parenthesized { inner = Some inner } when not (same_ast_node expr inner)
+  && expr_has_leading_comment inner -> render_parenthesized_expr state inner
+  | Parenthesized { inner = Some inner } when not (same_ast_node expr inner)
+  && expr_is_multiline inner -> render_parenthesized_expr state inner
+  | Parenthesized { inner = Some inner } when not (same_ast_node expr inner) ->
       render_expr state inner
-  | Parenthesized { inner=Some inner } ->
+  | Parenthesized { inner = Some inner } ->
       emit_text state "(";
       with_delimited_expr state (fun () -> render_expr state inner);
       emit_text state ")"
-  | Parenthesized { inner=None } ->
-      emit_text state "()"
-  | If { condition=Some condition; then_branch=Some then_branch; else_branch } ->
+  | Parenthesized { inner = None } -> emit_text state "()"
+  | If { condition = Some condition; then_branch = Some then_branch; else_branch } ->
       render_if_expr state expr condition then_branch else_branch
-  | If _ ->
-      unsupported_node "incomplete if expression" expr
-  | Let { body=Some body; _ } ->
-      render_let_expr state expr body
-  | Let _ ->
-      unsupported_node "let expression without body" expr
-  | Fun { body=Some body } ->
-      render_fun_expr state expr body
-  | Fun { body=None } ->
-      unsupported_node "fun expression without body" expr
-  | Function { first_case=Some _ } ->
-      render_function_expr state expr
-  | Function { first_case=None } ->
-      unsupported_node "function expression without cases" expr
-  | Match { scrutinee=Some scrutinee; first_case=Some _ } ->
+  | If _ -> unsupported_node "incomplete if expression" expr
+  | Let { body = Some body; _ } -> render_let_expr state expr body
+  | Let _ -> unsupported_node "let expression without body" expr
+  | Fun { body = Some body } -> render_fun_expr state expr body
+  | Fun { body = None } -> unsupported_node "fun expression without body" expr
+  | Function { first_case = Some _ } -> render_function_expr state expr
+  | Function { first_case = None } -> unsupported_node "function expression without cases" expr
+  | Match { scrutinee = Some scrutinee; first_case = Some _ } ->
       render_match_expr state expr scrutinee
-  | Match _ ->
-      unsupported_node "match expression without scrutinee or cases" expr
-  | Try { body=Some body; first_case=Some _ } ->
-      render_try_expr state expr body
-  | Try _ ->
-      unsupported_node "try expression without body or cases" expr
-  | LocalOpen { body=Some _ } ->
-      render_local_open_expr state expr
-  | LocalOpen { body=None } ->
-      unsupported_node "local open expression without body" expr
-  | List ->
-      render_list_expr state expr
-  | Array ->
-      render_array_expr state expr
-  | Record ->
-      render_record_expr state ~inline:false expr
-  | RecordUpdate ->
-      render_record_expr state ~inline:false expr
-  | Typed { expr=Some inner; annotation=Some annotation } ->
+  | Match _ -> unsupported_node "match expression without scrutinee or cases" expr
+  | Try { body = Some body; first_case = Some _ } -> render_try_expr state expr body
+  | Try _ -> unsupported_node "try expression without body or cases" expr
+  | LocalOpen { body = Some _ } -> render_local_open_expr state expr
+  | LocalOpen { body = None } -> unsupported_node "local open expression without body" expr
+  | List -> render_list_expr state expr
+  | Array -> render_array_expr state expr
+  | Record -> render_record_expr state ~inline:false expr
+  | RecordUpdate -> render_record_expr state ~inline:false expr
+  | Typed { expr = Some inner; annotation = Some annotation } ->
       (
         if type_expr_is_coercion_annotation annotation then
           render_expr state inner
@@ -5090,11 +5124,9 @@ let rec render_expr = fun state expr ->
           render_expr_atom state inner
       );
       render_typed_expr_annotation state annotation
-  | Typed _ ->
-      unsupported_node "incomplete typed expression" expr
-  | Tuple ->
-      render_tuple_expr state expr
-  | Sequence { left=Some left; right=Some right } ->
+  | Typed _ -> unsupported_node "incomplete typed expression" expr
+  | Tuple -> render_tuple_expr state expr
+  | Sequence { left = Some left; right = Some right } ->
       if expr_is_tuple left then
         render_expr_atom state left
       else
@@ -5120,7 +5152,7 @@ let rec render_expr = fun state expr ->
         render_expr_atom state right
       else
         render_expr state right
-  | Sequence { left=Some left; right=None } ->
+  | Sequence { left = Some left; right = None } ->
       if expr_is_tuple left then
         render_expr_atom state left
       else
@@ -5138,65 +5170,49 @@ let rec render_expr = fun state expr ->
               )
         | None -> emit_text state ";"
       )
-  | Sequence _ ->
-      unsupported_node "incomplete sequence expression" expr
-  | ArrayIndex { target=Some target; index=Some index } ->
+  | Sequence _ -> unsupported_node "incomplete sequence expression" expr
+  | ArrayIndex { target = Some target; index = Some index } ->
       render_index_expr state expr target index ~fallback_open:".(" ~fallback_close:")"
-  | ArrayIndex _ ->
-      unsupported_node "incomplete array index expression" expr
-  | StringIndex { target=Some target; index=Some index } ->
+  | ArrayIndex _ -> unsupported_node "incomplete array index expression" expr
+  | StringIndex { target = Some target; index = Some index } ->
       render_index_expr state expr target index ~fallback_open:".[" ~fallback_close:"]"
-  | StringIndex _ ->
-      unsupported_node "incomplete string index expression" expr
-  | PolyVariant { payload } ->
-      render_poly_variant_expr state expr payload
-  | BindingOperator _ ->
-      render_binding_operator_expr state expr
-  | LetModule { body=Some _ } ->
-      render_let_module_expr state expr
-  | LetModule { body=None } ->
-      unsupported_node "let module expression without body" expr
-  | FirstClassModule ->
-      render_first_class_module_expr state expr
-  | LetException { body=Some _ } ->
-      render_let_exception_expr state expr
-  | LetException { body=None } ->
-      unsupported_node "let exception expression without body" expr
-  | While { condition=Some condition; body=Some body } ->
-      render_while_expr state condition body
-  | While _ ->
-      unsupported_node "incomplete while expression" expr
-  | Assert { argument=Some argument } ->
-      render_assert_expr state argument
-  | Assert { argument=None } ->
-      unsupported_node "assert expression without argument" expr
-  | Lazy { argument=Some argument } ->
-      render_lazy_expr state expr argument
-  | Lazy { argument=None } ->
-      unsupported_node "lazy expression without argument" expr
-  | Attribute { inner=Some _ } ->
-      render_attribute_expr state expr
-  | Attribute { inner=None } ->
+  | StringIndex _ -> unsupported_node "incomplete string index expression" expr
+  | PolyVariant { payload } -> render_poly_variant_expr state expr payload
+  | BindingOperator _ -> render_binding_operator_expr state expr
+  | LetModule { body = Some _ } -> render_let_module_expr state expr
+  | LetModule { body = None } -> unsupported_node "let module expression without body" expr
+  | FirstClassModule -> render_first_class_module_expr state expr
+  | LetException { body = Some _ } -> render_let_exception_expr state expr
+  | LetException { body = None } -> unsupported_node "let exception expression without body" expr
+  | While { condition = Some condition; body = Some body } -> render_while_expr state condition body
+  | While _ -> unsupported_node "incomplete while expression" expr
+  | Assert { argument = Some argument } -> render_assert_expr state argument
+  | Assert { argument = None } -> unsupported_node "assert expression without argument" expr
+  | Lazy { argument = Some argument } -> render_lazy_expr state expr argument
+  | Lazy { argument = None } -> unsupported_node "lazy expression without argument" expr
+  | Attribute { inner = Some _ } -> render_attribute_expr state expr
+  | Attribute { inner = None } ->
       unsupported_node "attribute expression without inner expression" expr
-  | Extension ->
-      render_extension_expr state expr
-  | For { pattern=Some pattern; start_=Some start_; stop=Some stop; body=Some body } ->
-      render_for_expr state expr pattern start_ stop body
-  | For _ ->
-      unsupported_node "incomplete for expression" expr
-  | Unreachable ->
-      render_unreachable_expr state expr
+  | Extension -> render_extension_expr state expr
+  | For {
+    pattern = Some pattern;
+    start_ = Some start_;
+    stop = Some stop;
+    body = Some body
+  } -> render_for_expr state expr pattern start_ stop body
+  | For _ -> unsupported_node "incomplete for expression" expr
+  | Unreachable -> render_unreachable_expr state expr
   | Object
   | New
   | Error _
-  | Unknown _ ->
-      unsupported_node "unsupported expression" expr
+  | Unknown _ -> unsupported_node "unsupported expression" expr
 
 and render_method_call_expr = fun state expr target method_ ->
   render_expr_postfix_target state target;
   (
     let hash_token = ref None in
-    Ast.Node.for_each_child_token expr
+    Ast.Node.for_each_child_token
+      expr
       ~fn:(fun token ->
         if Option.is_none !hash_token && token_kind_is token Kind.HASH then
           hash_token := Some token);
@@ -5228,7 +5244,9 @@ and render_tuple_expr = fun state expr ->
     (
       emit_text state "(";
       emit_line state;
-      with_indent state 2
+      with_indent
+        state
+        2
         (fun () ->
           let length = Vector.length items in
           let rec loop index =
@@ -5251,7 +5269,9 @@ and render_tuple_expr = fun state expr ->
     render_inline ()
 
 and render_tuple_expr_contents = fun state items ~render_item ->
-  emit_joined_vector state items
+  emit_joined_vector
+    state
+    items
     ~sep:(fun () ->
       emit_text state ",";
       emit_space state)
@@ -5259,24 +5279,21 @@ and render_tuple_expr_contents = fun state items ~render_item ->
 
 and render_expr_atom = fun state expr ->
   match Ast.Expr.view expr with
-  | Parenthesized { inner=Some inner } when expr_first_token_text_is expr "begin" ->
+  | Parenthesized { inner = Some inner } when expr_first_token_text_is expr "begin" ->
       render_expr state expr
-  | Parenthesized { inner=Some inner } when not (same_ast_node expr inner) && expr_is_fun inner ->
+  | Parenthesized { inner = Some inner } when not (same_ast_node expr inner) && expr_is_fun inner ->
       emit_text state "(";
       render_expr state inner;
       emit_text state ")"
-  | Parenthesized { inner=Some inner } when not (same_ast_node expr inner)
-  && expr_has_leading_comment inner ->
-      render_parenthesized_expr state inner
-  | Parenthesized { inner=Some inner } when not (same_ast_node expr inner) ->
+  | Parenthesized { inner = Some inner } when not (same_ast_node expr inner)
+  && expr_has_leading_comment inner -> render_parenthesized_expr state inner
+  | Parenthesized { inner = Some inner } when not (same_ast_node expr inner) ->
       if expr_can_render_atom_without_parens inner then
         render_expr_atom state inner
       else
         render_parenthesized_expr state inner
-  | Tuple ->
-      render_expr state expr
-  | LocalOpen _ when local_open_expr_can_render_atom_without_parens expr ->
-      render_expr state expr
+  | Tuple -> render_expr state expr
+  | LocalOpen _ when local_open_expr_can_render_atom_without_parens expr -> render_expr state expr
   | Path _
   | Literal _
   | FieldAccess _
@@ -5292,19 +5309,17 @@ and render_expr_atom = fun state expr ->
   | FirstClassModule
   | Extension
   | LabeledArg _
-  | PolyVariant { payload=None }
-  | OptionalArg _ ->
-      render_expr state expr
+  | PolyVariant { payload = None }
+  | OptionalArg _ -> render_expr state expr
   | Fun _ ->
       emit_text state "(";
       render_expr state expr;
       emit_text state ")"
-  | _ ->
-      render_parenthesized_expr state expr
+  | _ -> render_parenthesized_expr state expr
 
 and render_prefix_operand = fun state operand ->
   match Ast.Expr.view operand with
-  | Parenthesized { inner=Some inner } when not (same_ast_node operand inner)
+  | Parenthesized { inner = Some inner } when not (same_ast_node operand inner)
   && expr_is_dotted_path inner -> render_parenthesized_expr state inner
   | _ when expr_is_prefix_deref operand -> render_parenthesized_expr state operand
   | _ -> render_expr_atom state operand
@@ -5320,10 +5335,8 @@ and parenthesized_expr_should_multiline = fun state expr ->
     true
   else
     match Ast.Expr.view expr with
-    | Typed { annotation=Some annotation; _ } -> type_expr_should_break_after_colon
-      state
-      ~suffix_width:1
-      annotation
+    | Typed { annotation = Some annotation; _ } ->
+        type_expr_should_break_after_colon state ~suffix_width:1 annotation
     | _ -> false
 
 and render_parenthesized_expr_with_multiline_indent = fun state expr ~body_indent ~closing_indent ->
@@ -5331,9 +5344,7 @@ and render_parenthesized_expr_with_multiline_indent = fun state expr ~body_inden
     render_expr state expr
   else
     (
-      let render_inner () =
-        with_delimited_expr state (fun () -> render_expr state expr)
-      in
+      let render_inner () = with_delimited_expr state (fun () -> render_expr state expr) in
       if parenthesized_expr_should_multiline state expr then
         (
           emit_text state "(";
@@ -5345,11 +5356,12 @@ and render_parenthesized_expr_with_multiline_indent = fun state expr ~body_inden
           else
             emit_text state ")"
         )
-      else (
-        emit_text state "(";
-        render_inner ();
-        emit_text state ")"
-      )
+      else
+        (
+          emit_text state "(";
+          render_inner ();
+          emit_text state ")"
+        )
     )
 
 and render_parenthesized_expr = fun state expr ->
@@ -5377,13 +5389,14 @@ and infix_expr_should_break = fun state expr left operator right ->
   then
     true
   else
-    match expr_flat_width left, expr_flat_width right with
-    | Some left_width, Some right_width -> Int.(state.column
-    + left_width
-    + 2
-    + infix_operator_flat_width_from_expr expr left operator right
-    + right_width
-    > state.width)
+    match (expr_flat_width left, expr_flat_width right) with
+    | (Some left_width, Some right_width) ->
+        Int.(state.column
+        + left_width
+        + 2
+        + infix_operator_flat_width_from_expr expr left operator right
+        + right_width
+        > state.width)
     | _ -> false
 
 and collect_infix_chain = fun ~operator_text left operator right ->
@@ -5391,7 +5404,7 @@ and collect_infix_chain = fun ~operator_text left operator right ->
   let first = ref left in
   let rec push_left expr =
     match Ast.Expr.view expr with
-    | Infix { left=Some left; operator=Some operator; right=Some right } when String.equal
+    | Infix { left = Some left; operator = Some operator; right = Some right } when String.equal
       (token_text operator)
       operator_text ->
         push_left left;
@@ -5404,9 +5417,10 @@ and collect_infix_chain = fun ~operator_text left operator right ->
 
 and render_multiline_infix_expr = fun state left operator right ->
   let operator_text = token_text operator in
-  let first, parts = collect_infix_chain ~operator_text left operator right in
+  let (first, parts) = collect_infix_chain ~operator_text left operator right in
   render_infix_left_operand state ~operator_text first;
-  Vector.for_each parts
+  Vector.for_each
+    parts
     ~fn:(fun (operator, operand) ->
       let operator_text = token_text operator in
       emit_line state;
@@ -5421,7 +5435,8 @@ and render_infix_left_operand = fun state ~operator_text left ->
     render_expr state left
   else if
     String.equal operator_text "|>"
-    && (expr_can_be_bare_pipe_left_operand left || expr_is_infix_with_operator_text left operator_text)
+    && (expr_can_be_bare_pipe_left_operand left
+    || expr_is_infix_with_operator_text left operator_text)
   then
     render_expr state left
   else if
@@ -5429,7 +5444,9 @@ and render_infix_left_operand = fun state ~operator_text left ->
     && (expr_can_be_bare_caret_operand left || expr_is_infix_with_operator_text left operator_text)
   then
     render_expr state left
-  else if String.equal operator_text "::" && expr_is_infix_with_operator_text left operator_text then
+  else if
+    String.equal operator_text "::" && expr_is_infix_with_operator_text left operator_text
+  then
     render_expr state left
   else if infix_left_operand_can_be_bare ~parent_operator:operator_text left then
     render_expr state left
@@ -5467,39 +5484,44 @@ and render_infix_expr = fun state expr left operator right ->
   let operator_text = infix_operator_text_from_expr expr left operator right in
   if String.equal operator_text "|>" || infix_expr_should_break state expr left operator right then
     render_multiline_infix_expr state left operator right
-  else (
-    render_infix_left_operand state ~operator_text left;
-    emit_space state;
-    render_infix_operator_tokens state expr left operator right;
-    emit_space state;
-    render_infix_right_operand state ~operator_text right
-  )
+  else
+    (
+      render_infix_left_operand state ~operator_text left;
+      emit_space state;
+      render_infix_operator_tokens state expr left operator right;
+      emit_space state;
+      render_infix_right_operand state ~operator_text right
+    )
 
 and render_delimited_local_open_body_expr = fun state expr ->
   match Ast.Expr.view expr with
-  | Infix { left=Some left; operator=Some operator; right=Some right } when expr_is_prefix_deref left ->
+  | Infix { left = Some left; operator = Some operator; right = Some right } when expr_is_prefix_deref
+    left ->
       let operator_text = infix_operator_text_from_expr expr left operator right in
-      if String.equal operator_text "|>" || infix_expr_should_break state expr left operator right then
+      if
+        String.equal operator_text "|>" || infix_expr_should_break state expr left operator right
+      then
         render_multiline_infix_expr state left operator right
-      else (
-        render_parenthesized_expr state left;
-        emit_space state;
-        render_infix_operator_tokens state expr left operator right;
-        emit_space state;
-        render_infix_right_operand state ~operator_text right
-      )
+      else
+        (
+          render_parenthesized_expr state left;
+          emit_space state;
+          render_infix_operator_tokens state expr left operator right;
+          emit_space state;
+          render_infix_right_operand state ~operator_text right
+        )
   | _ -> render_expr state expr
 
 and render_let_body_with_leading_comment = fun state body ->
   emit_node_leading_comments_as_lines state body;
   match Ast.Expr.view body with
-  | Infix { left=Some left; operator=Some operator; right=Some right } when String.equal
+  | Infix { left = Some left; operator = Some operator; right = Some right } when String.equal
     (token_text operator)
     "|>" -> render_multiline_infix_expr state left operator right
   | _ -> render_expr state body
 
 and render_apply_flat = fun state callee args ->
-  let callee, base_args = collect_apply callee in
+  let (callee, base_args) = collect_apply callee in
   let render_arg arg =
     emit_space state;
     render_apply_argument state arg
@@ -5559,13 +5581,13 @@ and render_poly_variant_tag = fun state expr ->
 and render_apply_argument = fun state arg ->
   let rec render_split_arg arg =
     match Ast.Expr.view arg with
-    | PolyVariant { payload=Some payload } ->
+    | PolyVariant { payload = Some payload } ->
         render_poly_variant_tag state arg;
         emit_space state;
         render_split_arg payload
-    | LabeledArg { label=Some label; value=Some value } -> (
+    | LabeledArg { label = Some label; value = Some value } -> (
         match Ast.Expr.view value with
-        | PolyVariant { payload=Some payload } ->
+        | PolyVariant { payload = Some payload } ->
             emit_text state "~";
             emit_token state label;
             emit_text state ":";
@@ -5574,9 +5596,9 @@ and render_apply_argument = fun state arg ->
             render_split_arg payload
         | _ -> render_expr_atom state arg
       )
-    | OptionalArg { label=Some label; value=Some value } -> (
+    | OptionalArg { label = Some label; value = Some value } -> (
         match Ast.Expr.view value with
-        | PolyVariant { payload=Some payload } ->
+        | PolyVariant { payload = Some payload } ->
             emit_text state "?";
             emit_token state label;
             emit_text state ":";
@@ -5585,16 +5607,15 @@ and render_apply_argument = fun state arg ->
             render_split_arg payload
         | _ -> render_expr_atom state arg
       )
-    | _ ->
-        render_expr_atom state arg
+    | _ -> render_expr_atom state arg
   in
   render_split_arg arg
 
 and expr_is_fun_or_parenthesized_fun = fun expr ->
   match Ast.Expr.view expr with
   | Fun _ -> true
-  | Parenthesized { inner=Some inner } when not (same_ast_node expr inner) -> expr_is_fun_or_parenthesized_fun
-    inner
+  | Parenthesized { inner = Some inner } when not (same_ast_node expr inner) ->
+      expr_is_fun_or_parenthesized_fun inner
   | _ -> false
 
 and fun_body_should_force_break_in_broken_arg = fun body ->
@@ -5603,16 +5624,16 @@ and fun_body_should_force_break_in_broken_arg = fun body ->
   else
     match Ast.Expr.view body with
     | Apply _ ->
-        let _, args = collect_apply body in
+        let (_, args) = collect_apply body in
         Int.(Vector.length args > 2) || apply_args_have_heavy_nested_apply args
     | _ -> false
 
 and fun_expr_should_force_body_break_in_broken_arg = fun expr ->
   match Ast.Expr.view expr with
-  | Fun { body=Some body } -> fun_body_should_force_break_in_broken_arg body
-  | Fun { body=None } -> true
-  | Parenthesized { inner=Some inner } when not (same_ast_node expr inner) -> fun_expr_should_force_body_break_in_broken_arg
-    inner
+  | Fun { body = Some body } -> fun_body_should_force_break_in_broken_arg body
+  | Fun { body = None } -> true
+  | Parenthesized { inner = Some inner } when not (same_ast_node expr inner) ->
+      fun_expr_should_force_body_break_in_broken_arg inner
   | _ -> false
 
 and render_broken_apply_argument = fun state arg ->
@@ -5620,8 +5641,8 @@ and render_broken_apply_argument = fun state arg ->
     match Ast.Expr.view arg with
     | Fun _
     | Parenthesized _ -> fun_expr_should_force_body_break_in_broken_arg arg
-    | LabeledArg { value=Some value; _ }
-    | OptionalArg { value=Some value; _ } -> fun_expr_should_force_body_break_in_broken_arg value
+    | LabeledArg { value = Some value; _ }
+    | OptionalArg { value = Some value; _ } -> fun_expr_should_force_body_break_in_broken_arg value
     | _ -> false
   in
   if force then
@@ -5636,41 +5657,38 @@ and expr_is_constructor_like_callee = fun expr ->
       | Some token -> token_text_starts_uppercase token
       | None -> false
     )
-  | PolyVariant _ ->
-      true
-  | _ ->
-      false
+  | PolyVariant _ -> true
+  | _ -> false
 
 and expr_is_single_constructor_apply = fun expr ->
   match Ast.Expr.view expr with
   | Apply _ ->
-      let callee, args = collect_apply expr in
+      let (callee, args) = collect_apply expr in
       Int.equal (Vector.length args) 1 && expr_is_constructor_like_callee callee
   | _ -> false
 
 and expr_is_single_constructor_multiline_apply = fun expr ->
   match Ast.Expr.view expr with
   | Apply _ ->
-      let _, args = collect_apply expr in
+      let (_, args) = collect_apply expr in
       expr_is_single_constructor_apply expr && vector_exists_expr_is_multiline_except expr args
   | _ -> false
 
 and expr_is_heavy_nested_apply_value = fun expr ->
   match Ast.Expr.view expr with
-  | Parenthesized { inner=Some inner } when not (same_ast_node expr inner) ->
+  | Parenthesized { inner = Some inner } when not (same_ast_node expr inner) ->
       expr_is_heavy_nested_apply_value inner
   | Apply _ ->
-      let callee, args = collect_apply expr in
+      let (callee, args) = collect_apply expr in
       not (same_ast_node expr callee) && Int.(Vector.length args > 1)
-  | _ ->
-      false
+  | _ -> false
 
 and apply_argument_has_heavy_nested_apply = fun arg ->
   match Ast.Expr.view arg with
-  | LabeledArg { value=Some value; _ }
-  | OptionalArg { value=Some value; _ } -> expr_is_heavy_nested_apply_value value
-  | Parenthesized { inner=Some inner } when not (same_ast_node arg inner) -> expr_is_heavy_nested_apply_value
-    inner
+  | LabeledArg { value = Some value; _ }
+  | OptionalArg { value = Some value; _ } -> expr_is_heavy_nested_apply_value value
+  | Parenthesized { inner = Some inner } when not (same_ast_node arg inner) ->
+      expr_is_heavy_nested_apply_value inner
   | _ -> false
 
 and apply_args_have_heavy_nested_apply = fun args ->
@@ -5707,7 +5725,7 @@ and apply_expr_should_break = fun state expr args ->
   apply_expr_should_break_from_column state expr args ~column:state.column
 
 and render_apply_expr = fun state expr ->
-  let callee, args = collect_apply expr in
+  let (callee, args) = collect_apply expr in
   let arg_count = Vector.length args in
   let single_constructor_payload = Int.equal arg_count 1 && expr_is_constructor_like_callee callee in
   let has_multiline_args = vector_exists_expr_is_multiline_except expr args in
@@ -5730,13 +5748,8 @@ and render_apply_expr = fun state expr ->
   if same_ast_node expr callee then
     unsupported_node "apply expression resolved to itself" expr;
   match Ast.Expr.view callee with
-  | Infix { left=Some left; operator=Some operator; right=Some right } -> render_infix_expr_with_right_apply
-    state
-    callee
-    left
-    operator
-    right
-    args
+  | Infix { left = Some left; operator = Some operator; right = Some right } ->
+      render_infix_expr_with_right_apply state callee left operator right args
   | _ ->
       render_expr_atom state callee;
       let rec loop index breaking =
@@ -5746,18 +5759,20 @@ and render_apply_expr = fun state expr ->
             let should_break =
               break_all_args
               || expr_has_leading_comment arg
-              || (break_before_multiline_args && (breaking || expr_is_multiline arg)) in
+              || (break_before_multiline_args && (breaking || expr_is_multiline arg))
+            in
             if should_break then
               (
                 emit_line state;
                 with_indent state 2 (fun () -> render_broken_apply_argument state arg);
                 loop (Int.add index 1) true
               )
-            else (
-              emit_space state;
-              render_apply_argument state arg;
-              loop (Int.add index 1) breaking
-            )
+            else
+              (
+                emit_space state;
+                render_apply_argument state arg;
+                loop (Int.add index 1) breaking
+              )
           )
       in
       loop 0 false
@@ -5770,11 +5785,12 @@ and render_if_expr = fun ?(else_if_continuation = false) state expr condition th
       with_indent state 2 (fun () -> render_expr state condition);
       emit_line state
     )
-  else (
-    emit_space state;
-    render_expr state condition;
-    emit_space state
-  );
+  else
+    (
+      emit_space state;
+      render_expr state condition;
+      emit_space state
+    );
   emit_node_keyword state expr ~kind:Kind.THEN_KW ~fallback:"then";
   emit_line state;
   with_indent state 2 (fun () -> render_keyword_body_expr state then_branch);
@@ -5797,11 +5813,17 @@ and render_if_expr = fun ?(else_if_continuation = false) state expr condition th
         emit_token_or_keyword state else_token ~fallback:"else";
         (
           match Ast.Expr.view branch with
-          | If { condition=Some condition; then_branch=Some then_branch; else_branch } when not
+          | If { condition = Some condition; then_branch = Some then_branch; else_branch } when not
             (expr_has_leading_comment branch) ->
               emit_space state;
-              render_if_expr ~else_if_continuation:true state branch condition then_branch else_branch
-          | Parenthesized { inner=Some inner } when not (same_ast_node branch inner)
+              render_if_expr
+                ~else_if_continuation:true
+                state
+                branch
+                condition
+                then_branch
+                else_branch
+          | Parenthesized { inner = Some inner } when not (same_ast_node branch inner)
           && expr_is_sequence inner ->
               emit_line state;
               with_indent state 2 (fun () -> render_parenthesized_sequence_keyword_body state inner)
@@ -5819,7 +5841,8 @@ and render_fun_expr = fun state expr body ->
     | _ -> render_expr state body
   in
   emit_text state "fun";
-  Vector.for_each params
+  Vector.for_each
+    params
     ~fn:(fun param ->
       emit_space state;
       render_pattern state param);
@@ -5839,16 +5862,20 @@ and render_fun_expr = fun state expr body ->
       )
   in
   if
-    state.force_fun_body_break || expr_has_leading_comment body || expr_is_multiline body || body_exceeds_width
+    state.force_fun_body_break
+    || expr_has_leading_comment body
+    || expr_is_multiline body
+    || body_exceeds_width
   then
     (
       emit_line state;
       with_indent state 2 render_body
     )
-  else (
-    emit_space state;
-    render_body ()
-  )
+  else
+    (
+      emit_space state;
+      render_body ()
+    )
 
 and render_function_expr = fun state expr ->
   let inline = not state.line_start in
@@ -5879,11 +5906,12 @@ and render_try_expr = fun state expr body ->
       with_indent state 2 (fun () -> render_expr state body);
       emit_line state
     )
-  else (
-    emit_space state;
-    render_expr state body;
-    emit_space state
-  );
+  else
+    (
+      emit_space state;
+      render_expr state body;
+      emit_space state
+    );
   emit_text state "with";
   emit_line state;
   let cases = collect_match_cases expr in
@@ -5918,9 +5946,10 @@ and render_attribute_expr = fun state expr ->
 
 and render_extension_expr = fun state expr ->
   match Ast.ExtensionExpr.cast expr with
-  | Some extension -> emit_shell_token_stream
-    state
-    (fun ~fn -> Ast.ExtensionExpr.for_each_shell_token extension ~fn)
+  | Some extension ->
+      emit_shell_token_stream
+        state
+        (fun ~fn -> Ast.ExtensionExpr.for_each_shell_token extension ~fn)
   | None -> unsupported_node "unsupported extension expression" expr
 
 and render_let_exception_expr = fun state expr ->
@@ -6011,7 +6040,10 @@ and render_match_cases_with_body_break = fun state cases force_body_break ->
   let rec loop index =
     if Int.(index < length) then
       (
-        render_match_case_with_body_break state (Vector.get_unchecked cases ~at:index) force_body_break;
+        render_match_case_with_body_break
+          state
+          (Vector.get_unchecked cases ~at:index)
+          force_body_break;
         if Int.(index < Int.sub length 1) then
           emit_line state;
         loop (Int.add index 1)
@@ -6057,11 +6089,8 @@ and match_case_body_exceeds_width = fun state body ->
 
 and render_parenthesized_match_case_body = fun state expr ->
   match Ast.Expr.view expr with
-  | Parenthesized { inner=Some inner } when not (same_ast_node expr inner) -> render_parenthesized_expr_with_multiline_indent
-    state
-    inner
-    ~body_indent:4
-    ~closing_indent:2
+  | Parenthesized { inner = Some inner } when not (same_ast_node expr inner) ->
+      render_parenthesized_expr_with_multiline_indent state inner ~body_indent:4 ~closing_indent:2
   | _ -> render_expr state expr
 
 and render_match_case = fun state case -> render_match_case_with_body_break state case false
@@ -6107,7 +6136,9 @@ and render_match_case_with_body_break = fun state case force_body_break ->
     && Int.(state.delimited_expr_depth > 0)
     && expr_has_leading_comment body ->
         emit_line state;
-        with_indent state 4
+        with_indent
+          state
+          4
           (fun () ->
             emit_node_leading_comments_as_lines state body;
             render_expr_atom state body)
@@ -6116,7 +6147,9 @@ and render_match_case_with_body_break = fun state case force_body_break ->
         render_expr_atom state body
     | Some body when expr_is_tuple body && expr_has_leading_comment body ->
         emit_line state;
-        with_indent state 4
+        with_indent
+          state
+          4
           (fun () ->
             emit_node_leading_comments_as_lines state body;
             render_expr_atom state body)
@@ -6125,7 +6158,9 @@ and render_match_case_with_body_break = fun state case force_body_break ->
         render_expr_atom state body
     | Some body when expr_has_leading_comment body ->
         emit_line state;
-        with_indent state 4
+        with_indent
+          state
+          4
           (fun () ->
             emit_node_leading_comments_as_lines state body;
             render_expr state body)
@@ -6139,8 +6174,7 @@ and render_match_case_with_body_break = fun state case force_body_break ->
     | Some body ->
         emit_space state;
         render_expr state body
-    | None ->
-        unsupported_node "match case without body" case
+    | None -> unsupported_node "match case without body" case
   )
 
 and local_open_body_should_inline = fun state body ->
@@ -6165,7 +6199,7 @@ and local_open_body_keeps_first_infix_operand_after_in = fun state body ->
     false
   else
     match Ast.Expr.view body with
-    | Infix { left=Some left; operator=Some operator; right=Some right } ->
+    | Infix { left = Some left; operator = Some operator; right = Some right } ->
         let operator_text = infix_operator_text_from_expr body left operator right in
         (String.equal operator_text "^" || String.equal operator_text "|>")
         && infix_expr_should_break state body left operator right
@@ -6208,7 +6242,7 @@ and render_local_open_expr = fun state expr ->
       render_expr state body
   in
   match Ast.LocalOpenExpr.view expr with
-  | LetOpen { module_path=Some module_path; body=Some body; _ } ->
+  | LetOpen { module_path = Some module_path; body = Some body; _ } ->
       emit_text state "let";
       emit_space state;
       emit_text state "open";
@@ -6224,33 +6258,34 @@ and render_local_open_expr = fun state expr ->
           emit_space state;
           render_expr state body
         )
-      else (
-        emit_line state;
-        render_expr state body
-      )
-  | LetOpen _ ->
-      unsupported_node "incomplete let-open expression" expr
+      else
+        (
+          emit_line state;
+          render_expr state body
+        )
+  | LetOpen _ -> unsupported_node "incomplete let-open expression" expr
   | Delimited {
-    module_path=Some module_path;
-    dot_token=Some dot_token;
-    opening_token=Some opening;
-    body=Some body;
-    closing_token=Some closing
+    module_path = Some module_path;
+    dot_token = Some dot_token;
+    opening_token = Some opening;
+    body = Some body;
+    closing_token = Some closing
   } ->
       render_path state module_path;
       emit_token state dot_token;
       if token_kind_is opening Kind.LBRACKET then
         with_suppressed_list_item_leading_comments
           state
-          (fun () -> render_delimited_body opening body closing)
+          (fun () ->
+            render_delimited_body opening body closing)
       else
         render_delimited_body opening body closing
   | Delimited {
-    module_path=None;
-    dot_token=Some dot_token;
-    opening_token=Some opening;
-    body=Some body;
-    closing_token=Some closing
+    module_path = None;
+    dot_token = Some dot_token;
+    opening_token = Some opening;
+    body = Some body;
+    closing_token = Some closing
   } -> (
       let exprs = collect_child_exprs expr in
       if Int.equal (Vector.length exprs) 2 then
@@ -6260,15 +6295,15 @@ and render_local_open_expr = fun state expr ->
           if token_kind_is opening Kind.LBRACKET then
             with_suppressed_list_item_leading_comments
               state
-              (fun () -> render_delimited_body opening body closing)
+              (fun () ->
+                render_delimited_body opening body closing)
           else
             render_delimited_body opening body closing
         )
       else
         unsupported_node "incomplete delimited local-open expression" expr
     )
-  | Delimited _ ->
-      unsupported_node "incomplete delimited local-open expression" expr
+  | Delimited _ -> unsupported_node "incomplete delimited local-open expression" expr
 
 and token_vector_range_is_path = fun tokens ~start ~stop ->
   let rec loop index saw_ident expect_ident =
@@ -6277,9 +6312,15 @@ and token_vector_range_is_path = fun tokens ~start ~stop ->
     else
       let token = Vector.get_unchecked tokens ~at:index in
       if token_kind_is token Kind.IDENT && expect_ident then
-        loop (Int.add index 1) true false
+        loop
+          (Int.add index 1)
+          true
+          false
       else if token_kind_is token Kind.DOT && saw_ident && not expect_ident then
-        loop (Int.add index 1) saw_ident true
+        loop
+          (Int.add index 1)
+          saw_ident
+          true
       else
         false
   in
@@ -6303,27 +6344,45 @@ and render_token_path_range = fun state node tokens ~start ~stop message ->
 
 and render_parenthesized_val_module_body = fun state node ->
   let tokens = collect_child_tokens node in
-  match token_vector_find_kind tokens Kind.LPAREN, token_vector_find_kind tokens Kind.VAL_KW, token_vector_find_kind
-    tokens
-    Kind.COLON, token_vector_find_kind tokens Kind.RPAREN with
-  | Some opening_index, Some val_index, None, Some closing_index ->
+  match (
+    token_vector_find_kind tokens Kind.LPAREN,
+    token_vector_find_kind tokens Kind.VAL_KW,
+    token_vector_find_kind tokens Kind.COLON,
+    token_vector_find_kind tokens Kind.RPAREN
+  ) with
+  | (Some opening_index, Some val_index, None, Some closing_index) ->
       emit_token state (Vector.get_unchecked tokens ~at:opening_index);
       emit_token state (Vector.get_unchecked tokens ~at:val_index);
       emit_space state;
-      render_token_path_range state node tokens ~start:(Int.add val_index 1) ~stop:closing_index "first-class module unpack without value path";
+      render_token_path_range
+        state
+        node
+        tokens
+        ~start:(Int.add val_index 1)
+        ~stop:closing_index
+        "first-class module unpack without value path";
       emit_token state (Vector.get_unchecked tokens ~at:closing_index)
-  | Some opening_index, Some val_index, Some colon_index, Some closing_index ->
+  | (Some opening_index, Some val_index, Some colon_index, Some closing_index) ->
       emit_token state (Vector.get_unchecked tokens ~at:opening_index);
       emit_token state (Vector.get_unchecked tokens ~at:val_index);
       emit_space state;
-      render_token_path_range state node tokens ~start:(Int.add val_index 1) ~stop:colon_index "first-class module unpack without value path";
+      render_token_path_range
+        state
+        node
+        tokens
+        ~start:(Int.add val_index 1)
+        ~stop:colon_index
+        "first-class module unpack without value path";
       emit_space state;
       emit_token state (Vector.get_unchecked tokens ~at:colon_index);
       emit_space state;
-      emit_token_vector_range_stream state tokens ~start:(Int.add colon_index 1) ~stop:closing_index;
+      emit_token_vector_range_stream
+        state
+        tokens
+        ~start:(Int.add colon_index 1)
+        ~stop:closing_index;
       emit_token state (Vector.get_unchecked tokens ~at:closing_index)
-  | _ ->
-      unsupported_node "incomplete parenthesized module unpack" node
+  | _ -> unsupported_node "incomplete parenthesized module unpack" node
 
 and module_expr_specific_node = fun node ->
   match node_kind node with
@@ -6339,7 +6398,8 @@ and module_type_specific_node = fun node ->
 
 and collect_child_module_exprs = fun node ->
   let exprs = Vector.with_capacity ~size:(Ast.Node.child_count node) in
-  Ast.Node.for_each_child_node node
+  Ast.Node.for_each_child_node
+    node
     ~fn:(fun child ->
       match module_expr_specific_node child with
       | Some expr -> Vector.push exprs ~value:expr
@@ -6361,10 +6421,8 @@ and render_signature_body = fun state items ~end_token ->
           emit_line state;
           (
             match end_token with
-            | Some token -> with_indent
-              state
-              2
-              (fun () -> emit_token_leading_comments_as_lines state token)
+            | Some token ->
+                with_indent state 2 (fun () -> emit_token_leading_comments_as_lines state token)
             | None -> ()
           )
         )
@@ -6372,38 +6430,44 @@ and render_signature_body = fun state items ~end_token ->
         emit_space state;
       emit_text state "end"
     )
-  else (
-    emit_text state "sig";
-    emit_line state;
-    with_indent state 2
-      (fun () ->
-        render_signature_items state items;
-        match end_token, terminal_inline_trivia with
-        | Some token, Some trivia ->
-            emit_space state;
-            emit_text state trivia;
-            state.suppress_leading_token <- Some token.Ast.id
-        | Some token, None when has_terminal_trivia ->
-            emit_line state;
-            emit_line state;
-            emit_token_leading_comments_as_lines state token
-        | (Some _, None)
-        | (None, _) ->
-            ());
-    if (not has_terminal_trivia) || Option.is_some terminal_inline_trivia then
+  else
+    (
+      emit_text state "sig";
       emit_line state;
-    emit_text state "end"
-  )
+      with_indent
+        state
+        2
+        (fun () ->
+          render_signature_items state items;
+          match (end_token, terminal_inline_trivia) with
+          | (Some token, Some trivia) ->
+              emit_space state;
+              emit_text state trivia;
+              state.suppress_leading_token <- Some token.Ast.id
+          | (Some token, None) when has_terminal_trivia ->
+              emit_line state;
+              emit_line state;
+              emit_token_leading_comments_as_lines state token
+          | (Some _, None)
+          | (None, _) -> ());
+      if (not has_terminal_trivia) || Option.is_some terminal_inline_trivia then
+        emit_line state;
+      emit_text state "end"
+    )
 
 and render_signature_module_type_node = fun state node ->
   let items = collect_signature_items_from_node node in
-  render_signature_body state items ~end_token:(Ast.Node.first_child_token node ~kind:Kind.END_KW)
+  render_signature_body
+    state
+    items
+    ~end_token:(Ast.Node.first_child_token node ~kind:Kind.END_KW)
 
 and render_module_typeof_node = fun state node ->
   emit_text state "module type of";
   emit_space state;
   let tokens = Vector.with_capacity ~size:(Ast.Node.child_count node) in
-  Ast.Node.for_each_token node
+  Ast.Node.for_each_token
+    node
     ~fn:(fun token ->
       if token_kind_is token Kind.IDENT || token_kind_is token Kind.DOT then
         Vector.push tokens ~value:token);
@@ -6417,7 +6481,7 @@ and render_module_type_constraint_node = fun state node ->
   | None -> unsupported_node "unsupported module type constraint" node
   | Some constraint_ -> (
       match Ast.ModuleTypeConstraint.view constraint_ with
-      | Type { path=Some path; operator=Some operator; body=Some body } ->
+      | Type { path = Some path; operator = Some operator; body = Some body } ->
           emit_text state "type";
           emit_space state;
           render_path state path;
@@ -6425,9 +6489,8 @@ and render_module_type_constraint_node = fun state node ->
           emit_token state operator;
           emit_space state;
           render_type_expr state body
-      | Type _ ->
-          unsupported_node "incomplete module type constraint" node
-      | Module { path=Some path; body=Some body } ->
+      | Type _ -> unsupported_node "incomplete module type constraint" node
+      | Module { path = Some path; body = Some body } ->
           emit_text state "module";
           emit_space state;
           render_path state path;
@@ -6435,17 +6498,18 @@ and render_module_type_constraint_node = fun state node ->
           render_module_type_constraint_operator state node;
           emit_space state;
           render_module_type_constraint_module_body state body
-      | Module _ ->
-          unsupported_node "incomplete module constraint" node
-      | Unknown _ ->
-          unsupported_node "unsupported module type constraint" node
+      | Module _ -> unsupported_node "incomplete module constraint" node
+      | Unknown _ -> unsupported_node "unsupported module type constraint" node
     )
 
 and render_module_type_constraint_operator = fun state node ->
   let found = ref None in
-  Ast.Node.for_each_child_token node
+  Ast.Node.for_each_child_token
+    node
     ~fn:(fun token ->
-      if Option.is_none !found && (token_kind_is token Kind.EQ || token_kind_is token Kind.COLONEQ) then
+      if
+        Option.is_none !found && (token_kind_is token Kind.EQ || token_kind_is token Kind.COLONEQ)
+      then
         found := Some token);
   match !found with
   | Some operator -> emit_token state operator
@@ -6463,7 +6527,8 @@ and render_module_type_constraint_module_body = fun state body ->
 and render_with_module_type_node = fun state node ->
   let rendered_base = ref false in
   let pending_connector = ref None in
-  Ast.Node.for_each_child node
+  Ast.Node.for_each_child
+    node
     ~fn:(fun child ->
       match child with
       | Syn.SyntaxTree.Token id ->
@@ -6493,8 +6558,7 @@ and render_with_module_type_node = fun state node ->
                   render_module_type_constraint_node state child
               | None -> ()
             )
-      | Syn.SyntaxTree.Missing _ ->
-          ());
+      | Syn.SyntaxTree.Missing _ -> ());
   if not !rendered_base then
     unsupported_node "with module type without base" node
 
@@ -6525,10 +6589,8 @@ and render_struct_module_expr_node = fun state node ->
           emit_line state;
           (
             match end_token with
-            | Some token -> with_indent
-              state
-              2
-              (fun () -> emit_token_leading_comments_as_lines state token)
+            | Some token ->
+                with_indent state 2 (fun () -> emit_token_leading_comments_as_lines state token)
             | None -> ()
           )
         )
@@ -6536,36 +6598,37 @@ and render_struct_module_expr_node = fun state node ->
         emit_space state;
       emit_text state "end"
     )
-  else (
-    emit_text state "struct";
-    emit_line state;
-    with_indent state 2
-      (fun () ->
-        render_structure_items state items;
-        match end_token with
-        | Some token when has_terminal_trivia ->
-            emit_line state;
-            emit_line state;
-            emit_token_leading_comments_as_lines state token
-        | _ -> ());
-    if not has_terminal_trivia then
+  else
+    (
+      emit_text state "struct";
       emit_line state;
-    emit_text state "end"
-  )
+      with_indent
+        state
+        2
+        (fun () ->
+          render_structure_items state items;
+          match end_token with
+          | Some token when has_terminal_trivia ->
+              emit_line state;
+              emit_line state;
+              emit_token_leading_comments_as_lines state token
+          | _ -> ());
+      if not has_terminal_trivia then
+        emit_line state;
+      emit_text state "end"
+    )
 
 and render_module_expr_atom_node = fun state node ->
   match module_expr_specific_node node with
   | Some node when node_kind_is node Kind.PATH_MODULE_EXPR
   || node_kind_is node Kind.STRUCT_MODULE_EXPR
   || node_kind_is node Kind.PAREN_MODULE_EXPR
-  || node_kind_is node Kind.APPLY_MODULE_EXPR ->
-      render_module_expr_node state node
+  || node_kind_is node Kind.APPLY_MODULE_EXPR -> render_module_expr_node state node
   | Some node ->
       emit_text state "(";
       render_module_expr_node state node;
       emit_text state ")"
-  | None ->
-      unsupported_node "unsupported module expression" node
+  | None -> unsupported_node "unsupported module expression" node
 
 and render_apply_module_expr_node = fun state node ->
   let parts = collect_child_module_exprs node in
@@ -6603,16 +6666,11 @@ and render_module_expr_node = fun state node ->
 
 and render_let_module_body = fun state module_expr ->
   match Ast.LetModuleExpr.module_body_node module_expr with
-  | Some node when node_kind_is node Kind.PATH_MODULE_EXPR ->
-      render_module_expr_node state node
-  | Some node when node_kind_is node Kind.PAREN_MODULE_EXPR ->
-      render_module_expr_node state node
-  | Some node when node_kind_is node Kind.STRUCT_MODULE_EXPR ->
-      render_module_expr_node state node
-  | Some node when node_kind_is node Kind.APPLY_MODULE_EXPR ->
-      render_module_expr_node state node
-  | Some node ->
-      unsupported_node "unsupported let module body" node
+  | Some node when node_kind_is node Kind.PATH_MODULE_EXPR -> render_module_expr_node state node
+  | Some node when node_kind_is node Kind.PAREN_MODULE_EXPR -> render_module_expr_node state node
+  | Some node when node_kind_is node Kind.STRUCT_MODULE_EXPR -> render_module_expr_node state node
+  | Some node when node_kind_is node Kind.APPLY_MODULE_EXPR -> render_module_expr_node state node
+  | Some node -> unsupported_node "unsupported let module body" node
   | None -> (
       match Ast.LetModuleExpr.module_body module_expr with
       | Path ->
@@ -6623,8 +6681,7 @@ and render_let_module_body = fun state module_expr ->
           emit_text state "struct";
           emit_space state;
           emit_text state "end"
-      | Unsupported ->
-          unsupported_node "unsupported let module body" module_expr
+      | Unsupported -> unsupported_node "unsupported let module body" module_expr
     )
 
 and render_let_module_expr = fun state expr ->
@@ -6633,10 +6690,15 @@ and render_let_module_expr = fun state expr ->
     | Some module_expr -> module_expr
     | None -> unsupported_node "unsupported let module expression" expr
   in
-  match Ast.LetModuleExpr.let_token module_expr, Ast.LetModuleExpr.module_token module_expr, Ast.LetModuleExpr.name
-    module_expr, Ast.LetModuleExpr.equals_token module_expr, Ast.LetModuleExpr.in_token module_expr, Ast.LetModuleExpr.body
-    module_expr with
-  | Some let_token, Some module_token, Some name, Some equals_token, Some in_token, Some body ->
+  match (
+    Ast.LetModuleExpr.let_token module_expr,
+    Ast.LetModuleExpr.module_token module_expr,
+    Ast.LetModuleExpr.name module_expr,
+    Ast.LetModuleExpr.equals_token module_expr,
+    Ast.LetModuleExpr.in_token module_expr,
+    Ast.LetModuleExpr.body module_expr
+  ) with
+  | (Some let_token, Some module_token, Some name, Some equals_token, Some in_token, Some body) ->
       emit_token state let_token;
       emit_space state;
       emit_token state module_token;
@@ -6662,19 +6724,22 @@ and render_first_class_module_path = fun state expr for_each_path_ident message 
 
 and render_first_class_module_ascription_tokens = fun state expr colon_token ->
   let tokens = collect_child_tokens expr in
-  match token_vector_find_kind tokens Kind.COLON, token_vector_find_kind tokens Kind.RPAREN with
-  | Some colon_index, Some closing_index when Int.(Int.add colon_index 1 < closing_index) ->
+  match (token_vector_find_kind tokens Kind.COLON, token_vector_find_kind tokens Kind.RPAREN) with
+  | (Some colon_index, Some closing_index) when Int.(Int.add colon_index 1 < closing_index) ->
       emit_space state;
       emit_token state colon_token;
       emit_space state;
-      emit_token_vector_range_stream state tokens ~start:(Int.add colon_index 1) ~stop:closing_index
+      emit_token_vector_range_stream
+        state
+        tokens
+        ~start:(Int.add colon_index 1)
+        ~stop:closing_index
   | _ -> unsupported_node "unsupported first-class module ascription" expr
 
 and render_first_class_module_ascription = fun state expr ->
-  match Ast.FirstClassModuleExpr.colon_token expr, Ast.FirstClassModuleExpr.ascription expr with
-  | None, Ast.FirstClassModuleExpr.NoAscription ->
-      ()
-  | Some colon_token, Ast.FirstClassModuleExpr.PathAscription ->
+  match (Ast.FirstClassModuleExpr.colon_token expr, Ast.FirstClassModuleExpr.ascription expr) with
+  | (None, Ast.FirstClassModuleExpr.NoAscription) -> ()
+  | (Some colon_token, Ast.FirstClassModuleExpr.PathAscription) ->
       emit_space state;
       emit_token state colon_token;
       emit_space state;
@@ -6683,7 +6748,7 @@ and render_first_class_module_ascription = fun state expr ->
         expr
         (Ast.FirstClassModuleExpr.for_each_ascription_path_ident expr)
         "first-class module expression without module type path"
-  | Some colon_token, Ast.FirstClassModuleExpr.UnsupportedAscription ->
+  | (Some colon_token, Ast.FirstClassModuleExpr.UnsupportedAscription) ->
       render_first_class_module_ascription_tokens state expr colon_token
   | (Some _, Ast.FirstClassModuleExpr.NoAscription)
   | (None, Ast.FirstClassModuleExpr.PathAscription)
@@ -6696,8 +6761,11 @@ and render_first_class_module_expr = fun state expr ->
     | Some module_expr -> module_expr
     | None -> unsupported_node "unsupported first-class module expression" expr
   in
-  match Ast.FirstClassModuleExpr.opening_token module_expr, Ast.FirstClassModuleExpr.closing_token module_expr with
-  | Some opening_token, Some closing_token -> (
+  match (
+    Ast.FirstClassModuleExpr.opening_token module_expr,
+    Ast.FirstClassModuleExpr.closing_token module_expr
+  ) with
+  | (Some opening_token, Some closing_token) -> (
       emit_token state opening_token;
       match Ast.Node.first_child_token module_expr ~kind:Kind.VAL_KW with
       | Some val_token ->
@@ -6712,9 +6780,11 @@ and render_first_class_module_expr = fun state expr ->
           render_first_class_module_ascription state module_expr;
           emit_token state closing_token
       | None -> (
-          match Ast.FirstClassModuleExpr.module_token module_expr, Ast.FirstClassModuleExpr.module_path
-            module_expr with
-          | Some module_token, Ast.FirstClassModuleExpr.ModulePath ->
+          match (
+            Ast.FirstClassModuleExpr.module_token module_expr,
+            Ast.FirstClassModuleExpr.module_path module_expr
+          ) with
+          | (Some module_token, Ast.FirstClassModuleExpr.ModulePath) ->
               emit_token state module_token;
               emit_space state;
               render_first_class_module_path
@@ -6730,8 +6800,8 @@ and render_first_class_module_expr = fun state expr ->
   | _ -> unsupported_node "incomplete first-class module expression" expr
 
 and render_binding_operator_clause = fun state (clause: Ast.BindingOperatorExpr.clause) ->
-  match clause.keyword, clause.operator with
-  | Some keyword, Some operator ->
+  match (clause.keyword, clause.operator) with
+  | (Some keyword, Some operator) ->
       emit_token state keyword;
       emit_token state operator;
       emit_space state;
@@ -6755,14 +6825,15 @@ and render_binding_operator_expr = fun state expr ->
     | None -> unsupported_node "unsupported binding operator expression" expr
   in
   let clauses = collect_binding_operator_clauses view in
-  match Vector.length clauses, Ast.BindingOperatorExpr.in_token view, Ast.BindingOperatorExpr.body view with
-  | 0, _, _ ->
-      unsupported_node "binding operator expression without binding" expr
-  | _, None, _ ->
-      unsupported_node "binding operator expression without in" expr
-  | _, _, None ->
-      unsupported_node "binding operator expression without body" expr
-  | length, Some in_token, Some body ->
+  match (
+    Vector.length clauses,
+    Ast.BindingOperatorExpr.in_token view,
+    Ast.BindingOperatorExpr.body view
+  ) with
+  | (0, _, _) -> unsupported_node "binding operator expression without binding" expr
+  | (_, None, _) -> unsupported_node "binding operator expression without in" expr
+  | (_, _, None) -> unsupported_node "binding operator expression without body" expr
+  | (length, Some in_token, Some body) ->
       let multiline =
         if Int.(length > 1) then
           true
@@ -6772,7 +6843,9 @@ and render_binding_operator_expr = fun state expr ->
           let rec loop index =
             if Int.(index >= length) then
               false
-            else if binding_operator_clause_is_multiline (Vector.get_unchecked clauses ~at:index) then
+            else if
+              binding_operator_clause_is_multiline (Vector.get_unchecked clauses ~at:index)
+            then
               true
             else
               loop (Int.add index 1)
@@ -6802,40 +6875,37 @@ and render_binding_operator_expr = fun state expr ->
           emit_line state;
           render_in_body_expr state body
         )
-      else (
-        render_binding_operator_clause state (Vector.get_unchecked clauses ~at:0);
-        emit_space state;
-        emit_token state in_token;
-        if binding_operator_body_should_start_next_line state body then
-          emit_line state
-        else
+      else
+        (
+          render_binding_operator_clause state (Vector.get_unchecked clauses ~at:0);
           emit_space state;
-        render_in_body_expr state body
-      )
+          emit_token state in_token;
+          if binding_operator_body_should_start_next_line state body then
+            emit_line state
+          else
+            emit_space state;
+          render_in_body_expr state body
+        )
 
 and let_binding_body_renders_inline = fun body ->
   if expr_has_leading_comment body then
     false
   else
     match Ast.Expr.view body with
-    | Fun { body=Some body } ->
-        not (expr_has_leading_comment body || expr_is_multiline body)
+    | Fun { body = Some body } -> not (expr_has_leading_comment body || expr_is_multiline body)
     | Apply _ ->
-        let _, args = collect_apply body in
+        let (_, args) = collect_apply body in
         not (apply_args_have_heavy_nested_apply args || expr_is_multiline body)
     | Record
-    | RecordUpdate ->
-        record_expr_should_inline body
+    | RecordUpdate -> record_expr_should_inline body
     | Function _
-    | Assign _ ->
-        false
-    | _ ->
-        not (expr_is_multiline body)
+    | Assign _ -> false
+    | _ -> not (expr_is_multiline body)
 
 and let_binding_body_exceeds_width = fun state body ->
   match Ast.Expr.view body with
   | Apply _ ->
-      let _, args = collect_apply body in
+      let (_, args) = collect_apply body in
       apply_expr_should_break state body args
   | _ -> (
       match expr_flat_width body with
@@ -6846,8 +6916,12 @@ and let_binding_body_exceeds_width = fun state body ->
 and let_binding_apply_body_exceeds_inline_equals_width = fun state body ->
   match Ast.Expr.view body with
   | Apply _ ->
-      let _, args = collect_apply body in
-      apply_expr_should_break_from_column state body args ~column:(Int.add state.column 1)
+      let (_, args) = collect_apply body in
+      apply_expr_should_break_from_column
+        state
+        body
+        args
+        ~column:(Int.add state.column 1)
   | _ -> false
 
 and let_binding_tail_should_render_multiline = fun binding ->
@@ -6919,7 +6993,8 @@ and render_let_expr = fun state expr body ->
           emit_text state "in";
           emit_line state;
           render_in_body_expr state body
-      | Some binding_body when (not binding_rendered_multiline) && let_binding_body_renders_inline binding_body ->
+      | Some binding_body when (not binding_rendered_multiline)
+      && let_binding_body_renders_inline binding_body ->
           emit_space state;
           emit_text state "in";
           emit_line state;
@@ -7009,10 +7084,12 @@ and render_let_binding_tail_with_body_break = fun state binding force_body_break
     | None -> false
   in
   let render_binding_pattern () =
-    match view.pattern, annotation with
-    | Some constrained_pattern, Some annotation -> (
+    match (view.pattern, annotation) with
+    | (Some constrained_pattern, Some annotation) -> (
         match Ast.Pattern.view constrained_pattern with
-        | Constraint { pattern=Some pattern; annotation=Some existing } when same_ast_node existing annotation
+        | Constraint { pattern = Some pattern; annotation = Some existing } when same_ast_node
+          existing
+          annotation
         && pattern_ends_with_named_parameter pattern ->
             render_pattern state pattern;
             emit_space state;
@@ -7020,23 +7097,21 @@ and render_let_binding_tail_with_body_break = fun state binding force_body_break
             render_type_expr_after_tight_colon state ~suffix_width:0 annotation
         | _ -> render_pattern state constrained_pattern
       )
-    | Some pattern, None ->
-        render_pattern state pattern
-    | None, _ ->
-        unsupported_node "let binding without pattern" binding
+    | (Some pattern, None) -> render_pattern state pattern
+    | (None, _) -> unsupported_node "let binding without pattern" binding
   in
   let binding_parameter_return_annotation index parameter =
     if Int.equal index (Int.sub parameter_count 1) then
       (
         match Ast.Pattern.view parameter with
-        | Constraint { pattern=Some pattern; annotation=Some annotation } when pattern_ends_with_named_parameter
+        | Constraint { pattern = Some pattern; annotation = Some annotation } when pattern_ends_with_named_parameter
           pattern -> Some (pattern, annotation)
         | _ -> None
       )
     else
       None
   in
-  (render_binding_pattern ());
+  render_binding_pattern ();
   let rec render_parameters index =
     if Int.(index < parameter_count) then
       (
@@ -7046,8 +7121,7 @@ and render_let_binding_tail_with_body_break = fun state binding force_body_break
           match loose_binding_annotation with
           | Some (loose_index, _) when Int.equal index loose_index ->
               render_parameter_label_only state parameter
-          | Some _ ->
-              render_pattern state parameter
+          | Some _ -> render_pattern state parameter
           | None -> (
               match binding_parameter_return_annotation index parameter with
               | Some (pattern, annotation) ->
@@ -7063,21 +7137,20 @@ and render_let_binding_tail_with_body_break = fun state binding force_body_break
   in
   render_parameters 0;
   (
-    match annotation, loose_binding_annotation with
-    | Some annotation, Some _ ->
+    match (annotation, loose_binding_annotation) with
+    | (Some annotation, Some _) ->
         emit_return_annotation_colon ();
         emit_space state;
         render_type_expr state annotation
-    | None, Some (_, annotation) ->
+    | (None, Some (_, annotation)) ->
         emit_return_annotation_colon ();
         emit_space state;
         emit_token_stream state annotation
-    | Some annotation, None when not (pattern_contains_annotation annotation) ->
+    | (Some annotation, None) when not (pattern_contains_annotation annotation) ->
         emit_return_annotation_colon ();
         render_type_expr_after_tight_colon state ~suffix_width:0 annotation
     | (Some _, None)
-    | (None, None) ->
-        ()
+    | (None, None) -> ()
   );
   emit_space state;
   emit_text state "=";
@@ -7098,7 +7171,7 @@ and render_let_binding_tail_with_body_break = fun state binding force_body_break
   ) ->
       emit_line state;
       with_indent state 2 (fun () -> render_expr state body)
-  | Some ({ Ast.id=_; _ } as body) when (
+  | Some ({ Ast.id = _; _ } as body) when (
     match Ast.Expr.view body with
     | Array
     | List
@@ -7139,8 +7212,7 @@ and render_let_binding_tail_with_body_break = fun state binding force_body_break
   | Some body ->
       emit_space state;
       render_expr state body
-  | None ->
-      unsupported_node "let binding without body" binding
+  | None -> unsupported_node "let binding without body" binding
 
 and render_record_update_base = fun state base ->
   if expr_can_render_record_update_base_without_parens base then
@@ -7164,7 +7236,9 @@ and render_record_expr = fun state ~inline expr ->
           emit_space state
       | None -> ()
     );
-    emit_joined_vector state fields
+    emit_joined_vector
+      state
+      fields
       ~sep:(fun () ->
         emit_text state ";";
         emit_space state)
@@ -7186,40 +7260,43 @@ and render_record_expr = fun state ~inline expr ->
     in
     if record_expr_should_inline expr && fits_inline_width then
       render_inline ()
-    else (
-      emit_text state "{";
-      emit_line state;
-      with_indent state 2
-        (fun () ->
-          (
-            match base with
-            | Some base ->
-                render_record_update_base state base;
-                emit_space state;
-                emit_text state "with";
-                emit_line state
-            | None -> ()
-          );
-          let rec loop index =
-            if Int.(index < length) then
-              (
-                let field = Vector.get_unchecked fields ~at:index in
-                render_record_field state ~inline:false field;
+    else
+      (
+        emit_text state "{";
+        emit_line state;
+        with_indent
+          state
+          2
+          (fun () ->
+            (
+              match base with
+              | Some base ->
+                  render_record_update_base state base;
+                  emit_space state;
+                  emit_text state "with";
+                  emit_line state
+              | None -> ()
+            );
+            let rec loop index =
+              if Int.(index < length) then
                 (
-                  match field.Ast.RecordExpr.value with
-                  | Some value when expr_has_terminal_trailing_sequence value -> ()
-                  | Some _
-                  | None -> emit_text state ";"
-                );
-                if Int.(index < Int.sub length 1) then
-                  emit_line state;
-                loop (Int.add index 1)
-              )
-          in
-          loop 0);
-      emit_line state;
-      emit_text state "}"
-    )
+                  let field = Vector.get_unchecked fields ~at:index in
+                  render_record_field state ~inline:false field;
+                  (
+                    match field.Ast.RecordExpr.value with
+                    | Some value when expr_has_terminal_trailing_sequence value -> ()
+                    | Some _
+                    | None -> emit_text state ";"
+                  );
+                  if Int.(index < Int.sub length 1) then
+                    emit_line state;
+                  loop (Int.add index 1)
+                )
+            in
+            loop 0);
+        emit_line state;
+        emit_text state "}"
+      )
 
 and render_record_field = fun state ~inline field ->
   (
@@ -7241,20 +7318,23 @@ and render_record_field = fun state ~inline field ->
       if multiline_value then
         (
           emit_line state;
-          with_indent state 2
+          with_indent
+            state
+            2
             (fun () ->
               if expr_is_tuple value || expr_is_fun_or_parenthesized_fun value then
                 render_expr_atom state value
               else
                 render_expr state value)
         )
-      else (
-        emit_space state;
-        if expr_is_tuple value || expr_is_fun_or_parenthesized_fun value then
-          render_expr_atom state value
-        else
-          render_expr state value
-      )
+      else
+        (
+          emit_space state;
+          if expr_is_tuple value || expr_is_fun_or_parenthesized_fun value then
+            render_expr_atom state value
+          else
+            render_expr state value
+        )
 
 and render_array_expr = fun state expr ->
   let items = collect_array_items expr in
@@ -7264,7 +7344,9 @@ and render_array_expr = fun state expr ->
   else if array_expr_should_inline expr && array_expr_fits_inline state expr then
     (
       emit_text state "[|";
-      emit_joined_vector state items
+      emit_joined_vector
+        state
+        items
         ~sep:(fun () ->
           emit_text state ";";
           emit_space state)
@@ -7274,30 +7356,33 @@ and render_array_expr = fun state expr ->
           | _ -> render_expr state item);
       emit_text state "|]"
     )
-  else (
-    emit_text state "[|";
-    emit_line state;
-    with_indent state 2
-      (fun () ->
-        let rec loop index =
-          if Int.(index < length) then
-            (
-              let item = Vector.get_unchecked items ~at:index in
+  else
+    (
+      emit_text state "[|";
+      emit_line state;
+      with_indent
+        state
+        2
+        (fun () ->
+          let rec loop index =
+            if Int.(index < length) then
               (
-                match Ast.Expr.view item with
-                | Record -> render_record_expr state ~inline:true item
-                | _ -> render_expr state item
-              );
-              emit_text state ";";
-              if Int.(index < Int.sub length 1) then
-                emit_line state;
-              loop (Int.add index 1)
-            )
-        in
-        loop 0);
-    emit_line state;
-    emit_text state "|]"
-  )
+                let item = Vector.get_unchecked items ~at:index in
+                (
+                  match Ast.Expr.view item with
+                  | Record -> render_record_expr state ~inline:true item
+                  | _ -> render_expr state item
+                );
+                emit_text state ";";
+                if Int.(index < Int.sub length 1) then
+                  emit_line state;
+                loop (Int.add index 1)
+              )
+          in
+          loop 0);
+      emit_line state;
+      emit_text state "|]"
+    )
 
 and render_list_expr = fun state expr ->
   let items = collect_child_exprs expr in
@@ -7307,7 +7392,9 @@ and render_list_expr = fun state expr ->
   else if list_expr_should_inline expr && list_expr_fits_inline state expr then
     (
       emit_text state "[ ";
-      emit_joined_vector state items
+      emit_joined_vector
+        state
+        items
         ~sep:(fun () ->
           emit_text state ";";
           emit_space state)
@@ -7317,30 +7404,33 @@ and render_list_expr = fun state expr ->
       emit_space state;
       emit_text state "]"
     )
-  else (
-    emit_text state "[";
-    emit_line state;
-    with_indent state 2
-      (fun () ->
-        let rec loop index =
-          if Int.(index < length) then
-            (
-              let item = Vector.get_unchecked items ~at:index in
-              let render_item () = render_expr state item in
-              if state.suppress_list_item_leading_comments then
-                with_node_leading_comments_suppressed state item render_item
-              else
-                render_item ();
-              emit_text state ";";
-              if Int.(index < Int.sub length 1) then
-                emit_line state;
-              loop (Int.add index 1)
-            )
-        in
-        loop 0);
-    emit_line state;
-    emit_text state "]"
-  )
+  else
+    (
+      emit_text state "[";
+      emit_line state;
+      with_indent
+        state
+        2
+        (fun () ->
+          let rec loop index =
+            if Int.(index < length) then
+              (
+                let item = Vector.get_unchecked items ~at:index in
+                let render_item () = render_expr state item in
+                if state.suppress_list_item_leading_comments then
+                  with_node_leading_comments_suppressed state item render_item
+                else
+                  render_item ();
+                emit_text state ";";
+                if Int.(index < Int.sub length 1) then
+                  emit_line state;
+                loop (Int.add index 1)
+              )
+          in
+          loop 0);
+      emit_line state;
+      emit_text state "]"
+    )
 
 and render_open_declaration = fun state decl ->
   emit_text state "open";
@@ -7351,7 +7441,8 @@ and render_open_declaration = fun state decl ->
   );
   emit_space state;
   let first = ref true in
-  Ast.OpenDeclaration.for_each_path_ident decl
+  Ast.OpenDeclaration.for_each_path_ident
+    decl
     ~fn:(fun ident ->
       if !first then
         first := false
@@ -7399,8 +7490,8 @@ and render_record_type_field = fun state ~last field ->
     emit_text state ";"
 
 and record_type_field_flat_width = fun field ->
-  match Ast.RecordField.name field, Ast.RecordField.type_annotation field with
-  | Some name, Some annotation -> (
+  match (Ast.RecordField.name field, Ast.RecordField.type_annotation field) with
+  | (Some name, Some annotation) -> (
       match type_expr_flat_width annotation with
       | Some annotation_width ->
           let mutable_width =
@@ -7458,10 +7549,8 @@ and type_expr_is_light_record_field_annotation = fun annotation ->
       let tokens = collect_child_tokens path in
       Int.equal (Vector.length tokens) 1
   | Var _
-  | Wildcard ->
-      true
-  | _ ->
-      false
+  | Wildcard -> true
+  | _ -> false
 
 and record_type_fields_are_light_inline = fun fields ->
   let length = Vector.length fields in
@@ -7471,8 +7560,8 @@ and record_type_fields_are_light_inline = fun fields ->
     else
       let field = Vector.get_unchecked fields ~at:index in
       match Ast.RecordField.type_annotation field with
-      | Some annotation when type_expr_is_light_record_field_annotation annotation -> loop
-        (Int.add index 1)
+      | Some annotation when type_expr_is_light_record_field_annotation annotation ->
+          loop (Int.add index 1)
       | _ -> false
   in
   loop 0
@@ -7532,17 +7621,20 @@ and render_record_type_inline = fun state record_type fields ->
       emit_text state "{";
       render_record_type_closing state ~leading_trivia_indent:0 record_type
     )
-  else (
-    emit_text state "{";
-    emit_space state;
-    emit_joined_vector state fields
-      ~sep:(fun () ->
-        emit_text state ";";
-        emit_space state)
-      ~fn:(render_record_type_field state ~last:true);
-    emit_space state;
-    render_record_type_closing state ~leading_trivia_indent:0 record_type
-  )
+  else
+    (
+      emit_text state "{";
+      emit_space state;
+      emit_joined_vector
+        state
+        fields
+        ~sep:(fun () ->
+          emit_text state ";";
+          emit_space state)
+        ~fn:(render_record_type_field state ~last:true);
+      emit_space state;
+      render_record_type_closing state ~leading_trivia_indent:0 record_type
+    )
 
 and render_record_type_field_trailing_trivia = fun state record_type fields index ->
   let length = Vector.length fields in
@@ -7567,29 +7659,35 @@ and render_record_type = fun state ~allow_inline record_type ->
   );
   if record_type_should_inline state ~allow_inline record_type fields then
     render_record_type_inline state record_type fields
-  else (
-    emit_text state "{";
-    if Vector.length fields > 0 then
-      (
-        emit_line state;
-        with_indent state 2
-          (fun () ->
-            let length = Vector.length fields in
-            let rec loop index =
-              if Int.(index < length) then
-                (
-                  render_record_type_field state ~last:false (Vector.get_unchecked fields ~at:index);
-                  render_record_type_field_trailing_trivia state record_type fields index;
-                  if Int.(index < Int.sub length 1) then
-                    emit_line state;
-                  loop (Int.add index 1)
-                )
-            in
-            loop 0);
-        emit_line state
-      );
-    render_record_type_closing state ~leading_trivia_indent:2 record_type
-  )
+  else
+    (
+      emit_text state "{";
+      if Vector.length fields > 0 then
+        (
+          emit_line state;
+          with_indent
+            state
+            2
+            (fun () ->
+              let length = Vector.length fields in
+              let rec loop index =
+                if Int.(index < length) then
+                  (
+                    render_record_type_field
+                      state
+                      ~last:false
+                      (Vector.get_unchecked fields ~at:index);
+                    render_record_type_field_trailing_trivia state record_type fields index;
+                    if Int.(index < Int.sub length 1) then
+                      emit_line state;
+                    loop (Int.add index 1)
+                  )
+              in
+              loop 0);
+          emit_line state
+        );
+      render_record_type_closing state ~leading_trivia_indent:2 record_type
+    )
 
 and external_declaration_suffix_width = fun primitive_strings attribute_tokens ->
   let primitive_width =
@@ -7641,16 +7739,18 @@ and render_external_primitive_body_after_equals = fun state decl primitive_strin
         emit_space state;
         render_external_declaration_equals state decl
       )
-    else (
-      emit_line state;
-      with_indent state 2 (fun () -> render_external_declaration_equals state decl)
-    )
+    else
+      (
+        emit_line state;
+        with_indent state 2 (fun () -> render_external_declaration_equals state decl)
+      )
   );
   emit_line state;
   with_indent
     state
     2
-    (fun () -> render_external_primitive_body state decl primitive_strings attribute_tokens)
+    (fun () ->
+      render_external_primitive_body state decl primitive_strings attribute_tokens)
 
 and render_external_declaration = fun state decl ->
   let name_tokens = collect_external_name_tokens decl in
@@ -7663,67 +7763,75 @@ and render_external_declaration = fun state decl ->
   else
     emit_token_vector_stream state name_tokens;
   (
-    match Ast.ExternalDeclaration.colon_token decl, Ast.ExternalDeclaration.type_annotation decl with
-    | Some colon_token, Some annotation ->
+    match (Ast.ExternalDeclaration.colon_token decl, Ast.ExternalDeclaration.type_annotation decl) with
+    | (Some colon_token, Some annotation) ->
         emit_token state colon_token;
         let suffix_width = external_declaration_suffix_width primitive_strings attribute_tokens in
         if type_expr_should_break_after_colon state ~suffix_width annotation then
           if type_expr_should_break_after_colon state ~suffix_width:2 annotation then
             (
               render_type_expr_after_tight_colon state ~suffix_width:2 annotation;
-              render_external_primitive_body_after_equals state decl primitive_strings attribute_tokens
+              render_external_primitive_body_after_equals
+                state
+                decl
+                primitive_strings
+                attribute_tokens
             )
-          else (
+          else
+            (
+              render_type_expr_after_colon state annotation;
+              render_external_primitive_body_after_equals
+                state
+                decl
+                primitive_strings
+                attribute_tokens
+            )
+        else
+          (
             render_type_expr_after_colon state annotation;
-            render_external_primitive_body_after_equals state decl primitive_strings attribute_tokens
+            render_external_primitive_suffix
+              state
+              decl
+              primitive_strings
+              attribute_tokens
+              ~leading_space:true
           )
-        else (
-          render_type_expr_after_colon state annotation;
-          render_external_primitive_suffix
-            state
-            decl
-            primitive_strings
-            attribute_tokens
-            ~leading_space:true
-        )
     | _ -> unsupported_node "incomplete external declaration" decl
   )
 
 and render_exception_payload = fun state payload ->
   match payload with
   | Ast.ExceptionDeclaration.TypeExpr type_expr -> render_type_expr state type_expr
-  | Ast.ExceptionDeclaration.Record record_type -> render_record_type state ~allow_inline:true record_type
+  | Ast.ExceptionDeclaration.Record record_type ->
+      render_record_type state ~allow_inline:true record_type
 
 and render_exception_rhs = fun state rhs ->
   match rhs with
-  | Ast.ExceptionDeclaration.Bare ->
-      ()
-  | Ast.ExceptionDeclaration.Alias { equals_token=Some equals_token; path=Some path } ->
+  | Ast.ExceptionDeclaration.Bare -> ()
+  | Ast.ExceptionDeclaration.Alias { equals_token = Some equals_token; path = Some path } ->
       emit_space state;
       emit_token state equals_token;
       emit_space state;
       render_path state path
-  | Ast.ExceptionDeclaration.Alias { equals_token=None; path=Some path } ->
+  | Ast.ExceptionDeclaration.Alias { equals_token = None; path = Some path } ->
       emit_space state;
       render_path state path
-  | Ast.ExceptionDeclaration.Alias { equals_token=Some equals_token; path=None } ->
+  | Ast.ExceptionDeclaration.Alias { equals_token = Some equals_token; path = None } ->
       emit_space state;
       emit_token state equals_token
-  | Ast.ExceptionDeclaration.Alias { equals_token=None; path=None } ->
-      ()
-  | Ast.ExceptionDeclaration.Payload { of_token=Some of_token; payload=Some payload } ->
+  | Ast.ExceptionDeclaration.Alias { equals_token = None; path = None } -> ()
+  | Ast.ExceptionDeclaration.Payload { of_token = Some of_token; payload = Some payload } ->
       emit_space state;
       emit_token state of_token;
       emit_space state;
       render_exception_payload state payload
-  | Ast.ExceptionDeclaration.Payload { of_token=None; payload=Some payload } ->
+  | Ast.ExceptionDeclaration.Payload { of_token = None; payload = Some payload } ->
       emit_space state;
       render_exception_payload state payload
-  | Ast.ExceptionDeclaration.Payload { of_token=Some of_token; payload=None } ->
+  | Ast.ExceptionDeclaration.Payload { of_token = Some of_token; payload = None } ->
       emit_space state;
       emit_token state of_token
-  | Ast.ExceptionDeclaration.Payload { of_token=None; payload=None } ->
-      ()
+  | Ast.ExceptionDeclaration.Payload { of_token = None; payload = None } -> ()
 
 and render_exception_declaration = fun state decl ->
   (
@@ -7763,54 +7871,58 @@ and render_variant_constructor = fun state ~private_token constructor ->
     | None -> unsupported_node "variant constructor without name" constructor
   );
   (
-    match Ast.VariantConstructor.colon_token constructor, Ast.VariantConstructor.record_payload constructor, Ast.VariantConstructor.payload_type
-      constructor with
-    | Some colon_token, Some record_type, _ ->
+    match (
+      Ast.VariantConstructor.colon_token constructor,
+      Ast.VariantConstructor.record_payload constructor,
+      Ast.VariantConstructor.payload_type constructor
+    ) with
+    | (Some colon_token, Some record_type, _) ->
         emit_token state colon_token;
         emit_space state;
         with_indent state 2 (fun () -> render_record_type state ~allow_inline:false record_type);
         (
-          match Ast.Node.first_child_token constructor ~kind:Kind.ARROW, Ast.VariantConstructor.result_type
-            constructor with
-          | Some arrow_token, Some result ->
+          match (
+            Ast.Node.first_child_token constructor ~kind:Kind.ARROW,
+            Ast.VariantConstructor.result_type constructor
+          ) with
+          | (Some arrow_token, Some result) ->
               emit_space state;
               emit_token state arrow_token;
               emit_space state;
               render_type_expr state result
-          | None, Some result ->
+          | (None, Some result) ->
               emit_space state;
               emit_text state "->";
               emit_space state;
               render_type_expr state result
-          | Some arrow_token, None ->
+          | (Some arrow_token, None) ->
               emit_space state;
               emit_token state arrow_token
-          | None, None ->
-              ()
+          | (None, None) -> ()
         )
-    | _, Some record_type, _ ->
+    | (_, Some record_type, _) ->
         emit_space state;
         emit_text state "of";
         emit_space state;
         with_indent state 2 (fun () -> render_record_type state ~allow_inline:true record_type)
-    | _, None, Some payload ->
+    | (_, None, Some payload) ->
         emit_space state;
         emit_text state "of";
         emit_space state;
         render_type_expr state payload
-    | _, None, None ->
-        ()
+    | (_, None, None) -> ()
   );
   (
-    match Ast.VariantConstructor.colon_token constructor, Ast.VariantConstructor.record_payload constructor, Ast.VariantConstructor.result_type
-      constructor with
-    | Some _, Some _, _ ->
-        ()
-    | _, _, Some result ->
+    match (
+      Ast.VariantConstructor.colon_token constructor,
+      Ast.VariantConstructor.record_payload constructor,
+      Ast.VariantConstructor.result_type constructor
+    ) with
+    | (Some _, Some _, _) -> ()
+    | (_, _, Some result) ->
         emit_text state ":";
         render_type_expr_after_tight_colon state ~suffix_width:0 result
-    | _, _, None ->
-        ()
+    | (_, _, None) -> ()
   )
 
 and render_variant_type = fun state ~private_token variant_type ->
@@ -7819,7 +7931,9 @@ and render_variant_type = fun state ~private_token variant_type ->
   if Int.(length > 0) then
     (
       emit_line state;
-      with_indent state 2
+      with_indent
+        state
+        2
         (fun () ->
           let rec loop index =
             if Int.(index < length) then
@@ -7844,7 +7958,12 @@ and render_variant_type = fun state ~private_token variant_type ->
 
 and render_type_parameter = fun state parameter ->
   match parameter with
-  | Ast.TypeDeclaration.Named { name; quote; variance; injective } ->
+  | Ast.TypeDeclaration.Named {
+    name;
+    quote;
+    variance;
+    injective
+  } ->
       emit_optional_token state variance;
       emit_optional_token state injective;
       emit_optional_token state quote;
@@ -7856,8 +7975,7 @@ and render_type_parameter = fun state parameter ->
 
 and render_type_parameters = fun state parameters ->
   match Vector.length parameters with
-  | 0 ->
-      ()
+  | 0 -> ()
   | 1 ->
       render_type_parameter state (Vector.get_unchecked parameters ~at:0);
       emit_space state
@@ -7866,9 +7984,13 @@ and render_type_parameters = fun state parameters ->
       if Int.(length > 4) then
         (
           emit_line state;
-          with_indent state 2
+          with_indent
+            state
+            2
             (fun () ->
-              emit_joined_vector state parameters
+              emit_joined_vector
+                state
+                parameters
                 ~sep:(fun () ->
                   emit_text state ",";
                   emit_line state)
@@ -7876,7 +7998,9 @@ and render_type_parameters = fun state parameters ->
           emit_line state
         )
       else
-        emit_joined_vector state parameters
+        emit_joined_vector
+          state
+          parameters
           ~sep:(fun () ->
             emit_text state ",";
             emit_space state)
@@ -7886,7 +8010,8 @@ and render_type_parameters = fun state parameters ->
 
 and type_member_has_equals = fun member ->
   let found = ref false in
-  Ast.TypeDeclaration.Member.for_each_child_token member
+  Ast.TypeDeclaration.Member.for_each_child_token
+    member
     ~fn:(fun token ->
       if token_kind_is token Kind.EQ then
         found := true);
@@ -7895,7 +8020,8 @@ and type_member_has_equals = fun member ->
 and type_member_private_token = fun member ->
   let saw_equals = ref false in
   let found = ref None in
-  Ast.TypeDeclaration.Member.for_each_child_token member
+  Ast.TypeDeclaration.Member.for_each_child_token
+    member
     ~fn:(fun token ->
       match !found with
       | Some _ -> ()
@@ -7911,7 +8037,8 @@ and type_member_private_token = fun member ->
     match !found with
     | Some _ -> ()
     | None ->
-        Ast.TypeDeclaration.Member.for_each_child_node member
+        Ast.TypeDeclaration.Member.for_each_child_node
+          member
           ~fn:(fun node ->
             match !found with
             | Some _ -> ()
@@ -7922,7 +8049,8 @@ and type_member_private_token = fun member ->
 and type_member_is_alias_extensible = fun member ->
   let equals_count = ref 0 in
   let saw_dotdot_after_alias = ref false in
-  Ast.TypeDeclaration.Member.for_each_child_token member
+  Ast.TypeDeclaration.Member.for_each_child_token
+    member
     ~fn:(fun token ->
       if token_kind_is token Kind.EQ then
         equals_count := Int.add !equals_count 1
@@ -7960,15 +8088,17 @@ and render_type_expr_after_equals = fun state type_expr ->
       emit_line state;
       with_indent state 2 (fun () -> render_multiline_type_arrow state type_expr)
     )
-  else (
-    emit_space state;
-    render_type_expr state type_expr
-  )
+  else
+    (
+      emit_space state;
+      render_type_expr state type_expr
+    )
 
 and type_member_representation_equals_token = fun member ->
   let equals_seen = ref 0 in
   let found = ref None in
-  Ast.TypeDeclaration.Member.for_each_child_token member
+  Ast.TypeDeclaration.Member.for_each_child_token
+    member
     ~fn:(fun token ->
       if Option.is_none !found && token_kind_is token Kind.EQ then
         (
@@ -7990,7 +8120,8 @@ and collect_type_member_body_tokens = fun member ->
   let tokens = Vector.with_capacity ~size:(Ast.TypeDeclaration.Member.child_count member) in
   let collecting = ref false in
   let tree = (Ast.TypeDeclaration.Member.declaration member).tree in
-  Ast.TypeDeclaration.Member.for_each_child member
+  Ast.TypeDeclaration.Member.for_each_child
+    member
     ~fn:(
       function
       | Syn.SyntaxTree.Token id ->
@@ -8003,8 +8134,7 @@ and collect_type_member_body_tokens = fun member ->
           if !collecting then
             let node: Ast.Node.t = { tree; id } in
             Ast.Node.for_each_token node ~fn:(fun token -> Vector.push tokens ~value:token)
-      | Syn.SyntaxTree.Missing _ ->
-          ()
+      | Syn.SyntaxTree.Missing _ -> ()
     );
   tokens
 
@@ -8033,8 +8163,7 @@ and collect_type_member_constraint_tokens = fun member ->
                 let node: Ast.Node.t = { tree; id } in
                 Ast.Node.for_each_token node ~fn:(fun token -> Vector.push tokens ~value:token)
           | Some (Syn.SyntaxTree.Missing _)
-          | None ->
-              ()
+          | None -> ()
         );
         loop (Int.add index 1)
       )
@@ -8057,13 +8186,14 @@ and render_private_alias_type_member_body = fun state member ->
       let body_tokens = collect_type_member_body_tokens member in
       if Int.equal (Vector.length body_tokens) 0 then
         false
-      else (
-        emit_space state;
-        emit_text state "=";
-        emit_space state;
-        emit_token_vector_stream state body_tokens;
-        true
-      )
+      else
+        (
+          emit_space state;
+          emit_text state "=";
+          emit_space state;
+          emit_token_vector_stream state body_tokens;
+          true
+        )
 
 and render_type_attribute_items = fun state attributes ->
   let length = Vector.length attributes in
@@ -8111,20 +8241,23 @@ and render_type_member = fun state member ->
     | None -> unsupported "type declaration member without name"
   );
   (
-    match Ast.TypeDeclaration.Member.variant_type member, Ast.TypeDeclaration.Member.record_type member, Ast.TypeDeclaration.Member.manifest
-      member with
-    | Some variant_type, _, Some manifest ->
+    match (
+      Ast.TypeDeclaration.Member.variant_type member,
+      Ast.TypeDeclaration.Member.record_type member,
+      Ast.TypeDeclaration.Member.manifest member
+    ) with
+    | (Some variant_type, _, Some manifest) ->
         emit_space state;
         emit_text state "=";
         emit_space state;
         render_type_expr state manifest;
         render_type_member_representation_separator state member;
         render_variant_type state ~private_token:(type_member_private_token member) variant_type
-    | Some variant_type, _, None ->
+    | (Some variant_type, _, None) ->
         emit_space state;
         emit_text state "=";
         render_variant_type state ~private_token:(type_member_private_token member) variant_type
-    | None, Some record_type, Some manifest ->
+    | (None, Some record_type, Some manifest) ->
         emit_space state;
         emit_text state "=";
         emit_space state;
@@ -8132,21 +8265,20 @@ and render_type_member = fun state member ->
         render_type_member_representation_separator state member;
         emit_space state;
         render_record_type state ~allow_inline:true record_type
-    | None, Some record_type, None ->
+    | (None, Some record_type, None) ->
         emit_space state;
         emit_text state "=";
         emit_space state;
         render_record_type state ~allow_inline:true record_type
-    | None, None, Some manifest ->
+    | (None, None, Some manifest) ->
         emit_space state;
         emit_text state "=";
         render_type_expr_after_equals state manifest;
         render_alias_extensible_suffix state member
-    | None, None, None when type_member_has_equals member ->
+    | (None, None, None) when type_member_has_equals member ->
         if not (render_private_alias_type_member_body state member) then
           unsupported "unsupported type declaration body"
-    | None, None, None ->
-        ()
+    | (None, None, None) -> ()
   );
   render_type_member_constraints state member;
   let suffix_tokens = collect_type_member_attribute_suffix_tokens member in
@@ -8166,7 +8298,8 @@ and render_type_declaration = fun state decl ->
     && Int.equal (Ast.TypeDeclaration.Member.start_index (Vector.get_unchecked members ~at:0)) 0
     && Int.equal
       (Ast.TypeDeclaration.Member.stop_index (Vector.get_unchecked members ~at:0))
-      (Ast.Node.child_count decl) in
+      (Ast.Node.child_count decl)
+  in
   let rec loop index =
     if Int.(index < length) then
       (
@@ -8201,8 +8334,11 @@ and render_type_extension_declaration = fun state decl ->
     emit_joined_vector state name_tokens ~sep:(fun () -> emit_text state ".") ~fn:(emit_token state);
   emit_space state;
   (
-    match Ast.TypeExtensionDeclaration.plus_token decl, Ast.TypeExtensionDeclaration.equals_token decl with
-    | Some plus_token, Some equals_token ->
+    match (
+      Ast.TypeExtensionDeclaration.plus_token decl,
+      Ast.TypeExtensionDeclaration.equals_token decl
+    ) with
+    | (Some plus_token, Some equals_token) ->
         emit_token state plus_token;
         emit_token state equals_token
     | _ -> emit_text state "+="
@@ -8293,7 +8429,8 @@ and render_value_declaration = fun state decl ->
     | None -> unsupported_node "value declaration without annotation" decl
   )
 
-and render_let_declaration = fun state decl -> render_let_declaration_with_body_break state decl false
+and render_let_declaration = fun state decl ->
+  render_let_declaration_with_body_break state decl false
 
 and render_let_declaration_with_body_break = fun state decl force_body_break ->
   let bindings = collect_let_bindings decl in
@@ -8327,7 +8464,10 @@ and render_let_declaration_with_body_break = fun state decl force_body_break ->
             | None -> ()
           );
         emit_space state;
-        render_let_binding_tail_with_body_break state (Vector.get_unchecked bindings ~at:index) force_body_break;
+        render_let_binding_tail_with_body_break
+          state
+          (Vector.get_unchecked bindings ~at:index)
+          force_body_break;
         if Int.(index < Int.sub length 1) then
           (
             emit_line state;
@@ -8350,9 +8490,10 @@ and render_module_declaration_member = fun state member ->
   in
   let emit_member_token token =
     (
-      match !previous_token, !previous_node with
-      | _, true -> emit_space state
-      | Some previous, false when member_token_wants_space_before previous token -> emit_space state
+      match (!previous_token, !previous_node) with
+      | (_, true) -> emit_space state
+      | (Some previous, false) when member_token_wants_space_before previous token ->
+          emit_space state
       | (Some _, false)
       | (None, false) -> ()
     );
@@ -8368,10 +8509,10 @@ and render_module_declaration_member = fun state member ->
   in
   let emit_member_node render node =
     (
-      match !previous_token, !previous_node with
+      match (!previous_token, !previous_node) with
       | (Some _, _)
       | (None, true) -> emit_space state
-      | None, false -> ()
+      | (None, false) -> ()
     );
     render state node;
     previous_token := None;
@@ -8387,8 +8528,7 @@ and render_module_declaration_member = fun state member ->
         | Some node when is_module_expr_kind (node_kind node) ->
             emit_member_node render_module_expr_node node;
             loop (Int.add index 1)
-        | Some node ->
-            unsupported_node "unsupported module declaration child" node
+        | Some node -> unsupported_node "unsupported module declaration child" node
         | None -> (
             match Ast.ModuleDeclaration.Member.child_token_at member index with
             | Some token ->
@@ -8422,17 +8562,21 @@ and render_module_declaration_members = fun state decl ->
 
 and module_declaration_has_ascribed_body = fun decl ->
   let found = ref false in
-  Ast.ModuleDeclaration.for_each_member decl
+  Ast.ModuleDeclaration.for_each_member
+    decl
     ~fn:(fun member ->
-      match Ast.ModuleDeclaration.Member.module_type member, Ast.ModuleDeclaration.Member.module_expr
-        member with
-      | Some _, Some _ -> found := true
+      match (
+        Ast.ModuleDeclaration.Member.module_type member,
+        Ast.ModuleDeclaration.Member.module_expr member
+      ) with
+      | (Some _, Some _) -> found := true
       | _ -> ());
   !found
 
 and module_declaration_has_head_parameter = fun decl ->
   let found = ref false in
-  Ast.ModuleDeclaration.for_each_member decl
+  Ast.ModuleDeclaration.for_each_member
+    decl
     ~fn:(fun member ->
       let rec loop index =
         if not !found && Int.(index < Ast.ModuleDeclaration.Member.child_count member) then
@@ -8491,7 +8635,9 @@ and render_module_declaration = fun state decl ->
               emit_space state;
               emit_text state "struct";
               emit_line state;
-              with_indent state 2
+              with_indent
+                state
+                2
                 (fun () ->
                   render_structure_items state (collect_structure_items_from_module_decl decl);
                   match end_token with
@@ -8520,7 +8666,11 @@ and render_module_declaration = fun state decl ->
               if Ast.ModuleDeclaration.has_typeof_body decl then
                 render_module_typeof_body state decl
               else if node_has_token_kind decl Kind.PERCENT then
-                render_shell_body_after_separator state decl Kind.EQ ~label:"module extension declaration without '='"
+                render_shell_body_after_separator
+                  state
+                  decl
+                  Kind.EQ
+                  ~label:"module extension declaration without '='"
               else
                 render_module_declaration_members state decl
         )
@@ -8559,8 +8709,7 @@ and render_module_type_declaration = fun state decl ->
   );
   (
     match Ast.ModuleTypeDeclaration.body decl with
-    | Abstract ->
-        ()
+    | Abstract -> ()
     | Path ->
         render_module_type_declaration_equals state decl;
         render_module_body_path state (Ast.ModuleTypeDeclaration.for_each_body_path_ident decl);
@@ -8603,7 +8752,11 @@ and render_module_type_declaration = fun state decl ->
         render_wrapped_module_body_attribute_suffix state decl
     | Unsupported ->
         if node_has_token_kind decl Kind.PERCENT then
-          render_shell_body_after_separator state decl Kind.EQ ~label:"module type extension declaration without '='"
+          render_shell_body_after_separator
+            state
+            decl
+            Kind.EQ
+            ~label:"module type extension declaration without '='"
         else
           unsupported_node "unsupported module type declaration body" decl
   )
@@ -8627,10 +8780,11 @@ and render_structure_items = fun state items ->
   let emit_separator item next_item =
     if structure_items_join_tightly item next_item then
       emit_line state
-    else (
-      emit_line state;
-      emit_line state
-    )
+    else
+      (
+        emit_line state;
+        emit_line state
+      )
   in
   let rec loop index =
     if Int.(index < length) then
@@ -8656,10 +8810,11 @@ and render_structure_items = fun state items ->
                   emit_separator item (Vector.get_unchecked items ~at:next_index);
                 loop next_index
               )
-          else (
-            emit_separator item (Vector.get_unchecked items ~at:(Int.add index 1));
-            loop (Int.add index 1)
-          )
+          else
+            (
+              emit_separator item (Vector.get_unchecked items ~at:(Int.add index 1));
+              loop (Int.add index 1)
+            )
         else
           loop (Int.add index 1)
       )
@@ -8670,7 +8825,7 @@ and render_structure_item_entries = fun state entries ->
   let length = Vector.length entries in
   let rec render_suffix_attributes index =
     if Int.(index < length) then
-      let item, _ = Vector.get_unchecked entries ~at:index in
+      let (item, _) = Vector.get_unchecked entries ~at:index in
       if structure_item_is_attribute item then
         (
           emit_space state;
@@ -8685,21 +8840,22 @@ and render_structure_item_entries = fun state entries ->
   let emit_separator item next_item =
     if structure_items_join_tightly item next_item then
       emit_line state
-    else (
-      emit_line state;
-      emit_line state
-    )
+    else
+      (
+        emit_line state;
+        emit_line state
+      )
   in
   let rec loop index =
     if Int.(index < length) then
       (
-        let item, trailing_tokens = Vector.get_unchecked entries ~at:index in
+        let (item, trailing_tokens) = Vector.get_unchecked entries ~at:index in
         render_structure_item_with_trailing_tokens state item trailing_tokens;
         if Int.(Vector.length trailing_tokens > 0) then
           emit_token_vector_compact state trailing_tokens;
         if Int.(index < Int.sub length 1) then
           (
-            let next_item, _ = Vector.get_unchecked entries ~at:(Int.add index 1) in
+            let (next_item, _) = Vector.get_unchecked entries ~at:(Int.add index 1) in
             if structure_item_is_attribute next_item && not (structure_item_is_extension item) then
               if structure_item_is_expr item then
                 (
@@ -8713,18 +8869,20 @@ and render_structure_item_entries = fun state entries ->
                 (
                   let next_index = render_suffix_attributes (Int.add index 1) in
                   if Int.(next_index < length) then
-                    let next_item, _ = Vector.get_unchecked entries ~at:next_index in
+                    let (next_item, _) = Vector.get_unchecked entries ~at:next_index in
                     emit_separator item next_item;
-                    loop next_index
+                  loop next_index
                 )
-              else (
+              else
+                (
+                  emit_separator item next_item;
+                  loop (Int.add index 1)
+                )
+            else
+              (
                 emit_separator item next_item;
                 loop (Int.add index 1)
               )
-            else (
-              emit_separator item next_item;
-              loop (Int.add index 1)
-            )
           );
         if Int.equal index (Int.sub length 1) then
           loop (Int.add index 1)
@@ -8738,9 +8896,8 @@ and render_structure_item_with_trailing_tokens = fun state item trailing_tokens 
   else
     match Ast.StructureItem.view item with
     | Let decl -> render_let_declaration_with_body_break state decl true
-    | Module decl when Ast.ModuleDeclaration.body decl = EmptyStruct -> render_empty_struct_module_declaration_multiline
-      state
-      decl
+    | Module decl when Ast.ModuleDeclaration.body decl = EmptyStruct ->
+        render_empty_struct_module_declaration_multiline state decl
     | _ -> render_structure_item state item
 
 and render_signature_items = fun state items ->
@@ -8780,18 +8937,19 @@ and render_signature_items = fun state items ->
               )
             | None -> ()
           );
-          if signature_item_is_attribute next_item && not (signature_item_is_extension item) then
-            emit_space state
-          else if
-            signature_items_join_tightly item next_item
-            || signature_item_should_compact_leading_section item next_item
-          then
-            emit_line state
-          else (
+        if signature_item_is_attribute next_item && not (signature_item_is_extension item) then
+          emit_space state
+        else if
+          signature_items_join_tightly item next_item
+          || signature_item_should_compact_leading_section item next_item
+        then
+          emit_line state
+        else
+          (
             emit_line state;
             emit_line state
           );
-          loop (Int.add index 1)
+        loop (Int.add index 1)
       )
   in
   loop 0
@@ -8812,7 +8970,8 @@ and render_attribute_item_suffix = fun state item ->
 and collect_item_attribute_suffixes = fun item declaration ->
   let attributes = Vector.with_capacity ~size:(Ast.Node.child_count item) in
   let after_declaration = ref false in
-  Ast.Node.for_each_child_node item
+  Ast.Node.for_each_child_node
+    item
     ~fn:(fun child ->
       if !after_declaration then
         (
@@ -8895,7 +9054,8 @@ and signature_item_leading_docstring_count = fun item ->
   match Ast.Node.first_descendant_token item with
   | Some token ->
       let count = ref 0 in
-      Ast.Token.for_each_leading_trivia_item token
+      Ast.Token.for_each_leading_trivia_item
+        token
         ~fn:(
           function
           | Ast.Token.Docstring _ -> count := Int.add !count 1
@@ -8910,7 +9070,8 @@ and signature_item_first_leading_docstring_is_section = fun item ->
   | Some token ->
       let seen_docstring = ref false in
       let first_is_section = ref false in
-      Ast.Token.for_each_leading_trivia_item token
+      Ast.Token.for_each_leading_trivia_item
+        token
         ~fn:(
           function
           | Ast.Token.Docstring docstring ->
@@ -8955,7 +9116,7 @@ and token_first_leading_docstring_is_indented = fun token ->
     if Int.(index >= length) then
       false
     else if opener_at index then
-      let saw_line_start, indent = indentation_before (Int.sub index 1) 0 in
+      let (saw_line_start, indent) = indentation_before (Int.sub index 1) 0 in
       saw_line_start && Int.(indent > 0)
     else
       loop (Int.add index 1)
@@ -8974,8 +9135,8 @@ and structure_item_is_open = fun item ->
 
 and structure_item_is_module_path_alias = fun item ->
   match Ast.StructureItem.view item with
-  | Module decl -> Ast.ModuleDeclaration.body decl = Path
-  && not (module_declaration_has_ascribed_body decl)
+  | Module decl ->
+      Ast.ModuleDeclaration.body decl = Path && not (module_declaration_has_ascribed_body decl)
   | _ -> false
 
 and signature_items_join_tightly = fun left right ->
@@ -9115,7 +9276,9 @@ let write = fun ~writer ?(width = 100) ?(buffer_size = 4_096) source_file ->
     | Ok () -> (
         match sink.error with
         | Some error -> Error (Cannot_write error)
-        | None -> IO.flush writer |> Result.map_err ~fn:(fun error -> Cannot_write error)
+        | None ->
+            IO.flush writer
+            |> Result.map_err ~fn:(fun error -> Cannot_write error)
       )
     | Error error -> Error (Cannot_write error)
   with

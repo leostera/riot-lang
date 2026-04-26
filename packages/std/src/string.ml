@@ -11,7 +11,10 @@ include Kernel.String
 let from_char = fun value -> make ~len:1 ~char:value
 
 module MutIter = struct
-  type state = { source: string; mutable current_pos: int }
+  type state = {
+    source: string;
+    mutable current_pos: int;
+  }
 
   type item = Unicode.Rune.t
 
@@ -28,7 +31,8 @@ module MutIter = struct
         state.current_pos <- state.current_pos + char_size;
         Some item
       )
-    else None
+    else
+      None
 
   let size = fun { current_pos; source } -> length source - current_pos
 
@@ -50,8 +54,10 @@ module Iter = struct
         | None -> Kernel.SystemError.panic "Std.String: invalid utf-8 input"
       in
       let char_size = Rune.utf_decode_length utf_decoded in
-      let item = Rune.utf_decode_rune utf_decoded in (Some item, { state with current_pos = current_pos + char_size })
-    else (None, state)
+      let item = Rune.utf_decode_rune utf_decoded in
+      (Some item, { state with current_pos = current_pos + char_size })
+    else
+      (None, state)
 
   let size = fun { current_pos; source } -> length source - current_pos
 end
@@ -65,12 +71,17 @@ let fold_left = fun ~fn ~init value -> Kernel.String.fold_left ~fn:fn ~acc:init 
 let split_on_char = fun separator value -> split ~by:(from_char separator) value
 
 (* Unicode-aware operations *)
-let width = fun s -> (* Calculate display width by summing rune widths *)
-into_iter s |> Iterator.to_list |> List.fold_left ~init:0 ~fn:(
-  fun acc rune -> acc + Unicode.Rune.width rune
-)
 
-let rune_count = fun s -> into_iter s |> Iterator.to_list |> List.length
+let width = fun s ->
+  (* Calculate display width by summing rune widths *)
+  into_iter s
+  |> Iterator.to_list
+  |> List.fold_left ~init:0 ~fn:(fun acc rune -> acc + Unicode.Rune.width rune)
+
+let rune_count = fun s ->
+  into_iter s
+  |> Iterator.to_list
+  |> List.length
 
 let grapheme_count = fun s ->
   (* Count grapheme clusters *)
@@ -81,7 +92,8 @@ let grapheme_count = fun s ->
       match Unicode.Grapheme.first (sub s ~offset:pos ~len:(length s - pos)) with
       | None -> acc
       | Some (_, rest) ->
-          let consumed = length s - pos - length rest in count (pos + consumed) (acc + 1)
+          let consumed = length s - pos - length rest in
+          count (pos + consumed) (acc + 1)
   in
   count 0 0
 
@@ -112,8 +124,10 @@ let truncate_width = fun ~width:target_width ?(tail = "…") s ->
             if acc_width + rune_w > max_width then
               sub s ~offset:0 ~len:pos ^ tail
             else
-              let len = Rune.utf_decode_length decode in find_cut (pos + len) (acc_width + rune_w)
-          else sub s ~offset:0 ~len:pos ^ tail
+              let len = Rune.utf_decode_length decode in
+              find_cut (pos + len) (acc_width + rune_w)
+          else
+            sub s ~offset:0 ~len:pos ^ tail
       in
       find_cut 0 0
 
@@ -122,14 +136,16 @@ let pad_left = fun ~width:target_width pad_char s ->
   if s_width >= target_width then
     s
   else
-    let padding = make ~len:(target_width - s_width) ~char:pad_char in padding ^ s
+    let padding = make ~len:(target_width - s_width) ~char:pad_char in
+    padding ^ s
 
 let pad_right = fun ~width:target_width pad_char s ->
   let s_width = width s in
   if s_width >= target_width then
     s
   else
-    let padding = make ~len:(target_width - s_width) ~char:pad_char in s ^ padding
+    let padding = make ~len:(target_width - s_width) ~char:pad_char in
+    s ^ padding
 
 let pad_center = fun ~width:target_width pad_char s ->
   let s_width = width s in
@@ -138,31 +154,41 @@ let pad_center = fun ~width:target_width pad_char s ->
   else
     let total_padding = target_width - s_width in
     let left_padding = total_padding / 2 in
-    let right_padding = total_padding - left_padding in make ~len:left_padding ~char:pad_char ^ s ^ make ~len:right_padding ~char:pad_char
+    let right_padding = total_padding - left_padding in
+    make ~len:left_padding ~char:pad_char ^ s ^ make ~len:right_padding ~char:pad_char
 
 (* Grapheme iterators *)
+
 module GraphemeMutIter = struct
-  type state = { source: string; mutable current_pos: int }
+  type state = {
+    source: string;
+    mutable current_pos: int;
+  }
 
   type item = Unicode.Grapheme.t
 
   let next = fun state ->
     if state.current_pos < length state.source then
-      let remaining = sub state.source ~offset:state.current_pos ~len:(length state.source - state.current_pos) in
+      let remaining =
+        sub state.source ~offset:state.current_pos ~len:(length state.source - state.current_pos)
+      in
       match Unicode.Grapheme.first remaining with
       | None -> None
       | Some (grapheme, rest) ->
           let consumed = length remaining - length rest in
           state.current_pos <- state.current_pos + consumed;
           Some grapheme
-    else None
+    else
+      None
 
   let size = fun { current_pos; source } -> length source - current_pos
 
   let clone = fun { source; current_pos } -> { source; current_pos }
 end
 
-let into_grapheme_mut_iter = fun source -> MutIterator.make (module GraphemeMutIter) { source; current_pos = 0 }
+let into_grapheme_mut_iter = fun source -> MutIterator.make
+  (module GraphemeMutIter)
+  { source; current_pos = 0 }
 
 module GraphemeIter = struct
   type state = { source: string; current_pos: int }
@@ -173,17 +199,22 @@ module GraphemeIter = struct
     if current_pos < length source then
       let remaining = sub source ~offset:current_pos ~len:(length source - current_pos) in
       match Unicode.Grapheme.first remaining with
-      | None -> None, state
+      | None -> (None, state)
       | Some (grapheme, rest) ->
-          let consumed = length remaining - length rest in (Some grapheme, { state with current_pos = current_pos + consumed })
-    else (None, state)
+          let consumed = length remaining - length rest in
+          (Some grapheme, { state with current_pos = current_pos + consumed })
+    else
+      (None, state)
 
   let size = fun { current_pos; source } -> length source - current_pos
 end
 
-let into_grapheme_iter = fun source -> Iterator.make (module GraphemeIter) { source; current_pos = 0 }
+let into_grapheme_iter = fun source -> Iterator.make
+  (module GraphemeIter)
+  { source; current_pos = 0 }
 
 (* Text segmentation *)
+
 let word_boundaries = fun s -> Unicode.Segmentation.find_word_boundaries s
 
 let split_words = fun s ->
@@ -193,21 +224,23 @@ let split_words = fun s ->
     | [] ->
         if start < length s then
           [ sub s ~offset:start ~len:(length s - start) ]
-        else []
+        else
+          []
     | pos :: rest ->
         let word = trim (sub s ~offset:start ~len:(pos - start)) in
         if word = "" then
           split pos rest
-        else word :: split pos rest
+        else
+          word :: split pos rest
   in
   split 0 boundaries
 
 let line_breaks = fun s -> Unicode.Segmentation.find_line_breaks s
 
-let wrap = fun ~width:_ s -> (* Simplified: split on whitespace *)
-split ~by:" " s |> List.filter ~fn:(
-  fun w -> w != ""
-)
+let wrap = fun ~width:_ s ->
+  (* Simplified: split on whitespace *)
+  split ~by:" " s
+  |> List.filter ~fn:(fun w -> w != "")
 
 let wrap_words = fun ~width:target_width s ->
   let words = split_words s in
@@ -216,25 +249,28 @@ let wrap_words = fun ~width:target_width s ->
     | [] ->
         if current_line = "" then
           []
-        else [ trim current_line ]
+        else
+          [ trim current_line ]
     | word :: rest ->
         let word_width = width word in
         let space_width =
           if current_line = "" then
             0
-          else 1
+          else
+            1
         in
         if current_width + space_width + word_width <= target_width then
           let new_line =
             if current_line = "" then
               word
-            else current_line ^ " " ^ word
+            else
+              current_line ^ " " ^ word
           in
           build_lines new_line (current_width + space_width + word_width) rest
+        else if current_line = "" then
+          word :: build_lines "" 0 rest
         else
-          if current_line = "" then
-            word :: build_lines "" 0 rest
-          else (* Start new line *)
+          (* Start new line *)
           trim current_line :: build_lines word word_width rest
   in
   build_lines "" 0 words
@@ -245,19 +281,18 @@ let contains = fun haystack needle ->
   let haystack_len = length haystack in
   if needle_len = 0 then
     true
+  else if needle_len > haystack_len then
+    false
   else
-    if needle_len > haystack_len then
-      false
-    else
-      let rec check pos =
-        if pos > haystack_len - needle_len then
-          false
-        else
-          if sub haystack ~offset:pos ~len:needle_len = needle then
-            true
-          else check (pos + 1)
-      in
-      check 0
+    let rec check pos =
+      if pos > haystack_len - needle_len then
+        false
+      else if sub haystack ~offset:pos ~len:needle_len = needle then
+        true
+      else
+        check (pos + 1)
+    in
+    check 0
 
 module Read = struct
   type t = {
@@ -268,9 +303,13 @@ module Read = struct
     source_bytes: bytes;
   }
 
-  type progress = { mutable total: int; mutable continue_: bool }
+  type progress = {
+    mutable total: int;
+    mutable continue_: bool;
+  }
 
-  let panic_buffer_error = fun fn error -> Kernel.SystemError.panic ("Std.String.to_reader." ^ fn ^ ": " ^ Kernel.IO.Error.message error)
+  let panic_buffer_error = fun fn error ->
+    Kernel.SystemError.panic ("Std.String.to_reader." ^ fn ^ ": " ^ Kernel.IO.Error.message error)
 
   let read = fun state ~into ->
     let remaining = state.source_length - state.offset in
@@ -284,7 +323,8 @@ module Read = struct
             | Ok () -> IO.Buffer.writable_bytes into
             | Error error -> panic_buffer_error "ensure_free" error
           )
-        else IO.Buffer.writable_bytes into
+        else
+          IO.Buffer.writable_bytes into
       in
       let to_read = min state.chunk_size (min remaining available) in
       begin
@@ -297,8 +337,8 @@ module Read = struct
 
   let read_vectored = fun state ~into:bufs ->
     let progress = { total = 0; continue_ = true } in
-    IO.IoVec.for_each ~fn:(
-      fun segment ->
+    IO.IoVec.for_each
+      ~fn:(fun segment ->
         if progress.continue_ then
           (
             let remaining = state.source_length - state.offset in
@@ -306,14 +346,21 @@ module Read = struct
               progress.continue_ <- false
             else
               let segment_length = IO.IoVec.IoSlice.length segment in
-              let to_read = min state.chunk_size (min remaining segment_length) in IO.IoVec.IoSlice.blit_from_bytes_unchecked state.source_bytes ~src_off:state.offset segment ~dst_off:0 ~len:to_read;
+              let to_read = min state.chunk_size (min remaining segment_length) in
+              IO.IoVec.IoSlice.blit_from_bytes_unchecked
+                state.source_bytes
+                ~src_off:state.offset
+                segment
+                ~dst_off:0
+                ~len:to_read;
             state.offset <- state.offset + to_read;
             progress.total <- progress.total + to_read;
             if to_read < segment_length then
               progress.continue_ <- false
-            else ()
-          )
-    ) bufs;
+            else
+              ()
+          ))
+      bufs;
     Ok progress.total
 
   let is_read_vectored = fun _ -> true
@@ -328,17 +375,21 @@ let to_reader = fun ?chunk_size value ->
           raise (Invalid_argument "Std.String.to_reader: chunk_size must be positive");
         chunk_size
   in
-  let state = Read.{
-    chunk_size;
-    offset = 0;
-    source = value;
-    source_length = length value;
-    source_bytes = bytes_unsafe_of_string value
-  } in IO.Reader.from_source (module Read) state
+  let state =
+    Read.{
+      chunk_size;
+      offset = 0;
+      source = value;
+      source_length = length value;
+      source_bytes = bytes_unsafe_of_string value;
+    }
+  in
+  IO.Reader.from_source (module Read) state
 
 module Syntax = struct
   let set_unchecked = fun value ~at ~char ->
-    let bytes = bytes_unsafe_of_string value in Kernel.Bytes.set_unchecked bytes ~at ~char
+    let bytes = bytes_unsafe_of_string value in
+    Kernel.Bytes.set_unchecked bytes ~at ~char
 
   let get = fun value at -> get_unchecked value ~at
 

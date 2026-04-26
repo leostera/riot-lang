@@ -2,25 +2,40 @@ open Std
 
 (** Mutable prototype type representation used inside one inference query. *)
 type scheme
-
 type label =
   | Nolabel
   | Labelled of string
   | Optional of string
-
 type var_kind =
   | Flexible
   | Rigid
+type var = {
+  id: int;
+  kind: var_kind;
+  mutable link: t option;
+}
 
-type var = { id: int; kind: var_kind; mutable link: t option }
-and named_type_head = { type_constructor_id: TypeConstructorId.t; name: SurfacePath.t }
+and named_type_head = {
+  type_constructor_id: TypeConstructorId.t;
+  name: SurfacePath.t;
+}
+
 and package_value = { name: string; scheme: scheme }
-and package_signature = { values: package_value list }
+
+and package_signature = {
+  values: package_value list;
+}
+
 and poly_variant_bound =
   | Exact
   | UpperBound
   | LowerBound
-and poly_variant_tag = { name: string; payload_type: t option }
+
+and poly_variant_tag = {
+  name: string;
+  payload_type: t option;
+}
+
 and desc =
   | Int
   | Float
@@ -33,13 +48,21 @@ and desc =
   | Array of t
   | List of t
   | Seq of t
-  | Named of { head: named_type_head; arguments: t list }
+  | Named of {
+      head: named_type_head;
+      arguments: t list;
+    }
   | Package of package_signature
-  | PolyVariant of { bound: poly_variant_bound; tags: poly_variant_tag list; inherited: t list }
+  | PolyVariant of {
+      bound: poly_variant_bound;
+      tags: poly_variant_tag list;
+      inherited: t list;
+    }
   | Tuple of t list
   | Arrow of { label: label; lhs: t; rhs: t }
   | Var of var
   | Hole of int
+
 and t = {
   mutable desc: desc;
   mutable level: int;
@@ -50,7 +73,6 @@ and t = {
   mutable aux_order: int;
   mutable walk_mark: int;
 }
-
 val int: t
 
 val float: t

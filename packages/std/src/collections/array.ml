@@ -18,7 +18,8 @@ let set_unchecked = fun values ~at ~value -> Kernel.Array.set_unchecked values ~
 
 let clone = Kernel.Array.clone
 
-let blit = fun values ~src_offset ~dst ~dst_offset ~len -> Kernel.Array.blit values ~src_offset ~dst ~dst_offset ~len
+let blit = fun values ~src_offset ~dst ~dst_offset ~len ->
+  Kernel.Array.blit values ~src_offset ~dst ~dst_offset ~len
 
 let sub = fun values ~offset ~len -> Kernel.Array.sub values ~offset ~len
 
@@ -38,13 +39,17 @@ let to_list = fun values ->
   let rec loop index acc =
     if index < 0 then
       acc
-    else loop (index - 1) (get_unchecked values ~at:index :: acc)
+    else
+      loop (index - 1) (get_unchecked values ~at:index :: acc)
   in
   loop (length values - 1) []
 
 let iter: type item. item array -> item Iter.Iterator.t = fun arr ->
   let module ArrayIter = struct
-    type state = { arr: item array; idx: int }
+    type state = {
+      arr: item array;
+      idx: int;
+    }
 
     type nonrec item = item
 
@@ -52,7 +57,8 @@ let iter: type item. item array -> item Iter.Iterator.t = fun arr ->
       if state.idx >= length state.arr then
         (None, state)
       else
-        let value = get_unchecked state.arr ~at:state.idx in (Some value, { state with idx = state.idx + 1 })
+        let value = get_unchecked state.arr ~at:state.idx in
+        (Some value, { state with idx = state.idx + 1 })
 
     let size = fun state -> length state.arr - state.idx
   end in
@@ -60,7 +66,10 @@ let iter: type item. item array -> item Iter.Iterator.t = fun arr ->
 
 let mut_iter: type item. item array -> item Iter.MutIterator.t = fun arr ->
   let module ArrayMutIter = struct
-    type state = { arr: item array; mutable idx: int }
+    type state = {
+      arr: item array;
+      mutable idx: int;
+    }
 
     type nonrec item = item
 
@@ -68,7 +77,8 @@ let mut_iter: type item. item array -> item Iter.MutIterator.t = fun arr ->
       if state.idx >= length state.arr then
         None
       else
-        let value = get_unchecked state.arr ~at:state.idx in state.idx <- state.idx + 1;
+        let value = get_unchecked state.arr ~at:state.idx in
+        state.idx <- state.idx + 1;
       Some value
 
     let size = fun state -> length state.arr - state.idx

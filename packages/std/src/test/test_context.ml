@@ -1,9 +1,17 @@
 open Global
 open Collections
 
-type fixture = { path: Path.t; relpath: Path.t; name: string; snapshot_path: Path.t option }
+type fixture = {
+  path: Path.t;
+  relpath: Path.t;
+  name: string;
+  snapshot_path: Path.t option;
+}
 
-type built_binary = { name: string; path: Path.t }
+type built_binary = {
+  name: string;
+  path: Path.t;
+}
 
 type snapshot_mode =
   | External
@@ -24,23 +32,23 @@ type progress =
   | PropertyCounterExampleFound of { current: int; total: int; size: int }
   | PropertyShrinkStep of { current: int; total: int; step: int; max_steps: int }
   | SnapshotAssertionStarted of {
-    mode: snapshot_mode;
-    format: snapshot_format;
-    approved_path: Path.t option;
-    pending_path: Path.t option;
-  }
+      mode: snapshot_mode;
+      format: snapshot_format;
+      approved_path: Path.t option;
+      pending_path: Path.t option;
+    }
   | SnapshotAssertionMatched of {
-    mode: snapshot_mode;
-    format: snapshot_format;
-    approved_path: Path.t option;
-  }
+      mode: snapshot_mode;
+      format: snapshot_format;
+      approved_path: Path.t option;
+    }
   | SnapshotAssertionMismatch of {
-    mode: snapshot_mode;
-    format: snapshot_format;
-    approved_path: Path.t option;
-    pending_path: Path.t option;
-    reason: snapshot_mismatch_reason;
-  }
+      mode: snapshot_mode;
+      format: snapshot_format;
+      approved_path: Path.t option;
+      pending_path: Path.t option;
+      reason: snapshot_mismatch_reason;
+    }
 
 type progress_handler = progress -> unit
 
@@ -65,11 +73,9 @@ let with_progress_handler = fun ctx progress_handler -> { ctx with progress_hand
 
 let emit_progress = fun ctx progress -> ctx.progress_handler progress
 
-let find_binary = fun ctx name -> List.find ctx.built_binaries ~fn:(
-  fun (binary: built_binary) -> String.equal binary.name name
-) |> Option.map ~fn:(
-  fun binary -> binary.path
-)
+let find_binary = fun ctx name ->
+  List.find ctx.built_binaries ~fn:(fun (binary: built_binary) -> String.equal binary.name name)
+  |> Option.map ~fn:(fun binary -> binary.path)
 
 let require_binary = fun ctx name ->
   match find_binary ctx name with
@@ -81,10 +87,14 @@ let require_binary = fun ctx name ->
         | None -> ""
       in
       let available =
-        match List.map ctx.built_binaries ~fn:(
-          fun (binary: built_binary) -> binary.name
-        ) with
+        match List.map ctx.built_binaries ~fn:(fun (binary: built_binary) -> binary.name) with
         | [] -> "none"
         | names -> String.concat ", " names
       in
-      Error ("required built binary '" ^ name ^ "' was not available for " ^ package_prefix ^ "(available: " ^ available ^ ")")
+      Error ("required built binary '"
+      ^ name
+      ^ "' was not available for "
+      ^ package_prefix
+      ^ "(available: "
+      ^ available
+      ^ ")")

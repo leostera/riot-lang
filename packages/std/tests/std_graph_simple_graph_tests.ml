@@ -2,13 +2,9 @@ open Std
 
 module SimpleGraph = Graph.SimpleGraph
 
-let contains_id = fun ids needle -> List.any ids ~fn:(
-  fun id -> SimpleGraph.Node_id.eq id needle
-)
+let contains_id = fun ids needle -> List.any ids ~fn:(fun id -> SimpleGraph.Node_id.eq id needle)
 
-let ids_of_nodes = fun nodes -> List.map nodes ~fn:(
-  fun node -> node.SimpleGraph.id
-)
+let ids_of_nodes = fun nodes -> List.map nodes ~fn:(fun node -> node.SimpleGraph.id)
 
 let test_make_starts_empty = fun _ctx ->
   let graph = SimpleGraph.make () in
@@ -21,7 +17,8 @@ let test_add_node_and_get_node_roundtrip = fun _ctx ->
   let graph = SimpleGraph.make () in
   let node = SimpleGraph.add_node graph "alpha" in
   match SimpleGraph.get_node graph node.id with
-  | Some found when String.equal found.value "alpha" && SimpleGraph.Node_id.eq found.id node.id -> Ok ()
+  | Some found when String.equal found.value "alpha" && SimpleGraph.Node_id.eq found.id node.id ->
+      Ok ()
   | Some _ -> Error "get_node returned the wrong node"
   | None -> Error "get_node should return nodes that were added"
 
@@ -37,11 +34,10 @@ let test_add_edge_records_dependency = fun _ctx ->
   let a = SimpleGraph.add_node graph "A" in
   let b = SimpleGraph.add_node graph "B" in
   SimpleGraph.add_edge a ~depends_on:b;
-  if List.any a.deps ~fn:(
-    fun id -> SimpleGraph.Node_id.eq id b.id
-  ) then
+  if List.any a.deps ~fn:(fun id -> SimpleGraph.Node_id.eq id b.id) then
     Ok ()
-  else Error "add_edge should record the dependency id on the dependent node"
+  else
+    Error "add_edge should record the dependency id on the dependent node"
 
 let test_topo_sort_single_node = fun _ctx ->
   let graph = SimpleGraph.make () in
@@ -63,7 +59,8 @@ let test_topo_sort_simple_chain_respects_dependencies = fun _ctx ->
       let ids = ids_of_nodes sorted in
       if ids = [ a.id; b.id; c.id ] then
         Ok ()
-      else Error "topo_sort should return dependency order for a chain"
+      else
+        Error "topo_sort should return dependency order for a chain"
   | Error _ -> Error "topo_sort should succeed for a simple chain"
 
 let test_topo_sort_diamond_places_dependencies_first = fun _ctx ->
@@ -79,14 +76,16 @@ let test_topo_sort_diamond_places_dependencies_first = fun _ctx ->
   match SimpleGraph.topo_sort graph with
   | Ok sorted ->
       let positions = List.enumerate (ids_of_nodes sorted) in
-      let find_pos target = List.find positions ~fn:(
-        fun (_, id) -> SimpleGraph.Node_id.eq id target
-      ) |> Option.map ~fn:(
-        fun (index, _) -> index
-      ) in
+      let find_pos target =
+        List.find positions ~fn:(fun (_, id) -> SimpleGraph.Node_id.eq id target)
+        |> Option.map ~fn:(fun (index, _) -> index)
+      in
       (
-        match find_pos root.id, find_pos left.id, find_pos right.id, find_pos top.id with
-        | Some root_pos, Some left_pos, Some right_pos, Some top_pos when root_pos < left_pos && root_pos < right_pos && left_pos < top_pos && right_pos < top_pos -> Ok ()
+        match (find_pos root.id, find_pos left.id, find_pos right.id, find_pos top.id) with
+        | (Some root_pos, Some left_pos, Some right_pos, Some top_pos) when root_pos < left_pos
+        && root_pos < right_pos
+        && left_pos < top_pos
+        && right_pos < top_pos -> Ok ()
         | _ -> Error "topo_sort should place dependencies before dependents in a diamond graph"
       )
   | Error _ -> Error "topo_sort should succeed for a diamond graph"
@@ -116,24 +115,26 @@ let test_iter_visits_every_node_once = fun _ctx ->
   let a = SimpleGraph.add_node graph "A" in
   let b = SimpleGraph.add_node graph "B" in
   let seen = Sync.Atomic.make [] in
-  SimpleGraph.iter graph ~fn:(
-    fun id _ -> Sync.Atomic.set seen (id :: Sync.Atomic.get seen)
-  );
+  SimpleGraph.iter graph ~fn:(fun id _ -> Sync.Atomic.set seen (id :: Sync.Atomic.get seen));
   let ids = Sync.Atomic.get seen in
   if List.length ids = 2 && contains_id ids a.id && contains_id ids b.id then
     Ok ()
-  else Error "iter should visit every node exactly once"
+  else
+    Error "iter should visit every node exactly once"
 
 let test_map_returns_one_item_per_node = fun _ctx ->
   let graph = SimpleGraph.make () in
   let _ = SimpleGraph.add_node graph "alpha" in
   let _ = SimpleGraph.add_node graph "beta" in
-  let values = SimpleGraph.map graph ~fn:(
-    fun (_id, node) -> node.value
-  ) in
-  if List.length values = 2 && List.contains values ~value:"alpha" && List.contains values ~value:"beta" then
+  let values = SimpleGraph.map graph ~fn:(fun (_id, node) -> node.value) in
+  if
+    List.length values = 2
+    && List.contains values ~value:"alpha"
+    && List.contains values ~value:"beta"
+  then
     Ok ()
-  else Error "map should return one mapped item per node"
+  else
+    Error "map should return one mapped item per node"
 
 let test_reachable_from_includes_start_nodes_and_dependencies = fun _ctx ->
   let graph = SimpleGraph.make () in
@@ -143,9 +144,12 @@ let test_reachable_from_includes_start_nodes_and_dependencies = fun _ctx ->
   SimpleGraph.add_edge middle ~depends_on:root;
   SimpleGraph.add_edge top ~depends_on:middle;
   let reachable = SimpleGraph.reachable_from graph [ top ] in
-  if contains_id reachable root.id && contains_id reachable middle.id && contains_id reachable top.id then
+  if
+    contains_id reachable root.id && contains_id reachable middle.id && contains_id reachable top.id
+  then
     Ok ()
-  else Error "reachable_from should include the start node and all dependencies"
+  else
+    Error "reachable_from should include the start node and all dependencies"
 
 let test_reachable_from_merges_multiple_start_nodes_without_duplicates = fun _ctx ->
   let graph = SimpleGraph.make () in
@@ -155,41 +159,62 @@ let test_reachable_from_merges_multiple_start_nodes_without_duplicates = fun _ct
   SimpleGraph.add_edge left ~depends_on:shared;
   SimpleGraph.add_edge right ~depends_on:shared;
   let reachable = SimpleGraph.reachable_from graph [ left; right; left ] in
-  let shared_count = List.fold_left reachable ~init:0 ~fn:(
-    fun count id ->
-      if SimpleGraph.Node_id.eq id shared.id then
-        count + 1
-      else count
-  ) in
-  if contains_id reachable left.id && contains_id reachable right.id && Int.equal shared_count 1 then
+  let shared_count =
+    List.fold_left
+      reachable
+      ~init:0
+      ~fn:(fun count id ->
+        if SimpleGraph.Node_id.eq id shared.id then
+          count + 1
+        else
+          count)
+  in
+  if
+    contains_id reachable left.id && contains_id reachable right.id && Int.equal shared_count 1
+  then
     Ok ()
-  else Error "reachable_from should merge duplicate starting nodes without duplicate reachable ids"
+  else
+    Error "reachable_from should merge duplicate starting nodes without duplicate reachable ids"
 
 let test_node_id_accessors_are_consistent = fun _ctx ->
   let id = SimpleGraph.Node_id.next () in
   if not (SimpleGraph.Node_id.eq id id) then
     Error "Node_id.eq should report reflexive equality"
+  else if
+    not
+      (String.equal
+        (SimpleGraph.Node_id.to_string id)
+        (Int.to_string (SimpleGraph.Node_id.to_int id)))
+  then
+    Error "Node_id.to_string should agree with Node_id.to_int"
   else
-    if not (String.equal (SimpleGraph.Node_id.to_string id) (Int.to_string (SimpleGraph.Node_id.to_int id))) then
-      Error "Node_id.to_string should agree with Node_id.to_int"
-    else Ok ()
+    Ok ()
 
-let tests = Test.[
-  case "make starts empty" test_make_starts_empty;
-  case "add_node and get_node roundtrip" test_add_node_and_get_node_roundtrip;
-  case "get_node returns None for unknown ids" test_get_node_unknown_id_returns_none;
-  case "add_edge records dependency ids" test_add_edge_records_dependency;
-  case "topo_sort returns the single node" test_topo_sort_single_node;
-  case "topo_sort respects simple chain dependencies" test_topo_sort_simple_chain_respects_dependencies;
-  case "topo_sort places diamond dependencies first" test_topo_sort_diamond_places_dependencies_first;
-  case "topo_sort detects self-cycles" test_topo_sort_detects_self_cycle;
-  case "topo_sort detects two-node cycles" test_topo_sort_detects_two_node_cycle;
-  case "iter visits every node once" test_iter_visits_every_node_once;
-  case "map returns one item per node" test_map_returns_one_item_per_node;
-  case "reachable_from includes start nodes and dependencies" test_reachable_from_includes_start_nodes_and_dependencies;
-  case "reachable_from merges multiple starts without duplicates" test_reachable_from_merges_multiple_start_nodes_without_duplicates;
-  case "Node_id accessors are internally consistent" test_node_id_accessors_are_consistent;
-]
+let tests =
+  Test.[
+    case "make starts empty" test_make_starts_empty;
+    case "add_node and get_node roundtrip" test_add_node_and_get_node_roundtrip;
+    case "get_node returns None for unknown ids" test_get_node_unknown_id_returns_none;
+    case "add_edge records dependency ids" test_add_edge_records_dependency;
+    case "topo_sort returns the single node" test_topo_sort_single_node;
+    case
+      "topo_sort respects simple chain dependencies"
+      test_topo_sort_simple_chain_respects_dependencies;
+    case
+      "topo_sort places diamond dependencies first"
+      test_topo_sort_diamond_places_dependencies_first;
+    case "topo_sort detects self-cycles" test_topo_sort_detects_self_cycle;
+    case "topo_sort detects two-node cycles" test_topo_sort_detects_two_node_cycle;
+    case "iter visits every node once" test_iter_visits_every_node_once;
+    case "map returns one item per node" test_map_returns_one_item_per_node;
+    case
+      "reachable_from includes start nodes and dependencies"
+      test_reachable_from_includes_start_nodes_and_dependencies;
+    case
+      "reachable_from merges multiple starts without duplicates"
+      test_reachable_from_merges_multiple_start_nodes_without_duplicates;
+    case "Node_id accessors are internally consistent" test_node_id_accessors_are_consistent;
+  ]
 
 let main ~args = Test.Cli.main ~name:"graph_simple_graph" ~tests ~args ()
 

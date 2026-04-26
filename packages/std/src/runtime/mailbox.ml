@@ -2,7 +2,6 @@ open Kernel
 open Collections
 
 module Runtime_mutex = Kernel.Sync.Mutex
-
 module Runtime_atomic = Kernel.Sync.Atomic
 
 type t = {
@@ -17,20 +16,22 @@ let create = fun () ->
     producer_lock = Runtime_mutex.create ();
     inbox_rev = [];
     outbox = [];
-    size = Runtime_atomic.make 0
+    size = Runtime_atomic.make 0;
   }
 
 let queue = fun t msg ->
   Runtime_mutex.lock t.producer_lock;
   t.inbox_rev <- msg :: t.inbox_rev;
-  let _ = Runtime_atomic.fetch_and_add t.size 1 in Runtime_mutex.unlock t.producer_lock
+  let _ = Runtime_atomic.fetch_and_add t.size 1 in
+  Runtime_mutex.unlock t.producer_lock
 
 let pop_outbox = fun t ->
   match t.outbox with
   | [] -> None
   | msg :: rest ->
       t.outbox <- rest;
-      let _ = Runtime_atomic.fetch_and_add t.size (-1) in Some msg
+      let _ = Runtime_atomic.fetch_and_add t.size (-1) in
+      Some msg
 
 let next = fun t ->
   match pop_outbox t with

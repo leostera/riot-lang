@@ -65,21 +65,22 @@ let to_string = fun path ->
   | segments -> String.concat "." segments
 
 let rec equal = fun left right ->
-  match left, right with
+  match (left, right) with
   | (Bare left_name, Bare right_name) -> String.equal left_name right_name
-  | (Qualified (left_module, left_tail), Qualified (right_module, right_tail)) -> String.equal left_module right_module && equal left_tail right_tail
+  | (Qualified (left_module, left_tail), Qualified (right_module, right_tail)) ->
+      String.equal left_module right_module && equal left_tail right_tail
   | _ -> false
 
 let rec compare = fun left right ->
-  match left, right with
+  match (left, right) with
   | (Bare left_name, Bare right_name) -> String.compare left_name right_name
   | (Bare _, Qualified _) -> (-1)
   | (Qualified _, Bare _) -> 1
   | (Qualified (left_module, left_tail), Qualified (right_module, right_tail)) -> (
-    match String.compare left_module right_module with
-    | 0 -> compare left_tail right_tail
-    | order -> order
-  )
+      match String.compare left_module right_module with
+      | 0 -> compare left_tail right_tail
+      | order -> order
+    )
 
 let rec append_name = fun path name ->
   match path with
@@ -90,10 +91,11 @@ let rec append_name = fun path name ->
 let prepend_name = fun name path ->
   if is_empty path then
     Bare name
-  else Qualified (name, path)
+  else
+    Qualified (name, path)
 
 let rec append_path = fun left right ->
-  match left, right with
+  match (left, right) with
   | (path, other) when is_empty path -> other
   | (path, other) when is_empty other -> path
   | (Bare name, other) -> Qualified (name, other)
@@ -117,23 +119,25 @@ let rec split_last = fun value ->
   | Bare _ -> None
   | Qualified (module_name, Bare name) -> Some (Bare module_name, name)
   | Qualified (module_name, tail) ->
-      split_last tail |> Option.map
-        (
-          fun (prefix, name) -> (Qualified (module_name, prefix), name)
-        )
+      split_last tail
+      |> Option.map (fun (prefix, name) -> (Qualified (module_name, prefix), name))
 
 let rec strip_prefix = fun ~prefix path ->
-  match prefix, path with
+  match (prefix, path) with
   | (Bare "", path) -> Some path
   | (Bare prefix_name, Bare path_name) ->
       if String.equal prefix_name path_name then
         Some empty
-      else None
+      else
+        None
   | (Bare prefix_name, Qualified (module_name, tail)) ->
       if String.equal prefix_name module_name then
         Some tail
-      else None
-  | (Qualified (prefix_name, prefix_tail), Qualified (module_name, tail)) when String.equal prefix_name module_name -> strip_prefix ~prefix:prefix_tail tail
+      else
+        None
+  | (Qualified (prefix_name, prefix_tail), Qualified (module_name, tail)) when String.equal
+    prefix_name
+    module_name -> strip_prefix ~prefix:prefix_tail tail
   | _ -> None
 
 let prefixes = fun path ->
@@ -141,6 +145,7 @@ let prefixes = fun path ->
     | Bare "" -> []
     | Bare name -> [ Bare name ]
     | Qualified (module_name, tail) ->
-        let rest = nonempty tail in Bare module_name :: List.map (prepend_name module_name) rest
+        let rest = nonempty tail in
+        Bare module_name :: List.map (prepend_name module_name) rest
   in
   empty :: nonempty path

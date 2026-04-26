@@ -11,7 +11,6 @@ type diagnostic =
   | Lowering of Diagnostic.t
   (** Inference diagnostic emitted by [typ]. *)
   | Typing of Diagnostic.t
-
 type definition = ModuleTypings.definition_site
 
 (** Fetch the full per-source analysis record for one [SourceId]. *)

@@ -9,6 +9,7 @@ open Std.Collections
    raw token range that belongs to that source position, so leading whitespace,
    comments, and docstrings remain recoverable without allocating trivia nodes.
 *)
+
 (**
    Significant token leaf in the tree.
 
@@ -16,20 +17,25 @@ open Std.Collections
    leading trivia before the body token. `body_raw` points at the significant
    raw token that decides this leaf's syntax kind.
 *)
-type token_leaf = { kind: Syntax_kind.t; raw_lo: int; raw_hi: int; body_raw: int }
-
+type token_leaf = {
+  kind: Syntax_kind.t;
+  raw_lo: int;
+  raw_hi: int;
+  body_raw: int;
+}
 (**
    Parser-inserted placeholder for a token that was required by the grammar but
    absent from the source.
 *)
-type missing = { kind: Syntax_kind.t; offset: int }
-
+type missing = {
+  kind: Syntax_kind.t;
+  offset: int;
+}
 (** Child edge stored in a node's contiguous child range. *)
 type child =
   | Node of int
   | Token of int
   | Missing of missing
-
 (**
    Syntax node metadata.
 
@@ -46,7 +52,6 @@ type node = {
   full_width: int;
   token_width: int;
 }
-
 (** Complete lossless tree and the source/token storage it views. *)
 type t = {
   source: IO.IoVec.IoSlice.t;
@@ -57,7 +62,6 @@ type t = {
   children: child Vector.t;
   root: int;
 }
-
 type tree = t
 
 (**
@@ -67,16 +71,18 @@ type tree = t
    functions can reshape already-emitted children without allocating an
    intermediate concrete event list.
 *)
-module Builder : sig
+module Builder: sig
   type t
-
   type marker
-
   type completed
-
   type checkpoint
-
-  val create: source:IO.IoVec.IoSlice.t -> token_stream:Raw_token.stream -> ?event_capacity:int -> ?diagnostic_capacity:int -> unit -> t
+  val create:
+    source:IO.IoVec.IoSlice.t ->
+    token_stream:Raw_token.stream ->
+    ?event_capacity:int ->
+    ?diagnostic_capacity:int ->
+    unit ->
+    t
 
   val start_node: t -> marker
 

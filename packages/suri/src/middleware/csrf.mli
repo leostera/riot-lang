@@ -96,9 +96,16 @@
      csrf ~skip_safe_methods:false ()
    ]}
 *)
+
 open Std
 
-val middleware: ?param_name:string -> ?header_name:string -> ?skip_safe_methods:bool -> ?skip:(Conn.t -> bool) -> unit -> (conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t)
+val middleware:
+  ?param_name:string ->
+  ?header_name:string ->
+  ?skip_safe_methods:bool ->
+  ?skip:(Conn.t -> bool) ->
+  unit ->
+  (conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t)
 
 (**
    CSRF protection middleware.
@@ -156,7 +163,9 @@ val hidden_field: Conn.t -> 'msg Component.t
        ]
    ]}
 *)
-val meta_tag: Conn.t -> 'msg Component.t(**
+val meta_tag: Conn.t -> 'msg Component.t
+
+(**
    Generate HTML meta tag for AJAX requests.
 
    Returns Component: {i <meta name="csrf-token" content="...">}

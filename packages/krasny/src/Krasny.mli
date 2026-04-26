@@ -11,7 +11,6 @@ open Std
 type format_error = Format_core.format_error =
   | Cannot_parse of Syn.Diagnostic.t Std.Collections.Vector.t
   | Cannot_lower of string
-
 val format_error_to_string: format_error -> string
 
 (**
@@ -45,7 +44,11 @@ val format_source: filename:Path.t -> string -> (string, format_error) result
    `stream_format result ~writer ~width` renders a parse result directly into
    [writer] with the streaming formatter.
 *)
-val stream_format: Syn.Parser.parse_result -> writer:IO.Writer.t -> width:int -> (unit, write_error) result
+val stream_format:
+  Syn.Parser.parse_result ->
+  writer:IO.Writer.t ->
+  width:int ->
+  (unit, write_error) result
 
 (**
    `stream_format_to_string result ~width` renders a parse result with the
@@ -69,10 +72,10 @@ val syntax_hash_source: filename:Path.t -> string -> string
 (** `write ~writer result` renders a parse result into the provided writer. *)
 val write: writer:IO.Writer.t -> Syn.Parser.parse_result -> (unit, write_error) result
 
-module Stream_doc : module type of Stream_doc
+module Stream_doc: module type of Stream_doc
 
-module Streaming_lower : module type of Streaming_lower
+module Streaming_lower: module type of Streaming_lower
 
-module Runner : module type of Runner
+module Runner: module type of Runner
 
-module Report : module type of Report
+module Report: module type of Report

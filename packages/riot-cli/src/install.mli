@@ -16,7 +16,11 @@ val command: Std.ArgParser.command
    discovery succeeded. That lets the CLI keep workspace-bound and detached
    install flows in one place.
 *)
-val run_with_workspace_info: workspace:Riot_model.Workspace.t option -> workspace_error:string option -> Std.ArgParser.matches -> (unit, exn) result
+val run_with_workspace_info:
+  workspace:Riot_model.Workspace.t option ->
+  workspace_error:string option ->
+  Std.ArgParser.matches ->
+  (unit, exn) result
 
 (** Run [riot install] in a known workspace. *)
 val run: workspace:Riot_model.Workspace.t -> Std.ArgParser.matches -> (unit, exn) result

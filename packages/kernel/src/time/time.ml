@@ -19,7 +19,5 @@ external gmtime: float -> tm = "caml_kernel_gmtime"
 external mktime: tm -> float * tm = "caml_kernel_mktime"
 
 module SystemTime = System_time
-
 module Monotonic = Monotonic
-
 module Timer = Timer

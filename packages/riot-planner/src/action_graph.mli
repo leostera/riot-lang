@@ -5,7 +5,6 @@ module G = Std.Graph.SimpleGraph
 
 (** Create an empty action graph *)
 type t
-
 val create: unit -> t
 
 (**
@@ -39,7 +38,18 @@ val hash_action_node: t -> Action_node.t -> Crypto.hash
    This enables parallelization analysis: nodes without dependencies
    between them can be built in parallel.
 *)
-val from_module_graph: ?analyzed_modules:(G.Node_id.t * Module_graph.analyzed_module) list -> package:Package.t -> profile:Profile.t -> ctx:Build_ctx.t -> toolchain:Riot_toolchain.t -> store:Riot_store.Store.t -> depset:Dependency.t list -> needs_unix:bool -> needs_dynlink:bool -> Module_node.t G.t -> t * Path.t list
+val from_module_graph:
+  ?analyzed_modules:(G.Node_id.t * Module_graph.analyzed_module) list ->
+  package:Package.t ->
+  profile:Profile.t ->
+  ctx:Build_ctx.t ->
+  toolchain:Riot_toolchain.t ->
+  store:Riot_store.Store.t ->
+  depset:Dependency.t list ->
+  needs_unix:bool ->
+  needs_dynlink:bool ->
+  Module_node.t G.t ->
+  t * Path.t list
 
 val add_node: t -> Action_node.action_spec -> Action_node.t
 

@@ -3,6 +3,7 @@ open Global
 open IO
 
 (* Result monad for cleaner error handling *)
+
 let ( let* ) = fun x f -> Result.and_then x ~fn:f
 
 type error =
@@ -33,6 +34,7 @@ type 'src t = {
 }
 
 (* Helper: Read encrypted data from network and pump into TLS engine *)
+
 let read_from_network = fun t ->
   let buffer = IO.Buffer.create ~size:(Bytes.length t.network_in_buf) in
   match IO.read t.reader ~into:buffer with
@@ -43,12 +45,15 @@ let read_from_network = fun t ->
         (
           let chunk = IO.Buffer.to_bytes buffer in
           Bytes.blit_unchecked chunk ~src_offset:0 ~dst:t.network_in_buf ~dst_offset:0 ~len:n;
-          let _ = Tls.pump_encrypted_in t.engine t.network_in_buf ~pos:0 ~len:n in Ok ()
+          let _ = Tls.pump_encrypted_in t.engine t.network_in_buf ~pos:0 ~len:n in
+          Ok ()
         )
   | Error err -> Error (Network_read_failed err)
 
 (* Already wrapped by map_err *)
+
 (* Helper: Flush encrypted data from TLS engine to network *)
+
 let flush_to_network = fun t ->
   let rec flush_loop () =
     let n = Tls.read_encrypted_out t.engine t.network_out_buf in
@@ -65,6 +70,7 @@ let flush_to_network = fun t ->
   flush_loop ()
 
 (* Perform TLS handshake *)
+
 let do_handshake = fun t ->
   let rec handshake_loop () =
     if Tls.handshake_complete t.engine then
@@ -77,9 +83,7 @@ let do_handshake = fun t ->
         | Need_network_read ->
             (* TLS needs encrypted data from network *)
             (* But first, flush any pending output (e.g., ClientHello) *)
-            let* () = flush_to_network t
-            in
-            let* () = read_from_network t in handshake_loop ()
+            let* () = flush_to_network t in let* () = read_from_network t in handshake_loop ()
         | Need_network_write ->
             (* TLS needs to send encrypted data to network *)
             let* () = flush_to_network t in handshake_loop ()
@@ -104,7 +108,7 @@ let of_client_io = fun ~reader ~writer ~hostname () ->
       engine;
       state = `Active;
       network_in_buf = Bytes.create ~size:16_384;
-      network_out_buf = Bytes.create ~size:16_384
+      network_out_buf = Bytes.create ~size:16_384;
     }
     in
     match do_handshake t with
@@ -127,7 +131,7 @@ let of_server_io = fun ~reader ~writer ~cert_file ~key_file () ->
       engine;
       state = `Active;
       network_in_buf = Bytes.create ~size:16_384;
-      network_out_buf = Bytes.create ~size:16_384
+      network_out_buf = Bytes.create ~size:16_384;
     }
     in
     match do_handshake t with
@@ -143,9 +147,12 @@ let of_tcp_socket = fun ~mode sock ->
 
 let of_tcp_client = fun ~hostname tcp -> of_tcp_socket ~mode:(`Client hostname) tcp
 
-let of_tcp_server = fun ~cert_file ~key_file tcp -> of_tcp_socket ~mode:(`Server (cert_file, key_file)) tcp
+let of_tcp_server = fun ~cert_file ~key_file tcp -> of_tcp_socket
+  ~mode:(`Server (cert_file, key_file))
+  tcp
 
 (* Read plaintext from TLS stream *)
+
 let read_plaintext t dst: (int, error) Result.t =
   let rec read_loop () =
     match Tls.read_decrypted t.engine dst ~pos:0 ~len:(Bytes.length dst) with
@@ -162,17 +169,18 @@ let read_plaintext t dst: (int, error) Result.t =
   | `Eof -> Ok 0
   | `Error e -> raise e
   | `Active -> (
-    match read_loop () with
-    | Ok 0 ->
-        t.state <- `Eof;
-        Ok 0
-    | Ok n -> Ok n
-    | Error e ->
-        t.state <- `Error (Failure "TLS read error");
-        Error e
-  )
+      match read_loop () with
+      | Ok 0 ->
+          t.state <- `Eof;
+          Ok 0
+      | Ok n -> Ok n
+      | Error e ->
+          t.state <- `Error (Failure "TLS read error");
+          Error e
+    )
 
 (* Write plaintext to TLS stream *)
+
 let write_plaintext_bytes t src_bytes: (int, error) Result.t =
   let src_len = Bytes.length src_bytes in
   let rec write_loop pos remaining =
@@ -194,16 +202,17 @@ let write_plaintext_bytes t src_bytes: (int, error) Result.t =
   | `Eof -> Error Closed
   | `Error e -> raise e
   | `Active -> (
-    match write_loop 0 src_len with
-    | Ok n -> Ok n
-    | Error e ->
-        t.state <- `Error (Failure "TLS write error");
-        Error e
-  )
+      match write_loop 0 src_len with
+      | Ok n -> Ok n
+      | Error e ->
+          t.state <- `Error (Failure "TLS write error");
+          Error e
+    )
 
 let write_plaintext t src: (int, error) Result.t = write_plaintext_bytes t (Bytes.from_string src)
 
 (* Expose as reader *)
+
 let to_reader: type src. src t -> IO.Reader.t = fun tls_stream ->
   let module Read = struct
     type nonrec t = src t
@@ -214,9 +223,12 @@ let to_reader: type src. src t -> IO.Reader.t = fun tls_stream ->
           (
             match IO.Buffer.ensure_free into 4_096 with
             | Ok () -> IO.Buffer.writable into
-            | Error error -> Kernel.SystemError.panic ("Net.TlsStream.to_reader.ensure_free: " ^ Kernel.IO.Error.message error)
+            | Error error ->
+                Kernel.SystemError.panic
+                  ("Net.TlsStream.to_reader.ensure_free: " ^ Kernel.IO.Error.message error)
           )
-        else IO.Buffer.writable into
+        else
+          IO.Buffer.writable into
       in
       let scratch = Bytes.create ~size:(IO.IoSlice.length writable) in
       match read_plaintext tls scratch with
@@ -225,7 +237,9 @@ let to_reader: type src. src t -> IO.Reader.t = fun tls_stream ->
           begin
             match IO.Buffer.append_bytes into chunk with
             | Ok () -> Ok count
-            | Error error -> Kernel.SystemError.panic ("Net.TlsStream.to_reader.append: " ^ Kernel.IO.Error.message error)
+            | Error error ->
+                Kernel.SystemError.panic
+                  ("Net.TlsStream.to_reader.append: " ^ Kernel.IO.Error.message error)
           end
       | Error err -> Error (io_error_of_tls_error err)
 
@@ -238,22 +252,28 @@ let to_reader: type src. src t -> IO.Reader.t = fun tls_stream ->
         match read_plaintext tls scratch with
         | Ok count ->
             let copied = ref 0 in
-            IO.IoVec.for_each into ~fn:(
-              fun segment ->
+            IO.IoVec.for_each
+              into
+              ~fn:(fun segment ->
                 if !copied < count then
                   let remaining = count - !copied in
                   let available = IO.IoSlice.length segment in
                   let chunk =
                     if available < remaining then
                       available
-                    else remaining
+                    else
+                      remaining
                   in
                   if chunk > 0 then
                     (
-                      IO.IoSlice.blit_from_bytes_unchecked scratch ~src_off:!copied segment ~dst_off:0 ~len:chunk;
+                      IO.IoSlice.blit_from_bytes_unchecked
+                        scratch
+                        ~src_off:!copied
+                        segment
+                        ~dst_off:0
+                        ~len:chunk;
                       copied := !copied + chunk
-                    )
-            );
+                    ));
             Ok count
         | Error err -> Error (io_error_of_tls_error err)
 
@@ -262,6 +282,7 @@ let to_reader: type src. src t -> IO.Reader.t = fun tls_stream ->
   IO.Reader.from_source (module Read) tls_stream
 
 (* Expose as writer *)
+
 let to_writer: type src. src t -> IO.Writer.t = fun tls ->
   let module Write = struct
     type nonrec t = src t
@@ -281,6 +302,8 @@ let to_writer: type src. src t -> IO.Writer.t = fun tls ->
   IO.Writer.from_sink (module Write) tls
 
 (* TLS information *)
+
 let alpn_protocol = fun t -> Tls.alpn_protocol t.engine
 
-let close = fun _t -> ()(* Don't close underlying transport *)
+let close = fun _t -> ()
+(* Don't close underlying transport *)

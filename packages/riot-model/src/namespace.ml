@@ -10,9 +10,9 @@ let of_string = fun s ->
   if s = "" then
     []
   else
-    String.split ~by:"_" s |> List.filter ~fn:(
-      fun part -> not (String.is_empty part)
-    ) |> function
+    String.split ~by:"_" s
+    |> List.filter ~fn:(fun part -> not (String.is_empty part))
+    |> function
       | [] -> []
       | parts when List.length parts mod 2 = 0 ->
           (* Try to reconstruct from __ separated *)

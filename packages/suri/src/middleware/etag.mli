@@ -58,7 +58,9 @@ open Std
      etag ~weak:true;
    ]}
 *)
+
 (** {1 Middleware} *)
+
 (**
    ETag generation middleware.
 

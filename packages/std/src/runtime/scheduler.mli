@@ -7,9 +7,9 @@
    - one runnable queue per scheduler worker
    - a dedicated reactor domain for timers and async I/O polling
 *)
+
 (** Opaque scheduler runtime handle. *)
 type t
-
 (** Snapshot of scheduler counters used for multicore tracing. *)
 type trace_counters = {
   steals: int;
@@ -25,7 +25,11 @@ val get_scheduler: unit -> t
 val spawn: t -> (unit -> (unit, Process.exit_reason) Kernel.result) -> Pid.t
 
 (** Spawn a process pinned to a single normal scheduler. *)
-val spawn_pinned: ?worker_id:Scheduler_id.t -> t -> (unit -> (unit, Process.exit_reason) Kernel.result) -> Pid.t
+val spawn_pinned:
+  ?worker_id:Scheduler_id.t ->
+  t ->
+  (unit -> (unit, Process.exit_reason) Kernel.result) ->
+  Pid.t
 
 (**
    Spawn a process on a dedicated blocking lane outside the normal
@@ -55,7 +59,13 @@ val shutdown: t -> status:int -> unit
 val run: config:Config.t -> main:(unit -> (unit, Process.exit_reason) Kernel.result) -> int
 
 (** Register a timer in the reactor-owned timer wheel. *)
-val add_timer: t -> now:int64 -> duration_nanos:int64 -> mode:Timer.mode -> action:Timer.action -> Timer.id
+val add_timer:
+  t ->
+  now:int64 ->
+  duration_nanos:int64 ->
+  mode:Timer.mode ->
+  action:Timer.action ->
+  Timer.id
 
 (** Cancel a timer in the reactor-owned timer wheel. *)
 val cancel_timer: t -> Timer.id -> unit

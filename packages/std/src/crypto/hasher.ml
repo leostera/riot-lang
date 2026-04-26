@@ -1,10 +1,11 @@
 (** Hasher module type and utilities *)
+
 (** Interface that all hash algorithms must implement *)
 module type Intf = sig
   (** Internal state of the hasher *)
+
   (** Create a new hasher state *)
   type state
-
   val create: unit -> state
 
   (** Write immutable string data to the hasher - mutates state *)

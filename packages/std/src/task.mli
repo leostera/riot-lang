@@ -42,11 +42,11 @@
    - CPU-bound parallel computations
    - Running multiple independent operations concurrently
 *)
+
 open Global
 
 (** The type of an asynchronous task that will produce a value of type `'a` *)
 type 'a t
-
 (** # Creating and Running Tasks *)
 (**
    Starts an asynchronous task.

@@ -5,11 +5,25 @@ type provenance =
   | LoweredPattern of PatternArenaId.t
   | Prelude
   | Ambient
-  | TypeConstructor of { type_name: string; scope_path: SurfacePath.t }
-  | Exception of { name: string; scope_path: SurfacePath.t }
-  | DeclaredValue of { name: string; scope_path: SurfacePath.t }
-  | Included of { module_path: SurfacePath.t }
-  | ModuleAlias of { alias_name: string; module_path: SurfacePath.t }
+  | TypeConstructor of {
+      type_name: string;
+      scope_path: SurfacePath.t;
+    }
+  | Exception of {
+      name: string;
+      scope_path: SurfacePath.t;
+    }
+  | DeclaredValue of {
+      name: string;
+      scope_path: SurfacePath.t;
+    }
+  | Included of {
+      module_path: SurfacePath.t;
+    }
+  | ModuleAlias of {
+      alias_name: string;
+      module_path: SurfacePath.t;
+    }
 
 type t = {
   id: BindingId.t;
@@ -30,10 +44,14 @@ let make = fun ~id ~surface_path ~scheme ~provenance ->
     name = path_name surface_path;
     path = EntityId.resolved ~binding_id:id ~surface_path;
     scheme;
-    provenance
+    provenance;
   }
 
-let with_path = fun path binding -> { binding with name = path_name (EntityId.surface_path path); path }
+let with_path = fun path binding -> {
+  binding with
+  name = path_name (EntityId.surface_path path);
+  path;
+}
 
 let id = fun binding -> binding.id
 
@@ -51,7 +69,8 @@ let scheme = fun binding -> binding.scheme
 
 let provenance = fun binding -> binding.provenance
 
-let with_surface_path = fun surface_path binding -> with_path (EntityId.resolved ~binding_id:binding.id ~surface_path) binding
+let with_surface_path = fun surface_path binding ->
+  with_path (EntityId.resolved ~binding_id:binding.id ~surface_path) binding
 
 let with_scheme = fun scheme binding -> { binding with scheme }
 

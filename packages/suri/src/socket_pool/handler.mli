@@ -13,6 +13,7 @@ type ('state, 'error) handler_result =
   | Close of 'state
   | Error of 'state * 'error
   | Switch of t
+
 and ('state, 'error) handler = {
   to_string_error: 'error -> string;
   (** Convert 'error to string for logging *)
@@ -29,8 +30,12 @@ and ('state, 'error) handler = {
   handle_message: Message.t -> Connection.t -> 'state -> ('state, 'error) handler_result;
   (** Called when an inter-process message arrives *)
 }
+
 and t =
-  | H : { handler: ('new_state, 'error) handler; state: 'new_state } -> t
+  | H: {
+      handler: ('new_state, 'error) handler;
+      state: 'new_state;
+    } -> t
 
 (**
    Default handler implementations.

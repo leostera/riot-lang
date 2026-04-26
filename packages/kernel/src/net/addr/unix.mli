@@ -6,7 +6,6 @@ type error =
   | InvalidSocketAddr of { ip: string; port: int }
   | ResolutionFailed of { host: string }
   | System of System_error.t
-
 val error_to_string: error -> string
 
 val resolve_stream: host:string -> port:int -> (Socket_addr.t array, error) Result.t

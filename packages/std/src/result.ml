@@ -8,11 +8,13 @@ type ('a, 'e) t = ('a, 'e) Kernel.Result.t =
   | Error of 'e
 
 (* Constructors *)
+
 let ok = fun x -> Ok x
 
 let err = fun e -> Error e
 
 (* Querying *)
+
 let is_ok = function
   | Ok _ -> true
   | Error _ -> false
@@ -34,6 +36,7 @@ let is_err_and = fun f ->
   | Ok _ -> false
 
 (* Transforming *)
+
 let map = fun value ~fn ->
   match value with
   | Ok x -> Ok (fn x)
@@ -57,6 +60,7 @@ let map_or_else = fun value ~default ~fn ->
   | Error e -> default e
 
 (* Chaining *)
+
 let and_then = fun value ~fn ->
   match value with
   | Ok x -> fn x
@@ -73,6 +77,7 @@ let or_else = fun value ~fn ->
   | Error e -> fn e
 
 (* Extracting values *)
+
 let unwrap = function
   | Ok x -> x
   | Error _ -> panic "called Result.unwrap on an Error value"
@@ -115,6 +120,7 @@ let err_value = function
   | Ok _ -> None
 
 (* Inspecting *)
+
 let inspect = fun f r ->
   (
     match r with
@@ -132,6 +138,7 @@ let inspect_err = fun f r ->
   r
 
 (* Iterating *)
+
 let iter = fun value ~fn ->
   match value with
   | Ok x -> fn x
@@ -147,6 +154,7 @@ let iter_err = iiter_err
 let iter_error = iiter_err
 
 (* Converting *)
+
 let to_option = function
   | Ok x -> Some x
   | Error _ -> None
@@ -164,11 +172,13 @@ let transpose = function
   | Error e -> Some (Error e)
 
 (* Flattening *)
+
 let flatten = function
   | Ok r -> r
   | Error e -> Error e
 
 (* Collecting *)
+
 let all = fun results ->
   let rec go = fun acc ->
     function
@@ -179,12 +189,13 @@ let all = fun results ->
   go [] results
 
 let both = fun r1 r2 ->
-  match r1, r2 with
-  | Ok x, Ok y -> Ok (x, y)
-  | Error e, _ -> Error e
-  | _, Error e -> Error e
+  match (r1, r2) with
+  | (Ok x, Ok y) -> Ok (x, y)
+  | (Error e, _) -> Error e
+  | (_, Error e) -> Error e
 
 (* Misc *)
+
 let fold = fun value ~ok ~error ->
   match value with
   | Ok x -> ok x

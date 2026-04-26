@@ -1,13 +1,8 @@
 module Error = Error
-
 module IoVec = IoVec
-
 module Buffer = Buffer
-
 module Stdin = Stdio.Stdin
-
 module Stdout = Stdio.Stdout
-
 module Stderr = Stdio.Stderr
 
 let print = Stdout.print

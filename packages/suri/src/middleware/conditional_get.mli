@@ -72,7 +72,9 @@
    - Standard HTTP caching behavior
    - Works with both ETag and Last-Modified headers
 *)
-val middleware: conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t(**
+val middleware: conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t
+
+(**
    [middleware ~conn ~next] checks conditional request headers and returns
    304 Not Modified if the content hasn't changed.
 

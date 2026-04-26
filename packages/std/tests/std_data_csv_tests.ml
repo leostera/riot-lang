@@ -24,8 +24,8 @@ let test_parse_multiple_rows = fun _ctx ->
   let iter = Csv.of_string "a,b\nc,d" in
   let row1 = Iter.MutIterator.next iter in
   let row2 = Iter.MutIterator.next iter in
-  match row1, row2 with
-  | Some (Ok [ "a"; "b" ]), Some (Ok [ "c"; "d" ]) -> Ok ()
+  match (row1, row2) with
+  | (Some (Ok [ "a"; "b" ]), Some (Ok [ "c"; "d" ])) -> Ok ()
   | _ -> Error "Failed to parse multiple rows"
 
 let test_parse_quoted_field = fun _ctx ->
@@ -63,7 +63,8 @@ let test_parse_with_newlines = fun _ctx ->
   let rows = Iter.MutIterator.to_list iter in
   if List.length rows = 2 then
     Ok ()
-  else Error "Failed to parse with different newline types"
+  else
+    Error "Failed to parse with different newline types"
 
 let test_custom_delimiter = fun _ctx ->
   let config = Csv.config ~delimiter:';' () in
@@ -91,44 +92,53 @@ let test_serialize_simple_row = fun _ctx ->
   let str = Csv.to_string [ row ] in
   if String.contains str "a" && String.contains str "b" then
     Ok ()
-  else Error ("Unexpected serialization: " ^ str)
+  else
+    Error ("Unexpected serialization: " ^ str)
 
 let test_serialize_with_comma = fun _ctx ->
   let row = [ "a,b"; "c" ] in
   let str = Csv.to_string [ row ] in
   if String.contains str "\"" then
     Ok ()
-  else Error "Field with comma should be quoted"
+  else
+    Error "Field with comma should be quoted"
 
 let test_serialize_with_quote = fun _ctx ->
   let row = [ "a\"b"; "c" ] in
   let str = Csv.to_string [ row ] in
   if String.contains str "\"" then
     Ok ()
-  else Error "Field with quote should be escaped"
+  else
+    Error "Field with quote should be escaped"
 
 let test_serialize_empty_field = fun _ctx ->
   let row = [ "a"; ""; "c" ] in
   let str = Csv.to_string [ row ] in
   if String.contains str "," then
     Ok ()
-  else Error "Empty field not serialized correctly"
+  else
+    Error "Empty field not serialized correctly"
 
 let test_serialize_rows = fun _ctx ->
   let rows = [ [ "a"; "b" ]; [ "c"; "d" ] ] in
   let str = Csv.to_string rows in
   if String.contains str "\n" then
     Ok ()
-  else Error "Multiple rows should be separated by newlines"
+  else
+    Error "Multiple rows should be separated by newlines"
 
 let test_roundtrip = fun _ctx ->
   let original = [ [ "a"; "b"; "c" ]; [ "1"; "2"; "3" ] ] in
   let str = Csv.to_string original in
   let iter = Csv.of_string str in
-  let parsed = Iter.MutIterator.to_list iter |> List.filter_map ~fn:Result.to_option in
+  let parsed =
+    Iter.MutIterator.to_list iter
+    |> List.filter_map ~fn:Result.to_option
+  in
   if parsed = original then
     Ok ()
-  else Error "Roundtrip failed"
+  else
+    Error "Roundtrip failed"
 
 let test_headers = fun _ctx ->
   let iter = Csv.of_string "name,age\nAlice,30\nBob,25" in
@@ -137,28 +147,29 @@ let test_headers = fun _ctx ->
   | Some (Ok [ "name"; "age" ]) -> Ok ()
   | _ -> Error "Failed to read headers"
 
-let tests = Test.[
-  case "parse simple row" test_parse_simple_row;
-  case "parse empty string" test_parse_empty_string;
-  case "parse single field" test_parse_single_field;
-  case "parse multiple rows" test_parse_multiple_rows;
-  case "parse quoted field" test_parse_quoted_field;
-  case "parse quoted comma" test_parse_quoted_comma;
-  case "parse escaped quote" test_parse_escaped_quote;
-  case "parse empty fields" test_parse_empty_fields;
-  case "parse trailing comma" test_parse_trailing_comma;
-  case "parse with newlines" test_parse_with_newlines;
-  case "custom delimiter" test_custom_delimiter;
-  case "TSV parsing" test_tsv_parsing;
-  case "trim fields" test_trim_fields;
-  case "serialize simple row" test_serialize_simple_row;
-  case "serialize with comma" test_serialize_with_comma;
-  case "serialize with quote" test_serialize_with_quote;
-  case "serialize empty field" test_serialize_empty_field;
-  case "serialize rows" test_serialize_rows;
-  case "roundtrip" test_roundtrip;
-  case "headers" test_headers;
-]
+let tests =
+  Test.[
+    case "parse simple row" test_parse_simple_row;
+    case "parse empty string" test_parse_empty_string;
+    case "parse single field" test_parse_single_field;
+    case "parse multiple rows" test_parse_multiple_rows;
+    case "parse quoted field" test_parse_quoted_field;
+    case "parse quoted comma" test_parse_quoted_comma;
+    case "parse escaped quote" test_parse_escaped_quote;
+    case "parse empty fields" test_parse_empty_fields;
+    case "parse trailing comma" test_parse_trailing_comma;
+    case "parse with newlines" test_parse_with_newlines;
+    case "custom delimiter" test_custom_delimiter;
+    case "TSV parsing" test_tsv_parsing;
+    case "trim fields" test_trim_fields;
+    case "serialize simple row" test_serialize_simple_row;
+    case "serialize with comma" test_serialize_with_comma;
+    case "serialize with quote" test_serialize_with_quote;
+    case "serialize empty field" test_serialize_empty_field;
+    case "serialize rows" test_serialize_rows;
+    case "roundtrip" test_roundtrip;
+    case "headers" test_headers;
+  ]
 
 let main ~args = Test.Cli.main ~name:"csv" ~tests ~args ()
 

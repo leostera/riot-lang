@@ -13,13 +13,22 @@ type event = t
 module Buffer = struct
   type event = t
 
-  type t = { events: event Vector.t; diagnostics: Diagnostic.t Vector.t }
+  type t = {
+    events: event Vector.t;
+    diagnostics: Diagnostic.t Vector.t;
+  }
 
   type marker = { index: int }
 
-  type completed = { start_index: int; kind: Syntax_kind.t }
+  type completed = {
+    start_index: int;
+    kind: Syntax_kind.t;
+  }
 
-  let create = fun ?(event_capacity = 0) ?(diagnostic_capacity = 0) () -> { events = Vector.with_capacity ~size:event_capacity; diagnostics = Vector.with_capacity ~size:diagnostic_capacity }
+  let create = fun ?(event_capacity = 0) ?(diagnostic_capacity = 0) () -> {
+    events = Vector.with_capacity ~size:event_capacity;
+    diagnostics = Vector.with_capacity ~size:diagnostic_capacity;
+  }
 
   let start_node = fun t ->
     let index = Vector.length t.events in

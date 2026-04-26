@@ -9,12 +9,9 @@ open Suri
    Run: riot run suri:hello_world
    Test: curl http://localhost:4000
 *)
-let app =
-  [
-    (
-      fun ~conn ~next:_ -> Conn.respond conn ~status:Ok ~body:"Hello from Suri!"
-    );
-  ]
+let app = [
+  fun ~conn ~next:_ -> Conn.respond conn ~status:Ok ~body:"Hello from Suri!";
+]
 
 let main ~args:_ =
   Std.Config.load_file (Path.v "packages/suri/examples/conf.toml");

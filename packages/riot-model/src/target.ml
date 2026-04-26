@@ -19,12 +19,14 @@ module Set = struct
 
   let singleton = fun target ->
     let set = empty () in
-    let _ = Collections.HashSet.insert set ~value:target in set
+    let _ = Collections.HashSet.insert set ~value:target in
+    set
 
   let of_list = Collections.HashSet.from_list
 
   let insert = fun set target ->
-    let _ = Collections.HashSet.insert set ~value:target in ()
+    let _ = Collections.HashSet.insert set ~value:target in
+    ()
 
   let contains = fun set target -> Collections.HashSet.contains set ~value:target
 
@@ -32,9 +34,11 @@ module Set = struct
 
   let is_empty = Collections.HashSet.is_empty
 
-  let to_list = fun set -> Collections.HashSet.to_list set |> List.sort ~compare:(
-    fun left right -> String.compare (System.TargetTriple.to_string left) (System.TargetTriple.to_string right)
-  )
+  let to_list = fun set ->
+    Collections.HashSet.to_list set
+    |> List.sort
+      ~compare:(fun left right ->
+        String.compare (System.TargetTriple.to_string left) (System.TargetTriple.to_string right))
 end
 
 type request =
@@ -43,7 +47,10 @@ type request =
   | Pattern of string
   | Exact of Set.t
 
-type resolve_error = { pattern: string; available_targets: t list }
+type resolve_error = {
+  pattern: string;
+  available_targets: t list;
+}
 
 let current = System.TargetTriple.current
 
@@ -61,17 +68,20 @@ let host = fun () -> current
 
 let make_set = Set.of_list
 
-let normalize_pattern = fun value -> String.trim value |> String.lowercase_ascii
+let normalize_pattern = fun value ->
+  String.trim value
+  |> String.lowercase_ascii
 
 let parse = fun value ->
   match normalize_pattern value with
-  | "host" | "native" -> Host
+  | "host"
+  | "native" -> Host
   | "all" -> All
   | normalized -> (
-    match from_string normalized with
-    | Ok target -> Exact (Set.singleton target)
-    | Error _ -> Pattern normalized
-  )
+      match from_string normalized with
+      | Ok target -> Exact (Set.singleton target)
+      | Error _ -> Pattern normalized
+    )
 
 let configured_targets = fun ~host (config: Toolchain_config.t) ->
   match config.targets with
@@ -80,7 +90,8 @@ let configured_targets = fun ~host (config: Toolchain_config.t) ->
       let set = Set.of_list targets in
       if Set.is_empty set then
         Set.singleton host
-      else set
+      else
+        set
 
 let resolve = fun ~host ~configured_targets request ->
   match request with
@@ -88,27 +99,35 @@ let resolve = fun ~host ~configured_targets request ->
   | All -> Ok configured_targets
   | Exact targets -> Ok targets
   | Pattern pattern -> (
-    match normalize_pattern pattern with
-    | "host" | "native" -> Ok (Set.singleton host)
-    | "all" -> Ok configured_targets
-    | normalized -> (
-      match from_string normalized with
-      | Ok exact_target when Set.contains configured_targets exact_target -> Ok (Set.singleton exact_target)
-      | Ok _ | Error _ ->
-          let matches = Set.to_list configured_targets |> List.filter ~fn:(
-            fun target -> String.contains (to_string target) normalized
-          ) in
-          if List.is_empty matches then
-            Error { pattern = normalized; available_targets = Set.to_list configured_targets }
-          else Ok (Set.of_list matches)
+      match normalize_pattern pattern with
+      | "host"
+      | "native" -> Ok (Set.singleton host)
+      | "all" -> Ok configured_targets
+      | normalized -> (
+          match from_string normalized with
+          | Ok exact_target when Set.contains configured_targets exact_target ->
+              Ok (Set.singleton exact_target)
+          | Ok _
+          | Error _ ->
+              let matches =
+                Set.to_list configured_targets
+                |> List.filter ~fn:(fun target -> String.contains (to_string target) normalized)
+              in
+              if List.is_empty matches then
+                Error { pattern = normalized; available_targets = Set.to_list configured_targets }
+              else
+                Ok (Set.of_list matches)
+        )
     )
-  )
 
 let request_to_string = function
   | Host -> "host"
   | All -> "all"
   | Pattern pattern -> pattern
-  | Exact targets -> Set.to_list targets |> List.map ~fn:to_string |> String.concat ","
+  | Exact targets ->
+      Set.to_list targets
+      |> List.map ~fn:to_string
+      |> String.concat ","
 
 let is_cross = fun target -> not (equal target current)
 

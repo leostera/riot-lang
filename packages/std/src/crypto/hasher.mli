@@ -26,12 +26,13 @@
 
    See [Crypto] for the default algorithm and convenience functions.
 *)
+
 (** Interface that all hash algorithms must implement *)
 module type Intf = sig
   (** Internal state of the state *)
+
   (** Create a new state state *)
   type state
-
   val create: unit -> state
 
   (** Write immutable string data to the state. *)

@@ -14,13 +14,15 @@ let compare = Order.compare
 
 let min = fun left right ->
   match compare left right with
-  | Order.LT | Order.EQ -> left
+  | Order.LT
+  | Order.EQ -> left
   | Order.GT -> right
 
 let max = fun left right ->
   match compare left right with
   | Order.LT -> right
-  | Order.EQ | Order.GT -> left
+  | Order.EQ
+  | Order.GT -> left
 
 let ( != ) = Caml_runtime.not_equal
 

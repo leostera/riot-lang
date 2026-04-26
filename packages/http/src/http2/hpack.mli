@@ -12,9 +12,9 @@ open Std
    - Huffman encoding for string values (defined in RFC 7541 Appendix B)
 *)
 (** {1 Types} *)
+
 (** A header field is a name-value pair *)
 type header = { name: string; value: string }
-
 (** Encoding representation for a header field *)
 type encoding_type =
   | Indexed
@@ -26,12 +26,11 @@ type encoding_type =
   | LiteralNeverIndexed
 
 (** Literal never indexed - MUST NOT be added to table (e.g., sensitive data) *)
+
 (** Encoder context maintains the dynamic table state *)
 type encoder
-
 (** Decoder context maintains the dynamic table state *)
 type decoder
-
 (** {1 Encoder} *)
 (**
    Create a new encoder with the given dynamic table size limit.
@@ -64,6 +63,7 @@ val encode_header: encoder -> header -> encoding_type:encoding_type -> bytes
 val update_max_table_size: encoder -> int -> unit
 
 (** {1 Decoder} *)
+
 (**
    Create a new decoder with the given dynamic table size limit.
    Default is 4096 bytes per RFC 7541.
@@ -86,6 +86,7 @@ val decode: decoder -> bytes -> (header list, string) Result.t
 val update_max_table_size: decoder -> int -> unit
 
 (** {1 Static Table} *)
+
 (**
    Lookup a header in the static table by index (1-61).
    Returns None if index is out of range.
@@ -105,6 +106,7 @@ val static_table_find: name:string -> value:string -> int option
 val static_table_find_name: string -> int option
 
 (** {1 Utilities} *)
+
 (**
    Check if a header name should never be indexed (security-sensitive).
    Examples: authorization, cookie, set-cookie

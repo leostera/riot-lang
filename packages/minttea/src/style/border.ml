@@ -6,27 +6,34 @@ let rec create_string = fun n s ->
   if n = 0 then
     ""
   else
-    let str = create_string (n - 1) s in str ^ s
+    let str = create_string (n - 1) s in
+    str ^ s
 
-let utf8_len = fun str -> (* TODO: Implement proper grapheme cluster counting *)
-(* For now, use byte length as approximation *)
-String.length (remove_color_sequences str)
+let utf8_len = fun str ->
+  (* TODO: Implement proper grapheme cluster counting *)
+  (* For now, use byte length as approximation *)
+  String.length (remove_color_sequences str)
 
-let split_lines = fun text -> (* Split on \n, handling optional \r before it *)
-String.split_on_char '\n' text |> List.map ~fn:(
-  fun line ->
-    if String.length line > 0 && String.get line ~at:(String.length line - 1) = Some '\r' then
-      String.sub line ~offset:0 ~len:(String.length line - 1)
-    else line
-)
+let split_lines = fun text ->
+  (* Split on \n, handling optional \r before it *)
+  String.split_on_char '\n' text
+  |> List.map
+    ~fn:(fun line ->
+      if String.length line > 0 && String.get line ~at:(String.length line - 1) = Some '\r' then
+        String.sub line ~offset:0 ~len:(String.length line - 1)
+      else
+        line)
 
-let get_width = fun text -> List.fold_left (split_lines text) ~init:0 ~fn:(
-  fun acc line ->
-    let len = utf8_len (remove_color_sequences line) in
-    if acc < len then
-      len
-    else acc
-)
+let get_width = fun text ->
+  List.fold_left
+    (split_lines text)
+    ~init:0
+    ~fn:(fun acc line ->
+      let len = utf8_len (remove_color_sequences line) in
+      if acc < len then
+        len
+      else
+        acc)
 
 let get_height = fun text -> List.length (split_lines text)
 
@@ -60,7 +67,7 @@ let make = fun ?top ?left ?bottom ?right ?top_left ?top_right ?bottom_left ?bott
     middle_right;
     middle;
     middle_top;
-    middle_bottom
+    middle_bottom;
   }
 
 let build_border = fun (border: t) text ->
@@ -76,13 +83,17 @@ let build_border = fun (border: t) text ->
   let top_border = top_left ^ create_string width top ^ top_right in
   let bottom_border = bottom_left ^ create_string width bottom ^ bottom_right in
   let l = split_lines text in
-  let l = List.map l ~fn:(
-    fun x ->
-      let x_w = get_width x in
-      let extra_right_spacing = create_string (width - x_w) " " in
-      let res = left ^ x ^ extra_right_spacing ^ right in res
-  ) in
-  let text = String.concat "\n" l in top_border ^ "\n" ^ text ^ "\n" ^ bottom_border
+  let l =
+    List.map
+      l
+      ~fn:(fun x ->
+        let x_w = get_width x in
+        let extra_right_spacing = create_string (width - x_w) " " in
+        let res = left ^ x ^ extra_right_spacing ^ right in
+        res)
+  in
+  let text = String.concat "\n" l in
+  top_border ^ "\n" ^ text ^ "\n" ^ bottom_border
 
 let normal = {
   top = Some "─";
@@ -97,7 +108,7 @@ let normal = {
   middle_right = Some "┤";
   middle = Some "┼";
   middle_top = Some "┬";
-  middle_bottom = Some "┴"
+  middle_bottom = Some "┴";
 }
 
 let rounded = {
@@ -113,7 +124,7 @@ let rounded = {
   middle_right = Some "┤";
   middle = Some "┼";
   middle_top = Some "┬";
-  middle_bottom = Some "┴"
+  middle_bottom = Some "┴";
 }
 
 let block = {
@@ -129,7 +140,7 @@ let block = {
   middle_right = None;
   middle = None;
   middle_top = None;
-  middle_bottom = None
+  middle_bottom = None;
 }
 
 let outer_half_block = {
@@ -145,7 +156,7 @@ let outer_half_block = {
   middle_right = None;
   middle = None;
   middle_top = None;
-  middle_bottom = None
+  middle_bottom = None;
 }
 
 let inner_half_block = {
@@ -161,7 +172,7 @@ let inner_half_block = {
   middle_right = None;
   middle = None;
   middle_top = None;
-  middle_bottom = None
+  middle_bottom = None;
 }
 
 let thick = {
@@ -177,7 +188,7 @@ let thick = {
   middle_right = Some "┫";
   middle = Some "╋";
   middle_top = Some "┳";
-  middle_bottom = Some "┻"
+  middle_bottom = Some "┻";
 }
 
 let double = {
@@ -193,7 +204,7 @@ let double = {
   middle_right = Some "╣";
   middle = Some "╬";
   middle_top = Some "╦";
-  middle_bottom = Some "╩"
+  middle_bottom = Some "╩";
 }
 
 let hidden = {
@@ -209,5 +220,5 @@ let hidden = {
   middle_right = Some " ";
   middle = Some " ";
   middle_top = Some " ";
-  middle_bottom = Some " "
+  middle_bottom = Some " ";
 }

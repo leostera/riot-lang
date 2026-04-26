@@ -1,5 +1,4 @@
 type 'value t = 'value array
-
 val make: count:int -> value:'value -> 'value t
 
 val init: count:int -> fn:(int -> 'value) -> 'value t
@@ -80,7 +79,7 @@ val iter: 'value t -> 'value Iter.Iterator.t
 *)
 val mut_iter: 'value t -> 'value Iter.MutIterator.t
 
-module Syntax : sig
+module Syntax: sig
   val get: 'value t -> int -> 'value
 
   val set: 'value t -> int -> 'value -> unit

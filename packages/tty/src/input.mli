@@ -48,6 +48,7 @@
    ]}
 *)
 (** {1 Types} *)
+
 type key =
   | Char of char
   (** Regular character *)
@@ -79,7 +80,9 @@ type key =
   | KeypadBegin
   (** Often keypad 5 with NumLock off *)
   | Media of media_key
+
 (** Media control keys *)
+
 (** Media control keys *)
 and media_key =
   | Play
@@ -95,7 +98,6 @@ and media_key =
   | LowerVolume
   | RaiseVolume
   | MuteVolume
-
 type modifier =
   | Shift
   | Alt
@@ -104,7 +106,6 @@ type modifier =
   | Super
   (** Windows/Command key *)
   | Hyper
-
 type mouse_button =
   | Left
   | Middle
@@ -114,7 +115,6 @@ type mouse_button =
   | ScrollLeft
   (** Touchpad horizontal scroll *)
   | ScrollRight
-
 (** Touchpad horizontal scroll *)
 type mouse_action =
   | Mouse_press
@@ -124,7 +124,6 @@ type mouse_action =
   | Mouse_drag
   (** Mouse moved with button held *)
   | Mouse_move
-
 (** Mouse moved without button pressed *)
 type mouse_event = {
   button: mouse_button;
@@ -135,7 +134,6 @@ type mouse_event = {
   (** Row (1-based) *)
   modifiers: modifier list;
 }
-
 (** Key event kind distinguishes press, release, and repeat *)
 type key_event_kind =
   | Press
@@ -145,33 +143,46 @@ type key_event_kind =
   | Repeat
 
 (** Key auto-repeat *)
+
 (** Keyboard event with kind information *)
-type key_event = { code: key; modifiers: modifier list; kind: key_event_kind }
-
+type key_event = {
+  code: key;
+  modifiers: modifier list;
+  kind: key_event_kind;
+}
 (** Terminal events *)
-type event = [`Key of key_event | `Text of string (** UTF-8 text input that cannot be represented as a single Latin-1 char *)
-| `Mouse of mouse_event | `Resize of int * int (** width × height *)
-| `Paste of string (** Bracketed paste content *)
-| `FocusGained | `FocusLost | `Unknown of string (** Unknown escape sequence *)
-| `Retry (** No data available, try again *)
-| `End]
+type event = [
+  | `Key of key_event
+  | `Text of string
+  (** UTF-8 text input that cannot be represented as a single Latin-1 char *)
+  | `Mouse of mouse_event
+  | `Resize of int * int
+  (** width × height *)
+  | `Paste of string
+  (** Bracketed paste content *)
+  | `FocusGained
+  | `FocusLost
+  | `Unknown of string
+  (** Unknown escape sequence *)
+  | `Retry
+  (** No data available, try again *)
+  | `End
+]
 
-module Token : sig
+module Token: sig
   type control =
     | Escape
     | Csi of { raw: string; body: string }
     | Ss3 of { raw: string; body: string }
     | Osc of { raw: string; body: string }
-
   type t =
     | Text of string
     | Control of control
     | Unknown of string
 end
 
-module Tokenizer : sig
+module Tokenizer: sig
   type t
-
   val create: unit -> t
 
   val feed: t -> string -> t * Token.t list
@@ -179,9 +190,8 @@ module Tokenizer : sig
   val flush: t -> t * Token.t list
 end
 
-module Parser : sig
+module Parser: sig
   type t
-
   val create: unit -> t
 
   val feed: t -> string -> t * event list
@@ -190,6 +200,7 @@ module Parser : sig
 end
 
 (** {1 Reading Events} *)
+
 val read_event: unit -> event
 
 (**
@@ -236,4 +247,7 @@ val button_to_string: mouse_button -> string
 
 (** [button_to_string btn] returns a human-readable name for the mouse button. *)
 (** {1 Event Formatting} *)
-val event_to_string: event -> string(** [event_to_string event] converts an event to a readable string. *)
+
+val event_to_string: event -> string
+
+(** [event_to_string event] converts an event to a readable string. *)

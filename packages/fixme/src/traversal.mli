@@ -7,23 +7,15 @@ open Std
    rewriting the same syntax-tree traversal code each time.
 *)
 type syntax_tree = Syn.Ast.Node.t
-
 type syntax_node = Syn.Ast.Node.t
-
 type syntax_token = Syn.Ast.Token.t
-
 type syntax_element =
   | Node of syntax_node
   | Token of syntax_token
-
 type red_tree = syntax_tree
-
 type red_node = syntax_node
-
 type red_token = syntax_token
-
 type red_element = syntax_element
-
 (** {1 Finding Nodes} *)
 (**
    Return all nodes in [tree] that satisfy [predicate].
@@ -56,6 +48,7 @@ val find_by_kind: Syn.SyntaxKind.t -> red_tree -> red_node list
 val find_by_kinds: Syn.SyntaxKind.t list -> red_tree -> red_node list
 
 (** {1 Token Queries} *)
+
 (** Return all tokens in [tree] that satisfy [predicate]. *)
 val find_tokens: (red_token -> bool) -> red_tree -> red_token list
 
@@ -71,8 +64,12 @@ val first_non_trivia_child: red_node -> red_element option
 val first_non_trivia_token: red_node -> red_token option
 
 (** {1 Visitor Pattern} *)
+
 (** Visitor used by [fold]. *)
-type 'acc visitor = { visit_node: red_node -> 'acc -> 'acc; visit_token: red_token -> 'acc -> 'acc }
+type 'acc visitor = {
+  visit_node: red_node -> 'acc -> 'acc;
+  visit_token: red_token -> 'acc -> 'acc;
+}
 
 (**
    Fold over a tree in preorder.
@@ -96,10 +93,12 @@ type 'acc visitor = { visit_node: red_node -> 'acc -> 'acc; visit_token: red_tok
 val fold: 'acc visitor -> 'acc -> red_tree -> 'acc
 
 (** {1 Utilities} *)
+
 (** Return `true` if the syntax kind is trivia. *)
 val is_trivia: Syn.SyntaxKind.t -> bool
 
 (** {1 Typed Ast Helpers} *)
+
 (**
    Return the expressions reachable from the structure item.
 

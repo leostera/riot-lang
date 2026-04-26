@@ -17,13 +17,16 @@ let set = fun value ~at ~char -> Kernel.Bytes.set value ~at ~char
 
 let set_unchecked = fun value ~at ~char -> Kernel.Bytes.set_unchecked value ~at ~char
 
-let blit = fun src ~src_offset ~dst ~dst_offset ~len -> Kernel.Bytes.blit src ~src_offset ~dst ~dst_offset ~len
+let blit = fun src ~src_offset ~dst ~dst_offset ~len ->
+  Kernel.Bytes.blit src ~src_offset ~dst ~dst_offset ~len
 
-let blit_unchecked = fun src ~src_offset ~dst ~dst_offset ~len -> Kernel.Bytes.blit_unchecked src ~src_offset ~dst ~dst_offset ~len
+let blit_unchecked = fun src ~src_offset ~dst ~dst_offset ~len ->
+  Kernel.Bytes.blit_unchecked src ~src_offset ~dst ~dst_offset ~len
 
 let blit_string = fun src ~src_offset ~dst ~dst_offset ~len ->
   let slice = Kernel.String.sub src ~offset:src_offset ~len in
-  let src_bytes = Kernel.String.to_bytes slice in Kernel.Bytes.blit_unchecked src_bytes ~src_offset:0 ~dst ~dst_offset ~len
+  let src_bytes = Kernel.String.to_bytes slice in
+  Kernel.Bytes.blit_unchecked src_bytes ~src_offset:0 ~dst ~dst_offset ~len
 
 let fill = fun value ~offset ~len ~char -> Kernel.Bytes.fill value ~offset ~len ~char
 

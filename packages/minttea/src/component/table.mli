@@ -55,16 +55,16 @@
 open Std
 
 (** ## Types *)
-type t
 
+type t
 (** A table instance *)
 type column
-
 (** A column definition with title and width *)
 type row = string list
 
 (** A row is a list of cell values (one per column) *)
 (** ## Column Definition *)
+
 val column: title:string -> width:int -> column
 
 (**
@@ -74,6 +74,7 @@ val column: title:string -> width:int -> column
    - `width` - The column width in characters
 *)
 (** ## Creation *)
+
 val make: column list -> row list -> t
 
 (**
@@ -85,6 +86,7 @@ val make: column list -> row list -> t
    Note: Each row should have the same number of cells as columns.
 *)
 (** ## Configuration *)
+
 val set_height: t -> height:int -> t
 
 (**
@@ -106,6 +108,7 @@ val set_cursor_char: t -> char:string -> t
 
 (** `set_cursor_char table char` sets the selection indicator. Default: "> " *)
 (** ## Data *)
+
 val columns: t -> column list
 
 (** `columns table` returns the column definitions. *)
@@ -119,6 +122,7 @@ val set_rows: t -> rows:row list -> t
 
 (** `set_rows table rows` replaces all rows. Resets selection to first row. *)
 (** ## Selection *)
+
 val selected_row: t -> row option
 
 (** `selected_row table` returns the currently selected row, if any. *)
@@ -144,6 +148,7 @@ val goto_bottom: t -> t
 
 (** [goto_bottom table] selects the last row. *)
 (** ## Focus *)
+
 val focus: t -> t
 
 (** `focus table` enables keyboard navigation and shows selection. *)
@@ -154,6 +159,7 @@ val is_focused: t -> bool
 
 (** `is_focused table` returns true if table has focus. *)
 (** ## Input Handling *)
+
 val handle_key: t -> Event.key -> Event.modifier -> t
 
 (**
@@ -172,7 +178,10 @@ val handle_key: t -> Event.key -> Event.modifier -> t
    Returns updated table. No-op if not focused.
 *)
 (** ## Rendering *)
-val view: t -> string(**
+
+val view: t -> string
+
+(**
    `view table` renders the table for display.
 
      Format:

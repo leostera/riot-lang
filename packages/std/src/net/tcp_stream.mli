@@ -2,7 +2,6 @@
 open Global
 
 type t = Kernel.Net.TcpStream.t
-
 (** Errors returned by stream operations. *)
 type error =
   | Connection_refused
@@ -22,7 +21,14 @@ val connect: Addr.stream_addr -> (t, error) Kernel.result
    @param timeout Optional timeout duration. If specified and no data arrives
                   within the timeout, raises [Syscall_timeout].
 *)
-val read: t -> bytes -> ?pos:int -> ?len:int -> ?timeout:Time.Duration.t -> unit -> (int, error) Kernel.result
+val read:
+  t ->
+  bytes ->
+  ?pos:int ->
+  ?len:int ->
+  ?timeout:Time.Duration.t ->
+  unit ->
+  (int, error) Kernel.result
 
 (**
    Write data to the stream. This will suspend the process until the socket is

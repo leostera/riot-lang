@@ -13,7 +13,8 @@ type format_result =
 let find_ocamlformat_config = fun path ->
   let rec search dir =
     let ocamlformat_file = Path.join dir (Path.v ".ocamlformat") in
-    if Fs.exists ocamlformat_file |> Result.unwrap_or ~default:false then
+    if Fs.exists ocamlformat_file
+    |> Result.unwrap_or ~default:false then
       Some ocamlformat_file
     else
       match Path.parent dir with
@@ -21,11 +22,13 @@ let find_ocamlformat_config = fun path ->
       | Some parent ->
           if Path.equal parent dir then
             None
-          else search parent
+          else
+            search parent
   in
   search
     (
-      if Fs.is_dir path |> Result.unwrap_or ~default:false then
+      if Fs.is_dir path
+      |> Result.unwrap_or ~default:false then
         path
       else
         match Path.parent path with
@@ -35,22 +38,35 @@ let find_ocamlformat_config = fun path ->
 
 let format_file = fun t ~file_path ~check_only ->
   let file_str = Path.to_string file_path in
-  if not (Fs.exists file_path |> Result.unwrap_or ~default:false) then
+  if not
+    (
+      Fs.exists file_path
+      |> Result.unwrap_or ~default:false
+    ) then
     Error ("File not found: " ^ file_str)
+  else if not
+    (
+      (
+        file_str
+        |> String.ends_with ~suffix:".ml"
+      ) || (
+        file_str
+        |> String.ends_with ~suffix:".mli"
+      )
+    ) then
+    Error ("Not an OCaml file: " ^ file_str)
   else
-    if not ((file_str |> String.ends_with ~suffix:".ml") || (file_str |> String.ends_with ~suffix:".mli")) then
-      Error ("Not an OCaml file: " ^ file_str)
-    else
-      let check_flag =
-        if check_only then
-          "--check"
-        else "--inplace"
-      in
-      let ocamlformat_bin = Path.to_string t in
-      let cmd_str = ocamlformat_bin ^ " " ^ check_flag ^ " " ^ file_str in
-      let cmd = Command.make ~args:[ "-c"; cmd_str ] "sh" in
-      match Command.output cmd with
-      | Ok output when output.Command.status = 0 -> (
+    let check_flag =
+      if check_only then
+        "--check"
+      else
+        "--inplace"
+    in
+    let ocamlformat_bin = Path.to_string t in
+    let cmd_str = ocamlformat_bin ^ " " ^ check_flag ^ " " ^ file_str in
+    let cmd = Command.make ~args:[ "-c"; cmd_str ] "sh" in
+    match Command.output cmd with
+    | Ok output when output.Command.status = 0 -> (
         if check_only then
           Formatted { code = output.Command.stdout; changed = false }
         else
@@ -59,14 +75,18 @@ let format_file = fun t ~file_path ~check_only ->
           | Ok content -> Formatted { code = content; changed = true }
           | Error err -> Error ("Failed to read formatted file: " ^ IO.error_message err)
       )
-      | Ok output ->
-          let error_msg =
-            if String.length output.Command.stderr > 0 then
-              "ocamlformat failed with status " ^ Int.to_string output.Command.status ^ ": " ^ output.Command.stderr
-            else "ocamlformat failed with status " ^ Int.to_string output.Command.status
-          in
-          Error error_msg
-      | Error (Command.SystemError msg) -> Error msg
+    | Ok output ->
+        let error_msg =
+          if String.length output.Command.stderr > 0 then
+            "ocamlformat failed with status "
+            ^ Int.to_string output.Command.status
+            ^ ": "
+            ^ output.Command.stderr
+          else
+            "ocamlformat failed with status " ^ Int.to_string output.Command.status
+        in
+        Error error_msg
+    | Error (Command.SystemError msg) -> Error msg
 
 let format_code = fun t ~code ~file_path ->
   (* Create a temporary file with proper extension based on hint *)
@@ -76,7 +96,8 @@ let format_code = fun t ~code ~file_path ->
         let path_str = Path.to_string path in
         if String.ends_with ~suffix:".mli" path_str then
           ".mli"
-        else ".ml"
+        else
+          ".ml"
     | None -> ".ml"
   in
   let temp_file = "/tmp/riot_format_" ^ Int32.to_string (Process.id ()) ^ extension in
@@ -91,10 +112,15 @@ let format_code = fun t ~code ~file_path ->
           let cmd = Command.make ~args:[ "-c"; cmd_str ] "sh" in
           match Command.output cmd with
           | Ok output when output.Command.status = 0 ->
-              let changed = not (String.equal (String.trim output.Command.stdout) (String.trim code)) in Formatted { code = output.Command.stdout; changed }
-          | Ok output -> Error ("ocamlformat failed with status " ^ Int.to_string output.Command.status)
+              let changed =
+                not (String.equal (String.trim output.Command.stdout) (String.trim code))
+              in
+              Formatted { code = output.Command.stdout; changed }
+          | Ok output ->
+              Error ("ocamlformat failed with status " ^ Int.to_string output.Command.status)
           | Error (Command.SystemError msg) -> Error msg
         in
         (* Clean up temp file *)
-        let _ = Fs.remove_file temp_file_path in result
+        let _ = Fs.remove_file temp_file_path in
+        result
   )

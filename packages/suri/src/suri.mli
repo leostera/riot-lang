@@ -290,8 +290,10 @@ open Std
 
    {1 API Reference}
 *)
+
 (** {2 Top-Level API} *)
-module Config : sig
+
+module Config: sig
   (**
      Server Configuration
 
@@ -310,7 +312,6 @@ module Config : sig
     liveview_secret: string;
     (** Secret key for signing LiveView session tokens (min 32 characters) *)
   }
-
   val default: t
 
   (**
@@ -324,23 +325,35 @@ module Config : sig
      - buffer_size: 4096
      - liveview_secret: "INSECURE-CHANGE-ME-TO-AT-LEAST-32-CHARS" (MUST change in production!)
   *)
+
   (** Configuration via Std.Config - see Config.mli for full documentation *)
   val spec: Std.Config.Spec.t
 
   val get: Std.Config.Spec.value -> (t, Std.Config.error) result
 end
 
-val config: ?host:string -> ?port:int -> ?acceptors:int -> ?max_request_line_length:int -> ?max_header_count:int -> ?max_header_length:int -> ?buffer_size:int -> ?liveview_secret:string -> unit -> Config.t
+val config:
+  ?host:string ->
+  ?port:int ->
+  ?acceptors:int ->
+  ?max_request_line_length:int ->
+  ?max_header_count:int ->
+  ?max_header_length:int ->
+  ?buffer_size:int ->
+  ?liveview_secret:string ->
+  unit ->
+  Config.t
 
 (** Create server configuration with optional parameters. *)
 (** {2 Core Types} *)
-type middleware = Middleware.Pipeline.middleware
 
+type middleware = Middleware.Pipeline.middleware
 (** A middleware function: [Conn.t -> Conn.t] *)
 type handler = Middleware.Pipeline.t
 
 (** A handler is just a list of middleware functions *)
 (** {2 Starting the Server} *)
+
 val start_link: ?config:Config.t -> handler -> (Supervisor.Dynamic.t, [> `Bind_error]) result
 
 (**
@@ -377,6 +390,7 @@ val start_link: ?config:Config.t -> handler -> (Supervisor.Dynamic.t, [> `Bind_e
    @return Ok supervisor_pid if successful, Error `Bind_error if port binding fails
 *)
 (** {2 User-Facing Modules} *)
+
 module Conn = Middleware.Conn
 
 (**
@@ -415,6 +429,7 @@ module Request = Web_server.Request
    See {!Web_server.Request} for full documentation.
 *)
 (** {2 Framework Modules} *)
+
 module Middleware = Middleware
 
 (**
@@ -443,7 +458,9 @@ module Component = Component
 
    See {!Component} for complete documentation.
 *)
-module LiveView = Liveview(**
+module LiveView = Liveview
+
+(**
    Server-rendered components with live updates.
 
    Phoenix LiveView-style interactive UIs where events are

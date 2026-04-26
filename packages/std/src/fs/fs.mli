@@ -58,11 +58,12 @@
    Unix-like systems and Windows, particularly for permissions and symbolic
    links.
 *)
+
 open Iter
 
 type error = IO.error
 
-module Permissions : sig
+module Permissions: sig
   type t
 
   (** Unix file permissions *)
@@ -119,11 +120,13 @@ module Permissions : sig
   (** rwx------ (0700) - Owner read/write/execute only, no access for others *)
 end
 
-module Metadata : sig
+module Metadata: sig
   type t
 
   (** File metadata *)
-  val file_type: t -> [`Regular | `Directory | `Symlink | `Block | `Character | `Fifo | `Socket | `Unknown]
+  val file_type:
+    t ->
+    [`Regular | `Directory | `Symlink | `Block | `Character | `Fifo | `Socket | `Unknown]
 
   (** Get the file type *)
   val is_file: t -> bool
@@ -173,10 +176,9 @@ module Metadata : sig
   (** Device type (if special file) *)
 end
 
-module ReadDir : sig
+module ReadDir: sig
   (** Directory iterator *)
   type t
-
   type entry_kind = Kernel.Fs.ReadDir.kind =
     | RegularFile
     | Directory
@@ -186,9 +188,10 @@ module ReadDir : sig
     | NamedPipe
     | Socket
     | Unknown
-
-  type entry = { path: Path.t; kind: entry_kind }
-
+  type entry = {
+    path: Path.t;
+    kind: entry_kind;
+  }
   val open_dir: Path.t -> (t, error) Result.t
 
   (** Opaque directory handle *)
@@ -205,6 +208,7 @@ module File = File
 module Walker = Walker
 
 (** # Path Operations *)
+
 val canonicalize: Path.t -> (Path.t, error) Result.t
 
 (**
@@ -555,6 +559,7 @@ val write: string -> Path.t -> (unit, error) Result.t
    - [`create_dir_all`] - To ensure parent directories exist
 *)
 (** # Metadata Queries *)
+
 val metadata: Path.t -> (Metadata.t, error) Result.t
 
 (**
@@ -590,6 +595,7 @@ val symlink_metadata: Path.t -> (Metadata.t, error) Result.t
    _ -> false ```
 *)
 (** # Convenience Queries *)
+
 val is_file: Path.t -> (bool, error) Result.t
 
 (**
@@ -622,6 +628,7 @@ val is_dir: Path.t -> (bool, error) Result.t
    iter | Error _ -> 0 ```
 *)
 (** # Utilities *)
+
 val with_tempdir: ?prefix:string -> (Path.t -> 'a) -> ('a, error) Result.t
 
 (**

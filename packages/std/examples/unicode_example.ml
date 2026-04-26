@@ -46,7 +46,10 @@ let main ~args:_ =
       let s = Bytes.create ~size:4 in
       let n = ref c_code in
       for i = 3 downto 0 do
-        Bytes.set_unchecked s ~at:i ~char:(String.get_unchecked hex_chars ~at:(!n land 0xf));
+        Bytes.set_unchecked
+          s
+          ~at:i
+          ~char:(String.get_unchecked hex_chars ~at:(!n land 0xf));
         n := !n lsr 4
       done;
       Bytes.to_string s
@@ -71,12 +74,21 @@ let main ~args:_ =
           let s = Bytes.create ~size:4 in
           let n = ref code in
           for i = 3 downto 0 do
-            Bytes.set_unchecked s ~at:i ~char:(String.get_unchecked hex_chars ~at:(!n land 0xf));
+            Bytes.set_unchecked
+              s
+              ~at:i
+              ~char:(String.get_unchecked hex_chars ~at:(!n land 0xf));
             n := !n lsr 4
           done;
           Bytes.to_string s
         in
-        println ("   First rune of '" ^ s ^ "': U+" ^ hex_str ^ " at byte position " ^ Int.to_string next_pos)
+        println
+          ("   First rune of '"
+          ^ s
+          ^ "': U+"
+          ^ hex_str
+          ^ " at byte position "
+          ^ Int.to_string next_pos)
     | None -> println "   Failed to decode"
   );
   println ("   Is valid UTF-8: " ^ Bool.to_string (Unicode.Utf8.is_valid s));
@@ -86,7 +98,12 @@ let main ~args:_ =
   let s7 = "Hello 世界 World!" in
   println ("   Original: '" ^ s7 ^ "' (width: " ^ Int.to_string (String.width s7) ^ ")");
   let truncated = String.truncate_width ~width:10 s7 in
-  println ("   Truncated to width 10: '" ^ truncated ^ "' (width: " ^ Int.to_string (String.width truncated) ^ ")");
+  println
+    ("   Truncated to width 10: '"
+    ^ truncated
+    ^ "' (width: "
+    ^ Int.to_string (String.width truncated)
+    ^ ")");
   println "";
   (* Example 8: Padding with width awareness *)
   println "8. Padding strings (width-aware):";

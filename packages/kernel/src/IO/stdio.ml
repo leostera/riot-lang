@@ -8,13 +8,15 @@ type error =
 
 let validate_slice = fun buf ~pos ~len ->
   if pos < 0 || len < 0 || pos + len > Bytes.length buf then
-    Result.Error ({ pos; len; buffer_len = Bytes.length buf } : slice_validation)
-  else Result.Ok ()
+    Result.Error ({ pos; len; buffer_len = Bytes.length buf }: slice_validation)
+  else
+    Result.Ok ()
 
 let error_to_string = fun value ->
   match value with
   | InvalidSlice { pos; len; buffer_len } ->
-      String.concat ""
+      String.concat
+        ""
         [
           "invalid buffer slice: pos=";
           Int.to_string pos;
@@ -43,17 +45,18 @@ let to_source = fun fd ->
   let module Source = struct
     type nonrec t = int
 
-    let register = fun fd selector token interest -> Async.Adapter.Selector.register selector ~fd ~token ~interest
+    let register = fun fd selector token interest ->
+      Async.Adapter.Selector.register selector ~fd ~token ~interest
 
-    let reregister = fun fd selector token interest -> Async.Adapter.Selector.reregister selector ~fd ~token ~interest
+    let reregister = fun fd selector token interest ->
+      Async.Adapter.Selector.reregister selector ~fd ~token ~interest
 
     let deregister = fun fd selector -> Async.Adapter.Selector.deregister selector ~fd
   end in
   Async.Source.make (module Source) fd
 
-let map_system_error = fun result -> Result.map_err result ~fn:(
-  fun code -> System (System_error.from_code code)
-)
+let map_system_error = fun result ->
+  Result.map_err result ~fn:(fun code -> System (System_error.from_code code))
 
 let validate_buffer_write = fun ?(pos = 0) ?len buffer ->
   let len =
@@ -74,10 +77,14 @@ module Stdin = struct
 
   let read = fun ?pos ?len buffer ->
     match validate_buffer_write ?pos ?len buffer with
-    | Result.Ok (pos, len) -> FFI.read 0 buffer pos len |> map_system_error
+    | Result.Ok (pos, len) ->
+        FFI.read 0 buffer pos len
+        |> map_system_error
     | Result.Error error -> Result.Error error
 
-  let read_vectored = fun iovec -> FFI.readv 0 iovec |> map_system_error
+  let read_vectored = fun iovec ->
+    FFI.readv 0 iovec
+    |> map_system_error
 
   let flush = fun () -> Result.Ok ()
 
@@ -93,14 +100,22 @@ module Stdout = struct
 
   let write = fun ?pos ?len buffer ->
     match validate_buffer_write ?pos ?len buffer with
-    | Result.Ok (pos, len) -> FFI.write 1 buffer pos len |> map_system_error
+    | Result.Ok (pos, len) ->
+        FFI.write 1 buffer pos len
+        |> map_system_error
     | Result.Error error -> Result.Error error
 
-  let write_vectored = fun iovec -> FFI.writev 1 iovec |> map_system_error
+  let write_vectored = fun iovec ->
+    FFI.writev 1 iovec
+    |> map_system_error
 
-  let print = fun message -> FFI.print 1 message |> map_system_error
+  let print = fun message ->
+    FFI.print 1 message
+    |> map_system_error
 
-  let println = fun message -> FFI.println 1 message |> map_system_error
+  let println = fun message ->
+    FFI.println 1 message
+    |> map_system_error
 
   let flush = fun () -> Result.Ok ()
 
@@ -116,14 +131,22 @@ module Stderr = struct
 
   let write = fun ?pos ?len buffer ->
     match validate_buffer_write ?pos ?len buffer with
-    | Result.Ok (pos, len) -> FFI.write 2 buffer pos len |> map_system_error
+    | Result.Ok (pos, len) ->
+        FFI.write 2 buffer pos len
+        |> map_system_error
     | Result.Error error -> Result.Error error
 
-  let write_vectored = fun iovec -> FFI.writev 2 iovec |> map_system_error
+  let write_vectored = fun iovec ->
+    FFI.writev 2 iovec
+    |> map_system_error
 
-  let print = fun message -> FFI.print 2 message |> map_system_error
+  let print = fun message ->
+    FFI.print 2 message
+    |> map_system_error
 
-  let println = fun message -> FFI.println 2 message |> map_system_error
+  let println = fun message ->
+    FFI.println 2 message
+    |> map_system_error
 
   let flush = fun () -> Result.Ok ()
 

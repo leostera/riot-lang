@@ -2,9 +2,10 @@ open Std
 
 type file = { relative_path: string; content: string; executable: bool }
 
-let riot_skill_files =
-  [
-    { relative_path = ".agents/skills/riot/SKILL.md"; content = {|---
+let riot_skill_files = [
+  {
+    relative_path = ".agents/skills/riot/SKILL.md";
+    content = {|---
 name: riot
 description: Build, configure, run, test, benchmark, format, and troubleshoot projects that use the Riot toolchain. Use when Codex needs to work with `riot.toml`, `.riot/config.toml`, `ocaml-toolchain.toml`, `riot init`, `riot add`, `riot build`, `riot run`, `riot test`, `riot bench`, `riot fmt`, or `riot fix` in a Riot workspace or detached Riot package.
 ---
@@ -134,13 +135,21 @@ higher priority than this generic user skill.
   authoring, selection, recording, and comparison workflows.
 - Read [references/troubleshooting.md](references/troubleshooting.md) when Riot
   behavior looks surprising.
-|}; executable = false };
-    { relative_path = ".agents/skills/riot/agents/openai.yaml"; content = {|interface:
+|};
+    executable = false;
+  };
+  {
+    relative_path = ".agents/skills/riot/agents/openai.yaml";
+    content = {|interface:
   display_name: "Riot"
   short_description: "Build, run, and test Riot projects"
   default_prompt: "Use $riot to create, build, run, test, or troubleshoot a Riot workspace."
-|}; executable = false };
-    { relative_path = ".agents/skills/riot/references/commands.md"; content = {|# Command patterns
+|};
+    executable = false;
+  };
+  {
+    relative_path = ".agents/skills/riot/references/commands.md";
+    content = {|# Command patterns
 
 Use this reference when you know the task and need the right Riot command
 shape.
@@ -415,8 +424,12 @@ riot doc --json
 riot clean --json
 riot info --json
 ```
-|}; executable = false };
-    { relative_path = ".agents/skills/riot/references/testing.md"; content = {|# Testing
+|};
+    executable = false;
+  };
+  {
+    relative_path = ".agents/skills/riot/references/testing.md";
+    content = {|# Testing
 
 Use this reference when the task involves writing tests, running `riot test`,
 reviewing snapshots, suite selection, or repository-shared test policy.
@@ -576,8 +589,12 @@ Examples:
 riot test --json
 riot test -p my-package -f parser --json
 ```
-|}; executable = false };
-    { relative_path = ".agents/skills/riot/references/benchmarking.md"; content = {|# Benchmarking
+|};
+    executable = false;
+  };
+  {
+    relative_path = ".agents/skills/riot/references/benchmarking.md";
+    content = {|# Benchmarking
 
 Use this reference when the task involves writing benchmarks, running
 `riot bench`, recording benchmark history, or comparing performance over time.
@@ -688,8 +705,12 @@ typically expose:
 
 Most user tasks should still go through `riot bench` first so Riot can build the
 workspace once and pass the right context to each suite.
-|}; executable = false };
-    { relative_path = ".agents/skills/riot/references/troubleshooting.md"; content = {|# Troubleshooting
+|};
+    executable = false;
+  };
+  {
+    relative_path = ".agents/skills/riot/references/troubleshooting.md";
+    content = {|# Troubleshooting
 
 Use this reference when Riot behavior seems surprising or a command that should
 be simple does not behave as expected.
@@ -764,8 +785,12 @@ Checks:
 - read `ocaml-toolchain.toml`
 - confirm the user is actually using Riot's toolchain flow
 - avoid mixing unrelated external setup steps into a normal Riot workflow
-|}; executable = false };
-    { relative_path = ".agents/skills/riot/references/workspaces.md"; content = {|# Workspaces and config
+|};
+    executable = false;
+  };
+  {
+    relative_path = ".agents/skills/riot/references/workspaces.md";
+    content = {|# Workspaces and config
 
 Use this reference when you need to decide what kind of Riot project you are in
 and which config file owns a behavior.
@@ -878,8 +903,12 @@ Riot can treat that as the default runtime binary for the package.
 
 That means `riot run` may work without extra manifest boilerplate when the
 package layout is conventional.
-|}; executable = false };
-    { relative_path = ".agents/skills/riot/references/modules.md"; content = {|# Module system and dependency boundaries
+|};
+    executable = false;
+  };
+  {
+    relative_path = ".agents/skills/riot/references/modules.md";
+    content = {|# Module system and dependency boundaries
 
 Use this reference when a build fails because a module is unavailable, when you
 are changing package dependencies, or when source files cross package or target
@@ -958,10 +987,13 @@ When Riot reports that a module is not available:
 Do not work around these errors by guessing build paths or manually invoking the
 compiler. The module graph is Riot's source of truth for what the package is
 allowed to use.
-|}; executable = false };
-  ]
+|};
+    executable = false;
+  };
+]
 
-let dev_config_toml = fun ~workspace_name -> {|[app]
+let dev_config_toml = fun ~workspace_name ->
+  {|[app]
 name = "|} ^ workspace_name ^ {|"
 log_level = "info"
 |}

@@ -35,9 +35,9 @@
    match Metadata.created meta with | Some ctime -> Log.info "Created: %f"
    ctime | None -> Log.info "Creation time not available" ```
 *)
+
 (** File metadata from filesystem stat operations. *)
 type t = Kernel.Fs.File.Metadata.t
-
 (** ## File Properties *)
 (**
    Returns the file type.
@@ -49,6 +49,7 @@ type t = Kernel.Fs.File.Metadata.t
    device" | `Character -> "character device" | `Fifo -> "named pipe" | `Socket
    -> "Unix socket" ```
 *)
+
 (**
    Returns [true] if this is a regular file.
 
@@ -56,7 +57,9 @@ type t = Kernel.Fs.File.Metadata.t
 
    ```ocaml if Metadata.is_file meta then process_file path ```
 *)
-val file_type: t -> [ | `Regular | `Directory | `Symlink | `Block | `Character | `Fifo | `Socket | `Unknown]
+val file_type:
+  t ->
+  [ | `Regular | `Directory | `Symlink | `Block | `Character | `Fifo | `Socket | `Unknown]
 
 val is_file: t -> bool
 
@@ -104,6 +107,7 @@ val len: t -> int
 val permissions: t -> Permissions.t
 
 (** ## Timestamps *)
+
 (**
    Returns last access time (atime) as seconds since Unix epoch.
 
@@ -145,6 +149,7 @@ val modified: t -> float
 val created: t -> float option
 
 (** ## Unix-specific *)
+
 (**
    Returns Unix mode bits (permissions + file type).
 

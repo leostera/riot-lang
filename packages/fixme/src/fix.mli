@@ -4,7 +4,6 @@ open Std
 type target =
   | Node of Syn.Ast.Node.t
   | Token of Syn.Ast.Token.t
-
 (**
    Replacement content for an edit.
 
@@ -15,7 +14,6 @@ type replacement =
   | SourceOfNode of Syn.Ast.Node.t
   | SourceOfToken of Syn.Ast.Token.t
   | Text of string
-
 (** One syntax-directed edit operation. *)
 type operation =
   | Delete of { target: target }
@@ -23,7 +21,6 @@ type operation =
   | InsertBefore of { anchor: target; content: replacement }
   | InsertAfter of { anchor: target; content: replacement }
   | Swap of { left: target; right: target }
-
 (** A named fix composed of one or more edit operations. *)
 type fix = {
   (** Human-readable fix title shown to users. *)
@@ -31,9 +28,11 @@ type fix = {
   (** Operations applied when the fix is executed. *)
   operations: operation list;
 }
-
 (** Concrete text edit produced after lowering a syntax-directed fix. *)
-type text_edit = { span: Syn.Ceibo.Span.t; new_text: string }
+type text_edit = {
+  span: Syn.Ceibo.Span.t;
+  new_text: string;
+}
 
 (** Reuse the exact source slice covered by a syntax node. *)
 val source_of_node: Syn.Ast.Node.t -> replacement

@@ -25,12 +25,15 @@ let resolve_source_for_hash = fun ~(package:Package.t) ~src_path ->
       let normalized_root =
         if String.ends_with ~suffix:"/" raw_root then
           String.sub raw_root ~offset:0 ~len:(String.length raw_root - 1)
-        else raw_root
+        else
+          raw_root
       in
       if String.length normalized_root = 0 then
         Some (Path.v ".")
-      else Some (Path.v normalized_root)
-    else None
+      else
+        Some (Path.v normalized_root)
+    else
+      None
   in
   let candidates =
     if Path.is_absolute src_path then
@@ -45,12 +48,14 @@ let resolve_source_for_hash = fun ~(package:Package.t) ~src_path ->
       workspace_relative @ [ src_path ]
   in
   let rec first_existing = function
-    | [] -> src_path
+    | [] ->
+        src_path
     | path :: rest -> (
-      match Fs.exists path with
-      | Ok true -> path
-      | Ok false | Error _ -> first_existing rest
-    )
+        match Fs.exists path with
+        | Ok true -> path
+        | Ok false
+        | Error _ -> first_existing rest
+      )
   in
   first_existing candidates
 
@@ -60,79 +65,81 @@ let hash_file = fun ~(package:Package.t) path ->
   | Ok contents -> Crypto.hash_string contents
   | Error _ -> Crypto.hash_string (Path.to_string path)
 
-let make = fun ~actions ~outs ~srcs ~(package:Package.t) ~toolchain ~dependency_hashes ~deps -> let open Crypto in
-let hasher = Sha256.create () in
-Sha256.write hasher (Package_name.to_string package.Package.name);
-let toolchain_hash = Riot_toolchain.hash toolchain in
-Sha256.write_hash hasher toolchain_hash;
-let sorted_actions = List.sort actions ~compare:(
-  fun a b ->
-    let hash_a = Action.hash a in
-    let hash_b = Action.hash b in Crypto.Hash.compare hash_a hash_b
-) in
-List.for_each sorted_actions ~fn:(
-  fun action ->
-    let action_hash = Action.hash action in Sha256.write_hash hasher action_hash
-);
-let sorted_srcs = List.sort srcs ~compare:(
-  fun a b -> String.compare (Path.to_string a) (Path.to_string b)
-) in
-List.for_each sorted_srcs ~fn:(
-  fun source ->
-    let source_hash = hash_file ~package source in Sha256.write_hash hasher source_hash
-);
-let sorted_outs = List.sort outs ~compare:(
-  fun a b -> String.compare (Path.to_string a) (Path.to_string b)
-) in
-List.for_each sorted_outs ~fn:(
-  fun output -> Sha256.write hasher (Path.to_string output)
-);
-let sorted_deps = List.sort deps ~compare:(
-  fun a b -> Int.compare (G.Node_id.to_int a) (G.Node_id.to_int b)
-) in
-List.for_each sorted_deps ~fn:(
-  fun dep_id ->
-    let dep_hash = dependency_hashes dep_id in Sha256.write_hash hasher dep_hash
-);
-let hash = Sha256.finish hasher in
-{
-  actions;
-  outs;
-  srcs;
-  package;
-  toolchain;
-  hash
-}
+let make = fun ~actions ~outs ~srcs ~(package:Package.t) ~toolchain ~dependency_hashes ~deps ->
+  let open Crypto in
+  let hasher = Sha256.create () in
+  Sha256.write hasher (Package_name.to_string package.Package.name);
+  let toolchain_hash = Riot_toolchain.hash toolchain in
+  Sha256.write_hash hasher toolchain_hash;
+  let sorted_actions =
+    List.sort
+      actions
+      ~compare:(fun a b ->
+        let hash_a = Action.hash a in
+        let hash_b = Action.hash b in
+        Crypto.Hash.compare hash_a hash_b)
+  in
+  List.for_each
+    sorted_actions
+    ~fn:(fun action ->
+      let action_hash = Action.hash action in
+      Sha256.write_hash hasher action_hash);
+  let sorted_srcs =
+    List.sort srcs ~compare:(fun a b -> String.compare (Path.to_string a) (Path.to_string b))
+  in
+  List.for_each
+    sorted_srcs
+    ~fn:(fun source ->
+      let source_hash = hash_file ~package source in
+      Sha256.write_hash hasher source_hash);
+  let sorted_outs =
+    List.sort outs ~compare:(fun a b -> String.compare (Path.to_string a) (Path.to_string b))
+  in
+  List.for_each sorted_outs ~fn:(fun output -> Sha256.write hasher (Path.to_string output));
+  let sorted_deps =
+    List.sort deps ~compare:(fun a b -> Int.compare (G.Node_id.to_int a) (G.Node_id.to_int b))
+  in
+  List.for_each
+    sorted_deps
+    ~fn:(fun dep_id ->
+      let dep_hash = dependency_hashes dep_id in
+      Sha256.write_hash hasher dep_hash);
+  let hash = Sha256.finish hasher in
+  {
+    actions;
+    outs;
+    srcs;
+    package;
+    toolchain;
+    hash;
+  }
 
 let get_hash = fun (node: t) -> node.value.hash
 
-let to_json = fun (node: t) -> let open Data.Json in
-let spec = node.value in
-obj
-  [
-    "id", int (G.Node_id.to_int node.id);
-    "actions", array (List.map spec.actions ~fn:Action.to_json);
-    "outputs", array (List.map spec.outs ~fn:(
-      fun p -> string (Path.to_string p)
-    ));
-    "sources", array (List.map spec.srcs ~fn:(
-      fun p -> string (Path.to_string p)
-    ));
-    "package", string (Package_name.to_string spec.package.Package.name);
-    "package_path", string (Path.to_string spec.package.Package.path);
-    "package_relative_path", string (Path.to_string spec.package.Package.relative_path);
-    "hash", string (Crypto.Digest.hex spec.hash);
-    "dependencies", array (List.map node.deps ~fn:(
-      fun dep -> int (G.Node_id.to_int dep)
-    ));
-  ]
+let to_json = fun (node: t) ->
+  let open Data.Json in
+  let spec = node.value in
+  obj
+    [
+      ("id", int (G.Node_id.to_int node.id));
+      ("actions", array (List.map spec.actions ~fn:Action.to_json));
+      ("outputs", array (List.map spec.outs ~fn:(fun p -> string (Path.to_string p))));
+      ("sources", array (List.map spec.srcs ~fn:(fun p -> string (Path.to_string p))));
+      ("package", string (Package_name.to_string spec.package.Package.name));
+      ("package_path", string (Path.to_string spec.package.Package.path));
+      ("package_relative_path", string (Path.to_string spec.package.Package.relative_path));
+      ("hash", string (Crypto.Digest.hex spec.hash));
+      ("dependencies", array (List.map node.deps ~fn:(fun dep -> int (G.Node_id.to_int dep))));
+    ]
 
 let equal = fun (n1: t) (n2: t) ->
   let s1 = n1.value in
-  let s2 = n2.value in Crypto.Digest.hex s1.hash = Crypto.Digest.hex s2.hash && Package_name.equal s1.package.Package.name s2.package.Package.name && List.compare_lengths ~left:s1.actions ~right:s2.actions = 0 && List.compare_lengths ~left:s1.outs ~right:s2.outs = 0 && List.compare_lengths ~left:s1.srcs ~right:s2.srcs = 0 && List.all (List.zip s1.actions s2.actions) ~fn:(
-    fun (left, right) -> Action.equal left right
-  ) && List.all (List.zip s1.outs s2.outs) ~fn:(
-    fun (left, right) -> Path.equal left right
-  ) && List.all (List.zip s1.srcs s2.srcs) ~fn:(
-    fun (left, right) -> Path.equal left right
-  )
+  let s2 = n2.value in
+  Crypto.Digest.hex s1.hash = Crypto.Digest.hex s2.hash
+  && Package_name.equal s1.package.Package.name s2.package.Package.name
+  && List.compare_lengths ~left:s1.actions ~right:s2.actions = 0
+  && List.compare_lengths ~left:s1.outs ~right:s2.outs = 0
+  && List.compare_lengths ~left:s1.srcs ~right:s2.srcs = 0
+  && List.all (List.zip s1.actions s2.actions) ~fn:(fun (left, right) -> Action.equal left right)
+  && List.all (List.zip s1.outs s2.outs) ~fn:(fun (left, right) -> Path.equal left right)
+  && List.all (List.zip s1.srcs s2.srcs) ~fn:(fun (left, right) -> Path.equal left right)

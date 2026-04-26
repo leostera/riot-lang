@@ -15,7 +15,6 @@ type t =
   | TimeSystemTime of Time.SystemTime.error
   | TimeMonotonic of Time.Monotonic.error
   | TimeTimer of Time.Timer.error
-
 val from_async: Async.error -> t
 
 val from_env: Env.error -> t

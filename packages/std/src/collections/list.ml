@@ -6,11 +6,11 @@ let length = Kernel.List.length
 
 let compare_lengths = fun ~left ~right ->
   let rec loop left_values right_values =
-    match left_values, right_values with
-    | [], [] -> 0
-    | [], _ -> (-1)
-    | _, [] -> 1
-    | _ :: next_left, _ :: next_right -> loop next_left next_right
+    match (left_values, right_values) with
+    | ([], []) -> 0
+    | ([], _) -> (-1)
+    | (_, []) -> 1
+    | (_ :: next_left, _ :: next_right) -> loop next_left next_right
   in
   loop left right
 
@@ -92,12 +92,13 @@ let filter = fun values ~fn -> Kernel.List.filter values ~fn
 
 let filter_map = fun values ~fn ->
   let rec loop acc = function
-    | [] -> reverse acc
+    | [] ->
+        reverse acc
     | value :: rest -> (
-      match fn value with
-      | Some mapped -> loop (mapped :: acc) rest
-      | None -> loop acc rest
-    )
+        match fn value with
+        | Some mapped -> loop (mapped :: acc) rest
+        | None -> loop acc rest
+      )
   in
   loop [] values
 
@@ -107,9 +108,10 @@ let unique = fun values ~compare -> Kernel.List.unique values ~compare
 
 let zip = fun left right ->
   let rec loop acc left_values right_values =
-    match left_values, right_values with
-    | [], [] -> reverse acc
-    | left_value :: left_rest, right_value :: right_rest -> loop ((left_value, right_value) :: acc) left_rest right_rest
+    match (left_values, right_values) with
+    | ([], []) -> reverse acc
+    | (left_value :: left_rest, right_value :: right_rest) ->
+        loop ((left_value, right_value) :: acc) left_rest right_rest
     | _ -> Kernel.SystemError.panic "List.zip received lists with different lengths"
   in
   loop [] left right
@@ -117,7 +119,7 @@ let zip = fun left right ->
 let unzip = fun values ->
   let rec loop left_acc right_acc values =
     match values with
-    | [] -> reverse left_acc, reverse right_acc
+    | [] -> (reverse left_acc, reverse right_acc)
     | (left, right) :: rest -> loop (left :: left_acc) (right :: right_acc) rest
   in
   loop [] [] values

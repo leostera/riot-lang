@@ -25,6 +25,7 @@
    - HTTP/2 - Binary protocol with multiplexing
    - HTTP/3 - QUIC-based protocol
 *)
+
 open Global
 
 type t =
@@ -35,6 +36,7 @@ type t =
   | Http3
 
 (** HTTP protocol versions from 0.9 to 3.0. *)
+
 (**
    Parses an HTTP version string.
 

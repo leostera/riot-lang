@@ -56,7 +56,9 @@ val sign: secret:string -> data:string -> string
    Low-level function for signing arbitrary data.
    Most users should use {!encode} instead.
 *)
-val verify: secret:string -> data:string -> signature:string -> bool(**
+val verify: secret:string -> data:string -> signature:string -> bool
+
+(**
    Verify an HMAC-SHA256 signature using constant-time comparison.
 
    Low-level function for signature verification.

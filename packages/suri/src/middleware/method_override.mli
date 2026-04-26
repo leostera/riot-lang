@@ -106,7 +106,9 @@ open Std
    <input type="hidden" name="_http_method" value="DELETE">
    v}
 *)
+
 (** {1 Middleware} *)
+
 (**
    Method override middleware.
 

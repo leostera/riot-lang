@@ -16,6 +16,7 @@ type read_error =
   | Gzip_error of error
 
 (** The gzip payload was malformed or incomplete. *)
+
 (** Errors returned by streaming compression or decompression into a writer. *)
 type stream_error =
   | Stream_source_error of IO.error
@@ -25,6 +26,7 @@ type stream_error =
   | Stream_gzip_error of error
 
 (** The gzip engine rejected the payload or output stream. *)
+
 (** Errors returned by file-based compression helpers. *)
 type file_error =
   | File_io_error of Fs.error
@@ -32,6 +34,7 @@ type file_error =
   | File_gzip_error of error
 
 (** The gzip engine rejected the payload or output stream. *)
+
 (**
    Wrap a compressed reader as a decompressed reader.
 

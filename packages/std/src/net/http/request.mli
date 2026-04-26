@@ -60,9 +60,9 @@
    | None -> Log.warn "No auth header"
    ```
 *)
+
 (** An HTTP request with method, URI, headers, and optional body. *)
 type t
-
 (** ## Construction *)
 (**
    Creates a new HTTP request with the given method and URI.
@@ -75,6 +75,7 @@ type t
 val create: Method.t -> Uri.t -> t
 
 (** ## Access *)
+
 (**
    Returns the HTTP method.
 
@@ -130,6 +131,7 @@ val body: t -> Body.t option
 val body_string: t -> string option
 
 (** ## Modification *)
+
 (**
    Returns a new request with the given method.
 
@@ -244,7 +246,8 @@ val get_header: t -> Header.name -> Header.value option
 val has_header: t -> Header.name -> bool
 
 (** ## Builder Pattern *)
-module Builder : sig
+
+module Builder: sig
   (**
      Fluent builder for constructing HTTP requests.
 
@@ -259,13 +262,13 @@ module Builder : sig
        |> Request.Builder.build
      ```
   *)
+
   (** The final request type *)
+
   (** The builder type *)
   type request = t
-
   (** Creates a new request builder. *)
   type t
-
   val create: Method.t -> Uri.t -> t
 
   (** Sets the HTTP method. *)
@@ -298,6 +301,7 @@ module Builder : sig
 end
 
 (** ## Convenience Constructors *)
+
 (**
    Creates a GET request.
 

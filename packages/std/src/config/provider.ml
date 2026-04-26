@@ -5,7 +5,9 @@ type env = Loader.env
 type t =
   | Empty
   | Env of { env: env }
-  | Path of { path: Path.t }
+  | Path of {
+      path: Path.t;
+    }
   | Static of { toml_string: string }
 
 let empty = Empty

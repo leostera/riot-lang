@@ -76,6 +76,7 @@
 
    See [Dot] for Graphviz format (better for complex graphs).
 *)
+
 (** Direction of graph layout *)
 type direction =
   | TD
@@ -89,6 +90,7 @@ type direction =
   | LR
 
 (** Left to Right *)
+
 (** Node shapes available in Mermaid *)
 type node_shape =
   | Rectangle
@@ -110,10 +112,8 @@ type node_shape =
   | Parallelogram
   (** [/text/] - Parallelogram *)
   | Trapezoid
-
 (** [\text/] - Trapezoid *)
 type node = { id: string; label: string; shape: node_shape }
-
 (** Node with label and shape. *)
 type edge_style =
   | Solid
@@ -121,12 +121,19 @@ type edge_style =
   | Dotted
   (** -.-> Dotted arrow *)
   | Thick
-
 (** ==> Thick arrow *)
-type edge = { from_node: string; to_node: string; label: string option; style: edge_style }
-
+type edge = {
+  from_node: string;
+  to_node: string;
+  label: string option;
+  style: edge_style;
+}
 (** Edge with optional label and style. *)
-type t = { direction: direction; nodes: node list; edges: edge list }
+type t = {
+  direction: direction;
+  nodes: node list;
+  edges: edge list;
+}
 
 (** Mermaid diagram representation. *)
 val create: ?direction:direction -> unit -> t
@@ -135,7 +142,16 @@ val create: ?direction:direction -> unit -> t
 val add_node: t -> id:string -> label:string -> ?shape:node_shape -> unit -> t
 
 (** Add a node to the graph. *)
-val add_edge: t -> from_node:string -> to_node:string -> ?label:string -> ?style:edge_style -> unit -> t
+val add_edge:
+  t ->
+  from_node:string ->
+  to_node:string ->
+  ?label:string ->
+  ?style:edge_style ->
+  unit ->
+  t
 
 (** Add an edge between two nodes. *)
-val to_string: t -> string(** Convert to Mermaid diagram string. *)
+val to_string: t -> string
+
+(** Convert to Mermaid diagram string. *)

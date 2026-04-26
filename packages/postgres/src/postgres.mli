@@ -1,17 +1,19 @@
 open Std
 
-(** PostgreSQL driver support for [Sqlx].
+(**
+   PostgreSQL driver support for [Sqlx].
 
-    Use this package when a Riot application needs to talk to PostgreSQL
-    through the shared SQL interface. The public surface here focuses on the
-    parts callers actually configure directly: connection settings, driver
-    wiring, and error rendering.
+   Use this package when a Riot application needs to talk to PostgreSQL
+   through the shared SQL interface. The public surface here focuses on the
+   parts callers actually configure directly: connection settings, driver
+   wiring, and error rendering.
 *)
 
-(** PostgreSQL driver errors.
+(**
+   PostgreSQL driver errors.
 
-    Use this module when a caller needs to render driver failures into logs,
-    JSON responses, or diagnostics.
+   Use this module when a caller needs to render driver failures into logs,
+   JSON responses, or diagnostics.
 *)
 module Error: sig
   type t
@@ -23,10 +25,11 @@ module Error: sig
   val to_json: t -> Data.Json.t
 end
 
-(** Connection settings for PostgreSQL.
+(**
+   Connection settings for PostgreSQL.
 
-    This module is the main entry point for configuring how the driver connects
-    to a PostgreSQL server.
+   This module is the main entry point for configuring how the driver connects
+   to a PostgreSQL server.
 *)
 module Config: sig
   (** SSL/TLS policy for the connection. *)
@@ -55,28 +58,30 @@ module Config: sig
     keepalives_idle: Time.Duration.t option;
   }
 
-  (** Build a configuration with development-friendly defaults.
+  (**
+     Build a configuration with development-friendly defaults.
 
-      Example return values:
-      - [host = "localhost"]
-      - [port = 5432]
-      - [database = "postgres"]
-      - [user = "postgres"]
-      - [ssl_mode = Prefer]
+     Example return values:
+     - [host = "localhost"]
+     - [port = 5432]
+     - [database = "postgres"]
+     - [user = "postgres"]
+     - [ssl_mode = Prefer]
 
-      Override at least the database name and credentials before using the
-      result against a real server.
+     Override at least the database name and credentials before using the
+     result against a real server.
   *)
   val default: unit -> t
 
-  (** Parse a PostgreSQL connection string.
+  (**
+     Parse a PostgreSQL connection string.
 
-      Supported formats:
-      - URI form, such as [postgresql://user:password@localhost:5432/app]
-      - Simple colon-separated form, such as [localhost:5432:app:user:password]
+     Supported formats:
+     - URI form, such as [postgresql://user:password@localhost:5432/app]
+     - Simple colon-separated form, such as [localhost:5432:app:user:password]
 
-      Use [from_string] when configuration comes from environment variables,
-      command-line flags, or secrets storage.
+     Use [from_string] when configuration comes from environment variables,
+     command-line flags, or secrets storage.
   *)
   val from_string: string -> (t, string) Result.t
 end

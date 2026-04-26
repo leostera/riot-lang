@@ -85,7 +85,9 @@ open Global
 
    For full TOML 1.0 support, consider using a more complete parser.
 *)
+
 (** {1 Types} *)
+
 (**
    TOML value representation supporting strings, integers, booleans, arrays,
    and tables.
@@ -96,7 +98,6 @@ type value =
   | Array of value list
   | Table of (string * value) list
   | Bool of bool
-
 (** TOML parsing errors with position information for debugging. *)
 type error =
   | Invalid_path of { path: string }
@@ -105,7 +106,6 @@ type error =
   | Unterminated_string of { position: int }
   | Unterminated_array of { position: int }
   | Unexpected_char of { position: int; found: char; expected: string }
-
 (** {1 Parsing} *)
 (**
    Parses TOML source text and returns the root table.
@@ -141,6 +141,7 @@ val parse: string -> (value, error) result
 val error_to_string: error -> string
 
 (** {1 Extractors} *)
+
 (**
    Extracts a string value. Returns [None] if not a string.
 

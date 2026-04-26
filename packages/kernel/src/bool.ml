@@ -15,4 +15,5 @@ let not = fun value -> Caml_runtime.not_bool ~value
 let to_string = fun value ->
   if value then
     "true"
-  else "false"
+  else
+    "false"

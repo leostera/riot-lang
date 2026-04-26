@@ -10,58 +10,194 @@ module Manifest = Manifest
 
 let ( let* ) result fn = Result.and_then result ~fn
 
-let artifacts_namespace = Contentstore.Namespace.from_parts [ "artifacts" ] |> Result.expect ~msg:"riot-store artifacts namespace should be valid"
+let artifacts_namespace =
+  Contentstore.Namespace.from_parts [ "artifacts" ]
+  |> Result.expect ~msg:"riot-store artifacts namespace should be valid"
 
-let plans_namespace = Contentstore.Namespace.from_parts [ "plans" ] |> Result.expect ~msg:"riot-store plans namespace should be valid"
+let plans_namespace =
+  Contentstore.Namespace.from_parts [ "plans" ]
+  |> Result.expect ~msg:"riot-store plans namespace should be valid"
 
-type t = { content_store: ContentStore.t; plan_store: ContentStore.t }
+type t = {
+  content_store: ContentStore.t;
+  plan_store: ContentStore.t;
+}
 
 type error =
-  | HashNotFound of { hash: Crypto.hash }
-  | LoadManifestFailed of { path: Path.t; cause: string }
-  | CreateTargetDirFailed of { path: Path.t; cause: Fs.error }
-  | CreateParentDirFailed of { path: Path.t; cause: Fs.error }
-  | ReadSourceMetadataFailed of { path: Path.t; cause: Fs.error }
-  | CopyArtifactFailed of { src: Path.t; dst: Path.t; cause: Fs.error }
-  | SetCopiedArtifactPermissionsFailed of { src: Path.t; dst: Path.t; cause: Fs.error }
-  | CreateTempDirFailed of { path: Path.t; cause: Fs.error }
-  | CheckSourceExistsFailed of { path: Path.t; cause: Fs.error }
-  | MetadataReadFailed of { path: Path.t; cause: Fs.error }
-  | SaveManifestFailed of { path: Path.t; cause: string }
-  | CommitArtifactsFailed of { source_dir: Path.t; destination_dir: Path.t; cause: string }
-  | SavePlanBundleFailed of { hash: Crypto.hash; cause: string }
-  | ExportPathMustBeRelative of { path: Path.t }
-  | CreatePackageOutputDirFailed of { path: Path.t; cause: Fs.error }
-  | CopyExportFailed of { src: Path.t; dst: Path.t; cause: Fs.error }
-  | ExportSourceMissing of { path: Path.t }
+  | HashNotFound of {
+      hash: Crypto.hash;
+    }
+  | LoadManifestFailed of {
+      path: Path.t;
+      cause: string;
+    }
+  | CreateTargetDirFailed of {
+      path: Path.t;
+      cause: Fs.error;
+    }
+  | CreateParentDirFailed of {
+      path: Path.t;
+      cause: Fs.error;
+    }
+  | ReadSourceMetadataFailed of {
+      path: Path.t;
+      cause: Fs.error;
+    }
+  | CopyArtifactFailed of {
+      src: Path.t;
+      dst: Path.t;
+      cause: Fs.error;
+    }
+  | SetCopiedArtifactPermissionsFailed of {
+      src: Path.t;
+      dst: Path.t;
+      cause: Fs.error;
+    }
+  | CreateTempDirFailed of {
+      path: Path.t;
+      cause: Fs.error;
+    }
+  | CheckSourceExistsFailed of {
+      path: Path.t;
+      cause: Fs.error;
+    }
+  | MetadataReadFailed of {
+      path: Path.t;
+      cause: Fs.error;
+    }
+  | SaveManifestFailed of {
+      path: Path.t;
+      cause: string;
+    }
+  | CommitArtifactsFailed of {
+      source_dir: Path.t;
+      destination_dir: Path.t;
+      cause: string;
+    }
+  | SavePlanBundleFailed of {
+      hash: Crypto.hash;
+      cause: string;
+    }
+  | ExportPathMustBeRelative of {
+      path: Path.t;
+    }
+  | CreatePackageOutputDirFailed of {
+      path: Path.t;
+      cause: Fs.error;
+    }
+  | CopyExportFailed of {
+      src: Path.t;
+      dst: Path.t;
+      cause: Fs.error;
+    }
+  | ExportSourceMissing of {
+      path: Path.t;
+    }
 
-type export_entry = Manifest.export_entry = { name: string; path: Path.t; action_hash: string }
+type export_entry = Manifest.export_entry = {
+  name: string;
+  path: Path.t;
+  action_hash: string;
+}
 
 let error_message = function
   | HashNotFound { hash } -> "Hash not found in store: " ^ Crypto.Digest.hex hash
-  | LoadManifestFailed { path; cause } -> "Failed to load manifest: " ^ Path.to_string path ^ " (" ^ cause ^ ")"
-  | CreateTargetDirFailed { path; cause } -> "Failed to create target directory: " ^ Path.to_string path ^ " (" ^ IO.error_message cause ^ ")"
-  | CreateParentDirFailed { path; cause } -> "Failed to create parent directory: " ^ Path.to_string path ^ " (" ^ IO.error_message cause ^ ")"
-  | ReadSourceMetadataFailed { path; cause } -> "Failed to read source metadata: " ^ Path.to_string path ^ " (" ^ IO.error_message cause ^ ")"
-  | CopyArtifactFailed { src; dst; cause } -> "Failed to copy file: " ^ Path.to_string src ^ " -> " ^ Path.to_string dst ^ " (" ^ IO.error_message cause ^ ")"
-  | SetCopiedArtifactPermissionsFailed { src; dst; cause } -> "Failed to preserve copied file permissions: " ^ Path.to_string src ^ " -> " ^ Path.to_string dst ^ " (" ^ IO.error_message cause ^ ")"
-  | CreateTempDirFailed { path; cause } -> "Failed to create temp directory: " ^ Path.to_string path ^ " (" ^ IO.error_message cause ^ ")"
-  | CheckSourceExistsFailed { path; cause } -> "Failed to check source path: " ^ Path.to_string path ^ " (" ^ IO.error_message cause ^ ")"
-  | MetadataReadFailed { path; cause } -> "Failed to get metadata for " ^ Path.to_string path ^ " (" ^ IO.error_message cause ^ ")"
-  | SaveManifestFailed { path; cause } -> "Failed to save manifest: " ^ Path.to_string path ^ " (" ^ cause ^ ")"
-  | CommitArtifactsFailed { source_dir; destination_dir; cause } -> "Failed to commit artifact directory: " ^ Path.to_string source_dir ^ " -> " ^ Path.to_string destination_dir ^ " (" ^ cause ^ ")"
-  | SavePlanBundleFailed { hash; cause } -> "Failed to save plan bundle for " ^ Crypto.Digest.hex hash ^ " (" ^ cause ^ ")"
+  | LoadManifestFailed { path; cause } ->
+      "Failed to load manifest: " ^ Path.to_string path ^ " (" ^ cause ^ ")"
+  | CreateTargetDirFailed { path; cause } ->
+      "Failed to create target directory: "
+      ^ Path.to_string path
+      ^ " ("
+      ^ IO.error_message cause
+      ^ ")"
+  | CreateParentDirFailed { path; cause } ->
+      "Failed to create parent directory: "
+      ^ Path.to_string path
+      ^ " ("
+      ^ IO.error_message cause
+      ^ ")"
+  | ReadSourceMetadataFailed { path; cause } ->
+      "Failed to read source metadata: " ^ Path.to_string path ^ " (" ^ IO.error_message cause ^ ")"
+  | CopyArtifactFailed { src; dst; cause } ->
+      "Failed to copy file: "
+      ^ Path.to_string src
+      ^ " -> "
+      ^ Path.to_string dst
+      ^ " ("
+      ^ IO.error_message cause
+      ^ ")"
+  | SetCopiedArtifactPermissionsFailed { src; dst; cause } ->
+      "Failed to preserve copied file permissions: "
+      ^ Path.to_string src
+      ^ " -> "
+      ^ Path.to_string dst
+      ^ " ("
+      ^ IO.error_message cause
+      ^ ")"
+  | CreateTempDirFailed { path; cause } ->
+      "Failed to create temp directory: "
+      ^ Path.to_string path
+      ^ " ("
+      ^ IO.error_message cause
+      ^ ")"
+  | CheckSourceExistsFailed { path; cause } ->
+      "Failed to check source path: " ^ Path.to_string path ^ " (" ^ IO.error_message cause ^ ")"
+  | MetadataReadFailed { path; cause } ->
+      "Failed to get metadata for " ^ Path.to_string path ^ " (" ^ IO.error_message cause ^ ")"
+  | SaveManifestFailed { path; cause } ->
+      "Failed to save manifest: " ^ Path.to_string path ^ " (" ^ cause ^ ")"
+  | CommitArtifactsFailed { source_dir; destination_dir; cause } ->
+      "Failed to commit artifact directory: "
+      ^ Path.to_string source_dir
+      ^ " -> "
+      ^ Path.to_string destination_dir
+      ^ " ("
+      ^ cause
+      ^ ")"
+  | SavePlanBundleFailed { hash; cause } ->
+      "Failed to save plan bundle for " ^ Crypto.Digest.hex hash ^ " (" ^ cause ^ ")"
   | ExportPathMustBeRelative { path } -> "Export path must be relative: " ^ Path.to_string path
-  | CreatePackageOutputDirFailed { path; cause } -> "Failed to create package output directory: " ^ Path.to_string path ^ " (" ^ IO.error_message cause ^ ")"
-  | CopyExportFailed { src; dst; cause } -> "Failed to copy export: " ^ Path.to_string src ^ " -> " ^ Path.to_string dst ^ " (" ^ IO.error_message cause ^ ")"
-  | ExportSourceMissing { path } -> "Export source is missing from the store: " ^ Path.to_string path ^ " (cache is corrupted; try `riot clean`)"
+  | CreatePackageOutputDirFailed { path; cause } ->
+      "Failed to create package output directory: "
+      ^ Path.to_string path
+      ^ " ("
+      ^ IO.error_message cause
+      ^ ")"
+  | CopyExportFailed { src; dst; cause } ->
+      "Failed to copy export: "
+      ^ Path.to_string src
+      ^ " -> "
+      ^ Path.to_string dst
+      ^ " ("
+      ^ IO.error_message cause
+      ^ ")"
+  | ExportSourceMissing { path } ->
+      "Export source is missing from the store: "
+      ^ Path.to_string path
+      ^ " (cache is corrupted; try `riot clean`)"
 
 (** Create a store rooted at a specific build lane *)
 let create_for_lane = fun ~(workspace:Workspace.t) ~profile ~target ->
-  let store_dir = Path.(workspace.target_dir_root / Path.v profile / Path.v (Riot_model.Target.to_string target) / Path.v "cache") in { content_store = ContentStore.create ~root:store_dir ~ns:artifacts_namespace ~policy:Contentstore.Policy.default; plan_store = ContentStore.create ~root:store_dir ~ns:plans_namespace ~policy:Contentstore.Policy.default }
+  let store_dir =
+    Path.(workspace.target_dir_root
+    / Path.v profile
+    / Path.v (Riot_model.Target.to_string target)
+    / Path.v "cache")
+  in
+  {
+    content_store = ContentStore.create
+      ~root:store_dir
+      ~ns:artifacts_namespace
+      ~policy:Contentstore.Policy.default;
+    plan_store = ContentStore.create
+      ~root:store_dir
+      ~ns:plans_namespace
+      ~policy:Contentstore.Policy.default;
+  }
 
 (** Create a new store for the given workspace *)
-let create = fun ~(workspace:Workspace.t) -> create_for_lane ~workspace ~profile:"debug" ~target:(Riot_dirs.host_target ())
+let create = fun ~(workspace:Workspace.t) ->
+  create_for_lane ~workspace ~profile:"debug" ~target:(Riot_dirs.host_target ())
 
 (** Get the path for a given hash in the store *)
 let get_hash_dir = fun store hash -> ContentStore.hash_dir_of store.content_store hash
@@ -71,18 +207,22 @@ let manifest_path = fun hash_dir -> Path.(hash_dir / Path.v "manifest.json")
 let manifest_cache_key = fun hash -> Std.Crypto.Digest.hex hash
 
 let copy_with_permissions = fun ~src ~dst ~copy_error ->
-  let* metadata = Fs.metadata src |> Result.map_err ~fn:(
-    fun cause -> ReadSourceMetadataFailed { path = src; cause }
-  )
+  let* metadata =
+    Fs.metadata src
+    |> Result.map_err ~fn:(fun cause -> ReadSourceMetadataFailed { path = src; cause })
   in
-  let* () = Fs.copy ~src ~dst |> Result.map_err ~fn:copy_error in Fs.set_permissions dst (Fs.Metadata.permissions metadata) |> Result.map_err ~fn:(
-    fun cause -> SetCopiedArtifactPermissionsFailed { src; dst; cause }
-  )
+  let* () =
+    Fs.copy ~src ~dst
+    |> Result.map_err ~fn:copy_error
+  in
+  Fs.set_permissions dst (Fs.Metadata.permissions metadata)
+  |> Result.map_err ~fn:(fun cause -> SetCopiedArtifactPermissionsFailed { src; dst; cause })
 
 let cleanup_temp_dir = fun temp_dir ->
   match Fs.exists temp_dir with
   | Ok true -> Fs.remove_dir_all temp_dir
-  | Ok false | Error _ -> Ok ()
+  | Ok false
+  | Error _ -> Ok ()
 
 let artifact_temp_counter = cell 0L
 
@@ -92,10 +232,22 @@ let next_artifact_temp_nonce = fun () ->
   nonce
 
 let artifact_temp_dir = fun store hash ->
-  let nanos = Time.SystemTime.duration_since_epoch () |> Time.Duration.to_nanos in
-  let pid = Process.id () |> Int32.to_string in
-  let nonce = next_artifact_temp_nonce () |> Int64.to_string in
-  let temp_name = Std.Crypto.Digest.hex hash ^ ".tmp." ^ pid ^ "." ^ Int64.to_string nanos ^ "." ^ nonce in Path.(ContentStore.root store.content_store / Path.v temp_name)
+  let nanos =
+    Time.SystemTime.duration_since_epoch ()
+    |> Time.Duration.to_nanos
+  in
+  let pid =
+    Process.id ()
+    |> Int32.to_string
+  in
+  let nonce =
+    next_artifact_temp_nonce ()
+    |> Int64.to_string
+  in
+  let temp_name =
+    Std.Crypto.Digest.hex hash ^ ".tmp." ^ pid ^ "." ^ Int64.to_string nanos ^ "." ^ nonce
+  in
+  Path.(ContentStore.root store.content_store / Path.v temp_name)
 
 let hash_of_hex = fun hex ->
   let hex_nibble ch =
@@ -114,9 +266,15 @@ let hash_of_hex = fun hex ->
       if index >= len then
         Some (Crypto.Hash.of_bytes bytes)
       else
-        match hex_nibble (String.get_unchecked hex ~at:index), hex_nibble (String.get_unchecked hex ~at:(index + 1)) with
-        | Some hi, Some lo ->
-            IO.Bytes.set_unchecked bytes ~at:(index / 2) ~char:(Char.from_int_unchecked ((hi lsl 4) lor lo));
+        match (
+          hex_nibble (String.get_unchecked hex ~at:index),
+          hex_nibble (String.get_unchecked hex ~at:(index + 1))
+        ) with
+        | (Some hi, Some lo) ->
+            IO.Bytes.set_unchecked
+              bytes
+              ~at:(index / 2)
+              ~char:(Char.from_int_unchecked ((hi lsl 4) lor lo));
             loop (index + 2)
         | _ -> None
     in
@@ -124,18 +282,21 @@ let hash_of_hex = fun hex ->
 
 let read_opened_file = fun file ->
   let content = Fs.File.read_to_end file in
-  let _ = Fs.File.close file in content
+  let _ = Fs.File.close file in
+  content
 
 (** Check if artifacts for a given hash exist in the store *)
 let exists = fun store hash ->
   let hash_dir = get_hash_dir store hash in
   match Fs.exists hash_dir with
   | Ok true -> (
-    match Fs.exists (manifest_path hash_dir) with
-    | Ok true -> true
-    | Ok false | Error _ -> false
-  )
-  | Ok false | Error _ -> false
+      match Fs.exists (manifest_path hash_dir) with
+      | Ok true -> true
+      | Ok false
+      | Error _ -> false
+    )
+  | Ok false
+  | Error _ -> false
 
 (** Promote artifacts from store to target directory *)
 let promote = fun store hash ~target_dir ->
@@ -145,37 +306,41 @@ let promote = fun store hash ~target_dir ->
     match Manifest.load ~path:manifest_path with
     | Ok manifest -> Ok manifest
     | Error cause -> (
-      match Fs.exists manifest_path with
-      | Ok true -> Error (LoadManifestFailed { path = manifest_path; cause })
-      | Ok false | Error _ -> Error (HashNotFound { hash })
-    )
+        match Fs.exists manifest_path with
+        | Ok true -> Error (LoadManifestFailed { path = manifest_path; cause })
+        | Ok false
+        | Error _ -> Error (HashNotFound { hash })
+      )
   in
-  let* () = Fs.create_dir_all target_dir |> Result.map_err ~fn:(
-    fun cause -> CreateTargetDirFailed { path = target_dir; cause }
-  )
+  let* () =
+    Fs.create_dir_all target_dir
+    |> Result.map_err ~fn:(fun cause -> CreateTargetDirFailed { path = target_dir; cause })
   in
   let promote_one (entry: Manifest.file_entry) =
     let src = Path.(hash_dir / entry.path) in
     let dst = Path.(target_dir / entry.path) in
     let dst_parent = Path.dirname dst in
-    let* () = Fs.create_dir_all dst_parent |> Result.map_err ~fn:(
-      fun cause -> CreateParentDirFailed { path = dst_parent; cause }
-    ) in copy_with_permissions ~src ~dst ~copy_error:(
-      fun cause -> CopyArtifactFailed { src; dst; cause }
-    )
+    let* () =
+      Fs.create_dir_all dst_parent
+      |> Result.map_err ~fn:(fun cause -> CreateParentDirFailed { path = dst_parent; cause })
+    in
+    copy_with_permissions
+      ~src
+      ~dst
+      ~copy_error:(fun cause -> CopyArtifactFailed { src; dst; cause })
   in
-  List.fold_left manifest.files ~init:(Ok ()) ~fn:(
-    fun acc entry ->
-      let* () = acc in promote_one entry
-  )
+  List.fold_left
+    manifest.files
+    ~init:(Ok ())
+    ~fn:(fun acc entry -> let* () = acc in promote_one entry)
 
 (** Store artifacts from sandbox to content-addressable store *)
 let store_artifacts = fun store ~package ?(ocamlc_warnings = []) ?(exports = []) hash sandbox_dir declared_outputs ->
   let hash_dir = get_hash_dir store hash in
   let temp_dir = artifact_temp_dir store hash in
-  let* () = Fs.create_dir_all temp_dir |> Result.map_err ~fn:(
-    fun cause -> CreateTempDirFailed { path = temp_dir; cause }
-  )
+  let* () =
+    Fs.create_dir_all temp_dir
+    |> Result.map_err ~fn:(fun cause -> CreateTempDirFailed { path = temp_dir; cause })
   in
   (* Copy declared outputs to store and track what was actually stored *)
   let copy_output output_file =
@@ -186,51 +351,69 @@ let store_artifacts = fun store ~package ?(ocamlc_warnings = []) ?(exports = [])
     | Ok true ->
         let dst = Path.(temp_dir / Path.v output_file) in
         let dst_parent = Path.dirname dst in
-        let* () = Fs.create_dir_all dst_parent |> Result.map_err ~fn:(
-          fun cause -> CreateParentDirFailed { path = dst_parent; cause }
-        )
+        let* () =
+          Fs.create_dir_all dst_parent
+          |> Result.map_err ~fn:(fun cause -> CreateParentDirFailed { path = dst_parent; cause })
         in
-        let* () = copy_with_permissions ~src ~dst ~copy_error:(
-          fun cause -> CopyArtifactFailed { src; dst; cause }
-        )
+        let* () =
+          copy_with_permissions
+            ~src
+            ~dst
+            ~copy_error:(fun cause -> CopyArtifactFailed { src; dst; cause }) in
+        let* metadata =
+          Fs.metadata dst
+          |> Result.map_err ~fn:(fun cause -> MetadataReadFailed { path = dst; cause })
         in
-        let* metadata = Fs.metadata dst |> Result.map_err ~fn:(
-          fun cause -> MetadataReadFailed { path = dst; cause }
-        ) in Ok (Some (Path.v output_file, Fs.Metadata.len metadata))
+        Ok (Some (Path.v output_file, Fs.Metadata.len metadata))
   in
   let rec collect_outputs = fun acc ->
     function
-    | [] -> Ok (List.reverse acc)
+    | [] ->
+        Ok (List.reverse acc)
     | output_file :: rest -> (
-      match copy_output output_file with
-      | Error _ as err -> err
-      | Ok None -> collect_outputs acc rest
-      | Ok (Some entry) -> collect_outputs (entry :: acc) rest
-    )
+        match copy_output output_file with
+        | Error _ as err -> err
+        | Ok None -> collect_outputs acc rest
+        | Ok (Some entry) -> collect_outputs (entry :: acc) rest
+      )
   in
   let result =
-    let* stored_files_with_sizes = collect_outputs [] declared_outputs
+    let* stored_files_with_sizes = collect_outputs [] declared_outputs in
+    let manifest =
+      Manifest.create
+        ~base_dir:temp_dir
+        ~ocamlc_warnings
+        ~exports
+        ()
+        ~package
+        ~build_hash:(Std.Crypto.Digest.hex hash)
+        ~files:(List.reverse stored_files_with_sizes)
     in
-    let manifest = Manifest.create ~base_dir:temp_dir ~ocamlc_warnings ~exports () ~package ~build_hash:(Std.Crypto.Digest.hex hash) ~files:(List.reverse stored_files_with_sizes) in
     let manifest_path = manifest_path temp_dir in
-    let* () = Manifest.save manifest ~path:manifest_path |> Result.map_err ~fn:(
-      fun cause -> SaveManifestFailed { path = manifest_path; cause }
-    )
+    let* () =
+      Manifest.save manifest ~path:manifest_path
+      |> Result.map_err ~fn:(fun cause -> SaveManifestFailed { path = manifest_path; cause })
     in
-    let* () = ContentStore.commit_dir store.content_store ~hash ~source_dir:temp_dir |> Result.map_err ~fn:(
-      fun cause -> CommitArtifactsFailed { source_dir = temp_dir; destination_dir = hash_dir; cause = ContentStore.error_message cause }
-    )
+    let* () =
+      ContentStore.commit_dir store.content_store ~hash ~source_dir:temp_dir
+      |> Result.map_err
+        ~fn:(fun cause ->
+          CommitArtifactsFailed {
+            source_dir = temp_dir;
+            destination_dir = hash_dir;
+            cause = ContentStore.error_message cause;
+          })
     in
-    let stored_files = List.map stored_files_with_sizes ~fn:(
-      fun (path, _) -> path
-    ) in Ok Artifact.{
+    let stored_files = List.map stored_files_with_sizes ~fn:(fun (path, _) -> path) in
+    Ok Artifact.{
       hash;
       files = List.reverse stored_files;
       ocamlc_warnings;
-      exports
+      exports;
     }
   in
-  let _ = cleanup_temp_dir temp_dir in result
+  let _ = cleanup_temp_dir temp_dir in
+  result
 
 let export_source_path = fun store (entry: export_entry) ->
   if Path.is_absolute entry.path then
@@ -245,74 +428,85 @@ let load_manifest = fun store ~hash ->
   | Ok manifest -> Some manifest
   | Error _ -> None
 
-let path_exists = fun path -> Fs.exists path |> Result.unwrap_or ~default:false
+let path_exists = fun path ->
+  Fs.exists path
+  |> Result.unwrap_or ~default:false
 
-let manifest_exports_exist = fun store (manifest: Manifest.t) -> List.all manifest.exports ~fn:(
-  fun (entry: Manifest.export_entry) ->
-    match export_source_path store entry with
-    | Some path -> path_exists path
-    | None -> false
-)
+let manifest_exports_exist = fun store (manifest: Manifest.t) ->
+  List.all
+    manifest.exports
+    ~fn:(fun (entry: Manifest.export_entry) ->
+      match export_source_path store entry with
+      | Some path -> path_exists path
+      | None -> false)
 
 (** Simple interface - check if we have cached artifacts for a hash *)
 let get = fun store hash ->
   match load_manifest store ~hash with
   | Some manifest ->
       if manifest_exports_exist store manifest then
-        let files = List.map manifest.files ~fn:(
-          fun (entry: Manifest.file_entry) -> entry.path
-        ) in Some Artifact.{
+        let files = List.map manifest.files ~fn:(fun (entry: Manifest.file_entry) -> entry.path) in
+        Some Artifact.{
           hash;
           files;
           ocamlc_warnings = manifest.ocamlc_warnings;
-          exports = manifest.exports
+          exports = manifest.exports;
         }
-      else None
+      else
+        None
   | None -> None
 
 (** Save build outputs to the store *)
 let save = fun ?(ocamlc_warnings = []) ?(exports = []) store ~package ~hash ~sandbox_dir ~outs ->
   let sandbox_str = Path.to_string sandbox_dir in
   let sandbox_len = String.length sandbox_str in
-  let outs_str = List.map outs ~fn:(
-    fun out_path ->
-      let out_str = Path.to_string out_path in
-      if String.starts_with ~prefix:sandbox_str out_str then
-        let relative_start = sandbox_len + 1 in String.sub out_str ~offset:relative_start ~len:(String.length out_str - relative_start)
-      else Path.to_string out_path
-  ) in store_artifacts store ~package ~ocamlc_warnings ~exports hash sandbox_dir outs_str
+  let outs_str =
+    List.map
+      outs
+      ~fn:(fun out_path ->
+        let out_str = Path.to_string out_path in
+        if String.starts_with ~prefix:sandbox_str out_str then
+          let relative_start = sandbox_len + 1 in
+          String.sub out_str ~offset:relative_start ~len:(String.length out_str - relative_start)
+        else
+          Path.to_string out_path)
+  in
+  store_artifacts store ~package ~ocamlc_warnings ~exports hash sandbox_dir outs_str
 
 (** Promote cached artifacts to target directory *)
-let promote_artifact = fun store artifact ~target_dir -> promote store Artifact.(artifact.hash) ~target_dir
+let promote_artifact = fun store artifact ~target_dir ->
+  promote store Artifact.(artifact.hash) ~target_dir
 
 (** Get absolute paths to artifact files in immutable cache *)
 let get_artifact_paths = fun store artifact ->
-  let hash_dir = get_hash_dir store Artifact.(artifact.hash) in List.map Artifact.(artifact.files) ~fn:(
-    fun rel_path -> Path.(hash_dir / rel_path)
-  )
+  let hash_dir = get_hash_dir store Artifact.(artifact.hash) in
+  List.map Artifact.(artifact.files) ~fn:(fun rel_path -> Path.(hash_dir / rel_path))
 
 (** Get the cache directory containing an artifact's files *)
 let get_artifact_dir = fun store artifact -> get_hash_dir store Artifact.(artifact.hash)
 
 let hash_dir_of = fun store hash -> get_hash_dir store hash
 
-let save_plan_bundle = fun store ~hash ~plan -> ContentStore.save_object store.plan_store ~hash ~content:(Std.Data.Json.to_string plan) |> Result.map_err ~fn:(
-  fun cause -> SavePlanBundleFailed { hash; cause = ContentStore.error_message cause }
-)
+let save_plan_bundle = fun store ~hash ~plan ->
+  ContentStore.save_object store.plan_store ~hash ~content:(Std.Data.Json.to_string plan)
+  |> Result.map_err
+    ~fn:(fun cause -> SavePlanBundleFailed { hash; cause = ContentStore.error_message cause })
 
 let load_plan_bundle = fun store ~hash ->
   match ContentStore.open_object store.plan_store ~hash with
   | Error _ -> None
   | Ok file -> (
-    match read_opened_file file with
-    | Error _ -> None
-    | Ok content -> Data.Json.of_string content |> Result.to_option
-  )
+      match read_opened_file file with
+      | Error _ -> None
+      | Ok content ->
+          Data.Json.of_string content
+          |> Result.to_option
+    )
 
 let materialize_package_exports = fun store ~exports ~target_dir ->
-  let* () = Fs.create_dir_all target_dir |> Result.map_err ~fn:(
-    fun cause -> CreatePackageOutputDirFailed { path = target_dir; cause }
-  )
+  let* () =
+    Fs.create_dir_all target_dir
+    |> Result.map_err ~fn:(fun cause -> CreatePackageOutputDirFailed { path = target_dir; cause })
   in
   let copy_one (entry: export_entry) =
     match export_source_path store entry with
@@ -320,12 +514,12 @@ let materialize_package_exports = fun store ~exports ~target_dir ->
     | Some src ->
         let dst = Path.(target_dir / Path.v entry.name) in
         match Fs.exists src with
-        | Ok true -> copy_with_permissions ~src ~dst ~copy_error:(
-          fun cause -> CopyExportFailed { src; dst; cause }
-        )
-        | Ok false | Error _ -> Error (ExportSourceMissing { path = src })
+        | Ok true ->
+            copy_with_permissions
+              ~src
+              ~dst
+              ~copy_error:(fun cause -> CopyExportFailed { src; dst; cause })
+        | Ok false
+        | Error _ -> Error (ExportSourceMissing { path = src })
   in
-  List.fold_left exports ~init:(Ok ()) ~fn:(
-    fun acc entry ->
-      let* () = acc in copy_one entry
-  )
+  List.fold_left exports ~init:(Ok ()) ~fn:(fun acc entry -> let* () = acc in copy_one entry)

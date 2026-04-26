@@ -33,7 +33,12 @@ type entry =
 *)
 let compare_entries = fun e1 e2 ->
   let get_name = function
-    | ML (n, _) | MLI (n, _) | C (n, _) | H (n, _) | Other (n, _, _) | Dir (n, _, _) -> n
+    | ML (n, _)
+    | MLI (n, _)
+    | C (n, _)
+    | H (n, _)
+    | Other (n, _, _)
+    | Dir (n, _, _) -> n
   in
   let get_priority = function
     | MLI _ -> 0
@@ -43,8 +48,8 @@ let compare_entries = fun e1 e2 ->
     | Other _ -> 4
     | Dir _ -> 5
   in
-  match get_priority e1, get_priority e2 with
-  | p1, p2 when p1 != p2 -> Int.compare p1 p2
+  match (get_priority e1, get_priority e2) with
+  | (p1, p2) when p1 != p2 -> Int.compare p1 p2
   | _ -> String.compare (get_name e1) (get_name e2)
 
 (**
@@ -68,46 +73,50 @@ let rec scan_directory = fun ~from_dir ~rel_path ->
   | Error _ -> []
   | Ok iter ->
       let entries = Std.Iter.MutIterator.to_list iter in
-      let scanned = List.map entries ~fn:(
-        fun entry ->
-          let source_path = Path.(from_dir / entry) in
-          let entry_rel_path = Path.(rel_path / entry) in
-          let name = Path.basename entry in
-          match Fs.is_dir source_path with
-          | Ok true ->
-              let children = scan_directory ~from_dir:source_path ~rel_path:entry_rel_path in
-              [
-                Dir (name, entry_rel_path, children);
-              ]
-          | Ok false -> (
-            match Path.extension source_path with
-            | Some ".ml" ->
+      let scanned =
+        List.map
+          entries
+          ~fn:(fun entry ->
+            let source_path = Path.(from_dir / entry) in
+            let entry_rel_path = Path.(rel_path / entry) in
+            let name = Path.basename entry in
+            match Fs.is_dir source_path with
+            | Ok true ->
+                let children = scan_directory ~from_dir:source_path ~rel_path:entry_rel_path in
                 [
-                  ML (name, entry_rel_path);
+                  Dir (name, entry_rel_path, children);
                 ]
-            | Some ".mli" ->
-                [
-                  MLI (name, entry_rel_path);
-                ]
-            | Some ".c" ->
-                [
-                  C (name, entry_rel_path);
-                ]
-            | Some ".h" ->
-                [
-                  H (name, entry_rel_path);
-                ]
-            | Some ext ->
-                [
-                  Other (name, entry_rel_path, ext);
-                ]
-            | None ->
-                [
-                  Other (name, entry_rel_path, "");
-                ]
-          )
-          | Error _ -> []
-      ) |> List.concat in List.sort scanned ~compare:compare_entries
+            | Ok false -> (
+                match Path.extension source_path with
+                | Some ".ml" ->
+                    [
+                      ML (name, entry_rel_path);
+                    ]
+                | Some ".mli" ->
+                    [
+                      MLI (name, entry_rel_path);
+                    ]
+                | Some ".c" ->
+                    [
+                      C (name, entry_rel_path);
+                    ]
+                | Some ".h" ->
+                    [
+                      H (name, entry_rel_path);
+                    ]
+                | Some ext ->
+                    [
+                      Other (name, entry_rel_path, ext);
+                    ]
+                | None ->
+                    [
+                      Other (name, entry_rel_path, "");
+                    ]
+              )
+            | Error _ -> [])
+        |> List.concat
+      in
+      List.sort scanned ~compare:compare_entries
 
 (**
    Scan a source directory relative to project root.
@@ -118,4 +127,5 @@ let rec scan_directory = fun ~from_dir ~rel_path ->
    "src/main.ml", "src/utils/helper.ml" (relative to project root).
 *)
 let scan = fun ~root ~source_dir ->
-  let dir = Path.(root / source_dir) in scan_directory ~from_dir:dir ~rel_path:source_dir
+  let dir = Path.(root / source_dir) in
+  scan_directory ~from_dir:dir ~rel_path:source_dir

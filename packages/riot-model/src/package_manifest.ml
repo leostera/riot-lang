@@ -60,13 +60,15 @@ let of_package = fun (pkg: Package.t) ->
     compiler = pkg.compiler;
     commands = pkg.commands;
     fix_providers = pkg.fix_providers;
-    publish = pkg.publish
+    publish = pkg.publish;
   }
 
 let is_workspace_member = fun manifest ->
-  let rel_str = Path.to_string manifest.relative_path in not (String.starts_with ~prefix:"../" rel_str || Path.is_absolute manifest.relative_path)
+  let rel_str = Path.to_string manifest.relative_path in
+  not (String.starts_with ~prefix:"../" rel_str || Path.is_absolute manifest.relative_path)
 
-let all_dependencies = fun manifest -> (manifest.dependencies @ manifest.dev_dependencies) @ manifest.build_dependencies
+let all_dependencies = fun manifest ->
+  (manifest.dependencies @ manifest.dev_dependencies) @ manifest.build_dependencies
 
 let from_toml = Package.parse_manifest_spec
 

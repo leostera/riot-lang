@@ -61,7 +61,9 @@
    - [TERM] contains "color" → Basic ANSI color support
    - Otherwise → No color support
 *)
+
 (** Terminal color profile representing color capability level *)
+
 (**
    [from_env ()] detects the terminal's color capability from environment
    variables like [COLORTERM] and [TERM].
@@ -69,7 +71,6 @@
    Returns a profile that matches the detected capability.
 *)
 type t
-
 val from_env: unit -> t
 
 (** [default] snapshots {!from_env} at module initialization time. *)

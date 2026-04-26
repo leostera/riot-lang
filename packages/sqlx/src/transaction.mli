@@ -1,9 +1,7 @@
 open Std
 
 type t
-
 type isolation_level = [`Read_uncommitted | `Read_committed | `Repeatable_read | `Serializable]
-
 val begin_transaction: Connection.t -> (t, string) result
 
 val commit: t -> (unit, string) result

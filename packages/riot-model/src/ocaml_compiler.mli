@@ -11,6 +11,7 @@ type mode =
   | CustomExe
 
 (** Link with C stubs (-custom flag) *)
+
 (** OCaml compiler warnings *)
 type warning =
   | PartialMatch

@@ -1,16 +1,16 @@
 open Std
 open Model
 
-type opened_module = { visible_path: SurfacePath.t; module_id: PackageEnv.ModuleId.t }
-
+type opened_module = {
+  visible_path: SurfacePath.t;
+  module_id: PackageEnv.ModuleId.t;
+}
 type resolved_module = {
   visible_path: SurfacePath.t;
   module_id: PackageEnv.ModuleId.t;
   suffix: SurfacePath.t;
 }
-
 type t
-
 val empty: unit -> t
 
 val create: package_env:PackageEnv.t -> scope_view:ScopeView.t -> t
@@ -35,4 +35,8 @@ val lookup_module_scope: t -> SurfacePath.t -> CompiledScope.t option
 
 val lookup_type_decl: t -> SurfacePath.t -> FileSummary.type_decl option
 
-val visible_type_decls_for_module: t -> visible_path:SurfacePath.t -> module_id:PackageEnv.ModuleId.t -> FileSummary.type_decl list
+val visible_type_decls_for_module:
+  t ->
+  visible_path:SurfacePath.t ->
+  module_id:PackageEnv.ModuleId.t ->
+  FileSummary.type_decl list

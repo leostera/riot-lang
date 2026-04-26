@@ -12,14 +12,15 @@ let middleware = fun ~conn ~next ->
   (* Format as string with 4 decimal places *)
   let runtime_str =
     let whole = int_of_float seconds in
-    let frac = int_of_float ((seconds -. float_of_int whole) *. 10000.0) in
+    let frac = int_of_float ((seconds -. float_of_int whole) *. 10_000.0) in
     let frac_str = string_of_int frac in
     (* Pad to 4 digits *)
     let padded =
       let len = String.length frac_str in
       if len >= 4 then
         String.sub frac_str ~offset:0 ~len:4
-      else frac_str ^ String.make ~len:(4 - len) ~char:'0'
+      else
+        frac_str ^ String.make ~len:(4 - len) ~char:'0'
     in
     string_of_int whole ^ "." ^ padded
   in

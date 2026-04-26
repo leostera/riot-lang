@@ -1,4 +1,5 @@
 open Std
+
 module Buffer = IO.Buffer
 
 type error = Error.t
@@ -27,9 +28,16 @@ let generate_websocket_key = fun () ->
   let random_bytes = IO.Bytes.create ~size:16 in
   for i = 0 to 15 do
     yield ();
-    IO.Bytes.set_unchecked random_bytes ~at:i
-      ~char:(Char.from_int_unchecked
-        (Random.int 256 |> Result.expect ~msg:"failed to generate websocket key byte"))
+    IO.Bytes.set_unchecked
+      random_bytes
+      ~at:i
+      ~char:(
+        Char.from_int_unchecked
+          (
+            Random.int 256
+            |> Result.expect ~msg:"failed to generate websocket key byte"
+          )
+      )
   done;
   Encoding.Base64.encode_bytes random_bytes
 
@@ -48,26 +56,28 @@ let close_transport = fun transport ->
       Net.TcpStream.close stream
 
 let connect_transport = fun uri host ->
-  let scheme = Net.Uri.scheme uri |> Option.unwrap_or ~default:"ws" in
+  let scheme =
+    Net.Uri.scheme uri
+    |> Option.unwrap_or ~default:"ws"
+  in
   let default_port =
     match scheme with
     | "wss" -> 443
     | _ -> 80
   in
-  let port = Net.Uri.port uri |> Option.unwrap_or ~default:default_port in
+  let port =
+    Net.Uri.port uri
+    |> Option.unwrap_or ~default:default_port
+  in
   match Net.Addr.of_host_and_port ~host ~port with
-  | Error (Net.Addr.System_error io_err) ->
-      Error (Error.NetError (Net.System_error io_err))
-  | Error (Net.Addr.Invalid_port_number _ | Net.Addr.Invalid_format _) ->
-      Error (Error.NetError (Net.System_error IO.Invalid_argument))
+  | Error (Net.Addr.System_error io_err) -> Error (Error.NetError (Net.System_error io_err))
+  | Error (Net.Addr.Invalid_port_number _
+  | Net.Addr.Invalid_format _) -> Error (Error.NetError (Net.System_error IO.Invalid_argument))
   | Ok addr -> (
       match Net.TcpStream.connect addr with
-      | Error Net.TcpStream.Closed ->
-          Error (Error.NetError Net.Closed)
-      | Error Net.TcpStream.Connection_refused ->
-          Error (Error.NetError Net.Connection_refused)
-      | Error (Net.TcpStream.System_error error) ->
-          Error (Error.NetError (Net.System_error error))
+      | Error Net.TcpStream.Closed -> Error (Error.NetError Net.Closed)
+      | Error Net.TcpStream.Connection_refused -> Error (Error.NetError Net.Connection_refused)
+      | Error (Net.TcpStream.System_error error) -> Error (Error.NetError (Net.System_error error))
       | Ok stream -> (
           match scheme with
           | "ws" ->
@@ -77,11 +87,12 @@ let connect_transport = fun uri host ->
               | Error error ->
                   Net.TcpStream.close stream;
                   Error (Error.TlsError error)
-              | Ok tls -> Ok (
-                Secure (stream, tls),
-                Net.TlsStream.to_reader tls,
-                Net.TlsStream.to_writer tls
-              )
+              | Ok tls ->
+                  Ok (
+                    Secure (stream, tls),
+                    Net.TlsStream.to_reader tls,
+                    Net.TlsStream.to_writer tls
+                  )
             )
           | _ ->
               Net.TcpStream.close stream;
@@ -104,13 +115,14 @@ let read_handshake_response = fun conn ->
   let rec read_response () =
     let chunk = IO.Buffer.create ~size:4_096 in
     match IO.read conn.reader ~into:chunk with
-    | Error error ->
-        Error (Error.of_io_error error)
-    | Ok 0 ->
-        Error (Error.HandshakeFailed "Connection closed during handshake")
+    | Error error -> Error (Error.of_io_error error)
+    | Ok 0 -> Error (Error.HandshakeFailed "Connection closed during handshake")
     | Ok _ ->
         let readable = IO.Buffer.readable chunk in
-        let _ = Buffer.append_slice response_buffer readable |> Result.expect ~msg:"failed to append websocket handshake bytes" in
+        let _ =
+          Buffer.append_slice response_buffer readable
+          |> Result.expect ~msg:"failed to append websocket handshake bytes"
+        in
         let response = Buffer.contents response_buffer in
         if String.contains response "\r\n\r\n" then
           Ok response
@@ -121,20 +133,25 @@ let read_handshake_response = fun conn ->
 
 let validate_handshake = fun expected_accept response ->
   let lines = String.split ~by:"\n" response in
-  let status_line = List.head lines |> Option.unwrap_or ~default:"" |> String.trim in
+  let status_line =
+    List.head lines
+    |> Option.unwrap_or ~default:""
+    |> String.trim
+  in
   if not (String.contains status_line " 101 ") then
     Error (Error.HandshakeFailed "Server did not return 101 Switching Protocols")
   else
     let has_correct_accept =
-      List.any lines
+      List.any
+        lines
         ~fn:(fun line ->
           let trimmed = String.trim line in
           let lower = String.lowercase_ascii trimmed in
-          String.starts_with ~prefix:"sec-websocket-accept:" lower
-          && String.contains trimmed ":"
-          && let parts = String.split ~by:":" trimmed in
+          String.starts_with ~prefix:"sec-websocket-accept:" lower && String.contains trimmed ":" && let parts =
+            String.split ~by:":" trimmed
+          in
           match parts with
-          | [_;value] -> String.trim value = expected_accept
+          | [ _; value ] -> String.trim value = expected_accept
           | _ -> false)
     in
     if has_correct_accept then
@@ -143,7 +160,10 @@ let validate_handshake = fun expected_accept response ->
       Error (Error.HandshakeFailed "Invalid Sec-WebSocket-Accept header")
 
 let connect = fun uri ->
-  let host = Net.Uri.host uri |> Option.unwrap_or ~default:"localhost" in
+  let host =
+    Net.Uri.host uri
+    |> Option.unwrap_or ~default:"localhost"
+  in
   match connect_transport uri host with
   | Error error -> Error error
   | Ok (transport, reader, writer) ->
@@ -234,24 +254,23 @@ let receive = fun conn ->
     let rec try_parse () =
       let data = Buffer.contents conn.buffer in
       match Http.Ws.Parser.parse data with
-      | Http.Ws.Parser.Done { value=frame; remaining } -> (
+      | Http.Ws.Parser.Done { value = frame; remaining } -> (
           Buffer.clear conn.buffer;
           Buffer.add_string conn.buffer remaining;
           match Http.Ws.Frame.(frame.opcode) with
-          | Http.Ws.Frame.Text ->
-              Ok (Text frame.payload)
-          | Http.Ws.Frame.Binary ->
-              Ok (Binary frame.payload)
+          | Http.Ws.Frame.Text -> Ok (Text frame.payload)
+          | Http.Ws.Frame.Binary -> Ok (Binary frame.payload)
           | Http.Ws.Frame.Ping ->
               let _ = send_pong conn ~payload:frame.payload () in
               Ok (Ping frame.payload)
-          | Http.Ws.Frame.Pong ->
-              Ok (Pong frame.payload)
+          | Http.Ws.Frame.Pong -> Ok (Pong frame.payload)
           | Http.Ws.Frame.Close ->
               conn.closed <- true;
               if String.length frame.payload >= 2 then
-                let code = (Char.code (String.get_unchecked frame.payload ~at:0) lsl 8)
-                lor Char.code (String.get_unchecked frame.payload ~at:1) in
+                let code =
+                  (Char.code (String.get_unchecked frame.payload ~at:0) lsl 8)
+                  lor Char.code (String.get_unchecked frame.payload ~at:1)
+                in
                 let reason =
                   if String.length frame.payload > 2 then
                     String.sub frame.payload ~offset:2 ~len:(String.length frame.payload - 2)
@@ -261,23 +280,22 @@ let receive = fun conn ->
                 Ok (Close (Some code, reason))
               else
                 Ok (Close (None, ""))
-          | Http.Ws.Frame.Continuation ->
-              Error Error.InvalidFrame
+          | Http.Ws.Frame.Continuation -> Error Error.InvalidFrame
         )
       | Http.Ws.Parser.Need_more -> (
           let chunk = IO.Buffer.create ~size:4_096 in
           match IO.read conn.reader ~into:chunk with
-          | Error error ->
-              Error (Error.of_io_error error)
-          | Ok 0 ->
-              Error Error.Eof
+          | Error error -> Error (Error.of_io_error error)
+          | Ok 0 -> Error Error.Eof
           | Ok _ ->
               let readable = IO.Buffer.readable chunk in
-              let _ = Buffer.append_slice conn.buffer readable |> Result.expect ~msg:"failed to append websocket frame bytes" in
+              let _ =
+                Buffer.append_slice conn.buffer readable
+                |> Result.expect ~msg:"failed to append websocket frame bytes"
+              in
               try_parse ()
         )
-      | Http.Ws.Parser.Error msg ->
-          Error (Error.HandshakeFailed msg)
+      | Http.Ws.Parser.Error msg -> Error (Error.HandshakeFailed msg)
     in
     try_parse ()
 

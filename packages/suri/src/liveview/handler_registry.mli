@@ -4,10 +4,11 @@
    Manages mapping between handler IDs and event handler functions.
    Each LiveView instance has its own registry.
 *)
+
 (** Registry that maps handler IDs to event handler functions *)
+
 (** Create a new empty registry *)
 type 'msg t
-
 val create: unit -> 'msg t
 
 (**

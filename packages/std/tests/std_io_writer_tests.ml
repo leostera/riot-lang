@@ -2,7 +2,11 @@ open Std
 
 module IoVec = IO.IoVec
 
-type sink = { mutable chunks: string list; mutable flushes: int; max_chunk: int option }
+type sink = {
+  mutable chunks: string list;
+  mutable flushes: int;
+  max_chunk: int option;
+}
 
 let create_sink = fun ?max_chunk () -> { chunks = []; flushes = 0; max_chunk }
 
@@ -18,7 +22,10 @@ module CollectWriter = struct
       | Some max_chunk -> Int.min max_chunk requested
       | None -> requested
     in
-    let chunk = IO.Buffer.contents from |> String.sub ~offset:0 ~len:written in
+    let chunk =
+      IO.Buffer.contents from
+      |> String.sub ~offset:0 ~len:written
+    in
     sink.chunks <- sink.chunks @ [ chunk ];
     Ok written
 
@@ -29,7 +36,10 @@ module CollectWriter = struct
       | Some max_chunk -> Int.min max_chunk requested
       | None -> requested
     in
-    let chunk = IoVec.to_string from |> String.sub ~offset:0 ~len:written in
+    let chunk =
+      IoVec.to_string from
+      |> String.sub ~offset:0 ~len:written
+    in
     sink.chunks <- sink.chunks @ [ chunk ];
     Ok written
 
@@ -68,12 +78,8 @@ let test_write_vectored_appends_segment_content = fun _ctx ->
   let sink = create_sink () in
   let writer = IO.Writer.from_sink (module CollectWriter) sink in
   let iov =
-    IoVec.from_string_array
-      [|
-        "ab";
-        "cd";
-        "ef";
-      |] |> Result.unwrap
+    IoVec.from_string_array [|"ab"; "cd"; "ef"|]
+    |> Result.unwrap
   in
   match IO.write_vectored writer ~from:iov with
   | Ok written when Int.equal written 6 && String.equal (sink_contents sink) "abcdef" -> Ok ()
@@ -84,12 +90,8 @@ let test_write_all_vectored_handles_partial_writes = fun _ctx ->
   let sink = create_sink ~max_chunk:2 () in
   let writer = IO.Writer.from_sink (module CollectWriter) sink in
   let iov =
-    IoVec.from_string_array
-      [|
-        "ab";
-        "cd";
-        "ef";
-      |] |> Result.unwrap
+    IoVec.from_string_array [|"ab"; "cd"; "ef"|]
+    |> Result.unwrap
   in
   match IO.write_all_vectored writer ~from:iov with
   | Ok () when String.equal (sink_contents sink) "abcdef" -> Ok ()
@@ -121,10 +123,10 @@ let test_reader_writer_copy_loop_reconstructs_payload = fun _ctx ->
     match IO.read reader ~into:buffer with
     | Ok 0 -> Ok ()
     | Ok _ -> (
-      match IO.write_all writer ~from:buffer with
-      | Ok () -> loop ()
-      | Error _ -> Error "writer unexpectedly failed"
-    )
+        match IO.write_all writer ~from:buffer with
+        | Ok () -> loop ()
+        | Error _ -> Error "writer unexpectedly failed"
+      )
     | Error _ -> Error "reader unexpectedly failed"
   in
   match loop () with
@@ -132,15 +134,18 @@ let test_reader_writer_copy_loop_reconstructs_payload = fun _ctx ->
   | Ok () -> Error "copy loop should reconstruct the original payload"
   | Error message -> Error message
 
-let tests = Test.[
-  case "write appends exact content" test_write_appends_exact_content;
-  case "write_all handles partial writes" test_write_all_handles_partial_writes;
-  case "write_vectored appends segment content" test_write_vectored_appends_segment_content;
-  case "write_all_vectored handles partial writes" test_write_all_vectored_handles_partial_writes;
-  case "writer propagates io errors" test_writer_propagates_io_errors;
-  case "flush forwards to the underlying sink" test_flush_forwards_to_the_underlying_sink;
-  case "reader writer copy loops reconstruct payloads" test_reader_writer_copy_loop_reconstructs_payload;
-]
+let tests =
+  Test.[
+    case "write appends exact content" test_write_appends_exact_content;
+    case "write_all handles partial writes" test_write_all_handles_partial_writes;
+    case "write_vectored appends segment content" test_write_vectored_appends_segment_content;
+    case "write_all_vectored handles partial writes" test_write_all_vectored_handles_partial_writes;
+    case "writer propagates io errors" test_writer_propagates_io_errors;
+    case "flush forwards to the underlying sink" test_flush_forwards_to_the_underlying_sink;
+    case
+      "reader writer copy loops reconstruct payloads"
+      test_reader_writer_copy_loop_reconstructs_payload;
+  ]
 
 let main ~args = Test.Cli.main ~name:"IO.Writer" ~tests ~args ()
 

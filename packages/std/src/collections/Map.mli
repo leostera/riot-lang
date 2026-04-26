@@ -1,8 +1,6 @@
 module type S = sig
   type key
-
   type +'value t
-
   val empty: 'value t
 
   val is_empty: 'value t -> bool
@@ -19,9 +17,17 @@ module type S = sig
 
   val remove: 'value t -> key:key -> 'value t
 
-  val merge: left:'left t -> right:'right t -> fn:(key:key -> left:'left option -> right:'right option -> 'merged option) -> 'merged t
+  val merge:
+    left:'left t ->
+    right:'right t ->
+    fn:(key:key -> left:'left option -> right:'right option -> 'merged option) ->
+    'merged t
 
-  val union: left:'value t -> right:'value t -> fn:(key:key -> left:'value -> right:'value -> 'value option) -> 'value t
+  val union:
+    left:'value t ->
+    right:'value t ->
+    fn:(key:key -> left:'value -> right:'value -> 'value option) ->
+    'value t
 
   val length: 'value t -> int
 

@@ -1,10 +1,12 @@
 open Std
 
 type t
-
 val empty: t
 
-val of_type_decls: ?cached_by_id:(TypeConstructorId.t, FileSummary.type_decl) Collections.HashMap.t -> FileSummary.type_decl list -> t
+val of_type_decls:
+  ?cached_by_id:(TypeConstructorId.t, FileSummary.type_decl) Collections.HashMap.t ->
+  FileSummary.type_decl list ->
+  t
 
 val merge: t -> t -> t
 
@@ -36,4 +38,8 @@ val canonicalize_type_decl: t -> FileSummary.type_decl -> FileSummary.type_decl
 
 val type_decls_for_include: t -> SurfacePath.t -> FileSummary.type_decl list
 
-val type_decls_for_module_alias: t -> alias_name:string -> module_path:SurfacePath.t -> FileSummary.type_decl list
+val type_decls_for_module_alias:
+  t ->
+  alias_name:string ->
+  module_path:SurfacePath.t ->
+  FileSummary.type_decl list

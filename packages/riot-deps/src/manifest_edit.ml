@@ -11,39 +11,84 @@ let section_name = function
   | Dev -> "dev-dependencies"
 
 type error =
-  | ReadFailed of { path: Path.t; error: IO.error }
-  | WriteFailed of { path: Path.t; error: IO.error }
-  | TomlParseFailed of { path: Path.t; error: Std.Data.Toml.error }
+  | ReadFailed of {
+      path: Path.t;
+      error: IO.error;
+    }
+  | WriteFailed of {
+      path: Path.t;
+      error: IO.error;
+    }
+  | TomlParseFailed of {
+      path: Path.t;
+      error: Std.Data.Toml.error;
+    }
   | InvalidDependencyName of {
-    path: Path.t;
-    dependency: string;
-    error: Riot_model.Package_name.error;
-  }
-  | DependencySectionMustBeTable of { path: Path.t; section: string }
-  | ManifestMustBeTable of { path: Path.t }
+      path: Path.t;
+      dependency: string;
+      error: Riot_model.Package_name.error;
+    }
+  | DependencySectionMustBeTable of {
+      path: Path.t;
+      section: string;
+    }
+  | ManifestMustBeTable of {
+      path: Path.t;
+    }
 
 let error_message = function
-  | ReadFailed { path; error } -> "failed to read manifest '" ^ Path.to_string path ^ "': " ^ IO.error_message error
-  | WriteFailed { path; error } -> "failed to write manifest '" ^ Path.to_string path ^ "': " ^ IO.error_message error
-  | TomlParseFailed { path; error } -> "failed to parse manifest '" ^ Path.to_string path ^ "': " ^ Std.Data.Toml.error_to_string error
-  | InvalidDependencyName { path; dependency; error } -> "manifest '" ^ Path.to_string path ^ "' has invalid dependency name '" ^ dependency ^ "': " ^ Riot_model.Package_name.error_message error
-  | DependencySectionMustBeTable { path; section } -> "manifest '" ^ Path.to_string path ^ "' section [" ^ section ^ "] must be a table"
-  | ManifestMustBeTable { path } -> "manifest '" ^ Path.to_string path ^ "' root must be a TOML table"
+  | ReadFailed { path; error } ->
+      "failed to read manifest '" ^ Path.to_string path ^ "': " ^ IO.error_message error
+  | WriteFailed { path; error } ->
+      "failed to write manifest '" ^ Path.to_string path ^ "': " ^ IO.error_message error
+  | TomlParseFailed { path; error } ->
+      "failed to parse manifest '"
+      ^ Path.to_string path
+      ^ "': "
+      ^ Std.Data.Toml.error_to_string error
+  | InvalidDependencyName { path; dependency; error } ->
+      "manifest '"
+      ^ Path.to_string path
+      ^ "' has invalid dependency name '"
+      ^ dependency
+      ^ "': "
+      ^ Riot_model.Package_name.error_message error
+  | DependencySectionMustBeTable { path; section } ->
+      "manifest '" ^ Path.to_string path ^ "' section [" ^ section ^ "] must be a table"
+  | ManifestMustBeTable { path } ->
+      "manifest '" ^ Path.to_string path ^ "' root must be a TOML table"
 
 let quoted = fun value -> Std.Data.Toml.to_string (Std.Data.Toml.String value)
 
 let render_dependency_table = fun name fields ->
-  let rendered_fields = List.map fields ~fn:(
-    fun (field, value) -> field ^ " = " ^ value
-  ) in name ^ " = { " ^ String.concat ", " rendered_fields ^ " }"
+  let rendered_fields = List.map fields ~fn:(fun (field, value) -> field ^ " = " ^ value) in
+  name ^ " = { " ^ String.concat ", " rendered_fields ^ " }"
 
 let render_dependency = fun (dep: Riot_model.Package.dependency) ->
   let name = Riot_model.Package_name.to_string dep.name in
   match dep.source with
   | { workspace = true; _ } -> name ^ " = { workspace = true }"
-  | { path = None; source_locator = None; ref_ = None; version = Some requirement; _ } -> name ^ " = " ^ quoted (Std.Version.requirement_to_string requirement)
-  | { path = None; source_locator = None; ref_ = None; version = None; _ } -> name ^ " = " ^ quoted "*"
-  | { path; source_locator; ref_; version; _ } ->
+  | {
+    path = None;
+    source_locator = None;
+    ref_ = None;
+    version = Some requirement;
+    _
+  } -> name ^ " = " ^ quoted (Std.Version.requirement_to_string requirement)
+  | {
+    path = None;
+    source_locator = None;
+    ref_ = None;
+    version = None;
+    _
+  } -> name ^ " = " ^ quoted "*"
+  | {
+    path;
+    source_locator;
+    ref_;
+    version;
+    _
+  } ->
       let fields = [] in
       let fields =
         match path with
@@ -62,19 +107,23 @@ let render_dependency = fun (dep: Riot_model.Package.dependency) ->
       in
       let fields =
         match version with
-        | Some requirement -> ("version", quoted (Std.Version.requirement_to_string requirement)) :: fields
+        | Some requirement ->
+            ("version", quoted (Std.Version.requirement_to_string requirement)) :: fields
         | None -> fields
       in
       render_dependency_table name (List.reverse fields)
 
 let render_section_lines = fun ~section dependencies ->
   let header = "[" ^ section_name section ^ "]" in
-  let body = List.map dependencies ~fn:render_dependency in header :: body
+  let body = List.map dependencies ~fn:render_dependency in
+  header :: body
 
 let is_section_header = fun line ->
   let trimmed = String.trim line in
   match String.length trimmed with
-  | len when len >= 3 -> Char.equal (String.get_unchecked trimmed ~at:0) '[' && Char.equal (String.get_unchecked trimmed ~at:(len - 1)) ']'
+  | len when len >= 3 ->
+      Char.equal (String.get_unchecked trimmed ~at:0) '['
+      && Char.equal (String.get_unchecked trimmed ~at:(len - 1)) ']'
   | _ -> false
 
 let replace_section_lines = fun ~source ~section dependencies ->
@@ -90,12 +139,14 @@ let replace_section_lines = fun ~source ~section dependencies ->
   let rec find_header index =
     if index >= len then
       None
+    else if
+      Option.is_some_and
+        (line_at index lines)
+        ~fn:(fun line -> String.equal (String.trim line) header)
+    then
+      Some index
     else
-      if Option.is_some_and (line_at index lines) ~fn:(
-        fun line -> String.equal (String.trim line) header
-      ) then
-        Some index
-      else find_header (index + 1)
+      find_header (index + 1)
   in
   let list_slice start_ stop =
     let rec loop acc index =
@@ -108,19 +159,23 @@ let replace_section_lines = fun ~source ~section dependencies ->
     in
     if stop <= start_ then
       []
-    else loop [] (stop - 1)
+    else
+      loop [] (stop - 1)
   in
   match find_header 0 with
   | Some start_index ->
       let rec find_end index =
         if index >= len then
           len
+        else if
+          index > start_index && Option.is_some_and (line_at index lines) ~fn:is_section_header
+        then
+          index
         else
-          if index > start_index && Option.is_some_and (line_at index lines) ~fn:is_section_header then
-            index
-          else find_end (index + 1)
+          find_end (index + 1)
       in
-      let end_index = find_end (start_index + 1) in String.concat "\n" ((list_slice 0 start_index @ replacement) @ list_slice end_index len)
+      let end_index = find_end (start_index + 1) in
+      String.concat "\n" ((list_slice 0 start_index @ replacement) @ list_slice end_index len)
   | None ->
       let existing = lines in
       let needs_blank =
@@ -131,7 +186,8 @@ let replace_section_lines = fun ~source ~section dependencies ->
       let prefix =
         if needs_blank then
           existing @ [ "" ]
-        else existing
+        else
+          existing
       in
       String.concat "\n" (prefix @ replacement)
 

@@ -20,9 +20,9 @@ open Std
    from the original source when needed.
 *)
 (** # Types *)
+
 (** Keyword type from the `Keyword` module. *)
 type keyword = Keyword.t
-
 type literal =
   | String of { value: string; terminated: bool }
   (**
@@ -33,7 +33,6 @@ type literal =
   | Float of float
   (** Floating-point literal. *)
   | Char of char
-
 (** Character literal. *)
 type delimiter =
   | Paren
@@ -53,14 +52,16 @@ type delimiter =
   | ObjectEnd
 
 (** `object` / `end` pair *)
+
 (** A token with its kind and source location. *)
 type trivia_kind =
   | CommentTrivia of { value: string; terminated: bool }
   | DocstringTrivia of { value: string; terminated: bool }
   | WhitespaceTrivia
-
-type trivia = { kind: trivia_kind; span: Ceibo.Span.t }
-
+type trivia = {
+  kind: trivia_kind;
+  span: Ceibo.Span.t;
+}
 type token_kind =
   (* Keywords *)
   | Keyword of keyword
@@ -183,10 +184,12 @@ type token_kind =
   | EOF
   (** End of file marker. *)
   | Unknown of char
-
 (** Unknown/invalid character. Used for error recovery. *)
-type t = { kind: token_kind; span: Ceibo.Span.t; leading_trivia: trivia list }
-
+type t = {
+  kind: token_kind;
+  span: Ceibo.Span.t;
+  leading_trivia: trivia list;
+}
 (** # Utilities *)
 (**
    `delimiter_of_keyword kw` returns the delimiter type for keywords that act

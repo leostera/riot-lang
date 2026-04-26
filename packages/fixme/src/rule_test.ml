@@ -16,7 +16,7 @@ let run = fun ~rules ?filename source ->
         initial;
         fixed_source = None;
         applied_fixes = [];
-        after = None
+        after = None;
       }
   | Ok (Some (fixed_source, applied_fixes)) ->
       let after = Source_runner.run ~rules ?filename fixed_source in
@@ -24,7 +24,7 @@ let run = fun ~rules ?filename source ->
         initial;
         fixed_source = Some fixed_source;
         applied_fixes;
-        after = Some after
+        after = Some after;
       }
 
 let run_rule = fun ~rule ?filename source -> run ~rules:[ rule ] ?filename source

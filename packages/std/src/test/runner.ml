@@ -12,7 +12,8 @@ let find_segment_index = fun segments needle ->
     | segment :: rest ->
         if String.equal segment needle then
           Some idx
-        else loop (idx + 1) rest
+        else
+          loop (idx + 1) rest
   in
   loop 0 segments
 
@@ -34,7 +35,10 @@ let derive_package_name = fun binary_path ->
   match binary_path with
   | None -> None
   | Some path ->
-      let segments = Path.components path |> List.map ~fn:Path.to_string in
+      let segments =
+        Path.components path
+        |> List.map ~fn:Path.to_string
+      in
       match find_segment_index segments "out" with
       | Some idx when List.length segments > idx + 1 -> List.get segments ~at:(idx + 1)
       | _ -> None
@@ -43,20 +47,24 @@ let derive_workspace_root = fun ~current_dir ~binary_path ->
   match binary_path with
   | None -> current_dir
   | Some path -> (
-    let segments = Path.components path |> List.map ~fn:Path.to_string in
-    match find_segment_index segments "_build" with
-    | Some 0 -> current_dir
-    | Some idx -> (
-      match take idx segments with
-      | [] | [ "." ] -> current_dir
-      | prefix -> (
-        match Path.from_string (join_path_segments prefix) with
-        | Ok root -> Some root
-        | Error _ -> current_dir
-      )
+      let segments =
+        Path.components path
+        |> List.map ~fn:Path.to_string
+      in
+      match find_segment_index segments "_build" with
+      | Some 0 -> current_dir
+      | Some idx -> (
+          match take idx segments with
+          | []
+          | [ "." ] -> current_dir
+          | prefix -> (
+              match Path.from_string (join_path_segments prefix) with
+              | Ok root -> Some root
+              | Error _ -> current_dir
+            )
+        )
+      | None -> current_dir
     )
-    | None -> current_dir
-  )
 
 type mode =
   | Sequential
@@ -67,7 +75,11 @@ type size_filter =
   | Only_small
   | Only_large
 
-type target = { query: string option; size_filter: size_filter; flaky_only: bool }
+type target = {
+  query: string option;
+  size_filter: size_filter;
+  flaky_only: bool;
+}
 
 type test_descriptor = {
   index: int;
@@ -80,22 +92,40 @@ type test_descriptor = {
 type event =
   | SuiteStarted of { suite_name: string; total: int }
   | TestStarted of test_descriptor
-  | TestProgress of { test: test_descriptor; attempt: int; progress: Test_context.progress }
-  | TestAttemptStarted of { test: test_descriptor; attempt: int; timeout: Time.Duration.t option }
-  | TestHeartbeat of { test: test_descriptor; attempt: int; elapsed: Time.Duration.t }
+  | TestProgress of {
+      test: test_descriptor;
+      attempt: int;
+      progress: Test_context.progress;
+    }
+  | TestAttemptStarted of {
+      test: test_descriptor;
+      attempt: int;
+      timeout: Time.Duration.t option;
+    }
+  | TestHeartbeat of {
+      test: test_descriptor;
+      attempt: int;
+      elapsed: Time.Duration.t;
+    }
   | TestAttemptFinished of {
-    test: test_descriptor;
-    attempt: int;
-    result: Test_result.single_result;
-    duration: Time.Duration.t;
-  }
+      test: test_descriptor;
+      attempt: int;
+      result: Test_result.single_result;
+      duration: Time.Duration.t;
+    }
   | TestFinished of Test_result.t
 
-type scheduled_test = { index: int; test: Test_case.t }
+type scheduled_test = {
+  index: int;
+  test: Test_case.t;
+}
 
 type event_handler = event -> unit
 
-type policy = { small_test_timeout: Time.Duration.t option; flaky_max_retries: int }
+type policy = {
+  small_test_timeout: Time.Duration.t option;
+  flaky_max_retries: int;
+}
 
 type config = {
   concurrency: int;
@@ -109,28 +139,43 @@ type config = {
 
 type run_summary = Test_result.summary
 
-let default_policy = { small_test_timeout = Some (Time.Duration.from_millis 500); flaky_max_retries = 0 }
+let default_policy = {
+  small_test_timeout = Some (Time.Duration.from_millis 500);
+  flaky_max_retries = 0;
+}
 
 let no_event_handler: event_handler = fun _ -> ()
 
 let heartbeat_interval = Time.Duration.from_secs 1
 
 type Message.t +=
-  | Test_runner_worker_event of { run_ref: unit Ref.t; event: event }
-  | Test_runner_worker_failed of { run_ref: unit Ref.t; exn: exn }
+  | Test_runner_worker_event of {
+      run_ref: unit Ref.t;
+      event: event;
+    }
+  | Test_runner_worker_failed of {
+      run_ref: unit Ref.t;
+      exn: exn;
+    }
 
 let make_ctx = fun ~(suite_info:Reporter.suite_info) ~index (test: Test_case.t) ->
-  let current_dir = Env.current_dir () |> Result.to_option in Test_context.{
+  let current_dir =
+    Env.current_dir ()
+    |> Result.to_option
+  in
+  Test_context.{
     suite_name = suite_info.name;
     test_name = test.name;
     test_index = index;
     source_file = suite_info.source_file;
     binary_path = suite_info.binary_path;
     built_binaries = suite_info.built_binaries;
-    workspace_root = Option.or_ suite_info.workspace_root (derive_workspace_root ~current_dir ~binary_path:suite_info.binary_path);
+    workspace_root = Option.or_
+      suite_info.workspace_root
+      (derive_workspace_root ~current_dir ~binary_path:suite_info.binary_path);
     package_name = Option.or_ suite_info.package_name (derive_package_name suite_info.binary_path);
     fixture = None;
-    progress_handler = Test_context.no_progress_handler
+    progress_handler = Test_context.no_progress_handler;
   }
 
 let filter_tests = fun target tests ->
@@ -140,8 +185,10 @@ let filter_tests = fun target tests ->
     | Some query -> String.contains test.name query
   in
   let matches_size (test: Test_case.t) =
-    match target.size_filter, test.size with
-    | (All_sizes, _) | (Only_small, Test_case.Small) | (Only_large, Test_case.Large) -> true
+    match (target.size_filter, test.size) with
+    | (All_sizes, _)
+    | (Only_small, Test_case.Small)
+    | (Only_large, Test_case.Large) -> true
     | _ -> false
   in
   let matches_flaky (test: Test_case.t) =
@@ -149,9 +196,7 @@ let filter_tests = fun target tests ->
     | Test_case.Stable -> false
     | Test_case.Flaky _ -> true
   in
-  List.filter tests ~fn:(
-    fun test -> matches_query test && matches_size test && matches_flaky test
-  )
+  List.filter tests ~fn:(fun test -> matches_query test && matches_size test && matches_flaky test)
 
 let shuffle_list = fun lst ->
   let arr = Array.from_list lst in
@@ -161,25 +206,28 @@ let shuffle_list = fun lst ->
     let candidate = Int.rem ((i * 48_271) + 1) modulus in
     if candidate < 0 then
       candidate + modulus
-    else candidate
+    else
+      candidate
   in
   for i = len - 1 downto 1 do
     let j = shuffle_index i in
     let temp = Array.get_unchecked arr ~at:i in
-    Array.set_unchecked arr ~at:i ~value:(Array.get_unchecked arr ~at:j);
+    Array.set_unchecked
+      arr
+      ~at:i
+      ~value:(Array.get_unchecked arr ~at:j);
     Array.set_unchecked arr ~at:j ~value:temp
   done;
-  Array.fold_right arr ~init:[] ~fn:(
-    fun item acc -> item :: acc
-  )
+  Array.fold_right arr ~init:[] ~fn:(fun item acc -> item :: acc)
 
 let render_exception_failure = fun exn ->
   let exn = Exception.to_string exn in
-  let bt = Exception.raw_backtrace_to_string (Exception.get_raw_backtrace ()) in exn ^ "\n\n" ^ bt
+  let bt = Exception.raw_backtrace_to_string (Exception.get_raw_backtrace ()) in
+  exn ^ "\n\n" ^ bt
 
 let test_timeout_for = fun policy (test: Test_case.t) ->
-  match test.size, policy.small_test_timeout with
-  | Test_case.Small, Some timeout -> Some timeout
+  match (test.size, policy.small_test_timeout) with
+  | (Test_case.Small, Some timeout) -> Some timeout
   | _ -> None
 
 let retry_budget = fun policy (test: Test_case.t) ->
@@ -188,7 +236,8 @@ let retry_budget = fun policy (test: Test_case.t) ->
   | Test_case.Flaky { retry_attempts } ->
       if policy.flaky_max_retries > 0 then
         Int.min retry_attempts policy.flaky_max_retries
-      else retry_attempts
+      else
+        retry_attempts
 
 let test_descriptor_of_case = fun index (test: Test_case.t) ->
   {
@@ -196,50 +245,54 @@ let test_descriptor_of_case = fun index (test: Test_case.t) ->
     name = test.name;
     test_type = test.test_type;
     size = test.size;
-    reliability = test.reliability
+    reliability = test.reliability;
   }
 
-let wait_for_exit = fun pid ?timeout () -> receive ~selector:(
-  fun (msg: Runtime.Message.t) ->
-    match msg with
-    | Runtime.Actor.DOWN { pid = down_pid; reason; _ } when Pid.equal down_pid pid -> `select reason
-    | _ -> `skip
-) ?timeout ()
+let wait_for_exit = fun pid ?timeout () ->
+  receive
+    ~selector:(fun (msg: Runtime.Message.t) ->
+      match msg with
+      | Runtime.Actor.DOWN { pid = down_pid; reason; _ } when Pid.equal down_pid pid ->
+          `select reason
+      | _ -> `skip)
+    ?timeout
+    ()
 
-let wait_for_start = fun () -> receive ~selector:(
-  fun (msg: Runtime.Message.t) ->
-    match msg with
-    | Test_runner_start -> `select ()
-    | _ -> `skip
-) ()
+let wait_for_start = fun () ->
+  receive
+    ~selector:(fun (msg: Runtime.Message.t) ->
+      match msg with
+      | Test_runner_start -> `select ()
+      | _ -> `skip)
+    ()
 
-let cast_worker: type task other. (task, other) Type.eq -> other Worker_pool.DynamicWorkerPool.worker -> task Worker_pool.DynamicWorkerPool.worker = fun witness worker ->
+let cast_worker:
+  type task other. (task, other) Type.eq ->
+  other Worker_pool.DynamicWorkerPool.worker ->
+  task Worker_pool.DynamicWorkerPool.worker = fun witness worker ->
   match witness with
   | Type.Equal -> worker
 
 let run_single_attempt = fun ~ctx ~on_event ~test_info (test: Test_case.t) ~attempt ~timeout ->
   on_event (TestAttemptStarted { test = test_info; attempt; timeout });
   let ctx =
-    Test_context.with_progress_handler ctx
-      (
-        fun progress -> on_event (TestProgress { test = test_info; attempt; progress })
-      )
+    Test_context.with_progress_handler
+      ctx
+      (fun progress -> on_event (TestProgress { test = test_info; attempt; progress }))
   in
   let outcome: ((unit, string) result option) Sync.Atomic.t = Sync.Atomic.make None in
   let child =
     spawn
-      (
-        fun () ->
-          wait_for_start ();
-          let result =
-            match test.fn ctx with
-            | Ok () -> Ok ()
-            | Error msg -> Error msg
-            | exception exn -> Error (render_exception_failure exn)
-          in
-          Sync.Atomic.set outcome (Some result);
-          Ok ()
-      )
+      (fun () ->
+        wait_for_start ();
+        let result =
+          match test.fn ctx with
+          | Ok () -> Ok ()
+          | Error msg -> Error msg
+          | exception exn -> Error (render_exception_failure exn)
+        in
+        Sync.Atomic.set outcome (Some result);
+        Ok ())
   in
   let monitor_ref = Runtime.Actor.monitor child in
   let started = Time.Instant.now () in
@@ -253,7 +306,8 @@ let run_single_attempt = fun ~ctx ~on_event ~test_info (test: Test_case.t) ~atte
           let remaining = Time.Duration.sub timeout elapsed in
           if Time.Duration.is_zero remaining then
             Time.Duration.zero
-          else Time.Duration.min remaining heartbeat_interval
+          else
+            Time.Duration.min remaining heartbeat_interval
     in
     if Time.Duration.is_zero wait_timeout then
       (
@@ -266,7 +320,8 @@ let run_single_attempt = fun ~ctx ~on_event ~test_info (test: Test_case.t) ~atte
     else
       try wait_for_exit child ~timeout:wait_timeout () with
       | Receive_timeout ->
-          on_event (TestHeartbeat { test = test_info; attempt; elapsed = Time.Instant.elapsed started });
+          on_event
+            (TestHeartbeat { test = test_info; attempt; elapsed = Time.Instant.elapsed started });
           wait_loop ()
   in
   let exit_reason = wait_loop () in
@@ -277,11 +332,11 @@ let run_single_attempt = fun ~ctx ~on_event ~test_info (test: Test_case.t) ~atte
     | Some (Ok ()) -> Test_result.Passed
     | Some (Error msg) -> Failed msg
     | None -> (
-      match exit_reason with
-      | Error (Test_timeout timeout) -> Timed_out { timeout }
-      | Ok () -> Failed "test actor exited without reporting a result"
-      | Error exn -> Failed (render_exception_failure exn)
-    )
+        match exit_reason with
+        | Error (Test_timeout timeout) -> Timed_out { timeout }
+        | Ok () -> Failed "test actor exited without reporting a result"
+        | Error exn -> Failed (render_exception_failure exn)
+      )
   in
   on_event
     (
@@ -289,15 +344,17 @@ let run_single_attempt = fun ~ctx ~on_event ~test_info (test: Test_case.t) ~atte
         test = test_info;
         attempt;
         result;
-        duration
+        duration;
       }
     );
   (result, duration)
 
 let should_retry = fun policy (test: Test_case.t) attempts (result: Test_result.single_result) ->
   attempts <= retry_budget policy test && match result with
-  | Test_result.Passed | Test_result.Skipped -> false
-  | Test_result.Failed _ | Test_result.Timed_out _ -> true
+  | Test_result.Passed
+  | Test_result.Skipped -> false
+  | Test_result.Failed _
+  | Test_result.Timed_out _ -> true
 
 let run_single_test = fun ~suite_info ~policy ~on_event index (test: Test_case.t) ->
   let name = test.name in
@@ -315,26 +372,29 @@ let run_single_test = fun ~suite_info ~policy ~on_event index (test: Test_case.t
         reliability = test.reliability;
         attempts = 0;
         result = Skipped;
-        duration = Time.Duration.zero
+        duration = Time.Duration.zero;
       }
     else
       (
         let timeout = test_timeout_for policy test in
         let rec loop attempts total_duration =
-          let attempt_result, attempt_duration = run_single_attempt ~ctx ~on_event ~test_info test ~attempt:attempts ~timeout in
+          let (attempt_result, attempt_duration) =
+            run_single_attempt ~ctx ~on_event ~test_info test ~attempt:attempts ~timeout
+          in
           let total_duration = Time.Duration.add total_duration attempt_duration in
           if should_retry policy test attempts attempt_result then
             loop (attempts + 1) total_duration
-          else Test_result.{
-            index;
-            name;
-            test_type;
-            size = test.size;
-            reliability = test.reliability;
-            attempts;
-            result = attempt_result;
-            duration = total_duration
-          }
+          else
+            Test_result.{
+              index;
+              name;
+              test_type;
+              size = test.size;
+              reliability = test.reliability;
+              attempts;
+              result = attempt_result;
+              duration = total_duration;
+            }
         in
         loop 1 Time.Duration.zero
       )
@@ -375,21 +435,29 @@ let run_tests_parallel = fun ~(config:config) tests_to_run ->
   let run_ref = Ref.make () in
   let pending = Queue.create () in
   let completed = HashMap.create () in
-  let tests_with_indices = List.enumerate tests_to_run |> List.map ~fn:(
-    fun (idx, test) -> { index = idx + 1; test }
-  ) in
-  List.for_each tests_with_indices ~fn:(
-    fun scheduled -> Queue.push pending ~value:scheduled
-  );
+  let tests_with_indices =
+    List.enumerate tests_to_run
+    |> List.map ~fn:(fun (idx, test) -> { index = idx + 1; test })
+  in
+  List.for_each tests_with_indices ~fn:(fun scheduled -> Queue.push pending ~value:scheduled);
   let worker_fn ~owner ~task =
     let { index; test }: scheduled_test = task in
     let on_event event = send owner (Test_runner_worker_event { run_ref; event }) in
     try
-      let _ = run_single_test ~suite_info:config.suite_info ~policy:config.policy ~on_event index test in ()
+      let _ =
+        run_single_test ~suite_info:config.suite_info ~policy:config.policy ~on_event index test
+      in
+      ()
     with
     | exn -> send owner (Test_runner_worker_failed { run_ref; exn })
   in
-  let pool = Worker_pool.DynamicWorkerPool.start ~concurrency:(Int.max 1 config.concurrency) ~owner ~worker_fn () in
+  let pool =
+    Worker_pool.DynamicWorkerPool.start
+      ~concurrency:(Int.max 1 config.concurrency)
+      ~owner
+      ~worker_fn
+      ()
+  in
   let state = {
     owner;
     pool;
@@ -401,31 +469,41 @@ let run_tests_parallel = fun ~(config:config) tests_to_run ->
     total = List.length tests_to_run;
     reporter = config.reporter;
     on_event = config.event_handler;
-    run_ref
+    run_ref;
   }
   in
   let rec loop () =
     if Int.equal state.finished_count state.total then
       ()
     else
-      let selector: ([`WorkerReady of scheduled_test Worker_pool.DynamicWorkerPool.worker | `WorkerEvent of event | `WorkerFailed of exn]) selector = function
+      let selector:
+        ([
+          | `WorkerReady of scheduled_test Worker_pool.DynamicWorkerPool.worker
+          | `WorkerEvent of event
+          | `WorkerFailed of exn
+        ]) selector = function
         | Worker_pool.DynamicWorkerPool.WorkerReady worker -> (
-          match Ref.type_equal state.pool.task_ref (Worker_pool.DynamicWorkerPool.get_worker_task_ref worker) with
-          | Some witness -> `select (`WorkerReady (cast_worker witness worker))
-          | None -> `skip
-        )
-        | Test_runner_worker_event { run_ref; event } when Ref.equal state.run_ref run_ref -> `select (`WorkerEvent event)
-        | Test_runner_worker_failed { run_ref; exn } when Ref.equal state.run_ref run_ref -> `select (`WorkerFailed exn)
-        | _ -> `skip
+            match Ref.type_equal
+              state.pool.task_ref
+              (Worker_pool.DynamicWorkerPool.get_worker_task_ref worker) with
+            | Some witness -> `select (`WorkerReady (cast_worker witness worker))
+            | None -> `skip
+          )
+        | Test_runner_worker_event { run_ref; event } when Ref.equal state.run_ref run_ref ->
+            `select (`WorkerEvent event)
+        | Test_runner_worker_failed { run_ref; exn } when Ref.equal state.run_ref run_ref ->
+            `select (`WorkerFailed exn)
+        | _ ->
+            `skip
       in
       match receive ~selector () with
       | `WorkerReady worker -> (
-        match Queue.pop state.pending with
-        | Some task ->
-            Worker_pool.DynamicWorkerPool.send_task state.pool worker task;
-            loop ()
-        | None -> loop ()
-      )
+          match Queue.pop state.pending with
+          | Some task ->
+              Worker_pool.DynamicWorkerPool.send_task state.pool worker task;
+              loop ()
+          | None -> loop ()
+        )
       | `WorkerEvent event ->
           state.on_event event;
           (
@@ -433,16 +511,20 @@ let run_tests_parallel = fun ~(config:config) tests_to_run ->
             | TestFinished result ->
                 state.finished_count <- state.finished_count + 1;
                 state.results_rev <- result :: state.results_rev;
-                let _ = HashMap.insert state.completed ~key:result.index ~value:result in flush_reporter_results state
+                let _ = HashMap.insert state.completed ~key:result.index ~value:result in
+                flush_reporter_results state
             | _ -> ()
           );
           loop ()
       | `WorkerFailed exn -> raise exn
   in
   loop ();
-  let results = List.sort state.results_rev ~compare:(
-    fun (left: Test_result.t) (right: Test_result.t) -> Int.compare left.index right.index
-  ) in
+  let results =
+    List.sort
+      state.results_rev
+      ~compare:(fun (left: Test_result.t) (right: Test_result.t) ->
+        Int.compare left.index right.index)
+  in
   let summary = Test_result.make_summary results in
   R.finalize summary;
   summary
@@ -457,13 +539,21 @@ let run_tests = fun ~config tests ->
   in
   let module R = (val config.reporter : Reporter.Intf) in
   R.init config.suite_info (List.length tests_to_run);
-  config.event_handler (SuiteStarted { suite_name = config.suite_info.name; total = List.length tests_to_run });
+  config.event_handler
+    (SuiteStarted { suite_name = config.suite_info.name; total = List.length tests_to_run });
   if config.concurrency <= 1 || List.length tests_to_run <= 1 then
     (
       let rec run_all index = function
         | [] -> []
         | test :: rest ->
-            let result = run_single_test ~suite_info:config.suite_info ~policy:config.policy ~on_event:config.event_handler index test in
+            let result =
+              run_single_test
+                ~suite_info:config.suite_info
+                ~policy:config.policy
+                ~on_event:config.event_handler
+                index
+                test
+            in
             R.on_result index result;
             result :: run_all (index + 1) rest
       in
@@ -472,4 +562,5 @@ let run_tests = fun ~config tests ->
       R.finalize summary;
       summary
     )
-  else run_tests_parallel ~config tests_to_run
+  else
+    run_tests_parallel ~config tests_to_run

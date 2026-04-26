@@ -26,13 +26,14 @@
    @see <https://en.wikipedia.org/wiki/Hash_table#Collision_resolution>
      Hash collision attacks
 *)
-module DefaultHasher : Hasher.Intf
+
+module DefaultHasher: Hasher.Intf
 
 (** Default hasher using kernel's default hash algorithm. *)
-(** Random state for HashMap/HashSet - provides seeded hashing. *)
-module RandomState : sig
-  type t
 
+(** Random state for HashMap/HashSet - provides seeded hashing. *)
+module RandomState: sig
+  type t
   val create: unit -> t
 
   (** Create a new random state with random seeds *)

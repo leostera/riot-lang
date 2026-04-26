@@ -3,18 +3,24 @@ open Suri
 
 (** Example showing the debugger middleware in action *)
 (* Helper function that will be in the stack trace *)
+
 let find_user = fun id ->
   if id = "123" then
     "Alice"
-  else panic (String.concat "" [ "User not found: "; id ])
+  else
+    panic (String.concat "" [ "User not found: "; id ])
 
 (* Another level in the stack *)
+
 let process_user_request = fun id ->
-  let name = find_user id in "Hello, " ^ name
+  let name = find_user id in
+  "Hello, " ^ name
 
 (* Route handlers *)
+
 let home_handler = fun conn _req ->
-  let html = {|
+  let html =
+    {|
 <!DOCTYPE html>
 <html>
   <head><title>Debugger Test</title></head>
@@ -37,38 +43,52 @@ let home_handler = fun conn _req ->
     <p><strong>Note:</strong> Check your terminal - errors are logged automatically!</p>
   </body>
 </html>
-  |} in conn |> Conn.with_status Ok |> Conn.with_header "Content-Type" "text/html" |> Conn.with_body html |> Conn.send
+  |}
+  in
+  conn
+  |> Conn.with_status Ok
+  |> Conn.with_header "Content-Type" "text/html"
+  |> Conn.with_body html
+  |> Conn.send
 
 let user_handler = fun conn req ->
   let params = Conn.params conn in
-  let id = Std.Collections.Proplist.get params ~key:"id" |> Option.unwrap_or ~default:"" in
-  let result = process_user_request id in conn |> Conn.respond ~status:Ok ~body:result |> Conn.send
+  let id =
+    Std.Collections.Proplist.get params ~key:"id"
+    |> Option.unwrap_or ~default:""
+  in
+  let result = process_user_request id in
+  conn
+  |> Conn.respond ~status:Ok ~body:result
+  |> Conn.send
 
 let crash_handler = fun conn req ->
   (* Set some response state before crashing *)
-  let _conn = Conn.with_header "X-Custom" "value" conn in panic "Intentional crash for testing!"
+  let _conn = Conn.with_header "X-Custom" "value" conn in
+  panic "Intentional crash for testing!"
 
 let divide_handler = fun conn req ->
   let x = 10 in
   let y = 0 in
-  let result = x / y in (* Division by zero! *)
-  conn |> Conn.respond ~status:Ok ~body:(Int.to_string result) |> Conn.send
+  let result = x / y in
+  (* Division by zero! *)
+  conn
+  |> Conn.respond ~status:Ok ~body:(Int.to_string result)
+  |> Conn.send
 
 (* Define routes *)
-let routes = Middleware.Router.[
-  get "/" home_handler;
-  get "/users/:id" user_handler;
-  get "/crash" crash_handler;
-  get "/divide" divide_handler;
-]
+
+let routes =
+  Middleware.Router.[
+    get "/" home_handler;
+    get "/users/:id" user_handler;
+    get "/crash" crash_handler;
+    get "/divide" divide_handler;
+  ]
 
 (* App with debugger middleware! *)
-let app = Middleware.[
-  request_id;
-  logger;
-  debugger;
-  router routes;
-]
+
+let app = Middleware.[ request_id; logger; debugger; router routes; ]
 
 let main ~args:_ =
   (* Enable backtraces! Critical for debugger *)
@@ -77,12 +97,14 @@ let main ~args:_ =
   let config = Suri.config ~port:3_000 () in
   match Suri.start_link ~config app with
   | Ok supervisor ->
-      Log.info "╔════════════════════════════════════════════════╗";
+      Log.info
+        "╔════════════════════════════════════════════════╗";
       Log.info "║  🐛 Debugger Middleware Test                  ║";
       Log.info "║  http://localhost:3000                        ║";
       Log.info "║                                                ║";
       Log.info "║  Try /users/999 to see beautiful error page!  ║";
-      Log.info "╚════════════════════════════════════════════════╝";
+      Log.info
+        "╚════════════════════════════════════════════════╝";
       Log.info "";
       Log.info "Routes:";
       Log.info "  GET  /           - Home with links";

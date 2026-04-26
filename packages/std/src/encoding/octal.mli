@@ -24,6 +24,7 @@
    ignore (file_mode, parsed, signed)
    ```
 *)
+
 open Global
 
 type decode_error = [`Invalid_octal]

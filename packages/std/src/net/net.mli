@@ -61,6 +61,7 @@
 
    See [Uri] for URL parsing and [Http] for HTTP-specific functionality.
 *)
+
 (** Network error types. *)
 type error =
   | Connection_refused
@@ -70,28 +71,28 @@ type error =
 module Uri = Uri
 
 (** Network addresses. *)
-module Addr : module type of Addr
+module Addr: module type of Addr
 
 (** TCP stream for connected sockets. *)
-module TcpStream : module type of Tcp_stream
+module TcpStream: module type of Tcp_stream
 
 (** TCP listener for accepting connections. *)
-module TcpListener : module type of Tcp_listener
+module TcpListener: module type of Tcp_listener
 
 (** TCP server that manages a listener and handles line-based protocols. *)
-module TcpServer : module type of Tcp_server
+module TcpServer: module type of Tcp_server
 
 (** UDP socket for datagram-oriented networking. *)
-module UdpSocket : module type of Udp_socket
+module UdpSocket: module type of Udp_socket
 
 (** UDP server convenience wrapper for packet handlers. *)
-module UdpServer : module type of Udp_server
+module UdpServer: module type of Udp_server
 
 (** TCP client for line-based protocols. *)
-module TcpClient : module type of Tcp_client
+module TcpClient: module type of Tcp_client
 
 (** TLS stream for encrypted connections. *)
-module TlsStream : module type of Tls_stream
+module TlsStream: module type of Tls_stream
 
 (** HTTP types and utilities. *)
-module Http : module type of Http
+module Http: module type of Http

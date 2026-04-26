@@ -41,11 +41,13 @@ let set entries ~key ~value =
     | [] ->
         if found then
           List.reverse acc
-        else List.reverse ((key, value) :: acc)
+        else
+          List.reverse ((key, value) :: acc)
     | (entry_key, _) :: rest when entry_key = key ->
         if found then
           loop acc found rest
-        else loop ((key, value) :: acc) true rest
+        else
+          loop ((key, value) :: acc) true rest
     | entry :: rest -> loop (entry :: acc) found rest
   in
   loop [] false entries
@@ -56,7 +58,8 @@ let remove entries ~key =
     | ((entry_key, _) as entry) :: rest ->
         if entry_key = key then
           loop acc rest
-        else loop (entry :: acc) rest
+        else
+          loop (entry :: acc) rest
   in
   loop [] entries
 
@@ -97,8 +100,8 @@ let iter: type key value. (key, value) t -> (key * value) Iter.Iterator.t = fun 
     type item = key * value
 
     let next = function
-      | [] -> None, []
-      | entry :: rest -> Some entry, rest
+      | [] -> (None, [])
+      | entry :: rest -> (Some entry, rest)
 
     let size = List.length
   end in

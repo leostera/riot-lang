@@ -1,4 +1,5 @@
 open Std
+
 module Request = Super.Request
 module Response = Super.Response
 module RetryPolicy = Super.Retry_policy
@@ -29,8 +30,10 @@ type t = {
   telemetry: Telemetry.t -> unit;
 }
 
-let pool = fun ?idle_ttl ~max_idle_per_endpoint () ->
-  { max_idle_per_endpoint = Int.max 0 max_idle_per_endpoint; idle_ttl }
+let pool = fun ?idle_ttl ~max_idle_per_endpoint () -> {
+  max_idle_per_endpoint = Int.max 0 max_idle_per_endpoint;
+  idle_ttl;
+}
 
 let connection_policy_to_string = fun value ->
   match value with
@@ -46,8 +49,7 @@ let close_behavior = fun value ->
 
 let default_budget_policy = Budget.policy ~capacity:100 ~window:(Time.Duration.from_secs 10)
 
-let make = fun ?(retry_policy = RetryPolicy.default) ?(now = Time.Instant.now) ?(sleep = fun _ -> ()) ?transport ?(connection_policy = CloseAfterRequest) ?(budget_policy = default_budget_policy) ?(circuit_breaker_policy = CircuitBreaker.default_policy) ?(telemetry = fun _ ->
-  ()) () ->
+let make = fun ?(retry_policy = RetryPolicy.default) ?(now = Time.Instant.now) ?(sleep = fun _ -> ()) ?transport ?(connection_policy = CloseAfterRequest) ?(budget_policy = default_budget_policy) ?(circuit_breaker_policy = CircuitBreaker.default_policy) ?(telemetry = fun _ -> ()) () ->
   {
     retry_policy;
     now;

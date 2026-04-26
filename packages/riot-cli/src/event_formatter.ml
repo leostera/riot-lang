@@ -8,7 +8,10 @@ let format = fun ~displayed_packages:_ (event: Riot_build.Event.t) ->
       let kind =
         if host then
           "host"
-        else "target"
+        else
+          "target"
       in
       "building " ^ kind ^ " " ^ Riot_model.Target.to_string target
-  | Riot_build.Event.CacheGc _ | Riot_build.Event.Telemetry _ | Riot_build.Event.Phase _ -> ""
+  | Riot_build.Event.CacheGc _
+  | Riot_build.Event.Telemetry _
+  | Riot_build.Event.Phase _ -> ""

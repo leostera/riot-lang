@@ -72,7 +72,9 @@ open Std
      ]
    ]}
 *)
+
 (** {1 Configuration} *)
+
 type config = {
   show_directory: bool;
   (** Enable directory browsing with HTML listings. Default: [false] *)
@@ -127,7 +129,10 @@ val default_config: config
    - [cache_control = Some "public, max-age=3600"] - 1 hour cache
 *)
 (** {1 Middleware} *)
-val middleware: ?config:config -> at:string -> Path.t -> unit -> Pipeline.middleware(**
+
+val middleware: ?config:config -> at:string -> Path.t -> unit -> Pipeline.middleware
+
+(**
    Create static file serving middleware.
 
    {3 Parameters}

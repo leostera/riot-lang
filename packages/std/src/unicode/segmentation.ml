@@ -20,7 +20,8 @@ let find_sentence_boundaries = fun s ->
       List.reverse acc
     else
       match String.get s ~at:pos with
-      | Some char when List.contains [ '.'; '!'; '?' ] ~value:char -> find (pos + 1) ((pos + 1) :: acc)
+      | Some char when List.contains [ '.'; '!'; '?' ] ~value:char ->
+          find (pos + 1) ((pos + 1) :: acc)
       | _ -> find (pos + 1) acc
   in
   find 0 []

@@ -9,16 +9,16 @@ let diff_strings = fun left right ->
       let next =
         let left_char = String.get left ~at:idx in
         let right_char = String.get right ~at:idx in
-        match left_char, right_char with
-        | Some x, Some y when x = y -> acc
-        | None, Some y -> { Diff.path = [ Diff.Index idx ]; kind = Diff.Added y } :: acc
-        | Some x, None -> { Diff.path = [ Diff.Index idx ]; kind = Diff.Removed x } :: acc
-        | Some x, Some y ->
+        match (left_char, right_char) with
+        | (Some x, Some y) when x = y -> acc
+        | (None, Some y) -> { Diff.path = [ Diff.Index idx ]; kind = Diff.Added y } :: acc
+        | (Some x, None) -> { Diff.path = [ Diff.Index idx ]; kind = Diff.Removed x } :: acc
+        | (Some x, Some y) ->
             {
               Diff.path = [ Diff.Index idx ];
-              kind = Diff.Changed (x, y)
+              kind = Diff.Changed (x, y);
             } :: acc
-        | None, None -> acc
+        | (None, None) -> acc
       in
       loop (idx + 1) next
   in
@@ -28,25 +28,29 @@ let test_diff_identical_strings = fun _ctx ->
   let diffs = diff_strings "riot" "riot" in
   if diffs = [] then
     Ok ()
-  else Error "Identical strings should produce no changes"
+  else
+    Error "Identical strings should produce no changes"
 
 let test_diff_different_strings = fun _ctx ->
   let diffs = diff_strings "ab" "cd" in
   if List.length (Diff.changes diffs) = 2 then
     Ok ()
-  else Error "Expected every character to change"
+  else
+    Error "Expected every character to change"
 
 let test_diff_empty_strings = fun _ctx ->
   let diffs = diff_strings "" "" in
   if not (Diff.has_changes diffs) then
     Ok ()
-  else Error "Empty strings should produce no changes"
+  else
+    Error "Empty strings should produce no changes"
 
 let test_diff_one_empty = fun _ctx ->
   let diffs = diff_strings "" "abc" in
   if List.length (Diff.additions diffs) = 3 then
     Ok ()
-  else Error "Expected all characters to be additions"
+  else
+    Error "Expected all characters to be additions"
 
 let test_diff_char_by_char = fun _ctx ->
   let diffs = diff_strings "abc" "axc" in
@@ -84,18 +88,19 @@ let test_diff_whitespace_changes = fun _ctx ->
   | [ { path = [ Diff.Index 1 ]; kind = Diff.Changed (' ', '\t') } ] -> Ok ()
   | _ -> Error "Expected whitespace change at index 1"
 
-let tests = Test.[
-  case "identical strings" test_diff_identical_strings;
-  case "different strings" test_diff_different_strings;
-  case "empty strings" test_diff_empty_strings;
-  case "one empty" test_diff_one_empty;
-  case "char by char" test_diff_char_by_char;
-  case "inserted chars" test_diff_inserted_chars;
-  case "deleted chars" test_diff_deleted_chars;
-  case "replaced chars" test_diff_replaced_chars;
-  case "case change" test_diff_case_change;
-  case "whitespace changes" test_diff_whitespace_changes;
-]
+let tests =
+  Test.[
+    case "identical strings" test_diff_identical_strings;
+    case "different strings" test_diff_different_strings;
+    case "empty strings" test_diff_empty_strings;
+    case "one empty" test_diff_one_empty;
+    case "char by char" test_diff_char_by_char;
+    case "inserted chars" test_diff_inserted_chars;
+    case "deleted chars" test_diff_deleted_chars;
+    case "replaced chars" test_diff_replaced_chars;
+    case "case change" test_diff_case_change;
+    case "whitespace changes" test_diff_whitespace_changes;
+  ]
 
 let main ~args = Test.Cli.main ~name:"string-diff" ~tests ~args ()
 

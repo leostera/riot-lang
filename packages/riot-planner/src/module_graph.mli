@@ -6,14 +6,12 @@ module G = Std.Graph.SimpleGraph
 type root_mode =
   | Library_root of { library_name: string }
   | Loose_sources
-
 type source_group = {
   source_dir: Path.t;
   allowed_source_files: Path.t list;
   root_mode: root_mode;
   namespace: Namespace.t;
 }
-
 type config = {
   root: Path.t;
   source_groups: source_group list;
@@ -21,7 +19,6 @@ type config = {
   toolchain: Riot_toolchain.t;
   workspace: Workspace.t;
 }
-
 type analyzed_module = {
   display_path: Path.t;
   source_hash: Crypto.hash;
@@ -32,9 +29,7 @@ type analyzed_module = {
   resolved_dep_ids: G.Node_id.t list;
   unresolved_deps: string list;
 }
-
 type t
-
 val create: config -> t
 
 val add_direct_dependency_root: t -> package_name:Package_name.t -> root_module:string -> unit
@@ -45,9 +40,21 @@ val wire_dependencies: t -> (unit, Planning_error.t) result
 
 val add_library_node: t -> name:string -> includes:Path.t list -> unit
 
-val add_binary_node: t -> name:string -> source:Path.t -> libraries:Path.t list -> includes:Path.t list -> unit
+val add_binary_node:
+  t ->
+  name:string ->
+  source:Path.t ->
+  libraries:Path.t list ->
+  includes:Path.t list ->
+  unit
 
-val add_command_node: t -> name:string -> source:Path.t -> libraries:Path.t list -> includes:Path.t list -> unit
+val add_command_node:
+  t ->
+  name:string ->
+  source:Path.t ->
+  libraries:Path.t list ->
+  includes:Path.t list ->
+  unit
 
 val graph: t -> Module_node.t G.t
 

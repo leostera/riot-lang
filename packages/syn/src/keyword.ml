@@ -179,7 +179,10 @@ let to_string = function
   | With -> "with"
 
 let is_opening = function
-  | Begin | Struct | Sig | Object -> true
+  | Begin
+  | Struct
+  | Sig
+  | Object -> true
   | _ -> false
 
 let is_closing = function

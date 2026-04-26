@@ -24,12 +24,13 @@ let selector = fun msg ->
   | other -> `select (Event.Custom other)
 
 (* User custom messages *)
+
 let rec loop = fun state ->
   Log.trace "[PROGRAM] Waiting for event...";
   let event = receive ~selector () in
   Log.trace "[PROGRAM] Received event";
   forward_event event state;
-  let model, cmd = state.app.update event state.model in
+  let (model, cmd) = state.app.update event state.model in
   let state = { state with model } in
   let view = state.app.view model in
   Renderer.render state.renderer view;
@@ -37,6 +38,7 @@ let rec loop = fun state ->
   match handle_cmd cmd state with
   | Halt -> handle_shutdown state
   | Continue -> loop state
+
 and forward_event = fun event state ->
   (* Forward resize events to renderer *)
   (
@@ -44,6 +46,7 @@ and forward_event = fun event state ->
     | Event.Resize { width; height } -> Renderer.resize state.renderer ~width ~height
     | _ -> ()
   )
+
 and handle_cmd = fun cmd state ->
   match cmd with
   | Quit -> Halt
@@ -87,12 +90,14 @@ and handle_cmd = fun cmd state ->
       Renderer.set_window_title state.renderer title;
       Continue
   | SetTimer { ref; duration } ->
-      let _ = Timer.send_after (self ()) (Timer ref) ~after:duration in Continue
+      let _ = Timer.send_after (self ()) (Timer ref) ~after:duration in
+      Continue
   | Seq [] -> Continue
   | Seq (cmd :: rest) ->
       match handle_cmd cmd state with
       | Halt -> Halt
       | Continue -> handle_cmd (Seq rest) state
+
 and handle_shutdown = fun state ->
   Log.trace "Shutting down Minttea";
   Renderer.show_cursor state.renderer;
@@ -103,7 +108,7 @@ and handle_shutdown = fun state ->
 
 let init = fun state ->
   (* Initialize app with initial model - size will be updated by renderer *)
-  let model, init_cmd = state.app.init state.model in
+  let (model, init_cmd) = state.app.init state.model in
   let state = { state with model } in
   (* Handle init command BEFORE first render *)
   let should_quit = handle_cmd init_cmd state in
@@ -135,7 +140,7 @@ let run = fun ~app ~config ~initial_model ->
     tty;
     app;
     config;
-    model = initial_model
+    model = initial_model;
   }
   in
   init state

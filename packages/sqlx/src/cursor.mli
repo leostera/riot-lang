@@ -1,7 +1,6 @@
 open Std
 
 type t
-
 val make: string -> 'rs -> (module Sqlx_driver.Driver.Intf with type result_set = 'rs) -> t
 
 val to_mut_iter: t -> Sqlx_driver.Row.t Std.Iter.MutIterator.t

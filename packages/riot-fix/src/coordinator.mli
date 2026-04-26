@@ -2,11 +2,11 @@
 open Std
 
 (** Either a pre-resolved file list or root paths to stream from. *)
+
 (** Coordinator configuration *)
 type input =
   | Files of Path.t list
   | Roots of Path.t list
-
 (**
    Start a new coordinator actor.
 
@@ -27,5 +27,4 @@ type config = {
   scope: Fix_config.scope option;
   owner: Pid.t;
 }
-
 val start: config -> Pid.t

@@ -45,6 +45,7 @@
    Result.map_err (fun _ -> "Config file not found") |> Result.and_then
    parse_json |> Result.expect ~msg:"Failed to load configuration" ```
 *)
+
 type ('a, 'e) t = ('a, 'e) Kernel.result =
   | Ok of 'a
   | Error of 'e
@@ -54,6 +55,7 @@ type ('a, 'e) t = ('a, 'e) Kernel.result =
    an error value
 *)
 (** # Constructors *)
+
 (**
    Creates an [`Ok`] value.
 
@@ -74,6 +76,7 @@ val ok: 'a -> ('a, 'e) t
 val err: 'e -> ('a, 'e) t
 
 (** # Querying *)
+
 (**
    Returns `true` if the result is [`Ok`].
 
@@ -134,6 +137,7 @@ val is_ok_and: ('a -> bool) -> ('a, 'e) t -> bool
 val is_err_and: ('e -> bool) -> ('a, 'e) t -> bool
 
 (** # Transforming *)
+
 (**
    Maps a `Result<'a, 'e>` to `Result<'b, 'e>` by applying a function to the
    [`Ok`] value.
@@ -203,6 +207,7 @@ val map_or: ('a, 'e) t -> default:'b -> fn:('a -> 'b) -> 'b
 val map_or_else: ('a, 'e) t -> default:('e -> 'b) -> fn:('a -> 'b) -> 'b
 
 (** # Chaining *)
+
 (**
    Calls function on [`Ok`] value if present, short-circuits on [`Error`].
 
@@ -256,6 +261,7 @@ val or_: ('a, 'e) t -> ('a, 'e) t -> ('a, 'e) t
 val or_else: ('a, 'e) t -> fn:('e -> ('a, 'f) t) -> ('a, 'f) t
 
 (** # Extracting values *)
+
 (**
    Returns the contained [`Ok`] value, consuming the result.
 
@@ -276,6 +282,7 @@ val or_else: ('a, 'e) t -> fn:('e -> ('a, 'f) t) -> ('a, 'f) t
    Generally, prefer [`expect`] which provides a more helpful panic message, or
    [`unwrap_or`] / [`unwrap_or_else`] for non-panicking alternatives.
 *)
+
 (**
    Returns the contained [`Ok`] value or a provided default.
 
@@ -391,6 +398,7 @@ val ok_value: ('a, 'e) t -> 'a option
 val err_value: ('a, 'e) t -> 'e option
 
 (** # Inspecting *)
+
 (**
    Calls the provided closure on the contained [`Ok`] value (if any).
 
@@ -422,6 +430,7 @@ val inspect: ('a -> unit) -> ('a, 'e) t -> ('a, 'e) t
 val inspect_err: ('e -> unit) -> ('a, 'e) t -> ('a, 'e) t
 
 (** # Iterating *)
+
 (**
    Calls function on [`Ok`] value if present, otherwise does nothing.
 
@@ -449,6 +458,7 @@ val iter: ('a, 'e) t -> fn:('a -> unit) -> unit
 val iter_err: ('a, 'e) t -> fn:('e -> unit) -> unit
 
 (** # Converting *)
+
 (**
    Converts from `Result<'a, 'e>` to [`Option<'a>`].
 
@@ -499,6 +509,7 @@ val from_option: error:'e -> 'a option -> ('a, 'e) t
 val transpose: ('a option, 'e) t -> ('a, 'e) t option
 
 (** # Flattening *)
+
 (**
    Converts from `Result<Result<'a, 'e>, 'e>` to `Result<'a, 'e>`.
 
@@ -518,6 +529,7 @@ val transpose: ('a option, 'e) t -> ('a, 'e) t option
 val flatten: (('a, 'e) t, 'e) t -> ('a, 'e) t
 
 (** # Collecting *)
+
 (**
    Converts a list of `Result`s into a single `Result` containing a list.
 
@@ -566,6 +578,7 @@ val all: ('a, 'e) t list -> ('a list, 'e) t
 val both: ('a, 'e) t -> ('b, 'e) t -> ('a * 'b, 'e) t
 
 (** # Misc *)
+
 (**
    Applies one of two functions depending on the result variant.
 
@@ -585,6 +598,6 @@ val both: ('a, 'e) t -> ('b, 'e) t -> ('a * 'b, 'e) t
 *)
 val fold: ('a, 'e) t -> ok:('a -> 'c) -> error:('e -> 'c) -> 'c
 
-module Syntax : sig
+module Syntax: sig
   val ( let* ): ('a, 'e) t -> ('a -> ('b, 'e) t) -> ('b, 'e) t
 end

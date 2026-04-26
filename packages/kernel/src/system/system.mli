@@ -1,10 +1,13 @@
 (** Platform identity and executable metadata for the current host. *)
-module Host : sig
+module Host: sig
   type error =
     | InvalidTripletFormat of { value: string }
-
-  type t = { architecture: string; vendor: string; os: string; abi: string option }
-
+  type t = {
+    architecture: string;
+    vendor: string;
+    os: string;
+    abi: string option;
+  }
   val current: t
 
   (** Use `to_string host` to render `host` as `arch-vendor-os[-abi]`. *)
@@ -18,12 +21,11 @@ module Host : sig
   val equal: t -> t -> bool
 end
 
-module OS : sig
+module OS: sig
   type t =
     | Unix
     | Win32
     | Cygwin
-
   val current: t
 
   (** Use `to_string value` for the stable legacy rendering used across Riot. *)

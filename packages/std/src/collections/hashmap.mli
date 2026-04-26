@@ -1,9 +1,7 @@
 type ('key, 'value) t
-
 type ('key, 'value) entry =
   | Occupied of 'value
   | Vacant
-
 val create: unit -> ('key, 'value) t
 
 val with_capacity: size:int -> ('key, 'value) t

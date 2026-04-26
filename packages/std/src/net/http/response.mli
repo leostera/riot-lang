@@ -53,9 +53,9 @@
      Log.error "Request failed: %d" (Status.to_int (Response.status resp))
    ```
 *)
+
 (** An HTTP response with status, headers, and optional body. *)
 type t
-
 (** ## Construction *)
 (**
    Creates a new HTTP response with the given status code.
@@ -67,6 +67,7 @@ type t
 val create: Status.t -> t
 
 (** ## Access *)
+
 (**
    Returns the HTTP status code.
 
@@ -113,6 +114,7 @@ val body: t -> Body.t option
 val body_string: t -> string option
 
 (** ## Modification *)
+
 (**
    Returns a new response with the given status.
 
@@ -217,7 +219,8 @@ val get_header: t -> Header.name -> Header.value option
 val has_header: t -> Header.name -> bool
 
 (** ## Builder Pattern *)
-module Builder : sig
+
+module Builder: sig
   (**
      Fluent builder for constructing HTTP responses.
 
@@ -231,13 +234,13 @@ module Builder : sig
        |> Response.Builder.build
      ```
   *)
+
   (** The final response type *)
+
   (** The builder type *)
   type response = t
-
   (** Creates a new response builder. *)
   type t
-
   val create: Status.t -> t
 
   (** Sets the status code. *)
@@ -267,6 +270,7 @@ module Builder : sig
 end
 
 (** ## Convenience Constructors *)
+
 (**
    Creates a 200 OK response with body.
 

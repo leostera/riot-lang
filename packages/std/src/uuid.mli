@@ -65,11 +65,11 @@
    - Session tokens
    - Resource identifiers
 *)
+
 open Global
 
 (** The type for UUIDs (128 bits / 16 bytes). *)
 type t
-
 (** {1 Creation} *)
 (**
    Generates a random UUID v4.
@@ -227,6 +227,7 @@ val v4_from_bytes: bytes -> t
 val v7_from_parts: time_ms:int64 -> rand_a:int -> rand_b:int64 -> t
 
 (** {1 Constants} *)
+
 (** The nil UUID (all zeros): [00000000-0000-0000-0000-000000000000]. *)
 val nil: t
 
@@ -246,6 +247,7 @@ val ns_oid: t
 val ns_x500: t
 
 (** {1 Parsing} *)
+
 (**
    Parses a UUID from string format.
 
@@ -282,6 +284,7 @@ val of_string: string -> (t, [ | `Invalid_uuid of string]) result
 val of_bytes: bytes -> (t, [ | `Invalid_uuid of string]) result
 
 (** {1 Serialization} *)
+
 (**
    Converts UUID to string format.
 
@@ -315,6 +318,7 @@ val to_string_nodash: ?upper:bool -> t -> string
 val to_bytes: t -> bytes
 
 (** {1 Comparison} *)
+
 (**
    Tests if two UUIDs are equal.
 
@@ -352,6 +356,7 @@ val compare: t -> t -> Order.t
 val is_nil: t -> bool
 
 (** {1 Query} *)
+
 (**
    Returns the UUID version (3, 4, 5, 7, 8) or [None] for nil/invalid.
 

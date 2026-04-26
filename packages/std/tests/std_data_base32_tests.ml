@@ -7,20 +7,23 @@ let test_encode_simple = fun _ctx ->
   let encoded = Base32.encode "Hello" in
   if encoded = "JBSWY3DP" then
     Ok ()
-  else Error ("Expected 'JBSWY3DP', got '" ^ encoded ^ "'")
+  else
+    Error ("Expected 'JBSWY3DP', got '" ^ encoded ^ "'")
 
 let test_encode_empty = fun _ctx ->
   let encoded = Base32.encode "" in
   if encoded = "" then
     Ok ()
-  else Error "Empty string should encode to empty string"
+  else
+    Error "Empty string should encode to empty string"
 
 let test_encode_bytes = fun _ctx ->
   let bytes = Bytes.from_string "test" in
   let encoded = Base32.encode_bytes bytes in
   if String.length encoded > 0 then
     Ok ()
-  else Error "Bytes encoding failed"
+  else
+    Error "Bytes encoding failed"
 
 let test_decode_simple = fun _ctx ->
   match Base32.decode "JBSWY3DP" with
@@ -51,18 +54,20 @@ let test_padding = fun _ctx ->
   let encoded = Base32.encode "f" in
   if String.contains encoded "=" then
     Ok ()
-  else Error "Short strings should have padding"
+  else
+    Error "Short strings should have padding"
 
-let tests = Test.[
-  case "encode simple" test_encode_simple;
-  case "encode empty" test_encode_empty;
-  case "encode bytes" test_encode_bytes;
-  case "decode simple" test_decode_simple;
-  case "decode invalid char" test_decode_invalid_char;
-  case "roundtrip" test_roundtrip;
-  case "binary roundtrip" test_roundtrip_binary;
-  case "padding" test_padding;
-]
+let tests =
+  Test.[
+    case "encode simple" test_encode_simple;
+    case "encode empty" test_encode_empty;
+    case "encode bytes" test_encode_bytes;
+    case "decode simple" test_decode_simple;
+    case "decode invalid char" test_decode_invalid_char;
+    case "roundtrip" test_roundtrip;
+    case "binary roundtrip" test_roundtrip_binary;
+    case "padding" test_padding;
+  ]
 
 let main ~args = Test.Cli.main ~name:"base32" ~tests ~args ()
 

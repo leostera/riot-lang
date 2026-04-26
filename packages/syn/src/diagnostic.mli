@@ -23,13 +23,13 @@ open Std
    - Better IDE support (errors don't block analysis)
 *)
 (** # Types *)
+
 type found_token = {
   kind: string;
   (** Token kind description like "trivia", "keyword" *)
   text: string;
   (** Actual text from source *)
 }
-
 (** A diagnostic with structured error information and source location. *)
 type kind =
   (* Specific parsing errors with helpful hints *)
@@ -93,9 +93,10 @@ type kind =
   | MissingModuleExpr of { found: found_token }
   | MissingWithKeyword of { found: found_token }
   | InvalidModuleName of { found: found_token }
-
-type t = { kind: kind; span: Ceibo.Span.t }
-
+type t = {
+  kind: kind;
+  span: Ceibo.Span.t;
+}
 (** # Construction *)
 (**
    `make ~kind ~span` creates a diagnostic.
@@ -114,6 +115,7 @@ val make: kind:kind -> span:Ceibo.Span.t -> t
 
    These helpers create specific diagnostic types with helpful hints.
 *)
+
 (**
    Create a "malformed type variable" diagnostic.
 
@@ -155,7 +157,12 @@ val missing_let_binding_expr: found:Token.t -> text:string -> span:Ceibo.Span.t 
 val unexpected_structure_item: found:Token.t -> text:string -> span:Ceibo.Span.t -> t
 
 (** Create an "unexpected closing delimiter" diagnostic. *)
-val unexpected_closing_delimiter: delimiter:string -> found:Token.t -> text:string -> span:Ceibo.Span.t -> t
+val unexpected_closing_delimiter:
+  delimiter:string ->
+  found:Token.t ->
+  text:string ->
+  span:Ceibo.Span.t ->
+  t
 
 (** Create a "missing module declaration equals" diagnostic. *)
 val missing_module_decl_equals: found:Token.t -> text:string -> span:Ceibo.Span.t -> t
@@ -210,17 +217,43 @@ val multi_char_literal: text:string -> span:Ceibo.Span.t -> t
 
 val unclosed_char_literal: text:string -> span:Ceibo.Span.t -> t
 
-val missing_binary_operand: operator:string -> side:string -> found:Token.t -> text:string -> span:Ceibo.Span.t -> t
+val missing_binary_operand:
+  operator:string ->
+  side:string ->
+  found:Token.t ->
+  text:string ->
+  span:Ceibo.Span.t ->
+  t
 
-val consecutive_binary_operators: operators:string -> found:Token.t -> text:string -> span:Ceibo.Span.t -> t
+val consecutive_binary_operators:
+  operators:string ->
+  found:Token.t ->
+  text:string ->
+  span:Ceibo.Span.t ->
+  t
 
-val invalid_type_parameter: text:string -> found:Token.t -> text_found:string -> span:Ceibo.Span.t -> t
+val invalid_type_parameter:
+  text:string ->
+  found:Token.t ->
+  text_found:string ->
+  span:Ceibo.Span.t ->
+  t
 
-val uppercase_type_variable: text:string -> found:Token.t -> text_found:string -> span:Ceibo.Span.t -> t
+val uppercase_type_variable:
+  text:string ->
+  found:Token.t ->
+  text_found:string ->
+  span:Ceibo.Span.t ->
+  t
 
 val uppercase_type_name: text:string -> found:Token.t -> text_found:string -> span:Ceibo.Span.t -> t
 
-val bracketed_type_parameters: type_name:string -> found:Token.t -> text:string -> span:Ceibo.Span.t -> t
+val bracketed_type_parameters:
+  type_name:string ->
+  found:Token.t ->
+  text:string ->
+  span:Ceibo.Span.t ->
+  t
 
 val list_double_semicolon: found:Token.t -> text:string -> span:Ceibo.Span.t -> t
 
@@ -236,7 +269,12 @@ val match_guard_missing_expr: found:Token.t -> text:string -> span:Ceibo.Span.t 
 
 val tuple_pattern_extra_comma: found:Token.t -> text:string -> span:Ceibo.Span.t -> t
 
-val constructor_pattern_needs_parens: constructor:string -> found:Token.t -> text:string -> span:Ceibo.Span.t -> t
+val constructor_pattern_needs_parens:
+  constructor:string ->
+  found:Token.t ->
+  text:string ->
+  span:Ceibo.Span.t ->
+  t
 
 val cons_pattern_missing_head: found:Token.t -> text:string -> span:Ceibo.Span.t -> t
 
@@ -248,15 +286,26 @@ val or_pattern_double: found:Token.t -> text:string -> span:Ceibo.Span.t -> t
 
 val mutable_field_missing_name: found:Token.t -> text:string -> span:Ceibo.Span.t -> t
 
-val record_field_missing_colon: field_name:string -> found:Token.t -> text:string -> span:Ceibo.Span.t -> t
+val record_field_missing_colon:
+  field_name:string ->
+  found:Token.t ->
+  text:string ->
+  span:Ceibo.Span.t ->
+  t
 
-val record_field_missing_type: field_name:string -> found:Token.t -> text:string -> span:Ceibo.Span.t -> t
+val record_field_missing_type:
+  field_name:string ->
+  found:Token.t ->
+  text:string ->
+  span:Ceibo.Span.t ->
+  t
 
 val poly_type_missing_var_name: found:Token.t -> text:string -> span:Ceibo.Span.t -> t
 
 val poly_type_missing_dot: found:Token.t -> text:string -> span:Ceibo.Span.t -> t
 
 (** # Serialization *)
+
 (** `error_id diag` returns the error ID for this diagnostic. *)
 val error_id: t -> Error.id
 

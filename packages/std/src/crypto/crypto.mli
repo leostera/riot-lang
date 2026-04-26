@@ -38,11 +38,14 @@
    - Non-cryptographic hashing for HashMap/HashSet
    - Password hashing (use proper KDFs like Argon2, not these!)
 *)
+
 (** ## Core Types *)
+
 type hash = Hash.t
 
 (** Universal hash type produced by all hash algorithms. *)
 (** ## Modules *)
+
 module Hash = Hash
 
 module Hasher = Hasher
@@ -52,15 +55,17 @@ module Digest = Digest
 
 (** Digest formatting functions *)
 (** ## Algorithms *)
-module Sha1 : Hasher.Intf
 
-module Sha256 : Hasher.Intf
+module Sha1: Hasher.Intf
 
-module Sha512 : Hasher.Intf
+module Sha256: Hasher.Intf
 
-module Md5 : Hasher.Intf
+module Sha512: Hasher.Intf
+
+module Md5: Hasher.Intf
 
 (** ## Defaults *)
+
 module DefaultHasher = Default.DefaultHasher
 
 (** Default hasher for general use *)
@@ -68,6 +73,7 @@ module RandomState = Default.RandomState
 
 (** Random state for HashMap/HashSet *)
 (** ## Convenience Functions *)
+
 val hash_string: string -> hash
 
 (** Hash a string directly. *)

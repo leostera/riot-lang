@@ -12,7 +12,7 @@ let make = fun ?(max_request_line_length = 8_192) ?(max_header_count = 100) ?(ma
     max_request_line_length;
     max_header_count;
     max_header_length;
-    buffer_size
+    buffer_size;
   }
 
 let default = make ()

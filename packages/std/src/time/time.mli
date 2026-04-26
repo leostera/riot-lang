@@ -30,6 +30,7 @@
    Timeouts/delays | [Duration] | | Timestamps/logging | [SystemTime] | |
    Benchmarking | [Instant] | | Calendar operations | [DateTime] (separate module) |
 *)
+
 module Duration = Duration
 
 (** Spans of time with nanosecond precision. See [Duration]. *)

@@ -1,21 +1,24 @@
 open Std
 
-let escape_html = fun input -> String.fold_left ~fn:(
-  fun acc ch ->
-    acc ^ (
-      match ch with
-      | '<' -> "&lt;"
-      | '>' -> "&gt;"
-      | '&' -> "&amp;"
-      | '"' -> "&quot;"
-      | '\'' -> "&#39;"
-      | _ -> String.make ~len:1 ~char:ch
-    )
-) ~init:"" input
+let escape_html = fun input ->
+  String.fold_left
+    ~fn:(fun acc ch ->
+      acc ^ (
+        match ch with
+        | '<' -> "&lt;"
+        | '>' -> "&gt;"
+        | '&' -> "&amp;"
+        | '"' -> "&quot;"
+        | '\'' -> "&#39;"
+        | _ -> String.make ~len:1 ~char:ch
+      ))
+    ~init:""
+    input
 
-let assets =
-  [
-    "assets/doc.css", [
+let assets = [
+  (
+    "assets/doc.css",
+    [
       "@import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;700&display=swap');";
       ":root {";
       "  --bg: oklch(1 0 0);";
@@ -153,17 +156,32 @@ let assets =
       ".item-snippet .hljs-variable, .item-snippet .hljs-params, .item-snippet .hljs-name { color: var(--text); }";
       "@media (max-width: 980px) { .docs-shell { grid-template-columns: 1fr; width: min(100vw - 20px, 1120px); } .sidebar { position: static; } }";
       "@media (max-width: 640px) { .page-header, .section-card, .sidebar { padding: 16px; } .page-title { font-size: 1.9rem; } .item-row, .item-subitem { grid-template-columns: 1fr; gap: 4px; } }";
-    ] |> String.concat "\n";
-  ]
+    ]
+    |> String.concat "\n"
+  );
+]
 
-let render_empty_state = fun message -> "<div class=\"empty-state\">" ^ escape_html message ^ "</div>"
+let render_empty_state = fun message ->
+  "<div class=\"empty-state\">" ^ escape_html message ^ "</div>"
 
 let render_sidebar_group = fun ~title links ->
   if links = [] then
     ""
-  else "<section class=\"sidebar-group\">\n" ^ "  <h2>" ^ escape_html title ^ "</h2>\n" ^ "  <ul>\n" ^ (links |> List.map ~fn:(
-    fun (href, label) -> "    <li><a href=\"" ^ href ^ "\">" ^ escape_html label ^ "</a></li>"
-  ) |> String.concat "\n") ^ "\n  </ul>\n" ^ "</section>\n"
+  else
+    "<section class=\"sidebar-group\">\n"
+    ^ "  <h2>"
+    ^ escape_html title
+    ^ "</h2>\n"
+    ^ "  <ul>\n"
+    ^ (
+      links
+      |> List.map
+        ~fn:(fun (href, label) ->
+          "    <li><a href=\"" ^ href ^ "\">" ^ escape_html label ^ "</a></li>")
+      |> String.concat "\n"
+    )
+    ^ "\n  </ul>\n"
+    ^ "</section>\n"
 
 type doc_block =
   | Text of string
@@ -172,7 +190,10 @@ type doc_block =
 let render_code_block = fun snippet ->
   if String.equal snippet "" then
     ""
-  else "<pre class=\"item-snippet\"><code class=\"language-ocaml\">" ^ escape_html snippet ^ "</code></pre>\n"
+  else
+    "<pre class=\"item-snippet\"><code class=\"language-ocaml\">"
+    ^ escape_html snippet
+    ^ "</code></pre>\n"
 
 let render_docstring x =
   match x with
@@ -185,9 +206,11 @@ let render_docstring_block = fun ~class_name docstring ->
   | html -> "<div class=\"" ^ class_name ^ "\">" ^ html ^ "</div>\n"
 
 let first_doc_line = function
-  | Some docstring -> docstring |> String.split ~by:"\n" |> List.find ~fn:(
-    fun line -> not (String.equal (String.trim line) "")
-  ) |> Option.map ~fn:String.trim
+  | Some docstring ->
+      docstring
+      |> String.split ~by:"\n"
+      |> List.find ~fn:(fun line -> not (String.equal (String.trim line) ""))
+      |> Option.map ~fn:String.trim
   | None -> None
 
 let summary_text = fun ~meta ~signature ~docstring ->
@@ -211,200 +234,453 @@ let render_item_row = fun ~href ~name ~kind_label ~meta ~signature ~snippet ~doc
   ) ^ ">\n" ^ "  <a class=\"item-name\" href=\"" ^ href ^ "\">" ^ escape_html name ^ "</a>\n" ^ (
     if String.equal summary "" then
       ""
-    else "  <div class=\"item-summary\">" ^ escape_html summary ^ "</div>\n"
+    else
+      "  <div class=\"item-summary\">" ^ escape_html summary ^ "</div>\n"
   ) ^ "</li>"
 
 let render_kind_section = fun ~section_id ~title ~note rows ->
-  "<section id=\"" ^ section_id ^ "\" class=\"section-card\">\n" ^ "  <div class=\"section-header\">\n" ^ "    <h2>" ^ escape_html title ^ "</h2>\n" ^ "    <span class=\"section-note\">" ^ escape_html note ^ "</span>\n" ^ "  </div>\n" ^ (
+  "<section id=\""
+  ^ section_id
+  ^ "\" class=\"section-card\">\n"
+  ^ "  <div class=\"section-header\">\n"
+  ^ "    <h2>"
+  ^ escape_html title
+  ^ "</h2>\n"
+  ^ "    <span class=\"section-note\">"
+  ^ escape_html note
+  ^ "</span>\n"
+  ^ "  </div>\n" ^ (
     if rows = [] then
       render_empty_state ("No " ^ String.lowercase_ascii title ^ " were discovered yet.")
-    else "<ul class=\"item-list\">\n" ^ String.concat "\n" rows ^ "\n</ul>"
+    else
+      "<ul class=\"item-list\">\n" ^ String.concat "\n" rows ^ "\n</ul>"
   ) ^ "\n</section>\n"
 
 let render_detail_section = fun ~section_id ~title ~note details ->
-  "<section id=\"" ^ section_id ^ "\" class=\"section-card\">\n" ^ "  <div class=\"section-header\">\n" ^ "    <h2>" ^ escape_html title ^ "</h2>\n" ^ "    <span class=\"section-note\">" ^ escape_html note ^ "</span>\n" ^ "  </div>\n" ^ (
+  "<section id=\""
+  ^ section_id
+  ^ "\" class=\"section-card\">\n"
+  ^ "  <div class=\"section-header\">\n"
+  ^ "    <h2>"
+  ^ escape_html title
+  ^ "</h2>\n"
+  ^ "    <span class=\"section-note\">"
+  ^ escape_html note
+  ^ "</span>\n"
+  ^ "  </div>\n" ^ (
     if details = [] then
       render_empty_state ("No " ^ String.lowercase_ascii title ^ " were discovered yet.")
-    else "<div class=\"item-detail-list\">\n" ^ String.concat "\n" details ^ "\n</div>"
+    else
+      "<div class=\"item-detail-list\">\n" ^ String.concat "\n" details ^ "\n</div>"
   ) ^ "\n</section>\n"
 
 let render_dependency_section = fun dependencies ->
-  let rows = dependencies |> List.map ~fn:(
-    fun (dep: Doctree.dependency_link) -> render_item_row ~href:dep.url ~name:dep.name ~kind_label:"dependency" ~meta:("linked docs: " ^ Option.unwrap_or ~default:"dev" dep.version) ~signature:"" ~snippet:"" ~docstring:None ~anchor:None
-  ) in render_kind_section ~section_id:"dependencies" ~title:"Dependencies" ~note:"" rows
+  let rows =
+    dependencies
+    |> List.map
+      ~fn:(fun (dep: Doctree.dependency_link) ->
+        render_item_row
+          ~href:dep.url
+          ~name:dep.name
+          ~kind_label:"dependency"
+          ~meta:("linked docs: " ^ Option.unwrap_or ~default:"dev" dep.version)
+          ~signature:""
+          ~snippet:""
+          ~docstring:None
+          ~anchor:None)
+  in
+  render_kind_section ~section_id:"dependencies" ~title:"Dependencies" ~note:"" rows
 
-let render_module_rows = fun ~from_module modules -> modules |> List.map ~fn:(
-  fun (module_doc: Doctree.module_doc) ->
-    let href =
-      match from_module with
-      | Some from_module -> Doctree.relative_module_href ~from_module ~to_module:module_doc
-      | None -> Doctree.module_href module_doc
-    in
-    render_item_row ~href ~name:(Doctree.module_display_name module_doc) ~kind_label:"module" ~meta:"" ~signature:"" ~snippet:"" ~docstring:module_doc.docstring ~anchor:None
-)
+let render_module_rows = fun ~from_module modules ->
+  modules
+  |> List.map
+    ~fn:(fun (module_doc: Doctree.module_doc) ->
+      let href =
+        match from_module with
+        | Some from_module -> Doctree.relative_module_href ~from_module ~to_module:module_doc
+        | None -> Doctree.module_href module_doc
+      in
+      render_item_row
+        ~href
+        ~name:(Doctree.module_display_name module_doc)
+        ~kind_label:"module"
+        ~meta:""
+        ~signature:""
+        ~snippet:""
+        ~docstring:module_doc.docstring
+        ~anchor:None)
 
 let render_item_detail = fun (item: Doctree.item) ->
   let definition =
     if String.equal item.snippet "" then
       item.signature
-    else item.snippet
+    else
+      item.snippet
   in
-  let render_detail_group (group: Doctree.item_detail_group) = "<section class=\"item-subsection\">\n" ^ "  <h4>" ^ escape_html group.title ^ "</h4>\n" ^ "  <div class=\"item-subitem-list\">\n" ^ (group.details |> List.map ~fn:(
-    fun (detail: Doctree.item_detail) ->
-      "<div class=\"item-subitem\">\n" ^ "  <div class=\"item-subitem-signature\">" ^ escape_html detail.signature ^ "</div>\n" ^ (
-        match detail.docstring with
-        | Some docstring when not (String.equal docstring "") -> "  " ^ render_docstring_block ~class_name:"item-subitem-docstring" (Some docstring)
-        | _ -> ""
-      ) ^ "</div>"
-  ) |> String.concat "\n") ^ "\n  </div>\n" ^ "</section>" in
-  "<article class=\"item-detail\" id=\"" ^ escape_html item.anchor ^ "\">\n" ^ "  <h3 class=\"item-detail-title\"><a href=\"#" ^ escape_html item.anchor ^ "\">" ^ escape_html item.name ^ "</a></h3>\n" ^ render_code_block definition ^ render_docstring_block ~class_name:"item-docstring" item.docstring ^ (
+  let render_detail_group (group: Doctree.item_detail_group) =
+    "<section class=\"item-subsection\">\n"
+    ^ "  <h4>"
+    ^ escape_html group.title
+    ^ "</h4>\n"
+    ^ "  <div class=\"item-subitem-list\">\n" ^ (
+      group.details
+      |> List.map
+        ~fn:(fun (detail: Doctree.item_detail) ->
+          "<div class=\"item-subitem\">\n"
+          ^ "  <div class=\"item-subitem-signature\">"
+          ^ escape_html detail.signature
+          ^ "</div>\n" ^ (
+            match detail.docstring with
+            | Some docstring when not (String.equal docstring "") ->
+                "  " ^ render_docstring_block ~class_name:"item-subitem-docstring" (Some docstring)
+            | _ -> ""
+          ) ^ "</div>")
+      |> String.concat "\n"
+    ) ^ "\n  </div>\n" ^ "</section>"
+  in
+  "<article class=\"item-detail\" id=\""
+  ^ escape_html item.anchor
+  ^ "\">\n"
+  ^ "  <h3 class=\"item-detail-title\"><a href=\"#"
+  ^ escape_html item.anchor
+  ^ "\">"
+  ^ escape_html item.name
+  ^ "</a></h3>\n"
+  ^ render_code_block definition
+  ^ render_docstring_block ~class_name:"item-docstring" item.docstring ^ (
     match item.detail_groups with
     | [] -> ""
-    | groups -> "<div class=\"item-subsections\">\n" ^ String.concat "\n" (List.map groups ~fn:render_detail_group) ^ "\n</div>\n"
+    | groups ->
+        "<div class=\"item-subsections\">\n"
+        ^ String.concat "\n" (List.map groups ~fn:render_detail_group)
+        ^ "\n</div>\n"
   ) ^ "</article>"
 
-let package_module_name = fun package_name -> package_name |> String.map ~fn:(
-  fun ch ->
-    match ch with
-    | '-' -> '_'
-    | _ -> ch
-) |> String.capitalize_ascii
+let package_module_name = fun package_name ->
+  package_name
+  |> String.map
+    ~fn:(fun ch ->
+      match ch with
+      | '-' -> '_'
+      | _ -> ch)
+  |> String.capitalize_ascii
 
 let package_summary_module = fun (package_doc: Doctree.package_doc) ->
   let expected = package_module_name package_doc.package in
-  match List.find package_doc.modules ~fn:(
-    fun (module_doc: Doctree.module_doc) -> String.equal module_doc.name expected
-  ) with
+  match List.find
+    package_doc.modules
+    ~fn:(fun (module_doc: Doctree.module_doc) -> String.equal module_doc.name expected) with
   | Some module_doc -> Some module_doc
   | None -> (
-    match package_doc.modules with
-    | head :: _ -> Some head
-    | [] -> None
-  )
+      match package_doc.modules with
+      | head :: _ -> Some head
+      | [] -> None
+    )
 
 let render_module_breadcrumbs = fun package (module_doc: Doctree.module_doc) ->
-  let package_link = "<a href=\"" ^ Doctree.relative_href ~from_segments:module_doc.path ~to_segments:[] ^ "\">" ^ escape_html package ^ "</a>" in
+  let package_link =
+    "<a href=\""
+    ^ Doctree.relative_href ~from_segments:module_doc.path ~to_segments:[]
+    ^ "\">"
+    ^ escape_html package
+    ^ "</a>"
+  in
   let rec loop prefix = function
     | [] -> []
     | [ last ] -> [ escape_html last ]
     | segment :: rest ->
-        let target = prefix @ [ segment ] in ("<a href=\"" ^ Doctree.relative_href ~from_segments:module_doc.path ~to_segments:target ^ "\">" ^ escape_html segment ^ "</a>") :: loop target rest
+        let target = prefix @ [ segment ] in
+        ("<a href=\""
+        ^ Doctree.relative_href ~from_segments:module_doc.path ~to_segments:target
+        ^ "\">"
+        ^ escape_html segment
+        ^ "</a>")
+        :: loop target rest
   in
   String.concat " / " (package_link :: loop [] module_doc.path)
 
 let render_module_docstring doc =
   let docstring = render_docstring_block ~class_name:"module-docstring" doc in
   if docstring != "" then
-    "<details class=\"summary-block\" open>\n" ^ "  <summary class=\"summary-toggle\">Summary</summary>\n" ^ docstring ^ "</details>\n"
-  else ""
+    "<details class=\"summary-block\" open>\n"
+    ^ "  <summary class=\"summary-toggle\">Summary</summary>\n"
+    ^ docstring
+    ^ "</details>\n"
+  else
+    ""
 
 let rec prefix_segments = fun count acc ->
   if count <= 0 then
     acc
-  else prefix_segments (count - 1) ("../" ^ acc)
+  else
+    prefix_segments (count - 1) ("../" ^ acc)
 
-let asset_prefix = fun (module_doc: Doctree.module_doc) -> prefix_segments (List.length module_doc.Doctree.path) ""
+let asset_prefix = fun (module_doc: Doctree.module_doc) ->
+  prefix_segments (List.length module_doc.Doctree.path) ""
 
-let render_common_head = fun css_href title -> "<!doctype html>\n" ^ "<html>\n" ^ "<head>\n" ^ "  <meta charset=\"utf-8\" />\n" ^ "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n" ^ "  <title>" ^ escape_html title ^ "</title>\n" ^ "  <link rel=\"stylesheet\" href=\"" ^ css_href ^ "\" />\n" ^ "  <link rel=\"stylesheet\" href=\"https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css\" />\n" ^ "</head>\n"
+let render_common_head = fun css_href title ->
+  "<!doctype html>\n"
+  ^ "<html>\n"
+  ^ "<head>\n"
+  ^ "  <meta charset=\"utf-8\" />\n"
+  ^ "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n"
+  ^ "  <title>"
+  ^ escape_html title
+  ^ "</title>\n"
+  ^ "  <link rel=\"stylesheet\" href=\""
+  ^ css_href
+  ^ "\" />\n"
+  ^ "  <link rel=\"stylesheet\" href=\"https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css\" />\n"
+  ^ "</head>\n"
 
-let render_common_scripts = fun () -> "  <script defer src=\"https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js\"></script>\n" ^ "  <script defer src=\"https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/languages/ocaml.min.js\"></script>\n" ^ "  <script>window.addEventListener('DOMContentLoaded', function () { if (window.hljs) hljs.highlightAll(); });</script>\n"
+let render_common_scripts = fun () ->
+  "  <script defer src=\"https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js\"></script>\n"
+  ^ "  <script defer src=\"https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/languages/ocaml.min.js\"></script>\n"
+  ^ "  <script>window.addEventListener('DOMContentLoaded', function () { if (window.hljs) hljs.highlightAll(); });</script>\n"
 
 let render_index = fun (package_doc: Doctree.package_doc) ->
   let summary_module = package_summary_module package_doc in
   let section_links =
     match summary_module with
     | Some summary_module ->
-        let links =
-          [
-            "#modules", "Modules";
-          ]
-        in
+        let links = [ ("#modules", "Modules"); ] in
         let links =
           if Doctree.items_of_kind Doctree.Type_item summary_module.items = [] then
             links
           else
-            links @ [
-              "#types", "Types";
-            ]
+            links @ [ ("#types", "Types"); ]
         in
         let links =
           if Doctree.items_of_kind Doctree.Function_item summary_module.items = [] then
             links
           else
-            links @ [
-              "#functions", "Functions";
-            ]
+            links @ [ ("#functions", "Functions"); ]
         in
         let links =
           if Doctree.items_of_kind Doctree.Macro_item summary_module.items = [] then
             links
           else
-            links @ [
-              "#macros", "Macros";
-            ]
+            links @ [ ("#macros", "Macros"); ]
         in
         if package_doc.dependencies = [] then
           links
         else
-          links @ [
-            "#dependencies", "Dependencies";
-          ]
+          links @ [ ("#dependencies", "Dependencies"); ]
     | None ->
         if package_doc.dependencies = [] then
-          [
-            "#modules", "Modules";
-          ]
+          [ ("#modules", "Modules"); ]
         else
-          [
-            "#modules", "Modules";
-            "#dependencies", "Dependencies";
-          ]
+          [ ("#modules", "Modules"); ("#dependencies", "Dependencies"); ]
   in
-  let sidebar_modules, module_rows =
+  let (sidebar_modules, module_rows) =
     match summary_module with
     | Some summary_module ->
-        let children = summary_module.modules in (children |> List.map ~fn:(
-          fun (module_doc: Doctree.module_doc) -> (Doctree.module_href module_doc, module_doc.name)
-        ), render_module_rows ~from_module:None children)
-    | None -> package_doc.modules |> List.map ~fn:(
-      fun (module_doc: Doctree.module_doc) -> (Doctree.module_href module_doc, module_doc.name)
-    ), render_module_rows ~from_module:None package_doc.modules
+        let children = summary_module.modules in
+        (
+          children
+          |> List.map
+            ~fn:(fun (module_doc: Doctree.module_doc) -> (
+              Doctree.module_href module_doc,
+              module_doc.name
+            )),
+          render_module_rows ~from_module:None children
+        )
+    | None -> (
+      package_doc.modules
+      |> List.map
+        ~fn:(fun (module_doc: Doctree.module_doc) -> (
+          Doctree.module_href module_doc,
+          module_doc.name
+        )),
+      render_module_rows ~from_module:None package_doc.modules
+    )
   in
   let render_item_section kind =
     match summary_module with
     | None -> ""
     | Some summary_module ->
-        let rows = Doctree.items_of_kind kind summary_module.items |> List.map ~fn:(
-          fun (item: Doctree.item) -> render_item_row ~href:(Doctree.module_href summary_module ^ "#" ^ item.anchor) ~name:item.name ~kind_label:(Doctree.item_kind_label item.kind) ~meta:"" ~signature:item.signature ~snippet:"" ~docstring:item.docstring ~anchor:None
-        ) in render_kind_section ~section_id:(Doctree.item_kind_slug kind) ~title:(Doctree.item_kind_title kind) ~note:"" rows
+        let rows =
+          Doctree.items_of_kind kind summary_module.items
+          |> List.map
+            ~fn:(fun (item: Doctree.item) ->
+              render_item_row
+                ~href:(Doctree.module_href summary_module ^ "#" ^ item.anchor)
+                ~name:item.name
+                ~kind_label:(Doctree.item_kind_label item.kind)
+                ~meta:""
+                ~signature:item.signature
+                ~snippet:""
+                ~docstring:item.docstring
+                ~anchor:None)
+        in
+        render_kind_section
+          ~section_id:(Doctree.item_kind_slug kind)
+          ~title:(Doctree.item_kind_title kind)
+          ~note:""
+          rows
   in
-  render_common_head "assets/doc.css" (package_doc.package ^ " docs") ^ "<body>\n" ^ "  <div class=\"docs-shell\">\n" ^ "    <aside class=\"sidebar\">\n" ^ "      <a class=\"sidebar-brand\" href=\"index.html\">Riot Docs</a>\n" ^ "      <div class=\"sidebar-title\">" ^ escape_html package_doc.package ^ "</div>\n" ^ "      <div class=\"sidebar-meta\">v" ^ escape_html package_doc.version ^ "</div>\n" ^ render_sidebar_group ~title:"Package Items" section_links ^ render_sidebar_group ~title:"Modules" sidebar_modules ^ "    </aside>\n" ^ "    <main class=\"content\">\n" ^ "      <header class=\"page-header\">\n" ^ "        <div class=\"page-title\">" ^ escape_html package_doc.package ^ "</div>\n" ^ (
+  render_common_head "assets/doc.css" (package_doc.package ^ " docs")
+  ^ "<body>\n"
+  ^ "  <div class=\"docs-shell\">\n"
+  ^ "    <aside class=\"sidebar\">\n"
+  ^ "      <a class=\"sidebar-brand\" href=\"index.html\">Riot Docs</a>\n"
+  ^ "      <div class=\"sidebar-title\">"
+  ^ escape_html package_doc.package
+  ^ "</div>\n"
+  ^ "      <div class=\"sidebar-meta\">v"
+  ^ escape_html package_doc.version
+  ^ "</div>\n"
+  ^ render_sidebar_group ~title:"Package Items" section_links
+  ^ render_sidebar_group ~title:"Modules" sidebar_modules
+  ^ "    </aside>\n"
+  ^ "    <main class=\"content\">\n"
+  ^ "      <header class=\"page-header\">\n"
+  ^ "        <div class=\"page-title\">"
+  ^ escape_html package_doc.package
+  ^ "</div>\n" ^ (
     match summary_module with
     | Some summary_module -> render_module_docstring summary_module.docstring
     | None -> ""
-  ) ^ "      </header>\n" ^ render_kind_section ~section_id:"modules" ~title:"Modules" ~note:"" module_rows ^ render_item_section Doctree.Type_item ^ render_item_section Doctree.Function_item ^ render_item_section Doctree.Macro_item ^ render_dependency_section package_doc.dependencies ^ "    </main>\n" ^ "  </div>\n" ^ render_common_scripts () ^ "</body>\n" ^ "</html>\n"
+  ) ^ "      </header>\n" ^ render_kind_section
+    ~section_id:"modules"
+    ~title:"Modules"
+    ~note:""
+    module_rows ^ render_item_section Doctree.Type_item ^ render_item_section Doctree.Function_item ^ render_item_section
+    Doctree.Macro_item ^ render_dependency_section package_doc.dependencies ^ "    </main>\n" ^ "  </div>\n" ^ render_common_scripts
+    () ^ "</body>\n" ^ "</html>\n"
 
 let render_module = fun (package_doc: Doctree.package_doc) (module_doc: Doctree.module_doc) ->
   let render_item_section kind =
-    let details = Doctree.items_of_kind kind module_doc.items |> List.map ~fn:render_item_detail in render_detail_section ~section_id:(Doctree.item_kind_slug kind) ~title:(Doctree.item_kind_title kind) ~note:(Doctree.module_full_name module_doc) details
+    let details =
+      Doctree.items_of_kind kind module_doc.items
+      |> List.map ~fn:render_item_detail
+    in
+    render_detail_section
+      ~section_id:(Doctree.item_kind_slug kind)
+      ~title:(Doctree.item_kind_title kind)
+      ~note:(Doctree.module_full_name module_doc)
+      details
   in
-  let sidebar_items kind = Doctree.items_of_kind kind module_doc.items |> List.map ~fn:(
-    fun (item: Doctree.item) -> ("#" ^ item.anchor, item.name)
-  ) in
-  let sidebar_modules = module_doc.modules |> List.map ~fn:(
-    fun child_module -> (Doctree.relative_module_href ~from_module:module_doc ~to_module:child_module, child_module.name)
-  ) in
-  render_common_head (asset_prefix module_doc ^ "assets/doc.css") (Doctree.module_full_name module_doc ^ " - docs") ^ "<body>\n" ^ "  <div class=\"docs-shell\">\n" ^ "    <aside class=\"sidebar\">\n" ^ "      <a class=\"sidebar-brand\" href=\"" ^ Doctree.relative_href ~from_segments:module_doc.path ~to_segments:[] ^ "\">Back to " ^ escape_html package_doc.package ^ "</a>\n" ^ "      <div class=\"sidebar-title\">" ^ escape_html (Doctree.module_full_name module_doc) ^ "</div>\n" ^ "      <div class=\"sidebar-meta\">" ^ escape_html package_doc.version ^ " · " ^ escape_html (Path.to_string module_doc.source_path) ^ "</div>\n" ^ render_sidebar_group ~title:"Overview"
+  let sidebar_items kind =
+    Doctree.items_of_kind kind module_doc.items
+    |> List.map ~fn:(fun (item: Doctree.item) -> ("#" ^ item.anchor, item.name))
+  in
+  let sidebar_modules =
+    module_doc.modules
+    |> List.map
+      ~fn:(fun child_module -> (
+        Doctree.relative_module_href ~from_module:module_doc ~to_module:child_module,
+        child_module.name
+      ))
+  in
+  render_common_head
+    (asset_prefix module_doc ^ "assets/doc.css")
+    (Doctree.module_full_name module_doc ^ " - docs")
+  ^ "<body>\n"
+  ^ "  <div class=\"docs-shell\">\n"
+  ^ "    <aside class=\"sidebar\">\n"
+  ^ "      <a class=\"sidebar-brand\" href=\""
+  ^ Doctree.relative_href ~from_segments:module_doc.path ~to_segments:[]
+  ^ "\">Back to "
+  ^ escape_html package_doc.package
+  ^ "</a>\n"
+  ^ "      <div class=\"sidebar-title\">"
+  ^ escape_html (Doctree.module_full_name module_doc)
+  ^ "</div>\n"
+  ^ "      <div class=\"sidebar-meta\">"
+  ^ escape_html package_doc.version
+  ^ " · "
+  ^ escape_html (Path.to_string module_doc.source_path)
+  ^ "</div>\n"
+  ^ render_sidebar_group
+    ~title:"Overview"
     [
-      "#modules", "Modules";
-      "#types", "Types";
-      "#functions", "Functions";
-      "#macros", "Macros";
-    ] ^ render_sidebar_group ~title:"Modules" sidebar_modules ^ render_sidebar_group ~title:"Types" (sidebar_items Doctree.Type_item) ^ render_sidebar_group ~title:"Functions" (sidebar_items Doctree.Function_item) ^ render_sidebar_group ~title:"Macros" (sidebar_items Doctree.Macro_item) ^ "    </aside>\n" ^ "    <main class=\"content\">\n" ^ "      <header class=\"page-header\">\n" ^ "        <div class=\"breadcrumbs\">" ^ render_module_breadcrumbs package_doc.package module_doc ^ "</div>\n" ^ "        <div class=\"section-header\">\n" ^ "          <div>\n" ^ "            <div class=\"eyebrow\">Module page</div>\n" ^ "            <div class=\"page-title\">" ^ escape_html (Doctree.module_full_name module_doc) ^ "</div>\n" ^ "          </div>\n" ^ "          <a href=\"source.html\">src</a>\n" ^ "        </div>\n" ^ render_module_docstring module_doc.docstring ^ "      </header>\n" ^ render_kind_section ~section_id:"modules" ~title:"Modules" ~note:(Doctree.module_full_name module_doc) (render_module_rows ~from_module:(Some module_doc) module_doc.modules) ^ render_item_section Doctree.Type_item ^ render_item_section Doctree.Function_item ^ render_item_section Doctree.Macro_item ^ "    </main>\n" ^ "  </div>\n" ^ render_common_scripts () ^ "</body>\n" ^ "</html>\n"
+      ("#modules", "Modules");
+      ("#types", "Types");
+      ("#functions", "Functions");
+      ("#macros", "Macros");
+    ]
+  ^ render_sidebar_group ~title:"Modules" sidebar_modules
+  ^ render_sidebar_group ~title:"Types" (sidebar_items Doctree.Type_item)
+  ^ render_sidebar_group ~title:"Functions" (sidebar_items Doctree.Function_item)
+  ^ render_sidebar_group ~title:"Macros" (sidebar_items Doctree.Macro_item)
+  ^ "    </aside>\n"
+  ^ "    <main class=\"content\">\n"
+  ^ "      <header class=\"page-header\">\n"
+  ^ "        <div class=\"breadcrumbs\">"
+  ^ render_module_breadcrumbs package_doc.package module_doc
+  ^ "</div>\n"
+  ^ "        <div class=\"section-header\">\n"
+  ^ "          <div>\n"
+  ^ "            <div class=\"eyebrow\">Module page</div>\n"
+  ^ "            <div class=\"page-title\">"
+  ^ escape_html (Doctree.module_full_name module_doc)
+  ^ "</div>\n"
+  ^ "          </div>\n"
+  ^ "          <a href=\"source.html\">src</a>\n"
+  ^ "        </div>\n"
+  ^ render_module_docstring module_doc.docstring
+  ^ "      </header>\n"
+  ^ render_kind_section
+    ~section_id:"modules"
+    ~title:"Modules"
+    ~note:(Doctree.module_full_name module_doc)
+    (render_module_rows ~from_module:(Some module_doc) module_doc.modules)
+  ^ render_item_section Doctree.Type_item
+  ^ render_item_section Doctree.Function_item
+  ^ render_item_section Doctree.Macro_item
+  ^ "    </main>\n"
+  ^ "  </div>\n"
+  ^ render_common_scripts ()
+  ^ "</body>\n"
+  ^ "</html>\n"
 
 let render_module_source = fun (package_doc: Doctree.package_doc) (module_doc: Doctree.module_doc) ->
-  render_common_head (asset_prefix module_doc ^ "assets/doc.css") (Doctree.module_full_name module_doc ^ " source") ^ "<body>\n" ^ "  <div class=\"docs-shell\">\n" ^ "    <aside class=\"sidebar\">\n" ^ "      <a class=\"sidebar-brand\" href=\"index.html\">Back to " ^ escape_html (Doctree.module_full_name module_doc) ^ "</a>\n" ^ "      <div class=\"sidebar-title\">" ^ escape_html (Doctree.module_full_name module_doc) ^ "</div>\n" ^ "      <div class=\"sidebar-meta\">" ^ escape_html package_doc.version ^ " · " ^ escape_html (Path.to_string module_doc.source_path) ^ "</div>\n" ^ render_sidebar_group ~title:"Pages"
-    [
-      "index.html", "Docs";
-      "source.html", "Source";
-    ] ^ "    </aside>\n" ^ "    <main class=\"content\">\n" ^ "      <header class=\"page-header\">\n" ^ "        <div class=\"breadcrumbs\">" ^ render_module_breadcrumbs package_doc.package module_doc ^ " / source</div>\n" ^ "        <div class=\"section-header\">\n" ^ "          <div>\n" ^ "            <div class=\"eyebrow\">Source</div>\n" ^ "            <div class=\"page-title\">" ^ escape_html (Doctree.module_full_name module_doc) ^ "</div>\n" ^ "          </div>\n" ^ "          <a href=\"index.html\">docs</a>\n" ^ "        </div>\n" ^ "      </header>\n" ^ "<section class=\"section-card\">\n" ^ "  <div class=\"section-header\">\n" ^ "    <h2>Source</h2>\n" ^ "    <span class=\"section-note\">" ^ escape_html (Path.to_string module_doc.source_path) ^ "</span>\n" ^ "  </div>\n" ^ render_code_block module_doc.snippet ^ "</section>\n" ^ "    </main>\n" ^ "  </div>\n" ^ render_common_scripts () ^ "</body>\n" ^ "</html>\n"
+  render_common_head
+    (asset_prefix module_doc ^ "assets/doc.css")
+    (Doctree.module_full_name module_doc ^ " source")
+  ^ "<body>\n"
+  ^ "  <div class=\"docs-shell\">\n"
+  ^ "    <aside class=\"sidebar\">\n"
+  ^ "      <a class=\"sidebar-brand\" href=\"index.html\">Back to "
+  ^ escape_html (Doctree.module_full_name module_doc)
+  ^ "</a>\n"
+  ^ "      <div class=\"sidebar-title\">"
+  ^ escape_html (Doctree.module_full_name module_doc)
+  ^ "</div>\n"
+  ^ "      <div class=\"sidebar-meta\">"
+  ^ escape_html package_doc.version
+  ^ " · "
+  ^ escape_html (Path.to_string module_doc.source_path)
+  ^ "</div>\n"
+  ^ render_sidebar_group ~title:"Pages" [ ("index.html", "Docs"); ("source.html", "Source"); ]
+  ^ "    </aside>\n"
+  ^ "    <main class=\"content\">\n"
+  ^ "      <header class=\"page-header\">\n"
+  ^ "        <div class=\"breadcrumbs\">"
+  ^ render_module_breadcrumbs package_doc.package module_doc
+  ^ " / source</div>\n"
+  ^ "        <div class=\"section-header\">\n"
+  ^ "          <div>\n"
+  ^ "            <div class=\"eyebrow\">Source</div>\n"
+  ^ "            <div class=\"page-title\">"
+  ^ escape_html (Doctree.module_full_name module_doc)
+  ^ "</div>\n"
+  ^ "          </div>\n"
+  ^ "          <a href=\"index.html\">docs</a>\n"
+  ^ "        </div>\n"
+  ^ "      </header>\n"
+  ^ "<section class=\"section-card\">\n"
+  ^ "  <div class=\"section-header\">\n"
+  ^ "    <h2>Source</h2>\n"
+  ^ "    <span class=\"section-note\">"
+  ^ escape_html (Path.to_string module_doc.source_path)
+  ^ "</span>\n"
+  ^ "  </div>\n"
+  ^ render_code_block module_doc.snippet
+  ^ "</section>\n"
+  ^ "    </main>\n"
+  ^ "  </div>\n"
+  ^ render_common_scripts ()
+  ^ "</body>\n"
+  ^ "</html>\n"

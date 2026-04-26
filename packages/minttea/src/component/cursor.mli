@@ -1,5 +1,4 @@
 type t
-
 val make: ?style:Style.t -> ?blink:bool -> ?fps:Fps.t -> unit -> t
 
 val update: t -> Event.t -> t

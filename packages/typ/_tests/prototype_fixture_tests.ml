@@ -7,16 +7,21 @@ open Typ.Session
 
 let fixtures_dir = Path.v "packages/typ/tests/fixtures"
 
-let append_snapshot_suffix = fun path suffix -> Path.to_string path ^ suffix |> Path.of_string |> Result.expect ~msg:"snapshot path should stay valid UTF-8"
+let append_snapshot_suffix = fun path suffix ->
+  Path.to_string path ^ suffix
+  |> Path.of_string
+  |> Result.expect ~msg:"snapshot path should stay valid UTF-8"
 
 let approved_snapshot_path = fun path -> append_snapshot_suffix path ".expected"
 
 let fixture_filter = fun path ->
   match Path.extension path with
-  | Some ".ml" | Some ".mli" -> `keep
+  | Some ".ml"
+  | Some ".mli" -> `keep
   | _ -> `skip
 
-let stable_fixture_filename = fun (ctx: Test.FixtureRunner.ctx) -> Path.join fixtures_dir ctx.fixture_relpath
+let stable_fixture_filename = fun (ctx: Test.FixtureRunner.ctx) ->
+  Path.join fixtures_dir ctx.fixture_relpath
 
 let parse_failure_report = fun ~filename ->
   fun parse_result ->
@@ -24,8 +29,11 @@ let parse_failure_report = fun ~filename ->
       let source_id = SourceId.of_int 0 in
       let (parse_diagnostics, lowering_diagnostics) =
         match error with
-        | Syn.Parse_diagnostics diagnostics -> diagnostics, []
-        | Syn.Cst_builder_error builder_error -> parse_result.Syn.Parser.diagnostics, [ Diagnostic.CstBuilderError { builder_error } ]
+        | Syn.Parse_diagnostics diagnostics -> (diagnostics, [])
+        | Syn.Cst_builder_error builder_error -> (
+          parse_result.Syn.Parser.diagnostics,
+          [ Diagnostic.CstBuilderError { builder_error } ]
+        )
       in
       {
         Check_result.source_id;
@@ -41,7 +49,7 @@ let parse_failure_report = fun ~filename ->
         type_index = TypeIndex.empty;
         exports = [];
         item_traces = [];
-        expr_traces = []
+        expr_traces = [];
       }
 
 let check_source_text = fun ~filename text ->
@@ -50,18 +58,38 @@ let check_source_text = fun ~filename text ->
   | Ok cst ->
       let origin = Source.Path filename in
       let implicit_opens = [] in
-      let source = Source.make_prepared ~source_id:(SourceId.of_int 0) ~kind:Source.File ~module_name:(Source.infer_module_name origin) ~implicit_opens ~origin ~revision:0 ~source_hash:(Source.hash ~implicit_opens ~cst) ~parse_result ~cst in Typ.check ~config:Config.default ~source
+      let source =
+        Source.make_prepared
+          ~source_id:(SourceId.of_int 0)
+          ~kind:Source.File
+          ~module_name:(Source.infer_module_name origin)
+          ~implicit_opens
+          ~origin
+          ~revision:0
+          ~source_hash:(Source.hash ~implicit_opens ~cst)
+          ~parse_result
+          ~cst
+      in
+      Typ.check ~config:Config.default ~source
   | Error error -> parse_failure_report ~filename parse_result error
 
 let test_fixture = fun ~(ctx:Test.FixtureRunner.ctx) ->
-  let source = Fs.read ctx.fixture_path |> Result.expect ~msg:"fixture should exist" in
-  let report = check_source_text ~filename:(stable_fixture_filename ctx) source in Test.Snapshot.assert_json ~ctx:ctx.test ~actual:(Report.to_json report)
+  let source =
+    Fs.read ctx.fixture_path
+    |> Result.expect ~msg:"fixture should exist"
+  in
+  let report = check_source_text ~filename:(stable_fixture_filename ctx) source in
+  Test.Snapshot.assert_json ~ctx:ctx.test ~actual:(Report.to_json report)
 
 let main ~args =
-  let tests = Test.FixtureRunner.cases () ~dir:fixtures_dir ~filter:fixture_filter ~snapshot_path:(
-    fun path -> Some (approved_snapshot_path path)
-  ) ~run:(
-    fun ctx -> test_fixture ~ctx
-  ) in Test.Cli.main ~name:"typ:prototype_fixtures" ~tests ~args ()
+  let tests =
+    Test.FixtureRunner.cases
+      ()
+      ~dir:fixtures_dir
+      ~filter:fixture_filter
+      ~snapshot_path:(fun path -> Some (approved_snapshot_path path))
+      ~run:(fun ctx -> test_fixture ~ctx)
+  in
+  Test.Cli.main ~name:"typ:prototype_fixtures" ~tests ~args ()
 
 let () = Runtime.run ~main ~args:Std.Env.args ()

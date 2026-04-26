@@ -3,24 +3,30 @@ open Std
 open Std.Collections
 
 let main ~args:_ =
-  let print_numbered_lines lines ~show_width = List.for_each (List.enumerate lines) ~fn:(
-    fun (i, line) ->
-      let num =
-        if i + 1 < 10 then
-          " " ^ Int.to_string (i + 1)
-        else Int.to_string (i + 1)
-      in
-      let suffix =
-        if show_width then
-          " (width: " ^ Int.to_string (String.width line) ^ ")"
-        else ""
-      in
-      println ("   " ^ num ^ "| " ^ line ^ suffix)
-  ) in
+  let print_numbered_lines lines ~show_width =
+    List.for_each
+      (List.enumerate lines)
+      ~fn:(fun (i, line) ->
+        let num =
+          if i + 1 < 10 then
+            " " ^ Int.to_string (i + 1)
+          else
+            Int.to_string (i + 1)
+        in
+        let suffix =
+          if show_width then
+            " (width: " ^ Int.to_string (String.width line) ^ ")"
+          else
+            ""
+        in
+        println ("   " ^ num ^ "| " ^ line ^ suffix))
+  in
   println "=== Line Wrapping Example ===\n";
   (* Example 1: Basic English text *)
   println "1. Wrapping English text to 40 characters:";
-  let text1 = "The quick brown fox jumps over the lazy dog. This is a sample sentence to demonstrate line wrapping." in
+  let text1 =
+    "The quick brown fox jumps over the lazy dog. This is a sample sentence to demonstrate line wrapping."
+  in
   println ("   Original: " ^ text1);
   println ("   Width: " ^ Int.to_string (String.width text1) ^ " characters\n");
   let wrapped1 = Unicode.Segmentation.wrap_lines ~width:40 text1 in
@@ -60,7 +66,9 @@ let main ~args:_ =
   println "";
   (* Example 7: Log output *)
   println "7. Wrapping log output (width 60):";
-  let log = "[2024-11-01 08:15:23] INFO: Processing request from user@example.com with parameters: foo=bar, baz=qux, very_long_parameter_name=some_value" in
+  let log =
+    "[2024-11-01 08:15:23] INFO: Processing request from user@example.com with parameters: foo=bar, baz=qux, very_long_parameter_name=some_value"
+  in
   let wrapped_log = Unicode.Segmentation.wrap_lines ~width:60 log in
   print_numbered_lines wrapped_log ~show_width:false;
   println "";
@@ -73,14 +81,19 @@ let main ~args:_ =
   println "";
   (* Example 9: Simulating terminal pager *)
   println "9. Simulating terminal pager view (width 70):";
-  let doc = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris." in
+  let doc =
+    "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris."
+  in
   let pager_lines = Unicode.Segmentation.wrap_lines ~width:70 doc in
-  println "   ┌──────────────────────────────────────────────────────────────────────┐";
-  List.for_each pager_lines ~fn:(
-    fun line ->
-      let padding = String.make ~len:(68 - String.length line) ~char:' ' in println ("   │ " ^ line ^ padding ^ " │")
-  );
-  println "   └──────────────────────────────────────────────────────────────────────┘";
+  println
+    "   ┌──────────────────────────────────────────────────────────────────────┐";
+  List.for_each
+    pager_lines
+    ~fn:(fun line ->
+      let padding = String.make ~len:(68 - String.length line) ~char:' ' in
+      println ("   │ " ^ line ^ padding ^ " │"));
+  println
+    "   └──────────────────────────────────────────────────────────────────────┘";
   println "";
   println "Line wrapping example completed!";
   Ok ()

@@ -23,14 +23,13 @@
 
    See [Fs.read_dir] for a simpler API that returns all entries at once.
 *)
+
 open Global
 open Common
 
 (** Directory reading iterator. *)
 type t
-
 type state = t
-
 (**
    Lightweight kind hint derived from the directory entry itself.
 
@@ -46,13 +45,13 @@ type entry_kind = Kernel.Fs.ReadDir.kind =
   | NamedPipe
   | Socket
   | Unknown
-
 (** One validated relative directory entry returned by [next]. *)
-type entry = { path: Path.t; kind: entry_kind }
-
+type entry = {
+  path: Path.t;
+  kind: entry_kind;
+}
 (** Open a directory for reading. *)
 type item = entry
-
 val open_dir: Path.t -> (t, error) result
 
 (**

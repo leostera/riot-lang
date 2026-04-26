@@ -1,5 +1,4 @@
 type t = char
-
 val equal: t -> t -> bool
 
 val compare: t -> t -> Order.t

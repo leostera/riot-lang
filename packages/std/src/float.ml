@@ -12,22 +12,26 @@ let ( != ) left right =
 let ( < ) left right =
   match compare left right with
   | Order.LT -> true
-  | Order.EQ | Order.GT -> false
+  | Order.EQ
+  | Order.GT -> false
 
 let ( > ) left right =
   match compare left right with
   | Order.GT -> true
-  | Order.LT | Order.EQ -> false
+  | Order.LT
+  | Order.EQ -> false
 
 let ( <= ) left right =
   match compare left right with
   | Order.GT -> false
-  | Order.LT | Order.EQ -> true
+  | Order.LT
+  | Order.EQ -> true
 
 let ( >= ) left right =
   match compare left right with
   | Order.LT -> false
-  | Order.EQ | Order.GT -> true
+  | Order.EQ
+  | Order.GT -> true
 
 let ( + ) = add
 

@@ -9,6 +9,7 @@ open Std
    Keywords are language-level identifiers with special meaning that cannot be
    used as variable names or other identifiers.
 *)
+
 (**
    All OCaml keywords.
 
@@ -16,6 +17,7 @@ open Std
    that some keywords like `begin`, `struct`, `sig`, and `object` also serve as
    opening delimiters.
 *)
+
 (**
    `of_string str` parses a keyword from a string.
 
@@ -82,7 +84,6 @@ type t =
   | When
   | While
   | With
-
 val of_string: string -> t option
 
 (**

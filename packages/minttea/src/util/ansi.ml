@@ -9,26 +9,32 @@ type ansi_state = {
 }
 
 (* Strip all ANSI escape sequences *)
+
 let strip = Tty.Escape_seq.strip
 
 (* Calculate display width ignoring ANSI codes *)
+
 let width = Tty.Escape_seq.width
 
 (* Split string into lines *)
+
 let split_lines = fun str -> String.split_on_char '\n' str
 
 (* Pad functions *)
+
 let pad_right = fun ~width:target_width c str ->
   let w = width str in
   if w >= target_width then
     str
-  else str ^ String.make ~len:(target_width - w) ~char:c
+  else
+    str ^ String.make ~len:(target_width - w) ~char:c
 
 let pad_left = fun ~width:target_width c str ->
   let w = width str in
   if w >= target_width then
     str
-  else String.make ~len:(target_width - w) ~char:c ^ str
+  else
+    String.make ~len:(target_width - w) ~char:c ^ str
 
 let pad_center = fun ~width:target_width c str ->
   let w = width str in
@@ -37,66 +43,77 @@ let pad_center = fun ~width:target_width c str ->
   else
     let total_pad = target_width - w in
     let left_pad = total_pad / 2 in
-    let right_pad = total_pad - left_pad in String.make ~len:left_pad ~char:c ^ str ^ String.make ~len:right_pad ~char:c
+    let right_pad = total_pad - left_pad in
+    String.make ~len:left_pad ~char:c ^ str ^ String.make ~len:right_pad ~char:c
 
 (* Truncate with ellipsis, preserving ANSI codes *)
+
 let truncate = fun ~width ?ellipsis:tail str -> String.truncate_width ~width ?tail str
 
 (* Helper to check if string contains substring *)
+
 let contains_substring = fun haystack needle ->
   let h_len = String.length haystack in
   let n_len = String.length needle in
   if n_len = 0 then
     true
+  else if n_len > h_len then
+    false
   else
-    if n_len > h_len then
-      false
-    else
-      let rec search i =
-        if i > h_len - n_len then
-          false
-        else
-          let rec match_at j =
-            if j = n_len then
-              true
-            else
-              if Option.unwrap (String.get haystack ~at:(i + j)) = Option.unwrap (String.get needle ~at:j) then
-                match_at (j + 1)
-              else false
-          in
-          if match_at 0 then
+    let rec search i =
+      if i > h_len - n_len then
+        false
+      else
+        let rec match_at j =
+          if j = n_len then
             true
-          else search (i + 1)
-      in
-      search 0
+          else if
+            Option.unwrap (String.get haystack ~at:(i + j))
+            = Option.unwrap (String.get needle ~at:j)
+          then
+            match_at (j + 1)
+          else
+            false
+        in
+        if match_at 0 then
+          true
+        else
+          search (i + 1)
+    in
+    search 0
 
 (* Parse ANSI state from string (simplified) *)
+
 let parse_state = fun str ->
   {
     bold = contains_substring str "\027[1m";
     italic = contains_substring str "\027[3m";
     underline = contains_substring str "\027[4m";
     fg_color = None;
-    bg_color = None
+    bg_color = None;
   }
 
 (* Convert state to ANSI codes *)
+
 let state_to_codes = fun state ->
   let codes = [] in
   let codes =
     if state.bold then
       "1" :: codes
-    else codes
+    else
+      codes
   in
   let codes =
     if state.italic then
       "3" :: codes
-    else codes
+    else
+      codes
   in
   let codes =
     if state.underline then
       "4" :: codes
-    else codes
+    else
+      codes
   in
   let codes =
     match state.fg_color with
@@ -110,9 +127,11 @@ let state_to_codes = fun state ->
   in
   if codes = [] then
     ""
-  else "\027[" ^ String.concat ";" codes ^ "m"
+  else
+    "\027[" ^ String.concat ";" codes ^ "m"
 
 (* Word wrapping with ANSI preservation *)
+
 let word_wrap = fun ~width:target_width str ->
   if target_width <= 0 then
     [ str ]
@@ -129,13 +148,15 @@ let word_wrap = fun ~width:target_width str ->
           | [] ->
               if current_line = "" then
                 List.rev acc
-              else List.rev (current_line :: acc)
+              else
+                List.rev (current_line :: acc)
           | word :: rest ->
               let word_width = width word in
               let space_width =
                 if current_line = "" then
                   0
-                else 1
+                else
+                  1
               in
               let new_width = current_width + space_width + word_width in
               if current_line = "" then
@@ -145,13 +166,25 @@ let word_wrap = fun ~width:target_width str ->
                   if chars_fit <= 0 then
                     build_lines "" 0 (word :: acc) rest
                   else
-                    let part = String.sub stripped_word ~offset:0 ~len:(min chars_fit (String.length stripped_word)) in
-                    let remaining = String.sub stripped_word ~offset:chars_fit ~len:(String.length stripped_word - chars_fit) in build_lines "" 0 (part :: acc) (remaining :: rest)
-                else build_lines word word_width acc rest
+                    let part =
+                      String.sub
+                        stripped_word
+                        ~offset:0
+                        ~len:(min chars_fit (String.length stripped_word))
+                    in
+                    let remaining =
+                      String.sub
+                        stripped_word
+                        ~offset:chars_fit
+                        ~len:(String.length stripped_word - chars_fit)
+                    in
+                    build_lines "" 0 (part :: acc) (remaining :: rest)
+                else
+                  build_lines word word_width acc rest
+              else if new_width <= target_width then
+                build_lines (current_line ^ " " ^ word) new_width acc rest
               else
-                if new_width <= target_width then
-                  build_lines (current_line ^ " " ^ word) new_width acc rest
-                else (* Start new line with this word *)
+                (* Start new line with this word *)
                 build_lines word word_width (current_line :: acc) rest
         in
         build_lines "" 0 [] words

@@ -2,11 +2,8 @@
 open Prelude
 
 module String = Kernel.String
-
 module List = Collections.List
-
 module Scalar = Kernel.Unicode.Rune
-
 module Rune = Rune
 
 type t = Rune.t list
@@ -41,7 +38,10 @@ let first = fun s ->
               (List.reverse cluster, "")
             else
               match String.get_utf_8_rune s ~at:pos with
-              | None -> List.reverse cluster, String.sub s ~offset:pos ~len:(String.length s - pos)
+              | None -> (
+                List.reverse cluster,
+                String.sub s ~offset:pos ~len:(String.length s - pos)
+              )
               | Some decode ->
                   if not (Scalar.utf_decode_is_valid decode) then
                     (List.reverse cluster, String.sub s ~offset:pos ~len:(String.length s - pos))
@@ -52,14 +52,17 @@ let first = fun s ->
                     let curr_prop = Grapheme_break.get_break_property curr_code in
                     (* Check if we should break *)
                     if Grapheme_break.should_break ~prev_prop ~curr_prop ~has_zwj then
-                      let rest = String.sub s ~offset:pos ~len:(String.length s - pos) in (List.reverse cluster, rest)
+                      let rest = String.sub s ~offset:pos ~len:(String.length s - pos) in
+                      (List.reverse cluster, rest)
                     else
                       (* Don't break - add to cluster and continue *)
-                      let new_has_zwj = has_zwj || (curr_code = 0x200d) in consume_cluster (pos + curr_len) (curr_rune :: cluster) curr_prop new_has_zwj
+                      let new_has_zwj = has_zwj || (curr_code = 0x200d) in
+                      consume_cluster (pos + curr_len) (curr_rune :: cluster) curr_prop new_has_zwj
           in
           let first_code = Rune.to_int first_rune in
           let first_prop = Grapheme_break.get_break_property first_code in
-          let (cluster, rest) = consume_cluster first_len [ first_rune ] first_prop false in Some (cluster, rest)
+          let (cluster, rest) = consume_cluster first_len [ first_rune ] first_prop false in
+          Some (cluster, rest)
 
 let width = fun grapheme ->
   (* Width of a grapheme cluster

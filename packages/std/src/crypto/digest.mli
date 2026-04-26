@@ -31,6 +31,7 @@
    - **bytes**: Raw binary, further processing
    - **to_int/to_int64**: Hash table indexing, fast comparison
 *)
+
 (** Convert hash to hexadecimal string. *)
 val hex: Hash.t -> string
 

@@ -2,9 +2,11 @@ open Std
 open Suri
 
 (** Example app demonstrating body_parser middleware with CSRF protection *)
+
 (** Home page with form *)
 let home = fun conn _req ->
-  let html = {|<!DOCTYPE html>
+  let html =
+    {|<!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
@@ -26,7 +28,9 @@ let home = fun conn _req ->
   
   <h2>HTML Form (urlencoded)</h2>
   <form method="POST" action="/submit">
-    |} ^ Component.to_html (Middleware.Csrf.hidden_field conn) ^ {|
+    |}
+    ^ Component.to_html (Middleware.Csrf.hidden_field conn)
+    ^ {|
     <label for="name">Name:</label>
     <input type="text" id="name" name="name" value="Alice" required>
     
@@ -55,16 +59,31 @@ let home = fun conn _req ->
     <li>No manual parsing required!</li>
   </ul>
 </body>
-</html>|} in conn |> Conn.with_status Net.Http.Status.Ok |> Conn.with_body html |> Conn.send
+</html>|}
+  in
+  conn
+  |> Conn.with_status Net.Http.Status.Ok
+  |> Conn.with_body html
+  |> Conn.send
 
 (** Handle form submission *)
 let submit_form = fun conn _req ->
   let body_params = Conn.body_params conn in
   (* Extract form fields *)
-  let name = Std.Collections.Proplist.get body_params ~key:"name" |> Option.unwrap_or ~default:"Unknown" in
-  let email = Std.Collections.Proplist.get body_params ~key:"email" |> Option.unwrap_or ~default:"unknown@example.com" in
-  let message = Std.Collections.Proplist.get body_params ~key:"message" |> Option.unwrap_or ~default:"" in
-  let html = {|<!DOCTYPE html>
+  let name =
+    Std.Collections.Proplist.get body_params ~key:"name"
+    |> Option.unwrap_or ~default:"Unknown"
+  in
+  let email =
+    Std.Collections.Proplist.get body_params ~key:"email"
+    |> Option.unwrap_or ~default:"unknown@example.com"
+  in
+  let message =
+    Std.Collections.Proplist.get body_params ~key:"message"
+    |> Option.unwrap_or ~default:""
+  in
+  let html =
+    {|<!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
@@ -85,46 +104,67 @@ let submit_form = fun conn _req ->
   
   <h2>Received Data (from Conn.body_params):</h2>
   <div class="data">
-    <p><strong>Name:</strong> |} ^ name ^ {|</p>
-    <p><strong>Email:</strong> |} ^ email ^ {|</p>
-    <p><strong>Message:</strong> |} ^ message ^ {|</p>
+    <p><strong>Name:</strong> |}
+    ^ name
+    ^ {|</p>
+    <p><strong>Email:</strong> |}
+    ^ email
+    ^ {|</p>
+    <p><strong>Message:</strong> |}
+    ^ message
+    ^ {|</p>
   </div>
   
   <p><a href="/">← Back to form</a></p>
 </body>
-</html>|} in conn |> Conn.with_status Net.Http.Status.Ok |> Conn.with_body html |> Conn.send
+</html>|}
+  in
+  conn
+  |> Conn.with_status Net.Http.Status.Ok
+  |> Conn.with_body html
+  |> Conn.send
 
 (** Handle JSON API request *)
 let api_handler = fun conn _req ->
   let body_params = Conn.body_params conn in
   (* Extract JSON fields *)
-  let name = Std.Collections.Proplist.get body_params ~key:"name" |> Option.unwrap_or ~default:"Unknown" in
-  let action = Std.Collections.Proplist.get body_params ~key:"action" |> Option.unwrap_or ~default:"none" in
+  let name =
+    Std.Collections.Proplist.get body_params ~key:"name"
+    |> Option.unwrap_or ~default:"Unknown"
+  in
+  let action =
+    Std.Collections.Proplist.get body_params ~key:"action"
+    |> Option.unwrap_or ~default:"none"
+  in
   (* Create JSON response *)
-  let response_json = Data.Json.(Object [
-    "success", Bool true;
-    "message", String "Data received and parsed";
-    "received", Object [
-      "name", String name;
-      "action", String action;
-    ];
-    "middleware", String "body_parser automatically parsed the JSON body";
-  ]) in
-  let body = Data.Json.to_string response_json in conn |> Conn.with_status Net.Http.Status.Ok |> Conn.with_header "content-type" "application/json" |> Conn.with_body body |> Conn.send
+  let response_json =
+    Data.Json.(Object [
+      ("success", Bool true);
+      ("message", String "Data received and parsed");
+      ("received", Object [ ("name", String name); ("action", String action); ]);
+      ("middleware", String "body_parser automatically parsed the JSON body");
+    ])
+  in
+  let body = Data.Json.to_string response_json in
+  conn
+  |> Conn.with_status Net.Http.Status.Ok
+  |> Conn.with_header "content-type" "application/json"
+  |> Conn.with_body body
+  |> Conn.send
 
 (** Routes *)
-let routes = Middleware.Router.[ get "/" home; post "/submit" submit_form; post "/api/data" api_handler ]
+let routes =
+  Middleware.Router.[ get "/" home; post "/submit" submit_form; post "/api/data" api_handler ]
 
 (** Application with body_parser + CSRF *)
-let app = Middleware.[
-  logger;
-  session ~secret:"development-secret-key-change-in-production" ();
-  body_parser ();
-  csrf ~skip:(
-    fun conn -> String.starts_with ~prefix:"/api/" (Conn.path conn)
-  ) ();
-  router routes;
-]
+let app =
+  Middleware.[
+    logger;
+    session ~secret:"development-secret-key-change-in-production" ();
+    body_parser ();
+    csrf ~skip:(fun conn -> String.starts_with ~prefix:"/api/" (Conn.path conn)) ();
+    router routes;
+  ]
 
 let main ~args:_ =
   let port = 8_080 in

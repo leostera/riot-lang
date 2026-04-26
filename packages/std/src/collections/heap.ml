@@ -6,15 +6,17 @@ type 'a box = { mutable value: 'a }
 
 let box = fun value -> { value }
 
-type 'a t = { mutable data: 'a array; mutable size: int; compare: 'a -> 'a -> Order.t }
+type 'a t = {
+  mutable data: 'a array;
+  mutable size: int;
+  compare: 'a -> 'a -> Order.t;
+}
 
 let create_with = fun ~compare () -> { data = [||]; size = 0; compare }
 
 let create = fun () -> create_with ~compare ()
 
-let create_max = fun () -> create_with ~compare:(
-  fun a b -> compare b a
-) ()
+let create_max = fun () -> create_with ~compare:(fun a b -> compare b a) ()
 
 let length = fun heap -> heap.size
 
@@ -29,7 +31,8 @@ let ensure_capacity = fun heap ->
       let new_len =
         if len = 0 then
           8
-        else len * 2
+        else
+          len * 2
       in
       let new_data = Array.make ~count:new_len ~value:(Array.get_unchecked heap.data ~at:0) in
       Array.blit heap.data ~src_offset:0 ~dst:new_data ~dst_offset:0 ~len:heap.size;
@@ -44,7 +47,10 @@ let right = fun i -> (2 * i) + 2
 
 let swap = fun heap i j ->
   let temp = Array.get_unchecked heap.data ~at:i in
-  Array.set_unchecked heap.data ~at:i ~value:(Array.get_unchecked heap.data ~at:j);
+  Array.set_unchecked
+    heap.data
+    ~at:i
+    ~value:(Array.get_unchecked heap.data ~at:j);
   Array.set_unchecked heap.data ~at:j ~value:temp
 
 let rec sift_up = fun heap i ->
@@ -54,7 +60,8 @@ let rec sift_up = fun heap i ->
     | Order.LT ->
         swap heap i p;
         sift_up heap p
-    | Order.EQ | Order.GT -> ()
+    | Order.EQ
+    | Order.GT -> ()
 
 let rec sift_down = fun heap i ->
   let l = left i in
@@ -62,15 +69,21 @@ let rec sift_down = fun heap i ->
   let smallest = box i in
   if l < heap.size then
     (
-      match heap.compare (Array.get_unchecked heap.data ~at:l) (Array.get_unchecked heap.data ~at:smallest.value) with
+      match heap.compare
+        (Array.get_unchecked heap.data ~at:l)
+        (Array.get_unchecked heap.data ~at:smallest.value) with
       | Order.LT -> smallest.value <- l
-      | Order.EQ | Order.GT -> ()
+      | Order.EQ
+      | Order.GT -> ()
     );
   if r < heap.size then
     (
-      match heap.compare (Array.get_unchecked heap.data ~at:r) (Array.get_unchecked heap.data ~at:smallest.value) with
+      match heap.compare
+        (Array.get_unchecked heap.data ~at:r)
+        (Array.get_unchecked heap.data ~at:smallest.value) with
       | Order.LT -> smallest.value <- r
-      | Order.EQ | Order.GT -> ()
+      | Order.EQ
+      | Order.GT -> ()
     );
   let smallest_val = smallest.value in
   if smallest_val != i then
@@ -82,7 +95,8 @@ let rec sift_down = fun heap i ->
 let push = fun heap ~value ->
   if heap.size = 0 then
     heap.data <- Array.make ~count:8 ~value
-  else ensure_capacity heap;
+  else
+    ensure_capacity heap;
   Array.set_unchecked heap.data ~at:heap.size ~value;
   sift_up heap heap.size;
   heap.size <- heap.size + 1
@@ -90,21 +104,27 @@ let push = fun heap ~value ->
 let peek = fun heap ->
   if heap.size = 0 then
     None
-  else Some (Array.get_unchecked heap.data ~at:0)
+  else
+    Some (Array.get_unchecked heap.data ~at:0)
 
 let peek_unchecked = fun heap ->
   if heap.size = 0 then
     Kernel.SystemError.panic "Heap.peek_unchecked called on an empty heap"
-  else Array.get_unchecked heap.data ~at:0
+  else
+    Array.get_unchecked heap.data ~at:0
 
 let pop = fun heap ->
   if heap.size = 0 then
     None
   else
-    let result = Array.get_unchecked heap.data ~at:0 in heap.size <- heap.size - 1;
+    let result = Array.get_unchecked heap.data ~at:0 in
+    heap.size <- heap.size - 1;
   if heap.size > 0 then
     (
-      Array.set_unchecked heap.data ~at:0 ~value:(Array.get_unchecked heap.data ~at:heap.size);
+      Array.set_unchecked
+        heap.data
+        ~at:0
+        ~value:(Array.get_unchecked heap.data ~at:heap.size);
       sift_down heap 0
     );
   Some result
@@ -115,7 +135,9 @@ let pop_unchecked = fun heap ->
   | None -> Kernel.SystemError.panic "Heap.pop_unchecked called on an empty heap"
 
 let heapify = fun heap ->
-  for i = (heap.size / 2) - 1 downto 0 do sift_down heap i done
+  for i = (heap.size / 2) - 1 downto 0 do
+    sift_down heap i
+  done
 
 let from_list_with = fun ~compare list ->
   match list with
@@ -176,12 +198,13 @@ let iter: type item. item t -> item Iter.Iterator.t = fun heap ->
 
     let next = fun state ->
       match pop state with
-      | None -> None, state
-      | Some value -> Some value, state
+      | None -> (None, state)
+      | Some value -> (Some value, state)
 
     let size = fun state -> state.size
   end in
-  let heap_copy = { data = Array.clone heap.data; size = heap.size; compare = heap.compare } in Iter.Iterator.make (module HeapIter) heap_copy
+  let heap_copy = { data = Array.clone heap.data; size = heap.size; compare = heap.compare } in
+  Iter.Iterator.make (module HeapIter) heap_copy
 
 let mut_iter: type item. item t -> item Iter.MutIterator.t = fun heap ->
   let module HeapIter = struct
@@ -193,6 +216,10 @@ let mut_iter: type item. item t -> item Iter.MutIterator.t = fun heap ->
 
     let size = fun state -> state.size
 
-    let clone = fun state -> { data = Array.clone state.data; size = state.size; compare = state.compare }
+    let clone = fun state -> {
+      data = Array.clone state.data;
+      size = state.size;
+      compare = state.compare;
+    }
   end in
   Iter.MutIterator.make (module HeapIter) heap

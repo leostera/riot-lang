@@ -4,11 +4,11 @@ open Std
 type color = Colors.rgb
 
 (** Terminal RGB color used throughout Gooey's public API. *)
+
 (** Layout direction *)
 type direction =
   | LeftToRight
   | TopToBottom
-
 (** Sizing type for width/height *)
 type sizing_type =
   | Fit
@@ -20,6 +20,7 @@ type sizing_type =
   | Percent of float
 
 (** Percentage of parent (0.0-1.0) *)
+
 (** Sizing configuration *)
 type sizing = {
   width: sizing_type;
@@ -29,33 +30,26 @@ type sizing = {
   min_height: float option;
   max_height: float option;
 }
-
 (** Horizontal alignment *)
 type h_align =
   | Left
   | Center
   | Right
-
 (** Vertical alignment *)
 type v_align =
   | Top
   | Middle
   | Bottom
-
 (** Alignment configuration *)
 type alignment = { x: h_align; y: v_align }
-
 (** Padding *)
 type padding = { left: int; right: int; top: int; bottom: int }
-
 (** Margin *)
 type margin = { left: int; right: int; top: int; bottom: int }
-
 (** Overflow behavior for child content *)
 type overflow =
   | Visible
   | Clip
-
 (** Text wrapping mode *)
 type text_wrap =
   | Words
@@ -65,26 +59,23 @@ type text_wrap =
   | Character
 
 (** Wrap on character boundaries *)
+
 (** Text alignment *)
 type text_align =
   | TextLeft
   | TextCenter
   | TextRight
-
 (** Font weight *)
 type font_weight =
   | Normal
   | Bold
-
 (** Text decoration *)
 type text_decoration =
   | NoDecoration
   | Underline
   | Strikethrough
-
 (** Corner radius for borders *)
 type corner_radius = { top_left: float; top_right: float; bottom_left: float; bottom_right: float }
-
 (** Complete style configuration *)
 type t = {
   (* Layout properties *)
@@ -116,6 +107,7 @@ type t = {
 val empty: t
 
 (** {1 Builder Functions} *)
+
 val row: t -> t
 
 (** Set direction to LeftToRight *)
@@ -191,7 +183,8 @@ val z_index: int -> t -> t
 val strikethrough: t -> t
 
 (** {1 Padding Helpers} *)
-module Padding : sig
+
+module Padding: sig
   val make: ?left:int -> ?right:int -> ?top:int -> ?bottom:int -> unit -> padding
 
   val all: int -> padding
@@ -202,7 +195,8 @@ module Padding : sig
 end
 
 (** {1 Margin Helpers} *)
-module Margin : sig
+
+module Margin: sig
   val make: ?left:int -> ?right:int -> ?top:int -> ?bottom:int -> unit -> margin
 
   val all: int -> margin
@@ -213,8 +207,15 @@ module Margin : sig
 end
 
 (** {1 Corner Radius Helpers} *)
-module CornerRadius : sig
-  val make: ?top_left:float -> ?top_right:float -> ?bottom_left:float -> ?bottom_right:float -> unit -> corner_radius
+
+module CornerRadius: sig
+  val make:
+    ?top_left:float ->
+    ?top_right:float ->
+    ?bottom_left:float ->
+    ?bottom_right:float ->
+    unit ->
+    corner_radius
 
   val all: float -> corner_radius
 
@@ -222,7 +223,10 @@ module CornerRadius : sig
 end
 
 (** {1 Color Helpers} *)
-val color: string -> color(**
+
+val color: string -> color
+
+(**
    [color hex] parses a hex color string like "#FF0000" or "#F00" into an RGB color.
 
    Examples:

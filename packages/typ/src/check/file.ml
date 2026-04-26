@@ -16,17 +16,19 @@ let serializer =
     (
       Serde.Ser.fields
         [
-          Serde.Ser.field "diagnostics" (Serde.Ser.contramap Array.from_list (Serde.Ser.array Diagnostics.Diagnostic.serializer))
-            (
-              fun (file: t) -> file.diagnostics
-            );
-          Serde.Ser.field "bindings" (Serde.Ser.contramap Array.from_list (Serde.Ser.array Typing_context.value_binding_serializer))
-            (
-              fun (file: t) -> file.bindings
-            );
-          Serde.Ser.field "typing_context" Typing_context.serializer
-            (
-              fun (file: t) -> file.typing_context
-            );
+          Serde.Ser.field
+            "diagnostics"
+            (Serde.Ser.contramap Array.from_list (Serde.Ser.array Diagnostics.Diagnostic.serializer))
+            (fun (file: t) -> file.diagnostics);
+          Serde.Ser.field
+            "bindings"
+            (Serde.Ser.contramap
+              Array.from_list
+              (Serde.Ser.array Typing_context.value_binding_serializer))
+            (fun (file: t) -> file.bindings);
+          Serde.Ser.field
+            "typing_context"
+            Typing_context.serializer
+            (fun (file: t) -> file.typing_context);
         ]
     )

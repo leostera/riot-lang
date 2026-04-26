@@ -83,9 +83,9 @@ open Global
    - ['src] represents the underlying transport source
    - ['err] represents errors from the underlying transport
 *)
+
 (** TLS-specific errors *)
 type 'src t
-
 type error =
   | Closed
   | Handshake_failed of string
@@ -94,7 +94,6 @@ type error =
   | Network_write_failed of IO.error
   | Tls_not_available
   | Unsupported_vectored_operation
-
 (** {2 Create TLS Streams} *)
 (**
    Create TLS client from any reader/writer pair.
@@ -106,7 +105,12 @@ type error =
    @param writer Destination for encrypted bytes (to network)
    @param hostname Server hostname for SNI and certificate verification
 *)
-val of_client_io: reader:IO.Reader.t -> writer:IO.Writer.t -> hostname:string -> unit -> (Tcp_stream.t t, error) Kernel.result
+val of_client_io:
+  reader:IO.Reader.t ->
+  writer:IO.Writer.t ->
+  hostname:string ->
+  unit ->
+  (Tcp_stream.t t, error) Kernel.result
 
 (**
    Create TLS server from any reader/writer pair.
@@ -114,9 +118,16 @@ val of_client_io: reader:IO.Reader.t -> writer:IO.Writer.t -> hostname:string ->
    @param cert_file Path to server certificate (PEM format)
    @param key_file Path to server private key (PEM format)
 *)
-val of_server_io: reader:IO.Reader.t -> writer:IO.Writer.t -> cert_file:string -> key_file:string -> unit -> (Tcp_stream.t t, error) Kernel.result
+val of_server_io:
+  reader:IO.Reader.t ->
+  writer:IO.Writer.t ->
+  cert_file:string ->
+  key_file:string ->
+  unit ->
+  (Tcp_stream.t t, error) Kernel.result
 
 (** {2 Convenience TCP Wrappers} *)
+
 (**
    Create TLS stream from TCP socket.
 
@@ -126,7 +137,10 @@ val of_server_io: reader:IO.Reader.t -> writer:IO.Writer.t -> cert_file:string -
    @param mode Either [`Client hostname] for client-side TLS with SNI,
                or [`Server (cert_file, key_file)] for server-side TLS
 *)
-val of_tcp_socket: mode:[ | `Client of string | `Server of string * string] -> Tcp_stream.t -> (Tcp_stream.t t, error) Kernel.result
+val of_tcp_socket:
+  mode:[ | `Client of string | `Server of string * string] ->
+  Tcp_stream.t ->
+  (Tcp_stream.t t, error) Kernel.result
 
 (**
    Create TLS client from TCP stream.
@@ -140,9 +154,14 @@ val of_tcp_client: hostname:string -> Tcp_stream.t -> (Tcp_stream.t t, error) Ke
 
    Convenience wrapper around [of_server_io] for TCP sockets.
 *)
-val of_tcp_server: cert_file:string -> key_file:string -> Tcp_stream.t -> (Tcp_stream.t t, error) Kernel.result
+val of_tcp_server:
+  cert_file:string ->
+  key_file:string ->
+  Tcp_stream.t ->
+  (Tcp_stream.t t, error) Kernel.result
 
 (** {2 Generic IO Interface} *)
+
 (**
    Convert TLS stream to a generic Reader.
 
@@ -183,6 +202,7 @@ val to_reader: 'src t -> IO.Reader.t
 val to_writer: 'src t -> IO.Writer.t
 
 (** {2 TLS Information} *)
+
 (**
    Get negotiated ALPN protocol (e.g., "h2", "http/1.1").
 

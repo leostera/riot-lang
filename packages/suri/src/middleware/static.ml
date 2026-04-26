@@ -15,68 +15,70 @@ let default_config = {
   dotfiles = `Deny;
   symlinks = `Follow;
   headers = [];
-  cache_control = Some "public, max-age=3600"
+  cache_control = Some "public, max-age=3600";
 }
 
 (** MIME type detection from file extension *)
 module Mime = struct
-  let extension_map =
-    [
-      "html", "text/html; charset=utf-8";
-      "htm", "text/html; charset=utf-8";
-      "css", "text/css; charset=utf-8";
-      "js", "text/javascript; charset=utf-8";
-      "mjs", "text/javascript; charset=utf-8";
-      "json", "application/json";
-      "xml", "application/xml";
-      "txt", "text/plain; charset=utf-8";
-      "md", "text/markdown; charset=utf-8";
-      "csv", "text/csv";
-      "png", "image/png";
-      "jpg", "image/jpeg";
-      "jpeg", "image/jpeg";
-      "gif", "image/gif";
-      "svg", "image/svg+xml";
-      "webp", "image/webp";
-      "ico", "image/x-icon";
-      "bmp", "image/bmp";
-      "tiff", "image/tiff";
-      "woff", "font/woff";
-      "woff2", "font/woff2";
-      "ttf", "font/ttf";
-      "otf", "font/otf";
-      "eot", "application/vnd.ms-fontobject";
-      "pdf", "application/pdf";
-      "zip", "application/zip";
-      "tar", "application/x-tar";
-      "gz", "application/gzip";
-      "7z", "application/x-7z-compressed";
-      "rar", "application/vnd.rar";
-      "mp3", "audio/mpeg";
-      "wav", "audio/wav";
-      "ogg", "audio/ogg";
-      "m4a", "audio/mp4";
-      "mp4", "video/mp4";
-      "webm", "video/webm";
-      "ogv", "video/ogg";
-      "avi", "video/x-msvideo";
-      "mov", "video/quicktime";
-    ]
+  let extension_map = [
+    ("html", "text/html; charset=utf-8");
+    ("htm", "text/html; charset=utf-8");
+    ("css", "text/css; charset=utf-8");
+    ("js", "text/javascript; charset=utf-8");
+    ("mjs", "text/javascript; charset=utf-8");
+    ("json", "application/json");
+    ("xml", "application/xml");
+    ("txt", "text/plain; charset=utf-8");
+    ("md", "text/markdown; charset=utf-8");
+    ("csv", "text/csv");
+    ("png", "image/png");
+    ("jpg", "image/jpeg");
+    ("jpeg", "image/jpeg");
+    ("gif", "image/gif");
+    ("svg", "image/svg+xml");
+    ("webp", "image/webp");
+    ("ico", "image/x-icon");
+    ("bmp", "image/bmp");
+    ("tiff", "image/tiff");
+    ("woff", "font/woff");
+    ("woff2", "font/woff2");
+    ("ttf", "font/ttf");
+    ("otf", "font/otf");
+    ("eot", "application/vnd.ms-fontobject");
+    ("pdf", "application/pdf");
+    ("zip", "application/zip");
+    ("tar", "application/x-tar");
+    ("gz", "application/gzip");
+    ("7z", "application/x-7z-compressed");
+    ("rar", "application/vnd.rar");
+    ("mp3", "audio/mpeg");
+    ("wav", "audio/wav");
+    ("ogg", "audio/ogg");
+    ("m4a", "audio/mp4");
+    ("mp4", "video/mp4");
+    ("webm", "video/webm");
+    ("ogv", "video/ogg");
+    ("avi", "video/x-msvideo");
+    ("mov", "video/quicktime");
+  ]
 
   let from_extension = fun ext ->
     (* Remove leading dot if present *)
     let ext =
       if String.starts_with ~prefix:"." ext then
         String.sub ext ~offset:1 ~len:(String.length ext - 1)
-      else ext
+      else
+        ext
     in
-    Std.Collections.Proplist.get extension_map ~key:(String.lowercase_ascii ext) |> Option.unwrap_or ~default:"application/octet-stream"
+    Std.Collections.Proplist.get extension_map ~key:(String.lowercase_ascii ext)
+    |> Option.unwrap_or ~default:"application/octet-stream"
 end
 
 (** Security checks for path traversal and dotfiles *)
 module Security = struct
   let is_dotfile = fun path ->
-    let filename = Path.basename path in String.length filename > 0 && String.get_unchecked filename ~at:0 = '.'
+    let filename = Path.basename path in
+    String.length filename > 0 && String.get_unchecked filename ~at:0 = '.'
 
   let check_dotfile = fun config path ->
     if not (is_dotfile path) then
@@ -94,12 +96,16 @@ module Security = struct
     match Fs.canonicalize full_path with
     | Ok canonical ->
         (* CRITICAL: Ensure canonical path is under root *)
-        let root_canonical = Fs.canonicalize root |> Result.unwrap_or ~default:root in
+        let root_canonical =
+          Fs.canonicalize root
+          |> Result.unwrap_or ~default:root
+        in
         let root_str = Path.to_string root_canonical in
         let canonical_str = Path.to_string canonical in
         if String.starts_with ~prefix:root_str canonical_str then
           Ok canonical
-        else Error "path traversal blocked"
+        else
+          Error "path traversal blocked"
     | Error _ -> Error "invalid path"
 
   let is_safe_path = fun config root path ->
@@ -143,14 +149,16 @@ module Cache = struct
         (
           if acc = "" then
             "0"
-          else acc
+          else
+            acc
         )
       else
         let digit = n land 0xf in
         let char =
           if digit < 10 then
             Char.chr (Char.code '0' + digit)
-          else Char.chr (Char.code 'a' + (digit - 10))
+          else
+            Char.chr (Char.code 'a' + (digit - 10))
         in
         loop (String.make ~len:1 ~char ^ acc) (n lsr 4)
     in
@@ -160,31 +168,27 @@ module Cache = struct
     (* Simple ETag from size and mtime *)
     let size = Fs.Metadata.len meta in
     let mtime = int_of_float (Fs.Metadata.modified meta) in
-    String.concat ""
-      [
-        "\"";
-        to_hex size;
-        "-";
-        to_hex mtime;
-        "\"";
-      ]
+    String.concat "" [ "\""; to_hex size; "-"; to_hex mtime; "\""; ]
 
   let pad2 = fun n ->
     if n < 10 then
       "0" ^ string_of_int n
-    else string_of_int n
+    else
+      string_of_int n
 
   let pad4 = fun n ->
     let s = string_of_int n in
     let len = String.length s in
     if len >= 4 then
       s
-    else String.make ~len:(4 - len) ~char:'0' ^ s
+    else
+      String.make ~len:(4 - len) ~char:'0' ^ s
 
   let last_modified = fun timestamp ->
     (* Format as HTTP date: Sun, 06 Nov 1994 08:49:37 GMT *)
     let tm = Time.gmtime timestamp in
-    String.concat ""
+    String.concat
+      ""
       [
         weekday tm.tm_wday;
         ", ";
@@ -227,10 +231,10 @@ module Cache = struct
           in
           let year = Int.of_string year_str in
           let time_parts = String.split_on_char ':' time_str in
-          let hour, min, sec =
+          let (hour, min, sec) =
             match time_parts with
-            | [ h; m; s ] -> Int.of_string h, Int.of_string m, Int.of_string s
-            | _ -> 0, 0, 0
+            | [ h; m; s ] -> (Int.of_string h, Int.of_string m, Int.of_string s)
+            | _ -> (0, 0, 0)
           in
           let tm: Time.tm = {
             tm_sec = sec;
@@ -241,10 +245,11 @@ module Cache = struct
             tm_year = year - 1_900;
             tm_wday = 0;
             tm_yday = 0;
-            tm_isdst = false
+            tm_isdst = false;
           }
           in
-          let unix_time, _ = Time.mktime tm in Some unix_time
+          let (unix_time, _) = Time.mktime tm in
+          Some unix_time
       | _ -> None
     with
     | _ -> None
@@ -252,17 +257,19 @@ module Cache = struct
   let check_not_modified = fun conn meta ->
     let headers = Conn.headers conn in
     (* Check If-None-Match (ETag) *)
-    let etag_match = Net.Http.Header.get headers "if-none-match" |> Option.map ~fn:(
-      fun client_etag -> client_etag = etag meta
-    ) |> Option.unwrap_or ~default:false in
+    let etag_match =
+      Net.Http.Header.get headers "if-none-match"
+      |> Option.map ~fn:(fun client_etag -> client_etag = etag meta)
+      |> Option.unwrap_or ~default:false
+    in
     (* Check If-Modified-Since *)
     let modified_match =
       match Net.Http.Header.get headers "if-modified-since" with
       | Some date_str -> (
-        match parse_http_date date_str with
-        | Some client_time -> client_time >= Fs.Metadata.modified meta
-        | None -> false
-      )
+          match parse_http_date date_str with
+          | Some client_time -> client_time >= Fs.Metadata.modified meta
+          | None -> false
+        )
       | None -> false
     in
     etag_match || modified_match
@@ -274,34 +281,37 @@ module Directory = struct
 
   let format_float_1dp = fun f ->
     let whole = int_of_float f in
-    let frac = int_of_float ((f -. float whole) *. 10.0) in string_of_int whole ^ "." ^ string_of_int frac
+    let frac = int_of_float ((f -. float whole) *. 10.0) in
+    string_of_int whole ^ "." ^ string_of_int frac
 
   let format_size = fun size ->
     if size < 1_024 then
       string_of_int size ^ " B"
+    else if size < 1_024 * 1_024 then
+      format_float_1dp (float size /. 1_024.0) ^ " KB"
+    else if size < 1_024 * 1_024 * 1_024 then
+      format_float_1dp (float size /. (1_024.0 *. 1_024.0)) ^ " MB"
     else
-      if size < 1_024 * 1_024 then
-        format_float_1dp (float size /. 1024.0) ^ " KB"
-      else
-        if size < 1_024 * 1_024 * 1_024 then
-          format_float_1dp (float size /. (1024.0 *. 1024.0)) ^ " MB"
-        else format_float_1dp (float size /. (1024.0 *. 1024.0 *. 1024.0)) ^ " GB"
+      format_float_1dp (float size /. (1_024.0 *. 1_024.0 *. 1_024.0)) ^ " GB"
 
   let format_date = fun timestamp ->
     let tm = Time.localtime timestamp in
     let pad2 n =
       if n < 10 then
         "0" ^ string_of_int n
-      else string_of_int n
+      else
+        string_of_int n
     in
     let pad4 n =
       let s = string_of_int n in
       let len = String.length s in
       if len >= 4 then
         s
-      else String.make ~len:(4 - len) ~char:'0' ^ s
+      else
+        String.make ~len:(4 - len) ~char:'0' ^ s
     in
-    String.concat ""
+    String.concat
+      ""
       [
         pad4 (tm.tm_year + 1_900);
         "-";
@@ -319,8 +329,9 @@ module Directory = struct
     | Error _ -> []
     | Ok iter ->
         let entries = ref [] in
-        Iter.MutIterator.for_each iter ~fn:(
-          fun entry_path ->
+        Iter.MutIterator.for_each
+          iter
+          ~fn:(fun entry_path ->
             (* entry_path from read_dir is just the filename - join with directory *)
             let name = Path.to_string entry_path in
             let full_path = Path.join path entry_path in
@@ -331,7 +342,8 @@ module Directory = struct
                 | `Allow -> true
                 | `Deny -> false
                 | `Ignore -> false
-              else true
+              else
+                true
             in
             if include_entry then
               match Fs.metadata full_path with
@@ -340,36 +352,37 @@ module Directory = struct
                     name;
                     is_dir = Fs.Metadata.is_dir meta;
                     size = Fs.Metadata.len meta;
-                    modified = Fs.Metadata.modified meta
+                    modified = Fs.Metadata.modified meta;
                   }
                   in
                   entries := entry :: !entries
-              | Error _ -> ()
-        );
-        List.sort ~compare:(
-          fun a b -> String.compare a.name b.name
-        ) !entries
+              | Error _ -> ());
+        List.sort ~compare:(fun a b -> String.compare a.name b.name) !entries
 
   let entry_row = fun request_path entry ->
     (* Build absolute path by appending entry name to request path *)
     let request_path_str =
       if String.ends_with ~suffix:"/" request_path then
         request_path
-      else request_path ^ "/"
+      else
+        request_path ^ "/"
     in
     let href = String.concat "" [ request_path_str; Net.Uri.percent_encode entry.name ] in
     let display_name =
       if entry.is_dir then
         entry.name ^ "/"
-      else entry.name
+      else
+        entry.name
     in
     let size_str =
       if entry.is_dir then
         "-"
-      else format_size entry.size
+      else
+        format_size entry.size
     in
     let date_str = format_date entry.modified in
-    String.concat ""
+    String.concat
+      ""
       [
         "    <tr>\n";
         "      <td><a href=\"";
@@ -392,7 +405,8 @@ module Directory = struct
     let parent_href =
       if String.ends_with ~suffix:"/" request_path then
         String.sub request_path ~offset:0 ~len:(String.length request_path - 1)
-      else request_path
+      else
+        request_path
     in
     let parent_href =
       match String.last_index parent_href '/' with
@@ -400,7 +414,8 @@ module Directory = struct
       | None -> "/"
     in
     let entries_html = String.concat "\n" (List.map ~fn:(entry_row request_path) entries) in
-    String.concat ""
+    String.concat
+      ""
       [
         {|<!DOCTYPE html>
 <html>
@@ -449,69 +464,105 @@ module Directory = struct
 end
 
 (** Core file serving logic *)
-let find_index_file = fun config path -> config.index_files |> List.filter_map ~fn:(
-  fun index_name ->
-    let index_path = Path.join path (Path.v index_name) in
-    match Fs.exists index_path with
-    | Ok true -> (
-      match Fs.metadata index_path with
-      | Ok meta when Fs.Metadata.is_file meta -> Some index_path
-      | _ -> None
-    )
-    | _ -> None
-) |> List.head
+let find_index_file = fun config path ->
+  config.index_files
+  |> List.filter_map
+    ~fn:(fun index_name ->
+      let index_path = Path.join path (Path.v index_name) in
+      match Fs.exists index_path with
+      | Ok true -> (
+          match Fs.metadata index_path with
+          | Ok meta when Fs.Metadata.is_file meta -> Some index_path
+          | _ -> None
+        )
+      | _ -> None)
+  |> List.head
 
 let rec serve_file = fun config root requested_path conn ->
   (* Normalize and validate path *)
   match Security.normalize_path root requested_path with
-  | Error msg -> conn |> Conn.respond ~status:Net.Http.Status.Forbidden ~body:msg |> Conn.halt
+  | Error msg ->
+      conn
+      |> Conn.respond ~status:Net.Http.Status.Forbidden ~body:msg
+      |> Conn.halt
   | Ok full_path -> (
-    (* Check dotfile policy *)
-    if not (Security.check_dotfile config full_path) then
-      conn |> Conn.respond ~status:Net.Http.Status.Forbidden ~body:"access to dotfiles denied" |> Conn.halt
-    else
-      (* Get file metadata *)
-      match Fs.metadata full_path with
-      | Error _ -> conn |> Conn.respond ~status:Net.Http.Status.NotFound ~body:"404 Not Found" |> Conn.halt
-      | Ok meta when Fs.Metadata.is_dir meta -> serve_directory config root full_path conn
-      | Ok meta when Fs.Metadata.is_file meta -> serve_regular_file config full_path meta conn
-      | Ok _ -> conn |> Conn.respond ~status:Net.Http.Status.Forbidden ~body:"cannot serve special files" |> Conn.halt
-  )
+      (* Check dotfile policy *)
+      if not (Security.check_dotfile config full_path) then
+        conn
+        |> Conn.respond ~status:Net.Http.Status.Forbidden ~body:"access to dotfiles denied"
+        |> Conn.halt
+      else
+        (* Get file metadata *)
+        match Fs.metadata full_path with
+        | Error _ ->
+            conn
+            |> Conn.respond ~status:Net.Http.Status.NotFound ~body:"404 Not Found"
+            |> Conn.halt
+        | Ok meta when Fs.Metadata.is_dir meta -> serve_directory config root full_path conn
+        | Ok meta when Fs.Metadata.is_file meta -> serve_regular_file config full_path meta conn
+        | Ok _ ->
+            conn
+            |> Conn.respond ~status:Net.Http.Status.Forbidden ~body:"cannot serve special files"
+            |> Conn.halt
+    )
+
 and serve_directory = fun config root path conn ->
   (* Try index files first *)
   match find_index_file config path with
-  | Some index_path -> (* Serve index file *)
-  (
-    match Fs.metadata index_path with
-    | Ok meta -> serve_regular_file config index_path meta conn
-    | Error _ -> conn |> Conn.respond ~status:Net.Http.Status.InternalServerError ~body:"failed to read index file" |> Conn.halt
-  )
+  | Some index_path -> (
+      match Fs.metadata index_path with
+      | Ok meta -> serve_regular_file config index_path meta conn
+      | Error _ ->
+          conn
+          |> Conn.respond
+            ~status:Net.Http.Status.InternalServerError
+            ~body:"failed to read index file"
+          |> Conn.halt
+    )
   | None ->
       (* No index file found *)
       if config.show_directory then
         let entries = Directory.collect_entries config path in
         let request_path = Conn.path conn in
-        let html = Directory.generate_html request_path path entries in conn |> Conn.respond ~status:Net.Http.Status.Ok ~body:html |> Conn.with_header "content-type" "text/html; charset=utf-8" |> Conn.send
-      else conn |> Conn.respond ~status:Net.Http.Status.Forbidden ~body:"directory listing disabled" |> Conn.halt
+        let html = Directory.generate_html request_path path entries in
+        conn
+        |> Conn.respond ~status:Net.Http.Status.Ok ~body:html
+        |> Conn.with_header "content-type" "text/html; charset=utf-8"
+        |> Conn.send
+      else
+        conn
+        |> Conn.respond ~status:Net.Http.Status.Forbidden ~body:"directory listing disabled"
+        |> Conn.halt
+
 and serve_regular_file = fun config path meta conn ->
   (* Check if client has cached version *)
   if Cache.check_not_modified conn meta then
-    conn |> Conn.respond ~status:Net.Http.Status.NotModified |> Conn.halt
+    conn
+    |> Conn.respond ~status:Net.Http.Status.NotModified
+    |> Conn.halt
   else
     (* Read file contents *)
     match Fs.read path with
-    | Error _ -> conn |> Conn.respond ~status:Net.Http.Status.InternalServerError ~body:"failed to read file" |> Conn.halt
+    | Error _ ->
+        conn
+        |> Conn.respond ~status:Net.Http.Status.InternalServerError ~body:"failed to read file"
+        |> Conn.halt
     | Ok content ->
         (* Determine MIME type *)
-        let mime_type = Path.extension path |> Option.map ~fn:Mime.from_extension |> Option.unwrap_or ~default:"application/octet-stream" in
+        let mime_type =
+          Path.extension path
+          |> Option.map ~fn:Mime.from_extension
+          |> Option.unwrap_or ~default:"application/octet-stream"
+        in
         (* Build headers *)
         let headers =
           [
-            "content-type", mime_type;
-            "content-length", string_of_int (String.length content);
-            "etag", Cache.etag meta;
-            "last-modified", Cache.last_modified (Fs.Metadata.modified meta);
-          ] @ config.headers
+            ("content-type", mime_type);
+            ("content-length", string_of_int (String.length content));
+            ("etag", Cache.etag meta);
+            ("last-modified", Cache.last_modified (Fs.Metadata.modified meta));
+          ]
+          @ config.headers
         in
         let headers =
           match config.cache_control with
@@ -520,9 +571,14 @@ and serve_regular_file = fun config path meta conn ->
         in
         (* Send response *)
         let conn = Conn.respond conn ~status:Net.Http.Status.Ok ~body:content in
-        let conn = List.fold_left headers ~init:conn ~fn:(
-          fun c ((name, value)) -> Conn.with_header name value c
-        ) in Conn.send conn
+        let conn =
+          List.fold_left
+            headers
+            ~init:conn
+            ~fn:(fun c ((name, value)) ->
+              Conn.with_header name value c)
+        in
+        Conn.send conn
 
 (** Middleware function *)
 let middleware = fun ?(config = default_config) ~at root () ->
@@ -538,7 +594,8 @@ let middleware = fun ?(config = default_config) ~at root () ->
         let path_len = String.length request_path in
         if at_len >= path_len then
           ""
-        else String.sub request_path ~offset:at_len ~len:(path_len - at_len)
+        else
+          String.sub request_path ~offset:at_len ~len:(path_len - at_len)
       in
       (* Handle empty or root path *)
       let requested_path =
@@ -549,7 +606,8 @@ let middleware = fun ?(config = default_config) ~at root () ->
           let relative =
             if String.length relative > 0 && String.get_unchecked relative ~at:0 = '/' then
               String.sub relative ~offset:1 ~len:(String.length relative - 1)
-            else relative
+            else
+              relative
           in
           Path.v relative
       in

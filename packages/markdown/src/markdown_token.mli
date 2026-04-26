@@ -5,7 +5,6 @@ type token_kind =
   | Line_text
   | Newline
   | EOF
-
 (** One markdown lexer token. *)
 type t = {
   (** Token kind. *)

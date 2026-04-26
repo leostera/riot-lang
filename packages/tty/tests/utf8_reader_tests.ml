@@ -1,7 +1,6 @@
 open Std
 
 module Test = Std.Test
-
 module Utf8_reader = Tty.Utf8_reader
 
 type chunk =
@@ -25,7 +24,9 @@ let make_read = fun chunks ->
         IO.Bytes.blit_string chunk ~src_offset:0 ~dst:bytes ~dst_offset:offset ~len:count;
         if Int.equal count (String.length chunk) then
           remaining := rest
-        else remaining := Data (String.sub chunk ~offset:count ~len:(String.length chunk - count)) :: rest;
+        else
+          remaining := Data (String.sub chunk ~offset:count ~len:(String.length chunk - count))
+          :: rest;
         `Ok count
 
 let test_ascii = fun _ctx ->
@@ -69,10 +70,10 @@ let test_partial_sequence_retries_and_recovers = fun _ctx ->
   let read = make_read [ Data "\xc3"; Would_block; Data "\xa9" ] in
   match Utf8_reader.read reader ~read with
   | `Retry -> (
-    match Utf8_reader.read reader ~read with
-    | `Read "é" -> Ok ()
-    | _ -> Error "Expected a pending two-byte rune to resume after retry"
-  )
+      match Utf8_reader.read reader ~read with
+      | `Read "é" -> Ok ()
+      | _ -> Error "Expected a pending two-byte rune to resume after retry"
+    )
   | _ -> Error "Expected a partial multi-byte read to yield Retry"
 
 let test_incomplete_sequence_at_end = fun _ctx ->
@@ -80,10 +81,10 @@ let test_incomplete_sequence_at_end = fun _ctx ->
   let read = make_read [ Data "\xe2"; Data "\x82" ] in
   match Utf8_reader.read reader ~read with
   | `Retry -> (
-    match Utf8_reader.read reader ~read with
-    | `Malformed "Incomplete UTF-8 sequence" -> Ok ()
-    | _ -> Error "Expected EOF during a partial sequence to report incomplete UTF-8"
-  )
+      match Utf8_reader.read reader ~read with
+      | `Malformed "Incomplete UTF-8 sequence" -> Ok ()
+      | _ -> Error "Expected EOF during a partial sequence to report incomplete UTF-8"
+    )
   | _ -> Error "Expected partial three-byte rune to remain pending"
 
 let test_end_of_stream = fun _ctx ->
@@ -92,17 +93,18 @@ let test_end_of_stream = fun _ctx ->
   | `End -> Ok ()
   | _ -> Error "Expected empty input to report end of stream"
 
-let tests = Test.[
-  case "ascii" test_ascii;
-  case "two_byte_rune" test_two_byte_rune;
-  case "three_byte_rune" test_three_byte_rune;
-  case "four_byte_rune" test_four_byte_rune;
-  case "invalid_start_byte" test_invalid_start_byte;
-  case "invalid_continuation_byte" test_invalid_continuation_byte;
-  case "partial_sequence_retries_and_recovers" test_partial_sequence_retries_and_recovers;
-  case "incomplete_sequence_at_end" test_incomplete_sequence_at_end;
-  case "end_of_stream" test_end_of_stream;
-]
+let tests =
+  Test.[
+    case "ascii" test_ascii;
+    case "two_byte_rune" test_two_byte_rune;
+    case "three_byte_rune" test_three_byte_rune;
+    case "four_byte_rune" test_four_byte_rune;
+    case "invalid_start_byte" test_invalid_start_byte;
+    case "invalid_continuation_byte" test_invalid_continuation_byte;
+    case "partial_sequence_retries_and_recovers" test_partial_sequence_retries_and_recovers;
+    case "incomplete_sequence_at_end" test_incomplete_sequence_at_end;
+    case "end_of_stream" test_end_of_stream;
+  ]
 
 let main ~args = Test.Cli.main ~name:"tty_utf8_reader" ~tests ~args ()
 

@@ -6,7 +6,6 @@ type severity =
   | Warning
   | Info
   | Hint
-
 (**
    Diagnostic classification.
 
@@ -14,9 +13,14 @@ type severity =
    [Generic] is the fallback for ad-hoc diagnostics.
 *)
 type kind =
-  | Known of { rule_id: Rule_id.t; message: string }
-  | Generic of { rule_id: Rule_id.t; message: string }
-
+  | Known of {
+      rule_id: Rule_id.t;
+      message: string;
+    }
+  | Generic of {
+      rule_id: Rule_id.t;
+      message: string;
+    }
 (** Diagnostic reported by a rule or traversal. *)
 type t
 
@@ -26,7 +30,14 @@ type t
    Use [`fix`] to attach an autofix and [`suggestion`] for a short next-step
    hint shown to the user.
 *)
-val make: severity:severity -> kind:kind -> span:Syn.Ceibo.Span.t -> ?suggestion:string -> ?fix:Fix.fix -> unit -> t
+val make:
+  severity:severity ->
+  kind:kind ->
+  span:Syn.Ceibo.Span.t ->
+  ?suggestion:string ->
+  ?fix:Fix.fix ->
+  unit ->
+  t
 
 (** Return the diagnostic kind. *)
 val kind: t -> kind

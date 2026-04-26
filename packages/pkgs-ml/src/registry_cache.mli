@@ -2,10 +2,8 @@ open Std
 
 (** On-disk cache layout for one registry. *)
 type t
-
 type create_error =
   | HomeDirectoryUnavailable
-
 val create_error_message: create_error -> string
 
 (**

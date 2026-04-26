@@ -4,7 +4,6 @@ open Std.Collections
 
 (** Trivia that appears immediately before a token. *)
 type ('kind, 'text) trivia = { kind: 'kind; text: 'text; width: int }
-
 (**
    A token with syntax kind, text content, token-body width, and leading trivia.
 
@@ -17,9 +16,13 @@ type ('kind, 'text) token = {
   width: int;
   leading_trivia: ('kind, 'text) trivia list;
 }
-
 (** A node with syntax kind, computed width, and non-trivia child elements. *)
-type ('kind, 'text) node = { kind: 'kind; width: int; children: ('kind, 'text) element list }
+type ('kind, 'text) node = {
+  kind: 'kind;
+  width: int;
+  children: ('kind, 'text) element list;
+}
+
 (** A green-tree element: either a token or a node. *)
 and ('kind, 'text) element =
   | Token of ('kind, 'text) token
@@ -29,7 +32,12 @@ and ('kind, 'text) element =
 val make_trivia: kind:'kind -> text:'text -> width:int -> ('kind, 'text) trivia
 
 (** Create a token with the given kind, text, width, and leading trivia. *)
-val make_token: leading_trivia:('kind, 'text) trivia list -> kind:'kind -> text:'text -> width:int -> ('kind, 'text) token
+val make_token:
+  leading_trivia:('kind, 'text) trivia list ->
+  kind:'kind ->
+  text:'text ->
+  width:int ->
+  ('kind, 'text) token
 
 (**
    Create a node with the given kind and children.
@@ -69,7 +77,11 @@ val is_token: ('kind, 'text) element -> bool
 val is_node: ('kind, 'text) element -> bool
 
 (** Return a copy of the node with one child replaced. *)
-val replace_child: ('kind, 'text) node -> index:int -> child:('kind, 'text) element -> ('kind, 'text) node
+val replace_child:
+  ('kind, 'text) node ->
+  index:int ->
+  child:('kind, 'text) element ->
+  ('kind, 'text) node
 
 (** Return a copy of the node with one child appended. *)
 val append_child: ('kind, 'text) node -> child:('kind, 'text) element -> ('kind, 'text) node
@@ -84,4 +96,8 @@ val child: ('kind, 'text) node -> int -> ('kind, 'text) element option
 val children: ('kind, 'text) node -> ('kind, 'text) element list
 
 (** Encode an element as JSON. *)
-val to_json: kind_to_json:('kind -> Data.Json.t) -> text_to_json:('text -> Data.Json.t) -> ('kind, 'text) element -> Data.Json.t
+val to_json:
+  kind_to_json:('kind -> Data.Json.t) ->
+  text_to_json:('text -> Data.Json.t) ->
+  ('kind, 'text) element ->
+  Data.Json.t

@@ -7,16 +7,16 @@ let diff_lists = fun left right ->
       List.reverse acc
     else
       let next =
-        match List.get left ~at:idx, List.get right ~at:idx with
-        | Some x, Some y when x = y -> acc
-        | None, Some y -> { Diff.path = [ Diff.Index idx ]; kind = Diff.Added y } :: acc
-        | Some x, None -> { Diff.path = [ Diff.Index idx ]; kind = Diff.Removed x } :: acc
-        | Some x, Some y ->
+        match (List.get left ~at:idx, List.get right ~at:idx) with
+        | (Some x, Some y) when x = y -> acc
+        | (None, Some y) -> { Diff.path = [ Diff.Index idx ]; kind = Diff.Added y } :: acc
+        | (Some x, None) -> { Diff.path = [ Diff.Index idx ]; kind = Diff.Removed x } :: acc
+        | (Some x, Some y) ->
             {
               Diff.path = [ Diff.Index idx ];
-              kind = Diff.Changed (x, y)
+              kind = Diff.Changed (x, y);
             } :: acc
-        | None, None -> acc
+        | (None, None) -> acc
       in
       loop (idx + 1) next
   in
@@ -26,13 +26,15 @@ let test_diff_identical_lists = fun _ctx ->
   let diffs = diff_lists [ 1; 2 ] [ 1; 2 ] in
   if diffs = [] then
     Ok ()
-  else Error "Identical lists should produce no changes"
+  else
+    Error "Identical lists should produce no changes"
 
 let test_diff_empty_lists = fun _ctx ->
   let diffs = diff_lists [] [] in
   if not (Diff.has_changes diffs) then
     Ok ()
-  else Error "Empty lists should produce no changes"
+  else
+    Error "Empty lists should produce no changes"
 
 let test_diff_added_elements = fun _ctx ->
   let diffs = diff_lists [ 1 ] [ 1; 2 ] in
@@ -56,16 +58,16 @@ let test_diff_reordered_elements = fun _ctx ->
   let diffs = diff_lists [ 1; 2 ] [ 2; 1 ] in
   if List.length (Diff.changes diffs) = 2 then
     Ok ()
-  else Error "Expected both positions to change when reordered"
+  else
+    Error "Expected both positions to change when reordered"
 
 let test_diff_nested_lists = fun _ctx ->
-  let diffs =
-    [
-      {
-        Diff.path = [ Diff.Index 0 ];
-        kind = Diff.Changed ([ 1 ], [ 2 ])
-      };
-    ]
+  let diffs = [
+    {
+      Diff.path = [ Diff.Index 0 ];
+      kind = Diff.Changed ([ 1 ], [ 2 ]);
+    };
+  ]
   in
   match Diff.changes diffs with
   | [ { kind = Diff.Changed ([ 1 ], [ 2 ]); _ } ] -> Ok ()
@@ -75,40 +77,36 @@ let test_diff_one_empty = fun _ctx ->
   let diffs = diff_lists [] [ 1; 2 ] in
   if List.length (Diff.additions diffs) = 2 then
     Ok ()
-  else Error "Expected all elements to be additions"
+  else
+    Error "Expected all elements to be additions"
 
 let test_diff_different_lengths = fun _ctx ->
   let diffs = diff_lists [ 1 ] [ 1; 2; 3 ] in
   if List.length diffs = 2 then
     Ok ()
-  else Error "Expected two additions"
+  else
+    Error "Expected two additions"
 
 let test_diff_mixed_changes = fun _ctx ->
-  let diffs =
-    diff_lists [ 1; 2; 3 ]
-      [
-        1;
-        4;
-        5;
-        6;
-      ]
-  in
+  let diffs = diff_lists [ 1; 2; 3 ] [ 1; 4; 5; 6; ] in
   if List.length (Diff.changes diffs) = 2 && List.length (Diff.additions diffs) = 1 then
     Ok ()
-  else Error "Expected mixed list diff"
+  else
+    Error "Expected mixed list diff"
 
-let tests = Test.[
-  case "identical lists" test_diff_identical_lists;
-  case "empty lists" test_diff_empty_lists;
-  case "added elements" test_diff_added_elements;
-  case "removed elements" test_diff_removed_elements;
-  case "changed elements" test_diff_changed_elements;
-  case "reordered elements" test_diff_reordered_elements;
-  case "nested lists" test_diff_nested_lists;
-  case "one empty" test_diff_one_empty;
-  case "different lengths" test_diff_different_lengths;
-  case "mixed changes" test_diff_mixed_changes;
-]
+let tests =
+  Test.[
+    case "identical lists" test_diff_identical_lists;
+    case "empty lists" test_diff_empty_lists;
+    case "added elements" test_diff_added_elements;
+    case "removed elements" test_diff_removed_elements;
+    case "changed elements" test_diff_changed_elements;
+    case "reordered elements" test_diff_reordered_elements;
+    case "nested lists" test_diff_nested_lists;
+    case "one empty" test_diff_one_empty;
+    case "different lengths" test_diff_different_lengths;
+    case "mixed changes" test_diff_mixed_changes;
+  ]
 
 let main ~args = Test.Cli.main ~name:"list-diff" ~tests ~args ()
 

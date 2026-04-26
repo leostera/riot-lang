@@ -11,7 +11,6 @@ type modifier =
   | CtrlShift
   | AltShift
   | CtrlAltShift
-
 (** Keyboard keys *)
 type key =
   | Up
@@ -40,6 +39,7 @@ val key_to_string: key -> string
 val modifier_to_string: modifier -> string
 
 (** Convert a modifier to a human-readable string *)
+
 (** Mouse button *)
 type mouse_button =
   | Left
@@ -47,7 +47,6 @@ type mouse_button =
   | Right
   | WheelUp
   | WheelDown
-
 (** Mouse event type *)
 type mouse_event_type =
   | Click
@@ -57,6 +56,7 @@ type mouse_event_type =
   | Motion
 
 (** Mouse moved (with or without button pressed) *)
+
 (** Mouse event *)
 type mouse_event = {
   button: mouse_button;
@@ -69,7 +69,6 @@ type mouse_event = {
   alt: bool;
   shift: bool;
 }
-
 (** Window size *)
 type window_size = {
   width: int;
@@ -77,7 +76,6 @@ type window_size = {
   height: int;
   (** Terminal height in rows *)
 }
-
 (** Terminal events *)
 type t =
   | KeyDown of key * modifier
@@ -90,5 +88,6 @@ type t =
   | FocusGained
   | FocusLost
   | Custom of Message.t
+val to_string: t -> string
 
-val to_string: t -> string(** Convert an event to a human-readable string *)
+(** Convert an event to a human-readable string *)

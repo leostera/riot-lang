@@ -28,7 +28,7 @@ let make = fun ~workspace ~packages ~targets ~scope ~profile ?(dev_artifacts = {
     scope;
     dev_artifacts;
     profile;
-    requested_parallelism
+    requested_parallelism;
   }
 
 module Internal = struct

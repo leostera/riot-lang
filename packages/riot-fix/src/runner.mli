@@ -3,7 +3,6 @@ open Std
 type mode =
   | Check
   | Apply
-
 type file_result = {
   file: Path.t;
   final_source: string;
@@ -13,7 +12,6 @@ type file_result = {
   changed: bool;
   error: string option;
 }
-
 type summary = {
   total_files: int;
   changed_files: int;
@@ -21,12 +19,24 @@ type summary = {
   applied_fixes: int;
   failed_files: int;
 }
+type run_result = {
+  files: file_result list;
+  summary: summary;
+}
+val run_file:
+  ?pipeline:Pipeline.t ->
+  ?pipeline_for_file:(Path.t -> Pipeline.t) ->
+  ?on_progress:(Fixme.Source_runner.progress_event -> unit) ->
+  mode:mode ->
+  Path.t ->
+  file_result
 
-type run_result = { files: file_result list; summary: summary }
-
-val run_file: ?pipeline:Pipeline.t -> ?pipeline_for_file:(Path.t -> Pipeline.t) -> ?on_progress:(Fixme.Source_runner.progress_event -> unit) -> mode:mode -> Path.t -> file_result
-
-val run_files: ?pipeline:Pipeline.t -> ?pipeline_for_file:(Path.t -> Pipeline.t) -> mode:mode -> Path.t list -> run_result
+val run_files:
+  ?pipeline:Pipeline.t ->
+  ?pipeline_for_file:(Path.t -> Pipeline.t) ->
+  mode:mode ->
+  Path.t list ->
+  run_result
 
 val summarize: file_result list -> summary
 

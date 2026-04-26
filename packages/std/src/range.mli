@@ -29,6 +29,7 @@
    both input ranges were built with compatible ordering semantics. The left
    range's comparator is used for those operations.
 *)
+
 open Global
 
 (**
@@ -42,7 +43,6 @@ type 'a bound =
   | Included of 'a
   | Excluded of 'a
   | Unbounded
-
 (**
    An interval over ordered values.
 

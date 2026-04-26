@@ -69,13 +69,18 @@
 
    The environment is auto-detected from `RIOT_ENV` (or defaults to `dev`).
 *)
+
 open Global
 
 (** {1 Types} *)
+
 type error =
   | NotFound of { app: string }
   (** Config section not found in TOML file *)
-  | ValidationError of { app: string; errors: string list }
+  | ValidationError of {
+      app: string;
+      errors: string list;
+    }
   (** Configuration validation failed *)
   | ParseError of { path: string; message: string }
   (** TOML parsing error *)
@@ -83,7 +88,8 @@ type error =
 
 (** Configuration file not found *)
 (** {1 Configuration Providers} *)
-module Provider : sig
+
+module Provider: sig
   type t
 
   (** Configuration source - environment-based path, explicit path, or static TOML string *)
@@ -126,6 +132,7 @@ module Provider : sig
 end
 
 (** {1 Configuration Schema} *)
+
 module Spec = Spec
 
 (** Configuration schema DSL. See {!Spec} for the complete API. *)
@@ -157,6 +164,7 @@ end
    ```
 *)
 (** {1 Core API} *)
+
 val load: ?provider:Provider.t -> unit -> unit
 
 (**
@@ -319,6 +327,7 @@ val patch: app:string -> (string * Spec.value) list -> (unit, string) result
    let port = Config.as_int port_value in
    ```
 *)
+
 val get_string: Spec.value -> string -> string
 
 (**
@@ -468,6 +477,7 @@ val get_map: Spec.value -> string -> Spec.value
    These functions extract values directly without looking up a key.
    Useful when you already have a {!Spec.value} to unwrap.
 *)
+
 val as_string: Spec.value -> string
 
 (**
@@ -580,7 +590,10 @@ val as_map: Spec.value -> (string * Spec.value) list
    These modules are exposed for testing and advanced use cases.
    Most users won't need to interact with them directly.
 *)
+
 module Loader = Loader
 
 (** Configuration file loading and environment detection *)
-module Validator = Validator(** Configuration validation against specs *)
+module Validator = Validator
+
+(** Configuration validation against specs *)

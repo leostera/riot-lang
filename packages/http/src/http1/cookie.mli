@@ -58,16 +58,17 @@
    - Set appropriate [max_age] to limit session lifetime
    - Use [__Host-] or [__Secure-] prefixes for sensitive cookies
 *)
+
 open Std
 
 (** {2 Types} *)
+
 type same_site =
   | Strict
   (** Strictest - no cross-site requests *)
   | Lax
   (** Safe cross-site (GET only) - recommended default *)
   | None
-
 (** Allow all cross-site (requires Secure flag) *)
 type t = {
   name: string;
@@ -89,7 +90,6 @@ type t = {
   same_site: same_site option;
   (** CSRF protection *)
 }
-
 (** {2 Parsing} *)
 (**
    Parse Cookie header into name-value pairs.
@@ -120,6 +120,7 @@ val parse: string -> (string * string) list
 val parse_set_cookie: string -> t option
 
 (** {2 Serialization} *)
+
 (**
    Serialize cookie to Set-Cookie header value.
 
@@ -134,6 +135,7 @@ val parse_set_cookie: string -> t option
 val to_set_cookie: t -> string
 
 (** {2 Construction} *)
+
 (**
    Create a cookie with sensible defaults.
 
@@ -149,7 +151,18 @@ val to_set_cookie: t -> string
           ~max_age:3600 ~secure:true ()
    ]}
 *)
-val make: name:string -> value:string -> ?max_age:int -> ?expires:string -> ?path:string -> ?domain:string -> ?secure:bool -> ?http_only:bool -> ?same_site:same_site -> unit -> t
+val make:
+  name:string ->
+  value:string ->
+  ?max_age:int ->
+  ?expires:string ->
+  ?path:string ->
+  ?domain:string ->
+  ?secure:bool ->
+  ?http_only:bool ->
+  ?same_site:same_site ->
+  unit ->
+  t
 
 (**
    Create a cookie with validation.
@@ -160,9 +173,21 @@ val make: name:string -> value:string -> ?max_age:int -> ?expires:string -> ?pat
 
    Returns [Error msg] if validation fails.
 *)
-val make_validated: name:string -> value:string -> ?max_age:int -> ?expires:string -> ?path:string -> ?domain:string -> ?secure:bool -> ?http_only:bool -> ?same_site:same_site -> unit -> (t, string) result
+val make_validated:
+  name:string ->
+  value:string ->
+  ?max_age:int ->
+  ?expires:string ->
+  ?path:string ->
+  ?domain:string ->
+  ?secure:bool ->
+  ?http_only:bool ->
+  ?same_site:same_site ->
+  unit ->
+  (t, string) result
 
 (** {2 Validation} *)
+
 (** Check if cookie name is valid (alphanumeric + underscore + hyphen). *)
 val is_valid_name: string -> bool
 
@@ -170,5 +195,6 @@ val is_valid_name: string -> bool
 val is_valid_value: string -> bool
 
 (** {2 Utilities} *)
+
 (** Convert SameSite to string ("Strict", "Lax", or "None"). *)
 val same_site_to_string: same_site -> string

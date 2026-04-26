@@ -19,33 +19,34 @@ open Riot_model
 *)
 type plan_result =
   | Cached of {
-    package_key: Package.key;
-    package: Package.t;
-    hash: Std.Crypto.hash;
-    artifact: Riot_store.Artifact.t;
-    depset: Dependency.t list;
-    exports: Riot_store.Store.export_entry list;
-    breakdown: planning_breakdown;
-  }
+      package_key: Package.key;
+      package: Package.t;
+      hash: Std.Crypto.hash;
+      artifact: Riot_store.Artifact.t;
+      depset: Dependency.t list;
+      exports: Riot_store.Store.export_entry list;
+      breakdown: planning_breakdown;
+    }
   | Planned of {
-    package_key: Package.key;
-    package: Package.t;
-    module_graph: Module_node.t Graph.SimpleGraph.t;
-    action_graph: Action_graph.t;
-    hash: Std.Crypto.hash;
-    depset: Dependency.t list;
-    breakdown: planning_breakdown;
-  }
+      package_key: Package.key;
+      package: Package.t;
+      module_graph: Module_node.t Graph.SimpleGraph.t;
+      action_graph: Action_graph.t;
+      hash: Std.Crypto.hash;
+      depset: Dependency.t list;
+      breakdown: planning_breakdown;
+    }
   | MissingDependencies of {
-    package: Package.t;
-    missing: Package.t list;
-    breakdown: planning_breakdown;
-  }
+      package: Package.t;
+      missing: Package.t list;
+      breakdown: planning_breakdown;
+    }
   | FailedDependencies of {
-    package: Package.t;
-    failed: Package.t list;
-    breakdown: planning_breakdown;
-  }
+      package: Package.t;
+      failed: Package.t list;
+      breakdown: planning_breakdown;
+    }
+
 and planning_breakdown = {
   dependency_count: int;
   dependency_check_duration: Time.Duration.t;
@@ -57,7 +58,23 @@ and planning_breakdown = {
   plan_bundle_cache_hit: bool;
   module_plan_duration: Time.Duration.t;
 }
+val compute_input_hash:
+  ?planner_version:string ->
+  package:Package.t ->
+  depset:Dependency.t list ->
+  workspace:Workspace.t ->
+  profile:Profile.t ->
+  build_ctx:Build_ctx.t ->
+  toolchain:Riot_toolchain.t ->
+  unit ->
+  Std.Crypto.hash
 
-val compute_input_hash: ?planner_version:string -> package:Package.t -> depset:Dependency.t list -> workspace:Workspace.t -> profile:Profile.t -> build_ctx:Build_ctx.t -> toolchain:Riot_toolchain.t -> unit -> Std.Crypto.hash
-
-val plan_package: workspace:Workspace.t -> toolchain:Riot_toolchain.t -> store:Riot_store.Store.t -> package_graph:Package_graph.t -> package_key:Package.key -> package:Package.t -> build_ctx:Build_ctx.t -> (plan_result, Planning_error.t) result
+val plan_package:
+  workspace:Workspace.t ->
+  toolchain:Riot_toolchain.t ->
+  store:Riot_store.Store.t ->
+  package_graph:Package_graph.t ->
+  package_key:Package.key ->
+  package:Package.t ->
+  build_ctx:Build_ctx.t ->
+  (plan_result, Planning_error.t) result

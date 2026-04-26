@@ -2,60 +2,50 @@ open Std
 open Suri
 
 (** Basic Auth with custom validation - simulating database lookup *)
+
 (** Mock database module *)
 module DB = struct
   type user = { id: int; username: string; password_hash: string; role: string; email: string }
 
   (* Simulated user database *)
-  let users =
-    [
-      {
-        id = 1;
-        username = "alice";
-        password_hash = "hash_of_pass1";
-        role = "admin";
-        email = "alice@example.com"
-      };
-      {
-        id = 2;
-        username = "bob";
-        password_hash = "hash_of_pass2";
-        role = "user";
-        email = "bob@example.com"
-      };
-      {
-        id = 3;
-        username = "charlie";
-        password_hash = "hash_of_pass3";
-        role = "user";
-        email = "charlie@example.com"
-      };
-    ]
 
-  let find_user = fun username -> List.find users ~fn:(
-    fun u -> String.equal u.username username
-  )
+  let users = [
+    {
+      id = 1;
+      username = "alice";
+      password_hash = "hash_of_pass1";
+      role = "admin";
+      email = "alice@example.com";
+    };
+    {
+      id = 2;
+      username = "bob";
+      password_hash = "hash_of_pass2";
+      role = "user";
+      email = "bob@example.com";
+    };
+    {
+      id = 3;
+      username = "charlie";
+      password_hash = "hash_of_pass3";
+      role = "user";
+      email = "charlie@example.com";
+    };
+  ]
 
-  let verify_password = fun user password -> (* In real app: use bcrypt, argon2, etc. *)
-  (* For demo: just check if hash matches "hash_of_" + password *)
-  String.equal user.password_hash (String.concat "" [ "hash_of_"; password ])
+  let find_user = fun username -> List.find users ~fn:(fun u -> String.equal u.username username)
+
+  let verify_password = fun user password ->
+    (* In real app: use bcrypt, argon2, etc. *)
+    (* For demo: just check if hash matches "hash_of_" + password *)
+    String.equal user.password_hash (String.concat "" [ "hash_of_"; password ])
 end
 
 (** Custom validation function *)
 let validate = fun ~username ~password ->
   match DB.find_user username with
   | Some user when DB.verify_password user password ->
-      Log.info
-        (
-          String.concat ""
-            [
-              "User authenticated: ";
-              username;
-              " (";
-              user.role;
-              ")";
-            ]
-        );
+      Log.info (String.concat "" [ "User authenticated: "; username; " ("; user.role; ")"; ]);
       Some user
   | Some _ ->
       Log.warn (String.concat "" [ "Failed auth attempt for: "; username; " (wrong password)" ]);
@@ -67,7 +57,8 @@ let validate = fun ~username ~password ->
 (** Route handlers *)
 let home_handler = fun conn _req ->
   let html =
-    String.concat ""
+    String.concat
+      ""
       [
         "<html><head><title>Database Auth Demo</title></head><body>";
         "<h1>Basic Auth - Database Validation Example</h1>";
@@ -94,14 +85,18 @@ let home_handler = fun conn _req ->
         "</body></html>";
       ]
   in
-  conn |> Conn.respond ~status:Net.Http.Status.Ok ~body:html |> Conn.with_header "content-type" "text/html" |> Conn.send
+  conn
+  |> Conn.respond ~status:Net.Http.Status.Ok ~body:html
+  |> Conn.with_header "content-type" "text/html"
+  |> Conn.send
 
 let dashboard_handler = fun conn _req ->
   (* Get authenticated user from connection *)
   match Middleware.Basic_auth.get "basic_auth_user" conn with
   | Some user ->
       let html =
-        String.concat ""
+        String.concat
+          ""
           [
             "<html><head><title>Dashboard</title></head><body>";
             "<h1>Dashboard</h1>";
@@ -125,9 +120,15 @@ let dashboard_handler = fun conn _req ->
             "</body></html>";
           ]
       in
-      conn |> Conn.respond ~status:Net.Http.Status.Ok ~body:html |> Conn.with_header "content-type" "text/html" |> Conn.send
-  | None -> (* Should never happen if middleware is configured correctly *)
-  conn |> Conn.respond ~status:Net.Http.Status.Unauthorized ~body:"Unauthorized" |> Conn.send
+      conn
+      |> Conn.respond ~status:Net.Http.Status.Ok ~body:html
+      |> Conn.with_header "content-type" "text/html"
+      |> Conn.send
+  | None ->
+      (* Should never happen if middleware is configured correctly *)
+      conn
+      |> Conn.respond ~status:Net.Http.Status.Unauthorized ~body:"Unauthorized"
+      |> Conn.send
 
 let admin_handler = fun conn _req ->
   match Middleware.Basic_auth.get "basic_auth_user" conn with
@@ -135,7 +136,8 @@ let admin_handler = fun conn _req ->
       (* Check if user is admin *)
       if String.equal user.DB.role "admin" then
         let html =
-          String.concat ""
+          String.concat
+            ""
             [
               "<html><head><title>Admin Panel</title></head><body>";
               "<h1>Admin Panel</h1>";
@@ -148,10 +150,14 @@ let admin_handler = fun conn _req ->
               "</body></html>";
             ]
         in
-        conn |> Conn.respond ~status:Net.Http.Status.Ok ~body:html |> Conn.with_header "content-type" "text/html" |> Conn.send
+        conn
+        |> Conn.respond ~status:Net.Http.Status.Ok ~body:html
+        |> Conn.with_header "content-type" "text/html"
+        |> Conn.send
       else
         let html =
-          String.concat ""
+          String.concat
+            ""
             [
               "<html><head><title>Forbidden</title></head><body>";
               "<h1>403 Forbidden</h1>";
@@ -164,14 +170,21 @@ let admin_handler = fun conn _req ->
               "</body></html>";
             ]
         in
-        conn |> Conn.respond ~status:Net.Http.Status.Forbidden ~body:html |> Conn.with_header "content-type" "text/html" |> Conn.send
-  | None -> conn |> Conn.respond ~status:Net.Http.Status.Unauthorized ~body:"Unauthorized" |> Conn.send
+        conn
+        |> Conn.respond ~status:Net.Http.Status.Forbidden ~body:html
+        |> Conn.with_header "content-type" "text/html"
+        |> Conn.send
+  | None ->
+      conn
+      |> Conn.respond ~status:Net.Http.Status.Unauthorized ~body:"Unauthorized"
+      |> Conn.send
 
 let profile_handler = fun conn _req ->
   match Middleware.Basic_auth.get "basic_auth_user" conn with
   | Some user ->
       let json =
-        String.concat ""
+        String.concat
+          ""
           [
             "{\"id\": ";
             string_of_int user.DB.id;
@@ -187,27 +200,39 @@ let profile_handler = fun conn _req ->
             "}";
           ]
       in
-      conn |> Conn.respond ~status:Net.Http.Status.Ok ~body:json |> Conn.with_header "content-type" "application/json" |> Conn.send
-  | None -> conn |> Conn.respond ~status:Net.Http.Status.Unauthorized ~body:"{\"error\": \"Unauthorized\"}" |> Conn.with_header "content-type" "application/json" |> Conn.send
+      conn
+      |> Conn.respond ~status:Net.Http.Status.Ok ~body:json
+      |> Conn.with_header "content-type" "application/json"
+      |> Conn.send
+  | None ->
+      conn
+      |> Conn.respond ~status:Net.Http.Status.Unauthorized ~body:"{\"error\": \"Unauthorized\"}"
+      |> Conn.with_header "content-type" "application/json"
+      |> Conn.send
 
-let routes = Middleware.Router.[
-  get "/" home_handler;
-  get "/dashboard" dashboard_handler;
-  get "/admin" admin_handler;
-  get "/profile" profile_handler;
-]
+let routes =
+  Middleware.Router.[
+    get "/" home_handler;
+    get "/dashboard" dashboard_handler;
+    get "/admin" admin_handler;
+    get "/profile" profile_handler;
+  ]
 
 let main ~args:_ =
   let app = Middleware.[
     request_id;
     logger;
-    basic_auth_with_validation ~validate ~realm:"Member Area" ~skip:(
-      fun conn ->
-        let path = Conn.path conn in (* Only skip the home page *)
-        String.equal path "/"
-    ) ();
+    basic_auth_with_validation
+      ~validate
+      ~realm:"Member Area"
+      ~skip:(fun conn ->
+        let path = Conn.path conn in
+        (* Only skip the home page *)
+        String.equal path "/")
+      ();
     router routes;
-  ] in
+  ]
+  in
   let config = Suri.config ~port:3_003 () in
   match Suri.start_link ~config app with
   | Ok _supervisor ->

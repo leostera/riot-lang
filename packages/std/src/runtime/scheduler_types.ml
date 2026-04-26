@@ -1,17 +1,11 @@
 open Collections
 
 module Runtime_pid = Pid
-
 module Runtime_process = Process
-
 module Runtime_scheduler_id = Scheduler_id
-
 module Runtime_timer = Timer
-
 module Runtime_mutex = Kernel.Sync.Mutex
-
 module Runtime_condition = Kernel.Sync.Condition
-
 module Runtime_atomic = Kernel.Sync.Atomic
 
 type io_registration_error =
@@ -55,28 +49,38 @@ type worker = {
   cond: Runtime_condition.t;
 }
 
-type 'a response = { lock: Runtime_mutex.t; cond: Runtime_condition.t; mutable value: 'a option }
+type 'a response = {
+  lock: Runtime_mutex.t;
+  cond: Runtime_condition.t;
+  mutable value: 'a option;
+}
 
 type reactor_command =
   | Add_timer of {
-    now: int64;
-    duration_nanos: int64;
-    mode: Runtime_timer.mode;
-    action: Runtime_timer.action;
-    reply: Runtime_timer.id response;
-  }
+      now: int64;
+      duration_nanos: int64;
+      mode: Runtime_timer.mode;
+      action: Runtime_timer.action;
+      reply: Runtime_timer.id response;
+    }
   | Cancel_timer of Runtime_timer.id
   | Register_io of {
-    token: Kernel.Async.Token.t;
-    interest: Kernel.Async.Interest.t;
-    source: Kernel.Async.Source.t;
-    reply: (unit, io_registration_error) Kernel.result response;
-  }
+      token: Kernel.Async.Token.t;
+      interest: Kernel.Async.Interest.t;
+      source: Kernel.Async.Source.t;
+      reply: (unit, io_registration_error) Kernel.result response;
+    }
   | Deregister_io of Kernel.Async.Source.t
 
-type process_shard = { lock: Runtime_mutex.t; processes: (Runtime_pid.t, process_slot) HashMap.t }
+type process_shard = {
+  lock: Runtime_mutex.t;
+  processes: (Runtime_pid.t, process_slot) HashMap.t;
+}
 
-type process_registry = { shards: process_shard array; size: int Runtime_atomic.t }
+type process_registry = {
+  shards: process_shard array;
+  size: int Runtime_atomic.t;
+}
 
 type runtime_counters = {
   steals: int Runtime_atomic.t;
@@ -108,7 +112,4 @@ type domain_context = {
 }
 
 let current_context: domain_context option Kernel.Thread.DLS.key =
-  Kernel.Thread.DLS.new_key
-    (
-      fun () -> None
-    )
+  Kernel.Thread.DLS.new_key (fun () -> None)

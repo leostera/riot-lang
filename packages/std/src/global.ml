@@ -118,10 +118,12 @@ let spawn_link = Runtime.spawn_link
 let send = Runtime.send
 
 let receive = fun ~selector ?timeout () ->
-  let timeout = Option.map timeout ~fn:Time.Duration.to_secs_float in Runtime.receive ~selector ?timeout ()
+  let timeout = Option.map timeout ~fn:Time.Duration.to_secs_float in
+  Runtime.receive ~selector ?timeout ()
 
 let receive_any = fun ?timeout () ->
-  let timeout = Option.map timeout ~fn:Time.Duration.to_secs_float in Runtime.receive_any ?timeout ()
+  let timeout = Option.map timeout ~fn:Time.Duration.to_secs_float in
+  Runtime.receive_any ?timeout ()
 
 let sleep = fun timeout ->
   let selector _msg = `skip in

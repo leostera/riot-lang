@@ -21,6 +21,7 @@
    ignore (auth, mode)
    ```
 *)
+
 module Base16 = Base16
 
 module Hex = Base16

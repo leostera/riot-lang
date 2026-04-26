@@ -12,7 +12,8 @@ let length = Caml_runtime.bytes_length
 let get = fun value ~at ->
   if at < 0 || at >= length value then
     None
-  else Some (Caml_runtime.bytes_get value at)
+  else
+    Some (Caml_runtime.bytes_get value at)
 
 let get_unchecked = fun value ~at -> Caml_runtime.bytes_get value at
 
@@ -27,10 +28,11 @@ let set = fun value ~at ~char ->
         bytes = value;
         lenght = length value;
         at;
-        char
+        char;
       }
     )
-  else Ok (set_unchecked value ~at ~char)
+  else
+    Ok (set_unchecked value ~at ~char)
 
 let blit = fun src ~src_offset ~dst ~dst_offset ~len ->
   let src_len = length src in
@@ -41,22 +43,23 @@ let blit = fun src ~src_offset ~dst ~dst_offset ~len ->
         bytes = src;
         lenght = src_len;
         at = src_offset;
-        char = '\000'
+        char = '\000';
+      }
+    )
+  else if dst_offset < 0 || len < 0 || dst_offset + len > dst_len then
+    Error (
+      OutOfBoundSet {
+        bytes = dst;
+        lenght = dst_len;
+        at = dst_offset;
+        char = '\000';
       }
     )
   else
-    if dst_offset < 0 || len < 0 || dst_offset + len > dst_len then
-      Error (
-        OutOfBoundSet {
-          bytes = dst;
-          lenght = dst_len;
-          at = dst_offset;
-          char = '\000'
-        }
-      )
-    else Ok (Caml_runtime.bytes_blit src src_offset dst dst_offset len)
+    Ok (Caml_runtime.bytes_blit src src_offset dst dst_offset len)
 
-let blit_unchecked = fun src ~src_offset ~dst ~dst_offset ~len -> Caml_runtime.bytes_blit src src_offset dst dst_offset len
+let blit_unchecked = fun src ~src_offset ~dst ~dst_offset ~len ->
+  Caml_runtime.bytes_blit src src_offset dst dst_offset len
 
 let fill = fun value ~offset ~len ~char -> Caml_runtime.bytes_fill value offset len char
 
@@ -78,10 +81,11 @@ let sub = fun value ~offset ~len ->
         bytes = value;
         lenght = length value;
         at = offset;
-        char = '\000'
+        char = '\000';
       }
     )
-  else Ok (sub_unchecked value ~offset ~len)
+  else
+    Ok (sub_unchecked value ~offset ~len)
 
 let sub_string = fun value ~offset ~len ->
   match sub value ~offset ~len with

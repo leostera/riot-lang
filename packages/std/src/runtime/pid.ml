@@ -14,7 +14,8 @@ let next = fun () ->
     let next = current + 1 in
     if Runtime_atomic.compare_and_set counter current next then
       next
-    else next_id ()
+    else
+      next_id ()
   in
   next_id ()
 

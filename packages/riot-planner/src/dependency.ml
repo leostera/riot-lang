@@ -3,10 +3,19 @@ open Std.Collections
 open Std.Iter
 open Riot_model
 
-type t = { package: Package.t; artifact_dir: Path.t; depset: t list; hash: Crypto.hash }
+type t = {
+  package: Package.t;
+  artifact_dir: Path.t;
+  depset: t list;
+  hash: Crypto.hash;
+}
 
 let library_cmxa: t -> Path.t = fun dep ->
-  let cmxa = Module_name.(of_string (Package_name.to_string dep.package.name) |> cmxa) in Path.(dep.artifact_dir / cmxa)
+  let cmxa =
+    Module_name.(of_string (Package_name.to_string dep.package.name)
+    |> cmxa)
+  in
+  Path.(dep.artifact_dir / cmxa)
 
 let transitive_closure = fun deps ->
   let seen = HashSet.create () in
@@ -22,4 +31,5 @@ let transitive_closure = fun deps ->
       )
   in
   List.for_each deps ~fn:collect;
-  Vector.iter ordered |> Iterator.to_list
+  Vector.iter ordered
+  |> Iterator.to_list

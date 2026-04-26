@@ -53,17 +53,13 @@
    - [Time.Instant] for monotonic time measurements
    - [Time.Duration] for time spans
 *)
+
 (** {1 Time Zones} *)
-module Tz : sig
+
+module Tz: sig
   type t =
     | Etc_UTC
     | Local
-
-  (**
-     Time zone representation:
-     - [Etc_UTC]: UTC/GMT timezone
-     - [Local]: System's local timezone
-  *)
   val to_string: t -> string
 
   (**
@@ -77,6 +73,7 @@ module Tz : sig
 end
 
 (** {1 Types} *)
+
 open Global
 
 type t = {
@@ -104,7 +101,6 @@ type t = {
   std_offset: int;
   (** Standard time offset *)
 }
-
 (** A date and time with calendar fields and timezone information. *)
 type naive = {
   year: int;
@@ -135,6 +131,7 @@ type naive = {
    To work with actual wall-clock times, convert to {!t} using {!from_naive}.
 *)
 (** {1 Creation} *)
+
 val epoch: t
 
 (**
@@ -216,6 +213,7 @@ val from_system_time: Time.SystemTime.t -> t
    The resulting datetime is in UTC timezone.
 *)
 (** {1 Conversion} *)
+
 val to_system_time: t -> Time.SystemTime.t
 
 (**
@@ -315,6 +313,7 @@ val to_iso8601: t -> string
    - Interoperability with other systems
 *)
 (** {1 Comparison} *)
+
 val equal: t -> t -> bool
 
 (**
@@ -339,6 +338,7 @@ val equal: t -> t -> bool
    same moment will be equal.
 *)
 (** {1 Parsing} *)
+
 type error =
   | Invalid_format of string
   (** The input string doesn't match expected ISO 8601 format *)
@@ -349,8 +349,11 @@ type error =
   | Invalid_timezone of string
 
 (** Timezone offset is malformed *)
+
 (** Errors that can occur when parsing datetime strings. *)
-val parse: string -> (t, error) result(**
+val parse: string -> (t, error) result
+
+(**
    Parses an ISO 8601 datetime string into a DateTime.
 
    This function has full parity with Elixir's DateTime.from_iso8601/2 parser.

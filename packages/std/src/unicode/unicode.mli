@@ -37,7 +37,8 @@
      (ASCII=1, CJK=2, emoji=2, combining=0)
 *)
 (** {1 Rune - Unicode Code Points} *)
-module Rune : sig
+
+module Rune: sig
   type t = Kernel.Unicode.Rune.t
 
   (**
@@ -46,6 +47,7 @@ module Rune : sig
      Valid range: U+0000 to U+10FFFF, excluding surrogates.
   *)
   (** {2 Constants} *)
+
   val max: t
 
   (** [max] is U+10FFFF, the maximum valid Unicode code point. *)
@@ -62,6 +64,7 @@ module Rune : sig
 
   (** [max_latin1] is U+00FF, the maximum Latin-1 character. *)
   (** {2 Conversion} *)
+
   val from_int: int -> t option
 
   (**
@@ -87,6 +90,7 @@ module Rune : sig
      {b Warning}: Only use if you know [n] is a valid code point.
   *)
   (** {2 Character Classification} *)
+
   val is_letter: t -> bool
 
   (** [is_letter r] tests if [r] is a letter (category L). *)
@@ -124,6 +128,7 @@ module Rune : sig
 
   (** [is_symbol r] tests if [r] is a symbol (category S). *)
   (** {2 Case Operations} *)
+
   val is_upper: t -> bool
 
   (** [is_upper r] tests if [r] is an uppercase letter. *)
@@ -152,6 +157,7 @@ module Rune : sig
      Returns [r] unchanged if no titlecase mapping exists.
   *)
   (** {2 Display Width} *)
+
   val width: t -> int
 
   (**
@@ -165,6 +171,7 @@ module Rune : sig
      This follows EastAsianWidth properties and grapheme cluster rules.
   *)
   (** {2 East Asian Width Properties} *)
+
   val is_wide: t -> bool
 
   (** [is_wide r] tests if [r] has East Asian Width property "Wide" (W). *)
@@ -180,7 +187,8 @@ module Rune : sig
 end
 
 (** {1 Grapheme - User-Perceived Characters} *)
-module Grapheme : sig
+
+module Grapheme: sig
   type t = Rune.t list
 
   (**
@@ -211,7 +219,8 @@ module Grapheme : sig
 end
 
 (** {1 UTF-8 Encoding} *)
-module Utf8 : sig
+
+module Utf8: sig
   val decode_rune: string -> int -> (Rune.t * int) option
 
   (**
@@ -240,7 +249,8 @@ module Utf8 : sig
 end
 
 (** {1 UTF-16 Offsets} *)
-module Utf16 : sig
+
+module Utf16: sig
   type position = { line: int; character: int }
 
   (** A zero-based line and UTF-16 code-unit offset within that line. *)
@@ -272,6 +282,7 @@ module Utf16 : sig
 end
 
 (** {1 Text Segmentation} *)
+
 type line_break =
   | Must_break
   (** Line must break here (e.g., newline) *)
@@ -280,8 +291,9 @@ type line_break =
   | Dont_break
 
 (** Line must not break here *)
+
 (** Line breaking opportunities per Unicode UAX #14. *)
-module Segmentation : sig
+module Segmentation: sig
   val find_word_boundaries: string -> int list
 
   (**
@@ -331,7 +343,8 @@ module Segmentation : sig
 end
 
 (** {1 Configuration} *)
-module Config : sig
+
+module Config: sig
   val set_east_asian_width: bool -> unit
 
   (**

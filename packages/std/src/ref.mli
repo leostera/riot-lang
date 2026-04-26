@@ -62,6 +62,7 @@ open Global
    - Capability tokens
    - Unique resource identifiers
 *)
+
 (**
    A unique identifier for a type ['a]. Each call to [make] creates a fresh
    identifier that is distinct from all others.

@@ -2,6 +2,7 @@
 open Std
 
 (** Worker configuration *)
+
 (**
    Start a new worker actor.
 
@@ -14,6 +15,9 @@ open Std
 
    If linting fails, the worker sends a failure message and continues.
 *)
-type config = { mode: Runner.mode; scope: Fix_config.scope option; coordinator: Pid.t }
-
+type config = {
+  mode: Runner.mode;
+  scope: Fix_config.scope option;
+  coordinator: Pid.t;
+}
 val start: config -> Pid.t

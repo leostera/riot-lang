@@ -14,53 +14,46 @@ type fixture = {
   (** Snapshot path associated with this fixture, when any. *)
   snapshot_path: Path.t option;
 }
-
 type built_binary = {
   (** Binary name as declared or autodiscovered for an available runtime binary. *)
   name: string;
   (** Absolute built binary path. *)
   path: Path.t;
 }
-
 type snapshot_mode =
   | External
   | Inline
-
 type snapshot_format =
   | Text
   | Json
-
 type snapshot_mismatch_reason =
   | Missing_approved
   | Pending_exists
   | Mismatch
-
 type progress =
   | PropertyIterationPassed of { current: int; total: int; size: int }
   | PropertyAssumptionRejected of { current: int; total: int; size: int; rejected_count: int }
   | PropertyCounterExampleFound of { current: int; total: int; size: int }
   | PropertyShrinkStep of { current: int; total: int; step: int; max_steps: int }
   | SnapshotAssertionStarted of {
-    mode: snapshot_mode;
-    format: snapshot_format;
-    approved_path: Path.t option;
-    pending_path: Path.t option;
-  }
+      mode: snapshot_mode;
+      format: snapshot_format;
+      approved_path: Path.t option;
+      pending_path: Path.t option;
+    }
   | SnapshotAssertionMatched of {
-    mode: snapshot_mode;
-    format: snapshot_format;
-    approved_path: Path.t option;
-  }
+      mode: snapshot_mode;
+      format: snapshot_format;
+      approved_path: Path.t option;
+    }
   | SnapshotAssertionMismatch of {
-    mode: snapshot_mode;
-    format: snapshot_format;
-    approved_path: Path.t option;
-    pending_path: Path.t option;
-    reason: snapshot_mismatch_reason;
-  }
-
+      mode: snapshot_mode;
+      format: snapshot_format;
+      approved_path: Path.t option;
+      pending_path: Path.t option;
+      reason: snapshot_mismatch_reason;
+    }
 type progress_handler = progress -> unit
-
 (**
    Stable per-test metadata supplied by the shared test runner.
 

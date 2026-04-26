@@ -1,8 +1,8 @@
 open Prelude
 
-type t = int [@@immediate]
+type t = int [@@ immediate]
 
-type utf_decode = int [@@immediate]
+type utf_decode = int [@@ immediate]
 
 type error =
   | BadRune of { int: int }
@@ -25,12 +25,14 @@ let valid_bit = 27
 
 let decode_bits = 24
 
-let is_valid = fun value -> (min <= value && value <= lo_bound) || (hi_bound <= value && value <= max)
+let is_valid = fun value -> (min <= value && value <= lo_bound) || (hi_bound <= value
+&& value <= max)
 
 let from_int = fun value ->
   if is_valid value then
     Ok value
-  else Error (BadRune { int = value })
+  else
+    Error (BadRune { int = value })
 
 let from_int_unchecked = fun value -> value
 
@@ -41,7 +43,8 @@ let from_char = fun value -> Char.to_int value
 let to_char = fun value ->
   if value > max_latin1 then
     System_error.panic "unicode scalar value is not a latin1 character"
-  else Char.from_int_unchecked value
+  else
+    Char.from_int_unchecked value
 
 let equal = Int.equal
 
@@ -61,13 +64,12 @@ let utf_8_byte_length = fun rune ->
   let code = to_int rune in
   if code <= 0x007f then
     1
+  else if code <= 0x07ff then
+    2
+  else if code <= 0xffff then
+    3
   else
-    if code <= 0x07ff then
-      2
-    else
-      if code <= 0xffff then
-        3
-      else 4
+    4
 
 let to_string = fun rune ->
   let width = utf_8_byte_length rune in

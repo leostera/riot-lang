@@ -40,8 +40,8 @@
 open Std
 
 (** ## Types *)
-type t
 
+type t
 (** A viewport instance *)
 type wrap_mode = [`None | `Soft]
 
@@ -51,6 +51,7 @@ type wrap_mode = [`None | `Soft]
    - `` `Soft`` - Soft wrap at word boundaries to fit viewport width
 *)
 (** ## Creation *)
+
 val make: width:int -> height:int -> t
 
 (**
@@ -59,6 +60,7 @@ val make: width:int -> height:int -> t
    The viewport starts at the top (y_offset = 0) with no content.
 *)
 (** ## Content Management *)
+
 val set_content: t -> content:string -> t
 
 (**
@@ -77,6 +79,7 @@ val visible_lines: t -> int
 
 (** `visible_lines viewport` returns how many lines are currently visible. *)
 (** ## Dimensions *)
+
 val set_width: t -> width:int -> t
 
 (** `set_width viewport ~width` changes the viewport width. *)
@@ -90,6 +93,7 @@ val height: t -> int
 
 (** `height viewport` returns the current height. *)
 (** ## Text Wrapping *)
+
 val set_wrap_mode: t -> mode:wrap_mode -> t
 
 (**
@@ -110,6 +114,7 @@ val wrap_mode: t -> wrap_mode
 
 (** `wrap_mode viewport` returns the current wrap mode. *)
 (** ## Scrolling *)
+
 val y_offset: t -> int
 
 (** `y_offset viewport` returns the current vertical scroll position (0-based). *)
@@ -153,6 +158,7 @@ val goto_bottom: t -> t
 
 (** `goto_bottom viewport` scrolls to the very bottom. *)
 (** ## Position Queries *)
+
 val at_top: t -> bool
 
 (** `at_top viewport` returns true if scrolled to the very top. *)
@@ -169,6 +175,7 @@ val scroll_percent: t -> float
    - Values in between = proportional position
 *)
 (** ## Mouse Support *)
+
 val set_mouse_wheel_enabled: t -> enabled:bool -> t
 
 (** `set_mouse_wheel_enabled viewport ~enabled` enables/disables mouse wheel scrolling. *)
@@ -176,7 +183,10 @@ val set_mouse_wheel_delta: t -> delta:int -> t
 
 (** `set_mouse_wheel_delta viewport ~delta` sets lines per mouse wheel notch (default: 3). *)
 (** ## Rendering *)
-val view: t -> string(**
+
+val view: t -> string
+
+(**
    `view viewport` renders the visible portion of the content.
 
    Returns only the lines that fit in the viewport at the current scroll position.

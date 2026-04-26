@@ -412,102 +412,102 @@ module Error = struct
 
   let from_json = fun json ->
     let open Data.Json in
-      let get_string key =
-        match get_field key json with
-        | Some (String s) -> Some s
-        | _ -> None
-      in
-      let get_int key =
-        match get_field key json with
-        | Some (Int n) -> Some n
-        | _ -> None
-      in
-      {
-        severity = get_string "severity";
-        sqlstate =
-          (
-            match get_string "sqlstate" with
-            | Some s -> Some (Sqlstate.of_string s)
-            | None -> None
-          );
-        message =
-          (
-            match get_string "message" with
-            | Some m -> m
-            | None -> "Unknown error"
-          );
-        detail = get_string "detail";
-        hint = get_string "hint";
-        position = get_int "position";
-        internal_position = None;
-        internal_query = None;
-        where_context = get_string "context";
-        schema_name = get_string "schema";
-        table_name = get_string "table";
-        column_name = get_string "column";
-        datatype_name = None;
-        constraint_name = get_string "constraint";
-        source_file = None;
-        source_line = None;
-        source_routine = None;
-      }
+    let get_string key =
+      match get_field key json with
+      | Some (String s) -> Some s
+      | _ -> None
+    in
+    let get_int key =
+      match get_field key json with
+      | Some (Int n) -> Some n
+      | _ -> None
+    in
+    {
+      severity = get_string "severity";
+      sqlstate =
+        (
+          match get_string "sqlstate" with
+          | Some s -> Some (Sqlstate.of_string s)
+          | None -> None
+        );
+      message =
+        (
+          match get_string "message" with
+          | Some m -> m
+          | None -> "Unknown error"
+        );
+      detail = get_string "detail";
+      hint = get_string "hint";
+      position = get_int "position";
+      internal_position = None;
+      internal_query = None;
+      where_context = get_string "context";
+      schema_name = get_string "schema";
+      table_name = get_string "table";
+      column_name = get_string "column";
+      datatype_name = None;
+      constraint_name = get_string "constraint";
+      source_file = None;
+      source_line = None;
+      source_routine = None;
+    }
 
   (* Convert error to JSON *)
 
   let to_json = fun err ->
     let open Data.Json in
-      let fields = [ ("message", string err.message); ] in
-      let fields =
-        match err.severity with
-        | Some sev -> fields @ [ ("severity", string sev) ]
-        | None -> fields
-      in
-      let fields =
-        match err.sqlstate with
-        | Some code -> fields @ [ ("sqlstate", string (Sqlstate.to_string code)) ]
-        | None -> fields
-      in
-      let fields =
-        match err.detail with
-        | Some d -> fields @ [ ("detail", string d) ]
-        | None -> fields
-      in
-      let fields =
-        match err.hint with
-        | Some h -> fields @ [ ("hint", string h) ]
-        | None -> fields
-      in
-      let fields =
-        match err.position with
-        | Some p -> fields @ [ ("position", int p) ]
-        | None -> fields
-      in
-      let fields =
-        match err.constraint_name with
-        | Some n -> fields @ [ ("constraint", string n) ]
-        | None -> fields
-      in
-      let fields =
-        match err.schema_name with
-        | Some s -> fields @ [ ("schema", string s) ]
-        | None -> fields
-      in
-      let fields =
-        match err.table_name with
-        | Some t -> fields @ [ ("table", string t) ]
-        | None -> fields
-      in
-      let fields =
-        match err.column_name with
-        | Some c -> fields @ [ ("column", string c) ]
-        | None -> fields
-      in
-      let fields =
-        match err.where_context with
-        | Some w -> fields @ [ ("context", string w) ]
-        | None -> fields
-      in
-      obj fields
+    let fields = [ ("message", string err.message); ] in
+    let fields =
+      match err.severity with
+      | Some sev -> fields @ [ ("severity", string sev) ]
+      | None -> fields
+    in
+    let fields =
+      match err.sqlstate with
+      | Some code -> fields @ [ ("sqlstate", string (Sqlstate.to_string code)) ]
+      | None -> fields
+    in
+    let fields =
+      match err.detail with
+      | Some d -> fields @ [ ("detail", string d) ]
+      | None -> fields
+    in
+    let fields =
+      match err.hint with
+      | Some h -> fields @ [ ("hint", string h) ]
+      | None -> fields
+    in
+    let fields =
+      match err.position with
+      | Some p -> fields @ [ ("position", int p) ]
+      | None -> fields
+    in
+    let fields =
+      match err.constraint_name with
+      | Some n -> fields @ [ ("constraint", string n) ]
+      | None -> fields
+    in
+    let fields =
+      match err.schema_name with
+      | Some s -> fields @ [ ("schema", string s) ]
+      | None -> fields
+    in
+    let fields =
+      match err.table_name with
+      | Some t -> fields @ [ ("table", string t) ]
+      | None -> fields
+    in
+    let fields =
+      match err.column_name with
+      | Some c -> fields @ [ ("column", string c) ]
+      | None -> fields
+    in
+    let fields =
+      match err.where_context with
+      | Some w -> fields @ [ ("context", string w) ]
+      | None -> fields
+    in
+    obj fields
 
   (* Format error for display *)
 
@@ -552,15 +552,15 @@ module Error = struct
     (* Add schema/table/column if present *)
     let parts =
       match (err.schema_name, err.table_name, err.column_name) with
-      | Some s, Some t, Some c -> parts
-      @ [ "Location: schema \"" ^ s ^ "\", table \"" ^ t ^ "\", column \"" ^ c ^ "\"" ]
-      | Some s, Some t, None -> parts @ [ "Location: schema \"" ^ s ^ "\", table \"" ^ t ^ "\"" ]
-      | None, Some t, Some c -> parts @ [ "Location: table \"" ^ t ^ "\", column \"" ^ c ^ "\"" ]
-      | Some s, None, Some c -> parts @ [ "Location: schema \"" ^ s ^ "\", column \"" ^ c ^ "\"" ]
-      | Some s, None, None -> parts @ [ "Schema: \"" ^ s ^ "\"" ]
-      | None, Some t, None -> parts @ [ "Table: \"" ^ t ^ "\"" ]
-      | None, None, Some c -> parts @ [ "Column: \"" ^ c ^ "\"" ]
-      | None, None, None -> parts
+      | (Some s, Some t, Some c) ->
+          parts @ [ "Location: schema \"" ^ s ^ "\", table \"" ^ t ^ "\", column \"" ^ c ^ "\"" ]
+      | (Some s, Some t, None) -> parts @ [ "Location: schema \"" ^ s ^ "\", table \"" ^ t ^ "\"" ]
+      | (None, Some t, Some c) -> parts @ [ "Location: table \"" ^ t ^ "\", column \"" ^ c ^ "\"" ]
+      | (Some s, None, Some c) -> parts @ [ "Location: schema \"" ^ s ^ "\", column \"" ^ c ^ "\"" ]
+      | (Some s, None, None) -> parts @ [ "Schema: \"" ^ s ^ "\"" ]
+      | (None, Some t, None) -> parts @ [ "Table: \"" ^ t ^ "\"" ]
+      | (None, None, Some c) -> parts @ [ "Column: \"" ^ c ^ "\"" ]
+      | (None, None, None) -> parts
     in
     (* Add where context if present *)
     let parts =
@@ -795,7 +795,7 @@ module Format = struct
   (* Data format code *)
 
   type t =
-    Text
+    | Text
     | Binary
 
   let of_int = function
@@ -828,7 +828,7 @@ module Row = struct
   type description = field list
 
   type value =
-    Null
+    | Null
     | Value of string
 
   type data = value list
@@ -947,7 +947,8 @@ module Writer = struct
     write_string buf statement_name;
     write_int16 buf 0;
     write_int16 buf (List.length params);
-    List.for_each params
+    List.for_each
+      params
       ~fn:(fun param ->
         write_int32 buf (String.length param);
         Buffer.add_string buf param);
@@ -1018,12 +1019,13 @@ module Reader = struct
     let msg_char = Char.chr msg_type in
     match msg_char with
     | 'R' -> (
-        let auth_type = Binary_reader.read_int32 reader |> Option.expect ~msg:"Protocol error: expected auth_type in Authentication message" in
+        let auth_type =
+          Binary_reader.read_int32 reader
+          |> Option.expect ~msg:"Protocol error: expected auth_type in Authentication message"
+        in
         match auth_type with
-        | 0 ->
-            AuthenticationOk
-        | 3 ->
-            AuthenticationCleartextPassword
+        | 0 -> AuthenticationOk
+        | 3 -> AuthenticationCleartextPassword
         | 5 ->
             let salt =
               Binary_reader.read_bytes reader 4
@@ -1032,54 +1034,82 @@ module Reader = struct
                       AuthenticationMD5Password"
             in
             AuthenticationMD5Password salt
-        | 10 ->
-            AuthenticationSASL (read_cstrings reader)
-        | 11 ->
-            AuthenticationSASLContinue (read_remaining_string reader)
-        | 12 ->
-            AuthenticationSASLFinal (read_remaining_string reader)
-        | n ->
-            panic ("Unknown authentication type: " ^ string_of_int n)
+        | 10 -> AuthenticationSASL (read_cstrings reader)
+        | 11 -> AuthenticationSASLContinue (read_remaining_string reader)
+        | 12 -> AuthenticationSASLFinal (read_remaining_string reader)
+        | n -> panic ("Unknown authentication type: " ^ string_of_int n)
       )
     | 'K' ->
-        let process_id = Binary_reader.read_int32 reader |> Option.expect ~msg:"Protocol error: expected process_id in BackendKeyData" in
-        let secret_key = Binary_reader.read_int32 reader |> Option.expect ~msg:"Protocol error: expected secret_key in BackendKeyData" in
+        let process_id =
+          Binary_reader.read_int32 reader
+          |> Option.expect ~msg:"Protocol error: expected process_id in BackendKeyData"
+        in
+        let secret_key =
+          Binary_reader.read_int32 reader
+          |> Option.expect ~msg:"Protocol error: expected secret_key in BackendKeyData"
+        in
         BackendKeyData { process_id; secret_key }
     | 'S' ->
-        let name = Binary_reader.read_string reader |> Option.expect ~msg:"Protocol error: expected name in ParameterStatus" in
-        let value = Binary_reader.read_string reader |> Option.expect ~msg:"Protocol error: expected value in ParameterStatus" in
+        let name =
+          Binary_reader.read_string reader
+          |> Option.expect ~msg:"Protocol error: expected name in ParameterStatus"
+        in
+        let value =
+          Binary_reader.read_string reader
+          |> Option.expect ~msg:"Protocol error: expected value in ParameterStatus"
+        in
         ParameterStatus { name; value }
     | 'Z' ->
-        let status = Binary_reader.read_byte reader |> Option.expect ~msg:"Protocol error: expected status in ReadyForQuery" in
+        let status =
+          Binary_reader.read_byte reader
+          |> Option.expect ~msg:"Protocol error: expected status in ReadyForQuery"
+        in
         ReadyForQuery (Char.chr status)
     | 'T' ->
-        let field_count = Binary_reader.read_int16 reader |> Option.expect ~msg:"Protocol error: expected field_count in RowDescription" in
+        let field_count =
+          Binary_reader.read_int16 reader
+          |> Option.expect ~msg:"Protocol error: expected field_count in RowDescription"
+        in
         let rec read_fields n acc =
           if n = 0 then
             List.rev acc
           else
-            let name = Binary_reader.read_string reader
-            |> Option.expect
-              ~msg:("Protocol error: expected field name (field "
-              ^ string_of_int (field_count - n + 1)) in
-            let table_oid = Binary_reader.read_int32 reader
-            |> Option.expect ~msg:("Protocol error: expected table_oid (field " ^ name ^ ")")
-            |> Oid.of_int in
-            let column_attr = Binary_reader.read_int16 reader
-            |> Option.expect ~msg:("Protocol error: expected column_attr (field " ^ name ^ ")")
-            |> ColumnAttr.of_int in
-            let type_oid = Binary_reader.read_int32 reader
-            |> Option.expect ~msg:("Protocol error: expected type_oid (field " ^ name ^ ")")
-            |> TypeOid.of_int in
-            let type_size = Binary_reader.read_int16 reader
-            |> Option.expect ~msg:("Protocol error: expected type_size (field " ^ name ^ ")")
-            |> TypeSize.of_int in
-            let type_modifier = Binary_reader.read_int32 reader
-            |> Option.expect ~msg:("Protocol error: expected type_modifier (field " ^ name ^ ")")
-            |> TypeModifier.of_int in
-            let format = Binary_reader.read_int16 reader
-            |> Option.expect ~msg:("Protocol error: expected format (field " ^ name ^ ")")
-            |> Format.of_int in
+            let name =
+              Binary_reader.read_string reader
+              |> Option.expect
+                ~msg:("Protocol error: expected field name (field "
+                ^ string_of_int (field_count - n + 1))
+            in
+            let table_oid =
+              Binary_reader.read_int32 reader
+              |> Option.expect ~msg:("Protocol error: expected table_oid (field " ^ name ^ ")")
+              |> Oid.of_int
+            in
+            let column_attr =
+              Binary_reader.read_int16 reader
+              |> Option.expect ~msg:("Protocol error: expected column_attr (field " ^ name ^ ")")
+              |> ColumnAttr.of_int
+            in
+            let type_oid =
+              Binary_reader.read_int32 reader
+              |> Option.expect ~msg:("Protocol error: expected type_oid (field " ^ name ^ ")")
+              |> TypeOid.of_int
+            in
+            let type_size =
+              Binary_reader.read_int16 reader
+              |> Option.expect ~msg:("Protocol error: expected type_size (field " ^ name ^ ")")
+              |> TypeSize.of_int
+            in
+            let type_modifier =
+              Binary_reader.read_int32 reader
+              |> Option.expect ~msg:("Protocol error: expected type_modifier (field " ^ name ^ ")")
+              |> TypeModifier.of_int
+            in
+            let format =
+              Binary_reader.read_int16 reader
+              |> Option.expect ~msg:("Protocol error: expected format (field " ^ name ^ ")")
+              |> Format.of_int
+            in
             let field: Row.field = {
               Row.name;
               table_oid;
@@ -1094,31 +1124,41 @@ module Reader = struct
         in
         RowDescription (read_fields field_count [])
     | 'D' ->
-        let col_count = Binary_reader.read_int16 reader |> Option.expect ~msg:"Protocol error: expected column_count in DataRow" in
+        let col_count =
+          Binary_reader.read_int16 reader
+          |> Option.expect ~msg:"Protocol error: expected column_count in DataRow"
+        in
         let rec read_columns n acc =
           if n = 0 then
             List.rev acc
           else
-            let col_len = Binary_reader.read_int32 reader
-            |> Option.expect
-              ~msg:("Protocol error: expected column_length (col "
-              ^ string_of_int (col_count - n + 1)
-              ^ ")") in
+            let col_len =
+              Binary_reader.read_int32 reader
+              |> Option.expect
+                ~msg:("Protocol error: expected column_length (col "
+                ^ string_of_int (col_count - n + 1)
+                ^ ")")
+            in
             if col_len = (-1) then
               read_columns (n - 1) (Row.Null :: acc)
             else
-              let value = Binary_reader.read_cstring reader col_len
-              |> Option.expect
-                ~msg:("Protocol error: expected column_value (col "
-                ^ string_of_int (col_count - n + 1)
-                ^ ", len="
-                ^ string_of_int col_len
-                ^ "). Buffer underrun - possible network issue.") in
+              let value =
+                Binary_reader.read_cstring reader col_len
+                |> Option.expect
+                  ~msg:("Protocol error: expected column_value (col "
+                  ^ string_of_int (col_count - n + 1)
+                  ^ ", len="
+                  ^ string_of_int col_len
+                  ^ "). Buffer underrun - possible network issue.")
+              in
               read_columns (n - 1) (Row.Value value :: acc)
         in
         DataRow (read_columns col_count [])
     | 'C' ->
-        let tag = Binary_reader.read_string reader |> Option.expect ~msg:"Protocol error: expected tag in CommandComplete" in
+        let tag =
+          Binary_reader.read_string reader
+          |> Option.expect ~msg:"Protocol error: expected tag in CommandComplete"
+        in
         CommandComplete tag
     | 'E'
     | 'N' ->
@@ -1128,10 +1168,8 @@ module Reader = struct
             err
           else
             match Binary_reader.read_byte reader with
-            | None ->
-                err
-            | Some 0 ->
-                err
+            | None -> err
+            | Some 0 -> err
             | Some field_code -> (
                 let field_char = Char.chr field_code in
                 match Binary_reader.read_string reader with
@@ -1186,25 +1224,25 @@ module Reader = struct
           ErrorResponse error
         else
           NoticeResponse error
-    | '1' ->
-        ParseComplete
-    | '2' ->
-        BindComplete
-    | '3' ->
-        CloseComplete
-    | 'n' ->
-        NoData
-    | 'I' ->
-        EmptyQueryResponse
+    | '1' -> ParseComplete
+    | '2' -> BindComplete
+    | '3' -> CloseComplete
+    | 'n' -> NoData
+    | 'I' -> EmptyQueryResponse
     | 't' ->
-        let param_count = Binary_reader.read_int16 reader |> Option.expect ~msg:"Protocol error: expected param_count in ParameterDescription" in
+        let param_count =
+          Binary_reader.read_int16 reader
+          |> Option.expect ~msg:"Protocol error: expected param_count in ParameterDescription"
+        in
         let rec read_oids n acc =
           if n = 0 then
             List.rev acc
           else
-            let oid = Binary_reader.read_int32 reader
-            |> Option.expect ~msg:"Protocol error: expected OID in ParameterDescription"
-            |> TypeOid.of_int in
+            let oid =
+              Binary_reader.read_int32 reader
+              |> Option.expect ~msg:"Protocol error: expected OID in ParameterDescription"
+              |> TypeOid.of_int
+            in
             read_oids (n - 1) (oid :: acc)
         in
         ParameterDescription (read_oids param_count [])

@@ -83,7 +83,9 @@ val make_raw: unit -> Terminal.t
    It disables canonical input and echo but preserves output processing and the
    terminal's character configuration, which is what TUI applications need.
 *)
-val restore: Terminal.t -> unit(**
+val restore: Terminal.t -> unit
+
+(**
    [restore (tty_fd, settings)] restores the terminal to its original configuration
    and closes the tty file descriptor.
 

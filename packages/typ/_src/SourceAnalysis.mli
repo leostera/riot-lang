@@ -7,7 +7,6 @@ open Model
 type completeness = FileSummary.completeness =
   | Complete
   | Partial
-
 (** One source analyzed within one immutable snapshot. *)
 type t = {
   (** Logical source revision analyzed by this record. *)
@@ -44,7 +43,10 @@ val exports: t -> FileSummary.exports
 val completeness_of_file_summary: FileSummary.t -> completeness
 
 (** Resolve one binding reference to a local definition site or an exported path. *)
-val definition_target_of_binding_ref: t -> Check_result.binding_ref -> ModuleTypings.value_definition_target option
+val definition_target_of_binding_ref:
+  t ->
+  Check_result.binding_ref ->
+  ModuleTypings.value_definition_target option
 
 (** Build exported definition targets for this analyzed source. *)
 val export_definitions: t -> ModuleTypings.value_definition list

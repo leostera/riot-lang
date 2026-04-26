@@ -36,11 +36,13 @@
    non-zero status are NOT considered errors - only system-level failures
    (command not found, permission denied, etc.) return [`Error`].
 *)
+
 (** # Types *)
+
+
 open Global
 
 type status = int
-
 (**
    Process exit status code.
 
@@ -57,10 +59,8 @@ type output = {
   status: status;
   (** Exit status code *)
 }
-
 (** Output from a completed process including streams and exit status *)
 type t
-
 (** The type of a command configuration, ready to be executed *)
 type error =
   | SystemError of string
@@ -72,6 +72,7 @@ type error =
    failures to start the process return [`Error`].
 *)
 (** # Building Commands *)
+
 val make: ?cwd:string -> ?env:(string * string) list -> ?args:string list -> string -> t
 
 (**
@@ -115,7 +116,13 @@ val to_string: t -> string
    structured command value and does not invoke a shell.
 *)
 (** # Execution *)
-val output: ?on_stdout_line:(string -> unit) -> ?on_idle:(Time.Duration.t -> unit) -> ?idle_interval:Time.Duration.t -> t -> (output, error) result
+
+val output:
+  ?on_stdout_line:(string -> unit) ->
+  ?on_idle:(Time.Duration.t -> unit) ->
+  ?idle_interval:Time.Duration.t ->
+  t ->
+  (output, error) result
 
 (**
    Executes command and captures its output.
@@ -146,7 +153,9 @@ val output: ?on_stdout_line:(string -> unit) -> ?on_idle:(Time.Duration.t -> uni
    Output is expected to be UTF-8. Invalid UTF-8 bytes may be replaced with
    replacement characters.
 *)
-val status: t -> (status, error) result(**
+val status: t -> (status, error) result
+
+(**
    Executes command and returns only its exit status.
 
    Runs the command as a child process without capturing output. Stdout and

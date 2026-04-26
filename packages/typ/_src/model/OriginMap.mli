@@ -10,7 +10,6 @@ type semantic_id =
   | Expr of ExprArenaId.t
   (** Lowered pattern semantic identity. *)
   | Pattern of PatternArenaId.t
-
 type kind =
   (** Origin attached to one top-level item. *)
   | ItemKind
@@ -20,7 +19,6 @@ type kind =
   | ExprKind
   (** Origin attached to one lowered pattern. *)
   | PatternKind
-
 type origin = {
   (** Snapshot-local origin identifier. *)
   origin_id: OriginId.t;
@@ -37,7 +35,6 @@ type origin = {
   (** Primary source span for this semantic node. *)
   span: Syn.Ceibo.Span.t;
 }
-
 (** Snapshot-local origin table. *)
 type t
 

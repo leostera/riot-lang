@@ -74,9 +74,11 @@
    - **Defaults**: Applied when fields are missing
    - **Nested maps**: Recursively validated
 *)
+
 open Global
 
 (** {1 Configuration Values} *)
+
 type value =
   | String of string
   (** UTF-8 text value *)
@@ -102,14 +104,18 @@ type value =
   (** UUID (e.g., "550e8400-e29b-41d4-a716-446655440000") *)
   | List of value list
   (** Array of homogeneous values *)
-  | DiscriminatedUnion of { discriminant: string; variant: string; fields: (string * value) list }
+  | DiscriminatedUnion of {
+      discriminant: string;
+      variant: string;
+      fields: (string * value) list;
+    }
   (** Discriminated union - structure determined by discriminant field *)
   | Map of (string * value) list
 
 (** Nested configuration object *)
 (** {1 Schema Definition} *)
-type field_spec
 
+type field_spec
 (** A field specification with type, defaults, and constraints *)
 type t
 
@@ -137,6 +143,7 @@ val for_app: app:string -> field_spec list -> t
    @return A registered configuration spec
 *)
 (** {1 Field Types} *)
+
 val string: ?default:string -> ?required:bool -> ?help:string -> string -> field_spec
 
 (**
@@ -340,7 +347,13 @@ val uuid: ?default:Uuid.t -> ?required:bool -> ?help:string -> string -> field_s
    @param help Human-readable description
    @param name Field name
 *)
-val list: field_spec -> ?default:value list -> ?required:bool -> ?help:string -> string -> field_spec
+val list:
+  field_spec ->
+  ?default:value list ->
+  ?required:bool ->
+  ?help:string ->
+  string ->
+  field_spec
 
 (**
    Define an array field where all items have the same structure.
@@ -525,6 +538,7 @@ val key: string -> field_spec -> field_spec
    @return A named field spec
 *)
 (** {1 Introspection} *)
+
 val app_name: t -> string
 
 (**
@@ -551,21 +565,51 @@ val all_specs: unit -> t list
    These types are exposed for validation and testing but are not typically
    used directly in application code.
 *)
+
 type field_type =
-  | String of { default: string option }
-  | Char of { default: char option }
-  | Int of { default: int option }
-  | Int32 of { default: int32 option }
-  | Int64 of { default: int64 option }
-  | Bool of { default: bool option }
-  | Float of { default: float option }
-  | Uri of { default: Net.Uri.t option }
-  | DateTime of { default: DateTime.t option }
-  | Path of { default: Path.t option }
-  | Uuid of { default: Uuid.t option }
-  | List of { item_spec: field; default: value list option }
-  | DiscriminatedUnion of { discriminant: string; cases: (string * field list) list }
+  | String of {
+      default: string option;
+    }
+  | Char of {
+      default: char option;
+    }
+  | Int of {
+      default: int option;
+    }
+  | Int32 of {
+      default: int32 option;
+    }
+  | Int64 of {
+      default: int64 option;
+    }
+  | Bool of {
+      default: bool option;
+    }
+  | Float of {
+      default: float option;
+    }
+  | Uri of {
+      default: Net.Uri.t option;
+    }
+  | DateTime of {
+      default: DateTime.t option;
+    }
+  | Path of {
+      default: Path.t option;
+    }
+  | Uuid of {
+      default: Uuid.t option;
+    }
+  | List of {
+      item_spec: field;
+      default: value list option;
+    }
+  | DiscriminatedUnion of {
+      discriminant: string;
+      cases: (string * field list) list;
+    }
   | Map of field list
+
 (** Internal representation of field types with default values *)
 and field = {
   name: string;
@@ -595,7 +639,9 @@ val field_name: field_spec -> string
 
    Used internally by the validator.
 *)
-val field_type: field_spec -> field_type(**
+val field_type: field_spec -> field_type
+
+(**
    Get the type of a field.
 
    Used internally by the validator.

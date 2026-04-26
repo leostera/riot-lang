@@ -1,4 +1,4 @@
-module Exception : sig
+module Exception: sig
   (** Raised when a receive operation times out. *)
   exception Receive_timeout
 
@@ -40,4 +40,10 @@ val exit: unit -> (unit, Process.exit_reason) Kernel.result
    Use [`timeout`] to abort after the given number of seconds. Raises
    [Exception.Syscall_timeout] on timeout.
 *)
-val syscall: ?timeout:float -> name:string -> interest:Kernel.Async.Interest.t -> source:Kernel.Async.Source.t -> (unit -> 'a) -> 'a
+val syscall:
+  ?timeout:float ->
+  name:string ->
+  interest:Kernel.Async.Interest.t ->
+  source:Kernel.Async.Source.t ->
+  (unit -> 'a) ->
+  'a

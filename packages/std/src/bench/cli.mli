@@ -26,4 +26,8 @@ open Global
    let () = Runtime.run ~main ~args:Env.args ()
    ```
 *)
-val main: name:string -> benchmarks:Bench_runner.bench_item list -> args:string list -> (unit, Runtime.Actor.exit_reason) result
+val main:
+  name:string ->
+  benchmarks:Bench_runner.bench_item list ->
+  args:string list ->
+  (unit, Runtime.Actor.exit_reason) result

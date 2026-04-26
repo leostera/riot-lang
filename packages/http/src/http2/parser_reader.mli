@@ -9,6 +9,7 @@ open Std
    - Returns Need_more when data is incomplete
    - Never blocks or allocates large buffers upfront
 *)
+
 (** Parser configuration *)
 type config = {
   max_frame_size: int;
@@ -37,6 +38,7 @@ type parse_error =
   | Incomplete_settings_payload
 
 (** SETTINGS payload is not multiple of 6 bytes *)
+
 (** Parse result *)
 type parse_result =
   | Frame of Frame.t
@@ -46,6 +48,7 @@ type parse_result =
   | Error of parse_error
 
 (** Parse error *)
+
 (**
    Parse the next frame from the reader.
 

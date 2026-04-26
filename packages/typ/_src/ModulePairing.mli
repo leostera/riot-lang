@@ -6,7 +6,6 @@ type source_input = {
   analysis: SourceAnalysis.t;
   visible_type_decls: FileSummary.type_decl list;
 }
-
 (**
    Paired module result for one logical module name.
 

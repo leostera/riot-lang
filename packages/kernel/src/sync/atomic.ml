@@ -10,13 +10,16 @@ module Loc = struct
   external fetch_and_add: int t -> int -> int = "%atomic_fetch_add_loc"
 
   let set = fun location value ->
-    let _ = exchange location value in ()
+    let _ = exchange location value in
+    ()
 
   let incr = fun location ->
-    let _ = fetch_and_add location 1 in ()
+    let _ = fetch_and_add location 1 in
+    ()
 
   let decr = fun location ->
-    let _ = fetch_and_add location (-1) in ()
+    let _ = fetch_and_add location (-1) in
+    ()
 end
 
 type !'value t = { mutable contents: 'value [@atomic] }
@@ -31,7 +34,11 @@ let set = fun atomic value -> atomic.contents <- value
 
 let exchange = fun atomic value -> Loc.exchange [%atomic.loc atomic.contents] value
 
-let compare_and_set = fun atomic current next -> Loc.compare_and_set [%atomic.loc atomic.contents] current next
+let compare_and_set = fun atomic current next -> Loc.compare_and_set
+
+[%atomic.loc atomic.contents]
+
+current next
 
 let fetch_and_add = fun atomic incr -> Loc.fetch_and_add [%atomic.loc atomic.contents] incr
 

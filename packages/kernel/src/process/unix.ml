@@ -82,7 +82,14 @@ let status_stopped = 2
 let status_continued = 3
 
 module FFI = struct
-  external spawn: string -> string array -> (string * string) array -> string option -> raw_stdio -> ((int * Fs.File.t option * Fs.File.t option * Fs.File.t option), int) Result.t = "kernel_new_process_spawn"
+  external spawn:
+    string ->
+    string array ->
+    (string * string) array ->
+    string option ->
+    raw_stdio ->
+    ((int * Fs.File.t option * Fs.File.t option * Fs.File.t option), int) Result.t =
+    "kernel_new_process_spawn"
 
   external try_wait: int -> (((int * int) option), int) Result.t = "kernel_new_process_try_wait"
 
@@ -97,37 +104,37 @@ let default_stdio = { stdin = Stdin.Inherit; stdout = Stdout.Inherit; stderr = S
 
 let encode_input_stdio = fun value ->
   match value with
-  | Stdin.Null -> stdio_null, None
-  | Stdin.Pipe -> stdio_pipe, None
-  | Stdin.Inherit -> stdio_inherit, None
-  | Stdin.File file -> stdio_file, Some file
+  | Stdin.Null -> (stdio_null, None)
+  | Stdin.Pipe -> (stdio_pipe, None)
+  | Stdin.Inherit -> (stdio_inherit, None)
+  | Stdin.File file -> (stdio_file, Some file)
 
 let encode_output_stdio = fun value ->
   match value with
-  | Stdout.Null -> stdio_null, None
-  | Stdout.Pipe -> stdio_pipe, None
-  | Stdout.Inherit -> stdio_inherit, None
-  | Stdout.File file -> stdio_file, Some file
+  | Stdout.Null -> (stdio_null, None)
+  | Stdout.Pipe -> (stdio_pipe, None)
+  | Stdout.Inherit -> (stdio_inherit, None)
+  | Stdout.File file -> (stdio_file, Some file)
 
 let encode_error_stdio = fun value ->
   match value with
-  | Stderr.Null -> stdio_null, None
-  | Stderr.Pipe -> stdio_pipe, None
-  | Stderr.Inherit -> stdio_inherit, None
-  | Stderr.RedirectToStdout -> stdio_redirect_to_stdout, None
-  | Stderr.File file -> stdio_file, Some file
+  | Stderr.Null -> (stdio_null, None)
+  | Stderr.Pipe -> (stdio_pipe, None)
+  | Stderr.Inherit -> (stdio_inherit, None)
+  | Stderr.RedirectToStdout -> (stdio_redirect_to_stdout, None)
+  | Stderr.File file -> (stdio_file, Some file)
 
 let raw_stdio_of_config = fun config ->
-  let stdin_mode, stdin_file = encode_input_stdio config.stdin in
-  let stdout_mode, stdout_file = encode_output_stdio config.stdout in
-  let stderr_mode, stderr_file = encode_error_stdio config.stderr in
+  let (stdin_mode, stdin_file) = encode_input_stdio config.stdin in
+  let (stdout_mode, stdout_file) = encode_output_stdio config.stdout in
+  let (stderr_mode, stderr_file) = encode_error_stdio config.stderr in
   {
     stdin_mode;
     stdin_file;
     stdout_mode;
     stdout_file;
     stderr_mode;
-    stderr_file
+    stderr_file;
   }
 
 let status_of_raw = fun tag code ->
@@ -154,40 +161,42 @@ let stderr = fun process -> process.stderr_pipe
 let spawn = fun ~program ~args ?env ?current_dir ~stdio () ->
   let env = Option.unwrap_or env ~default:[||] in
   let current_dir = Option.map current_dir ~fn:Path.to_string in
-  let raw_stdio = raw_stdio_of_config stdio in Result.map ~fn:(
-    fun (pid, stdin_pipe, stdout_pipe, stderr_pipe) ->
+  let raw_stdio = raw_stdio_of_config stdio in
+  Result.map
+    ~fn:(fun (pid, stdin_pipe, stdout_pipe, stderr_pipe) ->
       {
         pid;
         stdin_pipe;
         stdout_pipe;
         stderr_pipe;
-        status = Running
-      }
-  ) (FFI.spawn program args env current_dir raw_stdio) |> Result.map_err ~fn:(
-    fun code -> System (System_error.from_code code)
-  )
+        status = Running;
+      })
+    (FFI.spawn program args env current_dir raw_stdio)
+  |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
 
 let try_wait = fun process ->
   match process.status with
-  | Exited _ | Signaled _ -> Result.Ok (Some process.status)
-  | Running | Stopped _ ->
-      let* status = Result.map_err (FFI.try_wait process.pid) ~fn:(
-        fun code -> System (System_error.from_code code)
-      )
-      in
+  | Exited _
+  | Signaled _ -> Result.Ok (Some process.status)
+  | Running
+  | Stopped _ ->
+      let* status =
+        Result.map_err
+          (FFI.try_wait process.pid)
+          ~fn:(fun code -> System (System_error.from_code code)) in
       match status with
       | None -> (
-        match process.status with
-        | Stopped _ -> Result.Ok (Some process.status)
-        | Running -> Result.Ok None
-        | Exited _ | Signaled _ -> Result.Ok None
-      )
+          match process.status with
+          | Stopped _ -> Result.Ok (Some process.status)
+          | Running -> Result.Ok None
+          | Exited _
+          | Signaled _ -> Result.Ok None
+        )
       | Some (tag, code) when tag = status_continued ->
           process.status <- Running;
           Result.Ok None
       | Some (tag, code) ->
-          let* status = status_of_raw tag code
-          in
+          let* status = status_of_raw tag code in
           process.status <- status;
           Result.Ok (Some status)
 
@@ -195,30 +204,34 @@ let to_source = fun process ->
   let module Source = struct
     type nonrec t = t
 
-    let register = fun process selector token _interest -> Async.Adapter.Selector.register_process selector ~pid:process.pid ~token
+    let register = fun process selector token _interest ->
+      Async.Adapter.Selector.register_process selector ~pid:process.pid ~token
 
-    let reregister = fun process selector token _interest -> Async.Adapter.Selector.reregister_process selector ~pid:process.pid ~token
+    let reregister = fun process selector token _interest ->
+      Async.Adapter.Selector.reregister_process selector ~pid:process.pid ~token
 
-    let deregister = fun process selector -> Async.Adapter.Selector.deregister_process selector ~pid:process.pid
+    let deregister = fun process selector ->
+      Async.Adapter.Selector.deregister_process selector ~pid:process.pid
   end in
   Async.Source.make (module Source) process
 
-let kill = fun process ~signal -> Result.map_err (FFI.kill process.pid signal) ~fn:(
-  fun code -> System (System_error.from_code code)
-)
+let kill = fun process ~signal ->
+  Result.map_err
+    (FFI.kill process.pid signal)
+    ~fn:(fun code -> System (System_error.from_code code))
 
 let execv = fun program argv -> Result.map_err (FFI.execv program argv) ~fn:System_error.from_code
 
 let close = fun process ->
   let rec close_all first_error = function
     | [] -> (
-      match first_error with
-      | Some error -> Result.Error error
-      | None -> Result.Ok ()
-    )
+        match first_error with
+        | Some error -> Result.Error error
+        | None -> Result.Ok ()
+      )
     | file :: rest ->
         let next_error =
-          match first_error, Fs.File.close file with
+          match (first_error, Fs.File.close file) with
           | (Some error, _) -> Some error
           | (None, Result.Ok ()) -> None
           | (None, Result.Error (Fs.File.System System_error.BadFileDescriptor)) -> None

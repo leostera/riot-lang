@@ -7,21 +7,20 @@
 open Std
 
 (** {1 Core Types} *)
+
 (** MCP protocol version string, for example `"2024-11-05"`. *)
 type protocol_version = string
-
 (** JSON payload type used by MCP messages. *)
 type json = Data.Json.t
 
 (** {1 JSON-RPC Base Types} *)
+
 (** JSON-RPC request identifier used by MCP. *)
 type request_id =
   | String of string
   | Number of int
-
 (** JSON-RPC error code. *)
 type error_code = int
-
 (** JSON-RPC error object returned by MCP peers. *)
 type error = {
   (** Numeric error code. *)
@@ -33,13 +32,14 @@ type error = {
 }
 
 (** {1 Peer Identity} *)
+
 (** Information about the connecting client. *)
 type client_info = { name: string; version: string }
-
 (** Information about the server. *)
 type server_info = { name: string; version: string }
 
 (** {1 Capabilities} *)
+
 (**
    Tool capability marker.
 
@@ -47,7 +47,6 @@ type server_info = { name: string; version: string }
    grow without reshaping callers.
 *)
 type tool_capability = unit
-
 (** Resource capability flags. *)
 type resource_capability = {
   (** Whether resource subscriptions are supported. *)
@@ -55,13 +54,10 @@ type resource_capability = {
   (** Whether clients can be notified when resource lists change. *)
   list_changed: bool option;
 }
-
 (** Prompt capability marker. *)
 type prompt_capability = unit
-
 (** Sampling capability marker. *)
 type sampling_capability = unit
-
 (** Capabilities advertised by a client. *)
 type client_capabilities = {
   tools: tool_capability option;
@@ -69,7 +65,6 @@ type client_capabilities = {
   prompts: prompt_capability option;
   sampling: sampling_capability option;
 }
-
 (** Capabilities advertised by a server. *)
 type server_capabilities = {
   tools: tool_capability option;
@@ -78,9 +73,9 @@ type server_capabilities = {
 }
 
 (** {1 Tools} *)
+
 (** JSON Schema describing tool input parameters. *)
 type tool_input_schema = json
-
 (** Tool definition exposed by an MCP server. *)
 type tool = {
   (** Tool name used in MCP requests. *)
@@ -92,14 +87,16 @@ type tool = {
 }
 
 (** {1 Resources} *)
+
 (** Resource URI. *)
 type resource_uri = string
-
 (** Resource payload returned by the server. *)
 type resource_contents =
-  | TextContent of { text: string; mime_type: string option }
+  | TextContent of {
+      text: string;
+      mime_type: string option;
+    }
   | BlobContent of { data: string; mime_type: string }
-
 (** Resource descriptor. *)
 type resource = {
   uri: resource_uri;
@@ -109,18 +106,26 @@ type resource = {
 }
 
 (** {1 Prompts} *)
-(** Prompt argument definition. *)
-type prompt_argument = { name: string; description: string option; required: bool option }
 
+(** Prompt argument definition. *)
+type prompt_argument = {
+  name: string;
+  description: string option;
+  required: bool option;
+}
 (** Prompt definition exposed by a server. *)
-type prompt = { name: string; description: string option; arguments: prompt_argument list option }
+type prompt = {
+  name: string;
+  description: string option;
+  arguments: prompt_argument list option;
+}
 
 (** {1 Messages} *)
+
 (** Content carried by a chat-style MCP message. *)
 type message_content =
   | Text of string
   | Resource of resource_contents
-
 (** Chat-style message used by sampling flows. *)
 type message = {
   (** Sender role, usually `"user"` or `"assistant"`. *)
@@ -130,6 +135,7 @@ type message = {
 }
 
 (** {1 Requests} *)
+
 (** Well-known MCP request methods plus a custom escape hatch. *)
 type request_method =
   | Initialize
@@ -144,35 +150,39 @@ type request_method =
   | CompleteSampling
   | Ping
   | Custom of string
-
 (** Decoded parameters for each supported request method. *)
 type request_params =
   | InitializeParams of {
-    protocol_version: protocol_version;
-    capabilities: client_capabilities;
-    client_info: client_info;
-  }
+      protocol_version: protocol_version;
+      capabilities: client_capabilities;
+      client_info: client_info;
+    }
   | InitializedParams
   | ShutdownParams
   | ListToolsParams
-  | CallToolParams of { name: string; arguments: json option }
+  | CallToolParams of {
+      name: string;
+      arguments: json option;
+    }
   | ListResourcesParams
   | ReadResourceParams of { uri: resource_uri }
   | ListPromptsParams
-  | GetPromptParams of { name: string; arguments: (string * string) list option }
+  | GetPromptParams of {
+      name: string;
+      arguments: (string * string) list option;
+    }
   | CompleteSamplingParams of {
-    messages: message list;
-    model_preferences: json option;
-    system_prompt: string option;
-    include_context: string option;
-    temperature: float option;
-    max_tokens: int option;
-    stop_sequences: string list option;
-    metadata: json option;
-  }
+      messages: message list;
+      model_preferences: json option;
+      system_prompt: string option;
+      include_context: string option;
+      temperature: float option;
+      max_tokens: int option;
+      stop_sequences: string list option;
+      metadata: json option;
+    }
   | PingParams
   | CustomParams of json
-
 (** MCP request envelope. *)
 type request = {
   (** Always `"2.0"`. *)
@@ -183,46 +193,64 @@ type request = {
 }
 
 (** {1 Responses} *)
+
 (** Successful response payload for each supported request type. *)
 type response_result =
   | InitializeResult of {
-    protocol_version: protocol_version;
-    capabilities: server_capabilities;
-    server_info: server_info;
-    instructions: string option;
-  }
+      protocol_version: protocol_version;
+      capabilities: server_capabilities;
+      server_info: server_info;
+      instructions: string option;
+    }
   | InitializedResult
   | ShutdownResult
-  | ListToolsResult of { tools: tool list; next_cursor: string option }
-  | CallToolResult of { content: message_content list; is_error: bool option }
-  | ListResourcesResult of { resources: resource list; next_cursor: string option }
-  | ReadResourceResult of { contents: resource_contents list }
-  | ListPromptsResult of { prompts: prompt list; next_cursor: string option }
-  | GetPromptResult of { description: string option; messages: message list }
+  | ListToolsResult of {
+      tools: tool list;
+      next_cursor: string option;
+    }
+  | CallToolResult of {
+      content: message_content list;
+      is_error: bool option;
+    }
+  | ListResourcesResult of {
+      resources: resource list;
+      next_cursor: string option;
+    }
+  | ReadResourceResult of {
+      contents: resource_contents list;
+    }
+  | ListPromptsResult of {
+      prompts: prompt list;
+      next_cursor: string option;
+    }
+  | GetPromptResult of {
+      description: string option;
+      messages: message list;
+    }
   | CompleteSamplingResult of {
-    messages: message list;
-    model: string option;
-    stop_reason: string option;
-  }
+      messages: message list;
+      model: string option;
+      stop_reason: string option;
+    }
   | PingResult
   | CustomResult of json
-
 (** MCP response envelope. *)
 type response =
   | SuccessResponse of {
-    (** Always `"2.0"`. *)
-    jsonrpc: string;
-    id: request_id;
-    result: response_result;
-  }
+      (** Always `"2.0"`. *)
+      jsonrpc: string;
+      id: request_id;
+      result: response_result;
+    }
   | ErrorResponse of {
-    (** Always `"2.0"`. *)
-    jsonrpc: string;
-    id: request_id;
-    error: error;
-  }
+      (** Always `"2.0"`. *)
+      jsonrpc: string;
+      id: request_id;
+      error: error;
+    }
 
 (** {1 Notifications} *)
+
 (** Well-known notification methods plus a custom escape hatch. *)
 type notification_method =
   | ResourceListChanged
@@ -231,16 +259,23 @@ type notification_method =
   | Progress
   | LogMessage
   | CustomNotification of string
-
 (** Decoded notification parameters. *)
 type notification_params =
   | ResourceListChangedParams
   | ToolListChangedParams
   | PromptListChangedParams
-  | ProgressParams of { progress_token: string; progress: float; total: float option }
-  | LogMessageParams of { level: string; logger: string option; data: json option; message: string }
+  | ProgressParams of {
+      progress_token: string;
+      progress: float;
+      total: float option;
+    }
+  | LogMessageParams of {
+      level: string;
+      logger: string option;
+      data: json option;
+      message: string;
+    }
   | CustomNotificationParams of json
-
 (** MCP notification envelope. *)
 type notification = {
   (** Always `"2.0"`. *)
@@ -248,7 +283,6 @@ type notification = {
   method_name: string;
   params: notification_params option;
 }
-
 (** {1 Serialization} *)
 (** Encode a request as JSON. *)
 val request_to_json: request -> json
@@ -269,6 +303,7 @@ val notification_to_json: notification -> json
 val notification_of_json: json -> (notification, string) result
 
 (** {1 Helpers} *)
+
 (** Build a request envelope from a method tag and optional params. *)
 val make_request: ?params:request_params -> request_id -> request_method -> request
 

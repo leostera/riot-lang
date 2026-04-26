@@ -18,7 +18,9 @@ open Std
    | None -> print_endline "Not an integer"
    ```
 *)
+
 (* The type of database values *)
+
 type t =
   | Null
   | Int of int
@@ -37,6 +39,7 @@ type t =
   | Numeric of string
 
 (* ## Constructors *)
+
 val null: t
 
 val int: int -> t
@@ -68,6 +71,7 @@ val json: string -> t
 val numeric: string -> t
 
 (* ## Conversions *)
+
 val to_int: t -> int option
 
 val to_int64: t -> int64 option
@@ -99,11 +103,15 @@ val to_numeric: t -> string option
 val is_null: t -> bool
 
 (* ## Utility Functions *)
+
 (* `to_string v` converts a value to its string representation *)
+
 val to_string: t -> string
 
 (* `equal a b` tests equality between two values *)
+
 val equal: t -> t -> bool
 
 (* `compare a b` compares two values for ordering *)
+
 val compare: t -> t -> Order.t

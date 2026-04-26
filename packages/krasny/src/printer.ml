@@ -48,7 +48,9 @@ let to_string = fun ?(size_hint = 1_024) ?(final_newline = false) doc ->
           line_start
         else
           (
-            for _ = 1 to count do IO.Buffer.add_char buffer ' ' done;
+            for _ = 1 to count do
+              IO.Buffer.add_char buffer ' '
+            done;
             false
           )
     | Doc.Line ->
@@ -60,7 +62,11 @@ let to_string = fun ?(size_hint = 1_024) ?(final_newline = false) doc ->
         let rec loop line_start index =
           if Int.(index >= Vector.length docs) then
             line_start
-          else loop (write ~line_start ~indent (Vector.get_unchecked docs ~at:index)) (Int.add index 1)
+          else
+            loop (write
+              ~line_start
+              ~indent
+              (Vector.get_unchecked docs ~at:index)) (Int.add index 1)
         in
         loop line_start 0
     | Doc.Indent (extra, doc) -> write ~line_start ~indent:(indent + extra) doc
@@ -68,15 +74,27 @@ let to_string = fun ?(size_hint = 1_024) ?(final_newline = false) doc ->
     let length = String.length value in
     let rec loop line_start segment_start index =
       if Int.(index >= length) then
-        write_string_segment ~line_start ~indent value ~off:segment_start ~len:Int.(length - segment_start)
+        write_string_segment
+          ~line_start
+          ~indent
+          value
+          ~off:segment_start
+          ~len:Int.(length - segment_start)
+      else if Char.equal (String.get_unchecked value ~at:index) '\n' then
+        (
+          let _ =
+            write_string_segment
+              ~line_start
+              ~indent
+              value
+              ~off:segment_start
+              ~len:Int.(index - segment_start)
+          in
+          IO.Buffer.add_char buffer '\n';
+          loop true Int.(index + 1) Int.(index + 1)
+        )
       else
-        if Char.equal (String.get_unchecked value ~at:index) '\n' then
-          (
-            let _ = write_string_segment ~line_start ~indent value ~off:segment_start ~len:Int.(index - segment_start) in
-            IO.Buffer.add_char buffer '\n';
-            loop true Int.(index + 1) Int.(index + 1)
-          )
-        else loop line_start segment_start Int.(index + 1)
+        loop line_start segment_start Int.(index + 1)
     in
     loop line_start 0 0
   and write_raw_text ~line_start ~indent value =

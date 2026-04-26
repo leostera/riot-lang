@@ -2,9 +2,10 @@
 type single_result =
   | Passed
   | Failed of string
-  | Timed_out of { timeout: Time.Duration.t }
+  | Timed_out of {
+      timeout: Time.Duration.t;
+    }
   | Skipped
-
 (** A test result tagged with its index and name. *)
 type t = {
   (** Position of the test in the run. *)
@@ -24,7 +25,6 @@ type t = {
   (** Time spent executing this test case. *)
   duration: Time.Duration.t;
 }
-
 (** Summary of all test results in a run. *)
 type summary = {
   (** Total number of tests considered. *)

@@ -5,11 +5,11 @@
    rendering step to a concrete pattern string. Compilation and execution stay
    delegated to {!Kernel.Regex}.
 *)
+
 (** Character-class items. *)
 type char_class_item =
   | Single of char
   | Range of char * char
-
 (** Regular-expression syntax tree. *)
 type t =
   | Empty
@@ -17,17 +17,24 @@ type t =
   | End_of_text
   | Literal of string
   | Any_char
-  | Char_class of { negated: bool; items: char_class_item list }
+  | Char_class of {
+      negated: bool;
+      items: char_class_item list;
+    }
   | Seq of t list
   | Alt of t list
-  | Repeat of { expr: t; min: int; max: int option }
-
+  | Repeat of {
+      expr: t;
+      min: int;
+      max: int option;
+    }
 (** A compiled regular expression. *)
 type regex
-
 (** Regex compile errors are surfaced directly from {!Kernel.Regex}. *)
-type compile_error = Kernel.Regex.compile_error = { message: string; offset: int option }
-
+type compile_error = Kernel.Regex.compile_error = {
+  message: string;
+  offset: int option;
+}
 (** The first match span returned by {!find}. *)
 type match_ = Kernel.Regex.match_ = { start: int; stop: int }
 

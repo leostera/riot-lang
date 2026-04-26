@@ -120,7 +120,9 @@ open Std
    {b Note}: Current implementation uses exact IP matching.
    CIDR range support coming in future version.
 *)
+
 (** {1 Middleware} *)
+
 (**
    Remote IP middleware - extracts real client IP from proxy headers.
 
@@ -160,4 +162,10 @@ open Std
      ]
    ]}
 *)
-val middleware: ?header:string -> unit -> proxies:string list -> conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t
+val middleware:
+  ?header:string ->
+  unit ->
+  proxies:string list ->
+  conn:Conn.t ->
+  next:(Conn.t -> Conn.t) ->
+  Conn.t

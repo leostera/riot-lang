@@ -40,8 +40,11 @@ let decode_bytes = fun str ->
       if i >= len then
         Ok result
       else
-        match decode_char (String.get_unchecked str ~at:i), decode_char (String.get_unchecked str ~at:(i + 1)) with
-        | Some hi, Some lo ->
+        match (
+          decode_char (String.get_unchecked str ~at:i),
+          decode_char (String.get_unchecked str ~at:(i + 1))
+        ) with
+        | (Some hi, Some lo) ->
             Bytes.set_unchecked result ~at:(i / 2) ~char:(Char.from_int_unchecked ((hi lsl 4) lor lo));
             decode_pair (i + 2)
         | _ -> Error `Invalid_base16

@@ -35,11 +35,20 @@ val execute: t -> Request.t -> (Response.t * Telemetry.t, error) Std.result
 val connect: t -> Std.Net.Uri.t -> (connection, Error.t) Std.result
 
 val request:
-  t -> connection -> Std.Net.Http.Request.t -> ?body:string -> unit -> (unit, Error.t) Std.result
+  t ->
+  connection ->
+  Std.Net.Http.Request.t ->
+  ?body:string ->
+  unit ->
+  (unit, Error.t) Std.result
 
 val stream: t -> connection -> (message list, Error.t) Std.result
 
-val messages: ?on_message:(message list -> unit) -> t -> connection -> (message list, Error.t) Std.result
+val messages:
+  ?on_message:(message list -> unit) ->
+  t ->
+  connection ->
+  (message list, Error.t) Std.result
 
 val await:
   ?on_message:(message list -> unit) ->

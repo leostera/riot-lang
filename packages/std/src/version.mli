@@ -83,20 +83,28 @@
 
    - SemVer 2.0 specification: https://semver.org/
 *)
+
 (** {1 Types} *)
+
 open Global
 
 type pre_release_segment =
   | Numeric of int
   | Alphanumeric of string
-
 (** Pre-release version segment - either numeric or alphanumeric *)
-type t = { major: int; minor: int; patch: int; pre: pre_release_segment list; build: string option }
+type t = {
+  major: int;
+  minor: int;
+  patch: int;
+  pre: pre_release_segment list;
+  build: string option;
+}
 
 (**
    Semantic version with major.minor.patch, optional pre-release identifiers,
    and optional build metadata
 *)
+
 (** Requirement operator for version matching *)
 type requirement_op =
   | ReqEq
@@ -112,10 +120,8 @@ type requirement_op =
   | ReqLte
   (** Less than or equal: <= *)
   | ReqTilde
-
 (** Tilde operator: ~> (allows patch-level changes) *)
 type requirement
-
 (**
    Version requirement specification (opaque). Includes the unconstrained
    ["*"] requirement.
@@ -131,7 +137,6 @@ type requirement_view =
   | TildeRequirement of t
   | PrefixMajorRequirement of int
   | PrefixMinorRequirement of int * int
-
 type parse_error =
   | Invalid_format of string
   | Invalid_version_segment of string
@@ -139,6 +144,7 @@ type parse_error =
 
 (** Version parsing errors *)
 (** {1 Parsing} *)
+
 val parse: string -> (t, parse_error) result
 
 (**
@@ -153,6 +159,7 @@ val to_string: t -> string
 
 (** Convert a version to its string representation *)
 (** {1 Comparison} *)
+
 val compare: t -> t -> Order.t
 
 (**
@@ -179,6 +186,7 @@ val gte: t -> t -> bool
 
 (** Greater than or equal *)
 (** {1 Requirements} *)
+
 val parse_requirement: string -> (requirement, parse_error) result
 
 (**
@@ -209,4 +217,14 @@ val matches: requirement -> t -> bool
 
 (** Check if a version satisfies a requirement *)
 (** {1 Constructors} *)
-val make: major:int -> minor:int -> patch:int -> ?pre:pre_release_segment list -> ?build:string -> unit -> t(** Create a version with no pre-release or build metadata *)
+
+val make:
+  major:int ->
+  minor:int ->
+  patch:int ->
+  ?pre:pre_release_segment list ->
+  ?build:string ->
+  unit ->
+  t
+
+(** Create a version with no pre-release or build metadata *)

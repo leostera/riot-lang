@@ -1,9 +1,9 @@
 open Std
 open Model
 
-module Snapshot : module type of Snapshot
+module Snapshot: module type of Snapshot
 
-module MissingRequirements : module type of MissingRequirements
+module MissingRequirements: module type of MissingRequirements
 
 (** Mutable host-owned set of logical sources. *)
 type t
@@ -25,7 +25,16 @@ val with_config: t -> config:TypConfig.t -> t
    parse artifacts and want to seed a session without reparsing the same
    source again.
 *)
-val create_source: t -> kind:Source.kind -> module_name:string -> implicit_opens:SurfacePath.t list -> origin:Source.origin -> source_hash:Crypto.hash -> parse_result:Syn.Parser.parse_result -> cst:Syn.Cst.source_file -> t * SourceId.t
+val create_source:
+  t ->
+  kind:Source.kind ->
+  module_name:string ->
+  implicit_opens:SurfacePath.t list ->
+  origin:Source.origin ->
+  source_hash:Crypto.hash ->
+  parse_result:Syn.Parser.parse_result ->
+  cst:Syn.Cst.source_file ->
+  t * SourceId.t
 
 (**
    Register one additional module-name alias for an existing source.
@@ -37,7 +46,13 @@ val create_source: t -> kind:Source.kind -> module_name:string -> implicit_opens
 val register_source_alias: t -> SourceId.t -> module_name:string -> t
 
 (** Replace one existing source while preserving its [SourceId]. *)
-val update_source: t -> SourceId.t -> source_hash:Crypto.hash -> parse_result:Syn.Parser.parse_result -> cst:Syn.Cst.source_file -> t
+val update_source:
+  t ->
+  SourceId.t ->
+  source_hash:Crypto.hash ->
+  parse_result:Syn.Parser.parse_result ->
+  cst:Syn.Cst.source_file ->
+  t
 
 (** Remove one logical source from future snapshots. *)
 val remove_source: t -> SourceId.t -> t

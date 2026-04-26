@@ -4,6 +4,7 @@
    A complete standard library providing modern primitives for building robust,
    concurrent, fault-tolerant applications in OCaml.
 *)
+
 (** Module Declarations *)
 module Agent = Agent
 
@@ -248,6 +249,7 @@ module Float = Float
 
    Extended float operations with parsing and formatting.
 *)
+
 (**
    **When to use:** Filesystem operations
 
@@ -427,6 +429,7 @@ module Process = Process
    - Checking if process is alive
    - Getting process info
 *)
+
 (**
    **When to use:** Physical equality and pointer operations
 
@@ -561,6 +564,7 @@ module Telemetry = Telemetry
    - Custom events
    - Performance monitoring
 *)
+
 (**
    **When to use:** Writing unit tests
 
@@ -694,6 +698,7 @@ module WorkerPool = Worker_pool
    - Batch analytics
    - Parallel map operations
 *)
+
 (** Re-exported from Global *)
 include module type of Global
 
@@ -724,6 +729,7 @@ val start: apps:Application.t list -> unit
    let () = Std.start ~apps:[database_app; web_app]
    ```
 *)
+
 (** Helper Functions from Global *)
 val panic: string -> 'a
 
@@ -762,15 +768,13 @@ val todo: string -> 'a
 val unimplemented: unit -> 'a
 
 (** Mark code as unimplemented - panics when called *)
+
 (** Collection Type Aliases and Constructors *)
 type 'a vec = 'a Collections.Vector.t
-
 (** Vector type alias - dynamically-sized array *)
 type 'a queue = 'a Collections.Queue.t
-
 (** Queue type alias - FIFO queue *)
 type 'a set = 'a Collections.HashSet.t
-
 (** Set type alias - hash-based set *)
 type ('k, 'v) map = ('k, 'v) Collections.HashMap.t
 
@@ -803,6 +807,7 @@ val map: ('k * 'v) list -> ('k, 'v) map
 
    **Example:** `let m = map [("a", 1); ("b", 2)] in HashMap.get m "a"`
 *)
+
 (** Actor Runtime Management *)
 exception Receive_timeout
 
@@ -837,4 +842,6 @@ val sleep: Time.Duration.t -> unit
 val yield: unit -> unit
 
 (** Yield control to the scheduler *)
-val shutdown: status:int -> unit(** Shutdown the runtime with the given exit status *)
+val shutdown: status:int -> unit
+
+(** Shutdown the runtime with the given exit status *)

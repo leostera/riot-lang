@@ -61,12 +61,12 @@
    - Rate limiting and throttling
    - Profiling code sections
 *)
+
 (**
    A point in time from a monotonic clock. Opaque - cannot be converted to
    wall-clock time, only compared with other instants.
 *)
 type t
-
 (** {1 Creation} *)
 (**
    Returns the current instant from the monotonic clock.
@@ -87,6 +87,7 @@ type t
 val now: unit -> t
 
 (** {1 Duration Operations} *)
+
 (**
    Returns the time elapsed from [earlier] to the given instant.
 
@@ -138,6 +139,7 @@ val saturating_duration_since: earlier:t -> t -> Duration.t
 val elapsed: t -> Duration.t
 
 (** {1 Arithmetic Operations} *)
+
 (**
    Adds a duration to an instant, returning a future instant. Panics on
    overflow.
@@ -164,6 +166,7 @@ val add: t -> Duration.t -> t
 val sub: t -> Duration.t -> t
 
 (** {1 Checked Operations} *)
+
 (**
    Adds a duration if the result can be represented, returns [None] on
    overflow.
@@ -187,6 +190,7 @@ val checked_add: t -> Duration.t -> t option
 val checked_sub: t -> Duration.t -> t option
 
 (** {1 Comparison} *)
+
 (**
    Compares two instants. Returns negative if first < second, 0 if equal,
    positive if first > second.

@@ -16,15 +16,15 @@ end
 
 let error_to_string error =
   match error with
-  | InvalidNanoseconds { nanos } -> String.concat "" [ "invalid nanoseconds component: "; Int.to_string nanos ]
+  | InvalidNanoseconds { nanos } ->
+      String.concat "" [ "invalid nanoseconds component: "; Int.to_string nanos ]
   | System system_error -> System_error.to_string system_error
 
-let validate_parts = fun ~secs:_ ~nanos -> Result.map_err (Common.validate_nanos nanos) ~fn:(
-  fun () -> InvalidNanoseconds { nanos }
-)
+let validate_parts = fun ~secs:_ ~nanos ->
+  Result.map_err (Common.validate_nanos nanos) ~fn:(fun () -> InvalidNanoseconds { nanos })
 
-let from_parts = fun ~secs ~nanos ->
-  let* () = validate_parts ~secs ~nanos in Result.Ok { secs; nanos }
+let from_parts = fun ~secs ~nanos -> let* () = validate_parts ~secs ~nanos in
+Result.Ok { secs; nanos }
 
 let to_parts = fun value -> (value.secs, value.nanos)
 
@@ -32,16 +32,26 @@ let secs = fun value -> value.secs
 
 let subsec_nanos = fun value -> value.nanos
 
-let now = fun () ->
-  let* (secs, nanos) = Result.map_err (FFI.now ()) ~fn:(
-    fun code -> System (System_error.from_code code)
-  ) in from_parts ~secs ~nanos
+let now = fun () -> let* (secs, nanos) =
+  Result.map_err (FFI.now ()) ~fn:(fun code -> System (System_error.from_code code)) in
+from_parts ~secs ~nanos
 
-let compare = fun left right -> Common.compare_parts ~left_secs:left.secs ~left_nanos:left.nanos ~right_secs:right.secs ~right_nanos:right.nanos
+let compare = fun left right ->
+  Common.compare_parts
+    ~left_secs:left.secs
+    ~left_nanos:left.nanos
+    ~right_secs:right.secs
+    ~right_nanos:right.nanos
 
 let equal = fun left right ->
   match compare left right with
   | Order.EQ -> true
-  | Order.LT | Order.GT -> false
+  | Order.LT
+  | Order.GT -> false
 
-let diff_ns = fun left right -> Common.diff_ns ~left_secs:left.secs ~left_nanos:left.nanos ~right_secs:right.secs ~right_nanos:right.nanos
+let diff_ns = fun left right ->
+  Common.diff_ns
+    ~left_secs:left.secs
+    ~left_nanos:left.nanos
+    ~right_secs:right.secs
+    ~right_nanos:right.nanos

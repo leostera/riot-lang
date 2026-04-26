@@ -87,11 +87,12 @@
        ]
    ]}
 *)
+
 (** {1 Core Types} *)
+
 type 'msg attr =
   | Attr of string * string
   | Event of string * (string -> 'msg)
-
 (**
    HTML attribute or event handler.
 
@@ -100,12 +101,17 @@ type 'msg attr =
    - Events (on_click, etc.) are only active in LiveView
 *)
 type 'msg t =
-  | El of { tag: string; attrs: 'msg attr list; children: 'msg t list }
+  | El of {
+      tag: string;
+      attrs: 'msg attr list;
+      children: 'msg t list;
+    }
   | Text of string
   | Fragment of 'msg t list
 
 (** Component tree - can be an element, text, or fragment. *)
 (** {1 Creating Attributes} *)
+
 val attr: string -> string -> 'msg attr
 
 (**
@@ -235,6 +241,7 @@ val data: string -> string -> 'msg attr
    {b Note:} Events are {b LiveView only}. They are completely ignored
    when rendering static HTML with [to_html].
 *)
+
 val on: string -> (string -> 'msg) -> 'msg attr
 
 (**
@@ -295,7 +302,9 @@ val on_mouseout: (string -> 'msg) -> 'msg attr
    Self-closing elements (like [input], [br], [img]) take [unit] instead
    of children and return ['msg t].
 *)
+
 (** {2 Document Structure} *)
+
 val html: ?attrs:'msg attr list -> 'msg t list -> 'msg t
 
 (** Root HTML element *)
@@ -324,6 +333,7 @@ val script: ?attrs:'msg attr list -> string -> 'msg t
 
 (** Inline or external JavaScript *)
 (** {2 Content Sectioning} *)
+
 val header: ?attrs:'msg attr list -> 'msg t list -> 'msg t
 
 (** Introductory content or navigation *)
@@ -355,6 +365,7 @@ val search: ?attrs:'msg attr list -> 'msg t list -> 'msg t
 
 (** Search or filtering section *)
 (** {2 Text Content} *)
+
 val div: ?attrs:'msg attr list -> 'msg t list -> 'msg t
 
 (** Generic container (block-level) *)
@@ -404,6 +415,7 @@ val menu: ?attrs:'msg attr list -> 'msg t list -> 'msg t
 
 (** Unordered list of items (semantic alternative to ul) *)
 (** {2 Inline Text Semantics} *)
+
 val a: ?attrs:'msg attr list -> 'msg t list -> 'msg t
 
 (** Hyperlink *)
@@ -492,6 +504,7 @@ val ins: ?attrs:'msg attr list -> 'msg t list -> 'msg t
 
 (** Inserted text *)
 (** {2 Lists} *)
+
 val ul: ?attrs:'msg attr list -> 'msg t list -> 'msg t
 
 val ol: ?attrs:'msg attr list -> 'msg t list -> 'msg t
@@ -505,6 +518,7 @@ val dt: ?attrs:'msg attr list -> 'msg t list -> 'msg t
 val dd: ?attrs:'msg attr list -> 'msg t list -> 'msg t
 
 (** {2 Tables} *)
+
 val table: ?attrs:'msg attr list -> 'msg t list -> 'msg t
 
 val caption: ?attrs:'msg attr list -> 'msg t list -> 'msg t
@@ -526,6 +540,7 @@ val col: ?attrs:'msg attr list -> unit -> 'msg t
 val colgroup: ?attrs:'msg attr list -> 'msg t list -> 'msg t
 
 (** {2 Forms} *)
+
 val form: ?attrs:'msg attr list -> 'msg t list -> 'msg t
 
 (** Form for user input *)
@@ -569,6 +584,7 @@ val meter: ?attrs:'msg attr list -> 'msg t list -> 'msg t
 
 (** Scalar measurement within range *)
 (** {2 Interactive Elements} *)
+
 val details: ?attrs:'msg attr list -> 'msg t list -> 'msg t
 
 (** Disclosure widget (expandable/collapsible) *)
@@ -579,6 +595,7 @@ val dialog: ?attrs:'msg attr list -> 'msg t list -> 'msg t
 
 (** Dialog box or modal *)
 (** {2 Image and Multimedia} *)
+
 val area: ?attrs:'msg attr list -> unit -> 'msg t
 
 (** Clickable area in image map *)
@@ -598,6 +615,7 @@ val video: ?attrs:'msg attr list -> 'msg t list -> 'msg t
 
 (** Video content *)
 (** {2 Embedded Content} *)
+
 val embed: ?attrs:'msg attr list -> unit -> 'msg t
 
 (** External content (plugin) *)
@@ -614,6 +632,7 @@ val source: ?attrs:'msg attr list -> unit -> 'msg t
 
 (** Media resource for picture/audio/video *)
 (** {2 Scripting} *)
+
 val canvas: ?attrs:'msg attr list -> 'msg t list -> 'msg t
 
 (** Graphics canvas (2D/WebGL) *)
@@ -621,6 +640,7 @@ val noscript: ?attrs:'msg attr list -> 'msg t list -> 'msg t
 
 (** Fallback for disabled JavaScript *)
 (** {2 SVG and MathML} *)
+
 val svg: ?attrs:'msg attr list -> 'msg t list -> 'msg t
 
 (** SVG graphics container *)
@@ -628,6 +648,7 @@ val math: ?attrs:'msg attr list -> 'msg t list -> 'msg t
 
 (** MathML mathematical notation *)
 (** {2 Web Components} *)
+
 val slot: ?attrs:'msg attr list -> 'msg t list -> 'msg t
 
 (** Web component placeholder *)
@@ -635,6 +656,7 @@ val template: ?attrs:'msg attr list -> 'msg t list -> 'msg t
 
 (** HTML template (not rendered initially) *)
 (** {2 Generic Element Builder} *)
+
 val el: string -> ?attrs:'msg attr list -> 'msg t list -> 'msg t
 
 (**
@@ -650,6 +672,7 @@ val el: string -> ?attrs:'msg attr list -> 'msg t list -> 'msg t
    ]}
 *)
 (** {1 Content Helpers} *)
+
 val text: string -> 'msg t
 
 (**
@@ -698,6 +721,7 @@ val empty: 'msg t
    ]}
 *)
 (** {1 Conditional Rendering} *)
+
 val when_: bool -> 'msg t -> 'msg t
 
 (**
@@ -738,6 +762,7 @@ val maybe: 'a option -> ('a -> 'msg t) -> 'msg t
    ]}
 *)
 (** {1 Rendering} *)
+
 val to_html: 'msg t -> string
 
 (**
@@ -759,6 +784,7 @@ val to_html: 'msg t -> string
    ]}
 *)
 (** {1 Advanced} *)
+
 val map: ('a -> 'b) -> 'a t -> 'b t
 
 (**
@@ -780,7 +806,9 @@ val map: ('a -> 'b) -> 'a t -> 'b t
        ]
    ]}
 *)
-val extract_handlers: 'msg t -> (string * (string -> 'msg)) list(**
+val extract_handlers: 'msg t -> (string * (string -> 'msg)) list
+
+(**
    Extract all event handlers from a component tree.
 
    Used internally by LiveView runtime to register event handlers.

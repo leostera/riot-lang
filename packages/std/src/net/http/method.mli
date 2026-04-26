@@ -37,6 +37,7 @@
    ✓ | ✓ | | POST | ✗ | ✗ | ✗ | | PUT | ✗ | ✓ | ✗ | | DELETE | ✗ | ✓ | ✗ | |
    PATCH | ✗ | ✗ | ✗ | | OPTIONS | ✓ | ✓ | ✗ | | TRACE | ✓ | ✓ | ✗ |
 *)
+
 type t =
   | Get
   (** GET - Retrieve resource *)
@@ -56,6 +57,7 @@ type t =
   (** TRACE - Echo request *)
   | Patch
   (** PATCH - Partial modification *)
+
   (** Non-standard method. *)
   | Extension of string
 

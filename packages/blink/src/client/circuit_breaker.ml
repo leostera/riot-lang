@@ -18,8 +18,10 @@ type t = {
   mutable opened_at: Time.Instant.t option;
 }
 
-let policy = fun ?(failure_threshold = 3) ?(reset_after = Time.Duration.from_secs 30) () ->
-  { failure_threshold = Int.max 1 failure_threshold; reset_after }
+let policy = fun ?(failure_threshold = 3) ?(reset_after = Time.Duration.from_secs 30) () -> {
+  failure_threshold = Int.max 1 failure_threshold;
+  reset_after;
+}
 
 let default_policy = policy ()
 

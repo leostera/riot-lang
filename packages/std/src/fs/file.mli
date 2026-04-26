@@ -5,12 +5,10 @@ open Global
    `Kernel.Fs.File`. It never exposes raw descriptors.
 *)
 type t = Kernel.Fs.File.t
-
 type error = Kernel.Fs.File.error
-
 val error_to_string: error -> string
 
-module OpenFlags : sig
+module OpenFlags: sig
   type t = Kernel.Fs.File.open_flag =
     | ReadOnly
     | WriteOnly

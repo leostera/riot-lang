@@ -30,24 +30,46 @@ type arena = {
   mutable type_exprs: A.TypeExpr.t cached array;
 }
 
-type 'ctx t = { arena: arena; ctx: 'ctx; hooks: 'ctx hooks }
+type 'ctx t = {
+  arena: arena;
+  ctx: 'ctx;
+  hooks: 'ctx hooks;
+}
+
 and 'ctx enter_node = 'ctx t -> A.Node.t -> 'ctx t * action
+
 and 'ctx leave_node = 'ctx t -> A.Node.t -> 'ctx t
+
 and 'ctx enter_token = 'ctx t -> A.Token.t -> 'ctx t
+
 and 'ctx enter_structure_item = 'ctx t -> A.StructureItem.t -> 'ctx t * action
+
 and 'ctx enter_signature_item = 'ctx t -> A.SignatureItem.t -> 'ctx t * action
+
 and 'ctx enter_let_declaration = 'ctx t -> A.LetDeclaration.t -> 'ctx t * action
+
 and 'ctx enter_let_binding = 'ctx t -> A.LetBinding.t -> 'ctx t * action
+
 and 'ctx enter_type_declaration = 'ctx t -> A.TypeDeclaration.t -> 'ctx t * action
+
 and 'ctx enter_module_declaration = 'ctx t -> A.ModuleDeclaration.t -> 'ctx t * action
+
 and 'ctx enter_module_type_declaration = 'ctx t -> A.ModuleTypeDeclaration.t -> 'ctx t * action
+
 and 'ctx enter_open_declaration = 'ctx t -> A.OpenDeclaration.t -> 'ctx t * action
+
 and 'ctx enter_include_declaration = 'ctx t -> A.IncludeDeclaration.t -> 'ctx t * action
+
 and 'ctx enter_value_declaration = 'ctx t -> A.ValueDeclaration.t -> 'ctx t * action
+
 and 'ctx enter_expr = 'ctx t -> A.Expr.t -> 'ctx t * action
+
 and 'ctx enter_pattern = 'ctx t -> A.Pattern.t -> 'ctx t * action
+
 and 'ctx enter_parameter = 'ctx t -> A.Parameter.t -> 'ctx t * action
+
 and 'ctx enter_type_expr = 'ctx t -> A.TypeExpr.t -> 'ctx t * action
+
 and 'ctx hooks = {
   enter_node: 'ctx enter_node option;
   leave_node: 'ctx leave_node option;
@@ -68,7 +90,8 @@ and 'ctx hooks = {
   enter_type_expr: 'ctx enter_type_expr option;
 }
 
-let make_slots: type value. int -> value cached array = fun size -> Array.make ~count:size ~value:Unknown
+let make_slots: type value. int -> value cached array = fun size ->
+  Array.make ~count:size ~value:Unknown
 
 let make_arena = fun ~size ->
   {
@@ -87,7 +110,7 @@ let make_arena = fun ~size ->
     exprs = make_slots size;
     patterns = make_slots size;
     parameters = make_slots size;
-    type_exprs = make_slots size
+    type_exprs = make_slots size;
   }
 
 let reset_arena = fun arena tree ->
@@ -114,7 +137,11 @@ let prepare_arena = fun arena tree ->
   | Some current when Ptr.equal current tree -> ()
   | _ -> reset_arena arena tree
 
-let cached_cast: type value. value cached array -> A.Node.t -> (A.Node.t -> value option) -> value option = fun slots node cast ->
+let cached_cast:
+  type value. value cached array ->
+  A.Node.t ->
+  (A.Node.t -> value option) ->
+  value option = fun slots node cast ->
   let index = node.Ast.id in
   if index < 0 || index >= Array.length slots then
     cast node
@@ -143,7 +170,7 @@ let empty_hooks = {
   enter_expr = None;
   enter_pattern = None;
   enter_parameter = None;
-  enter_type_expr = None
+  enter_type_expr = None;
 }
 
 let make = fun ~ctx ~hooks -> { arena = make_arena ~size:0; ctx; hooks }
@@ -211,7 +238,7 @@ let type_expr = fun visitor (node: A.Node.t) ->
 let call_enter_node = fun visitor node ->
   match visitor.hooks.enter_node with
   | Some enter -> enter visitor node
-  | None -> visitor, Continue
+  | None -> (visitor, Continue)
 
 let call_leave_node = fun visitor node ->
   match visitor.hooks.leave_node with
@@ -225,66 +252,133 @@ let call_enter_token = fun visitor token ->
 
 let enter_with_cast = fun hook cast visitor node ->
   match hook with
-  | None -> visitor, Continue
+  | None -> (visitor, Continue)
   | Some enter -> (
-    match cast visitor node with
-    | Some view -> enter visitor view
-    | None -> (visitor, Continue)
-  )
+      match cast visitor node with
+      | Some view -> enter visitor view
+      | None -> (visitor, Continue)
+    )
 
 let enter_typed_hooks = fun visitor node ->
-  let visitor, action = enter_with_cast visitor.hooks.enter_structure_item structure_item visitor node in
+  let (visitor, action) =
+    enter_with_cast visitor.hooks.enter_structure_item structure_item visitor node
+  in
   match action with
-  | Skip_subtree -> visitor, Skip_subtree
+  | Skip_subtree -> (visitor, Skip_subtree)
   | Continue ->
-      let visitor, action = enter_with_cast visitor.hooks.enter_signature_item signature_item visitor node in
+      let (visitor, action) =
+        enter_with_cast visitor.hooks.enter_signature_item signature_item visitor node
+      in
       match action with
-      | Skip_subtree -> visitor, Skip_subtree
+      | Skip_subtree -> (visitor, Skip_subtree)
       | Continue ->
-          let visitor, action = enter_with_cast visitor.hooks.enter_let_declaration let_declaration visitor node in
+          let (visitor, action) =
+            enter_with_cast visitor.hooks.enter_let_declaration let_declaration visitor node
+          in
           match action with
-          | Skip_subtree -> visitor, Skip_subtree
+          | Skip_subtree -> (visitor, Skip_subtree)
           | Continue ->
-              let visitor, action = enter_with_cast visitor.hooks.enter_let_binding let_binding visitor node in
+              let (visitor, action) =
+                enter_with_cast visitor.hooks.enter_let_binding let_binding visitor node
+              in
               match action with
-              | Skip_subtree -> visitor, Skip_subtree
+              | Skip_subtree -> (visitor, Skip_subtree)
               | Continue ->
-                  let visitor, action = enter_with_cast visitor.hooks.enter_type_declaration type_declaration visitor node in
+                  let (visitor, action) =
+                    enter_with_cast
+                      visitor.hooks.enter_type_declaration
+                      type_declaration
+                      visitor
+                      node
+                  in
                   match action with
-                  | Skip_subtree -> visitor, Skip_subtree
+                  | Skip_subtree -> (visitor, Skip_subtree)
                   | Continue ->
-                      let visitor, action = enter_with_cast visitor.hooks.enter_module_declaration module_declaration visitor node in
+                      let (visitor, action) =
+                        enter_with_cast
+                          visitor.hooks.enter_module_declaration
+                          module_declaration
+                          visitor
+                          node
+                      in
                       match action with
-                      | Skip_subtree -> visitor, Skip_subtree
+                      | Skip_subtree -> (visitor, Skip_subtree)
                       | Continue ->
-                          let visitor, action = enter_with_cast visitor.hooks.enter_module_type_declaration module_type_declaration visitor node in
+                          let (visitor, action) =
+                            enter_with_cast
+                              visitor.hooks.enter_module_type_declaration
+                              module_type_declaration
+                              visitor
+                              node
+                          in
                           match action with
-                          | Skip_subtree -> visitor, Skip_subtree
+                          | Skip_subtree -> (visitor, Skip_subtree)
                           | Continue ->
-                              let visitor, action = enter_with_cast visitor.hooks.enter_open_declaration open_declaration visitor node in
+                              let (visitor, action) =
+                                enter_with_cast
+                                  visitor.hooks.enter_open_declaration
+                                  open_declaration
+                                  visitor
+                                  node
+                              in
                               match action with
-                              | Skip_subtree -> visitor, Skip_subtree
+                              | Skip_subtree -> (visitor, Skip_subtree)
                               | Continue ->
-                                  let visitor, action = enter_with_cast visitor.hooks.enter_include_declaration include_declaration visitor node in
+                                  let (visitor, action) =
+                                    enter_with_cast
+                                      visitor.hooks.enter_include_declaration
+                                      include_declaration
+                                      visitor
+                                      node
+                                  in
                                   match action with
-                                  | Skip_subtree -> visitor, Skip_subtree
+                                  | Skip_subtree -> (visitor, Skip_subtree)
                                   | Continue ->
-                                      let visitor, action = enter_with_cast visitor.hooks.enter_value_declaration value_declaration visitor node in
+                                      let (visitor, action) =
+                                        enter_with_cast
+                                          visitor.hooks.enter_value_declaration
+                                          value_declaration
+                                          visitor
+                                          node
+                                      in
                                       match action with
-                                      | Skip_subtree -> visitor, Skip_subtree
+                                      | Skip_subtree -> (visitor, Skip_subtree)
                                       | Continue ->
-                                          let visitor, action = enter_with_cast visitor.hooks.enter_expr expr visitor node in
+                                          let (visitor, action) =
+                                            enter_with_cast
+                                              visitor.hooks.enter_expr
+                                              expr
+                                              visitor
+                                              node
+                                          in
                                           match action with
-                                          | Skip_subtree -> visitor, Skip_subtree
+                                          | Skip_subtree -> (visitor, Skip_subtree)
                                           | Continue ->
-                                              let visitor, action = enter_with_cast visitor.hooks.enter_pattern pattern visitor node in
+                                              let (visitor, action) =
+                                                enter_with_cast
+                                                  visitor.hooks.enter_pattern
+                                                  pattern
+                                                  visitor
+                                                  node
+                                              in
                                               match action with
-                                              | Skip_subtree -> visitor, Skip_subtree
+                                              | Skip_subtree -> (visitor, Skip_subtree)
                                               | Continue ->
-                                                  let visitor, action = enter_with_cast visitor.hooks.enter_parameter parameter visitor node in
+                                                  let (visitor, action) =
+                                                    enter_with_cast
+                                                      visitor.hooks.enter_parameter
+                                                      parameter
+                                                      visitor
+                                                      node
+                                                  in
                                                   match action with
-                                                  | Skip_subtree -> visitor, Skip_subtree
-                                                  | Continue -> enter_with_cast visitor.hooks.enter_type_expr type_expr visitor node
+                                                  | Skip_subtree -> (visitor, Skip_subtree)
+                                                  | Continue ->
+                                                      enter_with_cast
+                                                        visitor.hooks.enter_type_expr
+                                                        type_expr
+                                                        visitor
+                                                        node
 
 let node_of_child = fun (parent: A.Node.t) id: A.Node.t -> { tree = parent.Ast.tree; id }
 
@@ -292,10 +386,10 @@ let token_of_child = fun (parent: A.Node.t) id: A.Token.t -> { tree = parent.Ast
 
 let rec visit_node: 'ctx. 'ctx t -> A.Node.t -> 'ctx t = fun visitor node ->
   prepare_arena visitor.arena node.Ast.tree;
-  let visitor, action = call_enter_node visitor node in
-  let visitor, action =
+  let (visitor, action) = call_enter_node visitor node in
+  let (visitor, action) =
     match action with
-    | Skip_subtree -> visitor, Skip_subtree
+    | Skip_subtree -> (visitor, Skip_subtree)
     | Continue -> enter_typed_hooks visitor node
   in
   let visitor =
@@ -303,12 +397,14 @@ let rec visit_node: 'ctx. 'ctx t -> A.Node.t -> 'ctx t = fun visitor node ->
     | Skip_subtree -> visitor
     | Continue ->
         let current = ref visitor in
-        A.Node.for_each_child node ~fn:(
-          function
-          | Syntax_tree.Node id -> current := visit_node !current (node_of_child node id)
-          | Syntax_tree.Token id -> current := call_enter_token !current (token_of_child node id)
-          | Syntax_tree.Missing _ -> ()
-        );
+        A.Node.for_each_child
+          node
+          ~fn:(
+            function
+            | Syntax_tree.Node id -> current := visit_node !current (node_of_child node id)
+            | Syntax_tree.Token id -> current := call_enter_token !current (token_of_child node id)
+            | Syntax_tree.Missing _ -> ()
+          );
         !current
   in
   call_leave_node visitor node

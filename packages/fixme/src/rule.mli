@@ -2,13 +2,10 @@ open Std
 
 (** Rule definition. *)
 type t
-
 (** Syntax tree passed through rule infrastructure when needed. *)
 type syntax_tree = Syn.SyntaxTree.t
-
 (** Root Ast node used during rule traversal. *)
 type syntax_root = Syn.Ast.Node.t
-
 (** Source context made available to a rule run. *)
 type context = {
   (** Path of the file being checked. *)
@@ -25,7 +22,14 @@ type context = {
    Use [run] to inspect the Ast root and return diagnostics. [explain] should
    provide the longer markdown explanation shown when the rule is documented.
 *)
-val make: id:Rule_id.t -> description:string -> explain:string -> ?enabled:bool -> run:(context -> syntax_root -> Diagnostic.t list) -> unit -> t
+val make:
+  id:Rule_id.t ->
+  description:string ->
+  explain:string ->
+  ?enabled:bool ->
+  run:(context -> syntax_root -> Diagnostic.t list) ->
+  unit ->
+  t
 
 (** Return the stable rule identifier. *)
 val id: t -> Rule_id.t

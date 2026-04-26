@@ -12,6 +12,11 @@ let register_providers = fun providers ->
   clear ();
   List.for_each providers ~fn:register_provider
 
-let rules = fun () -> providers () |> List.map ~fn:Provider.rules |> List.concat
+let rules = fun () ->
+  providers ()
+  |> List.map ~fn:Provider.rules
+  |> List.concat
 
-let rule_ids = fun () -> rules () |> List.map ~fn:Rule.id
+let rule_ids = fun () ->
+  rules ()
+  |> List.map ~fn:Rule.id

@@ -7,10 +7,8 @@ type config = {
   (** Metadata describing the benchmark suite being executed. *)
   suite_info: Reporter.Intf.suite_info;
 }
-
 (** Summary of a completed benchmark run. *)
 type run_summary = Bench_result.summary
-
 (** A benchmark item, either a single benchmark or a comparison. *)
 type bench_item =
   | Single of Bench_case.t

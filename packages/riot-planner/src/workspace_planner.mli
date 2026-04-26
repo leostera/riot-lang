@@ -9,7 +9,6 @@ type target =
   | All
   | Package of Package_name.t
   | Packages of Package_name.t list
-
 type planning_breakdown = {
   manifest_filter_duration: Time.Duration.t;
   filtered_workspace_package_count: int;
@@ -21,7 +20,6 @@ type planning_breakdown = {
   topological_sort_duration: Time.Duration.t;
   sorted_package_count: int;
 }
-
 type package_plan = {
   packages: Package.t list;
   nodes: Package_graph.package_node list;
@@ -29,7 +27,6 @@ type package_plan = {
   workspace: Workspace.t;
   breakdown: planning_breakdown;
 }
-
 (**
    Plan the workspace build:
 
@@ -41,13 +38,30 @@ type package_plan = {
    graphs - that's done lazily per-package by the executor.
 *)
 type plan_error =
-  | PackageNotFound of { name: Package_name.t; available: Package_name.t list }
-  | PackagesNotFound of { names: Package_name.t list; available: Package_name.t list }
-  | CycleDetected of { cycle: string list }
-  | MissingDependencies of { missing: Package_graph.missing_dependency list }
-  | PackageLoadFailed of { errors: Workspace_manager.load_error list }
-
-val plan_workspace: workspace:Workspace.t -> target:target -> scope:Package_graph.build_scope -> load_errors:Workspace_manager.load_error list -> dev_artifacts:Package_graph.dev_artifacts -> (package_plan, plan_error) result
+  | PackageNotFound of {
+      name: Package_name.t;
+      available: Package_name.t list;
+    }
+  | PackagesNotFound of {
+      names: Package_name.t list;
+      available: Package_name.t list;
+    }
+  | CycleDetected of {
+      cycle: string list;
+    }
+  | MissingDependencies of {
+      missing: Package_graph.missing_dependency list;
+    }
+  | PackageLoadFailed of {
+      errors: Workspace_manager.load_error list;
+    }
+val plan_workspace:
+  workspace:Workspace.t ->
+  target:target ->
+  scope:Package_graph.build_scope ->
+  load_errors:Workspace_manager.load_error list ->
+  dev_artifacts:Package_graph.dev_artifacts ->
+  (package_plan, plan_error) result
 
 (** Get the list of packages in the plan (topologically sorted) *)
 val packages_in_plan: package_plan -> Package.t list

@@ -25,7 +25,9 @@
    Unlike traditional string-based APIs, this module provides type-safe
    environment variable access with automatic parsing.
 *)
+
 (** # Command Line *)
+
 val args: string list
 
 (**
@@ -46,6 +48,7 @@ val args: string list
    (List.tl Env.args) ```
 *)
 (** # Working Directory *)
+
 val current_dir: unit -> (Path.t, Path.error) Result.t
 
 (**
@@ -105,17 +108,18 @@ val home_dir: unit -> Path.t option
    Returns [`None`] if the home directory cannot be determined.
 *)
 (** # Environment Variables *)
+
 (** Type specifications for environment variable parsing *)
 type 't var_type =
-  | String : string var_type
+  | String: string var_type
   (** String values (no parsing) *)
-  | Int : int var_type
+  | Int: int var_type
   (** Integer values *)
-  | Float : float var_type
+  | Float: float var_type
   (** Floating point values *)
-  | Bool : bool var_type
+  | Bool: bool var_type
   (** Boolean values (true/false, 1/0, yes/no) *)
-  | Char : char var_type
+  | Char: char var_type
 
 (**
    Reads and parses a typed environment variable.

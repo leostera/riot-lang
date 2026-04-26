@@ -1,10 +1,11 @@
 open Std
 open Std.IO
+
 module Error = Protocol.Error
 
 module Config = struct
   type ssl_mode =
-    Disable
+    | Disable
     | Require
     | Prefer
 
@@ -36,8 +37,14 @@ module Config = struct
   let from_string = fun str ->
     match Net.Uri.of_string str with
     | Ok uri when Net.Uri.scheme uri = Some "postgresql" || Net.Uri.scheme uri = Some "postgres" -> (
-        let hostname = Net.Uri.host uri |> Option.unwrap_or ~default:"localhost" in
-        let port = Net.Uri.port uri |> Option.unwrap_or ~default:5_432 in
+        let hostname =
+          Net.Uri.host uri
+          |> Option.unwrap_or ~default:"localhost"
+        in
+        let port =
+          Net.Uri.port uri
+          |> Option.unwrap_or ~default:5_432
+        in
         let host =
           match Net.Addr.of_host_and_port ~host:hostname ~port with
           | Ok addr ->
@@ -58,9 +65,9 @@ module Config = struct
         match Net.Uri.authority uri with
         | Some auth_str -> (
             match String.split_on_char '@' auth_str with
-            | [userinfo;_] -> (
+            | [ userinfo; _ ] -> (
                 match String.split_on_char ':' userinfo with
-                | [user;password] ->
+                | [ user; password ] ->
                     Ok {
                       host;
                       port;
@@ -92,7 +99,7 @@ module Config = struct
       )
     | Ok _ -> (
         match String.split_on_char ':' str with
-        | [host;port_str;database;user;password] -> (
+        | [ host; port_str; database; user; password ] -> (
             match Int.parse port_str with
             | Some port ->
                 Ok {
@@ -113,8 +120,7 @@ module Config = struct
                'postgresql://user:pass@host:port/db' or \
                'host:port:database:user:password')"
       )
-    | Error _ ->
-        Error "Failed to parse connection string"
+    | Error _ -> Error "Failed to parse connection string"
 end
 
 module Driver = struct
@@ -140,11 +146,7 @@ module Driver = struct
     prepared_statements: (string, statement) Collections.HashMap.t;
   }
 
-  and statement = {
-    name: string;
-    sql: string;
-    conn: connection;
-  }
+  and statement = { name: string; sql: string; conn: connection }
 
   type result_set = {
     rows: Sqlx_driver.Row.t Collections.Queue.t;
@@ -156,45 +158,52 @@ module Driver = struct
   let error_to_string = function
     | TransportError Net.TcpStream.Connection_refused -> "Connection refused"
     | TransportError Net.TcpStream.Closed -> "Connection closed"
-    | TransportError (Net.TcpStream.System_error io_err) -> "Transport error: " ^ IO.error_message io_err
+    | TransportError (Net.TcpStream.System_error io_err) ->
+        "Transport error: " ^ IO.error_message io_err
     | ProtocolError proto_err -> Protocol.Error.to_string proto_err
     | ConnectionClosed -> "Connection is closed"
     | AuthenticationNotSupported method_ -> "Authentication method not supported: " ^ method_
     | UnexpectedMessage msg -> "Unexpected message: " ^ msg
 
   let error_to_json = function
-    | TransportError Net.TcpStream.Connection_refused -> Data.Json.obj
-      [
-        ("type", Data.Json.string "transport_error");
-        ("error", Data.Json.string "connection_refused");
-        ("message", Data.Json.string "Connection refused")
-      ]
-    | TransportError Net.TcpStream.Closed -> Data.Json.obj
-      [
-        ("type", Data.Json.string "transport_error");
-        ("error", Data.Json.string "closed");
-        ("message", Data.Json.string "Connection closed")
-      ]
-    | TransportError (Net.TcpStream.System_error io_err) -> Data.Json.obj
-      [
-        ("type", Data.Json.string "transport_error");
-        ("error", Data.Json.string "system_error");
-        ("message", Data.Json.string (IO.error_message io_err))
-      ]
+    | TransportError Net.TcpStream.Connection_refused ->
+        Data.Json.obj
+          [
+            ("type", Data.Json.string "transport_error");
+            ("error", Data.Json.string "connection_refused");
+            ("message", Data.Json.string "Connection refused");
+          ]
+    | TransportError Net.TcpStream.Closed ->
+        Data.Json.obj
+          [
+            ("type", Data.Json.string "transport_error");
+            ("error", Data.Json.string "closed");
+            ("message", Data.Json.string "Connection closed");
+          ]
+    | TransportError (Net.TcpStream.System_error io_err) ->
+        Data.Json.obj
+          [
+            ("type", Data.Json.string "transport_error");
+            ("error", Data.Json.string "system_error");
+            ("message", Data.Json.string (IO.error_message io_err));
+          ]
     | ProtocolError proto_err -> Protocol.Error.to_json proto_err
-    | ConnectionClosed -> Data.Json.obj
-      [
-        ("type", Data.Json.string "connection_closed");
-        ("message", Data.Json.string "Connection is closed")
-      ]
-    | AuthenticationNotSupported method_ -> Data.Json.obj
-      [
-        ("type", Data.Json.string "authentication_not_supported");
-        ("method", Data.Json.string method_);
-        ("message", Data.Json.string ("Authentication method not supported: " ^ method_))
-      ]
-    | UnexpectedMessage msg -> Data.Json.obj
-      [ ("type", Data.Json.string "unexpected_message"); ("message", Data.Json.string msg) ]
+    | ConnectionClosed ->
+        Data.Json.obj
+          [
+            ("type", Data.Json.string "connection_closed");
+            ("message", Data.Json.string "Connection is closed");
+          ]
+    | AuthenticationNotSupported method_ ->
+        Data.Json.obj
+          [
+            ("type", Data.Json.string "authentication_not_supported");
+            ("method", Data.Json.string method_);
+            ("message", Data.Json.string ("Authentication method not supported: " ^ method_));
+          ]
+    | UnexpectedMessage msg ->
+        Data.Json.obj
+          [ ("type", Data.Json.string "unexpected_message"); ("message", Data.Json.string msg) ]
 
   let write_message = fun stream msg ->
     let bytes = Bytes.from_string msg in
@@ -202,11 +211,18 @@ module Driver = struct
     | Error err -> Error (TransportError err)
     | Ok _n -> Ok ()
 
-  let hmac_sha256 = fun ~key ~data -> hmac_sha256_bytes key data |> Bytes.to_string
+  let hmac_sha256 = fun ~key ~data ->
+    hmac_sha256_bytes key data
+    |> Bytes.to_string
 
-  let sha256_bytes = fun data -> Crypto.Sha256.hash_string data |> Crypto.Digest.bytes |> Bytes.to_string
+  let sha256_bytes = fun data ->
+    Crypto.Sha256.hash_string data
+    |> Crypto.Digest.bytes
+    |> Bytes.to_string
 
-  let md5_hex = fun data -> Crypto.Md5.hash_string data |> Crypto.Digest.hex
+  let md5_hex = fun data ->
+    Crypto.Md5.hash_string data
+    |> Crypto.Digest.hex
 
   let xor_strings = fun left right ->
     let len = String.length left in
@@ -239,13 +255,14 @@ module Driver = struct
           let update = Char.code (String.get_unchecked next ~at:index) in
           Bytes.set_unchecked output ~at:index ~char:(Char.chr (current lxor update))
         done;
-        loop (remaining - 1) next
+      loop (remaining - 1) next
     in
     loop iterations first
 
   let sasl_escape = fun value ->
     let buffer = Buffer.create ~size:(String.length value) in
-    String.for_each value
+    String.for_each
+      value
       ~fn:(fun char ->
         match char with
         | ',' -> Buffer.add_string buffer "=2C"
@@ -279,35 +296,39 @@ module Driver = struct
     in
     loop fields
 
-  let parse_scram_attributes = fun payload ->
-    String.split_on_char ',' payload
+  let parse_scram_attributes = fun payload -> String.split_on_char ',' payload
 
   let scram_client_final = fun (cfg: Config.t) client_first_bare server_first ->
     let fields = parse_scram_attributes server_first in
-    match field_value "r" fields, field_value "s" fields, field_value "i" fields with
-    | Some server_nonce, Some salt_b64, Some iterations_text -> (
-        match Int.parse iterations_text, Encoding.Base64.decode salt_b64 with
-        | Some iterations, Ok salt when iterations > 0 ->
+    match (field_value "r" fields, field_value "s" fields, field_value "i" fields) with
+    | (Some server_nonce, Some salt_b64, Some iterations_text) -> (
+        match (Int.parse iterations_text, Encoding.Base64.decode salt_b64) with
+        | (Some iterations, Ok salt) when iterations > 0 ->
             let client_final_without_proof = "c=biws,r=" ^ server_nonce in
-            let auth_message = client_first_bare ^ "," ^ server_first ^ "," ^ client_final_without_proof in
+            let auth_message =
+              client_first_bare ^ "," ^ server_first ^ "," ^ client_final_without_proof
+            in
             let salted_password = pbkdf2_sha256 ~password:cfg.password ~salt ~iterations in
             let client_key = hmac_sha256 ~key:salted_password ~data:"Client Key" in
             let stored_key = sha256_bytes client_key in
             let client_signature = hmac_sha256 ~key:stored_key ~data:auth_message in
-            let client_proof = xor_strings client_key client_signature
-            |> Bytes.from_string
-            |> Encoding.Base64.encode_bytes in
+            let client_proof =
+              xor_strings client_key client_signature
+              |> Bytes.from_string
+              |> Encoding.Base64.encode_bytes
+            in
             let server_key = hmac_sha256 ~key:salted_password ~data:"Server Key" in
-            let server_signature = hmac_sha256 ~key:server_key ~data:auth_message
-            |> Bytes.from_string
-            |> Encoding.Base64.encode_bytes in
+            let server_signature =
+              hmac_sha256 ~key:server_key ~data:auth_message
+              |> Bytes.from_string
+              |> Encoding.Base64.encode_bytes
+            in
             Ok (client_final_without_proof ^ ",p=" ^ client_proof, server_signature)
-        | None, _ ->
+        | (None, _) ->
             Error (UnexpectedMessage "SCRAM server-first-message has invalid iteration count")
-        | Some _, Ok _ ->
+        | (Some _, Ok _) ->
             Error (UnexpectedMessage "SCRAM server-first-message has invalid iteration count")
-        | _, Error _ ->
-            Error (UnexpectedMessage "SCRAM server-first-message has invalid salt")
+        | (_, Error _) -> Error (UnexpectedMessage "SCRAM server-first-message has invalid salt")
       )
     | _ -> Error (UnexpectedMessage "SCRAM server-first-message is missing required fields")
 
@@ -385,27 +406,26 @@ module Driver = struct
                           | Error error -> Error error
                           | Ok (msg_type, length, body) -> (
                               match Protocol.Reader.parse_backend_message msg_type length body with
-                              | Protocol.AuthenticationSASLFinal server_final -> verify_scram_final
-                                server_signature
-                                server_final
+                              | Protocol.AuthenticationSASLFinal server_final ->
+                                  verify_scram_final server_signature server_final
                               | Protocol.ErrorResponse err -> Error (ProtocolError err)
                               | _ -> Error (UnexpectedMessage "Expected SCRAM final message")
                             )
                         )
                     )
                 )
-              | Protocol.ErrorResponse err ->
-                  Error (ProtocolError err)
-              | _ ->
-                  Error (UnexpectedMessage "Expected SCRAM continue message")
+              | Protocol.ErrorResponse err -> Error (ProtocolError err)
+              | _ -> Error (UnexpectedMessage "Expected SCRAM continue message")
             )
         )
 
   let perform_handshake = fun stream (cfg: Config.t) ->
-    let startup_msg = Protocol.Writer.startup_message
-      ~user:cfg.user
-      ~database:cfg.database
-      ~application_name:cfg.application_name in
+    let startup_msg =
+      Protocol.Writer.startup_message
+        ~user:cfg.user
+        ~database:cfg.database
+        ~application_name:cfg.application_name
+    in
     match write_message stream startup_msg with
     | Error e -> Error e
     | Ok () ->
@@ -415,14 +435,16 @@ module Driver = struct
           | Ok (msg_type, length, body) -> (
               let backend_msg = Protocol.Reader.parse_backend_message msg_type length body in
               match backend_msg with
-              | Protocol.AuthenticationOk ->
-                  read_until_ready ()
+              | Protocol.AuthenticationOk -> read_until_ready ()
               | Protocol.AuthenticationCleartextPassword ->
-                  authenticate_cleartext stream cfg |> Result.and_then ~fn:read_until_ready
+                  authenticate_cleartext stream cfg
+                  |> Result.and_then ~fn:read_until_ready
               | Protocol.AuthenticationMD5Password salt ->
-                  authenticate_md5 stream cfg salt |> Result.and_then ~fn:read_until_ready
+                  authenticate_md5 stream cfg salt
+                  |> Result.and_then ~fn:read_until_ready
               | Protocol.AuthenticationSASL mechanisms ->
-                  authenticate_scram_sha256 stream cfg mechanisms |> Result.and_then ~fn:read_until_ready
+                  authenticate_scram_sha256 stream cfg mechanisms
+                  |> Result.and_then ~fn:read_until_ready
               | Protocol.AuthenticationSASLContinue _ ->
                   Error (UnexpectedMessage "SCRAM continue without SASL start")
               | Protocol.AuthenticationSASLFinal _ ->
@@ -440,8 +462,7 @@ module Driver = struct
               | Protocol.ReadyForQuery status ->
                   Log.debug ("Ready for query, status: " ^ String.make ~len:1 ~char:status);
                   Ok ()
-              | Protocol.ErrorResponse err ->
-                  Error (ProtocolError err)
+              | Protocol.ErrorResponse err -> Error (ProtocolError err)
               | Protocol.NoticeResponse err ->
                   Log.info ("PostgreSQL notice: " ^ Protocol.Error.message err);
                   read_until_ready ()
@@ -483,16 +504,22 @@ module Driver = struct
       )
 
   let connect = fun (cfg: Config.t) ->
-    let id = "pg_" ^ (
-      string_of_int
-        (Random.int 1_000_000 |> Result.expect ~msg:"failed to generate client id")
-    )
+    let id =
+      "pg_"
+      ^ (
+        string_of_int
+          (
+            Random.int 1_000_000
+            |> Result.expect ~msg:"failed to generate client id"
+          )
+      )
     in
     match Net.Addr.of_host_and_port ~host:cfg.host ~port:cfg.port with
     | Error (Net.Addr.System_error _err) ->
         (* Host resolution failure - treat as connection refused *)
         Error (TransportError Net.TcpStream.Connection_refused)
-    | Error (Net.Addr.Invalid_port_number _ | Net.Addr.Invalid_format _) ->
+    | Error (Net.Addr.Invalid_port_number _
+    | Net.Addr.Invalid_format _) ->
         (* Invalid address format - treat as connection refused *)
         Error (TransportError Net.TcpStream.Connection_refused)
     | Ok addr -> (
@@ -542,7 +569,8 @@ module Driver = struct
           String.length after_space <= 5
           && String.for_all
             after_space
-            ~fn:(fun c -> Char.uppercase_ascii c = c || c = '/' || c = '_') in
+            ~fn:(fun c -> Char.uppercase_ascii c = c || c = '/' || c = '_')
+        in
         if is_tz_name then
           String.sub str ~offset:0 ~len:idx
         else
@@ -610,13 +638,10 @@ module Driver = struct
         | Some f -> Sqlx_driver.Value.float f
         | None -> Sqlx_driver.Value.string value
       )
-    | Protocol.TypeOid.Uuid ->
-        Sqlx_driver.Value.uuid value
+    | Protocol.TypeOid.Uuid -> Sqlx_driver.Value.uuid value
     | Protocol.TypeOid.Json
-    | Protocol.TypeOid.Jsonb ->
-        Sqlx_driver.Value.json value
-    | Protocol.TypeOid.Numeric ->
-        Sqlx_driver.Value.numeric value
+    | Protocol.TypeOid.Jsonb -> Sqlx_driver.Value.json value
+    | Protocol.TypeOid.Numeric -> Sqlx_driver.Value.numeric value
     | Protocol.TypeOid.Timestamp -> (
         match parse_pg_timestamp value with
         | Ok dt -> Sqlx_driver.Value.timestamp dt
@@ -629,15 +654,13 @@ module Driver = struct
       )
     | Protocol.TypeOid.Text
     | Protocol.TypeOid.Varchar
-    | Protocol.TypeOid.Char ->
-        Sqlx_driver.Value.string value
+    | Protocol.TypeOid.Char -> Sqlx_driver.Value.string value
     | Protocol.TypeOid.Bytea
     | Protocol.TypeOid.Oid
     | Protocol.TypeOid.Date
     | Protocol.TypeOid.Time
     | Protocol.TypeOid.Interval
-    | Protocol.TypeOid.Unknown _ ->
-        Sqlx_driver.Value.string value
+    | Protocol.TypeOid.Unknown _ -> Sqlx_driver.Value.string value
 
   (* Format DateTime.t to PostgreSQL timestamp format *)
 
@@ -646,7 +669,7 @@ module Driver = struct
       let s = string_of_int n in
       String.make ~len:(max 0 (width - String.length s)) ~char:'0' ^ s
     in
-    let micros, _precision = dt.DateTime.microseconds in
+    let (micros, _precision) = dt.DateTime.microseconds in
     (* Format: YYYY-MM-DD HH:MM:SS.microseconds *)
     pad dt.year 4
     ^ "-"
@@ -664,28 +687,17 @@ module Driver = struct
 
   let encode_param = fun (value: Sqlx_driver.Value.t) ->
     match value with
-    | Null ->
-        ""
-    | Int n ->
-        string_of_int n
-    | Int64 n ->
-        Int64.to_string n
-    | Int16 n ->
-        string_of_int n
-    | Float f ->
-        string_of_float f
-    | String s ->
-        s
-    | Bool true ->
-        "t"
-    | Bool false ->
-        "f"
-    | Bytes b ->
-        Bytes.to_string b
-    | Timestamp dt ->
-        datetime_to_pg_format dt
-    | TimestampWithTimezone dt ->
-        datetime_to_pg_format dt
+    | Null -> ""
+    | Int n -> string_of_int n
+    | Int64 n -> Int64.to_string n
+    | Int16 n -> string_of_int n
+    | Float f -> string_of_float f
+    | String s -> s
+    | Bool true -> "t"
+    | Bool false -> "f"
+    | Bytes b -> Bytes.to_string b
+    | Timestamp dt -> datetime_to_pg_format dt
+    | TimestampWithTimezone dt -> datetime_to_pg_format dt
     | Date (y, m, d) ->
         let pad n width =
           let s = string_of_int n in
@@ -698,24 +710,26 @@ module Driver = struct
           String.make ~len:(max 0 (width - String.length s)) ~char:'0' ^ s
         in
         pad h 2 ^ ":" ^ pad min 2 ^ ":" ^ pad s 2 ^ "." ^ pad us 6
-    | Uuid u ->
-        u
-    | Json j ->
-        j
-    | Numeric n ->
-        n
+    | Uuid u -> u
+    | Json j -> j
+    | Numeric n -> n
 
   let prepare = fun conn sql ->
     if conn.closed then
       Error ConnectionClosed
     else
-      let name = "stmt_" ^ string_of_int
-        (Random.int 1_000_000 |> Result.expect ~msg:"failed to generate statement id")
+      let name =
+        "stmt_"
+        ^ string_of_int
+          (
+            Random.int 1_000_000
+            |> Result.expect ~msg:"failed to generate statement id"
+          )
       in
       let stmt = { name; sql; conn } in
       let _ = Collections.HashMap.insert conn.prepared_statements ~key:name ~value:stmt in
       ();
-      Ok stmt
+    Ok stmt
 
   let execute = fun stmt params ->
     if stmt.conn.closed then
@@ -726,16 +740,20 @@ module Driver = struct
       | Some stream -> (
           let use_extended_protocol = List.length params > 0 in
           if use_extended_protocol then
-            let parse_msg = Protocol.Writer.parse_message
-              ~statement_name:stmt.name
-              ~query:stmt.sql
-              ~param_types:[] in
+            let parse_msg =
+              Protocol.Writer.parse_message
+                ~statement_name:stmt.name
+                ~query:stmt.sql
+                ~param_types:[]
+            in
             let describe_msg = Protocol.Writer.describe_message ~what:'S' ~name:stmt.name in
             let encoded_params = List.map params ~fn:encode_param in
-            let bind_msg = Protocol.Writer.bind_message
-              ~portal_name:""
-              ~statement_name:stmt.name
-              ~params:encoded_params in
+            let bind_msg =
+              Protocol.Writer.bind_message
+                ~portal_name:""
+                ~statement_name:stmt.name
+                ~params:encoded_params
+            in
             let execute_msg = Protocol.Writer.execute_message ~portal_name:"" ~max_rows:0 in
             let sync_msg = Protocol.Writer.sync_message () in
             match (
@@ -750,7 +768,7 @@ module Driver = struct
             | (_, _, Error e, _, _)
             | (_, _, _, Error e, _)
             | (_, _, _, _, Error e) -> Error e
-            | Ok (), Ok (), Ok (), Ok (), Ok () ->
+            | (Ok (), Ok (), Ok (), Ok (), Ok ()) ->
                 let result_set = { rows = Collections.Queue.create (); rows_affected = 0 } in
                 let column_info = ref [] in
                 let rec read_extended_results () =
@@ -759,17 +777,16 @@ module Driver = struct
                   | Ok (msg_type, length, body) -> (
                       let backend_msg = Protocol.Reader.parse_backend_message msg_type length body in
                       match backend_msg with
-                      | Protocol.ParseComplete ->
-                          read_extended_results ()
-                      | Protocol.BindComplete ->
-                          read_extended_results ()
+                      | Protocol.ParseComplete -> read_extended_results ()
+                      | Protocol.BindComplete -> read_extended_results ()
                       | Protocol.RowDescription row_desc ->
                           column_info := row_desc;
                           read_extended_results ()
                       | Protocol.DataRow cols ->
                           let row =
                             if List.length !column_info = List.length cols then
-                              List.zip !column_info cols |> List.map
+                              List.zip !column_info cols
+                              |> List.map
                                 ~fn:(fun ((field: Protocol.Row.field), row_val) ->
                                   let decoded_value =
                                     match row_val with
@@ -778,7 +795,8 @@ module Driver = struct
                                   in
                                   (field.name, decoded_value))
                             else
-                              List.enumerate cols |> List.map
+                              List.enumerate cols
+                              |> List.map
                                 ~fn:(fun (index, row_val) ->
                                   let value =
                                     match row_val with
@@ -802,19 +820,14 @@ module Driver = struct
                             | [] -> ()
                           );
                           read_extended_results ()
-                      | Protocol.ReadyForQuery _status ->
-                          Ok result_set
-                      | Protocol.ErrorResponse err ->
-                          Error (ProtocolError err)
+                      | Protocol.ReadyForQuery _status -> Ok result_set
+                      | Protocol.ErrorResponse err -> Error (ProtocolError err)
                       | Protocol.NoticeResponse err ->
                           Log.info ("PostgreSQL notice: " ^ Protocol.Error.message err);
                           read_extended_results ()
-                      | Protocol.NoData ->
-                          read_extended_results ()
-                      | Protocol.EmptyQueryResponse ->
-                          Ok result_set
-                      | _ ->
-                          read_extended_results ()
+                      | Protocol.NoData -> read_extended_results ()
+                      | Protocol.EmptyQueryResponse -> Ok result_set
+                      | _ -> read_extended_results ()
                     )
                 in
                 read_extended_results ()
@@ -837,7 +850,8 @@ module Driver = struct
                       | Protocol.DataRow cols ->
                           let row =
                             if List.length !column_info = List.length cols then
-                              List.zip !column_info cols |> List.map
+                              List.zip !column_info cols
+                              |> List.map
                                 ~fn:(fun ((field: Protocol.Row.field), row_val) ->
                                   let decoded_value =
                                     match row_val with
@@ -846,7 +860,8 @@ module Driver = struct
                                   in
                                   (field.name, decoded_value))
                             else
-                              List.enumerate cols |> List.map
+                              List.enumerate cols
+                              |> List.map
                                 ~fn:(fun (index, row_val) ->
                                   let value =
                                     match row_val with
@@ -870,10 +885,8 @@ module Driver = struct
                             | [] -> ()
                           );
                           read_query_results ()
-                      | Protocol.ReadyForQuery _status ->
-                          Ok result_set
-                      | Protocol.ErrorResponse err ->
-                          Error (ProtocolError err)
+                      | Protocol.ReadyForQuery _status -> Ok result_set
+                      | Protocol.ErrorResponse err -> Error (ProtocolError err)
                       | Protocol.NoticeResponse err ->
                           Log.info ("PostgreSQL notice: " ^ Protocol.Error.message err);
                           read_query_results ()
@@ -892,30 +905,33 @@ module Driver = struct
   let begin_transaction = fun conn ->
     if conn.closed then
       Error ConnectionClosed
-    else (
-      conn.transaction_status <- 'T';
-      Ok ()
-    )
+    else
+      (
+        conn.transaction_status <- 'T';
+        Ok ()
+      )
 
   let commit = fun conn ->
     if conn.closed then
       Error ConnectionClosed
     else if conn.transaction_status != 'T' then
       Error (UnexpectedMessage "No transaction in progress")
-    else (
-      conn.transaction_status <- 'I';
-      Ok ()
-    )
+    else
+      (
+        conn.transaction_status <- 'I';
+        Ok ()
+      )
 
   let rollback = fun conn ->
     if conn.closed then
       Error ConnectionClosed
     else if conn.transaction_status != 'T' then
       Error (UnexpectedMessage "No transaction in progress")
-    else (
-      conn.transaction_status <- 'I';
-      Ok ()
-    )
+    else
+      (
+        conn.transaction_status <- 'I';
+        Ok ()
+      )
 
   let set_isolation_level = fun _conn ->
     function

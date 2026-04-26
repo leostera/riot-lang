@@ -22,7 +22,6 @@ type id =
   | String of string
   | Number of int
   | Null
-
 (** Method parameters. *)
 type params =
   | Positional of Json.t list
@@ -30,7 +29,6 @@ type params =
   | Named of (string * Json.t) list
   (** Named parameters encoded as a JSON object. *)
   | NoParams
-
 (** Typed request lowered into a JSON-RPC method name and params. *)
 type prerequest = {
   (** Method name to invoke. *)
@@ -38,7 +36,6 @@ type prerequest = {
   (** Method parameters. *)
   params: params;
 }
-
 (** JSON-RPC request or notification. *)
 type request = {
   (** Protocol version. *)
@@ -50,12 +47,14 @@ type request = {
   (** Request identifier, or [None] for notifications. *)
   id: id option;
 }
-
 (** Client-side JSON-RPC error. *)
 type error =
   | ParseError of { raw_input: string; parse_error: string }
   (** Client failed to parse JSON or JSON-RPC structure. *)
-  | InvalidRequest of { request_json: Json.t; reason: string }
+  | InvalidRequest of {
+      request_json: Json.t;
+      reason: string;
+    }
   (** Malformed JSON-RPC request or response. *)
   | MethodNotFound of { method_name: string }
   (** Requested method does not exist. *)
@@ -63,9 +62,14 @@ type error =
   (** Method parameters could not be decoded. *)
   | InternalError of { context: string; details: string }
   (** Internal client error such as transport or serialization failure. *)
-  | UnknownServerError of { code: int; message: string; data: Json.t option }
+  | UnknownServerError of {
+      code: int;
+      message: string;
+      data: Json.t option;
+    }
 
 (** Server returned an untyped JSON-RPC error object. *)
+
 (** JSON-RPC response wrapper. *)
 type 'res response = {
   (** Protocol version. *)
@@ -75,10 +79,8 @@ type 'res response = {
   (** Identifier matching the originating request. *)
   id: id;
 }
-
 (** Batch request containing multiple JSON-RPC requests. *)
 type batch_request = request list
-
 (** Batch response containing multiple JSON-RPC responses. *)
 type 'res batch_response = 'res response list
 
@@ -132,7 +134,6 @@ val ok: ?id:id -> 'res -> 'res response
 module type ApplicationProtocol = sig
   (** Application-specific request type. *)
   type request
-
   (** Application-specific response type. *)
   type response
 
@@ -150,7 +151,7 @@ module type ApplicationProtocol = sig
 end
 
 (** Typed JSON-RPC client helpers. *)
-module Client : sig
+module Client: sig
   (**
      Raw transport used by the client.
 
@@ -175,7 +176,11 @@ module Client : sig
   type ('request, 'response) t
 
   (** Create a typed client from a transport and protocol adapter. *)
-  val create: transport:(module Transport with type t = 'transport) -> protocol:(module ApplicationProtocol with type request = 'req and type response = 'res) -> 'transport -> ('req, 'res) t
+  val create:
+    transport:(module Transport with type t = 'transport) ->
+    protocol:(module ApplicationProtocol with type request = 'req and type response = 'res) ->
+    'transport ->
+    ('req, 'res) t
 
   (** Send a raw method/params call and wait for the typed response. *)
   val call: ('req, 'res) t -> method_:string -> ?params:params -> unit -> ('res, error) result
@@ -202,19 +207,24 @@ module Client : sig
 end
 
 (** Typed JSON-RPC server helpers. *)
-module Server : sig
+module Server: sig
   (**
      Handler for one JSON-RPC method.
 
      The handler receives a reply callback and the decoded request payload.
   *)
-  type ('req, 'res) handler = { method_: string; fn: ('res -> unit) -> 'req -> unit }
-
+  type ('req, 'res) handler = {
+    method_: string;
+    fn: ('res -> unit) -> 'req -> unit;
+  }
   (** Typed server configuration. *)
   type ('request, 'response) t
 
   (** Create a server from a protocol adapter and method handlers. *)
-  val create: protocol:(module ApplicationProtocol with type request = 'req and type response = 'res) -> methods:('req, 'res) handler list -> ('req, 'res) t
+  val create:
+    protocol:(module ApplicationProtocol with type request = 'req and type response = 'res) ->
+    methods:('req, 'res) handler list ->
+    ('req, 'res) t
 
   (**
      Process one raw JSON-RPC message.

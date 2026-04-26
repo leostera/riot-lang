@@ -41,9 +41,9 @@
 
    Each triple is: read (4), write (2), execute (1)
 *)
+
 (** Unix permission bits for owner, group, and others. *)
 type t
-
 (** ## Conversion *)
 (**
    Creates permissions from Unix mode bits (octal).
@@ -66,6 +66,7 @@ val of_mode: int -> t
 val to_mode: t -> int
 
 (** ## Readonly Checks *)
+
 (**
    Returns [true] if no write bits are set (owner, group, or others).
 
@@ -103,6 +104,7 @@ val readonly: t -> bool
 val set_readonly: t -> bool -> t
 
 (** ## Permission Bits *)
+
 (** Checks if owner has read permission. *)
 val user_read: t -> bool
 
@@ -131,6 +133,7 @@ val other_write: t -> bool
 val other_execute: t -> bool
 
 (** ## Common Modes *)
+
 (**
    `rw-r--r--` (0644) - Owner read/write, group/others read-only.
 

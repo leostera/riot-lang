@@ -7,14 +7,12 @@ type timing = {
   (** Measured duration for the iteration. *)
   duration: Time.Duration.t;
 }
-
 (** GC collection counters observed while measuring a benchmark case. *)
 type gc_stats = Kernel.Gc.quick_stat = {
   minor_collections: int;
   major_collections: int;
   compactions: int;
 }
-
 (** Statistical summary of benchmark timings. *)
 type statistics = {
   (** Fastest recorded duration. *)
@@ -34,13 +32,11 @@ type statistics = {
   (** GC collection deltas observed across the measured iterations. *)
   gc: gc_stats;
 }
-
 (** The outcome of running a benchmark. *)
 type bench_result =
   | Completed of statistics
   | Failed of string
   | Skipped
-
 (** A benchmark result tagged with its index and name. *)
 type t = {
   (** Position of the benchmark in the run. *)
@@ -87,6 +83,7 @@ type summary = {
 val make_summary: t list -> summary
 
 (** {1 Comparison Results} *)
+
 (** Result of a single case in a comparison benchmark. *)
 type case_result = {
   (** Case name. *)
@@ -94,7 +91,6 @@ type case_result = {
   (** Measured statistics for that case. *)
   statistics: statistics;
 }
-
 (** Result of a comparison benchmark showing relative performance. *)
 type comparison_result = {
   (** Human-readable comparison description. *)

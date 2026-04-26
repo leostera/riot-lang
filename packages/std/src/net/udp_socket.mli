@@ -28,13 +28,14 @@
 open Global
 
 type t = Kernel.Net.UdpSocket.t
-
 (** Errors returned by UDP socket operations. *)
 type error =
   | System_error of IO.error
-
 (** Result returned when receiving from an unconnected UDP socket. *)
-type recv_result = { bytes_read: int; from: Addr.datagram_addr }
+type recv_result = {
+  bytes_read: int;
+  from: Addr.datagram_addr;
+}
 
 (**
    Create and bind a UDP socket. The socket is automatically configured for
@@ -52,13 +53,27 @@ val connect: t -> Addr.datagram_addr -> (unit, error) Kernel.result
    Read one datagram from a connected UDP socket. This suspends the process
    until a packet is available.
 *)
-val recv: t -> bytes -> ?pos:int -> ?len:int -> ?timeout:Time.Duration.t -> unit -> (int, error) Kernel.result
+val recv:
+  t ->
+  bytes ->
+  ?pos:int ->
+  ?len:int ->
+  ?timeout:Time.Duration.t ->
+  unit ->
+  (int, error) Kernel.result
 
 (**
    Read one datagram together with its sender from an unconnected UDP socket.
    This suspends the process until a packet is available.
 *)
-val recv_from: t -> bytes -> ?pos:int -> ?len:int -> ?timeout:Time.Duration.t -> unit -> (recv_result, error) Kernel.result
+val recv_from:
+  t ->
+  bytes ->
+  ?pos:int ->
+  ?len:int ->
+  ?timeout:Time.Duration.t ->
+  unit ->
+  (recv_result, error) Kernel.result
 
 (**
    Send one datagram to the connected peer. This suspends the process until
@@ -70,7 +85,14 @@ val send: t -> bytes -> ?pos:int -> ?len:int -> unit -> (int, error) Kernel.resu
    Send one datagram to an explicit destination. This suspends the process
    until the socket becomes writable.
 *)
-val send_to: t -> Addr.datagram_addr -> bytes -> ?pos:int -> ?len:int -> unit -> (int, error) Kernel.result
+val send_to:
+  t ->
+  Addr.datagram_addr ->
+  bytes ->
+  ?pos:int ->
+  ?len:int ->
+  unit ->
+  (int, error) Kernel.result
 
 (** Return the local address the socket is bound to. *)
 val local_addr: t -> Addr.datagram_addr

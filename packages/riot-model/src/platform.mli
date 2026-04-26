@@ -6,7 +6,6 @@ type t =
   | Linux
   | Windows
   | Unknown of string
-
 val to_string: t -> string
 
 val of_string: string -> t

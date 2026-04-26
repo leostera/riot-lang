@@ -6,10 +6,24 @@ type path = string list
 
 type arrow_label = { name: string; optional_: bool }
 
-type type_constr = { path: path; arguments: type_expr list }
+type type_constr = {
+  path: path;
+  arguments: type_expr list;
+}
+
 and type_alias = { type_: type_expr; name: string }
-and type_poly = { binders: string list; body: type_expr }
-and type_arrow = { label: arrow_label option; parameter: type_expr; result: type_expr }
+
+and type_poly = {
+  binders: string list;
+  body: type_expr;
+}
+
+and type_arrow = {
+  label: arrow_label option;
+  parameter: type_expr;
+  result: type_expr;
+}
+
 and type_expr =
   | AnyType
   | TypeVar of string
@@ -59,14 +73,21 @@ type module_type_declaration = {
   has_definition: bool;
 }
 
-type open_statement = { span: Syn.Ceibo.Span.t; target: path option; override_: bool }
+type open_statement = {
+  span: Syn.Ceibo.Span.t;
+  target: path option;
+  override_: bool;
+}
 
 type include_target =
   | ModulePath of path
   | ModuleTypePath of path
   | Opaque
 
-type include_statement = { span: Syn.Ceibo.Span.t; target: include_target }
+type include_statement = {
+  span: Syn.Ceibo.Span.t;
+  target: include_target;
+}
 
 type exception_rhs =
   | ExceptionAlias of path
@@ -86,9 +107,15 @@ type external_declaration = {
   annotation: type_expr;
 }
 
-type expression_item = { span: Syn.Ceibo.Span.t }
+type expression_item = {
+  span: Syn.Ceibo.Span.t;
+}
 
-type unsupported_item = { span: Syn.Ceibo.Span.t; kind: Syn.SyntaxKind.t; summary: string }
+type unsupported_item = {
+  span: Syn.Ceibo.Span.t;
+  kind: Syn.SyntaxKind.t;
+  summary: string;
+}
 
 type item =
   | TypeDeclaration of type_declaration
@@ -109,24 +136,27 @@ type t = {
   diagnostics: Diagnostics.Diagnostic.t list;
 }
 
-let exports_of_items = fun items -> List.filter items ~fn:(
-  function
-  | TypeDeclaration _ -> true
-  | ValueDeclaration _ -> true
-  | ModuleDeclaration _ -> true
-  | ModuleTypeDeclaration _ -> true
-  | IncludeStatement _ -> true
-  | ExceptionDeclaration _ -> true
-  | ExternalDeclaration _ -> true
-  | OpenStatement _ -> false
-  | Expression _ -> false
-  | Unsupported _ -> false
-)
+let exports_of_items = fun items ->
+  List.filter
+    items
+    ~fn:(
+      function
+      | TypeDeclaration _ -> true
+      | ValueDeclaration _ -> true
+      | ModuleDeclaration _ -> true
+      | ModuleTypeDeclaration _ -> true
+      | IncludeStatement _ -> true
+      | ExceptionDeclaration _ -> true
+      | ExternalDeclaration _ -> true
+      | OpenStatement _ -> false
+      | Expression _ -> false
+      | Unsupported _ -> false
+    )
 
 let empty = fun ~kind ->
   {
     kind;
     items = [];
     exports = [];
-    diagnostics = []
+    diagnostics = [];
   }

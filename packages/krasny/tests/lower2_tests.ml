@@ -14,25 +14,37 @@ let parse2_ml = fun source -> Syn.parse ~filename:sample_ml (source_slice source
 
 let parse2_mli = fun source -> Syn.parse ~filename:sample_mli (source_slice source)
 
-let format2_ml = fun source -> parse2_ml source |> Krasny.format
+let format2_ml = fun source ->
+  parse2_ml source
+  |> Krasny.format
 
-let format2_mli = fun source -> parse2_mli source |> Krasny.format
+let format2_mli = fun source ->
+  parse2_mli source
+  |> Krasny.format
 
 let parse2_source = fun ~filename source -> Syn.parse ~filename (source_slice source)
 
-let format2_source = fun ~filename source -> parse2_source ~filename source |> Krasny.format
+let format2_source = fun ~filename source ->
+  parse2_source ~filename source
+  |> Krasny.format
 
 let top_level = fun items -> String.concat "\n\n" items ^ "\n"
 
 let assert_format2_ml = fun ~expected source ->
-  let actual = format2_ml source |> Result.expect ~msg:"implementation should format through lower2" in
+  let actual =
+    format2_ml source
+    |> Result.expect ~msg:"implementation should format through lower2"
+  in
   if expected = actual then
     Ok ()
   else
     Error ("lower2 implementation output mismatch\nexpected:\n" ^ expected ^ "\nactual:\n" ^ actual)
 
 let assert_format2_mli = fun ~expected source ->
-  let actual = format2_mli source |> Result.expect ~msg:"interface should format through lower2" in
+  let actual =
+    format2_mli source
+    |> Result.expect ~msg:"interface should format through lower2"
+  in
   if expected = actual then
     Ok ()
   else
@@ -50,15 +62,25 @@ let fixture_manifest_path = Path.v "packages/krasny/tests/format_expectations.tx
 let fixtures_dir = Path.v "packages/krasny/tests/fixtures"
 
 let manifest_fixture_paths = fun () ->
-  let manifest = Fs.read fixture_manifest_path |> Result.expect ~msg:"failed to read krasny fixture manifest" in
-  let lines = manifest |> String.split_on_char '\n' |> List.map ~fn:String.trim in
+  let manifest =
+    Fs.read fixture_manifest_path
+    |> Result.expect ~msg:"failed to read krasny fixture manifest"
+  in
+  let lines =
+    manifest
+    |> String.split_on_char '\n'
+    |> List.map ~fn:String.trim
+  in
   let rec loop paths = function
     | [] -> List.reverse paths
     | line :: rest ->
         if String.equal line "" || String.starts_with ~prefix:"#" line then
           loop paths rest
         else
-          let relpath = Path.from_string line |> Result.expect ~msg:"fixture manifest entry should be valid UTF-8" in
+          let relpath =
+            Path.from_string line
+            |> Result.expect ~msg:"fixture manifest entry should be valid UTF-8"
+          in
           loop (Path.(fixtures_dir / relpath) :: paths) rest
   in
   loop [] lines
@@ -68,14 +90,19 @@ let parser2_formatter_fixture_supported = fun path ->
   not (String.contains path "class")
 
 let assert_lower2_fixture_matches_approved = fun path ->
-  let source = Fs.read path |> Result.expect ~msg:"fixture file should exist" in
+  let source =
+    Fs.read path
+    |> Result.expect ~msg:"fixture file should exist"
+  in
   match format2_source ~filename:path source with
-  | Error err -> Error (Path.to_string path
-  ^ " failed lower2 formatting: "
-  ^ Krasny.format_error_to_string err)
+  | Error err ->
+      Error (Path.to_string path ^ " failed lower2 formatting: " ^ Krasny.format_error_to_string err)
   | Ok formatted -> (
       let expected_path = approved_snapshot_path path in
-      let expected = Fs.read expected_path |> Result.expect ~msg:"approved fixture snapshot should exist" in
+      let expected =
+        Fs.read expected_path
+        |> Result.expect ~msg:"approved fixture snapshot should exist"
+      in
       if not (String.equal expected formatted) then
         Error (Path.to_string path
         ^ " lower2 output did not match approved formatter snapshot\nexpected:\n"
@@ -84,9 +111,10 @@ let assert_lower2_fixture_matches_approved = fun path ->
         ^ formatted)
       else
         match format2_source ~filename:path formatted with
-        | Error err -> Error (Path.to_string path
-        ^ " formatted once but failed to format again: "
-        ^ Krasny.format_error_to_string err)
+        | Error err ->
+            Error (Path.to_string path
+            ^ " formatted once but failed to format again: "
+            ^ Krasny.format_error_to_string err)
         | Ok reformatted ->
             if formatted = reformatted then
               Ok ()
@@ -129,7 +157,8 @@ let assert_lower2_existing_fixture_subset = fun () ->
     Path.v "packages/krasny/tests/fixtures/0419_typed_constructor_payload.ml";
     Path.v "packages/krasny/tests/fixtures/0420_typed_expression_parenthesized.ml";
     Path.v "packages/krasny/tests/fixtures/0421_labeled_arg_poly_variant_then_label.ml";
-    Path.v "packages/krasny/tests/fixtures/0422_top_level_expression_double_semicolon_before_floating_attribute.ml";
+    Path.v
+      "packages/krasny/tests/fixtures/0422_top_level_expression_double_semicolon_before_floating_attribute.ml";
     Path.v "packages/krasny/tests/fixtures/0423_extended_index_operators.ml";
     Path.v "packages/krasny/tests/fixtures/0424_top_level_trailing_sequence_prefix_operator.ml";
     Path.v "packages/krasny/tests/fixtures/0425_prefix_parenthesized_field_access.ml";
@@ -148,7 +177,8 @@ let assert_lower2_existing_fixture_subset = fun () ->
     Path.v "packages/krasny/tests/fixtures/0512_labeled_arg_literal_then_positional_before_infix.ml";
     Path.v "packages/krasny/tests/fixtures/0513_labeled_string_then_or_chain.ml";
     Path.v "packages/krasny/tests/fixtures/0514_labeled_tuple_payload.ml";
-    Path.v "packages/krasny/tests/fixtures/0515_optional_arg_parenthesized_payload_then_unit_before_tuple.ml";
+    Path.v
+      "packages/krasny/tests/fixtures/0515_optional_arg_parenthesized_payload_then_unit_before_tuple.ml";
     Path.v "packages/krasny/tests/fixtures/0516_labeled_arg_then_optional_then_unit_before_tuple.ml";
     Path.v "packages/krasny/tests/fixtures/0700_types_and_type_declarations.ml";
     Path.v "packages/krasny/tests/fixtures/0710_first_class_module_types.ml";
@@ -165,18 +195,26 @@ let assert_lower2_existing_fixture_subset = fun () ->
     Path.v "packages/krasny/tests/fixtures/0730_signature_operator_value_declarations.mli";
     Path.v "packages/krasny/tests/fixtures/0731_signature_docstring_after_open.mli";
     Path.v "packages/krasny/tests/fixtures/0732_signature_section_between_value_docstrings.mli";
-    Path.v "packages/krasny/tests/fixtures/0733_signature_value_docstring_then_section_then_type_docstrings.mli";
+    Path.v
+      "packages/krasny/tests/fixtures/0733_signature_value_docstring_then_section_then_type_docstrings.mli";
     Path.v "packages/krasny/tests/fixtures/0734_signature_type_trailing_doc_then_heading.mli";
     Path.v "packages/krasny/tests/fixtures/0735_signature_record_trailing_doc_then_heading.mli";
-    Path.v "packages/krasny/tests/fixtures/0736_signature_module_overview_before_open_then_type_doc.mli";
-    Path.v "packages/krasny/tests/fixtures/0737_signature_sum_type_trailing_doc_then_next_type_leading_doc.mli";
-    Path.v "packages/krasny/tests/fixtures/0738_signature_nested_module_adjacent_type_docs_and_section_heading.mli";
+    Path.v
+      "packages/krasny/tests/fixtures/0736_signature_module_overview_before_open_then_type_doc.mli";
+    Path.v
+      "packages/krasny/tests/fixtures/0737_signature_sum_type_trailing_doc_then_next_type_leading_doc.mli";
+    Path.v
+      "packages/krasny/tests/fixtures/0738_signature_nested_module_adjacent_type_docs_and_section_heading.mli";
     Path.v "packages/krasny/tests/fixtures/0739_signature_record_type_leading_doc_preserved.mli";
-    Path.v "packages/krasny/tests/fixtures/0740_signature_abstract_type_doc_then_creation_heading_then_values.mli";
-    Path.v "packages/krasny/tests/fixtures/0741_signature_abstract_type_then_error_type_then_section_heading.mli";
+    Path.v
+      "packages/krasny/tests/fixtures/0740_signature_abstract_type_doc_then_creation_heading_then_values.mli";
+    Path.v
+      "packages/krasny/tests/fixtures/0741_signature_abstract_type_then_error_type_then_section_heading.mli";
     Path.v "packages/krasny/tests/fixtures/0742_signature_protocol_sections_and_alias_docs.mli";
-    Path.v "packages/krasny/tests/fixtures/0743_signature_variant_constructor_doc_before_type_level_doc.mli";
-    Path.v "packages/krasny/tests/fixtures/0744_signature_record_field_doc_before_type_level_doc.mli";
+    Path.v
+      "packages/krasny/tests/fixtures/0743_signature_variant_constructor_doc_before_type_level_doc.mli";
+    Path.v
+      "packages/krasny/tests/fixtures/0744_signature_record_field_doc_before_type_level_doc.mli";
     Path.v "packages/krasny/tests/fixtures/0800_modules_signatures_and_functors.ml";
     Path.v "packages/krasny/tests/fixtures/0801_module_with_exception_declarations.ml";
     Path.v "packages/krasny/tests/fixtures/0810_local_module_parameter_spacing.ml";
@@ -202,9 +240,11 @@ let assert_lower2_existing_fixture_subset = fun () ->
     Path.v "packages/krasny/tests/fixtures/0917_signature_type_docstring_between_declarations.mli";
     Path.v "packages/krasny/tests/fixtures/0918_nested_signature_terminal_doc_before_end.mli";
     Path.v "packages/krasny/tests/fixtures/0919_nested_structure_terminal_comment_before_end.ml";
-    Path.v "packages/krasny/tests/fixtures/0920_signature_grouped_type_comment_before_and_member.mli";
+    Path.v
+      "packages/krasny/tests/fixtures/0920_signature_grouped_type_comment_before_and_member.mli";
     Path.v "packages/krasny/tests/fixtures/0921_signature_grouped_type_doc_before_and_member.mli";
-    Path.v "packages/krasny/tests/fixtures/0922_signature_variant_inline_record_terminal_doc_before_closing_brace.mli";
+    Path.v
+      "packages/krasny/tests/fixtures/0922_signature_variant_inline_record_terminal_doc_before_closing_brace.mli";
     Path.v "packages/krasny/tests/fixtures/0923_nested_signature_prefix_docs.mli";
     Path.v "packages/krasny/tests/fixtures/0924_type_declaration_attribute.ml";
     Path.v "packages/krasny/tests/fixtures/0925_comment_before_and_binding.ml";
@@ -234,7 +274,8 @@ let assert_lower2_existing_fixture_subset = fun () ->
     Path.v "packages/krasny/tests/fixtures/0962_signature_value_trailing_comment_preserved.mli";
     Path.v "packages/krasny/tests/fixtures/0963_signature_module_type_doc_between_items.mli";
     Path.v "packages/krasny/tests/fixtures/0964_nested_signature_value_docs_not_duplicated.mli";
-    Path.v "packages/krasny/tests/fixtures/0965_nested_signature_value_trailing_comment_not_duplicated.mli";
+    Path.v
+      "packages/krasny/tests/fixtures/0965_nested_signature_value_trailing_comment_not_duplicated.mli";
     Path.v "packages/krasny/tests/fixtures/0966_inline_record_constructor_terminal_semicolon.ml";
     Path.v "packages/krasny/tests/fixtures/0967_type_and_doc_preserved.mli";
     Path.v "packages/krasny/tests/fixtures/0968_terminal_variant_constructor_doc.mli";
@@ -286,8 +327,12 @@ let assert_lower2_manifest_fixtures = fun () ->
         | Error error -> loop (error :: errors) rest
       )
   in
-  loop []
-    (manifest_fixture_paths () |> List.filter ~fn:parser2_formatter_fixture_supported)
+  loop
+    []
+    (
+      manifest_fixture_paths ()
+      |> List.filter ~fn:parser2_formatter_fixture_supported
+    )
 
 let tests = [
   Test.case
@@ -306,7 +351,8 @@ let tests = [
         ~expected:(top_level
           [ "let value: int = 1"; "let id x: int = x"; "let keep_pattern (x: int) = x" ])
         "let value : int = 1\nlet id x : int = x\nlet keep_pattern (x : int) = x\n");
-  Test.case "lower2 formats quoted poly let annotations"
+  Test.case
+    "lower2 formats quoted poly let annotations"
     (fun _ctx ->
       assert_format2_ml
         ~expected:{ocaml|let id: 'a 'b. 'a -> 'b -> 'a = fun x _ -> x
@@ -318,7 +364,8 @@ let tests = [
       assert_format2_ml
         ~expected:"let make:\n  type socket err. reader:(socket, err) reader ->\n  writer:(socket, err) writer ->\n  of_io_error:(err -> error) ->\n  uri:uri ->\n  t = fun ~reader ~writer ~of_io_error ~uri -> make_conn reader writer of_io_error uri\n"
         "let make : type socket err. reader:(socket, err) reader -> writer:(socket, err) writer -> of_io_error:(err -> error) -> uri:uri -> t = fun ~reader ~writer ~of_io_error ~uri -> make_conn reader writer of_io_error uri\n");
-  Test.case "lower2 breaks non-polymorphic typed let annotations vertically after the colon"
+  Test.case
+    "lower2 breaks non-polymorphic typed let annotations vertically after the colon"
     (fun _ctx ->
       assert_format2_ml
         ~expected:{ocaml|let make:
@@ -332,23 +379,31 @@ let tests = [
 |ocaml});
   Test.case
     "lower2 formats mutual recursive let bindings"
-    (fun _ctx -> assert_format2_ml ~expected:"let rec f = g\n\nand g = f\n" "let rec f = g\nand g = f\n");
+    (fun _ctx ->
+      assert_format2_ml ~expected:"let rec f = g\n\nand g = f\n" "let rec f = g\nand g = f\n");
   Test.case
     "lower2 formats local let expressions"
-    (fun _ctx -> assert_format2_ml ~expected:"let x =\n  let y = 1 in\n  y\n" "let x = let y = 1 in y\n");
+    (fun _ctx ->
+      assert_format2_ml ~expected:"let x =\n  let y = 1 in\n  y\n" "let x = let y = 1 in y\n");
   Test.case
     "lower2 formats function expressions"
     (fun _ctx -> assert_format2_ml ~expected:"let id = fun x -> x\n" "let id = fun x -> x\n");
   Test.case
     "lower2 formats function expressions with return annotations"
-    (fun _ctx -> assert_format2_ml ~expected:"let boxed = fun (value: int): int -> value\n" "let boxed = fun (value: int) : int -> value\n");
+    (fun _ctx ->
+      assert_format2_ml
+        ~expected:"let boxed = fun (value: int): int -> value\n"
+        "let boxed = fun (value: int) : int -> value\n");
   Test.case
     "lower2 formats match expressions"
     (fun _ctx ->
-      assert_format2_ml ~expected:"let value =\n  match x with\n  | 0 -> 1\n  | _ -> 2\n" "let value = match x with | 0 -> 1 | _ -> 2\n");
+      assert_format2_ml
+        ~expected:"let value =\n  match x with\n  | 0 -> 1\n  | _ -> 2\n"
+        "let value = match x with | 0 -> 1 | _ -> 2\n");
   Test.case
     "lower2 formats sequence expressions"
-    (fun _ctx -> assert_format2_ml ~expected:"let run =\n  first;\n  second\n" "let run = first; second\n");
+    (fun _ctx ->
+      assert_format2_ml ~expected:"let run =\n  first;\n  second\n" "let run = first; second\n");
   Test.case
     "lower2 does not duplicate sequence-leading comments"
     (fun _ctx ->
@@ -358,11 +413,15 @@ let tests = [
   Test.case
     "lower2 preserves trailing sequence bodies in and-bindings"
     (fun _ctx ->
-      assert_format2_ml ~expected:"let rec f () =\n  log \"f\";\n\nand g () =\n  log \"g\";\n" "let rec f () = log \"f\";\nand g () = log \"g\";\n");
+      assert_format2_ml
+        ~expected:"let rec f () =\n  log \"f\";\n\nand g () =\n  log \"g\";\n"
+        "let rec f () = log \"f\";\nand g () = log \"g\";\n");
   Test.case
     "lower2 formats list and array expressions"
     (fun _ctx ->
-      assert_format2_ml ~expected:(top_level [ "let values = [ 1; 2 ]"; "let array = [|1; 2|]" ]) "let values = [1; 2]\nlet array = [|1; 2|]\n");
+      assert_format2_ml
+        ~expected:(top_level [ "let values = [ 1; 2 ]"; "let array = [|1; 2|]" ])
+        "let values = [1; 2]\nlet array = [|1; 2|]\n");
   Test.case
     "lower2 preserves parens around function application arguments"
     (fun _ctx ->
@@ -381,7 +440,8 @@ let tests = [
       assert_format2_ml
         ~expected:"let f body body_len content_length_hdr =\n  if not (String.ends_with ~suffix:\"}\" body) then\n    Error (\"Response body truncated! Length: \"\n    ^ string_of_int body_len\n    ^ \", Content-Length: \"\n    ^ (Option.unwrap_or ~default:\"missing\" content_length_hdr))\n  else\n    Ok ()\n"
         "let f body body_len content_length_hdr = if not (String.ends_with ~suffix:\"}\" body) then Error (\"Response body truncated! Length: \" ^ string_of_int body_len ^ \", Content-Length: \" ^ (Option.unwrap_or ~default:\"missing\" content_length_hdr)) else Ok ()\n");
-  Test.case "lower2 breaks ordinary calls before multiline infix arguments"
+  Test.case
+    "lower2 breaks ordinary calls before multiline infix arguments"
     (fun _ctx ->
       assert_format2_ml
         ~expected:{ocaml|let log chunk chunk_count =
@@ -401,7 +461,8 @@ let tests = [
       assert_format2_ml
         ~expected:"let run event =\n  match event with\n  | Blink.Connection.Status status ->\n      Log.info (\"Status: \" ^ string_of_int (Net.Http.Status.to_int status))\n  | _ -> ()\n"
         "let run event = match event with | Blink.Connection.Status status -> Log.info (\"Status: \" ^ string_of_int (Net.Http.Status.to_int status)) | _ -> ()\n");
-  Test.case "lower2 keeps parenthesized match bodies on long qualified cases"
+  Test.case
+    "lower2 keeps parenthesized match bodies on long qualified cases"
     (fun _ctx ->
       assert_format2_ml
         ~expected:{ocaml|let run json =
@@ -415,7 +476,8 @@ let tests = [
   | _ -> Error "Response is not a JSON object"
 |ocaml}
         "let run json = match json with | Data.Json.Object fields -> (match List.assoc_opt \"choices\" fields with | Some (Data.Json.Array _choices) -> Ok () | Some _ -> Error \"bad\" | None -> Ok ()) | _ -> Error \"Response is not a JSON object\"\n");
-  Test.case "lower2 keeps parenthesized sequence bodies on long qualified cases"
+  Test.case
+    "lower2 keeps parenthesized sequence bodies on long qualified cases"
     (fun _ctx ->
       assert_format2_ml
         ~expected:{ocaml|let receive parsed =
@@ -431,7 +493,8 @@ let tests = [
 |ocaml}
         {ocaml|let receive parsed = match parsed with | Http.Ws.Parser.Done frame -> (Buffer.clear buffer; Ok frame) | Http.Ws.Parser.Need_more -> (read_more (); receive parsed)
 |ocaml});
-  Test.case "lower2 keeps parenthesized let bodies on long qualified cases"
+  Test.case
+    "lower2 keeps parenthesized let bodies on long qualified cases"
     (fun _ctx ->
       assert_format2_ml
         ~expected:{ocaml|let receive parsed =
@@ -447,7 +510,8 @@ let tests = [
 |ocaml}
         {ocaml|let receive parsed = match parsed with | Http.Ws.Parser.Need_more -> (let reader = to_reader stream in let chunk = read reader in match chunk with | Ok data -> data | Error error -> error) | Http.Ws.Parser.Done frame -> frame
 |ocaml});
-  Test.case "lower2 indents commented parenthesized match bodies in cases"
+  Test.case
+    "lower2 indents commented parenthesized match bodies in cases"
     (fun _ctx ->
       assert_format2_ml
         ~expected:{ocaml|let next state =
@@ -462,7 +526,8 @@ let tests = [
 |ocaml}
         {ocaml|let next state = match parse_event state.buffer with | Some event -> Some event | None -> ((* Need more data from connection *) match stream state.conn with | Error _error -> None | Ok _messages -> next state)
 |ocaml});
-  Test.case "lower2 breaks parenthesized match after else"
+  Test.case
+    "lower2 breaks parenthesized match after else"
     (fun _ctx ->
       assert_format2_ml
         ~expected:{ocaml|let pick header =
@@ -478,7 +543,8 @@ let tests = [
 |ocaml}
         {ocaml|let pick header = if ready then Ok () else (match header with | Some "chunked" -> Ok () | Some other -> Error other | None -> Error "missing")
 |ocaml});
-  Test.case "lower2 keeps comments before else branch bodies"
+  Test.case
+    "lower2 keeps comments before else branch bodies"
     (fun _ctx ->
       assert_format2_ml
         ~expected:{ocaml|let next state =
@@ -494,7 +560,8 @@ let tests = [
 |ocaml}
         {ocaml|let next state = if state.done_ then None else (* Try to parse an event from current buffer *) match parse_event state.buffer with | Some event -> Some event | None -> (* Try parsing again with new data *) next state
 |ocaml});
-  Test.case "lower2 wraps parenthesized infix arguments containing match"
+  Test.case
+    "lower2 wraps parenthesized infix arguments containing match"
     (fun _ctx ->
       assert_format2_ml
         ~expected:{ocaml|let log first_event =
@@ -521,11 +588,16 @@ let tests = [
         "let ok = `Ok 1\nlet classify = function | `Ok value -> value | `Error -> 0\n");
   Test.case
     "lower2 preserves parens around polymorphic variant payload apply arguments"
-    (fun _ctx -> assert_format2_ml ~expected:"let wrapped = Some (`Tag { value = 1 })\n" "let wrapped = Some (`Tag { value = 1 })\n");
+    (fun _ctx ->
+      assert_format2_ml
+        ~expected:"let wrapped = Some (`Tag { value = 1 })\n"
+        "let wrapped = Some (`Tag { value = 1 })\n");
   Test.case
     "lower2 keeps simple polymorphic variant payload args bare"
     (fun _ctx ->
-      assert_format2_ml ~expected:"let color_escape color = Color.to_escape_seq ~mode:`fg color\n" "let color_escape color = Color.to_escape_seq ~mode:`fg color\n");
+      assert_format2_ml
+        ~expected:"let color_escape color = Color.to_escape_seq ~mode:`fg color\n"
+        "let color_escape color = Color.to_escape_seq ~mode:`fg color\n");
   Test.case
     "lower2 formats expression and pattern attributes"
     (fun _ctx ->
@@ -564,12 +636,15 @@ let tests = [
         ~expected:(top_level
           [
             "let char_ok = identifier_character source.[index - 1]";
-            "let item_ok = consume values.(index)"
+            "let item_ok = consume values.(index)";
           ])
         "let char_ok = identifier_character source.[index - 1]\nlet item_ok = consume values.(index)\n");
   Test.case
     "lower2 keeps deref prefix expressions bare in apply arguments"
-    (fun _ctx -> assert_format2_ml ~expected:"let count_text = string_of_int !chunk_count\n" "let count_text = string_of_int !chunk_count\n");
+    (fun _ctx ->
+      assert_format2_ml
+        ~expected:"let count_text = string_of_int !chunk_count\n"
+        "let count_text = string_of_int !chunk_count\n");
   Test.case
     "lower2 formats record expressions and patterns"
     (fun _ctx ->
@@ -619,7 +694,7 @@ let tests = [
           [
             "let packed = (module Foo.Bar)";
             "let typed = (module Foo : S.T)";
-            "let advanced = (module Foo : S with type t = item and type state = state)"
+            "let advanced = (module Foo : S with type t = item and type state = state)";
           ])
         "let packed = (module Foo.Bar)\nlet typed = (module Foo : S.T)\nlet advanced = (module Foo : S with type t = item and type state = state)\n");
   Test.case
@@ -630,7 +705,7 @@ let tests = [
           [
             "let f (type a b) (module M : S.T) = value";
             "let g (module _) = value";
-            "let h (module N : S with type t = item) = value"
+            "let h (module N : S with type t = item) = value";
           ])
         "let f (type a b) (module M : S.T) = value\nlet g (module _) = value\nlet h (module N : S with type t = item) = value\n");
   Test.case
@@ -639,7 +714,8 @@ let tests = [
       assert_format2_mli
         ~expected:"val get: (module ConfigSpec with type t = 'a) -> ('a, error) result\n"
         "val get: (module ConfigSpec with type t = 'a) -> ('a, error) result\n");
-  Test.case "lower2 formats let module expressions"
+  Test.case
+    "lower2 formats let module expressions"
     (fun _ctx ->
       assert_format2_ml
         ~expected:(top_level
@@ -656,7 +732,8 @@ let tests = [
              \  consume";
           ])
         "let value = let module M = Foo.Bar in result\nlet empty = let module Empty = struct end in done_\nlet packed = let module D = (val driver : Driver with type t = _) in body\nlet nested = let module ByteIter = struct let next = fun state -> let scratch = state in scratch end in consume\n");
-  Test.case "lower2 breaks let module before multiline bodies"
+  Test.case
+    "lower2 breaks let module before multiline bodies"
     (fun _ctx ->
       assert_format2_ml
         ~expected:{ocaml|let await = fun conn ->
@@ -665,7 +742,8 @@ let tests = [
 |ocaml}
         {ocaml|let await = fun conn -> let module I = SSEIterator in Iter.MutIterator.make (module I) { I.conn; buffer = ""; done_ = false }
 |ocaml});
-  Test.case "lower2 formats let exception expressions"
+  Test.case
+    "lower2 formats let exception expressions"
     (fun _ctx ->
       assert_format2_ml
         ~expected:{ocaml|let value =
@@ -691,8 +769,12 @@ let bare =
         "let _ = assert ready\nlet later = lazy compute\n");
   Test.case
     "lower2 formats try expressions"
-    (fun _ctx -> assert_format2_ml ~expected:"let value =\n  try read () with\n  | Failure -> 0\n" "let value = try read () with | Failure -> 0\n");
-  Test.case "lower2 formats while and for loops"
+    (fun _ctx ->
+      assert_format2_ml
+        ~expected:"let value =\n  try read () with\n  | Failure -> 0\n"
+        "let value = try read () with | Failure -> 0\n");
+  Test.case
+    "lower2 formats while and for loops"
     (fun _ctx ->
       assert_format2_ml
         ~expected:{ocaml|let poll =
@@ -711,7 +793,8 @@ let down =
   done
 |ocaml}
         "let poll = while ready do step () done\nlet up = for i = 0 to n do step i done\nlet down = for i = n downto 0 do step i done\n");
-  Test.case "lower2 keeps while and for body sequences inside done boundaries"
+  Test.case
+    "lower2 keeps while and for body sequences inside done boundaries"
     (fun _ctx ->
       assert_format2_ml
         ~expected:{ocaml|let poll ready =
@@ -735,7 +818,7 @@ let count n =
           [
             "let force = function\n  | lazy value -> value";
             "let recovered =\n  match read () with\n  | exception Failure -> 0\n  | value -> value";
-            "let classify = function\n  | 'a' .. 'z' -> 1\n  | _ -> 0"
+            "let classify = function\n  | 'a' .. 'z' -> 1\n  | _ -> 0";
           ])
         "let force = function | lazy value -> value\nlet recovered = match read () with | exception Failure -> 0 | value -> value\nlet classify = function | 'a' .. 'z' -> 1 | _ -> 0\n");
   Test.case
@@ -752,7 +835,7 @@ let count n =
           [
             "include Foo.Bar";
             "external id: 'a -> 'a = \"%identity\" \"caml_id\"";
-            "exception Boom"
+            "exception Boom";
           ])
         "include Foo.Bar\nexternal id : 'a -> 'a = \"%identity\" \"caml_id\"\nexception Boom\n");
   Test.case
@@ -763,7 +846,7 @@ let count n =
           [
             "type 'a box +=\n  | More of 'a";
             "exception Parse_error of string";
-            "exception Nested = Std.Result.Error"
+            "exception Nested = Std.Result.Error";
           ])
         "type 'a box += | More of 'a\nexception Parse_error of string\nexception Nested = Std.Result.Error\n");
   Test.case
@@ -773,7 +856,7 @@ let count n =
         ~expected:(top_level
           [
             "let error_to_string = function\n  | Error message -> message";
-            "exception Parse_exception of string"
+            "exception Parse_exception of string";
           ])
         "let error_to_string = function\n  | Error message -> message\n\nexception Parse_exception of string\n");
   Test.case
@@ -808,7 +891,8 @@ let count n =
             "module type Abstract";
           ])
         "module Alias : Foo.S\nmodule Http1 : module type of Foo.Bar\nmodule Empty : sig end\nmodule type S = Foo.S\nmodule type Abstract\n");
-  Test.case "lower2 keeps include constraints in one signature item"
+  Test.case
+    "lower2 keeps include constraints in one signature item"
     (fun _ctx ->
       assert_format2_mli
         ~expected:"module type McpApplicationProtocol = sig\n\
@@ -817,7 +901,8 @@ let count n =
         "module type McpApplicationProtocol = sig\n\
         \  include Jsonrpc.ApplicationProtocol with type request := request and type response := response\n\
         end\n");
-  Test.case "lower2 keeps then-branch sequences inside if expressions with else"
+  Test.case
+    "lower2 keeps then-branch sequences inside if expressions with else"
     (fun _ctx ->
       assert_format2_ml
         ~expected:"let render ok =\n\
@@ -827,7 +912,8 @@ let count n =
           \  else\n\
           \    done_ ()\n"
         "let render ok = if ok then log (); next () else done_ ()\n");
-  Test.case "lower2 keeps else-if chains after else-boundary comments"
+  Test.case
+    "lower2 keeps else-if chains after else-boundary comments"
     (fun _ctx ->
       assert_format2_ml
         ~expected:"let classify flag other =\n\
@@ -839,7 +925,8 @@ let count n =
           \  else\n\
           \    three\n"
         "let classify flag other = if flag then one (* before next branch *) else if other then two else three\n");
-  Test.case "lower2 keeps match-case sequences inside if then branches"
+  Test.case
+    "lower2 keeps match-case sequences inside if then branches"
     (fun _ctx ->
       assert_format2_ml
         ~expected:{ocaml|let classify ready input =
@@ -855,7 +942,8 @@ let count n =
 |ocaml}
         {ocaml|let classify ready input = if ready then match input with | '!' | '^' -> bump (); true | _ -> false else false
 |ocaml});
-  Test.case "lower2 breaks multiline labeled applications after equals"
+  Test.case
+    "lower2 breaks multiline labeled applications after equals"
     (fun _ctx ->
       assert_format2_ml
         ~expected:{ocaml|let () =
@@ -866,7 +954,8 @@ let count n =
     ()
 |ocaml}
         "let () = Runtime.run ~main:(fun ~args -> Bench.Cli.main ~name:\"Vector Benchmarks\" ~benchmarks ~args) ~args:Env.args ()\n");
-  Test.case "lower2 breaks medium pipelines vertically in arrow bodies"
+  Test.case
+    "lower2 breaks medium pipelines vertically in arrow bodies"
     (fun _ctx ->
       assert_format2_ml
         ~expected:{ocaml|let about_handler = fun conn req ->
@@ -875,7 +964,8 @@ let count n =
   |> Conn.send
 |ocaml}
         "let about_handler = fun conn req -> conn |> Conn.respond ~status:Ok ~body:\"Suri - High-performance web framework\" |> Conn.send\n");
-  Test.case "lower2 keeps multiline parenthesized tuple args with callee"
+  Test.case
+    "lower2 keeps multiline parenthesized tuple args with callee"
     (fun _ctx ->
       assert_format2_ml
         ~expected:"let next = Some (\n\
@@ -885,8 +975,12 @@ let count n =
         "let next = Some (Slice.sub_unchecked cursor.source ~off:start ~len:(stop - start), { cursor with pos = stop })\n");
   Test.case
     "lower2 keeps @@ fun applications bare"
-    (fun _ctx -> assert_format2_ml ~expected:"let () = start ~apps:[] @@ fun () -> main ()\n" "let () = start ~apps:[] @@ fun () -> main ()\n");
-  Test.case "lower2 breaks long pipelines after arrow bodies"
+    (fun _ctx ->
+      assert_format2_ml
+        ~expected:"let () = start ~apps:[] @@ fun () -> main ()\n"
+        "let () = start ~apps:[] @@ fun () -> main ()\n");
+  Test.case
+    "lower2 breaks long pipelines after arrow bodies"
     (fun _ctx ->
       assert_format2_ml
         ~expected:"let home_handler = fun conn req ->\n\
@@ -899,7 +993,8 @@ let count n =
   Test.case
     "lower2 formats type aliases with parameters"
     (fun _ctx -> assert_format2_mli ~expected:"type 'a t = 'a list\n" "type 'a t = 'a list\n");
-  Test.case "lower2 breaks function arrows before multiline record bodies"
+  Test.case
+    "lower2 breaks function arrows before multiline record bodies"
     (fun _ctx ->
       assert_format2_ml
         ~expected:"let create = fun method_ uri ->\n\
@@ -917,7 +1012,8 @@ let count n =
       assert_format2_mli
         ~expected:"type ('a, 'e) result_like = ('a, 'e) result\ntype pair = int * string\n"
         "type ('a, 'e) result_like = ('a, 'e) result\ntype pair = int * string\n");
-  Test.case "lower2 keeps qualified variant payload declarations multiline"
+  Test.case
+    "lower2 keeps qualified variant payload declarations multiline"
     (fun _ctx ->
       assert_format2_mli
         ~expected:{ocaml|type source =
@@ -929,7 +1025,8 @@ let count n =
   Test.case
     "lower2 formats simple value declarations"
     (fun _ctx -> assert_format2_mli ~expected:"val id: 'a -> 'a\n" "val id : 'a -> 'a\n");
-  Test.case "lower2 breaks long value declarations after the colon"
+  Test.case
+    "lower2 breaks long value declarations after the colon"
     (fun _ctx ->
       assert_format2_mli
         ~expected:{ocaml|val resolve_module_path:
@@ -940,7 +1037,8 @@ let count n =
 |ocaml}
         {ocaml|val resolve_module_path: lookup -> current_path:string list -> target_path:string list -> interface_source option
 |ocaml});
-  Test.case "lower2 breaks medium value declarations after the colon"
+  Test.case
+    "lower2 breaks medium value declarations after the colon"
     (fun _ctx ->
       assert_format2_mli
         ~expected:{ocaml|val materialize_package_exports:
@@ -957,7 +1055,8 @@ let count n =
       assert_format2_mli
         ~expected:"val request: t -> Net.Http.Request.t -> ?body:string -> unit -> (unit, Error.t) result\n"
         "val request: t -> Net.Http.Request.t -> ?body:string -> unit -> (unit, Error.t) result\n");
-  Test.case "lower2 fully breaks wider labeled value declarations after the colon"
+  Test.case
+    "lower2 fully breaks wider labeled value declarations after the colon"
     (fun _ctx ->
       assert_format2_mli
         ~expected:"val parse:\n\
@@ -967,7 +1066,8 @@ let count n =
           \  string ->\n\
           \  Std.Net.Http.Request.t parse_result\n"
         "val parse: ?max_request_line:int -> ?max_headers:int -> ?max_header_length:int -> string -> Std.Net.Http.Request.t parse_result\n");
-  Test.case "lower2 fully breaks named parameter declarations after the colon"
+  Test.case
+    "lower2 fully breaks named parameter declarations after the colon"
     (fun _ctx ->
       assert_format2_mli
         ~expected:"val make:\n\
@@ -983,7 +1083,8 @@ let count n =
           \  unit ->\n\
           \  t\n"
         "val make: name:string -> value:string -> ?max_age:int -> ?expires:string -> ?path:string -> ?domain:string -> ?secure:bool -> ?http_only:bool -> ?same_site:same_site -> unit -> t\n");
-  Test.case "lower2 keeps adjacent type and module declarations compact"
+  Test.case
+    "lower2 keeps adjacent type and module declarations compact"
     (fun _ctx ->
       assert_format2_mli
         ~expected:{ocaml|type source =
@@ -994,7 +1095,8 @@ let count n =
 module Ocamldep = Ocamldep
 |ocaml}
         "type source = Version of string | Path of Path.t | Url of Net.Uri.t\nmodule Ocamldep = Ocamldep\n");
-  Test.case "lower2 preserves consecutive docstring paragraphs"
+  Test.case
+    "lower2 preserves consecutive docstring paragraphs"
     (fun _ctx ->
       assert_format2_mli
         ~expected:"val hash: t -> Crypto.hash\n\n\
@@ -1002,7 +1104,8 @@ module Ocamldep = Ocamldep
           (** Multi-target toolchain support *)\n\
           val get_host_triple: unit -> Riot_model.Target.t\n"
         "val hash: t -> Crypto.hash\n\n(** Compute a hash of the toolchain for cache invalidation *)\n\n(** Multi-target toolchain support *)\nval get_host_triple: unit -> Riot_model.Target.t\n");
-  Test.case "lower2 keeps adjacent leading docstrings visually separated"
+  Test.case
+    "lower2 keeps adjacent leading docstrings visually separated"
     (fun _ctx ->
       assert_format2_mli
         ~expected:{ocaml|(** Module overview. *)
@@ -1014,7 +1117,8 @@ type t
 (** Item doc. *)
 type t
 |ocaml});
-  Test.case "lower2 keeps section headings tight to following signature docs"
+  Test.case
+    "lower2 keeps section headings tight to following signature docs"
     (fun _ctx ->
       assert_format2_mli
         ~expected:{ocaml|type t = { value: int }
@@ -1035,7 +1139,8 @@ val parse: string -> t
       assert_format2_mli
         ~expected:"module type Intf = sig\n  val name: string\n\n  val connect: Net.Addr.stream_addr -> Net.Uri.t -> (Connection.t, Error.t) result\nend\n"
         "module type Intf = sig\nval name:string\nval connect: Net.Addr.stream_addr -> Net.Uri.t -> (Connection.t, Error.t) result\nend\n");
-  Test.case "lower2 formats module struct bodies from nested items"
+  Test.case
+    "lower2 formats module struct bodies from nested items"
     (fun _ctx ->
       assert_format2_ml
         ~expected:{ocaml|module Tcp: Intf = struct
@@ -1055,7 +1160,8 @@ let name = "tcp"
 let connect = fun addr uri -> match Net.TcpStream.connect addr with | Ok sock -> let reader = Net.TcpStream.to_reader sock in let writer = Net.TcpStream.to_writer sock in Ok (Connection.make ~reader ~writer ~of_io_error:Error.of_io_error ~uri) | Error _ -> Error value
 end
 |ocaml});
-  Test.case "lower2 keeps adjacent module structures separated"
+  Test.case
+    "lower2 keeps adjacent module structures separated"
     (fun _ctx ->
       assert_format2_ml
         ~expected:{ocaml|module Tcp: Intf = struct
@@ -1077,7 +1183,8 @@ end
     "lower2 rejects unsupported shapes instead of replaying source"
     (fun _ctx -> assert_format2_ml_fails "let object_value = object end\n");
   Test.case
-    ~size:Large "lower2 formats the existing fixture corpus idempotently"
+    ~size:Large
+    "lower2 formats the existing fixture corpus idempotently"
     (fun _ctx -> assert_lower2_manifest_fixtures ());
 ]
 

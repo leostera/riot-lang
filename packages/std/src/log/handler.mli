@@ -1,15 +1,18 @@
 (** Log handler management *)
+
 (** Handler identifier *)
+
 (** A handler with an ID and a callback function *)
 type id = string
-
 (**
    Emit an event to all registered handlers.
    Handlers are called synchronously in the caller process.
    If a handler crashes, the exception is caught and ignored.
 *)
-type t = { id: id; fn: Event.t -> unit }
-
+type t = {
+  id: id;
+  fn: Event.t -> unit;
+}
 val emit: Event.t -> unit
 
 (** Attach a handler with the given ID and callback function *)

@@ -70,10 +70,9 @@ module DefaultHasher = struct
   let hash_list = fun hasher lst ->
     let state = create () in
     write_list
-      (
-        fun s x ->
-          let h = hasher x in write_hash s h
-      )
+      (fun s x ->
+        let h = hasher x in
+        write_hash s h)
       state
       lst;
     finish state
@@ -81,10 +80,9 @@ module DefaultHasher = struct
   let hash_array = fun hasher arr ->
     let state = create () in
     write_array
-      (
-        fun s x ->
-          let h = hasher x in write_hash s h
-      )
+      (fun s x ->
+        let h = hasher x in
+        write_hash s h)
       state
       arr;
     finish state
@@ -98,24 +96,14 @@ module RandomState = struct
     let pid = Int.to_string (Process.current_pid ()) in
     match Time.Monotonic.now () with
     | Ok now ->
-        let secs, nanos = Time.Monotonic.to_parts now in
-        String.concat ":"
-          [
-            label;
-            pid;
-            Int.to_string secs;
-            Int.to_string nanos;
-          ]
-    | Error _ ->
-        String.concat ":"
-          [
-            label;
-            pid;
-            "0";
-            "0";
-          ]
+        let (secs, nanos) = Time.Monotonic.to_parts now in
+        String.concat ":" [ label; pid; Int.to_string secs; Int.to_string nanos; ]
+    | Error _ -> String.concat ":" [ label; pid; "0"; "0"; ]
 
-  let create = fun () -> { seed1 = Digest.to_int64 (DefaultHasher.hash_string (seed_material "seed1")); seed2 = Digest.to_int64 (DefaultHasher.hash_string (seed_material "seed2")) }
+  let create = fun () -> {
+    seed1 = Digest.to_int64 (DefaultHasher.hash_string (seed_material "seed1"));
+    seed2 = Digest.to_int64 (DefaultHasher.hash_string (seed_material "seed2"));
+  }
 
   (** Hash with this random state for DoS resistance *)
   let hash_with_seed = fun state data seed1 seed2 ->

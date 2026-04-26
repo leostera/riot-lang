@@ -36,6 +36,7 @@
    ]}
 *)
 (** {1 Synchronized Updates} *)
+
 val begin_synchronized_update: Terminal.t -> unit
 
 (**
@@ -57,6 +58,7 @@ val end_synchronized_update: Terminal.t -> unit
    Must be paired with {!begin_synchronized_update}.
 *)
 (** {1 Cursor Styling} *)
+
 (** Cursor appearance styles *)
 type cursor_style =
   | DefaultUserShape
@@ -83,6 +85,7 @@ val set_cursor_style: Terminal.t -> cursor_style -> unit
    may be ignored or fall back to a default.
 *)
 (** {1 Line Wrapping} *)
+
 val enable_line_wrap: Terminal.t -> unit
 
 (**
@@ -100,6 +103,7 @@ val disable_line_wrap: Terminal.t -> unit
    Useful for precise cursor positioning and full-screen applications.
 *)
 (** {1 Window Size} *)
+
 (** Window size information including pixel dimensions *)
 type window_size = {
   rows: int;
@@ -111,7 +115,6 @@ type window_size = {
   height_px: int;
   (** Terminal height in pixels (may be 0) *)
 }
-
 val window_size: Terminal.t -> window_size
 
 (**
@@ -125,7 +128,10 @@ val window_size: Terminal.t -> window_size
    rows and columns.
 *)
 (** {1 Raw Mode Queries} *)
-val is_raw_mode_enabled: Terminal.t -> bool(**
+
+val is_raw_mode_enabled: Terminal.t -> bool
+
+(**
    [is_raw_mode_enabled tty] checks if the terminal is in raw mode.
 
    Returns [true] if the terminal mode is [Immediate] (raw/cbreak mode),

@@ -114,7 +114,9 @@ open Std
       - Returns requested resource (200 OK)
       - Returns 401 again (invalid credentials)
 *)
+
 (** {1 Types} *)
+
 (**
    Validation function type.
 
@@ -131,7 +133,6 @@ open Std
    ]}
 *)
 type 'a validation_fn = username:string -> password:string -> 'a option
-
 (** {1 Middleware} *)
 (**
    Create Basic Auth middleware with static credentials.
@@ -170,7 +171,13 @@ type 'a validation_fn = username:string -> password:string -> 'a option
        ()
    ]}
 *)
-val middleware: ?realm:string -> ?skip:(Conn.t -> bool) -> username:string -> password:string -> unit -> Pipeline.middleware
+val middleware:
+  ?realm:string ->
+  ?skip:(Conn.t -> bool) ->
+  username:string ->
+  password:string ->
+  unit ->
+  Pipeline.middleware
 
 (**
    Create Basic Auth middleware with custom validation.
@@ -205,9 +212,15 @@ val middleware: ?realm:string -> ?skip:(Conn.t -> bool) -> username:string -> pa
        | None -> (* should never happen if middleware passed *)
    ]}
 *)
-val middleware_with_validation: ?realm:string -> ?skip:(Conn.t -> bool) -> validate:'a validation_fn -> unit -> Pipeline.middleware
+val middleware_with_validation:
+  ?realm:string ->
+  ?skip:(Conn.t -> bool) ->
+  validate:'a validation_fn ->
+  unit ->
+  Pipeline.middleware
 
 (** {1 Helper Functions} *)
+
 (**
    Extract username and password from Authorization header.
 

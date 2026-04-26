@@ -1,11 +1,13 @@
 open Std
 
 (* Synchronized updates *)
+
 let begin_synchronized_update = fun t -> Terminal.write_escape t "?2026h"
 
 let end_synchronized_update = fun t -> Terminal.write_escape t "?2026l"
 
 (* Cursor styles *)
+
 type cursor_style =
   | DefaultUserShape
   | BlinkingBlock
@@ -29,11 +31,13 @@ let set_cursor_style = fun t style ->
   Terminal.write_escape t code
 
 (* Line wrapping *)
+
 let enable_line_wrap = fun t -> Terminal.write_escape t "?7h"
 
 let disable_line_wrap = fun t -> Terminal.write_escape t "?7l"
 
 (* Window size *)
+
 type window_size = { rows: int; columns: int; width_px: int; height_px: int }
 
 let window_size = fun t ->
@@ -42,10 +46,11 @@ let window_size = fun t ->
     rows = size.rows;
     columns = size.cols;
     width_px = 0;
-    height_px = 0
+    height_px = 0;
   }
 
 (* Raw mode check *)
+
 let is_raw_mode_enabled = fun t ->
   match Terminal.(t.mode) with
   | Terminal.Immediate -> true

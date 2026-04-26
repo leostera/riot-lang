@@ -9,7 +9,6 @@ module type S = sig
 end
 
 type t = (module S)
-
 val name: t -> string
 
 val rules: t -> Rule.t list

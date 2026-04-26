@@ -8,8 +8,10 @@ open Suri.Component
 
    The key insight: THE SAME COMPONENT STRUCTURE works for both!
 *)
+
 (** Common Styles *)
-let page_styles = {|
+let page_styles =
+  {|
   body { 
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     max-width: 600px; 
@@ -108,23 +110,41 @@ let page_styles = {|
 
 (** Step 1: Static Component (No Interactivity) *)
 let counter_view_static = fun count ->
-  div ~attrs:[ class_ "card" ]
+  div
+    ~attrs:[ class_ "card" ]
     [
       h1 [ text "Counter (Static HTML)" ];
       span ~attrs:[ class_ "label" ] [ text "A static component preview" ];
       div ~attrs:[ class_ "count" ] [ text (Int.to_string count) ];
-      div ~attrs:[ class_ "buttons" ] [ button ~attrs:[ class_ "btn btn-secondary" ] [ text "-" ]; button ~attrs:[ class_ "btn btn-primary" ] [ text "+" ] ];
-      div ~attrs:[ class_ "note" ] [ strong [ text "Note: " ]; text "Buttons are not interactive in static HTML rendering. "; text "This is just a preview of what the component looks like." ];
+      div
+        ~attrs:[ class_ "buttons" ]
+        [
+          button ~attrs:[ class_ "btn btn-secondary" ] [ text "-" ];
+          button ~attrs:[ class_ "btn btn-primary" ] [ text "+" ];
+        ];
+      div
+        ~attrs:[ class_ "note" ]
+        [
+          strong [ text "Note: " ];
+          text "Buttons are not interactive in static HTML rendering. ";
+          text "This is just a preview of what the component looks like.";
+        ];
     ]
 
 let static_page: unit t =
   html
     [
-      head [ title [ text "Counter - Static Preview" ]; meta ~attrs:[ attr "charset" "UTF-8" ] (); style page_styles ];
+      head
+        [
+          title [ text "Counter - Static Preview" ];
+          meta ~attrs:[ attr "charset" "UTF-8" ] ();
+          style page_styles;
+        ];
       body
         [
           counter_view_static 0;
-          div ~attrs:[ class_ "card"; style_ "text-align: left" ]
+          div
+            ~attrs:[ class_ "card"; style_ "text-align: left" ]
             [
               h2 [ text "What is this?" ];
               p
@@ -136,7 +156,15 @@ let static_page: unit t =
                   text ".";
                 ];
               p [ text "The component tree looks like this:" ];
-              pre ~attrs:[ style_ "background: #f4f4f4; padding: 16px; border-radius: 6px; overflow-x: auto" ] [ code [ text {|div ~attrs:[class_ "card"] [
+              pre
+                ~attrs:[
+                  style_ "background: #f4f4f4; padding: 16px; border-radius: 6px; overflow-x: auto";
+                ]
+                [
+                  code
+                    [
+                      text
+                        {|div ~attrs:[class_ "card"] [
   h1 [text "Counter"];
   div ~attrs:[class_ "count"] [
     text (Int.to_string count)
@@ -145,54 +173,72 @@ let static_page: unit t =
     button ~attrs:[class_ "btn"] [text "-"];
     button ~attrs:[class_ "btn"] [text "+"];
   ];
-]|} ] ];
+]|};
+                    ];
+                ];
             ];
         ];
     ]
 
 (** Step 2: LiveView Component (With Event Handlers) *)
 (* Define our message type for LiveView *)
+
 type msg =
   | Increment
   | Decrement
   | Reset
 
-let counter_view_interactive = fun count ->
-  div ~attrs:[ class_ "card" ]
-    [
-      h1 [ text "Counter (LiveView)" ];
-      span ~attrs:[ class_ "label" ] [ text "Interactive component with server-side handlers" ];
-      div ~attrs:[ class_ "count" ] [ text (Int.to_string count) ];
-      div ~attrs:[ class_ "buttons" ] [ button ~attrs:[
-        class_ "btn btn-secondary";
-        on_click
-          (
-            fun _ -> Decrement
-          );
-      ] [ text "-" ]; button ~attrs:[
-        class_ "btn btn-secondary";
-        on_click
-          (
-            fun _ -> Reset
-          );
-      ] [ text "Reset" ]; button ~attrs:[
-        class_ "btn btn-primary";
-        on_click
-          (
-            fun _ -> Increment
-          );
-      ] [ text "+" ] ];
-      div ~attrs:[ class_ "success" ] [ strong [ text "✓ Interactive: " ]; text "Buttons are wired to LiveView event handlers. "; text "Clicks are processed on the server and the UI updates automatically." ];
-    ]
+let counter_view_interactive = fun count -> div
+  ~attrs:[ class_ "card" ]
+  [
+    h1 [ text "Counter (LiveView)" ];
+    span ~attrs:[ class_ "label" ] [ text "Interactive component with server-side handlers" ];
+    div ~attrs:[ class_ "count" ] [ text (Int.to_string count) ];
+    div
+      ~attrs:[ class_ "buttons" ]
+      [
+        button
+          ~attrs:[
+            class_ "btn btn-secondary";
+            on_click (fun _ -> Decrement);
+          ]
+          [ text "-" ];
+        button
+          ~attrs:[
+            class_ "btn btn-secondary";
+            on_click (fun _ -> Reset);
+          ]
+          [ text "Reset" ];
+        button
+          ~attrs:[
+            class_ "btn btn-primary";
+            on_click (fun _ -> Increment);
+          ]
+          [ text "+" ];
+      ];
+    div
+      ~attrs:[ class_ "success" ]
+      [
+        strong [ text "✓ Interactive: " ];
+        text "Buttons are wired to LiveView event handlers. ";
+        text "Clicks are processed on the server and the UI updates automatically.";
+      ];
+  ]
 
 let interactive_page count: msg t =
   html
     [
-      head [ title [ text "Counter - LiveView Interactive" ]; meta ~attrs:[ attr "charset" "UTF-8" ] (); style page_styles ];
+      head
+        [
+          title [ text "Counter - LiveView Interactive" ];
+          meta ~attrs:[ attr "charset" "UTF-8" ] ();
+          style page_styles;
+        ];
       body
         [
           counter_view_interactive count;
-          div ~attrs:[ class_ "card"; style_ "text-align: left" ]
+          div
+            ~attrs:[ class_ "card"; style_ "text-align: left" ]
             [
               h2 [ text "How does it work?" ];
               p
@@ -204,7 +250,15 @@ let interactive_page count: msg t =
                   text " event handlers added!";
                 ];
               p [ text "The enhanced component looks like:" ];
-              pre ~attrs:[ style_ "background: #f4f4f4; padding: 16px; border-radius: 6px; overflow-x: auto" ] [ code [ text {|type msg = Increment | Decrement | Reset
+              pre
+                ~attrs:[
+                  style_ "background: #f4f4f4; padding: 16px; border-radius: 6px; overflow-x: auto";
+                ]
+                [
+                  code
+                    [
+                      text
+                        {|type msg = Increment | Decrement | Reset
 
 let counter_view count =
   div ~attrs:[class_ "card"] [
@@ -222,7 +276,9 @@ let counter_view count =
         on_click (fun _ -> Increment)  (* 👈 Add handler! *)
       ] [text "+"];
     ];
-  ]|} ] ];
+  ]|};
+                    ];
+                ];
               p
                 [
                   text "In LiveView, these handlers are wired to your ";
@@ -244,7 +300,8 @@ let comparison_page: msg t =
           title [ text "Static vs LiveView Comparison" ];
           meta ~attrs:[ attr "charset" "UTF-8" ] ();
           style page_styles;
-          style {|
+          style
+            {|
         .comparison {
           display: grid;
           grid-template-columns: 1fr 1fr;
@@ -259,13 +316,34 @@ let comparison_page: msg t =
         ];
       body
         [
-          div ~attrs:[ class_ "card" ] [ h1 [ text "Progressive Enhancement" ]; p [ text "Start with static components, add LiveView when you need interactivity." ] ];
-          div ~attrs:[ class_ "comparison" ] [ div [ counter_view_static 5 ]; div [ counter_view_interactive 5 ] ];
-          div ~attrs:[ class_ "card"; style_ "text-align: left; max-width: 800px; margin: 40px auto" ]
+          div
+            ~attrs:[ class_ "card" ]
+            [
+              h1 [ text "Progressive Enhancement" ];
+              p [ text "Start with static components, add LiveView when you need interactivity." ];
+            ];
+          div
+            ~attrs:[ class_ "comparison" ]
+            [ div [ counter_view_static 5 ]; div [ counter_view_interactive 5 ] ];
+          div
+            ~attrs:[ class_ "card"; style_ "text-align: left; max-width: 800px; margin: 40px auto" ]
             [
               h2 [ text "The Power of Unified Components" ];
               h3 [ text "Same Structure, Different Rendering" ];
-              ul [ li [ strong [ text "Static HTML: " ]; code [ text "to_html component" ]; text " - Event handlers ignored, clean HTML output" ]; li [ strong [ text "LiveView: " ]; text "Event handlers wired to server, automatic UI updates" ] ];
+              ul
+                [
+                  li
+                    [
+                      strong [ text "Static HTML: " ];
+                      code [ text "to_html component" ];
+                      text " - Event handlers ignored, clean HTML output";
+                    ];
+                  li
+                    [
+                      strong [ text "LiveView: " ];
+                      text "Event handlers wired to server, automatic UI updates";
+                    ];
+                ];
               h3 [ text "Benefits" ];
               ul
                 [
@@ -276,7 +354,12 @@ let comparison_page: msg t =
                   li [ text "No client-side JavaScript required" ];
                 ];
               h3 [ text "Migration Path" ];
-              ol [ li [ text "Build your UI with components and static HTML" ]; li [ text "When you need interactivity, add event handlers" ]; li [ text "Wire to LiveView - the component structure stays the same!" ] ];
+              ol
+                [
+                  li [ text "Build your UI with components and static HTML" ];
+                  li [ text "When you need interactivity, add event handlers" ];
+                  li [ text "Wire to LiveView - the component structure stays the same!" ];
+                ];
             ];
         ];
     ]

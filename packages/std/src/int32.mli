@@ -1,5 +1,4 @@
 type t = int32
-
 val zero: t
 
 val min_int: t

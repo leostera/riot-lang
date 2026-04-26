@@ -41,24 +41,24 @@
    - Object field names for object differences: `["user"; "name"]`
    - Array indices as strings for array differences: `["users"; "0"; "name"]`
 *)
+
 (** {1 Types} *)
+
 type path_component =
   | Key of string
   | Index of int
-
 type path = path_component list
-
 type 'value kind =
   | Added of 'value
   | Removed of 'value
   | Changed of 'value * 'value
-
-type 'value change = { path: path; kind: 'value kind }
-
+type 'value change = {
+  path: path;
+  kind: 'value kind;
+}
 type 'value diff =
   | Equal
   | Diff of 'value change list
-
 (** {1 Helper Functions} *)
 val has_changes: 'a change list -> bool
 

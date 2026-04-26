@@ -6,5 +6,4 @@
    values without generation tracking.
 *)
 type t
-
 val default: t

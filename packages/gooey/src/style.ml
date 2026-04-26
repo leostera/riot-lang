@@ -86,46 +86,50 @@ type t = {
 
 let empty = {
   direction = LeftToRight;
-  sizing = {
-    width = Fit;
-    height = Fit;
-    min_width = None;
-    max_width = None;
-    min_height = None;
-    max_height = None
-  };
+  sizing =
+    {
+      width = Fit;
+      height = Fit;
+      min_width = None;
+      max_width = None;
+      min_height = None;
+      max_height = None;
+    };
   grow_weight = 1.0;
   alignment = { x = Left; y = Top };
   child_gap = 0;
-  padding = {
-    left = 0;
-    right = 0;
-    top = 0;
-    bottom = 0
-  };
-  margin = {
-    left = 0;
-    right = 0;
-    top = 0;
-    bottom = 0
-  };
+  padding =
+    {
+      left = 0;
+      right = 0;
+      top = 0;
+      bottom = 0;
+    };
+  margin =
+    {
+      left = 0;
+      right = 0;
+      top = 0;
+      bottom = 0;
+    };
   overflow = Visible;
   background = None;
   foreground = None;
   border_width = 0;
   border_color = None;
-  corner_radius = {
-    top_left = 0.0;
-    top_right = 0.0;
-    bottom_left = 0.0;
-    bottom_right = 0.0
-  };
+  corner_radius =
+    {
+      top_left = 0.0;
+      top_right = 0.0;
+      bottom_left = 0.0;
+      bottom_right = 0.0;
+    };
   text_size = 12;
   text_wrap = Words;
   text_align = TextLeft;
   font_weight = Normal;
   text_decoration = NoDecoration;
-  z_index = 0
+  z_index = 0;
 }
 
 let row = fun t -> { t with direction = LeftToRight }
@@ -158,7 +162,12 @@ let bg = fun color t -> { t with background = Some color }
 
 let fg = fun color t -> { t with foreground = Some color }
 
-let border = fun ?(width = 1) ?color ?(radius = {top_left = 0.0; top_right = 0.0; bottom_left = 0.0; bottom_right = 0.0}) () t -> { t with border_width = width; border_color = color; corner_radius = radius }
+let border = fun ?(width = 1) ?color ?(radius = {top_left = 0.0; top_right = 0.0; bottom_left = 0.0; bottom_right = 0.0}) () t -> {
+  t with
+  border_width = width;
+  border_color = color;
+  corner_radius = radius;
+}
 
 let text_size = fun size t -> { t with text_size = size }
 
@@ -179,16 +188,21 @@ let grow_weight = fun weight t ->
     if (
       match Float.compare weight 0.0 with
       | Order.LT -> true
-      | Order.EQ | Order.GT -> false
+      | Order.EQ
+      | Order.GT -> false
     ) then
       0.0
-    else weight
+    else
+      weight
   in
   { t with grow_weight = weight }
 
 let grow = fun t -> { t with sizing = { t.sizing with width = Grow; height = Grow } }
 
-let fixed = fun ~width ~height t -> { t with sizing = { t.sizing with width = Fixed width; height = Fixed height } }
+let fixed = fun ~width ~height t -> {
+  t with
+  sizing = { t.sizing with width = Fixed width; height = Fixed height };
+}
 
 let text_wrap = fun wrap t -> { t with text_wrap = wrap }
 
@@ -205,28 +219,28 @@ module Padding = struct
     left;
     right;
     top;
-    bottom
+    bottom;
   }
 
   let all n: padding = {
     left = n;
     right = n;
     top = n;
-    bottom = n
+    bottom = n;
   }
 
   let symmetric ~h ~v : padding = {
     left = h;
     right = h;
     top = v;
-    bottom = v
+    bottom = v;
   }
 
   let empty: padding = {
     left = 0;
     right = 0;
     top = 0;
-    bottom = 0
+    bottom = 0;
   }
 end
 
@@ -235,28 +249,28 @@ module Margin = struct
     left;
     right;
     top;
-    bottom
+    bottom;
   }
 
   let all n: margin = {
     left = n;
     right = n;
     top = n;
-    bottom = n
+    bottom = n;
   }
 
   let symmetric ~h ~v : margin = {
     left = h;
     right = h;
     top = v;
-    bottom = v
+    bottom = v;
   }
 
   let empty: margin = {
     left = 0;
     right = 0;
     top = 0;
-    bottom = 0
+    bottom = 0;
   }
 end
 
@@ -266,7 +280,7 @@ module CornerRadius = struct
       top_left;
       top_right;
       bottom_left;
-      bottom_right
+      bottom_right;
     }
 
   let all = fun r ->
@@ -274,27 +288,30 @@ module CornerRadius = struct
       top_left = r;
       top_right = r;
       bottom_left = r;
-      bottom_right = r
+      bottom_right = r;
     }
 
   let zero = {
     top_left = 0.0;
     top_right = 0.0;
     bottom_left = 0.0;
-    bottom_right = 0.0
+    bottom_right = 0.0;
   }
 end
 
 (* Note: italic not implemented - terminal support is limited *)
+
 let italic = bold
 
 (* Color helper - parse hex color strings *)
+
 let color = fun hex_str ->
   let hex = String.trim hex_str in
   let hex =
     if String.starts_with ~prefix:"#" hex then
       String.sub hex ~offset:1 ~len:(String.length hex - 1)
-    else hex
+    else
+      hex
   in
   match String.length hex with
   | 3 ->
@@ -304,7 +321,8 @@ let color = fun hex_str ->
       let b = String.make ~len:2 ~char:(String.unsafe_get hex 2) in
       let r_val = Int.of_string ("0x" ^ r) in
       let g_val = Int.of_string ("0x" ^ g) in
-      let b_val = Int.of_string ("0x" ^ b) in `rgb (r_val, g_val, b_val)
+      let b_val = Int.of_string ("0x" ^ b) in
+      `rgb (r_val, g_val, b_val)
   | 6 ->
       (* Full form like "FF0000" *)
       let r = String.sub hex ~offset:0 ~len:2 in
@@ -312,5 +330,6 @@ let color = fun hex_str ->
       let b = String.sub hex ~offset:4 ~len:2 in
       let r_val = Int.of_string ("0x" ^ r) in
       let g_val = Int.of_string ("0x" ^ g) in
-      let b_val = Int.of_string ("0x" ^ b) in `rgb (r_val, g_val, b_val)
+      let b_val = Int.of_string ("0x" ^ b) in
+      `rgb (r_val, g_val, b_val)
   | _ -> raise (Invalid_argument ("Invalid hex color: " ^ hex_str ^ " (expected #RGB or #RRGGBB)"))

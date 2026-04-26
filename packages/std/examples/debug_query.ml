@@ -9,9 +9,7 @@ let main ~args:_ =
             println ("Raw query string from Uri.query: '" ^ query_str ^ "'");
             let params = Net.Uri.Query.parse query_str in
             println ("Parsed params count: " ^ Int.to_string (List.length params));
-            List.for_each params ~fn:(
-              fun (k, v) -> println ("  " ^ k ^ " = '" ^ v ^ "'")
-            )
+            List.for_each params ~fn:(fun (k, v) -> println ("  " ^ k ^ " = '" ^ v ^ "'"))
         | None -> println "No query"
       );
       Ok ()

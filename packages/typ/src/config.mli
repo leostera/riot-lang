@@ -7,7 +7,6 @@ type t = {
   (** Optional structured event sink. *)
   on_event: (Event.t -> unit) option;
 }
-
 val default: t
 
 val with_capture_traces: t -> capture_traces:bool -> t

@@ -1,11 +1,8 @@
 open Std
 
 module Array = Collections.Array
-
 module Vector = Collections.Vector
-
 module De = Serde.De
-
 module Ser = Serde.Ser
 
 type rank =
@@ -58,9 +55,15 @@ type manifest_field =
   | Field_stops
   | Field_mirrors
 
-type berth_builder = { mutable island: string option; mutable berth: int option }
+type berth_builder = {
+  mutable island: string option;
+  mutable berth: int option;
+}
 
-type stop_builder = { mutable island: string option; mutable supplies: int option }
+type stop_builder = {
+  mutable island: string option;
+  mutable supplies: int option;
+}
 
 type manifest_builder = {
   mutable ship: string option;
@@ -98,10 +101,10 @@ let io_chunk_size = 4_096
 let human_size = fun bytes ->
   if bytes >= 1_000_000 then
     Int.to_string (bytes / 1_000_000) ^ "MB"
+  else if bytes >= 1_000 then
+    Int.to_string (bytes / 1_000) ^ "KB"
   else
-    if bytes >= 1_000 then
-      Int.to_string (bytes / 1_000) ^ "KB"
-    else Int.to_string bytes ^ "B"
+    Int.to_string bytes ^ "B"
 
 let io_writer_of_buffer =
   let module Write = struct
@@ -109,16 +112,18 @@ let io_writer_of_buffer =
 
     let write = fun buffer ~from ->
       let written = IO.Buffer.readable_bytes from in
-      IO.Buffer.append_slice buffer (IO.Buffer.readable from) |> Result.expect ~msg:"serde-cbor bench writer should append buffer contents";
+      IO.Buffer.append_slice buffer (IO.Buffer.readable from)
+      |> Result.expect ~msg:"serde-cbor bench writer should append buffer contents";
       Ok written
 
     let write_vectored = fun buffer ~from ->
       let written = ref 0 in
-      IO.IoVec.for_each ~fn:(
-        fun chunk ->
-          IO.Buffer.append_slice buffer chunk |> Result.expect ~msg:"serde-cbor bench writer should append slices";
-          written := !written + IO.IoSlice.length chunk
-      ) from;
+      IO.IoVec.for_each
+        ~fn:(fun chunk ->
+          IO.Buffer.append_slice buffer chunk
+          |> Result.expect ~msg:"serde-cbor bench writer should append slices";
+          written := !written + IO.IoSlice.length chunk)
+        from;
       Ok !written
 
     let flush = fun _buffer -> Ok ()
@@ -148,24 +153,33 @@ let manifest_fields =
       De.field "mirrors" Field_mirrors;
     ]
 
-let rank_decode = De.variant [ De.Variant.unit "Captain" Captain; De.Variant.unit "Doctor" Doctor; De.Variant.unit "Navigator" Navigator ]
+let rank_decode =
+  De.variant
+    [
+      De.Variant.unit "Captain" Captain;
+      De.Variant.unit "Doctor" Doctor;
+      De.Variant.unit "Navigator" Navigator;
+    ]
 
 let rank_encode =
   Ser.variant
     [
-      Ser.Variant.unit "Captain"
+      Ser.Variant.unit
+        "Captain"
         (
           function
           | Captain -> true
           | _ -> false
         );
-      Ser.Variant.unit "Doctor"
+      Ser.Variant.unit
+        "Doctor"
         (
           function
           | Doctor -> true
           | _ -> false
         );
-      Ser.Variant.unit "Navigator"
+      Ser.Variant.unit
+        "Navigator"
         (
           function
           | Navigator -> true
@@ -173,231 +187,211 @@ let rank_encode =
         );
     ]
 
-let berth_decode = De.record_mut ~fields:berth_fields ~create:(
-  fun (): berth_builder -> { island = None; berth = None }
-) ~step:(
-  fun reader builder field ->
-    match field with
-    | Some Berth_island -> builder.island <- Some (De.read reader De.string)
-    | Some Berth_berth -> builder.berth <- Some (De.read reader De.int)
-    | None -> ignore (De.read reader De.skip_any)
-) ~finish:(
-  fun builder ->
-    match builder.island, builder.berth with
-    | (Some island, Some berth) -> ({ island; berth } : berth)
-    | _ -> De.missing_field ()
-)
+let berth_decode =
+  De.record_mut
+    ~fields:berth_fields
+    ~create:(fun (): berth_builder -> { island = None; berth = None })
+    ~step:(fun reader builder field ->
+      match field with
+      | Some Berth_island -> builder.island <- Some (De.read reader De.string)
+      | Some Berth_berth -> builder.berth <- Some (De.read reader De.int)
+      | None -> ignore (De.read reader De.skip_any))
+    ~finish:(fun builder ->
+      match (builder.island, builder.berth) with
+      | (Some island, Some berth) -> ({ island; berth }: berth)
+      | _ -> De.missing_field ())
 
 let berth_encode =
   Ser.record
     (
       Ser.fields
         [
-          Ser.field "island" Ser.string
-            (
-              fun (value: berth) -> value.island
-            );
-          Ser.field "berth" Ser.int
-            (
-              fun (value: berth) -> value.berth
-            );
+          Ser.field "island" Ser.string (fun (value: berth) -> value.island);
+          Ser.field "berth" Ser.int (fun (value: berth) -> value.berth);
         ]
     )
 
-let stop_decode = De.record_mut ~fields:stop_fields ~create:(
-  fun (): stop_builder -> { island = None; supplies = None }
-) ~step:(
-  fun reader builder field ->
-    match field with
-    | Some Stop_island -> builder.island <- Some (De.read reader De.string)
-    | Some Stop_supplies -> builder.supplies <- Some (De.read reader De.int)
-    | None -> ignore (De.read reader De.skip_any)
-) ~finish:(
-  fun builder ->
-    match builder.island, builder.supplies with
-    | (Some island, Some supplies) -> ({ island; supplies } : stop)
-    | _ -> De.missing_field ()
-)
+let stop_decode =
+  De.record_mut
+    ~fields:stop_fields
+    ~create:(fun (): stop_builder -> { island = None; supplies = None })
+    ~step:(fun reader builder field ->
+      match field with
+      | Some Stop_island -> builder.island <- Some (De.read reader De.string)
+      | Some Stop_supplies -> builder.supplies <- Some (De.read reader De.int)
+      | None -> ignore (De.read reader De.skip_any))
+    ~finish:(fun builder ->
+      match (builder.island, builder.supplies) with
+      | (Some island, Some supplies) -> ({ island; supplies }: stop)
+      | _ -> De.missing_field ())
 
 let stop_encode =
   Ser.record
     (
       Ser.fields
         [
-          Ser.field "island" Ser.string
-            (
-              fun (value: stop) -> value.island
-            );
-          Ser.field "supplies" Ser.int
-            (
-              fun (value: stop) -> value.supplies
-            );
+          Ser.field "island" Ser.string (fun (value: stop) -> value.island);
+          Ser.field "supplies" Ser.int (fun (value: stop) -> value.supplies);
         ]
     )
 
-let manifest_decode = De.record_mut ~fields:manifest_fields ~create:(
-  fun (): manifest_builder ->
-    {
-      ship = None;
-      emergency = None;
-      crew_count = None;
-      small = None;
-      bounty = None;
-      heading = None;
-      nickname = None;
-      rank = None;
-      marker = None;
-      home = None;
-      tags = None;
-      scores = None;
-      stops = None;
-      mirrors = None
-    }
-) ~step:(
-  fun reader builder field ->
-    match field with
-    | Some Field_ship -> builder.ship <- Some (De.read reader De.string)
-    | Some Field_emergency -> builder.emergency <- Some (De.read reader De.bool)
-    | Some Field_crew_count -> builder.crew_count <- Some (De.read reader De.int)
-    | Some Field_small -> builder.small <- Some (De.read reader De.int32)
-    | Some Field_bounty -> builder.bounty <- Some (De.read reader De.int64)
-    | Some Field_heading -> builder.heading <- Some (De.read reader De.float)
-    | Some Field_nickname -> builder.nickname <- Some (De.read reader (De.option De.string))
-    | Some Field_rank -> builder.rank <- Some (De.read reader rank_decode)
-    | Some Field_marker -> builder.marker <- Some (De.read reader (De.const ()))
-    | Some Field_home -> builder.home <- Some (De.read reader berth_decode)
-    | Some Field_tags -> builder.tags <- Some (De.read reader (De.list De.string))
-    | Some Field_scores -> builder.scores <- Some (De.read reader (De.array De.int))
-    | Some Field_stops -> builder.stops <- Some (De.read reader (De.list stop_decode))
-    | Some Field_mirrors -> builder.mirrors <- Some (De.read reader (De.array stop_decode))
-    | None -> ignore (De.read reader De.skip_any)
-) ~finish:(
-  fun builder ->
-    match builder.ship, builder.emergency, builder.crew_count, builder.small, builder.bounty, builder.heading, builder.rank, builder.marker, builder.home, builder.tags, builder.scores, builder.stops, builder.mirrors with
-    | (Some ship, Some emergency, Some crew_count, Some small, Some bounty, Some heading, Some rank, Some marker, Some home, Some tags, Some scores, Some stops, Some mirrors) ->
-        let nickname =
-          match builder.nickname with
-          | Some nickname -> nickname
-          | None -> None
-        in
-        ({
-          ship;
-          emergency;
-          crew_count;
-          small;
-          bounty;
-          heading;
-          nickname;
-          rank;
-          marker;
-          home;
-          tags;
-          scores;
-          stops;
-          mirrors
-        } : manifest)
-    | _ -> De.missing_field ()
-)
+let manifest_decode =
+  De.record_mut
+    ~fields:manifest_fields
+    ~create:(fun (): manifest_builder ->
+      {
+        ship = None;
+        emergency = None;
+        crew_count = None;
+        small = None;
+        bounty = None;
+        heading = None;
+        nickname = None;
+        rank = None;
+        marker = None;
+        home = None;
+        tags = None;
+        scores = None;
+        stops = None;
+        mirrors = None;
+      })
+    ~step:(fun reader builder field ->
+      match field with
+      | Some Field_ship -> builder.ship <- Some (De.read reader De.string)
+      | Some Field_emergency -> builder.emergency <- Some (De.read reader De.bool)
+      | Some Field_crew_count -> builder.crew_count <- Some (De.read reader De.int)
+      | Some Field_small -> builder.small <- Some (De.read reader De.int32)
+      | Some Field_bounty -> builder.bounty <- Some (De.read reader De.int64)
+      | Some Field_heading -> builder.heading <- Some (De.read reader De.float)
+      | Some Field_nickname -> builder.nickname <- Some (De.read reader (De.option De.string))
+      | Some Field_rank -> builder.rank <- Some (De.read reader rank_decode)
+      | Some Field_marker -> builder.marker <- Some (De.read reader (De.const ()))
+      | Some Field_home -> builder.home <- Some (De.read reader berth_decode)
+      | Some Field_tags -> builder.tags <- Some (De.read reader (De.list De.string))
+      | Some Field_scores -> builder.scores <- Some (De.read reader (De.array De.int))
+      | Some Field_stops -> builder.stops <- Some (De.read reader (De.list stop_decode))
+      | Some Field_mirrors -> builder.mirrors <- Some (De.read reader (De.array stop_decode))
+      | None -> ignore (De.read reader De.skip_any))
+    ~finish:(fun builder ->
+      match (
+        builder.ship,
+        builder.emergency,
+        builder.crew_count,
+        builder.small,
+        builder.bounty,
+        builder.heading,
+        builder.rank,
+        builder.marker,
+        builder.home,
+        builder.tags,
+        builder.scores,
+        builder.stops,
+        builder.mirrors
+      ) with
+      | (Some ship, Some emergency, Some crew_count, Some small, Some bounty, Some heading, Some rank, Some marker, Some home, Some tags, Some scores, Some stops, Some mirrors) ->
+          let nickname =
+            match builder.nickname with
+            | Some nickname -> nickname
+            | None -> None
+          in
+          ({
+            ship;
+            emergency;
+            crew_count;
+            small;
+            bounty;
+            heading;
+            nickname;
+            rank;
+            marker;
+            home;
+            tags;
+            scores;
+            stops;
+            mirrors;
+          }: manifest)
+      | _ -> De.missing_field ())
 
 let manifest_encode =
   Ser.record
     (
       Ser.fields
         [
-          Ser.field "ship" Ser.string
-            (
-              fun (value: manifest) -> value.ship
-            );
-          Ser.field "emergency" Ser.bool
-            (
-              fun (value: manifest) -> value.emergency
-            );
-          Ser.field "crew_count" Ser.int
-            (
-              fun (value: manifest) -> value.crew_count
-            );
-          Ser.field "small" Ser.int32
-            (
-              fun (value: manifest) -> value.small
-            );
-          Ser.field "bounty" Ser.int64
-            (
-              fun (value: manifest) -> value.bounty
-            );
-          Ser.field "heading" Ser.float
-            (
-              fun (value: manifest) -> value.heading
-            );
-          Ser.field "nickname" (Ser.option Ser.string)
-            (
-              fun (value: manifest) -> value.nickname
-            );
-          Ser.field "rank" rank_encode
-            (
-              fun (value: manifest) -> value.rank
-            );
-          Ser.field "marker" Ser.null
-            (
-              fun (value: manifest) -> value.marker
-            );
-          Ser.field "home" berth_encode
-            (
-              fun (value: manifest) -> value.home
-            );
-          Ser.field "tags" (Ser.list Ser.string)
-            (
-              fun (value: manifest) -> value.tags
-            );
-          Ser.field "scores" (Ser.array Ser.int)
-            (
-              fun (value: manifest) -> value.scores
-            );
-          Ser.field "stops" (Ser.list stop_encode)
-            (
-              fun (value: manifest) -> value.stops
-            );
-          Ser.field "mirrors" (Ser.array stop_encode)
-            (
-              fun (value: manifest) -> value.mirrors
-            );
+          Ser.field "ship" Ser.string (fun (value: manifest) -> value.ship);
+          Ser.field "emergency" Ser.bool (fun (value: manifest) -> value.emergency);
+          Ser.field "crew_count" Ser.int (fun (value: manifest) -> value.crew_count);
+          Ser.field "small" Ser.int32 (fun (value: manifest) -> value.small);
+          Ser.field "bounty" Ser.int64 (fun (value: manifest) -> value.bounty);
+          Ser.field "heading" Ser.float (fun (value: manifest) -> value.heading);
+          Ser.field "nickname" (Ser.option Ser.string) (fun (value: manifest) -> value.nickname);
+          Ser.field "rank" rank_encode (fun (value: manifest) -> value.rank);
+          Ser.field "marker" Ser.null (fun (value: manifest) -> value.marker);
+          Ser.field "home" berth_encode (fun (value: manifest) -> value.home);
+          Ser.field "tags" (Ser.list Ser.string) (fun (value: manifest) -> value.tags);
+          Ser.field "scores" (Ser.array Ser.int) (fun (value: manifest) -> value.scores);
+          Ser.field "stops" (Ser.list stop_encode) (fun (value: manifest) -> value.stops);
+          Ser.field "mirrors" (Ser.array stop_encode) (fun (value: manifest) -> value.mirrors);
         ]
     )
 
 let repeat = fun text count ->
   let buffer = IO.Buffer.create ~size:(String.length text * count) in
-  for _ = 1 to count do IO.Buffer.add_string buffer text done;
+  for _ = 1 to count do
+    IO.Buffer.add_string buffer text
+  done;
   IO.Buffer.contents buffer
 
 let tags_of_count = fun count ->
   let tags = Vector.with_capacity ~size:count in
-  for index = 0 to count - 1 do Vector.push tags ~value:("log-pose-" ^ Int.to_string index) done;
+  for index = 0 to count - 1 do
+    Vector.push tags ~value:("log-pose-" ^ Int.to_string index)
+  done;
   tags
 
-let scores_of_count = fun count -> Array.init ~count ~fn:(
-  fun index -> (index * 97) mod 1_000_000
-)
+let scores_of_count = fun count -> Array.init ~count ~fn:(fun index -> (index * 97) mod 1_000_000)
 
-let stop_of_index = fun index prefix -> ({ island = prefix ^ "-island-" ^ Int.to_string index; supplies = (index * 17) mod 10_000 } : stop)
+let stop_of_index = fun index prefix -> ({
+  island = prefix ^ "-island-" ^ Int.to_string index;
+  supplies = (index * 17) mod 10_000;
+}: stop)
 
 let stops_vec_of_count = fun count prefix ->
   let stops = Vector.with_capacity ~size:count in
-  for index = 0 to count - 1 do Vector.push stops ~value:(stop_of_index index prefix) done;
+  for index = 0 to count - 1 do
+    Vector.push stops ~value:(stop_of_index index prefix)
+  done;
   stops
 
-let stops_array_of_count = fun count prefix -> Array.init ~count ~fn:(
-  fun index -> stop_of_index index prefix
-)
+let stops_array_of_count = fun count prefix ->
+  Array.init ~count ~fn:(fun index -> stop_of_index index prefix)
 
 let vec_to_list = fun values ->
   let items = ref [] in
-  Vector.for_each values ~fn:(
-    fun value -> items := value :: !items
-  );
+  Vector.for_each values ~fn:(fun value -> items := value :: !items);
   List.rev !items
 
-let equal_manifest = fun (left: manifest) (right: manifest) -> String.equal left.ship right.ship && Bool.equal left.emergency right.emergency && Int.equal left.crew_count right.crew_count && Int32.equal left.small right.small && Int64.equal left.bounty right.bounty && Float.equal left.heading right.heading && left.nickname = right.nickname && left.rank = right.rank && left.home = right.home && vec_to_list left.tags = vec_to_list right.tags && left.scores = right.scores && vec_to_list left.stops = vec_to_list right.stops && Array.to_list left.mirrors = Array.to_list right.mirrors
+let equal_manifest = fun (left: manifest) (right: manifest) ->
+  String.equal left.ship right.ship
+  && Bool.equal left.emergency right.emergency
+  && Int.equal left.crew_count right.crew_count
+  && Int32.equal left.small right.small
+  && Int64.equal left.bounty right.bounty
+  && Float.equal left.heading right.heading
+  && left.nickname = right.nickname
+  && left.rank = right.rank
+  && left.home = right.home
+  && vec_to_list left.tags = vec_to_list right.tags
+  && left.scores = right.scores
+  && vec_to_list left.stops = vec_to_list right.stops
+  && Array.to_list left.mirrors = Array.to_list right.mirrors
 
-let build_fixture = fun ({ label; tag_count; score_count; stop_count; string_repeat }: fixture_spec) ->
+let build_fixture = fun ({
+  label;
+  tag_count;
+  score_count;
+  stop_count;
+  string_repeat
+}: fixture_spec) ->
   let value: manifest = {
     ship = repeat "thousand-sunny-logbook-" string_repeat;
     emergency = false;
@@ -408,15 +402,21 @@ let build_fixture = fun ({ label; tag_count; score_count; stop_count; string_rep
     nickname = Some (repeat "black-leg-" string_repeat);
     rank = Captain;
     marker = ();
-    home = ({ island = repeat "water-seven-" string_repeat; berth = 7 } : berth);
+    home = ({ island = repeat "water-seven-" string_repeat; berth = 7 }: berth);
     tags = tags_of_count tag_count;
     scores = scores_of_count score_count;
     stops = stops_vec_of_count stop_count "log";
-    mirrors = stops_array_of_count stop_count "mirror"
+    mirrors = stops_array_of_count stop_count "mirror";
   }
   in
-  let encoded = Serde_cbor.to_string manifest_encode value |> Result.expect ~msg:("expected " ^ label ^ " fixture to encode") in
-  let decoded = Serde_cbor.from_string manifest_decode encoded |> Result.expect ~msg:("expected " ^ label ^ " fixture to decode") in
+  let encoded =
+    Serde_cbor.to_string manifest_encode value
+    |> Result.expect ~msg:("expected " ^ label ^ " fixture to encode")
+  in
+  let decoded =
+    Serde_cbor.from_string manifest_decode encoded
+    |> Result.expect ~msg:("expected " ^ label ^ " fixture to decode")
+  in
   if not (equal_manifest value decoded) then
     panic ("serde_cbor_bench: fixture roundtrip failed for " ^ label);
   { label; value; encoded }
@@ -426,7 +426,7 @@ let small_fixture_spec = {
   tag_count = 64;
   score_count = 64;
   stop_count = 16;
-  string_repeat = 4
+  string_repeat = 4;
 }
 
 let large_fixture_spec = {
@@ -434,35 +434,56 @@ let large_fixture_spec = {
   tag_count = 8_192;
   score_count = 8_192;
   stop_count = 1_024;
-  string_repeat = 256
+  string_repeat = 256;
 }
 
-let bench_encode_in_memory = fun fixture () -> ignore (Serde_cbor.to_string manifest_encode fixture.value)
+let bench_encode_in_memory = fun fixture () ->
+  ignore (Serde_cbor.to_string manifest_encode fixture.value)
 
 let bench_encode_writer = fun fixture () ->
-  let buffer = IO.Buffer.create ~size:(String.length fixture.encoded) in ignore (Serde_cbor.to_writer manifest_encode (io_writer_of_buffer buffer) fixture.value)
+  let buffer = IO.Buffer.create ~size:(String.length fixture.encoded) in
+  ignore (Serde_cbor.to_writer manifest_encode (io_writer_of_buffer buffer) fixture.value)
 
-let bench_decode_in_memory = fun fixture () -> ignore (Serde_cbor.from_string manifest_decode fixture.encoded)
+let bench_decode_in_memory = fun fixture () ->
+  ignore (Serde_cbor.from_string manifest_decode fixture.encoded)
 
-let bench_decode_reader = fun fixture () -> ignore (Serde_cbor.from_reader manifest_decode (String.to_reader ~chunk_size:io_chunk_size fixture.encoded))
+let bench_decode_reader = fun fixture () ->
+  ignore
+    (Serde_cbor.from_reader
+      manifest_decode
+      (String.to_reader ~chunk_size:io_chunk_size fixture.encoded))
 
 let benchmark_suite = fun fixture ->
   let size = human_size (String.length fixture.encoded) in
   let config =
     if String.equal fixture.label "small" then
       small_bench_config
-    else large_bench_config
+    else
+      large_bench_config
   in
   Bench.[
-    with_config ~config ("serde-cbor encode in-memory " ^ fixture.label ^ " dataset (" ^ size ^ ")") (bench_encode_in_memory fixture);
-    with_config ~config ("serde-cbor encode writer " ^ fixture.label ^ " dataset (" ^ size ^ ")") (bench_encode_writer fixture);
-    with_config ~config ("serde-cbor decode in-memory " ^ fixture.label ^ " dataset (" ^ size ^ ")") (bench_decode_in_memory fixture);
-    with_config ~config ("serde-cbor decode reader " ^ fixture.label ^ " dataset (" ^ size ^ ")") (bench_decode_reader fixture);
+    with_config
+      ~config
+      ("serde-cbor encode in-memory " ^ fixture.label ^ " dataset (" ^ size ^ ")")
+      (bench_encode_in_memory fixture);
+    with_config
+      ~config
+      ("serde-cbor encode writer " ^ fixture.label ^ " dataset (" ^ size ^ ")")
+      (bench_encode_writer fixture);
+    with_config
+      ~config
+      ("serde-cbor decode in-memory " ^ fixture.label ^ " dataset (" ^ size ^ ")")
+      (bench_decode_in_memory fixture);
+    with_config
+      ~config
+      ("serde-cbor decode reader " ^ fixture.label ^ " dataset (" ^ size ^ ")")
+      (bench_decode_reader fixture);
   ]
 
 let main ~args =
   let small_fixture = build_fixture small_fixture_spec in
   let large_fixture = build_fixture large_fixture_spec in
-  let benchmarks = benchmark_suite small_fixture @ benchmark_suite large_fixture in Bench.Cli.main ~name:"serde-cbor benchmarks" ~benchmarks ~args
+  let benchmarks = benchmark_suite small_fixture @ benchmark_suite large_fixture in
+  Bench.Cli.main ~name:"serde-cbor benchmarks" ~benchmarks ~args
 
 let () = Runtime.run ~main ~args:Env.args ()

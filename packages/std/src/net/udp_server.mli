@@ -21,11 +21,9 @@ open Global
    ```
 *)
 type t
-
 (** Errors returned by UDP server operations. *)
 type error =
   | System_error of IO.error
-
 (**
    Datagram handler invoked for each received packet. The [payload] bytes are
    trimmed to the datagram length.
@@ -36,7 +34,13 @@ type handler = socket:Udp_socket.t -> from:Addr.datagram_addr -> bytes -> len:in
    Bind a UDP server socket and remember the packet handler that should run for
    each datagram.
 *)
-val bind: ?reuse_addr:bool -> ?reuse_port:bool -> ?buffer_size:int -> Addr.datagram_addr -> handler:handler -> (t, error) Kernel.result
+val bind:
+  ?reuse_addr:bool ->
+  ?reuse_port:bool ->
+  ?buffer_size:int ->
+  Addr.datagram_addr ->
+  handler:handler ->
+  (t, error) Kernel.result
 
 (**
    Run the receive loop until an error occurs. Each datagram is dispatched in
@@ -45,7 +49,13 @@ val bind: ?reuse_addr:bool -> ?reuse_port:bool -> ?buffer_size:int -> Addr.datag
 val serve: t -> (unit, error) Kernel.result
 
 (** Convenience wrapper around {!bind} followed by {!serve}. *)
-val listen: ?reuse_addr:bool -> ?reuse_port:bool -> ?buffer_size:int -> Addr.datagram_addr -> handler:handler -> (unit, error) Kernel.result
+val listen:
+  ?reuse_addr:bool ->
+  ?reuse_port:bool ->
+  ?buffer_size:int ->
+  Addr.datagram_addr ->
+  handler:handler ->
+  (unit, error) Kernel.result
 
 (** Return the local address the server socket is bound to. *)
 val local_addr: t -> Addr.datagram_addr

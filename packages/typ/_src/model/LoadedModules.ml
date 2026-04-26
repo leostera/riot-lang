@@ -14,10 +14,12 @@ let make = fun ~by_required_name ~count ->
     count;
     values_cache = None;
     names_cache = None;
-    stable_key_cache = None
+    stable_key_cache = None;
   }
 
-let required_name_of_summary = fun summary -> ModuleTypings.module_name summary |> LocalModules.RequiredName.of_string
+let required_name_of_summary = fun summary ->
+  ModuleTypings.module_name summary
+  |> LocalModules.RequiredName.of_string
 
 let empty = make ~by_required_name:(Collections.HashMap.create ()) ~count:0
 
@@ -29,10 +31,9 @@ let invalidate_caches = fun loaded_modules ->
 let copy = fun loaded_modules ->
   let by_required_name = Collections.HashMap.with_capacity loaded_modules.count in
   Collections.HashMap.iter
-    (
-      fun required_name summary ->
-        let _ = Collections.HashMap.insert by_required_name required_name summary in ()
-    )
+    (fun required_name summary ->
+      let _ = Collections.HashMap.insert by_required_name required_name summary in
+      ())
     loaded_modules.by_required_name;
   make ~by_required_name ~count:loaded_modules.count
 
@@ -52,20 +53,24 @@ let of_list = fun summaries ->
     | None -> count := !count + 1
     | Some _ -> ()
   in
-  summaries |> List.iter insert;
+  summaries
+  |> List.iter insert;
   make ~by_required_name ~count:!count
 
 let len = fun loaded_modules -> loaded_modules.count
 
 let is_empty = fun loaded_modules -> Int.equal loaded_modules.count 0
 
-let get = fun loaded_modules ~required_name -> Collections.HashMap.get loaded_modules.by_required_name required_name
+let get = fun loaded_modules ~required_name ->
+  Collections.HashMap.get loaded_modules.by_required_name required_name
 
-let contains = fun loaded_modules ~required_name -> Collections.HashMap.contains_key loaded_modules.by_required_name required_name
+let contains = fun loaded_modules ~required_name ->
+  Collections.HashMap.contains_key loaded_modules.by_required_name required_name
 
 let iter = fun f loaded_modules -> Collections.HashMap.iter f loaded_modules.by_required_name
 
-let fold = fun f loaded_modules init -> Collections.HashMap.fold f loaded_modules.by_required_name init
+let fold = fun f loaded_modules init ->
+  Collections.HashMap.fold f loaded_modules.by_required_name init
 
 let merge = fun ~preferred ~fallback ~combine ->
   let by_required_name = Collections.HashMap.with_capacity (preferred.count + fallback.count) in
@@ -76,19 +81,19 @@ let merge = fun ~preferred ~fallback ~combine ->
     | None -> count := !count + 1
     | Some _ -> ()
   in
+  iter (fun _required_name summary -> insert_summary summary) preferred;
   iter
-    (
-      fun _required_name summary -> insert_summary summary
-    )
-    preferred;
-  iter
-    (
-      fun required_name summary ->
-        match Collections.HashMap.get by_required_name required_name with
-        | None -> insert_summary summary
-        | Some existing ->
-            let _ = Collections.HashMap.insert by_required_name required_name (combine existing summary) in ()
-    )
+    (fun required_name summary ->
+      match Collections.HashMap.get by_required_name required_name with
+      | None -> insert_summary summary
+      | Some existing ->
+          let _ =
+            Collections.HashMap.insert
+              by_required_name
+              required_name
+              (combine existing summary)
+          in
+          ())
     fallback;
   make ~by_required_name ~count:!count
 
@@ -113,10 +118,21 @@ let stable_key = fun loaded_modules ->
   | Some cache_key -> cache_key
   | None ->
       let cache_key =
-        values loaded_modules |> List.map
-          (
-            fun typings -> format Format.[ str (ModuleTypings.module_name typings); str ":"; str (ModuleTypings.source_hash typings |> Crypto.Digest.hex) ]
-          ) |> List.sort String.compare |> String.concat "|"
+        values loaded_modules
+        |> List.map
+          (fun typings ->
+            format
+              Format.[
+                str (ModuleTypings.module_name typings);
+                str ":";
+                str
+                  (
+                    ModuleTypings.source_hash typings
+                    |> Crypto.Digest.hex
+                  );
+              ])
+        |> List.sort String.compare
+        |> String.concat "|"
       in
       loaded_modules.stable_key_cache <- Some cache_key;
       cache_key

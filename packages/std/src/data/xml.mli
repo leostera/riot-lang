@@ -13,13 +13,18 @@
    let xml = Xml.declaration ^ "\n" ^ Xml.to_string doc
    ```
 *)
+
 (** {1 Types} *)
+
 (** XML node representation. *)
 type t =
-  | Element of { name: string; attrs: (string * string) list; children: t list }
+  | Element of {
+      name: string;
+      attrs: (string * string) list;
+      children: t list;
+    }
   | Text of string
   | CData of string
-
 (** {1 Constructors} *)
 (**
    Creates an XML element with optional attributes and child nodes.
@@ -59,6 +64,7 @@ val text: string -> t
 val cdata: string -> t
 
 (** {1 Rendering} *)
+
 (**
    Serializes an XML node using two-space indentation.
 

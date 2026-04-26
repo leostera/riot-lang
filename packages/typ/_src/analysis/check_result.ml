@@ -7,11 +7,25 @@ type binding_provenance =
   | LoweredPattern of PatternArenaId.t
   | Prelude
   | Ambient
-  | TypeConstructor of { type_name: string; scope_path: SurfacePath.t }
-  | Exception of { name: string; scope_path: SurfacePath.t }
-  | DeclaredValue of { name: string; scope_path: SurfacePath.t }
-  | Included of { module_path: SurfacePath.t }
-  | ModuleAlias of { alias_name: string; module_path: SurfacePath.t }
+  | TypeConstructor of {
+      type_name: string;
+      scope_path: SurfacePath.t;
+    }
+  | Exception of {
+      name: string;
+      scope_path: SurfacePath.t;
+    }
+  | DeclaredValue of {
+      name: string;
+      scope_path: SurfacePath.t;
+    }
+  | Included of {
+      module_path: SurfacePath.t;
+    }
+  | ModuleAlias of {
+      alias_name: string;
+      module_path: SurfacePath.t;
+    }
 
 type binding_ref = {
   entity_id: EntityId.t;
@@ -27,7 +41,11 @@ type expr_trace = {
   inferred_type: TypeRepr.t;
 }
 
-type item_trace = { item_id: ItemArenaId.t; binding_names: string list; exports_after: env }
+type item_trace = {
+  item_id: ItemArenaId.t;
+  binding_names: string list;
+  exports_after: env;
+}
 
 type t = {
   source_id: SourceId.t;

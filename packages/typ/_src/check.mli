@@ -9,31 +9,37 @@ type prepared_source = {
   public_module_name: LocalModules.AmbientName.t option;
   source: Source.t;
 }
-
-type checked_source = { path: Path.t; analysis: SourceAnalysis.t }
-
+type checked_source = {
+  path: Path.t;
+  analysis: SourceAnalysis.t;
+}
 type finished_group = {
   module_name: LocalModules.InternalName.t;
   checked_sources: checked_source list;
   module_result: ModuleTypings.t;
 }
-
 type 'acc package_check_result = {
   acc: 'acc;
   loaded_modules: LoadedModules.t;
   public_module_typings: LoadedModules.t;
 }
-
 type error =
   | MissingRequirements of {
-    module_name: LocalModules.InternalName.t;
-    requirements: MissingRequirements.t;
-  }
-  | MissingModuleTypings of { module_name: LocalModules.InternalName.t }
-  | MissingAnalysis of { module_name: LocalModules.InternalName.t; path: Path.t }
-  | StoreFailure of { module_name: LocalModules.InternalName.t; reason: string }
+      module_name: LocalModules.InternalName.t;
+      requirements: MissingRequirements.t;
+    }
+  | MissingModuleTypings of {
+      module_name: LocalModules.InternalName.t;
+    }
+  | MissingAnalysis of {
+      module_name: LocalModules.InternalName.t;
+      path: Path.t;
+    }
+  | StoreFailure of {
+      module_name: LocalModules.InternalName.t;
+      reason: string;
+    }
   | PackageStoreFailure of { package_name: string; reason: string }
-
 val check: config:TypConfig.t -> source:Source.t -> Check_result.t
 
 (**
@@ -50,4 +56,12 @@ val check: config:TypConfig.t -> source:Source.t -> Check_result.t
    loaded-module index and the final authoritative public-module typings
    bundle assembled inside the engine.
 *)
-val fold_package_sources: ?package_name:string -> ?package_fingerprint:Crypto.hash -> config:TypConfig.t -> ordered_sources:prepared_source list -> init:'acc -> f:('acc -> finished_group -> 'acc) -> unit -> ('acc package_check_result, error) result
+val fold_package_sources:
+  ?package_name:string ->
+  ?package_fingerprint:Crypto.hash ->
+  config:TypConfig.t ->
+  ordered_sources:prepared_source list ->
+  init:'acc ->
+  f:('acc -> finished_group -> 'acc) ->
+  unit ->
+  ('acc package_check_result, error) result

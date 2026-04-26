@@ -5,7 +5,7 @@ open Model
 (** Immutable analysis view over one [Session] revision. *)
 type t
 
-module SharedCaches : sig
+module SharedCaches: sig
   type t
 
   (**
@@ -34,7 +34,13 @@ end
 val make: revision:int -> roots:SourceId.t list -> config:TypConfig.t -> sources:Source.t list -> t
 
 (** Build a rooted snapshot while reusing one host-owned shared cache scope. *)
-val make_with_shared_caches: revision:int -> roots:SourceId.t list -> config:TypConfig.t -> sources:Source.t list -> shared_caches:SharedCaches.t -> t
+val make_with_shared_caches:
+  revision:int ->
+  roots:SourceId.t list ->
+  config:TypConfig.t ->
+  sources:Source.t list ->
+  shared_caches:SharedCaches.t ->
+  t
 
 (** Monotonic session revision captured by this snapshot. *)
 val revision: t -> int

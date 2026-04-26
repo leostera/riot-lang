@@ -20,7 +20,7 @@ let make = fun ~namespace ~filename ->
     module_name = mod_name;
     namespace;
     filename;
-    kind
+    kind;
   }
 
 let module_name = fun t -> t.module_name
@@ -45,4 +45,5 @@ let cmt = fun t -> Module_name.cmt t.module_name
 
 let cmti = fun t -> Module_name.cmti t.module_name
 
-let eq = fun a b -> Module_name.qualified_name a.module_name = Module_name.qualified_name b.module_name
+let eq = fun a b ->
+  Module_name.qualified_name a.module_name = Module_name.qualified_name b.module_name

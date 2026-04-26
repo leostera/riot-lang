@@ -27,9 +27,19 @@ type error =
   | Unterminated_string of { position: int }
   | Invalid_literal of { expected: string; position: int; found: string }
   | Invalid_number of { position: int; text: string }
-  | Expected_comma_or_bracket of { kind: string; position: int; found: char option }
-  | Expected_string_key of { position: int; found: char option }
-  | Expected_colon of { position: int; found: char option }
+  | Expected_comma_or_bracket of {
+      kind: string;
+      position: int;
+      found: char option;
+    }
+  | Expected_string_key of {
+      position: int;
+      found: char option;
+    }
+  | Expected_colon of {
+      position: int;
+      found: char option;
+    }
   | Unexpected_end_of_input of { expected: string }
   | Unexpected_character of { position: int; character: char; expected: string }
   | Extra_input_after_value of { position: int }
@@ -37,15 +47,28 @@ type error =
 
 let error_to_string = function
   | Unterminated_string { position } -> "Unterminated string at position " ^ Int.to_string position
-  | Invalid_literal { expected; position; found } -> "Invalid literal at position " ^ Int.to_string position ^ ": expected '" ^ expected ^ "' but found '" ^ found ^ "'"
-  | Invalid_number { position; text } -> "Invalid number format at position " ^ Int.to_string position ^ ": '" ^ text ^ "'"
+  | Invalid_literal { expected; position; found } ->
+      "Invalid literal at position "
+      ^ Int.to_string position
+      ^ ": expected '"
+      ^ expected
+      ^ "' but found '"
+      ^ found
+      ^ "'"
+  | Invalid_number { position; text } ->
+      "Invalid number format at position " ^ Int.to_string position ^ ": '" ^ text ^ "'"
   | Expected_comma_or_bracket { kind; position; found } ->
       let found_str =
         match found with
         | Some c -> String.make ~len:1 ~char:c
         | None -> "end of input"
       in
-      "Expected ',' or closing bracket in " ^ kind ^ " at position " ^ Int.to_string position ^ ", found " ^ found_str
+      "Expected ',' or closing bracket in "
+      ^ kind
+      ^ " at position "
+      ^ Int.to_string position
+      ^ ", found "
+      ^ found_str
   | Expected_string_key { position; found } ->
       let found_str =
         match found with
@@ -61,8 +84,16 @@ let error_to_string = function
       in
       "Expected ':' after object key at position " ^ Int.to_string position ^ ", found " ^ found_str
   | Unexpected_end_of_input { expected } -> "Unexpected end of input while parsing " ^ expected
-  | Unexpected_character { position; character; expected } -> "Unexpected character '" ^ String.make ~len:1 ~char:character ^ "' at position " ^ Int.to_string position ^ " (expected " ^ expected ^ ")"
-  | Extra_input_after_value { position } -> "Extra input after JSON value at position " ^ Int.to_string position
+  | Unexpected_character { position; character; expected } ->
+      "Unexpected character '"
+      ^ String.make ~len:1 ~char:character
+      ^ "' at position "
+      ^ Int.to_string position
+      ^ " (expected "
+      ^ expected
+      ^ ")"
+  | Extra_input_after_value { position } ->
+      "Extra input after JSON value at position " ^ Int.to_string position
   | Unknown_error msg -> "Unknown error: " ^ msg
 
 (** Escape a string for JSON *)
@@ -95,18 +126,20 @@ let add_unicode_escape = fun buffer code ->
 
 let escape_string = fun s ->
   let buffer = Buffer.create ~size:(String.length s * 2) in
-  String.for_each ~fn:(
-    function
-    | '"' -> Buffer.add_string buffer "\\\""
-    | '\\' -> Buffer.add_string buffer "\\\\"
-    | '\b' -> Buffer.add_string buffer "\\b"
-    | '\012' -> Buffer.add_string buffer "\\f"
-    | '\n' -> Buffer.add_string buffer "\\n"
-    | '\r' -> Buffer.add_string buffer "\\r"
-    | '\t' -> Buffer.add_string buffer "\\t"
-    | c when Char.to_int c < 0x20 -> add_unicode_escape buffer (Char.to_int c)
-    | c -> Buffer.add_char buffer c
-  ) s;
+  String.for_each
+    ~fn:(
+      function
+      | '"' -> Buffer.add_string buffer "\\\""
+      | '\\' -> Buffer.add_string buffer "\\\\"
+      | '\b' -> Buffer.add_string buffer "\\b"
+      | '\012' -> Buffer.add_string buffer "\\f"
+      | '\n' -> Buffer.add_string buffer "\\n"
+      | '\r' -> Buffer.add_string buffer "\\r"
+      | '\t' -> Buffer.add_string buffer "\\t"
+      | c when Char.to_int c < 0x20 -> add_unicode_escape buffer (Char.to_int c)
+      | c -> Buffer.add_char buffer c
+    )
+    s;
   Buffer.contents buffer
 
 (** Format float for JSON - ensures valid JSON number format *)
@@ -114,19 +147,20 @@ let format_float = fun f ->
   (* Handle special float values *)
   if Float.is_nan f then
     "null"
-  else
-    if Float.is_infinite f then
-      if f > 0.0 then
-        "null"
+  else if Float.is_infinite f then
+    if f > 0.0 then
+      "null"
       (* or could use a large number *)
-      else "null"
     else
-      let s = Float.to_string f in
-      (* OCaml's string_of_float can produce "2000." which is invalid JSON *)
-      (* If it ends with "." add a "0" to make it valid JSON *)
-      if String.ends_with ~suffix:"." s then
-        s ^ "0"
-      else s
+      "null"
+  else
+    let s = Float.to_string f in
+    (* OCaml's string_of_float can produce "2000." which is invalid JSON *)
+    (* If it ends with "." add a "0" to make it valid JSON *)
+    if String.ends_with ~suffix:"." s then
+      s ^ "0"
+    else
+      s
 
 (** Serialize JSON to string *)
 let rec to_string = function
@@ -134,33 +168,56 @@ let rec to_string = function
   | Bool b ->
       if b then
         "true"
-      else "false"
+      else
+        "false"
   | Int i -> Int.to_string i
   | Float f -> format_float f
   | String s -> "\"" ^ escape_string s ^ "\""
   | Array items -> "[" ^ String.concat "," (List.map ~fn:to_string items) ^ "]"
-  | Object fields -> "{" ^ String.concat "," (List.map ~fn:(
-    fun ((k, v)) -> "\"" ^ escape_string k ^ "\":" ^ to_string v
-  ) fields) ^ "}"
+  | Object fields ->
+      "{"
+      ^ String.concat
+        ","
+        (List.map ~fn:(fun ((k, v)) -> "\"" ^ escape_string k ^ "\":" ^ to_string v) fields)
+      ^ "}"
   | Embed t -> to_string t
 
 let indentation = fun depth -> String.make ~len:(depth * 2) ~char:' '
 
 let rec to_string_pretty = fun ?(depth = 0) json ->
   match json with
-  | Null | Bool _ | Int _ | Float _ | String _ -> to_string json
+  | Null
+  | Bool _
+  | Int _
+  | Float _
+  | String _ -> to_string json
   | Array [] -> "[]"
   | Array items ->
       let item_indent = indentation (depth + 1) in
-      let closing_indent = indentation depth in "[\n" ^ (List.map items ~fn:(
-        fun item -> item_indent ^ to_string_pretty ~depth:(depth + 1) item
-      ) |> String.concat ",\n") ^ "\n" ^ closing_indent ^ "]"
+      let closing_indent = indentation depth in
+      "[\n"
+      ^ (
+        List.map items ~fn:(fun item -> item_indent ^ to_string_pretty ~depth:(depth + 1) item)
+        |> String.concat ",\n"
+      )
+      ^ "\n"
+      ^ closing_indent
+      ^ "]"
   | Object [] -> "{}"
   | Object fields ->
       let field_indent = indentation (depth + 1) in
-      let closing_indent = indentation depth in "{\n" ^ (List.map fields ~fn:(
-        fun (key, value) -> field_indent ^ to_string (String key) ^ ": " ^ to_string_pretty ~depth:(depth + 1) value
-      ) |> String.concat ",\n") ^ "\n" ^ closing_indent ^ "}"
+      let closing_indent = indentation depth in
+      "{\n"
+      ^ (
+        List.map
+          fields
+          ~fn:(fun (key, value) ->
+            field_indent ^ to_string (String key) ^ ": " ^ to_string_pretty ~depth:(depth + 1) value)
+        |> String.concat ",\n"
+      )
+      ^ "\n"
+      ^ closing_indent
+      ^ "}"
   | Embed t -> to_string_pretty t
 
 (** Parse JSON from string *)
@@ -168,13 +225,18 @@ let of_string = fun str ->
   let len = String.length str in
   let pos = cell 0 in
   let peek () = String.get str ~at:!pos in
-  let advance () = pos := !pos + 1 in
+  let advance () =
+    pos := !pos + 1
+  in
   let rec skip_whitespace () =
     if !pos >= len then
       ()
     else
       match peek () with
-      | Some ' ' | Some '\t' | Some '\n' | Some '\r' ->
+      | Some ' '
+      | Some '\t'
+      | Some '\n'
+      | Some '\r' ->
           advance ();
           skip_whitespace ()
       | _ -> ()
@@ -199,13 +261,25 @@ let of_string = fun str ->
         let decode_at index =
           match hex_value (String.get_unchecked str ~at:index) with
           | Some value -> value
-          | None -> raise_error (Unexpected_character { position = index; character = String.get_unchecked str ~at:index; expected = "hex digit" })
+          | None ->
+              raise_error
+                (Unexpected_character {
+                  position = index;
+                  character = String.get_unchecked str ~at:index;
+                  expected = "hex digit";
+                })
         in
-        let code = (decode_at (!pos + 1) lsl 12) lor (decode_at (!pos + 2) lsl 8) lor (decode_at (!pos + 3) lsl 4) lor decode_at (!pos + 4) in
+        let code =
+          (decode_at (!pos + 1) lsl 12)
+          lor (decode_at (!pos + 2) lsl 8)
+          lor (decode_at (!pos + 3) lsl 4)
+          lor decode_at (!pos + 4)
+        in
         let rune =
           match Kernel.Unicode.Rune.from_int code with
           | Ok rune -> rune
-          | Error (Kernel.Unicode.Rune.BadRune { int }) -> raise_error (Unknown_error ("invalid unicode scalar value " ^ Int.to_string int))
+          | Error (Kernel.Unicode.Rune.BadRune { int }) ->
+              raise_error (Unknown_error ("invalid unicode scalar value " ^ Int.to_string int))
         in
         advance ();
       advance ();
@@ -272,10 +346,14 @@ let of_string = fun str ->
     let is_float = cell false in
     let rec consume () =
       match peek () with
-      | Some ('0' .. '9' | '-' | '+') ->
+      | Some ('0' .. '9'
+      | '-'
+      | '+') ->
           advance ();
           consume ()
-      | Some ('.' | 'e' | 'E') ->
+      | Some ('.'
+      | 'e'
+      | 'E') ->
           is_float := true;
           advance ();
           consume ()
@@ -309,12 +387,15 @@ let of_string = fun str ->
               pos := !pos + 4;
               Null
             )
-          else raise_error (Invalid_literal { expected = "null"; position = start_pos; found = substring })
+          else
+            raise_error
+              (Invalid_literal { expected = "null"; position = start_pos; found = substring })
         else
           let found =
             if !pos < len then
               String.sub str ~offset:!pos ~len:(len - !pos)
-            else ""
+            else
+              ""
           in
           raise_error (Invalid_literal { expected = "null"; position = start_pos; found })
     | Some 't' ->
@@ -328,10 +409,10 @@ let of_string = fun str ->
           let found =
             if !pos + 4 <= len then
               String.sub str ~offset:!pos ~len:4
+            else if !pos < len then
+              String.sub str ~offset:!pos ~len:(len - !pos)
             else
-              if !pos < len then
-                String.sub str ~offset:!pos ~len:(len - !pos)
-              else ""
+              ""
           in
           raise_error (Invalid_literal { expected = "true"; position = start_pos; found })
     | Some 'f' ->
@@ -345,10 +426,10 @@ let of_string = fun str ->
           let found =
             if !pos + 5 <= len then
               String.sub str ~offset:!pos ~len:5
+            else if !pos < len then
+              String.sub str ~offset:!pos ~len:(len - !pos)
             else
-              if !pos < len then
-                String.sub str ~offset:!pos ~len:(len - !pos)
-              else ""
+              ""
           in
           raise_error (Invalid_literal { expected = "false"; position = start_pos; found })
     | Some '"' -> String (parse_string ())
@@ -371,8 +452,12 @@ let of_string = fun str ->
             | Some ']' ->
                 advance ();
                 Array (List.reverse (item :: acc))
-            | Some c -> raise_error (Expected_comma_or_bracket { kind = "array"; position = !pos; found = Some c })
-            | None -> raise_error (Expected_comma_or_bracket { kind = "array"; position = !pos; found = None })
+            | Some c ->
+                raise_error
+                  (Expected_comma_or_bracket { kind = "array"; position = !pos; found = Some c })
+            | None ->
+                raise_error
+                  (Expected_comma_or_bracket { kind = "array"; position = !pos; found = None })
           in
           parse_items []
     | Some '{' ->
@@ -409,12 +494,18 @@ let of_string = fun str ->
             | Some '}' ->
                 advance ();
                 Object (List.reverse ((key, value) :: acc))
-            | Some c -> raise_error (Expected_comma_or_bracket { kind = "object"; position = !pos; found = Some c })
-            | None -> raise_error (Expected_comma_or_bracket { kind = "object"; position = !pos; found = None })
+            | Some c ->
+                raise_error
+                  (Expected_comma_or_bracket { kind = "object"; position = !pos; found = Some c })
+            | None ->
+                raise_error
+                  (Expected_comma_or_bracket { kind = "object"; position = !pos; found = None })
           in
           parse_fields []
-    | Some ('-' | '0' .. '9') -> parse_number ()
-    | Some c -> raise_error (Unexpected_character { position = !pos; character = c; expected = "value" })
+    | Some ('-'
+    | '0' .. '9') -> parse_number ()
+    | Some c ->
+        raise_error (Unexpected_character { position = !pos; character = c; expected = "value" })
   in
   try
     skip_whitespace ();
@@ -422,7 +513,8 @@ let of_string = fun str ->
     skip_whitespace ();
     if !pos < len then
       Error (Extra_input_after_value { position = !pos })
-    else Ok result
+    else
+      Ok result
   with
   | Json_parse_error err -> Error err
   | exn -> Error (Unknown_error (Kernel.Exception.to_string exn))
@@ -444,11 +536,9 @@ let obj = fun fields -> Object fields
 
 let get_field = fun name ->
   function
-  | Object fields -> List.find fields ~fn:(
-    fun (key, _) -> String.equal key name
-  ) |> Option.map ~fn:(
-    fun (_, value) -> value
-  )
+  | Object fields ->
+      List.find fields ~fn:(fun (key, _) -> String.equal key name)
+      |> Option.map ~fn:(fun (_, value) -> value)
   | _ -> None
 
 let get_string = function
@@ -473,27 +563,25 @@ let get_object = function
 
 let rec diff = fun a b ->
   let rec diff_at_path path a b =
-    match a, b with
-    | Null, Null -> []
-    | Bool x, Bool y when x = y -> []
-    | Int x, Int y when x = y -> []
-    | Float x, Float y when x = y -> []
-    | String x, String y when x = y -> []
-    | Array xs, Array ys -> diff_arrays path xs ys
-    | Object xs, Object ys -> diff_objects path xs ys
+    match (a, b) with
+    | (Null, Null) -> []
+    | (Bool x, Bool y) when x = y -> []
+    | (Int x, Int y) when x = y -> []
+    | (Float x, Float y) when x = y -> []
+    | (String x, String y) when x = y -> []
+    | (Array xs, Array ys) -> diff_arrays path xs ys
+    | (Object xs, Object ys) -> diff_objects path xs ys
     | _ ->
         [
           {
             Diff.path;
-            kind = Diff.Changed (a, b)
+            kind = Diff.Changed (a, b);
           };
         ]
   and diff_arrays path xs ys =
     let max_len = max (List.length xs) (List.length ys) in
     let diffs_acc = Vector.with_capacity ~size:max_len in
-    let push_diffs diffs = List.for_each diffs ~fn:(
-      fun diff -> Vector.push diffs_acc ~value:diff
-    ) in
+    let push_diffs diffs = List.for_each diffs ~fn:(fun diff -> Vector.push diffs_acc ~value:diff) in
     let rec loop idx =
       if idx >= max_len then
         Array.to_list (Vector.to_array diffs_acc)
@@ -501,56 +589,49 @@ let rec diff = fun a b ->
         let x_opt = List.get xs ~at:idx in
         let y_opt = List.get ys ~at:idx in
         let idx_path = path @ [ Diff.Index idx ] in
-        match x_opt, y_opt with
-        | Some x, Some y ->
+        match (x_opt, y_opt) with
+        | (Some x, Some y) ->
             let diffs = diff_at_path idx_path x y in
             push_diffs diffs;
             loop (idx + 1)
-        | Some x, None ->
+        | (Some x, None) ->
             let diff = { Diff.path = idx_path; kind = Diff.Removed x } in
             Vector.push diffs_acc ~value:diff;
             loop (idx + 1)
-        | None, Some y ->
+        | (None, Some y) ->
             let diff = { Diff.path = idx_path; kind = Diff.Added y } in
             Vector.push diffs_acc ~value:diff;
             loop (idx + 1)
-        | None, None -> loop (idx + 1)
+        | (None, None) -> loop (idx + 1)
     in
     loop 0
   and diff_objects path xs ys =
     let all_keys =
-      let xs_keys = List.map xs ~fn:(
-        fun (key, _) -> key
-      ) in
-      let ys_keys = List.map ys ~fn:(
-        fun (key, _) -> key
-      ) in List.unique ~compare:String.compare (List.sort (xs_keys @ ys_keys) ~compare:String.compare)
+      let xs_keys = List.map xs ~fn:(fun (key, _) -> key) in
+      let ys_keys = List.map ys ~fn:(fun (key, _) -> key) in
+      List.unique ~compare:String.compare (List.sort (xs_keys @ ys_keys) ~compare:String.compare)
     in
     let diffs_acc = Vector.with_capacity ~size:(List.length all_keys) in
-    let push_diffs diffs = List.for_each diffs ~fn:(
-      fun diff -> Vector.push diffs_acc ~value:diff
-    ) in
+    let push_diffs diffs = List.for_each diffs ~fn:(fun diff -> Vector.push diffs_acc ~value:diff) in
     let rec loop keys =
       match keys with
       | [] -> Array.to_list (Vector.to_array diffs_acc)
       | key :: rest ->
-          let x_opt = List.find xs ~fn:(
-            fun (item_key, _) -> item_key = key
-          ) |> Option.map ~fn:(
-            fun (_, value) -> value
-          ) in
-          let y_opt = List.find ys ~fn:(
-            fun (item_key, _) -> item_key = key
-          ) |> Option.map ~fn:(
-            fun (_, value) -> value
-          ) in
+          let x_opt =
+            List.find xs ~fn:(fun (item_key, _) -> item_key = key)
+            |> Option.map ~fn:(fun (_, value) -> value)
+          in
+          let y_opt =
+            List.find ys ~fn:(fun (item_key, _) -> item_key = key)
+            |> Option.map ~fn:(fun (_, value) -> value)
+          in
           let key_path = path @ [ Diff.Key key ] in
           let new_diffs =
-            match x_opt, y_opt with
-            | Some x, Some y -> diff_at_path key_path x y
-            | Some x, None -> [ { Diff.path = key_path; kind = Diff.Removed x } ]
-            | None, Some y -> [ { Diff.path = key_path; kind = Diff.Added y } ]
-            | None, None -> []
+            match (x_opt, y_opt) with
+            | (Some x, Some y) -> diff_at_path key_path x y
+            | (Some x, None) -> [ { Diff.path = key_path; kind = Diff.Removed x } ]
+            | (None, Some y) -> [ { Diff.path = key_path; kind = Diff.Added y } ]
+            | (None, None) -> []
           in
           push_diffs new_diffs;
           loop rest

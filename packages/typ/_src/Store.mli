@@ -9,8 +9,10 @@ open Model
    the concrete host cache implementation.
 *)
 type t
-
-type package_bundle = { fingerprint: Crypto.hash; typings: ModuleTypings.t list }
+type package_bundle = {
+  fingerprint: Crypto.hash;
+  typings: ModuleTypings.t list;
+}
 
 (** Build a [Typ.Store] on top of a generic [Contentstore]. *)
 val create: Contentstore.t -> unit -> t
@@ -42,10 +44,19 @@ val save_module_typings: t -> ModuleTypings.t -> (unit, string) result
    Hosts use this to cache the locally computed module-typing closure for a
    package under the current build lane.
 *)
-val save_package_module_typings: t -> package_name:string -> ModuleTypings.t list -> (unit, string) result
+val save_package_module_typings:
+  t ->
+  package_name:string ->
+  ModuleTypings.t list ->
+  (unit, string) result
 
 (**
    Persist a package bundle together with the transitive fingerprint that
    proves which source and dependency interface inputs produced it.
 *)
-val save_package_bundle: t -> package_name:string -> fingerprint:Crypto.hash -> ModuleTypings.t list -> (unit, string) result
+val save_package_bundle:
+  t ->
+  package_name:string ->
+  fingerprint:Crypto.hash ->
+  ModuleTypings.t list ->
+  (unit, string) result

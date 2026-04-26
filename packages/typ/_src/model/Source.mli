@@ -8,13 +8,11 @@ type kind =
   | Fragment
   (** Source text produced by a generator or macro lane. *)
   | Generated
-
 type origin =
   (** Host path for a file-backed source. *)
   | Path of Path.t
   (** Human-readable label for fragments and synthetic inputs. *)
   | Label of string
-
 type t = {
   (** Stable identity preserved across text updates to this logical source. *)
   source_id: SourceId.t;
@@ -49,7 +47,17 @@ val hash: implicit_opens:SurfacePath.t list -> cst:Syn.Cst.source_file -> Crypto
    Build one logical source record from host-prepared parse and CST
    artifacts.
 *)
-val make_prepared: source_id:SourceId.t -> kind:kind -> module_name:string -> implicit_opens:SurfacePath.t list -> origin:origin -> revision:int -> source_hash:Crypto.hash -> parse_result:Syn.Parser.parse_result -> cst:Syn.Cst.source_file -> t
+val make_prepared:
+  source_id:SourceId.t ->
+  kind:kind ->
+  module_name:string ->
+  implicit_opens:SurfacePath.t list ->
+  origin:origin ->
+  revision:int ->
+  source_hash:Crypto.hash ->
+  parse_result:Syn.Parser.parse_result ->
+  cst:Syn.Cst.source_file ->
+  t
 
 (**
    Host-side fallback for simple file-backed inputs that do not already know a

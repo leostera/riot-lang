@@ -9,6 +9,7 @@ type 'a override =
   | Override of 'a
 
 (** Replace with this value *)
+
 (** Profile override - partially specified profile fields *)
 type profile_override = {
   kind: Ocaml_compiler.compilation_kind override;
@@ -77,7 +78,7 @@ let debug = {
   ];
   cc_flags = [];
   ld_flags = [];
-  ocamlc_flags = [ "-g" ]
+  ocamlc_flags = [ "-g" ];
 }
 
 (** Default release profile - optimized, strict *)
@@ -94,7 +95,7 @@ let release = {
   errors = [ Ocaml_compiler.All ];
   cc_flags = [];
   ld_flags = [];
-  ocamlc_flags = []
+  ocamlc_flags = [];
 }
 
 (** Merge two profiles - override takes precedence per-field *)
@@ -102,11 +103,12 @@ let merge = fun base override ->
   {
     name = override.name;
     kind = override.kind;
-    inline = (
-      match override.inline with
-      | None -> base.inline
-      | some -> some
-    );
+    inline =
+      (
+        match override.inline with
+        | None -> base.inline
+        | some -> some
+      );
     no_assert = override.no_assert;
     compact = override.compact;
     unsafe = override.unsafe;
@@ -116,81 +118,93 @@ let merge = fun base override ->
     errors = override.errors;
     cc_flags = base.cc_flags @ override.cc_flags;
     ld_flags = base.ld_flags @ override.ld_flags;
-    ocamlc_flags = base.ocamlc_flags @ override.ocamlc_flags
+    ocamlc_flags = base.ocamlc_flags @ override.ocamlc_flags;
   }
 
 (** Apply a profile override to a base profile *)
 let apply_override = fun base (override: profile_override) ->
   {
     name = base.name;
-    kind = (
-      match override.kind with
-      | Inherit -> base.kind
-      | Override k -> k
-    );
-    inline = (
-      match override.inline with
-      | Inherit -> base.inline
-      | Override opt -> opt
-    );
-    no_assert = (
-      match override.no_assert with
-      | Inherit -> base.no_assert
-      | Override b -> b
-    );
-    compact = (
-      match override.compact with
-      | Inherit -> base.compact
-      | Override b -> b
-    );
-    unsafe = (
-      match override.unsafe with
-      | Inherit -> base.unsafe
-      | Override b -> b
-    );
-    no_alias_deps = (
-      match override.no_alias_deps with
-      | Inherit -> base.no_alias_deps
-      | Override b -> b
-    );
-    open_modules = (
-      match override.open_modules with
-      | Inherit -> base.open_modules
-      | Override l -> l
-    );
-    warnings = (
-      match override.warnings with
-      | Inherit -> base.warnings
-      | Override l -> l
-    );
-    errors = (
-      match override.errors with
-      | Inherit -> base.errors
-      | Override l -> l
-    );
-    cc_flags = (
-      match override.cc_flags with
-      | Inherit -> base.cc_flags
-      | Override l -> base.cc_flags @ l
-    );
-    ld_flags = (
-      match override.ld_flags with
-      | Inherit -> base.ld_flags
-      | Override l -> base.ld_flags @ l
-    );
-    ocamlc_flags = (
-      match override.ocamlc_flags with
-      | Inherit -> base.ocamlc_flags
-      | Override l -> base.ocamlc_flags @ l
-    )
+    kind =
+      (
+        match override.kind with
+        | Inherit -> base.kind
+        | Override k -> k
+      );
+    inline =
+      (
+        match override.inline with
+        | Inherit -> base.inline
+        | Override opt -> opt
+      );
+    no_assert =
+      (
+        match override.no_assert with
+        | Inherit -> base.no_assert
+        | Override b -> b
+      );
+    compact =
+      (
+        match override.compact with
+        | Inherit -> base.compact
+        | Override b -> b
+      );
+    unsafe =
+      (
+        match override.unsafe with
+        | Inherit -> base.unsafe
+        | Override b -> b
+      );
+    no_alias_deps =
+      (
+        match override.no_alias_deps with
+        | Inherit -> base.no_alias_deps
+        | Override b -> b
+      );
+    open_modules =
+      (
+        match override.open_modules with
+        | Inherit -> base.open_modules
+        | Override l -> l
+      );
+    warnings =
+      (
+        match override.warnings with
+        | Inherit -> base.warnings
+        | Override l -> l
+      );
+    errors =
+      (
+        match override.errors with
+        | Inherit -> base.errors
+        | Override l -> l
+      );
+    cc_flags =
+      (
+        match override.cc_flags with
+        | Inherit -> base.cc_flags
+        | Override l -> base.cc_flags @ l
+      );
+    ld_flags =
+      (
+        match override.ld_flags with
+        | Inherit -> base.ld_flags
+        | Override l -> base.ld_flags @ l
+      );
+    ocamlc_flags =
+      (
+        match override.ocamlc_flags with
+        | Inherit -> base.ocamlc_flags
+        | Override l -> base.ocamlc_flags @ l
+      );
   }
 
 (** Apply overrides from a list by looking up the profile's name *)
 let apply_overrides = fun base overrides ->
   Log.debug ("[PROFILE] apply_overrides: looking for profile '" ^ base.name ^ "' in overrides");
-  Log.debug ("[PROFILE] available overrides: " ^ String.concat ", " (List.map overrides ~fn:(
-    fun (name, _override) -> name
-  )));
+  Log.debug
+    ("[PROFILE] available overrides: "
+    ^ String.concat ", " (List.map overrides ~fn:(fun (name, _override) -> name)));
   match Fields.get base.name overrides with
   | None ->
       Log.debug ("[PROFILE] No override found for '" ^ base.name ^ "'");
@@ -200,125 +214,150 @@ let apply_overrides = fun base overrides ->
       apply_override base override
 
 (** Parse profile_override from TOML table *)
-let override_from_toml: (string * Std.Data.Toml.value) list -> profile_override = fun table_items -> let open Std.Data.Toml in
-let get_string_list key =
-  match Fields.get key table_items with
-  | Some (Array arr) -> Override (List.filter_map ~fn:(
-    function
-    | String s -> Some s
-    | _ -> None
-  ) arr)
-  | _ -> Inherit
-in
-let get_int_opt key =
-  match Fields.get key table_items with
-  | Some (String s) -> (
-    match Int.parse s with
-    | Some value -> Override (Some value)
-    | None -> Inherit
-  )
-  | _ -> Inherit
-in
-let get_bool key =
-  match Fields.get key table_items with
-  | Some (Bool b) -> Override b
-  | _ -> Inherit
-in
-let get_compilation_kind () =
-  match Fields.get "kind" table_items with
-  | Some (String "bytecode") -> Override Ocaml_compiler.Bytecode
-  | Some (String "native") -> Override Ocaml_compiler.Native
-  | _ -> Inherit
-in
-{
-  kind = get_compilation_kind ();
-  inline = get_int_opt "inline";
-  no_assert = get_bool "no_assert";
-  compact = get_bool "compact";
-  unsafe = get_bool "unsafe";
-  no_alias_deps = get_bool "no_alias_deps";
-  open_modules = get_string_list "open_modules";
-  warnings = Inherit;
-  errors = Inherit;
-  cc_flags = get_string_list "cc_flags";
-  ld_flags = get_string_list "ld_flags";
-  ocamlc_flags = get_string_list "ocamlc_flags"
-}
+let override_from_toml: (string * Std.Data.Toml.value) list -> profile_override = fun table_items ->
+  let open Std.Data.Toml in
+  let get_string_list key =
+    match Fields.get key table_items with
+    | Some (Array arr) ->
+        Override (
+          List.filter_map
+            ~fn:(
+              function
+              | String s -> Some s
+              | _ -> None
+            )
+            arr
+        )
+    | _ -> Inherit
+  in
+  let get_int_opt key =
+    match Fields.get key table_items with
+    | Some (String s) -> (
+        match Int.parse s with
+        | Some value -> Override (Some value)
+        | None -> Inherit
+      )
+    | _ -> Inherit
+  in
+  let get_bool key =
+    match Fields.get key table_items with
+    | Some (Bool b) -> Override b
+    | _ -> Inherit
+  in
+  let get_compilation_kind () =
+    match Fields.get "kind" table_items with
+    | Some (String "bytecode") -> Override Ocaml_compiler.Bytecode
+    | Some (String "native") -> Override Ocaml_compiler.Native
+    | _ -> Inherit
+  in
+  {
+    kind = get_compilation_kind ();
+    inline = get_int_opt "inline";
+    no_assert = get_bool "no_assert";
+    compact = get_bool "compact";
+    unsafe = get_bool "unsafe";
+    no_alias_deps = get_bool "no_alias_deps";
+    open_modules = get_string_list "open_modules";
+    warnings = Inherit;
+    errors = Inherit;
+    cc_flags = get_string_list "cc_flags";
+    ld_flags = get_string_list "ld_flags";
+    ocamlc_flags = get_string_list "ocamlc_flags";
+  }
 
 (** Parse profile from TOML table *)
-let from_toml: (string * Std.Data.Toml.value) list -> base:t -> t = fun table_items ~base -> let open Std.Data.Toml in
-let get_string_list key =
-  match Fields.get key table_items with
-  | Some (Array arr) -> List.filter_map ~fn:(
-    function
-    | String s -> Some s
-    | _ -> None
-  ) arr
-  | _ -> base.open_modules
-in
-let get_int_opt key =
-  match Fields.get key table_items with
-  | Some (String s) -> (
-    match Int.parse s with
-    | Some value -> Some value
-    | None -> base.inline
-  )
-  | _ -> base.inline
-in
-let get_bool key default =
-  match Fields.get key table_items with
-  | Some (Bool b) -> b
-  | _ -> default
-in
-let get_compilation_kind () =
-  match Fields.get "kind" table_items with
-  | Some (String "bytecode") -> Ocaml_compiler.Bytecode
-  | Some (String "native") -> Ocaml_compiler.Native
-  | _ -> base.kind
-in
-{
-  name = base.name;
-  kind = get_compilation_kind ();
-  inline = get_int_opt "inline";
-  no_assert = get_bool "no_assert" base.no_assert;
-  compact = get_bool "compact" base.compact;
-  unsafe = get_bool "unsafe" base.unsafe;
-  no_alias_deps = get_bool "no_alias_deps" base.no_alias_deps;
-  open_modules = get_string_list "open_modules";
-  warnings = base.warnings;
-  errors = base.errors;
-  cc_flags = (
-    match Fields.get "cc_flags" table_items with
-    | Some (Array arr) -> List.filter_map ~fn:(
-      function
-      | String s -> Some s
-      | _ -> None
-    ) arr
-    | _ -> base.cc_flags
-  );
-  ld_flags = (
-    match Fields.get "ld_flags" table_items with
-    | Some (Array arr) -> List.filter_map ~fn:(
-      function
-      | String s -> Some s
-      | _ -> None
-    ) arr
-    | _ -> base.ld_flags
-  );
-  ocamlc_flags = (
-    match Fields.get "ocamlc_flags" table_items with
-    | Some (Array arr) -> List.filter_map ~fn:(
-      function
-      | String s -> Some s
-      | _ -> None
-    ) arr
-    | _ -> base.ocamlc_flags
-  )
-}
+let from_toml: (string * Std.Data.Toml.value) list -> base:t -> t = fun table_items ~base ->
+  let open Std.Data.Toml in
+  let get_string_list key =
+    match Fields.get key table_items with
+    | Some (Array arr) ->
+        List.filter_map
+          ~fn:(
+            function
+            | String s -> Some s
+            | _ -> None
+          )
+          arr
+    | _ -> base.open_modules
+  in
+  let get_int_opt key =
+    match Fields.get key table_items with
+    | Some (String s) -> (
+        match Int.parse s with
+        | Some value -> Some value
+        | None -> base.inline
+      )
+    | _ -> base.inline
+  in
+  let get_bool key default =
+    match Fields.get key table_items with
+    | Some (Bool b) -> b
+    | _ -> default
+  in
+  let get_compilation_kind () =
+    match Fields.get "kind" table_items with
+    | Some (String "bytecode") -> Ocaml_compiler.Bytecode
+    | Some (String "native") -> Ocaml_compiler.Native
+    | _ -> base.kind
+  in
+  {
+    name = base.name;
+    kind = get_compilation_kind ();
+    inline = get_int_opt "inline";
+    no_assert = get_bool "no_assert" base.no_assert;
+    compact = get_bool "compact" base.compact;
+    unsafe = get_bool "unsafe" base.unsafe;
+    no_alias_deps = get_bool "no_alias_deps" base.no_alias_deps;
+    open_modules = get_string_list "open_modules";
+    warnings = base.warnings;
+    errors = base.errors;
+    cc_flags =
+      (
+        match Fields.get "cc_flags" table_items with
+        | Some (Array arr) ->
+            List.filter_map
+              ~fn:(
+                function
+                | String s -> Some s
+                | _ -> None
+              )
+              arr
+        | _ -> base.cc_flags
+      );
+    ld_flags =
+      (
+        match Fields.get "ld_flags" table_items with
+        | Some (Array arr) ->
+            List.filter_map
+              ~fn:(
+                function
+                | String s -> Some s
+                | _ -> None
+              )
+              arr
+        | _ -> base.ld_flags
+      );
+    ocamlc_flags =
+      (
+        match Fields.get "ocamlc_flags" table_items with
+        | Some (Array arr) ->
+            List.filter_map
+              ~fn:(
+                function
+                | String s -> Some s
+                | _ -> None
+              )
+              arr
+        | _ -> base.ocamlc_flags
+      );
+  }
 
 (** Convert profile to OCaml compiler flags *)
 let to_compiler_flags = fun profile ->
-  let flags = Vector.with_capacity ~size:(7 + List.length profile.open_modules + List.length profile.ocamlc_flags) in
+  let flags =
+    Vector.with_capacity
+      ~size:(7 + List.length profile.open_modules + List.length profile.ocamlc_flags)
+  in
   (
     match profile.inline with
     | Some n -> Vector.push flags ~value:(Ocaml_compiler.Inline n)
@@ -340,29 +379,34 @@ let to_compiler_flags = fun profile ->
     if profile.no_alias_deps then
       Vector.push flags ~value:Ocaml_compiler.NoAliasDeps
   );
-  profile.open_modules |> List.for_each ~fn:(
-    fun m -> Vector.push flags ~value:(Ocaml_compiler.Open m)
-  );
+  profile.open_modules
+  |> List.for_each ~fn:(fun m -> Vector.push flags ~value:(Ocaml_compiler.Open m));
   (
     if List.is_empty profile.warnings then
       ()
-    else Vector.push flags ~value:(Ocaml_compiler.Warning profile.warnings)
+    else
+      Vector.push flags ~value:(Ocaml_compiler.Warning profile.warnings)
   );
   (
     if List.is_empty profile.errors then
       ()
-    else Vector.push flags ~value:(Ocaml_compiler.WarnError profile.errors)
+    else
+      Vector.push flags ~value:(Ocaml_compiler.WarnError profile.errors)
   );
-  profile.ocamlc_flags |> List.for_each ~fn:(
-    fun flag -> Vector.push flags ~value:(Ocaml_compiler.Raw flag)
-  );
-  Ocaml_compiler.flags_to_string (Vector.to_array flags |> Array.to_list)
+  profile.ocamlc_flags
+  |> List.for_each ~fn:(fun flag -> Vector.push flags ~value:(Ocaml_compiler.Raw flag));
+  Ocaml_compiler.flags_to_string
+    (
+      Vector.to_array flags
+      |> Array.to_list
+    )
 
 (** Hash profile into a Sha256 hasher state *)
 let hash = fun state profile ->
   let module H = Crypto.Sha256 in
   H.write state profile.name;
-  H.write state
+  H.write
+    state
     (
       match profile.kind with
       | Ocaml_compiler.Bytecode -> "bytecode"
@@ -378,36 +422,33 @@ let hash = fun state profile ->
   H.write state (Bool.to_string profile.unsafe);
   H.write state (Bool.to_string profile.no_alias_deps);
   List.for_each profile.open_modules ~fn:(H.write state);
-  List.for_each profile.warnings ~fn:(
-    fun w -> H.write state (Ocaml_compiler.warning_to_string w)
-  );
-  List.for_each profile.errors ~fn:(
-    fun w -> H.write state (Ocaml_compiler.warning_to_string w)
-  );
+  List.for_each profile.warnings ~fn:(fun w -> H.write state (Ocaml_compiler.warning_to_string w));
+  List.for_each profile.errors ~fn:(fun w -> H.write state (Ocaml_compiler.warning_to_string w));
   List.for_each profile.cc_flags ~fn:(H.write state);
   List.for_each profile.ld_flags ~fn:(H.write state);
   List.for_each profile.ocamlc_flags ~fn:(H.write state)
 
 (** Convert profile to JSON *)
-let to_json = fun profile -> let open Data.Json in
-obj
-  [
-    "name", string profile.name;
-    "kind", string
-      (
-        match profile.kind with
-        | Ocaml_compiler.Bytecode -> "bytecode"
-        | Native -> "native"
-      );
-    ("inline", match profile.inline with
-    | Some n -> int n
-    | None -> Null);
-    "no_assert", bool profile.no_assert;
-    "compact", bool profile.compact;
-    "unsafe", bool profile.unsafe;
-    "no_alias_deps", bool profile.no_alias_deps;
-    "open_modules", array (List.map profile.open_modules ~fn:string);
-    "cc_flags", array (List.map profile.cc_flags ~fn:string);
-    "ld_flags", array (List.map profile.ld_flags ~fn:string);
-    "ocamlc_flags", array (List.map profile.ocamlc_flags ~fn:string);
-  ]
+let to_json = fun profile ->
+  let open Data.Json in
+  obj
+    [
+      ("name", string profile.name);
+      ("kind", string
+        (
+          match profile.kind with
+          | Ocaml_compiler.Bytecode -> "bytecode"
+          | Native -> "native"
+        ));
+      ("inline", match profile.inline with
+      | Some n -> int n
+      | None -> Null);
+      ("no_assert", bool profile.no_assert);
+      ("compact", bool profile.compact);
+      ("unsafe", bool profile.unsafe);
+      ("no_alias_deps", bool profile.no_alias_deps);
+      ("open_modules", array (List.map profile.open_modules ~fn:string));
+      ("cc_flags", array (List.map profile.cc_flags ~fn:string));
+      ("ld_flags", array (List.map profile.ld_flags ~fn:string));
+      ("ocamlc_flags", array (List.map profile.ocamlc_flags ~fn:string));
+    ]

@@ -7,8 +7,12 @@ let main ~args:_ =
       if n = 0 then
         if acc = "" then
           "0000"
-        else String.make ~len:(4 - String.length acc) ~char:'0' ^ acc
-      else to_hex (n / 16) (String.make ~len:1 ~char:(String.get_unchecked hex_chars ~at:(n mod 16)) ^ acc)
+        else
+          String.make ~len:(4 - String.length acc) ~char:'0' ^ acc
+      else
+        to_hex
+          (n / 16)
+          (String.make ~len:1 ~char:(String.get_unchecked hex_chars ~at:(n mod 16)) ^ acc)
     in
     to_hex (Unicode.Rune.to_int rune) ""
   in
@@ -45,7 +49,8 @@ let main ~args:_ =
   println "";
   let cyrillic_hex = rune_hex cyrillic_a in
   println ("Cyrillic А (U+" ^ cyrillic_hex ^ "):");
-  println ("  is_letter: " ^ Bool.to_string (Unicode.Rune.is_letter cyrillic_a) ^ " (should be true)");
+  println
+    ("  is_letter: " ^ Bool.to_string (Unicode.Rune.is_letter cyrillic_a) ^ " (should be true)");
   println ("  is_upper: " ^ Bool.to_string (Unicode.Rune.is_upper cyrillic_a) ^ " (should be true)");
   println "";
   let zhong_hex = rune_hex zhong in

@@ -50,7 +50,9 @@ open Global
    - Protocol messages
    - Simple database formats
 *)
+
 (** {1 Types} *)
+
 (**
    S-expression representation.
 
@@ -65,6 +67,7 @@ type t =
 exception Parse_error of string
 
 (** {1 Parsing} *)
+
 (**
    Parses a string into an S-expression.
 
@@ -114,6 +117,7 @@ val parse_exn: string -> t
 val parse_many: string -> (t list, string) result
 
 (** {1 Printing} *)
+
 (**
    Converts an S-expression to a compact string.
 
@@ -141,6 +145,7 @@ val to_string: t -> string
 val pretty_print: t -> string
 
 (** {1 Constructors} *)
+
 (**
    Creates an atom S-expression.
 
@@ -165,6 +170,7 @@ val atom: string -> t
 val list: t list -> t
 
 (** {1 Accessors} *)
+
 (**
    Returns [true] if the S-expression is an atom.
 
@@ -254,7 +260,8 @@ val find_atom: string -> t list -> t option
 val assoc: string -> t list -> t option
 
 (** {1 Canonical S-expressions (Csexp)} *)
-module Csexp : sig
+
+module Csexp: sig
   (**
      Converts to canonical S-expression format, a length-prefixed,
      unambiguous encoding.

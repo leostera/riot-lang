@@ -20,9 +20,11 @@ let resolve_target_dir_root = fun ~root ?target_dir () ->
   let target_dir_path = Path.v target_dir in
   if Path.is_absolute target_dir_path then
     target_dir_path
-  else Path.(root / target_dir_path)
+  else
+    Path.(root / target_dir_path)
 
-let make ?name ~root ~packages ?(dependencies = []) ?(dev_dependencies = []) ?(build_dependencies = []) ?(profile_overrides = []) ?target_dir (): t = {
+let make ?name ~root ~packages ?(dependencies = []) ?(dev_dependencies = []) ?(build_dependencies = []) ?(profile_overrides = []) ?target_dir ():
+  t = {
   name;
   root;
   target_dir_root = resolve_target_dir_root ~root ?target_dir ();
@@ -30,10 +32,20 @@ let make ?name ~root ~packages ?(dependencies = []) ?(dev_dependencies = []) ?(b
   dependencies;
   dev_dependencies;
   build_dependencies;
-  profile_overrides
+  profile_overrides;
 }
 
-let make_realized ?name ~root ~packages ?(dependencies = []) ?(dev_dependencies = []) ?(build_dependencies = []) ?(profile_overrides = []) ?target_dir () = make ?name ~root ~packages:(List.map packages ~fn:Package_manifest.of_package) ~dependencies ~dev_dependencies ~build_dependencies ~profile_overrides ?target_dir ()
+let make_realized ?name ~root ~packages ?(dependencies = []) ?(dev_dependencies = []) ?(build_dependencies = []) ?(profile_overrides = []) ?target_dir () =
+  make
+    ?name
+    ~root
+    ~packages:(List.map packages ~fn:Package_manifest.of_package)
+    ~dependencies
+    ~dev_dependencies
+    ~build_dependencies
+    ~profile_overrides
+    ?target_dir
+    ()
 
 let dependencies_for_scope = fun scope (workspace: t) ->
   match scope with
@@ -44,7 +56,8 @@ let dependencies_for_scope = fun scope (workspace: t) ->
 let package_root = fun (workspace: t) (pkg: Package_manifest.t) ->
   if Package_manifest.is_workspace_member pkg then
     Path.normalize Path.(workspace.root / pkg.relative_path)
-  else Path.normalize pkg.path
+  else
+    Path.normalize pkg.path
 
 let find_package_for_path = fun (workspace: t) ~path ->
   let path = Path.normalize path in
@@ -54,38 +67,47 @@ let find_package_for_path = fun (workspace: t) ~path ->
     | Ok _ -> true
     | Error _ -> false
   in
-  workspace.packages |> List.filter ~fn:contains_path |> List.sort ~compare:(
-    fun (left: Package_manifest.t) (right: Package_manifest.t) -> Int.compare (String.length (Path.to_string (package_root workspace right))) (String.length (Path.to_string (package_root workspace left)))
-  ) |> function
+  workspace.packages
+  |> List.filter ~fn:contains_path
+  |> List.sort
+    ~compare:(fun (left: Package_manifest.t) (right: Package_manifest.t) ->
+      Int.compare
+        (String.length (Path.to_string (package_root workspace right)))
+        (String.length (Path.to_string (package_root workspace left))))
+  |> function
     | pkg :: _ -> Some pkg
     | [] -> None
 
 let realize_package = fun ~intent manifest -> Package_manifest.realize ~intent manifest
 
-let realize_packages = fun ~intent workspace -> List.map workspace.packages ~fn:(realize_package ~intent)
+let realize_packages = fun ~intent workspace ->
+  List.map workspace.packages ~fn:(realize_package ~intent)
 
 let project_id = fun workspace ->
-  let root_str = Path.to_string workspace.root in String.map root_str ~fn:(
-    fun c ->
+  let root_str = Path.to_string workspace.root in
+  String.map
+    root_str
+    ~fn:(fun c ->
       if c = '/' then
         '-'
-      else c
-  )
+      else
+        c)
 
 let server_port = fun workspace ->
   let root_str = Path.to_string workspace.root in
   let hash = Std.Crypto.hash_string root_str in
   let hash_int = Std.Crypto.Digest.to_int hash in
-  let port_range = 65_535 - 49_152 in 50_152 + (Int.abs hash_int mod port_range)
+  let port_range = 65_535 - 49_152 in
+  50_152 + (Int.abs hash_int mod port_range)
 
-let discover_commands: t -> Package_command.t list = fun workspace -> List.map workspace.packages ~fn:(
-  fun (pkg: Package_manifest.t) -> pkg.commands
-) |> List.concat
+let discover_commands: t -> Package_command.t list = fun workspace ->
+  List.map workspace.packages ~fn:(fun (pkg: Package_manifest.t) -> pkg.commands)
+  |> List.concat
 
-let find_command: t -> string -> Package_command.t option = fun workspace name -> discover_commands workspace |> List.find ~fn:(
-  fun (cmd: Package_command.t) -> cmd.name = name
-)
+let find_command: t -> string -> Package_command.t option = fun workspace name ->
+  discover_commands workspace
+  |> List.find ~fn:(fun (cmd: Package_command.t) -> cmd.name = name)
 
-let discover_fix_providers: t -> Fix_provider.t list = fun workspace -> List.map workspace.packages ~fn:(
-  fun (pkg: Package_manifest.t) -> pkg.fix_providers
-) |> List.concat
+let discover_fix_providers: t -> Fix_provider.t list = fun workspace ->
+  List.map workspace.packages ~fn:(fun (pkg: Package_manifest.t) -> pkg.fix_providers)
+  |> List.concat

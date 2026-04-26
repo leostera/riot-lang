@@ -12,19 +12,14 @@ open Global
    ```
 *)
 type 't raw_addr = Kernel.Net.SocketAddr.t
-
 (** TCP address family tag. *)
 type tcp_addr = Kernel.Net.IpAddr.t
-
 (** Stream socket address. *)
 type stream_addr = Kernel.Net.SocketAddr.t
-
 (** Datagram socket address. *)
 type datagram_addr = Kernel.Net.SocketAddr.t
-
 (** Any network socket address. *)
 type socket_addr = Kernel.Net.SocketAddr.t
-
 (** Errors returned while parsing or constructing addresses. *)
 type error =
   | System_error of IO.error

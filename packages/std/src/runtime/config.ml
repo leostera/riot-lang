@@ -12,7 +12,10 @@ let default_scheduler_count = Int.max 1 (Thread.available_parallelism - 1)
 
 let default = { timer_resolution = Millisecond; scheduler_count = default_scheduler_count }
 
-let make = fun ?(timer_resolution = Millisecond) ?(scheduler_count = default_scheduler_count) () -> { timer_resolution; scheduler_count = Int.max 1 scheduler_count }
+let make = fun ?(timer_resolution = Millisecond) ?(scheduler_count = default_scheduler_count) () -> {
+  timer_resolution;
+  scheduler_count = Int.max 1 scheduler_count;
+}
 
 let worker_count = fun config -> config.scheduler_count
 

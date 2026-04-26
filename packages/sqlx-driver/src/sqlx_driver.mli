@@ -43,11 +43,15 @@
      Postgres.Config.{ host = "localhost"; ... }
    ```
 *)
+
 (* Database value types and conversions *)
+
 module Value = Value
 
 (* Database row representation and typed field access *)
+
 module Row = Row
 
 (* Database driver interface that all drivers must implement *)
+
 module Driver = Driver

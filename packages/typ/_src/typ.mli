@@ -42,9 +42,7 @@ open Std
    semantics and module artifacts.
 *)
 type config = TypConfig.t
-
 type source = Model.Source.t
-
 type checked_source = Analysis.Check_result.t
 
 (**
@@ -56,38 +54,38 @@ type checked_source = Analysis.Check_result.t
 *)
 val check: config:config -> source:source -> checked_source
 
-module Model : module type of Model
+module Model: module type of Model
 
-module Analysis : module type of Analysis
+module Analysis: module type of Analysis
 
-module SourceAnalysis : module type of SourceAnalysis
+module SourceAnalysis: module type of SourceAnalysis
 
-module PackageEnv : module type of PackageEnv
+module PackageEnv: module type of PackageEnv
 
-module ScopeView : module type of ScopeView
+module ScopeView: module type of ScopeView
 
-module ImportedWorld : module type of ImportedWorld
+module ImportedWorld: module type of ImportedWorld
 
-module ModulePairing : module type of ModulePairing
+module ModulePairing: module type of ModulePairing
 
-module ModuleSurface : module type of ModuleSurface
+module ModuleSurface: module type of ModuleSurface
 
-module Lower : module type of Lower
+module Lower: module type of Lower
 
-module Infer : module type of Infer
+module Infer: module type of Infer
 
-module Event : module type of Event
+module Event: module type of Event
 
-module Diagnostics : module type of Diagnostics
+module Diagnostics: module type of Diagnostics
 
-module MissingRequirements : module type of MissingRequirements
+module MissingRequirements: module type of MissingRequirements
 
-module Query : module type of Query
+module Query: module type of Query
 
-module Session : module type of Session
+module Session: module type of Session
 
-module Store : module type of Store
+module Store: module type of Store
 
-module Check : module type of Check
+module Check: module type of Check
 
-module Config : module type of TypConfig
+module Config: module type of TypConfig

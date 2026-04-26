@@ -41,22 +41,25 @@ type setting =
   | MaxHeaderListSize of int
 
 type payload =
-  | DataPayload of { data: string; pad_length: int option }
+  | DataPayload of {
+      data: string;
+      pad_length: int option;
+    }
   | HeadersPayload of {
-    pad_length: int option;
-    stream_dependency: int option;
-    weight: int option;
-    exclusive: bool;
-    header_block_fragment: string;
-  }
+      pad_length: int option;
+      stream_dependency: int option;
+      weight: int option;
+      exclusive: bool;
+      header_block_fragment: string;
+    }
   | PriorityPayload of { stream_dependency: int; exclusive: bool; weight: int }
   | RstStreamPayload of error_code
   | SettingsPayload of setting list
   | PushPromisePayload of {
-    pad_length: int option;
-    promised_stream_id: int;
-    header_block_fragment: string;
-  }
+      pad_length: int option;
+      promised_stream_id: int;
+      header_block_fragment: string;
+    }
   | PingPayload of string
   | GoawayPayload of { last_stream_id: int; error_code: error_code; debug_data: string }
   | WindowUpdatePayload of int
@@ -75,7 +78,7 @@ let default_flags = {
   end_headers = false;
   padded = false;
   priority = false;
-  ack = false
+  ack = false;
 }
 
 let data = fun ~stream_id ?(end_stream = false) ?pad_length data ->
@@ -90,7 +93,7 @@ let data = fun ~stream_id ?(end_stream = false) ?pad_length data ->
     frame_type = Data;
     flags;
     stream_id;
-    payload = DataPayload { data; pad_length }
+    payload = DataPayload { data; pad_length };
   }
 
 let headers = fun ~stream_id ?(end_stream = false) ?(end_headers = false) ?pad_length ?priority header_block_fragment ->
@@ -101,13 +104,13 @@ let headers = fun ~stream_id ?(end_stream = false) ?(end_headers = false) ?pad_l
       end_stream;
       end_headers;
       padded = Option.is_some pad_length;
-      priority = has_priority
+      priority = has_priority;
     }
   in
-  let stream_dependency, weight, exclusive =
+  let (stream_dependency, weight, exclusive) =
     match priority with
-    | Some (dep, excl, w) -> Some dep, Some w, excl
-    | None -> None, None, false
+    | Some (dep, excl, w) -> (Some dep, Some w, excl)
+    | None -> (None, None, false)
   in
   let payload_len =
     String.length header_block_fragment + (
@@ -116,20 +119,22 @@ let headers = fun ~stream_id ?(end_stream = false) ?(end_headers = false) ?pad_l
       | None -> 0
     ) + if has_priority then
       5
-    else 0
+    else
+      0
   in
   {
     length = payload_len;
     frame_type = Headers;
     flags;
     stream_id;
-    payload = HeadersPayload {
-      pad_length;
-      stream_dependency;
-      weight;
-      exclusive;
-      header_block_fragment
-    }
+    payload =
+      HeadersPayload {
+        pad_length;
+        stream_dependency;
+        weight;
+        exclusive;
+        header_block_fragment;
+      };
   }
 
 let priority = fun ~stream_id ~stream_dependency ~exclusive ~weight ->
@@ -138,7 +143,7 @@ let priority = fun ~stream_id ~stream_dependency ~exclusive ~weight ->
     frame_type = Priority;
     flags = default_flags;
     stream_id;
-    payload = PriorityPayload { stream_dependency; exclusive; weight }
+    payload = PriorityPayload { stream_dependency; exclusive; weight };
   }
 
 let rst_stream = fun ~stream_id error_code ->
@@ -147,7 +152,7 @@ let rst_stream = fun ~stream_id error_code ->
     frame_type = RstStream;
     flags = default_flags;
     stream_id;
-    payload = RstStreamPayload error_code
+    payload = RstStreamPayload error_code;
   }
 
 let settings = fun ?(ack = false) settings_list ->
@@ -155,14 +160,15 @@ let settings = fun ?(ack = false) settings_list ->
   let length =
     if ack then
       0
-    else List.length settings_list * 6
+    else
+      List.length settings_list * 6
   in
   {
     length;
     frame_type = Settings;
     flags;
     stream_id = 0;
-    payload = SettingsPayload settings_list
+    payload = SettingsPayload settings_list;
   }
 
 let push_promise = fun ~stream_id ~promised_stream_id ?pad_length header_block_fragment ->
@@ -177,7 +183,7 @@ let push_promise = fun ~stream_id ~promised_stream_id ?pad_length header_block_f
     frame_type = PushPromise;
     flags;
     stream_id;
-    payload = PushPromisePayload { pad_length; promised_stream_id; header_block_fragment }
+    payload = PushPromisePayload { pad_length; promised_stream_id; header_block_fragment };
   }
 
 let ping = fun ?(ack = false) opaque_data ->
@@ -189,7 +195,7 @@ let ping = fun ?(ack = false) opaque_data ->
     frame_type = Ping;
     flags;
     stream_id = 0;
-    payload = PingPayload opaque_data
+    payload = PingPayload opaque_data;
   }
 
 let goaway = fun ~last_stream_id ~error_code ?(debug_data = "") () ->
@@ -198,7 +204,7 @@ let goaway = fun ~last_stream_id ~error_code ?(debug_data = "") () ->
     frame_type = Goaway;
     flags = default_flags;
     stream_id = 0;
-    payload = GoawayPayload { last_stream_id; error_code; debug_data }
+    payload = GoawayPayload { last_stream_id; error_code; debug_data };
   }
 
 let window_update = fun ~stream_id increment ->
@@ -209,7 +215,7 @@ let window_update = fun ~stream_id increment ->
     frame_type = WindowUpdate;
     flags = default_flags;
     stream_id;
-    payload = WindowUpdatePayload increment
+    payload = WindowUpdatePayload increment;
   }
 
 let continuation = fun ~stream_id ?(end_headers = false) header_block_fragment ->
@@ -219,7 +225,7 @@ let continuation = fun ~stream_id ?(end_headers = false) header_block_fragment -
     frame_type = Continuation;
     flags;
     stream_id;
-    payload = ContinuationPayload header_block_fragment
+    payload = ContinuationPayload header_block_fragment;
   }
 
 let error_code_to_int = function

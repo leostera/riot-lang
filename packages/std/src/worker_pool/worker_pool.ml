@@ -6,5 +6,4 @@
    - SimpleWorkerPool: Automatic task distribution from pre-queued tasks
 *)
 module DynamicWorkerPool = Dynamic
-
 module SimpleWorkerPool = Simple

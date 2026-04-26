@@ -14,12 +14,13 @@ let normalized_segments = fun path ->
 let head_of_path = fun path ->
   let segments = normalized_segments path in
   match segments with
-  | [ "list" ] -> Some (TypeRepr.named_head ~type_constructor_id:list_type_constructor_id ~name:path)
+  | [ "list" ] ->
+      Some (TypeRepr.named_head ~type_constructor_id:list_type_constructor_id ~name:path)
   | [ "exn" ] -> Some (TypeRepr.named_head ~type_constructor_id:exn_type_constructor_id ~name:path)
   | _ -> None
 
 let type_of_path = fun path arguments ->
-  match normalized_segments path, arguments with
+  match (normalized_segments path, arguments) with
   | ([ "int" ], []) -> Some TypeRepr.int
   | ([ "float" ], []) -> Some TypeRepr.float
   | ([ "bool" ], []) -> Some TypeRepr.bool

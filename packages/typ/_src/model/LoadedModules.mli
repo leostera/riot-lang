@@ -39,7 +39,11 @@ val of_list: ModuleTypings.t list -> t
    [preferred] is inserted first, so duplicate module names are combined as
    [combine existing incoming] where [existing] came from [preferred].
 *)
-val merge: preferred:t -> fallback:t -> combine:(ModuleTypings.t -> ModuleTypings.t -> ModuleTypings.t) -> t
+val merge:
+  preferred:t ->
+  fallback:t ->
+  combine:(ModuleTypings.t -> ModuleTypings.t -> ModuleTypings.t) ->
+  t
 
 (** Number of loaded modules in the index. *)
 val len: t -> int

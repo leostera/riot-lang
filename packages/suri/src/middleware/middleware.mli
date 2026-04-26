@@ -147,6 +147,7 @@ open Std
 
    {1 API Reference}
 *)
+
 module Conn = Conn
 
 (**
@@ -307,6 +308,7 @@ module Debugger = Debugger
    See {!Debugger} for full API and examples.
 *)
 (** {2 Convenience Functions} *)
+
 (**
    Create router middleware from a list of routes.
 
@@ -430,6 +432,7 @@ module Cors = Cors
 
    See {!Cors} for full documentation and examples.
 *)
+
 (**
    CORS middleware - simple and direct.
 
@@ -456,7 +459,15 @@ module Cors = Cors
 
     See {!Cors.middleware} for full documentation.
 *)
-val cors: origins:string list -> ?methods:Net.Http.Method.t list -> ?headers:string list -> ?credentials:bool -> ?expose:string list -> ?max_age:int -> unit -> Pipeline.middleware
+val cors:
+  origins:string list ->
+  ?methods:Net.Http.Method.t list ->
+  ?headers:string list ->
+  ?credentials:bool ->
+  ?expose:string list ->
+  ?max_age:int ->
+  unit ->
+  Pipeline.middleware
 
 module Session = Session
 
@@ -495,6 +506,7 @@ module Session = Session
 
    See {!Session} for full documentation.
 *)
+
 (**
    Session middleware - secure cookie-based sessions.
 
@@ -537,7 +549,14 @@ module Session = Session
 
    See {!Session.middleware} for full documentation.
 *)
-val session: secret:string -> ?cookie_name:string -> ?max_age:int -> ?secure:bool -> ?same_site:Http.Http1.Cookie.same_site -> unit -> Pipeline.middleware
+val session:
+  secret:string ->
+  ?cookie_name:string ->
+  ?max_age:int ->
+  ?secure:bool ->
+  ?same_site:Http.Http1.Cookie.same_site ->
+  unit ->
+  Pipeline.middleware
 
 module Csrf = Csrf
 
@@ -573,6 +592,7 @@ module Csrf = Csrf
 
    See {!Csrf} for full documentation.
 *)
+
 (**
    CSRF protection middleware - validates tokens on unsafe requests.
 
@@ -607,7 +627,13 @@ module Csrf = Csrf
 
    See {!Csrf.middleware} for full documentation.
 *)
-val csrf: ?param_name:string -> ?header_name:string -> ?skip_safe_methods:bool -> ?skip:(Conn.t -> bool) -> unit -> Pipeline.middleware
+val csrf:
+  ?param_name:string ->
+  ?header_name:string ->
+  ?skip_safe_methods:bool ->
+  ?skip:(Conn.t -> bool) ->
+  unit ->
+  Pipeline.middleware
 
 module Body_parser = Body_parser
 
@@ -639,6 +665,7 @@ module Body_parser = Body_parser
 
    See {!Body_parser} for full documentation.
 *)
+
 (**
    Body parser middleware - parses request bodies automatically.
 
@@ -705,6 +732,7 @@ module Static = Static
 
    See {!Static} for full documentation.
 *)
+
 (**
    Serve static files from a directory.
 
@@ -797,6 +825,7 @@ module Basic_auth = Basic_auth
 
    See {!Basic_auth} for full documentation.
 *)
+
 (**
    Basic Auth with static credentials.
 
@@ -832,7 +861,13 @@ module Basic_auth = Basic_auth
 
    See {!Basic_auth.middleware} for full documentation.
 *)
-val basic_auth: ?realm:string -> ?skip:(Conn.t -> bool) -> username:string -> password:string -> unit -> Pipeline.middleware
+val basic_auth:
+  ?realm:string ->
+  ?skip:(Conn.t -> bool) ->
+  username:string ->
+  password:string ->
+  unit ->
+  Pipeline.middleware
 
 (**
    Basic Auth with custom validation function.
@@ -868,7 +903,12 @@ val basic_auth: ?realm:string -> ?skip:(Conn.t -> bool) -> username:string -> pa
 
    See {!Basic_auth.middleware_with_validation} for full documentation.
 *)
-val basic_auth_with_validation: ?realm:string -> ?skip:(Conn.t -> bool) -> validate:'a Basic_auth.validation_fn -> unit -> Pipeline.middleware
+val basic_auth_with_validation:
+  ?realm:string ->
+  ?skip:(Conn.t -> bool) ->
+  validate:'a Basic_auth.validation_fn ->
+  unit ->
+  Pipeline.middleware
 
 module Accepts = Accepts
 
@@ -909,6 +949,7 @@ module Accepts = Accepts
 
    See {!Accepts} for full documentation.
 *)
+
 (**
    Content negotiation middleware - validates Accept and Content-Type headers.
 
@@ -980,6 +1021,7 @@ module Head = Head
 
    See {!Head} for full documentation.
 *)
+
 (**
    HEAD request handler middleware.
 
@@ -1022,6 +1064,7 @@ module Runtime = Request_runtime
 
    See {!Runner} for full documentation.
 *)
+
 (**
    Request timing middleware.
 
@@ -1070,6 +1113,7 @@ module Method_override = Method_override
 
    See {!Method_override} for full documentation.
 *)
+
 (**
    Method override middleware for HTML forms (uses default "_method" param).
 
@@ -1128,6 +1172,7 @@ module Remote_ip = Remote_ip
    See {!Remote_ip} for full documentation.
 *)
 (* No convenience function - use Remote_ip.middleware ~proxies:[...] directly *)
+
 module Etag = Etag
 
 (**
@@ -1163,6 +1208,7 @@ module Etag = Etag
 
    See {!Etag} for full documentation.
 *)
+
 (**
    ETag generation middleware (uses strong ETags by default).
 
@@ -1227,6 +1273,7 @@ module Conditional_get = Conditional_get
 
    See {!Conditional_get} for full documentation.
 *)
+
 (**
    Conditional GET middleware for 304 responses.
 

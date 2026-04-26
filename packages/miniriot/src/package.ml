@@ -29,6 +29,7 @@ let cc_flags = fun t -> t.cc_flags
 let ld_flags = fun t -> t.ld_flags
 
 (* Detect the current OS *)
+
 let detect_os = fun () ->
   let ic = Unix.open_process_in "uname -s" in
   let uname = input_line ic in
@@ -39,6 +40,7 @@ let detect_os = fun () ->
   | _ -> "unknown"
 
 (* Parse a string list from TOML array *)
+
 let parse_string_list = fun toml_array ->
   match toml_array with
   | Toml.Array items ->
@@ -53,15 +55,22 @@ let parse_string_list = fun toml_array ->
 
 let parse_dependency_names = fun dep_items ->
   List.filter_map
-    (
-      fun ((name: string), _) ->
-        match name with
-        | "stdlib" | "unix" | "dynlink" -> None
-        | dep -> Some dep
-    )
+    (fun ((name: string), _) ->
+      match name with
+      | "stdlib"
+      | "unix"
+      | "dynlink" -> None
+      | dep -> Some dep)
     dep_items
 
-let is_runtime_binary_path = fun path -> not (String.starts_with ~prefix:"tests/" path || String.starts_with ~prefix:"test/" path || String.starts_with ~prefix:"examples/" path || String.starts_with ~prefix:"example/" path || String.starts_with ~prefix:"bench/" path || String.starts_with ~prefix:"benchmarks/" path)
+let is_runtime_binary_path = fun path ->
+  not
+    (String.starts_with ~prefix:"tests/" path
+    || String.starts_with ~prefix:"test/" path
+    || String.starts_with ~prefix:"examples/" path
+    || String.starts_with ~prefix:"example/" path
+    || String.starts_with ~prefix:"bench/" path
+    || String.starts_with ~prefix:"benchmarks/" path)
 
 let read = fun path ->
   let toml_path = Filename.concat path "riot.toml" in
@@ -84,17 +93,17 @@ let read = fun path ->
             uses_unix = false;
             uses_dynlink = false;
             cc_flags = [];
-            ld_flags = []
+            ld_flags = [];
           }
       | Ok (Toml.Table items) ->
           (* Get package name *)
           let name =
             match Toml.find "package" items with
             | Some (Toml.Table pkg_items) -> (
-              match Toml.find "name" pkg_items with
-              | Some (Toml.String n) -> n
-              | _ -> Filename.basename path
-            )
+                match Toml.find "name" pkg_items with
+                | Some (Toml.String n) -> n
+                | _ -> Filename.basename path
+              )
             | _ -> Filename.basename path
           in
           (* Get binaries from [[bin]] array *)
@@ -102,10 +111,9 @@ let read = fun path ->
             match Toml.find "bin" items with
             | Some (Toml.Array bin_tables) ->
                 List.filter_map
-                  (
-                    fun bin_value ->
-                      match bin_value with
-                      | Toml.Table bin_items -> (
+                  (fun bin_value ->
+                    match bin_value with
+                    | Toml.Table bin_items -> (
                         let bin_name =
                           match Toml.find "name" bin_items with
                           | Some (Toml.String n) -> Some n
@@ -116,59 +124,66 @@ let read = fun path ->
                           | Some (Toml.String p) -> Some p
                           | _ -> None
                         in
-                        match bin_name, bin_path with
-                        | Some n, Some p when is_runtime_binary_path p -> Some { name = n; path = Filename.concat path p }
+                        match (bin_name, bin_path) with
+                        | (Some n, Some p) when is_runtime_binary_path p ->
+                            Some { name = n; path = Filename.concat path p }
                         | _ -> None
                       )
-                      | _ -> None
-                  )
+                    | _ -> None)
                   bin_tables
             | _ -> []
           in
           (* Get dependencies from [dependencies] table *)
-          let deps, uses_stdlib, uses_unix, uses_dynlink =
+          let (deps, uses_stdlib, uses_unix, uses_dynlink) =
             match Toml.find "dependencies" items with
             | Some (Toml.Table dep_items) ->
                 let deps = parse_dependency_names dep_items in
                 let has_stdlib = Toml.find "stdlib" dep_items != None in
                 let has_unix = Toml.find "unix" dep_items != None in
-                let has_dynlink = Toml.find "dynlink" dep_items != None in (deps, has_stdlib, has_unix, has_dynlink)
+                let has_dynlink = Toml.find "dynlink" dep_items != None in
+                (deps, has_stdlib, has_unix, has_dynlink)
             | _ -> ([], false, false, false)
           in
           (* Get target-specific flags based on OS *)
           let os = detect_os () in
           Printf.printf "  DEBUG: Detected OS: %s\n" os;
-          let cc_flags, ld_flags =
+          let (cc_flags, ld_flags) =
             (* Look for [target] table first, then check for OS-specific subtable *)
             match Toml.find "target" items with
             | Some (Toml.Table target_items) -> (
-              Printf.printf "  DEBUG: Found [target] table\n";
-              match Toml.find os target_items with
-              | Some (Toml.Table os_items) ->
-                  Printf.printf "  DEBUG: Found [target.%s] table\n" os;
-                  let cc =
-                    match Toml.find "cc_flags" os_items with
-                    | Some arr ->
-                        let flags = parse_string_list arr in
-                        Printf.printf "  DEBUG: Found %d cc_flags: %s\n" (List.length flags) (String.concat " " flags);
-                        flags
-                    | None ->
-                        Printf.printf "  DEBUG: No cc_flags found\n";
-                        []
-                  in
-                  let ld =
-                    match Toml.find "ld_flags" os_items with
-                    | Some arr ->
-                        let flags = parse_string_list arr in
-                        Printf.printf "  DEBUG: Found %d ld_flags: %s\n" (List.length flags) (String.concat " " flags);
-                        flags
-                    | None -> []
-                  in
-                  (cc, ld)
-              | _ ->
-                  Printf.printf "  DEBUG: No [target.%s] subtable found\n" os;
-                  ([], [])
-            )
+                Printf.printf "  DEBUG: Found [target] table\n";
+                match Toml.find os target_items with
+                | Some (Toml.Table os_items) ->
+                    Printf.printf "  DEBUG: Found [target.%s] table\n" os;
+                    let cc =
+                      match Toml.find "cc_flags" os_items with
+                      | Some arr ->
+                          let flags = parse_string_list arr in
+                          Printf.printf
+                            "  DEBUG: Found %d cc_flags: %s\n"
+                            (List.length flags)
+                            (String.concat " " flags);
+                          flags
+                      | None ->
+                          Printf.printf "  DEBUG: No cc_flags found\n";
+                          []
+                    in
+                    let ld =
+                      match Toml.find "ld_flags" os_items with
+                      | Some arr ->
+                          let flags = parse_string_list arr in
+                          Printf.printf
+                            "  DEBUG: Found %d ld_flags: %s\n"
+                            (List.length flags)
+                            (String.concat " " flags);
+                          flags
+                      | None -> []
+                    in
+                    (cc, ld)
+                | _ ->
+                    Printf.printf "  DEBUG: No [target.%s] subtable found\n" os;
+                    ([], [])
+              )
             | _ ->
                 Printf.printf "  DEBUG: No [target] table found\n";
                 ([], [])
@@ -182,7 +197,7 @@ let read = fun path ->
             uses_unix;
             uses_dynlink;
             cc_flags;
-            ld_flags
+            ld_flags;
           }
       | _ ->
           {
@@ -194,7 +209,7 @@ let read = fun path ->
             uses_unix = false;
             uses_dynlink = false;
             cc_flags = [];
-            ld_flags = []
+            ld_flags = [];
           }
     )
   else
@@ -207,5 +222,5 @@ let read = fun path ->
       uses_unix = false;
       uses_dynlink = false;
       cc_flags = [];
-      ld_flags = []
+      ld_flags = [];
     }

@@ -11,7 +11,6 @@ open Std.Collections
    source storage.
 *)
 type file_kind = [ | `Implementation | `Interface]
-
 (**
    Result of one parser run.
 

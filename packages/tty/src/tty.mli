@@ -12,13 +12,10 @@ module Size = Size
 
 module Input = Input
 
-module Utf8_reader : sig
+module Utf8_reader: sig
   type read_result = [`Ok of int | `Would_block | `Error]
-
   type t
-
   type result = [`Retry | `End | `Malformed of string | `Read of string]
-
   val create: unit -> t
 
   val read: t -> read:(bytes -> offset:int -> len:int -> read_result) -> result
@@ -27,20 +24,23 @@ end
 module Terminal_control = Terminal_control
 
 type fd
-
 type size = { rows: int; cols: int }
-
 type error =
   | NoTtyConnected
   | SystemError of IO.error
-
 type mode =
   | LineBuffered
   | Immediate
-
 type t
-
-val make: ?fd:fd -> ?stdin:fd -> ?stdout:fd -> ?stderr:fd -> ?size:size -> ?mode:mode -> unit -> (t, error) result
+val make:
+  ?fd:fd ->
+  ?stdin:fd ->
+  ?stdout:fd ->
+  ?stderr:fd ->
+  ?size:size ->
+  ?mode:mode ->
+  unit ->
+  (t, error) result
 
 val make_raw: unit -> (t, error) result
 
@@ -67,7 +67,6 @@ type read =
   | End
   | Malformed of string
   | Retry
-
 val read_utf8: t -> read
 
 val read: t -> (string, IO.error) result

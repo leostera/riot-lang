@@ -30,10 +30,12 @@ let accept = fun ?timeout t ->
     match Kernel.Net.TcpListener.accept t with
     | Ok (stream, addr) -> Ok (stream, addr)
     | Error Kernel.Net.TcpListener.WouldBlock ->
-        Runtime.syscall ?timeout:timeout_secs ~name:"TcpListener.accept" ~interest:Interest.readable ~source
-          (
-            fun () -> accept_loop ()
-          )
+        Runtime.syscall
+          ?timeout:timeout_secs
+          ~name:"TcpListener.accept"
+          ~interest:Interest.readable
+          ~source
+          (fun () -> accept_loop ())
     | Error err -> Error (System_error (io_error_of_listener_error err))
   in
   accept_loop ()
@@ -41,7 +43,13 @@ let accept = fun ?timeout t ->
 let local_addr = fun t ->
   match Kernel.Net.TcpListener.local_addr t with
   | Ok addr -> addr
-  | Error err -> panic (format Format.[ str "TcpListener.local_addr failed: "; str (IO.error_message (io_error_of_listener_error err)) ])
+  | Error err ->
+      panic
+        (format
+          Format.[
+            str "TcpListener.local_addr failed: ";
+            str (IO.error_message (io_error_of_listener_error err));
+          ])
 
 let close = fun t ->
   match Kernel.Net.TcpListener.close t with

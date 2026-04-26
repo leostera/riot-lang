@@ -12,11 +12,16 @@ let request_counter = Atomic.make 0
 let next_request_id = fun () -> Atomic.fetch_and_add request_counter 1 + 1
 
 module Server = struct
-  type state = { style: Log_config.format_style }
+  type state = {
+    style: Log_config.format_style;
+  }
 
   type message =
     | Write of Event.t
-    | Flush of { reply_to: Pid.t; request_id: request_id }
+    | Flush of {
+        reply_to: Pid.t;
+        request_id: request_id;
+      }
 
   type Message.t +=
     | StdoutHandler of message
@@ -36,11 +41,13 @@ module Server = struct
         let meta_part =
           if meta_str = "" then
             ""
-          else " [" ^ meta_str ^ "]"
+          else
+            " [" ^ meta_str ^ "]"
         in
         timestamp ^ " | " ^ level_str ^ " | " ^ event.Event.message ^ meta_part ^ "\n"
     | Log_config.Compact ->
-        let level_str = Level.to_string event.Event.level in level_str ^ " | " ^ event.Event.message ^ "\n"
+        let level_str = Level.to_string event.Event.level in
+        level_str ^ " | " ^ event.Event.message ^ "\n"
 
   let rec loop = fun state ->
     let selector msg =
@@ -58,22 +65,28 @@ module Server = struct
         loop state
 
   let init = fun () ->
-    let config = Config.get (module Log_config) |> Result.expect ~msg:"Could not find log config" in
+    let config =
+      Config.get (module Log_config)
+      |> Result.expect ~msg:"Could not find log config"
+    in
     (* Find the stdout handler in the list *)
     let stdout_format =
-      match List.find config.handlers ~fn:(
-        function
-        | Log_config.Stdout _ -> true
-        | _ -> false
-      ) with
+      match List.find
+        config.handlers
+        ~fn:(
+          function
+          | Log_config.Stdout _ -> true
+          | _ -> false
+        ) with
       | Some (Log_config.Stdout { format }) -> Some format
       | Some _ -> None
       | None -> None
     in
     match stdout_format with
     | Some format -> loop { style = format }
-    | None -> (* No stdout handler configured, use default *)
-    loop { style = Log_config.Full }
+    | None ->
+        (* No stdout handler configured, use default *)
+        loop { style = Log_config.Full }
 end
 
 (** Shared process state - updated by supervised process on start *)
@@ -98,32 +111,36 @@ let flush = fun () ->
       send pid Server.(StdoutHandler (Flush { reply_to = self (); request_id }));
       let selector msg =
         match msg with
-        | Server.StdoutHandler_flushed { request_id = got } when Int.equal got request_id -> `select ()
+        | Server.StdoutHandler_flushed { request_id = got } when Int.equal got request_id ->
+            `select ()
         | _ -> `skip
       in
       receive ~selector ()
 
 (** Child spec for supervision *)
-let child_spec = fun () -> Supervisor.child_spec ~id:handler_id ~start:(
-  fun () ->
-    let request_id = next_request_id () in
-    let starter = self () in
-    let pid =
-      spawn_link
-        (
-          fun () ->
+let child_spec = fun () ->
+  Supervisor.child_spec
+    ~id:handler_id
+    ~start:(fun () ->
+      let request_id = next_request_id () in
+      let starter = self () in
+      let pid =
+        spawn_link
+          (fun () ->
             (* Update shared state so handler callbacks can find us *)
             handler_pid := Some (self ());
             send starter Server.(StdoutHandler_ready { request_id });
-            Server.init ()
-        )
-    in
-    let selector msg =
-      match msg with
-      | Server.StdoutHandler_ready { request_id = got } when Int.equal got request_id -> `select ()
-      | _ -> `skip
-    in
-    receive ~selector ();
-    attach ();
-    pid
-) ~restart:Permanent ~shutdown:(Timeout (Time.Duration.from_secs 5)) ()
+            Server.init ())
+      in
+      let selector msg =
+        match msg with
+        | Server.StdoutHandler_ready { request_id = got } when Int.equal got request_id ->
+            `select ()
+        | _ -> `skip
+      in
+      receive ~selector ();
+      attach ();
+      pid)
+    ~restart:Permanent
+    ~shutdown:(Timeout (Time.Duration.from_secs 5))
+    ()

@@ -1,15 +1,9 @@
 module Config = Config
-
 module Request = Request
-
 module Response = Response
-
 module Handler = Http_handler
-
 module Http1 = Http1_handler
-
 module Http2 = Http2_handler
-
 module ProtocolDetector = Protocol_detector
 
 (**
@@ -34,7 +28,13 @@ let start_link = fun ?(host = "0.0.0.0") ~port ?(acceptors = Std.Thread.availabl
     handle_error = Http1.handle_error;
     handle_shutdown = Http1.handle_shutdown;
     handle_message = Http1.handle_message;
-    to_string_error = Http1.to_string_error
+    to_string_error = Http1.to_string_error;
   }
   in
-  Socket_pool.start_link ~host ~port ~acceptors ~buffer_size:config.Config.buffer_size socket_handler handler_state
+  Socket_pool.start_link
+    ~host
+    ~port
+    ~acceptors
+    ~buffer_size:config.Config.buffer_size
+    socket_handler
+    handler_state

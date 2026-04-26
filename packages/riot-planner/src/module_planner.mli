@@ -20,7 +20,6 @@ type plan_input = {
   depset: Dependency.t list;
   store: Riot_store.Store.t;
 }
-
 (**
    Plan a complete build for a package.
 
@@ -42,5 +41,4 @@ type plan_result = {
   analyzed_modules: (Graph.SimpleGraph.Node_id.t * Module_graph.analyzed_module) list;
   action_graph: Action_graph.t;
 }
-
 val plan_node: plan_input -> (plan_result, Planning_error.t) result

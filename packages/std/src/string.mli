@@ -35,12 +35,11 @@
 
    (* Join strings *) let csv = String.concat "," ["a"; "b"; "c"] ```
 *)
+
 open Iter
 
 type t = string
-
 type utf_decode = Kernel.Unicode.Rune.utf_decode
-
 val empty: t
 
 val is_empty: t -> bool
@@ -130,6 +129,7 @@ val unsafe_from_bytes: bytes -> t
 val to_bytes: t -> bytes
 
 (** # UTF-8 Iteration *)
+
 (**
    Creates a mutable iterator over UTF-8 characters.
 
@@ -180,6 +180,7 @@ val into_mut_iter: string -> Unicode.Rune.t MutIterator.t
 val into_iter: string -> Unicode.Rune.t Iterator.t
 
 (** # Unicode-Aware Operations *)
+
 (**
    Calculate display width for monospace fonts/terminals.
 
@@ -419,7 +420,7 @@ val contains: string -> string -> bool
 *)
 val to_reader: ?chunk_size:int -> string -> IO.Reader.t
 
-module Syntax : sig
+module Syntax: sig
   val get: string -> int -> char
 
   val set: string -> int -> char -> unit

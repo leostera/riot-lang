@@ -113,6 +113,7 @@
 
    {1 API Reference}
 *)
+
 (**
    A route handler receives the connection and the original request.
 
@@ -134,12 +135,11 @@
        Conn.respond conn ~status:Ok ~body:("User " ^ id) |> Conn.send
    ]}
 *)
+
 (** A single route definition with pattern, method, and handler. *)
 type handler = Conn.t -> Web_server.Request.t -> Conn.t
-
 (** A router is a list of routes, matched in order. *)
 type route
-
 (**
    Create a route that matches any HTTP method.
 
@@ -151,7 +151,6 @@ type route
    ]}
 *)
 type t = route list
-
 val any: string -> handler -> route
 
 (**
@@ -264,7 +263,11 @@ val scope: string -> route list -> route
 
    The handler module must implement {!Channel.Handler.Intf}.
 *)
-val websocket: string -> (module Channel.Handler.Intf with type args = 'a and type state = 's) -> 'a -> route
+val websocket:
+  string ->
+  (module Channel.Handler.Intf with type args = 'a and type state = 's) ->
+  'a ->
+  route
 
 (**
    Convert a list of routes into middleware.

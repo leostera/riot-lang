@@ -45,7 +45,8 @@ open Global
    - Module dependency analysis
    - Any DAG (Directed Acyclic Graph) operations
 *)
-module Node_id : sig
+
+module Node_id: sig
   type t
 
   (** Unique node identifier. *)
@@ -63,8 +64,11 @@ module Node_id : sig
   (** Convert to string. *)
 end
 
-type 'value node = { id: Node_id.t; mutable deps: Node_id.t list; mutable value: 'value }
-
+type 'value node = {
+  id: Node_id.t;
+  mutable deps: Node_id.t list;
+  mutable value: 'value;
+}
 (** Graph node with value and dependencies. *)
 type 'value t
 
@@ -90,7 +94,9 @@ val map: 'a t -> fn:(Node_id.t * 'a node -> 'b) -> 'b list
 val topo_sort: 'a t -> ('a node list, Node_id.t list) result
 
 (** Topological sort. Returns Ok with sorted nodes, or Error with cycle node IDs if graph has cycles. *)
-val reachable_from: 'a t -> 'a node list -> Node_id.t list(**
+val reachable_from: 'a t -> 'a node list -> Node_id.t list
+
+(**
    Get all nodes reachable from a given starting set through their
    dependency edges. Returns a list of node IDs that can be reached.
 *)

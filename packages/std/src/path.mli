@@ -35,9 +35,9 @@
    - Unix-like systems: `/`
    - Windows: `\` (though `/` is also accepted)
 *)
+
 (** The type of filesystem paths. Always contains valid UTF-8. *)
 type t = string
-
 type error =
   (** Path contains invalid UTF-8 bytes *)
   | InvalidUtf8 of { path: string }
@@ -102,6 +102,7 @@ val v: string -> t
 val to_string: t -> string
 
 (** # Path Operations *)
+
 (**
    Joins two paths together with a path separator.
 
@@ -180,6 +181,7 @@ val basename: t -> string
 val dirname: t -> t
 
 (** # Extensions and Properties *)
+
 (**
    Returns the file extension, if any.
 
@@ -270,6 +272,7 @@ val is_absolute: t -> bool
 val is_relative: t -> bool
 
 (** # Path Analysis *)
+
 (**
    Splits a path into its components.
 
@@ -308,6 +311,7 @@ val components: t -> t list
 val normalize: t -> t
 
 (** # Filesystem Queries *)
+
 (**
    Checks if the path exists on the filesystem.
 
@@ -356,6 +360,7 @@ val is_directory: t -> bool
 val is_file: t -> bool
 
 (** # Comparison and Manipulation *)
+
 (**
    Compares two paths for equality.
 

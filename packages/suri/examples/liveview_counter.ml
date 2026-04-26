@@ -16,7 +16,6 @@ module Counter = struct
   let id = LiveView.id "counter"
 
   open LiveView
-
   open Component
 
   type state = { count: int }
@@ -29,6 +28,7 @@ module Counter = struct
   type args = unit
 
   (* No args needed for simple counter *)
+
   let serialize_args = fun () -> Data.Json.Null
 
   let deserialize_args = fun _ -> Ok ()
@@ -48,45 +48,60 @@ module Counter = struct
     Log.info ("Counter: " ^ Int.to_string state.count ^ " -> " ^ Int.to_string new_state.count);
     new_state
 
-  let render = fun ~state () ->
-    div ~attrs:[ class_ "counter-app" ]
-      [
-        header ~attrs:[ class_ "header" ] [ h1 [ text "LiveView Counter" ]; p ~attrs:[ class_ "subtitle" ] [ text "Server-side rendering with real-time updates" ] ];
-        div ~attrs:[ class_ "counter-display" ] [ div ~attrs:[ class_ "count-label" ] [ text "Current Count:" ]; div ~attrs:[ class_ "count-value" ] [ text (Int.to_string state.count) ] ];
-        div ~attrs:[ class_ "controls" ] [ button ~attrs:[
-          class_ "btn btn-decrement";
-          on_click
-            (
-              fun _ -> Decrement
-            );
-        ] [ text "−" ]; button ~attrs:[
-          class_ "btn btn-reset";
-          on_click
-            (
-              fun _ -> Reset
-            );
-        ] [ text "Reset" ]; button ~attrs:[
-          class_ "btn btn-increment";
-          on_click
-            (
-              fun _ -> Increment
-            );
-        ] [ text "+" ] ];
-        footer ~attrs:[ class_ "info" ]
-          [
-            p
-              [
-                strong [ text "How it works: " ];
-                text "Clicks are sent to the server over WebSocket. ";
-                text "The server updates state and sends back only the HTML changes. ";
-                text "No client-side framework needed!";
-              ];
-          ];
-      ]
+  let render = fun ~state () -> div
+    ~attrs:[ class_ "counter-app" ]
+    [
+      header
+        ~attrs:[ class_ "header" ]
+        [
+          h1 [ text "LiveView Counter" ];
+          p ~attrs:[ class_ "subtitle" ] [ text "Server-side rendering with real-time updates" ];
+        ];
+      div
+        ~attrs:[ class_ "counter-display" ]
+        [
+          div ~attrs:[ class_ "count-label" ] [ text "Current Count:" ];
+          div ~attrs:[ class_ "count-value" ] [ text (Int.to_string state.count) ];
+        ];
+      div
+        ~attrs:[ class_ "controls" ]
+        [
+          button
+            ~attrs:[
+              class_ "btn btn-decrement";
+              on_click (fun _ -> Decrement);
+            ]
+            [ text "−" ];
+          button
+            ~attrs:[
+              class_ "btn btn-reset";
+              on_click (fun _ -> Reset);
+            ]
+            [ text "Reset" ];
+          button
+            ~attrs:[
+              class_ "btn btn-increment";
+              on_click (fun _ -> Increment);
+            ]
+            [ text "+" ];
+        ];
+      footer
+        ~attrs:[ class_ "info" ]
+        [
+          p
+            [
+              strong [ text "How it works: " ];
+              text "Clicks are sent to the server over WebSocket. ";
+              text "The server updates state and sends back only the HTML changes. ";
+              text "No client-side framework needed!";
+            ];
+        ];
+    ]
 end
 
 (** Page styles *)
-let page_styles = {|
+let page_styles =
+  {|
   * {
     box-sizing: border-box;
     margin: 0;
@@ -229,28 +244,38 @@ let page_styles = {|
 |}
 
 (** Home page handler with embedded LiveView *)
-let home_page = fun conn _req -> let open Component in
-let page =
-  html
-    [
-      head
-        [
-          meta ~attrs:[ attr "charset" "UTF-8" ] ();
-          meta ~attrs:[ attr "viewport" "width=device-width, initial-scale=1.0" ] ();
-          title [ text "LiveView Counter" ];
-          LiveView.client_script;
-          style page_styles;
+let home_page = fun conn _req ->
+  let open Component in
+  let page =
+    html
+      [
+        head
+          [
+            meta ~attrs:[ attr "charset" "UTF-8" ] ();
+            meta ~attrs:[ attr "viewport" "width=device-width, initial-scale=1.0" ] ();
+            title [ text "LiveView Counter" ];
+            LiveView.client_script;
+            style page_styles;
+          ];
+        body [
+          div ~attrs:[ id "app" ] [
+            LiveView.embed (module Counter) ();
+          ];
         ];
-      body [ div ~attrs:[ id "app" ] [ LiveView.embed (module Counter) () ] ];
-    ]
-in
-conn |> Conn.render_component Net.Http.Status.Ok page
+      ]
+  in
+  conn
+  |> Conn.render_component Net.Http.Status.Ok page
 
 (* Define routes *)
-let routes = Middleware.Router.[ get "/" home_page; (* Serve home page with custom styles *)
-LiveView.live (module Counter) ]
+
+let routes = Middleware.Router.[
+  get "/" home_page;
+  LiveView.live (module Counter);
+]
 
 (* App is just a list of middleware! *)
+
 let app = [ Middleware.router routes ]
 
 let main ~args:_ =
@@ -259,12 +284,14 @@ let main ~args:_ =
   let config = Suri.config ~port:9_999 () in
   match Suri.start_link ~config app with
   | Ok supervisor ->
-      Log.info "╔═══════════════════════════════════════════════════╗";
+      Log.info
+        "╔═══════════════════════════════════════════════════╗";
       Log.info "║  LiveView Counter running!                       ║";
       Log.info "║  http://localhost:9999                           ║";
       Log.info "║                                                   ║";
       Log.info "║  Open your browser and watch the magic happen!   ║";
-      Log.info "╚═══════════════════════════════════════════════════╝";
+      Log.info
+        "╚═══════════════════════════════════════════════════╝";
       let count = Supervisor.Dynamic.count_children supervisor in
       Log.info ("Started with " ^ Int.to_string count.active ^ " acceptors");
       let rec loop () =

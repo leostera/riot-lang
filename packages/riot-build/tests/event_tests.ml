@@ -1,53 +1,60 @@
 open Std
 
 module Test = Std.Test
-
 module Telemetry_events = Riot_build.Internal.Telemetry_events
 
-let package_name = fun name -> Result.expect (Riot_model.Package_name.from_string name) ~msg:("package name " ^ name)
+let package_name = fun name ->
+  Result.expect (Riot_model.Package_name.from_string name) ~msg:("package name " ^ name)
 
 let test_building_target_event_to_json = fun _ctx ->
-  let target = Result.expect (Riot_model.Target.from_string "aarch64-unknown-linux-gnu") ~msg:"target" in
+  let target =
+    Result.expect (Riot_model.Target.from_string "aarch64-unknown-linux-gnu") ~msg:"target"
+  in
   let actual = Riot_build.Event.to_json (Riot_build.Event.BuildingTarget { target; host = false }) in
-  Test.assert_equal ~expected:(
-    Some (
-      Data.Json.Object [
-        "type", Data.Json.String "BuildingTarget";
-        "target", Data.Json.String "aarch64-unknown-linux-gnu";
-        "host", Data.Json.Bool false;
-      ]
-    )
-  ) ~actual;
+  Test.assert_equal
+    ~expected:(Some (Data.Json.Object [
+      ("type", Data.Json.String "BuildingTarget");
+      ("target", Data.Json.String "aarch64-unknown-linux-gnu");
+      ("host", Data.Json.Bool false);
+    ]))
+    ~actual;
   Ok ()
 
 let test_pm_event_to_json_reuses_riot_model_event_shape = fun _ctx ->
   let session_id = Riot_model.Session_id.make () in
-  let event = Riot_model.Event.create ~session_id ~level:Riot_model.Event.Info (Riot_model.Event.PackageDownloadStarted { package = package_name "std"; version = "0.1.0"; path = "/tmp/std" }) in
+  let event =
+    Riot_model.Event.create
+      ~session_id
+      ~level:Riot_model.Event.Info
+      (Riot_model.Event.PackageDownloadStarted {
+        package = package_name "std";
+        version = "0.1.0";
+        path = "/tmp/std";
+      })
+  in
   match Riot_build.Event.to_json (Riot_build.Event.Pm event) with
   | Some (Data.Json.Object fields) -> (
-    match List.find fields ~fn:(
-      fun (name, _) -> String.equal name "event"
-    ) |> Option.map ~fn:(
-      fun (_, value) -> value
-    ) with
-    | Some (Data.Json.String "riot.pm.package_download.started") -> Ok ()
-    | Some json -> Error ("expected PM event name in JSON, got " ^ Data.Json.to_string json)
-    | None -> Error "expected PM event name in JSON"
-  )
+      match List.find fields ~fn:(fun (name, _) -> String.equal name "event")
+      |> Option.map ~fn:(fun (_, value) -> value) with
+      | Some (Data.Json.String "riot.pm.package_download.started") -> Ok ()
+      | Some json -> Error ("expected PM event name in JSON, got " ^ Data.Json.to_string json)
+      | None -> Error "expected PM event name in JSON"
+    )
   | Some json -> Error ("expected JSON object, got " ^ Data.Json.to_string json)
   | None -> Error "expected JSON output for PM event"
 
 let test_build_phase_event_to_json = fun _ctx ->
-  let actual = Riot_build.Event.to_json (Riot_build.Event.Phase (Riot_build.Event.TargetsResolved { target_count = 3 })) in
-  Test.assert_equal ~expected:(
-    Some (
-      Data.Json.Object [
-        "type", Data.Json.String "BuildPhase";
-        "phase", Data.Json.String "targets_resolved";
-        "target_count", Data.Json.Int 3;
-      ]
-    )
-  ) ~actual;
+  let actual =
+    Riot_build.Event.to_json
+      (Riot_build.Event.Phase (Riot_build.Event.TargetsResolved { target_count = 3 }))
+  in
+  Test.assert_equal
+    ~expected:(Some (Data.Json.Object [
+      ("type", Data.Json.String "BuildPhase");
+      ("phase", Data.Json.String "targets_resolved");
+      ("target_count", Data.Json.Int 3);
+    ]))
+    ~actual;
   Ok ()
 
 let test_package_planning_phase_event_to_json = fun _ctx ->
@@ -64,34 +71,44 @@ let test_package_planning_phase_event_to_json = fun _ctx ->
             cached_count = 1;
             skipped_count = 1;
             failed_count = 0;
-            error_count = 0
+            error_count = 0;
           }
         )
       )
   in
-  Test.assert_equal ~expected:(
-    Some (
-      Data.Json.Object [
-        "type", Data.Json.String "BuildPhase";
-        "phase", Data.Json.String "package_planning_finished";
-        "lane_count", Data.Json.Int 2;
-        "package_count", Data.Json.Int 5;
-        "deferred_count", Data.Json.Int 1;
-        "execution_required_count", Data.Json.Int 2;
-        "finalized_count", Data.Json.Int 2;
-        "cached_count", Data.Json.Int 1;
-        "skipped_count", Data.Json.Int 1;
-        "failed_count", Data.Json.Int 0;
-        "error_count", Data.Json.Int 0;
-      ]
-    )
-  ) ~actual;
+  Test.assert_equal
+    ~expected:(Some (Data.Json.Object [
+      ("type", Data.Json.String "BuildPhase");
+      ("phase", Data.Json.String "package_planning_finished");
+      ("lane_count", Data.Json.Int 2);
+      ("package_count", Data.Json.Int 5);
+      ("deferred_count", Data.Json.Int 1);
+      ("execution_required_count", Data.Json.Int 2);
+      ("finalized_count", Data.Json.Int 2);
+      ("cached_count", Data.Json.Int 1);
+      ("skipped_count", Data.Json.Int 1);
+      ("failed_count", Data.Json.Int 0);
+      ("error_count", Data.Json.Int 0);
+    ]))
+    ~actual;
   Ok ()
 
 let test_telemetry_event_to_json = fun _ctx ->
   let session_id = Riot_model.Session_id.make () in
-  let package = Riot_model.Package.make ~name:(package_name "demo") ~path:(Path.v "/tmp/demo") ~relative_path:(Path.v "packages/demo") ~library:{ path = Path.v "src/lib.ml" } () in
-  let telemetry_event = Telemetry_events.BuildStarted { session_id; package; target = Riot_planner.Workspace_planner.Package package.name } in
+  let package =
+    Riot_model.Package.make
+      ~name:(package_name "demo")
+      ~path:(Path.v "/tmp/demo")
+      ~relative_path:(Path.v "packages/demo")
+      ~library:{ path = Path.v "src/lib.ml" }
+      ()
+  in
+  let telemetry_event = Telemetry_events.BuildStarted {
+    session_id;
+    package;
+    target = Riot_planner.Workspace_planner.Package package.name;
+  }
+  in
   let actual = Riot_build.Event.to_json (Riot_build.Event.Telemetry telemetry_event) in
   let expected = Telemetry_events.to_json telemetry_event in
   Test.assert_equal ~expected ~actual;

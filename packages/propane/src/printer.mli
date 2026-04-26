@@ -17,6 +17,7 @@ open Std
 type 'value t = 'value -> string
 
 (** Function that renders a value into a diagnostic string. *)
+
 (** Print integers. *)
 val int: int t
 

@@ -44,13 +44,13 @@ open Global
    in let full = Uri.join base "v1/users" |> Result.unwrap in Uri.to_string
    full (* "https://example.com/api/v1/users" *) ```
 *)
+
 (** A parsed URL/URI with all components. *)
+
 (** Alias for [t]. *)
 type t
-
 (** URL parsing errors. *)
 type url = t
-
 type error =
   | InvalidScheme
   (** Invalid or unsupported scheme *)
@@ -68,6 +68,7 @@ type error =
 
 (** URL exceeds maximum length *)
 (** ## Creation and Parsing *)
+
 (** Parse a string into a URL *)
 val of_string: string -> (t, error) Kernel.result
 
@@ -78,6 +79,7 @@ val from_slice: IO.IoVec.IoSlice.t -> (t, error) Kernel.result
 val to_string: t -> string
 
 (** ## Components Access *)
+
 (** Get the scheme (e.g., "http", "https") *)
 val scheme: t -> string option
 
@@ -103,6 +105,7 @@ val fragment: t -> string option
 val path_and_query: t -> string
 
 (** ## Percent Encoding/Decoding *)
+
 (**
    Encode string per RFC 3986, encoding all except unreserved characters.
 
@@ -164,9 +167,9 @@ val form_encode: string -> string
 val form_decode: string -> string
 
 (** ## Component Types *)
-module Scheme : sig
-  type t = string
 
+module Scheme: sig
+  type t = string
   val http: t
 
   val https: t
@@ -180,9 +183,8 @@ module Scheme : sig
   val to_string: t -> string
 end
 
-module Authority : sig
+module Authority: sig
   type t
-
   val host: t -> string
 
   val port: t -> int option
@@ -194,9 +196,8 @@ module Authority : sig
   val to_string: t -> string
 end
 
-module PathAndQuery : sig
+module PathAndQuery: sig
   type t
-
   val path: t -> string
 
   val query: t -> string option
@@ -207,9 +208,9 @@ module PathAndQuery : sig
 end
 
 (** ## URL Builder *)
-module Builder : sig
-  type t
 
+module Builder: sig
+  type t
   val create: unit -> t
 
   val scheme: t -> string -> t
@@ -230,6 +231,7 @@ module Builder : sig
 end
 
 (** ## Utilities *)
+
 (** Check if URL is absolute (has scheme) *)
 val is_absolute: t -> bool
 
@@ -246,9 +248,9 @@ val equal: t -> t -> bool
 val compare: t -> t -> Order.t
 
 (** ## Query Parameter Utilities *)
-module Query : sig
-  type param = string * string
 
+module Query: sig
+  type param = string * string
   (**
      Parse query string into parameter list.
 
@@ -268,7 +270,6 @@ module Query : sig
      Now returns decoded values per RFC 3986.
   *)
   type t = param list
-
   val parse: string -> t
 
   (**

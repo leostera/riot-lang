@@ -68,10 +68,9 @@ let hash_bool = fun b ->
 let hash_list = fun hasher lst ->
   let state = create () in
   write_list
-    (
-      fun s x ->
-        let h = hasher x in write_hash s h
-    )
+    (fun s x ->
+      let h = hasher x in
+      write_hash s h)
     state
     lst;
   finish state
@@ -79,10 +78,9 @@ let hash_list = fun hasher lst ->
 let hash_array = fun hasher arr ->
   let state = create () in
   write_array
-    (
-      fun s x ->
-        let h = hasher x in write_hash s h
-    )
+    (fun s x ->
+      let h = hasher x in
+      write_hash s h)
     state
     arr;
   finish state

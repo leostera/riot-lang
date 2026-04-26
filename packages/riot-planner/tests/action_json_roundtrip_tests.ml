@@ -8,7 +8,8 @@ let assert_roundtrip = fun action ->
   | Ok decoded ->
       if Riot_planner.Action.equal action decoded then
         Ok ()
-      else Error "action changed after json roundtrip"
+      else
+        Error "action changed after json roundtrip"
   | Error err -> Error ("failed to decode action json: " ^ err)
 
 let compile_interface_roundtrip_preserves_fields = fun _ctx ->
@@ -18,7 +19,7 @@ let compile_interface_roundtrip_preserves_fields = fun _ctx ->
         source = Path.v "src/a.mli";
         outputs = [ Path.v "a.cmi" ];
         includes = [ Path.v "src"; Path.v "vendor/lib" ];
-        flags = [ Riot_toolchain.Ocamlc.Open "Std"; Riot_toolchain.Ocamlc.NoAliasDeps ]
+        flags = [ Riot_toolchain.Ocamlc.Open "Std"; Riot_toolchain.Ocamlc.NoAliasDeps ];
       }
     )
 
@@ -29,11 +30,21 @@ let compile_implementation_roundtrip_preserves_flags = fun _ctx ->
         source = Path.v "src/a.ml";
         outputs = [ Path.v "a.cmx"; Path.v "a.o" ];
         includes = [ Path.v "src" ];
-        flags = [ Riot_toolchain.Ocamlc.Open "Std"; Riot_toolchain.Ocamlc.NoStdlib; Riot_toolchain.Ocamlc.NoPervasives ]
+        flags = [
+          Riot_toolchain.Ocamlc.Open "Std";
+          Riot_toolchain.Ocamlc.NoStdlib;
+          Riot_toolchain.Ocamlc.NoPervasives;
+        ];
       }
     )
 
-let compile_c_roundtrip_preserves_ccflags = fun _ctx -> assert_roundtrip (Riot_planner.Action.CompileC { source = Path.v "native/stub.c"; outputs = [ Path.v "stub.o" ]; ccflags = [ "-O3"; "-fPIC"; "-DTEST=1" ] })
+let compile_c_roundtrip_preserves_ccflags = fun _ctx ->
+  assert_roundtrip
+    (Riot_planner.Action.CompileC {
+      source = Path.v "native/stub.c";
+      outputs = [ Path.v "stub.o" ];
+      ccflags = [ "-O3"; "-fPIC"; "-DTEST=1" ];
+    })
 
 let create_executable_roundtrip_preserves_linker_fields = fun _ctx ->
   assert_roundtrip
@@ -45,7 +56,7 @@ let create_executable_roundtrip_preserves_linker_fields = fun _ctx ->
         includes = [ Path.v "src"; Path.v "_build/deps" ];
         cclibs = [ Path.v "libfoo.a"; Path.v "libbar.a" ];
         ccopt_flags = [ "-Wl,-rpath,/tmp/lib"; "-pthread" ];
-        cclib_flags = [ "-lssl"; "-lcrypto" ]
+        cclib_flags = [ "-lssl"; "-lcrypto" ];
       }
     )
 
@@ -59,7 +70,7 @@ let create_shared_library_roundtrip_preserves_linker_fields = fun _ctx ->
         includes = [ Path.v "src"; Path.v "runtime" ];
         cclibs = [ Path.v "libruntime.a" ];
         ccopt_flags = [ "-fPIC" ];
-        cclib_flags = [ "-ldl"; "-lm" ]
+        cclib_flags = [ "-ldl"; "-lm" ];
       }
     )
 
@@ -71,10 +82,7 @@ let build_foreign_dependency_roundtrip_preserves_env_and_outputs = fun _ctx ->
         path = Path.v "native/ring";
         build_cmd = [ "cargo"; "build"; "--release" ];
         outputs = [ Path.v "target/release/libring.a"; Path.v "target/release/ring.h" ];
-        env = [
-          "RUSTFLAGS", "-C target-cpu=native";
-          "CC", "clang";
-        ]
+        env = [ ("RUSTFLAGS", "-C target-cpu=native"); ("CC", "clang"); ];
       }
     )
 
@@ -85,7 +93,12 @@ let compile_implementation_roundtrip_preserves_combined_warning_flags = fun _ctx
         source = Path.v "src/warn.ml";
         outputs = [ Path.v "warn.cmx"; Path.v "warn.o" ];
         includes = [ Path.v "src" ];
-        flags = [ Riot_toolchain.Ocamlc.Warning [ Riot_toolchain.Ocamlc.All; Riot_toolchain.Ocamlc.NoCmiFile ] ]
+        flags = [
+          Riot_toolchain.Ocamlc.Warning [
+            Riot_toolchain.Ocamlc.All;
+            Riot_toolchain.Ocamlc.NoCmiFile;
+          ];
+        ];
       }
     )
 
@@ -102,20 +115,29 @@ let compile_implementation_roundtrip_preserves_profile_style_flags = fun _ctx ->
           Riot_toolchain.Ocamlc.Compact;
           Riot_toolchain.Ocamlc.WarnError [ Riot_toolchain.Ocamlc.All ];
           Riot_toolchain.Ocamlc.Raw "-O2";
-        ]
+        ];
       }
     )
 
-let tests = Test.[
-  case "compile interface json roundtrip" compile_interface_roundtrip_preserves_fields;
-  case "compile implementation json roundtrip" compile_implementation_roundtrip_preserves_flags;
-  case "compile c json roundtrip" compile_c_roundtrip_preserves_ccflags;
-  case "create executable json roundtrip" create_executable_roundtrip_preserves_linker_fields;
-  case "create shared library json roundtrip" create_shared_library_roundtrip_preserves_linker_fields;
-  case "build foreign dependency json roundtrip" build_foreign_dependency_roundtrip_preserves_env_and_outputs;
-  case "compile implementation combined warning flags roundtrip" compile_implementation_roundtrip_preserves_combined_warning_flags;
-  case "compile implementation profile-style flags roundtrip" compile_implementation_roundtrip_preserves_profile_style_flags;
-]
+let tests =
+  Test.[
+    case "compile interface json roundtrip" compile_interface_roundtrip_preserves_fields;
+    case "compile implementation json roundtrip" compile_implementation_roundtrip_preserves_flags;
+    case "compile c json roundtrip" compile_c_roundtrip_preserves_ccflags;
+    case "create executable json roundtrip" create_executable_roundtrip_preserves_linker_fields;
+    case
+      "create shared library json roundtrip"
+      create_shared_library_roundtrip_preserves_linker_fields;
+    case
+      "build foreign dependency json roundtrip"
+      build_foreign_dependency_roundtrip_preserves_env_and_outputs;
+    case
+      "compile implementation combined warning flags roundtrip"
+      compile_implementation_roundtrip_preserves_combined_warning_flags;
+    case
+      "compile implementation profile-style flags roundtrip"
+      compile_implementation_roundtrip_preserves_profile_style_flags;
+  ]
 
 let name = "riot-planner:action-json-roundtrip"
 

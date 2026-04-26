@@ -13,18 +13,15 @@
    - [ANSI.to_rgb] for terminal palette values
    - [RGB.blend] for perceptual blending between RGB colors
 *)
+
 (** ANSI 256-color palette entry. *)
 type ansi = [ | `ansi of int]
-
 (** Standard RGB color with integer channels in the range `0..255`. *)
 type rgb = [ | `rgb of int * int * int]
-
 (** Linear RGB color used for numeric color-space calculations. *)
 type lrgb = [ | `lrgb of float * float * float]
-
 (** CIE 1931 XYZ color. This representation is device-independent. *)
 type xyz = [ | `xyz of float * float * float]
-
 (**
    Normalized CIE LUV color.
 
@@ -32,10 +29,8 @@ type xyz = [ | `xyz of float * float * float]
    conventional `0..100`, and scales `u`/`v` accordingly.
 *)
 type luv = [ | `luv of float * float * float]
-
 (** Chromaticity coordinates derived from XYZ. *)
 type uv = [ | `uv of float * float]
-
 (** Any supported color representation. *)
 type color = [ | ansi | rgb | lrgb | xyz | luv | uv]
 
@@ -55,7 +50,7 @@ val to_string: color -> string
    Use this module when you are starting from terminal palette indices and need
    to move into RGB-based conversions.
 *)
-module ANSI : sig
+module ANSI: sig
   (**
      Convert an ANSI palette entry to RGB.
 
@@ -85,7 +80,7 @@ module ANSI : sig
 end
 
 (** White-point definitions used by XYZ and LUV conversions. *)
-module White_reference : sig
+module White_reference: sig
   (** Standard D50 white point. Useful for print-oriented workflows. *)
   val d50: xyz
 
@@ -114,7 +109,7 @@ end
    curve removed. Use it as the bridge between display RGB values and CIE
    color spaces such as XYZ.
 *)
-module Linear_RGB : sig
+module Linear_RGB: sig
   (**
      Remove the sRGB gamma curve and convert an RGB color to linear RGB.
 
@@ -154,7 +149,7 @@ end
    XYZ is device-independent and is the main bridge between RGB-style color
    values and perceptually uniform spaces such as LUV.
 *)
-module XYZ : sig
+module XYZ: sig
   (**
      Convert XYZ to linear RGB.
 
@@ -195,7 +190,7 @@ end
    LUV is useful when you want distances and interpolation to track perceived
    color change more closely than raw RGB values do.
 *)
-module LUV : sig
+module LUV: sig
   (** Measure Euclidean distance in normalized LUV space. *)
   val distance: luv -> luv -> float
 
@@ -263,7 +258,7 @@ end
    colors but you still want conversions and blending that respect perceptual
    color differences.
 *)
-module RGB : sig
+module RGB: sig
   (** Convert RGB to linear RGB. *)
   val to_linear_rgb: rgb -> lrgb
 

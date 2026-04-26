@@ -43,7 +43,9 @@ val messages: ?on_message:(message list -> unit) -> Connection.t -> (message lis
 
 (** Wait for the response to complete and return the response plus body. *)
 val await:
-  ?on_message:(message list -> unit) -> Connection.t -> (Net.Http.Response.t * string, error) result
+  ?on_message:(message list -> unit) ->
+  Connection.t ->
+  (Net.Http.Response.t * string, error) result
 
 (** Close the connection. *)
 val close: Connection.t -> unit

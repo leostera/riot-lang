@@ -26,10 +26,20 @@ val assert_json: ctx:Test_context.t -> actual:Data.Json.t -> (unit, string) resu
 val assert_with: ctx:Test_context.t -> render:('a -> string) -> actual:'a -> (unit, string) result
 
 (** Render a value to text with a custom function before snapshotting it. *)
-val assert_inline_text: ctx:Test_context.t -> actual:string -> expected:string -> (unit, string) result
+val assert_inline_text:
+  ctx:Test_context.t ->
+  actual:string ->
+  expected:string ->
+  (unit, string) result
 
 (** Compare two inline strings without creating external snapshot artifacts. *)
-val assert_inline_json: ctx:Test_context.t -> actual:Data.Json.t -> expected:Data.Json.t -> (unit, string) result(**
+val assert_inline_json:
+  ctx:Test_context.t ->
+  actual:Data.Json.t ->
+  expected:Data.Json.t ->
+  (unit, string) result
+
+(**
    Compare two inline JSON values after canonicalizing object-key order and
    rendering them through [Std.Data.Json.to_string_pretty].
 *)

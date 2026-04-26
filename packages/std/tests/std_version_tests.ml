@@ -1,18 +1,34 @@
 open Std
 
-let parse_version = fun source -> Version.parse source |> Result.unwrap
+let parse_version = fun source ->
+  Version.parse source
+  |> Result.unwrap
 
-let parse_requirement = fun source -> Version.parse_requirement source |> Result.unwrap
+let parse_requirement = fun source ->
+  Version.parse_requirement source
+  |> Result.unwrap
 
 let test_parse_plain_version = fun _ctx ->
   match Version.parse "1.2.3" with
-  | Ok { major = 1; minor = 2; patch = 3; pre = []; build = None } -> Ok ()
+  | Ok {
+    major = 1;
+    minor = 2;
+    patch = 3;
+    pre = [];
+    build = None
+  } -> Ok ()
   | Ok _ -> Error "expected Version.parse 1.2.3 to return a plain semver"
   | Error _ -> Error "expected Version.parse 1.2.3 to succeed"
 
 let test_parse_zero_version = fun _ctx ->
   match Version.parse "0.0.0" with
-  | Ok { major = 0; minor = 0; patch = 0; pre = []; build = None } -> Ok ()
+  | Ok {
+    major = 0;
+    minor = 0;
+    patch = 0;
+    pre = [];
+    build = None
+  } -> Ok ()
   | Ok _ -> Error "expected Version.parse 0.0.0 to return the zero version"
   | Error _ -> Error "expected Version.parse 0.0.0 to succeed"
 
@@ -60,55 +76,68 @@ let test_to_string_roundtrips_parsed_versions = fun _ctx ->
   let version = parse_version source in
   if String.equal (Version.to_string version) source then
     Ok ()
-  else Error "expected Version.to_string to roundtrip canonical semver strings"
+  else
+    Error "expected Version.to_string to roundtrip canonical semver strings"
 
 let test_compare_ignores_build_metadata = fun _ctx ->
   let left = parse_version "1.2.3+build.1" in
   let right = parse_version "1.2.3+build.2" in
   if Version.compare left right = Order.EQ then
     Ok ()
-  else Error "expected Version.compare to ignore build metadata"
+  else
+    Error "expected Version.compare to ignore build metadata"
 
 let test_compare_stable_release_is_greater_than_prerelease = fun _ctx ->
   let stable = parse_version "1.2.3" in
   let prerelease = parse_version "1.2.3-alpha" in
   if Version.compare stable prerelease = Order.GT then
     Ok ()
-  else Error "expected stable releases to compare greater than their prereleases"
+  else
+    Error "expected stable releases to compare greater than their prereleases"
 
 let test_compare_numeric_pre_release_segments = fun _ctx ->
   let left = parse_version "1.0.0-alpha.1" in
   let right = parse_version "1.0.0-alpha.2" in
   if Version.compare left right = Order.LT then
     Ok ()
-  else Error "expected numeric pre-release segments to compare numerically"
+  else
+    Error "expected numeric pre-release segments to compare numerically"
 
 let test_compare_numeric_segments_lower_than_alphanumeric = fun _ctx ->
   let left = parse_version "1.0.0-1" in
   let right = parse_version "1.0.0-alpha" in
   if Version.compare left right = Order.LT then
     Ok ()
-  else Error "expected numeric pre-release segments to compare lower than alphanumeric ones"
+  else
+    Error "expected numeric pre-release segments to compare lower than alphanumeric ones"
 
 let test_compare_shorter_prerelease_lists_lower = fun _ctx ->
   let left = parse_version "1.0.0-alpha" in
   let right = parse_version "1.0.0-alpha.1" in
   if Version.compare left right = Order.LT then
     Ok ()
-  else Error "expected shorter equal-prefix pre-release lists to compare lower"
+  else
+    Error "expected shorter equal-prefix pre-release lists to compare lower"
 
 let test_ordering_helpers_agree_with_compare = fun _ctx ->
   let left = parse_version "1.2.3-alpha" in
   let right = parse_version "1.2.3" in
-  if Version.lt left right && Version.lte left right && Version.gt right left && Version.gte right left then
+  if
+    Version.lt left right
+    && Version.lte left right
+    && Version.gt right left
+    && Version.gte right left
+  then
     Ok ()
-  else Error "expected Version.lt/lte/gt/gte to agree with Version.compare"
+  else
+    Error "expected Version.lt/lte/gt/gte to agree with Version.compare"
 
 let test_make_defaults_optional_fields = fun _ctx ->
   let version = Version.make ~major:1 ~minor:2 ~patch:3 () in
   if Version.equal version (parse_version "1.2.3") then
     Ok ()
-  else Error "expected Version.make to default to no pre-release and no build metadata"
+  else
+    Error "expected Version.make to default to no pre-release and no build metadata"
 
 let test_parse_requirement_any = fun _ctx ->
   match Version.view_requirement (parse_requirement "*") with
@@ -139,61 +168,106 @@ let test_requirement_to_string_roundtrips = fun _ctx ->
   let requirement = parse_requirement ">= 1.2.3" in
   if String.equal (Version.requirement_to_string requirement) ">= 1.2.3" then
     Ok ()
-  else Error "expected Version.requirement_to_string to preserve the canonical representation"
+  else
+    Error "expected Version.requirement_to_string to preserve the canonical representation"
 
 let test_matches_exact_requirement = fun _ctx ->
   let requirement = parse_requirement "== 1.2.3" in
-  if Version.matches requirement (parse_version "1.2.3") && not (Version.matches requirement (parse_version "1.2.4")) then
+  if
+    Version.matches requirement (parse_version "1.2.3")
+    && not (Version.matches requirement (parse_version "1.2.4"))
+  then
     Ok ()
-  else Error "expected exact requirements to match only the same semantic version"
+  else
+    Error "expected exact requirements to match only the same semantic version"
 
 let test_matches_major_prefix_requirement = fun _ctx ->
   let requirement = parse_requirement "1" in
-  if Version.matches requirement (parse_version "1.0.0") && Version.matches requirement (parse_version "1.9.9") && not (Version.matches requirement (parse_version "2.0.0")) then
+  if
+    Version.matches requirement (parse_version "1.0.0")
+    && Version.matches requirement (parse_version "1.9.9")
+    && not (Version.matches requirement (parse_version "2.0.0"))
+  then
     Ok ()
-  else Error "expected major-prefix requirements to match only that major line"
+  else
+    Error "expected major-prefix requirements to match only that major line"
 
 let test_matches_minor_prefix_requirement = fun _ctx ->
   let requirement = parse_requirement "1.2" in
-  if Version.matches requirement (parse_version "1.2.0") && Version.matches requirement (parse_version "1.2.99") && not (Version.matches requirement (parse_version "1.3.0")) then
+  if
+    Version.matches requirement (parse_version "1.2.0")
+    && Version.matches requirement (parse_version "1.2.99")
+    && not (Version.matches requirement (parse_version "1.3.0"))
+  then
     Ok ()
-  else Error "expected minor-prefix requirements to match only that minor line"
+  else
+    Error "expected minor-prefix requirements to match only that minor line"
 
 let test_matches_tilde_requirement = fun _ctx ->
   let requirement = parse_requirement "~> 1.2.3" in
-  if Version.matches requirement (parse_version "1.2.3") && Version.matches requirement (parse_version "1.2.9") && not (Version.matches requirement (parse_version "1.3.0")) then
+  if
+    Version.matches requirement (parse_version "1.2.3")
+    && Version.matches requirement (parse_version "1.2.9")
+    && not (Version.matches requirement (parse_version "1.3.0"))
+  then
     Ok ()
-  else Error "expected tilde requirements to accept >= anchor and < next minor"
+  else
+    Error "expected tilde requirements to accept >= anchor and < next minor"
 
-let tests = Test.[
-  case "Version.parse parses a plain semantic version" test_parse_plain_version;
-  case "Version.parse parses the zero version" test_parse_zero_version;
-  case "Version.parse captures alpha prerelease segments" test_parse_pre_release_alpha;
-  case "Version.parse captures mixed prerelease segments" test_parse_pre_release_mixed_segments;
-  case "Version.parse captures build metadata" test_parse_build_metadata;
-  case "Version.parse captures prerelease and build metadata together" test_parse_prerelease_and_build;
-  case "Version.parse rejects versions missing the patch segment" test_parse_rejects_missing_patch;
-  case "Version.parse rejects versions with too many segments" test_parse_rejects_too_many_segments;
-  case "Version.parse rejects invalid prerelease characters" test_parse_rejects_invalid_pre_release_characters;
-  case "Version.to_string roundtrips parsed canonical versions" test_to_string_roundtrips_parsed_versions;
-  case "Version.compare ignores build metadata" test_compare_ignores_build_metadata;
-  case "Version.compare ranks stable releases above prereleases" test_compare_stable_release_is_greater_than_prerelease;
-  case "Version.compare orders numeric prerelease segments numerically" test_compare_numeric_pre_release_segments;
-  case "Version.compare ranks numeric prerelease segments below alphanumeric ones" test_compare_numeric_segments_lower_than_alphanumeric;
-  case "Version.compare ranks shorter equal-prefix prerelease lists lower" test_compare_shorter_prerelease_lists_lower;
-  case "Version ordering helpers agree with Version.compare" test_ordering_helpers_agree_with_compare;
-  case "Version.make defaults optional fields" test_make_defaults_optional_fields;
-  case "Version.parse_requirement parses * as AnyRequirement" test_parse_requirement_any;
-  case "Version.parse_requirement parses exact requirements" test_parse_requirement_exact;
-  case "Version.parse_requirement parses tilde requirements" test_parse_requirement_tilde;
-  case "Version.parse_requirement parses bare major prefixes" test_parse_requirement_major_prefix;
-  case "Version.parse_requirement parses bare minor prefixes" test_parse_requirement_minor_prefix;
-  case "Version.requirement_to_string renders canonical requirements" test_requirement_to_string_roundtrips;
-  case "Version.matches exact requirements precisely" test_matches_exact_requirement;
-  case "Version.matches major prefixes across the whole major line" test_matches_major_prefix_requirement;
-  case "Version.matches minor prefixes across the whole minor line" test_matches_minor_prefix_requirement;
-  case "Version.matches tilde requirements within the minor line" test_matches_tilde_requirement;
-]
+let tests =
+  Test.[
+    case "Version.parse parses a plain semantic version" test_parse_plain_version;
+    case "Version.parse parses the zero version" test_parse_zero_version;
+    case "Version.parse captures alpha prerelease segments" test_parse_pre_release_alpha;
+    case "Version.parse captures mixed prerelease segments" test_parse_pre_release_mixed_segments;
+    case "Version.parse captures build metadata" test_parse_build_metadata;
+    case
+      "Version.parse captures prerelease and build metadata together"
+      test_parse_prerelease_and_build;
+    case "Version.parse rejects versions missing the patch segment" test_parse_rejects_missing_patch;
+    case
+      "Version.parse rejects versions with too many segments"
+      test_parse_rejects_too_many_segments;
+    case
+      "Version.parse rejects invalid prerelease characters"
+      test_parse_rejects_invalid_pre_release_characters;
+    case
+      "Version.to_string roundtrips parsed canonical versions"
+      test_to_string_roundtrips_parsed_versions;
+    case "Version.compare ignores build metadata" test_compare_ignores_build_metadata;
+    case
+      "Version.compare ranks stable releases above prereleases"
+      test_compare_stable_release_is_greater_than_prerelease;
+    case
+      "Version.compare orders numeric prerelease segments numerically"
+      test_compare_numeric_pre_release_segments;
+    case
+      "Version.compare ranks numeric prerelease segments below alphanumeric ones"
+      test_compare_numeric_segments_lower_than_alphanumeric;
+    case
+      "Version.compare ranks shorter equal-prefix prerelease lists lower"
+      test_compare_shorter_prerelease_lists_lower;
+    case
+      "Version ordering helpers agree with Version.compare"
+      test_ordering_helpers_agree_with_compare;
+    case "Version.make defaults optional fields" test_make_defaults_optional_fields;
+    case "Version.parse_requirement parses * as AnyRequirement" test_parse_requirement_any;
+    case "Version.parse_requirement parses exact requirements" test_parse_requirement_exact;
+    case "Version.parse_requirement parses tilde requirements" test_parse_requirement_tilde;
+    case "Version.parse_requirement parses bare major prefixes" test_parse_requirement_major_prefix;
+    case "Version.parse_requirement parses bare minor prefixes" test_parse_requirement_minor_prefix;
+    case
+      "Version.requirement_to_string renders canonical requirements"
+      test_requirement_to_string_roundtrips;
+    case "Version.matches exact requirements precisely" test_matches_exact_requirement;
+    case
+      "Version.matches major prefixes across the whole major line"
+      test_matches_major_prefix_requirement;
+    case
+      "Version.matches minor prefixes across the whole minor line"
+      test_matches_minor_prefix_requirement;
+    case "Version.matches tilde requirements within the minor line" test_matches_tilde_requirement;
+  ]
 
 let main ~args = Test.Cli.main ~name:"Version" ~tests ~args ()
 

@@ -82,6 +82,7 @@
 
    For simple scripts, manual argv parsing might be sufficient.
 *)
+
 open Global
 
 type action =
@@ -90,16 +91,12 @@ type action =
   | SetFalse
   | Append
   | Count
-
 (** How an argument's value should be set. *)
 type 'a arg
-
 (** Command-line argument definition. *)
 type command
-
 (** Command definition with arguments and subcommands. *)
 type matches
-
 (** Parsed argument matches. *)
 type error =
   | UnknownArgument of string
@@ -112,9 +109,8 @@ type error =
   | TooFewValues of string
 
 (** Parsing errors. *)
-module Arg : sig
+module Arg: sig
   type 'a t = 'a arg
-
   val flag: string -> unit t
 
   val option: string -> unit t

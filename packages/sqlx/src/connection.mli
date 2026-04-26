@@ -2,16 +2,17 @@ open Std
 
 (** Error type that wraps driver errors with their conversion functions *)
 type error =
-  | DriverError : { error: 'err; to_string: 'err -> string; to_json: 'err -> Data.Json.t } -> error
-
+  | DriverError: {
+      error: 'err;
+      to_string: 'err -> string;
+      to_json: 'err -> Data.Json.t;
+    } -> error
 type t
-
 type config =
-  | Config : {
-    driver: (module Sqlx_driver.Driver.Intf with type config = 'config);
-    config: 'config;
-  } -> config
-
+  | Config: {
+      driver: (module Sqlx_driver.Driver.Intf with type config = 'config);
+      config: 'config;
+    } -> config
 val create: config -> (t, error) result
 
 val query: t -> string -> Sqlx_driver.Value.t list -> (Cursor.t, error) result

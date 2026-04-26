@@ -7,6 +7,7 @@ type 'a override =
   | Override of 'a
 
 (** Replace with this value *)
+
 (** Profile override - partially specified profile fields *)
 type profile_override = {
   kind: Ocaml_compiler.compilation_kind override;
@@ -22,7 +23,6 @@ type profile_override = {
   ld_flags: string list override;
   ocamlc_flags: string list override;
 }
-
 (** Build profile configuration with individual flag fields *)
 type t = {
   name: string;

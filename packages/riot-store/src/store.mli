@@ -9,26 +9,78 @@ module Manifest = Manifest
 type t
 
 (** Abstract type representing a store *)
+
 (** Artifact witness - proof that build outputs have been stored *)
 type error =
-  | HashNotFound of { hash: Std.Crypto.hash }
-  | LoadManifestFailed of { path: Std.Path.t; cause: string }
-  | CreateTargetDirFailed of { path: Std.Path.t; cause: Std.Fs.error }
-  | CreateParentDirFailed of { path: Std.Path.t; cause: Std.Fs.error }
-  | ReadSourceMetadataFailed of { path: Std.Path.t; cause: Std.Fs.error }
-  | CopyArtifactFailed of { src: Std.Path.t; dst: Std.Path.t; cause: Std.Fs.error }
-  | SetCopiedArtifactPermissionsFailed of { src: Std.Path.t; dst: Std.Path.t; cause: Std.Fs.error }
-  | CreateTempDirFailed of { path: Std.Path.t; cause: Std.Fs.error }
-  | CheckSourceExistsFailed of { path: Std.Path.t; cause: Std.Fs.error }
-  | MetadataReadFailed of { path: Std.Path.t; cause: Std.Fs.error }
-  | SaveManifestFailed of { path: Std.Path.t; cause: string }
-  | CommitArtifactsFailed of { source_dir: Std.Path.t; destination_dir: Std.Path.t; cause: string }
-  | SavePlanBundleFailed of { hash: Std.Crypto.hash; cause: string }
-  | ExportPathMustBeRelative of { path: Std.Path.t }
-  | CreatePackageOutputDirFailed of { path: Std.Path.t; cause: Std.Fs.error }
-  | CopyExportFailed of { src: Std.Path.t; dst: Std.Path.t; cause: Std.Fs.error }
-  | ExportSourceMissing of { path: Std.Path.t }
-
+  | HashNotFound of {
+      hash: Std.Crypto.hash;
+    }
+  | LoadManifestFailed of {
+      path: Std.Path.t;
+      cause: string;
+    }
+  | CreateTargetDirFailed of {
+      path: Std.Path.t;
+      cause: Std.Fs.error;
+    }
+  | CreateParentDirFailed of {
+      path: Std.Path.t;
+      cause: Std.Fs.error;
+    }
+  | ReadSourceMetadataFailed of {
+      path: Std.Path.t;
+      cause: Std.Fs.error;
+    }
+  | CopyArtifactFailed of {
+      src: Std.Path.t;
+      dst: Std.Path.t;
+      cause: Std.Fs.error;
+    }
+  | SetCopiedArtifactPermissionsFailed of {
+      src: Std.Path.t;
+      dst: Std.Path.t;
+      cause: Std.Fs.error;
+    }
+  | CreateTempDirFailed of {
+      path: Std.Path.t;
+      cause: Std.Fs.error;
+    }
+  | CheckSourceExistsFailed of {
+      path: Std.Path.t;
+      cause: Std.Fs.error;
+    }
+  | MetadataReadFailed of {
+      path: Std.Path.t;
+      cause: Std.Fs.error;
+    }
+  | SaveManifestFailed of {
+      path: Std.Path.t;
+      cause: string;
+    }
+  | CommitArtifactsFailed of {
+      source_dir: Std.Path.t;
+      destination_dir: Std.Path.t;
+      cause: string;
+    }
+  | SavePlanBundleFailed of {
+      hash: Std.Crypto.hash;
+      cause: string;
+    }
+  | ExportPathMustBeRelative of {
+      path: Std.Path.t;
+    }
+  | CreatePackageOutputDirFailed of {
+      path: Std.Path.t;
+      cause: Std.Fs.error;
+    }
+  | CopyExportFailed of {
+      src: Std.Path.t;
+      dst: Std.Path.t;
+      cause: Std.Fs.error;
+    }
+  | ExportSourceMissing of {
+      path: Std.Path.t;
+    }
 val error_message: error -> string
 
 type export_entry = Manifest.export_entry = {
@@ -39,7 +91,6 @@ type export_entry = Manifest.export_entry = {
   (** Hex-encoded action hash that owns [path] in immutable cache storage. *)
   action_hash: string;
 }
-
 (** {1 Store Management} *)
 val create: workspace:Workspace.t -> t
 
@@ -48,6 +99,7 @@ val create_for_lane: workspace:Workspace.t -> profile:string -> target:Riot_mode
 
 (** Create a store rooted at a specific build lane. *)
 (** {1 Simple Interface} *)
+
 val get: t -> Std.Crypto.hash -> Artifact.t option
 
 (**
@@ -58,13 +110,22 @@ val get: t -> Std.Crypto.hash -> Artifact.t option
 val load_manifest: t -> hash:Std.Crypto.hash -> Manifest.t option
 
 (** Load the full hash manifest when present. *)
-val save: ?ocamlc_warnings:string list -> ?exports:export_entry list -> t -> package:string -> hash:Std.Crypto.hash -> sandbox_dir:Std.Path.t -> outs:Std.Path.t list -> (Artifact.t, error) result
+val save:
+  ?ocamlc_warnings:string list ->
+  ?exports:export_entry list ->
+  t ->
+  package:string ->
+  hash:Std.Crypto.hash ->
+  sandbox_dir:Std.Path.t ->
+  outs:Std.Path.t list ->
+  (Artifact.t, error) result
 
 (**
    Save build outputs to the store. Copies the specified output files from
    sandbox_dir to the store.
 *)
 (** {1 Artifact Operations} *)
+
 val promote: t -> Std.Crypto.hash -> target_dir:Std.Path.t -> (unit, error) result
 
 (**
@@ -114,7 +175,13 @@ val export_source_path: t -> export_entry -> Std.Path.t option
 
    Returns [None] when the export path is absolute.
 *)
-val materialize_package_exports: t -> exports:export_entry list -> target_dir:Std.Path.t -> (unit, error) result(**
+val materialize_package_exports:
+  t ->
+  exports:export_entry list ->
+  target_dir:Std.Path.t ->
+  (unit, error) result
+
+(**
    Materialize package exports from immutable action artifact locations into a
    package out directory.
 

@@ -50,7 +50,9 @@ open Std
    - State management per connection (in dedicated process)
    - Automatic re-rendering on state changes
 *)
+
 (** {1 Component Interface} *)
+
 val id: string -> string
 
 (**
@@ -74,6 +76,7 @@ type 'msg event =
   | App of 'msg
 
 (** Component-specific messages from UI events *)
+
 (**
    Event wrapper for component messages.
 
@@ -91,10 +94,8 @@ module type Component = sig
      This is used to create both the WebSocket endpoint path and DOM element ID.
   *)
   type state
-
   (** Application state *)
   type msg
-
   (** Messages that can change state *)
   type args
 
@@ -128,6 +129,7 @@ module type Component = sig
 end
 
 (** {1 LiveView JavaScript Runtime} *)
+
 val serve_runtime: ?prefix:string -> unit -> Middleware.Pipeline.middleware
 
 (**
@@ -149,7 +151,11 @@ val serve_runtime: ?prefix:string -> unit -> Middleware.Pipeline.middleware
    ]}
 *)
 (** {1 Mounting LiveViews} *)
-val mount: (module Component with type state = 's and type msg = 'm) -> Middleware.Conn.t -> Channel.Handler.upgrade_opts * Channel.Handler.t
+
+val mount:
+  (module Component with type state = 's and type msg = 'm) ->
+  Middleware.Conn.t ->
+  Channel.Handler.upgrade_opts * Channel.Handler.t
 
 (**
    Create a LiveView Channel.Handler.
@@ -259,6 +265,7 @@ val live: (module Component with type state = 's and type msg = 'm) -> Middlewar
    ]}
 *)
 (** {1 JavaScript Runtime} *)
+
 val javascript_runtime: string
 
 (**
@@ -294,7 +301,15 @@ val client_script: 'msg Component.t
      ]
    ]}
 *)
-val html_template: element_id:string -> ws_path:string -> ?title:string -> ?styles:string -> 'msg Component.t -> string(**
+val html_template:
+  element_id:string ->
+  ws_path:string ->
+  ?title:string ->
+  ?styles:string ->
+  'msg Component.t ->
+  string
+
+(**
    Generate HTML template with LiveView bootstrapping.
 
    @param element_id DOM element ID to mount LiveView

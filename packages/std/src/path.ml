@@ -20,43 +20,37 @@ let is_valid_utf8 = fun s ->
         let c = Char.code (String.get_unchecked s ~at:i) in
         if c < 0x80 then
           check (i + 1)
-        else
-          if c < 0xc0 then
+        else if c < 0xc0 then
+          false
+        else if c < 0xe0 then
+          if i + 1 >= len then
+            false
+          else if Char.code (String.get_unchecked s ~at:(i + 1)) land 0xc0 != 0x80 then
             false
           else
-            if c < 0xe0 then
-              if i + 1 >= len then
-                false
-              else
-                if Char.code (String.get_unchecked s ~at:(i + 1)) land 0xc0 != 0x80 then
-                  false
-                else check (i + 2)
-            else
-              if c < 0xf0 then
-                if i + 2 >= len then
-                  false
-                else
-                  if Char.code (String.get_unchecked s ~at:(i + 1)) land 0xc0 != 0x80 then
-                    false
-                  else
-                    if Char.code (String.get_unchecked s ~at:(i + 2)) land 0xc0 != 0x80 then
-                      false
-                    else check (i + 3)
-              else
-                if c < 0xf8 then
-                  if i + 3 >= len then
-                    false
-                  else
-                    if Char.code (String.get_unchecked s ~at:(i + 1)) land 0xc0 != 0x80 then
-                      false
-                    else
-                      if Char.code (String.get_unchecked s ~at:(i + 2)) land 0xc0 != 0x80 then
-                        false
-                      else
-                        if Char.code (String.get_unchecked s ~at:(i + 3)) land 0xc0 != 0x80 then
-                          false
-                        else check (i + 4)
-                else false
+            check (i + 2)
+        else if c < 0xf0 then
+          if i + 2 >= len then
+            false
+          else if Char.code (String.get_unchecked s ~at:(i + 1)) land 0xc0 != 0x80 then
+            false
+          else if Char.code (String.get_unchecked s ~at:(i + 2)) land 0xc0 != 0x80 then
+            false
+          else
+            check (i + 3)
+        else if c < 0xf8 then
+          if i + 3 >= len then
+            false
+          else if Char.code (String.get_unchecked s ~at:(i + 1)) land 0xc0 != 0x80 then
+            false
+          else if Char.code (String.get_unchecked s ~at:(i + 2)) land 0xc0 != 0x80 then
+            false
+          else if Char.code (String.get_unchecked s ~at:(i + 3)) land 0xc0 != 0x80 then
+            false
+          else
+            check (i + 4)
+        else
+          false
     in
     check 0
   with
@@ -65,44 +59,46 @@ let is_valid_utf8 = fun s ->
 let from_string = fun s ->
   if is_valid_utf8 s then
     Result.ok s
-  else Result.err (InvalidUtf8 { path = s })
+  else
+    Result.err (InvalidUtf8 { path = s })
 
 let from_string_unchecked = fun s -> s
 
-let v = fun path -> from_string path |> Result.expect ~msg:("Invalid string path " ^ path)
+let v = fun path ->
+  from_string path
+  |> Result.expect ~msg:("Invalid string path " ^ path)
 
 let to_string = fun t -> t
 
 let join = fun base path ->
   if is_absolute path then
     path
+  else if base = "" then
+    path
+  else if String.get_unchecked base ~at:(String.length base - 1) = '/' then
+    base ^ path
   else
-    if base = "" then
-      path
-    else
-      if String.get_unchecked base ~at:(String.length base - 1) = '/' then
-        base ^ path
-      else base ^ "/" ^ path
+    base ^ "/" ^ path
 
 let ( / ) = join
 
 let dirname = fun path ->
   if path = "" then
     "."
+  else if path = "/" then
+    "/"
   else
-    if path = "/" then
-      "/"
+    let parts = String.split ~by:"/" path in
+    let without_last =
+      match List.reverse parts with
+      | [] -> []
+      | _ :: rest -> List.reverse rest
+    in
+    let result = String.concat "/" without_last in
+    if result = "" then
+      "."
     else
-      let parts = String.split ~by:"/" path in
-      let without_last =
-        match List.reverse parts with
-        | [] -> []
-        | _ :: rest -> List.reverse rest
-      in
-      let result = String.concat "/" without_last in
-      if result = "" then
-        "."
-      else result
+      result
 
 let parent = fun path ->
   match dirname path with
@@ -114,17 +110,17 @@ let parent = fun path ->
 let basename = fun path ->
   if path = "" then
     ""
+  else if path = "/" then
+    "/"
   else
-    if path = "/" then
-      "/"
-    else
-      let parts = String.split ~by:"/" path in
-      match List.reverse parts with
-      | [] -> ""
-      | last :: _ ->
-          if last = "" then
-            "/"
-          else last
+    let parts = String.split ~by:"/" path in
+    match List.reverse parts with
+    | [] -> ""
+    | last :: _ ->
+        if last = "" then
+          "/"
+        else
+          last
 
 let extension = fun path ->
   let base = basename path in
@@ -132,10 +128,10 @@ let extension = fun path ->
   let rec find_dot i =
     if i < 1 then
       None
+    else if String.get_unchecked base ~at:i = '.' then
+      Some i
     else
-      if String.get_unchecked base ~at:i = '.' then
-        Some i
-      else find_dot (i - 1)
+      find_dot (i - 1)
   in
   match find_dot (len - 1) with
   | None -> None
@@ -148,24 +144,25 @@ let remove_extension = fun path ->
   let rec find_dot i =
     if i < 1 then
       len
+    else if String.get_unchecked base ~at:i = '.' then
+      i
     else
-      if String.get_unchecked base ~at:i = '.' then
-        i
-      else find_dot (i - 1)
+      find_dot (i - 1)
   in
   let base_without_ext = String.sub base ~offset:0 ~len:(find_dot (len - 1)) in
   if dir = "." then
     base_without_ext
+  else if dir = "/" then
+    "/" ^ base_without_ext
   else
-    if dir = "/" then
-      "/" ^ base_without_ext
-    else dir ^ "/" ^ base_without_ext
+    dir ^ "/" ^ base_without_ext
 
 let add_extension = fun path ~ext ->
   let ext =
     if String.length ext > 0 && String.get_unchecked ext ~at:0 != '.' then
       "." ^ ext
-    else ext
+    else
+      ext
   in
   path ^ ext
 
@@ -176,41 +173,43 @@ let is_relative = fun path -> not (is_absolute path)
 let components = fun t ->
   if t = "" then
     []
+  else if t = "/" then
+    [ "/" ]
   else
-    if t = "/" then
-      [ "/" ]
-    else
-      let parts = String.split ~by:"/" t in
-      let rec build_components acc parts =
-        match parts with
-        | [] -> List.reverse acc
-        | "" :: rest when acc = [] -> build_components [ "/" ] rest
-        | "" :: rest -> build_components acc rest
-        | part :: rest -> build_components (part :: acc) rest
-      in
-      build_components [] parts
+    let parts = String.split ~by:"/" t in
+    let rec build_components acc parts =
+      match parts with
+      | [] -> List.reverse acc
+      | "" :: rest when acc = [] -> build_components [ "/" ] rest
+      | "" :: rest -> build_components acc rest
+      | part :: rest -> build_components (part :: acc) rest
+    in
+    build_components [] parts
 
 let rec normalize = fun path ->
   let parts = String.split ~by:"/" path in
   let rec process acc = function
-    | [] -> List.reverse acc
-    | "." :: rest -> process acc rest
+    | [] ->
+        List.reverse acc
+    | "." :: rest ->
+        process acc rest
     | ".." :: rest -> (
-      match acc with
-      | [] -> process [ ".." ] rest
-      | ".." :: _ -> process (".." :: acc) rest
-      | _ :: acc' -> process acc' rest
-    )
-    | part :: rest -> process (part :: acc) rest
+        match acc with
+        | [] -> process [ ".." ] rest
+        | ".." :: _ -> process (".." :: acc) rest
+        | _ :: acc' -> process acc' rest
+      )
+    | part :: rest ->
+        process (part :: acc) rest
   in
   let normalized = process [] parts in
   let result = String.concat "/" normalized in
   if is_absolute path && result != "" && not (String.starts_with ~prefix:"/" result) then
     "/" ^ result
+  else if result = "" then
+    "."
   else
-    if result = "" then
-      "."
-    else result
+    result
 
 let exists = fun path ->
   match Kernel.Fs.File.exists path with
@@ -232,13 +231,20 @@ let strip_prefix = fun path ~prefix ->
   let path_components = components path in
   let prefix_components = components prefix in
   let rec consume path_parts prefix_parts =
-    match path_parts, prefix_parts with
-    | _, [] -> Result.ok path_parts
-    | [], _ :: _ -> Result.err (SystemError ("Path " ^ to_string path ^ " does not start with prefix " ^ to_string prefix))
-    | p :: path_rest, pre :: prefix_rest ->
+    match (path_parts, prefix_parts) with
+    | (_, []) -> Result.ok path_parts
+    | ([], _ :: _) ->
+        Result.err
+          (SystemError ("Path " ^ to_string path ^ " does not start with prefix " ^ to_string prefix))
+    | (p :: path_rest, pre :: prefix_rest) ->
         if to_string p = to_string pre then
           consume path_rest prefix_rest
-        else Result.err (SystemError ("Path " ^ to_string path ^ " does not start with prefix " ^ to_string prefix))
+        else
+          Result.err
+            (SystemError ("Path "
+            ^ to_string path
+            ^ " does not start with prefix "
+            ^ to_string prefix))
   in
   match consume path_components prefix_components with
   | Ok [] -> Result.ok (v "")

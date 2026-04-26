@@ -8,25 +8,26 @@ type failure = {
   ocamlc_warnings: string list;
   duration_ms: int;
 }
+
 and failure_reason =
   | PackagePlanningFailed of Riot_planner.Planning_error.t
   | PackageExecutionFailed of { message: string }
   | PackageActionFailed of { message: string }
-  | PackageActionOutputsNotCreated of { missing: Std.Path.t list }
-  | PackageActionDependenciesFailed of { failed: Std.Graph.SimpleGraph.Node_id.t list }
+  | PackageActionOutputsNotCreated of {
+      missing: Std.Path.t list;
+    }
+  | PackageActionDependenciesFailed of {
+      failed: Std.Graph.SimpleGraph.Node_id.t list;
+    }
   | PackageSkipped of { reason: string }
   | UnknownFailure
-
 type package_status =
   | Built of Riot_store.Artifact.t
   | Cached of Riot_store.Artifact.t
   | Skipped of string
   | Failed of string
-
 type package_result
-
 type t
-
 val of_build_results: Package_builder.build_result list -> t
 
 val packages: t -> package_result list

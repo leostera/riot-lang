@@ -2,11 +2,12 @@ open Std
 open Std.IO
 
 (* Use Array from Collections *)
-module Array = Collections.Array
 
+module Array = Collections.Array
 module Vector = Collections.Vector
 
 (* Use Cell from Sync *)
+
 module Cell = Sync.Cell
 
 (** HPACK: Header Compression for HTTP/2 (RFC 7541) *)
@@ -25,77 +26,78 @@ type encoding_type =
    The static table consists of 61 common HTTP header fields.
    Indexes are 1-based (index 0 is invalid).
 *)
-let static_table =
-  [|
-    { name = ":authority"; value = "" };
-    { name = ":method"; value = "GET" };
-    { name = ":method"; value = "POST" };
-    { name = ":path"; value = "/" };
-    { name = ":path"; value = "/index.html" };
-    { name = ":scheme"; value = "http" };
-    { name = ":scheme"; value = "https" };
-    { name = ":status"; value = "200" };
-    { name = ":status"; value = "204" };
-    { name = ":status"; value = "206" };
-    { name = ":status"; value = "304" };
-    { name = ":status"; value = "400" };
-    { name = ":status"; value = "404" };
-    { name = ":status"; value = "500" };
-    { name = "accept-charset"; value = "" };
-    { name = "accept-encoding"; value = "gzip, deflate" };
-    { name = "accept-language"; value = "" };
-    { name = "accept-ranges"; value = "" };
-    { name = "accept"; value = "" };
-    { name = "access-control-allow-origin"; value = "" };
-    { name = "age"; value = "" };
-    { name = "allow"; value = "" };
-    { name = "authorization"; value = "" };
-    { name = "cache-control"; value = "" };
-    { name = "content-disposition"; value = "" };
-    { name = "content-encoding"; value = "" };
-    { name = "content-language"; value = "" };
-    { name = "content-length"; value = "" };
-    { name = "content-location"; value = "" };
-    { name = "content-range"; value = "" };
-    { name = "content-type"; value = "" };
-    { name = "cookie"; value = "" };
-    { name = "date"; value = "" };
-    { name = "etag"; value = "" };
-    { name = "expect"; value = "" };
-    { name = "expires"; value = "" };
-    { name = "from"; value = "" };
-    { name = "host"; value = "" };
-    { name = "if-match"; value = "" };
-    { name = "if-modified-since"; value = "" };
-    { name = "if-none-match"; value = "" };
-    { name = "if-range"; value = "" };
-    { name = "if-unmodified-since"; value = "" };
-    { name = "last-modified"; value = "" };
-    { name = "link"; value = "" };
-    { name = "location"; value = "" };
-    { name = "max-forwards"; value = "" };
-    { name = "proxy-authenticate"; value = "" };
-    { name = "proxy-authorization"; value = "" };
-    { name = "range"; value = "" };
-    { name = "referer"; value = "" };
-    { name = "refresh"; value = "" };
-    { name = "retry-after"; value = "" };
-    { name = "server"; value = "" };
-    { name = "set-cookie"; value = "" };
-    { name = "strict-transport-security"; value = "" };
-    { name = "transfer-encoding"; value = "" };
-    { name = "user-agent"; value = "" };
-    { name = "vary"; value = "" };
-    { name = "via"; value = "" };
-    { name = "www-authenticate"; value = "" };
-  |]
+
+let static_table = [|
+  { name = ":authority"; value = "" };
+  { name = ":method"; value = "GET" };
+  { name = ":method"; value = "POST" };
+  { name = ":path"; value = "/" };
+  { name = ":path"; value = "/index.html" };
+  { name = ":scheme"; value = "http" };
+  { name = ":scheme"; value = "https" };
+  { name = ":status"; value = "200" };
+  { name = ":status"; value = "204" };
+  { name = ":status"; value = "206" };
+  { name = ":status"; value = "304" };
+  { name = ":status"; value = "400" };
+  { name = ":status"; value = "404" };
+  { name = ":status"; value = "500" };
+  { name = "accept-charset"; value = "" };
+  { name = "accept-encoding"; value = "gzip, deflate" };
+  { name = "accept-language"; value = "" };
+  { name = "accept-ranges"; value = "" };
+  { name = "accept"; value = "" };
+  { name = "access-control-allow-origin"; value = "" };
+  { name = "age"; value = "" };
+  { name = "allow"; value = "" };
+  { name = "authorization"; value = "" };
+  { name = "cache-control"; value = "" };
+  { name = "content-disposition"; value = "" };
+  { name = "content-encoding"; value = "" };
+  { name = "content-language"; value = "" };
+  { name = "content-length"; value = "" };
+  { name = "content-location"; value = "" };
+  { name = "content-range"; value = "" };
+  { name = "content-type"; value = "" };
+  { name = "cookie"; value = "" };
+  { name = "date"; value = "" };
+  { name = "etag"; value = "" };
+  { name = "expect"; value = "" };
+  { name = "expires"; value = "" };
+  { name = "from"; value = "" };
+  { name = "host"; value = "" };
+  { name = "if-match"; value = "" };
+  { name = "if-modified-since"; value = "" };
+  { name = "if-none-match"; value = "" };
+  { name = "if-range"; value = "" };
+  { name = "if-unmodified-since"; value = "" };
+  { name = "last-modified"; value = "" };
+  { name = "link"; value = "" };
+  { name = "location"; value = "" };
+  { name = "max-forwards"; value = "" };
+  { name = "proxy-authenticate"; value = "" };
+  { name = "proxy-authorization"; value = "" };
+  { name = "range"; value = "" };
+  { name = "referer"; value = "" };
+  { name = "refresh"; value = "" };
+  { name = "retry-after"; value = "" };
+  { name = "server"; value = "" };
+  { name = "set-cookie"; value = "" };
+  { name = "strict-transport-security"; value = "" };
+  { name = "transfer-encoding"; value = "" };
+  { name = "user-agent"; value = "" };
+  { name = "vary"; value = "" };
+  { name = "via"; value = "" };
+  { name = "www-authenticate"; value = "" };
+|]
 
 let static_table_size = Array.length static_table
 
 let static_table_lookup = fun index ->
   if index >= 1 && index <= static_table_size then
     Some (Array.get_unchecked static_table ~at:(index - 1))
-  else None
+  else
+    None
 
 let static_table_find = fun ~name ~value ->
   let rec loop i =
@@ -105,7 +107,8 @@ let static_table_find = fun ~name ~value ->
       let entry = Array.get_unchecked static_table ~at:i in
       if String.equal entry.name name && String.equal entry.value value then
         Some (i + 1)
-      else loop (i + 1)
+      else
+        loop (i + 1)
   in
   loop 0
 
@@ -113,10 +116,10 @@ let static_table_find_name = fun name ->
   let rec loop i =
     if i >= static_table_size then
       None
+    else if String.equal (Array.get_unchecked static_table ~at:i).name name then
+      Some (i + 1)
     else
-      if String.equal (Array.get_unchecked static_table ~at:i).name name then
-        Some (i + 1)
-      else loop (i + 1)
+      loop (i + 1)
   in
   loop 0
 
@@ -130,12 +133,21 @@ let static_table_find_name = fun name ->
    - Table size = sum of entry sizes
    - Entry size = length(name) + length(value) + 32 bytes overhead
 *)
+
 let header_size = fun header -> String.length header.name + String.length header.value + 32
 
 module DynamicTable = struct
-  type t = { entries: header list Cell.t; current_size: int Cell.t; max_size: int Cell.t }
+  type t = {
+    entries: header list Cell.t;
+    current_size: int Cell.t;
+    max_size: int Cell.t;
+  }
 
-  let create = fun max_size -> { entries = Cell.create []; current_size = Cell.create 0; max_size = Cell.create max_size }
+  let create = fun max_size -> {
+    entries = Cell.create [];
+    current_size = Cell.create 0;
+    max_size = Cell.create max_size;
+  }
 
   let size = fun t -> Cell.get t.current_size
 
@@ -178,7 +190,8 @@ module DynamicTable = struct
     let entries = Cell.get t.entries in
     if index >= 1 && index <= List.length entries then
       Some (List.get_unchecked entries ~at:(index - 1))
-    else None
+    else
+      None
 
   let find = fun t ~name ~value ->
     let entries = Cell.get t.entries in
@@ -188,7 +201,8 @@ module DynamicTable = struct
       | hdr :: rest ->
           if String.equal hdr.name name && String.equal hdr.value value then
             Some i
-          else loop (i + 1) rest
+          else
+            loop (i + 1) rest
     in
     loop 1 entries
 
@@ -200,7 +214,8 @@ module DynamicTable = struct
       | hdr :: rest ->
           if String.equal hdr.name name then
             Some i
-          else loop (i + 1) rest
+          else
+            loop (i + 1) rest
     in
     loop 1 entries
 
@@ -219,15 +234,18 @@ end
    - If value < 2^N - 1: encode directly in N bits
    - Otherwise: encode 2^N - 1 in N bits, then encode (value - (2^N - 1)) as a series of bytes
 *)
+
 module Integer = struct
   let encode = fun prefix_bits value ->
     let max_prefix = (1 lsl prefix_bits) - 1 in
     if value < max_prefix then
-      let result = Bytes.create ~size:1 in Bytes.set_unchecked result ~at:0 ~char:(Char.from_int_unchecked value);
+      let result = Bytes.create ~size:1 in
+      Bytes.set_unchecked result ~at:0 ~char:(Char.from_int_unchecked value);
       result
     else
       (* Doesn't fit, use continuation bytes *)
-      let buf = Buffer.create ~size:8 in Buffer.add_char buf (Char.from_int_unchecked max_prefix);
+      let buf = Buffer.create ~size:8 in
+      Buffer.add_char buf (Char.from_int_unchecked max_prefix);
     let remaining = Cell.create (value - max_prefix) in
     while Cell.get remaining >= 128 do
       let byte = (Cell.get remaining land 0x7f) lor 0x80 in
@@ -248,12 +266,16 @@ module Integer = struct
         if pos >= Bytes.length data then
           Error "Incomplete integer encoding"
         else
-          let byte = Bytes.get_unchecked data ~at:pos |> Char.to_int in
+          let byte =
+            Bytes.get_unchecked data ~at:pos
+            |> Char.to_int
+          in
           let value = byte land 0x7f in
           let acc = acc + (value * multiplier) in
           if byte land 0x80 = 0 then
             Ok (acc, pos + 1)
-          else read_continuation acc (multiplier * 128) (pos + 1)
+          else
+            read_continuation acc (multiplier * 128) (pos + 1)
       in
       match read_continuation prefix_mask 1 offset with
       | Ok (value, new_offset) -> Ok (value, new_offset)
@@ -273,6 +295,7 @@ end
 
    Note: Full Huffman implementation deferred to huffman.ml
 *)
+
 module String_ = struct
   let encode = fun ?(use_huffman = false) str ->
     let len = String.length str in
@@ -300,35 +323,46 @@ module String_ = struct
             let str =
               if is_huffman then
                 Bytes.to_string str_data
-              else Bytes.to_string str_data
+              else
+                Bytes.to_string str_data
             in
             Ok (str, new_offset + length)
 end
 
 (** {1 Encoder} *)
-type encoder = { dynamic_table: DynamicTable.t; sensitive_headers: string list Cell.t }
 
-let create_encoder = fun ?(max_dynamic_table_size = 4_096) () -> { dynamic_table = DynamicTable.create max_dynamic_table_size; sensitive_headers = Cell.create [ "authorization"; "cookie"; "set-cookie" ] }
+type encoder = {
+  dynamic_table: DynamicTable.t;
+  sensitive_headers: string list Cell.t;
+}
 
-let update_max_table_size = fun encoder new_size -> DynamicTable.update_max_size encoder.dynamic_table new_size
+let create_encoder = fun ?(max_dynamic_table_size = 4_096) () -> {
+  dynamic_table = DynamicTable.create max_dynamic_table_size;
+  sensitive_headers = Cell.create [ "authorization"; "cookie"; "set-cookie" ];
+}
+
+let update_max_table_size = fun encoder new_size ->
+  DynamicTable.update_max_size encoder.dynamic_table new_size
 
 let is_sensitive_header = fun name ->
-  List.contains
-    [
-      "authorization";
-      "cookie";
-      "set-cookie";
-      "proxy-authorization";
-    ]
-    ~value:name
+  List.contains [ "authorization"; "cookie"; "set-cookie"; "proxy-authorization"; ] ~value:name
 
 let encode_indexed_header = fun index ->
   (* Indexed Header Field: 1xxxxxxx *)
   let prefix_byte = 0x80 in
   let index_bytes = Integer.encode 7 index in
   let result = Bytes.create ~size:(Bytes.length index_bytes) in
-  Bytes.set_unchecked result ~at:0 ~char:(Char.from_int_unchecked (prefix_byte lor Char.to_int (Bytes.get_unchecked index_bytes ~at:0)));
-  Bytes.blit_unchecked index_bytes ~src_offset:1 ~dst:result ~dst_offset:1 ~len:(Bytes.length index_bytes - 1);
+  Bytes.set_unchecked
+    result
+    ~at:0
+    ~char:(Char.from_int_unchecked
+      (prefix_byte lor Char.to_int (Bytes.get_unchecked index_bytes ~at:0)));
+  Bytes.blit_unchecked
+    index_bytes
+    ~src_offset:1
+    ~dst:result
+    ~dst_offset:1
+    ~len:(Bytes.length index_bytes - 1);
   result
 
 let encode_literal_with_indexing = fun ~name_index ~value ->
@@ -339,8 +373,13 @@ let encode_literal_with_indexing = fun ~name_index ~value ->
       (* Name is indexed *)
       let prefix_byte = 0x40 in
       let index_bytes = Integer.encode 6 index in
-      Buffer.add_char buf (Char.from_int_unchecked (prefix_byte lor Char.to_int (Bytes.get_unchecked index_bytes ~at:0)));
-      Buffer.add_bytes buf (Bytes.sub_unchecked index_bytes ~offset:1 ~len:(Bytes.length index_bytes - 1));
+      Buffer.add_char
+        buf
+        (Char.from_int_unchecked
+          (prefix_byte lor Char.to_int (Bytes.get_unchecked index_bytes ~at:0)));
+      Buffer.add_bytes
+        buf
+        (Bytes.sub_unchecked index_bytes ~offset:1 ~len:(Bytes.length index_bytes - 1));
       Buffer.add_bytes buf (String_.encode value);
       Bytes.from_string (Buffer.contents buf)
   | None ->
@@ -371,8 +410,13 @@ let encode_literal_never_indexed = fun ~name_index ~value ->
   match name_index with
   | Some index ->
       let index_bytes = Integer.encode 4 index in
-      Buffer.add_char buf (Char.from_int_unchecked (prefix_byte lor Char.to_int (Bytes.get_unchecked index_bytes ~at:0)));
-      Buffer.add_bytes buf (Bytes.sub_unchecked index_bytes ~offset:1 ~len:(Bytes.length index_bytes - 1));
+      Buffer.add_char
+        buf
+        (Char.from_int_unchecked
+          (prefix_byte lor Char.to_int (Bytes.get_unchecked index_bytes ~at:0)));
+      Buffer.add_bytes
+        buf
+        (Bytes.sub_unchecked index_bytes ~offset:1 ~len:(Bytes.length index_bytes - 1));
       Buffer.add_bytes buf (String_.encode value);
       Bytes.from_string (Buffer.contents buf)
   | None ->
@@ -385,8 +429,9 @@ let encode_header = fun encoder header ~encoding_type ->
   (* Try to find exact match in tables *)
   let static_match = static_table_find ~name ~value in
   let dynamic_match = DynamicTable.find encoder.dynamic_table ~name ~value in
-  match static_match, dynamic_match with
-  | (Some index, _) | (_, Some index) ->
+  match (static_match, dynamic_match) with
+  | (Some index, _)
+  | (_, Some index) ->
       (* Full match found - use indexed representation *)
       let actual_index =
         match static_match with
@@ -394,15 +439,15 @@ let encode_header = fun encoder header ~encoding_type ->
         | None -> static_table_size + Option.unwrap dynamic_match
       in
       encode_indexed_header actual_index
-  | None, None ->
+  | (None, None) ->
       (* No full match - check for name match *)
       let static_name_match = static_table_find_name name in
       let dynamic_name_match = DynamicTable.find_name encoder.dynamic_table name in
       let name_index =
-        match static_name_match, dynamic_name_match with
-        | Some i, _ -> Some i
-        | None, Some i -> Some (static_table_size + i)
-        | None, None -> None
+        match (static_name_match, dynamic_name_match) with
+        | (Some i, _) -> Some i
+        | (None, Some i) -> Some (static_table_size + i)
+        | (None, None) -> None
       in
       match encoding_type with
       | Indexed ->
@@ -419,28 +464,39 @@ let encode_header = fun encoder header ~encoding_type ->
 
 let encode = fun encoder ?(sensitive_headers = []) () ~headers ->
   let buf = Buffer.create ~size:256 in
-  List.for_each headers ~fn:(
-    fun header ->
+  List.for_each
+    headers
+    ~fn:(fun header ->
       let encoding_type =
-        if is_sensitive_header header.name || List.contains sensitive_headers ~value:header.name then
+        if
+          is_sensitive_header header.name || List.contains sensitive_headers ~value:header.name
+        then
           LiteralNeverIndexed
-        else LiteralWithIndexing
+        else
+          LiteralWithIndexing
       in
-      let encoded = encode_header encoder header ~encoding_type in Buffer.add_bytes buf encoded
-  );
+      let encoded = encode_header encoder header ~encoding_type in
+      Buffer.add_bytes buf encoded);
   Bytes.from_string (Buffer.contents buf)
 
 (** {1 Decoder} *)
-type decoder = { dynamic_table: DynamicTable.t }
 
-let create_decoder = fun ?(max_dynamic_table_size = 4_096) () -> { dynamic_table = DynamicTable.create max_dynamic_table_size }
+type decoder = {
+  dynamic_table: DynamicTable.t;
+}
 
-let update_max_table_size = fun decoder new_size -> DynamicTable.update_max_size decoder.dynamic_table new_size
+let create_decoder = fun ?(max_dynamic_table_size = 4_096) () -> {
+  dynamic_table = DynamicTable.create max_dynamic_table_size;
+}
+
+let update_max_table_size = fun decoder new_size ->
+  DynamicTable.update_max_size decoder.dynamic_table new_size
 
 let lookup_header = fun decoder index ->
   if index <= static_table_size then
     static_table_lookup index
-  else DynamicTable.lookup decoder.dynamic_table (index - static_table_size)
+  else
+    DynamicTable.lookup decoder.dynamic_table (index - static_table_size)
 
 let decode_header_block = fun decoder data offset ->
   if offset >= Bytes.length data then
@@ -452,15 +508,14 @@ let decode_header_block = fun decoder data offset ->
       match Integer.decode 7 first_byte data (offset + 1) with
       | Error e -> Error e
       | Ok (index, new_offset) -> (
-        match lookup_header decoder index with
-        | None -> Error ("Invalid header index: " ^ Int.to_string index)
-        | Some header -> Ok ([ header ], new_offset)
-      )
-    else
-      if first_code land 0x40 != 0 then
-        match Integer.decode 6 first_byte data (offset + 1) with
-        | Error e -> Error e
-        | Ok (name_index, pos1) -> (
+          match lookup_header decoder index with
+          | None -> Error ("Invalid header index: " ^ Int.to_string index)
+          | Some header -> Ok ([ header ], new_offset)
+        )
+    else if first_code land 0x40 != 0 then
+      match Integer.decode 6 first_byte data (offset + 1) with
+      | Error e -> Error e
+      | Ok (name_index, pos1) -> (
           match (
             if name_index = 0 then
               String_.decode data pos1
@@ -474,66 +529,67 @@ let decode_header_block = fun decoder data offset ->
               match String_.decode data pos2 with
               | Error e -> Error e
               | Ok (value, new_offset) ->
-                  let header = { name; value } in Ok ([ header ], new_offset)
+                  let header = { name; value } in
+                  Ok ([ header ], new_offset)
         )
-      else
-        if first_code land 0x20 != 0 then
-          match Integer.decode 5 first_byte data (offset + 1) with
+    else if first_code land 0x20 != 0 then
+      match Integer.decode 5 first_byte data (offset + 1) with
+      | Error e -> Error e
+      | Ok (new_size, new_offset) ->
+          DynamicTable.update_max_size decoder.dynamic_table new_size;
+          Ok ([], new_offset)
+    else if first_code land 0x10 != 0 then
+      match Integer.decode 4 first_byte data (offset + 1) with
+      | Error e -> Error e
+      | Ok (name_index, pos1) -> (
+          match (
+            if name_index = 0 then
+              String_.decode data pos1
+            else
+              match lookup_header decoder name_index with
+              | None -> Error ("Invalid name index: " ^ Int.to_string name_index)
+              | Some h -> Ok (h.name, pos1)
+          ) with
           | Error e -> Error e
-          | Ok (new_size, new_offset) ->
-              DynamicTable.update_max_size decoder.dynamic_table new_size;
-              Ok ([], new_offset)
-        else
-          if first_code land 0x10 != 0 then
-            match Integer.decode 4 first_byte data (offset + 1) with
-            | Error e -> Error e
-            | Ok (name_index, pos1) -> (
-              match (
-                if name_index = 0 then
-                  String_.decode data pos1
-                else
-                  match lookup_header decoder name_index with
-                  | None -> Error ("Invalid name index: " ^ Int.to_string name_index)
-                  | Some h -> Ok (h.name, pos1)
-              ) with
+          | Ok (name, pos2) ->
+              match String_.decode data pos2 with
               | Error e -> Error e
-              | Ok (name, pos2) ->
-                  match String_.decode data pos2 with
-                  | Error e -> Error e
-                  | Ok (value, new_offset) -> Ok ([ { name; value } ], new_offset)
-            )
-          else
-            (* Literal without Indexing: 0000xxxx *)
-            match Integer.decode 4 first_byte data (offset + 1) with
-            | Error e -> Error e
-            | Ok (name_index, pos1) -> (
-              match (
-                if name_index = 0 then
-                  String_.decode data pos1
-                else
-                  match lookup_header decoder name_index with
-                  | None -> Error ("Invalid name index: " ^ Int.to_string name_index)
-                  | Some h -> Ok (h.name, pos1)
-              ) with
+              | Ok (value, new_offset) -> Ok ([ { name; value } ], new_offset)
+        )
+    else
+      (* Literal without Indexing: 0000xxxx *)
+      match Integer.decode 4 first_byte data (offset + 1) with
+      | Error e -> Error e
+      | Ok (name_index, pos1) -> (
+          match (
+            if name_index = 0 then
+              String_.decode data pos1
+            else
+              match lookup_header decoder name_index with
+              | None -> Error ("Invalid name index: " ^ Int.to_string name_index)
+              | Some h -> Ok (h.name, pos1)
+          ) with
+          | Error e -> Error e
+          | Ok (name, pos2) ->
+              match String_.decode data pos2 with
               | Error e -> Error e
-              | Ok (name, pos2) ->
-                  match String_.decode data pos2 with
-                  | Error e -> Error e
-                  | Ok (value, new_offset) -> Ok ([ { name; value } ], new_offset)
-            )
+              | Ok (value, new_offset) -> Ok ([ { name; value } ], new_offset)
+        )
 
 let decode = fun decoder data ->
   let headers = Vector.with_capacity ~size:8 in
   let rec decode_all offset =
     if offset >= Bytes.length data then
-      Ok (Vector.to_array headers |> Array.to_list)
+      Ok (
+        Vector.to_array headers
+        |> Array.to_list
+      )
     else
       match decode_header_block decoder data offset with
       | Error e -> Error e
       | Ok (decoded, new_offset) ->
-          decoded |> List.for_each ~fn:(
-            fun header -> Vector.push headers ~value:header
-          );
+          decoded
+          |> List.for_each ~fn:(fun header -> Vector.push headers ~value:header);
           decode_all new_offset
   in
   decode_all 0

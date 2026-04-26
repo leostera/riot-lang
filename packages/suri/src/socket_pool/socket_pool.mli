@@ -76,16 +76,26 @@ open Std
        { requests = 0 }
    ```
 *)
-module Connection : module type of Connection
+module Connection: module type of Connection
 
 (** Connection management - see {!Connection} *)
-module Handler : module type of Handler
+module Handler: module type of Handler
 
 (** Handler abstraction - see {!Handler} *)
-module Transport : module type of Transport
+module Transport: module type of Transport
 
 (** Transport layer - see {!Transport} *)
-val start_link: host:string -> port:int -> ?acceptors:int -> ?buffer_size:int -> ?transport:Transport.t -> ('state, 'err) Handler.handler -> 'state -> (Supervisor.Dynamic.t, [> `Bind_error]) result(**
+val start_link:
+  host:string ->
+  port:int ->
+  ?acceptors:int ->
+  ?buffer_size:int ->
+  ?transport:Transport.t ->
+  ('state, 'err) Handler.handler ->
+  'state ->
+  (Supervisor.Dynamic.t, [> `Bind_error]) result
+
+(**
    [start_link ~host ~port handler initial_state] starts a supervised TCP server.
 
    - [host] - Host to bind to (e.g., "0.0.0.0" or "127.0.0.1")

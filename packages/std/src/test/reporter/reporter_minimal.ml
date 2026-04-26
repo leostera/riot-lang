@@ -12,4 +12,12 @@ let on_result = fun _idx (result: Test_result.t) ->
 
 let finalize = fun (summary: Test_result.summary) ->
   println "";
-  println ("Tests: " ^ Int.to_string summary.total ^ ", Passed: " ^ Int.to_string summary.passed ^ ", Failed: " ^ Int.to_string summary.failed ^ ", Skipped: " ^ Int.to_string summary.skipped)
+  println
+    ("Tests: "
+    ^ Int.to_string summary.total
+    ^ ", Passed: "
+    ^ Int.to_string summary.passed
+    ^ ", Failed: "
+    ^ Int.to_string summary.failed
+    ^ ", Skipped: "
+    ^ Int.to_string summary.skipped)

@@ -7,9 +7,10 @@
    The separate `actors` package is now a compatibility facade over this
    module.
 *)
+
 open Kernel
 
-module Exception : sig
+module Exception: sig
   (** Raised when a receive operation times out. *)
   exception Receive_timeout
 
@@ -20,7 +21,7 @@ end
 (** Runtime configuration. *)
 module Config = Config
 
-module Runtime : sig
+module Runtime: sig
   (** Reset the process-local reduction count to a new value. *)
   val reset_reductions: int -> unit
 
@@ -36,36 +37,42 @@ module Pid = Pid
 (** Opaque scheduler identifier used by runtime internals. *)
 module Scheduler_id = Scheduler_id
 
-module Message : sig
+module Message: sig
   type t = ..
 end
 
-module Actor : sig
+module Actor: sig
   (** The reason an actor exited. *)
   type exit_reason = exn
-
   (** Actor flags. *)
   type flag =
     | TrapExit of bool
-
-  (** Opaque reference to a monitor registration. *)
   type monitor_ref
 
   type Message.t +=
-    | EXIT of { from: Pid.t; reason: (unit, exit_reason) result }
-    | DOWN of { ref: monitor_ref; pid: Pid.t; reason: (unit, exit_reason) result }
+    | EXIT of {
+        from: Pid.t;
+        reason: (unit, exit_reason) result;
+      }
+    | DOWN of {
+        ref: monitor_ref;
+        pid: Pid.t;
+        reason: (unit, exit_reason) result;
+      }
 
   (** Scheduler-visible actor state. *)
   type state =
     private | Uninitialized
     | Runnable
     | Waiting_message
-    | Waiting_io of { name: string; token: Kernel.Async.Token.t; source: Kernel.Async.Source.t }
+    | Waiting_io of {
+        name: string;
+        token: Kernel.Async.Token.t;
+        source: Kernel.Async.Source.t;
+      }
     | Running
     | Exited of (unit, exit_reason) result
     | Finalized
-
-  (** Opaque actor handle. *)
   type t
 
   (** Create an actor from its entry function. *)
@@ -98,7 +105,7 @@ module Actor : sig
   (** Consume all ready I/O tokens with the given callback. *)
   val consume_ready_tokens: t -> (Kernel.Async.Token.t * Kernel.Async.Source.t -> unit) -> unit
 
-  module Monitor : sig
+  module Monitor: sig
     (** Opaque monitor reference. *)
     type t = monitor_ref
   end
@@ -127,10 +134,9 @@ module Process = Actor
 (** Opaque timer identifiers. *)
 module Timer_id = Timer_id
 
-module Timer : sig
+module Timer: sig
   (** Opaque timer identifier. *)
   type t = Timer_id.t
-
   type id = t
 
   (** Send a message to an actor after the given delay in seconds. *)
@@ -208,13 +214,24 @@ val shutdown: status:int -> unit
    Wait for an async source to become ready, then run the continuation.
    Raises [Exception.Syscall_timeout] when [`timeout`] expires.
 *)
-val syscall: ?timeout:float -> name:string -> interest:Kernel.Async.Interest.t -> source:Kernel.Async.Source.t -> (unit -> 'a) -> 'a
+val syscall:
+  ?timeout:float ->
+  name:string ->
+  interest:Kernel.Async.Interest.t ->
+  source:Kernel.Async.Source.t ->
+  (unit -> 'a) ->
+  'a
 
 (**
    Start the runtime with optional configuration. Defaults to millisecond
    timer resolution and [Config.default_scheduler_count] workers.
 *)
-val run: main:(args:string list -> (unit, Actor.exit_reason) result) -> args:string list -> ?config:Config.t -> unit -> unit
+val run:
+  main:(args:string list -> (unit, Actor.exit_reason) result) ->
+  args:string list ->
+  ?config:Config.t ->
+  unit ->
+  unit
 
 (** Enable debug tracing. *)
 val enable_trace: unit -> unit

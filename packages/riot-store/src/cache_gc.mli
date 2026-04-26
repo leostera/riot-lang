@@ -1,10 +1,16 @@
 open Std
 open Riot_model
 
-type generation_lane = { profile: string; target: Riot_model.Target.t; hashes: string list }
-
-type new_cache_entry = { profile: string; target: Riot_model.Target.t; hash: string }
-
+type generation_lane = {
+  profile: string;
+  target: Riot_model.Target.t;
+  hashes: string list;
+}
+type new_cache_entry = {
+  profile: string;
+  target: Riot_model.Target.t;
+  hash: string;
+}
 type summary = {
   ran_gc: bool;
   kept_generations: int;
@@ -13,33 +19,48 @@ type summary = {
   size_before_bytes: int64;
   size_after_bytes: int64;
 }
-
 type error = string
-
 type trigger =
   | Manual
   | Post_build
-
 type event =
   | GcStarted of { trigger: trigger }
   | GcSkipped of { trigger: trigger; summary: summary }
   | GcCompleted of { trigger: trigger; summary: summary }
   | GcFailed of { trigger: trigger; error: string }
-  | ForceCleanStarted of { build_root: Path.t }
-  | ForceCleanCompleted of { build_root: Path.t }
-  | ForceCleanFailed of { build_root: Path.t; error: string }
-
+  | ForceCleanStarted of {
+      build_root: Path.t;
+    }
+  | ForceCleanCompleted of {
+      build_root: Path.t;
+    }
+  | ForceCleanFailed of {
+      build_root: Path.t;
+      error: string;
+    }
 val clean: workspace:Workspace.t -> (summary, error) result
 
 val clean_with_events: workspace:Workspace.t -> on_event:(event -> unit) -> (summary, error) result
 
 val force_clean: workspace:Workspace.t -> (unit, error) result
 
-val force_clean_with_events: workspace:Workspace.t -> on_event:(event -> unit) -> (unit, error) result
+val force_clean_with_events:
+  workspace:Workspace.t ->
+  on_event:(event -> unit) ->
+  (unit, error) result
 
-val record_successful_build: workspace:Workspace.t -> lanes:generation_lane list -> new_entries:new_cache_entry list -> (summary, error) result
+val record_successful_build:
+  workspace:Workspace.t ->
+  lanes:generation_lane list ->
+  new_entries:new_cache_entry list ->
+  (summary, error) result
 
-val record_successful_build_with_events: workspace:Workspace.t -> on_event:(event -> unit) -> lanes:generation_lane list -> new_entries:new_cache_entry list -> (summary, error) result
+val record_successful_build_with_events:
+  workspace:Workspace.t ->
+  on_event:(event -> unit) ->
+  lanes:generation_lane list ->
+  new_entries:new_cache_entry list ->
+  (summary, error) result
 
 val summary_message: summary -> string
 

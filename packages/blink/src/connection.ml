@@ -1,4 +1,5 @@
 open Std
+
 module Buffer = IO.Buffer
 
 type message =
@@ -26,7 +27,11 @@ type t =
     } -> t
 
 let make:
-  reader:IO.Reader.t -> writer:IO.Writer.t -> of_io_error:(IO.error -> Error.t) -> uri:Net.Uri.t -> t = fun ~reader ~writer ~of_io_error ~uri ->
+  reader:IO.Reader.t ->
+  writer:IO.Writer.t ->
+  of_io_error:(IO.error -> Error.t) ->
+  uri:Net.Uri.t ->
+  t = fun ~reader ~writer ~of_io_error ~uri ->
   Conn {
     protocol = (module Protocol.Http1);
     reader;
@@ -43,31 +48,45 @@ let request = fun (Conn conn) req ?body () ->
   let version = Net.Http.Request.version req in
   let headers = Net.Http.Request.headers req in
   let resource = Net.Uri.path_and_query conn.uri in
-  let request_line = (Net.Http.Method.to_string method_)
-  ^ " "
-  ^ resource
-  ^ " "
-  ^ (Net.Http.Version.to_string version)
-  ^ "\r\n" in
+  let request_line =
+    (Net.Http.Method.to_string method_)
+    ^ " "
+    ^ resource
+    ^ " "
+    ^ (Net.Http.Version.to_string version)
+    ^ "\r\n"
+  in
   let headers =
     (
-      headers |> fun h ->
-        Net.Http.Header.add h "host"
-          (Net.Uri.host conn.uri |> Option.unwrap_or ~default:"localhost")
+      headers
+      |> fun h ->
+        Net.Http.Header.add
+          h
+          "host"
+          (
+            Net.Uri.host conn.uri
+            |> Option.unwrap_or ~default:"localhost"
+          )
     )
-    |> fun h ->
-      Net.Http.Header.add h "user-agent" "Riot-Blink/0.2.0"
+    |> fun h -> Net.Http.Header.add h "user-agent" "Riot-Blink/0.2.0"
   in
   let headers =
     match body with
     | Some b ->
-        Net.Http.Header.add headers "content-length"
-          (String.length b |> Int.to_string)
+        Net.Http.Header.add
+          headers
+          "content-length"
+          (
+            String.length b
+            |> Int.to_string
+          )
     | None -> headers
   in
-  let headers_str = Net.Http.Header.to_list headers
-  |> List.map ~fn:(fun (name, value) -> name ^ ": " ^ value ^ "\r\n")
-  |> String.concat "" in
+  let headers_str =
+    Net.Http.Header.to_list headers
+    |> List.map ~fn:(fun (name, value) -> name ^ ": " ^ value ^ "\r\n")
+    |> String.concat ""
+  in
   let request = request_line ^ headers_str ^ "\r\n" in
   let full_request =
     match body with
@@ -86,24 +105,24 @@ let request = fun (Conn conn) req ?body () ->
 let read_more = fun (Conn conn) ->
   let chunk = IO.Buffer.create ~size:4_096 in
   match IO.read conn.reader ~into:chunk with
-  | Ok 0 ->
-      Error Error.Eof
+  | Ok 0 -> Error Error.Eof
   | Ok _ ->
       let readable = IO.Buffer.readable chunk in
-      let _ = Buffer.append_slice conn.buffer readable |> Result.expect ~msg:"failed to append response chunk" in
+      let _ =
+        Buffer.append_slice conn.buffer readable
+        |> Result.expect ~msg:"failed to append response chunk"
+      in
       Ok ()
-  | Error e ->
-      Error (conn.of_io_error e)
+  | Error e -> Error (conn.of_io_error e)
 
 let stream = fun (Conn conn as c) ->
   match conn.state with
-  | Complete ->
-      Ok [ Done ]
+  | Complete -> Ok [ Done ]
   | WaitingForHeaders ->
       let rec try_parse () =
         let data = Buffer.contents conn.buffer in
         match Http.Http1.Response.parse data with
-        | Http.Http1.Common.Done { value=response; remaining } ->
+        | Http.Http1.Common.Done { value = response; remaining } ->
             let status = Net.Http.Response.status response in
             let headers = Net.Http.Response.headers response in
             conn.response <- Some response;
@@ -130,8 +149,7 @@ let stream = fun (Conn conn as c) ->
             | Ok () -> try_parse ()
             | Error e -> Error e
           )
-        | Http.Http1.Common.Error msg ->
-            Error (Error.ParseError msg)
+        | Http.Http1.Common.Error msg -> Error (Error.ParseError msg)
       in
       try_parse ()
   | ReadingFixedBody { length; received } -> (
@@ -170,7 +188,7 @@ let stream = fun (Conn conn as c) ->
       let rec parse_chunks acc =
         let data = Buffer.contents conn.buffer in
         match Http.Http1.Chunk.parse data with
-        | Http.Http1.Common.Done { value={ data=chunk_data; remaining }; _ } ->
+        | Http.Http1.Common.Done { value = { data = chunk_data; remaining }; _ } ->
             Buffer.clear conn.buffer;
             Buffer.add_string conn.buffer remaining;
             if chunk_data = "" then
@@ -190,8 +208,7 @@ let stream = fun (Conn conn as c) ->
                 else
                   Error e
           )
-        | Http.Http1.Common.Error msg ->
-            Error (Error.ParseError msg)
+        | Http.Http1.Common.Error msg -> Error (Error.ParseError msg)
       in
       parse_chunks []
 
@@ -213,10 +230,13 @@ let await = fun ?(on_message = fun _ -> ()) (Conn conn as c) ->
   match messages ~on_message c with
   | Error e -> Error e
   | Ok msgs ->
-      let response = conn.response
-      |> Option.unwrap_or ~default:(Net.Http.Response.create (Net.Http.Status.of_int 500)) in
+      let response =
+        conn.response
+        |> Option.unwrap_or ~default:(Net.Http.Response.create (Net.Http.Status.of_int 500))
+      in
       let body_chunks =
-        List.filter_map msgs
+        List.filter_map
+          msgs
           ~fn:(
             function
             | Data chunk -> Some chunk
@@ -227,5 +247,4 @@ let await = fun ?(on_message = fun _ -> ()) (Conn conn as c) ->
       Ok (response, body)
 
 let close = fun _conn -> ()
-
 (* Reader/writer don't need explicit close *)

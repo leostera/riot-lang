@@ -17,25 +17,13 @@ let is_failure_message = function
   | _ -> false
 
 let test_async_await_returns_ok = fun _ctx ->
-  match Task.await
-    (
-      Task.async
-        (
-          fun () -> 42
-        )
-    ) with
+  match Task.await (Task.async (fun () -> 42)) with
   | Ok 42 -> Ok ()
   | Ok value -> Error ("expected Task.await to return 42, got " ^ Int.to_string value)
   | Error _ -> Error "expected Task.await to succeed"
 
 let test_async_await_returns_error_for_exception = fun _ctx ->
-  match Task.await
-    (
-      Task.async
-        (
-          fun () -> raise (Failure "boom")
-        )
-    ) with
+  match Task.await (Task.async (fun () -> raise (Failure "boom"))) with
   | Error exn when is_failure_message exn -> Ok ()
   | Error _ -> Error "expected Task.await to return Failure boom"
   | Ok _ -> Error "expected Task.await to return Error for a crashing task"
@@ -43,10 +31,7 @@ let test_async_await_returns_error_for_exception = fun _ctx ->
 let test_await_all_singleton = fun _ctx ->
   match Task.await_all
     [
-      Task.async
-        (
-          fun () -> "ok"
-        );
+      Task.async (fun () -> "ok");
     ] with
   | [ Ok "ok" ] -> Ok ()
   | _ -> Error "expected Task.await_all on a singleton list to return one Ok result"
@@ -59,18 +44,9 @@ let test_await_all_empty_returns_immediately = fun _ctx ->
 let test_await_all_multiple_successes = fun _ctx ->
   match Task.await_all
     [
-      Task.async
-        (
-          fun () -> 1
-        );
-      Task.async
-        (
-          fun () -> 2
-        );
-      Task.async
-        (
-          fun () -> 3
-        );
+      Task.async (fun () -> 1);
+      Task.async (fun () -> 2);
+      Task.async (fun () -> 3);
     ] with
   | [ Ok 1; Ok 2; Ok 3 ] -> Ok ()
   | _ -> Error "expected Task.await_all to preserve all successful results"
@@ -78,18 +54,9 @@ let test_await_all_multiple_successes = fun _ctx ->
 let test_await_all_preserves_mixed_success_and_failure = fun _ctx ->
   match Task.await_all
     [
-      Task.async
-        (
-          fun () -> 1
-        );
-      Task.async
-        (
-          fun () -> raise (Failure "boom")
-        );
-      Task.async
-        (
-          fun () -> 3
-        );
+      Task.async (fun () -> 1);
+      Task.async (fun () -> raise (Failure "boom"));
+      Task.async (fun () -> 3);
     ] with
   | [ Ok 1; Error exn; Ok 3 ] when is_failure_message exn -> Ok ()
   | _ -> Error "expected Task.await_all to preserve both Ok and Error results"
@@ -98,37 +65,42 @@ let test_await_all_preserves_input_order = fun _ctx ->
   let parent = self () in
   let gate =
     spawn
-      (
-        fun () ->
-          let slow_pid = receive ~selector:(
-            function
-            | Register_slow slow_pid -> `select slow_pid
-            | _ -> `skip
-          ) () in
-          send parent Slow_task_registered;
-          receive ~selector:(
+      (fun () ->
+        let slow_pid =
+          receive
+            ~selector:(
+              function
+              | Register_slow slow_pid -> `select slow_pid
+              | _ -> `skip
+            )
+            ()
+        in
+        send parent Slow_task_registered;
+        receive
+          ~selector:(
             function
             | Release_slow -> `select ()
             | _ -> `skip
-          ) ();
-          send slow_pid Slow_task_released;
-          Ok ()
-      )
+          )
+          ();
+        send slow_pid Slow_task_released;
+        Ok ())
   in
   let slow =
     Task.async
-      (
-        fun () ->
-          send gate (Register_slow (self ()));
-          receive ~selector:(
+      (fun () ->
+        send gate (Register_slow (self ()));
+        receive
+          ~selector:(
             function
             | Slow_task_released -> `select ()
             | _ -> `skip
-          ) ();
-          "slow"
-      )
+          )
+          ();
+        "slow")
   in
-  match await_message ~what:"slow task registration"
+  match await_message
+    ~what:"slow task registration"
     (
       function
       | Slow_task_registered -> `select ()
@@ -138,11 +110,9 @@ let test_await_all_preserves_input_order = fun _ctx ->
   | Ok () ->
       let fast =
         Task.async
-          (
-            fun () ->
-              send gate Release_slow;
-              "fast"
-          )
+          (fun () ->
+            send gate Release_slow;
+            "fast")
       in
       match Task.await_all [ slow; fast ] with
       | [ Ok "slow"; Ok "fast" ] -> Ok ()
@@ -153,42 +123,36 @@ let test_await_all_ignores_unrelated_messages = fun _ctx ->
   let results =
     Task.await_all
       [
-        Task.async
-          (
-            fun () -> 7
-          );
-        Task.async
-          (
-            fun () -> 9
-          );
+        Task.async (fun () -> 7);
+        Task.async (fun () -> 9);
       ]
   in
   match results with
   | [ Ok 7; Ok 9 ] -> (
-    match await_message ~what:"unrelated message"
-      (
-        function
-        | Task_unrelated payload -> `select payload
-        | _ -> `skip
-      ) with
-    | Ok "noise" -> Ok ()
-    | Ok payload -> Error ("expected unrelated payload noise, got " ^ payload)
-    | Error _ as err -> err
-  )
+      match await_message
+        ~what:"unrelated message"
+        (
+          function
+          | Task_unrelated payload -> `select payload
+          | _ -> `skip
+        ) with
+      | Ok "noise" -> Ok ()
+      | Ok payload -> Error ("expected unrelated payload noise, got " ^ payload)
+      | Error _ as err -> err
+    )
   | _ -> Error "expected Task.await_all to ignore unrelated mailbox messages"
 
 let test_async_starts_eagerly = fun _ctx ->
   let parent = self () in
   let task =
     Task.async
-      (
-        fun () ->
-          send parent Task_started;
-          sleep (Time.Duration.from_millis 25);
-          42
-      )
+      (fun () ->
+        send parent Task_started;
+        sleep (Time.Duration.from_millis 25);
+        42)
   in
-  match await_message ~what:"task start"
+  match await_message
+    ~what:"task start"
     (
       function
       | Task_started -> `select ()
@@ -196,23 +160,30 @@ let test_async_starts_eagerly = fun _ctx ->
     ) with
   | Error _ as err -> err
   | Ok () -> (
-    match Task.await task with
-    | Ok 42 -> Ok ()
-    | Ok value -> Error ("expected task result 42, got " ^ Int.to_string value)
-    | Error _ -> Error "expected eager task to succeed"
-  )
+      match Task.await task with
+      | Ok 42 -> Ok ()
+      | Ok value -> Error ("expected task result 42, got " ^ Int.to_string value)
+      | Error _ -> Error "expected eager task to succeed"
+    )
 
-let tests = Test.[
-  case "Task.await returns Ok for a pure task" test_async_await_returns_ok;
-  case "Task.await returns Error for a crashing task" test_async_await_returns_error_for_exception;
-  case "Task.await_all on a singleton list returns one result" test_await_all_singleton;
-  case "Task.await_all on an empty list returns immediately" test_await_all_empty_returns_immediately;
-  case "Task.await_all preserves multiple successful results" test_await_all_multiple_successes;
-  case "Task.await_all preserves mixed success and failure results" test_await_all_preserves_mixed_success_and_failure;
-  case "Task.await_all preserves input order" test_await_all_preserves_input_order;
-  case "Task.await_all ignores unrelated mailbox messages" test_await_all_ignores_unrelated_messages;
-  case "Task.async starts eagerly before await" test_async_starts_eagerly;
-]
+let tests =
+  Test.[
+    case "Task.await returns Ok for a pure task" test_async_await_returns_ok;
+    case "Task.await returns Error for a crashing task" test_async_await_returns_error_for_exception;
+    case "Task.await_all on a singleton list returns one result" test_await_all_singleton;
+    case
+      "Task.await_all on an empty list returns immediately"
+      test_await_all_empty_returns_immediately;
+    case "Task.await_all preserves multiple successful results" test_await_all_multiple_successes;
+    case
+      "Task.await_all preserves mixed success and failure results"
+      test_await_all_preserves_mixed_success_and_failure;
+    case "Task.await_all preserves input order" test_await_all_preserves_input_order;
+    case
+      "Task.await_all ignores unrelated mailbox messages"
+      test_await_all_ignores_unrelated_messages;
+    case "Task.async starts eagerly before await" test_async_starts_eagerly;
+  ]
 
 let main ~args = Test.Cli.main ~name:"Task" ~tests ~args ()
 

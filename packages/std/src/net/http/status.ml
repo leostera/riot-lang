@@ -275,23 +275,29 @@ let reason_phrase = function
   | Extension code -> Int.to_string code
 
 let is_informational = fun status ->
-  let code = to_int status in code >= 100 && code < 200
+  let code = to_int status in
+  code >= 100 && code < 200
 
 let is_success = fun status ->
-  let code = to_int status in code >= 200 && code < 300
+  let code = to_int status in
+  code >= 200 && code < 300
 
 let is_redirection = fun status ->
-  let code = to_int status in code >= 300 && code < 400
+  let code = to_int status in
+  code >= 300 && code < 400
 
 let is_client_error = fun status ->
-  let code = to_int status in code >= 400 && code < 500
+  let code = to_int status in
+  code >= 400 && code < 500
 
 let is_server_error = fun status ->
-  let code = to_int status in code >= 500 && code < 600
+  let code = to_int status in
+  code >= 500 && code < 600
 
 let compare = fun s1 s2 -> Int.compare (to_int s1) (to_int s2)
 
 let equal = fun s1 s2 ->
   match compare s1 s2 with
   | Order.EQ -> true
-  | Order.LT | Order.GT -> false
+  | Order.LT
+  | Order.GT -> false

@@ -25,6 +25,7 @@
    (* old_value = 1, new value = 11 *)
    ```
 *)
+
 (** Agent handle parametrized by state type *)
 type 'state t
 

@@ -45,6 +45,7 @@ val check_health: t -> (unit, string) result
 
    Returns Ok () if healthy, Error msg with details otherwise.
 *)
+
 (** Access toolchain components *)
 val ocamlc: t -> Ocamlc.t
 
@@ -59,11 +60,15 @@ val c_compiler: t -> Path.t option
 val hash: t -> Crypto.hash
 
 (** Compute a hash of the toolchain for cache invalidation *)
+
 (** Multi-target toolchain support *)
 val get_host_triple: unit -> Riot_model.Target.t
 
 (** Get the current host architecture triple *)
-val init_for_target: config:Riot_model.Toolchain_config.t -> target:Riot_model.Target.t -> (t, string) result
+val init_for_target:
+  config:Riot_model.Toolchain_config.t ->
+  target:Riot_model.Target.t ->
+  (t, string) result
 
 (**
    Initialize toolchain for a specific target architecture.
@@ -74,35 +79,47 @@ val init_for_target: config:Riot_model.Toolchain_config.t -> target:Riot_model.T
 
    Returns Ok toolchain if ready, Error msg otherwise.
 *)
-val get_for_target: config:Riot_model.Toolchain_config.t -> target:Riot_model.Target.t -> (t, string) result
+val get_for_target:
+  config:Riot_model.Toolchain_config.t ->
+  target:Riot_model.Target.t ->
+  (t, string) result
 
 (**
    Get toolchain for specific target (lazy initialization).
    Equivalent to init_for_target but more explicit about intent.
 *)
-val download_and_install_toolchain: string -> host:Riot_model.Target.t -> target:Riot_model.Target.t -> (unit, string) result
+val download_and_install_toolchain:
+  string ->
+  host:Riot_model.Target.t ->
+  target:Riot_model.Target.t ->
+  (unit, string) result
 
 (**
    Download and install a toolchain for the given version and target.
    Returns Ok () on success, Error msg on failure.
 *)
+
 (** Toolchain management *)
 type toolchain_status =
-  | Installed of { path: Path.t }
-  | NotInstalled of { expected_path: Path.t }
-  | Incomplete of { path: Path.t; missing: string list }
-
+  | Installed of {
+      path: Path.t;
+    }
+  | NotInstalled of {
+      expected_path: Path.t;
+    }
+  | Incomplete of {
+      path: Path.t;
+      missing: string list;
+    }
 type toolchain_info = {
   version: string;
   target: Riot_model.Target.t;
   is_host: bool;
   status: toolchain_status;
 }
-
 type available_toolchain_kind =
   | Native
   | Cross
-
 type available_toolchain = {
   version: string;
   host: Riot_model.Target.t;
@@ -115,7 +132,6 @@ type available_toolchain = {
   size_bytes: int option;
   last_modified: string option;
 }
-
 val list_toolchains: config:Riot_model.Toolchain_config.t -> toolchain_info list
 
 (** List all toolchains configured for this project with their status *)
@@ -129,4 +145,6 @@ val install_all_toolchains: config:Riot_model.Toolchain_config.t -> (int * int, 
    Returns Ok (installed_count, skipped_count) or Error msg.
    Prints progress during installation.
 *)
-val list_available_toolchains: unit -> (available_toolchain list, string) result(** Fetch and parse the published OCaml toolchain manifest. *)
+val list_available_toolchains: unit -> (available_toolchain list, string) result
+
+(** Fetch and parse the published OCaml toolchain manifest. *)

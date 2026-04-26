@@ -37,8 +37,10 @@ type Message.t +=
 let schedule_next_tick = fun pid fps ->
   if fps > 0 then
     let after = Time.Duration.from_secs_float (fps_to_secs fps) in
-    let _ = Timer.send_after pid Tick ~after in ()
-  else ()
+    let _ = Timer.send_after pid Tick ~after in
+    ()
+  else
+    ()
 
 type t = Pid.t
 
@@ -64,16 +66,19 @@ type state = {
 }
 
 (* Empty element for initialization *)
+
 let empty_element = Gooey.Element.empty
 
 (* Helper functions for output target *)
+
 let write_output = fun state str ->
   match state.output_target with
   | Conf.Stdout -> print str
   | Conf.Stderr -> eprint str
 
-let log_frame = fun _frame_num _frame -> (* Frame logging disabled - would require file I/O *)
-()
+let log_frame = fun _frame_num _frame ->
+  (* Frame logging disabled - would require file I/O *)
+  ()
 
 let restore_screen = fun t ->
   let output = Buffer.create ~size:64 in
@@ -97,6 +102,7 @@ let restore_screen = fun t ->
     write_output t (Buffer.contents output)
 
 (* Pipeline: Element -> Gooey Layout -> ANSI (using Gooey) *)
+
 let paint_frame = fun state ->
   let size = Tty.size state.tty in
   Log.debug
@@ -110,16 +116,20 @@ let paint_frame = fun state ->
       )
     );
   (* Create Gooey viewport from terminal size *)
-  let viewport = Gooey.Viewport.make ~width:(float_of_int size.cols) ~height:(float_of_int size.rows) in
+  let viewport =
+    Gooey.Viewport.make ~width:(float_of_int size.cols) ~height:(float_of_int size.rows)
+  in
   (* Create Gooey config with text measurer *)
   let text_measurer ~constraints:_ text _style =
     let width = float_of_int (String.length text) in
     let height = 1.0 in
-    let size = Gooey.Viewport.make ~width ~height in { Gooey.Config.size; lines = [ text ] }
+    let size = Gooey.Viewport.make ~width ~height in
+    { Gooey.Config.size; lines = [ text ] }
   in
   let config = Gooey.Config.make ~viewport ~text_measurer () in
   (* Run Gooey layout to get render commands *)
-  let commands = Gooey.layout ~config state.current_root_element in (* Convert render commands to ANSI string - use inline renderer for line-by-line output *)
+  let commands = Gooey.layout ~config state.current_root_element in
+  (* Convert render commands to ANSI string - use inline renderer for line-by-line output *)
   Gooey.Terminal_renderer_inline.render_to_string commands
 
 let print_frame = fun state frame ->
@@ -136,14 +146,18 @@ let print_frame = fun state frame ->
       state.needs_altscreen_setup <- false
     );
   if state.is_altscreen_active then
-    ((* Alt screen: always position at top-left *)
-    Buffer.add_string output (Tty.Escape_seq.cursor_position_seq 1 1))
+    (
+      (* Alt screen: always position at top-left *)
+      Buffer.add_string output (Tty.Escape_seq.cursor_position_seq 1 1)
+    )
   else
     (
       (* Inline mode: move cursor up to start of previous render if we had lines *)
       if state.lines_rendered > 1 then
-        ((* Move up to first line of previous render *)
-        Buffer.add_string output (Tty.Escape_seq.cursor_up_seq (state.lines_rendered - 1)));
+        (
+          (* Move up to first line of previous render *)
+          Buffer.add_string output (Tty.Escape_seq.cursor_up_seq (state.lines_rendered - 1))
+        );
       Buffer.add_string output "\r"
     );
   (* Add the frame content (which includes EraseLineRight from ansi_emitter) *)
@@ -152,21 +166,21 @@ let print_frame = fun state frame ->
   let line_count =
     let count = Cell.create 1 in
     String.iter
-      (
-        fun c ->
-          if c = '\n' then
-            count := !count + 1
-      )
+      (fun c ->
+        if c = '\n' then
+          count := !count + 1)
       frame;
     !count
   in
   (* If new content is shorter than previous, clear remaining lines below *)
   if line_count < state.lines_rendered then
-    (Buffer.add_string output (Tty.Escape_seq.erase_display_seq 0));
+    Buffer.add_string output (Tty.Escape_seq.erase_display_seq 0);
   state.lines_rendered <- line_count;
   if state.is_altscreen_active then
-    ((* In alt-screen, position at start of last line *)
-    Buffer.add_string output (Tty.Escape_seq.cursor_position_seq line_count 1));
+    (
+      (* In alt-screen, position at start of last line *)
+      Buffer.add_string output (Tty.Escape_seq.cursor_position_seq line_count 1)
+    );
   let final_output = Buffer.contents output in
   (* Log frame for debugging *)
   state.frame_count <- state.frame_count + 1;
@@ -218,15 +232,21 @@ let rec loop = fun state ->
       handle_set_window_title state title;
       loop state
   | _ -> loop state
+
 and handle_shutdown = fun state ->
   (* Clear the last rendered content in inline mode *)
   (
     try
-      if state.render_mode = Conf.Clear && (not state.is_altscreen_active) && state.lines_rendered > 0 then
+      if
+        state.render_mode = Conf.Clear && (not state.is_altscreen_active) && state.lines_rendered
+        > 0
+      then
         (
           (* Use the same clearing logic as flush() *)
           (* Move cursor up to the first line *)
-          for _i = 1 to state.lines_rendered - 1 do write_output state (Tty.Escape_seq.cursor_up_seq 1) done;
+          for _i = 1 to state.lines_rendered - 1 do
+            write_output state (Tty.Escape_seq.cursor_up_seq 1)
+          done;
           (* Clear each line and move down *)
           for i = 1 to state.lines_rendered do
             write_output state Tty.Escape_seq.erase_entire_line_seq;
@@ -234,7 +254,9 @@ and handle_shutdown = fun state ->
               write_output state (Tty.Escape_seq.cursor_down_seq 1)
           done;
           (* Move cursor back up to where we started (before any content was rendered) *)
-          for _i = 1 to state.lines_rendered - 1 do write_output state (Tty.Escape_seq.cursor_up_seq 1) done;
+          for _i = 1 to state.lines_rendered - 1 do
+            write_output state (Tty.Escape_seq.cursor_up_seq 1)
+          done;
           write_output state "\r"
         )
     with
@@ -243,6 +265,7 @@ and handle_shutdown = fun state ->
   restore_screen state;
   send state.runner ShutdownComplete;
   Ok ()
+
 and handle_tick = fun t ->
   Log.trace "[RENDERER] Tick received";
   let now = Time.Instant.now () in
@@ -250,10 +273,13 @@ and handle_tick = fun t ->
   send t.runner (Io_loop.Input (Event.Frame now));
   schedule_next_tick (self ()) t.fps;
   loop t
+
 and handle_render_element = fun t element ->
   (* Paint immediately so inline apps only redraw when their model changes. *)
   t.current_root_element <- element;
-  let frame = paint_frame t in print_frame t frame
+  let frame = paint_frame t in
+  print_frame t frame
+
 and handle_enter_alt_screen = fun t ->
   if t.is_altscreen_active then
     ()
@@ -263,6 +289,7 @@ and handle_enter_alt_screen = fun t ->
       t.is_altscreen_active <- true;
       t.needs_altscreen_setup <- true
     )
+
 and handle_exit_alt_screen = fun t ->
   if not t.is_altscreen_active then
     ()
@@ -271,6 +298,7 @@ and handle_exit_alt_screen = fun t ->
       t.is_altscreen_active <- false;
       write_output t Tty.Escape_seq.exit_alt_screen_seq
     )
+
 and handle_set_cursor_visibility = fun cursor t ->
   if t.cursor_visibility = cursor then
     ()
@@ -283,6 +311,7 @@ and handle_set_cursor_visibility = fun cursor t ->
       );
       t.cursor_visibility <- cursor
     )
+
 and handle_enable_mouse = fun t mode ->
   if not t.mouse_enabled then
     (
@@ -296,6 +325,7 @@ and handle_enable_mouse = fun t mode ->
       t.mouse_enabled <- true;
       t.mouse_mode <- Some mode
     )
+
 and handle_disable_mouse = fun t ->
   if t.mouse_enabled then
     (
@@ -305,32 +335,38 @@ and handle_disable_mouse = fun t ->
       t.mouse_enabled <- false;
       t.mouse_mode <- None
     )
+
 and handle_enable_bracketed_paste = fun t ->
   if not t.bracketed_paste_enabled then
     (
       write_output t Tty.Escape_seq.enable_bracketed_paste_seq;
       t.bracketed_paste_enabled <- true
     )
+
 and handle_disable_bracketed_paste = fun t ->
   if t.bracketed_paste_enabled then
     (
       write_output t Tty.Escape_seq.disable_bracketed_paste_seq;
       t.bracketed_paste_enabled <- false
     )
+
 and handle_enable_focus_tracking = fun t ->
   if not t.focus_tracking_enabled then
     (
       write_output t Tty.Escape_seq.enable_focus_events_seq;
       t.focus_tracking_enabled <- true
     )
+
 and handle_disable_focus_tracking = fun t ->
   if t.focus_tracking_enabled then
     (
       write_output t Tty.Escape_seq.disable_focus_events_seq;
       t.focus_tracking_enabled <- false
     )
-and handle_set_window_title = fun state title -> (* OSC 2 ; title BEL *)
-write_output state ("\x1b]2;" ^ title ^ "\x07")
+
+and handle_set_window_title = fun state title ->
+  (* OSC 2 ; title BEL *)
+  write_output state ("\x1b]2;" ^ title ^ "\x07")
 
 let init = fun ~parent ~config ~tty ->
   send parent (RendererStarted (self ()));
@@ -353,23 +389,19 @@ let init = fun ~parent ~config ~tty ->
       bracketed_paste_enabled = false;
       focus_tracking_enabled = false;
       current_root_element = empty_element;
-      frame_count = 0
+      frame_count = 0;
     }
 
 let start = fun ~config ~tty () ->
   let parent = self () in
-  let pid =
-    spawn
-      (
-        fun () -> init ~parent ~config ~tty
-      )
-  in
+  let pid = spawn (fun () -> init ~parent ~config ~tty) in
   let selector msg =
     match msg with
     | RendererStarted pid' when Pid.equal pid pid' -> `select pid
     | _ -> `skip
   in
-  let timeout = Time.Duration.from_secs 2 in receive ~selector ~timeout ()
+  let timeout = Time.Duration.from_secs 2 in
+  receive ~selector ~timeout ()
 
 let render = fun pid element -> send pid (Render element)
 
@@ -386,7 +418,8 @@ let shutdown = fun pid ->
     | ShutdownComplete -> `select ()
     | _ -> `skip
   in
-  let timeout = Time.Duration.from_secs 2 in receive ~selector ~timeout ()
+  let timeout = Time.Duration.from_secs 2 in
+  receive ~selector ~timeout ()
 
 let hide_cursor = fun pid -> send pid (SetCursorVisibility `hidden)
 

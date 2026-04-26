@@ -2,19 +2,12 @@ open Std
 open Std.IO
 
 module Escape_seq = Escape_seq
-
 module Color = Color
-
 module Profile = Profile
-
 module Style = Style
-
 module Size = Size
-
 module Input = Input
-
 module Utf8_reader = Utf8_reader
-
 module Terminal_control = Terminal_control
 
 type fd = Platform.fd
@@ -31,7 +24,9 @@ type mode = Terminal.mode =
 
 type t = Terminal.t
 
-type stdin_cell = { mutable current: IO.Stdin.t option }
+type stdin_cell = {
+  mutable current: IO.Stdin.t option;
+}
 
 let stdin_handle = { current = None }
 
@@ -53,7 +48,8 @@ let read_stdin_bytes = fun stdin bytes ~offset ~len ->
         let copied = IO.Buffer.to_bytes buffer in
         IO.Bytes.blit_unchecked copied ~src_offset:0 ~dst:bytes ~dst_offset:offset ~len:count;
         `Ok count
-    | Error IO.Operation_would_block | Error IO.Resource_unavailable_try_again -> `Would_block
+    | Error IO.Operation_would_block
+    | Error IO.Resource_unavailable_try_again -> `Would_block
     | Error _ -> `Error
 
 let error_of_io_error = fun error -> SystemError error
@@ -66,55 +62,59 @@ let detect_size = fun fd ->
   | Error _ -> default_size ()
 
 let make = fun ?fd ?stdin ?stdout ?stderr ?size ?(mode = LineBuffered) () ->
-  let fd_result, owns_fd =
+  let (fd_result, owns_fd) =
     match fd with
-    | Some fd -> Ok fd, false
-    | None -> Platform.open_tty (), true
+    | Some fd -> (Ok fd, false)
+    | None -> (Platform.open_tty (), true)
   in
   match fd_result with
   | Error _ -> Error NoTtyConnected
   | Ok tty_fd -> (
-    match Platform.get_attributes tty_fd with
-    | Error error ->
-        if owns_fd then
-          (
-            let _ = Platform.close tty_fd in ()
-          );
-        Error (error_of_io_error error)
-    | Ok original_attrs ->
-        let detected_size =
-          match size with
-          | Some size -> size
-          | None -> detect_size tty_fd
-        in
-        let terminal = Terminal.{
-          fd = tty_fd;
-          owns_fd;
-          input_fd = Option.unwrap_or ~default:tty_fd stdin;
-          stdout = Option.unwrap_or ~default:(Platform.stdout_fd ()) stdout;
-          stderr = Option.unwrap_or ~default:(Platform.stderr_fd ()) stderr;
-          original_attrs;
-          size = detected_size;
-          mode = LineBuffered;
-          resume_mode = None;
-          input_buffer = Utf8_reader.create ()
-        } in
-        match mode with
-        | LineBuffered -> Ok terminal
-        | Immediate -> (
-          let raw_attrs = Platform.make_raw_mode original_attrs in
-          match Platform.set_attributes tty_fd Platform.Now raw_attrs with
-          | Ok () ->
-              terminal.mode <- Immediate;
-              Ok terminal
-          | Error error ->
-              if owns_fd then
-                (
-                  let _ = Platform.close tty_fd in ()
-                );
-              Error (error_of_io_error error)
-        )
-  )
+      match Platform.get_attributes tty_fd with
+      | Error error ->
+          if owns_fd then
+            (
+              let _ = Platform.close tty_fd in
+              ()
+            );
+          Error (error_of_io_error error)
+      | Ok original_attrs ->
+          let detected_size =
+            match size with
+            | Some size -> size
+            | None -> detect_size tty_fd
+          in
+          let terminal =
+            Terminal.{
+              fd = tty_fd;
+              owns_fd;
+              input_fd = Option.unwrap_or ~default:tty_fd stdin;
+              stdout = Option.unwrap_or ~default:(Platform.stdout_fd ()) stdout;
+              stderr = Option.unwrap_or ~default:(Platform.stderr_fd ()) stderr;
+              original_attrs;
+              size = detected_size;
+              mode = LineBuffered;
+              resume_mode = None;
+              input_buffer = Utf8_reader.create ();
+            }
+          in
+          match mode with
+          | LineBuffered -> Ok terminal
+          | Immediate -> (
+              let raw_attrs = Platform.make_raw_mode original_attrs in
+              match Platform.set_attributes tty_fd Platform.Now raw_attrs with
+              | Ok () ->
+                  terminal.mode <- Immediate;
+                  Ok terminal
+              | Error error ->
+                  if owns_fd then
+                    (
+                      let _ = Platform.close tty_fd in
+                      ()
+                    );
+                  Error (error_of_io_error error)
+            )
+    )
 
 let make_raw = fun () -> make ~mode:Immediate ()
 
@@ -133,26 +133,27 @@ let set_raw = fun t ->
   match t.Terminal.mode with
   | Immediate -> ()
   | LineBuffered -> (
-    let raw_attrs = Platform.make_raw_mode t.Terminal.original_attrs in
-    match Platform.set_attributes t.Terminal.fd Platform.Now raw_attrs with
-    | Ok () -> t.Terminal.mode <- Immediate
-    | Error _ -> ()
-  )
+      let raw_attrs = Platform.make_raw_mode t.Terminal.original_attrs in
+      match Platform.set_attributes t.Terminal.fd Platform.Now raw_attrs with
+      | Ok () -> t.Terminal.mode <- Immediate
+      | Error _ -> ()
+    )
 
 let set_line_buffered = fun t ->
   match t.Terminal.mode with
   | LineBuffered -> ()
   | Immediate -> (
-    match Platform.set_attributes t.Terminal.fd Platform.Flush t.Terminal.original_attrs with
-    | Ok () -> t.Terminal.mode <- LineBuffered
-    | Error _ -> ()
-  )
+      match Platform.set_attributes t.Terminal.fd Platform.Flush t.Terminal.original_attrs with
+      | Ok () -> t.Terminal.mode <- LineBuffered
+      | Error _ -> ()
+    )
 
 let restore = fun t ->
   let _ = Platform.set_attributes t.Terminal.fd Platform.Now t.Terminal.original_attrs in
   t.Terminal.mode <- LineBuffered;
   if t.Terminal.owns_fd then
-    let _ = Platform.close t.Terminal.fd in ()
+    let _ = Platform.close t.Terminal.fd in
+    ()
 
 let suspend = fun t ->
   match t.Terminal.mode with
@@ -166,7 +167,8 @@ let resume = fun t ->
   | Some Immediate ->
       t.Terminal.resume_mode <- None;
       set_raw t
-  | Some LineBuffered | None -> t.Terminal.resume_mode <- None
+  | Some LineBuffered
+  | None -> t.Terminal.resume_mode <- None
 
 type read =
   | Read of string
@@ -205,13 +207,18 @@ let read_line = fun t ->
         Buffer.add_string buffer value;
         if String.contains value "\n" || String.contains value "\r" then
           Ok (Buffer.contents buffer)
-        else loop ()
+        else
+          loop ()
     | Error error -> Error error
   in
   loop ()
 
 let to_string = fun t ->
-  "TTY { size=" ^ Int.to_string t.Terminal.size.cols ^ "x" ^ Int.to_string t.Terminal.size.rows ^ "; mode=" ^ (
+  "TTY { size="
+  ^ Int.to_string t.Terminal.size.cols
+  ^ "x"
+  ^ Int.to_string t.Terminal.size.rows
+  ^ "; mode=" ^ (
     match t.Terminal.mode with
     | LineBuffered -> "line-buffered"
     | Immediate -> "immediate"

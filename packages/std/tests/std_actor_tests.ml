@@ -14,13 +14,12 @@ let test_actor_self_in_spawned_actor = fun _ctx ->
   ignore
     (
       Actor.spawn
-        (
-          fun () ->
-            send parent (Actor_self_reply (Actor.self ()));
-            Ok ()
-        )
+        (fun () ->
+          send parent (Actor_self_reply (Actor.self ()));
+          Ok ())
     );
-  match await ~what:"spawned actor self"
+  match await
+    ~what:"spawned actor self"
     (
       function
       | Actor_self_reply pid -> `select pid
@@ -30,25 +29,27 @@ let test_actor_self_in_spawned_actor = fun _ctx ->
   | Ok child_pid ->
       if not (Pid.equal child_pid parent) then
         Ok ()
-      else Error "expected child Actor.self to differ from parent pid"
+      else
+        Error "expected child Actor.self to differ from parent pid"
 
 let test_actor_spawn_returns_live_pid = fun _ctx ->
   let parent = self () in
   let child =
     Actor.spawn
-      (
-        fun () ->
-          send parent (Actor_ready (Actor.self ()));
-          receive ~selector:(
+      (fun () ->
+        send parent (Actor_ready (Actor.self ()));
+        receive
+          ~selector:(
             function
             | Actor_stop -> `select ()
             | _ -> `skip
-          ) ();
-          Ok ()
-      )
+          )
+          ();
+        Ok ())
   in
   let _monitor = Runtime.Actor.monitor child in
-  match await ~what:"spawned actor ready"
+  match await
+    ~what:"spawned actor ready"
     (
       function
       | Actor_ready pid -> `select pid
@@ -61,7 +62,8 @@ let test_actor_spawn_returns_live_pid = fun _ctx ->
           send child Actor_stop;
           ignore
             (
-              await ~what:"spawned actor down"
+              await
+                ~what:"spawned actor down"
                 (
                   function
                   | Runtime.Actor.DOWN { pid; _ } when Pid.equal pid child -> `select ()
@@ -70,7 +72,8 @@ let test_actor_spawn_returns_live_pid = fun _ctx ->
             );
           Ok ()
         )
-      else Error "expected spawn to return the same pid reported by the child"
+      else
+        Error "expected spawn to return the same pid reported by the child"
 
 let is_failure = fun exn ~message ->
   match exn with
@@ -79,22 +82,26 @@ let is_failure = fun exn ~message ->
 
 let test_actor_spawn_link_reports_abnormal_exit = fun _ctx ->
   Actor.set_flags [ Runtime.Actor.TrapExit true ];
-  let child =
-    Actor.spawn_link
-      (
-        fun () -> Error (Failure "boom")
-      )
-  in
-  match await ~what:"linked actor exit"
+  let child = Actor.spawn_link (fun () -> Error (Failure "boom")) in
+  match await
+    ~what:"linked actor exit"
     (
       function
-      | Runtime.Actor.EXIT { from; reason = Error exn } when Pid.equal from child && is_failure exn ~message:"boom" -> `select ()
+      | Runtime.Actor.EXIT { from; reason = Error exn } when Pid.equal from child
+      && is_failure exn ~message:"boom" -> `select ()
       | _ -> `skip
     ) with
   | Ok () -> Ok ()
   | Error _ as err -> err
 
-let tests = Test.[ case "Actor.self inside spawned actor differs from parent" test_actor_self_in_spawned_actor; case "Actor.spawn returns a live pid" test_actor_spawn_returns_live_pid; case "Actor.spawn_link reports abnormal exit when trapping exits" test_actor_spawn_link_reports_abnormal_exit ]
+let tests =
+  Test.[
+    case "Actor.self inside spawned actor differs from parent" test_actor_self_in_spawned_actor;
+    case "Actor.spawn returns a live pid" test_actor_spawn_returns_live_pid;
+    case
+      "Actor.spawn_link reports abnormal exit when trapping exits"
+      test_actor_spawn_link_reports_abnormal_exit;
+  ]
 
 let main ~args = Test.Cli.main ~name:"Actor" ~tests ~args ()
 

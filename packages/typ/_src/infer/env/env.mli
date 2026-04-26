@@ -2,26 +2,21 @@ open Std
 open Analysis
 open Model
 
-module Binding : module type of Binding
+module Binding: module type of Binding
 
-module Constructor_env : module type of Constructor_env
+module Constructor_env: module type of Constructor_env
 
-module Label_env : module type of Label_env
+module Label_env: module type of Label_env
 
-module Type_env : module type of Type_env
+module Type_env: module type of Type_env
 
-module Value_env : module type of Value_env
+module Value_env: module type of Value_env
 
 type bindings = Binding.t list
-
 type summary = Summary2.t
-
 type t
-
 type module_scope
-
 type item_scope
-
 val empty: t
 
 val empty_summary: summary
@@ -44,15 +39,33 @@ val of_module_scope: module_scope -> t
 
 val env_of_summary: summary -> t
 
-val of_entries: make_id:(SurfacePath.t -> BindingId.t) -> provenance:Binding.provenance -> TypConfig.env -> t
+val of_entries:
+  make_id:(SurfacePath.t -> BindingId.t) ->
+  provenance:Binding.provenance ->
+  TypConfig.env ->
+  t
 
 val of_bindings: bindings -> t
 
 val of_type_decls: FileSummary.type_decl list -> t
 
-val singleton: make_id:(SurfacePath.t -> BindingId.t) -> name:string -> scheme:TypeScheme.t -> provenance:Binding.provenance -> t
+val singleton:
+  make_id:(SurfacePath.t -> BindingId.t) ->
+  name:string ->
+  scheme:TypeScheme.t ->
+  provenance:Binding.provenance ->
+  t
 
-val singleton_constructor: make_id:(SurfacePath.t -> BindingId.t) -> name:string -> scheme:TypeScheme.t -> provenance:Binding.provenance -> owner_path:SurfacePath.t -> owner_type_constructor_id:TypeConstructorId.t -> constructor_id:ConstructorId.t -> inline_record_labels:TypeDecl.label list option -> t
+val singleton_constructor:
+  make_id:(SurfacePath.t -> BindingId.t) ->
+  name:string ->
+  scheme:TypeScheme.t ->
+  provenance:Binding.provenance ->
+  owner_path:SurfacePath.t ->
+  owner_type_constructor_id:TypeConstructorId.t ->
+  constructor_id:ConstructorId.t ->
+  inline_record_labels:TypeDecl.label list option ->
+  t
 
 val singleton_module: name:string -> t -> t
 
@@ -96,7 +109,11 @@ val lookup_type: t -> SurfacePath.t -> FileSummary.type_decl option
 
 val lookup_constructors: t -> SurfacePath.t -> Constructor_env.entry list
 
-val lookup_owned_constructor: t -> SurfacePath.t -> TypeConstructorId.t -> Constructor_env.entry option
+val lookup_owned_constructor:
+  t ->
+  SurfacePath.t ->
+  TypeConstructorId.t ->
+  Constructor_env.entry option
 
 val lookup_record_decls: t -> string -> Label_env.record_decl list
 
@@ -120,7 +137,11 @@ val introduced_entries: t -> t -> t
 
 val entries_for_include: t -> SurfacePath.t -> t
 
-val export_names_for_module_alias: t -> alias_name:string -> module_path:SurfacePath.t -> string list
+val export_names_for_module_alias:
+  t ->
+  alias_name:string ->
+  module_path:SurfacePath.t ->
+  string list
 
 val entries_for_module_alias: t -> alias_name:string -> module_path:SurfacePath.t -> t
 

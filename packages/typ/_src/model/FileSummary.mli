@@ -14,13 +14,10 @@ type type_decl = {
   (** Lowered declaration summary exported by the source. *)
   declaration: TypeDecl.t;
 }
-
 type exports = (SurfacePath.t * TypeScheme.t) list
-
 type completeness =
   | Complete
   | Partial
-
 type export_result =
   (** Exports are safe enough for downstream reuse. *)
   | TrustedExport of { exports: exports }
@@ -28,12 +25,10 @@ type export_result =
   | ErroredExport of { exports: exports }
   (** No export can be trusted for this source revision. *)
   | NoExport
-
 type export_status =
   | Trusted
   | Errored
   | Missing
-
 type t = {
   (** Source summarized by this export result. *)
   source_id: SourceId.t;

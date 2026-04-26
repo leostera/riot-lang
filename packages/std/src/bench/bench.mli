@@ -30,9 +30,9 @@ open Global
      let () = Runtime.run ~main ~args:Env.args ()
    ]}
 *)
+
 (** A benchmark case. *)
 type bench_case = Bench_case.t
-
 (**
    Benchmark configuration.
 
@@ -41,17 +41,15 @@ type bench_case = Bench_case.t
    - [warmup]: Number of warmup iterations before measurement (default: 10).
 *)
 type bench_config = Bench_case.bench_config = { iterations: int; warmup: int }
-
 (** A comparison benchmark. *)
 type comparison = Bench_comparison.t
-
 (** A benchmark item, either a single benchmark or a comparison. *)
 type bench_item =
   | Single of bench_case
   | Compare of comparison
 
 (** Runs benchmark suites and summarizes their results. *)
-module Runner : sig
+module Runner: sig
   (** Configuration for a benchmark run. *)
   type config = {
     (** Reporter implementation used to display progress and results. *)
@@ -59,7 +57,6 @@ module Runner : sig
     (** Metadata describing the benchmark suite being executed. *)
     suite_info: Reporter.Intf.suite_info;
   }
-
   (** Aggregate benchmark results for a completed run. *)
   type run_summary = Bench_result.summary
 
@@ -68,7 +65,7 @@ module Runner : sig
 end
 
 (** Reporter interfaces and the default reporter implementation. *)
-module Reporter : sig
+module Reporter: sig
   module Intf = Reporter.Intf
 
   module Default = Reporter.Default
@@ -138,7 +135,7 @@ val make_case: string -> (unit -> unit) -> bench_case
 val make_case_with_config: config:bench_config -> string -> (unit -> unit) -> bench_case
 
 (** CLI helpers for benchmark binaries. *)
-module Cli : sig
+module Cli: sig
   (**
      Main entry point for benchmark binaries with CLI support.
 
@@ -151,5 +148,9 @@ module Cli : sig
      - [--iterations <n>]: Override iterations.
      - [--warmup <n>]: Override warmup count.
   *)
-  val main: name:string -> benchmarks:bench_item list -> args:string list -> (unit, Runtime.Actor.exit_reason) result
+  val main:
+    name:string ->
+    benchmarks:bench_item list ->
+    args:string list ->
+    (unit, Runtime.Actor.exit_reason) result
 end

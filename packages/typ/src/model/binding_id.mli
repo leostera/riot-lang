@@ -1,5 +1,4 @@
 type t
-
 val local: stamp:int -> name:Surface_path.t -> t
 
 val name: t -> Surface_path.t

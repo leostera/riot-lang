@@ -24,7 +24,6 @@ open Global
 
 (** The client connection type. Contains the TCP stream and internal buffers. *)
 type t
-
 (** Errors returned by client operations. *)
 type error =
   | Connection_refused
