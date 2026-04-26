@@ -4025,6 +4025,30 @@ and expr_is_unit = fun expr ->
   | Parenthesized { inner=None } -> true
   | _ -> false
 
+and expr_is_prefix = fun expr ->
+  match Ast.Expr.view expr with
+  | Parenthesized { inner=Some inner } when not (same_ast_node expr inner) -> expr_is_prefix inner
+  | Prefix _ -> true
+  | _ -> false
+
+and expr_is_prefix_operator_text = fun expr expected ->
+  match Ast.Expr.view expr with
+  | Parenthesized { inner=Some inner } when not (same_ast_node expr inner) ->
+      expr_is_prefix_operator_text inner expected
+  | Prefix { operator=Some operator; _ } ->
+      let operator_tokens = collect_prefix_operator_tokens expr in
+      let operator =
+        if Int.equal (Vector.length operator_tokens) 0 then
+          operator
+        else
+          Vector.get_unchecked operator_tokens ~at:(Int.sub (Vector.length operator_tokens) 1)
+      in
+      token_text_is operator expected
+  | _ ->
+      false
+
+and expr_is_prefix_deref = fun expr -> expr_is_prefix_operator_text expr "!"
+
 and expr_is_parenthesized_apply = fun expr ->
   match Ast.Expr.view expr with
   | Parenthesized { inner=Some inner } when not (same_ast_node expr inner) -> expr_is_apply inner
@@ -4070,6 +4094,21 @@ and expr_can_render_atom_without_parens = fun expr ->
   | OptionalArg _
   | PolyVariant { payload=None } -> true
   | _ -> false
+
+and expr_can_render_record_update_base_without_parens = fun expr ->
+  expr_can_render_atom_without_parens expr && not (expr_is_prefix expr)
+
+and expr_can_render_postfix_target_without_parens = fun expr ->
+  expr_can_render_atom_without_parens expr && not (expr_is_prefix expr)
+
+and expr_postfix_target_flat_width = fun budget expr ->
+  match expr_flat_width_with_budget budget expr with
+  | Some width ->
+      if expr_can_render_postfix_target_without_parens expr then
+        Some width
+      else
+        Some (Int.add width 2)
+  | None -> None
 
 and expr_tuple_has_parens = fun expr ->
   Option.is_some (Ast.Node.first_child_token expr ~kind:Kind.LPAREN)
@@ -4189,14 +4228,14 @@ and expr_flat_width_with_budget = fun budget expr ->
     | Literal { token=None } ->
         None
     | FieldAccess { target=Some target; field=Some field } -> (
-        match expr_flat_width_with_budget next_budget target with
+        match expr_postfix_target_flat_width next_budget target with
         | Some target_width -> Some Int.(target_width + 1 + token_flat_width field)
         | None -> None
       )
     | FieldAccess _ ->
         None
     | MethodCall { target=Some target; method_=Some method_ } -> (
-        match expr_flat_width_with_budget next_budget target with
+        match expr_postfix_target_flat_width next_budget target with
         | Some target_width -> Some Int.(target_width + 1 + token_flat_width method_)
         | None -> None
       )
@@ -4483,7 +4522,7 @@ and record_expr_flat_width = fun budget expr ->
           match expr_flat_width_with_budget budget base with
           | Some width ->
               let width =
-                if expr_can_render_atom_without_parens base then
+                if expr_can_render_record_update_base_without_parens base then
                   width
                 else
                   Int.add width 2
@@ -4918,7 +4957,7 @@ let rec render_expr = fun state expr ->
   | Literal { token=None } ->
       unsupported_node "literal expression without token" expr
   | FieldAccess { target=Some target; field=Some field } ->
-      render_expr_atom state target;
+      render_expr_postfix_target state target;
       emit_text state ".";
       emit_token state field
   | FieldAccess _ ->
@@ -5154,7 +5193,7 @@ let rec render_expr = fun state expr ->
       unsupported_node "unsupported expression" expr
 
 and render_method_call_expr = fun state expr target method_ ->
-  render_expr_atom state target;
+  render_expr_postfix_target state target;
   (
     let hash_token = ref None in
     Ast.Node.for_each_child_token expr
@@ -5267,7 +5306,14 @@ and render_prefix_operand = fun state operand ->
   match Ast.Expr.view operand with
   | Parenthesized { inner=Some inner } when not (same_ast_node operand inner)
   && expr_is_dotted_path inner -> render_parenthesized_expr state inner
+  | _ when expr_is_prefix_deref operand -> render_parenthesized_expr state operand
   | _ -> render_expr_atom state operand
+
+and render_expr_postfix_target = fun state target ->
+  if expr_can_render_postfix_target_without_parens target then
+    render_expr_atom state target
+  else
+    render_parenthesized_expr state target
 
 and parenthesized_expr_should_multiline = fun state expr ->
   if expr_has_leading_comment expr || expr_is_multiline expr then
@@ -5312,7 +5358,7 @@ and render_parenthesized_expr = fun state expr ->
 and render_index_expr = fun state expr target index ~fallback_open ~fallback_close ->
   let opening_tokens = collect_direct_tokens_between_children expr target index in
   let closing_tokens = collect_direct_tokens_after_child expr index in
-  render_expr_atom state target;
+  render_expr_postfix_target state target;
   if Int.equal (Vector.length opening_tokens) 0 then
     emit_text state fallback_open
   else
@@ -5428,6 +5474,21 @@ and render_infix_expr = fun state expr left operator right ->
     emit_space state;
     render_infix_right_operand state ~operator_text right
   )
+
+and render_delimited_local_open_body_expr = fun state expr ->
+  match Ast.Expr.view expr with
+  | Infix { left=Some left; operator=Some operator; right=Some right } when expr_is_prefix_deref left ->
+      let operator_text = infix_operator_text_from_expr expr left operator right in
+      if String.equal operator_text "|>" || infix_expr_should_break state expr left operator right then
+        render_multiline_infix_expr state left operator right
+      else (
+        render_parenthesized_expr state left;
+        emit_space state;
+        render_infix_operator_tokens state expr left operator right;
+        emit_space state;
+        render_infix_right_operand state ~operator_text right
+      )
+  | _ -> render_expr state expr
 
 and render_let_body_with_leading_comment = fun state body ->
   emit_node_leading_comments_as_lines state body;
@@ -6137,7 +6198,7 @@ and render_local_open_expr = fun state expr ->
               render_tuple_expr_contents state items ~render_item
             )
           else
-            render_expr state body
+            render_delimited_local_open_body_expr state body
         );
         if spaced then
           emit_space state;
@@ -7082,10 +7143,10 @@ and render_let_binding_tail_with_body_break = fun state binding force_body_break
       unsupported_node "let binding without body" binding
 
 and render_record_update_base = fun state base ->
-  if expr_can_render_atom_without_parens base then
+  if expr_can_render_record_update_base_without_parens base then
     render_expr state base
   else
-    render_expr_atom state base
+    render_parenthesized_expr state base
 
 and render_record_expr = fun state ~inline expr ->
   let base = Ast.RecordExpr.base expr in
