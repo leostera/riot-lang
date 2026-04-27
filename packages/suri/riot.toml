@@ -12,7 +12,6 @@ path = "src/suri.ml"
 std = { path = "../std", version = "*" }
 http = { path = "../http", version = "*" }
 blink = { path = "../blink", version = "*" }
-riot-model = { path = "../riot-model", version = "*" }
 
 # NOTE: Disabled until Telemetry.event API is updated
 # [[command]]

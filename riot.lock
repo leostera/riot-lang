@@ -1,6 +1,6 @@
 format_version = 1
 
-dependency_hash = "afa7341fbf28d3c7"
+dependency_hash = "cc66f86464b489f4"
 
 [[packages]]
 name = "blink"
@@ -286,7 +286,7 @@ dev_dependencies = [{ name = "propane", package = { name = "propane" } }]
 name = "suri"
 root = "packages/suri"
 provenance = { kind = "workspace" }
-dependencies = [{ name = "blink", package = { name = "blink" } }, { name = "http", package = { name = "http" } }, { name = "riot-model", package = { name = "riot-model" } }, { name = "std", package = { name = "std" } }]
+dependencies = [{ name = "blink", package = { name = "blink" } }, { name = "http", package = { name = "http" } }, { name = "std", package = { name = "std" } }]
 build_dependencies = []
 dev_dependencies = []
 
