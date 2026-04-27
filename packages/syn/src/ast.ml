@@ -4836,6 +4836,14 @@ let for_each_declaration_name_token = fun decl ~keyword ~fn ->
 module ValueDeclaration = struct
   type t = value_declaration
 
+  type view =
+    | Value of {
+        name: Token.t Vector.t;
+        colon_token: Token.t;
+        annotation: type_expr;
+      }
+    | Unknown of node
+
   let cast = fun (node: node) ->
     if node_kind_is node Syntax_kind.VAL_DECL then
       Some node
@@ -4853,6 +4861,21 @@ module ValueDeclaration = struct
       decl
       ~keyword:Syntax_kind.VAL_KW
       ~fn
+
+  let name_tokens = fun decl ->
+    let tokens = Vector.with_capacity ~size:(Node.child_count decl) in
+    for_each_name_token decl ~fn:(fun token -> Vector.push tokens ~value:token);
+    tokens
+
+  let view = fun decl ->
+    match (colon_token decl, type_annotation decl) with
+    | (Some colon_token, Some annotation) ->
+        let name = name_tokens decl in
+        if Int.equal (Vector.length name) 0 then
+          Unknown decl
+        else
+          Value { name; colon_token; annotation }
+    | _ -> Unknown decl
 
   let for_each_annotation_token = fun decl ~fn ->
     for_each_token_after_child_token

@@ -148,6 +148,13 @@ let name_of_tokens = fun for_each_token ->
   |> vector_to_list
   |> String.concat ""
 
+let name_of_token_vector = fun tokens ->
+  let parts = Vector.with_capacity ~size:(Vector.length tokens) in
+  Vector.for_each tokens ~fn:(fun token -> Vector.push parts ~value:(Ast.Token.text token));
+  parts
+  |> vector_to_list
+  |> String.concat ""
+
 let push_diagnostic = fun state diagnostic -> Vector.push state.diagnostics ~value:diagnostic
 
 let push_unsupported_type = fun state node summary ->
@@ -585,9 +592,9 @@ let lower_external_declaration = fun state declaration ->
   | None -> push_unsupported state declaration "external declaration"
 
 let lower_value_declaration = fun state declaration ->
-  let name = name_of_tokens (Ast.ValueDeclaration.for_each_name_token declaration) in
-  match Ast.ValueDeclaration.type_annotation declaration with
-  | Some annotation ->
+  match Ast.ValueDeclaration.view declaration with
+  | Ast.ValueDeclaration.Value { name = name_tokens; annotation; _ } ->
+      let name = name_of_token_vector name_tokens in
       push_item
         state
         (
@@ -601,7 +608,7 @@ let lower_value_declaration = fun state declaration ->
             annotation = Some (lower_type_expr state annotation);
           }
         )
-  | None -> push_unsupported state declaration "value declaration"
+  | Ast.ValueDeclaration.Unknown _ -> push_unsupported state declaration "value declaration"
 
 let lower_expr_item = fun state item ->
   match Ast.ExprItem.expr item with

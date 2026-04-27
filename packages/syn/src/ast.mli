@@ -1092,7 +1092,16 @@ end
 
 module ValueDeclaration: sig
   type t = value_declaration
+  type view =
+    | Value of {
+        name: Token.t Vector.t;
+        colon_token: Token.t;
+        annotation: type_expr;
+      }
+    | Unknown of Node.t
   val cast: Node.t -> t option
+
+  val view: t -> view
 
   val name: t -> Token.t option
 

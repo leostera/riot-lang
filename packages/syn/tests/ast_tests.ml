@@ -481,15 +481,14 @@ let test_signature_and_type_views = fun _ctx ->
   (
     match Ast.SignatureItem.view value_item with
     | Ast.SignatureItem.Value decl ->
-        let name =
-          Ast.ValueDeclaration.name decl
-          |> require_some ~msg:"expected value name"
+        let (name, annotation) =
+          match Ast.ValueDeclaration.view decl with
+          | Ast.ValueDeclaration.Value { name; colon_token; annotation } ->
+              Test.assert_equal ~expected:":" ~actual:(Ast.Token.text colon_token);
+              (vector_first name ~msg:"expected value name token", annotation)
+          | Ast.ValueDeclaration.Unknown _ -> panic "expected value declaration view"
         in
         Test.assert_equal ~expected:"x" ~actual:(Ast.Token.text name);
-        let annotation =
-          Ast.ValueDeclaration.type_annotation decl
-          |> require_some ~msg:"expected value type annotation"
-        in
         (
           match Ast.TypeExpr.view annotation with
           | Ast.TypeExpr.Arrow { arg; ret; _ } ->

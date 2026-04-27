@@ -8525,28 +8525,24 @@ and render_module_typeof_body = fun state decl ->
   render_module_body_path state (Ast.ModuleDeclaration.for_each_typeof_body_path_ident decl)
 
 and render_value_declaration = fun state decl ->
-  let name_tokens = collect_value_name_tokens decl in
-  emit_text state "val";
-  emit_space state;
-  if Vector.length name_tokens = 0 then
-    unsupported_node "value declaration without name" decl
-  else if token_vector_is_parenthesized_operator_name name_tokens then
-    render_parenthesized_operator_tokens state name_tokens
-  else
-    emit_token_vector_stream state name_tokens;
-  emit_text state ":";
-  (
-    match Ast.ValueDeclaration.type_annotation decl with
-    | Some annotation ->
-        let type_tokens = collect_node_tokens_after_direct_token decl Kind.COLON in
-        let annotation_tokens = collect_node_tokens annotation in
-        if Int.(Vector.length type_tokens > Vector.length annotation_tokens) then (
-          emit_space state;
-          emit_core_type_token_vector_stream state type_tokens
-        ) else
-          render_type_expr_after_tight_colon state ~suffix_width:0 annotation
-    | None -> unsupported_node "value declaration without annotation" decl
-  )
+  match Ast.ValueDeclaration.view decl with
+  | Ast.ValueDeclaration.Value { name = name_tokens; colon_token; annotation } ->
+      emit_text state "val";
+      emit_space state;
+      if token_vector_is_parenthesized_operator_name name_tokens then
+        render_parenthesized_operator_tokens state name_tokens
+      else
+        emit_token_vector_stream state name_tokens;
+      emit_token state colon_token;
+      let type_tokens = collect_node_tokens_after_direct_token decl Kind.COLON in
+      let annotation_tokens = collect_node_tokens annotation in
+      if Int.(Vector.length type_tokens > Vector.length annotation_tokens) then (
+        emit_space state;
+        emit_core_type_token_vector_stream state type_tokens
+      ) else
+        render_type_expr_after_tight_colon state ~suffix_width:0 annotation
+  | Ast.ValueDeclaration.Unknown node ->
+      unsupported_node "unsupported value declaration" node
 
 and render_let_declaration = fun state decl ->
   render_let_declaration_with_body_break
