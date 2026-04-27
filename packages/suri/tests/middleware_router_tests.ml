@@ -15,12 +15,12 @@ module Router = Suri.Middleware.Router
 module Session = Suri.Middleware.Session
 module Static = Suri.Middleware.Static
 module Response = Suri.Response
-module Connection = Suri.For_testing.Connection
-module Handler = Suri.For_testing.Handler
-module LiveViewSession = Suri.For_testing.LiveViewSession
-module LiveViewProtocol = Suri.For_testing.LiveViewProtocol
-module Channel = Suri.For_testing.Channel
-module Http1 = Suri.For_testing.Http1
+module Connection = Suri.Testing.Internal.Connection
+module Handler = Suri.Testing.Internal.Handler
+module LiveViewSession = Suri.Testing.Internal.LiveViewSession
+module LiveViewProtocol = Suri.Testing.Internal.LiveViewProtocol
+module Channel = Suri.Testing.Internal.Channel
+module Http1 = Suri.Testing.Internal.Http1
 
 let valid_websocket_key = "dGhlIHNhbXBsZSBub25jZQ=="
 

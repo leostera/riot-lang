@@ -1,8 +1,9 @@
-module Request = Suri__Testing__Request
-module Conn = Suri__Testing__Conn
-module Middleware = Suri__Testing__Middleware
-module App = Suri__Testing__App
-module Expect = Suri__Testing__Expect
+module Request = Testing_request
+module Conn = Testing_conn
+module Middleware = Testing_middleware
+module App = Testing_app
+module Expect = Expect
+module Internal = Testing_internal
 
 type outcome = App.outcome =
   | Responded of Web_server.Response.t

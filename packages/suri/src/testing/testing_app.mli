@@ -1,4 +1,4 @@
-module Request = Suri__Testing__Request
+module Request = Testing_request
 
 type outcome =
   | Responded of Web_server.Response.t

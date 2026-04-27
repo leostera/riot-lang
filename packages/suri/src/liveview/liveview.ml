@@ -6,6 +6,7 @@ open Std
 
 module Protocol = Protocol
 module HandlerRegistry = Handler_registry
+module Session = Session
 
 (** Generate a unique LiveView component ID *)
 let id = fun base_name ->

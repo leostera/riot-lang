@@ -1,5 +1,5 @@
-module Conn = Suri__Middleware__Conn
-module Pipeline = Suri__Middleware__Pipeline
+module Conn = Middleware.Conn
+module Pipeline = Middleware.Pipeline
 
 type middleware = Pipeline.middleware
 

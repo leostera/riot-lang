@@ -1,5 +1,9 @@
 open Std
 
+module Protocol: module type of Protocol
+
+module Session: module type of Session
+
 (**
    {1 LiveView - Server-Rendered Components with Live Updates}
 

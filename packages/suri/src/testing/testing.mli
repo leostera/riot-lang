@@ -5,15 +5,17 @@
    middleware pipeline. It does not provide replacement protocol parsers,
    replacement components, or fake application modules.
 *)
-module Request = Suri__Testing__Request
+module Request = Testing_request
 
-module Conn = Suri__Testing__Conn
+module Conn = Testing_conn
 
-module Middleware = Suri__Testing__Middleware
+module Middleware = Testing_middleware
 
-module App = Suri__Testing__App
+module App = Testing_app
 
-module Expect = Suri__Testing__Expect
+module Expect = Expect
+
+module Internal = Testing_internal
 
 type outcome = App.outcome =
   | Responded of Web_server.Response.t
