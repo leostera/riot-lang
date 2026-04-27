@@ -121,6 +121,45 @@ let test_cors_rejects_wildcard_origin_with_credentials = fun _ctx ->
   | Error Cors.WildcardOriginWithCredentials -> Ok ()
   | Ok _ -> Error "expected wildcard credentials CORS config to be rejected"
 
+let test_cors_reports_disallowed_origin = fun _ctx ->
+  Test.assert_equal
+    ~expected:(Error (Cors.OriginNotAllowed {
+      origin = "https://evil.example";
+      allowed = [ "https://example.com"; ];
+    }))
+    ~actual:(Cors.validate_origin ~origins:[ "https://example.com"; ] ~origin:"https://evil.example");
+  Ok ()
+
+let test_cors_middleware_renders_disallowed_origin = fun _ctx ->
+  let conn = Suri.Testing.Conn.make ~headers:[ ("origin", "https://evil.example"); ] () in
+  match Cors.middleware ~origins:[ "https://example.com"; ] () with
+  | Error error -> Error (Cors.config_error_to_string error)
+  | Ok middleware ->
+      let response =
+        middleware
+          ~conn
+          ~next:(fun conn ->
+            conn
+            |> Conn.respond ~status:Net.Http.Status.Ok ~body:"ok"
+            |> Conn.send)
+        |> Conn.to_response
+      in
+      Test.assert_equal ~expected:Net.Http.Status.Forbidden ~actual:response.status;
+      Test.assert_equal
+        ~expected:"CORS origin is not allowed: https://evil.example; allowed origins: https://example.com"
+        ~actual:response.body;
+      Ok ()
+
+let test_cors_preflight_rejects_missing_method = fun _ctx ->
+  match Cors.validate_preflight
+    ~methods:[ Net.Http.Method.Put; ]
+    ~headers:[]
+    ~request_method:" "
+    ~request_headers:None with
+  | Error Cors.MissingRequestMethod -> Ok ()
+  | Ok () -> Error "expected missing CORS preflight method"
+  | Error error -> Error (Cors.preflight_error_to_string error)
+
 let test_cors_preflight_rejects_disallowed_method = fun _ctx ->
   match Cors.validate_preflight
     ~methods:[ Net.Http.Method.Put; ]
@@ -237,6 +276,9 @@ let tests =
     case
       "cors rejects wildcard origin with credentials"
       test_cors_rejects_wildcard_origin_with_credentials;
+    case "cors reports disallowed origin" test_cors_reports_disallowed_origin;
+    case "cors middleware renders disallowed origin" test_cors_middleware_renders_disallowed_origin;
+    case "cors preflight rejects missing method" test_cors_preflight_rejects_missing_method;
     case "cors preflight rejects disallowed method" test_cors_preflight_rejects_disallowed_method;
     case "cors preflight rejects disallowed headers" test_cors_preflight_rejects_disallowed_headers;
     case "cors preflight allows configured headers" test_cors_preflight_allows_configured_headers;

@@ -116,10 +116,17 @@ open Std
 
 type config_error =
   | WildcardOriginWithCredentials
-
 val config_error_to_string: config_error -> string
 
+type origin_error =
+  | OriginNotAllowed of {
+      origin: string;
+      allowed: string list;
+    }
+val origin_error_to_string: origin_error -> string
+
 type preflight_error =
+  | MissingRequestMethod
   | MethodNotAllowed of Net.Http.Method.t
   | HeadersNotAllowed of {
       requested: string list;
@@ -182,6 +189,8 @@ val middleware:
   (Pipeline.middleware, config_error) result
 
 val validate_config: origins:string list -> credentials:bool -> (unit, config_error) result
+
+val validate_origin: origins:string list -> origin:string -> (unit, origin_error) Std.result
 
 val validate_preflight:
   methods:Net.Http.Method.t list ->
