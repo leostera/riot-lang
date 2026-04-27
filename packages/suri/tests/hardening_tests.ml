@@ -792,6 +792,24 @@ let test_handler_recovers_from_middleware_exceptions = fun _ctx ->
       Ok ()
   | None -> Error "expected exception recovery to return an HTTP response"
 
+let test_conn_to_response_returns_not_found_when_unsent = fun _ctx ->
+  let response = Conn.to_response (Conn.For_testing.make ()) in
+  Test.assert_equal ~expected:Net.Http.Status.NotFound ~actual:response.status;
+  Test.assert_equal ~expected:"Not Found" ~actual:response.body;
+  Ok ()
+
+let test_handler_returns_not_found_when_pipeline_does_not_send = fun _ctx ->
+  let app = [
+    fun ~conn ~next -> next conn;
+  ]
+  in
+  match Handler.run_pipeline_response app (Conn.For_testing.make ()) with
+  | Some response ->
+      Test.assert_equal ~expected:Net.Http.Status.NotFound ~actual:response.status;
+      Test.assert_equal ~expected:"Not Found" ~actual:response.body;
+      Ok ()
+  | None -> Error "expected unsent pipeline to return an HTTP response"
+
 let test_http1_response_rejects_invalid_header_name = fun _ctx ->
   let res = Response.ok ~headers:[ ("bad name", "value"); ] ~body:"ok" () in
   match Http1.serialize_response res with
@@ -1027,6 +1045,12 @@ let tests =
     case
       "handler recovers from middleware exceptions"
       test_handler_recovers_from_middleware_exceptions;
+    case
+      "conn to response returns not found when unsent"
+      test_conn_to_response_returns_not_found_when_unsent;
+    case
+      "handler returns not found when pipeline does not send"
+      test_handler_returns_not_found_when_pipeline_does_not_send;
     case
       "http1 response rejects invalid header name"
       test_http1_response_rejects_invalid_header_name;
