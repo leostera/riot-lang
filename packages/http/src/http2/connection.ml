@@ -151,21 +151,7 @@ let send_preface = fun conn ->
     Frame.MaxFrameSize (Cell.get conn.local_settings.max_frame_size);
   ]
   in
-  let settings_frame = {
-    Frame.length = 0;
-    frame_type = Frame.Settings;
-    flags =
-      {
-        Frame.end_stream = false;
-        end_headers = false;
-        padded = false;
-        priority = false;
-        ack = false;
-      };
-    stream_id = 0;
-    payload = Frame.SettingsPayload settings_list;
-  }
-  in
+  let settings_frame = Frame.settings settings_list in
   let settings_bytes = Serializer.serialize_frame settings_frame in
   match conn.role with
   | Client ->

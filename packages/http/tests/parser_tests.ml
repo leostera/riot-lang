@@ -3,10 +3,13 @@ open Std
 (** HTTP/2 frame serialization tests *)
 module Frame = Http.Http2.Frame
 module Serializer = Http.Http2.Serializer
+module Connection = Http.Http2.Connection
 
-let frame_payload_length = fun serialized ->
-  let byte index = Char.code (String.get_unchecked serialized ~at:index) in
+let frame_payload_length_at = fun serialized ~offset ->
+  let byte index = Char.code (String.get_unchecked serialized ~at:(offset + index)) in
   (byte 0 lsl 16) lor (byte 1 lsl 8) lor byte 2
+
+let frame_payload_length = fun serialized -> frame_payload_length_at serialized ~offset:0
 
 let test_serialize_settings_frame = fun _ctx ->
   let frame = {
@@ -98,6 +101,24 @@ let test_serialize_settings_payload_length = fun _ctx ->
   else
     Result.Error ("Serialized settings length should be 6, got " ^ Int.to_string length)
 
+let test_client_preface_settings_payload_length = fun _ctx ->
+  let conn = Connection.create ~role:Connection.Client () in
+  let preface = Connection.send_preface conn in
+  let length = frame_payload_length_at preface ~offset:24 in
+  if Int.equal length 30 then
+    Result.Ok ()
+  else
+    Result.Error ("Client preface settings length should be 30, got " ^ Int.to_string length)
+
+let test_server_preface_settings_payload_length = fun _ctx ->
+  let conn = Connection.create ~role:Connection.Server () in
+  let preface = Connection.send_preface conn in
+  let length = frame_payload_length preface in
+  if Int.equal length 30 then
+    Result.Ok ()
+  else
+    Result.Error ("Server preface settings length should be 30, got " ^ Int.to_string length)
+
 let test_frame_types = fun _ctx ->
   let types = [ Frame.Data; Frame.Headers; Frame.Settings; Frame.Ping; Frame.Goaway; ] in
   if List.length types = 5 then
@@ -111,6 +132,8 @@ let tests =
     case "serialize_data_frame" test_serialize_data_frame;
     case "serialize_recomputes_payload_length" test_serialize_recomputes_payload_length;
     case "serialize_settings_payload_length" test_serialize_settings_payload_length;
+    case "client_preface_settings_payload_length" test_client_preface_settings_payload_length;
+    case "server_preface_settings_payload_length" test_server_preface_settings_payload_length;
     case "frame_types" test_frame_types;
   ]
 
