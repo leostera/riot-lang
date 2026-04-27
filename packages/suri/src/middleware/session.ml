@@ -130,7 +130,7 @@ let from_json = fun json ->
       Option.some { values; created_at; expires_at }
   | _ -> Option.none
 
-(** {1 Basic Crypto (XOR placeholder - NOT SECURE for production)} *)
+(** {1 Cookie Protection} *)
 
 (** Simple XOR encryption - placeholder for real AES-GCM *)
 let encrypt = fun ~secret data ->
@@ -148,21 +148,63 @@ let encrypt = fun ~secret data ->
 (** Simple XOR decryption - same as encryption for XOR *)
 let decrypt = fun ~secret encrypted -> encrypt ~secret encrypted
 
-(** Simple signature using hash of combined secret and data *)
+let secure_equal = fun s1 s2 ->
+  if not (String.length s1 = String.length s2) then
+    false
+  else
+    let mismatch = ref 0 in
+    for i = 0 to String.length s1 - 1 do
+      let c1 = Char.code (String.get_unchecked s1 ~at:i) in
+      let c2 = Char.code (String.get_unchecked s2 ~at:i) in
+      mismatch := !mismatch lor (c1 lxor c2)
+    done;
+  !mismatch = 0
+
+let digest_to_string = fun digest ->
+  digest
+  |> Crypto.Digest.bytes
+  |> IO.Bytes.to_string
+
+let normalize_hmac_key = fun secret ->
+  let key =
+    if String.length secret > 64 then
+      Crypto.Sha256.hash_string secret
+      |> digest_to_string
+    else
+      secret
+  in
+  if String.length key < 64 then
+    key ^ String.make ~len:(64 - String.length key) ~char:'\000'
+  else
+    key
+
+let xor_with_byte = fun data byte ->
+  String.init
+    ~len:(String.length data)
+    ~fn:(fun index ->
+      let value = Char.code (String.get_unchecked data ~at:index) lxor byte in
+      Char.chr value)
+
+let hmac_sha256 = fun ~secret data ->
+  let key = normalize_hmac_key secret in
+  let inner_key = xor_with_byte key 0x36 in
+  let outer_key = xor_with_byte key 0x5c in
+  let inner_hash =
+    Crypto.Sha256.hash_string (inner_key ^ data)
+    |> digest_to_string
+  in
+  Crypto.Sha256.hash_string (outer_key ^ inner_hash)
+  |> digest_to_string
+
+(** HMAC-SHA256 signature for cookie integrity. *)
 let sign = fun ~secret data ->
-  let combined = String.concat ":" [ secret; data ] in
-  (* Simple hash: sum of all byte values *)
-  let sum = ref 0 in
-  for i = 0 to String.length combined - 1 do
-    sum := !sum + Char.code (String.get_unchecked combined ~at:i)
-  done;
-  (* Convert to hex string *)
-  String.concat "" [ "0x"; Int.to_string !sum ]
+  hmac_sha256 ~secret data
+  |> Encoding.Base64.encode
 
 (** Verify signature *)
 let verify = fun ~secret data signature ->
   let expected = sign ~secret data in
-  String.equal expected signature
+  secure_equal expected signature
 
 (** {1 Cookie Serialization} *)
 
@@ -211,6 +253,18 @@ let from_cookie_value = fun ~cookie_name ~secret cookie_value ->
           | Result.Error _ -> Result.err "Invalid base64 encoding"
         )
   | _ -> Result.err "Invalid cookie format"
+
+module For_testing = struct
+  let create = create
+
+  let sign = sign
+
+  let verify = verify
+
+  let to_cookie_value = to_cookie_value
+
+  let from_cookie_value = from_cookie_value
+end
 
 (** {1 Middleware} *)
 

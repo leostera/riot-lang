@@ -530,6 +530,42 @@ let test_session_middleware_installs_session = fun _ctx ->
   Test.assert_true !found_session;
   Ok ()
 
+let test_session_signing_uses_hmac = fun _ctx ->
+  let secret = "0123456789abcdef0123456789abcdef" in
+  let signature = Session.For_testing.sign ~secret "payload" in
+  Test.assert_false (String.starts_with ~prefix:"0x" signature);
+  Test.assert_true (Session.For_testing.verify ~secret "payload" signature);
+  Test.assert_false (Session.For_testing.verify ~secret "tampered" signature);
+  Ok ()
+
+let tamper_last_char = fun value ->
+  let len = String.length value in
+  let prefix = String.sub value ~offset:0 ~len:(len - 1) in
+  let last = String.get_unchecked value ~at:(len - 1) in
+  let replacement =
+    if last = 'A' then
+      "B"
+    else
+      "A"
+  in
+  prefix ^ replacement
+
+let test_session_cookie_roundtrips_and_rejects_tampering = fun _ctx ->
+  let secret = "0123456789abcdef0123456789abcdef" in
+  let session = Session.For_testing.create ~cookie_name:"_test" ~secret () in
+  Session.put "user_id" "123" session;
+  let cookie = Session.For_testing.to_cookie_value session in
+  match Session.For_testing.from_cookie_value ~cookie_name:"_test" ~secret cookie with
+  | Error err -> Error err
+  | Ok decoded ->
+      Test.assert_equal ~expected:(Some "123") ~actual:(Session.get_value "user_id" decoded);
+      match Session.For_testing.from_cookie_value
+        ~cookie_name:"_test"
+        ~secret
+        (tamper_last_char cookie) with
+      | Error _ -> Ok ()
+      | Ok _ -> Error "expected tampered session cookie to fail verification"
+
 let test_csrf_requires_session_middleware = fun _ctx ->
   let conn =
     Conn.For_testing.make
@@ -974,6 +1010,10 @@ let tests =
     case "csrf rejects malformed masked tokens" test_csrf_rejects_malformed_masked_tokens;
     case "csrf secure equal checks full token" test_csrf_secure_equal_checks_full_token;
     case "session middleware installs session" test_session_middleware_installs_session;
+    case "session signing uses hmac" test_session_signing_uses_hmac;
+    case
+      "session cookie roundtrips and rejects tampering"
+      test_session_cookie_roundtrips_and_rejects_tampering;
     case "csrf requires session middleware" test_csrf_requires_session_middleware;
     case
       "http1 websocket accept matches rfc example"

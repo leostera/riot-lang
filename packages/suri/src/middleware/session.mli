@@ -6,9 +6,10 @@
    Sessions store small amounts of data (< 4KB) in cookies. No server-side
    storage is required.
 
-   This middleware is not production-ready yet. It still uses placeholder
-   signing/encryption internally and must be replaced with authenticated
-   encryption before handling sensitive data.
+   This middleware is not production-ready yet. Cookies are integrity-protected
+   with HMAC-SHA256, but the confidentiality layer still uses placeholder XOR
+   encryption and must be replaced with authenticated encryption before handling
+   sensitive data.
 
    {2 Quick Start}
 
@@ -49,10 +50,11 @@
    - {b HTTPS Only}: Set [~secure:true] in production
    - {b SameSite}: Default [Lax] helps reduce CSRF exposure
    - {b HttpOnly}: Always enabled, prevents XSS access
-   - {b Not production safe}: Signing and encryption are placeholders today
+   - {b Integrity}: Cookie payloads are signed with HMAC-SHA256
+   - {b Not production safe}: Cookie encryption is still placeholder-only today
 
-   {b Warning}: Current crypto is placeholder-only. Replace it with
-   authenticated encryption before production use.
+   {b Warning}: Replace the placeholder encryption with authenticated
+   encryption before production use.
 
    {2 Configuration}
 
@@ -213,3 +215,15 @@ val is_expired: t -> bool
    Used internally to determine if cookie needs updating.
 *)
 val is_modified: t -> bool
+
+module For_testing: sig
+  val create: cookie_name:string -> secret:string -> unit -> t
+
+  val sign: secret:string -> string -> string
+
+  val verify: secret:string -> string -> string -> bool
+
+  val to_cookie_value: t -> string
+
+  val from_cookie_value: cookie_name:string -> secret:string -> string -> (t, string) result
+end
