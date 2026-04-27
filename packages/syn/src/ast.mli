@@ -1,4 +1,5 @@
 open Std
+open Std.Collections
 
 (**
    Typed views over `Syntax_tree`.
@@ -48,6 +49,11 @@ type record_expr_field = node
 type variant_type = node
 type variant_constructor = node
 type path = node
+type record_expr_field_view = {
+  path: path option;
+  value: expr option;
+  node: record_expr_field;
+}
 
 (** Root view for a parsed syntax tree. *)
 val root: Syntax_tree.t -> node
@@ -163,41 +169,32 @@ end
 
 module TypeExpr: sig
   type t = type_expr
-  type tuple_separator =
-    | Star
-    | Comma
-    | UnknownSeparator
+  type arrow_label = {
+    name: Token.t option;
+    optional_: bool;
+  }
   type view =
-    | Path of { path: path }
+    | Unit
+    | Ident of { path: path }
     | Var of {
         name: Token.t option;
       }
     | Wildcard
     | Arrow of {
-        left: t option;
-        right: t option;
+        label: arrow_label option;
+        arg: t option;
+        ret: t option;
       }
     | Poly of {
         body: t option;
       }
-    | Labeled of {
-        optional_token: Token.t option;
-        label: Token.t option;
-        annotation: t option;
-      }
     | Tuple of {
-        left: t option;
-        right: t option;
-        separator: tuple_separator;
+        parts: t Vector.t;
       }
     | Apply of {
-        argument: t option;
-        constructor: t option;
+        ident: path option;
+        args: t Vector.t;
       }
-    | Parenthesized of {
-        inner: t option;
-      }
-    | Opaque of Node.t
     | Error of Node.t
     | Unknown of Node.t
   val cast: Node.t -> t option
@@ -272,29 +269,30 @@ end
 module Pattern: sig
   type t = pattern
   type view =
+    | Unit
     | Wildcard
-    | Path of { path: path }
-    | Apply of {
-        callee: t option;
-        argument: t option;
+    | Ident of { path: path }
+    | Construct of {
+        constructor: path option;
+        payload: t option;
       }
     | Literal of {
         token: Token.t option;
       }
-    | Parenthesized of {
-        inner: t option;
+    | Tuple of {
+        parts: t Vector.t;
       }
-    | Tuple
-    | List
-    | Array
+    | List of {
+        items: t Vector.t;
+      }
+    | Array of {
+        items: t Vector.t;
+      }
     | Record
-    | PolyVariant
-    | Extension
-    | Attribute of {
-        inner: t option;
+    | PolyVariant of {
+        tag: Token.t option;
+        payload: t option;
       }
-    | LocalOpen
-    | LocallyAbstractType
     | FirstClassModule
     | Interval of {
         left: t option;
@@ -322,9 +320,6 @@ module Pattern: sig
     | Exception of {
         pattern: t option;
       }
-    | LabeledParam of parameter
-    | OptionalParam of parameter
-    | OptionalParamDefault of parameter
     | Error of Node.t
     | Unknown of Node.t
   val cast: Node.t -> t option
@@ -477,6 +472,7 @@ end
 module Expr: sig
   type t = expr
   type view =
+    | Unit
     | Let of {
         first_binding: let_binding option;
         body: t option;
@@ -490,15 +486,6 @@ module Expr: sig
     | LetException of {
         body: t option;
       }
-    | BindingOperator of {
-        first_binding: let_binding option;
-        body: t option;
-      }
-    | FirstClassModule
-    | Extension
-    | Unreachable
-    | Object
-    | New
     | If of {
         condition: t option;
         then_branch: t option;
@@ -510,8 +497,6 @@ module Expr: sig
       }
     | Fun of {
         body: t option;
-      }
-    | Function of {
         first_case: match_case option;
       }
     | Try of {
@@ -527,15 +512,6 @@ module Expr: sig
         start_: t option;
         stop: t option;
         body: t option;
-      }
-    | Assert of {
-        argument: t option;
-      }
-    | Lazy of {
-        argument: t option;
-      }
-    | Attribute of {
-        inner: t option;
       }
     | Sequence of {
         left: t option;
@@ -568,39 +544,29 @@ module Expr: sig
         method_: Token.t option;
       }
     | PolyVariant of {
+        tag: Token.t option;
         payload: t option;
       }
-    | Path of { path: path }
+    | Ident of { path: path }
     | Literal of {
         token: Token.t option;
       }
-    | Parenthesized of {
-        inner: t option;
+    | Tuple of {
+        items: t Vector.t;
       }
-    | Tuple
-    | List
-    | Array
-    | Record
-    | RecordUpdate
-    | ArrayIndex of {
-        target: t option;
-        index: t option;
+    | List of {
+        items: t Vector.t;
       }
-    | StringIndex of {
-        target: t option;
-        index: t option;
+    | Array of {
+        items: t Vector.t;
       }
-    | Typed of {
+    | Record of {
+        base: t option;
+        fields: record_expr_field_view Vector.t;
+      }
+    | Annotated of {
         expr: t option;
         annotation: type_expr option;
-      }
-    | LabeledArg of {
-        label: Token.t option;
-        value: t option;
-      }
-    | OptionalArg of {
-        label: Token.t option;
-        value: t option;
       }
     | Error of Node.t
     | Unknown of Node.t
@@ -635,11 +601,7 @@ end
 
 module RecordExpr: sig
   type t = expr
-  type field = {
-    path: path option;
-    value: expr option;
-    node: record_expr_field;
-  }
+  type field = record_expr_field_view
   val cast: expr -> t option
 
   val base: t -> expr option

@@ -75,6 +75,12 @@ type variant_constructor = node
 
 type path = node
 
+type record_expr_field_view = {
+  path: path option;
+  value: expr option;
+  node: record_expr_field;
+}
+
 let root = fun tree -> ({ tree; id = tree.Syntax_tree.root }: node)
 
 let wrap_node = fun tree id -> ({ tree; id }: node)
@@ -805,37 +811,32 @@ module TypeExpr = struct
     | Comma
     | UnknownSeparator
 
+  type arrow_label = {
+    name: token option;
+    optional_: bool;
+  }
+
   type view =
-    | Path of { path: path }
+    | Ident of { path: path }
     | Var of {
         name: Token.t option;
       }
     | Wildcard
     | Arrow of {
-        left: t option;
-        right: t option;
+        label: arrow_label option;
+        arg: t option;
+        ret: t option;
       }
     | Poly of {
         body: t option;
       }
-    | Labeled of {
-        optional_token: Token.t option;
-        label: Token.t option;
-        annotation: t option;
-      }
     | Tuple of {
-        left: t option;
-        right: t option;
-        separator: tuple_separator;
+        parts: t Vector.t;
       }
     | Apply of {
-        argument: t option;
-        constructor: t option;
+        ident: path option;
+        args: t Vector.t;
       }
-    | Parenthesized of {
-        inner: t option;
-      }
-    | Opaque of Node.t
     | Error of Node.t
     | Unknown of Node.t
 
@@ -865,6 +866,94 @@ module TypeExpr = struct
     else
       type_expr
 
+  let child_type_exprs = fun type_expr ->
+    let items = Vector.with_capacity ~size:(Node.child_count type_expr) in
+    for_each_child_node_matching
+      type_expr
+      ~matches:is_type_expr_kind
+      ~fn:(fun child -> Vector.push items ~value:child);
+    items
+
+  let rec parenthesized_inner = fun type_expr ->
+    match Node.kind type_expr with
+    | Syntax_kind.TYPE_EXPR -> (
+        match first_child_node_matching type_expr ~matches:is_type_expr_kind with
+        | Some child -> parenthesized_inner child
+        | None -> None
+      )
+    | Syntax_kind.PAREN_TYPE -> first_child_node_matching type_expr ~matches:is_type_expr_kind
+    | _ -> Some type_expr
+
+  let labeled_arrow_argument = fun type_expr ->
+    match parenthesized_inner type_expr with
+    | Some inner when node_kind_is inner Syntax_kind.LABELED_TYPE ->
+        Some (
+          {
+            name = first_ident_token inner;
+            optional_ = Option.is_some
+              (first_child_token_matching inner ~matches:(fun kind -> Syntax_kind.(kind = QUESTION)));
+          },
+          first_child_node_matching inner ~matches:is_type_expr_kind
+        )
+    | _ -> None
+
+  let comma_tuple_parts = fun type_expr ->
+    match parenthesized_inner type_expr with
+    | Some inner when node_kind_is inner Syntax_kind.TUPLE_TYPE && tuple_separator inner = Comma ->
+        Some (child_type_exprs inner)
+    | _ -> None
+
+  let tuple_parts = fun type_expr ->
+    let parts = Vector.with_capacity ~size:(Node.child_count type_expr) in
+    let rec collect item =
+      match parenthesized_inner item with
+      | Some inner when node_kind_is inner Syntax_kind.TUPLE_TYPE
+      && tuple_separator inner = tuple_separator type_expr ->
+          for_each_child_node_matching inner ~matches:is_type_expr_kind ~fn:collect
+      | Some inner -> Vector.push parts ~value:inner
+      | None -> ()
+    in
+    collect type_expr;
+    parts
+
+  let type_constructor_path = fun type_expr ->
+    match parenthesized_inner type_expr with
+    | Some inner when node_kind_is inner Syntax_kind.PATH_TYPE -> Some inner
+    | _ -> None
+
+  let apply_parts = fun type_expr ->
+    let rec loop expr args =
+      match Node.kind expr with
+      | Syntax_kind.APPLY_TYPE -> (
+          let argument = nth_child_node_matching expr 0 ~matches:is_type_expr_kind in
+          let constructor = nth_child_node_matching expr 1 ~matches:is_type_expr_kind in
+          let args =
+            match argument with
+            | Some argument -> (
+                match comma_tuple_parts argument with
+                | Some tuple_args ->
+                    Vector.for_each tuple_args ~fn:(fun arg -> Vector.push args ~value:arg);
+                    args
+                | None ->
+                    Vector.push args ~value:argument;
+                    args
+              )
+            | None -> args
+          in
+          match constructor with
+          | Some constructor -> loop constructor args
+          | None -> (None, args)
+        )
+      | Syntax_kind.TYPE_EXPR -> (
+          match first_child_node_matching expr ~matches:is_type_expr_kind with
+          | Some child -> loop child args
+          | None -> (None, args)
+        )
+      | Syntax_kind.PATH_TYPE -> (Some expr, args)
+      | _ -> (None, args)
+    in
+    loop type_expr (Vector.with_capacity ~size:(Node.child_count type_expr))
+
   let rec view = fun (type_expr: type_expr) ->
     match Node.kind type_expr with
     | Syntax_kind.TYPE_EXPR -> (
@@ -874,43 +963,40 @@ module TypeExpr = struct
         ) with
         | (Some child, None) -> (
             match Node.kind child with
-            | Syntax_kind.TYPE_EXPR -> Opaque type_expr
+            | Syntax_kind.TYPE_EXPR -> Unknown type_expr
             | _ -> view child
           )
-        | _ -> Opaque type_expr
+        | _ -> Unknown type_expr
       )
-    | Syntax_kind.PATH_TYPE -> Path { path = type_expr }
+    | Syntax_kind.PATH_TYPE -> Ident { path = type_expr }
     | Syntax_kind.VAR_TYPE -> Var { name = last_ident_token type_expr }
     | Syntax_kind.WILDCARD_TYPE -> Wildcard
-    | Syntax_kind.ARROW_TYPE ->
-        Arrow {
-          left = nth_child_node_matching type_expr 0 ~matches:is_type_expr_kind;
-          right = nth_child_node_matching type_expr 1 ~matches:is_type_expr_kind;
-        }
+    | Syntax_kind.ARROW_TYPE -> (
+        let left = nth_child_node_matching type_expr 0 ~matches:is_type_expr_kind in
+        let (label, arg) =
+          match left with
+          | Some left -> (
+              match labeled_arrow_argument left with
+              | Some (label, arg) -> (Some label, arg)
+              | None -> (None, Some left)
+            )
+          | None -> (None, None)
+        in
+        Arrow { label; arg; ret = nth_child_node_matching type_expr 1 ~matches:is_type_expr_kind }
+      )
     | Syntax_kind.POLY_TYPE ->
         Poly { body = first_child_node_matching type_expr ~matches:is_type_expr_kind }
-    | Syntax_kind.LABELED_TYPE ->
-        Labeled {
-          optional_token = first_child_token_matching
-            type_expr
-            ~matches:(fun kind -> Syntax_kind.(kind = QUESTION));
-          label = first_ident_token type_expr;
-          annotation = first_child_node_matching type_expr ~matches:is_type_expr_kind;
-        }
-    | Syntax_kind.TUPLE_TYPE ->
-        Tuple {
-          left = nth_child_node_matching type_expr 0 ~matches:is_type_expr_kind;
-          right = nth_child_node_matching type_expr 1 ~matches:is_type_expr_kind;
-          separator = tuple_separator type_expr;
-        }
+    | Syntax_kind.LABELED_TYPE -> Unknown type_expr
+    | Syntax_kind.TUPLE_TYPE -> Tuple { parts = tuple_parts type_expr }
     | Syntax_kind.APPLY_TYPE ->
-        Apply {
-          argument = nth_child_node_matching type_expr 0 ~matches:is_type_expr_kind;
-          constructor = nth_child_node_matching type_expr 1 ~matches:is_type_expr_kind;
-        }
-    | Syntax_kind.PAREN_TYPE ->
-        Parenthesized { inner = first_child_node_matching type_expr ~matches:is_type_expr_kind }
-    | Syntax_kind.OPAQUE_TYPE -> Opaque type_expr
+        let (ident, args) = apply_parts type_expr in
+        Apply { ident; args }
+    | Syntax_kind.PAREN_TYPE -> (
+        match first_child_node_matching type_expr ~matches:is_type_expr_kind with
+        | Some inner -> view inner
+        | None -> Ident { path = type_expr }
+      )
+    | Syntax_kind.OPAQUE_TYPE -> Unknown type_expr
     | Syntax_kind.ERROR -> Error type_expr
     | _ -> Unknown type_expr
 
@@ -1159,6 +1245,7 @@ end
 module Expr: sig
   type t = expr
   type view =
+    | Unit
     | Let of {
         first_binding: let_binding option;
         body: t option;
@@ -1172,15 +1259,6 @@ module Expr: sig
     | LetException of {
         body: t option;
       }
-    | BindingOperator of {
-        first_binding: let_binding option;
-        body: t option;
-      }
-    | FirstClassModule
-    | Extension
-    | Unreachable
-    | Object
-    | New
     | If of {
         condition: t option;
         then_branch: t option;
@@ -1192,8 +1270,6 @@ module Expr: sig
       }
     | Fun of {
         body: t option;
-      }
-    | Function of {
         first_case: match_case option;
       }
     | Try of {
@@ -1209,15 +1285,6 @@ module Expr: sig
         start_: t option;
         stop: t option;
         body: t option;
-      }
-    | Assert of {
-        argument: t option;
-      }
-    | Lazy of {
-        argument: t option;
-      }
-    | Attribute of {
-        inner: t option;
       }
     | Sequence of {
         left: t option;
@@ -1250,39 +1317,29 @@ module Expr: sig
         method_: token option;
       }
     | PolyVariant of {
+        tag: token option;
         payload: t option;
       }
-    | Path of { path: path }
+    | Ident of { path: path }
     | Literal of {
         token: token option;
       }
-    | Parenthesized of {
-        inner: t option;
+    | Tuple of {
+        items: t Vector.t;
       }
-    | Tuple
-    | List
-    | Array
-    | Record
-    | RecordUpdate
-    | ArrayIndex of {
-        target: t option;
-        index: t option;
+    | List of {
+        items: t Vector.t;
       }
-    | StringIndex of {
-        target: t option;
-        index: t option;
+    | Array of {
+        items: t Vector.t;
       }
-    | Typed of {
+    | Record of {
+        base: t option;
+        fields: record_expr_field_view Vector.t;
+      }
+    | Annotated of {
         expr: t option;
         annotation: type_expr option;
-      }
-    | LabeledArg of {
-        label: token option;
-        value: t option;
-      }
-    | OptionalArg of {
-        label: token option;
-        value: t option;
       }
     | Error of Node.t
     | Unknown of Node.t
@@ -1301,6 +1358,7 @@ end = struct
   type t = expr
 
   type view =
+    | Unit
     | Let of {
         first_binding: let_binding option;
         body: t option;
@@ -1314,15 +1372,6 @@ end = struct
     | LetException of {
         body: t option;
       }
-    | BindingOperator of {
-        first_binding: let_binding option;
-        body: t option;
-      }
-    | FirstClassModule
-    | Extension
-    | Unreachable
-    | Object
-    | New
     | If of {
         condition: t option;
         then_branch: t option;
@@ -1334,8 +1383,6 @@ end = struct
       }
     | Fun of {
         body: t option;
-      }
-    | Function of {
         first_case: match_case option;
       }
     | Try of {
@@ -1351,15 +1398,6 @@ end = struct
         start_: t option;
         stop: t option;
         body: t option;
-      }
-    | Assert of {
-        argument: t option;
-      }
-    | Lazy of {
-        argument: t option;
-      }
-    | Attribute of {
-        inner: t option;
       }
     | Sequence of {
         left: t option;
@@ -1392,39 +1430,29 @@ end = struct
         method_: token option;
       }
     | PolyVariant of {
+        tag: token option;
         payload: t option;
       }
-    | Path of { path: path }
+    | Ident of { path: path }
     | Literal of {
         token: token option;
       }
-    | Parenthesized of {
-        inner: t option;
+    | Tuple of {
+        items: t Vector.t;
       }
-    | Tuple
-    | List
-    | Array
-    | Record
-    | RecordUpdate
-    | ArrayIndex of {
-        target: t option;
-        index: t option;
+    | List of {
+        items: t Vector.t;
       }
-    | StringIndex of {
-        target: t option;
-        index: t option;
+    | Array of {
+        items: t Vector.t;
       }
-    | Typed of {
+    | Record of {
+        base: t option;
+        fields: record_expr_field_view Vector.t;
+      }
+    | Annotated of {
         expr: t option;
         annotation: type_expr option;
-      }
-    | LabeledArg of {
-        label: token option;
-        value: t option;
-      }
-    | OptionalArg of {
-        label: token option;
-        value: t option;
       }
     | Error of Node.t
     | Unknown of Node.t
@@ -1455,6 +1483,55 @@ end = struct
 
   let literal_token = Node.first_token
 
+  let child_exprs = fun expr ->
+    let items = Vector.with_capacity ~size:(Node.child_count expr) in
+    for_each_child_node_matching
+      expr
+      ~matches:is_expr_kind
+      ~fn:(fun child -> Vector.push items ~value:child);
+    items
+
+  let record_expr_base = fun record ->
+    if node_kind_is record Syntax_kind.RECORD_UPDATE_EXPR then
+      nth_expr_child record 0
+    else
+      None
+
+  let record_expr_field_of_node = fun (field: record_expr_field) ->
+    match (nth_expr_child field 0, nth_expr_child field 1) with
+    | (Some expr, value) when node_kind_is expr Syntax_kind.PATH_EXPR ->
+        { path = Path.cast expr; value; node = field }
+    | (Some expr, _) when node_kind_is expr Syntax_kind.INFIX_EXPR -> (
+        match (nth_expr_child expr 0, nth_expr_child expr 1) with
+        | (Some left, Some right) ->
+            let path =
+              if node_kind_is left Syntax_kind.PATH_EXPR then
+                Path.cast left
+              else
+                None
+            in
+            { path; value = Some right; node = field }
+        | _ -> { path = None; value = None; node = field }
+      )
+    | (Some expr, value) -> { path = Path.cast expr; value; node = field }
+    | (None, _) -> { path = None; value = None; node = field }
+
+  let record_expr_fields = fun record ->
+    let fields = Vector.with_capacity ~size:(Node.child_count record) in
+    Syntax_tree.for_each_child
+      record.tree
+      (syntax_node record)
+      ~fn:(
+        function
+        | Syntax_tree.Node id ->
+            let child = wrap_node record.tree id in
+            if node_matches child is_record_expr_field_kind then
+              Vector.push fields ~value:(record_expr_field_of_node child)
+        | Syntax_tree.Token _
+        | Syntax_tree.Missing _ -> ()
+      );
+    fields
+
   let list_has_trailing_separator = fun (expr: expr) ->
     if not (node_kind_is expr Syntax_kind.LIST_EXPR) then
       false
@@ -1476,23 +1553,25 @@ end = struct
         Int.(items > 0 && separators >= items)
       )
 
-  let view = fun (expr: expr) ->
+  let rec view = fun (expr: expr) ->
     match Node.kind expr with
+    | Syntax_kind.PAREN_EXPR -> (
+        match first_expr_child expr with
+        | Some inner -> view inner
+        | None -> Unit
+      )
     | Syntax_kind.LET_EXPR ->
         Let { first_binding = first_let_binding_child expr; body = nth_expr_child expr 0 }
     | Syntax_kind.LOCAL_OPEN_EXPR -> LocalOpen { body = nth_expr_child expr 1 }
     | Syntax_kind.LET_MODULE_EXPR -> LetModule { body = first_expr_child expr }
     | Syntax_kind.LET_EXCEPTION_EXPR -> LetException { body = first_expr_child expr }
     | Syntax_kind.BINDING_OPERATOR_EXPR ->
-        BindingOperator {
-          first_binding = first_let_binding_child expr;
-          body = nth_expr_child expr 0;
-        }
-    | Syntax_kind.FIRST_CLASS_MODULE_EXPR -> FirstClassModule
-    | Syntax_kind.EXTENSION_EXPR -> Extension
-    | Syntax_kind.UNREACHABLE_EXPR -> Unreachable
-    | Syntax_kind.OBJECT_EXPR -> Object
-    | Syntax_kind.NEW_EXPR -> New
+        Let { first_binding = first_let_binding_child expr; body = nth_expr_child expr 0 }
+    | Syntax_kind.FIRST_CLASS_MODULE_EXPR
+    | Syntax_kind.EXTENSION_EXPR
+    | Syntax_kind.UNREACHABLE_EXPR
+    | Syntax_kind.OBJECT_EXPR
+    | Syntax_kind.NEW_EXPR -> Unknown expr
     | Syntax_kind.IF_EXPR ->
         If {
           condition = nth_expr_child expr 0;
@@ -1501,8 +1580,8 @@ end = struct
         }
     | Syntax_kind.MATCH_EXPR ->
         Match { scrutinee = nth_expr_child expr 0; first_case = first_match_case_child expr }
-    | Syntax_kind.FUN_EXPR -> Fun { body = nth_expr_child expr 0 }
-    | Syntax_kind.FUNCTION_EXPR -> Function { first_case = first_match_case_child expr }
+    | Syntax_kind.FUN_EXPR -> Fun { body = nth_expr_child expr 0; first_case = None }
+    | Syntax_kind.FUNCTION_EXPR -> Fun { body = None; first_case = first_match_case_child expr }
     | Syntax_kind.TRY_EXPR ->
         Try { body = nth_expr_child expr 0; first_case = first_match_case_child expr }
     | Syntax_kind.WHILE_EXPR ->
@@ -1514,9 +1593,13 @@ end = struct
           stop = nth_expr_child expr 1;
           body = nth_expr_child expr 2;
         }
-    | Syntax_kind.ASSERT_EXPR -> Assert { argument = first_expr_child expr }
-    | Syntax_kind.LAZY_EXPR -> Lazy { argument = first_expr_child expr }
-    | Syntax_kind.ATTRIBUTE_EXPR -> Attribute { inner = first_expr_child expr }
+    | Syntax_kind.ASSERT_EXPR
+    | Syntax_kind.LAZY_EXPR -> Apply { callee = None; argument = first_expr_child expr }
+    | Syntax_kind.ATTRIBUTE_EXPR -> (
+        match first_expr_child expr with
+        | Some inner -> view inner
+        | None -> Unknown expr
+      )
     | Syntax_kind.SEQUENCE_EXPR ->
         Sequence { left = nth_expr_child expr 0; right = nth_expr_child expr 1 }
     | Syntax_kind.APPLY_EXPR ->
@@ -1539,25 +1622,27 @@ end = struct
         FieldAccess { target = nth_expr_child expr 0; field = last_ident_token expr }
     | Syntax_kind.METHOD_CALL_EXPR ->
         MethodCall { target = nth_expr_child expr 0; method_ = last_ident_token expr }
-    | Syntax_kind.POLY_VARIANT_EXPR -> PolyVariant { payload = first_expr_child expr }
-    | Syntax_kind.PATH_EXPR -> Path { path = expr }
+    | Syntax_kind.POLY_VARIANT_EXPR ->
+        PolyVariant {
+          tag = first_child_token_matching expr ~matches:(fun kind -> Syntax_kind.(kind = IDENT));
+          payload = first_expr_child expr;
+        }
+    | Syntax_kind.PATH_EXPR -> Ident { path = expr }
     | Syntax_kind.LITERAL_EXPR -> Literal { token = literal_token expr }
-    | Syntax_kind.PAREN_EXPR -> Parenthesized { inner = first_expr_child expr }
-    | Syntax_kind.TUPLE_EXPR -> Tuple
-    | Syntax_kind.LIST_EXPR -> List
-    | Syntax_kind.ARRAY_EXPR -> Array
-    | Syntax_kind.RECORD_EXPR -> Record
-    | Syntax_kind.RECORD_UPDATE_EXPR -> RecordUpdate
+    | Syntax_kind.TUPLE_EXPR -> Tuple { items = child_exprs expr }
+    | Syntax_kind.LIST_EXPR -> List { items = child_exprs expr }
+    | Syntax_kind.ARRAY_EXPR -> Array { items = child_exprs expr }
+    | Syntax_kind.RECORD_EXPR
+    | Syntax_kind.RECORD_UPDATE_EXPR ->
+        Record { base = record_expr_base expr; fields = record_expr_fields expr }
     | Syntax_kind.ARRAY_INDEX_EXPR ->
-        ArrayIndex { target = nth_expr_child expr 0; index = nth_expr_child expr 1 }
+        Infix { left = nth_expr_child expr 0; operator = None; right = nth_expr_child expr 1 }
     | Syntax_kind.STRING_INDEX_EXPR ->
-        StringIndex { target = nth_expr_child expr 0; index = nth_expr_child expr 1 }
+        Infix { left = nth_expr_child expr 0; operator = None; right = nth_expr_child expr 1 }
     | Syntax_kind.TYPED_EXPR ->
-        Typed { expr = first_expr_child expr; annotation = first_type_expr_child expr }
-    | Syntax_kind.LABELED_ARG ->
-        LabeledArg { label = first_ident_token expr; value = first_expr_child expr }
-    | Syntax_kind.OPTIONAL_ARG ->
-        OptionalArg { label = first_ident_token expr; value = first_expr_child expr }
+        Annotated { expr = first_expr_child expr; annotation = first_type_expr_child expr }
+    | Syntax_kind.LABELED_ARG
+    | Syntax_kind.OPTIONAL_ARG -> Unknown expr
     | Syntax_kind.ERROR -> Error expr
     | _ -> Unknown expr
 
@@ -1614,11 +1699,7 @@ end
 
 module RecordExpr: sig
   type t = expr
-  type field = {
-    path: path option;
-    value: expr option;
-    node: record_expr_field;
-  }
+  type field = record_expr_field_view
   val cast: expr -> t option
 
   val base: t -> expr option
@@ -1627,11 +1708,7 @@ module RecordExpr: sig
 end = struct
   type t = expr
 
-  type field = {
-    path: path option;
-    value: expr option;
-    node: record_expr_field;
-  }
+  type field = record_expr_field_view
 
   let cast = fun (expr: expr) ->
     if
@@ -1647,24 +1724,7 @@ end = struct
     else
       None
 
-  let field_of_node = fun (field: record_expr_field) ->
-    match (nth_expr_child field 0, nth_expr_child field 1) with
-    | (Some expr, value) when node_kind_is expr Syntax_kind.PATH_EXPR ->
-        { path = Path.cast expr; value; node = field }
-    | (Some expr, _) when node_kind_is expr Syntax_kind.INFIX_EXPR -> (
-        match (nth_expr_child expr 0, nth_expr_child expr 1) with
-        | (Some left, Some right) ->
-            let path =
-              if node_kind_is left Syntax_kind.PATH_EXPR then
-                Path.cast left
-              else
-                None
-            in
-            { path; value = Some right; node = field }
-        | _ -> { path = None; value = None; node = field }
-      )
-    | (Some expr, value) -> { path = Path.cast expr; value; node = field }
-    | (None, _) -> { path = None; value = None; node = field }
+  let field_of_node = record_expr_field_of_node
 
   let for_each_field = fun (record: t) ~fn ->
     Syntax_tree.for_each_child
@@ -2262,29 +2322,30 @@ end
 module Pattern: sig
   type t = pattern
   type view =
+    | Unit
     | Wildcard
-    | Path of { path: path }
-    | Apply of {
-        callee: t option;
-        argument: t option;
+    | Ident of { path: path }
+    | Construct of {
+        constructor: path option;
+        payload: t option;
       }
     | Literal of {
         token: token option;
       }
-    | Parenthesized of {
-        inner: t option;
+    | Tuple of {
+        parts: t Vector.t;
       }
-    | Tuple
-    | List
-    | Array
+    | List of {
+        items: t Vector.t;
+      }
+    | Array of {
+        items: t Vector.t;
+      }
     | Record
-    | PolyVariant
-    | Extension
-    | Attribute of {
-        inner: t option;
+    | PolyVariant of {
+        tag: token option;
+        payload: t option;
       }
-    | LocalOpen
-    | LocallyAbstractType
     | FirstClassModule
     | Interval of {
         left: t option;
@@ -2312,9 +2373,6 @@ module Pattern: sig
     | Exception of {
         pattern: t option;
       }
-    | LabeledParam of parameter
-    | OptionalParam of parameter
-    | OptionalParamDefault of parameter
     | Error of Node.t
     | Unknown of Node.t
   val cast: Node.t -> t option
@@ -2330,29 +2388,30 @@ end = struct
   type t = pattern
 
   type view =
+    | Unit
     | Wildcard
-    | Path of { path: path }
-    | Apply of {
-        callee: t option;
-        argument: t option;
+    | Ident of { path: path }
+    | Construct of {
+        constructor: path option;
+        payload: t option;
       }
     | Literal of {
         token: token option;
       }
-    | Parenthesized of {
-        inner: t option;
+    | Tuple of {
+        parts: t Vector.t;
       }
-    | Tuple
-    | List
-    | Array
+    | List of {
+        items: t Vector.t;
+      }
+    | Array of {
+        items: t Vector.t;
+      }
     | Record
-    | PolyVariant
-    | Extension
-    | Attribute of {
-        inner: t option;
+    | PolyVariant of {
+        tag: token option;
+        payload: t option;
       }
-    | LocalOpen
-    | LocallyAbstractType
     | FirstClassModule
     | Interval of {
         left: t option;
@@ -2380,9 +2439,6 @@ end = struct
     | Exception of {
         pattern: t option;
       }
-    | LabeledParam of parameter
-    | OptionalParam of parameter
-    | OptionalParamDefault of parameter
     | Error of Node.t
     | Unknown of Node.t
 
