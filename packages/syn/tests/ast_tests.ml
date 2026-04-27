@@ -996,35 +996,41 @@ let test_type_declaration_body_group_views = fun _ctx ->
           Ast.TypeDeclaration.Member.variant_type member
           |> require_some ~msg:"expected variant type body"
         in
-        let names = ref [] in
-        let pipe_flags = ref [] in
-        let payload_shapes = ref [] in
+        let names = Vector.with_capacity ~size:3 in
+        let pipe_flags = Vector.with_capacity ~size:3 in
+        let payload_shapes = Vector.with_capacity ~size:3 in
         Ast.VariantType.for_each_constructor
           variant
           ~fn:(fun constructor ->
-            let name =
-              Ast.VariantConstructor.name constructor
-              |> require_some ~msg:"expected constructor name"
+            let (name, pipe_token, rhs) =
+              match Ast.VariantConstructor.view constructor with
+              | Ast.VariantConstructor.Constructor { pipe_token; name; rhs } ->
+                  (name, pipe_token, rhs)
+              | Ast.VariantConstructor.Unknown _ -> panic "expected constructor view"
             in
-            names := Ast.Token.text name :: !names;
-            pipe_flags := Option.is_some (Ast.VariantConstructor.pipe_token constructor)
-            :: !pipe_flags;
+            Vector.push names ~value:(Ast.Token.text name);
+            Vector.push pipe_flags ~value:(Option.is_some pipe_token);
             let payload_shape =
-              match Ast.VariantConstructor.payload_type constructor with
-              | None -> "none"
-              | Some payload -> (
+              match rhs with
+              | Ast.VariantConstructor.Plain -> "none"
+              | Ast.VariantConstructor.Payload {
+                  payload = Ast.VariantConstructor.TypeExpr payload;
+                  _;
+                } -> (
                   match Ast.TypeExpr.view payload with
                   | Ast.TypeExpr.Ident _ -> "path"
                   | Ast.TypeExpr.Tuple _ -> "tuple"
                   | _ -> "other"
                 )
+              | Ast.VariantConstructor.Payload { payload = Ast.VariantConstructor.Record _; _ }
+              | Ast.VariantConstructor.Gadt _ -> "other"
             in
-            payload_shapes := payload_shape :: !payload_shapes);
-        Test.assert_equal ~expected:[ "Red"; "Blue"; "Pair" ] ~actual:(List.reverse !names);
-        Test.assert_equal ~expected:[ false; true; true ] ~actual:(List.reverse !pipe_flags);
+            Vector.push payload_shapes ~value:payload_shape);
+        Test.assert_equal ~expected:[ "Red"; "Blue"; "Pair" ] ~actual:(vector_to_list names);
+        Test.assert_equal ~expected:[ false; true; true ] ~actual:(vector_to_list pipe_flags);
         Test.assert_equal
           ~expected:[ "none"; "path"; "tuple" ]
-          ~actual:(List.reverse !payload_shapes);
+          ~actual:(vector_to_list payload_shapes);
         Ok ()
     | _ -> Error "expected color type declaration"
   )
@@ -1295,20 +1301,24 @@ let test_type_extension_and_exception_views = fun _ctx ->
           !constructor
           |> require_some ~msg:"expected type extension constructor"
         in
-        let constructor_name =
-          Ast.VariantConstructor.name constructor
-          |> require_some ~msg:"expected type extension constructor name"
+        let (constructor_name, rhs) =
+          match Ast.VariantConstructor.view constructor with
+          | Ast.VariantConstructor.Constructor { name; rhs; _ } -> (name, rhs)
+          | Ast.VariantConstructor.Unknown _ -> panic "expected type extension constructor view"
         in
         Test.assert_equal ~expected:"More" ~actual:(Ast.Token.text constructor_name);
         (
-          match Ast.VariantConstructor.payload_type constructor with
-          | Some payload -> (
+          match rhs with
+          | Ast.VariantConstructor.Payload {
+              payload = Ast.VariantConstructor.TypeExpr payload;
+              _;
+            } -> (
               match Ast.TypeExpr.view payload with
               | Ast.TypeExpr.Var { name = payload_name } ->
                   Test.assert_equal ~expected:"a" ~actual:(Ast.Token.text payload_name)
               | _ -> panic "expected type extension payload type variable"
             )
-          | None -> panic "expected type extension payload"
+          | _ -> panic "expected type extension payload"
         );
         Ok ()
     | _ -> Error "expected type extension declaration"

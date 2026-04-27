@@ -7985,6 +7985,54 @@ and render_exception_declaration = fun state decl ->
   );
   render_exception_rhs state (Ast.ExceptionDeclaration.view decl)
 
+and render_variant_constructor_payload = fun state payload ->
+  match payload with
+  | Ast.VariantConstructor.TypeExpr type_expr -> render_type_expr state type_expr
+  | Ast.VariantConstructor.Record record_type ->
+      with_indent state 2 (fun () -> render_record_type state ~allow_inline:true record_type)
+
+and render_variant_constructor_gadt_rhs = fun
+  state
+  ~colon_token
+  ~record_payload
+  ~arrow_token
+  ~result ->
+  match record_payload with
+  | Some record_type ->
+      emit_token state colon_token;
+      emit_space state;
+      with_indent state 2 (fun () -> render_record_type state ~allow_inline:false record_type);
+      (
+        match arrow_token with
+        | Some token ->
+            emit_space state;
+            emit_token state token
+        | None ->
+            emit_space state;
+            emit_text state "->"
+      );
+      emit_space state;
+      render_type_expr state result
+  | None ->
+      emit_token state colon_token;
+      render_type_expr_after_tight_colon state ~suffix_width:0 result
+
+and render_variant_constructor_rhs = fun state rhs ->
+  match rhs with
+  | Ast.VariantConstructor.Plain -> ()
+  | Ast.VariantConstructor.Payload { of_token; payload } ->
+      emit_space state;
+      emit_token state of_token;
+      emit_space state;
+      render_variant_constructor_payload state payload
+  | Ast.VariantConstructor.Gadt {
+      colon_token;
+      record_payload;
+      arrow_token;
+      result;
+    } ->
+      render_variant_constructor_gadt_rhs state ~colon_token ~record_payload ~arrow_token ~result
+
 and render_variant_constructor = fun state ~private_token constructor ->
   (
     match private_token with
@@ -7993,75 +8041,32 @@ and render_variant_constructor = fun state ~private_token constructor ->
         emit_space state
     | None -> ()
   );
-  (
-    match Ast.VariantConstructor.pipe_token constructor with
-    | Some pipe_token ->
-        emit_token_leading_comments_as_lines state pipe_token;
-        emit_token state pipe_token;
-        emit_space state
-    | None ->
-        emit_text state "|";
-        emit_space state
-  );
-  (
-    match Ast.VariantConstructor.name constructor with
-    | Some name -> emit_token state name
-    | None -> unsupported_node "variant constructor without name" constructor
-  );
-  (
-    match (
-      Ast.VariantConstructor.colon_token constructor,
-      Ast.VariantConstructor.record_payload constructor,
-      Ast.VariantConstructor.payload_type constructor
-    ) with
-    | (Some colon_token, Some record_type, _) ->
-        emit_token state colon_token;
-        emit_space state;
-        with_indent state 2 (fun () -> render_record_type state ~allow_inline:false record_type);
-        (
-          match (
-            Ast.Node.first_child_token constructor ~kind:Kind.ARROW,
-            Ast.VariantConstructor.result_type constructor
-          ) with
-          | (Some arrow_token, Some result) ->
-              emit_space state;
-              emit_token state arrow_token;
-              emit_space state;
-              render_type_expr state result
-          | (None, Some result) ->
-              emit_space state;
-              emit_text state "->";
-              emit_space state;
-              render_type_expr state result
-          | (Some arrow_token, None) ->
-              emit_space state;
-              emit_token state arrow_token
-          | (None, None) -> ()
-        )
-    | (_, Some record_type, _) ->
-        emit_space state;
-        emit_text state "of";
-        emit_space state;
-        with_indent state 2 (fun () -> render_record_type state ~allow_inline:true record_type)
-    | (_, None, Some payload) ->
-        emit_space state;
-        emit_text state "of";
-        emit_space state;
-        render_type_expr state payload
-    | (_, None, None) -> ()
-  );
-  (
-    match (
-      Ast.VariantConstructor.colon_token constructor,
-      Ast.VariantConstructor.record_payload constructor,
-      Ast.VariantConstructor.result_type constructor
-    ) with
-    | (Some _, Some _, _) -> ()
-    | (_, _, Some result) ->
-        emit_text state ":";
-        render_type_expr_after_tight_colon state ~suffix_width:0 result
-    | (_, _, None) -> ()
-  )
+  match Ast.VariantConstructor.view constructor with
+  | Ast.VariantConstructor.Constructor { pipe_token; name; rhs } ->
+      (
+        match pipe_token with
+        | Some pipe_token ->
+            emit_token_leading_comments_as_lines state pipe_token;
+            emit_token state pipe_token;
+            emit_space state
+        | None ->
+            emit_text state "|";
+            emit_space state
+      );
+      emit_token state name;
+      render_variant_constructor_rhs state rhs
+  | Ast.VariantConstructor.Unknown node ->
+      (
+        match Ast.VariantConstructor.pipe_token constructor with
+        | Some pipe_token ->
+            emit_token_leading_comments_as_lines state pipe_token;
+            emit_token state pipe_token;
+            emit_space state
+        | None ->
+            emit_text state "|";
+            emit_space state
+      );
+      unsupported_node "unsupported variant constructor" node
 
 and render_variant_type = fun state ~private_token variant_type ->
   let constructors = collect_variant_constructors variant_type in

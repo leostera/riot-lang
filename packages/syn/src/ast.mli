@@ -269,7 +269,31 @@ end
 
 module VariantConstructor: sig
   type t = variant_constructor
+  type payload =
+    | TypeExpr of type_expr
+    | Record of record_type
+  type rhs =
+    | Plain
+    | Payload of {
+        of_token: Token.t;
+        payload: payload;
+      }
+    | Gadt of {
+        colon_token: Token.t;
+        record_payload: record_type option;
+        arrow_token: Token.t option;
+        result: type_expr;
+      }
+  type view =
+    | Constructor of {
+        pipe_token: Token.t option;
+        name: Token.t;
+        rhs: rhs;
+      }
+    | Unknown of Node.t
   val cast: Node.t -> t option
+
+  val view: t -> view
 
   val pipe_token: t -> Token.t option
 

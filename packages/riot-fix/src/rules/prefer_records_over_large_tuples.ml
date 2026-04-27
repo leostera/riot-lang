@@ -73,6 +73,17 @@ let rec check_type_expr = fun ctx diagnostics type_expr ->
         Ast.TypeExpr.for_each_child_type type_expr ~fn:(check_type_expr ctx diagnostics)
   | _ -> Ast.TypeExpr.for_each_child_type type_expr ~fn:(check_type_expr ctx diagnostics)
 
+let check_variant_constructor_rhs = fun ctx diagnostics rhs ->
+  match rhs with
+  | Ast.VariantConstructor.Payload {
+      payload = Ast.VariantConstructor.TypeExpr type_expr;
+      _;
+    } ->
+      check_type_expr ctx diagnostics type_expr
+  | Ast.VariantConstructor.Gadt { result; _ } -> check_type_expr ctx diagnostics result
+  | Ast.VariantConstructor.Payload { payload = Ast.VariantConstructor.Record _; _ }
+  | Ast.VariantConstructor.Plain -> ()
+
 let check_type_declaration = fun ctx diagnostics declaration ->
   Ast.TypeDeclaration.for_each_member
     declaration
@@ -86,9 +97,10 @@ let check_type_declaration = fun ctx diagnostics declaration ->
           Ast.VariantType.for_each_constructor
             variant_type
             ~fn:(fun constructor ->
-              Option.for_each
-                (Ast.VariantConstructor.payload_type constructor)
-                ~fn:(check_type_expr ctx diagnostics))))
+              match Ast.VariantConstructor.view constructor with
+              | Ast.VariantConstructor.Constructor { rhs; _ } ->
+                  check_variant_constructor_rhs ctx diagnostics rhs
+              | Ast.VariantConstructor.Unknown _ -> ())))
 
 let check_tree = fun ctx root ->
   let diagnostics = H.diagnostics_for_root root in

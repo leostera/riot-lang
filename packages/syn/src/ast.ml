@@ -1446,6 +1446,31 @@ end
 module VariantConstructor = struct
   type t = variant_constructor
 
+  type payload =
+    | TypeExpr of type_expr
+    | Record of record_type
+
+  type rhs =
+    | Plain
+    | Payload of {
+        of_token: Token.t;
+        payload: payload;
+      }
+    | Gadt of {
+        colon_token: Token.t;
+        record_payload: record_type option;
+        arrow_token: Token.t option;
+        result: type_expr;
+      }
+
+  type view =
+    | Constructor of {
+        pipe_token: Token.t option;
+        name: Token.t;
+        rhs: rhs;
+      }
+    | Unknown of node
+
   let cast = fun (node: node) ->
     if node_matches node is_variant_constructor_kind then
       Some node
@@ -1459,6 +1484,8 @@ module VariantConstructor = struct
   let of_token = fun constructor -> Node.first_child_token constructor ~kind:Syntax_kind.OF_KW
 
   let colon_token = fun constructor -> Node.first_child_token constructor ~kind:Syntax_kind.COLON
+
+  let arrow_token = fun constructor -> Node.first_child_token constructor ~kind:Syntax_kind.ARROW
 
   let payload_type = fun constructor ->
     match of_token constructor with
@@ -1474,6 +1501,47 @@ module VariantConstructor = struct
     first_child_node_matching
       constructor
       ~matches:is_record_type_kind
+
+  let payload = fun constructor ->
+    match record_payload constructor with
+    | Some record -> Some (Record record)
+    | None -> (
+        match payload_type constructor with
+        | Some type_expr -> Some (TypeExpr type_expr)
+        | None -> None
+      )
+
+  let rhs = fun constructor ->
+    match colon_token constructor with
+    | Some colon_token -> (
+        match result_type constructor with
+        | Some result ->
+            Some (
+              Gadt {
+                colon_token;
+                record_payload = record_payload constructor;
+                arrow_token = arrow_token constructor;
+                result;
+              }
+            )
+        | None -> None
+      )
+    | None -> (
+        match (of_token constructor, payload constructor) with
+        | (Some of_token, Some payload) -> Some (Payload { of_token; payload })
+        | (None, _) -> Some Plain
+        | (Some _, None) -> None
+      )
+
+  let view = fun constructor ->
+    match (name constructor, rhs constructor) with
+    | (Some name, Some rhs) ->
+        Constructor {
+          pipe_token = pipe_token constructor;
+          name;
+          rhs;
+        }
+    | _ -> Unknown constructor
 end
 
 module VariantType = struct

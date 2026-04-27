@@ -37,8 +37,9 @@ let check_variant = fun variant diagnostics ->
   Ast.VariantType.for_each_constructor
     variant
     ~fn:(fun constructor ->
-      match Ast.VariantConstructor.name constructor with
-      | Some token when H.should_be_class_case (Ast.Token.text token) ->
+      match Ast.VariantConstructor.view constructor with
+      | Ast.VariantConstructor.Constructor { name = token; _ }
+        when H.should_be_class_case (Ast.Token.text token) ->
           H.push_diagnostic diagnostics (make_diagnostic token)
       | _ -> ());
   ()
