@@ -161,6 +161,41 @@ let test_static_dotfile_detection_checks_all_segments = fun _ctx ->
   Test.assert_false (Static.path_has_dot_segment (Path.v "public/assets/app.css"));
   Ok ()
 
+let test_static_middleware_enforces_nested_dotfile_policy = fun _ctx ->
+  Fs.with_tempdir
+    (fun root ->
+      let dot_dir = Path.join root (Path.v "public/.git") in
+      let dot_file = Path.join dot_dir (Path.v "config") in
+      match Fs.create_dir_all dot_dir with
+      | Error _ -> Error "failed to create nested dotfile fixture directory"
+      | Ok () -> (
+          match Fs.write "secret" dot_file with
+          | Error _ -> Error "failed to write nested dotfile fixture"
+          | Ok () ->
+              let run = fun config ->
+                let middleware = Static.middleware ~at:"/assets" ~config root () in
+                let conn = Suri.Testing.Conn.make ~uri:"/assets/public/.git/config" () in
+                middleware
+                  ~conn
+                  ~next:(fun conn ->
+                    conn
+                    |> Conn.respond ~status:Net.Http.Status.Ok ~body:"next"
+                    |> Conn.send)
+                |> Conn.to_response
+              in
+              let denied = run Static.default_config in
+              Test.assert_equal ~expected:Net.Http.Status.Forbidden ~actual:denied.status;
+              Test.assert_equal ~expected:"access to dotfiles denied" ~actual:denied.body;
+              let ignored = run Static.{ default_config with dotfiles = IgnoreDotfiles } in
+              Test.assert_equal ~expected:Net.Http.Status.NotFound ~actual:ignored.status;
+              Test.assert_equal ~expected:"404 Not Found" ~actual:ignored.body;
+              let allowed = run Static.{ default_config with dotfiles = AllowDotfiles } in
+              Test.assert_equal ~expected:Net.Http.Status.Ok ~actual:allowed.status;
+              Test.assert_equal ~expected:"secret" ~actual:allowed.body;
+              Ok ()
+        ))
+  |> expect_tempdir
+
 let test_static_directory_listing_escapes_displayed_values = fun _ctx ->
   let html =
     Static.directory_listing_html
@@ -262,6 +297,9 @@ let tests =
     case
       "static dotfile detection checks all segments"
       test_static_dotfile_detection_checks_all_segments;
+    case
+      "static middleware enforces nested dotfile policy"
+      test_static_middleware_enforces_nested_dotfile_policy;
     case
       "static directory listing escapes displayed values"
       test_static_directory_listing_escapes_displayed_values;
