@@ -247,6 +247,88 @@ let test_request_without_content_length_preserves_remaining = fun _ctx ->
       else
         Result.Ok ()
 
+let test_request_accepts_matching_duplicate_content_length = fun _ctx ->
+  let req =
+    build_request
+      ~method_:"POST"
+      ~path:"/upload"
+      ~headers:[ ("Host", "example.com"); ("Content-Length", "5"); ("Content-Length", "5"); ]
+      ~body:"Hello"
+  in
+  match expect_request_parse req with
+  | Error error -> Result.Error error
+  | Ok (parsed, remaining) ->
+      let body =
+        NetRequest.body parsed
+        |> Option.map ~fn:NetBody.to_string
+      in
+      if body != Some "Hello" then
+        Result.Error "Expected body Hello on parsed request"
+      else if remaining != "" then
+        Result.Error ("Expected empty remaining, got " ^ remaining)
+      else
+        Result.Ok ()
+
+let test_request_rejects_conflicting_content_length = fun _ctx ->
+  let req =
+    build_request
+      ~method_:"POST"
+      ~path:"/upload"
+      ~headers:[ ("Host", "example.com"); ("Content-Length", "5"); ("Content-Length", "7"); ]
+      ~body:"Hello"
+  in
+  match Http1.Request.parse req with
+  | Error "Conflicting Content-Length" -> Result.Ok ()
+  | Error error -> Result.Error ("Expected conflicting Content-Length error, got " ^ error)
+  | Need_more -> Result.Error "Expected conflicting Content-Length error, got Need_more"
+  | Done _ -> Result.Error "Expected conflicting Content-Length error"
+
+let test_request_rejects_invalid_content_length = fun _ctx ->
+  let req =
+    build_request
+      ~method_:"POST"
+      ~path:"/upload"
+      ~headers:[ ("Host", "example.com"); ("Content-Length", "nope"); ]
+      ~body:"Hello"
+  in
+  match Http1.Request.parse req with
+  | Error "Invalid Content-Length" -> Result.Ok ()
+  | Error error -> Result.Error ("Expected invalid Content-Length error, got " ^ error)
+  | Need_more -> Result.Error "Expected invalid Content-Length error, got Need_more"
+  | Done _ -> Result.Error "Expected invalid Content-Length error"
+
+let test_request_rejects_transfer_encoding_with_content_length = fun _ctx ->
+  let req =
+    build_request
+      ~method_:"POST"
+      ~path:"/upload"
+      ~headers:[
+        ("Host", "example.com");
+        ("Transfer-Encoding", "chunked");
+        ("Content-Length", "5");
+      ]
+      ~body:"Hello"
+  in
+  match Http1.Request.parse req with
+  | Error "Invalid body framing: Transfer-Encoding with Content-Length" -> Result.Ok ()
+  | Error error -> Result.Error ("Expected TE+CL framing error, got " ^ error)
+  | Need_more -> Result.Error "Expected TE+CL framing error, got Need_more"
+  | Done _ -> Result.Error "Expected TE+CL framing error"
+
+let test_request_rejects_unsupported_transfer_encoding = fun _ctx ->
+  let req =
+    build_request
+      ~method_:"POST"
+      ~path:"/upload"
+      ~headers:[ ("Host", "example.com"); ("Transfer-Encoding", "chunked"); ]
+      ~body:"5\r\nHello\r\n0\r\n\r\n"
+  in
+  match Http1.Request.parse req with
+  | Error "Unsupported Transfer-Encoding" -> Result.Ok ()
+  | Error error -> Result.Error ("Expected unsupported Transfer-Encoding error, got " ^ error)
+  | Need_more -> Result.Error "Expected unsupported Transfer-Encoding error, got Need_more"
+  | Done _ -> Result.Error "Expected unsupported Transfer-Encoding error"
+
 let test_request_parse_slice = fun _ctx ->
   let req = "GET /view HTTP/1.1\r\nHost: example.com\r\n\r\n" in
   match expect_request_parse_slice req with
@@ -445,6 +527,19 @@ let tests =
     case
       "request without content length preserves remaining"
       test_request_without_content_length_preserves_remaining;
+    case
+      "request accepts matching duplicate content length"
+      test_request_accepts_matching_duplicate_content_length;
+    case
+      "request rejects conflicting content length"
+      test_request_rejects_conflicting_content_length;
+    case "request rejects invalid content length" test_request_rejects_invalid_content_length;
+    case
+      "request rejects transfer encoding with content length"
+      test_request_rejects_transfer_encoding_with_content_length;
+    case
+      "request rejects unsupported transfer encoding"
+      test_request_rejects_unsupported_transfer_encoding;
     case "request_parse_slice" test_request_parse_slice;
     case
       "request rejects missing lf after request line"

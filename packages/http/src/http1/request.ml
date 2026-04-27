@@ -120,26 +120,48 @@ let header_name_equal = fun left right ->
   | Order.LT
   | Order.GT -> false
 
-let first_header_value = fun headers name ->
-  let rec loop = function
-    | [] -> None
+let header_values = fun headers name ->
+  let rec loop acc = function
+    | [] -> List.reverse acc
     | (header_name, value) :: rest ->
         if header_name_equal header_name name then
-          Some value
+          loop (value :: acc) rest
         else
-          loop rest
+          loop acc rest
   in
-  loop headers
+  loop [] headers
+
+let parse_content_length_value = fun value ->
+  match Int.parse (String.trim value) with
+  | None -> Slice_error "Invalid Content-Length"
+  | Some length when length < 0 -> Slice_error "Invalid Content-Length"
+  | Some length -> Slice_done length
+
+let parse_content_length_values = fun values ->
+  let rec loop expected = function
+    | [] ->
+        Slice_done expected
+    | value :: rest -> (
+        match parse_content_length_value value with
+        | Slice_need_more -> Slice_need_more
+        | Slice_error error -> Slice_error error
+        | Slice_done length -> (
+            match expected with
+            | None -> loop (Some length) rest
+            | Some previous when previous = length -> loop expected rest
+            | Some _ -> Slice_error "Conflicting Content-Length"
+          )
+      )
+  in
+  loop None values
 
 let parse_content_length = fun headers ->
-  match first_header_value headers "Content-Length" with
-  | None -> Slice_done None
-  | Some value -> (
-      match Int.parse (String.trim value) with
-      | None -> Slice_error "Invalid Content-Length"
-      | Some length when length < 0 -> Slice_error "Invalid Content-Length"
-      | Some length -> Slice_done (Some length)
-    )
+  let transfer_encoding = header_values headers "Transfer-Encoding" in
+  let content_lengths = header_values headers "Content-Length" in
+  match (transfer_encoding, content_lengths) with
+  | ([], values) -> parse_content_length_values values
+  | (_ :: _, []) -> Slice_error "Unsupported Transfer-Encoding"
+  | (_ :: _, _ :: _) -> Slice_error "Invalid body framing: Transfer-Encoding with Content-Length"
 
 let split_fixed_body = fun input length ->
   let available = Slice.length input in
