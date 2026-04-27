@@ -173,10 +173,7 @@ let is_pattern_kind = function
   | Syntax_kind.OR_PATTERN
   | Syntax_kind.CONS_PATTERN
   | Syntax_kind.LAZY_PATTERN
-  | Syntax_kind.EXCEPTION_PATTERN
-  | Syntax_kind.LABELED_PARAM
-  | Syntax_kind.OPTIONAL_PARAM
-  | Syntax_kind.OPTIONAL_PARAM_DEFAULT -> true
+  | Syntax_kind.EXCEPTION_PATTERN -> true
   | _ -> false
 
 let is_parameter_kind = function
@@ -184,6 +181,8 @@ let is_parameter_kind = function
   | Syntax_kind.OPTIONAL_PARAM
   | Syntax_kind.OPTIONAL_PARAM_DEFAULT -> true
   | _ -> false
+
+let is_parameter_node_kind = fun kind -> is_parameter_kind kind || is_pattern_kind kind
 
 let is_path_kind = function
   | Syntax_kind.PATH_EXPR
@@ -1533,8 +1532,8 @@ module Expr: sig
         right: t option;
       }
     | Apply of {
-        callee: t option;
-        argument: t option;
+        callee: t;
+        argument: t;
       }
     | Infix of {
         left: t option;
@@ -1642,8 +1641,8 @@ end = struct
         right: t option;
       }
     | Apply of {
-        callee: t option;
-        argument: t option;
+        callee: t;
+        argument: t;
       }
     | Infix of {
         left: t option;
@@ -1847,8 +1846,7 @@ end = struct
           body = normalize_expr_option (nth_expr_child expr 2);
         }
     | Syntax_kind.ASSERT_EXPR
-    | Syntax_kind.LAZY_EXPR ->
-        Apply { callee = None; argument = normalize_expr_option (first_expr_child expr) }
+    | Syntax_kind.LAZY_EXPR -> Unknown expr
     | Syntax_kind.ATTRIBUTE_EXPR -> (
         match first_expr_child expr with
         | Some inner -> view inner
@@ -1859,11 +1857,11 @@ end = struct
           left = normalize_expr_option (nth_expr_child expr 0);
           right = normalize_expr_option (nth_expr_child expr 1);
         }
-    | Syntax_kind.APPLY_EXPR ->
-        Apply {
-          callee = normalize_expr_option (nth_expr_child expr 0);
-          argument = normalize_expr_option (nth_expr_child expr 1);
-        }
+    | Syntax_kind.APPLY_EXPR -> (
+        match (normalize_expr_option (nth_expr_child expr 0), normalize_expr_option (nth_expr_child expr 1)) with
+        | (Some callee, Some argument) -> Apply { callee; argument }
+        | _ -> Unknown expr
+      )
     | Syntax_kind.INFIX_EXPR ->
         Infix {
           left = normalize_expr_option (nth_expr_child expr 0);
@@ -2618,7 +2616,7 @@ module Pattern: sig
     | Wildcard
     | Ident of { path: path }
     | Construct of {
-        constructor: path option;
+        constructor: path;
         payload: t option;
       }
     | Literal of {
@@ -2691,7 +2689,7 @@ end = struct
     | Wildcard
     | Ident of { path: path }
     | Construct of {
-        constructor: path option;
+        constructor: path;
         payload: t option;
       }
     | Literal of {
@@ -2806,7 +2804,7 @@ end = struct
     | Syntax_kind.WILDCARD_PATTERN -> Wildcard
     | Syntax_kind.PATH_PATTERN ->
         if path_is_constructor pattern then
-          Construct { constructor = Some pattern; payload = None }
+          Construct { constructor = pattern; payload = None }
         else
           Ident { path = pattern }
     | Syntax_kind.CONSTRUCT_PATTERN -> (
@@ -2816,10 +2814,10 @@ end = struct
         | Some callee -> (
             match view callee with
             | Construct { constructor; payload = None } -> Construct { constructor; payload }
-            | Ident { path } -> Construct { constructor = Some path; payload }
+            | Ident { path } -> Construct { constructor = path; payload }
             | _ -> Unknown pattern
           )
-        | None -> Construct { constructor = None; payload }
+        | None -> Unknown pattern
       )
     | Syntax_kind.LITERAL_PATTERN -> Literal { token = literal_token pattern }
     | Syntax_kind.TUPLE_PATTERN -> Tuple { parts = child_patterns pattern }
@@ -3126,6 +3124,9 @@ end
 module Parameter: sig
   type t = parameter
   type view =
+    | Positional of {
+        pattern: pattern;
+      }
     | Labeled of {
         label: token option;
         pattern: pattern option;
@@ -3149,6 +3150,9 @@ end = struct
   type t = parameter
 
   type view =
+    | Positional of {
+        pattern: pattern;
+      }
     | Labeled of {
         label: token option;
         pattern: pattern option;
@@ -3165,7 +3169,7 @@ end = struct
     | Unknown of Node.t
 
   let cast = fun (node: node) ->
-    if node_matches node is_parameter_kind then
+    if node_matches node is_parameter_node_kind then
       Some node
     else
       None
@@ -3178,21 +3182,22 @@ end = struct
 
   let view = fun (parameter: parameter) ->
     match Node.kind parameter with
+    | kind when is_pattern_kind kind -> Positional { pattern = normalize_pattern_node parameter }
     | Syntax_kind.LABELED_PARAM ->
         Labeled {
           label = parameter_label_token parameter;
-          pattern = first_pattern_child parameter;
+          pattern = normalize_pattern_option (first_pattern_child parameter);
         }
     | Syntax_kind.OPTIONAL_PARAM ->
         Optional {
           label = parameter_label_token parameter;
-          pattern = first_pattern_child parameter;
+          pattern = normalize_pattern_option (first_pattern_child parameter);
         }
     | Syntax_kind.OPTIONAL_PARAM_DEFAULT ->
         OptionalDefault {
           label = parameter_label_token parameter;
-          pattern = first_pattern_child parameter;
-          default = first_expr_child parameter;
+          pattern = normalize_pattern_option (first_pattern_child parameter);
+          default = normalize_expr_option (first_expr_child parameter);
         }
     | _ -> Unknown parameter
 
@@ -3250,7 +3255,7 @@ module LetBinding: sig
 
   val body: t -> expr option
 
-  val for_each_parameter: t -> fn:(pattern -> unit) -> unit
+  val for_each_parameter: t -> fn:(parameter -> unit) -> unit
 
   val type_annotation: t -> type_expr option
 end = struct
@@ -3273,36 +3278,28 @@ end = struct
 
   let view = fun (binding: let_binding) -> { pattern = pattern binding; body = body binding }
 
-  let rec for_each_parameter_pattern = fun pattern ~fn ->
-    match Node.kind pattern with
+  let rec for_each_parameter_node = fun node ~fn ->
+    match Node.kind node with
     | Syntax_kind.CONSTRUCT_PATTERN ->
-        let left = nth_pattern_child pattern 0 in
-        let right = nth_pattern_child pattern 1 in
-        (
-          match left with
-          | Some left -> for_each_parameter_pattern left ~fn
-          | None -> ()
-        );
-        (
-          match right with
-          | Some right -> for_each_parameter_pattern right ~fn
-          | None -> ()
-        )
+        for_each_child_node_matching
+          node
+          ~matches:is_parameter_node_kind
+          ~fn:(fun child -> for_each_parameter_node child ~fn)
     | Syntax_kind.CONSTRAINT_PATTERN -> (
-        match first_pattern_child pattern with
-        | Some pattern -> for_each_parameter_pattern pattern ~fn
-        | None -> fn pattern
+        match first_pattern_child node with
+        | Some pattern -> for_each_parameter_node pattern ~fn
+        | None -> fn node
       )
-    | _ -> fn pattern
+    | _ -> fn node
 
   let for_each_parameter = fun (binding: let_binding) ~fn ->
     let seen_first = ref false in
     for_each_child_node_matching
       binding
-      ~matches:is_pattern_kind
-      ~fn:(fun pattern ->
+      ~matches:is_parameter_node_kind
+      ~fn:(fun parameter ->
         if !seen_first then
-          for_each_parameter_pattern pattern ~fn
+          for_each_parameter_node parameter ~fn
         else
           seen_first := true)
 

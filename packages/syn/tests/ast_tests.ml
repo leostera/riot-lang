@@ -379,7 +379,7 @@ let test_labeled_application_after_poly_variant_argument = fun _ctx ->
   in
   let rec application_parts expr args =
     match Ast.Expr.view expr with
-    | Ast.Expr.Apply { callee = Some callee; argument = Some argument } ->
+    | Ast.Expr.Apply { callee; argument } ->
         application_parts callee (argument :: args)
     | _ -> (expr, args)
   in
@@ -1874,7 +1874,7 @@ let render = function | (((Some (((item)))))) -> item
   in
   let* () =
     match Ast.Expr.view call_body with
-    | Ast.Expr.Apply { argument = Some argument; _ } ->
+    | Ast.Expr.Apply { argument; _ } ->
         Test.assert_equal ~expected:SyntaxKind.APPLY_EXPR ~actual:(Ast.Node.kind argument);
         Ok ()
     | _ -> Error "expected outer call expression"
@@ -2326,7 +2326,7 @@ let test_local_open_argument_views = fun _ctx ->
   in
   let rec application_parts expr args =
     match Ast.Expr.view expr with
-    | Ast.Expr.Apply { callee = Some callee; argument = Some argument } ->
+    | Ast.Expr.Apply { callee; argument } ->
         application_parts callee (argument :: args)
     | _ -> (expr, args)
   in
@@ -2386,7 +2386,7 @@ let test_local_open_labeled_argument_views = fun _ctx ->
   in
   let rec application_parts expr args =
     match Ast.Expr.view expr with
-    | Ast.Expr.Apply { callee = Some callee; argument = Some argument } ->
+    | Ast.Expr.Apply { callee; argument } ->
         application_parts callee (argument :: args)
     | _ -> (expr, args)
   in
@@ -3029,6 +3029,60 @@ let test_optional_default_labeled_parameter_view = fun _ctx ->
     )
   | _ -> Error "expected optional and positional parameters"
 
+let test_let_binding_parameters_are_parameter_views = fun _ctx ->
+  let root =
+    parse_ml {ocaml|let build name ~(mode : mode) ?config:(cfg = default_config) = cfg
+|ocaml}
+    |> Result.expect ~msg:"expected parse source file"
+  in
+  let binding =
+    nth_structure_item root 0
+    |> require_some ~msg:"expected parameter-view item"
+    |> binding_of_structure_item
+    |> Result.expect ~msg:"expected parameter-view binding"
+  in
+  let parameters = Vector.with_capacity ~size:3 in
+  Ast.LetBinding.for_each_parameter
+    binding
+    ~fn:(fun parameter -> Vector.push parameters ~value:parameter);
+  Test.assert_equal ~expected:3 ~actual:(Vector.length parameters);
+  (
+    match Ast.Parameter.view (Vector.get_unchecked parameters ~at:0) with
+    | Ast.Parameter.Positional { pattern } -> (
+        match Ast.Pattern.view pattern with
+        | Ast.Pattern.Ident { path } -> assert_last_ident_text path "name"
+        | _ -> panic "expected positional parameter path"
+      )
+    | _ -> panic "expected positional parameter view"
+  );
+  (
+    match Ast.Parameter.view (Vector.get_unchecked parameters ~at:1) with
+    | Ast.Parameter.Labeled { label = Some label; pattern = Some pattern } ->
+        Test.assert_equal ~expected:"mode" ~actual:(Ast.Token.text label);
+        (
+          match Ast.Pattern.view pattern with
+          | Ast.Pattern.Constraint { annotation = Some annotation; _ } ->
+              assert_type_path_last_ident annotation "mode"
+          | _ -> panic "expected labeled parameter type constraint"
+        )
+    | _ -> panic "expected labeled parameter view"
+  );
+  match Ast.Parameter.view (Vector.get_unchecked parameters ~at:2) with
+  | Ast.Parameter.OptionalDefault { label = Some label; pattern = Some pattern; default = Some default } ->
+      Test.assert_equal ~expected:"config" ~actual:(Ast.Token.text label);
+      (
+        match Ast.Pattern.view pattern with
+        | Ast.Pattern.Ident { path } -> assert_last_ident_text path "cfg"
+        | _ -> panic "expected optional-default parameter pattern"
+      );
+      (
+        match Ast.Expr.view default with
+        | Ast.Expr.Ident { path } -> assert_last_ident_text path "default_config"
+        | _ -> panic "expected optional-default parameter expression"
+      );
+      Ok ()
+  | _ -> Error "expected optional-default parameter view"
+
 let test_if_then_branch_sequence_boundaries = fun _ctx ->
   let root =
     parse_ml
@@ -3302,6 +3356,9 @@ let tests =
     case
       "ast exposes renamed optional parameters with defaults"
       test_optional_default_labeled_parameter_view;
+    case
+      "ast exposes let binding parameters as parameter views"
+      test_let_binding_parameters_are_parameter_views;
     case
       "ast keeps if then-branch sequences inside explicit else branches"
       test_if_then_branch_sequence_boundaries;

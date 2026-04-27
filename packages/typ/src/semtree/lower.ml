@@ -299,9 +299,13 @@ let return_annotation_of_binding = fun binding ->
       | Some pattern ->
           if !seen_first_pattern then
             (
-              match Ast.Pattern.view pattern with
-              | Ast.Pattern.Constraint { annotation = Some type_expr; _ } ->
-                  annotation := Some type_expr
+              match Ast.Node.kind node with
+              | Syn.SyntaxKind.CONSTRAINT_PATTERN -> (
+                  match Ast.Pattern.view pattern with
+                  | Ast.Pattern.Constraint { annotation = Some type_expr; _ } ->
+                      annotation := Some type_expr
+                  | _ -> ()
+                )
               | _ -> ()
             )
           else

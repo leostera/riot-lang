@@ -283,7 +283,7 @@ module Pattern: sig
     | Wildcard
     | Ident of { path: path }
     | Construct of {
-        constructor: path option;
+        constructor: path;
         payload: t option;
       }
     | Literal of {
@@ -430,6 +430,9 @@ end
 module Parameter: sig
   type t = parameter
   type view =
+    | Positional of {
+        pattern: pattern;
+      }
     | Labeled of {
         label: Token.t option;
         pattern: pattern option;
@@ -477,7 +480,7 @@ module LetBinding: sig
 
   val body: t -> expr option
 
-  val for_each_parameter: t -> fn:(pattern -> unit) -> unit
+  val for_each_parameter: t -> fn:(parameter -> unit) -> unit
 
   val type_annotation: t -> type_expr option
 end
@@ -531,8 +534,8 @@ module Expr: sig
         right: t option;
       }
     | Apply of {
-        callee: t option;
-        argument: t option;
+        callee: t;
+        argument: t;
       }
     | Infix of {
         left: t option;

@@ -30,7 +30,7 @@ let expr_path_name = fun expr ->
 
 let is_reraise_body = fun name expr ->
   match Ast.Expr.view (unwrap_expr expr) with
-  | Ast.Expr.Apply { callee = Some callee; argument = Some argument } -> (
+  | Ast.Expr.Apply { callee; argument } -> (
       match (expr_path_name callee, expr_path_name argument) with
       | (Some "raise", Some argument_name) -> String.equal name argument_name
       | _ -> false

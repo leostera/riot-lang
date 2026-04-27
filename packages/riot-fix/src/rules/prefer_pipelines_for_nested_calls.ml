@@ -43,7 +43,7 @@ let callee_text = fun ctx callee ->
 
 let rec collect_call_chain = fun ctx expr ->
   match Ast.Expr.view (unwrap_expr expr) with
-  | Ast.Expr.Apply { callee = Some callee; argument = Some argument } -> (
+  | Ast.Expr.Apply { callee; argument } -> (
       match callee_text ctx callee with
       | Some callee ->
           let argument = unwrap_expr argument in

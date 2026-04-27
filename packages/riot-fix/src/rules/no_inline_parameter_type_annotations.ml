@@ -24,9 +24,11 @@ obvious place where its signature lives.
 |}
 
 let rec pattern_has_inline_type = fun pattern ->
-  match Ast.Parameter.cast pattern with
-  | Some parameter -> parameter_has_inline_type parameter
-  | None -> (
+  match Ast.Node.kind pattern with
+  | Syn.SyntaxKind.LABELED_PARAM
+  | Syn.SyntaxKind.OPTIONAL_PARAM
+  | Syn.SyntaxKind.OPTIONAL_PARAM_DEFAULT -> parameter_has_inline_type pattern
+  | _ -> (
       match Ast.Pattern.view (H.unwrap_pattern pattern) with
       | Ast.Pattern.Constraint _ -> true
       | _ -> false
@@ -34,6 +36,7 @@ let rec pattern_has_inline_type = fun pattern ->
 
 and parameter_has_inline_type = fun parameter ->
   match Ast.Parameter.view parameter with
+  | Ast.Parameter.Positional { pattern } -> pattern_has_inline_type pattern
   | Ast.Parameter.Labeled { pattern = Some pattern; _ }
   | Ast.Parameter.Optional { pattern = Some pattern; _ }
   | Ast.Parameter.OptionalDefault { pattern = Some pattern; _ } -> pattern_has_inline_type pattern

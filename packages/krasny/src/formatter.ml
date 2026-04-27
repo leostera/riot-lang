@@ -1327,13 +1327,22 @@ let collect_child_patterns = fun (node: Ast.Node.t) ->
 
 let collect_fun_parameters = fun (node: Ast.Node.t) ->
   let parameters = Vector.with_capacity ~size:(Ast.Node.child_count node) in
-  let rec push_parameter pattern =
+  let rec push_parameter parameter =
+    match Ast.Parameter.view parameter with
+    | Positional _ when node_kind_is parameter Kind.CONSTRUCT_PATTERN ->
+        push_positional_construct parameter
+    | Positional _
+    | Labeled _
+    | Optional _
+    | OptionalDefault _
+    | Unknown _ -> Vector.push parameters ~value:parameter
+  and push_positional_construct pattern =
     match node_kind pattern with
     | Kind.CONSTRUCT_PATTERN ->
         Ast.Node.for_each_child_node
           pattern
           ~fn:(fun child ->
-            match Ast.Pattern.cast child with
+            match Ast.Parameter.cast child with
             | Some child -> push_parameter child
             | None -> ())
     | _ -> Vector.push parameters ~value:pattern
@@ -1341,8 +1350,8 @@ let collect_fun_parameters = fun (node: Ast.Node.t) ->
   Ast.Node.for_each_child_node
     node
     ~fn:(fun child ->
-      match Ast.Pattern.cast child with
-      | Some pattern -> push_parameter pattern
+      match Ast.Parameter.cast child with
+      | Some parameter -> push_parameter parameter
       | None -> ());
   parameters
 
@@ -3662,6 +3671,7 @@ and render_named_parameter = fun state ~sigil parameter label pattern ->
 
 and render_parameter = fun state parameter ->
   match Ast.Parameter.view parameter with
+  | Positional { pattern } -> render_pattern state pattern
   | Labeled { label = Some label; pattern = None } ->
       emit_text state "~";
       emit_token state label

@@ -178,15 +178,22 @@ type parameter_kind =
   | OptionalParameter
 
 let parameter_kind = fun pattern ->
-  match Ast.Parameter.cast pattern with
-  | Some parameter -> (
+  match Ast.Node.kind pattern with
+  | Syn.SyntaxKind.LABELED_PARAM
+  | Syn.SyntaxKind.OPTIONAL_PARAM
+  | Syn.SyntaxKind.OPTIONAL_PARAM_DEFAULT -> (
+      let parameter =
+        Ast.Parameter.cast pattern
+        |> Option.expect ~msg:"expected syntactic parameter view"
+      in
       match Ast.Parameter.view parameter with
+      | Ast.Parameter.Positional _ -> None
       | Ast.Parameter.Labeled _ -> Some LabeledParameter
       | Ast.Parameter.Optional _
       | Ast.Parameter.OptionalDefault _ -> Some OptionalParameter
       | Ast.Parameter.Unknown _ -> None
     )
-  | None -> None
+  | _ -> None
 
 let pattern_name_token = fun pattern ->
   match Ast.Pattern.view (unwrap_pattern pattern) with
@@ -219,9 +226,16 @@ let binding_is_function = fun binding ->
   | None -> false
 
 let rec parameter_name_token = fun pattern ->
-  match Ast.Parameter.cast pattern with
-  | Some parameter -> (
+  match Ast.Node.kind pattern with
+  | Syn.SyntaxKind.LABELED_PARAM
+  | Syn.SyntaxKind.OPTIONAL_PARAM
+  | Syn.SyntaxKind.OPTIONAL_PARAM_DEFAULT -> (
+      let parameter =
+        Ast.Parameter.cast pattern
+        |> Option.expect ~msg:"expected syntactic parameter view"
+      in
       match Ast.Parameter.view parameter with
+      | Ast.Parameter.Positional { pattern } -> parameter_name_token pattern
       | Ast.Parameter.Labeled { label = Some label; _ }
       | Ast.Parameter.Optional { label = Some label; _ }
       | Ast.Parameter.OptionalDefault { label = Some label; _ } -> Some label
@@ -230,7 +244,7 @@ let rec parameter_name_token = fun pattern ->
       | Ast.Parameter.OptionalDefault { pattern = Some pattern; _ } -> pattern_name_token pattern
       | _ -> None
     )
-  | None -> (
+  | _ -> (
       match Ast.Pattern.view pattern with
       | Ast.Pattern.Ident { path } -> path_last_ident path
       | Ast.Pattern.Constraint { pattern = Some pattern; _ } -> parameter_name_token pattern

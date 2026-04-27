@@ -231,7 +231,15 @@ let pattern = fun visitor (node: A.Node.t) ->
 
 let parameter = fun visitor (node: A.Node.t) ->
   prepare_arena visitor.arena node.Ast.tree;
-  cached_cast visitor.arena.parameters node A.Parameter.cast
+  cached_cast
+    visitor.arena.parameters
+    node
+    (fun node ->
+      match A.Node.kind node with
+      | Syntax_kind.LABELED_PARAM
+      | Syntax_kind.OPTIONAL_PARAM
+      | Syntax_kind.OPTIONAL_PARAM_DEFAULT -> A.Parameter.cast node
+      | _ -> None)
 
 let type_expr = fun visitor (node: A.Node.t) ->
   prepare_arena visitor.arena node.Ast.tree;
