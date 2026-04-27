@@ -7,6 +7,8 @@
    - Extensible design for adding new algorithms
    - DoS-resistant hashing for HashMap/HashSet
 *)
+open Prelude
+
 type hash = Hash.t
 
 module Hash = Hash
@@ -46,3 +48,5 @@ let hash_bool = DefaultHasher.hash_bool
 let hash_list = DefaultHasher.hash_list
 
 let hash_array = DefaultHasher.hash_array
+
+let hmac_sha256 = fun ~key ~data -> IO.Bytes.to_string (Ffi.hmac_sha256 ~key ~data)

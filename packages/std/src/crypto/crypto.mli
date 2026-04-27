@@ -94,3 +94,6 @@ val hash_bool: bool -> hash
 val hash_list: ('a -> hash) -> 'a list -> hash
 
 val hash_array: ('a -> hash) -> 'a array -> hash
+
+(** HMAC-SHA256 over [data] using [key], returned as raw digest bytes. *)
+val hmac_sha256: key:string -> data:string -> string

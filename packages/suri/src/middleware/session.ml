@@ -198,45 +198,9 @@ let secure_equal = fun s1 s2 ->
     done;
   !mismatch = 0
 
-let digest_to_string = fun digest ->
-  digest
-  |> Crypto.Digest.bytes
-  |> IO.Bytes.to_string
-
-let normalize_hmac_key = fun secret ->
-  let key =
-    if String.length secret > 64 then
-      Crypto.Sha256.hash_string secret
-      |> digest_to_string
-    else
-      secret
-  in
-  if String.length key < 64 then
-    key ^ String.make ~len:(64 - String.length key) ~char:'\000'
-  else
-    key
-
-let xor_with_byte = fun data byte ->
-  String.init
-    ~len:(String.length data)
-    ~fn:(fun index ->
-      let value = Char.code (String.get_unchecked data ~at:index) lxor byte in
-      Char.chr value)
-
-let hmac_sha256 = fun ~secret data ->
-  let key = normalize_hmac_key secret in
-  let inner_key = xor_with_byte key 0x36 in
-  let outer_key = xor_with_byte key 0x5c in
-  let inner_hash =
-    Crypto.Sha256.hash_string (inner_key ^ data)
-    |> digest_to_string
-  in
-  Crypto.Sha256.hash_string (outer_key ^ inner_hash)
-  |> digest_to_string
-
 (** HMAC-SHA256 signature for cookie integrity. *)
 let sign = fun ~secret data ->
-  hmac_sha256 ~secret data
+  Crypto.hmac_sha256 ~key:secret ~data
   |> Encoding.Base64.encode
 
 (** Verify signature *)

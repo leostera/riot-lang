@@ -158,6 +158,17 @@ let test_md5_known_abc_digest = fun _ctx ->
   else
     Error "Md5 should match the known digest for abc"
 
+let test_hmac_sha256_matches_known_vector = fun _ctx ->
+  let digest =
+    Crypto.hmac_sha256 ~key:"key" ~data:"The quick brown fox jumps over the lazy dog"
+    |> raw_hash
+    |> Crypto.Digest.hex
+  in
+  if String.equal digest "f7bc83f430538424b13298e6aa6fb143ef4d59a14946175997479dbc2d1a3cd8" then
+    Ok ()
+  else
+    Error "HMAC-SHA256 should match the known RFC 4231-style vector"
+
 let test_hash_bool_distinguishes_true_and_false = fun _ctx ->
   if not (Crypto.Hash.equal (Crypto.hash_bool true) (Crypto.hash_bool false)) then
     Ok ()
@@ -209,6 +220,7 @@ let tests =
     case "Sha256 matches the known abc digest" test_sha256_known_abc_digest;
     case "Sha1 matches the known abc digest" test_sha1_known_abc_digest;
     case "Md5 matches the known abc digest" test_md5_known_abc_digest;
+    case "HMAC-SHA256 matches a known vector" test_hmac_sha256_matches_known_vector;
     case "hash_bool distinguishes true and false" test_hash_bool_distinguishes_true_and_false;
     case "hash_list is order sensitive" test_hash_list_is_order_sensitive;
     case "hash_array is order sensitive" test_hash_array_is_order_sensitive;
