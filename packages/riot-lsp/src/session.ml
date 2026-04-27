@@ -478,7 +478,7 @@ let rec binding_name_tokens_of_parameter = fun parameter ->
 
 and binding_name_tokens_of_pattern = fun pattern ->
   match Syn.Ast.Pattern.view pattern with
-  | Syn.Ast.Pattern.Path { path } -> (
+  | Syn.Ast.Pattern.Ident { path } -> (
       match Syn.Ast.Path.last_ident path with
       | Some token -> Some [ token ]
       | None -> None
@@ -486,25 +486,16 @@ and binding_name_tokens_of_pattern = fun pattern ->
   | Syn.Ast.Pattern.Alias { alias = Some alias; _ }
   | Syn.Ast.Pattern.Constraint { pattern = Some alias; _ }
   | Syn.Ast.Pattern.Lazy { pattern = Some alias }
-  | Syn.Ast.Pattern.Exception { pattern = Some alias }
-  | Syn.Ast.Pattern.Parenthesized { inner = Some alias }
-  | Syn.Ast.Pattern.Attribute { inner = Some alias } -> binding_name_tokens_of_pattern alias
-  | Syn.Ast.Pattern.LabeledParam parameter
-  | Syn.Ast.Pattern.OptionalParam parameter
-  | Syn.Ast.Pattern.OptionalParamDefault parameter -> binding_name_tokens_of_parameter parameter
+  | Syn.Ast.Pattern.Exception { pattern = Some alias } -> binding_name_tokens_of_pattern alias
+  | Syn.Ast.Pattern.Unit
   | Syn.Ast.Pattern.Wildcard
-  | Syn.Ast.Pattern.Apply _
   | Syn.Ast.Pattern.Literal _
-  | Syn.Ast.Pattern.Parenthesized _
-  | Syn.Ast.Pattern.Tuple
-  | Syn.Ast.Pattern.List
-  | Syn.Ast.Pattern.Array
+  | Syn.Ast.Pattern.Construct _
+  | Syn.Ast.Pattern.Tuple _
+  | Syn.Ast.Pattern.List _
+  | Syn.Ast.Pattern.Array _
   | Syn.Ast.Pattern.Record
-  | Syn.Ast.Pattern.PolyVariant
-  | Syn.Ast.Pattern.Extension
-  | Syn.Ast.Pattern.Attribute _
-  | Syn.Ast.Pattern.LocalOpen
-  | Syn.Ast.Pattern.LocallyAbstractType
+  | Syn.Ast.Pattern.PolyVariant _
   | Syn.Ast.Pattern.FirstClassModule
   | Syn.Ast.Pattern.Interval _
   | Syn.Ast.Pattern.Constraint _
@@ -519,7 +510,6 @@ and binding_name_tokens_of_pattern = fun pattern ->
 let rec value_like_type_is_function = fun type_ ->
   match Syn.Ast.TypeExpr.view type_ with
   | Syn.Ast.TypeExpr.Arrow _ -> true
-  | Syn.Ast.TypeExpr.Parenthesized { inner = Some inner }
   | Syn.Ast.TypeExpr.Poly { body = Some inner } -> value_like_type_is_function inner
   | _ -> false
 

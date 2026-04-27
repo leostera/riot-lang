@@ -1,4 +1,5 @@
 open Std
+open Std.Collections
 
 module H = Rule_helpers
 module Ast = Syn.Ast
@@ -15,10 +16,7 @@ Prefer naming the row once with a type alias, then reference that alias from val
 containers, and larger type expressions.
 |}
 
-let rec unwrap_type = fun type_expr ->
-  match Ast.TypeExpr.view type_expr with
-  | Ast.TypeExpr.Parenthesized { inner = Some inner } -> unwrap_type inner
-  | _ -> type_expr
+let rec unwrap_type = fun type_expr -> H.unwrap_type_expr type_expr
 
 let is_closed_polyvariant_type = fun ctx type_expr ->
   let text =
@@ -46,22 +44,15 @@ let rec check_type_expr = fun ctx diagnostics ~allow_named_alias_root type_expr 
       ()
   else
     match Ast.TypeExpr.view type_expr with
-    | Ast.TypeExpr.Arrow { left; right } ->
-        Option.for_each left ~fn:(check_type_expr ctx diagnostics ~allow_named_alias_root:false);
-        Option.for_each right ~fn:(check_type_expr ctx diagnostics ~allow_named_alias_root:false)
-    | Ast.TypeExpr.Poly { body }
-    | Ast.TypeExpr.Labeled { annotation = body; _ }
-    | Ast.TypeExpr.Parenthesized { inner = body } ->
+    | Ast.TypeExpr.Arrow { arg; ret; _ } ->
+        Option.for_each arg ~fn:(check_type_expr ctx diagnostics ~allow_named_alias_root:false);
+        Option.for_each ret ~fn:(check_type_expr ctx diagnostics ~allow_named_alias_root:false)
+    | Ast.TypeExpr.Poly { body } ->
         Option.for_each body ~fn:(check_type_expr ctx diagnostics ~allow_named_alias_root:false)
-    | Ast.TypeExpr.Tuple { left; right; _ } ->
-        Option.for_each left ~fn:(check_type_expr ctx diagnostics ~allow_named_alias_root:false);
-        Option.for_each right ~fn:(check_type_expr ctx diagnostics ~allow_named_alias_root:false)
-    | Ast.TypeExpr.Apply { argument; constructor } ->
-        Option.for_each argument ~fn:(check_type_expr ctx diagnostics ~allow_named_alias_root:false);
-        Option.for_each
-          constructor
-          ~fn:(check_type_expr ctx diagnostics ~allow_named_alias_root:false)
-    | Ast.TypeExpr.Opaque node
+    | Ast.TypeExpr.Tuple { parts } ->
+        Vector.for_each parts ~fn:(check_type_expr ctx diagnostics ~allow_named_alias_root:false)
+    | Ast.TypeExpr.Apply { args; _ } ->
+        Vector.for_each args ~fn:(check_type_expr ctx diagnostics ~allow_named_alias_root:false)
     | Ast.TypeExpr.Error node
     | Ast.TypeExpr.Unknown node ->
         Ast.Node.for_each_child_node
@@ -71,7 +62,8 @@ let rec check_type_expr = fun ctx diagnostics ~allow_named_alias_root type_expr 
             | Some type_expr ->
                 check_type_expr ctx diagnostics ~allow_named_alias_root:false type_expr
             | None -> ())
-    | Ast.TypeExpr.Path _
+    | Ast.TypeExpr.Unit
+    | Ast.TypeExpr.Ident _
     | Ast.TypeExpr.Var _
     | Ast.TypeExpr.Wildcard -> ()
 

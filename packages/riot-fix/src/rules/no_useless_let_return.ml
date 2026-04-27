@@ -17,15 +17,11 @@ Prefer `compute ()` over `let value = compute () in value` unless the temporary
 name adds real meaning in the surrounding code.
 |}
 
-let rec unwrap_parens = fun expr ->
-  match Ast.Expr.view expr with
-  | Ast.Expr.Parenthesized { inner = Some inner } -> unwrap_parens inner
-  | Ast.Expr.Attribute { inner = Some inner } -> unwrap_parens inner
-  | _ -> expr
+let rec unwrap_parens = fun expr -> H.unwrap_expr expr
 
 let expr_path_name = fun expr ->
   match Ast.Expr.view (unwrap_parens expr) with
-  | Ast.Expr.Path { path } -> (
+  | Ast.Expr.Ident { path } -> (
       match Ast.Path.last_ident path with
       | Some token -> Some (Ast.Token.text token)
       | None -> None

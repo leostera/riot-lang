@@ -94,12 +94,48 @@ let assert_last_ident_text = fun path expected ->
 
 let assert_type_path_last_ident = fun type_expr expected ->
   match Ast.TypeExpr.view type_expr with
-  | Ast.TypeExpr.Path { path } -> assert_last_ident_text path expected
-  | _ -> panic "expected path type"
+  | Ast.TypeExpr.Ident { path } -> assert_last_ident_text path expected
+  | _ -> panic "expected ident type"
 
 let vector_to_list = fun vector ->
   Vector.to_array vector
   |> Array.to_list
+
+let vector_first = fun vector ~msg ->
+  if Int.equal (Vector.length vector) 0 then
+    panic msg
+  else
+    Vector.get_unchecked vector ~at:0
+
+let vector_second = fun vector ~msg ->
+  if Vector.length vector < 2 then
+    panic msg
+  else
+    Vector.get_unchecked vector ~at:1
+
+let first_child_expr = fun node ->
+  let found = ref None in
+  Ast.Node.for_each_child_node
+    node
+    ~fn:(fun child ->
+      match !found with
+      | Some _ -> ()
+      | None -> (
+          match Ast.Expr.cast child with
+          | Some expr -> found := Some expr
+          | None -> ()
+        ));
+  !found
+
+let assert_labeled_argument = fun arg expected ->
+  if not (SyntaxKind.is (Ast.Node.kind arg) SyntaxKind.LABELED_ARG) then
+    panic ("expected labeled argument " ^ expected);
+  let label =
+    Ast.Node.first_child_token arg ~kind:SyntaxKind.IDENT
+    |> require_some ~msg:"expected labeled argument label"
+  in
+  Test.assert_equal ~expected ~actual:(Ast.Token.text label);
+  first_child_expr arg
 
 type visitor_capture = {
   let_names: string Vector.t;
@@ -131,7 +167,7 @@ let test_source_file_and_let_binding_views = fun _ctx ->
   in
   (
     match Ast.Pattern.view pattern with
-    | Ast.Pattern.Path { path } -> assert_last_ident_text path "x"
+    | Ast.Pattern.Ident { path } -> assert_last_ident_text path "x"
     | _ -> panic "expected path pattern"
   );
   let body =
@@ -334,22 +370,15 @@ let test_labeled_application_after_poly_variant_argument = fun _ctx ->
         application_parts callee (argument :: args)
     | _ -> (expr, args)
   in
-  let assert_labeled_arg arg expected =
-    match Ast.Expr.view arg with
-    | Ast.Expr.LabeledArg { label = Some label; value } ->
-        Test.assert_equal ~expected ~actual:(Ast.Token.text label);
-        value
-    | _ -> panic ("expected labeled argument " ^ expected)
-  in
   let (callee, arguments) = application_parts body [] in
   (
     match Ast.Expr.view callee with
-    | Ast.Expr.Path { path } -> assert_last_ident_text path "parse"
+    | Ast.Expr.Ident { path } -> assert_last_ident_text path "parse"
     | _ -> panic "expected parse callee"
   );
   match arguments with
   | [ cst_kind; parse_item; source; tokens ] ->
-      let cst_kind_value = assert_labeled_arg cst_kind "cst_kind" in
+      let cst_kind_value = assert_labeled_argument cst_kind "cst_kind" in
       (
         match cst_kind_value
         |> require_some ~msg:"expected cst_kind value"
@@ -357,9 +386,9 @@ let test_labeled_application_after_poly_variant_argument = fun _ctx ->
         | Ast.Expr.PolyVariant { payload = None } -> ()
         | _ -> panic "expected cst_kind value to be a bare polymorphic variant"
       );
-      ignore (assert_labeled_arg parse_item "parse_item");
-      ignore (assert_labeled_arg source "source");
-      ignore (assert_labeled_arg tokens "tokens");
+      ignore (assert_labeled_argument parse_item "parse_item");
+      ignore (assert_labeled_argument source "source");
+      ignore (assert_labeled_argument tokens "tokens");
       Ok ()
   | _ -> Error "expected parse application to have four labeled arguments"
 
@@ -379,11 +408,7 @@ let test_pattern_views = fun _ctx ->
   in
   (
     match Ast.Pattern.view tuple_pattern with
-    | Ast.Pattern.Parenthesized { inner = Some inner } -> (
-        match Ast.Pattern.view inner with
-        | Ast.Pattern.Tuple -> ()
-        | _ -> panic "expected tuple pattern inside parentheses"
-      )
+    | Ast.Pattern.Tuple { parts } -> Test.assert_equal ~expected:2 ~actual:(Vector.length parts)
     | _ -> panic "expected tuple pattern"
   );
   let cons_pattern =
@@ -447,7 +472,7 @@ let test_poly_variant_tuple_pattern_boundary = fun _ctx ->
       in
       (
         match Ast.Pattern.view pattern with
-        | Ast.Pattern.Tuple -> ()
+        | Ast.Pattern.Tuple { parts } -> Test.assert_equal ~expected:2 ~actual:(Vector.length parts)
         | _ -> panic "expected polyvariant pair case to parse as a tuple pattern"
       );
       let children = Vector.with_capacity ~size:(Ast.Node.child_count pattern) in
@@ -460,7 +485,7 @@ let test_poly_variant_tuple_pattern_boundary = fun _ctx ->
           Ast.Pattern.view (Vector.get_unchecked children ~at:0),
           Ast.Pattern.view (Vector.get_unchecked children ~at:1)
         ) with
-        | (Ast.Pattern.PolyVariant, Ast.Pattern.PolyVariant) -> Ok ()
+        | (Ast.Pattern.PolyVariant _, Ast.Pattern.PolyVariant _) -> Ok ()
         | _ -> Error "expected both tuple items to be polymorphic variant patterns"
       )
   | _ -> Error "expected match expression"
@@ -493,9 +518,9 @@ let test_signature_and_type_views = fun _ctx ->
         in
         (
           match Ast.TypeExpr.view annotation with
-          | Ast.TypeExpr.Arrow { left = Some left; right = Some right } ->
-              assert_type_path_last_ident left "int";
-              assert_type_path_last_ident right "string";
+          | Ast.TypeExpr.Arrow { arg = Some arg; ret = Some ret; _ } ->
+              assert_type_path_last_ident arg "int";
+              assert_type_path_last_ident ret "string";
               Ok ()
           | _ -> Error "expected arrow value type"
         )
@@ -552,10 +577,10 @@ let test_package_type_value_annotation_views = fun _ctx ->
       in
       (
         match Ast.TypeExpr.view annotation with
-        | Ast.TypeExpr.Arrow { left = Some left; right = Some _ } -> (
-            match Ast.TypeExpr.view left with
-            | Ast.TypeExpr.Opaque _ -> Ok ()
-            | _ -> Error "expected package type annotation to lower as opaque type"
+        | Ast.TypeExpr.Arrow { arg = Some arg; ret = Some _; _ } -> (
+            match Ast.TypeExpr.view arg with
+            | Ast.TypeExpr.Unknown _ -> Ok ()
+            | _ -> Error "expected package type annotation to lower as unknown type"
           )
         | _ -> Error "expected arrow value type"
       )
@@ -579,9 +604,10 @@ let test_type_expression_views = fun _ctx ->
         in
         (
           match Ast.TypeExpr.view annotation with
-          | Ast.TypeExpr.Apply { argument = Some argument; constructor = Some constructor } ->
+          | Ast.TypeExpr.Apply { ident = Some ident; args } ->
+              assert_last_ident_text ident "list";
+              let argument = vector_first args ~msg:"expected list type argument" in
               assert_type_path_last_ident argument "int";
-              assert_type_path_last_ident constructor "list";
               Ok ()
           | _ -> Error "expected type application"
         )
@@ -600,8 +626,8 @@ let test_type_expression_views = fun _ctx ->
       in
       (
         match Ast.TypeExpr.view annotation with
-        | Ast.TypeExpr.Arrow { left = Some left; right = Some right } -> (
-            match (Ast.TypeExpr.view left, Ast.TypeExpr.view right) with
+        | Ast.TypeExpr.Arrow { arg = Some arg; ret = Some ret; _ } -> (
+            match (Ast.TypeExpr.view arg, Ast.TypeExpr.view ret) with
             | (Ast.TypeExpr.Var { name = Some left_name }, Ast.TypeExpr.Var { name = Some right_name }) ->
                 Test.assert_equal ~expected:"a" ~actual:(Ast.Token.text left_name);
                 Test.assert_equal ~expected:"a" ~actual:(Ast.Token.text right_name);
@@ -630,22 +656,21 @@ let test_type_tuple_separator_views = fun _ctx ->
         in
         (
           match Ast.TypeExpr.view manifest with
-          | Ast.TypeExpr.Apply { argument = Some argument; constructor = Some constructor } ->
-              assert_type_path_last_ident constructor "result";
+          | Ast.TypeExpr.Apply { ident = Some ident; args } ->
+              assert_last_ident_text ident "result";
+              Test.assert_equal ~expected:2 ~actual:(Vector.length args);
+              let arg = vector_first args ~msg:"expected first result argument" in
+              let ret = vector_second args ~msg:"expected second result argument" in
               (
-                match Ast.TypeExpr.view argument with
-                | Ast.TypeExpr.Tuple { separator = Ast.TypeExpr.Comma; left = Some left; right = Some right } -> (
-                    match (Ast.TypeExpr.view left, Ast.TypeExpr.view right) with
-                    | (
-                      Ast.TypeExpr.Var { name = Some left_name },
-                      Ast.TypeExpr.Var { name = Some right_name }
-                    ) ->
-                        Test.assert_equal ~expected:"a" ~actual:(Ast.Token.text left_name);
-                        Test.assert_equal ~expected:"e" ~actual:(Ast.Token.text right_name);
-                        Ok ()
-                    | _ -> Error "expected comma tuple type variables"
-                  )
-                | _ -> Error "expected comma tuple type argument"
+                match (Ast.TypeExpr.view arg, Ast.TypeExpr.view ret) with
+                | (
+                  Ast.TypeExpr.Var { name = Some left_name },
+                  Ast.TypeExpr.Var { name = Some right_name }
+                ) ->
+                    Test.assert_equal ~expected:"a" ~actual:(Ast.Token.text left_name);
+                    Test.assert_equal ~expected:"e" ~actual:(Ast.Token.text right_name);
+                    Ok ()
+                | _ -> Error "expected result type variables"
               )
           | _ -> Error "expected type constructor application"
         )
@@ -664,9 +689,12 @@ let test_type_tuple_separator_views = fun _ctx ->
       in
       (
         match Ast.TypeExpr.view manifest with
-        | Ast.TypeExpr.Tuple { separator = Ast.TypeExpr.Star; left = Some left; right = Some right } ->
-            assert_type_path_last_ident left "int";
-            assert_type_path_last_ident right "string";
+        | Ast.TypeExpr.Tuple { parts } ->
+            Test.assert_equal ~expected:2 ~actual:(Vector.length parts);
+            let arg = vector_first parts ~msg:"expected first tuple type" in
+            let ret = vector_second parts ~msg:"expected second tuple type" in
+            assert_type_path_last_ident arg "int";
+            assert_type_path_last_ident ret "string";
             Ok ()
         | _ -> Error "expected star tuple type"
       )
@@ -701,12 +729,8 @@ let test_poly_labeled_and_signed_views = fun _ctx ->
         Test.assert_equal ~expected:[ "socket"; "err" ] ~actual:(List.reverse !names);
         (
           match Ast.TypeExpr.view body with
-          | Ast.TypeExpr.Arrow { left = Some left; right = Some _ } -> (
-              match Ast.TypeExpr.view left with
-              | Ast.TypeExpr.Labeled { label = Some label; annotation = Some _; _ } ->
-                  Test.assert_equal ~expected:"reader" ~actual:(Ast.Token.text label)
-              | _ -> panic "expected labeled arrow argument type"
-            )
+          | Ast.TypeExpr.Arrow { label = Some { name = Some label; _ }; arg = Some _; ret = Some _ } ->
+              Test.assert_equal ~expected:"reader" ~actual:(Ast.Token.text label)
           | _ -> panic "expected poly type arrow body"
         )
     | _ -> panic "expected poly type annotation"
@@ -720,7 +744,7 @@ let test_poly_labeled_and_signed_views = fun _ctx ->
     |> Result.expect ~msg:"expected function body"
   in
   match Ast.Expr.view function_body with
-  | Ast.Expr.Function { first_case = Some first_case } -> (
+  | Ast.Expr.Fun { first_case = Some first_case; _ } -> (
       let case = Ast.MatchCase.view first_case in
       let pattern =
         case.Ast.MatchCase.pattern
@@ -773,27 +797,23 @@ let test_quoted_poly_let_annotation_views = fun _ctx ->
         Test.assert_equal ~expected:[ "field"; "builder"; "value" ] ~actual:(List.reverse !names);
         (
           match Ast.TypeExpr.view body with
-          | Ast.TypeExpr.Arrow { left = Some left; right = Some right } ->
+          | Ast.TypeExpr.Arrow { arg = Some arg; ret = Some ret; _ } ->
               (
-                match Ast.TypeExpr.view left with
-                | Ast.TypeExpr.Path { path } -> assert_last_ident_text path "state"
+                match Ast.TypeExpr.view arg with
+                | Ast.TypeExpr.Ident { path } -> assert_last_ident_text path "state"
                 | _ -> panic "expected state path type"
               );
               (
-                match Ast.TypeExpr.view right with
-                | Ast.TypeExpr.Arrow { left = Some labeled; right = Some _ } -> (
-                    match Ast.TypeExpr.view labeled with
-                    | Ast.TypeExpr.Labeled { label = Some label; annotation = Some labeled_annotation; _ } ->
-                        Test.assert_equal ~expected:"fields" ~actual:(Ast.Token.text label);
-                        (
-                          match Ast.TypeExpr.view labeled_annotation with
-                          | Ast.TypeExpr.Apply { constructor = Some constructor; _ } ->
-                              assert_type_path_last_ident constructor "t";
-                              Ok ()
-                          | _ -> Error "expected labeled fields apply type"
-                        )
-                    | _ -> Error "expected labeled fields type"
-                  )
+                match Ast.TypeExpr.view ret with
+                | Ast.TypeExpr.Arrow { label = Some { name = Some label; _ }; arg = Some labeled_annotation; ret = Some _ } ->
+                    Test.assert_equal ~expected:"fields" ~actual:(Ast.Token.text label);
+                    (
+                      match Ast.TypeExpr.view labeled_annotation with
+                      | Ast.TypeExpr.Apply { ident = Some ident; _ } ->
+                          assert_last_ident_text ident "t";
+                          Ok ()
+                      | _ -> Error "expected labeled fields apply type"
+                    )
                 | _ -> Error "expected arrow chain after state"
               )
           | _ -> Error "expected quoted poly type arrow body"
@@ -969,8 +989,8 @@ let test_type_declaration_body_group_views = fun _ctx ->
               | None -> "none"
               | Some payload -> (
                   match Ast.TypeExpr.view payload with
-                  | Ast.TypeExpr.Path _ -> "path"
-                  | Ast.TypeExpr.Tuple { separator = Ast.TypeExpr.Star; _ } -> "tuple"
+                  | Ast.TypeExpr.Ident _ -> "path"
+                  | Ast.TypeExpr.Tuple _ -> "tuple"
                   | _ -> "other"
                 )
             in
@@ -1023,7 +1043,7 @@ let test_type_declaration_body_group_views = fun _ctx ->
           in
           (
             match Ast.TypeExpr.view annotation with
-            | Ast.TypeExpr.Path { path } ->
+            | Ast.TypeExpr.Ident { path } ->
                 let last =
                   Ast.Path.last_ident path
                   |> require_some ~msg:"expected field type path"
@@ -1450,7 +1470,7 @@ let test_trailing_sequence_before_and_views = fun _ctx ->
         in
         (
           match Ast.Pattern.view pattern with
-          | Ast.Pattern.Path { path } -> assert_last_ident_text path expected_name
+          | Ast.Pattern.Ident { path } -> assert_last_ident_text path expected_name
           | _ -> panic "expected binding head path pattern"
         );
         let parameters = ref [] in
@@ -1720,7 +1740,7 @@ let test_binding_type_annotation_view = fun _ctx ->
     |> require_some ~msg:"expected binding type annotation"
   in
   match Ast.TypeExpr.view annotation with
-  | Ast.TypeExpr.Path { path } ->
+  | Ast.TypeExpr.Ident { path } ->
       assert_last_ident_text path "int";
       Ok ()
   | _ -> Error "expected binding path type annotation"
@@ -1741,11 +1761,28 @@ let test_function_binding_return_annotation_view = fun _ctx ->
     |> require_some ~msg:"expected function binding return annotation"
   in
   match Ast.TypeExpr.view annotation with
-  | Ast.TypeExpr.Apply { argument = Some argument; constructor = Some constructor } ->
+  | Ast.TypeExpr.Apply { ident = Some ident; args } ->
+      let argument = vector_first args ~msg:"expected function return type argument" in
       assert_type_path_last_ident argument "b";
-      assert_type_path_last_ident constructor "t";
+      assert_last_ident_text ident "t";
       Ok ()
   | _ -> Error "expected binding return apply type annotation"
+
+let test_parenthesized_parameter_annotation_is_not_return_annotation = fun _ctx ->
+  let root =
+    parse_ml {ocaml|let keep_pattern (x : int) = x
+|ocaml}
+    |> Result.expect ~msg:"expected parse source file"
+  in
+  let binding =
+    nth_structure_item root 0
+    |> require_some ~msg:"expected first structure item"
+    |> binding_of_structure_item
+    |> Result.expect ~msg:"expected let binding"
+  in
+  match Ast.LetBinding.type_annotation binding with
+  | None -> Ok ()
+  | Some _ -> Error "expected parameter annotation not to become binding return annotation"
 
 let last_path_text = fun path ->
   let token =
@@ -1779,11 +1816,11 @@ let test_record_views = fun _ctx ->
     record_view
     ~fn:(fun field ->
       let name =
-        field.Ast.RecordExpr.path
+        field.path
         |> require_some ~msg:"expected record field path"
         |> last_path_text
       in
-      record_fields := (name, Option.is_some field.Ast.RecordExpr.value) :: !record_fields);
+      record_fields := (name, Option.is_some field.value) :: !record_fields);
   Test.assert_equal ~expected:[ ("x", true); ("y", false); ] ~actual:(List.reverse !record_fields);
   let update_expr =
     nth_structure_item root 1
@@ -1801,7 +1838,8 @@ let test_record_views = fun _ctx ->
     match Ast.RecordExpr.base update_view with
     | Some base -> (
         match Ast.Expr.view base with
-        | Ast.Expr.Path { path } -> Test.assert_equal ~expected:"base" ~actual:(last_path_text path)
+        | Ast.Expr.Ident { path } ->
+            Test.assert_equal ~expected:"base" ~actual:(last_path_text path)
         | _ -> panic "expected record update base path"
       )
     | None -> panic "expected record update base"
@@ -1811,11 +1849,11 @@ let test_record_views = fun _ctx ->
     update_view
     ~fn:(fun field ->
       let name =
-        field.Ast.RecordExpr.path
+        field.path
         |> require_some ~msg:"expected update field path"
         |> last_path_text
       in
-      update_fields := (name, Option.is_some field.Ast.RecordExpr.value) :: !update_fields);
+      update_fields := (name, Option.is_some field.value) :: !update_fields);
   Test.assert_equal ~expected:[ ("x", true); ("y", false); ] ~actual:(List.reverse !update_fields);
   let scoped_expr =
     nth_structure_item root 2
@@ -1842,11 +1880,11 @@ let test_record_views = fun _ctx ->
           scoped_record
           ~fn:(fun field ->
             let name =
-              field.Ast.RecordExpr.path
+              field.path
               |> require_some ~msg:"expected scoped field path"
               |> last_path_text
             in
-            scoped_fields := (name, Option.is_some field.Ast.RecordExpr.value) :: !scoped_fields);
+            scoped_fields := (name, Option.is_some field.value) :: !scoped_fields);
         Test.assert_equal
           ~expected:[ ("name", true); ("version", true); ]
           ~actual:(List.reverse !scoped_fields)
@@ -1904,7 +1942,7 @@ let binding_pattern_text = fun binding ->
     |> Result.expect ~msg:"expected binding pattern"
   in
   match Ast.Pattern.view pattern with
-  | Ast.Pattern.Path { path } -> last_path_text path
+  | Ast.Pattern.Ident { path } -> last_path_text path
   | _ -> panic "expected path binding pattern"
 
 let binding_body_path_text = fun binding ->
@@ -1913,7 +1951,7 @@ let binding_body_path_text = fun binding ->
     |> Result.expect ~msg:"expected binding body"
   in
   match Ast.Expr.view body with
-  | Ast.Expr.Path { path } -> last_path_text path
+  | Ast.Expr.Ident { path } -> last_path_text path
   | _ -> panic "expected path binding body"
 
 let test_binding_operator_views = fun _ctx ->
@@ -2055,7 +2093,7 @@ let test_local_open_views = fun _ctx ->
         Test.assert_equal ~expected:"in" ~actual:(Ast.Token.text in_token);
         (
           match Ast.Expr.view body with
-          | Ast.Expr.Path { path } ->
+          | Ast.Expr.Ident { path } ->
               Test.assert_equal ~expected:"result" ~actual:(last_path_text path)
           | _ -> panic "expected local open body path"
         )
@@ -2085,7 +2123,7 @@ let test_local_open_views = fun _ctx ->
   Test.assert_equal ~expected:"." ~actual:(Ast.Token.text dot_token);
   let* () =
     match Ast.Pattern.view inner with
-    | Ast.Pattern.Path { path } ->
+    | Ast.Pattern.Ident { path } ->
         Test.assert_equal ~expected:"x" ~actual:(last_path_text path);
         Ok ()
     | _ -> Error "expected local open inner path pattern"
@@ -2146,14 +2184,14 @@ let test_local_open_argument_views = fun _ctx ->
   let (callee, arguments) = application_parts body [] in
   (
     match Ast.Expr.view callee with
-    | Ast.Expr.Path { path } -> assert_last_ident_text path "send"
+    | Ast.Expr.Ident { path } -> assert_last_ident_text path "send"
     | _ -> panic "expected send callee"
   );
   match arguments with
   | [ pid_arg; local_open_arg ] ->
       (
         match Ast.Expr.view pid_arg with
-        | Ast.Expr.Path { path } -> assert_last_ident_text path "pid"
+        | Ast.Expr.Ident { path } -> assert_last_ident_text path "pid"
         | _ -> panic "expected pid argument"
       );
       let local_open =
@@ -2206,15 +2244,14 @@ let test_local_open_labeled_argument_views = fun _ctx ->
   let (callee, arguments) = application_parts body [] in
   (
     match Ast.Expr.view callee with
-    | Ast.Expr.Path { path } -> assert_last_ident_text path "create"
+    | Ast.Expr.Ident { path } -> assert_last_ident_text path "create"
     | _ -> panic "expected create callee"
   );
   match arguments with
   | [ root_arg; ns_arg ] ->
       let* () =
-        match Ast.Expr.view root_arg with
-        | Ast.Expr.LabeledArg { label = Some label; value = Some value } ->
-            Test.assert_equal ~expected:"root" ~actual:(Ast.Token.text label);
+        match assert_labeled_argument root_arg "root" with
+        | Some value ->
             let local_open =
               Ast.LocalOpenExpr.cast value
               |> require_some ~msg:"expected local open root value"
@@ -2230,14 +2267,12 @@ let test_local_open_labeled_argument_views = fun _ctx ->
                   )
               | _ -> Error "expected complete labeled local open"
             )
-        | _ -> Error "expected labeled root argument"
+        | None -> Error "expected labeled root argument value"
       in
       (
-        match Ast.Expr.view ns_arg with
-        | Ast.Expr.LabeledArg { label = Some label; value = Some _ } ->
-            Test.assert_equal ~expected:"ns" ~actual:(Ast.Token.text label);
-            Ok ()
-        | _ -> Error "expected labeled ns argument"
+        match assert_labeled_argument ns_arg "ns" with
+        | Some _ -> Ok ()
+        | None -> Error "expected labeled ns argument value"
       )
   | _ -> Error "expected labeled application arguments"
 
@@ -2361,7 +2396,7 @@ let test_let_module_expression_views = fun _ctx ->
     match Ast.LetModuleExpr.body module_expr with
     | Some body -> (
         match Ast.Expr.view body with
-        | Ast.Expr.Path { path } ->
+        | Ast.Expr.Ident { path } ->
             Test.assert_equal ~expected:"result" ~actual:(last_path_text path)
         | _ -> panic "expected let module body path"
       )
@@ -2448,7 +2483,7 @@ let test_let_exception_expression_views = fun _ctx ->
     match Ast.LetExceptionExpr.body exception_expr with
     | Some body -> (
         match Ast.Expr.view body with
-        | Ast.Expr.Path { path } ->
+        | Ast.Expr.Ident { path } ->
             Test.assert_equal ~expected:"result" ~actual:(last_path_text path)
         | _ -> panic "expected let exception body path"
       )
@@ -2493,9 +2528,9 @@ let test_unreachable_expression_views = fun _ctx ->
       let view = Ast.MatchCase.view match_case in
       match view.body with
       | Some body -> (
-          match Ast.Expr.view body with
-          | Ast.Expr.Unreachable -> unreachable := Some body
-          | _ -> ()
+          match Ast.UnreachableExpr.cast body with
+          | Some _ -> unreachable := Some body
+          | None -> ()
         )
       | None -> ());
   let unreachable =
@@ -2541,12 +2576,8 @@ let test_attribute_views = fun _ctx ->
   in
   (
     match Ast.Expr.view attribute_expr with
-    | Ast.Expr.Attribute { inner = Some inner } -> (
-        match Ast.Expr.view inner with
-        | Ast.Expr.Path { path } -> assert_last_ident_text path "target"
-        | _ -> panic "expected attributed expression inner path"
-      )
-    | _ -> panic "expected attribute expression"
+    | Ast.Expr.Ident { path } -> assert_last_ident_text path "target"
+    | _ -> panic "expected attributed expression to unwrap to its inner path"
   );
   let attribute_expr =
     Ast.AttributeExpr.cast attribute_expr
@@ -2565,9 +2596,8 @@ let test_attribute_views = fun _ctx ->
     |> Result.expect ~msg:"expected attribute pattern"
   in
   let attribute_pattern =
-    match Ast.Pattern.view attribute_pattern with
-    | Ast.Pattern.Parenthesized { inner = Some inner } -> inner
-    | _ -> panic "expected parenthesized attribute pattern"
+    Ast.Node.first_child_node attribute_pattern ~kind:SyntaxKind.ATTRIBUTE_PATTERN
+    |> require_some ~msg:"expected parenthesized attribute pattern"
   in
   let attribute_pattern =
     Ast.AttributePattern.cast attribute_pattern
@@ -2577,7 +2607,7 @@ let test_attribute_views = fun _ctx ->
     match Ast.AttributePattern.inner attribute_pattern with
     | Some inner -> (
         match Ast.Pattern.view inner with
-        | Ast.Pattern.Path { path } -> assert_last_ident_text path "x"
+        | Ast.Pattern.Ident { path } -> assert_last_ident_text path "x"
         | _ -> panic "expected attributed pattern inner path"
       )
     | None -> panic "expected attribute pattern inner"
@@ -2609,8 +2639,8 @@ let test_extension_views = fun _ctx ->
   in
   (
     match Ast.Expr.view extension_expr with
-    | Ast.Expr.Extension -> ()
-    | _ -> panic "expected extension expression"
+    | Ast.Expr.Unknown _ -> ()
+    | _ -> panic "expected extension expression to lower as unknown"
   );
   let extension_expr =
     Ast.ExtensionExpr.cast extension_expr
@@ -2630,8 +2660,8 @@ let test_extension_views = fun _ctx ->
   in
   (
     match Ast.Pattern.view extension_pattern with
-    | Ast.Pattern.Extension -> ()
-    | _ -> panic "expected extension pattern"
+    | Ast.Pattern.Unknown _ -> ()
+    | _ -> panic "expected extension pattern to lower as unknown"
   );
   let extension_pattern =
     Ast.ExtensionPattern.cast extension_pattern
@@ -2692,11 +2722,6 @@ let test_special_pattern_views = fun _ctx ->
     ~fn:(fun pattern -> parameters := pattern :: !parameters);
   match List.reverse !parameters with
   | [ locally_abstract; first_class_module ] ->
-      (
-        match Ast.Pattern.view locally_abstract with
-        | Ast.Pattern.LocallyAbstractType -> ()
-        | _ -> panic "expected locally abstract type pattern"
-      );
       let locally_abstract =
         Ast.LocallyAbstractTypePattern.cast locally_abstract
         |> require_some ~msg:"expected locally abstract type pattern view"
@@ -2783,8 +2808,8 @@ let test_typed_labeled_parameter_view = fun _ctx ->
     ~fn:(fun pattern -> parameters := pattern :: !parameters);
   match List.reverse !parameters with
   | [ _locally_abstract; _iter; labeled ] -> (
-      match Ast.Pattern.view labeled with
-      | Ast.Pattern.LabeledParam parameter -> (
+      match Ast.Parameter.cast labeled with
+      | Some parameter -> (
           match Ast.Parameter.view parameter with
           | Ast.Parameter.Labeled { label = Some label; pattern = Some pattern } ->
               Test.assert_equal ~expected:"fn" ~actual:(Ast.Token.text label);
@@ -2793,12 +2818,12 @@ let test_typed_labeled_parameter_view = fun _ctx ->
                 | Ast.Pattern.Constraint { pattern = Some binding; annotation = Some annotation } ->
                     (
                       match Ast.Pattern.view binding with
-                      | Ast.Pattern.Path { path } -> assert_last_ident_text path "fn"
+                      | Ast.Pattern.Ident { path } -> assert_last_ident_text path "fn"
                       | _ -> panic "expected labeled parameter binding path"
                     );
                     (
                       match Ast.TypeExpr.view annotation with
-                      | Ast.TypeExpr.Arrow { left = Some _; right = Some _ } -> Ok ()
+                      | Ast.TypeExpr.Arrow { arg = Some _; ret = Some _ } -> Ok ()
                       | _ -> Error "expected labeled parameter arrow annotation"
                     )
                 | _ -> Error "expected typed labeled parameter pattern"
@@ -2827,27 +2852,27 @@ let test_optional_default_labeled_parameter_view = fun _ctx ->
     ~fn:(fun pattern -> parameters := pattern :: !parameters);
   match List.reverse !parameters with
   | [ optional; _types ] -> (
-      match Ast.Pattern.view optional with
-      | Ast.Pattern.OptionalParamDefault parameter -> (
+      match Ast.Parameter.cast optional with
+      | Some parameter -> (
           match Ast.Parameter.view parameter with
           | Ast.Parameter.OptionalDefault { label = Some label; pattern = Some pattern; default = Some default } ->
               Test.assert_equal ~expected:"config" ~actual:(Ast.Token.text label);
               (
                 match Ast.Pattern.view pattern with
-                | Ast.Pattern.Path { path } ->
+                | Ast.Pattern.Ident { path } ->
                     Test.assert_equal ~expected:"cfg" ~actual:(last_path_text path)
                 | _ -> panic "expected optional default binding path"
               );
               (
                 match Ast.Expr.view default with
-                | Ast.Expr.Path { path } ->
+                | Ast.Expr.Ident { path } ->
                     Test.assert_equal ~expected:"default_config" ~actual:(last_path_text path);
                     Ok ()
                 | _ -> Error "expected optional default expression path"
               )
           | _ -> Error "expected optional default parameter view"
         )
-      | _ -> Error "expected optional default parameter pattern"
+      | None -> Error "expected optional default parameter pattern"
     )
   | _ -> Error "expected optional and positional parameters"
 
@@ -3090,6 +3115,9 @@ let tests = [
   Test.case
     "ast exposes function binding return annotation views"
     test_function_binding_return_annotation_view;
+  Test.case
+    "ast keeps parenthesized parameter annotations out of return annotations"
+    test_parenthesized_parameter_annotation_is_not_return_annotation;
   Test.case "ast exposes record expression and pattern views" test_record_views;
   Test.case
     "ast keeps record field special-form bodies within the field boundary"

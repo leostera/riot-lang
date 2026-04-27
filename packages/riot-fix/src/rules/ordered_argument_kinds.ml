@@ -40,12 +40,10 @@ let kind_name = fun kind ->
   | Positional -> "positional"
 
 let parameter_kind = fun parameter ->
-  match Ast.Pattern.view parameter with
-  | Ast.Pattern.LabeledParam _ -> Some Labeled
-  | Ast.Pattern.OptionalParam _
-  | Ast.Pattern.OptionalParamDefault _ -> Some Optional
-  | Ast.Pattern.LocallyAbstractType -> None
-  | _ -> Some Positional
+  match H.parameter_kind parameter with
+  | Some H.LabeledParameter -> Some Labeled
+  | Some H.OptionalParameter -> Some Optional
+  | None -> Some Positional
 
 let make_diagnostic = fun parameter kind ->
   H.diagnostic

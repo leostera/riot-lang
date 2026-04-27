@@ -34,19 +34,25 @@ let make_diagnostic = fun expr depth ->
     ()
 
 let rec parenthesis_chain_depth = fun expr ->
-  match Ast.Expr.view expr with
-  | Ast.Expr.Parenthesized { inner = Some inner } -> 1 + parenthesis_chain_depth inner
-  | _ -> 0
+  if Syn.SyntaxKind.(Ast.Node.kind expr = PAREN_EXPR) then
+    match H.first_child_expr expr with
+    | Some inner -> 1 + parenthesis_chain_depth inner
+    | None -> 0
+  else
+    0
 
 let rec diagnostics_for_expression = fun diagnostics expr ->
-  match Ast.Expr.view expr with
-  | Ast.Expr.Parenthesized { inner = Some inner } ->
-      let depth = parenthesis_chain_depth expr in
-      let inner_depth = parenthesis_chain_depth inner in
-      if depth >= max_parenthesis_depth && inner_depth < max_parenthesis_depth then
-        H.push_diagnostic diagnostics (make_diagnostic expr depth);
-      diagnostics_for_expression diagnostics inner
-  | _ -> Ast.Expr.for_each_child_expr expr ~fn:(diagnostics_for_expression diagnostics)
+  if Syn.SyntaxKind.(Ast.Node.kind expr = PAREN_EXPR) then
+    match H.first_child_expr expr with
+    | Some inner ->
+        let depth = parenthesis_chain_depth expr in
+        let inner_depth = parenthesis_chain_depth inner in
+        if depth >= max_parenthesis_depth && inner_depth < max_parenthesis_depth then
+          H.push_diagnostic diagnostics (make_diagnostic expr depth);
+        diagnostics_for_expression diagnostics inner
+    | None -> ()
+  else
+    Ast.Expr.for_each_child_expr expr ~fn:(diagnostics_for_expression diagnostics)
 
 let check_tree = fun _ctx root ->
   let diagnostics = H.diagnostics_for_root root in

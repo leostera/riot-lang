@@ -46,11 +46,10 @@ type parameter_group =
   | Optional
 
 let classify_parameter = fun parameter ->
-  match Ast.Pattern.view parameter with
-  | Ast.Pattern.LabeledParam _ -> Some Labeled
-  | Ast.Pattern.OptionalParam _
-  | Ast.Pattern.OptionalParamDefault _ -> Some Optional
-  | _ -> None
+  match H.parameter_kind parameter with
+  | Some H.LabeledParameter -> Some Labeled
+  | Some H.OptionalParameter -> Some Optional
+  | None -> None
 
 let first_out_of_order = fun parameters ->
   let previous_name = ref None in

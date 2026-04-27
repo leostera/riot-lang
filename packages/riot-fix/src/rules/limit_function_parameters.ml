@@ -28,12 +28,9 @@ understand.
 type parameter_counts = { positional_count: int; named_count: int }
 
 let count_parameter = fun counts parameter ->
-  match Ast.Pattern.view parameter with
-  | Ast.Pattern.LabeledParam _
-  | Ast.Pattern.OptionalParam _
-  | Ast.Pattern.OptionalParamDefault _ -> { counts with named_count = counts.named_count + 1 }
-  | Ast.Pattern.LocallyAbstractType -> counts
-  | _ -> { counts with positional_count = counts.positional_count + 1 }
+  match H.parameter_kind parameter with
+  | Some _ -> { counts with named_count = counts.named_count + 1 }
+  | None -> { counts with positional_count = counts.positional_count + 1 }
 
 let parameter_counts = fun binding ->
   let counts = ref { positional_count = 0; named_count = 0 } in

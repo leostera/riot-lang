@@ -29,9 +29,8 @@ let expr_is_string_literal = fun expr ->
   | _ -> false
 
 let rec string_literal_chain_size = fun expr ->
-  match Ast.Expr.view expr with
+  match Ast.Expr.view (H.unwrap_expr expr) with
   | Ast.Expr.Literal _ when expr_is_string_literal expr -> Some 1
-  | Ast.Expr.Parenthesized { inner = Some inner } -> string_literal_chain_size inner
   | Ast.Expr.Infix { left = Some left; operator = Some operator; right = Some right } when String.equal
     (Ast.Token.text operator)
     "^" -> (

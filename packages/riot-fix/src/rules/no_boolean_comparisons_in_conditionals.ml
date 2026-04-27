@@ -16,11 +16,7 @@ Prefer `if is_ready then render ()` over `if is_ready = true then render ()`, an
 prefer `if not is_ready then render ()` over `if is_ready = false then render ()`.
 |}
 
-let rec unwrap_expr = fun expr ->
-  match Ast.Expr.view expr with
-  | Ast.Expr.Parenthesized { inner = Some inner }
-  | Ast.Expr.Attribute { inner = Some inner } -> unwrap_expr inner
-  | _ -> expr
+let rec unwrap_expr = fun expr -> H.unwrap_expr expr
 
 let bool_literal = fun expr ->
   match Ast.Expr.view (unwrap_expr expr) with
@@ -30,7 +26,7 @@ let bool_literal = fun expr ->
       | "false" -> Some false
       | _ -> None
     )
-  | Ast.Expr.Path { path } -> (
+  | Ast.Expr.Ident { path } -> (
       match Ast.Path.text path with
       | "true" -> Some true
       | "false" -> Some false

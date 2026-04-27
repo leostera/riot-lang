@@ -17,15 +17,11 @@ Prefer the protected expression directly unless the handler adds context, cleanu
 or recovery behavior.
 |}
 
-let rec unwrap_expr = fun expr ->
-  match Ast.Expr.view expr with
-  | Ast.Expr.Parenthesized { inner = Some inner }
-  | Ast.Expr.Attribute { inner = Some inner } -> unwrap_expr inner
-  | _ -> expr
+let rec unwrap_expr = fun expr -> H.unwrap_expr expr
 
 let expr_path_name = fun expr ->
   match Ast.Expr.view (unwrap_expr expr) with
-  | Ast.Expr.Path { path } -> (
+  | Ast.Expr.Ident { path } -> (
       match Ast.Path.last_ident path with
       | Some token -> Some (Ast.Token.text token)
       | None -> None

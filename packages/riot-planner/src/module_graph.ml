@@ -206,54 +206,49 @@ let binary_for_path = fun config path ->
 
 let rec executable_parameter_to_string = fun parameter ->
   let module Ast = Syn.Ast in
-  match Ast.Pattern.view parameter with
-  | Ast.Pattern.Path { path } ->
-      Ast.Path.last_ident path
-      |> Option.map ~fn:Ast.Token.text
-      |> Option.unwrap_or ~default:(String.trim (Ast.Node.text parameter))
-  | Ast.Pattern.LabeledParam param -> (
+  match Ast.Parameter.cast parameter with
+  | Some param -> (
       match Ast.Parameter.view param with
       | Ast.Parameter.Labeled { label = Some label; _ } -> "~" ^ Ast.Token.text label
-      | _ -> "~<unknown>"
-    )
-  | Ast.Pattern.OptionalParam param
-  | Ast.Pattern.OptionalParamDefault param -> (
-      match Ast.Parameter.view param with
       | Ast.Parameter.Optional { label = Some label; _ }
       | Ast.Parameter.OptionalDefault { label = Some label; _ } -> "?" ^ Ast.Token.text label
-      | _ -> "?<unknown>"
+      | _ -> "<unknown>"
     )
-  | Ast.Pattern.LocallyAbstractType -> "(type ...)"
-  | Ast.Pattern.Parenthesized { inner = None } -> "<positional>"
-  | Ast.Pattern.Parenthesized { inner = Some inner } -> executable_parameter_to_string inner
-  | Ast.Pattern.Constraint { pattern = Some pattern; _ }
-  | Ast.Pattern.Alias { pattern = Some pattern; _ } -> executable_parameter_to_string pattern
-  | _ ->
-      let text = String.trim (Ast.Node.text parameter) in
-      if String.is_empty text then
-        "<positional>"
-      else
-        text
+  | None -> (
+      match Ast.Pattern.view parameter with
+      | Ast.Pattern.Ident { path } ->
+          Ast.Path.last_ident path
+          |> Option.map ~fn:Ast.Token.text
+          |> Option.unwrap_or ~default:(String.trim (Ast.Node.text parameter))
+      | Ast.Pattern.Constraint { pattern = Some pattern; _ }
+      | Ast.Pattern.Alias { pattern = Some pattern; _ } -> executable_parameter_to_string pattern
+      | _ ->
+          let text = String.trim (Ast.Node.text parameter) in
+          if String.is_empty text then
+            "<positional>"
+          else
+            text
+    )
 
 let rec is_labeled_args_parameter = fun parameter ->
   let module Ast = Syn.Ast in
-  match Ast.Pattern.view parameter with
-  | Ast.Pattern.LabeledParam param -> (
+  match Ast.Parameter.cast parameter with
+  | Some param -> (
       match Ast.Parameter.view param with
       | Ast.Parameter.Labeled { label = Some label; _ } ->
           String.equal (Ast.Token.text label) "args"
       | _ -> false
     )
-  | Ast.Pattern.Parenthesized { inner = Some inner } -> is_labeled_args_parameter inner
-  | _ -> false
+  | None -> false
 
 let rec pattern_binding_name = fun pattern ->
   let module Ast = Syn.Ast in
   match Ast.Pattern.view pattern with
-  | Ast.Pattern.Path { path } ->
+  | Ast.Pattern.Ident { path } ->
       Ast.Path.last_ident path
       |> Option.map ~fn:Ast.Token.text
-  | Ast.Pattern.Parenthesized { inner = Some inner } -> pattern_binding_name inner
+  | Ast.Pattern.Constraint { pattern = Some inner; _ }
+  | Ast.Pattern.Alias { pattern = Some inner; _ } -> pattern_binding_name inner
   | _ -> None
 
 let let_binding_name = fun binding ->

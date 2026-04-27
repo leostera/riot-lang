@@ -65,11 +65,10 @@ let path_segments = fun ctx path ->
   |> String.split ~by:"."
 
 let rec unwrap_record_pattern = fun pattern ->
+  let pattern = H.unwrap_pattern pattern in
   match Ast.Pattern.view pattern with
   | Ast.Pattern.Record -> Ast.RecordPattern.cast pattern
   | Ast.Pattern.Constraint { pattern = Some pattern; _ }
-  | Ast.Pattern.Parenthesized { inner = Some pattern }
-  | Ast.Pattern.Attribute { inner = Some pattern }
   | Ast.Pattern.Alias { pattern = Some pattern; _ } -> unwrap_record_pattern pattern
   | _ -> None
 
@@ -79,15 +78,13 @@ let record_pattern_field_count = fun record ->
   !count
 
 let rec expr_is_parameter_path = fun ctx expected_name expr ->
-  match Ast.Expr.view expr with
-  | Ast.Expr.Path { path } -> (
+  match Ast.Expr.view (H.unwrap_expr expr) with
+  | Ast.Expr.Ident { path } -> (
       match path_segments ctx path with
       | [ name ] -> String.equal expected_name name
       | _ -> false
     )
-  | Ast.Expr.Parenthesized { inner = Some inner }
-  | Ast.Expr.Typed { expr = Some inner; _ }
-  | Ast.Expr.Attribute { inner = Some inner } -> expr_is_parameter_path ctx expected_name inner
+  | Ast.Expr.Annotated { expr = Some inner; _ } -> expr_is_parameter_path ctx expected_name inner
   | _ -> false
 
 let is_immediate_record_destructure = fun ctx expected_name expr ->
@@ -130,7 +127,7 @@ let should_prefer_destructuring = fun ctx expected_name expr ->
         Some (fun visitor expr ->
           (
             match Ast.Expr.view expr with
-            | Ast.Expr.Path { path } -> (
+            | Ast.Expr.Ident { path } -> (
                 match path_segments ctx path with
                 | [ name ] when String.equal expected_name name -> usage.has_whole_value_use <- true
                 | [ base; field ] when String.equal expected_name base ->

@@ -106,7 +106,7 @@ let record_expr_repeats_qualifier = fun ctx record ->
   Ast.RecordExpr.for_each_field
     record
     ~fn:(fun field ->
-      match field.Ast.RecordExpr.path
+      match field.path
       |> Option.and_then ~fn:(module_qualifier_of_path ctx) with
       | Some qualifier -> Vector.push qualifiers ~value:qualifier
       | None -> ());
@@ -126,9 +126,9 @@ let record_expr_repeats_qualifier = fun ctx record ->
 
 let body_is_bracket_expr = fun body ->
   match Ast.Expr.view body with
-  | Ast.Expr.List
-  | Ast.Expr.Array
-  | Ast.Expr.Record -> true
+  | Ast.Expr.List _
+  | Ast.Expr.Array _
+  | Ast.Expr.Record _ -> true
   | _ -> false
 
 let check_local_open = fun diagnostics visitor expr ->
@@ -143,8 +143,8 @@ let check_expr = fun ctx diagnostics visitor expr ->
     match Ast.Expr.view expr with
     | Ast.Expr.FieldAccess { target = Some target; field = Some field } ->
         check_field_access ctx diagnostics expr target field
-    | Ast.Expr.Path { path } -> check_path_access ctx diagnostics expr path
-    | Ast.Expr.Record ->
+    | Ast.Expr.Ident { path } -> check_path_access ctx diagnostics expr path
+    | Ast.Expr.Record _ ->
         Option.for_each
           (Ast.RecordExpr.cast expr)
           ~fn:(fun record ->

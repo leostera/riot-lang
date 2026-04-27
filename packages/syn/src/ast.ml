@@ -144,7 +144,7 @@ let is_expr_kind = function
 let is_pattern_kind = function
   | Syntax_kind.WILDCARD_PATTERN
   | Syntax_kind.PATH_PATTERN
-  | Syntax_kind.APPLY_PATTERN
+  | Syntax_kind.CONSTRUCT_PATTERN
   | Syntax_kind.LITERAL_PATTERN
   | Syntax_kind.PAREN_PATTERN
   | Syntax_kind.TUPLE_PATTERN
@@ -817,6 +817,7 @@ module TypeExpr = struct
   }
 
   type view =
+    | Unit
     | Ident of { path: path }
     | Var of {
         name: Token.t option;
@@ -2520,7 +2521,7 @@ end = struct
           Construct { constructor = Some pattern; payload = None }
         else
           Ident { path = pattern }
-    | Syntax_kind.APPLY_PATTERN -> (
+    | Syntax_kind.CONSTRUCT_PATTERN -> (
         let callee = nth_pattern_child pattern 0 in
         let payload = nth_pattern_child pattern 1 in
         match callee with
@@ -3074,16 +3075,26 @@ end = struct
   let view = fun (binding: let_binding) -> { pattern = pattern binding; body = body binding }
 
   let rec for_each_parameter_pattern = fun pattern ~fn ->
-    if node_kind_is pattern Syntax_kind.APPLY_PATTERN then
-      match (nth_pattern_child pattern 0, nth_pattern_child pattern 1) with
-      | (Some callee, Some argument) ->
-          for_each_parameter_pattern callee ~fn;
-          for_each_parameter_pattern argument ~fn
-      | _ -> fn pattern
-    else
-      match Pattern.view pattern with
-      | Constraint { pattern = Some pattern; _ } -> for_each_parameter_pattern pattern ~fn
-      | _ -> fn pattern
+    match Node.kind pattern with
+    | Syntax_kind.CONSTRUCT_PATTERN ->
+        let left = nth_pattern_child pattern 0 in
+        let right = nth_pattern_child pattern 1 in
+        (
+          match left with
+          | Some left -> for_each_parameter_pattern left ~fn
+          | None -> ()
+        );
+        (
+          match right with
+          | Some right -> for_each_parameter_pattern right ~fn
+          | None -> ()
+        )
+    | Syntax_kind.CONSTRAINT_PATTERN -> (
+        match first_pattern_child pattern with
+        | Some pattern -> for_each_parameter_pattern pattern ~fn
+        | None -> fn pattern
+      )
+    | _ -> fn pattern
 
   let for_each_parameter = fun (binding: let_binding) ~fn ->
     let seen_first = ref false in
@@ -3107,8 +3118,12 @@ end = struct
         | Some _ -> ()
         | None ->
             if !seen_binding_pattern then
-              match Pattern.view pattern with
-              | Constraint { annotation = Some annotation; _ } -> found := Some annotation
+              match Node.kind pattern with
+              | Syntax_kind.CONSTRAINT_PATTERN -> (
+                  match Pattern.view pattern with
+                  | Constraint { annotation = Some annotation; _ } -> found := Some annotation
+                  | _ -> ()
+                )
               | _ -> ()
             else
               seen_binding_pattern := true);

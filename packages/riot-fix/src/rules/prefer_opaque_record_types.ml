@@ -33,21 +33,18 @@ let is_interface_file = fun ctx ->
   | Some ".mli" -> true
   | _ -> false
 
-let rec unwrap_type = fun type_expr ->
-  match Ast.TypeExpr.view type_expr with
-  | Ast.TypeExpr.Parenthesized { inner = Some inner } -> unwrap_type inner
-  | _ -> type_expr
+let rec unwrap_type = fun type_expr -> H.unwrap_type_expr type_expr
 
 let type_path_last_ident_text = fun type_expr ->
   match Ast.TypeExpr.view (unwrap_type type_expr) with
-  | Ast.TypeExpr.Path { path } ->
+  | Ast.TypeExpr.Ident { path } ->
       Ast.Path.last_ident path
       |> Option.map ~fn:Ast.Token.text
   | _ -> None
 
 let first_arrow_argument_type = fun type_expr ->
   match Ast.TypeExpr.view (unwrap_type type_expr) with
-  | Ast.TypeExpr.Arrow { left = Some left; _ } -> Some left
+  | Ast.TypeExpr.Arrow { arg = Some arg; _ } -> Some arg
   | _ -> None
 
 let value_declaration_targets_record = fun value_declaration record ->

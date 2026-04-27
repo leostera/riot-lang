@@ -36,10 +36,10 @@ let make_diagnostic = fun expr inner ->
     ()
 
 let check_expression = fun diagnostics expr ->
-  match Ast.Expr.view expr with
-  | Ast.Expr.Parenthesized { inner = Some inner } when opens_with_begin expr ->
-      H.push_diagnostic diagnostics (make_diagnostic expr inner)
-  | _ -> ()
+  if Syn.SyntaxKind.(Ast.Node.kind expr = PAREN_EXPR) && opens_with_begin expr then
+    match H.first_child_expr expr with
+    | Some inner -> H.push_diagnostic diagnostics (make_diagnostic expr inner)
+    | None -> ()
 
 let check_tree = fun _ctx root ->
   let diagnostics = H.diagnostics_for_root root in

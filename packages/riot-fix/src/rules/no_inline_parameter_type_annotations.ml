@@ -24,14 +24,13 @@ obvious place where its signature lives.
 |}
 
 let rec pattern_has_inline_type = fun pattern ->
-  match Ast.Pattern.view pattern with
-  | Ast.Pattern.Constraint _ -> true
-  | Ast.Pattern.Parenthesized { inner = Some inner }
-  | Ast.Pattern.Attribute { inner = Some inner } -> pattern_has_inline_type inner
-  | Ast.Pattern.LabeledParam parameter
-  | Ast.Pattern.OptionalParam parameter
-  | Ast.Pattern.OptionalParamDefault parameter -> parameter_has_inline_type parameter
-  | _ -> false
+  match Ast.Parameter.cast pattern with
+  | Some parameter -> parameter_has_inline_type parameter
+  | None -> (
+      match Ast.Pattern.view (H.unwrap_pattern pattern) with
+      | Ast.Pattern.Constraint _ -> true
+      | _ -> false
+    )
 
 and parameter_has_inline_type = fun parameter ->
   match Ast.Parameter.view parameter with

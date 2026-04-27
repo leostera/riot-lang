@@ -17,10 +17,7 @@ Prefer a record when a tuple grows large or repeats the same slot shape. Field
 names make construction, pattern matching, and later changes easier to review.
 |}
 
-let rec unwrap_type = fun type_expr ->
-  match Ast.TypeExpr.view type_expr with
-  | Ast.TypeExpr.Parenthesized { inner = Some inner } -> unwrap_type inner
-  | _ -> type_expr
+let rec unwrap_type = fun type_expr -> H.unwrap_type_expr type_expr
 
 let diagnostic_for_type = fun type_expr -> H.diagnostic
   ~rule_id
@@ -32,9 +29,8 @@ let diagnostic_for_type = fun type_expr -> H.diagnostic
 let rec collect_tuple_parts = fun ctx parts type_expr ->
   let type_expr = unwrap_type type_expr in
   match Ast.TypeExpr.view type_expr with
-  | Ast.TypeExpr.Tuple { left = Some left; right = Some right; separator = Ast.TypeExpr.Star } ->
-      collect_tuple_parts ctx parts left;
-      collect_tuple_parts ctx parts right
+  | Ast.TypeExpr.Tuple { parts = type_parts } ->
+      Vector.for_each type_parts ~fn:(collect_tuple_parts ctx parts)
   | _ ->
       Vector.push
         parts
@@ -70,7 +66,7 @@ let tuple_should_be_record = fun ctx type_expr ->
 
 let rec check_type_expr = fun ctx diagnostics type_expr ->
   match Ast.TypeExpr.view (unwrap_type type_expr) with
-  | Ast.TypeExpr.Tuple { separator = Ast.TypeExpr.Star; _ } ->
+  | Ast.TypeExpr.Tuple _ ->
       if tuple_should_be_record ctx type_expr then
         H.push_diagnostic diagnostics (diagnostic_for_type type_expr)
       else

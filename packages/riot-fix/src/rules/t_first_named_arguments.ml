@@ -29,12 +29,7 @@ let make_diagnostic = fun parameter ->
     ~suggestion:"Move t to the front of the positional arguments so the function reads as named configuration followed by the receiver"
     ()
 
-let is_named_parameter = fun parameter ->
-  match Ast.Pattern.view parameter with
-  | Ast.Pattern.LabeledParam _
-  | Ast.Pattern.OptionalParam _
-  | Ast.Pattern.OptionalParamDefault _ -> true
-  | _ -> false
+let is_named_parameter = fun parameter -> Option.is_some (H.parameter_kind parameter)
 
 let is_positional_parameter = fun parameter -> not (is_named_parameter parameter)
 

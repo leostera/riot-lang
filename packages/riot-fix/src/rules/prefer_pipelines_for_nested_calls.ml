@@ -29,15 +29,11 @@ type call_chain = {
   functions: string Vector.t;
 }
 
-let rec unwrap_expr = fun expr ->
-  match Ast.Expr.view expr with
-  | Ast.Expr.Parenthesized { inner = Some inner } -> unwrap_expr inner
-  | Ast.Expr.Attribute { inner = Some inner } -> unwrap_expr inner
-  | _ -> expr
+let rec unwrap_expr = fun expr -> H.unwrap_expr expr
 
 let callee_text = fun ctx callee ->
   match Ast.Expr.view (unwrap_expr callee) with
-  | Ast.Expr.Path _
+  | Ast.Expr.Ident _
   | Ast.Expr.FieldAccess _ ->
       Some (
         H.node_source ctx (callee: Ast.Node.t)

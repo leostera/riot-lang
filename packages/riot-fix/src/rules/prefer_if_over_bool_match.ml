@@ -39,14 +39,12 @@ let rec pattern_kind = fun pattern ->
       | "false" -> Bool false
       | _ -> Unsupported
     )
-  | Ast.Pattern.Path { path } -> (
+  | Ast.Pattern.Ident { path } -> (
       match Ast.Path.text path with
       | "true" -> Bool true
       | "false" -> Bool false
       | _ -> Unsupported
     )
-  | Ast.Pattern.Parenthesized { inner = Some inner }
-  | Ast.Pattern.Attribute { inner = Some inner } -> pattern_kind inner
   | _ -> Unsupported
 
 let case_of_match_case = fun match_case ->

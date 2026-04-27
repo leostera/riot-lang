@@ -2374,7 +2374,7 @@ and parse_pattern_apply = fun p ~stop_type_at_arrow ->
       (
         let marker = precede p lhs in
         ignore (parse_pattern_atom p ~stop_type_at_arrow);
-        loop (complete p marker Syntax_kind.APPLY_PATTERN)
+        loop (complete p marker Syntax_kind.CONSTRUCT_PATTERN)
       )
     else
       lhs

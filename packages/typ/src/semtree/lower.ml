@@ -192,64 +192,49 @@ let collect_type_tuple = fun lower_type_expr state type_expr ->
   let items = Vector.with_capacity ~size:2 in
   let rec collect type_expr =
     match Ast.TypeExpr.view type_expr with
-    | Ast.TypeExpr.Tuple { left = Some left; right = Some right; _ } ->
-        collect left;
-        collect right
-    | Ast.TypeExpr.Parenthesized { inner = Some inner } -> collect inner
+    | Ast.TypeExpr.Tuple { parts } -> Vector.for_each parts ~fn:collect
     | _ -> Vector.push items ~value:(lower_type_expr state type_expr)
   in
   collect type_expr;
   vector_to_list items
 
-let lower_arrow_label = fun type_expr ->
-  match Ast.TypeExpr.view type_expr with
-  | Ast.TypeExpr.Labeled { optional_token; label = Some label; annotation = Some annotation } -> (
-    Some {
-      Semantic_tree.name = Ast.Token.text label;
-      optional_ = Option.is_some optional_token;
-    },
-    annotation
-  )
-  | _ -> (None, type_expr)
-
 let rec lower_type_expr = fun state type_expr ->
   match Ast.TypeExpr.view type_expr with
+  | Ast.TypeExpr.Unit -> Semantic_tree.TypeConstr { path = [ "unit" ]; arguments = [] }
   | Ast.TypeExpr.Wildcard -> Semantic_tree.AnyType
   | Ast.TypeExpr.Var { name = Some name } -> Semantic_tree.TypeVar (Ast.Token.text name)
   | Ast.TypeExpr.Var { name = None } ->
       push_unsupported_type state type_expr "type variable";
       Semantic_tree.TypeUnsupported "type variable"
-  | Ast.TypeExpr.Path { path } ->
+  | Ast.TypeExpr.Ident { path } ->
       Semantic_tree.TypeConstr { path = path_of_path path; arguments = [] }
-  | Ast.TypeExpr.Apply { argument = Some argument; constructor = Some constructor } -> (
-      match lower_type_expr state constructor with
-      | Semantic_tree.TypeConstr constr ->
-          let arguments =
-            match Ast.TypeExpr.view argument with
-            | Ast.TypeExpr.Tuple { separator = Ast.TypeExpr.Comma; _ } ->
-                collect_type_tuple lower_type_expr state argument
-            | Ast.TypeExpr.Parenthesized { inner = Some inner } -> (
-                match Ast.TypeExpr.view inner with
-                | Ast.TypeExpr.Tuple { separator = Ast.TypeExpr.Comma; _ } ->
-                    collect_type_tuple lower_type_expr state inner
-                | _ -> [ lower_type_expr state argument ]
-              )
-            | _ -> [ lower_type_expr state argument ]
-          in
-          Semantic_tree.TypeConstr { constr with arguments }
-      | _ ->
-          push_unsupported_type state type_expr "type application";
-          Semantic_tree.TypeUnsupported "type application"
-    )
-  | Ast.TypeExpr.Apply _ ->
+  | Ast.TypeExpr.Apply { ident = Some ident; args } ->
+      let arguments = Vector.with_capacity ~size:(Vector.length args) in
+      Vector.for_each args ~fn:(fun arg -> Vector.push arguments ~value:(lower_type_expr state arg));
+      Semantic_tree.TypeConstr {
+        path = path_of_path ident;
+        arguments = vector_to_list arguments;
+      }
+  | Ast.TypeExpr.Apply { ident = None; _ } ->
       push_unsupported_type state type_expr "type application";
       Semantic_tree.TypeUnsupported "type application"
-  | Ast.TypeExpr.Arrow { left = Some left; right = Some right } ->
-      let (label, parameter) = lower_arrow_label left in
+  | Ast.TypeExpr.Arrow { label; arg = Some arg; ret = Some ret } ->
+      let label =
+        Option.map
+          label
+          ~fn:(fun label ->
+            {
+              Semantic_tree.name =
+                label.Ast.TypeExpr.name
+                |> Option.map ~fn:Ast.Token.text
+                |> Option.unwrap_or ~default:"";
+              optional_ = label.optional_;
+            })
+      in
       Semantic_tree.TypeArrow {
         label;
-        parameter = lower_type_expr state parameter;
-        result = lower_type_expr state right;
+        parameter = lower_type_expr state arg;
+        result = lower_type_expr state ret;
       }
   | Ast.TypeExpr.Arrow _ ->
       push_unsupported_type state type_expr "arrow";
@@ -266,45 +251,31 @@ let rec lower_type_expr = fun state type_expr ->
   | Ast.TypeExpr.Poly { body = None } ->
       push_unsupported_type state type_expr "poly";
       Semantic_tree.TypeUnsupported "poly"
-  | Ast.TypeExpr.Labeled { annotation = Some annotation; _ } -> lower_type_expr state annotation
-  | Ast.TypeExpr.Labeled _ ->
-      push_unsupported_type state type_expr "labeled";
-      Semantic_tree.TypeUnsupported "labeled"
   | Ast.TypeExpr.Tuple _ ->
       Semantic_tree.TypeTuple (collect_type_tuple lower_type_expr state type_expr)
-  | Ast.TypeExpr.Parenthesized { inner = Some inner } -> lower_type_expr state inner
-  | Ast.TypeExpr.Parenthesized { inner = None } ->
-      push_unsupported_type state type_expr "parenthesized";
-      Semantic_tree.TypeUnsupported "parenthesized"
-  | Ast.TypeExpr.Opaque node -> (
+  | Ast.TypeExpr.Unknown node -> (
       match Ast.TypeExpr.inner_without_attribute_suffix type_expr with
       | Some inner -> lower_type_expr state inner
       | None ->
-          push_unsupported_type state node "opaque";
-          Semantic_tree.TypeUnsupported "opaque"
+          push_unsupported_type state node "unknown";
+          Semantic_tree.TypeUnsupported "unknown"
     )
   | Ast.TypeExpr.Error node ->
       push_unsupported_type state node "error";
       Semantic_tree.TypeUnsupported "error"
-  | Ast.TypeExpr.Unknown node ->
-      push_unsupported_type state node "unknown";
-      Semantic_tree.TypeUnsupported "unknown"
 
 let rec annotation_of_expression = fun state expr ->
   match Ast.Expr.view expr with
-  | Ast.Expr.Typed { annotation = Some annotation; _ } -> Some (lower_type_expr state annotation)
-  | Ast.Expr.Parenthesized { inner = Some inner } -> annotation_of_expression state inner
-  | Ast.Expr.Attribute { inner = Some inner } -> annotation_of_expression state inner
+  | Ast.Expr.Annotated { annotation = Some annotation; _ } ->
+      Some (lower_type_expr state annotation)
   | _ -> None
 
 let binding_name_token = fun binding ->
   let rec of_pattern pattern =
     match Ast.Pattern.view pattern with
-    | Ast.Pattern.Path { path } -> Ast.Path.last_ident path
-    | Ast.Pattern.Parenthesized { inner = Some inner } -> of_pattern inner
+    | Ast.Pattern.Ident { path } -> Ast.Path.last_ident path
     | Ast.Pattern.Constraint { pattern = Some inner; _ } -> of_pattern inner
     | Ast.Pattern.Alias { alias = Some alias; _ } -> of_pattern alias
-    | Ast.Pattern.Attribute { inner = Some inner } -> of_pattern inner
     | _ -> None
   in
   match Ast.LetBinding.pattern binding with
@@ -315,19 +286,7 @@ let parameter_count = fun binding ->
   let count = ref 0 in
   let rec count_parameter_pattern pattern =
     match Ast.Pattern.view pattern with
-    | Ast.Pattern.Apply { callee; argument } ->
-        (
-          match callee with
-          | Some callee -> count_parameter_pattern callee
-          | None -> ()
-        );
-        (
-          match argument with
-          | Some argument -> count_parameter_pattern argument
-          | None -> ()
-        )
-    | Ast.Pattern.Constraint { pattern = Some pattern; _ }
-    | Ast.Pattern.Attribute { inner = Some pattern } -> count_parameter_pattern pattern
+    | Ast.Pattern.Constraint { pattern = Some pattern; _ } -> count_parameter_pattern pattern
     | _ -> count := Int.add !count 1
   in
   Ast.LetBinding.for_each_parameter binding ~fn:count_parameter_pattern;
@@ -416,7 +375,7 @@ let manifest_of_type_member = fun state member ->
   match Ast.TypeDeclaration.Member.manifest member with
   | Some manifest -> (
       match Ast.TypeExpr.view manifest with
-      | Ast.TypeExpr.Opaque _ -> None
+      | Ast.TypeExpr.Unknown _ -> None
       | _ -> Some (lower_type_expr state manifest)
     )
   | None -> None

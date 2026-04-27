@@ -105,14 +105,96 @@ let should_be_class_case = fun text -> not (String.equal text (to_class_case tex
 
 let path_last_ident = fun path -> Ast.Path.last_ident path
 
+let first_child_expr = fun expr ->
+  let found = ref None in
+  Ast.Expr.for_each_child_expr
+    expr
+    ~fn:(fun child ->
+      match !found with
+      | Some _ -> ()
+      | None -> found := Some child);
+  !found
+
+let first_child_pattern = fun pattern ->
+  let found = ref None in
+  Ast.Pattern.for_each_child_pattern
+    pattern
+    ~fn:(fun child ->
+      match !found with
+      | Some _ -> ()
+      | None -> found := Some child);
+  !found
+
+let first_child_type_expr = fun type_expr ->
+  let found = ref None in
+  Ast.TypeExpr.for_each_child_type
+    type_expr
+    ~fn:(fun child ->
+      match !found with
+      | Some _ -> ()
+      | None -> found := Some child);
+  !found
+
+let rec unwrap_expr = fun expr ->
+  match Ast.AttributeExpr.cast expr with
+  | Some attribute -> (
+      match Ast.AttributeExpr.inner attribute with
+      | Some inner -> unwrap_expr inner
+      | None -> expr
+    )
+  | None ->
+      if Syn.SyntaxKind.(Ast.Node.kind expr = PAREN_EXPR) then
+        match first_child_expr expr with
+        | Some inner -> unwrap_expr inner
+        | None -> expr
+      else
+        expr
+
+let rec unwrap_pattern = fun pattern ->
+  match Ast.AttributePattern.cast pattern with
+  | Some attribute -> (
+      match Ast.AttributePattern.inner attribute with
+      | Some inner -> unwrap_pattern inner
+      | None -> pattern
+    )
+  | None ->
+      if Syn.SyntaxKind.(Ast.Node.kind pattern = PAREN_PATTERN) then
+        match first_child_pattern pattern with
+        | Some inner -> unwrap_pattern inner
+        | None -> pattern
+      else
+        pattern
+
+let rec unwrap_type_expr = fun type_expr ->
+  if Syn.SyntaxKind.(Ast.Node.kind type_expr = PAREN_TYPE) then
+    match first_child_type_expr type_expr with
+    | Some inner -> unwrap_type_expr inner
+    | None -> type_expr
+  else
+    type_expr
+
+type parameter_kind =
+  | LabeledParameter
+  | OptionalParameter
+
+let parameter_kind = fun pattern ->
+  match Ast.Parameter.cast pattern with
+  | Some parameter -> (
+      match Ast.Parameter.view parameter with
+      | Ast.Parameter.Labeled _ -> Some LabeledParameter
+      | Ast.Parameter.Optional _
+      | Ast.Parameter.OptionalDefault _ -> Some OptionalParameter
+      | Ast.Parameter.Unknown _ -> None
+    )
+  | None -> None
+
 let pattern_name_token = fun pattern ->
-  match Ast.Pattern.view pattern with
-  | Ast.Pattern.Path { path } -> path_last_ident path
+  match Ast.Pattern.view (unwrap_pattern pattern) with
+  | Ast.Pattern.Ident { path } -> path_last_ident path
   | Ast.Pattern.Constraint { pattern = Some pattern; _ }
-  | Ast.Pattern.Parenthesized { inner = Some pattern }
-  | Ast.Pattern.Attribute { inner = Some pattern } -> (
+  | Ast.Pattern.Alias { pattern = Some pattern; _ } -> (
       match Ast.Pattern.view pattern with
-      | Ast.Pattern.Path { path } -> path_last_ident path
+      | Ast.Pattern.Ident { path } -> path_last_ident path
       | _ -> None
     )
   | _ -> None
@@ -137,11 +219,8 @@ let binding_is_function = fun binding ->
   | None -> false
 
 let rec parameter_name_token = fun pattern ->
-  match Ast.Pattern.view pattern with
-  | Ast.Pattern.Path { path } -> path_last_ident path
-  | Ast.Pattern.LabeledParam parameter
-  | Ast.Pattern.OptionalParam parameter
-  | Ast.Pattern.OptionalParamDefault parameter -> (
+  match Ast.Parameter.cast pattern with
+  | Some parameter -> (
       match Ast.Parameter.view parameter with
       | Ast.Parameter.Labeled { label = Some label; _ }
       | Ast.Parameter.Optional { label = Some label; _ }
@@ -151,10 +230,12 @@ let rec parameter_name_token = fun pattern ->
       | Ast.Parameter.OptionalDefault { pattern = Some pattern; _ } -> pattern_name_token pattern
       | _ -> None
     )
-  | Ast.Pattern.Constraint { pattern = Some pattern; _ }
-  | Ast.Pattern.Parenthesized { inner = Some pattern }
-  | Ast.Pattern.Attribute { inner = Some pattern } -> parameter_name_token pattern
-  | _ -> None
+  | None -> (
+      match Ast.Pattern.view pattern with
+      | Ast.Pattern.Ident { path } -> path_last_ident path
+      | Ast.Pattern.Constraint { pattern = Some pattern; _ } -> parameter_name_token pattern
+      | _ -> None
+    )
 
 let for_each_let_binding = fun root ~fn ->
   let hooks =

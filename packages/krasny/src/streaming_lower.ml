@@ -1205,6 +1205,34 @@ let first_child_node_matching = fun node ~matches ->
             found := Some child);
   !found
 
+let nth_child_node_matching = fun node index ~matches ->
+  let found = ref None in
+  let current = ref 0 in
+  Ast.Node.for_each_child_node
+    node
+    ~fn:(fun child ->
+      match !found with
+      | Some _ -> ()
+      | None ->
+          if matches (node_kind child) then (
+            if Int.equal !current index then
+              found := Some child;
+            current := Int.add !current 1
+          ));
+  !found
+
+let first_child_token_matching = fun node ~matches ->
+  let found = ref None in
+  Ast.Node.for_each_child_token
+    node
+    ~fn:(fun token ->
+      match !found with
+      | Some _ -> ()
+      | None ->
+          if matches (Ast.Token.kind token) then
+            found := Some token);
+  !found
+
 let first_descendant_node_matching = fun (node: Ast.Node.t) ~matches ->
   let found = ref None in
   let rec visit node =
@@ -1634,18 +1662,11 @@ let collect_child_patterns = fun (node: Ast.Node.t) ->
 
 let collect_fun_parameters = fun (node: Ast.Node.t) ->
   let parameters = Vector.with_capacity ~size:(Ast.Node.child_count node) in
-  let rec push pattern =
-    match Ast.Pattern.view pattern with
-    | Apply { callee = Some callee; argument = Some argument } ->
-        push callee;
-        push argument
-    | _ -> Vector.push parameters ~value:pattern
-  in
   Ast.Node.for_each_child_node
     node
     ~fn:(fun child ->
       match Ast.Pattern.cast child with
-      | Some pattern -> push pattern
+      | Some pattern -> Vector.push parameters ~value:pattern
       | None -> ());
   parameters
 
@@ -1655,7 +1676,7 @@ let rec collect_child_type_exprs = fun (type_expr: Ast.TypeExpr.t) ->
   if Int.equal (Vector.length items) 1 && node_kind_is type_expr Kind.TYPE_EXPR then
     let only_child = Vector.get_unchecked items ~at:0 in
     match Ast.TypeExpr.view only_child with
-    | Tuple _ -> collect_child_type_exprs only_child
+    | Ast.TypeExpr.Tuple _ -> collect_child_type_exprs only_child
     | _ -> items
   else
     items
@@ -1843,6 +1864,556 @@ let collect_child_tokens = fun node ->
   let tokens = Vector.with_capacity ~size:(Ast.Node.child_count node) in
   Ast.Node.for_each_child_token node ~fn:(fun token -> Vector.push tokens ~value:token);
   tokens
+
+let is_expr_node_kind = function
+  | Kind.LET_EXPR
+  | Kind.LOCAL_OPEN_EXPR
+  | Kind.LET_MODULE_EXPR
+  | Kind.LET_EXCEPTION_EXPR
+  | Kind.BINDING_OPERATOR_EXPR
+  | Kind.FIRST_CLASS_MODULE_EXPR
+  | Kind.EXTENSION_EXPR
+  | Kind.UNREACHABLE_EXPR
+  | Kind.OBJECT_EXPR
+  | Kind.NEW_EXPR
+  | Kind.IF_EXPR
+  | Kind.MATCH_EXPR
+  | Kind.FUN_EXPR
+  | Kind.FUNCTION_EXPR
+  | Kind.TRY_EXPR
+  | Kind.WHILE_EXPR
+  | Kind.FOR_EXPR
+  | Kind.ASSERT_EXPR
+  | Kind.LAZY_EXPR
+  | Kind.ATTRIBUTE_EXPR
+  | Kind.SEQUENCE_EXPR
+  | Kind.APPLY_EXPR
+  | Kind.INFIX_EXPR
+  | Kind.PREFIX_EXPR
+  | Kind.ASSIGN_EXPR
+  | Kind.FIELD_ACCESS_EXPR
+  | Kind.METHOD_CALL_EXPR
+  | Kind.POLY_VARIANT_EXPR
+  | Kind.LABELED_ARG
+  | Kind.OPTIONAL_ARG
+  | Kind.ARRAY_INDEX_EXPR
+  | Kind.STRING_INDEX_EXPR
+  | Kind.TYPED_EXPR
+  | Kind.PATH_EXPR
+  | Kind.LITERAL_EXPR
+  | Kind.PAREN_EXPR
+  | Kind.TUPLE_EXPR
+  | Kind.LIST_EXPR
+  | Kind.ARRAY_EXPR
+  | Kind.RECORD_EXPR
+  | Kind.RECORD_UPDATE_EXPR -> true
+  | _ -> false
+
+let is_pattern_node_kind = function
+  | Kind.WILDCARD_PATTERN
+  | Kind.PATH_PATTERN
+  | Kind.CONSTRUCT_PATTERN
+  | Kind.LITERAL_PATTERN
+  | Kind.PAREN_PATTERN
+  | Kind.TUPLE_PATTERN
+  | Kind.LIST_PATTERN
+  | Kind.ARRAY_PATTERN
+  | Kind.RECORD_PATTERN
+  | Kind.POLY_VARIANT_PATTERN
+  | Kind.EXTENSION_PATTERN
+  | Kind.ATTRIBUTE_PATTERN
+  | Kind.LOCAL_OPEN_PATTERN
+  | Kind.LOCALLY_ABSTRACT_TYPE_PATTERN
+  | Kind.FIRST_CLASS_MODULE_PATTERN
+  | Kind.INTERVAL_PATTERN
+  | Kind.CONSTRAINT_PATTERN
+  | Kind.ALIAS_PATTERN
+  | Kind.OR_PATTERN
+  | Kind.CONS_PATTERN
+  | Kind.LAZY_PATTERN
+  | Kind.EXCEPTION_PATTERN
+  | Kind.LABELED_PARAM
+  | Kind.OPTIONAL_PARAM
+  | Kind.OPTIONAL_PARAM_DEFAULT -> true
+  | _ -> false
+
+let is_type_expr_node_kind = function
+  | Kind.TYPE_EXPR
+  | Kind.PATH_TYPE
+  | Kind.VAR_TYPE
+  | Kind.WILDCARD_TYPE
+  | Kind.ARROW_TYPE
+  | Kind.POLY_TYPE
+  | Kind.LABELED_TYPE
+  | Kind.TUPLE_TYPE
+  | Kind.APPLY_TYPE
+  | Kind.PAREN_TYPE
+  | Kind.OPAQUE_TYPE -> true
+  | _ -> false
+
+let first_child_expr = fun node -> first_child_node_matching node ~matches:is_expr_node_kind
+
+let nth_child_expr = fun node index -> nth_child_node_matching node index ~matches:is_expr_node_kind
+
+let first_child_pattern = fun node -> first_child_node_matching node ~matches:is_pattern_node_kind
+
+let nth_child_pattern = fun node index ->
+  nth_child_node_matching
+    node
+    index
+    ~matches:is_pattern_node_kind
+
+let first_child_type_expr = fun node ->
+  first_child_node_matching
+    node
+    ~matches:is_type_expr_node_kind
+
+let nth_child_type_expr = fun node index ->
+  nth_child_node_matching
+    node
+    index
+    ~matches:is_type_expr_node_kind
+
+let first_ident_token = fun node ->
+  first_child_token_matching
+    node
+    ~matches:(fun kind -> Kind.(kind = IDENT))
+
+let first_match_case_child = fun node ->
+  first_child_node_matching
+    node
+    ~matches:(fun kind -> Kind.(kind = MATCH_CASE))
+
+let first_let_binding_child = fun node ->
+  first_child_node_matching
+    node
+    ~matches:(fun kind -> Kind.(kind = LET_BINDING))
+
+module TypeExprView = struct
+  type tuple_separator =
+    | Star
+    | Comma
+    | UnknownSeparator
+
+  type view =
+    | Path of {
+        path: Ast.path;
+      }
+    | Var of {
+        name: Ast.Token.t option;
+      }
+    | Wildcard
+    | Arrow of {
+        left: Ast.TypeExpr.t option;
+        right: Ast.TypeExpr.t option;
+      }
+    | Poly of {
+        body: Ast.TypeExpr.t option;
+      }
+    | Tuple of { separator: tuple_separator }
+    | Apply of {
+        argument: Ast.TypeExpr.t option;
+        constructor: Ast.TypeExpr.t option;
+      }
+    | Parenthesized of {
+        inner: Ast.TypeExpr.t option;
+      }
+    | Labeled of {
+        optional_token: Ast.Token.t option;
+        label: Ast.Token.t option;
+        annotation: Ast.TypeExpr.t option;
+      }
+    | Opaque of Ast.Node.t
+    | Error of Ast.Node.t
+    | Unknown of Ast.Node.t
+
+  let tuple_separator = fun type_expr ->
+    let found = ref UnknownSeparator in
+    Ast.Node.for_each_child_token
+      type_expr
+      ~fn:(fun token ->
+        if token_kind_is token Kind.STAR then
+          found := Star
+        else if token_kind_is token Kind.COMMA then
+          found := Comma);
+    !found
+
+  let rec view = fun type_expr ->
+    match node_kind type_expr with
+    | Kind.TYPE_EXPR -> (
+        match (first_child_type_expr type_expr, nth_child_type_expr type_expr 1) with
+        | (Some child, None) when not (same_ast_node child type_expr) -> view child
+        | _ -> Unknown type_expr
+      )
+    | Kind.PATH_TYPE -> Path { path = type_expr }
+    | Kind.VAR_TYPE -> Var { name = first_ident_token type_expr }
+    | Kind.WILDCARD_TYPE -> Wildcard
+    | Kind.ARROW_TYPE ->
+        Arrow {
+          left = nth_child_type_expr type_expr 0;
+          right = nth_child_type_expr type_expr 1;
+        }
+    | Kind.POLY_TYPE -> Poly { body = first_child_type_expr type_expr }
+    | Kind.LABELED_TYPE ->
+        Labeled {
+          optional_token = first_child_token_matching
+            type_expr
+            ~matches:(fun kind -> Kind.(kind = QUESTION));
+          label = first_ident_token type_expr;
+          annotation = first_child_type_expr type_expr;
+        }
+    | Kind.TUPLE_TYPE -> Tuple { separator = tuple_separator type_expr }
+    | Kind.APPLY_TYPE ->
+        Apply {
+          argument = nth_child_type_expr type_expr 0;
+          constructor = nth_child_type_expr type_expr 1;
+        }
+    | Kind.PAREN_TYPE -> Parenthesized { inner = first_child_type_expr type_expr }
+    | Kind.OPAQUE_TYPE -> Opaque type_expr
+    | Kind.ERROR -> Error type_expr
+    | _ -> Unknown type_expr
+end
+
+module PatternView = struct
+  type view =
+    | Wildcard
+    | Path of {
+        path: Ast.path;
+      }
+    | Construct of {
+        callee: Ast.Pattern.t option;
+        argument: Ast.Pattern.t option;
+      }
+    | Literal of {
+        token: Ast.Token.t option;
+      }
+    | Parenthesized of {
+        inner: Ast.Pattern.t option;
+      }
+    | Tuple
+    | List
+    | Array
+    | Record
+    | PolyVariant
+    | Interval of {
+        left: Ast.Pattern.t option;
+        right: Ast.Pattern.t option;
+      }
+    | Constraint of {
+        pattern: Ast.Pattern.t option;
+        annotation: Ast.TypeExpr.t option;
+      }
+    | Alias of {
+        pattern: Ast.Pattern.t option;
+        alias: Ast.Pattern.t option;
+      }
+    | Or of {
+        left: Ast.Pattern.t option;
+        right: Ast.Pattern.t option;
+      }
+    | Cons of {
+        head: Ast.Pattern.t option;
+        tail: Ast.Pattern.t option;
+      }
+    | Lazy of {
+        pattern: Ast.Pattern.t option;
+      }
+    | Exception of {
+        pattern: Ast.Pattern.t option;
+      }
+    | LabeledParam of Ast.Parameter.t
+    | OptionalParam of Ast.Parameter.t
+    | OptionalParamDefault of Ast.Parameter.t
+    | LocallyAbstractType
+    | FirstClassModule
+    | LocalOpen
+    | Extension
+    | Attribute of {
+        inner: Ast.Pattern.t option;
+      }
+    | Error of Ast.Node.t
+    | Unknown of Ast.Node.t
+
+  let view = fun pattern ->
+    match node_kind pattern with
+    | Kind.PAREN_PATTERN -> Parenthesized { inner = first_child_pattern pattern }
+    | Kind.ATTRIBUTE_PATTERN -> Attribute { inner = first_child_pattern pattern }
+    | Kind.WILDCARD_PATTERN -> Wildcard
+    | Kind.PATH_PATTERN -> Path { path = pattern }
+    | Kind.CONSTRUCT_PATTERN ->
+        Construct {
+          callee = nth_child_pattern pattern 0;
+          argument = nth_child_pattern pattern 1;
+        }
+    | Kind.LITERAL_PATTERN -> Literal { token = Ast.Pattern.literal_token pattern }
+    | Kind.TUPLE_PATTERN -> Tuple
+    | Kind.LIST_PATTERN -> List
+    | Kind.ARRAY_PATTERN -> Array
+    | Kind.RECORD_PATTERN -> Record
+    | Kind.POLY_VARIANT_PATTERN -> PolyVariant
+    | Kind.INTERVAL_PATTERN ->
+        Interval { left = nth_child_pattern pattern 0; right = nth_child_pattern pattern 1 }
+    | Kind.CONSTRAINT_PATTERN ->
+        Constraint {
+          pattern = first_child_pattern pattern;
+          annotation = first_child_type_expr pattern;
+        }
+    | Kind.ALIAS_PATTERN ->
+        Alias { pattern = nth_child_pattern pattern 0; alias = nth_child_pattern pattern 1 }
+    | Kind.OR_PATTERN ->
+        Or { left = nth_child_pattern pattern 0; right = nth_child_pattern pattern 1 }
+    | Kind.CONS_PATTERN ->
+        Cons { head = nth_child_pattern pattern 0; tail = nth_child_pattern pattern 1 }
+    | Kind.LAZY_PATTERN -> Lazy { pattern = first_child_pattern pattern }
+    | Kind.EXCEPTION_PATTERN -> Exception { pattern = first_child_pattern pattern }
+    | Kind.LABELED_PARAM -> (
+        match Ast.Parameter.cast pattern with
+        | Some parameter -> LabeledParam parameter
+        | None -> Unknown pattern
+      )
+    | Kind.OPTIONAL_PARAM -> (
+        match Ast.Parameter.cast pattern with
+        | Some parameter -> OptionalParam parameter
+        | None -> Unknown pattern
+      )
+    | Kind.OPTIONAL_PARAM_DEFAULT -> (
+        match Ast.Parameter.cast pattern with
+        | Some parameter -> OptionalParamDefault parameter
+        | None -> Unknown pattern
+      )
+    | Kind.LOCALLY_ABSTRACT_TYPE_PATTERN -> LocallyAbstractType
+    | Kind.FIRST_CLASS_MODULE_PATTERN -> FirstClassModule
+    | Kind.LOCAL_OPEN_PATTERN -> LocalOpen
+    | Kind.EXTENSION_PATTERN -> Extension
+    | Kind.ERROR -> Error pattern
+    | _ -> Unknown pattern
+end
+
+module ExprView = struct
+  type view =
+    | Path of {
+        path: Ast.path;
+      }
+    | Literal of {
+        token: Ast.Token.t option;
+      }
+    | FieldAccess of {
+        target: Ast.Expr.t option;
+        field: Ast.Token.t option;
+      }
+    | MethodCall of {
+        target: Ast.Expr.t option;
+        method_: Ast.Token.t option;
+      }
+    | Assign of {
+        target: Ast.Expr.t option;
+        operator: Ast.Token.t option;
+        value: Ast.Expr.t option;
+      }
+    | Infix of {
+        left: Ast.Expr.t option;
+        operator: Ast.Token.t option;
+        right: Ast.Expr.t option;
+      }
+    | Prefix of {
+        operator: Ast.Token.t option;
+        operand: Ast.Expr.t option;
+      }
+    | Apply of {
+        callee: Ast.Expr.t option;
+        argument: Ast.Expr.t option;
+      }
+    | LabeledArg of {
+        label: Ast.Token.t option;
+        value: Ast.Expr.t option;
+      }
+    | OptionalArg of {
+        label: Ast.Token.t option;
+        value: Ast.Expr.t option;
+      }
+    | Parenthesized of {
+        inner: Ast.Expr.t option;
+      }
+    | If of {
+        condition: Ast.Expr.t option;
+        then_branch: Ast.Expr.t option;
+        else_branch: Ast.Expr.t option;
+      }
+    | Let of {
+        first_binding: Ast.LetBinding.t option;
+        body: Ast.Expr.t option;
+      }
+    | Fun of {
+        body: Ast.Expr.t option;
+      }
+    | Function of {
+        first_case: Ast.MatchCase.t option;
+      }
+    | Match of {
+        scrutinee: Ast.Expr.t option;
+        first_case: Ast.MatchCase.t option;
+      }
+    | Try of {
+        body: Ast.Expr.t option;
+        first_case: Ast.MatchCase.t option;
+      }
+    | LocalOpen of {
+        body: Ast.Expr.t option;
+      }
+    | List
+    | Array
+    | Record
+    | RecordUpdate
+    | Typed of {
+        expr: Ast.Expr.t option;
+        annotation: Ast.TypeExpr.t option;
+      }
+    | Tuple
+    | Sequence of {
+        left: Ast.Expr.t option;
+        right: Ast.Expr.t option;
+      }
+    | ArrayIndex of {
+        target: Ast.Expr.t option;
+        index: Ast.Expr.t option;
+      }
+    | StringIndex of {
+        target: Ast.Expr.t option;
+        index: Ast.Expr.t option;
+      }
+    | PolyVariant of {
+        payload: Ast.Expr.t option;
+      }
+    | BindingOperator
+    | LetModule of {
+        body: Ast.Expr.t option;
+      }
+    | LetException of {
+        body: Ast.Expr.t option;
+      }
+    | FirstClassModule
+    | While of {
+        condition: Ast.Expr.t option;
+        body: Ast.Expr.t option;
+      }
+    | Assert of {
+        argument: Ast.Expr.t option;
+      }
+    | Lazy of {
+        argument: Ast.Expr.t option;
+      }
+    | Attribute of {
+        inner: Ast.Expr.t option;
+      }
+    | Extension
+    | For of {
+        pattern: Ast.Pattern.t option;
+        start_: Ast.Expr.t option;
+        stop: Ast.Expr.t option;
+        body: Ast.Expr.t option;
+      }
+    | Unreachable
+    | Object
+    | New
+    | Error of Ast.Node.t
+    | Unknown of Ast.Node.t
+
+  let first_operator_token = fun node ->
+    first_child_token_matching
+      node
+      ~matches:(fun kind ->
+        not
+          (Kind.(kind = IDENT)
+          || Kind.(kind = INT)
+          || Kind.(kind = FLOAT)
+          || Kind.(kind = STRING)
+          || Kind.(kind = CHAR)
+          || Kind.(kind = TRUE_KW)
+          || Kind.(kind = FALSE_KW)))
+
+  let first_direct_token = fun node -> first_child_token_matching node ~matches:(fun _ -> true)
+
+  let view = fun expr ->
+    match node_kind expr with
+    | Kind.PAREN_EXPR -> Parenthesized { inner = first_child_expr expr }
+    | Kind.PATH_EXPR -> Path { path = expr }
+    | Kind.LITERAL_EXPR -> Literal { token = Ast.Expr.literal_token expr }
+    | Kind.FIELD_ACCESS_EXPR ->
+        FieldAccess { target = nth_child_expr expr 0; field = first_ident_token expr }
+    | Kind.METHOD_CALL_EXPR ->
+        MethodCall { target = nth_child_expr expr 0; method_ = first_ident_token expr }
+    | Kind.ASSIGN_EXPR ->
+        Assign {
+          target = nth_child_expr expr 0;
+          operator = first_direct_token expr;
+          value = nth_child_expr expr 1;
+        }
+    | Kind.INFIX_EXPR ->
+        Infix {
+          left = nth_child_expr expr 0;
+          operator = first_direct_token expr;
+          right = nth_child_expr expr 1;
+        }
+    | Kind.PREFIX_EXPR ->
+        Prefix { operator = first_operator_token expr; operand = first_child_expr expr }
+    | Kind.APPLY_EXPR ->
+        Apply { callee = nth_child_expr expr 0; argument = nth_child_expr expr 1 }
+    | Kind.LABELED_ARG ->
+        LabeledArg { label = first_ident_token expr; value = first_child_expr expr }
+    | Kind.OPTIONAL_ARG ->
+        OptionalArg { label = first_ident_token expr; value = first_child_expr expr }
+    | Kind.IF_EXPR ->
+        If {
+          condition = nth_child_expr expr 0;
+          then_branch = nth_child_expr expr 1;
+          else_branch = nth_child_expr expr 2;
+        }
+    | Kind.LET_EXPR ->
+        Let { first_binding = first_let_binding_child expr; body = nth_child_expr expr 0 }
+    | Kind.FUN_EXPR -> Fun { body = first_child_expr expr }
+    | Kind.FUNCTION_EXPR -> Function { first_case = first_match_case_child expr }
+    | Kind.MATCH_EXPR ->
+        Match { scrutinee = nth_child_expr expr 0; first_case = first_match_case_child expr }
+    | Kind.TRY_EXPR ->
+        Try { body = nth_child_expr expr 0; first_case = first_match_case_child expr }
+    | Kind.LOCAL_OPEN_EXPR -> LocalOpen { body = nth_child_expr expr 1 }
+    | Kind.LIST_EXPR -> List
+    | Kind.ARRAY_EXPR -> Array
+    | Kind.RECORD_EXPR -> Record
+    | Kind.RECORD_UPDATE_EXPR -> RecordUpdate
+    | Kind.TYPED_EXPR ->
+        Typed { expr = first_child_expr expr; annotation = first_child_type_expr expr }
+    | Kind.TUPLE_EXPR -> Tuple
+    | Kind.SEQUENCE_EXPR ->
+        Sequence { left = nth_child_expr expr 0; right = nth_child_expr expr 1 }
+    | Kind.ARRAY_INDEX_EXPR ->
+        ArrayIndex { target = nth_child_expr expr 0; index = nth_child_expr expr 1 }
+    | Kind.STRING_INDEX_EXPR ->
+        StringIndex { target = nth_child_expr expr 0; index = nth_child_expr expr 1 }
+    | Kind.POLY_VARIANT_EXPR -> PolyVariant { payload = first_child_expr expr }
+    | Kind.BINDING_OPERATOR_EXPR -> BindingOperator
+    | Kind.LET_MODULE_EXPR -> LetModule { body = first_child_expr expr }
+    | Kind.LET_EXCEPTION_EXPR -> LetException { body = first_child_expr expr }
+    | Kind.FIRST_CLASS_MODULE_EXPR -> FirstClassModule
+    | Kind.WHILE_EXPR ->
+        While { condition = nth_child_expr expr 0; body = nth_child_expr expr 1 }
+    | Kind.ASSERT_EXPR -> Assert { argument = first_child_expr expr }
+    | Kind.LAZY_EXPR -> Lazy { argument = first_child_expr expr }
+    | Kind.ATTRIBUTE_EXPR -> Attribute { inner = first_child_expr expr }
+    | Kind.EXTENSION_EXPR -> Extension
+    | Kind.FOR_EXPR ->
+        For {
+          pattern = first_child_pattern expr;
+          start_ = nth_child_expr expr 0;
+          stop = nth_child_expr expr 1;
+          body = nth_child_expr expr 2;
+        }
+    | Kind.UNREACHABLE_EXPR -> Unreachable
+    | Kind.OBJECT_EXPR -> Object
+    | Kind.NEW_EXPR -> New
+    | Kind.ERROR -> Error expr
+    | _ -> Unknown expr
+end
 
 let collect_node_tokens = fun node ->
   let tokens = Vector.with_capacity ~size:(Ast.Node.child_count node) in
@@ -2741,7 +3312,7 @@ let path_contains_dot = fun path ->
   !found
 
 let expr_is_dotted_path = fun expr ->
-  match Ast.Expr.view expr with
+  match ExprView.view expr with
   | Path { path } -> path_contains_dot path
   | _ -> false
 
@@ -2753,14 +3324,14 @@ let render_parenthesized_empty_pattern = fun state pattern ->
     emit_text state "()"
 
 let pattern_is_operator_name = fun pattern ->
-  match Ast.Pattern.view pattern with
+  match PatternView.view pattern with
   | Path { path } ->
       collect_child_tokens path
       |> token_vector_is_operator_name
   | _ -> false
 
 let rec pattern_is_unit = fun pattern ->
-  match Ast.Pattern.view pattern with
+  match PatternView.view pattern with
   | Parenthesized { inner = None } -> true
   | Constraint { pattern = Some inner; _ }
   | Attribute { inner = Some inner } -> pattern_is_unit inner
@@ -2769,7 +3340,7 @@ let rec pattern_is_unit = fun pattern ->
 let collect_or_pattern_items = fun pattern ->
   let items = Vector.with_capacity ~size:(Ast.Node.child_count pattern) in
   let rec collect pattern =
-    match Ast.Pattern.view pattern with
+    match PatternView.view pattern with
     | Or { left = Some left; right = Some right } ->
         collect left;
         collect right
@@ -2784,7 +3355,7 @@ let rec render_type_expr = fun state type_expr ->
       render_type_expr state inner;
       render_type_expr_attribute_suffix state type_expr
   | None -> (
-      match Ast.TypeExpr.view type_expr with
+      match TypeExprView.view type_expr with
       | Path { path } -> render_path state path
       | Var { name = Some name } ->
           emit_text state "'";
@@ -2898,7 +3469,7 @@ and render_type_expr_attribute_suffix = fun state type_expr ->
   loop 0
 
 and render_type_arrow_left = fun state type_expr ->
-  match Ast.TypeExpr.view type_expr with
+  match TypeExprView.view type_expr with
   | Arrow _ ->
       emit_text state "(";
       render_type_expr state type_expr;
@@ -2906,7 +3477,7 @@ and render_type_arrow_left = fun state type_expr ->
   | _ -> render_type_expr state type_expr
 
 and render_type_apply_argument = fun state argument ->
-  match Ast.TypeExpr.view argument with
+  match TypeExprView.view argument with
   | Arrow _
   | Poly _
   | Tuple _ ->
@@ -2916,7 +3487,7 @@ and render_type_apply_argument = fun state argument ->
   | _ -> render_type_expr state argument
 
 and type_expr_flat_width = fun type_expr ->
-  match Ast.TypeExpr.view type_expr with
+  match TypeExprView.view type_expr with
   | Path { path } ->
       let tokens = collect_child_tokens path in
       let length = Vector.length tokens in
@@ -2944,7 +3515,7 @@ and type_expr_flat_width = fun type_expr ->
       match (type_expr_flat_width left, type_expr_flat_width right) with
       | (Some left_width, Some right_width) ->
           let left_width =
-            match Ast.TypeExpr.view left with
+            match TypeExprView.view left with
             | Arrow _ -> Int.add left_width 2
             | _ -> left_width
           in
@@ -2956,7 +3527,7 @@ and type_expr_flat_width = fun type_expr ->
       match (type_expr_flat_width argument, type_expr_flat_width constructor) with
       | (Some argument_width, Some constructor_width) ->
           let argument_width =
-            match Ast.TypeExpr.view argument with
+            match TypeExprView.view argument with
             | Arrow _
             | Poly _
             | Tuple _ -> Int.add argument_width 2
@@ -3067,14 +3638,14 @@ and render_poly_type_expr = fun state type_expr body ->
 
 and render_type_tuple_separator = fun state separator ->
   match separator with
-  | Ast.TypeExpr.Star ->
+  | TypeExprView.Star ->
       emit_space state;
       emit_text state "*";
       emit_space state
-  | Ast.TypeExpr.Comma ->
+  | TypeExprView.Comma ->
       emit_text state ",";
       emit_space state
-  | Ast.TypeExpr.UnknownSeparator ->
+  | TypeExprView.UnknownSeparator ->
       emit_space state;
       emit_text state "*";
       emit_space state
@@ -3092,9 +3663,9 @@ and render_tuple_type_expr = fun state type_expr separator ->
       ~fn:(render_type_expr state)
 
 and type_tuple_separator_width = function
-  | Ast.TypeExpr.Star
-  | Ast.TypeExpr.UnknownSeparator -> 3
-  | Ast.TypeExpr.Comma -> 2
+  | TypeExprView.Star
+  | TypeExprView.UnknownSeparator -> 3
+  | TypeExprView.Comma -> 2
 
 and type_tuple_flat_width = fun type_expr ->
   let items = collect_child_type_exprs type_expr in
@@ -3103,7 +3674,7 @@ and type_tuple_flat_width = fun type_expr ->
     None
   else
     let separator_width =
-      match Ast.TypeExpr.view type_expr with
+      match TypeExprView.view type_expr with
       | Tuple { separator; _ } -> type_tuple_separator_width separator
       | _ -> 0
     in
@@ -3125,7 +3696,7 @@ and type_tuple_flat_width = fun type_expr ->
     loop 0 0
 
 and type_expr_is_opaque_gt = fun type_expr ->
-  match Ast.TypeExpr.view type_expr with
+  match TypeExprView.view type_expr with
   | Opaque node ->
       let tokens = collect_child_tokens node in
       if Int.equal (Vector.length tokens) 1 then
@@ -3135,13 +3706,13 @@ and type_expr_is_opaque_gt = fun type_expr ->
   | _ -> false
 
 and type_expr_starts_with_gt = fun type_expr ->
-  match Ast.TypeExpr.view type_expr with
+  match TypeExprView.view type_expr with
   | Opaque _ -> type_expr_is_opaque_gt type_expr
   | Apply { argument = Some argument; _ } -> type_expr_starts_with_gt argument
   | _ -> false
 
 and render_type_apply_argument_without_leading_gt = fun state argument ->
-  match Ast.TypeExpr.view argument with
+  match TypeExprView.view argument with
   | Arrow _
   | Poly _
   | Tuple _ ->
@@ -3151,7 +3722,7 @@ and render_type_apply_argument_without_leading_gt = fun state argument ->
   | _ -> render_type_expr_without_leading_gt state argument
 
 and render_type_expr_without_leading_gt = fun state type_expr ->
-  match Ast.TypeExpr.view type_expr with
+  match TypeExprView.view type_expr with
   | Opaque _ when type_expr_is_opaque_gt type_expr -> ()
   | Apply { argument = Some argument; constructor = Some constructor } when type_expr_is_opaque_gt
     argument -> render_type_expr state constructor
@@ -3163,7 +3734,7 @@ and render_type_expr_without_leading_gt = fun state type_expr ->
   | _ -> render_type_expr state type_expr
 
 and type_expr_labeled_coercion_parts = fun type_expr ->
-  match Ast.TypeExpr.view type_expr with
+  match TypeExprView.view type_expr with
   | Labeled { optional_token = None; label = Some label; annotation = Some annotation } when type_expr_starts_with_gt
     annotation -> Some (label, annotation)
   | _ -> None
@@ -3202,13 +3773,13 @@ and render_type_expr_after_colon = fun state type_expr ->
   )
 
 and type_expr_is_arrow = fun type_expr ->
-  match Ast.TypeExpr.view type_expr with
+  match TypeExprView.view type_expr with
   | Arrow _ -> true
   | Poly { body = Some body } -> type_expr_is_arrow body
   | _ -> false
 
 and type_expr_is_closed_backtick_bracketed_opaque = fun type_expr ->
-  match Ast.TypeExpr.view type_expr with
+  match TypeExprView.view type_expr with
   | Opaque node ->
       let tokens = collect_child_tokens node in
       let length = Vector.length tokens in
@@ -3231,7 +3802,7 @@ and render_multiline_type_arrow = fun state type_expr ->
       render_multiline_type_arrow state inner;
       render_type_expr_attribute_suffix state type_expr
   | None -> (
-      match Ast.TypeExpr.view type_expr with
+      match TypeExprView.view type_expr with
       | Arrow { left = Some left; right = Some right } ->
           render_type_arrow_left state left;
           emit_space state;
@@ -3273,12 +3844,12 @@ let pattern_tuple_has_parens = fun pattern ->
     (Ast.Node.first_child_token pattern ~kind:Kind.LPAREN)
 
 let pattern_is_tuple = fun pattern ->
-  match Ast.Pattern.view pattern with
+  match PatternView.view pattern with
   | Tuple -> true
   | _ -> false
 
 let pattern_is_or = fun pattern ->
-  match Ast.Pattern.view pattern with
+  match PatternView.view pattern with
   | Or _ -> true
   | _ -> false
 
@@ -3288,7 +3859,7 @@ let collect_tuple_pattern_items = fun pattern ->
     Ast.Pattern.for_each_child_pattern
       pattern
       ~fn:(fun child ->
-        match Ast.Pattern.view child with
+        match PatternView.view child with
         | Tuple when not (pattern_tuple_has_parens child) -> push_items child
         | _ -> Vector.push items ~value:child)
   in
@@ -3310,7 +3881,7 @@ let path_single_ident_token = fun path ->
     None
 
 let rec pattern_binding_ident_token = fun pattern ->
-  match Ast.Pattern.view pattern with
+  match PatternView.view pattern with
   | Path { path } -> path_single_ident_token path
   | Parenthesized { inner = Some inner }
   | Constraint { pattern = Some inner; _ }
@@ -3323,7 +3894,7 @@ let parameter_pattern_matches_label = fun label pattern ->
   | None -> false
 
 let split_typed_parameter_pattern = fun pattern ->
-  match Ast.Pattern.view pattern with
+  match PatternView.view pattern with
   | Constraint { pattern = Some pattern; annotation = Some annotation } ->
       Some (pattern, annotation)
   | _ -> None
@@ -3394,7 +3965,7 @@ let render_first_class_module_pattern = fun state pattern ->
   | _ -> unsupported_node "incomplete first-class module pattern" pattern
 
 let parameter_pattern_requires_parens = fun pattern ->
-  match Ast.Pattern.view pattern with
+  match PatternView.view pattern with
   | Alias _ -> true
   | _ -> false
 
@@ -3462,7 +4033,7 @@ let parenthesized_pattern_should_break = fun state pattern ->
   Int.(state.column + !width + 2 > state.width)
 
 let rec render_pattern = fun state pattern ->
-  match Ast.Pattern.view pattern with
+  match PatternView.view pattern with
   | Wildcard -> emit_text state "_"
   | Path { path } -> render_pattern_path state path
   | Literal { token = Some token } ->
@@ -3473,11 +4044,11 @@ let rec render_pattern = fun state pattern ->
       );
       emit_literal_token state token
   | Literal { token = None } -> unsupported_node "literal pattern without token" pattern
-  | Apply { callee = Some callee; argument = Some argument } ->
+  | Construct { callee = Some callee; argument = Some argument } ->
       render_pattern state callee;
       emit_space state;
       render_pattern_atom state argument
-  | Apply _ -> unsupported_node "incomplete apply pattern" pattern
+  | Construct _ -> unsupported_node "incomplete construct pattern" pattern
   | Parenthesized { inner = Some inner } when pattern_is_tuple inner ->
       render_tuple_pattern state inner
   | Parenthesized { inner = Some inner } when pattern_is_operator_name inner ->
@@ -3570,8 +4141,8 @@ let rec render_pattern = fun state pattern ->
   | Interval _ -> unsupported_node "incomplete interval pattern" pattern
   | Cons { head = Some head; tail = Some tail } ->
       (
-        match Ast.Pattern.view head with
-        | Apply _ -> render_pattern state head
+        match PatternView.view head with
+        | Construct _ -> render_pattern state head
         | _ -> render_pattern_atom state head
       );
       emit_space state;
@@ -3709,7 +4280,7 @@ and render_parameter = fun state parameter ->
   | Unknown _ -> unsupported_node "unsupported parameter" parameter
 
 and loose_parameter_binding_annotation = fun parameter ->
-  match Ast.Pattern.view parameter with
+  match PatternView.view parameter with
   | LabeledParam parameter -> (
       match Ast.Parameter.view parameter with
       | Labeled { pattern = Some annotation; _ } when (not
@@ -3727,7 +4298,7 @@ and loose_parameter_binding_annotation = fun parameter ->
   | _ -> None
 
 and render_parameter_label_only = fun state parameter ->
-  match Ast.Pattern.view parameter with
+  match PatternView.view parameter with
   | LabeledParam parameter -> (
       match Ast.Parameter.view parameter with
       | Labeled { label = Some label; _ } ->
@@ -3746,7 +4317,7 @@ and render_parameter_label_only = fun state parameter ->
 
 and pattern_is_named_parameter = fun pattern ->
   let rec loop pattern =
-    match Ast.Pattern.view pattern with
+    match PatternView.view pattern with
     | LabeledParam _
     | OptionalParam _
     | OptionalParamDefault _ -> true
@@ -3759,8 +4330,8 @@ and pattern_is_named_parameter = fun pattern ->
 
 and pattern_ends_with_named_parameter = fun pattern ->
   let rec loop pattern =
-    match Ast.Pattern.view pattern with
-    | Apply { argument = Some argument; _ } -> loop argument
+    match PatternView.view pattern with
+    | Construct { argument = Some argument; _ } -> loop argument
     | Constraint { pattern = Some inner; _ }
     | Parenthesized { inner = Some inner }
     | Attribute { inner = Some inner } -> loop inner
@@ -3893,7 +4464,7 @@ and render_record_pattern = fun state pattern ->
     emit_text state "}"
 
 and render_pattern_atom = fun state pattern ->
-  match Ast.Pattern.view pattern with
+  match PatternView.view pattern with
   | Constraint _ when parenthesized_pattern_should_break state pattern ->
       emit_text state "(";
       emit_line state;
@@ -3901,7 +4472,7 @@ and render_pattern_atom = fun state pattern ->
       emit_line state;
       emit_text state ")"
   | Tuple -> render_pattern state pattern
-  | Apply _
+  | Construct _
   | Or _
   | Cons _
   | Alias _
@@ -3934,7 +4505,7 @@ and render_attribute_pattern = fun state pattern ->
   | None -> unsupported_node "unsupported attribute pattern" pattern
 
 let rec pattern_contains_type_annotation = fun pattern annotation ->
-  match Ast.Pattern.view pattern with
+  match PatternView.view pattern with
   | Constraint { annotation = Some existing; _ } when same_ast_node existing annotation -> true
   | _ ->
       let found = ref false in
@@ -3946,7 +4517,7 @@ let rec pattern_contains_type_annotation = fun pattern annotation ->
       !found
 
 let rec pattern_should_render_multiline = fun pattern ->
-  match Ast.Pattern.view pattern with
+  match PatternView.view pattern with
   | Record ->
       let fields = collect_record_pattern_fields pattern in
       record_pattern_should_multiline pattern fields
@@ -3958,7 +4529,7 @@ let rec pattern_should_render_multiline = fun pattern ->
   | Parenthesized { inner = Some inner }
   | Constraint { pattern = Some inner; _ }
   | Attribute { inner = Some inner } -> pattern_should_render_multiline inner
-  | Apply { callee; argument } ->
+  | Construct { callee; argument } ->
       (
         match callee with
         | Some callee when pattern_should_render_multiline callee -> true
@@ -3982,7 +4553,7 @@ let collect_apply = fun expr ->
   let rec loop budget expr =
     if Int.(budget <= 0) then
       unsupported_node "cyclic apply expression" expr;
-    match Ast.Expr.view expr with
+    match ExprView.view expr with
     | Apply { callee = Some callee; argument = Some argument } when not (same_ast_node expr callee)
     && not (same_ast_node expr argument) ->
         Vector.push args ~value:argument;
@@ -4005,7 +4576,7 @@ and expr_is_multiline_with_budget = fun budget expr ->
   if Int.(budget <= 0) then
     unsupported_node "cyclic expression while classifying multiline layout" expr;
   let next_budget = Int.sub budget 1 in
-  match Ast.Expr.view expr with
+  match ExprView.view expr with
   | Sequence { left = Some left; right = None } when not (same_ast_node expr left) -> true
   | If _
   | Let _
@@ -4017,11 +4588,11 @@ and expr_is_multiline_with_budget = fun budget expr ->
   | Sequence _
   | While _
   | For _ -> true
-  | BindingOperator _ -> binding_operator_expr_is_multiline_with_budget next_budget expr
+  | BindingOperator -> binding_operator_expr_is_multiline_with_budget next_budget expr
   | LocalOpen _ -> (
       match Ast.LocalOpenExpr.view expr with
       | LetOpen { body = Some body; _ } when (
-        match Ast.Expr.view body with
+        match ExprView.view body with
         | LocalOpen _ -> true
         | _ -> false
       ) -> true
@@ -4060,7 +4631,7 @@ and expr_is_multiline_with_budget = fun budget expr ->
   | _ -> false
 
 and expr_is_parenthesized_multiline = fun expr ->
-  match Ast.Expr.view expr with
+  match ExprView.view expr with
   | Parenthesized { inner = Some inner } when not (same_ast_node expr inner) ->
       expr_is_multiline inner
   | _ -> false
@@ -4069,7 +4640,7 @@ and same_operator_infix_count = fun budget expr operator_text ->
   if Int.(budget <= 0) then
     0
   else
-    match Ast.Expr.view expr with
+    match ExprView.view expr with
     | Infix { left = Some left; operator = Some operator; right = Some right } when String.equal
       (infix_operator_text_from_expr expr left operator right)
       operator_text ->
@@ -4092,7 +4663,7 @@ and infix_operator_breaks_long_chain = fun operator_text ->
   || String.equal operator_text "or"
 
 and expr_is_long_breaking_infix_chain = fun expr ->
-  match Ast.Expr.view expr with
+  match ExprView.view expr with
   | Infix { left = Some left; operator = Some operator; right = Some right } ->
       let operator_text = infix_operator_text_from_expr expr left operator right in
       infix_operator_breaks_long_chain operator_text
@@ -4100,12 +4671,12 @@ and expr_is_long_breaking_infix_chain = fun expr ->
   | _ -> false
 
 and expr_is_tuple = fun expr ->
-  match Ast.Expr.view expr with
+  match ExprView.view expr with
   | Tuple -> true
   | _ -> false
 
 and expr_is_sequence = fun expr ->
-  match Ast.Expr.view expr with
+  match ExprView.view expr with
   | Sequence _ -> true
   | _ -> false
 
@@ -4118,7 +4689,7 @@ and expr_has_terminal_trailing_sequence_with_budget = fun budget expr ->
   if Int.(budget <= 0) then
     unsupported_node "cyclic expression while checking terminal sequence" expr;
   let next_budget = Int.sub budget 1 in
-  match Ast.Expr.view expr with
+  match ExprView.view expr with
   | Sequence { left = Some left; right = None } when not (same_ast_node expr left) -> true
   | Infix { right = Some right; _ } when not (same_ast_node expr right) ->
       expr_has_terminal_trailing_sequence_with_budget next_budget right
@@ -4142,23 +4713,23 @@ and expr_has_terminal_trailing_sequence_with_budget = fun budget expr ->
   | _ -> false
 
 and expr_is_apply = fun expr ->
-  match Ast.Expr.view expr with
+  match ExprView.view expr with
   | Apply _ -> true
   | _ -> false
 
 and expr_is_unit = fun expr ->
-  match Ast.Expr.view expr with
+  match ExprView.view expr with
   | Parenthesized { inner = None } -> true
   | _ -> false
 
 and expr_is_prefix = fun expr ->
-  match Ast.Expr.view expr with
+  match ExprView.view expr with
   | Parenthesized { inner = Some inner } when not (same_ast_node expr inner) -> expr_is_prefix inner
   | Prefix _ -> true
   | _ -> false
 
 and expr_is_prefix_operator_text = fun expr expected ->
-  match Ast.Expr.view expr with
+  match ExprView.view expr with
   | Parenthesized { inner = Some inner } when not (same_ast_node expr inner) ->
       expr_is_prefix_operator_text inner expected
   | Prefix { operator = Some operator; _ } ->
@@ -4175,24 +4746,24 @@ and expr_is_prefix_operator_text = fun expr expected ->
 and expr_is_prefix_deref = fun expr -> expr_is_prefix_operator_text expr "!"
 
 and expr_is_parenthesized_apply = fun expr ->
-  match Ast.Expr.view expr with
+  match ExprView.view expr with
   | Parenthesized { inner = Some inner } when not (same_ast_node expr inner) -> expr_is_apply inner
   | _ -> false
 
 and expr_unwrap_redundant_parentheses_for_delimited_render = fun expr ->
-  match Ast.Expr.view expr with
+  match ExprView.view expr with
   | Parenthesized { inner = Some inner } when not (same_ast_node expr inner)
   && not (expr_first_token_text_is expr "begin") ->
       expr_unwrap_redundant_parentheses_for_delimited_render inner
   | _ -> expr
 
 and expr_is_fun = fun expr ->
-  match Ast.Expr.view expr with
+  match ExprView.view expr with
   | Fun _ -> true
   | _ -> false
 
 and expr_is_typed = fun expr ->
-  match Ast.Expr.view expr with
+  match ExprView.view expr with
   | Typed _ -> true
   | _ -> false
 
@@ -4203,7 +4774,7 @@ and local_open_expr_can_render_atom_without_parens = fun expr ->
   | Delimited _ -> false
 
 and expr_can_render_atom_without_parens = fun expr ->
-  match Ast.Expr.view expr with
+  match ExprView.view expr with
   | Parenthesized { inner = Some inner } when not (same_ast_node expr inner) ->
       expr_can_render_atom_without_parens inner
   | Tuple -> true
@@ -4252,7 +4823,7 @@ and collect_tuple_expr_items = fun expr ->
     Ast.Expr.for_each_child_expr
       expr
       ~fn:(fun child ->
-        match Ast.Expr.view child with
+        match ExprView.view child with
         | Tuple when not (expr_tuple_has_parens child) -> push_items child
         | _ -> Vector.push items ~value:child)
   in
@@ -4339,7 +4910,7 @@ and expr_flat_width_with_budget = fun budget expr ->
     None
   else
     let next_budget = Int.sub budget 1 in
-    match Ast.Expr.view expr with
+    match ExprView.view expr with
     | Path { path } -> node_token_flat_width path
     | Literal { token = Some token } -> Some (token_flat_width token)
     | Literal { token = None } -> None
@@ -4591,7 +5162,7 @@ and list_expr_flat_width = fun budget expr ->
     loop 0 2
 
 and record_expr_field_flat_width = fun budget field ->
-  match (field.Ast.RecordExpr.path, field.Ast.RecordExpr.value) with
+  match (field.Ast.path, field.Ast.value) with
   | (Some path, Some value) -> (
       match expr_flat_width_with_budget budget value with
       | None -> None
@@ -4724,7 +5295,7 @@ and expr_is_inline_with_budget = fun budget expr ->
   if Int.(budget <= 0) then
     unsupported_node "cyclic expression while classifying inline layout" expr;
   let next_budget = Int.sub budget 1 in
-  match Ast.Expr.view expr with
+  match ExprView.view expr with
   | Path _
   | Literal _
   | FieldAccess _
@@ -4862,7 +5433,7 @@ and record_expr_should_inline = fun expr ->
         true
       else
         let field = Vector.get_unchecked fields ~at:index in
-        match field.Ast.RecordExpr.value with
+        match field.Ast.value with
         | None -> loop (Int.add index 1)
         | Some value ->
             if expr_is_inline value then
@@ -4873,19 +5444,19 @@ and record_expr_should_inline = fun expr ->
     loop 0
 
 let expr_can_follow_pipe_bare = fun expr ->
-  match Ast.Expr.view expr with
+  match ExprView.view expr with
   | Apply _
   | Fun _
   | Function _ -> true
   | _ -> false
 
 let expr_can_be_bare_infix_left_operand = fun expr ->
-  match Ast.Expr.view expr with
+  match ExprView.view expr with
   | Apply _ -> true
   | _ -> false
 
 let expr_can_be_bare_infix_right_operand = fun expr ->
-  match Ast.Expr.view expr with
+  match ExprView.view expr with
   | Apply _
   | Fun _
   | Function _
@@ -4896,17 +5467,17 @@ let expr_can_be_bare_infix_right_operand = fun expr ->
   | _ -> false
 
 let expr_can_be_bare_pipe_left_operand = fun expr ->
-  match Ast.Expr.view expr with
+  match ExprView.view expr with
   | Apply _ -> true
   | _ -> false
 
 let expr_can_be_bare_caret_operand = fun expr ->
-  match Ast.Expr.view expr with
+  match ExprView.view expr with
   | Apply _ -> true
   | _ -> false
 
 let expr_is_infix_with_operator_text = fun expr expected ->
-  match Ast.Expr.view expr with
+  match ExprView.view expr with
   | Infix { left = Some left; operator = Some operator; right = Some right } ->
       String.equal (infix_operator_text_from_expr expr left operator right) expected
   | _ -> false
@@ -4971,18 +5542,18 @@ let infix_operator_associativity = fun operator ->
     Infix_left
 
 let expr_infix_operator_text = fun expr ->
-  match Ast.Expr.view expr with
+  match ExprView.view expr with
   | Infix { left = Some left; operator = Some operator; right = Some right } ->
       Some (infix_operator_text_from_expr expr left operator right)
   | _ -> None
 
 let expr_is_literal = fun expr ->
-  match Ast.Expr.view expr with
+  match ExprView.view expr with
   | Literal _ -> true
   | _ -> false
 
 let expr_is_single_line_literal = fun expr ->
-  match Ast.Expr.view expr with
+  match ExprView.view expr with
   | Literal { token = Some token } -> not (Ast.Token.has_newline token)
   | Literal _ -> false
   | _ -> false
@@ -4991,7 +5562,7 @@ let prefix_operator_is_negative = fun operator ->
   token_text_is operator "-" || token_text_is operator "-."
 
 let rec expr_is_nonliteral_negative_prefix = fun expr ->
-  match Ast.Expr.view expr with
+  match ExprView.view expr with
   | Parenthesized { inner = Some inner } when not (same_ast_node expr inner) ->
       expr_is_nonliteral_negative_prefix inner
   | Prefix { operator = Some operator; operand = Some operand } ->
@@ -5046,7 +5617,7 @@ let infix_right_operand_can_be_bare = fun ~parent_operator right ->
 
 let rec render_expr = fun state expr ->
   emit_node_leading_trivia state expr;
-  match Ast.Expr.view expr with
+  match ExprView.view expr with
   | Path { path } -> render_expr_path state path
   | Literal { token = Some token } -> emit_literal_token state token
   | Literal { token = None } -> unsupported_node "literal expression without token" expr
@@ -5207,7 +5778,7 @@ let rec render_expr = fun state expr ->
       render_index_expr state expr target index ~fallback_open:".[" ~fallback_close:"]"
   | StringIndex _ -> unsupported_node "incomplete string index expression" expr
   | PolyVariant { payload } -> render_poly_variant_expr state expr payload
-  | BindingOperator _ -> render_binding_operator_expr state expr
+  | BindingOperator -> render_binding_operator_expr state expr
   | LetModule { body = Some _ } -> render_let_module_expr state expr
   | LetModule { body = None } -> unsupported_node "let module expression without body" expr
   | FirstClassModule -> render_first_class_module_expr state expr
@@ -5328,7 +5899,7 @@ and render_tuple_expr_contents = fun state items ~render_item ->
   loop 0
 
 and render_expr_atom = fun state expr ->
-  match Ast.Expr.view expr with
+  match ExprView.view expr with
   | Parenthesized { inner = Some inner } when expr_first_token_text_is expr "begin" ->
       render_expr state expr
   | Parenthesized { inner = Some inner } when not (same_ast_node expr inner) && expr_is_fun inner ->
@@ -5368,7 +5939,7 @@ and render_expr_atom = fun state expr ->
   | _ -> render_parenthesized_expr state expr
 
 and render_prefix_operand = fun state operand ->
-  match Ast.Expr.view operand with
+  match ExprView.view operand with
   | Parenthesized { inner = Some inner } when not (same_ast_node operand inner)
   && expr_is_dotted_path inner -> render_parenthesized_expr state inner
   | _ when expr_is_prefix_deref operand -> render_parenthesized_expr state operand
@@ -5384,7 +5955,7 @@ and parenthesized_expr_should_multiline = fun state expr ->
   if expr_has_leading_comment expr || expr_is_multiline expr then
     true
   else
-    match Ast.Expr.view expr with
+    match ExprView.view expr with
     | Typed { annotation = Some annotation; _ } ->
         type_expr_should_break_after_colon state ~suffix_width:1 annotation
     | _ -> false
@@ -5455,7 +6026,7 @@ and collect_infix_chain = fun ~operator_text left operator right ->
   let parts = Vector.with_capacity ~size:8 in
   let first = ref left in
   let rec push_left expr =
-    match Ast.Expr.view expr with
+    match ExprView.view expr with
     | Infix { left = Some left; operator = Some operator; right = Some right } when String.equal
       (token_text operator)
       operator_text ->
@@ -5545,7 +6116,7 @@ and render_infix_expr = fun state expr left operator right ->
   )
 
 and render_delimited_local_open_body_expr = fun state expr ->
-  match Ast.Expr.view expr with
+  match ExprView.view expr with
   | Infix { left = Some left; operator = Some operator; right = Some right } when expr_is_prefix_deref
     left ->
       let operator_text = infix_operator_text_from_expr expr left operator right in
@@ -5564,7 +6135,7 @@ and render_delimited_local_open_body_expr = fun state expr ->
 
 and render_let_body_with_leading_comment = fun state body ->
   emit_node_leading_comments_as_lines state body;
-  match Ast.Expr.view body with
+  match ExprView.view body with
   | Infix { left = Some left; operator = Some operator; right = Some right } when String.equal
     (token_text operator)
     "|>" -> render_multiline_infix_expr state left operator right
@@ -5589,7 +6160,7 @@ and render_infix_expr_with_right_apply = fun state expr left operator right args
   render_apply_flat state right args
 
 and render_keyword_body_expr = fun state expr ->
-  match Ast.Expr.view expr with
+  match ExprView.view expr with
   | Tuple -> render_expr_atom state expr
   | _ -> render_expr state expr
 
@@ -5609,7 +6180,7 @@ and render_parenthesized_sequence_keyword_body = fun state body ->
   emit_text state ")"
 
 and render_in_body_expr = fun state expr ->
-  match Ast.Expr.view expr with
+  match ExprView.view expr with
   | Tuple -> render_expr state expr
   | _ -> render_expr state expr
 
@@ -5630,13 +6201,13 @@ and render_poly_variant_tag = fun state expr ->
 
 and render_apply_argument = fun state arg ->
   let rec render_split_arg arg =
-    match Ast.Expr.view arg with
+    match ExprView.view arg with
     | PolyVariant { payload = Some payload } ->
         render_poly_variant_tag state arg;
         emit_space state;
         render_split_arg payload
     | LabeledArg { label = Some label; value = Some value } -> (
-        match Ast.Expr.view value with
+        match ExprView.view value with
         | PolyVariant { payload = Some payload } ->
             emit_text state "~";
             emit_token state label;
@@ -5647,7 +6218,7 @@ and render_apply_argument = fun state arg ->
         | _ -> render_expr_atom state arg
       )
     | OptionalArg { label = Some label; value = Some value } -> (
-        match Ast.Expr.view value with
+        match ExprView.view value with
         | PolyVariant { payload = Some payload } ->
             emit_text state "?";
             emit_token state label;
@@ -5666,7 +6237,7 @@ and render_apply_argument = fun state arg ->
   render_split_arg arg
 
 and expr_is_fun_or_parenthesized_fun = fun expr ->
-  match Ast.Expr.view expr with
+  match ExprView.view expr with
   | Fun _ -> true
   | Parenthesized { inner = Some inner } when not (same_ast_node expr inner) ->
       expr_is_fun_or_parenthesized_fun inner
@@ -5676,14 +6247,14 @@ and fun_body_should_force_break_in_broken_arg = fun body ->
   if expr_has_leading_comment body || expr_is_multiline body || expr_is_pipeline body then
     true
   else
-    match Ast.Expr.view body with
+    match ExprView.view body with
     | Apply _ ->
         let (_, args) = collect_apply body in
         Int.(Vector.length args > 2) || apply_args_have_heavy_nested_apply args
     | _ -> false
 
 and fun_expr_should_force_body_break_in_broken_arg = fun expr ->
-  match Ast.Expr.view expr with
+  match ExprView.view expr with
   | Fun { body = Some body } -> fun_body_should_force_break_in_broken_arg body
   | Fun { body = None } -> true
   | Parenthesized { inner = Some inner } when not (same_ast_node expr inner) ->
@@ -5692,14 +6263,14 @@ and fun_expr_should_force_body_break_in_broken_arg = fun expr ->
 
 and render_broken_apply_argument = fun state arg ->
   let force =
-    match Ast.Expr.view arg with
+    match ExprView.view arg with
     | Fun _
     | Parenthesized _ -> fun_expr_should_force_body_break_in_broken_arg arg
     | LabeledArg { value = Some value; _ }
     | OptionalArg { value = Some value; _ } -> fun_expr_should_force_body_break_in_broken_arg value
     | _ -> false
   in
-  match Ast.Expr.view arg with
+  match ExprView.view arg with
   | Record
   | RecordUpdate -> render_record_expr ~force_multiline:true state ~inline:false arg
   | _ ->
@@ -5709,7 +6280,7 @@ and render_broken_apply_argument = fun state arg ->
         render_apply_argument state arg
 
 and expr_is_constructor_like_callee = fun expr ->
-  match Ast.Expr.view expr with
+  match ExprView.view expr with
   | Path _ -> (
       match last_ident_token expr with
       | Some token -> token_text_starts_uppercase token
@@ -5719,21 +6290,21 @@ and expr_is_constructor_like_callee = fun expr ->
   | _ -> false
 
 and expr_is_single_constructor_apply = fun expr ->
-  match Ast.Expr.view expr with
+  match ExprView.view expr with
   | Apply _ ->
       let (callee, args) = collect_apply expr in
       Int.equal (Vector.length args) 1 && expr_is_constructor_like_callee callee
   | _ -> false
 
 and expr_is_single_constructor_multiline_apply = fun expr ->
-  match Ast.Expr.view expr with
+  match ExprView.view expr with
   | Apply _ ->
       let (_, args) = collect_apply expr in
       expr_is_single_constructor_apply expr && vector_exists_expr_is_multiline_except expr args
   | _ -> false
 
 and expr_is_heavy_nested_apply_value = fun expr ->
-  match Ast.Expr.view expr with
+  match ExprView.view expr with
   | Parenthesized { inner = Some inner } when not (same_ast_node expr inner) ->
       expr_is_heavy_nested_apply_value inner
   | Apply _ ->
@@ -5742,7 +6313,7 @@ and expr_is_heavy_nested_apply_value = fun expr ->
   | _ -> false
 
 and apply_argument_has_heavy_nested_apply = fun arg ->
-  match Ast.Expr.view arg with
+  match ExprView.view arg with
   | LabeledArg { value = Some value; _ }
   | OptionalArg { value = Some value; _ } -> expr_is_heavy_nested_apply_value value
   | Parenthesized { inner = Some inner } when not (same_ast_node arg inner) ->
@@ -5811,7 +6382,7 @@ and render_apply_expr = fun state expr ->
   in
   if same_ast_node expr callee then
     unsupported_node "apply expression resolved to itself" expr;
-  match Ast.Expr.view callee with
+  match ExprView.view callee with
   | Infix { left = Some left; operator = Some operator; right = Some right } ->
       render_infix_expr_with_right_apply state callee left operator right args
   | _ ->
@@ -5856,7 +6427,7 @@ and render_if_expr = fun
     emit_space state
   );
   let then_sequence_inner =
-    match Ast.Expr.view then_branch with
+    match ExprView.view then_branch with
     | Parenthesized { inner = Some inner } when not (same_ast_node then_branch inner)
     && expr_is_sequence inner -> Some inner
     | _ -> None
@@ -5897,7 +6468,7 @@ and render_if_expr = fun
         );
         emit_token_or_keyword state else_token ~fallback:"else";
         (
-          match Ast.Expr.view branch with
+          match ExprView.view branch with
           | If { condition = Some condition; then_branch = Some then_branch; else_branch } when not
             (expr_has_leading_comment branch) ->
               emit_space state;
@@ -5936,7 +6507,7 @@ and render_fun_expr = fun state expr body ->
   let break_params = Int.(param_count > 0) && fun_params_exceed_width state params in
   let render_body ?(force_apply_break = false) () =
     let render () =
-      match Ast.Expr.view body with
+      match ExprView.view body with
       | Tuple -> render_expr_atom state body
       | _ -> render_expr state body
     in
@@ -5974,7 +6545,7 @@ and render_fun_expr = fun state expr body ->
     emit_text state "->"
   );
   let body_exceeds_width =
-    match Ast.Expr.view body with
+    match ExprView.view body with
     | Array
     | List
     | Record
@@ -6214,7 +6785,7 @@ and match_case_body_exceeds_width = fun state body ->
   | None -> false
 
 and render_parenthesized_match_case_body = fun state expr ->
-  match Ast.Expr.view expr with
+  match ExprView.view expr with
   | Parenthesized { inner = Some inner } when not (same_ast_node expr inner) ->
       render_parenthesized_expr_with_multiline_indent state inner ~body_indent:4 ~closing_indent:2
   | _ -> render_expr state expr
@@ -6305,7 +6876,7 @@ and render_match_case_with_body_break = fun state case force_body_break ->
 
 and local_open_body_should_inline = fun state body ->
   let is_nested_let_open =
-    match Ast.Expr.view body with
+    match ExprView.view body with
     | LocalOpen _ -> (
         match Ast.LocalOpenExpr.view body with
         | LetOpen _ -> true
@@ -6324,7 +6895,7 @@ and local_open_body_keeps_first_infix_operand_after_in = fun state body ->
   if expr_has_leading_comment body then
     false
   else
-    match Ast.Expr.view body with
+    match ExprView.view body with
     | Infix { left = Some left; operator = Some operator; right = Some right } ->
         let operator_text = infix_operator_text_from_expr body left operator right in
         (String.equal operator_text "^" || String.equal operator_text "|>")
@@ -6336,7 +6907,7 @@ and render_local_open_expr = fun state expr ->
     if token_kind_is opening Kind.LPAREN then (
       emit_token state opening;
       let spaced =
-        match Ast.Expr.view body with
+        match ExprView.view body with
         | Path { path } ->
             let tokens = collect_child_tokens path in
             token_vector_is_operator_name tokens
@@ -6957,7 +7528,7 @@ and let_binding_body_renders_inline = fun body ->
   if expr_has_leading_comment body then
     false
   else
-    match Ast.Expr.view body with
+    match ExprView.view body with
     | Fun { body = Some body } -> not (expr_has_leading_comment body || expr_is_multiline body)
     | Apply _ ->
         let (_, args) = collect_apply body in
@@ -6970,7 +7541,7 @@ and let_binding_body_renders_inline = fun body ->
 
 and let_binding_body_exceeds_width = fun ?(suffix_width = 0) state body ->
   let body_column = Int.add state.column 1 in
-  match Ast.Expr.view body with
+  match ExprView.view body with
   | Apply _ ->
       let (_, args) = collect_apply body in
       apply_expr_should_break_from_column ~suffix_width state body args ~column:body_column
@@ -6981,7 +7552,7 @@ and let_binding_body_exceeds_width = fun ?(suffix_width = 0) state body ->
     )
 
 and let_binding_apply_body_exceeds_inline_equals_width = fun ?(suffix_width = 0) state body ->
-  match Ast.Expr.view body with
+  match ExprView.view body with
   | Apply _ ->
       let (_, args) = collect_apply body in
       apply_expr_should_break_from_column
@@ -7173,7 +7744,7 @@ and render_let_binding_tail_with_body_break = fun
   let render_binding_pattern () =
     match (view.pattern, annotation) with
     | (Some constrained_pattern, Some annotation) -> (
-        match Ast.Pattern.view constrained_pattern with
+        match PatternView.view constrained_pattern with
         | Constraint { pattern = Some pattern; annotation = Some existing } when same_ast_node
           existing
           annotation
@@ -7190,7 +7761,7 @@ and render_let_binding_tail_with_body_break = fun
   let binding_parameter_return_annotation index parameter =
     if Int.equal index (Int.sub parameter_count 1) then
       (
-        match Ast.Pattern.view parameter with
+        match PatternView.view parameter with
         | Constraint { pattern = Some pattern; annotation = Some annotation } when pattern_ends_with_named_parameter
           pattern -> Some (pattern, annotation)
         | _ -> None
@@ -7252,14 +7823,14 @@ and render_let_binding_tail_with_body_break = fun
       emit_line state;
       with_indent state 2 (fun () -> render_expr state body)
   | Some body when (
-    match Ast.Expr.view body with
+    match ExprView.view body with
     | Assign _ -> true
     | _ -> false
   ) ->
       emit_line state;
       with_indent state 2 (fun () -> render_expr state body)
   | Some ({ Ast.id = _; _ } as body) when (
-    match Ast.Expr.view body with
+    match ExprView.view body with
     | Array
     | List
     | Record
@@ -7369,7 +7940,7 @@ and render_record_expr = fun ?(force_multiline = false) state ~inline expr ->
                 let field = Vector.get_unchecked fields ~at:index in
                 render_record_field state ~inline:false field;
                 (
-                  match field.Ast.RecordExpr.value with
+                  match field.Ast.value with
                   | Some value when expr_has_terminal_trailing_sequence value -> ()
                   | Some _
                   | None -> emit_text state ";"
@@ -7386,11 +7957,11 @@ and render_record_expr = fun ?(force_multiline = false) state ~inline expr ->
 
 and render_record_field = fun state ~inline field ->
   (
-    match field.Ast.RecordExpr.path with
+    match field.Ast.path with
     | Some path -> render_path state path
     | None -> unsupported_node "record field without path" field.node
   );
-  match field.Ast.RecordExpr.value with
+  match field.Ast.value with
   | None -> ()
   | Some value ->
       emit_space state;
@@ -7433,7 +8004,7 @@ and render_array_expr = fun state expr ->
         emit_text state ";";
         emit_space state)
       ~fn:(fun item ->
-        match Ast.Expr.view item with
+        match ExprView.view item with
         | Record -> render_record_expr state ~inline:true item
         | _ -> render_expr state item);
     emit_text state "|]"
@@ -7449,7 +8020,7 @@ and render_array_expr = fun state expr ->
             (
               let item = Vector.get_unchecked items ~at:index in
               (
-                match Ast.Expr.view item with
+                match ExprView.view item with
                 | Record -> render_record_expr state ~inline:true item
                 | _ -> render_expr state item
               );
@@ -7621,7 +8192,7 @@ and record_type_fields_have_leading_comment = fun fields ->
   loop 0
 
 and type_expr_is_light_record_field_annotation = fun annotation ->
-  match Ast.TypeExpr.view annotation with
+  match TypeExprView.view annotation with
   | Path { path } ->
       let tokens = collect_child_tokens path in
       Int.equal (Vector.length tokens) 1

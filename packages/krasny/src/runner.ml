@@ -148,7 +148,7 @@ let syntax_hash = fun (result: Syn.Parser.parse_result) ->
     | Kind.RECORD_UPDATE_EXPR
     | Kind.APPLY_EXPR
     | Kind.INFIX_EXPR
-    | Kind.APPLY_PATTERN
+    | Kind.CONSTRUCT_PATTERN
     | Kind.TUPLE_PATTERN -> true
     | _ -> false
   in
