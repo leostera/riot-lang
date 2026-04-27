@@ -196,6 +196,7 @@ module TypeExpr: sig
         ret: t;
       }
     | Poly of {
+        names: Token.t Vector.t;
         body: t;
       }
     | Tuple of {

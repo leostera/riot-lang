@@ -752,12 +752,10 @@ let test_poly_labeled_and_signed_views = fun _ctx ->
   in
   (
     match Ast.TypeExpr.view annotation with
-    | Ast.TypeExpr.Poly { body } ->
-        let names = ref [] in
-        Ast.TypeExpr.for_each_poly_type_name
-          annotation
-          ~fn:(fun token -> names := Ast.Token.text token :: !names);
-        Test.assert_equal ~expected:[ "socket"; "err" ] ~actual:(List.reverse !names);
+    | Ast.TypeExpr.Poly { names; body } ->
+        Test.assert_equal
+          ~expected:[ "socket"; "err" ]
+          ~actual:(List.map (vector_to_list names) ~fn:Ast.Token.text);
         (
           match Ast.TypeExpr.view body with
           | Ast.TypeExpr.Arrow { label = Some { name = Some label; _ }; arg = _; ret = _ } ->
@@ -820,12 +818,10 @@ let test_quoted_poly_let_annotation_views = fun _ctx ->
   in
   (
     match Ast.TypeExpr.view annotation with
-    | Ast.TypeExpr.Poly { body } ->
-        let names = ref [] in
-        Ast.TypeExpr.for_each_poly_type_name
-          annotation
-          ~fn:(fun token -> names := Ast.Token.text token :: !names);
-        Test.assert_equal ~expected:[ "field"; "builder"; "value" ] ~actual:(List.reverse !names);
+    | Ast.TypeExpr.Poly { names; body } ->
+        Test.assert_equal
+          ~expected:[ "field"; "builder"; "value" ]
+          ~actual:(List.map (vector_to_list names) ~fn:Ast.Token.text);
         (
           match Ast.TypeExpr.view body with
           | Ast.TypeExpr.Arrow { arg; ret; _ } ->

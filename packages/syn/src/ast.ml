@@ -1051,6 +1051,7 @@ module TypeExpr = struct
         ret: t;
       }
     | Poly of {
+        names: Token.t Vector.t;
         body: t;
       }
     | Tuple of {
@@ -1179,6 +1180,31 @@ module TypeExpr = struct
     in
     loop type_expr (Vector.with_capacity ~size:(Node.child_count type_expr))
 
+  let for_each_poly_type_name = fun (type_expr: type_expr) ~fn ->
+    let type_expr = unwrap_poly_node type_expr in
+    let before_dot = ref true in
+    Syntax_tree.for_each_child
+      type_expr.tree
+      (syntax_node type_expr)
+      ~fn:(
+        function
+        | Syntax_tree.Token id ->
+            let token = wrap_token type_expr.tree id in
+            if token_kind_is token Syntax_kind.DOT then
+              before_dot := false
+            else if !before_dot && token_kind_is token Syntax_kind.IDENT then
+              fn token
+        | Syntax_tree.Node _
+        | Syntax_tree.Missing _ -> ()
+      )
+
+  let poly_type_names = fun type_expr ->
+    let names = Vector.with_capacity ~size:(Node.child_count type_expr) in
+    for_each_poly_type_name
+      type_expr
+      ~fn:(fun name -> Vector.push names ~value:name);
+    names
+
   let rec view = fun (type_expr: type_expr) ->
     match Node.kind type_expr with
     | Syntax_kind.TYPE_EXPR -> (
@@ -1224,7 +1250,7 @@ module TypeExpr = struct
         match normalize_type_expr_option
           (first_child_node_matching type_expr ~matches:is_type_expr_kind)
         with
-        | Some body -> Poly { body }
+        | Some body -> Poly { names = poly_type_names type_expr; body }
         | None -> Unknown type_expr
       )
     | Syntax_kind.LABELED_TYPE -> Unknown type_expr
@@ -1343,24 +1369,6 @@ module TypeExpr = struct
           )
         in
         loop first_suffix_index
-
-  let for_each_poly_type_name = fun (type_expr: type_expr) ~fn ->
-    let type_expr = unwrap_poly_node type_expr in
-    let before_dot = ref true in
-    Syntax_tree.for_each_child
-      type_expr.tree
-      (syntax_node type_expr)
-      ~fn:(
-        function
-        | Syntax_tree.Token id ->
-            let token = wrap_token type_expr.tree id in
-            if token_kind_is token Syntax_kind.DOT then
-              before_dot := false
-            else if !before_dot && token_kind_is token Syntax_kind.IDENT then
-              fn token
-        | Syntax_tree.Node _
-        | Syntax_tree.Missing _ -> ()
-      )
 
   let poly_type_keyword_token = fun (type_expr: type_expr) ->
     let type_expr = unwrap_poly_node type_expr in

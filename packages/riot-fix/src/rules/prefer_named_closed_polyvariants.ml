@@ -47,7 +47,7 @@ let rec check_type_expr = fun ctx diagnostics ~allow_named_alias_root type_expr 
     | Ast.TypeExpr.Arrow { arg; ret; _ } ->
         check_type_expr ctx diagnostics ~allow_named_alias_root:false arg;
         check_type_expr ctx diagnostics ~allow_named_alias_root:false ret
-    | Ast.TypeExpr.Poly { body } ->
+    | Ast.TypeExpr.Poly { body; _ } ->
         check_type_expr ctx diagnostics ~allow_named_alias_root:false body
     | Ast.TypeExpr.Tuple { parts } ->
         Vector.for_each parts ~fn:(check_type_expr ctx diagnostics ~allow_named_alias_root:false)

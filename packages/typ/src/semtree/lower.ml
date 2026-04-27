@@ -229,11 +229,9 @@ let rec lower_type_expr = fun state type_expr ->
         parameter = lower_type_expr state arg;
         result = lower_type_expr state ret;
       }
-  | Ast.TypeExpr.Poly { body } ->
-      let binders = Vector.with_capacity ~size:2 in
-      Ast.TypeExpr.for_each_poly_type_name
-        type_expr
-        ~fn:(fun token -> Vector.push binders ~value:(Ast.Token.text token));
+  | Ast.TypeExpr.Poly { names; body } ->
+      let binders = Vector.with_capacity ~size:(Vector.length names) in
+      Vector.for_each names ~fn:(fun token -> Vector.push binders ~value:(Ast.Token.text token));
       Semantic_tree.TypePoly {
         binders = vector_to_list binders;
         body = lower_type_expr state body;
