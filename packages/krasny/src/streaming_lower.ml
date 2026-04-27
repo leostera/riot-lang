@@ -2,6 +2,7 @@ open Std
 open Std.Collections
 
 module Ast = Syn.Ast
+module Facts = Layout_facts
 module Kind = Syn.SyntaxKind
 module Layout = Layout_policy
 module Slice = IO.IoVec.IoSlice
@@ -6380,24 +6381,7 @@ and apply_expr_should_break = fun state expr args ->
 
 and application_layout_facts = fun ~force_parent_break expr callee args ->
   let arg_count = Vector.length args in
-  let single_constructor_payload =
-    Int.equal arg_count 1 && expr_is_constructor_like_callee callee
-  in
   let has_multiline_args = vector_exists_expr_is_multiline_except expr args in
-  let pressure =
-    if force_parent_break then
-      Layout.Strong [ Layout.Parent_requires_block ]
-    else if apply_args_have_heavy_nested_apply args then
-      Layout.Strong [ Layout.Heavy_nested_apply ]
-    else if has_multiline_args && single_constructor_payload then
-      Layout.Soft [ Layout.Child_is_block ]
-    else if has_multiline_args && Int.(arg_count > 1) then
-      Layout.Strong [ Layout.Child_is_block ]
-    else if has_multiline_args then
-      Layout.Soft [ Layout.Child_is_block ]
-    else
-      Layout.Flat
-  in
   let flat_width =
     match expr_flat_width expr with
     | Some _ as width -> width
@@ -6409,12 +6393,13 @@ and application_layout_facts = fun ~force_parent_break expr callee args ->
     else
       Layout.Ordinary
   in
-  Layout.make_facts
-    ?flat_width
-    ~pressure
-    ~item_count:arg_count
-    ~syntax_family:Layout.Expr
+  Facts.application
+    ~force_parent_break
+    ~arg_count
     ~callee_class
+    ~flat_width
+    ~has_multiline_args
+    ~has_heavy_nested_apply:(apply_args_have_heavy_nested_apply args)
     ()
 
 and render_apply_expr = fun state expr ->
