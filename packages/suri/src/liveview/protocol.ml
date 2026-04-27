@@ -7,8 +7,8 @@ type client_msg =
 
 type client_msg_error =
   | InvalidJson of Data.Json.error
+  | InvalidEventPayload of Data.Json.t
   | UnknownMessageFormat of Data.Json.t
-  | UnexpectedDecodeException of exn
 
 type server_error =
   | ClientMessageDecodeFailed of client_msg_error
@@ -89,14 +89,10 @@ let client_msg_error_to_json = function
   | InvalidJson error ->
       Data.Json.obj
         [ ("type", Data.Json.string "InvalidJson"); ("error", json_error_to_json error); ]
+  | InvalidEventPayload json ->
+      Data.Json.obj [ ("type", Data.Json.string "InvalidEventPayload"); ("message", json); ]
   | UnknownMessageFormat json ->
       Data.Json.obj [ ("type", Data.Json.string "UnknownMessageFormat"); ("message", json); ]
-  | UnexpectedDecodeException exn ->
-      Data.Json.obj
-        [
-          ("type", Data.Json.string "UnexpectedDecodeException");
-          ("message", Data.Json.string (Exception.to_string exn));
-        ]
 
 let server_error_to_json = function
   | ClientMessageDecodeFailed error ->
@@ -109,9 +105,8 @@ let server_error_to_json = function
 
 let client_msg_error_to_string = function
   | InvalidJson error -> "invalid JSON: " ^ Data.Json.error_to_string error
+  | InvalidEventPayload json -> "invalid Event payload: " ^ Data.Json.to_string json
   | UnknownMessageFormat json -> "unknown message format: " ^ Data.Json.to_string json
-  | UnexpectedDecodeException exn ->
-      "unexpected LiveView protocol decode exception: " ^ Exception.to_string exn
 
 let server_error_to_string = function
   | ClientMessageDecodeFailed error -> client_msg_error_to_string error
@@ -129,18 +124,16 @@ let serialize_server_msg = fun msg ->
 
 (** Deserialize client message from JSON *)
 let deserialize_client_msg = fun json_str ->
-  try
-    if json_str = {|"Mount"|} then
-      Ok Mount
-    else
-      (* Parse as JSON *)
-      match Data.Json.of_string json_str with
-      | Error error -> Error (InvalidJson error)
-      | Ok json ->
-          (* Check for Event *)
-          match Data.Json.get_field "Event" json with
-          | Some (Data.Json.Array [ Data.Json.String handler_id; Data.Json.String event_data ]) ->
-              Ok (Event { handler_id; event_data })
-          | _ -> Error (UnknownMessageFormat json)
-  with
-  | exn -> Error (UnexpectedDecodeException exn)
+  if json_str = {|"Mount"|} then
+    Ok Mount
+  else
+    (* Parse as JSON *)
+    match Data.Json.of_string json_str with
+    | Error error -> Error (InvalidJson error)
+    | Ok json ->
+        (* Check for Event *)
+        match Data.Json.get_field "Event" json with
+        | Some (Data.Json.Array [ Data.Json.String handler_id; Data.Json.String event_data ]) ->
+            Ok (Event { handler_id; event_data })
+        | Some value -> Error (InvalidEventPayload value)
+        | _ -> Error (UnknownMessageFormat json)
