@@ -278,7 +278,7 @@ let decide_binding_rhs = fun ctx facts ->
               { mode = Block; reasons = [ width_overflow_reason ctx facts ] }
       )
 
-let decide = fun family ctx facts ->
+let decide_raw = fun family ctx facts ->
   if facts.contains_hardline then
     { mode = Block; reasons = [ Contains_hardline ] }
   else if facts.has_leading_comment then
@@ -341,3 +341,99 @@ let decide = fun family ctx facts ->
             else
               { mode = Block; reasons = [ width_overflow_reason ctx facts ] }
       )
+
+let trace_enabled =
+  match Env.get Env.Bool ~var:"KRASNY_LAYOUT_TRACE" with
+  | Some true -> true
+  | Some false
+  | None -> false
+
+let mode_to_string = function
+  | Inline -> "Inline"
+  | Flow -> "Flow"
+  | Hang indent -> "Hang(" ^ Int.to_string indent ^ ")"
+  | Vertical -> "Vertical"
+  | Block -> "Block"
+  | Isolate_child_blocks -> "Isolate_child_blocks"
+  | Break_after_separator -> "Break_after_separator"
+  | Tight -> "Tight"
+  | Blank_line -> "Blank_line"
+
+let family_to_string = function
+  | Delimited Parens -> "Delimited(Parens)"
+  | Delimited Brackets -> "Delimited(Brackets)"
+  | Delimited Braces -> "Delimited(Braces)"
+  | Delimited Begin_end -> "Delimited(Begin_end)"
+  | Delimited Sig_end -> "Delimited(Sig_end)"
+  | Delimited Struct_end -> "Delimited(Struct_end)"
+  | Separated Tuple -> "Separated(Tuple)"
+  | Separated List -> "Separated(List)"
+  | Separated Array -> "Separated(Array)"
+  | Separated Record_fields -> "Separated(Record_fields)"
+  | Separated Variant_rows -> "Separated(Variant_rows)"
+  | Application -> "Application"
+  | Infix_chain operator -> "Infix_chain(" ^ operator.text ^ ")"
+  | Binding_rhs Let_binding -> "Binding_rhs(Let_binding)"
+  | Binding_rhs Record_field -> "Binding_rhs(Record_field)"
+  | Binding_rhs Method_definition -> "Binding_rhs(Method_definition)"
+  | Keyword_clause If_then -> "Keyword_clause(If_then)"
+  | Keyword_clause If_else -> "Keyword_clause(If_else)"
+  | Keyword_clause Match_case -> "Keyword_clause(Match_case)"
+  | Keyword_clause Try_case -> "Keyword_clause(Try_case)"
+  | Keyword_clause Fun_body -> "Keyword_clause(Fun_body)"
+  | After_separator Colon -> "After_separator(Colon)"
+  | After_separator Coerce -> "After_separator(Coerce)"
+  | After_separator Equals -> "After_separator(Equals)"
+  | After_separator Arrow -> "After_separator(Arrow)"
+  | After_separator With -> "After_separator(With)"
+  | Top_level_join -> "Top_level_join"
+
+let reason_to_string = function
+  | Has_leading_comment -> "Has_leading_comment"
+  | Has_trailing_comment -> "Has_trailing_comment"
+  | Contains_hardline -> "Contains_hardline"
+  | Contains_section_doc -> "Contains_section_doc"
+  | Child_is_block -> "Child_is_block"
+  | Width_overflow { flat_width; remaining } ->
+      "Width_overflow(flat="
+      ^ Int.to_string flat_width
+      ^ ", remaining="
+      ^ Int.to_string remaining
+      ^ ")"
+  | Long_infix_chain { operator; terms } ->
+      "Long_infix_chain(operator=" ^ operator ^ ", terms=" ^ Int.to_string terms ^ ")"
+  | Heavy_nested_apply -> "Heavy_nested_apply"
+  | Pipeline_body -> "Pipeline_body"
+  | Assignment_body -> "Assignment_body"
+  | Inline_rhs_body -> "Inline_rhs_body"
+  | Known_width_overflow -> "Known_width_overflow"
+  | Single_constructor_payload -> "Single_constructor_payload"
+  | Parent_requires_block -> "Parent_requires_block"
+  | Opaque_payload -> "Opaque_payload"
+
+let reasons_to_string = fun reasons ->
+  match reasons with
+  | [] -> "[]"
+  | _ -> "[" ^ String.concat ", " (List.map reasons ~fn:reason_to_string) ^ "]"
+
+let trace_decision = fun family ctx facts decision ->
+  if trace_enabled then
+    eprintln
+      (
+        "krasny layout: "
+        ^ family_to_string family
+        ^ " column="
+        ^ Int.to_string ctx.column
+        ^ " width="
+        ^ Int.to_string ctx.width
+        ^ " flat=" ^ (
+          match facts.flat_width with
+          | Some width -> Int.to_string width
+          | None -> "unknown"
+        ) ^ " -> " ^ mode_to_string decision.mode ^ " " ^ reasons_to_string decision.reasons
+      )
+
+let decide = fun family ctx facts ->
+  let decision = decide_raw family ctx facts in
+  trace_decision family ctx facts decision;
+  decision
