@@ -97,6 +97,34 @@ end
 
 let match_path = Matcher.match_path
 
+let route_method_matches = fun route_meth meth ->
+  match route_meth with
+  | SpecificMethod m -> Net.Http.Method.equal m meth
+  | AnyMethod -> true
+
+let add_allowed_method = fun meth methods ->
+  if List.exists (fun existing -> Net.Http.Method.equal existing meth) methods then
+    methods
+  else
+    meth :: methods
+
+let route_method_allowed = fun route_meth allowed ->
+  match route_meth with
+  | SpecificMethod meth -> add_allowed_method meth allowed
+  | AnyMethod -> allowed
+
+let render_allow_header = fun methods ->
+  methods
+  |> List.sort ~compare:Net.Http.Method.compare
+  |> List.map ~fn:Net.Http.Method.to_string
+  |> String.concat ", "
+
+let method_not_allowed = fun allowed conn ->
+  conn
+  |> Conn.respond ~status:Net.Http.Status.MethodNotAllowed ~body:"Method Not Allowed"
+  |> Conn.set_header "allow" (render_allow_header allowed)
+  |> Conn.send
+
 let rec flatten_routes = fun prefix routes ->
   List.flat_map
     ~fn:(fun route ->
@@ -118,22 +146,22 @@ let middleware = fun routes ->
       let meth = Conn.method_ conn in
       let path = normalize_path (Conn.path conn) in
       let req = Conn.request conn in
-      let rec try_routes = function
-        | [] -> next conn
-        | (route_meth, route_path, handler) :: rest ->
-            let method_matches =
-              match route_meth with
-              | SpecificMethod m -> m = meth
-              | AnyMethod -> true
-            in
-            if method_matches then
-              match Matcher.match_path route_path path with
-              | Some params ->
-                  let conn = Conn.set_params params conn in
-                  (* Call handler with both conn and req *)
-                  handler conn req
-              | None -> try_routes rest
+      let rec try_routes allowed_methods = function
+        | [] ->
+            if List.is_empty allowed_methods then
+              next conn
             else
-              try_routes rest
+              method_not_allowed allowed_methods conn
+        | (route_meth, route_path, handler) :: rest -> (
+            match Matcher.match_path route_path path with
+            | Some params ->
+                if route_method_matches route_meth meth then
+                  let conn = Conn.set_params params conn in
+                  handler conn req
+                else
+                  let allowed_methods = route_method_allowed route_meth allowed_methods in
+                  try_routes allowed_methods rest
+            | None -> try_routes allowed_methods rest
+          )
       in
-      try_routes flat_routes
+      try_routes [] flat_routes

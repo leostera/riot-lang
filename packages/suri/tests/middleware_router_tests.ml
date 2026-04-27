@@ -21,6 +21,7 @@ module LiveViewSession = Suri.Testing.Internal.LiveViewSession
 module LiveViewProtocol = Suri.Testing.Internal.LiveViewProtocol
 module Channel = Suri.Testing.Internal.Channel
 module Http1 = Suri.Testing.Internal.Http1
+module Testing = Suri.Testing
 
 let valid_websocket_key = "dGhlIHNhbXBsZSBub25jZQ=="
 
@@ -116,6 +117,65 @@ let test_router_matcher_rejects_partial_literal_segments = fun _ctx ->
   Test.assert_equal ~expected:(Some []) ~actual:(Router.match_path "/assets" "/assets/");
   Ok ()
 
+let router_handler = fun body conn _req ->
+  conn
+  |> Conn.respond ~status:Net.Http.Status.Ok ~body
+  |> Conn.send
+
+let test_router_returns_method_not_allowed_for_known_path = fun _ctx ->
+  let app = [
+    Router.middleware
+      [
+        Router.post "/messages" (router_handler "post");
+        Router.get "/messages" (router_handler "get");
+      ];
+  ]
+  in
+  match Testing.App.delete app "/messages" with
+  | Error error -> Error (Testing.response_error_to_string error)
+  | Ok response ->
+      Test.assert_equal ~expected:Net.Http.Status.MethodNotAllowed ~actual:response.status;
+      Test.assert_equal
+        ~expected:(Some "GET, POST")
+        ~actual:(Net.Http.Header.get response.headers "allow");
+      Test.assert_equal ~expected:"Method Not Allowed" ~actual:response.body;
+      Ok ()
+
+let test_router_keeps_scanning_after_method_mismatch = fun _ctx ->
+  let app = [
+    Router.middleware
+      [
+        Router.post "/messages" (router_handler "post");
+        Router.delete "/messages" (router_handler "delete");
+      ];
+  ]
+  in
+  match Testing.App.delete app "/messages" with
+  | Error error -> Error (Testing.response_error_to_string error)
+  | Ok response ->
+      Test.assert_equal ~expected:Net.Http.Status.Ok ~actual:response.status;
+      Test.assert_equal ~expected:"delete" ~actual:response.body;
+      Test.assert_equal ~expected:None ~actual:(Net.Http.Header.get response.headers "allow");
+      Ok ()
+
+let test_router_passes_unmatched_paths_to_next_middleware = fun _ctx ->
+  let app = [
+    Router.middleware [ Router.get "/messages" (router_handler "get"); ];
+    (
+      fun ~conn ~next:_ ->
+        conn
+        |> Conn.respond ~status:Net.Http.Status.Ok ~body:"fallback"
+        |> Conn.send
+    );
+  ]
+  in
+  match Testing.App.get app "/missing" with
+  | Error error -> Error (Testing.response_error_to_string error)
+  | Ok response ->
+      Test.assert_equal ~expected:Net.Http.Status.Ok ~actual:response.status;
+      Test.assert_equal ~expected:"fallback" ~actual:response.body;
+      Ok ()
+
 let tests =
   Test.[
     case
@@ -125,6 +185,15 @@ let tests =
     case
       "router matcher rejects partial literal segments"
       test_router_matcher_rejects_partial_literal_segments;
+    case
+      "router returns method not allowed for known path"
+      test_router_returns_method_not_allowed_for_known_path;
+    case
+      "router keeps scanning after method mismatch"
+      test_router_keeps_scanning_after_method_mismatch;
+    case
+      "router passes unmatched paths to next middleware"
+      test_router_passes_unmatched_paths_to_next_middleware;
   ]
 
 let main ~args = Test.Cli.main ~name:"suri:middleware-router" ~tests ~args ()

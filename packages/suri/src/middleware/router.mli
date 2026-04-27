@@ -103,6 +103,12 @@
      ]
    ]}
 
+   {2 405 Handling}
+
+   If a path matches one or more routes but the request method does not match
+   any of them, the router returns [405 Method Not Allowed] and sets the
+   [Allow] response header to the methods accepted by that path.
+
    {2 Examples}
 
    See [packages/suri/examples/]:
@@ -278,7 +284,9 @@ val match_path: string -> string -> (string * string) list option
 
    The router middleware tries to match the request path and method against
    all routes in order. When a match is found, the route's handler is called.
-   If no route matches, the [next] middleware in the pipeline is called.
+   If the path matches but the method does not, the router returns
+   [405 Method Not Allowed]. If no route path matches, the [next] middleware
+   in the pipeline is called.
 
    {[
      let routes = [
