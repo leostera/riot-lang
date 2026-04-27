@@ -1662,11 +1662,22 @@ let collect_child_patterns = fun (node: Ast.Node.t) ->
 
 let collect_fun_parameters = fun (node: Ast.Node.t) ->
   let parameters = Vector.with_capacity ~size:(Ast.Node.child_count node) in
+  let rec push_parameter pattern =
+    match node_kind pattern with
+    | Kind.CONSTRUCT_PATTERN ->
+        Ast.Node.for_each_child_node
+          pattern
+          ~fn:(fun child ->
+            match Ast.Pattern.cast child with
+            | Some child -> push_parameter child
+            | None -> ())
+    | _ -> Vector.push parameters ~value:pattern
+  in
   Ast.Node.for_each_child_node
     node
     ~fn:(fun child ->
       match Ast.Pattern.cast child with
-      | Some pattern -> Vector.push parameters ~value:pattern
+      | Some pattern -> push_parameter pattern
       | None -> ());
   parameters
 
@@ -3856,12 +3867,16 @@ let pattern_is_or = fun pattern ->
 let collect_tuple_pattern_items = fun pattern ->
   let items = Vector.with_capacity ~size:(Ast.Node.child_count pattern) in
   let rec push_items pattern =
-    Ast.Pattern.for_each_child_pattern
+    Ast.Node.for_each_child_node
       pattern
       ~fn:(fun child ->
-        match PatternView.view child with
-        | Tuple when not (pattern_tuple_has_parens child) -> push_items child
-        | _ -> Vector.push items ~value:child)
+        match Ast.Pattern.cast child with
+        | Some child -> (
+            match PatternView.view child with
+            | Tuple when not (pattern_tuple_has_parens child) -> push_items child
+            | _ -> Vector.push items ~value:child
+          )
+        | None -> ())
   in
   push_items pattern;
   items
@@ -6360,7 +6375,9 @@ and render_apply_expr = fun state expr ->
     state.force_apply_break <- false;
   let (callee, args) = collect_apply expr in
   let arg_count = Vector.length args in
-  let single_constructor_payload = Int.equal arg_count 1 && expr_is_constructor_like_callee callee in
+  let single_constructor_payload =
+    Int.equal arg_count 1 && expr_is_constructor_like_callee callee
+  in
   let has_multiline_args = vector_exists_expr_is_multiline_except expr args in
   let break_all_args =
     if single_constructor_payload then

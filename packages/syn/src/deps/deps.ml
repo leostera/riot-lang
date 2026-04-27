@@ -662,6 +662,7 @@ module Ast_deps = struct
     | Syntax_kind.LET_BINDING -> collect_let_binding env deps node
     | Syntax_kind.LET_MODULE_EXPR -> collect_let_module_expr env deps node
     | Syntax_kind.FUN_EXPR -> collect_fun_expr env deps node
+    | Syntax_kind.MATCH_CASE -> collect_match_case env deps node
     | Syntax_kind.TYPE_DECL ->
         let deps = collect_direct_type_extension_path env deps node in
         let deps = collect_direct_type_payload_paths env deps node in
@@ -757,6 +758,32 @@ module Ast_deps = struct
         in
         (
           match A.LetBinding.body binding with
+          | Some body -> collect_node env deps body
+          | None -> Ok deps
+        )
+
+  and collect_match_case env deps node =
+    match A.MatchCase.cast node with
+    | None -> collect_child_nodes collect_node env deps node
+    | Some match_case ->
+        let view = A.MatchCase.view match_case in
+        let* deps =
+          match view.pattern with
+          | Some pattern -> collect_node env deps pattern
+          | None -> Ok deps
+        in
+        let env =
+          match view.pattern with
+          | Some pattern -> bind_pattern_modules env pattern
+          | None -> env
+        in
+        let* deps =
+          match view.guard with
+          | Some guard -> collect_node env deps guard
+          | None -> Ok deps
+        in
+        (
+          match view.body with
           | Some body -> collect_node env deps body
           | None -> Ok deps
         )

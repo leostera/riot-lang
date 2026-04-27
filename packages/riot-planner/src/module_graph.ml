@@ -216,6 +216,7 @@ let rec executable_parameter_to_string = fun parameter ->
     )
   | None -> (
       match Ast.Pattern.view parameter with
+      | Ast.Pattern.Unit -> "<positional>"
       | Ast.Pattern.Ident { path } ->
           Ast.Path.last_ident path
           |> Option.map ~fn:Ast.Token.text

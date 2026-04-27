@@ -459,6 +459,48 @@ let first_type_expr_child = fun (node: node) ->
     node
     ~matches:is_type_expr_kind
 
+let rec normalize_expr_node = fun (expr: expr) ->
+  match (syntax_node expr).Syntax_tree.kind with
+  | Syntax_kind.PAREN_EXPR
+  | Syntax_kind.ATTRIBUTE_EXPR -> (
+      match first_expr_child expr with
+      | Some inner -> normalize_expr_node inner
+      | None -> expr
+    )
+  | _ -> expr
+
+let normalize_expr_option = function
+  | Some expr -> Some (normalize_expr_node expr)
+  | None -> None
+
+let rec normalize_pattern_node = fun (pattern: pattern) ->
+  match (syntax_node pattern).Syntax_tree.kind with
+  | Syntax_kind.PAREN_PATTERN
+  | Syntax_kind.ATTRIBUTE_PATTERN -> (
+      match first_pattern_child pattern with
+      | Some inner -> normalize_pattern_node inner
+      | None -> pattern
+    )
+  | _ -> pattern
+
+let normalize_pattern_option = function
+  | Some pattern -> Some (normalize_pattern_node pattern)
+  | None -> None
+
+let rec normalize_type_expr_node = fun (type_expr: type_expr) ->
+  match (syntax_node type_expr).Syntax_tree.kind with
+  | Syntax_kind.TYPE_EXPR
+  | Syntax_kind.PAREN_TYPE -> (
+      match first_type_expr_child type_expr with
+      | Some inner -> normalize_type_expr_node inner
+      | None -> type_expr
+    )
+  | _ -> type_expr
+
+let normalize_type_expr_option = function
+  | Some type_expr -> Some (normalize_type_expr_node type_expr)
+  | None -> None
+
 let rec first_type_expr_descendant_of_pattern = fun (node: node) ->
   match first_type_expr_child node with
   | Some type_expr -> Some type_expr
@@ -872,7 +914,7 @@ module TypeExpr = struct
     for_each_child_node_matching
       type_expr
       ~matches:is_type_expr_kind
-      ~fn:(fun child -> Vector.push items ~value:child);
+      ~fn:(fun child -> Vector.push items ~value:(normalize_type_expr_node child));
     items
 
   let rec parenthesized_inner = fun type_expr ->
@@ -894,7 +936,7 @@ module TypeExpr = struct
             optional_ = Option.is_some
               (first_child_token_matching inner ~matches:(fun kind -> Syntax_kind.(kind = QUESTION)));
           },
-          first_child_node_matching inner ~matches:is_type_expr_kind
+          normalize_type_expr_option (first_child_node_matching inner ~matches:is_type_expr_kind)
         )
     | _ -> None
 
@@ -911,7 +953,7 @@ module TypeExpr = struct
       | Some inner when node_kind_is inner Syntax_kind.TUPLE_TYPE
       && tuple_separator inner = tuple_separator type_expr ->
           for_each_child_node_matching inner ~matches:is_type_expr_kind ~fn:collect
-      | Some inner -> Vector.push parts ~value:inner
+      | Some inner -> Vector.push parts ~value:(normalize_type_expr_node inner)
       | None -> ()
     in
     collect type_expr;
@@ -933,16 +975,18 @@ module TypeExpr = struct
             | Some argument -> (
                 match comma_tuple_parts argument with
                 | Some tuple_args ->
-                    Vector.for_each tuple_args ~fn:(fun arg -> Vector.push args ~value:arg);
+                    Vector.for_each
+                      tuple_args
+                      ~fn:(fun arg -> Vector.push args ~value:(normalize_type_expr_node arg));
                     args
                 | None ->
-                    Vector.push args ~value:argument;
+                    Vector.push args ~value:(normalize_type_expr_node argument);
                     args
               )
             | None -> args
           in
           match constructor with
-          | Some constructor -> loop constructor args
+          | Some constructor -> loop (normalize_type_expr_node constructor) args
           | None -> (None, args)
         )
       | Syntax_kind.TYPE_EXPR -> (
@@ -983,10 +1027,18 @@ module TypeExpr = struct
             )
           | None -> (None, None)
         in
-        Arrow { label; arg; ret = nth_child_node_matching type_expr 1 ~matches:is_type_expr_kind }
+        Arrow {
+          label;
+          arg = normalize_type_expr_option arg;
+          ret = normalize_type_expr_option
+            (nth_child_node_matching type_expr 1 ~matches:is_type_expr_kind);
+        }
       )
     | Syntax_kind.POLY_TYPE ->
-        Poly { body = first_child_node_matching type_expr ~matches:is_type_expr_kind }
+        Poly {
+          body = normalize_type_expr_option
+            (first_child_node_matching type_expr ~matches:is_type_expr_kind);
+        }
     | Syntax_kind.LABELED_TYPE -> Unknown type_expr
     | Syntax_kind.TUPLE_TYPE -> Tuple { parts = tuple_parts type_expr }
     | Syntax_kind.APPLY_TYPE ->
@@ -1005,7 +1057,7 @@ module TypeExpr = struct
     for_each_child_node_matching
       type_expr
       ~matches:is_type_expr_kind
-      ~fn
+      ~fn:(fun child -> fn (normalize_type_expr_node child))
 
   let child_token_kind_is_in = fun node index kind ->
     match child_token_kind_at node index with
@@ -1489,19 +1541,20 @@ end = struct
     for_each_child_node_matching
       expr
       ~matches:is_expr_kind
-      ~fn:(fun child -> Vector.push items ~value:child);
+      ~fn:(fun child -> Vector.push items ~value:(normalize_expr_node child));
     items
 
   let record_expr_base = fun record ->
     if node_kind_is record Syntax_kind.RECORD_UPDATE_EXPR then
-      nth_expr_child record 0
+      normalize_expr_option (nth_expr_child record 0)
     else
       None
 
   let record_expr_field_of_node = fun (field: record_expr_field) ->
+    let normalize_value = normalize_expr_option in
     match (nth_expr_child field 0, nth_expr_child field 1) with
     | (Some expr, value) when node_kind_is expr Syntax_kind.PATH_EXPR ->
-        { path = Path.cast expr; value; node = field }
+        { path = Path.cast expr; value = normalize_value value; node = field }
     | (Some expr, _) when node_kind_is expr Syntax_kind.INFIX_EXPR -> (
         match (nth_expr_child expr 0, nth_expr_child expr 1) with
         | (Some left, Some right) ->
@@ -1511,10 +1564,11 @@ end = struct
               else
                 None
             in
-            { path; value = Some right; node = field }
+            { path; value = Some (normalize_expr_node right); node = field }
         | _ -> { path = None; value = None; node = field }
       )
-    | (Some expr, value) -> { path = Path.cast expr; value; node = field }
+    | (Some expr, value) ->
+        { path = Path.cast expr; value = normalize_value value; node = field }
     | (None, _) -> { path = None; value = None; node = field }
 
   let record_expr_fields = fun record ->
@@ -1562,12 +1616,21 @@ end = struct
         | None -> Unit
       )
     | Syntax_kind.LET_EXPR ->
-        Let { first_binding = first_let_binding_child expr; body = nth_expr_child expr 0 }
-    | Syntax_kind.LOCAL_OPEN_EXPR -> LocalOpen { body = nth_expr_child expr 1 }
-    | Syntax_kind.LET_MODULE_EXPR -> LetModule { body = first_expr_child expr }
-    | Syntax_kind.LET_EXCEPTION_EXPR -> LetException { body = first_expr_child expr }
+        Let {
+          first_binding = first_let_binding_child expr;
+          body = normalize_expr_option (nth_expr_child expr 0);
+        }
+    | Syntax_kind.LOCAL_OPEN_EXPR ->
+        LocalOpen { body = normalize_expr_option (nth_expr_child expr 1) }
+    | Syntax_kind.LET_MODULE_EXPR ->
+        LetModule { body = normalize_expr_option (first_expr_child expr) }
+    | Syntax_kind.LET_EXCEPTION_EXPR ->
+        LetException { body = normalize_expr_option (first_expr_child expr) }
     | Syntax_kind.BINDING_OPERATOR_EXPR ->
-        Let { first_binding = first_let_binding_child expr; body = nth_expr_child expr 0 }
+        Let {
+          first_binding = first_let_binding_child expr;
+          body = normalize_expr_option (nth_expr_child expr 0);
+        }
     | Syntax_kind.FIRST_CLASS_MODULE_EXPR
     | Syntax_kind.EXTENSION_EXPR
     | Syntax_kind.UNREACHABLE_EXPR
@@ -1575,58 +1638,84 @@ end = struct
     | Syntax_kind.NEW_EXPR -> Unknown expr
     | Syntax_kind.IF_EXPR ->
         If {
-          condition = nth_expr_child expr 0;
-          then_branch = nth_expr_child expr 1;
-          else_branch = nth_expr_child expr 2;
+          condition = normalize_expr_option (nth_expr_child expr 0);
+          then_branch = normalize_expr_option (nth_expr_child expr 1);
+          else_branch = normalize_expr_option (nth_expr_child expr 2);
         }
     | Syntax_kind.MATCH_EXPR ->
-        Match { scrutinee = nth_expr_child expr 0; first_case = first_match_case_child expr }
-    | Syntax_kind.FUN_EXPR -> Fun { body = nth_expr_child expr 0; first_case = None }
+        Match {
+          scrutinee = normalize_expr_option (nth_expr_child expr 0);
+          first_case = first_match_case_child expr;
+        }
+    | Syntax_kind.FUN_EXPR ->
+        Fun { body = normalize_expr_option (nth_expr_child expr 0); first_case = None }
     | Syntax_kind.FUNCTION_EXPR -> Fun { body = None; first_case = first_match_case_child expr }
     | Syntax_kind.TRY_EXPR ->
-        Try { body = nth_expr_child expr 0; first_case = first_match_case_child expr }
+        Try {
+          body = normalize_expr_option (nth_expr_child expr 0);
+          first_case = first_match_case_child expr;
+        }
     | Syntax_kind.WHILE_EXPR ->
-        While { condition = nth_expr_child expr 0; body = nth_expr_child expr 1 }
+        While {
+          condition = normalize_expr_option (nth_expr_child expr 0);
+          body = normalize_expr_option (nth_expr_child expr 1);
+        }
     | Syntax_kind.FOR_EXPR ->
         For {
-          pattern = first_pattern_child expr;
-          start_ = nth_expr_child expr 0;
-          stop = nth_expr_child expr 1;
-          body = nth_expr_child expr 2;
+          pattern = normalize_pattern_option (first_pattern_child expr);
+          start_ = normalize_expr_option (nth_expr_child expr 0);
+          stop = normalize_expr_option (nth_expr_child expr 1);
+          body = normalize_expr_option (nth_expr_child expr 2);
         }
     | Syntax_kind.ASSERT_EXPR
-    | Syntax_kind.LAZY_EXPR -> Apply { callee = None; argument = first_expr_child expr }
+    | Syntax_kind.LAZY_EXPR ->
+        Apply { callee = None; argument = normalize_expr_option (first_expr_child expr) }
     | Syntax_kind.ATTRIBUTE_EXPR -> (
         match first_expr_child expr with
         | Some inner -> view inner
         | None -> Unknown expr
       )
     | Syntax_kind.SEQUENCE_EXPR ->
-        Sequence { left = nth_expr_child expr 0; right = nth_expr_child expr 1 }
+        Sequence {
+          left = normalize_expr_option (nth_expr_child expr 0);
+          right = normalize_expr_option (nth_expr_child expr 1);
+        }
     | Syntax_kind.APPLY_EXPR ->
-        Apply { callee = nth_expr_child expr 0; argument = nth_expr_child expr 1 }
+        Apply {
+          callee = normalize_expr_option (nth_expr_child expr 0);
+          argument = normalize_expr_option (nth_expr_child expr 1);
+        }
     | Syntax_kind.INFIX_EXPR ->
         Infix {
-          left = nth_expr_child expr 0;
+          left = normalize_expr_option (nth_expr_child expr 0);
           operator = first_direct_token expr;
-          right = nth_expr_child expr 1;
+          right = normalize_expr_option (nth_expr_child expr 1);
         }
     | Syntax_kind.PREFIX_EXPR ->
-        Prefix { operator = first_operator_token expr; operand = first_expr_child expr }
+        Prefix {
+          operator = first_operator_token expr;
+          operand = normalize_expr_option (first_expr_child expr);
+        }
     | Syntax_kind.ASSIGN_EXPR ->
         Assign {
-          target = nth_expr_child expr 0;
+          target = normalize_expr_option (nth_expr_child expr 0);
           operator = first_direct_token expr;
-          value = nth_expr_child expr 1;
+          value = normalize_expr_option (nth_expr_child expr 1);
         }
     | Syntax_kind.FIELD_ACCESS_EXPR ->
-        FieldAccess { target = nth_expr_child expr 0; field = last_ident_token expr }
+        FieldAccess {
+          target = normalize_expr_option (nth_expr_child expr 0);
+          field = last_ident_token expr;
+        }
     | Syntax_kind.METHOD_CALL_EXPR ->
-        MethodCall { target = nth_expr_child expr 0; method_ = last_ident_token expr }
+        MethodCall {
+          target = normalize_expr_option (nth_expr_child expr 0);
+          method_ = last_ident_token expr;
+        }
     | Syntax_kind.POLY_VARIANT_EXPR ->
         PolyVariant {
           tag = first_child_token_matching expr ~matches:(fun kind -> Syntax_kind.(kind = IDENT));
-          payload = first_expr_child expr;
+          payload = normalize_expr_option (first_expr_child expr);
         }
     | Syntax_kind.PATH_EXPR -> Ident { path = expr }
     | Syntax_kind.LITERAL_EXPR -> Literal { token = literal_token expr }
@@ -1637,11 +1726,22 @@ end = struct
     | Syntax_kind.RECORD_UPDATE_EXPR ->
         Record { base = record_expr_base expr; fields = record_expr_fields expr }
     | Syntax_kind.ARRAY_INDEX_EXPR ->
-        Infix { left = nth_expr_child expr 0; operator = None; right = nth_expr_child expr 1 }
+        Infix {
+          left = normalize_expr_option (nth_expr_child expr 0);
+          operator = None;
+          right = normalize_expr_option (nth_expr_child expr 1);
+        }
     | Syntax_kind.STRING_INDEX_EXPR ->
-        Infix { left = nth_expr_child expr 0; operator = None; right = nth_expr_child expr 1 }
+        Infix {
+          left = normalize_expr_option (nth_expr_child expr 0);
+          operator = None;
+          right = normalize_expr_option (nth_expr_child expr 1);
+        }
     | Syntax_kind.TYPED_EXPR ->
-        Annotated { expr = first_expr_child expr; annotation = first_type_expr_child expr }
+        Annotated {
+          expr = normalize_expr_option (first_expr_child expr);
+          annotation = normalize_type_expr_option (first_type_expr_child expr);
+        }
     | Syntax_kind.LABELED_ARG
     | Syntax_kind.OPTIONAL_ARG -> Unknown expr
     | Syntax_kind.ERROR -> Error expr
@@ -1651,7 +1751,7 @@ end = struct
     for_each_child_node_matching
       expr
       ~matches:is_expr_kind
-      ~fn
+      ~fn:(fun child -> fn (normalize_expr_node child))
 
   let for_each_match_case = fun (expr: expr) ~fn ->
     for_each_child_node_matching
@@ -2488,7 +2588,7 @@ end = struct
     for_each_child_node_matching
       pattern
       ~matches:is_pattern_kind
-      ~fn:(fun child -> Vector.push items ~value:child);
+      ~fn:(fun child -> Vector.push items ~value:(normalize_pattern_node child));
     items
 
   let path_is_constructor = fun path ->
@@ -2523,7 +2623,7 @@ end = struct
           Ident { path = pattern }
     | Syntax_kind.CONSTRUCT_PATTERN -> (
         let callee = nth_pattern_child pattern 0 in
-        let payload = nth_pattern_child pattern 1 in
+        let payload = normalize_pattern_option (nth_pattern_child pattern 1) in
         match callee with
         | Some callee -> (
             match view callee with
@@ -2539,26 +2639,43 @@ end = struct
     | Syntax_kind.ARRAY_PATTERN -> Array { items = child_patterns pattern }
     | Syntax_kind.RECORD_PATTERN -> Record
     | Syntax_kind.POLY_VARIANT_PATTERN ->
-        PolyVariant { tag = first_ident_token pattern; payload = first_pattern_child pattern }
+        PolyVariant {
+          tag = first_ident_token pattern;
+          payload = normalize_pattern_option (first_pattern_child pattern);
+        }
     | Syntax_kind.EXTENSION_PATTERN
     | Syntax_kind.LOCAL_OPEN_PATTERN
     | Syntax_kind.LOCALLY_ABSTRACT_TYPE_PATTERN -> Unknown pattern
     | Syntax_kind.FIRST_CLASS_MODULE_PATTERN -> FirstClassModule
     | Syntax_kind.INTERVAL_PATTERN ->
-        Interval { left = nth_pattern_child pattern 0; right = nth_pattern_child pattern 1 }
+        Interval {
+          left = normalize_pattern_option (nth_pattern_child pattern 0);
+          right = normalize_pattern_option (nth_pattern_child pattern 1);
+        }
     | Syntax_kind.CONSTRAINT_PATTERN ->
         Constraint {
-          pattern = first_pattern_child pattern;
-          annotation = first_type_expr_child pattern;
+          pattern = normalize_pattern_option (first_pattern_child pattern);
+          annotation = normalize_type_expr_option (first_type_expr_child pattern);
         }
     | Syntax_kind.ALIAS_PATTERN ->
-        Alias { pattern = nth_pattern_child pattern 0; alias = nth_pattern_child pattern 1 }
+        Alias {
+          pattern = normalize_pattern_option (nth_pattern_child pattern 0);
+          alias = normalize_pattern_option (nth_pattern_child pattern 1);
+        }
     | Syntax_kind.OR_PATTERN ->
-        Or { left = nth_pattern_child pattern 0; right = nth_pattern_child pattern 1 }
+        Or {
+          left = normalize_pattern_option (nth_pattern_child pattern 0);
+          right = normalize_pattern_option (nth_pattern_child pattern 1);
+        }
     | Syntax_kind.CONS_PATTERN ->
-        Cons { head = nth_pattern_child pattern 0; tail = nth_pattern_child pattern 1 }
-    | Syntax_kind.LAZY_PATTERN -> Lazy { pattern = first_pattern_child pattern }
-    | Syntax_kind.EXCEPTION_PATTERN -> Exception { pattern = first_pattern_child pattern }
+        Cons {
+          head = normalize_pattern_option (nth_pattern_child pattern 0);
+          tail = normalize_pattern_option (nth_pattern_child pattern 1);
+        }
+    | Syntax_kind.LAZY_PATTERN ->
+        Lazy { pattern = normalize_pattern_option (first_pattern_child pattern) }
+    | Syntax_kind.EXCEPTION_PATTERN ->
+        Exception { pattern = normalize_pattern_option (first_pattern_child pattern) }
     | Syntax_kind.LABELED_PARAM
     | Syntax_kind.OPTIONAL_PARAM
     | Syntax_kind.OPTIONAL_PARAM_DEFAULT -> Unknown pattern
@@ -2569,7 +2686,7 @@ end = struct
     for_each_child_node_matching
       pattern
       ~matches:is_pattern_kind
-      ~fn
+      ~fn:(fun child -> fn (normalize_pattern_node child))
 end
 
 module AttributePattern: sig

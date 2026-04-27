@@ -1784,6 +1784,74 @@ let test_parenthesized_parameter_annotation_is_not_return_annotation = fun _ctx 
   | None -> Ok ()
   | Some _ -> Error "expected parameter annotation not to become binding return annotation"
 
+let test_ast_views_normalize_redundant_parentheses = fun _ctx ->
+  let root =
+    parse_ml
+      {ocaml|let call = g (((f 1)))
+let typed: (((int))) list = x
+let render = function | (((Some (((item)))))) -> item
+|ocaml}
+    |> Result.expect ~msg:"expected parse source file"
+  in
+  let call_binding =
+    nth_structure_item root 0
+    |> require_some ~msg:"expected call item"
+    |> binding_of_structure_item
+    |> Result.expect ~msg:"expected call binding"
+  in
+  let call_body =
+    body_of_binding call_binding
+    |> Result.expect ~msg:"expected call body"
+  in
+  let* () =
+    match Ast.Expr.view call_body with
+    | Ast.Expr.Apply { argument = Some argument; _ } ->
+        Test.assert_equal ~expected:SyntaxKind.APPLY_EXPR ~actual:(Ast.Node.kind argument);
+        Ok ()
+    | _ -> Error "expected outer call expression"
+  in
+  let typed_binding =
+    nth_structure_item root 1
+    |> require_some ~msg:"expected typed item"
+    |> binding_of_structure_item
+    |> Result.expect ~msg:"expected typed binding"
+  in
+  let annotation =
+    Ast.LetBinding.type_annotation typed_binding
+    |> require_some ~msg:"expected typed binding annotation"
+  in
+  let* () =
+    match Ast.TypeExpr.view annotation with
+    | Ast.TypeExpr.Apply { args; _ } ->
+        let arg = vector_first args ~msg:"expected applied type argument" in
+        Test.assert_equal ~expected:SyntaxKind.PATH_TYPE ~actual:(Ast.Node.kind arg);
+        Ok ()
+    | _ -> Error "expected applied type annotation"
+  in
+  let render_binding =
+    nth_structure_item root 2
+    |> require_some ~msg:"expected render item"
+    |> binding_of_structure_item
+    |> Result.expect ~msg:"expected render binding"
+  in
+  let render_body =
+    body_of_binding render_binding
+    |> Result.expect ~msg:"expected render body"
+  in
+  match Ast.Expr.view render_body with
+  | Ast.Expr.Fun { first_case = Some first_case; _ } -> (
+      match (Ast.MatchCase.view first_case).pattern with
+      | Some pattern -> (
+          match Ast.Pattern.view pattern with
+          | Ast.Pattern.Construct { payload = Some payload; _ } ->
+              Test.assert_equal ~expected:SyntaxKind.PATH_PATTERN ~actual:(Ast.Node.kind payload);
+              Ok ()
+          | _ -> Error "expected constructor pattern"
+        )
+      | None -> Error "expected function case pattern"
+    )
+  | _ -> Error "expected function expression"
+
 let last_path_text = fun path ->
   let token =
     Ast.Path.last_ident path
@@ -2162,7 +2230,9 @@ let test_local_open_views = fun _ctx ->
   | None -> Error "expected local open record inner pattern"
 
 let test_local_open_argument_views = fun _ctx ->
-  let source = "let value = send pid Server.(Telemetry (Stop { reply_to = self (); request_id }))\n" in
+  let source =
+    "let value = send pid Server.(Telemetry (Stop { reply_to = self (); request_id }))\n"
+  in
   let root =
     parse_ml source
     |> Result.expect ~msg:"expected parse source file"
@@ -3118,6 +3188,9 @@ let tests = [
   Test.case
     "ast keeps parenthesized parameter annotations out of return annotations"
     test_parenthesized_parameter_annotation_is_not_return_annotation;
+  Test.case
+    "ast views normalize redundant parentheses"
+    test_ast_views_normalize_redundant_parentheses;
   Test.case "ast exposes record expression and pattern views" test_record_views;
   Test.case
     "ast keeps record field special-form bodies within the field boundary"

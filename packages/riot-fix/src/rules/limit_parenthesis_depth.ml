@@ -33,9 +33,27 @@ let make_diagnostic = fun expr depth ->
     ^ " by removing redundant grouping or extracting a named value")
     ()
 
+let raw_first_child_expr = fun expr ->
+  let found = ref None in
+  Ast.Node.for_each_child_node
+    expr
+    ~fn:(fun child ->
+      match !found with
+      | Some _ -> ()
+      | None -> found := Ast.Expr.cast child);
+  !found
+
+let raw_for_each_child_expr = fun expr ~fn ->
+  Ast.Node.for_each_child_node
+    expr
+    ~fn:(fun child ->
+      match Ast.Expr.cast child with
+      | Some child -> fn child
+      | None -> ())
+
 let rec parenthesis_chain_depth = fun expr ->
   if Syn.SyntaxKind.(Ast.Node.kind expr = PAREN_EXPR) then
-    match H.first_child_expr expr with
+    match raw_first_child_expr expr with
     | Some inner -> 1 + parenthesis_chain_depth inner
     | None -> 0
   else
@@ -43,7 +61,7 @@ let rec parenthesis_chain_depth = fun expr ->
 
 let rec diagnostics_for_expression = fun diagnostics expr ->
   if Syn.SyntaxKind.(Ast.Node.kind expr = PAREN_EXPR) then
-    match H.first_child_expr expr with
+    match raw_first_child_expr expr with
     | Some inner ->
         let depth = parenthesis_chain_depth expr in
         let inner_depth = parenthesis_chain_depth inner in
@@ -52,7 +70,7 @@ let rec diagnostics_for_expression = fun diagnostics expr ->
         diagnostics_for_expression diagnostics inner
     | None -> ()
   else
-    Ast.Expr.for_each_child_expr expr ~fn:(diagnostics_for_expression diagnostics)
+    raw_for_each_child_expr expr ~fn:(diagnostics_for_expression diagnostics)
 
 let check_tree = fun _ctx root ->
   let diagnostics = H.diagnostics_for_root root in

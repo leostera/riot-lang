@@ -39,7 +39,10 @@ let diagnostic_for_type = fun type_expr -> diagnostic_for_node (type_expr: Ast.N
 let is_named_parameter_pattern = fun pattern -> Option.is_some (H.parameter_kind pattern)
 
 let rec check_parameter_pattern = fun ctx diagnostics pattern ->
-  if not (is_named_parameter_pattern pattern) then
+  if
+    Syn.SyntaxKind.(Ast.Node.kind pattern = CONSTRAINT_PATTERN)
+    && not (is_named_parameter_pattern pattern)
+  then
     match Ast.Pattern.view pattern with
     | Ast.Pattern.Constraint { annotation = Some annotation; _ } when is_bool_type ctx annotation ->
         H.push_diagnostic diagnostics (diagnostic_for_type annotation)

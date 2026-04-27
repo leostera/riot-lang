@@ -307,6 +307,24 @@ let get (type a) ((module M : ConfigSpec with type t = a)) =
   | Ok modules -> Error ("expected deps [], got [" ^ String.concat ", " modules ^ "]")
   | Error err -> Error err
 
+let test_deps_bind_first_class_module_match_pattern = fun _ctx ->
+  let source =
+    {ocaml|module type Intf = sig
+  val render: int -> string
+end
+
+type t =
+  | Pack: (module Intf) * int -> t
+
+let render = function
+  | Pack ((module I), state) -> I.render state
+|ocaml}
+  in
+  match parse_modules ~env:Syn.Deps.Env.empty ~filename:"packed.ml" source with
+  | Ok [] -> Ok ()
+  | Ok modules -> Error ("expected deps [], got [" ^ String.concat ", " modules ^ "]")
+  | Error err -> Error err
+
 let test_deps_local_open_keeps_child_modules_on_opened_root = fun _ctx ->
   let source = {ocaml|let output = fun mod_ ->
   let open Dep_graph in
@@ -381,6 +399,9 @@ let tests =
     case
       "deps bind first class module function parameter"
       test_deps_bind_first_class_module_function_parameter;
+    case
+      "deps bind first class module match pattern"
+      test_deps_bind_first_class_module_match_pattern;
     case
       "deps local open keeps child modules on opened root"
       test_deps_local_open_keeps_child_modules_on_opened_root;

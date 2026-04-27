@@ -22,10 +22,28 @@ let opens_with_begin = fun expr ->
   Ast.Node.first_child_token expr ~kind:Syn.SyntaxKind.BEGIN_KW
   |> Option.is_some
 
+let raw_first_child_expr = fun expr ->
+  let found = ref None in
+  Ast.Node.for_each_child_node
+    expr
+    ~fn:(fun child ->
+      match !found with
+      | Some _ -> ()
+      | None -> found := Ast.Expr.cast child);
+  !found
+
+let raw_for_each_child_expr = fun expr ~fn ->
+  Ast.Node.for_each_child_node
+    expr
+    ~fn:(fun child ->
+      match Ast.Expr.cast child with
+      | Some child -> fn child
+      | None -> ())
+
 let is_obviously_redundant = fun expr ->
   match Ast.Expr.view expr with
   | Ast.Expr.Ident _
-  | Ast.Expr.Literal _
+  | Ast.Expr.Literal _ -> true
   | _ when Syn.SyntaxKind.(Ast.Node.kind expr = PAREN_EXPR) -> true
   | _ -> false
 
@@ -42,7 +60,7 @@ let make_diagnostic = fun expr inner ->
 
 let rec diagnostics_for_expression = fun diagnostics ~inside_redundant_chain expr ->
   if Syn.SyntaxKind.(Ast.Node.kind expr = PAREN_EXPR) then
-    match H.first_child_expr expr with
+    match raw_first_child_expr expr with
     | Some inner ->
         let redundant = is_obviously_redundant inner in
         if redundant && not inside_redundant_chain && not (opens_with_begin expr) then
@@ -53,7 +71,7 @@ let rec diagnostics_for_expression = fun diagnostics ~inside_redundant_chain exp
           inner
     | None -> ()
   else
-    Ast.Expr.for_each_child_expr
+    raw_for_each_child_expr
       expr
       ~fn:(diagnostics_for_expression diagnostics ~inside_redundant_chain:false)
 
