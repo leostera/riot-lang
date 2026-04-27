@@ -44,7 +44,7 @@ let rec check_parameter_pattern = fun ctx diagnostics pattern ->
     && not (is_named_parameter_pattern pattern)
   then
     match Ast.Pattern.view pattern with
-    | Ast.Pattern.Constraint { annotation = Some annotation; _ } when is_bool_type ctx annotation ->
+    | Ast.Pattern.Constraint { annotation; _ } when is_bool_type ctx annotation ->
         H.push_diagnostic diagnostics (diagnostic_for_type annotation)
     | _ -> ()
 
@@ -66,7 +66,7 @@ let rec check_application_arguments = fun ctx diagnostics pattern ->
   match Ast.Pattern.view pattern with
   | Ast.Pattern.Construct { payload = Some argument; _ } ->
       check_pattern_tree ctx diagnostics argument
-  | Ast.Pattern.Constraint { pattern = Some pattern; _ } ->
+  | Ast.Pattern.Constraint { pattern; _ } ->
       check_application_arguments ctx diagnostics pattern
   | _ -> ()
 
@@ -87,7 +87,7 @@ let check_let_binding_parameters = fun ctx diagnostics binding ->
 
 let rec check_type_expr = fun ctx diagnostics type_expr ->
   match Ast.TypeExpr.view type_expr with
-  | Ast.TypeExpr.Arrow { label; arg = Some arg; ret } ->
+  | Ast.TypeExpr.Arrow { label; arg; ret } ->
       (
         match label with
         | Some _ -> ()
@@ -95,7 +95,7 @@ let rec check_type_expr = fun ctx diagnostics type_expr ->
             if is_bool_type ctx arg then
               H.push_diagnostic diagnostics (diagnostic_for_type arg)
       );
-      Option.for_each ret ~fn:(check_type_expr ctx diagnostics)
+      check_type_expr ctx diagnostics ret
   | _ -> Ast.TypeExpr.for_each_child_type type_expr ~fn:(check_type_expr ctx diagnostics)
 
 let check_tree = fun ctx root ->

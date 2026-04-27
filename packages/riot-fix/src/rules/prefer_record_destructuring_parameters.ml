@@ -68,7 +68,7 @@ let rec unwrap_record_pattern = fun pattern ->
   let pattern = H.unwrap_pattern pattern in
   match Ast.Pattern.view pattern with
   | Ast.Pattern.Record _ -> Ast.RecordPattern.cast pattern
-  | Ast.Pattern.Constraint { pattern = Some pattern; _ }
+  | Ast.Pattern.Constraint { pattern; _ }
   | Ast.Pattern.Alias { pattern; _ } -> unwrap_record_pattern pattern
   | _ -> None
 
@@ -84,12 +84,12 @@ let rec expr_is_parameter_path = fun ctx expected_name expr ->
       | [ name ] -> String.equal expected_name name
       | _ -> false
     )
-  | Ast.Expr.Annotated { expr = Some inner; _ } -> expr_is_parameter_path ctx expected_name inner
+  | Ast.Expr.Annotated { expr = inner; _ } -> expr_is_parameter_path ctx expected_name inner
   | _ -> false
 
 let is_immediate_record_destructure = fun ctx expected_name expr ->
   match Ast.Expr.view expr with
-  | Ast.Expr.Let { first_binding = Some binding; _ } -> (
+  | Ast.Expr.Let { first_binding = binding; _ } -> (
       match (Ast.LetBinding.pattern binding, Ast.LetBinding.body binding) with
       | (Some pattern, Some bound_value) -> (
           match unwrap_record_pattern pattern with

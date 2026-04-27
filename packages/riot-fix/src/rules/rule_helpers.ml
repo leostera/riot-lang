@@ -198,7 +198,7 @@ let parameter_kind = fun pattern ->
 let pattern_name_token = fun pattern ->
   match Ast.Pattern.view (unwrap_pattern pattern) with
   | Ast.Pattern.Ident { path } -> path_last_ident path
-  | Ast.Pattern.Constraint { pattern = Some pattern; _ }
+  | Ast.Pattern.Constraint { pattern; _ }
   | Ast.Pattern.Alias { pattern; _ } -> (
       match Ast.Pattern.view pattern with
       | Ast.Pattern.Ident { path } -> path_last_ident path
@@ -247,7 +247,7 @@ let rec parameter_name_token = fun pattern ->
   | _ -> (
       match Ast.Pattern.view pattern with
       | Ast.Pattern.Ident { path } -> path_last_ident path
-      | Ast.Pattern.Constraint { pattern = Some pattern; _ } -> parameter_name_token pattern
+      | Ast.Pattern.Constraint { pattern; _ } -> parameter_name_token pattern
       | _ -> None
     )
 

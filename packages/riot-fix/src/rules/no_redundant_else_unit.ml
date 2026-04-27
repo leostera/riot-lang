@@ -40,7 +40,7 @@ let make_diagnostic = fun ctx expr condition then_branch ->
 
 let diagnostic_for_expr = fun ctx expr ->
   match Ast.Expr.view expr with
-  | Ast.Expr.If { condition = Some condition; then_branch = Some then_branch; else_branch = Some else_branch } when is_unit_expr
+  | Ast.Expr.If { condition; then_branch; else_branch = Some else_branch } when is_unit_expr
     ctx
     else_branch -> Some (make_diagnostic ctx expr condition then_branch)
   | _ -> None

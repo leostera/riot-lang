@@ -33,7 +33,7 @@ let expr_source = fun ctx expr ->
 let rec pattern_kind = fun pattern ->
   match Ast.Pattern.view pattern with
   | Ast.Pattern.Wildcard -> Wildcard
-  | Ast.Pattern.Literal { token = Some token } -> (
+  | Ast.Pattern.Literal { token } -> (
       match Ast.Token.text token with
       | "true" -> Bool true
       | "false" -> Bool false
@@ -123,7 +123,7 @@ let make_diagnostic = fun ctx expr replacement ->
 
 let diagnostic_for_expr = fun ctx expr ->
   match Ast.Expr.view expr with
-  | Ast.Expr.Match { scrutinee = Some scrutinee; _ } ->
+  | Ast.Expr.Match { scrutinee; _ } ->
       let cases = collect_cases expr in
       if Int.equal (Vector.length cases) 2 then
         match replacement_for_cases

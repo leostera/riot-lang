@@ -1042,16 +1042,16 @@ module TypeExpr = struct
   type view =
     | Ident of { path: path }
     | Var of {
-        name: Token.t option;
+        name: Token.t;
       }
     | Wildcard
     | Arrow of {
         label: arrow_label option;
-        arg: t option;
-        ret: t option;
+        arg: t;
+        ret: t;
       }
     | Poly of {
-        body: t option;
+        body: t;
       }
     | Tuple of {
         parts: t Vector.t;
@@ -1198,10 +1198,15 @@ module TypeExpr = struct
           Apply { ident = type_expr; args = Vector.with_capacity ~size:0 }
         else
           Ident { path = type_expr }
-    | Syntax_kind.VAR_TYPE -> Var { name = last_ident_token type_expr }
+    | Syntax_kind.VAR_TYPE -> (
+        match last_ident_token type_expr with
+        | Some name -> Var { name }
+        | None -> Unknown type_expr
+      )
     | Syntax_kind.WILDCARD_TYPE -> Wildcard
     | Syntax_kind.ARROW_TYPE -> (
         let left = nth_child_node_matching type_expr 0 ~matches:is_type_expr_kind in
+        let ret = nth_child_node_matching type_expr 1 ~matches:is_type_expr_kind in
         let (label, arg) =
           match left with
           | Some left -> (
@@ -1211,18 +1216,17 @@ module TypeExpr = struct
             )
           | None -> (None, None)
         in
-        Arrow {
-          label;
-          arg = normalize_type_expr_option arg;
-          ret = normalize_type_expr_option
-            (nth_child_node_matching type_expr 1 ~matches:is_type_expr_kind);
-        }
+        match (normalize_type_expr_option arg, normalize_type_expr_option ret) with
+        | (Some arg, Some ret) -> Arrow { label; arg; ret }
+        | _ -> Unknown type_expr
       )
-    | Syntax_kind.POLY_TYPE ->
-        Poly {
-          body = normalize_type_expr_option
-            (first_child_node_matching type_expr ~matches:is_type_expr_kind);
-        }
+    | Syntax_kind.POLY_TYPE -> (
+        match normalize_type_expr_option
+          (first_child_node_matching type_expr ~matches:is_type_expr_kind)
+        with
+        | Some body -> Poly { body }
+        | None -> Unknown type_expr
+      )
     | Syntax_kind.LABELED_TYPE -> Unknown type_expr
     | Syntax_kind.TUPLE_TYPE -> Tuple { parts = tuple_parts type_expr }
     | Syntax_kind.APPLY_TYPE ->
@@ -1235,7 +1239,7 @@ module TypeExpr = struct
     | Syntax_kind.PAREN_TYPE -> (
         match first_child_node_matching type_expr ~matches:is_type_expr_kind with
         | Some inner -> view inner
-        | None -> Ident { path = type_expr }
+        | None -> Unknown type_expr
       )
     | Syntax_kind.OPAQUE_TYPE -> Unknown type_expr
     | Syntax_kind.ERROR -> Error type_expr
@@ -1488,47 +1492,47 @@ module Expr: sig
   type view =
     | Unit
     | Let of {
-        first_binding: let_binding option;
-        body: t option;
+        first_binding: let_binding;
+        body: t;
       }
     | LocalOpen of {
-        body: t option;
+        body: t;
       }
     | LetModule of {
-        body: t option;
+        body: t;
       }
     | LetException of {
-        body: t option;
+        body: t;
       }
     | If of {
-        condition: t option;
-        then_branch: t option;
+        condition: t;
+        then_branch: t;
         else_branch: t option;
       }
     | Match of {
-        scrutinee: t option;
-        first_case: match_case option;
+        scrutinee: t;
+        first_case: match_case;
       }
     | Fun of {
         body: t option;
         first_case: match_case option;
       }
     | Try of {
-        body: t option;
-        first_case: match_case option;
+        body: t;
+        first_case: match_case;
       }
     | While of {
-        condition: t option;
-        body: t option;
+        condition: t;
+        body: t;
       }
     | For of {
-        pattern: pattern option;
-        start_: t option;
-        stop: t option;
-        body: t option;
+        pattern: pattern;
+        start_: t;
+        stop: t;
+        body: t;
       }
     | Sequence of {
-        left: t option;
+        left: t;
         right: t option;
       }
     | Apply of {
@@ -1536,30 +1540,30 @@ module Expr: sig
         argument: t;
       }
     | Infix of {
-        left: t option;
-        operator: token option;
-        right: t option;
+        left: t;
+        operator: token;
+        right: t;
       }
     | Prefix of {
-        operator: token option;
-        operand: t option;
+        operator: token;
+        operand: t;
       }
     | Assign of {
-        target: t option;
-        operator: token option;
-        value: t option;
+        target: t;
+        operator: token;
+        value: t;
       }
     | FieldAccess of {
-        target: t option;
-        field: token option;
+        target: t;
+        field: token;
       }
     | PolyVariant of {
-        tag: token option;
+        tag: token;
         payload: t option;
       }
     | Ident of { path: path }
     | Literal of {
-        token: token option;
+        token: token;
       }
     | Tuple of {
         items: t Vector.t;
@@ -1575,8 +1579,8 @@ module Expr: sig
         fields: record_expr_field_view Vector.t;
       }
     | Annotated of {
-        expr: t option;
-        annotation: type_expr option;
+        expr: t;
+        annotation: type_expr;
       }
     | Error of Node.t
     | Unknown of Node.t
@@ -1597,47 +1601,47 @@ end = struct
   type view =
     | Unit
     | Let of {
-        first_binding: let_binding option;
-        body: t option;
+        first_binding: let_binding;
+        body: t;
       }
     | LocalOpen of {
-        body: t option;
+        body: t;
       }
     | LetModule of {
-        body: t option;
+        body: t;
       }
     | LetException of {
-        body: t option;
+        body: t;
       }
     | If of {
-        condition: t option;
-        then_branch: t option;
+        condition: t;
+        then_branch: t;
         else_branch: t option;
       }
     | Match of {
-        scrutinee: t option;
-        first_case: match_case option;
+        scrutinee: t;
+        first_case: match_case;
       }
     | Fun of {
         body: t option;
         first_case: match_case option;
       }
     | Try of {
-        body: t option;
-        first_case: match_case option;
+        body: t;
+        first_case: match_case;
       }
     | While of {
-        condition: t option;
-        body: t option;
+        condition: t;
+        body: t;
       }
     | For of {
-        pattern: pattern option;
-        start_: t option;
-        stop: t option;
-        body: t option;
+        pattern: pattern;
+        start_: t;
+        stop: t;
+        body: t;
       }
     | Sequence of {
-        left: t option;
+        left: t;
         right: t option;
       }
     | Apply of {
@@ -1645,30 +1649,30 @@ end = struct
         argument: t;
       }
     | Infix of {
-        left: t option;
-        operator: token option;
-        right: t option;
+        left: t;
+        operator: token;
+        right: t;
       }
     | Prefix of {
-        operator: token option;
-        operand: t option;
+        operator: token;
+        operand: t;
       }
     | Assign of {
-        target: t option;
-        operator: token option;
-        value: t option;
+        target: t;
+        operator: token;
+        value: t;
       }
     | FieldAccess of {
-        target: t option;
-        field: token option;
+        target: t;
+        field: token;
       }
     | PolyVariant of {
-        tag: token option;
+        tag: token;
         payload: t option;
       }
     | Ident of { path: path }
     | Literal of {
-        token: token option;
+        token: token;
       }
     | Tuple of {
         items: t Vector.t;
@@ -1684,8 +1688,8 @@ end = struct
         fields: record_expr_field_view Vector.t;
       }
     | Annotated of {
-        expr: t option;
-        annotation: type_expr option;
+        expr: t;
+        annotation: type_expr;
       }
     | Error of Node.t
     | Unknown of Node.t
@@ -1796,55 +1800,90 @@ end = struct
         | None -> Unit
       )
     | Syntax_kind.LET_EXPR ->
-        Let {
-          first_binding = first_let_binding_child expr;
-          body = normalize_expr_option (nth_expr_child expr 0);
-        }
+        (
+          match (first_let_binding_child expr, normalize_expr_option (nth_expr_child expr 0)) with
+          | (Some first_binding, Some body) -> Let { first_binding; body }
+          | _ -> Unknown expr
+        )
     | Syntax_kind.LOCAL_OPEN_EXPR ->
-        LocalOpen { body = normalize_expr_option (nth_expr_child expr 1) }
+        (
+          match normalize_expr_option (nth_expr_child expr 1) with
+          | Some body -> LocalOpen { body }
+          | None -> Unknown expr
+        )
     | Syntax_kind.LET_MODULE_EXPR ->
-        LetModule { body = normalize_expr_option (first_expr_child expr) }
+        (
+          match normalize_expr_option (first_expr_child expr) with
+          | Some body -> LetModule { body }
+          | None -> Unknown expr
+        )
     | Syntax_kind.LET_EXCEPTION_EXPR ->
-        LetException { body = normalize_expr_option (first_expr_child expr) }
+        (
+          match normalize_expr_option (first_expr_child expr) with
+          | Some body -> LetException { body }
+          | None -> Unknown expr
+        )
     | Syntax_kind.BINDING_OPERATOR_EXPR ->
-        Let {
-          first_binding = first_let_binding_child expr;
-          body = normalize_expr_option (nth_expr_child expr 0);
-        }
+        (
+          match (first_let_binding_child expr, normalize_expr_option (nth_expr_child expr 0)) with
+          | (Some first_binding, Some body) -> Let { first_binding; body }
+          | _ -> Unknown expr
+        )
     | Syntax_kind.FIRST_CLASS_MODULE_EXPR
     | Syntax_kind.EXTENSION_EXPR
     | Syntax_kind.UNREACHABLE_EXPR -> Unknown expr
     | Syntax_kind.IF_EXPR ->
-        If {
-          condition = normalize_expr_option (nth_expr_child expr 0);
-          then_branch = normalize_expr_option (nth_expr_child expr 1);
-          else_branch = normalize_expr_option (nth_expr_child expr 2);
-        }
+        (
+          match
+            (
+              normalize_expr_option (nth_expr_child expr 0),
+              normalize_expr_option (nth_expr_child expr 1)
+            )
+          with
+          | (Some condition, Some then_branch) ->
+              If {
+                condition;
+                then_branch;
+                else_branch = normalize_expr_option (nth_expr_child expr 2);
+              }
+          | _ -> Unknown expr
+        )
     | Syntax_kind.MATCH_EXPR ->
-        Match {
-          scrutinee = normalize_expr_option (nth_expr_child expr 0);
-          first_case = first_match_case_child expr;
-        }
+        (
+          match (normalize_expr_option (nth_expr_child expr 0), first_match_case_child expr) with
+          | (Some scrutinee, Some first_case) -> Match { scrutinee; first_case }
+          | _ -> Unknown expr
+        )
     | Syntax_kind.FUN_EXPR ->
         Fun { body = normalize_expr_option (nth_expr_child expr 0); first_case = None }
     | Syntax_kind.FUNCTION_EXPR -> Fun { body = None; first_case = first_match_case_child expr }
     | Syntax_kind.TRY_EXPR ->
-        Try {
-          body = normalize_expr_option (nth_expr_child expr 0);
-          first_case = first_match_case_child expr;
-        }
+        (
+          match (normalize_expr_option (nth_expr_child expr 0), first_match_case_child expr) with
+          | (Some body, Some first_case) -> Try { body; first_case }
+          | _ -> Unknown expr
+        )
     | Syntax_kind.WHILE_EXPR ->
-        While {
-          condition = normalize_expr_option (nth_expr_child expr 0);
-          body = normalize_expr_option (nth_expr_child expr 1);
-        }
+        (
+          match
+            (normalize_expr_option (nth_expr_child expr 0), normalize_expr_option (nth_expr_child expr 1))
+          with
+          | (Some condition, Some body) -> While { condition; body }
+          | _ -> Unknown expr
+        )
     | Syntax_kind.FOR_EXPR ->
-        For {
-          pattern = normalize_pattern_option (first_pattern_child expr);
-          start_ = normalize_expr_option (nth_expr_child expr 0);
-          stop = normalize_expr_option (nth_expr_child expr 1);
-          body = normalize_expr_option (nth_expr_child expr 2);
-        }
+        (
+          match
+            (
+              normalize_pattern_option (first_pattern_child expr),
+              normalize_expr_option (nth_expr_child expr 0),
+              normalize_expr_option (nth_expr_child expr 1),
+              normalize_expr_option (nth_expr_child expr 2)
+            )
+          with
+          | (Some pattern, Some start_, Some stop, Some body) -> For { pattern; start_; stop; body }
+          | _ -> Unknown expr
+        )
     | Syntax_kind.ASSERT_EXPR
     | Syntax_kind.LAZY_EXPR -> Unknown expr
     | Syntax_kind.ATTRIBUTE_EXPR -> (
@@ -1853,44 +1892,64 @@ end = struct
         | None -> Unknown expr
       )
     | Syntax_kind.SEQUENCE_EXPR ->
-        Sequence {
-          left = normalize_expr_option (nth_expr_child expr 0);
-          right = normalize_expr_option (nth_expr_child expr 1);
-        }
+        (
+          match normalize_expr_option (nth_expr_child expr 0) with
+          | Some left -> Sequence { left; right = normalize_expr_option (nth_expr_child expr 1) }
+          | _ -> Unknown expr
+        )
     | Syntax_kind.APPLY_EXPR -> (
         match (normalize_expr_option (nth_expr_child expr 0), normalize_expr_option (nth_expr_child expr 1)) with
         | (Some callee, Some argument) -> Apply { callee; argument }
         | _ -> Unknown expr
       )
     | Syntax_kind.INFIX_EXPR ->
-        Infix {
-          left = normalize_expr_option (nth_expr_child expr 0);
-          operator = first_direct_token expr;
-          right = normalize_expr_option (nth_expr_child expr 1);
-        }
+        (
+          match
+            (
+              normalize_expr_option (nth_expr_child expr 0),
+              first_direct_token expr,
+              normalize_expr_option (nth_expr_child expr 1)
+            )
+          with
+          | (Some left, Some operator, Some right) -> Infix { left; operator; right }
+          | _ -> Unknown expr
+        )
     | Syntax_kind.PREFIX_EXPR ->
-        Prefix {
-          operator = first_operator_token expr;
-          operand = normalize_expr_option (first_expr_child expr);
-        }
+        (
+          match (first_operator_token expr, normalize_expr_option (first_expr_child expr)) with
+          | (Some operator, Some operand) -> Prefix { operator; operand }
+          | _ -> Unknown expr
+        )
     | Syntax_kind.ASSIGN_EXPR ->
-        Assign {
-          target = normalize_expr_option (nth_expr_child expr 0);
-          operator = first_direct_token expr;
-          value = normalize_expr_option (nth_expr_child expr 1);
-        }
+        (
+          match
+            (
+              normalize_expr_option (nth_expr_child expr 0),
+              first_direct_token expr,
+              normalize_expr_option (nth_expr_child expr 1)
+            )
+          with
+          | (Some target, Some operator, Some value) -> Assign { target; operator; value }
+          | _ -> Unknown expr
+        )
     | Syntax_kind.FIELD_ACCESS_EXPR ->
-        FieldAccess {
-          target = normalize_expr_option (nth_expr_child expr 0);
-          field = last_ident_token expr;
-        }
+        (
+          match (normalize_expr_option (nth_expr_child expr 0), last_ident_token expr) with
+          | (Some target, Some field) -> FieldAccess { target; field }
+          | _ -> Unknown expr
+        )
     | Syntax_kind.POLY_VARIANT_EXPR ->
-        PolyVariant {
-          tag = first_child_token_matching expr ~matches:(fun kind -> Syntax_kind.(kind = IDENT));
-          payload = normalize_expr_option (first_expr_child expr);
-        }
+        (
+          match first_child_token_matching expr ~matches:(fun kind -> Syntax_kind.(kind = IDENT)) with
+          | Some tag -> PolyVariant { tag; payload = normalize_expr_option (first_expr_child expr) }
+          | None -> Unknown expr
+        )
     | Syntax_kind.PATH_EXPR -> Ident { path = expr }
-    | Syntax_kind.LITERAL_EXPR -> Literal { token = literal_token expr }
+    | Syntax_kind.LITERAL_EXPR -> (
+        match literal_token expr with
+        | Some token -> Literal { token }
+        | None -> Unknown expr
+      )
     | Syntax_kind.TUPLE_EXPR -> Tuple { items = child_exprs expr }
     | Syntax_kind.LIST_EXPR -> List { items = child_exprs expr }
     | Syntax_kind.ARRAY_EXPR -> Array { items = child_exprs expr }
@@ -1898,22 +1957,17 @@ end = struct
     | Syntax_kind.RECORD_UPDATE_EXPR ->
         Record { base = record_expr_base expr; fields = record_expr_fields expr }
     | Syntax_kind.ARRAY_INDEX_EXPR ->
-        Infix {
-          left = normalize_expr_option (nth_expr_child expr 0);
-          operator = None;
-          right = normalize_expr_option (nth_expr_child expr 1);
-        }
+        Unknown expr
     | Syntax_kind.STRING_INDEX_EXPR ->
-        Infix {
-          left = normalize_expr_option (nth_expr_child expr 0);
-          operator = None;
-          right = normalize_expr_option (nth_expr_child expr 1);
-        }
+        Unknown expr
     | Syntax_kind.TYPED_EXPR ->
-        Annotated {
-          expr = normalize_expr_option (first_expr_child expr);
-          annotation = normalize_type_expr_option (first_type_expr_child expr);
-        }
+        (
+          match
+            (normalize_expr_option (first_expr_child expr), normalize_type_expr_option (first_type_expr_child expr))
+          with
+          | (Some expr, Some annotation) -> Annotated { expr; annotation }
+          | _ -> Unknown expr
+        )
     | Syntax_kind.LABELED_ARG
     | Syntax_kind.OPTIONAL_ARG -> Unknown expr
     | Syntax_kind.ERROR -> Error expr
@@ -2620,7 +2674,7 @@ module Pattern: sig
         payload: t option;
       }
     | Literal of {
-        token: token option;
+        token: token;
       }
     | Tuple of {
         parts: t Vector.t;
@@ -2636,39 +2690,39 @@ module Pattern: sig
         open_wildcard: token option;
       }
     | PolyVariant of {
-        tag: token option;
+        tag: token;
         payload: t option;
       }
     | FirstClassModule of {
-        binder: token option;
+        binder: token;
         ascription: first_class_module_pattern_ascription;
         ascription_path: token Vector.t;
       }
     | Interval of {
-        left: t option;
-        right: t option;
+        left: t;
+        right: t;
       }
     | Constraint of {
-        pattern: t option;
-        annotation: type_expr option;
+        pattern: t;
+        annotation: type_expr;
       }
     | Alias of {
         pattern: t;
         alias: t;
       }
     | Or of {
-        left: t option;
-        right: t option;
+        left: t;
+        right: t;
       }
     | Cons of {
-        head: t option;
-        tail: t option;
+        head: t;
+        tail: t;
       }
     | Lazy of {
-        pattern: t option;
+        pattern: t;
       }
     | Exception of {
-        pattern: t option;
+        pattern: t;
       }
     | Error of Node.t
     | Unknown of Node.t
@@ -2693,7 +2747,7 @@ end = struct
         payload: t option;
       }
     | Literal of {
-        token: token option;
+        token: token;
       }
     | Tuple of {
         parts: t Vector.t;
@@ -2709,39 +2763,39 @@ end = struct
         open_wildcard: token option;
       }
     | PolyVariant of {
-        tag: token option;
+        tag: token;
         payload: t option;
       }
     | FirstClassModule of {
-        binder: token option;
+        binder: token;
         ascription: first_class_module_pattern_ascription;
         ascription_path: token Vector.t;
       }
     | Interval of {
-        left: t option;
-        right: t option;
+        left: t;
+        right: t;
       }
     | Constraint of {
-        pattern: t option;
-        annotation: type_expr option;
+        pattern: t;
+        annotation: type_expr;
       }
     | Alias of {
         pattern: t;
         alias: t;
       }
     | Or of {
-        left: t option;
-        right: t option;
+        left: t;
+        right: t;
       }
     | Cons of {
-        head: t option;
-        tail: t option;
+        head: t;
+        tail: t;
       }
     | Lazy of {
-        pattern: t option;
+        pattern: t;
       }
     | Exception of {
-        pattern: t option;
+        pattern: t;
       }
     | Error of Node.t
     | Unknown of Node.t
@@ -2819,7 +2873,11 @@ end = struct
           )
         | None -> Unknown pattern
       )
-    | Syntax_kind.LITERAL_PATTERN -> Literal { token = literal_token pattern }
+    | Syntax_kind.LITERAL_PATTERN -> (
+        match literal_token pattern with
+        | Some token -> Literal { token }
+        | None -> Unknown pattern
+      )
     | Syntax_kind.TUPLE_PATTERN -> Tuple { parts = child_patterns pattern }
     | Syntax_kind.LIST_PATTERN -> List { items = child_patterns pattern }
     | Syntax_kind.ARRAY_PATTERN -> Array { items = child_patterns pattern }
@@ -2828,30 +2886,44 @@ end = struct
           fields = collect_record_pattern_fields pattern;
           open_wildcard = record_pattern_open_wildcard pattern;
         }
-    | Syntax_kind.POLY_VARIANT_PATTERN ->
-        PolyVariant {
-          tag = first_ident_token pattern;
-          payload = normalize_pattern_option (first_pattern_child pattern);
-        }
+    | Syntax_kind.POLY_VARIANT_PATTERN -> (
+        match first_ident_token pattern with
+        | Some tag ->
+            PolyVariant {
+              tag;
+              payload = normalize_pattern_option (first_pattern_child pattern);
+            }
+        | None -> Unknown pattern
+      )
     | Syntax_kind.EXTENSION_PATTERN
     | Syntax_kind.LOCAL_OPEN_PATTERN
     | Syntax_kind.LOCALLY_ABSTRACT_TYPE_PATTERN -> Unknown pattern
-    | Syntax_kind.FIRST_CLASS_MODULE_PATTERN ->
-        FirstClassModule {
-          binder = first_class_module_pattern_binder pattern;
-          ascription = first_class_module_pattern_ascription pattern;
-          ascription_path = first_class_module_pattern_ascription_path pattern;
-        }
-    | Syntax_kind.INTERVAL_PATTERN ->
-        Interval {
-          left = normalize_pattern_option (nth_pattern_child pattern 0);
-          right = normalize_pattern_option (nth_pattern_child pattern 1);
-        }
-    | Syntax_kind.CONSTRAINT_PATTERN ->
-        Constraint {
-          pattern = normalize_pattern_option (first_pattern_child pattern);
-          annotation = normalize_type_expr_option (first_type_expr_child pattern);
-        }
+    | Syntax_kind.FIRST_CLASS_MODULE_PATTERN -> (
+        match first_class_module_pattern_binder pattern with
+        | Some binder ->
+            FirstClassModule {
+              binder;
+              ascription = first_class_module_pattern_ascription pattern;
+              ascription_path = first_class_module_pattern_ascription_path pattern;
+            }
+        | None -> Unknown pattern
+      )
+    | Syntax_kind.INTERVAL_PATTERN -> (
+        match (
+          normalize_pattern_option (nth_pattern_child pattern 0),
+          normalize_pattern_option (nth_pattern_child pattern 1)
+        ) with
+        | (Some left, Some right) -> Interval { left; right }
+        | _ -> Unknown pattern
+      )
+    | Syntax_kind.CONSTRAINT_PATTERN -> (
+        match (
+          normalize_pattern_option (first_pattern_child pattern),
+          normalize_type_expr_option (first_type_expr_child pattern)
+        ) with
+        | (Some pattern, Some annotation) -> Constraint { pattern; annotation }
+        | _ -> Unknown pattern
+      )
     | Syntax_kind.ALIAS_PATTERN -> (
         match (
           normalize_pattern_option (nth_pattern_child pattern 0),
@@ -2860,20 +2932,32 @@ end = struct
         | (Some pattern, Some alias) -> Alias { pattern; alias }
         | _ -> Unknown pattern
       )
-    | Syntax_kind.OR_PATTERN ->
-        Or {
-          left = normalize_pattern_option (nth_pattern_child pattern 0);
-          right = normalize_pattern_option (nth_pattern_child pattern 1);
-        }
-    | Syntax_kind.CONS_PATTERN ->
-        Cons {
-          head = normalize_pattern_option (nth_pattern_child pattern 0);
-          tail = normalize_pattern_option (nth_pattern_child pattern 1);
-        }
-    | Syntax_kind.LAZY_PATTERN ->
-        Lazy { pattern = normalize_pattern_option (first_pattern_child pattern) }
-    | Syntax_kind.EXCEPTION_PATTERN ->
-        Exception { pattern = normalize_pattern_option (first_pattern_child pattern) }
+    | Syntax_kind.OR_PATTERN -> (
+        match (
+          normalize_pattern_option (nth_pattern_child pattern 0),
+          normalize_pattern_option (nth_pattern_child pattern 1)
+        ) with
+        | (Some left, Some right) -> Or { left; right }
+        | _ -> Unknown pattern
+      )
+    | Syntax_kind.CONS_PATTERN -> (
+        match (
+          normalize_pattern_option (nth_pattern_child pattern 0),
+          normalize_pattern_option (nth_pattern_child pattern 1)
+        ) with
+        | (Some head, Some tail) -> Cons { head; tail }
+        | _ -> Unknown pattern
+      )
+    | Syntax_kind.LAZY_PATTERN -> (
+        match normalize_pattern_option (first_pattern_child pattern) with
+        | Some pattern -> Lazy { pattern }
+        | None -> Unknown pattern
+      )
+    | Syntax_kind.EXCEPTION_PATTERN -> (
+        match normalize_pattern_option (first_pattern_child pattern) with
+        | Some pattern -> Exception { pattern }
+        | None -> Unknown pattern
+      )
     | Syntax_kind.LABELED_PARAM
     | Syntax_kind.OPTIONAL_PARAM
     | Syntax_kind.OPTIONAL_PARAM_DEFAULT -> Unknown pattern
@@ -3317,7 +3401,7 @@ end = struct
               match Node.kind pattern with
               | Syntax_kind.CONSTRAINT_PATTERN -> (
                   match Pattern.view pattern with
-                  | Constraint { annotation = Some annotation; _ } -> found := Some annotation
+                  | Constraint { annotation; _ } -> found := Some annotation
                   | _ -> ()
                 )
               | _ -> ()

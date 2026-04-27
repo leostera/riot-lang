@@ -485,9 +485,9 @@ and binding_name_tokens_of_pattern = fun pattern ->
       | None -> None
     )
   | Syn.Ast.Pattern.Alias { alias; _ }
-  | Syn.Ast.Pattern.Constraint { pattern = Some alias; _ }
-  | Syn.Ast.Pattern.Lazy { pattern = Some alias }
-  | Syn.Ast.Pattern.Exception { pattern = Some alias } -> binding_name_tokens_of_pattern alias
+  | Syn.Ast.Pattern.Constraint { pattern = alias; _ }
+  | Syn.Ast.Pattern.Lazy { pattern = alias }
+  | Syn.Ast.Pattern.Exception { pattern = alias } -> binding_name_tokens_of_pattern alias
   | Syn.Ast.Pattern.Unit
   | Syn.Ast.Pattern.Wildcard
   | Syn.Ast.Pattern.Literal _
@@ -499,18 +499,15 @@ and binding_name_tokens_of_pattern = fun pattern ->
   | Syn.Ast.Pattern.PolyVariant _
   | Syn.Ast.Pattern.FirstClassModule _
   | Syn.Ast.Pattern.Interval _
-  | Syn.Ast.Pattern.Constraint _
   | Syn.Ast.Pattern.Or _
   | Syn.Ast.Pattern.Cons _
-  | Syn.Ast.Pattern.Lazy _
-  | Syn.Ast.Pattern.Exception _
   | Syn.Ast.Pattern.Error _
   | Syn.Ast.Pattern.Unknown _ -> None
 
 let rec value_like_type_is_function = fun type_ ->
   match Syn.Ast.TypeExpr.view type_ with
   | Syn.Ast.TypeExpr.Arrow _ -> true
-  | Syn.Ast.TypeExpr.Poly { body = Some inner } -> value_like_type_is_function inner
+  | Syn.Ast.TypeExpr.Poly { body } -> value_like_type_is_function body
   | _ -> false
 
 let symbol_kind_of_type_member = fun member ->

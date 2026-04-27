@@ -68,7 +68,7 @@ let make_diagnostic = fun token ->
 
 let rec diagnostics_for_expression = fun diagnostics expr ->
   match Ast.Expr.view expr with
-  | Ast.Expr.Infix { operator = Some operator; _ } ->
+  | Ast.Expr.Infix { operator; _ } ->
       if should_flag_operator (Ast.Token.text operator) then
         H.push_diagnostic diagnostics (make_diagnostic operator);
       Ast.Expr.for_each_child_expr expr ~fn:(diagnostics_for_expression diagnostics)

@@ -51,7 +51,7 @@ let make_diagnostic = fun expr binding ->
 
 let diagnostic_for_expr = fun expr ->
   match Ast.Expr.view expr with
-  | Ast.Expr.Let { first_binding = Some binding; body = Some body } when binding_has_no_parameters
+  | Ast.Expr.Let { first_binding = binding; body } when binding_has_no_parameters
     binding -> (
       match (H.binding_name_token binding, expr_path_name body) with
       | (Some token, Some returned_name) when String.equal (Ast.Token.text token) returned_name ->

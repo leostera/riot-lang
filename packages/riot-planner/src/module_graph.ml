@@ -212,7 +212,7 @@ let rec executable_pattern_to_string = fun pattern ->
       Ast.Path.last_ident path
       |> Option.map ~fn:Ast.Token.text
       |> Option.unwrap_or ~default:(String.trim (Ast.Node.text pattern))
-  | Ast.Pattern.Constraint { pattern = Some pattern; _ } -> executable_pattern_to_string pattern
+  | Ast.Pattern.Constraint { pattern; _ } -> executable_pattern_to_string pattern
   | Ast.Pattern.Alias { pattern; _ } -> executable_pattern_to_string pattern
   | _ ->
       let text = String.trim (Ast.Node.text pattern) in
@@ -248,7 +248,7 @@ let rec pattern_binding_name = fun pattern ->
   | Ast.Pattern.Ident { path } ->
       Ast.Path.last_ident path
       |> Option.map ~fn:Ast.Token.text
-  | Ast.Pattern.Constraint { pattern = Some inner; _ } -> pattern_binding_name inner
+  | Ast.Pattern.Constraint { pattern = inner; _ } -> pattern_binding_name inner
   | Ast.Pattern.Alias { pattern = inner; _ } -> pattern_binding_name inner
   | _ -> None
 

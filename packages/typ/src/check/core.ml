@@ -513,7 +513,7 @@ let literal_type_of_token = fun token ->
 
 let rec collect_parameter_pattern = fun parameters pattern ->
   match Ast.Pattern.view pattern with
-  | Ast.Pattern.Constraint { pattern = Some inner; _ } -> collect_parameter_pattern parameters inner
+  | Ast.Pattern.Constraint { pattern = inner; _ } -> collect_parameter_pattern parameters inner
   | Ast.Pattern.Construct { constructor; payload = Some payload } ->
       Vector.push parameters ~value:constructor;
       collect_parameter_pattern parameters payload
@@ -552,7 +552,7 @@ let let_binding_return_annotations = fun binding ->
               match Ast.Node.kind node with
               | Syn.SyntaxKind.CONSTRAINT_PATTERN -> (
                   match Ast.Pattern.view pattern with
-                  | Ast.Pattern.Constraint { annotation = Some annotation; _ } ->
+                  | Ast.Pattern.Constraint { annotation; _ } ->
                       Vector.push annotations ~value:annotation
                   | _ -> ()
                 )
@@ -631,13 +631,12 @@ let first_non_coercion_type_arg = fun args ->
 let rec lower_core_type = fun state ~level vars type_expr ->
   match Ast.TypeExpr.view type_expr with
   | Ast.TypeExpr.Wildcard -> fresh_tyvar state ~level
-  | Ast.TypeExpr.Var { name = Some name } -> (
+  | Ast.TypeExpr.Var { name } -> (
       let name = token_text_surface_path name in
       match lookup_type_var vars name with
       | Some ty -> ty
       | None -> fresh_tyvar state ~level
     )
-  | Ast.TypeExpr.Var { name = None } -> fresh_tyvar state ~level
   | Ast.TypeExpr.Ident { path } -> (
       let path = surface_path_of_path path in
       match path with
@@ -683,14 +682,11 @@ let rec lower_core_type = fun state ~level vars type_expr ->
               ("unsupported type constructor " ^ SurfacePath.to_string path));
           fresh_tyvar state ~level
     )
-  | Ast.TypeExpr.Arrow { arg = Some parameter_type; ret = Some result_type; _ } ->
+  | Ast.TypeExpr.Arrow { arg = parameter_type; ret = result_type; _ } ->
       TArrow (
         lower_core_type state ~level vars parameter_type,
         lower_core_type state ~level vars result_type
       )
-  | Ast.TypeExpr.Arrow _ ->
-      add_diagnostic state (unsupported_type type_expr "incomplete arrow type");
-      fresh_tyvar state ~level
   | Ast.TypeExpr.Tuple _ -> TTuple (lower_tuple_type_elements state ~level vars type_expr)
   | Ast.TypeExpr.Poly _ ->
       add_diagnostic state (unsupported_type type_expr "polymorphic annotation");
@@ -748,8 +744,7 @@ let rec infer_pattern = fun state env ~level pattern ->
       let binding = make_binding state ~name ~ty in
       (ty, [ binding ])
   | Ast.Pattern.Wildcard -> (fresh_tyvar state ~level, [])
-  | Ast.Pattern.Literal { token = Some token } -> (literal_type_of_token token, [])
-  | Ast.Pattern.Literal { token = None } -> (fresh_tyvar state ~level, [])
+  | Ast.Pattern.Literal { token } -> (literal_type_of_token token, [])
   | Ast.Pattern.Tuple { parts } ->
       let (element_types, binding_groups) =
         (
@@ -760,14 +755,11 @@ let rec infer_pattern = fun state env ~level pattern ->
         |> List.unzip
       in
       (TTuple element_types, List.concat binding_groups)
-  | Ast.Pattern.Constraint { pattern = Some inner; annotation = Some annotation } ->
+  | Ast.Pattern.Constraint { pattern = inner; annotation } ->
       let (pattern_ty, bindings) = infer_pattern state env ~level inner in
       let annotated = lower_core_type state ~level [] annotation in
       unify state ~at:pattern pattern_ty annotated;
       (pattern_ty, bindings)
-  | Ast.Pattern.Constraint { pattern = Some inner; annotation = None } ->
-      infer_pattern state env ~level inner
-  | Ast.Pattern.Constraint _ -> (fresh_tyvar state ~level, [])
   | Ast.Pattern.Alias { pattern = inner; alias } ->
       let (pattern_ty, bindings) = infer_pattern state env ~level inner in
       let alias_name =
@@ -791,27 +783,18 @@ let rec infer_pattern = fun state env ~level pattern ->
             bindings)
       in
       (TList element_ty, bindings)
-  | Ast.Pattern.Cons { head = Some head; tail = Some tail } ->
+  | Ast.Pattern.Cons { head; tail } ->
       let (head_ty, head_bindings) = infer_pattern state env ~level head in
       let (tail_ty, tail_bindings) = infer_pattern state env ~level tail in
       unify state ~at:pattern tail_ty (TList head_ty);
       (TList head_ty, List.append head_bindings tail_bindings)
-  | Ast.Pattern.Cons _ ->
-      add_diagnostic state (unsupported_syntax pattern "cons pattern");
-      (fresh_tyvar state ~level, [])
-  | Ast.Pattern.Lazy { pattern = Some inner } ->
+  | Ast.Pattern.Lazy { pattern = inner } ->
       add_diagnostic state (unsupported_syntax pattern "lazy pattern");
       let _ = infer_pattern state env ~level inner in
       (fresh_tyvar state ~level, [])
-  | Ast.Pattern.Lazy { pattern = None } ->
-      add_diagnostic state (unsupported_syntax pattern "lazy pattern");
-      (fresh_tyvar state ~level, [])
-  | Ast.Pattern.Exception { pattern = Some inner } ->
+  | Ast.Pattern.Exception { pattern = inner } ->
       add_diagnostic state (unsupported_syntax pattern "exception pattern");
       let _ = infer_pattern state env ~level inner in
-      (fresh_tyvar state ~level, [])
-  | Ast.Pattern.Exception { pattern = None } ->
-      add_diagnostic state (unsupported_syntax pattern "exception pattern");
       (fresh_tyvar state ~level, [])
   | Ast.Pattern.Interval _
   | Ast.Pattern.Or _ ->
@@ -866,8 +849,7 @@ let rec infer_expression = fun state env ~level expression ->
         fresh_tyvar state ~level
       ) else
         lookup_surface_path state env ~level ~at:expression surface_path
-  | Ast.Expr.Literal { token = Some token } -> literal_type_of_token token
-  | Ast.Expr.Literal { token = None } -> fresh_tyvar state ~level
+  | Ast.Expr.Literal { token } -> literal_type_of_token token
   | Ast.Expr.Tuple { items } ->
       TTuple (
         List.map
@@ -888,7 +870,7 @@ let rec infer_expression = fun state env ~level expression ->
           let inferred = infer_expression state env ~level element in
           unify state ~at:element element_ty inferred);
       TList element_ty
-  | Ast.Expr.If { condition = Some condition; then_branch = Some then_branch; else_branch } ->
+  | Ast.Expr.If { condition; then_branch; else_branch } ->
       let condition_ty = infer_expression state env ~level condition in
       unify state ~at:expression condition_ty TBool;
       let then_ty = infer_expression state env ~level then_branch in
@@ -899,9 +881,6 @@ let rec infer_expression = fun state env ~level expression ->
       in
       unify state ~at:expression then_ty else_ty;
       then_ty
-  | Ast.Expr.If _ ->
-      add_diagnostic state (unsupported_syntax expression "if expression");
-      fresh_tyvar state ~level
   | Ast.Expr.Fun { body = Some body } ->
       infer_lambda state env ~level (fun_parameters expression) body
   | Ast.Expr.Fun { body = None } ->
@@ -918,40 +897,21 @@ let rec infer_expression = fun state env ~level expression ->
           unify state ~at:expression callee_ty (TArrow (argument_ty, result_ty));
           result_ty
     )
-  | Ast.Expr.Let { first_binding = Some first_binding; body = Some body } ->
+  | Ast.Expr.Let { first_binding; body } ->
       infer_let_expression state env ~level expression first_binding body
-  | Ast.Expr.Let _ ->
-      add_diagnostic state (unsupported_syntax expression "let expression");
-      fresh_tyvar state ~level
-  | Ast.Expr.Annotated { expr = Some inner; annotation = Some annotation } ->
+  | Ast.Expr.Annotated { expr = inner; annotation } ->
       let inferred = infer_expression state env ~level inner in
       let annotated = lower_core_type state ~level [] annotation in
       unify state ~at:expression inferred annotated;
       inferred
-  | Ast.Expr.Annotated { expr = Some inner; annotation = None } ->
-      infer_expression state env ~level inner
-  | Ast.Expr.Annotated _ -> fresh_tyvar state ~level
-  | Ast.Expr.Infix { left = Some left; operator = Some operator; right = Some right } ->
+  | Ast.Expr.Infix { left; operator; right } ->
       infer_infix state env ~level expression left operator right
-  | Ast.Expr.Infix _ ->
-      if
-        Syn.SyntaxKind.(Ast.Node.kind expression = ARRAY_INDEX_EXPR)
-        || Syn.SyntaxKind.(Ast.Node.kind expression = STRING_INDEX_EXPR)
-      then
-        add_diagnostic state (unsupported_syntax expression "index expression")
-      else
-        add_diagnostic state (unsupported_syntax expression "operator expression");
-      fresh_tyvar state ~level
-  | Ast.Expr.Sequence { left = Some left; right = Some right } ->
+  | Ast.Expr.Sequence { left; right = Some right } ->
       let _ = infer_expression state env ~level left in
       infer_expression state env ~level right
-  | Ast.Expr.Sequence { left = Some left; right = None } -> infer_expression state env ~level left
-  | Ast.Expr.Sequence _ -> TUnit
-  | Ast.Expr.Prefix { operator = Some operator; operand = Some operand } ->
+  | Ast.Expr.Sequence { left; right = None } -> infer_expression state env ~level left
+  | Ast.Expr.Prefix { operator; operand } ->
       infer_prefix state env ~level expression operator operand
-  | Ast.Expr.Prefix _ ->
-      add_diagnostic state (unsupported_syntax expression "operator expression");
-      fresh_tyvar state ~level
   | Ast.Expr.Match _ ->
       add_diagnostic state (unsupported_syntax expression "match expression");
       fresh_tyvar state ~level
@@ -988,7 +948,12 @@ let rec infer_expression = fun state env ~level expression ->
       add_diagnostic state (unsupported_syntax node "invalid expression");
       fresh_tyvar state ~level
   | Ast.Expr.Unknown node ->
-      if Option.is_some (Ast.FirstClassModuleExpr.cast node) then
+      if
+        Syn.SyntaxKind.(Ast.Node.kind node = ARRAY_INDEX_EXPR)
+        || Syn.SyntaxKind.(Ast.Node.kind node = STRING_INDEX_EXPR)
+      then
+        add_diagnostic state (unsupported_syntax node "index expression")
+      else if Option.is_some (Ast.FirstClassModuleExpr.cast node) then
         add_diagnostic state (unsupported_syntax node "first-class module expression")
       else
         add_diagnostic state (unsupported_syntax node "unsupported expression");

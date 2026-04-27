@@ -79,7 +79,7 @@ let check_field_access = fun ctx diagnostics expr target field ->
   let field_name = Ast.Token.text field in
   if starts_with_lowercase field_name then
     match Ast.Expr.view target with
-    | Ast.Expr.FieldAccess { target = Some base; field = Some module_token } when starts_with_uppercase
+    | Ast.Expr.FieldAccess { target = base; field = module_token } when starts_with_uppercase
       (Ast.Token.text module_token) ->
         H.push_diagnostic diagnostics (field_access_diagnostic ctx expr base module_token field)
     | _ -> ()
@@ -133,7 +133,7 @@ let body_is_bracket_expr = fun body ->
 
 let check_local_open = fun diagnostics visitor expr ->
   match Ast.Expr.view expr with
-  | Ast.Expr.LocalOpen { body = Some body } when (Syn.Visitor.ctx visitor).local_open_depth = 0 && Option.is_some
+  | Ast.Expr.LocalOpen { body } when (Syn.Visitor.ctx visitor).local_open_depth = 0 && Option.is_some
     (Ast.Node.first_child_token (expr: Ast.Node.t) ~kind:Syn.SyntaxKind.LET_KW) && body_is_bracket_expr
     body -> H.push_diagnostic diagnostics (diagnostic ~span:(H.span_of_node (expr: Ast.Node.t)) ())
   | _ -> ()
@@ -141,7 +141,7 @@ let check_local_open = fun diagnostics visitor expr ->
 let check_expr = fun ctx diagnostics visitor expr ->
   (
     match Ast.Expr.view expr with
-    | Ast.Expr.FieldAccess { target = Some target; field = Some field } ->
+    | Ast.Expr.FieldAccess { target; field } ->
         check_field_access ctx diagnostics expr target field
     | Ast.Expr.Ident { path } -> check_path_access ctx diagnostics expr path
     | Ast.Expr.Record _ ->

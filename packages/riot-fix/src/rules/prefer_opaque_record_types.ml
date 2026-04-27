@@ -44,7 +44,7 @@ let type_path_last_ident_text = fun type_expr ->
 
 let first_arrow_argument_type = fun type_expr ->
   match Ast.TypeExpr.view (unwrap_type type_expr) with
-  | Ast.TypeExpr.Arrow { arg = Some arg; _ } -> Some arg
+  | Ast.TypeExpr.Arrow { arg; _ } -> Some arg
   | _ -> None
 
 let value_declaration_targets_record = fun value_declaration record ->

@@ -20,7 +20,7 @@ let rec unwrap_expr = fun expr -> H.unwrap_expr expr
 
 let bool_literal = fun expr ->
   match Ast.Expr.view (unwrap_expr expr) with
-  | Ast.Expr.Literal { token = Some token } -> (
+  | Ast.Expr.Literal { token } -> (
       match Ast.Token.text token with
       | "true" -> Some true
       | "false" -> Some false
@@ -59,7 +59,7 @@ let replacement_text = fun ctx ~operator_is_equal ~bool_value operand ->
 
 let comparison_replacement = fun ctx condition ->
   match Ast.Expr.view (unwrap_expr condition) with
-  | Ast.Expr.Infix { left = Some left; operator = Some operator; right = Some right } -> (
+  | Ast.Expr.Infix { left; operator; right } -> (
       match comparison_operator operator with
       | None -> None
       | Some operator_is_equal -> (
@@ -86,7 +86,7 @@ let make_diagnostic = fun ctx condition replacement ->
 
 let diagnostic_for_expr = fun ctx expr ->
   match Ast.Expr.view expr with
-  | Ast.Expr.If { condition = Some condition; _ } -> (
+  | Ast.Expr.If { condition; _ } -> (
       match comparison_replacement ctx condition with
       | Some replacement -> Some (make_diagnostic ctx condition replacement)
       | None -> None

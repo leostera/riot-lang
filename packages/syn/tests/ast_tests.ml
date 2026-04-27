@@ -189,7 +189,7 @@ let test_source_file_and_let_binding_views = fun _ctx ->
   in
   (
     match Ast.Expr.view body with
-    | Ast.Expr.Literal { token = Some token } ->
+    | Ast.Expr.Literal { token } ->
         Test.assert_equal ~expected:"1" ~actual:(Ast.Token.text token);
         Ok ()
     | _ -> Error "expected literal expression body"
@@ -270,18 +270,8 @@ let test_expression_views = fun _ctx ->
   (
     match Ast.Expr.view if_body with
     | Ast.Expr.If { condition; then_branch; else_branch } ->
-        ignore
-          (
-            condition
-            |> expect_some ~msg:"expected if condition"
-            |> Result.expect ~msg:"condition"
-          );
-        ignore
-          (
-            then_branch
-            |> expect_some ~msg:"expected then branch"
-            |> Result.expect ~msg:"then branch"
-          );
+        ignore condition;
+        ignore then_branch;
         ignore
           (
             else_branch
@@ -303,16 +293,7 @@ let test_expression_views = fun _ctx ->
   in
   match Ast.Expr.view match_body with
   | Ast.Expr.Match { scrutinee; first_case } ->
-      ignore
-        (
-          scrutinee
-          |> expect_some ~msg:"expected match scrutinee"
-          |> Result.expect ~msg:"scrutinee"
-        );
-      let first_case =
-        first_case
-        |> require_some ~msg:"expected first match case"
-      in
+      ignore scrutinee;
       let case = Ast.MatchCase.view first_case in
       (
         match case.Ast.MatchCase.guard with
@@ -349,7 +330,7 @@ let test_assignment_operator_views = fun _ctx ->
   in
   let assert_assignment_operator body expected =
     match Ast.Expr.view body with
-    | Ast.Expr.Assign { operator = Some operator; _ } ->
+    | Ast.Expr.Assign { operator; _ } ->
         Test.assert_equal ~expected ~actual:(Ast.Token.text operator)
     | _ -> panic ("expected assignment operator " ^ expected)
   in
@@ -434,18 +415,8 @@ let test_pattern_views = fun _ctx ->
   in
   match Ast.Pattern.view cons_pattern with
   | Ast.Pattern.Cons { head; tail } ->
-      ignore
-        (
-          head
-          |> expect_some ~msg:"expected cons head"
-          |> Result.expect ~msg:"cons head"
-        );
-      ignore
-        (
-          tail
-          |> expect_some ~msg:"expected cons tail"
-          |> Result.expect ~msg:"cons tail"
-        );
+      ignore head;
+      ignore tail;
       Ok ()
   | _ -> Error "expected cons pattern"
 
@@ -477,7 +448,7 @@ let test_poly_variant_tuple_pattern_boundary = fun _ctx ->
     | _ -> panic "expected function body"
   in
   match Ast.Expr.view match_body with
-  | Ast.Expr.Match { first_case = Some first_case; _ } ->
+  | Ast.Expr.Match { first_case; _ } ->
       let case = Ast.MatchCase.view first_case in
       let pattern =
         case.Ast.MatchCase.pattern
@@ -531,7 +502,7 @@ let test_signature_and_type_views = fun _ctx ->
         in
         (
           match Ast.TypeExpr.view annotation with
-          | Ast.TypeExpr.Arrow { arg = Some arg; ret = Some ret; _ } ->
+          | Ast.TypeExpr.Arrow { arg; ret; _ } ->
               assert_type_path_last_ident arg "int";
               assert_type_path_last_ident ret "string";
               Ok ()
@@ -590,7 +561,7 @@ let test_package_type_value_annotation_views = fun _ctx ->
       in
       (
         match Ast.TypeExpr.view annotation with
-        | Ast.TypeExpr.Arrow { arg = Some arg; ret = Some _; _ } -> (
+        | Ast.TypeExpr.Arrow { arg; ret = _; _ } -> (
             match Ast.TypeExpr.view arg with
             | Ast.TypeExpr.Unknown _ -> Ok ()
             | _ -> Error "expected package type annotation to lower as unknown type"
@@ -645,9 +616,9 @@ val scoped_unit: M.unit
       in
       (
         match Ast.TypeExpr.view annotation with
-        | Ast.TypeExpr.Arrow { arg = Some arg; ret = Some ret; _ } -> (
+        | Ast.TypeExpr.Arrow { arg; ret; _ } -> (
             match (Ast.TypeExpr.view arg, Ast.TypeExpr.view ret) with
-            | (Ast.TypeExpr.Var { name = Some left_name }, Ast.TypeExpr.Var { name = Some right_name }) ->
+            | (Ast.TypeExpr.Var { name = left_name }, Ast.TypeExpr.Var { name = right_name }) ->
                 Test.assert_equal ~expected:"a" ~actual:(Ast.Token.text left_name);
                 Test.assert_equal ~expected:"a" ~actual:(Ast.Token.text right_name);
                 Ok ()
@@ -734,8 +705,8 @@ let test_type_tuple_separator_views = fun _ctx ->
               (
                 match (Ast.TypeExpr.view arg, Ast.TypeExpr.view ret) with
                 | (
-                  Ast.TypeExpr.Var { name = Some left_name },
-                  Ast.TypeExpr.Var { name = Some right_name }
+                  Ast.TypeExpr.Var { name = left_name },
+                  Ast.TypeExpr.Var { name = right_name }
                 ) ->
                     Test.assert_equal ~expected:"a" ~actual:(Ast.Token.text left_name);
                     Test.assert_equal ~expected:"e" ~actual:(Ast.Token.text right_name);
@@ -791,7 +762,7 @@ let test_poly_labeled_and_signed_views = fun _ctx ->
   in
   (
     match Ast.TypeExpr.view annotation with
-    | Ast.TypeExpr.Poly { body = Some body } ->
+    | Ast.TypeExpr.Poly { body } ->
         let names = ref [] in
         Ast.TypeExpr.for_each_poly_type_name
           annotation
@@ -799,7 +770,7 @@ let test_poly_labeled_and_signed_views = fun _ctx ->
         Test.assert_equal ~expected:[ "socket"; "err" ] ~actual:(List.reverse !names);
         (
           match Ast.TypeExpr.view body with
-          | Ast.TypeExpr.Arrow { label = Some { name = Some label; _ }; arg = Some _; ret = Some _ } ->
+          | Ast.TypeExpr.Arrow { label = Some { name = Some label; _ }; arg = _; ret = _ } ->
               Test.assert_equal ~expected:"reader" ~actual:(Ast.Token.text label)
           | _ -> panic "expected poly type arrow body"
         )
@@ -821,7 +792,7 @@ let test_poly_labeled_and_signed_views = fun _ctx ->
         |> require_some ~msg:"expected first function case pattern"
       in
       match Ast.Pattern.view pattern with
-      | Ast.Pattern.Literal { token = Some token } ->
+      | Ast.Pattern.Literal { token } ->
           let sign =
             Ast.Pattern.literal_sign_token pattern
             |> require_some ~msg:"expected signed literal sign"
@@ -859,7 +830,7 @@ let test_quoted_poly_let_annotation_views = fun _ctx ->
   in
   (
     match Ast.TypeExpr.view annotation with
-    | Ast.TypeExpr.Poly { body = Some body } ->
+    | Ast.TypeExpr.Poly { body } ->
         let names = ref [] in
         Ast.TypeExpr.for_each_poly_type_name
           annotation
@@ -867,7 +838,7 @@ let test_quoted_poly_let_annotation_views = fun _ctx ->
         Test.assert_equal ~expected:[ "field"; "builder"; "value" ] ~actual:(List.reverse !names);
         (
           match Ast.TypeExpr.view body with
-          | Ast.TypeExpr.Arrow { arg = Some arg; ret = Some ret; _ } ->
+          | Ast.TypeExpr.Arrow { arg; ret; _ } ->
               (
                 match Ast.TypeExpr.view arg with
                 | Ast.TypeExpr.Ident { path } -> assert_last_ident_text path "state"
@@ -875,7 +846,7 @@ let test_quoted_poly_let_annotation_views = fun _ctx ->
               );
               (
                 match Ast.TypeExpr.view ret with
-                | Ast.TypeExpr.Arrow { label = Some { name = Some label; _ }; arg = Some labeled_annotation; ret = Some _ } ->
+                | Ast.TypeExpr.Arrow { label = Some { name = Some label; _ }; arg = labeled_annotation; ret = _ } ->
                     Test.assert_equal ~expected:"fields" ~actual:(Ast.Token.text label);
                     (
                       match Ast.TypeExpr.view labeled_annotation with
@@ -1341,7 +1312,7 @@ let test_type_extension_and_exception_views = fun _ctx ->
           match Ast.VariantConstructor.payload_type constructor with
           | Some payload -> (
               match Ast.TypeExpr.view payload with
-              | Ast.TypeExpr.Var { name = Some payload_name } ->
+              | Ast.TypeExpr.Var { name = payload_name } ->
                   Test.assert_equal ~expected:"a" ~actual:(Ast.Token.text payload_name)
               | _ -> panic "expected type extension payload type variable"
             )
@@ -1553,7 +1524,7 @@ let test_trailing_sequence_before_and_views = fun _ctx ->
           |> Result.expect ~msg:"expected binding body"
         in
         match Ast.Expr.view body with
-        | Ast.Expr.Sequence { left = Some _; right = None } -> Ok ()
+        | Ast.Expr.Sequence { left = _; right = None } -> Ok ()
         | _ -> Error "expected trailing sequence expression body"
       in
       let* () = assert_trailing_sequence f_binding "f" in
@@ -2882,7 +2853,7 @@ let test_special_pattern_views = fun _ctx ->
       Test.assert_equal ~expected:[ "a"; "b" ] ~actual:(List.reverse !type_names);
       (
         match Ast.Pattern.view first_class_module with
-        | Ast.Pattern.FirstClassModule { binder = Some binder; ascription; ascription_path } ->
+        | Ast.Pattern.FirstClassModule { binder; ascription; ascription_path } ->
             Test.assert_equal ~expected:"M" ~actual:(Ast.Token.text binder);
             Test.assert_equal ~expected:Ast.PathAscription ~actual:ascription;
             Test.assert_equal ~expected:2 ~actual:(Vector.length ascription_path)
@@ -2968,7 +2939,7 @@ let test_typed_labeled_parameter_view = fun _ctx ->
               Test.assert_equal ~expected:"fn" ~actual:(Ast.Token.text label);
               (
                 match Ast.Pattern.view pattern with
-                | Ast.Pattern.Constraint { pattern = Some binding; annotation = Some annotation } ->
+                | Ast.Pattern.Constraint { pattern = binding; annotation } ->
                     (
                       match Ast.Pattern.view binding with
                       | Ast.Pattern.Ident { path } -> assert_last_ident_text path "fn"
@@ -2976,7 +2947,7 @@ let test_typed_labeled_parameter_view = fun _ctx ->
                     );
                     (
                       match Ast.TypeExpr.view annotation with
-                      | Ast.TypeExpr.Arrow { arg = Some _; ret = Some _ } -> Ok ()
+                      | Ast.TypeExpr.Arrow { arg = _; ret = _ } -> Ok ()
                       | _ -> Error "expected labeled parameter arrow annotation"
                     )
                 | _ -> Error "expected typed labeled parameter pattern"
@@ -3061,7 +3032,7 @@ let test_let_binding_parameters_are_parameter_views = fun _ctx ->
         Test.assert_equal ~expected:"mode" ~actual:(Ast.Token.text label);
         (
           match Ast.Pattern.view pattern with
-          | Ast.Pattern.Constraint { annotation = Some annotation; _ } ->
+          | Ast.Pattern.Constraint { annotation; _ } ->
               assert_type_path_last_ident annotation "mode"
           | _ -> panic "expected labeled parameter type constraint"
         )
@@ -3099,9 +3070,9 @@ let test_if_then_branch_sequence_boundaries = fun _ctx ->
   in
   (
     match Ast.Expr.view with_else_body with
-    | Ast.Expr.If { then_branch = Some then_branch; else_branch = Some _; _ } -> (
+    | Ast.Expr.If { then_branch; else_branch = Some _; _ } -> (
         match Ast.Expr.view then_branch with
-        | Ast.Expr.Sequence { left = Some _; right = Some _ } -> ()
+        | Ast.Expr.Sequence { left = _; right = Some _ } -> ()
         | _ -> panic "expected then branch sequence to stay inside if with else"
       )
     | _ -> panic "expected with_else body to be an if expression"
@@ -3115,7 +3086,7 @@ let test_if_then_branch_sequence_boundaries = fun _ctx ->
     |> Result.expect ~msg:"expected without_else body"
   in
   match Ast.Expr.view without_else_body with
-  | Ast.Expr.Sequence { left = Some left; right = Some _ } -> (
+  | Ast.Expr.Sequence { left; right = Some _ } -> (
       match Ast.Expr.view left with
       | Ast.Expr.If { else_branch = None; _ } -> Ok ()
       | _ -> Error "expected outer sequence to keep no-else if on the left"
@@ -3145,13 +3116,13 @@ let test_if_then_match_case_sequence_boundaries = fun _ctx ->
     |> Result.expect ~msg:"expected classify body"
   in
   match Ast.Expr.view body with
-  | Ast.Expr.If { then_branch = Some then_branch; _ } -> (
+  | Ast.Expr.If { then_branch; _ } -> (
       match Ast.Expr.view then_branch with
-      | Ast.Expr.Match { first_case = Some first_case; _ } -> (
+      | Ast.Expr.Match { first_case; _ } -> (
           match Ast.MatchCase.view first_case with
           | { Ast.MatchCase.body = Some case_body; _ } -> (
               match Ast.Expr.view case_body with
-              | Ast.Expr.Sequence { left = Some _; right = Some _ } -> Ok ()
+              | Ast.Expr.Sequence { left = _; right = Some _ } -> Ok ()
               | _ -> Error "expected first match case body sequence to stay inside the case"
             )
           | _ -> Error "expected first match case body"
@@ -3193,17 +3164,17 @@ let test_loop_body_sequence_boundaries = fun _ctx ->
   in
   (
     match Ast.Expr.view poll_body with
-    | Ast.Expr.While { body = Some body; _ } -> (
+    | Ast.Expr.While { body; _ } -> (
         match Ast.Expr.view body with
-        | Ast.Expr.Sequence { left = Some _; right = Some _ } -> ()
+        | Ast.Expr.Sequence { left = _; right = Some _ } -> ()
         | _ -> panic "expected while body sequence to stay inside the loop body"
       )
     | _ -> panic "expected poll body to be a while expression"
   );
   match Ast.Expr.view count_body with
-  | Ast.Expr.For { body = Some body; _ } -> (
+  | Ast.Expr.For { body; _ } -> (
       match Ast.Expr.view body with
-      | Ast.Expr.Sequence { left = Some _; right = Some _ } -> Ok ()
+      | Ast.Expr.Sequence { left = _; right = Some _ } -> Ok ()
       | _ -> Error "expected for body sequence to stay inside the loop body"
     )
   | _ -> Error "expected count body to be a for expression"

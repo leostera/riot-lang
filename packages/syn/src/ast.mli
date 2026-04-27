@@ -187,16 +187,16 @@ module TypeExpr: sig
   type view =
     | Ident of { path: path }
     | Var of {
-        name: Token.t option;
+        name: Token.t;
       }
     | Wildcard
     | Arrow of {
         label: arrow_label option;
-        arg: t option;
-        ret: t option;
+        arg: t;
+        ret: t;
       }
     | Poly of {
-        body: t option;
+        body: t;
       }
     | Tuple of {
         parts: t Vector.t;
@@ -287,7 +287,7 @@ module Pattern: sig
         payload: t option;
       }
     | Literal of {
-        token: Token.t option;
+        token: Token.t;
       }
     | Tuple of {
         parts: t Vector.t;
@@ -303,39 +303,39 @@ module Pattern: sig
         open_wildcard: Token.t option;
       }
     | PolyVariant of {
-        tag: Token.t option;
+        tag: Token.t;
         payload: t option;
       }
     | FirstClassModule of {
-        binder: Token.t option;
+        binder: Token.t;
         ascription: first_class_module_pattern_ascription;
         ascription_path: Token.t Vector.t;
       }
     | Interval of {
-        left: t option;
-        right: t option;
+        left: t;
+        right: t;
       }
     | Constraint of {
-        pattern: t option;
-        annotation: type_expr option;
+        pattern: t;
+        annotation: type_expr;
       }
     | Alias of {
         pattern: t;
         alias: t;
       }
     | Or of {
-        left: t option;
-        right: t option;
+        left: t;
+        right: t;
       }
     | Cons of {
-        head: t option;
-        tail: t option;
+        head: t;
+        tail: t;
       }
     | Lazy of {
-        pattern: t option;
+        pattern: t;
       }
     | Exception of {
-        pattern: t option;
+        pattern: t;
       }
     | Error of Node.t
     | Unknown of Node.t
@@ -490,47 +490,47 @@ module Expr: sig
   type view =
     | Unit
     | Let of {
-        first_binding: let_binding option;
-        body: t option;
+        first_binding: let_binding;
+        body: t;
       }
     | LocalOpen of {
-        body: t option;
+        body: t;
       }
     | LetModule of {
-        body: t option;
+        body: t;
       }
     | LetException of {
-        body: t option;
+        body: t;
       }
     | If of {
-        condition: t option;
-        then_branch: t option;
+        condition: t;
+        then_branch: t;
         else_branch: t option;
       }
     | Match of {
-        scrutinee: t option;
-        first_case: match_case option;
+        scrutinee: t;
+        first_case: match_case;
       }
     | Fun of {
         body: t option;
         first_case: match_case option;
       }
     | Try of {
-        body: t option;
-        first_case: match_case option;
+        body: t;
+        first_case: match_case;
       }
     | While of {
-        condition: t option;
-        body: t option;
+        condition: t;
+        body: t;
       }
     | For of {
-        pattern: pattern option;
-        start_: t option;
-        stop: t option;
-        body: t option;
+        pattern: pattern;
+        start_: t;
+        stop: t;
+        body: t;
       }
     | Sequence of {
-        left: t option;
+        left: t;
         right: t option;
       }
     | Apply of {
@@ -538,30 +538,30 @@ module Expr: sig
         argument: t;
       }
     | Infix of {
-        left: t option;
-        operator: Token.t option;
-        right: t option;
+        left: t;
+        operator: Token.t;
+        right: t;
       }
     | Prefix of {
-        operator: Token.t option;
-        operand: t option;
+        operator: Token.t;
+        operand: t;
       }
     | Assign of {
-        target: t option;
-        operator: Token.t option;
-        value: t option;
+        target: t;
+        operator: Token.t;
+        value: t;
       }
     | FieldAccess of {
-        target: t option;
-        field: Token.t option;
+        target: t;
+        field: Token.t;
       }
     | PolyVariant of {
-        tag: Token.t option;
+        tag: Token.t;
         payload: t option;
       }
     | Ident of { path: path }
     | Literal of {
-        token: Token.t option;
+        token: Token.t;
       }
     | Tuple of {
         items: t Vector.t;
@@ -577,8 +577,8 @@ module Expr: sig
         fields: record_expr_field_view Vector.t;
       }
     | Annotated of {
-        expr: t option;
-        annotation: type_expr option;
+        expr: t;
+        annotation: type_expr;
       }
     | Error of Node.t
     | Unknown of Node.t

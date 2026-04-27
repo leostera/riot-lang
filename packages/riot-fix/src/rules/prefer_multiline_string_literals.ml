@@ -25,13 +25,13 @@ the content is really one static block of text.
 
 let expr_is_string_literal = fun expr ->
   match Ast.Expr.view expr with
-  | Ast.Expr.Literal { token = Some token } -> Syn.SyntaxKind.(Ast.Token.kind token = STRING)
+  | Ast.Expr.Literal { token } -> Syn.SyntaxKind.(Ast.Token.kind token = STRING)
   | _ -> false
 
 let rec string_literal_chain_size = fun expr ->
   match Ast.Expr.view (H.unwrap_expr expr) with
   | Ast.Expr.Literal _ when expr_is_string_literal expr -> Some 1
-  | Ast.Expr.Infix { left = Some left; operator = Some operator; right = Some right } when String.equal
+  | Ast.Expr.Infix { left; operator; right } when String.equal
     (Ast.Token.text operator)
     "^" -> (
       match (string_literal_chain_size left, string_literal_chain_size right) with

@@ -47,7 +47,7 @@ let single_match_case = fun expr ->
 
 let diagnostic_for_expr = fun expr ->
   match Ast.Expr.view expr with
-  | Ast.Expr.Try { body = Some body; _ } -> (
+  | Ast.Expr.Try { body; _ } -> (
       match single_match_case expr with
       | Some match_case -> (
           let { Ast.MatchCase.pattern; body = handler_body; _ } = Ast.MatchCase.view match_case in

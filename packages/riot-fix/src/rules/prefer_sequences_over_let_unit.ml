@@ -74,7 +74,7 @@ let make_diagnostic = fun ctx expr binding body ->
 
 let diagnostic_for_expr = fun ctx expr ->
   match Ast.Expr.view expr with
-  | Ast.Expr.Let { first_binding = Some binding; body = Some body } -> (
+  | Ast.Expr.Let { first_binding = binding; body } -> (
       match Ast.LetBinding.pattern binding with
       | Some pattern when is_unit_pattern ctx pattern -> make_diagnostic ctx expr binding body
       | _ -> None

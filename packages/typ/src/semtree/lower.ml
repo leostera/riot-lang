@@ -201,10 +201,7 @@ let collect_type_tuple = fun lower_type_expr state type_expr ->
 let rec lower_type_expr = fun state type_expr ->
   match Ast.TypeExpr.view type_expr with
   | Ast.TypeExpr.Wildcard -> Semantic_tree.AnyType
-  | Ast.TypeExpr.Var { name = Some name } -> Semantic_tree.TypeVar (Ast.Token.text name)
-  | Ast.TypeExpr.Var { name = None } ->
-      push_unsupported_type state type_expr "type variable";
-      Semantic_tree.TypeUnsupported "type variable"
+  | Ast.TypeExpr.Var { name } -> Semantic_tree.TypeVar (Ast.Token.text name)
   | Ast.TypeExpr.Ident { path } ->
       Semantic_tree.TypeConstr { path = path_of_path path; arguments = [] }
   | Ast.TypeExpr.Apply { ident; args } ->
@@ -214,7 +211,7 @@ let rec lower_type_expr = fun state type_expr ->
         path = path_of_path ident;
         arguments = vector_to_list arguments;
       }
-  | Ast.TypeExpr.Arrow { label; arg = Some arg; ret = Some ret } ->
+  | Ast.TypeExpr.Arrow { label; arg; ret } ->
       let label =
         Option.map
           label
@@ -232,10 +229,7 @@ let rec lower_type_expr = fun state type_expr ->
         parameter = lower_type_expr state arg;
         result = lower_type_expr state ret;
       }
-  | Ast.TypeExpr.Arrow _ ->
-      push_unsupported_type state type_expr "arrow";
-      Semantic_tree.TypeUnsupported "arrow"
-  | Ast.TypeExpr.Poly { body = Some body } ->
+  | Ast.TypeExpr.Poly { body } ->
       let binders = Vector.with_capacity ~size:2 in
       Ast.TypeExpr.for_each_poly_type_name
         type_expr
@@ -244,9 +238,6 @@ let rec lower_type_expr = fun state type_expr ->
         binders = vector_to_list binders;
         body = lower_type_expr state body;
       }
-  | Ast.TypeExpr.Poly { body = None } ->
-      push_unsupported_type state type_expr "poly";
-      Semantic_tree.TypeUnsupported "poly"
   | Ast.TypeExpr.Tuple _ ->
       Semantic_tree.TypeTuple (collect_type_tuple lower_type_expr state type_expr)
   | Ast.TypeExpr.Unknown node -> (
@@ -262,15 +253,14 @@ let rec lower_type_expr = fun state type_expr ->
 
 let rec annotation_of_expression = fun state expr ->
   match Ast.Expr.view expr with
-  | Ast.Expr.Annotated { annotation = Some annotation; _ } ->
-      Some (lower_type_expr state annotation)
+  | Ast.Expr.Annotated { annotation; _ } -> Some (lower_type_expr state annotation)
   | _ -> None
 
 let binding_name_token = fun binding ->
   let rec of_pattern pattern =
     match Ast.Pattern.view pattern with
     | Ast.Pattern.Ident { path } -> Ast.Path.last_ident path
-    | Ast.Pattern.Constraint { pattern = Some inner; _ } -> of_pattern inner
+    | Ast.Pattern.Constraint { pattern = inner; _ } -> of_pattern inner
     | Ast.Pattern.Alias { alias; _ } -> of_pattern alias
     | _ -> None
   in
@@ -282,7 +272,7 @@ let parameter_count = fun binding ->
   let count = ref 0 in
   let rec count_parameter_pattern pattern =
     match Ast.Pattern.view pattern with
-    | Ast.Pattern.Constraint { pattern = Some pattern; _ } -> count_parameter_pattern pattern
+    | Ast.Pattern.Constraint { pattern; _ } -> count_parameter_pattern pattern
     | _ -> count := Int.add !count 1
   in
   Ast.LetBinding.for_each_parameter binding ~fn:count_parameter_pattern;
@@ -302,7 +292,7 @@ let return_annotation_of_binding = fun binding ->
               match Ast.Node.kind node with
               | Syn.SyntaxKind.CONSTRAINT_PATTERN -> (
                   match Ast.Pattern.view pattern with
-                  | Ast.Pattern.Constraint { annotation = Some type_expr; _ } ->
+                  | Ast.Pattern.Constraint { annotation = type_expr; _ } ->
                       annotation := Some type_expr
                   | _ -> ()
                 )
