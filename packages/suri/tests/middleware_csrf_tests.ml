@@ -247,6 +247,47 @@ let test_csrf_plain_apis_return_structured_errors = fun _ctx ->
       Test.assert_true (String.contains rendered "invalid int bound: 0");
       Ok ()
 
+let test_csrf_verify_token_reports_structured_errors = fun _ctx ->
+  let token = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef" in
+  let other_token = "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff" in
+  match Session.create ~cookie_name:"_test" ~secret:"0123456789abcdef0123456789abcdef" () with
+  | Error error -> Error (Session.setup_error_to_string error)
+  | Ok session -> (
+      Session.put "_csrf_token" token session;
+      Test.assert_equal ~expected:(Ok ()) ~actual:(Csrf.verify_token_result session token);
+      Test.assert_true (Csrf.verify_token session token);
+      Test.assert_equal
+        ~expected:(Error Csrf.TokenMismatch)
+        ~actual:(Csrf.verify_token_result session other_token);
+      Test.assert_false (Csrf.verify_token session other_token);
+      Test.assert_equal
+        ~expected:(Error (Csrf.InvalidRequestToken Csrf.InvalidMaskedTokenEncoding))
+        ~actual:(Csrf.verify_token_result session "not-base64");
+      match Csrf.mask_token token with
+      | Error error -> Error (Csrf.error_to_string error)
+      | Ok masked -> (
+          Test.assert_equal ~expected:(Ok ()) ~actual:(Csrf.verify_token_result session masked);
+          match Session.create ~cookie_name:"_missing" ~secret:"0123456789abcdef0123456789abcdef" () with
+          | Error error -> Error (Session.setup_error_to_string error)
+          | Ok missing_session -> (
+              Test.assert_equal
+                ~expected:(Error Csrf.MissingStoredToken)
+                ~actual:(Csrf.verify_token_result missing_session token);
+              match Session.create
+                ~cookie_name:"_invalid"
+                ~secret:"0123456789abcdef0123456789abcdef"
+                () with
+              | Error error -> Error (Session.setup_error_to_string error)
+              | Ok invalid_session ->
+                  Session.put "_csrf_token" "not-a-raw-token" invalid_session;
+                  Test.assert_equal
+                    ~expected:(Error Csrf.InvalidStoredToken)
+                    ~actual:(Csrf.verify_token_result invalid_session token);
+                  Ok ()
+            )
+        )
+    )
+
 let tests =
   Test.[
     case "csrf generates raw hex tokens" test_csrf_generates_raw_hex_tokens;
@@ -257,6 +298,9 @@ let tests =
     case "csrf secure equal checks full token" test_csrf_secure_equal_checks_full_token;
     case "csrf requires session middleware" test_csrf_requires_session_middleware;
     case "csrf plain apis return structured errors" test_csrf_plain_apis_return_structured_errors;
+    case
+      "csrf verify token reports structured errors"
+      test_csrf_verify_token_reports_structured_errors;
   ]
 
 let main ~args = Test.Cli.main ~name:"suri:middleware-csrf" ~tests ~args ()

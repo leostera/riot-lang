@@ -123,11 +123,18 @@ type error =
 type unmask_error =
   | InvalidMaskedTokenEncoding
   | InvalidMaskedTokenLength of { expected: int; actual: int }
+type verification_error =
+  | MissingStoredToken
+  | InvalidStoredToken
+  | InvalidRequestToken of unmask_error
+  | TokenMismatch
 val random_error_to_string: random_error -> string
 
 val error_to_string: error -> string
 
 val unmask_error_to_string: unmask_error -> string
+
+val verification_error_to_string: verification_error -> string
 
 val random_bytes_with_rng: Random.Rng.t -> int -> (string, random_error) result
 
@@ -140,6 +147,10 @@ val mask_token: string -> (string, error) result
 val unmask_token: string -> (string, unmask_error) result
 
 val get_or_create_token: Session.t -> (string, error) result
+
+val verify_token_result: Session.t -> string -> (unit, verification_error) Std.result
+
+val verify_token: Session.t -> string -> bool
 
 val is_raw_token: string -> bool
 

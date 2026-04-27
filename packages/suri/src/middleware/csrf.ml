@@ -17,6 +17,12 @@ type unmask_error =
   | InvalidMaskedTokenEncoding
   | InvalidMaskedTokenLength of { expected: int; actual: int }
 
+type verification_error =
+  | MissingStoredToken
+  | InvalidStoredToken
+  | InvalidRequestToken of unmask_error
+  | TokenMismatch
+
 let missing_session_body =
   "CSRF middleware requires Suri.Middleware.Session.middleware to run before it"
 
@@ -48,6 +54,13 @@ let unmask_error_to_string = function
           " bytes, got ";
           Int.to_string actual;
         ]
+
+let verification_error_to_string = function
+  | MissingStoredToken -> "CSRF token is missing from the session"
+  | InvalidStoredToken -> "CSRF token stored in the session is malformed"
+  | InvalidRequestToken error ->
+      "CSRF token submitted by the client is malformed: " ^ unmask_error_to_string error
+  | TokenMismatch -> "CSRF token does not match the session token"
 
 let secure_equal = fun s1 s2 ->
   let len1 = String.length s1 in
@@ -232,13 +245,30 @@ let get_or_create_token = fun session ->
           Ok token
 
 (** Verify token from request matches session *)
-let verify_token = fun session request_token ->
+let verify_token_result = fun session request_token ->
   match Session.get_value csrf_token_key session with
-  | Option.None -> false
+  | Option.None -> Error MissingStoredToken
   | Option.Some stored_token ->
-      is_raw_token stored_token && match unmask_token request_token with
-      | Ok unmasked -> is_raw_token unmasked && secure_equal unmasked stored_token
-      | Error _ -> is_raw_token request_token && secure_equal request_token stored_token
+      if not (is_raw_token stored_token) then
+        Error InvalidStoredToken
+      else if is_raw_token request_token then
+        if secure_equal request_token stored_token then
+          Ok ()
+        else
+          Error TokenMismatch
+      else
+        match unmask_token request_token with
+        | Ok unmasked ->
+            if is_raw_token unmasked && secure_equal unmasked stored_token then
+              Ok ()
+            else
+              Error TokenMismatch
+        | Error error -> Error (InvalidRequestToken error)
+
+let verify_token = fun session request_token ->
+  match verify_token_result session request_token with
+  | Ok () -> true
+  | Error _ -> false
 
 (** {1 HTTP Method Classification} *)
 
@@ -298,18 +328,19 @@ let middleware = fun
             )
           | Option.Some token ->
               (* Verify token *)
-              if verify_token session token then
-                begin
-                  (* Valid token - continue *)
-                  next conn
-                end
-              else
-                begin
+              match verify_token_result session token with
+              | Ok () -> begin
+                (* Valid token - continue *)
+                next conn
+              end
+              | Error error -> (
                   (* Invalid token *)
                   conn
-                  |> Conn.respond ~status:Net.Http.Status.Forbidden ~body:"CSRF token invalid"
+                  |> Conn.respond
+                    ~status:Net.Http.Status.Forbidden
+                    ~body:(verification_error_to_string error)
                   |> Conn.halt
-                end
+                )
 
 (** {1 View Helpers} *)
 
