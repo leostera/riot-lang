@@ -1702,18 +1702,6 @@ let test_module_type_with_constraint_views = fun _ctx ->
           seen := !seen + 1;
           match Ast.ModuleTypeConstraint.view constraint_ with
           | Ast.ModuleTypeConstraint.Type { path; operator; body } when Int.equal index 0 ->
-              let path =
-                path
-                |> require_some ~msg:"expected type constraint path"
-              in
-              let operator =
-                operator
-                |> require_some ~msg:"expected type constraint operator"
-              in
-              let body =
-                body
-                |> require_some ~msg:"expected type constraint body"
-              in
               let path_name =
                 Ast.Path.last_ident path
                 |> require_some ~msg:"expected type path name"
@@ -1725,15 +1713,7 @@ let test_module_type_with_constraint_views = fun _ctx ->
               Test.assert_equal ~expected:"config" ~actual:(Ast.Token.text path_name);
               Test.assert_equal ~expected:"=" ~actual:(Ast.Token.text operator);
               Test.assert_equal ~expected:"int" ~actual:(Ast.Token.text body_token)
-          | Ast.ModuleTypeConstraint.Module { path; body } when Int.equal index 1 ->
-              let path =
-                path
-                |> require_some ~msg:"expected module constraint path"
-              in
-              let body =
-                body
-                |> require_some ~msg:"expected module constraint body"
-              in
+          | Ast.ModuleTypeConstraint.Module { path; operator; body } when Int.equal index 1 ->
               let path_name =
                 Ast.Path.last_ident path
                 |> require_some ~msg:"expected module path name"
@@ -1743,6 +1723,7 @@ let test_module_type_with_constraint_views = fun _ctx ->
                 |> require_some ~msg:"expected module constraint body token"
               in
               Test.assert_equal ~expected:"Nested" ~actual:(Ast.Token.text path_name);
+              Test.assert_equal ~expected:"=" ~actual:(Ast.Token.text operator);
               Test.assert_equal ~expected:"Impl" ~actual:(Ast.Token.text body_token)
           | Ast.ModuleTypeConstraint.Unknown _ -> panic "unexpected module type constraint shape"
           | _ -> panic "unexpected module type constraint ordering");

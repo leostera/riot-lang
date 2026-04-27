@@ -6648,7 +6648,7 @@ and render_module_type_constraint_node = fun state node ->
   | None -> unsupported_node "unsupported module type constraint" node
   | Some constraint_ -> (
       match Ast.ModuleTypeConstraint.view constraint_ with
-      | Type { path = Some path; operator = Some operator; body = Some body } ->
+      | Type { path; operator; body } ->
           emit_text state "type";
           emit_space state;
           render_path state path;
@@ -6656,31 +6656,16 @@ and render_module_type_constraint_node = fun state node ->
           emit_token state operator;
           emit_space state;
           render_type_expr state body
-      | Type _ -> unsupported_node "incomplete module type constraint" node
-      | Module { path = Some path; body = Some body } ->
+      | Module { path; operator; body } ->
           emit_text state "module";
           emit_space state;
           render_path state path;
           emit_space state;
-          render_module_type_constraint_operator state node;
+          emit_token state operator;
           emit_space state;
           render_module_type_constraint_module_body state body
-      | Module _ -> unsupported_node "incomplete module constraint" node
       | Unknown _ -> unsupported_node "unsupported module type constraint" node
     )
-
-and render_module_type_constraint_operator = fun state node ->
-  let found = ref None in
-  Ast.Node.for_each_child_token
-    node
-    ~fn:(fun token ->
-      if
-        Option.is_none !found && (token_kind_is token Kind.EQ || token_kind_is token Kind.COLONEQ)
-      then
-        found := Some token);
-  match !found with
-  | Some operator -> emit_token state operator
-  | None -> emit_text state "="
 
 and render_module_type_constraint_module_body = fun state body ->
   match module_expr_specific_node body with

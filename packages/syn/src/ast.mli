@@ -1047,13 +1047,14 @@ module ModuleTypeConstraint: sig
   type t = module_type_constraint
   type view =
     | Type of {
-        path: path option;
-        operator: Token.t option;
-        body: type_expr option;
+        path: path;
+        operator: Token.t;
+        body: type_expr;
       }
     | Module of {
-        path: path option;
-        body: Node.t option;
+        path: path;
+        operator: Token.t;
+        body: Node.t;
       }
     | Unknown of Node.t
   val cast: Node.t -> t option

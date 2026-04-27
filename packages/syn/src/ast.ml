@@ -4670,13 +4670,14 @@ module ModuleTypeConstraint = struct
 
   type view =
     | Type of {
-        path: path option;
-        operator: token option;
-        body: type_expr option;
+        path: path;
+        operator: token;
+        body: type_expr;
       }
     | Module of {
-        path: path option;
-        body: node option;
+        path: path;
+        operator: token;
+        body: node;
       }
     | Unknown of node
 
@@ -4710,17 +4711,25 @@ module ModuleTypeConstraint = struct
       1
       ~matches:is_module_expr_kind
 
+  let type_operator = fun constraint_ ->
+    first_child_token_matching
+      constraint_
+      ~matches:(fun kind -> Syntax_kind.(kind = EQ || kind = COLONEQ || kind = PLUS))
+
+  let module_operator = fun constraint_ ->
+    first_child_token_matching
+      constraint_
+      ~matches:(fun kind -> Syntax_kind.(kind = EQ || kind = COLONEQ))
+
   let view = fun (constraint_: t) ->
     if node_kind_is constraint_ Syntax_kind.WITH_TYPE_CONSTRAINT then
-      Type {
-        path = type_path constraint_;
-        operator = first_child_token_matching
-          constraint_
-          ~matches:(fun kind -> Syntax_kind.(kind = EQ || kind = COLONEQ || kind = PLUS));
-        body = type_body constraint_;
-      }
+      match (type_path constraint_, type_operator constraint_, type_body constraint_) with
+      | (Some path, Some operator, Some body) -> Type { path; operator; body }
+      | _ -> Unknown constraint_
     else if node_kind_is constraint_ Syntax_kind.WITH_MODULE_CONSTRAINT then
-      Module { path = module_path constraint_; body = module_body constraint_ }
+      match (module_path constraint_, module_operator constraint_, module_body constraint_) with
+      | (Some path, Some operator, Some body) -> Module { path; operator; body }
+      | _ -> Unknown constraint_
     else
       Unknown constraint_
 end
