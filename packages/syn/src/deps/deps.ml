@@ -321,20 +321,23 @@ module Ast_deps = struct
     | Syntax_kind.OPAQUE_MODULE_TYPE -> true
     | _ -> false
 
+  let vector_to_list = fun vector ->
+    Vector.to_array vector
+    |> Array.to_list
+
   let path_segments = fun node ->
-    let segments = ref [] in
+    let segments = Vector.with_capacity ~size:(A.Node.child_count node) in
     A.Node.for_each_token
       node
       ~fn:(fun token ->
         if Syntax_kind.(token_kind token = IDENT) then
-          segments := A.Token.text token :: !segments);
-    List.reverse !segments
+          Vector.push segments ~value:(A.Token.text token));
+    vector_to_list segments
 
   let ast_path_segments = fun path ->
     let segments = Vector.with_capacity ~size:4 in
     A.Path.for_each_ident path ~fn:(fun token -> Vector.push segments ~value:(A.Token.text token));
-    Vector.to_array segments
-    |> Array.to_list
+    vector_to_list segments
 
   let add_parent_segments = fun env deps segments ->
     match drop_last segments with
